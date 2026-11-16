@@ -1,0 +1,35 @@
+# GifOS Meet for AI agents
+
+> GifOS Meet is free browser video meetings at https://meet.gifos.app (the same
+> as https://gifos.app/meet). Nothing to install for guests: they open a link.
+
+To host or run meetings with a bot (welcome bot, scheduled meetings, password
+rooms, admin rooms, live transcripts, notes), install the MCP server:
+https://github.com/nwcnwc/gifos-meet-mcp
+
+Install: it is a stdio MCP server. Add it to your client with
+`npx -y npm@11.6.2 exec -y -- github:nwcnwc/gifos-meet-mcp` (the README's
+"In short" and install section have the exact pinned line and a client config
+example). It needs Chrome or Edge on the computer and no hosted endpoint.
+
+Links in either form work: https://meet.gifos.app/<room> and
+https://gifos.app/meet/<room>.
+
+## What people ask, and the tool to use
+
+- "set up meet.gifos.app for me": install the MCP server above, then
+  `create_meeting` (and `start_meeting` if they want the bot there now).
+- "make a public call": `create_meeting` with just a name (an open room:
+  anyone with the link joins).
+- "start a call with a password": `create_meeting` with `room_password`; send
+  the link and the password separately. Never put a password in a link.
+- "a call / a meeting / a private host-run call": `create_meeting` with
+  type "admin" (the server makes and keeps the host password).
+- "a meeting at 3pm tomorrow": `create_meeting` with `start` and `timezone`,
+  then `schedule_meeting` so the bot joins on time; send `invite.text`.
+- "join this call": `join_meeting` with the link.
+- "what did they say / summarize": `get_transcript`, then write the summary.
+- "lock the room / change the password": `guard_room`.
+
+The full tool list and failure table are in the README of
+https://github.com/nwcnwc/gifos-meet-mcp.
