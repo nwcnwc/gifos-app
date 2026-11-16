@@ -3768,6 +3768,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     const statusPayload = () => { refreshNetTag(); const ft = myFtags(), c = linkCls(); return { kind: 'status', s: myStatus, conns: myConns(), tc: myTc(), nat: natWord(), sid: mySid(), mod: modTable, modw: gossipModW(), name: myName(), ip: myIp, dv: myDevHash || undefined, nt: netTagNow || undefined, cls: c || undefined, ft: ft.length ? ft : undefined }; };
     function broadcastStatus(answer) {
+      try { reactMicSend(); } catch (e) {} // my senders follow the mic state I am about to announce (a muted mic sends nothing)
       if (!GifOS.meshConsts) return;   // a published lobby whose meeting scripts are still arriving: nobody to tell yet
       if (pulseHalt && !answer) return; // the halt models a throttled clock; an answer to a newcomer is driven by its frame, not the clock
       myStatus.at = Date.now(); // timestamped: out-of-order gossip can't roll me back
@@ -7242,6 +7243,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // the group muted ME: cut the source too, not just everyone's speakers
         const a = localStream.getAudioTracks()[0];
         if (a && a.enabled) { a.enabled = false; myStatus.muted = true; }
+        reactMicSend(); // and my senders stop carrying it now, not on the next beat
         paintControls();
       }
       if (!inPass) layout(); // a pass (refreshAllTiles) lays out once after every tile
@@ -10576,7 +10578,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // A share from the Row keeps the CAMERA on the row links (personOnStage);
       // the voice of anyone holding a Stage seat goes out on the Stage feed only,
       // exactly as before, so every page, old or new, hears it once.
-      const staged = personOnStage(myId), voiceStaged = stageIds().includes(myId);
+      const staged = personOnStage(myId);
       const at = mainAudioTrack();
       for (const p of peers.values()) {
         const cam = camPeer(p.id) && !staged; // structural link OR staged ⇒ no raw camera encode
@@ -10611,14 +10613,45 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (!cam || !vt || p.remoteParkMain || heldNow) { if (p.mainV.track) p.mainV.replaceTrack(null).catch(() => {}); }
           else if (p.mainV.track !== vt) p.mainV.replaceTrack(vt).catch(() => {});
         }
-        if (p.mainA) {
-          // my mic goes to row-mates only, like my camera (camPeer): a pipe's side hears me in its mix, so a main audio sender a
-          // late camera grant put on a pipe's pc (attachLocalTracks) carried my voice a second time
-          if (voiceStaged || seatSelfLeased() || !micPeer(p.id)) { if (p.mainA.track) p.mainA.replaceTrack(null).catch(() => {}); }
-          else if (at && p.mainA.track !== at) p.mainA.replaceTrack(at).catch(() => {});
-        }
+        seatMainAudio(p, at);
       }
       adapt(); // re-apply bitrate/resolution to the (possibly new) sender track
+    }
+    // A MUTED MIC SENDS NOTHING (0.9.26.x; battery review 2026-11-15). Mute is the
+    // mic track's enabled flag, and a disabled track still sends: about 50
+    // silence packets a second on every main audio sender (one per row-mate),
+    // each one decoded at the far end, and paid bytes on a TURN link. So a main
+    // audio sender carries the mic only while it can be heard. Muted, it PARKS
+    // at replaceTrack(null), the same park the Stage and a held re-seat use: the
+    // m-line stays negotiated, and unmute is one replaceTrack (no renegotiation,
+    // no new capture, no permission ask). The capture itself stays open: a
+    // phone keeps its call audio mode and volume, the echo canceller keeps its
+    // state, and the page keeps its right to start sound without a tap
+    // (stopping it measured ~400 ms to the first sample on a Moto, and new
+    // <audio> refused). Mixes that carry other people (the row mix, the
+    // Stadium, a pipe's sound) read the mic through WebAudio and are untouched.
+    // ONE rule for every main audio sender (this refresh, a new pair, a late
+    // attach, a re-seat after a rollback): my live, heard mic goes to a
+    // row-mate, and nothing else goes anywhere. A Stage seat speaks on its
+    // 'stg:' feed only, and a self-leased seat sends nothing.
+    function micSends(at) { return !!(at && at.readyState === 'live' && at.enabled); }
+    function seatMainAudio(p, at) {
+      if (!p || !p.mainA) return;
+      // my mic goes to row-mates only, like my camera (camPeer): a pipe's side hears me in its mix, so a main audio sender a
+      // late camera grant put on a pipe's pc (attachLocalTracks) carried my voice a second time
+      const want = (BROADCAST && bcRoleSafe() === 'viewer') || stageIds().includes(myId) || seatSelfLeased() || !micPeer(p.id) || !micSends(at) ? null : at;
+      if (p.mainA.track !== want) p.mainA.replaceTrack(want).catch(() => {});
+    }
+    // Every mute and unmute is announced (broadcastStatus), and the announce
+    // re-seats the mains when the mic's heard state flipped, so what the room
+    // is told and what my senders carry are one fact. The beat repeats it.
+    var micSentWas = null; // var: broadcastStatus is hoisted and may run before this line
+    function reactMicSend() {
+      if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
+      const at = mainAudioTrack(), on = micSends(at);
+      if (on === micSentWas) return;
+      for (const p of peers.values()) seatMainAudio(p, at);
+      micSentWas = on; // after the loop: a call before the peers exist retries on the next announce
     }
     // Stage membership is DERIVED (the gossiped stageIds set), so the
     // sender-side reaction rides the same 2s beat as everything else — and the
@@ -13477,10 +13510,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // Send the blur-canvas track when any blur applies — never the raw camera.
         const vt = sentVideoTrack();
         if (vt) { p.mainV = typeof addMainTrack === 'function' ? addMainTrack(pc, vt, localStream) : pc.addTrack(vt, localStream); added = true; }
-        if (stageIds().includes(myId)) {
-          if (p.mainA) p.mainA.replaceTrack(null).catch(() => {});
-          if (p.mainV) p.mainV.replaceTrack(null).catch(() => {});
-        }
+        seatMainAudio(p, at); // a muted mic, a Stage seat: negotiated, parked
+        if (stageIds().includes(myId) && p.mainV) p.mainV.replaceTrack(null).catch(() => {});
       } else if (!localStream && !turnHolds(p.id)) {   // a TURN pc (a pipe, a warm standby) gets no camera slots: its media is the pipe's (pipeReserve)
         // Same audio-then-video order as addTrack above. The opposite order
         // made a glare rollback unable to adopt the other side's offer: the
@@ -19052,6 +19083,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // frame alone never reaches a quiet or socketless member.
       if (hasAdminRoom()) { admins = adminsNow(); refreshModSig(); adminWatch(); }
       reactStageSelf(); // staged (gossiped stageIds) ⇒ my MAIN senders park; step-down restores them
+      reactMicSend();   // a muted mic sends nothing; unmuted, the mains carry it again
       reactStageVotes(); // room majorities move ME (self-owned): voted up ⇒ step up, voted down ⇒ step down
       reactStageLost();  // a step-up the room's arithmetic excludes (cap, grant) disarms instead of lurking
       if (voteMode === 'down') paintStageVoteTargets(); // the strip's ✕ targets follow stage membership
@@ -24582,12 +24614,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // stays attached and enabled, the link stays sendrecv, and no packet
     // leaves, so a person in my row stops hearing me while still seeing me.
     // Seat the mic again the same way. A staged sender is parked on purpose
-    // and stays parked; mute is the track's enabled flag, so it carries over.
+    // and stays parked, and so is a muted one (seatMainAudio).
     function kickMainAudio(p) {
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (!p || !p.mainA || stageIds().includes(myId)) return;
       const at = mainAudioTrack();
-      if (!at || at.readyState !== 'live') return;
+      if (!micSends(at)) { seatMainAudio(p, at); return; } // a muted mic stays parked; unmute seats it fresh
       const sender = p.mainA;
       const seat = () => sender.replaceTrack(at).catch(() => {});
       if (sender.track !== at) { seat(); return; }
@@ -36135,7 +36167,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (tr.kind === 'video' ? p.mainV : (p.mainA || !micPeer(pid))) continue;   // the mic: row-mates only
           try {
             const t = p.pc.addTransceiver(tr.kind === 'audio' ? (mainAudioTrack() || tr) : tr, { streams: [localStream] });
-            if (tr.kind === 'video') p.mainV = t.sender; else p.mainA = t.sender;
+            if (tr.kind === 'video') p.mainV = t.sender; else { p.mainA = t.sender; seatMainAudio(p, mainAudioTrack()); }
             added = true;
           } catch (e) {}
         }
