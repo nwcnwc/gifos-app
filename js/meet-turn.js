@@ -1145,7 +1145,7 @@
       log('turn-probe dial ' + short(y) + ' ' + sl);
       try { if (io.probeDoor) io.probeDoor(pipeNo(sl), [y]); } catch (e) {}
     }
-    function probeStep(now) { for (const [y, p] of Array.from(probes)) { const hit = !!(io.directSeen && io.directSeen(y)); if (hit || now - p.at > ASK_MS) { probes.delete(y); probeSay(p.from, p.sl, y, hit ? 1 : 0); } } }
+    function probeStep(now) { for (const [y, p] of Array.from(probes)) { const hit = !!(io.directSeen && io.directSeen(y)); if (hit || now - p.at > ASK_MS) { probes.delete(y); if (!hit && io.probeEnd) { try { io.probeEnd(y); } catch (e) {} } probeSay(p.from, p.sl, y, hit ? 1 : 0); } } }   // a miss ends the probe's connection (SUB.8.1: a probe asks for a direct path only; nothing of it lingers)
     // My standby is to stand elsewhere: its present seat is told, and the warm-up starts again (warmStandby reads sbWant).
     function restand(L) {
       const sl = 's' + pipeNo(L.l);
