@@ -587,7 +587,7 @@
   function paintStatic() {
     const set = (sel, text) => { const el = document.querySelector(sel); if (el) el.textContent = text; };
     set('.topbar .title', T('store.title'));
-    set('.topbar .home:not(#subscribe-link)', T('store.homeScreen'));   // the Subscribe link shares the look, not the words
+    set('.topbar .home', T('store.homeScreen'));
     const h1 = document.querySelector('#browse h1');
     if (h1) h1.innerHTML = rich('store.browse.titleLead', {}, { gifs: '<span class="brand">' + esc(T('store.browse.gifs')) + '</span>' });
     set('#browse .lede', T('store.browse.lede'));
