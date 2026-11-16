@@ -18964,8 +18964,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const cands = myConns().filter((r) => r !== pid
             && (connsOf.get(r) || []).includes(pid)
             && !refusedNow(r)).sort();
-          // TURN.14.12: no connected peer names the target: my TURN peer is the one seat that reaches my row-mates across the cut; it dials the target for the carry
-          if (!cands.length && turnLinks) for (const r of turnLinks.turnPcs()) { const q = peers.get(r); if (r !== pid && q && q.connected && !refusedNow(r)) cands.push(r); }
           if (cands.length) {
             p.relayAskAt = now;
             // ranked on each pc's last stats reading (read again now for the next ask): the ask itself never waits
@@ -24723,7 +24721,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         .catch((e) => { if (p.pc !== pc) return; if (typeof clog === 'function') clog('roffer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); p.renegAgain = true; maybeRebuildNeg(p, e); })
         .finally(() => { if (p.neg.minting === mark) p.neg.minting = null; if (p.neg.turnWanted) giveTurn(p); });
     }
-    const t14Dial = new Map();   // TURN.14.12: target -> when I dialled it for my TURN peer's carry
     function startRelayJob(reqP, target) {
       const key = target + '>' + reqP.id;
       // A requester asks again only when it holds no claim on my carry (its claim was dropped while my job ran on):
@@ -24732,18 +24729,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const tp = peers.get(target);
       const refuse = (why) => { fhTrace('FH-REFUSE', 'target=' + String(target).slice(0, 8) + ' req=' + String(reqP.id).slice(0, 8) + ' ' + (why || '')); dcSend(reqP, { k: 'relay-no', target }); };
       if ((typeof isEjected === 'function' && isEjected(target) === true)) { refuse(); return; }
-      // TURN.14.12: asked over my TURN pc for a seat I hold no pc to: no NAT-kind test, I dial it (on my network the dial opens and the
-      // requester's next ask finds the pc; a dial that cannot open is the refusal the next ask reads)
-      if ((!tp || !tp.connected) && reqP.connected && turnLinks && turnLinks.isLink(reqP.id) && target && target !== myId) {
-        const now = Date.now(), at = t14Dial.get(target);
-        if (at === undefined || now - at > GifOS.timings.FHOP_RELAY_ASK_MS * 6) {   // a fresh dial (again, after a long while)
-          t14Dial.set(target, now); if (t14Dial.size > 64) t14Dial.delete(t14Dial.keys().next().value);
-          seatAskAt.set(target, now); seatMark.set(target, cleanMark({ s: 1 })); seatDial(target);
-          fhTrace('FH-T14-DIAL', 'target=' + String(target).slice(0, 8) + ' req=' + String(reqP.id).slice(0, 8));
-          return;
-        }
-        if (now - at < GifOS.timings.FHOP_RELAY_ASK_MS * 3) return;   // the dial is still on its way
-      }
       if (!tp || !tp.connected || !tp.stream || !reqP.connected || relayJobs.size >= FH_K().FHOP_CARRY_MAX) { refuse(!tp ? 'nopeer' : !tp.connected ? 'down' : !tp.stream ? 'nostream' : !reqP.connected ? 'reqdown' : 'full'); return; }
       // A friend-relay re-sends the target's RECEIVED tracks: still refused on WebKit.
       // The mesh's own forwards (mosAttach) run there through wkFwdSrc;
