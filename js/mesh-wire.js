@@ -848,9 +848,7 @@
     let lastRegWord = '';
     const netWord = () => { const t = opts.netTag ? String(opts.netTag() || '') : '', k = opts.netKind ? opts.netKind() : -1; return /^[0-9a-f]{8}$/.test(t) ? t + ':' + (k === 0 || k === 1 || k === 2 ? k : '') : ''; };
     const netWordBlob = (b) => { const w = netWord(); return w ? Object.assign({}, b, { nw: w.slice(0, 8) + w.slice(9) }) : b; };   /* one short field (the tag, then the kind digit): the sealed address is a fixed 128 bytes */
-    // L8.54.8: a changed word registers at once, past the throttle (it changes once per verdict or address, so it cannot loop); behind
-    // the throttle a first page's word kept "no kind" for 8 s after its verdict and a seeker read it as a network it can meet
-    function netWordChanged() { if (stopped || !seat || !iAmAGreeter()) return; const w = netWord(); if (w && w !== lastRegWord) reregister('net-word', true); }
+    function netWordChanged() { if (stopped || !seat || !iAmAGreeter()) return; const w = netWord(); if (w && w !== lastRegWord) reregister('net-word'); }
     function REGISTER_MYSELF_AS_A_GREETER(gk) {
       const k = gk || myKey;
       if (!iAmAGreeter()) { KNOCK_FOR_THE_GREETER_LIST(k); return; }
@@ -870,10 +868,10 @@
     // keepalive is due. Throttled so a solo greeter's own empty replies can
     // never chain into a knock loop. Every call is stamped into greeterTrace.
     let regLateT = 0;   // one deferred register while the throttle holds: a throttled call is delayed, never lost
-    function reregister(why, atOnce) {
+    function reregister(why) {
       if (stopped || !seat || !iAmAGreeter()) return;
       const now = Date.now();
-      if (!atOnce && now - lastRegAt < 8000) {
+      if (now - lastRegAt < 8000) {
         if (!regLateT) regLateT = setTimeout(() => { regLateT = 0; reregister(why + '-late'); }, 8000 - (now - lastRegAt));
         return;
       }
