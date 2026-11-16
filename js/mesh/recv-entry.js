@@ -34,7 +34,6 @@
   Seat.unit('mesh_seat.inc recv entry handlers', {
     // C++: mesh_seat.inc:Seat::onGreeters
     onGreeters(m) {
-      this.l8548List(m.list);   // L8.54.8: a word not said yet is asked for again (C++: onGreeters)
       const TICK = this.TICK, id = this.id, lv = this.w.lv;
       if ((this.state === 0 || this.state === 1) && this.l45Stale(m.list)) { this.reJoin = true; this.f.wake(id); return; }   // L45
       if (this.foundKnock && this.state === 3 && m.list.length === 0) { this.foundKnock = false; this.islandAsked.clear(); this.entEp.clear(); }
