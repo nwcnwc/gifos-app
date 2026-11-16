@@ -68,10 +68,12 @@
         if (this.bareAt.has(ckey(ol[q]))) continue;   // L25.7.1: a listing on its claimant's word alone is no role (L23), so it is not re-dialled either
         const ls = this.f.fabricLinkState(id, x);
         if (ls === LS_OPEN) { if (this.redial.size) this.redial.delete(x); if (this.d6cAt.size) { this.d6cAt.delete(x); this.d6cAsk.delete(x); } continue; }
-        if (ls === LS_DIALING) { const u = this.d6cAt.get(x); if (u === undefined) this.d6cAt.set(x, [-2, 0]); else if (u[0] === -3) u[0] = -2; continue; }   // D6c.7.1: a dial of mine (or one I joined) as this link's owner is out
+        let rel = false; { const rm = this.relMark.get(x); rel = rm !== undefined && TICK - rm <= K.LEASE_T; }   // D6c.7.4: it said it is reloading (L3.11): it comes back within the lease, so no clock of mine runs for it
+        if (rel && this.d6cAt.size) { this.d6cAt.delete(x); this.d6cAsk.delete(x); }
+        if (ls === LS_DIALING) { if (rel) continue; const u = this.d6cAt.get(x); if (u === undefined) this.d6cAt.set(x, [-2, 0]); else if (u[0] === -3) u[0] = -2; continue; }   // D6c.7.1: a dial of mine (or one I joined) as this link's owner is out
         let it = this.redial.get(x); if (it === undefined) { it = [TICK, K.REDIAL_GAP]; this.redial.set(x, it); }
-        if (!this.d6cAt.has(x)) { this.d6cAt.set(x, [-3, 0]); { const g = this.dials.goneAt(x); if (g >= 0 && g < this.seatedAt) { this.dials.lapse(x); this.trace('D6c.7-FIRST', id, ol[q], 'peer=%d', x); } } }   // D6c.7.1: my first dial as this link's owner is made whatever a hold from before I sat here says; a hold made since (its goodbye, a reload's too, or my own failed call) stands
-        if (this.d6cGone(x, ol[q], it)) continue;   // D6c.7: nobody reaches it for the healing bound: its cell is freed; or my last ask is out
+        if (!rel && !this.d6cAt.has(x)) { this.d6cAt.set(x, [-3, 0]); { const g = this.dials.goneAt(x); if (g >= 0 && g < this.seatedAt) { this.dials.lapse(x); this.trace('D6c.7-FIRST', id, ol[q], 'peer=%d', x); } } }   // D6c.7.1: my first dial as this link's owner is made whatever a hold from before I sat here says; a hold made since (its goodbye, a reload's too, or my own failed call) stands
+        if (!rel && this.d6cGone(x, ol[q], it)) continue;   // D6c.7: nobody reaches it for the healing bound: its cell is freed; or my last ask is out
         if (TICK < it[0]) continue;
         { const g = this.dials.goneAt(x); if (g >= 0 && TICK - g >= K.LEASE_T && FREE.l1731Word(this, x, g)) { this.dials.lapse(x); this.trace('L17.3-LAPSE', id, ol[q], 'peer=%d held=%lld', x, TICK - g); } }   // L17.3: a seat dead that long is off my view; one I still name lives, so the hold ends (its next failure starts a new one)
         this.trace('REDIAL', id, ol[q], 'peer=%d gap=%d', x, it[1]);
