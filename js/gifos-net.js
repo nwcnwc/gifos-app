@@ -416,6 +416,34 @@
     return { prepare, token, setRejoin, drop, busy: () => Date.now() < busyUntil, mode: () => mode, skew: () => off };
   }
 
+  // ---- the CORS proxy's ticket -----------------------------------------------
+  // The shared CORS proxy (cors-proxy.gifos.app) serves only a request that
+  // carries a join token in x-gifos-jt: the RELAY's token, same secret, same
+  // proof of work (gifos cors-proxy/README.md). The proxy mints at its own
+  // /t, so this is relayTicket pointed at the proxy: one ticket machine per
+  // proxy base, one device tag per page, the token reused until it runs out.
+  // A proxy without /t (a self-hosted copy from before tokens, a test fake)
+  // reads as 'off' and is called bare, as before. A refusal of OUR ticket
+  // (header x-gifos-jt-refused, never an upstream 401) drops it and the
+  // request goes once more with a fresh one.
+  const PROXY_SID = 'cors-proxy';
+  const proxyTix = new Map();   // proxy base -> { dev, t }
+  async function proxyFetch(base, target, init, fetchFn) {
+    base = String(base || '').replace(/\/+$/, '');
+    const f = fetchFn || ((u, i) => root.fetch(u, i));
+    let p = proxyTix.get(base);
+    if (!p) { p = { dev: randHex(8), t: relayTicket({ relayBase: base, sid: PROXY_SID }) }; proxyTix.set(base, p); }
+    for (let tries = 0; ; tries++) {
+      await p.t.prepare(p.dev);
+      const headers = Object.assign({}, init && init.headers, { 'x-gifos-target': String(target) });
+      const jt = p.t.token(p.dev);
+      if (jt) headers['x-gifos-jt'] = jt;
+      const r = await f(base + '/', Object.assign({}, init, { headers }));
+      if (tries === 0 && r && r.headers && r.headers.get('x-gifos-jt-refused')) { p.t.drop(); continue; }
+      return r;
+    }
+  }
+
   // ---- transport fragmentation ----------------------------------------------
   // Every transport has a per-MESSAGE ceiling (browsers cap a DataChannel
   // message around 256KB; the relay hard-drops anything over its burst), so
@@ -1077,7 +1105,7 @@
     RELAY_TYPES, RELAY_PLAIN_BYTES, RELAY_IV_B64_LEN, RELAY_CT_B64_LEN, RELAY_MAX_FRAME_LEN, RELAY_SHAPES, relayFrameOk, relayVerbOk, fitsFixed, sansPad, sealFixed, relayNameFit, referralFrames, referralJoin,
     bootOf, bootOk, fpOk, sdpOfBoot, iceOf, candOfIce,
     ICE_SERVERS, hasP2P, holdSessionLock,
-    steadySocket, relayTicket, solvePow, BUSY_TEXT, RECONNECT_CAP_MS, RECONNECT_SLOW_CAP_MS, RECONNECT_HIDDEN_CAP_MS, RECONNECT_JITTER_MIN, RECONNECT_JITTER_MAX,
+    steadySocket, relayTicket, solvePow, proxyFetch, BUSY_TEXT, RECONNECT_CAP_MS, RECONNECT_SLOW_CAP_MS, RECONNECT_HIDDEN_CAP_MS, RECONNECT_JITTER_MIN, RECONNECT_JITTER_MAX,
     FRAG_PART, FRAG_BUDGET, sendChunked, chunk, makeDefrag,
     shortCode, randHex, sha256hex, sha256hexOfBytes, keyId, keyVerifier,
     deriveMeet, deriveMeetKey, meetPwProof, mintGenesisKey,
