@@ -838,6 +838,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <button data-ti="trbtnTip" data-t="transcript" aria-keyshortcuts="Alt+T" title="The meeting's live transcript" id="trbtn"><svg class="ai-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>Transcript</button>
         <button data-ti="qabtnTip" data-t="qabtn" id="qabtn" type="button" title="Questions for the host: ask one, and vote up the ones you want answered">Questions</button>
         <button data-ti="agendaTip" data-t="agendaBtn" id="agendabtn" type="button" title="Share an agenda: the items, how long each takes, and which one is on now">Agenda</button>
+        <button data-t="turnSubscribe" id="subbtn" type="button" title="GifOS plans with PayPal: admin rooms for up to 20 people ($2 a month) or unlimited ($5 a month), with video over every connection">Subscribe</button>
       </div>
     </section>
     <section class="moregroup" data-group="video">
@@ -1985,7 +1986,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const phone = !!(s && s.phone), kind = s && s.kind;
       // Every button of the Meeting group, in the sheet's order: seat() appends these after any it does not
       // name, so a button missing here would lead the group (Agenda came before Hand).
-      const tail = ['ccbtn', 'whobtn', 'trbtn', 'qabtn', 'agendabtn'];
+      const tail = ['ccbtn', 'whobtn', 'trbtn', 'qabtn', 'agendabtn', 'subbtn'];
       if (kind === 'bc-host') {
         return phone
           ? { dock: ['cam', 'mic', 'stagebtn', 'reactbtn', 'ccdock', 'sharebtn'], use: ['chatbtn', 'hand'].concat(tail), video: [] }
@@ -13868,12 +13869,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const t = document.createElement('span'); t.className = 'tpause-say';
         const said = statusWords('videoPausedRelay');
         t.textContent = said; el.appendChild(t);
-        if (subsOn()) {
+        // Subscribe is offered on every paused tile; a tap turns subscriptions
+        // on for this browser (optIn) before PayPal opens.
+        if (window.GifOS && GifOS.meetSubs && GifOS.sub) {
           const b = document.createElement('button'); b.type = 'button'; b.className = 'tpause-sub';
           b.textContent = uiText('turnSubscribe', 'Subscribe');
           b.addEventListener('click', async (e) => {
             e.stopPropagation(); b.disabled = true;
             try {
+              if (GifOS.meetSubs.optIn) GifOS.meetSubs.optIn();
               const r = await GifOS.meetSubs.subscribe('room20', 'monthly', (w) => { t.textContent = w; });
               if (!(r && r.licenseJson)) { t.textContent = said; b.disabled = false; }
             } catch (x) { t.textContent = said; b.disabled = false; }
@@ -13885,6 +13889,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           b4.addEventListener('click', async (e) => {
             e.stopPropagation(); b4.disabled = true; b.disabled = true;
             try {
+              if (GifOS.meetSubs.optIn) GifOS.meetSubs.optIn();
               const r = await GifOS.meetSubs.buyPass((w) => { t.textContent = w; });
               if (!(r && r.passJson)) { t.textContent = said; b4.disabled = false; b.disabled = false; }
             } catch (x) { t.textContent = said; b4.disabled = false; b.disabled = false; }
@@ -37533,6 +37538,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     let subsTurnedAway = false, subsTierKey = '', subsTier = null, subsTierExp = 0;
     const subsProven = new Set(), subsAsked = new Map();   // knocker -> {n, at}
     const subsOn = () => !!(window.GifOS && GifOS.meetSubs && GifOS.sub && GifOS.meetSubs.enabled());
+    // The Subscribe entry in More: the plans in Settings, on for this browser from that tap.
+    { const sb = document.getElementById('subbtn'); if (sb) sb.addEventListener('click', () => { if (window.GifOS && GifOS.meetSubs && GifOS.meetSubs.openSubscribe) GifOS.meetSubs.openSubscribe(); }); }
     // The meeting a subscription ticket names: the room's relay session (a one-way hash of the room code), the same
     // room the relay's TURN vouches name, so the TURN Worker can check a paid ask's ticket against its vouches.
     const subsMeetId = () => sessId || roomKey();

@@ -1073,6 +1073,25 @@
     if (b) b.click();
     setTimeout(() => { const g = document.getElementById('set-g-sub'); if (g && g.scrollIntoView) g.scrollIntoView({ block: 'start' }); }, 50);
   }
+  // optIn() -> true once this browser has subscriptions on. A Subscribe
+  // button anywhere turns them on for this browser (the same word as
+  // localStorage 'gifos-subs' = '1') and starts what boot() starts, so the
+  // plan bought here is used by this page at once. A link carrying subs=0
+  // still wins.
+  function optIn() {
+    try { const s = safeStore(); if (s && !on()) s.setItem(SUB.FLAG_KEY, '1'); } catch (e) {}
+    if (on()) boot();
+    return on();
+  }
+  // The Subscribe entry: the Subscription group of Settings, painted before it
+  // is scrolled to. Where this page cannot turn subscriptions on, the
+  // subscribe page opens instead.
+  function openSubscribe() {
+    if (!optIn()) { try { root.open('/subscribe', '_blank', 'noopener'); } catch (e) {} return false; }
+    openSettings();
+    paintSettings().then(() => { const g = document.getElementById('set-g-sub'); if (g && g.scrollIntoView) g.scrollIntoView({ block: 'start' }); }, () => {});
+    return true;
+  }
 
   // ---- admin rooms: making one -------------------------------------------------
   // mayCreateAdminRoom(say) -> true: anyone may make an admin room. Without
@@ -1126,8 +1145,10 @@
     return true;
   }
 
+  let booted = false;
   function boot() {
-    if (!on()) return;
+    if (booted || !on()) return;
+    booted = true;
     const b = document.getElementById('setbtn');
     if (b) b.addEventListener('click', () => { paintSettings().catch(() => {}); });
     keepFresh().catch(() => {});
@@ -1145,7 +1166,7 @@
   }
 
   GifOS.meetSubs = {
-    enabled: on, rights, planRights, refresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, paintNow, paintSettings, openSettings, mayCreateAdminRoom, showFull, ensureFree, showHostPrompt,
+    enabled: on, rights, planRights, refresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, paintNow, paintSettings, openSettings, optIn, openSubscribe, mayCreateAdminRoom, showFull, ensureFree, showHostPrompt,
     roomOrder, roomTier, proveAtDoor, checkShown, newNonce,
     appNow, joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureCurrent, captureOrder, captureKeys, fileBytes, downloadFile, useFile, librarySigner, restoreInApp,
     passMeeting: () => (pmeet ? { room: pmeet.room, gen: pmeet.gen, exp: pmeet.exp, until: pmeet.until, moved: pmeet.moved, held: !!pmeet.ticket } : null),
