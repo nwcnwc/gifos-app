@@ -2,6 +2,19 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.26.8",
+      "date": "2026-11-15",
+      "headline": "Chat floats over the meeting, a slimmer top bar, and steadier linked offices",
+      "critical": false,
+      "fixes": [
+        "Meetings: chat and the transcript open as a panel over the meeting instead of squeezing it, and on phones the top bar is one row with a \u2026 menu.",
+        "Meetings: when two offices are linked, call setup between people no longer travels over the link, and an office keeps exactly one backup link instead of two.",
+        "Meetings: on a free link between offices, the Stage is heard as part of the office's one sound stream, so it no longer turns to static.",
+        "Apps: the shared web proxy used by apps such as the Bible Browser now only serves GifOS pages that have joined properly.",
+        "Phones and laptops on battery: the low power level now starts at 27%."
+      ]
+    },
+    {
       "version": "0.9.26.7",
       "date": "2026-11-15",
       "headline": "Blurred faces say why, and Back keeps you in the meeting",
