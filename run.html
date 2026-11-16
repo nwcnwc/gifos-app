@@ -3847,9 +3847,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // rides a room-wide beat of its own — ephemeral, so it is never re-fanned
       // or replayed — every other heartbeat: three chances inside the 30 s
       // presence window. A CHANGE to the table still floods at once (modFlood).
-      if (scoped && hasAdminRoom() && amAdmin && roomPastSection() && Date.now() - admBeatAt >= 7500) {
+      // A small room is not exempt from the open-channel push: the first status
+      // on a channel often leaves before the signature exists, and later beats
+      // only follow mesh links, so a person who can already see this seat would
+      // otherwise keep "No host present".
+      if (scoped && hasAdminRoom() && amAdmin && Date.now() - admBeatAt >= 7500) {
         admBeatAt = Date.now();
-        fanOut({ kind: 'mod', mod: modTable, modw: gossipModW() }, null, { ephemeral: true });
+        try { pushAdminProof(); } catch (e) {}
+        if (roomPastSection()) fanOut({ kind: 'mod', mod: modTable, modw: gossipModW() }, null, { ephemeral: true });
       }
       if (digestMode()) pushLeaf();
       updateTile('me');
@@ -17443,6 +17448,74 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // the 2-minute freshness bucket) changed — the heartbeat law: events may
     // trigger early, the beat guarantees.
     let modSigW = null, modSigSrc = '', modSigP = null, modWSeen = null, modWSeenTs = 0;
+    // The signed admin claim, on every data channel that is already open.
+    // dc.onopen sends it once, but adoptAdmKey's signature is async (the
+    // key check, then Ed25519), so that first frame often carries modw null
+    // and takeMod drops it. Heartbeats after that only go to mesh links.
+    // Someone who already has this seat's tile then never learns the host.
+    function pushAdminProof() {
+      if (!amAdmin || !modSigW) return 0;
+      const msg = { kind: 'mod', mod: modTable, modw: modSigW };
+      let n = 0;
+      for (const p of peers.values()) {
+        if (!p || !p.dc || p.dc.readyState !== 'open') continue;
+        try { dcSend(p, { k: 'sig', msg: msg }); n++; } catch (e) {}
+      }
+      return n;
+    }
+    function hostBanner() {
+      const el = document.getElementById('admcount');
+      return el && el.style.display !== 'none' ? String(el.textContent || '') : '';
+    }
+    // Confirmed host: this page holds the key, that key's verifier is this
+    // room's, and a signed claim exists for other pages to check. amAdmin
+    // alone is the local flag, set before any of that reaches the room.
+    function hostConfirmedNow() {
+      return !!(amAdmin && admKeys && av && admKeys.verifier === av && modSigW && !hostBanner());
+    }
+    function hostClaimNow() {
+      let roomCount = 0, island = false, seated = false;
+      try { roomCount = displayCount(); } catch (e) {}
+      try { island = islandApart(); } catch (e) {}
+      try { const s = meshSeat(); seated = !!(s && s.state === 3); } catch (e) {}
+      const ids = new Set(Array.isArray(rosterIds) ? rosterIds.filter(Boolean) : []);
+      if (myId) ids.add(myId);
+      return {
+        local: !!amAdmin,
+        confirmed: hostConfirmedNow(),
+        verifier: av || '',
+        proof: !!modSigW,
+        seated: seated,
+        banner: hostBanner(),
+        room_count: roomCount,
+        roster_count: ids.size,
+        island: !!island,
+      };
+    }
+    // Sign in again, even when amAdmin is already set. The password is checked
+    // against this room's verifier (adoptAdmKey). Host is confirmed only once
+    // the signed claim exists and has been handed to open channels.
+    async function recheckHost(password) {
+      const v = String(password || '').trim();
+      if (!av) return { confirmed: false, error: 'This meeting has no host (it is an open room), so there is nothing to sign in to.' };
+      if (!v) return { confirmed: false, error: 'A host password is needed.' };
+      let K;
+      try { K = await deriveAdminKey(room, v); }
+      catch (err) { return { confirmed: false, error: 'Could not check the host password.' }; }
+      const took = await adoptAdmKey(K);
+      if (!took) return { confirmed: false, error: 'That host password did not sign the bot in. The meeting page checked it against this room\'s host key.' };
+      try { localStorage.setItem(admStoreKey(), admKey); } catch (e2) {}
+      try { applyAdminUi(); } catch (e) {}
+      const end = Date.now() + 15000;
+      while (!modSigW && Date.now() < end) {
+        try { refreshModSig(); } catch (e) {}
+        await new Promise((r) => setTimeout(r, 200));
+      }
+      try { pushAdminProof(); } catch (e) {}
+      try { broadcastStatus(); } catch (e) {}
+      if (!hostConfirmedNow()) return { confirmed: false, error: 'The meeting page did not confirm the host sign-in. The room has not accepted an admin claim yet.' };
+      return { confirmed: true };
+    }
     function refreshModSig() {
       // WAIT for the S4 identity: `by` (my peer id) is INSIDE the signed
       // statement, and receivers only credit admin PRESENCE from it (admSeen).
@@ -17454,7 +17527,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const src = JSON.stringify(modTable) + '|' + myId + '|' + Math.floor(Date.now() / 120000);
       if (src === modSigSrc) return modSigP;
       modSigSrc = src;
-      modSigP = admSigned('mod', { mod: modTable }).then((w) => { modSigW = w; return w; });
+      modSigP = admSigned('mod', { mod: modTable }).then((w) => {
+        modSigW = w;
+        // The signature landed after channels were already open. Those
+        // channels still have the empty proof from dc.onopen.
+        try { pushAdminProof(); } catch (e) {}
+        return w;
+      });
       return modSigP;
     }
     const gossipModW = () => (amAdmin ? modSigW : modWSeen); // non-admins re-gossip the admin's own signed table — the signature travels
@@ -41411,6 +41490,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }),
       hasAdmin: () => hasAdminRoom(),
       amAdmin: () => amAdmin,
+      hostClaim: () => hostClaimNow(),
+      recheckHost: (password) => recheckHost(password),
+      islandApart: () => { try { return islandApart(); } catch (e) { return false; } },
       broadcast: () => BROADCAST,
       chatOff: () => !!chatOffInfo(),
       chatOffForTest: (on) => setMod('*', 'chat', !!on),
