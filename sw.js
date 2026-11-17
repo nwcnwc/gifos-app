@@ -56,6 +56,32 @@ var CACHE = 'gifos-shell-' + SHELL_VERSION;
 // actually run, and the cache is bounded by the number of files, not deploys.
 function keyOf(url) { return url.pathname; }
 
+// A response the browser reached by FOLLOWING a redirect carries redirected:true.
+// The host 308s every .html URL to its clean form (/run.html -> /run), so a fetch
+// of 'run.html' (meet-host.js reads the page that way, and install() precaches
+// '/run.html') comes back redirected. Kept as it is under the asked key, it was
+// later handed to a NAVIGATION, whose redirect mode is 'manual': the browser
+// refuses a redirected response there and the page fails to load
+// (net::ERR_FAILED), every time after, because a /versions/ snapshot is served
+// cache-first. plain() is the same bytes without the redirect mark, so the
+// cached copy can answer any request, a navigation included.
+function plain(res) {
+  if (!res || !res.redirected) return Promise.resolve(res);
+  return res.blob().then(function (body) {
+    return new Response(body, { status: res.status, statusText: res.statusText, headers: res.headers });
+  });
+}
+function keep(cache, key, res) {
+  return plain(res).then(function (r) { return cache.put(key, r); });
+}
+// A cached copy that still carries the mark (install()'s cache.add follows the
+// same 308s, and an older worker kept such copies too): serve it plain, and put
+// the plain copy back so the cache heals on first use.
+function fromCache(cache, key, res) {
+  if (!res || !res.redirected) return Promise.resolve(res);
+  return plain(res).then(function (r) { cache.put(key, r.clone()).catch(function () {}); return r; });
+}
+
 // The universal shell — identical on gifos.app and every theme subdomain. Per-
 // computer extras (archived builds under /versions/) are runtime-cached on first
 // visit, so a computer you have actually opened keeps working offline too.
@@ -155,7 +181,7 @@ self.addEventListener('message', function (e) {
       var cache = await caches.open(CACHE);
       await Promise.allSettled(CORE.concat(DESKTOP_SHELL).concat(themeOverride()).map(function (u) {
         return fetch(new Request(u, { cache: 'reload' })).then(function (r) {
-          if (r && r.ok) return cache.put(u, r);
+          if (r && r.ok) return keep(cache, u, r);
         }).catch(function () {});
       }));
       var cs = await self.clients.matchAll();
@@ -174,7 +200,7 @@ function raceNetwork(req, cache, ms, key) {
     var t = setTimeout(function () { if (!settled) { settled = true; resolve(null); } }, ms);
     fetch(req).then(function (res) {
       if (res && res.ok && (res.type === 'basic' || res.type === 'default')) {
-        cache.put(key || req, res.clone()).catch(function () {});
+        keep(cache, key || req, res.clone()).catch(function () {});
       }
       if (!settled) { settled = true; clearTimeout(t); resolve(res); }
     }, function () { if (!settled) { settled = true; clearTimeout(t); resolve(null); } });
@@ -227,7 +253,7 @@ function revalidate(req, cache, ms, passRouted, key) {
     try { rr = new Request(req, { cache: 'no-cache' }); } catch (e) { rr = req; }
     fetch(rr).then(function (res) {
       var ok = res && res.ok && (res.type === 'basic' || res.type === 'default');
-      if (ok) cache.put(key || req, res.clone()).catch(function () {});
+      if (ok) keep(cache, key || req, res.clone()).catch(function () {});
       var redirected = res && (res.type === 'opaqueredirect' || (res.status >= 300 && res.status < 400));
       var gone = !ok && res && res.status === 404;
       if (gone && key) cache.delete(key).catch(function () {});
@@ -477,7 +503,7 @@ self.addEventListener('fetch', function (e) {
   if (url.pathname.lastIndexOf('/versions/', 0) === 0) {
     e.respondWith((async function () {
       var cache = await caches.open(CACHE);
-      var cached = await cache.match(keyOf(url));
+      var cached = await fromCache(cache, keyOf(url), await cache.match(keyOf(url)));
       if (cached) return cached;                   // immutable snapshot wins; no silent refresh
       // A page load still gives up after 4 s, so an offline device sees the
       // "not installed" page instead of a hang. A script or stylesheet waits
@@ -492,7 +518,7 @@ self.addEventListener('fetch', function (e) {
       try {
         var res = await fetch(req);
         if (res && res.ok && (res.type === 'basic' || res.type === 'default')) {
-          cache.put(keyOf(url), res.clone()).catch(function () {});
+          keep(cache, keyOf(url), res.clone()).catch(function () {});
         }
         return res;
       } catch (err) {
@@ -525,7 +551,7 @@ self.addEventListener('fetch', function (e) {
     // router. See revalidate()'s note. The key is the bare path — see keyOf.
     var fresh = await revalidate(req, cache, 4000, req.mode === 'navigate', keyOf(url));
     if (fresh) return fresh;
-    var cached = await cache.match(keyOf(url));
+    var cached = await fromCache(cache, keyOf(url), await cache.match(keyOf(url)));
     if (cached) return cached;                      // offline / stalled → the newest copy this device ran
     return degrade(req, url, cache);
   })());
