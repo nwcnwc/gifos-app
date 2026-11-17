@@ -355,6 +355,9 @@
     const pop = (d) => { const n = d.n < 0 ? 0 : d.n, t = n + d.leased; let far = 0; for (const e of d.doors || []) if (e.k > 0) far += e.k; return (t < 0 ? 0 : t) + far; };   // C++: mesh.cpp:digPop
     // meetingCount(): the people in the whole meeting as my seat's fold counts them; null while my seat holds no fold yet.
     function meetingCount() { const s = raw(); if (!s || s.state !== 3 || !s.hasCoord) return null; const d = s.rootDig; return d && d.at >= 0 ? pop(d) : null; }
+    // doorCount(): the people a door counts against the room's limit: the meeting count plus the movers whose own count is
+    // still waiting out a move (held, as the vote bar counts them), so two knocks close together cannot pass the line.
+    function doorCount() { const n = meetingCount(); if (n == null) return null; const d = raw().rootDig; return n + Math.max(0, d.held || 0); }
     // meetingFar(): the people in the OTHER rooms of the meeting joined to mine (SUB.4 far form, per door), as my seat's fold
     // counts them: 0 with no joined room or no fold yet. Every seat of my room reads it, not only a pipe's end.
     function meetingFar() { const s = raw(); if (!s || s.state !== 3 || !s.hasCoord) return 0; const d = s.rootDig; if (!d || d.at < 0) return 0; let far = 0; for (const e of d.doors || []) if (e.k > 0) far += e.k; return far; }
@@ -443,7 +446,7 @@
     // seen(gid, lk): a gossip frame I already took, one behind its source's mark, or a copy over a channel whose copy of it
     // was refused for that channel (the wire skips the signature check for all three)
     const seen = (gid, lk) => typeof gid === 'string' && (gseen.has(gid) || gref.has(copyKey(gid, lk)) || gstale(gid, gid.slice(0, gid.lastIndexOf(':'))));
-    return { ids, view, gossip, gossipRecv, countForged: () => { counters.gspForged++; }, seen, setKicks, kickTally, kickDevs, kickCarry, kicked, setLeaf, setRefuses, roomDigest, meetingCount, meetingFar, standbyCands, sideOut, sideIn, afterTick, bump };
+    return { ids, view, gossip, gossipRecv, countForged: () => { counters.gspForged++; }, seen, setKicks, kickTally, kickDevs, kickCarry, kicked, setLeaf, setRefuses, roomDigest, meetingCount, doorCount, meetingFar, standbyCands, sideOut, sideIn, afterTick, bump };
   }
 
   const api = Object.freeze({ create, makeIds });
