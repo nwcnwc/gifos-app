@@ -177,15 +177,16 @@
   // person's click: a browser blocks a popup asked for after an await. So the
   // SDK is loaded and the provider made BEFORE the click (warm, when the pay
   // sheet opens), and the click starts eth_requestAccounts synchronously
-  // (connectNow). address() then reuses that request. (Nathan 2026-11-16:
-  // "Pay using USDC on Base" did nothing while PayPal's popup worked.)
+  // (connectNow). address() then takes that request, once.
   let providerNow = null, connectP = null;
   function warm() { try { provider().catch(() => {}); } catch (e) {} }
   function connectNow() {
     if (!providerNow || connectP) return;
     try {
-      connectP = Promise.resolve(providerNow.p.request({ method: 'eth_requestAccounts' }));
-      connectP.catch(() => {}).then(() => { setTimeout(() => { connectP = null; }, 0); });
+      const req = Promise.resolve(providerNow.p.request({ method: 'eth_requestAccounts' }));
+      connectP = req;
+      // A refused request may be asked again; a granted one waits for address().
+      req.catch(() => { if (connectP === req) connectP = null; });
     } catch (e) { connectP = null; }
   }
 
@@ -215,7 +216,8 @@
 
   async function address() {
     const { p } = await provider();
-    const accounts = await (connectP || p.request({ method: 'eth_requestAccounts' }));
+    const pending = connectP; connectP = null;   // the click's request is used once
+    const accounts = await (pending || p.request({ method: 'eth_requestAccounts' }));
     if (!accounts || !isAddress(accounts[0])) throw new Error('the wallet returned no account');
     await ensureChain(p);
     return accounts[0];
