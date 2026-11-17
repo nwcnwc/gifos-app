@@ -58,8 +58,6 @@
   const RETRY_BASE_MS = TM.TURN_RETRY_BASE_MS;         // first retry after about 2 s, doubling
   const RETRY_MAX_MS = TM.TURN_RETRY_MAX_MS;           // never longer than 5 minutes between tries
   const SIDE_MAX = 48;                    // ids per side a link end publishes (a fact rides one gossip frame)
-  const NAME_MAX = 24;                    // characters of one name a fact carries
-  const NAMED_MAX = 12;                   // side seats a fact names (the rest are counted and listed by id, as in a big room)
   const STANDBY_SWITCH_MS = TM.TURN_STANDBY_SWITCH_MS;   // TURN.9: a dead server's link is on its standby within this
   const THROTTLE_LOOK_MS = TM.TURN_THROTTLE_LOOK_MS;     // TURN.13: a link end reads its send capacity this often
   const THROTTLE_UP_MS = TM.TURN_THROTTLE_UP_MS;         // TURN.13: capacity holds this long before video steps up again
@@ -312,29 +310,6 @@
     return c === 3 || (opener ? c === 1 : c === 2);
   }
 
-  // farPeople(facts, me) → [{ id, name, bot }]: the people the up link facts name, ends and sides, me left out. A pipe
-  // carries no status, so a person behind one is known here only from its fact: the end names itself (ma/mb, bot qa/qb)
-  // and the first NAMED_MAX of its side (na/nb aligned with va/vb, bots by index ka/kb). A fact from an older page has
-  // ids only: those people are listed with no name.
-  function farPeople(facts, me) {
-    const out = new Map();
-    const add = (id, name, bot) => {
-      if (typeof id !== 'string' || !id || id === me) return;
-      const nm = typeof name === 'string' ? name.slice(0, NAME_MAX) : '';
-      const o = out.get(id);
-      if (!o) out.set(id, { id, name: nm, bot: !!bot });
-      else { if (!o.name && nm) o.name = nm; if (bot) o.bot = true; }
-    };
-    for (const f of facts || []) {
-      if (!f || !f.up) continue;
-      for (const [end, side, nk, mk, qk, kk] of [['a', 'va', 'na', 'ma', 'qa', 'ka'], ['b', 'vb', 'nb', 'mb', 'qb', 'kb']]) {
-        add(f[end], f[mk], f[qk]);
-        const ids = Array.isArray(f[side]) ? f[side] : [], names = Array.isArray(f[nk]) ? f[nk] : [], bots = Array.isArray(f[kk]) ? f[kk] : [];
-        ids.forEach((id, i) => add(id, names[i], bots.indexOf(i) >= 0));
-      }
-    }
-    return Array.from(out.values());
-  }
   // pausedBy(facts, me, pid) → is pid's video to me held at an unvouched TURN link? facts: the gossiped link facts
   // ({ up, v, a, b, va, vb }); me and pid on different sides of an up link with no video.
   function pausedBy(facts, me, pid) {
@@ -1009,15 +984,6 @@
       const o = { id: L.id, l: L.l, a: L.opener ? io.me() : L.far, b: L.opener ? L.far : io.me(), up: L.state === 'up' ? 1 : 0, v: L.video ? 1 : 0,
         s: L.serial || 0, c: s ? s.cell : 0, g: 0, [L.opener ? 'va' : 'vb']: L.side.slice(0, SIDE_MAX) };
       if (L.direct) o.dr = 1;   // SUB.5: a direct pipe: video flows, no vouch slot
-      // names cross the pipe on the fact (a status never does): this end's, and its side's first NAMED_MAX (older pages
-      // read known fields only and ignore these)
-      if (io.who) {
-        const cut = (w) => (w && typeof w.name === 'string' ? w.name.slice(0, NAME_MAX) : '');
-        const me = io.who(io.me()), side = L.side.slice(0, NAMED_MAX).map((x) => io.who(x));
-        o[L.opener ? 'ma' : 'mb'] = cut(me); if (me && me.bot) o[L.opener ? 'qa' : 'qb'] = 1;
-        o[L.opener ? 'na' : 'nb'] = side.map(cut);
-        const bots = []; side.forEach((w, i) => { if (w && w.bot) bots.push(i); }); if (bots.length) o[L.opener ? 'ka' : 'kb'] = bots;
-      }
       return o;
     }
 
@@ -1490,7 +1456,6 @@
         pump(L);
         if (L.state === 'up') {   // my side grows with the people I reach directly
           const s = io.seat();
-          if (s) L.side = L.side.filter((x) => s.view.indexOf(x) >= 0);   // a seat that left my view leaves my side (it is named on the fact)
           if (s) for (const x of s.view) if (x !== L.far && L.side.indexOf(x) < 0 && L.side.length < SIDE_MAX && io.reach(x) === 'direct') L.side.push(x);
         }
       }
@@ -1588,7 +1553,7 @@
     DEFAULT_WORKER, WORKER_KEY, FETCH_TIMEOUT_MS, RETRY_BASE_MS, RETRY_MAX_MS, SIDE_MAX, STANDBY_SWITCH_MS, THROTTLE_LOOK_MS, THROTTLE_UP_MS,
     THROTTLE_STEPS, THROTTLE_LOSS, throttlePlan, throttleNext, stepOf, voiceLow,
     retryDelayMs, parseIce, hasTurnServer, webHostOk, workerBase, askIce, askSub, createCredentials,
-    vouchToken, vouchParts, tvOk, TV_KEYS, bridgeHolds, linkId, clientEnd, farPeople, NAME_MAX, NAMED_MAX, pausedBy, stripPaused, vouchRank, vouchPlan, vouchPayers, budgetTicket, subsPresent, createLinks,
+    vouchToken, vouchParts, tvOk, TV_KEYS, bridgeHolds, linkId, clientEnd, pausedBy, stripPaused, vouchRank, vouchPlan, vouchPayers, budgetTicket, subsPresent, createLinks,
   };
   GifOS.meetTurn = api;
   if (isNode) module.exports = api;

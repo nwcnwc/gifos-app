@@ -11820,8 +11820,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         try { const m = modOf(p.id).mute; roomMute = !!(m && m.on); } catch (e3) {}
         push({ id: p.id, name: hostRename(p.id) || p.name || rosterNames[p.id] || 'Guest', me: false, muted: !!st.muted, hand: !!st.hand, stage: onStage || hostSpot(p.id), roomMute: roomMute });
       }
-      // people behind a TURN link (no pair, no status here): their names, nothing to act on
-      try { for (const f of farPeople()) push({ id: f.id, name: hostRename(f.id) || f.name || rosterNames[f.id] || 'Guest', me: false, far: true }); } catch (e) {}
       rows.sort((a, b) => {
         if (a.me !== b.me) return a.me ? -1 : 1;
         if (a.hand !== b.hand) return a.hand ? -1 : 1;
@@ -11930,7 +11928,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           row.appendChild(f);
         }
         // As on the tile: no Mute for someone already muted by their own hand.
-        const mayMute = !r.me && !r.far && !(r.muted && !r.roomMute) && !(typeof hasAdminRoom === 'function' && hasAdminRoom() && !amAdmin);
+        const mayMute = !r.me && !(r.muted && !r.roomMute) && !(typeof hasAdminRoom === 'function' && hasAdminRoom() && !amAdmin);
         if (mayMute) {
           const b = document.createElement('button');
           b.type = 'button';
@@ -11946,7 +11944,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           };
           row.appendChild(b);
         }
-        if (mayHost() && !r.me && !r.far) {
+        if (mayHost() && !r.me) {
           const acts = document.createElement('div');
           acts.className = 'acts';
           if (renameEditId === r.id) {
@@ -13746,12 +13744,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // TURN.11: the subscribers present in the MEETING (another room's subscriber counts while its statement is fresh)
         subs: () => GifOS.meetTurn.subsPresent(turnSubs, Date.now(), meshKnows, turnSubFreshMs(), myId),
         publish: (f) => { turnFactIn(myId, f); try { if (meshNode) meshNode.gossip({ a: 1, msg: { k: 'tlink', f } }); } catch (e) {} },
-        // the name and bot bit a link's fact carries for a seat of my side (a pipe carries no status)
-        who: (pid) => {
-          if (pid === myId) return { name: myName(), bot: !!myStatus.bot };
-          const p = peers.get(pid), st = statusOf.get(pid);
-          return { name: (p && p.name) || rosterNames[pid] || '', bot: !!(st && st.bot) };
-        },
         facts: () => { const now = Date.now(), out = []; for (const [id, f] of turnFacts) { if (now - f.at > turnLinks.factStaleMs) { turnFacts.delete(id); continue; } out.push(f); } return out; },
         setTimer: (fn, ms) => setTimeout(fn, ms), clearTimer: (h) => clearTimeout(h),
         // The web path (js/meet-tunnel.js): a link whose relay protocol finds no way out of this network runs over a WebSocket.
@@ -13810,23 +13802,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (typeof f.l === 'string' && /^l[0-9]{1,2}$/.test(f.l)) o.l = f.l;   // the pipe's name: a subroom the meeting holds
       if (from === f.a) { o.up = f.up ? 1 : 0; o.v = f.v ? 1 : 0; o.dr = f.dr ? 1 : 0; o.s = +f.s || 0; o.c = +f.c || 0; o.g = f.g ? 1 : 0; if (ids(f.va)) o.va = ids(f.va); }
       else { if (ids(f.vb)) o.vb = ids(f.vb); if (!o.s) { o.up = f.up ? 1 : 0; o.v = f.v ? 1 : 0; } }
-      // the names each end gives for itself and its side (bugs 1, 3: a person behind a pipe is named only here)
-      const MT = GifOS.meetTurn, nm = (x) => (typeof x === 'string' ? x.slice(0, MT.NAME_MAX) : '');
-      const nms = (x) => (Array.isArray(x) ? x.slice(0, MT.NAMED_MAX).map(nm) : null);
-      const idx = (x) => (Array.isArray(x) ? x.filter((i) => Number.isInteger(i) && i >= 0 && i < MT.NAMED_MAX) : null);
-      const e = from === f.a ? 'a' : 'b';
-      if ('m' + e in f) { o['m' + e] = nm(f['m' + e]); o['q' + e] = f['q' + e] ? 1 : 0; o['n' + e] = nms(f['n' + e]) || []; o['k' + e] = idx(f['k' + e]) || []; }
       o.at = Date.now(); turnFacts.set(f.id, o);
       turnPaint();
-    }
-    // The people behind TURN links (pipes), from the fresh up link facts: listed beside the roster, never put in it
-    // (rosterIds feeds the room's consent and blur: a far id has no status here).
-    function farPeople() {
-      if (!turnLinks || !GifOS.meetTurn.farPeople) return [];
-      const now = Date.now(), facts = [];
-      for (const f of turnFacts.values()) if (now - (f.at || 0) <= turnLinks.factStaleMs) facts.push(f);
-      const here = new Set(rosterIds);
-      return GifOS.meetTurn.farPeople(facts, myId).filter((x) => !here.has(x.id) && notTomb(x.id) && !(devOf[x.id] && devOf[x.id] === myDevHash));
     }
     // A subscriber's vouch: its meeting ticket for this meeting and its key's signature over the room (meet-subs roomOrder).
     // A four-hour pass vouches the same way with its pass meeting ticket (one meeting at a time, like a subscription).
@@ -39143,8 +39120,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const st = statusOf.get(pid);
         people.push({ id: pid, name: (p && p.name) || rosterNames[pid] || '', bot: !!(st && st.bot), me: false });
       }
-      // the people behind a TURN link: named by the link's fact (a bot on the box is always behind one)
-      try { for (const f of farPeople()) { if (seen.has(f.id)) continue; seen.add(f.id); people.push({ id: f.id, name: f.name || '', bot: !!f.bot, me: false, far: true }); } } catch (e) {}
       return people;
     }
     function roomControls() {
