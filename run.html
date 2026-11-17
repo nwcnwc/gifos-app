@@ -33028,7 +33028,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // continues one where it did: told a language, it echoes it back,
           // and told the wrong one for the audio it writes a translation.
           const found = (lang === 'auto' && !told) || contFound;
-          const wEng = local ? 'local' : 'whisper';
+          const wEng = ccEngine() === 'local' ? 'local' : 'whisper'; // the engine this clip ran on (the phone model, or Whisper)
           const rl = lang === 'auto' ? ((r && r.language) ? String(r.language) : '') : lang;
           const capNow = wspCaps.get(job.id);
           if (capNow) { capNow.lastEnd = job.at + clipMs; if (rl) { capNow.lastLang = rl; capNow.lastFound = found; } }
