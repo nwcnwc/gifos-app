@@ -5,7 +5,9 @@
  *   POST https://api.cdp.coinbase.com/platform/v2/onramp/orders
  * Guest checkout is Apple Pay, funded by a debit card. US phone numbers
  * only. The minimum is $5. Email and phone must already be verified; this
- * file refuses to order without that proof. The destination is the user's
+ * file refuses to order without that proof. The proof comes from the
+ * deployment's verifier (configure({ verify })), never from the person
+ * typing a time. The destination is the user's
  * Base Account address, on the network gifos-base-net.js already selected
  * (Base mainnet on the OS page). GifOS holds no key.
  *
@@ -14,6 +16,13 @@
  *     The CDP key stays on that server.
  *   configure({ cdpKey }) — a bearer token, for a later deploy. Nothing
  *     here ships a real key, and the token is never copied into the page.
+ *   configure({ verify }) — async ({ email, phoneNumber }) => { emailVerifiedAt
+ *     or emailVerificationId, phoneNumberVerifiedAt }, after the deployment
+ *     has verified both (its own codes, its own server).
+ *
+ * available() says whether Add USDC can complete here: configured, a
+ * verifier, and a payment method this device has (Apple Pay needs
+ * ApplePaySession). Where it cannot, the sheets do not offer it.
  *
  * The top-up sheet is OS UI (the trusted sheet), and the USDC balance is
  * an eth_call against the active network's USDC, read over its RPC.
@@ -29,13 +38,14 @@
   const METHOD = 'GUEST_CHECKOUT_APPLE_PAY';
   const isAddress = (a) => typeof a === 'string' && /^0x[0-9a-fA-F]{40}$/.test(a);
 
-  const cfg = { sessionTokenUrl: null, cdpKey: null };
+  const cfg = { sessionTokenUrl: null, cdpKey: null, verify: null };
 
   function configure(opts) {
     const o = opts || {};
     if (Object.prototype.hasOwnProperty.call(o, 'sessionTokenUrl')) cfg.sessionTokenUrl = o.sessionTokenUrl || null;
     if (Object.prototype.hasOwnProperty.call(o, 'cdpKey')) cfg.cdpKey = o.cdpKey || null;
-    return { sessionTokenUrl: !!cfg.sessionTokenUrl, cdpKey: !!cfg.cdpKey };
+    if (Object.prototype.hasOwnProperty.call(o, 'verify')) cfg.verify = typeof o.verify === 'function' ? o.verify : null;
+    return { sessionTokenUrl: !!cfg.sessionTokenUrl, cdpKey: !!cfg.cdpKey, verify: !!cfg.verify };
   }
 
   function configured() {
@@ -45,6 +55,18 @@
       if (!cfg.cdpKey && env.GIFOS_ONRAMP_CDP_KEY) cfg.cdpKey = env.GIFOS_ONRAMP_CDP_KEY;
     } catch (e) {}
     return !!(cfg.sessionTokenUrl || cfg.cdpKey);
+  }
+
+  // Guest Apple Pay works only where the browser has Apple Pay.
+  function applePayHere() {
+    try { return typeof root.ApplePaySession === 'function' && !!root.ApplePaySession.canMakePayments(); } catch (e) { return false; }
+  }
+  // The methods this device can complete, as [{ method, label }].
+  function methodsHere() {
+    return applePayHere() ? [{ method: METHOD, label: 'Apple Pay (debit card)' }] : [];
+  }
+  function available() {
+    return configured() && typeof cfg.verify === 'function' && methodsHere().length > 0;
   }
 
   // Dollar string to cents, as integer text. "5", "5.0" and "5.00" are $5.
@@ -154,9 +176,10 @@
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
-  // The trusted sheet. Not an app frame. Collects the guest-checkout fields
-  // and, only after email and phone verification times are filled in, asks
-  // createOrder. The payment link renders here; the bearer token does not.
+  // The trusted sheet. Not an app frame. It asks for the amount, email and
+  // phone; the deployment's verifier proves email and phone, and only then
+  // does createOrder run. Only methods this device has are offered. The
+  // payment link renders here; the bearer token does not.
   function showTopUp(opts) {
     const o = opts || {};
     const doc = root.document;
@@ -168,48 +191,71 @@
     bg.setAttribute('style', 'position:fixed;inset:0;z-index:75;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:1.2rem;');
     const box = doc.createElement('div');
     box.setAttribute('style', 'background:#14141f;color:#e8e8f4;border:1px solid #2a2a3f;border-radius:.8rem;max-width:24rem;width:100%;padding:1.2rem;font:15px/1.55 system-ui,-apple-system,sans-serif;');
+    const methods = methodsHere();
+    const field = (id, label, extra) => '<label style="display:block;color:#9a9ab5;font-size:.78rem">' + label + '<input id="' + id + '" ' + (extra || '') + ' style="display:block;width:100%;box-sizing:border-box;margin:.2rem 0 .6rem;background:#14141f;border:1px solid #2a2a3f;border-radius:.4rem;color:#e8e8f4;padding:.4rem .5rem;font:inherit"></label>';
     box.innerHTML =
       '<h3 style="margin:0 0 .35rem;font-size:1.05rem">Add USDC</h3>' +
-      '<p style="margin:0 0 .8rem;color:#b6b6cf;font-size:.86rem">Apple Pay, debit card, US only. The minimum is $5. Email and phone have to be verified before the order is sent. USDC lands in your Base Account — GifOS never holds it.</p>' +
+      (methods.length
+        ? '<p style="margin:0 0 .8rem;color:#b6b6cf;font-size:.86rem">Buy USDC with a debit card. US only, $5 minimum. It goes straight to your wallet.</p>'
+        : '<p style="margin:0 0 .8rem;color:#b6b6cf;font-size:.86rem">You can\'t add USDC on this device yet.</p>') +
       '<div style="background:#0e0e17;border:1px solid #23233a;border-radius:.6rem;padding:.7rem .8rem;margin-bottom:.7rem"><span style="color:#9a9ab5">USDC balance</span> <b id="go-bal">…</b></div>' +
-      '<label style="display:block;color:#9a9ab5;font-size:.78rem">Amount (USD)<input id="go-amt" value="5.00" style="display:block;width:100%;box-sizing:border-box;margin:.2rem 0 .6rem;background:#14141f;border:1px solid #2a2a3f;border-radius:.4rem;color:#e8e8f4;padding:.4rem .5rem;font:inherit"></label>' +
-      '<label style="display:block;color:#9a9ab5;font-size:.78rem">Email<input id="go-email" style="display:block;width:100%;box-sizing:border-box;margin:.2rem 0 .6rem;background:#14141f;border:1px solid #2a2a3f;border-radius:.4rem;color:#e8e8f4;padding:.4rem .5rem;font:inherit"></label>' +
-      '<label style="display:block;color:#9a9ab5;font-size:.78rem">US phone<input id="go-phone" placeholder="+1…" style="display:block;width:100%;box-sizing:border-box;margin:.2rem 0 .6rem;background:#14141f;border:1px solid #2a2a3f;border-radius:.4rem;color:#e8e8f4;padding:.4rem .5rem;font:inherit"></label>' +
-      '<label style="display:block;color:#9a9ab5;font-size:.78rem">Email verified at<input id="go-email-at" placeholder="ISO time" style="display:block;width:100%;box-sizing:border-box;margin:.2rem 0 .6rem;background:#14141f;border:1px solid #2a2a3f;border-radius:.4rem;color:#e8e8f4;padding:.4rem .5rem;font:inherit"></label>' +
-      '<label style="display:block;color:#9a9ab5;font-size:.78rem">Phone verified at<input id="go-phone-at" placeholder="ISO time" style="display:block;width:100%;box-sizing:border-box;margin:.2rem 0 .6rem;background:#14141f;border:1px solid #2a2a3f;border-radius:.4rem;color:#e8e8f4;padding:.4rem .5rem;font:inherit"></label>' +
-      '<label style="display:flex;gap:.4rem;align-items:flex-start;color:#b6b6cf;font-size:.82rem;margin-bottom:.7rem"><input id="go-agree" type="checkbox"> I accept Coinbase guest checkout terms.</label>' +
+      (methods.length
+        ? field('go-amt', 'Amount (USD)', 'value="5.00" inputmode="decimal"') +
+          field('go-email', 'Email', 'type="email" autocomplete="email"') +
+          field('go-phone', 'US phone', 'type="tel" autocomplete="tel" placeholder="+1…"') +
+          '<label style="display:flex;gap:.4rem;align-items:flex-start;color:#b6b6cf;font-size:.82rem;margin-bottom:.7rem"><input id="go-agree" type="checkbox" autocomplete="off"> I accept the Coinbase guest checkout terms.</label>'
+        : '') +
       '<div id="go-link" style="display:none;margin-bottom:.7rem"></div>' +
       '<p id="go-err" style="color:#e07a7a;font-size:.82rem;margin:0 0 .6rem"></p>' +
-      '<div style="display:flex;justify-content:flex-end;gap:.5rem"><button id="go-cancel" type="button" style="padding:.5rem 1rem;border-radius:.5rem;border:1px solid #2a2a3f;background:transparent;color:#b6b6cf;cursor:pointer;font:inherit">Close</button><button id="go-buy" type="button" style="padding:.5rem 1rem;border-radius:.5rem;border:none;background:#1652f0;color:#fff;cursor:pointer;font:inherit">Apple Pay — debit</button></div>';
+      '<div style="display:flex;justify-content:flex-end;gap:.5rem"><button id="go-cancel" type="button" style="padding:.5rem 1rem;border-radius:.5rem;border:1px solid #2a2a3f;background:transparent;color:#b6b6cf;cursor:pointer;font:inherit">Close</button>' +
+      methods.map((m) => '<button id="go-buy" type="button" data-method="' + esc(m.method) + '" style="padding:.5rem 1rem;border-radius:.5rem;border:none;background:#1652f0;color:#fff;cursor:pointer;font:inherit">' + esc(m.label) + '</button>').join('') +
+      '</div>';
     bg.appendChild(box);
     doc.body.appendChild(bg);
     const q = (id) => box.querySelector('#' + id);
+    // A restored page must not bring the terms back ticked.
+    if (q('go-agree')) q('go-agree').checked = false;
     q('go-cancel').onclick = () => bg.remove();
-    const dest = o.destinationAddress || null;
     const showBal = (text) => { const el = q('go-bal'); if (el) el.textContent = text; };
-    const holder = dest;
-    if (holder) {
-      readUsdcBalance(holder).then((u) => showBal(formatUsdc(u) + ' USDC'), () => showBal('unavailable'));
-    } else if (GifOS.payWallet && typeof GifOS.payWallet.peekAddress === 'function') {
-      GifOS.payWallet.peekAddress().then((addr) => {
-        if (!addr) { showBal('connect a wallet'); return null; }
-        o.destinationAddress = addr;
-        return readUsdcBalance(addr).then((u) => showBal(formatUsdc(u) + ' USDC'));
-      }, () => showBal('unavailable'));
+    const readFor = (addr) => { o.destinationAddress = addr; return readUsdcBalance(addr).then((u) => showBal(formatUsdc(u) + ' USDC'), () => showBal('unavailable')); };
+    const wallet = GifOS.payWallet;
+    const offerConnect = () => {
+      const el = q('go-bal');
+      if (!el) return;
+      el.innerHTML = '<button id="go-connect" type="button" style="padding:.2rem .6rem;border-radius:.4rem;border:1px solid #2a2a3f;background:#1652f0;color:#fff;cursor:pointer;font:inherit">Connect wallet</button>';
+      const b = el.querySelector ? el.querySelector('#go-connect') : null;
+      if (b) b.onclick = () => {
+        // The wallet's popup opens inside this tap (payWallet.connectNow).
+        try { wallet.connectNow(); } catch (e) {}
+        showBal('…');
+        wallet.address().then(readFor, () => offerConnect());
+      };
+    };
+    if (o.destinationAddress) readFor(o.destinationAddress);
+    else if (wallet && typeof wallet.peekAddress === 'function') {
+      if (wallet.warm) wallet.warm();
+      wallet.peekAddress().then((addr) => (addr ? readFor(addr) : offerConnect()), () => showBal('unavailable'));
     } else showBal('unavailable');
-    q('go-buy').onclick = async () => {
+    const buy = q('go-buy');
+    if (buy) buy.onclick = async () => {
       const err = q('go-err');
       err.textContent = '';
       try {
-        const address = o.destinationAddress || dest;
+        if (!o.destinationAddress) throw new Error('Connect your wallet first.');
+        if (!q('go-agree').checked) throw new Error('Accept the Coinbase terms to continue.');
+        const email = String(q('go-email').value || '').trim();
+        const phoneNumber = String(q('go-phone').value || '').trim();
+        if (typeof cfg.verify !== 'function') throw new Error('You can\'t add USDC here yet.');
+        const proof = (await cfg.verify({ email, phoneNumber })) || {};
         const result = await createOrder({
-          destinationAddress: address,
+          destinationAddress: o.destinationAddress,
           paymentAmount: String(q('go-amt').value || '').trim(),
-          email: String(q('go-email').value || '').trim(),
-          phoneNumber: String(q('go-phone').value || '').trim(),
-          emailVerifiedAt: String(q('go-email-at').value || '').trim(),
-          phoneNumberVerifiedAt: String(q('go-phone-at').value || '').trim(),
-          agreementAcceptedAt: q('go-agree').checked ? new Date().toISOString() : '',
+          email, phoneNumber,
+          emailVerifiedAt: proof.emailVerifiedAt || '',
+          emailVerificationId: proof.emailVerificationId || '',
+          phoneNumberVerifiedAt: proof.phoneNumberVerifiedAt || '',
+          paymentMethod: buy.getAttribute ? (buy.getAttribute('data-method') || METHOD) : METHOD,
+          agreementAcceptedAt: new Date().toISOString(),
         });
         const link = q('go-link');
         link.style.display = 'block';
@@ -223,6 +269,6 @@
 
   GifOS.onramp = {
     ORDER_URL, METHOD, MIN_CENTS,
-    configure, configured, buildOrder, createOrder, readUsdcBalance, formatUsdc, showTopUp, balanceOfData,
+    configure, configured, available, applePayHere, methodsHere, buildOrder, createOrder, readUsdcBalance, formatUsdc, showTopUp, balanceOfData,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
