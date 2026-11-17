@@ -241,6 +241,81 @@
     };
   }
 
+  // ---- caption lines (export v2) ---------------------------------------------------
+  // The export answers "who wrote this caption line, how, and what came of it"
+  // without the words. One record per caption line this page took, sent or
+  // dropped, and one per change in a peer's caption state. Fields:
+  //   by    the voice the line is for (6 characters of the id)
+  //   w     the writer: the page whose engine heard it
+  //   src   'mic' (the writer's own voice), 'ear' (a voice it heard first-hand), 'mix'
+  //   eng   the writer's engine: 'browser' (Web Speech), 'whisper', 'local' (the
+  //         phone's on-device model), 'native' (the Meet app's engine); '' unknown
+  //         (a line from a page older than the export v2)
+  //   inp   what that engine heard: 'mic' (the raw microphone: the system default,
+  //         not the call's track), 'track' (the call's own echo-cancelled track),
+  //         'mix' (the room-ear mix of call tracks), 'rx' (received audio)
+  //   dev / cdev  this page's own lines only: the device the engine listened to
+  //         ('default' for the raw microphone) and the call mic's device
+  //   dm    1 the engine heard the call's mic device, 0 another device, null unknown
+  //   lang, ld  the line's language, and 1 when the engine detected it
+  //   res   what this page did: kept, sent, dup, floor, en, rate, gate (the page's
+  //         own echo gate threw it away), mute
+  // Never the line's text.
+  const CAP_ENG = ['browser', 'whisper', 'local', 'native'];
+  const CAP_INP = ['mic', 'track', 'mix', 'rx'];
+  const CAP_SRC = ['mic', 'ear', 'mix'];
+  const CAP_LINE_KEYS = ['t', 'k', 'by', 'w', 'src', 'eng', 'inp', 'dev', 'cdev', 'dm', 'lang', 'ld', 'tl', 'at', 'end', 'res'];
+  const CAP_PEER_KEYS = ['t', 'k', 'id', 'cap', 'ccst', 'lang', 'muted', 'trs'];
+  const CAP_RING_MAX = 2000;
+  const id6 = (v) => (v === undefined || v === null ? '' : String(v).slice(0, 6));
+  const dev8 = (v) => (v === undefined || v === null ? '' : String(v).slice(0, 8));
+  const oneOf = (v, list) => (list.indexOf(v) >= 0 ? v : '');
+  function capLineRec(line, o) {
+    line = line || {}; o = o || {};
+    const dm = line.dm === 1 || line.dm === true ? 1 : (line.dm === 0 || line.dm === false ? 0 : null);
+    return {
+      t: typeof o.t === 'number' ? o.t : Date.now(), k: 'line',
+      by: id6(line.byId), w: id6(line.w), src: oneOf(line.src, CAP_SRC),
+      eng: oneOf(line.eng, CAP_ENG), inp: oneOf(line.inp, CAP_INP),
+      dev: dev8(o.dev), cdev: dev8(o.cdev), dm: dm,
+      lang: String(line.lang || '').slice(0, 8), ld: line.ld ? 1 : 0, tl: line.tl ? 1 : 0,
+      at: Number(line.at) || 0, end: Number(line.end) || 0,
+      res: String(o.res || '').slice(0, 8),
+    };
+  }
+  function capPeerRec(id, st, o) {
+    st = st || {}; o = o || {};
+    return {
+      t: typeof o.t === 'number' ? o.t : Date.now(), k: 'peer', id: id6(id),
+      cap: st.cap === 1 ? 1 : 0, ccst: String(st.ccst || '').slice(0, 8), lang: String(st.lang || '').slice(0, 8),
+      muted: st.muted ? 1 : 0, trs: st.trs ? 1 : 0,
+    };
+  }
+  // A status worth a record: the first one from a peer, or one whose caption state moved.
+  function capPeerMoved(prev, next) {
+    if (!next) return false;
+    if (!prev) return true;
+    return (prev.cap === 1) !== (next.cap === 1) || String(prev.ccst || '') !== String(next.ccst || '')
+      || String(prev.lang || '') !== String(next.lang || '') || !!prev.muted !== !!next.muted;
+  }
+  function capPush(ring, rec, max) {
+    if (!Array.isArray(ring) || !rec) return ring;
+    ring.push(rec);
+    const cap = max || CAP_RING_MAX;
+    if (ring.length > cap) ring.splice(0, ring.length - cap);
+    return ring;
+  }
+  // Did the engine hear the call's own mic? The raw microphone is the system
+  // default; it is the call's device when the default input's group is the
+  // call track's group (or the call track itself is the default).
+  function capDevMatch(eng, call, defGroup) {
+    eng = eng || {}; call = call || {};
+    if (eng.dev && eng.dev !== 'default') return call.dev ? (eng.dev === call.dev ? 1 : 0) : null;
+    if (call.dev === 'default') return 1;
+    if (!call.group || !defGroup) return null;
+    return call.group === defGroup ? 1 : 0;
+  }
+
   // ---- export -----------------------------------------------------------------------
   function fileName(t) {
     const d = new Date(t || Date.now()), p = (n) => String(n).padStart(2, '0');
@@ -265,6 +340,8 @@
     byteLen: byteLen, fmtSize: fmtSize, dropPlan: dropPlan,
     makeStore: makeStore, memoryBackend: memoryBackend, idbBackend: idbBackend,
     createRecorder: createRecorder, fileName: fileName, exportBlob: exportBlob,
+    CAP_LINE_KEYS: CAP_LINE_KEYS, CAP_PEER_KEYS: CAP_PEER_KEYS, CAP_RING_MAX: CAP_RING_MAX,
+    capLineRec: capLineRec, capPeerRec: capPeerRec, capPeerMoved: capPeerMoved, capPush: capPush, capDevMatch: capDevMatch,
   };
   GifOS.debugLog = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
