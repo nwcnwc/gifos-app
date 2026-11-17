@@ -14979,6 +14979,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!cur && from !== myId) scheduleNewPeerBeat(); // the first status from a person I held none for: answer with my own beat, whatever path carried theirs
       else if (cur && from !== myId && st.rx - (cur.rx || 0) > 30000 && !(typeof saidGone === 'object' && saidGone && saidGone.has(from)) && !(typeof bannedSeat === 'object' && bannedSeat && bannedSeat.has(from))) scheduleNewPeerBeat(); // 30 s: past a pocketed phone's 12-16 s beat; never for a member that said goodbye or was banned
       statusOf.set(from, st);
+      if (DEBUG_ON && window.__capTrace && DLOG && DLOG.capPeerMoved && DLOG.capPeerMoved(cur, st)) { try { DLOG.capPush(window.__capTrace, DLOG.capPeerRec(from, st)); } catch (e) {} }
       if (DEBUG_ON && (!cur || !!cur.bcend !== !!st.bcend || !!cur.bce !== !!st.bce || !!cur.rec !== !!st.rec || !!cur.stg !== !!st.stg)) { try { ((L) => { L.push({ t: Date.now(), ev: 'st', from: String(from).slice(0, 8), bcend: st.bcend || 0, bce: st.bce || 0, rec: !!st.rec, stg: st.stg || 0, cam: !st.camOff }); if (L.length > 400) L.shift(); })(window.__bcTrace = window.__bcTrace || []); } catch (e) {} }
       try { noteBcEnd(st); } catch (e) {} // a viewer keeps the host's ended word past its seat
       try { applySpotlightBit(from); } catch (e) {}
@@ -19544,10 +19545,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       ids.sort();
       return ids.join('\n');
     }
+    // The system default input's group: what a browser speech engine on the
+    // raw microphone hears (Chrome lists it as 'default'; other browsers list
+    // the default first). The caption export compares it with the call's mic.
+    let ccDefGroup = '';
+    function ccDefGroupOf(list) {
+      const ins = (list || []).filter((d) => d && d.kind === 'audioinput');
+      const d = ins.find((x) => x.deviceId === 'default') || ins[0];
+      return d ? String(d.groupId || '') : '';
+    }
     function noteAudioDevices() {
       const md = navigator.mediaDevices;
       if (!md || typeof md.enumerateDevices !== 'function') return Promise.resolve();
-      return md.enumerateDevices().then((list) => { audioDevKey = audioDevKeyOf(list); }, () => {});
+      return md.enumerateDevices().then((list) => { audioDevKey = audioDevKeyOf(list); ccDefGroup = ccDefGroupOf(list); }, () => {});
     }
     function setMicMode(mode, force) {
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
@@ -31308,6 +31318,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function dlogRecStart() {
       if (!DLOG || !DEBUG_ON || !dlogStoreGet()) return false;
+      if (!window.__capTrace) window.__capTrace = []; // caption lines and peers' caption state (capTrace)
       if (!dlogRec) dlogRec = DLOG.createRecorder({
         store: dlogStore, every: 5000, snapEvery: 30000,
         room: () => { try { return room || ''; } catch (e) { return ''; } },
@@ -31317,13 +31328,51 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           bc: window.__bcTrace || null, mem: window.__memSamples || null,
           pip: window.__pipTrace || null, view: window.__viewTrace || null, content: window.__contentTrace || null,
           meters: (typeof dbgMeterKit !== 'undefined' && dbgMeterKit) ? dbgMeterKit.ring() : null,
+          caps: window.__capTrace || null,
         }),
-        snapshot: () => (window.__gifosVideo && window.__gifosVideo.debugDump ? window.__gifosVideo.debugDump() : null),
+        snapshot: () => {
+          const d = window.__gifosVideo && window.__gifosVideo.debugDump ? window.__gifosVideo.debugDump() : null;
+          if (d && typeof capSnap === 'function') { try { d.caps = capSnap(); } catch (e) {} }
+          return d;
+        },
       });
       dlogRec.start();
       return true;
     }
     if (DEBUG_ON) dlogRecStart();
+    // CAPTION LINES IN THE DEBUG EXPORT (v2, js/meet-debuglog.js capLineRec):
+    // who wrote each line, with which engine, hearing what, and what this page
+    // did with it. Never the words. Only while debug is on (the debug recorder
+    // makes the ring, window.__capTrace).
+    function capTrace(line, res) {
+      const ring = window.__capTrace;
+      if (!ring || !DLOG || !DLOG.capLineRec || !line) return;
+      const o = { res: res };
+      if (line.w === myId && line.via) { o.dev = line.via.dev; o.cdev = line.via.cdev; }
+      try { DLOG.capPush(ring, DLOG.capLineRec(line, o)); } catch (e) {}
+    }
+    // The browser engine's own echo gate threw a line away (the raw microphone
+    // heard it while my call track showed no voice).
+    function capTraceGate(eng, lang, at) {
+      if (!window.__capTrace) return;
+      const line = { byId: myId, w: myId, src: 'mic', eng: eng, inp: 'mic', lang: lang, at: at, end: Date.now() };
+      Object.defineProperty(line, 'via', { value: ccVia(eng, 'mic') });
+      capTrace(line, 'gate');
+    }
+    // The call's microphone (the track the call sends): its device and group.
+    function ccCallMic() {
+      let s = {};
+      try { const t = localStream && localStream.getAudioTracks()[0]; s = (t && t.getSettings) ? (t.getSettings() || {}) : {}; } catch (e) {}
+      return { dev: String(s.deviceId || ''), group: String(s.groupId || '') };
+    }
+    // What an engine of this page heard, for a line it writes: eng, inp, and
+    // the devices (the raw microphone is the system default; a track is the call's).
+    function ccVia(eng, inp) {
+      const call = ccCallMic();
+      const dev = inp === 'mic' ? 'default' : (inp === 'track' || inp === 'mix' ? call.dev : '');
+      const dm = inp === 'rx' ? null : (DLOG && DLOG.capDevMatch ? DLOG.capDevMatch({ dev: dev }, call, ccDefGroup) : null);
+      return { eng: eng, inp: inp, dev: dev, cdev: call.dev, dm: dm };
+    }
     const dlogOut = () => { if (dlogRec && dlogRec.live()) dlogRec.flush(true); };
     window.addEventListener('pagehide', dlogOut);
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') dlogOut(); });
@@ -31953,22 +32002,29 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (typeof window !== 'undefined' && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'transcript', line: { by: line.by, byId: line.byId, text: line.text, at: line.at, w: line.w, src: line.src, lang: line.lang || '' } });
     }
     function takeTr(m, backfill) { // backfill: a 'hi' replay — see takeChat
-      if (!m || !m.id || trs.has(m.id) || ((m.at || 0) > 0 && (m.at || 0) <= (trs.floorAt || 0))) { if (clog && m && m.w === myId) clog('tr own drop', trs.has(m.id) ? 'held' : 'floor', m.at, trs.floorAt || 0); return false; }
+      if (!m || !m.id || trs.has(m.id) || ((m.at || 0) > 0 && (m.at || 0) <= (trs.floorAt || 0))) { if (clog && m && m.w === myId) clog('tr own drop', trs.has(m.id) ? 'held' : 'floor', m.at, trs.floorAt || 0); if (m && m.id) if (typeof capTrace === 'function') capTrace(m, trs.has(m.id) ? 'held' : 'floor'); return false; }
       const w = String(m.w || m.byId);
       // TRANSLATE EVERYTHING TO ENGLISH: this page holds and shows English
       // lines only. A line in another language is left out; this page's own
       // Whisper translates that voice instead.
-      if (trEnOn && trLangOf(m.lang) !== 'en') return false;
+      if (trEnOn && trLangOf(m.lang) !== 'en') { if (typeof capTrace === 'function') capTrace(m, 'en'); return false; }
       // The flood limit is per writer AND voice: one sharing device writes
       // down a whole row, and a single shared budget dropped real sentences.
-      if (!backfill && w !== myId && !chatRateOk('tr:' + w + '>' + String(m.byId))) return false;
+      if (!backfill && w !== myId && !chatRateOk('tr:' + w + '>' + String(m.byId))) { if (typeof capTrace === 'function') capTrace(m, 'rate'); return false; }
       const src = m.src === 'mic' || m.src === 'ear' || m.src === 'mix' ? m.src : (w === String(m.byId) ? 'mic' : 'ear');
       const line = { id: m.id, byId: m.byId, by: String(m.by || '?').slice(0, 40), at: m.at || 0, text: String(m.text || '').slice(0, 400), w, src, lang: trLangOf(m.lang) };
       if (m.ld) line.ld = 1;
       if (m.tl) line.tl = 1; // a translation (its words are not the speaker's)
       if (m.lo) line.lo = 1; // kept on this page only: a 'hi' replay leaves it out (the room has my own words)
       if (m.end > line.at && m.end - line.at <= 60000) line.end = m.end; // the clip's end, when the engine knows it (bounded: a clip is 15 s at most)
-      if (trMerge(line) === 'dup') return false;
+      // The writer's engine and what it heard (export v2; older pages send none).
+      if (['browser', 'whisper', 'local', 'native'].indexOf(m.eng) >= 0) line.eng = m.eng;
+      if (['mic', 'track', 'mix', 'rx'].indexOf(m.inp) >= 0) line.inp = m.inp;
+      if (m.dm === 0 || m.dm === 1) line.dm = m.dm;
+      const via = m.via; // this page's own line: its devices, kept in the export only
+      if (via) Object.defineProperty(line, 'via', { value: via });
+      if (trMerge(line) === 'dup') { if (typeof capTrace === 'function') capTrace(line, 'dup'); return false; }
+      if (typeof capTrace === 'function') capTrace(line, backfill ? 'replay' : 'kept');
       trs.set(m.id, line);
       trimMap(trs, CHAT_MAX);
       if (!backfill && w !== myId) trRxAt = Date.now();
@@ -32084,7 +32140,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // how: '' as above; 'tl' a translation (kept and sent as above, marked);
     // 'lo' a translation of my own voice, kept and shown here only; 'out' my
     // own words for the room, sent only (this page shows its translation).
-    function addTranscriptLine(text, at, forId, label, src, lang, detected, end, how) { // detected: the engine found the language itself (Whisper); end: when the clip ended
+    function addTranscriptLine(text, at, forId, label, src, lang, detected, end, how, via) { // detected: the engine found the language itself (Whisper); end: when the clip ended; via: ccVia (the engine and what it heard)
       text = String(text || '').trim();
       if (!text) return;
       // The bot's own microphone is never written down, and neither is a line
@@ -32097,14 +32153,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (end > m.at) m.end = end;
       if (how === 'tl' || how === 'lo') m.tl = 1;
       if (how === 'lo') m.lo = 1;
+      if (via && typeof ccVia === 'function') via = ccVia(via.eng, via.inp); // the devices, read now
+      if (via) {
+        m.eng = via.eng; m.inp = via.inp;
+        if (via.dm === 0 || via.dm === 1) m.dm = via.dm;
+        Object.defineProperty(m, 'via', { value: via }); // devices stay on this page (not on the wire)
+      }
       if (!mine) {
         m.byId = forId;
         m.src = src === 'mix' || trGeneric(forId) ? 'mix' : 'ear';
         m.by = String(label || rosterNames[forId] || (peers.get(forId) || {}).name || '…').slice(0, 40);
       }
       const send = how === 'lo' ? false : mine ? capSend() : (trMode() === 'share' || (trKeeps() && capPaused(forId)));
-      if (how === 'out') { if (send) sendAll({ k: 'tr', m }); return; }
-      if (!send && !trKeeps() && !trEnOn) return;
+      if (how === 'out') { if (send) { sendAll({ k: 'tr', m }); if (typeof capTrace === 'function') capTrace(m, 'sent'); } return; }
+      if (!send && !trKeeps() && !trEnOn) { if (typeof capTrace === 'function') capTrace(m, 'unkept'); return; }
       if (!takeTr(m)) return; // the same sentence is already held by a better line
       if (send) sendAll({ k: 'tr', m });
       renderTranscript();
@@ -32702,6 +32764,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // continues one where it did: told a language, it echoes it back,
           // and told the wrong one for the audio it writes a translation.
           const found = (lang === 'auto' && !told) || contFound;
+          const wEng = local ? 'local' : 'whisper';
           const rl = lang === 'auto' ? ((r && r.language) ? String(r.language) : '') : lang;
           const capNow = wspCaps.get(job.id);
           if (capNow) { capNow.lastEnd = job.at + clipMs; if (rl) { capNow.lastLang = rl; capNow.lastFound = found; } }
@@ -32713,18 +32776,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const own = !translated || trLangOf(rl) === 'en';
           const ll = translated ? 'en' : rl, lf = own && found, how = own ? '' : 'tl';
           if (job.id === 'me') {
-            if (job.lo || (translated && !own)) addTranscriptLine(text, job.at, null, null, 'mic', 'en', false, end, 'lo'); // my words in English, for this page only
-            else if (!trEnOn || trLangOf(rl) === 'en') addTranscriptLine(text, job.at, null, null, 'mic', ll, lf, end);
+            if (job.lo || (translated && !own)) addTranscriptLine(text, job.at, null, null, 'mic', 'en', false, end, 'lo', { eng: wEng, inp: 'track' }); // my words in English, for this page only
+            else if (!trEnOn || trLangOf(rl) === 'en') addTranscriptLine(text, job.at, null, null, 'mic', ll, lf, end, '', { eng: wEng, inp: 'track' });
             else {
               // My own words go to the room in my language; this page shows
               // them in English: the same clip once more, told the language
               // just found, translated. It goes first.
-              addTranscriptLine(text, job.at, null, null, 'mic', rl, found, end, 'out');
+              addTranscriptLine(text, job.at, null, null, 'mic', rl, found, end, 'out', { eng: wEng, inp: 'track' });
               wspQ.items.unshift({ id: 'me', chunks: job.chunks, at: job.at, rate: job.rate, keep: job.keep, task: 'translate', lo: true, told: rl || '', found: found });
             }
           }
-          else if (job.id === 'fold') { if (trWrites() || trEnOn) addTranscriptLine(text, job.at, 'stadium', 'Stadium', 'mix', ll, lf, end, how); }   // a far-row line, labelled by its channel
-          else if ((trWrites() || trEnOn) && (peers.has(job.id) || job.stage)) addTranscriptLine(text, job.at, job.id, null, 'ear', ll, lf, end, how);
+          else if (job.id === 'fold') { if (trWrites() || trEnOn) addTranscriptLine(text, job.at, 'stadium', 'Stadium', 'mix', ll, lf, end, how, { eng: wEng, inp: 'rx' }); }   // a far-row line, labelled by its channel
+          else if ((trWrites() || trEnOn) && (peers.has(job.id) || job.stage)) addTranscriptLine(text, job.at, job.id, null, 'ear', ll, lf, end, how, { eng: wEng, inp: 'rx' });
         }
         if (!wspQ.items.length && myStatus && myStatus.ccst === 'behind') {
           wspQ.behind = false;
@@ -33140,6 +33203,22 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (wspCaps.has('me')) return true;
       return !!(speech && speechProved);
     }
+    // The caption state for the debug export's snapshot: this page's engine,
+    // what it hears and the devices, and each peer's cap / ccst. No words.
+    function capSnap() {
+      const D = DLOG;
+      const eng = ccEngine() === 'browser' && phoneCaptions() ? 'native' : ccEngine();
+      const inp = wspCaps.has('me') ? 'track' : (speech ? (speech.input ? 'mix' : 'mic') : '');
+      const v = inp ? ccVia(eng, inp) : { eng: eng, inp: '', dev: '', cdev: ccCallMic().dev, dm: null };
+      const peersOut = [];
+      for (const [pid, st] of statusOf) if (pid !== myId && D && D.capPeerRec) peersOut.push(D.capPeerRec(pid, st));
+      return {
+        me: D && D.capPeerRec ? D.capPeerRec(myId, myStatus) : null,
+        eng: v.eng, inp: v.inp, dev: String(v.dev || '').slice(0, 8), cdev: String(v.cdev || '').slice(0, 8), dm: v.dm,
+        lang: trLang(), proved: !!speechProved, send: capSend(), mode: trMode() || 'off',
+        peers: peersOut,
+      };
+    }
     function capPublish() {
       const next = { cap: capLive() ? 1 : 0, lang: trLangKnown(), trs: trMode() === 'share' ? 1 : 0 };
       const prev = { cap: myStatus.cap || 0, lang: myStatus.lang || '', trs: myStatus.trs || 0 };
@@ -33377,6 +33456,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         speech.interimResults = false;
         speech.lang = speechLangFor();
         rec.langTag = trLangOf(speech.lang);
+        rec.eng = typeof phoneCaptions === 'function' && phoneCaptions() ? 'native' : 'browser'; // the Meet app's own engine stands in for the browser's
         speech.onresult = (e) => {
           speechFails = 0;
           speechProved = true;
@@ -33387,8 +33467,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               if (!e.results[i].isFinal) continue;
               const who = ccMixSpeaker();
               if (!who) { trDrops++; continue; }
-              if (who === 'me') addTranscriptLine(e.results[i][0].transcript, myVoiceFrom || 0, null, null, 'mic', rec.langTag, rec.langTag === trLangKnown(), Date.now());
-              else addTranscriptLine(e.results[i][0].transcript, 0, who, null, 'ear', rec.langTag);
+              if (who === 'me') addTranscriptLine(e.results[i][0].transcript, myVoiceFrom || 0, null, null, 'mic', rec.langTag, rec.langTag === trLangKnown(), Date.now(), '', { eng: rec.eng, inp: 'mix' });
+              else addTranscriptLine(e.results[i][0].transcript, 0, who, null, 'ear', rec.langTag, false, 0, '', { eng: rec.eng, inp: 'mix' });
             }
             return;
           }
@@ -33403,10 +33483,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const heard = !meters.has('me') || myVoiceSinceFinal || sinceVoice < 3000;
           for (let i = e.resultIndex; i < e.results.length; i++) {
             if (!e.results[i].isFinal) continue;
-            if (!heard) { trDrops++; if (clog) clog('tr own drop', 'gate', sinceVoice, String(e.results[i][0].transcript).slice(0, 40)); continue; }
+            if (!heard) { trDrops++; if (clog) clog('tr own drop', 'gate', sinceVoice, String(e.results[i][0].transcript).slice(0, 40)); if (typeof capTraceGate === 'function') capTraceGate(rec.eng, rec.langTag, myVoiceFrom || 0); continue; }
             // the line spans from when this stretch of my voice began to now; its language is as good as
             // detected when it is the one this page knows (picked, or learned from the room's Whisper pages)
-            addTranscriptLine(e.results[i][0].transcript, myVoiceFrom || 0, null, null, 'mic', rec.langTag, rec.langTag === trLangKnown(), Date.now());
+            addTranscriptLine(e.results[i][0].transcript, myVoiceFrom || 0, null, null, 'mic', rec.langTag, rec.langTag === trLangKnown(), Date.now(), '', { eng: rec.eng, inp: 'mic' });
           }
           myVoiceSinceFinal = false;
         };
