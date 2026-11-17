@@ -485,16 +485,21 @@
   const PAYPAL_WENT_THROUGH = 'This PayPal payment went through.';
   const PAYPAL_KEY = 'pay.paypal:';
   const PAYPAL_KEEP_MS = 6 * 60 * 60 * 1000;
+  // The notice a person closed: its sentence and the checkouts behind it.
+  // The same notice stays closed; a new fact about a checkout shows again.
+  const NOTICE_CLOSED_KEY = 'pay.notice.closed';
   const PAYPAL_POLL_MS = 2000;
   // Order ids whose sheet is still inside payWithPaypal. Resume skips them
   // so it does not file the same receipt the open call is about to return.
   const paypalLive = new Set();
   let paypalTimer = null;
 
-  function paypalBanner(text) {
+  function paypalBanner(text, about) {
     const doc = root.document;
     if (!doc || !doc.body) return;
     let el = doc.getElementById('gifos-pay-banner');
+    const sig = text ? text + '|' + (about || []).slice().sort().join(',') : '';
+    if (text && store.get(NOTICE_CLOSED_KEY) === sig) text = '';
     if (!text) {
       if (el) el.remove();
       const gone = doc.getElementById('gifos-pay-support');
@@ -513,7 +518,9 @@
     // status sentence alone, so there the support line is a sibling.
     const real = typeof HTMLElement !== 'undefined' && el instanceof HTMLElement;
     if (real) {
-      el.innerHTML = '<div>' + esc(text) + '</div><div id="gifos-pay-support">' + supportHtml() + '</div>';
+      el.innerHTML = '<button id="gifos-pay-banner-close" type="button" aria-label="Close" style="float:right;margin:-.2rem -.3rem .2rem .6rem;padding:.1rem .55rem;border:1px solid #6b5a2a;border-radius:.4rem;background:transparent;color:#f3e7c2;cursor:pointer;font:inherit;font-size:1.1rem;line-height:1.3">×</button>' +
+        '<div>' + esc(text) + '</div><div id="gifos-pay-support">' + supportHtml() + '</div>';
+      el.querySelector('#gifos-pay-banner-close').onclick = () => { store.set(NOTICE_CLOSED_KEY, sig); paypalBanner(''); };
       return;
     }
     el.textContent = text;
@@ -586,33 +593,33 @@
   async function resumePaypalOrders() {
     const keys = store.keys().filter((k) => k.indexOf(PAYPAL_KEY) === 0);
     if (!keys.length) { paypalBanner(''); return 0; }
-    let waiting = 0, rank = 0, banner = '';
-    const note = (n, text) => { if (n >= rank) { rank = n; banner = text; } };
+    let waiting = 0, rank = 0, banner = '', about = [];
+    const note = (n, text, id) => { if (n > rank) { rank = n; banner = text; about = []; } if (n === rank) about.push(String(id)); };
     for (const k of keys) {
       const rec = store.get(k);
       if (!rec || !rec.id || !rec.claim) { store.del(k); continue; }
-      if (paypalLive.has(rec.id)) { waiting++; note(3, PAYPAL_UNCONFIRMED); continue; }
-      if (rec.unfiled) { note(5, PAYPAL_UNFILED); continue; }
-      if (Date.now() - Number(rec.at || 0) > PAYPAL_KEEP_MS) { note(4, PAYPAL_STOPPED); continue; }
+      if (paypalLive.has(rec.id)) { waiting++; note(3, PAYPAL_UNCONFIRMED, rec.id); continue; }
+      if (rec.unfiled) { note(5, PAYPAL_UNFILED, rec.id); continue; }
+      if (Date.now() - Number(rec.at || 0) > PAYPAL_KEEP_MS) { note(4, PAYPAL_STOPPED, rec.id); continue; }
       let st;
       try { st = await paypalStatus(rec); } catch (e) { st = { status: 'UNKNOWN' }; }
       if (store.get(k) === undefined) continue;
       if (st.status === 'COMPLETED') {
         store.del(k);
         await filePaypal(rec, st.paid);
-        note(2, PAYPAL_WENT_THROUGH);
+        note(2, PAYPAL_WENT_THROUGH, rec.id);
       } else if (st.status === 'UNFILED') {
         keepPaypal(rec, { unfiled: true, receiptJson: st.receiptJson, sig: st.sig, why: st.why });
-        note(5, PAYPAL_UNFILED);
+        note(5, PAYPAL_UNFILED, rec.id);
       } else if (st.status === 'VOID') {
         store.del(k);
-        note(1, PAYPAL_NOT_CHARGED);
+        note(1, PAYPAL_NOT_CHARGED, rec.id);
       } else {
         waiting++;
-        note(3, PAYPAL_UNCONFIRMED);
+        note(3, PAYPAL_UNCONFIRMED, rec.id);
       }
     }
-    paypalBanner(banner);
+    paypalBanner(banner, about);
     if (waiting && !paypalTimer && typeof setTimeout === 'function') {
       paypalTimer = setTimeout(() => { paypalTimer = null; resumePaypalOrders().catch(() => {}); }, PAYPAL_POLL_MS);
     }
@@ -655,7 +662,7 @@
         }
         if (st.status === 'UNFILED') {
           keepPaypal(rec, { unfiled: true, receiptJson: st.receiptJson, sig: st.sig, why: st.why });
-          paypalBanner(PAYPAL_UNFILED);
+          paypalBanner(PAYPAL_UNFILED, [rec.id]);
           throw new Error(PAYPAL_UNFILED + (st.why ? ' ' + st.why : ''));
         }
         if (st.status === 'VOID') {
@@ -668,7 +675,7 @@
         await sleep(1500);
       }
       keepWindow = true;
-      paypalBanner(PAYPAL_UNCONFIRMED);
+      paypalBanner(PAYPAL_UNCONFIRMED, [rec.id]);
       throw new Error(PAYPAL_UNCONFIRMED);
     } finally {
       if (rec) paypalLive.delete(rec.id);
