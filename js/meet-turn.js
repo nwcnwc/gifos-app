@@ -1398,6 +1398,9 @@
           const open = sub.probe.some((r) => !((sub.heads && sub.heads.get(r)) || []).length);
           if (open && now - (sub.listAt || 0) < RESEND_MS) return;
           if (open && !sub.lookAt) { sub.lookAt = now; log('turn-sub a listed room is opening: its door once more'); subProbeDoors(); return; }
+          // a miss ends the dials the probe made (io.probeEnd: never a connected pair, a seat link or a TURN link's pc);
+          // left open, each was re-offered off the relay through the pipe for a minute, again every door round
+          for (const r of sub.probe) for (const p of (sub.heads && sub.heads.get(r)) || []) { try { if (io.probeEnd) io.probeEnd(p); } catch (e) {} }
           log('turn-sub no listed door reached'); subDoors(true);
         }
       }
