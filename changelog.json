@@ -2,6 +2,18 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.26.14",
+      "date": "2026-11-16",
+      "headline": "Steadier hosting and clearer tiles in meetings",
+      "critical": false,
+      "fixes": [
+        "The host's controls and presence now reach everyone, wherever they joined from.",
+        "Smoother admission when several people arrive at once.",
+        "When someone shares their screen, their tile now says \"Presenting\".",
+        "Clearer tiles when video is paused on a connection, showing the person's picture and one simple note."
+      ]
+    },
+    {
       "version": "0.9.26.13",
       "date": "2026-11-16",
       "headline": "Subscriptions for everyone in meetings",
