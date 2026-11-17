@@ -190,9 +190,11 @@
   let providerNow = null, connectP = null;
   function warm() { try { provider().catch(() => {}); } catch (e) {} }
   function connectNow() {
-    if (!providerNow || connectP) return;
+    // The same wallet provider() answers with: a test provider wins.
+    const now = root.__gifosTestProvider ? { p: root.__gifosTestProvider, kind: 'test' } : providerNow;
+    if (!now || connectP) return;
     try {
-      const req = Promise.resolve(providerNow.p.request({ method: 'eth_requestAccounts' }));
+      const req = Promise.resolve(now.p.request({ method: 'eth_requestAccounts' }));
       connectP = req;
       // A refused request may be asked again; a granted one waits for address().
       req.catch(() => { if (connectP === req) connectP = null; });
