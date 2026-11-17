@@ -1,0 +1,21 @@
+{
+  "title": "扫雷",
+  "new": "新游戏",
+  "keep": "继续游戏",
+  "loading": "加载中…",
+  "dens.easy": "初级",
+  "dens.medium": "中级",
+  "dens.hard": "高级",
+  "dens.expert": "专家",
+  "mode.off": "🚩 插旗模式：关",
+  "mode.on": "🚩 插旗模式：开",
+  "status.cleared": "用时 {time} 清除全部地雷。大家都赢了！",
+  "status.boom": "💥 轰！点按笑脸即可开始新棋盘。",
+  "status.flagMode": "插旗模式已开启：点按方格即可插旗或拔旗。",
+  "status.play": "点按打开 · 长按或右键插旗 · 点按数字可一次打开周围方格。",
+  "status.start": "点按任意方格。第一次点按一定安全。邀请好友即可共享这块棋盘。",
+  "best.boards": "棋盘：已清除 {wins}/{games}。",
+  "best.time": "{level}最佳用时：{time}。",
+  "ask.dens": "要开始新的{level}棋盘吗？",
+  "ask.new": "要开始新游戏吗？"
+}

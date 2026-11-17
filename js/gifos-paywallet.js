@@ -143,12 +143,21 @@
     return !!(root.__gifosTestProvider || root.ethereum || (typeof document !== 'undefined' && haveVendor()));
   }
 
+  // The vendored SDK's browser build sets window.createBaseAccountSDK, then
+  // replaces window.base with its pay/subscribe helpers, which have no
+  // createBaseAccountSDK. Take the factory from either place.
+  function vendorSdk() {
+    if (root.base && typeof root.base.createBaseAccountSDK === 'function') return root.base;
+    if (typeof root.createBaseAccountSDK === 'function') return { createBaseAccountSDK: root.createBaseAccountSDK };
+    return null;
+  }
+
   function loadVendorSdk() {
     return new Promise((res, rej) => {
-      if (root.base && root.base.createBaseAccountSDK) return res(root.base);
+      if (vendorSdk()) return res(vendorSdk());
       const s = document.createElement('script');
       s.src = 'js/vendor/base-account.min.js';
-      s.onload = () => (root.base && root.base.createBaseAccountSDK) ? res(root.base) : rej(new Error('base-account vendor loaded but createBaseAccountSDK missing'));
+      s.onload = () => vendorSdk() ? res(vendorSdk()) : rej(new Error('base-account vendor loaded but createBaseAccountSDK missing'));
       s.onerror = () => rej(new Error('no vendored Base Account SDK on this deployment'));
       document.head.appendChild(s);
     });
@@ -181,9 +190,11 @@
   let providerNow = null, connectP = null;
   function warm() { try { provider().catch(() => {}); } catch (e) {} }
   function connectNow() {
-    if (!providerNow || connectP) return;
+    // The same wallet provider() answers with: a test provider wins.
+    const now = root.__gifosTestProvider ? { p: root.__gifosTestProvider, kind: 'test' } : providerNow;
+    if (!now || connectP) return;
     try {
-      const req = Promise.resolve(providerNow.p.request({ method: 'eth_requestAccounts' }));
+      const req = Promise.resolve(now.p.request({ method: 'eth_requestAccounts' }));
       connectP = req;
       // A refused request may be asked again; a granted one waits for address().
       req.catch(() => { if (connectP === req) connectP = null; });
