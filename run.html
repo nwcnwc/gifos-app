@@ -9412,6 +9412,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       put(document.getElementById('unmute'));
       put(document.getElementById('showcam'));
       put(fitbtn);
+      put(document.getElementById('admcount'));   // its own full-width row under the controls (css .admcount)
       const appbar = document.getElementById('appbar'), pane = document.getElementById('apppane');
       const appOwn = () => document.body.classList.contains('has-app') || document.body.classList.contains('solo-app') || document.body.classList.contains('app-room');
       let headH = -1;
@@ -35705,6 +35706,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // Wake from the click instead: the target is already the control.
       let wakeOnClick = false;
       document.addEventListener('pointerdown', (e) => {
+        // Every gesture starts clean: a swipe, a long press or a pinch ends with no click, so a flag
+        // left by its pointerdown swallowed the next real tap anywhere.
+        swallowClick = false; wakeOnClick = false;
         if (!callOpen() || !phoneCall()) return;
         if (!document.body.classList.contains('chrome-away')) return;
         const t = e.target;
@@ -35712,7 +35716,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // a wake: swallowing it left Help and Abilities dead on a solo app.
         // A dialog (an app's abilities card, a sheet) is a press too: its
         // buttons were dead to every tap that came after a quiet spell.
-        if (t && t.closest && t.closest('.fitbtn, .topchip, #unmute, #showcam, #chatnote, #chatpanel, #chatbadge, #chatpreview, .name-modal, #waitlist, #tilewin, .tile-open, #appbar, ' + CHROME_DIALOGS)) {
+        // The content bar never tucks, so its tabs and tools, its exit and the view menu are presses too.
+        if (t && t.closest && t.closest('.fitbtn, .topchip, #unmute, #showcam, #chatnote, #chatpanel, #chatbadge, #chatpreview, .name-modal, #waitlist, #tilewin, .tile-open, #appbar, .ct-bar, .ct-exit, #viewpick, .ctarea button, ' + CHROME_DIALOGS)) {
           wakeOnClick = true;
           return;
         }
@@ -38536,7 +38541,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const FS = window.GifOS && GifOS.fullscreen;
       if (FS && FS.supported()) {
         const repaint = FS.attach(fb, document.documentElement, {
-          fill: 'app-full', words: true,
+          // app-full is an APP filling the glass: a meeting with no app that takes the screen keeps its own layout (Scroll scrolls)
+          fill: 'app-full', fillIf: () => document.body.classList.contains('has-app'), words: true,
           on: () => FS.active() === document.documentElement && !fsQuiet(),   // the quiet full screen still offers Full screen (the filmstrip)
           enterLabel: uiText('fullScreen', 'Full screen'), exitLabel: uiText('leaveFullScreen', 'Leave full screen') });
         // An app bar is nine buttons: the glyph comes back while an app is up.

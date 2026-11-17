@@ -105,7 +105,8 @@
   // screen — the page's half of the pane-fills-the-glass picture, and the whole
   // reason a pane no longer asks for fullscreen itself. opts.on, when given,
   // decides the label and the pressed state; the fill class still follows the
-  // browser.
+  // browser. opts.fillIf, when given, says when the fill class may hang at all
+  // (run.html: only while an app is up; the page calls repaint when that changes).
   function attach(btn, target, opts) {
     if (!btn) return function () {};
     const o = opts || {};
@@ -120,7 +121,7 @@
       const full = active() === (el(target) || doc.documentElement);
       // Both halves, from the one source of truth, on every fullscreenchange —
       // so Esc and the browser's own affordance drop the fill class too.
-      if (o.fill && doc.body) doc.body.classList.toggle(o.fill, full);
+      if (o.fill && doc.body) doc.body.classList.toggle(o.fill, full && (!o.fillIf || !!o.fillIf()));
       // opts.on: a page whose full screen has a quiet first stage (a phone
       // meeting) says what the next tap does.
       const on = o.on ? !!o.on() : full;

@@ -1556,7 +1556,7 @@
     border-radius: 0; font-size: 1.625rem; letter-spacing: .08em;
     padding: 0 calc(16px + var(--inset-right, 0px)) 0 calc(16px + var(--inset-left, 0px)); }
   body.broadcast .topchip { top: calc(var(--banner-h) + 8px + var(--inset-top, 0px)); }
-  body.broadcast .fitbtn, body.broadcast .admcount { top: calc(var(--banner-h) + 8px + 2.75rem + var(--inset-top, 0px)); }
+  body.broadcast .fitbtn { top: calc(var(--banner-h) + 8px + 2.75rem + var(--inset-top, 0px)); }
   body.broadcast #gifos-build-float { top: calc(var(--banner-h) + 8px + var(--inset-top, 0px)) !important; }
   #livebadge .livedot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
   body.broadcast #livebadge .livedot { width: 12px; height: 12px; }
@@ -1668,8 +1668,6 @@
   /* Older eyes: on a desktop window Fit is 16px, a 44px target, and sits in the
      header row beside the build label, above the tiles and their buttons. */
   @media (min-width: 601px) and (min-height: 501px) { .fitbtn { top: calc(14px + var(--gtop, 0px)); min-height: 44px; padding: 10px 16px; } }
-  /* A shared screen folds the faces into a strip, so Fit has nothing to fit, and Stop sharing owns that corner. */
-  body.screen-on .fitbtn { display: none; }
   /* A desktop reads the hand queue in the header row, left of Fit (placeHandq),
      at 18px and on top of the faces; the header line ellipsizes to give it room.
      A quiet call fades the header, never a raised hand. */
@@ -1882,7 +1880,6 @@
   body.desk-ptr.has-app.app-room.audio-on #apppane { padding-top: 70px; }
   body.has-app .fitbtn { display: none; }
   body.comfy .tile[data-fit="contain"] > video { object-fit: contain; }
-  .admcount { position: fixed; z-index: 6; top: calc(14px + 2.75rem + var(--inset-top, 0px)); left: calc(14px + var(--inset-left, 0px)); right: calc(14px + var(--inset-right, 0px)); }
   body.solo-app .topchip, body.app-room:not(.audio-on) .topchip { display: none !important; }
   body.app-room #barmore #reactbtn, body.app-room #reacttray { display: none !important; }
   /* The build name used to be a solid chip in the corner, beside Fit, and
@@ -2506,14 +2503,9 @@
       top: calc(110px + var(--gtop));
       bottom: var(--inset-bottom, 0px); }
   }
-  /* Fit steers the gallery, and a share puts the faces in a strip, so Fit
-     did nothing there and its row over the slide stood empty (an SE in
-     Safari watched the hymn at 116x66). It hides during a share, and
-     upright the share starts under the build line, unless Unmute, Camera
-     or the countdown hold that row. */
-  @media (max-width: 700px), (max-height: 500px) {
-    body.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .fitbtn { display: none; }
-  }
+  /* Upright, a share starts under the build line, unless Unmute, Camera
+     or the countdown hold that row. (The view button stays during a share:
+     it is the view menu in the one top bar, and it picks the share's layout.) */
   @media (max-width: 700px) and (orientation: portrait) {
     body.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app):not(:has(#unmute:not([hidden]), #showcam:not([hidden]), #admcount:not([style*="none"]))) #feed {
       top: calc(76px + var(--gtop)); }
@@ -3304,7 +3296,7 @@
   body.broadcast.bc-host #bcwhenrow { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; flex-wrap: wrap; }
   #bcwhenrow input { min-height: 44px; font: inherit; border-radius: var(--r-sm); padding: 0 8px; }
   @media (min-height: 500px) {
-    body.broadcast .fitbtn, body.broadcast .admcount { top: calc(var(--banner-h) + 8px + 4.25rem + var(--inset-top, 0px)); }
+    body.broadcast .fitbtn { top: calc(var(--banner-h) + 8px + 4.25rem + var(--inset-top, 0px)); }
   }
   .bar #flipcam { display: none; }
   @media (max-width: 700px) {
@@ -3441,7 +3433,7 @@
   .ctarea[hidden] { display: none; }
   .ctarea.ct-fixed { z-index: 33; border-radius: 0; }
   body.view-focus .ctarea.ct-fixed { z-index: 6; border-radius: var(--r-md); }
-  .ct-bar { position: absolute; left: 0; right: 0; top: 0; height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 8px; }
+  .ct-bar { position: absolute; z-index: 1; left: 0; right: 0; top: 0; height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 8px; }   /* over .ct-body, which spans the whole area: its tabs and tools take their taps */
   .ct-bar[hidden] { display: none; }
   .ct-tabs { display: flex; align-items: stretch; gap: 4px; min-width: 0; flex: 1 1 auto; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; height: 100%; }
   .ct-tabs::-webkit-scrollbar { display: none; }
@@ -3606,7 +3598,8 @@ body.comfy:not(.broadcast) #airbar { display: none !important; }
   color: var(--c-white); font: 600 1rem/1.2 system-ui, sans-serif; text-align: left; cursor: pointer; }
 #topmenu button:hover, #topmenu button:focus-visible { outline: 2px solid var(--c-white); outline-offset: -2px; }
 @media (max-width: 480px) {
-  #tophead { flex-wrap: nowrap; padding-top: 14px; }
+  #tophead { padding-top: 14px; }
+  #tophead > .topchip { flex-basis: 0; }   /* the chip fills what is left of the row, so only the banner breaks to a row of its own */
   #tophead > #appbar { display: none !important; }
   #tophead > .topmore { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center;
     min-width: 44px; min-height: 44px; border: 0; border-radius: var(--r-pill); background: var(--c-scrim);
