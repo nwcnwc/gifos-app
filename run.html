@@ -4455,7 +4455,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       clearTimeout(stillTimer);
       stillTimer = setTimeout(() => { el.classList.remove('on'); }, 8000);
     }
-    function paintAwayMark(t, on) {
+    function paintAwayMark(t, on, word) {
       if (!t || !t.tile) return;
       t.tile.classList.toggle('away', !!on);
       let mark = t.tile.querySelector('.awaymark');
@@ -4465,8 +4465,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         mark.className = 'awaymark';
         t.tile.appendChild(mark);
       }
-      const word = uiText('away', 'Away');
-      if (mark.textContent !== word) mark.textContent = word;
+      const w = word || uiText('away', 'Away');
+      if (mark.textContent !== w) mark.textContent = w;
     }
     // The blur note (tileBlurWhy): a face its sender wants clear, kept soft by
     // the room, says why in a few words. CSS shows it only while the meeting
@@ -7100,7 +7100,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // A silent peer (peerReconnecting) is still counted; its tile says so.
       const reconnecting = !isMe && typeof peerReconnecting === 'function' && peerReconnecting(id) === true;
       if (reconnecting) chips.push('<span class="warn">⟳ Reconnecting…</span>');
-      paintAwayMark(t, !isMe && !reconnecting && peerAway(id, 25000));
+      const awayNow = !isMe && !reconnecting && peerAway(id, 25000);
+      paintAwayMark(t, awayNow, awayNow && typeof sharingScreen === 'function' && sharingScreen(id) ? uiText('presenting', 'Presenting') : '');   // a presenter's own tab is hidden while it shows another one
       // Not verified myself: everyone holds my media.
       if (isMe && (typeof keysTrusted === 'function' && keysTrusted() === true) && !myIpAttV) chips.push(txChip('warn long', '\u26a0', 'the relay has not verified you yet \u2014 others cannot see or hear you until it does. If this stays, update GifOS.'));
       if ((typeof attestOn === 'function' && attestOn() === true) && !isMe && !(typeof isEjected === 'function' && isEjected(id) === true)) {
