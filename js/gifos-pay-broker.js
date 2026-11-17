@@ -367,13 +367,13 @@
       box.innerHTML =
         '<h3 style="margin:0 0 .35rem;font-size:1.1rem">' + esc(sheetData.app || 'This app') + ' asks you to pay</h3>' +
         '<p style="margin:0 0 .8rem;color:#b6b6cf;font-size:.9rem">' + esc(sheetData.reason) + '</p>' +
+        '<div id="gp-main">' +
         '<div style="background:#0e0e17;border:1px solid #23233a;border-radius:.6rem;padding:.8rem .9rem;margin-bottom:.9rem">' +
           '<div style="display:flex;justify-content:space-between;gap:.6rem"><span style="color:#9a9ab5">Amount</span><b id="gp-amt-show">' + esc(fmtUsd(sheetData.amount)) + '</b></div>' +
           (sheetData.editable ? '<div style="margin:.5rem 0 0"><input id="gp-amt" type="number" min="0.01" step="0.01" value="' + esc((Number(BigInt(sheetData.amount) / 10000n) / 100).toFixed(2)) + '" style="width:100%;box-sizing:border-box;background:#14141f;border:1px solid #2a2a3f;border-radius:.4rem;color:#e8e8f4;padding:.45rem .6rem;font:inherit"><div style="color:#9a9ab5;font-size:.78rem;margin-top:.25rem">You choose the amount — this is a tip.</div></div>' : '') +
           '<div style="display:flex;justify-content:space-between;gap:.6rem;margin-top:.45rem"><span style="color:#9a9ab5">Paying</span><span><b>' + esc(sheetData.payingTo) + '</b> <span style="color:#7ddb91">✓ verified</span></span></div>' +
           (sheetData.unlocks ? '<div style="display:flex;justify-content:space-between;gap:.6rem;margin-top:.45rem"><span style="color:#9a9ab5">Unlocks</span><span>' + esc(sheetData.sku) + ' (on this computer)</span></div>' : '') +
           (sheetNote(sheetData) ? '<div style="color:#9a9ab5;font-size:.78rem;margin-top:.55rem">' + esc(sheetNote(sheetData)) + '</div>' : '') +
-          ((canX402 || sheetData.rails.transfer) && GifOS.onramp ? '<div id="gp-onramp" style="margin-top:.7rem;padding-top:.6rem;border-top:1px solid #23233a"><div style="display:flex;justify-content:space-between;gap:.6rem"><span style="color:#9a9ab5">USDC balance</span><b id="gp-usdc-bal">…</b></div><button id="gp-topup" type="button" style="margin-top:.45rem;padding:.4rem .8rem;border-radius:.4rem;border:1px solid #2a2a3f;background:transparent;color:#b6b6cf;cursor:pointer;font:inherit">Add USDC</button></div>' : '') +
         '</div>' +
         '<div id="gp-buttons" style="display:flex;flex-direction:column;gap:.5rem">' +
           (canPaypal ? '<button id="gp-paypal" style="padding:.6rem 1rem;border-radius:.5rem;border:none;background:#ffc439;color:#111;cursor:pointer;font:inherit;font-weight:600">' + esc(sheetData.mode === 'LIVE' ? trPay('charge.pay.paypal', 'Pay by card or PayPal') : trPay('charge.pay.paypalSandbox', 'Pay by card or PayPal (sandbox)')) + '</button>' : '') +
@@ -383,6 +383,22 @@
           (canMpp ? '<button id="gp-mpp" style="padding:.6rem 1rem;border-radius:.5rem;border:1px solid #2a2a3f;background:#1d1d2c;color:#e8e8f4;cursor:pointer;font:inherit">Pay with your AI agent (Stripe Link)</button>' : '') +
           '<button id="gp-decline" style="padding:.6rem 1rem;border-radius:.5rem;border:1px solid #2a2a3f;background:transparent;color:#b6b6cf;cursor:pointer;font:inherit">No thanks</button>' +
         '</div>' +
+        '</div>' +
+        // Choosing USDC switches to this view: the amount in USDC, the wallet's
+        // balance, and nothing about PayPal or cards. Back returns.
+        (canX402 && walletReady ? '<div id="gp-usdc-view" style="display:none">' +
+          '<div style="background:#0e0e17;border:1px solid #23233a;border-radius:.6rem;padding:.8rem .9rem;margin-bottom:.9rem">' +
+            '<div style="display:flex;justify-content:space-between;gap:.6rem"><span style="color:#9a9ab5">Amount</span><b id="gp-usdc-amt"></b></div>' +
+            '<div style="display:flex;justify-content:space-between;gap:.6rem;margin-top:.45rem"><span style="color:#9a9ab5">Paying</span><span><b>' + esc(sheetData.payingTo) + '</b> <span style="color:#7ddb91">✓ verified</span></span></div>' +
+            '<div style="display:flex;justify-content:space-between;gap:.6rem;margin-top:.45rem"><span style="color:#9a9ab5">Your USDC</span><b id="gp-usdc-bal">…</b></div>' +
+            (onMainnet() ? '' : '<div style="color:#9a9ab5;font-size:.78rem;margin-top:.55rem">' + esc('USDC on ' + (sheetData.chain || 'a test network') + ', a test network.') + '</div>') +
+            (GifOS.onramp && GifOS.onramp.available && GifOS.onramp.available() ? '<button id="gp-topup" type="button" style="margin-top:.6rem;padding:.4rem .8rem;border-radius:.4rem;border:1px solid #2a2a3f;background:transparent;color:#b6b6cf;cursor:pointer;font:inherit">Add USDC</button>' : '') +
+          '</div>' +
+          '<div style="display:flex;flex-direction:column;gap:.5rem">' +
+            '<button id="gp-usdc-pay" style="padding:.6rem 1rem;border-radius:.5rem;border:none;background:#1652f0;color:#fff;cursor:pointer;font:inherit;font-weight:600"></button>' +
+            '<button id="gp-usdc-back" style="padding:.6rem 1rem;border-radius:.5rem;border:1px solid #2a2a3f;background:transparent;color:#b6b6cf;cursor:pointer;font:inherit">Back</button>' +
+          '</div>' +
+        '</div>' : '') +
         '<p id="gp-support" style="color:#9a9ab5;font-size:.78rem;margin:.7rem 0 0">' + supportHtml() + '</p>' +
         '<div id="gp-status" style="display:none;color:#b6b6cf;font-size:.9rem;margin-top:.8rem"></div>';
       bg.appendChild(box); doc.body.appendChild(bg);
@@ -398,19 +414,36 @@
         return cents * CENT; // whole cents, exactly
       };
       const done = (result) => { bg.remove(); resolve(result); };
+      const wallet = GifOS.payWallet;
+      const usdcView = box.querySelector('#gp-usdc-view'), mainView = box.querySelector('#gp-main');
+      const bal = box.querySelector('#gp-usdc-bal');
+      const showBal = (addr) => GifOS.onramp && GifOS.onramp.readUsdcBalance
+        ? GifOS.onramp.readUsdcBalance(addr).then((u) => { bal.textContent = GifOS.onramp.formatUsdc(u) + ' USDC'; }, () => { bal.textContent = 'unavailable'; })
+        : null;
+      // Not connected yet: a button, so the wallet opens inside the tap.
+      const offerConnect = () => {
+        bal.innerHTML = '<button id="gp-usdc-connect" type="button" style="padding:.15rem .6rem;border-radius:.4rem;border:1px solid #2a2a3f;background:#1652f0;color:#fff;cursor:pointer;font:inherit">Connect wallet</button>';
+        const cb = bal.querySelector ? bal.querySelector('#gp-usdc-connect') : null;
+        if (cb) cb.onclick = () => {
+          try { wallet.connectNow(); } catch (e) {}
+          bal.textContent = '…';
+          wallet.address().then(showBal, () => offerConnect());
+        };
+      };
+      let balRead = false;
+      const readBal = () => {
+        if (balRead || !bal || !wallet || typeof wallet.peekAddress !== 'function') return;
+        balRead = true;
+        wallet.peekAddress().then((addr) => (addr ? showBal(addr) : offerConnect())).catch(() => { bal.textContent = 'unavailable'; });
+      };
       const topUp = box.querySelector('#gp-topup');
-      if (topUp && GifOS.onramp) {
-        topUp.onclick = () => { try { GifOS.onramp.showTopUp(); } catch (e) {} };
-        const bal = box.querySelector('#gp-usdc-bal');
-        const wallet = GifOS.payWallet;
-        if (bal && wallet && typeof wallet.peekAddress === 'function') {
-          wallet.peekAddress().then((addr) => {
-            if (!addr) { bal.textContent = 'connect a wallet'; return null; }
-            return GifOS.onramp.readUsdcBalance(addr).then((u) => { bal.textContent = GifOS.onramp.formatUsdc(u) + ' USDC'; });
-          }).catch(() => { bal.textContent = 'unavailable'; });
-        }
-      }
-
+      if (topUp && GifOS.onramp) topUp.onclick = () => { try { GifOS.onramp.showTopUp(); } catch (e) {} };
+      const usdcLabel = (amt) => (amt % CENT === 0n ? fmtUsd(amt).slice(1) : fmtUsdcExact(amt)) + ' USDC';
+      let usdcAmt = null;
+      const showView = (usdc) => {
+        if (usdcView) usdcView.style.display = usdc ? 'block' : 'none';
+        if (mainView) mainView.style.display = usdc ? 'none' : 'block';
+      };
       box.querySelector('#gp-decline').onclick = () => done({ declined: true });
       const pp = box.querySelector('#gp-paypal');
       if (pp) pp.onclick = () => {
@@ -423,10 +456,21 @@
       const xb = box.querySelector('#gp-x402');
       if (xb && !xb.disabled) xb.onclick = () => {
         const amt = amountNow();
-        if (amt == null) return;
+        if (amt == null || !usdcView) return;
+        usdcAmt = amt;
+        box.querySelector('#gp-usdc-amt').textContent = usdcLabel(amt);
+        box.querySelector('#gp-usdc-pay').textContent = 'Pay ' + usdcLabel(amt);
+        showView(true);
+        readBal();
+      };
+      const ub = box.querySelector('#gp-usdc-back');
+      if (ub) ub.onclick = () => showView(false);
+      const up = box.querySelector('#gp-usdc-pay');
+      if (up) up.onclick = () => {
+        if (usdcAmt == null) return;
         // Open the wallet inside this click (see payWallet.connectNow).
-        try { if (GifOS.payWallet && GifOS.payWallet.connectNow) GifOS.payWallet.connectNow(); } catch (e) {}
-        done({ rail: 'x402', amount: amt });
+        try { if (wallet && wallet.connectNow) wallet.connectNow(); } catch (e) {}
+        done({ rail: 'x402', amount: usdcAmt });
       };
       const tb = box.querySelector('#gp-transfer');
       if (tb) tb.onclick = () => {
@@ -485,16 +529,21 @@
   const PAYPAL_WENT_THROUGH = 'This PayPal payment went through.';
   const PAYPAL_KEY = 'pay.paypal:';
   const PAYPAL_KEEP_MS = 6 * 60 * 60 * 1000;
+  // The notice a person closed: its sentence and the checkouts behind it.
+  // The same notice stays closed; a new fact about a checkout shows again.
+  const NOTICE_CLOSED_KEY = 'pay.notice.closed';
   const PAYPAL_POLL_MS = 2000;
   // Order ids whose sheet is still inside payWithPaypal. Resume skips them
   // so it does not file the same receipt the open call is about to return.
   const paypalLive = new Set();
   let paypalTimer = null;
 
-  function paypalBanner(text) {
+  function paypalBanner(text, about) {
     const doc = root.document;
     if (!doc || !doc.body) return;
     let el = doc.getElementById('gifos-pay-banner');
+    const sig = text ? text + '|' + (about || []).slice().sort().join(',') : '';
+    if (text && store.get(NOTICE_CLOSED_KEY) === sig) text = '';
     if (!text) {
       if (el) el.remove();
       const gone = doc.getElementById('gifos-pay-support');
@@ -513,7 +562,9 @@
     // status sentence alone, so there the support line is a sibling.
     const real = typeof HTMLElement !== 'undefined' && el instanceof HTMLElement;
     if (real) {
-      el.innerHTML = '<div>' + esc(text) + '</div><div id="gifos-pay-support">' + supportHtml() + '</div>';
+      el.innerHTML = '<button id="gifos-pay-banner-close" type="button" aria-label="Close" style="float:right;margin:-.2rem -.3rem .2rem .6rem;padding:.1rem .55rem;border:1px solid #6b5a2a;border-radius:.4rem;background:transparent;color:#f3e7c2;cursor:pointer;font:inherit;font-size:1.1rem;line-height:1.3">×</button>' +
+        '<div>' + esc(text) + '</div><div id="gifos-pay-support">' + supportHtml() + '</div>';
+      el.querySelector('#gifos-pay-banner-close').onclick = () => { store.set(NOTICE_CLOSED_KEY, sig); paypalBanner(''); };
       return;
     }
     el.textContent = text;
@@ -586,33 +637,33 @@
   async function resumePaypalOrders() {
     const keys = store.keys().filter((k) => k.indexOf(PAYPAL_KEY) === 0);
     if (!keys.length) { paypalBanner(''); return 0; }
-    let waiting = 0, rank = 0, banner = '';
-    const note = (n, text) => { if (n >= rank) { rank = n; banner = text; } };
+    let waiting = 0, rank = 0, banner = '', about = [];
+    const note = (n, text, id) => { if (n > rank) { rank = n; banner = text; about = []; } if (n === rank) about.push(String(id)); };
     for (const k of keys) {
       const rec = store.get(k);
       if (!rec || !rec.id || !rec.claim) { store.del(k); continue; }
-      if (paypalLive.has(rec.id)) { waiting++; note(3, PAYPAL_UNCONFIRMED); continue; }
-      if (rec.unfiled) { note(5, PAYPAL_UNFILED); continue; }
-      if (Date.now() - Number(rec.at || 0) > PAYPAL_KEEP_MS) { note(4, PAYPAL_STOPPED); continue; }
+      if (paypalLive.has(rec.id)) { waiting++; note(3, PAYPAL_UNCONFIRMED, rec.id); continue; }
+      if (rec.unfiled) { note(5, PAYPAL_UNFILED, rec.id); continue; }
+      if (Date.now() - Number(rec.at || 0) > PAYPAL_KEEP_MS) { note(4, PAYPAL_STOPPED, rec.id); continue; }
       let st;
       try { st = await paypalStatus(rec); } catch (e) { st = { status: 'UNKNOWN' }; }
       if (store.get(k) === undefined) continue;
       if (st.status === 'COMPLETED') {
         store.del(k);
         await filePaypal(rec, st.paid);
-        note(2, PAYPAL_WENT_THROUGH);
+        note(2, PAYPAL_WENT_THROUGH, rec.id);
       } else if (st.status === 'UNFILED') {
         keepPaypal(rec, { unfiled: true, receiptJson: st.receiptJson, sig: st.sig, why: st.why });
-        note(5, PAYPAL_UNFILED);
+        note(5, PAYPAL_UNFILED, rec.id);
       } else if (st.status === 'VOID') {
         store.del(k);
-        note(1, PAYPAL_NOT_CHARGED);
+        note(1, PAYPAL_NOT_CHARGED, rec.id);
       } else {
         waiting++;
-        note(3, PAYPAL_UNCONFIRMED);
+        note(3, PAYPAL_UNCONFIRMED, rec.id);
       }
     }
-    paypalBanner(banner);
+    paypalBanner(banner, about);
     if (waiting && !paypalTimer && typeof setTimeout === 'function') {
       paypalTimer = setTimeout(() => { paypalTimer = null; resumePaypalOrders().catch(() => {}); }, PAYPAL_POLL_MS);
     }
@@ -655,7 +706,7 @@
         }
         if (st.status === 'UNFILED') {
           keepPaypal(rec, { unfiled: true, receiptJson: st.receiptJson, sig: st.sig, why: st.why });
-          paypalBanner(PAYPAL_UNFILED);
+          paypalBanner(PAYPAL_UNFILED, [rec.id]);
           throw new Error(PAYPAL_UNFILED + (st.why ? ' ' + st.why : ''));
         }
         if (st.status === 'VOID') {
@@ -668,7 +719,7 @@
         await sleep(1500);
       }
       keepWindow = true;
-      paypalBanner(PAYPAL_UNCONFIRMED);
+      paypalBanner(PAYPAL_UNCONFIRMED, [rec.id]);
       throw new Error(PAYPAL_UNCONFIRMED);
     } finally {
       if (rec) paypalLive.delete(rec.id);

@@ -670,7 +670,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <input data-ph="lobAdminNamePh" id="lob-admin-name" maxlength="40" placeholder="Name this call" autocomplete="off">
         <button data-t="lobKeyReveal" type="button" id="lob-key-reveal" class="lob-text" hidden>Host password</button>
         <div id="lob-key-block">
-        <label class="lob-pwlab">🔑 <b data-t="invAdminPh" id="lob-admin-pass-head">Host password</b> — only you<small data-t="lobAdminPassNote" id="lob-admin-pass-note">Only you. Do not share it. It is not part of the link.</small></label>
+        <label class="lob-pwlab">🔑 <b data-t="invAdminPh" id="lob-admin-pass-head">Host password</b> — only you<small data-t="lobAdminPassNote" id="lob-admin-pass-note">Only you. Do not share it.</small></label>
         <div class="lob-keyrow">
           <input data-ph="invAdminPh" id="lob-admin-pass" type="password" maxlength="64" placeholder="Host password" autocomplete="new-password">
           <button data-t="lobKeygen" type="button" id="lob-keygen" class="lob-ghost">Generate</button>
@@ -679,7 +679,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <button data-t="lobGuestReveal" type="button" id="lob-guest-reveal" class="lob-text" hidden>Add a room password</button>
         <button data-t="lobGuestMore" type="button" id="lob-guest-more" class="lob-link" aria-expanded="false">Add a room password</button>
         <div id="lob-guest-extra" style="display:none">
-          <label class="lob-pwlab">🎟 <b data-t="lobGuestPassHead" id="lob-guest-pass-head">Room password</b> <small data-t="lobGuestPassNote" id="lob-guest-pass-note">The one you share. People need it to get in. It is not part of the link.</small></label>
+          <label class="lob-pwlab">🎟 <b data-t="lobGuestPassHead" id="lob-guest-pass-head">Room password</b> <small data-t="lobGuestPassNote" id="lob-guest-pass-note">The one you share. People need it to get in.</small></label>
           <input data-ph="invGuestPh" id="lob-guest-pass" type="password" maxlength="64" placeholder="Room password (optional)" autocomplete="new-password">
         </div>
         <!-- A broadcast asks two things and goes: who can watch, and now or later. -->
@@ -2270,7 +2270,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const inv = document.querySelector('#inv-modal h3');
       if (inv) inv.textContent = 'Share this broadcast';
       const pw = document.getElementById('pwbtn');
-      if (pw) pw.title = 'Room password. Optional. It is not part of the link.';
+      if (pw) pw.title = 'Room password. Optional.';
       const files = document.querySelector('#cfiles h4');
       if (files) files.textContent = 'Files pinned to this broadcast';
       const pin = document.getElementById('cattach');
@@ -19730,7 +19730,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       document.getElementById('pw-hint').textContent = service
         ? (locked
           ? 'Enter the room password to see the stage clearly.'
-          : 'Optional. It is not part of the link. People can still watch, and the stage stays blurred until it is set.')
+          : 'Optional. People can still watch, and the stage stays blurred until it is set.')
         : why === 'banned' ? uiText('pwHintBanned', 'They are out, and this is the room\'s new password. Everyone still here already has it. Anyone joining later needs it, so copy it and send it to them yourself. To let a banned person back in, tell them this password.')
         : (locked
           ? (why === 'changed'
@@ -20849,7 +20849,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const chosen = slugRoom(rawName, '');
         const pass = (document.getElementById('lob-admin-pass').value || '').trim();
         if (!chosen) { err.textContent = uiText('needName', 'Give your room a name.'); return; }
-        if (!pass) { err.textContent = uiText('needPass', 'Set a host password. It stays with you, not in the link.'); return; }
+        if (!pass) { err.textContent = uiText('needPass', 'Set a host password.'); return; }
         let atSecs = '';
         if (BC_INTENT && bcWho() === 'pw' && !(document.getElementById('lob-guest-pass').value || '').trim()) {
           err.textContent = uiText('bcNeedRoomPw', 'Set a room password, or pick Anyone with the link.');
@@ -37069,7 +37069,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             '<input id="inv-adm-room" maxlength="40" placeholder="' + esc(uiText('invRoomPh', 'Name this room')) + '" autocomplete="off" value="' + esc(room) + '">' +
             '<label class="lob-pwlab"><b>Host password</b><small>Only you. People who join do not need it.</small></label>' +
             '<input id="inv-adm-pass" type="password" maxlength="64" placeholder="' + esc(uiText('invAdminPh', 'Host password')) + '" autocomplete="new-password">' +
-            '<label class="lob-pwlab"><b>Room password</b><small>Optional. It is not part of the link.</small></label>' +
+            '<label class="lob-pwlab"><b>Room password</b><small>Optional.</small></label>' +
             '<input id="inv-adm-guest" type="password" maxlength="64" placeholder="' + esc(uiText('invGuestPh', 'Room password (optional)')) + '" autocomplete="new-password">' +
             (others ? '<label class="inv-check"><input type="checkbox" id="inv-adm-post" checked><span>Drop the new link in chat so they can follow.</span></label>' : '') +
             '<div class="appear-actions"><button id="inv-adm-back" type="button" class="appear-secondary">' + esc(uiText('invBack', 'Back')) + '</button><button id="inv-adm-go" type="button" class="appear-primary">' + esc(uiText('invGo', 'Create and switch')) + '</button></div>' +
