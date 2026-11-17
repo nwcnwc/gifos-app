@@ -52,7 +52,7 @@
   // USDC base units (6 decimals) — high enough for real unlocks, low enough
   // that the worst a hostile app can ASK for (a human still approves every
   // cent) is bounded. Settings can raise or lower it per app.
-  // $25: the Tip app offers $25 as one of its amounts (Nathan 2026-11-16).
+  // $25: the Tip app offers $25 as one of its amounts.
   const DEFAULT_MAX = '25000000';
   // GifOS's 3% (Nathan's 97/3, docs/payments.md). On PayPal the WORKER applies
   // it (platform_fees) — the client never computes fiat fees. On x402 the
