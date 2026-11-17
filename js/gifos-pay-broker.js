@@ -48,11 +48,12 @@
   const WORKER_KEY = 'gifos_pay_worker';           // localStorage override, for tests/self-hosters
   const DEFAULT_WORKER = 'https://pay.gifos.app';
   const POLICY_KEY = 'gifos_pay_policy';           // { "<appId>": { maxAmount: "<units>" } }
-  // The per-call ceiling an app gets before anyone touches Settings. $20 in
+  // The per-call ceiling an app gets before anyone touches Settings. $25 in
   // USDC base units (6 decimals) — high enough for real unlocks, low enough
   // that the worst a hostile app can ASK for (a human still approves every
   // cent) is bounded. Settings can raise or lower it per app.
-  const DEFAULT_MAX = '20000000';
+  // $25: the Tip app offers $25 as one of its amounts (Nathan 2026-11-16).
+  const DEFAULT_MAX = '25000000';
   // GifOS's 3% (Nathan's 97/3, docs/payments.md). On PayPal the WORKER applies
   // it (platform_fees) — the client never computes fiat fees. On x402 the
   // split is built here, because the broker constructs the payment.
@@ -357,6 +358,8 @@
       const box = doc.createElement('div');
       box.setAttribute('style', 'background:#14141f;color:#e8e8f4;border:1px solid #2a2a3f;border-radius:.8rem;max-width:24rem;width:100%;padding:1.2rem;font:15px/1.55 system-ui,-apple-system,sans-serif;');
       const walletReady = !!(GifOS.payWallet && GifOS.payWallet.available());
+      // Load the wallet SDK now, so the USDC click can open its popup at once.
+      if (walletReady && sheetData.rails.x402 && GifOS.payWallet.warm) GifOS.payWallet.warm();
       const canPaypal = !!sheetData.rails.paypal && wholeCents(sheetData.amount);
       const canX402 = !!sheetData.rails.x402;
       // Stripe takes whole cents and nothing under $0.50.
@@ -421,6 +424,8 @@
       if (xb && !xb.disabled) xb.onclick = () => {
         const amt = amountNow();
         if (amt == null) return;
+        // Open the wallet inside this click (see payWallet.connectNow).
+        try { if (GifOS.payWallet && GifOS.payWallet.connectNow) GifOS.payWallet.connectNow(); } catch (e) {}
         done({ rail: 'x402', amount: amt });
       };
       const tb = box.querySelector('#gp-transfer');
