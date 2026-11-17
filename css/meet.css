@@ -736,6 +736,7 @@
     background: rgba(255,255,255,.96); color: var(--c-ink); font: 700 22px/1 system-ui, sans-serif;
     white-space: nowrap; box-shadow: 0 8px 24px rgba(0,0,0,.28);
   }
+  .tile:has(> .tpause:not(.tpause-busy)) > .awaymark { display: none; }   /* the paused note says it already */
   /* Why a face its sender wants clear is still soft (paintBlurWhy). It sits in
      the middle, clear of the name (bottom left), the chips and Open (top), and
      shows only while the meeting controls are up: a resting screen is faces only. */
