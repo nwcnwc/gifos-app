@@ -3855,7 +3855,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (scoped && hasAdminRoom() && amAdmin && Date.now() - admBeatAt >= 7500) {
         admBeatAt = Date.now();
         try { pushAdminProof(); } catch (e) {}
-        if (roomPastSection()) fanOut({ kind: 'mod', mod: modTable, modw: gossipModW() }, null, { ephemeral: true });
+        // A small room joined to another by a TURN pipe (deepInView) is past one section too: its statuses stop at the pipe.
+        if (roomPastSection() || deepInView()) fanOut({ kind: 'mod', mod: modTable, modw: gossipModW() }, null, { ephemeral: true });
       }
       if (digestMode()) pushLeaf();
       updateTile('me');
@@ -5608,7 +5609,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // neighbours.
     function modFlood() {
       const m = { kind: 'mod', mod: modTable, modw: gossipModW() };
-      if (roomPastSection()) { fanOut(m); return; }   // a small room keeps today's per-link send (G8)
+      if (roomPastSection() || deepInView()) { fanOut(m); return; }   // a small room keeps today's per-link send (G8); one joined by a pipe floods
       for (const pid of gossipIds()) sendSig(pid, m);
     }
     // An admin can turn a guest's VIDEO off room-wide (stronger than blur): the
@@ -17308,7 +17309,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       admKey = K; admKeys = k; amAdmin = true;
       setTimeout(() => { subsPublishRoomPlan(); if (typeof subsAdminFree === 'function') subsAdminFree(); }, 1500);   // the admin's plan rides the room's signed orders; without a paid plan, the free plan's (no-op while subscriptions are off)
       admins = adminsNow(); // canStage reads this view; do not wait for the sweep
-      refreshModSig();
+      hostFlood();   // signs, then floods the proof: a channel dialled before the signature learns it now
       try { tryBroadcastStage(); } catch (e) {}
       return true;
     }
