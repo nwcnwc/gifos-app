@@ -32987,7 +32987,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // Android phone whose engine hears silence while Chrome holds the mic).
     // A keep page's lines for it go to the room as in 'share'.
     function capPaused(pid) { const st = statusOf.get(pid); return !!(st && st.ccst === 'paused' && st.cap !== 1); }
-    function earLangOk(pid) { const st = statusOf.get(pid); const l = st && trLangOf(st.lang); return !l || l === trLang(); }
+    // The speaker's language: picked or learned (lang), else the speaker's
+    // own device language (dl, a guess that is still the speaker's, 2026-11-17:
+    // a computer in German wrote an English-speaking phone in German, because
+    // the phone advertised nothing and the ear took that as a match).
+    function earLangOk(pid) { const st = statusOf.get(pid); const l = st && trLangOf(st.lang || st.dl); return !l || l === trLang(); }
     function trWrites() { return trKeeps(); }
     // Translating everything to English, the page hears EVERY voice through
     // its own Whisper: my own (even with Send off, for my own captions),
@@ -33392,11 +33396,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // voice, so the pages that hear her call audio keep writing her.
     function capHearsCall() { return wspCaps.has('me') || !!(speech && speech.input); }
     function capPublish() {
-      const next = { cap: capLive() && capHearsCall() ? 1 : 0, lang: trLangKnown(), trs: trMode() === 'share' ? 1 : 0 };
-      const prev = { cap: myStatus.cap || 0, lang: myStatus.lang || '', trs: myStatus.trs || 0 };
-      if (next.cap === prev.cap && next.lang === prev.lang && next.trs === prev.trs) return;
+      const lang = trLangKnown();
+      const next = { cap: capLive() && capHearsCall() ? 1 : 0, lang, dl: lang || ccLang() === 'auto' ? '' : trLangOf(ccLang()), trs: trMode() === 'share' ? 1 : 0 };
+      const prev = { cap: myStatus.cap || 0, lang: myStatus.lang || '', dl: myStatus.dl || '', trs: myStatus.trs || 0 };
+      if (next.cap === prev.cap && next.lang === prev.lang && next.dl === prev.dl && next.trs === prev.trs) return;
       if (next.cap) myStatus.cap = 1; else delete myStatus.cap;
       if (next.lang) myStatus.lang = next.lang; else delete myStatus.lang;
+      if (next.dl) myStatus.dl = next.dl; else delete myStatus.dl;
       if (next.trs) myStatus.trs = 1; else delete myStatus.trs;
       if (clog) clog('cap', next.cap, next.lang, next.trs);
       try { if (typeof updateTile === 'function') updateTile('me'); } catch (e) {}
@@ -41710,7 +41716,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       scribeWhyForTest: () => Array.from(peers.keys()).map((pid) => {
         const st = statusOf.get(pid) || {}; const p = peers.get(pid);
         return { id: String(pid).slice(0, 6), muted: !!st.muted, modMute: !!(modOf(pid).mute && modOf(pid).mute.on), covered: capCovered(pid), langOk: earLangOk(pid),
-          cap: st.cap || 0, lang: st.lang || '', trs: st.trs || 0, ccst: st.ccst || null, connected: !!(p && p.connected), source: !!(p && wspSource(pid)) };
+          cap: st.cap || 0, lang: st.lang || '', dl: st.dl || '', trs: st.trs || 0, ccst: st.ccst || null, connected: !!(p && p.connected), source: !!(p && wspSource(pid)) };
       }),
       takeTrForTest: (m) => takeTr(m),
       markBotForTest: (on) => {
