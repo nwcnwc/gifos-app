@@ -265,7 +265,7 @@
     if (out.sku) priceFor(p.prices, out.sku, r.amount);
     const cap = BigInt(p.maxAmount || 0);
     if (cap <= 0n) throw new Error(tr('charge.error.noCeiling', 'no spending ceiling is set for this app — nothing may be charged'));
-    if (amount > cap) throw new Error(tr('charge.error.overCeiling', 'this app asked for {amount} but its ceiling is {ceiling}', { amount: String(amount), ceiling: String(cap) }));
+    if (amount > cap) throw new Error(tr('charge.error.overCeiling', 'this app asked for {amount} but its ceiling is {ceiling}', { amount: fmtUsdUnits(amount), ceiling: fmtUsdUnits(cap) }));
     out.amount = amount;
 
     // Already bought? Say so instead of charging twice for the same thing.

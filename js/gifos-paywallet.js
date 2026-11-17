@@ -170,8 +170,23 @@
       if (root.ethereum) return { p: root.ethereum, kind: 'injected' };
       throw new Error('no wallet is available on this computer');
     })();
-    providerP.catch(() => { providerP = null; }); // a failed resolve may be retried
+    providerP.then((v) => { providerNow = v; }, () => { providerP = null; }); // a failed resolve may be retried
     return providerP;
+  }
+  // The wallet's popup (Coinbase's, for Base Account) only opens inside the
+  // person's click: a browser blocks a popup asked for after an await. So the
+  // SDK is loaded and the provider made BEFORE the click (warm, when the pay
+  // sheet opens), and the click starts eth_requestAccounts synchronously
+  // (connectNow). address() then reuses that request. (Nathan 2026-11-16:
+  // "Pay using USDC on Base" did nothing while PayPal's popup worked.)
+  let providerNow = null, connectP = null;
+  function warm() { try { provider().catch(() => {}); } catch (e) {} }
+  function connectNow() {
+    if (!providerNow || connectP) return;
+    try {
+      connectP = Promise.resolve(providerNow.p.request({ method: 'eth_requestAccounts' }));
+      connectP.catch(() => {}).then(() => { setTimeout(() => { connectP = null; }, 0); });
+    } catch (e) { connectP = null; }
   }
 
   async function ensureChain(p) {
@@ -200,7 +215,7 @@
 
   async function address() {
     const { p } = await provider();
-    const accounts = await p.request({ method: 'eth_requestAccounts' });
+    const accounts = await (connectP || p.request({ method: 'eth_requestAccounts' }));
     if (!accounts || !isAddress(accounts[0])) throw new Error('the wallet returned no account');
     await ensureChain(p);
     return accounts[0];
@@ -250,7 +265,7 @@
 
   GifOS.payWallet = {
     CHAIN_CAIP, CHAIN_ID,
-    available, address, peekAddress, signTransfers, paySplit,
+    available, address, peekAddress, signTransfers, paySplit, warm, connectNow,
     // pure, for the unit tier
     buildAuthorization, typedData,
   };
