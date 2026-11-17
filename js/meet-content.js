@@ -59,8 +59,9 @@
       if (known.has(k)) continue;
       if (!(k in st.ver)) st.ver[k] = 1;
       else st.ver[k]++;
-      // The first thing shared is what you look at: no badge, no tap.
-      if (!st.sel || keys.indexOf(st.sel) < 0) { st.sel = k; st.seen[k] = st.ver[k]; }
+      // The first thing shared is what you look at: no badge, no tap. A new screen share takes the tab
+      // too, unless I am already watching a screen.
+      if (!st.sel || keys.indexOf(st.sel) < 0 || (kindOf(k) === 'screen' && kindOf(st.sel) !== 'screen')) { st.sel = k; st.seen[k] = st.ver[k]; }
     }
     for (const k of Object.keys(st.ver)) if (keys.indexOf(k) < 0) { delete st.ver[k]; delete st.seen[k]; }
     if (st.sel && keys.indexOf(st.sel) < 0) st.sel = null;
