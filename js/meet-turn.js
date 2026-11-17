@@ -1391,7 +1391,12 @@
           if (v === true) { log('turn-sub join ' + r); subIdle(now, { join: r }, now + RESEND_MS); return; }   // the page moves its door there; no new ask meanwhile
           if (v !== false) pending = true;
         }
-        if (!pending) { log('turn-sub no listed door reached'); subDoors(true); }
+        if (!pending) {
+          // a miss ends the dials the probe made (io.probeEnd: never a connected pair, a seat link or a TURN link's pc);
+          // left open, each was re-offered off the relay through the pipe for a minute, again every door round
+          for (const r of sub.probe) for (const p of (sub.heads && sub.heads.get(r)) || []) { try { if (io.probeEnd) io.probeEnd(p); } catch (e) {} }
+          log('turn-sub no listed door reached'); subDoors(true);
+        }
       }
     }
 
