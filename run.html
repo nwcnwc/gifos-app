@@ -5338,7 +5338,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const peerAway = (pid, ms) => {
       const st = statusOf.get(pid) || {};
       const p = peers.get(pid);
-      return !!st.away || !!(p && p.lastHeard && Date.now() - p.lastHeard > (ms || 13000));
+      return !!st.away || !!(p && p.lastHeard && Date.now() - Math.max(p.lastHeard, p.meshRxAt || 0, p.dcRxAt || 0) > (ms || 13000));
     };
     // G1 HOLDOVER: freshness ≠ liveness. The 15s rule assumed the hidden-tab
     // heartbeat (12s) always lands inside it, but a locked phone's DOM timers
@@ -10285,7 +10285,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function syncAvatarFeed(id, t, isMe, st, gCam) {
       if (!t || !t.video) return;
       const blockedShare = !isMe && typeof shareBlocked === 'function' && !!shareBlocked(id);
-      const dark = !!(rowFaceDark(st) || gCam || blockedShare);
+      const held = !isMe && !!turnLinks && (GifOS.meetTurn.pausedBy(Array.from(turnFacts.values()), myId, id) || (turnLinks.isLink(id) && !turnLinks.standby(id) && !turnLinks.video(id)));   // the same test as turnPaint's note
+      const dark = !!(rowFaceDark(st) || gCam || blockedShare || held);
       if (isMe) {
         let vt = null;
         try { vt = sentVideoTrack(); } catch (e) {}
@@ -10313,7 +10314,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (tr && !tileHolds(t.video, own)) playTileVideo(t.video, own);
         return;
       }
-      const wire = (!gCam && !blockedShare) ? remoteWireTrack({ stream: own }) : null;
+      const wire = (!gCam && !blockedShare && !held) ? remoteWireTrack({ stream: own }) : null;   // a held link carries no picture
       if (wire) {
         clearPeerAvatar(t);
         showAvatarTrack(t.video, own, wire);
@@ -10685,7 +10686,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // frames move it, so silence is a steady verdict, not a gossip flap.
     function peerHeardAt(p) {
       const st = statusOf.get(p.id);
-      return Math.max(p.lastHeard || 0, p.meshRxAt || 0, (st && st.rx) || 0);
+      return Math.max(p.lastHeard || 0, p.meshRxAt || 0, p.dcRxAt || 0, (st && st.rx) || 0);
     }
     function peerReconnecting(pid) {
       const p = peers.get(pid);
@@ -13852,6 +13853,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           p.tile.appendChild(bel);
         } else if (!busy && bel) bel.remove();
         pauseNote(p.tile, show);
+        if ((p.tile.dataset.tpHeld === '1') !== show) { p.tile.dataset.tpHeld = show ? '1' : ''; try { updateTile(pid); } catch (e) {} }   // the face card follows the hold (syncAvatarFeed)
       }
       // SUB.4 + TURN.11 for every seat: the Stadium that shows a far room over a pipe with no video says so, with the same
       // note and Subscribe as a tile (Nathan 11-14: the note goes on the strip, not only on the pipe holders' tiles)
