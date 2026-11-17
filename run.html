@@ -33371,7 +33371,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // what it hears and the devices, and each peer's cap / ccst. No words.
     function capSnap() {
       const D = DLOG;
-      const eng = ccEngine() === 'browser' && phoneCaptions() ? 'native' : ccEngine();
+      const eng = ccEngine() === 'browser' && typeof phoneCaptions === 'function' && phoneCaptions() ? 'native' : ccEngine(); // a tree without the phone model has no phoneCaptions
       const inp = wspCaps.has('me') ? 'track' : (speech ? (speech.input ? 'mix' : 'mic') : '');
       const v = inp ? ccVia(eng, inp) : { eng: eng, inp: '', dev: '', cdev: ccCallMic().dev, dm: null };
       const peersOut = [];
