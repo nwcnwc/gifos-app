@@ -939,10 +939,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <button data-al="heartAria" type="button" data-burst="❤️" aria-label="Heart">❤️</button>
     </div>
   </div>
+  <div id="micchooser" class="camchooser" role="menu" data-al="micChooseAria" aria-label="Choose a microphone" hidden></div>
   <div id="camchooser" class="camchooser" role="menu" aria-label="Choose how you appear" hidden>
     <button type="button" role="menuitemradio" id="campick-max" data-cam-blur="2" data-t="camMaxBlur" aria-checked="false">Max blur</button>
     <button type="button" role="menuitemradio" id="campick-min" data-cam-blur="1" data-t="camMinBlur" aria-checked="false">Min blur</button>
     <button type="button" role="menuitemradio" id="campick-none" data-cam-blur="0" data-t="camNoBlur" aria-checked="false">No blur</button>
+    <div id="camdevs" role="group" data-al="camDevAria" aria-label="Camera" hidden></div>
   </div>
   <div data-al="waitRoom" id="waitlist" hidden role="region" aria-label="Waiting room"></div>
   <div id="waitdoor" hidden role="status">
@@ -1415,6 +1417,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <button type="button" id="status-full-people" data-t="people" aria-controls="roster">People</button>
         <button data-t="setClose" type="button" id="status-full-close">Close</button>
       </div>
+    </div>
+  </div>
+  <div class="name-modal" role="alertdialog" aria-modal="true" aria-labelledby="blurwhy-title" aria-describedby="blurwhy-text" id="blurwhy-modal" style="display:none">
+    <div class="name-box">
+      <h3 data-t="blurWhyTitle" id="blurwhy-title">Your video is still soft</h3>
+      <p id="blurwhy-text"></p>
+      <p id="blurwhy-do"></p>
+      <button data-t="blurWhySetPw" id="blurwhy-pw" type="button" style="display:none">Set room password</button>
+      <button data-t="blurWhyOk" id="blurwhy-ok" type="button">OK</button>
     </div>
   </div>
   <div class="name-modal" role="alertdialog" aria-modal="true" id="leave-ask" style="display:none">
@@ -8020,7 +8031,33 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return { sid: sid, name: sid === myId ? '' : displayName(sid), at: +st.scr || 0, mine: sid === myId };
       });
     }
-    function ctAgendaOn() { return !!(CT && ((CT.ag && CT.ag.items.length) || CT.agLocal)); }
+    // SHOW AGENDA is each person's own: Hide agenda takes the agenda's tab
+    // off this screen only. It deletes nothing, sends nothing, and the agenda
+    // goes on arriving and updating underneath; the More sheet's button reads
+    // "Show agenda" and brings it back. The choice is kept per room on this
+    // device.
+    function ctAgHideKey() { try { return 'gifos_ag_hide:' + roomKey(); } catch (e) { return ''; } }
+    function ctAgHidden() {
+      if (!CT) return false;
+      if (CT.agHide === undefined) { CT.agHide = false; try { const k = ctAgHideKey(); CT.agHide = !!k && localStorage.getItem(k) === '1'; } catch (e) {} }
+      return CT.agHide;
+    }
+    function ctAgendaHide(hide) {
+      if (!ctInit()) return;
+      CT.agHide = !!hide;
+      try { const k = ctAgHideKey(); if (k) { if (hide) localStorage.setItem(k, '1'); else localStorage.removeItem(k); } } catch (e) {}
+      if (hide) CT.agEdit = false;
+      ctRefresh();
+      try { layout(); } catch (e) {}
+    }
+    function ctPaintAgendaBtn() {
+      const ab = document.getElementById('agendabtn');
+      if (!ab) return;
+      const show = ctAgHidden() && !!(CT.ag && CT.ag.items.length);
+      const word = show ? ctText('agShow', 'Show agenda') : ctText('agendaBtn', 'Agenda');
+      if (ab.textContent !== word) ab.textContent = word;
+    }
+    function ctAgendaOn() { return !!(CT && !ctAgHidden() && ((CT.ag && CT.ag.items.length) || CT.agLocal)); }
     function ctAgCtx(who) { return { adminRoom: hasAdminRoom(), isAdmin: who === myId ? !!amAdmin : (Array.isArray(admins) && admins.indexOf(who) >= 0) }; }
     function ctCanEditAgenda() { return !!(CT && myId && GifOS.meetAgenda.canEdit(CT.ag, myId, ctAgCtx(myId))); }
     function ctRefresh() {
@@ -8030,6 +8067,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const before = CT.st.known.join('|');
       MC.sync(CT.st, list);
       CT.items = list;
+      ctPaintAgendaBtn();
       if (before !== CT.st.known.join('|')) ctNote('items', { keys: CT.st.known.slice(), sel: CT.st.sel });
       return list;
     }
@@ -8764,6 +8802,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         head.appendChild(pos);
       }
       const tools = document.createElement('div'); tools.className = 'ag-tools';
+      if (a.items.length && !CT.agEdit) tools.appendChild(ctAgBtn('ag-btn ag-hide', ctText('agHide', 'Hide agenda'), () => ctAgendaHide(true), ctText('agHideTip', 'Hide the agenda on your screen only. Nothing is deleted, and everyone else still sees it.')));
       if (may && a.items.length && !CT.agEdit) {
         if (a.cur > 0) tools.appendChild(ctAgBtn('ag-btn ag-back', ctText('agBack', 'Back'), () => ctAgendaPublish(MA.prev(CT.ag, myId), 'back')));
         const last = a.cur >= a.items.length - 1;
@@ -8861,6 +8900,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // The More sheet's Agenda button: open the agenda (start one if you may).
     function ctAgendaOpen() {
       if (!ctInit()) return;
+      if (ctAgHidden()) { CT.agHide = false; ctAgendaHide(false); }   // the button is Show agenda while it is hidden
       if (CT.ag && CT.ag.items.length) { ctRefresh(); ctSelect('agenda', 'button'); return; }
       if (!ctCanEditAgenda()) { setStatus(hasAdminRoom() ? ctText('agHostOnlyTip', 'Only the host can share an agenda in this room.') : ctAgendaWhoText()); return; }
       CT.agLocal = true; CT.agEdit = true;
@@ -19431,6 +19471,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // hardware actually has a second camera (see maybeShowFlip).
     let camFacing = 'user';
     try { camFacing = localStorage.getItem('gifos_cam_facing') || 'user'; } catch (e) {}
+    // THE CAMERA PICKER's state: this device's cameras (one row each) and the
+    // person's pick ('' = the facing choice above decides). A pick asks for
+    // that camera exactly; the flip button goes back to facing.
+    let camInputs = [], camDeviceId = '';
     // DO NOT COMMAND THE CAMERA'S ORIENTATION (2026-08-01, learned twice).
     // A transposed getUserMedia ask (720x1280 on an upright phone) was tried
     // and REVERTED same-day: some devices satisfy a portrait ask by delivering
@@ -19446,7 +19490,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // A manual video-quality rung (Settings) shapes the CAPTURE ask too —
       // 1080p can only come out of a camera that was asked for 1080p.
       const m = vqRung();
-      return { width: { ideal: m ? m.w : 1280 }, height: { ideal: m ? m.h : 720 }, facingMode: { ideal: camFacing } };
+      const c = { width: { ideal: m ? m.w : 1280 }, height: { ideal: m ? m.h : 720 }, facingMode: { ideal: camFacing } };
+      if (camDeviceId) c.deviceId = { exact: camDeviceId };
+      return c;
     };
     let flipChecked = false;
     function showFlipButton() {
@@ -19514,10 +19560,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (window.__regrabLog.length > 20) window.__regrabLog.shift();
       } catch (e) {}
       camGrabbing = true;
-      gumWithMicFallback(navigator.mediaDevices, { video: camVideoConstraints(), audio: true })
+      const picked = reason === 'pickCam';
+      // The fresh mic is the person's picked one (ideal: an unplugged pick
+      // must not cost the camera).
+      gumWithMicFallback(navigator.mediaDevices, { video: camVideoConstraints(), audio: micDeviceId ? { deviceId: { ideal: micDeviceId } } : true })
         .then(({ stream: s }) => {
           camGrabbing = false;
           const nv = s.getVideoTracks()[0], na = s.getAudioTracks()[0];
+          if (picked && nv) setStatus(uiText('stCamOnNamed', 'Camera on: {name}').replace('{name}', camLabelOf(nv)));
           // fresh tracks come back live — restore the user's actual choices
           if (nv) nv.enabled = !myStatus.camOff;
           if (na) na.enabled = !myStatus.muted;
@@ -19542,7 +19592,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (!(nv && blurPipe && blurPipe.track && blurPipe.track.readyState === 'live' && blurPipe.swapSource && blurPipe.swapSource(nv))) stopBlurPipe();
           refreshOutbound(); // rebuild the (blurred or raw) sender AND the WYSIWYG self-view
           if (death) showCamBack(false);
-        }).catch(() => { camGrabbing = false; if (death) showCamBack('fail'); });
+        }).catch(() => {
+          camGrabbing = false;
+          if (death) showCamBack('fail');
+          // A picked camera that would not open: back to the one that worked.
+          if (picked) { camDeviceId = camPickPrev; setStatus(uiText('stCamPickFailed', 'That camera could not be opened. Your camera did not change.')); }
+        });
     }
 
     // Live-but-BLACK camera (iOS mostly: another app held the hardware, or
@@ -19659,7 +19714,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // in ordinary conversation). Same swap idiom as reviveCamera: replace only
     // the senders that carry OUR old mic track (never the fold-mix aux tracks),
     // and mutate the SAME localStream so our announced stream id never changes.
-    let micMode = 'voice', micGrabbing = false, micWant = null;
+    let micMode = 'voice', micGrabbing = false, micWant = null, micUnmuteAfter = false;
     // devicechange also fires for a camera plug and for the label refresh
     // after the first grant. Neither is a new audio route. The mic restarts
     // only when an audioinput or audiooutput id appears or disappears, so
@@ -19674,6 +19729,31 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       ids.sort();
       return ids.join('\n');
     }
+    // THE MIC PICKER's list: the microphones this device has, one row per
+    // real input. Chromium also lists 'default' and 'communications', which
+    // are other names for one of the same inputs, so they are not counted: a
+    // computer with one mic has one row, and its mic button works as before.
+    // micDeviceId is the person's pick ('' = the browser's own choice); a
+    // pick that is unplugged is forgotten, so the next re-grab takes the
+    // browser's choice again instead of failing on a missing device.
+    let micInputs = [], micDeviceId = '';
+    function devRowsOf(list, kind) {
+      const out = [];
+      for (const d of list || []) {
+        if (!d || d.kind !== kind) continue;
+        const id = String(d.deviceId || '');
+        if (!id || id === 'default' || id === 'communications') continue;
+        out.push({ id, label: String(d.label || ''), group: String(d.groupId || '') });
+      }
+      return out;
+    }
+    function micInputsOf(list) { return devRowsOf(list, 'audioinput'); }
+    // THE SPEAKER PICKER: only where a page may choose where sound plays
+    // (setSinkId on media elements) and the device has more than one output.
+    // spkDeviceId '' = the system's own output; spkDefGroup marks that row.
+    const SINK_OK = !!(window.HTMLMediaElement && window.HTMLMediaElement.prototype && typeof window.HTMLMediaElement.prototype.setSinkId === 'function');
+    let spkOutputs = [], spkDeviceId = '', spkDefGroup = '';
+    function speakerChoices() { return SINK_OK && spkOutputs.length > 1 ? spkOutputs : []; }
     // The system default input's group: what a browser speech engine on the
     // raw microphone hears (Chrome lists it as 'default'; other browsers list
     // the default first). The caption export compares it with the call's mic.
@@ -19686,7 +19766,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function noteAudioDevices() {
       const md = navigator.mediaDevices;
       if (!md || typeof md.enumerateDevices !== 'function') return Promise.resolve();
-      return md.enumerateDevices().then((list) => { audioDevKey = audioDevKeyOf(list); ccDefGroup = ccDefGroupOf(list); }, () => {});
+      return md.enumerateDevices().then((list) => {
+        audioDevKey = audioDevKeyOf(list); ccDefGroup = ccDefGroupOf(list);
+        micInputs = micInputsOf(list);
+        if (micDeviceId && !micInputs.some((m) => m.id === micDeviceId)) micDeviceId = '';
+        camInputs = devRowsOf(list, 'videoinput');
+        if (camDeviceId && !camInputs.some((m) => m.id === camDeviceId)) camDeviceId = '';
+        spkOutputs = devRowsOf(list, 'audiooutput');
+        const sd = (list || []).find((d) => d && d.kind === 'audiooutput' && d.deviceId === 'default');
+        spkDefGroup = sd ? String(sd.groupId || '') : '';
+        if (spkDeviceId && !spkOutputs.some((m) => m.id === spkDeviceId)) { spkDeviceId = ''; applySpeaker(); }
+      }, () => {});
     }
     function setMicMode(mode, force) {
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
@@ -19709,7 +19799,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           ? { echoCancellation: true, noiseSuppression: false, autoGainControl: false }
           : { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
       micGrabbing = true;
-      navigator.mediaDevices.getUserMedia({ audio: want }).then((s) => {
+      const ask = micDeviceId ? Object.assign({ deviceId: { exact: micDeviceId } }, want) : want;
+      const unmute = !!micUnmuteAfter; micUnmuteAfter = false;
+      navigator.mediaDevices.getUserMedia({ audio: ask }).then((s) => {
         const na = s.getAudioTracks()[0];
         if (!na) return;
         micMode = mode;
@@ -19727,7 +19819,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         localStream.addTrack(na);
         meterFor('me', localStream);
         noteAudioDevices();
-      }).catch(() => { /* mic re-grab refused — keep the current mode */ })
+        if (unmute && !na.enabled) setMicOn(na, true);
+        else if (unmute) kickStageMic(na);
+        if (unmute) setStatus(uiText('stMicOnNamed', 'Mic on: {name}').replace('{name}', micLabelOf(na)));
+      }).catch(() => {
+        // mic re-grab refused — keep the current mode. A pick that could not
+        // be opened says so, and the mic that was working stays.
+        if (unmute) setStatus(uiText('stMicPickFailed', 'That microphone could not be opened. Your mic did not change.'));
+      })
         .finally(() => {
           micGrabbing = false;
           const w = micWant; micWant = null;
@@ -31408,6 +31507,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (stadLab && stadLab.dataset.on !== stadMark) { stadLab.dataset.on = stadMark; stadLab.style.display = hasStadium ? '' : 'none'; }
       setStageEarLevel(); // the Stage fader drives the ear fold
       kickPausedAudio();
+      applySpeaker(); // a voice that just arrived plays on the picked speaker
     }
     // The Settings modal: the sound mix's new home (same fader ids as when it
     // floated as its own Mix panel) plus the video-quality picker.
@@ -31421,6 +31521,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (typeof ac !== 'undefined' && ac && typeof ensureAc === 'function') ensureAc();
       } catch (e) {}
       try { if (typeof kickPausedAudio === 'function') kickPausedAudio(); } catch (e) {}
+      try { applySpeaker(); } catch (e) {}
       try { mixClockCheck(); } catch (e) {}
     }
     function armAudioKeepAlive() {
@@ -35156,6 +35257,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const anchor = document.getElementById(chooser.dataset.anchor || '') || document.getElementById('cam');
         if (anchor) placeDockPopover(chooser, anchor);
       }
+      const micCh = document.getElementById('micchooser');
+      if (micCh && !micCh.hidden) placeDockPopover(micCh, document.getElementById('mic'));
     }
     {
       let popFrame = 0;
@@ -35337,6 +35440,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (tray && !tray.hasAttribute('hidden')) return true;
         const chooser = document.getElementById('camchooser');
         if (chooser && !chooser.hidden) return true;
+        const micCh = document.getElementById('micchooser');
+        if (micCh && !micCh.hidden) return true;
         const ae = document.activeElement;
         if (ae && ae !== document.body && ae !== document.documentElement) {
           if (bar.contains(ae)) return true;
@@ -35755,6 +35860,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (tray && !tray.hasAttribute('hidden')) return true;
         const chooser = document.getElementById('camchooser');
         if (chooser && !chooser.hidden) return true;
+        const micCh = document.getElementById('micchooser');
+        if (micCh && !micCh.hidden) return true;
         const wait = document.getElementById('waitlist');
         if (wait && !wait.hasAttribute('hidden') && wait.getClientRects().length) return true;
         // A tile's window is open: its controls are the screen, not chrome.
@@ -35869,6 +35976,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       watchChrome(document.getElementById('chatpanel'), ['class']);
       watchChrome(document.getElementById('reacttray'), ['hidden']);
       watchChrome(document.getElementById('camchooser'), ['hidden']);
+      watchChrome(document.getElementById('micchooser'), ['hidden']);
       watchChrome(document.getElementById('waitlist'), ['hidden']);
       window.__gifosChrome = { ms: CHROME_IDLE_MS, idle: hideChrome, show: showChrome, safeBottom: safeBottomPx };
       syncChrome();
@@ -36538,7 +36646,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!localStream) return lateMedia('mic');
       const track = localStream.getAudioTracks()[0]; if (!track) return lateMedia('mic');
       if (!track.enabled && amGloballyMuted()) { sayState(modOf('me').mute && modOf('me').mute.wait ? 'micWaitRoom' : 'mutedByHost', { by: (modOf('me').mute || {}).by }); return; }
-      track.enabled = !track.enabled;
+      if (micChooserOpen()) { closeMicChooser(true); return; }
+      // More than one microphone: a tap while muted asks which one (the camera
+      // button's chooser, for the mic). A tap while talking mutes at once. One
+      // microphone: the tap toggles, as it always has.
+      if (!track.enabled && micInputs.length && (micInputs.length > 1 || speakerChoices().length)) { openMicChooser(track); return; }
+      setMicOn(track, !track.enabled);
+    };
+    function setMicOn(track, on) {
+      track.enabled = !!on;
       myStatus.muted = !track.enabled;
       paintControls();
       syncSpeech(); // my own voice leaves the captions while muted; the others' voices stay
@@ -36549,7 +36665,149 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // silence until it is seated again. Same kick as a camera that is
       // attached and emitting nothing (kickMainVideo), audio side.
       if (track.enabled) kickStageMic(track);
-    };
+    }
+    // The mic in use: its device id as the track reports it, and a name for it.
+    // The row of the mic this track came from. A track opened on the
+    // browser's own choice reports Chromium's 'default' alias, which has no
+    // row of its own: the row with the same groupId (the same physical
+    // device) is that mic.
+    function micIdOf(track) {
+      let st = null; try { st = track && track.getSettings ? track.getSettings() : null; } catch (e) {}
+      const id = String((st && st.deviceId) || '');
+      if (id && micInputs.some((m) => m.id === id)) return id;
+      const g = String((st && st.groupId) || '');
+      const m = g ? micInputs.find((x) => x.group === g) : null;
+      return m ? m.id : (micDeviceId || (micInputs.length === 1 ? micInputs[0].id : id));   // a device that names no row: the person's own pick is what it opened (with one mic, that mic)
+    }
+    function micLabelOf(track) {
+      const id = micIdOf(track);
+      const m = micInputs.find((x) => x.id === id);
+      return (m && m.label) || (track && track.label) || uiText('micUnnamed', 'Microphone');
+    }
+    function micChooserOpen() {
+      const el = document.getElementById('micchooser');
+      return !!(el && !el.hidden);
+    }
+    function closeMicChooser(refocus) {
+      const el = document.getElementById('micchooser');
+      if (el) el.hidden = true;
+      try { micBtn.setAttribute('aria-expanded', 'false'); } catch (e) {}
+      if (refocus) { try { micBtn.focus(); } catch (e) {} }
+    }
+    function openMicChooser(track) {
+      const el = document.getElementById('micchooser');
+      if (!el) { setMicOn(track, true); return; }
+      try { if (camChooserOpen()) closeCamChooser(); } catch (e) {}
+      const cur = micIdOf(track);
+      const spk = speakerChoices();
+      el.textContent = '';
+      el.setAttribute('aria-label', spk.length ? uiText('micSpkChooseAria', 'Choose a microphone or speaker') : uiText('micChooseAria', 'Choose a microphone'));
+      if (spk.length) devHead(el, uiText('micHead', 'Microphone'));
+      micInputs.forEach((m, i) => {
+        const b = devRow(m.label || uiText('micNumbered', 'Microphone {n}').replace('{n}', String(i + 1)), m.id === cur, () => pickMic(m.id));
+        b.dataset.micId = m.id;
+        el.appendChild(b);
+      });
+      if (spk.length) {
+        devHead(el, uiText('spkHead', 'Speaker'));
+        const on = spkDeviceId || ((spk.find((x) => spkDefGroup && x.group === spkDefGroup) || spk[0]).id);
+        spk.forEach((m, i) => {
+          const b = devRow(m.label || uiText('spkNumbered', 'Speaker {n}').replace('{n}', String(i + 1)), m.id === on, () => pickSpeaker(m.id));
+          b.dataset.spkId = m.id;
+          el.appendChild(b);
+        });
+      }
+      el.hidden = false;
+      micBtn.setAttribute('aria-expanded', 'true');
+      placeDockPopover(el, micBtn);
+      const first = el.querySelector('[aria-checked="true"]') || el.querySelector('button');
+      if (first) { try { first.focus(); } catch (e) {} }
+    }
+    // A pick turns the mic on with that microphone. The same mic only unmutes;
+    // another one is opened in place of the current one (setMicMode's re-grab,
+    // which swaps the track on every sender), then unmutes, so the others go on
+    // hearing this person through the switch.
+    function pickMic(id) {
+      closeMicChooser(true);
+      const track = localStream && localStream.getAudioTracks()[0];
+      if (!track) return;
+      if (amGloballyMuted()) { sayState(modOf('me').mute && modOf('me').mute.wait ? 'micWaitRoom' : 'mutedByHost', { by: (modOf('me').mute || {}).by }); return; }
+      if (id === micIdOf(track)) { setMicOn(track, true); return; }
+      micDeviceId = id;
+      micUnmuteAfter = true;
+      setMicMode(micMode, true);
+    }
+    // One row of a device pop-up, and a section name over rows.
+    function devRow(text, checked, onPick) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.setAttribute('role', 'menuitemradio');
+      b.setAttribute('aria-checked', String(!!checked));
+      b.textContent = text;
+      b.onclick = onPick;
+      return b;
+    }
+    function devHead(el, text) {
+      const h = document.createElement('div');
+      h.className = 'devhead';
+      h.setAttribute('role', 'presentation');
+      h.textContent = text;
+      el.appendChild(h);
+    }
+    // A speaker pick moves every element that plays the meeting; the mic
+    // stays as it was. applySpeaker also runs on the audio sweeps, so a voice
+    // that joins later plays on the same speaker.
+    function pickSpeaker(id) {
+      closeMicChooser(true);
+      const def = speakerChoices().find((x) => spkDefGroup && x.group === spkDefGroup);
+      spkDeviceId = (def && def.id === id) ? '' : id;
+      const row = spkOutputs.find((x) => x.id === id);
+      const name = (row && row.label) || uiText('spkUnnamed', 'Speaker');
+      applySpeaker().then((ok) => {
+        setStatus(ok ? uiText('stSpkNamed', 'Sound now plays on: {name}').replace('{name}', name) : uiText('stSpkPickFailed', 'That speaker could not be used. Sound stays where it was.'));
+      });
+    }
+    function audioCarriers() {
+      const out = new Set();
+      for (const a of document.querySelectorAll('audio')) out.add(a);
+      for (const v of document.querySelectorAll('video')) if (v._aud) out.add(v._aud);
+      try { if (stageEar && stageEar.el) out.add(stageEar.el); } catch (e) {}
+      try { if (typeof wkEar !== 'undefined' && wkEar && wkEar.el) out.add(wkEar.el); } catch (e) {}
+      try { for (const m of mosIn.values()) if (m && m.el && !m.el.muted) out.add(m.el); } catch (e) {}
+      return out;
+    }
+    window.__meetSpeaker = () => ({ want: spkDeviceId, sinks: [...audioCarriers()].map((e) => String(e.sinkId || '')) });   // read-only: where each playing element sends sound
+    function applySpeaker() {
+      if (!SINK_OK) return Promise.resolve(true);
+      const jobs = [];
+      for (const el of audioCarriers()) {
+        if (!el || typeof el.setSinkId !== 'function' || String(el.sinkId || '') === spkDeviceId) continue;
+        jobs.push(el.setSinkId(spkDeviceId).then(() => true, () => false));
+      }
+      return Promise.all(jobs).then((r) => r.every(Boolean));
+    }
+    {
+      const el = document.getElementById('micchooser');
+      if (el) el.addEventListener('keydown', (e) => {
+        const buttons = Array.from(el.querySelectorAll('button'));
+        if (!buttons.length) return;
+        const i = buttons.indexOf(document.activeElement);
+        let next = -1;
+        if (e.key === 'ArrowDown' || e.key === 'ArrowRight') next = (i + 1) % buttons.length;
+        else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') next = (i - 1 + buttons.length) % buttons.length;
+        else if (e.key === 'Home') next = 0;
+        else if (e.key === 'End') next = buttons.length - 1;
+        if (next < 0) return;
+        e.preventDefault();
+        try { buttons[next].focus(); } catch (err) {}
+      });
+      document.addEventListener('pointerdown', (e) => {
+        if (!micChooserOpen()) return;
+        const t = e.target;
+        if (t && t.closest && t.closest('#micchooser, #mic')) return;
+        closeMicChooser(false);
+      }, true);
+    }
     if (unmuteBtn) unmuteBtn.onclick = () => micBtn.onclick();
     function kickStageMic(track) {
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
@@ -36601,12 +36859,62 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       el.dataset.anchor = (camChooserAnchor && camChooserAnchor.id) || 'cam';
       el.setAttribute('aria-label', uiText('camChooseAria', 'Choose how you appear'));
       const wish = blurLevel(myStatus.blur);
-      for (const b of el.querySelectorAll('button')) b.setAttribute('aria-checked', String(+b.dataset.camBlur === wish));
+      for (const b of el.querySelectorAll('button[data-cam-blur]')) b.setAttribute('aria-checked', String(+b.dataset.camBlur === wish));
+      fillCamDevices();
+      // The cameras are named only once one was allowed: read the list again,
+      // and show the rows if it changed while the pop-up is open.
+      const camKey = camInputs.map((m) => m.id).join();
+      if (typeof noteAudioDevices === 'function') noteAudioDevices().then(() => { if (camChooserOpen() && camInputs.map((m) => m.id).join() !== camKey) fillCamDevices(); });
       el.hidden = false;
       if (anchor === camBtn && camBtn) camBtn.setAttribute('aria-expanded', 'true');
       placeDockPopover(el, camChooserAnchor);
       const first = el.querySelector('#campick-max') || el.querySelector('button');
       if (first) { try { first.focus(); } catch (e) {} }
+    }
+    // THE CAMERA PICKER: with more than one camera, the camera pop-up lists
+    // them under the blur choices. A pick opens that camera in place of the
+    // current one (regrabCamera: same stream, every sender re-fed, blur pipe
+    // kept) and turns the camera on with the blur already chosen.
+    let camPickPrev = '';
+    function camIdOf(track) {
+      let st = null; try { st = track && track.getSettings ? track.getSettings() : null; } catch (e) {}
+      const id = String((st && st.deviceId) || '');
+      if (id && camInputs.some((m) => m.id === id)) return id;
+      if (camDeviceId) return camDeviceId;
+      // A track that names no row (some browsers hide the id): its label.
+      const byLabel = track && track.label ? camInputs.filter((m) => m.label === track.label) : [];
+      return byLabel.length === 1 ? byLabel[0].id : id;
+    }
+    function camLabelOf(track) {
+      const m = camInputs.find((x) => x.id === camIdOf(track));
+      return (m && m.label) || (track && track.label) || uiText('camUnnamed', 'Camera');
+    }
+    function fillCamDevices() {
+      const box = document.getElementById('camdevs');
+      if (!box) return;
+      box.textContent = '';
+      box.hidden = !(camInputs.length > 1 && camChooserAnchor === camBtn);
+      if (box.hidden) return;
+      box.setAttribute('aria-label', uiText('camDevAria', 'Camera'));
+      devHead(box, uiText('camHead', 'Camera'));
+      const cur = camIdOf(localStream && localStream.getVideoTracks()[0]);
+      camInputs.forEach((m, i) => {
+        const b = devRow(m.label || uiText('camNumbered', 'Camera {n}').replace('{n}', String(i + 1)), m.id === cur, () => pickCamDevice(m.id));
+        b.dataset.camId = m.id;
+        box.appendChild(b);
+      });
+    }
+    function pickCamDevice(id) {
+      closeCamChooser();
+      if (typeof forcedCamOff === 'function' && forcedCamOff('me')) { sayState('videoOffByHost'); return; }
+      const track = localStream && localStream.getVideoTracks()[0];
+      camPickPrev = camDeviceId;
+      if (!track) { camDeviceId = id; turnCameraOn(); return; }   // no camera yet: the first grab asks for this one
+      if (myStatus.camOff) turnCameraOn();
+      if (id === camIdOf(track)) return;
+      camDeviceId = id;
+      regrabCamera('pickCam');
+      if (camBtn && camBtn.focus) { try { camBtn.focus(); } catch (e) {} }
     }
     function turnCameraOff() {
       const cam = localStream && localStream.getVideoTracks()[0];
@@ -36641,7 +36949,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function pickCamera(level) {
       const lvl = blurLevel(level);
       closeCamChooser();
-      setPersonalBlur(lvl); // still off: the refresh before the track enables is the avatar
+      setPersonalBlur(lvl, true); // still off: the refresh before the track enables is the avatar
       if (myStatus.camOff) turnCameraOn();
       if (camBtn && camBtn.focus) { try { camBtn.focus(); } catch (e) {} }
     }
@@ -36765,6 +37073,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!localStream) return;
       camFacing = camFacing === 'user' ? 'environment' : 'user';
       try { localStorage.setItem('gifos_cam_facing', camFacing); } catch (e) {}
+      camDeviceId = '';
       regrabCamera();
     };
 
@@ -36838,7 +37147,53 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const on = statusWords('camOn') || 'Camera on.';
       return why ? on + ' ' + why : on;
     }
-    function setPersonalBlur(v) {
+    // THE NO BLUR EXPLAINER. A No blur pick that a room rule still keeps soft
+    // opens a dialog the person closes, instead of a note that faded before it
+    // was read. It says why (BLUR_WHY's words, the same as the tile note) and
+    // what to do. For a room with no password: a Set room password button when
+    // this person can set it (the Password button is theirs), otherwise who can.
+    // The blur rule itself (blurHold) is unchanged. 'ready' is not a hold
+    // anyone has to act on (it clears as people turn their cameras on), so it
+    // keeps the status line.
+    const BLUR_WHY_ASK = { nopw: 1, guests: 1, forall: 1, noadmin: 1 };
+    function canSetRoomPw() {
+      const pwb = document.getElementById('pwbtn');
+      return !BROADCAST && !!pwb && !pwb.disabled;
+    }
+    function openBlurWhy(why) {
+      const m = document.getElementById('blurwhy-modal');
+      if (!m || !BLUR_WHY_ASK[why]) return false;
+      const setPw = why === 'nopw' && canSetRoomPw();
+      const todo = why === 'nopw'
+        ? (setPw ? uiText('blurWhyDoSetPw', 'Set a room password to lift this.')
+          : uiText('blurWhyDoAskAdmin', 'Ask the meeting admin to set the room password, which will require everyone to re-enter the meeting with that password.'))
+        : why === 'guests' ? uiText('blurWhyDoGuests', 'Ask the meeting admin to lift it.')
+        : why === 'forall' ? uiText('blurWhyDoForAll', 'Ask the person who blurred you to lift it.')
+        : uiText('blurWhyDoNoAdmin', 'It clears when an admin joins.');
+      document.getElementById('blurwhy-text').textContent = blurWhyWords(why, 'says');
+      document.getElementById('blurwhy-do').textContent = todo;
+      const pwBtn = document.getElementById('blurwhy-pw');
+      pwBtn.style.display = setPw ? '' : 'none';
+      m.dataset.why = why;
+      m.style.display = 'flex';
+      const first = setPw ? pwBtn : document.getElementById('blurwhy-ok');
+      try { first.focus(); } catch (e) {}
+      return true;
+    }
+    function closeBlurWhy() {
+      const m = document.getElementById('blurwhy-modal');
+      if (m) m.style.display = 'none';
+      try { if (camBtn && camBtn.focus) camBtn.focus(); } catch (e) {}
+    }
+    (function () {
+      const ok = document.getElementById('blurwhy-ok');
+      if (ok) ok.onclick = closeBlurWhy;
+      const pw = document.getElementById('blurwhy-pw');
+      if (pw) pw.onclick = () => { closeBlurWhy(); if (canSetRoomPw()) document.getElementById('pwbtn').click(); };
+    })();
+    // asked: the person picked this level themselves (the camera button's
+    // chooser), so a hold on No blur is explained in the dialog.
+    function setPersonalBlur(v, asked) {
       if (BROADCAST && !bcMayPublishAv()) return;
       myStatus.blur = v;
       paintControls();
@@ -36852,6 +37207,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // said at once, since turning the camera on does not lift it.
       const hold = blurHold('me');
       const why = noBlurWhy();
+      if (asked && openBlurWhy(hold)) { if (why) setStatus(why); return; }
       if (myStatus.camOff && hold !== 'nopw' && hold !== 'guests' && hold !== 'forall') {
         setStatus(uiText('stNoBlurPickedTurnYour', 'No blur picked — turn your camera on to be ready for clear video.'));
       } else if (why) {
@@ -36876,7 +37232,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       };
     }
     if (camChooserEl) camChooserEl.addEventListener('keydown', (e) => {
-      const buttons = camPicks.filter((b) => !b.disabled && !b.hidden);
+      const buttons = Array.from(camChooserEl.querySelectorAll('button')).filter((b) => !b.disabled && !b.hidden && !(b.parentElement && b.parentElement.hidden));
       if (!buttons.length) return;
       const i = buttons.indexOf(document.activeElement);
       let next = -1;
@@ -37149,6 +37505,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // Terminal screens: Escape or a stray tap must not navigate away (left-modal's
       // Close leaves the page) or uncover a meeting that has ended.
       if (el.id === 'left-modal' || el.id === 'closed-modal') return null;
+      // The No blur explainer is read, then closed with its own buttons.
+      if (el.id === 'blurwhy-modal') return null;
       const buttons = el.querySelectorAll('button');
       for (const b of buttons) {
         if (b.style.display === 'none' || b.disabled) continue;
@@ -37229,6 +37587,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (typeof camChooserOpen === 'function' && camChooserOpen()) {
           e.preventDefault();
           dismissCamChooser();
+          return;
+        }
+        if (typeof micChooserOpen === 'function' && micChooserOpen()) {
+          e.preventDefault();
+          closeMicChooser(true);
           return;
         }
         const tray = document.getElementById('reacttray');
@@ -39444,9 +39807,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // WHOLE MEETING away. Same set as desktop.js SYSTEM_LAUNCHERS.
       const SYSTEM_APPS = { meet: 1, video: 1, broadcast: 1, appstore: 1 };
       const apps = (files || []).filter((f) => f.isApp && !SYSTEM_APPS[f.appId]);
+      // NO STARTER APPS YET: the starter apps are put on a device by GifOS
+      // Home (desktop.js seeds them on its first load, marked isDefault).
+      // Someone who only ever came in through a meeting link has never loaded
+      // Home, so this list is empty, or holds only an app the meeting itself
+      // added. Say so, and offer Home and the App Store in a new tab: the
+      // meeting stays open, and Run app lists the apps once they are there.
+      const starters = (files || []).some((f) => f && f.isDefault === true);
       if (!apps.length) {
-        const where = (BROADCAST) ? 'on this broadcast' : 'in a meeting';
-        list.innerHTML = '<small style="color:#667">No apps on this computer yet. Make one with ＋ Add on your Home Screen, then run it ' + where + '.</small>';
+        list.textContent = '';
+        appStarterLinks(list, uiText('appEmptyLead', 'No apps on this device yet.'));
         return;
       }
       const label = (f) => (f.name || f.appId || 'App').replace(/\.gif$/i, '');
@@ -39458,6 +39828,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         b.onclick = () => { modal.style.display = 'none'; runApp(f.id, b.textContent); };
         list.appendChild(b);
       }
+      if (!starters) appStarterLinks(list, uiText('appNoStarters', 'The starter apps are not on this device yet.'));
+    }
+    function appStarterLinks(list, lead) {
+      const p = document.createElement('p'); p.className = 'app-empty';
+      p.textContent = lead;
+      list.appendChild(p);
+      const link = (cls, href, word) => {
+        const el = document.createElement('a'); el.className = 'app-empty-link ' + cls; el.href = href; el.target = '_blank'; el.rel = 'noopener';
+        el.textContent = word; list.appendChild(el);
+      };
+      link('app-empty-home', homeHref(), uiText('appEmptyHome', 'Get the starter apps on GifOS Home'));
+      link('app-empty-store', 'store.html', uiText('appEmptyStore', 'Find more apps in the App Store'));
+      const n = document.createElement('small'); n.className = 'app-empty-note';
+      n.textContent = uiText('appEmptyNote', 'They open in a new tab. Come back here and tap Run app again.');
+      list.appendChild(n);
     }
     // Second entry point: an app tab's "Meeting" toggle opens meet.html#app=<fileId>.
     // Auto-host that app once we're set up (its state lives in this same browser).
