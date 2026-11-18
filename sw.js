@@ -516,7 +516,10 @@ self.addEventListener('fetch', function (e) {
         return degrade(req, url, cache);
       }
       try {
-        var res = await fetch(req);
+        // A redirected answer is handed on plain as well as kept plain: Firefox
+        // never settles a page's fetch that the worker answers with the
+        // redirected response itself (the page's fetch('run.html') hung).
+        var res = await plain(await fetch(req));
         if (res && res.ok && (res.type === 'basic' || res.type === 'default')) {
           keep(cache, keyOf(url), res.clone()).catch(function () {});
         }
