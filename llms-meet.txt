@@ -22,8 +22,9 @@ The GifOS Meet screens name two kinds of meeting, and the tools take the
 matching `type` value. There are only these two:
 
 - "Start a public open-floor meeting" (short: Open floor, or Public):
-  `create_meeting` with type "open". Anyone with the link joins; there is
-  no host.
+  `create_meeting` with type "open". Anyone with the link joins. Everyone
+  inside can set the password, and anyone with a $5+ plan can take over as
+  host while they're connected.
 - "Host a private meeting" (a private, hosted meeting; short: Private):
   `create_meeting` with type "admin". It has a host: the server makes and
   keeps the host password, and the host can lock the room and remove people.
@@ -35,9 +36,10 @@ The person who runs a private meeting is its host, and the screens call the
 role host everywhere: the Host button, Host sign-in, the host password. The
 tools keep "admin" as the value (type "admin", mode "admin", and
 `admin_password`, the older name of `host_password`), and take "host" for
-"admin" where they read free text. A public open-floor meeting has no host.
-Someone on the $5 or $10 plan, or with a staff pass, can take charge of one
-with the "Make me host" button (`guard_room` does this for a bot).
+"admin" where they read free text. Someone on a $5+ plan, or with a staff pass, can take over as host of a
+public open-floor meeting while they're connected, with the "Make me host"
+button (`guard_room` does this for a bot). The room is private for that
+time; the URL does not change.
 
 ## What people ask, and the tool to use
 

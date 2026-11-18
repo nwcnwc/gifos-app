@@ -663,7 +663,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <div class="lobby-card">
       <h1 data-t="lobTitle">Meeting</h1>
       <p class="lob-quiet" data-t="lobJoinOff" id="lob-quiet">You'll join with your camera and microphone off. Turn them on when you're ready.</p>
-      <button id="lob-open" class="lob-primary"><span data-t="lobStart">Start a public open-floor meeting</span><small data-t="lobStartSub">Anyone with the link (and the room password, if one is set) can join. No host: everyone inside can set the password.</small></button>
+      <button id="lob-open" class="lob-primary"><span data-t="lobStart">Start a public open-floor meeting</span><small data-t="lobStartSub">Anyone with the link (and the room password, if one is set) can join. Everyone inside can set the password, and anyone with a $5+ plan can take over as host while they're connected.</small></button>
       <!-- Optional: a room password for the open-floor meeting, set the moment you are in (the Password button's own path). -->
       <button data-t="lobGuestMore" type="button" id="lob-open-more" class="lob-link lob-pwmore" aria-expanded="false" aria-controls="lob-open-extra">Add a room password</button>
       <div id="lob-open-extra" class="lob-expand lob-pwextra" style="display:none">
@@ -1379,7 +1379,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           <li><b>Run app</b> — an app the room uses together.</li>
           <li><b>Record / CC</b> — record here, or captions from your voice.</li>
           <li><b>Settings</b> — mix for Stage, My row, and the stadium. Timing: Conversation, Unison, or Song.</li>
-          <li><b>Host</b> — in a private meeting, the host can moderate. A public open-floor meeting has no host.</li>
+          <li><b>Host</b> — in a private meeting, the host can moderate. In a public open-floor meeting, anyone with a $5+ plan can take over as host while they're connected.</li>
         </ul>
         <h4>Singing together</h4>
         <p>Tap <b>Song</b> to lead. You step onto the stage as the song leader, and the room lines up so you are singing together, like a large hall.</p>
@@ -17688,7 +17688,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // the signed claim exists and has been handed to open channels.
     async function recheckHost(password) {
       const v = String(password || '').trim();
-      if (!av) return { confirmed: false, error: 'This meeting has no host (it is a public open-floor meeting), so there is nothing to sign in to.' };
+      if (!av) return { confirmed: false, error: 'No one has taken over as host in this public open-floor meeting, so there is nothing to sign in to.' };
       if (!v) return { confirmed: false, error: 'A host password is needed.' };
       let K;
       try { K = await deriveAdminKey(room, v); }
