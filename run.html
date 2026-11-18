@@ -663,9 +663,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <div class="lobby-card">
       <h1 data-t="lobTitle">Meeting</h1>
       <p class="lob-quiet" data-t="lobJoinOff" id="lob-quiet">You'll join with your camera and microphone off. Turn them on when you're ready.</p>
-      <button id="lob-open" class="lob-primary"><span data-t="lobStart">Start a public open-floor meeting</span><small data-t="lobStartSub">Anyone with the link can join</small></button>
+      <button id="lob-open" class="lob-primary"><span data-t="lobStart">Start a public open-floor meeting</span><small data-t="lobStartSub">Anyone with the link (and the room password, if one is set) can join. No host: everyone inside can set the password.</small></button>
+      <!-- Optional: a room password for the open-floor meeting, set the moment you are in (the Password button's own path). -->
+      <button data-t="lobGuestMore" type="button" id="lob-open-more" class="lob-link lob-pwmore" aria-expanded="false" aria-controls="lob-open-extra">Add a room password</button>
+      <div id="lob-open-extra" class="lob-expand lob-pwextra" style="display:none">
+        <label class="lob-pwlab" for="lob-open-pass">🎟 <b data-t="lobGuestPassHead">Room password</b> <small data-t="lobOpenPassNote">Optional. People need it to get in. Anyone inside can change it.</small></label>
+        <input data-ph="invGuestPh" id="lob-open-pass" type="password" maxlength="64" placeholder="Room password (optional)" autocomplete="new-password">
+      </div>
       <p class="lob-capnote" data-t="captionsNotice" id="lob-capnote">Captions are on in this meeting. What you say may be written down by other people's devices.</p>
-      <button data-t="lobAdminBtn" type="button" id="lob-admin-btn" class="lob-link">Host a private meeting</button>
+      <button type="button" id="lob-admin-btn" class="lob-link"><span data-t="lobAdminBtn">Host a private meeting</span><small data-t="lobAdminSub">Anyone with the link (and the room password, if one is set) can join. You are the host: only you set the password, and you can mute, blur or remove people.</small></button>
       <div id="lob-admin" class="lob-expand" style="display:none">
         <input data-ph="lobAdminNamePh" id="lob-admin-name" maxlength="40" placeholder="Name this meeting" autocomplete="off">
         <button data-t="lobKeyReveal" type="button" id="lob-key-reveal" class="lob-text" hidden>Host password</button>
@@ -697,6 +703,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <button data-t="lobJoinBtn" type="button" id="lob-join-btn" class="lob-link">Join a link</button>
       <div id="lob-join" class="lob-expand" style="display:none">
         <input data-ph="lobJoinInPh" id="lob-join-in" placeholder="Paste link or meeting id" autocomplete="off">
+        <input data-ph="lobJoinPassPh" data-al="lobGuestPassHead" id="lob-join-pass" type="password" maxlength="64" placeholder="Room password, if it has one" aria-label="Room password" autocomplete="new-password">
         <p data-t="lobWatchNote" id="lob-watch-note" class="lob-watch-note" hidden>Watching the broadcast. You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.</p>
         <div class="lob-row"><button data-t="shareCancel" id="lob-join-cancel" class="lob-ghost">Cancel</button><button data-t="join" id="lob-join-go">Join</button></div>
         <div id="lob-join-err" class="lob-err"></div>
@@ -16546,6 +16553,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // closes that gap (without it, a newcomer's status arrived at ~4.4 s
       // instead of within 3 s).
       if (s.hasCoord && s.state === 3 && !seatedBeatSent) { seatedBeatSent = true; try { broadcastStatus(); } catch (e) {} }
+      if (s.hasCoord && s.state === 3) { try { lobbyPwOpenRoom(); } catch (e) {} }   // a lobby room password for this open floor, once
       if (s.hasCoord && s.state === 3 && !pwBlocked && !bannedOut && !iAmWaiting()) mediaJoined = true;
       departSweep(s); // D2/D5 event intake FIRST — a freed seat leaves the view this tick
       const ids = new Set();
@@ -20151,6 +20159,47 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
 
     // ---- room password UI: one modal, two moods -------------------------------
     const pwModal = document.getElementById('pw-modal');
+    // LOBBY PASSWORDS (Start a public open-floor meeting, Join a link). Typed in
+    // the lobby, they cross the reload enterMeeting does in THIS tab's
+    // sessionStorage, and the very next load reads them into memory and removes
+    // them, so they are used once, by the room they were typed for, or dropped.
+    // Never in an address, a log, or the shared history. They go through the
+    // existing password paths only:
+    //   open  the first time this page is seated (the seat tick calls
+    //         lobbyPwOpenRoom), the Password button's own Save (setpw + pwinfo,
+    //         as if typed there), so the door locks the usual way;
+    //   join  the door's own password prompt is answered with it once (the
+    //         prompt's Join), so a wrong one gets the usual challenge, and a
+    //         room with no password never asks.
+    // A private meeting's room password is the lobby's lob-guest-pass (pre-seeded
+    // with the host key, the §LOCK re-assert locks the door).
+    const LOB_PW_KEY = 'gifos_lobpw';
+    function lobbyPwHandOver(kind, r, a, input) {
+      const pw = ((input && input.value) || '').trim();
+      try {
+        if (pw) sessionStorage.setItem(LOB_PW_KEY, JSON.stringify({ kind, room: r, av: a || '', pw }));
+        else sessionStorage.removeItem(LOB_PW_KEY);
+      } catch (e) {}
+      if (input) input.value = '';
+    }
+    let lobbyPw = (() => {
+      let o = null;
+      try { o = JSON.parse(sessionStorage.getItem(LOB_PW_KEY) || 'null'); sessionStorage.removeItem(LOB_PW_KEY); } catch (e) { o = null; }
+      if (!o || typeof o.pw !== 'string' || !o.pw) return null;
+      return { kind: o.kind, room: String(o.room || ''), av: String(o.av || ''), pw: o.pw };
+    })();
+    const lobbyPwFor = (kind) => !!(lobbyPw && lobbyPw.kind === kind && lobbyPw.room === room && lobbyPw.av === (av || ''));
+    function lobbyPwOpenRoom() {
+      if (!lobbyPw || lobbyPw.kind !== 'open') return;
+      if (!lobbyPwFor('open') || av || leaving || bannedOut || pwBlocked) { lobbyPw = null; return; }
+      const ms = meshSeat();
+      if (!(ms && ms.hasCoord && ms.state === 3)) return;   // not seated yet: the seat tick calls again
+      const v = lobbyPw.pw; lobbyPw = null;
+      pwModal.dataset.mode = 'manage';
+      document.getElementById('pw-new').value = v;
+      document.getElementById('pw-save').onclick();
+      if (!pwSaveWaited) document.getElementById('pw-new').value = '';
+    }
     function showPwModal(locked, why) {
       const service = BROADCAST;
       document.getElementById('pw-title').textContent = service ? uiText('pwTitle', 'Room password') : (locked ? uiText('pwTitleLocked', 'This room is locked') : uiText('pwTitle', 'Room password'));
@@ -20179,6 +20228,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       cancel.textContent = locked ? uiText('pwLeave', 'Leave') : uiText('pwClose', 'Close');
       pwModal.dataset.mode = locked ? 'join' : 'manage';
       pwModal.style.display = 'flex';
+      if (locked && lobbyPwFor('join')) {
+        const typed = lobbyPw.pw; lobbyPw = null;
+        inp.value = typed;
+        Promise.resolve().then(() => { if (pwModal.style.display !== 'none' && pwModal.dataset.mode === 'join' && inp.value === typed) document.getElementById('pw-save').onclick(); });
+        return;
+      }
       if (why === 'banned') { const cur = document.getElementById('pw-cur'); cur.focus(); cur.select(); } else inp.focus();
     }
     document.getElementById('pwbtn').onclick = () => showPwModal(false);
@@ -20843,6 +20898,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // door" leg, which is what that leg is for.) Her stored password is not
       // a guess: it is the authority she is about to prove.
       if (av && admKey) pwFromStore = false;
+      try { lobbyPwOpenRoom(); } catch (e) {}
       const relay = relayUrl();
       const custom = relay && relay !== window.GIFOS_RELAY;
       const avPart = (av ? '&av=' + av : '') + (BROADCAST ? '&bc=1' : '');
@@ -20989,11 +21045,29 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const w = Math.floor(d / 7); if (w < 5) return w + 'w ago';
       return Math.floor(d / 30) + 'mo ago';
     }
+    // The kind of a recent or saved meeting, from what the list already keeps:
+    // the entry's verifier (or the one in its link) makes it private, and this
+    // device's host key for it (gifos_vadm_<room>.<verifier>) makes it yours.
+    // A broadcast list shows only Private / Host (a broadcast has no open floor).
+    function lobKind(e) {
+      let p = null; try { p = parseMeetInput(e.url); } catch (err) { p = null; }
+      const v = String(e.av || (p && p.av) || '').toLowerCase();
+      if (!v) return 'open';
+      let host = false;
+      try { host = !!(p && p.room && localStorage.getItem('gifos_vadm_' + p.room + '.' + v)); } catch (err) { host = false; }
+      return host ? 'host' : 'private';
+    }
+    function lobBadge(e) {
+      const k = lobKind(e);
+      if (k === 'open' && CAST_SURFACE) return '';
+      const word = k === 'host' ? uiText('lobBadgeHost', 'Private · Host') : k === 'private' ? uiText('lobBadgePrivate', 'Private') : uiText('lobBadgeOpen', 'Open floor');
+      return '<span class="li-badge li-kind-' + k + '">' + esc(word) + '</span>';
+    }
     function lobRow(e, marked) {
       return '<div class="lob-item" data-url="' + esc(e.url) + '">' +
         '<button type="button" class="lob-star" data-star="' + esc(e.url) + '" aria-label="Save" title="' + (marked ? 'Saved' : 'Save') + '">' + (marked ? '★' : '☆') + '</button>' +
         '<div class="li-main"><span class="li-name">' + esc(e.name || SURFACE_NAME) +
-          (e.av ? '<span class="li-badge">' + esc(uiText('lobBadgePrivate', 'private')) + '</span>' : '') + '</span>' +
+          lobBadge(e) + '</span>' +
           '<span class="li-sub">' + agoLabel(e.ts) + '</span></div>' +
         '<button type="button" class="row-del" data-del="' + esc(e.url) + '" title="Remove" aria-label="Remove">' + DEL_ICON + '</button>' +
       '</div>';
@@ -21188,7 +21262,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function wireLobby() {
       const lob = document.getElementById('lobby');
       const toggle = (id) => { const el = document.getElementById(id); el.style.display = el.style.display === 'none' ? '' : 'none'; };
-      document.getElementById('lob-open').onclick = () => { enterMeeting('#v=' + shortCode()); };
+      document.getElementById('lob-open').onclick = () => {
+        const code = shortCode();
+        lobbyPwHandOver('open', code, '', document.getElementById('lob-open-pass'));
+        enterMeeting('#v=' + code);
+      };
+      const openMore = document.getElementById('lob-open-more');
+      if (openMore) openMore.onclick = () => {
+        const extra = document.getElementById('lob-open-extra');
+        const open = extra.style.display === 'none';
+        extra.style.display = open ? '' : 'none';
+        openMore.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (open) document.getElementById('lob-open-pass').focus();
+      };
+      document.getElementById('lob-open-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('lob-open').click(); });
       const lobCam = document.getElementById('lob-cam');
       if (lobCam) lobCam.onclick = () => {
         if (joinAv.cam) { setLobbyCam(false); return; }
@@ -21394,10 +21481,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const err = document.getElementById('lob-join-err');
         const p = parseMeetInput(document.getElementById('lob-join-in').value);
         if (!p) { err.textContent = uiText('badLink', 'Couldn’t read that — paste a meeting link or its id.'); return; }
+        lobbyPwHandOver('join', p.room, p.av || '', document.getElementById('lob-join-pass'));
         enterMeeting('#v=' + p.room + (p.av ? '&av=' + p.av : '') + (p.bc ? '&bc=1' : '') + (p.relay ? '&relay=' + encodeURIComponent(p.relay) : ''));
       };
       document.getElementById('lob-join-go').onclick = doJoin;
       document.getElementById('lob-join-in').addEventListener('keydown', (e) => { if (e.key === 'Enter') doJoin(); });
+      document.getElementById('lob-join-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') doJoin(); });
       document.getElementById('lob-guest-reveal').onclick = () => {
         const extra = document.getElementById('lob-guest-extra');
         extra.hidden = false;
