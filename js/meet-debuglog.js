@@ -264,7 +264,7 @@
   const CAP_ENG = ['browser', 'whisper', 'local', 'native'];
   const CAP_INP = ['mic', 'track', 'mix', 'rx'];
   const CAP_SRC = ['mic', 'ear', 'mix'];
-  const CAP_LINE_KEYS = ['t', 'k', 'by', 'w', 'src', 'eng', 'inp', 'dev', 'cdev', 'dm', 'lang', 'ld', 'tl', 'at', 'end', 'res'];
+  const CAP_LINE_KEYS = ['t', 'k', 'by', 'w', 'src', 'eng', 'inp', 'dev', 'cdev', 'dm', 'lang', 'ld', 'tl', 'at', 'end', 'res', 'nt'];
   const CAP_PEER_KEYS = ['t', 'k', 'id', 'cap', 'ccst', 'lang', 'muted', 'trs'];
   const CAP_RING_MAX = 2000;
   const id6 = (v) => (v === undefined || v === null ? '' : String(v).slice(0, 6));
@@ -281,6 +281,7 @@
       lang: String(line.lang || '').slice(0, 8), ld: line.ld ? 1 : 0, tl: line.tl ? 1 : 0,
       at: Number(line.at) || 0, end: Number(line.end) || 0,
       res: String(o.res || '').slice(0, 8),
+      nt: String(line.nt || '').slice(0, 5),
     };
   }
   function capPeerRec(id, st, o) {

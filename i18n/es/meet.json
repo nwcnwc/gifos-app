@@ -971,5 +971,10 @@
   "meet.appEmptyNote": "Se abren en una pestaña nueva. Vuelve aquí y toca otra vez Abrir app.",
   "meet.appNoStarters": "Las apps iniciales todavía no están en este dispositivo.",
   "meet.spkbtnTip": "Elige dónde suena la reunión",
-  "meet.spkChooseAria": "Elige un altavoz"
+  "meet.spkChooseAria": "Elige un altavoz",
+  "meet.trNoteLang": "[¿idioma equivocado?]",
+  "meet.trNoteWho": "[no se sabe quién habló]",
+  "meet.trNoteEcho": "[¿eco?]",
+  "meet.trNoteHard": "[difícil de oír]",
+  "meet.stCaptionsOtherMic": "Los subtítulos escuchan un micrófono distinto al de tu llamada. Pon el micrófono de la llamada como predeterminado del sistema o activa Whisper en Ajustes > Subtítulos."
 }

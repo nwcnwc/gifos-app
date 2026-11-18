@@ -971,5 +971,10 @@
   "meet.appEmptyNote": "Sie öffnen sich in einem neuen Tab. Komm hierher zurück und tippe noch einmal auf „App starten“.",
   "meet.appNoStarters": "Die Start-Apps sind noch nicht auf diesem Gerät.",
   "meet.spkbtnTip": "Wählen, wo der Ton des Meetings spielt",
-  "meet.spkChooseAria": "Lautsprecher wählen"
+  "meet.spkChooseAria": "Lautsprecher wählen",
+  "meet.trNoteLang": "[falsche Sprache?]",
+  "meet.trNoteWho": "[unklar, wer sprach]",
+  "meet.trNoteEcho": "[Echo?]",
+  "meet.trNoteHard": "[schwer zu verstehen]",
+  "meet.stCaptionsOtherMic": "Die Untertitel hören auf ein anderes Mikrofon als Ihr Anruf. Machen Sie Ihr Anrufmikrofon zum Systemstandard oder schalten Sie Whisper unter Einstellungen > Untertitel ein."
 }
