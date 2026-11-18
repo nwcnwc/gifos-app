@@ -1192,6 +1192,14 @@
   #sub-now { display: inline; border: 0; background: none; padding: 0 0 0 8px; color: var(--c-gray); font: inherit; font-size: .8125rem; cursor: pointer; white-space: nowrap; }
   #sub-now[hidden] { display: none; }
   .tile .tpause.tpause-busy { justify-content: flex-start; padding-top: 12px; }
+  /* A tile that shows the paused note (S1, Nathan 2026-11-17): the person's initial or picture sits at the top, the note
+     and Subscribe below it, so the two never overlap. The video under a held link carries no picture, so it is hidden and
+     the tile's own letter overlay (blurred like the face it stands for) is what shows. */
+  .tile:has(> .tpause:not(.tpause-busy)) > video { visibility: hidden; }
+  .tile:has(> .tpause:not(.tpause-busy)) .avatar { display: flex; align-items: flex-start; padding-top: max(8px, 5%); box-sizing: border-box; line-height: 1; transform-origin: 50% 0; } /* the blur's scale grows it down, not off the top */
+  .tile:has(> .tpause:not(.tpause-busy)) .avatar .avatar-img { top: max(8px, 5%); right: auto; bottom: auto; left: 50%; inset: max(8px, 5%) auto auto 50%;
+    width: 3.5rem; height: 3.5rem; transform: translateX(-50%); border-radius: var(--r-pill, 999px); }
+  .tile > .tpause:not(.tpause-busy) { padding-top: calc(max(8px, 5%) + 3.5rem + 8px); justify-content: safe center; } /* a note taller than the room left runs down, never up over the initial */
   /* On a phone the line is one caption above Live, not a clip on the face.
      A long line starts at the top and the rest scrolls inside the caption.
      No band for the bar: it rests on the safe area over the Record row, and
