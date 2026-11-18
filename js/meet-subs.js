@@ -771,6 +771,9 @@
   // date; each pass not yet run out with its window; and the rights in effect
   // now with the reason (the best of them wins).
   const PLAN_SHORT = { room20: ['planRoom20', 'Room 20'], unlimited: ['planUnlimited', 'Unlimited'], streamer: ['planStreamer', 'Streamer'], free: ['planFree', 'Free'] };
+  // A plan's long name, as Settings and the plan buttons show it (the two kinds of meeting: private meetings, public open-floor meetings).
+  const PLAN_NAME = { room20: 'planNameRoom20', unlimited: 'planNameUnlimited', streamer: 'planNameStreamer', free: 'planNameFree' };
+  const planName = (tier, t) => (PLAN_NAME[tier] ? tx(PLAN_NAME[tier], t.name) : t.name);
   const planShort = (tier) => { const x = PLAN_SHORT[tier]; return x ? tx(x[0], x[1]) : tx('planNone', 'No plan'); };
   const clockOf = (s) => { try { return new Date(s * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } };
   function leftOf(sec) {
@@ -835,8 +838,8 @@
     if (c.now.why === 'pass' && !Number.isFinite(c.now.until)) why = fill(tx('nowByPassNever', 'In effect now: {plan}, from your pass (no end).'), { plan: planShort(c.now.tier) });
     else if (c.now.why === 'pass') why = fill(tx('nowByPass', 'In effect now: {plan} until {until} ({left} left), from your four-hour pass.'), { plan: planShort(c.now.tier), until: clockOf(c.now.until), left: leftOf(c.now.until - n) });
     else if (c.now.why === 'sub') why = fill(tx('nowBySub', 'In effect now: {plan}, from your subscription.'), { plan: planShort(c.now.tier) });
-    else if (c.now.why === 'free') why = tx('nowByFree', 'In effect now: Free. Hosted rooms of up to 5 people.');
-    else why = tx('nowByNone', 'In effect now: no plan. Open-floor rooms are free.');
+    else if (c.now.why === 'free') why = tx('nowByFree', 'In effect now: Free. Private meetings of up to 5 people.');
+    else why = tx('nowByNone', 'In effect now: no plan. Public open-floor meetings are free.');
     p('held-now', why);
     if (c.then) p('held-then', fill(tx('nowThen', 'When the pass ends: {plan}, from your subscription.'), { plan: planShort(c.then) }));
     if (c.sub) {
@@ -847,7 +850,7 @@
       p('held-sub', fill(tx('heldSub', 'Subscription: {plan}, {period}, {standing}.'), { plan: planShort(c.sub.tier), period: per, standing: stand }));
     }
     for (const x of c.passes) {
-      const e = x.never ? fill(tx('heldPassNever', 'Pass: {plan}, no end{capture}.'), { plan: planShort(x.plan), capture: x.capture ? tx('heldPassCaptures', ', takes open-floor rooms') : '' })
+      const e = x.never ? fill(tx('heldPassNever', 'Pass: {plan}, no end{capture}.'), { plan: planShort(x.plan), capture: x.capture ? tx('heldPassCaptures', ', takes charge of public open-floor meetings') : '' })
         : x.live ? fill(tx('heldPassLive', 'Four-hour pass: Unlimited until {until}, {left} left.'), { until: clockOf(x.end), left: leftOf(x.end - n) })
         : fill(tx('heldPassNext', 'Four-hour pass: Unlimited from {start} to {until}.'), { start: clockOf(x.start), until: clockOf(x.end) });
       const q = p('', e); q.className = 'set-help held-pass'; q.dataset.pass = x.id;
@@ -911,7 +914,7 @@
         row.appendChild(el('p', { class: 'set-help' }, 'Your subscription works in one meeting at a time. Joining a meeting, here or in another browser with your subscription file, moves it there.'));
         if (!inApp) row.appendChild(el('a', { class: BTN, style: BTN_STYLE + ';display:inline-block;text-decoration:none', id: 'sub-manage-broadcast', href: '/cast', target: '_blank', rel: 'noopener' }, tx('subManageBroadcast', 'Manage it in the Broadcast app')));
       } else {
-        row.appendChild(el('p', { class: 'set-help' }, 'Your plan: ' + t.name + ' (' + (yearly ? t.priceYear + ' a year' : t.price + ' a month') + ').'));
+        row.appendChild(el('p', { class: 'set-help' }, 'Your plan: ' + planName(lic.tier, t) + ' (' + (yearly ? t.priceYear + ' a year' : t.price + ' a month') + ').'));
         row.appendChild(el('p', { class: 'set-help' }, st.status === 'CANCELLED' ? SUB.TEXT.cancelled + ' Ends ' + dateOf(st.until || lic.exp) + '.' : inApp || viaStore ? tx('subRenewsAuto', 'Renews automatically.') : 'Renews through PayPal.'));
         row.appendChild(el('p', { class: 'set-help' }, 'Your subscription works in one meeting at a time. Joining a meeting, here or in another browser with your subscription file, moves it there.'));
         if (meet && meet.moved === 'moved') row.appendChild(el('p', { class: 'set-help' }, 'It is in use in another meeting now.'));
@@ -942,16 +945,16 @@
         }
       }
     } else {
-      if (st.subId && st.status && st.status !== 'APPROVAL_PENDING') row.appendChild(el('p', { class: 'set-help' }, SUB.TEXT.lapsed));
-      if (await verifiedFree()) row.appendChild(el('p', { class: 'set-help', id: 'sub-free-plan' }, tx('subFreePlan', 'Your plan: Free. Hosted rooms of up to 5 people.')));
-      row.appendChild(el('p', { class: 'set-help' }, 'Open-floor rooms are free. A subscription adds hosted rooms you run as admin, and video for people whose networks block direct connections.'));
+      if (st.subId && st.status && st.status !== 'APPROVAL_PENDING') row.appendChild(el('p', { class: 'set-help' }, tx('subLapsed', SUB.TEXT.lapsed)));
+      if (await verifiedFree()) row.appendChild(el('p', { class: 'set-help', id: 'sub-free-plan' }, tx('subFreePlan', 'Your plan: Free. Private meetings of up to 5 people.')));
+      row.appendChild(el('p', { class: 'set-help', id: 'sub-free-note' }, tx('subFreeNote', 'Public open-floor meetings are free. A subscription adds private meetings you host, and video for people whose networks block direct connections.')));
       if (!inApp) row.appendChild(el('p', { class: 'set-help', id: 'sub-how' }, tx('subHow', 'Subscribe with PayPal (card or PayPal balance).')));
       for (const period of ['monthly', 'yearly']) {
         for (const id of SUB.tiersSoldIn(app)) {
           const t = SUB.TIERS[id];
           if (inApp && !SUB.storeSku(RAIL().store(), { what: 'sub', tier: id, period })) continue;   // not sold in this store: not offered
           const sp = skuOf({ what: 'sub', tier: id, period });
-          const label = (period === 'yearly' ? (sp || t.priceYear) + ' a year' : (sp || t.price) + ' a month') + ': ' + t.name;
+          const label = (period === 'yearly' ? (sp || t.priceYear) + ' a year' : (sp || t.price) + ' a month') + ': ' + planName(id, t);
           const b = el('button', { type: 'button', class: BTN, style: BTN_STYLE, 'data-tier': id, 'data-period': period }, label);
           b.onclick = async () => {
             for (const x of row.querySelectorAll('button[data-tier]')) x.disabled = true;
