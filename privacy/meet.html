@@ -98,10 +98,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       engine and no fallback to one. On a phone that cannot caption a language on the device, the app may download its
       own offline speech engine once from Google Play or the App Store, and captions pause until it is in. The first
       time you use a language, the phone may also download its speech model once. These downloads carry none of your
-      voice. <b>On the web, on a phone</b>, the meeting in your browser writes captions on the phone itself: a speech
+      voice. <b>On the web, on an Android phone</b>, the meeting in your browser writes captions on the phone itself: a speech
       model runs inside the browser and your voice never leaves the phone. The model is downloaded once from gifos.app
       and kept on the phone. If the phone cannot run it, or there is no model for your language yet, the meeting says
-      captions are not available; it never sends your voice to a speech service instead. <b>On a computer</b> you choose
+      captions are not available; it never sends your voice to a speech service instead. <b>On the web, on an iPhone or
+      iPad</b>, captions are browser captions. <b>On a computer</b> you choose
       the engine in Settings → Captions. <b>Browser captions</b>, the default on computers, use your browser's own
       speech service, which may send your voice to its maker to turn it into text (Chrome: Google; Safari: Apple) under
       that company's privacy policy. GifOS never receives the audio. <b>Whisper</b> runs on your computer and sends your
