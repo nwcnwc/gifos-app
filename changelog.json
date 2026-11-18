@@ -2,6 +2,19 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.26.21",
+      "date": "2026-11-18",
+      "headline": "Simpler camera and mic choices",
+      "critical": false,
+      "features": [
+        "Phones open your front camera, with Flip in More to switch.",
+        "Clearer camera, mic and speaker pickers."
+      ],
+      "fixes": [
+        "Smoother joining."
+      ]
+    },
+    {
       "version": "0.9.26.20",
       "date": "2026-11-18",
       "headline": "Captions on Android, and one-tap unmute",
