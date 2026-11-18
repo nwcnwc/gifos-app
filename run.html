@@ -8218,6 +8218,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         ctNote('screen-src', { sid: String(it.sid).slice(0, 8), from: src ? src.from : 'none' });
       }
       p.dataset.src = src ? src.from : 'none';
+      try { const held = !it.mine && turnHeld(it.sid); pauseNote(p, held, held ? shareFirewallWords(it.name) : ''); } catch (e) {}
       const cap = p.querySelector('.ct-cap');
       if (cap) {
         const want = ctLabel(it);
@@ -13901,13 +13902,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!meshNode || !subsOn()) return;
       GifOS.meetSubs.roomOrder(subsMeetId()).then((o) => { if (!o) return; turnSubIn(myId, o); try { meshNode.gossip({ a: 1, msg: { k: 'tsub', o } }); } catch (e) {} }, () => {});
     }
+    // Does this person's video reach me only over a free TURN link that carries no video? (a standby holds nobody's video, SUB.7)
+    function turnHeld(pid, facts) {
+      if (!turnLinks || !pid || pid === myId) return false;
+      return GifOS.meetTurn.pausedBy(facts || Array.from(turnFacts.values()), myId, pid) || (turnLinks.isLink(pid) && !turnLinks.standby(pid) && !turnLinks.video(pid));
+    }
     function turnPaint() {
       const facts = turnLinks ? Array.from(turnFacts.values()) : [];
       // every person tile, a pair's or a carried one (a person whose media a friend brings has no pair here)
       for (const tile of document.querySelectorAll('.tile[data-peer]')) {
         const pid = tile.dataset.peer; if (!pid || pid === myId) continue;
         const p = { id: pid, tile };
-        const show = !!turnLinks && (GifOS.meetTurn.pausedBy(facts, myId, p.id) || (turnLinks.isLink(p.id) && !turnLinks.standby(p.id) && !turnLinks.video(p.id)));   // a standby holds nobody's video (SUB.7)
+        const show = turnHeld(p.id, facts);
         // TURN.13: the far end paused its video because the server throttles (vouched: nothing to subscribe to)
         const busy = !show && !!turnLinks && turnLinks.farBusy(p.id);
         let bel = p.tile.querySelector(':scope > .tpause-busy');
@@ -13923,18 +13929,37 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // note and Subscribe as a tile (Nathan 11-14: the note goes on the strip, not only on the pipe holders' tiles)
       const sd = document.querySelector('#stadium [data-row="sd"]');
       if (sd) { let far = 0; try { far = meshNode && typeof meshNode.meetingFar === 'function' ? meshNode.meetingFar() : 0; } catch (e) {} pauseNote(sd, !!turnLinks && GifOS.meetTurn.stripPaused(facts, far)); }
+      try { ctTurnPaint(facts); } catch (e) {}
+    }
+    // S6 (Nathan 2026-11-17): a screen shared by someone whose video reaches me only over the free audio-only TURN link
+    // cannot arrive; its pane says so, with Subscribe, instead of a dark stage with their big initial. The TURN rule is
+    // unchanged: this is only the words on the pane.
+    function shareFirewallWords(name) {
+      return uiText('turnShareFirewall', '{name}’s network firewall lets a screen share through only on a paid subscription. Subscribe to see {name}’s screen.').split('{name}').join(name || '…');
+    }
+    function ctTurnPaint(facts) {
+      if (typeof CT === 'undefined' || !CT || !CT.items) return;
+      for (const it of CT.items) {
+        if (it.kind !== 'screen') continue;
+        const pane = CT.panes.get(it.key); if (!pane) continue;
+        const held = !it.mine && turnHeld(it.sid, facts);
+        pauseNote(pane, held, held ? shareFirewallWords(it.name) : '');
+      }
     }
     // THE PAUSED NOTE on a host: a person's tile (pausedBy), or the Stadium strip that stands for a far room whose pipe
     // carries no video (stripPaused): the named state's sentence and one tap to subscribe or buy the pass.
-    function pauseNote(host, show) {
+    // say: the sentence, when the host is not a person (a shared screen's pane, S6); else the named state's.
+    function pauseNote(host, show, say) {
       let el = host.querySelector(':scope > .tpause:not(.tpause-busy)');
+      if (show && el && say && el.dataset.say !== say) { el.remove(); el = null; }   // a new sharer name: the note is built again with its words
       if (show && !el) {
         // VIDEO IS PAUSED: the named state's sentence (meet-status videoPausedRelay) over the dark tile, and one
         // tap to subscribe ($2 monthly, PayPal). A subscription's vouch turns this link's video on where it is:
         // the next paint finds the link carrying video and takes the note away.
         el = document.createElement('div'); el.className = 'tpause'; el.setAttribute('role', 'note');
         const t = document.createElement('span'); t.className = 'tpause-say';
-        const said = statusWords('videoPausedRelay');
+        const said = say || statusWords('videoPausedRelay');
+        if (say) el.dataset.say = say;
         t.textContent = said; el.appendChild(t);
         // Subscribe is offered on every paused tile.
         if (window.GifOS && GifOS.meetSubs && GifOS.sub) {

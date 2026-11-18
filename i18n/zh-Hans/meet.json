@@ -829,6 +829,7 @@
  "meet.shareStageFull": "舞台已满，需要先有人下台。",
  "meet.sttVideoPausedRelay": "此连接上的视频已暂停。声音仍然正常。会议中的订阅者可以开启视频。",
  "meet.turnSubscribe": "订阅",
+ "meet.turnShareFirewall": "{name} 的网络防火墙只允许付费订阅时共享屏幕。订阅后即可查看 {name} 的屏幕。",
  "meet.capBtn": "设我为管理员",
  "meet.capbtnTip": "接管这个自由发言房间：由你设置密码，并可移除他人",
  "meet.capNote": "此房间已有管理员",

@@ -1177,21 +1177,25 @@
   /* A tile whose video a free TURN link holds back (run.html turnPaint): the
      sentence and Subscribe, quiet over the dark tile. Chrome on the content:
      no panel, no border, no accent colour; the name pill keeps its corner. */
-  .tile .tpause { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  :is(.tile, .ct-pane) .tpause { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
                   gap: 12px; padding: 16px 16px 44px; text-align: center; pointer-events: none; z-index: 3;
                   font-size: .875rem; line-height: 1.35; color: var(--c-white); }
-  .tile .tpause > span { max-width: 22rem; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
-  .tile .tpause .tpause-sub { pointer-events: auto; min-height: 36px; padding: 6px 16px; border: 0; border-radius: var(--r-pill);
+  :is(.tile, .ct-pane) .tpause > span { max-width: 22rem; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+  :is(.tile, .ct-pane) .tpause .tpause-sub { pointer-events: auto; min-height: 36px; padding: 6px 16px; border: 0; border-radius: var(--r-pill);
                   background: rgba(255,255,255,.16); color: var(--c-white); font: inherit; font-weight: 500; cursor: pointer; }
-  .tile .tpause .tpause-sub:disabled { opacity: .6; cursor: default; }
+  :is(.tile, .ct-pane) .tpause .tpause-sub:disabled { opacity: .6; cursor: default; }
   /* The second choice under Subscribe: the four-hour pass, a quiet line of text, no fill. */
-  .tile .tpause .tpause-pass { pointer-events: auto; min-height: 32px; padding: 4px 8px; border: 0; background: none;
+  :is(.tile, .ct-pane) .tpause .tpause-pass { pointer-events: auto; min-height: 32px; padding: 4px 8px; border: 0; background: none;
                   color: var(--c-white); opacity: .8; font: inherit; cursor: pointer; }
-  .tile .tpause .tpause-pass:disabled { opacity: .5; cursor: default; }
+  :is(.tile, .ct-pane) .tpause .tpause-pass:disabled { opacity: .5; cursor: default; }
   /* What is in effect (a pass's time left, or the plan), quiet beside the status line; a tap opens Settings. */
   #sub-now { display: inline; border: 0; background: none; padding: 0 0 0 8px; color: var(--c-gray); font: inherit; font-size: .8125rem; cursor: pointer; white-space: nowrap; }
   #sub-now[hidden] { display: none; }
   .tile .tpause.tpause-busy { justify-content: flex-start; padding-top: 12px; }
+  /* S6 (Nathan 2026-11-17): a shared screen that cannot reach me over the free TURN link shows the note, never a dark
+     stage with the sharer's big initial: the pane's picture is hidden while the note is on it. */
+  .ct-pane:has(> .tpause:not(.tpause-busy)) > video { visibility: hidden; }
+  .ct-pane > .tpause > span { max-width: 28rem; }
   /* A tile that shows the paused note (S1, Nathan 2026-11-17): the person's initial or picture sits at the top, the note
      and Subscribe below it, so the two never overlap. The video under a held link carries no picture, so it is hidden and
      the tile's own letter overlay (blurred like the face it stands for) is what shows. */
