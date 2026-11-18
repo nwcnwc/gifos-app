@@ -37692,8 +37692,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function updateMediaSession() {
       const ms = navigator.mediaSession; if (!ms) return;
       try { ms.metadata = new MediaMetadata({ title: 'GifOS Meeting', artist: participantCount() + ' here' }); } catch (e) {}
-      try { ms.setMicrophoneActive(!myStatus.muted); } catch (e) {}
-      try { ms.setCameraActive(!myStatus.camOff); } catch (e) {}
+      // Safari answers these two with a promise and rejects it (seen on iOS as an unhandled rejection): both ways are caught.
+      try { const r = ms.setMicrophoneActive(!myStatus.muted); if (r && r.catch) r.catch(() => {}); } catch (e) {}
+      try { const r = ms.setCameraActive(!myStatus.camOff); if (r && r.catch) r.catch(() => {}); } catch (e) {}
       try { ms.playbackState = 'playing'; } catch (e) {}
     }
     (function wireMediaSession() {
