@@ -705,9 +705,11 @@
   const peekEls = [];
   function now(){ return Date.now ? Date.now() : 0; }
   // ---- who is here, and who sits where (plain functions: the checks run them) ----
-  // Here means THIS page saw the person's heartbeat move lately. The heartbeat's own time is the other
-  // device's clock, so it only dates a heartbeat this page has never seen move (an old game's record).
-  function c4Seen(rows, seen, lastT, t){ for (const id in rows){ const r=rows[id]; if(!r) continue; if(lastT[id]!==r.t){ seen[id]=(id in lastT)?t:Math.min(t,+r.t||0); lastT[id]=r.t; } } }
+  // Here means THIS page saw the person's heartbeat move lately, on this device's clock only: the heartbeat's
+  // own time is the other device's clock and never dates anything (a guest whose clock ran 10 s ahead read the
+  // host's first beat as 10 s old, so the host had left and the guest moved for Red). A heartbeat this page has
+  // never seen move counts for 4 s (two beats): a live player's next beat lands in that time, an old record's never.
+  function c4Seen(rows, seen, lastT, t){ for (const id in rows){ const r=rows[id]; if(!r) continue; if(lastT[id]!==r.t){ seen[id]=(id in lastT)?t:t-LIVE+4000; lastT[id]=r.t; } } }
   function c4Live(rows, seen, t, live){ const out=[]; for (const id in rows){ if(rows[id] && (t-(seen[id]||0))<live) out.push(id); } return out; }
   // A seat is held only by someone who is here: a player who left, or a seat kept in the saved board from
   // an earlier game, leaves it open for the next person. One person holds one seat: a board that names the
