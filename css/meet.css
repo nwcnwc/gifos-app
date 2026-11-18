@@ -565,11 +565,9 @@
   #fsview.on { display: block; }
   body.fsopen #grid video { visibility: hidden; }
   #fsmain { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; width: 100%; height: 100%; object-fit: contain; background: var(--c-black); }
-  /* A face fills the screen: a landscape camera on a portrait phone would
-     otherwise be a thin strip between two black bars. Cropped at the same
-     point as the meeting tiles, so the head stays in view. A shared screen
-     or a packed picture keeps contain (data-fit unset), so nothing is cut. */
-  #fsmain[data-fit="cover"] { object-fit: cover; object-position: 50% 40%; }
+  /* The big view (Focus and Full screen) always shows the whole picture, fitted with bars: a face is never cropped
+     to fill it (Nathan 2026-11-18: a portrait iPhone in a landscape Focus pane showed only the hat). The grid tiles
+     still crop. */
   /* Cross-row Follow: the big view shows the Stadium zoomed onto the far talkers' tiles (run.html fsZoomPaint sets the
      transform). The view clips the zoomed picture. */
   #fsview { overflow: hidden; }
