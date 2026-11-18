@@ -843,7 +843,7 @@
     const mark = (e) => { if (!e) return; e.setAttribute('aria-selected', 'true'); e.classList.add('sub-on'); };
     if (sel.free) mark(root.querySelector('[data-tier="free"]'));
     if (sel.tier && sel.period) mark(root.querySelector('button[data-tier="' + sel.tier + '"][data-period="' + sel.period + '"]'));
-    if (sel.pass) mark(root.querySelector('#sub-pass-buy'));
+    if (sel.pass) { mark(root.querySelector('#sub-pass-buy')); mark(root.querySelector('tr[data-tier="pass"]')); }
     return sel;
   }
   // Queued (not yet live) passes and a pass that moved away: the table and the
@@ -860,7 +860,7 @@
     if (c.passes && c.passes.length && pmeet && pmeet.moved === 'moved') p('held-pass-moved', tx('passMoved', 'Your four-hour pass is in use in another meeting now: it works in one meeting at a time.'));
   }
 
-  // ---- Settings: the Subscription group ---------------------------------------
+  // ---- Subscription dialog (#sub-modal): same window as Settings ---------------
   const BTN = 'seg';
   const BTN_STYLE = 'border:1px solid var(--border,#2a2a3f);border-radius:.4rem;margin:.2rem .4rem .2rem 0';
   function el(tag, attrs, text) { const e = document.createElement(tag); for (const k in (attrs || {})) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; return e; }
@@ -880,18 +880,11 @@
   }
   const dateOf = (s) => { try { return new Date(s * 1000).toLocaleDateString(); } catch (e) { return ''; } };
   async function paintSettings(credNow) {
-    const body = document.querySelector('#set-modal .dlg-body');
+    const body = document.querySelector('#sub-modal .dlg-body');
     if (!body) return;
-    let g = document.getElementById('set-g-sub');
-    if (!g) {
-      g = el('section', { class: 'set-group', id: 'set-g-sub' });
-      const dbg = document.getElementById('set-g-debug');
-      body.insertBefore(g, dbg || null);
-    }
-    g.textContent = '';
-    g.appendChild(el('h4', null, 'Subscription'));
-    const row = el('div', { class: 'set-row set-wide' });
-    g.appendChild(row);
+    body.textContent = '';
+    const row = el('div', { class: 'set-row set-wide', id: 'sub-body' });
+    body.appendChild(row);
     const msg = el('p', { class: 'set-help', id: 'sub-msg', role: 'status', 'aria-live': 'polite' });
     const say = (t) => { msg.textContent = t || ''; };
     await keepFresh();
@@ -905,21 +898,6 @@
     const price = inApp ? await RAIL().prices().catch(() => ({})) : {};
     const skuOf = (want) => { const k = inApp && SUB.storeSku(RAIL().store(), want); return k ? price[k.basePlan ? k.product + ':' + k.basePlan : k.product] || null : null; };
     const passPrice = skuOf({ what: 'pass' });
-    const passBtn = el('button', { type: 'button', class: BTN, style: BTN_STYLE, id: 'sub-pass-buy' }, passPrice ? tx('passBuyAt', '{price}: Unlimited for the next 4 hours').replace('{price}', passPrice) : tx('passBuy', '$1: Unlimited for the next 4 hours'));
-    passBtn.onclick = async () => {
-      passBtn.disabled = true; say(inApp ? '' : tx('passOpening', 'Opening PayPal…'));
-      try {
-        const r = await buyPass(say);
-        say(r && r.passJson ? tx('passThanks', 'Thank you. Your four-hour pass is on.') : inApp ? msg.textContent : tx('passNotConfirmed', 'PayPal did not confirm the payment.'));
-        paintSettings();
-      } catch (e) { passBtn.disabled = false; say(String(e.message || e)); }
-    };
-    row.appendChild(passBtn);
-    if (!inApp) row.appendChild(el('p', { class: 'set-help', id: 'sub-pass-how' }, tx('passHow', 'Pay by card or PayPal.')));
-    row.appendChild(legalLine('sub-pass-legal', inApp));
-    if (sel.pass && heldCred.now && Number.isFinite(heldCred.now.until)) {
-      row.appendChild(el('p', { class: 'set-help', id: 'sub-pass-until' }, fill(tx('passUntil', 'Unlimited until {until}'), { until: clockOf(heldCred.now.until) })));
-    }
     const lic = await verifiedLicense();
     const st = readState();
     const cred = await credential();
@@ -966,11 +944,10 @@
         }
       }
     }
-    // The plan table lives in this Settings dialog (#set-modal): same header,
-    // body and Close. Free is the first row (no buttons). Monthly and Annual
-    // are two columns of the same plans, billed differently.
+    // The plan table lives in the Subscription dialog (#sub-modal): same window
+    // as Settings (header, body, Close). Free, then the $1 four-hour pass, then
+    // one row per paid plan with Monthly and Annual buttons side by side.
     if (st.subId && st.status && st.status !== 'APPROVAL_PENDING' && !lic) row.appendChild(el('p', { class: 'set-help' }, tx('subLapsed', SUB.TEXT.lapsed)));
-    if (!lic && !inApp) row.appendChild(el('p', { class: 'set-help', id: 'sub-how' }, tx('subHow', 'Subscribe with PayPal (card or PayPal balance).')));
     const table = el('table', { class: 'sub-plans', id: 'sub-plans' });
     const thead = document.createElement('thead');
     const hr = document.createElement('tr');
@@ -982,6 +959,26 @@
     const fr = el('tr', { class: 'sub-plan-free', 'data-tier': 'free' });
     const fd = el('td', { colspan: '3', class: 'sub-plan-desc' }, tx('subFreeTop', 'Free: private meetings up to 5 people; public open-floor meetings always free'));
     fr.appendChild(fd); tb.appendChild(fr);
+    // $1 four-hour pass: one row after Free and before the $2 plan, one button.
+    const pr = el('tr', { class: 'sub-plan-pass', 'data-tier': 'pass' });
+    let passDesc = tx('subPassDesc', 'Unlimited people for 4 hours');
+    if (sel.pass && heldCred.now && Number.isFinite(heldCred.now.until)) {
+      passDesc = passDesc + ' · ' + fill(tx('passUntil', 'Unlimited until {until}'), { until: clockOf(heldCred.now.until) });
+    }
+    pr.appendChild(el('td', { class: 'sub-plan-desc' }, passDesc));
+    const ptd = el('td', { class: 'sub-plan-buy', colspan: '2' });
+    const passBtn = el('button', { type: 'button', class: BTN, style: BTN_STYLE, id: 'sub-pass-buy' }, passPrice ? tx('passForHoursAt', '{price} for 4 hours').replace('{price}', passPrice) : tx('passForHours', '$1 for 4 hours'));
+    passBtn.onclick = async () => {
+      passBtn.disabled = true; say(inApp ? '' : tx('passOpening', 'Opening PayPal…'));
+      try {
+        const r = await buyPass(say);
+        say(r && r.passJson ? tx('passThanks', 'Thank you. Your four-hour pass is on.') : inApp ? msg.textContent : tx('passNotConfirmed', 'PayPal did not confirm the payment.'));
+        paintSettings();
+      } catch (e) { passBtn.disabled = false; say(String(e.message || e)); }
+    };
+    ptd.appendChild(passBtn);
+    pr.appendChild(ptd);
+    tb.appendChild(pr);
     const onBuy = async (id, period) => {
       for (const x of row.querySelectorAll('button[data-tier]')) x.disabled = true;
       say(inApp ? '' : 'Opening PayPal…');
@@ -1014,6 +1011,7 @@
     }
     table.appendChild(tb);
     row.appendChild(table);
+    if (!inApp) row.appendChild(el('p', { class: 'set-help', id: 'sub-how' }, tx('passHow', 'Pay by card or PayPal.')));
     row.appendChild(legalLine('sub-legal', inApp));
     applySubSelection(row, sel);
     if (inApp) {
@@ -1072,21 +1070,33 @@
         paintSettings();
       } catch (e) { say(String(e.message || e)); }
     };
-    const lab = el('label', { class: 'set-help', style: 'display:block;margin-top:.4rem' }, 'Use a subscription file from another browser: ');
+    const lab = el('label', { class: 'set-help', style: 'display:block;margin-top:.4rem' }, tx('subFileUse', 'Use a subscription file from another browser: '));
     lab.appendChild(pick);
     row.appendChild(lab);
     row.appendChild(msg);
   }
+  function closeSubscribe() {
+    const m = document.getElementById('sub-modal');
+    if (m) m.style.display = 'none';
+  }
+  function wireSubModal() {
+    const m = document.getElementById('sub-modal');
+    if (!m || m.dataset.wired) return m;
+    m.dataset.wired = '1';
+    const c = document.getElementById('sub-close');
+    if (c) c.addEventListener('click', closeSubscribe);
+    m.addEventListener('click', (e) => { if (e.target === m) closeSubscribe(); });
+    return m;
+  }
   function openSettings() {
     const b = document.getElementById('setbtn');
     if (b) b.click();
-    setTimeout(() => { const g = document.getElementById('set-g-sub'); if (g && g.scrollIntoView) g.scrollIntoView({ block: 'start' }); }, 50);
   }
-  // The Subscribe entry: the Subscription group of Settings, painted before it
-  // is scrolled to.
+  // The Subscription entry: the Subscription dialog, same window as Settings.
   function openSubscribe() {
-    openSettings();
-    paintSettings().then(() => { const g = document.getElementById('set-g-sub'); if (g && g.scrollIntoView) g.scrollIntoView({ block: 'start' }); }, () => {});
+    const m = wireSubModal();
+    if (m) m.style.display = 'flex';
+    paintSettings().catch(() => {});
     return true;
   }
 
@@ -1145,8 +1155,7 @@
   function boot() {
     if (booted) return;
     booted = true;
-    const b = document.getElementById('setbtn');
-    if (b) b.addEventListener('click', () => { paintSettings().catch(() => {}); });
+    wireSubModal();
     keepFresh().catch(() => {});
     resumePending().catch(() => {});
     if (RAIL()) {
