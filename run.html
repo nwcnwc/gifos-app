@@ -1312,6 +1312,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <button id="adm-enable" data-t="admEnable">Sign in as host</button>
       </div>
       <div id="adm-panel" style="display:none;text-align:left">
+        <!-- A private meeting's host only: the host password this device kept when it created the meeting or signed in. -->
+        <section id="adm-hpw" aria-labelledby="adm-hpw-h" hidden>
+          <h4 id="adm-hpw-h" data-t="admHpwH">Host password</h4>
+          <button type="button" id="adm-hpw-show" data-t="admHpwShow" aria-expanded="false" aria-controls="adm-hpw-box">Show host password</button>
+          <div id="adm-hpw-box" hidden style="display:flex;gap:.5rem;align-items:center;margin:.45rem 0"><input id="adm-hpw-val" type="text" readonly autocomplete="off" spellcheck="false" data-al="admHpwH" aria-label="Host password" style="flex:1;min-width:0;font-family:monospace"><button type="button" id="adm-hpw-copy" data-t="admHpwCopy">Copy</button></div>
+          <p id="adm-hpw-none" hidden data-t="admHpwNone" style="margin:.45rem 0">This device did not keep the host password. A device keeps it only when it created this meeting, or signed in as host, after this update.</p>
+          <small id="adm-hpw-note" data-t="admHpwNote" style="display:block;margin-top:.4rem;opacity:.85">You can only change this by creating a new private meeting.</small>
+        </section>
         <section id="adm-chat" aria-labelledby="adm-chat-h">
           <h4 id="adm-chat-h" data-t="admChatH">Chat options</h4>
           <label class="admopt"><input type="checkbox" id="adm-chat-guests"><span><span data-t="admChatGuests">Guests can chat</span><small data-t="admChatGuestsSub">Off: only hosts can post.</small></span></label>
@@ -20330,6 +20338,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (amAdmin) {
         setup.style.display = 'none'; panel.style.display = '';
         paintChatOptions();
+        paintHostPw();
         document.getElementById('adm-hint').textContent = uiText('admHintOn', 'You are a host of this room. Hosts can lock the room with a room password (the key to clear video), mute or blur someone for everyone, and ban people. Anyone who knows the host password can open Host and sign in too.');
       } else {
         setup.style.display = ''; panel.style.display = 'none';
@@ -20339,6 +20348,42 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       admModal.style.display = 'flex';
     }
     document.getElementById('admbtn').onclick = showAdmModal;
+    // Show host password (a private meeting's host only). The password is the
+    // one this device kept (gifos_vhpw_<room>.<verifier>) when it created the
+    // meeting or signed in as host. It is never logged, mirrored or put in a
+    // link, and it leaves the page again whenever the popup closes. It cannot
+    // change: the meeting's link carries the verifier made from it.
+    const hostPwKey = () => 'gifos_vhpw_' + roomKey();
+    function hostPwShown() { return !document.getElementById('adm-hpw-box').hidden || !document.getElementById('adm-hpw-none').hidden; }
+    function paintHostPw(show) {
+      const sec = document.getElementById('adm-hpw');
+      const btn = document.getElementById('adm-hpw-show');
+      const box = document.getElementById('adm-hpw-box');
+      const val = document.getElementById('adm-hpw-val');
+      const none = document.getElementById('adm-hpw-none');
+      const copy = document.getElementById('adm-hpw-copy');
+      // A public open-floor meeting has no host password, even for whoever took charge of it.
+      sec.hidden = !(amAdmin && av);
+      let pw = '';
+      if (show && !sec.hidden) { try { pw = localStorage.getItem(hostPwKey()) || ''; } catch (e) { pw = ''; } }
+      val.value = pw;
+      box.hidden = !(show && pw);
+      none.hidden = !(show && !pw && !sec.hidden);
+      copy.textContent = uiText('admHpwCopy', 'Copy');
+      btn.textContent = show ? uiText('admHpwHide', 'Hide host password') : uiText('admHpwShow', 'Show host password');
+      btn.setAttribute('aria-expanded', show ? 'true' : 'false');
+    }
+    document.getElementById('adm-hpw-show').onclick = () => paintHostPw(!hostPwShown());
+    document.getElementById('adm-hpw-copy').onclick = () => {
+      const val = document.getElementById('adm-hpw-val'), copy = document.getElementById('adm-hpw-copy');
+      if (!val.value) return;
+      const done = () => { copy.textContent = uiText('admHpwCopied', 'Copied'); };   // back to Copy on the next paint (Hide, Show, reopening)
+      const fallback = () => { try { val.select(); if (document.execCommand('copy')) done(); } catch (e) {} };
+      try { navigator.clipboard.writeText(val.value).then(done, fallback); } catch (e) { fallback(); }
+    };
+    // Every way the popup closes takes the password off the page.
+    new MutationObserver(() => { if (admModal.style.display === 'none' && document.getElementById('adm-hpw-val').value) paintHostPw(false); })
+      .observe(admModal, { attributes: true, attributeFilter: ['style'] });
     document.getElementById('adm-close').onclick = () => { admModal.style.display = 'none'; };
     document.getElementById('adm-enable').onclick = async () => {
       // Sign in only: prove knowledge of THIS room's password (salt = this room).
@@ -20370,6 +20415,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       btn.disabled = false;
       document.getElementById('adm-pass').value = '';
       try { localStorage.setItem(admStoreKey(), admKey); } catch (e2) {}
+      try { localStorage.setItem(hostPwKey(), v); } catch (e2) {}   // Show host password (never mirrored)
       mirrorRoomState({ admin: true });
       admModal.style.display = 'none';
       sayState('adminSignedIn');
@@ -21300,6 +21346,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const K = await deriveAdminKey(chosen, pass);
           const V = (await net.edKeysFromSeedHex(K)).verifier; // V commits to the PUBLIC key (§9)
           try { localStorage.setItem('gifos_vadm_' + chosen + '.' + V, K); } catch (e) {}
+          try { localStorage.setItem('gifos_vhpw_' + chosen + '.' + V, pass); } catch (e) {}   // Show host password (this device only, never mirrored)
           mirrorRoomState({ admin: true }, chosen + '.' + V);
           // The ROOM password (optional): pre-seed the room-password store —
           // exactly what the Password button writes — and the admin's normal
@@ -38635,6 +38682,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const K = await deriveAdminKey(chosen, pass);
       const V = (await net.edKeysFromSeedHex(K)).verifier; // V commits to the PUBLIC key K seeds (§9) — 96-bit, short link, preimage-safe
       try { localStorage.setItem('gifos_vadm_' + chosen + '.' + V, K); } catch (e) {}
+      try { localStorage.setItem('gifos_vhpw_' + chosen + '.' + V, pass); } catch (e) {}   // Show host password (this device only, never mirrored)
       mirrorRoomState({ admin: true }, chosen + '.' + V);
       // Optional GUEST password: pre-seed the room-password store (what the
       // Password button writes) — the §LOCK re-assert locks the new room the
