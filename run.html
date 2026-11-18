@@ -22688,7 +22688,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       } else if (m.k === 'tr') {
         if (takeTr(m.m)) {
           if (trKeeps()) renderTranscript(); // a page that keeps no transcript shows the line (CC) and lets it go (trForget)
-          showCaption(m.m.byId, m.m.text, m.m.w !== m.m.byId ? String(m.m.by || '').slice(0, 40) : '');
+          showCaption(m.m.byId, trNote(m.m) + m.m.text, m.m.w !== m.m.byId ? String(m.m.by || '').slice(0, 40) : '');
           paintTxMark();
           // not gossiped onward (see chat): a caption line is one flood
         }
@@ -32177,11 +32177,40 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // speakers, not a's own.
     // Shared words: most of the shorter line's (TR_ECHO_SHARE), three at least.
     const TR_ECHO_SHARE = 0.6;
+    // A near-copy (TR_ECHO_SURE of the shorter line, the same moment) is the
+    // echo for certain and never stands. Below that a person may really have
+    // repeated someone (2026-11-17, Nathan: a wrong caption with a note beats
+    // none): the line stays, marked [echo?].
+    const TR_ECHO_SURE = 0.8;
+    // THE NOTES (2026-11-17, Nathan): a line we are unsure of is kept and
+    // marked, never thrown away. nt on the line (and on the wire); each page
+    // shows it in its own UI language. Older pages ignore nt.
+    //   lang  the writer's engine listened in another language than the
+    //         speaker's (picked, learned, or device language)
+    //   who   my raw microphone heard it while my call track carried no voice
+    //   echo  most of its words are someone else's, said at the same time
+    //   hard  the engine itself was unsure (Web Speech confidence)
+    const TR_NOTES = { lang: ['trNoteLang', '[wrong language?]'], who: ['trNoteWho', '[not sure who spoke]'], echo: ['trNoteEcho', '[echo?]'], hard: ['trNoteHard', '[hard to hear]'] };
+    function trNote(l) { const n = l && TR_NOTES[l.nt]; return n ? uiText(n[0], n[1]) + ' ' : ''; }
+    // The echo strength of a against b: 2 a near-copy (dropped), 1 most words
+    // shared (kept, marked), 0 none.
+    function trEchoLevel(a, b) {
+      if (!trEchoOf(a, b)) return 0;
+      const wa = trWords(trNorm(a.text)), wb = trWords(trNorm(b.text));
+      let shared = 0; for (const x of wa) if (wb.has(x)) shared++;
+      return shared >= TR_ECHO_SURE * Math.min(wa.size, wb.size) ? 2 : 1;
+    }
     function trEchoOf(a, b) {
       if (a.inp !== 'mic' || !a.byId || !b.byId || a.byId === b.byId || trGeneric(a.byId) || trGeneric(b.byId)) return false;
+      // A line its writer's call track carried no voice for (nt 'who') is
+      // never the voice another line repeats: a voiced line is not its echo,
+      // and an unvoiced raw line is the copy whichever engine finished first
+      // (2026-11-17: Jo's unvoiced copy, finished first, threw out Ann's own line).
+      const aw = a.nt === 'who', bw = b.nt === 'who';
+      if (bw && !aw) return false;
       // Both raw: the copy is the one the engine finished later (the echo
       // is heard after the voice it repeats); the same end, the later start.
-      if (b.inp === 'mic') { const ae = a.end || a.at || 0, be = b.end || b.at || 0; if (be > ae || (be === ae && (b.at || 0) > (a.at || 0))) return false; }
+      if (b.inp === 'mic' && !(aw && !bw)) { const ae = a.end || a.at || 0, be = b.end || b.at || 0; if (be > ae || (be === ae && (b.at || 0) > (a.at || 0))) return false; }
       if (!trOverlap(a, b)) return false;
       const wa = trWords(trNorm(a.text)), wb = trWords(trNorm(b.text));
       let shared = 0; for (const x of wa) if (wb.has(x)) shared++;
@@ -32189,10 +32218,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // My raw microphone's final, before it goes anywhere: is it the echo of
     // a line this page already holds from another person?
-    function trEchoHeld(text, at) {
+    function trEchoHeld(text, at, unvoiced) {
       const m = { byId: myId, inp: 'mic', at: at, end: Date.now(), text: String(text || '') };
-      for (const l of trs.values()) if (trEchoOf(m, l)) return true;
-      return false;
+      if (unvoiced) m.nt = 'who';
+      let lv = 0;
+      for (const l of trs.values()) lv = Math.max(lv, trEchoLevel(m, l));
+      return lv;
     }
     function trSame(a, b) {
       if (trGap(a, b) >= 8000) return false;
@@ -32221,6 +32252,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function trBetter(a, b) {
       if (trLangClash(a, b)) return !!a.ld;
       if (trRawEar(a, b)) return a.inp !== 'mic';
+      if (!!a.nt !== !!b.nt) return !a.nt; // a line nobody doubts beats a marked one
       const ra = trRank(a), rb = trRank(b);
       if (ra !== rb) return ra > rb;
       if ((a.at || 0) !== (b.at || 0)) return (a.at || 0) < (b.at || 0);
@@ -32249,8 +32281,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // An echo never stands: the new line is one ('echo', dropped), or a
       // held raw line is the echo of the new one (it leaves).
       for (const l of Array.from(trs.values())) {
-        if (trEchoOf(m, l)) { trDrops++; return 'echo'; }
-        if (trEchoOf(l, m)) { trs.delete(l.id); trDrops++; if (typeof capTrace === 'function') capTrace(l, 'echo'); }
+        const mv = trEchoLevel(m, l);
+        if (mv === 2) { trDrops++; return 'echo'; }
+        if (mv === 1 && !m.nt) m.nt = 'echo';
+        const lv = trEchoLevel(l, m);
+        if (lv === 2) { trs.delete(l.id); trDrops++; if (typeof capTrace === 'function') capTrace(l, 'echo'); }
+        else if (lv === 1 && !l.nt) l.nt = 'echo';
       }
       const same = [];
       for (const l of trs.values()) if (trSame(l, m)) same.push(l);
@@ -32303,6 +32339,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (['browser', 'whisper', 'local', 'native'].indexOf(m.eng) >= 0) line.eng = m.eng;
       if (['mic', 'track', 'mix', 'rx'].indexOf(m.inp) >= 0) line.inp = m.inp;
       if (m.dm === 0 || m.dm === 1) line.dm = m.dm;
+      if (Object.prototype.hasOwnProperty.call(TR_NOTES, m.nt)) line.nt = m.nt;
       const via = m.via; // this page's own line: its devices, kept in the export only
       if (via) Object.defineProperty(line, 'via', { value: via });
       const merged = trMerge(line);
@@ -32363,8 +32400,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const out = [];
       for (const l of lines) {
         const last = out[out.length - 1];
-        if (last && last.byId === l.byId && last.w === l.w && (last.lang || '') === (l.lang || '') && l.at - last.end < 5000 && last.text.length + l.text.length < 700) { last.text += ' ' + l.text; last.end = l.at; }
-        else out.push({ byId: l.byId, by: l.by, at: l.at, end: l.at, text: l.text, w: l.w, src: l.src, lang: l.lang || '' });
+        if (last && last.byId === l.byId && last.w === l.w && (last.lang || '') === (l.lang || '') && (last.nt || '') === (l.nt || '') && l.at - last.end < 5000 && last.text.length + l.text.length < 700) { last.text += ' ' + l.text; last.end = l.at; }
+        else out.push({ byId: l.byId, by: l.by, at: l.at, end: l.at, text: l.text, w: l.w, src: l.src, lang: l.lang || '', nt: l.nt || '' });
       }
       return out;
     }
@@ -32403,7 +32440,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const lines = trBlocks();
       const mine = trLang();
       const html = lines.length
-        ? lines.map((l) => '<div class="trline"><b>' + (typeof avatarChip === 'function' ? (avatarChip(l.byId) || '') : '') + esc(l.by) + '</b>' + esc(l.text) + (l.lang && l.lang !== mine ? ' <small style="color:var(--muted,#8888aa)">' + esc(l.lang) + '</small>' : '') + '</div>').join('')
+        ? lines.map((l) => '<div class="trline"><b>' + (typeof avatarChip === 'function' ? (avatarChip(l.byId) || '') : '') + esc(l.by) + '</b>' + esc(trNote(l) + l.text) + (l.lang && l.lang !== mine ? ' <small style="color:var(--muted,#8888aa)">' + esc(l.lang) + '</small>' : '') + '</div>').join('')
         : '<small data-t="trEmpty" style="color:#667">' + esc(uiText('trEmpty', 'This meeting is being written down. Lines gather here under each speaker\'s name. Anyone here can open this and download it.')) + '</small>';
       paintLog(log, html);
     }
@@ -32423,7 +32460,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // how: '' as above; 'tl' a translation (kept and sent as above, marked);
     // 'lo' a translation of my own voice, kept and shown here only; 'out' my
     // own words for the room, sent only (this page shows its translation).
-    function addTranscriptLine(text, at, forId, label, src, lang, detected, end, how, via) { // detected: the engine found the language itself (Whisper); end: when the clip ended; via: ccVia (the engine and what it heard)
+    function addTranscriptLine(text, at, forId, label, src, lang, detected, end, how, via, nt) { // detected: the engine found the language itself (Whisper); end: when the clip ended; via: ccVia (the engine and what it heard)
       text = String(text || '').trim();
       if (!text) return;
       // The bot's own microphone is never written down, and neither is a line
@@ -32436,6 +32473,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (end > m.at) m.end = end;
       if (how === 'tl' || how === 'lo') m.tl = 1;
       if (how === 'lo') m.lo = 1;
+      if (nt && Object.prototype.hasOwnProperty.call(TR_NOTES, nt)) m.nt = nt;
       if (via && typeof ccVia === 'function') via = ccVia(via.eng, via.inp); // the devices, read now
       if (via) {
         m.eng = via.eng; m.inp = via.inp;
@@ -32453,7 +32491,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!takeTr(m)) return; // the same sentence is already held by a better line
       if (send) sendAll({ k: 'tr', m });
       renderTranscript();
-      showCaption(m.byId, m.text, mine ? '' : m.by);
+      showCaption(m.byId, trNote(m) + m.text, mine ? '' : m.by);
     }
     // What the bot SAYS is written down by the bot, from the words it was
     // handed: its microphone is never captioned (above), so this is the only
@@ -33795,7 +33833,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       // One engine, one language: a voice its own page captions is left to
       // that page, and a voice in another language would come out as nonsense.
-      for (const id of Array.from(out.keys())) if (id !== 'me' && (capCovered(id) || !earLangOk(id))) out.delete(id);
+      // A voice in another language stays in (2026-11-17, Nathan: a wrong
+      // caption marked [wrong language?] beats none); its lines carry the note.
+      for (const id of Array.from(out.keys())) if (id !== 'me' && capCovered(id)) out.delete(id);
       return out;
     }
     function ccMixDrop(id) {
@@ -33860,6 +33900,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // 2 s of the previous one continues that speaker. null: nobody talked
     // (noise, or a voice now gone).
     const CC_BURST_MS = GifOS.timings.CC_BURST_MS;
+    // [hard to hear] from the engine's confidence: OFF. Measured 2026-11-17
+    // (Chrome on-device engine, en-US, the gate2 speech fixture clips):
+    // clean English 0.955; English under noise 0.90-0.95 with only 6-11 of 13
+    // words right; German heard as English 0.83-0.97 with none right. The
+    // number does not tell a wrong line from a right one, so no threshold.
+    const CC_HARD_CONF = 0;
     const CC_GATE_TAIL_MS = GifOS.timings.CC_GATE_TAIL_MS; // the own-voice gate's one grace: the meter's slowest tick
     function ccMixSpeaker() {
       let best = null, ms = 0;
@@ -33909,6 +33955,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const v = ccLang();
       return v === 'auto' ? (navigator.language || 'en-US') : v;
     }
+    // [wrong language?]: my engine listened in langTag, the speaker said (or
+    // their device says) another language.
+    function ccEarLangNote(pid, langTag) {
+      const st = statusOf.get(pid); const l = st && trLangOf(st.lang || st.dl);
+      return l && langTag && l !== trLangOf(langTag) ? 'lang' : '';
+    }
+    // [hard to hear]: the engine's own confidence, where it gives one, under
+    // CC_HARD_CONF (0 = off: see timings for the measured numbers).
+    function ccHardNote(alt) {
+      const c = alt && typeof alt.confidence === 'number' ? alt.confidence : 0;
+      return c > 0 && c < CC_HARD_CONF ? 'hard' : '';
+    }
     function startSpeech(input) { // input: the room-ear mix; none = the raw microphone
       if (ccEngine() === 'local') return false;
       if (speechGaveUp) return false;
@@ -33926,9 +33984,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         rec.langTag = trLangOf(speech.lang);
         rec.eng = typeof phoneCaptions === 'function' && phoneCaptions() ? 'native' : 'browser'; // the Meet app's own engine stands in for the browser's
         speech.onresult = (e) => {
-          // A stopped (or replaced) session's late final, or a line while I am
-          // muted: never mine to send.
-          if (speech !== rec || (myStatus.muted && !rec.input)) {
+          // A line while I am muted is never mine to send (privacy: muted means
+          // not in the meeting). A stopped session's late final while I am NOT
+          // muted is the tail of words I said: it is kept (2026-11-17, Nathan:
+          // a real line is never thrown away).
+          if (myStatus.muted && (!rec.input || speech !== rec)) {
             for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) { trDrops++; if (typeof capTraceGate === 'function') capTraceGate(rec.eng, rec.langTag, myVoiceFrom || 0, speech !== rec ? 'late' : 'muted', rec.input ? 'mix' : 'mic'); }
             return;
           }
@@ -33941,8 +34001,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               if (!e.results[i].isFinal) continue;
               const who = ccMixSpeaker();
               if (!who) { trDrops++; continue; }
-              if (who === 'me') addTranscriptLine(e.results[i][0].transcript, myVoiceFrom || 0, null, null, 'mic', rec.langTag, rec.langTag === trLangKnown(), Date.now(), '', { eng: rec.eng, inp: 'mix' });
-              else addTranscriptLine(e.results[i][0].transcript, 0, who, null, 'ear', rec.langTag, false, 0, '', { eng: rec.eng, inp: 'mix' });
+              if (who === 'me') addTranscriptLine(e.results[i][0].transcript, myVoiceFrom || 0, null, null, 'mic', rec.langTag, rec.langTag === trLangKnown(), Date.now(), '', { eng: rec.eng, inp: 'mix' }, ccHardNote(e.results[i][0]));
+              else addTranscriptLine(e.results[i][0].transcript, 0, who, null, 'ear', rec.langTag, false, 0, '', { eng: rec.eng, inp: 'mix' }, ccEarLangNote(who, rec.langTag) || ccHardNote(e.results[i][0]));
             }
             return;
           }
@@ -33965,12 +34025,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             // The echo of a line I already hold from someone else: dropped
             // here, never sent, and it does not use up my voice: the final
             // that follows may be my own sentence.
-            if (heard && typeof trEchoHeld === 'function' && trEchoHeld(e.results[i][0].transcript, myVoiceFrom || 0)) { trDrops++; if (typeof capTraceGate === 'function') capTraceGate(rec.eng, rec.langTag, myVoiceFrom || 0, 'echo'); continue; }
+            const echo = typeof trEchoHeld === 'function' ? trEchoHeld(e.results[i][0].transcript, myVoiceFrom || 0, !heard) : 0;
+            if (echo === 2) { trDrops++; if (typeof capTraceGate === 'function') capTraceGate(rec.eng, rec.langTag, myVoiceFrom || 0, 'echo'); continue; }
             mine = true;
-            if (!heard) { trDrops++; if (clog) clog('tr own drop', 'gate', sinceVoice, String(e.results[i][0].transcript).slice(0, 40)); if (typeof capTraceGate === 'function') capTraceGate(rec.eng, rec.langTag, myVoiceFrom || 0); continue; }
+            // No voice on my call track for this line: kept, marked [not sure
+            // who spoke] (2026-11-17, Nathan: a marked line beats a lost one).
+            if (!heard && clog) clog('tr own mark', 'gate', sinceVoice);
+            const nt = !heard ? 'who' : echo === 1 ? 'echo' : ccHardNote(e.results[i][0]);
             // the line spans from when this stretch of my voice began to now; its language is as good as
             // detected when it is the one this page knows (picked, or learned from the room's Whisper pages)
-            addTranscriptLine(e.results[i][0].transcript, myVoiceFrom || 0, null, null, 'mic', rec.langTag, rec.langTag === trLangKnown(), Date.now(), '', { eng: rec.eng, inp: 'mic' });
+            addTranscriptLine(e.results[i][0].transcript, myVoiceFrom || 0, null, null, 'mic', rec.langTag, rec.langTag === trLangKnown(), Date.now(), '', { eng: rec.eng, inp: 'mic' }, nt);
           }
           if (mine) myVoiceSinceFinal = false;
         };
@@ -34118,7 +34182,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       const lines = trBlocks();
       const last = lines.length ? lines[lines.length - 1] : null;
-      if (last) showCaption(last.byId, last.text);
+      if (last) showCaption(last.byId, trNote(last) + last.text);
     };
     const ccDockBtn = document.getElementById('ccdock');
     if (ccDockBtn) ccDockBtn.onclick = () => document.getElementById('ccbtn').click();
@@ -34199,7 +34263,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function transcriptFile() {
       const blocks = trBlocks();
       const mine = trLang();
-      const lines = blocks.map((l) => '[' + new Date(l.at).toLocaleTimeString() + '] ' + l.by + (l.lang && l.lang !== mine ? ' (' + l.lang + ')' : '') + ': ' + l.text);
+      const lines = blocks.map((l) => '[' + new Date(l.at).toLocaleTimeString() + '] ' + l.by + (l.lang && l.lang !== mine ? ' (' + l.lang + ')' : '') + ': ' + trNote(l) + l.text);
       return { blob: new Blob([lines.join('\n') + '\n'], { type: 'text/plain' }), name: meetDownloadName('Transcript', room, blocks.length ? blocks[0].at : 0, 'txt'), lines: lines.length };
     }
     document.getElementById('trdl').onclick = () => {
@@ -41906,8 +41970,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       followWaitState: () => followWait ? { id: followWait.id, needed: Array.from(followWait.needed), acked: Array.from(followWait.acked) } : null,
       statusText: () => statusEl.textContent,
       addTranscript: (t) => addTranscriptLine(t),
-      transcriptTexts: () => (trKeeps() ? Array.from(trs.values()).sort((a, b) => a.at - b.at) : []).map((l) => l.by + ': ' + l.text), // a page with Transcript off holds only a 20 s window for the CC overlay: it reads as nothing here, as in its Transcript window
-      transcriptBlocks: () => trBlocks().map((l) => l.by + ': ' + l.text),
+      transcriptTexts: () => (trKeeps() ? Array.from(trs.values()).sort((a, b) => a.at - b.at) : []).map((l) => l.by + ': ' + trNote(l) + l.text), // a page with Transcript off holds only a 20 s window for the CC overlay: it reads as nothing here, as in its Transcript window
+      transcriptBlocks: () => trBlocks().map((l) => l.by + ': ' + trNote(l) + l.text),
       captionsForTest: () => ({ mix: Array.from(ccMix.ins.keys()), drops: trDrops, show: !!ccShow, send: capSend(), mode: trMode(),
         lines: Array.from(trs.values()).sort((a, b) => a.at - b.at).map((l) => ({ by: l.by, byId: l.byId, w: l.w, src: l.src, lang: l.lang || '', ld: l.ld || 0, at: l.at, text: l.text })) }),
       // The transcript settings and what they produced on this page.

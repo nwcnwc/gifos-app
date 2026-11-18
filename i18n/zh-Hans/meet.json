@@ -984,5 +984,10 @@
  "meet.appEmptyNote": "它们会在新标签页中打开。回到这里后再点一次“运行应用”。",
  "meet.appNoStarters": "这台设备上还没有入门应用。",
  "meet.spkbtnTip": "选择会议声音从哪里播放",
- "meet.spkChooseAria": "选择扬声器"
+ "meet.spkChooseAria": "选择扬声器",
+ "meet.trNoteLang": "[语言可能不对？]",
+ "meet.trNoteWho": "[不确定是谁说的]",
+ "meet.trNoteEcho": "[回声？]",
+ "meet.trNoteHard": "[听不清]",
+ "meet.stCaptionsOtherMic": "字幕正在听的麦克风与通话使用的不同。请把通话麦克风设为系统默认，或在 设置 > 字幕 中开启 Whisper。"
 }

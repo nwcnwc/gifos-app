@@ -985,5 +985,9 @@
   "meet.appEmptyNote": "They open in a new tab. Come back here and tap Run app again.",
   "meet.appNoStarters": "The starter apps are not on this device yet.",
   "meet.spkbtnTip": "Choose where the meeting's sound plays",
-  "meet.spkChooseAria": "Choose a speaker"
+  "meet.spkChooseAria": "Choose a speaker",
+  "meet.trNoteLang": "[wrong language?]",
+  "meet.trNoteWho": "[not sure who spoke]",
+  "meet.trNoteEcho": "[echo?]",
+  "meet.trNoteHard": "[hard to hear]"
 }
