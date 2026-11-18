@@ -148,7 +148,7 @@
       if (this.state === 1 && this.oldCell && (this.rcPendAt >= 0 || this.rcRound2) && m.roster.length) { this.roster = kvCopy(m.roster); this.haveRoster = true; this.lastReach = TICK; return; }   // L3.10.6
       if (this.state === 1) {
         if (noCell) { this.retryAt = TICK - 10; return; }
-        if (this.entryTerm() && m.from >= 0) { this.gateway = m.from; this.islandAskAt = -1; this.islandAskN = 0; this.islandAsked.clear(); this.islandLast = false; }
+        if (this.entryTerm() && m.from >= 0) { this.gateway = m.from; this.islandAskAt = -1; this.islandAskN = 0; this.subEarly = false; this.islandAsked.clear(); this.islandLast = false; }
         if (m.line >= 0) { this.lineAdopt(m.line, m.lineAt, 'home'); if (m.lineF) this.lineFork = true; }
         this.roster = kvCopy(m.roster); this.haveRoster = true; this.lastReach = TICK; this.seatTries = 0; this.resumeTries = 0;
         let t;
