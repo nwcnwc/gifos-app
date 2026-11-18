@@ -6217,10 +6217,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // Follow speaker does not skip a camera-off person: that person is a
     // name card in the strip (fsSources).
-    // Each source says what it carries. fit 'cover' is one camera face, which
-    // fills the screen; 'contain' is a shared screen, a service program or a
-    // packed picture of several people, which must show whole. The stage is
-    // one face only while one person is on it and nobody shares.
+    // Each source says what it carries: 'cover' is one camera face, 'contain' a shared screen, a service program or a
+    // packed picture of several people. The stage is one face only while one person is on it and nobody shares.
+    // The big view shows every source whole either way (fsRefresh: never cropped to fill).
     function fsFeedLive(v) {
       const st = v && v.srcObject;
       const t = st && typeof st.getVideoTracks === 'function' ? st.getVideoTracks()[0] : null;
@@ -6360,7 +6359,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           showName(false);
         }
         fsmain.dataset.key = main.key;
-        if (main.fit === 'cover') fsmain.dataset.fit = 'cover'; else delete fsmain.dataset.fit;
+        // The big view shows the WHOLE picture, fitted with bars (Nathan 2026-11-18: a portrait iPhone in a landscape
+        // Focus pane showed only the sender's hat). It never crops to fill, whatever the shapes; the grid tiles still crop.
+        delete fsmain.dataset.fit;
         fsZoomPaint(fsSel === 'auto' && main.key === 'sd' ? fsZoomIds : null);
       } else {
         fsZoomPaint(null);
