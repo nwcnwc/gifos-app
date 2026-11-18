@@ -32415,15 +32415,27 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         setStatus('Captions now listen for ' + ccLangLabel() + '.');
       };
     })();
-    // ON-DEVICE CAPTIONS ON A PHONE. A phone writes its own captions with a
-    // speech model that runs in this browser (GifOS.ondevice, a Web Worker):
-    // the voice never leaves the phone. It is the only engine on a phone: the
-    // browser's speech service, which sends the voice to its maker, is never
-    // started there, and Whisper is not offered. A phone that cannot run the
-    // model, or a language with no model yet, gets no captions from this page
-    // and is told so. Clips are cut and queued exactly as for Whisper, and the
-    // lines go to the room the same way.
-    const CC_ON_PHONE = mobileDevice(navigator);
+    // ON-DEVICE CAPTIONS ON AN ANDROID PHONE. The phone writes its captions
+    // with a speech model that runs in this browser (GifOS.ondevice, a Web
+    // Worker): the voice never leaves the phone. Android only (2026-11-18,
+    // measured on two Moto g24s and an iPhone SE2 on live 0.9.26.19): while
+    // Chrome holds the microphone for the call, Android silences Google's
+    // recognizer, so the browser's speech engine writes nothing on an Android
+    // phone, from the mic or from the call's audio, and its on-device mode
+    // answers "language not supported". The on-device model hears the call's
+    // own audio and writes it. An iPhone's speech engine writes the same
+    // sentences (4 of 4 clips), so an iPhone keeps it, as a computer does.
+    // On an Android phone this is the only engine: Whisper is not offered.
+    // A phone that cannot run the model, or a language with no model yet,
+    // gets no captions from this page and is told so. Clips are cut and
+    // queued exactly as for Whisper, and the lines go to the room the same
+    // way: my own voice, and (keep / share) the voices nobody captions.
+    function ccOnAndroid(nav) {
+      nav = nav || {};
+      const android = /Android/i.test(nav.userAgent || '') || !!(nav.userAgentData && nav.userAgentData.platform === 'Android');
+      return android && MP.mobileDevice(nav);
+    }
+    const CC_ON_PHONE = ccOnAndroid(navigator);
     const ccLocal = { eng: null, opening: null, lang: '', state: '', loaded: 0, total: 0, cached: false, err: '', step: -1, said: '' };
     let ccLocalWhyV = null;
     // '' when this phone can run the model, else why not (the module's answer,
@@ -32995,7 +33007,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // Translating, my own voice is transcribed first while I send my captions
       // (the room's line goes out as soon as it would without translating),
       // and every other voice is translated.
-      const task = job.task || (trEnOn && !(job.id === 'me' && capSend()) ? 'translate' : 'transcribe');
+      // The on-device engine only transcribes: its line is in the language it heard, never a translation.
+      const task = local ? 'transcribe' : (job.task || (trEnOn && !(job.id === 'me' && capSend()) ? 'translate' : 'transcribe'));
       let model = 'base';
       if (typeof wspModel === 'function') {
         const picked = wspModel();
@@ -33122,7 +33135,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const ll = translated ? 'en' : rl, lf = own && found, how = own ? '' : 'tl';
           if (job.id === 'me') {
             if (job.lo || (translated && !own)) addTranscriptLine(text, job.at, null, null, 'mic', 'en', false, end, 'lo', { eng: wEng, inp: 'track' }); // my words in English, for this page only
-            else if (!trEnOn || trLangOf(rl) === 'en') addTranscriptLine(text, job.at, null, null, 'mic', ll, lf, end, '', { eng: wEng, inp: 'track' });
+            else if (!trEnOn || local || trLangOf(rl) === 'en') addTranscriptLine(text, job.at, null, null, 'mic', ll, lf, end, '', { eng: wEng, inp: 'track' }); // the on-device engine cannot translate: one line, in the language heard
             else {
               // My own words go to the room in my language; this page shows
               // them in English: the same clip once more, told the language
@@ -33197,7 +33210,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const en = trEnOn;
       const me = (capSend() || en) && ((ccEngine() === 'whisper' && whisperReady()) || (ccEngine() === 'local' && !ccLocalQ.blocked())) && !myStatus.muted;
       if (!wspPaused && me) want.add('me');
-      if (!wspPaused && (trWrites() || en) && ccEngine() === 'whisper' && whisperReady()) {
+      // The on-device engine (an Android phone) writes the voices nobody
+      // captions, as the browser engine's room ear does on other devices: one
+      // model, one language, so a voice its own page captions is left to it.
+      const localEar = ccEngine() === 'local' && !ccLocalQ.blocked() && trWrites();
+      if (!wspPaused && (((trWrites() || en) && ccEngine() === 'whisper' && whisperReady()) || localEar)) {
         const stagers = (typeof stageIds === 'function') ? stageIds() : [];
         const stageSet = new Set(stagers);
         const talking = (pid) => (typeof speakingOf !== 'undefined' && speakingOf && speakingOf.get(pid));
@@ -33206,6 +33223,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (!pid || (typeof myId !== 'undefined' && pid === myId) || queued.indexOf(pid) >= 0) return;
           const st = statusOf.get(pid) || {};
           if (st.muted || st.bot || (modOf(pid).mute && modOf(pid).mute.on)) return;
+          if (localEar && capCovered(pid)) return;
           const p = peers.get(pid);
           const onStage = stageSet.has(pid) && !!wspStageSid(pid);
           if (!onStage && !(p && p.connected && wspSource(pid))) return;
@@ -33245,7 +33263,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (ccMix.dest) { ccMixSync(); if (!ccMix.ins.size) syncSpeech(); return; }
       if (trWrites() && !(ccEngine() === 'whisper' && whisperReady()) && !(speech && speech.input) && ccTrackInput() && ccMixVoices().size) syncSpeech();
     }
-    setInterval(() => { trEnSync(); if (wspCaps.size || trEnOn || (trWrites() && ccEngine() === 'whisper' && whisperReady())) wspSync(); earTick(); trForget(); paintTxMark(); }, 2000);
+    setInterval(() => { trEnSync(); if (wspCaps.size || trEnOn || (trWrites() && ((ccEngine() === 'whisper' && whisperReady()) || ccEngine() === 'local'))) wspSync(); earTick(); trForget(); paintTxMark(); }, 2000);
     // ONE TAP TO INSTALL. The provider is a signed 13 MB GIF on this very site:
     // GifOS.providers.install downloads, checks the catalog hash and the
     // gifos.app signature, files it into the Providers folder and we assign it
