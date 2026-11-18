@@ -10,7 +10,7 @@
 
 GifOS Meet is free browser video meetings at https://meet.gifos.app (the same
 as https://gifos.app/meet). There are two kinds of meeting, named on screen
-"Start a public open-floor meeting" (anyone with the link joins; no host) and
+"Start a public open-floor meeting" (anyone with the link joins; everyone inside can set the password, and anyone with a $5+ plan can take over as host while they're connected) and
 "Host a private meeting" (a private, hosted meeting: the host has a host
 password and can lock the room and remove people). To host or run meetings
 with a bot (welcome bot, scheduled meetings, public open-floor meetings,
