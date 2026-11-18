@@ -284,6 +284,17 @@ function notInstalled(v) {
 //  - anything else → a clean error the caller can handle.
 //
 // A DEGRADE NEVER CROSSES THE CHANNEL BOUNDARY (bug ledger #3, 2026-08-06).
+
+// The host answers /x/run.html with a 308 to /x/run, and a navigation follows
+// that itself, so the page is cached only under the clean path. Offline, the
+// .html address finds nothing under its own key; Chromium still gets by on its
+// HTTP cache's copy of the 308, Firefox and WebKit landed on the Offline page.
+// Same answer the host gives: the redirect, to the copy this device has.
+function cleanOf(path) {
+  if (!/\.html$/.test(path)) return '';
+  return /\/index\.html$/.test(path) ? path.slice(0, -10) : path.slice(0, -5);
+}
+
 // This used to answer EVERY navigation with the ROOT /index.html — including a
 // navigation to /versions/<x.y.z>/…, which hands a pinned visitor the EDGE
 // shell. That shell then runs ITS channel loader, which re-routes by whatever
@@ -513,6 +524,8 @@ self.addEventListener('fetch', function (e) {
       if (req.mode === 'navigate') {
         var fresh = await raceNetwork(req, cache, 4000, keyOf(url));
         if (fresh) return fresh;
+        var clean = cleanOf(url.pathname);
+        if (clean && await cache.match(clean)) return Response.redirect(url.origin + clean + url.search, 308);
         return degrade(req, url, cache);
       }
       try {
