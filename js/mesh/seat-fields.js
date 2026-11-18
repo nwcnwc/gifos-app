@@ -876,6 +876,7 @@
     ["islandAskAt", "i32"],   // int = -1  (line 1898)
     ["islandAskN", "i32"],   // int = 0  (line 1898)
     ["forkAt", "i32"],   // int = -1  (line 1898)
+    ["subEarly", "bool"],   // bool = false  (line 1898)
     ["islandFounder", "bool"],   // bool = false  (line 1898)
     ["forkSilent", "bool"],   // bool = false  (line 1898)
     ["islandAsked", "<i32>"],   // OSet<int>  (line 1898)
@@ -1445,6 +1446,7 @@
     islandAskAt: -1,
     islandAskN: 0,
     forkAt: -1,
+    subEarly: false,
     islandFounder: false,
     forkSilent: false,
     islandLast: false,
