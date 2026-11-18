@@ -653,6 +653,20 @@ GUEST SEMANTICS your code should expect:
      away"). Catch and show it.
    - Private collections on a guest live in the tab and die with it.
 
+PEOPLE AND SEATS — three rules for any app where people take part
+(games, turns, seats, "N here"):
+   1. Never compare a time another device wrote. A row's timestamp comes
+      from its writer's clock, which can run seconds or minutes off yours.
+      To tell who is still here, note by YOUR clock when you saw their
+      row change, and count them gone only after it has stood still for
+      a good while (several missed beats, not one).
+   2. Free a seat when its holder is gone. A seat, a turn or a hand held
+      by someone who left must go back to the table (or be folded,
+      skipped, or claimed), never wait on them forever.
+   3. One person, one seat. Seat someone only if they hold no other
+      seat, and never seat a newcomer in a seat whose holder is still
+      here.
+
 LEAD (optional): declare records the host can "lead" —
    "lead": [{ "collection": "nav", "id": "cursor" }]
 — and the OS gives the host a communal/leading switch that flips exactly
