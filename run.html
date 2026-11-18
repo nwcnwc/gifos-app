@@ -838,7 +838,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <button data-ti="trbtnTip" data-t="transcript" aria-keyshortcuts="Alt+T" title="The meeting's live transcript" id="trbtn"><svg class="ai-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>Transcript</button>
         <button data-ti="qabtnTip" data-t="qabtn" id="qabtn" type="button" title="Questions for the host: ask one, and vote up the ones you want answered">Questions</button>
         <button data-ti="agendaTip" data-t="agendaBtn" id="agendabtn" type="button" title="Share an agenda: the items, how long each takes, and which one is on now">Agenda</button>
-        <button data-t="turnSubscribe" id="subbtn" type="button" title="GifOS plans with PayPal: admin rooms for up to 20 people ($2 a month) or unlimited ($5 a month), with video over every connection">Subscribe</button>
+        <button data-t="turnSubscribe" id="subbtn" type="button" title="GifOS plans with PayPal: hosted rooms for up to 20 people ($2 a month) or unlimited ($5 a month), with video over every connection">Subscribe</button>
       </div>
     </section>
     <section class="moregroup" data-group="video">
@@ -898,7 +898,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <h4 data-t="room">Room</h4>
       <div class="morerow">
         <button id="pwbtn" data-t="password" data-ti="pwTip" aria-keyshortcuts="Alt+L" title="Lock this room with a password">Password</button>
-        <button data-ti="capbtnTip" data-t="capBtn" id="capbtn" type="button" title="Take charge of this open room: you set its password and can remove people" style="display:none">Make me admin</button>
+        <button data-ti="capbtnTip" data-t="capBtn" id="capbtn" type="button" title="Take charge of this open-floor room: you set its password and can remove people" style="display:none">Make me admin</button>
         <span id="capnote" class="capnote" role="status" style="display:none">This room has an admin</span>
         <button data-ti="waitbtnTip" data-t="waitRoom" id="waitbtn" type="button" aria-pressed="false" title="Hold people at the door until you admit them" style="display:none">Waiting room</button>
         <button data-ti="recbtnTip" id="recbtn" data-t="record" aria-keyshortcuts="Alt+R" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
@@ -17401,7 +17401,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         net.meetPwProof(room, av, '').then((pr) => { pwProof = pr; if (meshNode && meshNode.setKey) meshNode.setKey(roomE2E); }).catch(() => {});
         try { purgeAllFiles(false); renderFiles(); reactRoomState(); } catch (e) {}
       }
-      setStatus(uiText('capOpen', 'This room is open again'));
+      setStatus(uiText('capOpen', 'This room is an open floor again'));
       capPaint();
     }
     function capCheck() {
@@ -17427,7 +17427,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       capBusy = true;
       try {
         const o = await GifOS.meetSubs.captureOrder(subsMeetId());
-        if (!o) { setStatus(uiText('capNeedPlan', 'Making yourself admin of an open room takes the $5 plan')); return; }
+        if (!o) { setStatus(uiText('capNeedPlan', 'Making yourself admin of an open-floor room takes the $5 plan')); return; }
         pwLog('capture-sent');
         relaySendObj({ t: 'capture', tk: o.tk, w: o.w });
       } finally { capBusy = false; capPaint(); }   // the server's answer (onCapFrame) says the rest
