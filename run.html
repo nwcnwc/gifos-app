@@ -6130,6 +6130,32 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       return out;
     }
+    // A FACE IN THE BIG VIEW IS CROPPED A LITTLE, NEVER A LOT (Nathan 2026-11-18). A full crop to fill showed a portrait
+    // phone in a landscape pane as the top of a head; a whole fit leaves wide bars when the shapes are close. The big
+    // view scales a camera face so that at most FS_CROP_MAX of its picture is cut (on the side that overflows), and the
+    // rest of the pane is thin bars. Shapes close enough that a full fill cuts no more than that just fill the pane.
+    // Shared screens, content and the Stadium stay whole. #fsmain's box is the part shown, centred in the pane, and
+    // meet.css crops inside it (cover, 50% 40%). Repainted on every refresh, a pane resize and a picture size change.
+    const FS_CROP_MAX = 0.25;
+    function fsCropBox(vw, vh, pw, ph, crop) {   // the shown box in pane px for a vw x vh picture, or null
+      if (!(vw > 0 && vh > 0 && pw > 0 && ph > 0)) return null;
+      const cover = Math.max(pw / vw, ph / vh), whole = Math.min(pw / vw, ph / vh);
+      const s = Math.min(cover, whole / (1 - crop));
+      const w = Math.min(pw, vw * s), h = Math.min(ph, vh * s);
+      return { x: (pw - w) / 2, y: (ph - h) / 2, w, h, fill: s >= cover, shown: (w * h) / (vw * s * vh * s) };
+    }
+    function fsFitPaint() {
+      const box = fsmain._fit === 'cover' ? fsCropBox(fsmain.videoWidth, fsmain.videoHeight, fsview.clientWidth, fsview.clientHeight, FS_CROP_MAX) : null;
+      const px = (n) => n.toFixed(1) + 'px';
+      const want = box ? { left: px(box.x), top: px(box.y), width: px(box.w), height: px(box.h), right: 'auto', bottom: 'auto' }
+        : { left: '', top: '', width: '', height: '', right: '', bottom: '' };
+      for (const k in want) if (fsmain.style[k] !== want[k]) fsmain.style[k] = want[k];
+      if (box) fsmain.dataset.fit = 'cover'; else delete fsmain.dataset.fit;
+    }
+    fsmain.addEventListener('loadedmetadata', fsFitPaint);
+    fsmain.addEventListener('resize', fsFitPaint);   // the sender turned the phone: a new picture size
+    window.addEventListener('resize', fsFitPaint);
+    if (typeof ResizeObserver === 'function') new ResizeObserver(fsFitPaint).observe(fsview);
     // The big view's zoom onto Stadium cells: a CSS transform on #fsmain, the picture itself unchanged. The box of the
     // cells, padded, fills the view as far as FS_ZOOM_MAX allows, and the picture never slides off its own edge.
     const FS_ZOOM_MAX = 8, FS_ZOOM_PAD = 0.1;
@@ -6230,7 +6256,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // name card in the strip (fsSources).
     // Each source says what it carries: 'cover' is one camera face, 'contain' a shared screen, a service program or a
     // packed picture of several people. The stage is one face only while one person is on it and nobody shares.
-    // The big view shows every source whole either way (fsRefresh: never cropped to fill).
+    // The big view crops a 'cover' source by at most FS_CROP_MAX and shows a 'contain' one whole (fsFitPaint).
     function fsFeedLive(v) {
       const st = v && v.srcObject;
       const t = st && typeof st.getVideoTracks === 'function' ? st.getVideoTracks()[0] : null;
@@ -6370,13 +6396,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           showName(false);
         }
         fsmain.dataset.key = main.key;
-        // The big view shows the WHOLE picture, fitted with bars (Nathan 2026-11-18: a portrait iPhone in a landscape
-        // Focus pane showed only the sender's hat). It never crops to fill, whatever the shapes; the grid tiles still crop.
-        delete fsmain.dataset.fit;
+        // A face is cropped by at most FS_CROP_MAX, the rest bars (fsFitPaint); anything else shows whole.
+        fsmain._fit = main.fit === 'cover' ? 'cover' : null;
+        fsFitPaint();
         fsZoomPaint(fsSel === 'auto' && main.key === 'sd' ? fsZoomIds : null);
       } else {
         fsZoomPaint(null);
-        fsmain.srcObject = null; fsmain.dataset.key = ''; fsmain.classList.remove('dark'); fsBlurClass(fsmain, 0); delete fsmain.dataset.fit;
+        fsmain.srcObject = null; fsmain.dataset.key = ''; fsmain.classList.remove('dark'); fsBlurClass(fsmain, 0); fsmain._fit = null; fsFitPaint();
         if (identOn) identCard();
         else if (broadcastFs) {
           const lineEl = document.getElementById('bc-stage-line');
@@ -6533,7 +6559,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       document.body.classList.remove('fsopen');
       fsmain.srcObject = null;
       fsmain.classList.remove('dark');
-      delete fsmain.dataset.fit;
+      fsmain._fit = null; fsFitPaint();
       fsname.classList.remove('on', 'ident', 'pic');
       for (const tv of fsstrip.querySelectorAll('video')) tv.srcObject = null; // no leftover sinks — decode work ends with the view
       fsstrip.textContent = ''; fsstrip.dataset.set = '';
