@@ -178,6 +178,7 @@
     RZ_DEBOUNCE_MS: 120,   // ms
     "SCALE.HB": 4000,   // ms
     SEAT_GONE_MS: 60000,   // ms
+    SEAT_LOCK_MAX_MS: 1500,   // ms
     SEAT_MEM_MS: 110000,   // ms
     SEED_QUIET_MS: 1500,   // ms
     SERVE_SLOT: 90,   // ms
