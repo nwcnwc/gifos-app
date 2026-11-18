@@ -6245,22 +6245,38 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         out.push({ key: 'stage:' + ((v.closest('.rowtile') || {}).dataset || {}).row, label: 'On stage', v, fit: stageFit });
       }
       if (BROADCAST) return out;
+      // Focus has every tile, camera on or off (Nathan 2026-11-18): a camera-off person is a card with their Settings
+      // picture (the one their grid tile shows) or their initial, so Focus is never a black screen.
+      const picOf = (pid, p) => {
+        try {
+          if (pid === 'me') { const a = (GifOS.store.identity() || {}).avatar; return (a && a.url) || ''; }
+          return (GifOS.meetViews && GifOS.meetViews.avatarUrl && GifOS.meetViews.avatarUrl(statusOf.get(pid), p)) || '';
+        } catch (e) { return ''; }
+      };
       for (const [pid, p] of peers) {
-        if (!p.connected) continue;
-        // Every connected peer is listed. A dark one (camera off, admin
-        // video-off, blocked share, or no ready picture) is a name card:
-        // v stays null so the raw frames are never painted. A live peer
-        // still carries the receiver blur level.
+        // Every peer the grid shows is listed: a live link, or a tile on the grid while the link is still coming up
+        // (applyComfy's own rule for a tile that takes a slot).
+        const onGrid = !!(p && p.tile && !p.headless && !p.held && p.tile.parentNode && !(p.tile.style && p.tile.style.display === 'none'));
+        if (!p.connected && !onGrid) continue;
+        // A dark one (camera off, admin video-off, blocked share, or no ready
+        // picture) is a name card: v stays null so the raw frames are never
+        // painted. Its picture wears the same blur as the tile's avatar. A live
+        // peer still carries the receiver blur level.
         const label = displayName(pid);
         const blocked = forcedCamOff(pid) || (typeof shareBlocked === 'function' && shareBlocked(pid));
         const dark = !pipReady(p.video) || seatDark(statusOf.get(pid)) || blocked;
-        if (dark) out.push({ key: 'peer:' + pid, label: label, v: null, dark: true });
+        if (dark) out.push({ key: 'peer:' + pid, label: label, v: null, dark: true, pic: picOf(pid, p), pbl: blurLevelFor(pid, true) });
         else out.push({ key: 'peer:' + pid, label: label, v: p.video, bl: blurLevelFor(pid), fit: sharingScreen(pid) ? 'contain' : 'cover' });
       }
       const sd = stadiumEl.querySelector('[data-row="sd"] video');
-      if (pipReady(sd)) out.push({ key: 'sd', label: 'The stadium', v: sd, fit: 'contain' });
+      if (pipReady(sd)) out.push({ key: 'sd', label: uiText('setStadium', 'The stadium'), v: sd, fit: 'contain' });
       // My tile shows my screen only when I share from the Stage; a share from the Row keeps my camera there.
-      if (meTile && !seatDark(myStatus) && pipReady(meTile.video)) out.push({ key: 'me', label: 'You', v: meTile.video, fit: (myStatus.scr && !shareOnlyStage('me')) ? 'contain' : 'cover' });
+      // With my camera off it is my card (my picture, or my initial).
+      if (meTile) {
+        const you = uiText('lobPreviewName', 'You');
+        if (!seatDark(myStatus) && pipReady(meTile.video)) out.push({ key: 'me', label: you, v: meTile.video, fit: (myStatus.scr && !shareOnlyStage('me')) ? 'contain' : 'cover' });
+        else out.push({ key: 'me', label: you, v: null, dark: true, pic: picOf('me'), initial: (() => { try { return nameInitial(myName()); } catch (e) { return ''; } })() });
+      }
       return out;
     }
     function fsPaintSel() { for (const th of fsstrip.children) th.classList.toggle('sel', th.dataset.key === fsSel); }
@@ -6317,6 +6333,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           fsmain.classList.add('dark');
           fsBlurClass(fsmain, 0);
           showName(true, main.label);
+          if (main.initial) { const letter = fsname.querySelector('.fsinitial'); if (letter) letter.textContent = main.initial; }
+          // A camera-off card shows the person's picture when they set one (its blur is the tile avatar's).
+          const pic = fsname.querySelector('.fspic');
+          if (pic) {
+            if (main.pic) { if (pic.getAttribute('src') !== main.pic) pic.setAttribute('src', main.pic); } else pic.removeAttribute('src');
+            fsBlurClass(pic, main.pic ? (main.pbl | 0) : 0);
+          }
+          fsname.classList.toggle('pic', !!main.pic);
         } else {
           const st = main.stream;
           // The view borrows the tile's stream. A <video> that never started
@@ -6382,9 +6406,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           let ini = el.querySelector('.fsinitial');
           if (!ini) { ini = document.createElement('span'); ini.className = 'fsinitial'; el.appendChild(ini); }
           if (s.dark) {
-            const ch = Array.from(String(s.label || ''))[0];
+            const ch = s.initial || Array.from(String(s.label || ''))[0];
             ini.textContent = ch ? ch.toUpperCase() : '\u2022';
           }
+          // a camera-off card with a picture shows the picture (blurred like the tile's avatar)
+          let pic = el.querySelector('.fspic');
+          const url = s.dark ? (s.pic || '') : '';
+          if (url && !pic) { pic = document.createElement('img'); pic.className = 'fspic'; pic.setAttribute('alt', ''); el.appendChild(pic); }
+          if (pic) {
+            if (url) { if (pic.getAttribute('src') !== url) pic.setAttribute('src', url); } else pic.removeAttribute('src');
+            fsBlurClass(pic, url ? (s.pbl | 0) : 0);
+          }
+          el.classList.toggle('pic', !!url);
         };
         if (!th) {
           th = document.createElement('div'); th.className = 'fsthumb'; th.dataset.key = s.key;

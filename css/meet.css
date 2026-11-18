@@ -598,6 +598,12 @@
   body.broadcast #fsname.ident.pic .fsinitial { display: none; }
   body.broadcast #fsname.ident.pic .fspic { display: block; width: min(320px, 50vh); height: min(320px, 50vh); object-fit: cover; border-radius: 1rem; }
   body.broadcast #fsname.ident .fsnote { display: block; color: #b9bdd6; font-size: 1.1rem; }
+  /* Focus in a meeting: a camera-off person's card shows their picture when they set one, else a readable initial. */
+  body:not(.broadcast) #fsname .fsinitial { color: #b9bdd6; }
+  body:not(.broadcast) #fsname.pic .fsinitial { display: none; }
+  body:not(.broadcast) #fsname.pic .fspic { display: block; width: min(320px, 50vh, 70vw); height: min(320px, 50vh, 70vw); object-fit: cover; border-radius: 1rem; }
+  #fsname .fspic.blur1, .fsthumb .fspic.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .009))) saturate(.9); }
+  #fsname .fspic.blur2, .fsthumb .fspic.blur2 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-max, .0225))) saturate(.75); }
   #fsstrip { position: absolute; right: 0; top: 0; bottom: 0; display: flex; flex-direction: column; gap: .5rem;
     padding: .55rem; overflow-y: auto; overflow-x: hidden; z-index: 2;
     background: linear-gradient(to left, rgba(0,0,0,.55), transparent); }
@@ -613,7 +619,10 @@
   .fsthumb .fsinitial { display: none; }
   .fsthumb.dark video { visibility: hidden; }
   .fsthumb.dark .fsinitial { display: flex; position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0;
-    align-items: center; justify-content: center; font-size: 1.7rem; font-weight: 800; color: #3a3a55; background: #14141f; }
+    align-items: center; justify-content: center; font-size: 1.7rem; font-weight: 800; color: #b9bdd6; background: #14141f; }
+  .fsthumb .fspic { display: none; }
+  .fsthumb.dark.pic .fspic { display: block; position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .fsthumb.dark.pic .fsinitial { display: none; }
   /* JOINING VEIL: until the seat is real, joining LOOKS like joining — never
      like an empty room. Sits UNDER the password/name modals (z 40): typing
      the password is part of joining. */
@@ -3421,6 +3430,7 @@
   body.view-focus .fsthumb { border: 0; border-radius: var(--r-md); background: var(--c-night); }
   body.view-focus .fsthumb.sel { box-shadow: none; outline: 2px solid var(--c-white); outline-offset: -2px; }
   body.view-focus .fsthumb.fsauto { background: var(--c-night); color: var(--c-white); }
+  body.view-focus .fsthumb.dark .fsinitial { background: #2a2a3f; } /* a camera-off card stands out from the strip behind it */
   body.view-focus .fsthumb .fslbl { left: 6px; bottom: 6px; font-size: 12px; padding: 2px 8px; border-radius: var(--r-pill); background: var(--c-scrim); color: var(--c-white); }
   @media (orientation: portrait) {
     body.view-focus #fsstrip { top: auto; left: 0; right: 0; bottom: 0; flex-direction: row; overflow-x: auto; overflow-y: hidden; }
