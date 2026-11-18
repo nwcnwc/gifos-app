@@ -36,6 +36,7 @@
     CATCH_MAX_MS: 500,   // ms
     CATCH_MIN_MS: 30,   // ms
     CC_BURST_MS: 2000,   // ms
+    CC_DEAF_MS: 60000,   // ms
     CC_GATE_TAIL_MS: 900,   // ms
     CHAT_PER_10S: 20,   // count
     CHAT_SLOW_MS: 10000,   // ms

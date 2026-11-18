@@ -33995,11 +33995,22 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // my own voice only, behind the echo gate (see startSpeech).
     // Track input and processLocally arrived together in Chrome's engine; an
     // engine without them would ignore the track and listen to the microphone.
+    // But the interface is not the engine. Every Chromium-based browser shows
+    // start(track) and processLocally, and each brings its own speech engine:
+    // Microsoft Edge's writes words nobody said from a track that Chrome's
+    // writes correctly (measured 2026-11-18, Edge 157 and Chrome 158, the same
+    // audio; Edge's engine is right on its plain microphone). So a track goes
+    // only to an engine measured to hear one: Google Chrome's. Every other
+    // browser keeps the plain microphone, and never claims the voice (cap 0).
     function ccTrackInput() {
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      return !!(SR && SR.prototype && 'processLocally' in SR.prototype);
+      if (!(SR && SR.prototype && 'processLocally' in SR.prototype)) return false;
+      const brands = (typeof navigator !== 'undefined' && navigator.userAgentData && navigator.userAgentData.brands) || [];
+      for (let i = 0; i < brands.length; i++) if (/^Google Chrome\b/.test(String(brands[i] && brands[i].brand))) return true;
+      return false;
     }
-    const ccMix = { dest: null, ins: new Map(), talk: new Map(), tick: null, at: 0, last: null, lastAt: 0 };
+    // mine / wrote: my own voice in the mix (ms) and the letters the engine wrote, since the last check (ccMixHears)
+    const ccMix = { dest: null, ins: new Map(), talk: new Map(), tick: null, at: 0, last: null, lastAt: 0, mine: 0, wrote: 0 };
     const CC_TALK_RMS = 5 / 128; // the talking ring's threshold (meter loop), on float samples
     function ccMixVoices() { // id ('me' | pid) -> a source node in ac
       const out = new Map();
@@ -34070,8 +34081,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         for (const [id, i] of ccMix.ins) {
           i.an.getFloatTimeDomainData(i.buf);
           let acc = 0; for (let k = 0; k < i.buf.length; k++) acc += i.buf[k] * i.buf[k];
-          if (Math.sqrt(acc / i.buf.length) > CC_TALK_RMS) ccMix.talk.set(id, (ccMix.talk.get(id) || 0) + dt);
+          if (Math.sqrt(acc / i.buf.length) > CC_TALK_RMS) {
+            ccMix.talk.set(id, (ccMix.talk.get(id) || 0) + dt);
+            if (id === 'me') ccMix.mine += Math.min(dt, CC_GATE_TAIL_MS); // one reading stands for one meter tick at most (a throttled tab)
+          }
         }
+        ccMixHears();
       }, 150);
       return ccMix.dest.stream.getAudioTracks()[0] || null;
     }
@@ -34080,7 +34095,26 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       for (const id of Array.from(ccMix.ins.keys())) ccMixDrop(id);
       clearInterval(ccMix.tick); ccMix.tick = null;
       ccMix.dest = null; ccMix.talk.clear(); ccMix.last = null;
+      ccMix.mine = 0; ccMix.wrote = 0;
       capPublish();
+    }
+    // THE SPOT CHECK: does the engine hear what it is fed? This page knows one
+    // thing for sure: when its own microphone carried voice. Every CC_DEAF_MS of
+    // my own voice the engine must have written something: at least a letter
+    // per second of it, in lines under any name (I may only have said "yes"
+    // while someone else talked). An engine that wrote less is deaf or dead
+    // (a session that ended without telling, an input it cannot read): this
+    // page stops claiming my voice (cap 0: the pages that hear my call audio
+    // write me) and starts a fresh session, which earns the claim back with a
+    // line of its own.
+    function ccMixHears() {
+      if (ccMix.mine < CC_DEAF_MS) return;
+      const wrote = ccMix.wrote, mine = ccMix.mine;
+      ccMix.mine = 0; ccMix.wrote = 0;
+      if (wrote >= mine / 1000 || !(speech && speech.input)) return;
+      if (clog) clog('cc deaf', wrote, mine);
+      stopSpeech();
+      try { syncSpeech(); } catch (e) {}
     }
     // Who said the line the engine just finished: the voice that talked most
     // since the previous line. An engine also hands over one long utterance
@@ -34095,6 +34129,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // number does not tell a wrong line from a right one, so no threshold.
     const CC_HARD_CONF = 0;
     const CC_GATE_TAIL_MS = GifOS.timings.CC_GATE_TAIL_MS; // the own-voice gate's one grace: the meter's slowest tick
+    const CC_DEAF_MS = GifOS.timings.CC_DEAF_MS; // this much of my own voice with next to nothing written: the engine does not hear
     function ccMixSpeaker() {
       let best = null, ms = 0;
       for (const [id, t] of ccMix.talk) if (t > ms) { ms = t; best = id; }
@@ -34202,6 +34237,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (rec.input) {
             for (let i = e.resultIndex; i < e.results.length; i++) {
               if (!e.results[i].isFinal) continue;
+              ccMix.wrote += String(e.results[i][0].transcript || '').trim().length;
               const who = ccMixSpeaker();
               if (!who) { trDrops++; continue; }
               if (who === 'me') addTranscriptLine(e.results[i][0].transcript, myVoiceFrom || 0, null, null, 'mic', rec.langTag, rec.langTag === trLangKnown(), Date.now(), '', { eng: rec.eng, inp: 'mix' }, ccHardNote(e.results[i][0]));
