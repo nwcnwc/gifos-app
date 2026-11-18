@@ -33413,7 +33413,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // what it hears and the devices, and each peer's cap / ccst. No words.
     function capSnap() {
       const D = DLOG;
-      const eng = ccEngine() === 'browser' && typeof phoneCaptions === 'function' && phoneCaptions() ? 'native' : ccEngine(); // a tree without the phone model has no phoneCaptions
+      const eng = ccEngine(); // this release has no phone model (no phoneCaptions): the engine is the setting
       const inp = wspCaps.has('me') ? 'track' : (speech ? (speech.input ? 'mix' : 'mic') : '');
       const v = inp ? ccVia(eng, inp) : { eng: eng, inp: '', dev: '', cdev: ccCallMic().dev, dm: null };
       const peersOut = [];
@@ -33693,7 +33693,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         speech.interimResults = false;
         speech.lang = speechLangFor();
         rec.langTag = trLangOf(speech.lang);
-        rec.eng = typeof phoneCaptions === 'function' && phoneCaptions() ? 'native' : 'browser'; // the Meet app's own engine stands in for the browser's
+        rec.eng = 'browser'; // this release has no phone model (no phoneCaptions)
         speech.onresult = (e) => {
           // A line while I am muted is never mine to send (privacy: muted means
           // not in the meeting). A stopped session's late final while I am NOT
