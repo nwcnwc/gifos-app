@@ -1422,7 +1422,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   </div>
   <div class="name-modal" role="alertdialog" aria-modal="true" aria-labelledby="blurwhy-title" aria-describedby="blurwhy-text" id="blurwhy-modal" style="display:none">
     <div class="name-box">
-      <h3 data-t="blurWhyTitle" id="blurwhy-title">Your video is still soft</h3>
+      <h3 data-t="blurWhyTitle" id="blurwhy-title">Your video is still blurred</h3>
       <p id="blurwhy-text"></p>
       <p id="blurwhy-do"></p>
       <button data-t="blurWhySetPw" id="blurwhy-pw" type="button" style="display:none">Set room password</button>
@@ -11448,7 +11448,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const bcLive = !!(BROADCAST && ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin')));
       let extra = '';
       if (n > 1 && !bcWatcher) {
-        if (!roomPw) extra = bcLive ? ' · blurred until you set a room password' : ' · ' + uiText('unlockClear', 'faces stay soft until a password');
+        if (!roomPw) extra = bcLive ? ' · blurred until you set a room password' : ' · ' + uiText('unlockClear', 'faces stay blurred until a password');
         else if (hasAdminRoom() && admins.length === 0) extra = ' · no admin here — everyone stays blurred';
         else if (!adminPresent() && !allConsent()) {
           // Past one section the ready count is the fold's: everyone minus the
