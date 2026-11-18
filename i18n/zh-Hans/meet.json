@@ -969,5 +969,7 @@
  "meet.appEmptyHome": "在 GifOS 主页获取入门应用",
  "meet.appEmptyStore": "在应用商店查找更多应用",
  "meet.appEmptyNote": "它们会在新标签页中打开。回到这里后再点一次“运行应用”。",
- "meet.appNoStarters": "这台设备上还没有入门应用。"
+ "meet.appNoStarters": "这台设备上还没有入门应用。",
+ "meet.spkbtnTip": "选择会议声音从哪里播放",
+ "meet.spkChooseAria": "选择扬声器"
 }
