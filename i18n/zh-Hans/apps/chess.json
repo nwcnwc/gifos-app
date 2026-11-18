@@ -55,6 +55,7 @@
   "hint.err.setup": "请在“设置”中配置 Smartest AI 以获取提示。",
   "hint.err.fail": "暂时无法获取提示。",
   "resign": "认输",
+  "claim.left": "{name} 已离开 — 判我获胜",
   "rematch": "再来一局",
   "status.winner": "获胜者：{name}",
   "status.drawStalemate": "和棋——逼和。需要再来一局才能晋级。",
