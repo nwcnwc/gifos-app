@@ -838,7 +838,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <button data-ti="trbtnTip" data-t="transcript" aria-keyshortcuts="Alt+T" title="The meeting's live transcript" id="trbtn"><svg class="ai-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>Transcript</button>
         <button data-ti="qabtnTip" data-t="qabtn" id="qabtn" type="button" title="Questions for the host: ask one, and vote up the ones you want answered">Questions</button>
         <button data-ti="agendaTip" data-t="agendaBtn" id="agendabtn" type="button" title="Share an agenda: the items, how long each takes, and which one is on now">Agenda</button>
-        <button data-t="turnSubscribe" id="subbtn" type="button" title="GifOS plans with PayPal: admin rooms for up to 20 people ($2 a month) or unlimited ($5 a month), with video over every connection">Subscribe</button>
+        <button data-t="turnSubscribe" id="subbtn" type="button" title="GifOS plans with PayPal: hosted rooms for up to 20 people ($2 a month) or unlimited ($5 a month), with video over every connection">Subscribe</button>
       </div>
     </section>
     <section class="moregroup" data-group="video">
@@ -898,7 +898,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <h4 data-t="room">Room</h4>
       <div class="morerow">
         <button id="pwbtn" data-t="password" data-ti="pwTip" aria-keyshortcuts="Alt+L" title="Lock this room with a password">Password</button>
-        <button data-ti="capbtnTip" data-t="capBtn" id="capbtn" type="button" title="Take charge of this open room: you set its password and can remove people" style="display:none">Make me admin</button>
+        <button data-ti="capbtnTip" data-t="capBtn" id="capbtn" type="button" title="Take charge of this open-floor room: you set its password and can remove people" style="display:none">Make me admin</button>
         <span id="capnote" class="capnote" role="status" style="display:none">This room has an admin</span>
         <button data-ti="waitbtnTip" data-t="waitRoom" id="waitbtn" type="button" aria-pressed="false" title="Hold people at the door until you admit them" style="display:none">Waiting room</button>
         <button data-ti="recbtnTip" id="recbtn" data-t="record" aria-keyshortcuts="Alt+R" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
@@ -922,6 +922,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <section class="moregroup" data-group="setup">
       <h4 data-t="setHelp">Settings and help</h4>
       <div class="morerow">
+        <button data-ti="spkbtnTip" id="spkbtn" data-t="spkHead" type="button" aria-haspopup="menu" aria-expanded="false" title="Choose where the meeting's sound plays" hidden>Speaker</button>
         <button data-ti="setbtnTip" id="setbtn" data-t="settings" aria-keyshortcuts="Alt+," title="Meeting settings — your sound mix, timing, and the video quality your camera records">Settings</button>
         <button data-ti="shortcutTitle" id="keysbtn" data-t="keys" type="button" title="Keyboard shortcuts">Keys</button>
       </div>
@@ -939,10 +940,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <button data-al="heartAria" type="button" data-burst="❤️" aria-label="Heart">❤️</button>
     </div>
   </div>
+  <div id="micchooser" class="camchooser" role="menu" data-al="micChooseAria" aria-label="Choose a microphone" hidden></div>
   <div id="camchooser" class="camchooser" role="menu" aria-label="Choose how you appear" hidden>
     <button type="button" role="menuitemradio" id="campick-max" data-cam-blur="2" data-t="camMaxBlur" aria-checked="false">Max blur</button>
     <button type="button" role="menuitemradio" id="campick-min" data-cam-blur="1" data-t="camMinBlur" aria-checked="false">Min blur</button>
     <button type="button" role="menuitemradio" id="campick-none" data-cam-blur="0" data-t="camNoBlur" aria-checked="false">No blur</button>
+    <div id="camdevs" role="group" data-al="camDevAria" aria-label="Camera" hidden></div>
   </div>
   <div data-al="waitRoom" id="waitlist" hidden role="region" aria-label="Waiting room"></div>
   <div id="waitdoor" hidden role="status">
@@ -1402,6 +1405,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <button type="button" id="status-full-people" data-t="people" aria-controls="roster">People</button>
         <button data-t="setClose" type="button" id="status-full-close">Close</button>
       </div>
+    </div>
+  </div>
+  <div class="name-modal" role="alertdialog" aria-modal="true" aria-labelledby="blurwhy-title" aria-describedby="blurwhy-text" id="blurwhy-modal" style="display:none">
+    <div class="name-box">
+      <h3 data-t="blurWhyTitle" id="blurwhy-title">Your video is still soft</h3>
+      <p id="blurwhy-text"></p>
+      <p id="blurwhy-do"></p>
+      <button data-t="blurWhySetPw" id="blurwhy-pw" type="button" style="display:none">Set room password</button>
+      <button data-t="blurWhyOk" id="blurwhy-ok" type="button">OK</button>
     </div>
   </div>
   <div class="name-modal" role="alertdialog" aria-modal="true" id="leave-ask" style="display:none">
@@ -8001,7 +8013,33 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return { sid: sid, name: sid === myId ? '' : displayName(sid), at: +st.scr || 0, mine: sid === myId };
       });
     }
-    function ctAgendaOn() { return !!(CT && ((CT.ag && CT.ag.items.length) || CT.agLocal)); }
+    // SHOW AGENDA is each person's own: Hide agenda takes the agenda's tab
+    // off this screen only. It deletes nothing, sends nothing, and the agenda
+    // goes on arriving and updating underneath; the More sheet's button reads
+    // "Show agenda" and brings it back. The choice is kept per room on this
+    // device.
+    function ctAgHideKey() { try { return 'gifos_ag_hide:' + roomKey(); } catch (e) { return ''; } }
+    function ctAgHidden() {
+      if (!CT) return false;
+      if (CT.agHide === undefined) { CT.agHide = false; try { const k = ctAgHideKey(); CT.agHide = !!k && localStorage.getItem(k) === '1'; } catch (e) {} }
+      return CT.agHide;
+    }
+    function ctAgendaHide(hide) {
+      if (!ctInit()) return;
+      CT.agHide = !!hide;
+      try { const k = ctAgHideKey(); if (k) { if (hide) localStorage.setItem(k, '1'); else localStorage.removeItem(k); } } catch (e) {}
+      if (hide) CT.agEdit = false;
+      ctRefresh();
+      try { layout(); } catch (e) {}
+    }
+    function ctPaintAgendaBtn() {
+      const ab = document.getElementById('agendabtn');
+      if (!ab) return;
+      const show = ctAgHidden() && !!(CT.ag && CT.ag.items.length);
+      const word = show ? ctText('agShow', 'Show agenda') : ctText('agendaBtn', 'Agenda');
+      if (ab.textContent !== word) ab.textContent = word;
+    }
+    function ctAgendaOn() { return !!(CT && !ctAgHidden() && ((CT.ag && CT.ag.items.length) || CT.agLocal)); }
     function ctAgCtx(who) { return { adminRoom: hasAdminRoom(), isAdmin: who === myId ? !!amAdmin : (Array.isArray(admins) && admins.indexOf(who) >= 0) }; }
     function ctCanEditAgenda() { return !!(CT && myId && GifOS.meetAgenda.canEdit(CT.ag, myId, ctAgCtx(myId))); }
     function ctRefresh() {
@@ -8011,6 +8049,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const before = CT.st.known.join('|');
       MC.sync(CT.st, list);
       CT.items = list;
+      ctPaintAgendaBtn();
       if (before !== CT.st.known.join('|')) ctNote('items', { keys: CT.st.known.slice(), sel: CT.st.sel });
       return list;
     }
@@ -8745,6 +8784,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         head.appendChild(pos);
       }
       const tools = document.createElement('div'); tools.className = 'ag-tools';
+      if (a.items.length && !CT.agEdit) tools.appendChild(ctAgBtn('ag-btn ag-hide', ctText('agHide', 'Hide agenda'), () => ctAgendaHide(true), ctText('agHideTip', 'Hide the agenda on your screen only. Nothing is deleted, and everyone else still sees it.')));
       if (may && a.items.length && !CT.agEdit) {
         if (a.cur > 0) tools.appendChild(ctAgBtn('ag-btn ag-back', ctText('agBack', 'Back'), () => ctAgendaPublish(MA.prev(CT.ag, myId), 'back')));
         const last = a.cur >= a.items.length - 1;
@@ -8842,6 +8882,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // The More sheet's Agenda button: open the agenda (start one if you may).
     function ctAgendaOpen() {
       if (!ctInit()) return;
+      if (ctAgHidden()) { CT.agHide = false; ctAgendaHide(false); }   // the button is Show agenda while it is hidden
       if (CT.ag && CT.ag.items.length) { ctRefresh(); ctSelect('agenda', 'button'); return; }
       if (!ctCanEditAgenda()) { setStatus(hasAdminRoom() ? ctText('agHostOnlyTip', 'Only the host can share an agenda in this room.') : ctAgendaWhoText()); return; }
       CT.agLocal = true; CT.agEdit = true;
@@ -14979,6 +15020,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!cur && from !== myId) scheduleNewPeerBeat(); // the first status from a person I held none for: answer with my own beat, whatever path carried theirs
       else if (cur && from !== myId && st.rx - (cur.rx || 0) > 30000 && !(typeof saidGone === 'object' && saidGone && saidGone.has(from)) && !(typeof bannedSeat === 'object' && bannedSeat && bannedSeat.has(from))) scheduleNewPeerBeat(); // 30 s: past a pocketed phone's 12-16 s beat; never for a member that said goodbye or was banned
       statusOf.set(from, st);
+      if (DEBUG_ON && window.__capTrace && DLOG && DLOG.capPeerMoved && DLOG.capPeerMoved(cur, st)) { try { DLOG.capPush(window.__capTrace, DLOG.capPeerRec(from, st)); } catch (e) {} }
       if (DEBUG_ON && (!cur || !!cur.bcend !== !!st.bcend || !!cur.bce !== !!st.bce || !!cur.rec !== !!st.rec || !!cur.stg !== !!st.stg)) { try { ((L) => { L.push({ t: Date.now(), ev: 'st', from: String(from).slice(0, 8), bcend: st.bcend || 0, bce: st.bce || 0, rec: !!st.rec, stg: st.stg || 0, cam: !st.camOff }); if (L.length > 400) L.shift(); })(window.__bcTrace = window.__bcTrace || []); } catch (e) {} }
       try { noteBcEnd(st); } catch (e) {} // a viewer keeps the host's ended word past its seat
       try { applySpotlightBit(from); } catch (e) {}
@@ -17359,7 +17401,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         net.meetPwProof(room, av, '').then((pr) => { pwProof = pr; if (meshNode && meshNode.setKey) meshNode.setKey(roomE2E); }).catch(() => {});
         try { purgeAllFiles(false); renderFiles(); reactRoomState(); } catch (e) {}
       }
-      setStatus(uiText('capOpen', 'This room is open again'));
+      setStatus(uiText('capOpen', 'This room is an open floor again'));
       capPaint();
     }
     function capCheck() {
@@ -17385,7 +17427,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       capBusy = true;
       try {
         const o = await GifOS.meetSubs.captureOrder(subsMeetId());
-        if (!o) { setStatus(uiText('capNeedPlan', 'Making yourself admin of an open room takes the $5 plan')); return; }
+        if (!o) { setStatus(uiText('capNeedPlan', 'Making yourself admin of an open-floor room takes the $5 plan')); return; }
         pwLog('capture-sent');
         relaySendObj({ t: 'capture', tk: o.tk, w: o.w });
       } finally { capBusy = false; capPaint(); }   // the server's answer (onCapFrame) says the rest
@@ -19301,6 +19343,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // hardware actually has a second camera (see maybeShowFlip).
     let camFacing = 'user';
     try { camFacing = localStorage.getItem('gifos_cam_facing') || 'user'; } catch (e) {}
+    // THE CAMERA PICKER's state: this device's cameras (one row each) and the
+    // person's pick ('' = the facing choice above decides). A pick asks for
+    // that camera exactly; the flip button goes back to facing.
+    let camInputs = [], camDeviceId = '';
     // DO NOT COMMAND THE CAMERA'S ORIENTATION (2026-08-01, learned twice).
     // A transposed getUserMedia ask (720x1280 on an upright phone) was tried
     // and REVERTED same-day: some devices satisfy a portrait ask by delivering
@@ -19316,7 +19362,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // A manual video-quality rung (Settings) shapes the CAPTURE ask too —
       // 1080p can only come out of a camera that was asked for 1080p.
       const m = vqRung();
-      return { width: { ideal: m ? m.w : 1280 }, height: { ideal: m ? m.h : 720 }, facingMode: { ideal: camFacing } };
+      const c = { width: { ideal: m ? m.w : 1280 }, height: { ideal: m ? m.h : 720 }, facingMode: { ideal: camFacing } };
+      if (camDeviceId) c.deviceId = { exact: camDeviceId };
+      return c;
     };
     let flipChecked = false;
     function showFlipButton() {
@@ -19384,10 +19432,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (window.__regrabLog.length > 20) window.__regrabLog.shift();
       } catch (e) {}
       camGrabbing = true;
-      gumWithMicFallback(navigator.mediaDevices, { video: camVideoConstraints(), audio: true })
+      const picked = reason === 'pickCam';
+      // The fresh mic is the person's picked one (ideal: an unplugged pick
+      // must not cost the camera).
+      gumWithMicFallback(navigator.mediaDevices, { video: camVideoConstraints(), audio: micDeviceId ? { deviceId: { ideal: micDeviceId } } : true })
         .then(({ stream: s }) => {
           camGrabbing = false;
           const nv = s.getVideoTracks()[0], na = s.getAudioTracks()[0];
+          if (picked && nv) setStatus(uiText('stCamOnNamed', 'Camera on: {name}').replace('{name}', camLabelOf(nv)));
           // fresh tracks come back live — restore the user's actual choices
           if (nv) nv.enabled = !myStatus.camOff;
           if (na) na.enabled = !myStatus.muted;
@@ -19412,7 +19464,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (!(nv && blurPipe && blurPipe.track && blurPipe.track.readyState === 'live' && blurPipe.swapSource && blurPipe.swapSource(nv))) stopBlurPipe();
           refreshOutbound(); // rebuild the (blurred or raw) sender AND the WYSIWYG self-view
           if (death) showCamBack(false);
-        }).catch(() => { camGrabbing = false; if (death) showCamBack('fail'); });
+        }).catch(() => {
+          camGrabbing = false;
+          if (death) showCamBack('fail');
+          // A picked camera that would not open: back to the one that worked.
+          if (picked) { camDeviceId = camPickPrev; setStatus(uiText('stCamPickFailed', 'That camera could not be opened. Your camera did not change.')); }
+        });
     }
 
     // Live-but-BLACK camera (iOS mostly: another app held the hardware, or
@@ -19529,7 +19586,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // in ordinary conversation). Same swap idiom as reviveCamera: replace only
     // the senders that carry OUR old mic track (never the fold-mix aux tracks),
     // and mutate the SAME localStream so our announced stream id never changes.
-    let micMode = 'voice', micGrabbing = false, micWant = null;
+    let micMode = 'voice', micGrabbing = false, micWant = null, micUnmuteAfter = false;
     // devicechange also fires for a camera plug and for the label refresh
     // after the first grant. Neither is a new audio route. The mic restarts
     // only when an audioinput or audiooutput id appears or disappears, so
@@ -19544,10 +19601,55 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       ids.sort();
       return ids.join('\n');
     }
+    // THE MIC PICKER's list: the microphones this device has, one row per
+    // real input. Chromium also lists 'default' and 'communications', which
+    // are other names for one of the same inputs, so they are not counted: a
+    // computer with one mic has one row, and its mic button works as before.
+    // micDeviceId is the person's pick ('' = the browser's own choice); a
+    // pick that is unplugged is forgotten, so the next re-grab takes the
+    // browser's choice again instead of failing on a missing device.
+    let micInputs = [], micDeviceId = '';
+    function devRowsOf(list, kind) {
+      const out = [];
+      for (const d of list || []) {
+        if (!d || d.kind !== kind) continue;
+        const id = String(d.deviceId || '');
+        if (!id || id === 'default' || id === 'communications') continue;
+        out.push({ id, label: String(d.label || ''), group: String(d.groupId || '') });
+      }
+      return out;
+    }
+    function micInputsOf(list) { return devRowsOf(list, 'audioinput'); }
+    // THE SPEAKER PICKER: only where a page may choose where sound plays
+    // (setSinkId on media elements) and the device has more than one output.
+    // spkDeviceId '' = the system's own output; spkDefGroup marks that row.
+    const SINK_OK = !!(window.HTMLMediaElement && window.HTMLMediaElement.prototype && typeof window.HTMLMediaElement.prototype.setSinkId === 'function');
+    let spkOutputs = [], spkDeviceId = '', spkDefGroup = '';
+    function speakerChoices() { return SINK_OK && spkOutputs.length > 1 ? spkOutputs : []; }
+    // The system default input's group: what a browser speech engine on the
+    // raw microphone hears (Chrome lists it as 'default'; other browsers list
+    // the default first). The caption export compares it with the call's mic.
+    let ccDefGroup = '';
+    function ccDefGroupOf(list) {
+      const ins = (list || []).filter((d) => d && d.kind === 'audioinput');
+      const d = ins.find((x) => x.deviceId === 'default') || ins[0];
+      return d ? String(d.groupId || '') : '';
+    }
     function noteAudioDevices() {
       const md = navigator.mediaDevices;
       if (!md || typeof md.enumerateDevices !== 'function') return Promise.resolve();
-      return md.enumerateDevices().then((list) => { audioDevKey = audioDevKeyOf(list); }, () => {});
+      return md.enumerateDevices().then((list) => {
+        audioDevKey = audioDevKeyOf(list); ccDefGroup = ccDefGroupOf(list);
+        micInputs = micInputsOf(list);
+        if (micDeviceId && !micInputs.some((m) => m.id === micDeviceId)) micDeviceId = '';
+        camInputs = devRowsOf(list, 'videoinput');
+        if (camDeviceId && !camInputs.some((m) => m.id === camDeviceId)) camDeviceId = '';
+        spkOutputs = devRowsOf(list, 'audiooutput');
+        const sd = (list || []).find((d) => d && d.kind === 'audiooutput' && d.deviceId === 'default');
+        spkDefGroup = sd ? String(sd.groupId || '') : '';
+        if (spkDeviceId && !spkOutputs.some((m) => m.id === spkDeviceId)) { spkDeviceId = ''; applySpeaker(); }
+        paintSpkBtn();
+      }, () => {});
     }
     function setMicMode(mode, force) {
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
@@ -19570,7 +19672,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           ? { echoCancellation: true, noiseSuppression: false, autoGainControl: false }
           : { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
       micGrabbing = true;
-      navigator.mediaDevices.getUserMedia({ audio: want }).then((s) => {
+      const ask = micDeviceId ? Object.assign({ deviceId: { exact: micDeviceId } }, want) : want;
+      const unmute = !!micUnmuteAfter; micUnmuteAfter = false;
+      navigator.mediaDevices.getUserMedia({ audio: ask }).then((s) => {
         const na = s.getAudioTracks()[0];
         if (!na) return;
         micMode = mode;
@@ -19588,7 +19692,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         localStream.addTrack(na);
         meterFor('me', localStream);
         noteAudioDevices();
-      }).catch(() => { /* mic re-grab refused — keep the current mode */ })
+        if (unmute && !na.enabled) setMicOn(na, true);
+        else if (unmute) kickStageMic(na);
+        if (unmute) setStatus(uiText('stMicOnNamed', 'Mic on: {name}').replace('{name}', micLabelOf(na)));
+      }).catch(() => {
+        // mic re-grab refused — keep the current mode. A pick that could not
+        // be opened says so, and the mic that was working stays.
+        if (unmute) setStatus(uiText('stMicPickFailed', 'That microphone could not be opened. Your mic did not change.'));
+      })
         .finally(() => {
           micGrabbing = false;
           const w = micWant; micWant = null;
@@ -22448,7 +22559,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       } else if (m.k === 'tr') {
         if (takeTr(m.m)) {
           if (trKeeps()) renderTranscript(); // a page that keeps no transcript shows the line (CC) and lets it go (trForget)
-          showCaption(m.m.byId, m.m.text, m.m.w !== m.m.byId ? String(m.m.by || '').slice(0, 40) : '');
+          showCaption(m.m.byId, trNote(m.m) + m.m.text, m.m.w !== m.m.byId ? String(m.m.by || '').slice(0, 40) : '');
           paintTxMark();
           // not gossiped onward (see chat): a caption line is one flood
         }
@@ -31269,6 +31380,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (stadLab && stadLab.dataset.on !== stadMark) { stadLab.dataset.on = stadMark; stadLab.style.display = hasStadium ? '' : 'none'; }
       setStageEarLevel(); // the Stage fader drives the ear fold
       kickPausedAudio();
+      applySpeaker(); // a voice that just arrived plays on the picked speaker
     }
     // The Settings modal: the sound mix's new home (same fader ids as when it
     // floated as its own Mix panel) plus the video-quality picker.
@@ -31282,6 +31394,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (typeof ac !== 'undefined' && ac && typeof ensureAc === 'function') ensureAc();
       } catch (e) {}
       try { if (typeof kickPausedAudio === 'function') kickPausedAudio(); } catch (e) {}
+      try { applySpeaker(); } catch (e) {}
       try { mixClockCheck(); } catch (e) {}
     }
     function armAudioKeepAlive() {
@@ -31308,6 +31421,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function dlogRecStart() {
       if (!DLOG || !DEBUG_ON || !dlogStoreGet()) return false;
+      if (!window.__capTrace) window.__capTrace = []; // caption lines and peers' caption state (capTrace)
       if (!dlogRec) dlogRec = DLOG.createRecorder({
         store: dlogStore, every: 5000, snapEvery: 30000,
         room: () => { try { return room || ''; } catch (e) { return ''; } },
@@ -31317,13 +31431,62 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           bc: window.__bcTrace || null, mem: window.__memSamples || null,
           pip: window.__pipTrace || null, view: window.__viewTrace || null, content: window.__contentTrace || null,
           meters: (typeof dbgMeterKit !== 'undefined' && dbgMeterKit) ? dbgMeterKit.ring() : null,
+          caps: window.__capTrace || null,
         }),
-        snapshot: () => (window.__gifosVideo && window.__gifosVideo.debugDump ? window.__gifosVideo.debugDump() : null),
+        snapshot: () => {
+          const d = window.__gifosVideo && window.__gifosVideo.debugDump ? window.__gifosVideo.debugDump() : null;
+          if (d && typeof capSnap === 'function') { try { d.caps = capSnap(); } catch (e) {} }
+          return d;
+        },
       });
       dlogRec.start();
       return true;
     }
     if (DEBUG_ON) dlogRecStart();
+    // CAPTION LINES IN THE DEBUG EXPORT (v2, js/meet-debuglog.js capLineRec):
+    // who wrote each line, with which engine, hearing what, and what this page
+    // did with it. Never the words. Only while debug is on (the debug recorder
+    // makes the ring, window.__capTrace).
+    function capTrace(line, res) {
+      const ring = window.__capTrace;
+      if (!ring || !DLOG || !DLOG.capLineRec || !line) return;
+      const o = { res: res };
+      if (line.w === myId && line.via) { o.dev = line.via.dev; o.cdev = line.via.cdev; }
+      try { DLOG.capPush(ring, DLOG.capLineRec(line, o)); } catch (e) {}
+    }
+    // The browser engine's own echo gate threw a line away (the raw microphone
+    // heard it while my call track showed no voice).
+    function capTraceGate(eng, lang, at, why, inp) {
+      if (!window.__capTrace) return;
+      inp = inp || 'mic';
+      const line = { byId: myId, w: myId, src: 'mic', eng: eng, inp: inp, lang: lang, at: at, end: Date.now() };
+      Object.defineProperty(line, 'via', { value: ccVia(eng, inp) });
+      capTrace(line, why || 'gate');
+    }
+    // The browser engine on the raw microphone hears the system default
+    // device; when the call's mic is another device, say so once.
+    let ccDevWarned = false;
+    function ccDevNotice() {
+      if (ccDevWarned) return;
+      const v = ccVia('browser', 'mic');
+      if (v.dm !== 0) return;
+      ccDevWarned = true;
+      try { setStatus(uiText('stCaptionsOtherMic', 'Captions are listening to a different microphone than your call. Make your call microphone the system default, or turn on Whisper in Settings > Captions.'), 0, 'stop'); } catch (e) {}
+    }
+    // The call's microphone (the track the call sends): its device and group.
+    function ccCallMic() {
+      let s = {};
+      try { const t = localStream && localStream.getAudioTracks()[0]; s = (t && t.getSettings) ? (t.getSettings() || {}) : {}; } catch (e) {}
+      return { dev: String(s.deviceId || ''), group: String(s.groupId || '') };
+    }
+    // What an engine of this page heard, for a line it writes: eng, inp, and
+    // the devices (the raw microphone is the system default; a track is the call's).
+    function ccVia(eng, inp) {
+      const call = ccCallMic();
+      const dev = inp === 'mic' ? 'default' : (inp === 'track' || inp === 'mix' ? call.dev : '');
+      const dm = inp === 'rx' ? null : (DLOG && DLOG.capDevMatch ? DLOG.capDevMatch({ dev: dev }, call, ccDefGroup) : null);
+      return { eng: eng, inp: inp, dev: dev, cdev: call.dev, dm: dm };
+    }
     const dlogOut = () => { if (dlogRec && dlogRec.live()) dlogRec.flush(true); };
     window.addEventListener('pagehide', dlogOut);
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') dlogOut(); });
@@ -31870,10 +32033,73 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function trTlSame(a, b) {
       return !!((a.tl || b.tl) && a.byId === b.byId && !trGeneric(a.byId) && trOverlap(a, b));
     }
+    // One named voice, two lines over the same span: one written by the
+    // speaker's engine on the RAW microphone (inp 'mic': the system default
+    // device, the speakers included), one by a page that heard the call's
+    // audio of that voice (src 'ear'). One utterance, whatever the words: the
+    // raw microphone may have heard something else entirely. The ear wins.
+    function trRawEar(a, b) {
+      if (!a.byId || a.byId !== b.byId || trGeneric(a.byId) || !trOverlap(a, b)) return false;
+      return (a.inp === 'mic' && b.src === 'ear') || (b.inp === 'mic' && a.src === 'ear');
+    }
+    // THE ECHO SIGNATURE: a's words are another named person's words (b),
+    // said at the same time, and a came off a RAW microphone (inp 'mic'),
+    // which hears the speakers. a is that person's voice through a's
+    // speakers, not a's own.
+    // Shared words: most of the shorter line's (TR_ECHO_SHARE), three at least.
+    const TR_ECHO_SHARE = 0.6;
+    // A near-copy (TR_ECHO_SURE of the shorter line, the same moment) is the
+    // echo for certain and never stands. Below that a person may really have
+    // repeated someone (2026-11-17, Nathan: a wrong caption with a note beats
+    // none): the line stays, marked [echo?].
+    const TR_ECHO_SURE = 0.8;
+    // THE NOTES (2026-11-17, Nathan): a line we are unsure of is kept and
+    // marked, never thrown away. nt on the line (and on the wire); each page
+    // shows it in its own UI language. Older pages ignore nt.
+    //   lang  the writer's engine listened in another language than the
+    //         speaker's (picked, learned, or device language)
+    //   who   my raw microphone heard it while my call track carried no voice
+    //   echo  most of its words are someone else's, said at the same time
+    //   hard  the engine itself was unsure (Web Speech confidence)
+    const TR_NOTES = { lang: ['trNoteLang', '[wrong language?]'], who: ['trNoteWho', '[not sure who spoke]'], echo: ['trNoteEcho', '[echo?]'], hard: ['trNoteHard', '[hard to hear]'] };
+    function trNote(l) { const n = l && TR_NOTES[l.nt]; return n ? uiText(n[0], n[1]) + ' ' : ''; }
+    // The echo strength of a against b: 2 a near-copy (dropped), 1 most words
+    // shared (kept, marked), 0 none.
+    function trEchoLevel(a, b) {
+      if (!trEchoOf(a, b)) return 0;
+      const wa = trWords(trNorm(a.text)), wb = trWords(trNorm(b.text));
+      let shared = 0; for (const x of wa) if (wb.has(x)) shared++;
+      return shared >= TR_ECHO_SURE * Math.min(wa.size, wb.size) ? 2 : 1;
+    }
+    function trEchoOf(a, b) {
+      if (a.inp !== 'mic' || !a.byId || !b.byId || a.byId === b.byId || trGeneric(a.byId) || trGeneric(b.byId)) return false;
+      // A line its writer's call track carried no voice for (nt 'who') is
+      // never the voice another line repeats: a voiced line is not its echo,
+      // and an unvoiced raw line is the copy whichever engine finished first
+      // (2026-11-17: Jo's unvoiced copy, finished first, threw out Ann's own line).
+      const aw = a.nt === 'who', bw = b.nt === 'who';
+      if (bw && !aw) return false;
+      // Both raw: the copy is the one the engine finished later (the echo
+      // is heard after the voice it repeats); the same end, the later start.
+      if (b.inp === 'mic' && !(aw && !bw)) { const ae = a.end || a.at || 0, be = b.end || b.at || 0; if (be > ae || (be === ae && (b.at || 0) > (a.at || 0))) return false; }
+      if (!trOverlap(a, b)) return false;
+      const wa = trWords(trNorm(a.text)), wb = trWords(trNorm(b.text));
+      let shared = 0; for (const x of wa) if (wb.has(x)) shared++;
+      return shared >= 3 && shared >= TR_ECHO_SHARE * Math.min(wa.size, wb.size);
+    }
+    // My raw microphone's final, before it goes anywhere: is it the echo of
+    // a line this page already holds from another person?
+    function trEchoHeld(text, at, unvoiced) {
+      const m = { byId: myId, inp: 'mic', at: at, end: Date.now(), text: String(text || '') };
+      if (unvoiced) m.nt = 'who';
+      let lv = 0;
+      for (const l of trs.values()) lv = Math.max(lv, trEchoLevel(m, l));
+      return lv;
+    }
     function trSame(a, b) {
       if (trGap(a, b) >= 8000) return false;
       if (a.byId !== b.byId && !trGeneric(a.byId) && !trGeneric(b.byId)) return false;
-      if (trLangClash(a, b) || trTlSame(a, b)) return true;
+      if (trLangClash(a, b) || trTlSame(a, b) || trRawEar(a, b)) return true;
       const la = trLangOf(a.lang), lb = trLangOf(b.lang);
       // Two engines heard the SAME stretch of one voice and named different
       // languages: one of them guessed wrong (a short tail of a sentence
@@ -31896,6 +32122,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // the lower id. Order-independent, so every page keeps the same line.
     function trBetter(a, b) {
       if (trLangClash(a, b)) return !!a.ld;
+      if (trRawEar(a, b)) return a.inp !== 'mic';
+      if (!!a.nt !== !!b.nt) return !a.nt; // a line nobody doubts beats a marked one
       const ra = trRank(a), rb = trRank(b);
       if (ra !== rb) return ra > rb;
       if ((a.at || 0) !== (b.at || 0)) return (a.at || 0) < (b.at || 0);
@@ -31921,12 +32149,22 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // lines whose words it holds, or the same voice rendered in another
       // language (the clash, or an overlap): a line with words the survivor
       // lacks stays, whatever its rank. An extra line is better than a lost one.
+      // An echo never stands: the new line is one ('echo', dropped), or a
+      // held raw line is the echo of the new one (it leaves).
+      for (const l of Array.from(trs.values())) {
+        const mv = trEchoLevel(m, l);
+        if (mv === 2) { trDrops++; return 'echo'; }
+        if (mv === 1 && !m.nt) m.nt = 'echo';
+        const lv = trEchoLevel(l, m);
+        if (lv === 2) { trs.delete(l.id); trDrops++; if (typeof capTrace === 'function') capTrace(l, 'echo'); }
+        else if (lv === 1 && !l.nt) l.nt = 'echo';
+      }
       const same = [];
       for (const l of trs.values()) if (trSame(l, m)) same.push(l);
       if (!same.length) return 'new';
       let best = m;
       for (const l of same) if (trBetter(l, best)) best = l;
-      const folds = (l, into) => l !== into && (trLangClash(l, into) || trSameVoiceOtherLang(l, into) || trTlSame(l, into) || trWithin(l, into));
+      const folds = (l, into) => l !== into && (trLangClash(l, into) || trRawEar(l, into) || trSameVoiceOtherLang(l, into) || trTlSame(l, into) || trWithin(l, into));
       let at = best.at || 0;
       for (const l of same.concat([m])) if (folds(l, best) && (l.at || 0) > 0 && (at <= 0 || l.at < at)) at = l.at;
       if (clog) clog('tr same', String(m.byId).slice(0, 6), m.src, m.at, 'held', String(best.byId).slice(0, 6), best.src, best.at, 'x' + same.length);
@@ -31953,22 +32191,31 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (typeof window !== 'undefined' && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'transcript', line: { by: line.by, byId: line.byId, text: line.text, at: line.at, w: line.w, src: line.src, lang: line.lang || '' } });
     }
     function takeTr(m, backfill) { // backfill: a 'hi' replay — see takeChat
-      if (!m || !m.id || trs.has(m.id) || ((m.at || 0) > 0 && (m.at || 0) <= (trs.floorAt || 0))) { if (clog && m && m.w === myId) clog('tr own drop', trs.has(m.id) ? 'held' : 'floor', m.at, trs.floorAt || 0); return false; }
+      if (!m || !m.id || trs.has(m.id) || ((m.at || 0) > 0 && (m.at || 0) <= (trs.floorAt || 0))) { if (clog && m && m.w === myId) clog('tr own drop', trs.has(m.id) ? 'held' : 'floor', m.at, trs.floorAt || 0); if (m && m.id) if (typeof capTrace === 'function') capTrace(m, trs.has(m.id) ? 'held' : 'floor'); return false; }
       const w = String(m.w || m.byId);
       // TRANSLATE EVERYTHING TO ENGLISH: this page holds and shows English
       // lines only. A line in another language is left out; this page's own
       // Whisper translates that voice instead.
-      if (trEnOn && trLangOf(m.lang) !== 'en') return false;
+      if (trEnOn && trLangOf(m.lang) !== 'en') { if (typeof capTrace === 'function') capTrace(m, 'en'); return false; }
       // The flood limit is per writer AND voice: one sharing device writes
       // down a whole row, and a single shared budget dropped real sentences.
-      if (!backfill && w !== myId && !chatRateOk('tr:' + w + '>' + String(m.byId))) return false;
+      if (!backfill && w !== myId && !chatRateOk('tr:' + w + '>' + String(m.byId))) { if (typeof capTrace === 'function') capTrace(m, 'rate'); return false; }
       const src = m.src === 'mic' || m.src === 'ear' || m.src === 'mix' ? m.src : (w === String(m.byId) ? 'mic' : 'ear');
       const line = { id: m.id, byId: m.byId, by: String(m.by || '?').slice(0, 40), at: m.at || 0, text: String(m.text || '').slice(0, 400), w, src, lang: trLangOf(m.lang) };
       if (m.ld) line.ld = 1;
       if (m.tl) line.tl = 1; // a translation (its words are not the speaker's)
       if (m.lo) line.lo = 1; // kept on this page only: a 'hi' replay leaves it out (the room has my own words)
       if (m.end > line.at && m.end - line.at <= 60000) line.end = m.end; // the clip's end, when the engine knows it (bounded: a clip is 15 s at most)
-      if (trMerge(line) === 'dup') return false;
+      // The writer's engine and what it heard (export v2; older pages send none).
+      if (['browser', 'whisper', 'local', 'native'].indexOf(m.eng) >= 0) line.eng = m.eng;
+      if (['mic', 'track', 'mix', 'rx'].indexOf(m.inp) >= 0) line.inp = m.inp;
+      if (m.dm === 0 || m.dm === 1) line.dm = m.dm;
+      if (Object.prototype.hasOwnProperty.call(TR_NOTES, m.nt)) line.nt = m.nt;
+      const via = m.via; // this page's own line: its devices, kept in the export only
+      if (via) Object.defineProperty(line, 'via', { value: via });
+      const merged = trMerge(line);
+      if (merged === 'dup' || merged === 'echo') { if (typeof capTrace === 'function') capTrace(line, merged); return false; }
+      if (typeof capTrace === 'function') capTrace(line, backfill ? 'replay' : 'kept');
       trs.set(m.id, line);
       trimMap(trs, CHAT_MAX);
       if (!backfill && w !== myId) trRxAt = Date.now();
@@ -32024,8 +32271,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const out = [];
       for (const l of lines) {
         const last = out[out.length - 1];
-        if (last && last.byId === l.byId && last.w === l.w && (last.lang || '') === (l.lang || '') && l.at - last.end < 5000 && last.text.length + l.text.length < 700) { last.text += ' ' + l.text; last.end = l.at; }
-        else out.push({ byId: l.byId, by: l.by, at: l.at, end: l.at, text: l.text, w: l.w, src: l.src, lang: l.lang || '' });
+        if (last && last.byId === l.byId && last.w === l.w && (last.lang || '') === (l.lang || '') && (last.nt || '') === (l.nt || '') && l.at - last.end < 5000 && last.text.length + l.text.length < 700) { last.text += ' ' + l.text; last.end = l.at; }
+        else out.push({ byId: l.byId, by: l.by, at: l.at, end: l.at, text: l.text, w: l.w, src: l.src, lang: l.lang || '', nt: l.nt || '' });
       }
       return out;
     }
@@ -32064,7 +32311,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const lines = trBlocks();
       const mine = trLang();
       const html = lines.length
-        ? lines.map((l) => '<div class="trline"><b>' + (typeof avatarChip === 'function' ? (avatarChip(l.byId) || '') : '') + esc(l.by) + '</b>' + esc(l.text) + (l.lang && l.lang !== mine ? ' <small style="color:var(--muted,#8888aa)">' + esc(l.lang) + '</small>' : '') + '</div>').join('')
+        ? lines.map((l) => '<div class="trline"><b>' + (typeof avatarChip === 'function' ? (avatarChip(l.byId) || '') : '') + esc(l.by) + '</b>' + esc(trNote(l) + l.text) + (l.lang && l.lang !== mine ? ' <small style="color:var(--muted,#8888aa)">' + esc(l.lang) + '</small>' : '') + '</div>').join('')
         : '<small data-t="trEmpty" style="color:#667">' + esc(uiText('trEmpty', 'This meeting is being written down. Lines gather here under each speaker\'s name. Anyone here can open this and download it.')) + '</small>';
       paintLog(log, html);
     }
@@ -32084,7 +32331,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // how: '' as above; 'tl' a translation (kept and sent as above, marked);
     // 'lo' a translation of my own voice, kept and shown here only; 'out' my
     // own words for the room, sent only (this page shows its translation).
-    function addTranscriptLine(text, at, forId, label, src, lang, detected, end, how) { // detected: the engine found the language itself (Whisper); end: when the clip ended
+    function addTranscriptLine(text, at, forId, label, src, lang, detected, end, how, via, nt) { // detected: the engine found the language itself (Whisper); end: when the clip ended; via: ccVia (the engine and what it heard)
       text = String(text || '').trim();
       if (!text) return;
       // The bot's own microphone is never written down, and neither is a line
@@ -32097,18 +32344,25 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (end > m.at) m.end = end;
       if (how === 'tl' || how === 'lo') m.tl = 1;
       if (how === 'lo') m.lo = 1;
+      if (nt && Object.prototype.hasOwnProperty.call(TR_NOTES, nt)) m.nt = nt;
+      if (via && typeof ccVia === 'function') via = ccVia(via.eng, via.inp); // the devices, read now
+      if (via) {
+        m.eng = via.eng; m.inp = via.inp;
+        if (via.dm === 0 || via.dm === 1) m.dm = via.dm;
+        Object.defineProperty(m, 'via', { value: via }); // devices stay on this page (not on the wire)
+      }
       if (!mine) {
         m.byId = forId;
         m.src = src === 'mix' || trGeneric(forId) ? 'mix' : 'ear';
         m.by = String(label || rosterNames[forId] || (peers.get(forId) || {}).name || '…').slice(0, 40);
       }
       const send = how === 'lo' ? false : mine ? capSend() : (trMode() === 'share' || (trKeeps() && capPaused(forId)));
-      if (how === 'out') { if (send) sendAll({ k: 'tr', m }); return; }
-      if (!send && !trKeeps() && !trEnOn) return;
+      if (how === 'out') { if (send) { sendAll({ k: 'tr', m }); if (typeof capTrace === 'function') capTrace(m, 'sent'); } return; }
+      if (!send && !trKeeps() && !trEnOn) { if (typeof capTrace === 'function') capTrace(m, 'unkept'); return; }
       if (!takeTr(m)) return; // the same sentence is already held by a better line
       if (send) sendAll({ k: 'tr', m });
       renderTranscript();
-      showCaption(m.byId, m.text, mine ? '' : m.by);
+      showCaption(m.byId, trNote(m) + m.text, mine ? '' : m.by);
     }
     // What the bot SAYS is written down by the bot, from the words it was
     // handed: its microphone is never captioned (above), so this is the only
@@ -32225,7 +32479,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       'class WspCaptureProcessor extends AudioWorkletProcessor {',
       '  constructor() { super(); this.buf = new Float32Array(4096); this.n = 0; }',
       '  process(inputs) {',
-      '    const ch = inputs[0] && inputs[0][0];',
+      '    const ins = inputs[0] || [];',
+      '    let ch = ins[0];',
+      '    if (ch && ins.length > 1) { const m = new Float32Array(ch.length); for (const c of ins) for (let k = 0; k < m.length; k++) m[k] += c[k] / ins.length; ch = m; }',
       '    if (ch && ch.length) {',
       '      let i = 0;',
       '      while (i < ch.length) {',
@@ -32333,7 +32589,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       } else {
         node.onaudioprocess = (e) => {
           if (wspCaps.get(id) !== w) return;
-          wspOnChunk(w, new Float32Array(e.inputBuffer.getChannelData(0))); // the browser reuses its buffer
+          const ib = e.inputBuffer, nc = ib.numberOfChannels || 1;
+          const out = new Float32Array(ib.getChannelData(0)); // the browser reuses its buffer
+          for (let c = 1; c < nc; c++) { const d = ib.getChannelData(c); for (let k = 0; k < out.length; k++) out[k] += d[k]; }
+          if (nc > 1) for (let k = 0; k < out.length; k++) out[k] /= nc; // every channel, averaged
+          wspOnChunk(w, out);
         };
       }
       w.src.connect(node);
@@ -32498,7 +32758,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           setStatus(uiText('stCaptionsBehindSkippingOldAudio', 'Captions behind, skipping old audio'), 8000);
         }
       }
-      const job = { id: w.id, chunks, at, rate: rate || w.rate, keep: !!keep, stage: !!w.stageSid };
+      // A clip at a rate no microphone runs at (8 to 192 kHz) would be
+      // resampled into nonsense: dropped at the input, never transcribed.
+      const jr = rate || w.rate;
+      if (!(jr >= 8000 && jr <= 192000)) { wspQ.dropped++; if (clog) clog('wsp bad rate', w.id, jr); return; }
+      const job = { id: w.id, chunks, at, rate: jr, keep: !!keep, stage: !!w.stageSid };
       if (keep) wspQ.items.unshift(job); else wspQ.items.push(job);
       wspDrain();
     }
@@ -32702,6 +32966,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // continues one where it did: told a language, it echoes it back,
           // and told the wrong one for the audio it writes a translation.
           const found = (lang === 'auto' && !told) || contFound;
+          const wEng = ccEngine() === 'local' ? 'local' : 'whisper'; // the engine this clip ran on (the phone model, or Whisper)
           const rl = lang === 'auto' ? ((r && r.language) ? String(r.language) : '') : lang;
           const capNow = wspCaps.get(job.id);
           if (capNow) { capNow.lastEnd = job.at + clipMs; if (rl) { capNow.lastLang = rl; capNow.lastFound = found; } }
@@ -32713,18 +32978,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const own = !translated || trLangOf(rl) === 'en';
           const ll = translated ? 'en' : rl, lf = own && found, how = own ? '' : 'tl';
           if (job.id === 'me') {
-            if (job.lo || (translated && !own)) addTranscriptLine(text, job.at, null, null, 'mic', 'en', false, end, 'lo'); // my words in English, for this page only
-            else if (!trEnOn || trLangOf(rl) === 'en') addTranscriptLine(text, job.at, null, null, 'mic', ll, lf, end);
+            if (job.lo || (translated && !own)) addTranscriptLine(text, job.at, null, null, 'mic', 'en', false, end, 'lo', { eng: wEng, inp: 'track' }); // my words in English, for this page only
+            else if (!trEnOn || trLangOf(rl) === 'en') addTranscriptLine(text, job.at, null, null, 'mic', ll, lf, end, '', { eng: wEng, inp: 'track' });
             else {
               // My own words go to the room in my language; this page shows
               // them in English: the same clip once more, told the language
               // just found, translated. It goes first.
-              addTranscriptLine(text, job.at, null, null, 'mic', rl, found, end, 'out');
+              addTranscriptLine(text, job.at, null, null, 'mic', rl, found, end, 'out', { eng: wEng, inp: 'track' });
               wspQ.items.unshift({ id: 'me', chunks: job.chunks, at: job.at, rate: job.rate, keep: job.keep, task: 'translate', lo: true, told: rl || '', found: found });
             }
           }
-          else if (job.id === 'fold') { if (trWrites() || trEnOn) addTranscriptLine(text, job.at, 'stadium', 'Stadium', 'mix', ll, lf, end, how); }   // a far-row line, labelled by its channel
-          else if ((trWrites() || trEnOn) && (peers.has(job.id) || job.stage)) addTranscriptLine(text, job.at, job.id, null, 'ear', ll, lf, end, how);
+          else if (job.id === 'fold') { if (trWrites() || trEnOn) addTranscriptLine(text, job.at, 'stadium', 'Stadium', 'mix', ll, lf, end, how, { eng: wEng, inp: 'rx' }); }   // a far-row line, labelled by its channel
+          else if ((trWrites() || trEnOn) && (peers.has(job.id) || job.stage)) addTranscriptLine(text, job.at, job.id, null, 'ear', ll, lf, end, how, { eng: wEng, inp: 'rx' });
         }
         if (!wspQ.items.length && myStatus && myStatus.ccst === 'behind') {
           wspQ.behind = false;
@@ -32760,7 +33025,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // Android phone whose engine hears silence while Chrome holds the mic).
     // A keep page's lines for it go to the room as in 'share'.
     function capPaused(pid) { const st = statusOf.get(pid); return !!(st && st.ccst === 'paused' && st.cap !== 1); }
-    function earLangOk(pid) { const st = statusOf.get(pid); const l = st && trLangOf(st.lang); return !l || l === trLang(); }
+    // The speaker's language: picked or learned (lang), else the speaker's
+    // own device language (dl, a guess that is still the speaker's, 2026-11-17:
+    // a computer in German wrote an English-speaking phone in German, because
+    // the phone advertised nothing and the ear took that as a match).
+    function earLangOk(pid) { const st = statusOf.get(pid); const l = st && trLangOf(st.lang || st.dl); return !l || l === trLang(); }
     function trWrites() { return trKeeps(); }
     // Translating everything to English, the page hears EVERY voice through
     // its own Whisper: my own (even with Send off, for my own captions),
@@ -33140,12 +33409,38 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (wspCaps.has('me')) return true;
       return !!(speech && speechProved);
     }
+    // The caption state for the debug export's snapshot: this page's engine,
+    // what it hears and the devices, and each peer's cap / ccst. No words.
+    function capSnap() {
+      const D = DLOG;
+      const eng = ccEngine(); // this release has no phone model (no phoneCaptions): the engine is the setting
+      const inp = wspCaps.has('me') ? 'track' : (speech ? (speech.input ? 'mix' : 'mic') : '');
+      const v = inp ? ccVia(eng, inp) : { eng: eng, inp: '', dev: '', cdev: ccCallMic().dev, dm: null };
+      const peersOut = [];
+      for (const [pid, st] of statusOf) if (pid !== myId && D && D.capPeerRec) peersOut.push(D.capPeerRec(pid, st));
+      return {
+        me: D && D.capPeerRec ? D.capPeerRec(myId, myStatus) : null,
+        eng: v.eng, inp: v.inp, dev: String(v.dev || '').slice(0, 8), cdev: String(v.cdev || '').slice(0, 8), dm: v.dm,
+        lang: trLang(), proved: !!speechProved, send: capSend(), mode: trMode() || 'off',
+        peers: peersOut,
+      };
+    }
+    // THE CAP BIT says "this page captions my voice from what the call sends":
+    // Whisper on my call track, or the speech engine fed the call track (the
+    // mix). A browser engine on the RAW microphone hears the system default
+    // device, speakers included (2026-11-17, a tester: fluent English she never
+    // said went out under her name while every other page heard her clean):
+    // its lines still go out, marked inp 'mic', but it never claims the
+    // voice, so the pages that hear her call audio keep writing her.
+    function capHearsCall() { return wspCaps.has('me') || !!(speech && speech.input); }
     function capPublish() {
-      const next = { cap: capLive() ? 1 : 0, lang: trLangKnown(), trs: trMode() === 'share' ? 1 : 0 };
-      const prev = { cap: myStatus.cap || 0, lang: myStatus.lang || '', trs: myStatus.trs || 0 };
-      if (next.cap === prev.cap && next.lang === prev.lang && next.trs === prev.trs) return;
+      const lang = trLangKnown();
+      const next = { cap: capLive() && capHearsCall() ? 1 : 0, lang, dl: lang || ccLang() === 'auto' ? '' : trLangOf(ccLang()), trs: trMode() === 'share' ? 1 : 0 };
+      const prev = { cap: myStatus.cap || 0, lang: myStatus.lang || '', dl: myStatus.dl || '', trs: myStatus.trs || 0 };
+      if (next.cap === prev.cap && next.lang === prev.lang && next.dl === prev.dl && next.trs === prev.trs) return;
       if (next.cap) myStatus.cap = 1; else delete myStatus.cap;
       if (next.lang) myStatus.lang = next.lang; else delete myStatus.lang;
+      if (next.dl) myStatus.dl = next.dl; else delete myStatus.dl;
       if (next.trs) myStatus.trs = 1; else delete myStatus.trs;
       if (clog) clog('cap', next.cap, next.lang, next.trs);
       try { if (typeof updateTile === 'function') updateTile('me'); } catch (e) {}
@@ -33250,7 +33545,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       // One engine, one language: a voice its own page captions is left to
       // that page, and a voice in another language would come out as nonsense.
-      for (const id of Array.from(out.keys())) if (id !== 'me' && (capCovered(id) || !earLangOk(id))) out.delete(id);
+      // A voice in another language stays in (2026-11-17, Nathan: a wrong
+      // caption marked [wrong language?] beats none); its lines carry the note.
+      for (const id of Array.from(out.keys())) if (id !== 'me' && capCovered(id)) out.delete(id);
       return out;
     }
     function ccMixDrop(id) {
@@ -33315,6 +33612,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // 2 s of the previous one continues that speaker. null: nobody talked
     // (noise, or a voice now gone).
     const CC_BURST_MS = GifOS.timings.CC_BURST_MS;
+    // [hard to hear] from the engine's confidence: OFF. Measured 2026-11-17
+    // (Chrome on-device engine, en-US, the gate2 speech fixture clips):
+    // clean English 0.955; English under noise 0.90-0.95 with only 6-11 of 13
+    // words right; German heard as English 0.83-0.97 with none right. The
+    // number does not tell a wrong line from a right one, so no threshold.
+    const CC_HARD_CONF = 0;
+    const CC_GATE_TAIL_MS = GifOS.timings.CC_GATE_TAIL_MS; // the own-voice gate's one grace: the meter's slowest tick
     function ccMixSpeaker() {
       let best = null, ms = 0;
       for (const [id, t] of ccMix.talk) if (t > ms) { ms = t; best = id; }
@@ -33363,6 +33667,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const v = ccLang();
       return v === 'auto' ? (navigator.language || 'en-US') : v;
     }
+    // [wrong language?]: my engine listened in langTag, the speaker said (or
+    // their device says) another language.
+    function ccEarLangNote(pid, langTag) {
+      const st = statusOf.get(pid); const l = st && trLangOf(st.lang || st.dl);
+      return l && langTag && l !== trLangOf(langTag) ? 'lang' : '';
+    }
+    // [hard to hear]: the engine's own confidence, where it gives one, under
+    // CC_HARD_CONF (0 = off: see timings for the measured numbers).
+    function ccHardNote(alt) {
+      const c = alt && typeof alt.confidence === 'number' ? alt.confidence : 0;
+      return c > 0 && c < CC_HARD_CONF ? 'hard' : '';
+    }
     function startSpeech(input) { // input: the room-ear mix; none = the raw microphone
       if (speechGaveUp) return false;
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -33377,7 +33693,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         speech.interimResults = false;
         speech.lang = speechLangFor();
         rec.langTag = trLangOf(speech.lang);
+        rec.eng = 'browser'; // this release has no phone model (no phoneCaptions)
         speech.onresult = (e) => {
+          // A line while I am muted is never mine to send (privacy: muted means
+          // not in the meeting). A stopped session's late final while I am NOT
+          // muted is the tail of words I said: it is kept (2026-11-17, Nathan:
+          // a real line is never thrown away).
+          if (myStatus.muted && (!rec.input || speech !== rec)) {
+            for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) { trDrops++; if (typeof capTraceGate === 'function') capTraceGate(rec.eng, rec.langTag, myVoiceFrom || 0, speech !== rec ? 'late' : 'muted', rec.input ? 'mix' : 'mic'); }
+            return;
+          }
           speechFails = 0;
           speechProved = true;
           speechEngineUp();
@@ -33387,28 +33712,42 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               if (!e.results[i].isFinal) continue;
               const who = ccMixSpeaker();
               if (!who) { trDrops++; continue; }
-              if (who === 'me') addTranscriptLine(e.results[i][0].transcript, myVoiceFrom || 0, null, null, 'mic', rec.langTag, rec.langTag === trLangKnown(), Date.now());
-              else addTranscriptLine(e.results[i][0].transcript, 0, who, null, 'ear', rec.langTag);
+              if (who === 'me') addTranscriptLine(e.results[i][0].transcript, myVoiceFrom || 0, null, null, 'mic', rec.langTag, rec.langTag === trLangKnown(), Date.now(), '', { eng: rec.eng, inp: 'mix' }, ccHardNote(e.results[i][0]));
+              else addTranscriptLine(e.results[i][0].transcript, 0, who, null, 'ear', rec.langTag, false, 0, '', { eng: rec.eng, inp: 'mix' }, ccEarLangNote(who, rec.langTag) || ccHardNote(e.results[i][0]));
             }
             return;
           }
-          // THE GATE: the raw microphone hears the speakers too. No voice on
-          // my own echo-cancelled mic in the last 3s means I only heard this
-          // through them. No meter yet (AudioContext not born) ⇒ no verdict ⇒
-          // let it through.
-          // ... or carried voice at any time since the previous final: an engine
-          // hands a long utterance's final over seconds after the voice stopped,
-          // and a line a person really said is never thrown away for that.
+          // THE GATE: the raw microphone hears the speakers too. A line goes
+          // out only if my own echo-cancelled mic carried voice during its
+          // span: since the previous final (an engine hands a long utterance's
+          // final over seconds after the voice stopped, and that line is kept).
+          // Voice that belonged to the previous line is not this one's
+          // (2026-11-17: the old 3 s grace passed a line heard right after I
+          // stopped). The meter's own resolution is the one grace: voice in
+          // its last tick (CC_GATE_TAIL_MS; a hidden tab reads every 900 ms)
+          // may not have set the flag yet. No meter yet (AudioContext not
+          // born) ⇒ no verdict ⇒ let it through.
           const sinceVoice = Date.now() - myVoiceAt;
-          const heard = !meters.has('me') || myVoiceSinceFinal || sinceVoice < 3000;
+          const heard = !meters.has('me') || myVoiceSinceFinal || sinceVoice < CC_GATE_TAIL_MS;
+          if (typeof ccDevNotice === 'function') ccDevNotice();
+          let mine = false;
           for (let i = e.resultIndex; i < e.results.length; i++) {
             if (!e.results[i].isFinal) continue;
-            if (!heard) { trDrops++; if (clog) clog('tr own drop', 'gate', sinceVoice, String(e.results[i][0].transcript).slice(0, 40)); continue; }
+            // The echo of a line I already hold from someone else: dropped
+            // here, never sent, and it does not use up my voice: the final
+            // that follows may be my own sentence.
+            const echo = typeof trEchoHeld === 'function' ? trEchoHeld(e.results[i][0].transcript, myVoiceFrom || 0, !heard) : 0;
+            if (echo === 2) { trDrops++; if (typeof capTraceGate === 'function') capTraceGate(rec.eng, rec.langTag, myVoiceFrom || 0, 'echo'); continue; }
+            mine = true;
+            // No voice on my call track for this line: kept, marked [not sure
+            // who spoke] (2026-11-17, Nathan: a marked line beats a lost one).
+            if (!heard && clog) clog('tr own mark', 'gate', sinceVoice);
+            const nt = !heard ? 'who' : echo === 1 ? 'echo' : ccHardNote(e.results[i][0]);
             // the line spans from when this stretch of my voice began to now; its language is as good as
             // detected when it is the one this page knows (picked, or learned from the room's Whisper pages)
-            addTranscriptLine(e.results[i][0].transcript, myVoiceFrom || 0, null, null, 'mic', rec.langTag, rec.langTag === trLangKnown(), Date.now());
+            addTranscriptLine(e.results[i][0].transcript, myVoiceFrom || 0, null, null, 'mic', rec.langTag, rec.langTag === trLangKnown(), Date.now(), '', { eng: rec.eng, inp: 'mic' }, nt);
           }
-          myVoiceSinceFinal = false;
+          if (mine) myVoiceSinceFinal = false;
         };
         speech.onend = () => {
           if (!(speech === rec && speechKeep(rec))) return;
@@ -33498,7 +33837,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       // The room ear runs only while there is a voice to hear: an engine on an
       // empty mix is a speech session open over silence.
-      if (hearRoom && ccTrackInput() && ccMixVoices().size) {
+      // My own voice too: wherever the engine takes a track, it hears the
+      // call's echo-cancelled mic, never the raw default device.
+      if ((hearRoom || mine) && ccTrackInput() && ccMixVoices().size) {
         if (speechRunning() && !speech.input) stopSpeech(); // a raw-microphone engine hands over to the room ear
         const input = ccMixStart();
         if (input) {
@@ -33507,7 +33848,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           return;
         }
       }
-      // No track input, or this device is only writing itself: my microphone.
+      // No track input: my microphone (the system default device).
       if (speechRunning() && speech.input) stopSpeech(); // the room ear stands down to the plain microphone
       if (mine && !speechRunning()) startSpeech();
       if (!mine && speechRunning()) stopSpeech();
@@ -33551,7 +33892,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       const lines = trBlocks();
       const last = lines.length ? lines[lines.length - 1] : null;
-      if (last) showCaption(last.byId, last.text);
+      if (last) showCaption(last.byId, trNote(last) + last.text);
     };
     const ccDockBtn = document.getElementById('ccdock');
     if (ccDockBtn) ccDockBtn.onclick = () => document.getElementById('ccbtn').click();
@@ -33632,7 +33973,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function transcriptFile() {
       const blocks = trBlocks();
       const mine = trLang();
-      const lines = blocks.map((l) => '[' + new Date(l.at).toLocaleTimeString() + '] ' + l.by + (l.lang && l.lang !== mine ? ' (' + l.lang + ')' : '') + ': ' + l.text);
+      const lines = blocks.map((l) => '[' + new Date(l.at).toLocaleTimeString() + '] ' + l.by + (l.lang && l.lang !== mine ? ' (' + l.lang + ')' : '') + ': ' + trNote(l) + l.text);
       return { blob: new Blob([lines.join('\n') + '\n'], { type: 'text/plain' }), name: meetDownloadName('Transcript', room, blocks.length ? blocks[0].at : 0, 'txt'), lines: lines.length };
     }
     document.getElementById('trdl').onclick = () => {
@@ -34786,6 +35127,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const anchor = document.getElementById(chooser.dataset.anchor || '') || document.getElementById('cam');
         if (anchor) placeDockPopover(chooser, anchor);
       }
+      const micCh = document.getElementById('micchooser');
+      if (micCh && !micCh.hidden) placeDockPopover(micCh, document.getElementById('mic'));
     }
     {
       let popFrame = 0;
@@ -34967,6 +35310,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (tray && !tray.hasAttribute('hidden')) return true;
         const chooser = document.getElementById('camchooser');
         if (chooser && !chooser.hidden) return true;
+        const micCh = document.getElementById('micchooser');
+        if (micCh && !micCh.hidden) return true;
         const ae = document.activeElement;
         if (ae && ae !== document.body && ae !== document.documentElement) {
           if (bar.contains(ae)) return true;
@@ -35385,6 +35730,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (tray && !tray.hasAttribute('hidden')) return true;
         const chooser = document.getElementById('camchooser');
         if (chooser && !chooser.hidden) return true;
+        const micCh = document.getElementById('micchooser');
+        if (micCh && !micCh.hidden) return true;
         const wait = document.getElementById('waitlist');
         if (wait && !wait.hasAttribute('hidden') && wait.getClientRects().length) return true;
         // A tile's window is open: its controls are the screen, not chrome.
@@ -35499,6 +35846,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       watchChrome(document.getElementById('chatpanel'), ['class']);
       watchChrome(document.getElementById('reacttray'), ['hidden']);
       watchChrome(document.getElementById('camchooser'), ['hidden']);
+      watchChrome(document.getElementById('micchooser'), ['hidden']);
       watchChrome(document.getElementById('waitlist'), ['hidden']);
       window.__gifosChrome = { ms: CHROME_IDLE_MS, idle: hideChrome, show: showChrome, safeBottom: safeBottomPx };
       syncChrome();
@@ -36168,7 +36516,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!localStream) return lateMedia('mic');
       const track = localStream.getAudioTracks()[0]; if (!track) return lateMedia('mic');
       if (!track.enabled && amGloballyMuted()) { sayState(modOf('me').mute && modOf('me').mute.wait ? 'micWaitRoom' : 'mutedByHost', { by: (modOf('me').mute || {}).by }); return; }
-      track.enabled = !track.enabled;
+      if (micChooserOpen()) { closeMicChooser(true); return; }
+      // More than one microphone: a tap while muted asks which one (the camera
+      // button's chooser, for the mic). A tap while talking mutes at once. One
+      // microphone: the tap toggles, as it always has.
+      if (!track.enabled && micInputs.length > 1) { openMicChooser(track); return; }   // one mic: the tap unmutes, as it always has
+      setMicOn(track, !track.enabled);
+    };
+    function setMicOn(track, on) {
+      track.enabled = !!on;
       myStatus.muted = !track.enabled;
       paintControls();
       syncSpeech(); // my own voice leaves the captions while muted; the others' voices stay
@@ -36179,7 +36535,179 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // silence until it is seated again. Same kick as a camera that is
       // attached and emitting nothing (kickMainVideo), audio side.
       if (track.enabled) kickStageMic(track);
-    };
+    }
+    // The mic in use: its device id as the track reports it, and a name for it.
+    // The row of the mic this track came from. A track opened on the
+    // browser's own choice reports Chromium's 'default' alias, which has no
+    // row of its own: the row with the same groupId (the same physical
+    // device) is that mic.
+    function micIdOf(track) {
+      let st = null; try { st = track && track.getSettings ? track.getSettings() : null; } catch (e) {}
+      const id = String((st && st.deviceId) || '');
+      if (id && micInputs.some((m) => m.id === id)) return id;
+      const g = String((st && st.groupId) || '');
+      const m = g ? micInputs.find((x) => x.group === g) : null;
+      return m ? m.id : (micDeviceId || (micInputs.length === 1 ? micInputs[0].id : id));   // a device that names no row: the person's own pick is what it opened (with one mic, that mic)
+    }
+    function micLabelOf(track) {
+      const id = micIdOf(track);
+      const m = micInputs.find((x) => x.id === id);
+      return (m && m.label) || (track && track.label) || uiText('micUnnamed', 'Microphone');
+    }
+    function micChooserOpen() {
+      const el = document.getElementById('micchooser');
+      return !!(el && !el.hidden);
+    }
+    function closeMicChooser(refocus) {
+      const el = document.getElementById('micchooser');
+      const from = (el && el.dataset.from === 'spk') ? document.getElementById('spkbtn') : micBtn;
+      if (el) { el.hidden = true; delete el.dataset.from; }
+      try { micBtn.setAttribute('aria-expanded', 'false'); } catch (e) {}
+      try { const sb = document.getElementById('spkbtn'); if (sb) sb.setAttribute('aria-expanded', 'false'); } catch (e) {}
+      if (refocus && from) { try { from.focus(); } catch (e) {} }
+    }
+    // THE SPEAKER CHOICE in More: only where a page can move the sound
+    // (speakerChoices: setSinkId and more than one output). It opens the mic
+    // pop-up's own element with the speaker rows alone.
+    function paintSpkBtn() {
+      const b = document.getElementById('spkbtn');
+      if (b) b.hidden = !speakerChoices().length;
+    }
+    { const sb = document.getElementById('spkbtn'); if (sb) sb.onclick = () => { if (micChooserOpen()) closeMicChooser(true); else openSpkChooser(); }; }
+    function openSpkChooser() {
+      const el = document.getElementById('micchooser'), sb = document.getElementById('spkbtn');
+      const spk = speakerChoices();
+      if (!el || !sb || !spk.length) return;
+      try { if (camChooserOpen()) closeCamChooser(); } catch (e) {}
+      el.textContent = '';
+      el.dataset.from = 'spk';
+      el.setAttribute('aria-label', uiText('spkChooseAria', 'Choose a speaker'));
+      const on = spkDeviceId || ((spk.find((x) => spkDefGroup && x.group === spkDefGroup) || spk[0]).id);
+      spk.forEach((m, i) => {
+        const b = devRow(m.label || uiText('spkNumbered', 'Speaker {n}').replace('{n}', String(i + 1)), m.id === on, () => pickSpeaker(m.id));
+        b.dataset.spkId = m.id;
+        el.appendChild(b);
+      });
+      el.hidden = false;
+      sb.setAttribute('aria-expanded', 'true');
+      placeDockPopover(el, sb);
+      const first = el.querySelector('[aria-checked="true"]') || el.querySelector('button');
+      if (first) { try { first.focus(); } catch (e) {} }
+    }
+    function openMicChooser(track) {
+      const el = document.getElementById('micchooser');
+      if (!el) { setMicOn(track, true); return; }
+      try { if (camChooserOpen()) closeCamChooser(); } catch (e) {}
+      const cur = micIdOf(track);
+      const spk = speakerChoices();
+      el.textContent = '';
+      el.setAttribute('aria-label', spk.length ? uiText('micSpkChooseAria', 'Choose a microphone or speaker') : uiText('micChooseAria', 'Choose a microphone'));
+      if (spk.length) devHead(el, uiText('micHead', 'Microphone'));
+      micInputs.forEach((m, i) => {
+        const b = devRow(m.label || uiText('micNumbered', 'Microphone {n}').replace('{n}', String(i + 1)), m.id === cur, () => pickMic(m.id));
+        b.dataset.micId = m.id;
+        el.appendChild(b);
+      });
+      if (spk.length) {
+        devHead(el, uiText('spkHead', 'Speaker'));
+        const on = spkDeviceId || ((spk.find((x) => spkDefGroup && x.group === spkDefGroup) || spk[0]).id);
+        spk.forEach((m, i) => {
+          const b = devRow(m.label || uiText('spkNumbered', 'Speaker {n}').replace('{n}', String(i + 1)), m.id === on, () => pickSpeaker(m.id));
+          b.dataset.spkId = m.id;
+          el.appendChild(b);
+        });
+      }
+      el.hidden = false;
+      micBtn.setAttribute('aria-expanded', 'true');
+      placeDockPopover(el, micBtn);
+      const first = el.querySelector('[aria-checked="true"]') || el.querySelector('button');
+      if (first) { try { first.focus(); } catch (e) {} }
+    }
+    // A pick turns the mic on with that microphone. The same mic only unmutes;
+    // another one is opened in place of the current one (setMicMode's re-grab,
+    // which swaps the track on every sender), then unmutes, so the others go on
+    // hearing this person through the switch.
+    function pickMic(id) {
+      closeMicChooser(true);
+      const track = localStream && localStream.getAudioTracks()[0];
+      if (!track) return;
+      if (amGloballyMuted()) { sayState(modOf('me').mute && modOf('me').mute.wait ? 'micWaitRoom' : 'mutedByHost', { by: (modOf('me').mute || {}).by }); return; }
+      if (id === micIdOf(track)) { setMicOn(track, true); return; }
+      micDeviceId = id;
+      micUnmuteAfter = true;
+      setMicMode(micMode, true);
+    }
+    // One row of a device pop-up, and a section name over rows.
+    function devRow(text, checked, onPick) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.setAttribute('role', 'menuitemradio');
+      b.setAttribute('aria-checked', String(!!checked));
+      b.textContent = text;
+      b.onclick = onPick;
+      return b;
+    }
+    function devHead(el, text) {
+      const h = document.createElement('div');
+      h.className = 'devhead';
+      h.setAttribute('role', 'presentation');
+      h.textContent = text;
+      el.appendChild(h);
+    }
+    // A speaker pick moves every element that plays the meeting; the mic
+    // stays as it was. applySpeaker also runs on the audio sweeps, so a voice
+    // that joins later plays on the same speaker.
+    function pickSpeaker(id) {
+      closeMicChooser(true);
+      const def = speakerChoices().find((x) => spkDefGroup && x.group === spkDefGroup);
+      spkDeviceId = (def && def.id === id) ? '' : id;
+      const row = spkOutputs.find((x) => x.id === id);
+      const name = (row && row.label) || uiText('spkUnnamed', 'Speaker');
+      applySpeaker().then((ok) => {
+        setStatus(ok ? uiText('stSpkNamed', 'Sound now plays on: {name}').replace('{name}', name) : uiText('stSpkPickFailed', 'That speaker could not be used. Sound stays where it was.'));
+      });
+    }
+    function audioCarriers() {
+      const out = new Set();
+      for (const a of document.querySelectorAll('audio')) out.add(a);
+      for (const v of document.querySelectorAll('video')) if (v._aud) out.add(v._aud);
+      try { if (stageEar && stageEar.el) out.add(stageEar.el); } catch (e) {}
+      try { if (typeof wkEar !== 'undefined' && wkEar && wkEar.el) out.add(wkEar.el); } catch (e) {}
+      try { for (const m of mosIn.values()) if (m && m.el && !m.el.muted) out.add(m.el); } catch (e) {}
+      return out;
+    }
+    window.__meetSpeaker = () => { const els = [...audioCarriers()]; return { want: spkDeviceId, sinks: els.map((e) => String(e.sinkId || '')), voice: els.map((e) => { try { const st = e.srcObject; return !!(st && st.getAudioTracks && st.getAudioTracks().some((t) => t.readyState === 'live')); } catch (x) { return false; } }) }; };   // read-only: where each playing element sends sound, and whether it carries a voice at all
+    function applySpeaker() {
+      if (!SINK_OK) return Promise.resolve(true);
+      const jobs = [];
+      for (const el of audioCarriers()) {
+        if (!el || typeof el.setSinkId !== 'function' || String(el.sinkId || '') === spkDeviceId) continue;
+        jobs.push(el.setSinkId(spkDeviceId).then(() => true, () => false));
+      }
+      return Promise.all(jobs).then((r) => r.every(Boolean));
+    }
+    {
+      const el = document.getElementById('micchooser');
+      if (el) el.addEventListener('keydown', (e) => {
+        const buttons = Array.from(el.querySelectorAll('button'));
+        if (!buttons.length) return;
+        const i = buttons.indexOf(document.activeElement);
+        let next = -1;
+        if (e.key === 'ArrowDown' || e.key === 'ArrowRight') next = (i + 1) % buttons.length;
+        else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') next = (i - 1 + buttons.length) % buttons.length;
+        else if (e.key === 'Home') next = 0;
+        else if (e.key === 'End') next = buttons.length - 1;
+        if (next < 0) return;
+        e.preventDefault();
+        try { buttons[next].focus(); } catch (err) {}
+      });
+      document.addEventListener('pointerdown', (e) => {
+        if (!micChooserOpen()) return;
+        const t = e.target;
+        if (t && t.closest && t.closest('#micchooser, #mic, #spkbtn')) return;
+        closeMicChooser(false);
+      }, true);
+    }
     if (unmuteBtn) unmuteBtn.onclick = () => micBtn.onclick();
     function kickStageMic(track) {
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
@@ -36231,12 +36759,62 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       el.dataset.anchor = (camChooserAnchor && camChooserAnchor.id) || 'cam';
       el.setAttribute('aria-label', uiText('camChooseAria', 'Choose how you appear'));
       const wish = blurLevel(myStatus.blur);
-      for (const b of el.querySelectorAll('button')) b.setAttribute('aria-checked', String(+b.dataset.camBlur === wish));
+      for (const b of el.querySelectorAll('button[data-cam-blur]')) b.setAttribute('aria-checked', String(+b.dataset.camBlur === wish));
+      fillCamDevices();
+      // The cameras are named only once one was allowed: read the list again,
+      // and show the rows if it changed while the pop-up is open.
+      const camKey = camInputs.map((m) => m.id).join();
+      if (typeof noteAudioDevices === 'function') noteAudioDevices().then(() => { if (camChooserOpen() && camInputs.map((m) => m.id).join() !== camKey) fillCamDevices(); });
       el.hidden = false;
       if (anchor === camBtn && camBtn) camBtn.setAttribute('aria-expanded', 'true');
       placeDockPopover(el, camChooserAnchor);
       const first = el.querySelector('#campick-max') || el.querySelector('button');
       if (first) { try { first.focus(); } catch (e) {} }
+    }
+    // THE CAMERA PICKER: with more than one camera, the camera pop-up lists
+    // them under the blur choices. A pick opens that camera in place of the
+    // current one (regrabCamera: same stream, every sender re-fed, blur pipe
+    // kept) and turns the camera on with the blur already chosen.
+    let camPickPrev = '';
+    function camIdOf(track) {
+      let st = null; try { st = track && track.getSettings ? track.getSettings() : null; } catch (e) {}
+      const id = String((st && st.deviceId) || '');
+      if (id && camInputs.some((m) => m.id === id)) return id;
+      if (camDeviceId) return camDeviceId;
+      // A track that names no row (some browsers hide the id): its label.
+      const byLabel = track && track.label ? camInputs.filter((m) => m.label === track.label) : [];
+      return byLabel.length === 1 ? byLabel[0].id : id;
+    }
+    function camLabelOf(track) {
+      const m = camInputs.find((x) => x.id === camIdOf(track));
+      return (m && m.label) || (track && track.label) || uiText('camUnnamed', 'Camera');
+    }
+    function fillCamDevices() {
+      const box = document.getElementById('camdevs');
+      if (!box) return;
+      box.textContent = '';
+      box.hidden = !(camInputs.length > 1 && camChooserAnchor === camBtn);
+      if (box.hidden) return;
+      box.setAttribute('aria-label', uiText('camDevAria', 'Camera'));
+      devHead(box, uiText('camHead', 'Camera'));
+      const cur = camIdOf(localStream && localStream.getVideoTracks()[0]);
+      camInputs.forEach((m, i) => {
+        const b = devRow(m.label || uiText('camNumbered', 'Camera {n}').replace('{n}', String(i + 1)), m.id === cur, () => pickCamDevice(m.id));
+        b.dataset.camId = m.id;
+        box.appendChild(b);
+      });
+    }
+    function pickCamDevice(id) {
+      closeCamChooser();
+      if (typeof forcedCamOff === 'function' && forcedCamOff('me')) { sayState('videoOffByHost'); return; }
+      const track = localStream && localStream.getVideoTracks()[0];
+      camPickPrev = camDeviceId;
+      if (!track) { camDeviceId = id; turnCameraOn(); return; }   // no camera yet: the first grab asks for this one
+      if (myStatus.camOff) turnCameraOn();
+      if (id === camIdOf(track)) return;
+      camDeviceId = id;
+      regrabCamera('pickCam');
+      if (camBtn && camBtn.focus) { try { camBtn.focus(); } catch (e) {} }
     }
     function turnCameraOff() {
       const cam = localStream && localStream.getVideoTracks()[0];
@@ -36271,7 +36849,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function pickCamera(level) {
       const lvl = blurLevel(level);
       closeCamChooser();
-      setPersonalBlur(lvl); // still off: the refresh before the track enables is the avatar
+      setPersonalBlur(lvl, true); // still off: the refresh before the track enables is the avatar
       if (myStatus.camOff) turnCameraOn();
       if (camBtn && camBtn.focus) { try { camBtn.focus(); } catch (e) {} }
     }
@@ -36395,6 +36973,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!localStream) return;
       camFacing = camFacing === 'user' ? 'environment' : 'user';
       try { localStorage.setItem('gifos_cam_facing', camFacing); } catch (e) {}
+      camDeviceId = '';
       regrabCamera();
     };
 
@@ -36468,7 +37047,53 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const on = statusWords('camOn') || 'Camera on.';
       return why ? on + ' ' + why : on;
     }
-    function setPersonalBlur(v) {
+    // THE NO BLUR EXPLAINER. A No blur pick that a room rule still keeps soft
+    // opens a dialog the person closes, instead of a note that faded before it
+    // was read. It says why (BLUR_WHY's words, the same as the tile note) and
+    // what to do. For a room with no password: a Set room password button when
+    // this person can set it (the Password button is theirs), otherwise who can.
+    // The blur rule itself (blurHold) is unchanged. 'ready' is not a hold
+    // anyone has to act on (it clears as people turn their cameras on), so it
+    // keeps the status line.
+    const BLUR_WHY_ASK = { nopw: 1, guests: 1, forall: 1, noadmin: 1 };
+    function canSetRoomPw() {
+      const pwb = document.getElementById('pwbtn');
+      return !BROADCAST && !!pwb && !pwb.disabled;
+    }
+    function openBlurWhy(why) {
+      const m = document.getElementById('blurwhy-modal');
+      if (!m || !BLUR_WHY_ASK[why]) return false;
+      const setPw = why === 'nopw' && canSetRoomPw();
+      const todo = why === 'nopw'
+        ? (setPw ? uiText('blurWhyDoSetPw', 'Set a room password to lift this.')
+          : uiText('blurWhyDoAskAdmin', 'Ask the meeting admin to set the room password, which will require everyone to re-enter the meeting with that password.'))
+        : why === 'guests' ? uiText('blurWhyDoGuests', 'Ask the meeting admin to lift it.')
+        : why === 'forall' ? uiText('blurWhyDoForAll', 'Ask the person who blurred you to lift it.')
+        : uiText('blurWhyDoNoAdmin', 'It clears when an admin joins.');
+      document.getElementById('blurwhy-text').textContent = blurWhyWords(why, 'says');
+      document.getElementById('blurwhy-do').textContent = todo;
+      const pwBtn = document.getElementById('blurwhy-pw');
+      pwBtn.style.display = setPw ? '' : 'none';
+      m.dataset.why = why;
+      m.style.display = 'flex';
+      const first = setPw ? pwBtn : document.getElementById('blurwhy-ok');
+      try { first.focus(); } catch (e) {}
+      return true;
+    }
+    function closeBlurWhy() {
+      const m = document.getElementById('blurwhy-modal');
+      if (m) m.style.display = 'none';
+      try { if (camBtn && camBtn.focus) camBtn.focus(); } catch (e) {}
+    }
+    (function () {
+      const ok = document.getElementById('blurwhy-ok');
+      if (ok) ok.onclick = closeBlurWhy;
+      const pw = document.getElementById('blurwhy-pw');
+      if (pw) pw.onclick = () => { closeBlurWhy(); if (canSetRoomPw()) document.getElementById('pwbtn').click(); };
+    })();
+    // asked: the person picked this level themselves (the camera button's
+    // chooser), so a hold on No blur is explained in the dialog.
+    function setPersonalBlur(v, asked) {
       if (BROADCAST && !bcMayPublishAv()) return;
       myStatus.blur = v;
       paintControls();
@@ -36482,6 +37107,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // said at once, since turning the camera on does not lift it.
       const hold = blurHold('me');
       const why = noBlurWhy();
+      if (asked && openBlurWhy(hold)) { if (why) setStatus(why); return; }
       if (myStatus.camOff && hold !== 'nopw' && hold !== 'guests' && hold !== 'forall') {
         setStatus(uiText('stNoBlurPickedTurnYour', 'No blur picked — turn your camera on to be ready for clear video.'));
       } else if (why) {
@@ -36506,7 +37132,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       };
     }
     if (camChooserEl) camChooserEl.addEventListener('keydown', (e) => {
-      const buttons = camPicks.filter((b) => !b.disabled && !b.hidden);
+      const buttons = Array.from(camChooserEl.querySelectorAll('button')).filter((b) => !b.disabled && !b.hidden && !(b.parentElement && b.parentElement.hidden));
       if (!buttons.length) return;
       const i = buttons.indexOf(document.activeElement);
       let next = -1;
@@ -36779,6 +37405,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // Terminal screens: Escape or a stray tap must not navigate away (left-modal's
       // Close leaves the page) or uncover a meeting that has ended.
       if (el.id === 'left-modal' || el.id === 'closed-modal') return null;
+      // The No blur explainer is read, then closed with its own buttons.
+      if (el.id === 'blurwhy-modal') return null;
       const buttons = el.querySelectorAll('button');
       for (const b of buttons) {
         if (b.style.display === 'none' || b.disabled) continue;
@@ -36859,6 +37487,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (typeof camChooserOpen === 'function' && camChooserOpen()) {
           e.preventDefault();
           dismissCamChooser();
+          return;
+        }
+        if (typeof micChooserOpen === 'function' && micChooserOpen()) {
+          e.preventDefault();
+          closeMicChooser(true);
           return;
         }
         const tray = document.getElementById('reacttray');
@@ -39074,9 +39707,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // WHOLE MEETING away. Same set as desktop.js SYSTEM_LAUNCHERS.
       const SYSTEM_APPS = { meet: 1, video: 1, broadcast: 1, appstore: 1 };
       const apps = (files || []).filter((f) => f.isApp && !SYSTEM_APPS[f.appId]);
+      // NO STARTER APPS YET: the starter apps are put on a device by GifOS
+      // Home (desktop.js seeds them on its first load, marked isDefault).
+      // Someone who only ever came in through a meeting link has never loaded
+      // Home, so this list is empty, or holds only an app the meeting itself
+      // added. Say so, and offer Home and the App Store in a new tab: the
+      // meeting stays open, and Run app lists the apps once they are there.
+      const starters = (files || []).some((f) => f && f.isDefault === true);
       if (!apps.length) {
-        const where = (BROADCAST) ? 'on this broadcast' : 'in a meeting';
-        list.innerHTML = '<small style="color:#667">No apps on this computer yet. Make one with ＋ Add on your Home Screen, then run it ' + where + '.</small>';
+        list.textContent = '';
+        appStarterLinks(list, uiText('appEmptyLead', 'No apps on this device yet.'));
         return;
       }
       const label = (f) => (f.name || f.appId || 'App').replace(/\.gif$/i, '');
@@ -39088,6 +39728,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         b.onclick = () => { modal.style.display = 'none'; runApp(f.id, b.textContent); };
         list.appendChild(b);
       }
+      if (!starters) appStarterLinks(list, uiText('appNoStarters', 'The starter apps are not on this device yet.'));
+    }
+    function appStarterLinks(list, lead) {
+      const p = document.createElement('p'); p.className = 'app-empty';
+      p.textContent = lead;
+      list.appendChild(p);
+      const link = (cls, href, word) => {
+        const el = document.createElement('a'); el.className = 'app-empty-link ' + cls; el.href = href; el.target = '_blank'; el.rel = 'noopener';
+        el.textContent = word; list.appendChild(el);
+      };
+      link('app-empty-home', homeHref(), uiText('appEmptyHome', 'Get the starter apps on GifOS Home'));
+      link('app-empty-store', 'store.html', uiText('appEmptyStore', 'Find more apps in the App Store'));
+      const n = document.createElement('small'); n.className = 'app-empty-note';
+      n.textContent = uiText('appEmptyNote', 'They open in a new tab. Come back here and tap Run app again.');
+      list.appendChild(n);
     }
     // Second entry point: an app tab's "Meeting" toggle opens meet.html#app=<fileId>.
     // Auto-host that app once we're set up (its state lives in this same browser).
@@ -41023,8 +41678,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       followWaitState: () => followWait ? { id: followWait.id, needed: Array.from(followWait.needed), acked: Array.from(followWait.acked) } : null,
       statusText: () => statusEl.textContent,
       addTranscript: (t) => addTranscriptLine(t),
-      transcriptTexts: () => (trKeeps() ? Array.from(trs.values()).sort((a, b) => a.at - b.at) : []).map((l) => l.by + ': ' + l.text), // a page with Transcript off holds only a 20 s window for the CC overlay: it reads as nothing here, as in its Transcript window
-      transcriptBlocks: () => trBlocks().map((l) => l.by + ': ' + l.text),
+      transcriptTexts: () => (trKeeps() ? Array.from(trs.values()).sort((a, b) => a.at - b.at) : []).map((l) => l.by + ': ' + trNote(l) + l.text), // a page with Transcript off holds only a 20 s window for the CC overlay: it reads as nothing here, as in its Transcript window
+      transcriptBlocks: () => trBlocks().map((l) => l.by + ': ' + trNote(l) + l.text),
       captionsForTest: () => ({ mix: Array.from(ccMix.ins.keys()), drops: trDrops, show: !!ccShow, send: capSend(), mode: trMode(),
         lines: Array.from(trs.values()).sort((a, b) => a.at - b.at).map((l) => ({ by: l.by, byId: l.byId, w: l.w, src: l.src, lang: l.lang || '', ld: l.ld || 0, at: l.at, text: l.text })) }),
       // The transcript settings and what they produced on this page.
@@ -41125,7 +41780,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       scribeWhyForTest: () => Array.from(peers.keys()).map((pid) => {
         const st = statusOf.get(pid) || {}; const p = peers.get(pid);
         return { id: String(pid).slice(0, 6), muted: !!st.muted, modMute: !!(modOf(pid).mute && modOf(pid).mute.on), covered: capCovered(pid), langOk: earLangOk(pid),
-          cap: st.cap || 0, lang: st.lang || '', trs: st.trs || 0, ccst: st.ccst || null, connected: !!(p && p.connected), source: !!(p && wspSource(pid)) };
+          cap: st.cap || 0, lang: st.lang || '', dl: st.dl || '', trs: st.trs || 0, ccst: st.ccst || null, connected: !!(p && p.connected), source: !!(p && wspSource(pid)) };
       }),
       takeTrForTest: (m) => takeTr(m),
       markBotForTest: (on) => {

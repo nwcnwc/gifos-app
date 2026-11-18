@@ -460,12 +460,12 @@
      so a phone tile and a full-screen tile look the same. This receiver blur
      is the backstop against a sender that ships clear video: lighter than the
      sender's own blur, which it barely changes. */
-  .tile video.blur1, #fsmain.blur1, .fsthumb video.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .0225))) saturate(.9); transform: scale(1.07); }
-  .tile video.blur2, #fsmain.blur2, .fsthumb video.blur2 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-max, .045))) saturate(.75); transform: scale(1.15); }
+  .tile video.blur1, #fsmain.blur1, .fsthumb video.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .009))) saturate(.9); transform: scale(1.07); }
+  .tile video.blur2, #fsmain.blur2, .fsthumb video.blur2 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-max, .0225))) saturate(.75); transform: scale(1.15); }
   /* The face boxes on a shared screen (STAGE-FACES). No transform here: a
      strip-cell face is positioned by left/top, and a scale would move it. */
-  .stagefacebox video.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .0225))) saturate(.9); }
-  .stagefacebox video.blur2 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-max, .045))) saturate(.75); }
+  .stagefacebox video.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .009))) saturate(.9); }
+  .stagefacebox video.blur2 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-max, .0225))) saturate(.75); }
   #muteall.on { border-color: #ff5c5c; color: #ff9c9c; background: #2a1010; }
   #blurall.on { border-color: #ffb86c; color: var(--c-yellow); background: #2a1f10; }
   #camall.on { border-color: #ff5c5c; color: #ff9c9c; background: #2a1010; }
@@ -678,8 +678,8 @@
   .tile .avatar.has-img { font-size: 0; color: transparent; }
   .tile .avatar .avatar-img { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   /* A camera-off placeholder is as soft as the face it stands in for. */
-  .tile .avatar.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .0225))) saturate(.9); transform: scale(1.07); }
-  .tile .avatar.blur2 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-max, .045))) saturate(.75); transform: scale(1.15); }
+  .tile .avatar.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .009))) saturate(.9); transform: scale(1.07); }
+  .tile .avatar.blur2 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-max, .0225))) saturate(.75); transform: scale(1.15); }
   .cmsg img.avchip, .trline img.avchip, .brow img.avchip { width: 1.25rem; height: 1.25rem; object-fit: cover;
     border-radius: .25rem; vertical-align: middle; margin-right: .35rem; }
   #bc-ident { display: none; }
@@ -2099,6 +2099,23 @@
     width: max-content; max-width: calc(100vw - 16px); padding: 8px; background: var(--c-white); border-radius: var(--r-lg);
     box-shadow: 0 10px 28px rgba(0,0,0,.28); }
   #camchooser[hidden] { display: none !important; }
+  #micchooser { position: fixed; z-index: 45; left: 0; top: 0; display: flex; flex-direction: column; gap: 6px;
+    width: max-content; max-width: calc(100vw - 16px); padding: 8px; background: var(--c-white); border-radius: var(--r-lg);
+    box-shadow: 0 10px 28px rgba(0,0,0,.28); }
+  #micchooser[hidden] { display: none !important; }
+  #micchooser button { min-height: 48px; min-width: 160px; max-width: calc(100vw - 32px); border: 0; border-radius: var(--r-md);
+    font: 700 16px/1.2 system-ui, sans-serif; padding: 8px 14px; text-align: left; cursor: pointer;
+    background: #e7f8ee; color: #0a3d24; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #micchooser button[aria-checked="true"] { background: #8fd4a8; color: #08331c; }
+  #micchooser button:focus-visible { outline: 3px solid var(--c-ink); outline-offset: 2px; }
+  #app-list .app-empty { margin: 8px 0; }
+  #app-list .app-empty-link { display: block; min-height: 44px; line-height: 44px; font-weight: 700; color: inherit; text-decoration: underline; }
+  #app-list .app-empty-note { display: block; margin-top: 6px; opacity: .75; }
+  #camdevs { display: flex; flex-direction: column; gap: 6px; }
+  #camdevs[hidden] { display: none !important; }
+  #camdevs button { background: #e7f8ee; color: #0a3d24; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #camdevs button[aria-checked="true"] { background: #8fd4a8; color: #08331c; }
+  #micchooser .devhead, #camdevs .devhead { font: 700 13px/1.2 system-ui, sans-serif; color: var(--c-ink); padding: 4px 2px 0; }
   #camchooser button { min-height: 48px; min-width: 160px; border: 0; border-radius: var(--r-md);
     font: 700 16px/1.2 system-ui, sans-serif; padding: 8px 14px; text-align: left; cursor: pointer; }
   #camchooser button:focus-visible { outline: 3px solid var(--c-ink); outline-offset: 2px; }
@@ -2545,8 +2562,8 @@
   #lob-preview[data-cam="off"] video { display: none; }
   #lob-preview[data-cam="on"] .lob-pv-off { display: none; }
   /* The lobby preview is the raw camera: it shows the SENDER's look (BLUR_MIN/MAX_FRAC). */
-  .lob-preview video.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-min, .045))) saturate(.9); transform: scale(1.07); }
-  .lob-preview video.blur2 { filter: blur(calc(var(--bw, 320px) * var(--blur-max, .09))) saturate(.75); transform: scale(1.15); }
+  .lob-preview video.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-min, .018))) saturate(.9); transform: scale(1.07); }
+  .lob-preview video.blur2 { filter: blur(calc(var(--bw, 320px) * var(--blur-max, .045))) saturate(.75); transform: scale(1.15); }
   .lob-pv-off { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 12px; color: var(--c-paper); pointer-events: none; }
   .lob-pv-face { width: 112px; height: 112px; border-radius: 50%; background: #2c313b; color: var(--c-paper); overflow: hidden;

@@ -695,7 +695,7 @@
   }
   const db = gifos.db('game'), W=7, H=6, PFX='p:', LIVE=8000;
   const fresh = function(){ return { id:'board', cells:new Array(W*H).fill(null), turn:'R', starts:'R', winner:null, line:null, players:{}, names:{}, score:{R:0,Y:0,D:0} }; };
-  let cur = fresh(), me = { id:'local', name:'You' }, askLocal = false, here = {}, hover = -1;
+  let cur = fresh(), me = { id:'local', name:'You' }, askLocal = false, here = {}, hover = -1, seen = {}, lastT = {};
   const colsEl = document.getElementById('cols');
   const railEl = document.getElementById('rail');
   const statusEl = document.getElementById('status');
@@ -704,11 +704,27 @@
   const cellEls = [];
   const peekEls = [];
   function now(){ return Date.now ? Date.now() : 0; }
-  function liveIds(){ const t=now(), out=[]; for (const id in here){ if (here[id] && (t-(here[id].t||0))<LIVE) out.push(id); } return out; }
+  // ---- who is here, and who sits where (plain functions: the checks run them) ----
+  // Here means THIS page saw the person's heartbeat move lately. The heartbeat's own time is the other
+  // device's clock, so it only dates a heartbeat this page has never seen move (an old game's record).
+  function c4Seen(rows, seen, lastT, t){ for (const id in rows){ const r=rows[id]; if(!r) continue; if(lastT[id]!==r.t){ seen[id]=(id in lastT)?t:Math.min(t,+r.t||0); lastT[id]=r.t; } } }
+  function c4Live(rows, seen, t, live){ const out=[]; for (const id in rows){ if(rows[id] && (t-(seen[id]||0))<live) out.push(id); } return out; }
+  // A seat is held only by someone who is here: a player who left, or a seat kept in the saved board from
+  // an earlier game, leaves it open for the next person. One person holds one seat: a board that names the
+  // same person on both keeps them Red and opens Yellow.
+  function c4Seat(players, s, ids, meId){
+    const id=players&&players[s]; if(!id) return null;
+    if(id!==meId && ids.indexOf(id)<0) return null;
+    if(s==='Y' && c4Seat(players,'R',ids,meId)===id) return null;
+    return id;
+  }
+  // ---- end of who is here ----
+  function liveIds(){ return c4Live(here, seen, now(), LIVE); }
   function opp(){ return liveIds().some(function(id){ return id!==me.id; }); }
   function friendName(){ const ids=liveIds(); for (let i=0;i<ids.length;i++){ if(ids[i]!==me.id) return (here[ids[i]] && here[ids[i]].name) || ''; } return ''; }
-  function myMark(){ return cur.players.R===me.id?'R':cur.players.Y===me.id?'Y':null; }
-  function canPlay(){ if(cur.winner) return false; if(!opp()) return true; const mm=myMark(); return mm?cur.turn===mm:!cur.players[cur.turn]; }
+  function seatOf(s){ return c4Seat(cur.players, s, liveIds(), me.id); }
+  function myMark(){ return seatOf('R')===me.id?'R':seatOf('Y')===me.id?'Y':null; }
+  function canPlay(){ if(cur.winner) return false; if(!opp()) return true; const mm=myMark(); return mm?cur.turn===mm:!seatOf(cur.turn); }
   function colorName(s){ return s==='R'?T('color.red'):s==='Y'?T('color.yellow'):s; }
   function label(s){ return cur.names&&cur.names[s]?cur.names[s]:colorName(s); }
   function boardEmpty(){ return cur.cells.every(function(v){ return !v; }); }
@@ -753,7 +769,7 @@
     }
   }
   function setSeat(el, youEl, nameEl, mark, on, isWin){
-    const claimed = cur.players && cur.players[mark];
+    const claimed = seatOf(mark);
     const mine = claimed===me.id;
     nameEl.textContent = claimed ? label(mark) : (opp() ? T('seat.open') : colorName(mark));
     youEl.hidden = !mine;
@@ -804,7 +820,7 @@
       else if (live) statusEl.textContent=T('status.yourMove');
       else statusEl.textContent=T('status.yourMoveColor',{color:cur.turn});
     } else {
-      const tn=cur.names&&cur.names[cur.turn];
+      const tn=seatOf(cur.turn)&&cur.names&&cur.names[cur.turn];
       statusEl.textContent=tn?T('status.waiting',{name:tn}):T('status.waitingColor',{color:cur.turn});
     }
     if (!cur.winner && !live) hintEl.textContent=T('hint.alone');
@@ -822,7 +838,7 @@
     askLocal=false;
     const seat=cur.turn;
     if(opp()){
-      cur.players=Object.assign({},cur.players); cur.players[seat]=cur.players[seat]||me.id;
+      cur.players=Object.assign({},cur.players); cur.players[seat]=seatOf(seat)||me.id;
       cur.names=Object.assign({},cur.names); if(cur.players[seat]===me.id) cur.names[seat]=me.name;
     }
     cur.cells=cur.cells.slice(); cur.cells[row*W+col]=seat;
@@ -891,12 +907,12 @@
       cur.score=Object.assign({R:0,Y:0,D:0},cur.score||{});
       cur.players=cur.players||{}; cur.names=cur.names||{};
     }
-    const next={}; const t=now();
+    const next={};
     items.forEach(function(x){
-      if(x && typeof x.id==='string' && x.id.indexOf(PFX)===0 && x.t && (t-x.t)<LIVE)
+      if(x && typeof x.id==='string' && x.id.indexOf(PFX)===0 && x.t)
         next[x.id.slice(PFX.length)]=x;
     });
-    here=next; render();
+    here=next; c4Seen(here, seen, lastT, now()); render();
   }
   // Nothing that calls T runs before the catalog has loaded (a key must never be painted).
   function boot(){
@@ -7099,7 +7115,7 @@ The big name is whose turn it is now; **Up next** is the person after them. **Ne
 
 ## In a meeting
 
-The person whose turn it is and the person up next go on the Stage, so the next reader is ready. Your camera stays as you set it; if you are muted, the meeting asks whether to unmute. In an admin room the host can lead the app so only they move the turns.
+The person whose turn it is and the person up next go on the Stage, so the next reader is ready. Your camera stays as you set it; if you are muted, the meeting asks whether to unmute. In a hosted room the host can lead the app so only they move the turns.
 
 ## Saved
 
