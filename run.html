@@ -19471,11 +19471,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     });
 
     // ---- which camera: front or back (the standard mobile flip) -------------
-    // facingMode is an IDEAL, so desktops with one webcam are unaffected; the
-    // choice persists per device. The flip button only appears when the
-    // hardware actually has a second camera (see maybeShowFlip).
+    // facingMode is an IDEAL, so desktops with one webcam are unaffected.
+    // Every join starts on the front camera (0.9.26.21): a flip lasts for the
+    // meeting it was made in and is not kept (a back camera at the next join
+    // surprised people). The flip button only appears when the hardware
+    // actually has a second camera (see maybeShowFlip).
     let camFacing = 'user';
-    try { camFacing = localStorage.getItem('gifos_cam_facing') || 'user'; } catch (e) {}
     // THE CAMERA PICKER's state: this device's cameras (one row each) and the
     // person's pick ('' = the facing choice above decides). A pick asks for
     // that camera exactly; the flip button goes back to facing.
@@ -19587,10 +19588,26 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       } catch (e) {}
       camGrabbing = true;
       const picked = reason === 'pickCam';
+      // FLIP: many phones open one camera at a time (both Motos refuse the back
+      // camera with NotReadableError while the front one is open, and the grab
+      // below then fell back to sound only: no picture at all). So a flip lets
+      // go of the current camera FIRST, and a facing that will not open goes
+      // back to the front camera ('flipBack').
+      const flip = reason === 'flip' || reason === 'flipBack';
+      if (flip && localStream) for (const old of localStream.getVideoTracks()) { try { old.stop(); } catch (e) {} }
+      const flipFailed = () => {
+        if (reason !== 'flip') return false;
+        camFacing = 'user';
+        camGrabbing = false;
+        setStatus(uiText('stCamPickFailed', 'That camera could not be opened. Your camera did not change.'));
+        regrabCamera('flipBack');
+        return true;
+      };
       // The fresh mic is the person's picked one (ideal: an unplugged pick
       // must not cost the camera).
       gumWithMicFallback(navigator.mediaDevices, { video: camVideoConstraints(), audio: micDeviceId ? { deviceId: { ideal: micDeviceId } } : true })
         .then(({ stream: s }) => {
+          if (flip && !s.getVideoTracks()[0] && reason === 'flip') { for (const t of s.getTracks()) { try { t.stop(); } catch (e) {} } flipFailed(); return; }
           camGrabbing = false;
           const nv = s.getVideoTracks()[0], na = s.getAudioTracks()[0];
           if (picked && nv) setStatus(uiText('stCamOnNamed', 'Camera on: {name}').replace('{name}', camLabelOf(nv)));
@@ -19619,6 +19636,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           refreshOutbound(); // rebuild the (blurred or raw) sender AND the WYSIWYG self-view
           if (death) showCamBack(false);
         }).catch(() => {
+          if (flipFailed()) return;
           camGrabbing = false;
           if (death) showCamBack('fail');
           // A picked camera that would not open: back to the one that worked.
@@ -37344,9 +37362,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (BROADCAST && !bcMayPublishAv()) return;
       if (!localStream) return;
       camFacing = camFacing === 'user' ? 'environment' : 'user';
-      try { localStorage.setItem('gifos_cam_facing', camFacing); } catch (e) {}
       camDeviceId = '';
-      regrabCamera();
+      regrabCamera('flip');
     };
 
     // ---- stay in the meeting when the tab is hidden ---------------------------
