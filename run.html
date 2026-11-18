@@ -34106,6 +34106,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return best;
     }
     let speech = null, speechFails = 0, speechRetry = null, speechGaveUp = false, speechProved = false;
+    // Starts the engine refused in a row (start() threw: a session the browser still holds, a track no
+    // longer live). Only a written line resets it: a start() that returns has not proved the engine hears.
+    let speechThrew = 0;
+    // A start() that throws leaves no session at all: no result, no error and no end will ever come. So
+    // nothing is left pointing at it (no engine, no proof, cap 0: the pages that hear my call audio write
+    // me), and the engine is started again from the settings, backing off; after three in a row this page
+    // also says Captions paused. The first written line takes that back.
+    function speechStartThrew(err) {
+      speechThrew++;
+      if (clog) clog('cc start threw', String((err && err.name) || err), speechThrew);
+      stopSpeech();
+      if (speechThrew >= 3) speechEngineDown();
+      speechRetry = setTimeout(() => { speechRetry = null; try { syncSpeech(); } catch (e) {} }, speechRetryDelay(speechThrew));
+    }
     // A browser whose speech engine cannot run tells the room so (ccst
     // 'paused'): it sends no captions, and a keep/share page writes that
     // voice instead. The first line it writes again takes the word back.
@@ -34166,6 +34180,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const rec = speech;
         rec.input = input || null;
         const go = () => { if (rec.input) rec.start(rec.input); else rec.start(); };
+        const restart = () => { try { go(); } catch (err) { if (speech === rec) speechStartThrew(err); } };
         speech.continuous = true;
         speech.interimResults = false;
         speech.lang = speechLangFor();
@@ -34180,8 +34195,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) { trDrops++; if (typeof capTraceGate === 'function') capTraceGate(rec.eng, rec.langTag, myVoiceFrom || 0, speech !== rec ? 'late' : 'muted', rec.input ? 'mix' : 'mic'); }
             return;
           }
-          speechFails = 0;
-          speechProved = true;
+          speechFails = 0; speechThrew = 0;
+          if (speech === rec) speechProved = true; // a stopped session's late line proves nothing about the engine now running
           speechEngineUp();
           try { capPublish(); } catch (err) {}
           if (rec.input) {
@@ -34232,11 +34247,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             const wait = speechRetryDelay(speechFails);
             speechRetry = setTimeout(() => {
               speechRetry = null;
-              if (speech === rec && speechKeep(rec)) { try { go(); } catch (err) {} }
+              if (speech === rec && speechKeep(rec)) restart();
             }, wait);
             return;
           }
-          try { go(); } catch (err) {}
+          restart();
         };
         speech.onerror = (e) => {
           if (speech !== rec) return;
@@ -34259,13 +34274,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             }
           }
         };
-        go();
+        try { go(); } catch (err) { speechStartThrew(err); return false; }
         return true;
-      } catch (e) { speech = null; return false; }
+      } catch (e) { speech = null; speechProved = false; return false; }
     }
     function stopSpeech() {
       const sp = speech;
       speech = null; // onend sees null → no restart
+      speechProved = false; // the next session earns the cap bit with a line of its own
       if (speechRetry) { clearTimeout(speechRetry); speechRetry = null; }
       if (sp) { try { sp.stop(); } catch (e) {} }
       ccMixStop();
