@@ -19627,7 +19627,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       return out;
     }
-    function micInputsOf(list) { return devRowsOf(list, 'audioinput'); }
+    // Chrome on Android lists the phone's ONE built-in microphone twice, as
+    // the call's two sound routes: 'Speakerphone' and 'Headset earpiece'
+    // (Chromium's fixed English route names, the same on every phone). They
+    // are not two microphones: the earpiece row is dropped, so a phone with
+    // no headset has one row and a tap on Mic unmutes. Counted as two, every
+    // muted tap on a Motorola opened the chooser instead of the mic, and a
+    // second tap shut it again with the mic still off (live 0.9.26.19).
+    // A headset, Bluetooth or USB mic is a real second row and still asks.
+    function micInputsOf(list) {
+      const rows = devRowsOf(list, 'audioinput');
+      if (!IS_ANDROID || !rows.some((r) => r.label === 'Speakerphone')) return rows;
+      return rows.filter((r) => r.label !== 'Headset earpiece');
+    }
     // THE SPEAKER PICKER: only where a page may choose where sound plays
     // (setSinkId on media elements) and the device has more than one output.
     // spkDeviceId '' = the system's own output; spkDefGroup marks that row.
