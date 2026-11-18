@@ -113,31 +113,60 @@ html body .bar > #leavebtn .docklab { color: #ff5c5c; }
 #lobby.form-open #lob-open-more, #lobby.form-open #lob-open-extra { display: none !important; }
 @media (max-width: 700px), (max-height: 500px) { html.ui-large #lob-admin-btn small { display: none; } }
 
-/* Subscription plans in the Settings dialog (#set-modal): two columns
-   (Monthly | Annual) stay side by side down to a 360px phone. The selected
-   plan or the Free row is white on near-black. */
-#set-modal .sub-plans {
+/* Subscription dialog reuses the Settings window (same header, body, Close). */
+#sub-modal .name-box.set-box {
+  width: min(720px, calc(100vw - 32px)); max-width: none; padding: 0; text-align: left;
+  color: var(--text, var(--c-ink));
+}
+#sub-modal .set-box > .dlg-head { padding: 16px 20px 12px; border-bottom: 1px solid var(--border, #d9dce3); }
+#sub-modal .set-box > .dlg-head h3 { margin: 0; font-size: 1.25rem; line-height: 1.3; text-align: left; }
+#sub-modal .set-box > .dlg-body { padding: 4px 20px 16px; }
+#sub-modal .set-box > .dlg-actions { padding: 12px 20px; border-top: 1px solid var(--border, #d9dce3); justify-content: flex-end; }
+#sub-modal .set-row {
+  display: grid; grid-template-columns: 11rem minmax(0, 1fr); gap: 6px 16px; align-items: start;
+  margin: 0; padding: 12px 0; font-size: 1rem;
+}
+#sub-modal .set-row.set-wide > * { grid-column: 1 / -1; }
+#sub-modal .set-help { font-size: .875rem; line-height: 1.45; margin: 0; color: var(--muted, #5a6070); }
+#sub-modal p.set-help { margin: 0; }
+#sub-modal .seg, #sub-modal .name-box button { min-height: 44px; padding: 8px 14px; font-size: 1rem; }
+#sub-modal #sub-close { min-width: 112px; }
+@media (max-height: 500px) {
+  #sub-modal .set-box > .dlg-head { padding-top: 10px; padding-bottom: 8px; }
+  #sub-modal .set-box > .dlg-actions { padding-top: 8px; padding-bottom: 8px; }
+}
+@media (max-width: 640px) {
+  #sub-modal .name-box.set-box { width: calc(100vw - 16px); }
+  #sub-modal .set-box > .dlg-head, #sub-modal .set-box > .dlg-body, #sub-modal .set-box > .dlg-actions { padding-left: 16px; padding-right: 16px; }
+  #sub-modal .set-row { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Subscription plans in #sub-modal: two columns (Monthly | Annual) stay side
+   by side down to a 360px phone. The selected plan, pass, or Free row is
+   white on near-black. */
+#sub-modal .sub-plans {
   width: 100%; border-collapse: collapse; table-layout: fixed;
   margin: .4rem 0 .6rem; font-size: 1rem;
 }
-#set-modal .sub-plans th,
-#set-modal .sub-plans td { padding: 6px 4px; vertical-align: middle; }
-#set-modal .sub-plans th { font-size: .8rem; font-weight: 700; text-align: center; }
-#set-modal .sub-plans th:first-child { width: auto; }
-#set-modal .sub-plans td.sub-plan-desc { text-align: left; font-weight: 600; line-height: 1.3; }
-#set-modal .sub-plans td.sub-plan-buy { width: 7.2rem; text-align: center; padding: 4px; }
-#set-modal .sub-plans button {
+#sub-modal .sub-plans th,
+#sub-modal .sub-plans td { padding: 6px 4px; vertical-align: middle; }
+#sub-modal .sub-plans th { font-size: .8rem; font-weight: 700; text-align: center; }
+#sub-modal .sub-plans th:first-child { width: auto; }
+#sub-modal .sub-plans td.sub-plan-desc { text-align: left; font-weight: 600; line-height: 1.3; }
+#sub-modal .sub-plans td.sub-plan-buy { width: 7.2rem; text-align: center; padding: 4px; }
+#sub-modal .sub-plans button {
   width: 100%; min-height: 44px; padding: 8px 6px; font-size: .9rem;
   white-space: nowrap; box-sizing: border-box;
 }
-#set-modal .sub-plans tr.sub-plan-free td { font-weight: 600; padding: 10px 8px; }
-#set-modal .sub-plans [aria-selected="true"],
-#set-modal #sub-pass-buy[aria-selected="true"] {
+#sub-modal .sub-plans tr.sub-plan-free td,
+#sub-modal .sub-plans tr.sub-plan-pass td.sub-plan-desc { font-weight: 600; padding: 10px 8px; }
+#sub-modal .sub-plans [aria-selected="true"],
+#sub-modal #sub-pass-buy[aria-selected="true"] {
   background: #111 !important; color: #fff !important; border-color: #111 !important;
 }
-#set-modal .sub-plans tr[aria-selected="true"] td { background: #111; color: #fff; }
+#sub-modal .sub-plans tr[aria-selected="true"] td { background: #111; color: #fff; }
 @media (max-width: 400px) {
-  #set-modal .sub-plans { font-size: .9rem; }
-  #set-modal .sub-plans td.sub-plan-buy { width: 6.4rem; }
-  #set-modal .sub-plans button { font-size: .8rem; padding: 8px 4px; }
+  #sub-modal .sub-plans { font-size: .9rem; }
+  #sub-modal .sub-plans td.sub-plan-buy { width: 6.4rem; }
+  #sub-modal .sub-plans button { font-size: .8rem; padding: 8px 4px; }
 }
