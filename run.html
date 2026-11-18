@@ -31585,11 +31585,22 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // The browser engine's own echo gate threw a line away (the raw microphone
     // heard it while my call track showed no voice).
-    function capTraceGate(eng, lang, at) {
+    function capTraceGate(eng, lang, at, why, inp) {
       if (!window.__capTrace) return;
-      const line = { byId: myId, w: myId, src: 'mic', eng: eng, inp: 'mic', lang: lang, at: at, end: Date.now() };
-      Object.defineProperty(line, 'via', { value: ccVia(eng, 'mic') });
-      capTrace(line, 'gate');
+      inp = inp || 'mic';
+      const line = { byId: myId, w: myId, src: 'mic', eng: eng, inp: inp, lang: lang, at: at, end: Date.now() };
+      Object.defineProperty(line, 'via', { value: ccVia(eng, inp) });
+      capTrace(line, why || 'gate');
+    }
+    // The browser engine on the raw microphone hears the system default
+    // device; when the call's mic is another device, say so once.
+    let ccDevWarned = false;
+    function ccDevNotice() {
+      if (ccDevWarned) return;
+      const v = ccVia('browser', 'mic');
+      if (v.dm !== 0) return;
+      ccDevWarned = true;
+      try { setStatus(uiText('stCaptionsOtherMic', 'Captions are listening to a different microphone than your call. Make your call microphone the system default, or turn on Whisper in Settings > Captions.'), 0, 'stop'); } catch (e) {}
     }
     // The call's microphone (the track the call sends): its device and group.
     function ccCallMic() {
@@ -32151,10 +32162,42 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function trTlSame(a, b) {
       return !!((a.tl || b.tl) && a.byId === b.byId && !trGeneric(a.byId) && trOverlap(a, b));
     }
+    // One named voice, two lines over the same span: one written by the
+    // speaker's engine on the RAW microphone (inp 'mic': the system default
+    // device, the speakers included), one by a page that heard the call's
+    // audio of that voice (src 'ear'). One utterance, whatever the words: the
+    // raw microphone may have heard something else entirely. The ear wins.
+    function trRawEar(a, b) {
+      if (!a.byId || a.byId !== b.byId || trGeneric(a.byId) || !trOverlap(a, b)) return false;
+      return (a.inp === 'mic' && b.src === 'ear') || (b.inp === 'mic' && a.src === 'ear');
+    }
+    // THE ECHO SIGNATURE: a's words are another named person's words (b),
+    // said at the same time, and a came off a RAW microphone (inp 'mic'),
+    // which hears the speakers. a is that person's voice through a's
+    // speakers, not a's own.
+    // Shared words: most of the shorter line's (TR_ECHO_SHARE), three at least.
+    const TR_ECHO_SHARE = 0.6;
+    function trEchoOf(a, b) {
+      if (a.inp !== 'mic' || !a.byId || !b.byId || a.byId === b.byId || trGeneric(a.byId) || trGeneric(b.byId)) return false;
+      // Both raw: the copy is the one the engine finished later (the echo
+      // is heard after the voice it repeats); the same end, the later start.
+      if (b.inp === 'mic') { const ae = a.end || a.at || 0, be = b.end || b.at || 0; if (be > ae || (be === ae && (b.at || 0) > (a.at || 0))) return false; }
+      if (!trOverlap(a, b)) return false;
+      const wa = trWords(trNorm(a.text)), wb = trWords(trNorm(b.text));
+      let shared = 0; for (const x of wa) if (wb.has(x)) shared++;
+      return shared >= 3 && shared >= TR_ECHO_SHARE * Math.min(wa.size, wb.size);
+    }
+    // My raw microphone's final, before it goes anywhere: is it the echo of
+    // a line this page already holds from another person?
+    function trEchoHeld(text, at) {
+      const m = { byId: myId, inp: 'mic', at: at, end: Date.now(), text: String(text || '') };
+      for (const l of trs.values()) if (trEchoOf(m, l)) return true;
+      return false;
+    }
     function trSame(a, b) {
       if (trGap(a, b) >= 8000) return false;
       if (a.byId !== b.byId && !trGeneric(a.byId) && !trGeneric(b.byId)) return false;
-      if (trLangClash(a, b) || trTlSame(a, b)) return true;
+      if (trLangClash(a, b) || trTlSame(a, b) || trRawEar(a, b)) return true;
       const la = trLangOf(a.lang), lb = trLangOf(b.lang);
       // Two engines heard the SAME stretch of one voice and named different
       // languages: one of them guessed wrong (a short tail of a sentence
@@ -32177,6 +32220,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // the lower id. Order-independent, so every page keeps the same line.
     function trBetter(a, b) {
       if (trLangClash(a, b)) return !!a.ld;
+      if (trRawEar(a, b)) return a.inp !== 'mic';
       const ra = trRank(a), rb = trRank(b);
       if (ra !== rb) return ra > rb;
       if ((a.at || 0) !== (b.at || 0)) return (a.at || 0) < (b.at || 0);
@@ -32202,12 +32246,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // lines whose words it holds, or the same voice rendered in another
       // language (the clash, or an overlap): a line with words the survivor
       // lacks stays, whatever its rank. An extra line is better than a lost one.
+      // An echo never stands: the new line is one ('echo', dropped), or a
+      // held raw line is the echo of the new one (it leaves).
+      for (const l of Array.from(trs.values())) {
+        if (trEchoOf(m, l)) { trDrops++; return 'echo'; }
+        if (trEchoOf(l, m)) { trs.delete(l.id); trDrops++; if (typeof capTrace === 'function') capTrace(l, 'echo'); }
+      }
       const same = [];
       for (const l of trs.values()) if (trSame(l, m)) same.push(l);
       if (!same.length) return 'new';
       let best = m;
       for (const l of same) if (trBetter(l, best)) best = l;
-      const folds = (l, into) => l !== into && (trLangClash(l, into) || trSameVoiceOtherLang(l, into) || trTlSame(l, into) || trWithin(l, into));
+      const folds = (l, into) => l !== into && (trLangClash(l, into) || trRawEar(l, into) || trSameVoiceOtherLang(l, into) || trTlSame(l, into) || trWithin(l, into));
       let at = best.at || 0;
       for (const l of same.concat([m])) if (folds(l, best) && (l.at || 0) > 0 && (at <= 0 || l.at < at)) at = l.at;
       if (clog) clog('tr same', String(m.byId).slice(0, 6), m.src, m.at, 'held', String(best.byId).slice(0, 6), best.src, best.at, 'x' + same.length);
@@ -32255,7 +32305,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (m.dm === 0 || m.dm === 1) line.dm = m.dm;
       const via = m.via; // this page's own line: its devices, kept in the export only
       if (via) Object.defineProperty(line, 'via', { value: via });
-      if (trMerge(line) === 'dup') { if (typeof capTrace === 'function') capTrace(line, 'dup'); return false; }
+      const merged = trMerge(line);
+      if (merged === 'dup' || merged === 'echo') { if (typeof capTrace === 'function') capTrace(line, merged); return false; }
       if (typeof capTrace === 'function') capTrace(line, backfill ? 'replay' : 'kept');
       trs.set(m.id, line);
       trimMap(trs, CHAT_MAX);
@@ -32648,7 +32699,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       'class WspCaptureProcessor extends AudioWorkletProcessor {',
       '  constructor() { super(); this.buf = new Float32Array(4096); this.n = 0; }',
       '  process(inputs) {',
-      '    const ch = inputs[0] && inputs[0][0];',
+      '    const ins = inputs[0] || [];',
+      '    let ch = ins[0];',
+      '    if (ch && ins.length > 1) { const m = new Float32Array(ch.length); for (const c of ins) for (let k = 0; k < m.length; k++) m[k] += c[k] / ins.length; ch = m; }',
       '    if (ch && ch.length) {',
       '      let i = 0;',
       '      while (i < ch.length) {',
@@ -32756,7 +32809,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       } else {
         node.onaudioprocess = (e) => {
           if (wspCaps.get(id) !== w) return;
-          wspOnChunk(w, new Float32Array(e.inputBuffer.getChannelData(0))); // the browser reuses its buffer
+          const ib = e.inputBuffer, nc = ib.numberOfChannels || 1;
+          const out = new Float32Array(ib.getChannelData(0)); // the browser reuses its buffer
+          for (let c = 1; c < nc; c++) { const d = ib.getChannelData(c); for (let k = 0; k < out.length; k++) out[k] += d[k]; }
+          if (nc > 1) for (let k = 0; k < out.length; k++) out[k] /= nc; // every channel, averaged
+          wspOnChunk(w, out);
         };
       }
       w.src.connect(node);
@@ -32921,7 +32978,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           setStatus(uiText('stCaptionsBehindSkippingOldAudio', 'Captions behind, skipping old audio'), 8000);
         }
       }
-      const job = { id: w.id, chunks, at, rate: rate || w.rate, keep: !!keep, stage: !!w.stageSid };
+      // A clip at a rate no microphone runs at (8 to 192 kHz) would be
+      // resampled into nonsense: dropped at the input, never transcribed.
+      const jr = rate || w.rate;
+      if (!(jr >= 8000 && jr <= 192000)) { wspQ.dropped++; if (clog) clog('wsp bad rate', w.id, jr); return; }
+      const job = { id: w.id, chunks, at, rate: jr, keep: !!keep, stage: !!w.stageSid };
       if (keep) wspQ.items.unshift(job); else wspQ.items.push(job);
       wspDrain();
     }
@@ -33610,8 +33671,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         peers: peersOut,
       };
     }
+    // THE CAP BIT says "this page captions my voice from what the call sends":
+    // Whisper on my call track, or the speech engine fed the call track (the
+    // mix). A browser engine on the RAW microphone hears the system default
+    // device, speakers included (2026-11-17, a tester: fluent English she never
+    // said went out under her name while every other page heard her clean):
+    // its lines still go out, marked inp 'mic', but it never claims the
+    // voice, so the pages that hear her call audio keep writing her.
+    function capHearsCall() { return wspCaps.has('me') || !!(speech && speech.input); }
     function capPublish() {
-      const next = { cap: capLive() ? 1 : 0, lang: trLangKnown(), trs: trMode() === 'share' ? 1 : 0 };
+      const next = { cap: capLive() && capHearsCall() ? 1 : 0, lang: trLangKnown(), trs: trMode() === 'share' ? 1 : 0 };
       const prev = { cap: myStatus.cap || 0, lang: myStatus.lang || '', trs: myStatus.trs || 0 };
       if (next.cap === prev.cap && next.lang === prev.lang && next.trs === prev.trs) return;
       if (next.cap) myStatus.cap = 1; else delete myStatus.cap;
@@ -33785,6 +33854,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // 2 s of the previous one continues that speaker. null: nobody talked
     // (noise, or a voice now gone).
     const CC_BURST_MS = GifOS.timings.CC_BURST_MS;
+    const CC_GATE_TAIL_MS = GifOS.timings.CC_GATE_TAIL_MS; // the own-voice gate's one grace: the meter's slowest tick
     function ccMixSpeaker() {
       let best = null, ms = 0;
       for (const [id, t] of ccMix.talk) if (t > ms) { ms = t; best = id; }
@@ -33850,6 +33920,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         rec.langTag = trLangOf(speech.lang);
         rec.eng = typeof phoneCaptions === 'function' && phoneCaptions() ? 'native' : 'browser'; // the Meet app's own engine stands in for the browser's
         speech.onresult = (e) => {
+          // A stopped (or replaced) session's late final, or a line while I am
+          // muted: never mine to send.
+          if (speech !== rec || (myStatus.muted && !rec.input)) {
+            for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) { trDrops++; if (typeof capTraceGate === 'function') capTraceGate(rec.eng, rec.langTag, myVoiceFrom || 0, speech !== rec ? 'late' : 'muted', rec.input ? 'mix' : 'mic'); }
+            return;
+          }
           speechFails = 0;
           speechProved = true;
           speechEngineUp();
@@ -33864,23 +33940,33 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             }
             return;
           }
-          // THE GATE: the raw microphone hears the speakers too. No voice on
-          // my own echo-cancelled mic in the last 3s means I only heard this
-          // through them. No meter yet (AudioContext not born) ⇒ no verdict ⇒
-          // let it through.
-          // ... or carried voice at any time since the previous final: an engine
-          // hands a long utterance's final over seconds after the voice stopped,
-          // and a line a person really said is never thrown away for that.
+          // THE GATE: the raw microphone hears the speakers too. A line goes
+          // out only if my own echo-cancelled mic carried voice during its
+          // span: since the previous final (an engine hands a long utterance's
+          // final over seconds after the voice stopped, and that line is kept).
+          // Voice that belonged to the previous line is not this one's
+          // (2026-11-17: the old 3 s grace passed a line heard right after I
+          // stopped). The meter's own resolution is the one grace: voice in
+          // its last tick (CC_GATE_TAIL_MS; a hidden tab reads every 900 ms)
+          // may not have set the flag yet. No meter yet (AudioContext not
+          // born) ⇒ no verdict ⇒ let it through.
           const sinceVoice = Date.now() - myVoiceAt;
-          const heard = !meters.has('me') || myVoiceSinceFinal || sinceVoice < 3000;
+          const heard = !meters.has('me') || myVoiceSinceFinal || sinceVoice < CC_GATE_TAIL_MS;
+          if (typeof ccDevNotice === 'function') ccDevNotice();
+          let mine = false;
           for (let i = e.resultIndex; i < e.results.length; i++) {
             if (!e.results[i].isFinal) continue;
+            // The echo of a line I already hold from someone else: dropped
+            // here, never sent, and it does not use up my voice: the final
+            // that follows may be my own sentence.
+            if (heard && typeof trEchoHeld === 'function' && trEchoHeld(e.results[i][0].transcript, myVoiceFrom || 0)) { trDrops++; if (typeof capTraceGate === 'function') capTraceGate(rec.eng, rec.langTag, myVoiceFrom || 0, 'echo'); continue; }
+            mine = true;
             if (!heard) { trDrops++; if (clog) clog('tr own drop', 'gate', sinceVoice, String(e.results[i][0].transcript).slice(0, 40)); if (typeof capTraceGate === 'function') capTraceGate(rec.eng, rec.langTag, myVoiceFrom || 0); continue; }
             // the line spans from when this stretch of my voice began to now; its language is as good as
             // detected when it is the one this page knows (picked, or learned from the room's Whisper pages)
             addTranscriptLine(e.results[i][0].transcript, myVoiceFrom || 0, null, null, 'mic', rec.langTag, rec.langTag === trLangKnown(), Date.now(), '', { eng: rec.eng, inp: 'mic' });
           }
-          myVoiceSinceFinal = false;
+          if (mine) myVoiceSinceFinal = false;
         };
         speech.onend = () => {
           if (!(speech === rec && speechKeep(rec))) return;
@@ -33971,7 +34057,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       // The room ear runs only while there is a voice to hear: an engine on an
       // empty mix is a speech session open over silence.
-      if (hearRoom && ccTrackInput() && ccMixVoices().size) {
+      // My own voice too: wherever the engine takes a track, it hears the
+      // call's echo-cancelled mic, never the raw default device.
+      if ((hearRoom || mine) && ccTrackInput() && ccMixVoices().size) {
         if (speechRunning() && !speech.input) stopSpeech(); // a raw-microphone engine hands over to the room ear
         const input = ccMixStart();
         if (input) {
@@ -33980,7 +34068,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           return;
         }
       }
-      // No track input, or this device is only writing itself: my microphone.
+      // No track input: my microphone (the system default device).
       if (speechRunning() && speech.input) stopSpeech(); // the room ear stands down to the plain microphone
       if (mine && !speechRunning()) startSpeech();
       if (!mine && speechRunning()) stopSpeech();

@@ -713,6 +713,7 @@
   "meet.setTrShareHelp": "The same, and the lines this device writes about others go to everyone. Your tile shows a transcript badge.",
   "meet.trShareChip": "sharing a transcript",
   "meet.stCaptionsNowListenFor": "Captions now listen for {lang}.",
+  "meet.stCaptionsOtherMic": "Captions are listening to a different microphone than your call. Make your call microphone the system default, or turn on Whisper in Settings > Captions.",
   "meet.stSendingCaptionsOn": "Sending your captions to the meeting.",
   "meet.stSendingCaptionsOff": "Your captions are off. The others may still write you down.",
   "meet.stTranscriptShare": "You keep a transcript and share the voices you write down with the room.",
