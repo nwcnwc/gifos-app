@@ -17850,8 +17850,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function seatMemTake() {
       const mem = seatMemRead(); if (!mem) return Promise.resolve(null);
-      return seatKeyLock(mem.seed, 3).then((got) => {
-        if (!got) { seatMemErase(); return null; }
+      // RELOAD.1 (2026-11-18, the iPhone reload that never reseats): log each gate a reload passes, and never wait on the
+      // seat lock for longer than SEAT_LOCK_MAX_MS (Safari may keep the old page's lock while it sits in the back-forward
+      // cache): past it, this tab joins as a NEW person, which the room seats like any newcomer.
+      try { clog('reload-mem seed=' + mem.seed.slice(0, 6) + ' age=' + (Date.now() - (+mem.at || 0)) + 'ms'); } catch (e) {}
+      const lockP = seatKeyLock(mem.seed, 3);
+      const capP = new Promise((r) => setTimeout(() => r('timeout'), 2000));
+      return Promise.race([lockP, capP]).then((got) => {
+        try { clog('reload-lock ' + (got === 'timeout' ? 'timeout' : got ? 'got' : 'busy')); } catch (e) {}
+        if (got !== true) { seatMemErase(); return null; }
         seatMemNow = mem; return mem;
       });
     }
