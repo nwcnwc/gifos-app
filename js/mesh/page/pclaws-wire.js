@@ -561,9 +561,6 @@
       trace('PC-BYE-IN', me, null, 'peer=%d why=%s', x, why);
       L.byeIn = true; doorEndCount(L);
       if (why === 'leave') { const s = mySeat(); if (s && !s.dead) s.l45Bye(x); }   // L45: the page's own word for the sim's leave-close
-      // JOIN.1: a door that DECLINED my knock while I hold no seat is read as BUSY, so the seat moves on to the next greeter
-      // (or asks the door again) at once, instead of redialling that door every few seconds (the 'pcbye-in declined' loop).
-      if ((why === 'declined' || why === 'door') && !mySeated()) { const b = msg.newMsg('BUSY'); b.id = x; b.from = -1; b.to = me; b.lk = -1; io.deliver(b); }
       if (L.state === LK_OPEN || L.state === LK_DIALING) { L.state = LK_CLOSED; L.epoch = (L.epoch + 1) >>> 0; L.q = []; L.half = 0; L.halfAt = -1; }
       L.view[e] = LK_CLOSED; L.gone |= (1 << e); L.callClosed = true; L.outside = 0;
       if (L.agreed[e]) {
@@ -611,10 +608,7 @@
       const L = LINKS.get(x);
       if (L && (L.state === LK_DIALING || L.state === LK_OPEN)) { L.state = LK_NONE; L.epoch = (L.epoch + 1) >>> 0; L.q = []; L.view[mine(x)] = LK_NONE; doorEndCount(L); io.close(x, 'refused'); }
       if (!(info && info.busy)) declNote(x);   // L23: remember it (fabricDial); L16 busy has its own BUSY path
-      // JOIN.1 (2026-11-18, the join hang): a door that refuses a knocker who holds no seat yet, for any reason, is read as
-      // BUSY, so the seat's L16 path moves on to the next greeter or asks the door again at once, instead of redialling the
-      // same refusing door every few seconds (the phones' 'pcbye-in ... declined' loop).
-      if ((info && info.busy) || !mySeated()) { const b = msg.newMsg('BUSY'); b.id = x; b.from = -1; b.to = me; b.lk = -1; io.deliver(b); }
+      if (info && info.busy) { const b = msg.newMsg('BUSY'); b.id = x; b.from = -1; b.to = me; b.lk = -1; io.deliver(b); }
     }
     // the page's leave: a goodbye on every open pc (the seat's LEAVE went out before)
     function leaveAll() { for (const [x, L] of LINKS) if (L.state === LK_OPEN || L.state === LK_DIALING) { L.state = LK_CLOSED; L.view[mine(x)] = LK_CLOSED; L.gone |= (1 << mine(x)); bye(x, 'leave', L); } }
