@@ -31,6 +31,14 @@ matching `type` value. There are only these two:
 `type` also takes the screen words ("public", "open floor", "private",
 "hosted") and maps them to "open" and "admin".
 
+The person who runs a private meeting is its host, and the screens call the
+role host everywhere: the Host button, Host sign-in, the host password. The
+tools keep "admin" as the value (type "admin", mode "admin", and
+`admin_password`, the older name of `host_password`), and take "host" for
+"admin" where they read free text. A public open-floor meeting has no host.
+Someone on the $5 or $10 plan, or with a staff pass, can take charge of one
+with the "Make me host" button (`guard_room` does this for a bot).
+
 ## What people ask, and the tool to use
 
 - "set up meet.gifos.app for me": install the MCP server above, then
