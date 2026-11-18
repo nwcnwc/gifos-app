@@ -982,5 +982,7 @@
   "meet.appEmptyHome": "Get the starter apps on GifOS Home",
   "meet.appEmptyStore": "Find more apps in the App Store",
   "meet.appEmptyNote": "They open in a new tab. Come back here and tap Run app again.",
-  "meet.appNoStarters": "The starter apps are not on this device yet."
+  "meet.appNoStarters": "The starter apps are not on this device yet.",
+  "meet.spkbtnTip": "Choose where the meeting's sound plays",
+  "meet.spkChooseAria": "Choose a speaker"
 }

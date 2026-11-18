@@ -922,6 +922,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <section class="moregroup" data-group="setup">
       <h4 data-t="setHelp">Settings and help</h4>
       <div class="morerow">
+        <button data-ti="spkbtnTip" id="spkbtn" data-t="spkHead" type="button" aria-haspopup="menu" aria-expanded="false" title="Choose where the meeting's sound plays" hidden>Speaker</button>
         <button data-ti="setbtnTip" id="setbtn" data-t="settings" aria-keyshortcuts="Alt+," title="Meeting settings — your sound mix, timing, and the video quality your camera records">Settings</button>
         <button data-ti="shortcutTitle" id="keysbtn" data-t="keys" type="button" title="Keyboard shortcuts">Keys</button>
       </div>
@@ -19776,6 +19777,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const sd = (list || []).find((d) => d && d.kind === 'audiooutput' && d.deviceId === 'default');
         spkDefGroup = sd ? String(sd.groupId || '') : '';
         if (spkDeviceId && !spkOutputs.some((m) => m.id === spkDeviceId)) { spkDeviceId = ''; applySpeaker(); }
+        paintSpkBtn();
       }, () => {});
     }
     function setMicMode(mode, force) {
@@ -36690,9 +36692,39 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function closeMicChooser(refocus) {
       const el = document.getElementById('micchooser');
-      if (el) el.hidden = true;
+      const from = (el && el.dataset.from === 'spk') ? document.getElementById('spkbtn') : micBtn;
+      if (el) { el.hidden = true; delete el.dataset.from; }
       try { micBtn.setAttribute('aria-expanded', 'false'); } catch (e) {}
-      if (refocus) { try { micBtn.focus(); } catch (e) {} }
+      try { const sb = document.getElementById('spkbtn'); if (sb) sb.setAttribute('aria-expanded', 'false'); } catch (e) {}
+      if (refocus && from) { try { from.focus(); } catch (e) {} }
+    }
+    // THE SPEAKER CHOICE in More: only where a page can move the sound
+    // (speakerChoices: setSinkId and more than one output). It opens the mic
+    // pop-up's own element with the speaker rows alone.
+    function paintSpkBtn() {
+      const b = document.getElementById('spkbtn');
+      if (b) b.hidden = !speakerChoices().length;
+    }
+    { const sb = document.getElementById('spkbtn'); if (sb) sb.onclick = () => { if (micChooserOpen()) closeMicChooser(true); else openSpkChooser(); }; }
+    function openSpkChooser() {
+      const el = document.getElementById('micchooser'), sb = document.getElementById('spkbtn');
+      const spk = speakerChoices();
+      if (!el || !sb || !spk.length) return;
+      try { if (camChooserOpen()) closeCamChooser(); } catch (e) {}
+      el.textContent = '';
+      el.dataset.from = 'spk';
+      el.setAttribute('aria-label', uiText('spkChooseAria', 'Choose a speaker'));
+      const on = spkDeviceId || ((spk.find((x) => spkDefGroup && x.group === spkDefGroup) || spk[0]).id);
+      spk.forEach((m, i) => {
+        const b = devRow(m.label || uiText('spkNumbered', 'Speaker {n}').replace('{n}', String(i + 1)), m.id === on, () => pickSpeaker(m.id));
+        b.dataset.spkId = m.id;
+        el.appendChild(b);
+      });
+      el.hidden = false;
+      sb.setAttribute('aria-expanded', 'true');
+      placeDockPopover(el, sb);
+      const first = el.querySelector('[aria-checked="true"]') || el.querySelector('button');
+      if (first) { try { first.focus(); } catch (e) {} }
     }
     function openMicChooser(track) {
       const el = document.getElementById('micchooser');
@@ -36776,7 +36808,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { for (const m of mosIn.values()) if (m && m.el && !m.el.muted) out.add(m.el); } catch (e) {}
       return out;
     }
-    window.__meetSpeaker = () => ({ want: spkDeviceId, sinks: [...audioCarriers()].map((e) => String(e.sinkId || '')) });   // read-only: where each playing element sends sound
+    window.__meetSpeaker = () => { const els = [...audioCarriers()]; return { want: spkDeviceId, sinks: els.map((e) => String(e.sinkId || '')), voice: els.map((e) => { try { const st = e.srcObject; return !!(st && st.getAudioTracks && st.getAudioTracks().some((t) => t.readyState === 'live')); } catch (x) { return false; } }) }; };   // read-only: where each playing element sends sound, and whether it carries a voice at all
     function applySpeaker() {
       if (!SINK_OK) return Promise.resolve(true);
       const jobs = [];
@@ -36804,7 +36836,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       document.addEventListener('pointerdown', (e) => {
         if (!micChooserOpen()) return;
         const t = e.target;
-        if (t && t.closest && t.closest('#micchooser, #mic')) return;
+        if (t && t.closest && t.closest('#micchooser, #mic, #spkbtn')) return;
         closeMicChooser(false);
       }, true);
     }
