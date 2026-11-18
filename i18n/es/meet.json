@@ -86,6 +86,8 @@
   "meet.setStage": "Escenario",
   "meet.setRow": "Mi fila",
   "meet.setStadium": "El estadio",
+  "meet.zoneRowHead": "Conexiones directas",
+  "meet.zoneStadHead": "Conexiones del estadio",
   "meet.setTiming": "Tiempo",
   "meet.setTalkTip": "Las respuestas más rápidas. Tus oídos se alinean solo con tus propias conexiones.",
   "meet.setTalk": "Conversación",
