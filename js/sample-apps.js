@@ -251,20 +251,22 @@
   // "N here" counts a person while THIS page saw their heartbeat change in the last 35 s. The heartbeat's
   // own time is the other device's clock and is never compared with ours; a heartbeat this page has not
   // yet seen change counts for 20 s (time for one 15 s beat to arrive), so an old record drops off.
-  var hereRows=[], hereSeen={}, hereTs={};
+  // The count is redone when the presence rows change, and once more at the moment the next counted person
+  // would drop off (one timer to that time, no polling).
+  var HERE_MS=35000, hereRows=[], hereSeen={}, hereTs={}, hereT=null;
   function countHere(){
-    var now=Date.now(), n=0;
+    var now=Date.now(), n=0, due=Infinity;
     hereRows.forEach(function(r){
       if(!r||!r.id||r.id.indexOf('p:')!==0||r.id==='p:'+me.id) return;
       if(hereTs[r.id]!==r.ts){ hereSeen[r.id]=(r.id in hereTs)?now:now-15000; hereTs[r.id]=r.ts; }
-      if(now-hereSeen[r.id]<35000) n++;
+      if(now-hereSeen[r.id]<HERE_MS){ n++; due=Math.min(due, hereSeen[r.id]+HERE_MS); }
     });
+    clearTimeout(hereT); hereT=(due<Infinity)?setTimeout(countHere, due-now):null;
     if(n!==others){ others=n; setWho(); }
   }
   function watchPresence(){
     if(pres&&pres.subscribe){
       pres.subscribe(function(rows){ hereRows=rows||[]; countHere(); });
-      setInterval(countHere, 5000);
       setInterval(function(){ if(document.visibilityState!=='hidden') beat(); },15000);
     }
   }
@@ -1133,20 +1135,22 @@
   // "N here" counts a person while THIS page saw their heartbeat change in the last 35 s. The heartbeat's
   // own time is the other device's clock and is never compared with ours; a heartbeat this page has not
   // yet seen change counts for 20 s (time for one 15 s beat to arrive), so an old record drops off.
-  var hereRows=[], hereSeen={}, hereTs={};
+  // The count is redone when the presence rows change, and once more at the moment the next counted person
+  // would drop off (one timer to that time, no polling).
+  var HERE_MS=35000, hereRows=[], hereSeen={}, hereTs={}, hereT=null;
   function countHere(){
-    var now=Date.now(), n=0;
+    var now=Date.now(), n=0, due=Infinity;
     hereRows.forEach(function(r){
       if(!r||!r.id||r.id.indexOf('p:')!==0||r.id==='p:'+me.id) return;
       if(hereTs[r.id]!==r.ts){ hereSeen[r.id]=(r.id in hereTs)?now:now-15000; hereTs[r.id]=r.ts; }
-      if(now-hereSeen[r.id]<35000) n++;
+      if(now-hereSeen[r.id]<HERE_MS){ n++; due=Math.min(due, hereSeen[r.id]+HERE_MS); }
     });
+    clearTimeout(hereT); hereT=(due<Infinity)?setTimeout(countHere, due-now):null;
     if(n!==others){ others=n; setWho(); if(!last.length&&!pend.length) paint(); }
   }
   function watchPresence(){
     if(pres&&pres.subscribe){
       pres.subscribe(function(rows){ hereRows=rows||[]; countHere(); });
-      setInterval(countHere, 5000);
       setInterval(function(){ if(document.visibilityState!=='hidden') beat(); },15000);
     }
   }
@@ -6460,11 +6464,13 @@ i18nStart(async()=>{
   var view={ order:[], cur:null, idx:-1, next:null, step:0 };
   var turnKey='', turnLocal=0, refused=false, noteT=null, normAt=0;
   // Liveness by when THIS page saw a heartbeat move, so two machines whose
-  // clocks disagree still agree on who is here.
+  // clocks disagree still agree on who is here. The heartbeat's ts is the other device's clock and never dates
+  // it: a heartbeat this page has never seen move counts for two beats (a live person's next beat lands in that
+  // time, an old record's never), the same rule as Connect Four.
   function people(){
     var now=Date.now(), out=[];
     for(var id in rows){ var r=rows[id];
-      if(lastTs[id]!==r.ts){ seen[id]=(id in lastTs)?now:Math.min(now,+r.ts||0); lastTs[id]=r.ts; }
+      if(lastTs[id]!==r.ts){ seen[id]=(id in lastTs)?now:now-LIVE+2*BEAT; lastTs[id]=r.ts; }
       if(now-(seen[id]||0)<LIVE) out.push({ id:id, name:r.name||'', since:+r.since||0 });
     }
     if(!rows[me.id]) out.push({ id:me.id, name:me.name, since:since });
