@@ -74,6 +74,8 @@
   "meet.setCcHelp": "What <b>your own device</b> listens for. The browser engine cannot guess: it uses this device's language unless you pick one here. Whisper finds the language by itself.",
   "meet.setCcBrowser": "Browser captions",
   "meet.setCcBrowserHelp": "Instant. One fixed language, picked above; two-word lines without punctuation on some devices. Your browser may send your voice to its maker's speech service (Chrome: Google).",
+  "meet.setCcPhone": "On this phone",
+  "meet.setCcPhoneHelp": "Captions are made on this phone. No voice is ever sent to any server: only the caption text goes to the meeting. The first time a language is used, the phone may download its speech model once.",
   "meet.setCcWhisper": "Whisper on this device",
   "meet.setCcWhisperHelp": "Any language, found by itself. Real sentences with punctuation. Your own names and words. Can translate everything to English. A sentence appears a few seconds after it is said; on a phone it is slower and uses battery. Your voice stays on this device; only the written words can go to the meeting.",
   "meet.setCcEnglish": "Translate everything to English",
@@ -976,5 +978,16 @@
   "meet.trNoteLang": "[wrong language?]",
   "meet.trNoteWho": "[not sure who spoke]",
   "meet.trNoteEcho": "[echo?]",
-  "meet.trNoteHard": "[hard to hear]"
+  "meet.trNoteHard": "[hard to hear]",
+  "meet.setCcLocal": "Captions on this phone",
+  "meet.setCcLocalHelp": "A speech model in your browser writes your captions. Your voice never leaves the phone; only the text goes to the meeting.",
+  "meet.setCcLocalReady": "Ready. The speech model is on this phone.",
+  "meet.setCcLocalStarting": "Starting the speech model…",
+  "meet.setCcLocalLoading": "Downloading the speech model: {pct}% of {mb} MB, once.",
+  "meet.setCcLocalIdle": "The speech model downloads once from gifos.app the first time your microphone is on, and stays on this phone.",
+  "meet.stCcLocalReady": "Captions are ready. They run on this phone.",
+  "meet.stCcLocalLoading": "Getting captions ready on this phone: {pct}% of {mb} MB, once.",
+  "meet.stCcLocalNoDevice": "Captions aren’t available on this phone: its browser can’t run the speech model.",
+  "meet.stCcLocalNoLang": "Captions aren’t available in {lang} on this phone yet.",
+  "meet.stCcLocalFailed": "Captions couldn’t load their speech model. They try again the next time your microphone turns on."
 }

@@ -74,6 +74,8 @@
  "meet.setCcHelp": "<b>你自己的设备</b>按此语言来听。浏览器引擎无法自动判断：除非你在这里选择，否则使用本设备的语言。Whisper 会自动识别语言。",
  "meet.setCcBrowser": "浏览器字幕",
  "meet.setCcBrowserHelp": "即时显示。使用上方选定的单一语言；部分设备上只有不带标点的短句。你的浏览器可能会把你的语音发送给其厂商的语音服务（Chrome 为 Google）。",
+ "meet.setCcPhone": "在此手机上",
+ "meet.setCcPhoneHelp": "字幕在此手机上生成。任何语音都不会发送到任何服务器：只有字幕文字会发送到会议。首次使用某种语言时，手机可能会下载一次该语言的语音模型。",
  "meet.setCcWhisper": "本机 Whisper",
  "meet.setCcWhisperHelp": "支持任何语言，自动识别。有标点的完整句子，能认出你自己的名字和词汇，还能把一切翻译成英文。一句话在说完几秒后出现；在手机上更慢且更耗电。你的声音留在本机；只有写下的文字可能发送到会议。",
  "meet.setCcEnglish": "全部翻译成英文",
@@ -976,5 +978,16 @@
  "meet.trNoteWho": "[不确定是谁说的]",
  "meet.trNoteEcho": "[回声？]",
  "meet.trNoteHard": "[听不清]",
- "meet.stCaptionsOtherMic": "字幕正在听的麦克风与通话使用的不同。请把通话麦克风设为系统默认，或在 设置 > 字幕 中开启 Whisper。"
+ "meet.stCaptionsOtherMic": "字幕正在听的麦克风与通话使用的不同。请把通话麦克风设为系统默认，或在 设置 > 字幕 中开启 Whisper。",
+ "meet.setCcLocal": "本机字幕",
+ "meet.setCcLocalHelp": "浏览器中的语音模型为你生成字幕。你的声音不会离开手机，只有文字会发送到会议。",
+ "meet.setCcLocalReady": "已就绪。语音模型在这部手机上。",
+ "meet.setCcLocalStarting": "正在启动语音模型…",
+ "meet.setCcLocalLoading": "正在下载语音模型：{pct}%，共 {mb} MB，仅一次。",
+ "meet.setCcLocalIdle": "首次打开麦克风时，语音模型会从 gifos.app 下载一次，并保存在这部手机上。",
+ "meet.stCcLocalReady": "字幕已就绪，在这部手机上运行。",
+ "meet.stCcLocalLoading": "正在这部手机上准备字幕：{pct}%，共 {mb} MB，仅一次。",
+ "meet.stCcLocalNoDevice": "这部手机无法使用字幕：它的浏览器无法运行语音模型。",
+ "meet.stCcLocalNoLang": "这部手机暂不支持{lang}字幕。",
+ "meet.stCcLocalFailed": "无法加载字幕的语音模型。下次打开麦克风时会再试。"
 }

@@ -74,6 +74,8 @@
   "meet.setCcHelp": "Lo que escucha <b>tu propio dispositivo</b>. El motor del navegador no puede adivinar: usa el idioma de este dispositivo, salvo que elijas otro aquí. Whisper detecta el idioma por sí mismo.",
   "meet.setCcBrowser": "Subtítulos del navegador",
   "meet.setCcBrowserHelp": "Al instante. Un idioma fijo, el de arriba. En algunos dispositivos son dos palabras sin puntuación. El navegador puede enviar tu voz al servicio de su fabricante (Chrome: Google).",
+  "meet.setCcPhone": "En este teléfono",
+  "meet.setCcPhoneHelp": "Los subtítulos se crean en este teléfono. Nunca se envía ninguna voz a ningún servidor: solo el texto de los subtítulos llega a la reunión. La primera vez que se usa un idioma, el teléfono puede descargar una vez su modelo de voz.",
   "meet.setCcWhisper": "Whisper en este dispositivo",
   "meet.setCcWhisperHelp": "Cualquier idioma, lo detecta solo. Frases de verdad, con puntuación. Tus nombres y palabras. Puede traducir todo al inglés. Una frase aparece unos segundos después. En el teléfono va más lento y gasta batería. Tu voz se queda en este dispositivo; solo las palabras escritas pueden ir a la reunión.",
   "meet.setCcEnglish": "Traducir todo al inglés",
@@ -976,5 +978,16 @@
   "meet.trNoteWho": "[no se sabe quién habló]",
   "meet.trNoteEcho": "[¿eco?]",
   "meet.trNoteHard": "[difícil de oír]",
-  "meet.stCaptionsOtherMic": "Los subtítulos escuchan un micrófono distinto al de tu llamada. Pon el micrófono de la llamada como predeterminado del sistema o activa Whisper en Ajustes > Subtítulos."
+  "meet.stCaptionsOtherMic": "Los subtítulos escuchan un micrófono distinto al de tu llamada. Pon el micrófono de la llamada como predeterminado del sistema o activa Whisper en Ajustes > Subtítulos.",
+  "meet.setCcLocal": "Subtítulos en este teléfono",
+  "meet.setCcLocalHelp": "Un modelo de voz en tu navegador escribe tus subtítulos. Tu voz nunca sale del teléfono; solo el texto va a la reunión.",
+  "meet.setCcLocalReady": "Listo. El modelo de voz está en este teléfono.",
+  "meet.setCcLocalStarting": "Iniciando el modelo de voz…",
+  "meet.setCcLocalLoading": "Descargando el modelo de voz: {pct} % de {mb} MB, una sola vez.",
+  "meet.setCcLocalIdle": "El modelo de voz se descarga una sola vez de gifos.app la primera vez que activas el micrófono, y se queda en este teléfono.",
+  "meet.stCcLocalReady": "Los subtítulos están listos. Funcionan en este teléfono.",
+  "meet.stCcLocalLoading": "Preparando los subtítulos en este teléfono: {pct} % de {mb} MB, una sola vez.",
+  "meet.stCcLocalNoDevice": "Los subtítulos no están disponibles en este teléfono: su navegador no puede ejecutar el modelo de voz.",
+  "meet.stCcLocalNoLang": "Los subtítulos en {lang} aún no están disponibles en este teléfono.",
+  "meet.stCcLocalFailed": "No se pudo cargar el modelo de voz de los subtítulos. Se volverá a intentar la próxima vez que actives el micrófono."
 }

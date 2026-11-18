@@ -2,6 +2,19 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.26.20",
+      "date": "2026-11-18",
+      "headline": "Captions on Android, and one-tap unmute",
+      "critical": false,
+      "features": [
+        "Live captions now work on Android phones, right on your device.",
+        "Tap Mic once to unmute. Pick a mic only when you have more than one."
+      ],
+      "fixes": [
+        "If a mic can't be opened, your meeting goes back to the one that works."
+      ]
+    },
+    {
       "version": "0.9.26.19",
       "date": "2026-11-17",
       "headline": "Choose your mic, camera and speaker",
