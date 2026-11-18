@@ -55,6 +55,7 @@
   "hint.err.setup": "Configura tu IA «Smartest» en Ajustes para recibir pistas.",
   "hint.err.fail": "Ahora mismo no se pudo obtener una pista.",
   "resign": "Rendirse",
+  "claim.left": "{name} se fue — reclama la victoria",
   "rematch": "Revancha",
   "status.winner": "Ganador: {name}",
   "status.drawStalemate": "Tablas por ahogado. Jugad la revancha para avanzar.",

@@ -55,6 +55,7 @@
   "hint.err.setup": "Set up your Smartest AI in Settings to get hints.",
   "hint.err.fail": "Couldn’t get a hint right now.",
   "resign": "Resign",
+  "claim.left": "{name} left — claim the win",
   "rematch": "Rematch",
   "status.winner": "Winner: {name}",
   "status.drawStalemate": "Draw — stalemate. Rematch to advance.",
