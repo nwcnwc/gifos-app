@@ -84,6 +84,7 @@
     HOLDOVER_MS: 60000,   // ms
     HOLD_MAX_MS: 5000,   // ms
     HOLD_SECONDS: 60,   // s
+    HOST_RECHECK_POLL_MS: 200,   // ms
     HOT_VOID_MS: 12000,   // ms
     ICE_BATCH_MS: 50,   // ms
     ICE_FINISH_MS: 12000,   // ms
