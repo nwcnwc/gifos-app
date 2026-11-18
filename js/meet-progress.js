@@ -35,6 +35,7 @@
  *   turn      the relayed link's state: '' none | 'ask' | 'dial' | 'web' (the relay protocol found no way out of this
  *             network and the link is being made as a web connection) | 'up'
  *   web       the relayed link that is up runs as a web connection
+ *   farIn     a relayed link that is up has a far end I hold a working connection with
  *   n         people in the meeting as this page counts them (me included)
  *   live      people I have a working connection with (not counting door-only pairs)
  *   tries     load: tries done so far;  loaded  load: every part is in
@@ -135,7 +136,9 @@
     add('relay', turnUp || f.turn === 'web');
     add('web', turnUp && !!f.web);
     // merged: seated again with more people than this part had before the link
-    add('merge', turnUp && isSeat && (f.n | 0) > (f.nAtRelay | 0) && (f.nAtRelay | 0) > 0);
+    // or seated with the link up and its far end a live connection of mine (farIn): the people behind it were counted before
+    // the link (their statuses came through someone else), so n never grows past nAtRelay, and the link has still joined me to them
+    add('merge', turnUp && isSeat && (f.nAtRelay | 0) > 0 && ((f.n | 0) > (f.nAtRelay | 0) || !!f.farIn));
     const alone = isSeat && (f.greeters | 0) === 0 && (f.n | 0) <= 1 && !!f.list;
     add('people', isSeat && ((f.live | 0) > 0 || alone));
     // the current step: what the page is waiting for now

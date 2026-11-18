@@ -2105,16 +2105,23 @@
   #micchooser[hidden] { display: none !important; }
   #micchooser button { min-height: 48px; min-width: 160px; max-width: calc(100vw - 32px); border: 0; border-radius: var(--r-md);
     font: 700 16px/1.2 system-ui, sans-serif; padding: 8px 14px; text-align: left; cursor: pointer;
-    background: #e7f8ee; color: #0a3d24; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #micchooser button[aria-checked="true"] { background: #8fd4a8; color: #08331c; }
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #micchooser button:focus-visible { outline: 3px solid var(--c-ink); outline-offset: 2px; }
   #app-list .app-empty { margin: 8px 0; }
   #app-list .app-empty-link { display: block; min-height: 44px; line-height: 44px; font-weight: 700; color: inherit; text-decoration: underline; }
   #app-list .app-empty-note { display: block; margin-top: 6px; opacity: .75; }
   #camdevs { display: flex; flex-direction: column; gap: 6px; }
   #camdevs[hidden] { display: none !important; }
-  #camdevs button { background: #e7f8ee; color: #0a3d24; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #camdevs button[aria-checked="true"] { background: #8fd4a8; color: #08331c; }
+  #camdevs button { max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Device rows (camera, microphone, speaker) are not the blur greens: a pick
+     of a device is not a blur level. Unselected: dark text on white with a thin
+     gray line; selected: white on near-black with a check (16.8:1 both ways). The
+     pop-up is white in every theme, so these hold in dark mode too. #camchooser
+     #camdevs: above the #camchooser button rule below (border: 0). */
+  #micchooser button, #camchooser #camdevs button { background: var(--c-white); color: var(--c-ink); border: 1px solid var(--c-gray); }
+  #micchooser button::before, #camchooser #camdevs button::before { content: ''; display: inline-block; width: 1.3em; }
+  #micchooser button[aria-checked="true"], #camchooser #camdevs button[aria-checked="true"] { background: var(--c-ink); color: var(--c-white); border-color: var(--c-ink); }
+  #micchooser button[aria-checked="true"]::before, #camchooser #camdevs button[aria-checked="true"]::before { content: '\2713'; }
   #micchooser .devhead, #camdevs .devhead { font: 700 13px/1.2 system-ui, sans-serif; color: var(--c-ink); padding: 4px 2px 0; }
   #camchooser button { min-height: 48px; min-width: 160px; border: 0; border-radius: var(--r-md);
     font: 700 16px/1.2 system-ui, sans-serif; padding: 8px 14px; text-align: left; cursor: pointer; }

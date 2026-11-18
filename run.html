@@ -1416,7 +1416,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   </div>
   <div class="name-modal" role="alertdialog" aria-modal="true" aria-labelledby="blurwhy-title" aria-describedby="blurwhy-text" id="blurwhy-modal" style="display:none">
     <div class="name-box">
-      <h3 data-t="blurWhyTitle" id="blurwhy-title">Your video is still soft</h3>
+      <h3 data-t="blurWhyTitle" id="blurwhy-title">Your video is still blurred</h3>
       <p id="blurwhy-text"></p>
       <p id="blurwhy-do"></p>
       <button data-t="blurWhySetPw" id="blurwhy-pw" type="button" style="display:none">Set room password</button>
@@ -11437,7 +11437,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const bcLive = !!(BROADCAST && ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin')));
       let extra = '';
       if (n > 1 && !bcWatcher) {
-        if (!roomPw) extra = bcLive ? ' · blurred until you set a room password' : ' · ' + uiText('unlockClear', 'faces stay soft until a password');
+        if (!roomPw) extra = bcLive ? ' · blurred until you set a room password' : ' · ' + uiText('unlockClear', 'faces stay blurred until a password');
         else if (hasAdminRoom() && admins.length === 0) extra = ' · no admin here — everyone stays blurred';
         else if (!adminPresent() && !allConsent()) {
           // Past one section the ready count is the fold's: everyone minus the
@@ -16149,6 +16149,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       let turn = '';
       let turnWebUp = false;
+      // farIn: an up link's far end is a live connection of mine (its peer connected, channel open). A second guest beside a
+      // TURN-only host counts the host before the link (through the first guest), so the count never grows at the merge.
+      let farIn = false;
+      try { for (const L of (turnLinks ? turnLinks.dump().links : [])) { if (L.state !== 'up') continue; const fp = peers.get(L.far); if (fp && fp.connected && fp.dc && fp.dc.readyState === 'open') { farIn = true; break; } } } catch (e) {}
       // whose network needs the relay: my end is the link's TURN client (my network), and my end found no relay path (the web path's
       // reason is mine); otherwise the far network is the one that blocks, and the reason shown says so (never "your network")
       let turnClient = false, webMine = false;
@@ -16162,7 +16166,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const offline = !!netDarkAt || navigator.onLine === false;
       return { dp: directPath, relay: relayUp() && !offline, list, greeters, pw: atPwPrompt(),
         wait: document.body.classList.contains('wait-door') || (typeof iAmWaiting === 'function' && iAmWaiting()),
-        doorUp, st, coord, turn, web: turnWebUp, client: turnClient, webMine, n, live, nAtRelay: progNAtRelay, offline,
+        doorUp, st, coord, turn, web: turnWebUp, client: turnClient, webMine, farIn, n, live, nAtRelay: progNAtRelay, offline,
         saved: progRun && progRun.flow === 'update', reloaded: !!updateResume };
     }
     function progressStart(flow) {
@@ -19346,15 +19350,37 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     });
 
     // ---- which camera: front or back (the standard mobile flip) -------------
-    // facingMode is an IDEAL, so desktops with one webcam are unaffected; the
-    // choice persists per device. The flip button only appears when the
-    // hardware actually has a second camera (see maybeShowFlip).
+    // facingMode is an IDEAL, so desktops with one webcam are unaffected.
+    // Every join starts on the front camera (0.9.26.21): a flip lasts for the
+    // meeting it was made in and is not kept (a back camera at the next join
+    // surprised people). The flip button only appears when the hardware
+    // actually has a second camera (see maybeShowFlip).
     let camFacing = 'user';
-    try { camFacing = localStorage.getItem('gifos_cam_facing') || 'user'; } catch (e) {}
     // THE CAMERA PICKER's state: this device's cameras (one row each) and the
     // person's pick ('' = the facing choice above decides). A pick asks for
     // that camera exactly; the flip button goes back to facing.
     let camInputs = [], camDeviceId = '';
+    // A PHONE'S CAMERAS ARE FRONT AND BACK, NOT A LIST (0.9.26.21). A phone
+    // lists every lens as its own camera (both Motos: 'camera 1, facing front',
+    // 'camera 3, facing front', 'camera 2, facing back', 'camera 0, facing
+    // back'), which means nothing to the person holding it. Where any camera
+    // says which way it faces (getCapabilities().facingMode, or a label that
+    // names front or back), the camera pop-up has no camera list: video opens
+    // on the facing choice above (the front camera) and Flip in More switches.
+    // A computer's webcams name no facing, so two of them stay a list.
+    let camPhone = false;
+    const CAM_FACING_LABEL = /\bfacing (front|back)\b|\b(front|back|rear)\b.*\bcamera\b|\bcamera\b.*\b(front|back|rear)\b/i;
+    function camsHaveFacing(list) {
+      for (const d of list || []) {
+        if (!d || d.kind !== 'videoinput') continue;
+        let caps = null;
+        try { caps = typeof d.getCapabilities === 'function' ? d.getCapabilities() : null; } catch (e) {}
+        const fm = caps && caps.facingMode;
+        if ((Array.isArray(fm) ? fm : (fm ? [fm] : [])).some((f) => f === 'user' || f === 'environment')) return true;
+        if (CAM_FACING_LABEL.test(String(d.label || ''))) return true;
+      }
+      return false;
+    }
     // DO NOT COMMAND THE CAMERA'S ORIENTATION (2026-08-01, learned twice).
     // A transposed getUserMedia ask (720x1280 on an upright phone) was tried
     // and REVERTED same-day: some devices satisfy a portrait ask by delivering
@@ -19441,10 +19467,29 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       } catch (e) {}
       camGrabbing = true;
       const picked = reason === 'pickCam';
+      // FLIP: many phones open one camera at a time (both Motos refuse the back
+      // camera with NotReadableError while the front one is open, and the grab
+      // below then fell back to sound only: no picture at all). So a flip lets
+      // go of the current camera FIRST, and a facing that will not open goes
+      // back to the front camera ('flipBack').
+      const flip = reason === 'flip' || reason === 'flipBack';
+      if (flip && localStream) for (const old of localStream.getVideoTracks()) { try { old.stop(); } catch (e) {} }
+      // The blur pipe paints from its own clone of the camera, and a clone keeps
+      // the camera open after the original stops: let go of that one too.
+      if (flip && blurPipe && blurPipe.cloned && !blurPipe.screen && blurPipe.srcTrack) { try { blurPipe.srcTrack.stop(); } catch (e) {} }
+      const flipFailed = () => {
+        if (reason !== 'flip') return false;
+        camFacing = 'user';
+        camGrabbing = false;
+        setStatus(uiText('stCamPickFailed', 'That camera could not be opened. Your camera did not change.'));
+        regrabCamera('flipBack');
+        return true;
+      };
       // The fresh mic is the person's picked one (ideal: an unplugged pick
       // must not cost the camera).
       gumWithMicFallback(navigator.mediaDevices, { video: camVideoConstraints(), audio: micDeviceId ? { deviceId: { ideal: micDeviceId } } : true })
         .then(({ stream: s }) => {
+          if (flip && !s.getVideoTracks()[0] && reason === 'flip') { for (const t of s.getTracks()) { try { t.stop(); } catch (e) {} } flipFailed(); return; }
           camGrabbing = false;
           const nv = s.getVideoTracks()[0], na = s.getAudioTracks()[0];
           if (picked && nv) setStatus(uiText('stCamOnNamed', 'Camera on: {name}').replace('{name}', camLabelOf(nv)));
@@ -19473,6 +19518,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           refreshOutbound(); // rebuild the (blurred or raw) sender AND the WYSIWYG self-view
           if (death) showCamBack(false);
         }).catch(() => {
+          if (flipFailed()) return;
           camGrabbing = false;
           if (death) showCamBack('fail');
           // A picked camera that would not open: back to the one that worked.
@@ -19684,7 +19730,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         micInputs = micInputsOf(list);
         if (micDeviceId && !micInputs.some((m) => m.id === micDeviceId)) micDeviceId = '';
         camInputs = devRowsOf(list, 'videoinput');
-        if (camDeviceId && !camInputs.some((m) => m.id === camDeviceId)) camDeviceId = '';
+        camPhone = camsHaveFacing(list);
+        if (camDeviceId && (camPhone || !camInputs.some((m) => m.id === camDeviceId))) camDeviceId = '';
         spkOutputs = devRowsOf(list, 'audiooutput');
         const sd = (list || []).find((d) => d && d.kind === 'audiooutput' && d.deviceId === 'default');
         spkDefGroup = sd ? String(sd.groupId || '') : '';
@@ -37018,7 +37065,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const box = document.getElementById('camdevs');
       if (!box) return;
       box.textContent = '';
-      box.hidden = !(camInputs.length > 1 && camChooserAnchor === camBtn);
+      box.hidden = !(!camPhone && camInputs.length > 1 && camChooserAnchor === camBtn);
       if (box.hidden) return;
       box.setAttribute('aria-label', uiText('camDevAria', 'Camera'));
       devHead(box, uiText('camHead', 'Camera'));
@@ -37197,9 +37244,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (BROADCAST && !bcMayPublishAv()) return;
       if (!localStream) return;
       camFacing = camFacing === 'user' ? 'environment' : 'user';
-      try { localStorage.setItem('gifos_cam_facing', camFacing); } catch (e) {}
       camDeviceId = '';
-      regrabCamera();
+      regrabCamera('flip');
     };
 
     // ---- stay in the meeting when the tab is hidden ---------------------------
