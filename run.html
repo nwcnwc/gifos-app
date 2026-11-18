@@ -19595,6 +19595,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // back to the front camera ('flipBack').
       const flip = reason === 'flip' || reason === 'flipBack';
       if (flip && localStream) for (const old of localStream.getVideoTracks()) { try { old.stop(); } catch (e) {} }
+      // The blur pipe paints from its own clone of the camera, and a clone keeps
+      // the camera open after the original stops: let go of that one too.
+      if (flip && blurPipe && blurPipe.cloned && !blurPipe.screen && blurPipe.srcTrack) { try { blurPipe.srcTrack.stop(); } catch (e) {} }
       const flipFailed = () => {
         if (reason !== 'flip') return false;
         camFacing = 'user';
