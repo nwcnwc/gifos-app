@@ -855,8 +855,8 @@
     if (c.now.why === 'pass' && !Number.isFinite(c.now.until)) why = fill(tx('nowByPassNever', 'In effect now: {plan}, from your pass (no end).'), { plan: planShort(c.now.tier) });
     else if (c.now.why === 'pass') why = fill(tx('nowByPass', 'In effect now: {plan} until {until} ({left} left), from your four-hour pass.'), { plan: planShort(c.now.tier), until: clockOf(c.now.until), left: leftOf(c.now.until - n) });
     else if (c.now.why === 'sub') why = fill(tx('nowBySub', 'In effect now: {plan}, from your subscription.'), { plan: planShort(c.now.tier) });
-    else if (c.now.why === 'free') why = tx('nowByFree', 'In effect now: Free. Admin rooms of up to 5 people.');
-    else why = tx('nowByNone', 'In effect now: no plan. Open rooms are free.');
+    else if (c.now.why === 'free') why = tx('nowByFree', 'In effect now: Free. Hosted rooms of up to 5 people.');
+    else why = tx('nowByNone', 'In effect now: no plan. Open-floor rooms are free.');
     p('held-now', why);
     if (c.then) p('held-then', fill(tx('nowThen', 'When the pass ends: {plan}, from your subscription.'), { plan: planShort(c.then) }));
     if (c.sub) {
@@ -867,7 +867,7 @@
       p('held-sub', fill(tx('heldSub', 'Subscription: {plan}, {period}, {standing}.'), { plan: planShort(c.sub.tier), period: per, standing: stand }));
     }
     for (const x of c.passes) {
-      const e = x.never ? fill(tx('heldPassNever', 'Pass: {plan}, no end{capture}.'), { plan: planShort(x.plan), capture: x.capture ? tx('heldPassCaptures', ', takes open rooms') : '' })
+      const e = x.never ? fill(tx('heldPassNever', 'Pass: {plan}, no end{capture}.'), { plan: planShort(x.plan), capture: x.capture ? tx('heldPassCaptures', ', takes open-floor rooms') : '' })
         : x.live ? fill(tx('heldPassLive', 'Four-hour pass: Unlimited until {until}, {left} left.'), { until: clockOf(x.end), left: leftOf(x.end - n) })
         : fill(tx('heldPassNext', 'Four-hour pass: Unlimited from {start} to {until}.'), { start: clockOf(x.start), until: clockOf(x.end) });
       const q = p('', e); q.className = 'set-help held-pass'; q.dataset.pass = x.id;
@@ -979,8 +979,8 @@
       }
     } else {
       if (st.subId && st.status && st.status !== 'APPROVAL_PENDING') row.appendChild(el('p', { class: 'set-help' }, SUB.TEXT.lapsed));
-      if (await verifiedFree()) row.appendChild(el('p', { class: 'set-help', id: 'sub-free-plan' }, tx('subFreePlan', 'Your plan: Free. Admin rooms of up to 5 people.')));
-      row.appendChild(el('p', { class: 'set-help' }, 'Open rooms are free. A subscription adds rooms you run as admin, and video for people whose networks block direct connections.'));
+      if (await verifiedFree()) row.appendChild(el('p', { class: 'set-help', id: 'sub-free-plan' }, tx('subFreePlan', 'Your plan: Free. Hosted rooms of up to 5 people.')));
+      row.appendChild(el('p', { class: 'set-help' }, 'Open-floor rooms are free. A subscription adds hosted rooms you run as admin, and video for people whose networks block direct connections.'));
       if (!inApp) row.appendChild(el('p', { class: 'set-help', id: 'sub-how' }, tx('subHow', 'Subscribe with PayPal (card or PayPal balance).')));
       for (const period of ['monthly', 'yearly']) {
         for (const id of SUB.tiersSoldIn(app)) {

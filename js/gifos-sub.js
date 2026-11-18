@@ -82,9 +82,9 @@
   // links one subscriber present vouches for per slot (turn/worker paid.js;
   // Nathan 2026-11-11: 3 / 6 / 20).
   const TIERS = {
-    room20: { id: 'room20', name: 'Admin rooms, up to 20 people', price: '$2', priceYear: '$20', adminRooms: true, roomLimit: PEOPLE_LIMIT, turnVideo: true, storage: false, vouches: 3, paid: true },
-    unlimited: { id: 'unlimited', name: 'Admin rooms, unlimited people', price: '$5', priceYear: '$50', adminRooms: true, roomLimit: null, turnVideo: true, storage: false, vouches: 6, paid: true },
-    streamer: { id: 'streamer', name: 'Streamer: unlimited admin rooms and storage', price: '$10', priceYear: '$100', adminRooms: true, roomLimit: null, turnVideo: true, storage: true, vouches: 20, paid: true },
+    room20: { id: 'room20', name: 'Hosted rooms, up to 20 people', price: '$2', priceYear: '$20', adminRooms: true, roomLimit: PEOPLE_LIMIT, turnVideo: true, storage: false, vouches: 3, paid: true },
+    unlimited: { id: 'unlimited', name: 'Hosted rooms, unlimited people', price: '$5', priceYear: '$50', adminRooms: true, roomLimit: null, turnVideo: true, storage: false, vouches: 6, paid: true },
+    streamer: { id: 'streamer', name: 'Streamer: unlimited hosted rooms and storage', price: '$10', priceYear: '$100', adminRooms: true, roomLimit: null, turnVideo: true, storage: true, vouches: 20, paid: true },
   };
   const TIER_IDS = Object.keys(TIERS);              // the plans sold through PayPal
   // Which app sells which plan (Nathan 2026-11-13): Meet sells Room 20 and
@@ -95,7 +95,7 @@
   const tiersSoldIn = (app) => APP_TIERS[app === 'broadcast' ? 'broadcast' : 'meet'];
   // The FREE plan (Nathan 2026-11-11): admin rooms of up to 5 people; no TURN
   // video and so no vouches; no storage. It is never sold, never a TIER.
-  const FREE_PLAN = Object.freeze({ id: 'free', name: 'Free: admin rooms, up to 5 people', price: '$0', priceYear: '$0', adminRooms: true, roomLimit: FREE_LIMIT, turnVideo: false, storage: false, vouches: 0, paid: false });
+  const FREE_PLAN = Object.freeze({ id: 'free', name: 'Free: hosted rooms, up to 5 people', price: '$0', priceYear: '$0', adminRooms: true, roomLimit: FREE_LIMIT, turnVideo: false, storage: false, vouches: 0, paid: false });
   const PLANS = Object.freeze(Object.assign({}, TIERS, { free: FREE_PLAN }));   // every plan a license or ticket may name
   const PLAN_IDS = Object.keys(PLANS);
   const isPlan = (t) => typeof t === 'string' && Object.prototype.hasOwnProperty.call(PLANS, t);
@@ -154,9 +154,9 @@
     full: 'This meeting is full for people without a subscription. Any GifOS subscription lets you join.',
     fullFree: 'This room is full on the free plan',
     fullFreeNote: 'Any GifOS subscription lets you join.',
-    needForAdmin: 'Admin rooms come with a GifOS subscription. Open rooms stay free.',
+    needForAdmin: 'Hosted rooms come with a GifOS subscription. Open-floor rooms stay free.',
     waiting: 'Checking whether this meeting has room for you…',
-    lapsed: 'Your subscription has ended. Renew it in Settings to keep your admin rooms.',
+    lapsed: 'Your subscription has ended. Renew it in Settings to keep your hosted rooms.',
     pending: 'Finish signing up in the PayPal window. This updates as soon as PayPal confirms.',
     cancelled: 'Your subscription is cancelled. It keeps working until the end of the month you paid for.',
   };

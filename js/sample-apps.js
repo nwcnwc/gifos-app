@@ -7115,7 +7115,7 @@ The big name is whose turn it is now; **Up next** is the person after them. **Ne
 
 ## In a meeting
 
-The person whose turn it is and the person up next go on the Stage, so the next reader is ready. Your camera stays as you set it; if you are muted, the meeting asks whether to unmute. In an admin room the host can lead the app so only they move the turns.
+The person whose turn it is and the person up next go on the Stage, so the next reader is ready. Your camera stays as you set it; if you are muted, the meeting asks whether to unmute. In a hosted room the host can lead the app so only they move the turns.
 
 ## Saved
 
