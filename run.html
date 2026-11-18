@@ -19480,6 +19480,27 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // person's pick ('' = the facing choice above decides). A pick asks for
     // that camera exactly; the flip button goes back to facing.
     let camInputs = [], camDeviceId = '';
+    // A PHONE'S CAMERAS ARE FRONT AND BACK, NOT A LIST (0.9.26.21). A phone
+    // lists every lens as its own camera (both Motos: 'camera 1, facing front',
+    // 'camera 3, facing front', 'camera 2, facing back', 'camera 0, facing
+    // back'), which means nothing to the person holding it. Where any camera
+    // says which way it faces (getCapabilities().facingMode, or a label that
+    // names front or back), the camera pop-up has no camera list: video opens
+    // on the facing choice above (the front camera) and Flip in More switches.
+    // A computer's webcams name no facing, so two of them stay a list.
+    let camPhone = false;
+    const CAM_FACING_LABEL = /\bfacing (front|back)\b|\b(front|back|rear)\b.*\bcamera\b|\bcamera\b.*\b(front|back|rear)\b/i;
+    function camsHaveFacing(list) {
+      for (const d of list || []) {
+        if (!d || d.kind !== 'videoinput') continue;
+        let caps = null;
+        try { caps = typeof d.getCapabilities === 'function' ? d.getCapabilities() : null; } catch (e) {}
+        const fm = caps && caps.facingMode;
+        if ((Array.isArray(fm) ? fm : (fm ? [fm] : [])).some((f) => f === 'user' || f === 'environment')) return true;
+        if (CAM_FACING_LABEL.test(String(d.label || ''))) return true;
+      }
+      return false;
+    }
     // DO NOT COMMAND THE CAMERA'S ORIENTATION (2026-08-01, learned twice).
     // A transposed getUserMedia ask (720x1280 on an upright phone) was tried
     // and REVERTED same-day: some devices satisfy a portrait ask by delivering
@@ -19809,7 +19830,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         micInputs = micInputsOf(list);
         if (micDeviceId && !micInputs.some((m) => m.id === micDeviceId)) micDeviceId = '';
         camInputs = devRowsOf(list, 'videoinput');
-        if (camDeviceId && !camInputs.some((m) => m.id === camDeviceId)) camDeviceId = '';
+        camPhone = camsHaveFacing(list);
+        if (camDeviceId && (camPhone || !camInputs.some((m) => m.id === camDeviceId))) camDeviceId = '';
         spkOutputs = devRowsOf(list, 'audiooutput');
         const sd = (list || []).find((d) => d && d.kind === 'audiooutput' && d.deviceId === 'default');
         spkDefGroup = sd ? String(sd.groupId || '') : '';
@@ -37143,7 +37165,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const box = document.getElementById('camdevs');
       if (!box) return;
       box.textContent = '';
-      box.hidden = !(camInputs.length > 1 && camChooserAnchor === camBtn);
+      box.hidden = !(!camPhone && camInputs.length > 1 && camChooserAnchor === camBtn);
       if (box.hidden) return;
       box.setAttribute('aria-label', uiText('camDevAria', 'Camera'));
       devHead(box, uiText('camHead', 'Camera'));
