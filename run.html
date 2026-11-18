@@ -19748,18 +19748,39 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       return out;
     }
-    // Chrome on Android lists the phone's ONE built-in microphone twice, as
-    // the call's two sound routes: 'Speakerphone' and 'Headset earpiece'
-    // (Chromium's fixed English route names, the same on every phone). They
-    // are not two microphones: the earpiece row is dropped, so a phone with
-    // no headset has one row and a tap on Mic unmutes. Counted as two, every
-    // muted tap on a Motorola opened the chooser instead of the mic, and a
-    // second tap shut it again with the mic still off (live 0.9.26.19).
-    // A headset, Bluetooth or USB mic is a real second row and still asks.
+    // THE MIC BUTTON WORKS LIKE THE CAMERA BUTTON: a tap while talking mutes
+    // at once; a tap while muted asks which microphone only when there is a
+    // REAL choice (more than one microphone), else it unmutes. So the count
+    // must never be too high: a picker in the way of an unmute is the
+    // 0.9.26.19 bug (both Motorolas stayed muted, no one heard them).
+    // Counted as microphones: the listed inputs less 'default' and
+    // 'communications' (devRowsOf). Chrome on Android lists the phone's ONE
+    // built-in microphone as the call's sound routes ('Speakerphone',
+    // 'Headset earpiece'); a plugged or paired mic shows as 'Wired headset',
+    // 'Bluetooth headset' or 'USB audio' (Chromium's own English route names,
+    // not translated, not documented). So on Android only a row named wired,
+    // Bluetooth or USB is a separate microphone; every other row (the two
+    // built-in routes, and any name we cannot tell) folds into one built-in
+    // row. Elsewhere a row with no name (no permission yet) cannot be told
+    // apart, so it counts as the same mic. When in doubt: one mic, unmute.
+    // (groupId does not help on Android: the routes do not share one.)
+    const MIC_SEPARATE = /wired|bluetooth|usb/i;
     function micInputsOf(list) {
       const rows = devRowsOf(list, 'audioinput');
-      if (!IS_ANDROID || !rows.some((r) => r.label === 'Speakerphone')) return rows;
-      return rows.filter((r) => r.label !== 'Headset earpiece');
+      if (IS_ANDROID) {
+        const sep = rows.filter((r) => MIC_SEPARATE.test(r.label));
+        const own = rows.filter((r) => !MIC_SEPARATE.test(r.label));
+        const one = own.find((r) => r.label === 'Speakerphone') || own[0];
+        return (one ? [one] : []).concat(sep);
+      }
+      const named = rows.filter((r) => r.label);
+      return named.length ? named : rows.slice(0, 1);
+    }
+    // The picker's rows, the last-used microphone first (and checked), so one
+    // more tap turns it on.
+    function micOrderOf(rows, last) {
+      const i = rows.findIndex((m) => m.id === last);
+      return i > 0 ? [rows[i]].concat(rows.slice(0, i), rows.slice(i + 1)) : rows.slice();
     }
     // THE SPEAKER PICKER: only where a page may choose where sound plays
     // (setSinkId on media elements) and the device has more than one output.
@@ -36926,8 +36947,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       el.textContent = '';
       el.setAttribute('aria-label', spk.length ? uiText('micSpkChooseAria', 'Choose a microphone or speaker') : uiText('micChooseAria', 'Choose a microphone'));
       if (spk.length) devHead(el, uiText('micHead', 'Microphone'));
-      micInputs.forEach((m, i) => {
-        const b = devRow(m.label || uiText('micNumbered', 'Microphone {n}').replace('{n}', String(i + 1)), m.id === cur, () => pickMic(m.id));
+      const last = micInputs.some((m) => m.id === cur) ? cur : (micInputs.some((m) => m.id === micDeviceId) ? micDeviceId : (micInputs[0] || {}).id);
+      micOrderOf(micInputs, last).forEach((m, i) => {
+        const b = devRow(m.label || uiText('micNumbered', 'Microphone {n}').replace('{n}', String(i + 1)), m.id === last, () => pickMic(m.id));
         b.dataset.micId = m.id;
         el.appendChild(b);
       });
