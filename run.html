@@ -36650,7 +36650,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // More than one microphone: a tap while muted asks which one (the camera
       // button's chooser, for the mic). A tap while talking mutes at once. One
       // microphone: the tap toggles, as it always has.
-      if (!track.enabled && micInputs.length && (micInputs.length > 1 || speakerChoices().length)) { openMicChooser(track); return; }
+      if (!track.enabled && micInputs.length > 1) { openMicChooser(track); return; }   // one mic: the tap unmutes, as it always has
       setMicOn(track, !track.enabled);
     };
     function setMicOn(track, on) {
