@@ -86,6 +86,8 @@
  "meet.setStage": "舞台",
  "meet.setRow": "我身边",
  "meet.setStadium": "全场",
+ "meet.zoneRowHead": "直接连接",
+ "meet.zoneStadHead": "全场连接",
  "meet.setTiming": "时序",
  "meet.setTalkTip": "回应最快——你只会与自己直连的人对齐；整个房间的时序可能略有错开",
  "meet.setTalk": "对话",

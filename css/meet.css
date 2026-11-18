@@ -2374,6 +2374,13 @@
   /* The stadium is one composite, shown whole in the zone's box. */
   body.comfy #stadwhole { overflow: hidden; background: #0d0f14; }
   body.comfy #stadwhole video { width: 100%; height: 100%; object-fit: contain; object-position: center center; }
+  /* S7 (Nathan 2026-11-17): the only labels on the people are Scroll's two
+     section heads (.zone-head); the stadium box carries none of its own, in
+     any layout, and its parked source strip never shows its old label. */
+  body.comfy #stadwhole .name, body.comfy #stadium [data-row="sd"] > .rlabel { display: none; }
+  body.comfy .zone-head { z-index: 3; box-sizing: border-box; display: flex; align-items: center; padding: 0 .5rem;
+    color: #b9bdd6; font-size: .8rem; font-weight: 700; letter-spacing: .02em; pointer-events: none;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   body.comfy #stadwhole .name {
     position: absolute; left: .4rem; bottom: .4rem; z-index: 2;
     background: rgba(10,10,15,.72); color: #eceef8;

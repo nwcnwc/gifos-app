@@ -7782,6 +7782,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           self: window.__meetSelf || 'tile',
           gallery: window.__meetGallery || 'fit', float: window.__meetView === 'drag', now: Date.now(),
           content: ctTile ? contentOpts(phone) : null,
+          // Scroll only: the Row and the Stadium carry a label (S7). The words are display text; the code keeps row and stadium.
+          heads: window.__meetGallery === 'scroll' ? { row: uiText('zoneRowHead', 'Direct connections'), stad: uiText('zoneStadHead', 'Stadium connections') } : null,
           onSettle: () => { try { layout(); } catch (e) {} },
         });
         // Content on screen (a shared screen now; the content tabs later):
@@ -28708,7 +28710,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!el) {
         el = document.createElement('div'); el.className = 'rowtile'; el.dataset.row = 'sd';
         const v = document.createElement('video'); v.muted = true; v.autoplay = true; v.setAttribute('playsinline', '');
-        const lb = document.createElement('div'); lb.className = 'rlabel'; lb.textContent = 'The stadium';
+        const lb = document.createElement('div'); lb.className = 'rlabel'; lb.textContent = uiText('setStadium', 'The stadium');
         el.appendChild(v); el.appendChild(lb); stadiumEl.appendChild(el); trackAspect(el, v);
         try { turnPaint(); } catch (e) {}   // a new strip takes the paused note at once (TURN.11)
       }
