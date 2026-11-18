@@ -829,6 +829,7 @@
   "meet.shareStageFull": "El escenario está lleno. Alguien tiene que bajar primero.",
   "meet.sttVideoPausedRelay": "El vídeo está en pausa en esta conexión. El sonido sigue funcionando. Un suscriptor de la reunión puede activar el vídeo.",
   "meet.turnSubscribe": "Suscribirse",
+  "meet.turnShareFirewall": "El cortafuegos de la red de {name} solo deja pasar una pantalla compartida con una suscripción de pago. Suscríbete para ver la pantalla de {name}.",
   "meet.capBtn": "Hacerme anfitrión",
   "meet.capbtnTip": "Toma el control de esta sala libre: pones su contraseña y puedes sacar a gente",
   "meet.capNote": "Esta sala tiene anfitrión",

@@ -830,6 +830,7 @@
   "meet.shareStageFull": "The stage is full. Someone has to step down first.",
   "meet.sttVideoPausedRelay": "Video is paused on this connection. Sound still works. A subscriber in the meeting can turn video on.",
   "meet.turnSubscribe": "Subscribe",
+  "meet.turnShareFirewall": "{name}’s network firewall lets a screen share through only on a paid subscription. Subscribe to see {name}’s screen.",
   "meet.capBtn": "Make me admin",
   "meet.capbtnTip": "Take charge of this open-floor room: you set its password and can remove people",
   "meet.capNote": "This room has an admin",

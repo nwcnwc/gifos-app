@@ -829,6 +829,7 @@
   "meet.shareStageFull": "Die Bühne ist voll. Jemand muss zuerst heruntergehen.",
   "meet.sttVideoPausedRelay": "Das Video ist auf dieser Verbindung pausiert. Der Ton funktioniert weiter. Ein Abonnent im Meeting kann das Video einschalten.",
   "meet.turnSubscribe": "Abonnieren",
+  "meet.turnShareFirewall": "Die Netzwerk-Firewall von {name} lässt eine Bildschirmfreigabe nur mit einem bezahlten Abo durch. Abonniere, um den Bildschirm von {name} zu sehen.",
   "meet.capBtn": "Mich zur Leitung machen",
   "meet.capbtnTip": "Diese offene Runde übernehmen: Du setzt ihr Passwort und kannst Leute entfernen",
   "meet.capNote": "Dieser Raum hat eine Leitung",
