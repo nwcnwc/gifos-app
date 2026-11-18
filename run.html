@@ -34230,9 +34230,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) { trDrops++; if (typeof capTraceGate === 'function') capTraceGate(rec.eng, rec.langTag, myVoiceFrom || 0, speech !== rec ? 'late' : 'muted', rec.input ? 'mix' : 'mic'); }
             return;
           }
-          speechFails = 0; speechThrew = 0;
-          if (speech === rec) speechProved = true; // a stopped session's late line proves nothing about the engine now running
-          speechEngineUp();
+          speechFails = 0;
+          // Proof is a line with words in it: an engine that cannot read its input still hands over finals, empty ones.
+          let words = false;
+          for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal && String(e.results[i][0].transcript || '').trim()) words = true;
+          if (words) {
+            speechThrew = 0;
+            if (speech === rec) speechProved = true; // a stopped session's late line proves nothing about the engine now running
+            speechEngineUp();
+          }
           try { capPublish(); } catch (err) {}
           if (rec.input) {
             for (let i = e.resultIndex; i < e.results.length; i++) {
