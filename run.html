@@ -40076,13 +40076,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     window.appStagePlanForTest = appStagePlan;
     // ---- run a GIF app that isn't on this computer (file or link) ----
     function showAddErr(msg) { const el = document.getElementById('app-add-err'); if (!el) return; el.textContent = msg || ''; el.style.display = msg ? '' : 'none'; }
-    async function importAndRunGif(bytes, rawName) {
-      showAddErr('');
+    // Put a GIF app on this device: { fileId, name } or { error }.
+    async function importGif(bytes, rawName) {
       const buf = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
-      if (!(buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46)) { showAddErr('That isn’t a GIF file.'); return; }
+      if (!(buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46)) return { error: 'That isn’t a GIF file.' };
       let archive = null; try { archive = await GifOS.gif.decode(buf); } catch (e) {}
       const m = archive ? (GifOS.gif.readManifest(archive) || {}) : {};
-      if (!(archive && (m.appId || m.entry))) { showAddErr('That GIF isn’t a runnable app — it has no app inside it.'); return; }
+      if (!(archive && (m.appId || m.entry))) return { error: 'That GIF isn’t a runnable app — it has no app inside it.' };
       const name = (rawName || m.name || m.appId || 'App').replace(/\.gif$/i, '');
       const fileId = GifOS.store.uid('file');
       try {
@@ -40090,9 +40090,81 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // Keep it (filed under Stolen Apps, which the desktop creates on load) so
         // it's not an orphan — same home as an app opened via a /?run= link.
         await GifOS.store.putItem({ id: GifOS.store.uid('item'), kind: 'file', fileId, name: name + '.gif', parent: 'sys_stolen', x: 16, y: 16, iconSize: 64 });
-      } catch (e) { showAddErr('Could not save that app on this device.'); return; }
+      } catch (e) { return { error: 'Could not save that app on this device.' }; }
+      return { fileId, name };
+    }
+    async function importAndRunGif(bytes, rawName) {
+      showAddErr('');
+      const r = await importGif(bytes, rawName);
+      if (r.error) { showAddErr(r.error); return; }
       document.getElementById('app-modal').style.display = 'none';
-      runApp(fileId, name);
+      runApp(r.fileId, r.name);
+    }
+    // S16 (Nathan 2026-11-17): an official run link (https://gifos.app/?run=connect-four, or this site's own /?run= or
+    // #run=) names an app, not a GIF file. It is read the way GifOS Home reads it (desktop.js resolveRunTarget): a slug
+    // is that app in this site's /apps/, a GitHub page link is its raw file. null: not a run link.
+    const RUN_HOSTS = ['gifos.app', 'www.gifos.app'];
+    function runLinkTarget(raw) {
+      let u; try { u = new URL(raw); } catch (e) { return null; }
+      if (RUN_HOSTS.indexOf(u.hostname) < 0 && u.host !== location.host) return null;
+      let v = u.searchParams.get('run') || '';
+      if (!v) { try { v = new URLSearchParams(u.hash.slice(1)).get('run') || ''; } catch (e) {} }
+      if (!v) return null;
+      if (/^[a-z0-9][a-z0-9-]{0,63}$/i.test(v)) {
+        const slug = v.toLowerCase();
+        return { slug, url: location.origin + '/apps/' + slug + '/' + slug + '.gif', official: 'https://gifos.app/apps/' + slug + '/' + slug + '.gif' };
+      }
+      const gh = /^https?:\/\/(?:www\.)?github\.com\/([^\/?#]+)\/([^\/?#]+)\/(?:blob|raw)\/([^?#]+)$/i.exec(v);
+      return { slug: null, url: gh ? 'https://raw.githubusercontent.com/' + gh[1] + '/' + gh[2] + '/' + gh[3] : v };
+    }
+    // S5 (Nathan 2026-11-17): the Run picker always offers these, first, even on a device that never opened GifOS Home.
+    // Picking one that is not on the device puts it here, then runs it. Take Turns is built from this site's starter
+    // code (sample-apps.js, loaded only then); Whiteboard is the App Store's GIF on this site.
+    const RUN_DEFAULTS = [{ appId: 'taketurns', name: 'Take Turns', from: 'sample' }, { appId: 'whiteboard', name: 'Whiteboard', from: 'store' }];
+    const scriptOnce = {};
+    function loadScriptOnce(src) {
+      if (!scriptOnce[src]) scriptOnce[src] = new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.onload = () => res(); el.onerror = () => { delete scriptOnce[src]; rej(new Error('load ' + src)); }; document.head.appendChild(el); });
+      return scriptOnce[src];
+    }
+    async function installRunApp(d) {
+      if (d.from === 'sample') {
+        try { await loadScriptOnce('js/gifos-icons.js'); } catch (e) {}   // its tile art; a plain tile without it
+        await loadScriptOnce('js/sample-apps.js');
+        const seed = await GifOS.samples.build({ only: [d.appId] });
+        const all = [].concat(seed.loose || []);
+        const walk = (g) => { for (const a of g.apps || []) all.push(a); for (const s2 of g.sub || []) walk(s2); };
+        for (const g of seed.folders || []) walk(g);
+        const a = all.find((x) => x.appId === d.appId);
+        if (!a) return { error: 'missing' };
+        return importGif(a.bytes, d.name);
+      }
+      let r = await fetchGifFromUrl(location.origin + '/apps/' + d.appId + '/' + d.appId + '.gif');
+      if (r.error && location.hostname !== 'gifos.app') r = await fetchGifFromUrl('https://gifos.app/apps/' + d.appId + '/' + d.appId + '.gif');
+      if (r.error) return r;
+      return importGif(r.bytes, d.name);
+    }
+    // The picker's choices: the defaults first (each the copy on this device, or one to install), then every other app here.
+    function runChoices(apps) {
+      const label = (f) => (f.name || f.appId || 'App').replace(/\.gif$/i, '');
+      const out = [], used = new Set();
+      for (const d of RUN_DEFAULTS) {
+        const f = apps.find((x) => x.appId === d.appId && !used.has(x.id));
+        if (f) used.add(f.id);
+        out.push(f ? { name: d.name, fileId: f.id } : { name: d.name, install: d });
+      }
+      const rest = apps.filter((f) => !used.has(f.id));
+      rest.sort((a, b) => label(a).localeCompare(label(b), undefined, { sensitivity: 'base', numeric: true }));
+      for (const f of rest) out.push({ name: label(f), fileId: f.id });
+      return out;
+    }
+    async function runChoice(c, say) {
+      if (c.fileId) { document.getElementById('app-modal').style.display = 'none'; runApp(c.fileId, c.name); return true; }
+      say(uiText('appInstalling', 'Getting {name}…').split('{name}').join(c.name));
+      let r; try { r = await installRunApp(c.install); } catch (e) { r = { error: String(e && e.message || e) }; }
+      if (!r || r.error) { say(uiText('appInstallFail', 'Couldn’t get {name}. Check the connection and try again.').split('{name}').join(c.name), true); return false; }
+      document.getElementById('app-modal').style.display = 'none';
+      runApp(r.fileId, r.name);
+      return true;
     }
     // The same ceiling as the desktop's ?run= path (desktop.js RUN_MAX_BYTES):
     // an App GIF can be half a gigabyte and that is a feature, not a limit —
@@ -40141,7 +40213,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const raw = (document.getElementById('app-url').value || '').trim();
       if (!raw) { showAddErr(uiText('appNeedLink', 'Paste a GIF link first.')); return; }
       const go = document.getElementById('app-url-go'); go.disabled = true; const was = go.textContent; go.textContent = '…'; showAddErr('');
-      try { const r = await fetchGifFromUrl(raw); if (r.error) { showAddErr(r.error); return; } await importAndRunGif(r.bytes, r.name); }
+      try {
+        const run = runLinkTarget(raw);
+        if (run && run.slug) {
+          // the app named by an official run link: the copy already on this device, else the same install the picker does
+          let files = []; try { files = await GifOS.store.allFileMeta(); } catch (e) {}
+          const have = (files || []).find((f) => f && f.isApp && f.appId === run.slug);
+          const def = RUN_DEFAULTS.find((d) => d.appId === run.slug);
+          if (have || def) { await runChoice(have ? { name: (have.name || run.slug).replace(/\.gif$/i, ''), fileId: have.id } : { name: def.name, install: def }, (w, bad) => showAddErr(bad ? w : '')); return; }
+        }
+        let r = await fetchGifFromUrl(run ? run.url : raw);
+        if (r.error && run && run.official && run.official !== run.url) r = await fetchGifFromUrl(run.official);
+        if (r.error) { showAddErr(r.error); return; }
+        await importAndRunGif(r.bytes, r.name);
+      }
       finally { go.disabled = false; go.textContent = was; }
     };
     document.getElementById('app-url').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('app-url-go').click(); } });
@@ -40159,42 +40244,28 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // WHOLE MEETING away. Same set as desktop.js SYSTEM_LAUNCHERS.
       const SYSTEM_APPS = { meet: 1, video: 1, broadcast: 1, appstore: 1 };
       const apps = (files || []).filter((f) => f.isApp && !SYSTEM_APPS[f.appId]);
-      // NO STARTER APPS YET: the starter apps are put on a device by GifOS
-      // Home (desktop.js seeds them on its first load, marked isDefault).
-      // Someone who only ever came in through a meeting link has never loaded
-      // Home, so this list is empty, or holds only an app the meeting itself
-      // added. Say so, and offer Home and the App Store in a new tab: the
-      // meeting stays open, and Run app lists the apps once they are there.
-      const starters = (files || []).some((f) => f && f.isDefault === true);
-      if (!apps.length) {
-        list.textContent = '';
-        appStarterLinks(list, uiText('appEmptyLead', 'No apps on this device yet.'));
-        return;
-      }
-      const label = (f) => (f.name || f.appId || 'App').replace(/\.gif$/i, '');
-      apps.sort((a, b) => label(a).localeCompare(label(b), undefined, { sensitivity: 'base', numeric: true }));
-      list.innerHTML = '';
-      for (const f of apps) {
-        const b = document.createElement('button');
-        b.textContent = label(f);
-        b.onclick = () => { modal.style.display = 'none'; runApp(f.id, b.textContent); };
-        list.appendChild(b);
-      }
-      if (!starters) appStarterLinks(list, uiText('appNoStarters', 'The starter apps are not on this device yet.'));
-    }
-    function appStarterLinks(list, lead) {
-      const p = document.createElement('p'); p.className = 'app-empty';
-      p.textContent = lead;
-      list.appendChild(p);
-      const link = (cls, href, word) => {
-        const el = document.createElement('a'); el.className = 'app-empty-link ' + cls; el.href = href; el.target = '_blank'; el.rel = 'noopener';
-        el.textContent = word; list.appendChild(el);
-      };
-      link('app-empty-home', homeHref(), uiText('appEmptyHome', 'Get the starter apps on GifOS Home'));
-      link('app-empty-store', 'store.html', uiText('appEmptyStore', 'Find more apps in the App Store'));
-      const n = document.createElement('small'); n.className = 'app-empty-note';
-      n.textContent = uiText('appEmptyNote', 'They open in a new tab. Come back here and tap Run app again.');
-      list.appendChild(n);
+      // S5: a dropdown of real apps, the defaults first, on every device (a fresh one too); Run installs a missing one, then runs it.
+      list.textContent = '';
+      const choices = runChoices(apps);
+      const row = document.createElement('div'); row.className = 'app-pickrow';
+      const sel = document.createElement('select'); sel.id = 'app-pick'; sel.setAttribute('aria-label', uiText('appPickAria', 'App to run'));
+      choices.forEach((c, i) => { const o = document.createElement('option'); o.value = String(i); o.textContent = c.name; o.dataset.name = c.name; if (c.install) o.dataset.install = '1'; sel.appendChild(o); });
+      const go = document.createElement('button'); go.type = 'button'; go.id = 'app-pick-go'; go.textContent = uiText('appSheetRun', 'Run');
+      const note = document.createElement('small'); note.id = 'app-pick-note'; note.className = 'app-pick-note';
+      const noteFor = () => { const c = choices[+sel.value]; note.textContent = c && c.install ? uiText('appPickMissing', 'Not on this device yet. Run puts it here first, then starts it.') : ''; note.classList.remove('bad'); };
+      sel.addEventListener('change', noteFor);
+      go.addEventListener('click', async () => {
+        const c = choices[+sel.value]; if (!c) return;
+        go.disabled = true; sel.disabled = true;
+        try { await runChoice(c, (w, bad) => { note.textContent = w; note.classList.toggle('bad', !!bad); }); }
+        finally { go.disabled = false; sel.disabled = false; }
+      });
+      row.appendChild(sel); row.appendChild(go);
+      list.appendChild(row); list.appendChild(note);
+      noteFor();
+      // More apps: the App Store, in a new tab (the meeting stays open; Run app lists what it adds).
+      const more = document.createElement('a'); more.className = 'app-empty-link app-empty-store'; more.href = 'store.html'; more.target = '_blank'; more.rel = 'noopener';
+      more.textContent = uiText('appEmptyStore', 'Find more apps in the App Store'); list.appendChild(more);
     }
     // Second entry point: an app tab's "Meeting" toggle opens meet.html#app=<fileId>.
     // Auto-host that app once we're set up (its state lives in this same browser).

@@ -6682,7 +6682,11 @@ i18nStart(async()=>{
   if(window.gifos&&gifos.i18n&&gifos.i18n.load) gifos.i18n.load().then(boot,boot); else boot();
 </script>`;
 
-  function build() {
+  // opts.only: appIds to encode; the rest are left out (the meeting's Run app
+  // installs one starter app without baking every other one).
+  function build(opts) {
+    const only = opts && Array.isArray(opts.only) ? opts.only : null;
+    const want = (a) => !only || only.indexOf(a.appId) >= 0;
     const gif = GifOS.gif;
     // Apps that hand-author their theming with CSS variables take 'vars' —
     // palette injected, no auto-remap. This is any app with a signature accent
@@ -7539,12 +7543,12 @@ The Store itself does not keep a shopping cart in this icon.
     }];
 
     const encGroup = (g) => Promise.all([
-      Promise.all(g.apps.map(enc)),
+      Promise.all(g.apps.filter(want).map(enc)),
       Promise.all((g.sub || []).map(encGroup)),
     ]).then((r) => ({ name: g.name, apps: r[0], sub: r[1] }));
     return Promise.all([
       Promise.all(groups.map(encGroup)),
-      Promise.all(loose.map(enc)),
+      Promise.all(loose.filter(want).map(enc)),
     ]).then((r) => ({ folders: r[0], loose: r[1] }));
   }
 
