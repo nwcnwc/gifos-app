@@ -17838,11 +17838,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       } catch (e) { return null; }
     }
     // true when this tab now holds the key. The lock stays held for the page's life.
-    function seatKeyLock(seed, tries) {
+    // gave (optional): { up: true } once the caller stopped waiting; a lock that arrives after that is let go at once.
+    function seatKeyLock(seed, tries, gave) {
       if (!navigator.locks) return Promise.resolve(false);
       return new Promise((res) => {
-        navigator.locks.request('gifos_seat:' + seed.slice(0, 32), { ifAvailable: true }, (l) => { res(!!l); return l ? new Promise(() => {}) : undefined; }).catch(() => res(false));
-      }).then((got) => (got || tries <= 0) ? got : new Promise((r) => setTimeout(r, 250)).then(() => seatKeyLock(seed, tries - 1)));   // the page before me may still be letting go
+        navigator.locks.request('gifos_seat:' + seed.slice(0, 32), { ifAvailable: true }, (l) => { const keep = !!l && !(gave && gave.up); res(keep); return keep ? new Promise(() => {}) : undefined; }).catch(() => res(false));
+      }).then((got) => (got || tries <= 0 || (gave && gave.up)) ? got : new Promise((r) => setTimeout(r, 250)).then(() => seatKeyLock(seed, tries - 1, gave)));   // the page before me may still be letting go
     }
     function ensureIdentity() {
       if (myIdentity) return Promise.resolve(myIdentity);
@@ -17850,12 +17851,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function seatMemTake() {
       const mem = seatMemRead(); if (!mem) return Promise.resolve(null);
-      // RELOAD.1 (2026-11-18, the iPhone reload that never reseats): log each gate a reload passes, and never wait on the
-      // seat lock for longer than SEAT_LOCK_MAX_MS (Safari may keep the old page's lock while it sits in the back-forward
-      // cache): past it, this tab joins as a NEW person, which the room seats like any newcomer.
-      try { clog('reload-mem seed=' + mem.seed.slice(0, 6) + ' age=' + (Date.now() - (+mem.at || 0)) + 'ms'); } catch (e) {}
-      const lockP = seatKeyLock(mem.seed, 3);
-      const capP = new Promise((r) => setTimeout(() => r('timeout'), 2000));
+      // RELOAD.1 (2026-11-18): each gate of a reload's remembered seat is logged (reload-mem, reload-lock got|busy|timeout).
+      // A guard, not a proven fix: the lock ask is bounded by SEAT_LOCK_MAX_MS, so a lock request the browser never
+      // answers cannot hold the join. Past it this tab joins as a NEW person (a fresh seed, exactly as when the lock is
+      // busy: never a second copy of the old identity), and a lock that arrives later is let go.
+      try { clog('reload-mem age=' + (Date.now() - (+mem.at || 0)) + 'ms'); } catch (e) {}
+      const gave = { up: false };
+      const lockP = seatKeyLock(mem.seed, 3, gave);
+      const capP = new Promise((r) => setTimeout(() => { gave.up = true; r('timeout'); }, GifOS.timings.SEAT_LOCK_MAX_MS));
       return Promise.race([lockP, capP]).then((got) => {
         try { clog('reload-lock ' + (got === 'timeout' ? 'timeout' : got ? 'got' : 'busy')); } catch (e) {}
         if (got !== true) { seatMemErase(); return null; }
