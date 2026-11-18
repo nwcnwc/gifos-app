@@ -19715,7 +19715,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // in ordinary conversation). Same swap idiom as reviveCamera: replace only
     // the senders that carry OUR old mic track (never the fold-mix aux tracks),
     // and mutate the SAME localStream so our announced stream id never changes.
-    let micMode = 'voice', micGrabbing = false, micWant = null, micUnmuteAfter = false;
+    let micMode = 'voice', micGrabbing = false, micWant = null, micUnmuteAfter = false, micPickPrev = '';
     // devicechange also fires for a camera plug and for the label refresh
     // after the first grant. Neither is a new audio route. The mic restarts
     // only when an audioinput or audiooutput id appears or disappears, so
@@ -19838,8 +19838,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (unmute) setStatus(uiText('stMicOnNamed', 'Mic on: {name}').replace('{name}', micLabelOf(na)));
       }).catch(() => {
         // mic re-grab refused — keep the current mode. A pick that could not
-        // be opened says so, and the mic that was working stays.
-        if (unmute) setStatus(uiText('stMicPickFailed', 'That microphone could not be opened. Your mic did not change.'));
+        // be opened says so, and the mic that was working stays: the pick is
+        // forgotten too (micPickPrev), or every later re-grab (a headset
+        // plugged in, a song) asked for the mic that would not open, failed,
+        // and left the old route in place.
+        if (unmute) { micDeviceId = micPickPrev; setStatus(uiText('stMicPickFailed', 'That microphone could not be opened. Your mic did not change.')); }
       })
         .finally(() => {
           micGrabbing = false;
@@ -36953,6 +36956,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!track) return;
       if (amGloballyMuted()) { sayState(modOf('me').mute && modOf('me').mute.wait ? 'micWaitRoom' : 'mutedByHost', { by: (modOf('me').mute || {}).by }); return; }
       if (id === micIdOf(track)) { setMicOn(track, true); return; }
+      micPickPrev = micDeviceId;   // a pick that will not open goes back to this one (the camera's camPickPrev)
       micDeviceId = id;
       micUnmuteAfter = true;
       setMicMode(micMode, true);
@@ -42081,7 +42085,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           line: row ? row.textContent : '',
         };
       },
+      // PAINT ONLY: the dock's words and icon for a mic state. It never turns
+      // the mic track on or off, so it is no way to unmute a seat in a test
+      // (tap #mic, and pick a row when the chooser opens). With a live mic
+      // track that says otherwise it refuses, so no test reads a painted
+      // "on" over a mic that sends nothing (0.9.26.19 phone runs).
       setOwnMicForTest: (live) => {
+        const tr = localStream && localStream.getAudioTracks()[0];
+        if (tr && tr.readyState === 'live' && tr.enabled !== !!live) return { refused: 'the live mic track is ' + (tr.enabled ? 'on' : 'off') + ': setOwnMicForTest only paints; tap #mic to change it', muted: !!myStatus.muted, trackEnabled: tr.enabled };
         myStatus.muted = !live;
         paintControls();
         const word = micBtn.querySelector('.dockword');
