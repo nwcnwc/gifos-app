@@ -1320,7 +1320,7 @@
       Promise.resolve(io.tdoors ? io.tdoors(q) : null).then((x) => {
         if (g !== sub.gen) return;
         const d = x && typeof x === 'object' ? x.v : x;
-        if (d) { sub.devPid = (x && typeof x === 'object' && x.p) || {}; sub.heads = doorHeads(d, sub.devPid); const sg = doorsSig(d); if (sub.doorsSig && sg !== sub.doorsSig) subChanged('the subrooms'); sub.doorsSig = sg; }
+        if (d) { sub.devPid = (x && typeof x === 'object' && x.p) || {}; sub.heads = doorHeads(d, sub.devPid, x && typeof x === 'object' ? x.h : null); const sg = doorsSig(d); if (sub.doorsSig && sg !== sub.doorsSig) subChanged('the subrooms'); sub.doorsSig = sg; }
         if (!d) { subRefuse(io.now(), 'no-doors'); return; }
         // before a new number is asked for: a listed room whose heads this fresh door list names and I have not dialled
         // yet (it opened while I tried the others) is tried first; the service would read its greeters as unreachable
@@ -1333,7 +1333,7 @@
       Promise.resolve(io.tdoors ? io.tdoors() : null).then((x) => {
         if (g !== sub.gen) return;
         const d = x && typeof x === 'object' ? x.v : x;
-        if (d) { sub.devPid = (x && typeof x === 'object' && x.p) || {}; sub.heads = doorHeads(d, sub.devPid); }
+        if (d) { sub.devPid = (x && typeof x === 'object' && x.p) || {}; sub.heads = doorHeads(d, sub.devPid, x && typeof x === 'object' ? x.h : null); }
         sub.gen++; sub.st = 'probe';
       }, () => { if (g === sub.gen) { sub.gen++; sub.st = 'probe'; } });
     }
@@ -1378,12 +1378,20 @@
     const PROBE_HEADS = 2;
     // the subrooms a door list names (their numbers only: who greets at a door is not what a refusal named)
     function doorsSig(td) { try { const t = String(td).split('.')[1].replace(/-/g, '+').replace(/_/g, '/'); const o = JSON.parse(atob(t + '='.repeat((4 - (t.length % 4)) % 4))); return (o.doors || []).map((x) => x.r).sort((a, b) => a - b).join(','); } catch (e) { return ''; } }
-    function doorHeads(td, peers) {
+    function doorHeads(td, peers, dial) {
       const out = new Map();
       try {
         const t = String(td).split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
         const o = JSON.parse(atob(t + '='.repeat((4 - (t.length % 4)) % 4)));
         for (const x of o.doors || []) out.set(x.r, (x.g || []).map((h) => peers[h && h.d]).filter((p) => typeof p === 'string' && p).slice(0, PROBE_HEADS));
+        // SUB.2.2: every listed door names a seat to dial. The signed list names capable row heads only (the seats a pipe may
+        // end at); the relay's answer adds, per door, greeters to dial whatever their device (h). A room whose head is a
+        // phone had no head to try, and a joiner that could reach it was told "no listed door reached".
+        if (dial && typeof dial === 'object') for (const x of o.doors || []) {
+          const have = out.get(x.r) || [], more = Array.isArray(dial[x.r]) ? dial[x.r] : [];
+          for (const p of more) if (have.length < PROBE_HEADS && typeof p === 'string' && p && p.length <= 64 && have.indexOf(p) < 0) have.push(p);
+          out.set(x.r, have);
+        }
       } catch (e) {}
       return out;
     }

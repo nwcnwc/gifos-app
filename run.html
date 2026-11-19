@@ -18582,7 +18582,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (m.t === 'joined' && m.cap && !av) capTake(m.cap, true);   // a captured open room: the captor's ticket, checked here
       if (m.t === 'cap') { onCapFrame(m); return; }
       if (m.t === 'tvouch') { try { if (turnLinks) turnLinks.onVouch(m); } catch (e) {} return; }
-      if (m.t === 'tdoors') { const w = turnDoorsWait.splice(0); const ans = typeof m.v === 'string' ? { v: m.v, p: m.p && typeof m.p === 'object' ? m.p : {} } : null; for (const res of w) res(ans); return; }   // the relay's signed door list (the subroom ask)   // the relay's seated vouch for one of my TURN links
+      if (m.t === 'tdoors') { const w = turnDoorsWait.splice(0); const ans = typeof m.v === 'string' ? { v: m.v, p: m.p && typeof m.p === 'object' ? m.p : {}, h: m.h && typeof m.h === 'object' ? m.h : {} } : null; for (const res of w) res(ans); return; }   // the relay's signed door list (the subroom ask)   // the relay's seated vouch for one of my TURN links
       if (m.t === 'joined') {
         updateStatus(); broadcastStatus();
         // admins[] comes from VERIFIED signatures (adminsNow, \u00a79), never the relay
