@@ -9715,10 +9715,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // lit and a recording stopped as a 0-byte .webm (the recorder waits for
     // audio that never comes). Browsers without the option get the plain
     // constructor, as before.
-    function newMeetAudioContext() {
+    // newMeetAudioContext(true): a context that PLAYS to the speaker, for the one voice that has no element to play in
+    // (carryEarAc).
+    function newMeetAudioContext(speaker) {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return null;
-      if (AC.prototype && typeof AC.prototype.setSinkId === 'function') {
+      if (!speaker && AC.prototype && typeof AC.prototype.setSinkId === 'function') {
         try { return new AC({ sinkId: { type: 'none' } }); } catch (e) {}
       }
       return new AC();
@@ -9746,6 +9748,25 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (ac && (ac.state === 'suspended' || ac.state === 'interrupted')) ac.resume().catch(() => {});
     }
     document.addEventListener('pointerdown', () => ensureAc());
+    // Where a carried voice is HEARD (docs/turn-carry.md). Every other voice plays through an element; a carried voice is
+    // decoded in the page, so it plays from an AudioContext. The meeting context plays to no device where the browser allows
+    // that, so there the voice gets a context of its own that plays to the speaker (and follows the speaker pick:
+    // applySpeaker). Its own jitter buffer runs on that context's clock: no resampler between the two clocks, no pitch drift.
+    // Elsewhere the meeting context is the speaker's already.
+    let carryOutAc = null;
+    function carryEarAc() {
+      const m = ensureAc(); if (!m) return null;
+      let none = false; try { none = !!(m.sinkId && typeof m.sinkId === 'object' && m.sinkId.type === 'none'); } catch (e) {}
+      if (!none) return m;
+      if (!carryOutAc) {
+        try { carryOutAc = newMeetAudioContext(true); } catch (e) { carryOutAc = null; }
+        if (!carryOutAc) return null;
+        const wake = () => { if (carryOutAc && (carryOutAc.state === 'suspended' || carryOutAc.state === 'interrupted')) carryOutAc.resume().catch(() => {}); };
+        carryOutAc.onstatechange = wake; document.addEventListener('pointerdown', wake); wake();
+        if (spkDeviceId && typeof carryOutAc.setSinkId === 'function') carryOutAc.setSinkId(spkDeviceId).catch(() => {});
+      }
+      return carryOutAc;
+    }
     var myVoiceAt = 0; // last tick my OWN echo-cancelled mic carried voice (the caption gate reads it)
     var leafTalk = false; // my talk verdict as the fold last heard it (L6.2; pushLeaf repeats it to a new seat)
     var myVoiceFrom = 0; // when the current stretch of my voice began (a caption line's span starts here)
@@ -37561,6 +37582,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!el || typeof el.setSinkId !== 'function' || String(el.sinkId || '') === spkDeviceId) continue;
         jobs.push(el.setSinkId(spkDeviceId).then(() => true, () => false));
       }
+      if (typeof carryOutAc !== 'undefined' && carryOutAc && typeof carryOutAc.setSinkId === 'function') jobs.push(carryOutAc.setSinkId(spkDeviceId).then(() => true, () => false));   // the carried voice's speaker
       return Promise.all(jobs).then((r) => r.every(Boolean));
     }
     {
@@ -41374,8 +41396,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const G = carryG; if (!G) return;
       const ac = ensureAc(); if (!ac) return;
       if (!G.voice) {
-        G.voice = GifOS.meetCarry.createVoice(ac, { onPacket: (b) => { if (G.link) G.link.sendAudio(b); } });
-        G.voice.ready.then(() => { if (G.voice && G.voice.output) G.voice.output.connect(ac.destination); carryGuestTick(); });
+        G.voice = GifOS.meetCarry.createVoice(ac, { ear: carryEarAc(), onPacket: (b) => { if (G.link) G.link.sendAudio(b); } });   // its ear plays the room as my carrier hears it
+        G.voice.ready.then(() => { carryGuestTick(); });
       }
       G.link.sendText({ k: 'hello', name: myName() });
       G.micSaid = null;   // a new link hears my microphone's state afresh (carryGuestTick)
@@ -41429,11 +41451,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function carryHostVouch(m) { for (const c of carryHosts.values()) c.link.onVouch(m); }
     function carryHostUp(c) {
       const ac = ensureAc(); if (!ac || c.voice) return;
-      c.voice = GifOS.meetCarry.createVoice(ac, { onPacket: (b) => c.link.sendAudio(b) });
+      c.voice = GifOS.meetCarry.createVoice(ac, { ear: carryEarAc(), onPacket: (b) => c.link.sendAudio(b) });   // its ear: I hear the page I carry
       c.voice.ready.then(() => {
         if (!c.voice || !c.voice.output) return;
         c.out = ac.createMediaStreamDestination();          // what the room hears from me: my mic and the carried voice
-        c.voice.output.connect(c.out); c.voice.output.connect(ac.destination);   // I hear it too
+        c.voice.output.connect(c.out);
         carryVoiceTrack = c.out.stream.getAudioTracks()[0] || null;
         carryHostSync(c);
         c.tick = setInterval(() => carryHostSync(c), GifOS.timings.CARRY_LOOK_MS);
