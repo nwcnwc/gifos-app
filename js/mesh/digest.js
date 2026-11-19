@@ -602,6 +602,12 @@
       const id = this.id, TICK = this.TICK;
       if (this.spam && this.state === 3 && this.hasCoord) { if (this.coord.pc === 0) { this.s1Heartbeat(); this.s1Sync(); } else this.phoneHome(); }   // the bad-actor lever: a state message every tick
       if (this.state !== 3 || !this.hasCoord || this.moving) return;
+      // A bucket idle long enough to be full accepts the next frame as a missing one does. A probe older than its hold is not a loop. A quiet seat drops both on its own tick.
+      { const l10lim = TICK - K.L10_BUCKET_BURST * K.L10_BUCKET_REFILL;
+        for (const [k, b] of this.l10Bkt) if (b.at <= l10lim) this.l10Bkt.delete(k); }
+      { const l24lim = TICK - Math.floor(K.L24_BURST / K.L24_RATE);
+        for (const [k, b] of this.l24B) if (b.at > 0 && b.at <= l24lim) this.l24B.delete(k); }
+      for (const [k, v] of this.routeSeen) if (TICK - v > K.L191_HOLD) this.routeSeen.delete(k);
       if (this.l10NewAt && TICK >= this.l10NewAt - 1 + K.L10_NEW_WAIT) { this.l10NewAt = 0; this.l10Mark(); }   // a seat new in my fold has been there long enough
       const o = this.l10OwnNow(); if (o !== this.l10OwnSig) { if (this.l10OwnSig) this.l10Mark(); this.l10OwnSig = o; }   // the first look at my own facts is no change
       if (this.rootDig.at >= 0) { const r = dig.digSig(this.rootDig); if (r !== this.l10RootSig) { if (this.l10RootSig) this.l10DirtyDn = true; this.l10RootSig = r; } }
