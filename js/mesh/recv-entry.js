@@ -51,10 +51,12 @@
       for (const g of m.list) this.dials.heard(g);   // L17
       this.lastGreeters = m.list.slice(); this.lastGreetersAt = m.listAt.slice(); this.greetersAt = TICK;
       this.ddKnockAt = -1;   // TURN.5.4: the list is here
+      this.l8511Note();   // L8.54.11 (mesh_roomterm.inc): a word with no kind yet
       if (this.doorWordList(m)) return;   // FHOP.8.2 (mesh_island.inc): the friend whose door word I heard is listed: asked now
       if (this.foundKnock && this.state === 3) { this.foundKnock = false; const un = this.l813Unfound(m); this.islandAsked.clear(); this.entEp.clear(); if (un) return; }   // L8.1.3 (mesh_roomterm.inc)
       if (this.state === 3) this.l853Door();   // L8.53.3 (mesh_island.inc): the door's second word for a vouch I hold
       if (m.tag === 1) { const st = this.l3117Stray(m.list); if (st === 2) return; if (st === 0) this.keyAsk(m.list); }   // L3.11.7 (C++: onGreeters)   // L3.11.6: the door refused my registration (C++: onGreeters)
+      if (this.state === 1 && this.islandAskAt < 0 && !this.l8471() && this.l8475()) { this.l411Verdict(); return; }   // L8.47.5 with L8.54.11: the fresh list says the pair is the blocked pair: its entry from now
       if (this.state === 0 && this.entryTerm()) { this.islandAsk(m.list); return; }   // L8.2
       if (this.state === 0) {
         let g = m.list[Math.floor(this.rng() * m.list.length)];
@@ -152,7 +154,7 @@
       if (this.state === 1 && this.oldCell && (this.rcPendAt >= 0 || this.rcRound2) && m.roster.length) { this.roster = kvCopy(m.roster); this.haveRoster = true; this.lastReach = TICK; return; }   // L3.10.6
       if (this.state === 1) {
         if (noCell) { this.retryAt = TICK - 10; return; }
-        if (this.entryTerm() && m.from >= 0) { this.gateway = m.from; this.islandAskAt = -1; this.islandAskN = 0; this.subEarly = false; this.islandAsked.clear(); this.islandLast = false; }
+        if (this.entryTerm() && m.from >= 0) { this.gateway = m.from; this.islandAskAt = -1; this.islandAskN = 0; this.subEarly = false; this.kdAt = -1; this.islandAsked.clear(); this.islandLast = false; }
         if (m.line >= 0) { this.lineAdopt(m.line, m.lineAt, 'home'); if (m.lineF) this.lineFork = true; }
         this.roster = kvCopy(m.roster); this.haveRoster = true; this.lastReach = TICK; this.seatTries = 0; this.resumeTries = 0;
         let t;

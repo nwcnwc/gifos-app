@@ -90,6 +90,18 @@
       if (a0 >= 0 && this.state === 1) { let all = true; for (const g of this.l16List) if (!was.includes(g)) { all = false; break; } if (all) { this.l16FreshAt = a0; this.islandAskAt = a0; } }
     },
 
+    // L8.54.11 A WORD WITH NO KIND YET IS READ AGAIN WHEN ITS KIND IS DUE: a greeter that registered before its own probe's
+    // limit is listed with its tag and no kind. REACH_PROBE after that list came its verdict has landed and it registered
+    // again: a seeker that is not blocked, still unanswered at the door, knocks once per entry (docs/healing-laws.md).
+    // C++: mesh_roomterm.inc:Seat::l8511Note
+    l8511Note() { if (this.kdAt !== -1 || !this.w.lv.ISLAND_MODE || !(this.state === 0 || this.state === 1) || this.nat === E.NAT_BLOCKED) return; for (const g of this.lastGreeters) if (g >= 0 && g !== this.id && this.f.fabricDoorDue(this.id, g)) { this.kdAt = this.TICK; return; } },
+    // C++: mesh_roomterm.inc:Seat::l8511Tick
+    l8511Tick() {
+      if (this.kdAt < 0 || !(this.state === 0 || this.state === 1)) return false; if (this.TICK - this.kdAt <= K.REACH_PROBE) return false; const at = this.kdAt; this.kdAt = -2;
+      if (this.nat === E.NAT_BLOCKED || this.lastReach >= at || this.greetersAt < 0) return false; let due = false; for (const g of this.lastGreeters) if (g >= 0 && g !== this.id && this.f.fabricDoorDue(this.id, g)) { due = true; break; } if (!due) return false;
+      this.trace('L8.54.11-DUE', this.id, null, 'list=%d', at); this.emitRelay(this.linkKey); return true;
+    },
+
     // C++: mesh_roomterm.inc:Seat::entNote
     entNote(g) { if (g < 0 || g === this.id || this.entAsk.has(g)) return; if (this.entAsk.size > 32) this.entAsk.clear(); this.entAsk.set(g, this.TICK); },
 
