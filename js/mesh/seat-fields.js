@@ -990,6 +990,7 @@
     ["entAsk", "{i32:i32}"],   // OMap<int,int>  (line 1924)
     ["entAnsAt", "i32"],   // int = -1  (line 1924)
     ["entIsl", "bool"],   // bool = false  (line 1924)
+    ["found475", "bool"],   // bool = false  (line 1924)
     ["lineFork", "bool"],   // bool = false  (line 1924)
     ["linkKey", "u32"],   // uint32_t = 0  (line 1924)
     ["cutAt", "i32"],   // int = -1  (line 1924)
@@ -1524,6 +1525,7 @@
     mergeV: false,
     entAnsAt: -1,
     entIsl: false,
+    found475: false,
     lineFork: false,
     linkKey: 0,
     cutAt: -1,

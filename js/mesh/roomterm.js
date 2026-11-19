@@ -52,7 +52,7 @@
       if (!this.f.fabricDoors() || !this.islandFounder || !this.l850Lone()) return false;   // a blocked founder (and, L8.54.3, any founder for a greeter the door says its network can meet)
       for (let k = 0; k < m.list.length; k++) {
         const g = m.list[k]; if (g < 0 || g === this.id || this.islandAsked.has(g)) continue;
-        const at = k < m.listAt.length ? m.listAt[k] : -1; if (at >= 0 && this.entEp.has(at)) continue; if (this.l854Other(g)) continue;   /* L8.54.2 */ if (!this.l8471() && this.f.fabricDoorNet(this.id, g) !== 2) continue;   /* L8.54.3 */
+        const at = k < m.listAt.length ? m.listAt[k] : -1; if (at >= 0 && this.entEp.has(at)) continue; if (this.l854Other(g)) continue;   /* L8.54.2 */ if (this.found475 && this.f.fabricDoorBlk(this.id, g)) continue;   /* L8.47.5 */ if (!this.l8471() && !this.found475 && this.f.fabricDoorNet(this.id, g) !== 2) continue;   /* L8.54.3 */
         this.trace('L8.1.3-UNFOUND', this.id, this.coord, 'greeter=%d at=%d mine=%d', g, at, this.lineAt);
         this.c7Yield(this.ringName(), 'L8.1.3-unfound'); this.c7Old.clear(); this.l851Up = -1; this.c7At = K.C7AT_NEVER; this.f.relayUnlist(this.id); /* it was never a room: no merge to be gated (L8.5), no door entry to outlive it (L16.12) */ return true;
       }
