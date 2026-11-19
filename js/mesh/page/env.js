@@ -51,6 +51,8 @@
  *   fabricPipePeers      A1     the far ends of my joining connections that are up (o.sub.pipeEnds(), read once a tick)
  *   fabricSubDoor        A1     my own knock found my door empty: o.sub.doorEmpty() (the page asks for a fresh grant for my door)
  *   fabricSubRepipe      A1     my room lost its joining connection: o.sub.repipe() (the page asks once for a new one)
+ *   fabricSubGo          A1     SUB.10: o.sub.go(), the door my pipe end says my subroom walks to (-1 none)
+ *   fabricSubWalk        A1     SUB.10: o.sub.walk(n, p), may my seat walk now (a path end stays until it is alone)
  * Not seat calls, the fabric's own friend-hop parts on a page (C++ mesh_fhop.inc): fhDoorCall / fhDoorDue (FHOP.8, the door
  * pcw's clock fires when a knocker's door never opened) and doorCallIn (a call that reached me over a dc, kinds 7 and 8).
  *   l164Of               A1     LINKMODEL && !islandStand(s, IS_L164)
@@ -261,9 +263,10 @@
       if (!s || to < 0) return v;
       const now = s.TICK; let any = false, ak = 0;
       for (const [k, x] of s.occ) if (x === to) { const lt = s.live.get(k); if (lt !== undefined && now - lt <= 60) { v.seat = 1; v.c = topo.unckey(k); break; } if (!any) { any = true; ak = k; } }
-      if (v.seat === 0) { const it = s.farCk.get(to); if (it !== undefined && now - it.at <= K.RELAY_TTL) { if (it.ck) { v.seat = 1; v.c = topo.unckey(it.ck - 1); } else v.seat = -1; } }
+      const g = s.farGw.get(to);
+      if (v.seat === 0) { const it = s.farCk.get(to); if (it !== undefined && now - it.at <= K.RELAY_TTL && !(it.ck && g !== undefined && g.at > it.at)) { if (it.ck) { v.seat = 1; v.c = topo.unckey(it.ck - 1); } else v.seat = -1; } }   // FARVIEW.1: a FIND that names it as the seeker is its word too, and the later word wins
       if (v.seat === 0 && any) { v.seat = 1; v.c = topo.unckey(ak); }
-      const g = s.farGw.get(to); if (g !== undefined && now - g.at <= K.RELAY_TTL) { v.gw = g.gw; if (g.gck) { v.gc = topo.unckey(g.gck - 1); v.gcOk = true; } if (v.seat === 0) v.seat = -1; }
+      if (g !== undefined && now - g.at <= K.RELAY_TTL) { v.gw = g.gw; if (g.gck) { v.gc = topo.unckey(g.gck - 1); v.gcOk = true; } if (v.seat === 0) v.seat = -1; }
       return v;
     }
     const farSock = (v) => v.seat !== 1 || v.c.pc === 0;
@@ -484,6 +487,7 @@
       if (measure.probed && !measure.probed()) return -1;   // L8.54.4: my own kind is not known before my probe's verdict
       const k = w.length > 9 ? +w.slice(9) : E.NAT_OPEN, n = (measure.nat ? measure.nat() : E.NAT_OPEN) | 0;
       if (n !== E.NAT_BLOCKED && k !== E.NAT_BLOCKED && !(n === E.NAT_STRICT && k === E.NAT_STRICT)) return 2;
+      if (subF && subF.walked && subF.walked()) return 2;   // SUB.10.6 (C++: subWalked): my subroom walked to that door on its own dials: a path beats the tag
       // L8.54.4 (C++: mesh_net.inc:l854Never): cannot meet only when one end is blocked and the other is not open; a blocked end
       // beside an open one may meet it over TCP, two strict ends are left to their dials: 3, another network not known either way
       const never = (n === E.NAT_BLOCKED && k !== E.NAT_OPEN) || (k === E.NAT_BLOCKED && n !== E.NAT_OPEN);
@@ -513,6 +517,10 @@
     const fabricPipePeers = (id) => (id === me ? pipeNow.slice() : []);
     const fabricSubDoor = (id) => { if (id === me && subF && subF.doorEmpty) subF.doorEmpty(); };
     const fabricSubRepipe = (id) => { if (id === me && subF && subF.repipe) subF.repipe(); };
+    // SUB.10 (C++: mesh_turn.inc:fabricSubGo / fabricSubWalk): the door my end of my subroom's pipe says it walks to (-1 none);
+    // may my seat walk now (n: the seats my room fold counts, p: the door it says)
+    const fabricSubGo = (id) => { if (id !== me || !subF || !subF.go) return -1; const g = subF.go(); return Number.isInteger(g) && g >= 0 ? g : -1; };
+    const fabricSubWalk = (id, n, p) => !!(id === me && subF && subF.walk && subF.walk(n, p));
     // C++: mesh_turn.inc:subTick's answer: my door is r (a listed room the page reached, or a new number it was granted)
     function subGo(r) { const s = seat(); if (!s || dead || !(Number.isInteger(r) && r > 0) || s.sr !== 0) return false; guard('seat.subGo', () => s.subGo(r))(); woken = true; return true; }
     // room r's people are in my count: a fresh fold of a joining connection I hold lists door r
@@ -524,7 +532,7 @@
       fabricAdmitLog: noop, fabricDupMint: noop, fabricNoteBackoff: noop, fabricNoteReseat: noop, fabricNoteRollback: noop,
       fabricNoteSwap: noop, fabricVerdict: deaths.verdict, l18UxDeliv: noop, descEnd: noop, descNote: noop, g4Joined: noop,   // g4Joined: the sim's L40 contest lever only (X1 55c97d1)
       fabricFreeCells, fabricLieFor: () => null, fabricUnreachable, fhopActive: () => !!fh, fhopFriendFor,
-      fabricDoorNet, fabricSubAsk, fabricSubProbe, fabricPipePeers, fabricSubDoor, fabricSubRepipe,
+      fabricDoorNet, fabricSubAsk, fabricSubProbe, fabricPipePeers, fabricSubDoor, fabricSubRepipe, fabricSubGo, fabricSubWalk,
       fabricMyTier: () => ((measure.tier ? measure.tier() : E.TIER_DESKTOP) | 0),
       fabricMyNat: () => ((measure.nat ? measure.nat() : E.NAT_OPEN) | 0),
       fabricLeft: () => leaveNow(false), fabricReloadBye: () => leaveNow(true),
@@ -682,7 +690,7 @@
         doorNt.clear();   /* L8.54: what this list says of each greeter's network (C++: doorNtList) */
         (m.list || []).forEach((p, k) => { const x = learnPeer(p); if (x >= 0 && x !== me && !out.includes(x)) { out.push(x); const e = m.at ? m.at[k] : -1; at.set(x, Number.isInteger(e) && e >= 0 ? e : -1); const t = m.nt ? m.nt[k] : ''; if (typeof t === 'string' && t) doorNt.set(x, t); } });
         for (let k = out.length - 1; k > 0; k--) { const j = Math.floor((o.rand ? o.rand() : Math.random()) * (k + 1)); const t = out[k]; out[k] = out[j]; out[j] = t; }   // the sim's relay shuffles
-        const g = msg.newMsg('GREETERS'); g.list = out; g.listAt = out.map((x) => at.get(x)); g.to = me; g.from = -1; if (m.tag === 1 || m.tag === 3 || m.tag === 4) g.tag = m.tag;   /* 3: the relay holds no door for my room (it restarted): the seat asks for a fresh grant; 4: the first door is empty and other rooms of the meeting are live: a joiner asks before it founds */   /* L3.11.6: the door said admitted:false (C++: relayKnock) */ busAt(w.TICK, g);
+        const g = msg.newMsg('GREETERS'); g.list = out; g.listAt = out.map((x) => at.get(x)); g.to = me; g.from = -1; { const s0 = seat(); g.sr = Number.isInteger(m.sr) ? m.sr : (s0 ? s0.sr : 0); }   /* SUB.1.1: the door that was knocked */ if (m.tag === 1 || m.tag === 3 || m.tag === 4) g.tag = m.tag;   /* 3: the relay holds no door for my room (it restarted): the seat asks for a fresh grant; 4: the first door is empty and other rooms of the meeting are live: a joiner asks before it founds */   /* L3.11.6: the door said admitted:false (C++: relayKnock) */ busAt(w.TICK, g);
         return;
       }
       if (m.t === 'nosock') {

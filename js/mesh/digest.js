@@ -442,6 +442,7 @@
           for (const [pk, pe] of [...this.pipeDig]) { if (pp.indexOf(pk) < 0 || this.LT() - pe.rx > K.DIG_TTL) { this.trace('SUB.4-DROP', id, this.coord, 'peer=%d far=%d', pk, dig.digFar(pe)); this.pipeDig.delete(pk); continue; } dig.digFold(d, pe); }
           if (!this.pipeDig.size) this.pipeBase = msg.newDig();
         }
+        if (this.coord.pc === 0) { const g = this.f.fabricSubGo(id); if (g >= 0) d.go = g; }   // SUB.10: my page ends the link of a subroom that walks: the word rides my section to the room fold
         dig.digTrim(d);
         this.myDig = dig.cloneDig(d); this.lastPubAt = TICK; this.lastPubDepth = pcDepth(this.coord.pc);
         // --- (2) deep ROW HEAD: fold my row (my owner is linked only to me) --------
@@ -479,6 +480,7 @@
         if (this.coord.pc === 0) this.rootFold();
         this.kAuditPulse();   // L27.9 (inert unless a list exists)
         this.subWatch();   // inert unless my room fold ever listed a far door
+        this.subWalk();    // SUB.10 (inert unless my room fold says the subroom walks)
       } finally { this.findNc = svFind; }
     },
     // C++: mesh_seat.inc:Seat::rootFold

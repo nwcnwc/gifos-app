@@ -35,8 +35,10 @@
     // C++: mesh_seat.inc:Seat::onGreeters
     onGreeters(m) {
       const TICK = this.TICK, id = this.id, lv = this.w.lv;
+      if (m.sr !== this.sr) { this.trace('SUB.1.1-OTHERDOOR', id, this.hasCoord ? this.coord : null, 'knocked=%d mine=%d n=%d tag=%d', m.sr, this.sr, m.list.length, m.tag); return; }   // SUB.1.1: an answer is read at the door that was knocked
       if ((this.state === 0 || this.state === 1) && this.l45Stale(m.list)) { this.reJoin = true; this.f.wake(id); return; }   // L45
       if (this.foundKnock && this.state === 3 && m.list.length === 0) { this.foundKnock = false; this.islandAsked.clear(); this.entEp.clear(); }
+      if (m.list.length === 0 && m.tag === 3 && this.sr > 0 && this.state !== 3) { this.trace('SUB.10-DOOR-GONE', id, null, 'sr=%d', this.sr); this.walkedFrom = this.sr; this.doorAt.clear(); this.doorWalk.clear(); this.subGo(0); return; }   // SUB.10.7: the door I knock is empty and no grant is mine: its subroom is gone (it walked, or everyone left). I am a joiner of the meeting: door 0, as any joiner
       if (m.list.length === 0) {
         if (this.state === 0 && m.tag === 4 && this.sr === 0 && this.f.fabricSubAsk(id)) { this.trace('SUB.2-WAIT', id, null, 'door0=empty'); this.l16Backoff('sub-ask'); return; }   // the first door is empty but the meeting lives behind other doors: ask first; refused, found here as before
         if (this.state === 0) { this.genKey = this.linkKey; this.lineAt = TICK; /* L8.52.3: before take(): my registration at the door carries my epoch */ this.take({ pc: 0, r: 0, i: 0 }, -1, [], -1, -1, [], -1); this.lineAdopt(id, TICK, 'genesis'); this.l850Seated = false; /* L8.50.3: the first page has admitted nobody yet */ }

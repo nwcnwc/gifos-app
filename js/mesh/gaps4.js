@@ -65,7 +65,7 @@
       this.trace('L40-LOT', this.id, this.coord, 'rival=%d bound=%d open=%d', rival, d.com === (m.dc >>> 0) ? 1 : 0, d.theirs ? 1 : 0);
     },
     l40Go(rival, why) {
-      if (rival >= 0 && rival !== this.id && this.hasCoord && this.state === 3) { const r = this.l828RingOf(rival); if (r >= 0 && r !== this.ringName() && this.ringOlder(r, this.lineAtOf(rival), this.ringName(), this.lineAt)) this.l851Note(r + 1, this.lineAtOf(rival)); }   // L8.5.1: I leave my cell to a lower ring
+      if (rival >= 0 && rival !== this.id && this.hasCoord && this.state === 3) { const r = this.l828RingOf(rival); const rn = this.ringName(); if (r >= 0 && rn >= 0 && r !== rn && this.ringOlder(r, this.lineAtOf(rival), rn, this.lineAt)) this.l851Note(r + 1, this.lineAtOf(rival)); }   // L8.5.1: I leave my cell to a lower ring
       this.l40To = rival; this.requeue(why); this.l40To = -1;
     },
 
