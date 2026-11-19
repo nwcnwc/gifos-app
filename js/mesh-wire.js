@@ -769,6 +769,7 @@
           if (atDoor !== doorNow()) return;   // a door's answer counts only while that door is mine: my door moved since this socket knocked there
           recountOut = false;
           if (lockedFired && !(seat && seat.state === 3)) return;   // a bad password is the lock prompt: an empty list here would mint a founder
+          m.atDoor = atDoor;   // SUB.1.1: the answer names the door this socket knocked
           onGreeters(m);
           if (opts.onDoor) { try { opts.onDoor('seated', m); } catch (e) {} }
           return;
@@ -920,7 +921,7 @@
       if (opts.holdDoor && opts.holdDoor()) return;   // waiting on the admin with a lock I cannot read: a list I cannot open must not make me a founder
       // ROOMS JOINED BY RELAYED CONNECTIONS: tag 3, my own door is empty (the relay forgot it; the seat asks for a fresh
       // grant); tag 4, door 0 is empty while other doors of the meeting live (the seat asks before founding). The seat decides.
-      if ((m.tag === 3 || m.tag === 4) && penv) { regPendingAt = 0; /* the relay answered: this socket is alive (unanswered, the watchdog rebuilt it 12 s later) */ if (!stopped && seat) penv.relayFrame({ t: 'greeters', list: [], tag: m.tag }); return; }
+      if ((m.tag === 3 || m.tag === 4) && penv) { regPendingAt = 0; /* the relay answered: this socket is alive (unanswered, the watchdog rebuilt it 12 s later) */ if (!stopped && seat) penv.relayFrame({ t: 'greeters', list: [], tag: m.tag, sr: m.atDoor }); return; }
       const list = m.list || [];
       const ids = [], sealedFps = [], fa = [], behind = [];
       const ep = new Map(), atOf = (l) => l.map((p) => (ep.has(p) ? ep.get(p) : -1));   // each greeter's word of when its room was founded (-1: not said)
@@ -1042,7 +1043,7 @@
         // stands down when a connection is already up, and a solo seat whose
         // channel to the other fragment is open still has to SAY something on
         // it — nothing else it does addresses a seat it does not hold.
-        penv.relayFrame({ t: 'greeters', list: ids, at: atOf(ids), nt: ntOf(ids) });
+        penv.relayFrame({ t: 'greeters', list: ids, at: atOf(ids), nt: ntOf(ids), sr: m.atDoor });
         return;
       }
       if (list.length && !ids.length) {
@@ -1050,7 +1051,7 @@
         if (preState !== 3) fireLocked(); // R6: sealed list I can't read — wrong password (joiners only)
       } else if (!ids.length && !m.founded) {
         action = 'hold-mint-gap';                                         // hold; the join loop re-knocks
-        if (preState === 3) penv.relayFrame({ t: 'greeters', list: [] });   // ...but a SEATED seat learns nobody else is registered: its old list may name the departed
+        if (preState === 3) penv.relayFrame({ t: 'greeters', list: [], sr: m.atDoor });   // ...but a SEATED seat learns nobody else is registered: its old list may name the departed
       } else {
         // empty+founded + still joining ⇒ R3/R6 take-over mints 0/0.0;
         // empty+founded while already seated is a no-op (mesh.js gates on state===0).
@@ -1059,7 +1060,7 @@
         else action = 'deliver';
         // RELOAD TREE MEMORY: the doors this page sat with before its reload go first (treeMemAsk asks them all at once)
         if (prevOld && preState !== 3 && ids.length) { const old = ids.filter((p) => prevOld.has(p)); treeAsk = old.map((p) => layer.ids.nid(p)); ids.sort((a, b) => (prevOld.has(b) ? 1 : 0) - (prevOld.has(a) ? 1 : 0)); prevOld = null; }
-        penv.relayFrame(m.admitted === false && !m.founded && preState === 3 && iAmAGreeter() ? { t: 'greeters', list: ids, at: atOf(ids), nt: ntOf(ids), tag: 1 } : { t: 'greeters', list: ids, at: atOf(ids), nt: ntOf(ids) }); // the seat's L16 knocker takes it from here. L3.11.6: admitted:false to a seated Section-1 seat rides the list (tag 1): the seat asks a listed mate for the door's key and registers again
+        penv.relayFrame(m.admitted === false && !m.founded && preState === 3 && iAmAGreeter() ? { t: 'greeters', list: ids, at: atOf(ids), nt: ntOf(ids), tag: 1, sr: m.atDoor } : { t: 'greeters', list: ids, at: atOf(ids), nt: ntOf(ids), sr: m.atDoor }); // the seat's L16 knocker takes it from here. L3.11.6: admitted:false to a seated Section-1 seat rides the list (tag 1): the seat asks a listed mate for the door's key and registers again
       }
       // `adm` is the relay's `admitted`: does my genesis key match the room's?
       // Nothing ACTS on it — but its absence from this trace is why the

@@ -13830,10 +13830,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // side dials them one at a time on a plain connection (never a seat the mesh saw leave or the relay saw go).
         // SUB.10: my subroom is a leaf: my end holds one pipe and every far door my room fold lists comes through it
         subLeaf: () => {
-          const s = meshSeat(); if (!s || !s.pipeDig || s.pipeDig.size !== 1) return false;
-          const R = s.dRoot(); if (!R || R.at < 0) return false;
+          const r0 = meshNode && meshNode.raw, s = typeof r0 === 'function' ? r0() : r0;   // the law's own seat (meshSeat() is the page view, which holds no fold of the pipes)
+          if (!s || !s.pipeDig || s.pipeDig.size !== 1) return 'pipes=' + (s && s.pipeDig ? s.pipeDig.size : -1);
+          const R = s.dRoot(); if (!R || R.at < 0) return 'no fold';
           const F = new Set(Array.from(s.pipeDig.values())[0].doors.map((e) => e.id));
-          return R.doors.every((e) => e.id === s.sr || F.has(e.id));
+          return R.doors.every((e) => e.id === s.sr || F.has(e.id)) ? true : 'doors=' + R.doors.map((e) => e.id).join(',') + ' far=' + Array.from(F).join(',') + ' mine=' + s.sr;   // true, or why not (a debug line)
         },
         s1Seats: () => {
           if (!meshNode || !myId) return [];

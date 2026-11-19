@@ -174,7 +174,7 @@
       const R = this.dRoot(); const p = R.at >= 0 ? R.go : -1;
       if (p < 0 || p === this.sr || this.state !== 3 || !this.hasCoord) { this.goAt = -1; return; }
       if (this.goAt < 0) { this.goAt = this.TICK | 0; return; }
-      if (dig.digSeats(this.myDig) > 1) return;   // SUB.10.4 the seats below me first: my own section still counts somebody under me; they hear the word and the meeting through me until they have walked
+      if (dig.digSeats((this.coord.pc !== 0 && this.coord.i === 0) ? this.rowDig : this.myDig) > 1) return;   // SUB.10.4 the seats I carry first: the fold I publish upward still counts somebody besides me (a deep row's head carries its row); they hear the word and the meeting through me until they have walked
       if (this.f.fabricSubGo(this.id) >= 0 && this.TICK - this.goAt < K.L10_NEW_WAIT) return;   // the end that says the word stays until the far side has heard that this door walks (SUB.3's own clock)
       if (!this.f.fabricSubWalk(this.id, dig.digSeats(R), p)) return;
       this.trace('SUB.10-WALK', this.id, this.coord, 'from=%d to=%d n=%d', this.sr, p, dig.digSeats(R));

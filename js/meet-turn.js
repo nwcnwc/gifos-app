@@ -1206,15 +1206,17 @@
     const WALK_AGAIN_MS = K.TURN_RETRY * K.TURN_RETRY_MAX_X * tick, WALKED_MS = K.RELAY_TTL * tick;
     let walkedAt = -Infinity;
     function walkOff(L, why) { if (L.go != null) log('sub-walk off ' + L.l + ' ' + why); L.go = null; L.wk = null; }
+    function walkWait(L, why) { if (L.wkWhy !== why) { L.wkWhy = why; log('sub-walk wait ' + L.l + ' ' + why); } }   // the reason my end does not say GO yet, once a change
     function walkRound(L, now) {
       if (!io.sub || io.sub() !== pipeNo(L.l) || pipeNo(L.l) <= 0) { if (L.go != null || L.wk) walkOff(L, 'not my door'); return; }   // the walking side is the younger door, the pipe's own number
-      if (!(L.direct && L.sbUp && L.sbDirect)) { if (L.go != null || L.wk) walkOff(L, 'not two direct paths'); return; }
+      if (!(L.direct && L.sbUp && L.sbDirect)) { if (L.go != null || L.wk) walkOff(L, 'not two direct paths'); walkWait(L, 'paths pipe=' + (L.direct ? 'direct' : 'turn') + ' standby=' + (L.sbUp ? (L.sbDirect ? 'direct' : 'turn') : 'down')); return; }
       if (L.go != null) return;
-      if (!(io.subLeaf && io.subLeaf(L.far))) { if (L.wk) walkOff(L, 'no leaf'); return; }
-      if (now - walkedAt < WALK_AGAIN_MS) return;   // SUB.10.2: a walk that failed does not start again inside the longest wait
-      const Z = L.farS1 || []; if (!Z.length) return;
+      { const lf = io.subLeaf ? io.subLeaf(L.far) : 'no fold'; if (lf !== true) { if (L.wk) walkOff(L, 'no leaf'); walkWait(L, 'no leaf ' + lf); return; } }
+      if (now - walkedAt < WALK_AGAIN_MS) { walkWait(L, 'walked lately'); return; }   // SUB.10.2: a walk that failed does not start again inside the longest wait
+      const Z = L.farS1 || []; if (!Z.length) { walkWait(L, 'no far seats named'); return; }
       const W = L.wk || (L.wk = { ok: new Set(), q: null, y: null, sentAt: 0, nextAt: now, n: 0, x: 1, fails: 0, seat: 0 });
       const A = s1List().filter((x) => x !== io.me() && x !== L.sbSeat && !W.ok.has(x));
+      walkWait(L, 'seats left ' + A.length);
       if (!A.length) { L.go = Number(L.farR); L.wk = null; log('sub-walk go ' + L.l + ' to=' + L.go + ' far=' + short(L.far)); io.changed(L.far); return; }
       if (W.q) { if (now - W.sentAt < ASK_MS + 2 * RESEND_MS) return; W.q = null; W.fails++; }   // no word back: a miss
       if (now < W.nextAt) return;
