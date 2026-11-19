@@ -3575,6 +3575,10 @@
   .ag-min { flex: 0 0 auto; color: var(--c-gray); font-size: 13px; font-weight: 400; }
   .ag-in-t, .ag-in-min { min-height: 40px; padding: 0 10px; border: 0; border-radius: var(--r-sm); background: var(--c-ink); color: var(--c-white); font: inherit; font-size: 15px; }
   .ag-in-t { flex: 1 1 auto; min-width: 0; }
+  .ag-count { flex: 0 0 auto; color: var(--c-gray); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .ag-count.at { color: var(--c-yellow); }
+  .ag-limit { flex: 1 0 100%; color: var(--c-yellow); font-size: 12px; }
+  .ag-limit[hidden] { display: none; }
   .ag-in-min { flex: 0 0 72px; width: 72px; }
   .ag-mini { flex: 0 0 auto; min-width: 40px; min-height: 40px; border: 0; border-radius: var(--r-pill); background: none; color: var(--c-gray); font: inherit; font-size: 16px; cursor: pointer; }
   .ag-add { display: flex; gap: 8px; margin-top: 12px; }

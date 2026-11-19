@@ -859,7 +859,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <button type="button" id="whobtn" data-t="people" data-ti="whoTip" aria-keyshortcuts="Alt+W" title="Who is on this meeting — names and internet addresses">People</button>
         <button data-ti="trbtnTip" data-t="transcript" aria-keyshortcuts="Alt+T" title="The meeting's live transcript" id="trbtn"><svg class="ai-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>Transcript</button>
         <button data-ti="qabtnTip" data-t="qabtn" id="qabtn" type="button" title="Questions for the host: ask one, and vote up the ones you want answered">Questions</button>
-        <button data-ti="agendaTip" data-t="agendaBtn" id="agendabtn" type="button" title="Share an agenda: the items, how long each takes, and which one is on now">Agenda</button>
+        <button data-ti="agendaTip" data-t="agendaBtn" id="agendabtn" type="button" aria-keyshortcuts="Alt+J" title="Share an agenda: the items, how long each takes, and which one is on now">Agenda</button>
       </div>
     </section>
     <section class="moregroup" data-group="video">
@@ -1501,6 +1501,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <li><kbd>Alt+K</kbd> <span data-t="keyCaptions">Show or hide captions</span></li>
         <li><kbd>Alt+,</kbd> <span data-t="keySettings">Settings</span></li>
         <li><kbd>Alt+T</kbd> <span data-t="keyTranscript">Transcript</span></li>
+        <li><kbd>Alt+J</kbd> <span data-t="keyAgenda">Agenda</span></li>
         <li><kbd>Alt+/</kbd> <span data-t="keyHelp">Help</span></li>
         <li class="hostkey" hidden><kbd>Alt+M</kbd> <span data-t="keyMuteAll">Mute or unmute every guest</span></li>
         <li class="hostkey" hidden><kbd>Alt+B</kbd> <span data-t="keyBlurAll">Blur or unblur every guest</span></li>
@@ -8886,6 +8887,44 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         left.textContent = MA.mmss(c.ms);
       }
     }
+    // An agenda title: its own name, a counter, and a warning at 120 characters.
+    // The limit stays 120. A paste that would pass it is kept to the limit and
+    // the warning shows, so the cut is not silent.
+    function ctAgWords(label, value) {
+      const MA = GifOS.meetAgenda;
+      const t = document.createElement('input');
+      t.type = 'text'; t.className = 'ag-in-t'; t.maxLength = MA.MAX_T;
+      t.value = value || '';
+      t.setAttribute('aria-label', label);
+      const count = document.createElement('span');
+      count.className = 'ag-count';
+      count.setAttribute('aria-live', 'polite');
+      const warn = document.createElement('span');
+      warn.className = 'ag-limit';
+      warn.hidden = true;
+      const paint = () => {
+        const n = t.value.length;
+        count.textContent = n + '/' + MA.MAX_T;
+        const at = n >= MA.MAX_T;
+        count.classList.toggle('at', at);
+        warn.hidden = !at;
+        if (at) warn.textContent = ctText('agAtLimit', '120 characters is the most an item can hold.');
+      };
+      t.addEventListener('beforeinput', (e) => {
+        const data = e.data || '';
+        if (!data) return;
+        const start = t.selectionStart || 0, end = t.selectionEnd || 0;
+        if (t.value.length - (end - start) + data.length > MA.MAX_T) {
+          e.preventDefault();
+          const room = MA.MAX_T - (t.value.length - (end - start));
+          t.setRangeText(data.slice(0, Math.max(0, room)), start, end, 'end');
+          paint();
+        }
+      });
+      t.addEventListener('input', paint);
+      paint();
+      return { t, count, warn };
+    }
     function ctAgBtn(cls, word, act, title) {
       const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = word;
       if (title) b.title = title;
@@ -8941,13 +8980,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (i === a.cur) { li.classList.add('cur'); li.setAttribute('aria-current', 'step'); }
         else if (a.cur >= 0 && i < a.cur) li.classList.add('done');
         if (CT.agEdit) {
-          const t = document.createElement('input'); t.type = 'text'; t.className = 'ag-in-t'; t.value = it.t; t.maxLength = MA.MAX_T;
-          t.setAttribute('aria-label', ctText('agItemPh', 'What is this item?'));
+          const words = ctAgWords(ctText('agItemTitle', 'Item {n} title', { n: i + 1 }), it.t);
+          const t = words.t;
           const mn = document.createElement('input'); mn.type = 'number'; mn.className = 'ag-in-min'; mn.min = '0'; mn.max = String(MA.MAX_MIN); mn.value = it.min ? String(it.min) : '';
-          mn.placeholder = ctText('agMinPh', 'min'); mn.setAttribute('aria-label', ctText('agMinutes', 'Minutes'));
+          mn.placeholder = ctText('agMinPh', 'min'); mn.setAttribute('aria-label', ctText('agItemMinutes', 'Item {n} minutes', { n: i + 1 }));
           const commit = () => { if (t.value.trim() !== it.t || (+mn.value || 0) !== it.min) ctAgendaPublish(MA.edit(CT.ag, myId, it.id, t.value, +mn.value || 0), 'edit'); };
           t.addEventListener('change', commit); mn.addEventListener('change', commit);
-          li.appendChild(t); li.appendChild(mn);
+          li.appendChild(t); li.appendChild(words.count); li.appendChild(mn); li.appendChild(words.warn);
           const up = ctAgBtn('ag-mini', '↑', () => ctAgendaPublish(MA.move(CT.ag, myId, it.id, -1), 'move'), ctText('agMoveUp', 'Move up'));
           const dn = ctAgBtn('ag-mini', '↓', () => ctAgendaPublish(MA.move(CT.ag, myId, it.id, 1), 'move'), ctText('agMoveDown', 'Move down'));
           const rm = ctAgBtn('ag-mini', '✕', () => ctAgendaPublish(MA.remove(CT.ag, myId, it.id), 'remove'), ctText('agRemove', 'Remove'));
@@ -8973,12 +9012,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       if (CT.agEdit) {
         const add = document.createElement('form'); add.className = 'ag-add';
-        const t = document.createElement('input'); t.type = 'text'; t.className = 'ag-in-t'; t.maxLength = MA.MAX_T; t.placeholder = ctText('agItemPh', 'What is this item?');
-        t.setAttribute('aria-label', ctText('agItemPh', 'What is this item?'));
+        const words = ctAgWords(ctText('agNewTitle', 'New item title'), '');
+        const t = words.t;
+        t.placeholder = ctText('agItemPh', 'What is this item?');
         const mn = document.createElement('input'); mn.type = 'number'; mn.className = 'ag-in-min'; mn.min = '0'; mn.max = String(MA.MAX_MIN); mn.placeholder = ctText('agMinPh', 'min');
-        mn.setAttribute('aria-label', ctText('agMinutes', 'Minutes'));
+        mn.setAttribute('aria-label', ctText('agNewMinutes', 'New item minutes'));
         const b = document.createElement('button'); b.type = 'submit'; b.className = 'ag-btn'; b.textContent = ctText('agAddItem', 'Add item');
-        add.appendChild(t); add.appendChild(mn); add.appendChild(b);
+        add.appendChild(t); add.appendChild(words.count); add.appendChild(mn); add.appendChild(b); add.appendChild(words.warn);
         add.addEventListener('submit', (e) => {
           e.preventDefault();
           if (!t.value.trim()) return;
@@ -39256,7 +39296,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       return false;
     }
-    const SHORTCUT_IDS = { KeyA: 'mic', KeyV: 'cam', KeyS: 'sharebtn', KeyC: 'chatbtn', KeyK: 'ccdock', KeyH: 'hand', KeyF: 'fitbtn', KeyQ: 'leavebtn', KeyW: 'whobtn', KeyI: 'appinvite', KeyY: 'appbtn', KeyU: 'votebtn', KeyL: 'pwbtn', KeyG: 'stagebtn', KeyR: 'recbtn', Comma: 'setbtn', KeyT: 'trbtn', Slash: 'apphelp', KeyM: 'muteall', KeyB: 'blurall', KeyX: 'camall', KeyP: 'shareall' };
+    const SHORTCUT_IDS = { KeyA: 'mic', KeyV: 'cam', KeyS: 'sharebtn', KeyC: 'chatbtn', KeyK: 'ccdock', KeyH: 'hand', KeyF: 'fitbtn', KeyQ: 'leavebtn', KeyW: 'whobtn', KeyI: 'appinvite', KeyY: 'appbtn', KeyU: 'votebtn', KeyL: 'pwbtn', KeyG: 'stagebtn', KeyR: 'recbtn', Comma: 'setbtn', KeyT: 'trbtn', KeyJ: 'agendabtn', Slash: 'apphelp', KeyM: 'muteall', KeyB: 'blurall', KeyX: 'camall', KeyP: 'shareall' };
     // The control an Alt chord presses, or null when that chord does nothing
     // for this person right now.
     function shortcutTarget(id) {
