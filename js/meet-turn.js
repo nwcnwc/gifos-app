@@ -1163,6 +1163,7 @@
       if (next !== io.me()) for (const M of Array.from(links.values())) if (M.sb && M.l === sl && M.liveEnd === io.me()) close(M, 'replaced');
     }
     function probeHeard(from, sl, y, b) {
+      if (walkHeard(from, sl, y, b)) return;   // SUB.10: a dial my walk round asked for
       const L = livePipe(pipeNo(sl)), P = L && L.pr; if (!L || !L.opener || !P || P.q !== from || P.y !== y) return;
       P.q = null;
       if (b === 2) { P.held.add(from + '|' + y); P.n--; P.nextAt = io.now(); return; }   // a pair that holds a path of this link was no dial: the turn is not spent (the sim's rounds skip such a pair, subHolds)
@@ -1193,6 +1194,53 @@
       const sl = 's' + pipeNo(L.l);
       log('turn-probe ask ' + short(pq) + ' -> ' + short(py) + ' n=' + P.n + ' x=' + P.x);
       if (pq === io.me()) probeAsk(io.me(), sl, py); else io.sendTv(pq, { k: 'tv', q: 'o', l: sl, m: py });
+    }
+    // ---- SUB.10 THE MERGE (docs/turn-0926.md 3a; the sim's subProbeTick step 3, fabricSubGo, fabricSubWalk) -----------------
+    // With two direct paths (the pipe and its standby both off TURN) the seats keep looking. My subroom (the younger door, the
+    // pipe's own number) is not needed once every one of its Section-1 seats is known to reach a Section-1 seat of the far door
+    // directly: an end of the pipe or of its standby, or a dial my round asked for (SUB.8.1's dial, one at a time). Only a
+    // subroom no other pipe ends in walks (a leaf: my room fold lists no door my pipe does not bring). Then my end says GO
+    // (go(): the far door) in my section (Dig.go), the seats walk through the far door as ordinary joiners, the path ends
+    // last. The word stops when the pipe or its standby leaves its direct path. A page that walked does not say GO again
+    // inside the longest wait (SUB.10.2, TURN.10).
+    const WALK_AGAIN_MS = K.TURN_RETRY * K.TURN_RETRY_MAX_X * tick, WALKED_MS = K.RELAY_TTL * tick;
+    let walkedAt = -Infinity;
+    function walkOff(L, why) { if (L.go != null) log('sub-walk off ' + L.l + ' ' + why); L.go = null; L.wk = null; }
+    function walkWait(L, why) { if (L.wkWhy !== why) { L.wkWhy = why; log('sub-walk wait ' + L.l + ' ' + why); } }   // the reason my end does not say GO yet, once a change
+    function walkRound(L, now) {
+      if (!io.sub || io.sub() !== pipeNo(L.l) || pipeNo(L.l) <= 0) { if (L.go != null || L.wk) walkOff(L, 'not my door'); return; }   // the walking side is the younger door, the pipe's own number
+      if (!(L.direct && L.sbUp && L.sbDirect)) { if (L.go != null || L.wk) walkOff(L, 'not two direct paths'); walkWait(L, 'paths pipe=' + (L.direct ? 'direct' : 'turn') + ' standby=' + (L.sbUp ? (L.sbDirect ? 'direct' : 'turn') : 'down')); return; }
+      if (L.go != null) return;
+      { const lf = io.subLeaf ? io.subLeaf(L.far) : 'no fold'; if (lf !== true) { if (L.wk) walkOff(L, 'no leaf'); walkWait(L, 'no leaf ' + lf); return; } }
+      if (now - walkedAt < WALK_AGAIN_MS) { walkWait(L, 'walked lately'); return; }   // SUB.10.2: a walk that failed does not start again inside the longest wait
+      const Z = L.farS1 || []; if (!Z.length) { walkWait(L, 'no far seats named'); return; }
+      const W = L.wk || (L.wk = { ok: new Set(), q: null, y: null, sentAt: 0, nextAt: now, n: 0, x: 1, fails: 0, seat: 0 });
+      const A = s1List().filter((x) => x !== io.me() && x !== L.sbSeat && !W.ok.has(x));
+      walkWait(L, 'seats left ' + A.length);
+      if (!A.length) { L.go = Number(L.farR); L.wk = null; log('sub-walk go ' + L.l + ' to=' + L.go + ' far=' + short(L.far)); io.changed(L.far); return; }
+      if (W.q) { if (now - W.sentAt < ASK_MS + 2 * RESEND_MS) return; W.q = null; W.fails++; }   // no word back: a miss
+      if (now < W.nextAt) return;
+      if (W.fails >= A.length) { W.x = Math.min(2 * W.x, K.TURN_RETRY_MAX_X); W.fails = 0; }   // every seat left has failed since: the wait doubles (TURN.10)
+      const q = A[W.seat % A.length], y = Z[(W.seat + W.n) % Z.length];
+      W.q = q; W.y = y; W.sentAt = now; W.seat = (W.seat + 1) % A.length; W.n++;
+      W.nextAt = now + (W.n < Math.max(A.length, Z.length) ? ASK_MS : RETRY_MS * W.x);
+      log('sub-walk ask ' + short(q) + ' -> ' + short(y));
+      io.sendTv(q, { k: 'tv', q: 'o', l: 's' + pipeNo(L.l), m: y });
+    }
+    function walkHeard(from, sl, y, b) {
+      const L = livePipe(pipeNo(sl)), W = L && L.wk; if (!W || W.q !== from || W.y !== y) return false;
+      W.q = null; if (b === 1 || b === 2) { W.ok.add(from); W.fails = 0; log('sub-walk hit ' + short(from) + ' reaches ' + short(y)); } else W.fails++;   // 2: it holds a path of this link to it already
+      return true;
+    }
+    // The door my subroom walks to, as my end of its pipe says it (-1: none).
+    function walkGo() { for (const L of links.values()) if (!L.sb && L.state === 'up' && L.direct && L.go != null && io.sub && io.sub() === pipeNo(L.l)) return L.go; return -1; }
+    // May my seat walk now (its room fold counts n seats and says door p)? An end of the pipe stays until it is alone, an end of
+    // its standby while a seat that ends no path is still counted (1 more); every other seat goes at once.
+    function walkMay(n, p) {
+      let pipeEnd = false, sbEnd = false;
+      for (const L of links.values()) { if (L.state === 'closed' || !io.sub || io.sub() !== pipeNo(L.l)) continue; if (L.sb) sbEnd = true; else { pipeEnd = true; if (L.go !== p) return false; } }
+      if (pipeEnd && n > 1) return false; if (sbEnd && !pipeEnd && n > 2) return false;
+      walkedAt = io.now(); log('sub-walk walk to=' + p + ' n=' + n); return true;
     }
     // A live end whose pipe is lost, or (SUB.8, 'healed') whose standby is on a better path: its standby seat takes the
     // pipe over. A lost pipe's part ends here; a pipe on TURN that gave way to a direct standby stays, as the standby.
@@ -1471,6 +1519,7 @@
         if (L.state === 'up' && !L.sb) {   // SUB.8.1: each pipe end names its side's Section-1 seats once a change; the opener end runs the rounds
           const mine = s1List().slice(0, 25).join(','); if (mine && mine !== L.s1Sent && PROBE_RE.test(mine)) { L.s1Sent = mine; io.sendTv(L.far, { k: 'tv', q: 'o', l: L.l, m: mine }); }
           if (L.opener) probeRound(L, now);
+          walkRound(L, now);   // SUB.10 (inert unless my end is the younger door's and both paths are direct)
         }
         if (L.state === 'up' && !L.sb) warmStandby(L, now);   // SUB.8: a direct pipe keeps its standby too (the bridging seat may leave)
         if (L.state === 'up' || L.state === 'dial') io.keep(L.far);
@@ -1513,6 +1562,10 @@
       // JOIN.2: the seat's first ask at door 0 stalled: dial the heads of the other doors the relay lists. true: a probe starts or is out
       probe() { if (!(io.sub && io.sub() === 0) || !io.tdoors || !io.probeDoor) return false; if (sub.st === 'probe' && sub.asker === 'probe') return true; if (sub.st !== 'idle' || (sub.out && sub.out.refused) || io.now() - sub.probeAt < PROBE_GAP_MS) return false; sub.wantProbe = true; return true; },
       regrant() { const o = rg.out; rg.out = null; return o; },
+      // SUB.10: the door my subroom walks to as my pipe end says it (-1 none); may my seat walk now; did it walk lately (a path beats the tag)
+      go() { return walkGo(); },
+      walk(n, p) { return walkMay(n, p); },
+      walked() { return io.now() - walkedAt <= WALKED_MS; },
       // the seat is about to found on silence: may it ask the Worker first? Closed once after a refusal (that founding attempt
       // founds), and while a refusal's wait runs
       mayAsk() { if (sub.ans) { sub.ans = false; return false; } const o = sub.out; return !(o && o.refused && io.now() < o.retryAt); },

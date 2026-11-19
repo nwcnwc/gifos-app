@@ -113,7 +113,7 @@
       if (x < 0 || x === this.id) return false;
       { const l = this.lineOf(x); if (l >= 0 && this.line >= 0 && l !== this.line) return true; if (!this.mergeSeen()) return false; }
       if (!this.hasCoord || this.state !== 3) return false;
-      const a = this.l828RingOf(x); return a >= 0 && a !== this.ringName();
+      const a = this.l828RingOf(x); const rn = this.ringName(); return a >= 0 && rn >= 0 && a !== rn;   // (L8.27.1: a seat that knows no name of its own calls no ring another)
     },
 
     // C++: mesh_ring.inc:Seat::lineForeign
