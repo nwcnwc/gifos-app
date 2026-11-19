@@ -21824,39 +21824,35 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // view-only join a denied camera lands in; a viewer the host later
           // calls up gets media through lateMedia (a user gesture), exactly
           // like any view-only guest tapping the mic button.
+          let assistantBoot = false;
+          try { assistantBoot = sessionStorage.getItem('gifos_bot') === '1'; } catch (e) {}
           if (params.get('bot') === '1') {
-            // A bot has no camera and does not speak. The sent track stays
-            // disabled, and nothing from this computer's microphone is
-            // written down: the bot's transcript is the other people (scribe).
+            // Assistant mode: muted, camera off, and no permission prompt.
+            // The transcript is the other people. A tap can still open a mic later.
+            assistantBoot = true;
             myStatus.bot = true;
             myStatus.camOff = true;
             myStatus.muted = true;
             myStatus.blur = 0;
-            const mdB = navigator.mediaDevices;
-            const gumB = (mdB && mdB.getUserMedia)
-              ? mdB.getUserMedia({ audio: true, video: false })
-              : Promise.reject(new Error('no media devices'));
-            bootGumPending = gumB.finally(() => { bootGumPending = null; });
-            bootGumPending.catch(() => {});
-            gumB.then((stream) => {
-              localStream = stream;
-              for (const tr of stream.getTracks()) tr.enabled = false;
-              const n = meTile.tile.querySelector('.note'); if (n) n.remove();
-              meTile.video.style.display = 'none';
-              meterFor('me', stream);
-              try { ensureAc(); if (ac && ac.resume) ac.resume(); } catch (e) {}
-              updateTile('me');
-              attachLocalTracks();
-              refreshOutbound();
-              broadcastStatus();
-            }, () => {
-              localStream = null;
-              myStatus.bot = true;
-              myStatus.camOff = true;
-              myStatus.muted = true;
-              updateTile('me');
-              broadcastStatus();
-            });
+            localStream = null;
+            try { updateTile('me'); } catch (e) {}
+            try { broadcastStatus(); } catch (e) {}
+            try {
+              for (const id of ['ai-assist', 'meet-ai-assist']) {
+                const b = document.getElementById(id);
+                if (b) b.setAttribute('aria-pressed', 'true');
+              }
+            } catch (e) {}
+            return;
+          }
+          if (assistantBoot) {
+            myStatus.bot = true;
+            myStatus.camOff = true;
+            myStatus.muted = true;
+            myStatus.blur = 0;
+            localStream = null;
+            try { updateTile('me'); } catch (e) {}
+            try { broadcastStatus(); } catch (e) {}
             return;
           }
           if (BROADCAST && !bcHostStored()) {
@@ -21874,10 +21870,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // camera is missing, disabled or held (gumWithMicFallback): a
           // webcam-less desktop joins with a mic, not view-only for life.
           // A CAMERA THAT IS OFF IS NOT OPEN. The boot asks for the camera only
-          // when this boot turns it on (bootWantsCamera); otherwise the mic
-          // alone, and the Camera button opens the camera when it is tapped
+          // when this boot turns it on (bootWantsCamera). Mic and camera both
+          // off asks for nothing: a permission prompt waits for the tap
           // (lateMedia). A held, disabled camera keeps the camera light on.
-          const gum = (md && md.getUserMedia)
+          const wantMic = typeof joinAvChoice !== 'undefined' && joinAvChoice && joinAvChoice.mic;
+          const bothOff = !bootWantsCamera() && !wantMic;
+          const gum = bothOff
+            ? Promise.resolve(null)
+            : (md && md.getUserMedia)
             ? gumWithMicFallback(md, bootWantsCamera() ? { video: camVideoConstraints(), audio: true } : { audio: true }).then((r) => {
               if (r.camErr) { try { window.__gumBootNoCam = r.camErr.name || String(r.camErr); } catch (e) {} } // harness breadcrumb: mic-only boot, and why
               return r.stream;
@@ -21890,6 +21890,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // owns the refusal; this only marks the copy as handled.
           bootGumPending.catch(() => {});
           gum.then((stream) => {
+            if (!stream) {
+              localStream = null;
+              try { updateTile('me'); } catch (e) {}
+              try { broadcastStatus(); } catch (e) {}
+              return;
+            }
             localStream = stream;
             // Join QUIET by default: mic and camera acquired (permission
             // granted, instant to switch on) but disabled until you choose to
