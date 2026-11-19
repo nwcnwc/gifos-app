@@ -104,5 +104,17 @@
   "runtime.agent.noElement": "⚠ 没有元素 [{index}]",
   "runtime.agent.done": "✓ 完成",
   "runtime.agent.stoppedAfter": "⚠ 执行 {n} 步后已停止",
-  "runtime.agent.stopped": "已停止"
+  "runtime.agent.stopped": "已停止",
+  "runtime.room.notHere": "你不在这个房间里。",
+  "runtime.room.watching": "你正在观看。",
+  "runtime.room.notYourTurn": "还没轮到你。",
+  "runtime.room.adminOnly": "这里只有主持人可以这样做。",
+  "runtime.room.full": "这张桌子已满。",
+  "runtime.room.noSeat": "没有这个座位。",
+  "runtime.room.notMoves": "这不属于游戏。",
+  "runtime.room.badOp": "房间不能这样做。",
+  "runtime.room.pending": "房间没有回应。",
+  "runtime.room.asks": "{name} 请求加入 {app}。",
+  "runtime.room.seat": "给座位",
+  "runtime.room.notNow": "暂不"
 }

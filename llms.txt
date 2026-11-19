@@ -111,6 +111,10 @@ a .zip for multi-file apps). GifOS packs the GIF there.
    db.subscribe() and declare collection visibility = multiplayer for free.
 3. Identity: const me = await gifos.me(); -> { id, name } (name may be "").
    Attribute records to me.id/me.name so every player sees who did what.
+   GAMES AND ANYTHING WITH SEATS OR TURNS: declare "room" in the manifest and
+   use gifos.room (see "Multiplayer"). GifOS decides who plays, who watches,
+   whose turn it is and who gets a seat back. Never write presence or
+   heartbeat rows, never keep your own seat list, never ask for typed names.
 4. If window.gifos is undefined (opened outside GifOS), degrade gracefully.
 5. BACK BUTTON: the GifOS shell traps the phone's Back button, so a reflex
    press never closes your app — by default it is simply swallowed. Register
@@ -171,6 +175,7 @@ mandatory; everything else defaults sensibly.
               "prices": { "pro": "4990000" } },  // every sku (see "PAYMENTS")
      "data": { ... },             // per-collection visibility (see "Multiplayer")
      "lead": [ ... ],             // optional leader/communal toggle (see "Multiplayer")
+     "room": { ... },             // a multiplayer session GifOS runs (see "Multiplayer: gifos.room")
      "launch": { ... },           // optional link arguments (see "Sharing")
      "handoff": { ... },          // app->app documents (see gifos.handoff)
      "provides": { "ai": [...] }, // Provider apps only (see "Provider apps")
@@ -328,6 +333,13 @@ WHO/WHAT AM I
                                when running on the owner's computer — host
                                or solo; false on a guest)
    await gifos.me()         -> { id, name }   (per-browser identity)
+   await gifos.people()     -> [{ id, name, me, admin, here }] — the people in
+                               this room (a meeting or an app room), read-only,
+                               from the room's own roster; just you when alone.
+                               here: 'here' | 'away' (reconnecting).
+   gifos.room.*             -> the session GifOS runs for you; see
+                               "Multiplayer: gifos.room" (needs "room" in the
+                               manifest and minBuild 5700)
    await gifos.setName(n)   -> { id, name }   (ASKS the person, on an OS sheet,
                                 to take that name; resolves with the identity
                                 as it is afterwards — unchanged if they declined)
@@ -657,19 +669,68 @@ GUEST SEMANTICS your code should expect:
      away"). Catch and show it.
    - Private collections on a guest live in the tab and die with it.
 
-PEOPLE AND SEATS — three rules for any app where people take part
-(games, turns, seats, "N here"):
-   1. Never compare a time another device wrote. A row's timestamp comes
-      from its writer's clock, which can run seconds or minutes off yours.
-      To tell who is still here, note by YOUR clock when you saw their
-      row change, and count them gone only after it has stood still for
-      a good while (several missed beats, not one).
-   2. Free a seat when its holder is gone. A seat, a turn or a hand held
-      by someone who left must go back to the table (or be folded,
-      skipped, or claimed), never wait on them forever.
-   3. One person, one seat. Seat someone only if they hold no other
-      seat, and never seat a newcomer in a seat whose holder is still
-      here.
+MULTIPLAYER: gifos.room — GifOS runs the session; you draw the game.
+Any app where people take part (games, turns, seats, "N here") declares
+its session and lets GifOS do all of it: who is in the room, who plays and
+who watches, whose turn it is, a seat held while its player reconnects, the
+same seat after a reload or after the owner shares the app again, and the
+next person in line seated when a player leaves. People come from the room
+(the meeting or the app room's Invite), never from typed names.
+
+   "minBuild": 5700,
+   "data": { "game": { "visibility": "read-write" } },
+   "room": { "seats": ["Red", "Yellow"],  // seat names in turn order (or a number)
+             "min": 2,                     // players needed to start (default: all)
+             "turns": "order",             // "order": GifOS keeps the turn; "free": any player, any time
+             "watchers": true,             // others watch and wait in line (default true)
+             "joinLate": true,             // a free seat may be taken mid-round (default true)
+             "resume": true,               // seats and turn survive reloads and re-shares (default true)
+             "solo": true,                 // alone, one person may play every open seat
+             "moves": ["game"] }           // collections only players write, through room.move
+
+   gifos.room.subscribe(s => draw(s))  // now and on every change; returns unsubscribe
+   await gifos.room.state()            // the same object, once
+   await gifos.room.join([seat])       // ask to play (a free seat, else the line; in a
+                                       //   hosted room the host is asked)
+   await gifos.room.leave()            // give up my seat: I watch
+   await gifos.room.move(col, record [, { keep: true }])
+                                       // my move: writes record into a moves collection
+                                       //   and hands the turn on (keep: an extra move)
+   await gifos.room.newRound([col, record] [, { first: seat }])
+                                       // next round: reset the board, the turn goes to
+                                       //   the next starter (or `first`)
+   await gifos.room.seat(id, seat|null), gifos.room.deny(id)   // hosts only
+   await gifos.people()                // the room's people, the same list as s.people
+
+   s = { on, kind: 'open'|'admin', admin, live,
+         me: { id, name, seat, role: 'player'|'watcher'|'waiting'|'asking' },
+         seats: [{ seat, id, name, here: 'here'|'away'|'open' }],
+         turn, myTurn, round, ready, line: [{id,name}], asks: [{id,name}],
+         people: [{ id, name, me, admin, here }] }
+
+Write the game state with gifos.room.move, never with db.put: a plain put
+on a moves collection is refused, so is any write by a watcher or a player
+out of turn. Every call can reject with a sentence to show ("It is not
+your turn."). Use s.me.id (not gifos.me().id) to name players in your data:
+it is the same person after a reload and in the next room. Render from
+s.seats and s.turn; show a seat whose here is 'away' as reconnecting and
+wait for it; never decide on your own that somebody left.
+
+The room type decides, not your app: in an open meeting or app room a
+join takes a free seat at once and any player starts the next round; in a
+hosted meeting or an OWNED app room the host gives the seats (a guest's
+join is an ask the host answers on their own screen), and only the host
+can seat or unseat people.
+
+Older pages: a copy of your app can reach a page from before gifos.room
+(a guest in a meeting). Check `window.gifos && gifos.room` first; without
+it show one line ("This game needs a newer GifOS. Reload the page to
+update.") and draw read-only. Never fall back to your own seats.
+
+What GifOS guarantees, so you never write it: it never compares a time
+another device wrote; a seat is freed exactly when the room lets its
+holder go (a reload or a short drop keeps it); one person holds one seat;
+a seat goes only to a person the room itself hears.
 
 LEAD (optional): declare records the host can "lead" —
    "lead": [{ "collection": "nav", "id": "cursor" }]

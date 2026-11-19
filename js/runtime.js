@@ -91,6 +91,198 @@
     });
     return _appOwnerP;
   }
+  // ---- gifos.room: the OS runs an app's multiplayer session ----------------
+  // docs: llms.txt "Multiplayer: gifos.room". The engine (app-room.js) is pure; this is its plumbing: the person
+  // key that names a person across reloads and re-shares, the owner side that feeds the engine the room's own
+  // roster and people's signed requests and writes the session into the reserved collection, and the guest side
+  // that sends requests and shows the owner's session.
+  const ROOM_COL = '__room';
+  let _roomLibP = null;
+  function roomLib() {
+    const G = root.GifOS || {};
+    if (G.appRoom) return Promise.resolve(G.appRoom);
+    if (_roomLibP) return _roomLibP;
+    _roomLibP = new Promise((resolve, reject) => {
+      if (typeof document === 'undefined') { reject(new Error('app-room.js unavailable')); return; }
+      const s = document.createElement('script');
+      s.src = _selfSrc ? new URL('app-room.js', _selfSrc).href : 'js/app-room.js';
+      s.onload = () => (root.GifOS && root.GifOS.appRoom) ? resolve(root.GifOS.appRoom) : reject(new Error('app-room.js loaded but empty'));
+      s.onerror = () => { _roomLibP = null; reject(new Error('failed to load app-room.js')); };
+      document.head.appendChild(s);
+    });
+    return _roomLibP;
+  }
+  const hexBytes = (h) => { const a = new Uint8Array(h.length / 2); for (let i = 0; i < a.length; i++) a[i] = parseInt(h.substr(i * 2, 2), 16); return a; };
+  // One key per browser for rooms (like the name, shared by every app on this computer). The room id is the first
+  // 16 hex of SHA-256 of its public key: the same after a reload, in a new tab and in a new room.
+  let _personP = null;
+  function personKey() {
+    if (_personP) return _personP;
+    _personP = appOwnerLib().then((AO) => {
+      let seed = null;
+      try { seed = root.localStorage.getItem('gifos_room_seed'); } catch (e) {}
+      if (!seed || !/^[0-9a-f]{64}$/.test(seed)) {
+        const b = new Uint8Array(32); root.crypto.getRandomValues(b);
+        seed = Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
+        try { root.localStorage.setItem('gifos_room_seed', seed); } catch (e) {}
+      }
+      return AO.createSigner(seed).then((signer) => sha256hexOfBytes(hexBytes(signer.pkHex)).then((h) => {
+        let lastT = 0;
+        // t: this browser's own clock, made strictly increasing; the owner keeps the last t per person, so a
+        // copied request is never taken twice. It orders ONE sender's requests and dates nothing.
+        const stamp = () => { const n = Date.now(); lastT = n > lastT ? n : lastT + 1; return lastT; };
+        return { id: h.slice(0, 16), signer, stamp };
+      }));
+    });
+    return _personP;
+  }
+  function roomRoster(me) {
+    const r = typeof root.__gifosRoom === 'function' ? root.__gifosRoom('roster', { k: me.id }) : null;
+    if (r && r.on) return r;
+    // Not in a room (an app run on its own): the person alone.
+    return { on: false, kind: 'open', admin: false, me: '', people: [{ k: me.id, pid: '', name: identity().name || '', admin: false, here: 'here', me: true }] };
+  }
+  // The words for a refusal, from the engine's reason.
+  const roomWhy = (AR, why) => { const key = 'runtime.room.' + why, t = T(key); return t && t !== key ? t : ((AR.WHY && AR.WHY[why]) || why); };
+  // The app's moves collections are written only through gifos.room.move / newRound.
+  // Requests are signed for the lane's sid under their own name: a person key must never meet the owner-key binding
+  // an owned link's sid carries (a dot and a key hash), which only the owner's key can satisfy.
+  const roomSid = (sid) => 'gifos-room|' + String(sid || '').replace(/\./g, '_');
+  const roomMoves = (manifest) => (manifest && manifest.room && Array.isArray(manifest.room.moves)) ? manifest.room.moves.map(String) : [];
+
+  // An admin's page shows each ask in one line the app cannot draw or fake: "Ana asks to play Connect Four.
+  // Seat / Not now". The answer is the admin's own request (seat or deny), checked by the owner like any other.
+  const tr = (key, fb, p) => { const t = T(key, p); if (t && t !== key) return t; let o = fb; for (const n in (p || {})) o = o.split('{' + n + '}').join(p[n]); return o; };
+  function roomAskBar(v, appName, call) {
+    if (typeof document === 'undefined' || !document.body) return;
+    let el = document.getElementById('gifos-room-ask');
+    const ask = v && v.admin && v.asks && v.asks[0];
+    if (!ask) { if (el) el.remove(); return; }
+    if (el && el.dataset.who === ask.id) return;
+    if (!el) {
+      el = document.createElement('div'); el.id = 'gifos-room-ask'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-live', 'polite');
+      el.style.cssText = 'position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:41;max-width:min(92vw,520px);background:#111a;backdrop-filter:blur(6px);color:#fff;border:1px solid #fff4;border-radius:14px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;font:15px/1.35 system-ui,sans-serif';
+      document.body.appendChild(el);
+    }
+    el.dataset.who = ask.id; el.textContent = '';
+    const t = document.createElement('span'); t.style.cssText = 'flex:1 1 220px';
+    t.textContent = tr('runtime.room.asks', '{name} asks to play {app}.', { name: ask.name || '?', app: appName || 'this app' });
+    const btn = (label, id, primary, q) => { const b = document.createElement('button'); b.type = 'button'; b.id = id; b.textContent = label; b.style.cssText = 'min-height:44px;padding:8px 16px;border-radius:999px;border:1px solid #fff6;font:inherit;font-weight:700;cursor:pointer;' + (primary ? 'background:#fff;color:#111' : 'background:transparent;color:#fff'); b.onclick = () => { el.dataset.who = ''; call(q, null).catch(() => {}); }; return b; };
+    el.append(t, btn(tr('runtime.room.seat', 'Seat'), 'gifos-room-seat', true, { op: 'seat', who: ask.id }), btn(tr('runtime.room.notNow', 'Not now'), 'gifos-room-deny', false, { op: 'deny', who: ask.id }));
+  }
+
+  // THE OWNER SIDE. db is the authoritative store; the session record lives in it.
+  function makeRoomHost(manifest, db, AR, me) {
+    const sp = AR.spec(manifest.room);
+    let eng = null, frames = new Set(), lastView = '', ros = null, timer = null, sid = null;
+    const lastT = new Map();
+    const view = () => { const r = ros || roomRoster(me); return AR.view(sp, eng ? eng.session() : AR.fresh(sp), me.id, r.people, r.kind, !!r.admin && r.kind === 'admin'); };
+    let api = null;
+    const push = () => {
+      const v = view(); const j = JSON.stringify(v);
+      if (j === lastView) return; lastView = j;
+      if (api) roomAskBar(v, manifest.name, api.call);
+      frames.forEach((f) => { try { const w = f.contentWindow; if (w) w.postMessage({ ns: 'gifos', type: 'room', state: v }, '*'); else frames.delete(f); } catch (e) {} });
+    };
+    const save = () => db.op('put', ROOM_COL, null, eng.session()).catch(() => {});
+    let mounted = false;
+    const tick = () => {
+      if (!eng) return;
+      // the app was stopped (its frame left the page): this share's session ends here
+      if (mounted && ![...frames].some((f) => f.isConnected)) { if (timer) clearInterval(timer); timer = null; roomAskBar(null); return; }
+      ros = roomRoster(me);
+      if (eng.tick(ros.people, ros.kind, Date.now())) save();
+      push();
+    };
+    // one request from person k: the engine's verdict, the move's record written with it
+    const take = (k, q, rec) => {
+      tick();
+      const r = eng.request(k, q, Date.now());
+      const write = r.ok && rec && typeof rec === 'object' && (q.op === 'move' || q.op === 'newRound') && q.collection;
+      const w = write ? db.op('put', q.collection, null, safeRecord(rec)).catch(() => {}) : Promise.resolve();
+      return w.then(() => { if (r.changed || write) save(); push(); return r; });
+    };
+    const ready = db.op('get', ROOM_COL, 'session').catch(() => null).then((saved) => {
+      eng = AR.create(sp, saved, { now: Date.now(), resumeMs: GifOS.timings.APP_ROOM_RESUME_MS });
+      tick();
+      timer = setInterval(tick, GifOS.timings.APP_ROOM_BEAT_MS);
+    });
+    return api = {
+      owner: true,
+      frame(f) { frames.add(f); mounted = true; lastView = ''; ready.then(push); },
+      state() { return ready.then(() => { ros = roomRoster(me); return view(); }); },
+      call(q, rec) {
+        return ready.then(() => take(me.id, q, rec)).then((r) => { if (!r.ok) throw new Error(roomWhy(AR, r.why)); return r; });
+      },
+      // a guest's request frame, from the act lane (attachStageBus sets sid)
+      bind(s) { sid = s; },
+      remote(f) {
+        if (!sid || !f || !f.p || f.p.kind !== 'room' || !f.p.body) return;
+        const b = f.p.body;
+        appOwnerLib().then((AO) => AO.makeVerifier(roomSid(sid), f.pk).verify(f)).then((v) => {
+          if (!v || !v.ok) return null;
+          return sha256hexOfBytes(hexBytes(f.pk)).then((h) => {
+            const k = h.slice(0, 16);
+            ros = roomRoster(me);
+            // The sender's meeting id is on THIS page's roster, and that meeting id's own status names this key.
+            const p = ros.people.find((x) => x.pid && x.pid === b.pid);
+            if (!p || p.k !== k) return null;
+            const t = Number(b.t) || 0;
+            if (t <= (lastT.get(k) || 0)) return null;
+            lastT.set(k, t);
+            return ready.then(() => take(k, b.q || {}, b.rec));
+          });
+        }).catch(() => {});
+      },
+      mayWrite: () => false, // a moves collection is written through room.move only
+      stop() { if (timer) clearInterval(timer); timer = null; frames.clear(); roomAskBar(null); },
+    };
+  }
+
+  // THE GUEST SIDE: requests go to the owner signed with the person key; the session comes back owner-signed in
+  // the app's state (mirror). A request is sent again until the owner's session answers it.
+  function makeRoomClient(manifest, AR, me, send, sid, sessionOf) {
+    const sp = AR.spec(manifest.room);
+    let frames = new Set(), lastView = '', seq = 0;
+    const waits = new Map(); // q -> { res, rej, f, at, t0 }
+    const view = () => { const r = roomRoster(me); return AR.view(sp, sessionOf() || AR.fresh(sp), me.id, r.people, r.kind, !!r.admin && r.kind === 'admin'); };
+    let api = null;
+    const push = () => {
+      const v = view(); const j = JSON.stringify(v);
+      if (j === lastView) return; lastView = j;
+      if (api) roomAskBar(v, manifest.name, api.call);
+      frames.forEach((f) => { try { const w = f.contentWindow; if (w) w.postMessage({ ns: 'gifos', type: 'room', state: v }, '*'); else frames.delete(f); } catch (e) {} });
+    };
+    const answer = () => {
+      const s = sessionOf(); const res = s && s.res && s.res[me.id];
+      for (const [q, w] of waits) {
+        if (res && res.q === q) { waits.delete(q); if (res.ok) w.res({ ok: true }); else w.rej(new Error(roomWhy(AR, res.why))); continue; }
+        if (Date.now() - w.t0 > GifOS.timings.APP_ROOM_GIVEUP_MS) { waits.delete(q); w.rej(new Error(roomWhy(AR, 'pending'))); continue; }
+        if (Date.now() - w.at >= GifOS.timings.APP_ROOM_RETRY_MS) { w.at = Date.now(); try { send('act', { op: 'room', f: w.f }); } catch (e) {} }
+      }
+    };
+    const timer = setInterval(() => { answer(); push(); }, GifOS.timings.APP_ROOM_BEAT_MS);
+    return api = {
+      owner: false,
+      frame(f) { frames.add(f); lastView = ''; push(); },
+      changed() { answer(); push(); },
+      state() { return Promise.resolve(view()); },
+      call(q, rec) {
+        const r = roomRoster(me);
+        if (!r.on || !r.me) return Promise.reject(new Error(roomWhy(AR, 'notHere')));
+        const id = me.id.slice(0, 4) + (++seq) + '.' + Date.now().toString(36);
+        const body = { pid: r.me, t: me.stamp(), q: Object.assign({}, q, { q: id }) };
+        if (rec && typeof rec === 'object') body.rec = rec;
+        return me.signer.sign(roomSid(sid), 'room', body).then((f) => new Promise((res, rej) => {
+          waits.set(id, { res, rej, f, at: Date.now(), t0: Date.now() });
+          try { send('act', { op: 'room', f }); } catch (e) {}
+        }));
+      },
+      mayWrite: () => false,
+      stop() { clearInterval(timer); frames.clear(); roomAskBar(null); for (const [, w] of waits) w.rej(new Error(roomWhy(AR, 'pending'))); waits.clear(); },
+    };
+  }
+
   // App short-name → a URL-safe room label. Dot-free (a dot marks the verifier),
   // and guaranteed to contain a letter/digit — never empty or all-hyphens, so a
   // room can never be mistaken for a bare verifier segment.
@@ -354,6 +546,7 @@
           for (var ii = 0; ii < cbs.length; ii++) { try { cbs[ii](d.identity); } catch (err) {} }
         }
         if(d.type==='locale' && d.locale){ setLocale(d.locale); }
+        if(d.type==='room' && d.state){ roomLast = d.state; for (var ri = 0; ri < roomCbs.length; ri++) { try { roomCbs[ri](JSON.parse(JSON.stringify(d.state))); } catch (err) {} } }
         if(d.type==='db-change'){
           if(d.collection==='*'){ Object.keys(subs).forEach(refresh); }
           else refresh(d.collection);
@@ -404,6 +597,7 @@
       });
       var provHandlers = null;
       var meetSubs = { tr: [], pe: [], ch: [], xf: [] };
+      var roomCbs = [], roomLast = null;
       // Android Chrome only lets the container's Back trap "stick" once the page
       // has real user activation, and the user touches the APP, not the frame
       // around it — those gestures never reach the parent. Ping the container on
@@ -664,6 +858,25 @@
         assetHas: function(path){ return rpc({type:'asset-has', path:path}).then(function(r){ return !!(r && r.present); }); },
         info: function(){ return rpc({type:'info'}); },
         me: function(){ return rpc({type:'me'}); },
+        // gifos.room (manifest "room"): the OS runs the session. state() / subscribe(cb) read it; join, leave,
+        // move, newRound and seat ask the app's owner, and resolve once the owner took them (or reject with a
+        // sentence to show). people() is the room's roster, read-only: the same people state().people lists.
+        room: {
+          state: function(){ return roomLast ? Promise.resolve(JSON.parse(JSON.stringify(roomLast))) : rpc({type:'room', op:'state'}); },
+          subscribe: function(cb){
+            if (typeof cb !== 'function') return function(){};
+            roomCbs.push(cb);
+            (roomLast ? Promise.resolve(roomLast) : rpc({type:'room', op:'state'})).then(function(st){ if (roomCbs.indexOf(cb) >= 0 && st) { try { cb(JSON.parse(JSON.stringify(roomLast || st))); } catch (e) {} } }, function(){});
+            return function(){ var i = roomCbs.indexOf(cb); if (i >= 0) roomCbs.splice(i, 1); };
+          },
+          join: function(seat){ return rpc({type:'room', op:'join', seat: seat == null ? null : String(seat)}); },
+          leave: function(){ return rpc({type:'room', op:'leave'}); },
+          move: function(collection, record, opts){ return rpc({type:'room', op:'move', collection: String(collection), value: record, keep: !!(opts && opts.keep)}); },
+          newRound: function(collection, record, opts){ return rpc({type:'room', op:'newRound', collection: collection == null ? null : String(collection), value: record == null ? null : record, first: opts && opts.first != null ? String(opts.first) : null}); },
+          seat: function(id, seat){ return rpc({type:'room', op: seat === null ? 'unseat' : 'seat', who: String(id), seat: seat == null ? null : String(seat)}); },
+          deny: function(id){ return rpc({type:'room', op:'deny', who: String(id)}); }
+        },
+        people: function(){ return rpc({type:'room', op:'state'}).then(function(st){ return st && st.people ? st.people : []; }); },
         // capabilities.stage (docs/app-mesh.md "Apps that order the stage"): in a
         // meeting, name up to two people (meeting ids from state().me) in stage
         // order, first = on now, second = up next. Each person's own meeting page
@@ -1398,6 +1611,7 @@
   // (see handleRpc): a compromised guest can be rejected but never override.
   const VIS = { 'private': true, 'read-only': true, 'read-write': true };
   function collVis(data, collection) {
+    if (collection === ROOM_COL) return 'read-only'; // the session: every copy reads it, only the owner's OS writes it
     const d = data && data[collection];
     const v = d && d.visibility;
     return VIS[v] ? v : 'private';
@@ -3845,7 +4059,7 @@
         return;
       }
       if (!iframe.contentWindow || e.source !== iframe.contentWindow) return;
-      if (d.type === 'hello') { if (d.gen === gen) { live = gen; retry = false; identFrames.add(iframe); publishIdentity(); } return; }
+      if (d.type === 'hello') { if (d.gen === gen) { live = gen; retry = false; identFrames.add(iframe); publishIdentity(); if (db && db.roomP) db.roomP.then((rh) => { if (rh) rh.frame(iframe); }, () => {}); } return; }
       if (!live) return;
       // Guard at REPLY time, not just receipt: async ops (db/fetch/…) can
       // resolve after the iframe was torn out of the DOM (app takeover /
@@ -3857,8 +4071,10 @@
       // a synchronous throw inside an op must still become a reply, never an
       // uncaught error that leaves the app's promise hanging.
       if (d.type === 'db') {
+        const roomWrite = (d.op === 'put' || d.op === 'delete' || d.op === 'setVisibility') && (d.collection === ROOM_COL || roomMoves(manifest).indexOf(d.collection) >= 0);
         (d.op !== 'dump' && store.badCollectionName(d.collection)
           ? Promise.reject(new Error('bad collection name'))
+          : roomWrite ? Promise.reject(new Error(d.collection === ROOM_COL ? 'The room session is the OS\'s.' : 'Moves go through gifos.room.move.'))
           : Promise.resolve().then(() => db.op(d.op, d.collection, d.key, d.value)))
           .then((result) => reply({ ok: true, result })).catch((err) => reply({ ok: false, error: String(err && err.message || err) }));
       }
@@ -3937,6 +4153,21 @@
       // change visibility (setVisibility). A guest view is not the owner.
       else if (d.type === 'info') reply({ ok: true, result: { appId: manifest.appId, name: manifest.name, version: manifest.version, owner: !!(db && db.owner) } });
       else if (d.type === 'me') reply({ ok: true, result: identity() });
+      else if (d.type === 'room') {
+        const q = { op: String(d.op || 'state') };
+        if (d.seat != null) q.seat = String(d.seat);
+        if (d.collection != null) q.collection = String(d.collection);
+        if (d.keep) q.keep = true;
+        if (d.first != null) q.first = String(d.first);
+        if (d.who != null) q.who = String(d.who);
+        const rec = d.value && typeof d.value === 'object' ? d.value : null;
+        (db && db.roomP ? db.roomP : Promise.resolve(null)).then((rh) => {
+          if (rh) return q.op === 'state' ? rh.state() : rh.call(q, rec);
+          if (q.op !== 'state') throw new Error('This app declares no room.');
+          // No session declared: the room's people, read-only (gifos.people()).
+          return personKey().then((me) => ({ on: false, people: roomRoster(me).people.map((x) => ({ id: x.k, name: x.name || '', me: !!x.me, admin: !!x.admin, here: x.here === 'away' ? 'away' : 'here' })) }));
+        }).then((result) => reply({ ok: true, result }), (err) => reply({ ok: false, error: String(err && err.message || err) }));
+      }
       else if (d.type === 'stage') {
         const verdict = stageGate(manifest, capDisabled(manifest, 'stage'), typeof root.__gifosStage === 'function');
         if (verdict !== 'ok' && verdict !== 'none') reply({ ok: false, error: verdict });
@@ -4551,6 +4782,8 @@
         ? GifOS.lock.makeDb(fileId, lockKey, emit, lockState || { collections: {} })
         : makeLocalDb(fileId, emit);
       const netPolicy = makeNetPolicy(fileId, manifest);
+      // gifos.room: this copy owns the app, so its OS runs the session.
+      if (manifest && manifest.room) db.roomP = Promise.all([roomLib(), personKey()]).then(([AR, me]) => AR.spec(manifest.room) ? makeRoomHost(manifest, db, AR, me) : null).catch(() => null);
 
       // ---- invite-link lifetime & resilience ------------------------------
       // The link is a capability: whoever holds it can join live AND pull a
@@ -4756,8 +4989,10 @@
             // authoritative store. The resulting owner-signed delta is what the
             // room adopts — a non-owner can propose but never author state.
             const onAct = (op) => {
+              if (op && op.op === 'room') { if (db.roomP) db.roomP.then((rh) => { if (rh) rh.remote(op.f); }, () => {}); return; }
               if (!op || (op.op !== 'put' && op.op !== 'delete')) return;
               if (store.badCollectionName(op.collection)) return;
+              if (op.collection === ROOM_COL || roomMoves(manifest).indexOf(op.collection) >= 0) return; // the session and the moves go through the room
               // op.value already carries real Uint8Array bytes — the transport
               // revived them; no {$bin} decode needed.
               const targetId = op.op === 'put' ? (op.value && op.value.id) : op.key;
@@ -4778,6 +5013,7 @@
               if (!bus || typeof bus.send !== 'function' || typeof bus.subscribe !== 'function') return Promise.reject(new Error('bad stage bus'));
               return appOwnerLib().then((AO) => AO.createSigner(sec || undefined).then((signer) => {
                 stageSigner = signer; stageBus = bus;
+                if (db.roomP) db.roomP.then((rh) => { if (rh) rh.bind(sid); }, () => {});
                 stagePump = AO.createStagePump({ state: () => db.getFullState().then(filterForGuests), emit: pumpEmit });
                 // The pool rides the same lane, UNSIGNED and by design: any peer
                 // may answer, and what it answers is content addressed by URL —
@@ -4922,7 +5158,11 @@
     const localCols = new Map(); // private collections stay per-tab (never proposed)
     const localOf = (c) => { let m = localCols.get(c); if (!m) { m = new Map(); localCols.set(c, m); } return m; };
     const isPrivate = (c) => collVis(dataVis, c) === 'private';
-    const notify = (collection) => { if (iframe && iframe.contentWindow) iframe.contentWindow.postMessage({ ns: 'gifos', type: 'db-change', collection: collection || '*' }, '*'); };
+    let roomC = null; // gifos.room: the guest side, once the app's manifest is known
+    const notify = (collection) => {
+      if (iframe && iframe.contentWindow) iframe.contentWindow.postMessage({ ns: 'gifos', type: 'db-change', collection: collection || '*' }, '*');
+      if (roomC && (!collection || collection === '*' || collection === ROOM_COL)) roomC.changed();
+    };
     const itemsOf = (c) => (c && mirror.collections[c] && mirror.collections[c].items) || {};
 
     return appOwnerLib().then((AO) => {
@@ -5091,6 +5331,11 @@
         // what app it is running, let alone what it is allowed to share.
         if (poolHosts(manifestRef).length && !capDisabled(manifestRef, 'pool')) poolAttach({ send: send }, params.self);
         iframe = makeIframe(); mountEl.innerHTML = ''; mountEl.appendChild(iframe);
+        if (manifestRef && manifestRef.room) db.roomP = Promise.all([roomLib(), personKey()]).then(([AR, me]) => {
+          if (!AR.spec(manifestRef.room)) return null;
+          roomC = makeRoomClient(manifestRef, AR, me, send, sid, () => itemsOf(ROOM_COL).session || null);
+          return roomC;
+        }).catch(() => null);
         mountApp(iframe, filesRef, manifestRef, db, appBytes, makeNetPolicy(null, manifestRef));
         if (root.__gifosOnApp) root.__gifosOnApp(appBytes, manifestRef);
         notify('*');
@@ -5182,7 +5427,7 @@
 
       setStatus(T('runtime.status.connected'));
       return {
-        stop: () => { try { unsub && unsub(); } catch (e) {} clearInterval(actSweep); for (const k of [...pendingActs.keys()]) settle(k, false); pendingActs.clear(); poolDetach(); },
+        stop: () => { try { unsub && unsub(); } catch (e) {} clearInterval(actSweep); if (roomC) { roomC.stop(); roomC = null; } for (const k of [...pendingActs.keys()]) settle(k, false); pendingActs.clear(); poolDetach(); },
         // ONE RUNTIME (docs/one-runtime.md): the client's mirror is the room's
         // survival story. snapshot() packs app bytes + the owner-verified
         // mirror into a snapshot GIF — the successor adopts it (resilient

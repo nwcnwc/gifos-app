@@ -104,5 +104,17 @@
   "runtime.agent.noElement": "⚠ no element [{index}]",
   "runtime.agent.done": "✓ done",
   "runtime.agent.stoppedAfter": "⚠ stopped after {n} steps",
-  "runtime.agent.stopped": "stopped"
+  "runtime.agent.stopped": "stopped",
+  "runtime.room.notHere": "You are not in this room.",
+  "runtime.room.watching": "You are watching.",
+  "runtime.room.notYourTurn": "It is not your turn.",
+  "runtime.room.adminOnly": "Only the host can do that here.",
+  "runtime.room.full": "This table is full.",
+  "runtime.room.noSeat": "There is no such seat.",
+  "runtime.room.notMoves": "That is not part of the game.",
+  "runtime.room.badOp": "That is not something a room can do.",
+  "runtime.room.pending": "The room did not answer.",
+  "runtime.room.asks": "{name} asks to play {app}.",
+  "runtime.room.seat": "Seat",
+  "runtime.room.notNow": "Not now"
 }
