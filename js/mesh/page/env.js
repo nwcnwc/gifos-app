@@ -53,6 +53,8 @@
  *   fabricSubRepipe      A1     my room lost its joining connection: o.sub.repipe() (the page asks once for a new one)
  *   fabricSubGo          A1     SUB.10: o.sub.go(), the door my pipe end says my subroom walks to (-1 none)
  *   fabricSubWalk        A1     SUB.10: o.sub.walk(n, p), may my seat walk now (a path end stays until it is alone)
+ *   fabricTurnOn         A1     TURN.5.3: o.sub.on(), this meeting has a TURN service
+ *   fabricCutProbe       A1     TURN.5.3: o.sub.cut(pid): 0 no answer (yet), 1 a path (a plain pc, or a friend carries x), 2 answered, no path
  * Not seat calls, the fabric's own friend-hop parts on a page (C++ mesh_fhop.inc): fhDoorCall / fhDoorDue (FHOP.8, the door
  * pcw's clock fires when a knocker's door never opened) and doorCallIn (a call that reached me over a dc, kinds 7 and 8).
  *   l164Of               A1     LINKMODEL && !islandStand(s, IS_L164)
@@ -542,6 +544,25 @@
     // may my seat walk now (n: the seats my room fold counts, p: the door it says)
     const fabricSubGo = (id) => { if (id !== me || !subF || !subF.go) return -1; const g = subF.go(); return Number.isInteger(g) && g >= 0 ? g : -1; };
     const fabricSubWalk = (id, n, p) => !!(id === me && subF && subF.walk && subF.walk(n, p));
+    // TURN.5.3 (C++: mesh_turn.inc:fabricTurnOn / fabricCutProbe): the meeting has TURN; does x answer at the door, and is there a
+    // path to it (direct, or over a friend of mine: TURN.3)? The page's dial takes one verdict (FHOP_RELAY_ASK): cutArm starts it
+    // for a Section-1 seat as the root's report grows late, so the verdict is in when the law reads it (the sim's probe is an oracle).
+    const fabricTurnOn = () => !!(subF && subF.on && subF.on());
+    const fabricCutProbe = (a, x) => {
+      if (a !== me || x < 0 || x === me || !subF || !subF.cut) return 0; const p = ID.pid(x); if (!p) return 0;
+      { const s = seat(), r = srOf.get(x); if (s && r !== undefined && r !== s.sr) return 0; }   // its last frame came from another door: it left mine (a mate that cut a moment ago, now a subroom); the relay lists its old socket a while more, and the sim's door list does not (no answer at my door)
+      const v = subF.cut(p) | 0; return (v === 2 && fhopFriendFor(me, x)) ? 1 : v;
+    };
+    let cutWhy = '';
+    const srOf = new Map();   // seat id -> the door its last frame to me named
+    function cutArm(s) {
+      if (!subF || !subF.cut || s.state !== 3 || !s.hasCoord || s.sr !== 0 || s.coord.pc !== 0 || ckey(s.coord) === 0 || !fabricTurnOn()) return;
+      const it = s.s1tab.get(0); if (!it || it.at < 0 || it.by < 0 || it.by === me) return;
+      const age = s.LT() - it.rx; if (age <= K.DIG_TTL - 2 * K.FHOP_RELAY_ASK) { cutWhy = ''; return; }
+      const p = ID.pid(it.by); if (!p) return;
+      if (cutWhy !== String(it.by)) { cutWhy = String(it.by); trace('ENV-CUT-ARM', me, s.coord, 'root=%d age=%d', it.by, age); }   // once per change
+      subF.cut(p);
+    }
     // C++: mesh_turn.inc:subTick's answer: my door is r (a listed room the page reached, or a new number it was granted)
     function subGo(r) { const s = seat(); if (!s || dead || !(Number.isInteger(r) && r > 0) || s.sr !== 0) return false; guard('seat.subGo', () => s.subGo(r))(); woken = true; return true; }
     // room r's people are in my count: a fresh fold of a joining connection I hold lists door r
@@ -553,7 +574,7 @@
       fabricAdmitLog: noop, fabricDupMint: noop, fabricNoteBackoff: noop, fabricNoteReseat: noop, fabricNoteRollback: noop,
       fabricNoteSwap: noop, fabricVerdict: deaths.verdict, l18UxDeliv: noop, descEnd: noop, descNote: noop, g4Joined: noop,   // g4Joined: the sim's L40 contest lever only (X1 55c97d1)
       fabricFreeCells, fabricLieFor: () => null, fabricUnreachable, fhopActive: () => !!fh, fhopFriendFor,
-      fabricDoorNet, fabricDoorBlk, fabricDoorDue, fabricSubAsk, fabricSubProbe, fabricPipePeers, fabricSubDoor, fabricSubRepipe, fabricSubGo, fabricSubWalk,
+      fabricDoorNet, fabricDoorBlk, fabricDoorDue, fabricSubAsk, fabricSubProbe, fabricPipePeers, fabricSubDoor, fabricSubRepipe, fabricSubGo, fabricSubWalk, fabricTurnOn, fabricCutProbe,
       fabricMyTier: () => ((measure.tier ? measure.tier() : E.TIER_DESKTOP) | 0),
       fabricMyNat: () => ((measure.nat ? measure.nat() : E.NAT_OPEN) | 0),
       fabricLeft: () => leaveNow(false), fabricReloadBye: () => leaveNow(true),
@@ -596,6 +617,7 @@
       if (s && !dead && measure.nat) { const n0 = (measure.nat() | 0) & 0xff; if (n0 !== s.nat) { if (s.cnat === s.nat) s.cnat = n0; s.nat = n0; if (typeof s.l411Verdict === 'function') s.l411Verdict(); } else if (s.state === 1 && s.islandAskAt < 0 && typeof s.l8475 === 'function' && s.l8475()) s.l411Verdict();   /* L8.47.5: my kind stands as measured and my own network tag is known (the door's word reads -1 until both are): the greeters I hold are read against them from that tick, not at the next list */ }
       if (s && !dead) {
         guard('pipeRead', () => pipeRead(s))();
+        guard('cutArm', () => cutArm(s))();   // TURN.5.3
         const due = [];
         for (const t of [...bus.keys()].sort((a, b) => a - b)) { if (t > w.TICK) break; due.push(...bus.get(t)); bus.delete(t); }
         const ib = inbox; inbox = [];
@@ -651,6 +673,7 @@
     function recvOne(s, m) {
       if (s.dead) return;
       st.rx++;
+      if (m.from >= 0 && m.from !== me && m.t !== 'GREETERS' && m.t !== 'BUSY' && Number.isInteger(m.sr)) { if (srOf.size > 4096) srOf.clear(); srOf.set(m.from, m.t === 'LEAVE' && m.id === m.from ? -1 : m.sr); }   // TURN.5.3: the door each seat's last frame named (-1: its last frame was its own goodbye: it left its cell, and a seat outside is no greeter)
       guard('seat.recv', () => s.recv(m))();
       woken = true;   // the sim wakes the receiver of every delivered frame
     }

@@ -18258,6 +18258,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           go: () => (turnLinks && turnLinks.go ? turnLinks.go() : -1),   // SUB.10: the door my pipe end says my subroom walks to
           walk: (n, p) => !!(turnLinks && turnLinks.walk && turnLinks.walk(n, p)),   // SUB.10: may my seat walk now
           walked: () => !!(turnLinks && turnLinks.walked && turnLinks.walked()),   // SUB.10.6: my seat walked lately
+          on: () => !!(turnLinks && relayTv),   // TURN.5.3: this meeting has a TURN service
+          cut: (pid) => (turnLinks && turnLinks.cut ? turnLinks.cut(pid) : 0),   // TURN.5.3: the probe of a cut (0 / 1 a path / 2 answered, no path)
           repipe: () => { if (turnLinks) turnLinks.repipe(); },   // my room's fold lost a far door: re-pipe my room (asked once, by the home-cell seat)
           doorEmpty: () => { if (turnLinks) turnLinks.doorEmpty(); try { turnNote('turn-sub door ' + (meshNode ? meshNode.sub : '?') + ' empty at the relay: asking for a fresh grant'); } catch (e) {} },   // my door's relay forgot it (tag 3): a fresh grant for it
         },
