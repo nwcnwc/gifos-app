@@ -12950,6 +12950,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // answer are crossing on the relay, so the door's ICE clock starts (a door that never opens calls a friend to the door).
         // Whichever end dialled, the seated end keeps the clock: a door my own page dialled is as much a door.
         if (sig.dr === 1 && meshNode && meshNode.penv && meshNode.penv.doorNote) { try { meshNode.penv.doorNote(from); } catch (e) {} }
+        // A seated page's offer reached me over the relay. If my seat does not know that page, the door does: my seat knocks
+        // once and reads the door's list (two rooms at one door find each other this way, whatever stands between their networks).
+        if (sig.dr !== 1 && desc.type === 'offer' && meshNode && meshNode.penv && meshNode.penv.doorDialIn) { try { meshNode.penv.doorDialIn(from); } catch (e) {} }
         onSignal(from, sig);
         return;
       }
@@ -12963,6 +12966,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // A member a greeter called to the door for me says so. Its word alone opens nothing: my seat knocks and asks it
         // only if the door lists it. The frame is a name like any other, so it is also that member's dial request.
         if (f.dc === 1 && meshNode && meshNode.penv && meshNode.penv.doorWordIn) { try { meshNode.penv.doorWordIn(from); } catch (e) {} }
+        else if (meshNode && meshNode.penv && meshNode.penv.doorDialIn) { try { meshNode.penv.doorDialIn(from); } catch (e) {} }   // a dial request from a page my seat does not know: the door says who it is (one knock, bounded by the seat)
         const nm = String(f.n || '').slice(0, RELAY_NAME_MAX);
         if (nm) rosterNames[from] = nm;
         const p = peers.get(from);

@@ -88,6 +88,24 @@
       if (knocker >= 0 && knocker !== this.id && this.dwSent.size < 16 && !this.dwSent.has(knocker)) { this.dwSent.add(knocker); this.trace('DOOR-WORD', this.id, this.coord, 'to=%d', knocker); this.f.fabricDialJoin(this.id, knocker); }   // FHOP.8.2: registered, I dial the newcomer myself, once per newcomer per stand: the dial carries the door word
     },
 
+    // C++: mesh_island.inc:Seat::doorDial
+    // TURN.5.4 A DIAL AT MY DOOR FROM A PAGE MY VIEW DOES NOT HOLD IS THE DOOR'S NEWS: I KNOCK. Two rooms can stand at one
+    // door (the door forgot the first and a newcomer founded on the empty list). The older room's seat reads the newcomer
+    // on its own registration's list; the newcomer reads the door again only on its greeter beat. The older head's dial is
+    // an offer over the relay that lands at the newcomer: a page at my door that my view does not hold. Its word opens
+    // nothing: a Section-1 seat dialled by a page that is neither in its view nor on the list it holds knocks once (the
+    // answer is the door's fresh list), one knock out at a time, once per page per RELAY_TTL, at most 8 pages remembered.
+    doorDial(g) {
+      if (this.state !== 3 || !this.hasCoord || this.coord.pc !== 0 || g < 0 || g === this.id) return;
+      for (const v of this.occ.values()) if (v === g) return;   // my view holds it
+      if (this.greetersAt >= 0 && this.TICK - this.greetersAt <= K.RELAY_TTL && this.lastGreeters.includes(g)) return;   // the list I hold names it
+      { const at = this.ddSeen.get(g); if (at !== undefined && this.TICK - at <= K.RELAY_TTL) return; }
+      if (this.ddSeen.size >= 8) { const old = []; for (const [x, at] of this.ddSeen) if (this.TICK - at > K.RELAY_TTL) old.push(x); for (const x of old) this.ddSeen.delete(x); if (this.ddSeen.size >= 8) return; }
+      const out = this.ddKnockAt >= 0 && this.TICK - this.ddKnockAt < K.FHOP_RELAY_ASK;
+      this.ddSeen.set(g, this.TICK); this.trace('TURN.5.4-DIAL-IN', this.id, this.coord, 'from=%d knock=%d', g, out ? 0 : 1);
+      if (!out) { this.ddKnockAt = this.TICK; this.emitRelay(this.genKey); }
+    },
+
     // C++: mesh_island.inc:Seat::doorWord
     // FHOP.8.2 THE DOOR WORD, the newcomer's part. A page I never asked dials me at the door and says a greeter called
     // it there for me. Its word alone opens nothing: I knock (one knock answers every word that lands while it is out),

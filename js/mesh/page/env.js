@@ -376,6 +376,9 @@
       else if (kind === 8) fhDoorCall(j, by);   // the call passed to me: I call my friend on another network
     }
     // C++: mesh_fhop.inc:fhDoorWordAt   (the newcomer's end: a page that says a greeter called it to the door for me)
+    // TURN.5.4 (C++: mesh_turn.inc turnTick, the probe's dial landing): a seated page dialled me over the relay. The seat's own
+    // rule decides (a page in my view or on the list I hold is nothing new; one knock out at a time, bounded per page)
+    function doorDialIn(fromPeer) { const f = learnPeer(fromPeer), s = seat(); if (f < 0 || f === me || !s || dead || s.state !== 3 || typeof s.doorDial !== 'function') return; s.doorDial(f); }
     function doorWordIn(fromPeer) { const f = learnPeer(fromPeer), s = seat(); if (f < 0 || f === me || !s || dead || s.state === 3) return; s.doorWord(f); }
     // what the pc laws read (linkWhy LW_FHOP): my relay roles, as ints
     function fhRoles() {
@@ -742,6 +745,7 @@
       dirFor, learnDir, relayBusyList,
       doorNote: (peer) => { const x = learnPeer(peer); if (x >= 0 && x !== me && pcw.doorNote) guard('doorNote', pcw.doorNote)(x); },   // FHOP.8: a door page's offer, or its answer to my offer, reached me over the relay (run.html onRelayPeer)
       doorCallIn: (fromPeer, kind, knockerPeer) => guard('doorCallIn', doorCallIn)(fromPeer, kind, knockerPeer),   // FHOP.8 kinds 7 and 8 off a dc
+      doorDialIn: (fromPeer) => guard('doorDialIn', doorDialIn)(fromPeer),   // TURN.5.4: a seated page's dial off the relay (run.html onRelayPeer)
       doorWordIn: (fromPeer) => guard('doorWordIn', doorWordIn)(fromPeer),   // FHOP.8.2: a called friend's door word off the relay (run.html onRelayPeer)
       // the mark my answer to peer carries back to it (A2), for the pc layer's answer
       mark: (peer) => { const x = ID.pid(ID.nid(peer)) === String(peer) ? ID.nid(peer) : learnPeer(peer); return x >= 0 && pcw.mark ? pcw.mark(x) : null; }, farView: (to) => farView(seat(), to),
