@@ -157,6 +157,7 @@
         if (this.l8548Tick()) { wake(); return true; }   // L8.54.8: a word not said yet: the door's next list
         if (this.l16WaveTick()) { wake(); return true; }   // L16: a silent ask wave: everyone left
         if (this.l16PlainHedge()) { wake(); return true; }   // FHOP.8.3: my one ask went quiet: one more greeter beside it
+        this.subStall();   // JOIN.2 (mesh_roomterm.inc)
         if (this.entCheck()) { this.islandAsk(this.lastGreeters); wake(); return true; }   // L8.47
         if (this.islandTick()) { wake(); return true; }   // L8.1: nobody at the door answered
         if (this.reAsk || this.reJoin) {
