@@ -32040,7 +32040,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return dlogStore;
     }
     function dlogRecStart() {
-      if (!DLOG || !DEBUG_ON || !dlogStoreGet()) return false;
+      if (!DLOG || !dlogStoreGet()) return false;
       if (!window.__capTrace) window.__capTrace = []; // caption lines and peers' caption state (capTrace)
       if (!dlogRec) dlogRec = DLOG.createRecorder({
         store: dlogStore, every: 5000, snapEvery: 30000,
@@ -32132,7 +32132,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const sw = document.getElementById('dbglog-on');
       if (sw) sw.addEventListener('change', () => {
         if (!DLOG) return;
-        if (sw.checked) { DLOG.saveSetting(localStorage, true); if (DEBUG_ON) dlogRecStart(); }
+        if (sw.checked) { DLOG.saveSetting(localStorage, true); dlogRecStart(); if (dlogRec) dlogRec.flush(true); }
         else { DLOG.turnOff(window); if (dlogRec) { dlogRec.flush(true); dlogRec.stop(); } }
         paintDebugLog();
       });
