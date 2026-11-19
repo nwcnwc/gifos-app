@@ -737,6 +737,8 @@
   "meet.stCarryNoWay": "此浏览器无法加入通话：它没有 WebRTC，也没有 WebCodecs 音频。",
   "meet.stCarryLooking": "正在通过会议中的一个席位加入（此浏览器没有 WebRTC）…",
   "meet.stCarryUp": "已通过另一个席位加入会议（此浏览器没有 WebRTC）。",
+  "meet.stCarryLookingNoPath": "正在通过会议中的一个席位加入（此浏览器的连接找不到网络路径）…",
+  "meet.stCarryUpNoPath": "已通过另一个席位加入会议（此浏览器的连接找不到网络路径）。",
  "meet.stLoadIncomplete": "此页面未加载完成，因此无法安全加入。请刷新页面后重试。",
  "meet.setGroupDebug": "调试",
  "meet.setDbgOn": "调试日志",

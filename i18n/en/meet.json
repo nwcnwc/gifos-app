@@ -656,6 +656,8 @@
   "meet.stCarryNoWay": "This browser has no way to join a call: it has no WebRTC and no WebCodecs audio.",
   "meet.stCarryLooking": "Joining through a seat of the meeting (this browser has no WebRTC)…",
   "meet.stCarryUp": "In the meeting through another seat (this browser has no WebRTC).",
+  "meet.stCarryLookingNoPath": "Joining through a seat of the meeting (this browser's connections find no network path)…",
+  "meet.stCarryUpNoPath": "In the meeting through another seat (this browser's connections find no network path).",
   "meet.stLoadIncomplete": "This page did not finish loading, so it cannot join safely. Reload the page to try again.",
   "meet.stThisRoomAlreadyHasYou": "⛔ This room already has you connected from another device. Close it there, or reload here.",
   "meet.stThisMeetingNeedsTheCurrent": "⛔ This meeting needs the current GifOS. Reload the page to update.",

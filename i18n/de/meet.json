@@ -737,6 +737,8 @@
   "meet.stCarryNoWay": "Dieser Browser kann keinem Anruf beitreten: Er hat weder WebRTC noch WebCodecs-Audio.",
   "meet.stCarryLooking": "Beitritt über einen Platz der Besprechung (dieser Browser hat kein WebRTC)…",
   "meet.stCarryUp": "In der Besprechung über einen anderen Platz (dieser Browser hat kein WebRTC).",
+  "meet.stCarryLookingNoPath": "Beitritt über einen Platz der Besprechung (die Verbindungen dieses Browsers finden keinen Netzwerkweg)…",
+  "meet.stCarryUpNoPath": "In der Besprechung über einen anderen Platz (die Verbindungen dieses Browsers finden keinen Netzwerkweg).",
   "meet.stLoadIncomplete": "Diese Seite wurde nicht fertig geladen und kann daher nicht sicher beitreten. Laden Sie die Seite neu und versuchen Sie es erneut.",
   "meet.setGroupDebug": "Fehlersuche",
   "meet.setDbgOn": "Debug-Protokoll",
