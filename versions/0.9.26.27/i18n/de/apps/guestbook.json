@@ -1,0 +1,14 @@
+{
+  "title": "Gästebuch",
+  "who.alone": "nur Sie — Einladen",
+  "who.here": "{n} hier",
+  "hint.alone": "Sie tragen sich als <b>{name}</b> ein. Tippen Sie oben in der Leiste auf <b>Einladen</b>, um mit Freunden zu unterschreiben.",
+  "hint.friends": "Sie tragen sich als <b>{name}</b> ein. Freunde in diesem Raum unterschreiben mit ihrem Anzeigenamen — neue Zeilen erscheinen hier.",
+  "msg.placeholder": "Schreiben Sie etwas …",
+  "sign": "Eintragen",
+  "empty": "Noch hat niemand unterschrieben. Sie sind der Erste.<br>Tippen Sie oben in der Leiste auf <b>Einladen</b> und senden Sie den Link.",
+  "anon": "anonym",
+  "ago.now": "gerade eben",
+  "ago.m": "vor {n} Min.",
+  "ago.h": "vor {n} Std."
+}
