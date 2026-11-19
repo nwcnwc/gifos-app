@@ -3046,7 +3046,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       myStatus.bot = true;
       myStatus.camOff = true;
       myStatus.muted = true;
-      myStatus.blur = 0;
+      // An assistant publishes no face, so blur stays off.
+      if (myStatus.bot) myStatus.blur = 0;
       try { if (localStream) for (const tr of localStream.getTracks()) tr.enabled = false; } catch (e) {}
       for (const id of ['ai-assist', 'meet-ai-assist']) {
         const b = document.getElementById(id);
@@ -21729,7 +21730,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             myStatus.bot = true;
             myStatus.camOff = true;
             myStatus.muted = true;
-            myStatus.blur = 0;
+            // An assistant publishes no face, so blur stays off.
+            if (myStatus.bot) myStatus.blur = 0;
             localStream = null;
             try { updateTile('me'); } catch (e) {}
             try { broadcastStatus(); } catch (e) {}
