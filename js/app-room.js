@@ -53,7 +53,8 @@
     if (!saved || typeof saved !== 'object' || !Array.isArray(saved.seats)) return s;
     for (const x of saved.seats) {
       const i = sp.seats.indexOf(x && x.seat);
-      if (i >= 0 && x.k && typeof x.k === 'string') s.seats[i] = { seat: sp.seats[i], k: x.k, nm: str(x.nm, 40), h: 'away' };
+      // one person, one seat: a record naming the same person twice keeps the first seat only
+      if (i >= 0 && x.k && typeof x.k === 'string' && !s.seats.some((y) => y.k === x.k)) s.seats[i] = { seat: sp.seats[i], k: x.k, nm: str(x.nm, 40), h: 'away' };
     }
     if (Number.isInteger(saved.turn) && saved.turn >= 0 && saved.turn < sp.seats.length) s.turn = saved.turn;
     if (Number.isInteger(saved.first) && saved.first >= 0 && saved.first < sp.seats.length) s.first = saved.first;
