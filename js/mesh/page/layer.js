@@ -359,16 +359,15 @@
     // counts them: 0 with no joined room or no fold yet. Every seat of my room reads it, not only a pipe's end.
     function meetingFar() { const s = raw(); if (!s || s.state !== 3 || !s.hasCoord) return 0; const d = s.rootDig; if (!d || d.at < 0) return 0; let far = 0; for (const e of d.doors || []) if (e.k > 0) far += e.k; return far; }
     // meetingPeople(): SUB.11 the people of the OTHER rooms of the meeting by name, read from the fold that counts them (one
-    // report, one clock): per far door { door, n: its count, people: [{ id, nm, dv }] } (id null, nm '' until that person's
+    // report, one clock): per door { door, here, n: its count, people: [{ id, nm, dv }] } (here: my own room, listed while the fold names it) (id null, nm '' until that person's
     // facts are here). n - people.length people are a count only ("and N more").
     function meetingPeople() {
       const s = raw(); if (!s || s.state !== 3 || !s.hasCoord) return []; const d = s.rootDig; if (!d || d.at < 0) return [];
       const t = s.TICK, out = [];
-      for (const e of d.doors || []) {
-        if (!(e.k > 0)) continue; const people = [];
-        for (const p of d.ppl || []) { if (p.k !== e.id) continue; const f = facts.get(p.id); if (f && f.seen !== Infinity) f.seen = t; const id = P(p.id); people.push({ id: id != null ? id : (f ? f.p : null), nm: f ? f.nm : '', dv: f ? f.dv : '' }); }
-        out.push({ door: e.id, n: e.k, people });
-      }
+      const named = (k) => { const people = []; for (const p of d.ppl || []) { if (p.k !== k) continue; const f = facts.get(p.id); if (f && f.seen !== Infinity) f.seen = t; const id = P(p.id); people.push({ id: id != null ? id : (f ? f.p : null), nm: f ? f.nm : '', dv: f ? f.dv : '' }); } return people; };
+      // my own room first (here: true), while the fold names it (a meeting with a joined room): the people past my own row have no tile on this page, and the fold is the one list that counts them
+      { const own = named(-1); if (own.length) { const n = d.n < 0 ? 0 : d.n, seats = Math.max(0, n + d.leased); out.push({ door: s.sr | 0, here: true, n: seats, people: own }); } }
+      for (const e of d.doors || []) { if (!(e.k > 0)) continue; out.push({ door: e.id, here: false, n: e.k, people: named(e.id) }); }
       return out;
     }
     // standbyCands(): the other Section-1 seats of my room as my view holds them, in the order to try them for my room's end

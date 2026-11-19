@@ -11979,12 +11979,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         try { const m = modOf(p.id).mute; roomMute = !!(m && m.on); } catch (e3) {}
         push({ id: p.id, name: hostRename(p.id) || p.name || rosterNames[p.id] || 'Guest', me: false, muted: !!st.muted, hand: !!st.hand, stage: onStage || hostSpot(p.id), roomMute: roomMute });
       }
-      // SUB.11: the people in the other rooms of the meeting, from the fold that counts them (the header's own source):
-      // a row a name, and the ones the fold counts without a name as one "and N more" line.
+      // SUB.11: the people the fold names and this page shows no tile of: the other rooms of the meeting, and my own room
+      // past my row (the header's own source): a row a name, and the ones the fold counts without a name as one
+      // "and N more" line. A row from the fold alone carries no controls.
       let more = 0;
       for (const d of farPeople()) {
         let named = 0;
-        for (const x of d.people) { if (!x.id) continue; named++; push({ id: x.id, name: hostRename(x.id) || x.nm || rosterNames[x.id] || 'Guest', me: false, far: true, muted: false, hand: false, stage: false }); }
+        for (const x of d.people) { if (!x.id) continue; named++; if (x.id === myId) continue; const st = d.here ? (statusOf.get(x.id) || {}) : {}; push({ id: x.id, name: hostRename(x.id) || x.nm || rosterNames[x.id] || 'Guest', me: false, far: !d.here, fold: true, muted: !!st.muted, hand: !!st.hand, stage: false }); }
         more += Math.max(0, d.n - named);
       }
       rows.sort((a, b) => {
@@ -12099,7 +12100,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           row.appendChild(f);
         }
         // As on the tile: no Mute for someone already muted by their own hand.
-        const mayMute = !r.me && !r.far && !(r.muted && !r.roomMute) && !(typeof hasAdminRoom === 'function' && hasAdminRoom() && !amAdmin);
+        const mayMute = !r.me && !r.fold && !(r.muted && !r.roomMute) && !(typeof hasAdminRoom === 'function' && hasAdminRoom() && !amAdmin);
         if (mayMute) {
           const b = document.createElement('button');
           b.type = 'button';
@@ -12115,7 +12116,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           };
           row.appendChild(b);
         }
-        if (mayHost() && !r.me && !r.far) {
+        if (mayHost() && !r.me && !r.fold) {
           const acts = document.createElement('div');
           acts.className = 'acts';
           if (renameEditId === r.id) {
@@ -40546,7 +40547,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         people.push({ id: pid, name: (p && p.name) || rosterNames[pid] || '', bot: !!(st && st.bot), me: false });
       }
       // SUB.11: and the people of the other rooms of the meeting the fold names (far: true), so the bot's list and the People panel are one list
-      for (const d of farPeople()) for (const x of d.people) { if (!x.id || seen.has(x.id)) continue; seen.add(x.id); const st = statusOf.get(x.id); people.push({ id: x.id, name: x.nm || rosterNames[x.id] || '', bot: !!(st && st.bot), me: false, far: true }); }
+      for (const d of farPeople()) for (const x of d.people) { if (d.here || !x.id || seen.has(x.id)) continue; seen.add(x.id); const st = statusOf.get(x.id); people.push({ id: x.id, name: x.nm || rosterNames[x.id] || '', bot: !!(st && st.bot), me: false, far: true }); }
       return people;
     }
     function roomControls() {
@@ -42102,7 +42103,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       memSamples: () => (window.__memSamples ? window.__memSamples.slice() : []),
       meshTraceDump: () => { const G = window.__meshTraceRing; return G ? G.ring.map((e) => e[1]) : []; },
       // SUB.11 (test read): the People panel's rows, the header count beside them, the connector's list and the fold's far names
-      peopleDump: () => { const r = rosterRows(); return { header: headerCount(), n: r.length + (r.more || 0), more: r.more || 0, rows: r.map((x) => ({ id: x.id, name: x.name, far: !!x.far, me: !!x.me })), room: roomPeople(), far: farPeople() }; },
+      peopleDump: () => { const r = rosterRows(); return { header: headerCount(), n: r.length + (r.more || 0), more: r.more || 0, rows: r.map((x) => ({ id: x.id, name: x.name, far: !!x.far, fold: !!x.fold, me: !!x.me })), room: roomPeople(), far: farPeople() }; },
       meshForensics: (since) => {
         const G = window.__meshTraceRing || { ring: [], seq: 0 }; const s = meshSeat(); if (!s) return null;
         const six = (x) => (x == null ? null : String(x).slice(0, 6));
