@@ -68,9 +68,9 @@
 .lob-bc-opt small { display: block; color: var(--c-gray); }
 .lob-bc-when { display: flex; align-items: center; gap: 12px; }
 .lob-bc-when input { flex: 1 1 auto; min-height: 44px; }
-#lobby.service-ready #lob-bc { order: 2; }
+#lobby.service-ready #lob-bc { order: 3; }
 #lobby.service-ready #lob-guest-more { display: none !important; }
-#lobby.service-ready.bc-pw:not(.desk-more) #lob-guest-extra { display: block !important; order: 3; }
+#lobby.service-ready.bc-pw:not(.desk-more) #lob-guest-extra { display: block !important; order: 2; }
 #lobby.service-ready #lob-bc-sched { flex: 0 0 auto; }
 @media (max-width: 700px) and (min-height: 421px) {
   #lobby.form-open.service-ready #lob-bc,
@@ -111,7 +111,70 @@ html body .bar > #leavebtn .docklab { color: #ff5c5c; }
 #lobby.show #lob-open-more.lob-link { display: block; width: 100%; min-height: 36px; margin: -4px 0 6px; background: transparent; border: 0;
   color: var(--c-blue); font-weight: 600; font-size: .9rem; text-align: center; text-decoration: underline; }
 #lobby.form-open #lob-open-more, #lobby.form-open #lob-open-extra { display: none !important; }
-@media (max-width: 700px), (max-height: 500px) { html.ui-large #lob-admin-btn small { display: none; } }
+/* The three doors share one segment row. Each button is its label only. The selected explanation sits under the row. Colors stay the shared segment control. The name stays in the card unless a broadcast form is open. */
+#lobby .lob-segs { display: flex; width: 100%; margin: 0 0 .5rem; }
+#lobby .lob-segs .seg { flex: 1 1 0; min-width: 0; white-space: normal; text-align: center; line-height: 1.25; padding: .5rem .35rem; }
+#lobby .lob-segs .seg span { display: block; font-weight: 700; }
+#lobby .lob-seg-note { margin: 0 0 .75rem; color: var(--c-ink-2); font-size: 0.875rem; line-height: 1.35; text-align: center; }
+#lobby.show:not(.form-open) .lob-appear { position: static; left: auto; right: auto; top: auto; width: auto; margin: 0 0 14px; box-shadow: none; z-index: auto; background: var(--c-paper); }
+/* A phone broadcast is a form: the name, the room password and Go live stack from the top. */
+@media (max-width: 700px) and (min-height: 421px) {
+  #lobby.form-open.service-ready .lobby-card {
+    justify-content: flex-start !important;
+    background: var(--c-white) !important;
+    color: var(--c-ink) !important;
+    pointer-events: auto !important;
+    overflow: auto !important;
+  }
+  #lobby.form-open.service-ready.show h1,
+  #lobby.form-open.service-ready .lob-quiet {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 0 8px !important;
+    color: var(--c-ink) !important;
+    background: transparent !important;
+  }
+  #lobby.form-open.service-ready #lob-admin-name {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 0 8px !important;
+    color: var(--c-ink) !important;
+    background: var(--c-white) !important;
+    border: 1px solid var(--c-gray) !important;
+    border-radius: 14px;
+  }
+  #lobby.form-open.service-ready #lob-admin-name::placeholder { color: var(--c-ink-2) !important; }
+  #lobby.form-open.service-ready #lob-guest-extra,
+  #lobby.form-open.service-ready #lob-bc,
+  #lobby.form-open.service-ready #lob-admin-err,
+  #lobby.form-open.service-ready .lob-appear {
+    position: static !important;
+    pointer-events: auto !important;
+    color: var(--c-ink) !important;
+    background: transparent !important;
+  }
+  #lobby.form-open.service-ready #lob-go {
+    position: static !important;
+    pointer-events: auto !important;
+    width: 100%;
+    min-height: 56px;
+    background: var(--c-blue) !important;
+    color: var(--c-white) !important;
+  }
+  #lobby.form-open.service-ready .lob-pwlab,
+  #lobby.form-open.service-ready .lob-pwlab b,
+  #lobby.form-open.service-ready .lob-pwlab small,
+  #lobby.form-open.service-ready .lob-bc-who > b { color: var(--c-ink) !important; }
+  #lobby.form-open.service-ready .lob-seg-note { color: var(--c-ink-2) !important; }
+}
 
 /* Subscription dialog reuses the Settings window (same header, body, Close). */
 #sub-modal .name-box.set-box {

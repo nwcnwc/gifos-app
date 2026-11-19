@@ -295,7 +295,8 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
 #lobby.show #lob-name-in { min-width: 0; width: 100%; box-sizing: border-box; }
 /* A service sheet: Go live is a button, not the rest of the card. */
 #lobby.form-open.service-ready #lob-admin .lob-row { flex: 0 0 auto; }
-#lobby.form-open.service-ready #lob-admin-go { min-height: 56px; }
+#lobby.form-open.service-ready #lob-admin-go,
+#lobby.form-open.service-ready #lob-go { min-height: 56px; }
 /* A short sideways phone has no preview row: the service sheet takes the
    whole screen and scrolls if it must. */
 @media (max-height: 430px) {
