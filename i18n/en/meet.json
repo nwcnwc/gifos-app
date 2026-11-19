@@ -1045,5 +1045,19 @@
   "meet.ccallNoteDev": "Hosts only — every device starts writing down the voices it hears. Anyone can tap CC to opt out.",
   "meet.ccOnByHost": "A host",
   "meet.ccOnBy": "{by} turned captions on for your screen. Tap Captions to hide them.",
-  "meet.sttRelayFallback": "The custom connection isn't answering, so this meeting uses the standard GifOS connection."
+  "meet.sttRelayFallback": "The custom connection isn't answering, so this meeting uses the standard GifOS connection.",
+  "meet.trNoteMismatch": "[doesn't match what was heard]",
+  "meet.capHeardHere": "heard here",
+  "meet.capVia": "via {name}",
+  "meet.capClose": "Close",
+  "meet.capAuto": "Automatic",
+  "meet.capOwn": "{name}'s own captions",
+  "meet.capMine": "What this device hears",
+  "meet.capTheirs": "{name}'s captions",
+  "meet.capWarn": "{name}'s captions don't match what you're hearing",
+  "meet.capWarnEar": "{name}'s captions don't match what {ear}'s device hears",
+  "meet.capNowMine": "Showing what this device hears.",
+  "meet.capNowTheirs": "Showing {name}'s captions.",
+  "meet.capFlag": "These captions are wrong",
+  "meet.capSrcTitle": "Captions for {name}"
 }

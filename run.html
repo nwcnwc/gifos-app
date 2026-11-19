@@ -611,6 +611,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
 <script src="js/mesh-media.js" defer></script>
 <script src="js/meet-layout.js" defer></script>
 <script src="js/meet-debuglog.js" defer></script>
+<script src="js/meet-captrust.js" defer></script>
 <script src="js/meet-views.js" defer></script>
 <script src="js/meet-viewmode.js" defer></script>
 <script src="js/meet-power.js" defer></script>
@@ -22926,7 +22927,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       } else if (m.k === 'tr') {
         if (takeTr(m.m)) {
           if (trKeeps()) renderTranscript(); // a page that keeps no transcript shows the line (CC) and lets it go (trForget)
-          showCaption(m.m.byId, trNote(m.m) + m.m.text, m.m.w !== m.m.byId ? String(m.m.by || '').slice(0, 40) : '');
+          if (capShows(m.m)) showCaption(m.m.byId, trNote(m.m) + m.m.text, capLabel(m.m));
           paintTxMark();
           // not gossiped onward (see chat): a caption line is one flood
         }
@@ -32429,7 +32430,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     //   echo  most of its words are someone else's, said at the same time
     //   hard  the engine itself was unsure (Web Speech confidence)
     const TR_NOTES = { lang: ['trNoteLang', '[wrong language?]'], who: ['trNoteWho', '[not sure who spoke]'], echo: ['trNoteEcho', '[echo?]'], hard: ['trNoteHard', '[hard to hear]'] };
-    function trNote(l) { const n = l && TR_NOTES[l.nt]; return n ? uiText(n[0], n[1]) + ' ' : ''; }
+    function trNote(l) {
+      const n = l && TR_NOTES[l.nt];
+      const doubt = capDoubts(l) ? uiText('trNoteMismatch', '[doesn\'t match what was heard]') + ' ' : '';
+      return doubt + (n ? uiText(n[0], n[1]) + ' ' : '');
+    }
     // The echo strength of a against b: 2 a near-copy (dropped), 1 most words
     // shared (kept, marked), 0 none.
     function trEchoLevel(a, b) {
@@ -32580,6 +32585,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (Object.prototype.hasOwnProperty.call(TR_NOTES, m.nt)) line.nt = m.nt;
       const via = m.via; // this page's own line: its devices, kept in the export only
       if (via) Object.defineProperty(line, 'via', { value: via });
+      // Every source is seen by the trust check before the merge folds two lines of one sentence into one.
+      if (capTrust && !backfill) capTrust.observe({ byId: line.byId, w: line.w, src: line.src, at: line.at, end: line.end, text: line.text, tl: line.tl, vt: m.vt });
       const merged = trMerge(line);
       if (merged === 'dup' || merged === 'echo') { if (typeof capTrace === 'function') capTrace(line, merged); return false; }
       if (typeof capTrace === 'function') capTrace(line, backfill ? 'replay' : 'kept');
@@ -32658,6 +32665,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (!name) { if (byId === myId) name = myName(); else { const p = peers.get(byId); name = (p && p.name) || ''; } }
         } catch (e) {}
         bar.textContent = (name ? name + '. ' : '') + String(text || '');
+        bar.dataset.voice = byId || '';
+        if (!bar.onclick) bar.onclick = () => capSourceOpen(bar.dataset.voice);   // a tap: whose captions to show for this person
         bar.classList.add('show');
         bar.scrollTop = 0;
         clearTimeout(bar._hide);
@@ -32669,6 +32678,96 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       t.cap.classList.add('show');
       clearTimeout(t.capT);
       t.capT = setTimeout(() => t.cap.classList.remove('show'), 6000);
+    }
+    // CAPTION TRUST (js/meet-captrust.js): this page decides, for each person,
+    // whose lines it shows. It trusts only itself: its own ears (Whisper on the
+    // received audio) are the reference, and another source earns trust by
+    // matching them. Every state, pick and flag stays on this page.
+    const capTrust = (GifOS.capTrust && GifOS.timings) ? GifOS.capTrust.make({
+      me: () => myId,
+      T: { CT_SETTLE_MS: GifOS.timings.CT_SETTLE_MS, CT_PAD_MS: GifOS.timings.CT_PAD_MS, CT_KEEP_MS: GifOS.timings.CT_KEEP_MS, CT_SPOT_MS: GifOS.timings.CT_SPOT_MS, CT_SPOT_EVERY_MS: GifOS.timings.CT_SPOT_EVERY_MS },
+      earsFor: (v) => typeof wspCaps !== 'undefined' && wspCaps.has(v),
+      onWarn: (v, info) => { try { capWarn(v, info); } catch (e) {} },
+    }) : null;
+    // A line whose source this page does not trust (the speaker's own engine, or a writer) is kept and marked.
+    function capDoubts(l) { return !!(capTrust && l && l.byId && l.byId !== myId && l.w && capTrust.stateOf(l.byId, l.w) === 'distrusted'); }
+    function capName(id) {
+      if (id === myId) return myName();
+      try { const p = peers.get(id); return String((p && p.name) || rosterNames[id] || '…').slice(0, 40); } catch (e) { return '…'; }
+    }
+    // The caption bar names the source after the speaker: their own engine (the name alone), this device's ears, or a writer.
+    function capLabel(l) {
+      const name = l.byId === myId ? '' : (l.w !== l.byId ? String(l.by || capName(l.byId)).slice(0, 40) : '');
+      if (!l.w || l.w === l.byId || trGeneric(l.byId)) return name;
+      if (l.w === myId) return name + ' · ' + uiText('capHeardHere', 'heard here');
+      return name + ' · ' + uiText('capVia', 'via {name}').replace('{name}', capName(l.w));
+    }
+    function capShows(l) { return !capTrust || capTrust.shows(l); }
+    // Ears only: Whisper is installed on a computer that can afford it while the browser's engine writes my own voice.
+    // Its clips are samples for the trust check; they are written down only for a voice whose own captions lost trust.
+    function capEarsOnly() {
+      return !!capTrust && ccEngine() === 'browser' && !phoneCaptions() && !CC_ON_PHONE && !WSP_WEAK && whisperReady() && !wspPaused && !trEnOn;
+    }
+    // THE WARNING CARD and THE SOURCE CHOOSER: one small card over the call, one tap per source.
+    function capCard(id, v, title, note, rows) {
+      let c = document.getElementById(id);
+      if (!c) {
+        c = document.createElement('div'); c.id = id; c.className = 'capcard'; c.setAttribute('role', 'dialog');
+        document.body.appendChild(c);
+      }
+      c.dataset.voice = v;
+      c.innerHTML = '<div class="capcard-t"></div><div class="capcard-n"></div><div class="capcard-b dlg-actions"></div>';
+      c.querySelector('.capcard-t').textContent = title;
+      c.querySelector('.capcard-n').textContent = note || '';
+      const b = c.querySelector('.capcard-b');
+      for (const r of rows) {
+        const x = document.createElement('button'); x.type = 'button'; x.textContent = r.t; x.dataset.src = r.src;
+        if (r.on) x.setAttribute('aria-pressed', 'true');
+        x.onclick = () => { c.hidden = true; capPick(v, r.src); };
+        b.appendChild(x);
+      }
+      const done = document.createElement('button'); done.type = 'button'; done.className = 'capcard-x'; done.textContent = uiText('capClose', 'Close');
+      done.onclick = () => { c.hidden = true; };
+      b.appendChild(done);
+      c.hidden = false;
+      return c;
+    }
+    function capCanEar() { return whisperSupported() && !phoneCaptions() && !CC_ON_PHONE; }
+    // Sources for v other than the one shown: this device's ears, each writer with lines for v, the speaker's own.
+    function capRows(v, withAuto) {
+      const c = capTrust.choice(v), rows = [], name = capName(v);
+      if (withAuto) rows.push({ src: 'auto', t: uiText('capAuto', 'Automatic'), on: c.mode === 'auto' });
+      rows.push({ src: 'own', t: uiText('capOwn', '{name}\'s own captions').replace('{name}', name), on: c.mode === 'own' });
+      if (capTrust.hasEars(v) || capCanEar()) rows.push({ src: 'me', t: uiText('capMine', 'What this device hears'), on: c.mode === 'me' });
+      for (const s of capTrust.sources(v)) if (s.kind === 'ear') rows.push({ src: s.w, t: uiText('capTheirs', '{name}\'s captions').replace('{name}', capName(s.w)), on: c.mode === s.w });
+      return rows;
+    }
+    function capWarn(v, info) {
+      const name = capName(v), c = capTrust.choice(v);
+      const ear = info && info.by && info.by !== 'me' && info.by !== myId ? capName(info.by) : '';
+      const title = ear ? uiText('capWarnEar', '{name}\'s captions don\'t match what {ear}\'s device hears').replace('{name}', name).replace('{ear}', ear)
+        : uiText('capWarn', '{name}\'s captions don\'t match what you\'re hearing').replace('{name}', name);
+      const note = c.show === myId ? uiText('capNowMine', 'Showing what this device hears.')
+        : (c.show !== 'all' && c.show !== v) ? uiText('capNowTheirs', 'Showing {name}\'s captions.').replace('{name}', capName(c.show)) : '';
+      const rows = capRows(v, false);
+      if (clog) clog('captrust warn', String(v).slice(0, 6), info && info.why, String(c.show).slice(0, 6));
+      capCard('capwarn', v, title, note, rows);
+    }
+    function capSourceOpen(v) {
+      if (!capTrust || !v || v === myId) return;
+      const name = capName(v);
+      const rows = capRows(v, true);
+      rows.push({ src: 'flag', t: uiText('capFlag', 'These captions are wrong') });
+      capCard('capsrc', v, uiText('capSrcTitle', 'Captions for {name}').replace('{name}', name), '', rows);
+    }
+    function capPick(v, src) {
+      if (!capTrust) return;
+      if (src === 'flag') { const c = capTrust.choice(v); capTrust.flag(v, c.show === 'all' ? v : c.show); }
+      else capTrust.pick(v, src);
+      if (src === 'me' && !whisperReady() && capCanEar()) { try { installWhisper(true).catch(() => {}); } catch (e) {} }
+      if (clog) clog('captrust pick', String(v).slice(0, 6), src);
+      trDirty = true; try { renderTranscript(); } catch (e) {}
+      try { wspSync(); } catch (e) {}
     }
     let trDirty = false;
     function renderTranscript() {
@@ -32723,13 +32822,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         m.src = src === 'mix' || trGeneric(forId) ? 'mix' : 'ear';
         m.by = String(label || rosterNames[forId] || (peers.get(forId) || {}).name || '…').slice(0, 40);
       }
-      const send = how === 'lo' ? false : mine ? capSend() : (trMode() === 'share' || (trKeeps() && capPaused(forId)));
+      // My ears' verdict on that voice's own captions travels on the line (vt), as advice to pages that trust my ears.
+      if (!mine && m.src === 'ear' && capTrust) { const vt = capTrust.verdict(forId); if (vt === 0 || vt === 1) m.vt = vt; }
+      // A voice whose own captions this page's ears do not trust is written for the room, as for a paused voice.
+      const doubted = !mine && !!capTrust && capTrust.stateOf(forId, forId) === 'distrusted';
+      const send = how === 'lo' ? false : mine ? capSend() : (trMode() === 'share' || (trKeeps() && (capPaused(forId) || doubted)));
       if (how === 'out') { if (send) { sendAll({ k: 'tr', m }); if (typeof capTrace === 'function') capTrace(m, 'sent'); } return; }
       if (!send && !trKeeps() && !trEnOn) { if (typeof capTrace === 'function') capTrace(m, 'unkept'); return; }
       if (!takeTr(m)) return; // the same sentence is already held by a better line
       if (send) sendAll({ k: 'tr', m });
       renderTranscript();
-      showCaption(m.byId, trNote(m) + m.text, mine ? '' : m.by);
+      if (capShows(m)) showCaption(m.byId, trNote(m) + m.text, mine ? '' : capLabel(m));
     }
     // What the bot SAYS is written down by the bot, from the words it was
     // handed: its microphone is never captioned (above), so this is the only
@@ -33504,7 +33607,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             }
           }
           else if (job.id === 'fold') { if (trWrites() || trEnOn) addTranscriptLine(text, job.at, 'stadium', 'Stadium', 'mix', ll, lf, end, how, { eng: wEng, inp: 'rx' }); }   // a far-row line, labelled by its channel
-          else if ((trWrites() || trEnOn) && (peers.has(job.id) || job.stage)) addTranscriptLine(text, job.at, job.id, null, 'ear', ll, lf, end, how, { eng: wEng, inp: 'rx' });
+          else if (capEarsOnly() && (peers.has(job.id) || job.stage) && capTrust.stateOf(job.id, job.id) !== 'distrusted' && capTrust.choice(job.id).mode !== 'me') {
+            // ears only: a sample for the trust check, not a line
+            capTrust.observe({ byId: job.id, w: myId, src: 'ear', at: job.at, end, text, tl: how === 'tl' ? 1 : 0 });
+          }
+          else if ((trWrites() || trEnOn || capEarsOnly()) && (peers.has(job.id) || job.stage)) addTranscriptLine(text, job.at, job.id, null, 'ear', ll, lf, end, how, { eng: wEng, inp: 'rx' });
         }
         if (!wspQ.items.length && myStatus && myStatus.ccst === 'behind') {
           wspQ.behind = false;
@@ -33573,7 +33680,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // captions, as the browser engine's room ear does on other devices: one
       // model, one language, so a voice its own page captions is left to it.
       const localEar = ccEngine() === 'local' && !ccLocalQ.blocked() && trWrites();
-      if (!wspPaused && (((trWrites() || en) && ccEngine() === 'whisper' && whisperReady()) || localEar)) {
+      const earsOnly = capEarsOnly();
+      if (!wspPaused && (((trWrites() || en) && ccEngine() === 'whisper' && whisperReady()) || localEar || earsOnly)) {
         const stagers = (typeof stageIds === 'function') ? stageIds() : [];
         const stageSet = new Set(stagers);
         const talking = (pid) => (typeof speakingOf !== 'undefined' && speakingOf && speakingOf.get(pid));
@@ -33583,6 +33691,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const st = statusOf.get(pid) || {};
           if (st.muted || st.bot || (modOf(pid).mute && modOf(pid).mute.on)) return;
           if (localEar && capCovered(pid)) return;
+          // Ears only listen to voices someone else captions (that is what they check), and a voice whose own
+          // captions are trusted only during a spot check.
+          if (earsOnly && !capCovered(pid) && !(capTrust && capTrust.choice(pid).mode === 'me')) return;
+          if (capTrust && !en && !capTrust.earWanted(pid)) return;
           const p = peers.get(pid);
           const onStage = stageSet.has(pid) && !!wspStageSid(pid);
           if (!onStage && !(p && p.connected && wspSource(pid))) return;
@@ -33601,7 +33713,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (others >= max) break;
           want.add(pid); others++;
         }
-        if (others < max && wspFoldNeeded(queued, en) && wspFoldTracks().length) want.add('fold');
+        if (!earsOnly && others < max && wspFoldNeeded(queued, en) && wspFoldTracks().length) want.add('fold');
       }
       for (const id of Array.from(wspCaps.keys())) if (!want.has(id)) wspStop(id);
       for (const id of want) {
@@ -33622,7 +33734,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (ccMix.dest) { ccMixSync(); if (!ccMix.ins.size) syncSpeech(); return; }
       if (trWrites() && !(ccEngine() === 'whisper' && whisperReady()) && !(speech && speech.input) && ccTrackInput() && ccMixVoices().size) syncSpeech();
     }
-    setInterval(() => { trEnSync(); if (wspCaps.size || trEnOn || (trWrites() && ((ccEngine() === 'whisper' && whisperReady()) || ccEngine() === 'local'))) wspSync(); earTick(); trForget(); paintTxMark(); }, 2000);
+    setInterval(() => { trEnSync(); if (capTrust) capTrust.tick(); if (wspCaps.size || trEnOn || capEarsOnly() || (trWrites() && ((ccEngine() === 'whisper' && whisperReady()) || ccEngine() === 'local'))) wspSync(); earTick(); trForget(); paintTxMark(); }, 2000);
     // ONE TAP TO INSTALL. The provider is a signed 13 MB GIF on this very site:
     // GifOS.providers.install downloads, checks the catalog hash and the
     // gifos.app signature, files it into the Providers folder and we assign it
@@ -42479,6 +42591,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           headerCam: !!document.getElementById('showcam'),
         };
       },
+      // caption trust on this page: per peer the state of its own captions, the choice, whether my ears are on it
+      capTrustForTest: () => {
+        if (!capTrust) return null;
+        const o = { state: {}, choice: {}, spot: {}, listening: {}, ears: {}, dump: capTrust.dump() };
+        for (const pid of peers.keys()) {
+          o.state[pid] = capTrust.stateOf(pid, pid); o.choice[pid] = capTrust.choice(pid);
+          o.spot[pid] = o.state[pid] === 'trusted'; o.listening[pid] = wspCaps.has(pid);
+        }
+        o.ears = o.dump.ears;
+        return o;
+      },
+      capSourceOpen: (v) => capSourceOpen(v),
       whisperForTest: () => ({ engine: ccEngine(), live: !!wsp, ready: whisperReady(), queue: wspQ.items.length, sent: wspQ.sent, dropped: wspQ.dropped, rate: wsp ? wsp.rate : 0, captures: Array.from(wspCaps.keys()), writes: trWrites(), inFlight: !!wspQ.busy, behind: !!wspQ.behind, paused: !!wspPaused, lastLatencyMs: wspQ.lastLatencyMs || 0, model: wspModel(), local: ccLocalQ.test() }),
       whisperFeedForTest: (f32, rate, forId) => { const w = wspCaps.get(forId || 'me'); if (!w) return false; wspEnqueue(w, [Float32Array.from(f32)], Date.now(), rate || 16000, true); return true; },
       ccViewOn: () => !!ccShow,
