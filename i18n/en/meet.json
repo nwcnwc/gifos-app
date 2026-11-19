@@ -1045,5 +1045,6 @@
   "meet.ccallNoteDev": "Hosts only — every device starts writing down the voices it hears. Anyone can tap CC to opt out.",
   "meet.ccOnByHost": "A host",
   "meet.ccOnBy": "{by} turned captions on for your screen. Tap Captions to hide them.",
-  "meet.sttRelayFallback": "The custom connection isn't answering, so this meeting uses the standard GifOS connection."
+  "meet.sttRelayFallback": "The custom connection isn't answering, so this meeting uses the standard GifOS connection.",
+  "meet.chatLogAria": "Chat messages"
 }

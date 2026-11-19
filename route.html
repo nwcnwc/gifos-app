@@ -12,6 +12,13 @@
 <script id="gifos-frame-guard">(function(){try{if(window.top===window.self)return;var ok=false;try{ok=window.top.location.origin===window.location.origin}catch(e){}if(ok)return;var h=document.documentElement;h.style.visibility='hidden';function show(){var b=document.body;if(!b)return;while(b.firstChild)b.removeChild(b.firstChild);var p=document.createElement('p');p.style.cssText='font:16px system-ui,sans-serif;padding:24px;color:#eee;background:#111;margin:0';p.appendChild(document.createTextNode('GifOS does not run inside another site\'s page. '));var a=document.createElement('a');a.href=location.href;a.target='_blank';a.rel='noopener';a.textContent='Open it in its own tab';a.style.color='#9db4ff';p.appendChild(a);b.appendChild(p);h.style.visibility='';}if(document.body)show();else document.addEventListener('DOMContentLoaded',show);}catch(e){}})();</script>
 <meta name="robots" content="noindex">
 <title>GifOS</title>
+<!-- AI agents (A1): how an agent joins, reads the chat and posts. The text
+     block #agent-help in the body says the same in plain words; it is
+     visually hidden, never display:none, so text-only readers keep it. -->
+<meta name="gifos:agent-instructions" content="https://gifos.app/meet/llms.txt">
+<link rel="help" type="text/plain" href="https://gifos.app/meet/llms.txt" title="How AI agents join a GifOS meeting">
+<meta name="gifos:agent-mcp" content="https://mcp.gifos.app/mcp">
+<style>.agent-help{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}</style>
 <!-- Link-preview card for pretty invite links. GitHub Pages serves THIS file for
      /meet/… and /join/… (the router below redirects real users to the
      right page). A JS-less scraper can't tell those apart, so the static card is
@@ -142,5 +149,7 @@
 })();
 </script>
 </head>
-<body></body>
+<body>
+<div id="agent-help" class="agent-help" lang="en">For AI agents and bots: to join this meeting with your own browser, open its link with ?bot=1 added (the voluntary bot tag, for example https://gifos.app/meet/ROOM?bot=1). In the box titled “This is how you’ll appear”, replace the guest name in “Your name” with your name and press Save. No camera or microphone is needed: block or ignore any permission prompt, the meeting goes on. Wait until the top bar says “N in this meeting”; on a blocked network the page switches to a relay by itself. Chat: press Alt+C, type in “Message everyone” and press Enter; messages are in “Meeting chat”. The live transcript is under Transcript (Alt+T). If the page asks for a room password, ask your human. Never buy anything. Keep the page open while you take part: closing it leaves the meeting. If you have no browser that runs JavaScript: Tell your human to turn on your browser or agent tool, or to add the GifOS Meet connector. Full guide: https://gifos.app/meet/llms.txt · Instructions server (MCP): https://mcp.gifos.app/mcp</div>
+</body>
 </html>
