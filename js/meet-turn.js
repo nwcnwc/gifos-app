@@ -1062,6 +1062,7 @@
     // A live pipe end keeps its standby: the far end names its side's standby seat (and tells that seat), the opener has
     // a seat of its own side open the standby toward it. Asked again after a whole dial budget with no standby up.
     function warmStandby(L, now) {
+      if (L.go != null) return;   // SUB.10.4: while my subroom walks its link stands no new standby
       // my side's standby end is gone (up, or named and not answered yet: a seat picked in the tick it left): warm another now
       if (L.sbSeat && L.sbSeat !== io.me() && !io.alive(L.sbSeat)) { L.sbUp = false; L.sbAt = 0; L.sbSeat = null; }
       // SUB.8 (the sim's sweep, `rewarm`): a standby that ends on my own seat, the pipe's, because no other seat of my side
@@ -1182,7 +1183,7 @@
       L.sbWant = from; io.sendTv(L.far, { k: 'tv', q: 'o', l: L.l, m: y, b: 1 }); restand(L);
     }
     function probeRound(L, now) {
-      if (L.direct && L.sbUp && L.sbDirect) { L.pr = null; return; }   // two direct paths: nothing left to find
+      if ((L.direct && L.sbUp && L.sbDirect) || L.go != null) { L.pr = null; return; }   // two direct paths: nothing left to find (SUB.10: nor while the subroom walks)
       const A = s1List(), Z = L.farS1 || []; if (!A.length || !Z.length) return;
       const sees = A.join() + '|' + Z.join();
       let P = L.pr; if (!P || P.sees !== sees) P = L.pr = { sees, nextAt: now, x: 1, fails: 0, n: 0, seat: P ? P.seat : 0, turn: new Map(), q: null, y: null, sentAt: 0, ok: P ? P.ok : new Set(), held: new Set() };
@@ -1235,16 +1236,18 @@
     // directly: an end of the pipe or of its standby, or a dial my round asked for (SUB.8.1's dial, one at a time). Only a
     // subroom no other pipe ends in walks (a leaf: my room fold lists no door my pipe does not bring). Then my end says GO
     // (go(): the far door) in my section (Dig.go), the seats walk through the far door as ordinary joiners, the path ends
-    // last. The word stops when the pipe or its standby leaves its direct path. A page that walked does not say GO again
-    // inside the longest wait (SUB.10.2, TURN.10).
+    // last. Two direct paths START the word; once said it stands on the pipe alone (SUB.10.3, the sim's SUBGO: said while
+    // the pipe is up on its direct path), because the walk itself takes the standby away: its seat of my door walks before
+    // my end does (path ends last) and ends its standby with its walk. A link whose subroom walks stands no new standby
+    // and looks for nothing. A page that walked does not say GO again inside the longest wait (SUB.10.2, TURN.10).
     const WALK_AGAIN_MS = K.TURN_RETRY * K.TURN_RETRY_MAX_X * tick, WALKED_MS = K.RELAY_TTL * tick;
     let walkedAt = -Infinity;
     function walkOff(L, why) { if (L.go != null) log('sub-walk off ' + L.l + ' ' + why); L.go = null; L.wk = null; }
     function walkWait(L, why) { if (L.wkWhy !== why) { L.wkWhy = why; log('sub-walk wait ' + L.l + ' ' + why); } }   // the reason my end does not say GO yet, once a change
     function walkRound(L, now) {
       if (!io.sub || io.sub() !== pipeNo(L.l) || pipeNo(L.l) <= 0) { if (L.go != null || L.wk) walkOff(L, 'not my door'); return; }   // the walking side is the younger door, the pipe's own number
-      if (!(L.direct && L.sbUp && L.sbDirect)) { if (L.go != null || L.wk) walkOff(L, 'not two direct paths'); walkWait(L, 'paths pipe=' + (L.direct ? 'direct' : 'turn') + ' standby=' + (L.sbUp ? (L.sbDirect ? 'direct' : 'turn') : 'down')); return; }
-      if (L.go != null) return;
+      if (L.go != null) { if (!L.direct) walkOff(L, 'pipe off its direct path'); return; }   // said: the word stands while the pipe is up on its direct path (the standby's seat walks before my end does)
+      if (!(L.direct && L.sbUp && L.sbDirect)) { if (L.wk) walkOff(L, 'not two direct paths'); walkWait(L, 'paths pipe=' + (L.direct ? 'direct' : 'turn') + ' standby=' + (L.sbUp ? (L.sbDirect ? 'direct' : 'turn') : 'down')); return; }
       { const lf = io.subLeaf ? io.subLeaf(L.far) : 'no fold'; if (lf !== true) { if (L.wk) walkOff(L, 'no leaf'); walkWait(L, 'no leaf ' + lf); return; } }
       if (now - walkedAt < WALK_AGAIN_MS) { walkWait(L, 'walked lately'); return; }   // SUB.10.2: a walk that failed does not start again inside the longest wait
       const Z = L.farS1 || []; if (!Z.length) { walkWait(L, 'no far seats named'); return; }
@@ -1274,7 +1277,12 @@
       let pipeEnd = false, sbEnd = false;
       for (const L of links.values()) { if (L.state === 'closed' || !io.sub || io.sub() !== pipeNo(L.l)) continue; if (L.sb) sbEnd = true; else { pipeEnd = true; if (L.go !== p) return false; } }
       if (pipeEnd && n > 1) return false; if (sbEnd && !pipeEnd && n > 2) return false;
-      walkedAt = io.now(); log('sub-walk walk to=' + p + ' n=' + n); return true;
+      walkedAt = io.now(); log('sub-walk walk to=' + p + ' n=' + n);
+      // a seat that leaves the door ends no path of it: my standby end closes with my walk (the sim drops a standby whose end
+      // is no Section-1 seat of its door, subLost). Kept, it took the pipe over from the door I walked to once my pc to the
+      // pipe's end closed ("my live end left"), and the far side closed the pipe under the end still waiting to walk.
+      for (const L of Array.from(links.values())) if (L.sb && L.state !== 'closed' && io.sub() === pipeNo(L.l)) close(L, 'walked');
+      return true;
     }
     // A live end whose pipe is lost, or (SUB.8, 'healed') whose standby is on a better path: its standby seat takes the
     // pipe over. A lost pipe's part ends here; a pipe on TURN that gave way to a direct standby stays, as the standby.
