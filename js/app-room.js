@@ -60,6 +60,8 @@
     if (Number.isInteger(saved.first) && saved.first >= 0 && saved.first < sp.seats.length) s.first = saved.first;
     if (Number.isInteger(saved.round) && saved.round > 0) s.round = saved.round;
     s.moved = !!saved.moved;
+    // The last answer to each seat holder: a request the last share took is never taken twice (by its id).
+    if (saved.res && typeof saved.res === 'object') for (const k of Object.keys(saved.res)) { const r = saved.res[k]; if (r && typeof r === 'object' && s.seats.some((y) => y.k === k)) s.res[k] = { q: str(r.q, 24), ok: !!r.ok, why: str(r.why, 24) }; }
     // The line and the asks name people who were here then; a re-share asks them again.
     return s;
   }
@@ -115,7 +117,7 @@
       s.asks = s.asks.filter((x) => roster.has(x.k) && seatOf(x.k) < 0 && inLine(x.k) < 0);
       for (const x of s.line) x.nm = nameOf(x.k) || x.nm;
       for (const x of s.asks) x.nm = nameOf(x.k) || x.nm;
-      for (const k of Object.keys(s.res)) if (!roster.has(k)) delete s.res[k];
+      for (const k of Object.keys(s.res)) if (!roster.has(k) && seatOf(k) < 0) delete s.res[k];
       handOff();
     }
     const solo = () => sp.solo && roster.size === 1;
@@ -151,6 +153,9 @@
     //   | { op: 'seat', who, seat? } (admin: seat or line) | { op: 'unseat', who } | { op: 'deny', who }
     function request(k, q, now) {
       if (!roster.has(k)) return { ok: false, why: 'notHere' };
+      // one request, one effect: a request already answered (sent again, or carried to a new share) gets that answer
+      const done = q && q.q != null && s.res[k] && s.res[k].q === str(q.q, 24) ? s.res[k] : null;
+      if (done) return { ok: done.ok, why: done.why || undefined, again: true, changed: false };
       const before = copy(s);
       const r = apply(k, q || {});
       sync(now);
@@ -179,6 +184,8 @@
         case 'move': {
           if (sp.moves.indexOf(q.collection) < 0) return { ok: false, why: 'notMoves' };
           if (mine < 0) return { ok: false, why: 'watching' };
+          // a move made on the board of another round (a copy that had not caught up) is refused, never applied
+          if (q.round != null && Number(q.round) !== s.round) return { ok: false, why: 'stale' };
           if (sp.turns === 'order') {
             const at = s.seats[s.turn];
             if (s.turn !== mine && !(solo() && !at.k)) return { ok: false, why: 'notYourTurn', turn: at.seat, who: at.nm };
@@ -253,6 +260,7 @@
     notHere: 'You are not in this room.', watching: 'You are watching.', notYourTurn: 'It is not your turn.',
     adminOnly: 'Only the host can do that here.', full: 'This table is full.', noSeat: 'There is no such seat.',
     notMoves: 'That is not part of the game.', badOp: 'That is not something a room can do.', pending: 'The room did not answer.',
+    stale: 'The game moved on before it arrived.',
   };
 
   return { spec, fresh, adopt, create, view, WHY, MAX_SEATS };

@@ -379,6 +379,9 @@
       else if (kind === 8) fhDoorCall(j, by);   // the call passed to me: I call my friend on another network
     }
     // C++: mesh_fhop.inc:fhDoorWordAt   (the newcomer's end: a page that says a greeter called it to the door for me)
+    // TURN.5.4 (C++: mesh_turn.inc turnTick, the probe's dial landing): a seated page dialled me over the relay. The seat's own
+    // rule decides (a page in my view or on the list I hold is nothing new; one knock out at a time, bounded per page)
+    function doorDialIn(fromPeer) { const f = learnPeer(fromPeer), s = seat(); if (f < 0 || f === me || !s || dead || s.state !== 3 || typeof s.doorDial !== 'function') return; s.doorDial(f); }
     function doorWordIn(fromPeer) { const f = learnPeer(fromPeer), s = seat(); if (f < 0 || f === me || !s || dead || s.state === 3) return; s.doorWord(f); }
     // what the pc laws read (linkWhy LW_FHOP): my relay roles, as ints
     function fhRoles() {
@@ -498,6 +501,16 @@
       return never ? 0 : 3;
     };
 
+    // L8.47.5 (C++: mesh_net.inc:fabricDoorBlk): the door's word says the greeter sits on another network and one end of our
+    // pair is blocked while the other is open: only a carried path could hold it (fabricDoorNet 3), and its kind is the
+    // greeter's own measured one (a kind not measured yet is sent as open, never blocked)
+    const fabricDoorBlk = (a, g) => {
+      if (fabricDoorNet(a, g) !== 3) return false;
+      const w = doorNt.get(g); if (!w) return false;
+      const k = w.length > 9 ? +w.slice(9) : E.NAT_OPEN, n = (measure.nat ? measure.nat() : E.NAT_OPEN) | 0;
+      return n === E.NAT_BLOCKED || k === E.NAT_BLOCKED;
+    };
+
     // ---- rooms joined by relayed connections: the page's link manager (o.sub) ---------------------------------
     // o.sub.ask() -> true while the page's ask for the list of rooms is open (the seat keeps knocking), false: refused or
     // no service (the seat founds its room as before). o.sub.pipeEnds() -> [{ peer, sub, pipe, opener, video, up, standby }],
@@ -532,7 +545,7 @@
       fabricAdmitLog: noop, fabricDupMint: noop, fabricNoteBackoff: noop, fabricNoteReseat: noop, fabricNoteRollback: noop,
       fabricNoteSwap: noop, fabricVerdict: deaths.verdict, l18UxDeliv: noop, descEnd: noop, descNote: noop, g4Joined: noop,   // g4Joined: the sim's L40 contest lever only (X1 55c97d1)
       fabricFreeCells, fabricLieFor: () => null, fabricUnreachable, fhopActive: () => !!fh, fhopFriendFor,
-      fabricDoorNet, fabricSubAsk, fabricSubProbe, fabricPipePeers, fabricSubDoor, fabricSubRepipe, fabricSubGo, fabricSubWalk,
+      fabricDoorNet, fabricDoorBlk, fabricSubAsk, fabricSubProbe, fabricPipePeers, fabricSubDoor, fabricSubRepipe, fabricSubGo, fabricSubWalk,
       fabricMyTier: () => ((measure.tier ? measure.tier() : E.TIER_DESKTOP) | 0),
       fabricMyNat: () => ((measure.nat ? measure.nat() : E.NAT_OPEN) | 0),
       fabricLeft: () => leaveNow(false), fabricReloadBye: () => leaveNow(true),
@@ -572,7 +585,7 @@
       if (pcw.tick) guard('pcw.tick', pcw.tick)();
       // C++: mesh_net.inc:netTick's probe loop (L4.1.1): my network verdict landed or changed since the join read it: the seat's kind is
       // measured again, and a seeker at the door acts on it now (l411Verdict)
-      if (s && !dead && measure.nat) { const n0 = (measure.nat() | 0) & 0xff; if (n0 !== s.nat) { if (s.cnat === s.nat) s.cnat = n0; s.nat = n0; if (typeof s.l411Verdict === 'function') s.l411Verdict(); } }
+      if (s && !dead && measure.nat) { const n0 = (measure.nat() | 0) & 0xff; if (n0 !== s.nat) { if (s.cnat === s.nat) s.cnat = n0; s.nat = n0; if (typeof s.l411Verdict === 'function') s.l411Verdict(); } else if (s.state === 1 && s.islandAskAt < 0 && typeof s.l8475 === 'function' && s.l8475()) s.l411Verdict();   /* L8.47.5: my kind stands as measured and my own network tag is known (the door's word reads -1 until both are): the greeters I hold are read against them from that tick, not at the next list */ }
       if (s && !dead) {
         guard('pipeRead', () => pipeRead(s))();
         const due = [];
@@ -739,6 +752,7 @@
       dirFor, learnDir, relayBusyList,
       doorNote: (peer) => { const x = learnPeer(peer); if (x >= 0 && x !== me && pcw.doorNote) guard('doorNote', pcw.doorNote)(x); },   // FHOP.8: a door page's offer, or its answer to my offer, reached me over the relay (run.html onRelayPeer)
       doorCallIn: (fromPeer, kind, knockerPeer) => guard('doorCallIn', doorCallIn)(fromPeer, kind, knockerPeer),   // FHOP.8 kinds 7 and 8 off a dc
+      doorDialIn: (fromPeer) => guard('doorDialIn', doorDialIn)(fromPeer),   // TURN.5.4: a seated page's dial off the relay (run.html onRelayPeer)
       doorWordIn: (fromPeer) => guard('doorWordIn', doorWordIn)(fromPeer),   // FHOP.8.2: a called friend's door word off the relay (run.html onRelayPeer)
       // the mark my answer to peer carries back to it (A2), for the pc layer's answer
       mark: (peer) => { const x = ID.pid(ID.nid(peer)) === String(peer) ? ID.nid(peer) : learnPeer(peer); return x >= 0 && pcw.mark ? pcw.mark(x) : null; }, farView: (to) => farView(seat(), to),
