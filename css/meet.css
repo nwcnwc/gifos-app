@@ -3566,7 +3566,7 @@
   .ag-left { color: var(--c-gray); font-size: 13px; font-variant-numeric: tabular-nums; }
   .ag-now.over .ag-left { color: var(--c-red); }
   .ag-list { list-style: none; margin: 8px 0 0; padding: 0; counter-reset: ag; }
-  .ag-item { counter-increment: ag; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 4px 8px; border-radius: var(--r-md); color: var(--c-white); font-size: 15px; }
+  .ag-item { counter-increment: ag; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 44px; padding: 4px 8px; border-radius: var(--r-md); color: var(--c-white); font-size: 15px; }
   .ag-item::before { content: counter(ag); flex: 0 0 24px; color: var(--c-gray); font-size: 13px; font-variant-numeric: tabular-nums; }
   .ag-item.done { color: var(--c-gray); }
   .ag-item.cur { background: var(--c-ink); font-weight: 600; }
@@ -3574,7 +3574,7 @@
   .ag-t { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
   .ag-min { flex: 0 0 auto; color: var(--c-gray); font-size: 13px; font-weight: 400; }
   .ag-in-t, .ag-in-min { min-height: 40px; padding: 0 10px; border: 0; border-radius: var(--r-sm); background: var(--c-ink); color: var(--c-white); font: inherit; font-size: 15px; }
-  .ag-in-t { flex: 1 1 auto; min-width: 0; }
+  .ag-in-t { flex: 1 1 12em; min-width: 12em; }
   .ag-count { flex: 0 0 auto; color: var(--c-gray); font-size: 12px; font-variant-numeric: tabular-nums; }
   .ag-count.at { color: var(--c-yellow); }
   .ag-limit { flex: 1 0 100%; color: var(--c-yellow); font-size: 12px; }
@@ -3586,7 +3586,7 @@
   .for-ai-note { margin: 4px 0 0; color: var(--c-gray); font-size: 13px; }
   .ag-in-min { flex: 0 0 72px; width: 72px; }
   .ag-mini { flex: 0 0 auto; min-width: 40px; min-height: 40px; border: 0; border-radius: var(--r-pill); background: none; color: var(--c-gray); font: inherit; font-size: 16px; cursor: pointer; }
-  .ag-add { display: flex; gap: 8px; margin-top: 12px; }
+  .ag-add { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
   .ag-empty, .ag-note { color: var(--c-gray); font-size: 13px; margin: 12px 0 0; }
   .ag-who { margin-top: 16px; }
   .ag-wholb { color: var(--c-gray); font-size: 13px; margin-bottom: 8px; }
