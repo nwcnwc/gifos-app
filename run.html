@@ -13853,7 +13853,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         },
         tdoors: (q) => new Promise((res) => {   // q: device tags the relay says live or gone in its signed answer (a re-pipe ask, SUB.3)
           turnDoorsWait.push(res);
-          if (turnDoorsWait.length === 1) relaySendObj(Array.isArray(q) && q.length ? { t: 'tdoors', q } : { t: 'tdoors' });
+          if (turnDoorsWait.length === 1) {
+            // A page that holds no cell is no greeter, and the list it asks for says which it is (gr): the Worker refuses a seated seat of
+            // door 0's oldest room a new number (no-far, the root rule). A seat that left its cell (TURN.5.3) may still be listed: its
+            // requeue's unlist stands down while L16.12 keeps the listing, and the relay then signed gr for a joiner: refused, TURN_RETRY
+            // at the door, a room of its own founded at door 0 meanwhile (offices room 2026-11-19). The sim's Worker reads the seat itself.
+            { const r = turnRaw(); if (r && !(r.state === 3 && r.hasCoord)) relaySendObj({ t: 'unlist' }); }
+            relaySendObj(Array.isArray(q) && q.length ? { t: 'tdoors', q } : { t: 'tdoors' });
+          }
           const giveUp = () => { const i = turnDoorsWait.indexOf(res); if (i >= 0) { turnDoorsWait.splice(i, 1); res(null); } };   // no answer: no list this time
           setTimeout(giveUp, GifOS.meetTurn.FETCH_TIMEOUT_MS);
         }),
