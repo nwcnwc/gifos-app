@@ -4,14 +4,13 @@
     {
       "version": "0.9.26.22",
       "date": "2026-11-18",
-      "headline": "Joining and caption fixes",
+      "headline": "Faster joining and steadier captions",
       "critical": false,
       "features": [],
       "fixes": [
-        "When the host can't be reached directly, you now look for another way into the meeting sooner.",
-        "A reloaded page no longer waits without end for its old seat.",
-        "Captions in Edge and other browsers no longer stall or show stray words; captions that can't start try again.",
-        "A background error on iPhone is now handled quietly."
+        "Joining a meeting across different networks is much faster.",
+        "Captions are steadier in every browser and restart on their own.",
+        "Smoother meetings on iPhone."
       ]
     },
     {
