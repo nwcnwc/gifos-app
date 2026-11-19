@@ -150,6 +150,7 @@
         if (this.stranded) { if (TICK - this.strandedAt > K.STRAND_TTL) { this.stranded = false; this.lastReach = -1; this.joinStart = -1; this.join(); } wake(); return true; }   // R6
         if (this.l16WaveTick()) { wake(); return true; }   // L16: a silent ask wave: everyone left
         if (this.l16PlainHedge()) { wake(); return true; }   // FHOP.8.3: my one ask went quiet: one more greeter beside it
+        if (this.l8511Tick()) { wake(); return true; }   // L8.54.11: the kindless word is due: one knock
         this.subStall();   // JOIN.2 (mesh_roomterm.inc)
         if (this.entCheck()) { this.islandAsk(this.lastGreeters); wake(); return true; }   // L8.47
         if (this.islandTick()) { wake(); return true; }   // L8.1: nobody at the door answered
