@@ -29,6 +29,7 @@
     joining:        { tone: 'place', key: 'stJoiningTheMeetingYouPicked', en: 'Joining the meeting…' },
     joiningBroadcast: { tone: 'place', key: 'bcStageLine', en: 'Joining the broadcast…' },
     reconnecting:   { tone: 'place', key: 'sttReconnecting', en: 'Reconnecting…' },
+    relayFallback:  { tone: 'note', key: 'sttRelayFallback', en: 'The custom connection isn\'t answering, so this meeting uses the standard GifOS connection.' },
     backIn:         { tone: 'place', key: 'backIn', en: 'Getting you back in' },
     waitingRoom:    { tone: 'place', key: 'waitHere', en: 'In the waiting room' },
     waitingHost:    { tone: 'place', key: 'waitingForTheHost', en: 'Waiting for the host' },

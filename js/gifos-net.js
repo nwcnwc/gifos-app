@@ -99,6 +99,11 @@
     const prep = sockOpts && typeof sockOpts.prepare === 'function' ? sockOpts.prepare : null;
     const onBusy = sockOpts && typeof sockOpts.onBusy === 'function' ? sockOpts.onBusy : null;
     const onTokenRefused = sockOpts && typeof sockOpts.onTokenRefused === 'function' ? sockOpts.onTokenRefused : null;
+    // sockOpts.onConnectFail() (optional): a connect that ended without the socket ever opening (refused, closed
+    // before open, no answer by the deadline, or the ticket step got no answer). A socket that opened and then
+    // dropped is not one. The meeting page counts these to leave a relay that is not there.
+    const onConnectFail = sockOpts && typeof sockOpts.onConnectFail === 'function' ? sockOpts.onConnectFail : null;
+    const connectFailed = () => { if (onConnectFail && !closed) { try { onConnectFail(); } catch (e) {} } };
     let ws = null, closed = false, attempt = 0, timer = null, slow = false, stableTimer = null, bornTimer = null, slowTimer = null, preparing = false;
     s.busy = false; // the relay's spend breaker said "very busy" (4015) and no socket has stayed open since
     const queue = [];
@@ -137,7 +142,7 @@
         if (v === 'go') open();
         else { slow = true; setState('down'); schedule(); }
       };
-      const pt = setTimeout(() => go('wait'), TM.RELAY_TICKET_PREP_MS);
+      const pt = setTimeout(() => { if (!done) connectFailed(); go('wait'); }, TM.RELAY_TICKET_PREP_MS);
       let p;
       try { p = Promise.resolve(prep()); } catch (e) { p = Promise.resolve('go'); }
       p.then(go, () => go('wait'));
@@ -145,7 +150,8 @@
     function open() {
       if (closed) return;
       let sock;
-      try { sock = new WebSocket(makeUrl()); } catch (e) { schedule(); return; }
+      try { sock = new WebSocket(makeUrl()); } catch (e) { connectFailed(); schedule(); return; }
+      let opened = false;
       ws = sock;
       // A CONNECT that never completes has no close event. The first
       // attempt aborts at 3s. Later attempts grow to the 8s ceiling.
@@ -162,12 +168,14 @@
         if (ws !== sock || sock.readyState === 1) return;
         ws = null;
         try { sock.onerror = null; sock.close(); } catch (e) { /* already dead */ }
+        connectFailed();
         setState('down');
         schedule();
       }, connectDeadline);
       sock.onopen = () => {
         clearTimeout(bornTimer); clearTimeout(slowTimer);
         if (closed || ws !== sock) return;
+        opened = true;
         // OPEN is not yet GOOD. The relay turns a crowd away by ACCEPTING the
         // upgrade and closing with 1013 straight after (a Durable Object cannot
         // send a close code without accepting), so resetting the backoff here
@@ -190,6 +198,7 @@
         s.closes.push({ code: code == null ? 0 : code, at: Date.now() });
         if (s.closes.length > CLOSES_KEPT) s.closes.shift();
         if (onClose) { try { onClose(code == null ? 0 : code); } catch (e) {} }
+        if (!opened) connectFailed();
         const needsToken = code === 4010 && prep && /join token/.test(String((ev && ev.reason) || ''));
         if (code === 4016 || needsToken) { if (onTokenRefused) { try { onTokenRefused(code); } catch (e) {} } }
         else if (FATAL_CLOSES.indexOf(code) >= 0) s.rejected = code;

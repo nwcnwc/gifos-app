@@ -42,7 +42,7 @@
   const norm = (p) => p.replace(/^\.?\//, '');
 
   function relayUrl() {
-    try { return localStorage.getItem('gifos_relay') || root.GIFOS_RELAY || ''; }
+    try { return (root.GIFOS_storedRelay ? root.GIFOS_storedRelay() : localStorage.getItem('gifos_relay')) || root.GIFOS_RELAY || ''; }   // js/relay-config.js: on gifos.app only an address Settings wrote
     catch (e) { return root.GIFOS_RELAY || ''; }
   }
 
