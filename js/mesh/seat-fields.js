@@ -980,6 +980,7 @@
     ["goAt", "i32"],   // int = -1  (line 1922)
     ["walkedFrom", "i32"],   // int = -1  (line 1922)
     ["doorWalk", "<i32>"],   // OSet<int>  (line 1922)
+    ["cutHalf", "<i32>"],   // OSet<int>  (line 1922)
     ["line", "i32"],   // int = -1  (line 1923)
     ["sr", "i32"],   // int = 0  (line 1923)
     ["lineSeen", "{i32:(i32,i32)}"],   // OMap<int,pair<int,int>>  (line 1923)
