@@ -167,6 +167,7 @@
       ["com", "u32"],   // uint32_t  (line 1805)
       ["theirs", "u32"],   // uint32_t  (line 1805)
       ["at", "i32"],   // int  (line 1805)
+      ["due", "i32"],   // int  (line 1805)
     ],
     FarRec: [   // C++: mesh.cpp:Seat::FarRec
       ["ck", "u64"],   // uint64_t  (line 1830)

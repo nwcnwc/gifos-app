@@ -13,16 +13,57 @@
   const msg = req('./msg.js', 'meshMsg');
   const topo = req('./topo.js', 'meshTopo');
   const hash = req('./hash.js', 'meshHash');
-  const K = C_.consts;
+  const K = C_.consts, E = C_.enums;
   const { ckey, unckey: unck } = topo;
   const newMsg = (t) => msg.newMsg(t);
   const TWO32 = 4294967296;
 
+  // L40.6 THE ORDER IS DRAWN, AFTER BOTH SEATS HOLD THEIR IDS, AND A CELL IS DRAWN FOR ONCE (docs/healing-laws.md "L40.6").
+  // A page id is H(pubkey) of a key the page makes itself, so a rank of the cell and the id alone could be chosen. Each seat
+  // holds a secret lot per rival; a lot frame (CHALLENGE tag 28, signed by its author) leads every frame of the contest:
+  // the lot's commitment, and the open lot once the sender holds the rival's commitment. The rank takes both lots.
+  // C++: mesh_gaps4.inc:l40Com   [the commitment of x's lot for cell ck; 0 is "none"]
+  function l40Com(lot, x, ck) { const c = hash.fmix32(hash.hmix64(hash.hmixId(hash.hmix((hash.H_INIT ^ 0x6c6f74) >>> 0, lot >>> 0), x), ck)); return c ? c : 1; }
   // C++: mesh_gaps4.inc:l40Rank   [hmix64 of ck ^ 0x4c3430: the xor touches the low word only]
-  function l40Rank(ck, x) { return hash.hmix64(hash.hmixId(hash.H_INIT, x), hash.hi32(ck) * TWO32 + ((hash.lo32(ck) ^ 0x4c3430) >>> 0)); }
+  function l40Rank(ck, x, lots) { return hash.hmix64(hash.hmixId(hash.hmix(hash.H_INIT, lots >>> 0), x), hash.hi32(ck) * TWO32 + ((hash.lo32(ck) ^ 0x4c3430) >>> 0)); }
+  // The sim's lot (C++: the draw inside Seat::l40DrawOf): a hash of the run's seed, the tick, the two seats and the cell. Only a
+  // harness fabric calls it (fabricLot): a page has no fabricLot and draws from crypto.getRandomValues.
+  function simLot(seed0, tick, id, rival, ck) { const l = hash.fmix32(hash.hmix64(hash.hmixId(hash.hmixId(hash.hmix(((seed0 >>> 0) ^ 0x4c343036) >>> 0, tick >>> 0), id), rival), ck)); return l ? l : 1; }
+  function pageLot() { const a = new Uint32Array(1); (root.crypto || globalThis.crypto).getRandomValues(a); return a[0] ? a[0] : 1; }
 
   Seat.unit('mesh_gaps4.inc', {
     // C++: mesh_gaps4.inc:Seat::l40Go
+    // my lot for this rival in the cell I hold (made on the first frame of the contest; it lives as long as L25.9 counts one contest)
+    // C++: mesh_gaps4.inc:Seat::l40DrawOf
+    l40DrawOf(rival) {
+      if (rival < 0 || rival === this.id || !this.hasCoord || this.state !== 3) return null; const ck = ckey(this.coord);
+      let d = this.l40Dr.get(rival); if (d !== undefined && (d.ck !== ck || this.TICK - d.at > K.L25_ORD_AGE)) { this.l40Dr.delete(rival); d = undefined; }
+      if (d === undefined) { if (this.l40Dr.size >= 32) this.l40Dr.clear();
+        const lot = this.f.fabricLot ? this.f.fabricLot(this.id, rival, ck, this.TICK) : pageLot();
+        d = { ck, lot: lot >>> 0, com: 0, theirs: 0, at: this.TICK | 0, due: -1 }; this.l40Dr.set(rival, d); }
+      return d;
+    },
+    // The lot frame, ahead of the question, the answer or the tell it belongs to and by the same path (by: the arbiter, L25.18).
+    // C++: mesh_gaps4.inc:Seat::l40DrawPut
+    l40DrawPut(rival, by = -1) {
+      if (!this.w.lv.LINKMODEL) return; const d = this.l40DrawOf(rival); if (!d) return;
+      const c = newMsg('CHALLENGE'); c.tag = 28; c.ck = d.ck; c.from = this.id; c.id = this.id; c.sig = true; c.sigAt = this.TICK | 0; c.dc = l40Com(d.lot, this.id, d.ck); if (d.com) c.dn = d.lot;   // I open only to a rival that is bound
+      if (by >= 0 && by !== this.id && by !== rival) { c.via = rival; this.f.fabricCallFrame(this.id, by, c); } else this.f.fabricCallFrame(this.id, rival, c);
+    },
+    // a lot frame: passed on to the seat it is for (over my open channel), or taken from its author's own signed frame
+    // C++: mesh_gaps4.inc:Seat::l40DrawIn
+    l40DrawIn(m) {
+      if (m.tag !== 28) return false; if (!this.w.lv.LINKMODEL || !this.provenEv(m, m.id)) return true;
+      if (m.via >= 0 && m.via !== this.id) { const ok = this.f.fabricLinkState(this.id, m.via) === E.LS_OPEN; this.trace('L40-LOT-PASS', this.id, this.hasCoord ? this.coord : null, 'from=%d to=%d ok=%d', m.id, m.via, ok ? 1 : 0); if (ok) { const f = msg.clone(m); f.from = this.id; this.f.fabricCallFrame(this.id, m.via, f); } return true; }
+      this.l40DrawTake(m, m.id); return true;
+    },
+    // C++: mesh_gaps4.inc:Seat::l40DrawTake
+    l40DrawTake(m, rival) {
+      if (!m.dc || !this.hasCoord || this.state !== 3 || m.ck !== ckey(this.coord)) return; const d = this.l40DrawOf(rival); if (!d) return;
+      if (!d.com) d.com = m.dc >>> 0;   // the first commitment binds the rival for the life of my lot
+      if (m.dn && !d.theirs && l40Com(m.dn, rival, d.ck) === d.com) d.theirs = m.dn >>> 0;
+      this.trace('L40-LOT', this.id, this.coord, 'rival=%d bound=%d open=%d', rival, d.com === (m.dc >>> 0) ? 1 : 0, d.theirs ? 1 : 0);
+    },
     l40Go(rival, why) {
       if (rival >= 0 && rival !== this.id && this.hasCoord && this.state === 3) { const r = this.l828RingOf(rival); if (r >= 0 && r !== this.ringName() && this.ringOlder(r, this.lineAtOf(rival), this.ringName(), this.lineAt)) this.l851Note(r + 1, this.lineAtOf(rival)); }   // L8.5.1: I leave my cell to a lower ring
       this.l40To = rival; this.requeue(why); this.l40To = -1;
@@ -47,7 +88,7 @@
     l40Tell(rival, kept) {
       if (!this.w.lv.LINKMODEL || rival < 0 || rival === this.id || !this.hasCoord || this.state !== 3 || this.TICK - this.l2512TellAt <= K.L25_WAIT) return;
       this.l2512TellAt = this.TICK;
-      const c = newMsg('CHALLENGE'); c.ck = ckey(this.coord); c.from = this.id; c.tag = 27; c.hold = kept ? 1 : 0; this.f.fabricCallFrame(this.id, rival, c);
+      const c = newMsg('CHALLENGE'); c.ck = ckey(this.coord); c.from = this.id; c.tag = 27; c.hold = kept ? 1 : 0; this.l40DrawPut(rival);   /* L40.6: my lot, ahead of the tell */ this.f.fabricCallFrame(this.id, rival, c);
       this.trace('L40-TELL', this.id, this.coord, 'rival=%d kept=%d', rival, kept ? 1 : 0);
     },
 
@@ -63,9 +104,9 @@
       const told = this.l40ToldBy === m.id && this.TICK - this.l40ToldAt <= K.L25_WAIT;   // L25.12.1: the rival read my answer and told me it stays: my proof is none its view admits, so I order as it does
       if (mine && told) this.trace('L40-MINE-TOLD', this.id, this.coord, 'rival=%d', m.id);
       if (mine && !told) { this.trace('L40-MINE', this.id, this.coord, 'rival=%d', m.id); if (this.l40Arb || this.l25WitRival > 0) this.l40Tell(m.id, false); else this.l2512TellHeard(m.id); return true; }   // my claim carries a proof
-      this.l40Rev = true; const d = this.l40Decide(false);
+      const was = this.l40Rev; this.l40Rev = true; const d = this.l40Decide(false);
       if (d === 0) { this.l25WitPend = true; this.f.wake(this.id); return true; }
-      this.l40Rev = false; this.l40Act(d); return true;
+      this.l40Rev = false; if (was) this.l25WitPend = false;   /* L40.6: a later answer decided what this contest's own wait left pending */ this.l40Act(d); return true;
     },
 
     // C++: mesh_gaps4.inc:Seat::l40Act
@@ -75,13 +116,24 @@
       if (corr) this.l40Tell(this.l40Riv, this.l40Kept); else this.l2512TellHeard(this.l40Riv);
     },
 
+    // L40.6: the rival's lot frame may still be on its way (frames pass each other): the order waits for it inside L25.9's window
+    // C++: mesh_gaps4.inc:Seat::l40LotDue
+    l40LotDue(riv, deadline) {
+      if (deadline || (this.l40WonCk === ckey(this.coord) && this.l40WonRiv >= 0)) return false; const d = this.l40DrawOf(riv); if (!d || d.theirs) return false;
+      if (d.due < 0) d.due = this.TICK | 0;   // one clock for the contest
+      return this.TICK - d.due < K.L25_WAIT;   // L25_WIT_WAIT = L25_WAIT
+    },
     // L40.2 (b): am I first in the order of the two claims to my cell (read by L40.2 and by L25.12.1)
     // C++: mesh_gaps4.inc:Seat::l40First
     l40First(riv) {
-      const ck = ckey(this.coord), ra = l40Rank(ck, this.id), rb = l40Rank(ck, riv);
-      let first = ra < rb || (ra === rb && this.id < riv);
+      const ck = ckey(this.coord); let first, drawn = false;
+      if (this.l40WonCk === ck && this.l40WonRiv >= 0) { first = true; this.trace('L40-DRAWN', this.id, this.coord, 'rival=%d won=%d', riv, this.l40WonRiv); }   // L40.6 (4): a cell is drawn for once
+      else { const d = this.l40DrawOf(riv);
+        if (!d || !d.theirs) { first = true; this.trace('L40-NOLOT', this.id, this.coord, 'rival=%d bound=%d', riv, (d && d.com) ? 1 : 0); }   // L40.6 (3): no lot, no order
+        else { const lots = (d.lot ^ d.theirs) >>> 0, ra = l40Rank(ck, this.id, lots), rb = l40Rank(ck, riv, lots); first = ra < rb || (ra === rb && this.id < riv); drawn = true; } }
       { let ea = this.lineAtOf(riv), el = this.lineOf(riv); if ((ea < 0 || el < 0) && this.l25By >= 0 && this.l25By !== this.id) { ea = this.lineAtOf(this.l25By); el = this.lineOf(this.l25By); }
         if (this.coord.pc === 0 && this.lineAt >= 0 && ea >= 0 && ea !== this.lineAt && el >= 0 && el !== this.line && this.lineAt > ea) first = false; }   // L8.52.2: the seat of the younger room is never the first by the rank's coin
+      if (first && drawn) { this.l40WonCk = ck; this.l40WonRiv = riv; }   // the draw left me in my cell
       return first;
     },
 
@@ -97,6 +149,7 @@
       const corr = this.l40Arb || R > 0;
       if (!corr) { this.trace('L40-ALONE', this.id, this.coord, 'rival=%d kept=%d me=%d asked=%d', this.l40Riv, R, M, A); return 2; }
       if (this.l40ToldK && this.l40ToldBy === this.l40Riv) { this.trace('L40-ROOKED', this.id, this.coord, 'rival=%d kept=%d me=%d asked=%d', this.l40Riv, R, M, A); return 1; }
+      if (this.l40LotDue(this.l40Riv, deadline)) return 0;   // L40.6
       const first = this.l40First(this.l40Riv);
       this.trace('L40-ORDER', this.id, this.coord, 'rival=%d %s kept=%d me=%d asked=%d arb=%d', this.l40Riv, first ? 'first' : 'later', R, M, A, this.l40Arb ? 1 : 0);
       return first ? 2 : 1;
@@ -130,6 +183,6 @@
       return true;
     },
   });
-  GifOS.meshGaps4 = Object.freeze({ l40Rank });
+  GifOS.meshGaps4 = Object.freeze({ l40Rank, l40Com, simLot });
   if (isNode) module.exports = GifOS.meshGaps4;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -20,7 +20,7 @@
     l2512Tell(rival) {
       if (!this.w.lv.LINKMODEL || rival < 0 || rival === this.id || !this.hasCoord || this.state !== 3 || this.TICK - this.l2512TellAt <= K.L25_WAIT) return;
       this.l2512TellAt = this.TICK;
-      const c = newMsg('CHALLENGE'); c.ck = ckey(this.coord); c.from = this.id; c.tag = 27; if (this.l405Kept(rival)) { c.hold = 1; this.trace('L40.5-KEPT', this.id, this.coord, 'rival=%d me=%d heard=%d asked=%d', rival, this.l25WitMe, this.l25WitRival, this.l25WitAskedN); }   /* L40.5: the tell says my rook keeps me (gaps4.js) */ this.f.fabricCallFrame(this.id, rival, c);
+      const c = newMsg('CHALLENGE'); c.ck = ckey(this.coord); c.from = this.id; c.tag = 27; if (this.l405Kept(rival)) { c.hold = 1; this.trace('L40.5-KEPT', this.id, this.coord, 'rival=%d me=%d heard=%d asked=%d', rival, this.l25WitMe, this.l25WitRival, this.l25WitAskedN); }   /* L40.5: the tell says my rook keeps me (gaps4.js) */ this.l40DrawPut(rival);   /* L40.6: my lot, ahead of the tell */ this.f.fabricCallFrame(this.id, rival, c);
       this.trace('L25.12-TELL', this.id, this.coord, 'rival=%d', rival);
     },
 
@@ -37,9 +37,9 @@
     // C++: mesh_rcleft_l25.inc:Seat::l2512Rook
     l2512Rook(x) {
       if (this.l2512Q < 0 || this.l2512Q !== x) return false;
-      this.l2512Q = -1; this.l2512Rev = true; const d = this.l2512Decide(false);
+      this.l2512Q = -1; const was = this.l2512Rev; this.l2512Rev = true; const d = this.l2512Decide(false);
       if (d === 0) { this.l25WitPend = true; this.f.wake(this.id); return true; }
-      this.l2512Rev = false; if (d === 1) this.l40Go(x, 'L25.12-yield'); else this.l405Back(x);   // L40.5: a told seat its rook keeps says so (gaps4.js)
+      this.l2512Rev = false; if (was) this.l25WitPend = false;   /* L40.6 (as l40Unproven) */ if (d === 1) this.l40Go(x, 'L25.12-yield'); else this.l405Back(x);   // L40.5: a told seat its rook keeps says so (gaps4.js)
       return true;
     },
 
@@ -53,6 +53,7 @@
       if (N >= K.L25_WIT_MIN && M > R && 2 * M > N) { this.trace('L25.12-STAY', this.id, this.coord, 'kept=%d me=%d answered=%d', R, M, N); return 2; }
       if (this.l405Rooked()) { this.trace('L40.5-ROOKED', this.id, this.coord, 'kept=%d me=%d asked=%d', R, M, this.l25WitAskedN); return 1; }   // L40.5: the teller's rook keeps it, a witness of mine hears it, and my rook does not keep me (gaps4.js)
       if (!(this.l40Arb || R > 0)) { this.trace('L25.12-ALONE', this.id, this.coord, 'kept=%d me=%d answered=%d', R, M, N); return 2; }   // a rival nobody but itself speaks for moves nobody (L40.2)
+      if (this.l40LotDue(this.l25WitRivalId, deadline)) return 0;   // L40.6 (gaps4.js)
       const first = this.l40First(this.l25WitRivalId);
       this.trace('L25.12-ORDER', this.id, this.coord, 'rival=%d %s kept=%d me=%d answered=%d', this.l25WitRivalId, first ? 'first' : 'later', R, M, N);
       if (first) this.l40Tell(this.l25WitRivalId, this.l405Kept(this.l25WitRivalId));
