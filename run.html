@@ -32858,6 +32858,26 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       c.hidden = false;
       return c;
     }
+    // EARS ONLY ARE SPOT CHECKS. A page whose own engine is the browser's listens, by default, to one talking voice at a
+    // time for CT_SPOT_MS, then rests until CT_SPOT_EVERY_MS has passed: a quarter of one Whisper capture at most. A voice
+    // whose own captions lost this page's trust, or that its user put on this device's ears, is heard full time.
+    const capSpot = { id: '', until: 0, rest: 0, last: '' };
+    function capSpotQueue(queued, talking) {
+      const T = GifOS.timings, now = Date.now();
+      const full = queued.filter((pid) => capTrust.stateOf(pid, pid) === 'distrusted' || capTrust.choice(pid).mode === 'me');
+      const rest = queued.filter((pid) => full.indexOf(pid) < 0);
+      if (capSpot.id && (now >= capSpot.until || rest.indexOf(capSpot.id) < 0)) {
+        capSpot.last = capSpot.id; capSpot.id = ''; capSpot.rest = now + T.CT_SPOT_EVERY_MS - T.CT_SPOT_MS;
+      }
+      if (!capSpot.id && now >= capSpot.rest) {
+        const on = rest.filter((pid) => talking(pid));
+        const pick = on.find((pid) => pid !== capSpot.last) || on[0];
+        if (pick) { capSpot.id = pick; capSpot.until = now + T.CT_SPOT_MS; if (clog) clog('captrust spot', String(pick).slice(0, 6)); }
+      }
+      queued.length = 0;
+      for (const pid of full) queued.push(pid);
+      if (capSpot.id) queued.push(capSpot.id);
+    }
     function capCanEar() { return whisperSupported() && !phoneCaptions() && !CC_ON_PHONE; }
     // Sources for v other than the one shown: this device's ears, each writer with lines for v, the speaker's own.
     function capRows(v, withAuto) {
@@ -33743,6 +33763,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // into peers first, so eight silent row-mates filled it.
         const key = (a) => (capCovered(a) ? 4 : 0) + (stageSet.has(a) ? 0 : 2) + (talking(a) ? 0 : 1);
         queued.sort((a, b) => key(a) - key(b));
+        if (earsOnly && capTrust) capSpotQueue(queued, talking);
         const max = en ? Infinity : WSP_SCRIBE_MAX;
         let others = 0; // WSP_SCRIBE_MAX other voices, with or without my own capture
         for (const pid of queued) {
