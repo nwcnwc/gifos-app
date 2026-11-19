@@ -736,6 +736,8 @@
   "meet.stCarryNoWay": "Este navegador no puede unirse a una llamada: no tiene WebRTC ni audio WebCodecs.",
   "meet.stCarryLooking": "Uniéndote a través de un puesto de la reunión (este navegador no tiene WebRTC)…",
   "meet.stCarryUp": "En la reunión a través de otro puesto (este navegador no tiene WebRTC).",
+  "meet.stCarryLookingNoPath": "Uniéndote a través de un puesto de la reunión (las conexiones de este navegador no encuentran ninguna ruta de red)…",
+  "meet.stCarryUpNoPath": "En la reunión a través de otro puesto (las conexiones de este navegador no encuentran ninguna ruta de red).",
   "meet.stLoadIncomplete": "Esta página no terminó de cargar, así que no puede unirse de forma segura. Recarga la página para intentarlo de nuevo.",
   "meet.setGroupDebug": "Depuración",
   "meet.setDbgOn": "Registro de depuración",
