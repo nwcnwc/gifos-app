@@ -711,7 +711,9 @@ next person in line seated when a player leaves. People come from the room
 Write the game state with gifos.room.move, never with db.put: a plain put
 on a moves collection is refused, so is any write by a watcher or a player
 out of turn. Every call can reject with a sentence to show ("It is not
-your turn."). Use s.me.id (not gifos.me().id) to name players in your data:
+your turn."). A move is never lost: one made while the page is still
+catching up (back from the background) is held and sent when it has; a
+move made on the board of an earlier round is refused. Use s.me.id (not gifos.me().id) to name players in your data:
 it is the same person after a reload and in the next room. Render from
 s.seats and s.turn; show a seat whose here is 'away' as reconnecting and
 wait for it; never decide on your own that somebody left.

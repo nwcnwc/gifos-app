@@ -114,7 +114,10 @@
   "runtime.room.notMoves": "That is not part of the game.",
   "runtime.room.badOp": "That is not something a room can do.",
   "runtime.room.pending": "The room did not answer.",
+  "runtime.room.stale": "The game moved on before it arrived.",
   "runtime.room.asks": "{name} asks to play {app}.",
   "runtime.room.seat": "Seat",
-  "runtime.room.notNow": "Not now"
+  "runtime.room.notNow": "Not now",
+  "runtime.room.lost": "Your move in {app} was not made: {why}",
+  "runtime.room.ok": "OK"
 }

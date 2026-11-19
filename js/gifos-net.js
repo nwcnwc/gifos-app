@@ -965,7 +965,7 @@
     unlist: {},                                            // a seat that left Section 1 drops its greeter registration at once
     setpw: { pw: { str: 64, re: RELAY_PROOF_RE }, w: { obj: RELAY_ORDER, opt: 1 } },
     votekick: { devs: { list: 24, item: { str: 16, re: RELAY_DEV_RE } }, abs: { list: 24, item: { str: 16, re: RELAY_ABS_RE }, opt: 1 } },
-    tvouch: { to: { str: 16, re: RELAY_DEV_RE }, l: { str: 3, re: /^[ls][0-9]{1,2}$/ } },   // a seated greeter asks the relay to vouch for one TURN link (gifos shared/turn-ticket.js)
+    tvouch: { to: { str: 16, re: RELAY_DEV_RE }, l: { str: 3, re: /^[lsc][0-9]{1,2}$/ } },   // a seated greeter asks the relay to vouch for one TURN link (gifos shared/turn-ticket.js)
     capture: { tk: { obj: RELAY_TICKET }, w: { obj: RELAY_ORDER } },   // an open room taken by a $5/$10 subscriber: the meeting ticket and an order signed by its key
     capren: { tk: { obj: RELAY_TICKET } },                             // the captor's renewed ticket
     tdoors: { q: { list: 16, item: { str: 16, re: RELAY_DEV_RE }, opt: 1 } },   // the meeting's live subroom doors, signed by the relay for the TURN service; q: devices its signed answer says live or gone (a SUB.3 re-pipe ask)
