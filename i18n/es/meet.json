@@ -1044,5 +1044,6 @@
   "meet.stStageHostOnly": "Aquí solo un anfitrión puede subirte al escenario: no se pudo subir.",
   "meet.ccallNoteDev": "Solo anfitriones: cada dispositivo empieza a escribir las voces que oye. Cualquiera puede tocar CC para salir.",
   "meet.ccOnByHost": "Un anfitrión",
-  "meet.ccOnBy": "{by} activó los subtítulos en tu pantalla. Toca Subtítulos para ocultarlos."
+  "meet.ccOnBy": "{by} activó los subtítulos en tu pantalla. Toca Subtítulos para ocultarlos.",
+  "meet.chatLogAria": "Mensajes del chat"
 }

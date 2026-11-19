@@ -13,6 +13,43 @@ Install: it is a stdio MCP server. Add it to your client with
 "In short" and install section have the exact pinned line and a client config
 example). It needs Chrome or Edge on the computer and no hosted endpoint.
 
+## Join with your own browser (no install)
+
+Any AI agent with a real browser (one that runs JavaScript: ChatGPT agent
+mode, Claude in Chrome or computer use, Gemini in Chrome, a browser tool) can
+join a meeting itself. Asked "join this meeting and [do X]: <link>":
+
+1. Open the link with ?bot=1 added, e.g. https://gifos.app/meet/<room>?bot=1.
+   That is the voluntary bot tag: people see a "bot" badge on your tile, and
+   you join muted with the camera off.
+2. A box titled "This is how you'll appear" opens: type your name in "Your
+   name" ([data-agent="name-input"]) and press Save ([data-agent="name-save"]).
+3. You need no camera or microphone. Block or ignore any permission prompt:
+   the meeting goes on without it.
+4. Wait until the top bar ([data-agent="status"]) says "N in this meeting",
+   usually 5 to 15 seconds. "Step x of 11" means it is still connecting. A
+   blocked network is fine: the page switches to a free relay over port 443
+   by itself (voice and chat; video over a relay needs a plan).
+5. If the page asks for a room password, ask your human. Never guess one.
+6. Chat: Alt+C or the Chat button ([data-agent="chat-open"]); type in
+   "Message everyone" ([data-agent="chat-input"]) and press Enter or Send
+   ([data-agent="chat-send"]). Messages are in [data-agent="chat-log"].
+7. Transcript: Alt+T, or the Transcript tab ([data-agent="transcript-open"]);
+   lines are in [data-agent="transcript-log"]. Leave with Alt+Q.
+
+To speak with a generated voice or show generated video, keep the bot tag on,
+allow the microphone or camera for gifos.app, and press Unmute (Alt+A) or
+Start video (Alt+V).
+
+No browser? Tell your human to turn on your browser or agent tool, or to add
+the MCP server above. Never buy anything: for plans, tell your human to open
+https://gifos.app/meet, then More, then Subscription.
+
+The same steps, for your provider, from a stateless MCP server (Streamable
+HTTP, no sign-in, nothing to install): https://mcp.gifos.app/mcp
+Tools: how_to_join(url), how_to_chat, how_to_read_transcript, room_rules,
+check_my_setup, plans.
+
 Links in either form work: https://meet.gifos.app/<room> and
 https://gifos.app/meet/<room>.
 

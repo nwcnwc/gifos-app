@@ -1044,5 +1044,6 @@
   "meet.stStageHostOnly": "Nur ein Host kann Sie hier auf die Bühne holen — Ihr Schritt nach oben hat nicht geklappt.",
   "meet.ccallNoteDev": "Nur für Hosts – jedes Gerät beginnt, die gehörten Stimmen mitzuschreiben. Jeder kann auf CC tippen, um sich abzumelden.",
   "meet.ccOnByHost": "Ein Host",
-  "meet.ccOnBy": "{by} hat Untertitel für Ihren Bildschirm eingeschaltet. Tippen Sie auf Untertitel, um sie auszublenden."
+  "meet.ccOnBy": "{by} hat Untertitel für Ihren Bildschirm eingeschaltet. Tippen Sie auf Untertitel, um sie auszublenden.",
+  "meet.chatLogAria": "Chat-Nachrichten"
 }

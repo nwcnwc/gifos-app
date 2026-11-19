@@ -1044,5 +1044,6 @@
   "meet.stStageHostOnly": "Only a host can put you on the stage here — your step-up did not take.",
   "meet.ccallNoteDev": "Hosts only — every device starts writing down the voices it hears. Anyone can tap CC to opt out.",
   "meet.ccOnByHost": "A host",
-  "meet.ccOnBy": "{by} turned captions on for your screen. Tap Captions to hide them."
+  "meet.ccOnBy": "{by} turned captions on for your screen. Tap Captions to hide them.",
+  "meet.chatLogAria": "Chat messages"
 }
