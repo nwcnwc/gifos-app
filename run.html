@@ -41807,8 +41807,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // retry clocks, the admitter's vouches, and (meshTraceForTest) a ring of
       // the control frames this seat received and sent, by tick.
       meshSeatForTest: () => { const s = meshSeat(); if (!s) return null; const T = s.env.TICK; const ck = net.topo.ckey;
+        // The page view keys cells as "pc_r_i" and has no firstHandLive or sitting.
+        // Those live on the seat, under the integer cell key.
+        const raw = meshNode && meshNode.raw;
+        const occ = (s.occ && typeof s.occ.entries === 'function') ? s.occ : new Map();
+        const ik = (k) => { const p = String(k).split('_'); if (p.length !== 3) return NaN; const n = (+p[0]) * 65536 + (+p[1]) * 256 + (+p[2]); return n === n ? n : NaN; };
+        const live = (k) => { const n = ik(k); return !!(raw && n === n && raw.firstHandLive && raw.firstHandLive(n)); };
+        const sit = (raw && raw.sitting && typeof raw.sitting.entries === 'function') ? raw.sitting : new Map();
         return { tick: T, state: s.state, coord: s.hasCoord ? ck(s.coord) : null, lastAsked: s.lastAsked ? String(s.lastAsked).slice(0, 8) : null, findAckAt: s.findAckAt, retryAgo: T - s.retryAt, seatTries: s.seatTries, roster: (s.roster || []).map((e) => e.k + '=' + String(e.v).slice(0, 6)), greeters: (s.lastGreeters || []).map((g) => String(g).slice(0, 6)), greetersAgo: T - s.greetersAt, lastAckAgo: T - s.lastAck, seatedAgo: T - s.seatedAt,
-          occ: [...s.occ.entries()].map(([k, v]) => k + '=' + String(v).slice(0, 6) + (s.firstHandLive(k) ? '!' : '')), sitting: [...s.sitting.entries()].map(([k, v]) => k + '=' + String(v.joiner).slice(0, 6) + '@' + (T - v.at) + (v.pingAt >= 0 ? 'p' : '')), tlLog: (s.tlLog || []).slice(-6), moving: !!s.moving, drainAt: s.drainAt, stranded: !!s.stranded }; },
+          occ: [...occ.entries()].map(([k, v]) => k + '=' + String(v).slice(0, 6) + (live(k) ? '!' : '')), sitting: [...sit.entries()].map(([k, v]) => k + '=' + String(v && v.joiner).slice(0, 6) + '@' + (T - v.at) + (v.pingAt >= 0 ? 'p' : '')), tlLog: (s.tlLog || []).slice(-6), moving: !!s.moving, drainAt: s.drainAt, stranded: !!s.stranded }; },
       // The seat's decision trace (the sim's JSONL shape {t, s, e, c, d}) rides a page ring while DEBUG is on
       // (meshTraceSink, the seat world's trace sink); meet.js writes it into each participant's jsonl.
       meshTraceForTest: () => !!DEBUG_ON,
