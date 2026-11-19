@@ -503,6 +503,12 @@
       return never ? 0 : 3;
     };
 
+    // L8.54.11 (C++: mesh_net.inc:fabricDoorDue): the list I hold names the greeter on another network with a word that carries
+    // no kind yet (its tag, then nothing: it registered before its own probe's verdict)
+    const fabricDoorDue = (a, g) => {
+      if (a !== me || !fh || !fh.myTag) return false; const mine = fh.myTag(); if (!mine) return false;
+      const w = doorNt.get(g); return !!w && w.slice(0, 8) !== mine && !(w.length > 9);
+    };
     // L8.47.5 (C++: mesh_net.inc:fabricDoorBlk): the door's word says the greeter sits on another network and one end of our
     // pair is blocked while the other is open: only a carried path could hold it (fabricDoorNet 3), and its kind is the
     // greeter's own measured one (a kind not measured yet is sent as open, never blocked)
@@ -579,12 +585,6 @@
     for (const n of ['l18Route', 'l18Cell']) F[n] = guard(n, (pcw.fns && pcw.fns[n]) || (() => (n === 'l18Route' ? false : null)));
 
     // ---- the page's face ------------------------------------------------------------------------------------------
-    // L8.54.11 (C++: mesh_net.inc:fabricDoorDue): the list I hold names the greeter on another network with a word that carries
-    // no kind yet (its tag, then nothing: it registered before its own probe's verdict)
-    const fabricDoorDue = (a, g) => {
-      if (a !== me || !fh || !fh.myTag) return false; const mine = fh.myTag(); if (!mine) return false;
-      const w = doorNt.get(g); return !!w && w.slice(0, 8) !== mine && !(w.length > 9);
-    };
     // C++: mesh.cpp:doTick, for one seat: link tick, deliver, tick the seat if woken; then the clock moves on.
     function tick() {
       const s = seat();
