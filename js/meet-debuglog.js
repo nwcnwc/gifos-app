@@ -260,6 +260,7 @@
   //   lang, ld  the line's language, and 1 when the engine detected it
   //   res   what this page did: kept, sent, dup, floor, en, rate, gate (the page's
   //         own echo gate threw it away), mute
+  //   nt    a short mark on the line: lang, who, echo or hard; empty when there is none
   // Never the line's text.
   const CAP_ENG = ['browser', 'whisper', 'local', 'native'];
   const CAP_INP = ['mic', 'track', 'mix', 'rx'];
