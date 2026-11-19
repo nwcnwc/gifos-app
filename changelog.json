@@ -2,6 +2,17 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.26.24",
+      "date": "2026-11-18",
+      "headline": "More reliable joining",
+      "critical": false,
+      "features": [],
+      "fixes": [
+        "Joining is more reliable when someone joins from a phone.",
+        "Meetings always connect, even if a saved connection setting stops working."
+      ]
+    },
+    {
       "version": "0.9.26.23",
       "date": "2026-11-18",
       "headline": "Clearer meetings and a simpler Subscription window",

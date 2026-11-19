@@ -1044,5 +1044,6 @@
  "meet.stStageHostOnly": "这里只有主持人可以让你上台——上台没有成功。",
  "meet.ccallNoteDev": "仅限主持人——每台设备都会开始记录听到的声音。任何人都可以点 CC 退出。",
  "meet.ccOnByHost": "主持人",
- "meet.ccOnBy": "{by} 为你的屏幕开启了字幕。点“字幕”可隐藏。"
+ "meet.ccOnBy": "{by} 为你的屏幕开启了字幕。点“字幕”可隐藏。",
+ "meet.sttRelayFallback": "自定义连接没有响应，因此本次会议使用 GifOS 标准连接。"
 }

@@ -3575,7 +3575,10 @@
     opts = opts || {};
     closeContext();
     if (I18N) await I18N.load(['settings', 'common']).catch(() => null); // before any t() below
-    let relay = ''; try { relay = localStorage.getItem('gifos_relay') || ''; } catch (e) {}
+    // The field shows the address that is in effect: on gifos.app only one this field saved (gifos_relay_chosen,
+    // the rule of js/relay-config.js GIFOS_storedRelay, which index.html does not load).
+    let relay = '';
+    try { const v = localStorage.getItem('gifos_relay') || ''; relay = (!/(^|\.)gifos\.app$/i.test(location.hostname) || localStorage.getItem('gifos_relay_chosen') === v) ? v : ''; } catch (e) {}
 
     // Storage facts for the Advanced section.
     const est = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate().catch(() => null) : null;
@@ -3908,7 +3911,10 @@
       const relayEl = box.querySelector('#set-relay');
       const nameEl = box.querySelector('#set-name');
       const v = relayEl ? relayEl.value.trim() : '';
-      try { if (v) localStorage.setItem('gifos_relay', v); else localStorage.removeItem('gifos_relay'); } catch (e) {}
+      try {
+        if (v) { localStorage.setItem('gifos_relay', v); localStorage.setItem('gifos_relay_chosen', v); }   // chosen: the mark that this field set it
+        else { localStorage.removeItem('gifos_relay'); localStorage.removeItem('gifos_relay_chosen'); }
+      } catch (e) {}
       if (nameEl) store.setName(nameEl.value);
       if (box._avatarDraft !== undefined) {
         store.setAvatar(box._avatarDraft);
