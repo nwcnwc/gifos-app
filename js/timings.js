@@ -48,6 +48,11 @@
     CHAT_PER_10S: 20,   // count
     CHAT_SLOW_MS: 10000,   // ms
     CHROME_IDLE_MS: 3000,   // ms
+    CT_KEEP_MS: 60000,   // ms
+    CT_PAD_MS: 2500,   // ms
+    CT_SETTLE_MS: 3000,   // ms
+    CT_SPOT_EVERY_MS: 60000,   // ms
+    CT_SPOT_MS: 15000,   // ms
     DARK_RESUME_MS: 12000,   // ms
     DBG_METER_BOOT_MS: 1000,   // ms
     DBG_METER_BOOT_RETRY_MS: 2000,   // ms
