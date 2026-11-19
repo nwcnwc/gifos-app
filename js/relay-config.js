@@ -14,6 +14,26 @@
  */
 window.GIFOS_RELAY = 'wss://relay.gifos.app';
 
+// WHICH STORED ADDRESS COUNTS. On gifos.app the address in gifos_relay counts
+// only when Settings → Your own connection wrote it: Settings writes the same
+// address to gifos_relay_chosen, and nothing else does. An address left there
+// by a test harness or an older page is ignored, so a dead one can never hold
+// a join at the door. A local test site (any other host) reads gifos_relay as
+// before. ?relay= in the page's own link is read by the page and wins over both.
+window.GIFOS_relayProd = function (host) {
+  try { return /(^|\.)gifos\.app$/i.test(String(host == null ? window.location.hostname : host)); } catch (e) { return false; }
+};
+window.GIFOS_storedRelay = function () {
+  try {
+    const v = window.localStorage.getItem('gifos_relay') || '';
+    if (!v || !window.GIFOS_relayProd()) return v;
+    return window.localStorage.getItem('gifos_relay_chosen') === v ? v : '';
+  } catch (e) { return ''; }
+};
+// A relay other than the standard one that has not answered after this many
+// connects is left for the standard one (run.html relayConnectFailed).
+window.GIFOS_RELAY_FALLBACK_FAILS = 2;
+
 // The relay's ADDRESS-ATTESTATION public keys, as
 // { kid: base64 raw Ed25519 public key }, where
 // kid is the first 16 hex chars of SHA-256 over the raw key bytes. A meeting
