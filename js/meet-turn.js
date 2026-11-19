@@ -563,6 +563,7 @@
   //   dial(pid); reset(pid) (a fresh pc on the new settings, no dial); restart(pid, l) (move a live pc onto new settings)
   //   keep(pid) (the seat holds this pc: an L28 keep); drop(pid, why) (the TURN pc ends)
   //   subs() → [{ key, tier, ticket }] verified subscribers present (subsPresent: key order), each with its meeting ticket
+  //   noPc() → this page has no usable pc (it gathers no candidate) and is carried instead (true: it has left the mesh)
   //   web() → this browser can run the web path; turnPath(pid) → { at, relay }: when my connection of that pair began
   //   looking for its relay path (0: not yet) and whether it found one; webOpen(pid, { url, auth }); webAuth(pid, auth);
   //   webUp(pid) → the web path carries end to end; webClose(pid)                                    (TURN.18)
@@ -729,6 +730,9 @@
     // budget starts again, since the first one was spent learning that the relay protocol does not pass.
     function webStart(L, mine, host) {
       if (L.state === 'closed' || L.state === 'up') return;
+      // no usable pc here (its connection gathers no candidate: the web path's in-page pair could not connect either): the
+      // page is carried by a seat instead (run.html carryInstead, docs/turn-carry.md). The link ends with the mesh it left.
+      if (io.noPc && io.noPc()) { if (!L.noPc) { L.noPc = true; log('turn-web ' + short(L.far) + ' no usable connection here: carried instead'); } return; }
       if (!io.web || !io.web()) { if (!L.webNo) { L.webNo = true; log('turn-web ' + short(L.far) + ' not in this browser'); } return; }
       if (!L.web) {
         L.web = true; L.webMine = !!mine; L.askAt = io.now();
@@ -739,7 +743,7 @@
       if (host && !L.opener && L.webHost !== host) { L.webHost = host; if (L.webOpen) { L.webOpen = false; try { io.webClose(L.far); } catch (e) {} } }
       webGo(L);
     }
-    function webSay(L) { L.webSaidAt = io.now(); const f = { k: 'tv', q: 'w', l: L.l }; if (L.opener && L.webHost) f.m = L.webHost; io.sendTv(L.far, f); }
+    function webSay(L) { if (L.noPc) return; L.webSaidAt = io.now(); const f = { k: 'tv', q: 'w', l: L.l }; if (L.opener && L.webHost) f.m = L.webHost; io.sendTv(L.far, f); }
     // p: the link's id (both ends derive it from their two ids): two links of a room may share a link name, and the
     // server pairs the two ends of THIS one by it
     function webCred(L) { const g = L.cred && L.cred.servers(); return g && g[0] ? { u: g[0].username, c: g[0].credential, p: L.id } : null; }

@@ -114,7 +114,10 @@
   "runtime.room.notMoves": "这不属于游戏。",
   "runtime.room.badOp": "房间不能这样做。",
   "runtime.room.pending": "房间没有回应。",
+  "runtime.room.stale": "在它到达之前，游戏已经继续了。",
   "runtime.room.asks": "{name} 请求加入 {app}。",
   "runtime.room.seat": "给座位",
-  "runtime.room.notNow": "暂不"
+  "runtime.room.notNow": "暂不",
+  "runtime.room.lost": "你在{app}中的这一步没有走成：{why}",
+  "runtime.room.ok": "好"
 }
