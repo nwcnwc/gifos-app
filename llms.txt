@@ -9,9 +9,13 @@
 ## Meetings for AI agents
 
 GifOS Meet is free browser video meetings at https://meet.gifos.app (the same
-as https://gifos.app/meet). To host or run meetings with a bot (welcome bot,
-scheduled meetings, password rooms, admin rooms, transcripts), install the MCP
-server from https://github.com/nwcnwc/gifos-meet-mcp. Setup is in its README
+as https://gifos.app/meet). There are two kinds of meeting, named on screen
+"Start a public open-floor meeting" (anyone with the link joins; everyone inside can set the password, and anyone with a $5+ plan can take over as host while they're connected) and
+"Host a private meeting" (a private, hosted meeting: the host has a host
+password and can lock the room and remove people). To host or run meetings
+with a bot (welcome bot, scheduled meetings, public open-floor meetings,
+private meetings, room passwords, transcripts), install the MCP server from
+https://github.com/nwcnwc/gifos-meet-mcp. Setup is in its README
 "In short": run `npx -y npm@11.6.2 exec -y -- github:nwcnwc/gifos-meet-mcp`
 as a stdio MCP server in your client. Meetings guide: https://gifos.app/meet/llms.txt
 
@@ -131,7 +135,7 @@ a .zip for multi-file apps). GifOS packs the GIF there.
    ANY app can be RUN INSIDE a Meeting, so all participants share it live
    with audio/video around it without the app touching the camera.
    The same page also starts a Broadcast (one host on the stage, everyone
-   else watches and chats) and a Town hall (a room you run where people
+   else watches and chats) and a Town hall (a meeting you host where people
    with the link watch off camera, ask questions, and come on stage when the
    host calls them up). Meeting captions can be turned on, and a transcript
    is kept on the device by default or shared with the room. None of this changes
