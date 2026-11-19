@@ -1213,6 +1213,7 @@
     // lost: every verdict was 0 ("no answer: no cut") until that connection closed and the next question went by the relay
     // (offices room 2026-11-19: a deep seat asked 5 rounds, 70 s, into dead channels; the 6th was answered in 130 ms).
     const cuts = new Map();   // peer id -> { at, ans, v }
+    const cutUnsent = new Set();
     const sendDoor = (to, f) => (io.sendTvDoor ? io.sendTvDoor(to, f) : io.sendTv(to, f));
     function cutHeard(from, f) {
       if (f.b === undefined) { sendDoor(from, { k: 'tv', q: 'c', l: 's0', b: 1 }); return; }   // asked: my page runs, I answer by the same way
@@ -1221,13 +1222,19 @@
     function cutProbe(pid, now) {
       if (!pid || pid === io.me()) return 0;
       if (io.pcUp && io.pcUp(pid)) return 1;
+      // A friend's carry is a path only off TURN at both hops (the sim: grpReach0 to the friend and from it to x). A mate that
+      // re-entered and holds the new subroom's TURN pipe to x is no path of the room I still sit in: read as one, a deep seat
+      // answered "2" by every greeter stayed in its dead cell round after round, deaf (offices room 2026-11-19: 5 rounds, 60 s).
+      if (io.plainFriend && io.plainFriend(pid)) return 1;
       let c = cuts.get(pid);
       if (c && c.v >= 0 && now - c.vAt > ASK_MS) { cuts.delete(pid); c = null; }   // a verdict lives one dial: then ask again
       if (!c) {
         c = { at: now, ans: false, v: -1, vAt: 0 }; cuts.set(pid, c); if (cuts.size > 64) cuts.delete(cuts.keys().next().value);
-        sendDoor(pid, { k: 'tv', q: 'c', l: 's0' });
+        // a question that never left (my door socket is not there yet) is no dial: asked again the next time the law reads it
+        { const r = sendDoor(pid, { k: 'tv', q: 'c', l: 's0' }); if (r && typeof r.then === 'function') r.then((ok) => { if (ok === false && cuts.get(pid) === c && !c.ans) { cuts.delete(pid); if (!cutUnsent.has(pid)) { cutUnsent.add(pid); log('cut-probe unsent ' + short(pid)); } } else cutUnsent.delete(pid); }, () => {}); }
         try { if (io.probeDoor) io.probeDoor(0, [pid]); } catch (e) {}
-        log('cut-probe ask ' + short(pid)); return 0;
+        if (!cutUnsent.has(pid)) log('cut-probe ask ' + short(pid));   // (an unsent question is said once: its retry is silent)
+        return 0;
       }
       if (c.v >= 0) return c.v;
       if (now - c.at < ASK_MS) return 0;

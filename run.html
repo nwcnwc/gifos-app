@@ -13874,7 +13874,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         directSeen: (pid) => turnDirect.has(pid),
         directForget: (pid) => { turnDirect.delete(pid); },
         sendTv: (pid, f) => { const p = peers.get(pid); if (p && p.dc && p.dc.readyState === 'open') { try { dcSend(p, f); return; } catch (e) {} } relaySendSealed(pid, 'tv', f); },
-        sendTvDoor: (pid, f) => { relaySendSealed(pid, 'tv', f); },   // TURN.5.3: the question of a cut and its answer go by the door, never into a channel a silent firewall may have killed
+        sendTvDoor: (pid, f) => relaySendSealed(pid, 'tv', f),
+        plainFriend: (pid) => turnFriend(pid),   // TURN.5.3: a friend carries pid off TURN at both hops   // TURN.5.3: the question of a cut and its answer go by the door, never into a channel a silent firewall may have killed
         askVouch: (dev, l) => relaySendObj({ t: 'tvouch', to: dev, l }),
         ask: GifOS.meetTurn.askIce(window.fetch.bind(window)),
         // THE SUBROOM ASK (js/meet-turn.js): who asks, the relay's signed list of the meeting's doors, my door, the plan's
