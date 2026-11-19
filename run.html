@@ -40240,6 +40240,28 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return appStageState();
     };
     window.appStagePlanForTest = appStagePlan;
+    // gifos.room (js/app-room.js): the people an app's session may seat are this page's own roster, nothing else.
+    // Each person is named by the room id their OWN status carries (rk): a person whose status this page does not
+    // hold, or whose status names no room id, is nobody the app can seat. The runtime hands this page the room id of
+    // its own person key; it rides this page's status from then on. here = heard within the fresh window; away =
+    // still on the roster (the away and link holdovers, the seat's lease) but quiet: the seat waits exactly as long.
+    window.__gifosRoom = (op, args) => {
+      if (op !== 'roster') return { on: false };
+      const k = args && typeof args.k === 'string' && /^[0-9a-f]{16}$/.test(args.k) ? args.k : '';
+      if (k && myStatus.rk !== k) { myStatus.rk = k; try { broadcastStatus(); } catch (e) {} }
+      if (!myId || BROADCAST) return { on: false };
+      const people = [{ k: myStatus.rk || '', pid: myId, name: myName(), admin: !!amAdmin, here: 'here', me: true }];
+      const seen = new Set([myId]);
+      for (const pid of rosterIds) {
+        if (!pid || seen.has(pid)) continue;
+        seen.add(pid);
+        const st = statusOf.get(pid);
+        if (!st || typeof st.rk !== 'string' || !/^[0-9a-f]{16}$/.test(st.rk)) continue;
+        const p = peers.get(pid);
+        people.push({ k: st.rk, pid, name: (p && p.name) || rosterNames[pid] || '', admin: admins.includes(pid), here: Date.now() - stSeen(st) < GifOS.timings.APP_ROOM_AWAY_MS ? 'here' : 'away', me: false });
+      }
+      return { on: true, kind: hasAdminRoom() ? 'admin' : 'open', admin: !!amAdmin, me: myId, people: people.filter((x) => x.k) };
+    };
     // ---- run a GIF app that isn't on this computer (file or link) ----
     function showAddErr(msg) { const el = document.getElementById('app-add-err'); if (!el) return; el.textContent = msg || ''; el.style.display = msg ? '' : 'none'; }
     // Put a GIF app on this device: { fileId, name } or { error }.
