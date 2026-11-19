@@ -156,7 +156,7 @@
   function roomAskBar(v, appName, call) {
     if (typeof document === 'undefined' || !document.body) return;
     let el = document.getElementById('gifos-room-ask');
-    const ask = v && v.admin && v.asks && v.asks[0];
+    const ask = v && v.host && v.asks && v.asks[0];
     if (!ask) { if (el) el.remove(); return; }
     if (el && el.dataset.who === ask.id) return;
     if (!el) {
@@ -4165,7 +4165,7 @@
           if (rh) return q.op === 'state' ? rh.state() : rh.call(q, rec);
           if (q.op !== 'state') throw new Error('This app declares no room.');
           // No session declared: the room's people, read-only (gifos.people()).
-          return personKey().then((me) => ({ on: false, people: roomRoster(me).people.map((x) => ({ id: x.k, name: x.name || '', me: !!x.me, admin: !!x.admin, here: x.here === 'away' ? 'away' : 'here' })) }));
+          return personKey().then((me) => ({ on: false, people: roomRoster(me).people.map((x) => ({ id: x.k, name: x.name || '', me: !!x.me, host: !!x.admin, here: x.here === 'away' ? 'away' : 'here' })) }));
         }).then((result) => reply({ ok: true, result }), (err) => reply({ ok: false, error: String(err && err.message || err) }));
       }
       else if (d.type === 'stage') {

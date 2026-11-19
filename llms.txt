@@ -333,7 +333,7 @@ WHO/WHAT AM I
                                when running on the owner's computer — host
                                or solo; false on a guest)
    await gifos.me()         -> { id, name }   (per-browser identity)
-   await gifos.people()     -> [{ id, name, me, admin, here }] — the people in
+   await gifos.people()     -> [{ id, name, me, host, here }] — the people in
                                this room (a meeting or an app room), read-only,
                                from the room's own roster; just you when alone.
                                here: 'here' | 'away' (reconnecting).
@@ -691,7 +691,7 @@ next person in line seated when a player leaves. People come from the room
    gifos.room.subscribe(s => draw(s))  // now and on every change; returns unsubscribe
    await gifos.room.state()            // the same object, once
    await gifos.room.join([seat])       // ask to play (a free seat, else the line; in a
-                                       //   hosted room the host is asked)
+                                       //   private meeting the host is asked)
    await gifos.room.leave()            // give up my seat: I watch
    await gifos.room.move(col, record [, { keep: true }])
                                        // my move: writes record into a moves collection
@@ -702,11 +702,11 @@ next person in line seated when a player leaves. People come from the room
    await gifos.room.seat(id, seat|null), gifos.room.deny(id)   // hosts only
    await gifos.people()                // the room's people, the same list as s.people
 
-   s = { on, kind: 'open'|'admin', admin, live,
+   s = { on, kind: 'open'|'admin', host, live,
          me: { id, name, seat, role: 'player'|'watcher'|'waiting'|'asking' },
          seats: [{ seat, id, name, here: 'here'|'away'|'open' }],
          turn, myTurn, round, ready, line: [{id,name}], asks: [{id,name}],
-         people: [{ id, name, me, admin, here }] }
+         people: [{ id, name, me, host, here }] }
 
 Write the game state with gifos.room.move, never with db.put: a plain put
 on a moves collection is refused, so is any write by a watcher or a player
@@ -716,9 +716,9 @@ it is the same person after a reload and in the next room. Render from
 s.seats and s.turn; show a seat whose here is 'away' as reconnecting and
 wait for it; never decide on your own that somebody left.
 
-The room type decides, not your app: in an open meeting or app room a
-join takes a free seat at once and any player starts the next round; in a
-hosted meeting or an OWNED app room the host gives the seats (a guest's
+The meeting type decides, not your app: in a public open-floor meeting
+or a shared app a join takes a free seat at once and any player starts the next round; in a
+private meeting, or an app shared with a link you own, the host gives the seats (a guest's
 join is an ask the host answers on their own screen), and only the host
 can seat or unseat people.
 

@@ -231,11 +231,11 @@
     const mine = s.seats.find((x) => x.k && x.k === me);
     const role = mine ? 'player' : (s.line || []).some((x) => x.k === me) ? 'waiting' : (s.asks || []).some((x) => x.k === me) ? 'asking' : 'watcher';
     const turn = sp.turns === 'order' && s.seats[s.turn] ? s.seats[s.turn].seat : null;
-    const ppl = (people || []).map((p) => ({ id: p.k, name: p.name || '', me: !!p.me, admin: !!p.admin, here: p.here === 'away' ? 'away' : 'here' }));
+    const ppl = (people || []).map((p) => ({ id: p.k, name: p.name || '', me: !!p.me, host: !!p.admin, here: p.here === 'away' ? 'away' : 'here' }));
     const meRow = ppl.find((p) => p.me);
     const res = s.res && s.res[me];
     return {
-      on: true, kind: kind === 'admin' ? 'admin' : 'open', admin: !!amAdmin, live: ppl.filter((p) => !p.me).length > 0,
+      on: true, kind: kind === 'admin' ? 'admin' : 'open', host: !!amAdmin, live: ppl.filter((p) => !p.me).length > 0,
       me: { id: me, name: meRow ? meRow.name : '', seat: mine ? mine.seat : null, role },
       seats, turn,
       myTurn: !!mine && (sp.turns === 'free' || turn === mine.seat),
