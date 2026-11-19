@@ -13861,6 +13861,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         directSeen: (pid) => turnDirect.has(pid),
         directForget: (pid) => { turnDirect.delete(pid); },
         sendTv: (pid, f) => { const p = peers.get(pid); if (p && p.dc && p.dc.readyState === 'open') { try { dcSend(p, f); return; } catch (e) {} } relaySendSealed(pid, 'tv', f); },
+        sendTvDoor: (pid, f) => { relaySendSealed(pid, 'tv', f); },   // TURN.5.3: the question of a cut and its answer go by the door, never into a channel a silent firewall may have killed
         askVouch: (dev, l) => relaySendObj({ t: 'tvouch', to: dev, l }),
         ask: GifOS.meetTurn.askIce(window.fetch.bind(window)),
         // THE SUBROOM ASK (js/meet-turn.js): who asks, the relay's signed list of the meeting's doors, my door, the plan's
@@ -13873,7 +13874,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         },
         tdoors: (q) => new Promise((res) => {   // q: device tags the relay says live or gone in its signed answer (a re-pipe ask, SUB.3)
           turnDoorsWait.push(res);
-          if (turnDoorsWait.length === 1) relaySendObj(Array.isArray(q) && q.length ? { t: 'tdoors', q } : { t: 'tdoors' });
+          if (turnDoorsWait.length === 1) {
+            // A page that holds no cell is no greeter, and the list it asks for says which it is (gr): the Worker refuses a seated seat of
+            // door 0's oldest room a new number (no-far, the root rule). A seat that left its cell (TURN.5.3) may still be listed: its
+            // requeue's unlist stands down while L16.12 keeps the listing, and the relay then signed gr for a joiner: refused, TURN_RETRY
+            // at the door, a room of its own founded at door 0 meanwhile (offices room 2026-11-19). The sim's Worker reads the seat itself.
+            { const r = turnRaw(); if (r && !(r.state === 3 && r.hasCoord)) relaySendObj({ t: 'unlist' }); }
+            relaySendObj(Array.isArray(q) && q.length ? { t: 'tdoors', q } : { t: 'tdoors' });
+          }
           const giveUp = () => { const i = turnDoorsWait.indexOf(res); if (i >= 0) { turnDoorsWait.splice(i, 1); res(null); } };   // no answer: no list this time
           setTimeout(giveUp, GifOS.meetTurn.FETCH_TIMEOUT_MS);
         }),
@@ -18303,6 +18311,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           tier: () => { const E = GifOS.meshConsts.enums, hc = navigator.hardwareConcurrency | 0; return IS_MOBILE || (hc > 0 && hc <= 2) ? E.TIER_MOBILE : E.TIER_DESKTOP; },   // a 2-core desktop carries like a phone
           nat: () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' ? E.NAT_BLOCKED : directPath === 'strict' ? E.NAT_STRICT : E.NAT_OPEN; },
           probed: () => directPath === 'ok' || directPath === 'strict' || directPath === 'blocked',   // L8.54.4: my own network's verdict is in
+          noCand: () => pcGathers === false,   // L8.54.10: my probe connection finished gathering with no candidate: I meet nobody
           lgHealth: () => lgHealth(), lgCamOn: () => myStatus.camOff === false, lgWoke: () => lgWoken.size, lgStarve: () => lgStarvedNow(), lgLeave: () => lgLeave(),
         },
         // The seat's pcs (js/mesh/page/env.js calls these; it decides, the page carries out).

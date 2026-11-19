@@ -881,7 +881,7 @@
     let lastRegWord = '';
     const netWord = () => { const t = opts.netTag ? String(opts.netTag() || '') : '', k = opts.netKind ? opts.netKind() : -1; return /^[0-9a-f]{8}$/.test(t) ? t + ':' + (k === 0 || k === 1 || k === 2 ? k : '') : ''; };
     const netWordBlob = (b) => { const w = netWord(); return w ? Object.assign({}, b, { nw: w.slice(0, 8) + w.slice(9) }) : b; };   /* one short field (the tag, then the kind digit): the sealed address is a fixed 128 bytes */
-    function netWordChanged() { if (stopped || !seat || !iAmAGreeter()) return; const w = netWord(); if (w && w !== lastRegWord) reregister('net-word'); }
+    function netWordChanged() { if (stopped || !seat || !iAmAGreeter()) return; const w = netWord(); if (w && w !== lastRegWord) { lastRegAt = 0; /* L8.54.11: a changed word is never held back by the register throttle (it changes with a verdict or an address, never in a reply chain): a seeker reads it again when it is due */ reregister('net-word'); } }
     function REGISTER_MYSELF_AS_A_GREETER(gk) {
       const k = gk || myKey;
       if (!iAmAGreeter()) { KNOCK_FOR_THE_GREETER_LIST(k); return; }
