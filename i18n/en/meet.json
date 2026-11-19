@@ -1065,5 +1065,6 @@
   "meet.capNowMine": "Showing what this device hears.",
   "meet.capNowTheirs": "Showing {name}'s captions.",
   "meet.capFlag": "These captions are wrong",
-  "meet.capSrcTitle": "Captions for {name}"
+  "meet.capSrcTitle": "Captions for {name}",
+  "meet.chatLogAria": "Chat messages"
 }
