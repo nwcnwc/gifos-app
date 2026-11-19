@@ -113,7 +113,9 @@
       if (!ws.size) return;
       let a = lines.get(v); if (!a) { a = []; lines.set(v, a); }
       const at = +l.at || now();
-      a.push({ w, at, end: Math.max(at, +l.end || 0), ws, ear, mine: w === me() && ear, seen: new Set(), t: now() });
+      // this device's ears: Whisper (or the phone's model) on the received audio; no other engine of mine is a reference
+      const mine = w === me() && ear && (l.eng === 'whisper' || l.eng === 'local');
+      a.push({ w, at, end: Math.max(at, +l.end || 0), ws, ear, mine, seen: new Set(), t: now() });
       if (a.length > d.RING) a.splice(0, a.length - d.RING);
       if (ear && w !== me() && (l.vt === 0 || l.vt === 1)) { vts.set(key(v, w), l.vt); applyVouch(v, w); }
     }

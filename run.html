@@ -32607,7 +32607,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const via = m.via; // this page's own line: its devices, kept in the export only
       if (via) Object.defineProperty(line, 'via', { value: via });
       // Every source is seen by the trust check before the merge folds two lines of one sentence into one.
-      if (capTrust && !backfill) capTrust.observe({ byId: line.byId, w: line.w, src: line.src, at: line.at, end: line.end, text: line.text, tl: line.tl, vt: m.vt });
+      if (capTrust && !backfill) capTrust.observe({ byId: line.byId, w: line.w, src: line.src, eng: line.eng, at: line.at, end: line.end, text: line.text, tl: line.tl, vt: m.vt });
       const merged = trMerge(line);
       if (merged === 'dup' || merged === 'echo') { if (typeof capTrace === 'function') capTrace(line, merged); return false; }
       if (typeof capTrace === 'function') capTrace(line, backfill ? 'replay' : 'kept');
@@ -33616,7 +33616,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           else if (job.id === 'fold') { if (trWrites() || trEnOn) addTranscriptLine(text, job.at, 'stadium', 'Stadium', 'mix', ll, lf, end, how, { eng: wEng, inp: 'rx' }); }   // a far-row line, labelled by its channel
           else if (capEarsOnly() && (peers.has(job.id) || job.stage) && capTrust.stateOf(job.id, job.id) !== 'distrusted' && capTrust.choice(job.id).mode !== 'me') {
             // ears only: a sample for the trust check, not a line
-            capTrust.observe({ byId: job.id, w: myId, src: 'ear', at: job.at, end, text, tl: how === 'tl' ? 1 : 0 });
+            capTrust.observe({ byId: job.id, w: myId, src: 'ear', eng: wEng, at: job.at, end, text, tl: how === 'tl' ? 1 : 0 });
           }
           else if ((trWrites() || trEnOn || capEarsOnly()) && (peers.has(job.id) || job.stage)) addTranscriptLine(text, job.at, job.id, null, 'ear', ll, lf, end, how, { eng: wEng, inp: 'rx' });
         }
