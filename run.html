@@ -692,25 +692,23 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           <button data-t="lobKeygen" type="button" id="lob-keygen" class="lob-ghost">Generate</button>
         </div>
         </div>
-        <!-- A broadcast asks two things and goes: who can watch, and now or later. -->
+        <!-- A broadcast asks who can watch, and now or later. The room password stays under the name. -->
         <div id="lob-bc" hidden>
           <div class="lob-bc-who" role="radiogroup" aria-labelledby="lob-bc-who-h">
             <b data-t="bcWhoHead" id="lob-bc-who-h">Who can watch</b>
-            <label class="lob-bc-opt"><input type="radio" name="lob-bc-who" id="lob-bc-who-link" value="link" checked><span><span data-t="bcWhoLink">Anyone with the link</span><small data-t="bcWhoLinkSub">Your picture stays blurred for them</small></span></label>
-            <label class="lob-bc-opt"><input type="radio" name="lob-bc-who" id="lob-bc-who-pw" value="pw"><span><span data-t="bcWhoPw">People with the room password</span><small data-t="bcWhoPwSub">Only people you give it to can watch</small></span></label>
+            <label class="lob-bc-opt"><input type="radio" name="lob-bc-who" id="lob-bc-who-link" value="link" checked><span data-t="bcWhoLink">Anyone with the link</span></label>
+            <label class="lob-bc-opt"><input type="radio" name="lob-bc-who" id="lob-bc-who-pw" value="pw"><span data-t="bcWhoPw">People with the room password</span></label>
           </div>
+          <p class="lob-seg-note" id="lob-bc-note" role="status" aria-live="polite" data-t="bcWhoLinkSub">Your picture stays blurred for them</p>
+          <button data-t="bcSchedule" type="button" id="lob-bc-sched" class="lob-ghost" hidden>Schedule</button>
           <label id="lob-bc-when" class="lob-bc-when" hidden><span data-t="bcWhenStarts">Starts</span><input type="datetime-local" id="lob-bc-at"></label>
         </div>
-        <div class="lob-row"><button data-t="shareCancel" id="lob-admin-cancel" class="lob-ghost">Cancel</button><button data-t="bcSchedule" type="button" id="lob-bc-sched" class="lob-ghost" hidden>Schedule</button><button data-t="lobAdminGo" id="lob-admin-go">Start</button></div>
-        <div id="lob-admin-err" class="lob-err"></div>
       </div>
       <div id="lob-join" class="lob-expand" style="display:none">
         <input data-ph="lobJoinInPh" id="lob-join-in" placeholder="Paste link or meeting id" autocomplete="off">
         <label class="lob-pwlab" for="lob-join-pass"><b data-t="lobGuestPassHead">Room password</b></label>
         <input data-ph="lobJoinPassPh" data-al="lobGuestPassHead" id="lob-join-pass" type="password" maxlength="64" placeholder="Room password, if it has one" aria-label="Room password" autocomplete="new-password">
         <p data-t="lobWatchNote" id="lob-watch-note" class="lob-watch-note" hidden>Watching the broadcast. You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.</p>
-        <div class="lob-row"><button data-t="shareCancel" id="lob-join-cancel" class="lob-ghost">Cancel</button><button data-t="join" id="lob-join-go">Join</button></div>
-        <div id="lob-join-err" class="lob-err"></div>
       </div>
       <div id="lob-open-panel">
         <div class="lob-expand">
@@ -720,8 +718,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             <input data-ph="invGuestPh" id="lob-open-pass" type="password" maxlength="64" placeholder="Room password (optional)" autocomplete="new-password">
           </div>
         </div>
-        <button id="lob-open" class="lob-primary" type="button"><span data-t="lobAdminGo">Start</span></button>
       </div>
+      <button id="lob-go" class="lob-primary" type="button" data-t="lobOpenGo">Open</button>
+      <div id="lob-admin-err" class="lob-err"></div>
+      <div id="lob-join-err" class="lob-err"></div>
       <div class="lob-appear">
         <div data-t="appearTitle" class="lob-appear-k">This is how you'll appear</div>
         <div class="lob-appear-row">
@@ -21230,6 +21230,23 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             note.textContent = uiText('lobStartSub', 'Majority rules: vote people off the stage or out of the meeting.');
           }
         }
+        const adminErr = document.getElementById('lob-admin-err');
+        const joinErr = document.getElementById('lob-join-err');
+        if (adminErr) adminErr.hidden = which !== 'lob-admin-btn';
+        if (joinErr) joinErr.hidden = which !== 'lob-join-btn';
+        const goBtn = document.getElementById('lob-go');
+        if (goBtn && !BC_INTENT) {
+          if (which === 'lob-join-btn') {
+            goBtn.setAttribute('data-t', 'join');
+            goBtn.textContent = uiText('join', 'Join');
+          } else if (which === 'lob-admin-btn') {
+            goBtn.setAttribute('data-t', 'lobAdminGo');
+            goBtn.textContent = uiText('lobAdminGo', 'Start');
+          } else if (which === 'lob-open-seg') {
+            goBtn.setAttribute('data-t', 'lobOpenGo');
+            goBtn.textContent = uiText('lobOpenGo', 'Open');
+          }
+        }
         if (which === 'lob-admin-btn') {
           const n = document.getElementById('lob-admin-name');
           const key = document.getElementById('lob-admin-pass');
@@ -21240,7 +21257,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (j) j.focus();
         }
       };
-      document.getElementById('lob-open').onclick = () => {
+      const doOpen = () => {
         let code = shortCode();
         const named = document.getElementById('lob-open-name');
         const raw = named ? (named.value || '') : '';
@@ -21248,9 +21265,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         lobbyPwHandOver('open', code, '', document.getElementById('lob-open-pass'));
         enterMeeting('#v=' + code);
       };
-      document.getElementById('lob-open-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('lob-open').click(); });
+      document.getElementById('lob-open-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') doOpen(); });
       const openName = document.getElementById('lob-open-name');
-      if (openName) openName.addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('lob-open').click(); });
+      if (openName) openName.addEventListener('keydown', (e) => { if (e.key === 'Enter') doOpen(); });
       const openSeg = document.getElementById('lob-open-seg');
       if (openSeg) openSeg.onclick = () => { if (!BC_INTENT) selectLob('lob-open-seg'); };
       const lobCam = document.getElementById('lob-cam');
@@ -21312,7 +21329,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!BC_INTENT || !lob.classList.contains('service-ready') || lob.classList.contains('desk-more')) return;
         if (e.target.closest('#lob-desk-more, button, a, input, textarea, select')) return;
         if (!window.matchMedia('(max-width: 700px) and (min-height: 421px)').matches) return;
-        const go = document.getElementById('lob-admin-go');
+        const go = document.getElementById('lob-go');
         if (!go || go.disabled || go.getClientRects().length === 0) return;
         go.click();
       });
@@ -21322,22 +21339,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         key.focus();
         key.select();
       };
-      document.getElementById('lob-admin-cancel').onclick = () => {
-        document.getElementById('lob-admin').style.display = 'none';
-        document.getElementById('lobby').classList.remove('form-open');
-        if (!BC_INTENT) selectLob('lob-open-seg');
-      };
-      // Broadcast: Who can watch picks the room password field; Schedule
-      // shows the start time and turns Go live now into the plain choice.
+      // The room password stays on the form. Who can watch only changes the
+      // line under the choice. Schedule swaps the one button's word.
       let bcLater = false;
       const bcWho = () => (document.getElementById('lob-bc-who-pw').checked ? 'pw' : 'link');
       const paintBcWho = () => {
         if (!BC_INTENT) return;
         const pw = bcWho() === 'pw';
-        const extra = document.getElementById('lob-guest-extra');
-        extra.style.display = pw ? '' : 'none';
-        extra.hidden = !pw;
         lob.classList.toggle('bc-pw', pw);
+        const note = document.getElementById('lob-bc-note');
+        if (note) {
+          note.setAttribute('data-t', pw ? 'bcWhoPwSub' : 'bcWhoLinkSub');
+          note.textContent = pw ? uiText('bcWhoPwSub', 'Only people you give it to can watch') : uiText('bcWhoLinkSub', 'Your picture stays blurred for them');
+        }
       };
       ['lob-bc-who-link', 'lob-bc-who-pw'].forEach((id) => {
         document.getElementById(id).addEventListener('change', () => {
@@ -21351,7 +21365,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + 'T' + z(d.getHours()) + ':' + z(d.getMinutes());
       };
       document.getElementById('lob-bc-sched').onclick = () => {
-        const go = document.getElementById('lob-admin-go');
+        const go = document.getElementById('lob-go');
         const when = document.getElementById('lob-bc-when');
         const at = document.getElementById('lob-bc-at');
         if (!bcLater) {
@@ -21360,6 +21374,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           when.hidden = false;
           if (!at.value) at.value = bcNextHour();
           document.getElementById('lob-bc-sched').textContent = uiText('bcGoNowShort', 'Go live now');
+          go.setAttribute('data-t', 'bcSchedule');
           go.textContent = uiText('bcSchedule', 'Schedule');
           lob.classList.add('bc-later');
           return;
@@ -21367,11 +21382,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         bcLater = false;
         when.hidden = true;
         document.getElementById('lob-bc-sched').textContent = uiText('bcSchedule', 'Schedule');
-        go.textContent = uiText('bcGoNow', 'Go live now');
+        go.setAttribute('data-t', 'bcGoLive');
+        go.textContent = uiText('bcGoLive', 'Go live');
         lob.classList.remove('bc-later');
       };
       let goLiveBlurPick = null;
-      document.getElementById('lob-admin-go').onclick = async () => {
+      const doHost = async () => {
         const err = document.getElementById('lob-admin-err');
         let rawName = document.getElementById('lob-admin-name').value || '';
         // A broadcast's name is optional: a blank one is "broadcast" (the
@@ -21395,7 +21411,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (!Number.isFinite(ms) || ms < Date.now()) { err.textContent = uiText('bcNeedTime', 'Pick a start time that is still ahead.'); return; }
           atSecs = String(Math.floor(ms / 1000));
         }
-        const go = document.getElementById('lob-admin-go');
+        const go = document.getElementById('lob-go');
         // Go live is turning the camera on: the same blur choices as the
         // camera button, and that pick is the consent (Nathan 2026-11-08 A,
         // kept 2026-11-11). Who can watch sets only the audience.
@@ -21422,9 +21438,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // §LOCK re-assert locks the door + seals the key the moment they
           // arrive. It rides the SESSION, never the link (the whole point of
           // the two separate fields: the admin password must never reach a
-          // guest, the room password is the one you send them). A broadcast
-          // open to anyone with the link sets none.
-          const guest = (BC_INTENT && bcWho() !== 'pw') ? '' : (document.getElementById('lob-guest-pass').value || '').trim();
+          // guest, the room password is the one you send them). A password
+          // typed in the field locks the door, including on a broadcast.
+          const guest = (document.getElementById('lob-guest-pass').value || '').trim();
           if (guest) { try { localStorage.setItem('gifos_vpw_' + chosen + '.' + V, guest); localStorage.setItem('gifos_vpwat_' + chosen + '.' + V, String(Date.now())); } catch (e) {} } // stamp the store's clock (§LOCK expiry)
           // Go live now is the deliberate tap: the stream boots with the
           // camera on. A scheduled one (and the host link opened later)
@@ -21453,7 +21469,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           applyAvatarFile(file).then(() => paintLobbyAppear());
         });
       }
-      document.getElementById('lob-join-cancel').onclick = () => { document.getElementById('lob-join').style.display = 'none'; if (!BC_INTENT) selectLob('lob-open-seg'); };
       const doJoin = () => {
         const err = document.getElementById('lob-join-err');
         const p = parseMeetInput(document.getElementById('lob-join-in').value);
@@ -21461,11 +21476,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         lobbyPwHandOver('join', p.room, p.av || '', document.getElementById('lob-join-pass'));
         enterMeeting('#v=' + p.room + (p.av ? '&av=' + p.av : '') + (p.bc ? '&bc=1' : '') + (p.relay ? '&relay=' + encodeURIComponent(p.relay) : ''));
       };
-      document.getElementById('lob-join-go').onclick = doJoin;
+      document.getElementById('lob-go').onclick = () => {
+        if (BC_INTENT) { doHost(); return; }
+        const sel = document.querySelector('#lobby .lob-segs .seg.sel');
+        const id = sel ? sel.id : '';
+        if (id === 'lob-join-btn') doJoin();
+        else if (id === 'lob-admin-btn') doHost();
+        else doOpen();
+      };
       document.getElementById('lob-join-in').addEventListener('keydown', (e) => { if (e.key === 'Enter') doJoin(); });
       document.getElementById('lob-join-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') doJoin(); });
-      document.getElementById('lob-admin-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('lob-admin-go').click(); });
-      document.getElementById('lob-guest-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('lob-admin-go').click(); });
+      document.getElementById('lob-admin-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('lob-go').click(); });
+      document.getElementById('lob-guest-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('lob-go').click(); });
       document.getElementById('lob-list').addEventListener('click', (e) => {
         const star = e.target.closest('[data-star]');
         if (star) { e.stopPropagation(); toggleBookmark(star.getAttribute('data-star')); return; }
@@ -21501,9 +21523,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // host password is minted and kept on this device; More shows it.
       if (BC_INTENT) {
         document.querySelector('#lobby h1').textContent = uiText('bcTitle', 'Broadcast');
-        const quiet = document.querySelector('#lobby .lob-quiet');
-        if (quiet) quiet.textContent = uiText('bcLobbyQuiet', 'You host. People watch with the link.');
-        document.getElementById('lob-open').style.display = 'none';
+        const quiet = document.getElementById('lob-quiet');
+        if (quiet) {
+          quiet.setAttribute('data-t', 'bcLobbyQuiet');
+          quiet.textContent = uiText('bcLobbyQuiet', 'Name your broadcast, then go live.');
+        }
         document.getElementById('lob-admin-btn').style.display = 'none';
         const openPanel = document.getElementById('lob-open-panel');
         if (openPanel) openPanel.style.display = 'none';
@@ -21515,7 +21539,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (segNote) segNote.hidden = true;
         const nm = document.getElementById('lob-admin-name');
         nm.placeholder = uiText('bcNamePh', 'Name (optional)');
-        document.getElementById('lob-admin-go').textContent = uiText('bcGoNow', 'Go live now');
+        const goLive = document.getElementById('lob-go');
+        if (goLive) {
+          goLive.setAttribute('data-t', 'bcGoLive');
+          goLive.textContent = uiText('bcGoLive', 'Go live');
+        }
         document.getElementById('lob-bc').hidden = false;
         document.getElementById('lob-bc-sched').hidden = false;
         const watch = document.getElementById('lob-join-btn');
@@ -37807,7 +37835,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     document.addEventListener('pointerdown', (e) => {
       if (!camChooserOpen()) return;
       const t = e.target;
-      if (t && t.closest && t.closest('#camchooser, #cam, #lob-cam, #lob-admin-go')) return;
+      if (t && t.closest && t.closest('#camchooser, #cam, #lob-cam, #lob-go')) return;
       dismissCamChooser();
     }, true);
     // "Blur guests" (admin) — ONE room-wide order, modTable['*'].blur, on the

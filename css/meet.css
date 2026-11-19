@@ -3105,8 +3105,7 @@
   #lobby.service-ready:not(.desk-more) #lob-join,
   #lobby.service-ready:not(.desk-more) #lob-key-reveal,
   #lobby.service-ready:not(.desk-more) #lob-key-block,
-  #lobby.service-ready:not(.desk-more) #lob-guest-reveal,
-  #lobby.service-ready:not(.desk-more) #lob-guest-extra { display: none !important; }
+  #lobby.service-ready:not(.desk-more) #lob-guest-reveal { display: none !important; }
   #lobby.service-ready.desk-more #lob-admin .lob-row { display: none !important; }
   #lobby.service-ready #lob-admin-cancel { display: none !important; }
   #lobby.service-ready #lob-admin .lob-row { justify-content: stretch; }
@@ -3120,7 +3119,7 @@
      More opens Watch and Change host key, with the same readable key and Generate. */
   #lobby.form-open.service-ready #lob-admin { display: contents; }
   #lobby.service-ready #lob-admin-name-lab { order: 1; }
-  #lobby.service-ready #lob-admin-name { order: 2; }
+  #lobby.service-ready #lob-admin-name { order: 1; }
   #lobby.service-ready #lob-admin .lob-row { order: 3; }
   #lobby.service-ready #lob-join-btn { order: 4; }
   #lobby.service-ready #lob-join { order: 5; }
@@ -3128,7 +3127,13 @@
   #lobby.service-ready #lob-key-reveal { order: 7; }
   #lobby.service-ready #lob-key-block { order: 8; }
   #lobby.service-ready #lob-guest-reveal { order: 9; }
-  #lobby.service-ready #lob-guest-extra { order: 10; }
+  #lobby.service-ready #lob-guest-extra { display: block !important; order: 2; }
+  #lobby.service-ready #lob-go { order: 4; width: 100%; min-height: 56px; }
+  #lobby.service-ready.desk-more #lob-go { display: none !important; }
+  #lobby.service-ready #lob-admin-err,
+  #lobby.service-ready #lob-join-err { order: 5; }
+  #lobby.form-open.service-ready .lob-appear { order: 12; position: static; }
+  #lob-admin-err:empty, #lob-join-err:empty, #lob-admin-err[hidden], #lob-join-err[hidden] { display: none; min-height: 0; margin: 0; }
   #lobby.service-ready .lob-sep,
   #lobby.service-ready .lob-hist-h,
   #lobby.service-ready #lob-list,
@@ -3191,7 +3196,8 @@
       padding: 8px 12px; text-align: left;
     }
     #lobby.form-open.service-ready #lob-admin .lob-row { flex: 0 0 auto; margin: 0; width: auto; }
-    #lobby.form-open.service-ready #lob-admin-go {
+    #lobby.form-open.service-ready #lob-admin-go,
+    #lobby.form-open.service-ready #lob-go {
       min-height: 56px; box-shadow: 0 8px 28px rgba(0, 0, 0, .4);
     }
     #lobby.form-open.service-ready #lob-admin-name,
