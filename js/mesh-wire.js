@@ -1336,7 +1336,7 @@
         if (stopped || !penv || !raw) return false; const g = (typeof sg === 'string' && sg) ? sg : null;
         if (raw.sr === 0) { subGrant = g; /* before the seat knocks at its new door */ return penv.subGo(r); }
         if (r !== raw.sr || !g || raw.state !== 3) return false;   // any other door is refused once my door is not the first
-        // SUB.2.1: a fresh grant for my own door (its door stood empty). The relay reads a grant only when a socket connects, so the
+        // SUB.2.3: a fresh grant for my own door (its door stood empty). The relay reads a grant only when a socket connects, so the
         // grant is presented on a new socket now: its connect knock mints the door again and its onopen registers me. Registering
         // on the socket I had (its grant ran out) was answered "empty" again, and the door stayed empty until the 12 s watchdog
         // happened to rebuild the socket (live 2026-11-18: the joiners that came in that gap found no door to dial).
