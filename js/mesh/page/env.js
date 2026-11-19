@@ -543,7 +543,7 @@
     const fabricCutProbe = (a, x) => {
       if (a !== me || x < 0 || x === me || !subF || !subF.cut) return 0; const p = ID.pid(x); if (!p) return 0;
       { const s = seat(), r = srOf.get(x); if (s && r !== undefined && r !== s.sr) return 0; }   // its last frame came from another door: it left mine (a mate that cut a moment ago, now a subroom); the relay lists its old socket a while more, and the sim's door list does not (no answer at my door)
-      const v = subF.cut(p) | 0; return (v === 2 && fhopFriendFor(me, x)) ? 1 : v;
+      return subF.cut(p) | 0;   // (a friend's carry is read in the page's probe, off TURN at both hops: io.plainFriend; fhopFriendFor counts a TURN pipe as a way)
     };
     let cutWhy = '';
     const srOf = new Map();   // seat id -> the door its last frame to me named
