@@ -1045,5 +1045,6 @@
   "meet.ccallNoteDev": "Solo anfitriones: cada dispositivo empieza a escribir las voces que oye. Cualquiera puede tocar CC para salir.",
   "meet.ccOnByHost": "Un anfitrión",
   "meet.ccOnBy": "{by} activó los subtítulos en tu pantalla. Toca Subtítulos para ocultarlos.",
-  "meet.chatLogAria": "Mensajes del chat"
+  "meet.chatLogAria": "Mensajes del chat",
+  "meet.sttRelayFallback": "La conexión personalizada no responde, así que esta reunión usa la conexión estándar de GifOS."
 }

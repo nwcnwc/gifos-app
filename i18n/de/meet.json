@@ -1045,5 +1045,6 @@
   "meet.ccallNoteDev": "Nur für Hosts – jedes Gerät beginnt, die gehörten Stimmen mitzuschreiben. Jeder kann auf CC tippen, um sich abzumelden.",
   "meet.ccOnByHost": "Ein Host",
   "meet.ccOnBy": "{by} hat Untertitel für Ihren Bildschirm eingeschaltet. Tippen Sie auf Untertitel, um sie auszublenden.",
-  "meet.chatLogAria": "Chat-Nachrichten"
+  "meet.chatLogAria": "Chat-Nachrichten",
+  "meet.sttRelayFallback": "Die eigene Verbindung antwortet nicht, daher nutzt dieses Meeting die Standard-GifOS-Verbindung."
 }

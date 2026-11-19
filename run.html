@@ -16833,9 +16833,29 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
 
     // ---- the room: a reconnecting relay socket (signaling only) ---------------
+    // THE RELAY THIS PAGE DIALS: ?relay= in its own link, else the address chosen in Settings (js/relay-config.js
+    // GIFOS_storedRelay: on gifos.app only an address Settings wrote counts), else the standard one. A relay other than
+    // the standard one that never answered (GIFOS_RELAY_FALLBACK_FAILS connects, none opened) is left for the standard
+    // one with a one-line note; one that answered once is kept for the life of the page.
+    let relayFellBack = false, relayEverUp = false, relayFails = 0;
     function relayUrl() {
-      let u = null; try { u = localStorage.getItem('gifos_relay'); } catch (e) {}
-      return params.get('relay') || u || window.GIFOS_RELAY || null;
+      const std = window.GIFOS_RELAY || null;
+      if (relayFellBack) return std;
+      let u = null;
+      try { u = window.GIFOS_storedRelay ? window.GIFOS_storedRelay() : localStorage.getItem('gifos_relay'); } catch (e) {}
+      return params.get('relay') || u || std;
+    }
+    function relayConnectOpened() { relayEverUp = true; relayFails = 0; }
+    function relayConnectFailed() {
+      if (relayEverUp || relayFellBack) return;
+      const std = window.GIFOS_RELAY, cur = relayUrl();
+      if (!std || !cur || String(cur).replace(/\/+$/, '') === String(std).replace(/\/+$/, '')) return;
+      if (!(window.GIFOS_relayProd && window.GIFOS_relayProd())) return;   // a local test site keeps its test relay
+      if (++relayFails < (window.GIFOS_RELAY_FALLBACK_FAILS || 2)) return;
+      relayFellBack = true;
+      try { clog('relay ' + cur + ' never answered in ' + relayFails + ' connects: using ' + std); } catch (e) {}
+      try { sayState('relayFallback', null, 8000); } catch (e) {}
+      queueMicrotask(() => { if (!leaving && !bannedOut) startMesh(); });   // after the socket callback that counted the failure has returned
     }
 
     let room = null;
@@ -18282,6 +18302,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       pwReasserted = false;  // a fresh socket re-asserts the admin's door lock once
       meshNode = GifOS.meshWire.createMeshNode({
         relayUrl: relay.replace(/\/$/, ''),
+        onRelayFail: () => relayConnectFailed(), onRelayOpen: () => relayConnectOpened(),   // a relay that never answers is left (relayUrl)
         sid: sessId, tok: sessTok, key: roomE2E, identity, tickMs: 500,
         levers: { ISLAND_MODE: 1, URL_KEY: (parseInt(String(urlKeyHex).slice(0, 8), 16) | 1) >>> 0 },   // islands found under the meeting key (above)
         oldKeys: [prevRoomE2E, openKey].filter((k, i, all) => k && k !== roomE2E && all.indexOf(k) === i),   // a door blob one of these opens is behind me, not ahead (mesh-wire R6)
@@ -40687,7 +40708,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               const u = base ? new URL(msg.link, base) : new URL(msg.link);
               const hp = new URLSearchParams((u.hash || '').replace(/^#/, ''));
               const rel = hp.get('relay') || u.searchParams.get('relay');
-              if (rel) localStorage.setItem('gifos_relay', rel);
+              if (rel) params.set('relay', rel);   // this page only: a link's relay is never saved for later pages
             } catch (e) {}
           }
           params.set('v', parsed.room);
