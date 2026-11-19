@@ -47,7 +47,7 @@
       leased: d.leased, held: d.held, handN: d.handN, awayN: d.awayN,
       hands: d.hands.map(cloneLE), stage: d.stage.map(cloneLE), apps: d.apps.map(cloneLE), votes: d.votes.map(cloneVE),
       talk: d.talk.map(cloneLE), kick: d.kick.map(cloneVE), kabs: d.kabs, kOwn: cloneKStmt(d.kOwn), kl: d.kl.map(cloneKStmt),
-      rows: d.rows.map(cloneDRow), doors: d.doors.map(cloneLE), go: d.go,
+      rows: d.rows.map(cloneDRow), doors: d.doors.map(cloneLE), go: d.go, ppl: d.ppl.map(cloneLE),
     };
   }
   // C++: mesh.cpp:DigE
@@ -140,6 +140,54 @@
   // The people of other rooms are keyed by their door, so a door told twice is one door, not two: the larger count stays.
   // f (SUB.10.4): 1 this door is walking through another (its people will be counted there: a door that then leaves the fold is not lost)
   function doorsAdd(dst, r, n, f = 0) { let i = 0; while (i < dst.length && dst[i].id < r) i++; if (i === dst.length || dst[i].id !== r) dst.splice(i, 0, { id: r, k: n, f }); else { if (n > dst[i].k) dst[i].k = n; dst[i].f = (dst[i].f | f) & 255; } }
+  // C++: mesh.cpp:K_NAMED
+  // SUB.11 names in the fold: the fold that carries a door's count names its people too ({id, k: the door; k < 0: this door}),
+  // sorted by door then id, at most K_NAMED a door and never more than the door's count.
+  const K_NAMED = LAWS.K_NAMED;
+  // C++: mesh.cpp:doorsK
+  function doorsK(doors, r) { for (const e of doors) if (e.id === r) return e.k; return -1; }
+  // C++: mesh.cpp:pplN
+  function pplN(ppl, k) { let n = 0; for (const e of ppl) if (e.k === k) n++; return n; }
+  const pplLess = (a, b) => (a.k !== b.k ? a.k < b.k : a.id < b.id);
+  // C++: mesh.cpp:pplTrim
+  // Sorted by (door, id); cut to each door's bound: min(K_NAMED, its count). Changes the array in place.
+  function pplTrim(ppl, doors, seats) {
+    if (!ppl.length) return;
+    ppl.sort(byLess(pplLess));
+    const out = []; let cur = -2, n = 0, cap = 0;
+    for (const e of ppl) {
+      const k = e.k < 0 ? -1 : e.k;
+      if (k !== cur) { cur = k; n = 0; cap = Math.min(K_NAMED, k < 0 ? seats : Math.max(0, doorsK(doors, k))); }
+      if (n >= cap || (out.length && out[out.length - 1].k === k && out[out.length - 1].id === e.id)) continue;
+      out.push({ id: e.id, k, f: 0 }); n++;
+    }
+    ppl.length = 0; for (const e of out) ppl.push(e);
+  }
+  // C++: mesh.cpp:pplFold
+  // A far door told twice keeps the names that came with the count that stays (the larger; one count told twice: the longer
+  // list); a door's own people ({id, -1}) fold like the hands list, the K_NAMED lowest ids stay.
+  function pplFold(dst, s, held) {
+    let ch = false;
+    if (!held) for (const d of s.doors) {
+      if (d.k <= 0) continue;
+      const sn = Math.min(pplN(s.ppl, d.id), Math.min(K_NAMED, d.k)), dk = doorsK(dst.doors, d.id), dn = pplN(dst.ppl, d.id);
+      if (dk > d.k || (dk === d.k && dn >= sn)) continue;   // the count that stays is dst's, and its names with it
+      if (dn) { const keep = dst.ppl.filter((e) => e.k !== d.id); dst.ppl.length = 0; for (const e of keep) dst.ppl.push(e); }
+      let t = 0; for (const e of s.ppl) if (e.k === d.id && t < sn) { dst.ppl.push(cloneLE(e)); t++; }
+      ch = true;
+    }
+    {
+      const cap = Math.min(K_NAMED, digSeats(s)); let t = 0;
+      for (const e of s.ppl) {
+        if (e.k >= 0) continue; if (t >= cap) break; t++;
+        let dup = false; for (const x of dst.ppl) if (x.k < 0 && x.id === e.id) { dup = true; break; }
+        if (!dup) { dst.ppl.push({ id: e.id, k: -1, f: 0 }); ch = true; }
+      }
+    }
+    if (!ch) return;
+    dst.ppl.sort(byLess(pplLess));
+    { let n = 0, w = 0; for (let i = 0; i < dst.ppl.length; i++) { if (dst.ppl[i].k < 0 && n++ >= K_NAMED) continue; dst.ppl[w++] = dst.ppl[i]; } dst.ppl.length = w; }   // the own door's cut
+  }
   // C++: mesh.cpp:digLeasedIn
   function digLeasedIn(s) { const n = s.n < 0 ? 0 : s.n; return s.leased < -n ? -n : s.leased; }
   // C++: mesh.cpp:digFoldHeld
@@ -151,6 +199,7 @@
     const seats = digSeats(s);
     dst.leased += seats; dst.handN += z.handN; dst.awayN += z.awayN; if (s.held > 0) dst.held += s.held;   // a held mover under a lease is still a member for the bar
     listMerge(dst.hands, s.hands, K_HAND, true); listMerge(dst.apps, s.apps, K_APP, false); talkMerge(dst.talk, s.talk);   // no Stage under the lease
+    if (s.ppl.length) pplFold(dst, s, true);   // SUB.11: a held seat is still counted, so it is still named
     const cap = digSeats(s);
     for (const v of s.votes) {
       const c = cloneVE(v); if (c.up > cap) c.up = cap; if (c.dn > cap) c.dn = cap;
@@ -162,6 +211,7 @@
   }
   // C++: mesh.cpp:digFold
   function digFold(dst, s) {
+    if (s.ppl.length || dst.ppl.length) pplFold(dst, s, false);   // SUB.11 (before the doors: it reads the count each side holds)
     for (const e of s.doors) doorsAdd(dst.doors, e.id, e.k, e.f);   // SUB.4
     if (s.go >= 0) dst.go = s.go;   // SUB.10
     dst.n += s.n; dst.leased += digLeasedIn(s); if (s.held > 0) dst.held += s.held; dst.refuse += s.refuse; dst.freeC += s.freeC; if (s.dmin < dst.dmin) dst.dmin = s.dmin; if (s.part) dst.part = 1;
@@ -191,6 +241,7 @@
       d.kick.sort(byLess(kOrd)); if (d.kick.length > K_VOTE) d.kick.length = K_VOTE;
     }
     if (d.kabs > cap) d.kabs = cap;
+    pplTrim(d.ppl, d.doors, digSeats(d));   // SUB.11: no more names than people, per door
   }
   // C++: mesh.cpp:digListHash
   // G4 fidelity key over the list fields: an echo must reproduce what I sent.
@@ -215,6 +266,7 @@
     mix(d.n); mix(d.refuse); mix(d.freeC); mix(d.dmin); mix(d.part); mix(d.leased);
     if (d.held) { mix(10); mix(d.held); }   // only while a mover is held
     for (const e of d.doors) { mix(11); mix(e.id); mix(e.k); if (e.f) { mix(13); mix(e.f); } }   // only with people in another room of the meeting
+    for (const e of d.ppl) { mix(14); mix(e.id); mix(e.k + 1); }   // SUB.11 (only with a joining connection)
     if (d.go >= 0) { mix(12); mix(d.go); }   // SUB.10 (only while a subroom walks)
     return h;
   }
@@ -243,7 +295,7 @@
 
   const api = Object.freeze({
     K_HAND, K_STAGE, K_APP, K_VOTE, STAGE_CAP, TALK_ON, TALK_HOLD, K_TALK,
-    newDig, newKStmt, cloneLE, cloneVE, cloneKStmt, cloneDRow, cloneDig, cloneDigE, digBarPop, digSeats, digFar, digPop, doorsAdd, digLeasedIn, leEq, veEq, byLess,
+    newDig, newKStmt, cloneLE, cloneVE, cloneKStmt, cloneDRow, cloneDig, cloneDigE, digBarPop, digSeats, digFar, digPop, doorsAdd, K_NAMED, doorsK, pplN, pplTrim, pplFold, digLeasedIn, leEq, veEq, byLess,
     leAsc, leDesc, talkCls, talkLess, talkMerge, veOrd, listMerge, kOrd, kickAdd, kSigOk, kListAdd, kListUnion,
     kDerive, voteAdd, digFoldHeld, digFold, digTrim, digListHash, digSig, listHolds, votesHold,
   });

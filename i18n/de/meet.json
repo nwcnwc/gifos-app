@@ -228,6 +228,7 @@
   "meet.waitSelf": "Die Leitung lässt Sie gleich hinein",
   "meet.waitSelfNote": "Sie sehen die Besprechung, sobald Sie hereingelassen werden.",
   "meet.rosterPeople": "Personen",
+  "meet.rosterAndMore": "und {n} weitere",
   "meet.rosterFind": "Name suchen",
   "meet.waitRoom": "Warteraum",
   "meet.waitOn": "An",

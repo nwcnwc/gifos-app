@@ -11591,6 +11591,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // You left on purpose: the number is the room without you, frozen at
       // the click, not the tiles this page still has up behind the dialog.
       const shown = (leftUp && leftBehind > 0) ? leftBehind : headerCount();
+      // SUB.11: the People panel and this count read one fold, so an open panel follows it too. (A far person's name can
+      // arrive after the panel was painted: the row said "Guest" until something else repainted it.)
+      try {
+        const rEl = document.getElementById('roster');
+        if (rEl && rEl.classList.contains('open')) {
+          const all = rosterRows();
+          const sig = all.map((x) => x.id + '\t' + x.name).join('\n') + '\n' + (all.more || 0);
+          if (sig !== updateStatus.peopleSig) { updateStatus.peopleSig = sig; paintRosterSoon(); }
+        } else updateStatus.peopleSig = null;
+      } catch (e) {}
       // The password and ready-count sentences are longer than the row Fit
       // leaves, so they were cut off after you left. The count and quality stay.
       const tail = partial + link + savedLock + (leftUp ? '' : extra);
@@ -11979,13 +11989,25 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         try { const m = modOf(p.id).mute; roomMute = !!(m && m.on); } catch (e3) {}
         push({ id: p.id, name: hostRename(p.id) || p.name || rosterNames[p.id] || 'Guest', me: false, muted: !!st.muted, hand: !!st.hand, stage: onStage || hostSpot(p.id), roomMute: roomMute });
       }
+      // SUB.11: the people the fold names and this page shows no tile of: the other rooms of the meeting, and my own room
+      // past my row (the header's own source): a row a name, and the ones the fold counts without a name as one
+      // "and N more" line. A row from the fold alone carries no controls.
+      let more = 0;
+      for (const d of farPeople()) {
+        let named = 0;
+        for (const x of d.people) { if (!x.id) continue; named++; if (x.id === myId) continue; const st = d.here ? (statusOf.get(x.id) || {}) : {}; push({ id: x.id, name: hostRename(x.id) || x.nm || rosterNames[x.id] || 'Guest', me: false, far: !d.here, fold: true, muted: !!st.muted, hand: !!st.hand, stage: false }); }
+        more += Math.max(0, d.n - named);
+      }
       rows.sort((a, b) => {
         if (a.me !== b.me) return a.me ? -1 : 1;
         if (a.hand !== b.hand) return a.hand ? -1 : 1;
         return String(a.name).localeCompare(String(b.name));
       });
+      rows.more = more;
       return rows;
     }
+    // The other rooms' people by name, per door (js/mesh/page/layer.js meetingPeople): [] with no joined room.
+    function farPeople() { try { return meshNode && typeof meshNode.meetingPeople === 'function' ? (meshNode.meetingPeople() || []) : []; } catch (e) { return []; } }
     function waitingRows() {
       const rows = [];
       for (const p of peers.values()) {
@@ -12003,7 +12025,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const all = rosterRows();
       const rows = all.filter((r) => !q || String(r.name).toLowerCase().indexOf(q) >= 0);
       const title = document.getElementById('roster-title');
-      if (title) title.textContent = all.length + ' ' + (all.length === 1 ? uiText('rosterPersonOne', 'person') : uiText('rosterPeople', 'people'));
+      const allN = all.length + (all.more || 0);   // the named rows and the far people the fold only counts
+      if (title) title.textContent = allN + ' ' + (allN === 1 ? uiText('rosterPersonOne', 'person') : uiText('rosterPeople', 'people'));
       const close = document.getElementById('roster-close');
       if (close) close.textContent = uiText('rosterClose', 'Close');
       if (find) {
@@ -12087,7 +12110,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           row.appendChild(f);
         }
         // As on the tile: no Mute for someone already muted by their own hand.
-        const mayMute = !r.me && !(r.muted && !r.roomMute) && !(typeof hasAdminRoom === 'function' && hasAdminRoom() && !amAdmin);
+        const mayMute = !r.me && !r.fold && !(r.muted && !r.roomMute) && !(typeof hasAdminRoom === 'function' && hasAdminRoom() && !amAdmin);
         if (mayMute) {
           const b = document.createElement('button');
           b.type = 'button';
@@ -12103,7 +12126,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           };
           row.appendChild(b);
         }
-        if (mayHost() && !r.me) {
+        if (mayHost() && !r.me && !r.fold) {
           const acts = document.createElement('div');
           acts.className = 'acts';
           if (renameEditId === r.id) {
@@ -12138,6 +12161,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           }
           row.appendChild(acts);
         }
+        list.appendChild(row);
+      }
+      if (all.more && !q) {   // SUB.11: far people the fold counts and does not name (a big room, or names still on their way)
+        const row = document.createElement('div');
+        row.className = 'roster-row roster-more';
+        row.id = 'roster-more';
+        const nm = document.createElement('span');
+        nm.className = 'nm';
+        nm.textContent = uiText('rosterAndMore', 'and {n} more').replace('{n}', String(all.more));
+        row.appendChild(nm);
         list.appendChild(row);
       }
     }
@@ -40561,6 +40594,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const st = statusOf.get(pid);
         people.push({ id: pid, name: (p && p.name) || rosterNames[pid] || '', bot: !!(st && st.bot), me: false });
       }
+      // SUB.11: and the people of the other rooms of the meeting the fold names (far: true), so the bot's list and the People panel are one list
+      for (const d of farPeople()) for (const x of d.people) { if (d.here || !x.id || seen.has(x.id)) continue; seen.add(x.id); const st = statusOf.get(x.id); people.push({ id: x.id, name: x.nm || rosterNames[x.id] || '', bot: !!(st && st.bot), me: false, far: true }); }
       return people;
     }
     function roomControls() {
@@ -42119,6 +42154,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           v: { roster: rosterIds.includes(vp), peer: p ? { conn: !!p.connected, heard: Math.round((now - Math.max(p.lastHeard || 0, p.meshRxAt || 0)) / 1000) } : null, st: st ? Math.round((now - stSeen(st)) / 1000) : null, occ: occHas, first: occFirstSeen.has(vp) ? Math.round((now - occFirstSeen.get(vp)) / 1000) : null, gone: meshGone.has(vp) ? Math.round((now - meshGone.get(vp)) / 1000) : null } }; },
       memSamples: () => (window.__memSamples ? window.__memSamples.slice() : []),
       meshTraceDump: () => { const G = window.__meshTraceRing; return G ? G.ring.map((e) => e[1]) : []; },
+      // SUB.11 (test read): the People panel's rows, the header count beside them, the connector's list and the fold's far names
+      peopleDump: () => { const r = rosterRows(); return { header: headerCount(), n: r.length + (r.more || 0), more: r.more || 0, rows: r.map((x) => ({ id: x.id, name: x.name, far: !!x.far, fold: !!x.fold, me: !!x.me })), room: roomPeople(), far: farPeople() }; },
       meshForensics: (since) => {
         const G = window.__meshTraceRing || { ring: [], seq: 0 }; const s = meshSeat(); if (!s) return null;
         const six = (x) => (x == null ? null : String(x).slice(0, 6));
