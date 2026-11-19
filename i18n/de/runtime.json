@@ -104,5 +104,17 @@
   "runtime.agent.noElement": "⚠ kein Element [{index}]",
   "runtime.agent.done": "✓ fertig",
   "runtime.agent.stoppedAfter": "⚠ nach {n} Schritten angehalten",
-  "runtime.agent.stopped": "angehalten"
+  "runtime.agent.stopped": "angehalten",
+  "runtime.room.notHere": "Du bist nicht in diesem Raum.",
+  "runtime.room.watching": "Du schaust zu.",
+  "runtime.room.notYourTurn": "Du bist nicht am Zug.",
+  "runtime.room.adminOnly": "Das kann hier nur der Gastgeber.",
+  "runtime.room.full": "Dieser Tisch ist voll.",
+  "runtime.room.noSeat": "Diesen Platz gibt es nicht.",
+  "runtime.room.notMoves": "Das gehört nicht zum Spiel.",
+  "runtime.room.badOp": "Das kann ein Raum nicht.",
+  "runtime.room.pending": "Der Raum hat nicht geantwortet.",
+  "runtime.room.asks": "{name} möchte {app} mitspielen.",
+  "runtime.room.seat": "Platz geben",
+  "runtime.room.notNow": "Jetzt nicht"
 }

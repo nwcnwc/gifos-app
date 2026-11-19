@@ -104,5 +104,17 @@
   "runtime.agent.noElement": "⚠ no hay ningún elemento [{index}]",
   "runtime.agent.done": "✓ hecho",
   "runtime.agent.stoppedAfter": "⚠ se detuvo tras {n} pasos",
-  "runtime.agent.stopped": "detenido"
+  "runtime.agent.stopped": "detenido",
+  "runtime.room.notHere": "No estás en esta sala.",
+  "runtime.room.watching": "Estás mirando.",
+  "runtime.room.notYourTurn": "No es tu turno.",
+  "runtime.room.adminOnly": "Aquí solo el anfitrión puede hacer eso.",
+  "runtime.room.full": "Esta mesa está llena.",
+  "runtime.room.noSeat": "Ese asiento no existe.",
+  "runtime.room.notMoves": "Eso no forma parte del juego.",
+  "runtime.room.badOp": "Una sala no puede hacer eso.",
+  "runtime.room.pending": "La sala no respondió.",
+  "runtime.room.asks": "{name} pide jugar a {app}.",
+  "runtime.room.seat": "Dar asiento",
+  "runtime.room.notNow": "Ahora no"
 }

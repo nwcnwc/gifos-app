@@ -693,9 +693,13 @@
       });
     });
   }
-  const db = gifos.db('game'), W=7, H=6, PFX='p:', LIVE=8000;
-  const fresh = function(){ return { id:'board', cells:new Array(W*H).fill(null), turn:'R', starts:'R', winner:null, line:null, players:{}, names:{}, score:{R:0,Y:0,D:0} }; };
-  let cur = fresh(), me = { id:'local', name:'You' }, askLocal = false, here = {}, hover = -1, seen = {}, lastT = {};
+  // Who plays, who watches, whose turn it is, who gets a seat back, who takes a seat when a player leaves: the
+  // room decides all of it (gifos.room, manifest "room"). This app draws the board and makes moves.
+  const db = gifos.db('game'), W=7, H=6, SEATS=['R','Y'];
+  const ROOM = !!(window.gifos && gifos.room && gifos.room.subscribe);
+  const fresh = function(){ return { id:'board', cells:new Array(W*H).fill(null), winner:null, line:null, score:{R:0,Y:0,D:0} }; };
+  let cur = fresh(), rs = null, ask = null, askLocal = false, hover = -1, note = '', joined = false;
+  const ADB = ROOM ? gifos.db('ask') : null;
   const colsEl = document.getElementById('cols');
   const railEl = document.getElementById('rail');
   const statusEl = document.getElementById('status');
@@ -703,35 +707,18 @@
   const chipEl = document.getElementById('chip');
   const cellEls = [];
   const peekEls = [];
-  function now(){ return Date.now ? Date.now() : 0; }
-  // ---- who is here, and who sits where (plain functions: the checks run them) ----
-  // Here means THIS page saw the person's heartbeat move lately, on this device's clock only: the heartbeat's
-  // own time is the other device's clock and never dates anything (a guest whose clock ran 10 s ahead read the
-  // host's first beat as 10 s old, so the host had left and the guest moved for Red). A heartbeat this page has
-  // never seen move counts for 4 s (two beats): a live player's next beat lands in that time, an old record's never.
-  function c4Seen(rows, seen, lastT, t){ for (const id in rows){ const r=rows[id]; if(!r) continue; if(lastT[id]!==r.t){ seen[id]=(id in lastT)?t:t-LIVE+4000; lastT[id]=r.t; } } }
-  function c4Live(rows, seen, t, live){ const out=[]; for (const id in rows){ if(rows[id] && (t-(seen[id]||0))<live) out.push(id); } return out; }
-  // A seat is held only by someone who is here: a player who left, or a seat kept in the saved board from
-  // an earlier game, leaves it open for the next person. One person holds one seat: a board that names the
-  // same person on both keeps them Red and opens Yellow.
-  function c4Seat(players, s, ids, meId){
-    const id=players&&players[s]; if(!id) return null;
-    if(id!==meId && ids.indexOf(id)<0) return null;
-    if(s==='Y' && c4Seat(players,'R',ids,meId)===id) return null;
-    return id;
-  }
-  // ---- end of who is here ----
-  function liveIds(){ return c4Live(here, seen, now(), LIVE); }
-  function opp(){ return liveIds().some(function(id){ return id!==me.id; }); }
-  function friendName(){ const ids=liveIds(); for (let i=0;i<ids.length;i++){ if(ids[i]!==me.id) return (here[ids[i]] && here[ids[i]].name) || ''; } return ''; }
-  function seatOf(s){ return c4Seat(cur.players, s, liveIds(), me.id); }
-  function myMark(){ return seatOf('R')===me.id?'R':seatOf('Y')===me.id?'Y':null; }
-  function canPlay(){ if(cur.winner) return false; if(!opp()) return true; const mm=myMark(); return mm?cur.turn===mm:!seatOf(cur.turn); }
+  // ---- the room's word (plain functions: the checks run them) ----
+  function c4Seat(s, mark){ const x=s&&s.seats&&s.seats.find(function(q){ return q.seat===mark; }); return x||{ seat:mark, id:null, name:'', here:'open' }; }
+  function c4Turn(s){ return (s&&s.turn)||'R'; }
+  function c4Alone(s){ return !!s && !s.live; }
+  // ---- end of the room's word ----
+  function opp(){ return !!rs && rs.live; }
+  function myMark(){ return rs && rs.me ? rs.me.seat : null; }
+  function canPlay(){ if(!ROOM || !rs || cur.winner) return false; if(c4Alone(rs)) return !!myMark() && c4Seat(rs, c4Turn(rs)).here!=='away'; return !!rs.myTurn; }
   function colorName(s){ return s==='R'?T('color.red'):s==='Y'?T('color.yellow'):s; }
-  function label(s){ return cur.names&&cur.names[s]?cur.names[s]:colorName(s); }
+  function label(s){ const x=c4Seat(rs,s); return x.id&&x.name?x.name:colorName(s); }
   function boardEmpty(){ return cur.cells.every(function(v){ return !v; }); }
   function colFull(c){ return !!cur.cells[c]; }
-  function beat(){ if(!window.gifos || me.id==='local') return; db.put({id:PFX+me.id,name:me.name,t:now()}).catch(function(){}); }
   function win(cells){
     const dirs=[[1,0],[0,1],[1,1],[1,-1]];
     for(let y=0;y<H;y++)for(let x=0;x<W;x++){
@@ -763,26 +750,24 @@
   }
   function setHover(c){ hover=c; paintPeek(); }
   function paintPeek(){
-    const playable=canPlay();
+    const playable=canPlay(), t=c4Turn(rs);
     for(let c=0;c<W;c++){
       const p=peekEls[c]; if(!p) continue;
       const show = playable && hover===c && !colFull(c);
-      p.className='peek'+(show?' on '+(cur.turn.toLowerCase()):'');
+      p.className='peek'+(show?' on '+t.toLowerCase():'');
     }
   }
   function setSeat(el, youEl, nameEl, mark, on, isWin){
-    const claimed = seatOf(mark);
-    const mine = claimed===me.id;
-    nameEl.textContent = claimed ? label(mark) : (opp() ? T('seat.open') : colorName(mark));
-    youEl.hidden = !mine;
+    const x = c4Seat(rs, mark);
+    nameEl.textContent = x.id ? label(mark) + (x.here==='away' ? ' …' : '') : (opp() ? T('seat.open') : colorName(mark));
+    youEl.hidden = myMark()!==mark;
     el.classList.toggle('on', !!on);
     el.classList.toggle('win', !!isWin);
+    el.classList.toggle('away', x.here==='away');
   }
   function render(){
     ensure();
-    const playable=canPlay();
-    const live=opp();
-    const mm=myMark();
+    const playable=canPlay(), live=opp(), mm=myMark(), t=c4Turn(rs);
     for(let i=0;i<W*H;i++){
       const d=cellEls[i]; const v=cur.cells[i];
       const isWin = cur.line && cur.line.indexOf(i)>=0;
@@ -801,66 +786,73 @@
       col.setAttribute('aria-disabled', locked ? 'true' : 'false');
     }
     paintPeek();
-    setSeat(document.getElementById('seatR'), document.getElementById('youR'), document.getElementById('nameR'), 'R', !cur.winner && cur.turn==='R', cur.winner==='R');
-    setSeat(document.getElementById('seatY'), document.getElementById('youY'), document.getElementById('nameY'), 'Y', !cur.winner && cur.turn==='Y', cur.winner==='Y');
+    setSeat(document.getElementById('seatR'), document.getElementById('youR'), document.getElementById('nameR'), 'R', !cur.winner && t==='R', cur.winner==='R');
+    setSeat(document.getElementById('seatY'), document.getElementById('youY'), document.getElementById('nameY'), 'Y', !cur.winner && t==='Y', cur.winner==='Y');
     const sc=Object.assign({R:0,Y:0,D:0}, cur.score);
     document.getElementById('sr').textContent=String(sc.R);
     document.getElementById('sy').textContent=String(sc.Y);
     document.getElementById('sd').textContent=String(sc.D);
     statusEl.className='status';
     hintEl.textContent='';
+    if (!ROOM){
+      statusEl.textContent=T('needsNewer');
+      statusEl.className='status warn';
+      chipEl.textContent='';
+      renderConsent();
+      return;
+    }
+    const tx=c4Seat(rs,t);
     if (cur.winner==='draw'){
       statusEl.textContent=T('draw');
       hintEl.textContent=T('draw.hint');
     } else if (cur.winner){
       const you = mm===cur.winner;
-      const wn=cur.names&&cur.names[cur.winner];
-      statusEl.textContent=(you?T('win.you'):wn?T('win.other',{name:wn}):T('win.color',{color:cur.winner}));
+      const wx=c4Seat(rs,cur.winner);
+      statusEl.textContent=(you?T('win.you'):wx.id&&wx.name?T('win.other',{name:wx.name}):T('win.color',{color:cur.winner}));
       statusEl.className='status '+(you?'good':(mm?'warn':''));
     } else if (playable){
-      if (live && !mm) statusEl.textContent=T('status.sit',{color:cur.turn});
-      else if (live) statusEl.textContent=T('status.yourMove');
-      else statusEl.textContent=T('status.yourMoveColor',{color:cur.turn});
+      statusEl.textContent=live?T('status.yourMove'):T('status.yourMoveColor',{color:t});
+    } else if (tx.here==='away'){
+      statusEl.textContent=T('status.away',{name:tx.name||colorName(t)});
+    } else if (!tx.id){
+      statusEl.textContent=T('status.open',{color:t});
     } else {
-      const tn=seatOf(cur.turn)&&cur.names&&cur.names[cur.turn];
-      statusEl.textContent=tn?T('status.waiting',{name:tn}):T('status.waitingColor',{color:cur.turn});
+      statusEl.textContent=tx.name?T('status.waiting',{name:tx.name}):T('status.waitingColor',{color:t});
     }
-    if (!cur.winner && !live) hintEl.textContent=T('hint.alone');
-    else if (!cur.winner && live && !mm) hintEl.textContent=T('hint.claim');
-    else if (!cur.winner && live && mm) hintEl.textContent=T('hint.you',{color:mm});
-    const fn = live ? friendName() : '';
-    chipEl.textContent = live ? (fn ? T('chip.vs',{name:fn}) : T('chip.vsFriend')) : T('chip.alone');
+    const role=rs&&rs.me?rs.me.role:'watcher';
+    if (note) hintEl.textContent=note;
+    else if (!cur.winner && !live) hintEl.textContent=T('hint.alone');
+    else if (role==='waiting') hintEl.textContent=T('hint.line');
+    else if (role==='asking') hintEl.textContent=T('hint.asking');
+    else if (role==='watcher') hintEl.textContent=T('hint.watch');
+    else if (!cur.winner && mm) hintEl.textContent=T('hint.you',{color:mm});
+    const other = rs ? rs.seats.find(function(x){ return x.id && x.id!==rs.me.id; }) : null;
+    chipEl.textContent = live ? (other&&other.name ? T('chip.vs',{name:other.name}) : T('chip.vsFriend')) : T('chip.alone');
     renderConsent();
   }
+  function say(e){ note = e && e.message ? e.message : ''; render(); setTimeout(function(){ note=''; render(); }, 2500); }
   function drop(col){
     if(!canPlay()) return;
     let row=-1; for(let y=H-1;y>=0;y--){ if(!cur.cells[y*W+col]){ row=y; break; } }
     if(row<0) return;
-    if(cur.rematch) delete cur.rematch;
-    askLocal=false;
-    const seat=cur.turn;
-    if(opp()){
-      cur.players=Object.assign({},cur.players); cur.players[seat]=seatOf(seat)||me.id;
-      cur.names=Object.assign({},cur.names); if(cur.players[seat]===me.id) cur.names[seat]=me.name;
-    }
-    cur.cells=cur.cells.slice(); cur.cells[row*W+col]=seat;
-    cur.last=row*W+col;
-    const w=win(cur.cells);
-    cur.winner=w?w.mark:null; cur.line=w?w.cells:null;
-    if(cur.winner){ const sc=Object.assign({R:0,Y:0,D:0},cur.score); sc[cur.winner==='draw'?'D':cur.winner]++; cur.score=sc; }
-    cur.turn=seat==='R'?'Y':'R';
-    db.put(cur); render();
+    const seat=c4Turn(rs);
+    const nxt=Object.assign({}, cur);
+    nxt.cells=cur.cells.slice(); nxt.cells[row*W+col]=seat;
+    nxt.last=row*W+col;
+    const w=win(nxt.cells);
+    nxt.winner=w?w.mark:null; nxt.line=w?w.cells:null;
+    if(nxt.winner){ const sc=Object.assign({R:0,Y:0,D:0},cur.score); sc[nxt.winner==='draw'?'D':nxt.winner]++; nxt.score=sc; }
+    cur=nxt; hover=-1; render();
+    gifos.room.move('game', nxt).catch(say);
   }
   function startNew(){
     askLocal=false;
     const nxt=fresh();
     nxt.score=Object.assign({R:0,Y:0,D:0},cur.score);
-    nxt.starts=cur.starts==='R'?'Y':'R'; nxt.turn=nxt.starts;
-    nxt.players=cur.players; nxt.names=cur.names;
-    hover=-1;
-    return db.put(nxt);
+    if (ask && ADB) ADB.delete('rematch').catch(function(){});
+    return gifos.room.newRound('game', nxt).catch(say);
   }
-  function clearRematch(){ const c=Object.assign({},cur); delete c.rematch; cur=c; return db.put(c).then(render); }
+  function clearAsk(){ return ADB ? ADB.delete('rematch').catch(function(){}) : Promise.resolve(); }
   function cancelLocal(){ askLocal=false; render(); }
   function askButtons(askEl,text,onYes,onNo){
     const span=document.createElement('div'); span.textContent=text;
@@ -873,10 +865,12 @@
   function renderConsent(){
     const askEl=document.getElementById('ask'), btn=document.getElementById('new');
     askEl.textContent='';
-    const req=cur.rematch;
-    if(req && req.by!==me.id){
+    const mm=myMark();
+    if(!ROOM || !mm){ btn.style.display='none'; return; }
+    const req=ask && ask.round===(rs&&rs.round) ? ask : null;
+    if(req && req.by!==rs.me.id){
       btn.style.display='none';
-      askButtons(askEl,req.name?T('ask.rematch',{name:req.name}):T('ask.rematchAnon'),startNew,clearRematch);
+      askButtons(askEl,req.name?T('ask.rematch',{name:req.name}):T('ask.rematchAnon'),startNew,clearAsk);
     } else if(req){
       btn.textContent=T('ask.cancel'); btn.style.display=''; btn.className='act ghost';
       askEl.textContent=T('ask.waiting');
@@ -888,13 +882,11 @@
     }
   }
   document.getElementById('new').onclick=function(){
-    if(cur.rematch && cur.rematch.by===me.id) return clearRematch();
-    if(opp()){
-      const c=Object.assign({},cur); c.rematch={by:me.id,name:me.name}; cur=c;
-      return db.put(c).then(render);
-    }
-    if(boardEmpty()) return;
-    if(cur.winner) return startNew();
+    if(!ROOM || !myMark()) return;
+    if(ask && ask.round===rs.round && ask.by===rs.me.id) return clearAsk();
+    if(cur.winner || boardEmpty()) return startNew();
+    // A game in progress against someone here: they agree first. Alone: just confirm.
+    if(opp()) return ADB.put({ id:'rematch', by:rs.me.id, name:rs.me.name, round:rs.round }).catch(say);
     askLocal=true; render();
   };
   document.addEventListener('keydown', function(e){
@@ -907,22 +899,23 @@
       cur=b;
       if(!cur.cells || cur.cells.length!==W*H) cur.cells=fresh().cells;
       cur.score=Object.assign({R:0,Y:0,D:0},cur.score||{});
-      cur.players=cur.players||{}; cur.names=cur.names||{};
     }
-    const next={};
-    items.forEach(function(x){
-      if(x && typeof x.id==='string' && x.id.indexOf(PFX)===0 && x.t)
-        next[x.id.slice(PFX.length)]=x;
-    });
-    here=next; c4Seen(here, seen, lastT, now()); render();
+    render();
   }
+  // Read-only, so the checks and a tester can compare copies: the board and what this copy's room says.
+  window.__connect4 = { state: function(){ return { cells: cur.cells.join(''), winner: cur.winner, score: cur.score, room: rs ? { me: rs.me, seats: rs.seats, turn: rs.turn, round: rs.round, live: rs.live, kind: rs.kind } : null, status: statusEl.textContent, room_api: ROOM }; } };
   // Nothing that calls T runs before the catalog has loaded (a key must never be painted).
   function boot(){
     applyI18n();
-    if (window.gifos) gifos.me().then(function(m){ me={id:m.id,name:m.name||'You'}; beat(); render(); });
     db.subscribe(onItems);
-    setInterval(beat, 2000);
-    beat();
+    if (ROOM){
+      gifos.room.subscribe(function(s){
+        rs=s; render();
+        // Opening the game is asking to play: once. The room seats, lines up or asks the host.
+        if (!joined && s.me && s.me.role==='watcher'){ joined=true; gifos.room.join().catch(function(){}); }
+      });
+      ADB.subscribe(function(items){ ask=items.find(function(x){ return x.id==='rematch'; })||null; render(); });
+    }
     render();
     if (window.gifos && gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); render(); });
   }
@@ -6665,15 +6658,17 @@ Tap any disc in a column to drop yours to the lowest empty slot. **Red** starts 
 
 ## Solo or a friend
 
-- **Alone:** you play both colours. Pass the device.
-- **Invite** (top bar): send the link. When a friend is here, the first drop on a turn claims that colour, then you only move on your turn.
+- **Alone:** you play both colours.
+- **Invite** (top bar), or run it in a meeting: the first two people take Red and Yellow, everyone after them watches and waits in line. GifOS keeps the seats: a player who reloads or drops for a moment gets their seat back, and when a player leaves, the next person in line sits down. In a hosted meeting, the host says who plays.
+
+This game needs GifOS build 5700 or newer to play together.
 
 ## New game
 
 **New game** clears the grid but keeps the series score and who starts.
 
 - Alone, a finished game (or an empty grid) starts at once. Mid-game it asks you to confirm so a stray tap does not wipe the board.
-- With a friend they must accept. **Cancel request** while you wait. A drop cancels a pending request.
+- With a friend they must accept. **Cancel request** while you wait.
 
 ## Saved
 
@@ -7347,13 +7342,15 @@ The Store itself does not keep a shopping cart in this icon.
     //   PRIV — private: never leaves the owner's tab; each participant keeps
     //          their own copy (personal prefs, a guest's own library).
     const RW = { visibility: 'read-write' };
+    // The first build with gifos.room (manifest "room"): an app that declares a room needs it.
+    const ROOM_MIN_BUILD = 5700;
     const RO = { visibility: 'read-only' };
     const PRIV = { visibility: 'private' };
 
     const groups = [
       { name: 'Games', apps: [
         app('Tic-Tac-Toe', 'tictactoe', [92, 255, 123], TICTACTOE_HTML, { data: { game: RW } }),
-        app('Connect Four', 'connect4', [255, 180, 60], CONNECT_FOUR_HTML, { data: { game: RW } }),
+        app('Connect Four', 'connect4', [255, 180, 60], CONNECT_FOUR_HTML, { minBuild: ROOM_MIN_BUILD, data: { game: RW, ask: RW }, room: { seats: ['R', 'Y'], turns: 'order', moves: ['game'], solo: true } }),
         app('Minesweeper', 'minesweeper', [255, 210, 60], MINESWEEPER_HTML, { data: { mine: RW } }),
         // Declares Smartest text so the in-board "Hint" button can ask the
         // computer's AI for a move — the app feeds it a clean FEN + the exact

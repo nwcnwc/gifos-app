@@ -104,5 +104,17 @@
   "runtime.agent.noElement": "⚠ нет элемента [{index}]",
   "runtime.agent.done": "✓ готово",
   "runtime.agent.stoppedAfter": "⚠ остановлено после {n} шагов",
-  "runtime.agent.stopped": "остановлено"
+  "runtime.agent.stopped": "остановлено",
+  "runtime.room.notHere": "Вас нет в этой комнате.",
+  "runtime.room.watching": "Вы наблюдаете.",
+  "runtime.room.notYourTurn": "Сейчас не ваш ход.",
+  "runtime.room.adminOnly": "Здесь это может сделать только хозяин.",
+  "runtime.room.full": "Этот стол занят.",
+  "runtime.room.noSeat": "Такого места нет.",
+  "runtime.room.notMoves": "Это не часть игры.",
+  "runtime.room.badOp": "Комната так не умеет.",
+  "runtime.room.pending": "Комната не ответила.",
+  "runtime.room.asks": "{name} просит сыграть в {app}.",
+  "runtime.room.seat": "Посадить",
+  "runtime.room.notNow": "Не сейчас"
 }
