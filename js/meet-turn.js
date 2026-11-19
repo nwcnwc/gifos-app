@@ -1576,8 +1576,13 @@
         // return and whose connection is still not up when the wake's own settle time has run is lost first-hand: it is
         // closed then, not at the dial budget (that budget is for a connection that blips while I am here), and nothing
         // was refused, so no wait follows: SUB.3 (a) asks for the re-pipe at once and a standby is warmed again.
-        const wk = io.woke && io.wakeSettleMs > 0 ? io.woke() : 0, away = wk > 0 && L.upAt > 0 && L.upAt < wk && now - wk >= io.wakeSettleMs && now - wk < DIAL_BUDGET_MS * 2;   // (the settle time is the page's WAKE_SETTLE_MS)
-        if (L.state === 'up' && !io.pcUp(L.far)) { if (!L.downSince) L.downSince = now; if (away) { close(L, 'wake-lost'); continue; } if (now - L.downSince > DIAL_BUDGET_MS) { if (L.opener) sub.pipeRetryAt = now + RETRY_MS; close(L, 'lost'); continue; } }
+        // (down by the time the settle ran out and never up since: a link that drops later is the dial budget's, as before)
+        if (L.state === 'up' && !io.pcUp(L.far)) {
+          if (!L.downSince) L.downSince = now;
+          const wk = io.woke && io.wakeSettleMs > 0 ? io.woke() : 0;
+          if (wk > 0 && L.upAt > 0 && L.upAt < wk && now - wk >= io.wakeSettleMs && L.downSince - wk <= io.wakeSettleMs) { close(L, 'wake-lost'); continue; }
+          if (now - L.downSince > DIAL_BUDGET_MS) { if (L.opener) sub.pipeRetryAt = now + RETRY_MS; close(L, 'lost'); continue; }
+        }
         else L.downSince = 0;
         if ((L.state === 'ask' || (L.state === 'swap' && !L.peer)) && now - L.sentAt > RESEND_MS && (L.opener || L.farDev)) sendAsk(L);
         // a link that holds no vouch of mine yet (its setup, a takeover) asks again until it does; after that only a
