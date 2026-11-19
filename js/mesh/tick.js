@@ -150,6 +150,7 @@
         if (this.stranded) { if (TICK - this.strandedAt > K.STRAND_TTL) { this.stranded = false; this.lastReach = -1; this.joinStart = -1; this.join(); } wake(); return true; }   // R6
         if (this.l16WaveTick()) { wake(); return true; }   // L16: a silent ask wave: everyone left
         if (this.l16PlainHedge()) { wake(); return true; }   // FHOP.8.3: my one ask went quiet: one more greeter beside it
+        if (this.l8511Tick()) { wake(); return true; }   // L8.54.11: the kindless word is due: one knock
         this.subStall();   // JOIN.2 (mesh_roomterm.inc)
         if (this.entCheck()) { this.islandAsk(this.lastGreeters); wake(); return true; }   // L8.47
         if (this.islandTick()) { wake(); return true; }   // L8.1: nobody at the door answered
@@ -203,6 +204,7 @@
       if (lv.LG_ON) this.lgTick();   // L29: my load ladder
       if (this.retireDead()) { this.f.wake(id); return true; }   // one owned link lost its channel; the higher id vacates
       if (this.orphanSeat()) { let since = this.d6cBeat(); if (this.backAt > since) since = this.backAt; if (this.greetersAt > since + K.ORPHAN_T && TICK - this.greetersAt >= 16 && (this.coord.pc !== 0 || this.d6cOther())) { this.f.fabricDropHalf(id); this.leftCk = ckey(this.coord); this.leftAt = TICK; this.leftTo = -1;   /* D6c.4: the goodbye goes by the door */ this.requeue('D6c-orphan'); this.f.wake(id); return true; } if (TICK - this.cutAskAt >= 24) { this.cutAskAt = TICK; this.emitRelay(this.genKey); } }   // D6c
+      if (this.cutOff()) { this.cutLeave(-1); this.f.wake(id); return true; }   // TURN.5.3 (island.js): the room lives across a cut: back through the door as a joiner (the goodbye goes by the door, D6c.4)
       if (this.darkSeat() && !this.d6Lease()) { this.dark6++; this.d6Mark = true; this.requeue('D6-dark'); this.f.wake(id); return true; }   // D6
       if (this.islanded() && TICK - this.islandSince() > K.LEASE_T && !(this.l13('L13.6') && this.l13Mass() && TICK - this.l13CrashAt <= 64)) { this.trace('ISLAND-OUT', id, this.coord, 'since=%lld', this.islandSince()); this.requeue('L3-island'); this.f.wake(id); return true; }   // L3.6b
       // T: transit bookkeeping: a claim window that closes with NO contradiction CONFIRMS; the tombstone self-expires (T3).

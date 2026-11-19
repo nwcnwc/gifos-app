@@ -644,6 +644,7 @@
     // C++: mesh_seat.inc:Seat::requeue
     requeue(why = '') {
       const TICK = this.TICK, lv = this.w.lv, id = this.id;
+      const cut53 = why === 'TURN.5.3-cut';   // TURN.5.3: my goodbye says so, and the seats that hang from me follow
       if (this.line === this.id && !this.l850Seated && this.hasCoord && ckey(this.coord) === 0) this.lastPubAt = -1;   // D7.x.2: a founder of one that leaves its cell has no old report to drain
       this.lkAnyAt = -1; this.lkCarried = -1;   // D6c.2
       this.l13ReqN++;
@@ -655,9 +656,9 @@
       this.moving = false; this.oldNbrIds.length = 0; this.holdOcc.clear(); this.holdSeen.clear(); this.holdCous.clear(); this.leaseCk = 0; this.leaseUntil = -1;
       if (this.hasCoord) {
         const ol = ownedLinks(this.coord); const seen = new Set();
-        for (let k = 0; k < ol.length; k++) { const x = this.occGet(ckey(ol[k])); if (x >= 0 && x !== id && !seen.has(x)) { seen.add(x); const m = newMsg('LEAVE'); m.ck = ckey(this.coord); m.id = id; m.child = this.l1DeepKid(); if (this.l834Y >= 0) m.c7Min = this.l834Y; if (this.l40To >= 0) { m.nc = this.l40To; m.tag = 40; m.child = -1; } this.emit(x, m); } }
-        const o = this.ownerCoord(); if (o) { const oid = this.occGet(ckey(o)); if (oid >= 0 && oid !== id && !seen.has(oid)) { const m = newMsg('LEAVE'); m.ck = ckey(this.coord); m.id = id; m.child = this.l1DeepKid(); if (this.l834Y >= 0) m.c7Min = this.l834Y; if (this.l40To >= 0) { m.nc = this.l40To; m.tag = 40; m.child = -1; } this.emit(oid, m); } }
-        if (this.f.fabricDoors()) for (const [, s] of this.sitting) { if (s.assigner !== id || s.joiner < 0 || s.joiner === id || seen.has(s.joiner) || TICK - s.at > K.SIT_TTL || s.pl.t !== 'PLACE') continue; let names = false; for (const nb of s.pl.nbrs) if (nb.k === ckey(this.coord) && nb.v === id) names = true; if (!names) continue; seen.add(s.joiner); const m = newMsg('LEAVE'); m.ck = ckey(this.coord); m.id = id; m.child = this.l1DeepKid(); if (this.l834Y >= 0) m.c7Min = this.l834Y; if (this.l40To >= 0) { m.nc = this.l40To; m.tag = 40; m.child = -1; } this.emit(s.joiner, m); this.trace('L40.3.2-PLACED', id, this.coord, 'to=%d holder=%d', s.joiner, this.l40To); }   // LAW L40.3.2
+        for (let k = 0; k < ol.length; k++) { const x = this.occGet(ckey(ol[k])); if (x >= 0 && x !== id && !seen.has(x)) { seen.add(x); const m = newMsg('LEAVE'); m.ck = ckey(this.coord); m.id = id; m.child = this.l1DeepKid(); if (this.l834Y >= 0) m.c7Min = this.l834Y; if (this.l40To >= 0) { m.nc = this.l40To; m.tag = 40; m.child = -1; } else if (cut53) m.tag = 53; this.emit(x, m); } }
+        const o = this.ownerCoord(); if (o) { const oid = this.occGet(ckey(o)); if (oid >= 0 && oid !== id && !seen.has(oid)) { const m = newMsg('LEAVE'); m.ck = ckey(this.coord); m.id = id; m.child = this.l1DeepKid(); if (this.l834Y >= 0) m.c7Min = this.l834Y; if (this.l40To >= 0) { m.nc = this.l40To; m.tag = 40; m.child = -1; } else if (cut53) m.tag = 53; this.emit(oid, m); } }
+        if (this.f.fabricDoors()) for (const [, s] of this.sitting) { if (s.assigner !== id || s.joiner < 0 || s.joiner === id || seen.has(s.joiner) || TICK - s.at > K.SIT_TTL || s.pl.t !== 'PLACE') continue; let names = false; for (const nb of s.pl.nbrs) if (nb.k === ckey(this.coord) && nb.v === id) names = true; if (!names) continue; seen.add(s.joiner); const m = newMsg('LEAVE'); m.ck = ckey(this.coord); m.id = id; m.child = this.l1DeepKid(); if (this.l834Y >= 0) m.c7Min = this.l834Y; if (this.l40To >= 0) { m.nc = this.l40To; m.tag = 40; m.child = -1; } else if (cut53) m.tag = 53; this.emit(s.joiner, m); this.trace('L40.3.2-PLACED', id, this.coord, 'to=%d holder=%d', s.joiner, this.l40To); }   // LAW L40.3.2
       }   // V7b (H4): the owner reserves my cell in its ledger: it gets my goodbye too
       if (this.hasCoord && this.l40To >= 0 && this.f.fabricDoors()) { this.leftCk = ckey(this.coord); this.leftAt = TICK; this.leftTo = this.l40To; }   // LAW L40.3.3: the cell I hand to its holder is remembered, so a call for it hears that goodbye again
       if (this.hasCoord) this.live.delete(ckey(this.coord));   // my own cell's stamp: never refreshed while I sat there

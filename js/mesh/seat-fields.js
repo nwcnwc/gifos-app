@@ -982,6 +982,7 @@
     ["goAt", "i32"],   // int = -1  (line 1923)
     ["walkedFrom", "i32"],   // int = -1  (line 1923)
     ["doorWalk", "<i32>"],   // OSet<int>  (line 1923)
+    ["cutHalf", "<i32>"],   // OSet<int>  (line 1923)
     ["line", "i32"],   // int = -1  (line 1924)
     ["sr", "i32"],   // int = 0  (line 1924)
     ["lineSeen", "{i32:(i32,i32)}"],   // OMap<int,pair<int,int>>  (line 1924)
@@ -993,6 +994,7 @@
     ["entAsk", "{i32:i32}"],   // OMap<int,int>  (line 1927)
     ["entAnsAt", "i32"],   // int = -1  (line 1927)
     ["entIsl", "bool"],   // bool = false  (line 1927)
+    ["kdAt", "i32"],   // int = -1  (line 1927)
     ["found475", "bool"],   // bool = false  (line 1927)
     ["lineFork", "bool"],   // bool = false  (line 1927)
     ["linkKey", "u32"],   // uint32_t = 0  (line 1927)
@@ -1530,6 +1532,7 @@
     mergeV: false,
     entAnsAt: -1,
     entIsl: false,
+    kdAt: -1,
     found475: false,
     lineFork: false,
     linkKey: 0,
