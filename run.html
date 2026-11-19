@@ -1466,8 +1466,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <h3 data-t="blurWhyTitle" id="blurwhy-title">Your video is still blurred</h3>
       <p id="blurwhy-text"></p>
       <p id="blurwhy-do"></p>
-      <button data-t="blurWhySetPw" id="blurwhy-pw" type="button" style="display:none">Set room password</button>
-      <button data-t="blurWhyOk" id="blurwhy-ok" type="button">OK</button>
+      <div class="blurwhy-acts">
+        <button data-t="blurWhySetPw" id="blurwhy-pw" type="button" style="display:none">Set room password</button>
+        <button data-t="blurWhyOk" id="blurwhy-ok" type="button">OK</button>
+      </div>
     </div>
   </div>
   <div class="name-modal" role="alertdialog" aria-modal="true" id="leave-ask" style="display:none">
@@ -5944,6 +5946,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           lastCons = c;
         }
       }
+      try { explainHeldVideo(); } catch (e) {}
     }
     // GOSSIP REPAINTS ARE COALESCED. A status frame from every section-mate
     // (and a second copy of each over the DataChannel pair) used to run the
@@ -21149,8 +21152,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // camera, unblurred": both wrong. Now one record, joinAv, is both what the
     // lobby paints and what the call turns on at boot (JOIN_AV_KEY). It starts
     // off; only a tap here turns the camera or mic on, and only that tap opens
-    // the camera. Turned on, the preview is blurred by the same rule the room
-    // uses for you (blurLevelFor), so it is the picture others will get.
+    // the camera. The preview shows the blur you picked. No blur is clear here,
+    // and the line says a meeting may still keep the picture blurred.
     const joinAv = { cam: false, mic: false };
     let lobbyCamGen = 0;
     function stopLobbyPreview() {
@@ -21172,15 +21175,22 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         b.dataset.on = on ? '1' : '0';
         word(b.querySelector('.lob-avtxt'), on ? onKey : offKey, on ? onEn : offEn);
       };
+      let lvl = 2;
+      try { lvl = blurLevel(myStatus.blur); } catch (e) {}
       if (joinAv.cam) {
-        let lvl = 2;
-        try { lvl = blurLevel(myStatus.blur); } catch (e) {}
         const onSpec = lvl === 2 ? ['camMaxBlur', 'Max blur'] : lvl === 1 ? ['camMinBlur', 'Min blur'] : ['lobCamOn', 'Camera on'];
         btn('lob-cam', true, onSpec[0], onSpec[1], 'camOffChip', 'Camera off');
       } else btn('lob-cam', false, 'lobCamOn', 'Camera on', 'camOffChip', 'Camera off');
       btn('lob-mic', joinAv.mic, 'lobMicOn', 'Mic on', 'lobMicOff', 'Mic off');
       const quiet = joinAv.cam || joinAv.mic;
-      word(document.getElementById('lob-pv-note'), quiet ? 'appearTitle' : 'youJoinMutedWith', quiet ? 'This is how you\'ll appear' : 'You join muted, with the camera off');
+      const clearPick = !!(joinAv.cam && lvl === 0);
+      const note = document.getElementById('lob-pv-note');
+      word(note, !quiet ? 'youJoinMutedWith' : clearPick ? 'lobClearIf' : 'appearTitle',
+        !quiet ? 'You join muted, with the camera off' : clearPick ? 'This is how you\'ll appear if the meeting you join allows clear video.' : 'This is how you\'ll appear');
+      if (note) note.classList.toggle('lob-pv-clear', clearPick);
+      const lobEl = document.getElementById('lobby');
+      if (lobEl) lobEl.classList.toggle('lob-clear', clearPick);
+      try { placeClearLine(); } catch (e) {}
       let joinKey = 'lobJoinOff', joinEn = "You'll join with your camera and microphone off.";
       if (joinAv.cam && joinAv.mic) { joinKey = 'lobJoinBoth'; joinEn = "You'll join with your camera and microphone on."; }
       else if (joinAv.cam) { joinKey = 'lobJoinCam'; joinEn = "You'll join with your camera on and your microphone off."; }
@@ -21190,8 +21200,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (face) { const me = GifOS.store.identity(); paintAppearFace(face, me.name, me.avatar); }
       const vid = document.getElementById('lob-preview-vid');
       if (vid) {
-        let bl = 2;
-        try { bl = blurLevelFor('me', true); } catch (e) {}
+        const bl = joinAv.cam ? lvl : 0;
         vid.classList.toggle('blur1', bl === 1);
         vid.classList.toggle('blur2', bl === 2);
         if (bl) { try { blurSized(vid); } catch (e) {} }
@@ -21467,6 +21476,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (typeof camChooserOpen === 'function' && camChooserOpen()) { dismissCamChooser(); return; }
           openCamChooser(go, (level) => {
             goLiveBlurPick = blurLevel(level);
+            try { setPersonalBlur(level); } catch (e) {}
+            try { joinAv.cam = true; paintLobbyAv(); } catch (e) {}
+            setLobbyCam(true);
             go.click();
           });
           return;
@@ -21626,6 +21638,25 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       paintLobbyAv();
       placeDeskName();
     }
+    // On a phone Go live the form covers the picture. Sit the sentence in
+    // that form, just above Go live. Go live lives in the tab panel.
+    function placeClearLine() {
+      const note = document.getElementById('lob-pv-note');
+      const preview = document.getElementById('lob-preview');
+      if (!note || !preview) return;
+      const putBack = () => { if (note.parentElement !== preview) preview.appendChild(note); };
+      if (!note.classList.contains('lob-pv-clear')) { putBack(); return; }
+      let bc = false;
+      try { bc = !!BC_INTENT; } catch (e) {}
+      const go = document.getElementById('lob-go');
+      const parent = go && go.parentElement;
+      if (!bc || !parent) { putBack(); return; }
+      const gr = go.getBoundingClientRect();
+      const pr = preview.getBoundingClientRect();
+      const over = gr.height > 1 && gr.left < pr.right - 8 && gr.right > pr.left + 8 && gr.top < pr.bottom && gr.bottom > pr.top;
+      if (!over) { putBack(); return; }
+      if (note.parentElement !== parent) parent.insertBefore(note, go);
+    }
     function placeDeskName() {
       const lob = document.getElementById('lobby');
       if (!lob || !lob.classList.contains('service-ready')) return;
@@ -21644,7 +21675,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (next > 88) name.style.top = next + 'px';
       else name.style.top = '';
     }
-    window.addEventListener('resize', () => { try { placeDeskName(); } catch (e) {} });
+    window.addEventListener('resize', () => { try { placeDeskName(); placeClearLine(); } catch (e) {} });
 
     // ---- boot ------------------------------------------------------------------
     // Camera trouble must never lock anyone out of the room: no permission →
@@ -37794,28 +37825,43 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const on = statusWords('camOn') || 'Camera on.';
       return why ? on + ' ' + why : on;
     }
-    // THE NO BLUR EXPLAINER. A No blur pick that a room rule still keeps soft
+    // THE NO BLUR EXPLAINER. A No blur pick that a room rule still keeps blurred
     // opens a dialog the person closes, instead of a note that faded before it
     // was read. It says why (BLUR_WHY's words, the same as the tile note) and
     // what to do. For a room with no password: a Set room password button when
     // this person can set it (the Password button is theirs), otherwise who can.
-    // The blur rule itself (blurHold) is unchanged. 'ready' is not a hold
-    // anyone has to act on (it clears as people turn their cameras on), so it
-    // keeps the status line.
-    const BLUR_WHY_ASK = { nopw: 1, guests: 1, forall: 1, noadmin: 1 };
+    // The blur rule itself (blurHold) is unchanged. One show per room in this
+    // tab: a reload of the same meeting does not open it again. The lobby
+    // preview carries its own line, so the dialog waits until the meeting.
+    const BLUR_WHY_ASK = { nopw: 1, guests: 1, forall: 1, noadmin: 1, ready: 1 };
+    function heldNoteKey() {
+      let room = '';
+      try { room = (typeof updateRoomKey === 'function') ? updateRoomKey() : ''; } catch (e) {}
+      return 'gifos_held_note_' + room;
+    }
+    function heldNoteSeen() {
+      try { return sessionStorage.getItem(heldNoteKey()) === '1'; } catch (e) { return false; }
+    }
+    function markHeldNote() {
+      try { sessionStorage.setItem(heldNoteKey(), '1'); } catch (e) {}
+    }
     function canSetRoomPw() {
       const pwb = document.getElementById('pwbtn');
-      return !BROADCAST && !!pwb && !pwb.disabled;
+      return !!pwb && !pwb.disabled;
     }
     function openBlurWhy(why) {
       const m = document.getElementById('blurwhy-modal');
+      const lob = document.getElementById('lobby');
+      if (lob && lob.classList.contains('show')) return false;
       if (!m || !BLUR_WHY_ASK[why]) return false;
+      if (heldNoteSeen()) return false;
       const setPw = why === 'nopw' && canSetRoomPw();
       const todo = why === 'nopw'
         ? (setPw ? uiText('blurWhyDoSetPw', 'Set a room password to lift this.')
-          : uiText('blurWhyDoAskAdmin', 'Ask the meeting’s host (or whoever took charge of it) to set the room password, which will require everyone to re-enter the meeting with that password.'))
+          : uiText('blurWhyDoAskAdmin', 'Ask the meeting host to set the room password, which will require everyone to re-enter the meeting with that password.'))
         : why === 'guests' ? uiText('blurWhyDoGuests', 'Ask the meeting host to lift it.')
         : why === 'forall' ? uiText('blurWhyDoForAll', 'Ask the person who blurred you to lift it.')
+        : why === 'ready' ? uiText('blurWhyDoReady', 'Everyone here needs their camera on with No blur.')
         : uiText('blurWhyDoNoAdmin', 'It clears when a host joins.');
       document.getElementById('blurwhy-text').textContent = blurWhyWords(why, 'says');
       document.getElementById('blurwhy-do').textContent = todo;
@@ -37823,9 +37869,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       pwBtn.style.display = setPw ? '' : 'none';
       m.dataset.why = why;
       m.style.display = 'flex';
+      markHeldNote();
       const first = setPw ? pwBtn : document.getElementById('blurwhy-ok');
       try { first.focus(); } catch (e) {}
       return true;
+    }
+    function explainHeldVideo() {
+      const lob = document.getElementById('lobby');
+      if (lob && lob.classList.contains('show')) return;
+      if (!myStatus || myStatus.blur !== 0) return;
+      let hold = '';
+      try { hold = blurHold('me'); } catch (e) { return; }
+      if (!hold) return;
+      openBlurWhy(hold);
     }
     function closeBlurWhy() {
       const m = document.getElementById('blurwhy-modal');
@@ -37858,7 +37914,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (myStatus.camOff && hold !== 'nopw' && hold !== 'guests' && hold !== 'forall') {
         setStatus(uiText('stNoBlurPickedTurnYour', 'No blur picked — turn your camera on to be ready for clear video.'));
       } else if (why) {
-        blurNote(why);
+        // The dialog already says this and stays until they dismiss it.
+        // The fading note would sit on the picture under that dialog.
+        const whyDlg = document.getElementById('blurwhy-modal');
+        if (!(whyDlg && whyDlg.style.display !== 'none')) blurNote(why);
         setStatus(why);
       } else {
         setStatus(uiText('stBlurOff', 'Blur off.'));
