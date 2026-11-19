@@ -73,7 +73,7 @@
           if (this.cellReserved(k) || this.l31Held(k, this.findNc)) continue;
           if (this.courtHeld(k)) return null;
           const dk = ckey(down(cell)); if ((this.cellReserved(dk) && !this.occIsPhantom(dk)) || this.softSitting(dk)) continue;
-          if (j === 0 && live) continue;
+          if (j === 0 && live && !this.l714Open(t)) continue;
           if (!this.l31CellOk(cell)) return null;
           return cell;
         }

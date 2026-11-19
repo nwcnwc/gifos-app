@@ -51,7 +51,7 @@
     'fabricSend', 'fabricUnreachable', 'fabricVerdict', 'fhopActive', 'fhopFriendFor', 'l164Of', 'l18Deliv',
     'l18Hop', 'l18UxDeliv', 'l222Note', 'l22Agree', 'l23GreetRelease', 'l22Close', 'l22CloseAsk', 'l22Need', 'l22Quiet', 'l28Reply',
     'l915Note', 'relayKnock', 'relayUnlist', 'descEnd', 'descNote', 'wake', 'fabricAudit', 'fabricDoorHeard', 'g4Joined', 'fabricDropHalf', 'fabricLinkCarries',
-    'fabricDoorNet', 'fabricSubAsk', 'fabricSubProbe', 'fabricPipePeers', 'fabricSubDoor', 'fabricSubRepipe', 'fabricSubGo', 'fabricSubWalk',
+    'fabricDoorNet', 'fabricDoorBlk', 'fabricSubAsk', 'fabricSubProbe', 'fabricPipePeers', 'fabricSubDoor', 'fabricSubRepipe', 'fabricSubGo', 'fabricSubWalk',
   ]);
 
   // A fabric that refuses every call: the interface a harness or the page adapter fills in.
@@ -287,7 +287,7 @@
       if (this.occ.has(k) && deathWhy(why)) { if (this.hasCoord && this.coord.pc === 0 && ckPc(k) === 0 && this.occGet(k) >= 0) this.digGone.set(k, [this.occGet(k), this.TICK]); this.digForget(k); if (this.hasCoord && this.coord.pc === 0) this.rootFold(true); }
       if (this.occ.has(k) && (deathWhy(why) || why === 'leave' || why === 'goodbye' || why === 'mate-unreach') && this.hasCoord && this.coord.pc === 0 && this.coord.i === 0 && ckPc(k) === 0 && ckR(k) === this.coord.r && ckI(k) !== 0) { const x = this.occGet(k); if (x >= 0 && x !== this.id) { if (this.vacOut.size >= C * C) this.vacOut.delete(this.vacOut.keys().next().value); this.vacOut.set(k, [x, this.TICK]); } }   // D5.2 (headword.js): a death verdict on a cell of my row is told to my row
       if (this.occ.has(k) && deathWhy(why) && ckPc(k) === 0) this.trace('OCC-DEATH', this.id, unckey(k), 'gone=%d why=%s', this.occGet(k), why);   // forensics: a Section-1 occupant read dead, by whom and why
-      if (this.occ.has(k) && deathWhy(why)) { const x = this.occGet(k); if (x >= 0 && x !== this.id) this.memo.set(k, { id: x, tok: this.pinned.has(x) ? ins(this.pinned, x, () => 0) : 0, at: this.TICK }); }
+      if (this.occ.has(k) && deathWhy(why)) { const x = this.occGet(k); if (x >= 0 && x !== this.id && this.liveBy.get(k) === x) this.memo.set(k, { id: x, tok: this.pinned.has(x) ? ins(this.pinned, x, () => 0) : 0, at: this.TICK }); }
       if (this.occ.has(k) && deathWhy(why)) { const kf = this.kidful.get(k); if (kf !== undefined && kf) { this.kidMemo.set(k, this.TICK); if (this.kidMemo.size > 64) eraseFirst(this.kidMemo); } }
       if ((why === 'hint-move' || why === 'moved-by-gossip' || why === 'moved-confirmed') && this.hasCoord && this.coord.pc === 0 && ckPc(k) === 0) { const st = this.s1tab.get(k); if (st !== undefined && st.by >= 0 && st.by === this.occGet(k)) this.digForget(k); }   // the occupant moved to another cell: its report here is not a second person
       this.occ.delete(k);
