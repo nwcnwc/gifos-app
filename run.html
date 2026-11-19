@@ -11591,6 +11591,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // You left on purpose: the number is the room without you, frozen at
       // the click, not the tiles this page still has up behind the dialog.
       const shown = (leftUp && leftBehind > 0) ? leftBehind : headerCount();
+      // SUB.11: the People panel and this count read one fold, so an open panel follows it too. (A far person's name can
+      // arrive after the panel was painted: the row said "Guest" until something else repainted it.)
+      try {
+        const rEl = document.getElementById('roster');
+        if (rEl && rEl.classList.contains('open')) {
+          const all = rosterRows();
+          const sig = all.map((x) => x.id + '\t' + x.name).join('\n') + '\n' + (all.more || 0);
+          if (sig !== updateStatus.peopleSig) { updateStatus.peopleSig = sig; paintRosterSoon(); }
+        } else updateStatus.peopleSig = null;
+      } catch (e) {}
       // The password and ready-count sentences are longer than the row Fit
       // leaves, so they were cut off after you left. The count and quality stay.
       const tail = partial + link + savedLock + (leftUp ? '' : extra);
