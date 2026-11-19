@@ -145,6 +145,9 @@
   // The words for a refusal, from the engine's reason.
   const roomWhy = (AR, why) => { const key = 'runtime.room.' + why, t = T(key); return t && t !== key ? t : ((AR.WHY && AR.WHY[why]) || why); };
   // The app's moves collections are written only through gifos.room.move / newRound.
+  // Requests are signed for the lane's sid under their own name: a person key must never meet the owner-key binding
+  // an owned link's sid carries (a dot and a key hash), which only the owner's key can satisfy.
+  const roomSid = (sid) => 'gifos-room|' + String(sid || '').replace(/\./g, '_');
   const roomMoves = (manifest) => (manifest && manifest.room && Array.isArray(manifest.room.moves)) ? manifest.room.moves.map(String) : [];
 
   // An admin's page shows each ask in one line the app cannot draw or fake: "Ana asks to play Connect Four.
@@ -216,7 +219,7 @@
       remote(f) {
         if (!sid || !f || !f.p || f.p.kind !== 'room' || !f.p.body) return;
         const b = f.p.body;
-        appOwnerLib().then((AO) => AO.makeVerifier(sid, f.pk).verify(f)).then((v) => {
+        appOwnerLib().then((AO) => AO.makeVerifier(roomSid(sid), f.pk).verify(f)).then((v) => {
           if (!v || !v.ok) return null;
           return sha256hexOfBytes(hexBytes(f.pk)).then((h) => {
             const k = h.slice(0, 16);
@@ -270,7 +273,7 @@
         const id = me.id.slice(0, 4) + (++seq) + '.' + Date.now().toString(36);
         const body = { pid: r.me, t: me.stamp(), q: Object.assign({}, q, { q: id }) };
         if (rec && typeof rec === 'object') body.rec = rec;
-        return me.signer.sign(sid, 'room', body).then((f) => new Promise((res, rej) => {
+        return me.signer.sign(roomSid(sid), 'room', body).then((f) => new Promise((res, rej) => {
           waits.set(id, { res, rej, f, at: Date.now(), t0: Date.now() });
           try { send('act', { op: 'room', f }); } catch (e) {}
         }));
