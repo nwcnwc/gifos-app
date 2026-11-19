@@ -38,6 +38,23 @@
       const a = this.l31Acc.get(k); return a !== undefined && a.left && this.TICK - a.at <= K.L31_REC_HOLD;
     },
 
+    // L7.14: the head hole of a live row with no healer in my view (no down-child; no deep seat to pull; no unbroken run of goodbyes from the head to the row's first seat) is the frontier: the head of the row above seats it.
+    // C++: mesh_burst.inc:Seat::l714Open
+    l714Open(t) {
+      if (!this.hasCoord || this.coord.pc !== 0 || this.coord.i !== 0 || this.coord.r !== (t + C - 1) % C) return false;   // C3: judged by the cell's one admitter, the head of the row above (it alone knows its own vouch for the head)
+      const hk = ckey({ pc: 0, r: t, i: 0 });
+      if (this.occ.has(hk) || this.softSitting(hk)) return false;
+      { const dk = ckey(topo.down({ pc: 0, r: t, i: 0 })); if (this.cellReserved(dk) || this.occ.has(dk)) return false; }   // vertical promotion (11a)
+      if (this.hasChildren()) return false;   // L9.12: a room with deep seats heals a home hole by the pull
+      for (let q = 0; q < C * C; q++) { const k = ckey({ pc: 0, r: (q / C) | 0, i: q % C }); if (this.occGet(k) < 0) continue; const ch = this.childOf.get(k); const kf = this.kidful.get(k); if ((ch !== undefined && ch >= 0) || (kf !== undefined && kf)) return false; }   // ...read as homePull reads it
+      for (let j = 0; j < C; j++) {
+        const k = ckey({ pc: 0, r: t, i: j });
+        if (j > 0 && (this.occ.has(k) || this.softSitting(k))) return false;   // the first seat of the row, reached over goodbyes only: its scooch heals the head
+        const b = this.byeAt.get(k); if (b === undefined || this.TICK - b > K.LEASE_T) return true;   // a cell on the way that no goodbye emptied: nobody is coming
+      }
+      return true;
+    },
+
     // L44.4: the second ask waits 60 ticks when the greeter was asked under a second ago, and one tick past L7_HOLD otherwise. The list's length is not the test.
     // C++: mesh_burst.inc:Seat::l44AckWait
     l44AckWait() {
