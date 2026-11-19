@@ -22372,9 +22372,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     };
     // Room-wide chat options live in modTable['*'] (signed in admin rooms).
     // Open rooms have no switches — fixed policy only (STEERING 21:09).
-    const CHAT_SLOW_MS = GifOS.timings.CHAT_SLOW_MS;
+    const CHAT_SLOW_MS = GifOS.timings.CHAT_SLOW_MS, CHAT_SLOW_LAG_MS = GifOS.timings.CHAT_SLOW_LAG_MS;
     let chatSlowLast = 0;
-    const chatSlowSeen = new Map(); // byId -> receiver clock of their last kept line
+    const chatSlowSeen = new Map(); // byId -> receiver clock when their next line is due (slowBlocks)
+    // What happened to my lines and to the lines slow mode kept out, in the
+    // debug record (Settings → Debug logging): sent, held for slow mode,
+    // refused, or dropped on arrival. Ids and authors only, never the text.
+    function chatTrace(ev, m) {
+      if (!DEBUG_ON || typeof window === 'undefined') return;
+      const r = window.__chatTrace || (window.__chatTrace = []);
+      r.push({ t: Date.now(), ev: ev, id: m && m.id ? String(m.id).slice(0, 24) : null, by: m && m.byId ? String(m.byId).slice(0, 12) : null });
+      if (r.length > 300) r.splice(0, r.length - 300);
+    }
     let chatOptOverride = null; // chatOptForTest
     function modStarOn(field, ifAdminUnset) {
       if (chatOptOverride && Object.prototype.hasOwnProperty.call(chatOptOverride, field))
@@ -22455,14 +22464,22 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (o.role !== 'bot' && o.role !== 'controller') return false;
       return typeof o.op === 'string' && !!o.op;
     }
+    // Slow mode holds each author to one line per CHAT_SLOW_MS, counted as a
+    // pace, not as the gap between two arrivals. Lines travel different roads
+    // and a tab that was asleep takes everything that queued for it at once,
+    // so lines an author spaced out can reach this page together. Each line
+    // books the author's next slot (chatSlowSeen: the time it is due). A line
+    // lands while it comes no more than CHAT_SLOW_LAG_MS ahead of its slot:
+    // lines that bunched on the way all land, and a sender that skips its own
+    // wait still gets no more than the pace plus that credit.
     function slowBlocks(m) {
       if (!slowModeOn() || !m || !m.byId || m.byId === myId || isChatAdmin(m.byId)) return false;
       if (m.q === 1 || m.qv || m.qs != null) return false;
       if (botControlLine(m)) return false;
       const now = Date.now();
-      const prev = chatSlowSeen.get(m.byId) || 0;
-      if (prev && now - prev < CHAT_SLOW_MS) return true;
-      chatSlowSeen.set(m.byId, now);
+      const due = chatSlowSeen.get(m.byId) || 0;
+      if (due - now > CHAT_SLOW_LAG_MS) { chatTrace('slow-drop', m); return true; }
+      chatSlowSeen.set(m.byId, Math.max(due, now) + CHAT_SLOW_MS);
       return false;
     }
     function applyCdel(id, w) {
@@ -24338,23 +24355,58 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         try { inp.setSelectionRange(pos, pos); } catch (err) {}
       });
     })();
+    // MY LINE GOES OUT ONE WAY: postChat. Slow mode paces the sender, and it
+    // never throws a line away. A line said inside the wait is held, in order,
+    // and goes out the moment its slot comes; it joins my chat log as it goes,
+    // and the status line says it is on its way. Only past CHAT_HELD_MAX held
+    // lines is a line refused (false: the caller keeps it, the box keeps the
+    // text). Returns 'sent' or 'held'.
+    const CHAT_HELD_MAX = 5;
+    const chatHeld = [];
+    let chatHeldTimer = null;
+    function chatPaced(m) { return slowModeOn() && !amAdmin && !botControlLine(m); }
+    function chatGo(m) {
+      if (chatPaced(m)) chatSlowLast = Date.now();
+      chat.set(m.id, m);
+      sendAll({ k: 'chat', m });
+      chatTrace('sent', m);
+    }
+    function chatHeldDrain() {
+      chatHeldTimer = null;
+      while (chatHeld.length) {
+        const m = chatHeld[0];
+        if (chatOffInfo() && !amAdmin) { chatHeld.length = 0; setStatus(uiText('stTheHostHasTurnedChat', 'The host has turned chat off.')); break; }
+        const wait = chatPaced(m) ? chatSlowLast + CHAT_SLOW_MS - Date.now() : 0;
+        if (wait > 0) { chatHeldTimer = setTimeout(chatHeldDrain, wait); break; }
+        chatHeld.shift();
+        m.at = Date.now();   // said now: its slot is when the room hears it
+        chatGo(m);
+        renderChat();
+      }
+    }
+    function postChat(m) {
+      if (chatHeld.length || (chatPaced(m) && Date.now() - chatSlowLast < CHAT_SLOW_MS)) {
+        if (chatHeld.length >= CHAT_HELD_MAX) { chatTrace('refused', m); setStatus(uiText('stSlowModeWaitAFew', 'Slow mode: wait a few seconds before posting again.')); return false; }
+        chatHeld.push(m);
+        chatTrace('held', m);
+        setStatus(uiText('stSlowModeHeld', 'Slow mode: your message goes out in a few seconds.'));
+        if (!chatHeldTimer) chatHeldDrain();
+        return 'held';
+      }
+      chatGo(m);
+      return 'sent';
+    }
     document.getElementById('chatform').addEventListener('submit', (e) => {
       e.preventDefault();
       if (chatOffInfo() && !amAdmin) { setStatus(uiText('stTheHostHasTurnedChat', 'The host has turned chat off.')); return; }
       const inp = document.getElementById('chat-in');
       const text = inp.value.trim();
       if (!text) return;
-      if (slowModeOn() && !amAdmin) {
-        const now = Date.now();
-        if (now - chatSlowLast < CHAT_SLOW_MS) { setStatus(uiText('stSlowModeWaitAFew', 'Slow mode: wait a few seconds before posting again.')); return; }
-        chatSlowLast = now;
-      }
       const prayBtn = document.getElementById('pray');
       const m = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text };
       if (prayOn() && prayBtn && prayBtn.getAttribute('aria-pressed') === 'true') m.prayer = 1;
       if (pendingReply) m.reply = { id: pendingReply.id, by: pendingReply.by, text: pendingReply.text };
-      chat.set(m.id, m);
-      sendAll({ k: 'chat', m });
+      if (!postChat(m)) return;   // slow mode already holds as many lines as it keeps: this one stays in the box
       inp.value = '';
       // A search would hide the line you just sent.
       const q = document.getElementById('chatq');
@@ -31960,7 +32012,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           bc: window.__bcTrace || null, mem: window.__memSamples || null,
           pip: window.__pipTrace || null, view: window.__viewTrace || null, content: window.__contentTrace || null,
           meters: (typeof dbgMeterKit !== 'undefined' && dbgMeterKit) ? dbgMeterKit.ring() : null,
-          caps: window.__capTrace || null,
+          caps: window.__capTrace || null, chat: window.__chatTrace || null,
         }),
         snapshot: () => {
           const d = window.__gifosVideo && window.__gifosVideo.debugDump ? window.__gifosVideo.debugDump() : null;
@@ -40966,7 +41018,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const text = String((msg && msg.text) || '').slice(0, 2000);
           if (!text) return { ok: false };
           const m = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text: text };
-          chat.set(m.id, m);
           // A bot posts one chat per spoken line. On the mesh that burst spends
           // the author's flood budget, and the beats and commands after it
           // never arrive. Line pushes go on the direct channel only. Beats,
@@ -40975,14 +41026,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // Off the mesh (that budget is the room's) and off the chat seal
           // chain, so a line per utterance cannot queue the beats and answers
           // behind it. The file chain is the other ordered pipe.
+          // Its other lines take the room's one road for a line (postChat), so
+          // slow mode paces them as it paces a person's.
+          let how = 'sent';
           if (linePush) {
+            chat.set(m.id, m);
             for (const p of peers.values()) if (p.dc && p.dc.readyState === 'open') dcSendFile(p, { k: 'chat', m });
-          } else sendAll({ k: 'chat', m });
+          } else {
+            how = postChat(m);
+            if (!how) return { ok: false, error: 'Slow mode: this meeting allows one chat line per ' + Math.round(CHAT_SLOW_MS / 1000) + ' seconds, and ' + CHAT_HELD_MAX + ' are already waiting to go out.' };
+          }
           try { renderChat(); } catch (e) {}
           try {
             if (typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'chat', text: text, by: m.by, byId: m.byId, at: m.at, self: true });
           } catch (e) {}
-          return { ok: true, id: m.id };
+          return how === 'held' ? { ok: true, id: m.id, held: true } : { ok: true, id: m.id };
         },
         transcribe(msg) {
           // The bot keeps the room's transcript and, with on, writes down every
