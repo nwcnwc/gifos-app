@@ -252,6 +252,11 @@
       this.courtNc = mm.nc; if (!this.courtIgnore) this.courtSkipped = false;   // L3.14
       if (this.l31Pend.length) { for (const p of this.l31Pend) if (p.nc === mm.nc) { this.findAck(mm); return; } }   // L31.4
       for (const [, e] of this.sitting) if (e.joiner === mm.nc && e.assigner === id && e.pl.t === 'PLACE' && this.TICK - e.at <= K.SIT_TTL) { this.emit(mm.nc, msg.clone(e.pl)); return; }   // FINDACK
+      if (mm.tag !== 1 && mm.nc >= 0 && mm.nc !== id && this.hasCoord && this.state === 3 && this.coord.pc === 0) {   // L7.15: a vouch my assigner handed me with my row (SITXFER) is mine to honour, and I hold no PLACE of it to send again: the seeker it names is placed in that chair by me
+        let hc = null;
+        for (const [ek, e] of this.sitting) if (e.joiner === mm.nc && e.assigner === id && e.pl.t !== 'PLACE' && ckPc(ek) === 0 && this.TICK - e.at <= K.SIT_TTL && (this.occGet(ek) < 0 || this.occGet(ek) === mm.nc)) { hc = unckey(ek); break; }
+        if (hc !== null) { const hk = ckey(hc); this.trace('L7.15-HANDED', id, this.coord, 'cell=%s nc=%d', coordStr(hc), mm.nc); this.healOnly.delete(hk); this.healTry.set(hk, this.TICK); this.w.ADMIT_SITE = 's1-handed'; this.admit(hc, mm); return; }
+      }
       // D6b: a seeker that vacated by D6-dark knocks for a deep cell.
       const dkDeep = mm.dk;
       if (this.coord.pc === 0 && !dkDeep) {
@@ -368,7 +373,7 @@
           if (this.softSitting(dk)) { continue; }
           if (this.l33HeirCalled(k)) { skip.v = true; continue; }   // L33.2
           // HEADLESS-ROW admission: the vacated HEAD of a LIVE row is an INTERNAL HOLE owned by its designated healer.
-          if (j === 0 && rowLive[t]) continue;
+          if (j === 0 && rowLive[t]) { if (!this.l714Open(t)) continue; this.trace('L7.14-HEAD', this.id, this.coord, 'cell=%s nc=%d', coordStr(cell), mm.nc); }   // L7.14 (burst.js)
           let adm = (j > 0) ? { pc: 0, r: t, i: 0 } : { pc: 0, r: (t - 1 + C) % C, i: 0 };
           let devArm = null, devGuard = null;
           // A: soft-only primary (sitting-down, no occ yet) is not a FIND peer.
@@ -461,7 +466,7 @@
         }
         const liveR = rowLive[t];
         for (let j = 0; j < C; j++) {
-          if (j === 0 && liveR) continue; // head of live row: not an admit target
+          if (j === 0 && liveR && !this.l714Open(t)) continue; // head of live row: not an admit target (L7.14: unless it has no healer)
           if (!this.cellReserved(ckey({ pc: 0, r: t, i: j })) && this.courtHeld(ckey({ pc: 0, r: t, i: j }))) break;   // L3.14
           if (!this.cellReserved(ckey({ pc: 0, r: t, i: j })) || this.l13MateGone(ckey({ pc: 0, r: t, i: j }))) {
             if (this.l13('L13.30')) { const dk2 = ckey(down({ pc: 0, r: t, i: j })); if (this.cellReserved(dk2) && !this.occIsPhantom(dk2)) continue; }
