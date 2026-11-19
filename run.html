@@ -13837,6 +13837,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // one: that room; none inside one dial's verdict (FHOP_RELAY_ASK): not this room. The join that follows reuses the pc.
         // SUB.8.1: the Section-1 seats of my own room (me first), for the probe: a pipe end names them to the far end, whose
         // side dials them one at a time on a plain connection (never a seat the mesh saw leave or the relay saw go).
+        // SUB.10: my subroom is a leaf: my end holds one pipe and every far door my room fold lists comes through it
+        subLeaf: () => {
+          const r0 = meshNode && meshNode.raw, s = typeof r0 === 'function' ? r0() : r0;   // the law's own seat (meshSeat() is the page view, which holds no fold of the pipes)
+          if (!s || !s.pipeDig || s.pipeDig.size !== 1) return 'pipes=' + (s && s.pipeDig ? s.pipeDig.size : -1);
+          const R = s.dRoot(); if (!R || R.at < 0) return 'no fold';
+          const F = new Set(Array.from(s.pipeDig.values())[0].doors.map((e) => e.id));
+          return R.doors.every((e) => e.id === s.sr || F.has(e.id)) ? true : 'doors=' + R.doors.map((e) => e.id).join(',') + ' far=' + Array.from(F).join(',') + ' mine=' + s.sr;   // true, or why not (a debug line)
+        },
         s1Seats: () => {
           if (!meshNode || !myId) return [];
           const c = meshCoord(); if (!c || c.pc !== 0) return [];
@@ -18219,6 +18227,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           },
           probe: () => !!(turnLinks && relayTv && turnLinks.probe()),   // JOIN.2: my first ask stalled: dial the heads of the other doors the relay lists (no Worker call)
           pipeEnds: () => (turnLinks ? turnLinks.pipeEnds() : []),
+          go: () => (turnLinks && turnLinks.go ? turnLinks.go() : -1),   // SUB.10: the door my pipe end says my subroom walks to
+          walk: (n, p) => !!(turnLinks && turnLinks.walk && turnLinks.walk(n, p)),   // SUB.10: may my seat walk now
+          walked: () => !!(turnLinks && turnLinks.walked && turnLinks.walked()),   // SUB.10.6: my seat walked lately
           repipe: () => { if (turnLinks) turnLinks.repipe(); },   // my room's fold lost a far door: re-pipe my room (asked once, by the home-cell seat)
           doorEmpty: () => { if (turnLinks) turnLinks.doorEmpty(); try { turnNote('turn-sub door ' + (meshNode ? meshNode.sub : '?') + ' empty at the relay: asking for a fresh grant'); } catch (e) {} },   // my door's relay forgot it (tag 3): a fresh grant for it
         },

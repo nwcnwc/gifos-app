@@ -51,7 +51,7 @@
     'fabricSend', 'fabricUnreachable', 'fabricVerdict', 'fhopActive', 'fhopFriendFor', 'l164Of', 'l18Deliv',
     'l18Hop', 'l18UxDeliv', 'l222Note', 'l22Agree', 'l23GreetRelease', 'l22Close', 'l22CloseAsk', 'l22Need', 'l22Quiet', 'l28Reply',
     'l915Note', 'relayKnock', 'relayUnlist', 'descEnd', 'descNote', 'wake', 'fabricAudit', 'fabricDoorHeard', 'g4Joined', 'fabricDropHalf', 'fabricLinkCarries',
-    'fabricDoorNet', 'fabricSubAsk', 'fabricSubProbe', 'fabricPipePeers', 'fabricSubDoor', 'fabricSubRepipe',
+    'fabricDoorNet', 'fabricSubAsk', 'fabricSubProbe', 'fabricPipePeers', 'fabricSubDoor', 'fabricSubRepipe', 'fabricSubGo', 'fabricSubWalk',
   ]);
 
   // A fabric that refuses every call: the interface a harness or the page adapter fills in.
@@ -886,12 +886,12 @@
           if (a >= 0 && b >= 0 && a !== b) { if (this.l828At < 0 || TICK - this.l828At > K.RELAY_TTL) this.l828At = TICK; if (TICK - this.l828At < K.L828_HOLD) { this.trace('L8.28-HOLD', id, null, 'to=%d other=%d rings=%d/%d', to, o, a, b); return; } }
         }
       }
-      if (roomTerm(this, 1) && m.t === 'PONG' && m.id === id && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); this.emit(to, mm); return; }   // L8.31
-      if (roomTerm(this, 1) && m.t === 'HELLO' && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); mm.c7Held = this.l845Held(); mm.c7One = this.ringAlone() || (this.l850Lone());   /* L8.50: a founder that has seated nobody is its ring, whatever its view has absorbed from a room it has one pc into */ this.emit(to, mm); return; }   // L8.5 (L8.5.2: c7One says my ring holds nobody else)
-      if (roomTerm(this, 1) && ((m.t === 'HOME' && m.id === id) || (m.t === 'PLACE' && m.pp === id)) && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); this.emit(to, mm); return; }   // L8.5.1
-      if (roomTerm(this, 1) && m.t === 'PHONE' && m.id === id && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); this.emit(to, mm); return; }   // L8.10
+      if (roomTerm(this, 1) && m.t === 'PONG' && m.id === id && m.c7Min < 0 && this.hasCoord && this.state === 3) { const rn = this.ringName(); if (rn >= 0) { const mm = msg.clone(m); mm.c7Min = rn; this.emit(to, mm); return; } }   // L8.31
+      if (roomTerm(this, 1) && m.t === 'HELLO' && m.c7Min < 0 && this.hasCoord && this.state === 3) { const rn = this.ringName(); if (rn >= 0) { const mm = msg.clone(m); mm.c7Min = rn; mm.c7Held = this.l845Held(); mm.c7One = this.ringAlone() || (this.l850Lone());   /* L8.50: a founder that has seated nobody is its ring, whatever its view has absorbed from a room it has one pc into */ this.emit(to, mm); return; } }   // L8.5 (L8.5.2: c7One says my ring holds nobody else)
+      if (roomTerm(this, 1) && ((m.t === 'HOME' && m.id === id) || (m.t === 'PLACE' && m.pp === id)) && m.c7Min < 0 && this.hasCoord && this.state === 3) { const rn = this.ringName(); if (rn >= 0) { const mm = msg.clone(m); mm.c7Min = rn; this.emit(to, mm); return; } }   // L8.5.1
+      if (roomTerm(this, 1) && m.t === 'PHONE' && m.id === id && m.c7Min < 0 && this.hasCoord && this.state === 3) { const rn = this.ringName(); if (rn >= 0) { const mm = msg.clone(m); mm.c7Min = rn; this.emit(to, mm); return; } }   // L8.10
       if (m.t === 'WHOHOME' && !this.hasCoord && m.from === id) this.noteDoorAsk(to);   // dark-greeter evidence
-      if (roomTerm(this, 1) && m.t === 'CONFIRM' && m.id === id && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); this.emit(to, mm); return; }   // L8.11
+      if (roomTerm(this, 1) && m.t === 'CONFIRM' && m.id === id && m.c7Min < 0 && this.hasCoord && this.state === 3) { const rn = this.ringName(); if (rn >= 0) { const mm = msg.clone(m); mm.c7Min = rn; this.emit(to, mm); return; } }   // L8.11
       if (m.t === 'YIELD' && m.id === id && this.hasCoord && !m.yp) { const p = newMsg('PONG'); p.coord = topo.cc(this.coord); p.id = id; p.tag = 7; this.emit(to, p); const y = msg.clone(m); y.yp = true; this.emit(to, y); return; }
       if (m.t === 'FINDLEAF' && m.tag === 0 && this.rmVTag) { const mm = msg.clone(m); mm.tag = this.rmVTag; this.emit(to, mm); return; }   // L11
       if (((m.t === 'HELLO' && m.ck === ckey(this.coord)) || (m.t === 'PHONE' && !m.l10E && this.hasCoord && ckey(m.coord) === ckey(this.coord))) && m.id === id && m.arr < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.arr = Math.max(0, TICK - this.rmBornAt) | 0; mm.born = this.rmBornAt; this.emit(to, mm); return; }   // L11
