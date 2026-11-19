@@ -154,7 +154,7 @@
       this.memo.clear();   // L3.14's courtesy is for cells of the door I sat at: a seat that enters another door holds none of its cells for anybody (TURN.5.3)
       for (const x of this.l16Ask) this.f.fabricDoorDrop(this.id, x);
       this.l16Anch = false; this.l16Ho = -1; this.l16Until = 0; this.l16Round = 0; this.l16Ask.length = 0; this.l16Busy.length = 0; this.l16Last = -1; this.l16List.length = 0; this.l16Next = 0; this.l16WaveAt = -1; this.l16FreshAt = -1; this.l16Saw = false;
-      this.islandAsked.clear(); this.entEp.clear(); this.islandLast = false; this.islandAskN = 0; this.subEarly = false; this.islandAskAt = -1; this.gateway = -1; this.lastGreeters.length = 0; this.lastGreetersAt.length = 0; this.greetersAt = -1; this.state = 0; this.join();
+      this.islandAsked.clear(); this.entEp.clear(); this.islandLast = false; this.islandAskN = 0; this.subEarly = false; this.kdAt = -1; this.islandAskAt = -1; this.gateway = -1; this.lastGreeters.length = 0; this.lastGreetersAt.length = 0; this.greetersAt = -1; this.state = 0; this.join();
     },
     // C++: mesh_island.inc:Seat::pipeOut
     // Each end of a joining connection is one more child of the other. What I send my far end is the room fold built
@@ -275,7 +275,7 @@
       if (this.f.fabricSubAsk(this.id)) { this.trace('SUB.2-WAIT', this.id, null, 'asked=%zu', this.lastGreeters.length); this.l16Backoff('sub-ask'); return; }   // a joiner about to found on silence asks for the list of rooms first, and keeps knocking while the ask is open
       this.trace('ISLAND', this.id, null, 'asked=%zu since=%d rounds=%d reach=%d', this.lastGreeters.length, this.islandAskAt, this.islandAskN + 1, typeof this.f.fabricReachSeated === 'function' ? this.f.fabricReachSeated(this.id) : -1);   // reach: the oracle's count (netmatrix bar), -1 without groups
       this.l850Seated = false; this.ehAt = -1; this.ehAskAt = -1; this.ehFrom.clear(); this.foundKnock = true; this.found475 = this.l8475();
-      this.islandAskAt = -1; this.islandAskN = 0; this.subEarly = false; this.islandLast = false; this.genKey = this.w.lv.URL_KEY ? this.w.lv.URL_KEY : this.myKey; /* a founder with no link key mints its own (C++: islandFound) */ const e = []; this.lineAt = this.TICK; /* L8.52.3: before take(): my registration at the door carries my epoch */ this.take({ pc: 0, r: 0, i: 0 }, -1, e); this.islandFounder = true; this.lineAdopt(this.id, this.TICK, 'found'); this.lineFork = true;
+      this.islandAskAt = -1; this.islandAskN = 0; this.subEarly = false; this.kdAt = -1; this.islandLast = false; this.genKey = this.w.lv.URL_KEY ? this.w.lv.URL_KEY : this.myKey; /* a founder with no link key mints its own (C++: islandFound) */ const e = []; this.lineAt = this.TICK; /* L8.52.3: before take(): my registration at the door carries my epoch */ this.take({ pc: 0, r: 0, i: 0 }, -1, e); this.islandFounder = true; this.lineAdopt(this.id, this.TICK, 'found'); this.lineFork = true;
     },
 
     // C++: mesh_island.inc:Seat::l3117Stray
