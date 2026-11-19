@@ -13904,6 +13904,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const K = GifOS.meshConsts.consts, T = GifOS.meshTopo;
       return {
         me: () => myId, dev: () => myDevHash, sid: () => sessId, now: () => Date.now(), tickMs: meshNode.tickMs(),
+        doorLost: () => !!(meshNode && meshNode.doorLost && meshNode.doorLost()),   // my door is not mine at the relay right now (no socket, or the relay forgot the door)
         woke: () => wakeLastAt, wakeSettleMs: WAKE_SETTLE_MS,   // when this page last came back from a gap its connections do not outlive unanswered (wakeProbe), and how long its pairs get to settle
         seat: () => {
           const r = turnRaw(), v = meshSeat();

@@ -1050,8 +1050,8 @@
         if (g !== rg.gen) return;
         rg.st = 'idle'; rg.net = !a;   // no door list, or no answer: the wait that follows is for my own connection (relayBack ends it)
         if (a) netBack();   // the relay gave its door list and the service answered: my connection is back (TURN.10.1)
-        if (a && Number.isInteger(a.r) && a.r > 0 && typeof a.sg === 'string') { rg.want = false; rg.out = { r: a.r, sg: a.sg }; log('turn-sub door ' + a.r + ' re-granted'); }
-        else if (a && a.live) { rg.want = false; log('turn-sub door has greeters again'); }
+        if (a && Number.isInteger(a.r) && a.r > 0 && typeof a.sg === 'string') { rg.want = false; rg.out = { r: a.r, sg: a.sg }; log('turn-sub door ' + a.r + ' re-granted'); doorBack(); }
+        else if (a && a.live) { rg.want = false; log('turn-sub door has greeters again'); doorBack(); }
         // SUB.10.8: the service holds no subroom of my door's number (its record lapsed: no pipe credential was renewed in
         // time) and the relay holds no door for it: nothing can mint that door again, and no re-pipe is granted to a page
         // that is no greeter of it. The subroom is gone; its seats are joiners of door 0 (the seat reads gone()).
@@ -1395,6 +1395,11 @@
     // nothing but that connection. It is back (my relay socket opened again, or the service answered an ask made with a
     // fresh door list): the wait ends and the ask goes again now.
     function netBack() { if (sub.lastWhy === 'no-doors' || sub.lastWhy === 'no-answer') { sub.lastWhy = ''; subChanged('my connection to the relay'); } }
+    // ...and a refusal for want of my own door (no-room: the relay had forgotten my door, so I was no greeter of it) ends
+    // when the door is mine again (its fresh grant came, or it has greeters again).
+    function doorBack() { if (sub.lastWhy === 'no-room') { sub.lastWhy = ''; subChanged('my door'); } }
+    // the refusals that say something about THIS page's own standing (its connection, its door), not about the service
+    const ownWhy = (w) => w === 'no-doors' || w === 'no-answer' || w === 'no-room';
     function subChanged(what) { if (sub.mult > 1) { sub.mult = 1; if (sub.st === 'idle' && sub.retryAt > io.now()) sub.retryAt = io.now(); log('turn-sub ' + what + ' changed: ask again now'); } }
     function subIdle(now, out, retryAt) { sub.st = 'idle'; sub.token = null; sub.retryAt = retryAt || 0; sub.out = out; sub.gen++; }
     function subDoors(withToken) {
@@ -1519,6 +1524,10 @@
       }
       if (!asker) { if (sub.st !== 'idle') subIdle(now, null, sub.retryAt); else if (sub.out && sub.out.join != null) sub.out = null; return; }
       sub.asker = asker;
+      // A re-pipe is granted to a greeter of its door only. While my own door is empty at the relay and its fresh grant is
+      // on its way (regrantStep), the re-pipe ask waits for it: asked now it is refused no-room and waits TURN_RETRY.
+      // The same while it has no open relay socket (no door list could be had: the ask would only start a wait).
+      if (sub.st === 'idle' && asker === 'repipe' && (rg.want || rg.out || (io.doorLost && io.doorLost()))) return;
       if (sub.st === 'idle') { if (asker === 'probe') { if (now - sub.probeAt >= PROBE_GAP_MS) { sub.probeAt = now; subDoors(false); } else sub.wantProbe = false; return; } if (now >= Math.max(sub.retryAt, asker === 'joiner' ? 0 : sub.pipeRetryAt)) subDoors(false); return; }   // a probe reads the door list at most once a direct verdict; it is not an ask of the Worker's, so no refusal wait holds it
       if (sub.st === 'probe') {
         let pending = false;
@@ -1643,7 +1652,7 @@
         const now = io.now();
         if (sub.st !== 'idle' && sub.st !== 'found') return true;
         for (const L of links.values()) if (!L.sb && L.l[0] === 'l' && L.state !== 'closed' && (L.state !== 'up' || !io.pcUp(L.far))) return true;
-        if (sub.repipe && now >= Math.max(sub.retryAt, sub.pipeRetryAt)) return true;
+        if (sub.repipe && (now >= Math.max(sub.retryAt, sub.pipeRetryAt) || ownWhy(sub.lastWhy) || (io.doorLost && io.doorLost()))) return true;   // due, or waiting on my own connection or door (never the service's word)
         return !!rg.out || (rg.want && (rg.st !== 'idle' || now >= rg.retryAt));
       },
       // TURN.10.1: my relay socket is open again (netBack above). A refusal the service made (no far end, the budget, the
@@ -1651,7 +1660,7 @@
       relayBack() { netBack(); if (rg.want && rg.net && rg.st === 'idle') { rg.net = false; rg.retryAt = 0; } },
       // The subroom ask stands refused (no far end, the budget, the pool down) and its wait has not run out: no relayed
       // connection can be had for now.
-      refused() { const o = sub.out; return !!(o && o.refused && io.now() < o.retryAt); },
+      refused() { const o = sub.out; return !!(o && o.refused && !ownWhy(o.refused) && io.now() < o.retryAt); },
       // THE SUBROOM ASK's outcome for the page this tick (header): { join }, { found }, { wait }, { refused, retryAt }, or null
       subAsk() { return sub.out; },
       // the seat's hooks (opts.sub): my room lost a far door (the home-cell seat asks once to re-pipe it); my door's relay
