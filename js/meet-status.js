@@ -29,6 +29,7 @@
     joining:        { tone: 'place', key: 'stJoiningTheMeetingYouPicked', en: 'Joining the meeting…' },
     joiningBroadcast: { tone: 'place', key: 'bcStageLine', en: 'Joining the broadcast…' },
     reconnecting:   { tone: 'place', key: 'sttReconnecting', en: 'Reconnecting…' },
+    relayFallback:  { tone: 'note', key: 'sttRelayFallback', en: 'The custom connection isn\'t answering, so this meeting uses the standard GifOS connection.' },
     backIn:         { tone: 'place', key: 'backIn', en: 'Getting you back in' },
     waitingRoom:    { tone: 'place', key: 'waitHere', en: 'In the waiting room' },
     waitingHost:    { tone: 'place', key: 'waitingForTheHost', en: 'Waiting for the host' },
@@ -47,7 +48,7 @@
     camRestart:     { tone: 'note', key: 'camBlack', en: 'Your camera was sending black video. Restarting it…' },
     mutedByHost:    { tone: 'stop', key: 'sttMutedByHost', en: 'You were muted for everyone[ by {by}]. Someone else has to lift it.' },
     micWaitRoom:    { tone: 'stop', key: 'waitMic', en: 'You are in the waiting room. Your mic opens when the host lets you in.' },
-    videoOffByHost: { tone: 'stop', key: 'stAnAdminTurnedYourVideo2', en: 'An admin turned your video off for the room. Only an admin can turn it back on.' },
+    videoOffByHost: { tone: 'stop', key: 'stAnAdminTurnedYourVideo2', en: 'A host turned your video off for the room. Only a host can turn it back on.' },
     videoPausedRelay: { tone: 'stop', key: 'sttVideoPausedRelay', en: 'Video is paused on this connection. Sound still works. A subscriber in the meeting can turn video on.' },
     soundBack:      { tone: 'note', key: 'stSoundIsBack', en: 'Sound is back.' },
 
@@ -59,7 +60,7 @@
     stageFull:      { tone: 'stop', key: 'sttStageFull', en: 'The stage is full ({n} people). Someone has to step down first.' },
     stageNoStep:    { tone: 'stop', key: 'stCouldNotStepOntoThe', en: 'Could not step onto the stage. Tap Step on to try again.' },
     turnUnmute:     { tone: 'note', key: 'stTurnUnmute', en: 'It’s your turn. Unmute to speak?' },
-    stageNotAllowed: { tone: 'stop', key: 'stOnlyRoomAdminsAndPeople', en: 'Only room admins, and people they allow, can take the stage here.' },
+    stageNotAllowed: { tone: 'stop', key: 'stOnlyRoomAdminsAndPeople', en: 'Only room hosts, and people they allow, can take the stage here.' },
 
     // ---- sharing your screen ---------------------------------------------
     shareChoose:    { tone: 'note', key: 'sttShareChoose', en: 'Choose what to share…' },
@@ -67,14 +68,14 @@
     sharing:        { tone: 'note', key: 'shareLive', en: 'Sharing your screen. Sound from the shared tab does not travel, so talk over it.' },
     shareCancelled: { tone: 'note', key: 'shareCancelled', en: 'Screen share cancelled. Nothing was shared.' },
     shareStopped:   { tone: 'note', key: 'reshareNote', en: 'Your screen share stopped when you came back.' },
-    shareNotAllowed: { tone: 'stop', key: 'stOnlyThisRoomSAdmins', en: 'Only this room’s admins, and people they allow, can share a screen here.' },
+    shareNotAllowed: { tone: 'stop', key: 'stOnlyThisRoomSAdmins', en: 'Only this room’s hosts, and people they allow, can share a screen here.' },
     shareTurnedOff: { tone: 'stop', key: 'stScreenSharingWasTurnedOff', en: 'Screen sharing was turned off before it started.' },
-    shareVideoOff:  { tone: 'stop', key: 'stAnAdminTurnedYourVideo', en: 'An admin turned your video off for the room, so screen sharing is off too until they lift it.' },
+    shareVideoOff:  { tone: 'stop', key: 'stAnAdminTurnedYourVideo', en: 'A host turned your video off for the room, so screen sharing is off too until they lift it.' },
 
     // ---- the room's keys -------------------------------------------------
     adminChecking:  { tone: 'note', key: 'admCheckingStatus', en: 'Checking the password… (takes a few seconds)' },
     adminWrong:     { tone: 'stop', key: 'admWrongStatus', en: 'Wrong host password.' },
-    adminSignedIn:  { tone: 'note', key: 'admSignedIn', en: 'You are signed in as admin.' },
+    adminSignedIn:  { tone: 'note', key: 'admSignedIn', en: 'You are signed in as host.' },
     passwordChanged: { tone: 'stop', key: 'pwChangedStatus', en: 'The host changed the room password. Enter the new password to rejoin.' },
     passwordTrying: { tone: 'note', key: 'pwTrying', en: 'Trying the password…' },
   };

@@ -43,6 +43,7 @@
     // C++: mesh_seat.inc:Seat::take
     // nbrs is filled in place (the C++ vector<KV>& is the caller's).
     take(c, owner, nbrs, ppFrom = -1, ppTick = -1, nbrsRow = [], ppTickL = -1) {
+      this.l40WonRiv = -1; this.l40WonCk = 0; this.l40Dr.clear();   // L40.6: a new tenure: no lot and no draw comes with me
       const lv = this.w.lv, id = this.id, TICK = this.TICK;
       if (c.i >= C || c.r >= C) return;   // sanity: never take a malformed coord
       this.l381N = 0;   // L38.1: a seated seat's next entry starts fresh

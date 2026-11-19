@@ -757,3 +757,6 @@ html.ui-large body:not(.has-app):not(.solo-app):not(.app-room) #appbar #appinvit
   }
 }
 html.ui-large .bar:not(.collapsed) #barmore .moregroup > .morerow > button { font-size: 1rem; }
+
+/* Host popup: Show host password. The box is a flex row, so hidden needs saying. */
+#adm-hpw-box[hidden], #adm-hpw[hidden] { display: none !important; }

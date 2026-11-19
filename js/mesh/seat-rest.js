@@ -151,6 +151,7 @@
       this.l25Nc = m.nc; this.l25Ck = m.ck; this.l25By = by; this.l25ByWord = !!word; this.l25At = this.TICK | 0;
       const c = newMsg('CHALLENGE'); c.ck = m.ck; c.from = id; c.tag = 25;
       if (this.w.lv.LINKMODEL) {   // L25.18: while I hold no open channel to the rival the question also crosses the seat that named it, over our channels
+        if (this.hasCoord && this.state === 3 && ckey(this.coord) === m.ck) { this.l40DrawPut(m.nc); if (by >= 0 && by !== id && by !== m.nc && this.f.fabricLinkState(id, m.nc) !== E.LS_OPEN && this.f.fabricLinkState(id, by) === E.LS_OPEN) this.l40DrawPut(m.nc, by); }   // L40.6: my lot binds me, ahead of the question and by its paths (gaps4.js)
         const r = msg.clone(c); this.f.fabricCallFrame(id, m.nc, c);
         if (by >= 0 && by !== id && by !== m.nc && this.f.fabricLinkState(id, m.nc) !== E.LS_OPEN && this.f.fabricLinkState(id, by) === E.LS_OPEN) { r.asker = id; r.via = m.nc; this.f.fabricCallFrame(id, by, r); this.trace('L25.18-VIA', id, this.coord, 'by=%d rival=%d', by, m.nc); }
       } else if (by >= 0) { c.asker = id; c.via = m.nc; this.emit(by, c); }

@@ -122,7 +122,7 @@
     let upNext = -1;
     function mark(x) {
       const L = LINKS.get(x); const q0 = L && L.q.length ? L.q[0] : null;
-      return { s: mySeated() ? 1 : 0, up: (L && L.uplink) || upNext === x ? 1 : 0, mt: q0 ? q0.t : null, ck: q0 && (q0.t === 'HELLO' || q0.t === 'CLAIM' || (q0.t === 'CHALLENGE' && (q0.tag === 25 || q0.tag === K.GA_TAG))) ? q0.ck : 0, tier: mySeat() ? mySeat().ctier : 0 };
+      return { s: mySeated() ? 1 : 0, up: (L && L.uplink) || upNext === x ? 1 : 0, mt: q0 ? q0.t : null, ck: q0 && (q0.t === 'HELLO' || q0.t === 'CLAIM' || (q0.t === 'CHALLENGE' && (q0.tag === 25 || q0.tag === 28 || q0.tag === K.GA_TAG))) ? q0.ck : 0, tier: mySeat() ? mySeat().ctier : 0 };
     }
 
     // door progress (sim linkDeliver), run by each end for the frames it sends and the frames it receives

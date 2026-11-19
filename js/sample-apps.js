@@ -248,13 +248,25 @@
     if (msg.value.trim()) { await db.put({ by: me.name, uid: me.id, msg: msg.value.trim(), t: Date.now() }); msg.value=''; }
   };
   function beat(){ if(!pres||!me.id||me.id==='local') return; pres.put({id:'p:'+me.id,name:me.name,ts:Date.now()}); }
+  // "N here" counts a person while THIS page saw their heartbeat change in the last 35 s. The heartbeat's
+  // own time is the other device's clock and is never compared with ours; a heartbeat this page has not
+  // yet seen change counts for 20 s (time for one 15 s beat to arrive), so an old record drops off.
+  // The count is redone when the presence rows change, and once more at the moment the next counted person
+  // would drop off (one timer to that time, no polling).
+  var HERE_MS=35000, hereRows=[], hereSeen={}, hereTs={}, hereT=null;
+  function countHere(){
+    var now=Date.now(), n=0, due=Infinity;
+    hereRows.forEach(function(r){
+      if(!r||!r.id||r.id.indexOf('p:')!==0||r.id==='p:'+me.id) return;
+      if(hereTs[r.id]!==r.ts){ hereSeen[r.id]=(r.id in hereTs)?now:now-15000; hereTs[r.id]=r.ts; }
+      if(now-hereSeen[r.id]<HERE_MS){ n++; due=Math.min(due, hereSeen[r.id]+HERE_MS); }
+    });
+    clearTimeout(hereT); hereT=(due<Infinity)?setTimeout(countHere, due-now):null;
+    if(n!==others){ others=n; setWho(); }
+  }
   function watchPresence(){
     if(pres&&pres.subscribe){
-      pres.subscribe(function(rows){
-        var now=Date.now(); others=0;
-        (rows||[]).forEach(function(r){ if(r&&r.id&&r.id.indexOf('p:')===0&&r.id!=='p:'+me.id&&(now-(r.ts||0))<35000) others++; });
-        setWho();
-      });
+      pres.subscribe(function(rows){ hereRows=rows||[]; countHere(); });
       setInterval(function(){ if(document.visibilityState!=='hidden') beat(); },15000);
     }
   }
@@ -379,7 +391,15 @@
   let current = fresh();
   let askLocal = false;
   let me = { id:'local', name:'You' };
-  let here = {};
+  let here = {}, seen = {}, lastT = {};
+  // Here means THIS page saw the person's heartbeat change lately. The heartbeat's own time is the other
+  // device's clock and is never compared with ours: a heartbeat this page has not yet seen change counts
+  // for 4 s (two 2 s beats), so an old game's record drops off and a live player stays.
+  function tSeen(rows){ const t=now(); for (const id in rows){ const r=rows[id]; if(!r) continue; if(lastT[id]!==r.t){ seen[id]=(id in lastT)?t:t-LIVE+4000; lastT[id]=r.t; } } }
+  // A seat is held only by someone who is here: a player who left, or a seat kept in the saved board from
+  // an earlier game, leaves it open for the next person. One person holds one seat: a board that names the
+  // same person on both keeps them X and opens O.
+  function seatOf(s){ const id=current.players&&current.players[s]; if(!id) return null; if(id!==me.id && liveIds().indexOf(id)<0) return null; if(s==='O' && seatOf('X')===id) return null; return id; }
   const boardEl = document.getElementById('board');
   const statusEl = document.getElementById('status');
   const hintEl = document.getElementById('hint');
@@ -389,8 +409,8 @@
   function now(){ return Date.now ? Date.now() : 0; }
   function lineOf(c){ for (let i=0;i<WINS.length;i++){ const w=WINS[i]; if(c[w[0]] && c[w[0]]===c[w[1]] && c[w[0]]===c[w[2]]) return w; } return null; }
   function winnerOf(c){ const l=lineOf(c); if(l) return c[l[0]]; return c.every(Boolean) ? 'draw' : null; }
-  function myMark(){ return current.players.X===me.id ? 'X' : current.players.O===me.id ? 'O' : null; }
-  function liveIds(){ const t=now(), out=[]; for (const id in here){ if (here[id] && (t-(here[id].t||0))<LIVE) out.push(id); } return out; }
+  function myMark(){ return seatOf('X')===me.id ? 'X' : seatOf('O')===me.id ? 'O' : null; }
+  function liveIds(){ const t=now(), out=[]; for (const id in here){ if (here[id] && (t-(seen[id]||0))<LIVE) out.push(id); } return out; }
   function opponentLive(){ return liveIds().some(function(id){ return id!==me.id; }); }
   function friendName(){ const ids=liveIds(); for (let i=0;i<ids.length;i++){ if(ids[i]!==me.id) return (here[ids[i]] && here[ids[i]].name) || ''; } return ''; }
   function label(s){ return (current.names && current.names[s]) ? current.names[s] : s; }
@@ -400,7 +420,7 @@
     if (!opponentLive()) return true;
     const mm = myMark();
     if (mm) return current.turn === mm;
-    return !current.players[current.turn];
+    return !seatOf(current.turn);
   }
   function beat(){
     if (!window.gifos || me.id==='local') return;
@@ -428,7 +448,7 @@
     if (!winEl.classList.contains('on')) winEl.classList.add('on');
   }
   function setSeat(el, youEl, nameEl, mark, on, win){
-    const claimed = current.players && current.players[mark];
+    const claimed = seatOf(mark);
     const mine = claimed === me.id;
     const named = claimed && current.names && current.names[mark];
     nameEl.textContent = named ? current.names[mark] : (opponentLive() && !claimed ? T('seat.open') : '');
@@ -476,7 +496,7 @@
       else if (live) statusEl.textContent = T('status.yourMove');
       else statusEl.textContent = T('status.yourMoveMark',{mark:current.turn});
     } else {
-      statusEl.textContent = T('status.waiting',{name:label(current.turn) || current.turn});
+      statusEl.textContent = T('status.waiting',{name:(seatOf(current.turn) && label(current.turn)) || current.turn});
     }
     if (!current.winner && !live) hintEl.textContent = T('hint.alone');
     else if (!current.winner && live && !mm) hintEl.textContent = T('hint.claim');
@@ -492,7 +512,7 @@
     const seat = current.turn;
     if (opponentLive()){
       current.players = Object.assign({}, current.players);
-      current.players[seat] = current.players[seat] || me.id;
+      current.players[seat] = seatOf(seat) || me.id;
       current.names = Object.assign({}, current.names);
       if (current.players[seat]===me.id) current.names[seat] = me.name;
     }
@@ -571,10 +591,10 @@
     const next = {};
     const t = now();
     items.forEach(function(x){
-      if (x && typeof x.id==='string' && x.id.indexOf(PFX)===0 && x.t && (t-x.t)<LIVE)
+      if (x && typeof x.id==='string' && x.id.indexOf(PFX)===0 && x.t)
         next[x.id.slice(PFX.length)] = x;
     });
-    here = next;
+    here = next; tSeen(here);
     render();
   }
   // Nothing that calls T runs before the catalog has loaded (a key must never be painted).
@@ -1105,13 +1125,25 @@
     };
   }
   function beat(){ if(!pres||!me.id||me.id==='local') return; pres.put({id:'p:'+me.id,name:me.name,ts:Date.now()}); }
+  // "N here" counts a person while THIS page saw their heartbeat change in the last 35 s. The heartbeat's
+  // own time is the other device's clock and is never compared with ours; a heartbeat this page has not
+  // yet seen change counts for 20 s (time for one 15 s beat to arrive), so an old record drops off.
+  // The count is redone when the presence rows change, and once more at the moment the next counted person
+  // would drop off (one timer to that time, no polling).
+  var HERE_MS=35000, hereRows=[], hereSeen={}, hereTs={}, hereT=null;
+  function countHere(){
+    var now=Date.now(), n=0, due=Infinity;
+    hereRows.forEach(function(r){
+      if(!r||!r.id||r.id.indexOf('p:')!==0||r.id==='p:'+me.id) return;
+      if(hereTs[r.id]!==r.ts){ hereSeen[r.id]=(r.id in hereTs)?now:now-15000; hereTs[r.id]=r.ts; }
+      if(now-hereSeen[r.id]<HERE_MS){ n++; due=Math.min(due, hereSeen[r.id]+HERE_MS); }
+    });
+    clearTimeout(hereT); hereT=(due<Infinity)?setTimeout(countHere, due-now):null;
+    if(n!==others){ others=n; setWho(); if(!last.length&&!pend.length) paint(); }
+  }
   function watchPresence(){
     if(pres&&pres.subscribe){
-      pres.subscribe(function(rows){
-        var now=Date.now(); others=0;
-        (rows||[]).forEach(function(r){ if(r&&r.id&&r.id.indexOf('p:')===0&&r.id!=='p:'+me.id&&(now-(r.ts||0))<35000) others++; });
-        setWho(); if(!last.length&&!pend.length) paint();
-      });
+      pres.subscribe(function(rows){ hereRows=rows||[]; countHere(); });
       setInterval(function(){ if(document.visibilityState!=='hidden') beat(); },15000);
     }
   }
@@ -2751,6 +2783,21 @@ function syncDebug(){
   function nameOf(p){ return p&&p.cpu?tx('computer'):p.name; }
   const db=gifos.db('chess');
   let me={id:'local',name:'You'}, viewMatch=null, sel=null, promo=null;
+  // ---- who is here, and each turn's clock (plain functions: the checks run them) ----
+  // Here means THIS page saw the person's heartbeat move lately; the heartbeat's own time is the other
+  // device's clock and is never compared with ours. A player not here for GONE may be passed over: they
+  // drop out of the lobby, and the player facing them may claim the game.
+  const PFX='p:', BEAT=3000, LIVE=10000, GONE=30000;
+  let rows={}, seen={}, lastT={}, turnAt={};
+  function chSeen(rows, seen, lastT, t){ for (const id in rows){ const r=rows[id]; if(!r) continue; if(lastT[id]!==r.t){ seen[id]=(id in lastT)?t:t-LIVE; lastT[id]=r.t; } } }
+  function chHere(id, within){ if(!id||id==='cpu'||id===me.id) return true; return (Date.now()-(seen[id]===undefined?-1e15:seen[id]))<within; }
+  // A turn's time runs from when THIS page saw that turn begin (the move that started it arrived), never
+  // from a time the previous mover's device wrote.
+  function turnKey(m){ return m.id+'|'+m.board+'|'+m.turn; }
+  function turnStart(m){ const k=turnKey(m); if(turnAt[m.id]===undefined||turnAt[m.id].k!==k) turnAt[m.id]={ k:k, t:Date.now() }; return turnAt[m.id].t; }
+  function beat(){ if(!window.gifos||me.id==='local') return; db.put({ id:PFX+me.id, name:me.name, t:Date.now() }).catch(function(){}); }
+  function present(list){ return (list||[]).filter(function(p){ return p.cpu || chHere(p.id, GONE); }); }
+  // ---- end of who is here ----
   let hint=null, hinting=false, cpuBusy=false;
   const START='rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR';
   const GLYPH={p:'♟',r:'♜',n:'♞',b:'♝',q:'♛',k:'♚'};
@@ -2935,7 +2982,7 @@ function syncDebug(){
     if(!b){ m.winner=a; } return m;
   }
   function startTournament(){
-    let ps=T.players.slice(); if(ps.length<2) return;
+    let ps=present(T.players); if(ps.length<2) return;
     if(T.settings&&T.settings.shuffle){ for(let i=ps.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; const t=ps[i]; ps[i]=ps[j]; ps[j]=t; } }
     const matches=[]; for(let i=0;i<ps.length;i+=2){ matches.push(makeMatch(ps[i], ps[i+1]||null)); }
     T.started=true; T.rounds=[matches]; T.round=0; save();
@@ -2977,7 +3024,7 @@ function syncDebug(){
     save();
   }
   function mySeat(m){ return m.a&&m.a.id===me.id?'w':m.b&&m.b.id===me.id?'b':null; }
-  function remaining(m,side){ if(!m.clock) return null; let r=m.clock[side]; if(m.turn===side&&m.clock.last&&!m.winner&&!m.draw) r-=Date.now()-m.clock.last; return r; }
+  function remaining(m,side){ if(!m.clock) return null; let r=m.clock[side]; if(m.turn===side&&!m.winner&&!m.draw) r-=Date.now()-turnStart(m); return r; }
   function flagFall(m){
     if(!m.clock||m.winner||m.draw) return false;
     if(remaining(m,'w')<=0){ m.winner=m.b; m.draw=null; } else if(remaining(m,'b')<=0){ m.winner=m.a; m.draw=null; } else return false;
@@ -2986,7 +3033,7 @@ function syncDebug(){
   function writeState(m,s){ m.board=s.board; m.turn=s.turn; m.castle=s.castle; m.ep=s.ep; m.half=s.half; m.full=s.full; }
   function applyMv(m,mv){
     if(m.clock){ const now=Date.now(); const seat=m.turn;
-      if(m.clock.last) m.clock[seat]-=now-m.clock.last;
+      m.clock[seat]-=now-turnStart(m);
       if(m.clock[seat]<=0){ flagFall(m); return; }
       m.clock[seat]+=m.clock.inc||0; m.clock.last=now; }
     const s=make(gameOf(m), mv);
@@ -3004,6 +3051,11 @@ function syncDebug(){
     if(ms.length>1 && !pr){ promo={m:m, from:[fx,fy], to:[tx,ty], opts:ms}; render(); return; }
     const mv=pr? ms.find(function(x){ return x.promo===pr; })||ms[0] : ms[0];
     applyMv(m,mv);
+  }
+  function claimLeft(m){
+    const seat=mySeat(m); if(!seat||m.winner||m.draw) return;
+    const foe=seat==='w'?m.b:m.a; if(!foe||foe.cpu||chHere(foe.id, GONE)) return;
+    m.winner=seat==='w'?m.a:m.b; m.draw=null; save(); advance(); sel=null; render();
   }
   function resign(m){
     const seat=mySeat(m); if(!seat||m.winner||m.draw) return;
@@ -3062,7 +3114,7 @@ function syncDebug(){
     renderBracket();
   }
   function renderLobby(){
-    const inList=T.players.some(function(p){return p.id===me.id;});
+    const inList=T.players.some(function(p){return p.id===me.id;}); const here=present(T.players);
     const d=document.createElement('div'); d.className='lobby';
     const cpuBtn=document.createElement('button'); cpuBtn.className='playcpu'; cpuBtn.textContent=tx('play.cpu'); cpuBtn.onclick=playComputer;
     d.appendChild(cpuBtn);
@@ -3082,7 +3134,7 @@ function syncDebug(){
     const split=document.createElement('div'); split.className='split'; split.textContent=tx('tourney.or'); d.appendChild(split);
     const p=document.createElement('p'); p.textContent=tx('tourney.intro'); d.appendChild(p);
     const ul=document.createElement('ul'); ul.className='players';
-    T.players.forEach(function(pl){ const li=document.createElement('li'); li.textContent=pl.cpu?tx('player.cpu',{name:nameOf(pl)}):pl.id===me.id?tx('player.you',{name:pl.name}):pl.name; ul.appendChild(li); });
+    here.forEach(function(pl){ const li=document.createElement('li'); li.textContent=pl.cpu?tx('player.cpu',{name:nameOf(pl)}):pl.id===me.id?tx('player.you',{name:pl.name}):pl.name; ul.appendChild(li); });
     d.appendChild(ul);
     const ts=document.createElement('div'); ts.className='settings';
     ts.innerHTML='<h3>'+esc(tx('settings.title'))+'</h3><div class="hint">'+esc(tx('settings.hint'))+'</div>';
@@ -3098,14 +3150,14 @@ function syncDebug(){
     shc.onchange=function(){ T.settings=Object.assign({},settingsOf(),{shuffle:shc.checked}); save(); };
     shl.appendChild(shc); shl.appendChild(document.createTextNode(' '+tx('settings.shuffle')));
     ts.appendChild(shl); d.appendChild(ts);
-    const jb=document.createElement('button'); jb.textContent=inList?tx('join.in',{n:T.players.length}):tx('join'); jb.onclick=joinLobby;
+    const jb=document.createElement('button'); jb.textContent=inList?tx('join.in',{n:here.length}):tx('join'); jb.onclick=joinLobby;
     d.appendChild(jb);
     if(!T.players.some(function(p){ return p.cpu; })){
       const ac=document.createElement('button'); ac.className='ghost'; ac.textContent=tx('add.cpu'); ac.onclick=addCpu; d.appendChild(ac);
     }
-    if(T.players.length>=2){ const sb=document.createElement('button'); sb.textContent=tx('start'); sb.onclick=startTournament; d.appendChild(sb); }
+    if(here.length>=2){ const sb=document.createElement('button'); sb.textContent=tx('start'); sb.onclick=startTournament; d.appendChild(sb); }
     view.appendChild(d);
-    statusEl.textContent=tx('status.lobby',{n:T.players.length});
+    statusEl.textContent=tx('status.lobby',{n:here.length});
   }
   function renderBracket(){
     const wrap=document.createElement('div'); wrap.className='bracket';
@@ -3189,6 +3241,8 @@ function syncDebug(){
     }
     const actions=document.createElement('div'); actions.className='actions';
     if(seat&&!m.winner&&!m.draw){ const rs=document.createElement('button'); rs.className='ghost'; rs.textContent=tx('resign'); rs.onclick=function(){ resign(m); }; actions.appendChild(rs); }
+    const foe=seat?(seat==='w'?m.b:m.a):null;
+    if(seat&&!m.winner&&!m.draw&&foe&&!foe.cpu&&!chHere(foe.id, GONE)){ const cl=document.createElement('button'); cl.className='claim'; cl.textContent=tx('claim.left',{name:esc(nameOf(foe))}); cl.onclick=function(){ claimLeft(m); }; actions.appendChild(cl); }
     if(m.draw && seat){ const rm=document.createElement('button'); rm.textContent=tx('rematch'); rm.onclick=function(){ rematch(m); }; actions.appendChild(rm); }
     view.appendChild(actions);
     statusEl.textContent = m.winner ? tx('status.winner',{name:esc(nameOf(m.winner))})
@@ -3210,8 +3264,15 @@ function syncDebug(){
   const esc=function(s){ return String(s).replace(/[&<>]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }); };
   // Nothing that calls tx runs before the catalog has loaded.
   function start(){
-    db.subscribe(function(items){ const t=items.find(function(x){return x.id==='t';}); if(t){ T=t; T.settings=settingsOf(); } render(); queueCpu(); });
-    if(window.gifos) gifos.me().then(function(mm){ me={id:mm.id,name:mm.name||'You'}; joinLobby(); });
+    db.subscribe(function(items){ const t=items.find(function(x){return x.id==='t';}); if(t){ T=t; T.settings=settingsOf(); }
+      const next={}; items.forEach(function(x){ if(x&&typeof x.id==='string'&&x.id.indexOf(PFX)===0&&x.t) next[x.id.slice(PFX.length)]=x; });
+      rows=next; chSeen(rows, seen, lastT, Date.now()); curMatches().forEach(function(m){ if(m&&!m.winner&&!m.draw) turnStart(m); }); render(); queueCpu(); });
+    if(window.gifos) gifos.me().then(function(mm){ me={id:mm.id,name:mm.name||'You'}; beat(); joinLobby(); });
+    setInterval(beat, BEAT);
+    // someone leaving changes the lobby and the claim button without any record changing
+    let hereSig='';
+    setInterval(function(){ const sig=present(T.players).map(function(p){ return p.id; }).join(',')+'|'+T.players.map(function(p){ return chHere(p.id, GONE)?1:0; }).join('');
+      if(sig!==hereSig){ hereSig=sig; render(); } }, 2000);
     render();
     if(window.gifos&&gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); render(); });
   }
@@ -6396,11 +6457,13 @@ i18nStart(async()=>{
   var view={ order:[], cur:null, idx:-1, next:null, step:0 };
   var turnKey='', turnLocal=0, refused=false, noteT=null, normAt=0;
   // Liveness by when THIS page saw a heartbeat move, so two machines whose
-  // clocks disagree still agree on who is here.
+  // clocks disagree still agree on who is here. The heartbeat's ts is the other device's clock and never dates
+  // it: a heartbeat this page has never seen move counts for two beats (a live person's next beat lands in that
+  // time, an old record's never), the same rule as Connect Four.
   function people(){
     var now=Date.now(), out=[];
     for(var id in rows){ var r=rows[id];
-      if(lastTs[id]!==r.ts){ seen[id]=(id in lastTs)?now:Math.min(now,+r.ts||0); lastTs[id]=r.ts; }
+      if(lastTs[id]!==r.ts){ seen[id]=(id in lastTs)?now:now-LIVE+2*BEAT; lastTs[id]=r.ts; }
       if(now-(seen[id]||0)<LIVE) out.push({ id:id, name:r.name||'', since:+r.since||0 });
     }
     if(!rows[me.id]) out.push({ id:me.id, name:me.name, since:since });
@@ -6612,7 +6675,11 @@ i18nStart(async()=>{
   if(window.gifos&&gifos.i18n&&gifos.i18n.load) gifos.i18n.load().then(boot,boot); else boot();
 </script>`;
 
-  function build() {
+  // opts.only: appIds to encode; the rest are left out (the meeting's Run app
+  // installs one starter app without baking every other one).
+  function build(opts) {
+    const only = opts && Array.isArray(opts.only) ? opts.only : null;
+    const want = (a) => !only || only.indexOf(a.appId) >= 0;
     const gif = GifOS.gif;
     // Apps that hand-author their theming with CSS variables take 'vars' —
     // palette injected, no auto-remap. This is any app with a signature accent
@@ -7473,12 +7540,12 @@ The Store itself does not keep a shopping cart in this icon.
     }];
 
     const encGroup = (g) => Promise.all([
-      Promise.all(g.apps.map(enc)),
+      Promise.all(g.apps.filter(want).map(enc)),
       Promise.all((g.sub || []).map(encGroup)),
     ]).then((r) => ({ name: g.name, apps: r[0], sub: r[1] }));
     return Promise.all([
       Promise.all(groups.map(encGroup)),
-      Promise.all(loose.map(enc)),
+      Promise.all(loose.filter(want).map(enc)),
     ]).then((r) => ({ folders: r[0], loose: r[1] }));
   }
 

@@ -663,11 +663,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <div class="lobby-card">
       <h1 data-t="lobTitle">Meeting</h1>
       <p class="lob-quiet" data-t="lobJoinOff" id="lob-quiet">You'll join with your camera and microphone off. Turn them on when you're ready.</p>
-      <button id="lob-open" class="lob-primary"><span data-t="lobStart">Start a call</span><small data-t="lobStartSub">Anyone with the link can join</small></button>
+      <button id="lob-open" class="lob-primary"><span data-t="lobStart">Start a public open-floor meeting</span><small data-t="lobStartSub">Anyone with the link (and the room password, if one is set) can join. Everyone inside can set the password, and anyone with a $5+ plan can take over as host while they're connected.</small></button>
+      <!-- Optional: a room password for the open-floor meeting, set the moment you are in (the Password button's own path). -->
+      <button data-t="lobGuestMore" type="button" id="lob-open-more" class="lob-link lob-pwmore" aria-expanded="false" aria-controls="lob-open-extra">Add a room password</button>
+      <div id="lob-open-extra" class="lob-expand lob-pwextra" style="display:none">
+        <label class="lob-pwlab" for="lob-open-pass">🎟 <b data-t="lobGuestPassHead">Room password</b> <small data-t="lobOpenPassNote">Optional. People need it to get in. Anyone inside can change it.</small></label>
+        <input data-ph="invGuestPh" id="lob-open-pass" type="password" maxlength="64" placeholder="Room password (optional)" autocomplete="new-password">
+      </div>
       <p class="lob-capnote" data-t="captionsNotice" id="lob-capnote">Captions are on in this meeting. What you say may be written down by other people's devices.</p>
-      <button data-t="lobAdminBtn" type="button" id="lob-admin-btn" class="lob-link">Host a call</button>
+      <button type="button" id="lob-admin-btn" class="lob-link"><span data-t="lobAdminBtn">Host a private meeting</span><small data-t="lobAdminSub">Anyone with the link (and the room password, if one is set) can join. You are the host: only you set the password, and you can mute, blur or remove people.</small></button>
       <div id="lob-admin" class="lob-expand" style="display:none">
-        <input data-ph="lobAdminNamePh" id="lob-admin-name" maxlength="40" placeholder="Name this call" autocomplete="off">
+        <input data-ph="lobAdminNamePh" id="lob-admin-name" maxlength="40" placeholder="Name this meeting" autocomplete="off">
         <button data-t="lobKeyReveal" type="button" id="lob-key-reveal" class="lob-text" hidden>Host password</button>
         <div id="lob-key-block">
         <label class="lob-pwlab">🔑 <b data-t="invAdminPh" id="lob-admin-pass-head">Host password</b> — only you<small data-t="lobAdminPassNote" id="lob-admin-pass-note">Only you. Do not share it.</small></label>
@@ -697,6 +703,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <button data-t="lobJoinBtn" type="button" id="lob-join-btn" class="lob-link">Join a link</button>
       <div id="lob-join" class="lob-expand" style="display:none">
         <input data-ph="lobJoinInPh" id="lob-join-in" placeholder="Paste link or meeting id" autocomplete="off">
+        <input data-ph="lobJoinPassPh" data-al="lobGuestPassHead" id="lob-join-pass" type="password" maxlength="64" placeholder="Room password, if it has one" aria-label="Room password" autocomplete="new-password">
         <p data-t="lobWatchNote" id="lob-watch-note" class="lob-watch-note" hidden>Watching the broadcast. You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.</p>
         <div class="lob-row"><button data-t="shareCancel" id="lob-join-cancel" class="lob-ghost">Cancel</button><button data-t="join" id="lob-join-go">Join</button></div>
         <div id="lob-join-err" class="lob-err"></div>
@@ -838,7 +845,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <button data-ti="trbtnTip" data-t="transcript" aria-keyshortcuts="Alt+T" title="The meeting's live transcript" id="trbtn"><svg class="ai-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>Transcript</button>
         <button data-ti="qabtnTip" data-t="qabtn" id="qabtn" type="button" title="Questions for the host: ask one, and vote up the ones you want answered">Questions</button>
         <button data-ti="agendaTip" data-t="agendaBtn" id="agendabtn" type="button" title="Share an agenda: the items, how long each takes, and which one is on now">Agenda</button>
-        <button data-t="turnSubscribe" id="subbtn" type="button" title="GifOS plans with PayPal: hosted rooms for up to 20 people ($2 a month) or unlimited ($5 a month), with video over every connection">Subscribe</button>
       </div>
     </section>
     <section class="moregroup" data-group="video">
@@ -898,8 +904,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <h4 data-t="room">Room</h4>
       <div class="morerow">
         <button id="pwbtn" data-t="password" data-ti="pwTip" aria-keyshortcuts="Alt+L" title="Lock this room with a password">Password</button>
-        <button data-ti="capbtnTip" data-t="capBtn" id="capbtn" type="button" title="Take charge of this open-floor room: you set its password and can remove people" style="display:none">Make me admin</button>
-        <span id="capnote" class="capnote" role="status" style="display:none">This room has an admin</span>
+        <button data-ti="capbtnTip" data-t="capBtn" id="capbtn" type="button" title="Take charge of this public open-floor meeting: you set its password and can remove people" style="display:none">Make me host</button>
+        <span id="capnote" class="capnote" role="status" style="display:none">Someone has taken charge of this meeting</span>
         <button data-ti="waitbtnTip" data-t="waitRoom" id="waitbtn" type="button" aria-pressed="false" title="Hold people at the door until you admit them" style="display:none">Waiting room</button>
         <button data-ti="recbtnTip" id="recbtn" data-t="record" aria-keyshortcuts="Alt+R" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
         <button id="votebtn" data-t="vote" data-ti="voteTip" aria-keyshortcuts="Alt+U" title="Vote someone onto the stage, off the stage, or out of the room — majorities decide">Vote</button>
@@ -912,11 +918,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <section class="moregroup" data-group="host">
       <h4 data-t="host">Host</h4>
       <div class="morerow">
-        <button data-ti="muteallTip" id="muteall" data-t="muteGuests" aria-keyshortcuts="Alt+M" title="Mute every guest at once (admins). Only an admin can lift it, for one guest from their tile or for all with the same button." style="display:none">Mute guests</button>
-        <button data-ti="blurallTip" id="blurall" data-t="blurGuests" aria-keyshortcuts="Alt+B" title="Blur every guest at once (admins) — same as blocking each of them by hand" style="display:none">Blur guests</button>
-        <button data-ti="camallTip" id="camall" data-t="videoOff" aria-keyshortcuts="Alt+X" title="Turn video off for every guest at once (admins) — stronger than blur" style="display:none">Turn video off</button>
-        <button data-ti="shareallTip" id="shareall" data-t="allowShare" aria-keyshortcuts="Alt+P" title="Let every guest share their screen (admins). Off until you turn it on. One person can still be allowed or stopped from their tile." style="display:none">Allow screen share</button>
-        <button data-ti="admbtnTip" data-t="admBtn" id="admbtn" title="Room admin controls" style="display:none">Admin</button>
+        <button data-ti="muteallTip" id="muteall" data-t="muteGuests" aria-keyshortcuts="Alt+M" title="Mute every guest at once (hosts). Only a host can lift it, for one guest from their tile or for all with the same button." style="display:none">Mute guests</button>
+        <button data-ti="blurallTip" id="blurall" data-t="blurGuests" aria-keyshortcuts="Alt+B" title="Blur every guest at once (hosts) — same as blocking each of them by hand" style="display:none">Blur guests</button>
+        <button data-ti="camallTip" id="camall" data-t="videoOff" aria-keyshortcuts="Alt+X" title="Turn video off for every guest at once (hosts) — stronger than blur" style="display:none">Turn video off</button>
+        <button data-ti="shareallTip" id="shareall" data-t="allowShare" aria-keyshortcuts="Alt+P" title="Let every guest share their screen (hosts). Off until you turn it on. One person can still be allowed or stopped from their tile." style="display:none">Allow screen share</button>
+        <button data-ti="admbtnTip" data-t="admBtn" id="admbtn" title="Room host controls" style="display:none">Host</button>
       </div>
     </section>
     <section class="moregroup" data-group="setup">
@@ -924,6 +930,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <div class="morerow">
         <button data-ti="spkbtnTip" id="spkbtn" data-t="spkHead" type="button" aria-haspopup="menu" aria-expanded="false" title="Choose where the meeting's sound plays" hidden>Speaker</button>
         <button data-ti="setbtnTip" id="setbtn" data-t="settings" aria-keyshortcuts="Alt+," title="Meeting settings — your sound mix, timing, and the video quality your camera records">Settings</button>
+        <button data-t="subOpen" data-ti="subOpenTip" id="subbtn" type="button" title="GifOS plans: the four-hour pass, private meetings, and unlimited people. Pay by card or PayPal.">Subscription</button>
         <button data-ti="shortcutTitle" id="keysbtn" data-t="keys" type="button" title="Keyboard shortcuts">Keys</button>
       </div>
     </section>
@@ -1122,7 +1129,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           <p class="set-help" id="cctranslate-need" style="display:none;margin:.1rem 0 0 1.6rem" data-t="setCcEnglishNeed">Needs Whisper installed: nothing is translated until it is.</p>
           </div>
         </div>
-        <p class="set-help set-row set-wide" id="ccall-row" style="display:none"><button data-t="setCcAllOff" id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span data-t="ccallNote" id="ccall-note">Admins only — every screen shows captions. Anyone can tap Captions to hide them.</span></p>
+        <p class="set-help set-row set-wide" id="ccall-row" style="display:none"><button data-t="setCcAllOff" id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span data-t="ccallNote" id="ccall-note">Hosts only — every screen shows captions. Anyone can tap Captions to hide them.</span></p>
       </section>
       <!-- Debug: a log of this page kept on this device only, for finding
            problems. Nothing leaves the device unless the person exports it. -->
@@ -1152,6 +1159,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     </div>
   </div>
 
+  <!-- Subscription: the same window as Settings (header, body, Close). Opened
+       from More → Settings and help, not from inside Settings. -->
+  <div class="name-modal" role="dialog" aria-modal="true" aria-labelledby="sub-title" id="sub-modal" style="display:none">
+    <div class="name-box dlg set-box">
+      <div class="dlg-head"><h3 id="sub-title" data-t="subTitle">Subscription</h3></div>
+      <div class="dlg-body"></div>
+      <div class="dlg-actions">
+        <button id="sub-close" data-t="setClose" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- The share sheet. The app-pin note is not decoration: pinning an app is
        the better answer whenever the thing being shown IS an app, and this is
        the last moment to say so before a picker opens. -->
@@ -1159,7 +1178,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <div class="name-box" style="max-width:430px;text-align:left">
       <h3 data-t="shareTitle">Share your screen</h3>
       <div id="share-appnote" class="share-note"></div>
-      <div id="share-denied" class="share-note" data-t="shareDenied" style="display:none;border-left-color:#ffd23c;background:rgba(255,210,60,.08)">Only this room’s admins — or people they allow — can share a screen. Ask an admin to allow you, on your tile or for the whole room, then open this again.</div>
+      <div id="share-denied" class="share-note" data-t="shareDenied" style="display:none;border-left-color:#ffd23c;background:rgba(255,210,60,.08)">Only this room’s hosts — or people they allow — can share a screen. Ask a host to allow you, on your tile or for the whole room, then open this again.</div>
       <p class="share-body" data-t="shareBody">A screen share is for what an app can’t be: a deck on your disk, a tool that isn’t GifOS, a window from somewhere else. It shows on the stage, so the whole room sees it — and everyone can see that it’s you sharing.</p>
       <p class="share-body" data-t="shareSound">Your camera pauses while you share, and comes back when you stop. Sound from the shared tab doesn’t travel — talk over it.</p>
       <div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin-top:.9rem">
@@ -1299,16 +1318,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
 
   <div class="name-modal" role="dialog" aria-modal="true" id="adm-modal" style="display:none">
     <div class="name-box" style="max-width:420px">
-      <h3 data-t="admTitle">Room admin</h3>
+      <h3 data-t="admTitle">Room host</h3>
       <p id="adm-hint"></p>
       <div id="adm-setup">
         <input id="adm-pass" type="password" maxlength="64" data-ph="admPassPh" placeholder="Host password" autocomplete="new-password">
-        <button id="adm-enable" data-t="admEnable">Sign in as admin</button>
+        <button id="adm-enable" data-t="admEnable">Sign in as host</button>
       </div>
       <div id="adm-panel" style="display:none;text-align:left">
+        <!-- A private meeting's host only: the host password this device kept when it created the meeting or signed in. -->
+        <section id="adm-hpw" aria-labelledby="adm-hpw-h" hidden>
+          <h4 id="adm-hpw-h" data-t="admHpwH">Host password</h4>
+          <button type="button" id="adm-hpw-show" data-t="admHpwShow" aria-expanded="false" aria-controls="adm-hpw-box">Show host password</button>
+          <div id="adm-hpw-box" hidden style="display:flex;gap:.5rem;align-items:center;margin:.45rem 0"><input id="adm-hpw-val" type="text" readonly autocomplete="off" spellcheck="false" data-al="admHpwH" aria-label="Host password" style="flex:1;min-width:0;font-family:monospace"><button type="button" id="adm-hpw-copy" data-t="admHpwCopy">Copy</button></div>
+          <p id="adm-hpw-none" hidden data-t="admHpwNone" style="margin:.45rem 0">This device did not keep the host password. A device keeps it only when it created this meeting, or signed in as host, after this update.</p>
+          <small id="adm-hpw-note" data-t="admHpwNote" style="display:block;margin-top:.4rem;opacity:.85">You can only change this by creating a new private meeting.</small>
+        </section>
         <section id="adm-chat" aria-labelledby="adm-chat-h">
           <h4 id="adm-chat-h" data-t="admChatH">Chat options</h4>
-          <label class="admopt"><input type="checkbox" id="adm-chat-guests"><span><span data-t="admChatGuests">Guests can chat</span><small data-t="admChatGuestsSub">Off: only admins can post.</small></span></label>
+          <label class="admopt"><input type="checkbox" id="adm-chat-guests"><span><span data-t="admChatGuests">Guests can chat</span><small data-t="admChatGuestsSub">Off: only hosts can post.</small></span></label>
           <label class="admopt"><input type="checkbox" id="adm-chat-pray"><span><span data-t="admChatPray">Prayer button</span><small data-t="admChatPraySub">Anyone can mark a message as a prayer request.</small></span></label>
           <div class="admopt" id="adm-chat-files"><span><span data-t="admChatFiles">Files in chat</span><small id="adm-chat-files-sub"></small></span><button type="button" id="adm-chat-pw" data-t="admChatPw">Password</button></div>
           <label class="admopt"><input type="checkbox" id="adm-chat-gfile"><span><span data-t="admChatGfile">Guests can send files</span><small data-t="admChatGfileSub">Off even when the room has a password.</small></span></label>
@@ -1358,7 +1385,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           <li><b>Run app</b> — an app the room uses together.</li>
           <li><b>Record / CC</b> — record here, or captions from your voice.</li>
           <li><b>Settings</b> — mix for Stage, My row, and the stadium. Timing: Conversation, Unison, or Song.</li>
-          <li><b>Admin</b> — a host can moderate. Most rooms stay open.</li>
+          <li><b>Host</b> — in a private meeting, the host can moderate. In a public open-floor meeting, anyone with a $5+ plan can take over as host while they're connected.</li>
         </ul>
         <h4>Singing together</h4>
         <p>Tap <b>Song</b> to lead. You step onto the stage as the song leader, and the room lines up so you are singing together, like a large hall.</p>
@@ -1992,7 +2019,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const phone = !!(s && s.phone), kind = s && s.kind;
       // Every button of the Meeting group, in the sheet's order: seat() appends these after any it does not
       // name, so a button missing here would lead the group (Agenda came before Hand).
-      const tail = ['ccbtn', 'whobtn', 'trbtn', 'qabtn', 'agendabtn', 'subbtn'];
+      const tail = ['ccbtn', 'whobtn', 'trbtn', 'qabtn', 'agendabtn'];
       if (kind === 'bc-host') {
         return phone
           ? { dock: ['cam', 'mic', 'stagebtn', 'reactbtn', 'ccdock', 'sharebtn'], use: ['chatbtn', 'hand'].concat(tail), video: [] }
@@ -2149,7 +2176,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // An open room (no av=) has no files and no Chat options. The desk
       // preview paints before the mesh joins, so the paperclip is hidden here
       // too; paintChatGate repeats it once the call is up.
-      if (!/(?:^|[#&?])av=/.test(location.hash)) {
+      // A private meeting is known by its verifier, not by the hash: on
+      // gifos.app joinRoom moves the address to /meet/<room>/<verifier> (no
+      // hash), and applyAdminUi runs this paint, so a hash-only test took the
+      // Chat options out of an open Host popup a moment after it opened.
+      // hasAdminRoom also counts an open-floor meeting someone took charge of.
+      // Before the admin state exists (the desk preview), touching it throws
+      // and the address decides.
+      let hasHost = /(?:^|[#&?])av=/.test(location.hash) || /^\/(?:meet|cast)\/[^/]+\/[a-f0-9]{16,64}\/?$/i.test(location.pathname);
+      try { if (hasAdminRoom()) hasHost = true; } catch (e) {}
+      if (!hasHost) {
         const pinEarly = document.getElementById('cattach');
         if (pinEarly) pinEarly.hidden = true;
         const chatSec = document.getElementById('adm-chat');
@@ -5560,7 +5596,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // The room-wide chat switch is the admin's alone, and only means
       // anything where there IS an admin to sign it.
       if ((field === 'chat' || field === 'cc' || field === 'pray' || field === 'gfile' || field === 'greact' || field === 'qa' || field === 'chist' || field === 'slow' || field === 'clink') && (!hasAdminRoom() || !amAdmin)) return;
-      if (hasAdminRoom() && !amAdmin) { setStatus('🛡 Only this room' + String.fromCharCode(39) + 's admins can ' + (field === 'mute' ? 'mute' : 'blur') + ' someone for all.'); return; }
+      if (hasAdminRoom() && !amAdmin) { setStatus(field === 'mute' ? uiText('stOnlyHostsMute', '🛡 Only this room\u2019s hosts can mute someone for all.') : uiText('stOnlyHostsBlur', '🛡 Only this room\u2019s hosts can blur someone for all.')); return; }
       const mine = modTable[target] = modTable[target] || {};
       mine[field] = { on, by: myName(), byId: myId, at: Date.now() };
       // In an admin room the table travels with the admin's signature, and a
@@ -5657,13 +5693,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // moderation hammer in the room — which is exactly why sharing does not
       // get to skip the blur ladder for free (see sentVideoTrack).
       if (forcedCamOff('me') && myStatus.scr && typeof stopScreenShare === 'function') {
-        stopScreenShare('an admin turned video off for the room');
+        stopScreenShare(uiText('shareWhyVideoOff', 'a host turned video off for the room'));
       }
       // The screen-share grant was revoked, or was never given. Stop even if
       // the only thing armed is the capture itself (a client that set the
       // stream without the scr bit).
       if (!mayShareScreen('me') && (myStatus.scr || screenStream) && typeof stopScreenShare === 'function') {
-        stopScreenShare('an admin turned screen sharing off');
+        stopScreenShare(uiText('shareWhyShareOff', 'a host turned screen sharing off'));
       }
       if (!localStream) return;
       const track = localStream.getVideoTracks()[0]; if (!track) return;
@@ -5796,9 +5832,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // sender reads after picking No blur. uiText translates both.
     const BLUR_WHY = {
       nopw: { tile: ['blurWhyNoPw', 'Blurred: no room password'], says: ['blurSaysNoPw', 'You chose clear video, but for safety you stay blurred until this room has a password.'] },
-      guests: { tile: ['blurWhyGuests', 'Blurred: admin blurs guests'], says: ['blurSaysGuests', 'You chose clear video, but the admin has blurred every guest, so you stay blurred until they lift it.'] },
+      guests: { tile: ['blurWhyGuests', 'Blurred: a host blurs guests'], says: ['blurSaysGuests', 'You chose clear video, but the host has blurred every guest, so you stay blurred until they lift it.'] },
       forall: { tile: ['blurWhyForAll', 'Blurred for all'], says: ['blurSaysForAll', 'You chose clear video, but someone here blurred you for all, so you stay blurred until that is lifted.'] },
-      noadmin: { tile: ['blurWhyNoAdmin', 'Blurred: no admin here'], says: ['blurSaysNoAdmin', 'You chose clear video, but this room stays blurred until an admin is here.'] },
+      noadmin: { tile: ['blurWhyNoAdmin', 'Blurred: no host here'], says: ['blurSaysNoAdmin', 'You chose clear video, but this room stays blurred until a host is here.'] },
       ready: { tile: ['blurWhyReady', 'Blurred: not everyone is ready'], says: ['blurSaysReady', 'You chose clear video. Faces clear once everyone here has their camera on with No blur.'] },
     };
     function blurWhyWords(reason, part) {
@@ -6119,6 +6155,32 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       return out;
     }
+    // A FACE IN THE BIG VIEW IS CROPPED A LITTLE, NEVER A LOT (Nathan 2026-11-18). A full crop to fill showed a portrait
+    // phone in a landscape pane as the top of a head; a whole fit leaves wide bars when the shapes are close. The big
+    // view scales a camera face so that at most FS_CROP_MAX of its picture is cut (on the side that overflows), and the
+    // rest of the pane is thin bars. Shapes close enough that a full fill cuts no more than that just fill the pane.
+    // Shared screens, content and the Stadium stay whole. #fsmain's box is the part shown, centred in the pane, and
+    // meet.css crops inside it (cover, 50% 40%). Repainted on every refresh, a pane resize and a picture size change.
+    const FS_CROP_MAX = 0.25;
+    function fsCropBox(vw, vh, pw, ph, crop) {   // the shown box in pane px for a vw x vh picture, or null
+      if (!(vw > 0 && vh > 0 && pw > 0 && ph > 0)) return null;
+      const cover = Math.max(pw / vw, ph / vh), whole = Math.min(pw / vw, ph / vh);
+      const s = Math.min(cover, whole / (1 - crop));
+      const w = Math.min(pw, vw * s), h = Math.min(ph, vh * s);
+      return { x: (pw - w) / 2, y: (ph - h) / 2, w, h, fill: s >= cover, shown: (w * h) / (vw * s * vh * s) };
+    }
+    function fsFitPaint() {
+      const box = fsmain._fit === 'cover' ? fsCropBox(fsmain.videoWidth, fsmain.videoHeight, fsview.clientWidth, fsview.clientHeight, FS_CROP_MAX) : null;
+      const px = (n) => n.toFixed(1) + 'px';
+      const want = box ? { left: px(box.x), top: px(box.y), width: px(box.w), height: px(box.h), right: 'auto', bottom: 'auto' }
+        : { left: '', top: '', width: '', height: '', right: '', bottom: '' };
+      for (const k in want) if (fsmain.style[k] !== want[k]) fsmain.style[k] = want[k];
+      if (box) fsmain.dataset.fit = 'cover'; else delete fsmain.dataset.fit;
+    }
+    fsmain.addEventListener('loadedmetadata', fsFitPaint);
+    fsmain.addEventListener('resize', fsFitPaint);   // the sender turned the phone: a new picture size
+    window.addEventListener('resize', fsFitPaint);
+    if (typeof ResizeObserver === 'function') new ResizeObserver(fsFitPaint).observe(fsview);
     // The big view's zoom onto Stadium cells: a CSS transform on #fsmain, the picture itself unchanged. The box of the
     // cells, padded, fills the view as far as FS_ZOOM_MAX allows, and the picture never slides off its own edge.
     const FS_ZOOM_MAX = 8, FS_ZOOM_PAD = 0.1;
@@ -6217,10 +6279,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // Follow speaker does not skip a camera-off person: that person is a
     // name card in the strip (fsSources).
-    // Each source says what it carries. fit 'cover' is one camera face, which
-    // fills the screen; 'contain' is a shared screen, a service program or a
-    // packed picture of several people, which must show whole. The stage is
-    // one face only while one person is on it and nobody shares.
+    // Each source says what it carries: 'cover' is one camera face, 'contain' a shared screen, a service program or a
+    // packed picture of several people. The stage is one face only while one person is on it and nobody shares.
+    // The big view crops a 'cover' source by at most FS_CROP_MAX and shows a 'contain' one whole (fsFitPaint).
     function fsFeedLive(v) {
       const st = v && v.srcObject;
       const t = st && typeof st.getVideoTracks === 'function' ? st.getVideoTracks()[0] : null;
@@ -6245,22 +6306,38 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         out.push({ key: 'stage:' + ((v.closest('.rowtile') || {}).dataset || {}).row, label: 'On stage', v, fit: stageFit });
       }
       if (BROADCAST) return out;
+      // Focus has every tile, camera on or off (Nathan 2026-11-18): a camera-off person is a card with their Settings
+      // picture (the one their grid tile shows) or their initial, so Focus is never a black screen.
+      const picOf = (pid, p) => {
+        try {
+          if (pid === 'me') { const a = (GifOS.store.identity() || {}).avatar; return (a && a.url) || ''; }
+          return (GifOS.meetViews && GifOS.meetViews.avatarUrl && GifOS.meetViews.avatarUrl(statusOf.get(pid), p)) || '';
+        } catch (e) { return ''; }
+      };
       for (const [pid, p] of peers) {
-        if (!p.connected) continue;
-        // Every connected peer is listed. A dark one (camera off, admin
-        // video-off, blocked share, or no ready picture) is a name card:
-        // v stays null so the raw frames are never painted. A live peer
-        // still carries the receiver blur level.
+        // Every peer the grid shows is listed: a live link, or a tile on the grid while the link is still coming up
+        // (applyComfy's own rule for a tile that takes a slot).
+        const onGrid = !!(p && p.tile && !p.headless && !p.held && p.tile.parentNode && !(p.tile.style && p.tile.style.display === 'none'));
+        if (!p.connected && !onGrid) continue;
+        // A dark one (camera off, admin video-off, blocked share, or no ready
+        // picture) is a name card: v stays null so the raw frames are never
+        // painted. Its picture wears the same blur as the tile's avatar. A live
+        // peer still carries the receiver blur level.
         const label = displayName(pid);
         const blocked = forcedCamOff(pid) || (typeof shareBlocked === 'function' && shareBlocked(pid));
         const dark = !pipReady(p.video) || seatDark(statusOf.get(pid)) || blocked;
-        if (dark) out.push({ key: 'peer:' + pid, label: label, v: null, dark: true });
+        if (dark) out.push({ key: 'peer:' + pid, label: label, v: null, dark: true, pic: picOf(pid, p), pbl: blurLevelFor(pid, true) });
         else out.push({ key: 'peer:' + pid, label: label, v: p.video, bl: blurLevelFor(pid), fit: sharingScreen(pid) ? 'contain' : 'cover' });
       }
       const sd = stadiumEl.querySelector('[data-row="sd"] video');
-      if (pipReady(sd)) out.push({ key: 'sd', label: 'The stadium', v: sd, fit: 'contain' });
+      if (pipReady(sd)) out.push({ key: 'sd', label: uiText('setStadium', 'The stadium'), v: sd, fit: 'contain' });
       // My tile shows my screen only when I share from the Stage; a share from the Row keeps my camera there.
-      if (meTile && !seatDark(myStatus) && pipReady(meTile.video)) out.push({ key: 'me', label: 'You', v: meTile.video, fit: (myStatus.scr && !shareOnlyStage('me')) ? 'contain' : 'cover' });
+      // With my camera off it is my card (my picture, or my initial).
+      if (meTile) {
+        const you = uiText('lobPreviewName', 'You');
+        if (!seatDark(myStatus) && pipReady(meTile.video)) out.push({ key: 'me', label: you, v: meTile.video, fit: (myStatus.scr && !shareOnlyStage('me')) ? 'contain' : 'cover' });
+        else out.push({ key: 'me', label: you, v: null, dark: true, pic: picOf('me'), initial: (() => { try { return nameInitial(myName()); } catch (e) { return ''; } })() });
+      }
       return out;
     }
     function fsPaintSel() { for (const th of fsstrip.children) th.classList.toggle('sel', th.dataset.key === fsSel); }
@@ -6317,6 +6394,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           fsmain.classList.add('dark');
           fsBlurClass(fsmain, 0);
           showName(true, main.label);
+          if (main.initial) { const letter = fsname.querySelector('.fsinitial'); if (letter) letter.textContent = main.initial; }
+          // A camera-off card shows the person's picture when they set one (its blur is the tile avatar's).
+          const pic = fsname.querySelector('.fspic');
+          if (pic) {
+            if (main.pic) { if (pic.getAttribute('src') !== main.pic) pic.setAttribute('src', main.pic); } else pic.removeAttribute('src');
+            fsBlurClass(pic, main.pic ? (main.pbl | 0) : 0);
+          }
+          fsname.classList.toggle('pic', !!main.pic);
         } else {
           const st = main.stream;
           // The view borrows the tile's stream. A <video> that never started
@@ -6336,11 +6421,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           showName(false);
         }
         fsmain.dataset.key = main.key;
-        if (main.fit === 'cover') fsmain.dataset.fit = 'cover'; else delete fsmain.dataset.fit;
+        // A face is cropped by at most FS_CROP_MAX, the rest bars (fsFitPaint); anything else shows whole.
+        fsmain._fit = main.fit === 'cover' ? 'cover' : null;
+        fsFitPaint();
         fsZoomPaint(fsSel === 'auto' && main.key === 'sd' ? fsZoomIds : null);
       } else {
         fsZoomPaint(null);
-        fsmain.srcObject = null; fsmain.dataset.key = ''; fsmain.classList.remove('dark'); fsBlurClass(fsmain, 0); delete fsmain.dataset.fit;
+        fsmain.srcObject = null; fsmain.dataset.key = ''; fsmain.classList.remove('dark'); fsBlurClass(fsmain, 0); fsmain._fit = null; fsFitPaint();
         if (identOn) identCard();
         else if (broadcastFs) {
           const lineEl = document.getElementById('bc-stage-line');
@@ -6382,9 +6469,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           let ini = el.querySelector('.fsinitial');
           if (!ini) { ini = document.createElement('span'); ini.className = 'fsinitial'; el.appendChild(ini); }
           if (s.dark) {
-            const ch = Array.from(String(s.label || ''))[0];
+            const ch = s.initial || Array.from(String(s.label || ''))[0];
             ini.textContent = ch ? ch.toUpperCase() : '\u2022';
           }
+          // a camera-off card with a picture shows the picture (blurred like the tile's avatar)
+          let pic = el.querySelector('.fspic');
+          const url = s.dark ? (s.pic || '') : '';
+          if (url && !pic) { pic = document.createElement('img'); pic.className = 'fspic'; pic.setAttribute('alt', ''); el.appendChild(pic); }
+          if (pic) {
+            if (url) { if (pic.getAttribute('src') !== url) pic.setAttribute('src', url); } else pic.removeAttribute('src');
+            fsBlurClass(pic, url ? (s.pbl | 0) : 0);
+          }
+          el.classList.toggle('pic', !!url);
         };
         if (!th) {
           th = document.createElement('div'); th.className = 'fsthumb'; th.dataset.key = s.key;
@@ -6488,7 +6584,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       document.body.classList.remove('fsopen');
       fsmain.srcObject = null;
       fsmain.classList.remove('dark');
-      delete fsmain.dataset.fit;
+      fsmain._fit = null; fsFitPaint();
       fsname.classList.remove('on', 'ident', 'pic');
       for (const tv of fsstrip.querySelectorAll('video')) tv.srcObject = null; // no leftover sinks — decode work ends with the view
       fsstrip.textContent = ''; fsstrip.dataset.set = '';
@@ -7738,6 +7834,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           self: window.__meetSelf || 'tile',
           gallery: window.__meetGallery || 'fit', float: window.__meetView === 'drag', now: Date.now(),
           content: ctTile ? contentOpts(phone) : null,
+          // Scroll only: the Row and the Stadium carry a label (S7). The words are display text; the code keeps row and stadium.
+          heads: window.__meetGallery === 'scroll' ? { row: uiText('zoneRowHead', 'Direct connections'), stad: uiText('zoneStadHead', 'Stadium connections') } : null,
           onSettle: () => { try { layout(); } catch (e) {} },
         });
         // Content on screen (a shared screen now; the content tabs later):
@@ -8183,6 +8281,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         ctNote('screen-src', { sid: String(it.sid).slice(0, 8), from: src ? src.from : 'none' });
       }
       p.dataset.src = src ? src.from : 'none';
+      try { const held = !it.mine && turnHeld(it.sid); pauseNote(p, held, held ? shareFirewallWords(it.name) : ''); } catch (e) {}
       const cap = p.querySelector('.ct-cap');
       if (cap) {
         const want = ctLabel(it);
@@ -11438,7 +11537,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       let extra = '';
       if (n > 1 && !bcWatcher) {
         if (!roomPw) extra = bcLive ? ' · blurred until you set a room password' : ' · ' + uiText('unlockClear', 'faces stay blurred until a password');
-        else if (hasAdminRoom() && admins.length === 0) extra = ' · no admin here — everyone stays blurred';
+        else if (hasAdminRoom() && admins.length === 0) extra = ' · ' + uiText('stNoHostBlurred', 'no host here — everyone stays blurred');
         else if (!adminPresent() && !allConsent()) {
           // Past one section the ready count is the fold's: everyone minus the
           // refusals it carries (a label — the RULE is allConsent).
@@ -12124,7 +12223,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // meeting's admin holds a plan that lets a locked-out guest in once the
     // admin arrives. No such plan exists today, so no code reads this; it is
     // the one place that wording will live when it does.
-    const REACH_MSG_ADMIN_PLAN = 'If this meeting’s admin has a paid plan, you can join after the admin arrives.';
+    const REACH_MSG_ADMIN_PLAN = 'If this meeting’s host has a paid plan, you can join after the host arrives.';
     // probeDirectPath(makePc, timeoutMs) → 'ok' | 'blocked' | 'unknown'.
     // Gathers candidates on a throwaway connection: a server-reflexive
     // candidate (the public address a STUN server reflected back) proves
@@ -13866,13 +13965,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!meshNode || !subsOn()) return;
       GifOS.meetSubs.roomOrder(subsMeetId()).then((o) => { if (!o) return; turnSubIn(myId, o); try { meshNode.gossip({ a: 1, msg: { k: 'tsub', o } }); } catch (e) {} }, () => {});
     }
+    // Does this person's video reach me only over a free TURN link that carries no video? (a standby holds nobody's video, SUB.7)
+    function turnHeld(pid, facts) {
+      if (!turnLinks || !pid || pid === myId) return false;
+      return GifOS.meetTurn.pausedBy(facts || Array.from(turnFacts.values()), myId, pid) || (turnLinks.isLink(pid) && !turnLinks.standby(pid) && !turnLinks.video(pid));
+    }
     function turnPaint() {
       const facts = turnLinks ? Array.from(turnFacts.values()) : [];
       // every person tile, a pair's or a carried one (a person whose media a friend brings has no pair here)
       for (const tile of document.querySelectorAll('.tile[data-peer]')) {
         const pid = tile.dataset.peer; if (!pid || pid === myId) continue;
         const p = { id: pid, tile };
-        const show = !!turnLinks && (GifOS.meetTurn.pausedBy(facts, myId, p.id) || (turnLinks.isLink(p.id) && !turnLinks.standby(p.id) && !turnLinks.video(p.id)));   // a standby holds nobody's video (SUB.7)
+        const show = turnHeld(p.id, facts);
         // TURN.13: the far end paused its video because the server throttles (vouched: nothing to subscribe to)
         const busy = !show && !!turnLinks && turnLinks.farBusy(p.id);
         let bel = p.tile.querySelector(':scope > .tpause-busy');
@@ -13888,18 +13992,37 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // note and Subscribe as a tile (Nathan 11-14: the note goes on the strip, not only on the pipe holders' tiles)
       const sd = document.querySelector('#stadium [data-row="sd"]');
       if (sd) { let far = 0; try { far = meshNode && typeof meshNode.meetingFar === 'function' ? meshNode.meetingFar() : 0; } catch (e) {} pauseNote(sd, !!turnLinks && GifOS.meetTurn.stripPaused(facts, far)); }
+      try { ctTurnPaint(facts); } catch (e) {}
+    }
+    // S6 (Nathan 2026-11-17): a screen shared by someone whose video reaches me only over the free audio-only TURN link
+    // cannot arrive; its pane says so, with Subscribe, instead of a dark stage with their big initial. The TURN rule is
+    // unchanged: this is only the words on the pane.
+    function shareFirewallWords(name) {
+      return uiText('turnShareFirewall', '{name}’s network firewall lets a screen share through only on a paid subscription. Subscribe to see {name}’s screen.').split('{name}').join(name || '…');
+    }
+    function ctTurnPaint(facts) {
+      if (typeof CT === 'undefined' || !CT || !CT.items) return;
+      for (const it of CT.items) {
+        if (it.kind !== 'screen') continue;
+        const pane = CT.panes.get(it.key); if (!pane) continue;
+        const held = !it.mine && turnHeld(it.sid, facts);
+        pauseNote(pane, held, held ? shareFirewallWords(it.name) : '');
+      }
     }
     // THE PAUSED NOTE on a host: a person's tile (pausedBy), or the Stadium strip that stands for a far room whose pipe
     // carries no video (stripPaused): the named state's sentence and one tap to subscribe or buy the pass.
-    function pauseNote(host, show) {
+    // say: the sentence, when the host is not a person (a shared screen's pane, S6); else the named state's.
+    function pauseNote(host, show, say) {
       let el = host.querySelector(':scope > .tpause:not(.tpause-busy)');
+      if (show && el && say && el.dataset.say !== say) { el.remove(); el = null; }   // a new sharer name: the note is built again with its words
       if (show && !el) {
         // VIDEO IS PAUSED: the named state's sentence (meet-status videoPausedRelay) over the dark tile, and one
         // tap to subscribe ($2 monthly, PayPal). A subscription's vouch turns this link's video on where it is:
         // the next paint finds the link carrying video and takes the note away.
         el = document.createElement('div'); el.className = 'tpause'; el.setAttribute('role', 'note');
         const t = document.createElement('span'); t.className = 'tpause-say';
-        const said = statusWords('videoPausedRelay');
+        const said = say || statusWords('videoPausedRelay');
+        if (say) el.dataset.say = say;
         t.textContent = said; el.appendChild(t);
         // Subscribe is offered on every paused tile.
         if (window.GifOS && GifOS.meetSubs && GifOS.sub) {
@@ -16401,6 +16524,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // closes that gap (without it, a newcomer's status arrived at ~4.4 s
       // instead of within 3 s).
       if (s.hasCoord && s.state === 3 && !seatedBeatSent) { seatedBeatSent = true; try { broadcastStatus(); } catch (e) {} }
+      if (s.hasCoord && s.state === 3) { try { lobbyPwOpenRoom(); } catch (e) {} }   // a lobby room password for this open floor, once
       if (s.hasCoord && s.state === 3 && !pwBlocked && !bannedOut && !iAmWaiting()) mediaJoined = true;
       departSweep(s); // D2/D5 event intake FIRST — a freed seat leaves the view this tick
       const ids = new Set();
@@ -16660,9 +16784,29 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
 
     // ---- the room: a reconnecting relay socket (signaling only) ---------------
+    // THE RELAY THIS PAGE DIALS: ?relay= in its own link, else the address chosen in Settings (js/relay-config.js
+    // GIFOS_storedRelay: on gifos.app only an address Settings wrote counts), else the standard one. A relay other than
+    // the standard one that never answered (GIFOS_RELAY_FALLBACK_FAILS connects, none opened) is left for the standard
+    // one with a one-line note; one that answered once is kept for the life of the page.
+    let relayFellBack = false, relayEverUp = false, relayFails = 0;
     function relayUrl() {
-      let u = null; try { u = localStorage.getItem('gifos_relay'); } catch (e) {}
-      return params.get('relay') || u || window.GIFOS_RELAY || null;
+      const std = window.GIFOS_RELAY || null;
+      if (relayFellBack) return std;
+      let u = null;
+      try { u = window.GIFOS_storedRelay ? window.GIFOS_storedRelay() : localStorage.getItem('gifos_relay'); } catch (e) {}
+      return params.get('relay') || u || std;
+    }
+    function relayConnectOpened() { relayEverUp = true; relayFails = 0; }
+    function relayConnectFailed() {
+      if (relayEverUp || relayFellBack) return;
+      const std = window.GIFOS_RELAY, cur = relayUrl();
+      if (!std || !cur || String(cur).replace(/\/+$/, '') === String(std).replace(/\/+$/, '')) return;
+      if (!(window.GIFOS_relayProd && window.GIFOS_relayProd())) return;   // a local test site keeps its test relay
+      if (++relayFails < (window.GIFOS_RELAY_FALLBACK_FAILS || 2)) return;
+      relayFellBack = true;
+      try { clog('relay ' + cur + ' never answered in ' + relayFails + ' connects: using ' + std); } catch (e) {}
+      try { sayState('relayFallback', null, 8000); } catch (e) {}
+      queueMicrotask(() => { if (!leaving && !bannedOut) startMesh(); });   // after the socket callback that counted the failure has returned
     }
 
     let room = null;
@@ -17367,7 +17511,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (mine && !amAdmin) { try { admKeys = await GifOS.meetSubs.captureKeys(capKey); amAdmin = true; } catch (e) {} }
       if (!mine && amAdmin) capDemote();
       capRole();
-      if (fresh) { if (typeof clog === 'function') clog('capture on key=' + capKey.slice(0, 8) + ' mine=' + mine + ' exp=' + capExp); pwLog('capture-on mine=' + mine); setStatus(mine ? uiText('capYou', 'You are this room\u2019s admin') : uiText('capOther', 'This room has an admin now')); }
+      if (fresh) { if (typeof clog === 'function') clog('capture on key=' + capKey.slice(0, 8) + ' mine=' + mine + ' exp=' + capExp); pwLog('capture-on mine=' + mine); setStatus(mine ? uiText('capYou', 'You have taken charge of this meeting') : uiText('capOther', 'This room has an admin now')); }
       capPaint();
     }
     // The captor IS the room's admin (amAdmin), as an admin room's admin is after adoptAdmKey: admKeys (the capture
@@ -17385,7 +17529,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       admKeys = k; amAdmin = true;
       capRole();
       pwLog('capture-mine-late');
-      setStatus(uiText('capYou', 'You are this room\u2019s admin'));
+      setStatus(uiText('capYou', 'You have taken charge of this meeting'));
       capPaint();
       return true;
     }   // a captured room has no verifier: its only admin key is the capture key
@@ -17413,7 +17557,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         net.meetPwProof(room, av, '').then((pr) => { pwProof = pr; if (meshNode && meshNode.setKey) meshNode.setKey(roomE2E); }).catch(() => {});
         try { purgeAllFiles(false); renderFiles(); reactRoomState(); } catch (e) {}
       }
-      setStatus(uiText('capOpen', 'This room is an open floor again'));
+      setStatus(uiText('capOpen', 'This is a public open-floor meeting again'));
       capPaint();
     }
     function capCheck() {
@@ -17439,7 +17583,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       capBusy = true;
       try {
         const o = await GifOS.meetSubs.captureOrder(subsMeetId());
-        if (!o) { setStatus(uiText('capNeedPlan', 'Making yourself admin of an open-floor room takes the $5 plan')); return; }
+        if (!o) { setStatus(uiText('capNeedPlan', 'Taking charge of a public open-floor meeting takes the $5 plan')); return; }
         pwLog('capture-sent');
         relaySendObj({ t: 'capture', tk: o.tk, w: o.w });
       } finally { capBusy = false; capPaint(); }   // the server's answer (onCapFrame) says the rest
@@ -17448,13 +17592,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (av) return;
       if (m.on === 1) { if (m.ck) capServerKey = m.ck; capTake(m, true).then(() => { if (amAdmin) capTicketPublish(false); }); return; }
       if (m.on === 0) { capServerKey = null; capClear('server'); return; }
-      if (m.ok === 0) { pwLog('capture-refused ' + m.why); if (m.why === 'taken') setStatus(uiText('capTaken', 'Someone else is this room\u2019s admin')); else if (m.why === 'ended' && amAdmin) capClear('server ended'); else if (m.why !== 'ended') setStatus(uiText('capFailed', 'Could not make you admin of this room')); }
+      if (m.ok === 0) { pwLog('capture-refused ' + m.why); if (m.why === 'taken') setStatus(uiText('capTaken', 'Someone else has taken charge of this meeting')); else if (m.why === 'ended' && amAdmin) capClear('server ended'); else if (m.why !== 'ended') setStatus(uiText('capFailed', 'Could not make you admin of this room')); }
     }
     function capPaint() {
       const b = document.getElementById('capbtn'), n = document.getElementById('capnote');
       const show = !av && !capOn() && subsOn() && GifOS.meetSubs.canCapture(subsMeetId());
       if (b) { b.style.display = show ? '' : 'none'; b.disabled = capBusy; }
-      if (n) { n.style.display = capOn() ? '' : 'none'; n.textContent = amAdmin ? uiText('capYou', 'You are this room\u2019s admin') : uiText('capNote', 'This room has an admin'); }
+      if (n) { n.style.display = capOn() ? '' : 'none'; n.textContent = amAdmin ? uiText('capYou', 'You have taken charge of this meeting') : uiText('capNote', 'Someone has taken charge of this meeting'); }
       try { applyAdminUi(); } catch (e) {}
     }
     { const b = document.getElementById('capbtn'); if (b) b.onclick = () => capTry(); }
@@ -17638,14 +17782,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // ban management. Creating an admin room lives in Invite. A plain room has
       // no admin and never can, so there's nothing for this button to do there.
       ab.style.display = av ? '' : 'none';   // sign-in to a room with a verifier (a captor is admin by its capture)
-      ab.textContent = amAdmin ? uiText('admBtn', 'Admin') : uiText('admSignIn', 'Admin sign-in');
-      ab.title = amAdmin ? uiText('admTipOn', 'Admin controls: room password, chat and waiting room')
+      ab.textContent = amAdmin ? uiText('admBtn', 'Host') : uiText('admSignIn', 'Host sign-in');
+      ab.title = amAdmin ? uiText('admTipOn', 'Host controls: room password, chat and waiting room')
         : uiText('admTipOff', 'This room has a host — enter the host password to get the host controls');
       const pwb = document.getElementById('pwbtn');
       const pwLocked = hasAdmin && !amAdmin;   // a captured open room too: its admin's
       pwb.disabled = pwLocked;
       pwb.title = pwLocked
-        ? uiText('pwTipAdmin', 'This room\'s password is managed by its admin')
+        ? uiText('pwTipAdmin', 'This room\'s password is managed by its host (or by whoever took charge of it)')
         : uiText('pwTip', 'Lock this room with a password');
       // Vote-off only exists where there is no admin to ban bad actors.
       document.body.classList.toggle('canvote', !hasAdmin);
@@ -18035,6 +18179,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       pwReasserted = false;  // a fresh socket re-asserts the admin's door lock once
       meshNode = GifOS.meshWire.createMeshNode({
         relayUrl: relay.replace(/\/$/, ''),
+        onRelayFail: () => relayConnectFailed(), onRelayOpen: () => relayConnectOpened(),   // a relay that never answers is left (relayUrl)
         sid: sessId, tok: sessTok, key: roomE2E, identity, tickMs: 500,
         levers: { ISLAND_MODE: 1, URL_KEY: (parseInt(String(urlKeyHex).slice(0, 8), 16) | 1) >>> 0 },   // islands found under the meeting key (above)
         oldKeys: [prevRoomE2E, openKey].filter((k, i, all) => k && k !== roomE2E && all.indexOf(k) === i),   // a door blob one of these opens is behind me, not ahead (mesh-wire R6)
@@ -18342,7 +18487,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (m.t === 'joined' && m.cap && !av) capTake(m.cap, true);   // a captured open room: the captor's ticket, checked here
       if (m.t === 'cap') { onCapFrame(m); return; }
       if (m.t === 'tvouch') { try { if (turnLinks) turnLinks.onVouch(m); } catch (e) {} return; }
-      if (m.t === 'tdoors') { const w = turnDoorsWait.splice(0); const ans = typeof m.v === 'string' ? { v: m.v, p: m.p && typeof m.p === 'object' ? m.p : {} } : null; for (const res of w) res(ans); return; }   // the relay's signed door list (the subroom ask)   // the relay's seated vouch for one of my TURN links
+      if (m.t === 'tdoors') { const w = turnDoorsWait.splice(0); const ans = typeof m.v === 'string' ? { v: m.v, p: m.p && typeof m.p === 'object' ? m.p : {}, h: m.h && typeof m.h === 'object' ? m.h : {} } : null; for (const res of w) res(ans); return; }   // the relay's signed door list (the subroom ask)   // the relay's seated vouch for one of my TURN links
       if (m.t === 'joined') {
         updateStatus(); broadcastStatus();
         // admins[] comes from VERIFIED signatures (adminsNow, \u00a79), never the relay
@@ -19937,6 +20082,47 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
 
     // ---- room password UI: one modal, two moods -------------------------------
     const pwModal = document.getElementById('pw-modal');
+    // LOBBY PASSWORDS (Start a public open-floor meeting, Join a link). Typed in
+    // the lobby, they cross the reload enterMeeting does in THIS tab's
+    // sessionStorage, and the very next load reads them into memory and removes
+    // them, so they are used once, by the room they were typed for, or dropped.
+    // Never in an address, a log, or the shared history. They go through the
+    // existing password paths only:
+    //   open  the first time this page is seated (the seat tick calls
+    //         lobbyPwOpenRoom), the Password button's own Save (setpw + pwinfo,
+    //         as if typed there), so the door locks the usual way;
+    //   join  the door's own password prompt is answered with it once (the
+    //         prompt's Join), so a wrong one gets the usual challenge, and a
+    //         room with no password never asks.
+    // A private meeting's room password is the lobby's lob-guest-pass (pre-seeded
+    // with the host key, the §LOCK re-assert locks the door).
+    const LOB_PW_KEY = 'gifos_lobpw';
+    function lobbyPwHandOver(kind, r, a, input) {
+      const pw = ((input && input.value) || '').trim();
+      try {
+        if (pw) sessionStorage.setItem(LOB_PW_KEY, JSON.stringify({ kind, room: r, av: a || '', pw }));
+        else sessionStorage.removeItem(LOB_PW_KEY);
+      } catch (e) {}
+      if (input) input.value = '';
+    }
+    let lobbyPw = (() => {
+      let o = null;
+      try { o = JSON.parse(sessionStorage.getItem(LOB_PW_KEY) || 'null'); sessionStorage.removeItem(LOB_PW_KEY); } catch (e) { o = null; }
+      if (!o || typeof o.pw !== 'string' || !o.pw) return null;
+      return { kind: o.kind, room: String(o.room || ''), av: String(o.av || ''), pw: o.pw };
+    })();
+    const lobbyPwFor = (kind) => !!(lobbyPw && lobbyPw.kind === kind && lobbyPw.room === room && lobbyPw.av === (av || ''));
+    function lobbyPwOpenRoom() {
+      if (!lobbyPw || lobbyPw.kind !== 'open') return;
+      if (!lobbyPwFor('open') || av || leaving || bannedOut || pwBlocked) { lobbyPw = null; return; }
+      const ms = meshSeat();
+      if (!(ms && ms.hasCoord && ms.state === 3)) return;   // not seated yet: the seat tick calls again
+      const v = lobbyPw.pw; lobbyPw = null;
+      pwModal.dataset.mode = 'manage';
+      document.getElementById('pw-new').value = v;
+      document.getElementById('pw-save').onclick();
+      if (!pwSaveWaited) document.getElementById('pw-new').value = '';
+    }
     function showPwModal(locked, why) {
       const service = BROADCAST;
       document.getElementById('pw-title').textContent = service ? uiText('pwTitle', 'Room password') : (locked ? uiText('pwTitleLocked', 'This room is locked') : uiText('pwTitle', 'Room password'));
@@ -19950,7 +20136,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             ? uiText('pwHintChanged', 'The host changed the room password. Enter the new password to rejoin the meeting.')
             : uiText('pwHintLocked', 'Enter the room password to join the meeting.'))
           : !!av
-            ? uiText('pwHintAdmin', 'Only the admin can set or change it. When it is set or changed, everyone else here goes back to the door and must enter it to rejoin. Leave empty to remove the lock.')
+            ? uiText('pwHintAdmin', 'Only the host can set or change it. When it is set or changed, everyone else here goes back to the door and must enter it to rejoin. Leave empty to remove the lock.')
             : uiText('pwHint', 'Anyone in the meeting can set or change it. It reaches everyone here instantly, and new joiners must enter it. Leave empty to remove the lock.'));
       document.getElementById('pw-cur-row').style.display = locked ? 'none' : 'flex';
       document.getElementById('pw-cur').value = roomPw;
@@ -19965,12 +20151,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       cancel.textContent = locked ? uiText('pwLeave', 'Leave') : uiText('pwClose', 'Close');
       pwModal.dataset.mode = locked ? 'join' : 'manage';
       pwModal.style.display = 'flex';
+      if (locked && lobbyPwFor('join')) {
+        const typed = lobbyPw.pw; lobbyPw = null;
+        inp.value = typed;
+        Promise.resolve().then(() => { if (pwModal.style.display !== 'none' && pwModal.dataset.mode === 'join' && inp.value === typed) document.getElementById('pw-save').onclick(); });
+        return;
+      }
       if (why === 'banned') { const cur = document.getElementById('pw-cur'); cur.focus(); cur.select(); } else inp.focus();
     }
     document.getElementById('pwbtn').onclick = () => showPwModal(false);
     document.getElementById('waitbtn').onclick = () => {
       if (!hasAdminRoom()) return;
-      if (!amAdmin) { setStatus(uiText('stOnlyAnAdminCanTurn', 'Only an admin can turn the waiting room on.')); return; }
+      if (!amAdmin) { setStatus(uiText('stOnlyAnAdminCanTurn', 'Only a host can turn the waiting room on.')); return; }
       meetWait.hold(!holdDoor);
     };
     document.getElementById('waitdoor-leave').onclick = () => { location.href = MEET_PATH; };
@@ -20124,15 +20316,52 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (amAdmin) {
         setup.style.display = 'none'; panel.style.display = '';
         paintChatOptions();
-        document.getElementById('adm-hint').textContent = uiText('admHintOn', 'You are a host of this room. Hosts can lock the room with a room password (the key to clear video), mute or blur someone for everyone, and ban people. Anyone who knows the host password can open Admin and sign in too.');
+        paintHostPw();
+        document.getElementById('adm-hint').textContent = uiText('admHintOn', 'You are a host of this room. Hosts can lock the room with a room password (the key to clear video), mute or blur someone for everyone, and ban people. Anyone who knows the host password can open Host and sign in too.');
       } else {
         setup.style.display = ''; panel.style.display = 'none';
-        btn.textContent = uiText('admEnable', 'Sign in as admin');
+        btn.textContent = uiText('admEnable', 'Sign in as host');
         document.getElementById('adm-hint').textContent = uiText('admHintOff', 'This room has a host. If you know the host password, enter it here to get the host controls. Your password stays on this device.');
       }
       admModal.style.display = 'flex';
     }
     document.getElementById('admbtn').onclick = showAdmModal;
+    // Show host password (a private meeting's host only). The password is the
+    // one this device kept (gifos_vhpw_<room>.<verifier>) when it created the
+    // meeting or signed in as host. It is never logged, mirrored or put in a
+    // link, and it leaves the page again whenever the popup closes. It cannot
+    // change: the meeting's link carries the verifier made from it.
+    const hostPwKey = () => 'gifos_vhpw_' + roomKey();
+    function hostPwShown() { return !document.getElementById('adm-hpw-box').hidden || !document.getElementById('adm-hpw-none').hidden; }
+    function paintHostPw(show) {
+      const sec = document.getElementById('adm-hpw');
+      const btn = document.getElementById('adm-hpw-show');
+      const box = document.getElementById('adm-hpw-box');
+      const val = document.getElementById('adm-hpw-val');
+      const none = document.getElementById('adm-hpw-none');
+      const copy = document.getElementById('adm-hpw-copy');
+      // A public open-floor meeting has no host password, even for whoever took charge of it.
+      sec.hidden = !(amAdmin && av);
+      let pw = '';
+      if (show && !sec.hidden) { try { pw = localStorage.getItem(hostPwKey()) || ''; } catch (e) { pw = ''; } }
+      val.value = pw;
+      box.hidden = !(show && pw);
+      none.hidden = !(show && !pw && !sec.hidden);
+      copy.textContent = uiText('admHpwCopy', 'Copy');
+      btn.textContent = show ? uiText('admHpwHide', 'Hide host password') : uiText('admHpwShow', 'Show host password');
+      btn.setAttribute('aria-expanded', show ? 'true' : 'false');
+    }
+    document.getElementById('adm-hpw-show').onclick = () => paintHostPw(!hostPwShown());
+    document.getElementById('adm-hpw-copy').onclick = () => {
+      const val = document.getElementById('adm-hpw-val'), copy = document.getElementById('adm-hpw-copy');
+      if (!val.value) return;
+      const done = () => { copy.textContent = uiText('admHpwCopied', 'Copied'); };   // back to Copy on the next paint (Hide, Show, reopening)
+      const fallback = () => { try { val.select(); if (document.execCommand('copy')) done(); } catch (e) {} };
+      try { navigator.clipboard.writeText(val.value).then(done, fallback); } catch (e) { fallback(); }
+    };
+    // Every way the popup closes takes the password off the page.
+    new MutationObserver(() => { if (admModal.style.display === 'none' && document.getElementById('adm-hpw-val').value) paintHostPw(false); })
+      .observe(admModal, { attributes: true, attributeFilter: ['style'] });
     document.getElementById('adm-close').onclick = () => { admModal.style.display = 'none'; };
     document.getElementById('adm-enable').onclick = async () => {
       // Sign in only: prove knowledge of THIS room's password (salt = this room).
@@ -20148,7 +20377,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { K = await deriveAdminKey(room, v); }
       catch (err) {
         btn.disabled = false;
-        btn.textContent = uiText('admEnable', 'Sign in as admin');
+        btn.textContent = uiText('admEnable', 'Sign in as host');
         hint.textContent = uiText('admCheckFail', 'Could not check the password ({err}).').split('{err}').join((err && err.name) || 'Error');
         return;
       }
@@ -20156,7 +20385,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // is local, instant, and needs no relay round-trip.
       if (!(await adoptAdmKey(K))) {
         btn.disabled = false;
-        btn.textContent = uiText('admEnable', 'Sign in as admin');
+        btn.textContent = uiText('admEnable', 'Sign in as host');
         hint.textContent = uiText('admWrong', 'Wrong host password.');
         sayState('adminWrong');
         return;
@@ -20164,6 +20393,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       btn.disabled = false;
       document.getElementById('adm-pass').value = '';
       try { localStorage.setItem(admStoreKey(), admKey); } catch (e2) {}
+      try { localStorage.setItem(hostPwKey(), v); } catch (e2) {}   // Show host password (never mirrored)
       mirrorRoomState({ admin: true });
       admModal.style.display = 'none';
       sayState('adminSignedIn');
@@ -20591,6 +20821,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // door" leg, which is what that leg is for.) Her stored password is not
       // a guess: it is the authority she is about to prove.
       if (av && admKey) pwFromStore = false;
+      try { lobbyPwOpenRoom(); } catch (e) {}
       const relay = relayUrl();
       const custom = relay && relay !== window.GIFOS_RELAY;
       const avPart = (av ? '&av=' + av : '') + (BROADCAST ? '&bc=1' : '');
@@ -20737,11 +20968,29 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const w = Math.floor(d / 7); if (w < 5) return w + 'w ago';
       return Math.floor(d / 30) + 'mo ago';
     }
+    // The kind of a recent or saved meeting, from what the list already keeps:
+    // the entry's verifier (or the one in its link) makes it private, and this
+    // device's host key for it (gifos_vadm_<room>.<verifier>) makes it yours.
+    // A broadcast list shows only Private / Host (a broadcast has no open floor).
+    function lobKind(e) {
+      let p = null; try { p = parseMeetInput(e.url); } catch (err) { p = null; }
+      const v = String(e.av || (p && p.av) || '').toLowerCase();
+      if (!v) return 'open';
+      let host = false;
+      try { host = !!(p && p.room && localStorage.getItem('gifos_vadm_' + p.room + '.' + v)); } catch (err) { host = false; }
+      return host ? 'host' : 'private';
+    }
+    function lobBadge(e) {
+      const k = lobKind(e);
+      if (k === 'open' && CAST_SURFACE) return '';
+      const word = k === 'host' ? uiText('lobBadgeHost', 'Private · Host') : k === 'private' ? uiText('lobBadgePrivate', 'Private') : uiText('lobBadgeOpen', 'Open floor');
+      return '<span class="li-badge li-kind-' + k + '">' + esc(word) + '</span>';
+    }
     function lobRow(e, marked) {
       return '<div class="lob-item" data-url="' + esc(e.url) + '">' +
         '<button type="button" class="lob-star" data-star="' + esc(e.url) + '" aria-label="Save" title="' + (marked ? 'Saved' : 'Save') + '">' + (marked ? '★' : '☆') + '</button>' +
         '<div class="li-main"><span class="li-name">' + esc(e.name || SURFACE_NAME) +
-          (e.av ? '<span class="li-badge">admin</span>' : '') + '</span>' +
+          lobBadge(e) + '</span>' +
           '<span class="li-sub">' + agoLabel(e.ts) + '</span></div>' +
         '<button type="button" class="row-del" data-del="' + esc(e.url) + '" title="Remove" aria-label="Remove">' + DEL_ICON + '</button>' +
       '</div>';
@@ -20936,7 +21185,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function wireLobby() {
       const lob = document.getElementById('lobby');
       const toggle = (id) => { const el = document.getElementById(id); el.style.display = el.style.display === 'none' ? '' : 'none'; };
-      document.getElementById('lob-open').onclick = () => { enterMeeting('#v=' + shortCode()); };
+      document.getElementById('lob-open').onclick = () => {
+        const code = shortCode();
+        lobbyPwHandOver('open', code, '', document.getElementById('lob-open-pass'));
+        enterMeeting('#v=' + code);
+      };
+      const openMore = document.getElementById('lob-open-more');
+      if (openMore) openMore.onclick = () => {
+        const extra = document.getElementById('lob-open-extra');
+        const open = extra.style.display === 'none';
+        extra.style.display = open ? '' : 'none';
+        openMore.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (open) document.getElementById('lob-open-pass').focus();
+      };
+      document.getElementById('lob-open-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('lob-open').click(); });
       const lobCam = document.getElementById('lob-cam');
       if (lobCam) lobCam.onclick = () => {
         if (joinAv.cam) { setLobbyCam(false); return; }
@@ -21094,6 +21356,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const K = await deriveAdminKey(chosen, pass);
           const V = (await net.edKeysFromSeedHex(K)).verifier; // V commits to the PUBLIC key (§9)
           try { localStorage.setItem('gifos_vadm_' + chosen + '.' + V, K); } catch (e) {}
+          try { localStorage.setItem('gifos_vhpw_' + chosen + '.' + V, pass); } catch (e) {}   // Show host password (this device only, never mirrored)
           mirrorRoomState({ admin: true }, chosen + '.' + V);
           // The ROOM password (optional): pre-seed the room-password store —
           // exactly what the Password button writes — and the admin's normal
@@ -21141,10 +21404,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const err = document.getElementById('lob-join-err');
         const p = parseMeetInput(document.getElementById('lob-join-in').value);
         if (!p) { err.textContent = uiText('badLink', 'Couldn’t read that — paste a meeting link or its id.'); return; }
+        lobbyPwHandOver('join', p.room, p.av || '', document.getElementById('lob-join-pass'));
         enterMeeting('#v=' + p.room + (p.av ? '&av=' + p.av : '') + (p.bc ? '&bc=1' : '') + (p.relay ? '&relay=' + encodeURIComponent(p.relay) : ''));
       };
       document.getElementById('lob-join-go').onclick = doJoin;
       document.getElementById('lob-join-in').addEventListener('keydown', (e) => { if (e.key === 'Enter') doJoin(); });
+      document.getElementById('lob-join-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') doJoin(); });
       document.getElementById('lob-guest-reveal').onclick = () => {
         const extra = document.getElementById('lob-guest-extra');
         extra.hidden = false;
@@ -28565,7 +28830,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!el) {
         el = document.createElement('div'); el.className = 'rowtile'; el.dataset.row = 'sd';
         const v = document.createElement('video'); v.muted = true; v.autoplay = true; v.setAttribute('playsinline', '');
-        const lb = document.createElement('div'); lb.className = 'rlabel'; lb.textContent = 'The stadium';
+        const lb = document.createElement('div'); lb.className = 'rlabel'; lb.textContent = uiText('setStadium', 'The stadium');
         el.appendChild(v); el.appendChild(lb); stadiumEl.appendChild(el); trackAspect(el, v);
         try { turnPaint(); } catch (e) {}   // a new strip takes the paused note at once (TURN.11)
       }
@@ -30458,7 +30723,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       stgLostSince = 0;
       setStage(false);
       setStatus(canStage(myId) ? 'The stage was full (' + SCALE.C + ' people) — your step-up did not take.'
-        : 'The stage is admin-granted here — your step-up did not take.');
+        : uiText('stStageHostOnly', 'Only a host can put you on the stage here — your step-up did not take.'));
     }
     let stgFlips = 0; // every step-up/down (test hook: a vote storm shows as a rising count)
     function setStage(on) {
@@ -31659,7 +31924,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const ccNote = document.getElementById('ccall-note');
       if (ccNote) ccNote.textContent = BROADCAST
         ? 'In a broadcast only this host\u2019s device writes captions. Viewers and stage guests do not.'
-        : 'Admins only — every device starts writing down the voices it hears. Anyone can tap CC to opt out.';
+        : uiText('ccallNoteDev', 'Hosts only — every device starts writing down the voices it hears. Anyone can tap CC to opt out.');
       if (typeof applyCcAll === 'function') applyCcAll();
       setModal.style.display = 'flex';
     };
@@ -32035,7 +32300,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       if (roomSingOn()) { setStatus(singLeaderName() + ' is leading; wait for the song to end.'); return; }
       if (!stageIds().includes(myId)) {
-        if (!canStage(myId)) { setStatus(uiText('stOnlyRoomAdminsAndPeople2', 'Only room admins — and people they allow — can lead a song here.')); return; }
+        if (!canStage(myId)) { setStatus(uiText('stOnlyRoomAdminsAndPeople2', 'Only room hosts — and people they allow — can lead a song here.')); return; }
         if (stageIds().length >= SCALE.C) { sayState('stageFull', { n: SCALE.C }); return; }
         myStatus.sing = Date.now();
         singSteppedUp = true; // we stepped up FOR the song — step back down with it
@@ -34254,7 +34519,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (ccShow || ccOptOutAt >= (m.at || 0)) return;
       ccShow = true; ccByOrder = true;
       paintCcButtons();
-      setStatus((m.by || 'An admin') + ' turned captions on for your screen. Tap Captions to hide them.', 8000);
+      setStatus(uiText('ccOnBy', '{by} turned captions on for your screen. Tap Captions to hide them.').replace('{by}', m.by || uiText('ccOnByHost', 'A host')), 8000);
     }
     (function wireCcAll() {
       const btn = document.getElementById('ccall'); if (!btn) return;
@@ -36680,7 +36945,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // admin's video-off keeps the camera off, and a room-wide mute keeps the
     // microphone off, even when the permission is answered after the order.
     function lateRefusal(kind) {
-      if (kind === 'cam' && forcedCamOff('me')) return '📷 An admin turned your video off for the room — only they can turn it back on.';
+      if (kind === 'cam' && forcedCamOff('me')) return '📷 A host turned your video off for the room — only they can turn it back on.';
       if (kind === 'mic' && amGloballyMuted()) return micLockWords();
       return null;
     }
@@ -37377,7 +37642,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       let words = blurWhyWords(why, 'says');
       if (why === 'nopw') {
         words += ' ' + (hasAdminRoom()
-          ? (amAdmin ? uiText('blurPwYou', 'Set one with the Password button.') : uiText('blurPwAdmin', 'Only this room’s admin can set one.'))
+          ? (amAdmin ? uiText('blurPwYou', 'Set one with the Password button.') : uiText('blurPwAdmin', 'Only this room’s host (or whoever took charge of it) can set one.'))
           : uiText('blurPwAnyone', 'Anyone here can set one with the Password button.'));
       }
       if (why === 'ready') words += ' (' + consentCount() + '/' + participantCount() + ')';
@@ -37407,10 +37672,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const setPw = why === 'nopw' && canSetRoomPw();
       const todo = why === 'nopw'
         ? (setPw ? uiText('blurWhyDoSetPw', 'Set a room password to lift this.')
-          : uiText('blurWhyDoAskAdmin', 'Ask the meeting admin to set the room password, which will require everyone to re-enter the meeting with that password.'))
-        : why === 'guests' ? uiText('blurWhyDoGuests', 'Ask the meeting admin to lift it.')
+          : uiText('blurWhyDoAskAdmin', 'Ask the meeting’s host (or whoever took charge of it) to set the room password, which will require everyone to re-enter the meeting with that password.'))
+        : why === 'guests' ? uiText('blurWhyDoGuests', 'Ask the meeting host to lift it.')
         : why === 'forall' ? uiText('blurWhyDoForAll', 'Ask the person who blurred you to lift it.')
-        : uiText('blurWhyDoNoAdmin', 'It clears when an admin joins.');
+        : uiText('blurWhyDoNoAdmin', 'It clears when a host joins.');
       document.getElementById('blurwhy-text').textContent = blurWhyWords(why, 'says');
       document.getElementById('blurwhy-do').textContent = todo;
       const pwBtn = document.getElementById('blurwhy-pw');
@@ -38017,7 +38282,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const line = !roomAv
           ? (BROADCAST
             ? uiText('invBcWatch', 'Send this link. People who open it are watching.')
-            : uiText('invOpen', 'Send this link. Anyone who opens it can join this open meeting.'))
+            : uiText('invOpen', 'Send this link. Anyone who opens it can join this public open-floor meeting.'))
           : BROADCAST
             ? (holdsKey
               ? uiText('invBcHost', 'Send this link. People who open it are watching. The host password stays with you.')
@@ -38025,16 +38290,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
                 ? uiText('invBcWait', 'Send this link. People who open it are watching. The host admits them.')
                 : uiText('invBcWatch', 'Send this link. People who open it are watching.'))
             : (holdsKey
-              ? uiText('invAdmHost', 'Send this link. People who open it can join. The host password stays with you.')
+              ? uiText('invAdmHost', 'Send this link. People who open it can join this private meeting. The host password stays with you.')
               : doorHolds
-                ? uiText('invAdmWait', 'Send this link. People who open it can join. The host admits them.')
-                : uiText('invAdmJoin', 'Send this link. People who open it can join.'));
+                ? uiText('invAdmWait', 'Send this link. People who open it can ask to join this private meeting. The host admits them.')
+                : uiText('invAdmJoin', 'Send this link. People who open it can join this private meeting.'));
         body.innerHTML = '<p>' + line + '</p>' + linkRowHtml();
       } else {
         body.innerHTML =
-          '<p>' + uiText('invOpen', 'Send this link. Anyone who opens it can join this open meeting.') + '</p>' +
+          '<p>' + uiText('invOpen', 'Send this link. Anyone who opens it can join this public open-floor meeting.') + '</p>' +
           linkRowHtml() +
-          '<button id="inv-mkadm" type="button" class="inv-more">' + esc(uiText('invMk', 'A room you run')) + '</button>' +
+          '<button id="inv-mkadm" type="button" class="inv-more">' + esc(uiText('invMk', 'Host a private meeting')) + '</button>' +
           '<div id="inv-adm-open" style="display:none">' +
             '<p>This makes a new room that you run. Name it, then set a host password only you know.</p>' +
             (others
@@ -38254,7 +38519,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     let subsTurnedAway = false, subsTierKey = '', subsTier = null, subsTierExp = 0;
     const subsProven = new Set(), subsAsked = new Map();   // knocker -> {n, at}
     const subsOn = () => !!(window.GifOS && GifOS.meetSubs && GifOS.sub);   // the subscription code is loaded (always on)
-    // The Subscribe entry in More: the plans in Settings.
+    // The Subscription entry in More (Settings and help): opens the Subscription dialog.
     { const sb = document.getElementById('subbtn'); if (sb) sb.addEventListener('click', () => { if (window.GifOS && GifOS.meetSubs && GifOS.meetSubs.openSubscribe) GifOS.meetSubs.openSubscribe(); }); }
     // The meeting a subscription ticket names: the room's relay session (a one-way hash of the room code), the same
     // room the relay's TURN vouches name, so the TURN Worker can check a paid ask's ticket against its vouches.
@@ -38430,6 +38695,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const K = await deriveAdminKey(chosen, pass);
       const V = (await net.edKeysFromSeedHex(K)).verifier; // V commits to the PUBLIC key K seeds (§9) — 96-bit, short link, preimage-safe
       try { localStorage.setItem('gifos_vadm_' + chosen + '.' + V, K); } catch (e) {}
+      try { localStorage.setItem('gifos_vhpw_' + chosen + '.' + V, pass); } catch (e) {}   // Show host password (this device only, never mirrored)
       mirrorRoomState({ admin: true }, chosen + '.' + V);
       // Optional GUEST password: pre-seed the room-password store (what the
       // Password button writes) — the §LOCK re-assert locks the new room the
@@ -39407,7 +39673,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     let appBooting = false;
     async function runApp(fileId, name) {
       if (!window.GifOS || !GifOS.runtime || !GifOS.store) return;
-      if (!canIRunApp()) { setStatus(uiText('appDenied', '🛡 Only this room\u2019s admins — or people they allow — can run an app here.')); return; }
+      if (!canIRunApp()) { setStatus(uiText('appDenied', '🛡 Only this room\u2019s hosts — or people they allow — can run an app here.')); return; }
       if (GifOS.lock) {
         const all = await GifOS.store.allItems();
         const it = GifOS.lock.itemOfFile(all, fileId);
@@ -39801,7 +40067,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         btn.textContent = uiText('runApp', 'Run app');
         btn.title = canIRunApp()
           ? uiText('appTip', 'Run an app inside this meeting. Most stay in sync. One that turns multiplayer off stays on the host\'s screen.')
-          : uiText('appDeniedTip', 'Only this room\u2019s admins — or people they allow — can run an app here').replace(/^🛡\s*/, '');
+          : uiText('appDeniedTip', 'Only this room\u2019s hosts — or people they allow — can run an app here').replace(/^🛡\s*/, '');
       }
       const hideB = document.getElementById('apphide');
       hideB.style.display = (appKey && appMode !== 'watch' && !isMine) ? '' : 'none';
@@ -39809,7 +40075,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       stopB.style.display = (isMine || !hasAdminRoom() || amAdmin) ? '' : 'none';
       stopB.textContent = isMine ? uiText('stopApp', 'Stop app') : uiText('stopAppAll', 'Stop for everyone');
       stopB.title = isMine ? uiText('stopAppTip', 'Stop sharing this app with the meeting')
-        : (hasAdminRoom() ? uiText('stopAppTipAdmin', 'Admin: stop this app for the whole room')
+        : (hasAdminRoom() ? uiText('stopAppTipAdmin', 'Host: stop this app for the whole room')
           : uiText('stopAppTipRoom', 'Stop this app for the whole room — everyone sees it was you, and the sharer can re-share'));
       // ONE RUNTIME: in an app-PINNED room the app cannot be unmounted, hidden
       // or swapped — the room's whole identity is this app (docs/one-runtime.md).
@@ -39827,14 +40093,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         appHiddenSid = null; reconcileApp(); return; // Show app (un-hide)
       }
       if (myStatus.app) { stopApp(); return; } // toggle my own share off
-      if (!canIRunApp()) { setStatus(uiText('appDenied', '🛡 Only this room\u2019s admins — or people they allow — can run an app here.')); return; }
+      if (!canIRunApp()) { setStatus(uiText('appDenied', '🛡 Only this room\u2019s hosts — or people they allow — can run an app here.')); return; }
       openAppPicker();
     };
     document.getElementById('appstop').onclick = () => {
       if (myStatus.app && appKey === myStatus.app.s) { stopApp(); return; }
       const want = findSharedApp();
       if (!want) return;
-      if (hasAdminRoom() && !amAdmin) { setStatus(uiText('stOnlyThisRoomSAdmins2', '🛡 Only this room\u2019s admins can stop the shared app.')); return; }
+      if (hasAdminRoom() && !amAdmin) { setStatus(uiText('stOnlyThisRoomSAdmins2', '🛡 Only this room\u2019s hosts can stop the shared app.')); return; }
       stopRoomApp(want);
     };
     document.getElementById('apphide').onclick = () => {
@@ -39987,13 +40253,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     };
     // ---- run a GIF app that isn't on this computer (file or link) ----
     function showAddErr(msg) { const el = document.getElementById('app-add-err'); if (!el) return; el.textContent = msg || ''; el.style.display = msg ? '' : 'none'; }
-    async function importAndRunGif(bytes, rawName) {
-      showAddErr('');
+    // Put a GIF app on this device: { fileId, name } or { error }.
+    async function importGif(bytes, rawName) {
       const buf = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
-      if (!(buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46)) { showAddErr('That isn’t a GIF file.'); return; }
+      if (!(buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46)) return { error: 'That isn’t a GIF file.' };
       let archive = null; try { archive = await GifOS.gif.decode(buf); } catch (e) {}
       const m = archive ? (GifOS.gif.readManifest(archive) || {}) : {};
-      if (!(archive && (m.appId || m.entry))) { showAddErr('That GIF isn’t a runnable app — it has no app inside it.'); return; }
+      if (!(archive && (m.appId || m.entry))) return { error: 'That GIF isn’t a runnable app — it has no app inside it.' };
       const name = (rawName || m.name || m.appId || 'App').replace(/\.gif$/i, '');
       const fileId = GifOS.store.uid('file');
       try {
@@ -40001,9 +40267,81 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // Keep it (filed under Stolen Apps, which the desktop creates on load) so
         // it's not an orphan — same home as an app opened via a /?run= link.
         await GifOS.store.putItem({ id: GifOS.store.uid('item'), kind: 'file', fileId, name: name + '.gif', parent: 'sys_stolen', x: 16, y: 16, iconSize: 64 });
-      } catch (e) { showAddErr('Could not save that app on this device.'); return; }
+      } catch (e) { return { error: 'Could not save that app on this device.' }; }
+      return { fileId, name };
+    }
+    async function importAndRunGif(bytes, rawName) {
+      showAddErr('');
+      const r = await importGif(bytes, rawName);
+      if (r.error) { showAddErr(r.error); return; }
       document.getElementById('app-modal').style.display = 'none';
-      runApp(fileId, name);
+      runApp(r.fileId, r.name);
+    }
+    // S16 (Nathan 2026-11-17): an official run link (https://gifos.app/?run=connect-four, or this site's own /?run= or
+    // #run=) names an app, not a GIF file. It is read the way GifOS Home reads it (desktop.js resolveRunTarget): a slug
+    // is that app in this site's /apps/, a GitHub page link is its raw file. null: not a run link.
+    const RUN_HOSTS = ['gifos.app', 'www.gifos.app'];
+    function runLinkTarget(raw) {
+      let u; try { u = new URL(raw); } catch (e) { return null; }
+      if (RUN_HOSTS.indexOf(u.hostname) < 0 && u.host !== location.host) return null;
+      let v = u.searchParams.get('run') || '';
+      if (!v) { try { v = new URLSearchParams(u.hash.slice(1)).get('run') || ''; } catch (e) {} }
+      if (!v) return null;
+      if (/^[a-z0-9][a-z0-9-]{0,63}$/i.test(v)) {
+        const slug = v.toLowerCase();
+        return { slug, url: location.origin + '/apps/' + slug + '/' + slug + '.gif', official: 'https://gifos.app/apps/' + slug + '/' + slug + '.gif' };
+      }
+      const gh = /^https?:\/\/(?:www\.)?github\.com\/([^\/?#]+)\/([^\/?#]+)\/(?:blob|raw)\/([^?#]+)$/i.exec(v);
+      return { slug: null, url: gh ? 'https://raw.githubusercontent.com/' + gh[1] + '/' + gh[2] + '/' + gh[3] : v };
+    }
+    // S5 (Nathan 2026-11-17): the Run picker always offers these, first, even on a device that never opened GifOS Home.
+    // Picking one that is not on the device puts it here, then runs it. Take Turns is built from this site's starter
+    // code (sample-apps.js, loaded only then); Whiteboard is the App Store's GIF on this site.
+    const RUN_DEFAULTS = [{ appId: 'taketurns', name: 'Take Turns', from: 'sample' }, { appId: 'whiteboard', name: 'Whiteboard', from: 'store' }];
+    const scriptOnce = {};
+    function loadScriptOnce(src) {
+      if (!scriptOnce[src]) scriptOnce[src] = new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.onload = () => res(); el.onerror = () => { delete scriptOnce[src]; rej(new Error('load ' + src)); }; document.head.appendChild(el); });
+      return scriptOnce[src];
+    }
+    async function installRunApp(d) {
+      if (d.from === 'sample') {
+        try { await loadScriptOnce('js/gifos-icons.js'); } catch (e) {}   // its tile art; a plain tile without it
+        await loadScriptOnce('js/sample-apps.js');
+        const seed = await GifOS.samples.build({ only: [d.appId] });
+        const all = [].concat(seed.loose || []);
+        const walk = (g) => { for (const a of g.apps || []) all.push(a); for (const s2 of g.sub || []) walk(s2); };
+        for (const g of seed.folders || []) walk(g);
+        const a = all.find((x) => x.appId === d.appId);
+        if (!a) return { error: 'missing' };
+        return importGif(a.bytes, d.name);
+      }
+      let r = await fetchGifFromUrl(location.origin + '/apps/' + d.appId + '/' + d.appId + '.gif');
+      if (r.error && location.hostname !== 'gifos.app') r = await fetchGifFromUrl('https://gifos.app/apps/' + d.appId + '/' + d.appId + '.gif');
+      if (r.error) return r;
+      return importGif(r.bytes, d.name);
+    }
+    // The picker's choices: the defaults first (each the copy on this device, or one to install), then every other app here.
+    function runChoices(apps) {
+      const label = (f) => (f.name || f.appId || 'App').replace(/\.gif$/i, '');
+      const out = [], used = new Set();
+      for (const d of RUN_DEFAULTS) {
+        const f = apps.find((x) => x.appId === d.appId && !used.has(x.id));
+        if (f) used.add(f.id);
+        out.push(f ? { name: d.name, fileId: f.id } : { name: d.name, install: d });
+      }
+      const rest = apps.filter((f) => !used.has(f.id));
+      rest.sort((a, b) => label(a).localeCompare(label(b), undefined, { sensitivity: 'base', numeric: true }));
+      for (const f of rest) out.push({ name: label(f), fileId: f.id });
+      return out;
+    }
+    async function runChoice(c, say) {
+      if (c.fileId) { document.getElementById('app-modal').style.display = 'none'; runApp(c.fileId, c.name); return true; }
+      say(uiText('appInstalling', 'Getting {name}…').split('{name}').join(c.name));
+      let r; try { r = await installRunApp(c.install); } catch (e) { r = { error: String(e && e.message || e) }; }
+      if (!r || r.error) { say(uiText('appInstallFail', 'Couldn’t get {name}. Check the connection and try again.').split('{name}').join(c.name), true); return false; }
+      document.getElementById('app-modal').style.display = 'none';
+      runApp(r.fileId, r.name);
+      return true;
     }
     // The same ceiling as the desktop's ?run= path (desktop.js RUN_MAX_BYTES):
     // an App GIF can be half a gigabyte and that is a feature, not a limit —
@@ -40052,7 +40390,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const raw = (document.getElementById('app-url').value || '').trim();
       if (!raw) { showAddErr(uiText('appNeedLink', 'Paste a GIF link first.')); return; }
       const go = document.getElementById('app-url-go'); go.disabled = true; const was = go.textContent; go.textContent = '…'; showAddErr('');
-      try { const r = await fetchGifFromUrl(raw); if (r.error) { showAddErr(r.error); return; } await importAndRunGif(r.bytes, r.name); }
+      try {
+        const run = runLinkTarget(raw);
+        if (run && run.slug) {
+          // the app named by an official run link: the copy already on this device, else the same install the picker does
+          let files = []; try { files = await GifOS.store.allFileMeta(); } catch (e) {}
+          const have = (files || []).find((f) => f && f.isApp && f.appId === run.slug);
+          const def = RUN_DEFAULTS.find((d) => d.appId === run.slug);
+          if (have || def) { await runChoice(have ? { name: (have.name || run.slug).replace(/\.gif$/i, ''), fileId: have.id } : { name: def.name, install: def }, (w, bad) => showAddErr(bad ? w : '')); return; }
+        }
+        let r = await fetchGifFromUrl(run ? run.url : raw);
+        if (r.error && run && run.official && run.official !== run.url) r = await fetchGifFromUrl(run.official);
+        if (r.error) { showAddErr(r.error); return; }
+        await importAndRunGif(r.bytes, r.name);
+      }
       finally { go.disabled = false; go.textContent = was; }
     };
     document.getElementById('app-url').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('app-url-go').click(); } });
@@ -40070,42 +40421,28 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // WHOLE MEETING away. Same set as desktop.js SYSTEM_LAUNCHERS.
       const SYSTEM_APPS = { meet: 1, video: 1, broadcast: 1, appstore: 1 };
       const apps = (files || []).filter((f) => f.isApp && !SYSTEM_APPS[f.appId]);
-      // NO STARTER APPS YET: the starter apps are put on a device by GifOS
-      // Home (desktop.js seeds them on its first load, marked isDefault).
-      // Someone who only ever came in through a meeting link has never loaded
-      // Home, so this list is empty, or holds only an app the meeting itself
-      // added. Say so, and offer Home and the App Store in a new tab: the
-      // meeting stays open, and Run app lists the apps once they are there.
-      const starters = (files || []).some((f) => f && f.isDefault === true);
-      if (!apps.length) {
-        list.textContent = '';
-        appStarterLinks(list, uiText('appEmptyLead', 'No apps on this device yet.'));
-        return;
-      }
-      const label = (f) => (f.name || f.appId || 'App').replace(/\.gif$/i, '');
-      apps.sort((a, b) => label(a).localeCompare(label(b), undefined, { sensitivity: 'base', numeric: true }));
-      list.innerHTML = '';
-      for (const f of apps) {
-        const b = document.createElement('button');
-        b.textContent = label(f);
-        b.onclick = () => { modal.style.display = 'none'; runApp(f.id, b.textContent); };
-        list.appendChild(b);
-      }
-      if (!starters) appStarterLinks(list, uiText('appNoStarters', 'The starter apps are not on this device yet.'));
-    }
-    function appStarterLinks(list, lead) {
-      const p = document.createElement('p'); p.className = 'app-empty';
-      p.textContent = lead;
-      list.appendChild(p);
-      const link = (cls, href, word) => {
-        const el = document.createElement('a'); el.className = 'app-empty-link ' + cls; el.href = href; el.target = '_blank'; el.rel = 'noopener';
-        el.textContent = word; list.appendChild(el);
-      };
-      link('app-empty-home', homeHref(), uiText('appEmptyHome', 'Get the starter apps on GifOS Home'));
-      link('app-empty-store', 'store.html', uiText('appEmptyStore', 'Find more apps in the App Store'));
-      const n = document.createElement('small'); n.className = 'app-empty-note';
-      n.textContent = uiText('appEmptyNote', 'They open in a new tab. Come back here and tap Run app again.');
-      list.appendChild(n);
+      // S5: a dropdown of real apps, the defaults first, on every device (a fresh one too); Run installs a missing one, then runs it.
+      list.textContent = '';
+      const choices = runChoices(apps);
+      const row = document.createElement('div'); row.className = 'app-pickrow';
+      const sel = document.createElement('select'); sel.id = 'app-pick'; sel.setAttribute('aria-label', uiText('appPickAria', 'App to run'));
+      choices.forEach((c, i) => { const o = document.createElement('option'); o.value = String(i); o.textContent = c.name; o.dataset.name = c.name; if (c.install) o.dataset.install = '1'; sel.appendChild(o); });
+      const go = document.createElement('button'); go.type = 'button'; go.id = 'app-pick-go'; go.textContent = uiText('appSheetRun', 'Run');
+      const note = document.createElement('small'); note.id = 'app-pick-note'; note.className = 'app-pick-note';
+      const noteFor = () => { const c = choices[+sel.value]; note.textContent = c && c.install ? uiText('appPickMissing', 'Not on this device yet. Run puts it here first, then starts it.') : ''; note.classList.remove('bad'); };
+      sel.addEventListener('change', noteFor);
+      go.addEventListener('click', async () => {
+        const c = choices[+sel.value]; if (!c) return;
+        go.disabled = true; sel.disabled = true;
+        try { await runChoice(c, (w, bad) => { note.textContent = w; note.classList.toggle('bad', !!bad); }); }
+        finally { go.disabled = false; sel.disabled = false; }
+      });
+      row.appendChild(sel); row.appendChild(go);
+      list.appendChild(row); list.appendChild(note);
+      noteFor();
+      // More apps: the App Store, in a new tab (the meeting stays open; Run app lists what it adds).
+      const more = document.createElement('a'); more.className = 'app-empty-link app-empty-store'; more.href = 'store.html'; more.target = '_blank'; more.rel = 'noopener';
+      more.textContent = uiText('appEmptyStore', 'Find more apps in the App Store'); list.appendChild(more);
     }
     // Second entry point: an app tab's "Meeting" toggle opens meet.html#app=<fileId>.
     // Auto-host that app once we're set up (its state lives in this same browser).
@@ -40262,7 +40599,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               const u = base ? new URL(msg.link, base) : new URL(msg.link);
               const hp = new URLSearchParams((u.hash || '').replace(/^#/, ''));
               const rel = hp.get('relay') || u.searchParams.get('relay');
-              if (rel) localStorage.setItem('gifos_relay', rel);
+              if (rel) params.set('relay', rel);   // this page only: a link's relay is never saved for later pages
             } catch (e) {}
           }
           params.set('v', parsed.room);

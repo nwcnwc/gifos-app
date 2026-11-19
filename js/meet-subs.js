@@ -771,6 +771,9 @@
   // date; each pass not yet run out with its window; and the rights in effect
   // now with the reason (the best of them wins).
   const PLAN_SHORT = { room20: ['planRoom20', 'Room 20'], unlimited: ['planUnlimited', 'Unlimited'], streamer: ['planStreamer', 'Streamer'], free: ['planFree', 'Free'] };
+  // A plan's long name, as Settings and the plan buttons show it (the two kinds of meeting: private meetings, public open-floor meetings).
+  const PLAN_NAME = { room20: 'planNameRoom20', unlimited: 'planNameUnlimited', streamer: 'planNameStreamer', free: 'planNameFree' };
+  const planName = (tier, t) => (PLAN_NAME[tier] ? tx(PLAN_NAME[tier], t.name) : t.name);
   const planShort = (tier) => { const x = PLAN_SHORT[tier]; return x ? tx(x[0], x[1]) : tx('planNone', 'No plan'); };
   const clockOf = (s) => { try { return new Date(s * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } };
   function leftOf(sec) {
@@ -826,75 +829,75 @@
     el.dataset.plan = c.now.tier || ''; el.dataset.why = c.now.why;
     if (el.textContent !== line) el.textContent = line;
   }
-  // The credentials view: what is held and what is in effect, in Settings.
-  async function paintHeld(box) {
-    const c = await credentialsNow();
-    const n = nowS();
+  // What the Subscription table in Settings marks as selected (no separate status line).
+  function subSelection(c) {
+    const pass = !!(c && c.now && c.now.why === 'pass');
+    const sub = c && c.sub ? c.sub : null;
+    const tier = sub && sub.tier && sub.tier !== 'free' ? sub.tier : null;
+    const period = tier ? (sub.period === 'yearly' ? 'yearly' : 'monthly') : null;
+    return { free: !tier && !pass, tier: tier || null, period, pass };
+  }
+  function applySubSelection(root, sel) {
+    if (!root || !sel) return sel;
+    root.querySelectorAll('[aria-selected]').forEach((e) => { e.removeAttribute('aria-selected'); e.classList.remove('sub-on'); });
+    const mark = (e) => { if (!e) return; e.setAttribute('aria-selected', 'true'); e.classList.add('sub-on'); };
+    if (sel.free) mark(root.querySelector('[data-tier="free"]'));
+    if (sel.tier && sel.period) mark(root.querySelector('button[data-tier="' + sel.tier + '"][data-period="' + sel.period + '"]'));
+    if (sel.pass) { mark(root.querySelector('#sub-pass-buy')); mark(root.querySelector('tr[data-tier="pass"]')); }
+    return sel;
+  }
+  // Queued (not yet live) passes and a pass that moved away: the table and the
+  // pass button show what is on, so this does not repeat a status line.
+  async function paintHeld(box, cred) {
+    const c = cred || await credentialsNow();
     const p = (id, text) => { const e = el('p', { class: 'set-help', id }, text); box.appendChild(e); return e; };
-    let why;
-    if (c.now.why === 'pass' && !Number.isFinite(c.now.until)) why = fill(tx('nowByPassNever', 'In effect now: {plan}, from your pass (no end).'), { plan: planShort(c.now.tier) });
-    else if (c.now.why === 'pass') why = fill(tx('nowByPass', 'In effect now: {plan} until {until} ({left} left), from your four-hour pass.'), { plan: planShort(c.now.tier), until: clockOf(c.now.until), left: leftOf(c.now.until - n) });
-    else if (c.now.why === 'sub') why = fill(tx('nowBySub', 'In effect now: {plan}, from your subscription.'), { plan: planShort(c.now.tier) });
-    else if (c.now.why === 'free') why = tx('nowByFree', 'In effect now: Free. Hosted rooms of up to 5 people.');
-    else why = tx('nowByNone', 'In effect now: no plan. Open-floor rooms are free.');
-    p('held-now', why);
-    if (c.then) p('held-then', fill(tx('nowThen', 'When the pass ends: {plan}, from your subscription.'), { plan: planShort(c.then) }));
-    if (c.sub) {
-      const per = c.sub.period === 'yearly' ? tx('perYearly', 'yearly') : tx('perMonthly', 'monthly');
-      const stand = c.sub.status === 'cancelled' ? fill(tx('subCancelledUntil', 'cancelled, works until {date}'), { date: dateOf(c.sub.until) })
-        : c.sub.status === 'grace' ? fill(tx('subGrace', 'payment late, works until {date}'), { date: dateOf(c.sub.until) })
-          : c.sub.renews ? fill(tx('subRenews', 'active, renews {date}'), { date: dateOf(c.sub.renews) }) : tx('subActive', 'active');
-      p('held-sub', fill(tx('heldSub', 'Subscription: {plan}, {period}, {standing}.'), { plan: planShort(c.sub.tier), period: per, standing: stand }));
-    }
-    for (const x of c.passes) {
-      const e = x.never ? fill(tx('heldPassNever', 'Pass: {plan}, no end{capture}.'), { plan: planShort(x.plan), capture: x.capture ? tx('heldPassCaptures', ', takes open-floor rooms') : '' })
-        : x.live ? fill(tx('heldPassLive', 'Four-hour pass: Unlimited until {until}, {left} left.'), { until: clockOf(x.end), left: leftOf(x.end - n) })
+    for (const x of (c.passes || [])) {
+      if (x.live) continue;
+      const e = x.never ? fill(tx('heldPassNever', 'Pass: {plan}, no end{capture}.'), { plan: planShort(x.plan), capture: x.capture ? tx('heldPassCaptures', ', takes charge of public open-floor meetings') : '' })
         : fill(tx('heldPassNext', 'Four-hour pass: Unlimited from {start} to {until}.'), { start: clockOf(x.start), until: clockOf(x.end) });
       const q = p('', e); q.className = 'set-help held-pass'; q.dataset.pass = x.id;
     }
-    if (c.passes.length && pmeet && pmeet.moved === 'moved') p('held-pass-moved', tx('passMoved', 'Your four-hour pass is in use in another meeting now: it works in one meeting at a time.'));
+    if (c.passes && c.passes.length && pmeet && pmeet.moved === 'moved') p('held-pass-moved', tx('passMoved', 'Your four-hour pass is in use in another meeting now: it works in one meeting at a time.'));
   }
 
-  // ---- Settings: the Subscription group ---------------------------------------
+  // ---- Subscription dialog (#sub-modal): same window as Settings ---------------
   const BTN = 'seg';
   const BTN_STYLE = 'border:1px solid var(--border,#2a2a3f);border-radius:.4rem;margin:.2rem .4rem .2rem 0';
   function el(tag, attrs, text) { const e = document.createElement(tag); for (const k in (attrs || {})) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; return e; }
+  // One line near every pay button: terms and privacy open in a new tab (the app wrappers
+  // route target=_blank to the system browser, as for /cast and /library). Web PayPal also
+  // says whose name the charge shows under.
+  function legalLine(id, inApp) {
+    const p = el('p', { class: 'set-help', id });
+    const a = (href, t) => { const x = el('a', { href, target: '_blank', rel: 'noopener' }, t); return x; };
+    p.appendChild(document.createTextNode(tx('payAgreePre', 'By paying you agree to the ') ));
+    p.appendChild(a('https://gifos.app/terms/meet', tx('payTerms', 'Terms')));
+    p.appendChild(document.createTextNode(tx('payAnd', ' and ')));
+    p.appendChild(a('https://gifos.app/privacy/meet', tx('payPrivacy', 'Privacy policy')));
+    p.appendChild(document.createTextNode(inApp ? '' : '. '));
+    if (!inApp) p.appendChild(document.createTextNode(tx('payCharges', 'Charges show as Crowd Concepts (the company behind GifOS).')));
+    return p;
+  }
   const dateOf = (s) => { try { return new Date(s * 1000).toLocaleDateString(); } catch (e) { return ''; } };
-  async function paintSettings() {
-    const body = document.querySelector('#set-modal .dlg-body');
+  async function paintSettings(credNow) {
+    const body = document.querySelector('#sub-modal .dlg-body');
     if (!body) return;
-    let g = document.getElementById('set-g-sub');
-    if (!g) {
-      g = el('section', { class: 'set-group', id: 'set-g-sub' });
-      const dbg = document.getElementById('set-g-debug');
-      body.insertBefore(g, dbg || null);
-    }
-    g.textContent = '';
-    g.appendChild(el('h4', null, 'Subscription'));
-    const row = el('div', { class: 'set-row set-wide' });
-    g.appendChild(row);
+    body.textContent = '';
+    const row = el('div', { class: 'set-row set-wide', id: 'sub-body' });
+    body.appendChild(row);
     const msg = el('p', { class: 'set-help', id: 'sub-msg', role: 'status', 'aria-live': 'polite' });
     const say = (t) => { msg.textContent = t || ''; };
     await keepFresh();
     const held = el('div', { id: 'sub-held' });
     row.appendChild(held);
-    await paintHeld(held).catch(() => {});
+    const heldCred = credNow || await credentialsNow().catch(() => ({ now: { why: 'none' }, sub: null, passes: [] }));
+    const sel = subSelection(heldCred);
+    await paintHeld(held, heldCred).catch(() => {});
     // In the app the prices shown are the store's own.
     const inApp = !!RAIL();
     const price = inApp ? await RAIL().prices().catch(() => ({})) : {};
     const skuOf = (want) => { const k = inApp && SUB.storeSku(RAIL().store(), want); return k ? price[k.basePlan ? k.product + ':' + k.basePlan : k.product] || null : null; };
     const passPrice = skuOf({ what: 'pass' });
-    const passBtn = el('button', { type: 'button', class: BTN, style: BTN_STYLE, id: 'sub-pass-buy' }, passPrice ? tx('passBuyAt', '{price}: Unlimited for the next 4 hours').replace('{price}', passPrice) : tx('passBuy', '$1: Unlimited for the next 4 hours'));
-    passBtn.onclick = async () => {
-      passBtn.disabled = true; say(inApp ? '' : tx('passOpening', 'Opening PayPal…'));
-      try {
-        const r = await buyPass(say);
-        say(r && r.passJson ? tx('passThanks', 'Thank you. Your four-hour pass is on.') : inApp ? msg.textContent : tx('passNotConfirmed', 'PayPal did not confirm the payment.'));
-        paintSettings();
-      } catch (e) { passBtn.disabled = false; say(String(e.message || e)); }
-    };
-    row.appendChild(passBtn);
-    if (!inApp) row.appendChild(el('p', { class: 'set-help', id: 'sub-pass-how' }, tx('passHow', 'Pay by card or PayPal.')));
     const lic = await verifiedLicense();
     const st = readState();
     const cred = await credential();
@@ -907,11 +910,10 @@
       const elsewhere = SUB.tiersSoldIn(app).indexOf(lic.tier) < 0;
       const viaStore = /^[GA]-/.test(String(lic.subId || ''));
       if (elsewhere) {
-        row.appendChild(el('p', { class: 'set-help', id: 'sub-plan-elsewhere' }, tx('subFromBroadcast', 'Your plan: {plan}, from the Broadcast app. In meetings it gives everything Unlimited gives.').replace('{plan}', planShort(lic.tier))));
+        row.appendChild(el('p', { class: 'set-help', id: 'sub-plan-elsewhere' }, tx('subFromBroadcast', '{plan}, from the Broadcast app. In meetings it gives everything Unlimited gives.').replace('{plan}', planShort(lic.tier))));
         row.appendChild(el('p', { class: 'set-help' }, 'Your subscription works in one meeting at a time. Joining a meeting, here or in another browser with your subscription file, moves it there.'));
         if (!inApp) row.appendChild(el('a', { class: BTN, style: BTN_STYLE + ';display:inline-block;text-decoration:none', id: 'sub-manage-broadcast', href: '/cast', target: '_blank', rel: 'noopener' }, tx('subManageBroadcast', 'Manage it in the Broadcast app')));
       } else {
-        row.appendChild(el('p', { class: 'set-help' }, 'Your plan: ' + t.name + ' (' + (yearly ? t.priceYear + ' a year' : t.price + ' a month') + ').'));
         row.appendChild(el('p', { class: 'set-help' }, st.status === 'CANCELLED' ? SUB.TEXT.cancelled + ' Ends ' + dateOf(st.until || lic.exp) + '.' : inApp || viaStore ? tx('subRenewsAuto', 'Renews automatically.') : 'Renews through PayPal.'));
         row.appendChild(el('p', { class: 'set-help' }, 'Your subscription works in one meeting at a time. Joining a meeting, here or in another browser with your subscription file, moves it there.'));
         if (meet && meet.moved === 'moved') row.appendChild(el('p', { class: 'set-help' }, 'It is in use in another meeting now.'));
@@ -941,35 +943,77 @@
           row.appendChild(c);
         }
       }
-    } else {
-      if (st.subId && st.status && st.status !== 'APPROVAL_PENDING') row.appendChild(el('p', { class: 'set-help' }, SUB.TEXT.lapsed));
-      if (await verifiedFree()) row.appendChild(el('p', { class: 'set-help', id: 'sub-free-plan' }, tx('subFreePlan', 'Your plan: Free. Hosted rooms of up to 5 people.')));
-      row.appendChild(el('p', { class: 'set-help' }, 'Open-floor rooms are free. A subscription adds hosted rooms you run as admin, and video for people whose networks block direct connections.'));
-      if (!inApp) row.appendChild(el('p', { class: 'set-help', id: 'sub-how' }, tx('subHow', 'Subscribe with PayPal (card or PayPal balance).')));
-      for (const period of ['monthly', 'yearly']) {
-        for (const id of SUB.tiersSoldIn(app)) {
-          const t = SUB.TIERS[id];
-          if (inApp && !SUB.storeSku(RAIL().store(), { what: 'sub', tier: id, period })) continue;   // not sold in this store: not offered
-          const sp = skuOf({ what: 'sub', tier: id, period });
-          const label = (period === 'yearly' ? (sp || t.priceYear) + ' a year' : (sp || t.price) + ' a month') + ': ' + t.name;
-          const b = el('button', { type: 'button', class: BTN, style: BTN_STYLE, 'data-tier': id, 'data-period': period }, label);
-          b.onclick = async () => {
-            for (const x of row.querySelectorAll('button[data-tier]')) x.disabled = true;
-            say(inApp ? '' : 'Opening PayPal…');
-            try {
-              const r = await subscribe(id, period, say);
-              if (inApp) say(r && r.licenseJson ? tx('subThanksApp', 'You are subscribed. Thank you.') : msg.textContent);
-              else say(r && r.licenseJson ? 'You are subscribed. Thank you. Download your subscription file to keep it safe.' : r && r.status === 'APPROVAL_PENDING' ? SUB.TEXT.pending : 'PayPal did not confirm the subscription.');
-              paintSettings();
-            } catch (e) {
-              say(String(e.message || e));
-              for (const x of row.querySelectorAll('button[data-tier]')) x.disabled = false;
-            }
-          };
-          row.appendChild(b);
-        }
-      }
     }
+    // The plan table lives in the Subscription dialog (#sub-modal): same window
+    // as Settings (header, body, Close). Free, then the $1 four-hour pass, then
+    // one row per paid plan with Monthly and Annual buttons side by side.
+    if (st.subId && st.status && st.status !== 'APPROVAL_PENDING' && !lic) row.appendChild(el('p', { class: 'set-help' }, tx('subLapsed', SUB.TEXT.lapsed)));
+    const table = el('table', { class: 'sub-plans', id: 'sub-plans' });
+    const thead = document.createElement('thead');
+    const hr = document.createElement('tr');
+    hr.appendChild(el('th', { scope: 'col' }, ''));
+    hr.appendChild(el('th', { scope: 'col' }, tx('subColMonth', 'Monthly')));
+    hr.appendChild(el('th', { scope: 'col' }, tx('subColYear', 'Annual')));
+    thead.appendChild(hr); table.appendChild(thead);
+    const tb = document.createElement('tbody');
+    const fr = el('tr', { class: 'sub-plan-free', 'data-tier': 'free' });
+    const fd = el('td', { colspan: '3', class: 'sub-plan-desc' }, tx('subFreeTop', 'Free: private meetings up to 5 people; public open-floor meetings always free'));
+    fr.appendChild(fd); tb.appendChild(fr);
+    // $1 four-hour pass: one row after Free and before the $2 plan, one button.
+    const pr = el('tr', { class: 'sub-plan-pass', 'data-tier': 'pass' });
+    let passDesc = tx('subPassDesc', 'Unlimited people for 4 hours');
+    if (sel.pass && heldCred.now && Number.isFinite(heldCred.now.until)) {
+      passDesc = passDesc + ' · ' + fill(tx('passUntil', 'Unlimited until {until}'), { until: clockOf(heldCred.now.until) });
+    }
+    pr.appendChild(el('td', { class: 'sub-plan-desc' }, passDesc));
+    const ptd = el('td', { class: 'sub-plan-buy', colspan: '2' });
+    const passBtn = el('button', { type: 'button', class: BTN, style: BTN_STYLE, id: 'sub-pass-buy' }, passPrice ? tx('passForHoursAt', '{price} for 4 hours').replace('{price}', passPrice) : tx('passForHours', '$1 for 4 hours'));
+    passBtn.onclick = async () => {
+      passBtn.disabled = true; say(inApp ? '' : tx('passOpening', 'Opening PayPal…'));
+      try {
+        const r = await buyPass(say);
+        say(r && r.passJson ? tx('passThanks', 'Thank you. Your four-hour pass is on.') : inApp ? msg.textContent : tx('passNotConfirmed', 'PayPal did not confirm the payment.'));
+        paintSettings();
+      } catch (e) { passBtn.disabled = false; say(String(e.message || e)); }
+    };
+    ptd.appendChild(passBtn);
+    pr.appendChild(ptd);
+    tb.appendChild(pr);
+    const onBuy = async (id, period) => {
+      for (const x of row.querySelectorAll('button[data-tier]')) x.disabled = true;
+      say(inApp ? '' : 'Opening PayPal…');
+      try {
+        const r = await subscribe(id, period, say);
+        if (inApp) say(r && r.licenseJson ? tx('subThanksApp', 'You are subscribed. Thank you.') : msg.textContent);
+        else say(r && r.licenseJson ? 'You are subscribed. Thank you. Download your subscription file to keep it safe.' : r && r.status === 'APPROVAL_PENDING' ? SUB.TEXT.pending : 'PayPal did not confirm the subscription.');
+        paintSettings();
+      } catch (e) {
+        say(String(e.message || e));
+        for (const x of row.querySelectorAll('button[data-tier]')) x.disabled = false;
+      }
+    };
+    for (const id of SUB.tiersSoldIn(app)) {
+      const t = SUB.TIERS[id];
+      const tr = el('tr', { 'data-tier': id });
+      tr.appendChild(el('td', { class: 'sub-plan-desc' }, planName(id, t)));
+      for (const period of ['monthly', 'yearly']) {
+        const td = el('td', { class: 'sub-plan-buy' });
+        if (!(inApp && !SUB.storeSku(RAIL().store(), { what: 'sub', tier: id, period }))) {
+          const sp = skuOf({ what: 'sub', tier: id, period });
+          const label = period === 'yearly' ? (sp || t.priceYear) + ' a year' : (sp || t.price) + ' a month';
+          const b = el('button', { type: 'button', class: BTN, style: BTN_STYLE, 'data-tier': id, 'data-period': period }, label);
+          b.onclick = () => onBuy(id, period);
+          td.appendChild(b);
+        }
+        tr.appendChild(td);
+      }
+      tb.appendChild(tr);
+    }
+    table.appendChild(tb);
+    row.appendChild(table);
+    if (!inApp) row.appendChild(el('p', { class: 'set-help', id: 'sub-how' }, tx('passHow', 'Pay by card or PayPal.')));
+    row.appendChild(legalLine('sub-legal', inApp));
+    applySubSelection(row, sel);
     if (inApp) {
       // In the app: restore, and the credentials file through the system's own
       // share sheet and file picker. The words say what the file is for and
@@ -1026,21 +1070,33 @@
         paintSettings();
       } catch (e) { say(String(e.message || e)); }
     };
-    const lab = el('label', { class: 'set-help', style: 'display:block;margin-top:.4rem' }, 'Use a subscription file from another browser: ');
+    const lab = el('label', { class: 'set-help', style: 'display:block;margin-top:.4rem' }, tx('subFileUse', 'Use a subscription file from another browser: '));
     lab.appendChild(pick);
     row.appendChild(lab);
     row.appendChild(msg);
   }
+  function closeSubscribe() {
+    const m = document.getElementById('sub-modal');
+    if (m) m.style.display = 'none';
+  }
+  function wireSubModal() {
+    const m = document.getElementById('sub-modal');
+    if (!m || m.dataset.wired) return m;
+    m.dataset.wired = '1';
+    const c = document.getElementById('sub-close');
+    if (c) c.addEventListener('click', closeSubscribe);
+    m.addEventListener('click', (e) => { if (e.target === m) closeSubscribe(); });
+    return m;
+  }
   function openSettings() {
     const b = document.getElementById('setbtn');
     if (b) b.click();
-    setTimeout(() => { const g = document.getElementById('set-g-sub'); if (g && g.scrollIntoView) g.scrollIntoView({ block: 'start' }); }, 50);
   }
-  // The Subscribe entry: the Subscription group of Settings, painted before it
-  // is scrolled to.
+  // The Subscription entry: the Subscription dialog, same window as Settings.
   function openSubscribe() {
-    openSettings();
-    paintSettings().then(() => { const g = document.getElementById('set-g-sub'); if (g && g.scrollIntoView) g.scrollIntoView({ block: 'start' }); }, () => {});
+    const m = wireSubModal();
+    if (m) m.style.display = 'flex';
+    paintSettings().catch(() => {});
     return true;
   }
 
@@ -1099,8 +1155,7 @@
   function boot() {
     if (booted) return;
     booted = true;
-    const b = document.getElementById('setbtn');
-    if (b) b.addEventListener('click', () => { paintSettings().catch(() => {}); });
+    wireSubModal();
     keepFresh().catch(() => {});
     resumePending().catch(() => {});
     if (RAIL()) {
@@ -1116,7 +1171,7 @@
   }
 
   GifOS.meetSubs = {
-    rights, planRights, refresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, paintNow, paintSettings, openSettings, openSubscribe, mayCreateAdminRoom, showFull, ensureFree, showHostPrompt,
+    rights, planRights, refresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, subSelection, applySubSelection, paintNow, paintSettings, openSettings, openSubscribe, mayCreateAdminRoom, showFull, ensureFree, showHostPrompt,
     roomOrder, roomTier, proveAtDoor, checkShown, newNonce,
     appNow, joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureCurrent, captureOrder, captureKeys, fileBytes, downloadFile, useFile, librarySigner, restoreInApp,
     passMeeting: () => (pmeet ? { room: pmeet.room, gen: pmeet.gen, exp: pmeet.exp, until: pmeet.until, moved: pmeet.moved, held: !!pmeet.ticket } : null),

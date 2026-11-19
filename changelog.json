@@ -2,6 +2,35 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.26.24",
+      "date": "2026-11-18",
+      "headline": "More reliable joining",
+      "critical": false,
+      "features": [],
+      "fixes": [
+        "Joining is more reliable when someone joins from a phone.",
+        "Meetings always connect, even if a saved connection setting stops working."
+      ]
+    },
+    {
+      "version": "0.9.26.23",
+      "date": "2026-11-18",
+      "headline": "Clearer meetings and a simpler Subscription window",
+      "critical": false,
+      "features": [
+        "The start screen names both kinds of meeting: a public open-floor meeting, or a private meeting you host.",
+        "Add a room password whichever way you start or join a meeting.",
+        "Hosts can show and copy their host password in the Host window.",
+        "Subscription has its own window in More, with each plan\u2019s monthly and annual price side by side.",
+        "Focus shows everyone, camera on or off, and keeps faces in view.",
+        "Run app offers Take Turns and Whiteboard on any device."
+      ],
+      "fixes": [
+        "Who\u2019s here in Chat, Guestbook and games stays up to date.",
+        "Clearer labels and notes in Scroll view and on shared screens."
+      ]
+    },
+    {
       "version": "0.9.26.22",
       "date": "2026-11-18",
       "headline": "Faster joining and steadier captions",
