@@ -3921,11 +3921,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function pushLeaf() {
       if (!meshNode || typeof meshNode.setLeaf !== 'function') return;
       const a = myStatus.app;
+      const leafSt = typeof carryStatusOut === 'function' ? carryStatusOut(myStatus) : myStatus;
       meshNode.setLeaf({ nm: String(myName()).slice(0, 24), dv: myDevHash || '',
         hand: myStatus.hand || 0, stage: myStatus.stg || 0,
         sf: (myStatus.sing ? 1 : 0) | (myStatus.scr ? 2 : 0) | (a ? 4 : 0),
         app: a ? (a.ts || 0) : 0,
         ad: a ? { s: a.s, k: a.k, relay: a.relay, name: a.name, mesh: !!a.mesh, pk: a.pk, ts: a.ts, byName: a.byName, audio: !!a.audio } : null,
+        muted: !!leafSt.muted, camOff: !!leafSt.camOff,   // SUB.11.1: what my status beat says, for the people my beat does not reach
         away: !!myStatus.away, talk: !!leafTalk, vup: myStatus.vup || [], vdn: myStatus.vdn || [], vab: myStatus.vab || [] });
       if (typeof meshNode.setRefuses === 'function') meshNode.setRefuses(!consents(myStatus));
     }
@@ -7216,7 +7218,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           }
         }
       }
-      const st = (isMe ? myStatus : statusOf.get(id)) || {};
+      const st = (isMe ? myStatus : (statusOf.get(id) || (typeof foldStatusOf === 'function' ? foldStatusOf(id) : null))) || {};
       // Camera-off art: an avatar URL when one is already on the status or
       // peer, otherwise the initials painted just above. After the myStatus
       // read so a source test can still stop on that name.
@@ -11621,13 +11623,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // You left on purpose: the number is the room without you, frozen at
       // the click, not the tiles this page still has up behind the dialog.
       const shown = (leftUp && leftBehind > 0) ? leftBehind : headerCount();
+      // SUB.11.1: a tile with no status heard first-hand shows the one the fold tells: repaint it when that changes.
+      try {
+        const fs = new Map();
+        for (const d of farPeople()) for (const x of d.people) if (x.id && x.id !== myId && peers.has(x.id) && !statusOf.has(x.id)) fs.set(x.id, (x.muted ? 1 : 0) | (x.camOff ? 2 : 0) | (x.hand ? 4 : 0));
+        const was = updateStatus.foldSt;
+        for (const [id, f] of fs) if (!was || was.get(id) !== f) updateTile(id);
+        updateStatus.foldSt = fs;
+      } catch (e) {}
       // SUB.11: the People panel and this count read one fold, so an open panel follows it too. (A far person's name can
       // arrive after the panel was painted: the row said "Guest" until something else repainted it.)
       try {
         const rEl = document.getElementById('roster');
         if (rEl && rEl.classList.contains('open')) {
           const all = rosterRows();
-          const sig = all.map((x) => x.id + '\t' + x.name).join('\n') + '\n' + (all.more || 0);
+          const sig = all.map((x) => x.id + '\t' + x.name + '\t' + (x.muted ? 1 : 0) + (x.camOff ? 1 : 0) + (x.hand ? 1 : 0)).join('\n') + '\n' + (all.more || 0);
           if (sig !== updateStatus.peopleSig) { updateStatus.peopleSig = sig; paintRosterSoon(); }
         } else updateStatus.peopleSig = null;
       } catch (e) {}
@@ -12008,7 +12018,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const push = (row) => { if (!row || !row.id || seen.has(row.id)) return; seen.add(row.id); rows.push(row); };
       let mineStage = false;
       try { mineStage = !!(myStatus.stg && (amAdmin || (myId && stageIds().includes(myId)))); } catch (e) {}
-      push({ id: myId || 'me', name: myName(), me: true, muted: !!myStatus.muted, hand: !!myStatus.hand, stage: mineStage });
+      push({ id: myId || 'me', name: myName(), me: true, muted: !!myStatus.muted, camOff: !!myStatus.camOff, hand: !!myStatus.hand, stage: mineStage });
       for (const p of peers.values()) {
         if (!p || p.headless || isHeld(p.id)) continue;
         if (!p.tile || !p.tile.isConnected || p.tile.style.display === 'none') continue;
@@ -12017,7 +12027,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         try { onStage = stageIds().includes(p.id); } catch (e2) {}
         let roomMute = false;
         try { const m = modOf(p.id).mute; roomMute = !!(m && m.on); } catch (e3) {}
-        push({ id: p.id, name: hostRename(p.id) || p.name || rosterNames[p.id] || 'Guest', me: false, muted: !!st.muted, hand: !!st.hand, stage: onStage || hostSpot(p.id), roomMute: roomMute });
+        push({ id: p.id, name: hostRename(p.id) || p.name || rosterNames[p.id] || 'Guest', me: false, muted: !!st.muted, camOff: !!st.camOff, hand: !!st.hand, stage: onStage || hostSpot(p.id), roomMute: roomMute });
       }
       // SUB.11: the people the fold names and this page shows no tile of: the other rooms of the meeting, and my own room
       // past my row (the header's own source): a row a name, and the ones the fold counts without a name as one
@@ -12025,7 +12035,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       let more = 0;
       for (const d of farPeople()) {
         let named = 0;
-        for (const x of d.people) { if (!x.id) continue; named++; if (x.id === myId) continue; const st = d.here ? (statusOf.get(x.id) || {}) : {}; push({ id: x.id, name: hostRename(x.id) || x.nm || rosterNames[x.id] || 'Guest', me: false, far: !d.here, fold: true, muted: !!st.muted, hand: !!st.hand, stage: false }); }
+        for (const x of d.people) { if (!x.id) continue; named++; if (x.id === myId) continue; const st = statusOf.get(x.id) || x; push({ id: x.id, name: hostRename(x.id) || x.nm || rosterNames[x.id] || 'Guest', me: false, far: !d.here, fold: true, muted: !!st.muted, camOff: !!st.camOff, hand: !!st.hand, stage: false }); }   // SUB.11.1: the status I hear first-hand, else the one the fold tells with the name
         more += Math.max(0, d.n - named);
       }
       rows.sort((a, b) => {
@@ -12037,6 +12047,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return rows;
     }
     // The other rooms' people by name, per door (js/mesh/page/layer.js meetingPeople): [] with no joined room.
+    // SUB.11.1: the status the fold tells of a person (null: the fold does not name them). A tile or row with no status
+    // heard first-hand reads it: the people of a joined room past the connection's two ends.
+    function foldStatusOf(id) { for (const d of farPeople()) for (const x of d.people) if (x.id === id) return { muted: x.muted, camOff: x.camOff, hand: x.hand, fold: true }; return null; }
     function farPeople() { try { return meshNode && typeof meshNode.meetingPeople === 'function' ? (meshNode.meetingPeople() || []) : []; } catch (e) { return []; } }
     function waitingRows() {
       const rows = [];
@@ -12133,6 +12146,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (r.hand) flags.push(uiText('hand', 'Hand'));
         if (r.roomMute) flags.push(uiText('forEveryone', 'For all'));
         else if (r.muted) flags.push(uiText('muted', 'Muted'));
+        if (r.camOff) flags.push(uiText('camOffChip', 'Camera off'));
         if (flags.length) {
           const f = document.createElement('span');
           f.className = 'flags';
@@ -41566,7 +41580,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     window.__gifosVideo = {
       carryForTest: () => carryForTest(),
       statusMutedForTest: (id) => { const st = statusOf.get(String(id)); return st ? !!st.muted : null; },   // what this page reads of a peer's mute (the carrier's status, CARRY)
-      statusOfForTest: (id) => { const st = id === 'me' ? carryStatusOut(myStatus) : statusOf.get(String(id)); return st ? { muted: !!st.muted, camOff: !!st.camOff, at: st.at || 0, rxAge: st.rx ? Date.now() - st.rx : null } : null; },   // a peer's held status, or 'me': what my beat says (a carrier's mute speaks for its carried page): the status-cross rooms
+      statusOfForTest: (id) => { const st = id === 'me' ? carryStatusOut(myStatus) : statusOf.get(String(id)); return st ? { muted: !!st.muted, camOff: !!st.camOff, hand: !!st.hand, at: st.at || 0, rxAge: st.rx ? Date.now() - st.rx : null } : null; },   // a peer's held status, or 'me': what my beat says (a carrier's mute speaks for its carried page): the status-cross rooms
       seedGalleryForTest: (spec) => seedGalleryForTest(spec),
       // A seat whose device never sent a name (joined from a link, no name typed).
       clearNameForTest: (id) => {
@@ -42337,7 +42351,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       memSamples: () => (window.__memSamples ? window.__memSamples.slice() : []),
       meshTraceDump: () => { const G = window.__meshTraceRing; return G ? G.ring.map((e) => e[1]) : []; },
       // SUB.11 (test read): the People panel's rows, the header count beside them, the connector's list and the fold's far names
-      peopleDump: () => { const r = rosterRows(); return { header: headerCount(), n: r.length + (r.more || 0), more: r.more || 0, rows: r.map((x) => ({ id: x.id, name: x.name, far: !!x.far, fold: !!x.fold, me: !!x.me })), room: roomPeople(), far: farPeople() }; },
+      peopleDump: () => { const r = rosterRows(); return { header: headerCount(), n: r.length + (r.more || 0), more: r.more || 0, rows: r.map((x) => ({ id: x.id, name: x.name, far: !!x.far, fold: !!x.fold, me: !!x.me, muted: !!x.muted, camOff: !!x.camOff, hand: !!x.hand })), room: roomPeople(), far: farPeople() }; },
       meshForensics: (since) => {
         const G = window.__meshTraceRing || { ring: [], seq: 0 }; const s = meshSeat(); if (!s) return null;
         const six = (x) => (x == null ? null : String(x).slice(0, 6));
