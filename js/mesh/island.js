@@ -163,7 +163,9 @@
       const mine = dig.cloneDig(this.pipeBase.at >= 0 ? this.pipeBase : this.myDig);
       if (this.pipeBase.at >= 0) { for (const [k, e] of this.pipeDig) if (k !== peer) dig.digFold(mine, e); dig.digTrim(mine); }
       const h = { R: msg.newDig() }; this.rootFold(false, h, mine); const R = h.R;
-      const o = msg.newDig(); o.at = R.at; o.rx = R.rx; o.by = this.id; o.handN = R.handN; o.awayN = R.awayN; o.hands = R.hands; o.stage = R.stage; o.apps = R.apps; o.talk = R.talk; o.doors = R.doors.map(dig.cloneLE); dig.doorsAdd(o.doors, this.sr, dig.digSeats(R), (this.dRoot().go >= 0 || this.f.fabricSubGo(this.id) >= 0) ? 1 : 0);   /* SUB.10.4: my door is walking */
+      const o = msg.newDig(); o.at = R.at; o.rx = R.rx; o.by = this.id; o.handN = R.handN; o.awayN = R.awayN; o.hands = R.hands; o.stage = R.stage; o.apps = R.apps; o.talk = R.talk; o.doors = R.doors.map(dig.cloneLE); for (const e of o.doors) e.f &= 1;   /* (the heard marks are each pipe's own: they go no further) */
+      { let heard = false; const pd = this.pipeDig.get(peer); if (pd !== undefined) for (const e of pd.doors) if ((e.f & 16) && (e.f & 1)) heard = true;   /* SUB.10.4 HEARD: the fold I hold from this peer says its own door walks: my out-fold to it says so (bit 8 on my own door's entry) */
+        dig.doorsAdd(o.doors, this.sr, dig.digSeats(R), ((this.dRoot().go >= 0 || this.f.fabricSubGo(this.id) >= 0) ? 1 : 0) | (heard ? 8 : 0)); }   /* SUB.10.4: my door is walking */
       o.ppl = R.ppl.map(dig.cloneLE); for (const e of o.ppl) if (e.k < 0) e.k = this.sr; dig.pplTrim(o.ppl, o.doors, 0);   /* SUB.11: my door's people leave under my door's number, beside its count */
       return o;
     },
@@ -194,7 +196,11 @@
       if (p < 0 || p === this.sr || this.state !== 3 || !this.hasCoord) { this.goAt = -1; return; }
       if (this.goAt < 0) { this.goAt = this.TICK | 0; return; }
       if (dig.digSeats((this.coord.pc !== 0 && this.coord.i === 0) ? this.rowDig : this.myDig) > 1) return;   // SUB.10.4 the seats I carry first: the fold I publish upward still counts somebody besides me (a deep row's head carries its row); they hear the word and the meeting through me until they have walked
-      if (this.f.fabricSubGo(this.id) >= 0 && this.TICK - this.goAt < K.L10_NEW_WAIT) return;   // the end that says the word stays until the far side has heard that this door walks (SUB.3's own clock)
+      if (this.f.fabricSubGo(this.id) >= 0) {   // the end that says the word stays until the far end has SAID it heard that this door walks (its fold over the pipe carries the mark), and then the time a fold word needs to reach that door's home seat (SUB.3's own clock)
+        let heard = false; for (const e of this.pipeDig.values()) for (const d of e.doors) if (d.id === p && (d.f & 8)) heard = true;
+        if (!heard) { this.goAt = this.TICK | 0; return; }
+        if (this.TICK - this.goAt < K.L10_NEW_WAIT) return;
+      }
       if (!this.f.fabricSubWalk(this.id, dig.digSeats(R), p)) return;
       this.trace('SUB.10-WALK', this.id, this.coord, 'from=%d to=%d n=%d', this.sr, p, dig.digSeats(R));
       this.walkedFrom = this.sr; this.goAt = -1; this.doorAt.clear(); this.doorWalk.clear();   /* (the doors I noted were far doors of the room I leave: not mine to miss) */ this.requeue('sub-walk'); this.subGo(p);
@@ -211,6 +217,7 @@
       { const pp = this.f.fabricPipePeers(this.id); if (pp.indexOf(m.id) < 0) { this.trace('SUB.4-NOPEER', this.id, this.coord, 'from=%d', m.id); return; } }
       const u = dig.cloneDig(m.dgUp); this.rxDig(u); if (u.at < 0) return;
       u.doors = u.doors.filter((e) => !(e.id === this.sr || e.k < 0));   // my own door is never far (an echo)
+      for (const e of u.doors) e.f = ((e.f & 1) | (e.id === m.sr ? ((e.f & 8) | 16) : 0)) & 255;   // SUB.10.4 HEARD: the sender's own door is marked (16), and only its entry may say "I heard your door walks" (8)
       u.ppl = u.ppl.filter((e) => !(e.k < 0 || e.k === this.sr)); dig.pplTrim(u.ppl, u.doors, 0);   // SUB.11: far names only, each under a door the fold counts, no more than it counts
       u.go = -1; u.n = 0; u.leased = 0; u.held = 0; u.refuse = 0; u.part = 0; u.freeC = 0; u.dmin = 99; u.rows = []; u.votes = []; u.kick = []; u.kabs = 0; u.kl = []; u.kOwn = msg.newKStmt();   // far form, whatever arrived: nothing of another room is a seat of mine
       const was = this.pipeDig.get(m.id); this.l10Dirty(was !== undefined ? was : null, u); if (was === undefined) { this.trace('SUB.4-PIPE', this.id, this.coord, 'peer=%d far=%d', m.id, dig.digFar(u)); this.l10Mark(); }
