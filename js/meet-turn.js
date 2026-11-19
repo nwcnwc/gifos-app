@@ -589,7 +589,7 @@
     //   { found: r, sg, far, link }        a new subroom (or a re-pipe, r unchanged): found it with sg; the pipe is opened here
     //   { wait: 1 }                        a door list, an answer or a door probe is on its way, or a subroom is opening
     //   { refused: why, retryAt }          budget, rate, no far end, the meeting full, no service: no pipe, ask again at retryAt
-    const sub = { st: 'idle', gen: 0, out: null, retryAt: 0, token: null, list: [], probe: [], found: null, why: '', heads: null, tried: null, mult: 1, lastWhy: '', doorsSig: '', repipe: false, ans: false, ends: [], wantProbe: false, probedSig: null, probeAt: 0 };
+    const sub = { st: 'idle', gen: 0, out: null, retryAt: 0, pipeRetryAt: 0, token: null, list: [], probe: [], found: null, why: '', heads: null, tried: null, mult: 1, lastWhy: '', doorsSig: '', repipe: false, ans: false, ends: [], wantProbe: false, probedSig: null, probeAt: 0 };
     // THE WARM STANDBY (TURN.9 for pipes). Every live pipe l<r> keeps a standby s<r>: a second relayed connection between
     // OTHER seats of the same two subrooms, connected and idle (keep-alives only: no media, no mesh traffic). When a live
     // end leaves (its goodbye) or its connection dies (the pc's own verdict), the standby pair takes the pipe over at once
@@ -1367,6 +1367,11 @@
       sub.ans = true;
       subIdle(now, { refused: why, retryAt: at }, at);
     }
+    // TWO WAITS (the sim's SUBASK[q].w and SUBRP/TURNSB). retryAt is the ASK's own: the Worker refused it, or the pipe it
+    // granted never came up. pipeRetryAt is a seated end's: a path it opened was lost or its standby's dial failed, and it
+    // asks for a re-pipe after TURN_RETRY. A JOINER reads only the first: a page that left its cell (TURN.5.3: the firewall
+    // that cut it also failed its old links) asks at the door as any joiner, not 30 s after a link of the seat it left died
+    // (room new-r9, 2026-11-19: 42 s at the door beside the subroom its mates had founded).
     function subChanged(what) { if (sub.mult > 1) { sub.mult = 1; if (sub.st === 'idle' && sub.retryAt > io.now()) sub.retryAt = io.now(); log('turn-sub ' + what + ' changed: ask again now'); } }
     function subIdle(now, out, retryAt) { sub.st = 'idle'; sub.token = null; sub.retryAt = retryAt || 0; sub.out = out; sub.gen++; }
     function subDoors(withToken) {
@@ -1491,7 +1496,7 @@
       }
       if (!asker) { if (sub.st !== 'idle') subIdle(now, null, sub.retryAt); else if (sub.out && sub.out.join != null) sub.out = null; return; }
       sub.asker = asker;
-      if (sub.st === 'idle') { if (asker === 'probe') { if (now - sub.probeAt >= PROBE_GAP_MS) { sub.probeAt = now; subDoors(false); } else sub.wantProbe = false; return; } if (now >= sub.retryAt) subDoors(false); return; }   // a probe reads the door list at most once a direct verdict; it is not an ask of the Worker's, so no refusal wait holds it
+      if (sub.st === 'idle') { if (asker === 'probe') { if (now - sub.probeAt >= PROBE_GAP_MS) { sub.probeAt = now; subDoors(false); } else sub.wantProbe = false; return; } if (now >= Math.max(sub.retryAt, asker === 'joiner' ? 0 : sub.pipeRetryAt)) subDoors(false); return; }   // a probe reads the door list at most once a direct verdict; it is not an ask of the Worker's, so no refusal wait holds it
       if (sub.st === 'probe') {
         let pending = false;
         for (const r of sub.probe) {
@@ -1519,7 +1524,7 @@
         if (why !== sub.lastWhy) sub.mult = 1;
         sub.lastWhy = why; sub.retryAt = Math.max(sub.retryAt, io.now() + RETRY_MS * sub.mult); sub.mult = Math.min(RETRY_MAX_X, sub.mult * 2);
         sub.repipe = true;
-      } else if (L.opener && why === 'dialfail') sub.retryAt = io.now() + RETRY_MS;
+      } else if (L.opener && why === 'dialfail') sub.pipeRetryAt = io.now() + RETRY_MS;   // (a seated end's wait, see pipeRetryAt)
       close(L, why, quiet);
     }
     function step() {
@@ -1543,7 +1548,7 @@
         if (L.direct && L.state !== 'up' && now - L.directAt > ASK_MS) { if (io.directForget) io.directForget(L.far); close(L, 'dialfail'); continue; }
         if (L.state !== 'up' && now - L.askAt > DIAL_BUDGET_MS) { neverUp(L, 'dialfail'); continue; }
         if (L.sb && L.liveEnd && L.liveEnd !== io.me() && !io.alive(L.liveEnd)) { takeover(L, 'my live end left'); }
-        if (L.state === 'up' && !io.pcUp(L.far)) { if (!L.downSince) L.downSince = now; if (now - L.downSince > DIAL_BUDGET_MS) { if (L.opener) sub.retryAt = now + RETRY_MS; close(L, 'lost'); continue; } }
+        if (L.state === 'up' && !io.pcUp(L.far)) { if (!L.downSince) L.downSince = now; if (now - L.downSince > DIAL_BUDGET_MS) { if (L.opener) sub.pipeRetryAt = now + RETRY_MS; close(L, 'lost'); continue; } }
         else L.downSince = 0;
         if ((L.state === 'ask' || (L.state === 'swap' && !L.peer)) && now - L.sentAt > RESEND_MS && (L.opener || L.farDev)) sendAsk(L);
         // a link that holds no vouch of mine yet (its setup, a takeover) asks again until it does; after that only a
