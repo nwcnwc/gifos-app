@@ -671,7 +671,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <div class="lobby-card">
       <h1 data-t="lobTitle">Meeting</h1>
       <p class="lob-quiet" data-t="lobWelcome" id="lob-welcome">Join a meeting, or start your own in one tap.</p>
-      <p class="lob-quiet" data-t="lobJoinOff" id="lob-quiet">You'll join with your camera and microphone off. Turn them on when you're ready.</p>
+      <p class="lob-quiet" data-t="lobJoinOff" id="lob-quiet">You'll join with your camera and microphone off.</p>
       <div class="segwrap lob-segs" role="radiogroup" aria-label="Meeting choices">
         <button type="button" id="lob-join-btn" class="seg" role="radio" aria-checked="false"><span data-t="lobJoinBtn">JOIN by link or room name</span><small data-t="lobJoinSub">Paste a link or type a room name.</small></button>
         <button type="button" id="lob-admin-btn" class="seg" role="radio" aria-checked="false"><span data-t="lobAdminBtn">HOST a private meeting</span><small data-t="lobAdminSub">You control everything in the meeting</small></button>
@@ -679,19 +679,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       </div>
       <div id="lob-admin" class="lob-expand" style="display:none">
         <input data-ph="lobAdminNamePh" id="lob-admin-name" maxlength="40" placeholder="Name this meeting" autocomplete="off">
+        <div id="lob-guest-extra">
+          <label class="lob-pwlab" for="lob-guest-pass">🎟 <b data-t="lobGuestPassHead" id="lob-guest-pass-head">Room password</b> <small data-t="lobGuestPassNote" id="lob-guest-pass-note">The one you share. People need it to get in.</small></label>
+          <input data-ph="invGuestPh" id="lob-guest-pass" type="password" maxlength="64" placeholder="Room password (optional)" autocomplete="new-password">
+        </div>
         <button data-t="lobKeyReveal" type="button" id="lob-key-reveal" class="lob-text" hidden>Host password</button>
         <div id="lob-key-block">
-        <label class="lob-pwlab">🔑 <b data-t="invAdminPh" id="lob-admin-pass-head">Host password</b> — only you<small data-t="lobAdminPassNote" id="lob-admin-pass-note">Only you. Do not share it.</small></label>
+        <label class="lob-pwlab" for="lob-admin-pass">🔑 <b data-t="invAdminPh" id="lob-admin-pass-head">Host password</b> <span data-t="lobHostReq">required</span><small data-t="lobAdminPassNote" id="lob-admin-pass-note">This password controls the meeting, do not share it.</small></label>
         <div class="lob-keyrow">
-          <input data-ph="invAdminPh" id="lob-admin-pass" type="password" maxlength="64" placeholder="Host password" autocomplete="new-password">
+          <input data-ph="invAdminPh" id="lob-admin-pass" type="password" maxlength="64" placeholder="Host password" autocomplete="new-password" aria-required="true">
           <button data-t="lobKeygen" type="button" id="lob-keygen" class="lob-ghost">Generate</button>
         </div>
-        </div>
-        <button data-t="lobGuestReveal" type="button" id="lob-guest-reveal" class="lob-text" hidden>Add a room password</button>
-        <button data-t="lobGuestMore" type="button" id="lob-guest-more" class="lob-link" aria-expanded="false">Add a room password</button>
-        <div id="lob-guest-extra" style="display:none">
-          <label class="lob-pwlab">🎟 <b data-t="lobGuestPassHead" id="lob-guest-pass-head">Room password</b> <small data-t="lobGuestPassNote" id="lob-guest-pass-note">The one you share. People need it to get in.</small></label>
-          <input data-ph="invGuestPh" id="lob-guest-pass" type="password" maxlength="64" placeholder="Room password (optional)" autocomplete="new-password">
         </div>
         <!-- A broadcast asks two things and goes: who can watch, and now or later. -->
         <div id="lob-bc" hidden>
@@ -707,6 +705,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       </div>
       <div id="lob-join" class="lob-expand" style="display:none">
         <input data-ph="lobJoinInPh" id="lob-join-in" placeholder="Paste link or meeting id" autocomplete="off">
+        <label class="lob-pwlab" for="lob-join-pass"><b data-t="lobGuestPassHead">Room password</b></label>
         <input data-ph="lobJoinPassPh" data-al="lobGuestPassHead" id="lob-join-pass" type="password" maxlength="64" placeholder="Room password, if it has one" aria-label="Room password" autocomplete="new-password">
         <p data-t="lobWatchNote" id="lob-watch-note" class="lob-watch-note" hidden>Watching the broadcast. You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.</p>
         <div class="lob-row"><button data-t="shareCancel" id="lob-join-cancel" class="lob-ghost">Cancel</button><button data-t="join" id="lob-join-go">Join</button></div>
@@ -715,11 +714,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <div id="lob-open-panel">
         <div class="lob-expand">
           <input data-ph="lobAdminNamePh" id="lob-open-name" maxlength="40" placeholder="Name this meeting" autocomplete="off">
-        </div>
-        <button data-t="lobGuestMore" type="button" id="lob-open-more" class="lob-link lob-pwmore" aria-expanded="false" aria-controls="lob-open-extra">Add a room password</button>
-        <div id="lob-open-extra" class="lob-expand lob-pwextra" style="display:none">
-          <label class="lob-pwlab" for="lob-open-pass">🎟 <b data-t="lobGuestPassHead">Room password</b> <small data-t="lobOpenPassNote">Optional. People need it to get in. Anyone inside can change it.</small></label>
-          <input data-ph="invGuestPh" id="lob-open-pass" type="password" maxlength="64" placeholder="Room password (optional)" autocomplete="new-password">
+          <div id="lob-open-extra">
+            <label class="lob-pwlab" for="lob-open-pass">🎟 <b data-t="lobGuestPassHead">Room password</b> <small data-t="lobOpenPassNote">Optional. People need it to get in. Anyone inside can change it.</small></label>
+            <input data-ph="invGuestPh" id="lob-open-pass" type="password" maxlength="64" placeholder="Room password (optional)" autocomplete="new-password">
+          </div>
         </div>
         <button id="lob-open" class="lob-primary" type="button"><span data-t="lobAdminGo">Start</span></button>
       </div>
@@ -21112,7 +21110,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       btn('lob-mic', joinAv.mic, 'lobMicOn', 'Mic on', 'lobMicOff', 'Mic off');
       const quiet = joinAv.cam || joinAv.mic;
       word(document.getElementById('lob-pv-note'), quiet ? 'appearTitle' : 'youJoinMutedWith', quiet ? 'This is how you\'ll appear' : 'You join muted, with the camera off');
-      if (!BC_INTENT) word(document.getElementById('lob-quiet'), quiet ? 'lobJoinShown' : 'lobJoinOff', quiet ? 'You\'ll join just as shown here.' : 'You\'ll join with your camera and microphone off. Turn them on when you\'re ready.');
+      let joinKey = 'lobJoinOff', joinEn = "You'll join with your camera and microphone off.";
+      if (joinAv.cam && joinAv.mic) { joinKey = 'lobJoinBoth'; joinEn = "You'll join with your camera and microphone on."; }
+      else if (joinAv.cam) { joinKey = 'lobJoinCam'; joinEn = "You'll join with your camera on and your microphone off."; }
+      else if (joinAv.mic) { joinKey = 'lobJoinMic'; joinEn = "You'll join with your camera off and your microphone on."; }
+      if (!BC_INTENT) word(document.getElementById('lob-quiet'), joinKey, joinEn);
       const face = document.getElementById('lob-pv-face');
       if (face) { const me = GifOS.store.identity(); paintAppearFace(face, me.name, me.avatar); }
       const vid = document.getElementById('lob-preview-vid');
@@ -21226,14 +21228,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (/[A-Za-z0-9]/.test(raw)) { const chosen = slugRoom(raw, ''); if (chosen) code = chosen; }
         lobbyPwHandOver('open', code, '', document.getElementById('lob-open-pass'));
         enterMeeting('#v=' + code);
-      };
-      const openMore = document.getElementById('lob-open-more');
-      if (openMore) openMore.onclick = () => {
-        const extra = document.getElementById('lob-open-extra');
-        const open = extra.style.display === 'none';
-        extra.style.display = open ? '' : 'none';
-        openMore.setAttribute('aria-expanded', open ? 'true' : 'false');
-        if (open) document.getElementById('lob-open-pass').focus();
       };
       document.getElementById('lob-open-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('lob-open').click(); });
       const openName = document.getElementById('lob-open-name');
@@ -21370,7 +21364,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const chosen = slugRoom(rawName, '');
         const pass = (document.getElementById('lob-admin-pass').value || '').trim();
         if (!chosen) { err.textContent = uiText('needName', 'Give your room a name.'); return; }
-        if (!pass) { err.textContent = uiText('needPass', 'Set a host password.'); return; }
+        if (!pass) { err.textContent = uiText('needPass', 'A host password is required.'); document.getElementById('lob-admin-pass').focus(); return; }
         let atSecs = '';
         if (BC_INTENT && bcWho() === 'pw' && !(document.getElementById('lob-guest-pass').value || '').trim()) {
           err.textContent = uiText('bcNeedRoomPw', 'Set a room password, or pick Anyone with the link.');
@@ -21440,14 +21434,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           applyAvatarFile(file).then(() => paintLobbyAppear());
         });
       }
-      const guestMore = document.getElementById('lob-guest-more');
-      if (guestMore) guestMore.onclick = () => {
-        const extra = document.getElementById('lob-guest-extra');
-        const open = extra.style.display === 'none';
-        extra.style.display = open ? '' : 'none';
-        guestMore.setAttribute('aria-expanded', open ? 'true' : 'false');
-        if (open) document.getElementById('lob-guest-pass').focus();
-      };
       document.getElementById('lob-join-cancel').onclick = () => { document.getElementById('lob-join').style.display = 'none'; if (!BC_INTENT) selectLob('lob-open-seg'); };
       const doJoin = () => {
         const err = document.getElementById('lob-join-err');
@@ -21459,14 +21445,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       document.getElementById('lob-join-go').onclick = doJoin;
       document.getElementById('lob-join-in').addEventListener('keydown', (e) => { if (e.key === 'Enter') doJoin(); });
       document.getElementById('lob-join-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') doJoin(); });
-      document.getElementById('lob-guest-reveal').onclick = () => {
-        const extra = document.getElementById('lob-guest-extra');
-        extra.hidden = false;
-        document.getElementById('lob-guest-reveal').hidden = true;
-        document.getElementById('lob-guest-pass').focus();
-        if (extra.scrollIntoView) extra.scrollIntoView({ block: 'nearest' });
-        placeDeskName();
-      };
       document.getElementById('lob-admin-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('lob-admin-go').click(); });
       document.getElementById('lob-guest-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('lob-admin-go').click(); });
       document.getElementById('lob-list').addEventListener('click', (e) => {
