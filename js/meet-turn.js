@@ -1208,9 +1208,14 @@
     // (FHOP_RELAY_ASK). 1: a path came up (the plain pc, or a friend of mine carries x: env.js); 2: x's page answered and no
     // path came up: x is across a cut; 0: no answer yet, or none (a crashed, frozen or departed page: no cut, the room heals
     // it). A verdict is kept one dial long for the seat's next asks; the next question goes out after that.
+    // BY THE DOOR, both ways: a firewall that closes drops packets and tells nobody, so the channel I hold to x still reads
+    // open for as long as its connection takes to die (tens of seconds), and a question or an answer written to it is
+    // lost: every verdict was 0 ("no answer: no cut") until that connection closed and the next question went by the relay
+    // (offices room 2026-11-19: a deep seat asked 5 rounds, 70 s, into dead channels; the 6th was answered in 130 ms).
     const cuts = new Map();   // peer id -> { at, ans, v }
+    const sendDoor = (to, f) => (io.sendTvDoor ? io.sendTvDoor(to, f) : io.sendTv(to, f));
     function cutHeard(from, f) {
-      if (f.b === undefined) { io.sendTv(from, { k: 'tv', q: 'c', l: 's0', b: 1 }); return; }   // asked: my page runs, I answer by the same way
+      if (f.b === undefined) { sendDoor(from, { k: 'tv', q: 'c', l: 's0', b: 1 }); return; }   // asked: my page runs, I answer by the same way
       const c = cuts.get(from); if (c && !c.ans) { c.ans = true; log('cut-probe answer ' + short(from)); }
     }
     function cutProbe(pid, now) {
@@ -1220,7 +1225,7 @@
       if (c && c.v >= 0 && now - c.vAt > ASK_MS) { cuts.delete(pid); c = null; }   // a verdict lives one dial: then ask again
       if (!c) {
         c = { at: now, ans: false, v: -1, vAt: 0 }; cuts.set(pid, c); if (cuts.size > 64) cuts.delete(cuts.keys().next().value);
-        io.sendTv(pid, { k: 'tv', q: 'c', l: 's0' });
+        sendDoor(pid, { k: 'tv', q: 'c', l: 's0' });
         try { if (io.probeDoor) io.probeDoor(0, [pid]); } catch (e) {}
         log('cut-probe ask ' + short(pid)); return 0;
       }
