@@ -529,9 +529,11 @@
     const fabricTurnOn = () => !!(subF && subF.on && subF.on());
     const fabricCutProbe = (a, x) => {
       if (a !== me || x < 0 || x === me || !subF || !subF.cut) return 0; const p = ID.pid(x); if (!p) return 0;
+      { const s = seat(), r = srOf.get(x); if (s && r !== undefined && r !== s.sr) return 0; }   // its last frame came from another door: it left mine (a mate that cut a moment ago, now a subroom); the relay lists its old socket a while more, and the sim's door list does not (no answer at my door)
       const v = subF.cut(p) | 0; return (v === 2 && fhopFriendFor(me, x)) ? 1 : v;
     };
     let cutWhy = '';
+    const srOf = new Map();   // seat id -> the door its last frame to me named
     function cutArm(s) {
       if (!subF || !subF.cut || s.state !== 3 || !s.hasCoord || s.sr !== 0 || s.coord.pc !== 0 || ckey(s.coord) === 0 || !fabricTurnOn()) return;
       const it = s.s1tab.get(0); if (!it || it.at < 0 || it.by < 0 || it.by === me) return;
@@ -650,6 +652,7 @@
     function recvOne(s, m) {
       if (s.dead) return;
       st.rx++;
+      if (m.from >= 0 && m.from !== me && m.t !== 'GREETERS' && m.t !== 'BUSY' && Number.isInteger(m.sr)) { if (srOf.size > 4096) srOf.clear(); srOf.set(m.from, m.t === 'LEAVE' && m.id === m.from ? -1 : m.sr); }   // TURN.5.3: the door each seat's last frame named (-1: its last frame was its own goodbye: it left its cell, and a seat outside is no greeter)
       guard('seat.recv', () => s.recv(m))();
       woken = true;   // the sim wakes the receiver of every delivered frame
     }
