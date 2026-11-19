@@ -30414,6 +30414,26 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function sgaForgetWaiter(pid) {
       for (const map of [sgaWant, sgaAppWant]) for (const [sid, w] of map) { w.delete(pid); if (!w.size) map.delete(sid); }
     }
+    // A NEW NEIGHBOUR RE-SYNCS THE SNAP (2026-11-19, gifos.room g5). Each page floods along the edges its OWN view of
+    // the cells gives it (sgaTargets), and after a leave those views move one at a time: the leaver's cell is held for
+    // its goodbye, then taken, and each page hears the take on its own clock (3 to 17 s measured in a room of four).
+    // A page whose one way in was the leaver (alone in row 1 under the row-0 head) has no edge while the owner's next
+    // frames go out; a delta is not retained, and a page that holds an older snap never pulled again, so its copy kept
+    // the leaver in his seat for good. So when my neighbour set gains a peer with an open channel, I ask that peer
+    // for the snap of each share I follow, naming the one I hold (`have`); sgaServe answers only when its own differs,
+    // and sgaRecvSnap keeps the newer of the two, so a room whose views agree pays one small ask per new edge.
+    const sgaEdges = new Set();   // my neighbours with an open channel, as of the last look
+    function sgaEdgeSync() {
+      const now = new Set();
+      for (const pid of sgaTargets()) { const p = peers.get(pid); if (p && p.dc && p.dc.readyState === 'open') now.add(pid); }
+      const sids = [...sgaSubs.keys()].filter((sid) => !(myStatus.app && myStatus.app.s === sid));   // the owner holds the truth
+      for (const pid of now) {
+        if (sgaEdges.has(pid)) continue;
+        const p = peers.get(pid);
+        for (const sid of sids) { const held = sgaSnap.get(sid); dcSend(p, { k: 'sga-req', sid, have: held ? held.seq : null }); }
+      }
+      sgaEdges.clear(); for (const pid of now) sgaEdges.add(pid);
+    }
     function sgaAdvertised(sid) { // some live ad (mine, a fresh status, the digest) names this sid and no stop outranks it
       const stop = appStops.get(sid);
       const live = (ad) => !!(ad && ad.s === sid && !(stop && (ad.ts || 0) <= stop.at));
@@ -39926,6 +39946,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // every status tick and on peer departure, so it self-heals like the mesh.
     function reconcileApp() {
       sgaPromoteSnaps(); // a snap that raced the successor's ad
+      sgaEdgeSync();     // a neighbour I did not have: the frames I may have missed while my edges moved
       if (appBooting) return; // a host boot is settling — runApp reconciles when it lands
       const want = findSharedApp();
       // My own share lost the deterministic race, was stopped for the room, or
