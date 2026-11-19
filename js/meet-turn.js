@@ -587,7 +587,7 @@
     //   { found: r, sg, far, link }        a new subroom (or a re-pipe, r unchanged): found it with sg; the pipe is opened here
     //   { wait: 1 }                        a door list, an answer or a door probe is on its way, or a subroom is opening
     //   { refused: why, retryAt }          budget, rate, no far end, the meeting full, no service: no pipe, ask again at retryAt
-    const sub = { st: 'idle', gen: 0, out: null, retryAt: 0, token: null, list: [], probe: [], found: null, why: '', heads: null, tried: null, mult: 1, lastWhy: '', doorsSig: '', repipe: false, ans: false, ends: [] };
+    const sub = { st: 'idle', gen: 0, out: null, retryAt: 0, token: null, list: [], probe: [], found: null, why: '', heads: null, tried: null, mult: 1, lastWhy: '', doorsSig: '', repipe: false, ans: false, ends: [], wantProbe: false, probedSig: null, probeAt: 0 };
     // THE WARM STANDBY (TURN.9 for pipes). Every live pipe l<r> keeps a standby s<r>: a second relayed connection between
     // OTHER seats of the same two subrooms, connected and idle (keep-alives only: no media, no mesh traffic). When a live
     // end leaves (its goodbye) or its connection dies (the pc's own verdict), the standby pair takes the pipe over at once
@@ -1287,12 +1287,23 @@
         if (g !== sub.gen) return;
         const d = x && typeof x === 'object' ? x.v : x;
         if (d) { sub.devPid = (x && typeof x === 'object' && x.p) || {}; sub.heads = doorHeads(d, sub.devPid); const sg = doorsSig(d); if (sub.doorsSig && sg !== sub.doorsSig) subChanged('the subrooms'); sub.doorsSig = sg; }
+        // JOIN.2 THE PROBE AT THE FIRST STALL: the relay's door list is all it reads. The heads of every other door it names
+        // are dialled side by side; a miss asks for nothing (no Worker call, never a new number: TURN stays last).
+        if (sub.asker === 'probe') {
+          sub.wantProbe = false;
+          const mine = io.sub ? io.sub() : 0, rs = d ? Array.from(sub.heads.keys()).filter((r) => r > 0 && r !== mine && (sub.heads.get(r) || []).length) : [];
+          const sig = rs.map((r) => r + ':' + sub.heads.get(r).join('+')).join(',');
+          if (!rs.length || sig === sub.probedSig) { subIdle(io.now(), null, sub.retryAt); return; }   // no other door, or the same heads as my last probe
+          sub.probedSig = sig; sub.list = rs; sub.probe = rs; sub.tried = new Set(); sub.token = null;
+          log('turn-sub probe ' + rs.join(',') + ': trying the doors');
+          sub.gen++; sub.st = 'probe'; sub.out = busyOut; return;
+        }
         if (!d) { subRefuse(io.now(), 'no-doors'); return; }
         // before a new number is asked for: a listed room whose heads this fresh door list names and I have not dialled
         // yet (it opened while I tried the others) is tried first; the service would read its greeters as unreachable
         if (withToken && untried().length) { log('turn-sub a listed room opened: trying its heads'); sub.st = 'probe'; return; }
         subAsk(d, withToken ? sub.token : null);
-      }, () => { if (g === sub.gen) subRefuse(io.now(), 'no-doors'); });
+      }, () => { if (g !== sub.gen) return; if (sub.asker === 'probe') { sub.wantProbe = false; subIdle(io.now(), null, sub.retryAt); } else subRefuse(io.now(), 'no-doors'); });
     }
     function subProbeDoors() {
       const g = ++sub.gen; sub.st = 'doors'; sub.out = busyOut;
@@ -1342,6 +1353,7 @@
     // The heads the relay's door list names per door, as peer ids (the answer's own map; the signed list holds device
     // tags only): at most PROBE_HEADS per door, in the list's order.
     const PROBE_HEADS = 2;
+    const PROBE_GAP_MS = K.FHOP_RELAY_ASK * tick;   // JOIN.2: one door-list read per direct verdict at most
     // the subrooms a door list names (their numbers only: who greets at a door is not what a refusal named)
     function doorsSig(td) { try { const t = String(td).split('.')[1].replace(/-/g, '+').replace(/_/g, '/'); const o = JSON.parse(atob(t + '='.repeat((4 - (t.length % 4)) % 4))); return (o.doors || []).map((x) => x.r).sort((a, b) => a - b).join(','); } catch (e) { return ''; } }
     function doorHeads(td, peers) {
@@ -1371,7 +1383,7 @@
     }
     function subStep(now) {
       head.want = headWants(now);
-      const asker = (io.asker ? io.asker() : null) || (sub.repipe ? 'repipe' : null) || (head.want ? 'head' : null);   // SUB.3: a re-pipe is asked from either side, door 0 too
+      const asker = (io.asker ? io.asker() : null) || (sub.repipe ? 'repipe' : null) || (head.want ? 'head' : null) || ((sub.wantProbe || (sub.asker === 'probe' && sub.st !== 'idle')) && io.sub && io.sub() === 0 ? 'probe' : null);   // JOIN.2: the probe is the last reason (any ask of the Worker's goes first)   // SUB.3: a re-pipe is asked from either side, door 0 too
       if (sub.st === 'found') {
         const live = Array.from(links.values()).some((L) => L.opener && sub.found && L.l === sub.found.link);
         if (live) return;
@@ -1381,7 +1393,7 @@
       }
       if (!asker) { if (sub.st !== 'idle') subIdle(now, null, sub.retryAt); else if (sub.out && sub.out.join != null) sub.out = null; return; }
       sub.asker = asker;
-      if (sub.st === 'idle') { if (now >= sub.retryAt) subDoors(false); return; }
+      if (sub.st === 'idle') { if (asker === 'probe') { if (now - sub.probeAt >= PROBE_GAP_MS) { sub.probeAt = now; subDoors(false); } else sub.wantProbe = false; return; } if (now >= sub.retryAt) subDoors(false); return; }   // a probe reads the door list at most once a direct verdict; it is not an ask of the Worker's, so no refusal wait holds it
       if (sub.st === 'probe') {
         let pending = false;
         for (const r of sub.probe) {
@@ -1395,6 +1407,7 @@
           // a miss ends the dials the probe made (io.probeEnd: never a connected pair, a seat link or a TURN link's pc);
           // left open, each was re-offered off the relay through the pipe for a minute, again every door round
           for (const r of sub.probe) for (const p of (sub.heads && sub.heads.get(r)) || []) { try { if (io.probeEnd) io.probeEnd(p); } catch (e) {} }
+          if (asker === 'probe') { log('turn-sub probe: no listed door reached'); subIdle(now, null, sub.retryAt); return; }   // JOIN.2: a miss asks for nothing
           log('turn-sub no listed door reached'); subDoors(true);
         }
       }
@@ -1489,6 +1502,8 @@
       // forgot it (tag 3: a fresh grant). regrant(): a fresh grant to hand to the seat, once.
       repipe() { sub.repipe = true; },   // SUB.3 (b): my room's fold lost a far door (the home seat of any door, door 0 too)
       doorEmpty() { if (io.sub && io.sub() > 0) rg.want = true; },
+      // JOIN.2: the seat's first ask at door 0 stalled: dial the heads of the other doors the relay lists. true: a probe starts or is out
+      probe() { if (!(io.sub && io.sub() === 0) || !io.tdoors || !io.probeDoor) return false; if (sub.st === 'probe' && sub.asker === 'probe') return true; if (sub.st !== 'idle' || (sub.out && sub.out.refused) || io.now() - sub.probeAt < PROBE_GAP_MS) return false; sub.wantProbe = true; return true; },
       regrant() { const o = rg.out; rg.out = null; return o; },
       // the seat is about to found on silence: may it ask the Worker first? Closed once after a refusal (that founding attempt
       // founds), and while a refusal's wait runs

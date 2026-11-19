@@ -96,6 +96,16 @@
       }
       this.entIsl = true; this.trace('L8.47-ENTRY', this.id, null, 'silent=%d since=%d', n, first); return true;
     },
+
+    // C++: mesh_roomterm.inc:Seat::subStall
+    // JOIN.2: my first ask at door 0 stood one direct verdict (FHOP_RELAY_ASK) with no frame back from anybody: my page
+    // probes the meeting's other doors (the relay's door list, plain dials; no Worker call, never a new number).
+    subStall() {
+      if (this.sr !== 0 || !(this.state === 0 || this.state === 1) || this.entAsk.size === 0) return;
+      let first = -1; for (const at of this.entAsk.values()) if (first < 0 || at < first) first = at;
+      if (this.TICK - first < K.FHOP_RELAY_ASK || this.entAnsAt >= first || this.lastReach >= first) return;
+      if (this.f.fabricSubProbe(this.id)) this.trace('SUB.2-EARLY', this.id, null, 'stall=%d', (this.TICK | 0) - first);
+    },
   });
   GifOS.meshRoomterm = Object.freeze({});
   if (isNode) module.exports = GifOS.meshRoomterm;
