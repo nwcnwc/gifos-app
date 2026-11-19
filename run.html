@@ -32435,6 +32435,27 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const doubt = capDoubts(l) ? uiText('trNoteMismatch', '[doesn\'t match what was heard]') + ' ' : '';
       return doubt + (n ? uiText(n[0], n[1]) + ' ' : '');
     }
+    // CAPTION TRUST: the tracker (js/meet-captrust.js) is made with the warning card further down; until then nothing is judged.
+    let capTrust = null;
+    // A line whose source this page does not trust (the speaker's own engine, or a writer) is kept and marked.
+    function capDoubts(l) { return !!(capTrust && l && l.byId && l.byId !== myId && l.w && capTrust.stateOf(l.byId, l.w) === 'distrusted'); }
+    function capName(id) {
+      if (id === myId) return myName();
+      try { const p = peers.get(id); return String((p && p.name) || rosterNames[id] || '…').slice(0, 40); } catch (e) { return '…'; }
+    }
+    // The caption bar names the source after the speaker: their own engine (the name alone), this device's ears, or a writer.
+    function capLabel(l) {
+      const name = l.byId === myId ? '' : (l.w !== l.byId ? String(l.by || capName(l.byId)).slice(0, 40) : '');
+      if (!l.w || l.w === l.byId || trGeneric(l.byId)) return name;
+      if (l.w === myId) return name + ' · ' + uiText('capHeardHere', 'heard here');
+      return name + ' · ' + uiText('capVia', 'via {name}').replace('{name}', capName(l.w));
+    }
+    function capShows(l) { return !capTrust || capTrust.shows(l); }
+    // Ears only: Whisper is installed on a computer that can afford it while the browser's engine writes my own voice.
+    // Its clips are samples for the trust check; they are written down only for a voice whose own captions lost trust.
+    function capEarsOnly() {
+      return !!capTrust && ccEngine() === 'browser' && !phoneCaptions() && !CC_ON_PHONE && !WSP_WEAK && whisperReady() && !wspPaused && !trEnOn;
+    }
     // The echo strength of a against b: 2 a near-copy (dropped), 1 most words
     // shared (kept, marked), 0 none.
     function trEchoLevel(a, b) {
@@ -32665,7 +32686,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (!name) { if (byId === myId) name = myName(); else { const p = peers.get(byId); name = (p && p.name) || ''; } }
         } catch (e) {}
         bar.textContent = (name ? name + '. ' : '') + String(text || '');
-        bar.dataset.voice = byId || '';
+        if (bar.dataset) bar.dataset.voice = byId || '';
         if (!bar.onclick) bar.onclick = () => capSourceOpen(bar.dataset.voice);   // a tap: whose captions to show for this person
         bar.classList.add('show');
         bar.scrollTop = 0;
@@ -32678,96 +32699,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       t.cap.classList.add('show');
       clearTimeout(t.capT);
       t.capT = setTimeout(() => t.cap.classList.remove('show'), 6000);
-    }
-    // CAPTION TRUST (js/meet-captrust.js): this page decides, for each person,
-    // whose lines it shows. It trusts only itself: its own ears (Whisper on the
-    // received audio) are the reference, and another source earns trust by
-    // matching them. Every state, pick and flag stays on this page.
-    const capTrust = (GifOS.capTrust && GifOS.timings) ? GifOS.capTrust.make({
-      me: () => myId,
-      T: { CT_SETTLE_MS: GifOS.timings.CT_SETTLE_MS, CT_PAD_MS: GifOS.timings.CT_PAD_MS, CT_KEEP_MS: GifOS.timings.CT_KEEP_MS, CT_SPOT_MS: GifOS.timings.CT_SPOT_MS, CT_SPOT_EVERY_MS: GifOS.timings.CT_SPOT_EVERY_MS },
-      earsFor: (v) => typeof wspCaps !== 'undefined' && wspCaps.has(v),
-      onWarn: (v, info) => { try { capWarn(v, info); } catch (e) {} },
-    }) : null;
-    // A line whose source this page does not trust (the speaker's own engine, or a writer) is kept and marked.
-    function capDoubts(l) { return !!(capTrust && l && l.byId && l.byId !== myId && l.w && capTrust.stateOf(l.byId, l.w) === 'distrusted'); }
-    function capName(id) {
-      if (id === myId) return myName();
-      try { const p = peers.get(id); return String((p && p.name) || rosterNames[id] || '…').slice(0, 40); } catch (e) { return '…'; }
-    }
-    // The caption bar names the source after the speaker: their own engine (the name alone), this device's ears, or a writer.
-    function capLabel(l) {
-      const name = l.byId === myId ? '' : (l.w !== l.byId ? String(l.by || capName(l.byId)).slice(0, 40) : '');
-      if (!l.w || l.w === l.byId || trGeneric(l.byId)) return name;
-      if (l.w === myId) return name + ' · ' + uiText('capHeardHere', 'heard here');
-      return name + ' · ' + uiText('capVia', 'via {name}').replace('{name}', capName(l.w));
-    }
-    function capShows(l) { return !capTrust || capTrust.shows(l); }
-    // Ears only: Whisper is installed on a computer that can afford it while the browser's engine writes my own voice.
-    // Its clips are samples for the trust check; they are written down only for a voice whose own captions lost trust.
-    function capEarsOnly() {
-      return !!capTrust && ccEngine() === 'browser' && !phoneCaptions() && !CC_ON_PHONE && !WSP_WEAK && whisperReady() && !wspPaused && !trEnOn;
-    }
-    // THE WARNING CARD and THE SOURCE CHOOSER: one small card over the call, one tap per source.
-    function capCard(id, v, title, note, rows) {
-      let c = document.getElementById(id);
-      if (!c) {
-        c = document.createElement('div'); c.id = id; c.className = 'capcard'; c.setAttribute('role', 'dialog');
-        document.body.appendChild(c);
-      }
-      c.dataset.voice = v;
-      c.innerHTML = '<div class="capcard-t"></div><div class="capcard-n"></div><div class="capcard-b dlg-actions"></div>';
-      c.querySelector('.capcard-t').textContent = title;
-      c.querySelector('.capcard-n').textContent = note || '';
-      const b = c.querySelector('.capcard-b');
-      for (const r of rows) {
-        const x = document.createElement('button'); x.type = 'button'; x.textContent = r.t; x.dataset.src = r.src;
-        if (r.on) x.setAttribute('aria-pressed', 'true');
-        x.onclick = () => { c.hidden = true; capPick(v, r.src); };
-        b.appendChild(x);
-      }
-      const done = document.createElement('button'); done.type = 'button'; done.className = 'capcard-x'; done.textContent = uiText('capClose', 'Close');
-      done.onclick = () => { c.hidden = true; };
-      b.appendChild(done);
-      c.hidden = false;
-      return c;
-    }
-    function capCanEar() { return whisperSupported() && !phoneCaptions() && !CC_ON_PHONE; }
-    // Sources for v other than the one shown: this device's ears, each writer with lines for v, the speaker's own.
-    function capRows(v, withAuto) {
-      const c = capTrust.choice(v), rows = [], name = capName(v);
-      if (withAuto) rows.push({ src: 'auto', t: uiText('capAuto', 'Automatic'), on: c.mode === 'auto' });
-      rows.push({ src: 'own', t: uiText('capOwn', '{name}\'s own captions').replace('{name}', name), on: c.mode === 'own' });
-      if (capTrust.hasEars(v) || capCanEar()) rows.push({ src: 'me', t: uiText('capMine', 'What this device hears'), on: c.mode === 'me' });
-      for (const s of capTrust.sources(v)) if (s.kind === 'ear') rows.push({ src: s.w, t: uiText('capTheirs', '{name}\'s captions').replace('{name}', capName(s.w)), on: c.mode === s.w });
-      return rows;
-    }
-    function capWarn(v, info) {
-      const name = capName(v), c = capTrust.choice(v);
-      const ear = info && info.by && info.by !== 'me' && info.by !== myId ? capName(info.by) : '';
-      const title = ear ? uiText('capWarnEar', '{name}\'s captions don\'t match what {ear}\'s device hears').replace('{name}', name).replace('{ear}', ear)
-        : uiText('capWarn', '{name}\'s captions don\'t match what you\'re hearing').replace('{name}', name);
-      const note = c.show === myId ? uiText('capNowMine', 'Showing what this device hears.')
-        : (c.show !== 'all' && c.show !== v) ? uiText('capNowTheirs', 'Showing {name}\'s captions.').replace('{name}', capName(c.show)) : '';
-      const rows = capRows(v, false);
-      if (clog) clog('captrust warn', String(v).slice(0, 6), info && info.why, String(c.show).slice(0, 6));
-      capCard('capwarn', v, title, note, rows);
-    }
-    function capSourceOpen(v) {
-      if (!capTrust || !v || v === myId) return;
-      const name = capName(v);
-      const rows = capRows(v, true);
-      rows.push({ src: 'flag', t: uiText('capFlag', 'These captions are wrong') });
-      capCard('capsrc', v, uiText('capSrcTitle', 'Captions for {name}').replace('{name}', name), '', rows);
-    }
-    function capPick(v, src) {
-      if (!capTrust) return;
-      if (src === 'flag') { const c = capTrust.choice(v); capTrust.flag(v, c.show === 'all' ? v : c.show); }
-      else capTrust.pick(v, src);
-      if (src === 'me' && !whisperReady() && capCanEar()) { try { installWhisper(true).catch(() => {}); } catch (e) {} }
-      if (clog) clog('captrust pick', String(v).slice(0, 6), src);
-      trDirty = true; try { renderTranscript(); } catch (e) {}
-      try { wspSync(); } catch (e) {}
     }
     let trDirty = false;
     function renderTranscript() {
@@ -32859,6 +32790,77 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const CC_LANGS = [['', 'Auto-detect'], ['auto', 'Let Whisper detect it (Whisper only)'], ['en-US', 'English (US)'], ['en-GB', 'English (UK)'], ['ru-RU', 'Русский'], ['uk-UA', 'Українська'],
       ['es-ES', 'Español'], ['pt-BR', 'Português (BR)'], ['fr-FR', 'Français'], ['de-DE', 'Deutsch'], ['it-IT', 'Italiano'], ['pl-PL', 'Polski'],
       ['tr-TR', 'Türkçe'], ['zh-CN', '中文 (普通话)'], ['ja-JP', '日本語'], ['ko-KR', '한국어'], ['hi-IN', 'हिन्दी'], ['ar-SA', 'العربية']];
+    // CAPTION TRUST (js/meet-captrust.js): this page decides, for each person,
+    // whose lines it shows. It trusts only itself: its own ears (Whisper on the
+    // received audio) are the reference, and another source earns trust by
+    // matching them. Every state, pick and flag stays on this page.
+    capTrust = (GifOS.capTrust && GifOS.timings) ? GifOS.capTrust.make({
+      me: () => myId,
+      T: { CT_SETTLE_MS: GifOS.timings.CT_SETTLE_MS, CT_PAD_MS: GifOS.timings.CT_PAD_MS, CT_KEEP_MS: GifOS.timings.CT_KEEP_MS, CT_SPOT_MS: GifOS.timings.CT_SPOT_MS, CT_SPOT_EVERY_MS: GifOS.timings.CT_SPOT_EVERY_MS },
+      earsFor: (v) => typeof wspCaps !== 'undefined' && wspCaps.has(v),
+      onWarn: (v, info) => { try { capWarn(v, info); } catch (e) {} },
+    }) : null;
+    // THE WARNING CARD and THE SOURCE CHOOSER: one small card over the call, one tap per source.
+    function capCard(id, v, title, note, rows) {
+      let c = document.getElementById(id);
+      if (!c) {
+        c = document.createElement('div'); c.id = id; c.className = 'capcard'; c.setAttribute('role', 'dialog');
+        document.body.appendChild(c);
+      }
+      c.dataset.voice = v;
+      c.innerHTML = '<div class="capcard-t"></div><div class="capcard-n"></div><div class="capcard-b dlg-actions"></div>';
+      c.querySelector('.capcard-t').textContent = title;
+      c.querySelector('.capcard-n').textContent = note || '';
+      const b = c.querySelector('.capcard-b');
+      for (const r of rows) {
+        const x = document.createElement('button'); x.type = 'button'; x.textContent = r.t; x.dataset.src = r.src;
+        if (r.on) x.setAttribute('aria-pressed', 'true');
+        x.onclick = () => { c.hidden = true; capPick(v, r.src); };
+        b.appendChild(x);
+      }
+      const done = document.createElement('button'); done.type = 'button'; done.className = 'capcard-x'; done.textContent = uiText('capClose', 'Close');
+      done.onclick = () => { c.hidden = true; };
+      b.appendChild(done);
+      c.hidden = false;
+      return c;
+    }
+    function capCanEar() { return whisperSupported() && !phoneCaptions() && !CC_ON_PHONE; }
+    // Sources for v other than the one shown: this device's ears, each writer with lines for v, the speaker's own.
+    function capRows(v, withAuto) {
+      const c = capTrust.choice(v), rows = [], name = capName(v);
+      if (withAuto) rows.push({ src: 'auto', t: uiText('capAuto', 'Automatic'), on: c.mode === 'auto' });
+      rows.push({ src: 'own', t: uiText('capOwn', '{name}\'s own captions').replace('{name}', name), on: c.mode === 'own' });
+      if (capTrust.hasEars(v) || capCanEar()) rows.push({ src: 'me', t: uiText('capMine', 'What this device hears'), on: c.mode === 'me' });
+      for (const s of capTrust.sources(v)) if (s.kind === 'ear') rows.push({ src: s.w, t: uiText('capTheirs', '{name}\'s captions').replace('{name}', capName(s.w)), on: c.mode === s.w });
+      return rows;
+    }
+    function capWarn(v, info) {
+      const name = capName(v), c = capTrust.choice(v);
+      const ear = info && info.by && info.by !== 'me' && info.by !== myId ? capName(info.by) : '';
+      const title = ear ? uiText('capWarnEar', '{name}\'s captions don\'t match what {ear}\'s device hears').replace('{name}', name).replace('{ear}', ear)
+        : uiText('capWarn', '{name}\'s captions don\'t match what you\'re hearing').replace('{name}', name);
+      const note = c.show === myId ? uiText('capNowMine', 'Showing what this device hears.')
+        : (c.show !== 'all' && c.show !== v) ? uiText('capNowTheirs', 'Showing {name}\'s captions.').replace('{name}', capName(c.show)) : '';
+      const rows = capRows(v, false);
+      if (clog) clog('captrust warn', String(v).slice(0, 6), info && info.why, String(c.show).slice(0, 6));
+      capCard('capwarn', v, title, note, rows);
+    }
+    function capSourceOpen(v) {
+      if (!capTrust || !v || v === myId) return;
+      const name = capName(v);
+      const rows = capRows(v, true);
+      rows.push({ src: 'flag', t: uiText('capFlag', 'These captions are wrong') });
+      capCard('capsrc', v, uiText('capSrcTitle', 'Captions for {name}').replace('{name}', name), '', rows);
+    }
+    function capPick(v, src) {
+      if (!capTrust) return;
+      if (src === 'flag') { const c = capTrust.choice(v); capTrust.flag(v, c.show === 'all' ? v : c.show); }
+      else capTrust.pick(v, src);
+      if (src === 'me' && !whisperReady() && capCanEar()) { try { installWhisper(true).catch(() => {}); } catch (e) {} }
+      if (clog) clog('captrust pick', String(v).slice(0, 6), src);
+      trDirty = true; try { renderTranscript(); } catch (e) {}
+      try { wspSync(); } catch (e) {}
+    }
     const CC_LANG_KEY = 'gifos_cc_lang';
     const ccLang = () => { let v = ''; try { v = localStorage.getItem(CC_LANG_KEY) || ''; } catch (e) {} return v || navigator.language || 'en-US'; };
     const ccLangLabel = () => { const v = ccLang(); const hit = CC_LANGS.find((x) => x[0] === v); return hit ? hit[1] : v; };
@@ -33734,7 +33736,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (ccMix.dest) { ccMixSync(); if (!ccMix.ins.size) syncSpeech(); return; }
       if (trWrites() && !(ccEngine() === 'whisper' && whisperReady()) && !(speech && speech.input) && ccTrackInput() && ccMixVoices().size) syncSpeech();
     }
-    setInterval(() => { trEnSync(); if (capTrust) capTrust.tick(); if (wspCaps.size || trEnOn || capEarsOnly() || (trWrites() && ((ccEngine() === 'whisper' && whisperReady()) || ccEngine() === 'local'))) wspSync(); earTick(); trForget(); paintTxMark(); }, 2000);
+    setInterval(() => { trEnSync(); if (wspCaps.size || trEnOn || capEarsOnly() || (trWrites() && ((ccEngine() === 'whisper' && whisperReady()) || ccEngine() === 'local'))) wspSync(); earTick(); trForget(); paintTxMark(); if (capTrust) capTrust.tick(); }, 2000);
     // ONE TAP TO INSTALL. The provider is a signed 13 MB GIF on this very site:
     // GifOS.providers.install downloads, checks the catalog hash and the
     // gifos.app signature, files it into the Providers folder and we assign it

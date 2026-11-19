@@ -1225,15 +1225,15 @@
     position: fixed; z-index: 31; left: 50%; transform: translateX(-50%);
     bottom: calc(var(--inset-bottom, 0px) + var(--stateh, 0px) + 5.6em + var(--barlift, 0px));
     width: min(28rem, calc(100vw - 16px)); box-sizing: border-box; padding: 12px 14px; border-radius: var(--r-md);
-    background: rgba(10,10,15,.96); color: var(--c-white); font: 1rem/1.35 system-ui, sans-serif;
+    background: rgba(10,10,15,.92); color: var(--c-white); font: 1rem/1.35 system-ui, sans-serif;
   }
   .capcard[hidden] { display: none; }
   .capcard-t { font-weight: 700; }
   .capcard-n { opacity: .8; margin-top: 4px; }
   .capcard-n:empty { display: none; }
   .capcard-b { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-  .capcard-b button { font: inherit; padding: 6px 10px; border-radius: var(--r-pill, 999px); border: 1px solid rgba(255,255,255,.35); background: transparent; color: inherit; }
-  .capcard-b button[aria-pressed="true"] { background: rgba(255,255,255,.18); }
+  .capcard-b button { font: inherit; padding: 6px 10px; border-radius: var(--r-pill, 999px); border: 1px solid rgba(255,255,255,.2); background: transparent; color: inherit; }
+  .capcard-b button[aria-pressed="true"] { background: rgba(255,255,255,.16); }
   body.chrome-away #livecap { bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
   @media (max-width: 700px), (max-height: 500px) {
     .tile .cap { display: none !important; }
