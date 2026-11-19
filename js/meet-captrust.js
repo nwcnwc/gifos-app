@@ -83,7 +83,7 @@
     function setState(v, w, s, why, by) {
       const r = rec(v, w), was = r.s;
       r.s = s; r.why = why || ''; r.by = by || ''; r.at = now();
-      if (s !== 'distrusted' || was === 'distrusted' || w !== v) return;
+      if (s !== 'distrusted' || was === 'distrusted' || w !== v || r.why === 'flag') return;   // a flag is the user's own act: no warning
       // the speaker's own captions just lost this page's trust
       if (warned.has(v)) return;
       warned.add(v);
