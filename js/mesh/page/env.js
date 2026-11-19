@@ -494,6 +494,16 @@
       return never ? 0 : 3;
     };
 
+    // L8.47.5 (C++: mesh_net.inc:fabricDoorBlk): the door's word says the greeter sits on another network and one end of our
+    // pair is blocked while the other is open: only a carried path could hold it (fabricDoorNet 3), and its kind is the
+    // greeter's own measured one (a kind not measured yet is sent as open, never blocked)
+    const fabricDoorBlk = (a, g) => {
+      if (fabricDoorNet(a, g) !== 3) return false;
+      const w = doorNt.get(g); if (!w) return false;
+      const k = w.length > 9 ? +w.slice(9) : E.NAT_OPEN, n = (measure.nat ? measure.nat() : E.NAT_OPEN) | 0;
+      return n === E.NAT_BLOCKED || k === E.NAT_BLOCKED;
+    };
+
     // ---- rooms joined by relayed connections: the page's link manager (o.sub) ---------------------------------
     // o.sub.ask() -> true while the page's ask for the list of rooms is open (the seat keeps knocking), false: refused or
     // no service (the seat founds its room as before). o.sub.pipeEnds() -> [{ peer, sub, pipe, opener, video, up, standby }],
@@ -524,7 +534,7 @@
       fabricAdmitLog: noop, fabricDupMint: noop, fabricNoteBackoff: noop, fabricNoteReseat: noop, fabricNoteRollback: noop,
       fabricNoteSwap: noop, fabricVerdict: deaths.verdict, l18UxDeliv: noop, descEnd: noop, descNote: noop, g4Joined: noop,   // g4Joined: the sim's L40 contest lever only (X1 55c97d1)
       fabricFreeCells, fabricLieFor: () => null, fabricUnreachable, fhopActive: () => !!fh, fhopFriendFor,
-      fabricDoorNet, fabricSubAsk, fabricSubProbe, fabricPipePeers, fabricSubDoor, fabricSubRepipe,
+      fabricDoorNet, fabricDoorBlk, fabricSubAsk, fabricSubProbe, fabricPipePeers, fabricSubDoor, fabricSubRepipe,
       fabricMyTier: () => ((measure.tier ? measure.tier() : E.TIER_DESKTOP) | 0),
       fabricMyNat: () => ((measure.nat ? measure.nat() : E.NAT_OPEN) | 0),
       fabricLeft: () => leaveNow(false), fabricReloadBye: () => leaveNow(true),
@@ -557,6 +567,7 @@
 
     // ---- the page's face ------------------------------------------------------------------------------------------
     // C++: mesh.cpp:doTick, for one seat: link tick, deliver, tick the seat if woken; then the clock moves on.
+    let probedSeen = false;
     function tick() {
       const s = seat();
       if (closeAt >= 0 && w.TICK >= closeAt) { closeAt = -1; if (pcw.leaveAll) pcw.leaveAll(); }
@@ -564,7 +575,7 @@
       if (pcw.tick) guard('pcw.tick', pcw.tick)();
       // C++: mesh_net.inc:netTick's probe loop (L4.1.1): my network verdict landed or changed since the join read it: the seat's kind is
       // measured again, and a seeker at the door acts on it now (l411Verdict)
-      if (s && !dead && measure.nat) { const n0 = (measure.nat() | 0) & 0xff; if (n0 !== s.nat) { if (s.cnat === s.nat) s.cnat = n0; s.nat = n0; if (typeof s.l411Verdict === 'function') s.l411Verdict(); } }
+      if (s && !dead && measure.nat) { const n0 = (measure.nat() | 0) & 0xff; const pd = !measure.probed || !!measure.probed(); if (n0 !== s.nat) { if (s.cnat === s.nat) s.cnat = n0; s.nat = n0; if (typeof s.l411Verdict === 'function') s.l411Verdict(); } else if (pd && !probedSeen && typeof s.l411Verdict === 'function') s.l411Verdict();   /* L8.47.5: my kind stands as measured: the door's word about the greeters I hold is read against it from now */ probedSeen = pd; }
       if (s && !dead) {
         guard('pipeRead', () => pipeRead(s))();
         const due = [];

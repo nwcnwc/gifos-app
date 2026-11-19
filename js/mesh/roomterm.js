@@ -66,19 +66,27 @@
     l8471() { return !!this.w.lv.ISLAND_MODE && this.nat === E.NAT_BLOCKED; },
 
     // C++: mesh_roomterm.inc:Seat::islandWait
-    islandWait() { return this.l8471() ? K.ISLAND_WAIT_BLOCKED : K.ISLAND_WAIT; },
+    // L8.47.5 THE BLOCKED PAIR'S ENTRY IS THE PAIR'S, FROM EITHER END: a seeker that is not blocked and whose held list names
+    // only greeters of another network that registered blocked (the door's word: fabricDoorBlk) enters as L8.47.1's seeker
+    // does: the ask-all, ISLAND_WAIT_BLOCKED for silence, no second silent round; the confirm knock stands. One open or
+    // untagged name on the list and the rule is off.
+    // C++: mesh_roomterm.inc:Seat::l8475
+    l8475() { if (!this.w.lv.ISLAND_MODE || this.nat === E.NAT_BLOCKED) return false; let n = 0; for (const g of this.lastGreeters) { if (g < 0 || g === this.id) continue; if (!this.f.fabricDoorBlk(this.id, g)) return false; n++; } return n > 0; },
+
+    islandWait() { return (this.l8471() || this.l8475()) ? K.ISLAND_WAIT_BLOCKED : K.ISLAND_WAIT; },
 
     // C++: mesh_roomterm.inc:Seat::entryTerm
-    entryTerm() { return this.entIsl || this.l8471() || this.l854All(this.lastGreeters); },   // L8.54.3: every listed greeter is one my network cannot meet
+    entryTerm() { return this.entIsl || this.l8471() || this.l854All(this.lastGreeters) || this.l8475(); },   // L8.54.3: every listed greeter is one my network cannot meet
 
     // C++: mesh_roomterm.inc:Seat::l411Verdict   (L4.1.1: my probe's verdict landed while I stand at the door)
     l411Verdict() {
-      if (!this.l8471() || !(this.state === 0 || this.state === 1) || this.lastGreeters.length === 0 || !this.f.fabricDoors() || (this.state === 1 && this.islandAskAt >= 0)) return;
+      const pair = !this.l8471() && this.l8475();   /* L8.47.5 */
+      if (!(this.l8471() || pair) || !(this.state === 0 || this.state === 1) || this.lastGreeters.length === 0 || !this.f.fabricDoors() || (this.state === 1 && this.islandAskAt >= 0)) return;
       if (this.l16Until >= 0 && this.TICK < this.l16Until) return;   // waiting out a backoff: its knock's list is asked whole
       const a0 = (this.state === 1) ? this.retryAt : -1; const was = this.l16Ask.slice();
-      this.trace('L4.1.1-VERDICT', this.id, null, 'asked=%zu since=%d', was.length, a0);
-      this.islandAsk(this.lastGreeters);
-      if (this.w.lv.ISLAND_MODE) for (const g of this.lastGreeters) if (g >= 0 && g !== this.id && this.f.fabricDoorNet(this.id, g) === 3) { this.trace('L8.54.5-REKNOCK', this.id, null, 'greeter=%d', g); this.greetersAt = -1; this.emitRelay(this.linkKey); break; }   // L8.54.5: a word given before its own probe's verdict: the door's fresh list carries the measured one
+      this.trace(pair ? 'L8.47.5-PAIR' : 'L4.1.1-VERDICT', this.id, null, 'asked=%zu since=%d', was.length, a0);
+      this.islandAsk(this.lastGreeters); if (pair) this.f.wake(this.id);
+      if (this.w.lv.ISLAND_MODE && !pair) for (const g of this.lastGreeters) if (g >= 0 && g !== this.id && this.f.fabricDoorNet(this.id, g) === 3) { this.trace('L8.54.5-REKNOCK', this.id, null, 'greeter=%d', g); this.greetersAt = -1; this.emitRelay(this.linkKey); break; }   // L8.54.5: a word given before its own probe's verdict: the door's fresh list carries the measured one
       if (a0 >= 0 && this.state === 1) { let all = true; for (const g of this.l16List) if (!was.includes(g)) { all = false; break; } if (all) { this.l16FreshAt = a0; this.islandAskAt = a0; } }
     },
 
