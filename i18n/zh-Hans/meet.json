@@ -228,6 +228,7 @@
  "meet.waitSelf": "主持人会让你进入",
  "meet.waitSelfNote": "有人准许你进入后，你才能看到这场会议。",
  "meet.rosterPeople": "人",
+ "meet.rosterAndMore": "还有 {n} 人",
  "meet.rosterFind": "查找名字",
  "meet.waitRoom": "等候室",
  "meet.waitOn": "开",

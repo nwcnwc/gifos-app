@@ -102,11 +102,44 @@
   function eachDig(o, fn) { if (!o || typeof o !== 'object') return; for (const k of DIG_KEYS) if (o[k]) fn(o[k]); if (Array.isArray(o.digs)) for (const e of o.digs) if (e && e.d) fn(e.d); }
   // toWire: a written frame (msg.js writeMsg) as it goes between pages (changed in place); fromWire: a received one back
   // (a copy when a flag is there: the envelope may be handed on as it came)
-  function toWire(o) { eachDig(o, goOut); return o; }
-  function fromWire(o) {
-    let has = false; eachDig(o, (d) => { if (Array.isArray(d.doors) && d.doors.some((e) => e && ((e.f | 0) & 2))) has = true; });
+  // WIRE SKEW (SUB.11, 0.9.27). Dig.ppl (the names beside a door's count) is a field no 0.9.26 page knows, and it has no
+  // place inside a field they read: an entry more in Dig.doors is a door to them (their SUB.3 would miss it when it left).
+  // So the names leave the frame: toWire takes Dig.ppl out of every digest and the envelope carries them beside f
+  // (`pp`: { <digest key>: [[door, id, id, ...], ...] }, digs by index), a part of the envelope an older page never
+  // reads; fromWire(f, pp) puts them back, so the seat's Msg and the sim keep Dig.ppl. Like the display digest `pd`
+  // they are outside f and its signature (coreOf leaves them out): a page that does not know them verifies the same
+  // core. An older page in the path sends its fold on without names: the far side shows the count and "and N more".
+  const PP = new WeakMap();   // a written frame -> the names toWire took out of it
+  const PP_MAX = 64;          // doors a side list may name per digest (a meeting's pipes are far fewer)
+  function pplOut(o) {
+    let pp = null;
+    const take = (d, key) => {
+      if (!d || d.ppl === undefined) return; const by = new Map();
+      for (const e of d.ppl) { if (!e) continue; let a = by.get(e.k); if (!a) by.set(e.k, a = [e.k]); a.push(e.id); }
+      delete d.ppl; if (by.size) (pp = pp || {})[key] = Array.from(by.values());
+    };
+    for (const k of DIG_KEYS) take(o[k], k);
+    if (Array.isArray(o.digs)) o.digs.forEach((e, i) => { if (e && e.d) take(e.d, 'digs' + i); });
+    return pp;
+  }
+  function pplIn(o, pp) {
+    const put = (d, key) => {
+      const v = pp[key]; if (!d || !Array.isArray(v) || v.length > PP_MAX) return; const out = [];
+      for (const a of v) { if (!Array.isArray(a) || a.length < 2 || a.length > 65 || !a.every(Number.isFinite)) return; for (let i = 1; i < a.length; i++) out.push({ id: a[i], k: a[0], f: 0 }); }
+      if (out.length) d.ppl = out;
+    };
+    for (const k of DIG_KEYS) put(o[k], k);
+    if (Array.isArray(o.digs)) o.digs.forEach((e, i) => { if (e && e.d) put(e.d, 'digs' + i); });
+  }
+  const ppOf = (f) => PP.get(f) || null;
+  function toWire(o) { eachDig(o, goOut); const pp = pplOut(o); if (pp) PP.set(o, pp); return o; }
+  function fromWire(o, pp) {
+    let has = !!(pp && typeof pp === 'object' && !Array.isArray(pp)); const names = has;
+    eachDig(o, (d) => { if (Array.isArray(d.doors) && d.doors.some((e) => e && ((e.f | 0) & 2))) has = true; if (d && d.ppl !== undefined) has = true; });
     if (!has) return o;
-    const c = JSON.parse(JSON.stringify(o)); eachDig(c, goIn); return c;
+    const c = JSON.parse(JSON.stringify(o)); eachDig(c, goIn); eachDig(c, (d) => { delete d.ppl; });   // names come beside the frame, never in it
+    if (names) pplIn(c, pp);
+    return c;
   }
   const STAMPS = ['to', 'from', 'ttl', 'rttl', 'rvia', 'lk', 'lkEp', 'tx', 'sigL', 'ppL', 'mpL', 'foL', 'l31L', 'swL', 'vAt', 'born', 'e1At',
     'direct', 'rl', 'yl', 'fhTo', 'fhOrig', 'fhTtl', 'fhId', 'fhTc', 'routing', 'rfinal', 'rdst', 'adoor', 'gwc', 'l18', 'dsat', 'aId', 'aCk', 'sgw', 'sgwCk'];
@@ -123,6 +156,7 @@
   const pick = (o, keys) => { const out = { t: o.t }; for (const k of keys) if (o[k] !== undefined) out[k] = o[k]; return JSON.stringify(out); };
   function coreOf(msgM, m) {
     const r = claimRule(m), o = msgM.writeMsg(m);
+    eachDig(o, (d) => { delete d.ppl; });   // SUB.11: the names ride beside the frame, outside its signature (as pd does)
     if (r && r.only) return pick(o, r.only);
     if (r && r.relay && m.rl) return pick(o, r.relay);
     for (const k of STAMPS) delete o[k];
@@ -481,7 +515,7 @@
       const prev = outq.get(to) || Promise.resolve();
       // An envelope's origin is its sender's word (any friend could write it): a frame I did not sign as its author carries my word that I am its origin.
       const os = (sponsored && claim !== layer.ids.nid(peer) && identity) ? originSign(to, f) : null;
-      const q = prev.then(() => blk).then((s4) => Promise.all([os, ordP, ocP]).then(([o, ord, ocl]) => { if (stopped && m.t !== 'LEAVE') return; const out = { t: 'MW2', f }; if (s4) out.s4 = s4; if (o) out.o = o; if (ord) out.ord = ord; if (ocl) out.oc = ocl; if (dir && typeof dir === 'object') out.dir = dir; if (pd) out.pd = pd; deliver(to, out); })).catch(() => {});
+      const q = prev.then(() => blk).then((s4) => Promise.all([os, ordP, ocP]).then(([o, ord, ocl]) => { if (stopped && m.t !== 'LEAVE') return; const out = { t: 'MW2', f }; if (s4) out.s4 = s4; if (o) out.o = o; if (ord) out.ord = ord; if (ocl) out.oc = ocl; if (dir && typeof dir === 'object') out.dir = dir; if (pd) out.pd = pd; { const pp = ppOf(f); if (pp) out.pp = pp; } deliver(to, out); })).catch(() => {});
       outq.set(to, q); q.then(() => { if (outq.get(to) === q) outq.delete(to); });
       return true;
     }
@@ -632,7 +666,7 @@
       if (via != null) layer.ids.learn(String(via));
       if (m.t === 'MW2') {   // a seat frame
         const msgM = GifOS.meshMsg; let f;
-        try { f = msgM.readMsg(fromWire(m.f)); } catch (e) { return; }
+        try { f = msgM.readMsg(fromWire(m.f, m.pp)); } catch (e) { return; }
         if (holdBye(m, f, via, direct)) return;
         const claim = claimOf(f), dir = direct === true, sponsored = origin != null;
         let proven = null;   // the envelope's origin, once proved: its own signature on this envelope, or the frame's verified author
@@ -1381,6 +1415,7 @@
       meetingCount() { return layer ? layer.meetingCount() : null; },
       doorCount() { return layer ? layer.doorCount() : null; },
       meetingFar() { return layer ? layer.meetingFar() : 0; },   // the people in the other rooms joined to mine (0: none)
+      meetingPeople() { return layer ? layer.meetingPeople() : []; },   // SUB.11: those people by name, per door, from the same fold as the count
       knownSub(r) { return !!penv && penv.knownSub(r); },
       standbyCands() { return layer ? layer.standbyCands() : []; },   // the display fold beside the seat (layer.js leaf)
       // App access to the wire's relay socket (the ONE socket): signaling
@@ -1531,5 +1566,5 @@
     return { n, at: at + n * tickMs, absent: 0 };
   }
 
-  GifOS.meshWire = { createMeshNode, goodbyeLive, wallTicks, wire: { toWire, fromWire }, claims: { CLAIMS, STAMPS, claimOf, coreOf, relayCoreOf, relayForm } };
+  GifOS.meshWire = { createMeshNode, goodbyeLive, wallTicks, wire: { toWire, fromWire, ppOf }, claims: { CLAIMS, STAMPS, claimOf, coreOf, relayCoreOf, relayForm } };
 })(typeof window !== 'undefined' ? window : globalThis);
