@@ -191,7 +191,7 @@
         if (s.closes.length > CLOSES_KEPT) s.closes.shift();
         if (onClose) { try { onClose(code == null ? 0 : code); } catch (e) {} }
         const needsToken = code === 4010 && prep && /join token/.test(String((ev && ev.reason) || ''));
-        if (code === 4016 || needsToken) { if (onTokenRefused) { try { onTokenRefused(code); } catch (e) {} } }
+        if (code === 4016 || needsToken) { if (onTokenRefused) { try { onTokenRefused(code, String((ev && ev.reason) || '')); } catch (e) {} } }
         else if (FATAL_CLOSES.indexOf(code) >= 0) s.rejected = code;
         else if (SLOW_CLOSES.indexOf(code) >= 0) slow = true;
         if (code === 4015) { s.busy = true; if (onBusy) { try { onBusy(); } catch (e) {} } }
@@ -321,6 +321,7 @@
     return n;
   }
   const POW_MAX = 1 << 28; // never spin forever on a relay asking for silly work
+  const POW_ASKS = 4;      // a relay that asks again (adaptive proof of work) is answered this many times per mint
   async function solvePowSubtle(pre, bits) {
     for (let i = 0; i < POW_MAX; i += 256) {
       const tries = [];
@@ -360,6 +361,7 @@
     const key = 'gifos_rt:' + o.sid;
     const fetchFn = o.fetch || ((u) => root.fetch(u, { cache: 'no-store', credentials: 'omit' }));
     let jt = '', rt = '', inflight = null, busyUntil = 0;
+    let want = 0;   // the bits a raised room asked for (4016 "join token needs N bits"); the next mint asks for them
     let mode = '';   // '' unknown, 'off' (the relay answered 404: it issues no tokens), 'on' (it asks for them)
     try { rt = (root.sessionStorage && root.sessionStorage.getItem(key)) || ''; } catch (e) { rt = ''; }
     // A token's expiry is the RELAY's time, so it is judged on the relay's clock: off = relay minus this device,
@@ -373,7 +375,7 @@
     const live = (t, dev) => { if (!t) return false; const x = tokenExp(t); return x.d === dev && x.e - (Date.now() + off) > TM.RELAY_TOKEN_SLACK_MS; };
     const token = (dev) => (live(rt, dev) ? rt : live(jt, dev) ? jt : '');
     const busy = () => { busyUntil = Date.now() + TM.RELAY_BUSY_WAIT_MS; if (o.onBusy) { try { o.onBusy(); } catch (e) {} } return 'wait'; };
-    const getJson = (dev, extra) => fetchFn(httpBase + '/t?sid=' + encodeURIComponent(o.sid) + '&dev=' + encodeURIComponent(dev) + (extra || ''))
+    const getJson = (dev, extra) => fetchFn(httpBase + '/t?sid=' + encodeURIComponent(o.sid) + '&dev=' + encodeURIComponent(dev) + (want > 0 ? '&want=' + want : '') + (extra || ''))
       .then((r) => r.json().catch(() => ({})).then((j) => { learn(j); return { status: r.status, j }; }));
     async function mint(dev) {
       let r;
@@ -392,12 +394,20 @@
         return 'go';
       }
       mode = 'on';
-      const pts = Number(r.j.now) || Date.now();   // the relay's clock: its window is about its time, not this device's
-      const pow = await solvePow(o.sid, dev, pts, r.j.powBits);
-      if (!pow) return 'wait';
-      try { r = await getJson(dev, '&pts=' + pts + '&pow=' + pow); } catch (e) { return 'wait'; }
-      if (r.status === 200 && r.j && r.j.jt) { jt = r.j.jt; return 'go'; }
-      if (r.status === 503) return busy();
+      // The relay may ask again with more bits (a solve back faster than an honest solver's: adaptive proof of
+      // work); each ask is answered in turn, a few times at most, then the socket waits and asks later.
+      for (let tries = 0; tries < POW_ASKS; tries++) {
+        const pts = Number(r.j.now) || Date.now();   // the relay's clock: its window is about its time, not this device's
+        const bits = r.j.powBits;
+        const pow = await solvePow(o.sid, dev, pts, bits);
+        if (!pow) return 'wait';
+        // ch: the relay's signed ask, echoed with its bits, so the relay times the solve on its own clock
+        const signed = typeof r.j.ch === 'string' && r.j.ch ? '&ch=' + encodeURIComponent(r.j.ch) + '&b=' + bits : '';
+        try { r = await getJson(dev, '&pts=' + pts + '&pow=' + pow + signed); } catch (e) { return 'wait'; }
+        if (r.status === 200 && r.j && r.j.jt) { jt = r.j.jt; want = 0; return 'go'; }
+        if (r.status === 503) return busy();
+        if (r.status !== 403 || !r.j || !(r.j.powBits > 0)) return 'wait';
+      }
       return 'wait';
     }
     const prepare = (dev) => {
@@ -412,7 +422,12 @@
       rt = t;
       try { if (root.sessionStorage) root.sessionStorage.setItem(key, t); } catch (e) {}
     };
-    const drop = () => { jt = ''; rt = ''; mode = 'on'; try { if (root.sessionStorage) root.sessionStorage.removeItem(key); } catch (e) {} };
+    const drop = (why) => {
+      jt = ''; rt = ''; mode = 'on';
+      const n = /needs (\d{1,3}) bits/.exec(String(why || ''));
+      if (n) want = Number(n[1]);
+      try { if (root.sessionStorage) root.sessionStorage.removeItem(key); } catch (e) {}
+    };
     return { prepare, token, setRejoin, drop, busy: () => Date.now() < busyUntil, mode: () => mode, skew: () => off };
   }
 

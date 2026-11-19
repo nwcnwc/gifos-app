@@ -712,7 +712,7 @@
         onClose: (code) => { relayCloses.push({ code, at: Date.now() }); if (relayCloses.length > RELAY_CLOSES_KEPT) relayCloses.shift(); },
         onDuty: () => !stopped,
         prepare: prepareTicket,
-        onTokenRefused: () => { if (ticket) ticket.drop(); },
+        onTokenRefused: (code, why) => { if (ticket) ticket.drop(why); },   // why: a raised room names the bits it wants
         onBusy: () => { if (opts.onBusy) { try { opts.onBusy(); } catch (e) {} } },
       });
       sock.door = atDoor;   // the room number this socket's URL names (sendRaw moves it when my door moves)
