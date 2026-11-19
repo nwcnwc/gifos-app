@@ -215,6 +215,7 @@
     onPipe(m) {
       if (this.state !== 3 || !this.hasCoord || this.coord.pc !== 0 || m.id < 0 || m.id !== m.from) return;
       { const pp = this.f.fabricPipePeers(this.id); if (pp.indexOf(m.id) < 0) { this.trace('SUB.4-NOPEER', this.id, this.coord, 'from=%d', m.id); return; } }
+      if (m.sr === this.sr) { if (this.pipeDig.delete(m.id)) { this.trace('SUB.4-SAMEDOOR', this.id, this.coord, 'peer=%d door=%d', m.id, this.sr); this.l10Mark(); } return; }   // SUB.4.1: a fold over a pipe from a seat of my own door is my room's own fold coming back (a standby that became the pipe after its far end walked in): it is no far room
       const u = dig.cloneDig(m.dgUp); this.rxDig(u); if (u.at < 0) return;
       u.doors = u.doors.filter((e) => !(e.id === this.sr || e.k < 0));   // my own door is never far (an echo)
       for (const e of u.doors) e.f = ((e.f & 1) | (e.id === m.sr ? ((e.f & 8) | 16) : 0)) & 255;   // SUB.10.4 HEARD: the sender's own door is marked (16), and only its entry may say "I heard your door walks" (8)
