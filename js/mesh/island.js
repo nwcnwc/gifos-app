@@ -36,7 +36,7 @@
         for (const g of list) { if (g < 0 || g === this.id) continue; this.l16List.push(g); if (this.l16List.length >= 32) break; }
         this.l16Next = 0; this.l16Busy.length = 0; this.l16Last = -1; this.l16Hedged = false;
         const f = lv.L16FAN < 0 ? K.L16_FAN : lv.L16FAN;
-        this.l16Wave(this.evilDoor || f === 0 || this.l8471() ? this.l16List.length : f); return;
+        this.l16Wave(this.evilDoor || f === 0 || this.l8471() || this.l8475() ? this.l16List.length : f); return;
       }
       let n = 0;
       for (const g of list) { if (g < 0 || g === this.id) continue; const w = newMsg('WHOHOME'); w.from = this.id; w.ttl = 60; this.emit(g, w); if (++n >= 32) break; }
@@ -56,7 +56,7 @@
       if (this.f.fabricDoors() && this.islandAskAt >= 0 && (this.l16Next < this.l16List.length || this.TICK - this.l16FreshAt < iw)) return false;
       if (this.l16Saw) { this.l16Saw = false; this.l16Backoff('silent'); return true; }   // a BUSY is evidence for its own round (C++: islandTick)
       if (this.l8471() && !this.islandLast && !o54) this.trace('L8.47.1-ONE', this.id, null, 'asked=%zu since=%d wait=%d', this.islandAsked.size, this.islandAskAt, iw);
-      if (!this.l8471() && this.islandAskN + 1 < K.ISLAND_ASKS) {   // L8.1.1: a silent round is the door's list of one moment, not the room: knock again (bounded) before founding
+      if (!this.l8471() && !this.l8475() && this.islandAskN + 1 < K.ISLAND_ASKS) {   // L8.1.1: a silent round is the door's list of one moment, not the room: knock again (bounded) before founding
         this.islandAskN++; this.trace('ISLAND-REASK', this.id, null, 'round=%d asked=%zu since=%d', this.islandAskN, this.lastGreeters.length, this.islandAskAt);
         // JOIN.1 (Nathan 2026-11-18, the join hang): after the FIRST silent round, also ask for the room's subrooms now, in
         // parallel with the next round, instead of only when about to found (islandFound, ~2 rounds later). A joiner whose
@@ -86,6 +86,24 @@
       const was = this.doorCallOn(); this.doorCallUntil = (this.TICK | 0) + K.DOORCALL_HOLD;
       if (!was) { this.trace('DOOR-CALLED', this.id, this.coord, 'by=%d for=%d', by, knocker); this.emitRelay(this.genKey); this.dwSent.clear(); }
       if (knocker >= 0 && knocker !== this.id && this.dwSent.size < 16 && !this.dwSent.has(knocker)) { this.dwSent.add(knocker); this.trace('DOOR-WORD', this.id, this.coord, 'to=%d', knocker); this.f.fabricDialJoin(this.id, knocker); }   // FHOP.8.2: registered, I dial the newcomer myself, once per newcomer per stand: the dial carries the door word
+    },
+
+    // C++: mesh_island.inc:Seat::doorDial
+    // TURN.5.4 A DIAL AT MY DOOR FROM A PAGE MY VIEW DOES NOT HOLD IS THE DOOR'S NEWS: I KNOCK. Two rooms can stand at one
+    // door (the door forgot the first and a newcomer founded on the empty list). The older room's seat reads the newcomer
+    // on its own registration's list; the newcomer reads the door again only on its greeter beat. The older head's dial is
+    // an offer over the relay that lands at the newcomer: a page at my door that my view does not hold. Its word opens
+    // nothing: a Section-1 seat dialled by a page that is neither in its view nor on the list it holds knocks once (the
+    // answer is the door's fresh list), one knock out at a time, once per page per RELAY_TTL, at most 8 pages remembered.
+    doorDial(g) {
+      if (this.state !== 3 || !this.hasCoord || this.coord.pc !== 0 || g < 0 || g === this.id) return;
+      for (const v of this.occ.values()) if (v === g) return;   // my view holds it
+      if (this.greetersAt >= 0 && this.TICK - this.greetersAt <= K.RELAY_TTL && this.lastGreeters.includes(g)) return;   // the list I hold names it
+      { const at = this.ddSeen.get(g); if (at !== undefined && this.TICK - at <= K.RELAY_TTL) return; }
+      if (this.ddSeen.size >= 8) { const old = []; for (const [x, at] of this.ddSeen) if (this.TICK - at > K.RELAY_TTL) old.push(x); for (const x of old) this.ddSeen.delete(x); if (this.ddSeen.size >= 8) return; }
+      const out = this.ddKnockAt >= 0 && this.TICK - this.ddKnockAt < K.FHOP_RELAY_ASK;
+      this.ddSeen.set(g, this.TICK); this.trace('TURN.5.4-DIAL-IN', this.id, this.coord, 'from=%d knock=%d', g, out ? 0 : 1);
+      if (!out) { this.ddKnockAt = this.TICK; this.emitRelay(this.genKey); }
     },
 
     // C++: mesh_island.inc:Seat::doorWord
@@ -246,7 +264,7 @@
     islandFound() {
       if (this.f.fabricSubAsk(this.id)) { this.trace('SUB.2-WAIT', this.id, null, 'asked=%zu', this.lastGreeters.length); this.l16Backoff('sub-ask'); return; }   // a joiner about to found on silence asks for the list of rooms first, and keeps knocking while the ask is open
       this.trace('ISLAND', this.id, null, 'asked=%zu since=%d rounds=%d reach=%d', this.lastGreeters.length, this.islandAskAt, this.islandAskN + 1, typeof this.f.fabricReachSeated === 'function' ? this.f.fabricReachSeated(this.id) : -1);   // reach: the oracle's count (netmatrix bar), -1 without groups
-      this.l850Seated = false; this.ehAt = -1; this.ehAskAt = -1; this.ehFrom.clear(); this.foundKnock = true;
+      this.l850Seated = false; this.ehAt = -1; this.ehAskAt = -1; this.ehFrom.clear(); this.foundKnock = true; this.found475 = this.l8475();
       this.islandAskAt = -1; this.islandAskN = 0; this.subEarly = false; this.islandLast = false; this.genKey = this.w.lv.URL_KEY ? this.w.lv.URL_KEY : this.myKey; /* a founder with no link key mints its own (C++: islandFound) */ const e = []; this.lineAt = this.TICK; /* L8.52.3: before take(): my registration at the door carries my epoch */ this.take({ pc: 0, r: 0, i: 0 }, -1, e); this.islandFounder = true; this.lineAdopt(this.id, this.TICK, 'found'); this.lineFork = true;
     },
 
