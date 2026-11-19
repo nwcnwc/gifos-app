@@ -31641,6 +31641,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         let pr = null; try { pr = stageEar.el.play(); } catch (e) {}
         if (pr && pr.then) pr.then(() => { if (typeof audioUnblocked === 'function') audioUnblocked(stageEar.el); }).catch((e) => audioBlocked(stageEar.el, e));
       }
+      if (typeof carryEars !== 'undefined') for (const a of carryEars) {
+        if (!a.srcObject || !a.paused || blockedAudio.has(a)) continue;
+        let pr = null; try { pr = a.play(); } catch (e) {}
+        if (pr && pr.then) pr.then(() => { if (typeof audioUnblocked === 'function') audioUnblocked(a); }).catch((e) => audioBlocked(a, e));
+      }
       if (typeof wkEar !== 'undefined' && wkEar && wkEar.el && wkEar.el.srcObject && wkEar.el.paused && !blockedAudio.has(wkEar.el)) {
         let pr = null; try { pr = wkEar.el.play(); } catch (e) {}
         if (pr && pr.then) pr.then(() => { if (typeof audioUnblocked === 'function') audioUnblocked(wkEar.el); }).catch((e) => audioBlocked(wkEar.el, e));
@@ -37353,6 +37358,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { if (stageEar && stageEar.el) out.add(stageEar.el); } catch (e) {}
       try { if (typeof wkEar !== 'undefined' && wkEar && wkEar.el) out.add(wkEar.el); } catch (e) {}
       try { for (const m of mosIn.values()) if (m && m.el && !m.el.muted) out.add(m.el); } catch (e) {}
+      try { if (typeof carryEars !== 'undefined') for (const e of carryEars) out.add(e); } catch (e) {}   // the carried voice's ear
       return out;
     }
     window.__meetSpeaker = () => { const els = [...audioCarriers()]; return { want: spkDeviceId, sinks: els.map((e) => String(e.sinkId || '')), voice: els.map((e) => { try { const st = e.srcObject; return !!(st && st.getAudioTracks && st.getAudioTracks().some((t) => t.readyState === 'live')); } catch (x) { return false; } }) }; };   // read-only: where each playing element sends sound, and whether it carries a voice at all
@@ -41175,7 +41181,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const ac = ensureAc(); if (!ac) return;
       if (!G.voice) {
         G.voice = GifOS.meetCarry.createVoice(ac, { onPacket: (b) => { if (G.link) G.link.sendAudio(b); } });
-        G.voice.ready.then(() => { if (G.voice && G.voice.output) G.voice.output.connect(ac.destination); carryGuestTick(); });
+        G.voice.ready.then(() => { if (G.voice && G.voice.output && !G.ear) G.ear = carryEar(G.voice.output); carryGuestTick(); });   // my ear: the room as my carrier hears it
       }
       G.link.sendText({ k: 'hello', name: myName() });
       G.micSaid = null;   // a new link hears my microphone's state afresh (carryGuestTick)
@@ -41187,6 +41193,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (why !== 'closed') return;   // the pipe re-pairs by itself; a closed link asks the next seat
       clearTimeout(G.askT);
       if (G.voice) { try { G.voice.stop(); } catch (e) {} G.voice = null; }
+      if (G.ear) { G.ear.stop(); G.ear = null; }
       G.src = null; G.srcTrack = null; G.link = null;
       queueMicrotask(carryGuestNext);
     }
@@ -41226,6 +41233,27 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       turnNote('carry ' + String(from).slice(0, 8) + ' asked to be carried');
       c.link.onTv(f);
     }
+    // The carried voice's ear, at both ends. The meeting context plays to no output device (newMeetAudioContext), so a voice
+    // wired to its destination is never heard. The carried voice plays the way every voice plays: through an element, which the
+    // speaker pick reaches (audioCarriers, applySpeaker) and a refused autoplay reports (audioBlocked); on WebKit through the
+    // page's one ear (wkEarSet).
+    const carryEars = new Set();
+    function carryEar(node) {
+      const dest = ac.createMediaStreamDestination(); node.connect(dest);
+      const el = new Audio(); el.autoplay = true;
+      const E = { el, stop() {
+        try { node.disconnect(dest); } catch (e) {}
+        if (el._wkVoice) { try { wkEarSet(el, null, 0); } catch (e) {} }
+        try { el.pause(); el.srcObject = null; } catch (e) {}
+        carryEars.delete(el); blockedAudio.delete(el);
+      } };
+      if (wkEarSet(el, dest.stream, 1)) return E;
+      el.srcObject = dest.stream; carryEars.add(el);
+      if (SINK_OK && spkDeviceId && typeof el.setSinkId === 'function') el.setSinkId(spkDeviceId).catch(() => {});
+      let pr = null; try { pr = el.play(); } catch (e) { audioBlocked(el, e); }
+      if (pr && pr.then) pr.then(() => audioUnblocked(el)).catch((e) => audioBlocked(el, e));
+      return E;
+    }
     function carryHostVouch(m) { for (const c of carryHosts.values()) c.link.onVouch(m); }
     function carryHostUp(c) {
       const ac = ensureAc(); if (!ac || c.voice) return;
@@ -41233,7 +41261,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       c.voice.ready.then(() => {
         if (!c.voice || !c.voice.output) return;
         c.out = ac.createMediaStreamDestination();          // what the room hears from me: my mic and the carried voice
-        c.voice.output.connect(c.out); c.voice.output.connect(ac.destination);   // I hear it too
+        c.voice.output.connect(c.out); c.ear = carryEar(c.voice.output);   // I hear it too
         carryVoiceTrack = c.out.stream.getAudioTracks()[0] || null;
         carryHostSync(c);
         c.tick = setInterval(() => carryHostSync(c), GifOS.timings.CARRY_LOOK_MS);
@@ -41280,6 +41308,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       clearInterval(c.tick);
       for (const x of c.srcs.values()) { try { if (x.n) x.n.disconnect(); } catch (e) {} try { x.gn.disconnect(); } catch (e) {} }
       if (c.voice) { try { c.voice.stop(); } catch (e) {} }
+      if (c.ear) { c.ear.stop(); c.ear = null; }
       if (!carryHosts.size) { carryVoiceTrack = null; try { refreshOutbound(); } catch (e) {} }
       if (c.mic) { try { broadcastStatus(); } catch (e) {} }   // my status speaks for me alone again
       turnNote('carry ' + String(c.far).slice(0, 8) + ' ended');
