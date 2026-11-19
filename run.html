@@ -13163,12 +13163,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function bridgeHolds(p, msg) {
       try { return !!(p && turnLinks && turnLinks.isLink(p.id) && GifOS.meetTurn.bridgeHolds(msg)); } catch (e) { return false; }
     }
+    // SUB.9.3: what does cross a bridge goes in its bridge form (a status beat without my subroom's own words).
+    function bridgeOut(p, msg) {
+      try { return p && turnLinks && turnLinks.isLink(p.id) ? GifOS.meetTurn.bridgeForm(msg) : msg; } catch (e) { return msg; }
+    }
     // Sealed frame over this pair's DataChannel (chat, files, relay control).
     const dcSend = (p, msg) => {
       if (p && p.wireHold) return p.wireHold.then(() => dcSend(p, msg)); // DEBUG lever, see renegotiate
       if (p && p.testTx) { p.testTx.push(msg); return Promise.resolve(); } // openLinkForTest: a channel that only records
       if (!p || !p.dc || p.dc.readyState !== 'open') return Promise.resolve();
       if (standbyHolds(p, msg) || bridgeHolds(p, msg)) return Promise.resolve();
+      msg = bridgeOut(p, msg);
       if (turnWeb.size && (msg.k === 'roffer' || msg.k === 'ranswer' || msg.k === 'sig')) { const w = turnWeb.get(p.id); if (w && w.channel(msg)) return Promise.resolve(); }   // the web path negotiates with its end in this page
       const dc = p.dc;
       if (typeof clog === 'function') dcTally(msg); // DEBUG: what the channel bytes are
@@ -41109,7 +41114,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!C || !C.supported()) { setStatus(uiText('stCarryNoWay', 'This browser has no way to join a call: it has no WebRTC and no WebCodecs audio.'), true); return; }
       const ticket = net.relayTicket ? net.relayTicket({ relayBase, sid: sessId }) : null;
       const G = carryG = { relayBase, gk, why: why || '', door: null, link: null, voice: null, far: null, tried: new Set(), list: [], askT: null, src: null, srcTrack: null, at: Date.now() };
-      setStatus(uiText('stCarryLooking', 'Joining through a seat of the meeting (this browser has no WebRTC)…'), 0, 'note');
+      // the line names why I am carried: no RTCPeerConnection at all, or one whose connection gathers no candidate (a policy, the network)
+      G.said = /no candidate/.test(G.why) ? uiText('stCarryLookingNoPath', 'Joining through a seat of the meeting (this browser\'s connections find no network path)…') : uiText('stCarryLooking', 'Joining through a seat of the meeting (this browser has no WebRTC)…');
+      setStatus(G.said, 0, 'note');
       const url = () => (ticket ? ticket.prepare(myDevHash).catch(() => null) : Promise.resolve()).then(() => relayBase + '/s/' + sessId + '?role=mesh&pv=0.9.25&token=' + encodeURIComponent(sessTok || '')
         + '&peer=' + encodeURIComponent(myId) + '&gk=' + encodeURIComponent(gk) + '&dev=' + encodeURIComponent(myDevHash) + '&pw=' + encodeURIComponent(pwProof)
         + (ticket && ticket.token(myDevHash) ? '&jt=' + encodeURIComponent(ticket.token(myDevHash)) : ''));
@@ -41147,7 +41154,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       G.link.sendText({ k: 'hello', name: myName() });
       G.micSaid = null;   // a new link hears my microphone's state afresh (carryGuestTick)
-      setStatus(uiText('stCarryUp', 'In the meeting through another seat (this browser has no WebRTC).'), 0, 'note');
+      G.said = /no candidate/.test(G.why) ? uiText('stCarryUpNoPath', 'In the meeting through another seat (this browser\'s connections find no network path).') : uiText('stCarryUp', 'In the meeting through another seat (this browser has no WebRTC).');
+      setStatus(G.said, 0, 'note');
     }
     function carryGuestDown(why) {
       const G = carryG; if (!G) return;
@@ -41254,7 +41262,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     async function carryForTest() {
       const one = async (link, voice) => ({ link: link ? link.info() : null, pipe: link ? await link.stats() : null, voice: voice ? await voice.stats() : null });
       const log = turnLog.filter((x) => / carry /.test(x)).slice(-30);
-      if (carryG) return Object.assign({ role: 'carried', why: carryG.why, pcGathers, far: carryG.far, list: carryG.list.length, log }, await one(carryG.link, carryG.voice));
+      if (carryG) return Object.assign({ role: 'carried', why: carryG.why, said: carryG.said || null, pcGathers, far: carryG.far, list: carryG.list.length, log }, await one(carryG.link, carryG.voice));
       const out = [];
       for (const c of carryHosts.values()) out.push(Object.assign({ far: c.far, name: c.name, mic: c.mic == null ? null : !!c.mic, srcs: c.srcs.size, track: !!carryVoiceTrack }, await one(c.link, c.voice)));
       return { role: out.length ? 'carrier' : 'none', pcGathers, muted: !!myStatus.muted, saysMuted: !!carryStatusOut(myStatus).muted, carried: out, log };
@@ -41311,6 +41319,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     window.__gifosVideo = {
       carryForTest: () => carryForTest(),
       statusMutedForTest: (id) => { const st = statusOf.get(String(id)); return st ? !!st.muted : null; },   // what this page reads of a peer's mute (the carrier's status, CARRY)
+      statusOfForTest: (id) => { const st = id === 'me' ? carryStatusOut(myStatus) : statusOf.get(String(id)); return st ? { muted: !!st.muted, camOff: !!st.camOff, at: st.at || 0, rxAge: st.rx ? Date.now() - st.rx : null } : null; },   // a peer's held status, or 'me': what my beat says (a carrier's mute speaks for its carried page): the status-cross rooms
       seedGalleryForTest: (spec) => seedGalleryForTest(spec),
       // A seat whose device never sent a name (joined from a link, no name typed).
       clearNameForTest: (id) => {

@@ -1608,13 +1608,15 @@
   // SUB.9 WHAT CROSSES A SUBROOM BRIDGE (Nathan 11-15). Every TURN link joins two subrooms (two offices, or a blocked seat
   // that is a subroom of one), and each subroom runs its own mesh: its upkeep stays home. bridgeHolds(msg) -> true: the
   // frame never goes on a bridge's channel.
-  //   UPKEEP (held): a seat frame (MW2) other than the PIPE fold (the far end drops it anyway, SUB.1), the status plane
-  //     (sig 'status': my beat to my own links and section), section-scoped gossip (GSPS).
+  //   UPKEEP (held): a seat frame (MW2) other than the PIPE fold (the far end drops it anyway, SUB.1), section-scoped gossip
+  //     (GSPS: the section flood of the status beat among them).
   //   CONTENT (crosses, once per event): room-wide gossip (chat, transcript lines, TURN facts, subscriptions, goodbyes), who
   //     is talking (vtalk), the PIPE fold (the far roster, hands, Stage, talk), the sound announce (mx) and media. Once: a
   //     bridge gets no refan copy and no backlog replay (js/mesh/page/layer.js).
-  //   LINK (crosses): the link's own words (tv: handshake, standby, the SUB.8 direct-path probe list) and its own
-  //     connection's upkeep (renegotiation, ICE, channel auth).
+  //   LINK (crosses): the link's own words (tv: handshake, standby, the SUB.8 direct-path probe list), its own
+  //     connection's upkeep (renegotiation, ICE, channel auth), and each end's own status beat (SUB.9.3, Nathan 11-19: a TURN
+  //     link is an ordinary mesh link, free TURN carries everything but video): mute, camera, hand, name cross as on any
+  //     link (the sim's beat rides every open link, the pipe's too), in the bridge form (bridgeForm).
   //   THIRD-SEAT SIGNALLING (held, SUB.9.2): a friend-hop ask for a seat of the far subroom and what it forwards (fsig, fhi,
   //     fmesh) and the carry it sets up (relay-req and its answers). Seats of two subrooms never pair over a bridge: SUB.1
   //     drops their frames, and SUB.8's direct-path probe dials over the relay (pk42 on the tip: 60-80 KB of fsig on a
@@ -1625,15 +1627,24 @@
     if (!msg || typeof msg !== 'object') return false;
     if (THIRD_SEAT.has(msg.k)) return true;
     if (msg.k === 'mesh') { const m = msg.m || {}, t = m.t === 'MW2' && m.f ? m.f.t : m.t; return m.t === 'GSPS' || (m.t === 'MW2' && t !== 'PIPE'); }
-    if (msg.k === 'sig') return !!(msg.msg && msg.msg.kind === 'status');
     return false;
+  }
+  // SUB.9.3 THE BRIDGE FORM OF A STATUS BEAT: the beat as it is, without the words that serve my own subroom only: the
+  // friend-hop words (conns, tc, nat, nt, cls, ft: who I hold and my networks, read only to ask a carrier for a peer of
+  // my own subroom, SUB.9.2) and the room's moderation table (mod, modw: room gossip carries it across once a change).
+  // Any other frame goes as it is. The far end takes the beat as any link's; status is section-scoped, so it goes no further.
+  const STATUS_HOME = ['conns', 'tc', 'nat', 'nt', 'cls', 'ft', 'mod', 'modw'];
+  function bridgeForm(msg) {
+    if (!msg || msg.k !== 'sig' || !msg.msg || msg.msg.kind !== 'status') return msg;
+    const m = Object.assign({}, msg.msg); for (const k of STATUS_HOME) delete m[k];
+    return Object.assign({}, msg, { msg: m });
   }
 
   const api = {
     DEFAULT_WORKER, WORKER_KEY, FETCH_TIMEOUT_MS, RETRY_BASE_MS, RETRY_MAX_MS, SIDE_MAX, STANDBY_SWITCH_MS, THROTTLE_LOOK_MS, THROTTLE_UP_MS,
     THROTTLE_STEPS, THROTTLE_LOSS, throttlePlan, throttleNext, stepOf, voiceLow,
     retryDelayMs, parseIce, hasTurnServer, webHostOk, workerBase, askIce, askSub, createCredentials,
-    vouchToken, vouchParts, tvOk, TV_KEYS, bridgeHolds, linkId, clientEnd, pausedBy, stripPaused, vouchRank, vouchPlan, vouchPayers, budgetTicket, subsPresent, createLinks,
+    vouchToken, vouchParts, tvOk, TV_KEYS, bridgeHolds, bridgeForm, linkId, clientEnd, pausedBy, stripPaused, vouchRank, vouchPlan, vouchPayers, budgetTicket, subsPresent, createLinks,
   };
   GifOS.meetTurn = api;
   if (isNode) module.exports = api;
