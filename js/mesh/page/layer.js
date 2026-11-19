@@ -81,6 +81,7 @@
   function eachName(d, who, tag) {
     const les = (x) => { for (const f of ['hands', 'stage', 'apps', 'talk']) for (const e of arr(x[f])) if (e) who(e.id); };
     les(d); for (const r of arr(d.rows)) if (r) les(r);
+    for (const e of arr(d.ppl)) if (e) who(e.id);   // SUB.11: the people a fold names beside a door's count
     for (const v of arr(d.votes)) if (v) tag(v.tgt);
   }
 
@@ -357,6 +358,19 @@
     // meetingFar(): the people in the OTHER rooms of the meeting joined to mine (SUB.4 far form, per door), as my seat's fold
     // counts them: 0 with no joined room or no fold yet. Every seat of my room reads it, not only a pipe's end.
     function meetingFar() { const s = raw(); if (!s || s.state !== 3 || !s.hasCoord) return 0; const d = s.rootDig; if (!d || d.at < 0) return 0; let far = 0; for (const e of d.doors || []) if (e.k > 0) far += e.k; return far; }
+    // meetingPeople(): SUB.11 the people of the OTHER rooms of the meeting by name, read from the fold that counts them (one
+    // report, one clock): per far door { door, n: its count, people: [{ id, nm, dv }] } (id null, nm '' until that person's
+    // facts are here). n - people.length people are a count only ("and N more").
+    function meetingPeople() {
+      const s = raw(); if (!s || s.state !== 3 || !s.hasCoord) return []; const d = s.rootDig; if (!d || d.at < 0) return [];
+      const t = s.TICK, out = [];
+      for (const e of d.doors || []) {
+        if (!(e.k > 0)) continue; const people = [];
+        for (const p of d.ppl || []) { if (p.k !== e.id) continue; const f = facts.get(p.id); if (f && f.seen !== Infinity) f.seen = t; const id = P(p.id); people.push({ id: id != null ? id : (f ? f.p : null), nm: f ? f.nm : '', dv: f ? f.dv : '' }); }
+        out.push({ door: e.id, n: e.k, people });
+      }
+      return out;
+    }
     // standbyCands(): the other Section-1 seats of my room as my view holds them, in the order to try them for my room's end
     // of a second joining connection: the row heads (by row), then the next seats of my own row (by column), then the
     // rest (by row, column). Each is { pid, dev, head, r, i } (dev: its device word, '' until heard; r, i: its row and
@@ -442,7 +456,7 @@
     // seen(gid, lk): a gossip frame I already took, one behind its source's mark, or a copy over a channel whose copy of it
     // was refused for that channel (the wire skips the signature check for all three)
     const seen = (gid, lk) => typeof gid === 'string' && (gseen.has(gid) || gref.has(copyKey(gid, lk)) || gstale(gid, gid.slice(0, gid.lastIndexOf(':'))));
-    return { ids, view, gossip, gossipRecv, countForged: () => { counters.gspForged++; }, seen, setKicks, kickTally, kickDevs, kickCarry, kicked, setLeaf, setRefuses, roomDigest, meetingCount, doorCount, meetingFar, standbyCands, sideOut, sideIn, afterTick, bump };
+    return { ids, view, gossip, gossipRecv, countForged: () => { counters.gspForged++; }, seen, setKicks, kickTally, kickDevs, kickCarry, kicked, setLeaf, setRefuses, roomDigest, meetingCount, doorCount, meetingFar, meetingPeople, standbyCands, sideOut, sideIn, afterTick, bump };
   }
 
   const api = Object.freeze({ create, makeIds });

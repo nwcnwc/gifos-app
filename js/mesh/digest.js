@@ -417,6 +417,7 @@
         if (this.stageT) d.stage.push({ id, k: this.stageT, f: this.stageF });
         if (this.appT) d.apps.push({ id, k: this.appT, f: 0 });
         { this.talkExpire(); const te = this.talkEntry(); if (te) d.talk.push(te); }   // L6.2: my own place in the stage set
+        if (d.n === 1 && this.dRoot().doors.length) d.ppl.push({ id: this.id, k: -1, f: 0 });   // SUB.11: while my room fold lists a far door I name myself beside my count
         if (this.away) d.awayN = 1;
         else {
           const u = new Set(), w = new Set();

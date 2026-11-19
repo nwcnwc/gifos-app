@@ -164,6 +164,7 @@
       if (this.pipeBase.at >= 0) { for (const [k, e] of this.pipeDig) if (k !== peer) dig.digFold(mine, e); dig.digTrim(mine); }
       const h = { R: msg.newDig() }; this.rootFold(false, h, mine); const R = h.R;
       const o = msg.newDig(); o.at = R.at; o.rx = R.rx; o.by = this.id; o.handN = R.handN; o.awayN = R.awayN; o.hands = R.hands; o.stage = R.stage; o.apps = R.apps; o.talk = R.talk; o.doors = R.doors.map(dig.cloneLE); dig.doorsAdd(o.doors, this.sr, dig.digSeats(R), (this.dRoot().go >= 0 || this.f.fabricSubGo(this.id) >= 0) ? 1 : 0);   /* SUB.10.4: my door is walking */
+      o.ppl = R.ppl.map(dig.cloneLE); for (const e of o.ppl) if (e.k < 0) e.k = this.sr; dig.pplTrim(o.ppl, o.doors, 0);   /* SUB.11: my door's people leave under my door's number, beside its count */
       return o;
     },
     // C++: mesh_island.inc:Seat::knownSub
@@ -210,6 +211,7 @@
       { const pp = this.f.fabricPipePeers(this.id); if (pp.indexOf(m.id) < 0) { this.trace('SUB.4-NOPEER', this.id, this.coord, 'from=%d', m.id); return; } }
       const u = dig.cloneDig(m.dgUp); this.rxDig(u); if (u.at < 0) return;
       u.doors = u.doors.filter((e) => !(e.id === this.sr || e.k < 0));   // my own door is never far (an echo)
+      u.ppl = u.ppl.filter((e) => !(e.k < 0 || e.k === this.sr)); dig.pplTrim(u.ppl, u.doors, 0);   // SUB.11: far names only, each under a door the fold counts, no more than it counts
       u.go = -1; u.n = 0; u.leased = 0; u.held = 0; u.refuse = 0; u.part = 0; u.freeC = 0; u.dmin = 99; u.rows = []; u.votes = []; u.kick = []; u.kabs = 0; u.kl = []; u.kOwn = msg.newKStmt();   // far form, whatever arrived: nothing of another room is a seat of mine
       const was = this.pipeDig.get(m.id); this.l10Dirty(was !== undefined ? was : null, u); if (was === undefined) { this.trace('SUB.4-PIPE', this.id, this.coord, 'peer=%d far=%d', m.id, dig.digFar(u)); this.l10Mark(); }
       this.pipeDig.set(m.id, u); if (this.pipeBase.at < 0) this.pipeBase = dig.cloneDig(this.myDig);

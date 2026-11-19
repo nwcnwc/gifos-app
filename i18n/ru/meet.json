@@ -228,6 +228,7 @@
  "meet.waitSelf": "Ведущий впустит вас",
  "meet.waitSelfNote": "Вы увидите эту встречу, когда вас допустят.",
  "meet.rosterPeople": "участников",
+ "meet.rosterAndMore": "и ещё {n}",
  "meet.rosterFind": "Найти имя",
  "meet.waitRoom": "Зал ожидания",
  "meet.waitOn": "Вкл.",

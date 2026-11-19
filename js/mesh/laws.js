@@ -56,6 +56,7 @@
     KNOCK_FRESH: 40,             // a FIND from x within this long means x is knocking (split-off guard)
     K_APP: 3,                    // digest list cap: apps
     K_HAND: 8,                   // digest list cap: raised hands
+    K_NAMED: 12,                 // SUB.11: digest list cap: the people of one door told by name beside its count (docs/turn-0926.md 3a has the derivation from the fold's size budget)
     K_STAGE_PER_C: 2,            // digest list cap: stage entries, two per seat in a row
     K_VOTE: 16,                  // digest list cap: votes
     L10_BUCKET_BURST: 2,         // L10: a receiver accepts this many state messages in a burst from one sender per state class
