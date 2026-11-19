@@ -46,6 +46,7 @@
  *   fabricVerdict        A1     the seat's death verdicts (DEATH_WHY), drained by the page's departure intake
  *   fhopActive           A1     true where the page gave a friend-hop face (o.fhop), as the sim's LINKMODEL (friend-hop has no off switch)
  *   fhopFriendFor        A1     sponsorSend's friend rung would carry it (o.fhop.friendFor)
+ *   fabricSubProbe       A1     JOIN.2, my first ask stalled: o.sub.probe() (true: the page now dials the heads of the other doors the relay lists)
  *   fabricSubAsk         A1     a joiner about to found a room on silence: o.sub.ask() (true: the page's ask for the list of rooms is open)
  *   fabricPipePeers      A1     the far ends of my joining connections that are up (o.sub.pipeEnds(), read once a tick)
  *   fabricSubDoor        A1     my own knock found my door empty: o.sub.doorEmpty() (the page asks for a fresh grant for my door)
@@ -515,6 +516,7 @@
       if ((out.length !== pipeNow.length || out.some((x, i) => x !== pipeNow[i])) && s.state === 3 && s.hasCoord) { s.l10Mark(); s.l10Force = true; woken = true; }
       pipeNow = out;
     }
+    const fabricSubProbe = (id) => { const s = seat(); return (id === me && s && s.sr === 0 && subF && subF.probe && subF.probe()) ? 1 : 0; };
     const fabricSubAsk = (id) => { const s = seat(); return (id === me && s && s.sr === 0 && subF && subF.ask && subF.ask()) ? 1 : 0; };
     const fabricPipePeers = (id) => (id === me ? pipeNow.slice() : []);
     const fabricSubDoor = (id) => { if (id === me && subF && subF.doorEmpty) subF.doorEmpty(); };
@@ -530,7 +532,7 @@
       fabricAdmitLog: noop, fabricDupMint: noop, fabricNoteBackoff: noop, fabricNoteReseat: noop, fabricNoteRollback: noop,
       fabricNoteSwap: noop, fabricVerdict: deaths.verdict, l18UxDeliv: noop, descEnd: noop, descNote: noop, g4Joined: noop,   // g4Joined: the sim's L40 contest lever only (X1 55c97d1)
       fabricFreeCells, fabricLieFor: () => null, fabricUnreachable, fhopActive: () => !!fh, fhopFriendFor,
-      fabricDoorNet, fabricSubAsk, fabricPipePeers, fabricSubDoor, fabricSubRepipe,
+      fabricDoorNet, fabricSubAsk, fabricSubProbe, fabricPipePeers, fabricSubDoor, fabricSubRepipe,
       fabricMyTier: () => ((measure.tier ? measure.tier() : E.TIER_DESKTOP) | 0),
       fabricMyNat: () => ((measure.nat ? measure.nat() : E.NAT_OPEN) | 0),
       fabricLeft: () => leaveNow(false), fabricReloadBye: () => leaveNow(true),
