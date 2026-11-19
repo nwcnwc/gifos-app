@@ -1038,7 +1038,7 @@
     // ---- THE DOOR RE-GRANT (the relay restarted and forgot my door r > 0: my seat heard tag 3) -------------------------
     // One ask for a fresh grant for my own door; the page hands it to the seat (meshNode.subGo(r, sg)), which re-mints the
     // door. A re-grant still out (another seat of my room asked): ask again after TURN_DIAL; refused: after TURN_RETRY.
-    const rg = { want: false, st: 'idle', retryAt: 0, out: null, gen: 0 };
+    const rg = { want: false, st: 'idle', retryAt: 0, out: null, gen: 0, net: false, gone: 0 };
     function regrantStep(now) {
       if (!rg.want || rg.st !== 'idle' || now < rg.retryAt || !io.askSub) return;
       rg.st = 'busy'; const g = ++rg.gen;
@@ -1048,12 +1048,17 @@
         return io.askSub({ room: String(io.sid()), doors: d, regrant: 1 });
       }).then((a) => {
         if (g !== rg.gen) return;
-        rg.st = 'idle';
+        rg.st = 'idle'; rg.net = !a;   // no door list, or no answer: the wait that follows is for my own connection (relayBack ends it)
+        if (a) netBack();   // the relay gave its door list and the service answered: my connection is back (TURN.10.1)
         if (a && Number.isInteger(a.r) && a.r > 0 && typeof a.sg === 'string') { rg.want = false; rg.out = { r: a.r, sg: a.sg }; log('turn-sub door ' + a.r + ' re-granted'); }
         else if (a && a.live) { rg.want = false; log('turn-sub door has greeters again'); }
+        // SUB.10.8: the service holds no subroom of my door's number (its record lapsed: no pipe credential was renewed in
+        // time) and the relay holds no door for it: nothing can mint that door again, and no re-pipe is granted to a page
+        // that is no greeter of it. The subroom is gone; its seats are joiners of door 0 (the seat reads gone()).
+        else if (a && a.unavailable === 'no-room' && io.sub && io.sub() > 0) { rg.want = false; rg.gone = io.sub(); sub.repipe = false; log('turn-sub door ' + rg.gone + ' is gone: the service holds no such subroom'); }
         else if (a && a.pending === 'opening') rg.retryAt = io.now() + RESEND_MS;
         else rg.retryAt = io.now() + RETRY_MS;
-      }, () => { if (g === rg.gen) { rg.st = 'idle'; rg.retryAt = io.now() + RETRY_MS; } });
+      }, () => { if (g === rg.gen) { rg.st = 'idle'; rg.net = true; rg.retryAt = io.now() + RETRY_MS; } });
     }
 
     // ---- THE WARM STANDBY ---------------------------------------------------------------------------------------------
@@ -1386,6 +1391,10 @@
     // asks for a re-pipe after TURN_RETRY. A JOINER reads only the first: a page that left its cell (TURN.5.3: the firewall
     // that cut it also failed its old links) asks at the door as any joiner, not 30 s after a link of the seat it left died
     // (room new-r9, 2026-11-19: 42 s at the door beside the subroom its mates had founded).
+    // TURN.10.1: a refusal that was my own connection's (no door list from the relay, no answer from the service) named
+    // nothing but that connection. It is back (my relay socket opened again, or the service answered an ask made with a
+    // fresh door list): the wait ends and the ask goes again now.
+    function netBack() { if (sub.lastWhy === 'no-doors' || sub.lastWhy === 'no-answer') { sub.lastWhy = ''; subChanged('my connection to the relay'); } }
     function subChanged(what) { if (sub.mult > 1) { sub.mult = 1; if (sub.st === 'idle' && sub.retryAt > io.now()) sub.retryAt = io.now(); log('turn-sub ' + what + ' changed: ask again now'); } }
     function subIdle(now, out, retryAt) { sub.st = 'idle'; sub.token = null; sub.retryAt = retryAt || 0; sub.out = out; sub.gen++; }
     function subDoors(withToken) {
@@ -1626,6 +1635,9 @@
         if (sub.repipe && now >= Math.max(sub.retryAt, sub.pipeRetryAt)) return true;
         return !!rg.out || (rg.want && (rg.st !== 'idle' || now >= rg.retryAt));
       },
+      // TURN.10.1: my relay socket is open again (netBack above). A refusal the service made (no far end, the budget, the
+      // rate) is untouched; a door re-grant that failed for want of a connection is asked again too.
+      relayBack() { netBack(); if (rg.want && rg.net && rg.st === 'idle') { rg.net = false; rg.retryAt = 0; } },
       // The subroom ask stands refused (no far end, the budget, the pool down) and its wait has not run out: no relayed
       // connection can be had for now.
       refused() { const o = sub.out; return !!(o && o.refused && io.now() < o.retryAt); },
@@ -1638,6 +1650,8 @@
       // JOIN.2: the seat's first ask at door 0 stalled: dial the heads of the other doors the relay lists. true: a probe starts or is out
       probe() { if (!(io.sub && io.sub() === 0) || !io.tdoors || !io.probeDoor) return false; if (sub.st === 'probe' && sub.asker === 'probe') return true; if (sub.st !== 'idle' || (sub.out && sub.out.refused) || io.now() - sub.probeAt < PROBE_GAP_MS) return false; sub.wantProbe = true; return true; },
       regrant() { const o = rg.out; rg.out = null; return o; },
+      // SUB.10.8: my door's subroom is gone (see regrantStep): its number while my seat still sits at that door, else -1
+      gone() { if (rg.gone > 0 && io.sub && io.sub() !== rg.gone) rg.gone = 0; return rg.gone > 0 ? rg.gone : -1; },
       // SUB.10: the door my subroom walks to as my pipe end says it (-1 none); may my seat walk now; did it walk lately (a path beats the tag)
       go() { return walkGo(); },
       walk(n, p) { return walkMay(n, p); },

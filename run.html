@@ -18343,7 +18343,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (typeof RTCPeerConnection !== 'function') { carryInstead('no RTCPeerConnection'); return; }   // no connection at all: carried by a seat (docs/turn-carry.md)
       meshNode = GifOS.meshWire.createMeshNode({
         relayUrl: relay.replace(/\/$/, ''),
-        onRelayFail: () => relayConnectFailed(), onRelayOpen: () => relayConnectOpened(),   // a relay that never answers is left (relayUrl)
+        onRelayFail: () => relayConnectFailed(), onRelayOpen: () => { relayConnectOpened(); try { if (turnLinks) turnLinks.relayBack(); } catch (e) {} },   /* TURN.10.1: an ask refused because my connection was away goes again */   // a relay that never answers is left (relayUrl)
         sid: sessId, tok: sessTok, key: roomE2E, identity, tickMs: 500,
         levers: { ISLAND_MODE: 1, URL_KEY: (parseInt(String(urlKeyHex).slice(0, 8), 16) | 1) >>> 0 },   // islands found under the meeting key (above)
         oldKeys: [prevRoomE2E, openKey].filter((k, i, all) => k && k !== roomE2E && all.indexOf(k) === i),   // a door blob one of these opens is behind me, not ahead (mesh-wire R6)
