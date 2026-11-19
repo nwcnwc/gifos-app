@@ -234,6 +234,12 @@ setInterval(() => {   // a template that never came back is asked for again
 function onMedia(e, u) {   // an opened media frame: [kind][key][track, 2 bytes][the encoded frame]
   if (u.length < 4) return;
   const kind = u[0] === 1 ? 'video' : 'audio', key = (u[1] & 1) === 1, g = (u[2] << 8) | u[3];
+  if (e.raw) {   // a raw end (createRawEnd): the page decodes the frame itself
+    if (kind === 'audio') e.st.rxA++; else e.st.rxV++;
+    const data = u.buffer.slice(u.byteOffset + 4, u.byteOffset + u.length);
+    postMessage({ op: 'media', end: e.id, g, kind, key, data }, [data]);
+    return;
+  }
   const p = e.pipes.get(g);
   if (!p) { e.st.rxDrop++; return; }
   const bytes = u.buffer.slice(u.byteOffset + 4, u.byteOffset + u.length);
@@ -314,6 +320,7 @@ onmessage = (ev) => {
   if (m.op === 'open') {
     try { if (e.ws) { e.ws.onclose = e.ws.onmessage = null; e.ws.close(); } } catch (err) {}
     unkey(e, false);
+    e.raw = !!m.raw;
     let ws;
     try { ws = new WebSocket(m.url); } catch (err) { postMessage({ op: 'sock', end: m.end, ev: 'close', code: 0 }); return; }
     ws.binaryType = 'arraybuffer'; e.ws = ws;
@@ -351,6 +358,13 @@ onmessage = (ev) => {
     for (const f of pre) openIn(e, f[0], f[1]);
   }
   else if (m.op === 'ctl') ctl(e, m.m);
+  else if (m.op === 'raw') {   // a raw end's own encoded frame (createRawEnd): audio skips a backed-up socket, as a tap does
+    const ws = e.ws;
+    if (!ws || ws.readyState !== 1 || !e.sec || (m.kind === 'audio' && ws.bufferedAmount + e.txPend > HIGH_AUDIO)) { e.st.txDrop++; return; }
+    const d = new Uint8Array(m.data), out = new Uint8Array(d.length + 4);
+    out[0] = m.kind === 'video' ? 1 : 2; out[1] = m.key ? 1 : 0; out[2] = (m.g >> 8) & 255; out[3] = m.g & 255; out.set(d, 4);
+    if (sealOut(e, 1, out)) { if (m.kind === 'video') e.st.txV++; else e.st.txA++; } else e.st.txDrop++;
+  }
   else if (m.op === 'dc') sealOut(e, 2, TE.encode('d' + m.data));
   else if (m.op === 'carrier') { const p = pipeFor(e, m.g, 'video'); try { p.cw = m.writable.getWriter(); } catch (err) { p.cw = null; } p.needKey = true; p.q.length = 0; }
   else if (m.op === 'unpipe') { e.pipes.delete(m.g); }
@@ -769,7 +783,94 @@ onmessage = (ev) => {
     return E;
   }
 
-  const api = { supported, videoOk, createEnd, sections, renameStreams, sealCore, hsHello, hsAccept, hsKeys };
+  // createRawEnd(o) → one end of a sealed pipe with no connection behind it (docs/turn-carry.md: a carried page and its
+  // carrier). The same worker, socket, pairing, key agreement and seal as createEnd; what passes is the page's own:
+  // encoded media frames in (sendMedia) and out (o.onMedia), and must-arrive text both ways (sendText, o.onText).
+  // o = { url, auth, me, peer, seal, open, sign, verify, log, onState(s), onMedia(g, kind, key, ArrayBuffer), onText(s) }
+  // States: connecting, waiting (my socket is in, the far one is not), keying, up, refused, closed.
+  function createRawEnd(o) {
+    const id = 't' + (++endSeq);
+    const w = ensureWorker();
+    const log = (s) => { try { if (o.log) o.log(s); } catch (e) {} };
+    const E = { id, state: 'connecting', paired: false, closed: false };
+    let hs = null, retryT = null, retryN = 0, statsSeq = 0;
+    const statsWait = new Map();
+    const canSeal = !!(o.me && o.peer && o.me !== o.peer && o.seal && o.open && o.sign && o.verify && root.crypto && root.crypto.subtle);
+    const setState = (s) => { if (E.state === s) return; E.state = s; log('carry pipe ' + s); try { if (o.onState) o.onState(s); } catch (e) {} };
+    const post = (m, tr) => { m.end = id; try { tr ? w.postMessage(m, tr) : w.postMessage(m); } catch (e) {} };
+    function keyUp(round) {
+      E.paired = false;
+      const h = hs = { round, mine: null, far: null, done: false };
+      setState('keying');
+      hsHello(o.me, o.peer, o.sign).then((mine) => {
+        if (hs !== h || E.closed) return null;
+        h.mine = mine;
+        return Promise.resolve(o.seal(mine.msg)).then((env) => { if (hs === h && !E.closed) { post({ op: 'hs', round, data: JSON.stringify(env) }); keyDone(h); } });
+      }).catch((e) => log('carry key agreement failed: ' + (e && e.name)));
+    }
+    function keyIn(m) {
+      const h = hs;
+      if (!h || h.round !== m.round || h.far || h.gotFar) return;
+      let env = null; try { env = JSON.parse(m.data); } catch (e) {}
+      if (!env) return;
+      h.gotFar = true;
+      Promise.resolve(o.open(env)).then((msg) => hsAccept(o.me, o.peer, msg, o.verify)).then((far) => {
+        if (hs !== h || E.closed) return;
+        if (!far) { h.gotFar = false; log('carry: a key statement that is not the far seat\'s was refused'); return; }
+        h.far = far; keyDone(h);
+      }).catch(() => { h.gotFar = false; });
+    }
+    function keyDone(h) {
+      if (hs !== h || h.done || !h.mine || !h.far) return;
+      h.done = true;
+      hsKeys(o.me, o.peer, h.mine, h.far).then((k) => {
+        if (hs !== h || E.closed || !k) return;
+        h.bind = k.bind;
+        post({ op: 'keys', round: h.round, keys: k.keys });
+      }).catch((e) => log('carry key agreement failed: ' + (e && e.name)));
+    }
+    E.sendMedia = (g, kind, key, data) => { if (E.paired && !E.closed) post({ op: 'raw', g, kind, key: !!key, data }, [data]); };
+    E.sendText = (s) => { if (E.paired && !E.closed) { post({ op: 'dc', data: String(s) }); return true; } return false; };
+    E.auth = (auth) => { post({ op: 'auth', auth }); };
+    E.up = () => E.state === 'up';
+    E.stats = () => new Promise((res) => { const n = ++statsSeq; statsWait.set(n, res); post({ op: 'stats', id: n }); setTimeout(() => { if (statsWait.delete(n)) res(null); }, TM.TUNNEL_STATS_WAIT_MS); });
+    E.close = (why) => {
+      if (E.closed) return;
+      E.closed = true; clearTimeout(retryT);
+      post({ op: 'close' }); live.delete(id);
+      setState('closed'); log('carry pipe closed: ' + (why || ''));
+    };
+    E._in = (m) => {
+      if (E.closed) return;
+      if (m.op === 'stats') { const r = statsWait.get(m.id); if (r) { statsWait.delete(m.id); r(m.st); } return; }
+      if (m.op === 'sock') {
+        if (m.ev === 'server') {
+          if (m.m.t === 'paired') { retryN = 0; keyUp(m.round); }
+          else if (m.m.t === 'alone') { hs = null; E.paired = false; setState('waiting'); }
+          else if (m.m.t === 'ok') { if (!E.paired && !hs) setState('waiting'); }
+          return;
+        }
+        if (m.ev === 'close') {
+          hs = null; E.paired = false;
+          if (m.code === 4401 || m.code === 4403) { setState('refused'); return; }
+          setState('connecting');
+          const wait = Math.min(TM.TUNNEL_RETRY_MAX_MS, TM.TUNNEL_RETRY_BASE_MS * Math.pow(2, retryN++));
+          retryT = setTimeout(() => { if (!E.closed) post({ op: 'open', url: o.url, auth: o.auth, raw: true }); }, wait);
+        }
+        return;
+      }
+      if (m.op === 'hs') { keyIn(m); return; }
+      if (m.op === 'secured') { if (hs && hs.round === m.round && hs.bind && !E.paired) { E.paired = true; setState('up'); } return; }
+      if (m.op === 'media') { try { if (o.onMedia) o.onMedia(m.g, m.kind, m.key, m.data); } catch (e) {} return; }
+      if (m.op === 'dc') { try { if (o.onText) o.onText(m.data); } catch (e) {} return; }
+    };
+    live.set(id, E);
+    if (!canSeal) { log('carry pipe refused: no keys to seal it with'); setState('refused'); return E; }   // never an unsealed link
+    post({ op: 'open', url: o.url, auth: o.auth, raw: true });
+    return E;
+  }
+
+  const api = { supported, videoOk, createEnd, createRawEnd, sections, renameStreams, sealCore, hsHello, hsAccept, hsKeys };
   GifOS.meetTunnel = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
