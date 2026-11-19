@@ -15,6 +15,11 @@
     AGENDA_TICK_MS: 1000,   // ms
     AGENT_GRACE_MS: 120000,   // ms
     AGENT_KEEP_MS: 86400000,   // ms
+    APP_ROOM_AWAY_MS: 15000,   // ms
+    APP_ROOM_BEAT_MS: 1000,   // ms
+    APP_ROOM_GIVEUP_MS: 60000,   // ms
+    APP_ROOM_RESUME_MS: 110000,   // ms
+    APP_ROOM_RETRY_MS: 2000,   // ms
     APP_STAGE_ASK_HOLD_MS: 8000,   // ms
     APP_STAGE_BEAT_MS: 1000,   // ms
     APP_STAGE_GRANT_RENEW_MS: 20000,   // ms
