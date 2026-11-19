@@ -22941,7 +22941,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (capShows(m.m)) showCaption(m.m.byId, trNote(m.m) + m.m.text, capLabel(m.m));
           paintTxMark();
           // not gossiped onward (see chat): a caption line is one flood
-        }
+        } else if (capChosen(m.m)) showCaption(m.m.byId, trNote(m.m) + m.m.text, capLabel(m.m));   // folded into a held line, but it is the source this page shows for that voice
       } else if (m.k === 'vtalk') { if (window.__rowMixOn) window.__rowMixOn(p, m);
       } else if (m.k === 'pres') { if (typeof pipeResAsk === 'function') pipeResAsk(p, m);   // SUB.7: a row-mate's pipe or standby: keep its send back down reserved
       } else if (m.k === 'sig') {
@@ -32462,6 +32462,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return name + ' · ' + uiText('capVia', 'via {name}').replace('{name}', capName(l.w));
     }
     function capShows(l) { return !capTrust || capTrust.shows(l); }
+    // The line comes from the one source this page picked (or chose by itself) for that voice: the live captions show it
+    // even when the transcript folded it into a line it already held.
+    function capChosen(l) { return !!(capTrust && l && l.byId && l.w && l.byId !== myId && l.w !== l.byId && capTrust.choice(l.byId).show === l.w); }
     // Ears only: Whisper is installed on a computer that can afford it while the browser's engine writes my own voice.
     // Its clips are samples for the trust check; they are written down only for a voice whose own captions lost trust.
     function capEarsOnly() {
@@ -32775,6 +32778,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // the same sentence is already held by a better line. An ear line that is sent still goes: it is the
         // evidence other pages use to judge the speaker's own captions (they fold it into the line they hold).
         if (send && !mine && m.src === 'ear' && capTrust) sendAll({ k: 'tr', m });
+        if (capChosen(m)) showCaption(m.byId, trNote(m) + m.text, capLabel(m));   // the live captions follow the chosen source
         return;
       }
       if (send) sendAll({ k: 'tr', m });
