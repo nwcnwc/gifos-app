@@ -578,7 +578,6 @@
 
     // ---- the page's face ------------------------------------------------------------------------------------------
     // C++: mesh.cpp:doTick, for one seat: link tick, deliver, tick the seat if woken; then the clock moves on.
-    let probedSeen = false;
     function tick() {
       const s = seat();
       if (closeAt >= 0 && w.TICK >= closeAt) { closeAt = -1; if (pcw.leaveAll) pcw.leaveAll(); }
@@ -586,7 +585,7 @@
       if (pcw.tick) guard('pcw.tick', pcw.tick)();
       // C++: mesh_net.inc:netTick's probe loop (L4.1.1): my network verdict landed or changed since the join read it: the seat's kind is
       // measured again, and a seeker at the door acts on it now (l411Verdict)
-      if (s && !dead && measure.nat) { const n0 = (measure.nat() | 0) & 0xff; const pd = !measure.probed || !!measure.probed(); if (n0 !== s.nat) { if (s.cnat === s.nat) s.cnat = n0; s.nat = n0; if (typeof s.l411Verdict === 'function') s.l411Verdict(); } else if (pd && !probedSeen && typeof s.l411Verdict === 'function') s.l411Verdict();   /* L8.47.5: my kind stands as measured: the door's word about the greeters I hold is read against it from now */ probedSeen = pd; }
+      if (s && !dead && measure.nat) { const n0 = (measure.nat() | 0) & 0xff; if (n0 !== s.nat) { if (s.cnat === s.nat) s.cnat = n0; s.nat = n0; if (typeof s.l411Verdict === 'function') s.l411Verdict(); } else if (s.state === 1 && s.islandAskAt < 0 && typeof s.l8475 === 'function' && s.l8475()) s.l411Verdict();   /* L8.47.5: my kind stands as measured and my own network tag is known (the door's word reads -1 until both are): the greeters I hold are read against them from that tick, not at the next list */ }
       if (s && !dead) {
         guard('pipeRead', () => pipeRead(s))();
         const due = [];
