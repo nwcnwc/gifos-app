@@ -129,7 +129,7 @@
         case 'HELLO': this.onHello(m); return;
         case 'YIELD': this.onYield(m); return;
         case 'CLAIM': this.onClaim(m); return;
-        case 'LEAVE': { const lx = m.id, lck = m.ck, lmv = m.mv; if (this.provenEv(m, lx)) this.l40Dr.delete(lx);   /* L40.6: a goodbye ends the tenancy and its lot */ this.onLeave(m); this.l2522Bye(lx, lck, lmv); return; }   // L25.22
+        case 'LEAVE': { const lx = m.id, lck = m.ck, lmv = m.mv; const lpv = this.provenEv(m, lx); const l53 = m.tag === 53 && lpv; if (lpv) this.l40Dr.delete(lx);   /* L40.6: a goodbye ends the tenancy and its lot */ this.onLeave(m); this.l2522Bye(lx, lck, lmv); if (l53 && this.cutFollow(lx, lck)) { this.cutLeave(lx); this.f.wake(id); } return; }   // L25.22
         case 'LGSTARVE': case 'LGASK': case 'LGCOMP': this.lgRecv(m); return;   // L29
         case 'SWAPQ': this.l4OnQ(m); return;
         case 'SWAPRDY': this.l4OnRdy(m); return;

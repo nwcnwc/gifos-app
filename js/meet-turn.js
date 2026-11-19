@@ -295,6 +295,7 @@
     if (f.q === 's') return (f.d === undefined || (typeof f.d === 'string' && DEV_RE.test(f.d))) && (f.e === undefined || (typeof f.e === 'string' && /^[0-9a-z]{1,2}$/.test(f.e)));
     if (f.q === 'p' || f.q === 'b') return f.b === 0 || f.b === 1;
     if (f.q === 'o') return typeof f.m === 'string' && PROBE_RE.test(f.m) && (f.b === undefined || f.b === 0 || f.b === 1 || f.b === 2);
+    if (f.q === 'c') return f.b === undefined || f.b === 1;   // TURN.5.3: a cut probe's question, and its answer (b 1)
     return false;
   }
 
@@ -777,6 +778,7 @@
     // A `tv` frame from the far end (relay, or the pair's own channel once open).
     function onFrame(from, f) {
       if (!tvOk(f) || from === io.me()) return;
+      if (f.q === 'c') { cutHeard(from, f); return; }   // TURN.5.3
       let L = links.get(from);
       if (!L && onSide(from, f)) return;
       if (!L) {   // the first answer of a pipe I opened: from now on it is addressed by the far end's peer id
@@ -1199,6 +1201,34 @@
       log('turn-probe ask ' + short(pq) + ' -> ' + short(py) + ' n=' + P.n + ' x=' + P.x);
       if (pq === io.me()) probeAsk(io.me(), sl, py); else io.sendTv(pq, { k: 'tv', q: 'o', l: sl, m: py });
     }
+    // ---- TURN.5.3 A CUT IS NOT A CRASH (docs/turn-0926.md 3; the sim's fabricCutProbe) ------------------------------------------
+    // My seat asks: does seat x answer at the door, and is there a path to it? I send x a question by the door (the relay; an
+    // open channel of ours is a path already) and dial it on a plain connection (no TURN), one dial's verdict long
+    // (FHOP_RELAY_ASK). 1: a path came up (the plain pc, or a friend of mine carries x: env.js); 2: x's page answered and no
+    // path came up: x is across a cut; 0: no answer yet, or none (a crashed, frozen or departed page: no cut, the room heals
+    // it). A verdict is kept one dial long for the seat's next asks; the next question goes out after that.
+    const cuts = new Map();   // peer id -> { at, ans, v }
+    function cutHeard(from, f) {
+      if (f.b === undefined) { io.sendTv(from, { k: 'tv', q: 'c', l: 's0', b: 1 }); return; }   // asked: my page runs, I answer by the same way
+      const c = cuts.get(from); if (c && !c.ans) { c.ans = true; log('cut-probe answer ' + short(from)); }
+    }
+    function cutProbe(pid, now) {
+      if (!pid || pid === io.me()) return 0;
+      if (io.pcUp && io.pcUp(pid)) return 1;
+      let c = cuts.get(pid);
+      if (c && c.v >= 0 && now - c.vAt > ASK_MS) { cuts.delete(pid); c = null; }   // a verdict lives one dial: then ask again
+      if (!c) {
+        c = { at: now, ans: false, v: -1, vAt: 0 }; cuts.set(pid, c); if (cuts.size > 64) cuts.delete(cuts.keys().next().value);
+        io.sendTv(pid, { k: 'tv', q: 'c', l: 's0' });
+        try { if (io.probeDoor) io.probeDoor(0, [pid]); } catch (e) {}
+        log('cut-probe ask ' + short(pid)); return 0;
+      }
+      if (c.v >= 0) return c.v;
+      if (now - c.at < ASK_MS) return 0;
+      c.v = (io.pcUp && io.pcUp(pid)) ? 1 : (c.ans ? 2 : 0); c.vAt = now;
+      if (c.v !== 1 && io.probeEnd) { try { io.probeEnd(pid); } catch (e) {} }   // a miss ends the probe's connection (SUB.8.1)
+      log('cut-probe verdict ' + short(pid) + ' ' + c.v); return c.v;
+    }
     // ---- SUB.10 THE MERGE (docs/turn-0926.md 3a; the sim's subProbeTick step 3, fabricSubGo, fabricSubWalk) -----------------
     // With two direct paths (the pipe and its standby both off TURN) the seats keep looking. My subroom (the younger door, the
     // pipe's own number) is not needed once every one of its Section-1 seats is known to reach a Section-1 seat of the far door
@@ -1570,6 +1600,8 @@
       go() { return walkGo(); },
       walk(n, p) { return walkMay(n, p); },
       walked() { return io.now() - walkedAt <= WALKED_MS; },
+      // TURN.5.3: the probe of a cut (0 no answer yet or none, 1 a path, 2 answered and no path)
+      cut(pid) { return cutProbe(pid, io.now()); },
       // the seat is about to found on silence: may it ask the Worker first? Closed once after a refusal (that founding attempt
       // founds), and while a refusal's wait runs
       mayAsk() { if (sub.ans) { sub.ans = false; return false; } const o = sub.out; return !(o && o.refused && io.now() < o.retryAt); },
