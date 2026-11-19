@@ -216,10 +216,13 @@
       if (this.state !== 3 || !this.hasCoord || this.moving || this.sr !== 0 || !this.f.fabricTurnOn()) return false;   // only in a meeting with TURN
       if (this.coord.pc === 0) {
         if (ckey(this.coord) === 0) return false;   // the root's holder: the room is where I am
-        const it = this.s1tab.get(0); if (it === undefined || it.at < 0 || it.by < 0 || it.by === this.id) return false;   // the root I last heard (its report leaves my table at DIG_TTL: the dial goes out FHOP_RELAY_ASK before that)
-        if (this.LT() - it.rx <= K.DIG_TTL - K.FHOP_RELAY_ASK) return false;
-        const h = it.by; if (this.f.fabricCutProbe(this.id, h) !== 2) return false;
-        this.trace('TURN.5.3-CUT', this.id, this.coord, 'root=%d age=%lld', h, this.LT() - it.rx); return true;
+        const it = this.s1tab.get(0); let h = -1, rx = -1;   // the root I last heard (its report leaves my table at DIG_TTL: the dial goes out FHOP_RELAY_ASK before that)
+        if (it !== undefined && it.at >= 0 && it.by >= 0) { if (it.by === this.id) return false; h = it.by; rx = it.rx; }
+        else if (this.cutBy >= 0 && this.cutBy !== this.id && this.occGet(0) < 0 && this.LT() - this.cutRx <= K.DIG_TTL) { h = this.cutBy; rx = this.cutRx; }   // TURN.5.3.1: ...or my own death verdict took it sooner (silence is a crash or a cut: the same dial tells them apart, on the same clock)
+        else return false;
+        if (this.LT() - rx <= K.DIG_TTL - K.FHOP_RELAY_ASK) return false;
+        if (this.f.fabricCutProbe(this.id, h) !== 2) return false;
+        this.trace('TURN.5.3-CUT', this.id, this.coord, 'root=%d age=%lld', h, this.LT() - rx); return true;
       }
       if (this.rootDig.at < 0 || this.LT() - this.rootDig.rx <= K.DIG_TTL) return false;
       if (this.greetersAt < 0 || this.TICK - this.greetersAt > K.DIG_TTL) { if (this.TICK - this.l13KnockAt >= K.DIG_TTL) { this.l13KnockAt = this.TICK | 0; this.emitRelay(this.genKey, false); } return false; }   // one knock while its list is good
@@ -238,7 +241,7 @@
         const it = this.s1tab.get(0); if (it !== undefined && it.at >= 0 && this.LT() - it.rx <= K.DIG_TTL - 2 * K.FHOP_RELAY_ASK) return false;
         this.trace('TURN.5.3-FOLLOW', this.id, this.coord, 'from=%d', x); return true;
       }
-      const o = this.ownerCoord(); const mine = (o && ckey(o) === ck) || (this.coord.i !== 0 && c.pc === this.coord.pc && c.r === this.coord.r && c.i === 0);
+      const o = this.ownerCoord(); const mine = (o && ckey(o) === ck) || (this.coord.i !== 0 && c.pc === this.coord.pc && c.r === this.coord.r && c.i === 0) || (this.u2Hot && (x === this.u2Id || x === this.u3Id)) || (this.coord.i === 0 && this.e1Dn && c.pc === this.coord.pc && c.r === this.coord.r && c.i !== 0);   // TURN.5.3.2: while my row's way up is E2 the room reaches the row's source through the backup owner, and me, its head, through the source (L2.4.1)
       if (!mine) return false;
       this.trace('TURN.5.3-FOLLOW', this.id, this.coord, 'from=%d', x); return true;
     },
@@ -249,6 +252,7 @@
       this.cutHalf.clear(); if (said >= 0) this.cutHalf.add(said);
       if (this.coord.pc === 0) for (const d of this.s1tab.values()) { if (d.at >= 0 && d.by >= 0 && d.by !== this.id && this.LT() - d.rx <= K.DIG_TTL - 2 * K.FHOP_RELAY_ASK) this.cutHalf.add(d.by); }
       this.f.fabricDropHalf(this.id); this.leftCk = ckey(this.coord); this.leftAt = this.TICK; this.leftTo = -1; this.requeue('TURN.5.3-cut');   // (the goodbye goes by the door, D6c.4)
+      if (this.line >= 0) { this.trace('LINEAGE', this.id, null, 'from=%d to=-1 why=cut', this.line); this.line = -1; this.mergeTick = -1; }   // TURN.5.3.3: I left that room: no frame of mine is its door moving (SUB.1 b), and none of its seats' frames moves mine
     },
     // C++: mesh_island.inc:Seat::pipeBeat
     pipeBeat() {
