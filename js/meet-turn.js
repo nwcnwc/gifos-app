@@ -767,6 +767,32 @@
       io.webOpen(L.far, { url: (io.webScheme ? io.webScheme() : 'wss://') + L.webHost + '/', auth: a });
       if (L.paidMe) webAuth(L, 'paid');
     }
+    // TURN.22.2 A WEB LINK FOLLOWS ITS GRANT. A web link holds one socket on one server's pipe. When the opener's
+    // newest grant no longer lists that host (the server is leaving for an update; the credential service names it in no
+    // new answer), the opener names the grant's first host with the word that opened the path ('w') and both ends move
+    // there, make before break: a second socket, the same sealed session, then the first socket closes
+    // (meet-tunnel.js move). The pair's connection and every track stay as they are. The far end moves only to a host
+    // its own grant allows; a move that does not land is tried again one move's time later.
+    function webFollow(L) {
+      if (!L.web || !L.webOpen || L.state !== 'up' || !io.webMove) return;
+      const mine = (L.cred && L.cred.web()) || [];
+      if (L.opener) { if (!mine.length || mine.indexOf(L.webHost) >= 0) { L.webTo = ''; return; } L.webTo = mine[0]; }
+      if (!L.webTo || L.webTo === L.webHost) { L.webTo = ''; return; }
+      if (!webHostOk(L.webTo, mine)) return;
+      const now = io.now();
+      if (L.webMvAt && now - L.webMvAt < MOVE_MS) return;
+      L.webMvAt = now;
+      log('turn-web move ' + short(L.far) + ' ' + L.webHost + ' to ' + L.webTo);
+      if (L.opener) io.sendTv(L.far, { k: 'tv', q: 'w', l: L.l, m: L.webTo });
+      if (io.webMove(L.far, (io.webScheme ? io.webScheme() : 'wss://') + L.webTo + '/') === 'dialled') webMoved(L.far, true);   // not up at the tunnel: nothing to carry, it dials the new host
+    }
+    function webMoved(pid, ok) {
+      const L = links.get(pid); if (!L || !L.web || !L.webTo) return;
+      if (!ok) { log('turn-web move not done ' + short(L.far)); return; }
+      log('turn-web moved ' + short(L.far) + ' ' + L.webTo);
+      L.webHost = L.webTo; L.webTo = ''; L.webMvN = (L.webMvN || 0) + 1;
+      io.changed(L.far);
+    }
     function maybeDial(L) {
       if (L.web) return;
       if (!L.opener || !L.readyMe || !L.readyFar || L.dialAt || (L.direct && !L.dEcho)) return;   // a direct standby dials once the far end echoed 'd' (its pc is plain too)
@@ -836,6 +862,7 @@
       }
       if (f.q === 'r') { L.readyFar = true; maybeDial(L); return; }
       if (f.q === 'd') { if (!L.sb) return; if (L.opener) { if (L.direct && !L.dEcho) { L.dEcho = true; maybeDial(L); } } else { setDirect(L); io.sendTv(L.far, { k: 'tv', q: 'd', l: L.l }); } return; }   // the target echoes: the opener dials only then
+      if (f.q === 'w' && L.web && L.state === 'up' && !L.opener && f.m && f.m !== L.webHost) { L.webTo = f.m; webFollow(L); return; }   // TURN.22.2: the opener moves the link to another server
       if (f.q === 'w') { webStart(L, false, f.m); if (L.opener && io.now() - L.webSaidAt > RESEND_MS / 2) webSay(L); return; }
       // the far end moved its pool: it moves the pc itself (its own restart, or 'i' to the offerer), so no restart here:
       // a second one per move restarted the path again mid-move and the video's estimate with it (vouched one-way, 2026-11-12)
@@ -1571,6 +1598,7 @@
         // TURN.18: a client end's connection has looked for its relay path for TURN_WEB_WAIT and found none
         if (L.state !== 'up' && !L.web && L.client && L.cred && io.turnPath) { const tp = io.turnPath(L.far); if (tp && tp.at > 0 && !tp.relay && now - tp.at >= WEB_WAIT_MS && L.cred.web().length) webStart(L, true); }
         if (L.web && L.state !== 'up') { if (now - L.webSaidAt > RESEND_MS) webSay(L); webGo(L); }
+        if (L.web && L.state === 'up') webFollow(L);
         if (L.state !== 'up' && L.readyMe && (L.readyFar || L.web) && io.pcUp(L.far) && (!L.web || io.webUp(L.far))) {
           L.state = 'up'; L.upAt = now; L.serial = now; log('turn-link up ' + short(L.far) + (L.sb ? ' (standby)' : '')); io.changed(L.far); subChanged('a pipe of mine');
           if (L.sb && L.liveEnd && L.liveEnd !== io.me()) io.sendTv(L.liveEnd, { k: 'tv', q: 'r', l: L.l, b: L.direct ? 1 : 0 });
@@ -1652,12 +1680,13 @@
       camRoom(pid) { const L = links.get(pid); if (L && L.direct) return L.state === 'up' && !L.sb; if (!L || !L.video || L.busy || !(L.cap > 0)) return false; const K = meshConsts().consts, perS = 1000 / tick; return L.cap - K.TURN_BASE_BYTES * perS * 8 >= 2 * K.TURN_VIDEO_MIN_BYTES * perS * 8; },
       close(pid, why) { const L = links.get(pid); if (L) close(L, why || 'closed'); },
       stopAll(why) { for (const L of Array.from(links.values())) close(L, why || 'stop', true); },
+      webMoved,
       dump() {
         const out = [];
         for (const L of links.values()) out.push({ far: L.far, l: L.l, opener: L.opener, state: L.state, client: L.client, farDev: L.farDev, farBlocked: L.farBlocked,
           mine: !!L.mine, peer: !!L.peer, readyMe: L.readyMe, readyFar: L.readyFar, cred: L.cred ? L.cred.state() : null, credRefusal: L.cred ? L.cred.refusal() : null,
           pool: L.paidMe ? 'paid' : 'free', paid: L.paid ? L.paid.state() : null, paidRefusal: L.paid ? L.paid.refusal() : null, paidFar: L.paidFar,
-          vouched: L.vouched, video: L.video, upAt: L.upAt, side: L.side.length, web: L.web, webHost: L.webHost || null,
+          vouched: L.vouched, video: L.video, upAt: L.upAt, side: L.side.length, web: L.web, webHost: L.webHost || null, webMoves: L.webMvN || 0,
           step: L.thr ? L.thr.step : null, cap: L.cap || null, busy: L.busy, farBusy: L.farBusy, standbyN: L.standbyN, lastSwitchMs: L.lastSwitchMs || null, direct: !!L.direct, sb: !!L.sb, sbUp: !!L.sbUp, probes: L.pr ? L.pr.n : 0, probeX: L.pr ? L.pr.x : 0 });
         return { links: out, sub: { st: sub.st, out: sub.out, list: sub.list.slice(), retryAt: sub.retryAt, found: sub.found } };
       },

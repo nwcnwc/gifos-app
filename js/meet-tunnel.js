@@ -136,6 +136,7 @@
 const SEAL = (${sealCore.toString()})();
 const TE = new TextEncoder(), TD = new TextDecoder();
 const PRE_MAX = 256;        // frames held while this end still derives a pairing's keys
+const MV_HOLD_MAX = 1024;   // frames held on the socket a link is moving onto, until the far end's last word on the old one
 const ends = new Map();     // end id -> { ws, taps: Map(g -> {t, kind, needKey}), pipes: Map(g -> pipe), st }
 const HIGH_VIDEO = 262144;  // socket backlog above which video waits for a key frame
 const HIGH_AUDIO = 49152;   // socket backlog above which audio frames are skipped
@@ -199,6 +200,7 @@ function onMust(e, pt) {
   if (c0 !== 99 /* c */) return;
   let c = null; try { c = JSON.parse(s.slice(1)); } catch (err) {}
   if (!c || c.t === 'kc') return;
+  if (c.t === 'mv') { mvFar(e); return; }
   if (c.t === 'key') { keyFrameOf(e.taps.get(c.g)); return; }
   postMessage({ op: 'ctl', end: e.id, m: c });
 }
@@ -315,39 +317,118 @@ onrtctransform = (ev) => {
     if (o.role === 'tap' && e.taps.get(o.g) === item) e.taps.delete(o.g);
   })();
 };
+// A frame from the far end (never the server's own word): media is binary, a must-arrive frame is text 'x', the key
+// agreement text 'k'.
+function frameIn(e, data) {
+  if (typeof data !== 'string') {   // media: sealed, or not taken
+    const u = new Uint8Array(data);
+    e.st.rxBytes += u.length;
+    if (u[0] === 1) openIn(e, 1, u); else e.st.rxPlain++;
+    return;
+  }
+  e.st.rxBytes += data.length;
+  const c0 = data.charCodeAt(0);
+  if (c0 === 120 /* x: a sealed must-arrive frame */) { const u = SEAL.unb64(data.slice(1)); if (u) openIn(e, 2, u); else e.st.rxBad++; }
+  else if (c0 === 107 /* k: the far end's half of the key agreement */) postMessage({ op: 'hs', end: e.id, round: e.round, data: data.slice(1) });
+  else e.st.rxPlain++;   // nothing unsealed is taken from the far end
+}
+// MOVING TO ANOTHER SERVER, MAKE BEFORE BREAK. The link's sealed session does not belong to a socket: its keys and
+// counters go on, on a second socket to another server, and the first socket closes only when nothing is left on it.
+// Both ends open the second socket; the server pairs them. Then each end says mv as its LAST sealed word on the old
+// socket and sends everything after it on the new one, and holds what arrives on the new socket until it has read the
+// far end's mv on the old one. So every frame keeps its order in each direction and nothing is keyed again.
+// If the old socket ends before both mv crossed, frames may be missing: before this end switched it just stays where
+// it is; after, the session ends as on any lost socket and the link dials the new server afresh.
+function mvPaired(e, mv) {
+  if (mv.paired) return;
+  mv.paired = true;
+  ctl(e, { t: 'mv' });
+  e.txq = e.txq.then(() => { if (e.mv !== mv) return; e.ws = mv.ws; mv.said = true; mvDone(e, mv); }).catch(() => {});
+}
+function mvFar(e) {   // the far end's last word on the old socket (called in receive order)
+  const mv = e.mv; if (!mv || mv.far) return;
+  mv.far = true;
+  const q = mv.q; mv.q = [];
+  for (const d of q) frameIn(e, d);
+  mvDone(e, mv);
+}
+function mvDone(e, mv) {
+  if (e.mv !== mv || !mv.said || !mv.far) return;
+  e.mv = null;
+  try { mv.old.onclose = mv.old.onmessage = null; mv.old.close(); } catch (err) {}
+  postMessage({ op: 'sock', end: e.id, ev: 'moved', ok: true });
+}
+function mvAbort(e, why) {
+  const mv = e.mv; if (!mv) return;
+  e.mv = null;
+  if (!mv.said) {   // still sending on the old socket: the move is dropped, the link stays where it is
+    try { mv.ws.onclose = mv.ws.onmessage = null; mv.ws.close(); } catch (err) {}
+    postMessage({ op: 'sock', end: e.id, ev: 'moved', ok: false, why });
+    return;
+  }
+  try { mv.old.onclose = mv.old.onmessage = null; mv.old.close(); } catch (err) {}
+  broken(e, 'move: ' + why);   // already on the new socket and the old one's tail is lost: key afresh
+}
+function sockClosed(e, ws, code) {
+  const mv = e.mv;
+  if (mv && (ws === mv.ws || ws === mv.old)) {
+    if (ws === mv.old && mv.far) return;   // the far end left the old socket after its last word: nothing is lost
+    const wasOld = ws === mv.old && !mv.said;
+    mvAbort(e, ws === mv.ws ? 'new socket closed' : 'old socket closed');
+    if (!wasOld) return;   // (a lost new socket before the switch: the link stays on the old one; after it: broken() said so)
+  }
+  if (e.ws !== ws) return;
+  e.ws = null; unkey(e, false); postMessage({ op: 'sock', end: e.id, ev: 'close', code });
+}
+function sockIn(e, ws, data) {
+  const mv = e.mv, server = typeof data === 'string' && data.charCodeAt(0) === 115;   // s: the server's own word
+  if (mv && ws === mv.ws) {   // the socket this end is moving onto
+    if (server) {
+      let c = null; try { c = JSON.parse(data.slice(1)); } catch (err) {}
+      if (c && c.t === 'paired') mvPaired(e, mv); else if (c && c.t === 'alone') mvAbort(e, 'the far end left');
+      return;
+    }
+    if (!mv.far) { if (mv.q.length < MV_HOLD_MAX) mv.q.push(data); else mvAbort(e, 'held too much'); return; }
+    frameIn(e, data);
+    return;
+  }
+  if (e.ws !== ws && !(mv && mv.old === ws)) return;
+  if (!server) { frameIn(e, data); return; }
+  if (mv && mv.old === ws && mv.far) return;   // the old socket after the far end's last word: its alone is the far end closing it
+  let c = null; try { c = JSON.parse(data.slice(1)); } catch (err) {}
+  if (!c) return;
+  if (mv && (c.t === 'paired' || c.t === 'alone')) { const said = mv.said; mvAbort(e, 'the old pairing ended'); if (said) return; }
+  if (c.t === 'paired') { e.round++; unkey(e, true); }   // a pairing: its frames are held until this end has its keys
+  else if (c.t === 'alone') unkey(e, false);
+  postMessage({ op: 'sock', end: e.id, ev: 'server', m: c, round: e.round });
+}
 onmessage = (ev) => {
   const m = ev.data, e = endOf(m.end);
   if (m.op === 'open') {
     try { if (e.ws) { e.ws.onclose = e.ws.onmessage = null; e.ws.close(); } } catch (err) {}
+    if (e.mv) { const w = e.mv.ws; e.mv = null; try { w.onclose = w.onmessage = null; w.close(); } catch (err) {} }
     unkey(e, false);
     e.raw = !!m.raw;
     let ws;
     try { ws = new WebSocket(m.url); } catch (err) { postMessage({ op: 'sock', end: m.end, ev: 'close', code: 0 }); return; }
     ws.binaryType = 'arraybuffer'; e.ws = ws;
     ws.onopen = () => { if (e.ws !== ws) return; ws.send('s' + JSON.stringify(Object.assign({ t: 'auth' }, m.auth))); postMessage({ op: 'sock', end: m.end, ev: 'open' }); };
-    ws.onclose = (c) => { if (e.ws !== ws) return; e.ws = null; unkey(e, false); postMessage({ op: 'sock', end: m.end, ev: 'close', code: c.code }); };
-    ws.onmessage = (x) => {
-      if (e.ws !== ws) return;
-      if (typeof x.data !== 'string') {   // media: sealed, or not taken
-        const u = new Uint8Array(x.data);
-        e.st.rxBytes += u.length;
-        if (u[0] === 1) openIn(e, 1, u); else e.st.rxPlain++;
-        return;
-      }
-      e.st.rxBytes += x.data.length;
-      const c0 = x.data.charCodeAt(0);
-      if (c0 === 120 /* x: a sealed must-arrive frame */) { const u = SEAL.unb64(x.data.slice(1)); if (u) openIn(e, 2, u); else e.st.rxBad++; }
-      else if (c0 === 107 /* k: the far end's half of the key agreement */) postMessage({ op: 'hs', end: m.end, round: e.round, data: x.data.slice(1) });
-      else if (c0 === 115 /* s: the server's own word */) {
-        let c = null; try { c = JSON.parse(x.data.slice(1)); } catch (err) {}
-        if (!c) return;
-        if (c.t === 'paired') { e.round++; unkey(e, true); }   // a pairing: its frames are held until this end has its keys
-        else if (c.t === 'alone') unkey(e, false);
-        postMessage({ op: 'sock', end: m.end, ev: 'server', m: c, round: e.round });
-      }
-      else e.st.rxPlain++;   // nothing unsealed is taken from the far end
-    };
+    ws.onclose = (c) => sockClosed(e, ws, c.code);
+    ws.onmessage = (x) => sockIn(e, ws, x.data);
   }
+  else if (m.op === 'move') {   // the link leaves its server for another: a second socket, the same sealed session
+    const no = (why) => postMessage({ op: 'sock', end: m.end, ev: 'moved', ok: false, why });
+    if (e.mv) return;
+    if (!e.ws || e.ws.readyState !== 1 || !e.sec || !e.sec.ok) { no('not up'); return; }
+    let ws;
+    try { ws = new WebSocket(m.url); } catch (err) { no('socket'); return; }
+    ws.binaryType = 'arraybuffer';
+    const mv = e.mv = { ws, old: e.ws, paired: false, said: false, far: false, q: [] };
+    ws.onopen = () => { if (e.mv !== mv) return; ws.send('s' + JSON.stringify(Object.assign({ t: 'auth' }, m.auth))); if (m.paid) ws.send('s' + JSON.stringify(Object.assign({ t: 'auth' }, m.paid))); };
+    ws.onclose = (c) => sockClosed(e, ws, c.code);
+    ws.onmessage = (x) => sockIn(e, ws, x.data);
+  }
+  else if (m.op === 'unmove') { if (e.mv && !e.mv.said) mvAbort(e, 'gave up'); }
   else if (m.op === 'auth') sendText(e, 's' + JSON.stringify(Object.assign({ t: 'auth' }, m.auth)));
   else if (m.op === 'hs') { if (m.round === e.round && e.keying) sendText(e, 'k' + m.data); }
   else if (m.op === 'keys') {   // this pairing's keys: say so under them, then take what was held
@@ -370,7 +451,8 @@ onmessage = (ev) => {
   else if (m.op === 'unpipe') { e.pipes.delete(m.g); }
   else if (m.op === 'fresh') { e.taps.clear(); e.pipes.clear(); }   // this end's connection was rebuilt: its tracks are numbered anew
   else if (m.op === 'close') {   // after what is still being sealed (the last word to the far end)
-    const ws = e.ws, fin = () => { try { if (ws) { ws.onclose = ws.onmessage = null; ws.close(); } } catch (err) {} unkey(e, false); };
+    const ws = e.ws, mv = e.mv, fin = () => { try { if (ws) { ws.onclose = ws.onmessage = null; ws.close(); } } catch (err) {} for (const w of mv ? [mv.ws, mv.old] : []) { try { w.onclose = w.onmessage = null; w.close(); } catch (err) {} } unkey(e, false); };
+    e.mv = null;
     ends.delete(m.end); e.txq.then(fin, fin);
   }
   else if (m.op === 'stats') { const out = Object.assign({ backlog: e.ws ? e.ws.bufferedAmount : -1, taps: e.taps.size, pipes: e.pipes.size, sealed: e.sec && e.sec.ok ? 1 : 0, round: e.round }, e.st); postMessage({ op: 'stats', end: m.end, id: m.id, st: out }); }
@@ -443,7 +525,7 @@ onmessage = (ev) => {
     let held = null;                   // my side's offer that arrived while mine was out
     let lastAnswered = null;           // { oid, answer }: the same offer again gets the same answer
     let dcQueue = [], farQueue = [], iceWait = [];
-    let offerT = null, resendT = null, retryT = null, retryN = 0, statsSeq = 0;
+    let offerT = null, resendT = null, retryT = null, moveT = null, retryN = 0, statsSeq = 0;
     const statsWait = new Map();
     let audioSrc = null;
     let hs = null;                     // this pairing's key agreement: { round, mine, far, done }
@@ -725,13 +807,32 @@ onmessage = (ev) => {
     };
     E.auth = (auth) => { o.auth = auth.pool === 'paid' ? o.auth : auth; if (auth.pool === 'paid') E._paid = auth; post({ op: 'auth', auth }); };
     E.up = () => E.state === 'up';
+    // move(url): leave this server for another, make before break (the worker's move). The session and all it
+    // carries stay as they are. o.onMoved(ok, why) hears how it ended; a move that never pairs is given up after
+    // TUNNEL_MOVE_WAIT_MS and the link stays where it is. An end that is not up has nothing to carry over: it dials there.
+    E.move = (url) => {
+      if (E.closed || url === o.url) return;
+      E._from = o.url; o.url = url;
+      if (E.moving) return;
+      if (E.state !== 'up') { clearTimeout(retryT); post({ op: 'open', url: o.url, auth: o.auth }); return; }
+      E.moving = true; log('tunnel moving');
+      post({ op: 'move', url, auth: o.auth, paid: E._paid || null });
+      clearTimeout(moveT); moveT = setTimeout(() => { if (E.moving && !E.closed) post({ op: 'unmove' }); }, TM.TUNNEL_MOVE_WAIT_MS);
+    };
+    const onMoved = (m) => {
+      E.moving = false; clearTimeout(moveT); log('tunnel ' + (m.ok ? 'moved' : 'move dropped: ' + m.why));
+      if (!m.ok && E._from) o.url = E._from;   // still on the old server: that is where a lost socket dials again
+      E._from = '';
+      if (m.ok) { post({ op: 'auth', auth: o.auth }); if (E._paid) post({ op: 'auth', auth: E._paid }); }   // a credential renewed during the move
+      try { if (o.onMoved) o.onMoved(!!m.ok, m.why || ''); } catch (e) {}
+    };
     // What stands for this link's far end where a connection's certificate would: { l: mine, r: the far end's }, null until the link is keyed.
     E.binding = () => (E.paired && E.bind ? { l: E.bind.l, r: E.bind.r } : null);
     E.stats = () => new Promise((res) => { const n = ++statsSeq; statsWait.set(n, res); post({ op: 'stats', id: n }); setTimeout(() => { if (statsWait.delete(n)) res(null); }, TM.TUNNEL_STATS_WAIT_MS); });
     E.close = (why) => {
       if (E.closed) return;
       E.closed = true;
-      clearTimeout(retryT);
+      clearTimeout(retryT); clearTimeout(moveT);
       post({ op: 'ctl', m: { t: 'down' } });
       dropShadow(why || 'closed');
       post({ op: 'close' });
@@ -745,6 +846,7 @@ onmessage = (ev) => {
       if (E.closed) return;
       if (m.op === 'stats') { const r = statsWait.get(m.id); if (r) { statsWait.delete(m.id); r(m.st); } return; }
       if (m.op === 'sock') {
+        if (m.ev === 'moved') { onMoved(m); return; }
         if (m.ev === 'server') {
           if (m.m.t === 'paired') { retryN = 0; if (E._paid) post({ op: 'auth', auth: E._paid }); keyUp(m.round); }
           else if (m.m.t === 'alone') { hs = null; E.paired = false; E.bind = null; E.farOpen = false; farSends = []; dropShadow('far end left'); setState('waiting'); }
@@ -752,6 +854,7 @@ onmessage = (ev) => {
           return;
         }
         if (m.ev === 'close') {
+          E.moving = false; clearTimeout(moveT);
           hs = null; E.paired = false; E.bind = null; E.farOpen = false; farSends = [];
           if (m.code === 4498) log('tunnel: the sealed session broke (' + m.why + '), keying afresh');
           dropShadow('socket closed ' + m.code);
@@ -793,7 +896,7 @@ onmessage = (ev) => {
     const w = ensureWorker();
     const log = (s) => { try { if (o.log) o.log(s); } catch (e) {} };
     const E = { id, state: 'connecting', paired: false, closed: false };
-    let hs = null, retryT = null, retryN = 0, statsSeq = 0;
+    let hs = null, retryT = null, moveT = null, retryN = 0, statsSeq = 0;
     const statsWait = new Map();
     const canSeal = !!(o.me && o.peer && o.me !== o.peer && o.seal && o.open && o.sign && o.verify && root.crypto && root.crypto.subtle);
     const setState = (s) => { if (E.state === s) return; E.state = s; log('carry pipe ' + s); try { if (o.onState) o.onState(s); } catch (e) {} };
@@ -831,12 +934,31 @@ onmessage = (ev) => {
     }
     E.sendMedia = (g, kind, key, data) => { if (E.paired && !E.closed) post({ op: 'raw', g, kind, key: !!key, data }, [data]); };
     E.sendText = (s) => { if (E.paired && !E.closed) { post({ op: 'dc', data: String(s) }); return true; } return false; };
-    E.auth = (auth) => { post({ op: 'auth', auth }); };
+    E.auth = (auth) => { if (auth && auth.pool !== 'paid') o.auth = auth; post({ op: 'auth', auth }); };
     E.up = () => E.state === 'up';
+    // move(url): leave this server for another, make before break (the worker's move). The session and all it
+    // carries stay as they are. o.onMoved(ok, why) hears how it ended; a move that never pairs is given up after
+    // TUNNEL_MOVE_WAIT_MS and the link stays where it is. An end that is not up has nothing to carry over: it dials there.
+    E.move = (url) => {
+      if (E.closed || url === o.url) return;
+      E._from = o.url; o.url = url;
+      if (E.moving) return;
+      if (E.state !== 'up') { clearTimeout(retryT); post({ op: 'open', url: o.url, auth: o.auth, raw: true }); return; }
+      E.moving = true; log('tunnel moving');
+      post({ op: 'move', url, auth: o.auth, paid: E._paid || null });
+      clearTimeout(moveT); moveT = setTimeout(() => { if (E.moving && !E.closed) post({ op: 'unmove' }); }, TM.TUNNEL_MOVE_WAIT_MS);
+    };
+    const onMoved = (m) => {
+      E.moving = false; clearTimeout(moveT); log('tunnel ' + (m.ok ? 'moved' : 'move dropped: ' + m.why));
+      if (!m.ok && E._from) o.url = E._from;   // still on the old server: that is where a lost socket dials again
+      E._from = '';
+      if (m.ok) { post({ op: 'auth', auth: o.auth }); if (E._paid) post({ op: 'auth', auth: E._paid }); }   // a credential renewed during the move
+      try { if (o.onMoved) o.onMoved(!!m.ok, m.why || ''); } catch (e) {}
+    };
     E.stats = () => new Promise((res) => { const n = ++statsSeq; statsWait.set(n, res); post({ op: 'stats', id: n }); setTimeout(() => { if (statsWait.delete(n)) res(null); }, TM.TUNNEL_STATS_WAIT_MS); });
     E.close = (why) => {
       if (E.closed) return;
-      E.closed = true; clearTimeout(retryT);
+      E.closed = true; clearTimeout(retryT); clearTimeout(moveT);
       post({ op: 'close' }); live.delete(id);
       setState('closed'); log('carry pipe closed: ' + (why || ''));
     };
@@ -844,6 +966,7 @@ onmessage = (ev) => {
       if (E.closed) return;
       if (m.op === 'stats') { const r = statsWait.get(m.id); if (r) { statsWait.delete(m.id); r(m.st); } return; }
       if (m.op === 'sock') {
+        if (m.ev === 'moved') { onMoved(m); return; }
         if (m.ev === 'server') {
           if (m.m.t === 'paired') { retryN = 0; keyUp(m.round); }
           else if (m.m.t === 'alone') { hs = null; E.paired = false; setState('waiting'); }
@@ -851,6 +974,7 @@ onmessage = (ev) => {
           return;
         }
         if (m.ev === 'close') {
+          E.moving = false; clearTimeout(moveT);
           hs = null; E.paired = false;
           if (m.code === 4401 || m.code === 4403) { setState('refused'); return; }
           setState('connecting');
