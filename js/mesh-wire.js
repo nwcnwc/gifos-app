@@ -895,7 +895,7 @@
         // c: '1' a capable row head (a pipe may end here); '2' a capable Section-1 seat with its cell key k, which the relay
         // names when its door has no capable row head left (the seat next in line for a head cell, SUB.3); '0' neither
         w.c = cap ? (seat.coord.i === 0 ? '1' : '2') : '0';
-        if (w.c === '2') w.k = String(seat.coord.r * 256 + seat.coord.i);
+        if (w.c !== '1') w.k = String(seat.coord.r * 256 + seat.coord.i);   // SUB.3.1: '0' gives its cell too (a door with no capable seat names its lowest cell)
       }
       if (raw && Number.isInteger(raw.lineAt) && raw.lineAt >= 0 && raw.lineAt < 1e15) w.ep = String(raw.lineAt);
       return w;
