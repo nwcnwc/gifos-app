@@ -114,7 +114,10 @@
   "runtime.room.notMoves": "Это не часть игры.",
   "runtime.room.badOp": "Комната так не умеет.",
   "runtime.room.pending": "Комната не ответила.",
+  "runtime.room.stale": "Игра ушла вперёд, пока он шёл.",
   "runtime.room.asks": "{name} просит сыграть в {app}.",
   "runtime.room.seat": "Посадить",
-  "runtime.room.notNow": "Не сейчас"
+  "runtime.room.notNow": "Не сейчас",
+  "runtime.room.lost": "Ваш ход в {app} не сделан: {why}",
+  "runtime.room.ok": "OK"
 }

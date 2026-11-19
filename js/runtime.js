@@ -198,13 +198,14 @@
     const take = (k, q, rec) => {
       tick();
       const r = eng.request(k, q, Date.now());
-      const write = r.ok && rec && typeof rec === 'object' && (q.op === 'move' || q.op === 'newRound') && q.collection;
+      const write = r.ok && !r.again && rec && typeof rec === 'object' && (q.op === 'move' || q.op === 'newRound') && q.collection; // an answered request again: its move is already written
       const w = write ? db.op('put', q.collection, null, safeRecord(rec)).catch(() => {}) : Promise.resolve();
       return w.then(() => { if (r.changed || write) save(); push(); return r; });
     };
     const ready = db.op('get', ROOM_COL, 'session').catch(() => null).then((saved) => {
       eng = AR.create(sp, saved, { now: Date.now(), resumeMs: GifOS.timings.APP_ROOM_RESUME_MS });
       tick();
+      save(); // every copy has this share's session from its first state on (a held request reads its answer there)
       timer = setInterval(tick, GifOS.timings.APP_ROOM_BEAT_MS);
     });
     return api = {
@@ -239,12 +240,47 @@
     };
   }
 
+  // A move is never lost. A page that was frozen (or slow) can still show the copy of a share that ended, for a few
+  // seconds, until the meeting mounts the new one; a tap there is a request to a session that is gone. When a copy
+  // stops with requests its owner never answered, they are held here, per app, and the next copy of the same app on
+  // this page sends them, under its own share, once it has caught up (its session has arrived and the room hears this
+  // page). The owner judges them on the state it holds then: a move that is no longer legal (another round, not this
+  // person's turn) is refused, and the page says so in its own line, since the copy that made it is gone. A request
+  // nobody takes within APP_ROOM_GIVEUP_MS of the tap is refused the same way.
+  const roomHeld = new Map(); // app key -> [{ q, rec, t0 }]
+  const roomAppKey = (manifest) => String((manifest && (manifest.appId || manifest.name)) || '');
+  function roomNote(text) {
+    if (typeof document === 'undefined' || !document.body) return;
+    let el = document.getElementById('gifos-room-note');
+    if (!el) {
+      el = document.createElement('div'); el.id = 'gifos-room-note'; el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite');
+      el.style.cssText = 'position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:41;max-width:min(92vw,520px);background:#111a;backdrop-filter:blur(6px);color:#fff;border:1px solid #fff4;border-radius:14px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;font:15px/1.35 system-ui,sans-serif';
+      document.body.appendChild(el);
+    }
+    el.textContent = '';
+    const t = document.createElement('span'); t.style.cssText = 'flex:1 1 220px'; t.textContent = text;
+    const b = document.createElement('button'); b.type = 'button'; b.id = 'gifos-room-note-ok'; b.textContent = tr('runtime.room.ok', 'OK');
+    b.style.cssText = 'min-height:44px;padding:8px 16px;border-radius:999px;border:1px solid #fff6;font:inherit;font-weight:700;cursor:pointer;background:#fff;color:#111';
+    b.onclick = () => el.remove();
+    el.append(t, b);
+  }
+  const roomLost = (manifest, why) => roomNote(tr('runtime.room.lost', 'Your move in {app} was not made: {why}', { app: (manifest && manifest.name) || 'this app', why }));
+  // a held request the next copy never picked up: refused, visibly, when its time is up
+  function roomHeldExpire(key, AR, manifest) {
+    const list = roomHeld.get(key); if (!list) return;
+    const now = Date.now(), keep = [];
+    for (const h of list) { if (now - h.t0 > GifOS.timings.APP_ROOM_GIVEUP_MS) roomLost(manifest, roomWhy(AR, 'pending')); else keep.push(h); }
+    if (keep.length) roomHeld.set(key, keep); else roomHeld.delete(key);
+    return keep.length ? Math.min(...keep.map((h) => h.t0)) + GifOS.timings.APP_ROOM_GIVEUP_MS - now : 0;
+  }
+
   // THE GUEST SIDE: requests go to the owner signed with the person key; the session comes back owner-signed in
   // the app's state (mirror). A request is sent again until the owner's session answers it.
   function makeRoomClient(manifest, AR, me, send, sid, sessionOf) {
     const sp = AR.spec(manifest.room);
-    let frames = new Set(), lastView = '', seq = 0;
-    const waits = new Map(); // q -> { res, rej, f, at, t0 }
+    const key = roomAppKey(manifest);
+    let frames = new Set(), lastView = '', seq = 0, stopped = false;
+    const waits = new Map(); // q -> { res, rej, q, rec, f, signing, at, t0, held }
     const view = () => { const r = roomRoster(me); return AR.view(sp, sessionOf() || AR.fresh(sp), me.id, r.people, r.kind, !!r.admin && r.kind === 'admin'); };
     let api = null;
     const push = () => {
@@ -253,33 +289,67 @@
       if (api) roomAskBar(v, manifest.name, api.call);
       frames.forEach((f) => { try { const w = f.contentWindow; if (w) w.postMessage({ ns: 'gifos', type: 'room', state: v }, '*'); else frames.delete(f); } catch (e) {} });
     };
+    // Caught up: the room hears this page, and for a request an earlier copy made, this copy has the owner's session
+    // too (the owner writes it as the share starts), so an answer the owner already gave is read, not asked twice.
+    // Until then a request waits unsigned.
+    const caughtUp = (w) => { const r = roomRoster(me); return !!(r.on && r.me && (!w.held || sessionOf())); };
+    const sendOne = (id, w) => {
+      if (w.f || w.signing || stopped || !caughtUp(w)) return;
+      const r = roomRoster(me);
+      const body = { pid: r.me, t: me.stamp(), q: w.q };
+      if (w.rec) body.rec = w.rec;
+      w.signing = true;
+      me.signer.sign(roomSid(sid), 'room', body).then((f) => {
+        w.signing = false;
+        if (stopped || waits.get(id) !== w) return;
+        w.f = f; w.at = Date.now();
+        try { send('act', { op: 'room', f }); } catch (e) {}
+      }, () => { w.signing = false; });
+    };
     const answer = () => {
       const s = sessionOf(); const res = s && s.res && s.res[me.id];
       for (const [q, w] of waits) {
         if (res && res.q === q) { waits.delete(q); if (res.ok) w.res({ ok: true }); else w.rej(new Error(roomWhy(AR, res.why))); continue; }
         if (Date.now() - w.t0 > GifOS.timings.APP_ROOM_GIVEUP_MS) { waits.delete(q); w.rej(new Error(roomWhy(AR, 'pending'))); continue; }
+        if (!w.f) { sendOne(q, w); continue; }
         if (Date.now() - w.at >= GifOS.timings.APP_ROOM_RETRY_MS) { w.at = Date.now(); try { send('act', { op: 'room', f: w.f }); } catch (e) {} }
       }
     };
+    // Requests an earlier copy of this app could not finish: this copy sends them (the copy that made them is gone,
+    // so a refusal is said by the page).
+    const held = roomHeld.get(key); roomHeld.delete(key);
+    for (const h of held || []) {
+      waits.set(h.q.q, { q: h.q, rec: h.rec, f: null, signing: false, at: 0, t0: h.t0, held: true, res: () => {}, rej: (e) => roomLost(manifest, e && e.message) });
+    }
     const timer = setInterval(() => { answer(); push(); }, GifOS.timings.APP_ROOM_BEAT_MS);
+    if (held && held.length) answer();
     return api = {
       owner: false,
       frame(f) { frames.add(f); lastView = ''; push(); },
       changed() { answer(); push(); },
       state() { return Promise.resolve(view()); },
       call(q, rec) {
-        const r = roomRoster(me);
-        if (!r.on || !r.me) return Promise.reject(new Error(roomWhy(AR, 'notHere')));
         const id = me.id.slice(0, 4) + (++seq) + '.' + Date.now().toString(36);
-        const body = { pid: r.me, t: me.stamp(), q: Object.assign({}, q, { q: id }) };
-        if (rec && typeof rec === 'object') body.rec = rec;
-        return me.signer.sign(roomSid(sid), 'room', body).then((f) => new Promise((res, rej) => {
-          waits.set(id, { res, rej, f, at: Date.now(), t0: Date.now() });
-          try { send('act', { op: 'room', f }); } catch (e) {}
-        }));
+        const s = sessionOf();
+        // a move is made on the board of one round: the owner refuses it in another
+        const qq = Object.assign({}, q, { q: id }, q.op === 'move' && s && Number.isInteger(s.round) ? { round: s.round } : {});
+        return new Promise((res, rej) => {
+          waits.set(id, { res, rej, q: qq, rec: rec && typeof rec === 'object' ? rec : null, f: null, signing: false, at: 0, t0: Date.now(), held: false });
+          sendOne(id, waits.get(id));
+        });
       },
       mayWrite: () => false,
-      stop() { clearInterval(timer); frames.clear(); roomAskBar(null); for (const [, w] of waits) w.rej(new Error(roomWhy(AR, 'pending'))); waits.clear(); },
+      stop() {
+        stopped = true; clearInterval(timer); frames.clear(); roomAskBar(null);
+        // what the owner has not answered is held for the next copy of this app on this page (never dropped)
+        const list = roomHeld.get(key) || [];
+        for (const [, w] of waits) list.push({ q: w.q, rec: w.rec, t0: w.t0 });
+        waits.clear();
+        if (!list.length) return;
+        roomHeld.set(key, list);
+        const later = () => { const ms = roomHeldExpire(key, AR, manifest); if (ms > 0) setTimeout(later, ms + 50); };
+        setTimeout(later, Math.max(0, Math.min(...list.map((h) => h.t0)) + GifOS.timings.APP_ROOM_GIVEUP_MS - Date.now()) + 50);
+      },
     };
   }
 
