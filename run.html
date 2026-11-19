@@ -32760,7 +32760,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const send = how === 'lo' ? false : mine ? capSend() : (trMode() === 'share' || (trKeeps() && (capPaused(forId) || doubted)));
       if (how === 'out') { if (send) { sendAll({ k: 'tr', m }); if (typeof capTrace === 'function') capTrace(m, 'sent'); } return; }
       if (!send && !trKeeps() && !trEnOn) { if (typeof capTrace === 'function') capTrace(m, 'unkept'); return; }
-      if (!takeTr(m)) return; // the same sentence is already held by a better line
+      if (!takeTr(m)) {
+        // the same sentence is already held by a better line. An ear line that is sent still goes: it is the
+        // evidence other pages use to judge the speaker's own captions (they fold it into the line they hold).
+        if (send && !mine && m.src === 'ear' && capTrust) sendAll({ k: 'tr', m });
+        return;
+      }
       if (send) sendAll({ k: 'tr', m });
       renderTranscript();
       if (capShows(m)) showCaption(m.byId, trNote(m) + m.text, mine ? '' : capLabel(m));

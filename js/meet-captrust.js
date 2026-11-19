@@ -209,7 +209,7 @@
       if (picks.get(v) === 'me') return true;
       const r = st.get(key(v, v));
       if (!r || r.s !== 'trusted') return true;
-      return ((now() - r.at) % T.CT_SPOT_EVERY_MS) >= T.CT_SPOT_EVERY_MS - T.CT_SPOT_MS;
+      return ((now() - r.at) % T.CT_SPOT_EVERY_MS) < T.CT_SPOT_MS;   // the first check right away, then one a period
     }
     // vt for this page's own ear line about v: its verdict on v's own captions.
     function verdict(v) { const s = stateOf(v, v); return s === 'distrusted' ? 0 : s === 'trusted' ? 1 : undefined; }
