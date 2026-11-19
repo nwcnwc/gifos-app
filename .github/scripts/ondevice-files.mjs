@@ -104,7 +104,10 @@ function runtime(work) {
 }
 
 const [mode, work] = process.argv.slice(2);
-if (import.meta.url === 'file://' + process.argv[1]) {
+// Run as a command (not imported): compare real paths, since Node resolves symlinks in import.meta.url but not in
+// argv[1], and a URL escapes characters a path does not. A mismatch here printed nothing and exited 0.
+const isMain = (() => { try { return fs.realpathSync(fileURLToPath(import.meta.url)) === fs.realpathSync(process.argv[1] || ''); } catch (e) { return false; } })();
+if (isMain) {
   if (mode === 'list') for (const f of files()) console.log([f.key, f.sha256, f.bytes, f.type, f.src, f.member].join(' '));
   else if (mode === 'fetch' && work) fetchAll(path.resolve(work));
   else if (mode === 'runtime' && work) runtime(path.resolve(work));
