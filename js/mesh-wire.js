@@ -105,7 +105,7 @@
   // WIRE SKEW (SUB.11, 0.9.27). Dig.ppl (the names beside a door's count) is a field no 0.9.26 page knows, and it has no
   // place inside a field they read: an entry more in Dig.doors is a door to them (their SUB.3 would miss it when it left).
   // So the names leave the frame: toWire takes Dig.ppl out of every digest and the envelope carries them beside f
-  // (`pp`: { <digest key>: [[door, id, id, ...], ...] }, digs by index), a part of the envelope an older page never
+  // (`pp`: { <digest key>: [[door, id, f, id, f, ...], ...] }, digs by index; f (SUB.11.1): the person's status byte, 1 muted, 2 camera off, 4 hand raised), a part of the envelope an older page never
   // reads; fromWire(f, pp) puts them back, so the seat's Msg and the sim keep Dig.ppl. Like the display digest `pd`
   // they are outside f and its signature (coreOf leaves them out): a page that does not know them verifies the same
   // core. An older page in the path sends its fold on without names: the far side shows the count and "and N more".
@@ -115,7 +115,7 @@
     let pp = null;
     const take = (d, key) => {
       if (!d || d.ppl === undefined) return; const by = new Map();
-      for (const e of d.ppl) { if (!e) continue; let a = by.get(e.k); if (!a) by.set(e.k, a = [e.k]); a.push(e.id); }
+      for (const e of d.ppl) { if (!e) continue; let a = by.get(e.k); if (!a) by.set(e.k, a = [e.k]); a.push(e.id, (e.f | 0) & 7); }
       delete d.ppl; if (by.size) (pp = pp || {})[key] = Array.from(by.values());
     };
     for (const k of DIG_KEYS) take(o[k], k);
@@ -125,7 +125,7 @@
   function pplIn(o, pp) {
     const put = (d, key) => {
       const v = pp[key]; if (!d || !Array.isArray(v) || v.length > PP_MAX) return; const out = [];
-      for (const a of v) { if (!Array.isArray(a) || a.length < 2 || a.length > 65 || !a.every(Number.isFinite)) return; for (let i = 1; i < a.length; i++) out.push({ id: a[i], k: a[0], f: 0 }); }
+      for (const a of v) { if (!Array.isArray(a) || a.length < 3 || a.length > 129 || !(a.length & 1) || !a.every(Number.isFinite)) return; for (let i = 1; i < a.length; i += 2) out.push({ id: a[i], k: a[0], f: (a[i + 1] | 0) & 7 }); }   // pairs: a name and its status byte
       if (out.length) d.ppl = out;
     };
     for (const k of DIG_KEYS) put(o[k], k);
@@ -895,7 +895,7 @@
         // c: '1' a capable row head (a pipe may end here); '2' a capable Section-1 seat with its cell key k, which the relay
         // names when its door has no capable row head left (the seat next in line for a head cell, SUB.3); '0' neither
         w.c = cap ? (seat.coord.i === 0 ? '1' : '2') : '0';
-        if (w.c === '2') w.k = String(seat.coord.r * 256 + seat.coord.i);
+        if (w.c !== '1') w.k = String(seat.coord.r * 256 + seat.coord.i);   // SUB.3.1: '0' gives its cell too (a door with no capable seat names its lowest cell)
       }
       if (raw && Number.isInteger(raw.lineAt) && raw.lineAt >= 0 && raw.lineAt < 1e15) w.ep = String(raw.lineAt);
       return w;

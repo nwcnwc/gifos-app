@@ -417,7 +417,7 @@
         if (this.stageT) d.stage.push({ id, k: this.stageT, f: this.stageF });
         if (this.appT) d.apps.push({ id, k: this.appT, f: 0 });
         { this.talkExpire(); const te = this.talkEntry(); if (te) d.talk.push(te); }   // L6.2: my own place in the stage set
-        if (d.n === 1 && this.dRoot().doors.length) d.ppl.push({ id: this.id, k: -1, f: 0 });   // SUB.11: while my room fold lists a far door I name myself beside my count
+        if (d.n === 1 && this.dRoot().doors.length) d.ppl.push({ id: this.id, k: -1, f: this.pplOwnF() });   // SUB.11: while my room fold lists a far door I name myself beside my count
         if (this.away) d.awayN = 1;
         else {
           const u = new Set(), w = new Set();
@@ -539,10 +539,14 @@
 
   // ---- L10: triggered state messages -----------------------------------------------------------------------
   Seat.unit('mesh_seat.inc L10', {
+    // C++: mesh.cpp:Seat::pplOwnF
+    // SUB.11.1: the byte of my own name entry: 1 muted, 2 camera off (pst, as my page says it), 4 hand raised (handT).
+    pplOwnF() { return (this.pst & 3) | (this.handT ? 4 : 0); },
     // C++: mesh_seat.inc:Seat::l10OwnNow
     l10OwnNow() {
       let h = H_INIT; const mix = (x) => { h = hmix64(h, x); };
       mix(this.handT); mix(this.stageT); mix(this.stageF); mix(this.appT); mix(this.away ? 1 : 0); mix(this.refuses ? 1 : 0);
+      if (this.pst) { mix(15); mix(this.pst); }   // SUB.11.1 (a zero byte hashes as before)
       mix(this.vup.length); for (const t of this.vup) mix(t); mix(this.vdn.length); for (const t of this.vdn) mix(t);
       const te = this.talkEntry(); if (te) { mix(7); mix(te.id); mix(te.k); mix(te.f); }
       return h;
