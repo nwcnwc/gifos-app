@@ -22,8 +22,9 @@ join a meeting itself. Asked "join this meeting and [do X]: <link>":
 1. Open the link with ?bot=1 added, e.g. https://gifos.app/meet/<room>?bot=1.
    That is the voluntary bot tag: people see a "bot" badge on your tile, and
    you join muted with the camera off.
-2. A box titled "This is how you'll appear" opens: type your name in "Your
-   name" ([data-agent="name-input"]) and press Save ([data-agent="name-save"]).
+2. A box titled "This is how you'll appear" opens. "Your name"
+   ([data-agent="name-input"]) holds a guest name like "Guest 1234": replace
+   it with your name and press Save ([data-agent="name-save"]).
 3. You need no camera or microphone. Block or ignore any permission prompt:
    the meeting goes on without it.
 4. Wait until the top bar ([data-agent="status"]) says "N in this meeting",
@@ -35,7 +36,8 @@ join a meeting itself. Asked "join this meeting and [do X]: <link>":
    "Message everyone" ([data-agent="chat-input"]) and press Enter or Send
    ([data-agent="chat-send"]). Messages are in [data-agent="chat-log"].
 7. Transcript: Alt+T, or the Transcript tab ([data-agent="transcript-open"]);
-   lines are in [data-agent="transcript-log"]. Leave with Alt+Q.
+   lines are in [data-agent="transcript-log"]. Keep the page open while you
+   take part (closing it leaves the meeting); leave on purpose with Alt+Q.
 
 To speak with a generated voice or show generated video, keep the bot tag on,
 allow the microphone or camera for gifos.app, and press Unmute (Alt+A) or
