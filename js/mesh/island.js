@@ -139,7 +139,9 @@
       if (m.t === 'PIPE') return true;   // onPipe takes it from my own far end only
       let named = false; if (m.sr === 0 || this.sr === 0) for (const x of this.occ.values()) if (x === m.from) { named = true; break; }
       if (!named) { this.trace('SUB.1-DROP', this.id, null, 'from=%d sr=%d mine=%d mt=%d', m.from, m.sr, this.sr, msg.MT_NAMES.indexOf(m.t)); return false; }
-      if (this.sr === 0 && m.sr !== this.walkedFrom) { this.sr = m.sr; this.trace('SUB.1-ADOPT', this.id, this.hasCoord ? this.coord : null, 'from=%d sr=%d', m.from, this.sr); }
+      if (this.sr === 0 && m.sr !== this.walkedFrom) {
+        if (m.line < 0 || this.line < 0 || m.line !== this.line) { this.trace('SUB.1-DROP', this.id, null, 'from=%d sr=%d mine=%d mt=%d line=%d/%d', m.from, m.sr, this.sr, msg.MT_NAMES.indexOf(m.t), m.line, this.line); return false; }   // (b) is MY ROOM moving its door: the frame says so with my room's own lineage (TURN.5.3: a seat that left my room through the door and founded another is still named in my view)
+        this.sr = m.sr; this.trace('SUB.1-ADOPT', this.id, this.hasCoord ? this.coord : null, 'from=%d sr=%d', m.from, this.sr); }
       return true;
     },
     // C++: mesh_island.inc:Seat::subGo
@@ -149,6 +151,7 @@
     subGo(r) {
       this.trace('SUB.2-GO', this.id, this.hasCoord ? this.coord : null, 'sr=%d state=%d', r, this.state); this.sr = r;
       if (this.state === 3) { this.emitRelay(this.genKey); return; }
+      this.memo.clear();   // L3.14's courtesy is for cells of the door I sat at: a seat that enters another door holds none of its cells for anybody (TURN.5.3)
       for (const x of this.l16Ask) this.f.fabricDoorDrop(this.id, x);
       this.l16Anch = false; this.l16Ho = -1; this.l16Until = 0; this.l16Round = 0; this.l16Ask.length = 0; this.l16Busy.length = 0; this.l16Last = -1; this.l16List.length = 0; this.l16Next = 0; this.l16WaveAt = -1; this.l16FreshAt = -1; this.l16Saw = false;
       this.islandAsked.clear(); this.entEp.clear(); this.islandLast = false; this.islandAskN = 0; this.subEarly = false; this.islandAskAt = -1; this.gateway = -1; this.lastGreeters.length = 0; this.lastGreetersAt.length = 0; this.greetersAt = -1; this.state = 0; this.join();
@@ -204,6 +207,48 @@
       if (!this.f.fabricSubWalk(this.id, dig.digSeats(R), p)) return;
       this.trace('SUB.10-WALK', this.id, this.coord, 'from=%d to=%d n=%d', this.sr, p, dig.digSeats(R));
       this.walkedFrom = this.sr; this.goAt = -1; this.doorAt.clear(); this.doorWalk.clear();   /* (the doors I noted were far doors of the room I leave: not mine to miss) */ this.requeue('sub-walk'); this.subGo(p);
+    },
+    // C++: mesh_island.inc:Seat::cutOff
+    // TURN.5.3 A CUT IS NOT A CRASH: THE HALF WITHOUT THE ROOT ENTERS AGAIN. A seat of door 0 that the room reaches no more (no report
+    // from the root for DIG_TTL) dials the seat it hangs from through the door. Answered and no path: the room lives across a cut and
+    // this seat is outside it: it leaves with the goodbye by the door and enters as any joiner. No answer is a crash or a freeze.
+    cutOff() {
+      if (this.state !== 3 || !this.hasCoord || this.moving || this.sr !== 0 || !this.f.fabricTurnOn()) return false;   // only in a meeting with TURN
+      if (this.coord.pc === 0) {
+        if (ckey(this.coord) === 0) return false;   // the root's holder: the room is where I am
+        const it = this.s1tab.get(0); if (it === undefined || it.at < 0 || it.by < 0 || it.by === this.id) return false;   // the root I last heard (its report leaves my table at DIG_TTL: the dial goes out FHOP_RELAY_ASK before that)
+        if (this.LT() - it.rx <= K.DIG_TTL - K.FHOP_RELAY_ASK) return false;
+        const h = it.by; if (this.f.fabricCutProbe(this.id, h) !== 2) return false;
+        this.trace('TURN.5.3-CUT', this.id, this.coord, 'root=%d age=%lld', h, this.LT() - it.rx); return true;
+      }
+      if (this.rootDig.at < 0 || this.LT() - this.rootDig.rx <= K.DIG_TTL) return false;
+      if (this.greetersAt < 0 || this.TICK - this.greetersAt > K.DIG_TTL) { if (this.TICK - this.l13KnockAt >= K.DIG_TTL) { this.l13KnockAt = this.TICK | 0; this.emitRelay(this.genKey, false); } return false; }   // one knock while its list is good
+      let across = 0; for (const g of this.lastGreeters) { if (g < 0 || g === this.id) continue; const v = this.f.fabricCutProbe(this.id, g); if (v === 1) return false; if (v === 2) across++; }
+      if (!across) return false;
+      this.trace('TURN.5.3-CUT', this.id, this.coord, 'listed=%zu across=%d', this.lastGreeters.length, across); return true;
+    },
+    // C++: mesh_island.inc:Seat::cutFollow
+    // TURN.5.3 THE WORD. The goodbye of a seat that leaves by TURN.5.3 says so (LEAVE tag 53). A deeper seat whose owner or row head said
+    // it follows at once; a Section-1 seat follows when the root is late for it as well (a seat the root still reaches stays).
+    cutFollow(x, ck) {
+      if (this.state !== 3 || !this.hasCoord || this.moving || this.sr !== 0 || x < 0 || x === this.id) return false;
+      const c = unckey(ck);
+      if (this.coord.pc === 0) {
+        if (ckey(this.coord) === 0 || c.pc !== 0) return false;
+        const it = this.s1tab.get(0); if (it !== undefined && it.at >= 0 && this.LT() - it.rx <= K.DIG_TTL - 2 * K.FHOP_RELAY_ASK) return false;
+        this.trace('TURN.5.3-FOLLOW', this.id, this.coord, 'from=%d', x); return true;
+      }
+      const o = this.ownerCoord(); const mine = (o && ckey(o) === ck) || (this.coord.i !== 0 && c.pc === this.coord.pc && c.r === this.coord.r && c.i === 0);
+      if (!mine) return false;
+      this.trace('TURN.5.3-FOLLOW', this.id, this.coord, 'from=%d', x); return true;
+    },
+    // C++: mesh_island.inc:Seat::cutLeave
+    // TURN.5.3 THE LEAVE. The seats of my half leave in the same beat and the door lists them for a moment more: until I sit again the
+    // door's list is read without them (the Section-1 seats whose reports are on time in my table, and the seat whose word I follow).
+    cutLeave(said) {
+      this.cutHalf.clear(); if (said >= 0) this.cutHalf.add(said);
+      if (this.coord.pc === 0) for (const d of this.s1tab.values()) { if (d.at >= 0 && d.by >= 0 && d.by !== this.id && this.LT() - d.rx <= K.DIG_TTL - 2 * K.FHOP_RELAY_ASK) this.cutHalf.add(d.by); }
+      this.f.fabricDropHalf(this.id); this.leftCk = ckey(this.coord); this.leftAt = this.TICK; this.leftTo = -1; this.requeue('TURN.5.3-cut');   // (the goodbye goes by the door, D6c.4)
     },
     // C++: mesh_island.inc:Seat::pipeBeat
     pipeBeat() {
