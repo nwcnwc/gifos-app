@@ -228,6 +228,7 @@
   "meet.waitSelf": "The host will let you in",
   "meet.waitSelfNote": "You can see this meeting when someone admits you.",
   "meet.rosterPeople": "people",
+  "meet.rosterAndMore": "and {n} more",
   "meet.rosterFind": "Find a name",
   "meet.waitRoom": "Waiting room",
   "meet.waitOn": "On",

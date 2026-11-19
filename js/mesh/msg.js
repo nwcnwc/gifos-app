@@ -145,8 +145,8 @@
   }
 
   // Dig (written sparse)
-  const Dig_FIELDS = new Set(["n","refuse","freeC","at","by","dmin","ag","rx","part","leased","held","handN","awayN","hands","stage","apps","votes","talk","kick","kabs","kOwn","kl","rows","doors","go"]);
-  function newDig() { return { n: 0, refuse: 0, freeC: 0, at: -1, by: -1, dmin: 99, ag: 0, rx: -1, part: 0, leased: 0, held: 0, handN: 0, awayN: 0, hands: [], stage: [], apps: [], votes: [], talk: [], kick: [], kabs: 0, kOwn: newKStmt(), kl: [], rows: [], doors: [], go: -1 }; }
+  const Dig_FIELDS = new Set(["n","refuse","freeC","at","by","dmin","ag","rx","part","leased","held","handN","awayN","hands","stage","apps","votes","talk","kick","kabs","kOwn","kl","rows","doors","go","ppl"]);
+  function newDig() { return { n: 0, refuse: 0, freeC: 0, at: -1, by: -1, dmin: 99, ag: 0, rx: -1, part: 0, leased: 0, held: 0, handN: 0, awayN: 0, hands: [], stage: [], apps: [], votes: [], talk: [], kick: [], kabs: 0, kOwn: newKStmt(), kl: [], rows: [], doors: [], go: -1, ppl: [] }; }
   const Dig_DEF = {};
   function writeDig(x) {
     const o = {};
@@ -175,6 +175,7 @@
     if (x.rows.length) o.rows = x.rows.map(writeDRow);
     if (x.doors.length) o.doors = x.doors.map(writeLE);
     if (x.go !== -1) o.go = x.go;
+    if (x.ppl.length) o.ppl = x.ppl.map(writeLE);
     return o;
   }
   function readDig(o) {
@@ -205,6 +206,7 @@
     if (o.rows !== undefined) x.rows = o.rows.map(readDRow);
     if (o.doors !== undefined) x.doors = o.doors.map(readLE);
     if (o.go !== undefined) x.go = o.go;
+    if (o.ppl !== undefined) x.ppl = o.ppl.map(readLE);
     return x;
   }
 

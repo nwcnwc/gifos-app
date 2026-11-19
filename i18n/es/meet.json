@@ -228,6 +228,7 @@
   "meet.waitSelf": "El anfitrión te dejará entrar",
   "meet.waitSelfNote": "Verás la reunión cuando te admitan.",
   "meet.rosterPeople": "personas",
+  "meet.rosterAndMore": "y {n} más",
   "meet.rosterFind": "Buscar un nombre",
   "meet.waitRoom": "Sala de espera",
   "meet.waitOn": "Sí",
