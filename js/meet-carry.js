@@ -231,9 +231,11 @@ registerProcessor('carry-play', CarryPlay);
   //   input   an AudioNode: whatever is connected to it is encoded and handed to o.onPacket(ArrayBuffer) every 20 ms
   //   output  an AudioNode: the far end's decoded voice, through the jitter buffer (connect it where it is to be heard)
   //   take(buf) an Opus packet from the far end
+  //   o.ear     an AudioContext that plays to the speaker: the far end's voice is HEARD there, through a jitter buffer of
+  //             its own on that context's clock (ac may play to no device)
   function createVoice(ac, o) {
     const V = { input: null, output: null, ready: null, st: { enc: 0, dec: 0, encErr: 0, decErr: 0 } };
-    let enc = null, dec = null, cap = null, play = null, ts = 0, stopped = false, statsWait = null;
+    let enc = null, dec = null, cap = null, play = null, ear = null, ts = 0, stopped = false, statsWait = null;
     V.ready = ensureWorklet(ac).then(() => {
       if (stopped) return;
       V.input = ac.createGain();
@@ -242,6 +244,13 @@ registerProcessor('carry-play', CarryPlay);
       const sink = ac.createGain(); sink.gain.value = 0; cap.connect(sink); sink.connect(ac.destination);   // pulled, never heard
       play = new AudioWorkletNode(ac, 'carry-play', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [1] });
       V.output = ac.createGain(); play.connect(V.output);
+      return o.ear ? ensureWorklet(o.ear).then(() => {   // the ear: a jitter buffer of its own on the speaker context's clock
+        if (stopped) return;
+        ear = new AudioWorkletNode(o.ear, 'carry-play', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [1] });
+        ear.connect(o.ear.destination);
+      }).catch(() => { ear = null; }) : null;   // no ear: the room still hears this voice
+    }).then(() => {
+      if (stopped) return;
       play.port.onmessage = (ev) => { if (ev.data && ev.data.stats && statsWait) { const r = statsWait; statsWait = null; r(ev.data.stats); } };
       enc = new AudioEncoder({
         output: (chunk) => { const b = new ArrayBuffer(chunk.byteLength); chunk.copyTo(b); V.st.enc++; try { o.onPacket(b); } catch (e) {} },
@@ -250,7 +259,7 @@ registerProcessor('carry-play', CarryPlay);
       enc.configure({ codec: 'opus', sampleRate: ac.sampleRate, numberOfChannels: 1, bitrate: BITRATE, opus: { frameDuration: OPUS_FRAME * 1000 } });
       dec = new AudioDecoder({
         output: (ad) => {
-          try { const pcm = new Float32Array(ad.numberOfFrames); ad.copyTo(pcm, { planeIndex: 0, format: 'f32-planar' }); V.st.dec++; play.port.postMessage({ pcm, rate: ad.sampleRate }, [pcm.buffer]); } catch (e) { V.st.decErr++; }
+          try { const pcm = new Float32Array(ad.numberOfFrames); ad.copyTo(pcm, { planeIndex: 0, format: 'f32-planar' }); V.st.dec++; if (ear) ear.port.postMessage({ pcm: pcm.slice(), rate: ad.sampleRate }); play.port.postMessage({ pcm, rate: ad.sampleRate }, [pcm.buffer]); } catch (e) { V.st.decErr++; }
           try { ad.close(); } catch (e) {}
         },
         error: () => { V.st.decErr++; },
@@ -271,7 +280,7 @@ registerProcessor('carry-play', CarryPlay);
     V.stats = () => new Promise((res) => { if (!play) return res(Object.assign({}, V.st)); statsWait = (s) => res(Object.assign({}, V.st, s)); play.port.postMessage({ stats: 1 }); setTimeout(() => { if (statsWait) { statsWait = null; res(Object.assign({}, V.st)); } }, TM().TUNNEL_STATS_WAIT_MS); });
     V.stop = () => {
       stopped = true;
-      for (const n of [V.input, cap, play, V.output]) { try { if (n) n.disconnect(); } catch (e) {} }
+      for (const n of [V.input, cap, play, V.output, ear]) { try { if (n) n.disconnect(); } catch (e) {} }
       try { if (enc && enc.state !== 'closed') enc.close(); } catch (e) {}
       try { if (dec && dec.state !== 'closed') dec.close(); } catch (e) {}
     };

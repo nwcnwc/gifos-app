@@ -147,6 +147,10 @@
   // C++: mesh.cpp:doorsK
   function doorsK(doors, r) { for (const e of doors) if (e.id === r) return e.k; return -1; }
   // C++: mesh.cpp:pplN
+  // SUB.11.1: a name entry's byte is its person's own status: 1 muted, 2 camera off, 4 hand raised. The seat stamps its own
+  // entry (pplOwnF); the byte folds, crosses and ages with the name. A person named twice in one fold shows every mark
+  // either report holds until the older one ages out.
+  const PPL_F = 7;
   function pplN(ppl, k) { let n = 0; for (const e of ppl) if (e.k === k) n++; return n; }
   const pplLess = (a, b) => (a.k !== b.k ? a.k < b.k : a.id < b.id);
   // C++: mesh.cpp:pplTrim
@@ -159,7 +163,7 @@
       const k = e.k < 0 ? -1 : e.k;
       if (k !== cur) { cur = k; n = 0; cap = Math.min(K_NAMED, k < 0 ? seats : Math.max(0, doorsK(doors, k))); }
       if (n >= cap || (out.length && out[out.length - 1].k === k && out[out.length - 1].id === e.id)) continue;
-      out.push({ id: e.id, k, f: 0 }); n++;
+      out.push({ id: e.id, k, f: e.f & PPL_F }); n++;   // SUB.11.1: the status byte stays with its name
     }
     ppl.length = 0; for (const e of out) ppl.push(e);
   }
@@ -180,8 +184,8 @@
       const cap = Math.min(K_NAMED, digSeats(s)); let t = 0;
       for (const e of s.ppl) {
         if (e.k >= 0) continue; if (t >= cap) break; t++;
-        let dup = false; for (const x of dst.ppl) if (x.k < 0 && x.id === e.id) { dup = true; break; }
-        if (!dup) { dst.ppl.push({ id: e.id, k: -1, f: 0 }); ch = true; }
+        const ef = e.f & PPL_F; let dup = false; for (const x of dst.ppl) if (x.k < 0 && x.id === e.id) { dup = true; if ((x.f | ef) !== x.f) { x.f |= ef; ch = true; } break; }
+        if (!dup) { dst.ppl.push({ id: e.id, k: -1, f: ef }); ch = true; }   // SUB.11.1: the byte folds with the name
       }
     }
     if (!ch) return;
@@ -266,7 +270,7 @@
     mix(d.n); mix(d.refuse); mix(d.freeC); mix(d.dmin); mix(d.part); mix(d.leased);
     if (d.held) { mix(10); mix(d.held); }   // only while a mover is held
     for (const e of d.doors) { mix(11); mix(e.id); mix(e.k); if (e.f) { mix(13); mix(e.f); } }   // only with people in another room of the meeting
-    for (const e of d.ppl) { mix(14); mix(e.id); mix(e.k + 1); }   // SUB.11 (only with a joining connection)
+    for (const e of d.ppl) { mix(14); mix(e.id); mix(e.k + 1); if (e.f) { mix(15); mix(e.f); } }   // SUB.11 (only with a joining connection)
     if (d.go >= 0) { mix(12); mix(d.go); }   // SUB.10 (only while a subroom walks)
     return h;
   }
@@ -295,7 +299,7 @@
 
   const api = Object.freeze({
     K_HAND, K_STAGE, K_APP, K_VOTE, STAGE_CAP, TALK_ON, TALK_HOLD, K_TALK,
-    newDig, newKStmt, cloneLE, cloneVE, cloneKStmt, cloneDRow, cloneDig, cloneDigE, digBarPop, digSeats, digFar, digPop, doorsAdd, K_NAMED, doorsK, pplN, pplTrim, pplFold, digLeasedIn, leEq, veEq, byLess,
+    newDig, newKStmt, cloneLE, cloneVE, cloneKStmt, cloneDRow, cloneDig, cloneDigE, digBarPop, digSeats, digFar, digPop, doorsAdd, K_NAMED, PPL_F, doorsK, pplN, pplTrim, pplFold, digLeasedIn, leEq, veEq, byLess,
     leAsc, leDesc, talkCls, talkLess, talkMerge, veOrd, listMerge, kOrd, kickAdd, kSigOk, kListAdd, kListUnion,
     kDerive, voteAdd, digFoldHeld, digFold, digTrim, digListHash, digSig, listHolds, votesHold,
   });

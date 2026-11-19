@@ -18,6 +18,9 @@ private meetings, room passwords, transcripts), install the MCP server from
 https://github.com/nwcnwc/gifos-meet-mcp. Setup is in its README
 "In short": run `npx -y npm@11.6.2 exec -y -- github:nwcnwc/gifos-meet-mcp`
 as a stdio MCP server in your client. Meetings guide: https://gifos.app/meet/llms.txt
+An agent with its own browser can also join a meeting by itself: the guide
+above has the steps, and https://mcp.gifos.app/mcp (a stateless MCP server)
+answers them for your provider.
 
 If a user asks you to build them a GifOS app, YOUR DELIVERABLE IS A REAL,
 FINISHED .gif FILE — not code. And building new is only half the fun:
