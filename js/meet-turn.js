@@ -1571,7 +1571,13 @@
         if (L.direct && L.state !== 'up' && now - L.directAt > ASK_MS) { if (io.directForget) io.directForget(L.far); close(L, 'dialfail'); continue; }
         if (L.state !== 'up' && now - L.askAt > DIAL_BUDGET_MS) { neverUp(L, 'dialfail'); continue; }
         if (L.sb && L.liveEnd && L.liveEnd !== io.me() && !io.alive(L.liveEnd)) { takeover(L, 'my live end left'); }
-        if (L.state === 'up' && !io.pcUp(L.far)) { if (!L.downSince) L.downSince = now; if (now - L.downSince > DIAL_BUDGET_MS) { if (L.opener) sub.pipeRetryAt = now + RETRY_MS; close(L, 'lost'); continue; } }
+        // A LINK THAT DID NOT SURVIVE MY ABSENCE. My page came back from a gap no connection outlives unanswered (io.woke():
+        // a frozen renderer, a device asleep, a network gone dark) and probed its pairs. A link that was up before that
+        // return and whose connection is still not up when the wake's own settle time has run is lost first-hand: it is
+        // closed then, not at the dial budget (that budget is for a connection that blips while I am here), and nothing
+        // was refused, so no wait follows: SUB.3 (a) asks for the re-pipe at once and a standby is warmed again.
+        const wk = io.woke ? io.woke() : 0, away = wk > 0 && L.upAt > 0 && L.upAt < wk && now - wk >= (io.wakeSettleMs || 6000) && now - wk < DIAL_BUDGET_MS * 2;
+        if (L.state === 'up' && !io.pcUp(L.far)) { if (!L.downSince) L.downSince = now; if (away) { close(L, 'wake-lost'); continue; } if (now - L.downSince > DIAL_BUDGET_MS) { if (L.opener) sub.pipeRetryAt = now + RETRY_MS; close(L, 'lost'); continue; } }
         else L.downSince = 0;
         if ((L.state === 'ask' || (L.state === 'swap' && !L.peer)) && now - L.sentAt > RESEND_MS && (L.opener || L.farDev)) sendAsk(L);
         // a link that holds no vouch of mine yet (its setup, a takeover) asks again until it does; after that only a
