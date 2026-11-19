@@ -11569,6 +11569,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       refreshTrBtn();
       if (bannedOut) return;                      // the ban notice is permanent
       if (Date.now() < statusHoldUntil) return;   // an explicit message is showing
+      try { if (blockedAudio && blockedAudio.size) return; } catch (e) {} // a refused play stays on the line until the sound starts
       statusEl.classList.remove('alert');
       // Faces on the wall are people, even before their transport has vouched.
       // participantCount() stays the ladder's input; the label may only go up.
@@ -31678,6 +31679,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       audioNoteQueued = false;
       document.removeEventListener('pointerdown', audioKick, true);
       document.removeEventListener('keydown', audioKick, true);
+      document.removeEventListener('click', audioKick, true);
       sayState('soundBack');
     }
     // Drop the companion. A removed tile used to leave el._aud playing the
@@ -31715,6 +31717,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         audioKickArmed = true;
         document.addEventListener('pointerdown', audioKick, true);
         document.addEventListener('keydown', audioKick, true);
+        document.addEventListener('click', audioKick, true); // a control's click() does not fire pointerdown, and that click is what retries play()
       }
       // One line per refusal episode. A burst of companions (stage, stadium,
       // row) rejects in the same turn; the count is the set after that turn.
