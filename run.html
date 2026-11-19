@@ -3815,7 +3815,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (Number.isInteger(msg.cls) && msg.cls >= 0 && msg.cls <= 3) clsOf.set(from, msg.cls);
       if (Array.isArray(msg.ft)) ftagsOf.set(from, msg.ft.slice(0, GifOS.meshConsts.consts.FH_FTAGS).filter((t) => typeof t === 'string' && /^[0-9a-f]{8}$/.test(t)));
     }
-    const statusPayload = () => { refreshNetTag(); const ft = myFtags(), c = linkCls(); return { kind: 'status', s: myStatus, conns: myConns(), tc: myTc(), nat: natWord(), sid: mySid(), mod: modTable, modw: gossipModW(), name: myName(), ip: myIp, dv: myDevHash || undefined, nt: netTagNow || undefined, cls: c || undefined, ft: ft.length ? ft : undefined }; };
+    // CARRY (docs/turn-carry.md): two people at one device. While a page I carry has its microphone on, my status says what the
+    // room hears from my device: not muted (its tile lights when it talks). My own mute button and my own track are untouched.
+    const carryStatusOut = (s) => { try { return s.muted && carryHosts.size && Array.from(carryHosts.values()).some((c) => c.mic) ? Object.assign({}, s, { muted: false }) : s; } catch (e) { return s; } };
+    const statusPayload = () => { refreshNetTag(); const ft = myFtags(), c = linkCls(); return { kind: 'status', s: (typeof carryStatusOut === 'function' ? carryStatusOut(myStatus) : myStatus), conns: myConns(), tc: myTc(), nat: natWord(), sid: mySid(), mod: modTable, modw: gossipModW(), name: myName(), ip: myIp, dv: myDevHash || undefined, nt: netTagNow || undefined, cls: c || undefined, ft: ft.length ? ft : undefined }; };
     function broadcastStatus(answer) {
       if (!GifOS.meshConsts) return;   // a published lobby whose meeting scripts are still arriving: nobody to tell yet
       if (pulseHalt && !answer) return; // the halt models a throttled clock; an answer to a newcomer is driven by its frame, not the clock
@@ -12271,6 +12274,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       });
     }
     const REACH_PROBE_MS = GifOS.timings.REACH_PROBE_MS;
+    // NO USABLE PC (docs/turn-carry.md): does my connection gather any candidate at all? The network probe's connection
+    // answers it for free: true at its first candidate (host, mDNS or reflexive), false when it finished gathering with
+    // none (an agent sandbox's WebRtcIPHandling policy: no candidate without a TURN server), null while unknown.
+    let pcGathers = null;
+    function pcGathersWatch(pc) {
+      try {
+        pc.addEventListener('icecandidate', (ev) => { if (ev && ev.candidate && ev.candidate.candidate) pcGathers = true; });
+        pc.addEventListener('icegatheringstatechange', () => { if (pc.iceGatheringState === 'complete' && pcGathers !== true) pcGathers = false; });
+      } catch (e) {}
+      return pc;
+    }
     let directPath = 'pending'; // 'pending' | 'ok' | 'strict' | 'blocked' | 'unknown' — this network's verdict
     let directPathRun = 0;
     // L4.1.1: a firewall that blocks UDP drops it silently, so 'blocked' at the probe's limit (REACH_PROBE_MS) IS the verdict every
@@ -12286,7 +12300,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const forced = (typeof DEBUG_ON !== 'undefined' && DEBUG_ON && window.__gifosDirectPath) ? String(window.__gifosDirectPath) : '';
       if (forced === 'ok' || forced === 'blocked' || forced === 'strict') { directPath = forced; updateStatus(); if (meshNode && meshNode.remeasure) meshNode.remeasure(); return Promise.resolve(forced); }
       if (typeof RTCPeerConnection !== 'function') { directPath = 'unknown'; return Promise.resolve('unknown'); }
-      return probeDirectPath(() => new RTCPeerConnection({ iceServers: ICE_SERVERS }), REACH_PROBE_MS, (v) => {
+      return probeDirectPath(() => pcGathersWatch(new RTCPeerConnection({ iceServers: ICE_SERVERS })), REACH_PROBE_MS, (v) => {
         if (gen !== directPathRun) return;
         directMeasured = v !== null; if (v === null) return;
         directPath = v; updateStatus(); if (meshNode && meshNode.remeasure) meshNode.remeasure();
@@ -12959,6 +12973,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // answer are crossing on the relay, so the door's ICE clock starts (a door that never opens calls a friend to the door).
         // Whichever end dialled, the seated end keeps the clock: a door my own page dialled is as much a door.
         if (sig.dr === 1 && meshNode && meshNode.penv && meshNode.penv.doorNote) { try { meshNode.penv.doorNote(from); } catch (e) {} }
+        // A seated page's offer reached me over the relay. If my seat does not know that page, the door does: my seat knocks
+        // once and reads the door's list (two rooms at one door find each other this way, whatever stands between their networks).
+        if (sig.dr !== 1 && desc.type === 'offer' && meshNode && meshNode.penv && meshNode.penv.doorDialIn) { try { meshNode.penv.doorDialIn(from); } catch (e) {} }
         onSignal(from, sig);
         return;
       }
@@ -12972,6 +12989,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // A member a greeter called to the door for me says so. Its word alone opens nothing: my seat knocks and asks it
         // only if the door lists it. The frame is a name like any other, so it is also that member's dial request.
         if (f.dc === 1 && meshNode && meshNode.penv && meshNode.penv.doorWordIn) { try { meshNode.penv.doorWordIn(from); } catch (e) {} }
+        else if (meshNode && meshNode.penv && meshNode.penv.doorDialIn) { try { meshNode.penv.doorDialIn(from); } catch (e) {} }   // a dial request from a page my seat does not know: the door says who it is (one knock, bounded by the seat)
         const nm = String(f.n || '').slice(0, RELAY_NAME_MAX);
         if (nm) rosterNames[from] = nm;
         const p = peers.get(from);
@@ -13913,6 +13931,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         setTimer: (fn, ms) => setTimeout(fn, ms), clearTimer: (h) => clearTimeout(h),
         // The web path (js/meet-tunnel.js): a link whose relay protocol finds no way out of this network runs over a WebSocket.
         web: () => !!(GifOS.meetTunnel && GifOS.meetTunnel.supported()),
+        // NO USABLE PC: the web path's in-page pair needs a candidate of its own. A page whose connection gathers none (the
+        // probe) and holds no connected pair has no path but the carried one: it leaves the mesh and is carried (carryInstead).
+        noPc: () => pcGathers === false && !Array.from(peers.values()).some((q) => q && q.connected) && carryInstead('no candidate'),
         turnPath: (pid) => { const p = peers.get(pid), pc = p && p.pc; if (!pc) return { at: 0, relay: false }; return { at: turnWebClock(pc, Date.now()), relay: !!pc.__relayCand || !!p.connected }; },
         webOpen: (pid, o) => turnWebOpen(pid, o),
         webAuth: (pid, auth) => { const w = turnWeb.get(pid); if (w) w.auth(auth); },
@@ -14095,7 +14116,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function turnStep() {
       if (!turnLinks || !relayTv) return;
       try { turnLinks.step(); } catch (e) { turnNote('turn-step-err ' + String(e && e.stack || e).slice(0, 160)); }
-      try { turnSubApply(turnLinks.subAsk()); } catch (e) { turnNote('turn-sub-err ' + String(e && e.message || e).slice(0, 120)); }
+      try { if (turnLinks) turnSubApply(turnLinks.subAsk()); } catch (e) { turnNote('turn-sub-err ' + String(e && e.message || e).slice(0, 120)); }   // a step may end the links (carryInstead)
       for (const p of peers.values()) if (turnLinks.holds(p.id) || (p.pc && p.pc.__turnGuarded)) turnApplyVideo(p);
       turnWatch();
       pipeWatch();
@@ -14821,7 +14842,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // makes the offer at some doors and the answer at the others. On an offer the far end's gate reads the word (an
     // unseated dialler is not a stale member); on either, a seated far end starts that door's clock (onRelayPeer).
     const doorWord = () => { const ms = meshSeat(); return ms && ms.hasCoord && ms.state === 3 && ms.seatTick - ms.seatedAt > 40 ? 0 : 1; };
-    const sigMeta = () => ({ name: myName(), ip: myIp, st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), tc: myTc(), sid: mySid() });
+    const sigMeta = () => ({ name: myName(), ip: myIp, st: (typeof carryStatusOut === 'function' ? carryStatusOut(myStatus) : myStatus), mod: modTable, modw: gossipModW(), conns: myConns(), tc: myTc(), sid: mySid() });   // st: the status my beat says (carryStatusOut), or an offer undoes it
     // THE RULES THAT REBUILD BEFORE AN OFFER LANDS, first match wins. After a rebuild none of the later ones can
     // hold: a fresh pc has no death, no remote description, no connection and no media.
     const offerFpOf = (sdp) => { const m = /\r?\na=fingerprint:([^\r\n]+)/.exec(String(sdp && sdp.sdp || sdp || '')); return m ? m[1] : ''; };
@@ -18166,6 +18187,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return true;   // refused
     }
     function startMesh() {
+      if (typeof carryG !== 'undefined' && carryG) return;   // a carried page never runs a mesh of its own (carryInstead)
       if (unitsGate()) return;
       const relay = relayUrl();
       if (!relay) { setStatus(uiText('stNoConnectionServiceIsSet', 'No connection service is set up, so nobody can be invited in.')); return; }
@@ -18194,7 +18216,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (myIdReadyResolve) { const resolveId = myIdReadyResolve; myIdReadyResolve = null; resolveId(); }
       try { tryBroadcastStage(); } catch (e) {}
       pwReasserted = false;  // a fresh socket re-asserts the admin's door lock once
-      if (typeof RTCPeerConnection !== 'function') { carryGuestStart(relay.replace(/\/$/, ''), 'g' + ((parseInt(String(urlKeyHex).slice(0, 8), 16) | 1) >>> 0).toString(16)); return; }   // no connection at all: carried by a seat (docs/turn-carry.md)
+      carryBoot = { relay: relay.replace(/\/$/, ''), gk: 'g' + ((parseInt(String(urlKeyHex).slice(0, 8), 16) | 1) >>> 0).toString(16) };   // where a carried join knocks (carryInstead)
+      if (typeof RTCPeerConnection !== 'function') { carryInstead('no RTCPeerConnection'); return; }   // no connection at all: carried by a seat (docs/turn-carry.md)
       meshNode = GifOS.meshWire.createMeshNode({
         relayUrl: relay.replace(/\/$/, ''),
         onRelayFail: () => relayConnectFailed(), onRelayOpen: () => relayConnectOpened(),   // a relay that never answers is left (relayUrl)
@@ -41084,13 +41107,33 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         sign: (text) => net.edSign(myIdentity.priv, text).then((sig) => ({ sig, pub: myIdentity.pubB64 })),
         verify: (id, pub, sig, text) => GifOS.meshIdentity.peerIdOf(pub).then((got) => (got === id ? net.edVerify(pub, sig, text) : false)) };
     }
+    // NO USABLE PC, ONE PATH: no RTCPeerConnection at all (the boot), or one that gathers no candidate, neither its own nor a
+    // relay one (meet-turn webStart: the moment the web path would start, whose in-page pair needs a candidate too). The page
+    // leaves the mesh it began (an island of one at most: nothing can connect to it) and is carried. Never back: a reload is.
+    var carryBoot = null;   // var: the boot sets it before this line's block may have run
+    function carryInstead(why) {
+      if (carryG) return true;
+      if (!carryBoot) return false;
+      if (typeof clog === 'function') clog('carry-instead ' + why);
+      turnNote('carry instead: ' + why);
+      const mn = meshNode, tl = turnLinks;
+      meshNode = null; turnLinks = null; meshBootGen++;
+      queueMicrotask(() => {   // after the caller's own loop (the link manager's step) has returned
+        try { if (mn) mn.leave(false); } catch (e) {}
+        if (tl) { try { tl.stopAll('carried'); } catch (e) {} }
+        for (const pid of Array.from(peers.keys())) { try { dropPeer(pid); } catch (e) {} }
+        if (typeof clearRosterTiles === 'function') clearRosterTiles();
+      });
+      carryGuestStart(carryBoot.relay, carryBoot.gk, why);
+      return true;
+    }
     // --- the guest end: my door socket, one greeter at a time, my voice and my chat through the link
-    function carryGuestStart(relayBase, gk) {
+    function carryGuestStart(relayBase, gk, why) {
       if (carryG) return;
       const C = GifOS.meetCarry;
       if (!C || !C.supported()) { setStatus(uiText('stCarryNoWay', 'This browser has no way to join a call: it has no WebRTC and no WebCodecs audio.'), true); return; }
       const ticket = net.relayTicket ? net.relayTicket({ relayBase, sid: sessId }) : null;
-      const G = carryG = { relayBase, gk, door: null, link: null, voice: null, far: null, tried: new Set(), list: [], askT: null, src: null, srcTrack: null, at: Date.now() };
+      const G = carryG = { relayBase, gk, why: why || '', door: null, link: null, voice: null, far: null, tried: new Set(), list: [], askT: null, src: null, srcTrack: null, at: Date.now() };
       setStatus(uiText('stCarryLooking', 'Joining through a seat of the meeting (this browser has no WebRTC)…'), 0, 'note');
       const url = () => (ticket ? ticket.prepare(myDevHash).catch(() => null) : Promise.resolve()).then(() => relayBase + '/s/' + sessId + '?role=mesh&pv=0.9.25&token=' + encodeURIComponent(sessTok || '')
         + '&peer=' + encodeURIComponent(myId) + '&gk=' + encodeURIComponent(gk) + '&dev=' + encodeURIComponent(myDevHash) + '&pw=' + encodeURIComponent(pwProof)
@@ -41128,6 +41171,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         G.voice.ready.then(() => { if (G.voice && G.voice.output) G.voice.output.connect(ac.destination); carryGuestTick(); });
       }
       G.link.sendText({ k: 'hello', name: myName() });
+      G.micSaid = null;   // a new link hears my microphone's state afresh (carryGuestTick)
       setStatus(uiText('stCarryUp', 'In the meeting through another seat (this browser has no WebRTC).'), 0, 'note');
     }
     function carryGuestDown(why) {
@@ -41141,6 +41185,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function carryGuestTick() {   // my microphone into my voice's encoder, whichever track it is now
       const G = carryG; if (!G || !G.voice || !G.voice.input) return;
       const t = mainAudioTrack();
+      const on = !myStatus.muted && !!t && t.enabled !== false;   // my carrier's status speaks for both of us (carryStatusOut)
+      if (G.link && G.micSaid !== on) { G.micSaid = on; G.link.sendText({ k: 'mic', on }); }
       if (t === G.srcTrack) return;
       try { if (G.src) G.src.disconnect(); } catch (e) {}
       G.src = null; G.srcTrack = t;
@@ -41206,8 +41252,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         } catch (e) {}
       }
     }
-    function carryHostText(c, m) {   // what the page I carry says: its name, and its chat lines (nothing else is taken)
+    function carryHostText(c, m) {   // what the page I carry says: its name, its microphone's state, and its chat lines (nothing else is taken)
       if (m.k === 'hello' && typeof m.name === 'string') { c.name = m.name.slice(0, 40); return; }
+      if (m.k === 'mic' && typeof m.on === 'boolean') { if (c.mic !== m.on) { c.mic = m.on; try { broadcastStatus(); } catch (e) {} } return; }
       if (m.k === 'chat' && m.m && typeof m.m.text === 'string' && m.m.text.trim()) {   // its line, as my word under its name
         // byId: its own peer id, which its key statement proved to me on this link: the room's per-author rules (slow mode, rate) see its own author
         const line = { id: uid('m'), by: (c.name || 'Guest').slice(0, 40), byId: c.far, at: Date.now(), text: m.m.text.slice(0, 2000) };
@@ -41226,15 +41273,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       for (const x of c.srcs.values()) { try { if (x.n) x.n.disconnect(); } catch (e) {} try { x.gn.disconnect(); } catch (e) {} }
       if (c.voice) { try { c.voice.stop(); } catch (e) {} }
       if (!carryHosts.size) { carryVoiceTrack = null; try { refreshOutbound(); } catch (e) {} }
+      if (c.mic) { try { broadcastStatus(); } catch (e) {} }   // my status speaks for me alone again
       turnNote('carry ' + String(c.far).slice(0, 8) + ' ended');
     }
     async function carryForTest() {
       const one = async (link, voice) => ({ link: link ? link.info() : null, pipe: link ? await link.stats() : null, voice: voice ? await voice.stats() : null });
       const log = turnLog.filter((x) => / carry /.test(x)).slice(-30);
-      if (carryG) return Object.assign({ role: 'carried', far: carryG.far, list: carryG.list.length, log }, await one(carryG.link, carryG.voice));
+      if (carryG) return Object.assign({ role: 'carried', why: carryG.why, pcGathers, far: carryG.far, list: carryG.list.length, log }, await one(carryG.link, carryG.voice));
       const out = [];
-      for (const c of carryHosts.values()) out.push(Object.assign({ far: c.far, name: c.name, srcs: c.srcs.size, track: !!carryVoiceTrack }, await one(c.link, c.voice)));
-      return { role: out.length ? 'carrier' : 'none', carried: out, log };
+      for (const c of carryHosts.values()) out.push(Object.assign({ far: c.far, name: c.name, mic: c.mic == null ? null : !!c.mic, srcs: c.srcs.size, track: !!carryVoiceTrack }, await one(c.link, c.voice)));
+      return { role: out.length ? 'carrier' : 'none', pcGathers, muted: !!myStatus.muted, saysMuted: !!carryStatusOut(myStatus).muted, carried: out, log };
     }
     function dbgMeterSources() {
       const out = [];
@@ -41287,6 +41335,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     if (DEBUG_ON) setTimeout(function dbgMeterBoot() { if (!dbgMeters()) setTimeout(dbgMeterBoot, 2000); }, 1000);
     window.__gifosVideo = {
       carryForTest: () => carryForTest(),
+      statusMutedForTest: (id) => { const st = statusOf.get(String(id)); return st ? !!st.muted : null; },   // what this page reads of a peer's mute (the carrier's status, CARRY)
       seedGalleryForTest: (spec) => seedGalleryForTest(spec),
       // A seat whose device never sent a name (joined from a link, no name typed).
       clearNameForTest: (id) => {
