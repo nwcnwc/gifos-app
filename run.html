@@ -18064,7 +18064,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           },
           pipeEnds: () => (turnLinks ? turnLinks.pipeEnds() : []),
           repipe: () => { if (turnLinks) turnLinks.repipe(); },   // my room's fold lost a far door: re-pipe my room (asked once, by the home-cell seat)
-          doorEmpty: () => { if (turnLinks) turnLinks.doorEmpty(); },   // my door's relay forgot it (tag 3): a fresh grant for it
+          doorEmpty: () => { if (turnLinks) turnLinks.doorEmpty(); try { turnNote('turn-sub door ' + (meshNode ? meshNode.sub : '?') + ' empty at the relay: asking for a fresh grant'); } catch (e) {} },   // my door's relay forgot it (tag 3): a fresh grant for it
         },
         // Friend-hop's page face (env.js decides which frames; sponsorSend and fwdOnward are the rungs).
         fhop: {

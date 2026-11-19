@@ -888,7 +888,7 @@
       if (opts.holdDoor && opts.holdDoor()) return;   // waiting on the admin with a lock I cannot read: a list I cannot open must not make me a founder
       // ROOMS JOINED BY RELAYED CONNECTIONS: tag 3, my own door is empty (the relay forgot it; the seat asks for a fresh
       // grant); tag 4, door 0 is empty while other doors of the meeting live (the seat asks before founding). The seat decides.
-      if ((m.tag === 3 || m.tag === 4) && penv) { if (!stopped && seat) penv.relayFrame({ t: 'greeters', list: [], tag: m.tag }); return; }
+      if ((m.tag === 3 || m.tag === 4) && penv) { regPendingAt = 0; /* the relay answered: this socket is alive (unanswered, the watchdog rebuilt it 12 s later) */ if (!stopped && seat) penv.relayFrame({ t: 'greeters', list: [], tag: m.tag }); return; }
       const list = m.list || [];
       const ids = [], sealedFps = [], fa = [], behind = [];
       const ep = new Map(), atOf = (l) => l.map((p) => (ep.has(p) ? ep.get(p) : -1));   // each greeter's word of when its room was founded (-1: not said)
@@ -1336,7 +1336,14 @@
         if (stopped || !penv || !raw) return false; const g = (typeof sg === 'string' && sg) ? sg : null;
         if (raw.sr === 0) { subGrant = g; /* before the seat knocks at its new door */ return penv.subGo(r); }
         if (r !== raw.sr || !g || raw.state !== 3) return false;   // any other door is refused once my door is not the first
-        subGrant = g; raw.emitRelay(raw.genKey); return true;   // a fresh grant for my own door (its door stood empty): I register with it
+        // SUB.2.1: a fresh grant for my own door (its door stood empty). The relay reads a grant only when a socket connects, so the
+        // grant is presented on a new socket now: its connect knock mints the door again and its onopen registers me. Registering
+        // on the socket I had (its grant ran out) was answered "empty" again, and the door stayed empty until the 12 s watchdog
+        // happened to rebuild the socket (live 2026-11-18: the joiners that came in that gap found no door to dial).
+        subGrant = g; regPendingAt = 0;
+        if (sock && !sock.rejected) { try { sock.close(); } catch (e) {} sock = null; }
+        if (!sock) makeSock();
+        return true;
       },
       meetingCount() { return layer ? layer.meetingCount() : null; },
       doorCount() { return layer ? layer.doorCount() : null; },
