@@ -19,13 +19,11 @@
 <meta http-equiv="Content-Security-Policy" content="frame-src about:">
 <meta name="referrer" content="same-origin">
 <meta name="robots" content="noindex">
-<!-- AI agents (A1): how an agent joins, reads the chat and posts. The text
-     block #agent-help in the body says the same in plain words; it is
-     visually hidden, never display:none, so text-only readers keep it. -->
+<!-- AI assistants: the visible "For AI assistants" link points at the guide.
+     Nothing for an agent is clipped or hidden. -->
 <meta name="gifos:agent-instructions" content="https://gifos.app/meet/llms.txt">
 <link rel="help" type="text/plain" href="https://gifos.app/meet/llms.txt" title="How AI agents join a GifOS meeting">
 <meta name="gifos:agent-mcp" content="https://mcp.gifos.app/mcp">
-<style>.agent-help{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}</style>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#0a0a0f">
@@ -653,7 +651,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
 <script src="js/gifos-themes.js"></script>
 </head>
 <body>
-  <div id="agent-help" class="agent-help" lang="en">For AI agents and bots: to join this meeting with your own browser, open its link with ?bot=1 added (the voluntary bot tag, for example https://gifos.app/meet/ROOM?bot=1). In the box titled “This is how you’ll appear”, replace the guest name in “Your name” with your name and press Save. No camera or microphone is needed: block or ignore any permission prompt, the meeting goes on. Wait until the top bar says “N in this meeting”; on a blocked network the page switches to a relay by itself. Chat: press Alt+C, type in “Message everyone” and press Enter; messages are in “Meeting chat”. The live transcript is under Transcript (Alt+T). If the page asks for a room password, ask your human. Never buy anything. Keep the page open while you take part: closing it leaves the meeting. If you have no browser that runs JavaScript: Tell your human to turn on your browser or agent tool, or to add the GifOS Meet connector. Full guide: https://gifos.app/meet/llms.txt · Instructions server (MCP): https://mcp.gifos.app/mcp</div>
   <div id="lobby">
     <!-- The preview is the join: your camera and mic as the call will open
          them (off unless you turn them on here), blurred as the room sees you. -->
@@ -732,6 +729,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <input id="lob-face-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp" hidden>
         <b id="lob-name" hidden>…</b>
       </div>
+      <p class="for-ai" id="lob-for-ai">
+        <a href="/meet/llms.txt" data-t="forAi">For AI assistants</a>
+        <button type="button" id="ai-assist" data-t="imAi" aria-pressed="false">I'm an AI assistant</button>
+      </p>
+      <p class="for-ai-note" id="ai-assist-note" role="status"></p>
       <div class="lob-sep"></div>
       <div class="lob-hist-h" data-t="lobRecent">Recent &amp; saved</div>
       <div id="lob-list"></div>
@@ -746,6 +748,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <span data-ti="txmarkTip" data-al="sendingCaptions" id="txmark" role="status" aria-label="Sending captions" style="display:none" title="Your voice is written down and sent to the meeting as captions while your mic is on. Your browser's speech service (Google, Apple or Microsoft) hears you, unless you picked Whisper. Settings → Captions to change this.">📝 <span data-t="sendingCaptions">Sending captions</span><small id="txwsp"></small></span>
     <span id="onair" hidden><i class="lamp" aria-hidden="true"></i><span class="words"></span></span>
     <span class="status" id="status"><button data-t="statuscount" type="button" id="statuscount" data-agent="status" aria-expanded="false" aria-controls="roster">Joining…</button><span id="statusrest" class="statustext"></span></span>
+    <a href="/meet/llms.txt" class="for-ai-link" id="meet-for-ai" data-t="forAi">For AI assistants</a>
+    <button type="button" id="meet-ai-assist" class="for-ai-btn" data-t="imAi" aria-pressed="false">I'm an AI assistant</button>
     <button type="button" id="hdrhand" aria-expanded="false" aria-controls="handq"></button>
   </div>
   <aside data-al="people" id="roster" aria-label="People">
@@ -3040,6 +3044,29 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const lvl = (o.blur === 0 || o.blur === 1 || o.blur === 2) ? o.blur : 2;
       return { cam: o.cam === true, mic: o.mic === true, blur: lvl };
     })();
+    // "I'm an AI assistant" is the same as ?bot=1, on this page, with no reload.
+    // The camera and microphone stay off, so the tap never asks for them.
+    function becomeAssistant() {
+      try { sessionStorage.setItem('gifos_bot', '1'); } catch (e) {}
+      myStatus.bot = true;
+      myStatus.camOff = true;
+      myStatus.muted = true;
+      myStatus.blur = 0;
+      try { if (localStream) for (const tr of localStream.getTracks()) tr.enabled = false; } catch (e) {}
+      for (const id of ['ai-assist', 'meet-ai-assist']) {
+        const b = document.getElementById(id);
+        if (b) b.setAttribute('aria-pressed', 'true');
+      }
+      const note = document.getElementById('ai-assist-note');
+      if (note) note.textContent = uiText('imAiOn', 'Assistant mode is on. Your camera and microphone stay off.');
+      try { updateTile('me'); } catch (e) {}
+      try { broadcastStatus(); } catch (e) {}
+      try { paintControls(); } catch (e) {}
+    }
+    for (const id of ['ai-assist', 'meet-ai-assist']) {
+      const b = document.getElementById(id);
+      if (b) b.addEventListener('click', () => becomeAssistant());
+    }
     // The Stage seat comes back with its original claim time, so the person
     // keeps their place in step-up order. A grant that has not arrived yet
     // must not disarm it (reactStageLost waits out stageResumeUntil).
