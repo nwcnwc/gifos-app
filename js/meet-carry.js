@@ -27,10 +27,10 @@
 
   const CARRY_MAX = 1;              // pages one seat carries at once (its load never grows with the room)
   const LINKS = 6;                  // c0..c5: the credential service's free link names per room (turn/worker link.js FREE_LINKS_DEFAULT)
-  const FRAME_MS = 20;              // one Opus packet (a codec frame size, not a wait)
+  const OPUS_FRAME = 20;            // ms of sound in one Opus packet: a codec frame size, not a wait
   const BITRATE = 24000;            // Opus voice, bits a second
   const JB_START = 3, JB_MAX = 15, JB_SLACK = 2;   // the jitter buffer, in frames: start, most, held over the target before skipping
-  const ASK_MS = 4000;              // a greeter that has not answered my ask this long: ask the next one (two relay round trips and a busy page)
+  const TM = () => GifOS.timings || {};   // every wait: js/timings.js (CARRY_ASK_MS, CARRY_LOOK_MS, TUNNEL_RETRY_*)
   const LINK_RE = /^c[0-9]$/, DEV_RE = /^[A-Za-z0-9_.-]{1,16}$/, NONCE_RE = /^[0-9a-f]{18}$/, MAC_RE = /^[A-Za-z0-9_-]{43}$/, E36_RE = /^[0-9a-z]{1,11}$/;
   const MT = () => GifOS.meetTurn, TUN = () => GifOS.meetTunnel;
 
@@ -61,17 +61,18 @@
   function createLink(o) {
     const now = o.now || (() => Date.now());
     const log = (s) => { try { if (o.log) o.log('carry ' + String(o.far).slice(0, 8) + ' ' + s); } catch (e) {} };
-    const L = { l: o.l, far: o.far, farDev: '', farSub: 0, mine: null, peer: null, peerE: 0, cred: null, end: null, state: 'ask', closed: false, askedAt: 0, vAskAt: 0, upAt: 0 };
-    const life = () => (GifOS.timings && GifOS.timings.TURN_VOUCH_LIFE_MS) || 60000;
-    const usable = (e) => e && e - now() > life() / 4;
+    const L = { l: o.l, far: o.far, farDev: '', farSub: 0, mine: null, peer: null, peerV: null, cred: null, end: null, state: 'ask', closed: false, askedAt: 0, vAskAt: 0, upAt: 0 };
+    // a vouch is used while three quarters of its life (from when I got it to its expiry) is left to run
+    const usable = (v) => !!v && v.e - now() > (v.e - v.at) / 4;
     function sendAsk(b) { L.askedAt = now(); o.sendTv({ k: 'tv', q: 'c', l: L.l, d: o.dev(), b: b ? 1 : 0, e: ((o.sub ? o.sub() : 0) | 0).toString(36) }); }
     function askMine() { if (!L.farDev) return; L.vAskAt = now(); o.askVouch(L.farDev, L.l); }
     function credStart() {
       if (L.cred || L.closed) return;
       L.cred = MT().createCredentials({ ask: o.ask, room: o.sid(), pool: 'free', now,
         extra: () => {
-          if (!L.mine || !usable(L.mine.e)) { if (now() - L.vAskAt > 2000) askMine(); return null; }
-          if (!L.peer || !usable(L.peerE)) { if (now() - L.askedAt > 2000) sendAsk(0); return null; }   // an ask is the far end's cue to vouch again
+          const again = TM().CARRY_ASK_MS;
+          if (!usable(L.mine)) { if (now() - L.vAskAt > again) askMine(); return null; }
+          if (!L.peer || !usable(L.peerV)) { if (now() - L.askedAt > again) sendAsk(0); return null; }   // an ask is the far end's cue to vouch again
           return { vouch: L.mine.v, peerVouch: L.peer };
         },
         onChange: (k) => {
@@ -119,14 +120,14 @@
           if (L.farDev && L.farDev !== f.d) return;
           const first = !L.farDev; L.farDev = f.d; L.farSub = f.e ? parseInt(f.e, 36) : 0;
           if (!o.guest) sendAsk(0);       // the carrier answers every ask: the guest's cue, and its own vouch follows
-          if (first || !L.mine || !usable(L.mine.e)) askMine();
+          if (first || !usable(L.mine)) askMine();
           else if (L.mine) o.sendTv(L.mine.frame);
           return;
         }
         if (f.q === 'v') {
           if (!L.farDev) return;
           const e = parseInt(f.e, 36);
-          L.peer = MT().vouchToken(o.sid(), L.farSub, L.farDev, o.dev(), L.l, e, f.n, f.m); L.peerE = e;
+          L.peer = MT().vouchToken(o.sid(), L.farSub, L.farDev, o.dev(), L.l, e, f.n, f.m); L.peerV = { e, at: now() };
           haveBoth();
         }
       },
@@ -136,7 +137,7 @@
         if (!m.v) { log('vouch refused: ' + m.error); return; }
         const p = MT().vouchParts(m.v); if (!p) return;
         const frame = { k: 'tv', q: 'v', l: L.l, e: Number(p.e).toString(36), n: p.n, m: p.m };
-        L.mine = { v: m.v, e: Number(p.e), frame };
+        L.mine = { v: m.v, e: Number(p.e), at: now(), frame };
         o.sendTv(frame);
         haveBoth();
       },
@@ -156,7 +157,7 @@
   // target and JB_SLACK, so a stall of the TCP pipe costs one gap, never a growing delay.
   const WORKLET_SRC = `
 class CarryCap extends AudioWorkletProcessor {
-  constructor(o) { super(); this.n = Math.round(sampleRate * ${FRAME_MS} / 1000); this.buf = new Float32Array(this.n); this.k = 0; }
+  constructor(o) { super(); this.n = Math.round(sampleRate * ${OPUS_FRAME} / 1000); this.buf = new Float32Array(this.n); this.k = 0; }
   process(inputs) {
     const ch = inputs[0] && inputs[0][0];
     if (ch) for (let i = 0; i < ch.length; i++) { this.buf[this.k++] = ch[i]; if (this.k === this.n) { this.port.postMessage(this.buf, [this.buf.buffer]); this.buf = new Float32Array(this.n); this.k = 0; } }
@@ -171,9 +172,9 @@ class CarryPlay extends AudioWorkletProcessor {
       const m = ev.data;
       if (m && m.stats) { this.port.postMessage({ stats: Object.assign({ held: this.q.length, target: this.target }, this.st) }); return; }
       const now = currentTime * 1000;
-      if (this.lastAt) { const gap = Math.abs(now - this.lastAt - ${FRAME_MS}); this.jit = this.jit * 0.95 + gap * 0.05; }
+      if (this.lastAt) { const gap = Math.abs(now - this.lastAt - ${OPUS_FRAME}); this.jit = this.jit * 0.95 + gap * 0.05; }
       this.lastAt = now;
-      this.target = Math.max(${JB_START}, Math.min(${JB_MAX}, Math.ceil(${JB_START} + 2 * this.jit / ${FRAME_MS})));
+      this.target = Math.max(${JB_START}, Math.min(${JB_MAX}, Math.ceil(${JB_START} + 2 * this.jit / ${OPUS_FRAME})));
       this.q.push(m); this.st.in++;
       if (this.q.length > this.target + ${JB_SLACK}) { const drop = this.q.length - this.target; this.q.splice(0, drop); this.st.skipped += drop; }
     };
@@ -223,7 +224,7 @@ registerProcessor('carry-play', CarryPlay);
         output: (chunk) => { const b = new ArrayBuffer(chunk.byteLength); chunk.copyTo(b); V.st.enc++; try { o.onPacket(b); } catch (e) {} },
         error: () => { V.st.encErr++; },
       });
-      enc.configure({ codec: 'opus', sampleRate: ac.sampleRate, numberOfChannels: 1, bitrate: BITRATE, opus: { frameDuration: FRAME_MS * 1000 } });
+      enc.configure({ codec: 'opus', sampleRate: ac.sampleRate, numberOfChannels: 1, bitrate: BITRATE, opus: { frameDuration: OPUS_FRAME * 1000 } });
       dec = new AudioDecoder({
         output: (ad) => {
           try { const pcm = new Float32Array(ad.numberOfFrames); ad.copyTo(pcm, { planeIndex: 0, format: 'f32-planar' }); V.st.dec++; play.port.postMessage({ pcm, rate: ad.sampleRate }, [pcm.buffer]); } catch (e) { V.st.decErr++; }
@@ -242,9 +243,9 @@ registerProcessor('carry-play', CarryPlay);
     let dts = 0;
     V.take = (buf) => {
       if (stopped || !dec || dec.state !== 'configured') return;
-      try { dec.decode(new EncodedAudioChunk({ type: 'key', timestamp: dts, data: buf })); dts += FRAME_MS * 1000; } catch (e) { V.st.decErr++; }
+      try { dec.decode(new EncodedAudioChunk({ type: 'key', timestamp: dts, data: buf })); dts += OPUS_FRAME * 1000; } catch (e) { V.st.decErr++; }
     };
-    V.stats = () => new Promise((res) => { if (!play) return res(Object.assign({}, V.st)); statsWait = (s) => res(Object.assign({}, V.st, s)); play.port.postMessage({ stats: 1 }); setTimeout(() => { if (statsWait) { statsWait = null; res(Object.assign({}, V.st)); } }, 500); });
+    V.stats = () => new Promise((res) => { if (!play) return res(Object.assign({}, V.st)); statsWait = (s) => res(Object.assign({}, V.st, s)); play.port.postMessage({ stats: 1 }); setTimeout(() => { if (statsWait) { statsWait = null; res(Object.assign({}, V.st)); } }, TM().TUNNEL_STATS_WAIT_MS); });
     V.stop = () => {
       stopped = true;
       for (const n of [V.input, cap, play, V.output]) { try { if (n) n.disconnect(); } catch (e) {} }
@@ -285,7 +286,7 @@ registerProcessor('carry-play', CarryPlay);
         };
       });
     }
-    function retry() { ws = null; if (stopped) return; const wait = Math.min(8000, 500 * Math.pow(2, tries++)); setTimeout(open, wait); }
+    function retry() { ws = null; if (stopped) return; const wait = Math.min(TM().TUNNEL_RETRY_MAX_MS, TM().TUNNEL_RETRY_BASE_MS * Math.pow(2, tries++)); setTimeout(open, wait); }
     open();
     return {
       send(obj) { if (ws && ws.readyState === 1) { ws.send(JSON.stringify(obj)); return true; } return false; },
@@ -295,7 +296,7 @@ registerProcessor('carry-play', CarryPlay);
     };
   }
 
-  const api = { CARRY_MAX, LINKS, FRAME_MS, BITRATE, ASK_MS, JB_START, JB_MAX, linkName, supported, tvOk, createLink, createVoice, createDoor };
+  const api = { CARRY_MAX, LINKS, OPUS_FRAME, BITRATE, JB_START, JB_MAX, linkName, supported, tvOk, createLink, createVoice, createDoor };
   GifOS.meetCarry = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

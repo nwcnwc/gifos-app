@@ -10645,7 +10645,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     var carryVoiceTrack = null; // var, as above: my mic and the voice of the page I carry, mixed (docs/turn-carry.md)
     function mainAudioTrack() {
       if (botVoiceTrack && botVoiceTrack.readyState === 'live') return botVoiceTrack;
-      if (carryVoiceTrack && carryVoiceTrack.readyState === 'live') return carryVoiceTrack;
+      if (typeof carryVoiceTrack !== 'undefined' && carryVoiceTrack && carryVoiceTrack.readyState === 'live') return carryVoiceTrack;
       return (localStream && localStream.getAudioTracks()[0]) || null;
     }
     function mainGone(pc, sd) {
@@ -22576,8 +22576,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // budget policy).
     const sentFrames = []; // the last app frames I sent to the room (sentFramesForTest)
     function sendAll(msg, opts) { // opts: a gossip scope (the status plane) — chat, transcript lines, files and deletions stay room-wide
-      if (carryG) { carryGuestSend(msg); return; }   // a carried page: its carrier says it in the room (docs/turn-carry.md)
-      if (msg && msg.k === 'chat' && msg.m) carryHostTell({ k: 'chat', m: msg.m });   // my own line, to the page I carry
+      if (typeof carryG !== 'undefined' && carryG) { carryGuestSend(msg); return; }   // a carried page: its carrier says it in the room (docs/turn-carry.md)
+      if (msg && msg.k === 'chat' && msg.m && typeof carryHostTell === 'function') carryHostTell({ k: 'chat', m: msg.m });   // my own line, to the page I carry
       sentFrames.push(msg); if (sentFrames.length > 20) sentFrames.shift();
       fanOut(msg, (p) => dcSend(p, msg), opts);
     }
@@ -23572,8 +23572,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return o;
       });
     }
-    function takeChat(m, backfill, opts) { const took = takeChat0(m, backfill, opts); if (took && carryHosts.size && m && m.id && !carryOwnLines.has(m.id)) carryHostTell({ k: 'chat', m: chat.get(m.id) || m }); return took; }   // a line I take, to the page I carry
-    function takeChat0(m, backfill, opts) { // backfill: a 'hi' replay — bounded by its frame, not by the live limiter
+    function takeChat(m, backfill, opts) { // backfill: a 'hi' replay — bounded by its frame, not by the live limiter
       if (!m || !m.id || chat.has(m.id) || ((m.at || 0) > 0 && (m.at || 0) <= (chat.floorAt || 0))) return false;
       const kept = chatTombs.get(m.id);
       if (kept && (!kept.ownBy || m.byId === kept.ownBy)) return false;
@@ -23617,6 +23616,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // hs: when the line was said, on THIS page's clock (now less its age; unknown for an unaged replay). It never crosses the wire (chatWire).
       chat.set(m.id, { id: m.id, by: String(m.by || '?').slice(0, 40), byId: m.byId, at: m.at || 0, text: String(m.text || '').slice(0, 2000), link, reply, prayer: m.prayer ? 1 : 0, hs: Number.isFinite(ageMs) ? Date.now() - ageMs : undefined });
       trimMap(chat, CHAT_MAX);
+      if (typeof carryHostTell === 'function') carryHostTell({ k: 'chat', m: chat.get(m.id) });   // a line I take, to the page I carry (docs/turn-carry.md)
       return true;
     }
     // Questions ride the chat's carrier (one flood, 'hi' backfill to a late
@@ -25391,7 +25391,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // sweep.
     let selfFoldSt = null;
     function selfFoldStream() {
-      const at = (localStream && localStream.getAudioTracks()[0]) || null;
+      const at = mainAudioTrack();   // the voice the main senders carry: my mic, or my mic with the page I carry (docs/turn-carry.md)
       const vs = meTile && meTile.video ? meTile.video.srcObject : null;
       if (!at || at.readyState === 'ended') { selfFoldSt = null; return vs || localStream; }
       if (!selfFoldSt || selfFoldSt.getAudioTracks()[0] !== at) selfFoldSt = new MediaStream([at]);
@@ -25928,7 +25928,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const v = stageVideoTrack();
       // A rebroadcast's sound comes from the same element as its picture. A
       // clip with no sound sends none, not the host's mic.
-      const a = (rbNow && rbNow.v) ? (rbNow.a || null) : ((localStream && localStream.getAudioTracks()[0]) || null);
+      const a = (rbNow && rbNow.v) ? (rbNow.a || null) : mainAudioTrack();   // the voice my main senders carry
       if (!v && !a) return null;   // nothing to broadcast — no feed to ship
       if (!selfShipMemo || selfShipMemo.v !== v || selfShipMemo.a !== a) {
         // WHICH track moved? Rebuilding this memo mints a new MediaStream id,
@@ -41071,13 +41071,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             net.open(roomE2E, m.msg).then((f) => { if (f && C.tvOk(f) && G.link) G.link.onTv(f); }).catch(() => {});
           }
         } });
-      setInterval(carryGuestTick, 1000);
+      setInterval(carryGuestTick, GifOS.timings.CARRY_LOOK_MS);
     }
     function carryGuestNext() {
       const G = carryG, C = GifOS.meetCarry;
       if (!G || G.link) return;
       const id = G.list.find((x) => !G.tried.has(x));
-      if (!id) { G.tried.clear(); setTimeout(() => { if (carryG && !carryG.link && carryG.door) carryG.door.knock(); }, C.ASK_MS); return; }   // asked them all: knock again for a fresh list
+      if (!id) { G.tried.clear(); setTimeout(() => { if (carryG && !carryG.link && carryG.door) carryG.door.knock(); }, GifOS.timings.CARRY_ASK_MS); return; }   // asked them all: knock again for a fresh list
       G.tried.add(id); G.far = id;
       const sendTv = (f) => net.sealFixed(roomE2E, f).then((env) => { if (env) G.door.send({ t: 'peer', to: id, ty: 'tv', msg: env }); });
       G.link = C.createLink(Object.assign(carryIo(id, C.linkName(myId), sendTv, (dev, l) => G.door.send({ t: 'tvouch', to: dev, l }), true), {
@@ -41086,7 +41086,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         onText: (m) => carryGuestText(m) }));
       G.link.start();
       clearTimeout(G.askT);
-      G.askT = setTimeout(() => { const L = G.link; if (carryG && L && !L.info().farDev) L.close('no answer', true); }, C.ASK_MS);   // a seat that answered (yes) keeps the link: its vouch and credential follow
+      G.askT = setTimeout(() => { const L = G.link; if (carryG && L && !L.info().farDev) L.close('no answer', true); }, GifOS.timings.CARRY_ASK_MS);   // a seat that answered (yes) keeps the link: its vouch and credential follow
     }
     function carryGuestUp() {
       const G = carryG; if (!G) return;
@@ -41104,7 +41104,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       clearTimeout(G.askT);
       if (G.voice) { try { G.voice.stop(); } catch (e) {} G.voice = null; }
       G.src = null; G.srcTrack = null; G.link = null;
-      setTimeout(carryGuestNext, 200);
+      queueMicrotask(carryGuestNext);
     }
     function carryGuestTick() {   // my microphone into my voice's encoder, whichever track it is now
       const G = carryG; if (!G || !G.voice || !G.voice.input) return;
@@ -41150,7 +41150,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         c.voice.output.connect(c.out); c.voice.output.connect(ac.destination);   // I hear it too
         carryVoiceTrack = c.out.stream.getAudioTracks()[0] || null;
         carryHostSync(c);
-        c.tick = setInterval(() => carryHostSync(c), 1000);
+        c.tick = setInterval(() => carryHostSync(c), GifOS.timings.CARRY_LOOK_MS);
         try { refreshOutbound(); } catch (e) {}
       });
       turnNote('carry ' + String(c.far).slice(0, 8) + ' carried');
