@@ -670,16 +670,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     </div>
     <div class="lobby-card">
       <h1 data-t="lobTitle">Meeting</h1>
+      <p class="lob-quiet" data-t="lobWelcome" id="lob-welcome">Join a meeting, or start your own in one tap.</p>
       <p class="lob-quiet" data-t="lobJoinOff" id="lob-quiet">You'll join with your camera and microphone off. Turn them on when you're ready.</p>
-      <button id="lob-open" class="lob-primary"><span data-t="lobStart">Start a public open-floor meeting</span><small data-t="lobStartSub">Anyone with the link (and the room password, if one is set) can join. Everyone inside can set the password, and anyone with a $5+ plan can take over as host while they're connected.</small></button>
-      <!-- Optional: a room password for the open-floor meeting, set the moment you are in (the Password button's own path). -->
-      <button data-t="lobGuestMore" type="button" id="lob-open-more" class="lob-link lob-pwmore" aria-expanded="false" aria-controls="lob-open-extra">Add a room password</button>
-      <div id="lob-open-extra" class="lob-expand lob-pwextra" style="display:none">
-        <label class="lob-pwlab" for="lob-open-pass">🎟 <b data-t="lobGuestPassHead">Room password</b> <small data-t="lobOpenPassNote">Optional. People need it to get in. Anyone inside can change it.</small></label>
-        <input data-ph="invGuestPh" id="lob-open-pass" type="password" maxlength="64" placeholder="Room password (optional)" autocomplete="new-password">
+      <div class="segwrap lob-segs" role="radiogroup" aria-label="Meeting choices">
+        <button type="button" id="lob-join-btn" class="seg" role="radio" aria-checked="false"><span data-t="lobJoinBtn">JOIN by link or room name</span><small data-t="lobJoinSub">Paste a link or type a room name.</small></button>
+        <button type="button" id="lob-admin-btn" class="seg" role="radio" aria-checked="false"><span data-t="lobAdminBtn">HOST a private meeting</span><small data-t="lobAdminSub">You control everything in the meeting</small></button>
+        <button type="button" id="lob-open-seg" class="seg sel" role="radio" aria-checked="true"><span data-t="lobStart">OPEN a public meeting</span><small data-t="lobStartSub">Majority rules: vote people off the stage or out of the meeting.</small></button>
       </div>
-      <p class="lob-capnote" data-t="captionsNotice" id="lob-capnote">Captions are on in this meeting. What you say may be written down by other people's devices.</p>
-      <button type="button" id="lob-admin-btn" class="lob-link"><span data-t="lobAdminBtn">Host a private meeting</span><small data-t="lobAdminSub">Anyone with the link (and the room password, if one is set) can join. You are the host: only you set the password, and you can mute, blur or remove people.</small></button>
       <div id="lob-admin" class="lob-expand" style="display:none">
         <input data-ph="lobAdminNamePh" id="lob-admin-name" maxlength="40" placeholder="Name this meeting" autocomplete="off">
         <button data-t="lobKeyReveal" type="button" id="lob-key-reveal" class="lob-text" hidden>Host password</button>
@@ -708,7 +705,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <div class="lob-row"><button data-t="shareCancel" id="lob-admin-cancel" class="lob-ghost">Cancel</button><button data-t="bcSchedule" type="button" id="lob-bc-sched" class="lob-ghost" hidden>Schedule</button><button data-t="lobAdminGo" id="lob-admin-go">Start</button></div>
         <div id="lob-admin-err" class="lob-err"></div>
       </div>
-      <button data-t="lobJoinBtn" type="button" id="lob-join-btn" class="lob-link">Join a link</button>
       <div id="lob-join" class="lob-expand" style="display:none">
         <input data-ph="lobJoinInPh" id="lob-join-in" placeholder="Paste link or meeting id" autocomplete="off">
         <input data-ph="lobJoinPassPh" data-al="lobGuestPassHead" id="lob-join-pass" type="password" maxlength="64" placeholder="Room password, if it has one" aria-label="Room password" autocomplete="new-password">
@@ -716,10 +712,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <div class="lob-row"><button data-t="shareCancel" id="lob-join-cancel" class="lob-ghost">Cancel</button><button data-t="join" id="lob-join-go">Join</button></div>
         <div id="lob-join-err" class="lob-err"></div>
       </div>
-      <div class="lob-sep"></div>
-      <div class="lob-hist-h" data-t="lobRecent">Recent &amp; saved</div>
-      <div id="lob-list"></div>
-      <div id="lob-empty" class="lob-empty" data-t="lobEmpty">Calls you start or join show up here.</div>
+      <div id="lob-open-panel">
+        <div class="lob-expand">
+          <input data-ph="lobAdminNamePh" id="lob-open-name" maxlength="40" placeholder="Name this meeting" autocomplete="off">
+        </div>
+        <button data-t="lobGuestMore" type="button" id="lob-open-more" class="lob-link lob-pwmore" aria-expanded="false" aria-controls="lob-open-extra">Add a room password</button>
+        <div id="lob-open-extra" class="lob-expand lob-pwextra" style="display:none">
+          <label class="lob-pwlab" for="lob-open-pass">🎟 <b data-t="lobGuestPassHead">Room password</b> <small data-t="lobOpenPassNote">Optional. People need it to get in. Anyone inside can change it.</small></label>
+          <input data-ph="invGuestPh" id="lob-open-pass" type="password" maxlength="64" placeholder="Room password (optional)" autocomplete="new-password">
+        </div>
+        <button id="lob-open" class="lob-primary" type="button"><span data-t="lobAdminGo">Start</span></button>
+      </div>
       <div class="lob-appear">
         <div data-t="appearTitle" class="lob-appear-k">This is how you'll appear</div>
         <div class="lob-appear-row">
@@ -729,6 +732,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <input id="lob-face-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp" hidden>
         <b id="lob-name" hidden>…</b>
       </div>
+      <div class="lob-sep"></div>
+      <div class="lob-hist-h" data-t="lobRecent">Recent &amp; saved</div>
+      <div id="lob-list"></div>
+      <div id="lob-empty" class="lob-empty" data-t="lobEmpty">Calls you start or join show up here.</div>
     </div>
   </div>
   <!-- The one top bar (R1, 2026-11-15): every top control sits in this row, in flow, so none lands on another; its measured bottom is where the meeting box starts. -->
@@ -21314,8 +21321,30 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function wireLobby() {
       const lob = document.getElementById('lobby');
       const toggle = (id) => { const el = document.getElementById(id); el.style.display = el.style.display === 'none' ? '' : 'none'; };
+      const selectLob = (which) => {
+        const modes = [['lob-join-btn', 'lob-join'], ['lob-admin-btn', 'lob-admin'], ['lob-open-seg', 'lob-open-panel']];
+        for (let i = 0; i < modes.length; i++) {
+          const on = modes[i][0] === which;
+          const b = document.getElementById(modes[i][0]);
+          const p = document.getElementById(modes[i][1]);
+          if (b) { b.classList.toggle('sel', on); b.setAttribute('aria-checked', on ? 'true' : 'false'); }
+          if (p) p.style.display = on ? '' : 'none';
+        }
+        if (which === 'lob-admin-btn') {
+          const n = document.getElementById('lob-admin-name');
+          const key = document.getElementById('lob-admin-pass');
+          if (key && !key.value) key.value = mintHostKey();
+          if (n) n.focus();
+        } else if (which === 'lob-join-btn') {
+          const j = document.getElementById('lob-join-in');
+          if (j) j.focus();
+        }
+      };
       document.getElementById('lob-open').onclick = () => {
-        const code = shortCode();
+        let code = shortCode();
+        const named = document.getElementById('lob-open-name');
+        const raw = named ? (named.value || '') : '';
+        if (/[A-Za-z0-9]/.test(raw)) { const chosen = slugRoom(raw, ''); if (chosen) code = chosen; }
         lobbyPwHandOver('open', code, '', document.getElementById('lob-open-pass'));
         enterMeeting('#v=' + code);
       };
@@ -21328,6 +21357,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (open) document.getElementById('lob-open-pass').focus();
       };
       document.getElementById('lob-open-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('lob-open').click(); });
+      const openName = document.getElementById('lob-open-name');
+      if (openName) openName.addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('lob-open').click(); });
+      const openSeg = document.getElementById('lob-open-seg');
+      if (openSeg) openSeg.onclick = () => { if (!BC_INTENT) selectLob('lob-open-seg'); };
       const lobCam = document.getElementById('lob-cam');
       if (lobCam) lobCam.onclick = () => {
         if (joinAv.cam) { setLobbyCam(false); return; }
@@ -21338,20 +21371,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       };
       const lobMic = document.getElementById('lob-mic');
       if (lobMic) lobMic.onclick = () => { joinAv.mic = !joinAv.mic; paintLobbyAv(); };
-      // Host a call mints an admin small group.
+      // Host a private meeting mints the host key when that segment opens.
       document.getElementById('lob-admin-btn').onclick = () => {
-        toggle('lob-admin');
-        document.getElementById('lob-join').style.display = 'none';
-        const open = document.getElementById('lob-admin').style.display !== 'none';
-        document.getElementById('lobby').classList.toggle('form-open', open);
-        const n = document.getElementById('lob-admin-name');
-        const key = document.getElementById('lob-admin-pass');
-        if (open && key && !key.value) key.value = mintHostKey();
-        if (open && BC_INTENT) {
-          document.getElementById('lob-key-block').hidden = true;
-          document.getElementById('lob-key-reveal').hidden = false;
+        if (BC_INTENT) {
+          toggle('lob-admin');
+          document.getElementById('lob-join').style.display = 'none';
+          const open = document.getElementById('lob-admin').style.display !== 'none';
+          document.getElementById('lobby').classList.toggle('form-open', open);
+          const n = document.getElementById('lob-admin-name');
+          const key = document.getElementById('lob-admin-pass');
+          if (open && key && !key.value) key.value = mintHostKey();
+          if (open) {
+            document.getElementById('lob-key-block').hidden = true;
+            document.getElementById('lob-key-reveal').hidden = false;
+          }
+          if (open) n.focus();
+          return;
         }
-        if (open) n.focus();
+        selectLob('lob-admin-btn');
       };
       document.getElementById('lob-key-reveal').onclick = () => {
         document.getElementById('lob-key-block').hidden = false;
@@ -21396,6 +21433,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       document.getElementById('lob-admin-cancel').onclick = () => {
         document.getElementById('lob-admin').style.display = 'none';
         document.getElementById('lobby').classList.remove('form-open');
+        if (!BC_INTENT) selectLob('lob-open-seg');
       };
       // Broadcast: Who can watch picks the room password field; Schedule
       // shows the start time and turns Go live now into the plain choice.
@@ -21504,7 +21542,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           enterMeeting('#v=' + chosen + '&av=' + V + (BC_INTENT ? '&bc=1' + (atSecs ? '&at=' + atSecs : '') : ''));
         } catch (e) { err.textContent = 'Could not create the room. Try again.'; go.disabled = false; go.textContent = go.dataset.label || 'Start'; }
       };
-      document.getElementById('lob-join-btn').onclick = () => { toggle('lob-join'); document.getElementById('lob-admin').style.display = 'none'; const i = document.getElementById('lob-join-in'); if (document.getElementById('lob-join').style.display !== 'none') i.focus(); };
+      document.getElementById('lob-join-btn').onclick = () => {
+        if (BC_INTENT) { toggle('lob-join'); document.getElementById('lob-admin').style.display = 'none'; const i = document.getElementById('lob-join-in'); if (document.getElementById('lob-join').style.display !== 'none') i.focus(); return; }
+        selectLob('lob-join-btn');
+      };
       const nameIn = document.getElementById('lob-name-in');
       if (nameIn) nameIn.addEventListener('change', () => {
         const v = nameIn.value.trim();
@@ -21528,7 +21569,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         guestMore.setAttribute('aria-expanded', open ? 'true' : 'false');
         if (open) document.getElementById('lob-guest-pass').focus();
       };
-      document.getElementById('lob-join-cancel').onclick = () => { document.getElementById('lob-join').style.display = 'none'; };
+      document.getElementById('lob-join-cancel').onclick = () => { document.getElementById('lob-join').style.display = 'none'; if (!BC_INTENT) selectLob('lob-open-seg'); };
       const doJoin = () => {
         const err = document.getElementById('lob-join-err');
         const p = parseMeetInput(document.getElementById('lob-join-in').value);
@@ -21588,6 +21629,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (quiet) quiet.textContent = uiText('bcLobbyQuiet', 'You host. People watch with the link.');
         document.getElementById('lob-open').style.display = 'none';
         document.getElementById('lob-admin-btn').style.display = 'none';
+        const openPanel = document.getElementById('lob-open-panel');
+        if (openPanel) openPanel.style.display = 'none';
+        const openSegEl = document.getElementById('lob-open-seg');
+        if (openSegEl) openSegEl.style.display = 'none';
+        const welcome = document.getElementById('lob-welcome');
+        if (welcome) welcome.style.display = 'none';
         const nm = document.getElementById('lob-admin-name');
         nm.placeholder = uiText('bcNamePh', 'Name (optional)');
         document.getElementById('lob-admin-go').textContent = uiText('bcGoNow', 'Go live now');

@@ -3076,6 +3076,9 @@
      Park the rest of the lobby and keep Cancel / Create in the card while
      the fields scroll. A short or narrow screen also shrinks the preview. */
   #lobby.form-open .lob-quiet,
+  #lobby.form-open #lob-welcome,
+  #lobby.form-open #lob-open-seg,
+  #lobby.form-open #lob-open-panel,
   #lobby.form-open #lob-admin-btn,
   #lobby.form-open #lob-open,
   #lobby.form-open #lob-join-btn,
