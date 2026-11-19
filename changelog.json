@@ -12,7 +12,8 @@
         "A link for AI assistants is on the meeting and the lobby. One tap turns assistant mode on.",
         "Joining with the camera and microphone off asks for neither.",
         "Debug logging starts when you turn it on.",
-        "The meeting tab shows its icon."
+        "The meeting tab shows its icon.",
+        "Choosing No blur shows a clear preview. A meeting that keeps the picture blurred explains why."
       ],
       "fixes": []
     },
