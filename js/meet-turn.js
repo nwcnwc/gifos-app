@@ -627,7 +627,7 @@
       if (L.sb && L.liveEnd === io.me()) { const P = livePipe(pipeNo(L.l)); if (P) P.sbUp = false; }
       log('turn-link closed ' + short(L.far) + ' ' + why);
       if (L.upAt > 0) subChanged('a pipe of mine');
-      if (!L.sb && L.l[0] === 'l' && L.upAt > 0 && why !== 'standby-took-over' && why !== 'replaced' && why !== 'healed' && (io.sub ? io.sub() : 0) === pipeNo(L.l)) sub.repipe = true;   // SUB.3 (a): an end of my room's pipe that closed with no takeover asks at once
+      if (!L.sb && L.l[0] === 'l' && L.upAt > 0 && why !== 'standby-took-over' && why !== 'replaced' && why !== 'healed' && why !== 'walked' && (io.sub ? io.sub() : 0) === pipeNo(L.l)) sub.repipe = true;   // SUB.3 (a): an end of my room's pipe that closed with no takeover asks at once
       try { io.drop(L.far, why, { pipe: !L.sb && L.l[0] === 'l' && L.upAt > 0, sub: pipeNo(L.l) }); } catch (e) {}   // pipe l<r> is subroom r's (a pipe that came up: one that never did is asked for again as before)
       if (L.farPid && !L.sb) { try { io.publish({ id: L.id, a: L.opener ? io.me() : L.far, b: L.opener ? L.far : io.me(), up: 0, v: 0, gone: 1 }); } catch (e) {} }
       try { io.changed(L.far); } catch (e) {}
@@ -1278,10 +1278,12 @@
       for (const L of links.values()) { if (L.state === 'closed' || !io.sub || io.sub() !== pipeNo(L.l)) continue; if (L.sb) sbEnd = true; else { pipeEnd = true; if (L.go !== p) return false; } }
       if (pipeEnd && n > 1) return false; if (sbEnd && !pipeEnd && n > 2) return false;
       walkedAt = io.now(); log('sub-walk walk to=' + p + ' n=' + n);
-      // a seat that leaves the door ends no path of it: my standby end closes with my walk (the sim drops a standby whose end
-      // is no Section-1 seat of its door, subLost). Kept, it took the pipe over from the door I walked to once my pc to the
-      // pipe's end closed ("my live end left"), and the far side closed the pipe under the end still waiting to walk.
-      for (const L of Array.from(links.values())) if (L.sb && L.state !== 'closed' && io.sub() === pipeNo(L.l)) close(L, 'walked');
+      // a seat that leaves the door ends no path of it: my standby end closes with my walk, and so does the pipe when its
+      // end walks, last ("the pipe closes with its end's goodbye", SUB.10.4; the sim drops a path whose end is no Section-1
+      // seat of its door, subLost). Kept, a standby took the pipe over from the door I walked to once my pc to the pipe's
+      // end closed ("my live end left") and the far side closed the pipe under the end still waiting to walk; and a pipe
+      // kept by its end lived on inside the merged room, warming standbys there and failing with the next firewall.
+      for (const L of Array.from(links.values())) if (L.state !== 'closed' && io.sub() === pipeNo(L.l)) close(L, 'walked');
       return true;
     }
     // A live end whose pipe is lost, or (SUB.8, 'healed') whose standby is on a better path: its standby seat takes the
