@@ -1614,6 +1614,21 @@
       holds(pid) { const L = links.get(pid); return !!L && L.state !== 'closed'; },
       isLink(pid) { const L = links.get(pid); return !!L && (L.state === 'up' || L.state === 'dial'); },
       linking() { return (sub.st !== 'idle' && sub.st !== 'found') || Array.from(links.values()).some((L) => L.opener && !L.sb && L.state !== 'up'); },   // a subroom ask or my pipe is on its way
+      // THE WAY BACK IS BEING MADE: this page is making, or making again, the connection that joins its room to the rest of the
+      // meeting. True while an ask is out (the door list, the Worker's answer, a door being tried), while a pipe this page
+      // ends is opening or its connection is down with no verdict yet, and while a re-pipe or a fresh grant for its door is
+      // due. False while a refusal's wait runs (the refusal is the answer until then) and when nothing is asked for. The
+      // status line reads it: a page alone while this is true is on its way back in, not locked out.
+      making() {
+        const now = io.now();
+        if (sub.st !== 'idle' && sub.st !== 'found') return true;
+        for (const L of links.values()) if (!L.sb && L.l[0] === 'l' && L.state !== 'closed' && (L.state !== 'up' || !io.pcUp(L.far))) return true;
+        if (sub.repipe && now >= Math.max(sub.retryAt, sub.pipeRetryAt)) return true;
+        return !!rg.out || (rg.want && (rg.st !== 'idle' || now >= rg.retryAt));
+      },
+      // The subroom ask stands refused (no far end, the budget, the pool down) and its wait has not run out: no relayed
+      // connection can be had for now.
+      refused() { const o = sub.out; return !!(o && o.refused && io.now() < o.retryAt); },
       // THE SUBROOM ASK's outcome for the page this tick (header): { join }, { found }, { wait }, { refused, retryAt }, or null
       subAsk() { return sub.out; },
       // the seat's hooks (opts.sub): my room lost a far door (the home-cell seat asks once to re-pipe it); my door's relay

@@ -1417,6 +1417,16 @@
       meetingFar() { return layer ? layer.meetingFar() : 0; },   // the people in the other rooms joined to mine (0: none)
       meetingPeople() { return layer ? layer.meetingPeople() : []; },   // SUB.11: those people by name, per door, from the same fold as the count
       knownSub(r) { return !!penv && penv.knownSub(r); },
+      // A far door left my room's fold and its loss is not judged yet (SUB.3 b: the note is kept L10_NEW_WAIT, then the
+      // home seat asks for a re-pipe and forgets it): the people behind that door are not counted and are not gone.
+      farPending() {
+        try {
+          if (!raw || raw.state !== 3 || !raw.doorAt || !raw.doorAt.size) return false;
+          const R = raw.dRoot(), wait = GifOS.meshConsts.consts.L10_NEW_WAIT;
+          for (const [d, at] of raw.doorAt) if (raw.TICK - at <= wait && !(R.at >= 0 && R.doors.some((e) => e.id === d))) return true;
+        } catch (e) {}
+        return false;
+      },
       standbyCands() { return layer ? layer.standbyCands() : []; },   // the display fold beside the seat (layer.js leaf)
       // App access to the wire's relay socket (the ONE socket): signaling
       // fallback ({t:'peer'}), moderation verbs (setpw/ban/votekick), etc.
