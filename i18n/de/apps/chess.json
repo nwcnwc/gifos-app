@@ -55,6 +55,7 @@
   "hint.err.setup": "Richten Sie in den Einstellungen Ihre Klügste KI ein, um Tipps zu erhalten.",
   "hint.err.fail": "Im Moment ist kein Tipp möglich.",
   "resign": "Aufgeben",
+  "claim.left": "{name} ist gegangen — Sieg beanspruchen",
   "rematch": "Revanche",
   "status.winner": "Sieger: {name}",
   "status.drawStalemate": "Remis — Patt. Revanche, um weiterzukommen.",

@@ -565,10 +565,10 @@
   #fsview.on { display: block; }
   body.fsopen #grid video { visibility: hidden; }
   #fsmain { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; width: 100%; height: 100%; object-fit: contain; background: var(--c-black); }
-  /* A face fills the screen: a landscape camera on a portrait phone would
-     otherwise be a thin strip between two black bars. Cropped at the same
-     point as the meeting tiles, so the head stays in view. A shared screen
-     or a packed picture keeps contain (data-fit unset), so nothing is cut. */
+  /* A face in the big view (Focus and Full screen) is cropped by at most a quarter, the rest is thin bars (Nathan
+     2026-11-18). run.html fsFitPaint sizes #fsmain to the part shown, centred in the pane, and sets data-fit=cover
+     only then; the crop inside that box keeps the face, as the 0.9.25 fill did. Anything else shows whole (contain).
+     The grid tiles are unchanged. */
   #fsmain[data-fit="cover"] { object-fit: cover; object-position: 50% 40%; }
   /* Cross-row Follow: the big view shows the Stadium zoomed onto the far talkers' tiles (run.html fsZoomPaint sets the
      transform). The view clips the zoomed picture. */
@@ -598,6 +598,12 @@
   body.broadcast #fsname.ident.pic .fsinitial { display: none; }
   body.broadcast #fsname.ident.pic .fspic { display: block; width: min(320px, 50vh); height: min(320px, 50vh); object-fit: cover; border-radius: 1rem; }
   body.broadcast #fsname.ident .fsnote { display: block; color: #b9bdd6; font-size: 1.1rem; }
+  /* Focus in a meeting: a camera-off person's card shows their picture when they set one, else a readable initial. */
+  body:not(.broadcast) #fsname .fsinitial { color: #b9bdd6; }
+  body:not(.broadcast) #fsname.pic .fsinitial { display: none; }
+  body:not(.broadcast) #fsname.pic .fspic { display: block; width: min(320px, 50vh, 70vw); height: min(320px, 50vh, 70vw); object-fit: cover; border-radius: 1rem; }
+  #fsname .fspic.blur1, .fsthumb .fspic.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .009))) saturate(.9); }
+  #fsname .fspic.blur2, .fsthumb .fspic.blur2 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-max, .0225))) saturate(.75); }
   #fsstrip { position: absolute; right: 0; top: 0; bottom: 0; display: flex; flex-direction: column; gap: .5rem;
     padding: .55rem; overflow-y: auto; overflow-x: hidden; z-index: 2;
     background: linear-gradient(to left, rgba(0,0,0,.55), transparent); }
@@ -613,7 +619,10 @@
   .fsthumb .fsinitial { display: none; }
   .fsthumb.dark video { visibility: hidden; }
   .fsthumb.dark .fsinitial { display: flex; position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0;
-    align-items: center; justify-content: center; font-size: 1.7rem; font-weight: 800; color: #3a3a55; background: #14141f; }
+    align-items: center; justify-content: center; font-size: 1.7rem; font-weight: 800; color: #b9bdd6; background: #14141f; }
+  .fsthumb .fspic { display: none; }
+  .fsthumb.dark.pic .fspic { display: block; position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .fsthumb.dark.pic .fsinitial { display: none; }
   /* JOINING VEIL: until the seat is real, joining LOOKS like joining — never
      like an empty room. Sits UNDER the password/name modals (z 40): typing
      the password is part of joining. */
@@ -1168,21 +1177,33 @@
   /* A tile whose video a free TURN link holds back (run.html turnPaint): the
      sentence and Subscribe, quiet over the dark tile. Chrome on the content:
      no panel, no border, no accent colour; the name pill keeps its corner. */
-  .tile .tpause { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  :is(.tile, .ct-pane) .tpause { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
                   gap: 12px; padding: 16px 16px 44px; text-align: center; pointer-events: none; z-index: 3;
                   font-size: .875rem; line-height: 1.35; color: var(--c-white); }
-  .tile .tpause > span { max-width: 22rem; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
-  .tile .tpause .tpause-sub { pointer-events: auto; min-height: 36px; padding: 6px 16px; border: 0; border-radius: var(--r-pill);
+  :is(.tile, .ct-pane) .tpause > span { max-width: 22rem; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+  :is(.tile, .ct-pane) .tpause .tpause-sub { pointer-events: auto; min-height: 36px; padding: 6px 16px; border: 0; border-radius: var(--r-pill);
                   background: rgba(255,255,255,.16); color: var(--c-white); font: inherit; font-weight: 500; cursor: pointer; }
-  .tile .tpause .tpause-sub:disabled { opacity: .6; cursor: default; }
+  :is(.tile, .ct-pane) .tpause .tpause-sub:disabled { opacity: .6; cursor: default; }
   /* The second choice under Subscribe: the four-hour pass, a quiet line of text, no fill. */
-  .tile .tpause .tpause-pass { pointer-events: auto; min-height: 32px; padding: 4px 8px; border: 0; background: none;
+  :is(.tile, .ct-pane) .tpause .tpause-pass { pointer-events: auto; min-height: 32px; padding: 4px 8px; border: 0; background: none;
                   color: var(--c-white); opacity: .8; font: inherit; cursor: pointer; }
-  .tile .tpause .tpause-pass:disabled { opacity: .5; cursor: default; }
+  :is(.tile, .ct-pane) .tpause .tpause-pass:disabled { opacity: .5; cursor: default; }
   /* What is in effect (a pass's time left, or the plan), quiet beside the status line; a tap opens Settings. */
   #sub-now { display: inline; border: 0; background: none; padding: 0 0 0 8px; color: var(--c-gray); font: inherit; font-size: .8125rem; cursor: pointer; white-space: nowrap; }
   #sub-now[hidden] { display: none; }
   .tile .tpause.tpause-busy { justify-content: flex-start; padding-top: 12px; }
+  /* S6 (Nathan 2026-11-17): a shared screen that cannot reach me over the free TURN link shows the note, never a dark
+     stage with the sharer's big initial: the pane's picture is hidden while the note is on it. */
+  .ct-pane:has(> .tpause:not(.tpause-busy)) > video { visibility: hidden; }
+  .ct-pane > .tpause > span { max-width: 28rem; }
+  /* A tile that shows the paused note (S1, Nathan 2026-11-17): the person's initial or picture sits at the top, the note
+     and Subscribe below it, so the two never overlap. The video under a held link carries no picture, so it is hidden and
+     the tile's own letter overlay (blurred like the face it stands for) is what shows. */
+  .tile:has(> .tpause:not(.tpause-busy)) > video { visibility: hidden; }
+  .tile:has(> .tpause:not(.tpause-busy)) .avatar { display: flex; align-items: flex-start; padding-top: max(8px, 5%); box-sizing: border-box; line-height: 1; transform-origin: 50% 0; } /* the blur's scale grows it down, not off the top */
+  .tile:has(> .tpause:not(.tpause-busy)) .avatar .avatar-img { top: max(8px, 5%); right: auto; bottom: auto; left: 50%; inset: max(8px, 5%) auto auto 50%;
+    width: 3.5rem; height: 3.5rem; transform: translateX(-50%); border-radius: var(--r-pill, 999px); }
+  .tile > .tpause:not(.tpause-busy) { padding-top: calc(max(8px, 5%) + 3.5rem + 8px); justify-content: safe center; } /* a note taller than the room left runs down, never up over the initial */
   /* On a phone the line is one caption above Live, not a clip on the face.
      A long line starts at the top and the rest scrolls inside the caption.
      No band for the bar: it rests on the safe area over the Record row, and
@@ -2107,6 +2128,13 @@
     font: 700 16px/1.2 system-ui, sans-serif; padding: 8px 14px; text-align: left; cursor: pointer;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #micchooser button:focus-visible { outline: 3px solid var(--c-ink); outline-offset: 2px; }
+  /* S5: the Run picker is one dropdown of real apps and its Run button. */
+  #app-list .app-pickrow { display: flex; gap: .4rem; align-items: stretch; }
+  #app-list #app-pick { flex: 1; min-width: 0; min-height: 44px; padding: .4rem .6rem; border-radius: .5rem; border: 1px solid var(--border, #2a2a3f);
+    background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); font: inherit; font-size: 16px; }
+  #app-list #app-pick-go { display: inline-block; width: auto; margin: 0; min-height: 44px; padding: .5rem .9rem; text-align: center; }
+  #app-list .app-pick-note { display: block; min-height: 1.2em; margin: .35rem 0 .2rem; opacity: .8; }
+  #app-list .app-pick-note.bad { color: #e0574a; opacity: 1; }
   #app-list .app-empty { margin: 8px 0; }
   #app-list .app-empty-link { display: block; min-height: 44px; line-height: 44px; font-weight: 700; color: inherit; text-decoration: underline; }
   #app-list .app-empty-note { display: block; margin-top: 6px; opacity: .75; }
@@ -2357,6 +2385,13 @@
   /* The stadium is one composite, shown whole in the zone's box. */
   body.comfy #stadwhole { overflow: hidden; background: #0d0f14; }
   body.comfy #stadwhole video { width: 100%; height: 100%; object-fit: contain; object-position: center center; }
+  /* S7 (Nathan 2026-11-17): the only labels on the people are Scroll's two
+     section heads (.zone-head); the stadium box carries none of its own, in
+     any layout, and its parked source strip never shows its old label. */
+  body.comfy #stadwhole .name, body.comfy #stadium [data-row="sd"] > .rlabel { display: none; }
+  body.comfy .zone-head { z-index: 3; box-sizing: border-box; display: flex; align-items: center; padding: 0 .5rem;
+    color: #b9bdd6; font-size: .8rem; font-weight: 700; letter-spacing: .02em; pointer-events: none;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   body.comfy #stadwhole .name {
     position: absolute; left: .4rem; bottom: .4rem; z-index: 2;
     background: rgba(10,10,15,.72); color: #eceef8;
@@ -3421,6 +3456,7 @@
   body.view-focus .fsthumb { border: 0; border-radius: var(--r-md); background: var(--c-night); }
   body.view-focus .fsthumb.sel { box-shadow: none; outline: 2px solid var(--c-white); outline-offset: -2px; }
   body.view-focus .fsthumb.fsauto { background: var(--c-night); color: var(--c-white); }
+  body.view-focus .fsthumb.dark .fsinitial { background: #2a2a3f; } /* a camera-off card stands out from the strip behind it */
   body.view-focus .fsthumb .fslbl { left: 6px; bottom: 6px; font-size: 12px; padding: 2px 8px; border-radius: var(--r-pill); background: var(--c-scrim); color: var(--c-white); }
   @media (orientation: portrait) {
     body.view-focus #fsstrip { top: auto; left: 0; right: 0; bottom: 0; flex-direction: row; overflow-x: auto; overflow-y: hidden; }

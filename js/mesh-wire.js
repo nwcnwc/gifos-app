@@ -710,6 +710,7 @@
       const atDoor = doorNow();
       sock = net.steadySocket(makeUrl, {
         onClose: (code) => { relayCloses.push({ code, at: Date.now() }); if (relayCloses.length > RELAY_CLOSES_KEPT) relayCloses.shift(); },
+        onConnectFail: () => { if (!stopped && opts.onRelayFail) { try { opts.onRelayFail(); } catch (e) {} } },   // a connect that never opened (the page may leave a dead relay)
         onDuty: () => !stopped,
         prepare: prepareTicket,
         onTokenRefused: (code, why) => { if (ticket) ticket.drop(why); },   // why: a raised room names the bits it wants
@@ -723,6 +724,7 @@
       // address, so without this the pool stays empty until E3 (100-200s):
       // exactly the window the tear drill founds a second meeting in.
       sock.onopen = () => {
+        if (opts.onRelayOpen) { try { opts.onRelayOpen(); } catch (e) {} }
         // A reopened socket has NO pool entry (the entry was the old socket's attachment). The 8 s throttle
         // exists to stop a reply chain looping, not to cover a reopen: a greeter that registered 3 s ago and
         // reconnected now sent nothing and was off the door until E3 (seen live 2026-11-09: the next knocker founded).

@@ -291,7 +291,7 @@
   // a row tile. The row is repacked once into the band that shrink frees.
   // forceStack: Fit with no share keeps the stadium in a bottom band on a
   // wide screen too (the row floats above it).
-  function compositePeople(row, stad, box, phone, gallery, gap, stadCount, forceStack) {
+  function compositePeople(row, stad, box, phone, gallery, gap, stadCount, forceStack, headH) {
     const nr = row.length;
     const id = stad[0];
     const faces = faceCount(stadCount, nr);
@@ -299,8 +299,12 @@
       const k = phone ? 'phone' : 'desk';
       let s = nr ? Math.min(box.w, Math.max(SCROLL_ROW_MIN[k], fitSide(nr, 0, box.w, box.h, gap))) : 0;
       if (nr) s = phone && s <= box.h ? Math.min(box.h, snap(box.w, s, gap)) : snap(box.w, s, gap);
-      const a = nr ? flow(row, 'row', box, s, box.y, gap, false) : { rects: [], y: box.y };
-      const y = a.rects.length ? a.y + gap : box.y;
+      const H = headH > 0 ? headH : 0;
+      const heads = [];
+      if (H && nr) heads.push({ key: 'row', x: box.x, y: box.y, w: box.w, h: H });
+      const a = nr ? flow(row, 'row', box, s, box.y + (H && nr ? H : 0), gap, false) : { rects: [], y: box.y };
+      let y = a.rects.length ? a.y + gap : box.y;
+      if (H) { heads.push({ key: 'stad', x: box.x, y: y, w: box.w, h: H }); y += H; }
       let side = box.w;
       if (nr) {
         const g = gridOf(faces);
@@ -311,7 +315,7 @@
       const x = box.x + (box.w - side) / 2;
       const st = { id: id, tier: 'stad', x: x, y: y, w: side, h: side, fit: 'contain' };
       const total = (y - box.y) + side;
-      return { rects: a.rects.concat([st]), contentH: Math.max(box.h, total), side: s, stadSide: side, tooSmall: side < 28 };
+      return { rects: a.rects.concat([st]), contentH: Math.max(box.h, total), side: s, stadSide: side, tooSmall: side < 28, heads: heads };
     }
     if (!nr) {
       const st = { id: id, tier: 'stad', x: box.x, y: box.y, w: box.w, h: box.h, fit: 'contain' };
@@ -372,9 +376,11 @@
     return out;
   }
 
-  function people(row, stad, box, phone, gallery, gap, avoidLone, stadCount, forceStack) {
+  // headH (Scroll only): a label band that tall above the Row and above the
+  // Stadium (S7, Nathan 2026-11-17). meet-views writes the words into it.
+  function people(row, stad, box, phone, gallery, gap, avoidLone, stadCount, forceStack, headH) {
     // A Stage keeps the small stadium. One composite with no Stage does not.
-    if (stad.length === 1 && !avoidLone) return compositePeople(row, stad, box, phone, gallery, gap, stadCount, forceStack);
+    if (stad.length === 1 && !avoidLone) return compositePeople(row, stad, box, phone, gallery, gap, stadCount, forceStack, gallery === 'scroll' ? headH : 0);
     const nr = row.length, ns = stad.length;
     let s, t;
     if (gallery === 'scroll') {
@@ -413,18 +419,22 @@
         if (t > cap) t = cap;
       }
     }
-    const total = peopleH(nr, ns, box.w, s, t, gap, avoidLone);
+    const H = gallery === 'scroll' && headH > 0 ? headH : 0;
+    const heads = [];
+    const total = peopleH(nr, ns, box.w, s, t, gap, avoidLone) + (H && nr ? H : 0) + (H && ns ? H : 0);
     // Both modes start at the top of the band. Fit then absorbs leftover
     // height so the block meets the bottom edge.
     let y = box.y;
+    if (H && nr) { heads.push({ key: 'row', x: box.x, y: y, w: box.w, h: H }); y += H; }
     const a = flow(row, 'row', box, s, y, gap, avoidLone);
     y = a.y + (a.rects.length && ns ? gap : 0);
+    if (H && ns) { heads.push({ key: 'stad', x: box.x, y: y, w: box.w, h: H }); y += H; }
     const b = flow(stad, 'stad', box, t, y, gap, avoidLone);
     const rects = a.rects.concat(b.rects);
     // Beside a share the band is a tall strip. Stretching it makes slivers.
     // Squares stay squares; pinEnd still meets the outer edge.
     if (gallery !== 'scroll' && !avoidLone) fillBand(rects, box, gap);
-    return { rects: rects, contentH: Math.max(box.h, total), side: s, stadSide: t, tooSmall: ns > 0 && t < 28 };
+    return { rects: rects, contentH: Math.max(box.h, total), side: s, stadSide: t, tooSmall: ns > 0 && t < 28, heads: heads };
   }
 
   // A share (one screen, or an app) at its true aspect, contain-fit in its
@@ -567,6 +577,10 @@
   const FACE_FLOOR_FRAC = 0.28;
   const FLOAT_INSET = { frac: FACE_FLOOR_FRAC, min: 96, max: 220, margin: 12 };
 
+  // Scroll's section labels (opts.heads): the band each one takes.
+  const HEAD_H = { phone: 22, desk: 26 };
+  function headOf(opts, phone) { return opts && opts.heads === true ? HEAD_H[phone ? 'phone' : 'desk'] : 0; }
+
   function laid(rects, contentH, regions, extra, gallery) {
     return {
       rects: rects,
@@ -575,6 +589,7 @@
       side: extra && extra.side || 0,
       stadSide: extra && extra.stadSide || 0,
       tooSmall: !!(extra && extra.tooSmall) && gallery === 'fit',
+      heads: (gallery === 'scroll' && extra && extra.heads) || [],
       gallery: gallery,
     };
   }
@@ -678,7 +693,7 @@
       }
       // No share and no one on stage. Fit still stacks the stadium under the
       // row on a wide screen, and the row is the floating panel.
-      const p = people(row, stad, box, phone, gallery, gap, false, opts.stadCount, gallery === 'fit');
+      const p = people(row, stad, box, phone, gallery, gap, false, opts.stadCount, gallery === 'fit', headOf(opts, phone));
       if (gallery === 'fit') tagRows(p.rects);
       return laid(p.rects, p.contentH, { stage: null, share: null, people: box }, p, gallery);
     }
@@ -707,7 +722,7 @@
     let extra = { side: 0, stadSide: 0, tooSmall: false };
     let contentH = y - box.y;
     if (row.length || stad.length) {
-      const p = people(row, stad, pb, phone, 'scroll', gap, false, opts.stadCount);
+      const p = people(row, stad, pb, phone, 'scroll', gap, false, opts.stadCount, false, headOf(opts, phone));
       for (let i = 0; i < p.rects.length; i++) rects.push(p.rects[i]);
       extra = p;
       contentH = (pb.y - box.y) + p.contentH;

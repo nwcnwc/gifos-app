@@ -406,6 +406,7 @@
     if (whole) whole.remove();
     const band = root.document && root.document.getElementById('stadband');
     if (band) band.remove();
+    placeHeads(feed, null, null, 0);
     const src = feed.querySelector('[data-row="sd"]');
     if (src && src.classList) src.classList.remove('stad-src');
     if (feed.style) feed.style.top = '';
@@ -730,6 +731,41 @@
     el.style.zIndex = '4';
   }
 
+  // Scroll's section labels (S7, Nathan 2026-11-17): the words go in the
+  // band meet-zones left above the Row and above the Stadium. Only Scroll
+  // lays a band, so no other layout shows a label. words: { row, stad },
+  // already translated by the page. The code keeps its own terms.
+  function placeHeads(feed, heads, words, stadN) {
+    const doc = feed.ownerDocument || document;
+    const want = {};
+    for (let i = 0; i < (heads || []).length; i++) {
+      const h = heads[i];
+      const text = words && words[h.key];
+      if (!text) continue;
+      want[h.key] = 1;
+      let el = doc.getElementById('zonehead-' + h.key);
+      if (!el) {
+        el = doc.createElement('div');
+        el.id = 'zonehead-' + h.key;
+        el.className = 'zone-head';
+        el.setAttribute('role', 'heading');
+        el.setAttribute('aria-level', '2');
+        feed.appendChild(el);
+      }
+      el.textContent = h.key === 'stad' && stadN > 0 ? text + ' \u00b7 ' + stadN : text;
+      el.style.position = 'absolute';
+      el.style.left = h.x + 'px';
+      el.style.top = h.y + 'px';
+      el.style.width = h.w + 'px';
+      el.style.height = h.h + 'px';
+    }
+    for (const k of ['row', 'stad']) {
+      if (want[k]) continue;
+      const old = doc.getElementById('zonehead-' + k);
+      if (old) old.remove();
+    }
+  }
+
   let stadSeen = { key: '', at: 0 };
   let stadTimer = 0;
 
@@ -808,12 +844,12 @@
     }
     const z = MZ.layout({ box: box, stage: stage, share: share, row: row, stad: stad, phone: !!opts.phone,
       gallery: opts.gallery === 'scroll' ? 'scroll' : 'fit', float: opts.float === true, content: opts.content || null, gap: opts.phone ? 4 : MZ.GAP, floor: +opts.floor || 0,
-      stadCount: opts.stadCount > 0 ? opts.stadCount : 0 });
+      stadCount: opts.stadCount > 0 ? opts.stadCount : 0, heads: !!(opts.heads && opts.gallery === 'scroll') });
     let band = null;
     if (z.tooSmall) band = { text: 'faces tiny \u00b7 Scroll is in \u25a6', x: box.x + 6, y: box.y + 6 };
     return { mode: (stage.length || share.length) ? 'stage' : 'gallery', gallery: z.gallery, rects: z.rects, crowd: false, band: band,
       box: box, regions: z.regions, stage: z.regions.stage, share: z.regions.share, contentH: z.contentH, tooSmall: !!z.tooSmall,
-      self: { arrangement: 'tile' }, zones: true, side: z.side, stadSide: z.stadSide };
+      self: { arrangement: 'tile' }, zones: true, side: z.side, stadSide: z.stadSide, heads: z.heads || [] };
   }
 
   // The composite's frame size. The pack canvas wins. A face video on the
@@ -1002,6 +1038,7 @@
     // Short, in the bottom right corner, where a tile has no name or button.
     if (past && !band) band = { text: '\u2193' + past, label: past + ' more below, scroll down', x: lay.box.x + lay.box.w - 4, y: clipY - 4, end: true };
     placeBand(feed, band);
+    placeHeads(feed, lay.heads, opts.heads, allFaces.length);
     // The hint hangs in the last face's bottom right corner, where a wide
     // name ("Lobby iPad" on a 109px tile) ran under it. That tile's name
     // keeps clear of it and wraps instead.
