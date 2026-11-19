@@ -32495,9 +32495,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return name + ' · ' + uiText('capVia', 'via {name}').replace('{name}', capName(l.w));
     }
     function capShows(l) { return !capTrust || capTrust.shows(l); }
-    // The line comes from the one source this page picked (or chose by itself) for that voice: the live captions show it
-    // even when the transcript folded it into a line it already held.
-    function capChosen(l) { return !!(capTrust && l && l.byId && l.w && l.byId !== myId && l.w !== l.byId && capTrust.choice(l.byId).show === l.w); }
+    // The line comes from the one source this page picked (or chose by itself) for that voice, or that source is quiet
+    // and the line is from an undoubted ear: the live captions show it even when the transcript folded it into a line it
+    // already held.
+    function capChosen(l) { return !!(capTrust && l && l.byId && l.w && l.byId !== myId && l.w !== l.byId && capTrust.showsHeld(l)); }
     // Ears only: Whisper is installed on a computer that can afford it while the browser's engine writes my own voice.
     // Its clips are samples for the trust check; they are written down only for a voice whose own captions lost trust.
     function capEarsOnly() {

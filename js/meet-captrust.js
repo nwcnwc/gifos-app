@@ -233,7 +233,18 @@
       for (const [w, n] of earOk) o.ears[w] = n;
       return o;
     }
-    return { observe, tick, choice, shows, earWanted, verdict, pick, flag, sources, stateOf, hasEars, dump };
+    // A line the transcript folded into one it already holds: the live captions still show it when it comes from the
+    // source this page shows for that voice, or when that source is quiet and the line is from an undoubted ear (as
+    // shows() does for any line). A voice shown from every source has its sentence on screen already.
+    function showsHeld(l) {
+      if (!l || !l.byId || !l.w) return false;
+      const v = String(l.byId), w = String(l.w);
+      if (v === me() || w === v) return false;
+      const c = choice(v);
+      if (c.show === w) return true;
+      return c.show !== 'all' && shows(l);
+    }
+    return { observe, tick, choice, shows, showsHeld, earWanted, verdict, pick, flag, sources, stateOf, hasEars, dump };
   }
 
   GifOS.capTrust = { make, words, overlap, judge, DIALS };
