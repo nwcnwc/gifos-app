@@ -38,6 +38,8 @@
     BOT_THINK_MS: 60000,   // ms
     BUSY_DELAY_MS: 600,   // ms
     BYE_STRAY_MS: 800,   // ms
+    CARRY_ASK_MS: 4000,   // ms
+    CARRY_LOOK_MS: 1000,   // ms
     CATCH_MAX_MS: 500,   // ms
     CATCH_MIN_MS: 30,   // ms
     CC_BURST_MS: 2000,   // ms
