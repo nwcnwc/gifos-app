@@ -673,10 +673,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <p class="lob-quiet" data-t="lobWelcome" id="lob-welcome">Join a meeting, or start your own in one tap.</p>
       <p class="lob-quiet" data-t="lobJoinOff" id="lob-quiet">You'll join with your camera and microphone off.</p>
       <div class="segwrap lob-segs" role="radiogroup" aria-label="Meeting choices">
-        <button type="button" id="lob-join-btn" class="seg" role="radio" aria-checked="false"><span data-t="lobJoinBtn">JOIN by link or room name</span><small data-t="lobJoinSub">Paste a link or type a room name.</small></button>
-        <button type="button" id="lob-admin-btn" class="seg" role="radio" aria-checked="false"><span data-t="lobAdminBtn">HOST a private meeting</span><small data-t="lobAdminSub">You control everything in the meeting</small></button>
-        <button type="button" id="lob-open-seg" class="seg sel" role="radio" aria-checked="true"><span data-t="lobStart">OPEN a public meeting</span><small data-t="lobStartSub">Majority rules: vote people off the stage or out of the meeting.</small></button>
+        <button type="button" id="lob-join-btn" class="seg" role="radio" aria-checked="false"><span data-t="lobJoinBtn">JOIN by link or room name</span></button>
+        <button type="button" id="lob-admin-btn" class="seg" role="radio" aria-checked="false"><span data-t="lobAdminBtn">HOST a private meeting</span></button>
+        <button type="button" id="lob-open-seg" class="seg sel" role="radio" aria-checked="true" aria-describedby="lob-seg-note"><span data-t="lobStart">OPEN a public meeting</span></button>
       </div>
+      <p class="lob-seg-note" id="lob-seg-note" role="status" aria-live="polite" data-t="lobStartSub">Majority rules: vote people off the stage or out of the meeting.</p>
       <div id="lob-admin" class="lob-expand" style="display:none">
         <input data-ph="lobAdminNamePh" id="lob-admin-name" maxlength="40" placeholder="Name this meeting" autocomplete="off">
         <div id="lob-guest-extra">
@@ -21208,8 +21209,26 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const on = modes[i][0] === which;
           const b = document.getElementById(modes[i][0]);
           const p = document.getElementById(modes[i][1]);
-          if (b) { b.classList.toggle('sel', on); b.setAttribute('aria-checked', on ? 'true' : 'false'); }
+          if (b) {
+            b.classList.toggle('sel', on);
+            b.setAttribute('aria-checked', on ? 'true' : 'false');
+            if (on) b.setAttribute('aria-describedby', 'lob-seg-note');
+            else b.removeAttribute('aria-describedby');
+          }
           if (p) p.style.display = on ? '' : 'none';
+        }
+        const note = document.getElementById('lob-seg-note');
+        if (note) {
+          if (which === 'lob-join-btn') {
+            note.setAttribute('data-t', 'lobJoinSub');
+            note.textContent = uiText('lobJoinSub', 'Paste a link or type a room name.');
+          } else if (which === 'lob-admin-btn') {
+            note.setAttribute('data-t', 'lobAdminSub');
+            note.textContent = uiText('lobAdminSub', 'You control everything in the meeting.');
+          } else if (which === 'lob-open-seg') {
+            note.setAttribute('data-t', 'lobStartSub');
+            note.textContent = uiText('lobStartSub', 'Majority rules: vote people off the stage or out of the meeting.');
+          }
         }
         if (which === 'lob-admin-btn') {
           const n = document.getElementById('lob-admin-name');
@@ -21492,6 +21511,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (openSegEl) openSegEl.style.display = 'none';
         const welcome = document.getElementById('lob-welcome');
         if (welcome) welcome.style.display = 'none';
+        const segNote = document.getElementById('lob-seg-note');
+        if (segNote) segNote.hidden = true;
         const nm = document.getElementById('lob-admin-name');
         nm.placeholder = uiText('bcNamePh', 'Name (optional)');
         document.getElementById('lob-admin-go').textContent = uiText('bcGoNow', 'Go live now');
