@@ -47,7 +47,7 @@
       leased: d.leased, held: d.held, handN: d.handN, awayN: d.awayN,
       hands: d.hands.map(cloneLE), stage: d.stage.map(cloneLE), apps: d.apps.map(cloneLE), votes: d.votes.map(cloneVE),
       talk: d.talk.map(cloneLE), kick: d.kick.map(cloneVE), kabs: d.kabs, kOwn: cloneKStmt(d.kOwn), kl: d.kl.map(cloneKStmt),
-      rows: d.rows.map(cloneDRow), doors: d.doors.map(cloneLE),
+      rows: d.rows.map(cloneDRow), doors: d.doors.map(cloneLE), go: d.go,
     };
   }
   // C++: mesh.cpp:DigE
@@ -138,7 +138,8 @@
   function digPop(d) { return digSeats(d) + digFar(d); }
   // C++: mesh.cpp:doorsAdd
   // The people of other rooms are keyed by their door, so a door told twice is one door, not two: the larger count stays.
-  function doorsAdd(dst, r, n) { let i = 0; while (i < dst.length && dst[i].id < r) i++; if (i === dst.length || dst[i].id !== r) dst.splice(i, 0, { id: r, k: n, f: 0 }); else if (n > dst[i].k) dst[i].k = n; }
+  // f (SUB.10.4): 1 this door is walking through another (its people will be counted there: a door that then leaves the fold is not lost)
+  function doorsAdd(dst, r, n, f = 0) { let i = 0; while (i < dst.length && dst[i].id < r) i++; if (i === dst.length || dst[i].id !== r) dst.splice(i, 0, { id: r, k: n, f }); else { if (n > dst[i].k) dst[i].k = n; dst[i].f = (dst[i].f | f) & 255; } }
   // C++: mesh.cpp:digLeasedIn
   function digLeasedIn(s) { const n = s.n < 0 ? 0 : s.n; return s.leased < -n ? -n : s.leased; }
   // C++: mesh.cpp:digFoldHeld
@@ -161,7 +162,8 @@
   }
   // C++: mesh.cpp:digFold
   function digFold(dst, s) {
-    for (const e of s.doors) doorsAdd(dst.doors, e.id, e.k);
+    for (const e of s.doors) doorsAdd(dst.doors, e.id, e.k, e.f);   // SUB.4
+    if (s.go >= 0) dst.go = s.go;   // SUB.10
     dst.n += s.n; dst.leased += digLeasedIn(s); if (s.held > 0) dst.held += s.held; dst.refuse += s.refuse; dst.freeC += s.freeC; if (s.dmin < dst.dmin) dst.dmin = s.dmin; if (s.part) dst.part = 1;
     // population-bounded claims, per input
     const cap = digPop(s);
@@ -212,7 +214,8 @@
     let h = digListHash(d); const mix = (x) => { h = hmix64(h, x); };
     mix(d.n); mix(d.refuse); mix(d.freeC); mix(d.dmin); mix(d.part); mix(d.leased);
     if (d.held) { mix(10); mix(d.held); }   // only while a mover is held
-    for (const e of d.doors) { mix(11); mix(e.id); mix(e.k); }   // only with people in another room of the meeting
+    for (const e of d.doors) { mix(11); mix(e.id); mix(e.k); if (e.f) { mix(13); mix(e.f); } }   // only with people in another room of the meeting
+    if (d.go >= 0) { mix(12); mix(d.go); }   // SUB.10 (only while a subroom walks)
     return h;
   }
   // C++: mesh.cpp:listHolds

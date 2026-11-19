@@ -121,7 +121,7 @@
       if (m.t === 'PIPE') return true;   // onPipe takes it from my own far end only
       let named = false; if (m.sr === 0 || this.sr === 0) for (const x of this.occ.values()) if (x === m.from) { named = true; break; }
       if (!named) { this.trace('SUB.1-DROP', this.id, null, 'from=%d sr=%d mine=%d mt=%d', m.from, m.sr, this.sr, msg.MT_NAMES.indexOf(m.t)); return false; }
-      if (this.sr === 0) { this.sr = m.sr; this.trace('SUB.1-ADOPT', this.id, this.hasCoord ? this.coord : null, 'from=%d sr=%d', m.from, this.sr); }
+      if (this.sr === 0 && m.sr !== this.walkedFrom) { this.sr = m.sr; this.trace('SUB.1-ADOPT', this.id, this.hasCoord ? this.coord : null, 'from=%d sr=%d', m.from, this.sr); }
       return true;
     },
     // C++: mesh_island.inc:Seat::subGo
@@ -145,7 +145,7 @@
       const mine = dig.cloneDig(this.pipeBase.at >= 0 ? this.pipeBase : this.myDig);
       if (this.pipeBase.at >= 0) { for (const [k, e] of this.pipeDig) if (k !== peer) dig.digFold(mine, e); dig.digTrim(mine); }
       const h = { R: msg.newDig() }; this.rootFold(false, h, mine); const R = h.R;
-      const o = msg.newDig(); o.at = R.at; o.rx = R.rx; o.by = this.id; o.handN = R.handN; o.awayN = R.awayN; o.hands = R.hands; o.stage = R.stage; o.apps = R.apps; o.talk = R.talk; o.doors = R.doors.map(dig.cloneLE); dig.doorsAdd(o.doors, this.sr, dig.digSeats(R));
+      const o = msg.newDig(); o.at = R.at; o.rx = R.rx; o.by = this.id; o.handN = R.handN; o.awayN = R.awayN; o.hands = R.hands; o.stage = R.stage; o.apps = R.apps; o.talk = R.talk; o.doors = R.doors.map(dig.cloneLE); dig.doorsAdd(o.doors, this.sr, dig.digSeats(R), (this.dRoot().go >= 0 || this.f.fabricSubGo(this.id) >= 0) ? 1 : 0);   /* SUB.10.4: my door is walking */
       return o;
     },
     // C++: mesh_island.inc:Seat::knownSub
@@ -158,11 +158,27 @@
     // whoever holds the home cell next still asks.
     subWatch() {
       const R = this.dRoot(); if (R.at < 0 || (!R.doors.length && !this.doorAt.size)) return;
-      for (const e of R.doors) { if (this.doorAt.size >= 64 && !this.doorAt.has(e.id)) continue; this.doorAt.set(e.id, this.TICK | 0); }
+      for (const e of R.doors) { if (this.doorAt.size >= 64 && !this.doorAt.has(e.id)) continue; this.doorAt.set(e.id, this.TICK | 0); if (e.f & 1) this.doorWalk.add(e.id); else this.doorWalk.delete(e.id); }
       if (this.state !== 3 || !this.hasCoord || ckey(this.coord) !== 0) return;
       const lost = []; for (const [d, at] of this.doorAt) if (this.TICK - at > K.L10_NEW_WAIT) lost.push(d); if (!lost.length) return;
-      for (const d of lost) { this.trace('SUB.3-LOST', this.id, this.coord, 'door=%d', d); this.doorAt.delete(d); }
-      this.f.fabricSubRepipe(this.id);
+      let ask = false; for (const d of lost) { this.doorAt.delete(d); if (this.doorWalk.delete(d)) { this.trace('SUB.10-DOOR-WALKED', this.id, this.coord, 'door=%d', d); continue; }   /* SUB.10.4: its last word was that it walks: its people are joiners of another door, nothing is cut off and no server is asked */ this.trace('SUB.3-LOST', this.id, this.coord, 'door=%d', d); ask = true; }
+      if (ask) this.f.fabricSubRepipe(this.id);
+    },
+    // C++: mesh_island.inc:Seat::subWalk
+    // SUB.10 THE WALK (0.9.27; docs/turn-0926.md 3a). My room fold says my subroom walks to door p (Dig.go: the word of the link's end on
+    // my side, fresh while its page says it). I pass the word on with one state beat, then I leave my cell with the ordinary goodbye and
+    // enter door p as any joiner does (SUB.2-GO: its greeters, an ordinary join). A seat that ends a path of the link stays until the
+    // others have gone (fabricSubWalk reads my page's own paths and my room fold's count): the pipe carries the meeting to every seat
+    // still here. The number I walked out of is never taken back (SUB.1 b).
+    subWalk() {
+      const R = this.dRoot(); const p = R.at >= 0 ? R.go : -1;
+      if (p < 0 || p === this.sr || this.state !== 3 || !this.hasCoord) { this.goAt = -1; return; }
+      if (this.goAt < 0) { this.goAt = this.TICK | 0; return; }
+      if (dig.digSeats(this.myDig) > 1) return;   // SUB.10.4 the seats below me first: my own section still counts somebody under me; they hear the word and the meeting through me until they have walked
+      if (this.f.fabricSubGo(this.id) >= 0 && this.TICK - this.goAt < K.L10_NEW_WAIT) return;   // the end that says the word stays until the far side has heard that this door walks (SUB.3's own clock)
+      if (!this.f.fabricSubWalk(this.id, dig.digSeats(R), p)) return;
+      this.trace('SUB.10-WALK', this.id, this.coord, 'from=%d to=%d n=%d', this.sr, p, dig.digSeats(R));
+      this.walkedFrom = this.sr; this.goAt = -1; this.doorAt.clear(); this.doorWalk.clear();   /* (the doors I noted were far doors of the room I leave: not mine to miss) */ this.requeue('sub-walk'); this.subGo(p);
     },
     // C++: mesh_island.inc:Seat::pipeBeat
     pipeBeat() {
@@ -176,7 +192,7 @@
       { const pp = this.f.fabricPipePeers(this.id); if (pp.indexOf(m.id) < 0) { this.trace('SUB.4-NOPEER', this.id, this.coord, 'from=%d', m.id); return; } }
       const u = dig.cloneDig(m.dgUp); this.rxDig(u); if (u.at < 0) return;
       u.doors = u.doors.filter((e) => !(e.id === this.sr || e.k < 0));   // my own door is never far (an echo)
-      u.n = 0; u.leased = 0; u.held = 0; u.refuse = 0; u.part = 0; u.freeC = 0; u.dmin = 99; u.rows = []; u.votes = []; u.kick = []; u.kabs = 0; u.kl = []; u.kOwn = msg.newKStmt();   // far form, whatever arrived: nothing of another room is a seat of mine
+      u.go = -1; u.n = 0; u.leased = 0; u.held = 0; u.refuse = 0; u.part = 0; u.freeC = 0; u.dmin = 99; u.rows = []; u.votes = []; u.kick = []; u.kabs = 0; u.kl = []; u.kOwn = msg.newKStmt();   // far form, whatever arrived: nothing of another room is a seat of mine
       const was = this.pipeDig.get(m.id); this.l10Dirty(was !== undefined ? was : null, u); if (was === undefined) { this.trace('SUB.4-PIPE', this.id, this.coord, 'peer=%d far=%d', m.id, dig.digFar(u)); this.l10Mark(); }
       this.pipeDig.set(m.id, u); if (this.pipeBase.at < 0) this.pipeBase = dig.cloneDig(this.myDig);
     },
@@ -318,8 +334,18 @@
       while (this.l827Hist.length > 2 && this.TICK - this.l827Hist[1][0] > K.L827_HOLD + 1) this.l827Hist.shift();
     },
 
+    // C++: mesh_island.inc:Seat::ringDeep
+    // L8.27.1 A DEEP SEAT NAMES THE RING IT HANGS UNDER (0.9.27): the ring the seat above it (my row head; a head's owner) last named
+    // to it on its own frame (L8.28's note, while fresh), so the name comes down the tree; until it has heard one it names none (-1).
+    ringDeep() {
+      const a = this.coord.i !== 0 ? this.occGet(ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 })) : this.ownerId();
+      if (a < 0 || a === this.id) return -1;
+      return this.l828RingOf(a);
+    },
+
     // C++: mesh_island.inc:Seat::ringName
     ringName() {
+      if (roomTerm(this, 1) && this.hasCoord && this.state === 3 && this.coord.pc !== 0) return this.ringDeep();   // L8.27.1
       if (!roomTerm(this, 1) || this.l827Hist.length === 0 || this.TICK - this.l827Hist[0][0] < K.L827_HOLD) return this.ringMin();
       let v = this.l827Hist[0][1]; for (const p of this.l827Hist) { if (this.TICK - p[0] >= K.L827_HOLD) v = p[1]; else break; } return v;
     },

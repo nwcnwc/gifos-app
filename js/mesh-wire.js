@@ -78,6 +78,36 @@
   const BY_ID = { by: 'id' };   // a type no seat signs today: a claim on it still has to verify as m.id's whole frame
   // Per-hop fields, never signed: addressing, each holder's clock (recv.js CLOCKS moves vAt, born, e1At and the *L ticks),
   // the link's door bit, the route's own state and FARVIEW's first-emitter stamp.
+  // WIRE SKEW (SUB.10, 0.9.27). A page drops WHOLE any frame with a field it does not know (msg.js rejectUnknown), and
+  // a 0.9.26 page knows no Dig.go: a digest that carried it would end the fold with every older page of a walking
+  // subroom. On the wire the word is a flag on the Dig.doors entry of that door instead (LE.f bit 2; bit 4: the entry
+  // is there only for the flag, k 0), a field every 0.9.26 page reads and folds without the flag (its doorsAdd keeps
+  // no f, its digSig reads none). The seat's Msg and the sim keep Dig.go; only the bytes between pages differ, and
+  // fromWire(toWire(o)) is o. An older page in the path drops the flag: no walk (its subroom stays a subroom).
+  const DIG_KEYS = ['dgUp', 'dgPub', 'dgEcho', 'dgRoot', 'dgSi'];
+  function goOut(d) {
+    if (!d || d.go === undefined) return;
+    const g = d.go; delete d.go; const ds = d.doors || (d.doors = []);
+    let i = 0; while (i < ds.length && ds[i].id < g) i++;
+    if (i < ds.length && ds[i].id === g) ds[i].f = (ds[i].f | 0) | 2; else ds.splice(i, 0, { id: g, k: 0, f: 6 });
+  }
+  function goIn(d) {
+    if (!d || !Array.isArray(d.doors)) return;
+    for (let i = 0; i < d.doors.length; i++) {
+      const e = d.doors[i]; if (!e || !((e.f | 0) & 2)) continue;
+      d.go = e.id; if ((e.f | 0) & 4) { d.doors.splice(i, 1); i--; } else e.f = (e.f | 0) & ~2;
+    }
+    if (!d.doors.length) delete d.doors;
+  }
+  function eachDig(o, fn) { if (!o || typeof o !== 'object') return; for (const k of DIG_KEYS) if (o[k]) fn(o[k]); if (Array.isArray(o.digs)) for (const e of o.digs) if (e && e.d) fn(e.d); }
+  // toWire: a written frame (msg.js writeMsg) as it goes between pages (changed in place); fromWire: a received one back
+  // (a copy when a flag is there: the envelope may be handed on as it came)
+  function toWire(o) { eachDig(o, goOut); return o; }
+  function fromWire(o) {
+    let has = false; eachDig(o, (d) => { if (Array.isArray(d.doors) && d.doors.some((e) => e && ((e.f | 0) & 2))) has = true; });
+    if (!has) return o;
+    const c = JSON.parse(JSON.stringify(o)); eachDig(c, goIn); return c;
+  }
   const STAMPS = ['to', 'from', 'ttl', 'rttl', 'rvia', 'lk', 'lkEp', 'tx', 'sigL', 'ppL', 'mpL', 'foL', 'l31L', 'swL', 'vAt', 'born', 'e1At',
     'direct', 'rl', 'yl', 'fhTo', 'fhOrig', 'fhTtl', 'fhId', 'fhTc', 'routing', 'rfinal', 'rdst', 'adoor', 'gwc', 'l18', 'dsat', 'aId', 'aCk', 'sgw', 'sgwCk'];
   // What a relayed goodbye may hold past its signed form: the relay's own marks and the heir hint byeRelay copies (L13.7),
@@ -416,10 +446,10 @@
       if (m.t === 'LEAVE' && m.bye && preLeave && m.id === layer.ids.nid(peer)) {
         const at = m.sigAt, atL = m.sigL; m.sigAt = preLeave.at; if (m.sigL >= 0) m.sigL = preLeave.at;
         const s4 = preLeave.s4.get(coreOf(msgM, m));
-        if (s4) { try { const out = { t: 'MW2', f: msgM.writeMsg(m), s4 }; if (dir && typeof dir === 'object') out.dir = dir; deliver(to, out); return true; } catch (e) { return false; } }
+        if (s4) { try { const out = { t: 'MW2', f: toWire(msgM.writeMsg(m)), s4 }; if (dir && typeof dir === 'object') out.dir = dir; deliver(to, out); return true; } catch (e) { return false; } }
         m.sigAt = at; m.sigL = atL;
       }
-      let f; try { f = msgM.writeMsg(m); } catch (e) { return false; }
+      let f; try { f = toWire(msgM.writeMsg(m)); } catch (e) { return false; }
       let claim = claimOf(m); const core = claim >= 0 ? coreOf(msgM, m) : null;
       let blk = null;
       if (claim >= 0 && claim === layer.ids.nid(peer)) {
@@ -436,7 +466,7 @@
         // word behind it): hand it on unclaimed, as a receiver would have to read it, and say so.
         if (!blk) {
           if (opts.trace) { try { opts.trace('{"t":' + (env.TICK | 0) + ',"s":' + layer.ids.nid(peer) + ',"e":"SIG-NOCARRY","c":null,"d":"mt=' + String(m.t).replace(/[^A-Z0-9_]/g, '') + ' claim=' + claim + '"}'); } catch (e) {} }
-          const u = msgM.clone(m); clearClaim(u); f = msgM.writeMsg(u); claim = -1;
+          const u = msgM.clone(m); clearClaim(u); f = toWire(msgM.writeMsg(u)); claim = -1;
         }
       }
       const pd = layer.sideOut(to, m);   // the page's display digest beside the seat's frame (layer.js; outside f and its signature)
@@ -492,7 +522,7 @@
         for (const m of goodbyeFrames(false)) {
           m.sigAt = preLeave.at; if (m.sigL >= 0) m.sigL = preLeave.at;
           const s4 = preLeave.s4.get(coreOf(msgM, m)); if (!s4) return false;
-          out.push([m.to, { t: 'MW2', f: msgM.writeMsg(m), s4, rh: 1 }]);
+          out.push([m.to, { t: 'MW2', f: toWire(msgM.writeMsg(m)), s4, rh: 1 }]);
         }
       } catch (e) { return false; }
       if (!out.length) return false;
@@ -602,7 +632,7 @@
       if (via != null) layer.ids.learn(String(via));
       if (m.t === 'MW2') {   // a seat frame
         const msgM = GifOS.meshMsg; let f;
-        try { f = msgM.readMsg(m.f); } catch (e) { return; }
+        try { f = msgM.readMsg(fromWire(m.f)); } catch (e) { return; }
         if (holdBye(m, f, via, direct)) return;
         const claim = claimOf(f), dir = direct === true, sponsored = origin != null;
         let proven = null;   // the envelope's origin, once proved: its own signature on this envelope, or the frame's verified author
@@ -1296,7 +1326,7 @@
       // DataChannel ingestion: the DC layer hands OPENED control objects here
       // (production unwraps its own sealed frames; {mw:1, m} envelopes route m).
       // A stale-key frame's one way in: a plain or reload LEAVE of the seat the channel belongs to (ingest still checks its signature).
-      isOwnGoodbye(m, pid) { try { const f = GifOS.meshMsg.readMsg(m.f); return m.t === 'MW2' && f.t === 'LEAVE' && !!f.bye && !f.mvd && String(layer.ids.pid(f.id)) === String(pid); } catch (e) { return false; } },
+      isOwnGoodbye(m, pid) { try { const f = GifOS.meshMsg.readMsg(fromWire(m.f)); return m.t === 'MW2' && f.t === 'LEAVE' && !!f.bye && !f.mvd && String(layer.ids.pid(f.id)) === String(pid); } catch (e) { return false; } },
       recvCtl(m, via, direct, origin) { if (!stopped && seat && m) ingest(m, via, direct, origin); }, // via: the delivering peer; direct === true ONLY for a frame off that peer's own DataChannel (run.html's pair intake) — never for a sponsor envelope or the relay
       // Room-wide app traffic (chat/status/votes/files): flood over the mesh —
       // the relay session is only the greeter pool now, not the room.
@@ -1378,14 +1408,14 @@
         try { m = msgM.newMsg(String(ty)); } catch (e) { return { err: 'bad type' }; }
         const own = (v) => (v === '$me' ? raw.id : v === '$ck' ? (raw.hasCoord ? GifOS.meshTopo.ckey(raw.coord) : 0) : v === '$tn' ? raw.tn : v);
         for (const k of Object.keys(fields || {})) m[k] = own(fields[k]); if (m.id === -1 || m.id === undefined) m.id = raw.id; if (m.from === -1) m.from = raw.id; if (!m.sig && !m.fsig && !(m.fo >= 0)) m.sig = true; m.to = layer.ids.nid(String(to));
-        let f; try { f = msgM.writeMsg(m); } catch (e) { return { err: 'encode' }; }
+        let f; try { f = toWire(msgM.writeMsg(m)); } catch (e) { return { err: 'encode' }; }
         const out = { t: 'MW2', f };
         const sendIt = () => !!(opts.sendDC && opts.sendDC(String(to), out, peer));
         if (how === 'alter') {
           const ts = Date.now(), core = coreOf(msgM, m), rc = relayCoreOf(msgM, m), sign = (c) => net.edSign(identity.priv, JSON.stringify({ v: 3, c, ts }));
           return Promise.all([sign(core), rc ? sign(rc) : null]).then(([sig, r]) => {
             out.s4 = { ts, sig, pub: identity.pubB64 }; if (r) out.s4.r = r;
-            const a = msgM.clone(m); Object.assign(a, alter || {}); out.f = msgM.writeMsg(a);
+            const a = msgM.clone(m); Object.assign(a, alter || {}); out.f = toWire(msgM.writeMsg(a));
             if (r && coreOf(msgM, a) === rc) out.s4 = { ts, sig: r, pub: identity.pubB64 };   // posing as a relay: it carries the relay form's signature
             return sendIt() ? { ok: true, ty: m.t, claim: claimOf(a), how, signedCoreSame: coreOf(msgM, a) === core } : { err: 'no open dc' };
           });
@@ -1500,5 +1530,5 @@
     return { n, at: at + n * tickMs, absent: 0 };
   }
 
-  GifOS.meshWire = { createMeshNode, goodbyeLive, wallTicks, claims: { CLAIMS, STAMPS, claimOf, coreOf, relayCoreOf, relayForm } };
+  GifOS.meshWire = { createMeshNode, goodbyeLive, wallTicks, wire: { toWire, fromWire }, claims: { CLAIMS, STAMPS, claimOf, coreOf, relayCoreOf, relayForm } };
 })(typeof window !== 'undefined' ? window : globalThis);
