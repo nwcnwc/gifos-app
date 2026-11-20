@@ -21976,6 +21976,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           gum.then((stream) => {
             if (!stream) {
               localStream = null;
+              // A reload lands with mic and camera off, so it asks for nothing and has no stream: a share
+              // that was up still comes back (or offers its one-tap prompt), as on the other two boot paths.
+              try { if (typeof applyRecoverMedia === 'function') applyRecoverMedia(); } catch (e) {}
               try { updateTile('me'); } catch (e) {}
               try { broadcastStatus(); } catch (e) {}
               if (typeof noteAudioDevices === 'function') noteAudioDevices();   // the list only (no prompt): the first Mic tap can ask which one
