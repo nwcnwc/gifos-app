@@ -495,8 +495,8 @@
     }
   }
 
-  // subsPresent(subs, now, inRoom, freshMs, me) → [{ key, tier, ticket }] the subscribers whose vouch counts now (TURN.11: the
-  // pool sums over the subscribers present in the MEETING). subs: Map pid → { tier, exp (s), ticket, at (ms, last heard) }.
+  // subsPresent(subs, now, inRoom, freshMs, me) → [{ key, tier, links, ticket }] the subscribers whose vouch counts now (TURN.11: the
+  // pool sums over the subscribers present in the MEETING). subs: Map pid → { tier (display), links (the ticket's signed turnVideoLinks), exp (s), ticket, at (ms, last heard) }.
   // Present: me; a seat of my own room (inRoom(pid)); or, in another room of the meeting (joined by a relayed pipe), one
   // whose statement was heard within freshMs (it restates itself while it stays). Ordered by key alone, so both ends of
   // a link read the same list and pick the same subscriber for it (vouchPayers).
@@ -504,13 +504,15 @@
     const out = [];
     for (const [pid, s] of subs || []) {
       if (!s || !(s.exp * 1000 > now)) continue;
-      if (pid === me || (inRoom && inRoom(pid)) || now - (s.at || 0) <= freshMs) out.push({ key: pid, tier: s.tier, ticket: s.ticket });
+      if (pid === me || (inRoom && inRoom(pid)) || now - (s.at || 0) <= freshMs) out.push({ key: pid, tier: s.tier, links: linksOf(s), ticket: s.ticket });
     }
     return out.sort((x, y) => (x.key < y.key ? -1 : x.key > y.key ? 1 : 0));
   }
 
+  // The video links one subscriber present vouches for: its ticket's signed line item (grants.turnVideoLinks).
+  const linksOf = (s) => (s && Number.isInteger(s.links) && s.links > 0 ? s.links : 0);
   // vouchRank(links, pool) → the ids that carry video now, in turnVouchOrder: the first `pool` links.
-  // links: [{ id, stage, cell, serial }]; pool: the sum of the tiers' video links over the subscribers present.
+  // links: [{ id, stage, cell, serial }]; pool: the sum of the video links the subscribers present vouch for.
   function vouchRank(links, pool) {
     const T = meshTurn();
     const ix = (links || []).slice();
@@ -520,21 +522,20 @@
   }
   function vouchPlan(links, pool) { return new Set(vouchRank(links, pool)); }
   // vouchPayers(ids, subs) → Map id → subscriber: whose vouch each vouched link uses. subs in key order (subsPresent),
-  // each taking as many links as its tier vouches for, in the order of ids (vouchRank). A link's paid ask presents that
+  // each taking as many links as its ticket vouches for, in the order of ids (vouchRank). A link's paid ask presents that
   // subscriber's ticket, and the service counts the link on that subscriber, so the pool is the sum of what each
   // subscriber may vouch for. Both ends read the same subscribers and link facts, so they pick the same one.
   function vouchPayers(ids, subs) {
-    const T = meshTurn(), out = new Map();
+    const out = new Map();
     let k = 0;
-    for (const s of subs || []) for (let n = T.turnTierLinks(s.tier); n > 0 && k < ids.length; n--) out.set(ids[k++], s);
+    for (const s of subs || []) for (let n = linksOf(s); n > 0 && k < ids.length; n--) out.set(ids[k++], s);
     return out;
   }
-  // budgetTicket(subs) → the meeting ticket a subroom ask presents: the subscriber whose plan vouches for the most links
+  // budgetTicket(subs) → the meeting ticket a subroom ask presents: the subscriber whose ticket vouches for the most links
   // (the meeting's pipe budget follows it), the lowest key on a tie; null with no subscriber.
   function budgetTicket(subs) {
-    const T = meshTurn();
     let best = null;
-    for (const s of subs || []) if (s && s.ticket && (!best || T.turnTierLinks(s.tier) > T.turnTierLinks(best.tier) || (T.turnTierLinks(s.tier) === T.turnTierLinks(best.tier) && s.key < best.key))) best = s;
+    for (const s of subs || []) if (s && s.ticket && (!best || linksOf(s) > linksOf(best) || (linksOf(s) === linksOf(best) && s.key < best.key))) best = s;
     return best ? best.ticket : null;
   }
 
@@ -967,7 +968,7 @@
     function planVideo(now) {
       const subs = io.subs() || [];
       let pool = 0;
-      for (const s of subs) pool += T.turnTierLinks(s.tier);
+      for (const s of subs) pool += linksOf(s);
       const ups = [];
       for (const f of io.facts() || []) if (f && f.up && !f.gone && !f.dr) ups.push({ id: f.id, stage: !!f.g, cell: f.c, serial: f.s });
       const rank = vouchRank(ups, pool), want = new Set(rank), payers = vouchPayers(rank, subs);

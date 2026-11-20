@@ -6072,8 +6072,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!subsOn()) return false;
         const m = GifOS.meetSubs.meeting && GifOS.meetSubs.meeting();
         if (m && m.paid) return true;   // the free plan's ticket holds nothing back
-        const t = !!av ? subsRoomTier() : null;
-        return !!(t && t !== 'free');
+        return !!(av && subsRoomTier() && subsGrants && subsGrants.admitAtFullDoor);   // the room's plan grants what a paid one does
       } catch (e) { return false; }
     }
     function updateHold() {
@@ -13875,7 +13874,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // socket that sends an unlisted type, so without its word this page asks for no link and answers none.
     let relayTv = false;
     const turnFacts = new Map();   // link id → { id, a, b, up, v, s, c, g, va, vb, at }
-    const turnSubs = new Map();    // subscriber pid → { tier, exp, ticket, at }
+    const turnSubs = new Map();    // subscriber pid → { tier (display), links (signed turnVideoLinks), exp, ticket, at }
     const turnLog = [];
     const turnHolds = (pid) => !!(turnLinks && turnLinks.holds(pid));
     // SUB.5: peers a plain pc of mine (no TURN link, no relay-only settings) reached 'connected' with: a proven direct path,
@@ -14106,10 +14105,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         },
         sub: () => (meshNode ? meshNode.sub : 0),
         knownSub: (r) => !!(meshNode && meshNode.knownSub(r)),
-        meetingFull: () => {
+        meetingFull: () => {   // the same line as the wall (subsRoomLimit): full at the line, no line or an unknown line is never full; no mesh seat, not full
           if (!hasAdminRoom() || !GifOS.sub) return false;
-          const n = subsMeetingCount();
-          return n != null && GifOS.sub.doorVerdict({ adminRoom: true, roomTier: subsRoomTier() || null, count: n }) !== 'let-in';   // at the limit already
+          const line = subsRoomLimit();
+          if (!(line > 0)) return false;
+          try { const n = meshNode ? meshNode.meetingCount() : null; return n != null && n >= line; } catch (e) { return false; }
         },
         // SUB.7: among the other row heads of my view keep the capable ones (not a phone) that
         // are not the pipe's far end and end fewer than two standbys, the fewest pipes and standbys first; else the next
@@ -14215,7 +14215,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // A four-hour pass vouches the same way with its pass meeting ticket (one meeting at a time, like a subscription).
     function turnSubIn(from, o) {
       if (!o || typeof o !== 'object' || !GifOS.meetSubs) return;
-      GifOS.meetSubs.roomTier(o, subsMeetId()).then((t) => { if (t) turnSubs.set(from, { tier: t.tier, exp: t.exp, ticket: o.ticket, pass: !!t.pass, at: Date.now() }); }, () => {});
+      GifOS.meetSubs.roomTier(o, subsMeetId()).then((t) => { if (t) turnSubs.set(from, { tier: t.tier, links: t.grants.turnVideoLinks, exp: t.exp, ticket: o.ticket, pass: !!t.pass, at: Date.now() }); }, () => {});
     }
     // a subscriber restates its vouch every half renewal period (turnStep); two of those unheard and it is gone
     const turnSubFreshMs = () => (GifOS.sub && GifOS.sub.RENEW_EVERY_S ? GifOS.sub.RENEW_EVERY_S * 1000 : 0);
@@ -17750,7 +17750,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const k = await net.edKeysFromSeedHex(K).catch(() => null);
       if (!k || k.verifier !== av) return false;
       admKey = K; admKeys = k; amAdmin = true;
-      setTimeout(() => { subsPublishRoomPlan(); if (typeof subsAdminFree === 'function') subsAdminFree(); }, 1500);   // the admin's plan rides the room's signed orders; without a paid plan, the free plan's (no-op while subscriptions are off)
+      setTimeout(() => { subsPublishRoomPlan(); }, 1500);   // the admin's plan rides the room's signed orders; without a paid plan, the free plan's (no-op while subscriptions are off)
       admins = adminsNow(); // canStage reads this view; do not wait for the sweep
       hostFlood();   // signs, then floods the proof: a channel dialled before the signature learns it now
       try { tryBroadcastStage(); } catch (e) {}
@@ -18462,7 +18462,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         onDoor: (kind, frame) => {
           if (kind === 'seated') {
             meetWait.waiting(false);
-            subsDoorSeen(frame);
           }
         },
         sendDC: meshSendDC,
@@ -39083,7 +39082,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // is counted at the door, so many people knocking in the same second, at
     // one door or at several, cannot pass the line, and a person who has left
     // holds no place.
-    let subsTurnedAway = false, subsTierKey = '', subsTier = null, subsTierExp = 0;
+    let subsTurnedAway = false, subsTierKey = '', subsTier = null, subsTierExp = 0, subsGrants = null;   // subsTier: the plan's name (display); subsGrants: its signed line items (every decision)
+    // The free line's words and the host's upgrade offer (display only): a room whose plan is the free one, or none shown.
+    const subsFreeWords = () => GifOS.sub.fullFreeWords(subsTier);
     const subsProven = new Set(), subsAsked = new Map();   // knocker -> {n, at}
     const subsOn = () => !!(window.GifOS && GifOS.meetSubs && GifOS.sub);   // the subscription code is loaded (always on)
     // The Subscription entry in More (Settings and help): opens the Subscription dialog.
@@ -39091,19 +39092,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // The meeting a subscription ticket names: the room's relay session (a one-way hash of the room code), the same
     // room the relay's TURN vouches name, so the TURN Worker can check a paid ask's ticket against its vouches.
     const subsMeetId = () => sessId || roomKey();
-    // The door's greeter list: its length and when it came (every greeters
-    // reply, a relay restart's empty hold excepted).
-    let subsListLen = null, subsListAt = 0;
-    function subsDoorSeen(frame) {
-      if (!frame || !Array.isArray(frame.list) || frame.hold) return;
-      subsListLen = frame.list.length; subsListAt = Date.now();
-    }
-    // THE MEETING'S COUNT, for what is shown and for the meeting's relayed rooms (never for the door). A meeting may be several subrooms joined by TURN pipes: the count is the mesh's count of the whole meeting,
-    // or the greeter list plus this door where the mesh gives none. null: not known yet.
-    function subsMeetingCount() {
-      try { if (meshNode && typeof meshNode.doorCount === 'function') return meshNode.doorCount(); } catch (e) {}
-      return subsListLen == null ? null : subsListLen + 1;   // the greeter list leaves the door out
-    }
     // THE PLAN IS UNKNOWN, not absent, to a door that has not yet heard the
     // admin's signed orders (a door seated a moment ago) while the room may
     // still have its admin. Reading that as "no plan" would hold a $5 room to
@@ -39122,10 +39110,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const o = (modTable['*'] || {}).sublic;
       const k = o ? String(o.at) + '|' + String(o.proof || '') : '';
       if (k !== subsTierKey) {
-        subsTierKey = k; subsTier = o ? undefined : null; subsTierExp = 0;
-        if (o) GifOS.meetSubs.roomTier(o, subsMeetId()).then((t) => { if (subsTierKey === k) { subsTier = t ? t.tier : null; subsTierExp = t ? t.exp : 0; } }, () => { if (subsTierKey === k) { subsTier = null; } });
+        subsTierKey = k; subsTier = o ? undefined : null; subsTierExp = 0; subsGrants = null;
+        if (o) GifOS.meetSubs.roomTier(o, subsMeetId()).then((t) => { if (subsTierKey === k) { subsTier = t ? (t.tier || 'custom') : null; subsGrants = t ? t.grants : null; subsTierExp = t ? t.exp : 0; } }, () => { if (subsTierKey === k) { subsTier = null; } });
       }
-      if (subsTier && Date.now() / 1000 >= subsTierExp) subsTier = null;   // the admin's ticket ran out: no plan, the free line
+      if (subsTier && Date.now() / 1000 >= subsTierExp) { subsTier = null; subsGrants = null; }   // the admin's ticket ran out: no plan, the free line
       return subsTier;
     }
     async function subsPublishRoomPlan() {
@@ -39137,7 +39125,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       hostFlood();
     }
     if (DEBUG_ON) window.__subsPublishNow = () => subsPublishRoomPlan();   // DEBUG=on only: a test republishes the room's plan now
-    if (DEBUG_ON) window.__turnSubsForTest = () => Array.from(turnSubs.entries()).map(([pid, s]) => ({ pid: String(pid), tier: s.tier, exp: s.exp, pass: !!s.pass, ticket: s.ticket }));   // DEBUG=on only: the vouches this page holds
+    if (DEBUG_ON) window.__turnSubsForTest = () => Array.from(turnSubs.entries()).map(([pid, s]) => ({ pid: String(pid), tier: s.tier, links: s.links, exp: s.exp, pass: !!s.pass, ticket: s.ticket }));   // DEBUG=on only: the vouches this page holds
     // ONE MEETING AT A TIME: joining asks the payment service for this
     // meeting's ticket (payment is checked then, once). Every renewal puts the
     // admin's fresh ticket into the room; losing it (the subscription moved to
@@ -39165,7 +39153,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!subsPlanKnown()) return undefined;
       const tier = subsRoomTier();
       if (tier === undefined) return undefined;
-      const n = GifOS.sub.roomLimitFor(GifOS.sub.isPlan(tier) ? tier : 'free');
+      const n = GifOS.sub.effective(tier ? subsGrants : null).roomLimit;   // the signed roomLimit line item (1..25, null = no line); no ticket: the free default
       return n == null ? null : n;
     }
     // What the mesh seat reads (js/mesh/wall.js): 0 no line, below 0 not known
@@ -39215,7 +39203,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function subsRefuse(p, asked) {
       if (!asked && !subsAsked.has(p.id)) return;   // only a knocker this door asked
       subsAsked.delete(p.id);
-      const free = !(subsTier && GifOS.sub.isPaid(subsTier));   // the free line: the free plan or no plan
+      const free = subsFreeWords();   // the free line's words (display): the free plan or no plan
       try { dcSend(p, free ? { k: 'subfull', free: true } : { k: 'subfull' }); } catch (e) {}
       if (free) subsTellHost();
     }
@@ -39238,14 +39226,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function subsTurnedSaid(p, dc) {
       if (!dc || dc.__authBy !== p.id) return;   // an authenticated channel only
       const ms = meshSeat();
-      if (!subsOn() || !amAdmin || !av || !(ms && ms.state === 3) || (subsRoomTier() && subsRoomTier() !== 'free')) return;
+      if (!subsOn() || !amAdmin || !av || !(ms && ms.state === 3) || (subsRoomTier() && !subsFreeWords())) return;
       GifOS.meetSubs.showHostPrompt();
-    }
-    // The admin of an admin room without a paid plan gets the free plan's
-    // license (no PayPal), so the room carries the free plan.
-    function subsAdminFree() {
-      if (!subsOn() || !av || !amAdmin || !GifOS.meetSubs.ensureFree) return;
-      GifOS.meetSubs.ensureFree().catch(() => {});
     }
 
     async function createAdminRoom(chosen, pass, postToChat, guestPw) {
