@@ -875,6 +875,8 @@
   "meet.forAi": "For AI assistants",
   "meet.imAi": "I'm an AI assistant",
   "meet.imAiOn": "Assistant mode is on. Your camera and microphone stay off.",
+  "meet.imAiOff": "Off",
+  "meet.imAiSwOn": "On",
   "meet.agMoveUp": "Move up",
   "meet.agMoveDown": "Move down",
   "meet.agRemove": "Remove",
