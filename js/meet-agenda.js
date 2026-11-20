@@ -6,7 +6,8 @@
  * over), the host taps Next.
  *
  * Who edits: the host in an admin room; in an open room the person who
- * shared it, who can hand editing to others (and take it back).
+ * shared it, who can hand editing to others (and take it back). In an open
+ * room anyone may stop it for everyone (canStop), as with a shared app.
  *
  * The agenda travels as one whole object. Every change raises v; a page
  * keeps the highest v it has proven (a tie goes to the larger hash, so two
@@ -85,6 +86,16 @@
     if (!a || !a.owner || !(a.items || []).length) return true;  // nobody shares one now: anyone may start it
     return who === a.owner || (a.ed || []).indexOf(who) >= 0;
   }
+  // STOP FOR EVERYONE (open-floor rooms): anyone may take the room's agenda
+  // off every screen, as anyone may stop a shared app. The stop is the empty
+  // version, made and signed by the person who pressed it (by), so everyone
+  // sees who did it. Once it is stopped anyone may share a new one. In a
+  // hosted room only the host stops it (canEdit).
+  function canStop(a, who, ctx) {
+    ctx = ctx || {};
+    if (!who || !a || !(a.items || []).length) return false;
+    return ctx.adminRoom ? !!ctx.isAdmin : true;
+  }
   // Only the owner hands editing on (open rooms); the host in an admin room
   // needs no list.
   function canHand(a, who, ctx) {
@@ -106,6 +117,9 @@
     if (!n || !n.by) return false;
     if (ctx.adminRoom) {
       if (!ctx.isAdmin) return false;
+    } else if (!n.items.length && !n.ed.length) {
+      // A stop (clear): anyone's (canStop), attributed by its signer. It
+      // shows nothing and hands nothing on.
     } else {
       // The editor must have had the right in the version they changed. A
       // new agenda (none held) is owned by whoever made it.
@@ -214,7 +228,7 @@
   // The owner's grant: the words the owner signs naming who may edit.
   function grantBody(a) { const c = clean(a); return c ? JSON.stringify([c.owner, c.ed]) : ''; }
 
-  const api = { grantBody, MAX_ITEMS, MAX_T, MAX_MIN, empty, clean, body, hash, canEdit, canHand, accept, add, edit, remove, move, go, next, prev, hand, clear, clock, mmss, totalMin };
+  const api = { grantBody, MAX_ITEMS, MAX_T, MAX_MIN, empty, clean, body, hash, canEdit, canStop, canHand, accept, add, edit, remove, move, go, next, prev, hand, clear, clock, mmss, totalMin };
   GifOS.meetAgenda = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
