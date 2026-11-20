@@ -477,11 +477,13 @@
     }
 
     // C++: mesh_dialsig_fab.inc:sigWayOut   [my end. L50.7 b: a new way out (my socket after a knock, my uplink's pc) starts
-    // every dial between seats that has no answer yet again: a fresh clock here, a fresh offer or ask from the page (io.redial)]
+    // every dial between seats that has no answer yet again: a fresh clock here, a fresh offer or ask from the page (io.redial).
+    // Not when the other end has already been without a reason: one shared dial clock would then never reach LINK_DIAL_FAIL.]
     function wayOut(why) {
       const s = mySeat(); if (!s || s.dead || !mySeated()) return 0; let n = 0;
       for (const [x, L] of LINKS) {
         if (L.state !== LK_DIALING || L.outside || L.ansAt >= 0 || turnLink(x)) continue;
+        if (L.nnAt[theirs(x)] >= 0) continue;
         L.dialAt = T(); n++; trace('L50.7-REDIAL', me, null, 'peer=%d why=%s', x, why);
         if (io.redial) io.redial(x);
       }
