@@ -12918,6 +12918,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (back && back.connected && back.dc && back.dc.readyState === 'open') { envl.rt = envl.rt.slice(0, -1); dcSend(back, envl); return true; }
         delete envl.rt;
       }
+      // L50.4.1: a dial that answers an offer starts on the channel the offer came by. That channel carried my ask out and the
+      // offer back a moment ago; the friend and the next hop below can both be the very seat whose silence I am dialling around.
+      if (envl.k === 'fsig') {
+        const dv = dialVia.get(to), vp = dv && dv !== to ? peers.get(dv) : null;
+        if (vp && vp.connected && vp.dc && vp.dc.readyState === 'open') { envl.rt = []; dcSend(vp, envl); return true; }
+      }
       // 1) the classic mutual-DC friend (one hop, deterministic pick)
       const cands = myConns().filter((r) => r !== to && (connsOf.get(r) || []).includes(to)).sort();
       for (const r of cands) {   // the first friend with an open channel
@@ -12984,15 +12990,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // L16.3.2: the seats the last walked frame from a peer crossed, its end first. The crumb is one word per seat, the last frame on ANY
     // walk, and retracing by crumbs loops; the list is this frame's own. Taken once by the reply, 60 s, bounded.
     const fwdRoute = new Map();
+    const dialVia = new Map();   // L50.4.1: pid I dial as my uplink -> the peer whose channel delivered its offer
     function noteRoute(pid, list) {
       fwdRoute.set(String(pid), { list: Array.isArray(list) ? list.slice(0, 13).map(String) : [], at: Date.now() });
       if (fwdRoute.size > 256) { const now = Date.now(); for (const [k, v] of fwdRoute) if (now - v.at > 60000) fwdRoute.delete(k); }
     }
-    function takeRoute(pid) {
+    function takeRoute(pid, peek) {
       const r = fwdRoute.get(String(pid)); if (!r) return null;
-      fwdRoute.delete(String(pid));
+      if (!peek) fwdRoute.delete(String(pid));
       return Date.now() - r.at > 60000 ? null : r.list;
     }
+    const routeHeld = (pid) => takeRoute(pid, true) !== null;
     // fwdOnward: an fsig/fmesh envelope reached me but names someone else —
     // pass it one bounded step onward. Order:
     //   1) direct channel / geometric mesh next hop (nextHopDc)
@@ -13150,7 +13158,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const relayDown = !relayUp();
       // altPath (§FWD transport rotation): a pair whose relay offers keep dying unanswered alternates its retries onto the sponsor path. The sweeper flips it per re-offer; connect clears it.
       const notOnRelay = relayNoSockRecently(to);
-      const targetUnreachable = notOnRelay || !!(peers.get(to) || {}).altPath;
+      // L16.3.2: the reply to a walked frame (the answer to a walked offer, the offer back to a walked ask) retraces it at once. The relay
+      // cannot carry it: the frame walked because its sender holds no socket.
+      const walked = (msg.kind === 'offer' || msg.kind === 'answer') && routeHeld(to);
+      const targetUnreachable = notOnRelay || walked || !!(peers.get(to) || {}).altPath;
       // A description carrying media never fits the relay (the law): it goes
       // by the sponsor path or not at all — the pair's channel is down, so a
       // friend's channel carries the restart; with no path the beat retries.
@@ -13168,7 +13179,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const m2 = sigSansIce(to, msg);
         if (!m2) return; // a blocked pair sends nothing on either path (fault injection)
         // every negotiation frame kept off the relay says why (a pair whose bootstrap never leaves is otherwise silent)
-        if (typeof clog === 'function' && (msg.kind === 'offer' || msg.kind === 'answer')) clog('sig ' + msg.kind + ' to ' + String(to).slice(0, 6) + ' off the relay: ' + [relayDown ? 'relay-down' : '', notOnRelay ? 'nosock' : '', (peers.get(to) || {}).altPath ? 'altPath' : '', mediaDesc ? 'media' : '', !mayRelay ? 'not-relay-pair' : ''].filter(Boolean).join(','));
+        if (typeof clog === 'function' && (msg.kind === 'offer' || msg.kind === 'answer')) clog('sig ' + msg.kind + ' to ' + String(to).slice(0, 6) + ' off the relay: ' + [relayDown ? 'relay-down' : '', notOnRelay ? 'nosock' : '', (peers.get(to) || {}).altPath ? 'altPath' : '', walked ? 'walked' : '', mediaDesc ? 'media' : '', !mayRelay ? 'not-relay-pair' : ''].filter(Boolean).join(','));
         const rt = (m2.kind === 'offer' || m2.kind === 'answer') ? takeRoute(to) : null;   // L16.3.2: the reply to a walked frame retraces it
         if (sponsorSend(Object.assign({ k: 'fsig', from: myId, to, tc: coordKeyOf(to), id: fwdId(), ttl: 12, m: m2 }, rt ? { rt } : {}))) { txStats.fwdSig++; return; }
         if (mediaDesc) { txStats.relayUnfit++; return; } // no friend's channel either: the sweeper's next attempt rebuilds and bootstraps (sendOffer)
@@ -14775,7 +14786,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         else if (p.connected) { doorPace.delete(p.id); p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; p.checkingSince = 0; if (!seatStranger(p)) restoreDoorTile(p); try { updateTile(p.id); } catch (e) {} }
         updateStatus();
         if (p.connected && !turnHolds(p.id)) turnDirectNote(p, pc);   // SUB.5: a proven direct path
-        if (p.connected) { p.altPath = false; p.tlAt = 0; p.hungUp = false; adapt(); try { headLinkUp(p.id); } catch (e) {} } // rotation ends when the pair lands; D5 edge re-arms; a link up to my row's head re-routes my sends now
+        if (p.connected) { p.altPath = false; dialVia.delete(p.id); p.tlAt = 0; p.hungUp = false; adapt(); try { headLinkUp(p.id); } catch (e) {} } // rotation ends when the pair lands; D5 edge re-arms; a link up to my row's head re-routes my sends now
         // D5: 'closed' out of nowhere (we didn't rebuild it and the peer is
         // still in the room) is a hard transport death — first-hand evidence.
         // 'failed' waits for the sweeper (must persist past the ICE-restart
@@ -18724,6 +18735,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         },
         // The seat's pcs (js/mesh/page/env.js calls these; it decides, the page carries out).
         pc: {
+          via: (pid, v) => { if (!pid || pid === myId) return; if (v && v !== pid && v !== myId) { dialVia.set(pid, v); if (dialVia.size > 64) dialVia.delete(dialVia.keys().next().value); } else dialVia.delete(pid); },   // L50.4.1
           ensure: (pid, o) => { if (!pid || pid === myId) return; seatAskAt.set(pid, Date.now()); if (seatAskAt.size > 256) seatAskAt.delete(seatAskAt.keys().next().value); seatMark.set(pid, cleanMark(o && o.mark)); if (seatMark.size > 256) seatMark.delete(seatMark.keys().next().value); seatDial(pid); },
           bye: pcBye,
           close: (pid, why) => {

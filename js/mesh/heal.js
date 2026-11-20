@@ -1179,7 +1179,7 @@
       if (cand.length === 0) { return; }
       for (let q = 0; q < cand.length; q++) {
         const x = cand[q]; const ref = [];
-        if (!this.f.fabricDialUplink(id, x, ref)) {
+        if (!this.f.fabricDialUplink(id, x, ref, -1)) {
           this.l14Failed.set(x, TICK | 0); this.l14Refused.add(x); this.trace('L14-FAIL', id, anc, 'to=%d ls=refused', x);
           let at = q + 1;
           for (const r of ref) {
@@ -1363,7 +1363,7 @@
       if (this.l14Up >= 0 || this.l14FailedNow(m.id)) return;
       const anc = this.coord.i !== 0 ? { pc: this.coord.pc, r: this.coord.r, i: 0 } : this.ownerCoord(); if (!anc || ckey(anc) !== ckey(m.target)) return;
       if (!(this.occGet(ckey(anc)) < 0 || TICK - this.lastAck >= K.L9_LONE)) return;
-      { const ref = []; if (!this.f.fabricDialUplink(id, m.id, ref)) return; }
+      { const ref = []; if (!this.f.fabricDialUplink(id, m.id, ref, m.from)) return; }   // L50.4.1: over the pc the offer came by
       this.l14Up = m.id; this.l14UpAt = TICK | 0; if (this.l14UpFirst < 0) this.l14UpFirst = TICK | 0; this.l14Refused.clear(); this.trace('L14-UP', id, anc, 'to=%d ask=1', m.id);
     },
 
