@@ -1728,8 +1728,11 @@
       videoStep(pid) { const L = links.get(pid); return L && L.video && L.thr && L.thr.step >= 0 ? L.thr : null; },
       // TURN.13: the rate each audio sender of the link takes while it is starved (bits a second), or 0: its full rate
       voiceCap(pid) { const L = links.get(pid); return L && L.state === 'up' && L.voiceLow > 0 ? L.voiceLow : 0; },
-      // TURN.23: a free link (no vouch: the free pool's byte cap is on it), up or still dialling; a warm standby too
-      thin(pid) { const L = links.get(pid); return !!L && (L.state === 'up' || L.state === 'dial') && !L.video; },
+      // TURN.23: a free link (no vouch: the free pool's byte cap is on it) from its ask on, at BOTH ends; a warm standby too.
+      // The answering end never dials: it waits in 'ask'/'swap' until its pc is up, and the opener's offer it is handed then
+      // is what sets ITS encoder (a thin() of 'dial'/'up' only left the answerer's sound at 50 packets a second when muted).
+      // A direct pipe carries video (setDirect), so it is never thin.
+      thin(pid) { const L = links.get(pid); return !!L && L.state !== 'closed' && !L.video; },
       busy(pid) { const L = links.get(pid); return !!L && L.busy; },
       farBusy(pid) { const L = links.get(pid); return !!L && L.video && L.farBusy; },
       // the pcs that run through TURN (the page watches their path, server and capacity)
