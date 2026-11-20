@@ -472,8 +472,12 @@
     }
     // C++: mesh_link.inc:dialOver   [no answer: LINK_DIAL_FAIL from the dial's start; answered: LINK_DIAL_ICE from the answer. The browser's own verdict comes at 15 s or never]
     const dialOver = (L) => T() - L.dialAt >= K.LINK_DIAL_FAIL || (L.ansAt >= 0 && T() - L.ansAt >= K.LINK_DIAL_ICE);
+    // L8.54.12 (C++: mesh_net.inc:DOORV): peer -> the tick my answered dial to it gave up for want of a path. It stands
+    // RELAY_TTL, or until a connection between us opens.
+    const DOORV = new Map();
+    const doorVerdict = (x) => { const t = DOORV.get(x); return t !== undefined && T() - t <= K.RELAY_TTL; };
     function dialTimeouts() {
-      for (const [x, L] of LINKS) if (L.state === LK_DIALING && dialOver(L) && !turnLink(x)) { dialFailed(x); io.close(x); }   // a TURN link's dial has its own budget (the link manager closes it as dialfail)
+      for (const [x, L] of LINKS) if (L.state === LK_DIALING && dialOver(L) && !turnLink(x)) { if (L.ansAt >= 0 && T() - L.ansAt >= K.LINK_DIAL_ICE) DOORV.set(x, T());   /* L8.54.12 (C++: mesh_net.inc:doorVFail): answered, and no path */ dialFailed(x); io.close(x); }   // a TURN link's dial has its own budget (the link manager closes it as dialfail)
     }
 
     // ---- the page face -----------------------------------------------------------------------------------------
@@ -528,6 +532,7 @@
     // C++: mesh_link.inc:linkOpenNow   [my end]
     function opened(x) {
       FHDOOR.delete(x);   // C++: mesh_fhop.inc:fhDoorOpened (FHOP.8: the door opened)
+      DOORV.delete(x);   // L8.54.12 (C++: mesh_net.inc:doorVOpen): a path: no verdict stands
       const L = LINKS.get(x); if (!L || L.state === LK_OPEN) return;
       turnNoDoor(x, L);
       DECL.delete(x);
@@ -628,7 +633,7 @@
       byeIn: (x, why) => byeIn(x, BYE.includes(why) ? why : 'call'), dialFailed, refused, leaveAll, pageClosed,
       busyFrom: (x) => refused(x, { busy: 1 }),
       link: (x) => LINKS.get(x) || null, dump: () => [...LINKS].map(([x, L]) => ({ x, state: L.state, view: L.view[mine(x)], outside: L.outside, gone: L.gone, q: L.q.length })),
-      dialHeld: (x) => pc.dialHeld(me, x), laws: pc, BYE,
+      dialHeld: (x) => pc.dialHeld(me, x), doorVerdict, laws: pc, BYE,
       doorForgive: (x) => pc.S.L16COOL.delete(hash.idPair(me, x)),   // the admin's Admit: the waiting room's idle knocks are not this person's fault
     };
   }
