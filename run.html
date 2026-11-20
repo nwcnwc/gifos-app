@@ -732,7 +732,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       </div>
       <p class="for-ai" id="lob-for-ai">
         <a href="/meet/llms.txt" data-t="forAi">For AI assistants</a>
-        <button type="button" id="ai-assist" data-t="imAi" aria-pressed="false">I'm an AI assistant</button>
+        <button type="button" id="ai-assist" class="ai-sw" role="switch" aria-checked="false" aria-pressed="false"><span class="ai-sw-word" data-t="imAi">I'm an AI assistant</span><span class="ai-sw-state" data-t="imAiOff">Off</span><span class="ai-knob" aria-hidden="true"></span></button>
       </p>
       <p class="for-ai-note" id="ai-assist-note" role="status"></p>
       <div class="lob-sep"></div>
@@ -750,7 +750,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <span id="onair" hidden><i class="lamp" aria-hidden="true"></i><span class="words"></span></span>
     <span class="status" id="status"><button data-t="statuscount" type="button" id="statuscount" data-agent="status" aria-expanded="false" aria-controls="roster">Joining…</button><span id="statusrest" class="statustext"></span></span>
     <a href="/meet/llms.txt" class="for-ai-link" id="meet-for-ai" data-t="forAi">For AI assistants</a>
-    <button type="button" id="meet-ai-assist" class="for-ai-btn" data-t="imAi" aria-pressed="false">I'm an AI assistant</button>
+    <button type="button" id="meet-ai-assist" class="ai-sw" role="switch" aria-checked="false" aria-pressed="false"><span class="ai-sw-word" data-t="imAi">I'm an AI assistant</span><span class="ai-sw-state" data-t="imAiOff">Off</span><span class="ai-knob" aria-hidden="true"></span></button>
     <button type="button" id="hdrhand" aria-expanded="false" aria-controls="handq"></button>
   </div>
   <aside data-al="people" id="roster" aria-label="People">
@@ -3047,29 +3047,52 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const lvl = (o.blur === 0 || o.blur === 1 || o.blur === 2) ? o.blur : 2;
       return { cam: o.cam === true, mic: o.mic === true, blur: lvl };
     })();
-    // "I'm an AI assistant" is the same as ?bot=1, on this page, with no reload.
-    // The camera and microphone stay off, so the tap never asks for them.
-    function becomeAssistant() {
-      try { sessionStorage.setItem('gifos_bot', '1'); } catch (e) {}
-      myStatus.bot = true;
-      myStatus.camOff = true;
-      myStatus.muted = true;
-      // An assistant publishes no face, so blur stays off.
-      if (myStatus.bot) myStatus.blur = 0;
-      try { if (localStream) for (const tr of localStream.getTracks()) tr.enabled = false; } catch (e) {}
+    // "I'm an AI assistant" is a switch. On is the same as ?bot=1, on this page,
+    // with no reload. Off clears that choice. The camera and microphone stay off,
+    // so neither press asks for them.
+    let blurBeforeAssistant = null;
+    function paintAssistant(on) {
       for (const id of ['ai-assist', 'meet-ai-assist']) {
         const b = document.getElementById(id);
-        if (b) b.setAttribute('aria-pressed', 'true');
+        if (!b) continue;
+        b.setAttribute('aria-checked', on ? 'true' : 'false');
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        const st = b.querySelector('.ai-sw-state');
+        if (st) {
+          st.setAttribute('data-t', on ? 'imAiSwOn' : 'imAiOff');
+          st.textContent = on ? uiText('imAiSwOn', 'On') : uiText('imAiOff', 'Off');
+        }
       }
       const note = document.getElementById('ai-assist-note');
-      if (note) note.textContent = uiText('imAiOn', 'Assistant mode is on. Your camera and microphone stay off.');
+      if (note) note.textContent = on ? uiText('imAiOn', 'Assistant mode is on. Your camera and microphone stay off.') : '';
+    }
+    function becomeAssistant(on) {
+      if (on === undefined) on = true;
+      on = !!on;
+      if (on) {
+        if (!myStatus.bot) blurBeforeAssistant = myStatus.blur;
+        try { sessionStorage.setItem('gifos_bot', '1'); } catch (e) {}
+        myStatus.bot = true;
+        myStatus.camOff = true;
+        myStatus.muted = true;
+        // An assistant publishes no face, so blur stays off.
+        if (myStatus.bot) myStatus.blur = 0;
+        try { if (localStream) for (const tr of localStream.getTracks()) tr.enabled = false; } catch (e) {}
+      } else {
+        try { sessionStorage.removeItem('gifos_bot'); } catch (e) {}
+        myStatus.bot = false;
+        if (!myStatus.bot && (blurBeforeAssistant === 0 || blurBeforeAssistant === 1 || blurBeforeAssistant === 2)) myStatus.blur = blurBeforeAssistant;
+        else if (!myStatus.bot && myStatus.blur === 0) myStatus.blur = 2;
+        blurBeforeAssistant = null;
+      }
+      paintAssistant(on);
       try { updateTile('me'); } catch (e) {}
       try { broadcastStatus(); } catch (e) {}
       try { paintControls(); } catch (e) {}
     }
     for (const id of ['ai-assist', 'meet-ai-assist']) {
       const b = document.getElementById(id);
-      if (b) b.addEventListener('click', () => becomeAssistant());
+      if (b) b.addEventListener('click', () => becomeAssistant(b.getAttribute('aria-checked') !== 'true'));
     }
     // The Stage seat comes back with its original claim time, so the person
     // keeps their place in step-up order. A grant that has not arrived yet
@@ -21863,31 +21886,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (params.get('bot') === '1') {
             // Assistant mode: muted, camera off, and no permission prompt.
             // The transcript is the other people. A tap can still open a mic later.
+            // The switch shows On. Pressing it again clears assistant mode.
             assistantBoot = true;
-            myStatus.bot = true;
-            myStatus.camOff = true;
-            myStatus.muted = true;
-            myStatus.blur = 0;
+            becomeAssistant(true);
             localStream = null;
-            try { updateTile('me'); } catch (e) {}
-            try { broadcastStatus(); } catch (e) {}
-            try {
-              for (const id of ['ai-assist', 'meet-ai-assist']) {
-                const b = document.getElementById(id);
-                if (b) b.setAttribute('aria-pressed', 'true');
-              }
-            } catch (e) {}
             return;
           }
           if (assistantBoot) {
-            myStatus.bot = true;
-            myStatus.camOff = true;
-            myStatus.muted = true;
-            // An assistant publishes no face, so blur stays off.
-            if (myStatus.bot) myStatus.blur = 0;
+            // The lobby switch already chose assistant mode for this tab.
+            // Same quiet boot: no camera ask, no microphone ask, blur off.
+            becomeAssistant(true);
             localStream = null;
-            try { updateTile('me'); } catch (e) {}
-            try { broadcastStatus(); } catch (e) {}
             return;
           }
           if (BROADCAST && !bcHostStored()) {

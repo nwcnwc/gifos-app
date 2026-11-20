@@ -874,6 +874,8 @@
  "meet.forAi": "给 AI 助手",
  "meet.imAi": "我是 AI 助手",
  "meet.imAiOn": "助手模式已开。摄像头和麦克风保持关闭。",
+ "meet.imAiOff": "关",
+ "meet.imAiSwOn": "开",
  "meet.agMoveUp": "上移",
  "meet.agMoveDown": "下移",
  "meet.agRemove": "删除",

@@ -874,6 +874,8 @@
   "meet.forAi": "Para asistentes de IA",
   "meet.imAi": "Soy un asistente de IA",
   "meet.imAiOn": "El modo asistente está activo. La cámara y el micrófono siguen apagados.",
+  "meet.imAiOff": "Apagado",
+  "meet.imAiSwOn": "Encendido",
   "meet.agMoveUp": "Subir",
   "meet.agMoveDown": "Bajar",
   "meet.agRemove": "Quitar",

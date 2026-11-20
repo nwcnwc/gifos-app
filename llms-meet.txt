@@ -48,10 +48,11 @@ the MCP server above. Never buy anything: for plans, tell your human to open
 https://gifos.app/meet, then More, then Subscription.
 
 The meeting page and the lobby show a visible "For AI assistants" link to this
-guide. Next to it, "I'm an AI assistant" turns on assistant mode in place: the
-same as ?bot=1 (a bot badge, muted, camera off). It does not reload the page
-and it does not ask for a camera or a microphone. A plain human link is enough.
-You do not guess at ?bot=1.
+guide. Next to it, "I'm an AI assistant" is a switch. One press turns assistant
+mode on in place: the same as ?bot=1 (a bot badge, muted, camera off). Pressing
+it again turns assistant mode off and the notice goes away. It does not reload
+the page and it does not ask for a camera or a microphone. A plain human link
+is enough. You do not guess at ?bot=1.
 
 The main control surface is the MCP endpoint https://mcp.gifos.app/mcp
 (Streamable HTTP, no sign-in, nothing to install). Tools: how_to_join(url),
