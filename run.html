@@ -13879,8 +13879,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const turnHolds = (pid) => !!(turnLinks && turnLinks.holds(pid));
     // SUB.5: peers a plain pc of mine (no TURN link, no relay-only settings) reached 'connected' with: a proven direct path,
     // until my network changes ('online'). It only picks a standby's transport; the standby's own dial is the proof.
+    // The proof is the pair the connection selected, never my own settings alone: the FAR end may dial on relay-only
+    // settings (its page still holds a pipe to me, e.g. back from a freeze) and my plain pc then connects through ITS
+    // relay. That is no direct pair (pipekill 0.9.27 gate: B3 noted A3 so, a probe "hit" stood the standby on a pair
+    // with no path, and the pipe ran 6 minutes without a standby). A pair with a relay candidate at either end is not noted.
     const turnDirect = new Map();
-    function turnDirectNote(p, pc) { let relayOnly = false; try { relayOnly = pc.getConfiguration().iceTransportPolicy === 'relay'; } catch (e) {} if (relayOnly) return; turnDirect.set(p.id, Date.now()); if (turnDirect.size > 256) turnDirect.delete(turnDirect.keys().next().value); }
+    function turnDirectNote(p, pc) {
+      let relayOnly = false; try { relayOnly = pc.getConfiguration().iceTransportPolicy === 'relay'; } catch (e) {} if (relayOnly) return;
+      if (typeof pc.getStats !== 'function') return;
+      pc.getStats().then((st) => {
+        let sel = null; const by = new Map(); st.forEach((x) => by.set(x.id, x));
+        st.forEach((x) => { if (!sel && x.type === 'transport' && x.selectedCandidatePairId) sel = by.get(x.selectedCandidatePairId) || null; });
+        if (!sel) st.forEach((x) => { if (!sel && x.type === 'candidate-pair' && x.nominated && x.state === 'succeeded' && x.selected !== false) sel = x; });
+        const lc = sel && by.get(sel.localCandidateId), rc = sel && by.get(sel.remoteCandidateId);
+        if (!lc || !rc) return;   // no selected pair to read: no proof
+        if (lc.candidateType === 'relay' || rc.candidateType === 'relay') { if (!turnDirect.has(p.id)) turnNote('turn-direct no ' + String(p.id).slice(0, 8) + ' (' + lc.candidateType + '/' + rc.candidateType + ')'); return; }
+        turnDirect.set(p.id, Date.now()); if (turnDirect.size > 256) turnDirect.delete(turnDirect.keys().next().value);
+      }).catch(() => {});
+    }
     // The connection settings of a pair: TURN servers only for a link whose end here is a TURN client (never double TURN).
     // ONE TRANSPORT PER PAIR (bundlePolicy 'max-bundle'). Under the default 'balanced' policy Firefox gives each new
     // m-line of an offer a provisional transport of its own until the answer bundles it, and while that transport
