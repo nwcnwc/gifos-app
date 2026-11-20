@@ -730,15 +730,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <input id="lob-face-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp" hidden>
         <b id="lob-name" hidden>…</b>
       </div>
+      <div class="lob-sep"></div>
+      <div class="lob-hist-h" data-t="lobRecent">Recent &amp; saved</div>
+      <div id="lob-list"></div>
+      <div id="lob-empty" class="lob-empty" data-t="lobEmpty">Calls you start or join show up here.</div>
       <p class="for-ai" id="lob-for-ai">
         <a href="/meet/llms.txt" data-t="forAi">For AI assistants</a>
         <button type="button" id="ai-assist" class="ai-sw" role="switch" aria-checked="false" aria-pressed="false"><span class="ai-sw-word" data-t="imAi">I'm an AI assistant</span><span class="ai-sw-state" data-t="imAiOff">Off</span><span class="ai-knob" aria-hidden="true"></span></button>
       </p>
       <p class="for-ai-note" id="ai-assist-note" role="status"></p>
-      <div class="lob-sep"></div>
-      <div class="lob-hist-h" data-t="lobRecent">Recent &amp; saved</div>
-      <div id="lob-list"></div>
-      <div id="lob-empty" class="lob-empty" data-t="lobEmpty">Calls you start or join show up here.</div>
     </div>
   </div>
   <!-- The one top bar (R1, 2026-11-15): every top control sits in this row, in flow, so none lands on another; its measured bottom is where the meeting box starts. -->
@@ -750,9 +750,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <span id="onair" hidden><i class="lamp" aria-hidden="true"></i><span class="words"></span></span>
     <span class="status" id="status"><button data-t="statuscount" type="button" id="statuscount" data-agent="status" aria-expanded="false" aria-controls="roster">Joining…</button><span id="statusrest" class="statustext"></span></span>
     <a href="/meet/llms.txt" class="for-ai-link" id="meet-for-ai" data-t="forAi">For AI assistants</a>
-    <button type="button" id="meet-ai-assist" class="ai-sw" role="switch" aria-checked="false" aria-pressed="false"><span class="ai-sw-word" data-t="imAi">I'm an AI assistant</span><span class="ai-sw-state" data-t="imAiOff">Off</span><span class="ai-knob" aria-hidden="true"></span></button>
     <button type="button" id="hdrhand" aria-expanded="false" aria-controls="handq"></button>
   </div>
+  <button type="button" id="meet-ai-assist" class="ai-sw" role="switch" aria-checked="false" aria-pressed="false"><span class="ai-sw-word" data-t="imAi">I'm an AI assistant</span><span class="ai-sw-state" data-t="imAiOff">Off</span><span class="ai-knob" aria-hidden="true"></span></button>
   <aside data-al="people" id="roster" aria-label="People">
     <div class="roster-head"><h3 data-t="people" id="roster-title">People</h3><button data-t="setClose" type="button" id="roster-close">Close</button></div>
     <input data-ph="rosterFind" id="roster-find" type="search" placeholder="Find a name" autocomplete="off">
