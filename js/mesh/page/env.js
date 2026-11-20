@@ -557,10 +557,13 @@
     const srOf = new Map();   // seat id -> the door its last frame to me named
     function cutArm(s) {
       if (!subF || !subF.cut || s.state !== 3 || !s.hasCoord || s.sr !== 0 || s.coord.pc !== 0 || ckey(s.coord) === 0 || !fabricTurnOn()) return;
-      const it = s.s1tab.get(0); if (!it || it.at < 0 || it.by < 0 || it.by === me) return;
-      const age = s.LT() - it.rx; if (age <= K.DIG_TTL - 2 * K.FHOP_RELAY_ASK) { cutWhy = ''; return; }
-      const p = ID.pid(it.by); if (!p) return;
-      if (cutWhy !== String(it.by)) { cutWhy = String(it.by); trace('ENV-CUT-ARM', me, s.coord, 'root=%d age=%d', it.by, age); }   // once per change
+      const it = s.s1tab.get(0); let by = -1, rx = -1;
+      if (it && it.at >= 0 && it.by >= 0) { by = it.by; rx = it.rx; }
+      else if (s.cutBy >= 0 && s.occGet(0) < 0 && s.LT() - s.cutRx <= K.DIG_TTL) { by = s.cutBy; rx = s.cutRx; }   // TURN.5.3.1: the root my own death verdict took from the table (island.js cutOff reads the same pair)
+      if (by < 0 || by === me) return;
+      const age = s.LT() - rx; if (age <= K.DIG_TTL - 2 * K.FHOP_RELAY_ASK) { cutWhy = ''; return; }
+      const p = ID.pid(by); if (!p) return;
+      if (cutWhy !== String(by)) { cutWhy = String(by); trace('ENV-CUT-ARM', me, s.coord, 'root=%d age=%d', by, age); }   // once per change
       subF.cut(p);
     }
     // C++: mesh_turn.inc:subTick's answer: my door is r (a listed room the page reached, or a new number it was granted)

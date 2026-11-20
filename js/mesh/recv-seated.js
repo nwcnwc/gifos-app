@@ -588,7 +588,7 @@
       if (m.tag === 4) { if (m.t === 'U2BEAT' && this.coord.pc === 0 && m.coord.pc === 0 && m.coord.r !== this.coord.r && m.coord.i !== this.coord.i) { if (!this.s1bAt.has(m.id) && this.s1bAt.size >= 2 * C) { let ok = null, ov = 0; for (const [k, v] of this.s1bAt) if (ok === null || v < ov) { ok = k; ov = v; } this.s1bAt.delete(ok); } this.s1bAt.set(m.id, TICK); this.s1bSeat(m); } return; }   // L2.15: a bridge beat from a Section-1 seat off my row and column; bounded at 2C far ends
       if (m.t === 'U2ACK') {
         if (m.id === this.u2Id || (m.id === this.u3Id && 1 >= 1)) {
-          if (this.u2Hot && m.dgRoot.at >= 0 && this.state === 3 && this.hasCoord && this.coord.pc !== 0) { const rt = dig.cloneDig(m.dgRoot); this.rxDig(rt); if (this.rootDig.at < 0 || rt.rx > this.rootDig.rx) this.rootDig = rt; }   // L2.4.1
+          if (this.u2Hot && m.dgRoot.at >= 0 && this.state === 3 && this.hasCoord && this.coord.pc !== 0 && this.linkIs(m, m.id)) { const rt = dig.cloneDig(m.dgRoot);   /* TURN.5.3.4: over the E2 pc itself; an ack a friend carried proves no edge */ this.rxDig(rt); if (this.rootDig.at < 0 || rt.rx > this.rootDig.rx) this.rootDig = rt; }   // L2.4.1
           this.l211Ack(m); if (m.id === this.u2Id) this.u2AckAt = TICK; if (m.id === this.u3Id) this.u3AckAt = TICK;
           if (this.u2Hot && this.coord.i !== 0 && this.headEver) this.u2UpAt = TICK;   // only a heir whose head once answered it in this row is serving a GONE head
           if (m.e1dn) { this.ownVouchAt = TICK; this.vouchOwner = m.owner; this.vouchOCk = m.oCk; }
