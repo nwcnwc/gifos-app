@@ -14,7 +14,8 @@
         "Apps: Survey sits with Take Turns. Ask the room, and everyone sees the counts.",
         "Meetings: any room name works, even a short word like \"1\" or \"test\".",
         "Meetings: the AI assistant switch is in the lobby, before you join.",
-        "Meetings: every item in the More menu has its own icon."
+        "Meetings: every item in the More menu has its own icon.",
+        "Meetings: when a meeting is full, the door says how full it is and offers a way in: a $1 pass for 4 hours, or a plan. After you buy, you are let in without reloading."
       ],
       "fixes": [
         "Meetings: when someone on the link between two offices leaves, the offices hear each other again within about 5 seconds instead of up to 20.",
