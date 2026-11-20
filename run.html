@@ -37472,6 +37472,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return t;
       }, () => null);
     }
+    // A control tapped while an ask was open joined that ask (lateWant). When
+    // the ask lands without that kind (a Camera tap during a Mic tap's
+    // mic-only ask), the joined tap is asked for now, on its own: a tap is
+    // never dropped. An app room never opens a camera.
+    function askJoinedLeft(want, kind, appRoom) {
+      for (const k of want) {
+        if (k === kind || (appRoom && k === 'cam')) continue;
+        const held = localStream && (k === 'cam' ? localStream.getVideoTracks() : localStream.getAudioTracks())[0];
+        if (!held && !lateRefusal(k)) lateMedia(k);
+      }
+    }
     // pick: a microphone chosen in the mic chooser before any mic was open
     // (a quiet join holds none): the ask names that device.
     function lateMedia(kind, pick) {
@@ -37559,6 +37570,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               if (kind === 'cam') setStatus(typeof camOnWords === 'function' ? camOnWords() : statusWords('camOn')); else sayState('micOn');
               if (typeof syncSpeech === 'function') syncSpeech();   // after the status: a caption notice it says stays on screen
             }
+            askJoinedLeft(want, kind, appRoom);
             return;
           }
           lateWon++;
@@ -37615,6 +37627,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // this phone) must not be overwritten by "Mic on." in the same task.
           if (typeof syncSpeech === 'function') syncSpeech();
           if (typeof noteAudioDevices === 'function') noteAudioDevices();
+          askJoinedLeft(want, kind, appRoom);
         })
         .catch((err) => {
           if (gen !== lateGen || lateWon !== won0) return;
