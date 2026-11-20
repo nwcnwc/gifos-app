@@ -2081,6 +2081,15 @@
   #left-rejoin, #left-close { min-height: 64px; min-width: 120px; font-size: 1.2rem; border-radius: var(--r-md); cursor: pointer; }
   #left-rejoin { background: var(--c-blue); color: var(--c-white); border: 0; }
   #left-close { margin-left: 12px; background: var(--c-white); color: var(--c-ink); border: 1.5px solid var(--c-gray); }
+  /* The full door's offer (meet-subs showFull): the way in now first and largest, the plan as its quieter second line. */
+  #left-modal .sub-full { display: flex; flex-direction: column; gap: 10px; margin: 0 0 1.1rem; }
+  #left-modal .sub-full-pass { min-height: 64px; font-size: 1.2rem; font-weight: 700; border-radius: var(--r-md); border: 0; cursor: pointer;
+    background: var(--c-green, #1e8e3e); color: var(--c-white); padding: 8px 14px; }
+  #left-modal .sub-full-sub { min-height: 48px; font-size: 1rem; border-radius: var(--r-md); cursor: pointer; padding: 6px 12px;
+    background: var(--c-white); color: var(--c-blue); border: 1.5px solid var(--c-blue); }
+  #left-modal .sub-full button:disabled { opacity: .6; cursor: progress; }
+  #left-modal .sub-full p { margin: 0; font-size: .9rem; }
+  #left-modal .sub-full .sub-full-say:empty { display: none; }
   /* Unmute, camera, Reactions, Share screen, Chat, More, and Leave say what they do. */
   .bar #cam, .bar #mic, .bar #reactbtn, .bar #sharebtn, .bar #chatbtn, .bar #ccdock, .bar #bartoggle {
     height: 76px; width: auto; min-width: 72px; min-height: 76px;
