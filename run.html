@@ -13974,8 +13974,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const turnHolds = (pid) => !!(turnLinks && turnLinks.holds(pid));
     // SUB.5: peers a plain pc of mine (no TURN link, no relay-only settings) reached 'connected' with: a proven direct path,
     // until my network changes ('online'). It only picks a standby's transport; the standby's own dial is the proof.
+    // The proof is the pair the connection selected, never my own settings alone: the FAR end may dial on relay-only
+    // settings (its page still holds a pipe to me, e.g. back from a freeze) and my plain pc then connects through ITS
+    // relay. That is no direct pair (pipekill 0.9.27 gate: B3 noted A3 so, a probe "hit" stood the standby on a pair
+    // with no path, and the pipe ran 6 minutes without a standby). A pair with a relay candidate at either end is not noted.
     const turnDirect = new Map();
-    function turnDirectNote(p, pc) { let relayOnly = false; try { relayOnly = pc.getConfiguration().iceTransportPolicy === 'relay'; } catch (e) {} if (relayOnly) return; turnDirect.set(p.id, Date.now()); if (turnDirect.size > 256) turnDirect.delete(turnDirect.keys().next().value); }
+    function turnDirectNote(p, pc) {
+      let relayOnly = false; try { relayOnly = pc.getConfiguration().iceTransportPolicy === 'relay'; } catch (e) {} if (relayOnly) return;
+      if (typeof pc.getStats !== 'function') return;
+      pc.getStats().then((st) => {
+        let sel = null; const by = new Map(); st.forEach((x) => by.set(x.id, x));
+        st.forEach((x) => { if (!sel && x.type === 'transport' && x.selectedCandidatePairId) sel = by.get(x.selectedCandidatePairId) || null; });
+        if (!sel) st.forEach((x) => { if (!sel && x.type === 'candidate-pair' && x.nominated && x.state === 'succeeded' && x.selected !== false) sel = x; });
+        const lc = sel && by.get(sel.localCandidateId), rc = sel && by.get(sel.remoteCandidateId);
+        if (!lc || !rc) return;   // no selected pair to read: no proof
+        if (lc.candidateType === 'relay' || rc.candidateType === 'relay') { if (!turnDirect.has(p.id)) turnNote('turn-direct no ' + String(p.id).slice(0, 8) + ' (' + lc.candidateType + '/' + rc.candidateType + ')'); return; }
+        turnDirect.set(p.id, Date.now()); if (turnDirect.size > 256) turnDirect.delete(turnDirect.keys().next().value);
+      }).catch(() => {});
+    }
     // The connection settings of a pair: TURN servers only for a link whose end here is a TURN client (never double TURN).
     // ONE TRANSPORT PER PAIR (bundlePolicy 'max-bundle'). Under the default 'balanced' policy Firefox gives each new
     // m-line of an offer a provisional transport of its own until the answer bundles it, and while that transport
@@ -21530,10 +21546,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       if (!room || !/^[a-z0-9-]{1,64}$/i.test(room)) return null;
       if (av && !/^[a-f0-9]{16,64}$/.test(av)) av = '';
-      // A bare word ("hello") is not a meeting id. Links and id.verifier
-      // still parse above. Open-room codes are 16 characters, and a named
-      // room or the lobby's bare-id check is longer than five letters.
-      if (!/[:/#?]/.test(s) && !av && /^[A-Za-z]{1,5}$/.test(room)) return null;
+      // Any room name joins, short words too ("test", "team"): the room is the
+      // name in the link, gifos.app/meet/<name>, and the lobby says "type a room name".
       // NEVER normalise the room id. It is the whole capability: the relay
       // session, token and end-to-end key are all DERIVED from this exact string
       // ("derive, don't send", gifos-net.js). joinRoom() reads it from the link
@@ -37739,6 +37753,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return t;
       }, () => null);
     }
+    // A control tapped while an ask was open joined that ask (lateWant). When
+    // the ask lands without that kind (a Camera tap during a Mic tap's
+    // mic-only ask), the joined tap is asked for now, on its own: a tap is
+    // never dropped. An app room never opens a camera.
+    function askJoinedLeft(want, kind, appRoom) {
+      for (const k of want) {
+        if (k === kind || (appRoom && k === 'cam')) continue;
+        const held = localStream && (k === 'cam' ? localStream.getVideoTracks() : localStream.getAudioTracks())[0];
+        if (!held && !lateRefusal(k)) lateMedia(k);
+      }
+    }
     // pick: a microphone chosen in the mic chooser before any mic was open
     // (a quiet join holds none): the ask names that device.
     function lateMedia(kind, pick) {
@@ -37826,6 +37851,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               if (kind === 'cam') setStatus(typeof camOnWords === 'function' ? camOnWords() : statusWords('camOn')); else sayState('micOn');
               if (typeof syncSpeech === 'function') syncSpeech();   // after the status: a caption notice it says stays on screen
             }
+            askJoinedLeft(want, kind, appRoom);
             return;
           }
           lateWon++;
@@ -37882,6 +37908,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // this phone) must not be overwritten by "Mic on." in the same task.
           if (typeof syncSpeech === 'function') syncSpeech();
           if (typeof noteAudioDevices === 'function') noteAudioDevices();
+          askJoinedLeft(want, kind, appRoom);
         })
         .catch((err) => {
           if (gen !== lateGen || lateWon !== won0) return;
