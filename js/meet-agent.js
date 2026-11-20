@@ -1,6 +1,6 @@
 /*
  * meet-agent.js — window.gifosAgent v1: the meeting page's own API for AI agents.
- * Active under ?agent=1 (forced, cannot be untagged) or the bot toggle ("I'm an AI assistant", ?bot=1).
+ * Active under ?agent=1 (forced, cannot be untagged) or bot=1 (the lobby's "I'm an AI assistant" switch sets it).
  *
  * The page keeps every rule: this module only reads what the page already holds
  * and asks the page to act through the host it is given (run.html builds it).
