@@ -7,11 +7,10 @@
  *   - Settings gets a Subscription group: the plans (monthly or yearly),
  *     sign-up through PayPal, the current plan, Cancel, and the subscription
  *     file: download it, or use one brought from another browser.
- *   - Making an admin room: anyone may (Nathan 2026-11-11). Without a paid
- *     plan the page gets a FREE license from the payment service (no PayPal;
- *     bound to this browser's own key) and the room carries the free plan:
- *     up to 5 people. When the door turns someone away for that, the host
- *     sees a one-tap "Subscribe for up to 20".
+ *   - Making an admin room: anyone may (Nathan 2026-11-11). Without a plan
+ *     the room has the defaults every verifier applies when no signed right
+ *     is shown (Free is no plan at all): up to 5 people. When the door turns
+ *     someone away for that, the host sees a one-tap "Subscribe for up to 20".
  *   - ONE MEETING AT A TIME: joining a meeting (open or admin room) asks the
  *     payment service for a short ticket for that meeting. Joining another
  *     meeting, here or in any browser holding the same file, moves the
@@ -20,7 +19,7 @@
  *     paid keeps the subscription to its end.
  *   - The admin's ticket travels with the room (a signed room order), so the
  *     door knows the room's plan. In a room on the $2 plan that already
- *     holds 20 people (5 on the free plan, or when the room's plan cannot be
+ *     holds 20 people (5 with no plan, or when the room's plan cannot be
  *     shown), the door asks a newcomer to show a ticket for this meeting;
  *     without one they are told plainly and not let in. Rooms on the $5 and
  *     $10 plans have no limit, and open rooms never have one.
@@ -43,7 +42,6 @@
   const SUB = GifOS.sub;
   const STATE_KEY = 'gifos-sub-state';     // the last license and what PayPal said
   const CRED_KEY = 'gifos-sub-cred';       // this browser's copy of the subscription file's contents
-  const FREE_KEY = 'gifos-sub-free';       // the free plan's license for this browser's key: {subId, licenseJson, sig}
   const WALLET_KEY = 'gifos-pass-wallet';  // this browser's four-hour passes and their key (passes.json in the subscription file)
   // New words read the meeting's catalog (i18n/<lang>/meet.json); English stays beside the call.
   const tx = (key, en) => { try { const L = GifOS.i18n; if (L && L.ui() !== 'en' && L.has('meet.' + key)) return L.t('meet.' + key); } catch (e) {} return en; };
@@ -153,7 +151,6 @@
     if (!c) throw new Error('That file is not a GifOS subscription.');
     writeJson(CRED_KEY, c);
     keyMemo = { seed: null, p: null };
-    if (c.tier === 'free') { writeJson(FREE_KEY, null); await ensureFree(); return readState(); }
     writeState({ subId: c.subId, tier: c.tier, status: null });
     const st = await refresh();
     rejoin(true);
@@ -177,15 +174,6 @@
     st = st || readState();
     if (!st.licenseJson || !st.sig) return null;
     const lic = await SUB.verifyLicense({ licenseJson: st.licenseJson, sig: st.sig }, verifyPay, nowS()).catch(() => null);
-    if (!lic) return null;
-    try { if (lic.buyerKey !== (await myKey()).pub) return null; } catch (e) { return null; }
-    return lic;
-  }
-  // The free plan's license, when it is this browser's key's.
-  async function verifiedFree() {
-    const f = readJson(FREE_KEY);
-    if (!f || !f.licenseJson || !f.sig) return null;
-    const lic = await SUB.verifyLicense({ licenseJson: f.licenseJson, sig: f.sig }, verifyPay, nowS()).catch(() => null);
     if (!lic) return null;
     try { if (lic.buyerKey !== (await myKey()).pub) return null; } catch (e) { return null; }
     return lic;
@@ -217,10 +205,10 @@
     }
     return libKeyMemo.p;
   }
-  // The subscription's rights alone (paid, else free).
+  // The subscription's rights alone (its line items, else the defaults).
   async function planRights() {
     const lic = await verifiedLicense();
-    return SUB.rightsOf(lic || (await verifiedFree()), nowS());
+    return SUB.rightsOf(lic, nowS());   // no license: the defaults
   }
   // What is in effect now: the best of the subscription and a live pass.
   async function rights() {
@@ -244,7 +232,6 @@
   // Ask the payment service for a fresh license; keep what it says.
   async function refresh() {
     const c0 = await credential();
-    if (c0 && c0.tier === 'free') return null;   // the free plan's license is ensureFree's
     if (!(await subIdNow())) return null;
     const j = await post('/gifos/sub/license', await signed('license'));
     const st = readState();
@@ -262,8 +249,6 @@
   async function keepFresh() {
     const c = await credential();
     if (!c) return;
-    if (readJson(FREE_KEY)) { const f = await verifiedFree(); if (!f || f.exp - nowS() < REFRESH_BEFORE_S) await ensureFree(); }
-    if (c.tier === 'free') return;
     const lic = await verifiedLicense();
     const st = readState();
     if (!lic || lic.exp - nowS() < REFRESH_BEFORE_S || st.status === 'APPROVAL_PENDING') { try { await refresh(); } catch (e) {} }
@@ -277,7 +262,7 @@
   async function storeKey(fresh) {
     const cur = SUB.credentialOk(readJson(CRED_KEY));
     const held = readJson(STORE_PENDING);
-    let seedB64 = !fresh && cur && cur.tier !== 'free' ? cur.seed : held && typeof held.seed === 'string' ? held.seed : null;
+    let seedB64 = !fresh && cur ? cur.seed : held && typeof held.seed === 'string' ? held.seed : null;
     if (!seedB64) { const seed = new Uint8Array(32); crypto.getRandomValues(seed); seedB64 = b64(seed); writeJson(STORE_PENDING, { seed: seedB64 }); }
     const k = await GifOS.ed.keysFromSeed(fromB64(seedB64));
     return { seed: seedB64, buyerKey: b64(k.pubRaw), sign: async (text) => b64(await GifOS.ed.sign(k.priv, new TextEncoder().encode(text))) };
@@ -375,35 +360,6 @@
     }
     return readState();
   }
-  // ---- the free plan -----------------------------------------------------------
-  // ensureFree() -> the free license (admin rooms of up to 5 people), asked
-  // for when this browser has no paid plan. A browser with no key yet gets
-  // one now, kept like a subscription file (tier 'free'). Never PayPal.
-  let freeP = null;
-  function ensureFree() {
-    if (!freeP) {
-      freeP = (async () => {
-        if (await verifiedLicense()) return null;   // a paid plan already makes admin rooms
-        let lic = await verifiedFree();
-        if (lic && lic.exp - nowS() > REFRESH_BEFORE_S) return lic;
-        if (!(await credential())) {
-          const seed = new Uint8Array(32); crypto.getRandomValues(seed);
-          const k = await GifOS.ed.keysFromSeed(seed);
-          const buyerKey = b64(k.pubRaw);
-          writeJson(CRED_KEY, { v: 1, kind: SUB.CRED_KIND, subId: await SUB.freeIdFor(buyerKey), tier: 'free', period: 'monthly', seed: b64(seed), buyerKey });
-          keyMemo = { seed: null, p: null };
-        }
-        const subId = await SUB.freeIdFor((await myKey()).pub);
-        const j = await post('/gifos/sub/license', await signed('license', null, subId));
-        if (j.active && j.licenseJson) writeJson(FREE_KEY, { subId, licenseJson: j.licenseJson, sig: j.sig, checkedAt: Date.now() });
-        lic = await verifiedFree();
-        if (lic) rejoin();
-        return lic;
-      })().catch(() => null).then((x) => { freeP = null; return x; });
-    }
-    return freeP;
-  }
-
   // ---- the four-hour pass ------------------------------------------------------
   // $1 through PayPal for the Unlimited plan's meeting rights for four hours
   // (never capturing an open room). The passes and the seed of the key they
@@ -536,7 +492,6 @@
 
   async function cancel() {
     const c0 = await credential();
-    if (c0 && c0.tier === 'free') return readState();   // nothing to cancel on the free plan
     if (!(await subIdNow())) return readState();
     const j = await post('/gifos/sub/cancel', await signed('cancel'));
     writeState(Object.assign({}, readState(), { status: j.status, until: j.until }));
@@ -592,11 +547,10 @@
     m.joining = (async () => {
       const c = await credential();
       if (!c) return null;
-      // A paid plan when this browser holds one (or has just bought one: the
-      // service checks payment at the join), else the free plan's license.
+      // This browser's subscription (or one just bought: the service checks payment at the join). Without one there
+      // is nothing to join with: the defaults need no ticket.
       const paidLic = await verifiedLicense();
-      const freeLic = paidLic ? null : await verifiedFree();
-      m.subId = paidLic ? paidLic.subId : freeLic ? freeLic.subId : (SUB.FREE_ID_RE.test(c.subId) ? null : c.subId);
+      m.subId = paidLic ? paidLic.subId : c.subId;
       if (!m.subId) return null;
       m.tag = await SUB.meetingTag(room);
       const j = await post('/gifos/sub/join', await signed('join:' + m.tag, { meeting: m.tag }, m.subId));
@@ -787,7 +741,6 @@
     const lic = await verifiedLicense();
     const st = readState();
     const cred = await credential();
-    const free = lic ? null : await verifiedFree();
     let sub = null;
     if (lic) {
       const status = st.status === 'CANCELLED' ? 'cancelled' : st.paidThrough && st.paidThrough < n ? 'grace' : 'active';
@@ -795,15 +748,15 @@
     }
     const mine = (await passes().catch(() => [])).filter((x) => x.o.end > n);
     const held = mine.map((x) => ({ id: x.o.id, start: x.o.start, end: x.o.end, live: SUB.passLive(x.o, n), never: !Number.isFinite(x.o.end), plan: x.o.plan, capture: x.o.grants.captureOpenRoom }));
-    const base = SUB.rightsOf(lic || free, n);
+    const base = SUB.rightsOf(lic, n);   // no license: the defaults
     // The passes run back to back: the window in effect ends with the last
     // pass of the same permissions that follows on without a gap (passChain).
     const chain = SUB.passChain(mine.map((x) => x.o), n);
     const passEnd = chain ? chain.until : 0;
     const best = chain ? SUB.bestRights([base, SUB.passRights(Object.assign({}, chain.live, { end: Number.isFinite(passEnd) ? passEnd : null }))]) : base;
-    const now = best.pass ? { tier: best.tier, why: 'pass', until: passEnd } : base.tier ? { tier: base.tier, why: base.tier === 'free' ? 'free' : 'sub', until: base.until } : { tier: null, why: 'none' };
+    const now = best.pass ? { tier: best.tier, why: 'pass', until: passEnd } : base.tier ? { tier: base.tier, why: 'sub', until: base.until } : { tier: null, why: 'none' };
     const then = best.pass && base.tier ? base.tier : null;
-    return { sub, free: !!free, passes: held, now, then };
+    return { sub, free: !lic, passes: held, now, then };   // free: no plan, the defaults
   }
   // One line for the meeting's status: what is in effect, quietly.
   function nowLine(c) {
@@ -833,7 +786,7 @@
   function subSelection(c) {
     const pass = !!(c && c.now && c.now.why === 'pass');
     const sub = c && c.sub ? c.sub : null;
-    const tier = sub && sub.tier && sub.tier !== 'free' ? sub.tier : null;
+    const tier = sub && sub.tier ? sub.tier : null;
     const period = tier ? (sub.period === 'yearly' ? 'yearly' : 'monthly') : null;
     return { free: !tier && !pass, tier: tier || null, period, pass };
   }
@@ -1102,12 +1055,11 @@
 
   // ---- admin rooms: making one -------------------------------------------------
   // mayCreateAdminRoom(say) -> true: anyone may make an admin room. Without
-  // a paid plan the free plan's license is fetched first (up to 5 people);
+  // a plan everyone has the defaults (up to 5 people); nothing is fetched;
   // a payment service that cannot be reached does not stop the room.
   async function mayCreateAdminRoom(say) {
     const r = await planRights();
     if (r.adminRooms) return true;
-    await ensureFree();
     return true;
   }
 
@@ -1171,7 +1123,7 @@
   }
 
   GifOS.meetSubs = {
-    rights, planRights, refresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, subSelection, applySubSelection, paintNow, paintSettings, openSettings, openSubscribe, mayCreateAdminRoom, showFull, ensureFree, showHostPrompt,
+    rights, planRights, refresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, subSelection, applySubSelection, paintNow, paintSettings, openSettings, openSubscribe, mayCreateAdminRoom, showFull, showHostPrompt,
     roomOrder, roomTier, proveAtDoor, checkShown, newNonce,
     appNow, joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureCurrent, captureOrder, captureKeys, fileBytes, downloadFile, useFile, librarySigner, restoreInApp,
     passMeeting: () => (pmeet ? { grants: pmeet.grants || null, room: pmeet.room, gen: pmeet.gen, exp: pmeet.exp, until: pmeet.until, moved: pmeet.moved, held: !!pmeet.ticket } : null),

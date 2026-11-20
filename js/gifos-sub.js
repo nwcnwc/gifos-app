@@ -13,8 +13,8 @@
  * room line, past a full door, open-room capture, TURN video links, storage,
  * one meeting at a time), signed by the payment service, and its own end.
  * Every check reads those line items, never the name of a plan or pass; a
- * product is only a preset of them (TIERS[..].grants, FREE_PLAN.grants,
- * PASS_PRESETS), read where it is sold. Passes have a window that may never
+ * product is only a preset of them (TIERS[..].grants, PASS_PRESETS);
+ * without one, everyone has the DEFAULTS (free is no plan at all), read where it is sold. Passes have a window that may never
  * end; what is sold or minted (PASS_PRESETS):
  * the $1 four-hour pass (the Unlimited plan's meeting rights for four hours,
  * without capturing an open room) and the staff pass (no end, captures).
@@ -73,7 +73,6 @@
   // purchase token: storeSubId) or A-… (App Store, the original transaction
   // id). One license, ticket and one-meeting rule for all three.
   const SUB_ID_RE = /^(?:I-[A-Za-z0-9]{4,40}|G-[0-9a-f]{24}|A-[0-9]{6,24})$/;
-  const FREE_ID_RE = /^F-[0-9a-f]{24}$/;           // a free plan's id: F- + a hash of its key (freeIdFor)
   const NONCE_RE = /^[A-Za-z0-9+/=_.:-]{8,128}$/;
   const PEOPLE_LIMIT = 20;                         // the room20 plan's room size
   const FREE_LIMIT = 5;                            // the free plan's admin room size
@@ -99,33 +98,23 @@
   // HONORED everywhere: this is only what each app offers.
   const APP_TIERS = Object.freeze({ meet: Object.freeze(TIER_IDS.filter((t) => !TIERS[t].storage)), broadcast: Object.freeze(TIER_IDS.slice()) });
   const tiersSoldIn = (app) => APP_TIERS[app === 'broadcast' ? 'broadcast' : 'meet'];
-  // The FREE plan (Nathan 2026-11-11): admin rooms of up to 5 people; no TURN
-  // video and so no vouches; no storage. It is never sold, never a TIER.
-  const FREE_PLAN = Object.freeze({ id: 'free', name: 'Free: private meetings, up to 5 people', price: '$0', priceYear: '$0', adminRooms: true, roomLimit: FREE_LIMIT, turnVideo: false, storage: false, vouches: 0, paid: false, grants: g(FREE_LIMIT, false, false, 0, false) });
-  const PLANS = Object.freeze(Object.assign({}, TIERS, { free: FREE_PLAN }));   // every plan a license or ticket may name
+  // FREE is no plan at all (Nathan 2026-11-20: "free plan should be whatever the defaults are in the ABSENCE of a signed
+  // ticket"): the DEFAULTS below, with no license, no record and nothing to cancel. This row only names it in the plan
+  // list (display).
+  const FREE_PLAN = Object.freeze({ id: 'free', name: 'Free: private meetings, up to 5 people', price: '$0', priceYear: '$0', adminRooms: true, roomLimit: FREE_LIMIT, turnVideo: false, storage: false, vouches: 0, paid: false });
+  const PLANS = TIERS;   // every product a license or ticket may name (display/sales label)
   const PLAN_IDS = Object.keys(PLANS);
   const isPlan = (t) => typeof t === 'string' && Object.prototype.hasOwnProperty.call(PLANS, t);
   const isPaid = (t) => typeof t === 'string' && Object.prototype.hasOwnProperty.call(TIERS, t);
-  // A license or ticket names its subscription: a PayPal id for a paid plan,
-  // an F- id for the free plan.
-  const idFits = (subId) => typeof subId === 'string' && (FREE_ID_RE.test(subId) || SUB_ID_RE.test(subId));
-  // An F- id is its key's own (freeIdFor): one key, one such record, and nobody can name another key's.
-  const idOwned = async (o) => !FREE_ID_RE.test(o.subId) || o.subId === (await freeIdFor(o.buyerKey));
-  // freeIdFor(buyerKey) -> 'F-' + 24 hex: the free plan's id is its key's own,
-  // so one key holds one free record and nobody can name another key's.
-  async function freeIdFor(buyerKey) {
-    const d = new Uint8Array(await root.crypto.subtle.digest('SHA-256', utf8('gifos-sub-free:' + String(buyerKey))));
-    let h = ''; for (let i = 0; i < 12; i++) h += d[i].toString(16).padStart(2, '0');
-    return 'F-' + h;
-  }
-  const FREE = Object.freeze({ tier: null, subscribed: false, adminRooms: false, openRooms: true, roomLimit: null, turnAudio: true, turnVideo: false, storage: null, bypassLimit: false, vouches: 0, capture: false });
+  // A license or ticket names its subscription: a PayPal id, or the store's (G-, A-).
+  const idFits = (subId) => typeof subId === 'string' && SUB_ID_RE.test(subId);
 
   // ---- LINE ITEMS: what a right grants (Nathan 2026-11-20) --------------------------
   // "Subs work like signed menus of capabilities." A license, a meeting ticket and a pass each carry `grants`, signed
   // by the payment service, plus their own end; that is the whole contract. Every decision (the door, the room's line,
   // open-room capture, the TURN video vouch, storage, the rights a page shows) reads these line items and nothing
-  // else. A product (free, $2, $5, $10, the $1 pass, the staff pass) is only a PRESET of them: TIERS[..].grants,
-  // FREE_PLAN.grants and PASS_PRESETS, read by the payment service when it signs and by the sales/display UI.
+  // else. A product ($2, $5, $10, the $1 pass, the staff pass) is only a PRESET of them: TIERS[..].grants and
+  // PASS_PRESETS, read by the payment service when it signs and by the sales/display UI.
   //   roomLimit        the people line of the holder's admin room: 1..ROOM_LIMIT_MAX, or null (no line)
   //   admitAtFullDoor  let past any admin room's line at the door
   //   captureOpenRoom  may take an open room as its admin
@@ -133,11 +122,22 @@
   //   storage          a storage budget (its size rides the license: storage settings)
   //   oneMeeting       one meeting at a time (the payment service keeps only the newest meeting)
   // Every word must be present: an unknown word, a missing one or a bad value makes the set unreadable (refused), so a
-  // checker never guesses. NO_GRANTS is what nothing shown grants: a room whose plan cannot be shown keeps the line of
-  // FREE_LIMIT and lets nobody past it.
+  // checker never guesses.
+  //
+  // THE DEFAULTS (Nathan 2026-11-20): what everyone has WITHOUT a valid signed right, and what every verifier (door,
+  // relay, TURN Worker, page) applies when none is shown, or when one is forged, unsigned, run out or for elsewhere:
+  // admin and open rooms, a people line of FREE_LIMIT, voice across TURN but no TURN video, no storage, no capture,
+  // nothing past a line. A signed right can only ADD to them or RAISE them (effective): a smaller signed line never
+  // lowers the default one. Nothing a client writes changes them.
   const ROOM_LIMIT_MAX = 25;   // a signed room line is 1..25 people, or null: no line (Nathan 2026-11-20)
   const GRANT_WORDS = Object.freeze(['roomLimit', 'admitAtFullDoor', 'captureOpenRoom', 'turnVideoLinks', 'storage', 'oneMeeting']);
-  const NO_GRANTS = g(FREE_LIMIT, false, false, 0, false);
+  const DEFAULTS = g(FREE_LIMIT, false, false, 0, false);
+  // effective(grants) -> the defaults raised by a signed right's line items (null roomLimit: no line).
+  function effective(x) {
+    if (!x) return DEFAULTS;
+    return { roomLimit: x.roomLimit === null ? null : Math.max(x.roomLimit, DEFAULTS.roomLimit), admitAtFullDoor: !!x.admitAtFullDoor, captureOpenRoom: !!x.captureOpenRoom,
+      turnVideoLinks: Math.max(x.turnVideoLinks | 0, DEFAULTS.turnVideoLinks), storage: !!x.storage, oneMeeting: x.oneMeeting !== false };
+  }
   function grantsOk(x) {
     if (!x || typeof x !== 'object' || Array.isArray(x)) return null;
     const keys = Object.keys(x);
@@ -152,10 +152,13 @@
   const fullFreeWords = (label) => !isPaid(label) && label !== 'custom';
   const grantsKey = (x) => GRANT_WORDS.map((k) => String(x[k])).join('|');
   // The rights shape a page reads, from line items. label: the product's name, for display only.
-  function grantsRights(x, label, until) {
+  function grantsRights(signed, label, until) {
+    const x = effective(signed);
     return { tier: label || null, subscribed: x.admitAtFullDoor, adminRooms: true, openRooms: true, roomLimit: x.roomLimit, turnAudio: true, turnVideo: x.turnVideoLinks > 0,
-      storage: null, bypassLimit: x.admitAtFullDoor, until, vouches: x.turnVideoLinks, capture: x.captureOpenRoom, oneMeeting: x.oneMeeting, grants: x };
+      storage: null, bypassLimit: x.admitAtFullDoor, until, vouches: x.turnVideoLinks, capture: x.captureOpenRoom, oneMeeting: x.oneMeeting, grants: signed || null };
   }
+  // What everyone has with no signed right: the defaults, in the rights shape.
+  const FREE = Object.freeze(grantsRights(null, null, 0));
 
   const TEXT = {
     full: 'This meeting is full for people without a subscription. Any GifOS subscription lets you join.',
@@ -206,7 +209,6 @@
     if (!ok) return null;
     let o; try { o = JSON.parse(lic.licenseJson); } catch (e) { return null; }
     o = checkLicense(o, nowS);
-    if (o && !(await idOwned(o))) return null;   // an F- id belongs to its own key
     return o;
   }
 
@@ -262,7 +264,7 @@
   // ---- who may enter an admin room ------------------------------------------
   // admission({adminRoom, roomGrants, listLength, hold, entrant, freeWords}) where entrant is {isAdmin, grants}.
   // roomGrants: the line items of the room's plan as the door verified them (roomTierOf), or null when none can be
-  // shown: an admin room whose plan cannot be shown, for any reason, has NO_GRANTS' line (Nathan 2026-11-11). The
+  // shown: an admin room whose plan cannot be shown, for any reason, has the DEFAULTS' line (Nathan 2026-11-11). The
   // entrant goes past a line only by its own admitAtFullDoor. freeWords (display): say the free line's words.
   // -> {admit:true, why} | {admit:false, wait:true, why} | {admit:false, why, message}
   function admission(o) {
@@ -277,7 +279,7 @@
     if (o.hold) return { admit: false, wait: true, why: 'restart-hold', message: TEXT.waiting };
     const n = Number(o.listLength);
     if (!Number.isFinite(n) || n < 0) return { admit: false, wait: true, why: 'no-count', message: TEXT.waiting };
-    const limit = ((o.roomGrants && grantsOk(o.roomGrants)) || NO_GRANTS).roomLimit;
+    const limit = effective(o.roomGrants && grantsOk(o.roomGrants)).roomLimit;
     if (limit != null && n >= limit) return o.freeWords ? { admit: false, why: 'full', limit, free: true, message: TEXT.fullFree } : { admit: false, why: 'full', limit, message: TEXT.full };
     return { admit: true, why: 'room-has-space' };
   }
@@ -329,9 +331,7 @@
     try { ok = !!(await verify(sigBytes, utf8(t.ticketJson))); } catch (e) { ok = false; }
     if (!ok) return null;
     let o; try { o = JSON.parse(t.ticketJson); } catch (e) { return null; }
-    o = checkTicket(o, nowS, meeting);
-    if (o && !(await idOwned(o))) return null;
-    return o;
+    return checkTicket(o, nowS, meeting);
   }
   // What a meeting right grants in its meeting: its line items (FREE when it carries none readable).
   function ticketRights(t) {
@@ -792,13 +792,13 @@
 
   GifOS.sub = {
     TIERS, TIER_IDS, APP_TIERS, tiersSoldIn, FREE, TEXT, PEOPLE_LIMIT, LICENSE_KIND, SELLER, KEY_RE, SUB_ID_RE, ASK_WINDOW_S,
-    FREE_PLAN, FREE_LIMIT, FREE_ID_RE, PLANS, PLAN_IDS, isPlan, isPaid, freeIdFor,
+    FREE_PLAN, FREE_LIMIT, PLANS, PLAN_IDS, isPlan, isPaid,
     checkLicense, verifyLicense, rightsOf, storageAfterLapse, proofMessage, verifyProof, askMessage, askFresh,
     admission, roomContext, doorContext, roomTierOf, doorVerdict, doorProofOk,
     TICKET_KIND, TICKET_S, RENEW_EVERY_S, meetingTag, checkTicket, verifyTicket, ticketRights,
     PASS_KIND, passSeconds, PASS_PLAN, PASS_PRICE, PASS_VALUE, ORDER_ID_RE, PASS_ID_RE, passMessage, checkPass, passLive, passEnd, verifyPass,
     passStart, passRights, meetingRight, bestRights,
-    ROOM_LIMIT_MAX, GRANT_WORDS, NO_GRANTS, grantsOk, grantsRights, ownTicketGrants, fullFreeWords, PASS_PRESETS, presetPass, revokedSet, rightRevoked, captureRight,
+    ROOM_LIMIT_MAX, GRANT_WORDS, DEFAULTS, effective, grantsOk, grantsRights, ownTicketGrants, fullFreeWords, PASS_PRESETS, presetPass, revokedSet, rightRevoked, captureRight,
     PASS_TICKET_KIND, PASS_REC_RE, passRecId, passTicketMessage, passChain, checkPassTicket, verifyPassTicket, isPassTicket,
     WALLET_KIND, walletOk,
     CRED_KIND, credentialOk, credentialFiles, credentialFromFiles, walletFromFiles,

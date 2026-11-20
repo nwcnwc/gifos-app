@@ -17748,7 +17748,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const k = await net.edKeysFromSeedHex(K).catch(() => null);
       if (!k || k.verifier !== av) return false;
       admKey = K; admKeys = k; amAdmin = true;
-      setTimeout(() => { subsPublishRoomPlan(); if (typeof subsAdminFree === 'function') subsAdminFree(); }, 1500);   // the admin's plan rides the room's signed orders; without a paid plan, the free plan's (no-op while subscriptions are off)
+      setTimeout(() => { subsPublishRoomPlan(); }, 1500);   // the admin's plan rides the room's signed orders; without a paid plan, the free plan's (no-op while subscriptions are off)
       admins = adminsNow(); // canStage reads this view; do not wait for the sweep
       hostFlood();   // signs, then floods the proof: a channel dialled before the signature learns it now
       try { tryBroadcastStage(); } catch (e) {}
@@ -39248,12 +39248,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const ms = meshSeat();
       if (!subsOn() || !amAdmin || !av || !(ms && ms.state === 3) || (subsRoomTier() && !subsFreeWords())) return;
       GifOS.meetSubs.showHostPrompt();
-    }
-    // The admin of an admin room without a paid plan gets the free plan's
-    // license (no PayPal), so the room carries the free plan.
-    function subsAdminFree() {
-      if (!subsOn() || !av || !amAdmin || !GifOS.meetSubs.ensureFree) return;
-      GifOS.meetSubs.ensureFree().catch(() => {});
     }
 
     async function createAdminRoom(chosen, pass, postToChat, guestPw) {
