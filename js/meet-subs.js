@@ -1111,42 +1111,144 @@
     return true;
   }
 
-  // Shown instead of the meeting when the room is full for this person.
-  // free: the room is on the free plan (5 people).
-  function showFull(free) {
-    const m = document.getElementById('left-modal');
-    const t = document.getElementById('left-title');
-    const n = document.getElementById('left-note');
-    if (t) t.textContent = free ? tx('subFullFree', SUB.TEXT.fullFree) : 'This meeting is full';
-    if (n) n.textContent = free ? tx('subFullFreeNote', SUB.TEXT.fullFreeNote) : SUB.TEXT.full;
-    if (m && !document.getElementById('sub-full-go')) {
-      const b = el('button', { type: 'button', id: 'sub-full-go' }, 'Subscribe');
-      b.onclick = () => { m.style.display = 'none'; openSettings(); };
-      const box = m.querySelector('.name-box');
-      if (box) box.insertBefore(b, box.querySelector('#left-rejoin'));
-    }
-    if (m) m.style.display = 'flex';
+  // ---- a full door: what gets a person in, read from the rights ------------------
+  // Subscriptions are signed menus of rights (Nathan 2026-11-20): which offer
+  // shows is chosen from what each product GRANTS, never from its name. A pass
+  // preset or a plan is offered at a full door when its rights admit there
+  // (pastFull; admitAtFullDoor in the line-item words), and to a host when its
+  // rights carry no people line. The words may name the product.
+  const admitsAtFull = (g) => !!(g && (g.pastFull === true || g.admitAtFullDoor === true));
+  const amountOf = (price) => { const v = parseFloat(String(price || '').replace(/[^0-9.]/g, '')); return Number.isFinite(v) ? v : Infinity; };
+  const planGrants = (id) => (typeof SUB.presetGrants === 'function' ? SUB.presetGrants(id) : SUB.permsOfTier(id));
+  const planLine = (id) => { const g = typeof SUB.presetGrants === 'function' ? SUB.presetGrants(id) : null; return g && 'roomLimit' in g ? g.roomLimit : SUB.TIERS[id] ? SUB.TIERS[id].roomLimit : undefined; };
+  const cheapest = (list) => list.sort((a, b) => amountOf(a.price) - amountOf(b.price))[0] || null;
+  // fullOffers(app) -> {pass: {preset, price, hours} | null, sub: {tier, price} | null}
+  //   pass: the cheapest pass on sale whose rights admit at a full door
+  //   sub:  the cheapest plan this app sells whose rights admit at a full door
+  function fullOffers(app) {
+    const presets = SUB.PASS_PRESETS || {};
+    const passes = Object.keys(presets).filter((k) => presets[k] && presets[k].sold && admitsAtFull(presets[k].grants || presets[k].perms))
+      .map((k) => { const s = typeof presets[k].seconds === 'function' ? presets[k].seconds() : presets[k].seconds; return { preset: k, price: presets[k].price, hours: Number.isFinite(s) && s > 0 ? Math.round(s / 360) / 10 : null }; });
+    const subs = SUB.tiersSoldIn(app || appNow()).filter((t) => admitsAtFull(planGrants(t))).map((t) => ({ tier: t, price: SUB.TIERS[t].price }));
+    return { pass: cheapest(passes), sub: cheapest(subs) };
+  }
+  // hostOffer(app) -> {tier, price} | null: the cheapest plan this app sells whose rights carry no people line.
+  function hostOffer(app) {
+    return cheapest(SUB.tiersSoldIn(app || appNow()).filter((t) => planLine(t) === null).map((t) => ({ tier: t, price: SUB.TIERS[t].price })));
+  }
+  // doorRight() -> true when this browser now holds a right a full door lets in
+  // (a subscription or a live pass whose rights say so). Read here, no server.
+  async function doorRight() {
+    try { const r = await rights(); return !!(r && (r.bypassLimit === true || r.admitAtFullDoor === true)); } catch (e) { return false; }
   }
 
-  // The host of a room on the free plan, when the door turned someone away:
-  // a one-tap upgrade to the $2 plan (20 people) over the meeting.
-  function showHostPrompt() {
+  // Shown instead of the meeting when the room is full for this person: what
+  // happened, in one line with the room's real size, and the way in now.
+  // o: {limit, free, onRight} (a bare boolean is the old free flag). limit: the
+  // room's line (the door's own count); onRight(): called once when this
+  // browser holds a right the door lets in, from whichever path brought it (the
+  // pass here, the Subscription dialog, a file opened, a store restore), so the
+  // page knocks again by itself.
+  let fullWatch = null;
+  function fullWords(o) {
+    const n = Number.isInteger(o.limit) && o.limit > 0 ? o.limit : o.free ? SUB.FREE_LIMIT : null;
+    return n ? fill(tx('subFullTitleN', 'This meeting is full ({n} people on its host\'s plan).'), { n }) : tx('subFullTitle', 'This meeting is full.');
+  }
+  function showFull(o) {
+    if (typeof document === 'undefined') return false;
+    o = o && typeof o === 'object' ? o : { free: !!o };
+    const m = document.getElementById('left-modal');
+    if (!m) return false;
+    const t = document.getElementById('left-title');
+    const n = document.getElementById('left-note');
+    if (t) t.textContent = fullWords(o);
+    if (n) n.textContent = tx('subFullNote', 'A pass or any subscription walks you right in.');
+    const box = m.querySelector('.name-box') || m;
+    let card = document.getElementById('sub-full');
+    if (card) card.remove();
+    card = el('div', { id: 'sub-full', class: 'sub-full' });
+    const say = el('p', { id: 'sub-full-say', class: 'sub-full-say', role: 'status', 'aria-live': 'polite' });
+    const sayIt = (x) => { say.textContent = x || ''; };
+    const inApp = !!RAIL();
+    const off = fullOffers();
+    const done = () => { if (fullWatch) { clearInterval(fullWatch.t); const f = fullWatch.onRight; fullWatch = null; sayIt(tx('subFullJoining', 'You are in. Joining the meeting\u2026')); try { if (f) f(); } catch (e) {} } };
+    const check = () => { const w = fullWatch; if (w && !w.busy) { w.busy = true; doorRight().then((ok) => { w.busy = false; if (ok && fullWatch === w) done(); }); } };
+    if (off.pass) {
+      const label = fill(tx('subFullPass', 'Get in now: {price} for {hours} hours'), { price: off.pass.price, hours: off.pass.hours || 4 });
+      const b = el('button', { type: 'button', id: 'sub-full-pass', class: 'sub-full-pass' }, label);
+      b.onclick = async () => {
+        b.disabled = true; sayIt(inApp ? '' : tx('passOpening', 'Opening PayPal\u2026'));
+        try {
+          const r = await buyPass(sayIt);
+          if (r && r.passJson) check(); else { b.disabled = false; if (!inApp) sayIt(tx('passNotConfirmed', 'PayPal did not confirm the payment.')); }
+        } catch (e) { b.disabled = false; sayIt(String(e.message || e)); }
+      };
+      card.appendChild(b);
+    }
+    if (off.sub) {
+      const s = el('button', { type: 'button', id: 'sub-full-sub', class: 'sub-full-sub' }, fill(tx('subFullSub', 'or subscribe from {price}/month and never wait at a door'), { price: off.sub.price }));
+      s.onclick = () => { openSubscribe(); };
+      card.appendChild(s);
+    }
+    card.appendChild(say);
+    if (off.pass || off.sub) card.appendChild(legalLine('sub-full-legal', inApp));
+    if (inApp && off.pass) {   // in the app the price shown is the store's own (as in Settings)
+      RAIL().prices().then((pr) => {
+        const k = SUB.storeSku(RAIL().store(), { what: 'pass' }); const p = k && pr && pr[k.basePlan ? k.product + ':' + k.basePlan : k.product];
+        const b = document.getElementById('sub-full-pass');
+        if (p && b) b.textContent = fill(tx('subFullPass', 'Get in now: {price} for {hours} hours'), { price: p, hours: off.pass.hours || 4 });
+      }).catch(() => {});
+    }
+    box.insertBefore(card, box.querySelector('#left-rejoin'));
+    m.dataset.full = '1';
+    m.style.display = 'flex';
+    if (fullWatch) clearInterval(fullWatch.t);
+    fullWatch = typeof o.onRight === 'function' ? { onRight: o.onRight, busy: false, t: setInterval(check, POLL_MS) } : null;
+    if (fullWatch) check();   // a right already held (bought a moment ago, or a pass still waiting to start)
+    return true;
+  }
+  // The full screen goes (the page knocks again): the offer and its watch with it.
+  function hideFull() {
+    if (fullWatch) { clearInterval(fullWatch.t); fullWatch = null; }
+    if (typeof document === 'undefined') return;
+    const card = document.getElementById('sub-full'); if (card) card.remove();
+    const m = document.getElementById('left-modal');
+    if (m && m.dataset.full) { delete m.dataset.full; m.style.display = 'none'; }
+  }
+
+  // The host of a room with a people line, when its doors turned people away:
+  // how many, and the plan whose rights carry no line, in one tap.
+  // n: how many people could not get in (1 when not counted).
+  function showHostPrompt(n) {
     if (typeof document === 'undefined' || !document.body) return false;
+    n = Number.isInteger(n) && n > 0 ? n : 1;
+    const up = hostOffer();
+    const words = () => (n === 1 ? tx('subHostTurned1', '1 person couldn\'t get in.') : fill(tx('subHostTurnedN', '{n} people couldn\'t get in.'), { n }))
+      + (up ? ' ' + fill(tx('subHostUpNote', '{plan} ({price}) removes the limit.'), { plan: planShort(up.tier), price: up.price }) : '');
     let bar = document.getElementById('sub-host-up');
-    if (bar) { bar.hidden = false; return true; }
+    if (bar) {
+      bar.hidden = false;
+      const msg = document.getElementById('sub-host-up-msg'), go = document.getElementById('sub-host-up-go');
+      if (msg && !(go && go.disabled)) msg.textContent = words();   // a purchase under way keeps its own words
+      return true;
+    }
     bar = el('div', { id: 'sub-host-up', role: 'status', 'aria-live': 'polite', style: 'position:fixed;left:50%;bottom:5.5rem;transform:translateX(-50%);z-index:41;max-width:min(92vw,28rem);background:var(--panel,#1d1d2b);color:var(--text,#e8e8f4);border:1px solid var(--border,#2a2a3f);border-radius:.6rem;padding:.6rem .8rem;box-shadow:0 12px 32px rgba(0,0,0,.5);font:14px/1.4 system-ui,sans-serif;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap' });
-    const msg = el('span', { id: 'sub-host-up-msg', style: 'flex:1 1 12rem' }, tx('subHostTurned', 'Someone was turned away: this room is full on the free plan (5 people).'));
-    const go = el('button', { type: 'button', id: 'sub-host-up-go', class: BTN, style: BTN_STYLE }, tx('subUp20', 'Subscribe for up to 20'));
+    const msg = el('span', { id: 'sub-host-up-msg', style: 'flex:1 1 12rem' }, words());
+    bar.appendChild(msg);
+    if (up) {
+      const go = el('button', { type: 'button', id: 'sub-host-up-go', class: BTN, style: BTN_STYLE }, fill(tx('subHostUpGo', 'Get {plan}'), { plan: planShort(up.tier) }));
+      go.onclick = async () => {
+        go.disabled = true;
+        try {
+          const r = await subscribe(up.tier, 'monthly', (t) => { msg.textContent = t; });
+          if (r && r.licenseJson) bar.remove(); else { if (!RAIL()) msg.textContent = r && r.status === 'APPROVAL_PENDING' ? SUB.TEXT.pending : 'PayPal did not confirm the subscription.'; go.disabled = false; }
+        } catch (e) { msg.textContent = String(e.message || e); go.disabled = false; }
+      };
+      bar.appendChild(go);
+    }
     const x = el('button', { type: 'button', id: 'sub-host-up-x', class: BTN, style: BTN_STYLE, 'aria-label': tx('subUpClose', 'Close') }, '\u00d7');
-    go.onclick = async () => {
-      go.disabled = true;
-      try {
-        const r = await subscribe('room20', 'monthly', (t) => { msg.textContent = t; });
-        if (r && r.licenseJson) bar.remove(); else { if (!RAIL()) msg.textContent = r && r.status === 'APPROVAL_PENDING' ? SUB.TEXT.pending : 'PayPal did not confirm the subscription.'; go.disabled = false; }
-      } catch (e) { msg.textContent = String(e.message || e); go.disabled = false; }
-    };
     x.onclick = () => { bar.remove(); };
-    bar.appendChild(msg); bar.appendChild(go); bar.appendChild(x);
+    bar.appendChild(x);
     document.body.appendChild(bar);
     return true;
   }
@@ -1171,7 +1273,7 @@
   }
 
   GifOS.meetSubs = {
-    rights, planRights, refresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, subSelection, applySubSelection, paintNow, paintSettings, openSettings, openSubscribe, mayCreateAdminRoom, showFull, ensureFree, showHostPrompt,
+    rights, planRights, refresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, subSelection, applySubSelection, paintNow, paintSettings, openSettings, openSubscribe, mayCreateAdminRoom, showFull, hideFull, fullOffers, hostOffer, doorRight, ensureFree, showHostPrompt,
     roomOrder, roomTier, proveAtDoor, checkShown, newNonce,
     appNow, joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureCurrent, captureOrder, captureKeys, fileBytes, downloadFile, useFile, librarySigner, restoreInApp,
     passMeeting: () => (pmeet ? { room: pmeet.room, gen: pmeet.gen, exp: pmeet.exp, until: pmeet.until, moved: pmeet.moved, held: !!pmeet.ticket } : null),
