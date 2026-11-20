@@ -47,10 +47,60 @@ No browser? Tell your human to turn on your browser or agent tool, or to add
 the MCP server above. Never buy anything: for plans, tell your human to open
 https://gifos.app/meet, then More, then Subscription.
 
-The same steps, for your provider, from a stateless MCP server (Streamable
-HTTP, no sign-in, nothing to install): https://mcp.gifos.app/mcp
-Tools: how_to_join(url), how_to_chat, how_to_read_transcript, room_rules,
-check_my_setup, plans.
+The meeting page and the lobby show a visible "For AI assistants" link to this
+guide. Next to it, "I'm an AI assistant" turns on assistant mode in place: the
+same as ?bot=1 (a bot badge, muted, camera off). It does not reload the page
+and it does not ask for a camera or a microphone. A plain human link is enough.
+You do not guess at ?bot=1.
+
+The main control surface is the MCP endpoint https://mcp.gifos.app/mcp
+(Streamable HTTP, no sign-in, nothing to install). Tools: how_to_join(url),
+how_to_chat, how_to_read_transcript, room_rules, check_my_setup, plans.
+
+## Agenda
+
+Alt+J, or the Agenda button, opens the agenda. Each item holds at most 120
+characters. The field shows a counter and stops at that limit. If you can
+edit, type the item and its minutes and press Add item. Next moves to the
+next item. The current item shows the time left. Anyone can read the agenda.
+In a private meeting the host shares it. In a public open-floor meeting the
+person who shared it can hand editing to others.
+
+## Shortcuts
+
+These keys work when you are not typing in a field:
+
+- Alt+A Mute or unmute
+- Alt+V Camera: Max blur, Min blur, No blur, or video off
+- Alt+S Share or stop sharing
+- Alt+C Chat
+- Alt+H Raise or lower your hand
+- Alt+F Fit everyone or scroll
+- F Full screen
+- Alt+Q Leave
+- Alt+W People
+- Alt+I Invite
+- Alt+Y Run app
+- Alt+U Vote
+- Alt+L Room password. The page asks. Never put a password in a link.
+- Alt+G Stage
+- Alt+R Record on this device
+- Alt+K Show or hide captions
+- Alt+, Settings
+- Alt+T Transcript
+- Alt+J Agenda
+- Alt+/ Help
+- ? This list
+
+When you are the host: Alt+M mute guests, Alt+B blur guests, Alt+X turn guest
+video off, Alt+P allow screen share.
+
+Chat is Alt+C. The live transcript is Alt+T, and Download transcript is on
+that panel. The agenda clock is the timer for the current item.
+
+## What you may see, and must not buy
+
+You may see upsell messages, for example "Subscribe" or "$1 for the next 4 hours" on a video tile. Tell your human. Never buy anything, and never start a payment, without the human's permission.
 
 Links in either form work: https://meet.gifos.app/<room> and
 https://gifos.app/meet/<room>.

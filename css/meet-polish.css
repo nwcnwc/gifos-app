@@ -16,7 +16,7 @@
    One dark surface. Colour carries meaning only: green = your camera or mic is on, red = off or Leave, blue = a
    panel or choice that is on. Every other control is the same quiet light-on-dark button. Buttons inside the More
    sheet are not bar children and keep the sheet's own look. */
-.bar { background: var(--dock-bg); box-shadow: 0 8px 28px rgba(0,0,0,.45), inset 0 0 0 1px var(--dock-ring); }
+.bar { background: var(--dock-bg); }
 .bar > #reactbtn, .bar > #chatbtn, .bar > #ccdock, .bar > #bartoggle, .bar > #sharebtn, .bar > #stagebtn, .bar > #hand, .bar > #bargrip {
   background: var(--dock-btn); color: var(--dock-fg); }
 @media (hover: hover) {
@@ -57,28 +57,15 @@
   #lobby.show :is(#lob-admin-btn, #lob-join-btn).lob-link:hover { background: var(--c-line); }
 }
 /* ---- the Broadcast lobby -----------------------------------------------------------------------------------------
-   Two questions and go: who can watch (two plain choices) and now or later (Go live now, or Schedule with one time
-   field). The host password is minted on this device and sits behind More with Watch a link. */
+   Name, an optional room password, Schedule, and Go live. A blank room password leaves the link open. The host
+   password is minted on this device and sits behind More with Watch a link. */
 #lob-bc[hidden], #lob-bc-when[hidden], #lob-bc-sched[hidden] { display: none !important; }
-#lob-bc { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 0; }
-.lob-bc-who { display: flex; flex-direction: column; gap: 4px; }
-.lob-bc-who > b { font-weight: 600; }
-.lob-bc-opt { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 4px 8px; border-radius: var(--r-md); cursor: pointer; }
-.lob-bc-opt input { width: 20px; height: 20px; margin: 0; flex: 0 0 auto; accent-color: var(--c-blue); }
-.lob-bc-opt small { display: block; color: var(--c-gray); }
-.lob-bc-when { display: flex; align-items: center; gap: 12px; }
+#lob-bc { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin: 8px 0 0; }
+.lob-bc-when { display: flex; align-items: center; gap: 12px; width: 100%; }
 .lob-bc-when input { flex: 1 1 auto; min-height: 44px; }
-#lobby.service-ready #lob-bc { order: 2; }
+#lobby.service-ready #lob-bc { order: 3; }
 #lobby.service-ready #lob-guest-more { display: none !important; }
-#lobby.service-ready.bc-pw:not(.desk-more) #lob-guest-extra { display: block !important; order: 3; }
 #lobby.service-ready #lob-bc-sched { flex: 0 0 auto; }
-@media (max-width: 700px) and (min-height: 421px) {
-  #lobby.form-open.service-ready #lob-bc,
-  #lobby.form-open.service-ready.bc-pw:not(.desk-more) #lob-guest-extra {
-    pointer-events: auto; color: var(--c-white); background: var(--c-scrim); border-radius: var(--r-lg); padding: 8px 12px; margin: 0; }
-  #lobby.form-open.service-ready .lob-pwlab, #lobby.form-open.service-ready .lob-pwlab b { color: var(--c-white); }
-  #lobby.form-open.service-ready .lob-pwlab small { color: var(--c-gray); }
-}
 /* A broadcast is not a meeting: no votes, no apps, no waiting room. */
 body.broadcast #votebtn, body.broadcast #appbtn, body.broadcast #waitbtn { display: none !important; }
 
@@ -111,7 +98,110 @@ html body .bar > #leavebtn .docklab { color: #ff5c5c; }
 #lobby.show #lob-open-more.lob-link { display: block; width: 100%; min-height: 36px; margin: -4px 0 6px; background: transparent; border: 0;
   color: var(--c-blue); font-weight: 600; font-size: .9rem; text-align: center; text-decoration: underline; }
 #lobby.form-open #lob-open-more, #lobby.form-open #lob-open-extra { display: none !important; }
-@media (max-width: 700px), (max-height: 500px) { html.ui-large #lob-admin-btn small { display: none; } }
+/* One type scale for the lobby. Tabs and the action share a size. The selected tab is an underline, not a filled button. */
+#lobby {
+  --lob-tab-size: 1.125rem;
+  --lob-tab-weight: 700;
+  --lob-btn-size: 1.125rem;
+  --lob-btn-weight: 700;
+  --lob-label-size: 0.9375rem;
+  --lob-label-weight: 650;
+  --lob-help-size: 0.875rem;
+  --lob-help-weight: 400;
+  --lob-head-size: 0.8125rem;
+  --lob-head-weight: 650;
+}
+#lobby .lobby-card h1 { font-size: 1rem; font-weight: 650; margin: 0 0 0.35rem; letter-spacing: 0; }
+#lobby .lob-quiet, #lobby .lob-empty, #lobby .lob-watch-note { font-size: var(--lob-help-size); font-weight: var(--lob-help-weight); color: var(--c-ink-2); }
+#lobby .lob-tabs { border: 1px solid var(--c-line); border-radius: 12px; background: var(--c-white); margin: 0 0 1rem; overflow: hidden; }
+#lobby .lob-segs { display: flex; width: 100%; margin: 0; background: var(--c-paper); border: 0; border-radius: 0; border-bottom: 1px solid var(--c-line); overflow: visible; }
+#lobby .lob-segs .seg { flex: 1 1 0; min-width: 0; min-height: 48px; white-space: normal; text-align: center; line-height: 1.2; padding: 0.7rem 0.4rem; margin: 0; background: transparent; color: var(--c-ink); border: 0; border-radius: 0; box-shadow: none; text-decoration: none; font-size: var(--lob-tab-size); font-weight: var(--lob-tab-weight); }
+#lobby .lob-segs .seg span { display: block; font-size: inherit; font-weight: inherit; letter-spacing: 0; text-transform: none; }
+#lobby .lob-segs .seg.sel { background: transparent; color: var(--c-blue); box-shadow: inset 0 -3px 0 var(--c-blue); }
+@media (hover: hover) and (pointer: fine) {
+  #lobby .lob-segs .seg:hover { background: transparent; color: var(--c-ink); }
+  #lobby .lob-segs .seg.sel:hover { background: transparent; color: var(--c-blue); }
+}
+#lobby .lob-tabpanel { background: var(--c-white); padding: 0.75rem 0.75rem 0.85rem; }
+#lobby .lob-tabpanel .lob-expand { border: 0; background: transparent; padding: 0; margin: 0; border-radius: 0; box-shadow: none; }
+#lobby .lob-seg-note { margin: 0 0 0.75rem; color: var(--c-ink-2); font-size: var(--lob-help-size); font-weight: var(--lob-help-weight); line-height: 1.35; text-align: left; }
+#lobby .lob-pwlab { font-size: var(--lob-label-size); font-weight: var(--lob-label-weight); color: var(--c-ink); letter-spacing: 0; text-transform: none; }
+#lobby .lob-pwlab small, #lobby .lob-flag { display: inline; font-size: var(--lob-help-size); font-weight: var(--lob-help-weight); color: var(--c-ink-2); }
+#lobby .lob-flag { margin-left: 0.35rem; }
+#lobby .lob-pwlab small { display: block; margin: 0.12rem 0 0.15rem; line-height: 1.35; }
+#lobby .lobby-card input { font-size: 1rem; font-weight: 400; }
+#lobby.show #lob-go.lob-primary { background: var(--c-blue); color: var(--c-white); border: 0; border-radius: var(--r-lg); font-size: var(--lob-btn-size); font-weight: var(--lob-btn-weight); min-height: 52px; text-align: center; letter-spacing: 0; text-transform: none; }
+#lobby .lob-hist-h { font-size: var(--lob-head-size); font-weight: var(--lob-head-weight); text-transform: none; letter-spacing: 0; color: var(--c-ink-2); }
+#lobby .lob-appear-k { font-size: var(--lob-head-size); font-weight: var(--lob-head-weight); letter-spacing: 0; text-transform: none; color: var(--c-ink-2); }
+#lobby #lob-bc-sched { background: transparent; border: 0; box-shadow: none; color: var(--c-ink); font-size: var(--lob-label-size); font-weight: var(--lob-label-weight); text-decoration: underline; text-align: left; min-height: 44px; padding: 0; border-radius: 0; }
+#lobby #lob-keygen.lob-ghost { background: transparent; border: 0; box-shadow: none; color: var(--c-ink); font-size: var(--lob-label-size); font-weight: var(--lob-label-weight); text-decoration: underline; text-align: left; border-radius: 0; width: auto; align-self: flex-start; padding: 0 0.25rem; }
+#lobby.service-ready .lob-pv-note { display: none; }
+#lobby.service-ready .lob-tabs, #lobby.service-ready .lob-tabpanel { display: contents; }
+#lobby.service-ready:not(.desk-more) .lob-segs { display: none !important; }
+#lobby.show:not(.form-open) .lob-appear { position: static; left: auto; right: auto; top: auto; width: auto; margin: 0 0 14px; box-shadow: none; z-index: auto; background: var(--c-paper); }
+/* A phone broadcast is a form: the name, the room password and Go live stack from the top. */
+@media (max-width: 700px) and (min-height: 421px) {
+  #lobby.form-open.service-ready .lobby-card {
+    justify-content: flex-start !important;
+    background: var(--c-white) !important;
+    color: var(--c-ink) !important;
+    pointer-events: auto !important;
+    overflow: auto !important;
+  }
+  #lobby.form-open.service-ready.show h1,
+  #lobby.form-open.service-ready .lob-quiet {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 0 8px !important;
+    color: var(--c-ink) !important;
+    background: transparent !important;
+  }
+  #lobby.form-open.service-ready #lob-admin-name {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 0 8px !important;
+    color: var(--c-ink) !important;
+    background: var(--c-white) !important;
+    border: 1px solid var(--c-gray) !important;
+    border-radius: 14px;
+  }
+  #lobby.form-open.service-ready #lob-admin-name::placeholder { color: var(--c-ink-2) !important; }
+  #lobby.form-open.service-ready #lob-guest-extra,
+  #lobby.form-open.service-ready #lob-bc,
+  #lobby.form-open.service-ready #lob-admin-err,
+  #lobby.form-open.service-ready .lob-appear {
+    position: static !important;
+    pointer-events: auto !important;
+    color: var(--c-ink) !important;
+    background: transparent !important;
+  }
+  #lobby.form-open.service-ready #lob-go {
+    position: static !important;
+    pointer-events: auto !important;
+    width: 100%;
+    min-height: 56px;
+    background: var(--c-blue) !important;
+    color: var(--c-white) !important;
+  }
+  #lobby.form-open.service-ready .lob-pwlab,
+  #lobby.form-open.service-ready .lob-pwlab b { color: var(--c-ink) !important; }
+  #lobby.form-open.service-ready .lob-pwlab small,
+  #lobby.form-open.service-ready .lob-flag { color: var(--c-ink-2) !important; }
+  #lobby.form-open.service-ready .lob-seg-note { color: var(--c-ink-2) !important; }
+  #lobby.form-open.service-ready #lob-admin-name-lab {
+    position: static !important; width: auto !important; height: auto !important;
+    margin: 0 0 0.25rem !important; padding: 0 !important; overflow: visible !important;
+    clip: auto !important; white-space: normal !important; border: 0;
+  }
+}
 
 /* Subscription dialog reuses the Settings window (same header, body, Close). */
 #sub-modal .name-box.set-box {

@@ -1,0 +1,16 @@
+{
+  "title": "计时器与秒表",
+  "tab.stopwatch": "秒表",
+  "tab.timer": "计时器",
+  "preset.1m": "+1 分钟",
+  "preset.5m": "+5 分钟",
+  "preset.10m": "+10 分钟",
+  "preset.10s": "+10 秒",
+  "lap": "计次",
+  "lap.n": "第 {n} 圈",
+  "lap.now": "第 {n} 圈  {time}",
+  "reset": "重置",
+  "start": "开始",
+  "stop": "停止",
+  "pause": "暂停"
+}
