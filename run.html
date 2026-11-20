@@ -21323,10 +21323,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       if (!room || !/^[a-z0-9-]{1,64}$/i.test(room)) return null;
       if (av && !/^[a-f0-9]{16,64}$/.test(av)) av = '';
-      // A bare word ("hello") is not a meeting id. Links and id.verifier
-      // still parse above. Open-room codes are 16 characters, and a named
-      // room or the lobby's bare-id check is longer than five letters.
-      if (!/[:/#?]/.test(s) && !av && /^[A-Za-z]{1,5}$/.test(room)) return null;
+      // Any room name joins, short words too ("test", "team"): the room is the
+      // name in the link, gifos.app/meet/<name>, and the lobby says "type a room name".
       // NEVER normalise the room id. It is the whole capability: the relay
       // session, token and end-to-end key are all DERIVED from this exact string
       // ("derive, don't send", gifos-net.js). joinRoom() reads it from the link
