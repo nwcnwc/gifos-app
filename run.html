@@ -40486,8 +40486,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // S5 (Nathan 2026-11-17): the Run picker always offers these, first, even on a device that never opened GifOS Home.
     // Picking one that is not on the device puts it here, then runs it. Take Turns is built from this site's starter
-    // code (sample-apps.js, loaded only then); Whiteboard is the App Store's GIF on this site.
-    const RUN_DEFAULTS = [{ appId: 'taketurns', name: 'Take Turns', from: 'sample' }, { appId: 'whiteboard', name: 'Whiteboard', from: 'store' }];
+    // code (sample-apps.js, loaded only then). Survey and Whiteboard are App Store GIFs on this site.
+    const RUN_DEFAULTS = [{ appId: 'taketurns', name: 'Take Turns', from: 'sample' }, { appId: 'survey', name: 'Survey', from: 'store' }, { appId: 'whiteboard', name: 'Whiteboard', from: 'store' }];
     const scriptOnce = {};
     function loadScriptOnce(src) {
       if (!scriptOnce[src]) scriptOnce[src] = new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.onload = () => res(); el.onerror = () => { delete scriptOnce[src]; rej(new Error('load ' + src)); }; document.head.appendChild(el); });
