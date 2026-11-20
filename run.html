@@ -503,7 +503,8 @@
     } catch (e) { fallback(); }
   }
   // ?agent=1 is read here, before the meeting rewrites its own address (agent mode reads window.__gifosAgentQ).
-  try { window.__gifosAgentQ = /[?&]agent=1(?:&|$)/.test(location.search); } catch (e) {}
+  // A driver that loads the page with its own start script (the agent SDK) may set the flag before this line.
+  try { window.__gifosAgentQ = window.__gifosAgentQ === true || /[?&]agent=1(?:&|$)/.test(location.search); } catch (e) {}
   var decision = pinTarget(location.pathname, location.search, location.hash);
   if (decision && decision.ask) askLive(decision);
   else if (decision && decision.redirect) location.replace(decision.redirect);
