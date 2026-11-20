@@ -1199,7 +1199,10 @@
         if (p && b) b.textContent = fill(tx('subFullPass', 'Get in now: {price} for {hours} hours'), { price: p, hours: off.pass.hours || 4 });
       }).catch(() => {});
     }
-    box.insertBefore(card, box.querySelector('#left-rejoin'));
+    // Above the Rejoin / Close row: the page may have wrapped those buttons, so insert before the box's own child that holds Rejoin.
+    let ref = box.querySelector('#left-rejoin');
+    while (ref && ref.parentNode !== box) ref = ref.parentNode;
+    box.insertBefore(card, ref || null);
     m.dataset.full = '1';
     m.style.display = 'flex';
     if (fullWatch) clearInterval(fullWatch.t);
