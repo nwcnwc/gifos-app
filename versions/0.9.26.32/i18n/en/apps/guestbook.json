@@ -1,0 +1,14 @@
+{
+  "title": "Guestbook",
+  "who.alone": "just you — Invite",
+  "who.here": "{n} here",
+  "hint.alone": "Signing as <b>{name}</b>. Press <b>Invite</b> in the top bar to sign with friends.",
+  "hint.friends": "Signing as <b>{name}</b>. Friends in this room sign with their screen name — new lines appear here.",
+  "msg.placeholder": "Say something…",
+  "sign": "Sign",
+  "empty": "No one has signed yet. You are the first.<br>Press <b>Invite</b> in the top bar and send the link.",
+  "anon": "anon",
+  "ago.now": "just now",
+  "ago.m": "{n}m ago",
+  "ago.h": "{n}h ago"
+}
