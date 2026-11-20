@@ -248,7 +248,6 @@
     let doorAheadN = 0;    // blobs in my latest door reply that no key of mine (current or replaced) opens (doorAhead)
     let regPendingAt = 0;  // a registration awaiting its greeters reply (zombie detector)
     let subGrant = null;   // the grant that founds my door's room, as the page handed it with the answer to its ask (node.subGo)
-    let recountOut = false; // a door count asked for (node.recountDoor) and not answered yet: one ask at a time
     // SHRANK-TO-SOLO (the 2-person fork fix, 2026-07-29): a room that WAS
     // populated and collapsed to one is a fragment SUSPECT the moment it
     // happens — a fresh founder is legitimately alone, but nobody legitimately
@@ -801,7 +800,6 @@
         if (m.t === 'joined' && m.rt && ticket) ticket.setRejoin(m.rt);   // reconnects and reloads of this tab need no new proof of work
         if (m.t === 'greeters') {
           if (atDoor !== doorNow()) return;   // a door's answer counts only while that door is mine: my door moved since this socket knocked there
-          recountOut = false;
           if (lockedFired && !(seat && seat.state === 3)) return;   // a bad password is the lock prompt: an empty list here would mint a founder
           m.atDoor = atDoor;   // SUB.1.1: the answer names the door this socket knocked
           onGreeters(m);
@@ -1323,6 +1321,7 @@
         },
         send: (to, m, dir) => sendFrameTo(to, m, dir, true),   // FHOP's sponsored frames: deliver -> opts.sendDC -> the page's rungs, never the relay
         fhop: opts.fhop || null,
+        wall: opts.wall ? { line: () => opts.wall.line(), pass: (nc) => !!opts.wall.pass(String(layer.ids.pid(nc) || '')), walled: (nc, full) => { opts.wall.walled(String(layer.ids.pid(nc) || ''), full); } } : null,   // the room's people line: the page's reading of it, a newcomer's shown ticket, and this door's refusals
         sub: opts.sub || null,   // the page's link manager for rooms joined by relayed connections: { ask(), pipeEnds() }
         levers: opts.levers || null,   // the page's levers (run.html: islands found under the meeting key of the link)
         measure: opts.measure || null,
@@ -1382,14 +1381,6 @@
         return n;
       },
       _signGossipForTest(f) { return (identity && ident.signGossip) ? ident.signGossip(identity, f) : Promise.resolve(''); },   // TEST ONLY — my own signature on a frame I hold back
-      // THE DOOR'S COUNT (run.html subscriptions): a seated greeter asks the relay for the greeter list NOW, by
-      // registering again; the reply is the usual greeters frame (opts.onDoor). One ask at a time, and only a
-      // knocker arriving starts one, so it adds one relay frame per newcomer. false: not a greeter, no list to ask for.
-      recountDoor() {
-        if (stopped || !seat || !iAmAGreeter()) return false;
-        if (!recountOut) { recountOut = true; lastRegAt = regPendingAt = Date.now(); REGISTER_MYSELF_AS_A_GREETER(gkStr()); greeterTrace.push({ t: Date.now(), tick: env.TICK, state: seat.state, post: seat.state, listLen: -1, open: -1, founded: false, action: 're-register:door-count' }); if (greeterTrace.length > GREETER_TRACE_CAP) greeterTrace.shift(); }
-        return true;
-      },
       socketed() { return !raw || raw.socketed(); },   // the seat's own word: am I at the door (a joiner, a greeter, a seat that knocked)
       setRefuses(b) { if (layer) layer.setRefuses(b); },
       roomDigest() { return layer ? layer.roomDigest() : null; },

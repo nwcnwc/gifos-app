@@ -186,6 +186,7 @@
     admit(c, f) {
       const lv = this.w.lv, id = this.id, TICK = this.TICK;
       const nc = f.nc;
+      if (this.l52Admit(c, f)) return;   // L52.1 (wall.js): no cell at or past the wall for a seeker with no ticket
       const site = this.w.ADMIT_SITE === undefined ? '?' : this.w.ADMIT_SITE;
       // FRONT 3 measurement only: how a newcomer FIND ended, and how many hops it burned.
       if (descOn(this) && f.tag !== 1) this.f.descEnd(site.startsWith('deep') ? 0 : 1, 200 - f.ttl);

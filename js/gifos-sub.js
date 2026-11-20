@@ -36,8 +36,8 @@
  * forged, run out, the host left, the subscription moved to another meeting),
  * has the free line of 5. Anyone holding any PAID plan is always let in, even
  * past the line. The line applies only at entry: nobody inside is removed.
- * The room's count is the door's greeter list (plus the door itself), read
- * fresh when someone without a plan comes in (run.html subsRoomCount).
+ * The line is a place in the room's seating order, not a count: the mesh
+ * gives nobody without a ticket that place or one after it (js/mesh/wall.js).
  *
  * One meeting at a time: a subscription powers one meeting (open or admin
  * room) at a time. Joining a meeting gets a short meeting ticket from the

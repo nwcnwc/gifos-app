@@ -52,6 +52,7 @@
     'l18Hop', 'l18UxDeliv', 'l222Note', 'l22Agree', 'l23GreetRelease', 'l22Close', 'l22CloseAsk', 'l22Need', 'l22Quiet', 'l28Reply',
     'l915Note', 'relayKnock', 'relayUnlist', 'descEnd', 'descNote', 'wake', 'fabricAudit', 'fabricDoorHeard', 'g4Joined', 'fabricDropHalf', 'fabricLinkCarries',
     'fabricDoorNet', 'fabricDoorBlk', 'fabricDoorDue', 'fabricSubAsk', 'fabricSubProbe', 'fabricPipePeers', 'fabricSubDoor', 'fabricSubRepipe', 'fabricSubGo', 'fabricSubWalk', 'fabricCutProbe', 'fabricTurnOn',
+    'fabricWall', 'fabricPass', 'fabricWalled',
   ]);
 
   // A fabric that refuses every call: the interface a harness or the page adapter fills in.

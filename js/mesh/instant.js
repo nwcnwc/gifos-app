@@ -36,10 +36,12 @@
     l31Note(k, q, at, by, commit) {
       const a = this.l31Acc.get(k);
       if (a !== undefined && !a.left && this.TICK - a.at <= K.L31_REC_HOLD) {
-        if (a.q === q) { if (commit) a.commit = true; return true; }
-        if (!l31Beats(at, by, q, a.at, a.by, a.q)) return false;
+        if (a.q === q) { if (commit) a.commit = true; if (at > a.at && this.l52Firm()) { a.at = at; a.by = by; }   // L52.9: a later placement of the same seeker in the cell renews the record's hold
+          return true; }
+        if (this.l52Firm()) { if (a.commit) return false; if (!commit && !l31Beats(at, by, q, a.at, a.by, a.q)) return false; }   // L52.9 (wall.js): in a room with a line a committed or assented record is not beaten, and a commit stands over any proposal
+        else if (!l31Beats(at, by, q, a.at, a.by, a.q)) return false;
       }
-      if (this.l31Acc.size >= 4 * C) { const old = []; for (const [ek, ev] of this.l31Acc) if (this.TICK - ev.at > K.L31_REC_HOLD) old.push(ek); for (const o of old) this.l31Acc.delete(o); if (this.l31Acc.size >= 4 * C) this.l31Acc.clear(); }
+      if (this.l31Acc.size >= 4 * C) { const old = []; for (const [ek, ev] of this.l31Acc) if (this.TICK - ev.at > K.L31_REC_HOLD) old.push(ek); for (const o of old) this.l31Acc.delete(o); if (this.l31Acc.size >= 4 * C && !this.l52Firm()) this.l31Acc.clear(); }   // L52.9: in a room with a line the fresh records are the cells' word and are kept (one per home cell at most)
       this.l31Acc.set(k, { q, at, by, commit, left: false }); return true;
     },
 
@@ -92,6 +94,7 @@
         const ac = admCell(c); const ak = ckey(ac);
         p.ack = false; const akHeld = this.l315Cell(ak); p.needAck = !(this.hasCoord && ak === ckey(this.coord)) && this.occGet(ak) >= 0 && !akHeld;
         if (!p.needAck && !akHeld && !(this.hasCoord && ak === ckey(this.coord)) && !this.softSitting(ak) && !this.l31Held(ak, p.nc)) return false;
+        if (!p.needAck && !(this.hasCoord && ak === ckey(this.coord)) && this.l52Firm()) return false;   // L52.9 (wall.js): no admitter seated to give its word yet: the parent's path
       }
       const mm = newMsg('FIND'); mm.nc = p.nc; mm.from = p.nc; mm.ttl = K.FIND_TTL;
       const k = ckey(c); this.healOnly.delete(k); this.healTry.set(k, this.TICK);
@@ -179,6 +182,10 @@
           this.l31Fallback(p); continue;
         }
         if (this.TICK - p.at < K.L31_COMMIT) { this.l31Pend.push(p); continue; }
+        if (p.needAck && !p.ack && this.l52Firm()) {   // L52.9 (wall.js): in a room with a line the placement is sent on the admitter's word, not on the clock
+          if (this.TICK - p.at <= K.L31_ACK_WAIT) { this.l31Pend.push(p); continue; }
+          this.clearSoft(p.k, 'l52-no-assent'); this.healTry.delete(p.k); this.trace('L52-NOASSENT', this.id, this.coord, 'cell=%s seeker=%d', coordStr(unckey(p.k)), p.nc); this.l31Fallback(p); continue;
+        }
         this.l31Commit(p);
       }
       for (let i = 0; i < this.l31Done.length;) {
@@ -223,7 +230,7 @@
       const k = m.ck; const q = m.id, g = m.l31By; const commit = (m.l31 === 4);
       if (m.l31 === 6) {
         if (g !== this.id) return; const ac = admCell(unckey(k)); if (m.from < 0 || this.occGet(ckey(ac)) !== m.from) return;
-        for (const p of this.l31Pend) if (p.k === k && p.nc === q && p.at === m.l31At) p.ack = true;
+        for (const p of this.l31Pend) if (p.k === k && p.nc === q && p.at === m.l31At) { p.ack = true; if (this.l52Firm()) this.trace('L52-WORD', this.id, this.coord, 'cell=%s seeker=%d from=%d', coordStr(unckey(k)), q, m.from); }
         for (const d of this.l31Done) if (d.k === k && d.nc === q && d.at === m.l31At) d.wait = false;
         return;
       }
@@ -232,12 +239,13 @@
       if (m.from === g && m.from >= 0) this.l31Relay(m);
       let ok = this.ppAdm(k, g, q) && !this.liveElsewhere(q, k);
       const l31Loc = m.l31L >= 0 ? m.l31L : this.TICK;
+      if (ok && this.l52Given(k, q)) ok = false;   // L52.9 (wall.js): in a room with a line, a cell I gave myself is not given again on a later record
       if (ok && !this.l31Note(k, q, l31Loc, g, commit)) ok = false;
       const x = this.occGet(k);
       if (ok && x >= 0 && x !== q && (this.firstHandLive(k) || !this.occIsPhantom(k))) ok = false;
       if (ok && this.softSitting(k) && this.sitting.get(k).joiner !== q && this.sitting.get(k).assigner !== this.id) ok = false;
       if (ok) this.l31Beaten(k, q, l31Loc, g);
-      if (ok && !commit && m.tag !== 31) { const kc = unckey(k); const ac = admCell(kc); if (ckey(ac) === ckey(this.coord)) { const a = newMsg('PLACED'); a.ck = k; a.id = q; a.l31By = g; a.l31At = m.l31At; a.l31 = 6; this.emit(g, a); } }
+      if (ok && !commit && m.tag !== 31) { const kc = unckey(k); const ac = admCell(kc); if (ckey(ac) === ckey(this.coord)) { const a = newMsg('PLACED'); a.ck = k; a.id = q; a.l31By = g; a.l31At = m.l31At; a.l31 = 6; this.emit(g, a); this.l52Assented(k, q); } }
       if (!ok) { if (rook && commit) lv.L31_REFUSED++; if (m.tag === 31) lv.L31_FORGE_NO++; this.trace('L31-REFUSE', this.id, this.coord, 'cell=%s seeker=%d by=%d commit=%d', coordStr(unckey(k)), q, g, commit); return; }
       if (!rook || !commit) return;
       if (m.tag === 31) lv.L31_FORGE_OK++;
