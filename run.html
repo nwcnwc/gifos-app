@@ -505,6 +505,9 @@
   // ?agent=1 is read here, before the meeting rewrites its own address (agent mode reads window.__gifosAgentQ).
   // A driver that loads the page with its own start script (the agent SDK) may set the flag before this line.
   try { window.__gifosAgentQ = window.__gifosAgentQ === true || /[?&]agent=1(?:&|$)/.test(location.search); } catch (e) {}
+  // bot=1 (query or hash) is assistant mode for this tab; agent=1 is assistant mode too (plus the agent API).
+  // Read here, before the meeting rewrites its own address, and kept per tab so a reload stays an assistant.
+  try { if (/[?#&](?:bot|agent)=1(?:&|$)/.test(location.search + '&' + location.hash)) sessionStorage.setItem('gifos_bot', '1'); } catch (e) {}
   var decision = pinTarget(location.pathname, location.search, location.hash);
   if (decision && decision.ask) askLive(decision);
   else if (decision && decision.redirect) location.replace(decision.redirect);
@@ -739,15 +742,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <input id="lob-face-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp" hidden>
         <b id="lob-name" hidden>…</b>
       </div>
-      <p class="for-ai" id="lob-for-ai">
-        <a href="/meet/llms.txt" data-t="forAi">For AI assistants</a>
-        <button type="button" id="ai-assist" data-t="imAi" aria-pressed="false">I'm an AI assistant</button>
-      </p>
-      <p class="for-ai-note" id="ai-assist-note" role="status"></p>
       <div class="lob-sep"></div>
       <div class="lob-hist-h" data-t="lobRecent">Recent &amp; saved</div>
       <div id="lob-list"></div>
       <div id="lob-empty" class="lob-empty" data-t="lobEmpty">Calls you start or join show up here.</div>
+      <p class="for-ai" id="lob-for-ai">
+        <a href="/meet/llms.txt" data-t="forAi">For AI assistants</a>
+        <button type="button" id="ai-assist" class="ai-sw" role="switch" aria-checked="false" aria-pressed="false"><span class="ai-sw-word" data-t="imAi">I'm an AI assistant</span><span class="ai-sw-state" data-t="imAiOff">Off</span><span class="ai-knob" aria-hidden="true"></span></button>
+      </p>
+      <p class="for-ai-note" id="ai-assist-note" role="status"></p>
     </div>
   </div>
   <!-- The one top bar (R1, 2026-11-15): every top control sits in this row, in flow, so none lands on another; its measured bottom is where the meeting box starts. -->
@@ -759,7 +762,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <span id="onair" hidden><i class="lamp" aria-hidden="true"></i><span class="words"></span></span>
     <span class="status" id="status"><button data-t="statuscount" type="button" id="statuscount" data-agent="status" aria-expanded="false" aria-controls="roster">Joining…</button><span id="statusrest" class="statustext"></span></span>
     <a href="/meet/llms.txt" class="for-ai-link" id="meet-for-ai" data-t="forAi">For AI assistants</a>
-    <button type="button" id="meet-ai-assist" class="for-ai-btn" data-t="imAi" aria-pressed="false">I'm an AI assistant</button>
     <button type="button" id="hdrhand" aria-expanded="false" aria-controls="handq"></button>
   </div>
   <aside data-al="people" id="roster" aria-label="People">
@@ -3080,31 +3082,56 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const lvl = (o.blur === 0 || o.blur === 1 || o.blur === 2) ? o.blur : 2;
       return { cam: o.cam === true, mic: o.mic === true, blur: lvl };
     })();
-    // "I'm an AI assistant" is the same as ?bot=1, on this page, with no reload.
-    // The camera and microphone stay off, so the tap never asks for them.
-    function becomeAssistant() {
-      try { sessionStorage.setItem('gifos_bot', '1'); } catch (e) {}
-      myStatus.bot = true;
-      myStatus.camOff = true;
-      myStatus.muted = true;
-      // An assistant publishes no face, so blur stays off.
-      if (myStatus.bot) myStatus.blur = 0;
-      try { if (localStream) for (const tr of localStream.getTracks()) tr.enabled = false; } catch (e) {}
-      for (const id of ['ai-assist', 'meet-ai-assist']) {
-        const b = document.getElementById(id);
-        if (b) b.setAttribute('aria-pressed', 'true');
+    // Assistant mode is set by bot=1 in the address (kept per tab, read in the head).
+    // The lobby's "I'm an AI assistant" switch is only a way to set bot=1 for this tab
+    // before joining; the meeting has no switch (it covered the last tile's name).
+    // The camera and microphone stay off, so neither press asks for them.
+    let blurBeforeAssistant = null;
+    function paintAssistant(on) {
+      const b = document.getElementById('ai-assist');
+      if (b) {
+        b.setAttribute('aria-checked', on ? 'true' : 'false');
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        const st = b.querySelector('.ai-sw-state');
+        if (st) {
+          st.setAttribute('data-t', on ? 'imAiSwOn' : 'imAiOff');
+          st.textContent = on ? uiText('imAiSwOn', 'On') : uiText('imAiOff', 'Off');
+        }
       }
       const note = document.getElementById('ai-assist-note');
-      if (note) note.textContent = uiText('imAiOn', 'Assistant mode is on. Your camera and microphone stay off.');
+      if (note) note.textContent = on ? uiText('imAiOn', 'Assistant mode is on. Your camera and microphone stay off.') : '';
+    }
+    function becomeAssistant(on) {
+      if (on === undefined) on = true;
+      on = !!on;
+      if (on) {
+        if (!myStatus.bot) blurBeforeAssistant = myStatus.blur;
+        try { sessionStorage.setItem('gifos_bot', '1'); } catch (e) {}
+        myStatus.bot = true;
+        myStatus.camOff = true;
+        myStatus.muted = true;
+        // An assistant publishes no face, so blur stays off.
+        if (myStatus.bot) myStatus.blur = 0;
+        try { if (localStream) for (const tr of localStream.getTracks()) tr.enabled = false; } catch (e) {}
+      } else {
+        try { sessionStorage.removeItem('gifos_bot'); } catch (e) {}
+        myStatus.bot = false;
+        if (!myStatus.bot && (blurBeforeAssistant === 0 || blurBeforeAssistant === 1 || blurBeforeAssistant === 2)) myStatus.blur = blurBeforeAssistant;
+        else if (!myStatus.bot && myStatus.blur === 0) myStatus.blur = 2;
+        blurBeforeAssistant = null;
+      }
+      paintAssistant(on);
       try { updateTile('me'); } catch (e) {}
       try { broadcastStatus(); } catch (e) {}
       try { paintControls(); } catch (e) {}
-      try { setBotView(true); } catch (e) {}
+      try { setBotView(on); } catch (e) {}   // a lobby Off press takes back a bot view it asked for
     }
-    for (const id of ['ai-assist', 'meet-ai-assist']) {
-      const b = document.getElementById(id);
-      // The same button takes a person back from the bot view (no reload, no reseat).
-      if (b) b.addEventListener('click', () => { if (typeof botViewOn !== 'undefined' && botViewOn && myStatus.bot) backToNormalView(); else becomeAssistant(); });
+    {
+      const b = document.getElementById('ai-assist');
+      if (b) b.addEventListener('click', () => becomeAssistant(b.getAttribute('aria-checked') !== 'true'));
+      let on0 = false;
+      try { on0 = sessionStorage.getItem('gifos_bot') === '1'; } catch (e) {}
+      if (on0) paintAssistant(true);   // a bot=1 page shows the lobby switch On
     }
     // The Stage seat comes back with its original claim time, so the person
     // keeps their place in step-up order. A grant that has not arrived yet
@@ -5383,10 +5410,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     document.addEventListener('click', (e) => {
       if (!IS_ANDROID || !IS_MOBILE) return;
       const t = e.target;
-      if (t && t.closest && t.closest('#appfull')) {
+      const fb = t && t.closest ? t.closest('#appfull') : null;
+      if (fb) {
         // The quiet full screen the first tap took: this tap asks for the
-        // filmstrip, and the control's own toggle must not leave.
-        if (e.isTrusted && fsQuiet()) { e.preventDefault(); e.stopPropagation(); openFsView('auto'); return; }
+        // filmstrip, and the control's own toggle must not leave. A person's
+        // tap is one on the control or on its item in the header menu (the
+        // menu relays the choice with click(), which is never isTrusted).
+        if ((e.isTrusted || fb.__byPerson === true) && fsQuiet()) { e.preventDefault(); e.stopPropagation(); openFsView('auto'); return; }
         fsStripAsk = !pageFull() && fsStripOk();   // a deliberate full screen brings the filmstrip with it
         setAutoFsOff(pageFull()); return;   // a tap that leaves full screen turns this off; one that enters turns it back on
       }
@@ -9733,7 +9763,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const b = document.createElement('button');
           b.type = 'button'; b.setAttribute('role', 'menuitem');
           b.textContent = (src.textContent || '').trim() || src.getAttribute('aria-label') || src.title || id;
-          b.addEventListener('click', () => { closeMenu(); src.click(); });
+          // the person's choice goes on to the control as theirs (src.__byPerson while its click runs)
+          b.addEventListener('click', (ev) => { closeMenu(); src.__byPerson = ev.isTrusted === true; try { src.click(); } finally { src.__byPerson = false; } });
           menu.appendChild(b);
         }
         const r = more.getBoundingClientRect();
@@ -14843,6 +14874,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // Their own tile is on the grid even while reconcileGrid hides it: a row-mate on the Stage is shown on the strip,
       // and a held face beside it would be a second tile and one person too many in the count.
       const ownTile = (pid) => { const q = peers.get(pid), t = q && !q.headless && q.tile; return !!(t && t.parentNode); };
+      // A door tile makePeer kept off the grid (my seat did not name them yet) comes back in the pass where my seat names
+      // them, once their pair is up: the same rule as the connect edge and the 2 s beat (restoreDoorTile). Waiting for the beat
+      // left a connected, seated member on a held "Reconnecting…" face meanwhile (a bot joining four people, gate views).
+      if (typeof doorOffGrid === 'object' && doorOffGrid && doorOffGrid.size && typeof seatStranger === 'function') {
+        for (const pid of Array.from(doorOffGrid)) {
+          const q = peers.get(pid);
+          if (q && q.connected && !seatStranger(q)) { restoreDoorTile(q); changed = true; }
+        }
+      }
       for (const pid of Array.from(rosterTiles.keys())) {
         const why = !(Array.isArray(rosterIds) && rosterIds.includes(pid)) ? 'unrostered' : ownTile(pid) ? 'new-pair' : notRow(pid) ? 'not-row' : null;
         if (why) { dropRosterTile(pid, why); changed = true; }
@@ -22092,39 +22132,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // view-only join a denied camera lands in; a viewer the host later
           // calls up gets media through lateMedia (a user gesture), exactly
           // like any view-only guest tapping the mic button.
-          let assistantBoot = false;
-          try { assistantBoot = sessionStorage.getItem('gifos_bot') === '1'; } catch (e) {}
           if (params.get('agent') === '1' || (typeof window !== 'undefined' && window.__gifosAgentQ === true)) params.set('bot', '1');   // agent mode (gifosAgent) is bot mode, and it cannot be untagged
-          if (params.get('bot') === '1') {
-            // Assistant mode: muted, camera off, and no permission prompt.
-            // The transcript is the other people. A tap can still open a mic later.
-            assistantBoot = true;
-            myStatus.bot = true;
-            myStatus.camOff = true;
-            myStatus.muted = true;
-            myStatus.blur = 0;
-            localStream = null;
-            try { updateTile('me'); } catch (e) {}
-            try { broadcastStatus(); } catch (e) {}
-            try { setBotView(true); } catch (e) {}
-            try {
-              for (const id of ['ai-assist', 'meet-ai-assist']) {
-                const b = document.getElementById(id);
-                if (b) b.setAttribute('aria-pressed', 'true');
-              }
-            } catch (e) {}
-            return;
-          }
+          let assistantBoot = params.get('bot') === '1';
+          try { assistantBoot = assistantBoot || sessionStorage.getItem('gifos_bot') === '1'; } catch (e) {}
           if (assistantBoot) {
-            myStatus.bot = true;
-            myStatus.camOff = true;
-            myStatus.muted = true;
-            // An assistant publishes no face, so blur stays off.
-            if (myStatus.bot) myStatus.blur = 0;
+            // Assistant mode (bot=1, or the lobby switch, which sets it for this tab):
+            // muted, camera off, no permission prompt, blur off. A tap can still open a mic later.
+            becomeAssistant(true);
             localStream = null;
-            try { updateTile('me'); } catch (e) {}
-            try { broadcastStatus(); } catch (e) {}
-            try { setBotView(true); } catch (e) {}
             return;
           }
           if (BROADCAST && !bcHostStored()) {
@@ -22166,6 +22181,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               localStream = null;
               try { updateTile('me'); } catch (e) {}
               try { broadcastStatus(); } catch (e) {}
+              if (typeof noteAudioDevices === 'function') noteAudioDevices();   // the list only (no prompt): the first Mic tap can ask which one
               return;
             }
             localStream = stream;
@@ -37723,7 +37739,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return t;
       }, () => null);
     }
-    function lateMedia(kind) {
+    // pick: a microphone chosen in the mic chooser before any mic was open
+    // (a quiet join holds none): the ask names that device.
+    function lateMedia(kind, pick) {
       if (bcWatchingViewer()) return;
       if (myStatus.bot) { setStatus(uiText('stABotDoesNotUse', 'A bot does not use a camera or speak.')); return; }
       if (BROADCAST && !bcMayPublishAv()) { enforceBroadcastSeat(); return; }
@@ -37749,8 +37767,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           tr.enabled = true;
           if (kind === 'mic') myStatus.muted = false; else myStatus.camOff = false;
           paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateMediaSession();
-          if (typeof syncSpeech === 'function') syncSpeech();
           if (kind === 'cam') setStatus(typeof camOnWords === 'function' ? camOnWords() : statusWords('camOn')); else sayState('micOn');
+          if (typeof syncSpeech === 'function') syncSpeech();   // after the status: a caption notice it says stays on screen
         }, () => lateMedia(kind));
         return;
       }
@@ -37766,11 +37784,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // who was promised none, and a granted-but-disabled track is still a
       // camera we took.
       const appRoom = document.body.classList.contains('app-room');
-      sayState(appRoom ? 'askingMic' : 'askingMedia');
+      sayState((appRoom || kind === 'mic') ? 'askingMic' : 'askingMedia');   // name only what is asked for
       // A camera tap while the mic is already held asks for video alone: the
       // held mic is never re-taken, and a missing camera then fails on its own.
       const haveMic = !!(localStream && localStream.getAudioTracks()[0]);
-      const ask = appRoom ? { audio: true } : (kind === 'cam' && haveMic) ? { video: camVideoConstraints() } : { video: camVideoConstraints(), audio: true };
+      // A Mic tap asks for the microphone alone. A camera taken with it would be
+      // held as a disabled, live track: a camera light over a page that says
+      // camera off (A CAMERA THAT IS OFF IS NOT OPEN). Since a quiet join opens
+      // nothing, this tap is how most people's mic opens.
+      const micAsk = pick ? { deviceId: { exact: pick } } : true;
+      const ask = (appRoom || kind === 'mic') ? { audio: micAsk } : haveMic ? { video: camVideoConstraints() } : { video: camVideoConstraints(), audio: true };
       const gen = ++lateGen, won0 = lateWon;
       lateTimer = setTimeout(() => {
         if (gen !== lateGen || !lateAsk) return;
@@ -37800,14 +37823,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             }
             if (flipped) {
               paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateMediaSession();
-              if (typeof syncSpeech === 'function') syncSpeech();
               if (kind === 'cam') setStatus(typeof camOnWords === 'function' ? camOnWords() : statusWords('camOn')); else sayState('micOn');
+              if (typeof syncSpeech === 'function') syncSpeech();   // after the status: a caption notice it says stays on screen
             }
             return;
           }
           lateWon++;
           clearTimeout(lateTimer);
           lateAsk = false;
+          if (pick) micDeviceId = pick;   // the chooser's pick is the mic in use
           // Quiet-join discipline still holds: only the tapped controls go on
           // (this tap and any joined while the ask was open), and not one a
           // room order arrived for during the ask.
@@ -37850,17 +37874,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           broadcastStatus();
           reactRoomState();
           updateMediaSession();
-          if (typeof syncSpeech === 'function') syncSpeech();
           if (refused) setStatus(refused);
           else setStatus(kind === 'cam'
             ? (gotCam ? (typeof camOnWords === 'function' ? camOnWords() : 'Camera on.') : 'No camera on this device (' + ((camErr && camErr.name) || 'error') + '). Your microphone is ready — tap the mic button to talk.')
             : 'Mic on.');
+          // After the status: a notice syncSpeech says (captions unavailable on
+          // this phone) must not be overwritten by "Mic on." in the same task.
+          if (typeof syncSpeech === 'function') syncSpeech();
           if (typeof noteAudioDevices === 'function') noteAudioDevices();
         })
         .catch((err) => {
           if (gen !== lateGen || lateWon !== won0) return;
           clearTimeout(lateTimer);
           lateAsk = false;
+          if (pick && !gumRefused(err)) { setStatus(uiText('stMicPickFailed', 'That microphone could not be opened. Your mic did not change.')); return; }
           const name = (err && err.name) || 'error';
           const what = ask.audio ? (ask.video ? 'camera or microphone' : 'microphone') : 'camera'; // name only what was asked for
           setStatus(gumRefused(err)
@@ -37876,8 +37903,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (BROADCAST && !bcMayPublishAv()) { enforceBroadcastSeat(); return; }
       if (document.body.classList.contains('app-room') && !roomAudioOn()) { setStatus(uiText('stTalkIsOffOnlyThe', 'Talk is off — only the app host can turn it on.')); return; }
-      if (!localStream) return lateMedia('mic');
-      const track = localStream.getAudioTracks()[0]; if (!track) return lateMedia('mic');
+      const track = localStream && localStream.getAudioTracks()[0];
+      if (!track) {
+        // No mic open yet (a quiet join opens none): with two or more known
+        // microphones the tap asks which one, as it does over a held mic.
+        if (micChooserOpen()) { closeMicChooser(true); return; }
+        if (micInputs.length > 1 && !bootGumPending && !lateAsk) { openMicChooser(null); return; }
+        return lateMedia('mic');
+      }
       if (!track.enabled && amGloballyMuted()) { sayState(modOf('me').mute && modOf('me').mute.wait ? 'micWaitRoom' : 'mutedByHost', { by: (modOf('me').mute || {}).by }); return; }
       if (micChooserOpen()) { closeMicChooser(true); return; }
       // More than one microphone: a tap while muted asks which one (the camera
@@ -37959,7 +37992,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function openMicChooser(track) {
       const el = document.getElementById('micchooser');
-      if (!el) { setMicOn(track, true); return; }
+      if (!el) { if (track) setMicOn(track, true); else lateMedia('mic'); return; }
       try { if (camChooserOpen()) closeCamChooser(); } catch (e) {}
       const cur = micIdOf(track);
       const spk = speakerChoices();
@@ -37994,7 +38027,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function pickMic(id) {
       closeMicChooser(true);
       const track = localStream && localStream.getAudioTracks()[0];
-      if (!track) return;
+      if (!track) { lateMedia('mic', id); return; }   // no mic open yet: open the picked one (a refusal says so, nothing changes)
       if (amGloballyMuted()) { sayState(modOf('me').mute && modOf('me').mute.wait ? 'micWaitRoom' : 'mutedByHost', { by: (modOf('me').mute || {}).by }); return; }
       if (id === micIdOf(track)) { setMicOn(track, true); return; }
       micPickPrev = micDeviceId;   // a pick that will not open goes back to this one (the camera's camPickPrev)
@@ -41138,8 +41171,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // S5 (Nathan 2026-11-17): the Run picker always offers these, first, even on a device that never opened GifOS Home.
     // Picking one that is not on the device puts it here, then runs it. Take Turns is built from this site's starter
-    // code (sample-apps.js, loaded only then); Whiteboard is the App Store's GIF on this site.
-    const RUN_DEFAULTS = [{ appId: 'taketurns', name: 'Take Turns', from: 'sample' }, { appId: 'whiteboard', name: 'Whiteboard', from: 'store' }];
+    // code (sample-apps.js, loaded only then). Survey and Whiteboard are App Store GIFs on this site.
+    const RUN_DEFAULTS = [{ appId: 'taketurns', name: 'Take Turns', from: 'sample' }, { appId: 'survey', name: 'Survey', from: 'store' }, { appId: 'whiteboard', name: 'Whiteboard', from: 'store' }];
     const scriptOnce = {};
     function loadScriptOnce(src) {
       if (!scriptOnce[src]) scriptOnce[src] = new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.onload = () => res(); el.onerror = () => { delete scriptOnce[src]; rej(new Error('load ' + src)); }; document.head.appendChild(el); });
@@ -41449,13 +41482,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           params.set('v', parsed.room);
           if (parsed.av) params.set('av', parsed.av); else params.delete('av');
           params.set('mb', '1');
-          if (msg && msg.bot) {
+          // bot=1 is the one switch: a session that asks for it, or a tab already in
+          // assistant mode, keeps it; nothing here drops it.
+          if ((msg && msg.bot) || myStatus.bot) {
             params.set('bot', '1');
-            myStatus.bot = true;
-            myStatus.camOff = true;
-            myStatus.muted = true;
-            myStatus.blur = 0;
-          } else params.delete('bot');
+            becomeAssistant(true);
+          }
           if (msg && msg.name) window.__gifosMeetName = String(msg.name).slice(0, 40);
           capClosed = false;   // a new meeting may open devices again
           return new Promise((resolve, reject) => {
@@ -41687,7 +41719,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
 
     // ---- AGENT MODE AND THE BOT VIEW (window.gifosAgent v1: js/meet-agent.js) ----------------------------
-    // ?agent=1 is bot mode that cannot be untagged; the bot toggle ("I'm an AI assistant", ?bot=1) is bot mode a
+    // ?agent=1 is bot mode that cannot be untagged; bot=1 (or the lobby's "I'm an AI assistant" switch, which sets it) is bot mode a
     // person can leave with one tap. Either way the page is the same seat: the bot view only changes what is drawn
     // (no tiles, a text-first view), and the agent API reads what this page already holds. vars: becomeAssistant
     // and the boot may call setBotView before this line runs.
@@ -41948,7 +41980,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function setBotView(on) {
       on = !!on;
-      if (on && !room) { botViewWant = true; return; }   // the lobby: the meeting's boot turns it on
+      if (!room) { botViewWant = on; return; }   // the lobby: the meeting's boot turns it on (an Off press there takes it back)
       if (on) agentStart();
       if (on === !!botViewOn) return;
       botViewOn = on;
@@ -41975,8 +42007,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       delete myStatus.think; delete myStatus.nts;
       myStatus.camOff = true;
       if (!botVoiceTrack) myStatus.muted = true;
-      for (const id of ['ai-assist', 'meet-ai-assist']) { const b = document.getElementById(id); if (b) b.setAttribute('aria-pressed', 'false'); }
-      const note = document.getElementById('ai-assist-note'); if (note) note.textContent = '';
+      try { paintAssistant(false); } catch (e) {}   // the lobby switch shows Off again
       setBotView(false);
       try { setPersonalBlur(2); } catch (e) {}   // a person's camera, when they turn it on, starts at Max blur like any join
       if (agentCore) agentCore.stop();   // open video.in / video.out ports keep running

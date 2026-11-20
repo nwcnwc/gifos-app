@@ -8490,6 +8490,48 @@
       "sha256": "76753624e994eca309561e0ede069bbbe07a778ca50de00bd7899a96049ab1e4"
     },
     {
+      "slug": "survey",
+      "appId": "survey",
+      "name": "Survey",
+      "shortName": "Survey",
+      "version": "1.0",
+      "tagline": "Ask the room, and watch the votes come in.",
+      "author": {
+        "name": "GifOS",
+        "url": "https://gifos.app"
+      },
+      "minBuild": 947,
+      "offline": true,
+      "releaseDate": "2026-11-19",
+      "updated": "2026-11-19",
+      "categories": [
+        "Productivity"
+      ],
+      "tags": [
+        "survey",
+        "poll",
+        "vote",
+        "meeting",
+        "multiplayer",
+        "offline"
+      ],
+      "accent": [
+        64,
+        156,
+        214
+      ],
+      "cover": "/apps/survey/cover.jpg",
+      "bytes": 132511,
+      "download": 0,
+      "provides": null,
+      "signature": {
+        "type": "domain",
+        "id": "gifos.app",
+        "ts": "2026-11-20"
+      },
+      "sha256": "caff0d06fcf0cf0b42cbfdca0b45895c8cb155ce8145cca099de4d8686301eae"
+    },
+    {
       "slug": "svg-edit",
       "appId": "svg-edit",
       "name": "SVG-Edit",

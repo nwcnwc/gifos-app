@@ -884,6 +884,8 @@
  "meet.forAi": "Для ИИ-ассистентов",
  "meet.imAi": "Я ИИ-ассистент",
  "meet.imAiOn": "Режим ассистента включён. Камера и микрофон остаются выключенными.",
+ "meet.imAiOff": "Выкл",
+ "meet.imAiSwOn": "Вкл",
  "meet.agMoveUp": "Выше",
  "meet.agMoveDown": "Ниже",
  "meet.agRemove": "Удалить",

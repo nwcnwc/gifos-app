@@ -1394,6 +1394,17 @@
     border-radius: .35rem; background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: 600 .9rem/1.3 ui-monospace, monospace; text-align: center; }
   .name-box #help-keys { min-height: 44px; padding: .3rem .6rem; border: 0; background: none; color: var(--accent, #7b5cff); text-decoration: underline; }
   .name-box p { color: var(--muted, #8888aa); font-size: .85rem; margin-bottom: 1rem; }
+  /* A short window still shows every choice on Run an app, with Cancel, without a scroll. */
+  @media (max-height: 560px) {
+    #app-modal .name-box { padding: 12px 16px; }
+    #app-modal .name-box h3 { margin: 0 0 4px; }
+    #app-modal .dlg-body > p { margin-top: 0; margin-bottom: 8px; }
+    #app-modal .dlg-actions { padding-top: 8px; }
+    #app-modal #app-list { margin: 4px 0 !important; }
+    #app-modal #app-add { padding-top: 6px !important; margin-bottom: 0 !important; }
+    #app-modal #app-add > p { margin: 0 0 4px !important; }
+    #app-modal #app-make-own { margin-top: 4px !important; }
+  }
   #adm-modal #adm-hint { font-size: 16px; line-height: 1.45; }
   .name-box input { width: 100%; padding: .55rem .7rem; border-radius: .5rem; min-height: 48px;
     border: 1px solid var(--border, #2a2a3f); background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: inherit; margin-bottom: .8rem; }
@@ -3635,11 +3646,20 @@
   .ag-count.at { color: var(--c-yellow); }
   .ag-limit { flex: 1 0 100%; color: var(--c-yellow); font-size: 12px; }
   .ag-limit[hidden] { display: none; }
-  .for-ai { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 12px 0 0; font-size: 14px; }
-  .for-ai a { color: var(--c-blue); text-decoration: underline; font-size: 13px; }
-  .topchip .for-ai-link { color: var(--c-white); text-decoration: underline; font-size: 13px; }
-  .for-ai button, .topchip .for-ai-btn { min-height: 36px; padding: 0 12px; border: 0; border-radius: var(--r-pill); background: var(--c-ink-2); color: var(--c-white); font: inherit; font-size: 13px; cursor: pointer; }
-  .for-ai-note { margin: 4px 0 0; color: var(--c-gray); font-size: 13px; }
+  .for-ai { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 14px 0 0; font-size: 11px; }
+  .for-ai a { color: var(--c-blue); text-decoration: underline; font-size: 11px; }
+  .topchip .for-ai-link { color: var(--c-white); text-decoration: underline; font-size: 12px; }
+  .for-ai .ai-sw { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; max-width: 16rem; padding: 0 8px; border: 1px solid var(--c-gray); border-radius: var(--r-pill); background: transparent; color: var(--c-gray); font: inherit; font-size: 11px; font-weight: 500; cursor: pointer; }
+  .ai-sw-word { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ai-sw-state { flex: 0 0 auto; font-weight: 650; }
+  .ai-knob { position: relative; flex: 0 0 auto; width: 22px; height: 12px; border-radius: var(--r-pill); background: var(--c-gray); }
+  .ai-knob::after { content: ""; position: absolute; top: 2px; left: 2px; width: 8px; height: 8px; border-radius: var(--r-pill); background: var(--c-white); transition: transform var(--t-fast) ease; }
+  .for-ai .ai-sw[aria-checked="true"] { background: var(--c-blue); border-color: var(--c-blue); color: var(--c-white); opacity: 1; }
+  .ai-sw[aria-checked="true"] .ai-knob { background: var(--c-white); }
+  .ai-sw[aria-checked="true"] .ai-knob::after { transform: translateX(10px); background: var(--c-blue); }
+  .ai-sw:focus-visible { outline: 2px solid var(--c-blue); outline-offset: 2px; opacity: 1; }
+  .for-ai-note { margin: 2px 0 0; color: var(--c-gray); font-size: 12px; font-weight: 500; }
+  .for-ai-note:empty { display: none; }
   .ag-in-min { flex: 0 0 72px; width: 72px; }
   .ag-mini { flex: 0 0 auto; min-width: 40px; min-height: 40px; border: 0; border-radius: var(--r-pill); background: none; color: var(--c-gray); font: inherit; font-size: 16px; cursor: pointer; }
   .ag-add { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }

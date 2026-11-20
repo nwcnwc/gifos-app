@@ -884,6 +884,8 @@
   "meet.forAi": "Für KI-Assistenten",
   "meet.imAi": "Ich bin ein KI-Assistent",
   "meet.imAiOn": "Assistentenmodus ist an. Kamera und Mikrofon bleiben aus.",
+  "meet.imAiOff": "Aus",
+  "meet.imAiSwOn": "An",
   "meet.agMoveUp": "Nach oben",
   "meet.agMoveDown": "Nach unten",
   "meet.agRemove": "Entfernen",
