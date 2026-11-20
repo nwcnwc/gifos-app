@@ -1,0 +1,17 @@
+{
+  "title": "计算器",
+  "tab.graph": "图像",
+  "tab.list": "列表",
+  "add": "+ 表达式",
+  "view.reset": "重置视图",
+  "row.show": "显示",
+  "row.hide": "隐藏",
+  "row.delete": "删除此行",
+  "placeholder": "y = x^2  或  2+2",
+  "slider.min": "滑块最小值",
+  "slider.max": "滑块最大值",
+  "slider.play": "播放动画",
+  "err.unexpected": "意外的“{what}”",
+  "err.expected": "缺少“{what}”",
+  "err.end": "表达式意外结束"
+}
