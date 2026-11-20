@@ -1640,6 +1640,8 @@
       videoStep(pid) { const L = links.get(pid); return L && L.video && L.thr && L.thr.step >= 0 ? L.thr : null; },
       // TURN.13: the rate each audio sender of the link takes while it is starved (bits a second), or 0: its full rate
       voiceCap(pid) { const L = links.get(pid); return L && L.state === 'up' && L.voiceLow > 0 ? L.voiceLow : 0; },
+      // TURN.23: a free link (no vouch: the free pool's byte cap is on it), up or still dialling; a warm standby too
+      thin(pid) { const L = links.get(pid); return !!L && (L.state === 'up' || L.state === 'dial') && !L.video; },
       busy(pid) { const L = links.get(pid); return !!L && L.busy; },
       farBusy(pid) { const L = links.get(pid); return !!L && L.video && L.farBusy; },
       // the pcs that run through TURN (the page watches their path, server and capacity)
@@ -1699,7 +1701,74 @@
     return Object.assign({}, msg, { msg: m });
   }
 
+  // TURN.23 THE THIN FREE LINK. An unvouched TURN link rides the free pool, whose server passes a fixed number of wire
+  // bytes a second each way and drops the rest, counting every packet's whole size. What fills a link is rarely the sound
+  // itself: it is packets (every audio stream is 50 packets a second, sound or none, each with 60-70 bytes of framing)
+  // and whole session descriptions sent again at every renegotiation. Two rules, each at the one place every such byte
+  // passes (the sound keeps its rate: a sum of voices needs it, AUX_AUDIO_BPS):
+  //   .1 SILENCE SENDS NO SOUND PACKETS: every audio stream I send on a free link is encoded with Opus DTX (dtxSdp on the
+  //      description the far end gave me: its `usedtx=1` is what tells MY encoder), so a muted or quiet side sends a
+  //      comfort-noise packet every 400 ms instead of 50 packets a second. Nothing is asked of the far end: an older
+  //      page on the far side keeps sending as it did, and what I send it is plain Opus it already decodes.
+  //   .2 A RENEGOTIATION SENDS EACH LINE ONCE: a description is a list of sections that repeat each other line for line
+  //      (a dozen m-lines, tens of KB). rzPack sends the distinct lines once and each section as numbers; rzOpen gives
+  //      the exact text back. A page says it reads the packed form with `rz: 1` on the plain roffer/ranswer it sends, and
+  //      a packed frame says so by itself; a far end that never says it (an older page) is sent plain descriptions.
+  // dtxSdp(sdp) -> the same description with usedtx=1 on every Opus format of every audio section (a string in, a string out)
+  function dtxSdp(sdp) {
+    if (typeof sdp !== 'string' || sdp.indexOf('m=audio') < 0) return sdp;
+    const nl = sdp.indexOf('\r\n') >= 0 ? '\r\n' : '\n';
+    return sdp.split(/(?=^m=)/m).map((sec) => {
+      if (sec.indexOf('m=audio') !== 0) return sec;
+      const pts = new Set(); let m; const re = /^a=rtpmap:(\d+) opus\//gmi; while ((m = re.exec(sec))) pts.add(m[1]);
+      if (!pts.size) return sec;
+      const lines = sec.split(nl), seen = new Set();
+      for (let i = 0; i < lines.length; i++) {
+        const f = /^a=fmtp:(\d+) (.*)$/.exec(lines[i]); if (!f || !pts.has(f[1])) continue;
+        seen.add(f[1]);
+        if (/(^|;)\s*usedtx=1\s*(;|$)/.test(f[2])) continue;
+        const rest = f[2].split(';').map((x) => x.trim()).filter((x) => x && !/^usedtx=/.test(x));
+        rest.push('usedtx=1'); lines[i] = 'a=fmtp:' + f[1] + ' ' + rest.join(';');
+      }
+      for (const pt of pts) if (!seen.has(pt)) {   // an Opus format with no parameters line: it gets one, after its rtpmap
+        const at = lines.findIndex((l) => new RegExp('^a=rtpmap:' + pt + ' ', 'i').test(l)); if (at >= 0) lines.splice(at + 1, 0, 'a=fmtp:' + pt + ' usedtx=1');
+      }
+      return lines.join(nl);
+    }).join('');
+  }
+  // rzPack(msg) -> { k:'rz', t:'o'|'a', y:<description type>, oid?, d:[distinct lines], s:[line numbers] } for a roffer or
+  // ranswer, or null when msg is neither or its description is no text. rzOpen(frame) -> the roffer/ranswer, or null.
+  // Exact: rzOpen(rzPack(m)).sdp.sdp === m.sdp.sdp, byte for byte (line ends and a missing last line end included).
+  const RZ_MAX_LINES = 20000;
+  function rzPack(msg) {
+    if (!msg || (msg.k !== 'roffer' && msg.k !== 'ranswer') || !msg.sdp || typeof msg.sdp.sdp !== 'string' || typeof msg.sdp.type !== 'string') return null;
+    for (const k of Object.keys(msg)) if (k !== 'k' && k !== 'sdp' && k !== 'oid' && k !== 'rz') return null;   // a field this form does not carry: the plain frame goes
+    const text = msg.sdp.sdp, crlf = text.indexOf('\r\n') >= 0;
+    if (crlf && /(^|[^\r])\n/.test(text)) return null;   // mixed line ends: not worth a form of their own
+    const lines = text.split(crlf ? '\r\n' : '\n');
+    if (lines.length > RZ_MAX_LINES) return null;
+    const at = new Map(), d = [], s = [];
+    for (const l of lines) { let i = at.get(l); if (i === undefined) { i = d.length; d.push(l); at.set(l, i); } s.push(i); }
+    const out = { k: 'rz', t: msg.k === 'roffer' ? 'o' : 'a', y: msg.sdp.type, n: crlf ? 1 : 0, d, s };
+    if (msg.oid != null) out.oid = msg.oid;
+    return out;
+  }
+  function rzOpen(m) {
+    if (!m || m.k !== 'rz' || (m.t !== 'o' && m.t !== 'a') || typeof m.y !== 'string' || !Array.isArray(m.d) || !Array.isArray(m.s) || m.s.length > RZ_MAX_LINES) return null;
+    const lines = [];
+    for (const i of m.s) { if (!Number.isInteger(i) || i < 0 || i >= m.d.length || typeof m.d[i] !== 'string') return null; lines.push(m.d[i]); }
+    const out = { k: m.t === 'o' ? 'roffer' : 'ranswer', sdp: { type: m.y, sdp: lines.join(m.n ? '\r\n' : '\n') } };
+    if (m.oid != null) out.oid = m.oid;
+    return out;
+  }
+  // THE BYTE BUDGET OF ONE FREE LINK, each way, from the pool's cap (wire bytes a second): at rest (every mic muted) a
+  // third of it; with every seat talking five sixths (one mix at AUX_AUDIO_BPS is 8 KB/s of sound and 3.5 of packet
+  // framing, beside the rest load); a stream that carries silence sends at most silentPps packets a second (DTX sends
+  // 2.5). The room tests hold every free link to this, so a change that puts more on a free link shows there first.
+  function linkBudget(capBps) { const c = +capBps > 0 ? +capBps : 0; return { cap: c, rest: Math.floor(c / 3), talk: Math.floor(c * 5 / 6), silentPps: 5 }; }
+
   const api = {
+    dtxSdp, rzPack, rzOpen, linkBudget,
     DEFAULT_WORKER, WORKER_KEY, FETCH_TIMEOUT_MS, RETRY_BASE_MS, RETRY_MAX_MS, SIDE_MAX, STANDBY_SWITCH_MS, THROTTLE_LOOK_MS, THROTTLE_UP_MS,
     THROTTLE_STEPS, THROTTLE_LOSS, throttlePlan, throttleNext, stepOf, voiceLow,
     retryDelayMs, parseIce, hasTurnServer, webHostOk, workerBase, askIce, askSub, createCredentials,

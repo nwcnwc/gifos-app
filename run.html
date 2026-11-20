@@ -13256,6 +13256,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (standbyHolds(p, msg) || bridgeHolds(p, msg)) return Promise.resolve();
       msg = bridgeOut(p, msg);
       if (turnWeb.size && (msg.k === 'roffer' || msg.k === 'ranswer' || msg.k === 'sig')) { const w = turnWeb.get(p.id); if (w && w.channel(msg)) return Promise.resolve(); }   // the web path negotiates with its end in this page
+      // TURN.23.2 A RENEGOTIATION SENDS EACH LINE ONCE (js/meet-turn.js rzPack): to a far end that said it reads the packed
+      // form; a plain description says that I do (rz: 1; a page that does not know the word ignores it and is sent plain ones).
+      if (msg.k === 'roffer' || msg.k === 'ranswer') { try { if (p.rzOk) { const z = GifOS.meetTurn.rzPack(msg); if (z) msg = z; } else msg = Object.assign({}, msg, { rz: 1 }); } catch (e) {} }
       const dc = p.dc;
       if (typeof clog === 'function') dcTally(msg); // DEBUG: what the channel bytes are
       const bulk = isGossipFrame(msg);
@@ -14326,7 +14329,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const out = [];
       for (const p of peers.values()) {
         if (!p.pc) continue;
-        const r = { pid: p.id, name: p.name || rosterNames[p.id] || null, conn: p.pc.connectionState, link: !!(turnLinks && turnLinks.isLink(p.id)),
+        const r = { pid: p.id, name: p.name || rosterNames[p.id] || null, conn: p.pc.connectionState, link: !!(turnLinks && turnLinks.isLink(p.id)), free: !!(turnLinks && turnLinks.thin(p.id)), sb: !!(turnLinks && turnLinks.standby(p.id)),
           video: !!(turnLinks && turnLinks.video(p.id)), paused: !!(p.tile && p.tile.querySelector(':scope > .tpause:not(.tpause-busy)')), busyNote: !!(p.tile && p.tile.querySelector(':scope > .tpause-busy')), policy: null, turn: false,
           local: null, remote: null, vOut: 0, aOut: 0, vIn: 0, aIn: 0 };
         try { const c = p.pc.getConfiguration(); r.policy = c.iceTransportPolicy; r.turn = GifOS.meetTurn.hasTurnServer(c.iceServers); } catch (e) {}
@@ -14464,6 +14467,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       pc.ondatachannel = (ev) => { if (p.pc !== pc) return; try { ev.channel.__pc = pc; } catch (e) {} wireDc(p, ev.channel); };
       // every description this pair is handed passes soloSdp first (a Stadium picture does not wait for its sound)
       if (typeof soloSdp === 'function') { const srd0 = pc.setRemoteDescription.bind(pc); pc.setRemoteDescription = (d) => srd0(soloSdp(pc, d)); }
+      // TURN.23.1: and on a free TURN link every audio stream I send is encoded with DTX (thinSdp: silence sends no sound packets)
+      if (typeof thinSdp === 'function') { const srd1 = pc.setRemoteDescription.bind(pc); pc.setRemoteDescription = (d) => srd1(thinSdp(d, p)); }
       pc.ontrack = (ev) => {
         if (p.pc !== pc) return;
         if ((typeof isEjected === 'function' && isEjected(p.id) === true)) { try { ev.track.stop(); } catch (e) {} return; } // no media from a forger
@@ -14838,6 +14843,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!changed) return desc;
       if (typeof clog === 'function') clog('wk-h264 stripped from an offer');
       return { type: desc.type, sdp: out.join('') };
+    }
+    // TURN.23.1 THE THIN FREE LINK: SILENCE SENDS NO SOUND PACKETS (js/meet-turn.js). A description the
+    // far end of an unvouched TURN link hands me is applied with usedtx=1 on every Opus format: that word is what tells MY
+    // encoder to stop at silence (one comfort-noise packet every 400 ms instead of 50 packets a second), so a muted side
+    // and a quiet mix cost the free pool's byte cap almost nothing. Nothing is asked of the far end. Every description of
+    // the pair passes here (the pc's own setRemoteDescription, newPc), so a vouch that comes or goes takes hold at the
+    // next renegotiation; DTX left on under a vouch is harmless.
+    function thinSdp(desc, p) {
+      try {
+        if (!desc || typeof desc.sdp !== 'string' || !p || !p.id || typeof turnLinks === 'undefined' || !turnLinks || !turnLinks.thin(p.id)) return desc;
+        const sdp = GifOS.meetTurn.dtxSdp(desc.sdp);
+        if (sdp === desc.sdp) return desc;
+        if (typeof clog === 'function' && !p.__thinSaid) { p.__thinSaid = true; clog('turn-thin dtx ' + String(p.id).slice(0, 6)); }
+        return { type: desc.type, sdp };
+      } catch (e) { return desc; }
     }
     // IN-BAND FEC ONLY FOR MY OWN VOICE. My sender follows the far end's fmtp for its m-line, and with useinbandfec=1 Opus
     // answers every loss report (RTCP, smoothed over tens of seconds) by moving into its speech coder (SILK, with the FEC
@@ -22874,6 +22894,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function onDc(p, dc, m, admOk) {
       if (p && p.id && isSevered(p.id)) return; // DEBUG sever — see severPair; and an ejected forger
+      // TURN.23.2: a packed renegotiation frame is the roffer/ranswer it was made from; either form says the far end reads it
+      if (m && m.k === 'rz') { let o = null; try { o = GifOS.meetTurn.rzOpen(m); } catch (e) {} if (!o) return; if (p) p.rzOk = true; m = o; }
+      else if (m && m.rz === 1 && (m.k === 'roffer' || m.k === 'ranswer') && p) p.rzOk = true;
       if (m && m.from != null && (typeof isEjected === 'function' && isEjected(String(m.from)) === true)) return; // a forwarded frame FROM a forger (fsig/fhi/fmesh)
       // ANY DataChannel receive is FIRST-HAND transport proof (peer-instance
       // regression report, 2026-07-27): the starve edge keyed on MESH
