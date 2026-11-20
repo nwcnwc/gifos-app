@@ -502,6 +502,8 @@
       x.send();
     } catch (e) { fallback(); }
   }
+  // ?agent=1 is read here, before the meeting rewrites its own address (agent mode reads window.__gifosAgentQ).
+  try { window.__gifosAgentQ = /[?&]agent=1(?:&|$)/.test(location.search); } catch (e) {}
   var decision = pinTarget(location.pathname, location.search, location.hash);
   if (decision && decision.ask) askLive(decision);
   else if (decision && decision.redirect) location.replace(decision.redirect);
@@ -22091,7 +22093,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // like any view-only guest tapping the mic button.
           let assistantBoot = false;
           try { assistantBoot = sessionStorage.getItem('gifos_bot') === '1'; } catch (e) {}
-          if (params.get('agent') === '1' || /[?&]agent=1(?:&|$)/.test(location.search)) params.set('bot', '1');   // agent mode (gifosAgent) is bot mode, and it cannot be untagged
+          if (params.get('agent') === '1' || (typeof window !== 'undefined' && window.__gifosAgentQ === true)) params.set('bot', '1');   // agent mode (gifosAgent) is bot mode, and it cannot be untagged
           if (params.get('bot') === '1') {
             // Assistant mode: muted, camera off, and no permission prompt.
             // The transcript is the other people. A tap can still open a mic later.
@@ -41688,7 +41690,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // (no tiles, a text-first view), and the agent API reads what this page already holds. vars: becomeAssistant
     // and the boot may call setBotView before this line runs.
     var botViewOn, botViewWant, agentCore, hideBotsOn, hideBotsT;
-    const AGENT_FORCED = params.get('agent') === '1' || /[?&]agent=1(?:&|$)/.test(location.search);   // #agent=1 or ?agent=1
+    const AGENT_FORCED = params.get('agent') === '1' || window.__gifosAgentQ === true || /[?&]agent=1(?:&|$)/.test(location.search);   // #agent=1 or ?agent=1
     const agentOk = (x) => Object.assign({ ok: true }, x || {});
     const agentFail = (s) => ({ ok: false, error: String(s) });
     // The parks the bot view asks for (sendVisPark): every row mate's camera except the ones an agent watches.
@@ -41933,7 +41935,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         agentCore = GifOS.meetAgent.make(agentHost());
         try { GifOS.meetAgent.postMessageBridge(agentCore, window); } catch (e) {}
       }
-      if (!agentCore) return null;
+      if (!agentCore) {
+        // A bare visit runs the lobby's scripts first and the rest (this module among them) right after: look again.
+        if (!agentStart.wait) agentStart.wait = setTimeout(() => { agentStart.wait = null; agentStart(); }, GifOS.timings.AGENT_TICK_MS);
+        return null;
+      }
       window.gifosAgent = agentCore.api;
       agentCore.start();
       return agentCore;
@@ -41966,11 +41972,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       myStatus.bot = false;
       delete myStatus.think; delete myStatus.nts;
       myStatus.camOff = true;
-      myStatus.blur = 2;   // a person's camera, when they turn it on, starts at Max blur like any join
       if (!botVoiceTrack) myStatus.muted = true;
       for (const id of ['ai-assist', 'meet-ai-assist']) { const b = document.getElementById(id); if (b) b.setAttribute('aria-pressed', 'false'); }
       const note = document.getElementById('ai-assist-note'); if (note) note.textContent = '';
       setBotView(false);
+      try { setPersonalBlur(2); } catch (e) {}   // a person's camera, when they turn it on, starts at Max blur like any join
       if (agentCore) agentCore.stop();   // open video.in / video.out ports keep running
       for (const p of peers.values()) if (p.dc && p.dc.readyState === 'open' && camPeer(p.id)) dcSend(p, { k: 'vkick' });
       try { refreshAllTiles(); updateTile('me'); broadcastStatus(); paintControls(); reactRoomState(); layout(); applyBuses(); } catch (e) {}
