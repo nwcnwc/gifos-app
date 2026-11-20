@@ -1404,7 +1404,6 @@
         return true;
       },
       meetingCount() { return layer ? layer.meetingCount() : null; },
-      doorCount() { return layer ? layer.doorCount() : null; },
       meetingFar() { return layer ? layer.meetingFar() : 0; },   // the people in the other rooms joined to mine (0: none)
       meetingPeople() { return layer ? layer.meetingPeople() : []; },   // SUB.11: those people by name, per door, from the same fold as the count
       knownSub(r) { return !!penv && penv.knownSub(r); },
