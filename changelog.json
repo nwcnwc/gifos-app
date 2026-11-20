@@ -2,6 +2,43 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.26.29",
+      "date": "2026-11-19",
+      "headline": "A tap starts the sound",
+      "critical": false,
+      "features": [
+        "A tap starts the sound, and the notice stays up until you can hear it."
+      ],
+      "fixes": []
+    },
+    {
+      "version": "0.9.26.27",
+      "date": "2026-11-19",
+      "headline": "Agenda, assistants, and a quieter join",
+      "critical": false,
+      "features": [
+        "The lobby choices are tabs, and Go live uses the room password alone.",
+        "An agenda item shows its length and stops at 120 characters. Alt+J opens the agenda.",
+        "A link for AI assistants is on the meeting and the lobby. One tap turns assistant mode on.",
+        "Joining with the camera and microphone off asks for neither.",
+        "Debug logging starts when you turn it on.",
+        "The meeting tab shows its icon.",
+        "Choosing No blur shows a clear preview. A meeting that keeps the picture blurred explains why."
+      ],
+      "fixes": []
+    },
+    {
+      "version": "0.9.26.26",
+      "date": "2026-11-19",
+      "headline": "A clearer way to start",
+      "critical": false,
+      "features": [
+        "Join, host, or open an open-floor meeting from one button.",
+        "The room password stays on the form when you host and when you go live."
+      ],
+      "fixes": []
+    },
+    {
       "version": "0.9.26.25",
       "date": "2026-11-19",
       "headline": "Bring your AI assistant",
