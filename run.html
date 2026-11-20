@@ -502,6 +502,9 @@
       x.send();
     } catch (e) { fallback(); }
   }
+  // bot=1 (query or hash) is assistant mode for this tab. It is read here, before the
+  // meeting rewrites its own address, and kept per tab so a reload stays an assistant.
+  try { if (/[?#&]bot=1(?:&|$)/.test(location.search + '&' + location.hash)) sessionStorage.setItem('gifos_bot', '1'); } catch (e) {}
   var decision = pinTarget(location.pathname, location.search, location.hash);
   if (decision && decision.ask) askLive(decision);
   else if (decision && decision.redirect) location.replace(decision.redirect);
@@ -758,7 +761,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <a href="/meet/llms.txt" class="for-ai-link" id="meet-for-ai" data-t="forAi">For AI assistants</a>
     <button type="button" id="hdrhand" aria-expanded="false" aria-controls="handq"></button>
   </div>
-  <button type="button" id="meet-ai-assist" class="ai-sw" role="switch" aria-checked="false" aria-pressed="false"><span class="ai-sw-word" data-t="imAi">I'm an AI assistant</span><span class="ai-sw-state" data-t="imAiOff">Off</span><span class="ai-knob" aria-hidden="true"></span></button>
   <aside data-al="people" id="roster" aria-label="People">
     <div class="roster-head"><h3 data-t="people" id="roster-title">People</h3><button data-t="setClose" type="button" id="roster-close">Close</button></div>
     <input data-ph="rosterFind" id="roster-find" type="search" placeholder="Find a name" autocomplete="off">
@@ -3048,14 +3050,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const lvl = (o.blur === 0 || o.blur === 1 || o.blur === 2) ? o.blur : 2;
       return { cam: o.cam === true, mic: o.mic === true, blur: lvl };
     })();
-    // "I'm an AI assistant" is a switch. On is the same as ?bot=1, on this page,
-    // with no reload. Off clears that choice. The camera and microphone stay off,
-    // so neither press asks for them.
+    // Assistant mode is set by bot=1 in the address (kept per tab, read in the head).
+    // The lobby's "I'm an AI assistant" switch is only a way to set bot=1 for this tab
+    // before joining; the meeting has no switch (it covered the last tile's name).
+    // The camera and microphone stay off, so neither press asks for them.
     let blurBeforeAssistant = null;
     function paintAssistant(on) {
-      for (const id of ['ai-assist', 'meet-ai-assist']) {
-        const b = document.getElementById(id);
-        if (!b) continue;
+      const b = document.getElementById('ai-assist');
+      if (b) {
         b.setAttribute('aria-checked', on ? 'true' : 'false');
         b.setAttribute('aria-pressed', on ? 'true' : 'false');
         const st = b.querySelector('.ai-sw-state');
@@ -3091,9 +3093,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { broadcastStatus(); } catch (e) {}
       try { paintControls(); } catch (e) {}
     }
-    for (const id of ['ai-assist', 'meet-ai-assist']) {
-      const b = document.getElementById(id);
+    {
+      const b = document.getElementById('ai-assist');
       if (b) b.addEventListener('click', () => becomeAssistant(b.getAttribute('aria-checked') !== 'true'));
+      let on0 = false;
+      try { on0 = sessionStorage.getItem('gifos_bot') === '1'; } catch (e) {}
+      if (on0) paintAssistant(true);   // a bot=1 page shows the lobby switch On
     }
     // The Stage seat comes back with its original claim time, so the person
     // keeps their place in step-up order. A grant that has not arrived yet
@@ -21904,20 +21909,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // view-only join a denied camera lands in; a viewer the host later
           // calls up gets media through lateMedia (a user gesture), exactly
           // like any view-only guest tapping the mic button.
-          let assistantBoot = false;
-          try { assistantBoot = sessionStorage.getItem('gifos_bot') === '1'; } catch (e) {}
-          if (params.get('bot') === '1') {
-            // Assistant mode: muted, camera off, and no permission prompt.
-            // The transcript is the other people. A tap can still open a mic later.
-            // The switch shows On. Pressing it again clears assistant mode.
-            assistantBoot = true;
-            becomeAssistant(true);
-            localStream = null;
-            return;
-          }
+          let assistantBoot = params.get('bot') === '1';
+          try { assistantBoot = assistantBoot || sessionStorage.getItem('gifos_bot') === '1'; } catch (e) {}
           if (assistantBoot) {
-            // The lobby switch already chose assistant mode for this tab.
-            // Same quiet boot: no camera ask, no microphone ask, blur off.
+            // Assistant mode (bot=1, or the lobby switch, which sets it for this tab):
+            // muted, camera off, no permission prompt, blur off. A tap can still open a mic later.
             becomeAssistant(true);
             localStream = null;
             return;
@@ -41150,13 +41146,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           params.set('v', parsed.room);
           if (parsed.av) params.set('av', parsed.av); else params.delete('av');
           params.set('mb', '1');
-          if (msg && msg.bot) {
+          // bot=1 is the one switch: a session that asks for it, or a tab already in
+          // assistant mode, keeps it; nothing here drops it.
+          if ((msg && msg.bot) || myStatus.bot) {
             params.set('bot', '1');
-            myStatus.bot = true;
-            myStatus.camOff = true;
-            myStatus.muted = true;
-            myStatus.blur = 0;
-          } else params.delete('bot');
+            becomeAssistant(true);
+          }
           if (msg && msg.name) window.__gifosMeetName = String(msg.name).slice(0, 40);
           capClosed = false;   // a new meeting may open devices again
           return new Promise((resolve, reject) => {
