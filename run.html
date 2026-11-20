@@ -38466,6 +38466,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const lob = document.getElementById('lobby');
       if (lob && lob.classList.contains('show')) return;
       if (!myStatus || myStatus.blur !== 0) return;
+      if (myStatus.bot && myStatus.camOff) return;   // an assistant with no camera shows no face: nothing is held
       let hold = '';
       try { hold = blurHold('me'); } catch (e) { return; }
       if (!hold) return;
