@@ -177,7 +177,7 @@
     st = st || readState();
     if (!st.licenseJson || !st.sig) return null;
     const lic = await SUB.verifyLicense({ licenseJson: st.licenseJson, sig: st.sig }, verifyPay, nowS()).catch(() => null);
-    if (!lic || !SUB.isPaid(lic.tier)) return null;
+    if (!lic) return null;
     try { if (lic.buyerKey !== (await myKey()).pub) return null; } catch (e) { return null; }
     return lic;
   }
@@ -186,7 +186,7 @@
     const f = readJson(FREE_KEY);
     if (!f || !f.licenseJson || !f.sig) return null;
     const lic = await SUB.verifyLicense({ licenseJson: f.licenseJson, sig: f.sig }, verifyPay, nowS()).catch(() => null);
-    if (!lic || lic.tier !== 'free') return null;
+    if (!lic) return null;
     try { if (lic.buyerKey !== (await myKey()).pub) return null; } catch (e) { return null; }
     return lic;
   }
@@ -202,7 +202,7 @@
     let lic; try { lic = JSON.parse(licenseJson); } catch (e) { return null; }
     if (!lic || lic.subId !== c.subId) return null;
     try { if (lic.buyerKey !== (await myKey()).pub) return null; } catch (e) { return null; }
-    return { subId: c.subId, tier: lic.tier, exp: lic.exp, license: { licenseJson, sig }, sign: signText, libraryKey: await libraryKey(c) };
+    return { subId: c.subId, tier: lic.tier, grants: lic.grants || null, exp: lic.exp, license: { licenseJson, sig }, sign: signText, libraryKey: await libraryKey(c) };
   }
   // The library key: derived here from the subscription file's seed, so the
   // file (and its backup) is all it takes to open My library on any browser,
@@ -552,6 +552,7 @@
   function schedule(ms) { stopTimer(); if (meet) meet.timer = setTimeout(renewNow, ms); }
   function take(j) {
     meet.ticket = { ticketJson: j.ticketJson, sig: j.sig }; meet.exp = j.exp; meet.gen = j.gen; meet.tier = j.tier || meet.tier;
+    meet.grants = SUB.ownTicketGrants(j.ticketJson);   // what this ticket grants in this meeting (its signed line items)
     schedule((j.renewEvery || SUB.RENEW_EVERY_S) * 1000);
     try { if (hooks.onTicket) hooks.onTicket(meet.ticket); } catch (e) {}
   }
@@ -595,7 +596,7 @@
       // service checks payment at the join), else the free plan's license.
       const paidLic = await verifiedLicense();
       const freeLic = paidLic ? null : await verifiedFree();
-      m.subId = paidLic ? paidLic.subId : freeLic ? freeLic.subId : (c.tier !== 'free' ? c.subId : null);
+      m.subId = paidLic ? paidLic.subId : freeLic ? freeLic.subId : (SUB.FREE_ID_RE.test(c.subId) ? null : c.subId);
       if (!m.subId) return null;
       m.tag = await SUB.meetingTag(room);
       const j = await post('/gifos/sub/join', await signed('join:' + m.tag, { meeting: m.tag }, m.subId));
@@ -609,9 +610,8 @@
   function leaveMeeting(keepPass) { stopTimer(); meet = null; hooks = {}; if (!keepPass) { passStop(); pmeet = null; } }
   // The subscription on this browser changed (signed up, or a file opened):
   // the meeting this page is in joins with it now.
-  // upgrade: a paid plan just arrived, so a meeting held on the free plan
-  // joins again with it (the room then carries the paid plan).
-  function rejoin(upgrade) { if (meet && (!meet.ticket || (upgrade && !SUB.isPaid(meet.tier)))) { const room = meet.room; stopTimer(); meet = null; joinMeeting(room); } }
+  // upgrade: a new subscription just arrived, so the meeting joins again with it (the room then carries what it grants).
+  function rejoin(upgrade) { if (meet && (!meet.ticket || upgrade)) { const room = meet.room; stopTimer(); meet = null; joinMeeting(room); } }
   async function currentTicket(room) {
     if (!meet || meet.room !== room) return null;
     await meet.joining;
@@ -636,7 +636,7 @@
   }
   function passTake(m, j) {
     m.ticket = { ticketJson: j.ticketJson, sig: j.sig }; m.exp = j.exp; m.gen = j.gen; m.until = j.until || m.until; m.moved = null;
-    m.perms = SUB.passTicketPerms(j.ticketJson);   // what this pass grants in this meeting (capture, the plan)
+    m.grants = SUB.ownTicketGrants(j.ticketJson);   // what this pass grants in this meeting (its signed line items)
     passSchedule(m, (j.renewEvery || SUB.RENEW_EVERY_S) * 1000);
     passChanged();
   }
@@ -693,11 +693,11 @@
   // The admin's order that carries their plan into the room, or null.
   // A live four-hour pass rides instead of a ticket whose plan is below it
   // (none, free, $2): the best right held is the one the room reads.
-  const beatsPass = (tier, perms) => SUB.isPaid(tier) && !SUB.bestRights([SUB.ticketRights({ tier, exp: 1 }), SUB.passRights({ end: 1, perms })]).pass;
+  const beatsPass = (grants, pass) => !!grants && !!pass && !SUB.bestRights([SUB.ticketRights({ grants, exp: 1 }), SUB.passRights(Object.assign({}, pass, { end: 1 }))]).pass;
   async function roomOrder(room) {
     const ticket = await currentTicket(room);
     const lp = ticket && meet ? await livePass().catch(() => null) : null;
-    if (!(ticket && meet && beatsPass(meet.tier, lp && lp.o.perms))) {
+    if (!(ticket && meet && beatsPass(meet.grants, lp && lp.o))) {
       const pt = await currentPassTicket(room);
       if (pt) {
         const at = Date.now();
@@ -715,7 +715,7 @@
   // A knocker answering the door's challenge, or null without a ticket here.
   async function proveAtDoor(room, nonce) {
     const ticket = await currentTicket(room);
-    if (ticket && meet && SUB.isPaid(meet.tier)) return { ticket, proof: await signText(SUB.proofMessage(SUB.doorContext(room), nonce)) };
+    if (ticket && meet && meet.grants && meet.grants.admitAtFullDoor) return { ticket, proof: await signText(SUB.proofMessage(SUB.doorContext(room), nonce)) };
     // A four-hour pass in this meeting is let in as a subscriber is; a free plan is no way past a room's line.
     const pt = await currentPassTicket(room);
     if (pt) return { ticket: pt, proof: await passSign(SUB.proofMessage(SUB.doorContext(room), nonce)) };
@@ -729,13 +729,13 @@
 
   // ---- an open room's admin (capture) ------------------------------------------
   // Whoever holds a meeting right whose permissions say capture may take an
-  // open room: the $5 and $10 subscriptions (permsOfTier), and any pass
+  // open room: any ticket whose line items say captureOpenRoom (the $5 and $10 presets; never $2 or the $1 pass), and any pass
   // signed with capture (the staff pass; never the $1 pass). captureVia:
   // which of this browser's rights for the meeting carries it ('sub', 'pass') or null.
   function captureVia(room) {
     const n = nowS();
-    if (meet && meet.room === room && meet.ticket && n < meet.exp) { const p = SUB.permsOfTier(meet.tier); if (p && p.capture) return 'sub'; }
-    if (pmeet && pmeet.room === room && pmeet.ticket && n < pmeet.exp && pmeet.perms && pmeet.perms.capture) return 'pass';
+    if (meet && meet.room === room && meet.ticket && n < meet.exp && meet.grants && meet.grants.captureOpenRoom) return 'sub';
+    if (pmeet && pmeet.room === room && pmeet.ticket && n < pmeet.exp && pmeet.grants && pmeet.grants.captureOpenRoom) return 'pass';
     return null;
   }
   function canCapture(room) { return !!captureVia(room); }
@@ -794,13 +794,13 @@
       sub = { tier: lic.tier, period: cred && cred.period === 'yearly' ? 'yearly' : 'monthly', status, until: st.until || lic.exp, renews: status === 'active' ? st.paidThrough || null : null };
     }
     const mine = (await passes().catch(() => [])).filter((x) => x.o.end > n);
-    const held = mine.map((x) => ({ id: x.o.id, start: x.o.start, end: x.o.end, live: SUB.passLive(x.o, n), never: !Number.isFinite(x.o.end), plan: x.o.perms.plan, capture: x.o.perms.capture }));
+    const held = mine.map((x) => ({ id: x.o.id, start: x.o.start, end: x.o.end, live: SUB.passLive(x.o, n), never: !Number.isFinite(x.o.end), plan: x.o.plan, capture: x.o.grants.captureOpenRoom }));
     const base = SUB.rightsOf(lic || free, n);
     // The passes run back to back: the window in effect ends with the last
     // pass of the same permissions that follows on without a gap (passChain).
     const chain = SUB.passChain(mine.map((x) => x.o), n);
     const passEnd = chain ? chain.until : 0;
-    const best = chain ? SUB.bestRights([base, SUB.passRights({ end: passEnd, perms: chain.live.perms })]) : base;
+    const best = chain ? SUB.bestRights([base, SUB.passRights(Object.assign({}, chain.live, { end: Number.isFinite(passEnd) ? passEnd : null }))]) : base;
     const now = best.pass ? { tier: best.tier, why: 'pass', until: passEnd } : base.tier ? { tier: base.tier, why: base.tier === 'free' ? 'free' : 'sub', until: base.until } : { tier: null, why: 'none' };
     const then = best.pass && base.tier ? base.tier : null;
     return { sub, free: !!free, passes: held, now, then };
@@ -1174,8 +1174,8 @@
     rights, planRights, refresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, subSelection, applySubSelection, paintNow, paintSettings, openSettings, openSubscribe, mayCreateAdminRoom, showFull, ensureFree, showHostPrompt,
     roomOrder, roomTier, proveAtDoor, checkShown, newNonce,
     appNow, joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureCurrent, captureOrder, captureKeys, fileBytes, downloadFile, useFile, librarySigner, restoreInApp,
-    passMeeting: () => (pmeet ? { room: pmeet.room, gen: pmeet.gen, exp: pmeet.exp, until: pmeet.until, moved: pmeet.moved, held: !!pmeet.ticket } : null),
+    passMeeting: () => (pmeet ? { grants: pmeet.grants || null, room: pmeet.room, gen: pmeet.gen, exp: pmeet.exp, until: pmeet.until, moved: pmeet.moved, held: !!pmeet.ticket } : null),
     currentPassTicket,
-    meeting: () => (meet ? { room: meet.room, gen: meet.gen, exp: meet.exp, moved: meet.moved, held: !!meet.ticket, tier: meet.tier, paid: !!(meet.ticket && SUB.isPaid(meet.tier)) } : null),
+    meeting: () => (meet ? { room: meet.room, gen: meet.gen, exp: meet.exp, moved: meet.moved, held: !!meet.ticket, tier: meet.tier, grants: meet.grants || null, paid: !!(meet.ticket && meet.grants && meet.grants.admitAtFullDoor) } : null),
   };
 })(typeof window !== 'undefined' ? window : globalThis);
