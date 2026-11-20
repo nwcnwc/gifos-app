@@ -5970,6 +5970,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // everyone ready); an admin room clears per tile, so its own consent too.
       const clear = !blurHold(id) && (!hasAdminRoom() || consents(st));
       if (clear || (isMe && clearForTest)) return 0;
+      // Someone who says No blur where the room keeps video blurred may be
+      // sending clear pixels, so this screen blurs them at Max, never Min.
+      // My own picture keeps my pick: my page blurs what it sends.
+      if (!isMe && blurLevel(st.blur) === 0) return 2;
       return Math.max(1, blurLevel(st.blur));
     }
     // One knob re-derives every tile AND the outbound pixels whenever statuses,
