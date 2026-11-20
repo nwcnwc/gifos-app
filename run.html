@@ -14739,6 +14739,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // Their own tile is on the grid even while reconcileGrid hides it: a row-mate on the Stage is shown on the strip,
       // and a held face beside it would be a second tile and one person too many in the count.
       const ownTile = (pid) => { const q = peers.get(pid), t = q && !q.headless && q.tile; return !!(t && t.parentNode); };
+      // A door tile makePeer kept off the grid (my seat did not name them yet) comes back in the pass where my seat names
+      // them, once their pair is up: the same rule as the connect edge and the 2 s beat (restoreDoorTile). Waiting for the beat
+      // left a connected, seated member on a held "Reconnecting…" face meanwhile (a bot joining four people, gate views).
+      if (typeof doorOffGrid === 'object' && doorOffGrid && doorOffGrid.size && typeof seatStranger === 'function') {
+        for (const pid of Array.from(doorOffGrid)) {
+          const q = peers.get(pid);
+          if (q && q.connected && !seatStranger(q)) { restoreDoorTile(q); changed = true; }
+        }
+      }
       for (const pid of Array.from(rosterTiles.keys())) {
         const why = !(Array.isArray(rosterIds) && rosterIds.includes(pid)) ? 'unrostered' : ownTile(pid) ? 'new-pair' : notRow(pid) ? 'not-row' : null;
         if (why) { dropRosterTile(pid, why); changed = true; }
