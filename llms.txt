@@ -342,7 +342,7 @@ WHO/WHAT AM I
                                here: 'here' | 'away' (reconnecting).
    gifos.room.*             -> the session GifOS runs for you; see
                                "Multiplayer: gifos.room" (needs "room" in the
-                               manifest and minBuild 5700)
+                               manifest and minBuild 5861)
    await gifos.setName(n)   -> { id, name }   (ASKS the person, on an OS sheet,
                                 to take that name; resolves with the identity
                                 as it is afterwards — unchanged if they declined)
@@ -680,7 +680,7 @@ same seat after a reload or after the owner shares the app again, and the
 next person in line seated when a player leaves. People come from the room
 (the meeting or the app room's Invite), never from typed names.
 
-   "minBuild": 5700,
+   "minBuild": 5861,
    "data": { "game": { "visibility": "read-write" } },
    "room": { "seats": ["Red", "Yellow"],  // seat names in turn order (or a number)
              "min": 2,                     // players needed to start (default: all)

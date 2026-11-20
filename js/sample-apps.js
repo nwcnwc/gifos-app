@@ -6728,7 +6728,7 @@ Tap any disc in a column to drop yours to the lowest empty slot. **Red** starts 
 - **Alone:** you play both colours.
 - **Invite** (top bar), or run it in a meeting: the first two people take Red and Yellow, everyone after them watches and waits in line. GifOS keeps the seats: a player who reloads or drops for a moment gets their seat back, and when a player leaves, the next person in line sits down. In a hosted meeting, the host says who plays.
 
-This game needs GifOS build 5700 or newer to play together.
+This game needs GifOS build 5861 or newer to play together.
 
 ## New game
 
@@ -7409,8 +7409,8 @@ The Store itself does not keep a shopping cart in this icon.
     //   PRIV — private: never leaves the owner's tab; each participant keeps
     //          their own copy (personal prefs, a guest's own library).
     const RW = { visibility: 'read-write' };
-    // The first build with gifos.room (manifest "room"): an app that declares a room needs it.
-    const ROOM_MIN_BUILD = 5700;
+    // The first build with gifos.room (manifest "room"): the 0.9.27 cut build. An app that declares a room needs it.
+    const ROOM_MIN_BUILD = 5861;
     const RO = { visibility: 'read-only' };
     const PRIV = { visibility: 'private' };
 
