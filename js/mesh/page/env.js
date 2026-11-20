@@ -486,11 +486,14 @@
     // connection (one of us blocked, or both strict); 2 another network mine can meet; -1 no tag (an older page, or my
     // own tag not known yet). A greeter that said no kind is read as open.
     const doorNt = new Map();
+    // L8.54.12 (C++: mesh_net.inc:fabricDoorVerdict): my connection to this page was answered and then found no path, and
+    // none between us has opened since
+    const fabricDoorVerdict = (a, g) => a === me && !!pcw.doorVerdict && pcw.doorVerdict(g);
     const fabricDoorNet = (a, g) => {
       if (a !== me || !fh || !fh.myTag) return -1;
       if (measure.noCand && measure.noCand()) return 0;   // L8.54.10 (C++: mesh_net.inc:netNoCand): I gather no candidate: no greeter is one I can meet, whatever its word, my own network's too
       const mine = fh.myTag(); if (!mine) return -1;
-      const w = doorNt.get(g); if (!w) return -1; if (w.slice(0, 8) === mine) return 1;
+      const w = doorNt.get(g); if (!w) return -1; if (w.slice(0, 8) === mine) return fabricDoorVerdict(a, g) ? 0 : 1;   // L8.54.12: my own answered dial found no path to this page of my network
       if (measure.probed && !measure.probed()) return -1;   // L8.54.4: my own kind is not known before my probe's verdict
       const k = w.length > 9 ? +w.slice(9) : E.NAT_OPEN, n = (measure.nat ? measure.nat() : E.NAT_OPEN) | 0;
       if (n !== E.NAT_BLOCKED && k !== E.NAT_BLOCKED && !(n === E.NAT_STRICT && k === E.NAT_STRICT)) return 2;
@@ -577,7 +580,7 @@
       fabricAdmitLog: noop, fabricDupMint: noop, fabricNoteBackoff: noop, fabricNoteReseat: noop, fabricNoteRollback: noop,
       fabricNoteSwap: noop, fabricVerdict: deaths.verdict, l18UxDeliv: noop, descEnd: noop, descNote: noop, g4Joined: noop,   // g4Joined: the sim's L40 contest lever only (X1 55c97d1)
       fabricFreeCells, fabricLieFor: () => null, fabricUnreachable, fhopActive: () => !!fh, fhopFriendFor,
-      fabricDoorNet, fabricDoorBlk, fabricDoorDue, fabricSubAsk, fabricSubProbe, fabricPipePeers, fabricSubDoor, fabricSubRepipe, fabricSubGo, fabricSubWalk, fabricTurnOn, fabricCutProbe,
+      fabricDoorNet, fabricDoorVerdict, fabricDoorBlk, fabricDoorDue, fabricSubAsk, fabricSubProbe, fabricPipePeers, fabricSubDoor, fabricSubRepipe, fabricSubGo, fabricSubWalk, fabricTurnOn, fabricCutProbe,
       fabricMyTier: () => ((measure.tier ? measure.tier() : E.TIER_DESKTOP) | 0),
       fabricMyNat: () => ((measure.nat ? measure.nat() : E.NAT_OPEN) | 0),
       fabricLeft: () => leaveNow(false), fabricReloadBye: () => leaveNow(true),
