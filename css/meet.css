@@ -3629,7 +3629,12 @@
   .ai-sw-state { flex: 0 0 auto; font-weight: 800; }
   .ai-knob { position: relative; flex: 0 0 auto; width: 36px; height: 20px; border-radius: var(--r-pill); background: var(--c-gray); }
   .ai-knob::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: var(--r-pill); background: var(--c-white); transition: transform var(--t-fast) ease; }
-  .for-ai .ai-sw[aria-checked="true"], .topchip .ai-sw[aria-checked="true"] { background: var(--c-blue); border-color: var(--c-blue); color: var(--c-white); }
+  .for-ai .ai-sw[aria-checked="true"], .topchip .ai-sw[aria-checked="true"], #meet-ai-assist[aria-checked="true"] { background: var(--c-blue); border-color: var(--c-blue); color: var(--c-white); opacity: 1; }
+  /* The meeting switch stays on the page, under the bar, so the top row can keep More. Off is quiet; On fills. */
+  #meet-ai-assist { position: fixed; z-index: 6; top: calc(var(--headh, 64px) + 6px); left: max(8px, env(safe-area-inset-left, 0px));
+    display: inline-flex; align-items: center; gap: 6px; box-sizing: border-box; max-width: min(16rem, 70vw);
+    min-height: 44px; padding: 0 8px 0 10px; border: 1px solid transparent; border-radius: var(--r-pill);
+    background: transparent; color: var(--c-gray); font: inherit; font-size: 12px; font-weight: 550; opacity: 0.72; cursor: pointer; }
   .ai-sw[aria-checked="true"] .ai-knob { background: var(--c-white); }
   .ai-sw[aria-checked="true"] .ai-knob::after { transform: translateX(16px); background: var(--c-blue); }
   .ai-sw:focus-visible { outline: 2px solid var(--c-blue); outline-offset: 2px; }
@@ -3663,7 +3668,7 @@
 body.broadcast #tophead { top: calc(var(--banner-h, 0px) + var(--inset-top, 0px)); }
 #tophead > * { pointer-events: auto; position: static !important; top: auto !important; right: auto !important;
   bottom: auto !important; left: auto !important; transform: none !important; margin: 0 !important; }
-#tophead > .topchip { flex: 1 1 12rem; min-width: 0; max-width: none !important; width: auto; }
+#tophead > .topchip { flex: 1 1 12rem; min-width: 0; max-width: none !important; width: auto; overflow: hidden; }
 #tophead > .fitbtn { flex: 0 0 auto; }
 #tophead > #unmute, #tophead > #showcam { flex: 0 0 auto; }
 #tophead > #gifos-build-float { order: -1; flex: 1 0 100%; padding: 0 !important; background: transparent !important;

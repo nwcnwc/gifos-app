@@ -743,6 +743,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   </div>
   <!-- The one top bar (R1, 2026-11-15): every top control sits in this row, in flow, so none lands on another; its measured bottom is where the meeting box starts. -->
   <div id="tophead" role="banner"></div>
+  <button type="button" id="meet-ai-assist" class="ai-sw" role="switch" aria-checked="false" aria-pressed="false"><span class="ai-sw-word" data-t="imAi">I'm an AI assistant</span><span class="ai-sw-state" data-t="imAiOff">Off</span><span class="ai-knob" aria-hidden="true"></span></button>
   <div class="topchip">
     <span data-al="livebadgeAria" id="livebadge" data-state="off" aria-label="You are off air"><i class="livedot" aria-hidden="true"></i><span data-t="livebadgeTxt" id="livebadge-txt">OFF AIR</span></span>
     <a data-ti="openYourGifosComputerTip" class="title" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
@@ -750,7 +751,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <span id="onair" hidden><i class="lamp" aria-hidden="true"></i><span class="words"></span></span>
     <span class="status" id="status"><button data-t="statuscount" type="button" id="statuscount" data-agent="status" aria-expanded="false" aria-controls="roster">Joining…</button><span id="statusrest" class="statustext"></span></span>
     <a href="/meet/llms.txt" class="for-ai-link" id="meet-for-ai" data-t="forAi">For AI assistants</a>
-    <button type="button" id="meet-ai-assist" class="ai-sw" role="switch" aria-checked="false" aria-pressed="false"><span class="ai-sw-word" data-t="imAi">I'm an AI assistant</span><span class="ai-sw-state" data-t="imAiOff">Off</span><span class="ai-knob" aria-hidden="true"></span></button>
     <button type="button" id="hdrhand" aria-expanded="false" aria-controls="handq"></button>
   </div>
   <aside data-al="people" id="roster" aria-label="People">
