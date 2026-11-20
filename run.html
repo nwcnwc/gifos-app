@@ -14215,6 +14215,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!meshNode) return;
       const rg = turnLinks ? turnLinks.regrant() : null;   // my door's relay forgot it: the fresh grant re-mints it (the seat registers again inside the call)
       if (rg && rg.r === meshNode.sub) { meshNode.subGo(rg.r, rg.sg); turnNote('turn-sub door ' + rg.r + ' re-granted'); }
+      const gone = turnLinks ? turnLinks.gone() : -1;   // my room's door is empty and the service holds no such room: the room is gone, and my seat joins the meeting again at the first door
+      if (gone > 0 && gone === meshNode.sub && meshNode.subGone(gone)) turnNote('turn-sub door ' + gone + ' is gone: joining the meeting again');
       if (!o) return;
       if (o.found != null) {
         const k = 'f' + o.found + ':' + o.link + ':' + String(o.sg).slice(-8);

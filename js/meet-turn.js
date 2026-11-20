@@ -1671,7 +1671,12 @@
       probe() { if (!(io.sub && io.sub() === 0) || !io.tdoors || !io.probeDoor) return false; if (sub.st === 'probe' && sub.asker === 'probe') return true; if (sub.st !== 'idle' || (sub.out && sub.out.refused) || io.now() - sub.probeAt < PROBE_GAP_MS) return false; sub.wantProbe = true; return true; },
       regrant() { const o = rg.out; rg.out = null; return o; },
       // SUB.10.8: my door's subroom is gone (see regrantStep): its number while my seat still sits at that door, else -1
-      gone() { if (rg.gone > 0 && io.sub && io.sub() !== rg.gone) rg.gone = 0; return rg.gone > 0 ? rg.gone : -1; },
+      // Once the seat has left that door, what this page still held of the room's joining connections ends with it (a seat that
+      // leaves a door ends no path of it), so a number the service hands out again later starts clean.
+      gone() {
+        if (rg.gone > 0 && io.sub && io.sub() !== rg.gone) { const r = rg.gone; rg.gone = 0; for (const L of Array.from(links.values())) if (L.state !== 'closed' && pipeNo(L.l) === r) close(L, 'walked'); }
+        return rg.gone > 0 ? rg.gone : -1;
+      },
       // SUB.10: the door my subroom walks to as my pipe end says it (-1 none); may my seat walk now; did it walk lately (a path beats the tag)
       go() { return walkGo(); },
       walk(n, p) { return walkMay(n, p); },

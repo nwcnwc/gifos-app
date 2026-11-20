@@ -1414,6 +1414,10 @@
         if (!sock) makeSock();
         return true;
       },
+      // subGone(r): the service answered my ask for a fresh grant for my own door r that it holds no such room, after the
+      // relay said that door is empty: room r is gone. My seat leaves it and joins the meeting again at the first door, as
+      // any joiner does (true when it left).
+      subGone(r) { if (stopped || !penv || !raw || raw.sr !== r) return false; const left = penv.subGone(r); if (left) subGrant = null; return left; },
       meetingCount() { return layer ? layer.meetingCount() : null; },
       doorCount() { return layer ? layer.doorCount() : null; },
       meetingFar() { return layer ? layer.meetingFar() : 0; },   // the people in the other rooms joined to mine (0: none)

@@ -206,7 +206,26 @@
       }
       if (!this.f.fabricSubWalk(this.id, dig.digSeats(R), p)) return;
       this.trace('SUB.10-WALK', this.id, this.coord, 'from=%d to=%d n=%d', this.sr, p, dig.digSeats(R));
-      this.walkedFrom = this.sr; this.goAt = -1; this.doorAt.clear(); this.doorWalk.clear();   /* (the doors I noted were far doors of the room I leave: not mine to miss) */ this.requeue('sub-walk'); this.subGo(p);
+      this.subLeave(p, 'sub-walk');
+    },
+    // C++: mesh_island.inc:Seat::subLeave
+    // A SEAT LEAVES ITS SUBROOM FOR ANOTHER DOOR (SUB.10.4, SUB.10.7, SUB.10.8: one way out). Seated, I leave my cell with the ordinary
+    // goodbye; then I am a joiner of door p: its greeters, an ordinary join, every admission rule of a join. The number I leave is
+    // never taken back (SUB.10.5), and the far doors I noted were doors of the room I leave: not mine to miss.
+    subLeave(p, why) {
+      this.walkedFrom = this.sr; this.goAt = -1; this.doorAt.clear(); this.doorWalk.clear(); if (this.state === 3) this.requeue(why); this.subGo(p);
+    },
+    // C++: mesh_island.inc:Seat::subGone
+    // SUB.10.8 A SUBROOM NOBODY HOLDS ANY MORE IS GONE. I sit in Section 1 of subroom r, the relay answered my own registration
+    // that door r is empty (SUB.2-DOOR-EMPTY), and the service answered my ask for a fresh grant that it holds no subroom r: no
+    // connection's credential kept its record alive, so nothing can mint door r again and nobody will ever connect to it. Both
+    // answers are first-hand and both are needed. I am a joiner of the meeting: door 0, as any joiner (subLeave). My mates learn
+    // it the same way: a seat of r that sits in Section 1, now or when the room heals it there after my goodbye, knocks, hears the
+    // same two answers and follows; a seat that is between cells when it knocks is SUB.10.7's.
+    subGone(r) {
+      if (r <= 0 || r !== this.sr || this.state !== 3 || !this.hasCoord || this.coord.pc !== 0) return;
+      this.trace('SUB.10.8-GONE', this.id, this.coord, 'sr=%d', this.sr);
+      this.subLeave(0, 'sub-gone');
     },
     // C++: mesh_island.inc:Seat::cutOff
     // TURN.5.3 A CUT IS NOT A CRASH: THE HALF WITHOUT THE ROOT ENTERS AGAIN. A seat of door 0 that the room reaches no more (no report
