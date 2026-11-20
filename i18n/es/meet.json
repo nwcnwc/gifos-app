@@ -664,6 +664,7 @@
   "meet.stThisAppIsPasskeyLocked": "Esta app está bloqueada con passkey. Los demás dispositivos no tienen tu passkey, así que no se puede compartir en vivo.",
   "meet.stTheHostHasTurnedChat": "El anfitrión desactivó el chat.",
   "meet.stSlowModeWaitAFew": "Modo lento: espera unos segundos antes de volver a escribir.",
+  "meet.stSlowModeHeld": "Modo lento: tu mensaje se enviará en unos segundos.",
   "meet.stFilesAreNotAllowedHere": "Aquí no se permiten archivos.",
   "meet.stCalledToTheStageA": "Te llamaron al escenario: se abrirá un lugar cuando alguien baje.",
   "meet.stTurnUnmute": "Es tu turno. ¿Activar el micrófono para hablar?",

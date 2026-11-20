@@ -61,7 +61,7 @@
   function createLink(o) {
     const now = o.now || (() => Date.now());
     const log = (s) => { try { if (o.log) o.log('carry ' + String(o.far).slice(0, 8) + ' ' + s); } catch (e) {} };
-    const L = { l: o.l, far: o.far, farDev: '', farSub: 0, mine: null, peer: null, peerV: null, cred: null, end: null, state: 'ask', closed: false, askedAt: 0, vAskAt: 0, upAt: 0 };
+    const L = { l: o.l, far: o.far, farDev: '', farSub: 0, mine: null, peer: null, peerV: null, cred: null, end: null, state: 'ask', closed: false, askedAt: 0, vAskAt: 0, upAt: 0, host: '', moveTo: '' };
     // a vouch is used while three quarters of its life (from when I got it to its expiry) is left to run
     const usable = (v) => !!v && v.e - now() > (v.e - v.at) / 4;
     function sendAsk(b) { L.askedAt = now(); o.sendTv({ k: 'tv', q: 'c', l: L.l, d: o.dev(), b: b ? 1 : 0, e: ((o.sub ? o.sub() : 0) | 0).toString(36) }); }
@@ -82,10 +82,10 @@
           const g = L.cred.servers(), web = L.cred.web();
           if (!g || !g[0] || !web.length) { if (k === 'ok') log('no web host in the grant'); return; }
           const auth = { u: g[0].username, c: g[0].credential, p: MT().linkId(o.me, o.far) };
-          if (L.end) { L.end.auth(auth); return; }
-          const url = (o.webScheme ? o.webScheme() : 'wss://') + web[0] + '/';
+          if (L.end) { L.end.auth(auth); follow(web); return; }
+          const url = urlOf(web[0]);
           log('pipe open ' + web[0]);
-          L.state = 'dial';
+          L.state = 'dial'; L.host = web[0];
           L.end = TUN().createRawEnd({ url, auth, me: o.me, peer: o.far, seal: o.seal, open: o.open, sign: o.sign, verify: o.verify, log: o.log,
             onState: (s) => {
               if (s === 'up') { L.state = 'up'; L.upAt = now(); log('up'); try { o.onUp && o.onUp(); } catch (e) {} }
@@ -93,10 +93,33 @@
               if (s === 'refused') close('pipe refused');
             },
             onMedia: (g2, kind, key, data) => { if (kind === 'audio' && o.onAudio) o.onAudio(data); },
-            onText: (s) => { let m = null; try { m = JSON.parse(s); } catch (e) {} if (m && typeof m === 'object' && o.onText) o.onText(m); },
+            onText: (s) => { let m = null; try { m = JSON.parse(s); } catch (e) {} if (m && typeof m === 'object' && m.k === 'mv') { onMv(m); return; } if (m && typeof m === 'object' && o.onText) o.onText(m); },
+            onMoved: (ok) => { if (!ok) { log('pipe move not done'); return; } L.host = L.moveTo || L.host; L.moveTo = ''; log('pipe moved ' + L.host); },
           });
         } });
       L.cred.start();
+    }
+    // THE LINK FOLLOWS ITS GRANT (as a web link does, TURN.22.2). The pipe holds one socket on one server. When the
+    // carrier's renewed grant no longer lists that host (the server is leaving for an update), the carrier names the
+    // grant's first host on the pipe itself ({k:'mv', h}) and both ends move there, make before break: a second socket,
+    // the same sealed session (meet-tunnel.js move). An end moves only to a host its own grant allows; the carried page
+    // says the same word back once its own renewal allows it, and the carrier moves again to meet it.
+    const urlOf = (h) => (o.webScheme ? o.webScheme() : 'wss://') + h + '/';
+    function moveTo(h, say) {
+      log('pipe move ' + L.host + ' to ' + h);
+      L.moveTo = h;
+      if (say) L.end.sendText(JSON.stringify({ k: 'mv', h }));
+      L.end.move(urlOf(h));
+    }
+    function follow(web) {
+      if (!L.end || L.state !== 'up' || !web.length) return;
+      if (!o.guest) { if (web.indexOf(L.host) < 0) moveTo(web[0], true); return; }
+      if (L.moveTo && L.moveTo !== L.host && MT().webHostOk(L.moveTo, web)) moveTo(L.moveTo, true);
+    }
+    function onMv(m) {
+      if (L.closed || !L.end || typeof m.h !== 'string' || m.h === L.host) return;
+      if (MT().webHostOk(m.h, L.cred ? L.cred.web() : [])) moveTo(m.h, false);
+      else if (o.guest) L.moveTo = m.h;   // not a host of my grant yet: my next renewal decides
     }
     function haveBoth() { if (L.mine && L.peer) credStart(); }
     function close(why, quiet) {
@@ -144,7 +167,7 @@
       sendAudio(buf) { if (L.end && L.state === 'up') L.end.sendMedia(0, 'audio', false, buf); },
       sendText(obj) { return !!(L.end && L.state === 'up' && L.end.sendText(JSON.stringify(obj))); },
       stats() { return L.end ? L.end.stats() : Promise.resolve(null); },
-      info() { return { l: L.l, far: L.far, farDev: L.farDev, state: L.state, mine: !!L.mine, peer: !!L.peer, cred: L.cred ? L.cred.state() : 'none', refusal: L.cred ? L.cred.refusal() : null, upAt: L.upAt }; },
+      info() { return { l: L.l, far: L.far, farDev: L.farDev, state: L.state, mine: !!L.mine, peer: !!L.peer, cred: L.cred ? L.cred.state() : 'none', refusal: L.cred ? L.cred.refusal() : null, upAt: L.upAt, host: L.host }; },
       askedAt: () => L.askedAt,
       close,
     };

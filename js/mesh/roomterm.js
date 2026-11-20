@@ -93,6 +93,17 @@
     // L8.54.11 A WORD WITH NO KIND YET IS READ AGAIN WHEN ITS KIND IS DUE: a greeter that registered before its own probe's
     // limit is listed with its tag and no kind. REACH_PROBE after that list came its verdict has landed and it registered
     // again: a seeker that is not blocked, still unanswered at the door, knocks once per entry (docs/healing-laws.md).
+    // L8.54.12 a page of my own network that my answered dial found no path to is one I cannot meet: the door's word reads 0
+    // for it (the fabric), and when that makes every listed greeter such a one while I wait on my one ask, my asks of this
+    // entry are the round (L8.54.1 founds in this tick)
+    // C++: mesh_roomterm.inc:Seat::l8512Note
+    l8512Note() {
+      if (!this.w.lv.ISLAND_MODE || this.state !== 1 || this.islandAskAt >= 0 || !this.lastGreeters.length || this.greetersAt < 0 || !this.f.fabricDoors()) return;
+      let dv = false; for (const g of this.lastGreeters) if (g >= 0 && g !== this.id && this.f.fabricDoorVerdict(this.id, g)) { dv = true; break; }
+      if (!dv || !this.l854All(this.lastGreeters)) return;
+      let a0 = this.TICK; for (const g of this.lastGreeters) { if (g < 0 || g === this.id) continue; const it = this.entAsk.get(g); if (it !== undefined) { this.islandAsked.add(g); if (it < a0) a0 = it; } }
+      this.islandAskAt = a0; this.trace('L8.54.12-VERDICT', this.id, null, 'listed=%zu since=%d', this.lastGreeters.length, a0);
+    },
     // C++: mesh_roomterm.inc:Seat::l8511Note
     l8511Note() { if (this.kdAt !== -1 || !this.w.lv.ISLAND_MODE || !(this.state === 0 || this.state === 1) || this.nat === E.NAT_BLOCKED) return; for (const g of this.lastGreeters) if (g >= 0 && g !== this.id && this.f.fabricDoorDue(this.id, g)) { this.kdAt = this.TICK; return; } },
     // C++: mesh_roomterm.inc:Seat::l8511Tick

@@ -664,6 +664,7 @@
  "meet.stThisAppIsPasskeyLocked": "此应用已用通行密钥锁定。其他设备没有你的通行密钥，所以无法实时共享。",
  "meet.stTheHostHasTurnedChat": "主持人已关闭聊天。",
  "meet.stSlowModeWaitAFew": "慢速模式：请等几秒再发消息。",
+ "meet.stSlowModeHeld": "慢速模式：你的消息将在几秒后发出。",
  "meet.stFilesAreNotAllowedHere": "这里不允许发送文件。",
  "meet.stCalledToTheStageA": "已被请上舞台——有人下台后会空出位置。",
  "meet.stTurnUnmute": "轮到你了。要取消静音发言吗？",

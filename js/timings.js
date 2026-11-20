@@ -46,6 +46,7 @@
     CC_DEAF_MS: 60000,   // ms
     CC_GATE_TAIL_MS: 900,   // ms
     CHAT_PER_10S: 20,   // count
+    CHAT_SLOW_LAG_MS: 30000,   // ms
     CHAT_SLOW_MS: 10000,   // ms
     CHROME_IDLE_MS: 3000,   // ms
     CT_KEEP_MS: 60000,   // ms
@@ -234,6 +235,7 @@
     TUNNEL_KEY_ASK_MS: 250,   // ms
     TUNNEL_MINT_LOOK_MS: 20,   // ms
     TUNNEL_MINT_RETRY_MS: 60,   // ms
+    TUNNEL_MOVE_WAIT_MS: 3000,   // ms
     TUNNEL_OFFER_RESEND_MS: 2000,   // ms
     TUNNEL_OFFER_SETTLE_MS: 30,   // ms
     TUNNEL_RETRY_BASE_MS: 500,   // ms

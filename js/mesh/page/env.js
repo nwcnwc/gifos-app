@@ -486,11 +486,14 @@
     // connection (one of us blocked, or both strict); 2 another network mine can meet; -1 no tag (an older page, or my
     // own tag not known yet). A greeter that said no kind is read as open.
     const doorNt = new Map();
+    // L8.54.12 (C++: mesh_net.inc:fabricDoorVerdict): my connection to this page was answered and then found no path, and
+    // none between us has opened since
+    const fabricDoorVerdict = (a, g) => a === me && !!pcw.doorVerdict && pcw.doorVerdict(g);
     const fabricDoorNet = (a, g) => {
       if (a !== me || !fh || !fh.myTag) return -1;
       if (measure.noCand && measure.noCand()) return 0;   // L8.54.10 (C++: mesh_net.inc:netNoCand): I gather no candidate: no greeter is one I can meet, whatever its word, my own network's too
       const mine = fh.myTag(); if (!mine) return -1;
-      const w = doorNt.get(g); if (!w) return -1; if (w.slice(0, 8) === mine) return 1;
+      const w = doorNt.get(g); if (!w) return -1; if (w.slice(0, 8) === mine) return fabricDoorVerdict(a, g) ? 0 : 1;   // L8.54.12: my own answered dial found no path to this page of my network
       if (measure.probed && !measure.probed()) return -1;   // L8.54.4: my own kind is not known before my probe's verdict
       const k = w.length > 9 ? +w.slice(9) : E.NAT_OPEN, n = (measure.nat ? measure.nat() : E.NAT_OPEN) | 0;
       if (n !== E.NAT_BLOCKED && k !== E.NAT_BLOCKED && !(n === E.NAT_STRICT && k === E.NAT_STRICT)) return 2;
@@ -557,14 +560,20 @@
     const srOf = new Map();   // seat id -> the door its last frame to me named
     function cutArm(s) {
       if (!subF || !subF.cut || s.state !== 3 || !s.hasCoord || s.sr !== 0 || s.coord.pc !== 0 || ckey(s.coord) === 0 || !fabricTurnOn()) return;
-      const it = s.s1tab.get(0); if (!it || it.at < 0 || it.by < 0 || it.by === me) return;
-      const age = s.LT() - it.rx; if (age <= K.DIG_TTL - 2 * K.FHOP_RELAY_ASK) { cutWhy = ''; return; }
-      const p = ID.pid(it.by); if (!p) return;
-      if (cutWhy !== String(it.by)) { cutWhy = String(it.by); trace('ENV-CUT-ARM', me, s.coord, 'root=%d age=%d', it.by, age); }   // once per change
+      const it = s.s1tab.get(0); let by = -1, rx = -1;
+      if (it && it.at >= 0 && it.by >= 0) { by = it.by; rx = it.rx; }
+      else if (s.cutBy >= 0 && s.occGet(0) < 0 && s.LT() - s.cutRx <= K.DIG_TTL) { by = s.cutBy; rx = s.cutRx; }   // TURN.5.3.1: the root my own death verdict took from the table (island.js cutOff reads the same pair)
+      if (by < 0 || by === me) return;
+      const age = s.LT() - rx; if (age <= K.DIG_TTL - 2 * K.FHOP_RELAY_ASK) { cutWhy = ''; return; }
+      const p = ID.pid(by); if (!p) return;
+      if (cutWhy !== String(by)) { cutWhy = String(by); trace('ENV-CUT-ARM', me, s.coord, 'root=%d age=%d', by, age); }   // once per change
       subF.cut(p);
     }
     // C++: mesh_turn.inc:subTick's answer: my door is r (a listed room the page reached, or a new number it was granted)
     function subGo(r) { const s = seat(); if (!s || dead || !(Number.isInteger(r) && r > 0) || s.sr !== 0) return false; guard('seat.subGo', () => s.subGo(r))(); woken = true; return true; }
+    // C++: mesh_turn.inc:subTick's answer to the ask for a fresh grant: the service holds no room r (SUB.10.8). My seat, in Section 1 of
+    // door r, is a joiner of the first door again
+    function subGone(r) { const s = seat(); if (!s || dead || !(Number.isInteger(r) && r > 0) || s.sr !== r) return false; guard('seat.subGone', () => s.subGone(r))(); woken = true; return s.sr !== r; }
     // room r's people are in my count: a fresh fold of a joining connection I hold lists door r
     function knownSub(r) { const s = seat(); return !!s && s.knownSub(r); }
 
@@ -574,7 +583,7 @@
       fabricAdmitLog: noop, fabricDupMint: noop, fabricNoteBackoff: noop, fabricNoteReseat: noop, fabricNoteRollback: noop,
       fabricNoteSwap: noop, fabricVerdict: deaths.verdict, l18UxDeliv: noop, descEnd: noop, descNote: noop, g4Joined: noop,   // g4Joined: the sim's L40 contest lever only (X1 55c97d1)
       fabricFreeCells, fabricLieFor: () => null, fabricUnreachable, fhopActive: () => !!fh, fhopFriendFor,
-      fabricDoorNet, fabricDoorBlk, fabricDoorDue, fabricSubAsk, fabricSubProbe, fabricPipePeers, fabricSubDoor, fabricSubRepipe, fabricSubGo, fabricSubWalk, fabricTurnOn, fabricCutProbe,
+      fabricDoorNet, fabricDoorVerdict, fabricDoorBlk, fabricDoorDue, fabricSubAsk, fabricSubProbe, fabricPipePeers, fabricSubDoor, fabricSubRepipe, fabricSubGo, fabricSubWalk, fabricTurnOn, fabricCutProbe,
       fabricMyTier: () => ((measure.tier ? measure.tier() : E.TIER_DESKTOP) | 0),
       fabricMyNat: () => ((measure.nat ? measure.nat() : E.NAT_OPEN) | 0),
       fabricLeft: () => leaveNow(false), fabricReloadBye: () => leaveNow(true),
@@ -789,7 +798,7 @@
       mark: (peer) => { const x = ID.pid(ID.nid(peer)) === String(peer) ? ID.nid(peer) : learnPeer(peer); return x >= 0 && pcw.mark ? pcw.mark(x) : null; }, farView: (to) => farView(seat(), to),
       // the seat's construction is the caller's (A3): new Seat(env.me, env.world)
       newSeat: () => new seatM.Seat(me, w),
-      subGo, knownSub, pipePeers: () => pipeNow.map((x) => ID.pid(x)).filter((p) => p != null),   // the answer to the page's ask for a room; whether a room's people are in my count
+      subGo, subGone, knownSub, pipePeers: () => pipeNow.map((x) => ID.pid(x)).filter((p) => p != null),   // the answer to the page's ask for a room; whether a room's people are in my count
       drainDeaths: deaths.drain,   // [cellKey, seat id] the seat read dead since the last drain
     };
     if (dbg && typeof window !== 'undefined') window.__meshEnv = env;   // DEBUG: meet.js eval reaches the env (stats, traces, pcw.dump)
