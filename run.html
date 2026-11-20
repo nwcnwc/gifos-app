@@ -5346,10 +5346,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     document.addEventListener('click', (e) => {
       if (!IS_ANDROID || !IS_MOBILE) return;
       const t = e.target;
-      if (t && t.closest && t.closest('#appfull')) {
+      const fb = t && t.closest ? t.closest('#appfull') : null;
+      if (fb) {
         // The quiet full screen the first tap took: this tap asks for the
-        // filmstrip, and the control's own toggle must not leave.
-        if (e.isTrusted && fsQuiet()) { e.preventDefault(); e.stopPropagation(); openFsView('auto'); return; }
+        // filmstrip, and the control's own toggle must not leave. A person's
+        // tap is one on the control or on its item in the header menu (the
+        // menu relays the choice with click(), which is never isTrusted).
+        if ((e.isTrusted || fb.__byPerson === true) && fsQuiet()) { e.preventDefault(); e.stopPropagation(); openFsView('auto'); return; }
         fsStripAsk = !pageFull() && fsStripOk();   // a deliberate full screen brings the filmstrip with it
         setAutoFsOff(pageFull()); return;   // a tap that leaves full screen turns this off; one that enters turns it back on
       }
@@ -9682,7 +9685,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const b = document.createElement('button');
           b.type = 'button'; b.setAttribute('role', 'menuitem');
           b.textContent = (src.textContent || '').trim() || src.getAttribute('aria-label') || src.title || id;
-          b.addEventListener('click', () => { closeMenu(); src.click(); });
+          // the person's choice goes on to the control as theirs (src.__byPerson while its click runs)
+          b.addEventListener('click', (ev) => { closeMenu(); src.__byPerson = ev.isTrusted === true; try { src.click(); } finally { src.__byPerson = false; } });
           menu.appendChild(b);
         }
         const r = more.getBoundingClientRect();
