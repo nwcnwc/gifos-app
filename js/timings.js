@@ -234,6 +234,7 @@
     TUNNEL_KEY_ASK_MS: 250,   // ms
     TUNNEL_MINT_LOOK_MS: 20,   // ms
     TUNNEL_MINT_RETRY_MS: 60,   // ms
+    TUNNEL_MOVE_WAIT_MS: 3000,   // ms
     TUNNEL_OFFER_RESEND_MS: 2000,   // ms
     TUNNEL_OFFER_SETTLE_MS: 30,   // ms
     TUNNEL_RETRY_BASE_MS: 500,   // ms

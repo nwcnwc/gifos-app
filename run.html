@@ -14028,6 +14028,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         turnPath: (pid) => { const p = peers.get(pid), pc = p && p.pc; if (!pc) return { at: 0, relay: false }; return { at: turnWebClock(pc, Date.now()), relay: !!pc.__relayCand || !!p.connected }; },
         webOpen: (pid, o) => turnWebOpen(pid, o),
         webAuth: (pid, auth) => { const w = turnWeb.get(pid); if (w) w.auth(auth); },
+        webMove: (pid, url) => { const w = turnWeb.get(pid); if (!w) return ''; const up = w.up(); w.move(url); return up ? 'moving' : 'dialled'; },
         webUp: (pid) => { const w = turnWeb.get(pid); return !!w && w.up(); },
         webClose: (pid) => { const w = turnWeb.get(pid); if (w) { turnWeb.delete(pid); try { w.close('link closed'); } catch (e) {} } },
         log: turnNote,
@@ -14064,6 +14065,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         toSignal: (sig) => { if (turnWeb.get(pid) !== end) return; if (sig.kind === 'offer') { fresh(); sig.ib = 1; sig.boot = 1; } onSignal(pid, sig); },
         toChannel: (m) => { if (turnWeb.get(pid) !== end) return; const p = peers.get(pid); if (p && p.dc) onDc(p, p.dc, m); },
         onState: () => { try { turnPaint(); } catch (e) {} },
+        onMoved: (ok) => { if (turnWeb.get(pid) === end && turnLinks) turnLinks.webMoved(pid, ok); },
       });
       turnWeb.set(pid, end);
     }
