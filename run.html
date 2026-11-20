@@ -502,6 +502,9 @@
       x.send();
     } catch (e) { fallback(); }
   }
+  // ?agent=1 is read here, before the meeting rewrites its own address (agent mode reads window.__gifosAgentQ).
+  // A driver that loads the page with its own start script (the agent SDK) may set the flag before this line.
+  try { window.__gifosAgentQ = window.__gifosAgentQ === true || /[?&]agent=1(?:&|$)/.test(location.search); } catch (e) {}
   var decision = pinTarget(location.pathname, location.search, location.hash);
   if (decision && decision.ask) askLive(decision);
   else if (decision && decision.redirect) location.replace(decision.redirect);
@@ -1159,6 +1162,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       </section>
       <!-- Debug: a log of this page kept on this device only, for finding
            problems. Nothing leaves the device unless the person exports it. -->
+      <section class="set-group" id="set-g-bots">
+        <h4 data-t="setGroupBots">AI assistants</h4>
+        <div class="set-row set-wide">
+          <label class="rec-opt"><input type="checkbox" id="hidebots" role="switch"><span><b data-t="setHideBots">Hide bots</b><small data-t="setHideBotsHelp">On this device only: AI assistants' tiles are hidden and the voices this device gets from them on their own are muted. A voice already mixed into a row's sound still plays.</small></span></label>
+        </div>
+      </section>
       <section class="set-group" id="set-g-debug">
         <h4 data-t="setGroupDebug">Debug</h4>
         <div class="set-row set-wide">
@@ -1371,6 +1380,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           <label class="admopt"><input type="checkbox" id="adm-chat-slow"><span><span data-t="admChatSlow">Slow mode</span><small data-t="admChatSlowSub">Guests post at most one line every 10 seconds.</small></span></label>
           <label class="admopt"><input type="checkbox" id="adm-chat-clink"><span><span data-t="admChatClink">Links in chat</span><small data-t="admChatClinkSub">Off: a guest's links stay plain text.</small></span></label>
         </section>
+        <section id="adm-ai" aria-labelledby="adm-ai-h">
+          <h4 id="adm-ai-h" data-t="admAiNotes">AI notes</h4>
+          <div class="admopt"><span><span data-t="admAiNotesSub">May AI assistants keep notes of this meeting?</span><small data-t="admAiNotesHelp">Honest assistants obey this. An assistant taking notes is marked on its tile.</small></span>
+            <select id="adm-ai-notes" aria-labelledby="adm-ai-h"><option value="allowed" data-t="admAiAllowed">Allowed</option><option value="ask" data-t="admAiAsk">Ask first</option><option value="off" data-t="admAiOff">Off</option></select></div>
+          <div id="adm-ai-wait" hidden><small data-t="admAiWaiting">Waiting for your OK:</small><ul></ul></div>
+        </section>
       </div>
       <button id="adm-close" data-t="setClose" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
     </div>
@@ -1449,6 +1464,22 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <p data-t="closedMsg" id="closed-msg">This room’s host wasn’t here, so it closed. Reopen the same link when the host is back.</p>
       <button data-t="closedReload" id="closed-reload">Rejoin</button>
     </div>
+  </div>
+  <!-- BOT MODE: the text-first view for AI assistants (js/meet-agent.js renders it). The same page and seat; no tiles drawn. -->
+  <div id="botview" hidden role="main" aria-label="Bot mode" data-agent="bot-view">
+    <div class="bv-banner" role="region" aria-label="Bot mode"><span data-t="botBanner">Bot mode — for AI assistants.</span> <button type="button" id="bot-back" data-agent="bot-back" data-t="botBack">Back to normal view</button><span id="bot-forced" data-t="botForced" hidden>Agent mode: this page is an AI agent.</span></div>
+    <p class="bv-ver"><code data-agent="bot-version">gifosAgent v1</code> · <span data-t="botApiNote">window.gifosAgent is ready on this page.</span></p>
+    <p class="bv-status" data-agent="bot-status" role="status"></p>
+    <h2 data-t="botPeople">People</h2>
+    <table data-agent="bot-people"><thead><tr><th data-t="botColName">Name</th><th data-t="botColBot">Bot</th><th data-t="botColHost">Host</th><th data-t="botColMuted">Muted</th><th data-t="botColHand">Hand</th><th data-t="botColSpeaking">Speaking</th><th data-t="botColStage">On stage</th></tr></thead><tbody></tbody></table>
+    <h2 data-t="botTranscript">Transcript</h2>
+    <ol data-agent="bot-transcript"></ol>
+    <h2 data-t="botChat">Chat</h2>
+    <ol data-agent="bot-chat"></ol>
+    <form id="bot-say-form" class="bv-row"><label><span data-t="botSayAloud">Say aloud</span> <input id="bot-say" data-agent="bot-say" autocomplete="off"></label><button type="submit" data-agent="bot-say-send" data-t="botSayAloud">Say aloud</button></form>
+    <form id="bot-chat-form" class="bv-row"><label><span data-t="botSendChat">Send chat</span> <input id="bot-chat-in" data-agent="bot-chat-input" autocomplete="off"></label><button type="submit" data-agent="bot-chat-send" data-t="botSendChat">Send chat</button></form>
+    <p class="bv-row"><button type="button" id="bot-hand" data-agent="bot-hand" aria-pressed="false" data-t="botRaiseHand">Raise hand</button> <button type="button" id="bot-leave" data-agent="bot-leave" data-t="botLeave">Leave</button></p>
+    <script type="application/json" id="gifos-agent-state">{}</script>
   </div>
   <div class="name-modal" role="dialog" aria-modal="true" id="left-modal" style="display:none">
     <div class="name-box">
@@ -1623,6 +1654,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/meet-zones.js" defer></script>
   <script src="js/meet-content.js" defer></script>
   <script src="js/meet-agenda.js" defer></script>
+  <script src="js/meet-agent.js" defer></script>
   <script src="js/camera-studio.js" defer></script>
   <script src="js/gifos-ondevice.js" defer></script>
   <script>
@@ -3067,10 +3099,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { updateTile('me'); } catch (e) {}
       try { broadcastStatus(); } catch (e) {}
       try { paintControls(); } catch (e) {}
+      try { setBotView(true); } catch (e) {}
     }
     for (const id of ['ai-assist', 'meet-ai-assist']) {
       const b = document.getElementById(id);
-      if (b) b.addEventListener('click', () => becomeAssistant());
+      // The same button takes a person back from the bot view (no reload, no reseat).
+      if (b) b.addEventListener('click', () => { if (typeof botViewOn !== 'undefined' && botViewOn && myStatus.bot) backToNormalView(); else becomeAssistant(); });
     }
     // The Stage seat comes back with its original claim time, so the person
     // keeps their place in step-up order. A grant that has not arrived yet
@@ -5236,6 +5270,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (v) pipCardDrop();
         else if (meTile && !docPipOk() && pipCardEnsure()) { pipCardPaint(false); aim = pipCard.video; }
       } catch (e) {}
+      if (typeof botViewOn !== 'undefined' && botViewOn) aim = null;   // the bot view draws no tile, so nothing floats by itself
       if (aim === pipAimed) return;
       try { if (pipAimed) pipAimed.autoPictureInPicture = false; } catch (e) {}
       try { if (aim) aim.autoPictureInPicture = true; } catch (e) {}
@@ -5258,7 +5293,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       let floatPid = null;
       if (hidden) { const v = pipSource(); for (const [pid, p] of peers) if (p.video === v) { floatPid = pid; break; } }
       for (const [pid, p] of peers) {
-        const park = hidden && pid !== floatPid;
+        // The bot view (js/meet-agent.js) wants no video it has not opened: the same park, asked for the same way.
+        const park = (hidden && pid !== floatPid) || (typeof botParks === 'function' && botParks(pid, recording));
         if (visParkSent.get(pid) === park) continue;
         if (p.dc && p.dc.readyState === 'open') { const was = visParkSent.get(pid); dcSend(p, { k: 'vis', park }); visParkSent.set(pid, park); p.liftWait = park ? null : (was === true ? { fd: -1 } : p.liftWait); }
         else visParkSent.delete(pid); // never mark unsent state as delivered
@@ -5269,6 +5305,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function reassertVisLift(pid) {
       const p = peers.get(pid);
       if (!p || !p.dc || p.dc.readyState !== 'open' || document.hidden) return;
+      if (typeof botParks === 'function' && botParks(pid, false)) return;   // the bot view keeps its parks
       dcSend(p, { k: 'vis', park: false });
       visParkSent.set(pid, false);
     }
@@ -5654,7 +5691,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if ((field === 'app' || field === 'stg' || field === 'share') && (!hasAdminRoom() || !amAdmin)) return;
       // The room-wide chat switch is the admin's alone, and only means
       // anything where there IS an admin to sign it.
-      if ((field === 'chat' || field === 'cc' || field === 'pray' || field === 'gfile' || field === 'greact' || field === 'qa' || field === 'chist' || field === 'slow' || field === 'clink') && (!hasAdminRoom() || !amAdmin)) return;
+      if ((field === 'chat' || field === 'cc' || field === 'pray' || field === 'gfile' || field === 'greact' || field === 'qa' || field === 'chist' || field === 'slow' || field === 'clink' || field === 'ain') && (!hasAdminRoom() || !amAdmin)) return;
       if (hasAdminRoom() && !amAdmin) { setStatus(field === 'mute' ? uiText('stOnlyHostsMute', '🛡 Only this room\u2019s hosts can mute someone for all.') : uiText('stOnlyHostsBlur', '🛡 Only this room\u2019s hosts can blur someone for all.')); return; }
       const mine = modTable[target] = modTable[target] || {};
       mine[field] = { on, by: myName(), byId: myId, at: Date.now() };
@@ -7143,10 +7180,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (st && st.bot) {
         let mark = tile.querySelector(':scope > .botbadge');
         if (!mark) { mark = document.createElement('span'); mark.className = 'botbadge'; tile.appendChild(mark); }
-        if (mark.getAttribute('data-mark') !== 'note') {
-          mark.setAttribute('data-mark', 'note');
-          mark.title = 'Note bot';
-          mark.innerHTML = AI_SPARK_SVG + 'bot';
+        // nts: the agent keeps notes (1), or asks the host first (2): js/meet-agent.js, from the moment it subscribes
+        const nm = st.nts === 1 ? 'notes' : st.nts === 2 ? 'ask' : 'note';
+        if (mark.getAttribute('data-mark') !== nm) {
+          mark.setAttribute('data-mark', nm);
+          if (nm === 'note') {
+            mark.title = 'Note bot';
+            mark.innerHTML = AI_SPARK_SVG + 'bot';
+          } else {
+            mark.title = '';
+            mark.innerHTML = AI_SPARK_SVG;
+            mark.appendChild(document.createTextNode(nm === 'notes' ? uiText('botTakingNotes', 'bot \u00b7 taking notes') : uiText('botNotesAsk', 'bot \u00b7 asks to take notes')));
+          }
         }
       } else {
         const mark = tile.querySelector(':scope > .botbadge');
@@ -19040,6 +19085,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const vtr = p.stream && p.stream.getVideoTracks()[0];
       if (!p.connected || p.relayed) return 'link';
       if (document.hidden) return 'hidden';
+      if (typeof botParks === 'function' && visParkSent.get(pid) === true) return 'hidden';   // parked for the bot view: no frames is the ask
       if (document.pictureInPictureElement && document.pictureInPictureElement === p.video) return 'pip'; // a floated tile paints in the float, not in the room: no frame count to judge here
       if (!vtr || vtr.readyState !== 'live') return 'track';
       if (!p.video || !tileHolds(p.video, p.stream) || p.video.paused || p.video.readyState === 0) return 'element';
@@ -22048,6 +22094,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // like any view-only guest tapping the mic button.
           let assistantBoot = false;
           try { assistantBoot = sessionStorage.getItem('gifos_bot') === '1'; } catch (e) {}
+          if (params.get('agent') === '1' || (typeof window !== 'undefined' && window.__gifosAgentQ === true)) params.set('bot', '1');   // agent mode (gifosAgent) is bot mode, and it cannot be untagged
           if (params.get('bot') === '1') {
             // Assistant mode: muted, camera off, and no permission prompt.
             // The transcript is the other people. A tap can still open a mic later.
@@ -22059,6 +22106,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             localStream = null;
             try { updateTile('me'); } catch (e) {}
             try { broadcastStatus(); } catch (e) {}
+            try { setBotView(true); } catch (e) {}
             try {
               for (const id of ['ai-assist', 'meet-ai-assist']) {
                 const b = document.getElementById(id);
@@ -22076,6 +22124,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             localStream = null;
             try { updateTile('me'); } catch (e) {}
             try { broadcastStatus(); } catch (e) {}
+            try { setBotView(true); } catch (e) {}
             return;
           }
           if (BROADCAST && !bcHostStored()) {
@@ -24520,6 +24569,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (sl) sl.checked = slowModeOn();
       const lk = document.getElementById('adm-chat-clink');
       if (lk) lk.checked = chatLinksOn();
+      try { paintAiNotesAdmin(); } catch (e) {}
     }
     document.getElementById('chatmod').onclick = () => {
       setMod('*', 'chat', !chatOffInfo());
@@ -24543,6 +24593,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     document.getElementById('adm-chat-chist').onchange = (e) => { setMod('*', 'chist', !!e.target.checked); };
     document.getElementById('adm-chat-slow').onchange = (e) => { setMod('*', 'slow', !!e.target.checked); };
     document.getElementById('adm-chat-clink').onchange = (e) => { setMod('*', 'clink', !!e.target.checked); renderChat(); };
+    document.getElementById('adm-ai-notes').onchange = (e) => { setMod('*', 'ain', e.target.value === 'off' || e.target.value === 'ask' ? e.target.value : 'allowed'); paintAiNotesAdmin(); };
     document.getElementById('chatlog').addEventListener('scroll', () => {
       const log = document.getElementById('chatlog');
       if (logNearBottom(log)) paintChatNew(true);
@@ -25479,6 +25530,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // track is the stall this whole path exists to avoid.
     function wkQuietBind(video, stream, p) {
       if (video.error && video._wrapOf === stream) return; // the player failed on this picture: a re-seat cannot cure it
+      if (typeof botParks === 'function' && botParks(p.id, false)) return;   // parked for the bot view
       const t = Date.now();
       // One re-seat in flight; a sender that never goes quiet (an old client
       // re-seats at once) is asked again on a doubling backoff, 60 s at most.
@@ -32293,7 +32345,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // friend carries (relayVia). The tile's element can hold a painted
         // picture instead (camera off), which has no sound.
         const voice = p.relayed ? ((relayVia.get(pid) || {}).stream || null) : (p.stream || null);
-        busVolume(p.video, (bus && !sealed && !isHeld(pid)) ? mix[bus] : 0, voice);
+        busVolume(p.video, (bus && !sealed && !isHeld(pid) && !(typeof botHidden === 'function' && botHidden(pid))) ? mix[bus] : 0, voice);
       }
       // feed tiles (the nested mosaics): stage strip is Stage; stadium tiles
       // are The stadium.
@@ -38414,6 +38466,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const lob = document.getElementById('lobby');
       if (lob && lob.classList.contains('show')) return;
       if (!myStatus || myStatus.blur !== 0) return;
+      if (myStatus.bot && myStatus.camOff) return;   // an assistant with no camera shows no face: nothing is held
       let hold = '';
       try { hold = blurHold('me'); } catch (e) { return; }
       if (!hold) return;
@@ -41632,6 +41685,354 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         window.__gifosMeetEmit({ type: 'participants', people: people });
       }, 1500);
     }
+
+    // ---- AGENT MODE AND THE BOT VIEW (window.gifosAgent v1: js/meet-agent.js) ----------------------------
+    // ?agent=1 is bot mode that cannot be untagged; the bot toggle ("I'm an AI assistant", ?bot=1) is bot mode a
+    // person can leave with one tap. Either way the page is the same seat: the bot view only changes what is drawn
+    // (no tiles, a text-first view), and the agent API reads what this page already holds. vars: becomeAssistant
+    // and the boot may call setBotView before this line runs.
+    var botViewOn, botViewWant, agentCore, hideBotsOn, hideBotsT;
+    const AGENT_FORCED = params.get('agent') === '1' || window.__gifosAgentQ === true || /[?&]agent=1(?:&|$)/.test(location.search);   // #agent=1 or ?agent=1
+    const agentOk = (x) => Object.assign({ ok: true }, x || {});
+    const agentFail = (s) => ({ ok: false, error: String(s) });
+    // The parks the bot view asks for (sendVisPark): every row mate's camera except the ones an agent watches.
+    function botParks(pid, recording) {
+      if (!botViewOn || !(window.GifOS && GifOS.meetAgent)) return false;
+      return GifOS.meetAgent.wantsPark(pid, { botView: true, recording: !!recording, cell: meshCoord(), watching: agentCore ? agentCore.watching() : new Set() });
+    }
+    function botHidden(pid) { return !!hideBotsOn && !!pid && !!(statusOf.get(pid) || {}).bot; }
+    function aiNotesSetting() {
+      if (!hasAdminRoom()) return 'allowed';
+      const m = modTable['*'] && modTable['*'].ain;
+      const v = m && m.on;
+      return v === 'off' || v === 'ask' ? v : 'allowed';
+    }
+    function paintAiNotesAdmin() {
+      const sel = document.getElementById('adm-ai-notes');
+      if (sel) { sel.value = aiNotesSetting(); sel.disabled = !(hasAdminRoom() && amAdmin); }
+      const box = document.getElementById('adm-ai-wait');
+      const ul = box && box.querySelector('ul');
+      if (!ul) return;
+      ul.textContent = '';
+      let n = 0;
+      if (aiNotesSetting() === 'ask' && amAdmin) {
+        for (const pid of rosterIds) {
+          const st = statusOf.get(pid);
+          if (!st || !st.bot || st.nts !== 2) continue;
+          n++;
+          const li = document.createElement('li');
+          li.textContent = (rosterNames[pid] || (peers.get(pid) || {}).name || '…') + ' ';
+          const b = document.createElement('button'); b.type = 'button'; b.textContent = uiText('admAiAllow', 'Allow notes');
+          b.onclick = () => { setMod(pid, 'ain', true); paintAiNotesAdmin(); };
+          li.appendChild(b); ul.appendChild(li);
+        }
+      }
+      box.hidden = !n;
+    }
+    function agentPeople() {
+      const out = [];
+      const stg = stageIds();
+      for (const r of roomPeople()) {
+        const st = (r.me ? myStatus : statusOf.get(r.id)) || {};
+        out.push({ id: r.id, name: r.name, me: !!r.me, bot: !!r.bot, admin: r.me ? !!amAdmin : (hasAdminRoom() && admins.includes(r.id)), here: !r.far,
+          muted: st.muted !== false, camera: !st.camOff, hand: !!st.hand, onStage: stg.includes(r.id), speaking: !!speakingOf.get(r.me ? 'me' : r.id),
+          notes: st.nts === 1 || st.nts === 2 ? st.nts : 0, owner: typeof st.own === 'string' ? st.own : undefined });
+      }
+      return out;
+    }
+    function agentVideoSource(who) {
+      if (who === 'stadium') { const m = mosIn.get('sdm') || mosIn.get('sd'); return m && m.el ? { el: m.el, pid: 'stadium', source: 'stadium' } : null; }
+      const stg = stageIds();
+      const sid = who === 'stage' ? stg.find((id) => id !== myId) : (stg.includes(who) ? who : null);
+      if (sid) { const f = mosIn.get('stg:' + sid); if (f && f.el) return { el: f.el, pid: sid, source: 'stage' }; }
+      if (who === 'stage' || who === myId) return null;
+      const p = peers.get(who);
+      return p && p.video && camPeer(who) ? { el: p.video, pid: who, source: 'direct' } : null;
+    }
+    function agentVideoList() {
+      const out = [], stg = stageIds();
+      for (const [pid, p] of peers) {
+        const st = statusOf.get(pid);
+        if (!st || st.camOff || !p.video || !camPeer(pid) || stg.includes(pid)) continue;
+        out.push({ id: pid, source: 'direct', w: p.video.videoWidth || 0, h: p.video.videoHeight || 0, blurred: blurLevelFor(pid) > 0 });
+      }
+      for (const id of stg) if (id !== myId) out.push({ id: id, source: 'stage', blurred: blurLevelFor(id) > 0 });
+      if (mosIn.get('sdm') || mosIn.get('sd')) out.push({ id: 'stadium', source: 'stadium', blurred: blurLevelFor('stadium') > 0 });
+      return out;
+    }
+    function agentAudioTracks(who) {
+      const out = [];
+      const add = (st) => { const t = st && st.getAudioTracks && st.getAudioTracks()[0]; if (t && t.readyState === 'live' && out.indexOf(t) < 0) out.push(t); };
+      const mates = rowMates(), stg = stageIds();
+      if (who !== 'room') { const p = peers.get(who); if (p && mates.includes(who) && !stg.includes(who)) add(p.relayed ? (relayVia.get(who) || {}).stream : p.stream); return out; }
+      for (const pid of mates) { const p = peers.get(pid); if (p && !stg.includes(pid) && !isHeld(pid)) add(p.relayed ? (relayVia.get(pid) || {}).stream : p.stream); }
+      for (const [k, f] of mosIn) if (k === 'sdm' || k === 'sd' || k.indexOf('stg:') === 0) add(f && f.stream);
+      return out;
+    }
+    function agentState() {
+      const people = agentPeople();
+      const mine = people.find((p) => p.me) || { id: myId, name: myName() };
+      const last = progTrace.length ? progTrace[progTrace.length - 1] : null;
+      let agenda = null;
+      try {
+        if (CT && CT.ag && CT.ag.items.length) {
+          const c = GifOS.meetAgenda.clock(CT.ag, CT.agStart, Date.now());
+          agenda = { items: CT.ag.items.map((i) => ({ text: i.t, min: i.min })), current: CT.ag.cur, leftMs: c ? c.left : null, canEdit: ctCanEditAgenda() };
+        }
+      } catch (e) { agenda = null; }
+      let app = null;
+      for (const p of people) { const st = p.me ? myStatus : statusOf.get(p.id); if (st && st.app && st.app.name) { app = { running: { id: p.id, name: String(st.app.name) }, room: null }; break; } }
+      const lm = document.getElementById('left-modal');
+      const left = bannedOut ? 'removed' : (lm && lm.style.display !== 'none') ? 'manual' : '';
+      const sc = document.getElementById('statuscount'), sr = document.getElementById('statusrest');
+      return {
+        me: Object.assign({}, mine, { hand: !!myStatus.hand, camera: !myStatus.camOff, muted: !!myStatus.muted }),
+        room: { id: room ? String(room) : '', kind: hasAdminRoom() ? 'admin' : 'open', locked: !!roomPw, aiNotes: aiNotesSetting() },
+        joined: !!mediaJoined && !left, progress: last ? { step: last.x, of: last.y, text: last.text } : null, password: atPwPrompt(),
+        people: people, stage: { ids: stageIds(), mode: hasAdminRoom() ? 'host' : 'open' }, agenda: agenda, app: app, video: agentVideoList(),
+        host: { muted: typeof amGloballyMuted === 'function' && amGloballyMuted(), camOff: !!forcedCamOff('me'), removed: !!bannedOut },
+        left: left, botView: !!botViewOn, forced: AGENT_FORCED,
+        status: ((sc && sc.textContent) || '') + ((sr && sr.textContent) ? ' ' + sr.textContent : ''),
+      };
+    }
+    // The agent's voice: one track rides every main audio sender while it speaks (mainAudioTrack), as the
+    // meeting bot's does; the status says unmuted only while it plays.
+    function agentVoice(track) {
+      botVoiceTrack = track || null;
+      try { refreshOutbound(); } catch (e) {}
+      try { if (wspCaps.has('me')) wspStop('me'); wspSync(); } catch (e) {}
+      if (track) myStatus.muted = false;
+      else { const mic = localStream && localStream.getAudioTracks()[0]; myStatus.muted = !(mic && mic.enabled); }
+      try { paintControls(); broadcastStatus(); } catch (e) {}
+    }
+    // The agent's camera (video.out): a track it made, treated as a camera in every way (blur, consent, host orders).
+    function agentCamera(track, blur) {
+      if (!track) {
+        const vt = localStream && localStream.getVideoTracks()[0];
+        if (vt) { try { localStream.removeTrack(vt); } catch (e) {} }
+        myStatus.camOff = true;
+        try { paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateTile('me'); } catch (e) {}
+        return agentOk();
+      }
+      if (forcedCamOff('me')) return agentFail('The host has turned your camera off.');
+      if (!localStream) localStream = new MediaStream();
+      const old = localStream.getVideoTracks()[0];
+      if (old && old !== track) { try { localStream.removeTrack(old); } catch (e) {} }
+      if (!localStream.getVideoTracks().includes(track)) localStream.addTrack(track);
+      track.enabled = true;
+      myStatus.camOff = false;
+      try { setPersonalBlur(blurLevel(blur)); } catch (e) {}
+      try { attachLocalTracks(); } catch (e) {}
+      try { if (meTile && meTile.video) meTile.video.style.display = ''; paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateTile('me'); updateMediaSession(); } catch (e) {}
+      return agentOk();
+    }
+    function agentChat(text) {
+      text = String(text || '').trim().slice(0, 2000);
+      if (!text) return agentFail('Nothing to post.');
+      if (chatOffInfo() && !amAdmin) return agentFail(uiText('stTheHostHasTurnedChat', 'The host has turned chat off.'));
+      const m = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text: text };
+      const how = postChat(m);   // the one road for a line: slow mode paces it, and holds it rather than lose it
+      if (!how) return agentFail('Slow mode: this meeting allows one chat line per ' + Math.round(CHAT_SLOW_MS / 1000) + ' seconds, and ' + CHAT_HELD_MAX + ' are already waiting to go out.');
+      try { renderChat(); } catch (e) {}
+      return agentOk({ id: m.id, held: how === 'held' });
+    }
+    function agentHand(up) {
+      myStatus.hand = up ? (myStatus.hand || Date.now()) : null;
+      try { paintHand(); broadcastStatus(); layout(); renderHandq(); } catch (e) {}
+      return agentOk({ up: !!myStatus.hand });
+    }
+    function agentMic(on) {
+      if (on && typeof amGloballyMuted === 'function' && amGloballyMuted()) return agentFail('The host has muted you.');
+      const apply = (track) => {
+        if (track) track.enabled = !!on;
+        myStatus.muted = !(on && track);
+        try { paintControls(); broadcastStatus(); updateMediaSession(); if (typeof syncSpeech === 'function') syncSpeech(); } catch (e) {}
+        if (on && track && typeof kickStageMic === 'function') { try { kickStageMic(track); } catch (e) {} }
+        return agentOk({ mic: !myStatus.muted });
+      };
+      const live = localStream && localStream.getAudioTracks().find((t) => t.readyState === 'live');
+      if (live || !on) return apply(live || (localStream && localStream.getAudioTracks()[0]));
+      const md = navigator.mediaDevices;
+      if (!md || !md.getUserMedia) return agentFail('This page cannot open a microphone.');
+      // The agent's own call is the only way a microphone opens here.
+      return md.getUserMedia({ audio: true, video: false }).then((stream) => {
+        const tr = stream.getAudioTracks()[0];
+        if (!tr) return agentFail('This page cannot open a microphone.');
+        if (!localStream) localStream = new MediaStream();
+        const old = localStream.getAudioTracks()[0];
+        if (old && old !== tr) { try { localStream.removeTrack(old); } catch (e) {} }
+        if (!localStream.getAudioTracks().includes(tr)) localStream.addTrack(tr);
+        try { meterFor('me', localStream); attachLocalTracks(); } catch (e) {}
+        return apply(tr);
+      }, () => agentFail('This page cannot open a microphone.'));
+    }
+    function agentStage(on) {
+      if (!on) { if (myStatus.stg) { if (myStatus.scr) stopScreenShare('you stepped down'); setStage(false); } return agentOk({ onStage: false }); }
+      if (myStatus.stg) return agentOk({ onStage: true });
+      if (!canStage(myId)) return agentFail('Only a host can put you on the stage here. Raise your hand to ask.');
+      if (stageIds().length >= SCALE.C) return agentFail('The stage is full (' + SCALE.C + ' people).');
+      setStage(true);
+      return agentOk({ onStage: true });
+    }
+    async function agentAgendaSet(items) {
+      const MA = GifOS.meetAgenda;
+      if (!Array.isArray(items)) return agentFail('Give the agenda as a list of { text, min }.');
+      if (!ctCanEditAgenda()) return agentFail('Only the agenda’s owner or the host can change it here.');
+      let a = CT && CT.ag && CT.ag.items.length ? MA.clear(CT.ag, myId) : MA.empty(myId);
+      for (const it of items.slice(0, 50)) { const t = String((it && (it.text || it.t)) || '').trim(); if (t) a = MA.add(a, myId, t, +(it.min || 0) || 0) || a; }
+      return (await ctAgendaPublish(a, 'agent-set')) ? agentOk() : agentFail('The agenda could not be shared.');
+    }
+    function agentProfile(p) {
+      const out = {};
+      if (p.name != null) {
+        let n = String(p.name).replace(/\s+/g, ' ').trim().slice(0, 40);
+        if (!n) return agentFail('Give a name.');
+        if (AGENT_FORCED && !/\([^()]*\S[^()]*\)\s*$/.test(n)) {
+          const o = String(p.owner || '').trim();
+          if (!o) return agentFail('An agent’s name must say whose agent it is, such as "Ada (Sam’s assistant)".');
+          n = (n + ' (' + o + '’s assistant)').slice(0, 40);
+        }
+        if (window.__gifosMeetName) window.__gifosMeetName = n; else GifOS.store.setName(n);
+        out.name = n;
+      }
+      if (p.owner != null) { myStatus.own = String(p.owner).slice(0, 40); out.owner = myStatus.own; }
+      if (p.notesTo != null) { myStatus.ntg = String(p.notesTo).slice(0, 80); out.notesTo = myStatus.ntg; }
+      try { refreshAllTiles(); broadcastStatus(); if (typeof pushLeaf === 'function') pushLeaf(); } catch (e) {}
+      return agentOk(out);
+    }
+    function agentHost() {
+      const T = GifOS.timings;
+      return {
+        T: { AGENT_TICK_MS: T.AGENT_TICK_MS, AGENT_VOICE_TAIL_MS: T.AGENT_VOICE_TAIL_MS },
+        myId: () => myId, myName: () => myName(), isBot: () => !!myStatus.bot,
+        capState: (v, w) => { try { return capTrust ? capTrust.stateOf(v, w) : 'unknown'; } catch (e) { return 'unknown'; } },
+        isAdminId: (id) => hasAdminRoom() && admins.includes(id),
+        hostRoom: () => hasAdminRoom(), aiNotes: aiNotesSetting,
+        notesGranted: () => { const g = (modTable[myId] || {}).ain; return !!(g && g.on === true); },
+        setNotesMark: (v) => { if (v === 1 || v === 2) myStatus.nts = v; else delete myStatus.nts; try { updateTile('me'); broadcastStatus(); } catch (e) {} },
+        chatLines: () => chat.values(), trLines: () => trs.values(),
+        speaking: () => Array.from(speakingOf.entries()).map(([k, on]) => { const id = k === 'me' ? myId : k; return { id: id, on: !!on, level: on ? 1 : 0, bot: k === 'me' ? !!myStatus.bot : !!(statusOf.get(k) || {}).bot }; }),
+        state: agentState, joined: () => !!mediaJoined,
+        hostMuted: () => typeof amGloballyMuted === 'function' && amGloballyMuted(), camForcedOff: () => !!forcedCamOff('me'),
+        playVoice: agentVoice, writeSpoken: (text) => { rememberBotSpoken(text); writeBotSpoken(text); },
+        audioTracks: agentAudioTracks, videoSource: agentVideoSource,
+        blurFrac: (id) => blurViewFrac(blurLevelFor(id)), blurDraw: blurDraw, makeCanvas: () => document.createElement('canvas'),
+        setCamera: agentCamera, chat: agentChat, hand: agentHand, mic: agentMic, stage: agentStage,
+        appRun: (id) => { if (!canIRunApp()) return agentFail('This meeting does not let you run apps.'); if (!id) return agentFail('Say which app.'); return Promise.resolve(runApp(String(id))).then(() => agentOk({ running: !!myStatus.app })); },
+        appStop: () => { if (!myStatus.app) return agentFail('You are not sharing an app.'); stopApp(); return agentOk(); },
+        appRoom: (op, args) => { if (typeof window.__gifosRoom !== 'function') return agentFail('No app room here.'); return agentOk({ result: window.__gifosRoom(String(op || ''), args || {}) }); },
+        agendaNext: () => { if (!ctCanEditAgenda()) return agentFail('Only the agenda’s owner or the host can move it here.'); return Promise.resolve(ctAgendaPublish(GifOS.meetAgenda.next(CT && CT.ag, myId), 'agent-next')).then((r) => r ? agentOk() : agentFail('There is no next item.')); },
+        agendaSet: agentAgendaSet, profile: agentProfile,
+        leave: () => { try { leaveMeeting(); } catch (e) {} return agentOk(); },
+        renderBotView: (st) => {
+          if (!botViewOn) return;
+          const rows = (m) => Array.from(m.values()).filter((l) => l && !/^gb1 /.test(String(l.text || ''))).sort((x, y) => (x.at || 0) - (y.at || 0)).map((l) => ({ name: l.by || '', text: l.text || '' }));
+          GifOS.meetAgent.renderBotView(document.getElementById('botview'), Object.assign({}, st, { transcript: rows(trs), chat: rows(chat) }), uiText);
+        },
+        reaim: () => { try { sendVisPark(); } catch (e) {} },
+      };
+    }
+    function agentStart() {
+      if (!agentCore && window.GifOS && GifOS.meetAgent && GifOS.timings) {
+        agentCore = GifOS.meetAgent.make(agentHost());
+        try { GifOS.meetAgent.postMessageBridge(agentCore, window); } catch (e) {}
+      }
+      if (!agentCore) {
+        // A bare visit runs the lobby's scripts first and the rest (this module among them) right after: look again.
+        if (!agentStart.wait) agentStart.wait = setTimeout(() => { agentStart.wait = null; agentStart(); }, GifOS.timings.AGENT_TICK_MS);
+        return null;
+      }
+      window.gifosAgent = agentCore.api;
+      agentCore.start();
+      return agentCore;
+    }
+    function setBotView(on) {
+      on = !!on;
+      if (on && !room) { botViewWant = true; return; }   // the lobby: the meeting's boot turns it on
+      if (on) agentStart();
+      if (on === !!botViewOn) return;
+      botViewOn = on;
+      document.body.classList.toggle('bot-view', on);
+      const bv = document.getElementById('botview'); if (bv) bv.hidden = !on;
+      const back = document.getElementById('bot-back'), forced = document.getElementById('bot-forced');
+      if (back) back.hidden = AGENT_FORCED;
+      if (forced) forced.hidden = !AGENT_FORCED;
+      if (on && !AGENT_FORCED) {
+        let seen = false;
+        try { seen = sessionStorage.getItem('gifos_bot_seen') === '1'; sessionStorage.setItem('gifos_bot_seen', '1'); } catch (e) {}
+        if (!seen) setStatus(uiText('botFirstNote', 'This view is for AI assistants. Tap Back to normal view to return.'));
+      }
+      try { if (pipAimed) { pipAimed.autoPictureInPicture = false; pipAimed = null; } } catch (e) {}
+      try { sendVisPark(); } catch (e) {}
+    }
+    // BACK TO NORMAL VIEW: one tap, no reload, no reseat. The seat, its links, keys, sound and history stay; the
+    // camera stays off and the mic muted (on only when the person turns them on); every link is asked for video
+    // again with a fresh key frame, and the tiles are drawn from the roster as it is now. A reload stays normal.
+    function backToNormalView() {
+      if (AGENT_FORCED) return false;
+      try { sessionStorage.removeItem('gifos_bot'); } catch (e) {}
+      myStatus.bot = false;
+      delete myStatus.think; delete myStatus.nts;
+      myStatus.camOff = true;
+      if (!botVoiceTrack) myStatus.muted = true;
+      for (const id of ['ai-assist', 'meet-ai-assist']) { const b = document.getElementById(id); if (b) b.setAttribute('aria-pressed', 'false'); }
+      const note = document.getElementById('ai-assist-note'); if (note) note.textContent = '';
+      setBotView(false);
+      try { setPersonalBlur(2); } catch (e) {}   // a person's camera, when they turn it on, starts at Max blur like any join
+      if (agentCore) agentCore.stop();   // open video.in / video.out ports keep running
+      for (const p of peers.values()) if (p.dc && p.dc.readyState === 'open' && camPeer(p.id)) dcSend(p, { k: 'vkick' });
+      try { refreshAllTiles(); updateTile('me'); broadcastStatus(); paintControls(); reactRoomState(); layout(); applyBuses(); } catch (e) {}
+      return true;
+    }
+    (function wireBotView() {
+      const back = document.getElementById('bot-back');
+      if (back) back.onclick = () => backToNormalView();
+      const sayF = document.getElementById('bot-say-form'), chatF = document.getElementById('bot-chat-form');
+      if (sayF) sayF.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const inp = document.getElementById('bot-say'); const text = inp.value.trim(); if (!text) return;
+        inp.value = '';
+        // A voice needs speech audio. An embedder (or an extension) that makes it sets window.gifosAgentVoice(text) -> WAV
+        // bytes (base64); with none, the words go to chat and the status says so, never silently.
+        const tts = window.gifosAgentVoice;
+        if (typeof tts === 'function' && agentCore) Promise.resolve(tts(text)).then((wav) => agentCore.api.say(text, { wav: wav }));
+        else { agentChat(text); setStatus(uiText('botNoVoice', 'No voice on this page, so it went to chat.')); }
+      });
+      if (chatF) chatF.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const inp = document.getElementById('bot-chat-in'); const r = agentChat(inp.value);
+        if (r.ok) inp.value = ''; else setStatus(r.error);
+      });
+      const hand = document.getElementById('bot-hand');
+      if (hand) hand.onclick = () => agentHand(!myStatus.hand);
+      const lv = document.getElementById('bot-leave');
+      if (lv) lv.onclick = () => { try { leaveMeeting(); } catch (e) {} };
+      // HIDE BOTS (Settings, this device only): bot tiles off the grid, their own voices muted.
+      const hb = document.getElementById('hidebots');
+      const applyHideBots = () => {
+        let moved = false;
+        for (const [pid, p] of peers) {
+          if (!p.tile) continue;
+          const hide = botHidden(pid);
+          if (hide && p.tile.style.display !== 'none') { p.tile.style.display = 'none'; p.tile.dataset.bothide = '1'; moved = true; }
+          else if (!hide && p.tile.dataset.bothide) { delete p.tile.dataset.bothide; p.tile.style.display = ''; moved = true; }
+        }
+        if (moved) { try { layout(); applyBuses(); } catch (e) {} }
+      };
+      const setHide = (on) => {
+        hideBotsOn = !!on;
+        try { localStorage.setItem('gifos_hide_bots', on ? '1' : '0'); } catch (e) {}
+        clearInterval(hideBotsT); hideBotsT = null;
+        if (on) hideBotsT = setInterval(applyHideBots, GifOS.timings.AGENT_TICK_MS);
+        applyHideBots();
+        try { applyBuses(); } catch (e) {}
+      };
+      let saved = false; try { saved = localStorage.getItem('gifos_hide_bots') === '1'; } catch (e) {}
+      if (hb) { hb.checked = saved; hb.onchange = () => setHide(hb.checked); }
+      if (saved) setHide(true);
+    })();
+    if (AGENT_FORCED) agentStart();   // the API is there from the first moment; it says joined when the seat is
+    if (botViewWant && room) setBotView(true);
 
     // Painted stand-ins for desktop UI tests. DEBUG only. They are not mesh
     // peers: no offers, no absence sweep. Each one is a canvas captureStream
