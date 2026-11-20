@@ -152,6 +152,7 @@
         if (this.l16PlainHedge()) { wake(); return true; }   // FHOP.8.3: my one ask went quiet: one more greeter beside it
         if (this.l8511Tick()) { wake(); return true; }   // L8.54.11: the kindless word is due: one knock
         this.subStall();   // JOIN.2 (mesh_roomterm.inc)
+        this.l8512Note();   // L8.54.12 (mesh_roomterm.inc): every listed greeter is one my own dial found no path to
         if (this.entCheck()) { this.islandAsk(this.lastGreeters); wake(); return true; }   // L8.47
         if (this.islandTick()) { wake(); return true; }   // L8.1: nobody at the door answered
         if (this.reAsk || this.reJoin) {
