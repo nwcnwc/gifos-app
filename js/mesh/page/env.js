@@ -571,6 +571,9 @@
     }
     // C++: mesh_turn.inc:subTick's answer: my door is r (a listed room the page reached, or a new number it was granted)
     function subGo(r) { const s = seat(); if (!s || dead || !(Number.isInteger(r) && r > 0) || s.sr !== 0) return false; guard('seat.subGo', () => s.subGo(r))(); woken = true; return true; }
+    // C++: mesh_turn.inc:subTick's answer to the ask for a fresh grant: the service holds no room r (SUB.10.8). My seat, in Section 1 of
+    // door r, is a joiner of the first door again
+    function subGone(r) { const s = seat(); if (!s || dead || !(Number.isInteger(r) && r > 0) || s.sr !== r) return false; guard('seat.subGone', () => s.subGone(r))(); woken = true; return s.sr !== r; }
     // room r's people are in my count: a fresh fold of a joining connection I hold lists door r
     function knownSub(r) { const s = seat(); return !!s && s.knownSub(r); }
 
@@ -795,7 +798,7 @@
       mark: (peer) => { const x = ID.pid(ID.nid(peer)) === String(peer) ? ID.nid(peer) : learnPeer(peer); return x >= 0 && pcw.mark ? pcw.mark(x) : null; }, farView: (to) => farView(seat(), to),
       // the seat's construction is the caller's (A3): new Seat(env.me, env.world)
       newSeat: () => new seatM.Seat(me, w),
-      subGo, knownSub, pipePeers: () => pipeNow.map((x) => ID.pid(x)).filter((p) => p != null),   // the answer to the page's ask for a room; whether a room's people are in my count
+      subGo, subGone, knownSub, pipePeers: () => pipeNow.map((x) => ID.pid(x)).filter((p) => p != null),   // the answer to the page's ask for a room; whether a room's people are in my count
       drainDeaths: deaths.drain,   // [cellKey, seat id] the seat read dead since the last drain
     };
     if (dbg && typeof window !== 'undefined') window.__meshEnv = env;   // DEBUG: meet.js eval reaches the env (stats, traces, pcw.dump)

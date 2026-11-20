@@ -11602,7 +11602,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // meeting is not empty, and "Just you — send the invite" told a person
       // whose only partner was in a tunnel that the meeting had emptied. Say
       // what is happening: we are getting back in, waiting on the others.
-      const seat0 = meshSeat(), atDoor = !!(seat0 && (seat0.state === 1 || seat0.state === 2));
+      // ...and so is a page seated alone while the connection that joins its room to the others is made again (wayBack).
+      const seat0 = meshSeat(), atDoor = !!(seat0 && (seat0.state === 1 || seat0.state === 2)) || (typeof wayBack === 'function' && wayBack());
       // Alone means no other face on the grid either (displayCount).
       // REACH (see REACH_MSG): a network that blocks direct connections
       // rewrites the line — locked out, or unreachable, is the one thing a
@@ -11690,6 +11691,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // A WAIT ON THE WAY IN (or back in) reads its true step (js/meet-progress.js):
       // "Step 3 of 10: Finding your meeting… · 12 s". It replaces the resting
       // line, the password and reach sentences included; a refusal still wins.
+      // The way in is a wait from the page's first paint: its flow starts here when no beat has started it yet (the first
+      // beat comes a second in, and the line said the network's verdict until then).
+      try { if (!refused && !leftUp && typeof progressBegin === 'function') progressBegin(); } catch (e) {}
       const prog = !refused && !leftUp && typeof progressWords === 'function' ? progressWords() : null;
       if (prog) {
         countText = '';
@@ -12412,7 +12416,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // mesh's own "the meeting is live but unreachable" verdict (R6), atDoor
     // whether I am still asking to be let in.
     function reachStateOf(f) {
-      if (f.probe === 'blocked') {
+      // ON ITS WAY BACK IN (f.way): alone because the connection that joins its room to the rest of the meeting is being
+      // made again. Nothing is settled, so there is no verdict; the line shows the way back (the reconnect flow).
+      if (f.way) return null;
+      // A RELAYED WAY IS OPEN (f.turn 'open': this meeting has a relay service and it has not refused this page): a network
+      // that blocks direct connections locks nobody out, in or out, so the two blocked verdicts are not true. Refused, or
+      // no service, they stand as before.
+      if (f.probe === 'blocked' && f.turn !== 'open') {
         // My network is the problem. If anyone reaches me, they share it:
         // the people elsewhere are the ones who cannot. Alone and seated,
         // the same is true of whoever is yet to come.
@@ -12426,11 +12436,22 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return null;
     }
     let outsideSince = 0;
+    // wayBack() → true while I am seated and alone and the connection that joins my room to the rest of the meeting is
+    // being made again: my page is making it (turnLinks.making: an ask out, a pipe opening or down with no verdict yet,
+    // a re-pipe due), or a far door left my room's fold and its loss is not judged yet (meshNode.farPending). The people
+    // behind it are not gone and I am not locked out: the line says I am getting back in.
+    function wayBack() {
+      try {
+        const s = meshSeat();
+        if (!s || s.state !== 3 || !meshNode || participantCount() > 1) return false;
+        return !!((turnLinks && relayTv && turnLinks.making()) || (meshNode.farPending && meshNode.farPending()));
+      } catch (e) { return false; }
+    }
     function reachInfo() {
       const s = meshSeat();
-      const atDoor = !!(s && (s.state === 1 || s.state === 2));
+      const atDoor = !s || s.state !== 3;   // not seated yet (no seat, asking for the list, knocking, asking for a seat): still at the door, never "alone in the meeting"
       let isMember = null;
-      if (atDoor) { const members = new Set(); for (const v of s.occ.values()) if (v) members.add(String(v)); isMember = (pid) => members.has(String(pid)); }
+      if (atDoor && s) { const members = new Set(); for (const v of s.occ.values()) if (v) members.add(String(v)); isMember = (pid) => members.has(String(pid)); }
       const c = reachCounts(peers.values(), peerAway, isMember);
       // A page still outside after a minute reads the plain failure line, whatever the reason (a wrong clock looks just like this): the page cannot tell why, so it does not say.
       if (!s || s.state === 3 || (typeof iAmWaiting === 'function' && iAmWaiting())) outsideSince = 0; else if (!outsideSince) outsideSince = Date.now();
@@ -12440,7 +12461,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const n = participantCount();
       const cutOff = n <= 1 && islandApart();
       const f = { probe: directPath, n, live: c.live, dead: c.dead,
-        stranded: !!(s && s.stranded) || cutOff || (outsideSince > 0 && Date.now() - outsideSince > 60000), atDoor };
+        stranded: !!(s && s.stranded) || cutOff || (outsideSince > 0 && Date.now() - outsideSince > 60000), atDoor,
+        way: wayBack(), turn: (turnLinks && relayTv) ? (turnLinks.refused() ? 'refused' : 'open') : '' };
       f.state = reachStateOf(f);
       return f;
     }
@@ -13882,6 +13904,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const K = GifOS.meshConsts.consts, T = GifOS.meshTopo;
       return {
         me: () => myId, dev: () => myDevHash, sid: () => sessId, now: () => Date.now(), tickMs: meshNode.tickMs(),
+        doorLost: () => !!(meshNode && meshNode.doorLost && meshNode.doorLost()),   // my door is not mine at the relay right now (no socket, or the relay forgot the door)
+        woke: () => wakeLastAt, wakeSettleMs: WAKE_SETTLE_MS,   // when this page last came back from a gap its connections do not outlive unanswered (wakeProbe), and how long its pairs get to settle
         seat: () => {
           const r = turnRaw(), v = meshSeat();
           if (!r || !v || !r.hasCoord || r.state !== 3) return null;
@@ -14193,6 +14217,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!meshNode) return;
       const rg = turnLinks ? turnLinks.regrant() : null;   // my door's relay forgot it: the fresh grant re-mints it (the seat registers again inside the call)
       if (rg && rg.r === meshNode.sub) { meshNode.subGo(rg.r, rg.sg); turnNote('turn-sub door ' + rg.r + ' re-granted'); }
+      const gone = turnLinks ? turnLinks.gone() : -1;   // my room's door is empty and the service holds no such room: the room is gone, and my seat joins the meeting again at the first door
+      if (gone > 0 && gone === meshNode.sub && meshNode.subGone(gone)) turnNote('turn-sub door ' + gone + ' is gone: joining the meeting again');
       if (!o) return;
       if (o.found != null) {
         const k = 'f' + o.found + ':' + o.link + ':' + String(o.sg).slice(-8);
@@ -16386,7 +16412,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // state (progressFacts) by the pure judge in js/meet-progress.js; every
     // change goes into window.__meetProgress and (DEBUG) the clog, facts and
     // all, so a test can judge the same facts again and compare.
-    let progRun = null, progNAtRelay = 0, progListAt = -1, progEndedJoin = false, progBackSince = 0;
+    let progRun = null, progNAtRelay = 0, progListAt = -1, progEndedJoin = false, progBackSince = 0, progMend = false;
     const progTrace = window.__meetProgress = [];
     function progressFacts() {
       const r = turnRaw(), s = meshSeat();
@@ -16411,6 +16437,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // reason is mine); otherwise the far network is the one that blocks, and the reason shown says so (never "your network")
       let turnClient = false, webMine = false;
       try { for (const L of (turnLinks ? turnLinks.dump().links : [])) { if (L.client) turnClient = true; if (L.web && turnLinks.webMine && turnLinks.webMine(L.far)) webMine = true; if (L.state === 'up') { turn = 'up'; turnWebUp = !!L.web; break; } if (L.web) turn = 'web'; else if (turn !== 'web' && (L.state === 'ask' || L.state === 'dial')) turn = L.state; } } catch (e) {}
+      // no link to read a state from yet (the ask is out, or the old pipe's loss is not judged): the relayed link is being asked for
+      if (!turn && ((turnLinks && relayTv && turnLinks.making()) || wayBack())) turn = 'ask';
       const st = s ? s.state : 0, coord = !!(s && s.hasCoord);
       const n = typeof headerCount === 'function' ? headerCount() : 1;
       // the count before the link: taken while the link is asked for, or while the relay step waits (a link can come up between two beats)
@@ -16460,15 +16488,23 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // progressBeat(seated, now): which wait is on, judged once a second. The way
     // in once per page; back in after a drop the calm rule lets show (the same
     // quiet time as the reconnecting note).
+    // progressBegin(): the way in is a wait from the page's first paint (the status line calls this before its first words)
+    function progressBegin() { if (!progRun && !progEndedJoin && room && typeof meshSeat === 'function') { progressStart(updateResume ? 'update' : 'join'); progressTick(); } }
     function progressBeat(seated, now) {
       if (!progRun && !progEndedJoin) progressStart(updateResume ? 'update' : 'join');
       else if (!progRun && progEndedJoin) {
         const linkDown = !!(statusEl._linkDownAt && now - statusEl._linkDownAt >= GifOS.timings.STATUS_RECONNECT_QUIET_MS);
-        const lost = !seated && !leaving;
+        // lost: the seat is gone, or it is kept and I am alone while my room's joining connection is made again (wayBack)
+        const mending = seated && wayBack();
+        const lost = (!seated || mending) && !leaving;
         if (lost) { if (!progBackSince) progBackSince = now; } else progBackSince = 0;
         const dark = !!(netDarkAt && now - netDarkAt >= GifOS.timings.STATUS_RECONNECT_QUIET_MS);
-        if ((linkDown || dark || (lost && now - progBackSince >= GifOS.timings.STATUS_RECONNECT_QUIET_MS)) && !leaving && !(typeof leftDialogUp === 'function' && leftDialogUp())) progressStart('reconnect');
+        if ((linkDown || dark || (lost && now - progBackSince >= GifOS.timings.STATUS_RECONNECT_QUIET_MS)) && !leaving && !(typeof leftDialogUp === 'function' && leftDialogUp())) { progressStart('reconnect'); progMend = mending && !linkDown && !dark; }
       }
+      // A flow that began because the joining connection was being made again ends with that: the connection is up (the
+      // flow's own end), or nothing is being made any more (the ask was refused or closed: the line says what is true now).
+      if (progRun && progRun.flow === 'reconnect' && progMend && seated && !wayBack() && !progressFacts().turn) { progRun = null; progMend = false; if (typeof clog === 'function') clog('progress reconnect dropped: no way back is being made'); try { updateStatus(); } catch (e) {} }
+      if (!progRun) progMend = false;
       const changed = progressTick();
       const w = progressWords();
       if ((changed || (w && w.secs)) && Date.now() >= statusHoldUntil) { try { updateStatus(); } catch (e) {} }
@@ -18313,7 +18349,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (typeof RTCPeerConnection !== 'function') { carryInstead('no RTCPeerConnection'); return; }   // no connection at all: carried by a seat (docs/turn-carry.md)
       meshNode = GifOS.meshWire.createMeshNode({
         relayUrl: relay.replace(/\/$/, ''),
-        onRelayFail: () => relayConnectFailed(), onRelayOpen: () => relayConnectOpened(),   // a relay that never answers is left (relayUrl)
+        onRelayFail: () => relayConnectFailed(), onRelayOpen: () => { relayConnectOpened(); try { if (turnLinks) turnLinks.relayBack(); } catch (e) {} },   /* TURN.10.1: an ask refused because my connection was away goes again */   // a relay that never answers is left (relayUrl)
         sid: sessId, tok: sessTok, key: roomE2E, identity, tickMs: 500,
         levers: { ISLAND_MODE: 1, URL_KEY: (parseInt(String(urlKeyHex).slice(0, 8), 16) | 1) >>> 0 },   // islands found under the meeting key (above)
         oldKeys: [prevRoomE2E, openKey].filter((k, i, all) => k && k !== roomE2E && all.indexOf(k) === i),   // a door blob one of these opens is behind me, not ahead (mesh-wire R6)
