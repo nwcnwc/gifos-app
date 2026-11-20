@@ -21961,6 +21961,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               localStream = null;
               try { updateTile('me'); } catch (e) {}
               try { broadcastStatus(); } catch (e) {}
+              if (typeof noteAudioDevices === 'function') noteAudioDevices();   // the list only (no prompt): the first Mic tap can ask which one
               return;
             }
             localStream = stream;
@@ -37459,7 +37460,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return t;
       }, () => null);
     }
-    function lateMedia(kind) {
+    // pick: a microphone chosen in the mic chooser before any mic was open
+    // (a quiet join holds none): the ask names that device.
+    function lateMedia(kind, pick) {
       if (bcWatchingViewer()) return;
       if (myStatus.bot) { setStatus(uiText('stABotDoesNotUse', 'A bot does not use a camera or speak.')); return; }
       if (BROADCAST && !bcMayPublishAv()) { enforceBroadcastSeat(); return; }
@@ -37485,8 +37488,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           tr.enabled = true;
           if (kind === 'mic') myStatus.muted = false; else myStatus.camOff = false;
           paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateMediaSession();
-          if (typeof syncSpeech === 'function') syncSpeech();
           if (kind === 'cam') setStatus(typeof camOnWords === 'function' ? camOnWords() : statusWords('camOn')); else sayState('micOn');
+          if (typeof syncSpeech === 'function') syncSpeech();   // after the status: a caption notice it says stays on screen
         }, () => lateMedia(kind));
         return;
       }
@@ -37502,11 +37505,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // who was promised none, and a granted-but-disabled track is still a
       // camera we took.
       const appRoom = document.body.classList.contains('app-room');
-      sayState(appRoom ? 'askingMic' : 'askingMedia');
+      sayState((appRoom || kind === 'mic') ? 'askingMic' : 'askingMedia');   // name only what is asked for
       // A camera tap while the mic is already held asks for video alone: the
       // held mic is never re-taken, and a missing camera then fails on its own.
       const haveMic = !!(localStream && localStream.getAudioTracks()[0]);
-      const ask = appRoom ? { audio: true } : (kind === 'cam' && haveMic) ? { video: camVideoConstraints() } : { video: camVideoConstraints(), audio: true };
+      // A Mic tap asks for the microphone alone. A camera taken with it would be
+      // held as a disabled, live track: a camera light over a page that says
+      // camera off (A CAMERA THAT IS OFF IS NOT OPEN). Since a quiet join opens
+      // nothing, this tap is how most people's mic opens.
+      const micAsk = pick ? { deviceId: { exact: pick } } : true;
+      const ask = (appRoom || kind === 'mic') ? { audio: micAsk } : haveMic ? { video: camVideoConstraints() } : { video: camVideoConstraints(), audio: true };
       const gen = ++lateGen, won0 = lateWon;
       lateTimer = setTimeout(() => {
         if (gen !== lateGen || !lateAsk) return;
@@ -37536,14 +37544,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             }
             if (flipped) {
               paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateMediaSession();
-              if (typeof syncSpeech === 'function') syncSpeech();
               if (kind === 'cam') setStatus(typeof camOnWords === 'function' ? camOnWords() : statusWords('camOn')); else sayState('micOn');
+              if (typeof syncSpeech === 'function') syncSpeech();   // after the status: a caption notice it says stays on screen
             }
             return;
           }
           lateWon++;
           clearTimeout(lateTimer);
           lateAsk = false;
+          if (pick) micDeviceId = pick;   // the chooser's pick is the mic in use
           // Quiet-join discipline still holds: only the tapped controls go on
           // (this tap and any joined while the ask was open), and not one a
           // room order arrived for during the ask.
@@ -37586,17 +37595,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           broadcastStatus();
           reactRoomState();
           updateMediaSession();
-          if (typeof syncSpeech === 'function') syncSpeech();
           if (refused) setStatus(refused);
           else setStatus(kind === 'cam'
             ? (gotCam ? (typeof camOnWords === 'function' ? camOnWords() : 'Camera on.') : 'No camera on this device (' + ((camErr && camErr.name) || 'error') + '). Your microphone is ready — tap the mic button to talk.')
             : 'Mic on.');
+          // After the status: a notice syncSpeech says (captions unavailable on
+          // this phone) must not be overwritten by "Mic on." in the same task.
+          if (typeof syncSpeech === 'function') syncSpeech();
           if (typeof noteAudioDevices === 'function') noteAudioDevices();
         })
         .catch((err) => {
           if (gen !== lateGen || lateWon !== won0) return;
           clearTimeout(lateTimer);
           lateAsk = false;
+          if (pick && !gumRefused(err)) { setStatus(uiText('stMicPickFailed', 'That microphone could not be opened. Your mic did not change.')); return; }
           const name = (err && err.name) || 'error';
           const what = ask.audio ? (ask.video ? 'camera or microphone' : 'microphone') : 'camera'; // name only what was asked for
           setStatus(gumRefused(err)
@@ -37612,8 +37624,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (BROADCAST && !bcMayPublishAv()) { enforceBroadcastSeat(); return; }
       if (document.body.classList.contains('app-room') && !roomAudioOn()) { setStatus(uiText('stTalkIsOffOnlyThe', 'Talk is off — only the app host can turn it on.')); return; }
-      if (!localStream) return lateMedia('mic');
-      const track = localStream.getAudioTracks()[0]; if (!track) return lateMedia('mic');
+      const track = localStream && localStream.getAudioTracks()[0];
+      if (!track) {
+        // No mic open yet (a quiet join opens none): with two or more known
+        // microphones the tap asks which one, as it does over a held mic.
+        if (micChooserOpen()) { closeMicChooser(true); return; }
+        if (micInputs.length > 1 && !bootGumPending && !lateAsk) { openMicChooser(null); return; }
+        return lateMedia('mic');
+      }
       if (!track.enabled && amGloballyMuted()) { sayState(modOf('me').mute && modOf('me').mute.wait ? 'micWaitRoom' : 'mutedByHost', { by: (modOf('me').mute || {}).by }); return; }
       if (micChooserOpen()) { closeMicChooser(true); return; }
       // More than one microphone: a tap while muted asks which one (the camera
@@ -37695,7 +37713,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function openMicChooser(track) {
       const el = document.getElementById('micchooser');
-      if (!el) { setMicOn(track, true); return; }
+      if (!el) { if (track) setMicOn(track, true); else lateMedia('mic'); return; }
       try { if (camChooserOpen()) closeCamChooser(); } catch (e) {}
       const cur = micIdOf(track);
       const spk = speakerChoices();
@@ -37730,7 +37748,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function pickMic(id) {
       closeMicChooser(true);
       const track = localStream && localStream.getAudioTracks()[0];
-      if (!track) return;
+      if (!track) { lateMedia('mic', id); return; }   // no mic open yet: open the picked one (a refusal says so, nothing changes)
       if (amGloballyMuted()) { sayState(modOf('me').mute && modOf('me').mute.wait ? 'micWaitRoom' : 'mutedByHost', { by: (modOf('me').mute || {}).by }); return; }
       if (id === micIdOf(track)) { setMicOn(track, true); return; }
       micPickPrev = micDeviceId;   // a pick that will not open goes back to this one (the camera's camPickPrev)
