@@ -670,6 +670,7 @@
   "meet.stThisAppIsPasskeyLocked": "This app is passkey-locked. Other devices do not have your passkey, so it cannot be shared live.",
   "meet.stTheHostHasTurnedChat": "The host has turned chat off.",
   "meet.stSlowModeWaitAFew": "Slow mode: wait a few seconds before posting again.",
+  "meet.stSlowModeHeld": "Slow mode: your message goes out in a few seconds.",
   "meet.stFilesAreNotAllowedHere": "Files are not allowed here.",
   "meet.stCalledToTheStageA": "Called to the stage — a place will open when someone steps down.",
   "meet.stTurnUnmute": "It’s your turn. Unmute to speak?",
