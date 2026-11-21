@@ -4,8 +4,8 @@
   "appId": "thinktank",
   "name": "Thinktank",
   "shortName": "Thinktank",
-  "version": "1.0",
-  "minBuild": 947,
+  "version": "1.1",
+  "minBuild": 5861,
   "tagline": "Destroy the other base — against the computer, or a friend from one link.",
   "description": "The computer thinks on this device, or a friend joins from one link. Close it mid-game and come back; the board keeps.\n\nRed and blue take turns. Each side has a tinted home and a house inside it. On your turn you do one thing: place a piece from your hand around your home, slide one already out, or turn a tank. Tanks shoot in a straight line the way they face — the beam lights up when you tap one. A shield stops the other side's shots. Infiltrators steal a tank or a shield if they stand next to it. A mine blows up anything next to it except a shield. You may not leave your own pieces in harm's way. Destroy the other house and you win.\n\nPass the phone for two people in the same room, or press Play a friend and send the invite: the same board, live, on two devices. Red sits one side, blue the other.\n\nAn unofficial port of Thinktank by averycrespi.",
   "author": {
@@ -39,14 +39,14 @@
   "cover": "/apps/thinktank/cover.jpg",
   "screenshots": [],
   "gif": "/apps/thinktank/thinktank.gif",
-  "bytes": 208731,
+  "bytes": 208585,
   "download": 0,
   "provides": null,
-  "sha256": "1ac6c60b2e8cd735ec19d2e6b5cc9d18c05125cb62dd877958c8a80f96e6b9fb",
+  "sha256": "e43be678a77c0291e2eac958152987e416731c1593ea5f97905991e9324b1b2b",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-21"
   },
   "porter": {
     "name": "GifOS",

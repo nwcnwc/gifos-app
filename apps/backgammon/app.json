@@ -4,8 +4,8 @@
   "appId": "backgammon",
   "name": "Backgammon",
   "shortName": "Backgammon",
-  "version": "1.0",
-  "minBuild": 947,
+  "version": "1.1",
+  "minBuild": 5861,
   "tagline": "Play the computer, or send a link and a friend sits across the board.",
   "description": "The computer thinks on this device. Pass the phone, or press Play a friend and send the invite: the same table, live, on two devices. Close it mid-game and the board keeps.\n\nA table of twenty-four points. White and black take turns rolling two dice and moving their fifteen checkers toward home. Hit a blot, it goes to the bar. Bear them all off and you win. Doubles are four moves. There is no doubling cube. White goes first. Roll, tap a checker, tap where it goes, confirm the turn.\n\nAn unofficial port of backgammonjs by quasoft. The rules are the same general table that shipped with that game.",
   "author": {
@@ -39,14 +39,14 @@
   "cover": "/apps/backgammon/cover.jpg",
   "screenshots": [],
   "gif": "/apps/backgammon/backgammon.gif",
-  "bytes": 228141,
+  "bytes": 228071,
   "download": 0,
   "provides": null,
-  "sha256": "51c6faad9c49d63d4de9087b341f5ab4a2d1c0245514ee775f952c8131586113",
+  "sha256": "e882bbf03f3534f4afff1593ce4621dae93c4286d586bfdc7dd73e99fa860277",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-21"
   },
   "porter": {
     "name": "GifOS",

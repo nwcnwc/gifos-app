@@ -4,8 +4,8 @@
   "appId": "quiz-buzzer",
   "name": "Quiz Buzzer",
   "shortName": "Buzzer",
-  "version": "1.0",
-  "minBuild": 947,
+  "version": "1.1",
+  "minBuild": 5861,
   "tagline": "Send one link and every phone in the room becomes a buzzer.",
   "description": "No accounts and no class codes — one link, and everyone is in.\n\nPut a question on the big screen. Everyone else gets four huge coloured answers filling their phone. First correct answer scores. Wrong and late are recorded honestly. When everyone is in, the answer lights up. Next. At the end, the board.\n\nOn your own, drill the bundled pack against the clock — forty original questions in science, geography, words and numbers.\n\nWant a question that is not in the pack? Type it, pick four answers, tap which is right. It is saved with the app, so the quiz you made travels with the GIF.",
   "author": {
@@ -40,14 +40,14 @@
   "cover": "/apps/quiz-buzzer/cover.jpg",
   "screenshots": [],
   "gif": "/apps/quiz-buzzer/quiz-buzzer.gif",
-  "bytes": 204490,
+  "bytes": 205869,
   "download": 0,
   "provides": null,
-  "sha256": "5473f6b9d48121445951e2eb74a2f8a0f60540abc2dc9af17cce6d0c57d37d88",
+  "sha256": "1d654bd0ba774d06e727aa7ba24330bfe6c77997b8bda43fc6350f6fe9eca07d",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-21"
   },
   "inspiredBy": {
     "name": "Kahoot!",

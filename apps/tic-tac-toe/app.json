@@ -4,8 +4,8 @@
   "appId": "tic-tac-toe",
   "name": "Tic-Tac-Toe",
   "shortName": "TicTacToe",
-  "version": "1.0",
-  "minBuild": 947,
+  "version": "1.1",
+  "minBuild": 5861,
   "tagline": "The computer plays perfectly. Bring a friend if you want to win.",
   "description": "The computer thinks on this phone, and it does not lose. Press Play a friend, send the invite, and they sit the other mark on the same board.\n\nA three-by-three grid. One of you is X, the other is O. Take turns putting a mark down. First to three in a line — across, down, or diagonal — wins. Close it and come back: the game keeps.\n\nOn your own you play a perfect computer, on this device. Pass the phone for two people in the same room, or send one link.\n\nAn unofficial port of Colyseus Tic-Tac-Toe.",
   "author": {
@@ -39,14 +39,14 @@
   "cover": "/apps/tic-tac-toe/cover.jpg",
   "screenshots": [],
   "gif": "/apps/tic-tac-toe/tic-tac-toe.gif",
-  "bytes": 253870,
+  "bytes": 253606,
   "download": 0,
   "provides": null,
-  "sha256": "fbade96c12a625f59e63d234f565fe26d7e13027352edf6f14679c5222e8d533",
+  "sha256": "d215e81243c92b47c46b5d2a624f10c83aecc51aadd68fd22cbca44725276252",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-21"
   },
   "porter": {
     "name": "GifOS",
