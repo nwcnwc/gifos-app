@@ -44,5 +44,9 @@
   "net.wordsInnocent": "Palabras: «{a}» y «{b}». El impostor gana +3.",
   "net.yes": "Lo adivinó (impostor +3)",
   "net.no": "No (los demás +1)",
-  "net.again": "Jugar otra ronda"
+  "net.again": "Jugar otra ronda",
+  "needsNewer": "Este juego necesita un GifOS más nuevo para jugar juntos. Recarga la página para actualizar.",
+  "hint.line": "Eres el siguiente: te toca el primer asiento que se libere.",
+  "hint.asking": "Se le pidió al anfitrión que te dé un asiento.",
+  "hint.watch": "Estás mirando. Cuando se libere un asiento, será para la siguiente persona en la fila."
 }

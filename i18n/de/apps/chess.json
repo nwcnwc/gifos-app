@@ -65,5 +65,10 @@
   "status.cpuThinking": "Der Computer überlegt …",
   "status.waiting": "Warten auf den Gegner",
   "status.spectating": "Zuschauen",
-  "status.vs": "{state} — {a} gegen {b}"
+  "status.vs": "{state} — {a} gegen {b}",
+  "hint.line": "Du bist als Nächstes dran: Du bekommst den ersten freien Platz.",
+  "hint.asking": "Der Gastgeber wurde gebeten, dir einen Platz zu geben.",
+  "hint.watch": "Du schaust zu. Wird ein Platz frei, bekommt ihn die nächste Person in der Reihe.",
+  "needsNewer": "Für das gemeinsame Schachturnier braucht es ein neueres GifOS. Lade die Seite neu, um zu aktualisieren.",
+  "player.away": "{name} (verbindet sich neu)"
 }

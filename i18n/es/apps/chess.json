@@ -65,5 +65,10 @@
   "status.cpuThinking": "El ordenador está pensando…",
   "status.waiting": "Esperando al oponente",
   "status.spectating": "Observando",
-  "status.vs": "{state} — {a} contra {b}"
+  "status.vs": "{state} — {a} contra {b}",
+  "hint.line": "Eres el siguiente: te toca el primer asiento que se libere.",
+  "hint.asking": "Se le pidió al anfitrión que te dé un asiento.",
+  "hint.watch": "Estás mirando. Cuando se libere un asiento, será para la siguiente persona en la fila.",
+  "needsNewer": "El torneo de ajedrez necesita un GifOS más nuevo para jugar juntos. Recarga la página para actualizar.",
+  "player.away": "{name} (reconectando)"
 }

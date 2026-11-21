@@ -44,5 +44,9 @@
   "net.wordsInnocent": "Words: “{a}” vs “{b}”. Imposter wins +3.",
   "net.yes": "They guessed it (imposter +3)",
   "net.no": "Nope (others +1)",
-  "net.again": "Play another round"
+  "net.again": "Play another round",
+  "needsNewer": "This game needs a newer GifOS to play together. Reload the page to update.",
+  "hint.line": "You are next in line: you get the first seat that opens.",
+  "hint.asking": "The host has been asked to seat you.",
+  "hint.watch": "You are watching. When a seat opens, the next person in line gets it."
 }

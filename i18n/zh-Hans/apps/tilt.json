@@ -22,5 +22,9 @@
   "end.titleWho": "{who}：答对 {n} 个！",
   "end.again": "下一位玩家，同一牌组",
   "end.menu": "换牌组",
-  "player.default": "玩家"
+  "player.default": "玩家",
+  "needsNewer": "一起玩这个游戏需要更新的 GifOS。请刷新页面以更新。",
+  "hint.line": "你排在下一位：第一个空出的座位归你。",
+  "hint.asking": "已请主持人给你安排座位。",
+  "hint.watch": "你正在观看。座位空出时，排队的下一位会得到它。"
 }

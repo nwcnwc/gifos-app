@@ -22,5 +22,9 @@
   "end.titleWho": "{who}: {n} correct! ",
   "end.again": "Next player, same deck",
   "end.menu": "Change deck",
-  "player.default": "Player"
+  "player.default": "Player",
+  "needsNewer": "This game needs a newer GifOS to play together. Reload the page to update.",
+  "hint.line": "You are next in line: you get the first seat that opens.",
+  "hint.asking": "The host has been asked to seat you.",
+  "hint.watch": "You are watching. When a seat opens, the next person in line gets it."
 }

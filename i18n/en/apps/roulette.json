@@ -17,5 +17,9 @@
   "setup.lobbyText": "Tap <b>Invite</b>. The same card lands on every screen — no huddling around one phone.",
   "card.n": "card {n}",
   "card.next": "Next card →",
-  "card.players": "Players"
+  "card.players": "Players",
+  "needsNewer": "This game needs a newer GifOS to play together. Reload the page to update.",
+  "hint.line": "You are next in line: you get the first seat that opens.",
+  "hint.asking": "The host has been asked to seat you.",
+  "hint.watch": "You are watching. When a seat opens, the next person in line gets it."
 }
