@@ -318,8 +318,9 @@
       const L = linkGet(me, x); if (L.state === LK_NONE || L.state === LK_CLOSED) { startDial(me, x, L); L.dialHow = 2; } else if (L.state === LK_DIALING) L.view[mine(x)] = LK_DIALING;
     }
     // C++: mesh_link.inc:fabricDialUplink   [UPOFFER rides the dc as its first frame]
-    function fabricDialUplink(a, x, refer) {
+    function fabricDialUplink(a, x, refer, via) {
       void refer; if (a !== me || x < 0 || x === me) return false;
+      if (io.via) io.via(x, via != null && via >= 0 && via !== x && via !== me ? via : -1);   // L50.4.1: this dial's signal starts on the pc the offer came by
       const L0 = LINKS.get(x); const had = !!L0 && (L0.state === LK_OPEN || L0.state === LK_DIALING);
       upNext = x; try { fabricDialJoin(me, x); } finally { upNext = -1; } const L = LINKS.get(x); if (L && L.state === LK_DIALING) L.uplink = true;
       if (L && (L.state === LK_OPEN || L.state === LK_DIALING)) { const u = msg.newMsg('UPOFFER'); u.id = me; u.tag = had ? 1 : 0; u.to = x; u.from = me; u.lk = -1; busPush(u); }
