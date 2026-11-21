@@ -178,6 +178,8 @@
       headHeardSince(t) { const s = raw(), tp = TP(); if (!s || !s.hasCoord) return false; const it = s.live.get(tp.ckey({ pc: s.coord.pc, r: s.coord.r, i: 0 })); return it !== undefined && it > t; },
       get seatTick() { const s = raw(); return s ? s.TICK : 0; },
       // My branch rides its uplink: my chain up is broken in the seat's own view (L14), or I hold an uplink and my anchor still does not answer (L50.1's own test, the one the uplink was taken on).
+      // L50.4.2: my anchor answers (a deep head's owner sits in its cell in my view and answered within two beats): L50.1's test read the other way.
+      get anchorAnswers() { const s = raw(); if (!(s && s.hasCoord && s.state === 3 && s.coord.pc !== 0 && s.coord.i === 0)) return false; const oc = s.ownerCoord(); return !!oc && s.occGet(TP().ckey(oc)) >= 0 && s.TICK - s.lastAck < KC().L9_LONE; },
       get l14Cut() { const s = raw(); if (!(s && s.hasCoord && s.state === 3 && s.coord.pc !== 0)) return false; if (s.l14Branch()) return true; if (s.l14Up < 0 || s.coord.i !== 0) return false; const oc = s.ownerCoord(); return !!oc && (s.occGet(TP().ckey(oc)) < 0 || s.TICK - s.lastAck >= KC().L9_LONE); },
       l14Served() { const s = raw(), out = []; if (!s || !s.hasCoord) return out; for (const x of s.l14Served.keys()) { if (!s.l14Serve(x)) continue; const p = P(x); if (p != null && p !== me) out.push(p); } return out; },
       u2Heirs() { const s = raw(), out = []; if (!s || !s.hasCoord) return out; for (const e of s.u2Rows.values()) if (s.TICK - e.at <= 40) { const p = P(e.heir); if (p != null && p !== me && out.indexOf(p) < 0) out.push(p); } return out; },

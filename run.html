@@ -29096,6 +29096,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const pid = rk === 'sdm' ? rowHeadPid(c) : (co ? occPid(co) : null);
       return pid ? cand.find((x) => x.live && x.from === pid) || null : null;
     }
+    // L50.4.2: a deep head's anchor for the room's sound from above ('sdn') is its up seat; "answers" is the seat's own
+    // test (the anchor sits in its cell and answered within two beats).
+    function sdnAnchorPid() { const src = net.topo.up(c); return src ? occPid(src) : null; }
+    function anchorAnswers() { const sv = meshSeat(); return !!(sv && sv.anchorAnswers); }
     function claimRedun(rk, arr) {
       const now = Date.now();
       // Resolve every announcer to its (possibly parked) incoming stream.
@@ -29185,7 +29189,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const sdQ = rk.indexOf('sdrow:') === 0 ? +rk.slice(6) : -1, sdHead = sdQ >= 0 ? occPid({ pc: 0, r: sdQ, i: 0 }) : null;
       const mixBack = !!(pri && std && sdHead && fb.mixLeftAt && !rowMixHold(sdQ) && std.via === sdHead && pri.via !== sdHead && rowMixHeadArrives(sdQ) === 1
         && !(((fb.fbTried && fb.fbTried.get(std.via + '|' + std.streamId)) || 0) > fb.mixLeftAt));
-      const wantSwap = !!(pri && std && (!priLive || fb.dark || mixDeaf || mixBack || u2Over || (stdFbOk && (fb.picDead || (stdIsPref && !priIsPref)))));
+      // L50.4.2, the way back for a branch. While its anchor was silent this head left the anchor's copy of the room's
+      // sound for a stand-in's (its uplink). A stand-in fills its copy only while it stands in: afterwards the copy may
+      // hold nothing while its packets still flow, so nothing reads it dark. When the anchor answers again the head
+      // returns to the anchor's copy at once: not after the settle window, and not held by the mark an older wake left
+      // on that pipe (fbTried), which says the pipe was dark during the silence and nothing about a seat that answers
+      // now. One try per spell: a wake of the anchor's copy that fails after the head left it is remembered as any other.
+      const upPid = rk === 'sdn' ? sdnAnchorPid() : null;
+      const upBack = !!(pri && std && upPid && fb.upLeftAt && std.via === upPid && pri.via !== upPid && anchorAnswers()
+        && !(((fb.fbTried && fb.fbTried.get(std.via + '|' + std.streamId)) || 0) > fb.upLeftAt));
+      const wantSwap = !!(pri && std && (!priLive || fb.dark || mixDeaf || mixBack || upBack || u2Over || (stdFbOk && (fb.picDead || (stdIsPref && !priIsPref)))));
       if (wantSwap) {
         if (std && !std.el && std.stream) std.el = mosVideo(std.stream); // mint the decoder on wake, not while parked
         if (!fb.wakeAt) { fb.wakeAt = now; fb.f0 = frames(std.el); if (DEBUG_ON && rk.indexOf('stg:') === 0) swapPicNote(rk, 'wake', 'wantSwap priLive=' + (priLive ? 1 : 0) + ' dark=' + (fb.dark ? 1 : 0) + ' picDead=' + (fb.picDead ? 1 : 0)); }
@@ -29254,7 +29267,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // Coming back to the copy just left, or leaving one preference for another,
         // still waits. The timer itself is unchanged.
         const firstPref = !!(stdIsPref && !priIsPref && !fb.hadPref && (!pref || fb.left !== pref.from));
-        const settled = !priLive || fb.dark || mixDeaf || mixBack || fb.picDead || u2Over || firstPref || ((now - fb.prefSince >= MOS_SETTLE) && (now - fb.lastSwitch >= MOS_SETTLE));
+        const settled = !priLive || fb.dark || mixDeaf || mixBack || upBack || fb.picDead || u2Over || firstPref || ((now - fb.prefSince >= MOS_SETTLE) && (now - fb.lastSwitch >= MOS_SETTLE));
         if (DEBUG_ON && !(flowing && settled) && rk.indexOf('stg:') === 0) swapPicNote(rk, 'hold', 'flowing=' + (flowing ? 1 : 0) + ' settled=' + (settled ? 1 : 0) + ' f0=' + fb.f0 + ' stdAdv=' + (stdAdvanced ? 1 : 0) + (keepPic ? ' keepPic=1' : ''));
         if (flowing && settled) {
           const old = pri;
@@ -29268,6 +29281,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (rk.indexOf('stg:') === 0 && pri.stream && pri.stream.getVideoTracks().length) { try { kfNeed(rk); } catch (e) {} }
           pri.deadAt = 0; fb.lastSwitch = now; fb.wakeAt = 0; fb.prefSince = 0; fb.pvB = -1; fb.pvAt = 0;
           fb.mixLeftAt = mixDeaf ? now : 0; // L49: this row left its head's pipe for a silent mix (mixBack)
+          fb.upLeftAt = (upPid && old.via === upPid && !anchorAnswers()) ? now : 0; // L50.4.2: this head left its silent anchor's copy for a stand-in's (upBack)
           fb.left = old.via; fb.hadPref = !!stdIsPref; // the copy just installed is the anchor; the one left is not a fresh preference
           fb.picDead = false; fb.picStdOk = false; fb.picStd0 = null; fb.picRef = null;
           fb.dark = false; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; fb.fp = 0; fb.fpDecayAt = 0; fb.b0 = -1; fb.d0 = -1; fb.stdFdec = -1; fb.stdAdvAt = 0; fb.claimAt = now; fb.suspect = false; fb.stdTried = null; // fresh primary — the watchdog re-baselines and the penalty clears
