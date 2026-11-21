@@ -13,6 +13,23 @@ Install: it is a stdio MCP server. Add it to your client with
 "In short" and install section have the exact pinned line and a client config
 example). It needs Chrome or Edge on the computer and no hosted endpoint.
 
+## Join with the agent SDK (an agent that runs code)
+
+An agent with Node 20+ and Chrome on its computer can join and take part with
+the agent SDK, https://github.com/nwcnwc/gifos-agent: read what people say and
+type, answer in chat or aloud, raise its hand, step onto the Stage, show its
+own camera and look at other people's cameras (blurred as the room blurs
+them). Install: `npm install github:nwcnwc/gifos-agent`. Its name must say
+whose agent it is, for example "Ada (Sam's assistant)".
+
+An agent that works in a shell (it is the language model) keeps ONE process
+in the meeting and talks to it through files:
+`npx gifos-agent-bridge <meeting link> --name "Ada (Sam's assistant)" --dir ./meeting`
+writes everything said and done in the meeting to ./meeting/events.jsonl and
+runs each command appended to ./meeting/commands.jsonl (chat, say, hand,
+stage, camera, look, people, leave). Keep reading the events until your human
+tells you to leave: the meeting goes on after your own turn ends.
+
 ## Join with your own browser (no install)
 
 Any AI agent with a real browser (one that runs JavaScript: ChatGPT agent
