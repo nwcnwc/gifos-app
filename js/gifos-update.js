@@ -153,7 +153,18 @@
     const headline = entry && entry.headline ? String(entry.headline) : '';
     // Each sentence is its own message, so a language orders its own words.
     const v = String(o.latest);
-    const text = o.pinned
+    // IN A MEETING a page behind the live release is told plainly that it is behind, in a stronger bar (o.meeting:
+    // the others run the live release, so this page is the odd one out). Off a meeting the quieter words stay.
+    const behindIn = o.meeting && o.pinned !== 'edge';
+    const text = behindIn
+      ? (o.pinned
+        ? (cannotMeet
+          ? tr('update.bar.pinnedTooOld', 'You’re too far behind to stay in this meeting: you are pinned to v{version}, and it runs on v{latest}. Update now.', { version: o.version, latest: v })
+          : tr('update.bar.pinnedBehind', 'You’re behind: you are pinned to v{version}, and this meeting runs on v{latest}. Update now.', { version: o.version, latest: v }))
+        : (critical.length || urgent)
+          ? tr('update.bar.behindImportant', '⚠ You’re behind on an important update: this meeting runs on GifOS v{latest}, you have v{version}. Update now.', { version: o.version, latest: v })
+          : tr('update.bar.behind', 'You’re behind: this meeting runs on GifOS v{latest}, you have v{version}. Update now.', { version: o.version, latest: v }))
+      : o.pinned
       ? (o.pinned === 'edge' ? tr('update.bar.onEdge', 'You are on the edge build.') : tr('update.bar.pinned', 'You are pinned to v{version}.', { version: o.version })) + ' ' +
         (o.meeting ? tr('update.bar.meetingsRun', 'Meetings run on v{latest}.', { latest: v }) : tr('update.bar.latestIs', 'Latest is v{latest}.', { latest: v }))
       : (critical.length || urgent)
@@ -166,6 +177,9 @@
     return {
       latest: String(o.latest), pinned: !!o.pinned, meeting: !!o.meeting, critical,
       emergency: urgent && !o.pinned, cannotMeet: cannotMeet && !o.pinned, notes: entry, text,
+      // behind: a meeting page behind the live release (the strong bar); tooOld: a PINNED meeting page under the meet floor
+      // (it is never moved by itself, so its bar cannot be dismissed)
+      behind: !!behindIn, tooOld: !!(behindIn && o.pinned && cannotMeet),
     };
   }
 
@@ -224,12 +238,19 @@
     '.update-bar button.more{background:none;color:var(--text,#e0e0f0)}' +
     '.update-bar .dismiss{background:none;border:0;color:var(--muted,#9a9ab0);padding:.25rem .5rem}' +
     '.update-bar.critical{background-image:linear-gradient(135deg,rgba(255,92,92,.28),rgba(255,150,60,.28));border-bottom-color:#ff6b6b}' +
+    // A meeting page behind the live release: a solid bar, larger words, a larger button (decide().behind)
+    '.update-bar.behind{background-image:none;background-color:#7a4a00;border-bottom:2px solid #ffb020;font-size:.95rem;font-weight:600;color:#fff;padding-top:.6rem;padding-bottom:.6rem}' +
+    '.update-bar.behind.critical{background-color:#8a1f1f;border-bottom-color:#ff6b6b}' +
+    '.update-bar.behind #update-action{font-size:.9rem;font-weight:700;padding:.4rem 1.1rem;background:#ffb020;border-color:#ffb020;color:#1a1000}' +
+    '.update-bar.behind button.more,.update-bar.behind .dismiss{color:#fff}' +
     '.update-bar .update-notes{flex:1 0 100%;max-height:40vh;overflow:auto;margin:.1rem 0 .2rem;font-size:.8rem}' +
     '.update-bar .update-notes ul{margin:.2rem 0 .4rem;padding-left:1.2rem}' +
     '.update-bar .update-notes b{display:block;margin-top:.3rem}' +
     // Every page but the Home Screen: the bar floats over the top of the page.
     '.update-bar.floating{position:fixed;top:0;left:0;right:0;z-index:2147483000;' +
-    'padding-top:calc(.4rem + env(safe-area-inset-top,0px));background-color:var(--bg,#0a0a0f)}';
+    'padding-top:calc(.4rem + env(safe-area-inset-top,0px));background-color:var(--bg,#0a0a0f)}' +
+    '.update-bar.floating.behind{background-color:#7a4a00;padding-top:calc(.6rem + env(safe-area-inset-top,0px))}' +
+    '.update-bar.floating.behind.critical{background-color:#8a1f1f}';
   function injectCss() {
     const d = root.document;
     if (!d || typeof d.createElement !== 'function' || d.getElementById('gifos-update-css')) return;
@@ -280,7 +301,8 @@
     if (!bar) return;
     if (!d || bar.dataset.dismissed === d.latest) { bar.style.display = 'none'; return; }
     bar.style.display = '';
-    bar.classList.toggle('critical', d.critical.length > 0 || !!d.emergency);
+    bar.classList.toggle('critical', d.critical.length > 0 || !!d.emergency || !!d.tooOld);
+    bar.classList.toggle('behind', !!d.behind);
     bar.querySelector('#update-msg').textContent = d.text;
     const btn = bar.querySelector('#update-action');
     btn.style.display = action ? '' : 'none';
@@ -300,7 +322,9 @@
         mb.setAttribute('aria-expanded', 'true');
       };
     }
-    bar.querySelector('#update-dismiss').onclick = () => { bar.dataset.dismissed = d.latest; bar.style.display = 'none'; };
+    const dis = bar.querySelector('#update-dismiss');
+    dis.style.display = d.tooOld ? 'none' : '';
+    dis.onclick = () => { bar.dataset.dismissed = d.latest; bar.style.display = 'none'; };
   }
 
   // An emergency move happens once per tab per target release. If the page
