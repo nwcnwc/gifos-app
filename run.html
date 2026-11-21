@@ -29147,7 +29147,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // L50.4.2: a deep head's anchor for the room's sound from above ('sdn') is its up seat; "answers" is the seat's own
     // test (the anchor sits in its cell and answered within two beats).
-    function sdnAnchorPid() { const src = net.topo.up(c); return src ? occPid(src) : null; }
+    function sdnAnchorPid() { const c = meshCoord(); const src = c ? net.topo.up(c) : null; return src ? occPid(src) : null; }
     function anchorAnswers() { const sv = meshSeat(); return !!(sv && sv.anchorAnswers); }
     function claimRedun(rk, arr) {
       const now = Date.now();
