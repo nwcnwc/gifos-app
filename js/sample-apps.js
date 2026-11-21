@@ -223,7 +223,7 @@
   }
   const db = gifos.db('entries'), list = document.getElementById('list');
   // Who is here comes from the room (gifos.people()); an older GifOS has none: one plain line, read-only, nothing written.
-  const PEOPLE = !!(window.gifos && gifos.people), PEOPLE_MS = 2000;
+  const PEOPLE = !!(window.gifos && gifos.people), PEOPLE_MS = ${GifOS.timings.APP_PEOPLE_READ_MS};
   const EN_NEWER = 'Guestbook needs a newer GifOS to sign together. Reload the page to update.';
   const newerLine = () => { const t = T('needsNewer'); return t === 'needsNewer' ? EN_NEWER : t; };
   ['💜','✨','⭐','🌈','✍️','🐸'].forEach(function(s){
@@ -984,7 +984,7 @@
   // throttled by design). Images are shrunk to fit automatically.
   const MAX=256*1024, CS=87000, MAXCHUNKS=16;
   // Who is here comes from the room (gifos.people()); an older GifOS has none: one plain line, read-only, nothing written.
-  const PEOPLE=!!(window.gifos&&gifos.people), PEOPLE_MS=2000;
+  const PEOPLE=!!(window.gifos&&gifos.people), PEOPLE_MS=${GifOS.timings.APP_PEOPLE_READ_MS};
   const EN_NEWER='Chat needs a newer GifOS to talk together. Reload the page to update.';
   const newerLine=function(){ const t=T('needsNewer'); return t==='needsNewer'?EN_NEWER:t; };
   let me={id:'local',name:'You'}, last=[], others=0, room=[], owner=false;
@@ -3668,7 +3668,7 @@ i18nStart(function(){});</script>`;
   // in the PRIVATE prefs store, so they stay personal and never sync.
   var follow=true, shared=false, lastNav=null, othersHere=0, room=[], owner=false;
   // An older GifOS has no gifos.people: one plain line, reading works, nothing is written (not even private rows).
-  var PEOPLE=!!(window.gifos&&gifos.people), PEOPLE_MS=2000;
+  var PEOPLE=!!(window.gifos&&gifos.people), PEOPLE_MS=${GifOS.timings.APP_PEOPLE_READ_MS};
   var EN_NEWER='Bible Browser needs a newer GifOS to read together. Reload the page to update.';
   function newerLine(){ var t=T('needsNewer'); return t==='needsNewer'?EN_NEWER:t; }
   // Scroll is remembered per person AND shared with followers — as a FRACTION of
