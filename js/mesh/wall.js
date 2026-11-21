@@ -175,6 +175,11 @@
     l52Assented(k, q) { if (!this.l52Firm()) return; const a = this.l31Acc.get(k); const had = a !== undefined && a.q === q && !a.left; if (had && !a.commit) { a.commit = true; a.by = this.id; }   // by: the seat whose word gave the cell (L52.9 e)
       this.trace('L52-ASSENT', this.id, this.coord, 'ck=%lld seeker=%d kept=%d', k, q, had ? 1 : 0); },
 
+    // L52.9 h: in a room with a line a home cell under a live record (a word given, or a proposal still waiting for one) is promised to
+    // its seeker: Section 1's front pack (L9.22) moves no seat into it.
+    // C++: mesh_wall.inc:Seat::l52Promised
+    l52Promised(k) { return this.l52Firm() && this.l31Held(k, -1); },
+
     // L52.9, the cell's designated admitter: I hold my own vouch in k for a seat other than q, and it is no open proposal (the PLACE is out).
     // C++: mesh_wall.inc:Seat::l52Given
     l52Given(k, q) {
