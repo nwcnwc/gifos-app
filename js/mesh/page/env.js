@@ -233,6 +233,7 @@
     // ---- io for the pc laws (A2) --------------------------------------------------------------------------------
     const dialFailLater = [];
     const io = {
+      via(x, v) { const p = ID.pid(x); if (p && pc.via) pc.via(p, v >= 0 ? ID.pid(v) : null); },   // L50.4.1
       dial(x, mark) {
         const p = ID.pid(x);
         if (!p || !pc.ensure) { trace('ENV-NOPEER', me, null, 'peer=%d', x); drop('nopeer'); dialFailLater.push(x); return; }

@@ -56,7 +56,7 @@
       state: LK_NONE, view: [LK_NONE, LK_NONE], half: 0, stuck: false, leverHalf: false, wasOpen: false, carried: false,
       epoch: 0, openEp: 0, dialAt: -1, halfAt: -1, askAt: -1000000, txAt: [-1, -1], nnAt: [-1, -1], nnAsk: [-1000000, -1000000],
       arrAt: [-1, -1], q: [], outside: 0, dialBy: -1, dialT: -3, dialHow: 0, callClosed: false, gone: 0,
-      agreed: [false, false], hold: [[], []], closingAt: [-1, -1], farAsk: [-1000000, -1000000], uplink: false, dHeard: 0, dPlaced: 0,
+      agreed: [false, false], hold: [[], []], closingAt: [-1, -1], farAsk: [-1000000, -1000000], uplink: false, upVia: -1, dHeard: 0, dPlaced: 0,
       backAt: [-1, -1], dBorn: -1, dProg: -1, dOpenAt: -1, dAsked: false, dHomed: false, dHomedE: false, dGw: false, dIn: false, dSat: false, dHoAt: -1, dWait: -1,
       dOwed: false, dWaitAtFind: -1, dOwedAt: -1,
     };
@@ -567,10 +567,10 @@
     // C++: mesh_link.inc:fabricDialUplink   [end: the head's dial and its offer]; refer is left as given (the sim: (void)refer)
     // C++: mesh_link.inc:uplinkDialable   [fabric: an uplink from me to x can be dialled at all (L14/L50.3.2)]
     function uplinkDialable(me, x) { return !!lv.LINKMODEL && me >= 0 && x >= 0 && me !== x && me < lv.nextId && x < lv.nextId; }
-    function fabricDialUplink(me, x, refer) {
+    function fabricDialUplink(me, x, refer, via) {
       if (!uplinkDialable(me, x)) return false;
       const L0 = linkFind(me, x); const had = !!L0 && (L0.state === LK_OPEN || L0.state === LK_DIALING);
-      fabricDialJoin(me, x); const L = linkFind(me, x); if (L && L.state === LK_DIALING) L.uplink = true;
+      fabricDialJoin(me, x); const L = linkFind(me, x); if (L && L.state === LK_DIALING) { L.uplink = true; L.upVia = (L.dialBy === me && via !== x && via != null) ? via : -1; }   /* L50.4.1 */
       if (L && (L.state === LK_OPEN || L.state === LK_DIALING)) { const o = msg.newMsg('UPOFFER'); o.id = me; o.tag = had ? 1 : 0; o.to = x; o.from = -1; o.lk = -1; P.wireTx(o, me); P.busPush(T() + 1, o); }
       return true;
     }
