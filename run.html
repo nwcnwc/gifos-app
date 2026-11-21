@@ -9515,6 +9515,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           closeTileWin();
           try { layout(); } catch (e) {}
         }));
+        // Whose captions this page shows for this person: the same card as the caption warning, any time.
+        let ct = null; try { ct = (typeof capTrust !== 'undefined' && capTrust && capTrust.known(id)) ? capTrust : null; } catch (e) {}
+        if (ct) {
+          const doubt = ct.stateOf(id, id) === 'distrusted';
+          const cb = twButton(uiText('twCaptions', 'Captions') + (doubt ? ' \u26a0' : ''), false, () => { closeTileWin(); capSourceOpen(id); });
+          cb.dataset.captions = '1';
+          row.appendChild(cb);
+        }
       }
       // Beside a preview, Mute, Camera and the recording pill stay in the
       // narrow column. They used to be full-width rows under a 72px frame.
@@ -33543,16 +33551,28 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       onWarn: (v, info) => { try { capWarn(v, info); } catch (e) {} },
     }) : null;
     // THE WARNING CARD and THE SOURCE CHOOSER: one small card over the call, one tap per source.
-    function capCard(id, v, title, note, rows) {
+    // ex: { theirs, ours, by } from capTrust.evidence(v): shown side by side so the person can judge who is right.
+    function capCard(id, v, title, note, rows, ex) {
       let c = document.getElementById(id);
       if (!c) {
         c = document.createElement('div'); c.id = id; c.className = 'capcard'; c.setAttribute('role', 'dialog');
         document.body.appendChild(c);
       }
       c.dataset.voice = v;
-      c.innerHTML = '<div class="capcard-t"></div><div class="capcard-n"></div><div class="capcard-b dlg-actions"></div>';
+      c.innerHTML = '<div class="capcard-t"></div><div class="capcard-body"><div class="capcard-n"></div><div class="capcard-ex"></div><div class="capcard-h"></div></div><div class="capcard-b dlg-actions"></div>';
       c.querySelector('.capcard-t').textContent = title;
       c.querySelector('.capcard-n').textContent = note || '';
+      const exEl = c.querySelector('.capcard-ex');
+      if (ex && (ex.theirs || ex.ours)) {
+        const heardBy = !ex.by || ex.by === myId ? uiText('capExMine', 'This device heard') : uiText('capExTheirs', '{name}\'s device heard').replace('{name}', capName(ex.by));
+        for (const [cls, lab, txt] of [['theirs', uiText('capExSaid', '{name}\'s captions said').replace('{name}', capName(v)), ex.theirs], ['ours', heardBy, ex.ours]]) {
+          const q = document.createElement('div'); q.className = 'capcard-q capcard-q-' + cls;
+          const l = document.createElement('b'); l.textContent = lab;
+          const t = document.createElement('span'); t.textContent = '\u201c' + (txt || '\u2026') + '\u201d';
+          q.appendChild(l); q.appendChild(t); exEl.appendChild(q);
+        }
+      }
+      c.querySelector('.capcard-h').textContent = uiText('capLater', 'You can change this any time: tap {name}\'s tile, then Captions.').replace('{name}', capName(v));
       const b = c.querySelector('.capcard-b');
       for (const r of rows) {
         const x = document.createElement('button'); x.type = 'button'; x.textContent = r.t; x.dataset.src = r.src;
@@ -33588,32 +33608,44 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function capCanEar() { return whisperSupported() && !phoneCaptions() && !CC_ON_PHONE; }
     // Sources for v other than the one shown: this device's ears, each writer with lines for v, the speaker's own.
-    function capRows(v, withAuto) {
+    // The choices for v, in plain words: let the page decide, show this device's ears, the speaker's own, another
+    // participant's lines. The one in force is pressed.
+    function capRows(v) {
       const c = capTrust.choice(v), rows = [], name = capName(v);
-      if (withAuto) rows.push({ src: 'auto', t: uiText('capAuto', 'Automatic'), on: c.mode === 'auto' });
-      rows.push({ src: 'own', t: uiText('capOwn', '{name}\'s own captions').replace('{name}', name), on: c.mode === 'own' });
-      if (capTrust.hasEars(v) || capCanEar()) rows.push({ src: 'me', t: uiText('capMine', 'What this device hears'), on: c.mode === 'me' });
-      for (const s of capTrust.sources(v)) if (s.kind === 'ear') rows.push({ src: s.w, t: uiText('capTheirs', '{name}\'s captions').replace('{name}', capName(s.w)), on: c.mode === s.w });
+      rows.push({ src: 'auto', t: uiText('capAutoPlain', 'Decide for me (recommended)'), on: c.mode === 'auto' });
+      if (capTrust.hasEars(v) || capCanEar()) rows.push({ src: 'me', t: uiText('capMinePlain', 'Show what this device hears'), on: c.mode === 'me' });
+      rows.push({ src: 'own', t: uiText('capOwnPlain', 'Show {name}\'s own captions').replace('{name}', name), on: c.mode === 'own' });
+      for (const s of capTrust.sources(v)) if (s.kind === 'ear') rows.push({ src: s.w, t: uiText('capTheirsPlain', 'Show {name}\'s captions').replace('{name}', capName(s.w)), on: c.mode === s.w });
       return rows;
     }
-    function capWarn(v, info) {
-      const name = capName(v), c = capTrust.choice(v);
-      const ear = info && info.by && info.by !== 'me' && info.by !== myId ? capName(info.by) : '';
-      const title = ear ? uiText('capWarnEar', '{name}\'s captions don\'t match what {ear}\'s device hears').replace('{name}', name).replace('{ear}', ear)
-        : uiText('capWarn', '{name}\'s captions don\'t match what you\'re hearing').replace('{name}', name);
-      const note = c.show === myId ? uiText('capNowMine', 'Showing what this device hears.')
-        : (c.show !== 'all' && c.show !== v) ? uiText('capNowTheirs', 'Showing {name}\'s captions.').replace('{name}', capName(c.show)) : '';
-      const rows = capRows(v, false);
-      if (clog) clog('captrust warn', String(v).slice(0, 6), info && info.why, String(c.show).slice(0, 6));
-      capCard('capwarn', v, title, note, rows);
+    // What the page shows for v right now, in one sentence.
+    function capNowNote(v) {
+      const c = capTrust.choice(v);
+      const auto = c.mode === 'auto' ? uiText('capNowAuto', ' (decided for you)') : '';
+      if (c.show === myId) return uiText('capNowMine', 'Showing what this device hears.').replace(/\.$/, auto + '.');
+      if (c.show === v) return uiText('capNowOwnPlain', 'Showing {name}\'s own captions.').replace('{name}', capName(v)).replace(/\.$/, auto + '.');
+      if (c.show !== 'all') return uiText('capNowTheirs', 'Showing {name}\'s captions.').replace('{name}', capName(c.show)).replace(/\.$/, auto + '.');
+      return capTrust.stateOf(v, v) === 'distrusted' ? uiText('capNowNone', 'Hiding {name}\'s own captions: no better source yet.').replace('{name}', capName(v)) : '';
     }
-    function capSourceOpen(v) {
+    // ONE CARD for a person's captions. The warning (info set: this page just stopped trusting their captions) and the
+    // chooser (opened from their tile or the caption bar) are the same card: what was said vs what was heard, what is
+    // shown now, and one tap per choice.
+    function capSourceOpen(v, info) {
       if (!capTrust || !v || v === myId) return;
-      const name = capName(v);
-      const rows = capRows(v, true);
-      rows.push({ src: 'flag', t: uiText('capFlag', 'These captions are wrong') });
-      capCard('capsrc', v, uiText('capSrcTitle', 'Captions for {name}').replace('{name}', name), '', rows);
+      const name = capName(v), ex = capTrust.evidence(v);
+      const ear = ex && ex.by && ex.by !== myId ? capName(ex.by) : (info && info.by && info.by !== 'me' && info.by !== myId ? capName(info.by) : '');
+      let title;
+      if (info || capTrust.stateOf(v, v) === 'distrusted') {
+        title = ear ? uiText('capWarnEarPlain', '{name}\'s captions don\'t match what {ear}\'s device hears. Which should you see?').replace('{name}', name).replace('{ear}', ear)
+          : uiText('capWarnPlain', '{name}\'s captions don\'t match what your device hears. Which should you see?').replace('{name}', name);
+      } else title = uiText('capSrcTitle', 'Captions for {name}').replace('{name}', name);
+      const rows = capRows(v);
+      if (!info) rows.push({ src: 'flag', t: uiText('capFlag', 'These captions are wrong') });
+      if (info && clog) clog('captrust warn', String(v).slice(0, 6), info.why, String(capTrust.choice(v).show).slice(0, 6));
+      const other = document.getElementById(info ? 'capsrc' : 'capwarn'); if (other) other.hidden = true;
+      capCard(info ? 'capwarn' : 'capsrc', v, title, capNowNote(v), rows, ex);
     }
+    function capWarn(v, info) { capSourceOpen(v, info || { why: '' }); }
     function capPick(v, src) {
       if (!capTrust) return;
       if (src === 'flag') { const c = capTrust.choice(v); capTrust.flag(v, c.show === 'all' ? v : c.show); }
@@ -34454,7 +34486,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (!pid || (typeof myId !== 'undefined' && pid === myId) || queued.indexOf(pid) >= 0) return;
           const st = statusOf.get(pid) || {};
           if (st.muted || st.bot || (modOf(pid).mute && modOf(pid).mute.on)) return;
-          if (localEar && capCovered(pid)) return;
+          // The on-device ears leave a voice its own page captions (cap 1) to that page, except a voice whose own
+          // captions this page distrusts, or that its user put on this device's ears: those
+          // are heard full time, so the page shows what was really said and sees
+          // when the speaker's captions come right again (then trust returns and the page goes back to them).
+          if (localEar && capCovered(pid) && !(capTrust && (capTrust.stateOf(pid, pid) === 'distrusted' || capTrust.choice(pid).mode === 'me'))) return;
           // Ears only listen to voices someone else captions (that is what they check), and a voice whose own
           // captions are trusted only during a spot check.
           if (earsOnly && !capCovered(pid) && !(capTrust && capTrust.choice(pid).mode === 'me')) return;

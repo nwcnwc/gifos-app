@@ -29,7 +29,7 @@
   const GifOS = root.GifOS = root.GifOS || {};
 
   // Word-overlap dials (ratios and counts; the times come from the timings table).
-  const DIALS = { MATCH: 0.5, MISS: 0.25, BIG_MISS: 0.1, MIN_WORDS: 4, BIG_WORDS: 8, TRUST_N: 2, LOSE_N: 2, RING: 60 };
+  const DIALS = { MATCH: 0.5, MISS: 0.25, BIG_MISS: 0.1, MIN_WORDS: 4, BIG_WORDS: 8, TRUST_N: 2, LOSE_N: 2, RING: 60, EX_CHARS: 160 };
   const STOP = new Set(['the', 'and', 'for', 'you', 'that', 'this', 'with', 'are', 'was', 'but', 'not', 'have', 'has', 'had',
     'our', 'all', 'its', 'his', 'her', 'she', 'they', 'them', 'then', 'than', 'from', 'what', 'will', 'can', 'just', 'into',
     'one', 'too', 'there', 'their', 'your', 'who', 'how', 'any', 'out', 'yes', 'okay']);
@@ -89,9 +89,11 @@
       warned.add(v);
       try { if (opts.onWarn) opts.onWarn(v, { why: r.why, by: r.by, show: choice(v).show }); } catch (e) {}
     }
-    function sample(v, w, verdict, by) {
+    function sample(v, w, verdict, by, ex) {
       if (!verdict) return;
       const r = rec(v, w);
+      // the pair this verdict came from: what source w wrote and what the reference heard, over the same span
+      if (ex) { r.ex = ex; if (verdict !== 'match') r.exBad = ex; }
       if (r.why === 'flag' && r.s === 'distrusted') return;   // the user's flag stands for the meeting
       if (verdict === 'match') {
         r.bad = 0; r.ok++;
@@ -115,7 +117,8 @@
       const at = +l.at || now();
       // this device's ears: Whisper (or the phone's model) on the received audio; no other engine of mine is a reference
       const mine = w === me() && ear && (l.eng === 'whisper' || l.eng === 'local');
-      a.push({ w, at, end: Math.max(at, +l.end || 0), ws, ear, mine, seen: new Set(), t: now() });
+      // tx: the line's words as shown, kept in this page's memory so the chooser can show what each source said
+      a.push({ w, at, end: Math.max(at, +l.end || 0), ws, ear, mine, seen: new Set(), t: now(), tx: String(l.text || '').slice(0, d.EX_CHARS) });
       if (a.length > d.RING) a.splice(0, a.length - d.RING);
       if (ear && w !== me() && (l.vt === 0 || l.vt === 1)) { vts.set(key(v, w), l.vt); applyVouch(v, w); }
     }
@@ -129,6 +132,12 @@
     function hasEars(v) {
       if (opts.earsFor && opts.earsFor(v)) return true;
       return recent(v).some((x) => x.mine);
+    }
+    // Text of writer w on voice v over [a, b] (for the example the chooser shows).
+    function textIn(v, w, a, b) {
+      const out = [];
+      for (const x of lines.get(v) || []) if (x.w === w && x.end >= a && x.at <= b && x.tx && out.indexOf(x.tx) < 0) out.push(x.tx);
+      return out.join(' ').slice(-d.EX_CHARS);
     }
     // Words of writer w on voice v over [a, b].
     function wordsIn(v, w, a, b) {
@@ -158,7 +167,7 @@
               if (!ws) continue;
               r.seen.add(w);
               const vd = judge(r.ws, ws, d);
-              sample(v, w, vd, 'me');
+              sample(v, w, vd, 'me', vd ? { theirs: textIn(v, w, lo, hi), ours: r.tx, by: my } : null);
               if (w !== v && vd) { if (vd === 'match') earOk.set(w, (earOk.get(w) || 0) + 1); else earBad.add(w); }
             }
           } else if (!refMine && r.ear && r.w !== v) {
@@ -167,8 +176,9 @@
             if (own) {
               r.seen.add(v);
               const vd = judge(r.ws, own, d);
-              if (trustedEar(r.w)) sample(v, v, vd, r.w);
-              else if (vd === 'match') { earOk.set(r.w, (earOk.get(r.w) || 0) + 1); sample(v, v, vd, r.w); }
+              const ex = vd ? { theirs: textIn(v, v, lo, hi), ours: r.tx, by: r.w } : null;
+              if (trustedEar(r.w)) sample(v, v, vd, r.w, ex);
+              else if (vd === 'match') { earOk.set(r.w, (earOk.get(r.w) || 0) + 1); sample(v, v, vd, r.w, ex); }
             }
           }
         }
@@ -227,6 +237,15 @@
       }
       return out;
     }
+    // The example behind this page's view of v's own captions: the last pair that disagreed, else the last pair judged.
+    // -> { theirs, ours, by } (by: whose ears heard 'ours'), or null when nothing was compared yet.
+    function evidence(v) {
+      const r = st.get(key(String(v), String(v)));
+      const e = r && (r.s === 'trusted' ? r.ex : (r.exBad || r.ex));
+      return e ? { theirs: e.theirs || '', ours: e.ours || '', by: e.by || '' } : null;
+    }
+    // Has this page ever held a caption line for v, or judged v's captions? (The tile's Captions row is offered then.)
+    function known(v) { v = String(v); return lines.has(v) || st.has(key(v, v)); }
     function dump() {
       const o = { states: {}, picks: Object.fromEntries(picks), ears: {}, earBad: Array.from(earBad), warned: Array.from(warned) };
       for (const [k, r] of st) o.states[k] = { s: r.s, ok: r.ok, bad: r.bad, why: r.why, by: r.by };
@@ -244,7 +263,7 @@
       if (c.show === w) return true;
       return c.show !== 'all' && shows(l);
     }
-    return { observe, tick, choice, shows, showsHeld, earWanted, verdict, pick, flag, sources, stateOf, hasEars, dump };
+    return { observe, tick, choice, shows, showsHeld, earWanted, verdict, pick, flag, sources, stateOf, hasEars, evidence, known, dump };
   }
 
   GifOS.capTrust = { make, words, overlap, judge, DIALS };
