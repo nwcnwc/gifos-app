@@ -4,8 +4,8 @@
   "appId": "vintage-poker",
   "name": "Vintage Poker",
   "shortName": "Poker",
-  "version": "1.1",
-  "minBuild": 947,
+  "version": "1.2",
+  "minBuild": 5861,
   "tagline": "Texas Hold'em with friends. Everyone who opens your link takes a seat.",
   "description": "Texas Hold'em at one felt. Two hole cards, then the flop, the turn, the river. Fold, check, call, or raise. Best five of seven takes the pot.\n\nOn your own, two bots sit across from you. With friends, press Invite and send the link — everyone who opens it takes a seat, and the host deals. Your chip stack is saved with your copy of the app.\n\nAn unofficial port of Vintage Poker by Patrick Obermeier.",
   "author": {
@@ -40,14 +40,14 @@
   "cover": "/apps/vintage-poker/cover.jpg",
   "screenshots": [],
   "gif": "/apps/vintage-poker/vintage-poker.gif",
-  "bytes": 199911,
+  "bytes": 201726,
   "download": 0,
   "provides": null,
-  "sha256": "97011a9058fc934650d741f39233cdf7c95297e187c251e0558c9f467677a1df",
+  "sha256": "2fb80f5aab68d277e4f66d43b8da55f5cde3cbefdb04e754163772ba0dba8733",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-21"
   },
   "porter": {
     "name": "GifOS",

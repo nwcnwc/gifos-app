@@ -961,7 +961,7 @@
       "appId": "blackjack",
       "name": "Blackjack",
       "shortName": "Blackjack",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "tagline": "Beat the dealer to 21. Friends who open your invite play their own hands.",
       "author": {
         "name": "hanhaechi",
@@ -975,7 +975,7 @@
         "name": "blackjack",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-24",
       "updated": "2026-08-24",
@@ -995,15 +995,15 @@
         58
       ],
       "cover": "/apps/blackjack/cover.jpg",
-      "bytes": 192968,
+      "bytes": 193855,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "533e7e04b52ed730b4c7e8339acebe4b6e173ac83569bae30a095797a7731f29"
+      "sha256": "183188f0e5563c8d1e3ab98f84ca2b565ba8e0a0cd57ee508979c7fe8b1024d9"
     },
     {
       "slug": "blockly-games",
@@ -1063,7 +1063,7 @@
       "appId": "bowling",
       "name": "Bowling",
       "shortName": "Bowl",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "tagline": "Ten pins at the end of the lane. Aim, flick, take turns.",
       "author": {
         "name": "tincoats",
@@ -1077,7 +1077,7 @@
         "name": "bowling",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -1097,15 +1097,15 @@
         40
       ],
       "cover": "/apps/bowling/cover.jpg",
-      "bytes": 201050,
+      "bytes": 201663,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "d36f0d64e68e84fcca7520a824f43aeda06f10e75b089a827296d2a46a7702b6"
+      "sha256": "a7617b4b891082cad8c98770dc5ec46bc932fe4c56e6f6386a1dd2a7163696fd"
     },
     {
       "slug": "breaklock",
@@ -2106,7 +2106,7 @@
       "appId": "drawphone",
       "name": "Drawphone",
       "shortName": "Drawphone",
-      "version": "1.1",
+      "version": "1.2",
       "tagline": "Draw & guess for meetings: one draws, everyone guesses, points on every screen. Plus Telephone.",
       "author": {
         "name": "tannerkrewson",
@@ -2120,7 +2120,7 @@
         "name": "Drawphone",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-11-13",
       "updated": "2026-11-13",
@@ -2141,15 +2141,15 @@
         64
       ],
       "cover": "/apps/drawphone/cover.jpg",
-      "bytes": 228581,
+      "bytes": 229301,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-11-13"
+        "ts": "2026-11-21"
       },
-      "sha256": "4f8c59af47668ec7f1aced7a1996158bf9905682f7a3d068163f9ce6c09e283d"
+      "sha256": "62b9a5d2843233f672abccae0fe5542950fe7de5f0c9eadeae6889035194e5d8"
     },
     {
       "slug": "duck-hunt",
@@ -2656,7 +2656,7 @@
       "appId": "finger-pool",
       "name": "Finger Pool",
       "shortName": "Flick",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "tagline": "Flick a ball with your finger. Colours fly into the pockets. Take turns.",
       "author": {
         "name": "victorqribeiro",
@@ -2670,7 +2670,7 @@
         "name": "fingerPool",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -2691,15 +2691,15 @@
         54
       ],
       "cover": "/apps/finger-pool/cover.jpg",
-      "bytes": 220392,
+      "bytes": 220918,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "78e1fa937a18aa1ece4582cd4f04568738c9b4afb8a9cec81a3f670b823884c7"
+      "sha256": "abbed6c6aa148c9141c7a746b6004eb79886fbdfcd00cfb92426882e01bff2ca"
     },
     {
       "slug": "flexbox-froggy",
@@ -9669,7 +9669,7 @@
       "appId": "vintage-poker",
       "name": "Vintage Poker",
       "shortName": "Poker",
-      "version": "1.1",
+      "version": "1.2",
       "tagline": "Texas Hold'em with friends. Everyone who opens your link takes a seat.",
       "author": {
         "name": "Patrick Obermeier",
@@ -9683,7 +9683,7 @@
         "name": "Vintage Poker",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-24",
       "updated": "2026-08-24",
@@ -9704,15 +9704,15 @@
         58
       ],
       "cover": "/apps/vintage-poker/cover.jpg",
-      "bytes": 199911,
+      "bytes": 201726,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "97011a9058fc934650d741f39233cdf7c95297e187c251e0558c9f467677a1df"
+      "sha256": "2fb80f5aab68d277e4f66d43b8da55f5cde3cbefdb04e754163772ba0dba8733"
     },
     {
       "slug": "vocal-remover",
@@ -10088,7 +10088,7 @@
       "appId": "yahtzee",
       "name": "Yahtzee",
       "shortName": "Yahtzee",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "Yahtzee over a meeting — everyone sees the same dice.",
       "author": {
         "name": "Alhissar",
@@ -10102,7 +10102,7 @@
         "name": "Yahtzee",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -10122,15 +10122,15 @@
         58
       ],
       "cover": "/apps/yahtzee/cover.jpg",
-      "bytes": 338106,
+      "bytes": 338698,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "9c7b02444cb3b50aa122a94d70c89f6fca723ca96f7f12f2bba6fbd81d648f04"
+      "sha256": "d6a371599435d75d5a1184e4b6f0571426715ebf4b62df63cec302ac63962ce6"
     },
     {
       "slug": "yoinks",

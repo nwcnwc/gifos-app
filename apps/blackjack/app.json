@@ -4,8 +4,8 @@
   "appId": "blackjack",
   "name": "Blackjack",
   "shortName": "Blackjack",
-  "version": "1.1.0",
-  "minBuild": 947,
+  "version": "1.2.0",
+  "minBuild": 5861,
   "tagline": "Beat the dealer to 21. Friends who open your invite play their own hands.",
   "description": "Hit, stand, or double. Split a pair. Aces are soft until they have to be one. The dealer stands on 17. A natural 21 pays 3:2. Go broke and the table says so; restock deals you a fresh pile.\n\nYour chips stay with your copy of the app — send someone that copy and the table goes with it. One link sits friends at the same table. The host deals. The dealer plays in the host's browser.\n\nAn unofficial port of blackjack by hanhaechi.",
   "author": {
@@ -39,14 +39,14 @@
   "cover": "/apps/blackjack/cover.jpg",
   "screenshots": [],
   "gif": "/apps/blackjack/blackjack.gif",
-  "bytes": 192968,
+  "bytes": 193855,
   "download": 0,
   "provides": null,
-  "sha256": "533e7e04b52ed730b4c7e8339acebe4b6e173ac83569bae30a095797a7731f29",
+  "sha256": "183188f0e5563c8d1e3ab98f84ca2b565ba8e0a0cd57ee508979c7fe8b1024d9",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-21"
   },
   "porter": {
     "name": "GifOS",
