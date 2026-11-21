@@ -502,8 +502,10 @@
     chipEl.textContent = live ? (other&&other.name ? T('chip.vs',{name:other.name}) : T('chip.vsFriend')) : T('chip.alone');
     renderConsent();
   }
-  function say(e){ note = e && e.message ? e.message : ''; render(); setTimeout(function(){ note=''; render(); }, 2500); }
+  // A refusal note stays until the next room change or the next tap.
+  function say(e){ note = e && e.message ? e.message : ''; render(); }
   function play(i){
+    note = '';
     if (cur.cells[i] || !canPlay()) return;
     askLocal = false;
     const seat = turnOf(rs);
@@ -584,7 +586,7 @@
     db.subscribe(onItems);
     if (ROOM){
       gifos.room.subscribe(function(s){
-        rs = s; render();
+        rs = s; note = ''; render();
         // Opening the game is asking to play: once. The room seats, lines up or asks the host.
         if (!joined && s.me && s.me.role==='watcher'){ joined = true; gifos.room.join().catch(function(){}); }
       });
@@ -2955,7 +2957,8 @@ function syncDebug(){
     return best||ms[0];
   }
 
-  function say(e){ note=e&&e.message?e.message:''; render(); setTimeout(function(){ note=''; render(); },2500); }
+  // A refusal note stays until the next room change or the next tap.
+  function say(e){ note=e&&e.message?e.message:''; render(); }
   // Every change of the tournament is one room move (only a seated person may write it).
   function save(){ if(!ROOM||!rs||!rs.me||!rs.me.seat) return Promise.resolve(); return gifos.room.move('chess', T).catch(say); }
   function settingsOf(){ return Object.assign({ clock:'5+0', shuffle:true, cpu:'medium', side:'w' }, T.settings||{}); }
@@ -3202,6 +3205,7 @@ function syncDebug(){
       if((stNow==='check'||stNow==='mate')&&kp&&kp[0]===rx&&kp[1]===ry) sq.classList.add('check');
       if(hint&&seat===m.turn&&!m.winner&&!m.draw){ if(hint.from&&hint.from[0]===rx&&hint.from[1]===ry) sq.classList.add('hintf'); if(hint.to&&hint.to[0]===rx&&hint.to[1]===ry) sq.classList.add('hintt'); }
       sq.onclick=(function(cx,cy){ return function(){
+        note='';
         if(m.winner||m.draw||seat!==m.turn) return;
         if(sel){ const opts=legal(s).filter(function(mv){ return mv.from[0]===sel[0]&&mv.from[1]===sel[1]&&mv.to[0]===cx&&mv.to[1]===cy; });
           if(opts.length){ doMove(m,sel[0],sel[1],cx,cy); return; } sel=null; }
@@ -3263,7 +3267,7 @@ function syncDebug(){
     db.subscribe(function(items){ const t=items.find(function(x){return x.id==='t';}); if(t){ T=t; T.settings=settingsOf(); }
       curMatches().forEach(function(m){ if(m&&!m.winner&&!m.draw) turnStart(m); }); render(); queueCpu(); });
     if(ROOM) gifos.room.subscribe(function(s){
-      rs=s; if(s.me&&s.me.id) me={ id:s.me.id, name:s.me.name||'You' };
+      rs=s; note=''; if(s.me&&s.me.id) me={ id:s.me.id, name:s.me.name||'You' };
       if(!joined&&s.me&&s.me.role==='watcher'){ joined=true; joinLobby(); }
       render(); queueCpu();
     });
