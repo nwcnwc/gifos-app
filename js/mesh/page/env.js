@@ -8,7 +8,7 @@
  * laws on my end of each pc are pclaws-wire.js's (A2, GifOS.meshPcWire); the socket, signing, sealing and the
  * page's debug face are mesh-wire's (A3). This file decides nothing the laws decide.
  *
- * THE 54 CALLS (seat.js FABRIC_CALLS). Owner: A1 = here; A2 = pclaws-wire.js fns (merged over these at create);
+ * THE 55 CALLS (seat.js FABRIC_CALLS). Owner: A1 = here; A2 = pclaws-wire.js fns (merged over these at create);
  * meas = a measurement in the sim, a no-op here (a DEBUG trace line at most).
  *   call                 owner  page meaning
  *   fabricAdmitLog       meas   admit forensics
@@ -16,6 +16,7 @@
  *   fabricDial           A2     dial x (pclaws gates; io.dial -> o.pc.ensure)
  *   fabricDialFails      A2     the seat's own DialBook
  *   fabricDialJoin       A2     dial x or join its dial
+ *   fabricHoldDial       A2     L7.16: the answer door of a seeker whose FIND I hold, dialled at the hold
  *   fabricDialUplink     A2     L14 uplink dial + UPOFFER on the dc
  *   fabricUpDecline      A2     L14 decline + referrals (BUSY tag 14 on the dc; over the relay: relayBusyList here)
  *   fabricUpTake         A2     far page's L14 budget, my end

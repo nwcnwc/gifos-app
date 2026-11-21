@@ -43,7 +43,7 @@
 
   // The fabric calls a seat's code makes (C++: mesh_proof_on.inc, the list the proof tapes record).
   const FABRIC_CALLS = Object.freeze([
-    'fabricAdmitLog', 'fabricCallFrame', 'fabricDial', 'fabricDialFails', 'fabricDialJoin', 'fabricDialUplink',
+    'fabricAdmitLog', 'fabricCallFrame', 'fabricDial', 'fabricDialFails', 'fabricDialJoin', 'fabricDialUplink', 'fabricHoldDial',
     'fabricUpDecline', 'fabricUpTake', 'fabricDoorDrop', 'fabricDoorHanded', 'fabricDoors', 'fabricDupMint',
     'fabricFreeCells', 'fabricKickClose', 'fabricL23Busy', 'fabricLeft', 'fabricLieFor', 'fabricLinkOpen', 'fabricOpenPeers',
     'fabricLinkState', 'fabricMyDoors', 'fabricMyKnocks', 'fabricMyNat', 'fabricMyTier', 'fabricNoSock',
