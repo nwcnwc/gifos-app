@@ -1613,6 +1613,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/mesh/id.js" defer></script>
   <script src="js/mesh/ijoin.js" defer></script>
   <script src="js/mesh/burst.js" defer></script>
+  <script src="js/mesh/wall.js" defer></script>
   <script src="js/mesh/headword.js" defer></script>
   <script src="js/mesh/instant.js" defer></script>
   <script src="js/mesh/island.js" defer></script>
@@ -3515,7 +3516,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // A DOOR'S WORD HOLDS MY SEAT (law SUB.2.5: a refusal at a door whose room exists is never an answer to found a new
     // room on). A door that withholds my knock answers my seat nothing, and a founding attempt of my seat must never
     // read that as an empty room. So every word a door of this room says to me about my knock (held: its waiting room;
-    // doorwait: it is checking the room's plan; subask: it asks for my ticket; subfull: full) is remembered here, and
+    // doorwait: a 0.9.27.2 door checking the room's plan; an L52 door refuses at the wall instead and says subask/subfull; subask: it asks for my ticket; subfull: full) is remembered here, and
     // while it is fresh my seat is held (opts.sub.held): it keeps knocking and founds nothing. The door says its word
     // again at every knock; doorToldMs() without one and the ordinary law is back (the door went away).
     let doorToldAt = 0;
@@ -3527,7 +3528,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       doorToldAt = Date.now(); return true;
     }
     const doorHoldsMe = () => !!subsRefused || (doorToldAt > 0 && Date.now() - doorToldAt < doorToldMs());
-    const sayDoorWait = (id) => sayHeld(id, 'doorwait');   // door side: a plan check holds this knock. A new kind: a 0.9.27 page drops it (its 'held' would show the waiting-room screen)
     let heldWatch = 0;
     function showHeldScreen() {
       meetWait.waiting(true);
@@ -14241,10 +14241,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         },
         sub: () => (meshNode ? meshNode.sub : 0),
         knownSub: (r) => !!(meshNode && meshNode.knownSub(r)),
-        meetingFull: () => {
+        meetingFull: () => {   // the same line as the wall (subsRoomLimit): full at the line, no line or an unknown line is never full; no mesh seat, not full
           if (!hasAdminRoom() || !GifOS.sub) return false;
-          const n = subsMeetingCount();
-          return n != null && GifOS.sub.doorVerdict({ adminRoom: true, roomGrants: subsRoomTier() ? subsGrants : null, count: n }) !== 'let-in';   // at the limit already
+          const line = subsRoomLimit();
+          if (!(line > 0)) return false;
+          try { const n = meshNode ? meshNode.meetingCount() : null; return n != null && n >= line; } catch (e) { return false; }
         },
         // SUB.7: among the other row heads of my view keep the capable ones (not a phone) that
         // are not the pipe's far end and end fewer than two standbys, the fewest pipes and standbys first; else the next
@@ -18208,7 +18209,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (o.by && notTomb(o.by)) admSeen.set(o.by, Date.now());
         if (o.ts > modWSeenTs) { modWSeen = msg.modw; modWSeenTs = o.ts; }
         mergeMod(o.mod);
-        try { subsRejudge(); } catch (e) {}   // the room's admin state arrived: a door waiting on the plan can judge now
         if (newlyAdmin) {
           admins = adminsNow();
           if (typeof reconcileApp === 'function') reconcileApp();
@@ -18711,14 +18711,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         netTag: () => netTagNow,
         capable: () => { const hc = navigator.hardwareConcurrency | 0; return !IS_MOBILE && !(hc > 0 && hc <= 2); },   // a relayed pipe may end at my seat when it heads a row (the device class the mesh's tier reads)   // my registration at the door says which network I am on (the tag my beat carries)
         netKind: () => (directPath === 'blocked' ? 2 : directPath === 'strict' ? 1 : directPath === 'ok' ? 0 : -1),   // and what it measured as (the seat's NAT kinds)
-        doorHeld: (id) => { try { if (DEBUG_ON && window.__doorHoldAll) return true;   /* DEBUG=on only: this door answers no knock (a test picks the doors) */ const b = meetWait.blocks(id); if (b && id && amAdmin) meetWait.note(id, rosterNames[id] || 'Someone waiting'); if (b && id) sayHeld(id); if (b) return true; const sh = subsHolds(id); if (sh && id) sayDoorWait(id);   /* SUB.2.5: a knock held for the plan check is told so: unanswered, its seat read silence and founded a room of its own at this door */ return sh; } catch (e) { return false; } },   // a withheld knock goes on the host's list: nothing else names a plain room's knocker
+        doorHeld: (id) => { try { if (DEBUG_ON && window.__doorHoldAll) return true;   /* DEBUG=on only: this door answers no knock (a test picks the doors) */ const b = meetWait.blocks(id); if (b && id && amAdmin) meetWait.note(id, rosterNames[id] || 'Someone waiting'); if (b && id) sayHeld(id); return b; } catch (e) { return false; } },   // a withheld knock goes on the host's list: nothing else names a plain room's knocker
         onDoor: (kind, frame) => {
           if (kind === 'seated') {
             meetWait.waiting(false);
-            subsDoorSeen(frame);
           }
         },
         sendDC: meshSendDC,
+        wall: { line: () => subsWallLine(), pass: (id) => !!id && subsProven.has(id), walled: (id, full) => { try { subsWalled(id, full); } catch (e) {} } },   // the room's people line for the mesh seat (js/mesh/wall.js): where it stands, whose ticket was checked, and this door's refusals
         // ROOMS JOINED BY RELAYED CONNECTIONS (js/meet-turn.js). ask(): my seat is about to found a room on silence at
         // door 0, or the relay said the meeting lives behind other doors: 1 while the page's ask for the meeting's rooms
         // is open (or now opened), 2 while it is refused and its wait runs (a newcomer's seat founds nothing and knocks
@@ -23392,6 +23392,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (p.doorHeld && p.id && !doorOutsider(p.id)) { const held = Array.from(p.doorHeld.values()); p.doorHeld = null; doorDropKinds.replayed = (doorDropKinds.replayed || 0) + held.length; for (const h of held) { try { onDc(p, dc, h, admOk); } catch (e) {} } }
       if (m.k === 'tv') { if (dc && turnLinks) { try { turnLinks.onFrame(p.id, m); } catch (e) {} } return; }   // a TURN link's handshake over its own channel
       if (m.k === 'tlink') { if (!dc) turnFactIn(p.id, m.f); return; }   // a TURN link's fact, room-wide from one of its ends
+      if (m.k === 'dpass') { if (!dc) subsPassHeard(m); return; }   // a door checked a newcomer's ticket, room-wide
       if (m.k === 'tsub') { if (!dc) turnSubIn(p.id, m.o); return; }    // a subscriber's vouch, room-wide
       if (m.k === 'hi') {
         // Union-merge. The replay is BACKFILL (takeChat/takeTr's second
@@ -39490,13 +39491,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // run out, the host gone, moved to another meeting) is on that free line
     // too (Nathan 2026-11-11); the room closes soon after its last admin
     // leaves anyway. The line is only at entry. An unread count lets people in, never out.
-    // THE COUNT IS THE DOOR'S GREETER LIST (Nathan 2026-11-11), read when a
-    // newcomer comes in: the relay's list of the room's registered seats (the
-    // door's own entry is left out of its replies, so the count is the list
-    // plus the door). A list from before this knocker came is the room as it
-    // was then, so the door asks the relay again and holds the knock until
-    // the fresh list answers; a list's length is what everyone at that door
-    // reads, not one seat's view of the room.
+    // THE LINE IS A PLACE IN THE SEATING ORDER, not a count. The room seats its
+    // people in a fixed order of places, one person to a place, so the room's
+    // limit is the place with that number: the mesh gives no newcomer without a
+    // ticket of their own that place or any after it (js/mesh/wall.js). Nothing
+    // is counted at the door, so many people knocking in the same second, at
+    // one door or at several, cannot pass the line, and a person who has left
+    // holds no place.
     let subsTurnedAway = false, subsTierKey = '', subsTier = null, subsTierExp = 0, subsGrants = null;   // subsTier: the plan's name (display); subsGrants: its signed line items (every decision)
     // The free line's words and the host's upgrade offer (display only): a room whose plan is the free one, or none shown.
     const subsFreeWords = () => GifOS.sub.fullFreeWords(subsTier);
@@ -39507,40 +39508,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // The meeting a subscription ticket names: the room's relay session (a one-way hash of the room code), the same
     // room the relay's TURN vouches name, so the TURN Worker can check a paid ask's ticket against its vouches.
     const subsMeetId = () => sessId || roomKey();
-    // The door's greeter list: its length and when it came (every greeters
-    // reply, a relay restart's empty hold excepted), and the knockers held for
-    // a fresh one (knocker -> when this door first counted for it).
-    let subsListLen = null, subsListAt = 0;
-    const subsWaitList = new Map();
-    function subsDoorSeen(frame) {
-      if (!frame || !Array.isArray(frame.list) || frame.hold) return;
-      subsListLen = frame.list.length; subsListAt = Date.now();
-      const st = meshSeat(), held = Array.from(subsWaitList.keys());
-      if (held.length && st && st.recheckDoor) { try { st.recheckDoor(held); } catch (e) {} }   // the held knocks are judged again on this list (never admitted by it)
-    }
-    // The count for knocker `id`: the greeter list plus this door, from a list
-    // that came after the knocker did. Otherwise the door asks for a fresh one
-    // and answers 'wait'. undefined when there is no list to read (not seated,
-    // not a greeter): an unread count lets people in.
-    // THE MEETING'S COUNT. A meeting may be several subrooms joined by TURN pipes, and an admin room's limit counts them
-    // all: the count is the mesh's count of the whole meeting with the movers still being seated (doorCount; the fold
-    // already counts this door's own seat), or the greeter list plus this door where the mesh gives none. null: not known yet (a subroom whose pipe has not told it the meeting's size), so the knock waits.
-    function subsMeetingCount() {
-      try { if (meshNode && typeof meshNode.doorCount === 'function') return meshNode.doorCount(); } catch (e) {}
-      return subsListLen == null ? null : subsListLen + 1;   // the greeter list leaves the door out
-    }
-    function subsRoomCount(id) {
-      const ms = meshSeat();
-      if (!ms || ms.state !== 3) return undefined;
-      if (!subsWaitList.has(id)) { subsWaitList.set(id, Date.now()); if (subsWaitList.size > 64) subsWaitList.delete(subsWaitList.keys().next().value); }
-      if (subsListLen != null && subsListAt >= subsWaitList.get(id)) { const n = subsMeetingCount(); return n == null ? 'wait' : n; }
-      let asked = false; try { asked = !!(meshNode && meshNode.recountDoor && meshNode.recountDoor()); } catch (e) {}
-      if (asked) return 'wait';
-      subsWaitList.delete(id);
-      if (subsListLen == null) return undefined;
-      const n = subsMeetingCount();
-      return n == null ? 'wait' : n;
-    }
     // THE PLAN IS UNKNOWN, not absent, to a door that has not yet heard the
     // admin's signed orders (a door seated a moment ago) while the room may
     // still have its admin. Reading that as "no plan" would hold a $5 room to
@@ -39551,14 +39518,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // "no admin" too, and its closing countdown is no evidence. Every member
     // re-sends the admin's last signed orders, so a door seated after the admin
     // left still hears them; a room whose admin never sent any closes anyway.
-    const subsPlanWait = new Set();
     const subsPlanKnown = () => amAdmin || !!modWSeen;
-    function subsRejudge() {
-      if (!subsPlanWait.size || !subsPlanKnown() || (!!av && subsRoomTier() === undefined)) return;
-      const ids = Array.from(subsPlanWait); subsPlanWait.clear();
-      const st = meshSeat(); if (st && st.recheckDoor) { try { st.recheckDoor(ids); } catch (e) {} }   // judged again, never admitted
-    }
-    const subsWaitPlan = (id) => { subsPlanWait.add(id); if (subsPlanWait.size > 64) subsPlanWait.delete(subsPlanWait.values().next().value); return true; };
     // The room's plan, verified once per order: undefined while it is being
     // checked, null when none is valid. It is checked ahead of any knock (the
     // timer below), so a door does not meet its first knock with no answer.
@@ -39567,7 +39527,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const k = o ? String(o.at) + '|' + String(o.proof || '') : '';
       if (k !== subsTierKey) {
         subsTierKey = k; subsTier = o ? undefined : null; subsTierExp = 0; subsGrants = null;
-        if (o) GifOS.meetSubs.roomTier(o, subsMeetId()).then((t) => { if (subsTierKey === k) { subsTier = t ? (t.tier || 'custom') : null; subsGrants = t ? t.grants : null; subsTierExp = t ? t.exp : 0; try { subsRejudge(); } catch (e) {} } }, () => { if (subsTierKey === k) { subsTier = null; try { subsRejudge(); } catch (e) {} } });
+        if (o) GifOS.meetSubs.roomTier(o, subsMeetId()).then((t) => { if (subsTierKey === k) { subsTier = t ? (t.tier || 'custom') : null; subsGrants = t ? t.grants : null; subsTierExp = t ? t.exp : 0; } }, () => { if (subsTierKey === k) { subsTier = null; } });
       }
       if (subsTier && Date.now() / 1000 >= subsTierExp) { subsTier = null; subsGrants = null; }   // the admin's ticket ran out: no plan, the free line
       return subsTier;
@@ -39600,27 +39560,46 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       });
     }
     setInterval(() => { try { if (subsOn() && !!av) subsRoomTier(); } catch (e) {} try { capCheck(); capPaint(); } catch (e) {} }, 2000);   // the room's plan, and an open room's capture (capCheck)
-    function subsHolds(id) {
-      if (!id || !subsOn() || !av || subsProven.has(id)) return false;
-      if (!subsPlanKnown()) return subsWaitPlan(id);   // the admin's orders have not reached this door yet: hold, ask nothing
+    // THE ROOM'S PEOPLE LINE as a number: null when the room has none (an open
+    // room, or a plan with no limit), undefined while it cannot be read yet
+    // (the admin's signed orders have not come, or the plan on them is still
+    // being checked). The number comes from the room's signed order.
+    function subsRoomLimit() {
+      if (!subsOn() || !av) return null;
+      if (!subsPlanKnown()) return undefined;
       const tier = subsRoomTier();
-      if (tier && GifOS.sub.doorVerdict({ adminRoom: true, roomGrants: subsGrants, count: 1e9 }) === 'let-in') return false;   // a room with no line counts nobody
-      const count = subsRoomCount(id);
-      if (count === 'wait') return true;   // the fresh list answers this knock (subsDoorSeen)
-      subsWaitList.delete(id);
-      // While the room's plan is still being checked, a room below the free line
-      // lets the knocker in; a room at it holds the knock until the plan is
-      // known (the knocker asks again), and asks nothing yet.
-      if (tier === undefined) return GifOS.sub.doorVerdict({ adminRoom: true, roomGrants: null, count }) !== 'let-in' && subsWaitPlan(id);
-      if (GifOS.sub.doorVerdict({ adminRoom: true, roomGrants: tier ? subsGrants : null, count }) === 'let-in') return false;
+      if (tier === undefined) return undefined;
+      const n = GifOS.sub.effective(tier ? subsGrants : null).roomLimit;   // the signed roomLimit line item (1..25, null = no line); no ticket: the free default
+      return n == null ? null : n;
+    }
+    // What the mesh seat reads (js/mesh/wall.js): 0 no line, below 0 not known
+    // yet (the seat places nobody new and the newcomer asks again in a moment).
+    // A room joined to others by relayed connections that has not been told
+    // the meeting's people yet does not know where its line stands.
+    function subsWallLine() {
+      const n = subsRoomLimit();
+      if (n === undefined) return -1;
+      if (n === null) return 0;
+      try { if (meshNode && meshNode.sub && typeof meshNode.meetingCount === 'function' && meshNode.meetingCount() == null) return -1; } catch (e) {}
+      return n;
+    }
+    // This door refused a newcomer at the line. Only a full room is a reason
+    // to ask for a ticket; "not yet" (a place below the line is only late) is
+    // a short wait on the newcomer's side and nothing is said.
+    function subsWalled(id, full) {
+      if (DEBUG_ON) { try { (window.__subsWalled = window.__subsWalled || []).push({ id, full: !!full, at: Date.now() }); if (window.__subsWalled.length > 256) window.__subsWalled.shift(); } catch (e) {} }   // DEBUG=on only: a test reads this door's refusals
+      if (!full || !id || !subsOn() || !av || subsProven.has(id) || subsRoomLimit() == null) return;
       const q = peers.get(id), a = subsAsked.get(id);
       if (q && q.dc && q.dc.readyState === 'open' && !(a && Date.now() - a.at < 2000)) {
         const n = GifOS.meetSubs.newNonce();
         subsAsked.set(id, { n, at: Date.now() }); if (subsAsked.size > 64) subsAsked.delete(subsAsked.keys().next().value);
         try { dcSend(q, { k: 'subask', n }); } catch (e) {}
       }
-      return true;
     }
+    // A ticket checked at one door is good at every door: the door tells the
+    // room, so whichever seat gives the newcomer a place knows it.
+    function subsPassSay(id) { try { if (meshNode) meshNode.gossip({ a: 1, msg: { k: 'dpass', p: String(id) } }); } catch (e) {} }
+    function subsPassHeard(m) { const p = m && typeof m.p === 'string' && m.p.length <= 64 ? m.p : ''; if (!p || !subsOn()) return; subsProven.add(p); if (subsProven.size > 256) subsProven.delete(subsProven.values().next().value); }
     function subsAnswer(p, n) {
       const ms = meshSeat();
       if ((ms && ms.state === 3) || n.length > 128) return;
@@ -39634,7 +39613,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         subsAsked.delete(p.id);
         if (!ok) { subsRefuse(p, a); return; }
         subsProven.add(p.id); if (subsProven.size > 256) subsProven.delete(subsProven.values().next().value);
-        try { const st = meshSeat(); if (st && st.answerDoor) st.answerDoor([p.id]); } catch (e) {}
+        subsPassSay(p.id);   // the newcomer's next knock, a moment later, is given a place past the line
       });
     }
     // The room's people line as the door's own rule reads it (gifos-sub admission): a number, or null for no line.

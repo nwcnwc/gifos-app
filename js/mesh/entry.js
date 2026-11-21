@@ -158,7 +158,7 @@
         if (s.assigner !== id) { if (TICK - s.at >= K.SIT_TTL) { del.push(ek); } continue; }   // L7.7
         // Confirmed seated by first-hand contact with the joiner at this cell.
         if (this.occGet(ek) === s.joiner && this.firstHandLive(ek)) { del.push(ek); continue; }
-        if (!s.replayed && s.pl.t === 'PLACE' && TICK - s.at >= K.PLACE_REPLAY && this.occGet(ek) !== s.joiner) { s.replayed = true; this.emit(s.joiner, msg.clone(s.pl)); }   // FINDACK: a lost PLACE, replayed once
+        if (!s.replayed && s.pl.t === 'PLACE' && TICK - s.at >= K.PLACE_REPLAY && this.occGet(ek) !== s.joiner && !this.l52Open(ek)) { s.replayed = true; this.emit(s.joiner, msg.clone(s.pl)); }   // FINDACK: a lost PLACE, replayed once
         if (TICK - s.at < K.SIT_RECHECK) continue;
         // V4 PROBE-GATED CHECK-BACK: SITPING the admittee itself; a killed tab never answers, the chair frees.
         if (this.occGet(ek) !== s.joiner && !this.firstHandLive(ek)) {
@@ -186,6 +186,7 @@
     admit(c, f) {
       const lv = this.w.lv, id = this.id, TICK = this.TICK;
       const nc = f.nc;
+      if (this.l52Admit(c, f)) return;   // L52.1 (wall.js): no cell at or past the wall for a seeker with no ticket
       const site = this.w.ADMIT_SITE === undefined ? '?' : this.w.ADMIT_SITE;
       // FRONT 3 measurement only: how a newcomer FIND ended, and how many hops it burned.
       if (descOn(this) && f.tag !== 1) this.f.descEnd(site.startsWith('deep') ? 0 : 1, 200 - f.ttl);
@@ -251,7 +252,7 @@
       if (!this.hasCoord || mm.ttl <= 0) { if (descOn(this)) this.f.descEnd(4, 200 - mm.ttl); this.trace('NOROOM', id, this.hasCoord ? this.coord : null, 'nc=%d why=ttl-or-unseated', mm.nc); const m = newMsg('NOROOM'); m.gwc = mm.gwc; m.id = id; m.nd = (this.hasCoord ? pcDepth(this.coord.pc) : 0) & 0xff; this.emit(mm.nc, m); return; }
       this.courtNc = mm.nc; if (!this.courtIgnore) this.courtSkipped = false;   // L3.14
       if (this.l31Pend.length) { for (const p of this.l31Pend) if (p.nc === mm.nc) { this.findAck(mm); return; } }   // L31.4
-      for (const [, e] of this.sitting) if (e.joiner === mm.nc && e.assigner === id && e.pl.t === 'PLACE' && this.TICK - e.at <= K.SIT_TTL) { this.emit(mm.nc, msg.clone(e.pl)); return; }   // FINDACK
+      for (const [ek, e] of this.sitting) if (e.joiner === mm.nc && e.assigner === id && e.pl.t === 'PLACE' && this.TICK - e.at <= K.SIT_TTL && !this.l52Open(ek)) { this.emit(mm.nc, msg.clone(e.pl)); return; }   // FINDACK
       if (mm.tag !== 1 && mm.nc >= 0 && mm.nc !== id && this.hasCoord && this.state === 3 && this.coord.pc === 0) {   // L7.15: a vouch my assigner handed me with my row (SITXFER) is mine to honour, and I hold no PLACE of it to send again: the seeker it names is placed in that chair by me
         let hc = null;
         for (const [ek, e] of this.sitting) if (e.joiner === mm.nc && e.assigner === id && e.pl.t !== 'PLACE' && ckPc(ek) === 0 && this.TICK - e.at <= K.SIT_TTL && (this.occGet(ek) < 0 || this.occGet(ek) === mm.nc)) { hc = unckey(ek); break; }

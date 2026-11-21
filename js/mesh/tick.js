@@ -103,6 +103,7 @@
       try {
         this.l30Tick();   // L30.1: small mode, from my own state
         if (this.l31Pend.length || this.l31Done.length) this.l31PendTick();   // L31.4: my open proposals and unassented placements
+        if (this.l31Acc.size) this.l52HandTick();   // L52.9 e (wall.js): a row's ledger not gone yet, or said again
         if (this.tickHeld()) return;   // held work: a held compaction probe, a refused reclaim, a hand-back
         if (this.tickEntry()) return;   // not seated: the entry steps
         if (this.tickCommon()) return;   // every seat: links, ring, leases, transit

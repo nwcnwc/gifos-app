@@ -52,6 +52,7 @@
     'l18Hop', 'l18UxDeliv', 'l222Note', 'l22Agree', 'l23GreetRelease', 'l22Close', 'l22CloseAsk', 'l22Need', 'l22Quiet', 'l28Reply',
     'l915Note', 'relayKnock', 'relayUnlist', 'descEnd', 'descNote', 'wake', 'fabricAudit', 'fabricDoorHeard', 'g4Joined', 'fabricDropHalf', 'fabricLinkCarries',
     'fabricDoorNet', 'fabricDoorVerdict', 'fabricDoorBlk', 'fabricDoorDue', 'fabricSubAsk', 'fabricSubProbe', 'fabricPipePeers', 'fabricSubDoor', 'fabricSubRepipe', 'fabricSubGo', 'fabricSubWalk', 'fabricCutProbe', 'fabricTurnOn',
+    'fabricWall', 'fabricPass', 'fabricWalled',
   ]);
 
   // A fabric that refuses every call: the interface a harness or the page adapter fills in.
@@ -450,6 +451,7 @@
     },
     // C++: mesh.cpp:Seat::confirmSeated
     confirmSeated(k, joiner) {
+      this.l52Hand(k, joiner);   // L52.9 e (wall.js)
       let xfer = false; { const it = this.sitting.get(k); xfer = it !== undefined && it.assigner === this.id && it.joiner === joiner && ckPc(k) === 0 && ckI(k) === 0; }
       let sitAt = -1, vouched; { const it = this.sitting.get(k); vouched = it !== undefined && it.joiner === joiner; if (vouched) sitAt = it.at; }
       const l821 = roomTerm(this, 1) && vouched && joiner !== this.id && sitAt >= 0 && this.TICK - sitAt <= (this.f.fabricDoors() ? Seat.L163_CONFIRM_WIN : 2) && this.noChan.has(joiner) && this.hasCoord && this.ownedLinkCell(k) && ckPc(k) !== 0;
@@ -463,15 +465,22 @@
     },
     // C++: mesh.cpp:Seat::sitXfer
     sitXfer(k, joiner) {
+      const rk0 = this.l31Acc.get(k); const firm = rk0 !== undefined && this.l52Firm();
+      if (firm && !(rk0.commit && rk0.by === this.id && rk0.q === joiner && !rk0.left)) return;
+      if (firm && !this.f.fabricLinkOpen(this.id, joiner)) return;   // L52.9 e: the word goes when our own link is open (the ledger rides it): until then it is still mine, and no beat passes with nobody holding it   // L52.9 e: in a room with a line a recorded head cell's ledger is sent by the seat whose word gave it, once
       const m = newMsg('SITXFER'); m.ck = k; m.id = joiner;
       const r = ckR(k);
-      for (const [ek, s] of this.sitting) if (ckPc(ek) === 0 && ckR(ek) === r && s.assigner === this.id) m.nbrs.push({ k: ek, v: s.joiner });
-      { const nk = ckey({ pc: 0, r: (r + 1) % C, i: 0 }); const it = this.sitting.get(nk); if (it !== undefined && it.assigner === this.id) m.nbrs.push({ k: nk, v: it.joiner }); }
+      const given = (ck, q) => { if (!firm) return true; const x = this.l31Acc.get(ck); return x !== undefined && !x.left && x.commit && x.q === q; };   // L52.9 e: in a room with a line a vouch that is still a proposal (no word yet) is no promise, and does not go with the ledger
+      for (const [ek, s] of this.sitting) if (ckPc(ek) === 0 && ckR(ek) === r && s.assigner === this.id && given(ek, s.joiner)) m.nbrs.push({ k: ek, v: s.joiner });
+      { const nk = ckey({ pc: 0, r: (r + 1) % C, i: 0 }); const it = this.sitting.get(nk); if (it !== undefined && it.assigner === this.id && given(nk, it.joiner)) m.nbrs.push({ k: nk, v: it.joiner }); }
+      if (firm) { for (const [ek, x] of this.l31Acc) { if (ek === k || x.left || !x.commit || x.by !== this.id || x.q < 0 || ckPc(ek) !== 0 || ckR(ek) < r) continue; x.by = joiner; let has = false; for (const y of m.nbrs) if (y.k === ek) has = true; if (!has) m.nbrs.push({ k: ek, v: x.q }); } rk0.by = joiner; rk0.at = this.TICK | 0; this.f.wake(this.id); }   // L52.9 e (wall.js): every cell from this row on that was given on my word goes with the ledger, and the word with it
       for (let j = 0; j < C; j++) { const rk = ckey({ pc: 0, r, i: j }); const x = this.occGet(rk); if (x >= 0 && rk !== k) m.row.push({ k: rk, v: x, age: -1, ch: -1, ba: -1, tn: 0 }); }
+      if (this.l52Firm()) this.trace('L52-XFER', this.id, this.hasCoord ? this.coord : null, 'to=%d ck=%lld cells=%d', joiner, k, m.nbrs.length);
       this.emit(joiner, m);
     },
     // C++: mesh.cpp:Seat::clearVouch
     clearVouch(k, x, why) {
+      this.l52Hand(k, x);   // L52.9 e (wall.js)
       const it = this.sitting.get(k); if (it === undefined || it.joiner !== x) return;
       const mine = it.assigner === this.id && ckPc(k) === 0 && ckI(k) === 0 && x !== this.id;
       this.clearSoft(k, why);

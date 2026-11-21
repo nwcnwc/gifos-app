@@ -109,6 +109,7 @@
       const TICK = this.TICK, id = this.id;
       if (!this.hasCoord) { if (m.from >= 0 && m.from !== id) { if (this.whAsk.size >= 8 && !this.whAsk.has(m.from)) this.whAsk.clear(); this.whAsk.set(m.from, TICK | 0); } /* L16.16 */ const h = newMsg('HOME'); this.emit(m.from, h); return; }
       if (m.ttl <= 0) return;
+      if (this.coord.pc === 0 && this.l52Door(m)) return;   // L52.2 (wall.js): the full room answers before it looks for a cell
       if (this.coord.pc === 0 || this.doorCallOn()) {   // FHOP.8: a friend called to the door answers there as a greeter
         const h = newMsg('HOME'); h.roster = this.s1Roster(); h.id = id; h.gkey = this.genKey;
         h.askGap = this.doorAskAt < 0 ? 1000000 : (TICK - this.doorAskAt) | 0; this.doorAskAt = TICK | 0;   // one clock for the whole door, read before this answer moves it
@@ -251,6 +252,7 @@
     onNoRoom(m) {
       const TICK = this.TICK, id = this.id;
       if (m.tag === K.L711_TAG) { this.l711Reask('lost'); return; }   // L7.11
+      if (m.tag === K.L52_TAG) { this.l52Walled(m); return; }   // L52.3 (wall.js)
       if (this.state === 2) {
         if (m.nd >= this.w.lv.SPREAD_MINDEPTH) this.noroomSeen++; this.triedSilent.delete(m.id); if (this.lastAsked >= 0) this.triedSilent.delete(this.lastAsked); this.retryAt = TICK;
         if (this.f.fabricDoors() && m.split && this.l16Next < this.l16List.length) { this.trace('L16-SPLIT-FAN', id, null, 'from=%d rest=%d', m.id, this.l16List.length - this.l16Next); this.l16Wave(this.l16List.length); return; }   // L16
