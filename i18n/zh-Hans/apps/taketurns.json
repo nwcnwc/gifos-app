@@ -45,5 +45,6 @@
   "plan.count": "{n} 轮：",
   "plan.empty": "还没有要读的内容。",
   "stage.full": "舞台已满，轮流继续进行，不上舞台。",
-  "stage.wait": "等待主持人请你上舞台。"
+  "stage.wait": "等待主持人请你上舞台。",
+  "needsNewer": "Take Turns 需要更新的 GifOS 才能一起轮流。请重新加载页面以更新。"
 }

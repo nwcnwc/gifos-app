@@ -20,5 +20,6 @@
   "ai.empty": "La IA no devolvió nada. Inténtalo de nuevo.",
   "ai.failed": "Error al redactar con la IA: {msg}",
   "att.shrinkFail": "No se pudo reducir esa imagen para que quepa: los adjuntos tienen un límite de {max}.",
-  "att.tooBig": "Los adjuntos aquí tienen un límite de {max} (las imágenes se reducen automáticamente). Para archivos grandes, compártelos en una reunión: allí las transferencias van directas, de persona a persona."
+  "att.tooBig": "Los adjuntos aquí tienen un límite de {max} (las imágenes se reducen automáticamente). Para archivos grandes, compártelos en una reunión: allí las transferencias van directas, de persona a persona.",
+  "needsNewer": "El chat necesita un GifOS más nuevo para hablar juntos. Recarga la página para actualizar."
 }

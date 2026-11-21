@@ -20,5 +20,6 @@
   "ai.empty": "The AI returned nothing — try again.",
   "ai.failed": "AI draft failed: {msg}",
   "att.shrinkFail": "That image could not be shrunk to fit — attachments are capped at {max}.",
-  "att.tooBig": "Attachments here are capped at {max} (images are shrunk automatically). For big files, share them in a Meeting instead — transfers there go direct, peer to peer."
+  "att.tooBig": "Attachments here are capped at {max} (images are shrunk automatically). For big files, share them in a Meeting instead — transfers there go direct, peer to peer.",
+  "needsNewer": "Chat needs a newer GifOS to talk together. Reload the page to update."
 }

@@ -31,5 +31,6 @@
   "err.generic": "无法加载该页面。",
   "ext.title": "外部链接——请在你自己的浏览器中打开",
   "banner.cached": "正在显示保存在本设备上的副本——通过 CORS 代理的实时获取没有成功。点击 ↻ 重试。",
-  "foot": "文本来自 text.recoveryversion.bible，经由 GifOS CORS 代理读取——点击顶部的“互联网”按钮可查看或更改。你打开过的章节会保存在本设备上，方便离线重读。"
+  "foot": "文本来自 text.recoveryversion.bible，经由 GifOS CORS 代理读取——点击顶部的“互联网”按钮可查看或更改。你打开过的章节会保存在本设备上，方便离线重读。",
+  "needsNewer": "圣经浏览器需要更新的 GifOS 才能一起阅读。请重新加载页面以更新。"
 }
