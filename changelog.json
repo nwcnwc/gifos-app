@@ -2,6 +2,27 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.27.1",
+      "date": "2026-11-20",
+      "headline": "Agents join in, and meetings hold steadier",
+      "critical": false,
+      "features": [
+        "AI agents: a page made for agents. An agent can join a meeting, follow what is said, speak, chat, raise a hand, watch and send video, and use the stage and apps, through one simple page and a small Node library.",
+        "AI agents: an agent page shows a plain text view built for machines, with one tap back to the normal view.",
+        "Meetings: hosts can choose whether AI note takers are allowed, need to ask, or are off. Anyone can hide bots from their own view.",
+        "Plans: every plan and pass now carries exactly what it allows, signed, so the door checks the same thing everywhere."
+      ],
+      "fixes": [
+        "Meetings: a page left open on an older GifOS moves itself to this release when it joins a meeting, so everyone in a meeting runs the same version.",
+        "Meetings: open-floor rooms keep their agenda, stage and renames fair for everyone, and someone voted out stays out once the password changes.",
+        "Meetings: after a network change or a long pause, a page finds its way back into its meeting by itself.",
+        "Meetings: links between offices use less data when nobody is talking, so free links stay within their limit.",
+        "Meetings: a guest on a network that keeps devices apart starts its meeting as soon as it knows it cannot reach the others directly.",
+        "Meetings: when a link between rooms goes away, the people who need it get a new one instead of waiting.",
+        "Apps: Connect Four tells a player on an older GifOS that they need to update, in plain words."
+      ]
+    },
+    {
       "version": "0.9.27",
       "date": "2026-11-20",
       "headline": "Meetings that come together",
