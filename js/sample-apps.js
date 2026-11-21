@@ -7476,7 +7476,7 @@ The Store itself does not keep a shopping cart in this icon.
         // versions run on one device, so they need no shared visibility.)
         apps: (GifOS.irl ? GifOS.irl.netApps : []).map((g) => app(g.name, g.appId, g.accent, g.html, Object.assign({ minBuild: ROOM_MIN_BUILD, data: { party: RW }, room: IRL_ROOM, help: g.help }, g.manifest))),
         sub: [{ name: 'Single Phone',
-          apps: (GifOS.irl ? GifOS.irl.apps : []).map((g) => app(g.name, g.appId, g.accent, g.html, Object.assign({ minBuild: ROOM_MIN_BUILD, room: IRL_ROOM, help: g.help }, g.manifest || {}))) }] },
+          apps: (GifOS.irl ? GifOS.irl.apps : []).map((g) => app(g.name, g.appId, g.accent, g.html, Object.assign({ help: g.help }, g.manifest || {}))) }] },
     ];
     // Easter eggs: a themed computer (gifos-themes.js) can seed extra apps
     // that exist only on that digit — filed into a named folder, or loose.
