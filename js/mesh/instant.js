@@ -179,6 +179,16 @@
       const lv = this.w.lv;
       const v = this.l31Pend; this.l31Pend = [];
       for (const p of v) {
+        if (p.ask) {   // L52.9 j (wall.js): my proposal lost its cell and my view shows no other: the seat that holds the word names one, and I wait for that answer (the vouch in p.k is not mine)
+          if (this.l31DoorLeft(p.nc, p.home)) { this.trace('L31-DOORLEFT', this.id, this.hasCoord ? this.coord : null, 'cell=%s seeker=%d open=1', coordStr(unckey(p.k)), p.nc); continue; }
+          if (!this.hasCoord || this.state !== 3 || this.coord.pc !== 0) { this.l31Fallback(p); continue; }
+          if (this.TICK - p.at < K.L31_COMMIT + K.L31_COMMIT) { this.l31Pend.push(p); continue; }
+          p.ask = false;
+          if (p.tries < 3 && this.l31On()) { p.tries++; if (this.l31Propose(p)) { this.l31Pend.push(p); continue; }   // no answer: a cell of my own view by now, or said again
+            p.ask = true; p.needAck = true; p.ack = false; p.at = this.TICK | 0; this.l31Notify(p.k, p.nc, false, p.forge); this.l31Pend.push(p); continue; }
+          this.trace('L52-NOASSENT', this.id, this.coord, 'cell=%s seeker=%d', coordStr(unckey(p.k)), p.nc);
+          this.l31Fallback(p); continue;
+        }
         if (this.l31DoorLeft(p.nc, p.home)) { if (p.needAck && p.ack) this.l52Back(p.k, p.nc);   // L52.9 g (wall.js): the word I got for it goes back unused
           this.clearSoft(p.k, 'l31-door-left'); this.healTry.delete(p.k); this.trace('L31-DOORLEFT', this.id, this.hasCoord ? this.coord : null, 'cell=%s seeker=%d open=1', coordStr(unckey(p.k)), p.nc); continue; }
         if (!this.hasCoord || this.state !== 3 || this.coord.pc !== 0) { this.clearSoft(p.k, 'l31-stood-down'); this.l31Fallback(p); continue; }
@@ -188,10 +198,15 @@
         if (lost) {
           this.clearSoft(p.k, 'l31-lost'); this.healTry.delete(p.k); this.trace('L31-LOST', this.id, this.coord, 'cell=%s seeker=%d to=%d', coordStr(unckey(p.k)), p.nc, a.q); lv.L31_LOST++;
           p.parent = false;
+          if (this.l52Firm() && this.l31On()) {   // L52.9 j (wall.js): a cell lost to a commit is no try spent (a burst loses one a round, and the cells are few): the next one of my view, or none there: said again, and the seat that holds the word answers a taken cell with the next free one
+            if (this.l31Propose(p)) { this.l31Pend.push(p); continue; }
+            if (p.tries < 3) { p.ask = true; p.needAck = true; p.ack = false; p.at = this.TICK | 0; this.l31Notify(p.k, p.nc, false, p.forge); this.l31Pend.push(p); continue; }
+            this.l31Fallback(p); continue;
+          }
           if (p.tries < 3 && this.l31On() && this.l31Propose(p)) { p.tries++; this.l31Pend.push(p); continue; }
           this.l31Fallback(p); continue;
         }
-        if (this.TICK - p.at < K.L31_COMMIT && !(p.needAck && p.ack && this.l52Firm())) { this.l31Pend.push(p); continue; }   // L52.9 f: on the word, not on the clock
+        if (this.TICK - p.at < K.L31_COMMIT && !((p.ack || !p.needAck) && this.l52Firm())) { this.l31Pend.push(p); continue; }   // L52.9 f: on the word, not on the clock
         if (p.needAck && !p.ack && this.l52Firm()) {   // L52.9 (wall.js): in a room with a line the placement is sent on the admitter's word, not on the clock
           { const kc = unckey(p.k); const ac = admCell(kc); if (this.l52Word(ckey(ac))) { p.ack = true; this.trace('L52-WORD', this.id, this.coord, 'cell=%s seeker=%d from=%d', coordStr(kc), p.nc, this.id); } }   // L52.9 e: the word became mine while I waited (my placement of the cell's admitter committed)
           if (p.ack) { this.l31Commit(p); continue; }
@@ -206,9 +221,8 @@
         if (!p.needAck && this.l52Firm()) {   // L52.9 e: I proposed on my own word and the word has moved since (my ledger went to the row's head): the cell is its new holder's to give
           const kc = unckey(p.k); const ac = admCell(kc);
           if (!this.l52Word(ckey(ac))) {
-            this.clearSoft(p.k, 'l52-word-moved'); this.healTry.delete(p.k); this.trace('L52-MOVED', this.id, this.coord, 'cell=%s seeker=%d', coordStr(kc), p.nc);
-            if (!p.parent && p.tries < 3 && this.l31On() && this.l31Propose(p)) { p.tries++; this.l31Pend.push(p); continue; }
-            this.l31Fallback(p); continue;
+            this.trace('L52-MOVED', this.id, this.coord, 'cell=%s seeker=%d', coordStr(kc), p.nc);
+            p.needAck = true; p.ack = false; p.at = this.TICK | 0; this.l31Notify(p.k, p.nc, false, p.forge); this.l31Pend.push(p); continue;   // my proposal stands and is said again: the seat that holds the word now gives the cell, or names another (L52.9 j)
           }
         }
         this.l31Commit(p);
@@ -254,9 +268,12 @@
       if (!this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return;
       const k = m.ck; const q = m.id, g = m.l31By; const commit = (m.l31 === 4);
       if (m.l31 === 6) {
-        if (g !== this.id) return; if (m.tag === K.L52_TAG) { if (this.l52Firm()) this.l52Unused(m); return; }   // L52.9 g: a word of mine handed back, from the greeter I gave it to
+        if (g !== this.id) { if (m.pp >= 0 && m.from === m.pp && this.l52Firm() && this.l52Rook(g)) this.emit(g, msg.clone(m)); return; }   // L52.9 i (wall.js): a word for a seat of my row or column, first-hand from its sender: handed on, once
+        if (m.pp >= 0 && m.pp !== m.from) { if (!this.l52Firm() || !this.l52Rook(m.from)) return; m.from = m.pp; }   // L52.9 i: handed on by a seat of my row or column: its sender is the seat it names
+        if (m.tag === K.L52_TAG) { if (this.l52Firm()) this.l52Unused(m); return; }   // L52.9 g: a word of mine handed back, from the greeter I gave it to
         const ac = admCell(unckey(k)); if (m.from < 0) return; if (this.occGet(ckey(ac)) !== m.from) { if (!(this.l52Firm() && this.l52Head(m.from))) return; }   // L52.9 e: or from the head seat that holds the word while the admitter's cell is being taken
         const firm = this.l52Firm();
+        if (firm && this.l52Moved(m)) return;   // L52.9 j (wall.js): the word names another cell than I proposed: my proposal moves there
         if (firm && this.l52Unused(m)) return;   // L52.9 g (wall.js): a word that comes back to me unused, or a word for a proposal I hold no more
         for (const p of this.l31Pend) if (p.k === k && p.nc === q && (firm || p.at === m.l31At)) { p.ack = true; if (firm) { this.trace('L52-WORD', this.id, this.coord, 'cell=%s seeker=%d from=%d', coordStr(unckey(k)), q, m.from); this.l31Acc.set(k, { q, at: p.at, by: m.from, commit: true, left: false }); } }   // L52.9 f: the word is for the seeker in the cell (any proposal of mine for it), and it is the commit: my record stands over every proposal
         if (firm) this.f.wake(this.id);
@@ -267,6 +284,7 @@
       const rook = this.ownedLinkCell(k);
       if (m.from === g && m.from >= 0) this.l31Relay(m);
       let ok = this.ppAdm(k, g, q) && !this.liveElsewhere(q, k);
+      const base = ok;
       const l31Loc = m.l31L >= 0 ? m.l31L : this.TICK;
       if (ok && this.l52Given(k, q)) ok = false;   // L52.9 (wall.js): in a room with a line, a cell I gave myself is not given again on a later record
       if (ok && !this.l31Note(k, q, l31Loc, g, commit)) ok = false;
@@ -274,7 +292,9 @@
       if (ok && x >= 0 && x !== q && (this.firstHandLive(k) || !this.occIsPhantom(k))) ok = false;
       if (ok && this.softSitting(k) && this.sitting.get(k).joiner !== q && this.sitting.get(k).assigner !== this.id) ok = false;
       if (ok) this.l31Beaten(k, q, l31Loc, g);
-      if (ok && !commit && m.tag !== 31) { const kc = unckey(k); const ac = admCell(kc); if (this.l52Firm() ? this.l52Word(ckey(ac)) : ckey(ac) === ckey(this.coord)) { const a = newMsg('PLACED'); a.ck = k; a.id = q; a.l31By = g; a.l31At = m.l31At; a.l31 = 6; this.emit(g, a); this.l52Assented(k, q); if (kc.i === 0) this.l52Sweep(k); } }
+      let said = false;
+      if (ok && !commit && m.tag !== 31) { const kc = unckey(k); const ac = admCell(kc); if (this.l52Firm() ? (this.l52Word(ckey(ac)) && !this.l52Has(q, k, false)) : ckey(ac) === ckey(this.coord)) { said = true; const a = newMsg('PLACED'); a.ck = k; a.id = q; a.l31By = g; a.l31At = m.l31At; a.l31 = 6; this.l52Send(g, a); this.l52Assented(k, q); if (kc.i === 0) this.l52Sweep(k); } }
+      if (!said && base && !commit && m.tag !== 31 && this.l52Firm()) this.l52Offer(q, g, m.l31At);   // L52.9 j (wall.js): the cell is taken, or its word is not mine: the seat that holds the word of the next free cell names it
       if (!ok) { if (rook && commit) lv.L31_REFUSED++; if (m.tag === 31) lv.L31_FORGE_NO++; this.trace('L31-REFUSE', this.id, this.coord, 'cell=%s seeker=%d by=%d commit=%d', coordStr(unckey(k)), q, g, commit); return; }
       if (!rook || !commit) return;
       if (m.tag === 31) lv.L31_FORGE_OK++;
