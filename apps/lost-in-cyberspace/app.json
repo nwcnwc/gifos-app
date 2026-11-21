@@ -4,8 +4,8 @@
   "appId": "lost-in-cyberspace",
   "name": "Lost in Cyberspace",
   "shortName": "Cyberspace",
-  "version": "1.1",
-  "minBuild": 947,
+  "version": "1.2",
+  "minBuild": 5861,
   "tagline": "One of you is lost in the network; the other reads the codes. Talk fast.",
   "description": "Send the invite and the other person is in the same room. One of you is a HACKER lost in an 8×8 corporate network. The other is a NAVIGATOR at a terminal. Walk the maze, read the access codes, type them into nmap together, find the TARGET, and hack it before the locator catches you. The codes ARE the maze — colours, walls, traps, the target.\n\nThe original connection is your voice. You can still shout the codes in a meeting, or the hacker taps Send code and the navigator’s map fills in, layer by layer. On one device you switch seats without losing the maze.\n\nA trap costs you time. Hacking the wrong node costs you more. Time runs out and you are lost in CYBERSPACE. Top scores are saved.\n\nAn unofficial port of Lost in CYBERSPACE by Bartek Szopka and Zofia Korcz (js13kGames 2017). The maze and the terminal are the game.",
   "author": {
@@ -40,14 +40,14 @@
   "cover": "/apps/lost-in-cyberspace/cover.jpg",
   "screenshots": [],
   "gif": "/apps/lost-in-cyberspace/lost-in-cyberspace.gif",
-  "bytes": 209699,
+  "bytes": 210974,
   "download": 0,
   "provides": null,
-  "sha256": "f3bac053eccd127a2f89f3d1448c32dec54b7a2e0c43b462ca2105bf33f36794",
+  "sha256": "59f15af1b4d3f69b94743f062260e1071e7c44aa35d8aa1135680f3d2d023973",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-21"
   },
   "porter": {
     "name": "GifOS",

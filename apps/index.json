@@ -617,7 +617,7 @@
       "appId": "battleboat",
       "name": "Battleboat",
       "shortName": "Battleboat",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "Hide a fleet on your phone, send the link, sink theirs.",
       "author": {
         "name": "billmei",
@@ -631,7 +631,7 @@
         "name": "Battleboat",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -650,15 +650,15 @@
         0
       ],
       "cover": "/apps/battleboat/cover.jpg",
-      "bytes": 230756,
+      "bytes": 233519,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "f49cdf1e71474e18cc987b720d8147b6888a0e89db340e572c8217f14cf8a566"
+      "sha256": "79ee45247cb8573f8390ac1693682bc45a9a0a77dbd81cb48cf834e4ab8e725f"
     },
     {
       "slug": "beepbox",
@@ -1112,7 +1112,7 @@
       "appId": "breaklock",
       "name": "BreakLock",
       "shortName": "BreakLock",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "tagline": "You draw the secret. They have to crack it. Your streak lives in the file.",
       "author": {
         "name": "maxwellito",
@@ -1126,7 +1126,7 @@
         "name": "BreakLock",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-30",
       "updated": "2026-08-30",
@@ -1147,15 +1147,15 @@
         153
       ],
       "cover": "/apps/breaklock/cover.jpg",
-      "bytes": 264013,
+      "bytes": 265050,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "eae429a93d92545457f41e3c827aa062ab10bb4528b78ce5b4b8be8eb474861b"
+      "sha256": "ae5071b7b71461264b0ca2c70e78c93a377d236336221aa2cdac6bcf2a18c2c0"
     },
     {
       "slug": "breakout",
@@ -1417,13 +1417,13 @@
       "appId": "chess-grandmaster",
       "name": "Chess Grandmaster",
       "shortName": "Chess",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "tagline": "The real Stockfish engine, running on your device — no internet needed.",
       "author": {
         "name": "GifOS",
         "url": "https://gifos.app"
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-07-09",
       "updated": "2026-08-12",
@@ -1443,15 +1443,15 @@
         75
       ],
       "cover": "/apps/chess-grandmaster/cover.jpg",
-      "bytes": 8322481,
+      "bytes": 8323447,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "4db2c3eda103d3156a5a6aa5fceb65ed026c71ba265a9716f6f818fc5d218363"
+      "sha256": "efc94d5a9795e92163d6f74788fef514e0f458a8d6bfeb904f169a03ee6cbe21"
     },
     {
       "slug": "chrome-dino",
@@ -4434,7 +4434,7 @@
       "appId": "lost-in-cyberspace",
       "name": "Lost in Cyberspace",
       "shortName": "Cyberspace",
-      "version": "1.1",
+      "version": "1.2",
       "tagline": "One of you is lost in the network; the other reads the codes. Talk fast.",
       "author": {
         "name": "Bartek Szopka & Zofia Korcz",
@@ -4448,7 +4448,7 @@
         "name": "Lost in CYBERSPACE",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-24",
       "updated": "2026-08-24",
@@ -4469,15 +4469,15 @@
         204
       ],
       "cover": "/apps/lost-in-cyberspace/cover.jpg",
-      "bytes": 209699,
+      "bytes": 210974,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "f3bac053eccd127a2f89f3d1448c32dec54b7a2e0c43b462ca2105bf33f36794"
+      "sha256": "59f15af1b4d3f69b94743f062260e1071e7c44aa35d8aa1135680f3d2d023973"
     },
     {
       "slug": "lrc-maker",
@@ -5713,13 +5713,13 @@
       "appId": "one-stroke",
       "name": "One Stroke",
       "shortName": "OneStroke",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "A drawing game: one stroke each, then watch the picture replay.",
       "author": {
         "name": "GifOS",
         "url": "https://gifos.app"
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -5740,15 +5740,15 @@
         93
       ],
       "cover": "/apps/one-stroke/cover.jpg",
-      "bytes": 199621,
+      "bytes": 199763,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "a3498fa13737bda82c872ecb78396693f3a58d4f31efa02e2c79c263f5bc5fac"
+      "sha256": "959315a8200ac76fc33307a6aeaf29ed144944f3492e5cda05c8c25bb14f3e64"
     },
     {
       "slug": "onoff",
