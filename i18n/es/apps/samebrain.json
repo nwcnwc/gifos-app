@@ -49,5 +49,9 @@
   "q.25": "El mejor sabor de helado",
   "q.26": "La cadena de comida rápida más sobrevalorada",
   "q.27": "El mejor juego de mesa",
-  "q.28": "Lo primero que agarrarías en un incendio (aparte de personas o mascotas)"
+  "q.28": "Lo primero que agarrarías en un incendio (aparte de personas o mascotas)",
+  "needsNewer": "Este juego necesita un GifOS más nuevo para jugar juntos. Recarga la página para actualizar.",
+  "hint.line": "Eres el siguiente: te toca el primer asiento que se libere.",
+  "hint.asking": "Se le pidió al anfitrión que te dé un asiento.",
+  "hint.watch": "Estás mirando. Cuando se libere un asiento, será para la siguiente persona en la fila."
 }

@@ -1613,6 +1613,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/mesh/id.js" defer></script>
   <script src="js/mesh/ijoin.js" defer></script>
   <script src="js/mesh/burst.js" defer></script>
+  <script src="js/mesh/wall.js" defer></script>
   <script src="js/mesh/headword.js" defer></script>
   <script src="js/mesh/instant.js" defer></script>
   <script src="js/mesh/island.js" defer></script>
@@ -3515,7 +3516,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // A DOOR'S WORD HOLDS MY SEAT (law SUB.2.5: a refusal at a door whose room exists is never an answer to found a new
     // room on). A door that withholds my knock answers my seat nothing, and a founding attempt of my seat must never
     // read that as an empty room. So every word a door of this room says to me about my knock (held: its waiting room;
-    // doorwait: it is checking the room's plan; subask: it asks for my ticket; subfull: full) is remembered here, and
+    // doorwait: a 0.9.27.2 door checking the room's plan; an L52 door refuses at the wall instead and says subask/subfull; subask: it asks for my ticket; subfull: full) is remembered here, and
     // while it is fresh my seat is held (opts.sub.held): it keeps knocking and founds nothing. The door says its word
     // again at every knock; doorToldMs() without one and the ordinary law is back (the door went away).
     let doorToldAt = 0;
@@ -3527,7 +3528,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       doorToldAt = Date.now(); return true;
     }
     const doorHoldsMe = () => !!subsRefused || (doorToldAt > 0 && Date.now() - doorToldAt < doorToldMs());
-    const sayDoorWait = (id) => sayHeld(id, 'doorwait');   // door side: a plan check holds this knock. A new kind: a 0.9.27 page drops it (its 'held' would show the waiting-room screen)
     let heldWatch = 0;
     function showHeldScreen() {
       meetWait.waiting(true);
@@ -12946,6 +12946,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (back && back.connected && back.dc && back.dc.readyState === 'open') { envl.rt = envl.rt.slice(0, -1); dcSend(back, envl); return true; }
         delete envl.rt;
       }
+      // L50.4.1: a dial that answers an offer starts on the channel the offer came by. That channel carried my ask out and the
+      // offer back a moment ago; the friend and the next hop below can both be the very seat whose silence I am dialling around.
+      if (envl.k === 'fsig') {
+        const dv = dialVia.get(to), vp = dv && dv !== to ? peers.get(dv) : null;
+        if (vp && vp.connected && vp.dc && vp.dc.readyState === 'open') { envl.rt = []; dcSend(vp, envl); return true; }
+      }
       // 1) the classic mutual-DC friend (one hop, deterministic pick)
       const cands = myConns().filter((r) => r !== to && (connsOf.get(r) || []).includes(to)).sort();
       for (const r of cands) {   // the first friend with an open channel
@@ -13012,15 +13018,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // L16.3.2: the seats the last walked frame from a peer crossed, its end first. The crumb is one word per seat, the last frame on ANY
     // walk, and retracing by crumbs loops; the list is this frame's own. Taken once by the reply, 60 s, bounded.
     const fwdRoute = new Map();
+    const dialVia = new Map();   // L50.4.1: pid I dial as my uplink -> the peer whose channel delivered its offer
     function noteRoute(pid, list) {
       fwdRoute.set(String(pid), { list: Array.isArray(list) ? list.slice(0, 13).map(String) : [], at: Date.now() });
       if (fwdRoute.size > 256) { const now = Date.now(); for (const [k, v] of fwdRoute) if (now - v.at > 60000) fwdRoute.delete(k); }
     }
-    function takeRoute(pid) {
+    function takeRoute(pid, peek) {
       const r = fwdRoute.get(String(pid)); if (!r) return null;
-      fwdRoute.delete(String(pid));
+      if (!peek) fwdRoute.delete(String(pid));
       return Date.now() - r.at > 60000 ? null : r.list;
     }
+    const routeHeld = (pid) => takeRoute(pid, true) !== null;
     // fwdOnward: an fsig/fmesh envelope reached me but names someone else —
     // pass it one bounded step onward. Order:
     //   1) direct channel / geometric mesh next hop (nextHopDc)
@@ -13178,7 +13186,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const relayDown = !relayUp();
       // altPath (§FWD transport rotation): a pair whose relay offers keep dying unanswered alternates its retries onto the sponsor path. The sweeper flips it per re-offer; connect clears it.
       const notOnRelay = relayNoSockRecently(to);
-      const targetUnreachable = notOnRelay || !!(peers.get(to) || {}).altPath;
+      // L16.3.2: the reply to a walked frame (the answer to a walked offer, the offer back to a walked ask) retraces it at once. The relay
+      // cannot carry it: the frame walked because its sender holds no socket.
+      const walked = (msg.kind === 'offer' || msg.kind === 'answer') && routeHeld(to);
+      const targetUnreachable = notOnRelay || walked || !!(peers.get(to) || {}).altPath;
       // A description carrying media never fits the relay (the law): it goes
       // by the sponsor path or not at all — the pair's channel is down, so a
       // friend's channel carries the restart; with no path the beat retries.
@@ -13196,7 +13207,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const m2 = sigSansIce(to, msg);
         if (!m2) return; // a blocked pair sends nothing on either path (fault injection)
         // every negotiation frame kept off the relay says why (a pair whose bootstrap never leaves is otherwise silent)
-        if (typeof clog === 'function' && (msg.kind === 'offer' || msg.kind === 'answer')) clog('sig ' + msg.kind + ' to ' + String(to).slice(0, 6) + ' off the relay: ' + [relayDown ? 'relay-down' : '', notOnRelay ? 'nosock' : '', (peers.get(to) || {}).altPath ? 'altPath' : '', mediaDesc ? 'media' : '', !mayRelay ? 'not-relay-pair' : ''].filter(Boolean).join(','));
+        if (typeof clog === 'function' && (msg.kind === 'offer' || msg.kind === 'answer')) clog('sig ' + msg.kind + ' to ' + String(to).slice(0, 6) + ' off the relay: ' + [relayDown ? 'relay-down' : '', notOnRelay ? 'nosock' : '', (peers.get(to) || {}).altPath ? 'altPath' : '', walked ? 'walked' : '', mediaDesc ? 'media' : '', !mayRelay ? 'not-relay-pair' : ''].filter(Boolean).join(','));
         const rt = (m2.kind === 'offer' || m2.kind === 'answer') ? takeRoute(to) : null;   // L16.3.2: the reply to a walked frame retraces it
         if (sponsorSend(Object.assign({ k: 'fsig', from: myId, to, tc: coordKeyOf(to), id: fwdId(), ttl: 12, m: m2 }, rt ? { rt } : {}))) { txStats.fwdSig++; return; }
         if (mediaDesc) { txStats.relayUnfit++; return; } // no friend's channel either: the sweeper's next attempt rebuilds and bootstraps (sendOffer)
@@ -14230,10 +14241,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         },
         sub: () => (meshNode ? meshNode.sub : 0),
         knownSub: (r) => !!(meshNode && meshNode.knownSub(r)),
-        meetingFull: () => {
+        meetingFull: () => {   // the same line as the wall (subsRoomLimit): full at the line, no line or an unknown line is never full; no mesh seat, not full
           if (!hasAdminRoom() || !GifOS.sub) return false;
-          const n = subsMeetingCount();
-          return n != null && GifOS.sub.doorVerdict({ adminRoom: true, roomGrants: subsRoomTier() ? subsGrants : null, count: n }) !== 'let-in';   // at the limit already
+          const line = subsRoomLimit();
+          if (!(line > 0)) return false;
+          try { const n = meshNode ? meshNode.meetingCount() : null; return n != null && n >= line; } catch (e) { return false; }
         },
         // SUB.7: among the other row heads of my view keep the capable ones (not a phone) that
         // are not the pipe's far end and end fewer than two standbys, the fewest pipes and standbys first; else the next
@@ -14803,7 +14815,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         else if (p.connected) { doorPace.delete(p.id); p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; p.checkingSince = 0; if (!seatStranger(p)) restoreDoorTile(p); try { updateTile(p.id); } catch (e) {} }
         updateStatus();
         if (p.connected && !turnHolds(p.id)) turnDirectNote(p, pc);   // SUB.5: a proven direct path
-        if (p.connected) { p.altPath = false; p.tlAt = 0; p.hungUp = false; adapt(); try { headLinkUp(p.id); } catch (e) {} } // rotation ends when the pair lands; D5 edge re-arms; a link up to my row's head re-routes my sends now
+        if (p.connected) { p.altPath = false; dialVia.delete(p.id); p.tlAt = 0; p.hungUp = false; adapt(); try { headLinkUp(p.id); } catch (e) {} } // rotation ends when the pair lands; D5 edge re-arms; a link up to my row's head re-routes my sends now
         // D5: 'closed' out of nowhere (we didn't rebuild it and the peer is
         // still in the room) is a hard transport death — first-hand evidence.
         // 'failed' waits for the sweeper (must persist past the ICE-restart
@@ -18197,7 +18209,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (o.by && notTomb(o.by)) admSeen.set(o.by, Date.now());
         if (o.ts > modWSeenTs) { modWSeen = msg.modw; modWSeenTs = o.ts; }
         mergeMod(o.mod);
-        try { subsRejudge(); } catch (e) {}   // the room's admin state arrived: a door waiting on the plan can judge now
         if (newlyAdmin) {
           admins = adminsNow();
           if (typeof reconcileApp === 'function') reconcileApp();
@@ -18700,14 +18711,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         netTag: () => netTagNow,
         capable: () => { const hc = navigator.hardwareConcurrency | 0; return !IS_MOBILE && !(hc > 0 && hc <= 2); },   // a relayed pipe may end at my seat when it heads a row (the device class the mesh's tier reads)   // my registration at the door says which network I am on (the tag my beat carries)
         netKind: () => (directPath === 'blocked' ? 2 : directPath === 'strict' ? 1 : directPath === 'ok' ? 0 : -1),   // and what it measured as (the seat's NAT kinds)
-        doorHeld: (id) => { try { if (DEBUG_ON && window.__doorHoldAll) return true;   /* DEBUG=on only: this door answers no knock (a test picks the doors) */ const b = meetWait.blocks(id); if (b && id && amAdmin) meetWait.note(id, rosterNames[id] || 'Someone waiting'); if (b && id) sayHeld(id); if (b) return true; const sh = subsHolds(id); if (sh && id) sayDoorWait(id);   /* SUB.2.5: a knock held for the plan check is told so: unanswered, its seat read silence and founded a room of its own at this door */ return sh; } catch (e) { return false; } },   // a withheld knock goes on the host's list: nothing else names a plain room's knocker
+        doorHeld: (id) => { try { if (DEBUG_ON && window.__doorHoldAll) return true;   /* DEBUG=on only: this door answers no knock (a test picks the doors) */ const b = meetWait.blocks(id); if (b && id && amAdmin) meetWait.note(id, rosterNames[id] || 'Someone waiting'); if (b && id) sayHeld(id); return b; } catch (e) { return false; } },   // a withheld knock goes on the host's list: nothing else names a plain room's knocker
         onDoor: (kind, frame) => {
           if (kind === 'seated') {
             meetWait.waiting(false);
-            subsDoorSeen(frame);
           }
         },
         sendDC: meshSendDC,
+        wall: { line: () => subsWallLine(), pass: (id) => !!id && subsProven.has(id), walled: (id, full) => { try { subsWalled(id, full); } catch (e) {} } },   // the room's people line for the mesh seat (js/mesh/wall.js): where it stands, whose ticket was checked, and this door's refusals
         // ROOMS JOINED BY RELAYED CONNECTIONS (js/meet-turn.js). ask(): my seat is about to found a room on silence at
         // door 0, or the relay said the meeting lives behind other doors: 1 while the page's ask for the meeting's rooms
         // is open (or now opened), 2 while it is refused and its wait runs (a newcomer's seat founds nothing and knocks
@@ -18754,6 +18765,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         },
         // The seat's pcs (js/mesh/page/env.js calls these; it decides, the page carries out).
         pc: {
+          via: (pid, v) => { if (!pid || pid === myId) return; if (v && v !== pid && v !== myId) { dialVia.set(pid, v); if (dialVia.size > 64) dialVia.delete(dialVia.keys().next().value); } else dialVia.delete(pid); },   // L50.4.1
           ensure: (pid, o) => { if (!pid || pid === myId) return; seatAskAt.set(pid, Date.now()); if (seatAskAt.size > 256) seatAskAt.delete(seatAskAt.keys().next().value); seatMark.set(pid, cleanMark(o && o.mark)); if (seatMark.size > 256) seatMark.delete(seatMark.keys().next().value); seatDial(pid); },
           bye: pcBye,
           close: (pid, why) => {
@@ -23380,6 +23392,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (p.doorHeld && p.id && !doorOutsider(p.id)) { const held = Array.from(p.doorHeld.values()); p.doorHeld = null; doorDropKinds.replayed = (doorDropKinds.replayed || 0) + held.length; for (const h of held) { try { onDc(p, dc, h, admOk); } catch (e) {} } }
       if (m.k === 'tv') { if (dc && turnLinks) { try { turnLinks.onFrame(p.id, m); } catch (e) {} } return; }   // a TURN link's handshake over its own channel
       if (m.k === 'tlink') { if (!dc) turnFactIn(p.id, m.f); return; }   // a TURN link's fact, room-wide from one of its ends
+      if (m.k === 'dpass') { if (!dc) subsPassHeard(m); return; }   // a door checked a newcomer's ticket, room-wide
       if (m.k === 'tsub') { if (!dc) turnSubIn(p.id, m.o); return; }    // a subscriber's vouch, room-wide
       if (m.k === 'hi') {
         // Union-merge. The replay is BACKFILL (takeChat/takeTr's second
@@ -29132,6 +29145,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const pid = rk === 'sdm' ? rowHeadPid(c) : (co ? occPid(co) : null);
       return pid ? cand.find((x) => x.live && x.from === pid) || null : null;
     }
+    // L50.4.2: a deep head's anchor for the room's sound from above ('sdn') is its up seat; "answers" is the seat's own
+    // test (the anchor sits in its cell and answered within two beats).
+    function sdnAnchorPid() { const c = meshCoord(); const src = c ? net.topo.up(c) : null; return src ? occPid(src) : null; }
+    function anchorAnswers() { const sv = meshSeat(); return !!(sv && sv.anchorAnswers); }
     function claimRedun(rk, arr) {
       const now = Date.now();
       // Resolve every announcer to its (possibly parked) incoming stream.
@@ -29221,7 +29238,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const sdQ = rk.indexOf('sdrow:') === 0 ? +rk.slice(6) : -1, sdHead = sdQ >= 0 ? occPid({ pc: 0, r: sdQ, i: 0 }) : null;
       const mixBack = !!(pri && std && sdHead && fb.mixLeftAt && !rowMixHold(sdQ) && std.via === sdHead && pri.via !== sdHead && rowMixHeadArrives(sdQ) === 1
         && !(((fb.fbTried && fb.fbTried.get(std.via + '|' + std.streamId)) || 0) > fb.mixLeftAt));
-      const wantSwap = !!(pri && std && (!priLive || fb.dark || mixDeaf || mixBack || u2Over || (stdFbOk && (fb.picDead || (stdIsPref && !priIsPref)))));
+      // L50.4.2, the way back for a branch. While its anchor was silent this head left the anchor's copy of the room's
+      // sound for a stand-in's (its uplink). A stand-in fills its copy only while it stands in: afterwards the copy may
+      // hold nothing while its packets still flow, so nothing reads it dark. When the anchor answers again the head
+      // returns to the anchor's copy at once: not after the settle window, and not held by the mark an older wake left
+      // on that pipe (fbTried), which says the pipe was dark during the silence and nothing about a seat that answers
+      // now. One try per spell: a wake of the anchor's copy that fails after the head left it is remembered as any other.
+      const upPid = rk === 'sdn' ? sdnAnchorPid() : null;
+      const upBack = !!(pri && std && upPid && fb.upLeftAt && std.via === upPid && pri.via !== upPid && anchorAnswers()
+        && !(((fb.fbTried && fb.fbTried.get(std.via + '|' + std.streamId)) || 0) > fb.upLeftAt));
+      const wantSwap = !!(pri && std && (!priLive || fb.dark || mixDeaf || mixBack || upBack || u2Over || (stdFbOk && (fb.picDead || (stdIsPref && !priIsPref)))));
       if (wantSwap) {
         if (std && !std.el && std.stream) std.el = mosVideo(std.stream); // mint the decoder on wake, not while parked
         if (!fb.wakeAt) { fb.wakeAt = now; fb.f0 = frames(std.el); if (DEBUG_ON && rk.indexOf('stg:') === 0) swapPicNote(rk, 'wake', 'wantSwap priLive=' + (priLive ? 1 : 0) + ' dark=' + (fb.dark ? 1 : 0) + ' picDead=' + (fb.picDead ? 1 : 0)); }
@@ -29290,7 +29316,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // Coming back to the copy just left, or leaving one preference for another,
         // still waits. The timer itself is unchanged.
         const firstPref = !!(stdIsPref && !priIsPref && !fb.hadPref && (!pref || fb.left !== pref.from));
-        const settled = !priLive || fb.dark || mixDeaf || mixBack || fb.picDead || u2Over || firstPref || ((now - fb.prefSince >= MOS_SETTLE) && (now - fb.lastSwitch >= MOS_SETTLE));
+        const settled = !priLive || fb.dark || mixDeaf || mixBack || upBack || fb.picDead || u2Over || firstPref || ((now - fb.prefSince >= MOS_SETTLE) && (now - fb.lastSwitch >= MOS_SETTLE));
         if (DEBUG_ON && !(flowing && settled) && rk.indexOf('stg:') === 0) swapPicNote(rk, 'hold', 'flowing=' + (flowing ? 1 : 0) + ' settled=' + (settled ? 1 : 0) + ' f0=' + fb.f0 + ' stdAdv=' + (stdAdvanced ? 1 : 0) + (keepPic ? ' keepPic=1' : ''));
         if (flowing && settled) {
           const old = pri;
@@ -29304,6 +29330,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (rk.indexOf('stg:') === 0 && pri.stream && pri.stream.getVideoTracks().length) { try { kfNeed(rk); } catch (e) {} }
           pri.deadAt = 0; fb.lastSwitch = now; fb.wakeAt = 0; fb.prefSince = 0; fb.pvB = -1; fb.pvAt = 0;
           fb.mixLeftAt = mixDeaf ? now : 0; // L49: this row left its head's pipe for a silent mix (mixBack)
+          fb.upLeftAt = (upPid && old.via === upPid && !anchorAnswers()) ? now : 0; // L50.4.2: this head left its silent anchor's copy for a stand-in's (upBack)
           fb.left = old.via; fb.hadPref = !!stdIsPref; // the copy just installed is the anchor; the one left is not a fresh preference
           fb.picDead = false; fb.picStdOk = false; fb.picStd0 = null; fb.picRef = null;
           fb.dark = false; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; fb.fp = 0; fb.fpDecayAt = 0; fb.b0 = -1; fb.d0 = -1; fb.stdFdec = -1; fb.stdAdvAt = 0; fb.claimAt = now; fb.suspect = false; fb.stdTried = null; // fresh primary — the watchdog re-baselines and the penalty clears
@@ -39464,13 +39491,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // run out, the host gone, moved to another meeting) is on that free line
     // too (Nathan 2026-11-11); the room closes soon after its last admin
     // leaves anyway. The line is only at entry. An unread count lets people in, never out.
-    // THE COUNT IS THE DOOR'S GREETER LIST (Nathan 2026-11-11), read when a
-    // newcomer comes in: the relay's list of the room's registered seats (the
-    // door's own entry is left out of its replies, so the count is the list
-    // plus the door). A list from before this knocker came is the room as it
-    // was then, so the door asks the relay again and holds the knock until
-    // the fresh list answers; a list's length is what everyone at that door
-    // reads, not one seat's view of the room.
+    // THE LINE IS A PLACE IN THE SEATING ORDER, not a count. The room seats its
+    // people in a fixed order of places, one person to a place, so the room's
+    // limit is the place with that number: the mesh gives no newcomer without a
+    // ticket of their own that place or any after it (js/mesh/wall.js). Nothing
+    // is counted at the door, so many people knocking in the same second, at
+    // one door or at several, cannot pass the line, and a person who has left
+    // holds no place.
     let subsTurnedAway = false, subsTierKey = '', subsTier = null, subsTierExp = 0, subsGrants = null;   // subsTier: the plan's name (display); subsGrants: its signed line items (every decision)
     // The free line's words and the host's upgrade offer (display only): a room whose plan is the free one, or none shown.
     const subsFreeWords = () => GifOS.sub.fullFreeWords(subsTier);
@@ -39481,40 +39508,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // The meeting a subscription ticket names: the room's relay session (a one-way hash of the room code), the same
     // room the relay's TURN vouches name, so the TURN Worker can check a paid ask's ticket against its vouches.
     const subsMeetId = () => sessId || roomKey();
-    // The door's greeter list: its length and when it came (every greeters
-    // reply, a relay restart's empty hold excepted), and the knockers held for
-    // a fresh one (knocker -> when this door first counted for it).
-    let subsListLen = null, subsListAt = 0;
-    const subsWaitList = new Map();
-    function subsDoorSeen(frame) {
-      if (!frame || !Array.isArray(frame.list) || frame.hold) return;
-      subsListLen = frame.list.length; subsListAt = Date.now();
-      const st = meshSeat(), held = Array.from(subsWaitList.keys());
-      if (held.length && st && st.recheckDoor) { try { st.recheckDoor(held); } catch (e) {} }   // the held knocks are judged again on this list (never admitted by it)
-    }
-    // The count for knocker `id`: the greeter list plus this door, from a list
-    // that came after the knocker did. Otherwise the door asks for a fresh one
-    // and answers 'wait'. undefined when there is no list to read (not seated,
-    // not a greeter): an unread count lets people in.
-    // THE MEETING'S COUNT. A meeting may be several subrooms joined by TURN pipes, and an admin room's limit counts them
-    // all: the count is the mesh's count of the whole meeting with the movers still being seated (doorCount; the fold
-    // already counts this door's own seat), or the greeter list plus this door where the mesh gives none. null: not known yet (a subroom whose pipe has not told it the meeting's size), so the knock waits.
-    function subsMeetingCount() {
-      try { if (meshNode && typeof meshNode.doorCount === 'function') return meshNode.doorCount(); } catch (e) {}
-      return subsListLen == null ? null : subsListLen + 1;   // the greeter list leaves the door out
-    }
-    function subsRoomCount(id) {
-      const ms = meshSeat();
-      if (!ms || ms.state !== 3) return undefined;
-      if (!subsWaitList.has(id)) { subsWaitList.set(id, Date.now()); if (subsWaitList.size > 64) subsWaitList.delete(subsWaitList.keys().next().value); }
-      if (subsListLen != null && subsListAt >= subsWaitList.get(id)) { const n = subsMeetingCount(); return n == null ? 'wait' : n; }
-      let asked = false; try { asked = !!(meshNode && meshNode.recountDoor && meshNode.recountDoor()); } catch (e) {}
-      if (asked) return 'wait';
-      subsWaitList.delete(id);
-      if (subsListLen == null) return undefined;
-      const n = subsMeetingCount();
-      return n == null ? 'wait' : n;
-    }
     // THE PLAN IS UNKNOWN, not absent, to a door that has not yet heard the
     // admin's signed orders (a door seated a moment ago) while the room may
     // still have its admin. Reading that as "no plan" would hold a $5 room to
@@ -39525,14 +39518,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // "no admin" too, and its closing countdown is no evidence. Every member
     // re-sends the admin's last signed orders, so a door seated after the admin
     // left still hears them; a room whose admin never sent any closes anyway.
-    const subsPlanWait = new Set();
     const subsPlanKnown = () => amAdmin || !!modWSeen;
-    function subsRejudge() {
-      if (!subsPlanWait.size || !subsPlanKnown() || (!!av && subsRoomTier() === undefined)) return;
-      const ids = Array.from(subsPlanWait); subsPlanWait.clear();
-      const st = meshSeat(); if (st && st.recheckDoor) { try { st.recheckDoor(ids); } catch (e) {} }   // judged again, never admitted
-    }
-    const subsWaitPlan = (id) => { subsPlanWait.add(id); if (subsPlanWait.size > 64) subsPlanWait.delete(subsPlanWait.values().next().value); return true; };
     // The room's plan, verified once per order: undefined while it is being
     // checked, null when none is valid. It is checked ahead of any knock (the
     // timer below), so a door does not meet its first knock with no answer.
@@ -39541,7 +39527,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const k = o ? String(o.at) + '|' + String(o.proof || '') : '';
       if (k !== subsTierKey) {
         subsTierKey = k; subsTier = o ? undefined : null; subsTierExp = 0; subsGrants = null;
-        if (o) GifOS.meetSubs.roomTier(o, subsMeetId()).then((t) => { if (subsTierKey === k) { subsTier = t ? (t.tier || 'custom') : null; subsGrants = t ? t.grants : null; subsTierExp = t ? t.exp : 0; try { subsRejudge(); } catch (e) {} } }, () => { if (subsTierKey === k) { subsTier = null; try { subsRejudge(); } catch (e) {} } });
+        if (o) GifOS.meetSubs.roomTier(o, subsMeetId()).then((t) => { if (subsTierKey === k) { subsTier = t ? (t.tier || 'custom') : null; subsGrants = t ? t.grants : null; subsTierExp = t ? t.exp : 0; } }, () => { if (subsTierKey === k) { subsTier = null; } });
       }
       if (subsTier && Date.now() / 1000 >= subsTierExp) { subsTier = null; subsGrants = null; }   // the admin's ticket ran out: no plan, the free line
       return subsTier;
@@ -39574,27 +39560,46 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       });
     }
     setInterval(() => { try { if (subsOn() && !!av) subsRoomTier(); } catch (e) {} try { capCheck(); capPaint(); } catch (e) {} }, 2000);   // the room's plan, and an open room's capture (capCheck)
-    function subsHolds(id) {
-      if (!id || !subsOn() || !av || subsProven.has(id)) return false;
-      if (!subsPlanKnown()) return subsWaitPlan(id);   // the admin's orders have not reached this door yet: hold, ask nothing
+    // THE ROOM'S PEOPLE LINE as a number: null when the room has none (an open
+    // room, or a plan with no limit), undefined while it cannot be read yet
+    // (the admin's signed orders have not come, or the plan on them is still
+    // being checked). The number comes from the room's signed order.
+    function subsRoomLimit() {
+      if (!subsOn() || !av) return null;
+      if (!subsPlanKnown()) return undefined;
       const tier = subsRoomTier();
-      if (tier && GifOS.sub.doorVerdict({ adminRoom: true, roomGrants: subsGrants, count: 1e9 }) === 'let-in') return false;   // a room with no line counts nobody
-      const count = subsRoomCount(id);
-      if (count === 'wait') return true;   // the fresh list answers this knock (subsDoorSeen)
-      subsWaitList.delete(id);
-      // While the room's plan is still being checked, a room below the free line
-      // lets the knocker in; a room at it holds the knock until the plan is
-      // known (the knocker asks again), and asks nothing yet.
-      if (tier === undefined) return GifOS.sub.doorVerdict({ adminRoom: true, roomGrants: null, count }) !== 'let-in' && subsWaitPlan(id);
-      if (GifOS.sub.doorVerdict({ adminRoom: true, roomGrants: tier ? subsGrants : null, count }) === 'let-in') return false;
+      if (tier === undefined) return undefined;
+      const n = GifOS.sub.effective(tier ? subsGrants : null).roomLimit;   // the signed roomLimit line item (1..25, null = no line); no ticket: the free default
+      return n == null ? null : n;
+    }
+    // What the mesh seat reads (js/mesh/wall.js): 0 no line, below 0 not known
+    // yet (the seat places nobody new and the newcomer asks again in a moment).
+    // A room joined to others by relayed connections that has not been told
+    // the meeting's people yet does not know where its line stands.
+    function subsWallLine() {
+      const n = subsRoomLimit();
+      if (n === undefined) return -1;
+      if (n === null) return 0;
+      try { if (meshNode && meshNode.sub && typeof meshNode.meetingCount === 'function' && meshNode.meetingCount() == null) return -1; } catch (e) {}
+      return n;
+    }
+    // This door refused a newcomer at the line. Only a full room is a reason
+    // to ask for a ticket; "not yet" (a place below the line is only late) is
+    // a short wait on the newcomer's side and nothing is said.
+    function subsWalled(id, full) {
+      if (DEBUG_ON) { try { (window.__subsWalled = window.__subsWalled || []).push({ id, full: !!full, at: Date.now() }); if (window.__subsWalled.length > 256) window.__subsWalled.shift(); } catch (e) {} }   // DEBUG=on only: a test reads this door's refusals
+      if (!full || !id || !subsOn() || !av || subsProven.has(id) || subsRoomLimit() == null) return;
       const q = peers.get(id), a = subsAsked.get(id);
       if (q && q.dc && q.dc.readyState === 'open' && !(a && Date.now() - a.at < 2000)) {
         const n = GifOS.meetSubs.newNonce();
         subsAsked.set(id, { n, at: Date.now() }); if (subsAsked.size > 64) subsAsked.delete(subsAsked.keys().next().value);
         try { dcSend(q, { k: 'subask', n }); } catch (e) {}
       }
-      return true;
     }
+    // A ticket checked at one door is good at every door: the door tells the
+    // room, so whichever seat gives the newcomer a place knows it.
+    function subsPassSay(id) { try { if (meshNode) meshNode.gossip({ a: 1, msg: { k: 'dpass', p: String(id) } }); } catch (e) {} }
+    function subsPassHeard(m) { const p = m && typeof m.p === 'string' && m.p.length <= 64 ? m.p : ''; if (!p || !subsOn()) return; subsProven.add(p); if (subsProven.size > 256) subsProven.delete(subsProven.values().next().value); }
     function subsAnswer(p, n) {
       const ms = meshSeat();
       if ((ms && ms.state === 3) || n.length > 128) return;
@@ -39608,7 +39613,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         subsAsked.delete(p.id);
         if (!ok) { subsRefuse(p, a); return; }
         subsProven.add(p.id); if (subsProven.size > 256) subsProven.delete(subsProven.values().next().value);
-        try { const st = meshSeat(); if (st && st.answerDoor) st.answerDoor([p.id]); } catch (e) {}
+        subsPassSay(p.id);   // the newcomer's next knock, a moment later, is given a place past the line
       });
     }
     // The room's people line as the door's own rule reads it (gifos-sub admission): a number, or null for no line.
@@ -40606,7 +40611,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       menu.id = 'appmenu'; menu.setAttribute('role', 'menu'); menu.hidden = true;
       abar.appendChild(more); abar.appendChild(menu);
       const keep = (el) => el.classList.contains('brand') || ['appgif', 'appname', 'appinvite', 'apphelp', 'appfull'].includes(el.id);
-      const setOpen = (on) => { menu.hidden = !on; more.setAttribute('aria-expanded', on ? 'true' : 'false'); };
+      const placeMenu = () => {
+        const r = more.getBoundingClientRect();
+        menu.style.top = Math.round(r.bottom + 6) + 'px';
+        menu.style.right = Math.max(8, Math.round(window.innerWidth - r.right)) + 'px';
+        menu.style.left = 'auto';
+      };
+      const setOpen = (on) => {
+        menu.hidden = !on; more.setAttribute('aria-expanded', on ? 'true' : 'false');
+        if (on) placeMenu();
+      };
       function fit() {
         const b = document.body.classList;
         const fold = (b.contains('solo-app') || b.contains('app-room')) && abar.clientWidth > 0 && abar.clientWidth <= 720;
@@ -40619,7 +40633,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       menu.addEventListener('click', (e) => { if (e.target && e.target.closest && e.target.closest('button')) setTimeout(() => setOpen(false), 0); });
       document.addEventListener('click', (e) => { if (!menu.hidden && !(e.target && e.target.closest && e.target.closest('#appmenu, #appmore'))) setOpen(false); }, true);
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !menu.hidden) setOpen(false); });
-      try { new ResizeObserver(() => { try { fit(); } catch (e) {} }).observe(abar); } catch (e) {}
+      window.addEventListener('resize', () => { if (!menu.hidden) placeMenu(); });
+      try { new ResizeObserver(() => { try { fit(); if (!menu.hidden) placeMenu(); } catch (e) {} }).observe(abar); } catch (e) {}
       try { new MutationObserver(() => { try { fit(); } catch (e) {} }).observe(document.body, { attributes: true, attributeFilter: ['class'] }); } catch (e) {}
       fit();
     })();

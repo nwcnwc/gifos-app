@@ -221,18 +221,22 @@
       });
     });
   }
-  const db = gifos.db('entries'), pres = (window.gifos&&gifos.db)?gifos.db('presence'):null, list = document.getElementById('list');
+  const db = gifos.db('entries'), list = document.getElementById('list');
+  // Who is here comes from the room (gifos.people()); an older GifOS has none: one plain line, read-only, nothing written.
+  const PEOPLE = !!(window.gifos && gifos.people), PEOPLE_MS = ${GifOS.timings.APP_PEOPLE_READ_MS};
+  const EN_NEWER = 'Guestbook needs a newer GifOS to sign together. Reload the page to update.';
+  const newerLine = () => { const t = T('needsNewer'); return t === 'needsNewer' ? EN_NEWER : t; };
   ['💜','✨','⭐','🌈','✍️','🐸'].forEach(function(s){
     const b=document.createElement('button'); b.type='button'; b.textContent=s;
     b.onclick=function(){ const m=document.getElementById('msg'); m.value+=s; m.focus(); };
     document.getElementById('stamps').appendChild(b);
   });
-  let me = { id:'local', name: 'You' }, others=0;
+  let me = { id:'local', name: 'You' }, others=0, room=[], owner=false;
   const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
   function setWho(){
     document.getElementById('who').textContent = others>0 ? T('who.here',{n:others+1}) : T('who.alone');
     var h=document.getElementById('hint');
-    h.innerHTML = T(others>0 ? 'hint.friends' : 'hint.alone',{name:esc(me.name)});
+    h.innerHTML = PEOPLE ? T(others>0 ? 'hint.friends' : 'hint.alone',{name:esc(me.name)}) : esc(newerLine());
   }
   function ago(t){ if(!t) return ''; var d=Date.now()-t; if(d<45000) return T('ago.now'); if(d<3600000) return T('ago.m',{n:Math.max(1,Math.floor(d/60000))}); if(d<86400000) return T('ago.h',{n:Math.floor(d/3600000)}); var dt=new Date(t); var F=window.gifos&&gifos.i18n&&gifos.i18n.fmt; return F?F.date(dt,{month:'numeric',day:'numeric'}):(dt.getMonth()+1)+'/'+dt.getDate(); }
   let lastItems=[];
@@ -245,41 +249,34 @@
   document.getElementById('f').onsubmit = async e => {
     e.preventDefault();
     const msg = document.getElementById('msg');
-    if (msg.value.trim()) { await db.put({ by: me.name, uid: me.id, msg: msg.value.trim(), t: Date.now() }); msg.value=''; }
+    if (PEOPLE && msg.value.trim()) { await db.put({ by: me.name, uid: me.id, msg: msg.value.trim(), t: Date.now() }); msg.value=''; }
   };
-  function beat(){ if(!pres||!me.id||me.id==='local') return; pres.put({id:'p:'+me.id,name:me.name,ts:Date.now()}); }
-  // "N here" counts a person while THIS page saw their heartbeat change in the last 35 s. The heartbeat's
-  // own time is the other device's clock and is never compared with ours; a heartbeat this page has not
-  // yet seen change counts for 20 s (time for one 15 s beat to arrive), so an old record drops off.
-  // The count is redone when the presence rows change, and once more at the moment the next counted person
-  // would drop off (one timer to that time, no polling).
-  var HERE_MS=35000, hereRows=[], hereSeen={}, hereTs={}, hereT=null;
-  function countHere(){
-    var now=Date.now(), n=0, due=Infinity;
-    hereRows.forEach(function(r){
-      if(!r||!r.id||r.id.indexOf('p:')!==0||r.id==='p:'+me.id) return;
-      if(hereTs[r.id]!==r.ts){ hereSeen[r.id]=(r.id in hereTs)?now:now-15000; hereTs[r.id]=r.ts; }
-      if(now-hereSeen[r.id]<HERE_MS){ n++; due=Math.min(due, hereSeen[r.id]+HERE_MS); }
-    });
-    clearTimeout(hereT); hereT=(due<Infinity)?setTimeout(countHere, due-now):null;
-    if(n!==others){ others=n; setWho(); }
+  // The room's people: a local read (no network, no write). Read at boot, on each data change and on a calm timer.
+  function readRoom(){
+    if(!PEOPLE) return;
+    Promise.all([gifos.people(), gifos.info ? gifos.info() : Promise.resolve({})]).then(function(r){
+      const l = (r[0]||[]).map(function(p){ return { id:p.id, name:p.name||'', me:!!p.me }; });
+      const mr = l.filter(function(x){ return x.me; })[0];
+      const n = l.filter(function(x){ return !x.me; }).length, o = !!(r[1] && r[1].owner);
+      const nm = mr ? (mr.name || 'You') : me.name, id = mr ? mr.id : me.id;
+      if (n === others && o === owner && nm === me.name && id === me.id && l.length === room.length) { room = l; return; }
+      room = l; others = n; owner = o; me = { id: id, name: nm }; setWho();
+    }, function(){});
   }
-  function watchPresence(){
-    if(pres&&pres.subscribe){
-      pres.subscribe(function(rows){ hereRows=rows||[]; countHere(); });
-      setInterval(function(){ if(document.visibilityState!=='hidden') beat(); },15000);
-    }
-  }
-  document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible') beat(); });
   // Nothing that calls T runs before the catalog has loaded (a key must never be painted).
   function boot(){
     applyI18n();
-    if (window.gifos) gifos.me().then(function(m){ me = { id: m.id, name: m.name || 'You' }; setWho(); beat(); });
-    db.subscribe(render);
-    watchPresence();
+    if (!PEOPLE) { const f = document.getElementById('msg'); if (f) f.disabled = true; }
+    setWho();
+    readRoom();
+    db.subscribe(function(items){ render(items); readRoom(); });
+    if (PEOPLE) setInterval(readRoom, PEOPLE_MS);
     if (window.gifos && gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); setWho(); render(lastItems); });
   }
   if (window.gifos && gifos.i18n && gifos.i18n.load) gifos.i18n.load().then(boot, boot); else boot();
+  // Read-only view for the checks: the shared entries, who this copy counts, and whether it is the app's owner.
+  window.__guestbook = { state: function(){ return { entries: lastItems.map(function(e){ return { id: e.id, by: e.by, msg: e.msg }; }) }; },
+    people: function(){ return room.map(function(p){ return p.id; }); }, amHost: function(){ return PEOPLE && owner; } };
 </script>`;
 
   const TICTACTOE_HTML = `<!doctype html><meta charset="utf-8">
@@ -370,7 +367,14 @@
   <div class="ask" id="ask"></div>
 </main>
 <script>
-  const T = (k, p) => (window.gifos && gifos.i18n ? gifos.i18n.t(k, p) : k);
+  // EN: English for words an older GifOS's text files may lack (this app reaches a 0.9.26 page in a mixed room, whose
+  // catalog returns the bare key). A key the catalog knows is never replaced.
+  const EN = { needsNewer: 'Tic-Tac-Toe needs a newer GifOS to play together. Reload the page to update.', 'status.away': '{name} is reconnecting…', 'status.open': 'Waiting for someone to sit as {mark}.', 'hint.line': 'You are next in line: you get the first seat that opens.', 'hint.asking': 'The host has been asked to seat you.', 'hint.watch': 'You are watching. When a seat opens, the next person in line gets it.', 'win.mark': '{mark} wins.' };
+  const T = (k, p) => {
+    let v = window.gifos && gifos.i18n ? gifos.i18n.t(k, p) : k;
+    if (v === k && Object.prototype.hasOwnProperty.call(EN, k)) { v = EN[k]; for (const n in (p || {})) v = v.split('{' + n + '}').join(p[n]); }
+    return v;
+  };
   // Static markup keeps its English literal (shown until the catalog arrives, or on an older GifOS) and is
   // tagged data-i18n / -ph / -title / -aria; applyI18n fills those from the catalog.
   function applyI18n(){
@@ -383,49 +387,31 @@
       });
     });
   }
+  // Who plays, who watches, whose turn it is, who gets a seat back, who takes a seat when a player leaves: the
+  // room decides all of it (gifos.room, manifest "room"). This app draws the board and makes moves.
   const db = gifos.db('game');
   const WINS = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-  const PFX = 'p:';
-  const LIVE = 8000;
-  const fresh = function(){ return { id:'board', cells:[null,null,null,null,null,null,null,null,null], turn:'X', starts:'X', winner:null, line:null, players:{}, names:{}, score:{X:0,O:0,D:0} }; };
-  let current = fresh();
-  let askLocal = false;
-  let me = { id:'local', name:'You' };
-  let here = {}, seen = {}, lastT = {};
-  // Here means THIS page saw the person's heartbeat change lately. The heartbeat's own time is the other
-  // device's clock and is never compared with ours: a heartbeat this page has not yet seen change counts
-  // for 4 s (two 2 s beats), so an old game's record drops off and a live player stays.
-  function tSeen(rows){ const t=now(); for (const id in rows){ const r=rows[id]; if(!r) continue; if(lastT[id]!==r.t){ seen[id]=(id in lastT)?t:t-LIVE+4000; lastT[id]=r.t; } } }
-  // A seat is held only by someone who is here: a player who left, or a seat kept in the saved board from
-  // an earlier game, leaves it open for the next person. One person holds one seat: a board that names the
-  // same person on both keeps them X and opens O.
-  function seatOf(s){ const id=current.players&&current.players[s]; if(!id) return null; if(id!==me.id && liveIds().indexOf(id)<0) return null; if(s==='O' && seatOf('X')===id) return null; return id; }
+  const ROOM = !!(window.gifos && gifos.room && gifos.room.subscribe);
+  const fresh = function(){ return { id:'board', cells:[null,null,null,null,null,null,null,null,null], winner:null, line:null, score:{X:0,O:0,D:0} }; };
+  let cur = fresh(), rs = null, ask = null, askLocal = false, note = '', joined = false;
+  const ADB = ROOM ? gifos.db('ask') : null;
   const boardEl = document.getElementById('board');
   const statusEl = document.getElementById('status');
   const hintEl = document.getElementById('hint');
   const chipEl = document.getElementById('chip');
   const winEl = document.getElementById('win');
   const segEl = document.getElementById('seg');
-  function now(){ return Date.now ? Date.now() : 0; }
+  // ---- the room's word ----
+  function seatOf(s, mark){ const x=s&&s.seats&&s.seats.find(function(q){ return q.seat===mark; }); return x||{ seat:mark, id:null, name:'', here:'open' }; }
+  function turnOf(s){ return (s&&s.turn)||'X'; }
+  // ---- end of the room's word ----
+  function opp(){ return !!rs && rs.live; }
+  function myMark(){ return rs && rs.me ? rs.me.seat : null; }
+  function canPlay(){ if(!ROOM || !rs || cur.winner) return false; if(!rs.live) return !!myMark() && seatOf(rs, turnOf(rs)).here!=='away'; return !!rs.myTurn; }
   function lineOf(c){ for (let i=0;i<WINS.length;i++){ const w=WINS[i]; if(c[w[0]] && c[w[0]]===c[w[1]] && c[w[0]]===c[w[2]]) return w; } return null; }
   function winnerOf(c){ const l=lineOf(c); if(l) return c[l[0]]; return c.every(Boolean) ? 'draw' : null; }
-  function myMark(){ return seatOf('X')===me.id ? 'X' : seatOf('O')===me.id ? 'O' : null; }
-  function liveIds(){ const t=now(), out=[]; for (const id in here){ if (here[id] && (t-(seen[id]||0))<LIVE) out.push(id); } return out; }
-  function opponentLive(){ return liveIds().some(function(id){ return id!==me.id; }); }
-  function friendName(){ const ids=liveIds(); for (let i=0;i<ids.length;i++){ if(ids[i]!==me.id) return (here[ids[i]] && here[ids[i]].name) || ''; } return ''; }
-  function label(s){ return (current.names && current.names[s]) ? current.names[s] : s; }
-  function boardEmpty(){ return current.cells.every(function(v){ return !v; }); }
-  function canPlayTurn(){
-    if (current.winner) return false;
-    if (!opponentLive()) return true;
-    const mm = myMark();
-    if (mm) return current.turn === mm;
-    return !seatOf(current.turn);
-  }
-  function beat(){
-    if (!window.gifos || me.id==='local') return;
-    db.put({ id:PFX+me.id, name:me.name, t:now() }).catch(function(){});
-  }
+  function label(m){ const x=seatOf(rs,m); return x.id&&x.name?x.name:m; }
+  function boardEmpty(){ return cur.cells.every(function(v){ return !v; }); }
   function ensureBoard(){
     if (boardEl.children.length===9) return;
     boardEl.innerHTML = '';
@@ -438,7 +424,7 @@
     }
   }
   function paintWin(){
-    const line = current.line;
+    const line = cur.line;
     if (!line){ winEl.classList.remove('on'); return; }
     const a=line[0], b=line[2];
     segEl.setAttribute('x1', String(((a%3)+0.5)/3*100));
@@ -448,97 +434,99 @@
     if (!winEl.classList.contains('on')) winEl.classList.add('on');
   }
   function setSeat(el, youEl, nameEl, mark, on, win){
-    const claimed = seatOf(mark);
-    const mine = claimed === me.id;
-    const named = claimed && current.names && current.names[mark];
-    nameEl.textContent = named ? current.names[mark] : (opponentLive() && !claimed ? T('seat.open') : '');
-    youEl.hidden = !mine;
+    const x = seatOf(rs, mark);
+    nameEl.textContent = x.id ? label(mark) + (x.here==='away' ? ' …' : '') : (opp() ? T('seat.open') : '');
+    youEl.hidden = myMark()!==mark;
     el.classList.toggle('on', !!on);
     el.classList.toggle('win', !!win);
+    el.classList.toggle('away', x.here==='away');
   }
   function render(){
     ensureBoard();
-    const playable = canPlayTurn();
-    const live = opponentLive();
-    const mm = myMark();
-    current.cells.forEach(function(v,i){
+    const playable = canPlay(), live = opp(), mm = myMark(), t = turnOf(rs);
+    cur.cells.forEach(function(v,i){
       const d = boardEl.children[i];
-      const win = current.line && current.line.indexOf(i)>=0;
-      const last = current.last===i && !win;
-      const animate = !!(v && current.last===i && !win);
+      const win = cur.line && cur.line.indexOf(i)>=0;
+      const last = cur.last===i && !win;
+      const animate = !!(v && cur.last===i && !win);
       d.textContent = v || '';
       const cls = 'cell'+(v?' '+v.toLowerCase():'')+(win?' win':'')+(last?' last':'')+((v&&!animate)?' settled':'');
       if (d.className !== cls) d.className = cls;
-      d.disabled = !!(current.winner || v || !playable);
+      d.disabled = !!(cur.winner || v || !playable);
       d.setAttribute('aria-label', v || T('cell.empty'));
     });
     paintWin();
-    const xOn = !current.winner && current.turn==='X';
-    const oOn = !current.winner && current.turn==='O';
-    setSeat(document.getElementById('seatX'), document.getElementById('youX'), document.getElementById('nameX'), 'X', xOn, current.winner==='X');
-    setSeat(document.getElementById('seatO'), document.getElementById('youO'), document.getElementById('nameO'), 'O', oOn, current.winner==='O');
-    const sc = Object.assign({X:0,O:0,D:0}, current.score);
+    setSeat(document.getElementById('seatX'), document.getElementById('youX'), document.getElementById('nameX'), 'X', !cur.winner && t==='X', cur.winner==='X');
+    setSeat(document.getElementById('seatO'), document.getElementById('youO'), document.getElementById('nameO'), 'O', !cur.winner && t==='O', cur.winner==='O');
+    const sc = Object.assign({X:0,O:0,D:0}, cur.score);
     document.getElementById('sx').textContent = String(sc.X);
     document.getElementById('so').textContent = String(sc.O);
     document.getElementById('sd').textContent = String(sc.D);
     statusEl.className = 'status';
     hintEl.textContent = '';
-    if (current.winner==='draw'){
+    if (!ROOM){
+      statusEl.textContent = T('needsNewer');
+      statusEl.className = 'status warn';
+      chipEl.textContent = '';
+      renderConsent();
+      return;
+    }
+    const tx = seatOf(rs, t);
+    if (cur.winner==='draw'){
       statusEl.textContent = T('draw');
       hintEl.textContent = T('draw.hint');
-    } else if (current.winner){
-      const w = current.winner;
-      const you = !!(live && mm===w);
-      statusEl.textContent = you ? T('win.you') : T('win.other',{name:label(w)});
-      statusEl.className = 'status '+(you?'good':(live && mm ? 'warn':''));
+    } else if (cur.winner){
+      const w = cur.winner, you = mm===w, wx = seatOf(rs, w);
+      statusEl.textContent = you ? T('win.you') : (wx.id && wx.name) ? T('win.other',{name:wx.name}) : T('win.mark',{mark:w});
+      statusEl.className = 'status '+(you?'good':(mm?'warn':''));
     } else if (playable){
-      if (live && !mm) statusEl.textContent = T('status.sit',{mark:current.turn});
-      else if (live) statusEl.textContent = T('status.yourMove');
-      else statusEl.textContent = T('status.yourMoveMark',{mark:current.turn});
+      statusEl.textContent = live ? T('status.yourMove') : T('status.yourMoveMark',{mark:t});
+    } else if (tx.here==='away'){
+      statusEl.textContent = T('status.away',{name:tx.name||t});
+    } else if (!tx.id){
+      statusEl.textContent = T('status.open',{mark:t});
     } else {
-      statusEl.textContent = T('status.waiting',{name:(seatOf(current.turn) && label(current.turn)) || current.turn});
+      statusEl.textContent = T('status.waiting',{name:tx.name||t});
     }
-    if (!current.winner && !live) hintEl.textContent = T('hint.alone');
-    else if (!current.winner && live && !mm) hintEl.textContent = T('hint.claim');
-    else if (!current.winner && live && mm) hintEl.textContent = T('hint.you',{mark:mm});
-    const fn = live ? friendName() : '';
-    chipEl.textContent = live ? (fn ? T('chip.vs',{name:fn}) : T('chip.vsFriend')) : T('chip.alone');
+    const role = rs&&rs.me ? rs.me.role : 'watcher';
+    if (note) hintEl.textContent = note;
+    else if (!cur.winner && !live) hintEl.textContent = T('hint.alone');
+    else if (role==='waiting') hintEl.textContent = T('hint.line');
+    else if (role==='asking') hintEl.textContent = T('hint.asking');
+    else if (role==='watcher') hintEl.textContent = T('hint.watch');
+    else if (!cur.winner && mm) hintEl.textContent = T('hint.you',{mark:mm});
+    const other = rs ? rs.seats.find(function(x){ return x.id && x.id!==rs.me.id; }) : null;
+    chipEl.textContent = live ? (other&&other.name ? T('chip.vs',{name:other.name}) : T('chip.vsFriend')) : T('chip.alone');
     renderConsent();
   }
+  // A refusal note stays until the next room change or the next tap.
+  function say(e){ note = e && e.message ? e.message : ''; render(); }
   function play(i){
-    if (current.cells[i] || !canPlayTurn()) return;
-    if (current.rematch) delete current.rematch;
+    note = '';
+    if (cur.cells[i] || !canPlay()) return;
     askLocal = false;
-    const seat = current.turn;
-    if (opponentLive()){
-      current.players = Object.assign({}, current.players);
-      current.players[seat] = seatOf(seat) || me.id;
-      current.names = Object.assign({}, current.names);
-      if (current.players[seat]===me.id) current.names[seat] = me.name;
+    const seat = turnOf(rs);
+    const nxt = Object.assign({}, cur);
+    nxt.cells = cur.cells.slice(); nxt.cells[i] = seat;
+    nxt.last = i;
+    nxt.winner = winnerOf(nxt.cells);
+    nxt.line = lineOf(nxt.cells);
+    if (nxt.winner){
+      const sc = Object.assign({X:0,O:0,D:0}, cur.score);
+      sc[nxt.winner==='draw'?'D':nxt.winner]++;
+      nxt.score = sc;
     }
-    current.cells = current.cells.slice();
-    current.cells[i] = seat;
-    current.last = i;
-    current.winner = winnerOf(current.cells);
-    current.line = lineOf(current.cells);
-    if (current.winner){
-      const sc = Object.assign({X:0,O:0,D:0}, current.score);
-      sc[current.winner==='draw'?'D':current.winner]++;
-      current.score = sc;
-    }
-    current.turn = seat==='X' ? 'O' : 'X';
-    db.put(current);
-    render();
+    cur = nxt; render();
+    gifos.room.move('game', nxt).catch(say);
   }
   function startNew(){
     askLocal = false;
     const nxt = fresh();
-    nxt.score = Object.assign({X:0,O:0,D:0}, current.score);
-    nxt.starts = current.starts==='X' ? 'O' : 'X'; nxt.turn = nxt.starts;
-    nxt.players = current.players; nxt.names = current.names;
-    return db.put(nxt);
+    nxt.score = Object.assign({X:0,O:0,D:0}, cur.score);
+    if (ADB) ADB.delete('rematch').catch(function(){});
+    return gifos.room.newRound('game', nxt).catch(say);
   }
-  function clearRematch(){ const c = Object.assign({}, current); delete c.rematch; current = c; return db.put(c).then(render); }
+  function clearAsk(){ return ADB ? ADB.delete('rematch').catch(function(){}) : Promise.resolve(); }
   function cancelLocal(){ askLocal = false; render(); }
   function askButtons(askEl, text, onYes, onNo){
     const span = document.createElement('div'); span.textContent = text;
@@ -551,10 +539,11 @@
   function renderConsent(){
     const askEl = document.getElementById('ask'), btn = document.getElementById('new');
     askEl.textContent = '';
-    const req = current.rematch;
-    if (req && req.by !== me.id){
+    if (!ROOM || !myMark()){ btn.style.display = 'none'; return; }
+    const req = ask && ask.round===(rs&&rs.round) ? ask : null;
+    if (req && req.by !== rs.me.id){
       btn.style.display = 'none';
-      askButtons(askEl, req.name ? T('ask.rematch',{name:req.name}) : T('ask.rematchAnon'), startNew, clearRematch);
+      askButtons(askEl, req.name ? T('ask.rematch',{name:req.name}) : T('ask.rematchAnon'), startNew, clearAsk);
     } else if (req){
       btn.textContent = T('ask.cancel'); btn.style.display = ''; btn.className = 'act ghost';
       askEl.textContent = T('ask.waiting');
@@ -566,13 +555,11 @@
     }
   }
   document.getElementById('new').onclick = function(){
-    if (current.rematch && current.rematch.by===me.id) return clearRematch();
-    if (opponentLive()){
-      const c = Object.assign({}, current); c.rematch = { by:me.id, name:me.name }; current = c;
-      return db.put(c).then(render);
-    }
-    if (boardEmpty()) return;
-    if (current.winner) return startNew();
+    if (!ROOM || !myMark()) return;
+    if (ask && ask.round===rs.round && ask.by===rs.me.id) return clearAsk();
+    if (cur.winner || boardEmpty()) return startNew();
+    // A game in progress against someone here: they agree first. Alone: just confirm.
+    if (opp()) return ADB.put({ id:'rematch', by:rs.me.id, name:rs.me.name, round:rs.round }).catch(say);
     askLocal = true; render();
   };
   document.addEventListener('keydown', function(e){
@@ -582,28 +569,26 @@
   function onItems(items){
     const b = items.find(function(x){ return x.id==='board'; });
     if (b){
-      current = b;
-      if (!current.cells || current.cells.length!==9) current.cells = fresh().cells;
-      current.score = Object.assign({X:0,O:0,D:0}, current.score||{});
-      current.players = current.players || {};
-      current.names = current.names || {};
+      cur = b;
+      if (!cur.cells || cur.cells.length!==9) cur.cells = fresh().cells;
+      cur.score = Object.assign({X:0,O:0,D:0}, cur.score||{});
     }
-    const next = {};
-    const t = now();
-    items.forEach(function(x){
-      if (x && typeof x.id==='string' && x.id.indexOf(PFX)===0 && x.t)
-        next[x.id.slice(PFX.length)] = x;
-    });
-    here = next; tSeen(here);
     render();
   }
+  // Read-only, so the checks and a tester can compare copies: the board and what this copy's room says.
+  window.__tictactoe = { state: function(){ return { cells: cur.cells.map(function(v){ return v||'-'; }).join(''), winner: cur.winner, score: cur.score, room: rs ? { me: rs.me, seats: rs.seats, turn: rs.turn, round: rs.round, live: rs.live, kind: rs.kind } : null, status: statusEl.textContent, room_api: ROOM }; } };
   // Nothing that calls T runs before the catalog has loaded (a key must never be painted).
   function boot(){
     applyI18n();
-    if (window.gifos) gifos.me().then(function(m){ me = { id:m.id, name:m.name || 'You' }; beat(); render(); });
     db.subscribe(onItems);
-    setInterval(beat, 2000);
-    beat();
+    if (ROOM){
+      gifos.room.subscribe(function(s){
+        rs = s; note = ''; render();
+        // Opening the game is asking to play: once. The room seats, lines up or asks the host.
+        if (!joined && s.me && s.me.role==='watcher'){ joined = true; gifos.room.join().catch(function(){}); }
+      });
+      ADB.subscribe(function(items){ ask = items.find(function(x){ return x.id==='rematch'; })||null; render(); });
+    }
     render();
     if (window.gifos && gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); render(); });
   }
@@ -990,7 +975,7 @@
       });
     });
   }
-  const db=gifos.db('messages'), fdb=gifos.db('files'), pres=(window.gifos&&gifos.db)?gifos.db('presence'):null, log=document.getElementById('log');
+  const db=gifos.db('messages'), fdb=gifos.db('files'), log=document.getElementById('log');
   // Attachments ride gifos.db. The runtime fragments oversized messages, but
   // subscribers re-download a whole collection on every change — so file
   // bytes are base64-chunked (CS chars ≈ 64KB raw each) into the separate
@@ -998,10 +983,14 @@
   // fan-out, and capped at MAX bytes (the relay-fallback path is bandwidth-
   // throttled by design). Images are shrunk to fit automatically.
   const MAX=256*1024, CS=87000, MAXCHUNKS=16;
-  let me={id:'local',name:'You'}, last=[], others=0;
+  // Who is here comes from the room (gifos.people()); an older GifOS has none: one plain line, read-only, nothing written.
+  const PEOPLE=!!(window.gifos&&gifos.people), PEOPLE_MS=${GifOS.timings.APP_PEOPLE_READ_MS};
+  const EN_NEWER='Chat needs a newer GifOS to talk together. Reload the page to update.';
+  const newerLine=function(){ const t=T('needsNewer'); return t==='needsNewer'?EN_NEWER:t; };
+  let me={id:'local',name:'You'}, last=[], others=0, room=[], owner=false;
   function setWho(){
     var el=document.getElementById('who'); if(!el) return;
-    el.textContent = others>0 ? T('who.here',{n:others+1}) : T('who.alone');
+    el.textContent = !PEOPLE ? newerLine() : others>0 ? T('who.here',{n:others+1}) : T('who.alone');
   }
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const L10N=window.gifos&&gifos.i18n&&gifos.i18n.fmt; // the system locale (GifOS Settings)
@@ -1058,6 +1047,7 @@
     items.forEach(function(m){ if(m.kind==='file'&&m.att&&!atts[m.att]) fetchAtt(m); });
   }
   function sendText(text){
+    if(!PEOPLE) return;
     const rec={ id:'m'+Date.now().toString(36)+Math.floor(Math.random()*1e6).toString(36), by:me.name, uid:me.id, text:text, t:Date.now() };
     const p=Object.assign({state:'sending'},rec);
     pend.push(p); paint();
@@ -1127,30 +1117,19 @@
       }finally{ aiBtn.disabled=false; aiBtn.textContent=glyph; }
     };
   }
-  function beat(){ if(!pres||!me.id||me.id==='local') return; pres.put({id:'p:'+me.id,name:me.name,ts:Date.now()}); }
-  // "N here" counts a person while THIS page saw their heartbeat change in the last 35 s. The heartbeat's
-  // own time is the other device's clock and is never compared with ours; a heartbeat this page has not
-  // yet seen change counts for 20 s (time for one 15 s beat to arrive), so an old record drops off.
-  // The count is redone when the presence rows change, and once more at the moment the next counted person
-  // would drop off (one timer to that time, no polling).
-  var HERE_MS=35000, hereRows=[], hereSeen={}, hereTs={}, hereT=null;
-  function countHere(){
-    var now=Date.now(), n=0, due=Infinity;
-    hereRows.forEach(function(r){
-      if(!r||!r.id||r.id.indexOf('p:')!==0||r.id==='p:'+me.id) return;
-      if(hereTs[r.id]!==r.ts){ hereSeen[r.id]=(r.id in hereTs)?now:now-15000; hereTs[r.id]=r.ts; }
-      if(now-hereSeen[r.id]<HERE_MS){ n++; due=Math.min(due, hereSeen[r.id]+HERE_MS); }
-    });
-    clearTimeout(hereT); hereT=(due<Infinity)?setTimeout(countHere, due-now):null;
-    if(n!==others){ others=n; setWho(); if(!last.length&&!pend.length) paint(); }
+  // The room's people: a local read (no network, no write). Read at boot, on each data change and on a calm timer.
+  function readRoom(){
+    if(!PEOPLE) return;
+    Promise.all([gifos.people(), gifos.info?gifos.info():Promise.resolve({})]).then(function(r){
+      const l=(r[0]||[]).map(function(p){ return { id:p.id, name:p.name||'', me:!!p.me }; });
+      const mr=l.filter(function(x){ return x.me; })[0];
+      const n=l.filter(function(x){ return !x.me; }).length, o=!!(r[1]&&r[1].owner);
+      const nm=mr?(mr.name||'You'):me.name, id=mr?mr.id:me.id;
+      const same=n===others&&o===owner&&nm===me.name&&id===me.id;
+      room=l; if(same) return;
+      others=n; owner=o; me={id:id,name:nm}; setWho(); if(!last.length&&!pend.length) paint();
+    },function(){});
   }
-  function watchPresence(){
-    if(pres&&pres.subscribe){
-      pres.subscribe(function(rows){ hereRows=rows||[]; countHere(); });
-      setInterval(function(){ if(document.visibilityState!=='hidden') beat(); },15000);
-    }
-  }
-  document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible') beat(); });
   // ---- attachments ----
   const fi=document.getElementById('fi'), attBtn=document.getElementById('att');
   attBtn.onclick=function(){ fi.click(); };
@@ -1176,6 +1155,7 @@
     img.src=url;
   }); }
   async function sendFile(f){
+    if(!PEOPLE) return;
     attBtn.disabled=true; attBtn.textContent='⏳';
     try{
       let blob=f, mime=f.type||'application/octet-stream', name=f.name||'file';
@@ -1194,12 +1174,16 @@
   // Nothing that calls T runs before the catalog has loaded (a key must never be painted).
   function boot(){
     applyI18n(); setWho();
-    if(window.gifos) gifos.me().then(function(m){ me={id:m.id,name:m.name||'You'}; beat(); });
-    db.subscribe(function(items){ last=items; paint(); });
-    watchPresence();
+    if(!PEOPLE){ document.getElementById('t').disabled=true; }
+    readRoom();
+    db.subscribe(function(items){ last=items; paint(); readRoom(); });
+    if(PEOPLE) setInterval(readRoom, PEOPLE_MS);
     if(window.gifos && gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); setWho(); paint(); });
   }
   if(window.gifos && gifos.i18n && gifos.i18n.load) gifos.i18n.load().then(boot, boot); else boot();
+  // Read-only view for the checks: the shared messages, who this copy counts, and whether it is the app's owner.
+  window.__chat={ state:function(){ return { messages:last.map(function(m){ return { id:m.id, by:m.by, text:m.text, kind:m.kind||'' }; }) }; },
+    people:function(){ return room.map(function(p){ return p.id; }); }, amHost:function(){ return PEOPLE&&owner; } };
 </script>`;
 
   const PAINT_HTML = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
@@ -2778,7 +2762,13 @@ function syncDebug(){
 <div class="status" id="status" data-i18n="loading">Loading…</div>
 <div id="view"></div>
 <script>
-  const tx=function(k,p){ return window.gifos&&gifos.i18n?gifos.i18n.t(k,p):k; };   // T is the tournament below
+  // EN: English for words an older GifOS's text files may lack. A key the catalog knows is never replaced.
+  const EN = { needsNewer: 'Chess Tournament needs a newer GifOS to play together. Reload the page to update.', 'hint.line': 'You are next in line: you get the first seat that opens.', 'hint.asking': 'The host has been asked to seat you.', 'hint.watch': 'You are watching. When a seat opens, the next person in line gets it.', 'player.away': '{name} (reconnecting)' };
+  const tx=function(k,p){
+    let v=window.gifos&&gifos.i18n?gifos.i18n.t(k,p):k;
+    if(v===k&&Object.prototype.hasOwnProperty.call(EN,k)){ v=EN[k]; for(const n in (p||{})) v=v.split('{'+n+'}').join(p[n]); }
+    return v;
+  };   // T is the tournament below
   function applyI18n(){
     [].forEach.call(document.querySelectorAll('[data-i18n]'),function(e){ e.textContent=tx(e.getAttribute('data-i18n')); });
   }
@@ -2787,25 +2777,27 @@ function syncDebug(){
   const db=gifos.db('chess');
   let me={id:'local',name:'You'}, viewMatch=null, sel=null, promo=null;
   // ---- who is here, and each turn's clock (plain functions: the checks run them) ----
-  // Here means THIS page saw the person's heartbeat move lately; the heartbeat's own time is the other
-  // device's clock and is never compared with ours. A player not here for GONE may be passed over: they
-  // drop out of the lobby, and the player facing them may claim the game.
-  const PFX='p:', BEAT=3000, LIVE=10000, GONE=30000;
-  let rows={}, seen={}, lastT={}, turnAt={};
-  function chSeen(rows, seen, lastT, t){ for (const id in rows){ const r=rows[id]; if(!r) continue; if(lastT[id]!==r.t){ seen[id]=(id in lastT)?t:t-LIVE; lastT[id]=r.t; } } }
-  function chHere(id, within){ if(!id||id==='cpu'||id===me.id) return true; return (Date.now()-(seen[id]===undefined?-1e15:seen[id]))<within; }
+  // The room (gifos.room, manifest "room") owns who is in the tournament: each person here holds a seat, and a seat
+  // whose person left is freed by the room. A seat marked 'away' is a person reconnecting: wait, never pass over them.
+  // The tournament record 't' holds the bracket and settings only; the computer player is T.cpu.
+  const ROOM = !!(window.gifos && gifos.room && gifos.room.subscribe);
+  let rs=null, joined=false, note='', turnAt={};
+  function roster(){ return ((rs&&rs.seats)||[]).filter(function(x){ return x.id; }).map(function(x){ return { id:x.id, name:x.name||'?', here:x.here }; }); }
+  // A person is gone once the room no longer seats them (it held the seat while they were reconnecting).
+  function chGone(id){ if(!id||id==='cpu'||(rs&&rs.me&&id===rs.me.id)||!rs) return false; return !roster().some(function(x){ return x.id===id; }); }
   // A turn's time runs from when THIS page saw that turn begin (the move that started it arrived), never
   // from a time the previous mover's device wrote.
   function turnKey(m){ return m.id+'|'+m.board+'|'+m.turn; }
   function turnStart(m){ const k=turnKey(m); if(turnAt[m.id]===undefined||turnAt[m.id].k!==k) turnAt[m.id]={ k:k, t:Date.now() }; return turnAt[m.id].t; }
-  function beat(){ if(!window.gifos||me.id==='local') return; db.put({ id:PFX+me.id, name:me.name, t:Date.now() }).catch(function(){}); }
-  function present(list){ return (list||[]).filter(function(p){ return p.cpu || chHere(p.id, GONE); }); }
+  function lobbyPlayers(){ const out=roster().map(function(x){ return { id:x.id, name:x.name, away:x.here==='away' }; }); if(T.cpu) out.push({ id:'cpu', name:'Computer', cpu:true }); return out; }
   // ---- end of who is here ----
   let hint=null, hinting=false, cpuBusy=false;
   const START='rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR';
-  const GLYPH={p:'♟',r:'♜',n:'♞',b:'♝',q:'♛',k:'♚'};
+  // Separate white/black glyphs: phone fonts paint ♟ as an emoji that ignores CSS color,
+  // so White's pawns looked black when both sides shared the black set + .pw/.pb tint.
+  const GLYPH={P:'♙',R:'♖',N:'♘',B:'♗',Q:'♕',K:'♔',p:'♟',r:'♜',n:'♞',b:'♝',q:'♛',k:'♚'};
   const view=document.getElementById('view'), statusEl=document.getElementById('status');
-  let T={ id:'t', players:[], started:false, rounds:[], round:0, settings:{ clock:'5+0', shuffle:true, cpu:'medium', side:'w' } };
+  let T={ id:'t', cpu:false, started:false, rounds:[], round:0, settings:{ clock:'5+0', shuffle:true, cpu:'medium', side:'w' } };
   const CLOCKS=[['none','clock.none'],['1+0','clock.bullet1'],['3+0','clock.blitz3'],['3+2','clock.blitz3_2'],['5+0','clock.blitz5'],['5+3','clock.blitz5_3'],['10+0','clock.rapid10']];
   const CPUS=[['easy','cpu.easy'],['medium','cpu.medium'],['hard','cpu.hard']];
   function clockSpec(){ const c=(T.settings&&T.settings.clock)||'none'; if(c==='none') return null;
@@ -2963,19 +2955,16 @@ function syncDebug(){
     return best||ms[0];
   }
 
-  function save(){ return db.put(T); }
+  // A refusal note stays until the next room change or the next tap.
+  function say(e){ note=e&&e.message?e.message:''; render(); }
+  // Every change of the tournament is one room move (only a seated person may write it).
+  function save(){ if(!ROOM||!rs||!rs.me||!rs.me.seat) return Promise.resolve(); return gifos.room.move('chess', T).catch(say); }
   function settingsOf(){ return Object.assign({ clock:'5+0', shuffle:true, cpu:'medium', side:'w' }, T.settings||{}); }
-  async function joinLobby(){
-    const items=await db.getAll(); const t=items.find(function(x){ return x.id==='t'; }); if(t) T=t;
-    T.settings=settingsOf();
-    if(T.started) return render();
-    if(!T.players.some(function(p){ return p.id===me.id; })){ T.players=T.players.concat([{id:me.id,name:me.name}]); await save(); }
-    render();
-  }
+  // Opening the tournament is asking to play: once. The room seats, lines up or asks the host.
+  function joinLobby(){ if(ROOM) gifos.room.join().catch(say); }
   function addCpu(){
-    if(T.started) return;
-    if(T.players.some(function(p){ return p.cpu; })) return;
-    T.players=T.players.concat([{id:'cpu', name:'Computer', cpu:true}]); save();
+    if(T.started||T.cpu) return;
+    T.cpu=true; save(); render();
   }
   function makeMatch(a,b){
     const spec=clockSpec();
@@ -2985,7 +2974,7 @@ function syncDebug(){
     if(!b){ m.winner=a; } return m;
   }
   function startTournament(){
-    let ps=present(T.players); if(ps.length<2) return;
+    let ps=lobbyPlayers().map(function(x){ return x.cpu?{id:'cpu',name:'Computer',cpu:true}:{id:x.id,name:x.name}; }); if(ps.length<2) return;
     if(T.settings&&T.settings.shuffle){ for(let i=ps.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; const t=ps[i]; ps[i]=ps[j]; ps[j]=t; } }
     const matches=[]; for(let i=0;i<ps.length;i+=2){ matches.push(makeMatch(ps[i], ps[i+1]||null)); }
     T.started=true; T.rounds=[matches]; T.round=0; save();
@@ -2996,9 +2985,10 @@ function syncDebug(){
   function playComputer(){
     const side=(T.settings&&T.settings.side)||'w';
     const cpu={id:'cpu', name:'Computer', cpu:true};
+    if(!mySeatNo()) return;
     const human={id:me.id, name:me.name};
     const pick=side==='random'?(Math.random()<0.5?'w':'b'):side;
-    T.players=[human, cpu];
+    T.cpu=true;
     T.settings=Object.assign({}, settingsOf(), {shuffle:false});
     const spec=clockSpec();
     const a=pick==='w'?human:cpu, b=pick==='w'?cpu:human;
@@ -3006,6 +2996,7 @@ function syncDebug(){
     T.started=true; T.rounds=[[m]]; T.round=0; viewMatch=m.id; sel=null; hint=null; promo=null;
     save(); render(); queueCpu();
   }
+  function mySeatNo(){ return !!(rs&&rs.me&&rs.me.seat); }
   function curMatches(){ return T.rounds[T.round]||[]; }
   function advance(){
     const ms=curMatches(); if(!ms.every(function(m){ return m.winner||m.draw; })) return;
@@ -3023,7 +3014,7 @@ function syncDebug(){
   }
   function resetTournament(){
     T.started=false; T.rounds=[]; T.round=0; viewMatch=null; sel=null; hint=null; promo=null;
-    T.players=T.players.filter(function(p){ return p.id===me.id || !p.cpu; });
+    T.cpu=false;
     save();
   }
   function mySeat(m){ return m.a&&m.a.id===me.id?'w':m.b&&m.b.id===me.id?'b':null; }
@@ -3057,7 +3048,7 @@ function syncDebug(){
   }
   function claimLeft(m){
     const seat=mySeat(m); if(!seat||m.winner||m.draw) return;
-    const foe=seat==='w'?m.b:m.a; if(!foe||foe.cpu||chHere(foe.id, GONE)) return;
+    const foe=seat==='w'?m.b:m.a; if(!foe||foe.cpu||!chGone(foe.id)) return;
     m.winner=seat==='w'?m.a:m.b; m.draw=null; save(); advance(); sel=null; render();
   }
   function resign(m){
@@ -3112,12 +3103,13 @@ function syncDebug(){
 
   function render(){
     view.innerHTML='';
+    if(!ROOM){ const w=document.createElement('p'); w.className='hint'; w.textContent=tx('needsNewer'); view.appendChild(w); statusEl.textContent=tx('needsNewer'); return; }
     if(!T.started){ renderLobby(); return; }
     if(viewMatch){ renderBoard(); return; }
     renderBracket();
   }
   function renderLobby(){
-    const inList=T.players.some(function(p){return p.id===me.id;}); const here=present(T.players);
+    const inList=mySeatNo(); const here=lobbyPlayers();
     const d=document.createElement('div'); d.className='lobby';
     const cpuBtn=document.createElement('button'); cpuBtn.className='playcpu'; cpuBtn.textContent=tx('play.cpu'); cpuBtn.onclick=playComputer;
     d.appendChild(cpuBtn);
@@ -3137,7 +3129,7 @@ function syncDebug(){
     const split=document.createElement('div'); split.className='split'; split.textContent=tx('tourney.or'); d.appendChild(split);
     const p=document.createElement('p'); p.textContent=tx('tourney.intro'); d.appendChild(p);
     const ul=document.createElement('ul'); ul.className='players';
-    here.forEach(function(pl){ const li=document.createElement('li'); li.textContent=pl.cpu?tx('player.cpu',{name:nameOf(pl)}):pl.id===me.id?tx('player.you',{name:pl.name}):pl.name; ul.appendChild(li); });
+    here.forEach(function(pl){ const li=document.createElement('li'); li.textContent=pl.cpu?tx('player.cpu',{name:nameOf(pl)}):pl.id===me.id?tx('player.you',{name:pl.name}):pl.away?tx('player.away',{name:pl.name}):pl.name; ul.appendChild(li); });
     d.appendChild(ul);
     const ts=document.createElement('div'); ts.className='settings';
     ts.innerHTML='<h3>'+esc(tx('settings.title'))+'</h3><div class="hint">'+esc(tx('settings.hint'))+'</div>';
@@ -3153,12 +3145,14 @@ function syncDebug(){
     shc.onchange=function(){ T.settings=Object.assign({},settingsOf(),{shuffle:shc.checked}); save(); };
     shl.appendChild(shc); shl.appendChild(document.createTextNode(' '+tx('settings.shuffle')));
     ts.appendChild(shl); d.appendChild(ts);
-    const jb=document.createElement('button'); jb.textContent=inList?tx('join.in',{n:here.length}):tx('join'); jb.onclick=joinLobby;
+    const jb=document.createElement('button'); jb.textContent=inList?tx('join.in',{n:here.length}):tx('join'); jb.onclick=joinLobby; jb.disabled=inList;
     d.appendChild(jb);
-    if(!T.players.some(function(p){ return p.cpu; })){
+    const role=rs&&rs.me?rs.me.role:'watcher';
+    const rh=document.createElement('div'); rh.className='hint'; rh.textContent=note||(role==='waiting'?tx('hint.line'):role==='asking'?tx('hint.asking'):role==='watcher'?tx('hint.watch'):''); if(rh.textContent) d.appendChild(rh);
+    if(!T.cpu&&inList){
       const ac=document.createElement('button'); ac.className='ghost'; ac.textContent=tx('add.cpu'); ac.onclick=addCpu; d.appendChild(ac);
     }
-    if(here.length>=2){ const sb=document.createElement('button'); sb.textContent=tx('start'); sb.onclick=startTournament; d.appendChild(sb); }
+    if(inList&&here.length>=2){ const sb=document.createElement('button'); sb.textContent=tx('start'); sb.onclick=startTournament; d.appendChild(sb); }
     view.appendChild(d);
     statusEl.textContent=tx('status.lobby',{n:here.length});
   }
@@ -3201,7 +3195,7 @@ function syncDebug(){
     for(let y=0;y<8;y++)for(let x=0;x<8;x++){
       const rx=flip?7-x:x, ry=flip?7-y:y;
       const sq=document.createElement('div'); sq.className='sq '+(((rx+ry)%2)?'d':'l');
-      const p=bd[ry*8+rx]; if(p!=='.'){ sq.textContent=GLYPH[p.toLowerCase()]; sq.classList.add(p>='A'&&p<='Z'?'pw':'pb'); }
+      const p=bd[ry*8+rx]; if(p!=='.'){ sq.textContent=GLYPH[p]||GLYPH[p.toLowerCase()]; sq.classList.add(p>='A'&&p<='Z'?'pw':'pb'); }
       if(sel&&sel[0]===rx&&sel[1]===ry) sq.classList.add('sel');
       const hit=dests.filter(function(c){ return c.to[0]===rx&&c.to[1]===ry; });
       if(hit.length){ sq.classList.add('mv'); if(p!=='.'||hit[0].ep) sq.classList.add('cap'); }
@@ -3209,6 +3203,7 @@ function syncDebug(){
       if((stNow==='check'||stNow==='mate')&&kp&&kp[0]===rx&&kp[1]===ry) sq.classList.add('check');
       if(hint&&seat===m.turn&&!m.winner&&!m.draw){ if(hint.from&&hint.from[0]===rx&&hint.from[1]===ry) sq.classList.add('hintf'); if(hint.to&&hint.to[0]===rx&&hint.to[1]===ry) sq.classList.add('hintt'); }
       sq.onclick=(function(cx,cy){ return function(){
+        note='';
         if(m.winner||m.draw||seat!==m.turn) return;
         if(sel){ const opts=legal(s).filter(function(mv){ return mv.from[0]===sel[0]&&mv.from[1]===sel[1]&&mv.to[0]===cx&&mv.to[1]===cy; });
           if(opts.length){ doMove(m,sel[0],sel[1],cx,cy); return; } sel=null; }
@@ -3245,7 +3240,7 @@ function syncDebug(){
     const actions=document.createElement('div'); actions.className='actions';
     if(seat&&!m.winner&&!m.draw){ const rs=document.createElement('button'); rs.className='ghost'; rs.textContent=tx('resign'); rs.onclick=function(){ resign(m); }; actions.appendChild(rs); }
     const foe=seat?(seat==='w'?m.b:m.a):null;
-    if(seat&&!m.winner&&!m.draw&&foe&&!foe.cpu&&!chHere(foe.id, GONE)){ const cl=document.createElement('button'); cl.className='claim'; cl.textContent=tx('claim.left',{name:esc(nameOf(foe))}); cl.onclick=function(){ claimLeft(m); }; actions.appendChild(cl); }
+    if(seat&&!m.winner&&!m.draw&&foe&&!foe.cpu&&chGone(foe.id)){ const cl=document.createElement('button'); cl.className='claim'; cl.textContent=tx('claim.left',{name:esc(nameOf(foe))}); cl.onclick=function(){ claimLeft(m); }; actions.appendChild(cl); }
     if(m.draw && seat){ const rm=document.createElement('button'); rm.textContent=tx('rematch'); rm.onclick=function(){ rematch(m); }; actions.appendChild(rm); }
     view.appendChild(actions);
     statusEl.textContent = m.winner ? tx('status.winner',{name:esc(nameOf(m.winner))})
@@ -3268,19 +3263,18 @@ function syncDebug(){
   // Nothing that calls tx runs before the catalog has loaded.
   function start(){
     db.subscribe(function(items){ const t=items.find(function(x){return x.id==='t';}); if(t){ T=t; T.settings=settingsOf(); }
-      const next={}; items.forEach(function(x){ if(x&&typeof x.id==='string'&&x.id.indexOf(PFX)===0&&x.t) next[x.id.slice(PFX.length)]=x; });
-      rows=next; chSeen(rows, seen, lastT, Date.now()); curMatches().forEach(function(m){ if(m&&!m.winner&&!m.draw) turnStart(m); }); render(); queueCpu(); });
-    if(window.gifos) gifos.me().then(function(mm){ me={id:mm.id,name:mm.name||'You'}; beat(); joinLobby(); });
-    setInterval(beat, BEAT);
-    // someone leaving changes the lobby and the claim button without any record changing
-    let hereSig='';
-    setInterval(function(){ const sig=present(T.players).map(function(p){ return p.id; }).join(',')+'|'+T.players.map(function(p){ return chHere(p.id, GONE)?1:0; }).join('');
-      if(sig!==hereSig){ hereSig=sig; render(); } }, 2000);
+      curMatches().forEach(function(m){ if(m&&!m.winner&&!m.draw) turnStart(m); }); render(); queueCpu(); });
+    if(ROOM) gifos.room.subscribe(function(s){
+      rs=s; note=''; if(s.me&&s.me.id) me={ id:s.me.id, name:s.me.name||'You' };
+      if(!joined&&s.me&&s.me.role==='watcher'){ joined=true; joinLobby(); }
+      render(); queueCpu();
+    });
     render();
     if(window.gifos&&gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); render(); });
   }
   if(window.gifos&&gifos.i18n) gifos.i18n.load().then(function(){ applyI18n(); start(); }); else start();
   window.__chess={
+    state:function(){ return { started:T.started, cpu:!!T.cpu, round:T.round, players:lobbyPlayers().map(function(x){ return x.id; }), matches:curMatches().map(function(m){ return { id:m.id, a:m.a&&m.a.id, b:m.b&&m.b.id, board:m.board, turn:m.turn, winner:m.winner&&m.winner.id, draw:m.draw }; }), room:rs?{ me:rs.me, seats:rs.seats, turn:rs.turn, round:rs.round, live:rs.live, kind:rs.kind }:null, room_api:ROOM }; },
     legal:function(m){ return legal(gameOf(m||{board:START,turn:'w'})).map(moveUci); },
     status:function(m){ return statusOf(gameOf(m)); },
     fen:function(m){ return toFEN(gameOf(m||{board:START,turn:'w'})); },
@@ -3657,11 +3651,11 @@ i18nStart(function(){});</script>`;
   // Three stores, three visibilities (declared in the manifest):
   //   nav      — the shared reading position (read-write, and leadable so the
   //              host can switch to "only I lead").
-  //   presence — light heartbeats so everyone knows who's here (read-write).
+  //   who is here comes from the room (gifos.people()); nothing is written for presence.
   //   prefs    — MY theme, font size and last page (private: each reader keeps
   //              their own copy; it never leaves their tab).
   var hasDb=!!(window.gifos&&gifos.db);
-  var navDb=hasDb?gifos.db('nav'):null, presDb=hasDb?gifos.db('presence'):null, prefsDb=hasDb?gifos.db('prefs'):null;
+  var navDb=hasDb?gifos.db('nav'):null, prefsDb=hasDb?gifos.db('prefs'):null;
   // Recently-read pages, PRIVATE: so a chapter you already opened can be re-read
   // on a plane. Never shared — a meeting still fetches (or pools) the live page.
   var pagesDb=hasDb?gifos.db('pages'):null;
@@ -3674,24 +3668,35 @@ i18nStart(function(){});</script>`;
   // per-person and in-memory, so anyone can switch it off to peek elsewhere
   // without moving the group (or being moved). Reading prefs and last page live
   // in the PRIVATE prefs store, so they stay personal and never sync.
-  var follow=true, shared=false, hbTimer=null, lastNav=null, othersHere=0;
+  var follow=true, shared=false, lastNav=null, othersHere=0, room=[], owner=false;
+  // An older GifOS has no gifos.people: one plain line, reading works, nothing is written (not even private rows).
+  var PEOPLE=!!(window.gifos&&gifos.people), PEOPLE_MS=${GifOS.timings.APP_PEOPLE_READ_MS};
+  var EN_NEWER='Bible Browser needs a newer GifOS to read together. Reload the page to update.';
+  function newerLine(){ var t=T('needsNewer'); return t==='needsNewer'?EN_NEWER:t; }
   // Scroll is remembered per person AND shared with followers — as a FRACTION of
   // the page (0..1) so it lines up even when readers use different text sizes.
   var pendingFrac=null, applyingScroll=false, scrollSaveT=null, scrollPushT=null, lastFrac=-1;
   function esc(s){var d=document.createElement('div');d.textContent=s==null?'':s;return d.innerHTML;}
   function scrollFrac(){ var m=main.scrollHeight-main.clientHeight; return m>0?(main.scrollTop/m):0; }
   function applyFrac(f){ var m=main.scrollHeight-main.clientHeight; main.scrollTop=Math.max(0,Math.min(m,(f||0)*m)); }
-  function saveLast(){ if(prefsDb) prefsDb.put({id:'last', url:curUrl, scroll:scrollFrac()}); }  // my last page + where I was on it (private)
+  function saveLast(){ if(prefsDb&&PEOPLE) prefsDb.put({id:'last', url:curUrl, scroll:scrollFrac()}); }  // my last page + where I was on it (private)
   function applyPrefs(){ document.body.setAttribute('data-read', prefs.theme); document.documentElement.style.setProperty('--fs', prefs.fs+'px');
     document.getElementById('theme').innerHTML = prefs.theme==='night' ? '&#9790;' : prefs.theme==='bw' ? '&#9681;' : '&#9728;'; }
   function myName(){ return me.name||'Someone'; }
-  function savePrefs(){ if(prefsDb) prefsDb.put({id:'prefs', theme:prefs.theme, fs:prefs.fs}); }  // my own, never shared
-  // Presence heartbeat: a light 'p:<id>' record so everyone knows who's here
-  // (drives whether the Follow toggle is even shown). Kept fresh while shared.
-  function heartbeat(){ if(presDb&&me.id) presDb.put({id:'p:'+me.id, name:myName(), ts:Date.now()}); }
-  function startHeartbeat(){ if(hbTimer||!presDb||!me.id) return;
-    hbTimer=setInterval(function(){ if(document.visibilityState!=='hidden') heartbeat(); }, 15000);
-    heartbeat(); }  // set the guard BEFORE the first beat so a sync notify can't re-enter
+  function savePrefs(){ if(prefsDb&&PEOPLE) prefsDb.put({id:'prefs', theme:prefs.theme, fs:prefs.fs}); }  // my own, never shared
+  // The room's people (a local read: no network, no write): who is here drives whether Follow shows, and the
+  // person's id is the room's id. Read at boot and on a calm timer.
+  function readRoom(){
+    if(!PEOPLE) return Promise.resolve();
+    return Promise.all([gifos.people(), gifos.info?gifos.info():Promise.resolve({})]).then(function(r){
+      var l=(r[0]||[]).map(function(p){ return { id:p.id, name:p.name||'', me:!!p.me }; });
+      var mr=l.filter(function(x){ return x.me; })[0];
+      var n=l.filter(function(x){ return !x.me; }).length, o=!!(r[1]&&r[1].owner);
+      room=l; if(mr) me={ id:mr.id, name:mr.name };
+      owner=o;
+      if(n!==othersHere){ othersHere=n; recompute(); }
+    }, function(){});
+  }
   // Publish where I am so followers come along. Only called when I'm following.
   // The put is REFUSED when the host is leading (nav went read-only) — then I
   // just browse on my own; the reader drives everyone.
@@ -3707,14 +3712,8 @@ i18nStart(function(){});</script>`;
   function recompute(){
     var navByOther = !!(lastNav && lastNav.by && lastNav.by!==me.id && lastNav.url);
     shared = othersHere>0 || navByOther;
-    if(shared) startHeartbeat();
     updateFollowUi();
     return navByOther; }
-  // Presence collection changed: recount who's here (fresh 'p:<id>' beats).
-  function onPresence(rows){ if(!Array.isArray(rows)) return; var now=Date.now(), others=0;
-    for(var i=0;i<rows.length;i++){ var r=rows[i]; if(!r||!r.id) continue;
-      if(r.id.slice(0,2)==='p:'&&r.id!=='p:'+me.id&&(now-(r.ts||0))<35000) others++; }
-    othersHere=others; recompute(); }
   // Nav collection changed: where is the group reading, and do I follow there?
   function handleSync(rows){ if(!Array.isArray(rows)) return; var navRec=null;
     for(var i=0;i<rows.length;i++){ var r=rows[i]; if(r&&r.id==='nav'){ navRec=r; break; } }
@@ -3781,7 +3780,7 @@ i18nStart(function(){});</script>`;
   // A failed live fetch falls back to a PRIVATE copy of a page this device has
   // already opened (so re-reading a chapter works offline). cached:true when so.
   function cachePut(url, html){
-    if(!pagesDb||!url||html==null) return;
+    if(!pagesDb||!PEOPLE||!url||html==null) return;
     pagesDb.put({id:url, html:html, t:Date.now()}).then(function(){ return pagesDb.getAll(); })
       .then(function(rows){ if(!rows||rows.length<=40) return;
         rows.sort(function(a,b){ return (a.t||0)-(b.t||0); });
@@ -3942,8 +3941,6 @@ i18nStart(function(){});</script>`;
     else if(follow && lastNav && lastNav.url===curUrl && lastNav.by!==me.id && typeof lastNav.scroll==='number'){
       applyingScroll=true; applyFrac(lastNav.scroll); lastFrac=lastNav.scroll; setTimeout(function(){ applyingScroll=false; }, 90); }
     updateFollowUi(); };
-  document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible' && shared) heartbeat(); });
-  window.addEventListener('pagehide', function(){ if(presDb&&me.id){ try{ presDb.delete('p:'+me.id); }catch(e){} } });
   if(window.gifos&&gifos.onBack) gifos.onBack(function(){ if(hi>0){ hi--; go(hist[hi], false); buttons(); } });
   function firstPage(){ if(!prefsDb) return Promise.resolve({url:HOME});
     return prefsDb.get('last')
@@ -3952,14 +3949,15 @@ i18nStart(function(){});</script>`;
   // already reading or open my own last page — and from then on stay converged
   // via subscribe() on the two shared collections (nav + presence).
   function bibleBoot(){
-  (window.gifos&&gifos.me?gifos.me():Promise.resolve({id:'',name:''})).then(function(u){ me=u||{id:'',name:''}; })
+    if(!PEOPLE){ var nw=document.createElement('div'); nw.id='newer'; nw.style.cssText='padding:8px 12px;font-weight:600'; nw.textContent=newerLine(); document.body.insertBefore(nw, document.body.firstChild); }
+  readRoom()
     .then(function(){ return prefsDb?prefsDb.get('prefs'):null; })
     .then(function(p){ if(p){ if(p.theme) prefs.theme=p.theme; if(typeof p.fs==='number') prefs.fs=p.fs; } applyPrefs(); })
     .then(function(){ return navDb?navDb.getAll():[]; })
-    .then(function(navRows){ heartbeat();
+    .then(function(navRows){
       var navRec=null; (navRows||[]).forEach(function(r){ if(r&&r.id==='nav') navRec=r; });
       lastNav=navRec;
-      if(presDb&&presDb.subscribe) presDb.subscribe(onPresence);
+      if(PEOPLE) setInterval(readRoom, PEOPLE_MS);
       if(navDb&&navDb.subscribe) navDb.subscribe(handleSync);
       recompute();
       if(follow && navRec && navRec.by && navRec.by!==me.id && navRec.url){ go(navRec.url, true, true, navRec.scroll); return; }
@@ -3967,6 +3965,9 @@ i18nStart(function(){});</script>`;
     .catch(function(){ applyPrefs(); go(HOME, true); });
   }
   // A locale change re-words the chrome (applyI18n), the Follow button and whatever status is on screen.
+  // Read-only view for the checks: the shared reading position, who this copy counts, and whether it is the app's owner.
+  window.__bible={ state:function(){ return { nav: lastNav&&lastNav.url?{ url:lastNav.url, by:lastNav.by }:null }; },
+    people:function(){ return room.map(function(p){ return p.id; }); }, amHost:function(){ return PEOPLE&&owner; } };
   i18nStart(bibleBoot, function(){ updateFollowUi(); if(statusFn) setStatus(statusFn, statusErr); });
 </script>`;
 
@@ -6308,6 +6309,7 @@ i18nStart(async()=>{
     <button id="pass" type="button" data-i18n="pass" hidden>Pass</button>
   </div>
   <div class="note" id="note"></div>
+  <div class="note" id="newer" hidden></div>
   <div class="note" id="stagenote"></div>
   <div class="alone" id="alone" hidden data-i18n="alone">Just you so far. Press Invite to take turns with other people.</div>
   <section>
@@ -6451,36 +6453,48 @@ i18nStart(async()=>{
   function ttPaste(text){
     return String(text||'').split(/\\r?\\n/).map(function(l){ return l.trim().slice(0,160); }).filter(Boolean).slice(0,5000);
   }
-  // ---- presence: who is connected to this app (the meeting's or the app room's people) ----
-  var BEAT=3000, LIVE=10000, TICK=1000, STEADY=4000, NOTE=5000, STALE=21600000;
-  var stDb=null, planDb=null, presDb=null;
-  if(window.gifos&&gifos.db){ stDb=gifos.db('turns'); planDb=gifos.db('plan'); presDb=gifos.db('presence'); }
-  var me={ id:'local', name:'' }, since=Date.now();
-  var state=null, plan=null, items=[], rows={}, seen={}, lastTs={};
+  // ---- who is here: the room's people (gifos.people()); the owner of the app steers ----
+  var BEAT=3000, TICK=1000, NOTE=5000, STALE=21600000;
+  var PEOPLE=!!(window.gifos&&gifos.people);
+  var stDb=null, planDb=null, midDb=null;
+  if(window.gifos&&gifos.db){ stDb=gifos.db('turns'); planDb=gifos.db('plan'); midDb=gifos.db('mid'); }
+  var me={ id:'local', name:'' };
+  var state=null, plan=null, items=[], mids={}, room=[], owner=false, roomSig='', lastMid='';
   var view={ order:[], cur:null, idx:-1, next:null, step:0 };
-  var turnKey='', turnLocal=0, refused=false, noteT=null, normAt=0;
-  // Liveness by when THIS page saw a heartbeat move, so two machines whose
-  // clocks disagree still agree on who is here. The heartbeat's ts is the other device's clock and never dates
-  // it: a heartbeat this page has never seen move counts for two beats (a live person's next beat lands in that
-  // time, an old record's never), the same rule as Connect Four.
-  function people(){
-    var now=Date.now(), out=[];
-    for(var id in rows){ var r=rows[id];
-      if(lastTs[id]!==r.ts){ seen[id]=(id in lastTs)?now:now-LIVE+2*BEAT; lastTs[id]=r.ts; }
-      if(now-(seen[id]||0)<LIVE) out.push({ id:id, name:r.name||'', since:+r.since||0 });
-    }
-    if(!rows[me.id]) out.push({ id:me.id, name:me.name, since:since });
-    return out;
+  var turnKey='', turnLocal=0, refused=false, noteT=null;
+  // An older GifOS has no gifos.people: one plain line, the turn order shown read-only, nothing written.
+  var EN_NEWER='Take Turns needs a newer GifOS to take turns together. Reload the page to update.';
+  function newerLine(){ var t=T('needsNewer'); return t==='needsNewer'?EN_NEWER:t; }
+  // The room says who is here, in the order they arrived; nobody judges time. 'since' is that position.
+  function readRoom(){
+    if(!PEOPLE) return;
+    Promise.all([gifos.people(), gifos.info?gifos.info():Promise.resolve({})]).then(function(r){
+      var l=(r[0]||[]).map(function(p,i){ return { id:p.id, name:p.name||'', me:!!p.me, since:i }; });
+      var o=!!(r[1]&&r[1].owner), sig=JSON.stringify(l)+'|'+o;
+      if(sig===roomSig) return;
+      roomSig=sig; room=l; owner=o;
+      var mr=l.filter(function(x){ return x.me; })[0]; if(mr) me={ id:mr.id, name:mr.name };
+      putMid(); render();
+    }, function(){});
   }
-  function nameOf(id){ if(id===me.id) return me.name||T('you'); var r=rows[id]; return (r&&r.name)||T('someone'); }
-  function beat(){ if(presDb&&me.id!=='local') presDb.put({ id:'p:'+me.id, name:me.name, since:since, mid:stage.me||'', ts:Date.now() }).catch(function(){}); }
+  function people(){
+    if(!PEOPLE) return [{ id:me.id, name:me.name, since:0 }];
+    return room.length?room:[{ id:me.id, name:me.name, since:0 }];
+  }
+  function nameOf(id){ if(id===me.id) return me.name||T('you'); var p=room.filter(function(x){ return x.id===id; })[0]; return (p&&p.name)||T('someone'); }
+  // Stage needs each person's meeting id: one row per person, written when it first appears or changes, never on a timer.
+  function putMid(){
+    if(!PEOPLE||!midDb||me.id==='local') return;
+    var m=stage.me||''; if(m===lastMid) return;
+    lastMid=m; midDb.put({ id:me.id, mid:m }).catch(function(){});
+  }
   // ---- in a meeting: now and next on the Stage (capabilities.stage) ----
   // Every copy of the app asks for the same two people; each person's own
   // meeting page steps them up or down. Outside a meeting nothing happens.
   var stage={ on:false, me:'' }, stageKey='', stageAt=0;
   function stageWant(){
     if(!(window.gifos&&gifos.stage)||!stage.on) return [];
-    var mid=function(id){ if(id===me.id) return stage.me||''; var r=rows[id]; return (r&&r.mid)||''; };
+    var mid=function(id){ if(id===me.id) return stage.me||''; var r=mids[id]; return (r&&r.mid)||''; };
     var ids=[mid(view.cur)];
     if(view.order.length>1&&view.next&&view.next!==view.cur) ids.push(mid(view.next));
     return ids[0]?ids.filter(Boolean):[];
@@ -6490,17 +6504,16 @@ i18nStart(async()=>{
     var ids=stageWant(), key=ids.join(','), now=Date.now();
     if(key===stageKey&&now-stageAt<BEAT) return;
     stageKey=key; stageAt=now;
-    gifos.stage.want(ids).then(function(r){ if(r){ var was=stage.me; stage=r; if(r.me!==was) beat(); paintStage(); } }, function(){ stage={ on:false, me:'' }; paintStage(); });
+    gifos.stage.want(ids).then(function(r){ if(r){ var was=stage.me; stage=r; if(r.me!==was) putMid(); paintStage(); } }, function(){ stage={ on:false, me:'' }; paintStage(); });
   }
   function paintStage(){
     var el=document.getElementById('stagenote');
     el.textContent=!stage.on?'':stage.full?T('stage.full'):(stage.waiting&&stage.rank>=0&&stage.adminRoom)?T('stage.wait'):'';
   }
-  function onPres(list){
-    var r={}; (list||[]).forEach(function(x){ if(x&&x.id&&x.id.slice(0,2)==='p:') r[x.id.slice(2)]=x; }); rows=r; render();
-  }
+  function onMids(list){ var r={}; (list||[]).forEach(function(x){ if(x&&x.id) r[x.id]=x; }); mids=r; render(); }
   function say(msg){ var el=document.getElementById('note'); el.textContent=msg||''; clearTimeout(noteT); if(msg) noteT=setTimeout(function(){ el.textContent=''; },NOTE); }
   function write(act, arg){
+    if(!PEOPLE) return;
     var s=ttAct(state, view, act, arg, Date.now());
     state=s; render();
     if(!stDb) return;
@@ -6564,19 +6577,13 @@ i18nStart(async()=>{
     steward();
     stageTick();
   }
-  // The earliest person here writes the cleaned order back once the room has
-  // been steady a moment, so a person who left keeps out and a returning one
-  // rejoins at the end. Everyone already SEES the same cleaned order.
+  // The app's owner writes the cleaned order back, so a person who left keeps out and a returning one rejoins at the
+  // end. Everyone already SEES the same cleaned order. The owner is handed on by GifOS when the owner leaves.
   function steward(){
-    if(!stDb||refused||me.id==='local'||!view.order.length) return;
-    var ps=people().slice().sort(function(a,b){ return ((a.since||0)-(b.since||0))||(a.id<b.id?-1:1); });
-    if(!ps.length||ps[0].id!==me.id) return;
+    if(!PEOPLE||!stDb||refused||!owner||me.id==='local'||!view.order.length) return;
     var so=(state&&state.order)||[];
     var same=so.length===view.order.length&&so.every(function(id,i){ return view.order[i]===id; })&&state.cur===view.cur;
-    if(same){ normAt=0; return; }
-    if(!normAt){ normAt=Date.now(); return; }
-    if(Date.now()-normAt<STEADY) return;
-    normAt=0;
+    if(same) return;
     var s=ttAct(state, view, 'norm', null, Date.now()); s.v=(state&&state.v)|0; s.turnAt=(state&&state.turnAt)||s.turnAt;
     state=s; stDb.put(s).catch(function(){ refused=true; });
   }
@@ -6615,7 +6622,7 @@ i18nStart(async()=>{
   document.getElementById('restart').onclick=function(){ write('restart'); };
   document.getElementById('shuffle').onclick=function(){ write('order', ttShuffle(view.order, Math.random)); };
   document.getElementById('joinorder').onclick=function(){
-    var ps=people().sort(function(a,b){ return ((a.since||0)-(b.since||0))||(a.id<b.id?-1:1); });
+    var ps=people().slice().sort(function(a,b){ return ((a.since||0)-(b.since||0))||(a.id<b.id?-1:1); });
     write('order', ps.map(function(p){ return p.id; }));
   };
   document.getElementById('timers').onclick=function(e){ var b=e.target.closest&&e.target.closest('button'); if(b) write('timer', +b.dataset.t); };
@@ -6660,22 +6667,27 @@ i18nStart(async()=>{
   function onState(list){ var s=null; (list||[]).forEach(function(x){ if(x&&x.id==='state') s=x; }); state=s; render(); }
   function boot(){
     applyI18n();
-    if(stDb){
+    var nw=document.getElementById('newer'); if(!PEOPLE){ nw.hidden=false; nw.textContent=newerLine(); }
+    if(stDb&&PEOPLE){
       stDb.subscribe(onState);
       planDb.subscribe(function(list){ var p=null; (list||[]).forEach(function(x){ if(x&&x.id==='plan') p=x; }); onPlanRec(p); });
-      presDb.subscribe(onPres);
+      midDb.subscribe(onMids);
+    } else if(stDb){
+      stDb.subscribe(onState);
+      planDb.subscribe(function(list){ var p=null; (list||[]).forEach(function(x){ if(x&&x.id==='plan') p=x; }); onPlanRec(p); });
     }
-    var hello=function(m){ me={ id:(m&&m.id)||'local', name:(m&&m.name)||'' }; beat(); render(); };
-    if(window.gifos&&gifos.me) gifos.me().then(hello,function(){ hello(null); }); else hello(null);
-    if(window.gifos&&gifos.onIdentity) gifos.onIdentity(function(m){ if(m&&m.id){ me={ id:m.id, name:m.name||'' }; beat(); render(); } });
-    if(window.gifos&&gifos.stage) gifos.stage.state().then(function(r){ if(r&&r.on){ stage=r; beat(); render(); } }, function(){});
-    setInterval(beat, BEAT);
-    setInterval(render, TICK);
-    window.addEventListener('pagehide',function(){ if(presDb&&me.id!=='local') presDb.delete('p:'+me.id).catch(function(){}); });
-    if(window.gifos&&gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); render(); });
+    readRoom();
+    if(PEOPLE&&gifos.onIdentity) gifos.onIdentity(function(){ readRoom(); });
+    if(window.gifos&&gifos.stage) gifos.stage.state().then(function(r){ if(r&&r.on){ stage=r; putMid(); render(); } }, function(){});
+    setInterval(function(){ readRoom(); render(); }, TICK);
+    window.addEventListener('pagehide',function(){ if(PEOPLE&&midDb&&me.id!=='local'&&lastMid) midDb.delete(me.id).catch(function(){}); });
+    if(window.gifos&&gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); if(!PEOPLE) document.getElementById('newer').textContent=newerLine(); render(); });
     render();
   }
   if(window.gifos&&gifos.i18n&&gifos.i18n.load) gifos.i18n.load().then(boot,boot); else boot();
+  // Read-only view for the checks: the shared turn record, who this copy shows, and whether it steers.
+  window.__taketurns={ state:function(){ return state?JSON.parse(JSON.stringify(state)):null; },
+    people:function(){ return view.order.slice(); }, amHost:function(){ return PEOPLE&&owner; } };
 </script>`;
 
   // opts.only: appIds to encode; the rest are left out (the meeting's Run app
@@ -6705,7 +6717,7 @@ Tap an empty square. **X** always starts the first game of a series; after that 
 ## Solo or a friend
 
 - **Alone:** you play both marks. Pass the device, or just play both sides.
-- **Invite** (top bar): send the link. When a friend is here, the first tap on a turn claims that seat, so you lock to **X** or **O**. Then you only move on your turn.
+- **Invite** (top bar): send the link. When a friend is here, the room seats you as **X** or **O** and passes the turn. You only move on your turn; more people watch and take a seat when one opens.
 
 ## New game
 
@@ -7414,19 +7426,21 @@ The Store itself does not keep a shopping cart in this icon.
     const RW = { visibility: 'read-write' };
     // The first build with gifos.room (manifest "room"): the 0.9.27 cut build. An app that declares a room needs it.
     const ROOM_MIN_BUILD = 5861;
+    // The IRL party games: whoever is here holds a seat (up to 16, no turns); the game doc 'g' stays plain data.
+    const IRL_ROOM = { seats: 16, min: 1, turns: 'free', moves: [] };
     const RO = { visibility: 'read-only' };
     const PRIV = { visibility: 'private' };
 
     const groups = [
       { name: 'Games', apps: [
-        app('Tic-Tac-Toe', 'tictactoe', [92, 255, 123], TICTACTOE_HTML, { data: { game: RW } }),
+        app('Tic-Tac-Toe', 'tictactoe', [92, 255, 123], TICTACTOE_HTML, { minBuild: ROOM_MIN_BUILD, data: { game: RW, ask: RW }, room: { seats: ['X', 'O'], turns: 'order', moves: ['game'], solo: true } }),
         app('Connect Four', 'connect4', [255, 180, 60], CONNECT_FOUR_HTML, { minBuild: ROOM_MIN_BUILD, data: { game: RW, ask: RW }, room: { seats: ['R', 'Y'], turns: 'order', moves: ['game'], solo: true } }),
         app('Minesweeper', 'minesweeper', [255, 210, 60], MINESWEEPER_HTML, { data: { mine: RW } }),
         // Declares Smartest text so the in-board "Hint" button can ask the
         // computer's AI for a move — the app feeds it a clean FEN + the exact
         // legal-move list (from its own generator) so the model picks among
         // real moves, never a hallucinated one. Key stays in the runtime.
-        app('Chess Tournament', 'chess', [232, 195, 122], CHESS_HTML, { capabilities: { db: true, multiplayer: true, network: [], ai: ['smartest'] }, data: { chess: RW } }),
+        app('Chess Tournament', 'chess', [232, 195, 122], CHESS_HTML, { minBuild: ROOM_MIN_BUILD, capabilities: { db: true, multiplayer: true, network: [], ai: ['smartest'] }, data: { chess: RW }, room: { seats: 16, min: 1, turns: 'free', moves: ['chess'], solo: true } }),
       ] },
       { name: 'Studio', apps: [
         app('Paint', 'paint', [255, 92, 170], PAINT_HTML, { data: { canvas: RW } }),
@@ -7440,8 +7454,8 @@ The Store itself does not keep a shopping cart in this icon.
         // Take Turns: the turn order is the people connected to the app. The
         // shared turn and plan are leadable (an admin room's host leads by
         // default); stage asks for now + next on a meeting's Stage.
-        app('Take Turns', 'taketurns', [92, 200, 168], TAKETURNS_HTML, { capabilities: { db: true, multiplayer: true, network: [], stage: true },
-          data: { turns: RW, plan: RW, presence: RW }, lead: [{ collection: 'turns', id: 'state' }, { collection: 'plan', id: 'plan' }] }),
+        app('Take Turns', 'taketurns', [92, 200, 168], TAKETURNS_HTML, { minBuild: ROOM_MIN_BUILD, capabilities: { db: true, multiplayer: true, network: [], stage: true },
+          data: { turns: RW, plan: RW, mid: RW }, lead: [{ collection: 'turns', id: 'state' }, { collection: 'plan', id: 'plan' }] }),
         // The one app that reaches out: it declares exactly the site it needs,
         // so opening it demonstrates the network acknowledgement on a real app.
         app('Fortune', 'fortune', [255, 206, 107], FORTUNE_HTML, { capabilities: { db: true, network: ['api.adviceslip.com'] }, data: { fortunes: RW } }),
@@ -7451,8 +7465,8 @@ The Store itself does not keep a shopping cart in this icon.
         // (nav, read-write and leadable so the host can "only I lead"), who's
         // here (presence, read-write heartbeats), and each reader's OWN theme +
         // font size + last page (prefs, private — never leaves their tab).
-        app('Bible Browser', 'bible', [200, 162, 75], BIBLE_HTML, { capabilities: { db: true, multiplayer: true, network: ['text.recoveryversion.bible'], pool: ['text.recoveryversion.bible'] },
-          data: { nav: RW, presence: RW, prefs: PRIV, pages: PRIV }, lead: [{ collection: 'nav', id: 'nav' }] }),
+        app('Bible Browser', 'bible', [200, 162, 75], BIBLE_HTML, { minBuild: ROOM_MIN_BUILD, capabilities: { db: true, multiplayer: true, network: ['text.recoveryversion.bible'], pool: ['text.recoveryversion.bible'] },
+          data: { nav: RW, prefs: PRIV, pages: PRIV }, lead: [{ collection: 'nav', id: 'nav' }] }),
         // Showcases the brokered capabilities: a mic clip analysed on-device,
         // and the computer's own AI models. Both declare what they use.
         app('Speech Coach', 'speechcoach', [123, 92, 255], SPEECHCOACH_HTML, { capabilities: { db: true, microphone: true, network: [] }, data: { takes: PRIV } }),
@@ -7467,10 +7481,10 @@ The Store itself does not keep a shopping cart in this icon.
         app('Reader', 'reader', [255, 170, 90], READER_HTML, { capabilities: { db: true, ai: ['tts'], network: [] }, data: { texts: PRIV } }),
       ] },
       { name: 'Social', apps: [
-        app('Guestbook', 'guestbook', [255, 92, 170], GUESTBOOK_HTML, { capabilities: { db: true, multiplayer: true }, data: { entries: RW, presence: RW } }),
+        app('Guestbook', 'guestbook', [255, 92, 170], GUESTBOOK_HTML, { minBuild: ROOM_MIN_BUILD, capabilities: { db: true, multiplayer: true }, data: { entries: RW } }),
         // The "✨ AI draft" button uses YOUR OWN AI model/key (from Settings),
         // brokered locally per person — declares ai so the runtime allows it.
-        app('Chat', 'chat', [92, 220, 180], CHAT_HTML, { capabilities: { db: true, multiplayer: true, ai: ['cheapest', 'smartest'], network: [] }, data: { messages: RW, files: RW, presence: RW } }),
+        app('Chat', 'chat', [92, 220, 180], CHAT_HTML, { minBuild: ROOM_MIN_BUILD, capabilities: { db: true, multiplayer: true, ai: ['cheapest', 'smartest'], network: [] }, data: { messages: RW, files: RW } }),
       ] },
       // Party games where the phone just facilitates — dealing secrets,
       // keeping time, counting votes — and the action happens in person.
@@ -7480,7 +7494,7 @@ The Store itself does not keep a shopping cart in this icon.
         // Each own-phone game shares one heartbeat collection ('party'): the
         // game doc + everyone's player docs, all read-write. (The Single Phone
         // versions run on one device, so they need no shared visibility.)
-        apps: (GifOS.irl ? GifOS.irl.netApps : []).map((g) => app(g.name, g.appId, g.accent, g.html, Object.assign({ data: { party: RW }, help: g.help }, g.manifest))),
+        apps: (GifOS.irl ? GifOS.irl.netApps : []).map((g) => app(g.name, g.appId, g.accent, g.html, Object.assign({ minBuild: ROOM_MIN_BUILD, data: { party: RW }, room: IRL_ROOM, help: g.help }, g.manifest))),
         sub: [{ name: 'Single Phone',
           apps: (GifOS.irl ? GifOS.irl.apps : []).map((g) => app(g.name, g.appId, g.accent, g.html, Object.assign({ help: g.help }, g.manifest || {}))) }] },
     ];

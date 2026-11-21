@@ -10,5 +10,6 @@
   "anon": "anon",
   "ago.now": "just now",
   "ago.m": "{n}m ago",
-  "ago.h": "{n}h ago"
+  "ago.h": "{n}h ago",
+  "needsNewer": "Guestbook needs a newer GifOS to sign together. Reload the page to update."
 }

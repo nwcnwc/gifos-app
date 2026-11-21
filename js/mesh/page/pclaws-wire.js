@@ -309,6 +309,19 @@
       pc.noteCall(me, x); pc.l23MakeRoom(me, x);
       const L = linkGet(me, x); if (L.state === LK_NONE || L.state === LK_CLOSED) { startDial(me, x, L); L.dialHow = 1; }
     }
+    // C++: mesh_link.inc:fabricHoldDial
+    // L7.16: the holder dials the seeker it holds: an answer door like the PLACE's own (line "L.dialHow = 3" in linkSchedule), under every door
+    // limit; past them nothing is dialled now and the PLACE dials as before.
+    function fabricHoldDial(a, x) {
+      if (a !== me || x < 0 || x === me || !mySeated() || farSeated(x)) return;
+      const L = linkGet(me, x); if (!(L.state === LK_NONE || L.state === LK_CLOSED)) return;
+      if (pc.dialHeld(me, x) || pc.l18NoDial(me, x) || declined(x)) return;
+      lv.L16_DEFER = false; { const r = pc.l16Refuse(me, x, 'PLACE'); lv.L16_DEFER = false; if (r) return; }
+      trace('L7.16-DIAL', me, null, 'nc=%d', x);
+      pc.noteCall(me, x); L.askAt = T(); startDial(me, x, L); L.dialT = mtI('PLACE'); L.dialHow = 3;
+    }
+    // C++: mesh_link.inc:l716Holds
+    const l716Holds = (x) => { const s = mySeat(); if (!s) return false; for (const h of s.held) if (h.m.nc === x) return true; return false; };
     // C++: mesh_link.inc:fabricDialJoin
     function fabricDialJoin(a, x) {
       if (a !== me || x < 0 || x === me) return;
@@ -318,8 +331,9 @@
       const L = linkGet(me, x); if (L.state === LK_NONE || L.state === LK_CLOSED) { startDial(me, x, L); L.dialHow = 2; } else if (L.state === LK_DIALING) L.view[mine(x)] = LK_DIALING;
     }
     // C++: mesh_link.inc:fabricDialUplink   [UPOFFER rides the dc as its first frame]
-    function fabricDialUplink(a, x, refer) {
+    function fabricDialUplink(a, x, refer, via) {
       void refer; if (a !== me || x < 0 || x === me) return false;
+      if (io.via) io.via(x, via != null && via >= 0 && via !== x && via !== me ? via : -1);   // L50.4.1: this dial's signal starts on the pc the offer came by
       const L0 = LINKS.get(x); const had = !!L0 && (L0.state === LK_OPEN || L0.state === LK_DIALING);
       upNext = x; try { fabricDialJoin(me, x); } finally { upNext = -1; } const L = LINKS.get(x); if (L && L.state === LK_DIALING) L.uplink = true;
       if (L && (L.state === LK_OPEN || L.state === LK_DIALING)) { const u = msg.newMsg('UPOFFER'); u.id = me; u.tag = had ? 1 : 0; u.to = x; u.from = me; u.lk = -1; busPush(u); }
@@ -388,7 +402,7 @@
         if (farSeated(x)) L.dSat = true;
         const heard = pc.doorHeard(L, me, x); const named = pc.l15Names(me, x) || pc.l15NamedBy(me, x) || (!!mySeat() && (mySeat().l14Serve(x) || mySeat().l14Up === x));   // L14: my uplink, or one I took, is no door (in the sim both ends are seated); my view need not hold the head's cell
         let owes = false; if (L.dHomedE && mySeat()) { const w = mySeat().whAsk.get(x); owes = (w !== undefined && T() - w <= K.ISLAND_WAIT); }   // L16.16: I answered this knocker with no room and keep its ask: the door waits for my seat
-        if (!heard && !named && L.dBorn >= 0 && !owes) {
+        if (!heard && !named && L.dBorn >= 0 && !owes && !l716Holds(x)) {   // L7.16: nor the door of a seeker whose FIND I hold
           const idle = T() - L.dProg, age = T() - L.dBorn; let why = null;
           const placed = !!(L.dPlaced & (1 << mine(x)));   // L16.3.1: the placee closes it (L15.5), or the life limit from the PLACE
           if (!placed && L.dHoAt >= 0 && T() - L.dHoAt >= K.L16_HO_CLOSE && !(L.dOwed && L.dWait >= 0)) why = 'handed';
@@ -619,7 +633,7 @@
     function leaveAll() { for (const [x, L] of LINKS) if (L.state === LK_OPEN || L.state === LK_DIALING) { L.state = LK_CLOSED; L.view[mine(x)] = LK_CLOSED; L.gone |= (1 << mine(x)); bye(x, 'leave', L); } }
 
     const fns = Object.assign({}, F, {
-      fabricDial, fabricDialJoin, fabricDialUplink, fabricUpDecline, fabricKickClose, fabricLinkOpen, fabricOpenPeers, fabricDoorDrop,
+      fabricDial, fabricHoldDial, fabricDialJoin, fabricDialUplink, fabricUpDecline, fabricKickClose, fabricLinkOpen, fabricOpenPeers, fabricDoorDrop,
       fabricMyDoors: (a) => (a === me ? (S.DOORN[me] || 0) : 0), fabricMyKnocks: (a) => (a === me ? (S.DOORK[me] || 0) : 0),
       fabricL23Busy: (a, x) => (a === me ? F.fabricL23Busy(a, x) : false),
       l22Need: (a, x) => (a === me ? F.l22Need(a, x) : true),

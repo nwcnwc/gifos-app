@@ -44,26 +44,45 @@
   // render-side only (each phone shows just its own role) — party-grade, and
   // honest about it.
   const PARTY_LIB = `
-  const T = (k, p) => (window.gifos && gifos.i18n ? gifos.i18n.t(k, p) : k);
+  // EN: English for words an older GifOS's text files may lack; a key the catalog knows is never replaced.
+  const EN = { 'net.lobbyTitle': 'Everyone plays on their own phone', needsNewer: 'This game needs a newer GifOS to play together. Reload the page to update.', 'hint.line': 'You are next in line: you get the first seat that opens.', 'hint.asking': 'The host has been asked to seat you.', 'hint.watch': 'You are watching. When a seat opens, the next person in line gets it.' };
+  const T = (k, p) => { let v = window.gifos && gifos.i18n ? gifos.i18n.t(k, p) : k;
+    if (v === k && Object.prototype.hasOwnProperty.call(EN, k)) { v = EN[k]; for (const n in (p || {})) v = v.split('{' + n + '}').join(p[n]); }
+    return v; };
   const IRL = {
-    db: window.gifos ? gifos.db('party')
+    SOLO: !!window.IRL_SOLO,
+    db: (window.gifos && !window.IRL_SOLO) ? gifos.db('party')
       : { subscribe:function(){}, put:function(){return Promise.resolve();}, delete:function(){return Promise.resolve();} },
     me: { id:'local', name:'You' },
-    players: [], g: null,
+    players: [], g: null, rs: null, joined: false,
+    ROOM: !window.IRL_SOLO && !!(window.gifos && gifos.room && gifos.room.subscribe),
     onchange: null,
-    async init(){
-      if (window.gifos) { const m = await gifos.me(); IRL.me = { id:m.id, name:m.name||T('player.you') }; }
-      IRL.db.subscribe(function(items){
-        IRL.players = items.filter(function(x){ return x.id && String(x.id).indexOf('p_')===0; });
-        IRL.g = items.find(function(x){ return x.id==='g'; }) || null;
-        IRL.extra = items;
-        if (IRL.onchange) IRL.onchange();
+    // Who is playing comes from the room (gifos.room, manifest "room"): each person here holds a seat, the room frees
+    // the seat of whoever left and hands it to the next in line. The player list keeps its old shape ('p_<id>' docs
+    // that the games read) but is built from the seats; nothing is written for presence. The game doc 'g' stays data.
+    init(){
+      return new Promise(function(done){
+        IRL.db.subscribe(function(items){
+          IRL.g = items.find(function(x){ return x.id==='g'; }) || null;
+          IRL.extra = items;
+          if (IRL.onchange) IRL.onchange();
+        });
+        if (!IRL.ROOM) { done(); return; }
+        gifos.room.subscribe(function(r){
+          IRL.rs = r;
+          if (r.me && r.me.id) IRL.me = { id:r.me.id, name:r.me.name||T('player.you') };
+          IRL.players = (r.seats||[]).filter(function(x){ return x.id; }).map(function(x){ return { id:'p_'+x.id, name:x.name||T('player.you'), here:x.here }; });
+          // Opening the game is asking to play: once. The room seats, lines up or asks the host.
+          if (!IRL.joined && r.me && r.me.role==='watcher') { IRL.joined=true; gifos.room.join().catch(function(){}); }
+          done();
+          if (IRL.onchange) IRL.onchange();
+        });
       });
-      await IRL.db.put({ id:'p_'+IRL.me.id, name: IRL.me.name });
     },
+    // Read-only view for the checks: the shared game doc and who the room seats.
+    expose(appId){ window['__'+appId] = { state: function(){ return { g: IRL.g, players: IRL.players.map(function(p){ return p.id; }), room: IRL.rs ? { me: IRL.rs.me, seats: IRL.rs.seats, live: IRL.rs.live, kind: IRL.rs.kind } : null, room_api: IRL.ROOM, status: document.body.innerText.slice(0, 200) }; } }; },
     save(g){ g.id='g'; return IRL.db.put(g); },
     put(doc){ return IRL.db.put(doc); },
-    del(id){ return IRL.db.delete(id); },
     names(){ return IRL.players.map(function(p){ return p.name; }); },
     esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); },
     shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=a[i]; a[i]=a[j]; a[j]=t; } return a; },
@@ -90,9 +109,11 @@
     // player), invite guidance, and a start button gated on the minimum count
     lobby(min,title,text,startLabel){
       const ps=IRL.players;
-      return '<div class="card"><h2>'+title+'</h2><div class="muted">'+text+'</div></div>'
+      const role=IRL.rs&&IRL.rs.me?IRL.rs.me.role:'player';
+      const hint=!IRL.ROOM?T('needsNewer'):role==='waiting'?T('hint.line'):role==='asking'?T('hint.asking'):role==='watcher'?T('hint.watch'):'';
+      return (hint?'<div class="card"><div class="muted">'+IRL.esc(hint)+'</div></div>':'')+'<div class="card"><h2>'+title+'</h2><div class="muted">'+text+'</div></div>'
         +'<div class="card"><h2>'+T('lobby.players',{n:ps.length})+'</h2><div class="chips">'
-        +ps.map(function(p){ return '<span class="chip'+(p.id==='p_'+IRL.me.id?' me':'')+'" data-drop="'+p.id+'">'+IRL.esc(p.name)+'</span>'; }).join('')
+        +ps.map(function(p){ return '<span class="chip'+(p.id==='p_'+IRL.me.id?' me':'')+'">'+IRL.esc(p.name)+(p.here==='away'?' …':'')+'</span>'; }).join('')
         +'</div><div class="muted">'+T('lobby.invite')+'</div></div>'
         +'<button class="btn" id="start" '+(ps.length<min?'disabled':'')+'>'+T('lobby.startN',{label:startLabel||T('lobby.start'),n:ps.length})+'</button>'
         +(ps.length<min?'<div class="muted center">'+T('lobby.min',{n:min})+'</div>':'');
@@ -110,19 +131,22 @@
     },
     bindLobby(onStart){
       const s=document.getElementById('start'); if(s) s.onclick=onStart;
-      document.querySelectorAll('[data-drop]').forEach(function(el){
-        el.onclick=function(){ const pid=el.dataset.drop;
-          if(pid!=='p_'+IRL.me.id && confirm(T('lobby.confirmRemove',{name:el.textContent}))) IRL.del(pid); };
-      });
     },
     // Paint once the app's catalogs are in (nothing may show a raw key), and
     // again whenever the person picks another language. Without a catalog
     // loader (an older GifOS) paint straight away.
+    // An older page has no gifos.room: one plain line at the top, nothing written.
+    notice(){
+      if (IRL.ROOM || IRL.SOLO) return;
+      let n=document.getElementById('irlold');
+      if(!n){ n=document.createElement('div'); n.id='irlold'; n.className='card'; n.style.cssText='margin:8px 12px;font-weight:700'; document.body.insertBefore(n, document.body.firstChild); }
+      n.textContent=T('needsNewer');
+    },
     boot(paint, again){
-      const go=function(){ paint(); };
+      const go=function(){ paint(); IRL.notice(); };
       if(window.gifos&&gifos.i18n){
         gifos.i18n.load().then(go,go);
-        if(gifos.onLocaleChange) gifos.onLocaleChange(again||paint);
+        if(gifos.onLocaleChange) gifos.onLocaleChange(function(){ (again||paint)(); IRL.notice(); });
       } else go();
     },
   };
@@ -155,6 +179,7 @@
 ${PARTY_LIB}
 const PAIRS=${JSON.stringify(ODDWORD_PAIRS)};
 const M=document.getElementById('m');
+//@SOLO
 let localNames=[], peeking=false, localVotes=null, voteIdx=0;
 
 function fresh(){ return { phase:'setup', round:1, scores:{} }; }
@@ -176,11 +201,20 @@ function score(state, imposterCaught, guessedWord){
   if(imposterCaught){ state.names.forEach(function(n,i){ if(i!==state.imposter) sc[n]=(sc[n]||0)+(guessedWord?0:1); }); }
   state.scores=sc;
 }
+//@END
 function scoreTable(sc){ const ks=Object.keys(sc); if(!ks.length) return '';
   ks.sort(function(a,b){return (sc[b]||0)-(sc[a]||0);});
   return '<div class="card"><h2>'+T('scores.title')+'</h2><table class="scores">'+ks.map(function(k){return '<tr><td>'+IRL.esc(k)+'</td><td><b>'+sc[k]+'</b></td></tr>';}).join('')+'</table></div>';
 }
 
+//@NET
+function rSetup(){
+  M.innerHTML='<div class="card"><div class="muted">'+T('setup.intro')+'</div></div>'
+    +IRL.lobby(3,T('net.lobbyTitle'),T('setup.lobbyText'),T('setup.dealAll'));
+  IRL.bindLobby(function(){ if(IRL.players.length>=3) netStart(); });
+}
+//@END
+//@SOLO
 // ---------- pass-the-phone flow ----------
 function rSetup(){
   M.innerHTML='<div class="card"><h2>'+T('setup.title')+'</h2>'
@@ -188,7 +222,6 @@ function rSetup(){
     +'<div class="card"><h2>'+T('setup.who')+'</h2><div class="chips" id="chips"></div>'
     +'<input type="text" id="nm" placeholder="'+IRL.esc(T('name.placeholder'))+'"></div>'
     +'<button class="btn" id="go" '+(localNames.length<3?'disabled':'')+'>'+T('setup.deal')+'</button>'
-    +IRL.lobby(3,T('orPhones'),T('setup.lobbyText'),T('setup.dealAll'))
     +scoreTable(L.scores);
   const chips=document.getElementById('chips');
   chips.innerHTML=localNames.map(function(n,i){return '<span class="chip" data-i="'+i+'">'+IRL.esc(n)+' ✕</span>';}).join('')||'<span class="muted">'+T('players.none')+'</span>';
@@ -196,7 +229,6 @@ function rSetup(){
   const nm=document.getElementById('nm');
   nm.onkeydown=function(e){ if(e.key==='Enter'&&nm.value.trim()){ localNames.push(nm.value.trim()); rSetup(); } };
   document.getElementById('go').onclick=function(){ startRound(L, localNames); render(); };
-  IRL.bindLobby(function(){ if(IRL.players.length>=3) netStart(); });
 }
 function rDeal(){
   const i=L.dealt, name=L.names[i];
@@ -251,6 +283,8 @@ function rDone(){
   document.getElementById('reset').onclick=function(){ L=fresh(); localNames=[]; render(); };
 }
 
+//@END
+//@NET
 // ---------- everyone-has-a-phone flow (roles dealt over the wire) ----------
 function netStart(){
   const ids=IRL.players.map(function(p){return p.id.slice(2);});
@@ -310,10 +344,19 @@ function finishNetVote(g,votes){
   IRL.save(Object.assign({},g,{phase:'reveal',accused:acc}));
 }
 
+//@END
+//@NET
+function render(){
+  if(IRL.g&&IRL.g.net&&IRL.g.phase!=='setup'){ rNet(); return; }
+  rSetup();
+}
+//@END
+//@SOLO
 function render(){
   if(IRL.g&&IRL.g.net&&IRL.g.phase!=='setup'){ rNet(); return; }
   ({setup:rSetup,deal:rDeal,talk:rTalk,vote:rVote,reveal:rReveal,done:rDone})[L.phase]();
 }
+//@END
 IRL.onchange=render;
 IRL.boot(function(){ IRL.init().then(render); render(); }, render);
 </script>`;
@@ -375,10 +418,15 @@ IRL.boot(function(){ IRL.init().then(render); render(); }, render);
 ${PARTY_LIB}
 const PLACES=${JSON.stringify(SPY_PLACES)};
 const M=document.getElementById('m');
-let localNames=[], L={ phase:'setup', scores:{} }, tickInt=null;
+let tickInt=null;
+//@SOLO
+let localNames=[], L={ phase:'setup', scores:{} };
+//@END
+
 
 function placeList(sel){ return '<div class="places">'+PLACES.map(function(p,i){
   return '<div class="pl'+(sel===i?' sel':'')+'">'+IRL.esc(p[0])+'</div>'; }).join('')+'</div>'; }
+//@SOLO
 function startRound(state,names){
   state.place=Math.floor(Math.random()*PLACES.length);
   state.spy=Math.floor(Math.random()*names.length);
@@ -389,17 +437,25 @@ function startRound(state,names){
   state.first=names[Math.floor(Math.random()*names.length)];
   state.phase='deal';
 }
+//@END
 function scoreTable(sc){ const ks=Object.keys(sc); if(!ks.length) return '';
   ks.sort(function(a,b){return (sc[b]||0)-(sc[a]||0);});
   return '<div class="card"><h2>'+T('scores.title')+'</h2><table class="scores">'+ks.map(function(k){return '<tr><td>'+IRL.esc(k)+'</td><td><b>'+sc[k]+'</b></td></tr>';}).join('')+'</table></div>'; }
 
+//@NET
+function rSetup(){
+  M.innerHTML='<div class="card"><div class="muted">'+T('setup.intro')+'</div></div>'
+    +IRL.lobby(3,T('net.lobbyTitle'),T('setup.lobbyText'),T('setup.dealAll'));
+  IRL.bindLobby(function(){ if(IRL.players.length>=3) netStart(); });
+}
+//@END
+//@SOLO
 function rSetup(){
   M.innerHTML='<div class="card"><h2>'+T('setup.title')+'</h2>'
     +'<div class="muted">'+T('setup.intro')+'</div></div>'
     +'<div class="card"><h2>'+T('setup.pass')+'</h2><div class="chips" id="chips"></div>'
     +'<input type="text" id="nm" placeholder="'+IRL.esc(T('name.placeholder'))+'"></div>'
     +'<button class="btn" id="go" '+(localNames.length<3?'disabled':'')+'>'+T('setup.deal')+'</button>'
-    +IRL.lobby(3,T('orPhones'),T('setup.lobbyText'),T('setup.dealAll'))
     +scoreTable(L.scores);
   const chips=document.getElementById('chips');
   chips.innerHTML=localNames.map(function(n,i){return '<span class="chip" data-i="'+i+'">'+IRL.esc(n)+' ✕</span>';}).join('')||'<span class="muted">'+T('players.none')+'</span>';
@@ -407,7 +463,6 @@ function rSetup(){
   const nm=document.getElementById('nm');
   nm.onkeydown=function(e){ if(e.key==='Enter'&&nm.value.trim()){ localNames.push(nm.value.trim()); rSetup(); } };
   document.getElementById('go').onclick=function(){ startRound(L,localNames); render(); };
-  IRL.bindLobby(function(){ if(IRL.players.length>=3) netStart(); });
 }
 function rDeal(){
   const i=L.dealt, name=L.names[i], isSpy=i===L.spy;
@@ -469,6 +524,7 @@ function rSpyGuess(){
 }
 // the result is stored as data (kind + names + place), never as English text,
 // so every phone shows it in its own language
+//@END
 function resultText(r){
   if(!r||!r.k) return '';
   const pl=PLACES[r.place][0];
@@ -477,6 +533,7 @@ function resultText(r){
   if(r.k==='spyRight') return T('result.spyRight',{place:pl});
   return T('result.spyWrong',{place:pl});
 }
+//@SOLO
 function rResult(){
   M.innerHTML='<div class="card center"><h2>'+IRL.esc(resultText(L.result))+'</h2></div>'+scoreTable(L.scores)
     +'<button class="btn" id="next">'+T('next')+'</button><button class="btn alt" id="reset">'+T('done.reset')+'</button>';
@@ -484,6 +541,8 @@ function rResult(){
   document.getElementById('reset').onclick=function(){ L={phase:'setup',scores:{}}; localNames=[]; render(); };
 }
 
+//@END
+//@NET
 // ---------- own-phone: each screen peeks its own place, votes stay hidden ----------
 function netStart(){
   const ids=IRL.players.map(function(p){return p.id.slice(2);});
@@ -566,10 +625,19 @@ function rNet(){
     document.getElementById('next').onclick=netStart;
   }
 }
+//@END
+//@NET
+function render(){
+  if(IRL.g&&IRL.g.net&&IRL.g.phase&&IRL.g.phase!=='lobby'){ rNet(); return; }
+  rSetup();
+}
+//@END
+//@SOLO
 function render(){
   if(IRL.g&&IRL.g.net&&IRL.g.phase&&IRL.g.phase!=='lobby'){ rNet(); return; }
   ({setup:rSetup,deal:rDeal,play:rPlay,accuse:rAccuse,spyguess:rSpyGuess,result:rResult})[L.phase]();
 }
+//@END
 IRL.onchange=render;
 IRL.boot(function(){ IRL.init().then(render); render(); }, render);
 </script>`;
@@ -728,7 +796,11 @@ IRL.boot(function(){ applyI18n(); IRL.init(); rMenu(); }, function(){
 ${PARTY_LIB}
 const SPECS=${JSON.stringify(DIAL_SPECTRUMS)};
 const M=document.getElementById('m');
-let L={ phase:'menu', round:0, total:0, psychic:0 }, names=[], dial=50, dragging=false;
+let L={ phase:'menu', round:0, total:0, psychic:0 }, dial=50, dragging=false;
+//@SOLO
+let names=[];
+//@END
+
 
 function arc(cx,cy,r,a0,a1){ const p=function(a){ a=Math.PI*(1-a/100); return [cx+r*Math.cos(a),cy-r*Math.sin(a)]; };
   const s=p(a0),e=p(a1);
@@ -762,20 +834,26 @@ function bindDial(onmove){
   el.addEventListener('pointermove',function(e){ if(dragging) set(e); });
   el.addEventListener('pointerup',function(){ dragging=false; });
 }
+//@NET
+function rMenu(){
+  M.innerHTML='<div class="card"><div class="muted">'+T('menu.intro')+'</div></div>'
+    +IRL.lobby(3,T('net.lobbyTitle'),T('menu.lobbyText'),T('menu.startAll'));
+  IRL.bindLobby(function(){ if(IRL.players.length>=3) netStart(); });
+}
+//@END
+//@SOLO
 function rMenu(){
   M.innerHTML='<div class="card"><h2>'+T('menu.title')+'</h2>'
     +'<div class="muted">'+T('menu.intro')+'</div></div>'
     +'<div class="card"><h2>'+T('setup.pass')+'</h2><div class="chips" id="chips"></div>'
     +'<input type="text" id="nm" placeholder="'+IRL.esc(T('name.placeholder'))+'"></div>'
-    +'<button class="btn" id="go" '+(names.length<2?'disabled':'')+'>'+T('menu.start')+'</button>'
-    +IRL.lobby(3,T('orPhones'),T('menu.lobbyText'),T('menu.startAll'));
+    +'<button class="btn" id="go" '+(names.length<2?'disabled':'')+'>'+T('menu.start')+'</button>';
   const chips=document.getElementById('chips');
   chips.innerHTML=names.map(function(n,i){return '<span class="chip" data-i="'+i+'">'+IRL.esc(n)+' ✕</span>';}).join('')||'<span class="muted">'+T('players.none')+'</span>';
   chips.onclick=function(e){ const i=e.target.dataset.i; if(i!==undefined){ names.splice(+i,1); rMenu(); } };
   const nm=document.getElementById('nm');
   nm.onkeydown=function(e){ if(e.key==='Enter'&&nm.value.trim()){ names.push(nm.value.trim()); rMenu(); } };
   document.getElementById('go').onclick=function(){ L={phase:'peek',round:1,total:0,psychic:0}; newTarget(); render(); };
-  IRL.bindLobby(function(){ if(IRL.players.length>=3) netStart(); });
 }
 function newTarget(){ L.spec=SPECS[Math.floor(Math.random()*SPECS.length)]; L.target=8+Math.floor(Math.random()*84); dial=50; }
 function rPeek(){
@@ -804,8 +882,10 @@ function rGuess(){
     L.pts=d<=6?4:d<=12?3:d<=18?2:0; L.total+=L.pts; L.phase='reveal'; render();
   };
 }
+//@END
 function ptsText(p){ return p?T(p===4?'reveal.bullseye':'reveal.points',{n:p}):T('reveal.zero'); }
 function verdictText(t){ return t>=21?T('verdict.same'):t>=14?T('verdict.sync'):t>=7?T('verdict.static'):T('verdict.none'); }
+//@SOLO
 function rReveal(){
   M.innerHTML='<div class="card center"><h2>'+ptsText(L.pts)+'</h2></div>'
     +'<div class="card"><div>'+dialSvg(true)+'</div>'
@@ -823,6 +903,8 @@ function rVerdict(){
     +'<button class="btn" id="again">'+T('again')+'</button>';
   document.getElementById('again').onclick=function(){ L={phase:'menu',round:0,total:0,psychic:0}; render(); };
 }
+//@END
+//@NET
 function netStart(){
   const ids=IRL.players.map(function(p){return p.id.slice(2);});
   const names=IRL.players.map(function(p){return p.name;});
@@ -889,10 +971,19 @@ function rNet(){
     document.getElementById('again').onclick=function(){ IRL.save({phase:'lobby'}); };
   }
 }
+//@END
+//@NET
+function render(){
+  if(IRL.g&&IRL.g.net&&IRL.g.phase&&IRL.g.phase!=='lobby'){ rNet(); return; }
+  rMenu();
+}
+//@END
+//@SOLO
 function render(){
   if(IRL.g&&IRL.g.net&&IRL.g.phase&&IRL.g.phase!=='lobby'){ rNet(); return; }
   ({menu:rMenu,peek:rPeek,guess:rGuess,reveal:rReveal,verdict:rVerdict})[L.phase]();
 }
+//@END
 IRL.onchange=function(){ if(dragging&&IRL.g&&IRL.g.phase==='guess') return; render(); };
 IRL.boot(function(){ IRL.init().then(render); render(); }, render);
 </script>`;
@@ -949,27 +1040,38 @@ IRL.boot(function(){ IRL.init().then(render); render(); }, render);
 ${PARTY_LIB}
 const CARDS=${JSON.stringify(ROULETTE_CARDS)};
 const M=document.getElementById('m');
+//@SOLO
 let names=[], deck=[], n=0;
+//@END
 
+
+//@NET
+function rSetup(){
+  M.innerHTML='<div class="card"><div class="muted">'+T('setup.intro')+'</div></div>'
+    +IRL.lobby(2,T('net.lobbyTitle'),T('setup.lobbyText'),T('setup.dealAll'));
+  IRL.bindLobby(function(){ if(IRL.players.length>=2) netStart(); });
+}
+//@END
+//@SOLO
 function rSetup(){
   M.innerHTML='<div class="card"><h2>'+T('setup.title')+'</h2>'
     +'<div class="muted">'+T('setup.intro')+'</div></div>'
     +'<div class="card"><h2>'+T('setup.in')+'</h2><div class="chips" id="chips"></div>'
     +'<input type="text" id="nm" placeholder="'+IRL.esc(T('name.placeholder'))+'"></div>'
-    +'<button class="btn" id="go" '+(names.length<2?'disabled':'')+'>'+T('setup.go')+'</button>'
-    +IRL.lobby(2,T('orPhones'),T('setup.lobbyText'),T('setup.dealAll'));
+    +'<button class="btn" id="go" '+(names.length<2?'disabled':'')+'>'+T('setup.go')+'</button>';
   const chips=document.getElementById('chips');
   chips.innerHTML=names.map(function(x,i){return '<span class="chip" data-i="'+i+'">'+IRL.esc(x)+' ✕</span>';}).join('')||'<span class="muted">'+T('players.none')+'</span>';
   chips.onclick=function(e){ const i=e.target.dataset.i; if(i!==undefined){ names.splice(+i,1); rSetup(); } };
   const nm=document.getElementById('nm');
   nm.onkeydown=function(e){ if(e.key==='Enter'&&nm.value.trim()){ names.push(nm.value.trim()); rSetup(); } };
   document.getElementById('go').onclick=function(){ deck=IRL.shuffle(CARDS); n=0; rCard(); };
-  IRL.bindLobby(function(){ if(IRL.players.length>=2) netStart(); });
 }
+//@END
 function fill(c, list, seed){
   const pool=seed!=null?IRL.seededShuffle(list,seed):IRL.shuffle(list);
   return c.replace('{p}','<b>'+IRL.esc(pool[0])+'</b>').replace('{q}','<b>'+IRL.esc(pool[1]||pool[0])+'</b>');
 }
+//@SOLO
 function rCard(){
   if(n>=deck.length){ deck=IRL.shuffle(CARDS); n=0; }
   M.innerHTML='<div class="card"><div class="prompt">'+fill(deck[n],names)+'</div></div>'
@@ -980,6 +1082,8 @@ function rCard(){
   document.getElementById('next').onclick=rCard;
   document.getElementById('players').onclick=function(){ deck=[]; rSetup(); };
 }
+//@END
+//@NET
 function netStart(){
   const ids=IRL.players.map(function(p){return p.id.slice(2);});
   const nm=IRL.players.map(function(p){return p.name;});
@@ -994,6 +1098,16 @@ function rNet(){
     +'<button class="btn" id="next">'+T('card.next')+'</button>';
   document.getElementById('next').onclick=function(){ IRL.save(Object.assign({},g,{n:g.n+1})); };
 }
+//@END
+//@NET
+function render(){
+  if(IRL.g&&IRL.g.net&&IRL.g.phase&&IRL.g.phase!=='lobby'){ rNet(); return; }
+  rSetup();
+}
+IRL.onchange=render;
+IRL.boot(function(){ IRL.init().then(render); render(); }, render);
+//@END
+//@SOLO
 function render(){
   if(IRL.g&&IRL.g.net&&IRL.g.phase&&IRL.g.phase!=='lobby'){ rNet(); return; }
   if(deck.length) return; // local deal in progress — don't wipe the card
@@ -1006,6 +1120,7 @@ IRL.boot(function(){ IRL.init().then(render); render(); }, function(){
   if(deck.length){ n=Math.max(0,n-1); rCard(); return; }
   rSetup();
 });
+//@END
 </script>`;
 
   // ============================ FAKE FACTS ===================================
@@ -1867,20 +1982,33 @@ The shared deck lives in this icon for the room. A pass-the-phone deal is on thi
 `;
 
   const PARTY = { data: { party: { visibility: 'read-write' } } };
+  // Every game reads who plays from the room: IRL.expose lets the checks read the shared game (window.__<appId>.state()).
+  // Four games play two ways from one source: own phone (the room, no typed names) and one phone passed around
+  // (no room, no shared data). //@NET and //@SOLO blocks are kept for one way only; each page carries one mode's code.
+  const mode = (html, solo) => html
+    .replace(solo ? /\/\/@NET\n[\s\S]*?\/\/@END\n/g : /\/\/@SOLO\n[\s\S]*?\/\/@END\n/g, '')
+    .replace(/\/\/@(SOLO|NET|END)\n/g, '');
+  const X = (id, html) => mode(html, false) + '<script>IRL.expose(\'' + id + '\');</script>';
+  const ONE = (html) => mode(html, true).replace('<script>\n', '<script>window.IRL_SOLO=true;</script>\n<script>\n');
   GifOS.irl = {
     netApps: [
-      { name: 'Fake Facts',       appId: 'fakefacts', accent: [212, 112, 61],  html: FAKEFACTS_HTML, help: FAKEFACTS_HELP },
-      { name: 'One Clue',         appId: 'oneclue',   accent: [59, 165, 160],  html: ONECLUE_HTML,   help: ONECLUE_HELP },
-      { name: 'Same Brain',       appId: 'samebrain', accent: [224, 92, 138],  html: SAMEBRAIN_HTML, help: SAMEBRAIN_HELP },
-      { name: 'One Night Wolves', appId: 'wolves',    accent: [90, 74, 138],   html: WOLVES_HTML,    help: WOLVES_HELP },
+      { name: 'Fake Facts',       appId: 'fakefacts', accent: [212, 112, 61],  html: X('fakefacts', FAKEFACTS_HTML), help: FAKEFACTS_HELP },
+      { name: 'One Clue',         appId: 'oneclue',   accent: [59, 165, 160],  html: X('oneclue', ONECLUE_HTML),   help: ONECLUE_HELP },
+      { name: 'Same Brain',       appId: 'samebrain', accent: [224, 92, 138],  html: X('samebrain', SAMEBRAIN_HTML), help: SAMEBRAIN_HELP },
+      { name: 'One Night Wolves', appId: 'wolves',    accent: [90, 74, 138],   html: X('wolves', WOLVES_HTML),    help: WOLVES_HELP },
+      { name: 'Odd Word Out',   appId: 'imposter', accent: [59, 165, 93],   html: X('imposter', ODDWORD_HTML),  help: ODDWORD_HELP },
+      { name: 'Catch the Spy',  appId: 'spy',      accent: [77, 124, 214],  html: X('spy', SPY_HTML),      help: SPY_HELP },
+      { name: 'The Dial',       appId: 'dial',     accent: [198, 92, 204],  html: X('dial', DIAL_HTML),     help: DIAL_HELP },
+      { name: 'Party Roulette', appId: 'roulette', accent: [123, 92, 255],  html: X('roulette', ROULETTE_HTML), help: ROULETTE_HELP },
     ],
+    // One phone passed around: no room, no shared data, names typed on the device (they are not people of a room).
     apps: [
-      { name: 'Odd Word Out',   appId: 'imposter', accent: [59, 165, 93],   html: ODDWORD_HTML,  help: ODDWORD_HELP,  manifest: PARTY },
-      { name: 'Catch the Spy',  appId: 'spy',      accent: [77, 124, 214],  html: SPY_HTML,      help: SPY_HELP,      manifest: PARTY },
-      { name: 'Tilt',           appId: 'tilt',     accent: [232, 163, 60],  html: TILT_HTML,     help: TILT_HELP,
+      { name: 'Odd Word Out',   appId: 'imposter-1p', accent: [59, 165, 93],   html: ONE(ODDWORD_HTML),  help: ODDWORD_HELP },
+      { name: 'Catch the Spy',  appId: 'spy-1p',      accent: [77, 124, 214],  html: ONE(SPY_HTML),      help: SPY_HELP },
+      { name: 'Tilt',           appId: 'tilt',     accent: [232, 163, 60],  html: ONE(TILT_HTML),     help: TILT_HELP,
         manifest: { capabilities: { db: true, multiplayer: true, network: [], motion: true, fullscreen: true } } },
-      { name: 'The Dial',       appId: 'dial',     accent: [198, 92, 204],  html: DIAL_HTML,     help: DIAL_HELP,     manifest: PARTY },
-      { name: 'Party Roulette', appId: 'roulette', accent: [123, 92, 255],  html: ROULETTE_HTML, help: ROULETTE_HELP, manifest: PARTY },
+      { name: 'The Dial',       appId: 'dial-1p',     accent: [198, 92, 204],  html: ONE(DIAL_HTML),     help: DIAL_HELP },
+      { name: 'Party Roulette', appId: 'roulette-1p', accent: [123, 92, 255],  html: ONE(ROULETTE_HTML), help: ROULETTE_HELP },
     ],
   };
 })(typeof window !== 'undefined' ? window : globalThis);

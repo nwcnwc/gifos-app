@@ -475,12 +475,12 @@
         if (pass === 0 ? fh : (syn && !fh)) ks.push(x);
       }
       if (ks.length === 0 && !front) return;
-      this.l9PullAt = this.TICK | 0; let cellIx = 0; let frontDone = false; let frontHole = -1; if (front) for (let q = 0; q < C * C && frontHole < 0; q++) if (!l922Seat(this, ckey(cell(0, Math.floor(q / C), q % C)))) frontHole = q;   // L9.22: Section 1 fills in row-major order
+      this.l9PullAt = this.TICK | 0; let cellIx = 0; let frontDone = false; let frontHole = -1; if (front) for (let q = 0; q < C * C && frontHole < 0; q++) { const fk = ckey(cell(0, Math.floor(q / C), q % C)); if (!l922Seat(this, fk) && !this.l52Promised(fk)) frontHole = q; }   // L9.22: Section 1 fills in row-major order (L52.9 h: a cell promised to a seeker is no hole)
       const pull = (c) => {
         const k = ckey(c); if (l921 && !this.l921Vac(k)) return; if (front && (frontDone || c.r * C + c.i !== frontHole || l922Scooch(this, c))) return; let echo = this.occGet(k) >= 0 && this.occGet(k) !== id && this.TICK - this.seatedAt >= 2 * K.L9_PULL && !(this.live.has(k) && this.TICK - this.live.get(k) <= 2 * K.L9_PULL);
         if (echo && !this.ownedLinkCell(k)) echo = false;
         if (echo && this.l920Deaf(k)) echo = false;
-        if ((this.occGet(k) >= 0 && !echo && !front) || this.softSitting(k) || this.sitting.has(k) || this.occGet(ckey(down(c))) >= 0 || (this.hasDownChild(c) && !l1HeirFailed(this, c))) return;
+        if ((this.occGet(k) >= 0 && !echo && !front) || this.softSitting(k) || this.sitting.has(k) || this.l52Promised(k) || this.occGet(ckey(down(c))) >= 0 || (this.hasDownChild(c) && !l1HeirFailed(this, c))) return;
         const p = this.l9PullCell.get(k); if (p !== undefined && this.TICK - p < ((roomTerm(this, 1) || l921) ? K.L9_PULL + K.CONFIRM_TTL : K.L9_PULL)) return;
         let n = 0, x = -1;
         if (front) { const lr = l922LastRow(this); if (lr <= c.r) return; x = (lr === this.coord.r) ? id : this.occGet(ckey(cell(0, lr, 0))); if (x < 0) return; }   // L9.22: the head of Section 1's last row picks its trailing seat
@@ -576,7 +576,7 @@
                 }
               }
             }
-            if (l922Ok(this, hole) && !this.chanless(ckey(hole)) && !this.heldRightNow(ckey(hole))) {   // L9.22: a room with no deep leaf: Section 1's last row gives its trailing seat
+            if (l922Ok(this, hole) && !this.chanless(ckey(hole)) && !this.heldRightNow(ckey(hole)) && !this.l52Promised(ckey(hole))) {   // L9.22: a room with no deep leaf: Section 1's last row gives its trailing seat
               if (this.coord.i === 0) {
                 const lr = l922LastRow(this);
                 if (lr > this.coord.r) { const h = this.occGet(ckey(cell(0, lr, 0))); if (h >= 0 && h !== id && ttl > 0) this.emit(h, flMsg(hole, nbrs, ttl - 1, 12)); return; }   // a later row: its head
@@ -1179,7 +1179,7 @@
       if (cand.length === 0) { return; }
       for (let q = 0; q < cand.length; q++) {
         const x = cand[q]; const ref = [];
-        if (!this.f.fabricDialUplink(id, x, ref)) {
+        if (!this.f.fabricDialUplink(id, x, ref, -1)) {
           this.l14Failed.set(x, TICK | 0); this.l14Refused.add(x); this.trace('L14-FAIL', id, anc, 'to=%d ls=refused', x);
           let at = q + 1;
           for (const r of ref) {
@@ -1363,7 +1363,7 @@
       if (this.l14Up >= 0 || this.l14FailedNow(m.id)) return;
       const anc = this.coord.i !== 0 ? { pc: this.coord.pc, r: this.coord.r, i: 0 } : this.ownerCoord(); if (!anc || ckey(anc) !== ckey(m.target)) return;
       if (!(this.occGet(ckey(anc)) < 0 || TICK - this.lastAck >= K.L9_LONE)) return;
-      { const ref = []; if (!this.f.fabricDialUplink(id, m.id, ref)) return; }
+      { const ref = []; if (!this.f.fabricDialUplink(id, m.id, ref, m.from)) return; }   // L50.4.1: over the pc the offer came by
       this.l14Up = m.id; this.l14UpAt = TICK | 0; if (this.l14UpFirst < 0) this.l14UpFirst = TICK | 0; this.l14Refused.clear(); this.trace('L14-UP', id, anc, 'to=%d ask=1', m.id);
     },
 

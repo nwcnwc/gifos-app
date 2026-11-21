@@ -107,5 +107,9 @@
   "fact.21.q": "Oxford University is older than the ___",
   "fact.21.a": "Aztec Empire",
   "fact.22.q": "There are more stars in the universe than grains of sand on every ___",
-  "fact.22.a": "earth beach"
+  "fact.22.a": "earth beach",
+  "needsNewer": "This game needs a newer GifOS to play together. Reload the page to update.",
+  "hint.line": "You are next in line: you get the first seat that opens.",
+  "hint.asking": "The host has been asked to seat you.",
+  "hint.watch": "You are watching. When a seat opens, the next person in line gets it."
 }

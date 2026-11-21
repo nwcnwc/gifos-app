@@ -65,5 +65,9 @@
   "reveal.votes": "{n} 票",
   "reveal.center": "中央牌：{roles}",
   "reveal.again": "🌙 再来一夜",
-  "wins.title": "胜场"
+  "wins.title": "胜场",
+  "needsNewer": "一起玩这个游戏需要更新的 GifOS。请刷新页面以更新。",
+  "hint.line": "你排在下一位：第一个空出的座位归你。",
+  "hint.asking": "已请主持人给你安排座位。",
+  "hint.watch": "你正在观看。座位空出时，排队的下一位会得到它。"
 }

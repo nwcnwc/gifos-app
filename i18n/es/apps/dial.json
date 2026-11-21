@@ -44,5 +44,9 @@
   "net.clue": "«{clue}»",
   "net.psyWatch": "Puedes ver la aguja. No des pistas.",
   "net.guessBody": "Discutan, arrastren la aguja y fijen la respuesta.",
-  "net.revealInfo": "Pista: «{clue}» · vidente: {name}"
+  "net.revealInfo": "Pista: «{clue}» · vidente: {name}",
+  "needsNewer": "Este juego necesita un GifOS más nuevo para jugar juntos. Recarga la página para actualizar.",
+  "hint.line": "Eres el siguiente: te toca el primer asiento que se libere.",
+  "hint.asking": "Se le pidió al anfitrión que te dé un asiento.",
+  "hint.watch": "Estás mirando. Cuando se libere un asiento, será para la siguiente persona en la fila."
 }

@@ -364,12 +364,18 @@
   #appbar[data-fold="1"] > * { flex-shrink: 0; }
   #appbar[data-fold="1"] > #appname { flex-shrink: 1; }
   #appbar[data-fold="1"] #appmore { display: inline-flex; justify-content: center; min-width: 44px; min-height: 44px; font-size: 1.25rem; line-height: 1; box-sizing: border-box; }
-  #appmenu { position: absolute; top: 100%; right: .4rem; z-index: 31; display: flex; flex-direction: column; align-items: stretch; gap: .4rem;
+  #appmenu { position: fixed; z-index: 45; display: flex; flex-direction: column; align-items: stretch; gap: .4rem;
     min-width: 13rem; max-width: calc(100vw - .8rem); padding: .55rem; box-sizing: border-box; background: var(--surface, #14141f);
     border: 1px solid var(--border, #2a2a3f); border-radius: .7rem; box-shadow: 0 10px 28px rgba(0,0,0,.45); }
   #appmenu[hidden] { display: none; }
-  #appbar #appmenu > button { min-height: 44px; justify-content: flex-start; font-size: 1rem; padding: .45rem .8rem; }
-  #appbar #appmenu #appwho { order: 0; flex: none; white-space: normal; overflow: visible; padding: 0 .3rem; font-size: .85rem; }
+  #appbar #appmenu > button { min-height: 44px; justify-content: flex-start; font-size: 1rem; padding: .45rem .8rem;
+    color: var(--text, #e0e0f0); background: var(--bg, #0a0a0f); border-color: var(--border, #2a2a3f); }
+  #appbar #appmenu #appwho { order: 0; flex: none; white-space: normal; overflow: visible; padding: 0 .3rem; font-size: .85rem;
+    color: var(--muted, #8888aa); }
+  /* A solo app already has #appmore on its own bar. The meeting #topmore would
+     sit as a second "…" at the top-left on phones and open an empty/unreadable menu. */
+  body.solo-app #tophead > .topmore,
+  body.app-room #tophead > .topmore { display: none !important; }
   /* When the app bar is the ONLY bar (solo / app room before a call), it also
      carries the GifOS home link — same gradient wordmark as the meeting bar. */
   #appbar .brand { display: none; font-weight: 800; font-size: .9rem; text-decoration: none; cursor: pointer;

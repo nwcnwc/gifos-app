@@ -2,6 +2,25 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.27.3",
+      "date": "2026-11-21",
+      "headline": "Rooms that fill fairly, and apps that know who is here",
+      "critical": false,
+      "features": [
+        "Apps: Take Turns, Guestbook, Chat, Bible Browser, Tic-Tac-Toe, Chess Tournament and the party games take the people from the meeting itself, so the list of who is here is always right and nobody who left lingers.",
+        "Apps: the party games (Odd Word Out, Catch the Spy, The Dial, Party Roulette) take their players from the meeting. Passing one phone around lives on in separate Single Phone versions.",
+        "AI agents: the guide for agents names the agent library and explains how an agent stays in a meeting."
+      ],
+      "fixes": [
+        "Meetings: in a hosted room with a people limit, the limit holds even when many people join at once, and a seat promised to someone is not given to someone else.",
+        "Meetings: a hosted room with a people limit lets people in as fast as a room without one.",
+        "Meetings: when the person who links a row of seats stalls, the people behind them keep hearing the room, and hear everyone again as soon as that person is back.",
+        "Meetings: a page still on 0.9.27.1 or older updates at once when it joins a meeting, so everyone in a room runs the same version.",
+        "Phone apps: white chess pieces show properly, mic clips play in full, and the ... menu is easier to read.",
+        "Tic-Tac-Toe and Chess: a note that a move was refused stays until you tap or the room changes."
+      ]
+    },
+    {
       "version": "0.9.27.2",
       "date": "2026-11-21",
       "headline": "Agents you can hear, and full rooms that stay one",

@@ -177,7 +177,10 @@
       // A frame of my row's head reached me first-hand after this tick (the seat's own record).
       headHeardSince(t) { const s = raw(), tp = TP(); if (!s || !s.hasCoord) return false; const it = s.live.get(tp.ckey({ pc: s.coord.pc, r: s.coord.r, i: 0 })); return it !== undefined && it > t; },
       get seatTick() { const s = raw(); return s ? s.TICK : 0; },
-      get l14Cut() { const s = raw(); return !!(s && s.hasCoord && s.state === 3 && s.coord.pc !== 0 && s.l14Branch()); },   // my chain up is broken in the seat's own view (L14)
+      // My branch rides its uplink: my chain up is broken in the seat's own view (L14), or I hold an uplink and my anchor still does not answer (L50.1's own test, the one the uplink was taken on).
+      // L50.4.2: my anchor answers (a deep head's owner sits in its cell in my view and answered within two beats): L50.1's test read the other way.
+      get anchorAnswers() { const s = raw(); if (!(s && s.hasCoord && s.state === 3 && s.coord.pc !== 0 && s.coord.i === 0)) return false; const oc = s.ownerCoord(); return !!oc && s.occGet(TP().ckey(oc)) >= 0 && s.TICK - s.lastAck < KC().L9_LONE; },
+      get l14Cut() { const s = raw(); if (!(s && s.hasCoord && s.state === 3 && s.coord.pc !== 0)) return false; if (s.l14Branch()) return true; if (s.l14Up < 0 || s.coord.i !== 0) return false; const oc = s.ownerCoord(); return !!oc && (s.occGet(TP().ckey(oc)) < 0 || s.TICK - s.lastAck >= KC().L9_LONE); },
       l14Served() { const s = raw(), out = []; if (!s || !s.hasCoord) return out; for (const x of s.l14Served.keys()) { if (!s.l14Serve(x)) continue; const p = P(x); if (p != null && p !== me) out.push(p); } return out; },
       u2Heirs() { const s = raw(), out = []; if (!s || !s.hasCoord) return out; for (const e of s.u2Rows.values()) if (s.TICK - e.at <= 40) { const p = P(e.heir); if (p != null && p !== me && out.indexOf(p) < 0) out.push(p); } return out; },
       s1Bridges() { const s = raw(), out = [], K = KC(); if (!s || !s.hasCoord || s.coord.pc !== 0) return out; const add = (x) => { const p = P(x); if (p != null && p !== me && out.indexOf(p) < 0) out.push(p); }; for (const y of s.s1bP) add(y[0]); for (const [x, at] of s.s1bAt) if (s.TICK - at <= K.S1B_FRESH) add(x); return out; },   // L2.15: the far ends of my Section-1 bridges (the stage flood rides them; the receiver keeps the copy parked until its corner goes silent)
@@ -355,9 +358,6 @@
     const pop = (d) => { const n = d.n < 0 ? 0 : d.n, t = n + d.leased; let far = 0; for (const e of d.doors || []) if (e.k > 0) far += e.k; return (t < 0 ? 0 : t) + far; };   // C++: mesh.cpp:digPop
     // meetingCount(): the people in the whole meeting as my seat's fold counts them; null while my seat holds no fold yet.
     function meetingCount() { const s = raw(); if (!s || s.state !== 3 || !s.hasCoord) return null; const d = s.rootDig; return d && d.at >= 0 ? pop(d) : null; }
-    // doorCount(): the people a door counts against the room's limit: the meeting count plus the movers whose own count is
-    // still waiting out a move (held, as the vote bar counts them), so two knocks close together cannot pass the line.
-    function doorCount() { const n = meetingCount(); if (n == null) return null; const d = raw().rootDig; return n + Math.max(0, d.held || 0); }
     // meetingFar(): the people in the OTHER rooms of the meeting joined to mine (SUB.4 far form, per door), as my seat's fold
     // counts them: 0 with no joined room or no fold yet. Every seat of my room reads it, not only a pipe's end.
     function meetingFar() { const s = raw(); if (!s || s.state !== 3 || !s.hasCoord) return 0; const d = s.rootDig; if (!d || d.at < 0) return 0; let far = 0; for (const e of d.doors || []) if (e.k > 0) far += e.k; return far; }
@@ -458,7 +458,7 @@
     // seen(gid, lk): a gossip frame I already took, one behind its source's mark, or a copy over a channel whose copy of it
     // was refused for that channel (the wire skips the signature check for all three)
     const seen = (gid, lk) => typeof gid === 'string' && (gseen.has(gid) || gref.has(copyKey(gid, lk)) || gstale(gid, gid.slice(0, gid.lastIndexOf(':'))));
-    return { ids, view, gossip, gossipRecv, countForged: () => { counters.gspForged++; }, seen, setKicks, kickTally, kickDevs, kickCarry, kicked, setLeaf, setRefuses, roomDigest, meetingCount, doorCount, meetingFar, meetingPeople, standbyCands, sideOut, sideIn, afterTick, bump };
+    return { ids, view, gossip, gossipRecv, countForged: () => { counters.gspForged++; }, seen, setKicks, kickTally, kickDevs, kickCarry, kicked, setLeaf, setRefuses, roomDigest, meetingCount, meetingFar, meetingPeople, standbyCands, sideOut, sideIn, afterTick, bump };
   }
 
   const api = Object.freeze({ create, makeIds });

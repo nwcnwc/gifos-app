@@ -51,5 +51,9 @@
   "guess.waiting": "间谍正在猜…",
   "guess.spyBody": "点按你的猜测。猜错的话，其他人得分。",
   "guess.tongue": "管住你的嘴。",
-  "result.place": "地点是{place}。间谍：{spy}。"
+  "result.place": "地点是{place}。间谍：{spy}。",
+  "needsNewer": "一起玩这个游戏需要更新的 GifOS。请刷新页面以更新。",
+  "hint.line": "你排在下一位：第一个空出的座位归你。",
+  "hint.asking": "已请主持人给你安排座位。",
+  "hint.watch": "你正在观看。座位空出时，排队的下一位会得到它。"
 }

@@ -45,5 +45,6 @@
   "plan.count": "{n} Runden:",
   "plan.empty": "Noch nichts zu lesen.",
   "stage.full": "Die Bühne ist voll, die Runden laufen ohne sie weiter.",
-  "stage.wait": "Warte, bis der Gastgeber dich auf die Bühne holt."
+  "stage.wait": "Warte, bis der Gastgeber dich auf die Bühne holt.",
+  "needsNewer": "Take Turns braucht ein neueres GifOS, um gemeinsam abwechselnd dranzukommen. Lade die Seite neu, um zu aktualisieren."
 }

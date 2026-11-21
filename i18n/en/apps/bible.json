@@ -31,5 +31,6 @@
   "err.generic": "Couldn’t load that page.",
   "ext.title": "External link — open it in your own browser",
   "banner.cached": "Showing a copy saved on this device — the live fetch through the CORS proxy did not land. Tap ↻ to try again.",
-  "foot": "Text from text.recoveryversion.bible, read through the GifOS CORS proxy — tap the “Internet” button up top to see or change that. Chapters you open are saved on this device so you can re-read them offline."
+  "foot": "Text from text.recoveryversion.bible, read through the GifOS CORS proxy — tap the “Internet” button up top to see or change that. Chapters you open are saved on this device so you can re-read them offline.",
+  "needsNewer": "Bible Browser needs a newer GifOS to read together. Reload the page to update."
 }

@@ -34,5 +34,9 @@
   "end.great": "¡Grandes mentes!",
   "end.solid": "Buen equipo.",
   "end.notbad": "Nada mal…",
-  "end.retry": "Inténtenlo otra vez, con más café."
+  "end.retry": "Inténtenlo otra vez, con más café.",
+  "needsNewer": "Este juego necesita un GifOS más nuevo para jugar juntos. Recarga la página para actualizar.",
+  "hint.line": "Eres el siguiente: te toca el primer asiento que se libere.",
+  "hint.asking": "Se le pidió al anfitrión que te dé un asiento.",
+  "hint.watch": "Estás mirando. Cuando se libere un asiento, será para la siguiente persona en la fila."
 }

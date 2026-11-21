@@ -17,6 +17,7 @@
     AGENT_KEEP_MS: 86400000,   // ms
     AGENT_TICK_MS: 250,   // ms
     AGENT_VOICE_TAIL_MS: 500,   // ms
+    APP_PEOPLE_READ_MS: 2000,   // ms
     APP_ROOM_AWAY_MS: 15000,   // ms
     APP_ROOM_BEAT_MS: 1000,   // ms
     APP_ROOM_GIVEUP_MS: 60000,   // ms

@@ -2126,7 +2126,10 @@
             const blob = new Blob(chunks, { type: (rec && rec.mimeType) || mime || (kind === 'video' ? 'video/webm' : 'audio/webm') });
             blob.arrayBuffer().then((buf) => resolve({ bytes: buf, mime: blob.type, durationMs }));
           };
-          try { rec.start(); } catch (e) { cleanup(); return reject(new Error('Recording failed to start.')); }
+          // Timeslice so phone browsers flush audio while recording. Bare
+          // rec.start() left Speech Coach (and others) with ~1s clips while the
+          // overlay timer kept counting to maxSeconds (camera-studio uses 200).
+          try { rec.start(200); } catch (e) { cleanup(); return reject(new Error('Recording failed to start.')); }
         };
         const stop = () => { if (done || flipping) return; done = true; try { rec.stop(); } catch (e) { cleanup(); reject(new Error('Recording failed.')); } };
         // Flip mid-recording (video only): stop this recorder, re-acquire the

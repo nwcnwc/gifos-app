@@ -34,5 +34,9 @@
   "end.great": "Gleiche Gedanken!",
   "end.solid": "Solides Team.",
   "end.notbad": "Nicht schlecht …",
-  "end.retry": "Nochmal versuchen – mit mehr Kaffee."
+  "end.retry": "Nochmal versuchen – mit mehr Kaffee.",
+  "needsNewer": "Für gemeinsames Spielen braucht es ein neueres GifOS. Lade die Seite neu, um zu aktualisieren.",
+  "hint.line": "Du bist als Nächstes dran: Du bekommst den ersten freien Platz.",
+  "hint.asking": "Der Gastgeber wurde gebeten, dir einen Platz zu geben.",
+  "hint.watch": "Du schaust zu. Wird ein Platz frei, bekommt ihn die nächste Person in der Reihe."
 }

@@ -10,5 +10,6 @@
   "anon": "anonym",
   "ago.now": "gerade eben",
   "ago.m": "vor {n} Min.",
-  "ago.h": "vor {n} Std."
+  "ago.h": "vor {n} Std.",
+  "needsNewer": "Das Gästebuch braucht ein neueres GifOS, um gemeinsam zu unterschreiben. Lade die Seite neu, um zu aktualisieren."
 }
