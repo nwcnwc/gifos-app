@@ -393,7 +393,9 @@
   function mergeWallet(w) {
     const cur = SUB.walletOk(readJson(WALLET_KEY));
     const n = nowS();
-    if (cur && cur.seed !== w.seed && cur.passes.some((p) => { const o = passOf(p); return o && (o.end === null || o.end > n); })) return false;
+    // Still to use = readable under today's rules (checkPass: it carries line items) and not run out. A pass signed
+    // before line items can never be used again, so it never keeps a new file out.
+    if (cur && cur.seed !== w.seed && cur.passes.some((p) => { const o = SUB.checkPass(passOf(p)); return o && o.end > n; })) return false;
     const seen = new Set();
     const passes = (cur && cur.seed === w.seed ? cur.passes : []).concat(w.passes).filter((p) => !seen.has(p.passJson) && seen.add(p.passJson));
     writeJson(WALLET_KEY, Object.assign({}, w, { passes, pending: (cur && cur.seed === w.seed && cur.pending) || w.pending }));
