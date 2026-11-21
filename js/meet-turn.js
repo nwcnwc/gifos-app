@@ -1408,8 +1408,15 @@
     // order; a re-pipe probes none) → none reached: a fresh door list → ask with the list's token → 200: the pipe.
     // An answer that arrives after the machine moved on (a newer generation) is dropped.
     const busyOut = { wait: 1 };
-    // SUB.2: A REFUSAL IS THE ANSWER. The founding attempt that follows a refusal founds at door 0 as 0.9.25 (mayAsk is
-    // closed once, whatever the wait); the next ask comes from the founded seat when the wait is over.
+    // SUB.2.5: A REFUSAL IS NOT AN ANSWER TO FOUND ON, FOR A NEWCOMER. A page that has held no seat in this meeting and
+    // that the service refused (pool down, no answer, the room's budget, the rate, no seat to dial) stays a joiner at
+    // the door: its seat founds nothing while held() is true, and the ask goes out again at the first knock after the
+    // wait. A joiner's wait is longer by a jitter of up to a quarter of itself (pages refused in one burst do not ask
+    // again in one beat).
+    // SUB.2: FOR A SEAT THAT SAT IN THIS MEETING THE REFUSAL IS THE ANSWER (back at the door after a requeue or a cut's
+    // leave: a room that runs never stops to wait at a door). The founding attempt that follows a refusal founds at
+    // door 0 as 0.9.25 (held(true) says so once, whatever the wait); the next ask comes from the founded seat when the
+    // wait is over.
     // TURN.10: A REFUSED ASK BACKS OFF: the wait doubles from TURN_RETRY up to RETRY_MAX_X times it, and starts over only
     // when something the refusal named changes: the kind of refusal, the subrooms my answers list (their numbers), or a
     // pipe or standby of mine opening or closing. Never the greeters at my own door (who else is knocking), and nothing
@@ -1418,7 +1425,8 @@
     function subRefuse(now, why) {
       if (why !== sub.lastWhy) sub.mult = 1;
       sub.lastWhy = why;
-      const at = now + RETRY_MS * sub.mult;
+      const w = RETRY_MS * sub.mult;
+      const at = now + w + (sub.asker === 'joiner' ? Math.floor((io.rand ? io.rand() : Math.random()) * (w / 4)) : 0);
       sub.mult = Math.min(RETRY_MAX_X, sub.mult * 2);
       sub.ans = true;
       subIdle(now, { refused: why, retryAt: at }, at);
@@ -1721,9 +1729,11 @@
       walked() { return io.now() - walkedAt <= WALKED_MS; },
       // TURN.5.3: the probe of a cut (0 no answer yet or none, 1 a path, 2 answered and no path)
       cut(pid) { return cutProbe(pid, io.now()); },
-      // the seat is about to found on silence: may it ask the Worker first? Closed once after a refusal (that founding attempt
-      // founds), and while a refusal's wait runs
-      mayAsk() { if (sub.ans) { sub.ans = false; return false; } const o = sub.out; return !(o && o.refused && io.now() < o.retryAt); },
+      // SUB.2.5: the seat is about to found on silence, or the relay said the meeting lives behind other doors: is its ask
+      // refused (the wait still running)? A newcomer's seat is then held: it founds nothing and knocks again. was: my seat
+      // has sat in this meeting: its founding attempt founds as 0.9.25, and the first one after a refusal does so whatever
+      // the wait (the refusal is the answer, once). Not refused: the ask is open or goes out now
+      held(was) { if (sub.ans) { sub.ans = false; if (was) return true; } const o = sub.out; return !!(o && o.refused && io.now() < o.retryAt); },
       // The pipes this page holds an end of, for the media plane: the far end's peer id and subroom, the pipe, who opened it.
       pipeEnds() { const out = []; for (const L of links.values()) if (L.farPid) out.push({ peer: L.far, sub: L.farR, pipe: L.l, opener: !!L.opener, video: !!L.video, up: L.state === 'up', standby: !!L.sb, direct: !!L.direct }); return out; },
       standby(pid) { const L = links.get(pid); return !!L && L.sb; },   // a warm standby: keep-alives only, nothing rides it

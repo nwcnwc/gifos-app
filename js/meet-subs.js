@@ -393,7 +393,9 @@
   function mergeWallet(w) {
     const cur = SUB.walletOk(readJson(WALLET_KEY));
     const n = nowS();
-    if (cur && cur.seed !== w.seed && cur.passes.some((p) => { const o = passOf(p); return o && (o.end === null || o.end > n); })) return false;
+    // Still to use = readable under today's rules (checkPass: it carries line items) and not run out. A pass signed
+    // before line items can never be used again, so it never keeps a new file out.
+    if (cur && cur.seed !== w.seed && cur.passes.some((p) => { const o = SUB.checkPass(passOf(p)); return o && o.end > n; })) return false;
     const seen = new Set();
     const passes = (cur && cur.seed === w.seed ? cur.passes : []).concat(w.passes).filter((p) => !seen.has(p.passJson) && seen.add(p.passJson));
     writeJson(WALLET_KEY, Object.assign({}, w, { passes, pending: (cur && cur.seed === w.seed && cur.pending) || w.pending }));
@@ -1102,6 +1104,10 @@
   // browser holds a right the door lets in, from whichever path brought it (the
   // pass here, the Subscription dialog, a file opened, a store restore), so the
   // page knocks again by itself.
+  // WHILE IT WAITS the page knocks again by itself, politely (run.html subsReknock), and the offer stays up the whole
+  // time: the products on sale (the pass, the plans), with their names and prices, never a single right. fullWaiting()
+  // keeps the wait line true: first "we keep knocking", and after a while still outside the reminder that the pass (or,
+  // where no pass is sold, a subscription) gets the person in now.
   let fullWatch = null;
   function fullWords(o) {
     const n = Number.isInteger(o.limit) && o.limit > 0 ? o.limit : o.free ? SUB.FREE_LIMIT : null;
@@ -1144,6 +1150,7 @@
       card.appendChild(s);
     }
     card.appendChild(say);
+    card.appendChild(el('p', { id: 'sub-full-wait', class: 'sub-full-wait', role: 'status', 'aria-live': 'polite' }, tx('subFullWait', 'We keep knocking for you. You get in by yourself as soon as a place opens.')));
     if (off.pass || off.sub) card.appendChild(legalLine('sub-full-legal', inApp));
     if (inApp && off.pass) {   // in the app the price shown is the store's own (as in Settings)
       RAIL().prices().then((pr) => {
@@ -1161,6 +1168,21 @@
     if (fullWatch) clearInterval(fullWatch.t);
     fullWatch = typeof o.onRight === 'function' ? { onRight: o.onRight, busy: false, t: setInterval(check, POLL_MS) } : null;
     if (fullWatch) check();   // a right already held (bought a moment ago, or a pass still waiting to start)
+    return true;
+  }
+  // The wait line of the full screen, kept true by the page as its knocks are refused again. o: {still}: still outside
+  // after a while: the reminder names the product that gets the person in now (the pass on sale with its price as the
+  // button shows it; no pass sold: a subscription). No offer on sale here: the plain wait line stays.
+  function fullWaiting(o) {
+    if (typeof document === 'undefined') return false;
+    const w = document.getElementById('sub-full-wait');
+    if (!w) return false;
+    const off = fullOffers();
+    const still = !!(o && o.still) && !!(off.pass || off.sub);
+    w.textContent = !still ? tx('subFullWait', 'We keep knocking for you. You get in by yourself as soon as a place opens.')
+      : off.pass ? fill(tx('subFullStillPass', 'Still full, and we keep knocking. The {hours}-hour pass gets you in right now.'), { hours: off.pass.hours || 4 })
+        : tx('subFullStillSub', 'Still full, and we keep knocking. A subscription gets you in right now.');
+    w.className = 'sub-full-wait' + (still ? ' sub-full-still' : '');
     return true;
   }
   // The full screen goes (the page knocks again): the offer and its watch with it.
@@ -1229,7 +1251,7 @@
   }
 
   GifOS.meetSubs = {
-    rights, planRights, refresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, subSelection, applySubSelection, paintNow, paintSettings, openSettings, openSubscribe, mayCreateAdminRoom, showFull, hideFull, fullOffers, hostOffer, doorRight, showHostPrompt,
+    rights, planRights, refresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, subSelection, applySubSelection, paintNow, paintSettings, openSettings, openSubscribe, mayCreateAdminRoom, showFull, hideFull, fullWaiting, fullOffers, hostOffer, doorRight, showHostPrompt,
     roomOrder, roomTier, proveAtDoor, checkShown, newNonce,
     appNow, joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureCurrent, captureOrder, captureKeys, fileBytes, downloadFile, useFile, librarySigner, restoreInApp,
     passMeeting: () => (pmeet ? { grants: pmeet.grants || null, room: pmeet.room, gen: pmeet.gen, exp: pmeet.exp, until: pmeet.until, moved: pmeet.moved, held: !!pmeet.ticket } : null),

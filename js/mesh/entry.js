@@ -121,7 +121,7 @@
       if (this.l13Tell.length) { for (const v of this.l13Tell) { if (v < 0 || v === id) continue; this.f.fabricDialJoin(id, v); this.l13Answer(v, ckey(c)); } this.l13Tell.length = 0; }   // L13.4
       this.l20Out.clear(); this.l20Hold.clear();   // L20
       this.cutHalf.clear(); this.cutBy = -1; this.cutRx = -1;   // TURN.5.3: seated again
-      this.drainAt = 0; this.seatTries = 0; this.searchAt = -1; this.l917Ck = 0; this.seatedAt = TICK; this.rookSeenAt = TICK; this.rookEver = false; this.estAt = TICK; this.nbrAt = TICK; this.pendYBy = -1; this.challToId = -1; this.lateY.clear();   // grace
+      this.drainAt = 0; this.seatTries = 0; this.searchAt = -1; this.l917Ck = 0; this.seatedAt = TICK; this.wasSeated = true; this.rookSeenAt = TICK; this.rookEver = false; this.estAt = TICK; this.nbrAt = TICK; this.pendYBy = -1; this.challToId = -1; this.lateY.clear();   // grace
       // G: a seat change re-parents me; every digest relationship starts over.
       this.upLogI = 0; this.upSince = -1; this.lastAgg = -1; for (let q = 0; q < 16; q++) this.upLog[q] = state.newStruct('UpRec');
       this.rootKeep = this.rootDig;   // L3.12.3

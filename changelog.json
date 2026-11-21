@@ -2,6 +2,24 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.27.2",
+      "date": "2026-11-21",
+      "headline": "Agents you can hear, and full rooms that stay one",
+      "critical": false,
+      "features": [
+        "AI agents: an agent's voice is heard from its very first sentence, even before it sends any video.",
+        "AI agents: an agent can open an App Store app by its store id.",
+        "Meetings: a page that falls behind the GifOS its meeting runs on says so plainly, in a clearer bar with an Update now button."
+      ],
+      "fixes": [
+        "Meetings: a full room no longer splits newcomers off into a second room. They wait a moment and knock again politely until there is space.",
+        "Meetings: the host's AI note takers setting now reaches every page in the meeting, not only the host's.",
+        "Meetings: stage audio stays steady when two people change what they send at the same moment.",
+        "Meetings: a meeting linked between offices is kept while people are still in it, so a computer that paused can find its way back.",
+        "Plans: an older pass saved in your browser no longer stops a new pass from being added."
+      ]
+    },
+    {
       "version": "0.9.27.1",
       "date": "2026-11-20",
       "headline": "Agents join in, and meetings hold steadier",

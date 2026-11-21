@@ -294,6 +294,7 @@
     ["seatedAt", "i32"],   // int = 0  (line 1152)
     ["challAt", "i32"],   // int = -999  (line 1152)
     ["emptyHomes", "i32"],   // int = 0  (line 1152)
+    ["wasSeated", "bool"],   // bool = false  (line 1152)
     ["challToId", "i32"],   // int = -1  (line 1153)
     ["challToAt", "i32"],   // int = -99999  (line 1153)
     ["challToCk", "u64"],   // uint64_t = 0  (line 1153)
@@ -1062,6 +1063,7 @@
     seatedAt: 0,
     challAt: -999,
     emptyHomes: 0,
+    wasSeated: false,
     challToId: -1,
     challToAt: -99999,
     challToCk: 0,

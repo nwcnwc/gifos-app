@@ -2090,6 +2090,8 @@
   #left-modal .sub-full button:disabled { opacity: .6; cursor: progress; }
   #left-modal .sub-full p { margin: 0; font-size: .9rem; }
   #left-modal .sub-full .sub-full-say:empty { display: none; }
+  #left-modal .sub-full .sub-full-wait { opacity: .8; }
+  #left-modal .sub-full .sub-full-wait.sub-full-still { opacity: 1; font-weight: 600; }
   /* Unmute, camera, Reactions, Share screen, Chat, More, and Leave say what they do. */
   .bar #cam, .bar #mic, .bar #reactbtn, .bar #sharebtn, .bar #chatbtn, .bar #ccdock, .bar #bartoggle {
     height: 76px; width: auto; min-width: 72px; min-height: 76px;
