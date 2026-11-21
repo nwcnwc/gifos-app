@@ -4,8 +4,8 @@
   "appId": "air-hockey",
   "name": "Air Hockey",
   "shortName": "Air Hockey",
-  "version": "1.0.0",
-  "minBuild": 947,
+  "version": "1.1.0",
+  "minBuild": 5861,
   "tagline": "Two paddles on the ice. Drag yours. A friend takes the other end.",
   "description": "A low table, a red paddle, a sliding puck. Drag a finger or the mouse and the paddle follows. On your own you play a computer that chases the puck on the far side. Press Invite and send the link: a friend sits at the other end, on their phone or their computer.\n\nYour paddle stays on your half. The puck is the same one both of you see.\n\nAn unofficial port of MortimerGoro's table-ice game, MIT-licensed. This copy adds a friend on a second device, and keeps the original table, paddles and ice.",
   "author": {
@@ -39,14 +39,14 @@
   "cover": "/apps/air-hockey/cover.jpg",
   "screenshots": [],
   "gif": "/apps/air-hockey/air-hockey.gif",
-  "bytes": 1464254,
+  "bytes": 1467137,
   "download": 0,
   "provides": null,
-  "sha256": "358c902425da66cf4b4776b051694cb829cf1095c83794867ec8f1cb048b5126",
+  "sha256": "8b1d827a4656aa84a3592e535140f5bde69a97e479d043baf687b01513f749f7",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-21"
   },
   "porter": {
     "name": "GifOS",

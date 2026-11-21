@@ -164,7 +164,7 @@
       "appId": "air-hockey",
       "name": "Air Hockey",
       "shortName": "Air Hockey",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "tagline": "Two paddles on the ice. Drag yours. A friend takes the other end.",
       "author": {
         "name": "MortimerGoro",
@@ -178,7 +178,7 @@
         "name": "AirHockeyWebGL",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -198,15 +198,15 @@
         196
       ],
       "cover": "/apps/air-hockey/cover.jpg",
-      "bytes": 1464254,
+      "bytes": 1467137,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "358c902425da66cf4b4776b051694cb829cf1095c83794867ec8f1cb048b5126"
+      "sha256": "8b1d827a4656aa84a3592e535140f5bde69a97e479d043baf687b01513f749f7"
     },
     {
       "slug": "algorithm-visualizer",
@@ -568,7 +568,7 @@
       "appId": "battle-city",
       "name": "Eagle Defense",
       "shortName": "Eagle",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "tagline": "Tanks, bricks, and the eagle. A friend on the other pad.",
       "author": {
         "name": "feichao93",
@@ -582,7 +582,7 @@
         "name": "feichao93/battle-city",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -602,15 +602,15 @@
         33
       ],
       "cover": "/apps/battle-city/cover.jpg",
-      "bytes": 282903,
+      "bytes": 284166,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-15"
+        "ts": "2026-11-21"
       },
-      "sha256": "16535fbc7d865c82bc89ac5f1a0a7e6f4ba84c69c29862b960863ffe508ba95e"
+      "sha256": "60283a507f019ace4859d85a3d9afe8e2f297034f93b254ace478b419aca3a90"
     },
     {
       "slug": "battleboat",
@@ -3889,7 +3889,7 @@
       "appId": "jsnes",
       "name": "jsnes",
       "shortName": "jsnes",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "tagline": "The ROM and the save live in this file. Invite is player two.",
       "author": {
         "name": "Ben Firshman",
@@ -3903,7 +3903,7 @@
         "name": "JSNES",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-30",
       "updated": "2026-08-30",
@@ -3924,15 +3924,15 @@
         56
       ],
       "cover": "/apps/jsnes/cover.jpg",
-      "bytes": 315480,
+      "bytes": 316464,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "397bb92cc99d50912aff1fdb7bb1ff9d187df227d0efbd8819c2b99a9f4e3dcb"
+      "sha256": "933f9e2f992987e3ca22ec078c809ac08a430369c743e93b343b3ec425c661ab"
     },
     {
       "slug": "json-crack",
@@ -6750,7 +6750,7 @@
       "appId": "pong",
       "name": "Pong",
       "shortName": "Pong",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "tagline": "Pong across two phones. Send the link, first to nine.",
       "author": {
         "name": "Jake Gordon",
@@ -6764,7 +6764,7 @@
         "name": "JavaScript Pong",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -6784,22 +6784,22 @@
         110
       ],
       "cover": "/apps/pong/cover.jpg",
-      "bytes": 260311,
+      "bytes": 262921,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "7b076dd0ba432d911039979fb1e09591f527bea5218b6ccda3f73b43277ef5e4"
+      "sha256": "058d3cf44d9ca01cbb15fa7fafa98163cd7ad9c86f9bd728c63c640790b323a3"
     },
     {
       "slug": "pool",
       "appId": "pool",
       "name": "Pool",
       "shortName": "Pool",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "tagline": "Pool across two phones. Red against yellow, then the black.",
       "author": {
         "name": "henshmi",
@@ -6813,7 +6813,7 @@
         "name": "Classic Pool Game",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -6833,15 +6833,15 @@
         78
       ],
       "cover": "/apps/pool/cover.jpg",
-      "bytes": 401186,
+      "bytes": 403007,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "bcf806ae2cc7535c881c6e3583cbcf425c478aff186c3d17b536c7c6a067f879"
+      "sha256": "9c07f565787332b3f4113af220419983894cc4c37616c5251a561c8cf563a636"
     },
     {
       "slug": "primitive",
@@ -8887,13 +8887,13 @@
       "appId": "thumb-sprint",
       "name": "Thumb Sprint",
       "shortName": "Sprint",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "tagline": "Mash your thumb to sprint. A friend races the next lane from one link.",
       "author": {
         "name": "GifOS",
         "url": "https://gifos.app"
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -8913,15 +8913,15 @@
         74
       ],
       "cover": "/apps/thumb-sprint/cover.jpg",
-      "bytes": 225785,
+      "bytes": 227337,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "9ab4ddace296f0b610eec40c5e60a83e3fe32fb888ccc5a6c3673174505f9220"
+      "sha256": "15221284a9d63c9a6a1e16e11b9340ab03857d9a839da7cf99c6a560dc6f0aae"
     },
     {
       "slug": "tic-tac-toe",

@@ -4,8 +4,8 @@
   "appId": "thumb-sprint",
   "name": "Thumb Sprint",
   "shortName": "Sprint",
-  "version": "1.0.0",
-  "minBuild": 947,
+  "version": "1.1.0",
+  "minBuild": 5861,
   "tagline": "Mash your thumb to sprint. A friend races the next lane from one link.",
   "description": "Mash the pad on your phone. Your sticker sprints. First across the tape wins. A friend sits in the next lane from one invite.\n\nJump the countdown and everyone sees it: you lurch, you go back, you wait. The last second of the race loops so you can see whose nose broke the tape.\n\nOn your own, race a ghost of your best run, or a computer with a fair cadence — beatable if you mash, not asleep if you don't. Close the app: your best time is still there.\n\nThe pad is most of the lower half of the phone. On a laptop, hit space.",
   "author": {
@@ -39,13 +39,13 @@
   "cover": "/apps/thumb-sprint/cover.jpg",
   "screenshots": [],
   "gif": "/apps/thumb-sprint/thumb-sprint.gif",
-  "bytes": 225785,
+  "bytes": 227337,
   "download": 0,
   "provides": null,
-  "sha256": "9ab4ddace296f0b610eec40c5e60a83e3fe32fb888ccc5a6c3673174505f9220",
+  "sha256": "15221284a9d63c9a6a1e16e11b9340ab03857d9a839da7cf99c6a560dc6f0aae",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-21"
   }
 }

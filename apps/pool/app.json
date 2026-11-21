@@ -4,8 +4,8 @@
   "appId": "pool",
   "name": "Pool",
   "shortName": "Pool",
-  "version": "1.0.0",
-  "minBuild": 947,
+  "version": "1.1.0",
+  "minBuild": 5861,
   "tagline": "Pool across two phones. Red against yellow, then the black.",
   "description": "Press Invite and a friend takes the other turn on their own phone or computer.\n\nFifteen coloured balls, the black in the triangle, the white on its spot. Pot your colours, then the black. A foul and you place the white yourself.\n\nOn your own you play a computer that tries a handful of shots and picks the best. Two of you can pass the same screen. On a phone, pull back with your finger to aim and let go to shoot — the table turns to fill the screen.\n\nAn unofficial port of Classic Pool Game by henshmi. This copy adds a friend on a second device, and touch.",
   "author": {
@@ -39,14 +39,14 @@
   "cover": "/apps/pool/cover.jpg",
   "screenshots": [],
   "gif": "/apps/pool/pool.gif",
-  "bytes": 401186,
+  "bytes": 403007,
   "download": 0,
   "provides": null,
-  "sha256": "bcf806ae2cc7535c881c6e3583cbcf425c478aff186c3d17b536c7c6a067f879",
+  "sha256": "9c07f565787332b3f4113af220419983894cc4c37616c5251a561c8cf563a636",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-21"
   },
   "porter": {
     "name": "GifOS",
