@@ -700,7 +700,10 @@
   <div class="ask" id="ask"></div>
 </main>
 <script>
-  const T = (k, p) => (window.gifos && gifos.i18n ? gifos.i18n.t(k, p) : k);
+  // EN: English for words an older GifOS's text files may lack (this app reaches a 0.9.26 page in a mixed room, whose
+  // catalog returns the bare key). A key the catalog knows is never replaced.
+  const EN = { needsNewer: 'Connect Four needs a newer GifOS to play together. Reload the page to update.' };
+  const T = (k, p) => { const v = window.gifos && gifos.i18n ? gifos.i18n.t(k, p) : k; return v === k && Object.prototype.hasOwnProperty.call(EN, k) ? EN[k] : v; };
   // Static markup keeps its English literal (shown until the catalog arrives, or on an older GifOS) and is
   // tagged data-i18n / -ph / -title / -aria; applyI18n fills those from the catalog.
   function applyI18n(){
