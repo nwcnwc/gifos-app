@@ -149,7 +149,7 @@
   }
   // parseGrantList("roomLimit=12,captureOpenRoom,turnVideoLinks=6") -> { grants } | { error }: the text form of a hand-picked
   // set of line items (pay/mint-pass.mjs --grants). A name alone is true; name=true|false for the flags; roomLimit=1..25 or
-  // unlimited; turnVideoLinks=whole number. Strict: an unknown name, a repeated one or a bad value is an error. A word not
+  // none (no line); turnVideoLinks=whole number. Strict: an unknown name, a repeated one or a bad value is an error. A word not
   // named takes the no-grant value (nothing added: line 5, no flags, 0 links, one meeting): defaults fill nothing. The
   // result must also pass grantsOk, the one validator every verifier runs.
   function parseGrantList(text) {
@@ -164,9 +164,9 @@
       if (seen[k]) return { error: 'item "' + k + '" given twice' };
       seen[k] = true;
       if (k === 'roomLimit') {
-        if (v === 'unlimited') g.roomLimit = null;
+        if (v === 'none') g.roomLimit = null;
         else if (v !== undefined && /^[0-9]{1,2}$/.test(v) && +v >= 1 && +v <= ROOM_LIMIT_MAX) g.roomLimit = +v;
-        else return { error: 'roomLimit needs 1-' + ROOM_LIMIT_MAX + ' or unlimited' };
+        else return { error: 'roomLimit needs 1-' + ROOM_LIMIT_MAX + ' or none' };
       } else if (k === 'turnVideoLinks') {
         if (v !== undefined && /^[0-9]{1,4}$/.test(v) && +v <= 1000) g.turnVideoLinks = +v;
         else return { error: 'turnVideoLinks needs a whole number 0-1000' };
