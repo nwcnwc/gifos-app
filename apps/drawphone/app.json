@@ -4,8 +4,8 @@
   "appId": "drawphone",
   "name": "Drawphone",
   "shortName": "Drawphone",
-  "version": "1.1",
-  "minBuild": 947,
+  "version": "1.2",
+  "minBuild": 5861,
   "tagline": "Draw & guess for meetings: one draws, everyone guesses, points on every screen. Plus Telephone.",
   "description": "Open it in a meeting and everyone is at the table: no names to type, no codes, no Join button.\n\nDraw & guess: one person draws, everyone else guesses on their phone or computer. Quick right guesses score most, the drawer scores when people get it, and everyone sees the same standings. Three drawers a round, so a round fits in two or three minutes. Anyone can start the next one.\n\nTelephone: everyone draws a word at once, the pictures pass on and get guessed, and the chains are revealed step by step. No score; the fun is how far it drifts.\n\nPeople who join late play from the next round; someone who leaves is skipped. About 130 work-safe words in English, German, Spanish, Russian and Chinese, and a guess counts in any of them. Made for touch screens.\n\nAn unofficial port of Drawphone by Tanner Krewson, with Draw & guess added for GifOS meetings.",
   "author": {
@@ -40,14 +40,14 @@
   "cover": "/apps/drawphone/cover.jpg",
   "screenshots": [],
   "gif": "/apps/drawphone/drawphone.gif",
-  "bytes": 228581,
+  "bytes": 229301,
   "download": 0,
   "provides": null,
-  "sha256": "4f8c59af47668ec7f1aced7a1996158bf9905682f7a3d068163f9ce6c09e283d",
+  "sha256": "62b9a5d2843233f672abccae0fe5542950fe7de5f0c9eadeae6889035194e5d8",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-11-13"
+    "ts": "2026-11-21"
   },
   "porter": {
     "name": "GifOS",
