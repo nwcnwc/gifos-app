@@ -1250,6 +1250,8 @@
   .capcard-q span { display: block; overflow-wrap: anywhere; }
   .capcard-h { opacity: .7; font-size: .85em; margin-top: 8px; }
   .capcard-b { flex: none; }
+  /* While the card is open it is the captions view: the caption bar under it would show through the buttons on a phone. */
+  body:has(.capcard:not([hidden])) #livecap { visibility: hidden; }
   body.chrome-away #livecap { bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
   @media (max-width: 700px), (max-height: 500px) {
     .tile .cap { display: none !important; }
