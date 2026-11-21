@@ -111,5 +111,5 @@
   "emergency": "0.9.25",
   "latestEmergency": "0.9.26.2",
   "emergencyNote": "GifOS now checks that a real browser is joining a meeting.",
-  "latestMeetFloor": "0.9.27"
+  "latestMeetFloor": "0.9.27.2"
 }
