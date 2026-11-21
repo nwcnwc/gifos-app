@@ -2728,7 +2728,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // moment it lands and refused: nothing opens a device after Leave.
     const capTracks = new Set();
     let capClosed = false;
-    let subsRefused = null;   // {limit, free, at} while this page stands at a full door (subsFull); read by updateStatus, so declared up here
+    let subsRefused = null;   // {limit, free, at, n, t, tick} while this page stands at a full door (subsFull): n its refused knocks so far, t the timer of its next knock (or of the knock under way), tick the mesh tick in ms; read by updateStatus, so declared up here
     // The tracks the last releaseAllCapture() stopped, kept so the page can
     // still show that each one ended after localStream is dropped. A device
     // opened again starts a new record.
@@ -3506,12 +3506,28 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // door that withholds a knocker's HOME says so over the knocker's own authenticated channel ({k:'held'}), and the knocker
     // shows the screen from that. Only a page with no seat of its own, and only from a peer it asked, ever shows it.
     const heldSaidAt = new Map();   // door side: knocker id -> last time told
-    function sayHeld(id) {
+    function sayHeld(id, kind) {
       const now = Date.now(); if (now - (heldSaidAt.get(id) || 0) < 2000) return;
       const q = peers.get(id); if (!q || !q.dc || q.dc.readyState !== 'open') return;
       heldSaidAt.set(id, now); if (heldSaidAt.size > 64) heldSaidAt.delete(heldSaidAt.keys().next().value);
-      try { dcSend(q, { k: 'held' }); } catch (e) {}
+      try { dcSend(q, { k: kind || 'held' }); } catch (e) {}
     }
+    // A DOOR'S WORD HOLDS MY SEAT (law SUB.2.5: a refusal at a door whose room exists is never an answer to found a new
+    // room on). A door that withholds my knock answers my seat nothing, and a founding attempt of my seat must never
+    // read that as an empty room. So every word a door of this room says to me about my knock (held: its waiting room;
+    // doorwait: it is checking the room's plan; subask: it asks for my ticket; subfull: full) is remembered here, and
+    // while it is fresh my seat is held (opts.sub.held): it keeps knocking and founds nothing. The door says its word
+    // again at every knock; doorToldMs() without one and the ordinary law is back (the door went away).
+    let doorToldAt = 0;
+    const doorToldMs = () => (meshNode ? 3 * GifOS.meshConsts.consts.TURN_RETRY * meshNode.tickMs() : 0);   // three held knock rounds (the cap of a held round is TURN_RETRY ticks)
+    function doorTold(p, dc) {
+      if (!p || !dc || dc.__authBy !== p.id) return false;     // an authenticated channel only
+      const s = meshSeat(); if (s && s.hasCoord) return false;
+      if (!seatAskAt.has(p.id)) return false;                  // only a door I knocked at
+      doorToldAt = Date.now(); return true;
+    }
+    const doorHoldsMe = () => !!subsRefused || (doorToldAt > 0 && Date.now() - doorToldAt < doorToldMs());
+    const sayDoorWait = (id) => sayHeld(id, 'doorwait');   // door side: a plan check holds this knock. A new kind: a 0.9.27 page drops it (its 'held' would show the waiting-room screen)
     let heldWatch = 0;
     function showHeldScreen() {
       meetWait.waiting(true);
@@ -3524,6 +3540,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!dc || dc.__authBy !== p.id) return;                 // an authenticated channel only
       const s = meshSeat(); if (s && s.hasCoord) return;      // a seated page is never put behind the screen
       if (!seatAskAt.has(p.id)) return;                        // only a door I knocked at
+      doorTold(p, dc);
       showHeldScreen();
       if (!heldWatch) heldWatch = setInterval(() => {          // the screen goes when the seat lands (no greeters frame comes by this path)
         const t = meshSeat();
@@ -11818,6 +11835,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       let countText = '';
       let restText = '';
       let gettingBack = false;
+      try { subsSeatedCheck(); } catch (e) {}   // a knock at a full door landed: the full screen goes before the line is painted
       if (subsRefused) {
         // Turned away at a full door: not in the meeting, and never "Just you" (the full screen says why and the way in).
         restText = uiText('subFullTitle', 'This meeting is full.');
@@ -18682,7 +18700,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         netTag: () => netTagNow,
         capable: () => { const hc = navigator.hardwareConcurrency | 0; return !IS_MOBILE && !(hc > 0 && hc <= 2); },   // a relayed pipe may end at my seat when it heads a row (the device class the mesh's tier reads)   // my registration at the door says which network I am on (the tag my beat carries)
         netKind: () => (directPath === 'blocked' ? 2 : directPath === 'strict' ? 1 : directPath === 'ok' ? 0 : -1),   // and what it measured as (the seat's NAT kinds)
-        doorHeld: (id) => { try { if (DEBUG_ON && window.__doorHoldAll) return true;   /* DEBUG=on only: this door answers no knock (a test picks the doors) */ const b = meetWait.blocks(id); if (b && id && amAdmin) meetWait.note(id, rosterNames[id] || 'Someone waiting'); if (b && id) sayHeld(id); return b || subsHolds(id); } catch (e) { return false; } },   // a withheld knock goes on the host's list: nothing else names a plain room's knocker
+        doorHeld: (id) => { try { if (DEBUG_ON && window.__doorHoldAll) return true;   /* DEBUG=on only: this door answers no knock (a test picks the doors) */ const b = meetWait.blocks(id); if (b && id && amAdmin) meetWait.note(id, rosterNames[id] || 'Someone waiting'); if (b && id) sayHeld(id); if (b) return true; const sh = subsHolds(id); if (sh && id) sayDoorWait(id);   /* SUB.2.5: a knock held for the plan check is told so: unanswered, its seat read silence and founded a room of its own at this door */ return sh; } catch (e) { return false; } },   // a withheld knock goes on the host's list: nothing else names a plain room's knocker
         onDoor: (kind, frame) => {
           if (kind === 'seated') {
             meetWait.waiting(false);
@@ -18691,14 +18709,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         },
         sendDC: meshSendDC,
         // ROOMS JOINED BY RELAYED CONNECTIONS (js/meet-turn.js). ask(): my seat is about to found a room on silence at
-        // door 0: true while the page's ask for the meeting's rooms is open (or now opened), false when refused, off or
-        // inside the retry time. pipeEnds(): the relayed pipes this page holds an end of (read once a mesh tick).
+        // door 0, or the relay said the meeting lives behind other doors: 1 while the page's ask for the meeting's rooms
+        // is open (or now opened), 2 while it is refused and its wait runs (the seat founds nothing and knocks again:
+        // a refusal is not an answer to found on), 0 when this meeting has no relay service. pipeEnds(): the relayed pipes this page holds an end of (read once a mesh tick).
         sub: {
+          held: () => doorHoldsMe(),   // SUB.2.5: a door of this room told me to wait (waiting room, plan check, full): my seat founds nothing
           ask: () => {
-            if (!turnLinks || !relayTv) return false;
-            if (!turnLinks.mayAsk()) return false;   // a refusal is the answer: this founding attempt founds; then its wait runs
-            turnSubWantAt = Date.now();
-            return true;
+            if (!turnLinks || !relayTv) return 0;
+            turnSubWantAt = Date.now();   // held too: the ask goes out again at the first knock after its wait
+            return turnLinks.held() ? 2 : 1;
           },
           probe: () => !!(turnLinks && relayTv && turnLinks.probe()),   // JOIN.2: my first ask stalled: dial the heads of the other doors the relay lists (no Worker call)
           pipeEnds: () => (turnLinks ? turnLinks.pipeEnds() : []),
@@ -23750,7 +23769,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         dcSend(p, { k: 'wpong' }); // the wake probe (wakeProbe): the one answer it accepts
       } else if (m.k === 'held') {
         onHeldSaid(p, dc);
+      } else if (m.k === 'doorwait') {
+        doorTold(p, dc);            // a door holds my knock while it checks the room's plan: my seat founds nothing meanwhile
       } else if (m.k === 'subask' && typeof m.n === 'string') {
+        doorTold(p, dc);            // the room is at its line and the door asks for my ticket: held until its verdict
         subsAnswer(p, m.n);         // a door asks me to show a subscription
       } else if (m.k === 'subshow' && m.s && typeof m.s === 'object') {
         subsShown(p, m.s);          // a knocker shows one
@@ -39608,17 +39630,73 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // offers the way in. When this browser comes to hold a right the door lets
     // in (meet-subs showFull's onRight), the page knocks again on its own: no
     // reload, so the name, the settings and the identity stay.
+    // AND IT KNOCKS AGAIN, POLITELY (law SUB.2.5: a refusal at a door whose room exists is never an answer to found a
+    // new room on; the refused page waits and asks again). After each refusal the page waits TURN.10's wait (TURN_RETRY,
+    // doubling to TURN_RETRY_MAX_X times it, and a jitter of up to a quarter of the wait so the pages one burst refused
+    // do not come back in one beat), then knocks: a new mesh node, no devices, the full screen and its offer still up.
+    // Full again (the door's subfull, or no seat within one TURN_RETRY): it stands aside again and the wait doubles.
+    // Seated: a place opened, the screen goes, the person is in with no tap. A right gained meanwhile (a pass, a
+    // subscription) knocks at once (subsKnockAgain). While it knocks its seat is held (doorHoldsMe): it founds nothing.
     function subsFull(m) {
       const ms = meshSeat();
       if (subsTurnedAway || !subsOn() || (ms && ms.state === 3)) return;   // a seated member is never put out by it
       subsTurnedAway = true;
       const limit = m && Number.isInteger(m.limit) && m.limit > 0 && m.limit <= 1e6 ? m.limit : null;
-      subsRefused = { limit, free: !!(m && m.free), at: Date.now() };
-      if (DEBUG_ON) { try { clog('subs turned away at a full door limit=' + limit); } catch (e) {} }
+      const first = !subsRefused;
+      if (first) subsRefused = { limit, free: !!(m && m.free), at: Date.now(), n: 0, t: 0, tick: meshNode ? meshNode.tickMs() : 0 };
+      if (DEBUG_ON) { try { clog('subs turned away at a full door limit=' + limit + (first ? '' : ' again, knock ' + subsRefused.n)); } catch (e) {} }
       subsStandAside();
-      GifOS.meetSubs.showFull({ limit, free: subsRefused.free, onRight: subsKnockAgain });
+      if (first) GifOS.meetSubs.showFull({ limit, free: subsRefused.free, onRight: subsKnockAgain });
+      subsReknockArm();
       try { updateStatus(); } catch (e) {}
     }
+    function subsReknockClear() { const r = subsRefused; if (r) { clearTimeout(r.t); r.t = 0; } }
+    function subsReknockWait(r) {   // the wait before knock r.n (1, 2, ..), ms
+      const K = GifOS.meshConsts.consts, w = K.TURN_RETRY * r.tick * Math.min(K.TURN_RETRY_MAX_X, 2 ** Math.min(16, Math.max(0, r.n - 1)));
+      return w + Math.floor(Math.random() * (w / 4));
+    }
+    function subsReknockArm() {
+      const r = subsRefused; if (!r) return;
+      subsReknockClear();
+      if (!(r.tick > 0)) return;   // no mesh clock was ever seen: stand aside and wait for a right, as before
+      r.n++;
+      const w = subsReknockWait(r);
+      r.t = setTimeout(subsReknock, w);
+      if (DEBUG_ON) { try { clog('subs next knock ' + r.n + ' in ' + Math.round(w / 1000) + 's'); } catch (e) {} }
+      // still outside after three refused knocks (about four minutes): the reminder that the pass gets the person in now
+      try { GifOS.meetSubs.fullWaiting({ still: r.n > 3 }); } catch (e) {}
+    }
+    function subsReknock() {
+      const r = subsRefused; if (!r) return;
+      subsReknockClear();
+      if (DEBUG_ON) { try { clog('subs knock ' + r.n + ' at the full door after ' + Math.round((Date.now() - r.at) / 1000) + 's'); } catch (e) {} }
+      subsTurnedAway = false; leaving = false;   // capClosed stays: no device is opened or asked for while the person is outside
+      try { startMesh(); } catch (e) {}
+      r.t = setTimeout(() => {   // no seat and no word within one TURN_RETRY: the door still holds my knock. Aside again, as on a refusal
+        if (subsRefused !== r || subsTurnedAway) return;
+        r.t = 0;
+        if (subsSeatedCheck()) return;
+        if (DEBUG_ON) { try { clog('subs knock ' + r.n + ': no seat yet, standing aside again'); } catch (e) {} }
+        subsTurnedAway = true; subsStandAside(); subsReknockArm(); try { updateStatus(); } catch (e) {}
+      }, GifOS.meshConsts.consts.TURN_RETRY * r.tick);
+    }
+    // Seated by a knock at the full door (read at every status paint: the seat's landing repaints the line).
+    function subsSeatedCheck() {
+      if (!subsRefused || subsTurnedAway) return false;
+      const s = meshSeat();
+      if (!(s && s.state === 3 && s.hasCoord)) return false;
+      subsGotIn(); return true;
+    }
+    function subsGotIn() {
+      const r = subsRefused; if (!r) return;
+      if (DEBUG_ON) { try { clog('subs a place opened: seated by knock ' + r.n + ' after ' + Math.round((Date.now() - r.at) / 1000) + 's'); } catch (e) {} }
+      subsReknockClear();
+      subsRefused = null; subsTurnedAway = false; doorToldAt = 0;
+      leaving = false; capClosed = false;   // seated: devices may be opened again, each one by a tap
+      try { GifOS.meetSubs.hideFull(); } catch (e) {}
+      try { updateStatus(); } catch (e) {}
+    }
+    if (DEBUG_ON) window.__subsReknockForTest = () => (subsRefused ? { n: subsRefused.n, armed: !!subsRefused.t, aside: subsTurnedAway, sinceMs: Date.now() - subsRefused.at } : null);   // DEBUG=on only: a test reads the re-knock state
     function subsStandAside() {
       leaving = true;   // the mesh re-arms and reconnects stand down
       try { GifOS.meetSubs.leaveMeeting(); } catch (e) {}
@@ -39634,7 +39712,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function subsKnockAgain() {
       if (!subsRefused) return;
       if (DEBUG_ON) { try { clog('subs knock again after ' + Math.round((Date.now() - subsRefused.at) / 1000) + 's: this browser holds a right the door lets in'); } catch (e) {} }
-      subsRefused = null; subsTurnedAway = false;
+      subsReknockClear();
+      if (!subsTurnedAway) subsStandAside();   // a knock without the right is under way: it ends, and the new knock shows the right from its first word
+      subsRefused = null; subsTurnedAway = false; doorToldAt = 0;
       leaving = false; capClosed = false;   // a new knock may open devices again (each one asked by a tap)
       try { GifOS.meetSubs.hideFull(); } catch (e) {}
       try { startMesh(); } catch (e) {}
