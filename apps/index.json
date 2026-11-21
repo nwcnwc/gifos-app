@@ -465,7 +465,7 @@
       "appId": "backgammon",
       "name": "Backgammon",
       "shortName": "Backgammon",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "Play the computer, or send a link and a friend sits across the board.",
       "author": {
         "name": "quasoft",
@@ -479,7 +479,7 @@
         "name": "backgammonjs",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -499,15 +499,15 @@
         42
       ],
       "cover": "/apps/backgammon/cover.jpg",
-      "bytes": 228141,
+      "bytes": 228071,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "51c6faad9c49d63d4de9087b341f5ab4a2d1c0245514ee775f952c8131586113"
+      "sha256": "e882bbf03f3534f4afff1593ce4621dae93c4286d586bfdc7dd73e99fa860277"
     },
     {
       "slug": "background-removal",
@@ -717,7 +717,7 @@
       "appId": "besogo",
       "name": "BesoGo",
       "shortName": "BesoGo",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "A Go board. Two seats. Tap to place a stone.",
       "author": {
         "name": "yewang",
@@ -731,7 +731,7 @@
         "name": "BesoGo",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -752,15 +752,15 @@
         70
       ],
       "cover": "/apps/besogo/cover.jpg",
-      "bytes": 220530,
+      "bytes": 220646,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "e1e12d2c1278d3f081be12b8b00b681f0d829f14a2129425eb890d81f1b5d989"
+      "sha256": "bcd647d20ffb7bd375dfa321466d306df9a96398de77733b239871ce4537800d"
     },
     {
       "slug": "bible",
@@ -1368,7 +1368,7 @@
       "appId": "checkers",
       "name": "Checkers",
       "shortName": "Checkers",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "Play the computer, or send a link and a friend takes the other colour.",
       "author": {
         "name": "stroibot",
@@ -1382,7 +1382,7 @@
         "name": "Checkers",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -1402,15 +1402,15 @@
         42
       ],
       "cover": "/apps/checkers/cover.jpg",
-      "bytes": 198531,
+      "bytes": 198426,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "3624977c89c3d189e4ee54ba0a9be4718eb2641953fa54edab050c2627128a95"
+      "sha256": "664f2f1eada5ce30a42f148224187dd5a840d77a814cc6bdcc91fb785abdb12c"
     },
     {
       "slug": "chess-grandmaster",
@@ -1602,7 +1602,7 @@
       "appId": "connect-four",
       "name": "Connect Four",
       "shortName": "C4",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "Play the computer, or send a link and a friend drops the other colour.",
       "author": {
         "name": "kenrick95",
@@ -1616,7 +1616,7 @@
         "name": "c4",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -1635,15 +1635,15 @@
         59
       ],
       "cover": "/apps/connect-four/cover.jpg",
-      "bytes": 258048,
+      "bytes": 258151,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "9faa68c896aff7e3d5b315f6f6c3d5d04753ea08f1f0db7e8663a959e54f248d"
+      "sha256": "3c58cbcbce8ba1a48e38f311326754810cec9158042db89cd592ef951f2dff6c"
     },
     {
       "slug": "contrast-ratio",
@@ -3050,7 +3050,7 @@
       "appId": "gomoku",
       "name": "Gomoku",
       "shortName": "Gomoku",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "Five in a row. Play the computer, or a friend from one invite.",
       "author": {
         "name": "yyjhao",
@@ -3064,7 +3064,7 @@
         "name": "HTML5 Gomoku",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -3084,15 +3084,15 @@
         70
       ],
       "cover": "/apps/gomoku/cover.jpg",
-      "bytes": 264225,
+      "bytes": 263893,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "1d9ce1d532864667e8f39f0f2e0740c27d6bab4fa081b791145f9db0773e9641"
+      "sha256": "da77f1c311d647cd1bc1ca6525bfafcba890dd7d7963a6fbd8928c46d7a1729e"
     },
     {
       "slug": "grid-garden",
@@ -3351,13 +3351,13 @@
       "appId": "hex-chess",
       "name": "Hex Chess",
       "shortName": "HexChess",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "Chess on hexagons, with three bishops. Play the computer or a friend.",
       "author": {
         "name": "GifOS",
         "url": "https://gifos.app"
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -3377,15 +3377,15 @@
         39
       ],
       "cover": "/apps/hex-chess/cover.jpg",
-      "bytes": 204433,
+      "bytes": 205052,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "dc7630c926786f6e3de2ff02625b816dab436cddf8773322a4af6518c5899bf6"
+      "sha256": "a4cdd8796b9b6ab9714268165bf7667147ce259f2aaceef52df0427d6887de1f"
     },
     {
       "slug": "hexahedral",
@@ -4140,13 +4140,13 @@
       "appId": "jungle",
       "name": "Jungle",
       "shortName": "Jungle",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "Jungle chess. Play the computer, or a friend from one link.",
       "author": {
         "name": "GifOS",
         "url": "https://gifos.app"
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -4166,15 +4166,15 @@
         70
       ],
       "cover": "/apps/jungle/cover.jpg",
-      "bytes": 201406,
+      "bytes": 201378,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "d7e6237e88dd764133e8e96674eec5f263bdb0d9fdf4f01d43b0d15681e92edc"
+      "sha256": "fc13210b08fab3aab819618e080e4a22a2cb3723821f6951b92b14404f6880a0"
     },
     {
       "slug": "jupyterlite",
@@ -4534,7 +4534,7 @@
       "appId": "ludo",
       "name": "Ludo",
       "shortName": "Ludo",
-      "version": "1.1",
+      "version": "1.2",
       "tagline": "Ludo. Four seats fill as friends open your invite.",
       "author": {
         "name": "chukwumaijem",
@@ -4548,7 +4548,7 @@
         "name": "Ludo",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-24",
       "updated": "2026-08-24",
@@ -4567,15 +4567,15 @@
         74
       ],
       "cover": "/apps/ludo/cover.jpg",
-      "bytes": 192047,
+      "bytes": 191758,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "fe68370bbda1c0f85076ad8e4cd5bee2d3c91580a922af31835110131ce5f82a"
+      "sha256": "96fbda1c771b585a909cd018a7db9baa68fec348db6cce515928120d3b64b8d1"
     },
     {
       "slug": "math-race",
@@ -4685,7 +4685,7 @@
       "appId": "meeting-bot",
       "name": "Meeting Bot",
       "shortName": "Meet Bot",
-      "version": "0.9.25.1",
+      "version": "0.9.25.2",
       "tagline": "A meeting bot you drive from another device.",
       "author": {
         "name": "GifOS",
@@ -4710,15 +4710,15 @@
         255
       ],
       "cover": "/apps/meeting-bot/cover.jpg",
-      "bytes": 47150,
+      "bytes": 48717,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-11-12"
+        "ts": "2026-11-21"
       },
-      "sha256": "d5b8984e35bfd329ddb61887fcdaa20ef2170b4dc233b0066da003dc3a2ae0a7"
+      "sha256": "74f57700b33d79755a01d3ddbbf793d9656f24e9b570d0f0c71c843e7eef7fac"
     },
     {
       "slug": "memory",
@@ -7097,7 +7097,7 @@
       "appId": "quiz-buzzer",
       "name": "Quiz Buzzer",
       "shortName": "Buzzer",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "Send one link and every phone in the room becomes a buzzer.",
       "author": {
         "name": "GifOS",
@@ -7107,7 +7107,7 @@
         "name": "Kahoot!",
         "by": "Kahoot!"
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -7128,15 +7128,15 @@
         72
       ],
       "cover": "/apps/quiz-buzzer/cover.jpg",
-      "bytes": 204490,
+      "bytes": 205869,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "5473f6b9d48121445951e2eb74a2f8a0f60540abc2dc9af17cce6d0c57d37d88"
+      "sha256": "1d654bd0ba774d06e727aa7ba24330bfe6c77997b8bda43fc6350f6fe9eca07d"
     },
     {
       "slug": "racer",
@@ -7494,7 +7494,7 @@
       "appId": "reversi",
       "name": "Reversi",
       "shortName": "Reversi",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "Othello. The computer plays here, or a friend joins from one link.",
       "author": {
         "name": "alex-berson",
@@ -7508,7 +7508,7 @@
         "name": "Reversi",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -7528,15 +7528,15 @@
         100
       ],
       "cover": "/apps/reversi/cover.jpg",
-      "bytes": 256807,
+      "bytes": 256645,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "4d7630980f43169aa6f909a1af765739195776e245b40934ae93eef2a35e5ace"
+      "sha256": "fd3597969059d71850881a4f1bed52837a89872612b79086565b4ff8cb2aacb7"
     },
     {
       "slug": "rockets",
@@ -8838,7 +8838,7 @@
       "appId": "thinktank",
       "name": "Thinktank",
       "shortName": "Thinktank",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "Destroy the other base — against the computer, or a friend from one link.",
       "author": {
         "name": "averycrespi",
@@ -8852,7 +8852,7 @@
         "name": "Thinktank",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -8872,15 +8872,15 @@
         74
       ],
       "cover": "/apps/thinktank/cover.jpg",
-      "bytes": 208731,
+      "bytes": 208585,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "1ac6c60b2e8cd735ec19d2e6b5cc9d18c05125cb62dd877958c8a80f96e6b9fb"
+      "sha256": "e43be678a77c0291e2eac958152987e416731c1593ea5f97905991e9324b1b2b"
     },
     {
       "slug": "thumb-sprint",
@@ -8928,7 +8928,7 @@
       "appId": "tic-tac-toe",
       "name": "Tic-Tac-Toe",
       "shortName": "TicTacToe",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "The computer plays perfectly. Bring a friend if you want to win.",
       "author": {
         "name": "Colyseus",
@@ -8942,7 +8942,7 @@
         "name": "Colyseus Tic-Tac-Toe",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -8962,15 +8962,15 @@
         148
       ],
       "cover": "/apps/tic-tac-toe/cover.jpg",
-      "bytes": 253870,
+      "bytes": 253606,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "fbade96c12a625f59e63d234f565fe26d7e13027352edf6f14679c5222e8d533"
+      "sha256": "d215e81243c92b47c46b5d2a624f10c83aecc51aadd68fd22cbca44725276252"
     },
     {
       "slug": "tic80",

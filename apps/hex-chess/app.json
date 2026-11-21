@@ -4,8 +4,8 @@
   "appId": "hex-chess",
   "name": "Hex Chess",
   "shortName": "HexChess",
-  "version": "1.0",
-  "minBuild": 947,
+  "version": "1.1",
+  "minBuild": 5861,
   "tagline": "Chess on hexagons, with three bishops. Play the computer or a friend.",
   "description": "Hexagonal chess. The computer thinks here on this device, or you send one link and a friend sits the other colour.\n\nNinety-one hexes, three colours, three bishops. Tap a piece, then a hex — legal hexes light up. White sits at the near side. Close the tab and the game is still there when you come back.\n\nOn your own, a computer looks a little way ahead right on the phone. Pass the device for two people in the same room, or press Play a friend and send the invite.\n\nThere is no castling. A pawn that steps two hexes can still be taken in passing. This is the hexagonal kind, not the square board.",
   "author": {
@@ -39,13 +39,13 @@
   "cover": "/apps/hex-chess/cover.jpg",
   "screenshots": [],
   "gif": "/apps/hex-chess/hex-chess.gif",
-  "bytes": 204433,
+  "bytes": 205052,
   "download": 0,
   "provides": null,
-  "sha256": "dc7630c926786f6e3de2ff02625b816dab436cddf8773322a4af6518c5899bf6",
+  "sha256": "a4cdd8796b9b6ab9714268165bf7667147ce259f2aaceef52df0427d6887de1f",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-21"
   }
 }
