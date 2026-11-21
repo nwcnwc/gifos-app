@@ -18710,14 +18710,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         sendDC: meshSendDC,
         // ROOMS JOINED BY RELAYED CONNECTIONS (js/meet-turn.js). ask(): my seat is about to found a room on silence at
         // door 0, or the relay said the meeting lives behind other doors: 1 while the page's ask for the meeting's rooms
-        // is open (or now opened), 2 while it is refused and its wait runs (the seat founds nothing and knocks again:
-        // a refusal is not an answer to found on), 0 when this meeting has no relay service. pipeEnds(): the relayed pipes this page holds an end of (read once a mesh tick).
+        // is open (or now opened), 2 while it is refused and its wait runs (a newcomer's seat founds nothing and knocks
+        // again: a refusal is not an answer to found on; a seat that sat in this meeting, `was`, founds as before: a
+        // room that runs never waits at a door), 0 when this meeting has no relay service. pipeEnds(): the relayed pipes this page holds an end of (read once a mesh tick).
         sub: {
           held: () => doorHoldsMe(),   // SUB.2.5: a door of this room told me to wait (waiting room, plan check, full): my seat founds nothing
-          ask: () => {
+          ask: (was) => {
             if (!turnLinks || !relayTv) return 0;
             turnSubWantAt = Date.now();   // held too: the ask goes out again at the first knock after its wait
-            return turnLinks.held() ? 2 : 1;
+            return turnLinks.held(was) ? 2 : 1;
           },
           probe: () => !!(turnLinks && relayTv && turnLinks.probe()),   // JOIN.2: my first ask stalled: dial the heads of the other doors the relay lists (no Worker call)
           pipeEnds: () => (turnLinks ? turnLinks.pipeEnds() : []),

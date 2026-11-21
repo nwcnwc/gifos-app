@@ -47,7 +47,7 @@
  *   fhopActive           A1     true where the page gave a friend-hop face (o.fhop), as the sim's LINKMODEL (friend-hop has no off switch)
  *   fhopFriendFor        A1     sponsorSend's friend rung would carry it (o.fhop.friendFor)
  *   fabricSubProbe       A1     JOIN.2, my first ask stalled: o.sub.probe() (true: the page now dials the heads of the other doors the relay lists)
- *   fabricSubAsk         A1     a joiner about to found a room on silence: o.sub.ask() (1: the page's ask for the list of rooms is open; 2: refused, held; 0: no service); o.sub.held() true: a door of the room told the page to wait (3: held)
+ *   fabricSubAsk         A1     a joiner about to found a room on silence: o.sub.ask(was) (was: my seat has sat in this meeting; 1: the page's ask for the list of rooms is open; 2: refused: a newcomer is held, a seat that sat founds as before; 0: no service); o.sub.held() true: a door of the room told the page to wait (3: held)
  *   fabricPipePeers      A1     the far ends of my joining connections that are up (o.sub.pipeEnds(), read once a tick)
  *   fabricSubDoor        A1     my own knock found my door empty: o.sub.doorEmpty() (the page asks for a fresh grant for my door)
  *   fabricSubRepipe      A1     my room lost its joining connection: o.sub.repipe() (the page asks once for a new one)
@@ -539,7 +539,7 @@
       pipeNow = out;
     }
     const fabricSubProbe = (id) => { const s = seat(); return (id === me && s && s.sr === 0 && subF && subF.probe && subF.probe()) ? 1 : 0; };
-    const fabricSubAsk = (id) => { const s = seat(); if (id === me && s && subF && subF.held && subF.held()) return 3;   /* SUB.2.5: a door of this room told my page to wait (a waiting room, a plan check, a full door): held at any door, with or without a relay service */ if (!(id === me && s && s.sr === 0 && subF && subF.ask)) return 0; const a = subF.ask(); return a === 2 ? 2 : a ? 1 : 0; };   // 2: refused, the wait runs: the seat is held and founds nothing (SUB.2.5)
+    const fabricSubAsk = (id) => { const s = seat(); if (id === me && s && subF && subF.held && subF.held()) return 3;   /* SUB.2.5: a door of this room told my page to wait (a waiting room, a plan check, a full door): held at any door, with or without a relay service */ if (!(id === me && s && s.sr === 0 && subF && subF.ask)) return 0; const a = subF.ask(!!s.wasSeated); return a === 2 ? (s.wasSeated ? 0 : 2) : a ? 1 : 0; };   // refused, the wait runs: a NEWCOMER's seat is held and founds nothing (2, SUB.2.5); a seat that sat in this meeting (back at the door after a requeue or a cut's leave) founds as 0.9.25 (0): a room that runs never waits at a door
     const fabricPipePeers = (id) => (id === me ? pipeNow.slice() : []);
     const fabricSubDoor = (id) => { if (id === me && subF && subF.doorEmpty) subF.doorEmpty(); };
     const fabricSubRepipe = (id) => { if (id === me && subF && subF.repipe) subF.repipe(); };
