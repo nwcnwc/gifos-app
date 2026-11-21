@@ -293,7 +293,7 @@
         const heard = doorHeard(L, g, k);
         const named = l15Names(g, k) || l15NamedBy(g, k);
         let owes = false; if (L.dHomedE && alive[g]) { const w = seats[g].whAsk.get(k); owes = (w !== undefined && T() - w <= K.ISLAND_WAIT); }   // L16.16: I answered this knocker with no room and keep its ask: the door is not idle, it waits for my seat
-        if (!heard && !named && alive[g] && L.dBorn >= 0 && !owes) {
+        if (!heard && !named && alive[g] && L.dBorn >= 0 && !owes && !l716Holds(g, k)) {   // L7.16: nor the door of a seeker whose FIND I hold
           const idle = T() - L.dProg, age = T() - L.dBorn; let why = null;
           const placed = !!(L.dPlaced & (1 << lEnd(g, k)));   // L16.3.1: the placee closes it (L15.5), or the life limit from the PLACE
           if (!placed && L.dHoAt >= 0 && T() - L.dHoAt >= K.L16_HO_CLOSE && !(L.dOwed && L.dWait >= 0)) why = 'handed';
@@ -547,6 +547,19 @@
       l23MakeRoom(me, x);
       const L = ph().linkGet(me, x); if (L.state === LK_NONE || L.state === LK_CLOSED) { ph().startDial(me, x, L); L.dialHow = 1; } else if (L.state === LK_DIALING && ph().sigAsked) ph().sigAsked(L, me, x);
     }
+    // C++: mesh_link.inc:fabricHoldDial   [end]
+    // L7.16: the holder dials the seeker it holds: an answer door like the PLACE's own, under every door limit; past them nothing is dialled now.
+    function fabricHoldDial(me, x) {
+      if (!lv.LINKMODEL || me < 0 || x < 0 || me === x || x >= lv.nextId || !alive[me] || !alive[x]) return;
+      if (seats[x].hasCoord && seats[x].state === 3) return;
+      const L = ph().linkGet(me, x); if (!(L.state === LK_NONE || L.state === LK_CLOSED)) return;
+      if (dialHeld(me, x) || l18NoDial(me, x) || l23Refused(x, me)) return;
+      lv.L16_DEFER = false; if (l16Refuse(me, x, 'PLACE')) { lv.L16_DEFER = false; return; }
+      trace('L7.16-DIAL', me, null, 'nc=%d', x);
+      noteCall(me, x); L.askAt = T(); ph().startDial(me, x, L); L.dialT = mtI('PLACE'); L.dialHow = 3;
+    }
+    // C++: mesh_link.inc:l716Holds
+    function l716Holds(g, k) { if (g < 0 || g >= lv.nextId || !alive[g]) return false; for (const h of seats[g].held) if (h.m.nc === k) return true; return false; }
     // C++: mesh_link.inc:fabricDialJoin   [end]
     function fabricDialJoin(me, x) {
       if (!lv.LINKMODEL || me < 0 || x < 0 || me === x || x >= lv.nextId) return;
@@ -748,7 +761,7 @@
     function l18Deliv(m) { if (!m.l18) return; const h = 16 - m.rttl; lv.L18_DELIV++; lv.L18_HOPS += h; if (h > lv.L18_HMAX) lv.L18_HMAX = h; S.L18_HH[h < 8 ? h : 8]++; }
 
     Object.assign(fns, {
-      fabricLinkState, fabricDial, fabricDialJoin, fabricDialUplink, fabricDialFails, fabricUpTake, fabricUpDecline, fabricDoors,
+      fabricLinkState, fabricDial, fabricHoldDial, fabricDialJoin, fabricDialUplink, fabricDialFails, fabricUpTake, fabricUpDecline, fabricDoors,
       fabricDoorDrop, fabricDoorHanded, fabricDoorHeard, fabricMyDoors, fabricMyKnocks, fabricNoSock, fabricL23Busy, fabricCallFrame,
       l22Quiet, l222Note, l22Agree, l22Close, fabricDropHalf, fabricLinkCarries, l22CloseAsk, l22Need, l28Reply, l18Route, l18Cell, l18Hop, l18Deliv,
     });

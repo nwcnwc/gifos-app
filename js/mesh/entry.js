@@ -550,7 +550,7 @@
       this.held = this.held.filter((h) => h.m.nc !== mm.nc);   // one held FIND per seeker (a re-ask replaces it)
       this.trace('HOLD', this.id, this.coord, 'nc=%d', mm.nc);
       { const h = state.newStruct('Held'); h.m = msg.clone(mm); h.at = this.TICK; h.deep = deep; this.held.push(h); }
-      this.findAck(mm); this.f.wake(this.id); return true;   // L16.3
+      this.findAck(mm); if (this.f.fabricDoors()) this.f.fabricHoldDial(this.id, mm.nc);   /* L7.16 */ this.f.wake(this.id); return true;   // L16.3
     },
 
     // C++: mesh_seat.inc:Seat::serveHeld
