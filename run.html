@@ -2728,6 +2728,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // moment it lands and refused: nothing opens a device after Leave.
     const capTracks = new Set();
     let capClosed = false;
+    let subsRefused = null;   // {limit, free, at} while this page stands at a full door (subsFull); read by updateStatus, so declared up here
     // The tracks the last releaseAllCapture() stopped, kept so the page can
     // still show that each one ended after localStream is dropped. A device
     // opened again starts a new record.
@@ -5151,7 +5152,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const mic = d.createElement('button'); mic.type = 'button'; mic.id = 'pf-mic';
       const leave = d.createElement('button'); leave.type = 'button'; leave.className = 'leave'; leave.id = 'pf-leave';
       leave.textContent = uiText('leave', 'Leave');
-      mic.onclick = () => { const b = document.getElementById('mic'); if (b && !b.disabled) b.click(); docPipPaint(); };
+      mic.onclick = () => { const b = document.getElementById('mic'); if (b && !b.disabled) micTap(false); docPipPaint(); };   // no chooser: it would open in the meeting page, out of sight
       // A broadcast asks before leaving: that question is in the meeting
       // page, so the float closes to show it.
       leave.onclick = () => { const b = document.getElementById('leavebtn'); if (b) b.click(); exitPip(); };
@@ -6005,6 +6006,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // everyone ready); an admin room clears per tile, so its own consent too.
       const clear = !blurHold(id) && (!hasAdminRoom() || consents(st));
       if (clear || (isMe && clearForTest)) return 0;
+      // Someone who says No blur where the room keeps video blurred may be
+      // sending clear pixels, so this screen blurs them at Max, never Min.
+      // My own picture keeps my pick: my page blurs what it sends.
+      if (!isMe && blurLevel(st.blur) === 0) return 2;
       return Math.max(1, blurLevel(st.blur));
     }
     // One knob re-derives every tile AND the outbound pixels whenever statuses,
@@ -11814,7 +11819,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       let countText = '';
       let restText = '';
       let gettingBack = false;
-      if (refused) {
+      if (subsRefused) {
+        // Turned away at a full door: not in the meeting, and never "Just you" (the full screen says why and the way in).
+        restText = uiText('subFullTitle', 'This meeting is full.');
+      } else if (refused) {
         restText = relayNo ? relayNo.words : uiText('stThePeopleInThisRoom', '\u26d4 The people in this room voted not to let this device in.');
       } else if (atPwPrompt()) {
         restText = uiText('pwHintLocked', 'Enter the room password to join the meeting.');   // the prompt is the answer: no network line under it
@@ -11824,6 +11832,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // A person in the waiting room is not alone and has no one to invite.
         countText = uiText('waitHere', 'In the waiting room');
         restText = tail;
+      } else if (shown === 1 && leftUp) {
+        restText = uiText('leftTitle', 'You left');   // left with nobody counted behind: not a meeting of one
       } else if (shown === 1) {
         if (atDoor) {
           countText = uiText('backIn', 'Getting you back in');
@@ -11873,7 +11883,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (phoneLayout() && !BROADCAST && !reachLine) {
         const head = roomLabel ? roomLabel + ' · ' : '';
         phoneDetail = head + (shown <= 1 ? countText : shown + plus + ' ' + uiText('inMeeting', 'in this meeting')) + restText;
-        countText = head + (shown <= 1 ? (atDoor ? uiText('backIn', 'Getting you back in') : uiText('justYou', 'Just you')) : shown + plus + ' ' + uiText('inMeeting', 'in this meeting'));
+        const oneWord = subsRefused ? uiText('subFullTitle', 'This meeting is full.') : leftUp ? uiText('leftTitle', 'You left') : atDoor ? uiText('backIn', 'Getting you back in') : uiText('justYou', 'Just you');   // never "Just you" on a page that is not in the meeting
+        countText = head + (shown <= 1 ? oneWord : shown + plus + ' ' + uiText('inMeeting', 'in this meeting'));
         restText = '';
       }
       if (prog) { phoneDetail = restText; countText = phoneLayout() ? prog.head : ''; if (phoneLayout()) restText = ''; }
@@ -11884,7 +11895,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const statusKind = reachLine ? reachState : shown === 1 ? (atDoor ? 'door' : 'alone') : 'meeting';
       // The named state of the resting line (js/meet-status.js), most urgent first.
       const waitingHere = !refused && !atPwPrompt() && !reachLine && typeof iAmWaiting === 'function' && iAmWaiting();
-      const restState = prog ? 'progress' : refused ? 'refused' : atPwPrompt() ? 'passwordDoor' : reachLine ? reachState
+      const restState = prog ? 'progress' : (refused || subsRefused) ? 'refused' : atPwPrompt() ? 'passwordDoor' : reachLine ? reachState
         : (link && !leftUp) ? 'reconnecting' : waitingHere ? 'waitingRoom' : shown === 1 ? (atDoor ? 'backIn' : 'alone') : 'meeting';
       const statusShown = statusText;
       const shownDetail = phoneDetail;
@@ -13974,8 +13985,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const turnHolds = (pid) => !!(turnLinks && turnLinks.holds(pid));
     // SUB.5: peers a plain pc of mine (no TURN link, no relay-only settings) reached 'connected' with: a proven direct path,
     // until my network changes ('online'). It only picks a standby's transport; the standby's own dial is the proof.
+    // The proof is the pair the connection selected, never my own settings alone: the FAR end may dial on relay-only
+    // settings (its page still holds a pipe to me, e.g. back from a freeze) and my plain pc then connects through ITS
+    // relay. That is no direct pair (pipekill 0.9.27 gate: B3 noted A3 so, a probe "hit" stood the standby on a pair
+    // with no path, and the pipe ran 6 minutes without a standby). A pair with a relay candidate at either end is not noted.
     const turnDirect = new Map();
-    function turnDirectNote(p, pc) { let relayOnly = false; try { relayOnly = pc.getConfiguration().iceTransportPolicy === 'relay'; } catch (e) {} if (relayOnly) return; turnDirect.set(p.id, Date.now()); if (turnDirect.size > 256) turnDirect.delete(turnDirect.keys().next().value); }
+    function turnDirectNote(p, pc) {
+      let relayOnly = false; try { relayOnly = pc.getConfiguration().iceTransportPolicy === 'relay'; } catch (e) {} if (relayOnly) return;
+      if (typeof pc.getStats !== 'function') return;
+      pc.getStats().then((st) => {
+        let sel = null; const by = new Map(); st.forEach((x) => by.set(x.id, x));
+        st.forEach((x) => { if (!sel && x.type === 'transport' && x.selectedCandidatePairId) sel = by.get(x.selectedCandidatePairId) || null; });
+        if (!sel) st.forEach((x) => { if (!sel && x.type === 'candidate-pair' && x.nominated && x.state === 'succeeded' && x.selected !== false) sel = x; });
+        const lc = sel && by.get(sel.localCandidateId), rc = sel && by.get(sel.remoteCandidateId);
+        if (!lc || !rc) return;   // no selected pair to read: no proof
+        if (lc.candidateType === 'relay' || rc.candidateType === 'relay') { if (!turnDirect.has(p.id)) turnNote('turn-direct no ' + String(p.id).slice(0, 8) + ' (' + lc.candidateType + '/' + rc.candidateType + ')'); return; }
+        turnDirect.set(p.id, Date.now()); if (turnDirect.size > 256) turnDirect.delete(turnDirect.keys().next().value);
+      }).catch(() => {});
+    }
     // The connection settings of a pair: TURN servers only for a link whose end here is a TURN client (never double TURN).
     // ONE TRANSPORT PER PAIR (bundlePolicy 'max-bundle'). Under the default 'balanced' policy Firefox gives each new
     // m-line of an offer a provisional transport of its own until the answer bundles it, and while that transport
@@ -16763,7 +16790,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const now = Date.now();
       let w = null;
       try { if (typeof progressBeat === 'function') w = progressBeat(seated, now); } catch (e) {}
-      if (seated) { unseatedSince = 0; veilCeilLogged = false; if (joinVeilEl) { joinVeilEl.remove(); joinVeilEl = null; } return; }
+      if (seated || leftDialogUp()) { unseatedSince = 0; veilCeilLogged = false; if (joinVeilEl) { joinVeilEl.remove(); joinVeilEl = null; } return; }   // a page that left (or was turned away) is not connecting
       if (!unseatedSince) { unseatedSince = now; return; }
       if (now - unseatedSince < 4000) return; // fast joins never see it
       if (!joinVeilEl) {
@@ -21530,10 +21557,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       if (!room || !/^[a-z0-9-]{1,64}$/i.test(room)) return null;
       if (av && !/^[a-f0-9]{16,64}$/.test(av)) av = '';
-      // A bare word ("hello") is not a meeting id. Links and id.verifier
-      // still parse above. Open-room codes are 16 characters, and a named
-      // room or the lobby's bare-id check is longer than five letters.
-      if (!/[:/#?]/.test(s) && !av && /^[A-Za-z]{1,5}$/.test(room)) return null;
+      // Any room name joins, short words too ("test", "team"): the room is the
+      // name in the link, gifos.app/meet/<name>, and the lobby says "type a room name".
       // NEVER normalise the room id. It is the whole capability: the relay
       // session, token and end-to-end key are all DERIVED from this exact string
       // ("derive, don't send", gifos-net.js). joinRoom() reads it from the link
@@ -22179,6 +22204,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           gum.then((stream) => {
             if (!stream) {
               localStream = null;
+              // A reload lands with mic and camera off, so it asks for nothing and has no stream: a share
+              // that was up still comes back (or offers its one-tap prompt), as on the other two boot paths.
+              try { if (typeof applyRecoverMedia === 'function') applyRecoverMedia(); } catch (e) {}
               try { updateTile('me'); } catch (e) {}
               try { broadcastStatus(); } catch (e) {}
               if (typeof noteAudioDevices === 'function') noteAudioDevices();   // the list only (no prompt): the first Mic tap can ask which one
@@ -23730,9 +23758,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       } else if (m.k === 'subnone') {
         subsRefuse(p);
       } else if (m.k === 'subfull') {
-        subsFull(!!m.free);
+        subsFull(m);
       } else if (m.k === 'subturned') {
-        subsTurnedSaid(p, dc);      // a door in my free-plan room turned someone away
+        subsTurnedSaid(p, dc, m);   // a door in my room turned someone away
       } else if (m.k === 'wpong') {
         p.wakePongAt = Date.now();
       } else if (m.k === 'bye') {
@@ -37739,9 +37767,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return t;
       }, () => null);
     }
+    // A control tapped while an ask was open joined that ask (lateWant). When
+    // the ask lands without that kind (a Camera tap during a Mic tap's
+    // mic-only ask), the joined tap is asked for now, on its own: a tap is
+    // never dropped. An app room never opens a camera.
+    function askJoinedLeft(want, kind, appRoom) {
+      for (const k of want) {
+        if (k === kind || (appRoom && k === 'cam')) continue;
+        const held = localStream && (k === 'cam' ? localStream.getVideoTracks() : localStream.getAudioTracks())[0];
+        if (!held && !lateRefusal(k)) lateMedia(k);
+      }
+    }
     // pick: a microphone chosen in the mic chooser before any mic was open
     // (a quiet join holds none): the ask names that device.
     function lateMedia(kind, pick) {
+      if (capClosed) return;   // the meeting has ended for this page (left, or turned away at a full door): ask nothing, say nothing
       if (bcWatchingViewer()) return;
       if (myStatus.bot) { setStatus(uiText('stABotDoesNotUse', 'A bot does not use a camera or speak.')); return; }
       if (BROADCAST && !bcMayPublishAv()) { enforceBroadcastSeat(); return; }
@@ -37826,6 +37866,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               if (kind === 'cam') setStatus(typeof camOnWords === 'function' ? camOnWords() : statusWords('camOn')); else sayState('micOn');
               if (typeof syncSpeech === 'function') syncSpeech();   // after the status: a caption notice it says stays on screen
             }
+            askJoinedLeft(want, kind, appRoom);
             return;
           }
           lateWon++;
@@ -37882,6 +37923,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // this phone) must not be overwritten by "Mic on." in the same task.
           if (typeof syncSpeech === 'function') syncSpeech();
           if (typeof noteAudioDevices === 'function') noteAudioDevices();
+          askJoinedLeft(want, kind, appRoom);
         })
         .catch((err) => {
           if (gen !== lateGen || lateWon !== won0) return;
@@ -37898,7 +37940,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         });
     }
 
-    micBtn.onclick = () => {
+    // ONE MIC TAP. chooser: the tap came from the dock's Mic button, beside
+    // the chooser it opens. The float's mic button and the OS mic toggle pass
+    // false: the chooser is drawn in the meeting page, which the person cannot
+    // see from there, so a muted tap there unmutes at once with the mic in use
+    // or the one picked before (the browser's own choice when none was).
+    // Only a microphone is ever asked for: the camera stays as it is.
+    function micTap(chooser) {
+      if (capClosed) return;   // no meeting here now (left, or turned away): no device ask, no device words
       if (bcWatchingViewer()) return;
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (BROADCAST && !bcMayPublishAv()) { enforceBroadcastSeat(); return; }
@@ -37907,18 +37956,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!track) {
         // No mic open yet (a quiet join opens none): with two or more known
         // microphones the tap asks which one, as it does over a held mic.
+        if (!chooser) { if (micChooserOpen()) closeMicChooser(false); return lateMedia('mic', micInputs.some((m) => m.id === micDeviceId) ? micDeviceId : undefined); }
         if (micChooserOpen()) { closeMicChooser(true); return; }
         if (micInputs.length > 1 && !bootGumPending && !lateAsk) { openMicChooser(null); return; }
         return lateMedia('mic');
       }
       if (!track.enabled && amGloballyMuted()) { sayState(modOf('me').mute && modOf('me').mute.wait ? 'micWaitRoom' : 'mutedByHost', { by: (modOf('me').mute || {}).by }); return; }
-      if (micChooserOpen()) { closeMicChooser(true); return; }
+      if (micChooserOpen()) { closeMicChooser(chooser); if (chooser) return; }
       // More than one microphone: a tap while muted asks which one (the camera
       // button's chooser, for the mic). A tap while talking mutes at once. One
       // microphone: the tap toggles, as it always has.
-      if (!track.enabled && micInputs.length > 1) { openMicChooser(track); return; }   // one mic: the tap unmutes, as it always has
+      if (chooser && !track.enabled && micInputs.length > 1) { openMicChooser(track); return; }   // one mic: the tap unmutes, as it always has
       setMicOn(track, !track.enabled);
-    };
+    }
+    micBtn.onclick = () => micTap(true);
     function setMicOn(track, on) {
       track.enabled = !!on;
       myStatus.muted = !track.enabled;
@@ -38253,6 +38304,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (camBtn && camBtn.focus) { try { camBtn.focus(); } catch (e) {} }
     }
     camBtn.onclick = () => {
+      if (capClosed) return;   // no meeting here now (left, or turned away): no device ask, no device words
       if (bcWatchingViewer()) return;
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (BROADCAST && !bcMayPublishAv()) { enforceBroadcastSeat(); return; }
@@ -38394,7 +38446,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     (function wireMediaSession() {
       const ms = navigator.mediaSession; if (!ms || !ms.setActionHandler) return;
       const wire = (action, fn) => { try { ms.setActionHandler(action, fn); } catch (e) { /* action unsupported here */ } };
-      wire('togglemicrophone', () => micBtn.onclick());
+      wire('togglemicrophone', () => micTap(false));   // the OS control: no chooser out of sight
       wire('togglecamera', () => {
         if (!myStatus.camOff) { camBtn.onclick(); return; }
         if (document.hidden) return;
@@ -39510,34 +39562,79 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         try { const st = meshSeat(); if (st && st.answerDoor) st.answerDoor([p.id]); } catch (e) {}
       });
     }
+    // The room's people line as the door's own rule reads it (gifos-sub admission): a number, or null for no line.
+    function subsLine() {
+      try { const v = GifOS.sub.admission({ adminRoom: true, roomTier: subsTier, listLength: 1e9, entrant: { rights: GifOS.sub.FREE } }); return v && Number.isInteger(v.limit) ? v.limit : null; } catch (e) { return null; }
+    }
     function subsRefuse(p, asked) {
       if (!asked && !subsAsked.has(p.id)) return;   // only a knocker this door asked
       subsAsked.delete(p.id);
       const free = !(subsTier && GifOS.sub.isPaid(subsTier));   // the free line: the free plan or no plan
-      try { dcSend(p, free ? { k: 'subfull', free: true } : { k: 'subfull' }); } catch (e) {}
-      if (free) subsTellHost();
+      const limit = subsLine();   // the line the knocker met, so its screen names the real number
+      const m = { k: 'subfull' }; if (free) m.free = true; if (limit != null) m.limit = limit;
+      try { dcSend(p, m); } catch (e) {}
+      subsTellHost(p.id);
     }
-    function subsFull(free) {
+    // TURNED AWAY AT A FULL DOOR: this page stands aside without leaving the
+    // meeting for good. The knock stops (the mesh node goes, no reconnect), the
+    // camera and microphone close and no device is asked for or complained
+    // about (capClosed), the dock's clocks keep running, and the full screen
+    // offers the way in. When this browser comes to hold a right the door lets
+    // in (meet-subs showFull's onRight), the page knocks again on its own: no
+    // reload, so the name, the settings and the identity stay.
+    function subsFull(m) {
       const ms = meshSeat();
       if (subsTurnedAway || !subsOn() || (ms && ms.state === 3)) return;   // a seated member is never put out by it
       subsTurnedAway = true;
-      try { leaveMeeting(); } catch (e) {}
-      GifOS.meetSubs.showFull(free);
+      const limit = m && Number.isInteger(m.limit) && m.limit > 0 && m.limit <= 1e6 ? m.limit : null;
+      subsRefused = { limit, free: !!(m && m.free), at: Date.now() };
+      if (DEBUG_ON) { try { clog('subs turned away at a full door limit=' + limit); } catch (e) {} }
+      subsStandAside();
+      GifOS.meetSubs.showFull({ limit, free: subsRefused.free, onRight: subsKnockAgain });
+      try { updateStatus(); } catch (e) {}
     }
-    // FREE PLAN: whoever's door turned someone away tells the room's admins
-    // (or is the admin), and the admin is offered the $2 plan in one tap.
-    function subsTellHost() {
-      if (amAdmin) { GifOS.meetSubs.showHostPrompt(); return; }
+    function subsStandAside() {
+      leaving = true;   // the mesh re-arms and reconnects stand down
+      try { GifOS.meetSubs.leaveMeeting(); } catch (e) {}
+      try { stopLocalCapture(); } catch (e) {}
+      const mn = meshNode; meshNode = null; meshBootGen++;
+      try { if (mn) mn.leave(false); } catch (e) {}
+      try { releaseAllCapture(true); paintControls(); } catch (e) {}
+      for (const pid of Array.from(peers.keys())) { try { dropPeer(pid); } catch (e) {} }
+      try { if (typeof clearRosterTiles === 'function') clearRosterTiles(); } catch (e) {}
+      // Only the full screen is up: a dialog a tap opened before the refusal (Your video is still blurred) goes.
+      for (const id of ['blurwhy-modal', 'status-full']) { const d = document.getElementById(id); if (d) d.style.display = 'none'; }
+    }
+    function subsKnockAgain() {
+      if (!subsRefused) return;
+      if (DEBUG_ON) { try { clog('subs knock again after ' + Math.round((Date.now() - subsRefused.at) / 1000) + 's: this browser holds a right the door lets in'); } catch (e) {} }
+      subsRefused = null; subsTurnedAway = false;
+      leaving = false; capClosed = false;   // a new knock may open devices again (each one asked by a tap)
+      try { GifOS.meetSubs.hideFull(); } catch (e) {}
+      try { startMesh(); } catch (e) {}
+      try { updateStatus(); } catch (e) {}
+    }
+    // A DOOR TURNED SOMEONE AWAY: whoever's door it was tells the room's admins
+    // (or is the admin). The admin sees how many could not get in, and the plan
+    // whose rights carry no line in one tap. Counted once per person.
+    const subsTurnedIds = new Set();
+    let subsTurnedN = 0;
+    function subsTurnedCount(who) {
+      if (typeof who === 'string' && who) { if (subsTurnedIds.has(who)) return subsTurnedN; subsTurnedIds.add(who); if (subsTurnedIds.size > 512) subsTurnedIds.delete(subsTurnedIds.values().next().value); }
+      return ++subsTurnedN;
+    }
+    function subsTellHost(who) {
+      if (amAdmin) { GifOS.meetSubs.showHostPrompt(subsTurnedCount(who)); return; }
       for (const id of adminsNow()) {
         const q = peers.get(id);
-        if (q && q.dc && q.dc.readyState === 'open') { try { dcSend(q, { k: 'subturned' }); } catch (e) {} }
+        if (q && q.dc && q.dc.readyState === 'open') { try { dcSend(q, who ? { k: 'subturned', who } : { k: 'subturned' }); } catch (e) {} }
       }
     }
-    function subsTurnedSaid(p, dc) {
+    function subsTurnedSaid(p, dc, m) {
       if (!dc || dc.__authBy !== p.id) return;   // an authenticated channel only
       const ms = meshSeat();
-      if (!subsOn() || !amAdmin || !av || !(ms && ms.state === 3) || (subsRoomTier() && subsRoomTier() !== 'free')) return;
-      GifOS.meetSubs.showHostPrompt();
+      if (!subsOn() || !amAdmin || !av || !(ms && ms.state === 3) || subsLine() == null) return;   // a room with no line turns nobody away
+      GifOS.meetSubs.showHostPrompt(subsTurnedCount(m && typeof m.who === 'string' && m.who.length <= 128 ? m.who : null));
     }
     // The admin of an admin room without a paid plan gets the free plan's
     // license (no PayPal), so the room carries the free plan.

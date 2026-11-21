@@ -623,6 +623,9 @@
     }
     function close(L, why, quiet) {
       if (L.state === 'closed') return;
+      // SUB.5: a direct dial that closes before it came up (its own verdict, or the far end's: 'far-closed') was no direct
+      // pair after all, at BOTH ends; else the end that did not judge it dials it direct again on its stale note, forever
+      if (L.direct && L.state !== 'up' && io.directForget) { try { io.directForget(L.far); } catch (e) {} }
       L.state = 'closed';
       try { if (L.cred) L.cred.stop(); } catch (e) {}
       try { if (L.paid) L.paid.stop(); } catch (e) {}
