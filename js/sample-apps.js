@@ -7406,6 +7406,8 @@ The Store itself does not keep a shopping cart in this icon.
     const RW = { visibility: 'read-write' };
     // The first build with gifos.room (manifest "room"): the 0.9.27 cut build. An app that declares a room needs it.
     const ROOM_MIN_BUILD = 5861;
+    // The IRL party games: whoever is here holds a seat (up to 16, no turns); the game doc 'g' stays plain data.
+    const IRL_ROOM = { seats: 16, min: 1, turns: 'free', moves: [] };
     const RO = { visibility: 'read-only' };
     const PRIV = { visibility: 'private' };
 
@@ -7472,9 +7474,9 @@ The Store itself does not keep a shopping cart in this icon.
         // Each own-phone game shares one heartbeat collection ('party'): the
         // game doc + everyone's player docs, all read-write. (The Single Phone
         // versions run on one device, so they need no shared visibility.)
-        apps: (GifOS.irl ? GifOS.irl.netApps : []).map((g) => app(g.name, g.appId, g.accent, g.html, Object.assign({ data: { party: RW }, help: g.help }, g.manifest))),
+        apps: (GifOS.irl ? GifOS.irl.netApps : []).map((g) => app(g.name, g.appId, g.accent, g.html, Object.assign({ minBuild: ROOM_MIN_BUILD, data: { party: RW }, room: IRL_ROOM, help: g.help }, g.manifest))),
         sub: [{ name: 'Single Phone',
-          apps: (GifOS.irl ? GifOS.irl.apps : []).map((g) => app(g.name, g.appId, g.accent, g.html, Object.assign({ help: g.help }, g.manifest || {}))) }] },
+          apps: (GifOS.irl ? GifOS.irl.apps : []).map((g) => app(g.name, g.appId, g.accent, g.html, Object.assign({ minBuild: ROOM_MIN_BUILD, room: IRL_ROOM, help: g.help }, g.manifest || {}))) }] },
     ];
     // Easter eggs: a themed computer (gifos-themes.js) can seed extra apps
     // that exist only on that digit — filed into a named folder, or loose.

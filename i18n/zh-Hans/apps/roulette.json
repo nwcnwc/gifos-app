@@ -17,5 +17,9 @@
   "setup.lobbyText": "点按<b>邀请</b>。同一张牌会出现在每个人的屏幕上，不用再挤在一部手机旁。",
   "card.n": "第 {n} 张",
   "card.next": "下一张 →",
-  "card.players": "玩家"
+  "card.players": "玩家",
+  "needsNewer": "一起玩这个游戏需要更新的 GifOS。请刷新页面以更新。",
+  "hint.line": "你排在下一位：第一个空出的座位归你。",
+  "hint.asking": "已请主持人给你安排座位。",
+  "hint.watch": "你正在观看。座位空出时，排队的下一位会得到它。"
 }

@@ -49,5 +49,9 @@
   "q.25": "The best ice cream flavor",
   "q.26": "The most overrated fast food chain",
   "q.27": "The best board game",
-  "q.28": "Something you’d grab first in a fire (besides people or pets)"
+  "q.28": "Something you’d grab first in a fire (besides people or pets)",
+  "needsNewer": "This game needs a newer GifOS to play together. Reload the page to update.",
+  "hint.line": "You are next in line: you get the first seat that opens.",
+  "hint.asking": "The host has been asked to seat you.",
+  "hint.watch": "You are watching. When a seat opens, the next person in line gets it."
 }

@@ -22,5 +22,9 @@
   "end.titleWho": "{who}: {n, plural, one {¡# acierto!} other {¡# aciertos!}}",
   "end.again": "Siguiente jugador, mismo mazo",
   "end.menu": "Cambiar de mazo",
-  "player.default": "Jugador"
+  "player.default": "Jugador",
+  "needsNewer": "Este juego necesita un GifOS más nuevo para jugar juntos. Recarga la página para actualizar.",
+  "hint.line": "Eres el siguiente: te toca el primer asiento que se libere.",
+  "hint.asking": "Se le pidió al anfitrión que te dé un asiento.",
+  "hint.watch": "Estás mirando. Cuando se libere un asiento, será para la siguiente persona en la fila."
 }

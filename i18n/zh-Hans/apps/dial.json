@@ -44,5 +44,9 @@
   "net.clue": "“{clue}”",
   "net.psyWatch": "你可以看着指针，但不要暗示。",
   "net.guessBody": "讨论、拖动指针、锁定答案。",
-  "net.revealInfo": "线索：“{clue}” · 通灵者：{name}"
+  "net.revealInfo": "线索：“{clue}” · 通灵者：{name}",
+  "needsNewer": "一起玩这个游戏需要更新的 GifOS。请刷新页面以更新。",
+  "hint.line": "你排在下一位：第一个空出的座位归你。",
+  "hint.asking": "已请主持人给你安排座位。",
+  "hint.watch": "你正在观看。座位空出时，排队的下一位会得到它。"
 }

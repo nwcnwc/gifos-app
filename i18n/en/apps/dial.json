@@ -44,5 +44,9 @@
   "net.clue": "“{clue}”",
   "net.psyWatch": "You can watch the needle. Do not hint.",
   "net.guessBody": "Argue, drag the needle, lock it in.",
-  "net.revealInfo": "Clue: “{clue}” · psychic: {name}"
+  "net.revealInfo": "Clue: “{clue}” · psychic: {name}",
+  "needsNewer": "This game needs a newer GifOS to play together. Reload the page to update.",
+  "hint.line": "You are next in line: you get the first seat that opens.",
+  "hint.asking": "The host has been asked to seat you.",
+  "hint.watch": "You are watching. When a seat opens, the next person in line gets it."
 }

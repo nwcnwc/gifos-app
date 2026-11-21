@@ -44,26 +44,44 @@
   // render-side only (each phone shows just its own role) — party-grade, and
   // honest about it.
   const PARTY_LIB = `
-  const T = (k, p) => (window.gifos && gifos.i18n ? gifos.i18n.t(k, p) : k);
+  // EN: English for words an older GifOS's text files may lack; a key the catalog knows is never replaced.
+  const EN = { needsNewer: 'This game needs a newer GifOS to play together. Reload the page to update.', 'hint.line': 'You are next in line: you get the first seat that opens.', 'hint.asking': 'The host has been asked to seat you.', 'hint.watch': 'You are watching. When a seat opens, the next person in line gets it.' };
+  const T = (k, p) => { let v = window.gifos && gifos.i18n ? gifos.i18n.t(k, p) : k;
+    if (v === k && Object.prototype.hasOwnProperty.call(EN, k)) { v = EN[k]; for (const n in (p || {})) v = v.split('{' + n + '}').join(p[n]); }
+    return v; };
   const IRL = {
     db: window.gifos ? gifos.db('party')
       : { subscribe:function(){}, put:function(){return Promise.resolve();}, delete:function(){return Promise.resolve();} },
     me: { id:'local', name:'You' },
-    players: [], g: null,
+    players: [], g: null, rs: null, joined: false,
+    ROOM: !!(window.gifos && gifos.room && gifos.room.subscribe),
     onchange: null,
-    async init(){
-      if (window.gifos) { const m = await gifos.me(); IRL.me = { id:m.id, name:m.name||T('player.you') }; }
-      IRL.db.subscribe(function(items){
-        IRL.players = items.filter(function(x){ return x.id && String(x.id).indexOf('p_')===0; });
-        IRL.g = items.find(function(x){ return x.id==='g'; }) || null;
-        IRL.extra = items;
-        if (IRL.onchange) IRL.onchange();
+    // Who is playing comes from the room (gifos.room, manifest "room"): each person here holds a seat, the room frees
+    // the seat of whoever left and hands it to the next in line. The player list keeps its old shape ('p_<id>' docs
+    // that the games read) but is built from the seats; nothing is written for presence. The game doc 'g' stays data.
+    init(){
+      return new Promise(function(done){
+        IRL.db.subscribe(function(items){
+          IRL.g = items.find(function(x){ return x.id==='g'; }) || null;
+          IRL.extra = items;
+          if (IRL.onchange) IRL.onchange();
+        });
+        if (!IRL.ROOM) { done(); return; }
+        gifos.room.subscribe(function(r){
+          IRL.rs = r;
+          if (r.me && r.me.id) IRL.me = { id:r.me.id, name:r.me.name||T('player.you') };
+          IRL.players = (r.seats||[]).filter(function(x){ return x.id; }).map(function(x){ return { id:'p_'+x.id, name:x.name||T('player.you'), here:x.here }; });
+          // Opening the game is asking to play: once. The room seats, lines up or asks the host.
+          if (!IRL.joined && r.me && r.me.role==='watcher') { IRL.joined=true; gifos.room.join().catch(function(){}); }
+          done();
+          if (IRL.onchange) IRL.onchange();
+        });
       });
-      await IRL.db.put({ id:'p_'+IRL.me.id, name: IRL.me.name });
     },
+    // Read-only view for the checks: the shared game doc and who the room seats.
+    expose(appId){ window['__'+appId] = { state: function(){ return { g: IRL.g, players: IRL.players.map(function(p){ return p.id; }), room: IRL.rs ? { me: IRL.rs.me, seats: IRL.rs.seats, live: IRL.rs.live, kind: IRL.rs.kind } : null, room_api: IRL.ROOM, status: document.body.innerText.slice(0, 200) }; } }; },
     save(g){ g.id='g'; return IRL.db.put(g); },
     put(doc){ return IRL.db.put(doc); },
-    del(id){ return IRL.db.delete(id); },
     names(){ return IRL.players.map(function(p){ return p.name; }); },
     esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); },
     shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=a[i]; a[i]=a[j]; a[j]=t; } return a; },
@@ -90,9 +108,11 @@
     // player), invite guidance, and a start button gated on the minimum count
     lobby(min,title,text,startLabel){
       const ps=IRL.players;
-      return '<div class="card"><h2>'+title+'</h2><div class="muted">'+text+'</div></div>'
+      const role=IRL.rs&&IRL.rs.me?IRL.rs.me.role:'player';
+      const hint=!IRL.ROOM?T('needsNewer'):role==='waiting'?T('hint.line'):role==='asking'?T('hint.asking'):role==='watcher'?T('hint.watch'):'';
+      return (hint?'<div class="card"><div class="muted">'+IRL.esc(hint)+'</div></div>':'')+'<div class="card"><h2>'+title+'</h2><div class="muted">'+text+'</div></div>'
         +'<div class="card"><h2>'+T('lobby.players',{n:ps.length})+'</h2><div class="chips">'
-        +ps.map(function(p){ return '<span class="chip'+(p.id==='p_'+IRL.me.id?' me':'')+'" data-drop="'+p.id+'">'+IRL.esc(p.name)+'</span>'; }).join('')
+        +ps.map(function(p){ return '<span class="chip'+(p.id==='p_'+IRL.me.id?' me':'')+'">'+IRL.esc(p.name)+(p.here==='away'?' …':'')+'</span>'; }).join('')
         +'</div><div class="muted">'+T('lobby.invite')+'</div></div>'
         +'<button class="btn" id="start" '+(ps.length<min?'disabled':'')+'>'+T('lobby.startN',{label:startLabel||T('lobby.start'),n:ps.length})+'</button>'
         +(ps.length<min?'<div class="muted center">'+T('lobby.min',{n:min})+'</div>':'');
@@ -110,19 +130,22 @@
     },
     bindLobby(onStart){
       const s=document.getElementById('start'); if(s) s.onclick=onStart;
-      document.querySelectorAll('[data-drop]').forEach(function(el){
-        el.onclick=function(){ const pid=el.dataset.drop;
-          if(pid!=='p_'+IRL.me.id && confirm(T('lobby.confirmRemove',{name:el.textContent}))) IRL.del(pid); };
-      });
     },
     // Paint once the app's catalogs are in (nothing may show a raw key), and
     // again whenever the person picks another language. Without a catalog
     // loader (an older GifOS) paint straight away.
+    // An older page has no gifos.room: one plain line at the top, nothing written.
+    notice(){
+      if (IRL.ROOM) return;
+      let n=document.getElementById('irlold');
+      if(!n){ n=document.createElement('div'); n.id='irlold'; n.className='card'; n.style.cssText='margin:8px 12px;font-weight:700'; document.body.insertBefore(n, document.body.firstChild); }
+      n.textContent=T('needsNewer');
+    },
     boot(paint, again){
-      const go=function(){ paint(); };
+      const go=function(){ paint(); IRL.notice(); };
       if(window.gifos&&gifos.i18n){
         gifos.i18n.load().then(go,go);
-        if(gifos.onLocaleChange) gifos.onLocaleChange(again||paint);
+        if(gifos.onLocaleChange) gifos.onLocaleChange(function(){ (again||paint)(); IRL.notice(); });
       } else go();
     },
   };
@@ -1867,20 +1890,22 @@ The shared deck lives in this icon for the room. A pass-the-phone deal is on thi
 `;
 
   const PARTY = { data: { party: { visibility: 'read-write' } } };
+  // Every game reads who plays from the room: IRL.expose lets the checks read the shared game (window.__<appId>.state()).
+  const X = (id, html) => html + '<script>IRL.expose(\'' + id + '\');</script>';
   GifOS.irl = {
     netApps: [
-      { name: 'Fake Facts',       appId: 'fakefacts', accent: [212, 112, 61],  html: FAKEFACTS_HTML, help: FAKEFACTS_HELP },
-      { name: 'One Clue',         appId: 'oneclue',   accent: [59, 165, 160],  html: ONECLUE_HTML,   help: ONECLUE_HELP },
-      { name: 'Same Brain',       appId: 'samebrain', accent: [224, 92, 138],  html: SAMEBRAIN_HTML, help: SAMEBRAIN_HELP },
-      { name: 'One Night Wolves', appId: 'wolves',    accent: [90, 74, 138],   html: WOLVES_HTML,    help: WOLVES_HELP },
+      { name: 'Fake Facts',       appId: 'fakefacts', accent: [212, 112, 61],  html: X('fakefacts', FAKEFACTS_HTML), help: FAKEFACTS_HELP },
+      { name: 'One Clue',         appId: 'oneclue',   accent: [59, 165, 160],  html: X('oneclue', ONECLUE_HTML),   help: ONECLUE_HELP },
+      { name: 'Same Brain',       appId: 'samebrain', accent: [224, 92, 138],  html: X('samebrain', SAMEBRAIN_HTML), help: SAMEBRAIN_HELP },
+      { name: 'One Night Wolves', appId: 'wolves',    accent: [90, 74, 138],   html: X('wolves', WOLVES_HTML),    help: WOLVES_HELP },
     ],
     apps: [
-      { name: 'Odd Word Out',   appId: 'imposter', accent: [59, 165, 93],   html: ODDWORD_HTML,  help: ODDWORD_HELP,  manifest: PARTY },
-      { name: 'Catch the Spy',  appId: 'spy',      accent: [77, 124, 214],  html: SPY_HTML,      help: SPY_HELP,      manifest: PARTY },
-      { name: 'Tilt',           appId: 'tilt',     accent: [232, 163, 60],  html: TILT_HTML,     help: TILT_HELP,
+      { name: 'Odd Word Out',   appId: 'imposter', accent: [59, 165, 93],   html: X('imposter', ODDWORD_HTML),  help: ODDWORD_HELP,  manifest: PARTY },
+      { name: 'Catch the Spy',  appId: 'spy',      accent: [77, 124, 214],  html: X('spy', SPY_HTML),      help: SPY_HELP,      manifest: PARTY },
+      { name: 'Tilt',           appId: 'tilt',     accent: [232, 163, 60],  html: X('tilt', TILT_HTML),     help: TILT_HELP,
         manifest: { capabilities: { db: true, multiplayer: true, network: [], motion: true, fullscreen: true } } },
-      { name: 'The Dial',       appId: 'dial',     accent: [198, 92, 204],  html: DIAL_HTML,     help: DIAL_HELP,     manifest: PARTY },
-      { name: 'Party Roulette', appId: 'roulette', accent: [123, 92, 255],  html: ROULETTE_HTML, help: ROULETTE_HELP, manifest: PARTY },
+      { name: 'The Dial',       appId: 'dial',     accent: [198, 92, 204],  html: X('dial', DIAL_HTML),     help: DIAL_HELP,     manifest: PARTY },
+      { name: 'Party Roulette', appId: 'roulette', accent: [123, 92, 255],  html: X('roulette', ROULETTE_HTML), help: ROULETTE_HELP, manifest: PARTY },
     ],
   };
 })(typeof window !== 'undefined' ? window : globalThis);
