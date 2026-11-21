@@ -2803,7 +2803,9 @@ function syncDebug(){
   // ---- end of who is here ----
   let hint=null, hinting=false, cpuBusy=false;
   const START='rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR';
-  const GLYPH={p:'♟',r:'♜',n:'♞',b:'♝',q:'♛',k:'♚'};
+  // Separate white/black glyphs: phone fonts paint ♟ as an emoji that ignores CSS color,
+  // so White's pawns looked black when both sides shared the black set + .pw/.pb tint.
+  const GLYPH={P:'♙',R:'♖',N:'♘',B:'♗',Q:'♕',K:'♔',p:'♟',r:'♜',n:'♞',b:'♝',q:'♛',k:'♚'};
   const view=document.getElementById('view'), statusEl=document.getElementById('status');
   let T={ id:'t', players:[], started:false, rounds:[], round:0, settings:{ clock:'5+0', shuffle:true, cpu:'medium', side:'w' } };
   const CLOCKS=[['none','clock.none'],['1+0','clock.bullet1'],['3+0','clock.blitz3'],['3+2','clock.blitz3_2'],['5+0','clock.blitz5'],['5+3','clock.blitz5_3'],['10+0','clock.rapid10']];
@@ -3201,7 +3203,7 @@ function syncDebug(){
     for(let y=0;y<8;y++)for(let x=0;x<8;x++){
       const rx=flip?7-x:x, ry=flip?7-y:y;
       const sq=document.createElement('div'); sq.className='sq '+(((rx+ry)%2)?'d':'l');
-      const p=bd[ry*8+rx]; if(p!=='.'){ sq.textContent=GLYPH[p.toLowerCase()]; sq.classList.add(p>='A'&&p<='Z'?'pw':'pb'); }
+      const p=bd[ry*8+rx]; if(p!=='.'){ sq.textContent=GLYPH[p]||GLYPH[p.toLowerCase()]; sq.classList.add(p>='A'&&p<='Z'?'pw':'pb'); }
       if(sel&&sel[0]===rx&&sel[1]===ry) sq.classList.add('sel');
       const hit=dests.filter(function(c){ return c.to[0]===rx&&c.to[1]===ry; });
       if(hit.length){ sq.classList.add('mv'); if(p!=='.'||hit[0].ep) sq.classList.add('cap'); }
