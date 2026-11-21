@@ -5663,7 +5663,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // field (the admin's chat on/off switch). It rides the same signed
         // table as every per-target order, so it reaches late joiners on the
         // heartbeat and a forged copy dies in takeMod's admVerify.
-        for (const field of ['mute', 'blur', 'cam', 'app', 'stg', 'share', 'chat', 'cc', 'wait', 'admit', 'dhold', 'dadm', 'sublic', 'capt', 'rename', 'spot', 'pray', 'gfile', 'greact', 'qa', 'chist', 'slow', 'clink']) {
+        for (const field of ['mute', 'blur', 'cam', 'app', 'stg', 'share', 'chat', 'cc', 'wait', 'admit', 'dhold', 'dadm', 'sublic', 'capt', 'rename', 'spot', 'pray', 'gfile', 'greact', 'qa', 'chist', 'slow', 'clink', 'ain']) {
           const inc = incoming[target][field];
           if (!inc || typeof inc !== 'object') continue;
           if (goneAt != null && (+inc.at || 0) <= goneAt) continue;
@@ -41923,6 +41923,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // meeting bot's does; the status says unmuted only while it plays.
     function agentVoice(track) {
       botVoiceTrack = track || null;
+      // An agent joins with no camera or microphone, so the page holds no local stream, and the main senders that carry a
+      // voice to the row are made only beside one: give the voice a stream to ride, as the agent's camera does.
+      if (track && !localStream) localStream = new MediaStream();
       try { refreshOutbound(); } catch (e) {}
       try { if (wspCaps.has('me')) wspStop('me'); wspSync(); } catch (e) {}
       if (track) myStatus.muted = false;
@@ -42006,6 +42009,29 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       for (const it of items.slice(0, 50)) { const t = String((it && (it.text || it.t)) || '').trim(); if (t) a = MA.add(a, myId, t, +(it.min || 0) || 0) || a; }
       return (await ctAgendaPublish(a, 'agent-set')) ? agentOk() : agentFail('The agenda could not be shared.');
     }
+    // app.run(id): an app on this device (its file id or app id), or an App Store app by its id (the Run app picker's install
+    // path puts it on this device first). The answer says whether the app really runs for the meeting.
+    async function agentAppRun(id) {
+      if (!canIRunApp()) return agentFail('This meeting does not let you run apps.');
+      id = String(id || '').trim();
+      if (!id) return agentFail('Say which app.');
+      const SYSTEM_APPS = { meet: 1, video: 1, broadcast: 1, appstore: 1 };
+      let files = [];
+      try { files = await GifOS.store.allFileMeta(); } catch (e) {}
+      const f = (files || []).find((x) => x.isApp && !SYSTEM_APPS[x.appId] && (x.id === id || x.appId === id));
+      let fileId = f ? f.id : null, name = f ? String(f.name || f.appId || id).replace(/\.gif$/i, '') : '';
+      if (!fileId) {
+        if (SYSTEM_APPS[id] || !/^[a-z0-9][a-z0-9-]{0,63}$/i.test(id)) return agentFail('There is no app "' + id + '" on this device or in the App Store.');
+        const d = RUN_DEFAULTS.find((x) => x.appId === id.toLowerCase()) || { appId: id.toLowerCase(), name: id, from: 'store' };
+        let r = null;
+        try { r = await installRunApp(d); } catch (e) { r = { error: String(e && e.message || e) }; }
+        if (!r || r.error || !r.fileId) return agentFail('The app "' + id + '" could not be fetched from the App Store.');
+        fileId = r.fileId; name = r.name || d.name;
+      }
+      await runApp(fileId, name);
+      if (!myStatus.app) return agentFail('The app "' + name + '" did not start.');
+      return agentOk({ running: true, name: String(myStatus.app.name || name) });
+    }
     function agentProfile(p) {
       const out = {};
       if (p.name != null) {
@@ -42042,7 +42068,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         audioTracks: agentAudioTracks, videoSource: agentVideoSource,
         blurFrac: (id) => blurViewFrac(blurLevelFor(id)), blurDraw: blurDraw, makeCanvas: () => document.createElement('canvas'),
         setCamera: agentCamera, chat: agentChat, hand: agentHand, mic: agentMic, stage: agentStage,
-        appRun: (id) => { if (!canIRunApp()) return agentFail('This meeting does not let you run apps.'); if (!id) return agentFail('Say which app.'); return Promise.resolve(runApp(String(id))).then(() => agentOk({ running: !!myStatus.app })); },
+        appRun: agentAppRun,
         appStop: () => { if (!myStatus.app) return agentFail('You are not sharing an app.'); stopApp(); return agentOk(); },
         appRoom: (op, args) => { if (typeof window.__gifosRoom !== 'function') return agentFail('No app room here.'); return agentOk({ result: window.__gifosRoom(String(op || ''), args || {}) }); },
         agendaNext: () => { if (!ctCanEditAgenda()) return agentFail('Only the agenda’s owner or the host can move it here.'); return Promise.resolve(ctAgendaPublish(GifOS.meetAgenda.next(CT && CT.ag, myId), 'agent-next')).then((r) => r ? agentOk() : agentFail('There is no next item.')); },
