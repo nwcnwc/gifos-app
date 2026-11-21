@@ -6304,6 +6304,7 @@ i18nStart(async()=>{
     <button id="pass" type="button" data-i18n="pass" hidden>Pass</button>
   </div>
   <div class="note" id="note"></div>
+  <div class="note" id="newer" hidden></div>
   <div class="note" id="stagenote"></div>
   <div class="alone" id="alone" hidden data-i18n="alone">Just you so far. Press Invite to take turns with other people.</div>
   <section>
@@ -6447,36 +6448,48 @@ i18nStart(async()=>{
   function ttPaste(text){
     return String(text||'').split(/\\r?\\n/).map(function(l){ return l.trim().slice(0,160); }).filter(Boolean).slice(0,5000);
   }
-  // ---- presence: who is connected to this app (the meeting's or the app room's people) ----
-  var BEAT=3000, LIVE=10000, TICK=1000, STEADY=4000, NOTE=5000, STALE=21600000;
-  var stDb=null, planDb=null, presDb=null;
-  if(window.gifos&&gifos.db){ stDb=gifos.db('turns'); planDb=gifos.db('plan'); presDb=gifos.db('presence'); }
-  var me={ id:'local', name:'' }, since=Date.now();
-  var state=null, plan=null, items=[], rows={}, seen={}, lastTs={};
+  // ---- who is here: the room's people (gifos.people()); the owner of the app steers ----
+  var BEAT=3000, TICK=1000, NOTE=5000, STALE=21600000;
+  var PEOPLE=!!(window.gifos&&gifos.people);
+  var stDb=null, planDb=null, midDb=null;
+  if(window.gifos&&gifos.db){ stDb=gifos.db('turns'); planDb=gifos.db('plan'); midDb=gifos.db('mid'); }
+  var me={ id:'local', name:'' };
+  var state=null, plan=null, items=[], mids={}, room=[], owner=false, roomSig='', lastMid='';
   var view={ order:[], cur:null, idx:-1, next:null, step:0 };
-  var turnKey='', turnLocal=0, refused=false, noteT=null, normAt=0;
-  // Liveness by when THIS page saw a heartbeat move, so two machines whose
-  // clocks disagree still agree on who is here. The heartbeat's ts is the other device's clock and never dates
-  // it: a heartbeat this page has never seen move counts for two beats (a live person's next beat lands in that
-  // time, an old record's never), the same rule as Connect Four.
-  function people(){
-    var now=Date.now(), out=[];
-    for(var id in rows){ var r=rows[id];
-      if(lastTs[id]!==r.ts){ seen[id]=(id in lastTs)?now:now-LIVE+2*BEAT; lastTs[id]=r.ts; }
-      if(now-(seen[id]||0)<LIVE) out.push({ id:id, name:r.name||'', since:+r.since||0 });
-    }
-    if(!rows[me.id]) out.push({ id:me.id, name:me.name, since:since });
-    return out;
+  var turnKey='', turnLocal=0, refused=false, noteT=null;
+  // An older GifOS has no gifos.people: one plain line, the turn order shown read-only, nothing written.
+  var EN_NEWER='Take Turns needs a newer GifOS to take turns together. Reload the page to update.';
+  function newerLine(){ var t=T('needsNewer'); return t==='needsNewer'?EN_NEWER:t; }
+  // The room says who is here, in the order they arrived; nobody judges time. 'since' is that position.
+  function readRoom(){
+    if(!PEOPLE) return;
+    Promise.all([gifos.people(), gifos.info?gifos.info():Promise.resolve({})]).then(function(r){
+      var l=(r[0]||[]).map(function(p,i){ return { id:p.id, name:p.name||'', me:!!p.me, since:i }; });
+      var o=!!(r[1]&&r[1].owner), sig=JSON.stringify(l)+'|'+o;
+      if(sig===roomSig) return;
+      roomSig=sig; room=l; owner=o;
+      var mr=l.filter(function(x){ return x.me; })[0]; if(mr) me={ id:mr.id, name:mr.name };
+      putMid(); render();
+    }, function(){});
   }
-  function nameOf(id){ if(id===me.id) return me.name||T('you'); var r=rows[id]; return (r&&r.name)||T('someone'); }
-  function beat(){ if(presDb&&me.id!=='local') presDb.put({ id:'p:'+me.id, name:me.name, since:since, mid:stage.me||'', ts:Date.now() }).catch(function(){}); }
+  function people(){
+    if(!PEOPLE) return [{ id:me.id, name:me.name, since:0 }];
+    return room.length?room:[{ id:me.id, name:me.name, since:0 }];
+  }
+  function nameOf(id){ if(id===me.id) return me.name||T('you'); var p=room.filter(function(x){ return x.id===id; })[0]; return (p&&p.name)||T('someone'); }
+  // Stage needs each person's meeting id: one row per person, written when it first appears or changes, never on a timer.
+  function putMid(){
+    if(!PEOPLE||!midDb||me.id==='local') return;
+    var m=stage.me||''; if(m===lastMid) return;
+    lastMid=m; midDb.put({ id:me.id, mid:m }).catch(function(){});
+  }
   // ---- in a meeting: now and next on the Stage (capabilities.stage) ----
   // Every copy of the app asks for the same two people; each person's own
   // meeting page steps them up or down. Outside a meeting nothing happens.
   var stage={ on:false, me:'' }, stageKey='', stageAt=0;
   function stageWant(){
     if(!(window.gifos&&gifos.stage)||!stage.on) return [];
-    var mid=function(id){ if(id===me.id) return stage.me||''; var r=rows[id]; return (r&&r.mid)||''; };
+    var mid=function(id){ if(id===me.id) return stage.me||''; var r=mids[id]; return (r&&r.mid)||''; };
     var ids=[mid(view.cur)];
     if(view.order.length>1&&view.next&&view.next!==view.cur) ids.push(mid(view.next));
     return ids[0]?ids.filter(Boolean):[];
@@ -6486,17 +6499,16 @@ i18nStart(async()=>{
     var ids=stageWant(), key=ids.join(','), now=Date.now();
     if(key===stageKey&&now-stageAt<BEAT) return;
     stageKey=key; stageAt=now;
-    gifos.stage.want(ids).then(function(r){ if(r){ var was=stage.me; stage=r; if(r.me!==was) beat(); paintStage(); } }, function(){ stage={ on:false, me:'' }; paintStage(); });
+    gifos.stage.want(ids).then(function(r){ if(r){ var was=stage.me; stage=r; if(r.me!==was) putMid(); paintStage(); } }, function(){ stage={ on:false, me:'' }; paintStage(); });
   }
   function paintStage(){
     var el=document.getElementById('stagenote');
     el.textContent=!stage.on?'':stage.full?T('stage.full'):(stage.waiting&&stage.rank>=0&&stage.adminRoom)?T('stage.wait'):'';
   }
-  function onPres(list){
-    var r={}; (list||[]).forEach(function(x){ if(x&&x.id&&x.id.slice(0,2)==='p:') r[x.id.slice(2)]=x; }); rows=r; render();
-  }
+  function onMids(list){ var r={}; (list||[]).forEach(function(x){ if(x&&x.id) r[x.id]=x; }); mids=r; render(); }
   function say(msg){ var el=document.getElementById('note'); el.textContent=msg||''; clearTimeout(noteT); if(msg) noteT=setTimeout(function(){ el.textContent=''; },NOTE); }
   function write(act, arg){
+    if(!PEOPLE) return;
     var s=ttAct(state, view, act, arg, Date.now());
     state=s; render();
     if(!stDb) return;
@@ -6560,19 +6572,13 @@ i18nStart(async()=>{
     steward();
     stageTick();
   }
-  // The earliest person here writes the cleaned order back once the room has
-  // been steady a moment, so a person who left keeps out and a returning one
-  // rejoins at the end. Everyone already SEES the same cleaned order.
+  // The app's owner writes the cleaned order back, so a person who left keeps out and a returning one rejoins at the
+  // end. Everyone already SEES the same cleaned order. The owner is handed on by GifOS when the owner leaves.
   function steward(){
-    if(!stDb||refused||me.id==='local'||!view.order.length) return;
-    var ps=people().slice().sort(function(a,b){ return ((a.since||0)-(b.since||0))||(a.id<b.id?-1:1); });
-    if(!ps.length||ps[0].id!==me.id) return;
+    if(!PEOPLE||!stDb||refused||!owner||me.id==='local'||!view.order.length) return;
     var so=(state&&state.order)||[];
     var same=so.length===view.order.length&&so.every(function(id,i){ return view.order[i]===id; })&&state.cur===view.cur;
-    if(same){ normAt=0; return; }
-    if(!normAt){ normAt=Date.now(); return; }
-    if(Date.now()-normAt<STEADY) return;
-    normAt=0;
+    if(same) return;
     var s=ttAct(state, view, 'norm', null, Date.now()); s.v=(state&&state.v)|0; s.turnAt=(state&&state.turnAt)||s.turnAt;
     state=s; stDb.put(s).catch(function(){ refused=true; });
   }
@@ -6611,7 +6617,7 @@ i18nStart(async()=>{
   document.getElementById('restart').onclick=function(){ write('restart'); };
   document.getElementById('shuffle').onclick=function(){ write('order', ttShuffle(view.order, Math.random)); };
   document.getElementById('joinorder').onclick=function(){
-    var ps=people().sort(function(a,b){ return ((a.since||0)-(b.since||0))||(a.id<b.id?-1:1); });
+    var ps=people().slice().sort(function(a,b){ return ((a.since||0)-(b.since||0))||(a.id<b.id?-1:1); });
     write('order', ps.map(function(p){ return p.id; }));
   };
   document.getElementById('timers').onclick=function(e){ var b=e.target.closest&&e.target.closest('button'); if(b) write('timer', +b.dataset.t); };
@@ -6656,22 +6662,27 @@ i18nStart(async()=>{
   function onState(list){ var s=null; (list||[]).forEach(function(x){ if(x&&x.id==='state') s=x; }); state=s; render(); }
   function boot(){
     applyI18n();
-    if(stDb){
+    var nw=document.getElementById('newer'); if(!PEOPLE){ nw.hidden=false; nw.textContent=newerLine(); }
+    if(stDb&&PEOPLE){
       stDb.subscribe(onState);
       planDb.subscribe(function(list){ var p=null; (list||[]).forEach(function(x){ if(x&&x.id==='plan') p=x; }); onPlanRec(p); });
-      presDb.subscribe(onPres);
+      midDb.subscribe(onMids);
+    } else if(stDb){
+      stDb.subscribe(onState);
+      planDb.subscribe(function(list){ var p=null; (list||[]).forEach(function(x){ if(x&&x.id==='plan') p=x; }); onPlanRec(p); });
     }
-    var hello=function(m){ me={ id:(m&&m.id)||'local', name:(m&&m.name)||'' }; beat(); render(); };
-    if(window.gifos&&gifos.me) gifos.me().then(hello,function(){ hello(null); }); else hello(null);
-    if(window.gifos&&gifos.onIdentity) gifos.onIdentity(function(m){ if(m&&m.id){ me={ id:m.id, name:m.name||'' }; beat(); render(); } });
-    if(window.gifos&&gifos.stage) gifos.stage.state().then(function(r){ if(r&&r.on){ stage=r; beat(); render(); } }, function(){});
-    setInterval(beat, BEAT);
-    setInterval(render, TICK);
-    window.addEventListener('pagehide',function(){ if(presDb&&me.id!=='local') presDb.delete('p:'+me.id).catch(function(){}); });
-    if(window.gifos&&gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); render(); });
+    readRoom();
+    if(PEOPLE&&gifos.onIdentity) gifos.onIdentity(function(){ readRoom(); });
+    if(window.gifos&&gifos.stage) gifos.stage.state().then(function(r){ if(r&&r.on){ stage=r; putMid(); render(); } }, function(){});
+    setInterval(function(){ readRoom(); render(); }, TICK);
+    window.addEventListener('pagehide',function(){ if(PEOPLE&&midDb&&me.id!=='local'&&lastMid) midDb.delete(me.id).catch(function(){}); });
+    if(window.gifos&&gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); if(!PEOPLE) document.getElementById('newer').textContent=newerLine(); render(); });
     render();
   }
   if(window.gifos&&gifos.i18n&&gifos.i18n.load) gifos.i18n.load().then(boot,boot); else boot();
+  // Read-only view for the checks: the shared turn record, who this copy shows, and whether it steers.
+  window.__taketurns={ state:function(){ return state?JSON.parse(JSON.stringify(state)):null; },
+    people:function(){ return view.order.slice(); }, amHost:function(){ return PEOPLE&&owner; } };
 </script>`;
 
   // opts.only: appIds to encode; the rest are left out (the meeting's Run app
@@ -7438,8 +7449,8 @@ The Store itself does not keep a shopping cart in this icon.
         // Take Turns: the turn order is the people connected to the app. The
         // shared turn and plan are leadable (an admin room's host leads by
         // default); stage asks for now + next on a meeting's Stage.
-        app('Take Turns', 'taketurns', [92, 200, 168], TAKETURNS_HTML, { capabilities: { db: true, multiplayer: true, network: [], stage: true },
-          data: { turns: RW, plan: RW, presence: RW }, lead: [{ collection: 'turns', id: 'state' }, { collection: 'plan', id: 'plan' }] }),
+        app('Take Turns', 'taketurns', [92, 200, 168], TAKETURNS_HTML, { minBuild: ROOM_MIN_BUILD, capabilities: { db: true, multiplayer: true, network: [], stage: true },
+          data: { turns: RW, plan: RW, mid: RW }, lead: [{ collection: 'turns', id: 'state' }, { collection: 'plan', id: 'plan' }] }),
         // The one app that reaches out: it declares exactly the site it needs,
         // so opening it demonstrates the network acknowledgement on a real app.
         app('Fortune', 'fortune', [255, 206, 107], FORTUNE_HTML, { capabilities: { db: true, network: ['api.adviceslip.com'] }, data: { fortunes: RW } }),

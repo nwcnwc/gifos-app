@@ -45,5 +45,6 @@
   "plan.count": "{n} turnos:",
   "plan.empty": "Todavía no hay nada que leer.",
   "stage.full": "El escenario está lleno; los turnos siguen sin él.",
-  "stage.wait": "Esperando a que el anfitrión te suba al escenario."
+  "stage.wait": "Esperando a que el anfitrión te suba al escenario.",
+  "needsNewer": "Take Turns necesita un GifOS más nuevo para turnarse juntos. Recarga la página para actualizar."
 }
