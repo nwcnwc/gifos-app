@@ -4,8 +4,8 @@
   "appId": "breaklock",
   "name": "BreakLock",
   "shortName": "BreakLock",
-  "version": "1.0.0",
-  "minBuild": 947,
+  "version": "1.1.0",
+  "minBuild": 5861,
   "tagline": "You draw the secret. They have to crack it. Your streak lives in the file.",
   "description": "Invite in the bar above the app. You draw a pattern on the 3×3 lock; they have to find it. Close the app and your streak, best scores, and the lock you were on are still there.\n\nOn your own it is the original BreakLock: Android's pattern lock scored like Mastermind. Link four, five or six dots. After every try a filled peg means that dot is in the right place; an empty peg means it belongs, but in another order. Practice is unlimited. Challenge gives you ten tries. Countdown is one minute.\n\nA game you're gonna love to hate.\n\nAn unofficial port of BreakLock by maxwellito, MIT-licensed. This copy keeps your stats and turns one link into a lock you set.",
   "author": {
@@ -40,14 +40,14 @@
   "cover": "/apps/breaklock/cover.jpg",
   "screenshots": [],
   "gif": "/apps/breaklock/breaklock.gif",
-  "bytes": 264013,
+  "bytes": 265050,
   "download": 0,
   "provides": null,
-  "sha256": "eae429a93d92545457f41e3c827aa062ab10bb4528b78ce5b4b8be8eb474861b",
+  "sha256": "ae5071b7b71461264b0ca2c70e78c93a377d236336221aa2cdac6bcf2a18c2c0",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-21"
   },
   "porter": {
     "name": "GifOS",

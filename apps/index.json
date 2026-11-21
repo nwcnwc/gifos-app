@@ -164,7 +164,7 @@
       "appId": "air-hockey",
       "name": "Air Hockey",
       "shortName": "Air Hockey",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "tagline": "Two paddles on the ice. Drag yours. A friend takes the other end.",
       "author": {
         "name": "MortimerGoro",
@@ -178,7 +178,7 @@
         "name": "AirHockeyWebGL",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -198,15 +198,15 @@
         196
       ],
       "cover": "/apps/air-hockey/cover.jpg",
-      "bytes": 1464254,
+      "bytes": 1467137,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "358c902425da66cf4b4776b051694cb829cf1095c83794867ec8f1cb048b5126"
+      "sha256": "8b1d827a4656aa84a3592e535140f5bde69a97e479d043baf687b01513f749f7"
     },
     {
       "slug": "algorithm-visualizer",
@@ -568,7 +568,7 @@
       "appId": "battle-city",
       "name": "Eagle Defense",
       "shortName": "Eagle",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "tagline": "Tanks, bricks, and the eagle. A friend on the other pad.",
       "author": {
         "name": "feichao93",
@@ -582,7 +582,7 @@
         "name": "feichao93/battle-city",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -602,22 +602,22 @@
         33
       ],
       "cover": "/apps/battle-city/cover.jpg",
-      "bytes": 282903,
+      "bytes": 284166,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-15"
+        "ts": "2026-11-21"
       },
-      "sha256": "16535fbc7d865c82bc89ac5f1a0a7e6f4ba84c69c29862b960863ffe508ba95e"
+      "sha256": "60283a507f019ace4859d85a3d9afe8e2f297034f93b254ace478b419aca3a90"
     },
     {
       "slug": "battleboat",
       "appId": "battleboat",
       "name": "Battleboat",
       "shortName": "Battleboat",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "Hide a fleet on your phone, send the link, sink theirs.",
       "author": {
         "name": "billmei",
@@ -631,7 +631,7 @@
         "name": "Battleboat",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -650,15 +650,15 @@
         0
       ],
       "cover": "/apps/battleboat/cover.jpg",
-      "bytes": 230756,
+      "bytes": 233519,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "f49cdf1e71474e18cc987b720d8147b6888a0e89db340e572c8217f14cf8a566"
+      "sha256": "79ee45247cb8573f8390ac1693682bc45a9a0a77dbd81cb48cf834e4ab8e725f"
     },
     {
       "slug": "beepbox",
@@ -1112,7 +1112,7 @@
       "appId": "breaklock",
       "name": "BreakLock",
       "shortName": "BreakLock",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "tagline": "You draw the secret. They have to crack it. Your streak lives in the file.",
       "author": {
         "name": "maxwellito",
@@ -1126,7 +1126,7 @@
         "name": "BreakLock",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-30",
       "updated": "2026-08-30",
@@ -1147,15 +1147,15 @@
         153
       ],
       "cover": "/apps/breaklock/cover.jpg",
-      "bytes": 264013,
+      "bytes": 265050,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "eae429a93d92545457f41e3c827aa062ab10bb4528b78ce5b4b8be8eb474861b"
+      "sha256": "ae5071b7b71461264b0ca2c70e78c93a377d236336221aa2cdac6bcf2a18c2c0"
     },
     {
       "slug": "breakout",
@@ -1417,13 +1417,13 @@
       "appId": "chess-grandmaster",
       "name": "Chess Grandmaster",
       "shortName": "Chess",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "tagline": "The real Stockfish engine, running on your device — no internet needed.",
       "author": {
         "name": "GifOS",
         "url": "https://gifos.app"
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-07-09",
       "updated": "2026-08-12",
@@ -1443,15 +1443,15 @@
         75
       ],
       "cover": "/apps/chess-grandmaster/cover.jpg",
-      "bytes": 8322481,
+      "bytes": 8323447,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "4db2c3eda103d3156a5a6aa5fceb65ed026c71ba265a9716f6f818fc5d218363"
+      "sha256": "efc94d5a9795e92163d6f74788fef514e0f458a8d6bfeb904f169a03ee6cbe21"
     },
     {
       "slug": "chrome-dino",
@@ -3889,7 +3889,7 @@
       "appId": "jsnes",
       "name": "jsnes",
       "shortName": "jsnes",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "tagline": "The ROM and the save live in this file. Invite is player two.",
       "author": {
         "name": "Ben Firshman",
@@ -3903,7 +3903,7 @@
         "name": "JSNES",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-30",
       "updated": "2026-08-30",
@@ -3924,15 +3924,15 @@
         56
       ],
       "cover": "/apps/jsnes/cover.jpg",
-      "bytes": 315480,
+      "bytes": 316464,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "397bb92cc99d50912aff1fdb7bb1ff9d187df227d0efbd8819c2b99a9f4e3dcb"
+      "sha256": "933f9e2f992987e3ca22ec078c809ac08a430369c743e93b343b3ec425c661ab"
     },
     {
       "slug": "json-crack",
@@ -4434,7 +4434,7 @@
       "appId": "lost-in-cyberspace",
       "name": "Lost in Cyberspace",
       "shortName": "Cyberspace",
-      "version": "1.1",
+      "version": "1.2",
       "tagline": "One of you is lost in the network; the other reads the codes. Talk fast.",
       "author": {
         "name": "Bartek Szopka & Zofia Korcz",
@@ -4448,7 +4448,7 @@
         "name": "Lost in CYBERSPACE",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-24",
       "updated": "2026-08-24",
@@ -4469,15 +4469,15 @@
         204
       ],
       "cover": "/apps/lost-in-cyberspace/cover.jpg",
-      "bytes": 209699,
+      "bytes": 210974,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "f3bac053eccd127a2f89f3d1448c32dec54b7a2e0c43b462ca2105bf33f36794"
+      "sha256": "59f15af1b4d3f69b94743f062260e1071e7c44aa35d8aa1135680f3d2d023973"
     },
     {
       "slug": "lrc-maker",
@@ -5713,13 +5713,13 @@
       "appId": "one-stroke",
       "name": "One Stroke",
       "shortName": "OneStroke",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "A drawing game: one stroke each, then watch the picture replay.",
       "author": {
         "name": "GifOS",
         "url": "https://gifos.app"
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -5740,15 +5740,15 @@
         93
       ],
       "cover": "/apps/one-stroke/cover.jpg",
-      "bytes": 199621,
+      "bytes": 199763,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "a3498fa13737bda82c872ecb78396693f3a58d4f31efa02e2c79c263f5bc5fac"
+      "sha256": "959315a8200ac76fc33307a6aeaf29ed144944f3492e5cda05c8c25bb14f3e64"
     },
     {
       "slug": "onoff",
@@ -6750,7 +6750,7 @@
       "appId": "pong",
       "name": "Pong",
       "shortName": "Pong",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "tagline": "Pong across two phones. Send the link, first to nine.",
       "author": {
         "name": "Jake Gordon",
@@ -6764,7 +6764,7 @@
         "name": "JavaScript Pong",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -6784,22 +6784,22 @@
         110
       ],
       "cover": "/apps/pong/cover.jpg",
-      "bytes": 260311,
+      "bytes": 262921,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "7b076dd0ba432d911039979fb1e09591f527bea5218b6ccda3f73b43277ef5e4"
+      "sha256": "058d3cf44d9ca01cbb15fa7fafa98163cd7ad9c86f9bd728c63c640790b323a3"
     },
     {
       "slug": "pool",
       "appId": "pool",
       "name": "Pool",
       "shortName": "Pool",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "tagline": "Pool across two phones. Red against yellow, then the black.",
       "author": {
         "name": "henshmi",
@@ -6813,7 +6813,7 @@
         "name": "Classic Pool Game",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -6833,15 +6833,15 @@
         78
       ],
       "cover": "/apps/pool/cover.jpg",
-      "bytes": 401186,
+      "bytes": 403007,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "bcf806ae2cc7535c881c6e3583cbcf425c478aff186c3d17b536c7c6a067f879"
+      "sha256": "9c07f565787332b3f4113af220419983894cc4c37616c5251a561c8cf563a636"
     },
     {
       "slug": "primitive",
@@ -8887,13 +8887,13 @@
       "appId": "thumb-sprint",
       "name": "Thumb Sprint",
       "shortName": "Sprint",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "tagline": "Mash your thumb to sprint. A friend races the next lane from one link.",
       "author": {
         "name": "GifOS",
         "url": "https://gifos.app"
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -8913,15 +8913,15 @@
         74
       ],
       "cover": "/apps/thumb-sprint/cover.jpg",
-      "bytes": 225785,
+      "bytes": 227337,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "9ab4ddace296f0b610eec40c5e60a83e3fe32fb888ccc5a6c3673174505f9220"
+      "sha256": "15221284a9d63c9a6a1e16e11b9340ab03857d9a839da7cf99c6a560dc6f0aae"
     },
     {
       "slug": "tic-tac-toe",
