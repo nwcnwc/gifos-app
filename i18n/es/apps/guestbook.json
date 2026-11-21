@@ -10,5 +10,6 @@
   "anon": "anónimo",
   "ago.now": "ahora mismo",
   "ago.m": "hace {n} min",
-  "ago.h": "hace {n} h"
+  "ago.h": "hace {n} h",
+  "needsNewer": "El libro de visitas necesita un GifOS más nuevo para firmar juntos. Recarga la página para actualizar."
 }

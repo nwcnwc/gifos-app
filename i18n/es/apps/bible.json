@@ -31,5 +31,6 @@
   "err.generic": "No se pudo cargar esa página.",
   "ext.title": "Enlace externo: ábrelo en tu propio navegador",
   "banner.cached": "Se muestra una copia guardada en este dispositivo: la descarga en vivo a través del proxy CORS no llegó. Toca ↻ para intentarlo de nuevo.",
-  "foot": "Texto de text.recoveryversion.bible, leído a través del proxy CORS de GifOS. Toca el botón «Internet» de arriba para ver o cambiar eso. Los capítulos que abres se guardan en este dispositivo para que puedas releerlos sin conexión."
+  "foot": "Texto de text.recoveryversion.bible, leído a través del proxy CORS de GifOS. Toca el botón «Internet» de arriba para ver o cambiar eso. Los capítulos que abres se guardan en este dispositivo para que puedas releerlos sin conexión.",
+  "needsNewer": "El explorador de la Biblia necesita un GifOS más nuevo para leer juntos. Recarga la página para actualizar."
 }

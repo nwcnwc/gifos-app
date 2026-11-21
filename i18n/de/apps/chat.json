@@ -20,5 +20,6 @@
   "ai.empty": "Die KI hat nichts geliefert — versuchen Sie es erneut.",
   "ai.failed": "KI-Entwurf fehlgeschlagen: {msg}",
   "att.shrinkFail": "Dieses Bild ließ sich nicht klein genug verkleinern — Anhänge sind auf {max} begrenzt.",
-  "att.tooBig": "Anhänge sind hier auf {max} begrenzt (Bilder werden automatisch verkleinert). Teilen Sie große Dateien stattdessen in einer Besprechung — dort laufen Übertragungen direkt von Gerät zu Gerät."
+  "att.tooBig": "Anhänge sind hier auf {max} begrenzt (Bilder werden automatisch verkleinert). Teilen Sie große Dateien stattdessen in einer Besprechung — dort laufen Übertragungen direkt von Gerät zu Gerät.",
+  "needsNewer": "Der Chat braucht ein neueres GifOS, um gemeinsam zu schreiben. Lade die Seite neu, um zu aktualisieren."
 }

@@ -221,18 +221,22 @@
       });
     });
   }
-  const db = gifos.db('entries'), pres = (window.gifos&&gifos.db)?gifos.db('presence'):null, list = document.getElementById('list');
+  const db = gifos.db('entries'), list = document.getElementById('list');
+  // Who is here comes from the room (gifos.people()); an older GifOS has none: one plain line, read-only, nothing written.
+  const PEOPLE = !!(window.gifos && gifos.people), PEOPLE_MS = 2000;
+  const EN_NEWER = 'Guestbook needs a newer GifOS to sign together. Reload the page to update.';
+  const newerLine = () => { const t = T('needsNewer'); return t === 'needsNewer' ? EN_NEWER : t; };
   ['💜','✨','⭐','🌈','✍️','🐸'].forEach(function(s){
     const b=document.createElement('button'); b.type='button'; b.textContent=s;
     b.onclick=function(){ const m=document.getElementById('msg'); m.value+=s; m.focus(); };
     document.getElementById('stamps').appendChild(b);
   });
-  let me = { id:'local', name: 'You' }, others=0;
+  let me = { id:'local', name: 'You' }, others=0, room=[], owner=false;
   const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
   function setWho(){
     document.getElementById('who').textContent = others>0 ? T('who.here',{n:others+1}) : T('who.alone');
     var h=document.getElementById('hint');
-    h.innerHTML = T(others>0 ? 'hint.friends' : 'hint.alone',{name:esc(me.name)});
+    h.innerHTML = PEOPLE ? T(others>0 ? 'hint.friends' : 'hint.alone',{name:esc(me.name)}) : esc(newerLine());
   }
   function ago(t){ if(!t) return ''; var d=Date.now()-t; if(d<45000) return T('ago.now'); if(d<3600000) return T('ago.m',{n:Math.max(1,Math.floor(d/60000))}); if(d<86400000) return T('ago.h',{n:Math.floor(d/3600000)}); var dt=new Date(t); var F=window.gifos&&gifos.i18n&&gifos.i18n.fmt; return F?F.date(dt,{month:'numeric',day:'numeric'}):(dt.getMonth()+1)+'/'+dt.getDate(); }
   let lastItems=[];
@@ -245,41 +249,34 @@
   document.getElementById('f').onsubmit = async e => {
     e.preventDefault();
     const msg = document.getElementById('msg');
-    if (msg.value.trim()) { await db.put({ by: me.name, uid: me.id, msg: msg.value.trim(), t: Date.now() }); msg.value=''; }
+    if (PEOPLE && msg.value.trim()) { await db.put({ by: me.name, uid: me.id, msg: msg.value.trim(), t: Date.now() }); msg.value=''; }
   };
-  function beat(){ if(!pres||!me.id||me.id==='local') return; pres.put({id:'p:'+me.id,name:me.name,ts:Date.now()}); }
-  // "N here" counts a person while THIS page saw their heartbeat change in the last 35 s. The heartbeat's
-  // own time is the other device's clock and is never compared with ours; a heartbeat this page has not
-  // yet seen change counts for 20 s (time for one 15 s beat to arrive), so an old record drops off.
-  // The count is redone when the presence rows change, and once more at the moment the next counted person
-  // would drop off (one timer to that time, no polling).
-  var HERE_MS=35000, hereRows=[], hereSeen={}, hereTs={}, hereT=null;
-  function countHere(){
-    var now=Date.now(), n=0, due=Infinity;
-    hereRows.forEach(function(r){
-      if(!r||!r.id||r.id.indexOf('p:')!==0||r.id==='p:'+me.id) return;
-      if(hereTs[r.id]!==r.ts){ hereSeen[r.id]=(r.id in hereTs)?now:now-15000; hereTs[r.id]=r.ts; }
-      if(now-hereSeen[r.id]<HERE_MS){ n++; due=Math.min(due, hereSeen[r.id]+HERE_MS); }
-    });
-    clearTimeout(hereT); hereT=(due<Infinity)?setTimeout(countHere, due-now):null;
-    if(n!==others){ others=n; setWho(); }
+  // The room's people: a local read (no network, no write). Read at boot, on each data change and on a calm timer.
+  function readRoom(){
+    if(!PEOPLE) return;
+    Promise.all([gifos.people(), gifos.info ? gifos.info() : Promise.resolve({})]).then(function(r){
+      const l = (r[0]||[]).map(function(p){ return { id:p.id, name:p.name||'', me:!!p.me }; });
+      const mr = l.filter(function(x){ return x.me; })[0];
+      const n = l.filter(function(x){ return !x.me; }).length, o = !!(r[1] && r[1].owner);
+      const nm = mr ? (mr.name || 'You') : me.name, id = mr ? mr.id : me.id;
+      if (n === others && o === owner && nm === me.name && id === me.id && l.length === room.length) { room = l; return; }
+      room = l; others = n; owner = o; me = { id: id, name: nm }; setWho();
+    }, function(){});
   }
-  function watchPresence(){
-    if(pres&&pres.subscribe){
-      pres.subscribe(function(rows){ hereRows=rows||[]; countHere(); });
-      setInterval(function(){ if(document.visibilityState!=='hidden') beat(); },15000);
-    }
-  }
-  document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible') beat(); });
   // Nothing that calls T runs before the catalog has loaded (a key must never be painted).
   function boot(){
     applyI18n();
-    if (window.gifos) gifos.me().then(function(m){ me = { id: m.id, name: m.name || 'You' }; setWho(); beat(); });
-    db.subscribe(render);
-    watchPresence();
+    if (!PEOPLE) { const f = document.getElementById('msg'); if (f) f.disabled = true; }
+    setWho();
+    readRoom();
+    db.subscribe(function(items){ render(items); readRoom(); });
+    if (PEOPLE) setInterval(readRoom, PEOPLE_MS);
     if (window.gifos && gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); setWho(); render(lastItems); });
   }
   if (window.gifos && gifos.i18n && gifos.i18n.load) gifos.i18n.load().then(boot, boot); else boot();
+  // Read-only view for the checks: the shared entries, who this copy counts, and whether it is the app's owner.
+  window.__guestbook = { state: function(){ return { entries: lastItems.map(function(e){ return { id: e.id, by: e.by, msg: e.msg }; }) }; },
+    people: function(){ return room.map(function(p){ return p.id; }); }, amHost: function(){ return PEOPLE && owner; } };
 </script>`;
 
   const TICTACTOE_HTML = `<!doctype html><meta charset="utf-8">
@@ -978,7 +975,7 @@
       });
     });
   }
-  const db=gifos.db('messages'), fdb=gifos.db('files'), pres=(window.gifos&&gifos.db)?gifos.db('presence'):null, log=document.getElementById('log');
+  const db=gifos.db('messages'), fdb=gifos.db('files'), log=document.getElementById('log');
   // Attachments ride gifos.db. The runtime fragments oversized messages, but
   // subscribers re-download a whole collection on every change — so file
   // bytes are base64-chunked (CS chars ≈ 64KB raw each) into the separate
@@ -986,10 +983,14 @@
   // fan-out, and capped at MAX bytes (the relay-fallback path is bandwidth-
   // throttled by design). Images are shrunk to fit automatically.
   const MAX=256*1024, CS=87000, MAXCHUNKS=16;
-  let me={id:'local',name:'You'}, last=[], others=0;
+  // Who is here comes from the room (gifos.people()); an older GifOS has none: one plain line, read-only, nothing written.
+  const PEOPLE=!!(window.gifos&&gifos.people), PEOPLE_MS=2000;
+  const EN_NEWER='Chat needs a newer GifOS to talk together. Reload the page to update.';
+  const newerLine=function(){ const t=T('needsNewer'); return t==='needsNewer'?EN_NEWER:t; };
+  let me={id:'local',name:'You'}, last=[], others=0, room=[], owner=false;
   function setWho(){
     var el=document.getElementById('who'); if(!el) return;
-    el.textContent = others>0 ? T('who.here',{n:others+1}) : T('who.alone');
+    el.textContent = !PEOPLE ? newerLine() : others>0 ? T('who.here',{n:others+1}) : T('who.alone');
   }
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const L10N=window.gifos&&gifos.i18n&&gifos.i18n.fmt; // the system locale (GifOS Settings)
@@ -1046,6 +1047,7 @@
     items.forEach(function(m){ if(m.kind==='file'&&m.att&&!atts[m.att]) fetchAtt(m); });
   }
   function sendText(text){
+    if(!PEOPLE) return;
     const rec={ id:'m'+Date.now().toString(36)+Math.floor(Math.random()*1e6).toString(36), by:me.name, uid:me.id, text:text, t:Date.now() };
     const p=Object.assign({state:'sending'},rec);
     pend.push(p); paint();
@@ -1115,30 +1117,19 @@
       }finally{ aiBtn.disabled=false; aiBtn.textContent=glyph; }
     };
   }
-  function beat(){ if(!pres||!me.id||me.id==='local') return; pres.put({id:'p:'+me.id,name:me.name,ts:Date.now()}); }
-  // "N here" counts a person while THIS page saw their heartbeat change in the last 35 s. The heartbeat's
-  // own time is the other device's clock and is never compared with ours; a heartbeat this page has not
-  // yet seen change counts for 20 s (time for one 15 s beat to arrive), so an old record drops off.
-  // The count is redone when the presence rows change, and once more at the moment the next counted person
-  // would drop off (one timer to that time, no polling).
-  var HERE_MS=35000, hereRows=[], hereSeen={}, hereTs={}, hereT=null;
-  function countHere(){
-    var now=Date.now(), n=0, due=Infinity;
-    hereRows.forEach(function(r){
-      if(!r||!r.id||r.id.indexOf('p:')!==0||r.id==='p:'+me.id) return;
-      if(hereTs[r.id]!==r.ts){ hereSeen[r.id]=(r.id in hereTs)?now:now-15000; hereTs[r.id]=r.ts; }
-      if(now-hereSeen[r.id]<HERE_MS){ n++; due=Math.min(due, hereSeen[r.id]+HERE_MS); }
-    });
-    clearTimeout(hereT); hereT=(due<Infinity)?setTimeout(countHere, due-now):null;
-    if(n!==others){ others=n; setWho(); if(!last.length&&!pend.length) paint(); }
+  // The room's people: a local read (no network, no write). Read at boot, on each data change and on a calm timer.
+  function readRoom(){
+    if(!PEOPLE) return;
+    Promise.all([gifos.people(), gifos.info?gifos.info():Promise.resolve({})]).then(function(r){
+      const l=(r[0]||[]).map(function(p){ return { id:p.id, name:p.name||'', me:!!p.me }; });
+      const mr=l.filter(function(x){ return x.me; })[0];
+      const n=l.filter(function(x){ return !x.me; }).length, o=!!(r[1]&&r[1].owner);
+      const nm=mr?(mr.name||'You'):me.name, id=mr?mr.id:me.id;
+      const same=n===others&&o===owner&&nm===me.name&&id===me.id;
+      room=l; if(same) return;
+      others=n; owner=o; me={id:id,name:nm}; setWho(); if(!last.length&&!pend.length) paint();
+    },function(){});
   }
-  function watchPresence(){
-    if(pres&&pres.subscribe){
-      pres.subscribe(function(rows){ hereRows=rows||[]; countHere(); });
-      setInterval(function(){ if(document.visibilityState!=='hidden') beat(); },15000);
-    }
-  }
-  document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible') beat(); });
   // ---- attachments ----
   const fi=document.getElementById('fi'), attBtn=document.getElementById('att');
   attBtn.onclick=function(){ fi.click(); };
@@ -1164,6 +1155,7 @@
     img.src=url;
   }); }
   async function sendFile(f){
+    if(!PEOPLE) return;
     attBtn.disabled=true; attBtn.textContent='⏳';
     try{
       let blob=f, mime=f.type||'application/octet-stream', name=f.name||'file';
@@ -1182,12 +1174,16 @@
   // Nothing that calls T runs before the catalog has loaded (a key must never be painted).
   function boot(){
     applyI18n(); setWho();
-    if(window.gifos) gifos.me().then(function(m){ me={id:m.id,name:m.name||'You'}; beat(); });
-    db.subscribe(function(items){ last=items; paint(); });
-    watchPresence();
+    if(!PEOPLE){ document.getElementById('t').disabled=true; }
+    readRoom();
+    db.subscribe(function(items){ last=items; paint(); readRoom(); });
+    if(PEOPLE) setInterval(readRoom, PEOPLE_MS);
     if(window.gifos && gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); setWho(); paint(); });
   }
   if(window.gifos && gifos.i18n && gifos.i18n.load) gifos.i18n.load().then(boot, boot); else boot();
+  // Read-only view for the checks: the shared messages, who this copy counts, and whether it is the app's owner.
+  window.__chat={ state:function(){ return { messages:last.map(function(m){ return { id:m.id, by:m.by, text:m.text, kind:m.kind||'' }; }) }; },
+    people:function(){ return room.map(function(p){ return p.id; }); }, amHost:function(){ return PEOPLE&&owner; } };
 </script>`;
 
   const PAINT_HTML = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
@@ -3653,11 +3649,11 @@ i18nStart(function(){});</script>`;
   // Three stores, three visibilities (declared in the manifest):
   //   nav      — the shared reading position (read-write, and leadable so the
   //              host can switch to "only I lead").
-  //   presence — light heartbeats so everyone knows who's here (read-write).
+  //   who is here comes from the room (gifos.people()); nothing is written for presence.
   //   prefs    — MY theme, font size and last page (private: each reader keeps
   //              their own copy; it never leaves their tab).
   var hasDb=!!(window.gifos&&gifos.db);
-  var navDb=hasDb?gifos.db('nav'):null, presDb=hasDb?gifos.db('presence'):null, prefsDb=hasDb?gifos.db('prefs'):null;
+  var navDb=hasDb?gifos.db('nav'):null, prefsDb=hasDb?gifos.db('prefs'):null;
   // Recently-read pages, PRIVATE: so a chapter you already opened can be re-read
   // on a plane. Never shared — a meeting still fetches (or pools) the live page.
   var pagesDb=hasDb?gifos.db('pages'):null;
@@ -3670,24 +3666,35 @@ i18nStart(function(){});</script>`;
   // per-person and in-memory, so anyone can switch it off to peek elsewhere
   // without moving the group (or being moved). Reading prefs and last page live
   // in the PRIVATE prefs store, so they stay personal and never sync.
-  var follow=true, shared=false, hbTimer=null, lastNav=null, othersHere=0;
+  var follow=true, shared=false, lastNav=null, othersHere=0, room=[], owner=false;
+  // An older GifOS has no gifos.people: one plain line, reading works, nothing is written (not even private rows).
+  var PEOPLE=!!(window.gifos&&gifos.people), PEOPLE_MS=2000;
+  var EN_NEWER='Bible Browser needs a newer GifOS to read together. Reload the page to update.';
+  function newerLine(){ var t=T('needsNewer'); return t==='needsNewer'?EN_NEWER:t; }
   // Scroll is remembered per person AND shared with followers — as a FRACTION of
   // the page (0..1) so it lines up even when readers use different text sizes.
   var pendingFrac=null, applyingScroll=false, scrollSaveT=null, scrollPushT=null, lastFrac=-1;
   function esc(s){var d=document.createElement('div');d.textContent=s==null?'':s;return d.innerHTML;}
   function scrollFrac(){ var m=main.scrollHeight-main.clientHeight; return m>0?(main.scrollTop/m):0; }
   function applyFrac(f){ var m=main.scrollHeight-main.clientHeight; main.scrollTop=Math.max(0,Math.min(m,(f||0)*m)); }
-  function saveLast(){ if(prefsDb) prefsDb.put({id:'last', url:curUrl, scroll:scrollFrac()}); }  // my last page + where I was on it (private)
+  function saveLast(){ if(prefsDb&&PEOPLE) prefsDb.put({id:'last', url:curUrl, scroll:scrollFrac()}); }  // my last page + where I was on it (private)
   function applyPrefs(){ document.body.setAttribute('data-read', prefs.theme); document.documentElement.style.setProperty('--fs', prefs.fs+'px');
     document.getElementById('theme').innerHTML = prefs.theme==='night' ? '&#9790;' : prefs.theme==='bw' ? '&#9681;' : '&#9728;'; }
   function myName(){ return me.name||'Someone'; }
-  function savePrefs(){ if(prefsDb) prefsDb.put({id:'prefs', theme:prefs.theme, fs:prefs.fs}); }  // my own, never shared
-  // Presence heartbeat: a light 'p:<id>' record so everyone knows who's here
-  // (drives whether the Follow toggle is even shown). Kept fresh while shared.
-  function heartbeat(){ if(presDb&&me.id) presDb.put({id:'p:'+me.id, name:myName(), ts:Date.now()}); }
-  function startHeartbeat(){ if(hbTimer||!presDb||!me.id) return;
-    hbTimer=setInterval(function(){ if(document.visibilityState!=='hidden') heartbeat(); }, 15000);
-    heartbeat(); }  // set the guard BEFORE the first beat so a sync notify can't re-enter
+  function savePrefs(){ if(prefsDb&&PEOPLE) prefsDb.put({id:'prefs', theme:prefs.theme, fs:prefs.fs}); }  // my own, never shared
+  // The room's people (a local read: no network, no write): who is here drives whether Follow shows, and the
+  // person's id is the room's id. Read at boot and on a calm timer.
+  function readRoom(){
+    if(!PEOPLE) return Promise.resolve();
+    return Promise.all([gifos.people(), gifos.info?gifos.info():Promise.resolve({})]).then(function(r){
+      var l=(r[0]||[]).map(function(p){ return { id:p.id, name:p.name||'', me:!!p.me }; });
+      var mr=l.filter(function(x){ return x.me; })[0];
+      var n=l.filter(function(x){ return !x.me; }).length, o=!!(r[1]&&r[1].owner);
+      room=l; if(mr) me={ id:mr.id, name:mr.name };
+      owner=o;
+      if(n!==othersHere){ othersHere=n; recompute(); }
+    }, function(){});
+  }
   // Publish where I am so followers come along. Only called when I'm following.
   // The put is REFUSED when the host is leading (nav went read-only) — then I
   // just browse on my own; the reader drives everyone.
@@ -3703,14 +3710,8 @@ i18nStart(function(){});</script>`;
   function recompute(){
     var navByOther = !!(lastNav && lastNav.by && lastNav.by!==me.id && lastNav.url);
     shared = othersHere>0 || navByOther;
-    if(shared) startHeartbeat();
     updateFollowUi();
     return navByOther; }
-  // Presence collection changed: recount who's here (fresh 'p:<id>' beats).
-  function onPresence(rows){ if(!Array.isArray(rows)) return; var now=Date.now(), others=0;
-    for(var i=0;i<rows.length;i++){ var r=rows[i]; if(!r||!r.id) continue;
-      if(r.id.slice(0,2)==='p:'&&r.id!=='p:'+me.id&&(now-(r.ts||0))<35000) others++; }
-    othersHere=others; recompute(); }
   // Nav collection changed: where is the group reading, and do I follow there?
   function handleSync(rows){ if(!Array.isArray(rows)) return; var navRec=null;
     for(var i=0;i<rows.length;i++){ var r=rows[i]; if(r&&r.id==='nav'){ navRec=r; break; } }
@@ -3777,7 +3778,7 @@ i18nStart(function(){});</script>`;
   // A failed live fetch falls back to a PRIVATE copy of a page this device has
   // already opened (so re-reading a chapter works offline). cached:true when so.
   function cachePut(url, html){
-    if(!pagesDb||!url||html==null) return;
+    if(!pagesDb||!PEOPLE||!url||html==null) return;
     pagesDb.put({id:url, html:html, t:Date.now()}).then(function(){ return pagesDb.getAll(); })
       .then(function(rows){ if(!rows||rows.length<=40) return;
         rows.sort(function(a,b){ return (a.t||0)-(b.t||0); });
@@ -3938,8 +3939,6 @@ i18nStart(function(){});</script>`;
     else if(follow && lastNav && lastNav.url===curUrl && lastNav.by!==me.id && typeof lastNav.scroll==='number'){
       applyingScroll=true; applyFrac(lastNav.scroll); lastFrac=lastNav.scroll; setTimeout(function(){ applyingScroll=false; }, 90); }
     updateFollowUi(); };
-  document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible' && shared) heartbeat(); });
-  window.addEventListener('pagehide', function(){ if(presDb&&me.id){ try{ presDb.delete('p:'+me.id); }catch(e){} } });
   if(window.gifos&&gifos.onBack) gifos.onBack(function(){ if(hi>0){ hi--; go(hist[hi], false); buttons(); } });
   function firstPage(){ if(!prefsDb) return Promise.resolve({url:HOME});
     return prefsDb.get('last')
@@ -3948,14 +3947,15 @@ i18nStart(function(){});</script>`;
   // already reading or open my own last page — and from then on stay converged
   // via subscribe() on the two shared collections (nav + presence).
   function bibleBoot(){
-  (window.gifos&&gifos.me?gifos.me():Promise.resolve({id:'',name:''})).then(function(u){ me=u||{id:'',name:''}; })
+    if(!PEOPLE){ var nw=document.createElement('div'); nw.id='newer'; nw.style.cssText='padding:8px 12px;font-weight:600'; nw.textContent=newerLine(); document.body.insertBefore(nw, document.body.firstChild); }
+  readRoom()
     .then(function(){ return prefsDb?prefsDb.get('prefs'):null; })
     .then(function(p){ if(p){ if(p.theme) prefs.theme=p.theme; if(typeof p.fs==='number') prefs.fs=p.fs; } applyPrefs(); })
     .then(function(){ return navDb?navDb.getAll():[]; })
-    .then(function(navRows){ heartbeat();
+    .then(function(navRows){
       var navRec=null; (navRows||[]).forEach(function(r){ if(r&&r.id==='nav') navRec=r; });
       lastNav=navRec;
-      if(presDb&&presDb.subscribe) presDb.subscribe(onPresence);
+      if(PEOPLE) setInterval(readRoom, PEOPLE_MS);
       if(navDb&&navDb.subscribe) navDb.subscribe(handleSync);
       recompute();
       if(follow && navRec && navRec.by && navRec.by!==me.id && navRec.url){ go(navRec.url, true, true, navRec.scroll); return; }
@@ -3963,6 +3963,9 @@ i18nStart(function(){});</script>`;
     .catch(function(){ applyPrefs(); go(HOME, true); });
   }
   // A locale change re-words the chrome (applyI18n), the Follow button and whatever status is on screen.
+  // Read-only view for the checks: the shared reading position, who this copy counts, and whether it is the app's owner.
+  window.__bible={ state:function(){ return { nav: lastNav&&lastNav.url?{ url:lastNav.url, by:lastNav.by }:null }; },
+    people:function(){ return room.map(function(p){ return p.id; }); }, amHost:function(){ return PEOPLE&&owner; } };
   i18nStart(bibleBoot, function(){ updateFollowUi(); if(statusFn) setStatus(statusFn, statusErr); });
 </script>`;
 
@@ -7460,8 +7463,8 @@ The Store itself does not keep a shopping cart in this icon.
         // (nav, read-write and leadable so the host can "only I lead"), who's
         // here (presence, read-write heartbeats), and each reader's OWN theme +
         // font size + last page (prefs, private — never leaves their tab).
-        app('Bible Browser', 'bible', [200, 162, 75], BIBLE_HTML, { capabilities: { db: true, multiplayer: true, network: ['text.recoveryversion.bible'], pool: ['text.recoveryversion.bible'] },
-          data: { nav: RW, presence: RW, prefs: PRIV, pages: PRIV }, lead: [{ collection: 'nav', id: 'nav' }] }),
+        app('Bible Browser', 'bible', [200, 162, 75], BIBLE_HTML, { minBuild: ROOM_MIN_BUILD, capabilities: { db: true, multiplayer: true, network: ['text.recoveryversion.bible'], pool: ['text.recoveryversion.bible'] },
+          data: { nav: RW, prefs: PRIV, pages: PRIV }, lead: [{ collection: 'nav', id: 'nav' }] }),
         // Showcases the brokered capabilities: a mic clip analysed on-device,
         // and the computer's own AI models. Both declare what they use.
         app('Speech Coach', 'speechcoach', [123, 92, 255], SPEECHCOACH_HTML, { capabilities: { db: true, microphone: true, network: [] }, data: { takes: PRIV } }),
@@ -7476,10 +7479,10 @@ The Store itself does not keep a shopping cart in this icon.
         app('Reader', 'reader', [255, 170, 90], READER_HTML, { capabilities: { db: true, ai: ['tts'], network: [] }, data: { texts: PRIV } }),
       ] },
       { name: 'Social', apps: [
-        app('Guestbook', 'guestbook', [255, 92, 170], GUESTBOOK_HTML, { capabilities: { db: true, multiplayer: true }, data: { entries: RW, presence: RW } }),
+        app('Guestbook', 'guestbook', [255, 92, 170], GUESTBOOK_HTML, { minBuild: ROOM_MIN_BUILD, capabilities: { db: true, multiplayer: true }, data: { entries: RW } }),
         // The "✨ AI draft" button uses YOUR OWN AI model/key (from Settings),
         // brokered locally per person — declares ai so the runtime allows it.
-        app('Chat', 'chat', [92, 220, 180], CHAT_HTML, { capabilities: { db: true, multiplayer: true, ai: ['cheapest', 'smartest'], network: [] }, data: { messages: RW, files: RW, presence: RW } }),
+        app('Chat', 'chat', [92, 220, 180], CHAT_HTML, { minBuild: ROOM_MIN_BUILD, capabilities: { db: true, multiplayer: true, ai: ['cheapest', 'smartest'], network: [] }, data: { messages: RW, files: RW } }),
       ] },
       // Party games where the phone just facilitates — dealing secrets,
       // keeping time, counting votes — and the action happens in person.
