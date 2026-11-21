@@ -264,7 +264,7 @@
       "appId": "alphatab",
       "name": "alphaTab",
       "shortName": "alphaTab",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "tagline": "The tab lives in the GIF. Invite, and a friend follows the playhead.",
       "author": {
         "name": "Daniel Kuschny",
@@ -301,15 +301,15 @@
         48
       ],
       "cover": "/apps/alphatab/cover.jpg",
-      "bytes": 1367062,
+      "bytes": 1367800,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-21"
       },
-      "sha256": "4434a09b48f93ef9105c2af4e44e406ce7363f6d57730803dbe3cf5355285ac3"
+      "sha256": "f311df42a1734546f1c2990a93b201bc874a95a02511ed953102c10753dffdf6"
     },
     {
       "slug": "anyroad",
