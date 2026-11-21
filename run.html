@@ -24013,12 +24013,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             // in have-local-offer. An explicit rollback first leaves the old
             // m-line order in place and the answer throws, and the camera
             // transceiver then never negotiates.
+            // AN OFFER THAT CROSSED MINE ON A LIVE PAIR IS ALREADY TAKEN BACK. The channel is one ordered stream and the
+            // far end is the polite one: an offer of its that reaches me while my own renegotiation offer is out and its
+            // answer has not come was sent before the far end read mine, and reading mine rolls its own back; it offers
+            // again after its answer. Answering it, at any later time, answers an offer the far end no longer holds: the
+            // two ends then keep different m-line lists, the next offer throws, and the live pair is rebuilt with every
+            // feed on it. A slow page answers seconds late, so no wait tells a late answer from a lost one: I keep my
+            // offer and drop theirs. An offer that lands while the answer to mine is being set was made after that answer
+            // and is held as before.
+            const offerOut = () => { const so = p.neg.sentOffer, pc = p.pc; return !!(so && pc && so.pc === pc && (p.connected || (p.dc && p.dc.readyState === 'open'))
+              && pc.signalingState === 'have-local-offer' && pc.localDescription && so.sdp === pc.localDescription.sdp && p.neg.answerSeen !== so.oid); };
+            if (offerOut()) { if (typeof clog === 'function') clog('roffer-crossed ' + String(p.id).slice(0, 6) + ': mine stands'); return; }
             p.neg.rofferYield = m;
             if (!p.neg.rofferYieldTimer) {
               p.neg.rofferYieldTimer = setTimeout(() => {
                 p.neg.rofferYieldTimer = null;
                 let ym = p.neg.rofferYield; p.neg.rofferYield = null;
                 if (!ym || !p.pc || leaving || p.neg.minting) return;
+                if (offerOut()) { if (typeof clog === 'function') clog('roffer-crossed ' + String(p.id).slice(0, 6) + ': mine stands'); return; }   // held while my offer was being made; it is out now and unanswered
                 // The bootstrap offer was already answered: applying the twin
                 // restarts ICE before the channel opens. A firewalled pair is
                 // the exception: the first offer can carry candidates before
@@ -24069,6 +24081,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }
         noteGecko(p, m.sdp);
         const carried = p.connected || (p.dc && p.dc.readyState === 'open');
+        // The answer to my offer is in hand. An offer of theirs I still hold on a live pair came before this answer on
+        // the ordered channel, so the far end rolled it back when it took mine: it is dropped here, before the answer is
+        // set, never answered on its timer. One that lands while the answer is being set is a later offer and is kept.
+        if (p.pc.signalingState === 'have-local-offer') {
+          const so = p.neg.sentOffer;
+          if (so && so.pc === p.pc) p.neg.answerSeen = so.oid;
+          const ym = p.neg.rofferYield;
+          if (ym && carried && iInitiate(p.id) && !/o=mozilla/i.test(String((ym.sdp && ym.sdp.sdp) || '').slice(0, 80))) {
+            p.neg.rofferYield = null;
+            if (p.neg.rofferYieldTimer) { clearTimeout(p.neg.rofferYieldTimer); p.neg.rofferYieldTimer = null; }
+            if (typeof clog === 'function') clog('roffer-crossed ' + String(p.id).slice(0, 6) + ': mine answered');
+          }
+        }
         const srd = () => p.pc.setRemoteDescription(typeof fecVoiceOnly === 'function' ? fecVoiceOnly(m.sdp, p.pc, p) : m.sdp);
         // A renegotiation answer that never settles (lost on the wire, or a
         // test harness that swallows it) leaves have-local-offer on a live
