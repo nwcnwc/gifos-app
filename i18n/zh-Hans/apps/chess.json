@@ -65,5 +65,10 @@
   "status.cpuThinking": "电脑正在思考……",
   "status.waiting": "等待对手",
   "status.spectating": "观战中",
-  "status.vs": "{state}——{a} 对 {b}"
+  "status.vs": "{state}——{a} 对 {b}",
+  "hint.line": "你排在下一位：第一个空出的座位归你。",
+  "hint.asking": "已请主持人给你安排座位。",
+  "hint.watch": "你正在观看。座位空出时，排队的下一位会得到它。",
+  "needsNewer": "一起参加国际象棋锦标赛需要更新的 GifOS。请刷新页面以更新。",
+  "player.away": "{name}（正在重新连接）"
 }

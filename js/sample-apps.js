@@ -2764,7 +2764,13 @@ function syncDebug(){
 <div class="status" id="status" data-i18n="loading">Loading…</div>
 <div id="view"></div>
 <script>
-  const tx=function(k,p){ return window.gifos&&gifos.i18n?gifos.i18n.t(k,p):k; };   // T is the tournament below
+  // EN: English for words an older GifOS's text files may lack. A key the catalog knows is never replaced.
+  const EN = { needsNewer: 'Chess Tournament needs a newer GifOS to play together. Reload the page to update.', 'hint.line': 'You are next in line: you get the first seat that opens.', 'hint.asking': 'The host has been asked to seat you.', 'hint.watch': 'You are watching. When a seat opens, the next person in line gets it.', 'player.away': '{name} (reconnecting)' };
+  const tx=function(k,p){
+    let v=window.gifos&&gifos.i18n?gifos.i18n.t(k,p):k;
+    if(v===k&&Object.prototype.hasOwnProperty.call(EN,k)){ v=EN[k]; for(const n in (p||{})) v=v.split('{'+n+'}').join(p[n]); }
+    return v;
+  };   // T is the tournament below
   function applyI18n(){
     [].forEach.call(document.querySelectorAll('[data-i18n]'),function(e){ e.textContent=tx(e.getAttribute('data-i18n')); });
   }
@@ -2773,25 +2779,25 @@ function syncDebug(){
   const db=gifos.db('chess');
   let me={id:'local',name:'You'}, viewMatch=null, sel=null, promo=null;
   // ---- who is here, and each turn's clock (plain functions: the checks run them) ----
-  // Here means THIS page saw the person's heartbeat move lately; the heartbeat's own time is the other
-  // device's clock and is never compared with ours. A player not here for GONE may be passed over: they
-  // drop out of the lobby, and the player facing them may claim the game.
-  const PFX='p:', BEAT=3000, LIVE=10000, GONE=30000;
-  let rows={}, seen={}, lastT={}, turnAt={};
-  function chSeen(rows, seen, lastT, t){ for (const id in rows){ const r=rows[id]; if(!r) continue; if(lastT[id]!==r.t){ seen[id]=(id in lastT)?t:t-LIVE; lastT[id]=r.t; } } }
-  function chHere(id, within){ if(!id||id==='cpu'||id===me.id) return true; return (Date.now()-(seen[id]===undefined?-1e15:seen[id]))<within; }
+  // The room (gifos.room, manifest "room") owns who is in the tournament: each person here holds a seat, and a seat
+  // whose person left is freed by the room. A seat marked 'away' is a person reconnecting: wait, never pass over them.
+  // The tournament record 't' holds the bracket and settings only; the computer player is T.cpu.
+  const ROOM = !!(window.gifos && gifos.room && gifos.room.subscribe);
+  let rs=null, joined=false, note='', turnAt={};
+  function roster(){ return ((rs&&rs.seats)||[]).filter(function(x){ return x.id; }).map(function(x){ return { id:x.id, name:x.name||'?', here:x.here }; }); }
+  // A person is gone once the room no longer seats them (it held the seat while they were reconnecting).
+  function chGone(id){ if(!id||id==='cpu'||(rs&&rs.me&&id===rs.me.id)||!rs) return false; return !roster().some(function(x){ return x.id===id; }); }
   // A turn's time runs from when THIS page saw that turn begin (the move that started it arrived), never
   // from a time the previous mover's device wrote.
   function turnKey(m){ return m.id+'|'+m.board+'|'+m.turn; }
   function turnStart(m){ const k=turnKey(m); if(turnAt[m.id]===undefined||turnAt[m.id].k!==k) turnAt[m.id]={ k:k, t:Date.now() }; return turnAt[m.id].t; }
-  function beat(){ if(!window.gifos||me.id==='local') return; db.put({ id:PFX+me.id, name:me.name, t:Date.now() }).catch(function(){}); }
-  function present(list){ return (list||[]).filter(function(p){ return p.cpu || chHere(p.id, GONE); }); }
+  function lobbyPlayers(){ const out=roster().map(function(x){ return { id:x.id, name:x.name, away:x.here==='away' }; }); if(T.cpu) out.push({ id:'cpu', name:'Computer', cpu:true }); return out; }
   // ---- end of who is here ----
   let hint=null, hinting=false, cpuBusy=false;
   const START='rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR';
   const GLYPH={p:'♟',r:'♜',n:'♞',b:'♝',q:'♛',k:'♚'};
   const view=document.getElementById('view'), statusEl=document.getElementById('status');
-  let T={ id:'t', players:[], started:false, rounds:[], round:0, settings:{ clock:'5+0', shuffle:true, cpu:'medium', side:'w' } };
+  let T={ id:'t', cpu:false, started:false, rounds:[], round:0, settings:{ clock:'5+0', shuffle:true, cpu:'medium', side:'w' } };
   const CLOCKS=[['none','clock.none'],['1+0','clock.bullet1'],['3+0','clock.blitz3'],['3+2','clock.blitz3_2'],['5+0','clock.blitz5'],['5+3','clock.blitz5_3'],['10+0','clock.rapid10']];
   const CPUS=[['easy','cpu.easy'],['medium','cpu.medium'],['hard','cpu.hard']];
   function clockSpec(){ const c=(T.settings&&T.settings.clock)||'none'; if(c==='none') return null;
@@ -2949,19 +2955,15 @@ function syncDebug(){
     return best||ms[0];
   }
 
-  function save(){ return db.put(T); }
+  function say(e){ note=e&&e.message?e.message:''; render(); setTimeout(function(){ note=''; render(); },2500); }
+  // Every change of the tournament is one room move (only a seated person may write it).
+  function save(){ if(!ROOM||!rs||!rs.me||!rs.me.seat) return Promise.resolve(); return gifos.room.move('chess', T).catch(say); }
   function settingsOf(){ return Object.assign({ clock:'5+0', shuffle:true, cpu:'medium', side:'w' }, T.settings||{}); }
-  async function joinLobby(){
-    const items=await db.getAll(); const t=items.find(function(x){ return x.id==='t'; }); if(t) T=t;
-    T.settings=settingsOf();
-    if(T.started) return render();
-    if(!T.players.some(function(p){ return p.id===me.id; })){ T.players=T.players.concat([{id:me.id,name:me.name}]); await save(); }
-    render();
-  }
+  // Opening the tournament is asking to play: once. The room seats, lines up or asks the host.
+  function joinLobby(){ if(ROOM) gifos.room.join().catch(say); }
   function addCpu(){
-    if(T.started) return;
-    if(T.players.some(function(p){ return p.cpu; })) return;
-    T.players=T.players.concat([{id:'cpu', name:'Computer', cpu:true}]); save();
+    if(T.started||T.cpu) return;
+    T.cpu=true; save(); render();
   }
   function makeMatch(a,b){
     const spec=clockSpec();
@@ -2971,7 +2973,7 @@ function syncDebug(){
     if(!b){ m.winner=a; } return m;
   }
   function startTournament(){
-    let ps=present(T.players); if(ps.length<2) return;
+    let ps=lobbyPlayers().map(function(x){ return x.cpu?{id:'cpu',name:'Computer',cpu:true}:{id:x.id,name:x.name}; }); if(ps.length<2) return;
     if(T.settings&&T.settings.shuffle){ for(let i=ps.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; const t=ps[i]; ps[i]=ps[j]; ps[j]=t; } }
     const matches=[]; for(let i=0;i<ps.length;i+=2){ matches.push(makeMatch(ps[i], ps[i+1]||null)); }
     T.started=true; T.rounds=[matches]; T.round=0; save();
@@ -2982,9 +2984,10 @@ function syncDebug(){
   function playComputer(){
     const side=(T.settings&&T.settings.side)||'w';
     const cpu={id:'cpu', name:'Computer', cpu:true};
+    if(!mySeatNo()) return;
     const human={id:me.id, name:me.name};
     const pick=side==='random'?(Math.random()<0.5?'w':'b'):side;
-    T.players=[human, cpu];
+    T.cpu=true;
     T.settings=Object.assign({}, settingsOf(), {shuffle:false});
     const spec=clockSpec();
     const a=pick==='w'?human:cpu, b=pick==='w'?cpu:human;
@@ -2992,6 +2995,7 @@ function syncDebug(){
     T.started=true; T.rounds=[[m]]; T.round=0; viewMatch=m.id; sel=null; hint=null; promo=null;
     save(); render(); queueCpu();
   }
+  function mySeatNo(){ return !!(rs&&rs.me&&rs.me.seat); }
   function curMatches(){ return T.rounds[T.round]||[]; }
   function advance(){
     const ms=curMatches(); if(!ms.every(function(m){ return m.winner||m.draw; })) return;
@@ -3009,7 +3013,7 @@ function syncDebug(){
   }
   function resetTournament(){
     T.started=false; T.rounds=[]; T.round=0; viewMatch=null; sel=null; hint=null; promo=null;
-    T.players=T.players.filter(function(p){ return p.id===me.id || !p.cpu; });
+    T.cpu=false;
     save();
   }
   function mySeat(m){ return m.a&&m.a.id===me.id?'w':m.b&&m.b.id===me.id?'b':null; }
@@ -3043,7 +3047,7 @@ function syncDebug(){
   }
   function claimLeft(m){
     const seat=mySeat(m); if(!seat||m.winner||m.draw) return;
-    const foe=seat==='w'?m.b:m.a; if(!foe||foe.cpu||chHere(foe.id, GONE)) return;
+    const foe=seat==='w'?m.b:m.a; if(!foe||foe.cpu||!chGone(foe.id)) return;
     m.winner=seat==='w'?m.a:m.b; m.draw=null; save(); advance(); sel=null; render();
   }
   function resign(m){
@@ -3098,12 +3102,13 @@ function syncDebug(){
 
   function render(){
     view.innerHTML='';
+    if(!ROOM){ const w=document.createElement('p'); w.className='hint'; w.textContent=tx('needsNewer'); view.appendChild(w); statusEl.textContent=tx('needsNewer'); return; }
     if(!T.started){ renderLobby(); return; }
     if(viewMatch){ renderBoard(); return; }
     renderBracket();
   }
   function renderLobby(){
-    const inList=T.players.some(function(p){return p.id===me.id;}); const here=present(T.players);
+    const inList=mySeatNo(); const here=lobbyPlayers();
     const d=document.createElement('div'); d.className='lobby';
     const cpuBtn=document.createElement('button'); cpuBtn.className='playcpu'; cpuBtn.textContent=tx('play.cpu'); cpuBtn.onclick=playComputer;
     d.appendChild(cpuBtn);
@@ -3123,7 +3128,7 @@ function syncDebug(){
     const split=document.createElement('div'); split.className='split'; split.textContent=tx('tourney.or'); d.appendChild(split);
     const p=document.createElement('p'); p.textContent=tx('tourney.intro'); d.appendChild(p);
     const ul=document.createElement('ul'); ul.className='players';
-    here.forEach(function(pl){ const li=document.createElement('li'); li.textContent=pl.cpu?tx('player.cpu',{name:nameOf(pl)}):pl.id===me.id?tx('player.you',{name:pl.name}):pl.name; ul.appendChild(li); });
+    here.forEach(function(pl){ const li=document.createElement('li'); li.textContent=pl.cpu?tx('player.cpu',{name:nameOf(pl)}):pl.id===me.id?tx('player.you',{name:pl.name}):pl.away?tx('player.away',{name:pl.name}):pl.name; ul.appendChild(li); });
     d.appendChild(ul);
     const ts=document.createElement('div'); ts.className='settings';
     ts.innerHTML='<h3>'+esc(tx('settings.title'))+'</h3><div class="hint">'+esc(tx('settings.hint'))+'</div>';
@@ -3139,12 +3144,14 @@ function syncDebug(){
     shc.onchange=function(){ T.settings=Object.assign({},settingsOf(),{shuffle:shc.checked}); save(); };
     shl.appendChild(shc); shl.appendChild(document.createTextNode(' '+tx('settings.shuffle')));
     ts.appendChild(shl); d.appendChild(ts);
-    const jb=document.createElement('button'); jb.textContent=inList?tx('join.in',{n:here.length}):tx('join'); jb.onclick=joinLobby;
+    const jb=document.createElement('button'); jb.textContent=inList?tx('join.in',{n:here.length}):tx('join'); jb.onclick=joinLobby; jb.disabled=inList;
     d.appendChild(jb);
-    if(!T.players.some(function(p){ return p.cpu; })){
+    const role=rs&&rs.me?rs.me.role:'watcher';
+    const rh=document.createElement('div'); rh.className='hint'; rh.textContent=note||(role==='waiting'?tx('hint.line'):role==='asking'?tx('hint.asking'):role==='watcher'?tx('hint.watch'):''); if(rh.textContent) d.appendChild(rh);
+    if(!T.cpu&&inList){
       const ac=document.createElement('button'); ac.className='ghost'; ac.textContent=tx('add.cpu'); ac.onclick=addCpu; d.appendChild(ac);
     }
-    if(here.length>=2){ const sb=document.createElement('button'); sb.textContent=tx('start'); sb.onclick=startTournament; d.appendChild(sb); }
+    if(inList&&here.length>=2){ const sb=document.createElement('button'); sb.textContent=tx('start'); sb.onclick=startTournament; d.appendChild(sb); }
     view.appendChild(d);
     statusEl.textContent=tx('status.lobby',{n:here.length});
   }
@@ -3231,7 +3238,7 @@ function syncDebug(){
     const actions=document.createElement('div'); actions.className='actions';
     if(seat&&!m.winner&&!m.draw){ const rs=document.createElement('button'); rs.className='ghost'; rs.textContent=tx('resign'); rs.onclick=function(){ resign(m); }; actions.appendChild(rs); }
     const foe=seat?(seat==='w'?m.b:m.a):null;
-    if(seat&&!m.winner&&!m.draw&&foe&&!foe.cpu&&!chHere(foe.id, GONE)){ const cl=document.createElement('button'); cl.className='claim'; cl.textContent=tx('claim.left',{name:esc(nameOf(foe))}); cl.onclick=function(){ claimLeft(m); }; actions.appendChild(cl); }
+    if(seat&&!m.winner&&!m.draw&&foe&&!foe.cpu&&chGone(foe.id)){ const cl=document.createElement('button'); cl.className='claim'; cl.textContent=tx('claim.left',{name:esc(nameOf(foe))}); cl.onclick=function(){ claimLeft(m); }; actions.appendChild(cl); }
     if(m.draw && seat){ const rm=document.createElement('button'); rm.textContent=tx('rematch'); rm.onclick=function(){ rematch(m); }; actions.appendChild(rm); }
     view.appendChild(actions);
     statusEl.textContent = m.winner ? tx('status.winner',{name:esc(nameOf(m.winner))})
@@ -3254,19 +3261,18 @@ function syncDebug(){
   // Nothing that calls tx runs before the catalog has loaded.
   function start(){
     db.subscribe(function(items){ const t=items.find(function(x){return x.id==='t';}); if(t){ T=t; T.settings=settingsOf(); }
-      const next={}; items.forEach(function(x){ if(x&&typeof x.id==='string'&&x.id.indexOf(PFX)===0&&x.t) next[x.id.slice(PFX.length)]=x; });
-      rows=next; chSeen(rows, seen, lastT, Date.now()); curMatches().forEach(function(m){ if(m&&!m.winner&&!m.draw) turnStart(m); }); render(); queueCpu(); });
-    if(window.gifos) gifos.me().then(function(mm){ me={id:mm.id,name:mm.name||'You'}; beat(); joinLobby(); });
-    setInterval(beat, BEAT);
-    // someone leaving changes the lobby and the claim button without any record changing
-    let hereSig='';
-    setInterval(function(){ const sig=present(T.players).map(function(p){ return p.id; }).join(',')+'|'+T.players.map(function(p){ return chHere(p.id, GONE)?1:0; }).join('');
-      if(sig!==hereSig){ hereSig=sig; render(); } }, 2000);
+      curMatches().forEach(function(m){ if(m&&!m.winner&&!m.draw) turnStart(m); }); render(); queueCpu(); });
+    if(ROOM) gifos.room.subscribe(function(s){
+      rs=s; if(s.me&&s.me.id) me={ id:s.me.id, name:s.me.name||'You' };
+      if(!joined&&s.me&&s.me.role==='watcher'){ joined=true; joinLobby(); }
+      render(); queueCpu();
+    });
     render();
     if(window.gifos&&gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); render(); });
   }
   if(window.gifos&&gifos.i18n) gifos.i18n.load().then(function(){ applyI18n(); start(); }); else start();
   window.__chess={
+    state:function(){ return { started:T.started, cpu:!!T.cpu, round:T.round, players:lobbyPlayers().map(function(x){ return x.id; }), matches:curMatches().map(function(m){ return { id:m.id, a:m.a&&m.a.id, b:m.b&&m.b.id, board:m.board, turn:m.turn, winner:m.winner&&m.winner.id, draw:m.draw }; }), room:rs?{ me:rs.me, seats:rs.seats, turn:rs.turn, round:rs.round, live:rs.live, kind:rs.kind }:null, room_api:ROOM }; },
     legal:function(m){ return legal(gameOf(m||{board:START,turn:'w'})).map(moveUci); },
     status:function(m){ return statusOf(gameOf(m)); },
     fen:function(m){ return toFEN(gameOf(m||{board:START,turn:'w'})); },
@@ -7412,7 +7418,7 @@ The Store itself does not keep a shopping cart in this icon.
         // computer's AI for a move — the app feeds it a clean FEN + the exact
         // legal-move list (from its own generator) so the model picks among
         // real moves, never a hallucinated one. Key stays in the runtime.
-        app('Chess Tournament', 'chess', [232, 195, 122], CHESS_HTML, { capabilities: { db: true, multiplayer: true, network: [], ai: ['smartest'] }, data: { chess: RW } }),
+        app('Chess Tournament', 'chess', [232, 195, 122], CHESS_HTML, { minBuild: ROOM_MIN_BUILD, capabilities: { db: true, multiplayer: true, network: [], ai: ['smartest'] }, data: { chess: RW }, room: { seats: 16, min: 1, turns: 'free', moves: ['chess'], solo: true } }),
       ] },
       { name: 'Studio', apps: [
         app('Paint', 'paint', [255, 92, 170], PAINT_HTML, { data: { canvas: RW } }),
