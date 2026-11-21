@@ -601,6 +601,12 @@
     let serialN = 0, lastFactAt = 0;
     const log = (s) => { try { if (io.log) io.log(s); } catch (e) {} };
     const short = (p) => String(p || '').slice(0, 8);
+    // EVERY WORD OF A LINK GOES WHERE IT CAN ARRIVE. A silent firewall leaves a channel reading open on a connection that is
+    // dead: what is written to it is lost. The handshake of a pipe is spoken exactly then (a room a firewall cut, the half
+    // that left asks for a pipe to a seat it held a plain connection to: offices room 2026-11-20, the opener never heard
+    // 'ready', closed the link as gone and stood TURN_RETRY at the door, pipe up at +80 s). So a word for a page I hold no
+    // live connection to goes by the door (the relay), as the question of a cut does (TURN.5.3).
+    const tvSend = (to, f) => ((io.sendTvDoor && io.pcUp && !io.pcUp(to)) ? io.sendTvDoor(to, f) : io.sendTv(to, f));
 
     // newLink(far, l, opener, farDev, farR): a pipe I opened knows its far end's device tag and subroom from the grant and
     // is addressed by that tag until the far end answers (then by its peer id); a pipe I was asked for knows its opener.
@@ -626,8 +632,8 @@
       try { if (L.paid) L.paid.stop(); } catch (e) {}
       if (L.web) { try { io.webClose(L.far); } catch (e) {} }
       links.delete(L.far);
-      if (!quiet) { try { io.sendTv(L.far, { k: 'tv', q: 'x', l: L.l }); } catch (e) {} }
-      if (L.sb && L.liveEnd && L.liveEnd !== io.me()) { try { io.sendTv(L.liveEnd, { k: 'tv', q: 'x', l: L.l }); } catch (e) {} }
+      if (!quiet) { try { tvSend(L.far, { k: 'tv', q: 'x', l: L.l }); } catch (e) {} }
+      if (L.sb && L.liveEnd && L.liveEnd !== io.me()) { try { tvSend(L.liveEnd, { k: 'tv', q: 'x', l: L.l }); } catch (e) {} }
       if (L.sb && L.liveEnd === io.me()) { const P = livePipe(pipeNo(L.l)); if (P) P.sbUp = false; }
       log('turn-link closed ' + short(L.far) + ' ' + why);
       if (L.upAt > 0) subChanged('a pipe of mine');
@@ -642,7 +648,7 @@
     const fresh = (L) => !!(L.mine && L.peer && usableAt(L.mine.e) && usableAt(L.peerE));
     // e: the subroom my end sits in (base 36), so the far end vouches its pipe end toward the right side: pipe l<r> joins r and
     // the subroom it hangs from, and either side may have opened it (SUB.3: a re-pipe asked for a subroom cut off from mine)
-    function sendAsk(L) { if (L.direct) return; L.sentAt = io.now(); io.sendTv(L.far, { k: 'tv', q: 'a', l: L.l, d: io.dev(), b: io.blocked() ? 1 : 0, e: mySubFor(L).toString(36) }); }
+    function sendAsk(L) { if (L.direct) return; L.sentAt = io.now(); tvSend(L.far, { k: 'tv', q: 'a', l: L.l, d: io.dev(), b: io.blocked() ? 1 : 0, e: mySubFor(L).toString(36) }); }
     // Is pipe l<r> already part of my meeting? Then a handshake for it re-links a subroom the meeting holds (a re-pipe,
     // a standby taking over): no new entry. Judged only from what my own meeting holds, never from the asker's word: a
     // room-wide fact of pipe l<r> heard within its life, a pipe of mine by that name, or subroom r's people still in my
@@ -682,25 +688,25 @@
       if (L.web) {   // TURN.18: the web path shows each fresh credential on its open socket; the connection itself never moves
         if (pool === 'free') {
           if (k === 'expired') { close(L, 'expired'); return; }
-          if (!L.readyMe) { L.readyMe = true; io.sendTv(L.far, { k: 'tv', q: 'r', l: L.l }); }
+          if (!L.readyMe) { L.readyMe = true; tvSend(L.far, { k: 'tv', q: 'r', l: L.l }); }
           webGo(L);
         } else {
           const was = L.paidMe; L.paidMe = k !== 'expired';
           if (L.paidMe) webAuth(L, 'paid');
-          if (was !== L.paidMe) io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: L.paidMe ? 1 : 0 });
+          if (was !== L.paidMe) tvSend(L.far, { k: 'tv', q: 'p', l: L.l, b: L.paidMe ? 1 : 0 });
         }
         io.changed(L.far);
         return;
       }
       if (pool === 'free') {
-        if (k === 'ok' && !L.readyMe) { L.readyMe = true; io.reset(L.far); io.sendTv(L.far, { k: 'tv', q: 'r', l: L.l }); maybeDial(L); }
+        if (k === 'ok' && !L.readyMe) { L.readyMe = true; io.reset(L.far); tvSend(L.far, { k: 'tv', q: 'r', l: L.l }); maybeDial(L); }
         else if (k === 'ok' && L.tookOver) { L.tookOver = false; move(L, 'took-over'); }
         else if (k === 'renewed' && !L.paidMe) move(L, 'renewed');
         else if (k === 'expired' && !L.paidMe) close(L, 'expired');
       } else {
         // 'p' (b 1) waits for the move itself: my pc rides a paid server (onServer), or one move's time has passed (paidSay)
         if (k === 'ok' || k === 'renewed') { const was = L.paidMe; L.paidMe = true; if (!was) { L.paidAt = io.now(); L.paidSaid = false; } move(L, k === 'ok' ? 'paid' : 'paid-renewed'); }
-        else if (k === 'expired') { L.paidMe = false; L.paidSaid = false; move(L, 'paid-expired'); io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: 0 }); }
+        else if (k === 'expired') { L.paidMe = false; L.paidSaid = false; move(L, 'paid-expired'); tvSend(L.far, { k: 'tv', q: 'p', l: L.l, b: 0 }); }
       }
       io.changed(L.far);
     }
@@ -709,7 +715,7 @@
       if (L.readyMe || L.state === 'closed') return;
       L.client = clientEnd(io.blocked(), L.farBlocked, L.opener);
       if (L.client) { if (!L.cred) { L.cred = credFor(L, 'free'); L.cred.start(); } }
-      else { L.readyMe = true; io.reset(L.far); io.sendTv(L.far, { k: 'tv', q: 'r', l: L.l }); maybeDial(L); }   // both ends dial on a fresh pc: a half-made one from a door knock (still checking, an offer of its own out) ignores the dial ask
+      else { L.readyMe = true; io.reset(L.far); tvSend(L.far, { k: 'tv', q: 'r', l: L.l }); maybeDial(L); }   // both ends dial on a fresh pc: a half-made one from a door knock (still checking, an offer of its own out) ignores the dial ask
       if (L.state === 'ask') L.state = 'swap';
     }
     // SUB.5 THE DIRECT STANDBY (TURN.7, the sim's sweep (1)): a standby whose two ends reach each other without TURN is
@@ -723,7 +729,7 @@
       if (L.state === 'up') { L.state = 'swap'; L.dialAt = 0; }   // a standby that was up on TURN is dialled again, plain: it is up (and says so, direct) when that connection is
       log('turn-direct ' + short(L.far) + ' ' + L.l);
       io.reset(L.far);   // a pc not yet open, built on relay-only settings, is built again plain
-      io.sendTv(L.far, { k: 'tv', q: 'r', l: L.l });
+      tvSend(L.far, { k: 'tv', q: 'r', l: L.l });
       maybeDial(L);
       io.changed(L.far);
     }
@@ -747,7 +753,7 @@
       if (host && !L.opener && L.webHost !== host) { L.webHost = host; if (L.webOpen) { L.webOpen = false; try { io.webClose(L.far); } catch (e) {} } }
       webGo(L);
     }
-    function webSay(L) { if (L.noPc) return; L.webSaidAt = io.now(); const f = { k: 'tv', q: 'w', l: L.l }; if (L.opener && L.webHost) f.m = L.webHost; io.sendTv(L.far, f); }
+    function webSay(L) { if (L.noPc) return; L.webSaidAt = io.now(); const f = { k: 'tv', q: 'w', l: L.l }; if (L.opener && L.webHost) f.m = L.webHost; tvSend(L.far, f); }
     // p: the link's id (both ends derive it from their two ids): two links of a room may share a link name, and the
     // server pairs the two ends of THIS one by it
     function webCred(L) { const g = L.cred && L.cred.servers(); return g && g[0] ? { u: g[0].username, c: g[0].credential, p: L.id } : null; }
@@ -771,6 +777,32 @@
       io.webOpen(L.far, { url: (io.webScheme ? io.webScheme() : 'wss://') + L.webHost + '/', auth: a });
       if (L.paidMe) webAuth(L, 'paid');
     }
+    // TURN.22.2 A WEB LINK FOLLOWS ITS GRANT. A web link holds one socket on one server's pipe. When the opener's
+    // newest grant no longer lists that host (the server is leaving for an update; the credential service names it in no
+    // new answer), the opener names the grant's first host with the word that opened the path ('w') and both ends move
+    // there, make before break: a second socket, the same sealed session, then the first socket closes
+    // (meet-tunnel.js move). The pair's connection and every track stay as they are. The far end moves only to a host
+    // its own grant allows; a move that does not land is tried again one move's time later.
+    function webFollow(L) {
+      if (!L.web || !L.webOpen || L.state !== 'up' || !io.webMove) return;
+      const mine = (L.cred && L.cred.web()) || [];
+      if (L.opener) { if (!mine.length || mine.indexOf(L.webHost) >= 0) { L.webTo = ''; return; } L.webTo = mine[0]; }
+      if (!L.webTo || L.webTo === L.webHost) { L.webTo = ''; return; }
+      if (!webHostOk(L.webTo, mine)) return;
+      const now = io.now();
+      if (L.webMvAt && now - L.webMvAt < MOVE_MS) return;
+      L.webMvAt = now;
+      log('turn-web move ' + short(L.far) + ' ' + L.webHost + ' to ' + L.webTo);
+      if (L.opener) tvSend(L.far, { k: 'tv', q: 'w', l: L.l, m: L.webTo });
+      if (io.webMove(L.far, (io.webScheme ? io.webScheme() : 'wss://') + L.webTo + '/') === 'dialled') webMoved(L.far, true);   // not up at the tunnel: nothing to carry, it dials the new host
+    }
+    function webMoved(pid, ok) {
+      const L = links.get(pid); if (!L || !L.web || !L.webTo) return;
+      if (!ok) { log('turn-web move not done ' + short(L.far)); return; }
+      log('turn-web moved ' + short(L.far) + ' ' + L.webTo);
+      L.webHost = L.webTo; L.webTo = ''; L.webMvN = (L.webMvN || 0) + 1;
+      io.changed(L.far);
+    }
     function maybeDial(L) {
       if (L.web) return;
       if (!L.opener || !L.readyMe || !L.readyFar || L.dialAt || (L.direct && !L.dEcho)) return;   // a direct standby dials once the far end echoed 'd' (its pc is plain too)
@@ -791,7 +823,7 @@
       }
       if (L) L.heardAt = io.now();
       // SUB.5: the standby's opener knows its far end now; a plain pc of mine reached it off TURN: only a proven direct path
-      if (L && L.sb && L.opener && !L.direct && L.farPid && L.l === f.l && f.q !== 'x' && io.directSeen && io.directSeen(L.farPid)) { setDirect(L); L.dSentAt = io.now(); io.sendTv(L.far, { k: 'tv', q: 'd', l: L.l }); }
+      if (L && L.sb && L.opener && !L.direct && L.farPid && L.l === f.l && f.q !== 'x' && io.directSeen && io.directSeen(L.farPid)) { setDirect(L); L.dSentAt = io.now(); tvSend(L.far, { k: 'tv', q: 'd', l: L.l }); }
       if (f.q === 't') { if (L && L.sb && L.l === f.l) takeover(L, f.b === 1 ? 'healed' : 'the far standby end took over'); return; }
       // the far end names its side's standby seat only while it holds no standby up: the opener opens one toward it
       if (f.q === 'o') {   // SUB.8.1, between the two ends of a pipe
@@ -818,7 +850,7 @@
           if (f.l[0] === 's') {   // a standby: only a seat its own live end named takes it
             if (!sbExpect.has(f.l)) return;
             L = newLink(from, f.l, false); L.heardAt = io.now(); L.liveEnd = sbExpect.get(f.l);
-          } else if (io.meetingFull && io.meetingFull() && !knownPipe(f.l)) { log('turn-link refused ' + short(from) + ' ' + f.l + ': the meeting is full'); io.sendTv(from, { k: 'tv', q: 'x', l: f.l, b: 1 }); return; }
+          } else if (io.meetingFull && io.meetingFull() && !knownPipe(f.l)) { log('turn-link refused ' + short(from) + ' ' + f.l + ': the meeting is full'); tvSend(from, { k: 'tv', q: 'x', l: f.l, b: 1 }); return; }
           if (!L) { L = newLink(from, f.l, false); L.heardAt = io.now(); }
         }
         if (L.l !== f.l) return;
@@ -827,7 +859,7 @@
         if (!L.opener && f.e !== undefined) L.farR = parseInt(f.e, 36);   // the opener's subroom (an older page says none: the pipe's own)
         if (!L.opener && (first || io.now() - L.sentAt > RESEND_MS)) sendAsk(L);   // the target answers with its own device and network
         if (!L.mine || !usableAt(L.mine.e)) { if (io.now() - L.vAskAt > RESEND_MS / 2) askMine(L); }
-        else io.sendTv(L.far, { k: 'tv', q: 'v', l: L.l, e: L.mine.e.toString(36), n: L.mine.n, m: L.mine.m });
+        else tvSend(L.far, { k: 'tv', q: 'v', l: L.l, e: L.mine.e.toString(36), n: L.mine.n, m: L.mine.m });
         return;
       }
       if (!L || L.l !== f.l) return;
@@ -839,7 +871,8 @@
         return;
       }
       if (f.q === 'r') { L.readyFar = true; maybeDial(L); return; }
-      if (f.q === 'd') { if (!L.sb) return; if (L.opener) { if (L.direct && !L.dEcho) { L.dEcho = true; maybeDial(L); } } else { setDirect(L); io.sendTv(L.far, { k: 'tv', q: 'd', l: L.l }); } return; }   // the target echoes: the opener dials only then
+      if (f.q === 'd') { if (!L.sb) return; if (L.opener) { if (L.direct && !L.dEcho) { L.dEcho = true; maybeDial(L); } } else { setDirect(L); tvSend(L.far, { k: 'tv', q: 'd', l: L.l }); } return; }   // the target echoes: the opener dials only then
+      if (f.q === 'w' && L.web && L.state === 'up' && !L.opener && f.m && f.m !== L.webHost) { L.webTo = f.m; webFollow(L); return; }   // TURN.22.2: the opener moves the link to another server
       if (f.q === 'w') { webStart(L, false, f.m); if (L.opener && io.now() - L.webSaidAt > RESEND_MS / 2) webSay(L); return; }
       // the far end moved its pool: it moves the pc itself (its own restart, or 'i' to the offerer), so no restart here:
       // a second one per move restarted the path again mid-move and the video's estimate with it (vouched one-way, 2026-11-12)
@@ -912,7 +945,7 @@
     function paidSay(L, why) {
       L.paidSaid = true;
       log('turn-pool paid ' + short(L.far) + ' ' + why);
-      io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: 1 });
+      tvSend(L.far, { k: 'tv', q: 'p', l: L.l, b: 1 });
       io.changed(L.far);
     }
     function configOf(L) {
@@ -927,7 +960,7 @@
       if (busy !== L.busy) {
         L.busy = busy; if (busy) L.pausedAt = io.now();
         log('turn-busy ' + short(L.far) + ' ' + (busy ? 'on' : 'off') + ' cap=' + Math.round((L.cap || 0) / 1000) + 'k');
-        io.sendTv(L.far, { k: 'tv', q: 'b', l: L.l, b: busy ? 1 : 0 });
+        tvSend(L.far, { k: 'tv', q: 'b', l: L.l, b: busy ? 1 : 0 });
       }
       if (changed) { log('turn-step ' + short(L.far) + ' ' + (next ? next.step : 'none') + ' cap=' + Math.round((L.cap || 0) / 1000) + 'k'); io.changed(L.far); }
     }
@@ -960,7 +993,7 @@
       if (p.r !== mySubFor(L)) { log('turn-vouch ' + short(L.far) + ' names subroom ' + p.r + ', not this pipe\'s end'); return; }
       L.mine = { v: m.v, e: p.e, n: p.n, m: p.m, at: io.now() };
       log('turn-vouch ' + short(L.far) + ' ' + L.l);
-      io.sendTv(L.far, { k: 'tv', q: 'v', l: L.l, e: p.e.toString(36), n: p.n, m: p.m });
+      tvSend(L.far, { k: 'tv', q: 'v', l: L.l, e: p.e.toString(36), n: p.n, m: p.m });
       if (L.peer) haveBoth(L);
     }
 
@@ -980,10 +1013,10 @@
         // A vouched client end moves to the paid pool; an end back on free leaves it.
         const cl = L.client || L.web;   // on the web path each end holds its own credential (TURN.18)
         if (L.vouched && cl && !L.paid) { L.paid = credFor(L, 'paid'); L.paid.start(); }
-        if (!L.vouched && L.paid) { try { L.paid.stop(); } catch (e) {} L.paid = null; if (L.paidMe) { L.paidMe = false; L.paidSaid = false; if (!L.web) move(L, 'unvouched'); io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: 0 }); } }
+        if (!L.vouched && L.paid) { try { L.paid.stop(); } catch (e) {} L.paid = null; if (L.paidMe) { L.paidMe = false; L.paidSaid = false; if (!L.web) move(L, 'unvouched'); tvSend(L.far, { k: 'tv', q: 'p', l: L.l, b: 0 }); } }
         if (L.client && !L.web && L.paidMe && !L.paidSaid && now - L.paidAt >= MOVE_MS) paidSay(L, 'unseen');
-        if (L.vouched && !cl && !L.paidMe) { L.paidMe = true; io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: 1 }); }
-        if (!L.vouched && !cl && L.paidMe) { L.paidMe = false; io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: 0 }); }
+        if (L.vouched && !cl && !L.paidMe) { L.paidMe = true; tvSend(L.far, { k: 'tv', q: 'p', l: L.l, b: 1 }); }
+        if (!L.vouched && !cl && L.paidMe) { L.paidMe = false; tvSend(L.far, { k: 'tv', q: 'p', l: L.l, b: 0 }); }
         // the web path's connection never moves (its 'p' goes out at the credential, onCred), so its video waits for no move
         const v = L.vouched && L.paidMe && L.paidFar && (!L.client || L.web || L.paidSaid);
         if (v !== L.video) { L.video = v; L.ts = L.ts ? { step: 0, busy: false, voice: L.ts.voice, vOkSince: L.ts.vOkSince, vProbation: L.ts.vProbation, vProbeN: L.ts.vProbeN, vClean: L.ts.vClean, vHist: L.ts.vHist } : null; log('turn-video ' + short(L.far) + ' ' + (v ? 'on' : 'off')); if (!v) setThrottle(L, null); io.changed(L.far); }
@@ -1042,7 +1075,7 @@
     // ---- THE DOOR RE-GRANT (the relay restarted and forgot my door r > 0: my seat heard tag 3) -------------------------
     // One ask for a fresh grant for my own door; the page hands it to the seat (meshNode.subGo(r, sg)), which re-mints the
     // door. A re-grant still out (another seat of my room asked): ask again after TURN_DIAL; refused: after TURN_RETRY.
-    const rg = { want: false, st: 'idle', retryAt: 0, out: null, gen: 0 };
+    const rg = { want: false, st: 'idle', retryAt: 0, out: null, gen: 0, net: false, gone: 0 };
     function regrantStep(now) {
       if (!rg.want || rg.st !== 'idle' || now < rg.retryAt || !io.askSub) return;
       rg.st = 'busy'; const g = ++rg.gen;
@@ -1052,12 +1085,17 @@
         return io.askSub({ room: String(io.sid()), doors: d, regrant: 1 });
       }).then((a) => {
         if (g !== rg.gen) return;
-        rg.st = 'idle';
-        if (a && Number.isInteger(a.r) && a.r > 0 && typeof a.sg === 'string') { rg.want = false; rg.out = { r: a.r, sg: a.sg }; log('turn-sub door ' + a.r + ' re-granted'); }
-        else if (a && a.live) { rg.want = false; log('turn-sub door has greeters again'); }
+        rg.st = 'idle'; rg.net = !a;   // no door list, or no answer: the wait that follows is for my own connection (relayBack ends it)
+        if (a) netBack();   // the relay gave its door list and the service answered: my connection is back (TURN.10.1)
+        if (a && Number.isInteger(a.r) && a.r > 0 && typeof a.sg === 'string') { rg.want = false; rg.out = { r: a.r, sg: a.sg }; log('turn-sub door ' + a.r + ' re-granted'); doorBack(); }
+        else if (a && a.live) { rg.want = false; log('turn-sub door has greeters again'); doorBack(); }
+        // SUB.10.8: the service holds no subroom of my door's number (its record lapsed: no pipe credential was renewed in
+        // time) and the relay holds no door for it: nothing can mint that door again, and no re-pipe is granted to a page
+        // that is no greeter of it. The subroom is gone; its seats are joiners of door 0 (the seat reads gone()).
+        else if (a && a.unavailable === 'no-room' && io.sub && io.sub() > 0) { rg.want = false; rg.gone = io.sub(); sub.repipe = false; log('turn-sub door ' + rg.gone + ' is gone: the service holds no such subroom'); }
         else if (a && a.pending === 'opening') rg.retryAt = io.now() + RESEND_MS;
         else rg.retryAt = io.now() + RETRY_MS;
-      }, () => { if (g === rg.gen) { rg.st = 'idle'; rg.retryAt = io.now() + RETRY_MS; } });
+      }, () => { if (g === rg.gen) { rg.st = 'idle'; rg.net = true; rg.retryAt = io.now() + RETRY_MS; } });
     }
 
     // ---- THE WARM STANDBY ---------------------------------------------------------------------------------------------
@@ -1084,12 +1122,12 @@
       if (!L.opener) {
         L.sbAt = now; L.sbSeat = S ? S.pid : io.me();
         // my side's standby seat names its own device (its answer, onSide); with none I keep that end myself
-        if (S) io.sendTv(S.pid, { k: 'tv', q: 's', l: sl }); else { sbExpect.set(sl, io.me()); io.sendTv(L.far, { k: 'tv', q: 's', l: L.l, d: io.dev() }); }
+        if (S) tvSend(S.pid, { k: 'tv', q: 's', l: sl }); else { sbExpect.set(sl, io.me()); tvSend(L.far, { k: 'tv', q: 's', l: L.l, d: io.dev() }); }
         return;
       }
       if (!L.farSb) return;   // the far end has not named its side's standby seat yet
       L.sbAt = now; L.sbSeat = S ? S.pid : io.me();
-      if (S) { io.sendTv(S.pid, { k: 'tv', q: 's', l: sl, d: L.farSb, e: L.farR.toString(36) }); return; }
+      if (S) { tvSend(S.pid, { k: 'tv', q: 's', l: sl, d: L.farSb, e: L.farR.toString(36) }); return; }
       if (L.farSb === L.farDev) return;   // both subrooms are one seat: no other pair exists
       openStandby(sl, L.farSb, L.farR, io.me());
     }
@@ -1110,17 +1148,17 @@
       }
       if (f.q === 's' && f.d && f.e === undefined) {   // my standby seat's device: name it to the far side
         const P = livePipe(r);
-        if (P && !P.opener && P.sbSeat === from) io.sendTv(P.far, { k: 'tv', q: 's', l: P.l, d: f.d });
+        if (P && !P.opener && P.sbSeat === from) tvSend(P.far, { k: 'tv', q: 's', l: P.l, d: f.d });
         return true;
       }
       if (f.q === 's' && f.d) {   // open the standby toward f.d in subroom f.e
-        if (standbys() >= SB_PER_SEAT) { io.sendTv(from, { k: 'tv', q: 'x', l: f.l }); return true; }
+        if (standbys() >= SB_PER_SEAT) { tvSend(from, { k: 'tv', q: 'x', l: f.l }); return true; }
         let M = null; for (const x of links.values()) if (x.sb && x.l === f.l && x.farDev === f.d && x.state !== 'closed') M = x;
         if (!M) { openStandby(f.l, f.d, parseInt(f.e, 36), from); log('turn-standby open ' + f.l + ' toward ' + f.d); }
         else bindStandby(f.l, from);
         return true;
       }
-      if (f.q === 's') { sbExpect.set(f.l, from); bindStandby(f.l, from); io.sendTv(from, { k: 'tv', q: 's', l: f.l, d: io.dev() }); return true; }   // I end this pipe's standby on my side: my device, for the far side
+      if (f.q === 's') { sbExpect.set(f.l, from); bindStandby(f.l, from); tvSend(from, { k: 'tv', q: 's', l: f.l, d: io.dev() }); return true; }   // I end this pipe's standby on my side: my device, for the far side
       // the rest come only from a seat of my subroom in its role (else: a frame of a standby link not yet keyed by its peer id)
       const P = livePipe(r);
       if ((f.q === 'r' || f.q === 'x') && P && P.sbSeat === from) { P.sbUp = f.q === 'r'; P.sbDirect = f.q === 'r' && f.b === 1; if (f.q === 'x') P.sbAt = 0; return true; }
@@ -1139,7 +1177,7 @@
       for (const M of links.values()) {
         if (!M.sb || M.l !== sl || M.state === 'closed') continue;
         if (M.liveEnd !== liveEnd) { M.liveEnd = liveEnd; log('turn-standby ' + sl + ' now answers to ' + short(liveEnd)); }
-        if (M.state === 'up') io.sendTv(liveEnd, { k: 'tv', q: 'r', l: sl, b: M.direct ? 1 : 0 });
+        if (M.state === 'up') tvSend(liveEnd, { k: 'tv', q: 'r', l: sl, b: M.direct ? 1 : 0 });
       }
     }
     // ---- SUB.8.1 THE PROBE (docs/turn-0926.md; the sim's subProbeTick) ---------------------------------------------------
@@ -1150,7 +1188,7 @@
     // a turn, then one per TURN_RETRY, doubling up to TURN_RETRY_MAX_X once every pair left has failed (TURN.10's wait).
     const probes = new Map();   // far peer id -> { from, sl, at }: a dial I make for a pipe end of my subroom
     function s1List() { try { return (io.s1Seats ? io.s1Seats() : []) || []; } catch (e) { return []; } }
-    function probeSay(to, sl, y, b) { if (to === io.me()) probeHeard(to, sl, y, b); else io.sendTv(to, { k: 'tv', q: 'o', l: sl, m: y, b }); }
+    function probeSay(to, sl, y, b) { if (to === io.me()) probeHeard(to, sl, y, b); else tvSend(to, { k: 'tv', q: 'o', l: sl, m: y, b }); }
     function probeAsk(from, sl, y) {
       if (links.has(y)) { probeSay(from, sl, y, 2); return; }                          // one connection a pair: a path of this link is not tried
       if (io.directSeen && io.directSeen(y)) { probeSay(from, sl, y, 1); return; }     // a plain connection of mine reached it before
@@ -1170,7 +1208,7 @@
     // myself closes (its far end is told by the close), unless it stays where it is.
     function sbLeave(L, next) {
       const sl = 's' + pipeNo(L.l);
-      if (L.sbSeat && L.sbSeat !== io.me() && L.sbSeat !== next) io.sendTv(L.sbSeat, { k: 'tv', q: 'x', l: sl });
+      if (L.sbSeat && L.sbSeat !== io.me() && L.sbSeat !== next) tvSend(L.sbSeat, { k: 'tv', q: 'x', l: sl });
       if (next !== io.me()) for (const M of Array.from(links.values())) if (M.sb && M.l === sl && M.liveEnd === io.me()) close(M, 'replaced');
     }
     function probeHeard(from, sl, y, b) {
@@ -1184,7 +1222,7 @@
       const disjoint = from !== io.me() && y !== L.far;
       if (L.sbUp && L.sbDirect) return;                 // a direct standby stands already
       if (L.direct && !disjoint) return;                // beside a direct pipe only a pair on other seats is a better standby
-      L.sbWant = from; io.sendTv(L.far, { k: 'tv', q: 'o', l: L.l, m: y, b: 1 }); restand(L);
+      L.sbWant = from; tvSend(L.far, { k: 'tv', q: 'o', l: L.l, m: y, b: 1 }); restand(L);
     }
     function probeRound(L, now) {
       if ((L.direct && L.sbUp && L.sbDirect) || L.go != null) { L.pr = null; return; }   // two direct paths: nothing left to find (SUB.10: nor while the subroom walks)
@@ -1204,7 +1242,7 @@
       P.nextAt = now + (P.n < Math.max(A.length, Z.length) ? ASK_MS : RETRY_MS * P.x);
       const sl = 's' + pipeNo(L.l);
       log('turn-probe ask ' + short(pq) + ' -> ' + short(py) + ' n=' + P.n + ' x=' + P.x);
-      if (pq === io.me()) probeAsk(io.me(), sl, py); else io.sendTv(pq, { k: 'tv', q: 'o', l: sl, m: py });
+      if (pq === io.me()) probeAsk(io.me(), sl, py); else tvSend(pq, { k: 'tv', q: 'o', l: sl, m: py });
     }
     // ---- TURN.5.3 A CUT IS NOT A CRASH (docs/turn-0926.md 3; the sim's fabricCutProbe) ------------------------------------------
     // My seat asks: does seat x answer at the door, and is there a path to it? I send x a question by the door (the relay; an
@@ -1278,7 +1316,7 @@
       W.q = q; W.y = y; W.sentAt = now; W.seat = (W.seat + 1) % A.length; W.n++;
       W.nextAt = now + (W.n < Math.max(A.length, Z.length) ? ASK_MS : RETRY_MS * W.x);
       log('sub-walk ask ' + short(q) + ' -> ' + short(y));
-      io.sendTv(q, { k: 'tv', q: 'o', l: 's' + pipeNo(L.l), m: y });
+      tvSend(q, { k: 'tv', q: 'o', l: 's' + pipeNo(L.l), m: y });
     }
     function walkHeard(from, sl, y, b) {
       const L = livePipe(pipeNo(sl)), W = L && L.wk; if (!W || W.q !== from || W.y !== y) return false;
@@ -1310,13 +1348,13 @@
         if (io.now() - (L.healAt || 0) < RESEND_MS) return;
         L.healAt = io.now();
         log('turn-standby hand-over ' + L.l + ' (' + why + ')');
-        if (seat) { io.sendTv(seat, { k: 'tv', q: 't', l: sl, b: 1 }); return; }
+        if (seat) { tvSend(seat, { k: 'tv', q: 't', l: sl, b: 1 }); return; }
         const M = Array.from(links.values()).find((x) => x.sb && x.l === sl && x !== L && x.direct && x.state === 'up');
         if (M) takeover(M, 'healed');   // I hold both: the two change places here (takeover demotes my pipe)
         return;
       }
       log('turn-standby hand-over ' + L.l + ' (' + why + ')');
-      if (seat) io.sendTv(seat, { k: 'tv', q: 't', l: sl });
+      if (seat) tvSend(seat, { k: 'tv', q: 't', l: sl });
       if (L.direct && io.directForget) io.directForget(L.far);   // a direct path that died is no direct pair until a plain pc proves it again
       close(L, 'standby-took-over', true);
       if (!seat) for (const M of Array.from(links.values())) if (M.sb && M.l === sl) takeover(M, 'my own pipe died');
@@ -1336,7 +1374,7 @@
       if (P.client) { P.cred = credFor(P, 'free'); P.cred.start(); }
       log('turn-standby kept ' + sl + ' with ' + short(P.far) + ': the pipe moved to a direct path');
       askMine(P);
-      if (liveEnd !== io.me() && P.state === 'up') io.sendTv(liveEnd, { k: 'tv', q: 'r', l: sl, b: 0 });
+      if (liveEnd !== io.me() && P.state === 'up') tvSend(liveEnd, { k: 'tv', q: 'r', l: sl, b: 0 });
       subChanged('a pipe of mine');
       if (io.demoted) { try { io.demoted(P.far); } catch (e) { log('turn-standby kept ' + sl + ': media hand-back failed ' + String(e).slice(0, 80)); } }
       io.changed(P.far);
@@ -1350,8 +1388,8 @@
       if (healed && !M.direct) return;   // SUB.8: healed names a direct path; a standby on TURN is no better path than the pipe's
       const old = livePipe(r), was = M.liveEnd && M.liveEnd !== io.me() ? M.liveEnd : null;
       if (old && old !== M) { if (healed && !old.direct) demote(old, io.me()); else close(old, 'standby-took-over', true); }
-      try { io.sendTv(M.far, t); } catch (e) {}
-      if (was) { try { io.sendTv(was, t); } catch (e) {} }   // my side's old live end: its part of the pipe ends (healed: its pipe is my standby now)
+      try { tvSend(M.far, t); } catch (e) {}
+      if (was) { try { tvSend(was, t); } catch (e) {} }   // my side's old live end: its part of the pipe ends (healed: its pipe is my standby now)
       M.sb = false; M.l = 'l' + r; M.liveEnd = null; M.mine = null; M.peer = null; M.vAskAt = 0; M.tookOver = !!M.client; M.sbUp = false; M.sbDirect = false; M.sbAt = 0;
       sbExpect.delete(sl);
       if (healed) {   // SUB.8: the path the pipe left is my standby: at my old live end (its 'r' says it is up), or here when I held both
@@ -1390,6 +1428,15 @@
     // asks for a re-pipe after TURN_RETRY. A JOINER reads only the first: a page that left its cell (TURN.5.3: the firewall
     // that cut it also failed its old links) asks at the door as any joiner, not 30 s after a link of the seat it left died
     // (room new-r9, 2026-11-19: 42 s at the door beside the subroom its mates had founded).
+    // TURN.10.1: a refusal that was my own connection's (no door list from the relay, no answer from the service) named
+    // nothing but that connection. It is back (my relay socket opened again, or the service answered an ask made with a
+    // fresh door list): the wait ends and the ask goes again now.
+    function netBack() { if (sub.lastWhy === 'no-doors' || sub.lastWhy === 'no-answer') { sub.lastWhy = ''; subChanged('my connection to the relay'); } }
+    // ...and a refusal for want of my own door (no-room: the relay had forgotten my door, so I was no greeter of it) ends
+    // when the door is mine again (its fresh grant came, or it has greeters again).
+    function doorBack() { if (sub.lastWhy === 'no-room') { sub.lastWhy = ''; subChanged('my door'); } }
+    // the refusals that say something about THIS page's own standing (its connection, its door), not about the service
+    const ownWhy = (w) => w === 'no-doors' || w === 'no-answer' || w === 'no-room';
     function subChanged(what) { if (sub.mult > 1) { sub.mult = 1; if (sub.st === 'idle' && sub.retryAt > io.now()) sub.retryAt = io.now(); log('turn-sub ' + what + ' changed: ask again now'); } }
     function subIdle(now, out, retryAt) { sub.st = 'idle'; sub.token = null; sub.retryAt = retryAt || 0; sub.out = out; sub.gen++; }
     function subDoors(withToken) {
@@ -1514,6 +1561,10 @@
       }
       if (!asker) { if (sub.st !== 'idle') subIdle(now, null, sub.retryAt); else if (sub.out && sub.out.join != null) sub.out = null; return; }
       sub.asker = asker;
+      // A re-pipe is granted to a greeter of its door only. While my own door is empty at the relay and its fresh grant is
+      // on its way (regrantStep), the re-pipe ask waits for it: asked now it is refused no-room and waits TURN_RETRY.
+      // The same while it has no open relay socket (no door list could be had: the ask would only start a wait).
+      if (sub.st === 'idle' && asker === 'repipe' && (rg.want || rg.out || (io.doorLost && io.doorLost()))) return;
       if (sub.st === 'idle') { if (asker === 'probe') { if (now - sub.probeAt >= PROBE_GAP_MS) { sub.probeAt = now; subDoors(false); } else sub.wantProbe = false; return; } if (now >= Math.max(sub.retryAt, asker === 'joiner' ? 0 : sub.pipeRetryAt)) subDoors(false); return; }   // a probe reads the door list at most once a direct verdict; it is not an ask of the Worker's, so no refusal wait holds it
       if (sub.st === 'probe') {
         let pending = false;
@@ -1562,11 +1613,22 @@
         if (farGone) { if (L.state === 'up') close(L, 'gone', true); else neverUp(L, 'gone', true); continue; }
         // SUB.5: a direct standby that finds no path within a dial's direct verdict was no direct pair after all: forgotten,
         // and warmed again on TURN (one that is up is the pipe when its live end, on TURN, hands over: SUB.8 above)
-        if (L.direct && L.opener && !L.dEcho && now - (L.dSentAt || 0) > RESEND_MS) { L.dSentAt = now; io.sendTv(L.far, { k: 'tv', q: 'd', l: L.l }); }   // a lost 'd' is said again
+        if (L.direct && L.opener && !L.dEcho && now - (L.dSentAt || 0) > RESEND_MS) { L.dSentAt = now; tvSend(L.far, { k: 'tv', q: 'd', l: L.l }); }   // a lost 'd' is said again
         if (L.direct && L.state !== 'up' && now - L.directAt > ASK_MS) { if (io.directForget) io.directForget(L.far); close(L, 'dialfail'); continue; }
         if (L.state !== 'up' && now - L.askAt > DIAL_BUDGET_MS) { neverUp(L, 'dialfail'); continue; }
         if (L.sb && L.liveEnd && L.liveEnd !== io.me() && !io.alive(L.liveEnd)) { takeover(L, 'my live end left'); }
-        if (L.state === 'up' && !io.pcUp(L.far)) { if (!L.downSince) L.downSince = now; if (now - L.downSince > DIAL_BUDGET_MS) { if (L.opener) sub.pipeRetryAt = now + RETRY_MS; close(L, 'lost'); continue; } }
+        // A LINK THAT DID NOT SURVIVE MY ABSENCE. My page came back from a gap no connection outlives unanswered (io.woke():
+        // a frozen renderer, a device asleep, a network gone dark) and probed its pairs. A link that was up before that
+        // return and whose connection is still not up when the wake's own settle time has run is lost first-hand: it is
+        // closed then, not at the dial budget (that budget is for a connection that blips while I am here), and nothing
+        // was refused, so no wait follows: SUB.3 (a) asks for the re-pipe at once and a standby is warmed again.
+        // (down by the time the settle ran out and never up since: a link that drops later is the dial budget's, as before)
+        if (L.state === 'up' && !io.pcUp(L.far)) {
+          if (!L.downSince) L.downSince = now;
+          const wk = io.woke && io.wakeSettleMs > 0 ? io.woke() : 0;
+          if (wk > 0 && L.upAt > 0 && L.upAt < wk && now - wk >= io.wakeSettleMs && L.downSince - wk <= io.wakeSettleMs) { close(L, 'wake-lost'); continue; }
+          if (now - L.downSince > DIAL_BUDGET_MS) { if (L.opener) sub.pipeRetryAt = now + RETRY_MS; close(L, 'lost'); continue; }
+        }
         else L.downSince = 0;
         if ((L.state === 'ask' || (L.state === 'swap' && !L.peer)) && now - L.sentAt > RESEND_MS && (L.opener || L.farDev)) sendAsk(L);
         // a link that holds no vouch of mine yet (its setup, a takeover) asks again until it does; after that only a
@@ -1575,14 +1637,15 @@
         // TURN.18: a client end's connection has looked for its relay path for TURN_WEB_WAIT and found none
         if (L.state !== 'up' && !L.web && L.client && L.cred && io.turnPath) { const tp = io.turnPath(L.far); if (tp && tp.at > 0 && !tp.relay && now - tp.at >= WEB_WAIT_MS && L.cred.web().length) webStart(L, true); }
         if (L.web && L.state !== 'up') { if (now - L.webSaidAt > RESEND_MS) webSay(L); webGo(L); }
+        if (L.web && L.state === 'up') webFollow(L);
         if (L.state !== 'up' && L.readyMe && (L.readyFar || L.web) && io.pcUp(L.far) && (!L.web || io.webUp(L.far))) {
           L.state = 'up'; L.upAt = now; L.serial = now; log('turn-link up ' + short(L.far) + (L.sb ? ' (standby)' : '')); io.changed(L.far); subChanged('a pipe of mine');
-          if (L.sb && L.liveEnd && L.liveEnd !== io.me()) io.sendTv(L.liveEnd, { k: 'tv', q: 'r', l: L.l, b: L.direct ? 1 : 0 });
+          if (L.sb && L.liveEnd && L.liveEnd !== io.me()) tvSend(L.liveEnd, { k: 'tv', q: 'r', l: L.l, b: L.direct ? 1 : 0 });
           if (L.sb && L.liveEnd === io.me()) { const P = livePipe(pipeNo(L.l)); if (P) { P.sbUp = true; P.sbDirect = !!L.direct; } }
         }
-        if (L.mine && !L.peer && !L.direct && L.farDev && now - (L.vSentAt || 0) > RESEND_MS) { L.vSentAt = now; io.sendTv(L.far, { k: 'tv', q: 'v', l: L.l, e: L.mine.e.toString(36), n: L.mine.n, m: L.mine.m }); }   // the far end may have missed it (a takeover renames the link)
+        if (L.mine && !L.peer && !L.direct && L.farDev && now - (L.vSentAt || 0) > RESEND_MS) { L.vSentAt = now; tvSend(L.far, { k: 'tv', q: 'v', l: L.l, e: L.mine.e.toString(36), n: L.mine.n, m: L.mine.m }); }   // the far end may have missed it (a takeover renames the link)
         if (L.state === 'up' && !L.sb) {   // SUB.8.1: each pipe end names its side's Section-1 seats once a change; the opener end runs the rounds
-          const mine = s1List().slice(0, 25).join(','); if (mine && mine !== L.s1Sent && PROBE_RE.test(mine)) { L.s1Sent = mine; io.sendTv(L.far, { k: 'tv', q: 'o', l: L.l, m: mine }); }
+          const mine = s1List().slice(0, 25).join(','); if (mine && mine !== L.s1Sent && PROBE_RE.test(mine)) { L.s1Sent = mine; tvSend(L.far, { k: 'tv', q: 'o', l: L.l, m: mine }); }
           if (L.opener) probeRound(L, now);
           walkRound(L, now);   // SUB.10 (inert unless my end is the younger door's and both paths are direct)
         }
@@ -1618,6 +1681,24 @@
       holds(pid) { const L = links.get(pid); return !!L && L.state !== 'closed'; },
       isLink(pid) { const L = links.get(pid); return !!L && (L.state === 'up' || L.state === 'dial'); },
       linking() { return (sub.st !== 'idle' && sub.st !== 'found') || Array.from(links.values()).some((L) => L.opener && !L.sb && L.state !== 'up'); },   // a subroom ask or my pipe is on its way
+      // THE WAY BACK IS BEING MADE: this page is making, or making again, the connection that joins its room to the rest of the
+      // meeting. True while an ask is out (the door list, the Worker's answer, a door being tried), while a pipe this page
+      // ends is opening or its connection is down with no verdict yet, and while a re-pipe or a fresh grant for its door is
+      // due. False while a refusal's wait runs (the refusal is the answer until then) and when nothing is asked for. The
+      // status line reads it: a page alone while this is true is on its way back in, not locked out.
+      making() {
+        const now = io.now();
+        if (sub.st !== 'idle' && sub.st !== 'found') return true;
+        for (const L of links.values()) if (!L.sb && L.l[0] === 'l' && L.state !== 'closed' && (L.state !== 'up' || !io.pcUp(L.far))) return true;
+        if (sub.repipe && (now >= Math.max(sub.retryAt, sub.pipeRetryAt) || ownWhy(sub.lastWhy) || (io.doorLost && io.doorLost()))) return true;   // due, or waiting on my own connection or door (never the service's word)
+        return !!rg.out || (rg.want && (rg.st !== 'idle' || now >= rg.retryAt));
+      },
+      // TURN.10.1: my relay socket is open again (netBack above). A refusal the service made (no far end, the budget, the
+      // rate) is untouched; a door re-grant that failed for want of a connection is asked again too.
+      relayBack() { netBack(); if (rg.want && rg.net && rg.st === 'idle') { rg.net = false; rg.retryAt = 0; } },
+      // The subroom ask stands refused (no far end, the budget, the pool down) and its wait has not run out: no relayed
+      // connection can be had for now.
+      refused() { const o = sub.out; return !!(o && o.refused && !ownWhy(o.refused) && io.now() < o.retryAt); },
       // THE SUBROOM ASK's outcome for the page this tick (header): { join }, { found }, { wait }, { refused, retryAt }, or null
       subAsk() { return sub.out; },
       // the seat's hooks (opts.sub): my room lost a far door (the home-cell seat asks once to re-pipe it); my door's relay
@@ -1627,6 +1708,13 @@
       // JOIN.2: the seat's first ask at door 0 stalled: dial the heads of the other doors the relay lists. true: a probe starts or is out
       probe() { if (!(io.sub && io.sub() === 0) || !io.tdoors || !io.probeDoor) return false; if (sub.st === 'probe' && sub.asker === 'probe') return true; if (sub.st !== 'idle' || (sub.out && sub.out.refused) || io.now() - sub.probeAt < PROBE_GAP_MS) return false; sub.wantProbe = true; return true; },
       regrant() { const o = rg.out; rg.out = null; return o; },
+      // SUB.10.8: my door's subroom is gone (see regrantStep): its number while my seat still sits at that door, else -1
+      // Once the seat has left that door, what this page still held of the room's joining connections ends with it (a seat that
+      // leaves a door ends no path of it), so a number the service hands out again later starts clean.
+      gone() {
+        if (rg.gone > 0 && io.sub && io.sub() !== rg.gone) { const r = rg.gone; rg.gone = 0; for (const L of Array.from(links.values())) if (L.state !== 'closed' && pipeNo(L.l) === r) close(L, 'walked'); }
+        return rg.gone > 0 ? rg.gone : -1;
+      },
       // SUB.10: the door my subroom walks to as my pipe end says it (-1 none); may my seat walk now; did it walk lately (a path beats the tag)
       go() { return walkGo(); },
       walk(n, p) { return walkMay(n, p); },
@@ -1644,6 +1732,11 @@
       videoStep(pid) { const L = links.get(pid); return L && L.video && L.thr && L.thr.step >= 0 ? L.thr : null; },
       // TURN.13: the rate each audio sender of the link takes while it is starved (bits a second), or 0: its full rate
       voiceCap(pid) { const L = links.get(pid); return L && L.state === 'up' && L.voiceLow > 0 ? L.voiceLow : 0; },
+      // TURN.23: a free link (no vouch: the free pool's byte cap is on it) from its ask on, at BOTH ends; a warm standby too.
+      // The answering end never dials: it waits in 'ask'/'swap' until its pc is up, and the opener's offer it is handed then
+      // is what sets ITS encoder (a thin() of 'dial'/'up' only left the answerer's sound at 50 packets a second when muted).
+      // A direct pipe carries video (setDirect), so it is never thin.
+      thin(pid) { const L = links.get(pid); return !!L && L.state !== 'closed' && !L.video; },
       busy(pid) { const L = links.get(pid); return !!L && L.busy; },
       farBusy(pid) { const L = links.get(pid); return !!L && L.video && L.farBusy; },
       // the pcs that run through TURN (the page watches their path, server and capacity)
@@ -1656,12 +1749,13 @@
       camRoom(pid) { const L = links.get(pid); if (L && L.direct) return L.state === 'up' && !L.sb; if (!L || !L.video || L.busy || !(L.cap > 0)) return false; const K = meshConsts().consts, perS = 1000 / tick; return L.cap - K.TURN_BASE_BYTES * perS * 8 >= 2 * K.TURN_VIDEO_MIN_BYTES * perS * 8; },
       close(pid, why) { const L = links.get(pid); if (L) close(L, why || 'closed'); },
       stopAll(why) { for (const L of Array.from(links.values())) close(L, why || 'stop', true); },
+      webMoved,
       dump() {
         const out = [];
         for (const L of links.values()) out.push({ far: L.far, l: L.l, opener: L.opener, state: L.state, client: L.client, farDev: L.farDev, farBlocked: L.farBlocked,
           mine: !!L.mine, peer: !!L.peer, readyMe: L.readyMe, readyFar: L.readyFar, cred: L.cred ? L.cred.state() : null, credRefusal: L.cred ? L.cred.refusal() : null,
           pool: L.paidMe ? 'paid' : 'free', paid: L.paid ? L.paid.state() : null, paidRefusal: L.paid ? L.paid.refusal() : null, paidFar: L.paidFar,
-          vouched: L.vouched, video: L.video, upAt: L.upAt, side: L.side.length, web: L.web, webHost: L.webHost || null,
+          vouched: L.vouched, video: L.video, upAt: L.upAt, side: L.side.length, web: L.web, webHost: L.webHost || null, webMoves: L.webMvN || 0,
           step: L.thr ? L.thr.step : null, cap: L.cap || null, busy: L.busy, farBusy: L.farBusy, standbyN: L.standbyN, lastSwitchMs: L.lastSwitchMs || null, direct: !!L.direct, sb: !!L.sb, sbUp: !!L.sbUp, probes: L.pr ? L.pr.n : 0, probeX: L.pr ? L.pr.x : 0 });
         return { links: out, sub: { st: sub.st, out: sub.out, list: sub.list.slice(), retryAt: sub.retryAt, found: sub.found } };
       },
@@ -1703,7 +1797,74 @@
     return Object.assign({}, msg, { msg: m });
   }
 
+  // TURN.23 THE THIN FREE LINK. An unvouched TURN link rides the free pool, whose server passes a fixed number of wire
+  // bytes a second each way and drops the rest, counting every packet's whole size. What fills a link is rarely the sound
+  // itself: it is packets (every audio stream is 50 packets a second, sound or none, each with 60-70 bytes of framing)
+  // and whole session descriptions sent again at every renegotiation. Two rules, each at the one place every such byte
+  // passes (the sound keeps its rate: a sum of voices needs it, AUX_AUDIO_BPS):
+  //   .1 SILENCE SENDS NO SOUND PACKETS: every audio stream I send on a free link is encoded with Opus DTX (dtxSdp on the
+  //      description the far end gave me: its `usedtx=1` is what tells MY encoder), so a muted or quiet side sends a
+  //      comfort-noise packet every 400 ms instead of 50 packets a second. Nothing is asked of the far end: an older
+  //      page on the far side keeps sending as it did, and what I send it is plain Opus it already decodes.
+  //   .2 A RENEGOTIATION SENDS EACH LINE ONCE: a description is a list of sections that repeat each other line for line
+  //      (a dozen m-lines, tens of KB). rzPack sends the distinct lines once and each section as numbers; rzOpen gives
+  //      the exact text back. A page says it reads the packed form with `rz: 1` on the plain roffer/ranswer it sends, and
+  //      a packed frame says so by itself; a far end that never says it (an older page) is sent plain descriptions.
+  // dtxSdp(sdp) -> the same description with usedtx=1 on every Opus format of every audio section (a string in, a string out)
+  function dtxSdp(sdp) {
+    if (typeof sdp !== 'string' || sdp.indexOf('m=audio') < 0) return sdp;
+    const nl = sdp.indexOf('\r\n') >= 0 ? '\r\n' : '\n';
+    return sdp.split(/(?=^m=)/m).map((sec) => {
+      if (sec.indexOf('m=audio') !== 0) return sec;
+      const pts = new Set(); let m; const re = /^a=rtpmap:(\d+) opus\//gmi; while ((m = re.exec(sec))) pts.add(m[1]);
+      if (!pts.size) return sec;
+      const lines = sec.split(nl), seen = new Set();
+      for (let i = 0; i < lines.length; i++) {
+        const f = /^a=fmtp:(\d+) (.*)$/.exec(lines[i]); if (!f || !pts.has(f[1])) continue;
+        seen.add(f[1]);
+        if (/(^|;)\s*usedtx=1\s*(;|$)/.test(f[2])) continue;
+        const rest = f[2].split(';').map((x) => x.trim()).filter((x) => x && !/^usedtx=/.test(x));
+        rest.push('usedtx=1'); lines[i] = 'a=fmtp:' + f[1] + ' ' + rest.join(';');
+      }
+      for (const pt of pts) if (!seen.has(pt)) {   // an Opus format with no parameters line: it gets one, after its rtpmap
+        const at = lines.findIndex((l) => new RegExp('^a=rtpmap:' + pt + ' ', 'i').test(l)); if (at >= 0) lines.splice(at + 1, 0, 'a=fmtp:' + pt + ' usedtx=1');
+      }
+      return lines.join(nl);
+    }).join('');
+  }
+  // rzPack(msg) -> { k:'rz', t:'o'|'a', y:<description type>, oid?, d:[distinct lines], s:[line numbers] } for a roffer or
+  // ranswer, or null when msg is neither or its description is no text. rzOpen(frame) -> the roffer/ranswer, or null.
+  // Exact: rzOpen(rzPack(m)).sdp.sdp === m.sdp.sdp, byte for byte (line ends and a missing last line end included).
+  const RZ_MAX_LINES = 20000;
+  function rzPack(msg) {
+    if (!msg || (msg.k !== 'roffer' && msg.k !== 'ranswer') || !msg.sdp || typeof msg.sdp.sdp !== 'string' || typeof msg.sdp.type !== 'string') return null;
+    for (const k of Object.keys(msg)) if (k !== 'k' && k !== 'sdp' && k !== 'oid' && k !== 'rz') return null;   // a field this form does not carry: the plain frame goes
+    const text = msg.sdp.sdp, crlf = text.indexOf('\r\n') >= 0;
+    if (crlf && /(^|[^\r])\n/.test(text)) return null;   // mixed line ends: not worth a form of their own
+    const lines = text.split(crlf ? '\r\n' : '\n');
+    if (lines.length > RZ_MAX_LINES) return null;
+    const at = new Map(), d = [], s = [];
+    for (const l of lines) { let i = at.get(l); if (i === undefined) { i = d.length; d.push(l); at.set(l, i); } s.push(i); }
+    const out = { k: 'rz', t: msg.k === 'roffer' ? 'o' : 'a', y: msg.sdp.type, n: crlf ? 1 : 0, d, s };
+    if (msg.oid != null) out.oid = msg.oid;
+    return out;
+  }
+  function rzOpen(m) {
+    if (!m || m.k !== 'rz' || (m.t !== 'o' && m.t !== 'a') || typeof m.y !== 'string' || !Array.isArray(m.d) || !Array.isArray(m.s) || m.s.length > RZ_MAX_LINES) return null;
+    const lines = [];
+    for (const i of m.s) { if (!Number.isInteger(i) || i < 0 || i >= m.d.length || typeof m.d[i] !== 'string') return null; lines.push(m.d[i]); }
+    const out = { k: m.t === 'o' ? 'roffer' : 'ranswer', sdp: { type: m.y, sdp: lines.join(m.n ? '\r\n' : '\n') } };
+    if (m.oid != null) out.oid = m.oid;
+    return out;
+  }
+  // THE BYTE BUDGET OF ONE FREE LINK, each way, from the pool's cap (wire bytes a second): at rest (every mic muted) a
+  // third of it; with every seat talking five sixths (one mix at AUX_AUDIO_BPS is 8 KB/s of sound and 3.5 of packet
+  // framing, beside the rest load); a stream that carries silence sends at most silentPps packets a second (DTX sends
+  // 2.5). The room tests hold every free link to this, so a change that puts more on a free link shows there first.
+  function linkBudget(capBps) { const c = +capBps > 0 ? +capBps : 0; return { cap: c, rest: Math.floor(c / 3), talk: Math.floor(c * 5 / 6), silentPps: 5 }; }
+
   const api = {
+    dtxSdp, rzPack, rzOpen, linkBudget,
     DEFAULT_WORKER, WORKER_KEY, FETCH_TIMEOUT_MS, RETRY_BASE_MS, RETRY_MAX_MS, SIDE_MAX, STANDBY_SWITCH_MS, THROTTLE_LOOK_MS, THROTTLE_UP_MS,
     THROTTLE_STEPS, THROTTLE_LOSS, throttlePlan, throttleNext, stepOf, voiceLow,
     retryDelayMs, parseIce, hasTurnServer, webHostOk, workerBase, askIce, askSub, createCredentials,

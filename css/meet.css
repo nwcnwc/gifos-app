@@ -2081,6 +2081,15 @@
   #left-rejoin, #left-close { min-height: 64px; min-width: 120px; font-size: 1.2rem; border-radius: var(--r-md); cursor: pointer; }
   #left-rejoin { background: var(--c-blue); color: var(--c-white); border: 0; }
   #left-close { margin-left: 12px; background: var(--c-white); color: var(--c-ink); border: 1.5px solid var(--c-gray); }
+  /* The full door's offer (meet-subs showFull): the way in now first and largest, the plan as its quieter second line. */
+  #left-modal .sub-full { display: flex; flex-direction: column; gap: 10px; margin: 0 0 1.1rem; }
+  #left-modal .sub-full-pass { min-height: 64px; font-size: 1.2rem; font-weight: 700; border-radius: var(--r-md); border: 0; cursor: pointer;
+    background: var(--c-green, #1e8e3e); color: var(--c-white); padding: 8px 14px; }
+  #left-modal .sub-full-sub { min-height: 48px; font-size: 1rem; border-radius: var(--r-md); cursor: pointer; padding: 6px 12px;
+    background: var(--c-white); color: var(--c-blue); border: 1.5px solid var(--c-blue); }
+  #left-modal .sub-full button:disabled { opacity: .6; cursor: progress; }
+  #left-modal .sub-full p { margin: 0; font-size: .9rem; }
+  #left-modal .sub-full .sub-full-say:empty { display: none; }
   /* Unmute, camera, Reactions, Share screen, Chat, More, and Leave say what they do. */
   .bar #cam, .bar #mic, .bar #reactbtn, .bar #sharebtn, .bar #chatbtn, .bar #ccdock, .bar #bartoggle {
     height: 76px; width: auto; min-width: 72px; min-height: 76px;
@@ -3764,3 +3773,19 @@ body.comfy:not(.broadcast) #airbar { display: none !important; }
     right: auto !important; flex: none; line-height: 12px !important; font-size: 10px !important; }
 }
 body:is(.dock-calm, .chrome-away) #tophead > .topmore { opacity: 0; pointer-events: none; transition: opacity var(--t-slow) ease; }
+
+/* BOT MODE (js/meet-agent.js): a text-first view for AI assistants. The same page and seat; nothing else is drawn
+   (no tiles, no bar, no stage), so no picture is painted. Dialogs (password, leave) still show over it. */
+body.bot-view > :not(#botview):not(.name-modal):not(script):not(style) { display: none !important; }
+body.bot-view { overflow: auto; background: var(--bg); }
+#botview { font: 1rem/1.4 system-ui, sans-serif; color: var(--text); background: var(--bg); padding: 0 1rem 2rem; max-width: 60rem; margin: 0 auto; }
+#botview[hidden] { display: none; }
+#botview .bv-banner { position: sticky; top: 0; padding: .6rem 0; background: var(--surface); border-bottom: 1px solid var(--border); }
+#botview .bv-banner button { font: inherit; padding: .4rem .8rem; border-radius: var(--r-sm); border: 1px solid var(--border); background: var(--accent); color: var(--c-white); cursor: pointer; }
+#botview h2 { font-size: 1rem; margin: 1rem 0 .3rem; }
+#botview table { border-collapse: collapse; width: 100%; }
+#botview th, #botview td { text-align: left; border-bottom: 1px solid var(--border); padding: .2rem .4rem; }
+#botview ol { margin: 0; padding-left: 1.6rem; }
+#botview .bv-row { margin: .6rem 0; }
+#botview .bv-row input { font: inherit; min-width: 16rem; }
+#botview .bv-row button { font: inherit; }

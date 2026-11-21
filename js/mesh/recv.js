@@ -79,7 +79,7 @@
       this.framesInT[mtNum(m.t) & 63]++;   // measurement only (`digtop`)
       this.framesIn++;   // GAUGE only
       if (roomTerm(this, 1) && !(m.l10E || m.dgOnly) && m.c7Min >= 0 && m.id >= 0 && m.id !== id && (m.t === 'HELLO' || m.t === 'PHONE' || m.t === 'CONFIRM' || m.t === 'LEAVE' || m.t === 'PONG') && this.l42Own(m)) { this.l828Ring.set(m.id, [m.c7Min, TICK]); if (this.l828Ring.size > 256) this.l828Ring.clear(); }   // L8.28
-      if (m.from >= 0 && m.from !== id) { if (this.state !== 3) this.entAnsAt = TICK; else if (this.entIsl || this.entAsk.size) { this.entIsl = false; this.entAsk.clear(); } }   // L8.47
+      if (m.from >= 0 && m.from !== id) { if (this.state !== 3) { if (!this.cutHalf.has(m.from)) this.entAnsAt = TICK; } else if (this.entIsl || this.entAsk.size) { this.entIsl = false; this.entAsk.clear(); } }   // L8.47. TURN.5.3.5: a seat that left with me is no room to enter, and its frame is no answer from one
       const l846Early = (m.l10E || m.dgOnly);   // L8.46 + L10.6
       if (!l846Early) this.lineNote(m);   // L8.38
       if (m.routing && !this.routeStep(m)) return;   // Option A

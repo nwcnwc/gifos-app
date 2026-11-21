@@ -601,6 +601,8 @@
     HM_IDLEMAX: 0,   // C++: mesh_hostile.inc:HM_IDLEMAX
     HM_HELDSEAT: -1,   // C++: mesh_hostile.inc:HM_HELDSEAT
     HM_HELDPCS: 0,   // C++: mesh_hostile.inc:HM_HELDPCS
+    HM_REMAX: 0,   // C++: mesh_hostile.inc:HM_REMAX
+    HM_REN: 0,   // C++: mesh_hostile.inc:HM_REN
     HM_FPSMAX: 0,   // C++: mesh_hostile.inc:HM_FPSMAX
     HM_FPSSEAT: -1,   // C++: mesh_hostile.inc:HM_FPSSEAT
     HM_SHOWNMAX: 0,   // C++: mesh_hostile.inc:HM_SHOWNMAX

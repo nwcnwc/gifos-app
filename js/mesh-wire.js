@@ -247,6 +247,7 @@
     let lastRegAt = 0;     // last time we sent a greeter registration
     let doorAheadN = 0;    // blobs in my latest door reply that no key of mine (current or replaced) opens (doorAhead)
     let regPendingAt = 0;  // a registration awaiting its greeters reply (zombie detector)
+    let doorEmptyAt = 0;   // the relay answered that my own door is empty (tag 3) and no list has come since: I am no greeter of it for now
     let subGrant = null;   // the grant that founds my door's room, as the page handed it with the answer to its ask (node.subGo)
     // SHRANK-TO-SOLO (the 2-person fork fix, 2026-07-29): a room that WAS
     // populated and collapsed to one is a fragment SUSPECT the moment it
@@ -953,7 +954,7 @@
       if (opts.holdDoor && opts.holdDoor()) return;   // waiting on the admin with a lock I cannot read: a list I cannot open must not make me a founder
       // ROOMS JOINED BY RELAYED CONNECTIONS: tag 3, my own door is empty (the relay forgot it; the seat asks for a fresh
       // grant); tag 4, door 0 is empty while other doors of the meeting live (the seat asks before founding). The seat decides.
-      if ((m.tag === 3 || m.tag === 4) && penv) { regPendingAt = 0; /* the relay answered: this socket is alive (unanswered, the watchdog rebuilt it 12 s later) */ if (!stopped && seat) penv.relayFrame({ t: 'greeters', list: [], tag: m.tag, sr: m.atDoor }); return; }
+      if ((m.tag === 3 || m.tag === 4) && penv) { regPendingAt = 0; if (m.tag === 3) doorEmptyAt = Date.now(); /* the relay answered: this socket is alive (unanswered, the watchdog rebuilt it 12 s later) */ if (!stopped && seat) penv.relayFrame({ t: 'greeters', list: [], tag: m.tag, sr: m.atDoor }); return; }
       const list = m.list || [];
       const ids = [], sealedFps = [], fa = [], behind = [];
       const ep = new Map(), atOf = (l) => l.map((p) => (ep.has(p) ? ep.get(p) : -1));   // each greeter's word of when its room was founded (-1: not said)
@@ -996,6 +997,7 @@
       // ...and an excluded peer (an ejected forger) is never a door.
       if (typeof opts.excluded === 'function') { try { for (let i = ids.length - 1; i >= 0; i--) if (opts.excluded(String(ids[i]))) ids.splice(i, 1); } catch (e) {} }
       regPendingAt = 0; // the relay answered — the socket is provably alive
+      doorEmptyAt = 0;   // ...with my door's list: the door stands
       // Capture join state BEFORE recv — GREETERS empty+founded take()s at
       // state===0 and leaves state=3, so a post-recv snapshot would hide the
       // actual mint under "already seated".
@@ -1403,10 +1405,27 @@
         if (!sock) makeSock();
         return true;
       },
+      // subGone(r): the service answered my ask for a fresh grant for my own door r that it holds no such room, after the
+      // relay said that door is empty: room r is gone. My seat leaves it and joins the meeting again at the first door, as
+      // any joiner does (true when it left).
+      subGone(r) { if (stopped || !penv || !raw || raw.sr !== r) return false; const left = penv.subGone(r); if (left) subGrant = null; return left; },
       meetingCount() { return layer ? layer.meetingCount() : null; },
       meetingFar() { return layer ? layer.meetingFar() : 0; },   // the people in the other rooms joined to mine (0: none)
       meetingPeople() { return layer ? layer.meetingPeople() : []; },   // SUB.11: those people by name, per door, from the same fold as the count
       knownSub(r) { return !!penv && penv.knownSub(r); },
+      // My door is not mine at the relay right now: no open socket, or the relay's last word on my door was "empty"
+      // (it forgot the door; a fresh grant is on its way). What the relay grants a greeter of a door is not asked for meanwhile.
+      doorLost() { return !sock || sock.state !== 'up' || doorEmptyAt > 0; },
+      // A far door left my room's fold and its loss is not judged yet (SUB.3 b: the note is kept L10_NEW_WAIT, then the
+      // home seat asks for a re-pipe and forgets it): the people behind that door are not counted and are not gone.
+      farPending() {
+        try {
+          if (!raw || raw.state !== 3 || !raw.doorAt || !raw.doorAt.size) return false;
+          const R = raw.dRoot(), wait = GifOS.meshConsts.consts.L10_NEW_WAIT;
+          for (const [d, at] of raw.doorAt) if (raw.TICK - at <= wait && !(R.at >= 0 && R.doors.some((e) => e.id === d))) return true;
+        } catch (e) {}
+        return false;
+      },
       standbyCands() { return layer ? layer.standbyCands() : []; },   // the display fold beside the seat (layer.js leaf)
       // App access to the wire's relay socket (the ONE socket): signaling
       // fallback ({t:'peer'}), moderation verbs (setpw/ban/votekick), etc.

@@ -206,7 +206,26 @@
       }
       if (!this.f.fabricSubWalk(this.id, dig.digSeats(R), p)) return;
       this.trace('SUB.10-WALK', this.id, this.coord, 'from=%d to=%d n=%d', this.sr, p, dig.digSeats(R));
-      this.walkedFrom = this.sr; this.goAt = -1; this.doorAt.clear(); this.doorWalk.clear();   /* (the doors I noted were far doors of the room I leave: not mine to miss) */ this.requeue('sub-walk'); this.subGo(p);
+      this.subLeave(p, 'sub-walk');
+    },
+    // C++: mesh_island.inc:Seat::subLeave
+    // A SEAT LEAVES ITS SUBROOM FOR ANOTHER DOOR (SUB.10.4, SUB.10.7, SUB.10.8: one way out). Seated, I leave my cell with the ordinary
+    // goodbye; then I am a joiner of door p: its greeters, an ordinary join, every admission rule of a join. The number I leave is
+    // never taken back (SUB.10.5), and the far doors I noted were doors of the room I leave: not mine to miss.
+    subLeave(p, why) {
+      this.walkedFrom = this.sr; this.goAt = -1; this.doorAt.clear(); this.doorWalk.clear(); if (this.state === 3) this.requeue(why); this.subGo(p);
+    },
+    // C++: mesh_island.inc:Seat::subGone
+    // SUB.10.8 A SUBROOM NOBODY HOLDS ANY MORE IS GONE. I sit in Section 1 of subroom r, the relay answered my own registration
+    // that door r is empty (SUB.2-DOOR-EMPTY), and the service answered my ask for a fresh grant that it holds no subroom r: no
+    // connection's credential kept its record alive, so nothing can mint door r again and nobody will ever connect to it. Both
+    // answers are first-hand and both are needed. I am a joiner of the meeting: door 0, as any joiner (subLeave). My mates learn
+    // it the same way: a seat of r that sits in Section 1, now or when the room heals it there after my goodbye, knocks, hears the
+    // same two answers and follows; a seat that is between cells when it knocks is SUB.10.7's.
+    subGone(r) {
+      if (r <= 0 || r !== this.sr || this.state !== 3 || !this.hasCoord || this.coord.pc !== 0) return;
+      this.trace('SUB.10.8-GONE', this.id, this.coord, 'sr=%d', this.sr);
+      this.subLeave(0, 'sub-gone');
     },
     // C++: mesh_island.inc:Seat::cutOff
     // TURN.5.3 A CUT IS NOT A CRASH: THE HALF WITHOUT THE ROOT ENTERS AGAIN. A seat of door 0 that the room reaches no more (no report
@@ -216,10 +235,13 @@
       if (this.state !== 3 || !this.hasCoord || this.moving || this.sr !== 0 || !this.f.fabricTurnOn()) return false;   // only in a meeting with TURN
       if (this.coord.pc === 0) {
         if (ckey(this.coord) === 0) return false;   // the root's holder: the room is where I am
-        const it = this.s1tab.get(0); if (it === undefined || it.at < 0 || it.by < 0 || it.by === this.id) return false;   // the root I last heard (its report leaves my table at DIG_TTL: the dial goes out FHOP_RELAY_ASK before that)
-        if (this.LT() - it.rx <= K.DIG_TTL - K.FHOP_RELAY_ASK) return false;
-        const h = it.by; if (this.f.fabricCutProbe(this.id, h) !== 2) return false;
-        this.trace('TURN.5.3-CUT', this.id, this.coord, 'root=%d age=%lld', h, this.LT() - it.rx); return true;
+        const it = this.s1tab.get(0); let h = -1, rx = -1;   // the root I last heard (its report leaves my table at DIG_TTL: the dial goes out FHOP_RELAY_ASK before that)
+        if (it !== undefined && it.at >= 0 && it.by >= 0) { if (it.by === this.id) return false; h = it.by; rx = it.rx; }
+        else if (this.cutBy >= 0 && this.cutBy !== this.id && this.occGet(0) < 0 && this.LT() - this.cutRx <= K.DIG_TTL) { h = this.cutBy; rx = this.cutRx; }   // TURN.5.3.1: ...or my own death verdict took it sooner (silence is a crash or a cut: the same dial tells them apart, on the same clock)
+        else return false;
+        if (this.LT() - rx <= K.DIG_TTL - K.FHOP_RELAY_ASK) return false;
+        if (this.f.fabricCutProbe(this.id, h) !== 2) return false;
+        this.trace('TURN.5.3-CUT', this.id, this.coord, 'root=%d age=%lld', h, this.LT() - rx); return true;
       }
       if (this.rootDig.at < 0 || this.LT() - this.rootDig.rx <= K.DIG_TTL) return false;
       if (this.greetersAt < 0 || this.TICK - this.greetersAt > K.DIG_TTL) { if (this.TICK - this.l13KnockAt >= K.DIG_TTL) { this.l13KnockAt = this.TICK | 0; this.emitRelay(this.genKey, false); } return false; }   // one knock while its list is good
@@ -238,7 +260,7 @@
         const it = this.s1tab.get(0); if (it !== undefined && it.at >= 0 && this.LT() - it.rx <= K.DIG_TTL - 2 * K.FHOP_RELAY_ASK) return false;
         this.trace('TURN.5.3-FOLLOW', this.id, this.coord, 'from=%d', x); return true;
       }
-      const o = this.ownerCoord(); const mine = (o && ckey(o) === ck) || (this.coord.i !== 0 && c.pc === this.coord.pc && c.r === this.coord.r && c.i === 0);
+      const o = this.ownerCoord(); const mine = (o && ckey(o) === ck) || (this.coord.i !== 0 && c.pc === this.coord.pc && c.r === this.coord.r && c.i === 0) || (this.u2Hot && (x === this.u2Id || x === this.u3Id)) || (this.coord.i === 0 && this.e1Dn && c.pc === this.coord.pc && c.r === this.coord.r && c.i !== 0);   // TURN.5.3.2: while my row's way up is E2 the room reaches the row's source through the backup owner, and me, its head, through the source (L2.4.1)
       if (!mine) return false;
       this.trace('TURN.5.3-FOLLOW', this.id, this.coord, 'from=%d', x); return true;
     },
@@ -249,6 +271,7 @@
       this.cutHalf.clear(); if (said >= 0) this.cutHalf.add(said);
       if (this.coord.pc === 0) for (const d of this.s1tab.values()) { if (d.at >= 0 && d.by >= 0 && d.by !== this.id && this.LT() - d.rx <= K.DIG_TTL - 2 * K.FHOP_RELAY_ASK) this.cutHalf.add(d.by); }
       this.f.fabricDropHalf(this.id); this.leftCk = ckey(this.coord); this.leftAt = this.TICK; this.leftTo = -1; this.requeue('TURN.5.3-cut');   // (the goodbye goes by the door, D6c.4)
+      if (this.line >= 0) { this.trace('LINEAGE', this.id, null, 'from=%d to=-1 why=cut', this.line); this.line = -1; this.mergeTick = -1; }   // TURN.5.3.3: I left that room: no frame of mine is its door moving (SUB.1 b), and none of its seats' frames moves mine
     },
     // C++: mesh_island.inc:Seat::pipeBeat
     pipeBeat() {

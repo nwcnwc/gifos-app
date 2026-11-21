@@ -502,9 +502,12 @@
       x.send();
     } catch (e) { fallback(); }
   }
-  // bot=1 (query or hash) is assistant mode for this tab. It is read here, before the
-  // meeting rewrites its own address, and kept per tab so a reload stays an assistant.
-  try { if (/[?#&]bot=1(?:&|$)/.test(location.search + '&' + location.hash)) sessionStorage.setItem('gifos_bot', '1'); } catch (e) {}
+  // ?agent=1 is read here, before the meeting rewrites its own address (agent mode reads window.__gifosAgentQ).
+  // A driver that loads the page with its own start script (the agent SDK) may set the flag before this line.
+  try { window.__gifosAgentQ = window.__gifosAgentQ === true || /[?&]agent=1(?:&|$)/.test(location.search); } catch (e) {}
+  // bot=1 (query or hash) is assistant mode for this tab; agent=1 is assistant mode too (plus the agent API).
+  // Read here, before the meeting rewrites its own address, and kept per tab so a reload stays an assistant.
+  try { if (/[?#&](?:bot|agent)=1(?:&|$)/.test(location.search + '&' + location.hash)) sessionStorage.setItem('gifos_bot', '1'); } catch (e) {}
   var decision = pinTarget(location.pathname, location.search, location.hash);
   if (decision && decision.ask) askLive(decision);
   else if (decision && decision.redirect) location.replace(decision.redirect);
@@ -1161,6 +1164,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       </section>
       <!-- Debug: a log of this page kept on this device only, for finding
            problems. Nothing leaves the device unless the person exports it. -->
+      <section class="set-group" id="set-g-bots">
+        <h4 data-t="setGroupBots">AI assistants</h4>
+        <div class="set-row set-wide">
+          <label class="rec-opt"><input type="checkbox" id="hidebots" role="switch"><span><b data-t="setHideBots">Hide bots</b><small data-t="setHideBotsHelp">On this device only: AI assistants' tiles are hidden and the voices this device gets from them on their own are muted. A voice already mixed into a row's sound still plays.</small></span></label>
+        </div>
+      </section>
       <section class="set-group" id="set-g-debug">
         <h4 data-t="setGroupDebug">Debug</h4>
         <div class="set-row set-wide">
@@ -1373,6 +1382,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           <label class="admopt"><input type="checkbox" id="adm-chat-slow"><span><span data-t="admChatSlow">Slow mode</span><small data-t="admChatSlowSub">Guests post at most one line every 10 seconds.</small></span></label>
           <label class="admopt"><input type="checkbox" id="adm-chat-clink"><span><span data-t="admChatClink">Links in chat</span><small data-t="admChatClinkSub">Off: a guest's links stay plain text.</small></span></label>
         </section>
+        <section id="adm-ai" aria-labelledby="adm-ai-h">
+          <h4 id="adm-ai-h" data-t="admAiNotes">AI notes</h4>
+          <div class="admopt"><span><span data-t="admAiNotesSub">May AI assistants keep notes of this meeting?</span><small data-t="admAiNotesHelp">Honest assistants obey this. An assistant taking notes is marked on its tile.</small></span>
+            <select id="adm-ai-notes" aria-labelledby="adm-ai-h"><option value="allowed" data-t="admAiAllowed">Allowed</option><option value="ask" data-t="admAiAsk">Ask first</option><option value="off" data-t="admAiOff">Off</option></select></div>
+          <div id="adm-ai-wait" hidden><small data-t="admAiWaiting">Waiting for your OK:</small><ul></ul></div>
+        </section>
       </div>
       <button id="adm-close" data-t="setClose" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
     </div>
@@ -1451,6 +1466,22 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <p data-t="closedMsg" id="closed-msg">This room’s host wasn’t here, so it closed. Reopen the same link when the host is back.</p>
       <button data-t="closedReload" id="closed-reload">Rejoin</button>
     </div>
+  </div>
+  <!-- BOT MODE: the text-first view for AI assistants (js/meet-agent.js renders it). The same page and seat; no tiles drawn. -->
+  <div id="botview" hidden role="main" aria-label="Bot mode" data-agent="bot-view">
+    <div class="bv-banner" role="region" aria-label="Bot mode"><span data-t="botBanner">Bot mode — for AI assistants.</span> <button type="button" id="bot-back" data-agent="bot-back" data-t="botBack">Back to normal view</button><span id="bot-forced" data-t="botForced" hidden>Agent mode: this page is an AI agent.</span></div>
+    <p class="bv-ver"><code data-agent="bot-version">gifosAgent v1</code> · <span data-t="botApiNote">window.gifosAgent is ready on this page.</span></p>
+    <p class="bv-status" data-agent="bot-status" role="status"></p>
+    <h2 data-t="botPeople">People</h2>
+    <table data-agent="bot-people"><thead><tr><th data-t="botColName">Name</th><th data-t="botColBot">Bot</th><th data-t="botColHost">Host</th><th data-t="botColMuted">Muted</th><th data-t="botColHand">Hand</th><th data-t="botColSpeaking">Speaking</th><th data-t="botColStage">On stage</th></tr></thead><tbody></tbody></table>
+    <h2 data-t="botTranscript">Transcript</h2>
+    <ol data-agent="bot-transcript"></ol>
+    <h2 data-t="botChat">Chat</h2>
+    <ol data-agent="bot-chat"></ol>
+    <form id="bot-say-form" class="bv-row"><label><span data-t="botSayAloud">Say aloud</span> <input id="bot-say" data-agent="bot-say" autocomplete="off"></label><button type="submit" data-agent="bot-say-send" data-t="botSayAloud">Say aloud</button></form>
+    <form id="bot-chat-form" class="bv-row"><label><span data-t="botSendChat">Send chat</span> <input id="bot-chat-in" data-agent="bot-chat-input" autocomplete="off"></label><button type="submit" data-agent="bot-chat-send" data-t="botSendChat">Send chat</button></form>
+    <p class="bv-row"><button type="button" id="bot-hand" data-agent="bot-hand" aria-pressed="false" data-t="botRaiseHand">Raise hand</button> <button type="button" id="bot-leave" data-agent="bot-leave" data-t="botLeave">Leave</button></p>
+    <script type="application/json" id="gifos-agent-state">{}</script>
   </div>
   <div class="name-modal" role="dialog" aria-modal="true" id="left-modal" style="display:none">
     <div class="name-box">
@@ -1626,6 +1657,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/meet-zones.js" defer></script>
   <script src="js/meet-content.js" defer></script>
   <script src="js/meet-agenda.js" defer></script>
+  <script src="js/meet-agent.js" defer></script>
   <script src="js/camera-studio.js" defer></script>
   <script src="js/gifos-ondevice.js" defer></script>
   <script>
@@ -2697,6 +2729,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // moment it lands and refused: nothing opens a device after Leave.
     const capTracks = new Set();
     let capClosed = false;
+    let subsRefused = null;   // {limit, free, at} while this page stands at a full door (subsFull); read by updateStatus, so declared up here
     // The tracks the last releaseAllCapture() stopped, kept so the page can
     // still show that each one ended after localStream is dropped. A device
     // opened again starts a new record.
@@ -3093,6 +3126,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { updateTile('me'); } catch (e) {}
       try { broadcastStatus(); } catch (e) {}
       try { paintControls(); } catch (e) {}
+      try { setBotView(on); } catch (e) {}   // a lobby Off press takes back a bot view it asked for
     }
     {
       const b = document.getElementById('ai-assist');
@@ -5119,7 +5153,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const mic = d.createElement('button'); mic.type = 'button'; mic.id = 'pf-mic';
       const leave = d.createElement('button'); leave.type = 'button'; leave.className = 'leave'; leave.id = 'pf-leave';
       leave.textContent = uiText('leave', 'Leave');
-      mic.onclick = () => { const b = document.getElementById('mic'); if (b && !b.disabled) b.click(); docPipPaint(); };
+      mic.onclick = () => { const b = document.getElementById('mic'); if (b && !b.disabled) micTap(false); docPipPaint(); };   // no chooser: it would open in the meeting page, out of sight
       // A broadcast asks before leaving: that question is in the meeting
       // page, so the float closes to show it.
       leave.onclick = () => { const b = document.getElementById('leavebtn'); if (b) b.click(); exitPip(); };
@@ -5265,6 +5299,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (v) pipCardDrop();
         else if (meTile && !docPipOk() && pipCardEnsure()) { pipCardPaint(false); aim = pipCard.video; }
       } catch (e) {}
+      if (typeof botViewOn !== 'undefined' && botViewOn) aim = null;   // the bot view draws no tile, so nothing floats by itself
       if (aim === pipAimed) return;
       try { if (pipAimed) pipAimed.autoPictureInPicture = false; } catch (e) {}
       try { if (aim) aim.autoPictureInPicture = true; } catch (e) {}
@@ -5287,7 +5322,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       let floatPid = null;
       if (hidden) { const v = pipSource(); for (const [pid, p] of peers) if (p.video === v) { floatPid = pid; break; } }
       for (const [pid, p] of peers) {
-        const park = hidden && pid !== floatPid;
+        // The bot view (js/meet-agent.js) wants no video it has not opened: the same park, asked for the same way.
+        const park = (hidden && pid !== floatPid) || (typeof botParks === 'function' && botParks(pid, recording));
         if (visParkSent.get(pid) === park) continue;
         if (p.dc && p.dc.readyState === 'open') { const was = visParkSent.get(pid); dcSend(p, { k: 'vis', park }); visParkSent.set(pid, park); p.liftWait = park ? null : (was === true ? { fd: -1 } : p.liftWait); }
         else visParkSent.delete(pid); // never mark unsent state as delivered
@@ -5298,6 +5334,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function reassertVisLift(pid) {
       const p = peers.get(pid);
       if (!p || !p.dc || p.dc.readyState !== 'open' || document.hidden) return;
+      if (typeof botParks === 'function' && botParks(pid, false)) return;   // the bot view keeps its parks
       dcSend(p, { k: 'vis', park: false });
       visParkSent.set(pid, false);
     }
@@ -5686,14 +5723,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if ((field === 'app' || field === 'stg' || field === 'share') && (!hasAdminRoom() || !amAdmin)) return;
       // The room-wide chat switch is the admin's alone, and only means
       // anything where there IS an admin to sign it.
-      if ((field === 'chat' || field === 'cc' || field === 'pray' || field === 'gfile' || field === 'greact' || field === 'qa' || field === 'chist' || field === 'slow' || field === 'clink') && (!hasAdminRoom() || !amAdmin)) return;
+      if ((field === 'chat' || field === 'cc' || field === 'pray' || field === 'gfile' || field === 'greact' || field === 'qa' || field === 'chist' || field === 'slow' || field === 'clink' || field === 'ain') && (!hasAdminRoom() || !amAdmin)) return;
       if (hasAdminRoom() && !amAdmin) { setStatus(field === 'mute' ? uiText('stOnlyHostsMute', '🛡 Only this room\u2019s hosts can mute someone for all.') : uiText('stOnlyHostsBlur', '🛡 Only this room\u2019s hosts can blur someone for all.')); return; }
       const mine = modTable[target] = modTable[target] || {};
       mine[field] = { on, by: myName(), byId: myId, at: Date.now() };
       // In an admin room the table travels with the admin's signature, and a
       // guest honours only a table its signature covers. Sign the NEW table
       // before sending it, or every guest waits for the next heartbeat.
-      const signed = (hasAdminRoom() && amAdmin) ? refreshModSig() : null;
+      const signed = (hasAdminRoom() && amAdmin) ? refreshModSig() : !hasAdminRoom() ? modSignMine() : null;   // an open room: signed by me (modSignMine)
       if (signed && signed.then) signed.then(modFlood, modFlood); else modFlood();
       refreshAllTiles();
     }
@@ -5970,6 +6007,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // everyone ready); an admin room clears per tile, so its own consent too.
       const clear = !blurHold(id) && (!hasAdminRoom() || consents(st));
       if (clear || (isMe && clearForTest)) return 0;
+      // Someone who says No blur where the room keeps video blurred may be
+      // sending clear pixels, so this screen blurs them at Max, never Min.
+      // My own picture keeps my pick: my page blurs what it sends.
+      if (!isMe && blurLevel(st.blur) === 0) return 2;
       return Math.max(1, blurLevel(st.blur));
     }
     // One knob re-derives every tile AND the outbound pixels whenever statuses,
@@ -7174,10 +7215,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (st && st.bot) {
         let mark = tile.querySelector(':scope > .botbadge');
         if (!mark) { mark = document.createElement('span'); mark.className = 'botbadge'; tile.appendChild(mark); }
-        if (mark.getAttribute('data-mark') !== 'note') {
-          mark.setAttribute('data-mark', 'note');
-          mark.title = 'Note bot';
-          mark.innerHTML = AI_SPARK_SVG + 'bot';
+        // nts: the agent keeps notes (1), or asks the host first (2): js/meet-agent.js, from the moment it subscribes
+        const nm = st.nts === 1 ? 'notes' : st.nts === 2 ? 'ask' : 'note';
+        if (mark.getAttribute('data-mark') !== nm) {
+          mark.setAttribute('data-mark', nm);
+          if (nm === 'note') {
+            mark.title = 'Note bot';
+            mark.innerHTML = AI_SPARK_SVG + 'bot';
+          } else {
+            mark.title = '';
+            mark.innerHTML = AI_SPARK_SVG;
+            mark.appendChild(document.createTextNode(nm === 'notes' ? uiText('botTakingNotes', 'bot \u00b7 taking notes') : uiText('botNotesAsk', 'bot \u00b7 asks to take notes')));
+          }
         }
       } else {
         const mark = tile.querySelector(':scope > .botbadge');
@@ -8854,7 +8903,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (CT.ag && (a.v < CT.ag.v || (a.v === CT.ag.v && GifOS.meetAgenda.hash(a) === GifOS.meetAgenda.hash(CT.ag)))) return;
       if (!(await ctAgendaVerify(a, m.w))) { ctNote('agenda-bad-sig', { v: a.v, why: why }); return; }
       const g = (!hasAdminRoom() && m.g && (await ctGrantVerify(a, m.g))) ? m.g : null;
-      ctAgendaTake(a, m.w, +m.el || 0, ageMs, why, true, g);
+      const had = !!(CT.ag && CT.ag.items.length);
+      // Stopped for everyone by someone else: attributed (the stop is signed by a.by).
+      if (ctAgendaTake(a, m.w, +m.el || 0, ageMs, why, true, g) && had && !a.items.length && a.by !== myId) setStatus(ctText('agStoppedBy', '{name} stopped the agenda for everyone.', { name: displayName(a.by) }));
     }
     // Open rooms: the owner signs who may edit, so a latecomer can take an
     // editor's version without having seen the hand-over.
@@ -8877,7 +8928,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const MA = GifOS.meetAgenda;
       const a = MA.clean(next);
       if (!a) return false;
-      if (!MA.canEdit(CT.ag, myId, ctAgCtx(myId))) { setStatus(ctAgendaWhoText()); return false; }
+      // A stop for everyone (open-floor rooms): anyone, signed by whoever pressed it (meet-agenda canStop).
+      const stopAll = !a.items.length && !!(CT.ag && CT.ag.items.length) && MA.canStop(CT.ag, myId, ctAgCtx(myId));
+      if (!stopAll && !MA.canEdit(CT.ag, myId, ctAgCtx(myId))) { setStatus(ctAgendaWhoText()); return false; }
       a.by = myId;
       let w = null;
       try { w = await ctAgendaSign(a); } catch (e) { w = null; }
@@ -9020,6 +9073,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         head.appendChild(pos);
       }
       const tools = document.createElement('div'); tools.className = 'ag-tools';
+      // Open-floor rooms: anyone but its owner may stop it for everyone, as with a shared app (the owner's own Stop is in Edit).
+      if (a.items.length && !CT.agEdit && !isOwner && MA.canStop(CT.ag, myId, ctAgCtx(myId)) && !hasAdminRoom()) tools.appendChild(ctAgBtn('ag-btn ag-stopall', ctText('agStopAll', 'Stop for everyone'), () => { ctAgendaPublish(MA.clear(CT.ag, myId), 'stop-all').then((ok) => { if (ok) setStatus(ctText('agYouStopped', 'You stopped the agenda for everyone.')); }); }, ctText('agStopAllTip', 'Take the agenda off everyone\u2019s screen. Everyone sees that you did. Anyone can then share a new one.')));
       if (a.items.length && !CT.agEdit) tools.appendChild(ctAgBtn('ag-btn ag-hide', ctText('agHide', 'Hide agenda'), () => ctAgendaHide(true), ctText('agHideTip', 'Hide the agenda on your screen only. Nothing is deleted, and everyone else still sees it.')));
       if (may && a.items.length && !CT.agEdit) {
         if (a.cur > 0) tools.appendChild(ctAgBtn('ag-btn ag-back', ctText('agBack', 'Back'), () => ctAgendaPublish(MA.prev(CT.ag, myId), 'back')));
@@ -11714,7 +11769,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // meeting is not empty, and "Just you — send the invite" told a person
       // whose only partner was in a tunnel that the meeting had emptied. Say
       // what is happening: we are getting back in, waiting on the others.
-      const seat0 = meshSeat(), atDoor = !!(seat0 && (seat0.state === 1 || seat0.state === 2));
+      // ...and so is a page seated alone while the connection that joins its room to the others is made again (wayBack).
+      const seat0 = meshSeat(), atDoor = !!(seat0 && (seat0.state === 1 || seat0.state === 2)) || (typeof wayBack === 'function' && wayBack());
       // Alone means no other face on the grid either (displayCount).
       // REACH (see REACH_MSG): a network that blocks direct connections
       // rewrites the line — locked out, or unreachable, is the one thing a
@@ -11763,7 +11819,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       let countText = '';
       let restText = '';
       let gettingBack = false;
-      if (refused) {
+      if (subsRefused) {
+        // Turned away at a full door: not in the meeting, and never "Just you" (the full screen says why and the way in).
+        restText = uiText('subFullTitle', 'This meeting is full.');
+      } else if (refused) {
         restText = relayNo ? relayNo.words : uiText('stThePeopleInThisRoom', '\u26d4 The people in this room voted not to let this device in.');
       } else if (atPwPrompt()) {
         restText = uiText('pwHintLocked', 'Enter the room password to join the meeting.');   // the prompt is the answer: no network line under it
@@ -11773,6 +11832,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // A person in the waiting room is not alone and has no one to invite.
         countText = uiText('waitHere', 'In the waiting room');
         restText = tail;
+      } else if (shown === 1 && leftUp) {
+        restText = uiText('leftTitle', 'You left');   // left with nobody counted behind: not a meeting of one
       } else if (shown === 1) {
         if (atDoor) {
           countText = uiText('backIn', 'Getting you back in');
@@ -11802,6 +11863,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // A WAIT ON THE WAY IN (or back in) reads its true step (js/meet-progress.js):
       // "Step 3 of 10: Finding your meeting… · 12 s". It replaces the resting
       // line, the password and reach sentences included; a refusal still wins.
+      // The way in is a wait from the page's first paint: its flow starts here when no beat has started it yet (the first
+      // beat comes a second in, and the line said the network's verdict until then).
+      try { if (!refused && !leftUp && typeof progressBegin === 'function') progressBegin(); } catch (e) {}
       const prog = !refused && !leftUp && typeof progressWords === 'function' ? progressWords() : null;
       if (prog) {
         countText = '';
@@ -11819,7 +11883,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (phoneLayout() && !BROADCAST && !reachLine) {
         const head = roomLabel ? roomLabel + ' · ' : '';
         phoneDetail = head + (shown <= 1 ? countText : shown + plus + ' ' + uiText('inMeeting', 'in this meeting')) + restText;
-        countText = head + (shown <= 1 ? (atDoor ? uiText('backIn', 'Getting you back in') : uiText('justYou', 'Just you')) : shown + plus + ' ' + uiText('inMeeting', 'in this meeting'));
+        const oneWord = subsRefused ? uiText('subFullTitle', 'This meeting is full.') : leftUp ? uiText('leftTitle', 'You left') : atDoor ? uiText('backIn', 'Getting you back in') : uiText('justYou', 'Just you');   // never "Just you" on a page that is not in the meeting
+        countText = head + (shown <= 1 ? oneWord : shown + plus + ' ' + uiText('inMeeting', 'in this meeting'));
         restText = '';
       }
       if (prog) { phoneDetail = restText; countText = phoneLayout() ? prog.head : ''; if (phoneLayout()) restText = ''; }
@@ -11830,7 +11895,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const statusKind = reachLine ? reachState : shown === 1 ? (atDoor ? 'door' : 'alone') : 'meeting';
       // The named state of the resting line (js/meet-status.js), most urgent first.
       const waitingHere = !refused && !atPwPrompt() && !reachLine && typeof iAmWaiting === 'function' && iAmWaiting();
-      const restState = prog ? 'progress' : refused ? 'refused' : atPwPrompt() ? 'passwordDoor' : reachLine ? reachState
+      const restState = prog ? 'progress' : (refused || subsRefused) ? 'refused' : atPwPrompt() ? 'passwordDoor' : reachLine ? reachState
         : (link && !leftUp) ? 'reconnecting' : waitingHere ? 'waitingRoom' : shown === 1 ? (atDoor ? 'backIn' : 'alone') : 'meeting';
       const statusShown = statusText;
       const shownDetail = phoneDetail;
@@ -11999,12 +12064,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (adm && adm.on && (+adm.at || 0) >= (+w.at || 0)) return false;
       return true;
     }
+    // RENAME IS RESET-ONLY IN AN OPEN-FLOOR ROOM (0.9.27.1). Hiding a bad name is protection, so anyone may still reset
+    // anyone's name to the neutral default; writing new words on a person is not, so no other name is taken there.
+    const RENAME_RESET = 'Guest';
     function hostRename(pid) {
       const m = (modTable[pid] || {}).rename;
       if (!m || !m.name) return '';
-      return String(m.name).replace(/\s+/g, ' ').trim().slice(0, 40);
+      const nm = String(m.name).replace(/\s+/g, ' ').trim().slice(0, 40);
+      if (!hasAdminRoom() && nm !== RENAME_RESET) return '';
+      return nm;
     }
+    // SPOTLIGHT IS A HOST'S TOOL (0.9.27.1). In an open-floor room nobody is pushed onto the stage by one person:
+    // "vote onto the stage" (a majority) covers it, and the person can always step down. Every page ignores it there.
     function hostSpot(id) {
+      if (!hasAdminRoom()) return false;
       const m = (modTable[id] || {}).spot;
       return !!(m && m.on);
     }
@@ -12050,7 +12123,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (p) p.textContent = uiText('waitSelfNote', 'You can see this meeting when someone admits you.');
     }
     function hostFlood() {
-      const signed = (typeof hasAdminRoom === 'function' && hasAdminRoom() && amAdmin && typeof refreshModSig === 'function') ? refreshModSig() : null;
+      const adm = typeof hasAdminRoom === 'function' && hasAdminRoom();
+      const signed = (adm && amAdmin && typeof refreshModSig === 'function') ? refreshModSig() : (!adm && typeof modSignMine === 'function') ? modSignMine() : null;   // an open room: signed by me
       if (signed && signed.then) signed.then(modFlood, modFlood); else modFlood();
     }
     function applyHostOrders() {
@@ -12105,7 +12179,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function renameGuest(id, name) {
       if (!mayHost() || !id || id === myId) return;
-      const nm = String(name || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+      const nm = hasAdminRoom() ? String(name || '').replace(/\s+/g, ' ').trim().slice(0, 40) : RENAME_RESET;   // an open room: reset only
       if (!nm) return;
       const mine = modTable[id] = modTable[id] || {};
       mine.rename = { on: true, name: nm, by: myName(), byId: myId, at: Date.now() };
@@ -12115,7 +12189,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       paintRoster();
     }
     function spotlightGuest(id, on) {
-      if (!mayHost() || !id || id === myId) return;
+      if (!hasAdminRoom() || !mayHost() || !id || id === myId) return;   // a host's tool only (hostSpot)
       const mine = modTable[id] = modTable[id] || {};
       mine.spot = { on: !!on, by: myName(), byId: myId, at: Date.now() };
       hostFlood();
@@ -12259,6 +12333,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (r.roomMute) flags.push(uiText('forEveryone', 'For all'));
         else if (r.muted) flags.push(uiText('muted', 'Muted'));
         if (r.camOff) flags.push(uiText('camOffChip', 'Camera off'));
+        if (!r.me && !hasAdminRoom() && hostRename(r.id) === RENAME_RESET) { const rn = (modTable[r.id] || {}).rename; flags.push(uiText('nameResetBy', 'Name reset by {name}').replace('{name}', String((rn && rn.by) || 'someone').slice(0, 40))); }   // attributed, like every open-room order
         if (flags.length) {
           const f = document.createElement('span');
           f.className = 'flags';
@@ -12285,7 +12360,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (mayHost() && !r.me && !r.fold) {
           const acts = document.createElement('div');
           acts.className = 'acts';
-          if (renameEditId === r.id) {
+          if (!hasAdminRoom()) {
+            // An open-floor room: a name can only be reset to the neutral default, and nobody is spotlit.
+            if (hostRename(r.id) !== RENAME_RESET) {
+              const reset = document.createElement('button');
+              reset.type = 'button';
+              reset.className = 'renamebtn';
+              reset.textContent = uiText('resetName', 'Reset name');
+              reset.title = uiText('resetNameTip', 'Show this person as Guest for everyone here. Everyone sees that you did it.');   // the roster says who (nameResetBy)
+              reset.setAttribute('aria-label', uiText('resetName', 'Reset name') + ' ' + r.name);
+              reset.onclick = () => { renameGuest(r.id, RENAME_RESET); };
+              acts.appendChild(reset);
+            }
+          } else if (renameEditId === r.id) {
             const input = document.createElement('input');
             input.className = 'renamebox';
             input.value = r.name;
@@ -12524,7 +12611,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // mesh's own "the meeting is live but unreachable" verdict (R6), atDoor
     // whether I am still asking to be let in.
     function reachStateOf(f) {
-      if (f.probe === 'blocked') {
+      // ON ITS WAY BACK IN (f.way): alone because the connection that joins its room to the rest of the meeting is being
+      // made again. Nothing is settled, so there is no verdict; the line shows the way back (the reconnect flow).
+      if (f.way) return null;
+      // A RELAYED WAY IS OPEN (f.turn 'open': this meeting has a relay service and it has not refused this page): a network
+      // that blocks direct connections locks nobody out, in or out, so the two blocked verdicts are not true. Refused, or
+      // no service, they stand as before.
+      if (f.probe === 'blocked' && f.turn !== 'open') {
         // My network is the problem. If anyone reaches me, they share it:
         // the people elsewhere are the ones who cannot. Alone and seated,
         // the same is true of whoever is yet to come.
@@ -12538,11 +12631,22 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return null;
     }
     let outsideSince = 0;
+    // wayBack() → true while I am seated and alone and the connection that joins my room to the rest of the meeting is
+    // being made again: my page is making it (turnLinks.making: an ask out, a pipe opening or down with no verdict yet,
+    // a re-pipe due), or a far door left my room's fold and its loss is not judged yet (meshNode.farPending). The people
+    // behind it are not gone and I am not locked out: the line says I am getting back in.
+    function wayBack() {
+      try {
+        const s = meshSeat();
+        if (!s || s.state !== 3 || !meshNode || participantCount() > 1) return false;
+        return !!((turnLinks && relayTv && turnLinks.making()) || (meshNode.farPending && meshNode.farPending()));
+      } catch (e) { return false; }
+    }
     function reachInfo() {
       const s = meshSeat();
-      const atDoor = !!(s && (s.state === 1 || s.state === 2));
+      const atDoor = !s || s.state !== 3;   // not seated yet (no seat, asking for the list, knocking, asking for a seat): still at the door, never "alone in the meeting"
       let isMember = null;
-      if (atDoor) { const members = new Set(); for (const v of s.occ.values()) if (v) members.add(String(v)); isMember = (pid) => members.has(String(pid)); }
+      if (atDoor && s) { const members = new Set(); for (const v of s.occ.values()) if (v) members.add(String(v)); isMember = (pid) => members.has(String(pid)); }
       const c = reachCounts(peers.values(), peerAway, isMember);
       // A page still outside after a minute reads the plain failure line, whatever the reason (a wrong clock looks just like this): the page cannot tell why, so it does not say.
       if (!s || s.state === 3 || (typeof iAmWaiting === 'function' && iAmWaiting())) outsideSince = 0; else if (!outsideSince) outsideSince = Date.now();
@@ -12552,7 +12656,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const n = participantCount();
       const cutOff = n <= 1 && islandApart();
       const f = { probe: directPath, n, live: c.live, dead: c.dead,
-        stranded: !!(s && s.stranded) || cutOff || (outsideSince > 0 && Date.now() - outsideSince > 60000), atDoor };
+        stranded: !!(s && s.stranded) || cutOff || (outsideSince > 0 && Date.now() - outsideSince > 60000), atDoor,
+        way: wayBack(), turn: (turnLinks && relayTv) ? (turnLinks.refused() ? 'refused' : 'open') : '' };
       f.state = reachStateOf(f);
       return f;
     }
@@ -13013,8 +13118,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // DC doesn't exist yet when they matter).
       // 'appstop' rides the DC too (2026-08-03, the governance stop stall):
       // its authority is transport-independent exactly like the status pulse's
-      // mod table — open rooms take anyone's word, admin rooms verify the
-      // signed w — and the open pair channel is the one path that stays true
+      // mod table — open rooms take the stopper's own signed word, admin rooms
+      // verify the admin's signed w — and the open pair channel is the one path that stays true
       // while the relay view of a churning peer goes stale.
       if (msg.kind === 'status' || msg.kind === 'appstop' || msg.kind === 'mod') { // admin heartbeats too — their authority is the signature (§9), not the transport
         const pd = peers.get(to);
@@ -13277,8 +13382,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // under the key I replaced is itself the proof its sender held that
         // generation — a member — and the only ones never healed are those
         // excluded on purpose: a banned / voted-off seat, or an ejected forger.
-        if (typeof bannedSeat !== 'undefined' && bannedSeat.has(pid)) return null;
-        if (typeof isEjected === 'function' && isEjected(pid) === true) return null;
+        if (pwShut(pid)) return null;   // banned, forged or voted out
         const pd = peers.get(pid);
         if (noList && (!(pd && pd.dc && pd.dc.__authBy === pid) || meetWait.blocks(pid))) return null;   // a ban's grant goes only to the signed id at the far end of this channel, and not into the waiting room. A stale key is the member's proof: one back from a gap may have left my view
         const readIt = retainedGrant.k === 'pwinfo' ? old : null;   // the password is handed over: its frame is read (above)
@@ -13316,8 +13420,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       for (const b of list) {
         const pid = b && b.p, key = b && b.key;
         if (!pid || pid === myId || !key) continue;
-        if (typeof bannedSeat !== 'undefined' && bannedSeat.has(pid)) continue; // excluded on purpose — never healed
-        if (typeof isEjected === 'function' && isEjected(pid) === true) continue;
+        if (pwShut(pid)) continue; // excluded on purpose (banned, forged, voted out) — never healed
         if (now - (behindHealAt.get(pid) || 0) < 30000) continue;
         behindHealAt.set(pid, now);
         if (behindHealAt.size > 256) for (const [k, t] of behindHealAt) if (now - t > 60000) behindHealAt.delete(k);
@@ -13368,6 +13471,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (standbyHolds(p, msg) || bridgeHolds(p, msg)) return Promise.resolve();
       msg = bridgeOut(p, msg);
       if (turnWeb.size && (msg.k === 'roffer' || msg.k === 'ranswer' || msg.k === 'sig')) { const w = turnWeb.get(p.id); if (w && w.channel(msg)) return Promise.resolve(); }   // the web path negotiates with its end in this page
+      // TURN.23.2 A RENEGOTIATION SENDS EACH LINE ONCE (js/meet-turn.js rzPack): to a far end that said it reads the packed
+      // form; a plain description says that I do (rz: 1; a page that does not know the word ignores it and is sent plain ones).
+      if (msg.k === 'roffer' || msg.k === 'ranswer') { try { if (p.rzOk) { const z = GifOS.meetTurn.rzPack(msg); if (z) msg = z; } else msg = Object.assign({}, msg, { rz: 1 }); } catch (e) {} }
       const dc = p.dc;
       if (typeof clog === 'function') dcTally(msg); // DEBUG: what the channel bytes are
       const bulk = isGossipFrame(msg);
@@ -14010,6 +14116,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const K = GifOS.meshConsts.consts, T = GifOS.meshTopo;
       return {
         me: () => myId, dev: () => myDevHash, sid: () => sessId, now: () => Date.now(), tickMs: meshNode.tickMs(),
+        doorLost: () => !!(meshNode && meshNode.doorLost && meshNode.doorLost()),   // my door is not mine at the relay right now (no socket, or the relay forgot the door)
+        woke: () => wakeLastAt, wakeSettleMs: WAKE_SETTLE_MS,   // when this page last came back from a gap its connections do not outlive unanswered (wakeProbe), and how long its pairs get to settle
         seat: () => {
           const r = turnRaw(), v = meshSeat();
           if (!r || !v || !r.hasCoord || r.state !== 3) return null;
@@ -14157,6 +14265,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         turnPath: (pid) => { const p = peers.get(pid), pc = p && p.pc; if (!pc) return { at: 0, relay: false }; return { at: turnWebClock(pc, Date.now()), relay: !!pc.__relayCand || !!p.connected }; },
         webOpen: (pid, o) => turnWebOpen(pid, o),
         webAuth: (pid, auth) => { const w = turnWeb.get(pid); if (w) w.auth(auth); },
+        webMove: (pid, url) => { const w = turnWeb.get(pid); if (!w) return ''; const up = w.up(); w.move(url); return up ? 'moving' : 'dialled'; },
         webUp: (pid) => { const w = turnWeb.get(pid); return !!w && w.up(); },
         webClose: (pid) => { const w = turnWeb.get(pid); if (w) { turnWeb.delete(pid); try { w.close('link closed'); } catch (e) {} } },
         log: turnNote,
@@ -14193,6 +14302,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         toSignal: (sig) => { if (turnWeb.get(pid) !== end) return; if (sig.kind === 'offer') { fresh(); sig.ib = 1; sig.boot = 1; } onSignal(pid, sig); },
         toChannel: (m) => { if (turnWeb.get(pid) !== end) return; const p = peers.get(pid); if (p && p.dc) onDc(p, p.dc, m); },
         onState: () => { try { turnPaint(); } catch (e) {} },
+        onMoved: (ok) => { if (turnWeb.get(pid) === end && turnLinks) turnLinks.webMoved(pid, ok); },
       });
       turnWeb.set(pid, end);
     }
@@ -14320,6 +14430,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!meshNode) return;
       const rg = turnLinks ? turnLinks.regrant() : null;   // my door's relay forgot it: the fresh grant re-mints it (the seat registers again inside the call)
       if (rg && rg.r === meshNode.sub) { meshNode.subGo(rg.r, rg.sg); turnNote('turn-sub door ' + rg.r + ' re-granted'); }
+      const gone = turnLinks ? turnLinks.gone() : -1;   // my room's door is empty and the service holds no such room: the room is gone, and my seat joins the meeting again at the first door
+      if (gone > 0 && gone === meshNode.sub && meshNode.subGone(gone)) turnNote('turn-sub door ' + gone + ' is gone: joining the meeting again');
       if (!o) return;
       if (o.found != null) {
         const k = 'f' + o.found + ':' + o.link + ':' + String(o.sg).slice(-8);
@@ -14455,7 +14567,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const out = [];
       for (const p of peers.values()) {
         if (!p.pc) continue;
-        const r = { pid: p.id, name: p.name || rosterNames[p.id] || null, conn: p.pc.connectionState, link: !!(turnLinks && turnLinks.isLink(p.id)),
+        const r = { pid: p.id, name: p.name || rosterNames[p.id] || null, conn: p.pc.connectionState, link: !!(turnLinks && turnLinks.isLink(p.id)), free: !!(turnLinks && turnLinks.thin(p.id)), sb: !!(turnLinks && turnLinks.standby(p.id)),
           video: !!(turnLinks && turnLinks.video(p.id)), paused: !!(p.tile && p.tile.querySelector(':scope > .tpause:not(.tpause-busy)')), busyNote: !!(p.tile && p.tile.querySelector(':scope > .tpause-busy')), policy: null, turn: false,
           local: null, remote: null, vOut: 0, aOut: 0, vIn: 0, aIn: 0 };
         try { const c = p.pc.getConfiguration(); r.policy = c.iceTransportPolicy; r.turn = GifOS.meetTurn.hasTurnServer(c.iceServers); } catch (e) {}
@@ -14593,6 +14705,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       pc.ondatachannel = (ev) => { if (p.pc !== pc) return; try { ev.channel.__pc = pc; } catch (e) {} wireDc(p, ev.channel); };
       // every description this pair is handed passes soloSdp first (a Stadium picture does not wait for its sound)
       if (typeof soloSdp === 'function') { const srd0 = pc.setRemoteDescription.bind(pc); pc.setRemoteDescription = (d) => srd0(soloSdp(pc, d)); }
+      // TURN.23.1: and on a free TURN link every audio stream I send is encoded with DTX (thinSdp: silence sends no sound packets)
+      if (typeof thinSdp === 'function') { const srd1 = pc.setRemoteDescription.bind(pc); pc.setRemoteDescription = (d) => srd1(thinSdp(d, p)); }
       pc.ontrack = (ev) => {
         if (p.pc !== pc) return;
         if ((typeof isEjected === 'function' && isEjected(p.id) === true)) { try { ev.track.stop(); } catch (e) {} return; } // no media from a forger
@@ -14976,6 +15090,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!changed) return desc;
       if (typeof clog === 'function') clog('wk-h264 stripped from an offer');
       return { type: desc.type, sdp: out.join('') };
+    }
+    // TURN.23.1 THE THIN FREE LINK: SILENCE SENDS NO SOUND PACKETS (js/meet-turn.js). A description the
+    // far end of an unvouched TURN link hands me is applied with usedtx=1 on every Opus format: that word is what tells MY
+    // encoder to stop at silence (one comfort-noise packet every 400 ms instead of 50 packets a second), so a muted side
+    // and a quiet mix cost the free pool's byte cap almost nothing. Nothing is asked of the far end. Every description of
+    // the pair passes here (the pc's own setRemoteDescription, newPc), so a vouch that comes or goes takes hold at the
+    // next renegotiation; DTX left on under a vouch is harmless.
+    function thinSdp(desc, p) {
+      try {
+        if (!desc || typeof desc.sdp !== 'string' || !p || !p.id || typeof turnLinks === 'undefined' || !turnLinks || !turnLinks.thin(p.id)) return desc;
+        const sdp = GifOS.meetTurn.dtxSdp(desc.sdp);
+        if (sdp === desc.sdp) return desc;
+        if (typeof clog === 'function' && !p.__thinSaid) { p.__thinSaid = true; clog('turn-thin dtx ' + String(p.id).slice(0, 6)); }
+        return { type: desc.type, sdp };
+      } catch (e) { return desc; }
     }
     // IN-BAND FEC ONLY FOR MY OWN VOICE. My sender follows the far end's fmtp for its m-line, and with useinbandfec=1 Opus
     // answers every loss report (RTCP, smoothed over tens of seconds) by moving into its speech coder (SILK, with the FEC
@@ -15792,8 +15921,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const sp = peers.get(from);
         if (sp) {
           sp.lastHeard = Date.now();
-          if (msg.name && sp.name !== msg.name) {
-            const nm = String(msg.name).slice(0, 40); sp.name = nm; if (sp.label) sp.label.textContent = nm;
+          const said = hostRename(from) || msg.name;   // a name reset stands on my screen whatever their page says
+          if (said && sp.name !== said) {
+            const nm = String(said).slice(0, 40); sp.name = nm; if (sp.label) sp.label.textContent = nm;
             if (sp.avatar) { const letter = nameInitial(nm); if (typeof setTileLetter === 'function') setTileLetter(sp.avatar, letter); else sp.avatar.textContent = letter; }
           }
           if ('sid' in msg && sidIsNews(sp, msg.sid)) { sp.ownSid = msg.sid; claimOwnStream(sp); }
@@ -15807,20 +15937,22 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       } else if (msg.kind === 'mod') {
         takeMod(from, msg); // signature-verified in admin rooms (§9)
       } else if (msg.kind === 'appstop') {
-        // Someone stopped the room's app. Open room: anyone's word counts
-        // (anarchy, attributed). Admin room: only a SIGNED admin order
-        // counts (§9) — gossip can't fake the authority.
-        const apply = () => {
+        // Someone stopped the room's app. Open room: anyone may (anarchy,
+        // attributed), signed with the stopper's own key: the name and the
+        // time come from the signed statement (appStopCheck). Admin room: only
+        // a SIGNED admin order counts (§9) — gossip can't fake the authority.
+        const apply = (atIn, byIn) => {
           const sid = String(msg.s || ''); if (!sid) return;
           // Clamp the clock so a hostile 'at' can't tombstone all future re-shares.
-          const at = Math.min(+msg.at || Date.now(), Date.now() + 60000);
+          const at = Math.min(+atIn || Date.now(), Date.now() + MOD_AHEAD_MS);
+          const by = String(byIn || '').slice(0, 40);
           const cur = appStops.get(sid);
-          if (!cur || at > cur.at) appStops.set(sid, { at, by: String(msg.by || '').slice(0, 40) });
-          if (appKey === sid && !(myStatus.app && myStatus.app.s === sid)) setStatus('🧩 ' + (msg.by || 'Someone') + ' stopped the shared app.');
+          if (!cur || at > cur.at) appStops.set(sid, { at, by });
+          if (appKey === sid && !(myStatus.app && myStatus.app.s === sid)) setStatus('🧩 ' + (by || 'Someone') + ' stopped the shared app.');
           reconcileApp();
         };
-        if (!hasAdminRoom()) apply();
-        else admVerify(msg.w, 'appstop').then((o) => { if (o && String(o.s || '') === String(msg.s || '')) apply(); });
+        if (!hasAdminRoom()) appStopCheck(msg).then((o) => { if (o) apply(o.at, o.by); });
+        else admVerify(msg.w, 'appstop').then((o) => { if (o && String(o.s || '') === String(msg.s || '')) apply(msg.at, msg.by); });
       }
     }
 
@@ -16522,7 +16654,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // state (progressFacts) by the pure judge in js/meet-progress.js; every
     // change goes into window.__meetProgress and (DEBUG) the clog, facts and
     // all, so a test can judge the same facts again and compare.
-    let progRun = null, progNAtRelay = 0, progListAt = -1, progEndedJoin = false, progBackSince = 0;
+    let progRun = null, progNAtRelay = 0, progListAt = -1, progEndedJoin = false, progBackSince = 0, progMend = false;
     const progTrace = window.__meetProgress = [];
     function progressFacts() {
       const r = turnRaw(), s = meshSeat();
@@ -16547,6 +16679,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // reason is mine); otherwise the far network is the one that blocks, and the reason shown says so (never "your network")
       let turnClient = false, webMine = false;
       try { for (const L of (turnLinks ? turnLinks.dump().links : [])) { if (L.client) turnClient = true; if (L.web && turnLinks.webMine && turnLinks.webMine(L.far)) webMine = true; if (L.state === 'up') { turn = 'up'; turnWebUp = !!L.web; break; } if (L.web) turn = 'web'; else if (turn !== 'web' && (L.state === 'ask' || L.state === 'dial')) turn = L.state; } } catch (e) {}
+      // no link to read a state from yet (the ask is out, or the old pipe's loss is not judged): the relayed link is being asked for
+      if (!turn && ((turnLinks && relayTv && turnLinks.making()) || wayBack())) turn = 'ask';
       const st = s ? s.state : 0, coord = !!(s && s.hasCoord);
       const n = typeof headerCount === 'function' ? headerCount() : 1;
       // the count before the link: taken while the link is asked for, or while the relay step waits (a link can come up between two beats)
@@ -16596,15 +16730,23 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // progressBeat(seated, now): which wait is on, judged once a second. The way
     // in once per page; back in after a drop the calm rule lets show (the same
     // quiet time as the reconnecting note).
+    // progressBegin(): the way in is a wait from the page's first paint (the status line calls this before its first words)
+    function progressBegin() { if (!progRun && !progEndedJoin && room && typeof meshSeat === 'function') { progressStart(updateResume ? 'update' : 'join'); progressTick(); } }
     function progressBeat(seated, now) {
       if (!progRun && !progEndedJoin) progressStart(updateResume ? 'update' : 'join');
       else if (!progRun && progEndedJoin) {
         const linkDown = !!(statusEl._linkDownAt && now - statusEl._linkDownAt >= GifOS.timings.STATUS_RECONNECT_QUIET_MS);
-        const lost = !seated && !leaving;
+        // lost: the seat is gone, or it is kept and I am alone while my room's joining connection is made again (wayBack)
+        const mending = seated && wayBack();
+        const lost = (!seated || mending) && !leaving;
         if (lost) { if (!progBackSince) progBackSince = now; } else progBackSince = 0;
         const dark = !!(netDarkAt && now - netDarkAt >= GifOS.timings.STATUS_RECONNECT_QUIET_MS);
-        if ((linkDown || dark || (lost && now - progBackSince >= GifOS.timings.STATUS_RECONNECT_QUIET_MS)) && !leaving && !(typeof leftDialogUp === 'function' && leftDialogUp())) progressStart('reconnect');
+        if ((linkDown || dark || (lost && now - progBackSince >= GifOS.timings.STATUS_RECONNECT_QUIET_MS)) && !leaving && !(typeof leftDialogUp === 'function' && leftDialogUp())) { progressStart('reconnect'); progMend = mending && !linkDown && !dark; }
       }
+      // A flow that began because the joining connection was being made again ends with that: the connection is up (the
+      // flow's own end), or nothing is being made any more (the ask was refused or closed: the line says what is true now).
+      if (progRun && progRun.flow === 'reconnect' && progMend && seated && !wayBack() && !progressFacts().turn) { progRun = null; progMend = false; if (typeof clog === 'function') clog('progress reconnect dropped: no way back is being made'); try { updateStatus(); } catch (e) {} }
+      if (!progRun) progMend = false;
       const changed = progressTick();
       const w = progressWords();
       if ((changed || (w && w.secs)) && Date.now() >= statusHoldUntil) { try { updateStatus(); } catch (e) {} }
@@ -16649,7 +16791,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const now = Date.now();
       let w = null;
       try { if (typeof progressBeat === 'function') w = progressBeat(seated, now); } catch (e) {}
-      if (seated) { unseatedSince = 0; veilCeilLogged = false; if (joinVeilEl) { joinVeilEl.remove(); joinVeilEl = null; } return; }
+      if (seated || leftDialogUp()) { unseatedSince = 0; veilCeilLogged = false; if (joinVeilEl) { joinVeilEl.remove(); joinVeilEl = null; } return; }   // a page that left (or was turned away) is not connecting
       if (!unseatedSince) { unseatedSince = now; return; }
       if (now - unseatedSince < 4000) return; // fast joins never see it
       if (!joinVeilEl) {
@@ -17157,9 +17299,27 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const flood = new Set(gossipIds());
       for (const q of Array.from(peers.values())) {
         if (q.id === fromId || flood.has(q.id) || !q.dc || q.dc.readyState !== 'open') continue;
-        if (bannedSeat.has(q.id) || isEjected(q.id) === true || meetWait.blocks(q.id)) continue;
+        if (pwShut(q.id) || meetWait.blocks(q.id)) continue;
         pwSealTo(q, grant, key);
       }
+    }
+    // WHO NEVER HEARS A NEW PASSWORD FROM THIS PAGE: a seat barred by a host's ban, a forger, and a seat the room voted out
+    // (my own seat's verdict, L27: meshNode.kicked, which also names the voted-out device's other pages). The vote-out is
+    // read the moment my seat holds it, not once its pair is gone (bannedSeat waits for the 'kick' word on an open channel,
+    // and a seat with no channel to me never gets there). Every path that hands the password on asks this: the flood's
+    // channels (pwGrantAll), my door (pwDoorOut), the stale-key heal (healStaleFrom) and the door-side heal (healBehindDoor).
+    // The gossip lane needs no check: a seat does not seat (occ) or send to a voted-out one. A page trusts only itself:
+    // an open room's grant carries no list a stranger wrote.
+    function pwShut(pid) {
+      if (!pid) return false;
+      if (bannedSeat.has(pid) || isEjected(pid) === true) return true;
+      try { return !hasAdminRoom() && !!(meshNode && meshNode.kicked && meshNode.kicked(pid)); } catch (e) { return false; }
+    }
+    // An open room's grant to the room: sendAll, minus every channel pwShut names.
+    function pwGrantAll(grant) {
+      if (typeof carryG !== 'undefined' && carryG) { carryGuestSend(grant); return; }   // a carried page: its carrier says it in the room
+      sentFrames.push(grant); if (sentFrames.length > 20) sentFrames.shift();
+      fanOut(grant, (p) => { if (!pwShut(p.id)) dcSend(p, grant); });
     }
     function pwBarOut(no) {
       for (const id of no) {
@@ -17925,8 +18085,73 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // a hit costs a string compare, a miss costs what it always did.
     const modVer = new Map(); // pub|sig|statement -> the verified statement
     const MOD_VER_MAX = 8;
+    // SIGNED ORDERS IN AN OPEN-FLOOR ROOM (0.9.27.1). Anyone may mute, blur or reset the name of anyone for the whole
+    // room, and the order is always attributed. An open room has no host key, so each order is signed by the person who
+    // gives it, with the identity key that already signs the agenda, "bring everyone here" and the vote-out. The statement
+    // is { t:'mod', room, tgt, f, on, at, by: the giver's id, nm: the giver's name, name: a rename's words }. A receiving
+    // page builds the order from the statement alone, and takes it only when the key behind the signature is the id it
+    // names: a hacked page cannot put another person's name on an order or change one in transit. An order dated more
+    // than MOD_AHEAD_MS past this page's clock is not taken, so a far-future date cannot outrank the orders after it.
+    // These are the only orders an open room carries; anything else in its table is a host's order and is not taken.
+    const MOD_OPEN_FIELDS = ['mute', 'blur', 'rename'];
+    const MOD_AHEAD_MS = GifOS.timings.MOD_AHEAD_MS;
+    function modOpenSp(tgt, f, e) {
+      const o = { t: 'mod', room: roomKey(), tgt: String(tgt), f, on: !!e.on, at: +e.at || 0, by: String(e.byId || ''), nm: String(e.by || '').slice(0, 40) };
+      if (f === 'rename') o.name = String(e.name || '').slice(0, 40);
+      return JSON.stringify(o);
+    }
+    // Sign every order of mine the table holds unsigned (or changed since it was signed). The one path for every writer.
+    function modSignMine() {
+      if (hasAdminRoom() || !myIdentity || !myId) return Promise.resolve();
+      const jobs = [];
+      for (const tgt of Object.keys(modTable)) {
+        const t = modTable[tgt]; if (!t || typeof t !== 'object' || tgt === '*') continue;
+        for (const f of MOD_OPEN_FIELDS) {
+          const e = t[f]; if (!e || typeof e !== 'object' || e.byId !== myId) continue;
+          const sp = modOpenSp(tgt, f, e); if (e.w && e.w.sp === sp) continue;
+          jobs.push(net.edSign(myIdentity.priv, sp).then((sig) => { if (t[f] === e) e.w = { sp, sig, pub: myIdentity.pubB64 }; }).catch(() => {}));
+        }
+      }
+      return Promise.all(jobs);
+    }
+    // The order a signed statement proves, or null. Built from the statement, never from the fields beside it.
+    async function modOpenCheck(tgt, f, w) {
+      if (!w || typeof w.sp !== 'string' || typeof w.sig !== 'string' || typeof w.pub !== 'string' || w.sp.length > 600) return null;
+      let o; try { o = JSON.parse(w.sp); } catch (e) { return null; }
+      if (!o || o.t !== 'mod' || o.room !== roomKey() || o.tgt !== tgt || o.f !== f || typeof o.on !== 'boolean' || typeof o.by !== 'string' || !o.by || typeof o.nm !== 'string') return null;
+      if (!(+o.at > 0) || +o.at > Date.now() + MOD_AHEAD_MS) return null;
+      try {
+        if ((await GifOS.meshIdentity.peerIdOf(w.pub)) !== o.by) return null;
+        if (!(await net.edVerify(w.pub, w.sig, w.sp))) return null;
+      } catch (e) { return null; }
+      const out = { on: o.on, by: o.nm, byId: o.by, at: +o.at, w: { sp: w.sp, sig: w.sig, pub: w.pub } };
+      if (f === 'rename') out.name = typeof o.name === 'string' ? o.name : '';
+      return out;
+    }
+    // One verify per signature: the table rides every beat of every member.
+    const modOpenSeen = new Map(); // sig -> the proven order, or false
+    const MOD_OPEN_SEEN_MAX = 512;
+    function modOpenIn(inc) {
+      if (!inc || typeof inc !== 'object') return;
+      for (const tgt in inc) {
+        if ((tgt in Object.prototype) || tgt === '*' || !inc[tgt] || typeof inc[tgt] !== 'object') continue;
+        for (const f of MOD_OPEN_FIELDS) {
+          const e = inc[tgt][f], w = e && typeof e === 'object' ? e.w : null;
+          if (!w || typeof w.sig !== 'string') continue;   // unsigned: nobody's order
+          const mine = (modTable[tgt] || {})[f];
+          if (mine && mine.w && mine.w.sig === w.sig) continue;   // the order I hold
+          const take = (ord) => { if (!ord) return; const one = {}; one[tgt] = {}; one[tgt][f] = ord; mergeMod(one); };
+          if (modOpenSeen.has(w.sig)) { take(modOpenSeen.get(w.sig)); continue; }
+          modOpenCheck(tgt, f, w).then((ord) => {
+            if (modOpenSeen.size >= MOD_OPEN_SEEN_MAX) modOpenSeen.delete(modOpenSeen.keys().next().value);
+            modOpenSeen.set(w.sig, ord || false);
+            take(ord);
+          });
+        }
+      }
+    }
     function takeMod(from, msg) {
-      if (!hasAdminRoom()) { if (msg.mod) mergeMod(msg.mod); return; }
+      if (!hasAdminRoom()) { if (msg.mod) modOpenIn(msg.mod); return; }
       if (!msg.modw) return;
       if (DEBUG_ON && window.__modDelayUntil && Date.now() < window.__modDelayUntil) return;   // DEBUG=on only: this page hears the admin's orders late (a test)
       const key = String(msg.modw.pub) + '|' + String(msg.modw.sig) + '|' + String(msg.modw.sp);
@@ -18448,7 +18673,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (typeof RTCPeerConnection !== 'function') { carryInstead('no RTCPeerConnection'); return; }   // no connection at all: carried by a seat (docs/turn-carry.md)
       meshNode = GifOS.meshWire.createMeshNode({
         relayUrl: relay.replace(/\/$/, ''),
-        onRelayFail: () => relayConnectFailed(), onRelayOpen: () => relayConnectOpened(),   // a relay that never answers is left (relayUrl)
+        onRelayFail: () => relayConnectFailed(), onRelayOpen: () => { relayConnectOpened(); try { if (turnLinks) turnLinks.relayBack(); } catch (e) {} },   /* TURN.10.1: an ask refused because my connection was away goes again */   // a relay that never answers is left (relayUrl)
         sid: sessId, tok: sessTok, key: roomE2E, identity, tickMs: 500,
         levers: { ISLAND_MODE: 1, URL_KEY: (parseInt(String(urlKeyHex).slice(0, 8), 16) | 1) >>> 0 },   // islands found under the meeting key (above)
         oldKeys: [prevRoomE2E, openKey].filter((k, i, all) => k && k !== roomE2E && all.indexOf(k) === i),   // a door blob one of these opens is behind me, not ahead (mesh-wire R6)
@@ -18927,6 +19152,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const vtr = p.stream && p.stream.getVideoTracks()[0];
       if (!p.connected || p.relayed) return 'link';
       if (document.hidden) return 'hidden';
+      if (typeof botParks === 'function' && visParkSent.get(pid) === true) return 'hidden';   // parked for the bot view: no frames is the ask
       if (document.pictureInPictureElement && document.pictureInPictureElement === p.video) return 'pip'; // a floated tile paints in the float, not in the room: no frame count to judge here
       if (!vtr || vtr.readyState !== 'live') return 'track';
       if (!p.video || !tileHolds(p.video, p.stream) || p.video.paused || p.video.readyState === 0) return 'element';
@@ -20451,6 +20677,87 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (pwModal.dataset.mode === 'join') { location.href = MEET_PATH; return; }
       pwModal.style.display = 'none';
     });
+    // THE ROOM'S PASSWORD CHANGES (the Password button's Save, and the re-key after a vote-out): the relay's door gets the
+    // proof, the people inside get the password (an open room) or the order (an admin room), then this page moves to the new key.
+    // vo (the re-key after a vote-out): the voted-out ids it follows. A hint only: a page that reads it does not re-key
+    // the room again for them (voteRekey); it gives nobody anything.
+    function pwSetRoom(v, vo) {
+      storePw(v);
+      net.meetPwProof(room, av, roomPw).then(async (pr) => {
+        pwProof = pr;
+        // Two messages, two audiences: the relay's door gate gets the PROOF
+        // (it only ever compares equality); the room's occupants get the
+        // plaintext SEALED ({k:'pwinfo'}), so each can store it and derive
+        // their own proof for reconnects. In an admin room both orders are
+        // SIGNED (§9): the relay verifies the setpw, peers verify the pwinfo.
+        const ep = pwEpoch + 1; // the signed epoch: replaying an older grant can never roll anyone backwards
+        const wRelay = hasAdminRoom() ? await admSigned('setpw', { pw: pr }) : undefined;   // a captured room: signed by the captor (admKeys)
+        if (!!av && v) {
+          // ADMIN ROOM, A PASSWORD SET OR CHANGED: the door locks with the
+          // new proof, and the room gets the signed ORDER, never the
+          // password. Every other page leaves for the door's prompt
+          // (pwBootToDoor); this page keeps its seat and moves to the new
+          // key once the order has left under the old one. The order is
+          // retained: a page that missed it and still speaks the old key is
+          // sent it again (healStaleFrom, healBehindDoor).
+          const wOrder = await admSigned('pwreset', { ep });
+          relaySendObj({ t: 'setpw', pw: pr, w: wRelay });
+          const order = { k: 'pwreset', by: myName(), w: wOrder, ep };
+          sendAll(order);
+          pwBootOut(Array.from(peers.keys()));   // every present page is out of the room until it types the new password: its seat is given its goodbye
+          storePwEpoch(ep); retainedGrant = order;
+          pwLog('pwreset-sent ep=' + ep);
+          txm(() => Promise.resolve()).then(() => rekeyRoom());
+          // An admin who locks the room before she holds a seat (nobody
+          // inside would seat her) knocks again on the new lock: the door
+          // drops at once every socket that has not passed it, so her fresh
+          // knock founds the room instead of waiting out her join round.
+          if (!meshCoord()) {
+            const gen = meshBootGen;
+            pwLog('pwreset-sent unseated: knocking again on the new lock');
+            setTimeout(() => { if (gen !== meshBootGen || leaving || bannedOut || pwBlocked || meshCoord()) return; startMesh(); }, 1500);
+          }
+          return;
+        }
+        const wPeers = hasAdminRoom() ? await admSigned('pwinfo', { pw: v, ep }) : undefined;   // a captured room hands the password to everyone inside, signed
+        relaySendObj({ t: 'setpw', pw: pr, w: wRelay });
+        const grant = { k: 'pwinfo', pw: v, by: myName(), w: wPeers, ep };
+        if (Array.isArray(vo) && vo.length) grant.vo = vo.slice(0, 16);
+        pwGrantAll(grant);   // never to a seat the room voted out (pwShut)
+        pwDoorOut(grant, roomE2E, null);   // and my door, still under the key the rotation below replaces
+        // RELAY-ENVELOPE COPY (same law as the follow-me link): the flood
+        // above rides DC pairs + gossip, and a member whose pair is
+        // down/rebuilding at THIS instant needs the grant more than anyone
+        // — grant healing covers them only once their stale beats flow,
+        // and a DC-less deep member's beats are occ-gated and may not.
+        // Each relay-reachable member without an open channel also gets a
+        // `password` frame over the relay (→ onRelayPeer), under the SAME
+        // old key as the flood; the epoch guard absorbs doubles.
+        try {
+          // Paced like the door re-grant: one copy per target is one relay
+          // frame, and a large room passes the relay's per-socket burst.
+        } catch (e) {}
+        storePwEpoch(ep); retainedGrant = grant; // the setter retains its own grant — it heals stale neighbours like anyone else
+        // KEY ROTATION (§8): the pwinfo above is sealed under the OLD key —
+        // that is exactly how current occupants learn the new password. Only
+        // after those seals have left the queue do I move to the new key
+        // (txm is a chain; a queued no-op resolves after every earlier seal).
+        // Whoever doesn't learn the new password falls out of the ciphertext
+        // — which upgrades vote-off to a hard exclusion in locked rooms.
+        // The old ONE-SHOT sharp edge (a present member whose DC was
+        // mid-rebuild at this instant was orphaned; a delayed rotation was
+        // tried and REVERTED — it broke the R6 stale-pw bounce) is closed
+        // by GRANT HEALING now: rotation stays PROMPT, and a member who
+        // missed the flood keeps sealing under the previous key, which any
+        // neighbour recognizes and answers by replaying the retained signed
+        // grant one hop over their pair — see the §LOCK GRANT HEALING note
+        // at the state block. Exclusion is untouched: the excluded are
+        // disconnected/tombstoned before the change and no one heals them.
+        txm(() => Promise.resolve()).then(() => rekeyRoom());
+      }).catch((err) => pwChainFailed(err, false));
+      renderFiles(); // reflect the new password state (files allowed / the lock note)
+      reactRoomState(); // the password is the key to clear video — re-derive MY tiles now, not on the next heartbeat
+    }
     let pwSaveWaited = false;
     document.getElementById('pw-save').onclick = () => {
       const v = document.getElementById('pw-new').value.trim();
@@ -20502,80 +20809,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (!confirm('Clearing the password opens this room to anyone — and DELETES the ' + n + ' file' + (n > 1 ? 's' : '') + ' shared here, for everyone. Continue?')) return;
           purgeAllFiles(true);
         }
-        storePw(v);
-        net.meetPwProof(room, av, roomPw).then(async (pr) => {
-          pwProof = pr;
-          // Two messages, two audiences: the relay's door gate gets the PROOF
-          // (it only ever compares equality); the room's occupants get the
-          // plaintext SEALED ({k:'pwinfo'}), so each can store it and derive
-          // their own proof for reconnects. In an admin room both orders are
-          // SIGNED (§9): the relay verifies the setpw, peers verify the pwinfo.
-          const ep = pwEpoch + 1; // the signed epoch: replaying an older grant can never roll anyone backwards
-          const wRelay = hasAdminRoom() ? await admSigned('setpw', { pw: pr }) : undefined;   // a captured room: signed by the captor (admKeys)
-          if (!!av && v) {
-            // ADMIN ROOM, A PASSWORD SET OR CHANGED: the door locks with the
-            // new proof, and the room gets the signed ORDER, never the
-            // password. Every other page leaves for the door's prompt
-            // (pwBootToDoor); this page keeps its seat and moves to the new
-            // key once the order has left under the old one. The order is
-            // retained: a page that missed it and still speaks the old key is
-            // sent it again (healStaleFrom, healBehindDoor).
-            const wOrder = await admSigned('pwreset', { ep });
-            relaySendObj({ t: 'setpw', pw: pr, w: wRelay });
-            const order = { k: 'pwreset', by: myName(), w: wOrder, ep };
-            sendAll(order);
-            pwBootOut(Array.from(peers.keys()));   // every present page is out of the room until it types the new password: its seat is given its goodbye
-            storePwEpoch(ep); retainedGrant = order;
-            pwLog('pwreset-sent ep=' + ep);
-            txm(() => Promise.resolve()).then(() => rekeyRoom());
-            // An admin who locks the room before she holds a seat (nobody
-            // inside would seat her) knocks again on the new lock: the door
-            // drops at once every socket that has not passed it, so her fresh
-            // knock founds the room instead of waiting out her join round.
-            if (!meshCoord()) {
-              const gen = meshBootGen;
-              pwLog('pwreset-sent unseated: knocking again on the new lock');
-              setTimeout(() => { if (gen !== meshBootGen || leaving || bannedOut || pwBlocked || meshCoord()) return; startMesh(); }, 1500);
-            }
-            return;
-          }
-          const wPeers = hasAdminRoom() ? await admSigned('pwinfo', { pw: v, ep }) : undefined;   // a captured room hands the password to everyone inside, signed
-          relaySendObj({ t: 'setpw', pw: pr, w: wRelay });
-          const grant = { k: 'pwinfo', pw: v, by: myName(), w: wPeers, ep };
-          sendAll(grant);
-          pwDoorOut(grant, roomE2E, null);   // and my door, still under the key the rotation below replaces
-          // RELAY-ENVELOPE COPY (same law as the follow-me link): the flood
-          // above rides DC pairs + gossip, and a member whose pair is
-          // down/rebuilding at THIS instant needs the grant more than anyone
-          // — grant healing covers them only once their stale beats flow,
-          // and a DC-less deep member's beats are occ-gated and may not.
-          // Each relay-reachable member without an open channel also gets a
-          // `password` frame over the relay (→ onRelayPeer), under the SAME
-          // old key as the flood; the epoch guard absorbs doubles.
-          try {
-            // Paced like the door re-grant: one copy per target is one relay
-            // frame, and a large room passes the relay's per-socket burst.
-          } catch (e) {}
-          storePwEpoch(ep); retainedGrant = grant; // the setter retains its own grant — it heals stale neighbours like anyone else
-          // KEY ROTATION (§8): the pwinfo above is sealed under the OLD key —
-          // that is exactly how current occupants learn the new password. Only
-          // after those seals have left the queue do I move to the new key
-          // (txm is a chain; a queued no-op resolves after every earlier seal).
-          // Whoever doesn't learn the new password falls out of the ciphertext
-          // — which upgrades vote-off to a hard exclusion in locked rooms.
-          // The old ONE-SHOT sharp edge (a present member whose DC was
-          // mid-rebuild at this instant was orphaned; a delayed rotation was
-          // tried and REVERTED — it broke the R6 stale-pw bounce) is closed
-          // by GRANT HEALING now: rotation stays PROMPT, and a member who
-          // missed the flood keeps sealing under the previous key, which any
-          // neighbour recognizes and answers by replaying the retained signed
-          // grant one hop over their pair — see the §LOCK GRANT HEALING note
-          // at the state block. Exclusion is untouched: the excluded are
-          // disconnected/tombstoned before the change and no one heals them.
-          txm(() => Promise.resolve()).then(() => rekeyRoom());
-        }).catch((err) => pwChainFailed(err, false));
-        renderFiles(); // reflect the new password state (files allowed / the lock note)
-        reactRoomState(); // the password is the key to clear video — re-derive MY tiles now, not on the next heartbeat
+        pwSetRoom(v);
         pwModal.style.display = 'none';
       }
     };
@@ -21923,6 +22157,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // view-only join a denied camera lands in; a viewer the host later
           // calls up gets media through lateMedia (a user gesture), exactly
           // like any view-only guest tapping the mic button.
+          if (params.get('agent') === '1' || (typeof window !== 'undefined' && window.__gifosAgentQ === true)) params.set('bot', '1');   // agent mode (gifosAgent) is bot mode, and it cannot be untagged
           let assistantBoot = params.get('bot') === '1';
           try { assistantBoot = assistantBoot || sessionStorage.getItem('gifos_bot') === '1'; } catch (e) {}
           if (assistantBoot) {
@@ -21969,6 +22204,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           gum.then((stream) => {
             if (!stream) {
               localStream = null;
+              // A reload lands with mic and camera off, so it asks for nothing and has no stream: a share
+              // that was up still comes back (or offers its one-tap prompt), as on the other two boot paths.
+              try { if (typeof applyRecoverMedia === 'function') applyRecoverMedia(); } catch (e) {}
               try { updateTile('me'); } catch (e) {}
               try { broadcastStatus(); } catch (e) {}
               if (typeof noteAudioDevices === 'function') noteAudioDevices();   // the list only (no prompt): the first Mic tap can ask which one
@@ -22570,9 +22808,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     };
     // Room-wide chat options live in modTable['*'] (signed in admin rooms).
     // Open rooms have no switches — fixed policy only (STEERING 21:09).
-    const CHAT_SLOW_MS = GifOS.timings.CHAT_SLOW_MS;
+    const CHAT_SLOW_MS = GifOS.timings.CHAT_SLOW_MS, CHAT_SLOW_LAG_MS = GifOS.timings.CHAT_SLOW_LAG_MS;
     let chatSlowLast = 0;
-    const chatSlowSeen = new Map(); // byId -> receiver clock of their last kept line
+    const chatSlowSeen = new Map(); // byId -> receiver clock when their next line is due (slowBlocks)
+    // What happened to my lines and to the lines slow mode kept out, in the
+    // debug record (Settings → Debug logging): sent, held for slow mode,
+    // refused, or dropped on arrival. Ids and authors only, never the text.
+    function chatTrace(ev, m) {
+      if (!DEBUG_ON || typeof window === 'undefined') return;
+      const r = window.__chatTrace || (window.__chatTrace = []);
+      r.push({ t: Date.now(), ev: ev, id: m && m.id ? String(m.id).slice(0, 24) : null, by: m && m.byId ? String(m.byId).slice(0, 12) : null });
+      if (r.length > 300) r.splice(0, r.length - 300);
+    }
     let chatOptOverride = null; // chatOptForTest
     function modStarOn(field, ifAdminUnset) {
       if (chatOptOverride && Object.prototype.hasOwnProperty.call(chatOptOverride, field))
@@ -22653,14 +22900,22 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (o.role !== 'bot' && o.role !== 'controller') return false;
       return typeof o.op === 'string' && !!o.op;
     }
+    // Slow mode holds each author to one line per CHAT_SLOW_MS, counted as a
+    // pace, not as the gap between two arrivals. Lines travel different roads
+    // and a tab that was asleep takes everything that queued for it at once,
+    // so lines an author spaced out can reach this page together. Each line
+    // books the author's next slot (chatSlowSeen: the time it is due). A line
+    // lands while it comes no more than CHAT_SLOW_LAG_MS ahead of its slot:
+    // lines that bunched on the way all land, and a sender that skips its own
+    // wait still gets no more than the pace plus that credit.
     function slowBlocks(m) {
       if (!slowModeOn() || !m || !m.byId || m.byId === myId || isChatAdmin(m.byId)) return false;
       if (m.q === 1 || m.qv || m.qs != null) return false;
       if (botControlLine(m)) return false;
       const now = Date.now();
-      const prev = chatSlowSeen.get(m.byId) || 0;
-      if (prev && now - prev < CHAT_SLOW_MS) return true;
-      chatSlowSeen.set(m.byId, now);
+      const due = chatSlowSeen.get(m.byId) || 0;
+      if (due - now > CHAT_SLOW_LAG_MS) { chatTrace('slow-drop', m); return true; }
+      chatSlowSeen.set(m.byId, Math.max(due, now) + CHAT_SLOW_MS);
       return false;
     }
     function applyCdel(id, w) {
@@ -23072,6 +23327,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function onDc(p, dc, m, admOk) {
       if (p && p.id && isSevered(p.id)) return; // DEBUG sever — see severPair; and an ejected forger
+      // TURN.23.2: a packed renegotiation frame is the roffer/ranswer it was made from; either form says the far end reads it
+      if (m && m.k === 'rz') { let o = null; try { o = GifOS.meetTurn.rzOpen(m); } catch (e) {} if (!o) return; if (p) p.rzOk = true; m = o; }
+      else if (m && m.rz === 1 && (m.k === 'roffer' || m.k === 'ranswer') && p) p.rzOk = true;
       if (m && m.from != null && (typeof isEjected === 'function' && isEjected(String(m.from)) === true)) return; // a forwarded frame FROM a forger (fsig/fhi/fmesh)
       // ANY DataChannel receive is FIRST-HAND transport proof (peer-instance
       // regression report, 2026-07-27): the starve edge keyed on MESH
@@ -23501,9 +23759,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       } else if (m.k === 'subnone') {
         subsRefuse(p);
       } else if (m.k === 'subfull') {
-        subsFull(!!m.free);
+        subsFull(m);
       } else if (m.k === 'subturned') {
-        subsTurnedSaid(p, dc);      // a door in my free-plan room turned someone away
+        subsTurnedSaid(p, dc, m);   // a door in my room turned someone away
       } else if (m.k === 'wpong') {
         p.wakePongAt = Date.now();
       } else if (m.k === 'bye') {
@@ -23631,6 +23889,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         pwLog('pwinfo-adopt from=' + String(p.id || '?').slice(0, 6) + ' by=' + (m.by || '?') + ' ep=' + m.ep + ' myEp=' + pwEpoch + ' pwSame=' + (String(m.pw || '') === String(roomPw || '')));
         storePwEpoch(m.ep != null ? m.ep : pwEpoch + 1);
         retainedGrant = { k: 'pwinfo', pw: m.pw, by: m.by, w: m.w, ep: pwEpoch }; // retained VERBATIM — any member can heal a stale neighbour with the admin's own signature
+        if (!hasAdminRoom() && Array.isArray(m.vo)) for (const x of m.vo.slice(0, 16)) if (typeof x === 'string' && x) voteRekeyed.add(x);   // the re-key after a vote-out: not again for them (voteRekey)
         if (grantMine) { retainedGrant = null; pwWaitProof = false; }
         else if (grantNo) {
           retainedGrant.no = grantNo; retainedGrant.wb = m.wb;
@@ -24355,6 +24614,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (sl) sl.checked = slowModeOn();
       const lk = document.getElementById('adm-chat-clink');
       if (lk) lk.checked = chatLinksOn();
+      try { paintAiNotesAdmin(); } catch (e) {}
     }
     document.getElementById('chatmod').onclick = () => {
       setMod('*', 'chat', !chatOffInfo());
@@ -24378,6 +24638,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     document.getElementById('adm-chat-chist').onchange = (e) => { setMod('*', 'chist', !!e.target.checked); };
     document.getElementById('adm-chat-slow').onchange = (e) => { setMod('*', 'slow', !!e.target.checked); };
     document.getElementById('adm-chat-clink').onchange = (e) => { setMod('*', 'clink', !!e.target.checked); renderChat(); };
+    document.getElementById('adm-ai-notes').onchange = (e) => { setMod('*', 'ain', e.target.value === 'off' || e.target.value === 'ask' ? e.target.value : 'allowed'); paintAiNotesAdmin(); };
     document.getElementById('chatlog').addEventListener('scroll', () => {
       const log = document.getElementById('chatlog');
       if (logNearBottom(log)) paintChatNew(true);
@@ -24537,23 +24798,58 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         try { inp.setSelectionRange(pos, pos); } catch (err) {}
       });
     })();
+    // MY LINE GOES OUT ONE WAY: postChat. Slow mode paces the sender, and it
+    // never throws a line away. A line said inside the wait is held, in order,
+    // and goes out the moment its slot comes; it joins my chat log as it goes,
+    // and the status line says it is on its way. Only past CHAT_HELD_MAX held
+    // lines is a line refused (false: the caller keeps it, the box keeps the
+    // text). Returns 'sent' or 'held'.
+    const CHAT_HELD_MAX = 5;
+    const chatHeld = [];
+    let chatHeldTimer = null;
+    function chatPaced(m) { return slowModeOn() && !amAdmin && !botControlLine(m); }
+    function chatGo(m) {
+      if (chatPaced(m)) chatSlowLast = Date.now();
+      chat.set(m.id, m);
+      sendAll({ k: 'chat', m });
+      chatTrace('sent', m);
+    }
+    function chatHeldDrain() {
+      chatHeldTimer = null;
+      while (chatHeld.length) {
+        const m = chatHeld[0];
+        if (chatOffInfo() && !amAdmin) { chatHeld.length = 0; setStatus(uiText('stTheHostHasTurnedChat', 'The host has turned chat off.')); break; }
+        const wait = chatPaced(m) ? chatSlowLast + CHAT_SLOW_MS - Date.now() : 0;
+        if (wait > 0) { chatHeldTimer = setTimeout(chatHeldDrain, wait); break; }
+        chatHeld.shift();
+        m.at = Date.now();   // said now: its slot is when the room hears it
+        chatGo(m);
+        renderChat();
+      }
+    }
+    function postChat(m) {
+      if (chatHeld.length || (chatPaced(m) && Date.now() - chatSlowLast < CHAT_SLOW_MS)) {
+        if (chatHeld.length >= CHAT_HELD_MAX) { chatTrace('refused', m); setStatus(uiText('stSlowModeWaitAFew', 'Slow mode: wait a few seconds before posting again.')); return false; }
+        chatHeld.push(m);
+        chatTrace('held', m);
+        setStatus(uiText('stSlowModeHeld', 'Slow mode: your message goes out in a few seconds.'));
+        if (!chatHeldTimer) chatHeldDrain();
+        return 'held';
+      }
+      chatGo(m);
+      return 'sent';
+    }
     document.getElementById('chatform').addEventListener('submit', (e) => {
       e.preventDefault();
       if (chatOffInfo() && !amAdmin) { setStatus(uiText('stTheHostHasTurnedChat', 'The host has turned chat off.')); return; }
       const inp = document.getElementById('chat-in');
       const text = inp.value.trim();
       if (!text) return;
-      if (slowModeOn() && !amAdmin) {
-        const now = Date.now();
-        if (now - chatSlowLast < CHAT_SLOW_MS) { setStatus(uiText('stSlowModeWaitAFew', 'Slow mode: wait a few seconds before posting again.')); return; }
-        chatSlowLast = now;
-      }
       const prayBtn = document.getElementById('pray');
       const m = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text };
       if (prayOn() && prayBtn && prayBtn.getAttribute('aria-pressed') === 'true') m.prayer = 1;
       if (pendingReply) m.reply = { id: pendingReply.id, by: pendingReply.by, text: pendingReply.text };
-      chat.set(m.id, m);
-      sendAll({ k: 'chat', m });
+      if (!postChat(m)) return;   // slow mode already holds as many lines as it keeps: this one stays in the box
       inp.value = '';
       // A search would hide the line you just sent.
       const q = document.getElementById('chatq');
@@ -25279,6 +25575,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // track is the stall this whole path exists to avoid.
     function wkQuietBind(video, stream, p) {
       if (video.error && video._wrapOf === stream) return; // the player failed on this picture: a re-seat cannot cure it
+      if (typeof botParks === 'function' && botParks(p.id, false)) return;   // parked for the bot view
       const t = Date.now();
       // One re-seat in flight; a sender that never goes quiet (an old client
       // re-seats at once) is asked again on a doubling backoff, 60 s at most.
@@ -32093,7 +32390,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // friend carries (relayVia). The tile's element can hold a painted
         // picture instead (camera off), which has no sound.
         const voice = p.relayed ? ((relayVia.get(pid) || {}).stream || null) : (p.stream || null);
-        busVolume(p.video, (bus && !sealed && !isHeld(pid)) ? mix[bus] : 0, voice);
+        busVolume(p.video, (bus && !sealed && !isHeld(pid) && !(typeof botHidden === 'function' && botHidden(pid))) ? mix[bus] : 0, voice);
       }
       // feed tiles (the nested mosaics): stage strip is Stage; stadium tiles
       // are The stadium.
@@ -32161,7 +32458,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           bc: window.__bcTrace || null, mem: window.__memSamples || null,
           pip: window.__pipTrace || null, view: window.__viewTrace || null, content: window.__contentTrace || null,
           meters: (typeof dbgMeterKit !== 'undefined' && dbgMeterKit) ? dbgMeterKit.ring() : null,
-          caps: window.__capTrace || null,
+          caps: window.__capTrace || null, chat: window.__chatTrace || null,
         }),
         snapshot: () => {
           const d = window.__gifosVideo && window.__gifosVideo.debugDump ? window.__gifosVideo.debugDump() : null;
@@ -37485,6 +37782,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // pick: a microphone chosen in the mic chooser before any mic was open
     // (a quiet join holds none): the ask names that device.
     function lateMedia(kind, pick) {
+      if (capClosed) return;   // the meeting has ended for this page (left, or turned away at a full door): ask nothing, say nothing
       if (bcWatchingViewer()) return;
       if (myStatus.bot) { setStatus(uiText('stABotDoesNotUse', 'A bot does not use a camera or speak.')); return; }
       if (BROADCAST && !bcMayPublishAv()) { enforceBroadcastSeat(); return; }
@@ -37643,7 +37941,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         });
     }
 
-    micBtn.onclick = () => {
+    // ONE MIC TAP. chooser: the tap came from the dock's Mic button, beside
+    // the chooser it opens. The float's mic button and the OS mic toggle pass
+    // false: the chooser is drawn in the meeting page, which the person cannot
+    // see from there, so a muted tap there unmutes at once with the mic in use
+    // or the one picked before (the browser's own choice when none was).
+    // Only a microphone is ever asked for: the camera stays as it is.
+    function micTap(chooser) {
+      if (capClosed) return;   // no meeting here now (left, or turned away): no device ask, no device words
       if (bcWatchingViewer()) return;
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (BROADCAST && !bcMayPublishAv()) { enforceBroadcastSeat(); return; }
@@ -37652,18 +37957,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!track) {
         // No mic open yet (a quiet join opens none): with two or more known
         // microphones the tap asks which one, as it does over a held mic.
+        if (!chooser) { if (micChooserOpen()) closeMicChooser(false); return lateMedia('mic', micInputs.some((m) => m.id === micDeviceId) ? micDeviceId : undefined); }
         if (micChooserOpen()) { closeMicChooser(true); return; }
         if (micInputs.length > 1 && !bootGumPending && !lateAsk) { openMicChooser(null); return; }
         return lateMedia('mic');
       }
       if (!track.enabled && amGloballyMuted()) { sayState(modOf('me').mute && modOf('me').mute.wait ? 'micWaitRoom' : 'mutedByHost', { by: (modOf('me').mute || {}).by }); return; }
-      if (micChooserOpen()) { closeMicChooser(true); return; }
+      if (micChooserOpen()) { closeMicChooser(chooser); if (chooser) return; }
       // More than one microphone: a tap while muted asks which one (the camera
       // button's chooser, for the mic). A tap while talking mutes at once. One
       // microphone: the tap toggles, as it always has.
-      if (!track.enabled && micInputs.length > 1) { openMicChooser(track); return; }   // one mic: the tap unmutes, as it always has
+      if (chooser && !track.enabled && micInputs.length > 1) { openMicChooser(track); return; }   // one mic: the tap unmutes, as it always has
       setMicOn(track, !track.enabled);
-    };
+    }
+    micBtn.onclick = () => micTap(true);
     function setMicOn(track, on) {
       track.enabled = !!on;
       myStatus.muted = !track.enabled;
@@ -37998,6 +38305,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (camBtn && camBtn.focus) { try { camBtn.focus(); } catch (e) {} }
     }
     camBtn.onclick = () => {
+      if (capClosed) return;   // no meeting here now (left, or turned away): no device ask, no device words
       if (bcWatchingViewer()) return;
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (BROADCAST && !bcMayPublishAv()) { enforceBroadcastSeat(); return; }
@@ -38139,7 +38447,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     (function wireMediaSession() {
       const ms = navigator.mediaSession; if (!ms || !ms.setActionHandler) return;
       const wire = (action, fn) => { try { ms.setActionHandler(action, fn); } catch (e) { /* action unsupported here */ } };
-      wire('togglemicrophone', () => micBtn.onclick());
+      wire('togglemicrophone', () => micTap(false));   // the OS control: no chooser out of sight
       wire('togglecamera', () => {
         if (!myStatus.camOff) { camBtn.onclick(); return; }
         if (document.hidden) return;
@@ -38244,6 +38552,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const lob = document.getElementById('lobby');
       if (lob && lob.classList.contains('show')) return;
       if (!myStatus || myStatus.blur !== 0) return;
+      if (myStatus.bot && myStatus.camOff) return;   // an assistant with no camera shows no face: nothing is held
       let hold = '';
       try { hold = blurHold('me'); } catch (e) { return; }
       if (!hold) return;
@@ -38442,6 +38751,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           else if (Date.now() - at > 1500) { bannedSeat.add(q.id); confirmGone(q.id, 'ban'); dropPeer(q.id); }
         }
         for (const pid of Array.from(kickSaid.keys())) if (!meshNode.kicked(pid)) { kickSaid.delete(pid); bannedSeat.delete(pid); }
+        voteRekey();
       }
       const k = meshNode.kickTally(); const tally = {}; let need = 0;
       for (const pid of Object.keys(k.tally)) { const dv = devOf[pid]; if (!dv) continue; tally[dv] = Math.max(tally[dv] || 0, k.tally[pid]); need = Math.max(need, k.need[pid] || 0); }
@@ -38451,6 +38761,39 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (kickByesIn.size) {   // the words are forgotten once others have answered me for a while
         if (!answeredByOther()) keptAnsweredAt = 0; else if (!keptAnsweredAt) keptAnsweredAt = Date.now(); else if (Date.now() - keptAnsweredAt > 30000) { kickByesIn.clear(); keptAnsweredAt = 0; }
       }
+    }
+    // VOTE-OUT, THEN RE-KEY (0.9.27.1). In an open-floor room the vote-out is the removal, and the re-key makes it hard:
+    // once a person is voted out every page refuses them, so a password change after the verdict is handed to everyone
+    // inside but them (pwShut), and they cannot come back from another browser or device with the password they knew.
+    // When my seat holds a verdict the room has not re-keyed past, ONE page changes the password to a fresh random one
+    // through the Password button's own path (pwSetRoom). Which page: the lowest id among the seats my seat sees that are
+    // not voted out goes at once; the next ones wait one beat per rank and stand down when a newer password reaches them
+    // first (pwEpoch moved), so the pages do not race. A room with no password has no key to change: there the vote-out
+    // alone holds (every page refuses the device). No server work: the relay takes a password change from anyone inside.
+    const voteRekeyed = new Set();   // voted-out ids this page has seen the room re-key past
+    let voteRekeyT = 0;
+    function voteRekeyRank() {
+      const s = meshSeat(); if (!s || s.state !== 3 || !s.hasCoord || !s.occ || !myId) return -1;
+      const me = String(myId), seen = new Set(); let r = 0;
+      for (const v of s.occ.values()) { const id = String(v); if (!v || id === me || seen.has(id)) continue; seen.add(id); if (meshNode.kicked(id)) continue; if (id < me) r++; }
+      return r;
+    }
+    function voteRekey() {
+      if (hasAdminRoom() || !roomPw || voteRekeyT || !meshNode || !meshNode.kicked) return;
+      const out = [];
+      for (const pid of new Set(Object.keys(devOf).concat(Array.from(peers.keys()), Array.from(kickWant.keys())))) if (pid && pid !== myId && !voteRekeyed.has(pid) && meshNode.kicked(pid)) out.push(pid);
+      if (!out.length) return;
+      const rank = voteRekeyRank(); if (rank < 0) return;
+      const ep0 = pwEpoch;
+      voteRekeyT = setTimeout(() => {
+        voteRekeyT = 0;
+        if (hasAdminRoom() || !roomPw || leaving) return;
+        const still = out.filter((id) => meshNode && meshNode.kicked(id));
+        for (const id of out) voteRekeyed.add(id);
+        if (!still.length || pwEpoch > ep0) return;   // the verdict lifted, or the room has a newer password already
+        if (typeof clog === 'function') clog('vote-rekey rank=' + rank + ' out=' + still.map((x) => String(x).slice(0, 6)).join(','));
+        pwSetRoom(pwRandom(), still);
+      }, rank * SCALE.HB);
     }
     function toggleVote(id) {
       if (hasAdminRoom()) return; // admin rooms use the admin's ban, not votes
@@ -39200,34 +39543,79 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         subsPassSay(p.id);   // the newcomer's next knock, a moment later, is given a place past the line
       });
     }
+    // The room's people line as the door's own rule reads it (gifos-sub admission): a number, or null for no line.
+    function subsLine() {
+      try { const v = GifOS.sub.admission({ adminRoom: true, roomGrants: subsRoomTier() ? subsGrants : null, listLength: 1e9, entrant: { isAdmin: false, grants: null } }); return v && Number.isInteger(v.limit) ? v.limit : null; } catch (e) { return null; }
+    }
     function subsRefuse(p, asked) {
       if (!asked && !subsAsked.has(p.id)) return;   // only a knocker this door asked
       subsAsked.delete(p.id);
       const free = subsFreeWords();   // the free line's words (display): the free plan or no plan
-      try { dcSend(p, free ? { k: 'subfull', free: true } : { k: 'subfull' }); } catch (e) {}
-      if (free) subsTellHost();
+      const limit = subsLine();   // the line the knocker met, so its screen names the real number
+      const m = { k: 'subfull' }; if (free) m.free = true; if (limit != null) m.limit = limit;
+      try { dcSend(p, m); } catch (e) {}
+      subsTellHost(p.id);
     }
-    function subsFull(free) {
+    // TURNED AWAY AT A FULL DOOR: this page stands aside without leaving the
+    // meeting for good. The knock stops (the mesh node goes, no reconnect), the
+    // camera and microphone close and no device is asked for or complained
+    // about (capClosed), the dock's clocks keep running, and the full screen
+    // offers the way in. When this browser comes to hold a right the door lets
+    // in (meet-subs showFull's onRight), the page knocks again on its own: no
+    // reload, so the name, the settings and the identity stay.
+    function subsFull(m) {
       const ms = meshSeat();
       if (subsTurnedAway || !subsOn() || (ms && ms.state === 3)) return;   // a seated member is never put out by it
       subsTurnedAway = true;
-      try { leaveMeeting(); } catch (e) {}
-      GifOS.meetSubs.showFull(free);
+      const limit = m && Number.isInteger(m.limit) && m.limit > 0 && m.limit <= 1e6 ? m.limit : null;
+      subsRefused = { limit, free: !!(m && m.free), at: Date.now() };
+      if (DEBUG_ON) { try { clog('subs turned away at a full door limit=' + limit); } catch (e) {} }
+      subsStandAside();
+      GifOS.meetSubs.showFull({ limit, free: subsRefused.free, onRight: subsKnockAgain });
+      try { updateStatus(); } catch (e) {}
     }
-    // FREE PLAN: whoever's door turned someone away tells the room's admins
-    // (or is the admin), and the admin is offered the $2 plan in one tap.
-    function subsTellHost() {
-      if (amAdmin) { GifOS.meetSubs.showHostPrompt(); return; }
+    function subsStandAside() {
+      leaving = true;   // the mesh re-arms and reconnects stand down
+      try { GifOS.meetSubs.leaveMeeting(); } catch (e) {}
+      try { stopLocalCapture(); } catch (e) {}
+      const mn = meshNode; meshNode = null; meshBootGen++;
+      try { if (mn) mn.leave(false); } catch (e) {}
+      try { releaseAllCapture(true); paintControls(); } catch (e) {}
+      for (const pid of Array.from(peers.keys())) { try { dropPeer(pid); } catch (e) {} }
+      try { if (typeof clearRosterTiles === 'function') clearRosterTiles(); } catch (e) {}
+      // Only the full screen is up: a dialog a tap opened before the refusal (Your video is still blurred) goes.
+      for (const id of ['blurwhy-modal', 'status-full']) { const d = document.getElementById(id); if (d) d.style.display = 'none'; }
+    }
+    function subsKnockAgain() {
+      if (!subsRefused) return;
+      if (DEBUG_ON) { try { clog('subs knock again after ' + Math.round((Date.now() - subsRefused.at) / 1000) + 's: this browser holds a right the door lets in'); } catch (e) {} }
+      subsRefused = null; subsTurnedAway = false;
+      leaving = false; capClosed = false;   // a new knock may open devices again (each one asked by a tap)
+      try { GifOS.meetSubs.hideFull(); } catch (e) {}
+      try { startMesh(); } catch (e) {}
+      try { updateStatus(); } catch (e) {}
+    }
+    // A DOOR TURNED SOMEONE AWAY: whoever's door it was tells the room's admins
+    // (or is the admin). The admin sees how many could not get in, and the plan
+    // whose rights carry no line in one tap. Counted once per person.
+    const subsTurnedIds = new Set();
+    let subsTurnedN = 0;
+    function subsTurnedCount(who) {
+      if (typeof who === 'string' && who) { if (subsTurnedIds.has(who)) return subsTurnedN; subsTurnedIds.add(who); if (subsTurnedIds.size > 512) subsTurnedIds.delete(subsTurnedIds.values().next().value); }
+      return ++subsTurnedN;
+    }
+    function subsTellHost(who) {
+      if (amAdmin) { GifOS.meetSubs.showHostPrompt(subsTurnedCount(who)); return; }
       for (const id of adminsNow()) {
         const q = peers.get(id);
-        if (q && q.dc && q.dc.readyState === 'open') { try { dcSend(q, { k: 'subturned' }); } catch (e) {} }
+        if (q && q.dc && q.dc.readyState === 'open') { try { dcSend(q, who ? { k: 'subturned', who } : { k: 'subturned' }); } catch (e) {} }
       }
     }
-    function subsTurnedSaid(p, dc) {
+    function subsTurnedSaid(p, dc, m) {
       if (!dc || dc.__authBy !== p.id) return;   // an authenticated channel only
       const ms = meshSeat();
-      if (!subsOn() || !amAdmin || !av || !(ms && ms.state === 3) || (subsRoomTier() && !subsFreeWords())) return;
-      GifOS.meetSubs.showHostPrompt();
+      if (!subsOn() || !amAdmin || !av || !(ms && ms.state === 3) || subsLine() == null) return;   // a room with no line turns nobody away
+      GifOS.meetSubs.showHostPrompt(subsTurnedCount(m && typeof m.who === 'string' && m.who.length <= 128 ? m.who : null));
     }
 
     async function createAdminRoom(chosen, pass, postToChat, guestPw) {
@@ -40404,9 +40792,27 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         fan(w); refan(w, tries - 1);
       }, 3000);
       if (hasAdminRoom()) admSigned('appstop', { s: ad.s }).then((w) => { fan(w); refan(w, 10); });
-      else { fan(undefined); refan(undefined, 10); }
+      else appStopSign(ad.s, at).then((w) => { fan(w); refan(w, 10); });   // an open room: signed by me, so the name on it is mine
       setStatus(uiText('stYouStoppedTheSharedApp', '🧩 You stopped the shared app for everyone here.'));
       reconcileApp();
+    }
+    // An open-floor room's stop is signed with the stopper's identity key (the signed orders, modOpenCheck): the
+    // statement names the app, the time, the stopper's id and name. Receivers take the name and time from it.
+    async function appStopSign(sid, at) {
+      if (!myIdentity || !myId) return undefined;
+      const sp = JSON.stringify({ t: 'appstop', room: roomKey(), s: String(sid), at, by: myId, nm: myName().slice(0, 40) });
+      try { return { sp, sig: await net.edSign(myIdentity.priv, sp), pub: myIdentity.pubB64 }; } catch (e) { return undefined; }
+    }
+    async function appStopCheck(msg) {   // -> { at, by } proven, or null
+      const w = msg && msg.w;
+      if (!w || typeof w.sp !== 'string' || typeof w.sig !== 'string' || typeof w.pub !== 'string' || w.sp.length > 600) return null;
+      let o; try { o = JSON.parse(w.sp); } catch (e) { return null; }
+      if (!o || o.t !== 'appstop' || o.room !== roomKey() || o.s !== String(msg.s || '') || typeof o.by !== 'string' || !o.by || typeof o.nm !== 'string' || !(+o.at > 0)) return null;
+      try {
+        if ((await GifOS.meshIdentity.peerIdOf(w.pub)) !== o.by) return null;
+        if (!(await net.edVerify(w.pub, w.sig, w.sp))) return null;
+      } catch (e) { return null; }
+      return { at: +o.at, by: o.nm };
     }
     // ONE app wins everywhere, deterministically: the newest AUTHORIZED ad
     // (timestamp, then peer id) that isn't tombstoned. Every phone computes
@@ -41198,7 +41604,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const text = String((msg && msg.text) || '').slice(0, 2000);
           if (!text) return { ok: false };
           const m = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text: text };
-          chat.set(m.id, m);
           // A bot posts one chat per spoken line. On the mesh that burst spends
           // the author's flood budget, and the beats and commands after it
           // never arrive. Line pushes go on the direct channel only. Beats,
@@ -41207,14 +41612,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // Off the mesh (that budget is the room's) and off the chat seal
           // chain, so a line per utterance cannot queue the beats and answers
           // behind it. The file chain is the other ordered pipe.
+          // Its other lines take the room's one road for a line (postChat), so
+          // slow mode paces them as it paces a person's.
+          let how = 'sent';
           if (linePush) {
+            chat.set(m.id, m);
             for (const p of peers.values()) if (p.dc && p.dc.readyState === 'open') dcSendFile(p, { k: 'chat', m });
-          } else sendAll({ k: 'chat', m });
+          } else {
+            how = postChat(m);
+            if (!how) return { ok: false, error: 'Slow mode: this meeting allows one chat line per ' + Math.round(CHAT_SLOW_MS / 1000) + ' seconds, and ' + CHAT_HELD_MAX + ' are already waiting to go out.' };
+          }
           try { renderChat(); } catch (e) {}
           try {
             if (typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'chat', text: text, by: m.by, byId: m.byId, at: m.at, self: true });
           } catch (e) {}
-          return { ok: true, id: m.id };
+          return how === 'held' ? { ok: true, id: m.id, held: true } : { ok: true, id: m.id };
         },
         transcribe(msg) {
           // The bot keeps the room's transcript and, with on, writes down every
@@ -41377,6 +41789,353 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         window.__gifosMeetEmit({ type: 'participants', people: people });
       }, 1500);
     }
+
+    // ---- AGENT MODE AND THE BOT VIEW (window.gifosAgent v1: js/meet-agent.js) ----------------------------
+    // ?agent=1 is bot mode that cannot be untagged; bot=1 (or the lobby's "I'm an AI assistant" switch, which sets it) is bot mode a
+    // person can leave with one tap. Either way the page is the same seat: the bot view only changes what is drawn
+    // (no tiles, a text-first view), and the agent API reads what this page already holds. vars: becomeAssistant
+    // and the boot may call setBotView before this line runs.
+    var botViewOn, botViewWant, agentCore, hideBotsOn, hideBotsT;
+    const AGENT_FORCED = params.get('agent') === '1' || window.__gifosAgentQ === true || /[?&]agent=1(?:&|$)/.test(location.search);   // #agent=1 or ?agent=1
+    const agentOk = (x) => Object.assign({ ok: true }, x || {});
+    const agentFail = (s) => ({ ok: false, error: String(s) });
+    // The parks the bot view asks for (sendVisPark): every row mate's camera except the ones an agent watches.
+    function botParks(pid, recording) {
+      if (!botViewOn || !(window.GifOS && GifOS.meetAgent)) return false;
+      return GifOS.meetAgent.wantsPark(pid, { botView: true, recording: !!recording, cell: meshCoord(), watching: agentCore ? agentCore.watching() : new Set() });
+    }
+    function botHidden(pid) { return !!hideBotsOn && !!pid && !!(statusOf.get(pid) || {}).bot; }
+    function aiNotesSetting() {
+      if (!hasAdminRoom()) return 'allowed';
+      const m = modTable['*'] && modTable['*'].ain;
+      const v = m && m.on;
+      return v === 'off' || v === 'ask' ? v : 'allowed';
+    }
+    function paintAiNotesAdmin() {
+      const sel = document.getElementById('adm-ai-notes');
+      if (sel) { sel.value = aiNotesSetting(); sel.disabled = !(hasAdminRoom() && amAdmin); }
+      const box = document.getElementById('adm-ai-wait');
+      const ul = box && box.querySelector('ul');
+      if (!ul) return;
+      ul.textContent = '';
+      let n = 0;
+      if (aiNotesSetting() === 'ask' && amAdmin) {
+        for (const pid of rosterIds) {
+          const st = statusOf.get(pid);
+          if (!st || !st.bot || st.nts !== 2) continue;
+          n++;
+          const li = document.createElement('li');
+          li.textContent = (rosterNames[pid] || (peers.get(pid) || {}).name || '…') + ' ';
+          const b = document.createElement('button'); b.type = 'button'; b.textContent = uiText('admAiAllow', 'Allow notes');
+          b.onclick = () => { setMod(pid, 'ain', true); paintAiNotesAdmin(); };
+          li.appendChild(b); ul.appendChild(li);
+        }
+      }
+      box.hidden = !n;
+    }
+    function agentPeople() {
+      const out = [];
+      const stg = stageIds();
+      for (const r of roomPeople()) {
+        const st = (r.me ? myStatus : statusOf.get(r.id)) || {};
+        out.push({ id: r.id, name: r.name, me: !!r.me, bot: !!r.bot, admin: r.me ? !!amAdmin : (hasAdminRoom() && admins.includes(r.id)), here: !r.far,
+          muted: st.muted !== false, camera: !st.camOff, hand: !!st.hand, onStage: stg.includes(r.id), speaking: !!speakingOf.get(r.me ? 'me' : r.id),
+          notes: st.nts === 1 || st.nts === 2 ? st.nts : 0, owner: typeof st.own === 'string' ? st.own : undefined });
+      }
+      return out;
+    }
+    function agentVideoSource(who) {
+      if (who === 'stadium') { const m = mosIn.get('sdm') || mosIn.get('sd'); return m && m.el ? { el: m.el, pid: 'stadium', source: 'stadium' } : null; }
+      const stg = stageIds();
+      const sid = who === 'stage' ? stg.find((id) => id !== myId) : (stg.includes(who) ? who : null);
+      if (sid) { const f = mosIn.get('stg:' + sid); if (f && f.el) return { el: f.el, pid: sid, source: 'stage' }; }
+      if (who === 'stage' || who === myId) return null;
+      const p = peers.get(who);
+      return p && p.video && camPeer(who) ? { el: p.video, pid: who, source: 'direct' } : null;
+    }
+    function agentVideoList() {
+      const out = [], stg = stageIds();
+      for (const [pid, p] of peers) {
+        const st = statusOf.get(pid);
+        if (!st || st.camOff || !p.video || !camPeer(pid) || stg.includes(pid)) continue;
+        out.push({ id: pid, source: 'direct', w: p.video.videoWidth || 0, h: p.video.videoHeight || 0, blurred: blurLevelFor(pid) > 0 });
+      }
+      for (const id of stg) if (id !== myId) out.push({ id: id, source: 'stage', blurred: blurLevelFor(id) > 0 });
+      if (mosIn.get('sdm') || mosIn.get('sd')) out.push({ id: 'stadium', source: 'stadium', blurred: blurLevelFor('stadium') > 0 });
+      return out;
+    }
+    function agentAudioTracks(who) {
+      const out = [];
+      const add = (st) => { const t = st && st.getAudioTracks && st.getAudioTracks()[0]; if (t && t.readyState === 'live' && out.indexOf(t) < 0) out.push(t); };
+      const mates = rowMates(), stg = stageIds();
+      if (who !== 'room') { const p = peers.get(who); if (p && mates.includes(who) && !stg.includes(who)) add(p.relayed ? (relayVia.get(who) || {}).stream : p.stream); return out; }
+      for (const pid of mates) { const p = peers.get(pid); if (p && !stg.includes(pid) && !isHeld(pid)) add(p.relayed ? (relayVia.get(pid) || {}).stream : p.stream); }
+      for (const [k, f] of mosIn) if (k === 'sdm' || k === 'sd' || k.indexOf('stg:') === 0) add(f && f.stream);
+      return out;
+    }
+    function agentState() {
+      const people = agentPeople();
+      const mine = people.find((p) => p.me) || { id: myId, name: myName() };
+      const last = progTrace.length ? progTrace[progTrace.length - 1] : null;
+      let agenda = null;
+      try {
+        if (CT && CT.ag && CT.ag.items.length) {
+          const c = GifOS.meetAgenda.clock(CT.ag, CT.agStart, Date.now());
+          agenda = { items: CT.ag.items.map((i) => ({ text: i.t, min: i.min })), current: CT.ag.cur, leftMs: c ? c.left : null, canEdit: ctCanEditAgenda() };
+        }
+      } catch (e) { agenda = null; }
+      let app = null;
+      for (const p of people) { const st = p.me ? myStatus : statusOf.get(p.id); if (st && st.app && st.app.name) { app = { running: { id: p.id, name: String(st.app.name) }, room: null }; break; } }
+      const lm = document.getElementById('left-modal');
+      const left = bannedOut ? 'removed' : (lm && lm.style.display !== 'none') ? 'manual' : '';
+      const sc = document.getElementById('statuscount'), sr = document.getElementById('statusrest');
+      return {
+        me: Object.assign({}, mine, { hand: !!myStatus.hand, camera: !myStatus.camOff, muted: !!myStatus.muted }),
+        room: { id: room ? String(room) : '', kind: hasAdminRoom() ? 'admin' : 'open', locked: !!roomPw, aiNotes: aiNotesSetting() },
+        joined: !!mediaJoined && !left, progress: last ? { step: last.x, of: last.y, text: last.text } : null, password: atPwPrompt(),
+        people: people, stage: { ids: stageIds(), mode: hasAdminRoom() ? 'host' : 'open' }, agenda: agenda, app: app, video: agentVideoList(),
+        host: { muted: typeof amGloballyMuted === 'function' && amGloballyMuted(), camOff: !!forcedCamOff('me'), removed: !!bannedOut },
+        left: left, botView: !!botViewOn, forced: AGENT_FORCED,
+        status: ((sc && sc.textContent) || '') + ((sr && sr.textContent) ? ' ' + sr.textContent : ''),
+      };
+    }
+    // The agent's voice: one track rides every main audio sender while it speaks (mainAudioTrack), as the
+    // meeting bot's does; the status says unmuted only while it plays.
+    function agentVoice(track) {
+      botVoiceTrack = track || null;
+      try { refreshOutbound(); } catch (e) {}
+      try { if (wspCaps.has('me')) wspStop('me'); wspSync(); } catch (e) {}
+      if (track) myStatus.muted = false;
+      else { const mic = localStream && localStream.getAudioTracks()[0]; myStatus.muted = !(mic && mic.enabled); }
+      try { paintControls(); broadcastStatus(); } catch (e) {}
+    }
+    // The agent's camera (video.out): a track it made, treated as a camera in every way (blur, consent, host orders).
+    function agentCamera(track, blur) {
+      if (!track) {
+        const vt = localStream && localStream.getVideoTracks()[0];
+        if (vt) { try { localStream.removeTrack(vt); } catch (e) {} }
+        myStatus.camOff = true;
+        try { paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateTile('me'); } catch (e) {}
+        return agentOk();
+      }
+      if (forcedCamOff('me')) return agentFail('The host has turned your camera off.');
+      if (!localStream) localStream = new MediaStream();
+      const old = localStream.getVideoTracks()[0];
+      if (old && old !== track) { try { localStream.removeTrack(old); } catch (e) {} }
+      if (!localStream.getVideoTracks().includes(track)) localStream.addTrack(track);
+      track.enabled = true;
+      myStatus.camOff = false;
+      try { setPersonalBlur(blurLevel(blur)); } catch (e) {}
+      try { attachLocalTracks(); } catch (e) {}
+      try { if (meTile && meTile.video) meTile.video.style.display = ''; paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateTile('me'); updateMediaSession(); } catch (e) {}
+      return agentOk();
+    }
+    function agentChat(text) {
+      text = String(text || '').trim().slice(0, 2000);
+      if (!text) return agentFail('Nothing to post.');
+      if (chatOffInfo() && !amAdmin) return agentFail(uiText('stTheHostHasTurnedChat', 'The host has turned chat off.'));
+      const m = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text: text };
+      const how = postChat(m);   // the one road for a line: slow mode paces it, and holds it rather than lose it
+      if (!how) return agentFail('Slow mode: this meeting allows one chat line per ' + Math.round(CHAT_SLOW_MS / 1000) + ' seconds, and ' + CHAT_HELD_MAX + ' are already waiting to go out.');
+      try { renderChat(); } catch (e) {}
+      return agentOk({ id: m.id, held: how === 'held' });
+    }
+    function agentHand(up) {
+      myStatus.hand = up ? (myStatus.hand || Date.now()) : null;
+      try { paintHand(); broadcastStatus(); layout(); renderHandq(); } catch (e) {}
+      return agentOk({ up: !!myStatus.hand });
+    }
+    function agentMic(on) {
+      if (on && typeof amGloballyMuted === 'function' && amGloballyMuted()) return agentFail('The host has muted you.');
+      const apply = (track) => {
+        if (track) track.enabled = !!on;
+        myStatus.muted = !(on && track);
+        try { paintControls(); broadcastStatus(); updateMediaSession(); if (typeof syncSpeech === 'function') syncSpeech(); } catch (e) {}
+        if (on && track && typeof kickStageMic === 'function') { try { kickStageMic(track); } catch (e) {} }
+        return agentOk({ mic: !myStatus.muted });
+      };
+      const live = localStream && localStream.getAudioTracks().find((t) => t.readyState === 'live');
+      if (live || !on) return apply(live || (localStream && localStream.getAudioTracks()[0]));
+      const md = navigator.mediaDevices;
+      if (!md || !md.getUserMedia) return agentFail('This page cannot open a microphone.');
+      // The agent's own call is the only way a microphone opens here.
+      return md.getUserMedia({ audio: true, video: false }).then((stream) => {
+        const tr = stream.getAudioTracks()[0];
+        if (!tr) return agentFail('This page cannot open a microphone.');
+        if (!localStream) localStream = new MediaStream();
+        const old = localStream.getAudioTracks()[0];
+        if (old && old !== tr) { try { localStream.removeTrack(old); } catch (e) {} }
+        if (!localStream.getAudioTracks().includes(tr)) localStream.addTrack(tr);
+        try { meterFor('me', localStream); attachLocalTracks(); } catch (e) {}
+        return apply(tr);
+      }, () => agentFail('This page cannot open a microphone.'));
+    }
+    function agentStage(on) {
+      if (!on) { if (myStatus.stg) { if (myStatus.scr) stopScreenShare('you stepped down'); setStage(false); } return agentOk({ onStage: false }); }
+      if (myStatus.stg) return agentOk({ onStage: true });
+      if (!canStage(myId)) return agentFail('Only a host can put you on the stage here. Raise your hand to ask.');
+      if (stageIds().length >= SCALE.C) return agentFail('The stage is full (' + SCALE.C + ' people).');
+      setStage(true);
+      return agentOk({ onStage: true });
+    }
+    async function agentAgendaSet(items) {
+      const MA = GifOS.meetAgenda;
+      if (!Array.isArray(items)) return agentFail('Give the agenda as a list of { text, min }.');
+      if (!ctCanEditAgenda()) return agentFail('Only the agenda’s owner or the host can change it here.');
+      let a = CT && CT.ag && CT.ag.items.length ? MA.clear(CT.ag, myId) : MA.empty(myId);
+      for (const it of items.slice(0, 50)) { const t = String((it && (it.text || it.t)) || '').trim(); if (t) a = MA.add(a, myId, t, +(it.min || 0) || 0) || a; }
+      return (await ctAgendaPublish(a, 'agent-set')) ? agentOk() : agentFail('The agenda could not be shared.');
+    }
+    function agentProfile(p) {
+      const out = {};
+      if (p.name != null) {
+        let n = String(p.name).replace(/\s+/g, ' ').trim().slice(0, 40);
+        if (!n) return agentFail('Give a name.');
+        if (AGENT_FORCED && !/\([^()]*\S[^()]*\)\s*$/.test(n)) {
+          const o = String(p.owner || '').trim();
+          if (!o) return agentFail('An agent’s name must say whose agent it is, such as "Ada (Sam’s assistant)".');
+          n = (n + ' (' + o + '’s assistant)').slice(0, 40);
+        }
+        if (window.__gifosMeetName) window.__gifosMeetName = n; else GifOS.store.setName(n);
+        out.name = n;
+      }
+      if (p.owner != null) { myStatus.own = String(p.owner).slice(0, 40); out.owner = myStatus.own; }
+      if (p.notesTo != null) { myStatus.ntg = String(p.notesTo).slice(0, 80); out.notesTo = myStatus.ntg; }
+      try { refreshAllTiles(); broadcastStatus(); if (typeof pushLeaf === 'function') pushLeaf(); } catch (e) {}
+      return agentOk(out);
+    }
+    function agentHost() {
+      const T = GifOS.timings;
+      return {
+        T: { AGENT_TICK_MS: T.AGENT_TICK_MS, AGENT_VOICE_TAIL_MS: T.AGENT_VOICE_TAIL_MS },
+        myId: () => myId, myName: () => myName(), isBot: () => !!myStatus.bot,
+        capState: (v, w) => { try { return capTrust ? capTrust.stateOf(v, w) : 'unknown'; } catch (e) { return 'unknown'; } },
+        isAdminId: (id) => hasAdminRoom() && admins.includes(id),
+        hostRoom: () => hasAdminRoom(), aiNotes: aiNotesSetting,
+        notesGranted: () => { const g = (modTable[myId] || {}).ain; return !!(g && g.on === true); },
+        setNotesMark: (v) => { if (v === 1 || v === 2) myStatus.nts = v; else delete myStatus.nts; try { updateTile('me'); broadcastStatus(); } catch (e) {} },
+        chatLines: () => chat.values(), trLines: () => trs.values(),
+        speaking: () => Array.from(speakingOf.entries()).map(([k, on]) => { const id = k === 'me' ? myId : k; return { id: id, on: !!on, level: on ? 1 : 0, bot: k === 'me' ? !!myStatus.bot : !!(statusOf.get(k) || {}).bot }; }),
+        state: agentState, joined: () => !!mediaJoined,
+        hostMuted: () => typeof amGloballyMuted === 'function' && amGloballyMuted(), camForcedOff: () => !!forcedCamOff('me'),
+        playVoice: agentVoice, writeSpoken: (text) => { rememberBotSpoken(text); writeBotSpoken(text); },
+        audioTracks: agentAudioTracks, videoSource: agentVideoSource,
+        blurFrac: (id) => blurViewFrac(blurLevelFor(id)), blurDraw: blurDraw, makeCanvas: () => document.createElement('canvas'),
+        setCamera: agentCamera, chat: agentChat, hand: agentHand, mic: agentMic, stage: agentStage,
+        appRun: (id) => { if (!canIRunApp()) return agentFail('This meeting does not let you run apps.'); if (!id) return agentFail('Say which app.'); return Promise.resolve(runApp(String(id))).then(() => agentOk({ running: !!myStatus.app })); },
+        appStop: () => { if (!myStatus.app) return agentFail('You are not sharing an app.'); stopApp(); return agentOk(); },
+        appRoom: (op, args) => { if (typeof window.__gifosRoom !== 'function') return agentFail('No app room here.'); return agentOk({ result: window.__gifosRoom(String(op || ''), args || {}) }); },
+        agendaNext: () => { if (!ctCanEditAgenda()) return agentFail('Only the agenda’s owner or the host can move it here.'); return Promise.resolve(ctAgendaPublish(GifOS.meetAgenda.next(CT && CT.ag, myId), 'agent-next')).then((r) => r ? agentOk() : agentFail('There is no next item.')); },
+        agendaSet: agentAgendaSet, profile: agentProfile,
+        leave: () => { try { leaveMeeting(); } catch (e) {} return agentOk(); },
+        renderBotView: (st) => {
+          if (!botViewOn) return;
+          const rows = (m) => Array.from(m.values()).filter((l) => l && !/^gb1 /.test(String(l.text || ''))).sort((x, y) => (x.at || 0) - (y.at || 0)).map((l) => ({ name: l.by || '', text: l.text || '' }));
+          GifOS.meetAgent.renderBotView(document.getElementById('botview'), Object.assign({}, st, { transcript: rows(trs), chat: rows(chat) }), uiText);
+        },
+        reaim: () => { try { sendVisPark(); } catch (e) {} },
+      };
+    }
+    function agentStart() {
+      if (!agentCore && window.GifOS && GifOS.meetAgent && GifOS.timings) {
+        agentCore = GifOS.meetAgent.make(agentHost());
+        try { GifOS.meetAgent.postMessageBridge(agentCore, window); } catch (e) {}
+      }
+      if (!agentCore) {
+        // A bare visit runs the lobby's scripts first and the rest (this module among them) right after: look again.
+        if (!agentStart.wait) agentStart.wait = setTimeout(() => { agentStart.wait = null; agentStart(); }, GifOS.timings.AGENT_TICK_MS);
+        return null;
+      }
+      window.gifosAgent = agentCore.api;
+      agentCore.start();
+      return agentCore;
+    }
+    function setBotView(on) {
+      on = !!on;
+      if (!room) { botViewWant = on; return; }   // the lobby: the meeting's boot turns it on (an Off press there takes it back)
+      if (on) agentStart();
+      if (on === !!botViewOn) return;
+      botViewOn = on;
+      document.body.classList.toggle('bot-view', on);
+      const bv = document.getElementById('botview'); if (bv) bv.hidden = !on;
+      const back = document.getElementById('bot-back'), forced = document.getElementById('bot-forced');
+      if (back) back.hidden = AGENT_FORCED;
+      if (forced) forced.hidden = !AGENT_FORCED;
+      if (on && !AGENT_FORCED) {
+        let seen = false;
+        try { seen = sessionStorage.getItem('gifos_bot_seen') === '1'; sessionStorage.setItem('gifos_bot_seen', '1'); } catch (e) {}
+        if (!seen) setStatus(uiText('botFirstNote', 'This view is for AI assistants. Tap Back to normal view to return.'));
+      }
+      try { if (pipAimed) { pipAimed.autoPictureInPicture = false; pipAimed = null; } } catch (e) {}
+      try { sendVisPark(); } catch (e) {}
+    }
+    // BACK TO NORMAL VIEW: one tap, no reload, no reseat. The seat, its links, keys, sound and history stay; the
+    // camera stays off and the mic muted (on only when the person turns them on); every link is asked for video
+    // again with a fresh key frame, and the tiles are drawn from the roster as it is now. A reload stays normal.
+    function backToNormalView() {
+      if (AGENT_FORCED) return false;
+      try { sessionStorage.removeItem('gifos_bot'); } catch (e) {}
+      myStatus.bot = false;
+      delete myStatus.think; delete myStatus.nts;
+      myStatus.camOff = true;
+      if (!botVoiceTrack) myStatus.muted = true;
+      try { paintAssistant(false); } catch (e) {}   // the lobby switch shows Off again
+      setBotView(false);
+      try { setPersonalBlur(2); } catch (e) {}   // a person's camera, when they turn it on, starts at Max blur like any join
+      if (agentCore) agentCore.stop();   // open video.in / video.out ports keep running
+      for (const p of peers.values()) if (p.dc && p.dc.readyState === 'open' && camPeer(p.id)) dcSend(p, { k: 'vkick' });
+      try { refreshAllTiles(); updateTile('me'); broadcastStatus(); paintControls(); reactRoomState(); layout(); applyBuses(); } catch (e) {}
+      return true;
+    }
+    (function wireBotView() {
+      const back = document.getElementById('bot-back');
+      if (back) back.onclick = () => backToNormalView();
+      const sayF = document.getElementById('bot-say-form'), chatF = document.getElementById('bot-chat-form');
+      if (sayF) sayF.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const inp = document.getElementById('bot-say'); const text = inp.value.trim(); if (!text) return;
+        inp.value = '';
+        // A voice needs speech audio. An embedder (or an extension) that makes it sets window.gifosAgentVoice(text) -> WAV
+        // bytes (base64); with none, the words go to chat and the status says so, never silently.
+        const tts = window.gifosAgentVoice;
+        if (typeof tts === 'function' && agentCore) Promise.resolve(tts(text)).then((wav) => agentCore.api.say(text, { wav: wav }));
+        else { agentChat(text); setStatus(uiText('botNoVoice', 'No voice on this page, so it went to chat.')); }
+      });
+      if (chatF) chatF.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const inp = document.getElementById('bot-chat-in'); const r = agentChat(inp.value);
+        if (r.ok) inp.value = ''; else setStatus(r.error);
+      });
+      const hand = document.getElementById('bot-hand');
+      if (hand) hand.onclick = () => agentHand(!myStatus.hand);
+      const lv = document.getElementById('bot-leave');
+      if (lv) lv.onclick = () => { try { leaveMeeting(); } catch (e) {} };
+      // HIDE BOTS (Settings, this device only): bot tiles off the grid, their own voices muted.
+      const hb = document.getElementById('hidebots');
+      const applyHideBots = () => {
+        let moved = false;
+        for (const [pid, p] of peers) {
+          if (!p.tile) continue;
+          const hide = botHidden(pid);
+          if (hide && p.tile.style.display !== 'none') { p.tile.style.display = 'none'; p.tile.dataset.bothide = '1'; moved = true; }
+          else if (!hide && p.tile.dataset.bothide) { delete p.tile.dataset.bothide; p.tile.style.display = ''; moved = true; }
+        }
+        if (moved) { try { layout(); applyBuses(); } catch (e) {} }
+      };
+      const setHide = (on) => {
+        hideBotsOn = !!on;
+        try { localStorage.setItem('gifos_hide_bots', on ? '1' : '0'); } catch (e) {}
+        clearInterval(hideBotsT); hideBotsT = null;
+        if (on) hideBotsT = setInterval(applyHideBots, GifOS.timings.AGENT_TICK_MS);
+        applyHideBots();
+        try { applyBuses(); } catch (e) {}
+      };
+      let saved = false; try { saved = localStorage.getItem('gifos_hide_bots') === '1'; } catch (e) {}
+      if (hb) { hb.checked = saved; hb.onchange = () => setHide(hb.checked); }
+      if (saved) setHide(true);
+    })();
+    if (AGENT_FORCED) agentStart();   // the API is there from the first moment; it says joined when the seat is
+    if (botViewWant && room) setBotView(true);
 
     // Painted stand-ins for desktop UI tests. DEBUG only. They are not mesh
     // peers: no offers, no absence sweep. Each one is a canvas captureStream

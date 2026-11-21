@@ -15,6 +15,8 @@
     AGENDA_TICK_MS: 1000,   // ms
     AGENT_GRACE_MS: 120000,   // ms
     AGENT_KEEP_MS: 86400000,   // ms
+    AGENT_TICK_MS: 250,   // ms
+    AGENT_VOICE_TAIL_MS: 500,   // ms
     APP_ROOM_AWAY_MS: 15000,   // ms
     APP_ROOM_BEAT_MS: 1000,   // ms
     APP_ROOM_GIVEUP_MS: 60000,   // ms
@@ -46,6 +48,7 @@
     CC_DEAF_MS: 60000,   // ms
     CC_GATE_TAIL_MS: 900,   // ms
     CHAT_PER_10S: 20,   // count
+    CHAT_SLOW_LAG_MS: 30000,   // ms
     CHAT_SLOW_MS: 10000,   // ms
     CHROME_IDLE_MS: 3000,   // ms
     CT_KEEP_MS: 60000,   // ms
@@ -112,6 +115,7 @@
     MESH_BOOT_WATCH_MS: 10000,   // ms
     MIX_REBUILD_GAP_MS: 10000,   // ms
     MIX_STALL_MS: 4000,   // ms
+    MOD_AHEAD_MS: 60000,   // ms
     MOD_PARK_MS: 600000,   // ms
     MOS_DARK_MS: 700,   // ms
     MOS_FLOWED_RECENT: 10000,   // ms
@@ -234,6 +238,7 @@
     TUNNEL_KEY_ASK_MS: 250,   // ms
     TUNNEL_MINT_LOOK_MS: 20,   // ms
     TUNNEL_MINT_RETRY_MS: 60,   // ms
+    TUNNEL_MOVE_WAIT_MS: 3000,   // ms
     TUNNEL_OFFER_RESEND_MS: 2000,   // ms
     TUNNEL_OFFER_SETTLE_MS: 30,   // ms
     TUNNEL_RETRY_BASE_MS: 500,   // ms

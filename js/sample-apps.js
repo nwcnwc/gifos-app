@@ -700,7 +700,10 @@
   <div class="ask" id="ask"></div>
 </main>
 <script>
-  const T = (k, p) => (window.gifos && gifos.i18n ? gifos.i18n.t(k, p) : k);
+  // EN: English for words an older GifOS's text files may lack (this app reaches a 0.9.26 page in a mixed room, whose
+  // catalog returns the bare key). A key the catalog knows is never replaced.
+  const EN = { needsNewer: 'Connect Four needs a newer GifOS to play together. Reload the page to update.' };
+  const T = (k, p) => { const v = window.gifos && gifos.i18n ? gifos.i18n.t(k, p) : k; return v === k && Object.prototype.hasOwnProperty.call(EN, k) ? EN[k] : v; };
   // Static markup keeps its English literal (shown until the catalog arrives, or on an older GifOS) and is
   // tagged data-i18n / -ph / -title / -aria; applyI18n fills those from the catalog.
   function applyI18n(){
@@ -6728,7 +6731,7 @@ Tap any disc in a column to drop yours to the lowest empty slot. **Red** starts 
 - **Alone:** you play both colours.
 - **Invite** (top bar), or run it in a meeting: the first two people take Red and Yellow, everyone after them watches and waits in line. GifOS keeps the seats: a player who reloads or drops for a moment gets their seat back, and when a player leaves, the next person in line sits down. In a hosted meeting, the host says who plays.
 
-This game needs GifOS build 5700 or newer to play together.
+This game needs GifOS build 5861 or newer to play together.
 
 ## New game
 
@@ -7409,8 +7412,8 @@ The Store itself does not keep a shopping cart in this icon.
     //   PRIV — private: never leaves the owner's tab; each participant keeps
     //          their own copy (personal prefs, a guest's own library).
     const RW = { visibility: 'read-write' };
-    // The first build with gifos.room (manifest "room"): an app that declares a room needs it.
-    const ROOM_MIN_BUILD = 5700;
+    // The first build with gifos.room (manifest "room"): the 0.9.27 cut build. An app that declares a room needs it.
+    const ROOM_MIN_BUILD = 5861;
     const RO = { visibility: 'read-only' };
     const PRIV = { visibility: 'private' };
 

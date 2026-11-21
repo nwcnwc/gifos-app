@@ -2,6 +2,50 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.27.1",
+      "date": "2026-11-20",
+      "headline": "Agents join in, and meetings hold steadier",
+      "critical": false,
+      "features": [
+        "AI agents: a page made for agents. An agent can join a meeting, follow what is said, speak, chat, raise a hand, watch and send video, and use the stage and apps, through one simple page and a small Node library.",
+        "AI agents: an agent page shows a plain text view built for machines, with one tap back to the normal view.",
+        "Meetings: hosts can choose whether AI note takers are allowed, need to ask, or are off. Anyone can hide bots from their own view.",
+        "Plans: every plan and pass now carries exactly what it allows, signed, so the door checks the same thing everywhere."
+      ],
+      "fixes": [
+        "Meetings: a page left open on an older GifOS moves itself to this release when it joins a meeting, so everyone in a meeting runs the same version.",
+        "Meetings: open-floor rooms keep their agenda, stage and renames fair for everyone, and someone voted out stays out once the password changes.",
+        "Meetings: after a network change or a long pause, a page finds its way back into its meeting by itself.",
+        "Meetings: links between offices use less data when nobody is talking, so free links stay within their limit.",
+        "Meetings: a guest on a network that keeps devices apart starts its meeting as soon as it knows it cannot reach the others directly.",
+        "Meetings: when a link between rooms goes away, the people who need it get a new one instead of waiting.",
+        "Apps: Connect Four tells a player on an older GifOS that they need to update, in plain words."
+      ]
+    },
+    {
+      "version": "0.9.27",
+      "date": "2026-11-20",
+      "headline": "Meetings that come together",
+      "critical": false,
+      "features": [
+        "Meetings: people who join the same meeting from different offices or networks now come together into one meeting much faster.",
+        "Meetings: the People list shows everyone by name, even people far away in a big meeting or in another office, and shows whether they are muted, have their camera off or have a hand up.",
+        "Meetings: a browser that cannot make calls of its own can still join. Someone already in the meeting carries its sound and chat.",
+        "Apps: games like Connect Four now play together with everyone in the meeting. GifOS keeps the seats, the turns and the line of people waiting to play.",
+        "Apps: Survey sits with Take Turns. Ask the room, and everyone sees the counts.",
+        "Meetings: any room name works, even a short word like \"1\" or \"test\".",
+        "Meetings: the AI assistant switch is in the lobby, before you join.",
+        "Meetings: every item in the More menu has its own icon.",
+        "Meetings: when a meeting is full, the door says how full it is and offers a way in: a $1 pass for 4 hours, or a plan. After you buy, you are let in without reloading."
+      ],
+      "fixes": [
+        "Meetings: when someone on the link between two offices leaves, the offices hear each other again within about 5 seconds instead of up to 20.",
+        "Meetings: joining stays fast for real people, while floods of automated joiners slow down, and it is harder for anyone to grab a meeting unfairly.",
+        "Meetings: captions ignore garbled text from a broken or tampered sender.",
+        "Meetings: tapping Mic opens only the microphone, asks which one when you have more than one, and keeps the captions notice on screen."
+      ]
+    },
+    {
       "version": "0.9.26.32",
       "date": "2026-11-19",
       "headline": "Survey is in the meeting",

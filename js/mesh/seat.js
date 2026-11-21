@@ -51,7 +51,7 @@
     'fabricSend', 'fabricUnreachable', 'fabricVerdict', 'fhopActive', 'fhopFriendFor', 'l164Of', 'l18Deliv',
     'l18Hop', 'l18UxDeliv', 'l222Note', 'l22Agree', 'l23GreetRelease', 'l22Close', 'l22CloseAsk', 'l22Need', 'l22Quiet', 'l28Reply',
     'l915Note', 'relayKnock', 'relayUnlist', 'descEnd', 'descNote', 'wake', 'fabricAudit', 'fabricDoorHeard', 'g4Joined', 'fabricDropHalf', 'fabricLinkCarries',
-    'fabricDoorNet', 'fabricDoorBlk', 'fabricDoorDue', 'fabricSubAsk', 'fabricSubProbe', 'fabricPipePeers', 'fabricSubDoor', 'fabricSubRepipe', 'fabricSubGo', 'fabricSubWalk', 'fabricCutProbe', 'fabricTurnOn',
+    'fabricDoorNet', 'fabricDoorVerdict', 'fabricDoorBlk', 'fabricDoorDue', 'fabricSubAsk', 'fabricSubProbe', 'fabricPipePeers', 'fabricSubDoor', 'fabricSubRepipe', 'fabricSubGo', 'fabricSubWalk', 'fabricCutProbe', 'fabricTurnOn',
     'fabricWall', 'fabricPass', 'fabricWalled',
   ]);
 
@@ -285,6 +285,7 @@
     // (the L13DBG / MESH_CELLLOG debug prints of the C++ are left out: they write only under those env switches)
     occDrop(k, why) {
       if (this.occ.has(k)) this.f.fabricVerdict(this.id, k, this.occGet(k), why);
+      if (this.occ.has(k) && deathWhy(why) && k === 0 && this.hasCoord && this.coord.pc === 0) { const st = this.s1tab.get(0); if (st !== undefined && st.at >= 0 && st.by >= 0 && st.by !== this.id) { this.cutBy = st.by; this.cutRx = st.rx; } }   // TURN.5.3.1: silence read as death drops the root's report before DIG_TTL; the name and the clock stay for the dial
       if (this.occ.has(k) && deathWhy(why)) { if (this.hasCoord && this.coord.pc === 0 && ckPc(k) === 0 && this.occGet(k) >= 0) this.digGone.set(k, [this.occGet(k), this.TICK]); this.digForget(k); if (this.hasCoord && this.coord.pc === 0) this.rootFold(true); }
       if (this.occ.has(k) && (deathWhy(why) || why === 'leave' || why === 'goodbye' || why === 'mate-unreach') && this.hasCoord && this.coord.pc === 0 && this.coord.i === 0 && ckPc(k) === 0 && ckR(k) === this.coord.r && ckI(k) !== 0) { const x = this.occGet(k); if (x >= 0 && x !== this.id) { if (this.vacOut.size >= C * C) this.vacOut.delete(this.vacOut.keys().next().value); this.vacOut.set(k, [x, this.TICK]); } }   // D5.2 (headword.js): a death verdict on a cell of my row is told to my row
       if (this.occ.has(k) && deathWhy(why) && ckPc(k) === 0) this.trace('OCC-DEATH', this.id, unckey(k), 'gone=%d why=%s', this.occGet(k), why);   // forensics: a Section-1 occupant read dead, by whom and why
