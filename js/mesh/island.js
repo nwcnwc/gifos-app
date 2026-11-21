@@ -62,7 +62,7 @@
         // parallel with the next round, instead of only when about to found (islandFound, ~2 rounds later). A joiner whose
         // listed greeters never answer (a TURN-only host) then meets a reachable subroom's greeter in one round. In a mass
         // join into a reachable room the first round answers, so this costs nothing there. Once per join (subEarly).
-        if (this.islandAskN === 1 && this.sr === 0 && !this.subEarly && typeof this.f.fabricSubAsk === 'function') { this.subEarly = true; if (this.f.fabricSubAsk(this.id)) this.trace('SUB.2-EARLY', this.id, null, 'round=%d', this.islandAskN); }
+        if (this.islandAskN === 1 && this.sr === 0 && !this.subEarly && typeof this.f.fabricSubAsk === 'function') { this.subEarly = true; if (this.f.fabricSubAsk(this.id) === 1) this.trace('SUB.2-EARLY', this.id, null, 'round=%d', this.islandAskN); }
         for (const x of this.l16Ask) this.f.fabricDoorDrop(this.id, x);
         this.l16Anch = false; this.l16Ho = -1; this.l16Ask.length = 0; this.l16Busy.length = 0; this.l16Last = -1; this.l16List.length = 0; this.l16Next = 0; this.l16WaveAt = -1; this.l16FreshAt = -1;
         this.state = 0; this.islandAskAt = -1; this.gateway = -1; this.join();
@@ -295,7 +295,7 @@
 
     // C++: mesh_island.inc:Seat::islandFound
     islandFound() {
-      if (this.f.fabricSubAsk(this.id)) { this.trace('SUB.2-WAIT', this.id, null, 'asked=%zu', this.lastGreeters.length); this.l16Backoff('sub-ask'); return; }   // a joiner about to found on silence asks for the list of rooms first, and keeps knocking while the ask is open
+      { const a = this.f.fabricSubAsk(this.id); if (a) { if (a === 1) { this.trace('SUB.2-WAIT', this.id, null, 'asked=%zu', this.lastGreeters.length); this.l16Backoff('sub-ask'); } else { this.trace('SUB.2.5-HOLD', this.id, null, 'asked=%zu', this.lastGreeters.length); this.joinStart = -1; this.l16Backoff('sub-held', a === 3 ? K.TURN_RETRY : K.TURN_RETRY * K.TURN_RETRY_MAX_X); } return; } }   /* 3: a door of the room said "wait" itself (a waiting room, a plan check, a full door): the cap is tag 4's */   // a joiner about to found on silence asks for the list of rooms first, and keeps knocking while the ask is open. SUB.2.5: refused, or inside the refused wait (2): the door lists a room, so I found nothing and keep my rounds at the door on the held pace (a round dials every listed greeter: its cap is TURN.10's longest wait; held is never R6's stranded: the strand clock starts over). 0: the meeting has no TURN service
       this.trace('ISLAND', this.id, null, 'asked=%zu since=%d rounds=%d reach=%d', this.lastGreeters.length, this.islandAskAt, this.islandAskN + 1, typeof this.f.fabricReachSeated === 'function' ? this.f.fabricReachSeated(this.id) : -1);   // reach: the oracle's count (netmatrix bar), -1 without groups
       this.l850Seated = false; this.ehAt = -1; this.ehAskAt = -1; this.ehFrom.clear(); this.foundKnock = true; this.found475 = this.l8475();
       this.islandAskAt = -1; this.islandAskN = 0; this.subEarly = false; this.kdAt = -1; this.islandLast = false; this.genKey = this.w.lv.URL_KEY ? this.w.lv.URL_KEY : this.myKey; /* a founder with no link key mints its own (C++: islandFound) */ const e = []; this.lineAt = this.TICK; /* L8.52.3: before take(): my registration at the door carries my epoch */ this.take({ pc: 0, r: 0, i: 0 }, -1, e); this.islandFounder = true; this.lineAdopt(this.id, this.TICK, 'found'); this.lineFork = true;
@@ -698,9 +698,9 @@
     },
 
     // C++: mesh_island.inc:Seat::l16Backoff
-    l16Backoff(why) {
-      let w = this.w.lv.L16BO_BASE << Math.min(this.l16Round, 8); if (w > this.w.lv.L16BO_CAP) w = this.w.lv.L16BO_CAP; if (this.l16Round < 8) this.l16Round++;
-      let d = Math.trunc(this.rng() * (w + 1)); if (d < 1) d = 1;
+    l16Backoff(why, held) {   // held > 0 (SUB.2.5): a joiner the service refused: the cap is `held` ticks and the draw is in [w/2, w]
+      const cap = held ? held : this.w.lv.L16BO_CAP; let w = this.w.lv.L16BO_BASE << Math.min(this.l16Round, 8); if (w > cap) w = cap; if (this.l16Round < 8) this.l16Round++;
+      let d = held ? (w >> 1) + Math.trunc(this.rng() * (w - (w >> 1) + 1)) : Math.trunc(this.rng() * (w + 1)); if (d < 1) d = 1;
       for (const x of this.l16Ask) this.f.fabricDoorDrop(this.id, x);
       this.l16Anch = false; this.l16Ho = -1; this.l16Until = this.TICK + d; this.state = 0; this.islandAskAt = -1; this.gateway = -1; this.l16Ask.length = 0; this.l16Busy.length = 0; this.l16Last = -1; this.l16List.length = 0; this.l16Next = 0; this.l16WaveAt = -1; this.l16FreshAt = -1; this.f.fabricNoteBackoff(this.id);
       this.trace('BACKOFF', this.id, null, 'why=%s round=%d wait=%d', why, this.l16Round, d);
