@@ -147,6 +147,36 @@
     for (const k of ['admitAtFullDoor', 'captureOpenRoom', 'storage', 'oneMeeting']) if (typeof x[k] !== 'boolean') return null;
     return { roomLimit: x.roomLimit, admitAtFullDoor: x.admitAtFullDoor, captureOpenRoom: x.captureOpenRoom, turnVideoLinks: x.turnVideoLinks, storage: x.storage, oneMeeting: x.oneMeeting };
   }
+  // parseGrantList("roomLimit=12,captureOpenRoom,turnVideoLinks=6") -> { grants } | { error }: the text form of a hand-picked
+  // set of line items (pay/mint-pass.mjs --grants). A name alone is true; name=true|false for the flags; roomLimit=1..25 or
+  // unlimited; turnVideoLinks=whole number. Strict: an unknown name, a repeated one or a bad value is an error. A word not
+  // named takes the no-grant value (nothing added: line 5, no flags, 0 links, one meeting): defaults fill nothing. The
+  // result must also pass grantsOk, the one validator every verifier runs.
+  function parseGrantList(text) {
+    if (typeof text !== 'string' || !text.trim()) return { error: 'empty grant list' };
+    const g = { roomLimit: FREE_LIMIT, admitAtFullDoor: false, captureOpenRoom: false, turnVideoLinks: 0, storage: false, oneMeeting: true };
+    const seen = {};
+    for (const raw of text.split(',')) {
+      const m = /^([A-Za-z]+)(?:=([A-Za-z0-9]+))?$/.exec(raw.trim());
+      if (!m) return { error: 'bad item "' + raw.trim() + '"' };
+      const k = m[1], v = m[2];
+      if (GRANT_WORDS.indexOf(k) < 0) return { error: 'unknown item "' + k + '" (known: ' + GRANT_WORDS.join(', ') + ')' };
+      if (seen[k]) return { error: 'item "' + k + '" given twice' };
+      seen[k] = true;
+      if (k === 'roomLimit') {
+        if (v === 'unlimited') g.roomLimit = null;
+        else if (v !== undefined && /^[0-9]{1,2}$/.test(v) && +v >= 1 && +v <= ROOM_LIMIT_MAX) g.roomLimit = +v;
+        else return { error: 'roomLimit needs 1-' + ROOM_LIMIT_MAX + ' or unlimited' };
+      } else if (k === 'turnVideoLinks') {
+        if (v !== undefined && /^[0-9]{1,4}$/.test(v) && +v <= 1000) g.turnVideoLinks = +v;
+        else return { error: 'turnVideoLinks needs a whole number 0-1000' };
+      } else if (v === undefined || v === 'true') g[k] = true;
+      else if (v === 'false') g[k] = false;
+      else return { error: k + ' is a flag: use ' + k + ', ' + k + '=true or ' + k + '=false' };
+    }
+    const ok = grantsOk(g);
+    return ok ? { grants: ok } : { error: 'the grants fail the line-item check' };
+  }
   // The words of a refusal at a full door and the host's upgrade offer (display only, never a decision): the free
   // line's words in a room on the free plan or with no plan shown.
   const fullFreeWords = (label) => !isPaid(label) && label !== 'custom';
@@ -798,7 +828,7 @@
     TICKET_KIND, TICKET_S, RENEW_EVERY_S, meetingTag, checkTicket, verifyTicket, ticketRights,
     PASS_KIND, passSeconds, PASS_PLAN, PASS_PRICE, PASS_VALUE, ORDER_ID_RE, PASS_ID_RE, passMessage, checkPass, passLive, passEnd, verifyPass,
     passStart, passRights, meetingRight, bestRights,
-    ROOM_LIMIT_MAX, GRANT_WORDS, DEFAULTS, effective, grantsOk, grantsRights, ownTicketGrants, fullFreeWords, PASS_PRESETS, presetPass, revokedSet, rightRevoked, captureRight,
+    ROOM_LIMIT_MAX, GRANT_WORDS, DEFAULTS, effective, grantsOk, parseGrantList, grantsRights, ownTicketGrants, fullFreeWords, PASS_PRESETS, presetPass, revokedSet, rightRevoked, captureRight,
     PASS_TICKET_KIND, PASS_REC_RE, passRecId, passTicketMessage, passChain, checkPassTicket, verifyPassTicket, isPassTicket,
     WALLET_KIND, walletOk,
     CRED_KIND, credentialOk, credentialFiles, credentialFromFiles, walletFromFiles,
