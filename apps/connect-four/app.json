@@ -4,8 +4,8 @@
   "appId": "connect-four",
   "name": "Connect Four",
   "shortName": "C4",
-  "version": "1.0",
-  "minBuild": 947,
+  "version": "1.1",
+  "minBuild": 5861,
   "tagline": "Play the computer, or send a link and a friend drops the other colour.",
   "description": "The computer thinks here, on this phone. Press Play a friend, send the invite, and they sit the other colour on the same board.\n\nSeven columns. Drop a disc. First to four in a line — across, down, or diagonal — wins. Close it and come back: the board keeps.\n\nOn your own you play the original computer, on this device. Pass the phone for two people in the same room, or send one link.\n\nAn unofficial port of c4 by kenrick95. The computer is the same one that shipped with that game.",
   "author": {
@@ -38,14 +38,14 @@
   "cover": "/apps/connect-four/cover.jpg",
   "screenshots": [],
   "gif": "/apps/connect-four/connect-four.gif",
-  "bytes": 258048,
+  "bytes": 258151,
   "download": 0,
   "provides": null,
-  "sha256": "9faa68c896aff7e3d5b315f6f6c3d5d04753ea08f1f0db7e8663a959e54f248d",
+  "sha256": "3c58cbcbce8ba1a48e38f311326754810cec9158042db89cd592ef951f2dff6c",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-21"
   },
   "porter": {
     "name": "GifOS",
