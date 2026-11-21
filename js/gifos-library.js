@@ -96,10 +96,10 @@
   async function status() {
     if (!enabled()) return 'none';
     const r = await SUBS().rights().catch(() => null);
-    if (r && r.tier === 'streamer' && r.storage) return 'streamer';
+    if (r && r.grants && r.grants.storage && r.storage) return 'streamer';   // the license's signed storage line item
     // A plan that ended still reaches its library during the keep window.
     const sg = SUBS().librarySigner ? await SUBS().librarySigner().catch(() => null) : null;
-    if (sg && sg.tier === 'streamer') return 'streamer';
+    if (sg && sg.grants && sg.grants.storage) return 'streamer';
     return r && r.subscribed ? 'other' : 'none';
   }
 
