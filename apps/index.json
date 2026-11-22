@@ -3491,7 +3491,7 @@
       "appId": "hextris",
       "name": "Hextris",
       "shortName": "Hextris",
-      "version": "1.0.0",
+      "version": "1.1",
       "tagline": "Race a friend from the same falling hexes — your high score lives in the GIF.",
       "author": {
         "name": "Logan Engstrom, Garrett Finucane, Noah Moroze, Michael Yang",
@@ -3505,7 +3505,7 @@
         "name": "Hextris",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-30",
       "updated": "2026-08-30",
@@ -3526,15 +3526,15 @@
         60
       ],
       "cover": "/apps/hextris/cover.jpg",
-      "bytes": 336299,
+      "bytes": 346089,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-22"
       },
-      "sha256": "28d9ffac1618021e92b769faa7756adac3085630d864dd2e4e1c599e59e81c09"
+      "sha256": "d4b2e5c83fd1652bdaff874f5ca30137d8e861621dea105a8534bf8d0545d651"
     },
     {
       "slug": "hydra",
