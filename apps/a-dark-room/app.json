@@ -4,8 +4,8 @@
   "appId": "a-dark-room",
   "name": "A Dark Room",
   "shortName": "Dark Room",
-  "version": "1.4.0",
-  "minBuild": 1206,
+  "version": "1.5.0",
+  "minBuild": 5861,
   "tagline": "The fire lives in the file. Close the tab — still stoking. Invite someone to the same fire.",
   "description": "Close it mid-stoke and open it: the fire, the wood, the village are still there, inside this copy of the app. Send the Invite in the bar and a friend sits at the same fire — they can stoke, gather, and build while you keep the room going.\n\nYou wake in a dark room. Light the fire. Stoke it. A stranger arrives who can build. The village grows, the path opens, the world is a map of letters, and then there is a ship.\n\nThe original sent phones to an app-store splash. This copy plays on a phone: light fire is on the screen, the buttons are thumb-sized, the log sits above the room, and a pad under the map walks the wanderer. Sound is packed in — nothing is fetched. Lights start off.\n\nAn unofficial port of A Dark Room by Michael Townsend and doublespeak games.",
   "author": {
@@ -40,14 +40,14 @@
   "cover": "/apps/a-dark-room/cover.jpg",
   "screenshots": [],
   "gif": "/apps/a-dark-room/a-dark-room.gif",
-  "bytes": 5307863,
+  "bytes": 5316892,
   "download": 0,
   "provides": null,
-  "sha256": "8973ac97591218f517102a6410b1da4a2b5311168dc962b7ec280a10462bafa6",
+  "sha256": "2272b0f472bd9b37906d09c07c28505e45ef96e6efddbe3c283eebdaa84e7279",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-22"
   },
   "porter": {
     "name": "GifOS",
