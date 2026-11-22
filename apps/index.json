@@ -3541,7 +3541,7 @@
       "appId": "hydra",
       "name": "Hydra",
       "shortName": "Hydra",
-      "version": "1.0.0",
+      "version": "1.1",
       "tagline": "The patch lives in the GIF. Invite jams the same synth — no account, no server.",
       "author": {
         "name": "Olivia Jack",
@@ -3555,7 +3555,7 @@
         "name": "Hydra",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-30",
       "updated": "2026-08-30",
@@ -3577,15 +3577,15 @@
         122
       ],
       "cover": "/apps/hydra/cover.jpg",
-      "bytes": 229739,
+      "bytes": 230916,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-22"
       },
-      "sha256": "286b72af52a3196a28c0134dc0354fad77eebf164fe602c06a32cb4127b09214"
+      "sha256": "c68db2f0f9c263a084873287d63c6dcfea0d439afa6686a03241ad004c3a3d29"
     },
     {
       "slug": "invaderz",
