@@ -48,5 +48,9 @@
   "needsNewer": "Für gemeinsames Spielen braucht es ein neueres GifOS. Lade die Seite neu, um zu aktualisieren.",
   "hint.line": "Du bist als Nächstes dran: Du bekommst den ersten freien Platz.",
   "hint.asking": "Der Gastgeber wurde gebeten, dir einen Platz zu geben.",
-  "hint.watch": "Du schaust zu. Wird ein Platz frei, bekommt ihn die nächste Person in der Reihe."
+  "hint.watch": "Du schaust zu. Wird ein Platz frei, bekommt ihn die nächste Person in der Reihe.",
+  "mode.title": "Wie wollt ihr spielen?",
+  "mode.together": "Zusammen spielen (alle am eigenen Handy)",
+  "mode.one": "Ein Handy, reihum weitergeben",
+  "mode.change": "Spielweise ändern"
 }
