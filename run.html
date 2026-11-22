@@ -36288,8 +36288,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       } catch (e) {}
       return '';
     }
-    let recFloor = null;   // the silent source under the record mix (startRec)
-    function recStopFloor() { const f = recFloor; recFloor = null; if (f) { try { f.stop(); } catch (e) {} try { f.disconnect(); } catch (e) {} } }
     async function startRec(opts) {
       if (recStarting || (recRec && recRec.state !== 'inactive')) return;
       recStarting = true;
@@ -36490,6 +36488,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         recStarting = false;
       }
     }
+    let recFloor = null;   // the silent source under the record mix (startRec)
+    function recStopFloor() { const f = recFloor; recFloor = null; if (f) { try { f.stop(); } catch (e) {} try { f.disconnect(); } catch (e) {} } }
     function showRecOptions() {
       if (recStarting) return;
       if (document.getElementById('rec-options')) return;
