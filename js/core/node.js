@@ -360,21 +360,26 @@ function createMeeting(opts) {
     } catch (e) { fail('agent', e); }
   }
 
-  // close(): leave as a closed tab does (the goodbye goes out first). kill(): vanish with no goodbye, as a tab
-  // whose device died: timers, sockets and links just stop.
-  function end(polite) {
+  // close(): leave the meeting (the Leave button: farewell on every channel, the seat's LEAVE), then stop once the
+  // farewell has drained (the meeting's own FAREWELL_DRAIN_MS). kill(): vanish with no goodbye, as a device that died:
+  // timers, sockets and links just stop.
+  let ending = false;
+  function stopAll() {
     if (closed) return;
-    if (polite) { try { const v = context.__gifosVideo; if (v && typeof v.leave === 'function') v.leave(); } catch (e) {} }
     closed = true;
     for (const h of timers.values()) { clearTimeout(h); clearInterval(h); }
     timers.clear();
-    const shut = () => {
-      for (const s of sockets) { try { s.close(); } catch (e) {} }
-      for (const pc of Array.from(pcs)) { try { pc.close(); } catch (e) {} }
-    };
-    // the goodbye frames were queued on the sockets and channels: let them leave before the transports close
-    if (polite) setTimeout(shut, 300); else shut();
+    for (const s of sockets) { try { s.close(); } catch (e) {} }
+    for (const pc of Array.from(pcs)) { try { pc.close(); } catch (e) {} }
     try { if (typeof opts.onClose === 'function') opts.onClose(context); } catch (e) {}
+  }
+  function end(polite) {
+    if (closed || (ending && polite)) return Promise.resolve();
+    if (!polite) { stopAll(); return Promise.resolve(); }
+    ending = true;
+    try { meeting.core.leaveMeeting(); } catch (e) { fail('leave', e); }
+    const drain = (context.GifOS && context.GifOS.timings && context.GifOS.timings.FAREWELL_DRAIN_MS) || 0;
+    return new Promise((res) => { const t = setTimeout(() => { stopAll(); res(); }, drain); if (t.unref) t.unref(); });
   }
   const close = () => end(true), kill = () => end(false);
 
