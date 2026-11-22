@@ -12,8 +12,9 @@
  *     seat frees in the same pass as the roster lets them go.
  *   - A freed seat goes to the first person in line; the turn stays with the seat.
  *   - turns "order": the turn rests only on a held seat. It passes to the next HELD seat in seat order, skipping open
- *     seats; if the holder of the turn leaves and nobody is in line, it moves on at once. (Alone with `solo`, the
- *     player also plays the open seats, so the turn may rest on one.)
+ *     seats; if the holder of the turn leaves and nobody is in line, it moves on at once. With only ONE held seat (a
+ *     player waiting for company) it goes round to the next seat as it always did, open or not, so whoever sits
+ *     next moves in their own seat. (Alone with `solo`, the player also plays the open seats.)
  *   - Open room: a join takes a free seat at once. Admin room: a guest's join is an ask; an admin seats people.
  */
 (function (root, factory) {
@@ -125,6 +126,7 @@
       settleTurn();
     }
     const solo = () => sp.solo && roster.size === 1;
+    const heldN = () => s.seats.filter((x) => x.k).length;
     // The next held seat after seat i (i itself last, round the table); with `incl`, seat i counts first. -1 when none.
     function nextHeld(i, incl) {
       const n = s.seats.length;
@@ -133,7 +135,7 @@
     }
     // turns "order": the turn rests on a held seat (never an open one), except in a solo player's practice.
     function settleTurn() {
-      if (sp.turns !== 'order' || solo() || s.seats[s.turn].k) return;
+      if (sp.turns !== 'order' || solo() || heldN() < 2 || s.seats[s.turn].k) return;
       const j = nextHeld(s.turn, true);
       if (j >= 0) s.turn = j;
     }
@@ -205,7 +207,7 @@
           if (sp.turns === 'order') {
             const at = s.seats[s.turn];
             if (s.turn !== mine && !(solo() && !at.k)) return { ok: false, why: 'notYourTurn', turn: at.seat, who: at.nm };
-            if (!q.keep) s.turn = solo() ? (s.turn + 1) % s.seats.length : nextHeld(s.turn);
+            if (!q.keep) s.turn = solo() || heldN() < 2 ? (s.turn + 1) % s.seats.length : nextHeld(s.turn);
           }
           s.moved = true;
           return { ok: true };
