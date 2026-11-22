@@ -286,9 +286,19 @@ function createMeeting(opts) {
 
   const context = vm.createContext(g, { name: 'gifos participant' });
   g.window = g.self = g.globalThis = g.parent = g.top = context;
+  // every peer connection this participant makes is held, so close() ends it as a closed tab does
+  const pcs = new Set();
   if (opts.webrtc) {
     const port = typeof opts.webrtc === 'function' ? opts.webrtc(realmOf(context)) : opts.webrtc;
     for (const k of Object.keys(port || {})) g[k] = port[k];
+    const PC = g.RTCPeerConnection;
+    if (typeof PC === 'function') {
+      g.RTCPeerConnection = class RTCPeerConnection extends PC {
+        constructor(...a) { super(...a); pcs.add(this); }
+        close() { pcs.delete(this); return super.close(); }
+      };
+      for (const k of Object.getOwnPropertyNames(PC)) if (!(k in g.RTCPeerConnection)) try { g.RTCPeerConnection[k] = PC[k]; } catch (e) {}
+    }
   }
   // crypto.subtle results are this realm's ArrayBuffers in the page's own realm
   const R = realmOf(context);
@@ -350,15 +360,23 @@ function createMeeting(opts) {
     } catch (e) { fail('agent', e); }
   }
 
-  function close() {
+  // close(): leave as a closed tab does (the goodbye goes out first). kill(): vanish with no goodbye, as a tab
+  // whose device died: timers, sockets and links just stop.
+  function end(polite) {
     if (closed) return;
-    try { const v = context.__gifosVideo; if (v && typeof v.leave === 'function') v.leave(); } catch (e) {}
+    if (polite) { try { const v = context.__gifosVideo; if (v && typeof v.leave === 'function') v.leave(); } catch (e) {} }
     closed = true;
     for (const h of timers.values()) { clearTimeout(h); clearInterval(h); }
     timers.clear();
-    for (const s of sockets) { try { s.close(); } catch (e) {} }
+    const shut = () => {
+      for (const s of sockets) { try { s.close(); } catch (e) {} }
+      for (const pc of Array.from(pcs)) { try { pc.close(); } catch (e) {} }
+    };
+    // the goodbye frames were queued on the sockets and channels: let them leave before the transports close
+    if (polite) setTimeout(shut, 300); else shut();
     try { if (typeof opts.onClose === 'function') opts.onClose(context); } catch (e) {}
   }
+  const close = () => end(true), kill = () => end(false);
 
   return {
     context, meeting, ran,
@@ -368,7 +386,7 @@ function createMeeting(opts) {
     pageUses: () => Array.from(pageCounts).sort((a, b) => b[1] - a[1]),
     hostShims: () => Array.from(hostCounts).sort((a, b) => b[1] - a[1]),
     errors: () => errors.slice(),
-    close,
+    close, kill,
   };
 }
 
