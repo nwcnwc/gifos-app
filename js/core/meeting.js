@@ -7187,7 +7187,7 @@
       if (!p) return;
       // a stale claim lets go: their sid changed (reload) → old stream is void
       if (p.stream && p.ownSid && p.stream.id !== p.ownSid) {
-        if ((0, /*()*/__M.tileHolds)(p.video, p.stream)) p.video.srcObject = null;
+        if ((typeof __M.tileHolds === 'function' && (0, /*()*/__M.tileHolds)(p.video, p.stream))) p.video.srcObject = null;
         p.stream = null;
       }
       if (!p.ownSid) { updateTile(p.id); return; } // wait for gossip to prove identity
@@ -7207,7 +7207,7 @@
       if (own && p.stream !== own) {
         p.stream = own;
         if (!p.relayed) { (0, /*()*/__M.playTileVideo)(p.video, own); meterFor(p.id, own); }
-      } else if (own && !p.relayed && p.video && (0, /*()*/__M.tileHolds)(p.video, own) && (p.video.paused || p.video.readyState === 0)) {
+      } else if (own && !p.relayed && p.video && (typeof __M.tileHolds === 'function' && (0, /*()*/__M.tileHolds)(p.video, own)) && (p.video.paused || p.video.readyState === 0)) {
         // The stream was bound while its video track was still muted (no RTP
         // yet). A bare srcObject does not start decoding later — the element
         // stays paused at readyState 0 and videoWidth never leaves 0.
@@ -8154,7 +8154,7 @@
             // Replay only a stream the claim already accepted. Unmute is not
             // a second claim: an unverified person's track must stay off the tile.
             if (typeof mediaOk === 'function' && mediaOk(p.id) === false) return;
-            if (!p.stream || p.relayed || p.stream.id !== p.ownSid || !p.video || !(0, /*()*/__M.tileHolds)(p.video, p.stream)) return;
+            if (!p.stream || p.relayed || p.stream.id !== p.ownSid || !p.video || !(typeof __M.tileHolds === 'function' && (0, /*()*/__M.tileHolds)(p.video, p.stream))) return;
             (0, /*()*/__M.playTileVideo)(p.video, p.stream);
           });
         }
@@ -12907,7 +12907,7 @@
         // Nothing on this pc revives that track. Two samples 4s apart with
         // frames decoded and none shown: rebuild the pair; the far side
         // takes a new fingerprint as a new pc (the NEW-PC RULE).
-        if (p.connected && !GifOS.host.hidden() && p.stream && !p.relayed && p.video && (0, /*()*/__M.tileHolds)(p.video, p.stream)
+        if (p.connected && !GifOS.host.hidden() && p.stream && !p.relayed && p.video && (typeof __M.tileHolds === 'function' && (0, /*()*/__M.tileHolds)(p.video, p.stream))
             && !p.video.paused && p.video.readyState === 0 && mediaOk(pid) !== false && now - (p.sinkRebuiltAt || 0) > 30000) {
           const vtr = p.stream.getVideoTracks()[0];
           const rx = vtr && vtr.readyState === 'live' && p.pc.getReceivers().find((r) => r.track === vtr);
@@ -12920,7 +12920,7 @@
               if (p.pc !== pc0 || t - prev.at < 4000) return;
               p.sinkProbe = { fd, at: t, pc: pc0 };
               if (fd - prev.fd < 3) return;
-              if (p.video.readyState !== 0 || p.video.paused || !(0, /*()*/__M.tileHolds)(p.video, p.stream) || GifOS.host.hidden()) return;
+              if (p.video.readyState !== 0 || p.video.paused || !(typeof __M.tileHolds === 'function' && (0, /*()*/__M.tileHolds)(p.video, p.stream)) || GifOS.host.hidden()) return;
               // ON WEBKIT THIS IS THE ELEMENT, NOT THE PC (see WEBKIT_TILE): a
               // rebuild re-binds the tile on a flowing track, which stalls the
               // page and never paints. Ask the sender for a held re-seat and
