@@ -104,6 +104,7 @@ function siteDir(appRoot) {
   return {
     id: 'dir:' + root, root,
     files: JSON.parse(read('js/core/files.json')), platform: JSON.parse(read('js/core/platform.json')),
+    nones: JSON.parse(read('js/core/media/nones.json')).nones,
     read, name: (rel) => path.join(root, rel),
   };
 }
@@ -118,12 +119,13 @@ async function loadSite(origin, opts) {
   };
   const files = JSON.parse(await get('js/core/files.json'));
   const platform = JSON.parse(await get('js/core/platform.json'));
+  const nones = JSON.parse(await get('js/core/media/nones.json')).nones;
   const text = new Map();
   await Promise.all(files.core.concat(files.apps || []).map(async (rel) => { text.set(rel, await get(rel)); }));
   const stamp = (/stamp ([0-9a-f]+)/.exec(text.get('js/core/meeting.js') || '') || [])[1] || '';
   return {
     id: 'web:' + base + '@' + stamp + ':' + nodeCrypto.createHash('sha256').update(files.core.map((r) => text.get(r)).join('\n')).digest('hex').slice(0, 16),
-    files, platform, stamp,
+    files, platform, nones, stamp,
     read: (rel) => { if (!text.has(rel)) throw new Error('GifOS core: ' + rel + ' is not a core or app runtime file of ' + base); return text.get(rel); },
     name: (rel) => new URL(rel, base).href,
   };
@@ -388,6 +390,24 @@ function createMeeting(opts) {
   // the linker's counted placeholders until the media port narrows them.)
   const mediaNeeds = (corePart.needs && corePart.needs.media) || {};
   for (const name of Object.keys(mediaNeeds)) if (mediaNeeds[name] && !MEDIA_ACTS.has(name)) delete meeting.media[name];
+  // A media VARIABLE is its declared none (js/core/media/nones.json): null, false, 0, '', or an empty array, object, Map
+  // or Set of this participant's own, made fresh here (never shared between participants). The core may set it later.
+  // There are no placeholders: a variable with no declared none stops this participant at start, by name.
+  const nones = site.nones || {};
+  const R2 = realmOf(context);
+  const fresh = (v) => {
+    if (v && typeof v === 'object' && !Array.isArray(v) && v.$ === 'Map') return vm.runInContext('new Map()', context);
+    if (v && typeof v === 'object' && !Array.isArray(v) && v.$ === 'Set') return vm.runInContext('new Set()', context);
+    if (Array.isArray(v)) return new R2.Array();
+    if (v && typeof v === 'object') return new R2.Object();
+    return v;
+  };
+  for (const name of Object.keys(mediaNeeds)) {
+    if (mediaNeeds[name]) continue;
+    if (!Object.prototype.hasOwnProperty.call(nones, name)) throw new Error('GifOS core: the media variable "' + name + '" has no declared none (js/core/media/nones.json); this host has no media plane');
+    let held = fresh(nones[name]);
+    Object.defineProperty(meeting.media, name, { get: () => held, set: (v) => { held = v; }, enumerable: true, configurable: true });
+  }
   GifOS.core.meeting = meeting;
   let ran = false;
   try { ran = meeting.run(); } catch (e) { fail('run', e); }
