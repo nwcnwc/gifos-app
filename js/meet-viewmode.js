@@ -83,14 +83,16 @@
     const runs = st.runs;
     const live = new Set(keys || []);
     const loud = new Set(talking || []);
+    // A turn ends on a pause the meter heard: a quiet sample more than FOLLOW_GAP_MS after the last loud one. Time with
+    // no sample at all (a busy page's timer firing late) is not a pause, so a voice loud at every sample stays one turn.
     for (const k of loud) {
       if (!live.has(k)) continue;
       const r = runs[k];
-      if (r && now - r.last <= t.gap) r.last = now;
+      if (r) r.last = now;
       else runs[k] = { since: now, last: now };
     }
     for (const k of Object.keys(runs)) {
-      if (!live.has(k) || now - runs[k].last > t.gap) delete runs[k];
+      if (!live.has(k) || (!loud.has(k) && now - runs[k].last > t.gap)) delete runs[k];
     }
     const talks = (k) => !!runs[k];
     const before = st.holder;
