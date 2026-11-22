@@ -1696,6 +1696,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   // starter. The module after this script runs it once those libraries have
   // executed, and before DOMContentLoaded.
   window.__startMeet = function () {
+  // THE HOST'S FACTS the meeting asks about (GifOS.host): whether the page is hidden from its person (a background
+  // tab). A browser page answers from its document; a host with no screen brings its own answers.
+  if (!GifOS.host) GifOS.host = { hidden: () => document.hidden };
   (function () {
     // The meeting's words come from the meet catalog (i18n/<locale>/meet.json),
     // keyed by the name each call site and data-t/-ph/-al/-ti attribute carries.
@@ -1707,8 +1710,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function uiLang() { return (L10N && L10N.ui()) || 'en'; }
     // Answers the meeting keeps for itself that the page's elements used to hold: the "you left" screen is up
     // (#left-modal: a leave, or a full door's screen), and it is a full door's (the subscription library takes that one
-    // down again); the host face is on (body.amadmin, painted by applyAdminUi).
-    let leftScreenUp = false, leftScreenFull = false, adminFace = false;
+    // down again); the host face is on (body.amadmin, painted by applyAdminUi); this page is an app room (body.app-room);
+    // the chat panel is open (#chatpanel.open); the full-screen view is open (#fsview.on). The page sets the last two
+    // where it opens and closes them.
+    let leftScreenUp = false, leftScreenFull = false, adminFace = false, appRoomOn = false, chatOpen = false, fsOpen = false;
     function uiText(key, en) {
       if (L10N && L10N.ui() !== 'en' && L10N.has('meet.' + key)) return L10N.t('meet.' + key);
       return en || '';
@@ -2554,21 +2559,26 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // guest who is sending a camera or a microphone reads Live, and one who
     // is not reads Off air. Meetings hide the lamp.
     function paintOnAir() {
-      const el = document.getElementById('onair');
-      if (!el) return;
-      if (!BROADCAST) { el.hidden = true; return; }
+      if (!BROADCAST) { paintOnAirBadge(null); return; }
       const role = bcRoleSafe();
       let kind = 'off', words = 'Off air';
       if (role === 'viewer') { kind = 'watch'; words = 'Watching'; }
       else if (bcSendingSafe()) { kind = 'live'; words = 'Live'; }
+      paintOnAirBadge(kind, words);
+          try { paintOnAirSide(); } catch (e) {}
+      try { bcKeepSync(); } catch (e) {}
+    }
+    // The service's ON AIR badge (#onair): kind 'off' | 'watch' | 'live' and its words; none when this is no service.
+    function paintOnAirBadge(kind, words) {
+      const el = document.getElementById('onair');
+      if (!el) return;
+      if (!kind) { el.hidden = true; return; }
       el.hidden = false;
       el.className = kind;
       el.setAttribute('role', 'status');
       const w = el.querySelector('.words');
       if (w && w.textContent !== words) w.textContent = words;
       el.setAttribute('aria-label', words);
-          try { paintOnAirSide(); } catch (e) {}
-      try { bcKeepSync(); } catch (e) {}
     }
     function paintBroadcastJoinNote(role) {
       const note = document.getElementById('bc-join-note');
@@ -2619,6 +2629,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     };
     const share = document.getElementById('share');
     const shareUrl = document.getElementById('share-url');
+    // The meeting's own link (what #share-url shows): set at the knock, read wherever the link is shared.
+    let shareLink = '';
+    function paintShareUrl(link) { shareUrl.value = link; }
+    // The address bar follows the meeting's canonical address (a host with no address bar has none to change).
+    function replaceAddress(url) { history.replaceState(null, '', url); }
     // The address of the meeting this page joined (set at the knock). Rejoin goes back to it, whatever the address
     // bar says by then: a history Back inside the meeting (Android app 0.9.26 audit) left the bar on /run.html,
     // and a plain reload there opened the lobby instead of the meeting.
@@ -2868,6 +2883,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         seed = 'Guest ' + (1000 + Math.floor(Math.random() * 9000));
         GifOS.store.setName(seed);
       }
+      showAppearCard(seed);
+      // The knock does not wait on the card: the seeded or stored name goes
+      // now, and Save or Clear re-announce the one chosen.
+      return Promise.resolve(GifOS.store.identity());
+    }
+    // "This is how you'll appear": the name card (ensureName), seeded with the name the knock already carries.
+    function showAppearCard(seed) {
       const bg = document.createElement('div'); bg.className = 'name-modal';
       bg.id = 'appear-modal';
       bg.setAttribute('role', 'dialog'); bg.setAttribute('aria-modal', 'true');
@@ -2917,9 +2939,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         };
         input.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
       }
-      // The knock does not wait on the card: the seeded or stored name goes
-      // now, and Save or Clear re-announce the one chosen.
-      return Promise.resolve(GifOS.store.identity());
     }
 
     // Broadcast glance state. The status sentence still carries the detail.
@@ -3559,6 +3578,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (t && t.hasCoord) { clearInterval(heldWatch); heldWatch = 0; meetWait.waiting(false); }
       }, 500);
     }
+    // The waiting-room door on the page (#waitdoor and body.wait-door) follows meetWait's atWaitDoor.
+    function paintWaitDoor(on) {
+      const el = document.getElementById('waitdoor');
+      if (el) el.hidden = !on;
+      document.body.classList.toggle('wait-door', on);
+    }
     const meetWait = {
       hold(on) {
         if (!hasAdminRoom()) { holdDoor = false; waitPaint(); return false; }   // no waiting room in an open room
@@ -3627,9 +3652,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       },
       waiting(on) {
         atWaitDoor = !!on;
-        const el = document.getElementById('waitdoor');
-        if (el) el.hidden = !atWaitDoor;
-        document.body.classList.toggle('wait-door', atWaitDoor);
+        paintWaitDoor(atWaitDoor);
         return atWaitDoor;
       },
       atDoor() { return atWaitDoor; },
@@ -4380,7 +4403,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (frozeThisBeat(beatGap, nowMono - hbLastMono, peers.size)) frozeGap = beatGap;
       hbLastAt = nowBeat;
       hbLastMono = nowMono;
-      if (frozeGap && !document.hidden) { resumeReload(); return; }
+      if (frozeGap && !GifOS.host.hidden()) { resumeReload(); return; }
       // THE WAKE PROBE: a beat this late means the page was away — frozen,
       // suspended, blocked — for longer than every peer's receive-silence
       // threshold, and each of them has judged that silence (see wakeProbe).
@@ -4422,7 +4445,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // freshness window): a phone in a pocket keeps its seat without waking
       // the relay 21,600 times a day. The worker clock makes the 12s REAL —
       // under the old DOM timer a pocketed phone actually beat every 25-60s.
-      const throttled = document.hidden && hbTick % 3 !== 0;
+      const throttled = GifOS.host.hidden() && hbTick % 3 !== 0;
       // Beat whenever anyone can hear us: the relay socket, or any live
       // DataChannel (status prefers DCs — see sendSig — so a healing relay
       // socket no longer silences the room's pulse).
@@ -5346,7 +5369,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function sendVisPark() {
       for (const k of [...visParkSent.keys()]) if (!peers.has(k)) visParkSent.delete(k);
       const recording = !!(typeof recRec !== 'undefined' && recRec && recRec.state !== 'inactive');
-      const hidden = document.hidden && !recording;
+      const hidden = GifOS.host.hidden() && !recording;
       let floatPid = null;
       if (hidden) { const v = pipSource(); for (const [pid, p] of peers) if (p.video === v) { floatPid = pid; break; } }
       for (const [pid, p] of peers) {
@@ -6222,6 +6245,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return (pin && /^\d+\.\d+\.\d+(\.\d+)?$/.test(pin) && here !== pin) ? '/versions/' + pin + '/index.html' : 'index.html';
     }
     document.querySelectorAll('a.title[href="index.html"], a.brand[href="index.html"]').forEach((a) => { a.setAttribute('href', homeHref()); });
+    // The "meeting closed" screen (closeRoomNoHost).
+    function showClosedDialog() { const cm = document.getElementById('closed-modal'); if (cm) cm.style.display = 'flex'; }
     function closeRoomNoHost() {
       clearAdminClose();
       leaving = true;                          // stop the auto-reconnect loop
@@ -6232,7 +6257,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { stopRoomClocks(); } catch (e) {}
       for (const pid of Array.from(peers.keys())) { try { dropPeer(pid); } catch (e) {} } if (typeof clearRosterTiles === 'function') clearRosterTiles();
       try { releaseAudioContext(); } catch (e) {}
-      const cm = document.getElementById('closed-modal'); if (cm) cm.style.display = 'flex';
+      showClosedDialog();
     }
     // One path whether the admin never came or has left: `admins` is adminsNow(),
     // built from the signed proofs this page has seen (admSeen), not from the
@@ -6419,7 +6444,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         fsAutoPid = fsAutoKey ? fsAutoKey.slice(fsAutoKey.indexOf(':') + 1) : null;
         if (step.changed) viewNote('follow', { to: fsAutoPid, key: fsAutoKey, talking: talking });
         if (fsFollowT) { clearTimeout(fsFollowT); fsFollowT = 0; }
-        if (step.wakeAt) fsFollowT = setTimeout(() => { fsFollowT = 0; if (fsSel === 'auto' && fsview.classList.contains('on')) fsRefresh(); }, Math.max(0, step.wakeAt - Date.now()));
+        if (step.wakeAt) fsFollowT = setTimeout(() => { fsFollowT = 0; if (fsSel === 'auto' && fsOpen) fsRefresh(); }, Math.max(0, step.wakeAt - Date.now()));
       } else if (!(fsAutoPid && speakingKey('peer:' + fsAutoPid))) {
         for (const s of src) if (speakingKey(s.key)) { fsAutoPid = s.key.slice(5); break; }
         fsAutoKey = fsAutoPid ? 'peer:' + fsAutoPid : null;
@@ -6712,7 +6737,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       fsFollow = null;
       fsInline = !!inline;
       document.body.classList.toggle('view-focus', fsInline);
-      fsview.classList.add('on');
+      fsview.classList.add('on'); fsOpen = true;
       document.body.classList.add('fsopen');
       fsRefresh();
       if (!fsTick) fsTick = setInterval(fsRefresh, 2000);
@@ -6739,7 +6764,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // Something other than the view picker closed the Focus view (the
       // in-page Full screen toggle): the meeting goes back to the last view.
       if (wasInline && !fromPicker && typeof window.__meetLeaveFocus === 'function') { try { window.__meetLeaveFocus(); } catch (e) {} }
-      fsview.classList.remove('on');
+      fsview.classList.remove('on'); fsOpen = false;
       try { ctFocusSync(); } catch (e) {}
       document.body.classList.remove('fsopen');
       fsmain.srcObject = null;
@@ -8099,7 +8124,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function focusAllowed() { return !BROADCAST; }
     function syncFocus() {
       const want = window.__meetView === 'focus' && focusAllowed();
-      const on = fsview.classList.contains('on');
+      const on = fsOpen;
       if (want && !(on && fsInline)) {
         if (on) closeFsView(true);
         openFsView((!VMODE || VMODE.loadFollow(viewStore)) ? 'auto' : null, true);
@@ -9998,7 +10023,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // Hidden tab: sample at 900ms, not 180ms — the only hidden consumer is
       // the PiP re-aim (worker heartbeat, 4s), and five WebAudio reads/sec
       // per participant is real power on a pocketed phone.
-      if (document.hidden && ++meterHiddenTick % 5) return;
+      if (GifOS.host.hidden() && ++meterHiddenTick % 5) return;
       // ALL-MUTED ROOM: 720ms, not 180ms (2026-07-30 power work). The read is
       // already skipped per-muted-participant below, but the WAKEUP was not —
       // and a room where nobody has unmuted (the default: join-quiet) spun
@@ -10051,7 +10076,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // than FOLLOW_GAP_MS is the same turn; the seat keeps the start, the hold and the expiry. Sent on a change only.
       const talkNow = !!myVoiceAt && Date.now() - myVoiceAt <= GifOS.timings.FOLLOW_GAP_MS;
       if (talkNow !== leafTalk) { leafTalk = talkNow; try { if (digestMode()) meshNode.setLeaf({ talk: talkNow }); } catch (e) {} }
-      if (fsSel === 'auto' && fsview.classList.contains('on')) fsRefresh();
+      if (fsSel === 'auto' && fsOpen) fsRefresh();
     }, 180);
     function tileNote(t, msg) {
       t.video.style.display = 'none';
@@ -11671,6 +11696,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // Stage says whether it has not started, when it starts (with a
     // countdown), or that it has ended. "Ended" is the host's one gossiped
     // flag, the schedule, or this tab having seen company and now alone.
+    // The stage feed shows a picture (a row tile on #stagefeed).
+    function stageFeedShows() { return !!document.querySelector('#stagefeed .rowtile'); }
     function bcQuietLine(shown, reachBlocked, atDoor) {
       const host0 = typeof bcHostStored === 'function' && bcHostStored();
       const viewer = !!(BROADCAST && !host0);
@@ -11680,7 +11707,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // rebroadcast. A host waiting off air is not on air.
       let onAir = false;
       try {
-        onAir = !!document.querySelector('#stagefeed .rowtile') && stageIds().some((id) => {
+        onAir = !!stageFeedShows() && stageIds().some((id) => {
           const st = id === myId ? myStatus : statusOf.get(id);
           return stagePersonLive(id) || !!(st && (st.scr || st.rb));
         });
@@ -13820,7 +13847,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (meshNode && !(opts && opts.scope)) txStats.roomFlood = (txStats.roomFlood || 0) + 1; // room-wide floods I ORIGINATED (flags a message sent to everyone instead of its own section)
       if (meshNode) meshNode.gossip({ a: 1, msg }, opts); // opts: { scope: 'section', ephemeral } for the heartbeat — see THE STATUS PLANE
     }
-    const myName = () => (typeof window !== 'undefined' && window.__gifosMeetName) || GifOS.store.identity().name || 'Guest';
+    const myName = () => window.__gifosMeetName || GifOS.store.identity().name || 'Guest';
 
     // Exactly ONE side initiates each pairing, chosen by peer-id order — the
     // same rule no matter who joined, rejoined, or reloaded first. No glare.
@@ -14823,7 +14850,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         claimRelayStreams();   // explicitly mapped forwarded media → the target's tile
         claimMos();            // explicitly mapped mosaic hops → bands/frames (3b)
         fsRefreshIfOpen();
-        if (p.video && fsview.classList.contains('on')) p.video.addEventListener('resize', () => fsRefreshIfOpen(), { once: true });
+        wireFsResize(p);
       };
       pc.onicecandidate = (ev) => { if (p.pc !== pc) return; if (ev.candidate && / typ relay/.test(ev.candidate.candidate || '')) { pc.__relayCand = true; if (!pc.__turnSeenAt) pc.__turnSeenAt = Date.now(); } noteIce(p.id, ev.candidate || null); };
       pc.addEventListener('icecandidateerror', (ev) => { if (!pc.__turnSeenAt && turnServerWord(pc, ev && ev.url)) pc.__turnSeenAt = Date.now(); });   // the browser looked my TURN servers' names up and tried one: the web path's clock (turnWebClock)
@@ -14878,12 +14905,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // Seated, a pair my seat does not link is no one in the room by its transport alone: an admission pair, a backup uplink, a feed carrier. Their person counts when their status reaches me, not because a channel is open.
     function pairOnly(p) { const s = meshSeat(); return !!(s && s.hasCoord && s.state === 3 && !p.headless && !linkTo(p.id)); }
     function seatStranger(p) { const s = meshSeat(); return !!(s && s.hasCoord && s.state === 3 && !p.headless && !linkTo(p.id) && !meshKnows(p.id)); }
+    // A tile back on the grid (it is not there now).
+    function paintTileOnGrid(tile) { if (!tile.parentNode) grid.appendChild(tile); }
     function restoreDoorTile(p) {
       if (!p || !doorOffGrid.has(p.id)) return;
       doorOffGrid.delete(p.id);
       if (p.headless || !p.tile || p.tile.parentNode) return;
       if (typeof dropRosterTile === 'function') dropRosterTile(p.id, 'own-tile');   // one tile per member: their own replaces the held one
-      grid.appendChild(p.tile);
+      paintTileOnGrid(p.tile);
       // The returning tile replaces the held one in the grid, so lay the grid out now: until a pass places it, the tile
       // has no slot and no tier of its own (a bot showed its badge on a plain row square until the next beat).
       try { layout(); } catch (e) {}
@@ -14893,6 +14922,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // death, and that tick rebuilds the tile. The id stays dead. A reload
     // mints a new id, which is the person coming back after unban.
     const bannedSeat = new Set();
+    // A full-screen view that is open follows a new picture's size (rebuildPc).
+    function wireFsResize(p) { if (p.video && fsview.classList.contains('on')) p.video.addEventListener('resize', () => fsRefreshIfOpen(), { once: true }); }
     function makePeer(peerId, name, headless) {
       if (bannedSeat.has(peerId)) return null;
       if (peers.has(peerId)) return peers.get(peerId);
@@ -14989,7 +15020,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           let t = null;
           try { t = makeTile(pid, (rosterNames && rosterNames[pid]) || (q && q.name) || null, false, false); } catch (e) { t = null; }
           if (!t || !t.tile) continue;
-          try { if (!t.tile.parentNode) grid.appendChild(t.tile); } catch (e) {}
+          try { paintTileOnGrid(t.tile); } catch (e) {}
           holdRosterTile(pid, { tile: t.tile, video: t.video });   // no chips writer here: the empty chips of a held tile read "Reconnecting…" (CSS .rhold)
           changed = true;
         }
@@ -16751,7 +16782,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // that has not noticed yet: nothing reaches the server through a dark network
       const offline = !!netDarkAt || navigator.onLine === false;
       return { dp: directPath, relay: relayUp() && !offline, list, greeters, pw: atPwPrompt(),
-        wait: document.body.classList.contains('wait-door') || (typeof iAmWaiting === 'function' && iAmWaiting()),
+        wait: atWaitDoor || (typeof iAmWaiting === 'function' && iAmWaiting()),
         doorUp, st, coord, turn, web: turnWebUp, client: turnClient, webMine, farIn, n, live, nAtRelay: progNAtRelay, offline,
         saved: progRun && progRun.flow === 'update', reloaded: !!updateResume };
     }
@@ -17246,7 +17277,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // away, the power level, who I asked to park, my PiP aim, the
         // worker-vs-DOM heartbeat clock, and each sender's negotiated codec +
         // encoder implementation (SoC hardware name vs libvpx/OpenH264).
-        hidden: !!document.hidden, hbVia,
+        hidden: !!GifOS.host.hidden(), hbVia,
         pow: { level: powNow.level, why: powNow.why },
         parkAsked: Array.from(visParkSent.entries()).filter(([, v]) => v).map(([id]) => String(id).slice(0, 8)),
         parked: Array.from(peers.entries()).filter(([, p]) => p.remoteParkMain).map(([id]) => String(id).slice(0, 8)),
@@ -19200,7 +19231,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // person can actually trigger in the same words the button uses \u2014 one
         // rule, one sentence \u2014 and never show the raw wire text for it.
         else if (/admins only/.test(m.error || '')) setStatus(PW_ADMIN_ONLY);
-        else if (!/password required|session is full/.test(m.error || '')) { setStatus('Connection trouble: ' + m.error); try { statusEl.dataset.why = 'trouble'; paintLiveBadge(); } catch (e) {} }
+        else if (!/password required|session is full/.test(m.error || '')) { setStatus('Connection trouble: ' + m.error); try { statusLine.why = 'trouble'; paintStatusWhy('trouble'); paintLiveBadge(); } catch (e) {} }
       }
     }
     // The steady socket kicks itself on visibility/online; only the camera
@@ -19333,7 +19364,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function lgRead() {
       if (lgReadOff()) return;
       const beat = Date.now(), lag = lgBeatAt ? Math.max(0, beat - lgBeatAt - 2000) : 0; lgBeatAt = beat;
-      if (document.hidden) { lgHealthNow = 1; return; }
+      if (GifOS.host.hidden()) { lgHealthNow = 1; return; }
       const jobs = [];
       for (const p of peers.values()) if (p.pc && p.connected) jobs.push(p.pc.getStats().then((rep) => ({ p, rep })).catch(() => null));
       Promise.all(jobs).then((list) => {
@@ -19722,7 +19753,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // Nothing on this pc revives that track. Two samples 4s apart with
         // frames decoded and none shown: rebuild the pair; the far side
         // takes a new fingerprint as a new pc (the NEW-PC RULE).
-        if (p.connected && !document.hidden && p.stream && !p.relayed && p.video && tileHolds(p.video, p.stream)
+        if (p.connected && !GifOS.host.hidden() && p.stream && !p.relayed && p.video && tileHolds(p.video, p.stream)
             && !p.video.paused && p.video.readyState === 0 && mediaOk(pid) !== false && now - (p.sinkRebuiltAt || 0) > 30000) {
           const vtr = p.stream.getVideoTracks()[0];
           const rx = vtr && vtr.readyState === 'live' && p.pc.getReceivers().find((r) => r.track === vtr);
@@ -19735,7 +19766,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               if (p.pc !== pc0 || t - prev.at < 4000) return;
               p.sinkProbe = { fd, at: t, pc: pc0 };
               if (fd - prev.fd < 3) return;
-              if (p.video.readyState !== 0 || p.video.paused || !tileHolds(p.video, p.stream) || document.hidden) return;
+              if (p.video.readyState !== 0 || p.video.paused || !tileHolds(p.video, p.stream) || GifOS.host.hidden()) return;
               // ON WEBKIT THIS IS THE ELEMENT, NOT THE PC (see WEBKIT_TILE): a
               // rebuild re-binds the tile on a flowing track, which stalls the
               // page and never paints. Ask the sender for a held re-seat and
@@ -19906,6 +19937,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (el.innerHTML !== html) el.innerHTML = html;
       el.classList.add('on');
     }
+    function showWhoIfOpen() { if (whoModal && whoModal.style.display === 'flex') showWhoModal(); }
     function applyBcAct(id, act) {
       if (!id || id === myId || !amAdmin) return;
       if (act === 'ban') {
@@ -19919,7 +19951,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       else return;
       try { renderHandq(); } catch (e) {}
       try { paintBroadcastSeats(); } catch (e) {}
-      try { if (whoModal && whoModal.style.display === 'flex') showWhoModal(); } catch (e) {}
+      try { showWhoIfOpen(); } catch (e) {}
     }
     function renderHandq() {
       learnFoldedNames();
@@ -21442,13 +21474,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // A srcdoc session cannot always retarget its address. The mesh does
       // not depend on that; a thrown replaceState must not skip the knock.
       rejoinHref = canonical;
-      try { if (location.pathname + location.search + location.hash !== canonical) history.replaceState(null, '', canonical); } catch (e) {}
-      shareUrl.value = pretty ? pageOrigin() + prettyPath + prettyQs
+      try { if (location.pathname + location.search + location.hash !== canonical) replaceAddress(canonical); } catch (e) {}
+      shareLink = pretty ? pageOrigin() + prettyPath + prettyQs
         : pageOrigin() + MEET_PATH + '#v=' + room + avPartAt + (relay ? '&relay=' + encodeURIComponent(relay) : '');
+      paintShareUrl(shareLink);
       try { paintStreamLink(); } catch (e) {}
       if (!params.get('v')) share.classList.add('show'); // fresh room → surface the link
-      else recordMeetingInvite(room, shareUrl.value); // joined someone's link → log it in the desktop's Invites
-      recordMeetHistory(room, shareUrl.value, av); // lobby's "Recent" — every room, created OR joined, in ITS OWN surface's list
+      else recordMeetingInvite(room, shareLink); // joined someone's link → log it in the desktop's Invites
+      recordMeetHistory(room, shareLink, av); // lobby's "Recent" — every room, created OR joined, in ITS OWN surface's list
       // Derive the relay-facing identity + the room key from the room code
       // ("derive, don't send"), then connect. The relay never sees the code.
       // The device tag is ROOM-SALTED here too: the relay only ever receives a
@@ -22181,6 +22214,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // the entry dance and the camera have no ordering dependency at all:
     // knock NOW, and media attaches whenever it lands, through the same
     // transceiver path lateMedia uses for a camera granted mid-call.
+    // The tab's title, and a service's share words, once the page is in its room (bootIntoRoom).
+    function paintRoomTitle() {
+      document.title = BROADCAST ? 'Broadcast — GifOS' : 'Meeting — GifOS';
+      if (BROADCAST) {
+        const hint = document.querySelector('.share .hint');
+        if (hint) hint.textContent = 'Share this link — anyone who opens it is watching:';
+      }
+    }
+    // Why the status line is up (data-why: the live badge reads it).
+    function paintStatusWhy(why) { statusEl.dataset.why = why; }
     function bootIntoRoom() {
       // The mirror runs beside the socket. applyAdminBoot waits on
       // roomStateReady. The appearance card resolves before the knock,
@@ -22195,11 +22238,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           updateTile('me');
           joinRoom();
           updateStatus();
-          document.title = BROADCAST ? 'Broadcast — GifOS' : 'Meeting — GifOS';
+          paintRoomTitle();
           if (BROADCAST) {
-            const hint = document.querySelector('.share .hint');
-            if (hint) hint.textContent = 'Share this link — anyone who opens it is watching:';
-            if (!bcHostStored()) { sayState('joiningBroadcast'); try { statusEl.dataset.why = 'joining'; paintLiveBadge(); } catch (e) {} }
+            if (!bcHostStored()) { sayState('joiningBroadcast'); try { statusLine.why = 'joining'; paintStatusWhy('joining'); paintLiveBadge(); } catch (e) {} }
             else {
               // The HOST auto-steps onto the Stage: a broadcast page's whole
               // point, and the Stage is where their camera reaches the room.
@@ -22223,7 +22264,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // view-only join a denied camera lands in; a viewer the host later
           // calls up gets media through lateMedia (a user gesture), exactly
           // like any view-only guest tapping the mic button.
-          if (params.get('agent') === '1' || (typeof window !== 'undefined' && window.__gifosAgentQ === true)) params.set('bot', '1');   // agent mode (gifosAgent) is bot mode, and it cannot be untagged
+          if (params.get('agent') === '1' || window.__gifosAgentQ === true) params.set('bot', '1');   // agent mode (gifosAgent) is bot mode, and it cannot be untagged
           let assistantBoot = params.get('bot') === '1';
           try { assistantBoot = assistantBoot || sessionStorage.getItem('gifos_bot') === '1'; } catch (e) {}
           if (assistantBoot) {
@@ -22492,9 +22533,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const appRoomStr = (j) => 'app~' + (j.owned ? j.short + '~' + j.av + '~' : '') + j.k;
     let appRoomTicking = false;
     const armAppRoomTick = () => { if (!appRoomTicking) { appRoomTicking = true; setInterval(appRoomTick, 2000); } }; // only an app room runs it
+    function paintAppRoomBody() { document.body.classList.add('app-room'); }
     function bootAppRoom() {
       armAppRoomTick();
-      document.body.classList.add('app-room');
+      appRoomOn = true; paintAppRoomBody();
       try { refreshAudioBtn(); } catch (e) {}
       // A solo app that Invite turns into a room now speaks for the room.
       try { paintHelpTip(); } catch (e) {}
@@ -22510,10 +22552,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const pretty = /(^|\.)gifos\.app$/.test(location.hostname) && !custom;
         const prettyPath = j.owned ? '/join/' + j.short + '/' + j.av + '/' + j.k : '/join/' + j.k;
         const hashForm = MEET_PATH + (j.owned ? '#s=' + j.short + '.' + j.av + '&k=' + j.k : '#j=' + j.k);
-        shareUrl.value = location.origin + (pretty ? prettyPath : hashForm + (custom ? '&relay=' + encodeURIComponent(relay) : ''));
+        shareLink = location.origin + (pretty ? prettyPath : hashForm + (custom ? '&relay=' + encodeURIComponent(relay) : ''));
+        paintShareUrl(shareLink);
         const canonical = pretty ? prettyPath : hashForm + (custom ? '&relay=' + encodeURIComponent(relay) : '');
-        if (location.pathname + location.hash !== canonical) history.replaceState(null, '', canonical);
-        if (!ROOM.founder) recordMeetingInvite(j.owned ? j.short : 'app', shareUrl.value);
+        if (location.pathname + location.hash !== canonical) replaceAddress(canonical);
+        if (!ROOM.founder) recordMeetingInvite(j.owned ? j.short : 'app', shareLink);
         return Promise.all([
           net.deriveMeet(room, av, roomPw),
           net.meetPwProof(room, av, roomPw),
@@ -22794,7 +22837,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // available obligates nobody's camera. A quiet member sees who's live and
     // chooses; their own mic/cam tap opts them in too. Never silent tiles.
     const appRoomTick = () => {
-      if (!document.body.classList.contains('app-room')) return;
+      if (!appRoomOn) return;
       // App rooms may go beat-quiet (a 2-person room whose owner died sends
       // nothing) — reconcile on the tick so owner-away is TIME-driven, not
       // only event-driven. Idempotent when nothing changed.
@@ -23067,7 +23110,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function noteReactToMe(id, e, on) {
       const line = chat.get(String(id));
       if (!on || !line || line.byId !== myId) return;
-      if (chatPanel && chatPanel.classList.contains('open')) return;
+      if (chatOpen) return;
       const per = chatReacts.get(line.id);
       const who = new Set(per && per.get(e) ? per.get(e) : []);
       who.delete(myId);
@@ -23493,7 +23536,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           renderChat();
           if (m.m && typeof window !== 'undefined' && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'chat', text: m.m.text, by: m.m.by, byId: m.m.byId, at: m.m.at });
           countClosedChat(m.m);
-          if (!chatPanel.classList.contains('open')) paintChatCount();
+          if (!chatOpen) paintChatCount();
           // A frame the sender marked ackReq (today: only the follow-me link)
           // gets a delivery ack back over the mesh/DC — see FOLLOW-ME DELIVERY
           // WAIT. Ordinary chat carries none: this is not a read receipt.
@@ -25041,7 +25084,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     chatBtn.setAttribute('aria-expanded', chatPanelOpen() ? 'true' : 'false');
     chatBtn.onclick = () => {
-      chatPanel.classList.toggle('open');
+      chatOpen = chatPanel.classList.toggle('open');
       try { paintChatBtn(); } catch (e) {}
       // renderChat skips while the transcript tab is shown, and the transcript
       // is not painted while the panel is closed: paint the tab that shows.
@@ -25072,7 +25115,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // Closing the chat refits the dock first: beside the open chat Chat may
     // sit in More (placeDock), and focus on a hidden button is dropped.
     function closeChatToButton() {
-      chatPanel.classList.remove('open');
+      chatPanel.classList.remove('open'); chatOpen = false;
       document.body.classList.remove('chatside');
       if (window.__gifosDock) window.__gifosDock.place();
       try { paintChatBtn(); } catch (e) {}
@@ -25250,7 +25293,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (open) {
         const bar = document.querySelector('.bar');
         if (bar && !bar.classList.contains('collapsed')) { const t = document.getElementById('bartoggle'); if (t) t.click(); }
-        chatPanel.classList.remove('open');
+        chatPanel.classList.remove('open'); chatOpen = false;
         renderQa();
       }
     }
@@ -35483,7 +35526,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // The Transcript button in the top bar appears once captions are in play
     // anywhere in the meeting — the transcript must not hide behind Chat.
     document.getElementById('trbtn').onclick = () => {
-      chatPanel.classList.add('open');
+      chatPanel.classList.add('open'); chatOpen = true;
       setPanelView(true);
       paintChatBtn();
     };
@@ -38586,7 +38629,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       wire('togglemicrophone', () => micTap(false));   // the OS control: no chooser out of sight
       wire('togglecamera', () => {
         if (!myStatus.camOff) { camBtn.onclick(); return; }
-        if (document.hidden) return;
+        if (GifOS.host.hidden()) return;
         camBtn.onclick();
       });
       // The OS hang-up is the Leave button: a recording in flight is flushed
@@ -38707,6 +38750,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     })();
     // asked: the person picked this level themselves (the camera button's
     // chooser), so a hold on No blur is explained in the dialog.
+    // The blur note fades in over the picture, unless the blur dialog already says it (it stays until dismissed).
+    function showBlurNoteUnlessDialog(why) {
+      const whyDlg = document.getElementById('blurwhy-modal');
+      if (!(whyDlg && whyDlg.style.display !== 'none')) blurNote(why);
+    }
     function setPersonalBlur(v, asked) {
       if (BROADCAST && !bcMayPublishAv()) return;
       myStatus.blur = v;
@@ -38727,8 +38775,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       } else if (why) {
         // The dialog already says this and stays until they dismiss it.
         // The fading note would sit on the picture under that dialog.
-        const whyDlg = document.getElementById('blurwhy-modal');
-        if (!(whyDlg && whyDlg.style.display !== 'none')) blurNote(why);
+        showBlurNoteUnlessDialog(why);
         setStatus(why);
       } else {
         setStatus(uiText('stBlurOff', 'Blur off.'));
@@ -39767,6 +39814,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { updateStatus(); } catch (e) {}
     }
     if (DEBUG_ON) window.__subsReknockForTest = () => (subsRefused ? { n: subsRefused.n, armed: !!subsRefused.t, aside: subsTurnedAway, sinceMs: Date.now() - subsRefused.at } : null);   // DEBUG=on only: a test reads the re-knock state
+    function hideDialogs(ids) { for (const id of ids) { const d = document.getElementById(id); if (d) d.style.display = 'none'; } }
     function subsStandAside() {
       leaving = true;   // the mesh re-arms and reconnects stand down
       try { GifOS.meetSubs.leaveMeeting(); } catch (e) {}
@@ -39777,7 +39825,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       for (const pid of Array.from(peers.keys())) { try { dropPeer(pid); } catch (e) {} }
       try { if (typeof clearRosterTiles === 'function') clearRosterTiles(); } catch (e) {}
       // Only the full screen is up: a dialog a tap opened before the refusal (Your video is still blurred) goes.
-      for (const id of ['blurwhy-modal', 'status-full']) { const d = document.getElementById(id); if (d) d.style.display = 'none'; }
+      hideDialogs(['blurwhy-modal', 'status-full']);
     }
     function subsKnockAgain() {
       if (!subsRefused) return;
@@ -39840,7 +39888,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // link and out of the words next to it. A phone with a share sheet gets
     // that sheet. Otherwise the link is copied. Same path as the phone Invite.
     function viewerShareUrl() {
-      let raw = (shareUrl && shareUrl.value) || '';
+      let raw = shareLink || '';
       const named = (typeof room === 'string' && room) ? room : (params.get('v') || '');
       if (!raw && named) {
         const avBit = (params.get('av') || '').toLowerCase();
@@ -41051,6 +41099,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // Converge THIS phone's app view onto whatever the room is sharing. Runs on
     // every status tick and on peer departure, so it self-heals like the mesh.
+    function paintAppWho(text) { document.getElementById('appwho').textContent = text; }
     function reconcileApp() {
       sgaPromoteSnaps(); // a snap that raced the successor's ad
       sgaEdgeSync();     // a neighbour I did not have: the frames I may have missed while my edges moved
@@ -41096,7 +41145,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         succSince = 0;
         if (succT) { clearTimeout(succT); succT = null; }
         if (appClientCtl && appClientCtl.setFrozen) appClientCtl.setFrozen(false);
-        document.getElementById('appwho').textContent = '· shared with the room' + (want.byName ? ' by ' + want.byName : '');
+        paintAppWho('· shared with the room' + (want.byName ? ' by ' + want.byName : ''));
       }
       updateAppButtons(want);
     }
@@ -41332,7 +41381,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       el.append(t, ok, no);
       document.body.appendChild(el);
     }
-    const appStageOn = () => !!appKey && !!myId && !BROADCAST && !document.body.classList.contains('app-room');
+    const appStageOn = () => !!appKey && !!myId && !BROADCAST && !appRoomOn;
     function appStageState() {
       const p = appStageLast;
       return { on: appStageOn(), me: appStageOn() ? myId : '', adminRoom: hasAdminRoom(), admin: !!amAdmin, cap: SCALE.C,
@@ -41774,8 +41823,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               try { p = bootIntoRoom(); } catch (e) { reject(e); return; }
               const done = () => {
                 meetJoined = true;
-                const linkEl = document.getElementById('share-url');
-                resolve({ room: room, link: linkEl ? linkEl.value : '' });
+                resolve({ room: room, link: shareLink });
               };
               if (p && typeof p.then === 'function') p.then(done, reject);
               else done();
@@ -42239,6 +42287,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { refreshAllTiles(); broadcastStatus(); if (typeof pushLeaf === 'function') pushLeaf(); } catch (e) {}
       return agentOk(out);
     }
+    // A canvas for the agent's picture (the page's; a host with no screen has none).
+    function newCanvas() { return document.createElement('canvas'); }
+    // The bot's own view (#botview): its state, the transcript and the chat.
+    function paintBotView(st) {
+      const rows = (m) => Array.from(m.values()).filter((l) => l && !/^gb1 /.test(String(l.text || ''))).sort((x, y) => (x.at || 0) - (y.at || 0)).map((l) => ({ name: l.by || '', text: l.text || '' }));
+      GifOS.meetAgent.renderBotView(document.getElementById('botview'), Object.assign({}, st, { transcript: rows(trs), chat: rows(chat) }), uiText);
+    }
     function agentHost() {
       const T = GifOS.timings;
       return {
@@ -42255,7 +42310,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         hostMuted: () => typeof amGloballyMuted === 'function' && amGloballyMuted(), camForcedOff: () => !!forcedCamOff('me'),
         playVoice: agentVoice, writeSpoken: (text) => { rememberBotSpoken(text); writeBotSpoken(text); },
         audioTracks: agentAudioTracks, videoSource: agentVideoSource,
-        blurFrac: (id) => blurViewFrac(blurLevelFor(id)), blurDraw: blurDraw, makeCanvas: () => document.createElement('canvas'),
+        blurFrac: (id) => blurViewFrac(blurLevelFor(id)), blurDraw: blurDraw, makeCanvas: () => newCanvas(),
         setCamera: agentCamera, chat: agentChat, hand: agentHand, mic: agentMic, stage: agentStage,
         appRun: agentAppRun,
         appStop: () => { if (!myStatus.app) return agentFail('You are not sharing an app.'); stopApp(); return agentOk(); },
@@ -42265,16 +42320,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         leave: () => { try { leaveMeeting(); } catch (e) {} return agentOk(); },
         renderBotView: (st) => {
           if (!botViewOn) return;
-          const rows = (m) => Array.from(m.values()).filter((l) => l && !/^gb1 /.test(String(l.text || ''))).sort((x, y) => (x.at || 0) - (y.at || 0)).map((l) => ({ name: l.by || '', text: l.text || '' }));
-          GifOS.meetAgent.renderBotView(document.getElementById('botview'), Object.assign({}, st, { transcript: rows(trs), chat: rows(chat) }), uiText);
+          paintBotView(st);
         },
         reaim: () => { try { sendVisPark(); } catch (e) {} },
       };
     }
+    // The agent contract over the page's postMessage (a host page or extension talks to it); a host with no page has none.
+    function bridgeAgentToPage(core) { GifOS.meetAgent.postMessageBridge(core, window); }
     function agentStart() {
       if (!agentCore && window.GifOS && GifOS.meetAgent && GifOS.timings) {
         agentCore = GifOS.meetAgent.make(agentHost());
-        try { GifOS.meetAgent.postMessageBridge(agentCore, window); } catch (e) {}
+        try { bridgeAgentToPage(agentCore); } catch (e) {}
       }
       if (!agentCore) {
         // A bare visit runs the lobby's scripts first and the rest (this module among them) right after: look again.
@@ -42422,7 +42478,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const apple = /Apple/.test((navigator.vendor || ''));
         try {
           if (apple) throw new Error('no captureStream on this engine');
-          const c = document.createElement('canvas');
+          const c = newCanvas();
           c.width = 640; c.height = 360;
           const x = c.getContext('2d');
           const hue = (i * 47) % 360;
@@ -42485,7 +42541,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       let stream = null;
       try {
         if (apple) throw new Error('no captureStream on this engine');
-        const c = document.createElement('canvas');
+        const c = newCanvas();
         c.width = 320; c.height = 180;
         const x = c.getContext('2d');
         x.fillStyle = '#1d3a5f';
@@ -42878,12 +42934,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       },
       liveTracksForTest: () => (localStream && localStream.getTracks ? localStream.getTracks().filter((t) => t.readyState === 'live').length : 0),
       awayForTest: () => !!myStatus.away,
-      setTabHiddenForTest: (hidden) => {
-        try { Object.defineProperty(document, 'hidden', { configurable: true, get: () => !!hidden }); } catch (e) {}
-        document.dispatchEvent(new Event('visibilitychange'));
-        const el = document.getElementById('still');
-        return { ok: true, away: !!myStatus.away, still: !!(el && el.classList.contains('on')) };
-      },
       killCameraForTest: () => {
         const stopped = [];
         const stopAll = (stream) => {
@@ -43110,7 +43160,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         mixNow: Object.assign({}, mix),
       }),
       singForTest: (on) => { if (!!on !== !!myStatus.sing) toggleSing(); },
-      timingForTest: (t) => { const b = timingRow.querySelector('[data-timing="' + t + '"]'); if (b) b.click(); },
       gdForTest: (v) => { gdOverride = +v || 0; applyGrid(); broadcastStatus(); },
       // app-in-meeting
       appActive: () => !!appKey,
@@ -43124,20 +43173,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       sgaInjectForTest: (msg) => { if (!msg || msg.k !== 'sga-app' || !msg.m || typeof msg.m.sid !== 'string') return false; sgaRecvApp(msg.m); return true; }, // a frame as the wire would hand it in
       appSid: () => appKey,
       sgaPullState: (sid) => ({ snap: sgaSnap.has(sid), app: sgaApp.has(sid), reqTries: sgaReqTries.get(sid) || 0, appTries: sgaAppReqTries.get(sid) || 0 }),
-      appName: () => document.getElementById('appname').textContent,
       appIsHost: () => appMode === 'host',
       runAppForTest: (fileId, name) => runApp(fileId, name),
       stopAppForTest: () => stopApp(),
       capOf: (id) => capOf(id),
       scale: () => Object.assign({}, SCALE),
-      // The Stage (Channel St) — inspect + drive it from the meeting CLI.
-      stageInfo: () => ({
-        stagers: stageIds().map((id) => ({ id: String(id).slice(0, 12), name: id === myId ? myName() : (rosterNames[id] || null), me: id === myId })),
-        myStg: myStatus.stg || 0, canStage: canStage(myId), cap: SCALE.C,
-        held: [...mosIn.keys()].filter((k) => k.indexOf('stg:') === 0),
-        strip: (typeof stripPack !== 'undefined' && stripPack) ? stripPack.stats() : null,
-        stripPainted: !!document.querySelector('[data-row="sgs"] video'),
-      }),
       // Per-feed ground truth: every claimed mosaic feed's element + track state.
       feedsInfo: () => [...mosIn.entries()].map(([rk, f]) => ({
         key: rk, via: String(f.via).slice(0, 8), meta: f.meta || null,
@@ -43150,59 +43190,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         vState: f.stream && f.stream.getVideoTracks()[0] ? f.stream.getVideoTracks()[0].readyState : null,
       })),
       stageForTest: (on) => { if (!!on === !!myStatus.stg) return stageIds().includes(myId); if (on && (!canStage(myId) || stageIds().length >= SCALE.C)) return false; setStage(!!on); return true; },
-      // SCREEN SHARE (docs/media-plane.md Channel St). Read the state a
-      // receiver can actually act on: who the room believes is sharing, and —
-      // for the sharer — what is really on the outbound sender right now. The
-      // track's `label`/`displaySurface` is the only place the browser admits
-      // a track came from getDisplayMedia rather than a camera, which is what
-      // makes "the screen really is what is being published" provable at all.
-      screenInfo: () => {
-        const vt = (typeof sentVideoTrack === 'function') ? sentVideoTrack() : null;
-        let surface = null; try { surface = vt && vt.getSettings ? (vt.getSettings().displaySurface || null) : null; } catch (e) {}
-        const mainTracks = [];
-        for (const p of peers.values()) if (p.mainV && p.mainV.track) mainTracks.push(p.mainV.track.id);
-        return {
-          sharing: !!myStatus.scr, sharers: screenSharers(),
-          capable: canScreenShare(),
-          steppedUp: screenSteppedUp,
-          onStage: stageIds().includes(myId),
-          sentTrackId: vt ? vt.id : null,
-          sentLabel: vt ? String(vt.label || '') : null,
-          surface,
-          mainTrackIds: mainTracks,
-          // THE RESOLUTION SURFACE. A share that arrives unreadable fails none
-          // of the checks above — it is on the stage, it is a display capture,
-          // it is letterboxed — so the numbers that decide legibility are
-          // published here rather than inferred from pixels (a composited
-          // canvas cannot tell a downscale from a blurry desktop).
-          sentHint: vt ? String(vt.contentHint || '') : '',
-          // What the Stage element is ACTUALLY painting. The strip's canvas is
-          // square (one screen tile ⇒ cell x cell); the direct feed keeps the
-          // shared display's own shape. So the aspect alone says which one the
-          // viewer is looking at, and the width says at what cost.
-          stagePaint: (() => {
-            const v = stagefeedEl && stagefeedEl.querySelector('[data-row="sgs"] video');
-            return v ? { w: v.videoWidth, h: v.videoHeight } : null;
-          })(),
-          // Every outbound video sender's lane, as adapt() last left it.
-          senders: (() => {
-            const out = [];
-            for (const p of peers.values()) for (const sd of p.pc.getSenders()) {
-              if (!sd.track || sd.track.kind !== 'video') continue;
-              let prm = null; try { prm = sd.getParameters(); } catch (e) {}
-              const e0 = prm && prm.encodings && prm.encodings[0];
-              out.push({
-                stage: stageSenders.has(sd), aux: auxSenders.has(sd),
-                kbps: e0 && e0.maxBitrate ? Math.round(e0.maxBitrate / 1000) : 0,
-                deg: degOf.get(sd) || (prm && prm.degradationPreference) || '',
-              });
-            }
-            return out;
-          })(),
-          shareBtnShown: !!(shareBtn && shareBtn.offsetParent !== null),
-          bodyScreenOn: document.body.classList.contains('screen-on'),
-        };
-      },
       // The exact call the strip compositor makes when it packs a seat's cell.
       // Asserted directly because the alternative — reading pixels out of a
       // composited canvas — cannot tell a letterbox from a dark room, and the
@@ -43215,60 +43202,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // can tell a live face from an empty box.
       // Why this page reads a stager as sharing: its fresh status, the fold's bit, the grant.
       shareWhyForTest: (id) => { const st = statusOf.get(id), e = digStageEntry(id); return { share: !!sharingScreen(id), fresh: freshSt(id), scr: st ? st.scr || 0 : null, age: st ? Date.now() - stSeen(st) : -1, dig: e ? e.f : null, may: !!mayShareScreen(id) }; },
-      stageFacesForTest: () => {
-        const host = stagefeedEl && stagefeedEl.querySelector('[data-row="sgs"]');
-        const out = { view: stageViewNow, stagers: stageIds().slice(), screenSid: null, faces: [] };
-        for (const id of out.stagers) if (sharingScreen(id)) { out.screenSid = out.screenSid ? 'many' : id; }
-        // Same 24x24 mean the overlay uses. A pack tile is the raw track, so it is not cropped.
-        const lumaOf = (v, cell) => {
-          try {
-            if (!v.videoWidth) return null;
-            const cv = document.createElement('canvas'); cv.width = 24; cv.height = 24;
-            const x = cv.getContext('2d');
-            const k = v.videoWidth / (parseFloat(v.style.width) || STAGE_FACE_PX);
-            const sx = cell ? -(parseFloat(v.style.left) || 0) * k : 0, sy = cell ? -(parseFloat(v.style.top) || 0) * k : 0;
-            const sw = cell ? STAGE_FACE_PX * k : v.videoWidth, sh = cell ? STAGE_FACE_PX * k : v.videoHeight;
-            x.drawImage(v, sx, sy, sw, sh, 0, 0, 24, 24);
-            const d = x.getImageData(0, 0, 24, 24).data; let sum = 0;
-            for (let i = 0; i < d.length; i += 4) sum += d[i] + d[i + 1] + d[i + 2];
-            return +(sum / (d.length / 4) / 765).toFixed(4);
-          } catch (e) { return null; }
-        };
-        const pushFace = (id, v, cell, named, name, pack) => {
-          const face = { id, cell: !!cell, live: v.videoWidth > 0, w: v.videoWidth, h: v.videoHeight,
-            named: !!named, name: name || '',
-            bl: v.classList.contains('blur2') ? 2 : v.classList.contains('blur1') ? 1 : 0, luma: lumaOf(v, !!cell) };
-          if (pack) face.pack = true;
-          out.faces.push(face);
-        };
-        const box = host && host.querySelector('.stagefaces');
-        if (box) {
-          for (const w of box.children) {
-            const v = w.querySelector('video');
-            if (!v) continue;
-            // named=true: the box shows the name on dark, no picture (camera
-            // off, admin video-off, or a crop the current frame does not fit).
-            const nm = w.querySelector('.stagefacename');
-            pushFace(w.dataset.face, v, v.dataset.cell, nm && nm.style.display !== 'none', nm ? nm.textContent : '', false);
-          }
-        }
-        // The per-person pack draws each co-presenter as its own tile and
-        // removes the overlay, so the face is not painted twice. It is still
-        // on screen: read that tile.
-        if (host && host.dataset.pack === '1') {
-          const seen = new Set(out.faces.map((f) => f.id));
-          const feed = document.getElementById('feed');
-          if (feed) for (const el of feed.querySelectorAll('[data-stageview]')) {
-            const id = el.dataset.stageview;
-            if (!id || seen.has(id)) continue;
-            const v = el.querySelector('video');
-            if (!v) continue;
-            seen.add(id);
-            pushFace(id, v, false, false, '', true);
-          }
-        }
-        return out;
-      },
       startScreenShareForTest: () => { startScreenShare(); return true; },
       // Seated guests share their screens and the stage shows `stream` as
       // the strip a viewer gets; ids [] ends it.
@@ -43288,30 +43221,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return true;
       },
       stopScreenShareForTest: () => { stopScreenShare(); return true; },
-      // The sheet's copy, as rendered — the app-pin preference is a PROMISE the
-      // product makes in words, so the guard reads the words.
-      shareSheetForTest: () => {
-        openShareSheet();
-        const m = document.getElementById('share-modal');
-        const n = document.getElementById('share-appnote');
-        const r = document.getElementById('share-runapp');
-        // Not `style.display !== "none"`: that is TRUE for a sheet that was
-        // never shown at all, so a broken openShareSheet would still "pass".
-        // And not offsetParent either — it is null for ANY position:fixed
-        // element, which the sheet is, so that reads every open sheet as
-        // closed. The honest test is a real box on screen plus a computed
-        // display: both are false only when the thing genuinely is not there.
-        const shown = (el) => {
-          const r2 = el.getBoundingClientRect();
-          return r2.width > 0 && r2.height > 0 && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden';
-        };
-        const denied = document.getElementById('share-denied');
-        const go = document.getElementById('share-go');
-        return { open: shown(m), note: n.textContent || '',
-          runAppShown: shown(r), runAppLabel: r.textContent || '',
-          denied: shown(denied), goShown: shown(go) };
-      },
-      closeShareSheetForTest: () => { document.getElementById('share-modal').style.display = 'none'; return true; },
       // TEST: what the stage EAR actually PLAYS — peak level over `ms` of the
       // folded per-stager audio. -1 = no ear/no stream. The 2026-07-29 bar:
       // a room must HEAR its stage, not merely hold the feed (held keys and
@@ -43369,30 +43278,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return { t: now, me: six(myId), o, jobs, ear, lvl };
       },
       stgHiccupForTest: (ms) => { const jobs = [...mosJobs.values()].filter((b) => b.key.indexOf("stg:") === 0 && b.active); for (const b of jobs) b.senders.forEach((sd, i) => { const t = b.trackList[i]; if (t && t.kind === "audio") { try { sd.replaceTrack(null); } catch (e) {} } }); setTimeout(() => { for (const b of jobs) b.senders.forEach((sd, i) => { const t = b.trackList[i]; if (t && t.kind === "audio") { try { sd.replaceTrack(t); } catch (e) {} } }); }, ms); return jobs.length; },
-      // PRIVACY PROBE (test-only): what this page actually receives as VIDEO from one stager's stage feed, read off the track itself
-      // (not the roster, not a status): { feed, track, state, w, luma }. luma is the mean brightness (0..1) of up to 4 decoded frames,
-      // the max seen; null when the track is live but no frame decoded in the window. A camera-off stager must read dark (<= 0.05) or no track.
-      stageVideoProbeForTest: async (idPrefix) => {
-        const pre = String(idPrefix || '').slice(0, 8); let f = null;
-        for (const [k, v] of mosIn) { if (k.indexOf('stg:' + pre) === 0 && k !== 'stg:' + myId && v.stream) { f = v; break; } }
-        if (!f) return { feed: false, track: false };
-        const vt = f.stream.getVideoTracks()[0];
-        if (!vt) return { feed: true, track: false };
-        const out = { feed: true, track: true, state: vt.readyState, enabled: vt.enabled, w: 0, luma: null };
-        if (vt.readyState !== 'live') return out;
-        const el = document.createElement('video'); el.muted = true; el.playsInline = true; el.srcObject = new MediaStream([vt]);
-        try { await el.play(); } catch (e) {}
-        const cv = document.createElement('canvas'); cv.width = 24; cv.height = 24; const x = cv.getContext('2d');
-        for (let i = 0; i < 12 && (out.luma === null || i < 6); i++) {
-          await new Promise((r) => setTimeout(r, 250));
-          if (!el.videoWidth) continue;
-          out.w = el.videoWidth;
-          try { x.drawImage(el, 0, 0, 24, 24); const d = x.getImageData(0, 0, 24, 24).data; let sum = 0; for (let j = 0; j < d.length; j += 4) sum += d[j] + d[j + 1] + d[j + 2];
-            out.luma = Math.max(out.luma || 0, +(sum / (d.length / 4) / 765).toFixed(4)); } catch (e) {}
-        }
-        try { el.srcObject = null; } catch (e) {}
-        return out;
-      },
       // DEBUG AUDIO METERS: meters() = the last reading (rows by path, who, level, tones heard; hears = talker -> paths),
       // meterTones({name: hz}) names the pitches to tell apart inside a mix, meterLog(sinceMs) the per-second ring, meterPanel(on) the on-screen list.
       meters: () => { const k = dbgMeters(); return k ? k.read() : null; },
@@ -43716,81 +43601,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           meters: (() => { try { return dbgMeterKit ? { hears: dbgMeterKit.hears(), tones: dbgMeterKit.tones() } : null; } catch (e) { return { err: String(e).slice(0, 80) }; } })(),
         };
       },
-      mosaic: () => { const c = meshCoord(); const T = net.topo; const tgt = (co) => { if (!co) return null; const pid = occPid(co); const p = pid && peers.get(pid); return { pid: (pid||'').slice(0,6), has: !!p, conn: p && p.connected, dc: !!(p && p.dc && p.dc.readyState === 'open') }; };
-        return { multi: multiSection(), coord: c, head: c && c.i === 0, s1: c && c.pc === 0,
-        // WHO AM I, in the same 8-char form feedsInfo() reports `via` in. A
-        // receiver can see which peer it is claiming FROM, but nothing let an
-        // observer turn that back into a seat — so a stall could never be
-        // followed one hop upstream to ask what the sender was doing. Needed to
-        // resolve pipeStats() across seats (the stg-freeze hunt,
-        // docs/bug-pipe-stg-freeze-2026-08-05.md).
-        me: String(myId || '').slice(0, 8),
-        up: c ? tgt(T.up(c)) : null, down: c ? tgt(T.down(c)) : null,
-        prodStream: !!(prodPack && prodPack.stream), sdStream: !!(sdView && sdView.stream), roomStream: !!(roomPack && roomPack.stream), loop: !!(packLoop && packLoop.rx),
-        restarts: [...mosIn.entries(), ...mosStandby.entries()].filter(([, e]) => e && e.el).map(([rk, e]) => ({ key: rk, sid: e.el.srcObject ? String(e.el.srcObject.id).slice(0, 8) : null, vw: e.el.videoWidth, rs: e.el.readyState, n: e.el._mosRestarts || 0, held: !!e.el._mosHold })), // decoders restarted (parked, re-bound, resumed) because they showed no picture while the feed flowed (WebKit)
-        jobs: [...mosJobs.keys()], claims: [...mosIn.keys()], ann: [...mosAnn.keys()],
-        claimMeta: [...mosIn.entries()].map(([rk, e]) => rk.slice(-12) + ' n' + (e.meta ? e.meta.n : '-') + ' ids' + (e.meta && e.meta.ids ? e.meta.ids.map((x) => String(x).slice(2, 6)).join(',') : '-') + ' el' + (e.el ? (e.el.videoWidth || 0) : 'x') + ' a' + (e.stream ? e.stream.getAudioTracks().map((t) => t.readyState[0] + (t.muted ? 'M' : '')).join('') : '-')),   // what each claim says it holds: cells, named ids, picture width, sound tracks
-        view: { hasView: !!sdView, n: sdView ? sdView.count() : null, sound: (typeof sdViewSt !== 'undefined' && sdViewSt) ? sdViewSt.getAudioTracks().length : null },   // my own Stadium view: its faces after hiding my row, and whether it holds a sound track
-        // An announcer is only a CANDIDATE if its announced streamId resolves
-        // to one of that peer's incoming streams (claimRedun's `live`). The
-        // keys alone cannot show a MISMATCH — an announce whose stream never
-        // arrives, or a stale id re-announced after a transport swap — which
-        // is exactly the state that silently blocks failback, so surface the id.
-        // Every re-ship of an ALREADY-ESTABLISHED job, with the reason — see
-        // the note in shipMos. A receiver can only observe that the id changed;
-        // this says why it changed, on the side that changed it.
-        reship: (window.__mosReship || []).slice(-12),
-        // Why my OWN outbound stg stream changed identity — the root event the
-        // reship cascade above hangs off. See mySelfStream.
-        selfMemo: (window.__selfMemoLog || []).slice(-8),
-        regrab: (window.__regrabLog || []).slice(-8),
-        annSid: [...mosAnn.entries()].map(([k, v]) => k.slice(0, 14) + '|' + k.slice(k.indexOf('|') + 1) + '=' + String(v && v.streamId).slice(0, 8)
-          // mt = the mirror's TRANSIT ROW. A carrier recomputes the route from
-          // it, and slotFor/the forwarder both bail SILENTLY when it is absent
-          // (`if (t == null) return null`), so an announce that lost mt looks
-          // exactly like one that was never sent. Surface it.
-          + (v && v.mt != null ? ' mt=' + v.mt : ' mt=MISSING')),
-        // multi-subscribe forensics: hot standby slots, outbound jobs' active/dormant
-        // state, and the last want/idle demand I sent per announcer.
-        standby: [...mosStandby.keys()],
-        jobsActive: [...mosJobs.entries()].map(([k, j]) => k + (j.active ? '+' : '·')),
-        // per-job IDENTITY: sig = the SOURCE stream this job ships, streamId =
-        // the container minted for it. A changing sig means the producer
-        // handed us a new stream; a changing container with a STABLE sig means
-        // the job was reaped and re-created. (2026-07-29 stage re-ship churn.)
-        jobSig: [...mosJobs.entries()].map(([k, j]) => k.slice(0, 18) + '|s' + String(j.sig).slice(0, 6) + '|c' + String(j.streamId).slice(0, 6)),
-        demand: [...subWant.entries()].map(([k, v]) => k + '=' + v.st),
-        // per-slot primary/standby VIA (peer id) — lets a probe kill the exact
-        // feeding peer and watch the hot standby promote with no black-out.
-        claimVia: [...mosIn.entries()].map(([rk, c]) => ({ rk, via: c.via, sid: c.streamId })),
-        // WHY AN ANNOUNCER IS NOT A CANDIDATE. claimRedun only claims from an
-        // announcer whose announced streamId resolves to one of that peer's
-        // INCOMING streams (`live`), and when nothing resolves it claims
-        // NOTHING — the seat holds announcers, has no feed, and every seat
-        // below it starves with no announcer of its own to explain why.
-        // Measured 2026-08-10 (e2e-mosaic): a mid-tree seat sat on TWO stg
-        // announcers with an empty claim list, and nothing anywhere could say
-        // which half of the resolution failed. This recomputes it and reports
-        // the comparison itself: what was announced, against the stream ids
-        // that peer actually has.
-        cands: [...mosAnn.entries()].map(([k, v]) => {
-          const bar = k.indexOf('|'), from = k.slice(0, bar), key = k.slice(bar + 1);
-          const p = peers.get(from);
-          const inc = (p && p.incoming) ? p.incoming.map((s) => String(s.id).slice(0, 8)) : null;
-          const want = String(v && v.streamId).slice(0, 8);
-          return { key, from: from.slice(0, 8), want,
-            peer: !!p, conn: !!(p && p.connected), own: String(p && p.ownSid).slice(0, 8),
-            incoming: inc, h: v ? v.h : undefined, sb: v ? v.sb : undefined, vp: v ? v.vp : undefined, at: v ? v.at : undefined,
-            live: !!(p && p.incoming && p.incoming.find((s) => s.id === (v && v.streamId) && s.id !== p.ownSid)) };
-        }),
-        standbyVia: [...mosStandby.entries()].map(([rk, c]) => ({ rk, via: c.via, sid: c.streamId })),
-        // wake/failback forensics: per-slot wake-in-progress + settle stamps
-        fb: [...mosFb.entries()].map(([rk, f]) => ({ rk, wakeAt: f.wakeAt, prefSince: f.prefSince, lastSwitch: f.lastSwitch, dark: !!f.dark, lastAdvanceAt: f.lastAdvanceAt || 0, lastBytes: f.lastBytes != null ? f.lastBytes : -1, d0: f.d0 != null ? f.d0 : -1, stdFdec: f.stdFdec != null ? f.stdFdec : -1, flowSince: f.flowSince || 0, q: f.q || 0, fp: f.fp || 0 })),
-        prod: prodPack && prodPack.stats(), sd: sdView && sdView.stats(), room: roomPack && roomPack.stats(),
-        rowFaces: dbgRowFaces.slice(), // which pid the packer drew at each of my row's seats (test observability, 2026-07-29 stale-seat dup)
-        // w/h: the hidden source <video>'s own size; pack: the local composite's canvas; src: what the face cut used (chaos-1019: the two disagreed, 330 against 440)
-        tile: (() => { const v = stadiumEl.querySelector('[data-row="sd"] video'); const cl = window.__comfyLast; return v ? { live: v.videoWidth > 0, w: v.videoWidth, h: v.videoHeight, pack: (sdView && sdView.canvas) ? [sdView.canvas.width, sdView.canvas.height] : null, src: cl && cl.src ? cl.src : null } : null; })(),
-        strip: (() => { const v = stagefeedEl.querySelector('[data-row="sgs"] video'); return v ? { live: v.videoWidth > 0 } : null; })(), stagers: stageIds().length }; },
       relayUpNow: () => relayUp(),
       rosterIdsNow: () => rosterIds.slice(),
       linkToPeer: (pid) => linkTo(pid),
@@ -43799,25 +43609,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       stadium: () => Array.from(compOf.entries())
         .map(([row, c]) => ({ row, via: c.via, ids: (c.ids || []).slice(), names: (c.names || []).slice(), rws: (c.rws || []).slice(), cnt: c.cnt || 0, live: !!c.stream }))
         .sort((a, b) => a.row - b.row),
-      stadiumShown: () => stadiumEl.classList.contains('on'),
-      stadiumVideoLive: (row) => { const el = stadiumEl.querySelector('[data-row="' + row + '"] video'); return !!(el && el.srcObject && el.videoWidth > 0); },
-      // PiP forensics: what the overlay would float right now, and whether one is up.
-      pip: () => ({
-        aimed: (() => { const v = pipSource(); if (!v) return null; const t = v.closest('[data-peer]'); if (t) return 'peer:' + t.dataset.peer; const r = v.closest('.rowtile'); return r ? 'row:' + r.dataset.row : 'other'; })(),
-        active: pipFloating(),
-        byBrowser: pipByBrowser,
-        trace: pipTrace.slice(-40),
-        doc: docPip ? { name: docPip.name.textContent, live: !!docPip.video.srcObject, frames: (() => { try { return docPip.video.getVideoPlaybackQuality().totalVideoFrames; } catch (e) { return -1; } })(), mic: docPip.mic.textContent } : null,
-        // capability forensics: which PiP doors exist on THIS browser
-        caps: {
-          api: !!document.pictureInPictureEnabled,
-          req: typeof HTMLVideoElement.prototype.requestPictureInPicture === 'function',
-          webkit: typeof document.createElement('video').webkitSetPresentationMode === 'function',
-          autoAttr: 'autoPictureInPicture' in HTMLVideoElement.prototype,
-          doc: !!window.documentPictureInPicture,
-        },
-        btnShown: (() => { const b = document.getElementById('pipbtn'); return !!b && b.style.display !== 'none'; })(),
-      }),
       pipEnterForTest: () => enterPip(true),
       audienceReactForTest: (emoji, fromId) => takeAudienceReact(emoji, fromId || 'viewer'),
       // the reactions this page shows on faces now: { peerId: emoji }
@@ -43834,9 +43625,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       camOffPeerForTest: (id, name, scr) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [], neg: newNeg() }); peers.get(id).name = name; rosterNames[id] = name; statusOf.set(id, { camOff: true, muted: true, scr: scr ? 1 : 0, at: Date.now() }); paintBroadcastIdent(); },
       // a linked, recently heard peer: the status line counts it as here
       livePeerForTest: (id, name) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, dc: { readyState: 'open', label: 'test' }, testTx: [], neg: newNeg() }); const p = peers.get(id); p.connected = true; p.lastHeard = Date.now(); if (name) { p.name = name; rosterNames[id] = name; } updateStatus(); return participantCount(); },
-      // a joined peer by name whose fresh status has a hand up, as the host's queue line reads it
-      handPeerForTest: (id, name) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [], neg: newNeg() }); peers.get(id).name = name; rosterNames[id] = name; if (!rosterIds.includes(id)) rosterIds.push(id); const t = Date.now(); statusOf.set(id, { camOff: true, muted: true, hand: t, at: t, rx: t }); renderHandq(); return handqEl.textContent; },
-      chatGateForTest: (off, admin) => { chatGateOverride = { off: !!off, admin: !!admin }; paintChatGate(); return document.getElementById('chat-in').placeholder; },
       stageHostForTest: (id, name, stg) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [], neg: newNeg() }); peers.get(id).name = name; rosterNames[id] = name; if (!admins.includes(id)) admins.push(id); if (!rosterIds.includes(id)) rosterIds.push(id); statusOf.set(id, { camOff: false, muted: false, stg: stg === undefined ? 1 : stg, at: Date.now(), rx: Date.now() }); paintBroadcastIdent(); return stageIds().slice(); }, // a host whose status says on stage, camera on, before any feed
       hostPeerForTest: (id) => { id = String(id); admSeen.set(id, Date.now()); if (!admins.includes(id)) admins.push(id); updateStatus(); return admins.slice(); }, // admSeen, as a verified host frame does, so the watch count leaves them out
       linkFramesForTest: (id) => { const p = peers.get(String(id)); return p && p.testTx ? p.testTx.slice() : null; },
@@ -43851,8 +43639,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       fsSourcesForTest: () => fsSources().map((s) => ({ key: s.key, bl: s.bl || 0 })),
       openFsForTest: (key) => openFsView(key),
       closeFsForTest: () => closeFsView(),
-      fsMain: () => ({ key: fsmain.dataset.key || null, bl: fsmain.classList.contains('blur2') ? 2 : fsmain.classList.contains('blur1') ? 1 : 0, fit: getComputedStyle(fsmain).objectFit }),
-      fsThumbBlur: (key) => { const th = Array.from(fsstrip.children).find((t) => t.dataset.key === key); const tv = th && th.querySelector('video'); if (!tv) return null; return tv.classList.contains('blur2') ? 2 : tv.classList.contains('blur1') ? 1 : 0; },
       peerCamOff: (pid) => seatDark(statusOf.get(pid)),
       // A camera that is off is not open, so these two open one first, past every order check (an honest page never does).
       defyCamOffForTest: () => { if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return Promise.resolve(false); return camTrackForTest().then((t) => { if (!t) return false; camDefiant = true; t.enabled = true; myStatus.camOff = false; refreshOutbound(); broadcastStatus(); return true; }); },
@@ -43860,28 +43646,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       slipCamOnForTest: () => camTrackForTest().then((t) => { if (!t) return false; t.enabled = true; myStatus.camOff = false; try { paintOnAir(); } catch (e) {} return true; }),
       slipCamOffForTest: () => { const t = localStream && localStream.getVideoTracks()[0]; if (t) t.enabled = false; myStatus.camOff = true; try { paintOnAir(); } catch (e) {} return true; },
       recOnForTest: () => !!(recRec && recRec.state !== 'inactive'),
-      // The blob Rebroadcast plays: the file saved when the host left the air.
-      lastServiceForTest: async () => {
-        if (!bcLastService || !bcLastService.blob) return null;
-        const b = await bcLastService.blob;
-        const url = URL.createObjectURL(b);
-        const sec = await new Promise((res) => {
-          const v = document.createElement('video');
-          let done = false;
-          const finish = (n) => { if (done) return; done = true; try { v.removeAttribute('src'); v.load(); } catch (e) {} res(n); };
-          v.preload = 'metadata';
-          v.onloadedmetadata = () => {
-            if (isFinite(v.duration) && v.duration > 0 && v.duration < 1e6) finish(v.duration);
-            else { try { v.currentTime = 1e10; } catch (e) {} }
-          };
-          v.ontimeupdate = () => { if (isFinite(v.duration) && v.duration > 0 && v.duration < 1e6) finish(v.duration); };
-          v.onerror = () => finish(0);
-          setTimeout(() => finish(isFinite(v.duration) && v.duration < 1e6 ? v.duration : 0), 4000);
-          v.src = url;
-        });
-        try { URL.revokeObjectURL(url); } catch (e) {}
-        return { bytes: b.size, sec: sec };
-      },
       // freeze my outgoing pulses (simulates a phone that has throttled itself)
       haltPulseForTest: (on) => { pulseHalt = !!on; },
       // backdate the beat clock (simulates a renderer that froze and then resumed)
@@ -43889,16 +43653,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // sleep is a wall gap with a near-zero monotonic gap.
       freezeGapForTest: (ms, mono) => { hbLastAt = Date.now() - (ms | 0); hbLastMono -= (mono === undefined ? ms : mono) | 0; },
       stageVoteNeed: () => stageVoteTallies().need,
-      // THE STATUS PLANE, as this seat sees it.
-      statusPlane: () => { const d = roomDig(); return { id: myId, mode: digestMode(), past: roomPastSection(), n: d ? d.n : null, age: d ? d.age : null,
-        refuse: d ? d.refuse : null, part: d ? !!d.part : null, handN: d ? d.handN : null, hands: d ? d.hands.map((e) => e.id) : [], stage: d ? d.stage.map((e) => e.id) : [],
-        apps: d ? d.apps.map((e) => e.id) : [], votes: d ? d.votes.length : 0, display: displayCount(), consentIds: roomConsentIds().length,
-        fresh: Array.from(statusOf.keys()).filter((id) => id !== myId && freshSt(id)), coord: meshCoord(), label: statusEl.textContent,
-        statusN: statusOf.size, dcLinks: Array.from(peers.values()).filter((p) => p.dc && p.dc.readyState === 'open').length }; },
       totalCount: () => knownTotal() || 0,
       handQueue: () => handQueue().map((e) => ({ id: e.i, name: e.n, t: e.t })),
-      handqShown: () => handqEl.classList.contains('on'),
-      handqText: () => handqEl.textContent,
       handRaised: () => !!myStatus.hand,
       raiseHand: (on) => { myStatus.hand = on ? Date.now() : null; paintHand(); broadcastStatus(); layout(); renderHandq(); },
       // exact raise stamp — lets tests force a same-millisecond tie and assert the id tie-break
@@ -43938,15 +43694,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       stageFlagForTest: () => myStatus.stg || 0,   // my raw step-up claim, painted or not
       stageFlipsForTest: () => stgFlips,          // how many times setStage ran
       setStageForTest: (on) => setStage(!!on),
-      armBroadcastHostForTest: () => {
-        amAdmin = true;
-        document.body.classList.remove('notadmin');
-        if (myId && admins.indexOf(myId) < 0) admins.push(myId);
-        myStatus.camOff = true;
-        try { setStage(true); } catch (e) { myStatus.stg = Date.now(); }
-        paintOnAir();
-        return { ok: !!myStatus.stg };
-      },
       setClearForTest: (on) => { clearForTest = !!on; refreshOutbound(); return blurLevelFor('me'); },
       setCamLiveForTest: (on) => {
         myStatus.camOff = !on;
@@ -44121,7 +43868,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // FOLLOW-ME DELIVERY WAIT forensics: the admin's own view of who it is
       // still waiting on, mid-wait (null once resolved — acked or capped).
       followWaitState: () => followWait ? { id: followWait.id, needed: Array.from(followWait.needed), acked: Array.from(followWait.acked) } : null,
-      statusText: () => statusEl.textContent,
       addTranscript: (t) => addTranscriptLine(t),
       transcriptTexts: () => (trKeeps() ? Array.from(trs.values()).sort((a, b) => a.at - b.at) : []).map((l) => l.by + ': ' + trNote(l) + l.text), // a page with Transcript off holds only a 20 s window for the CC overlay: it reads as nothing here, as in its Transcript window
       transcriptBlocks: () => trBlocks().map((l) => l.by + ': ' + trNote(l) + l.text),
@@ -44137,93 +43883,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return { send: capSend(), show: !!ccShow, speech: speechRunning() };
       },
       whoFileForTest: () => whoFileText(),
-      appStopForTest: (mine) => {
-        if (mine) { appKey = 'qa-stop'; myStatus.app = { s: 'qa-stop', name: 'Notes' }; }
-        else { appKey = null; myStatus.app = null; }
-        showAppPane('Notes', '');
-        updateAppButtons(myStatus.app);
-        const b = document.getElementById('appstop');
-        return { text: b.textContent, title: b.title, font: parseFloat(getComputedStyle(b).fontSize), display: getComputedStyle(b).display };
-      },
-      appBarForTest: (talkOn) => {
-        document.body.classList.add('has-app');
-        if (talkOn) {
-          armAppRoomTick();
-          document.body.classList.add('app-room');
-          appMode = 'host';
-          myStatus.app = Object.assign(myStatus.app || { s: 'qa-talk' }, { audio: true });
-        } else if (myStatus.app) {
-          myStatus.app.audio = false;
-        }
-        paintTalkBtn();
-        ['appsave', 'appsteal', 'apphide', 'appaudio'].forEach((id) => { document.getElementById(id).style.display = ''; });
-        const read = (id) => {
-          const b = document.getElementById(id);
-          return { text: b.textContent, title: b.title, font: parseFloat(getComputedStyle(b).fontSize) };
-        };
-        return { save: read('appsave'), steal: read('appsteal'), hide: read('apphide'), talk: read('appaudio') };
-      },
-      // The sharer's own app bar: Invite, the lead switch (tapped once when
-      // tap is set), and Full screen, as the sharer reads them.
-      appWordsForTest: (tap) => {
-        document.body.classList.add('has-app');
-        appKey = 'qa-words'; myStatus.app = { s: 'qa-words' };
-        showAppPane('Notes', '');
-        appLeadable = true; appLeadOn = false; appLeadSet = () => {};
-        updateAppButtons(myStatus.app);
-        // Invite follows the room (paintInviteSlot). A meeting must not force it on.
-        if (tap) document.getElementById('applead').click();
-        const read = (id) => {
-          const b = document.getElementById(id);
-          return { text: b.textContent.trim(), title: b.title, label: b.getAttribute('aria-label') || '', font: parseFloat(getComputedStyle(b).fontSize), display: getComputedStyle(b).display };
-        };
-        return { invite: read('appinvite'), lead: read('applead'), full: read('appfull'), status: document.getElementById('status').textContent };
-      },
-      stealChoicesForTest: () => {
-        appClientCtl = appClientCtl || { stealToDesktop: () => new Promise(() => {}) };
-        const b = document.getElementById('appsteal');
-        b.style.display = '';
-        if (b.dataset.armed) delete b.dataset.armed;
-        document.querySelectorAll('#appbar [data-steal]').forEach((el) => el.remove());
-        b.click();
-        return [...document.querySelectorAll('#appbar [data-steal]')].map((el) => ({ text: el.textContent, title: el.title, data: el.dataset.steal }));
-      },
-      chatModForTest: (off) => {
-        amAdmin = true;
-        if (off) modTable['*'] = { chat: { on: true, by: 'Pastor Kim' } };
-        else delete modTable['*'];
-        applyAdminUi();
-        try { renderChat(); } catch (e) {}
-        document.getElementById('chatpanel').classList.add('open');
-        const b = document.getElementById('chatmod');
-        const row = document.querySelector('#chatlog .cmsg');
-        return {
-          text: b.textContent, title: b.title,
-          font: parseFloat(getComputedStyle(b).fontSize),
-          display: getComputedStyle(b).display,
-          line: row ? row.textContent : '',
-        };
-      },
-      // PAINT ONLY: the dock's words and icon for a mic state. It never turns
-      // the mic track on or off, so it is no way to unmute a seat in a test
-      // (tap #mic, and pick a row when the chooser opens). With a live mic
-      // track that says otherwise it refuses, so no test reads a painted
-      // "on" over a mic that sends nothing (0.9.26.19 phone runs).
-      setOwnMicForTest: (live) => {
-        const tr = localStream && localStream.getAudioTracks()[0];
-        if (tr && tr.readyState === 'live' && tr.enabled !== !!live) return { refused: 'the live mic track is ' + (tr.enabled ? 'on' : 'off') + ': setOwnMicForTest only paints; tap #mic to change it', muted: !!myStatus.muted, trackEnabled: tr.enabled };
-        myStatus.muted = !live;
-        paintControls();
-        const word = micBtn.querySelector('.dockword');
-        return {
-          muted: !!myStatus.muted,
-          word: word ? word.textContent : '',
-          label: micBtn.getAttribute('aria-label'),
-          svg: !!micBtn.querySelector('svg'),
-          headerUnmute: !!document.getElementById('unmute'),
-          headerCam: !!document.getElementById('showcam'),
-        };
-      },
       // caption trust on this page: per peer the state of its own captions, the choice, whether my ears are on it
       capTrustForTest: () => {
         if (!capTrust) return null;
@@ -44253,41 +43912,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         try { broadcastStatus(); } catch (e) {}
         try { layout(); } catch (e) {}
         return !!myStatus.bot;
-      },
-      comfyForTest: () => {
-        const feed = document.getElementById('feed');
-        const nodes = [];
-        const take = (el) => {
-          if (!el || el.classList.contains('stad-src')) return;
-          const cs = getComputedStyle(el);
-          if (cs.display === 'none' || cs.visibility === 'hidden') return;
-          const r = el.getBoundingClientRect();
-          if (r.width < 2 || r.height < 2) return;
-          nodes.push({
-            id: el.dataset.peer || el.dataset.stad || el.id || '',
-            tier: el.dataset.tier || '',
-            x: r.x, y: r.y, w: r.width, h: r.height,
-          });
-        };
-        document.querySelectorAll('#feed .tile').forEach(take);
-        document.querySelectorAll('#stadwhole').forEach(take);
-        const bar = document.querySelector('.bar');
-        const br = bar ? bar.getBoundingClientRect() : null;
-        let box = null;
-        try {
-          const landscape = window.innerWidth > window.innerHeight;
-          box = GifOS.meetLayout.viewBox(window.innerWidth, window.innerHeight, { phone: !landscape && window.innerWidth < 700, pill: document.body.classList.contains('has-pill') });
-        } catch (e) {}
-        return {
-          on: document.body.classList.contains('comfy'),
-          mode: window.__meetViewMode || 'gallery',
-          last: window.__comfyLast || null,
-          box: box,
-          nodes: nodes,
-          scroll: feed ? feed.scrollHeight - feed.clientHeight : null,
-          overflow: feed ? getComputedStyle(feed).overflow : null,
-          bar: br ? { x: br.x, y: br.y, w: br.width, h: br.height, free: bar.dataset.barfree || '', barx: bar.dataset.barx || '', bary: bar.dataset.bary || '' } : null,
-        };
       },
       outgoingHoldForTest: () => {
         const senders = [];
@@ -44387,7 +44011,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       verifier: () => av,
       modOn: (pid, field) => { const m = modOf(pid); return !!(m[field] && m[field].on); },
       adminsHere: () => admins.slice(),
-      countdownShown: () => { const el = document.getElementById('admcount'); return !!el && el.style.display !== 'none'; },
       // Absence-chain forensics: every link from a dead admin to the visible
       // countdown (admSeen age → confirmGone tombstone → grace timer), so a
       // missing countdown is attributable to ONE link from the test harness.
@@ -44424,46 +44047,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (myStatus.camOff) return 'avatar';
         return 'raw';
       },
-      // A camera-off seat with no transport, so the gate can watch per-tile
-      // blur and blur-all land on the avatar's video. The tile is the real
-      // one (makeTile + updateTile); nothing here is a second painter.
-      avatarSeatForTest: (opts) => {
-        opts = opts || {};
-        const id = String(opts.id || 'avatar_seat');
-        const name = String(opts.name || 'Ada').slice(0, 40);
-        let p = peers.get(id);
-        if (!p) {
-          const tile = makeTile(id, name, false);
-          p = { id, pc: null, neg: newNeg(), tile: tile.tile, video: tile.video, label: tile.label, avatar: tile.avatar, chips: tile.chips, cap: tile.cap, modbar: tile.modbar, voteBtn: tile.voteBtn,
-            name, headless: false, connected: true, pendingIce: [], absentSince: 0, lastKick: 0, lastHeard: Date.now(), bornAt: Date.now(), incoming: [], neverUp: false, stream: null };
-          peers.set(id, p);
-        }
-        p.name = name;
-        if (p.label) p.label.textContent = name;
-        if (p.avatar) p.avatar.textContent = nameInitial(name);
-        rosterNames[id] = name;
-        statusOf.set(id, { muted: true, camOff: opts.camOff !== false, blur: opts.blur == null ? 0 : (opts.blur | 0), at: Date.now(), rx: Date.now(), scr: 0 });
-        if (opts.useWire) {
-          const canvas = document.createElement('canvas');
-          paintAvatarCanvas(canvas, name, 0);
-          const stream = canvas.captureStream(0);
-          const track = stream.getVideoTracks()[0];
-          if (track && track.requestFrame) { try { track.requestFrame(); } catch (e) {} }
-          p.stream = stream;
-          p._wireHold = { canvas, stream, track };
-        }
-        if (opts.perTileBlur) setMod(id, 'blur', true);
-        if (opts.blurAll) setMod('*', 'blur', true);
-        updateTile(id);
-        const mod = modOf(id);
-        return { id, blur: blurLevelFor(id), blocked: !!(mod.blur && mod.blur.on) };
-      },
-      // read-only blur-pipe forensics (e2e-pipe-freeze): how often the canvas
-      // that IS the outbound camera was painted, by which driver, at what cost
-      blurPipeForTest: () => (blurPipe ? { painted: blurPipe.painted || 0, rvfcN: blurPipe.rvfcN || 0, metroN: blurPipe.metroN || 0,
-        cost: Math.round(blurPipe.cost || 0), sinceMs: blurPipe.lastPaintAt ? Date.now() - blurPipe.lastPaintAt : null,
-        w: blurPipe.canvas.width, h: blurPipe.canvas.height, srcW: blurPipe.src.videoWidth, srcState: blurPipe.srcTrack && blurPipe.srcTrack.readyState,
-        srcMuted: !!(blurPipe.srcTrack && blurPipe.srcTrack.muted), hidden: document.hidden } : null),
       voteNeed: () => voteNeed,
       stageVotes: () => {
         const vt = stageVoteTallies(), needOf = {};
@@ -44611,35 +44194,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       peerCount: () => peers.size,
       _corruptSid: (id) => { const p = peers.get(id); if (p) { p.ownSid = null; } },
       _failPeer: (id) => { const p = peers.get(id); if (p) { try { p.pc.close(); } catch (e) {} } },
-      // ---- A/V feed monitor hooks (READ-ONLY — test/meet.js `mon`) ----------
-      // monInfo(): one synchronous snapshot of everything the flap monitor
-      // diffs: the Stadium/Stage tiles' paint state (present/src/dims/frame
-      // counter), every claimed mosaic slot's element health, the standby set,
-      // outbound job active/dormant states, the demand map, packer stats and
-      // the stage ear's input set. No side effects.
-      monInfo: () => {
-        const vidInfo = (v) => v ? { sid: v.srcObject ? String(v.srcObject.id) : null,
-          w: v.videoWidth, h: v.videoHeight, paused: v.paused, ready: v.readyState,
-          frames: v.getVideoPlaybackQuality ? v.getVideoPlaybackQuality().totalVideoFrames : -1 } : null;
-        const c = meshCoord();
-        return {
-          t: Date.now(), coord: c ? (c.pc + '/' + c.r + '.' + c.i) : null, head: !!(c && c.i === 0), s1: !!(c && c.pc === 0),
-          tiles: { sd: vidInfo(stadiumEl.querySelector('[data-row="sd"] video')), sgs: vidInfo(stagefeedEl.querySelector('[data-row="sgs"] video')) },
-          claims: [...mosIn.entries()].map(([rk, f]) => ({ rk, via: String(f.via).slice(0, 8), sid: String(f.streamId).slice(0, 8),
-            vw: f.el ? f.el.videoWidth : -1, vh: f.el ? f.el.videoHeight : -1,
-            frames: (f.el && f.el.getVideoPlaybackQuality) ? f.el.getVideoPlaybackQuality().totalVideoFrames : -1,
-            aTrk: f.stream ? f.stream.getAudioTracks().length : 0,
-            vMuted: f.stream && f.stream.getVideoTracks()[0] ? f.stream.getVideoTracks()[0].muted : null })),
-          standby: [...mosStandby.entries()].map(([rk, f]) => ({ rk, via: String(f.via).slice(0, 8), sid: String(f.streamId).slice(0, 8) })),
-          jobs: [...mosJobs.entries()].map(([jk, j]) => ({ jk: j.key + '>' + String(j.to).slice(0, 8), active: !!j.active })),
-          demand: [...subWant.entries()].map(([k, v]) => { const a = k.split('|'); return { k: String(a[0]).slice(0, 8) + '|' + a[1], v: v.st }; }),
-          ear: (typeof stageEar !== 'undefined' && stageEar) ? [...stageEar.sids.keys()] : [],
-          packs: { prod: prodPack ? Object.assign({ w: prodPack.canvas.width, h: prodPack.canvas.height }, prodPack.stats()) : null,
-                   sd: sdView ? Object.assign({ w: sdView.canvas.width, h: sdView.canvas.height }, sdView.stats()) : null,
-                   room: roomPack ? roomPack.stats() : null, folds: downFolds.size, strip: stripPack ? stripPack.stats() : null },
-          stagers: stageIds().length, peers: peers.size,
-        };
-      },
       // avStats(): per-receiver WebRTC inbound stats (frames/packets/audio
       // energy) + per-sender outbound frames, each labeled with the mosaic
       // slot / job / tile it feeds, so a stall is attributable to ONE pipe.
@@ -44771,6 +44325,515 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return out;
       },
     };
+    // The test hooks that read the page's elements: the page adds them to the same hook object.
+    viewTestHooks(window.__gifosVideo);
+    function viewTestHooks(v) {
+      Object.assign(v, {
+      setTabHiddenForTest: (hidden) => {
+        try { Object.defineProperty(document, 'hidden', { configurable: true, get: () => !!hidden }); } catch (e) {}
+        document.dispatchEvent(new Event('visibilitychange'));
+        const el = document.getElementById('still');
+        return { ok: true, away: !!myStatus.away, still: !!(el && el.classList.contains('on')) };
+      },
+      timingForTest: (t) => { const b = timingRow.querySelector('[data-timing="' + t + '"]'); if (b) b.click(); },
+      appName: () => document.getElementById('appname').textContent,
+      // The Stage (Channel St) — inspect + drive it from the meeting CLI.
+      stageInfo: () => ({
+        stagers: stageIds().map((id) => ({ id: String(id).slice(0, 12), name: id === myId ? myName() : (rosterNames[id] || null), me: id === myId })),
+        myStg: myStatus.stg || 0, canStage: canStage(myId), cap: SCALE.C,
+        held: [...mosIn.keys()].filter((k) => k.indexOf('stg:') === 0),
+        strip: (typeof stripPack !== 'undefined' && stripPack) ? stripPack.stats() : null,
+        stripPainted: !!document.querySelector('[data-row="sgs"] video'),
+      }),
+      // SCREEN SHARE (docs/media-plane.md Channel St). Read the state a
+      // receiver can actually act on: who the room believes is sharing, and —
+      // for the sharer — what is really on the outbound sender right now. The
+      // track's `label`/`displaySurface` is the only place the browser admits
+      // a track came from getDisplayMedia rather than a camera, which is what
+      // makes "the screen really is what is being published" provable at all.
+      screenInfo: () => {
+        const vt = (typeof sentVideoTrack === 'function') ? sentVideoTrack() : null;
+        let surface = null; try { surface = vt && vt.getSettings ? (vt.getSettings().displaySurface || null) : null; } catch (e) {}
+        const mainTracks = [];
+        for (const p of peers.values()) if (p.mainV && p.mainV.track) mainTracks.push(p.mainV.track.id);
+        return {
+          sharing: !!myStatus.scr, sharers: screenSharers(),
+          capable: canScreenShare(),
+          steppedUp: screenSteppedUp,
+          onStage: stageIds().includes(myId),
+          sentTrackId: vt ? vt.id : null,
+          sentLabel: vt ? String(vt.label || '') : null,
+          surface,
+          mainTrackIds: mainTracks,
+          // THE RESOLUTION SURFACE. A share that arrives unreadable fails none
+          // of the checks above — it is on the stage, it is a display capture,
+          // it is letterboxed — so the numbers that decide legibility are
+          // published here rather than inferred from pixels (a composited
+          // canvas cannot tell a downscale from a blurry desktop).
+          sentHint: vt ? String(vt.contentHint || '') : '',
+          // What the Stage element is ACTUALLY painting. The strip's canvas is
+          // square (one screen tile ⇒ cell x cell); the direct feed keeps the
+          // shared display's own shape. So the aspect alone says which one the
+          // viewer is looking at, and the width says at what cost.
+          stagePaint: (() => {
+            const v = stagefeedEl && stagefeedEl.querySelector('[data-row="sgs"] video');
+            return v ? { w: v.videoWidth, h: v.videoHeight } : null;
+          })(),
+          // Every outbound video sender's lane, as adapt() last left it.
+          senders: (() => {
+            const out = [];
+            for (const p of peers.values()) for (const sd of p.pc.getSenders()) {
+              if (!sd.track || sd.track.kind !== 'video') continue;
+              let prm = null; try { prm = sd.getParameters(); } catch (e) {}
+              const e0 = prm && prm.encodings && prm.encodings[0];
+              out.push({
+                stage: stageSenders.has(sd), aux: auxSenders.has(sd),
+                kbps: e0 && e0.maxBitrate ? Math.round(e0.maxBitrate / 1000) : 0,
+                deg: degOf.get(sd) || (prm && prm.degradationPreference) || '',
+              });
+            }
+            return out;
+          })(),
+          shareBtnShown: !!(shareBtn && shareBtn.offsetParent !== null),
+          bodyScreenOn: document.body.classList.contains('screen-on'),
+        };
+      },
+      stageFacesForTest: () => {
+        const host = stagefeedEl && stagefeedEl.querySelector('[data-row="sgs"]');
+        const out = { view: stageViewNow, stagers: stageIds().slice(), screenSid: null, faces: [] };
+        for (const id of out.stagers) if (sharingScreen(id)) { out.screenSid = out.screenSid ? 'many' : id; }
+        // Same 24x24 mean the overlay uses. A pack tile is the raw track, so it is not cropped.
+        const lumaOf = (v, cell) => {
+          try {
+            if (!v.videoWidth) return null;
+            const cv = document.createElement('canvas'); cv.width = 24; cv.height = 24;
+            const x = cv.getContext('2d');
+            const k = v.videoWidth / (parseFloat(v.style.width) || STAGE_FACE_PX);
+            const sx = cell ? -(parseFloat(v.style.left) || 0) * k : 0, sy = cell ? -(parseFloat(v.style.top) || 0) * k : 0;
+            const sw = cell ? STAGE_FACE_PX * k : v.videoWidth, sh = cell ? STAGE_FACE_PX * k : v.videoHeight;
+            x.drawImage(v, sx, sy, sw, sh, 0, 0, 24, 24);
+            const d = x.getImageData(0, 0, 24, 24).data; let sum = 0;
+            for (let i = 0; i < d.length; i += 4) sum += d[i] + d[i + 1] + d[i + 2];
+            return +(sum / (d.length / 4) / 765).toFixed(4);
+          } catch (e) { return null; }
+        };
+        const pushFace = (id, v, cell, named, name, pack) => {
+          const face = { id, cell: !!cell, live: v.videoWidth > 0, w: v.videoWidth, h: v.videoHeight,
+            named: !!named, name: name || '',
+            bl: v.classList.contains('blur2') ? 2 : v.classList.contains('blur1') ? 1 : 0, luma: lumaOf(v, !!cell) };
+          if (pack) face.pack = true;
+          out.faces.push(face);
+        };
+        const box = host && host.querySelector('.stagefaces');
+        if (box) {
+          for (const w of box.children) {
+            const v = w.querySelector('video');
+            if (!v) continue;
+            // named=true: the box shows the name on dark, no picture (camera
+            // off, admin video-off, or a crop the current frame does not fit).
+            const nm = w.querySelector('.stagefacename');
+            pushFace(w.dataset.face, v, v.dataset.cell, nm && nm.style.display !== 'none', nm ? nm.textContent : '', false);
+          }
+        }
+        // The per-person pack draws each co-presenter as its own tile and
+        // removes the overlay, so the face is not painted twice. It is still
+        // on screen: read that tile.
+        if (host && host.dataset.pack === '1') {
+          const seen = new Set(out.faces.map((f) => f.id));
+          const feed = document.getElementById('feed');
+          if (feed) for (const el of feed.querySelectorAll('[data-stageview]')) {
+            const id = el.dataset.stageview;
+            if (!id || seen.has(id)) continue;
+            const v = el.querySelector('video');
+            if (!v) continue;
+            seen.add(id);
+            pushFace(id, v, false, false, '', true);
+          }
+        }
+        return out;
+      },
+      // The sheet's copy, as rendered — the app-pin preference is a PROMISE the
+      // product makes in words, so the guard reads the words.
+      shareSheetForTest: () => {
+        openShareSheet();
+        const m = document.getElementById('share-modal');
+        const n = document.getElementById('share-appnote');
+        const r = document.getElementById('share-runapp');
+        // Not `style.display !== "none"`: that is TRUE for a sheet that was
+        // never shown at all, so a broken openShareSheet would still "pass".
+        // And not offsetParent either — it is null for ANY position:fixed
+        // element, which the sheet is, so that reads every open sheet as
+        // closed. The honest test is a real box on screen plus a computed
+        // display: both are false only when the thing genuinely is not there.
+        const shown = (el) => {
+          const r2 = el.getBoundingClientRect();
+          return r2.width > 0 && r2.height > 0 && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden';
+        };
+        const denied = document.getElementById('share-denied');
+        const go = document.getElementById('share-go');
+        return { open: shown(m), note: n.textContent || '',
+          runAppShown: shown(r), runAppLabel: r.textContent || '',
+          denied: shown(denied), goShown: shown(go) };
+      },
+      closeShareSheetForTest: () => { document.getElementById('share-modal').style.display = 'none'; return true; },
+      // PRIVACY PROBE (test-only): what this page actually receives as VIDEO from one stager's stage feed, read off the track itself
+      // (not the roster, not a status): { feed, track, state, w, luma }. luma is the mean brightness (0..1) of up to 4 decoded frames,
+      // the max seen; null when the track is live but no frame decoded in the window. A camera-off stager must read dark (<= 0.05) or no track.
+      stageVideoProbeForTest: async (idPrefix) => {
+        const pre = String(idPrefix || '').slice(0, 8); let f = null;
+        for (const [k, v] of mosIn) { if (k.indexOf('stg:' + pre) === 0 && k !== 'stg:' + myId && v.stream) { f = v; break; } }
+        if (!f) return { feed: false, track: false };
+        const vt = f.stream.getVideoTracks()[0];
+        if (!vt) return { feed: true, track: false };
+        const out = { feed: true, track: true, state: vt.readyState, enabled: vt.enabled, w: 0, luma: null };
+        if (vt.readyState !== 'live') return out;
+        const el = document.createElement('video'); el.muted = true; el.playsInline = true; el.srcObject = new MediaStream([vt]);
+        try { await el.play(); } catch (e) {}
+        const cv = document.createElement('canvas'); cv.width = 24; cv.height = 24; const x = cv.getContext('2d');
+        for (let i = 0; i < 12 && (out.luma === null || i < 6); i++) {
+          await new Promise((r) => setTimeout(r, 250));
+          if (!el.videoWidth) continue;
+          out.w = el.videoWidth;
+          try { x.drawImage(el, 0, 0, 24, 24); const d = x.getImageData(0, 0, 24, 24).data; let sum = 0; for (let j = 0; j < d.length; j += 4) sum += d[j] + d[j + 1] + d[j + 2];
+            out.luma = Math.max(out.luma || 0, +(sum / (d.length / 4) / 765).toFixed(4)); } catch (e) {}
+        }
+        try { el.srcObject = null; } catch (e) {}
+        return out;
+      },
+      mosaic: () => { const c = meshCoord(); const T = net.topo; const tgt = (co) => { if (!co) return null; const pid = occPid(co); const p = pid && peers.get(pid); return { pid: (pid||'').slice(0,6), has: !!p, conn: p && p.connected, dc: !!(p && p.dc && p.dc.readyState === 'open') }; };
+        return { multi: multiSection(), coord: c, head: c && c.i === 0, s1: c && c.pc === 0,
+        // WHO AM I, in the same 8-char form feedsInfo() reports `via` in. A
+        // receiver can see which peer it is claiming FROM, but nothing let an
+        // observer turn that back into a seat — so a stall could never be
+        // followed one hop upstream to ask what the sender was doing. Needed to
+        // resolve pipeStats() across seats (the stg-freeze hunt,
+        // docs/bug-pipe-stg-freeze-2026-08-05.md).
+        me: String(myId || '').slice(0, 8),
+        up: c ? tgt(T.up(c)) : null, down: c ? tgt(T.down(c)) : null,
+        prodStream: !!(prodPack && prodPack.stream), sdStream: !!(sdView && sdView.stream), roomStream: !!(roomPack && roomPack.stream), loop: !!(packLoop && packLoop.rx),
+        restarts: [...mosIn.entries(), ...mosStandby.entries()].filter(([, e]) => e && e.el).map(([rk, e]) => ({ key: rk, sid: e.el.srcObject ? String(e.el.srcObject.id).slice(0, 8) : null, vw: e.el.videoWidth, rs: e.el.readyState, n: e.el._mosRestarts || 0, held: !!e.el._mosHold })), // decoders restarted (parked, re-bound, resumed) because they showed no picture while the feed flowed (WebKit)
+        jobs: [...mosJobs.keys()], claims: [...mosIn.keys()], ann: [...mosAnn.keys()],
+        claimMeta: [...mosIn.entries()].map(([rk, e]) => rk.slice(-12) + ' n' + (e.meta ? e.meta.n : '-') + ' ids' + (e.meta && e.meta.ids ? e.meta.ids.map((x) => String(x).slice(2, 6)).join(',') : '-') + ' el' + (e.el ? (e.el.videoWidth || 0) : 'x') + ' a' + (e.stream ? e.stream.getAudioTracks().map((t) => t.readyState[0] + (t.muted ? 'M' : '')).join('') : '-')),   // what each claim says it holds: cells, named ids, picture width, sound tracks
+        view: { hasView: !!sdView, n: sdView ? sdView.count() : null, sound: (typeof sdViewSt !== 'undefined' && sdViewSt) ? sdViewSt.getAudioTracks().length : null },   // my own Stadium view: its faces after hiding my row, and whether it holds a sound track
+        // An announcer is only a CANDIDATE if its announced streamId resolves
+        // to one of that peer's incoming streams (claimRedun's `live`). The
+        // keys alone cannot show a MISMATCH — an announce whose stream never
+        // arrives, or a stale id re-announced after a transport swap — which
+        // is exactly the state that silently blocks failback, so surface the id.
+        // Every re-ship of an ALREADY-ESTABLISHED job, with the reason — see
+        // the note in shipMos. A receiver can only observe that the id changed;
+        // this says why it changed, on the side that changed it.
+        reship: (window.__mosReship || []).slice(-12),
+        // Why my OWN outbound stg stream changed identity — the root event the
+        // reship cascade above hangs off. See mySelfStream.
+        selfMemo: (window.__selfMemoLog || []).slice(-8),
+        regrab: (window.__regrabLog || []).slice(-8),
+        annSid: [...mosAnn.entries()].map(([k, v]) => k.slice(0, 14) + '|' + k.slice(k.indexOf('|') + 1) + '=' + String(v && v.streamId).slice(0, 8)
+          // mt = the mirror's TRANSIT ROW. A carrier recomputes the route from
+          // it, and slotFor/the forwarder both bail SILENTLY when it is absent
+          // (`if (t == null) return null`), so an announce that lost mt looks
+          // exactly like one that was never sent. Surface it.
+          + (v && v.mt != null ? ' mt=' + v.mt : ' mt=MISSING')),
+        // multi-subscribe forensics: hot standby slots, outbound jobs' active/dormant
+        // state, and the last want/idle demand I sent per announcer.
+        standby: [...mosStandby.keys()],
+        jobsActive: [...mosJobs.entries()].map(([k, j]) => k + (j.active ? '+' : '·')),
+        // per-job IDENTITY: sig = the SOURCE stream this job ships, streamId =
+        // the container minted for it. A changing sig means the producer
+        // handed us a new stream; a changing container with a STABLE sig means
+        // the job was reaped and re-created. (2026-07-29 stage re-ship churn.)
+        jobSig: [...mosJobs.entries()].map(([k, j]) => k.slice(0, 18) + '|s' + String(j.sig).slice(0, 6) + '|c' + String(j.streamId).slice(0, 6)),
+        demand: [...subWant.entries()].map(([k, v]) => k + '=' + v.st),
+        // per-slot primary/standby VIA (peer id) — lets a probe kill the exact
+        // feeding peer and watch the hot standby promote with no black-out.
+        claimVia: [...mosIn.entries()].map(([rk, c]) => ({ rk, via: c.via, sid: c.streamId })),
+        // WHY AN ANNOUNCER IS NOT A CANDIDATE. claimRedun only claims from an
+        // announcer whose announced streamId resolves to one of that peer's
+        // INCOMING streams (`live`), and when nothing resolves it claims
+        // NOTHING — the seat holds announcers, has no feed, and every seat
+        // below it starves with no announcer of its own to explain why.
+        // Measured 2026-08-10 (e2e-mosaic): a mid-tree seat sat on TWO stg
+        // announcers with an empty claim list, and nothing anywhere could say
+        // which half of the resolution failed. This recomputes it and reports
+        // the comparison itself: what was announced, against the stream ids
+        // that peer actually has.
+        cands: [...mosAnn.entries()].map(([k, v]) => {
+          const bar = k.indexOf('|'), from = k.slice(0, bar), key = k.slice(bar + 1);
+          const p = peers.get(from);
+          const inc = (p && p.incoming) ? p.incoming.map((s) => String(s.id).slice(0, 8)) : null;
+          const want = String(v && v.streamId).slice(0, 8);
+          return { key, from: from.slice(0, 8), want,
+            peer: !!p, conn: !!(p && p.connected), own: String(p && p.ownSid).slice(0, 8),
+            incoming: inc, h: v ? v.h : undefined, sb: v ? v.sb : undefined, vp: v ? v.vp : undefined, at: v ? v.at : undefined,
+            live: !!(p && p.incoming && p.incoming.find((s) => s.id === (v && v.streamId) && s.id !== p.ownSid)) };
+        }),
+        standbyVia: [...mosStandby.entries()].map(([rk, c]) => ({ rk, via: c.via, sid: c.streamId })),
+        // wake/failback forensics: per-slot wake-in-progress + settle stamps
+        fb: [...mosFb.entries()].map(([rk, f]) => ({ rk, wakeAt: f.wakeAt, prefSince: f.prefSince, lastSwitch: f.lastSwitch, dark: !!f.dark, lastAdvanceAt: f.lastAdvanceAt || 0, lastBytes: f.lastBytes != null ? f.lastBytes : -1, d0: f.d0 != null ? f.d0 : -1, stdFdec: f.stdFdec != null ? f.stdFdec : -1, flowSince: f.flowSince || 0, q: f.q || 0, fp: f.fp || 0 })),
+        prod: prodPack && prodPack.stats(), sd: sdView && sdView.stats(), room: roomPack && roomPack.stats(),
+        rowFaces: dbgRowFaces.slice(), // which pid the packer drew at each of my row's seats (test observability, 2026-07-29 stale-seat dup)
+        // w/h: the hidden source <video>'s own size; pack: the local composite's canvas; src: what the face cut used (chaos-1019: the two disagreed, 330 against 440)
+        tile: (() => { const v = stadiumEl.querySelector('[data-row="sd"] video'); const cl = window.__comfyLast; return v ? { live: v.videoWidth > 0, w: v.videoWidth, h: v.videoHeight, pack: (sdView && sdView.canvas) ? [sdView.canvas.width, sdView.canvas.height] : null, src: cl && cl.src ? cl.src : null } : null; })(),
+        strip: (() => { const v = stagefeedEl.querySelector('[data-row="sgs"] video'); return v ? { live: v.videoWidth > 0 } : null; })(), stagers: stageIds().length }; },
+      stadiumShown: () => stadiumEl.classList.contains('on'),
+      stadiumVideoLive: (row) => { const el = stadiumEl.querySelector('[data-row="' + row + '"] video'); return !!(el && el.srcObject && el.videoWidth > 0); },
+      // PiP forensics: what the overlay would float right now, and whether one is up.
+      pip: () => ({
+        aimed: (() => { const v = pipSource(); if (!v) return null; const t = v.closest('[data-peer]'); if (t) return 'peer:' + t.dataset.peer; const r = v.closest('.rowtile'); return r ? 'row:' + r.dataset.row : 'other'; })(),
+        active: pipFloating(),
+        byBrowser: pipByBrowser,
+        trace: pipTrace.slice(-40),
+        doc: docPip ? { name: docPip.name.textContent, live: !!docPip.video.srcObject, frames: (() => { try { return docPip.video.getVideoPlaybackQuality().totalVideoFrames; } catch (e) { return -1; } })(), mic: docPip.mic.textContent } : null,
+        // capability forensics: which PiP doors exist on THIS browser
+        caps: {
+          api: !!document.pictureInPictureEnabled,
+          req: typeof HTMLVideoElement.prototype.requestPictureInPicture === 'function',
+          webkit: typeof document.createElement('video').webkitSetPresentationMode === 'function',
+          autoAttr: 'autoPictureInPicture' in HTMLVideoElement.prototype,
+          doc: !!window.documentPictureInPicture,
+        },
+        btnShown: (() => { const b = document.getElementById('pipbtn'); return !!b && b.style.display !== 'none'; })(),
+      }),
+      // a joined peer by name whose fresh status has a hand up, as the host's queue line reads it
+      handPeerForTest: (id, name) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [], neg: newNeg() }); peers.get(id).name = name; rosterNames[id] = name; if (!rosterIds.includes(id)) rosterIds.push(id); const t = Date.now(); statusOf.set(id, { camOff: true, muted: true, hand: t, at: t, rx: t }); renderHandq(); return handqEl.textContent; },
+      chatGateForTest: (off, admin) => { chatGateOverride = { off: !!off, admin: !!admin }; paintChatGate(); return document.getElementById('chat-in').placeholder; },
+      fsMain: () => ({ key: fsmain.dataset.key || null, bl: fsmain.classList.contains('blur2') ? 2 : fsmain.classList.contains('blur1') ? 1 : 0, fit: getComputedStyle(fsmain).objectFit }),
+      fsThumbBlur: (key) => { const th = Array.from(fsstrip.children).find((t) => t.dataset.key === key); const tv = th && th.querySelector('video'); if (!tv) return null; return tv.classList.contains('blur2') ? 2 : tv.classList.contains('blur1') ? 1 : 0; },
+      // The blob Rebroadcast plays: the file saved when the host left the air.
+      lastServiceForTest: async () => {
+        if (!bcLastService || !bcLastService.blob) return null;
+        const b = await bcLastService.blob;
+        const url = URL.createObjectURL(b);
+        const sec = await new Promise((res) => {
+          const v = document.createElement('video');
+          let done = false;
+          const finish = (n) => { if (done) return; done = true; try { v.removeAttribute('src'); v.load(); } catch (e) {} res(n); };
+          v.preload = 'metadata';
+          v.onloadedmetadata = () => {
+            if (isFinite(v.duration) && v.duration > 0 && v.duration < 1e6) finish(v.duration);
+            else { try { v.currentTime = 1e10; } catch (e) {} }
+          };
+          v.ontimeupdate = () => { if (isFinite(v.duration) && v.duration > 0 && v.duration < 1e6) finish(v.duration); };
+          v.onerror = () => finish(0);
+          setTimeout(() => finish(isFinite(v.duration) && v.duration < 1e6 ? v.duration : 0), 4000);
+          v.src = url;
+        });
+        try { URL.revokeObjectURL(url); } catch (e) {}
+        return { bytes: b.size, sec: sec };
+      },
+      // THE STATUS PLANE, as this seat sees it.
+      statusPlane: () => { const d = roomDig(); return { id: myId, mode: digestMode(), past: roomPastSection(), n: d ? d.n : null, age: d ? d.age : null,
+        refuse: d ? d.refuse : null, part: d ? !!d.part : null, handN: d ? d.handN : null, hands: d ? d.hands.map((e) => e.id) : [], stage: d ? d.stage.map((e) => e.id) : [],
+        apps: d ? d.apps.map((e) => e.id) : [], votes: d ? d.votes.length : 0, display: displayCount(), consentIds: roomConsentIds().length,
+        fresh: Array.from(statusOf.keys()).filter((id) => id !== myId && freshSt(id)), coord: meshCoord(), label: statusEl.textContent,
+        statusN: statusOf.size, dcLinks: Array.from(peers.values()).filter((p) => p.dc && p.dc.readyState === 'open').length }; },
+      handqShown: () => handqEl.classList.contains('on'),
+      handqText: () => handqEl.textContent,
+      armBroadcastHostForTest: () => {
+        amAdmin = true;
+        document.body.classList.remove('notadmin');
+        if (myId && admins.indexOf(myId) < 0) admins.push(myId);
+        myStatus.camOff = true;
+        try { setStage(true); } catch (e) { myStatus.stg = Date.now(); }
+        paintOnAir();
+        return { ok: !!myStatus.stg };
+      },
+      statusText: () => statusEl.textContent,
+      appStopForTest: (mine) => {
+        if (mine) { appKey = 'qa-stop'; myStatus.app = { s: 'qa-stop', name: 'Notes' }; }
+        else { appKey = null; myStatus.app = null; }
+        showAppPane('Notes', '');
+        updateAppButtons(myStatus.app);
+        const b = document.getElementById('appstop');
+        return { text: b.textContent, title: b.title, font: parseFloat(getComputedStyle(b).fontSize), display: getComputedStyle(b).display };
+      },
+      appBarForTest: (talkOn) => {
+        document.body.classList.add('has-app');
+        if (talkOn) {
+          armAppRoomTick();
+          appRoomOn = true;
+          document.body.classList.add('app-room');
+          appMode = 'host';
+          myStatus.app = Object.assign(myStatus.app || { s: 'qa-talk' }, { audio: true });
+        } else if (myStatus.app) {
+          myStatus.app.audio = false;
+        }
+        paintTalkBtn();
+        ['appsave', 'appsteal', 'apphide', 'appaudio'].forEach((id) => { document.getElementById(id).style.display = ''; });
+        const read = (id) => {
+          const b = document.getElementById(id);
+          return { text: b.textContent, title: b.title, font: parseFloat(getComputedStyle(b).fontSize) };
+        };
+        return { save: read('appsave'), steal: read('appsteal'), hide: read('apphide'), talk: read('appaudio') };
+      },
+      // The sharer's own app bar: Invite, the lead switch (tapped once when
+      // tap is set), and Full screen, as the sharer reads them.
+      appWordsForTest: (tap) => {
+        document.body.classList.add('has-app');
+        appKey = 'qa-words'; myStatus.app = { s: 'qa-words' };
+        showAppPane('Notes', '');
+        appLeadable = true; appLeadOn = false; appLeadSet = () => {};
+        updateAppButtons(myStatus.app);
+        // Invite follows the room (paintInviteSlot). A meeting must not force it on.
+        if (tap) document.getElementById('applead').click();
+        const read = (id) => {
+          const b = document.getElementById(id);
+          return { text: b.textContent.trim(), title: b.title, label: b.getAttribute('aria-label') || '', font: parseFloat(getComputedStyle(b).fontSize), display: getComputedStyle(b).display };
+        };
+        return { invite: read('appinvite'), lead: read('applead'), full: read('appfull'), status: document.getElementById('status').textContent };
+      },
+      stealChoicesForTest: () => {
+        appClientCtl = appClientCtl || { stealToDesktop: () => new Promise(() => {}) };
+        const b = document.getElementById('appsteal');
+        b.style.display = '';
+        if (b.dataset.armed) delete b.dataset.armed;
+        document.querySelectorAll('#appbar [data-steal]').forEach((el) => el.remove());
+        b.click();
+        return [...document.querySelectorAll('#appbar [data-steal]')].map((el) => ({ text: el.textContent, title: el.title, data: el.dataset.steal }));
+      },
+      chatModForTest: (off) => {
+        amAdmin = true;
+        if (off) modTable['*'] = { chat: { on: true, by: 'Pastor Kim' } };
+        else delete modTable['*'];
+        applyAdminUi();
+        try { renderChat(); } catch (e) {}
+        document.getElementById('chatpanel').classList.add('open');
+        const b = document.getElementById('chatmod');
+        const row = document.querySelector('#chatlog .cmsg');
+        return {
+          text: b.textContent, title: b.title,
+          font: parseFloat(getComputedStyle(b).fontSize),
+          display: getComputedStyle(b).display,
+          line: row ? row.textContent : '',
+        };
+      },
+      // PAINT ONLY: the dock's words and icon for a mic state. It never turns
+      // the mic track on or off, so it is no way to unmute a seat in a test
+      // (tap #mic, and pick a row when the chooser opens). With a live mic
+      // track that says otherwise it refuses, so no test reads a painted
+      // "on" over a mic that sends nothing (0.9.26.19 phone runs).
+      setOwnMicForTest: (live) => {
+        const tr = localStream && localStream.getAudioTracks()[0];
+        if (tr && tr.readyState === 'live' && tr.enabled !== !!live) return { refused: 'the live mic track is ' + (tr.enabled ? 'on' : 'off') + ': setOwnMicForTest only paints; tap #mic to change it', muted: !!myStatus.muted, trackEnabled: tr.enabled };
+        myStatus.muted = !live;
+        paintControls();
+        const word = micBtn.querySelector('.dockword');
+        return {
+          muted: !!myStatus.muted,
+          word: word ? word.textContent : '',
+          label: micBtn.getAttribute('aria-label'),
+          svg: !!micBtn.querySelector('svg'),
+          headerUnmute: !!document.getElementById('unmute'),
+          headerCam: !!document.getElementById('showcam'),
+        };
+      },
+      comfyForTest: () => {
+        const feed = document.getElementById('feed');
+        const nodes = [];
+        const take = (el) => {
+          if (!el || el.classList.contains('stad-src')) return;
+          const cs = getComputedStyle(el);
+          if (cs.display === 'none' || cs.visibility === 'hidden') return;
+          const r = el.getBoundingClientRect();
+          if (r.width < 2 || r.height < 2) return;
+          nodes.push({
+            id: el.dataset.peer || el.dataset.stad || el.id || '',
+            tier: el.dataset.tier || '',
+            x: r.x, y: r.y, w: r.width, h: r.height,
+          });
+        };
+        document.querySelectorAll('#feed .tile').forEach(take);
+        document.querySelectorAll('#stadwhole').forEach(take);
+        const bar = document.querySelector('.bar');
+        const br = bar ? bar.getBoundingClientRect() : null;
+        let box = null;
+        try {
+          const landscape = window.innerWidth > window.innerHeight;
+          box = GifOS.meetLayout.viewBox(window.innerWidth, window.innerHeight, { phone: !landscape && window.innerWidth < 700, pill: document.body.classList.contains('has-pill') });
+        } catch (e) {}
+        return {
+          on: document.body.classList.contains('comfy'),
+          mode: window.__meetViewMode || 'gallery',
+          last: window.__comfyLast || null,
+          box: box,
+          nodes: nodes,
+          scroll: feed ? feed.scrollHeight - feed.clientHeight : null,
+          overflow: feed ? getComputedStyle(feed).overflow : null,
+          bar: br ? { x: br.x, y: br.y, w: br.width, h: br.height, free: bar.dataset.barfree || '', barx: bar.dataset.barx || '', bary: bar.dataset.bary || '' } : null,
+        };
+      },
+      countdownShown: () => { const el = document.getElementById('admcount'); return !!el && el.style.display !== 'none'; },
+      // A camera-off seat with no transport, so the gate can watch per-tile
+      // blur and blur-all land on the avatar's video. The tile is the real
+      // one (makeTile + updateTile); nothing here is a second painter.
+      avatarSeatForTest: (opts) => {
+        opts = opts || {};
+        const id = String(opts.id || 'avatar_seat');
+        const name = String(opts.name || 'Ada').slice(0, 40);
+        let p = peers.get(id);
+        if (!p) {
+          const tile = makeTile(id, name, false);
+          p = { id, pc: null, neg: newNeg(), tile: tile.tile, video: tile.video, label: tile.label, avatar: tile.avatar, chips: tile.chips, cap: tile.cap, modbar: tile.modbar, voteBtn: tile.voteBtn,
+            name, headless: false, connected: true, pendingIce: [], absentSince: 0, lastKick: 0, lastHeard: Date.now(), bornAt: Date.now(), incoming: [], neverUp: false, stream: null };
+          peers.set(id, p);
+        }
+        p.name = name;
+        if (p.label) p.label.textContent = name;
+        if (p.avatar) p.avatar.textContent = nameInitial(name);
+        rosterNames[id] = name;
+        statusOf.set(id, { muted: true, camOff: opts.camOff !== false, blur: opts.blur == null ? 0 : (opts.blur | 0), at: Date.now(), rx: Date.now(), scr: 0 });
+        if (opts.useWire) {
+          const canvas = document.createElement('canvas');
+          paintAvatarCanvas(canvas, name, 0);
+          const stream = canvas.captureStream(0);
+          const track = stream.getVideoTracks()[0];
+          if (track && track.requestFrame) { try { track.requestFrame(); } catch (e) {} }
+          p.stream = stream;
+          p._wireHold = { canvas, stream, track };
+        }
+        if (opts.perTileBlur) setMod(id, 'blur', true);
+        if (opts.blurAll) setMod('*', 'blur', true);
+        updateTile(id);
+        const mod = modOf(id);
+        return { id, blur: blurLevelFor(id), blocked: !!(mod.blur && mod.blur.on) };
+      },
+      // read-only blur-pipe forensics (e2e-pipe-freeze): how often the canvas
+      // that IS the outbound camera was painted, by which driver, at what cost
+      blurPipeForTest: () => (blurPipe ? { painted: blurPipe.painted || 0, rvfcN: blurPipe.rvfcN || 0, metroN: blurPipe.metroN || 0,
+        cost: Math.round(blurPipe.cost || 0), sinceMs: blurPipe.lastPaintAt ? Date.now() - blurPipe.lastPaintAt : null,
+        w: blurPipe.canvas.width, h: blurPipe.canvas.height, srcW: blurPipe.src.videoWidth, srcState: blurPipe.srcTrack && blurPipe.srcTrack.readyState,
+        srcMuted: !!(blurPipe.srcTrack && blurPipe.srcTrack.muted), hidden: document.hidden } : null),
+      // ---- A/V feed monitor hooks (READ-ONLY — test/meet.js `mon`) ----------
+      // monInfo(): one synchronous snapshot of everything the flap monitor
+      // diffs: the Stadium/Stage tiles' paint state (present/src/dims/frame
+      // counter), every claimed mosaic slot's element health, the standby set,
+      // outbound job active/dormant states, the demand map, packer stats and
+      // the stage ear's input set. No side effects.
+      monInfo: () => {
+        const vidInfo = (v) => v ? { sid: v.srcObject ? String(v.srcObject.id) : null,
+          w: v.videoWidth, h: v.videoHeight, paused: v.paused, ready: v.readyState,
+          frames: v.getVideoPlaybackQuality ? v.getVideoPlaybackQuality().totalVideoFrames : -1 } : null;
+        const c = meshCoord();
+        return {
+          t: Date.now(), coord: c ? (c.pc + '/' + c.r + '.' + c.i) : null, head: !!(c && c.i === 0), s1: !!(c && c.pc === 0),
+          tiles: { sd: vidInfo(stadiumEl.querySelector('[data-row="sd"] video')), sgs: vidInfo(stagefeedEl.querySelector('[data-row="sgs"] video')) },
+          claims: [...mosIn.entries()].map(([rk, f]) => ({ rk, via: String(f.via).slice(0, 8), sid: String(f.streamId).slice(0, 8),
+            vw: f.el ? f.el.videoWidth : -1, vh: f.el ? f.el.videoHeight : -1,
+            frames: (f.el && f.el.getVideoPlaybackQuality) ? f.el.getVideoPlaybackQuality().totalVideoFrames : -1,
+            aTrk: f.stream ? f.stream.getAudioTracks().length : 0,
+            vMuted: f.stream && f.stream.getVideoTracks()[0] ? f.stream.getVideoTracks()[0].muted : null })),
+          standby: [...mosStandby.entries()].map(([rk, f]) => ({ rk, via: String(f.via).slice(0, 8), sid: String(f.streamId).slice(0, 8) })),
+          jobs: [...mosJobs.entries()].map(([jk, j]) => ({ jk: j.key + '>' + String(j.to).slice(0, 8), active: !!j.active })),
+          demand: [...subWant.entries()].map(([k, v]) => { const a = k.split('|'); return { k: String(a[0]).slice(0, 8) + '|' + a[1], v: v.st }; }),
+          ear: (typeof stageEar !== 'undefined' && stageEar) ? [...stageEar.sids.keys()] : [],
+          packs: { prod: prodPack ? Object.assign({ w: prodPack.canvas.width, h: prodPack.canvas.height }, prodPack.stats()) : null,
+                   sd: sdView ? Object.assign({ w: sdView.canvas.width, h: sdView.canvas.height }, sdView.stats()) : null,
+                   room: roomPack ? roomPack.stats() : null, folds: downFolds.size, strip: stripPack ? stripPack.stats() : null },
+          stagers: stageIds().length, peers: peers.size,
+        };
+      },
+      });
+    }
   })();
   };
   </script>

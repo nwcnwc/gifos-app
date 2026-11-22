@@ -22,20 +22,24 @@
  * THE VIEW. A host with no screen links a headless view of its own (see THE HEADLESS VIEW below): the view's names
  * are counted stand-ins, so standIns() counts both what the core asked of the view and of the media plane.
  *
- * WHAT THE CORE STILL ASKS OF THE PAGE (platform.json "page": document, getComputedStyle, requestAnimationFrame, ...)
- * reads as a counted placeholder (host.js): every use runs and does nothing, and is counted by pageUses(). `window`
- * and `self` are the context's own global (as on a page) and `Event` is the platform's own. A name of the view part,
- * which a host with no screen does not load, is stood in for by the linker and counted by standIns(). The two lists
- * together are what stands between the core and a core with no page in it.
+ * THE PAGE IS NOT HERE. The page globals the core part still names (platform.json "page": document, getComputedStyle,
+ * requestAnimationFrame, history, innerWidth, HTMLVideoElement, MutationObserver, ...) are present only so that a use
+ * fails loudly: any member read, call or conversion THROWS an error naming the global and the member, and is counted
+ * by pageUses() first. `window` and `self` are the context's own global (as on a page) and `Event` is the platform's
+ * own. A VARIABLE of the view part (an element) throws too (host.js); a view FUNCTION does nothing and returns
+ * undefined (the core's one road to the screen). Media stand-ins stay counted placeholders until the media port is
+ * narrowed. pageUses() empty is the bar: the core asked the page nothing.
  *
- * HOST SHIMS, each standing in for a page script that is not part of the core:
+ * HOST SHIMS, each standing in for a page script that is not part of the core (counted by hostShims(), not pageUses()):
  *   document.currentScript  while a library runs, { src } of its URL on the page's origin (libraries find their
- *                   own folder by it); null after.
- *   document.hidden, document.visibilityState  a host with no screen is never a hidden tab: false and 'visible'
- *                   (the core's background-tab paths are for a browser that hides the page). Counted all the same.
+ *                   own folder by it, js/gifos-ed.js at load); null after.
+ *   document.hidden, document.visibilityState, document.addEventListener/removeEventListener  for the core LIBRARIES'
+ *                   typeof-guarded page paths (js/gifos-net.js wakes its socket on visibilitychange/resume): never a
+ *                   hidden tab, and no event ever fires. The meeting itself asks GifOS.host.hidden() instead.
  *   GifOS.meshMedia.workerClock  the core's background-proof interval lives in the media library (js/mesh-media.js),
  *                   which a host without the browser media part does not load. The shim is that library's own path
  *                   when there is no Worker: a plain interval, with the same { via, stop() } handle.
+ *   GifOS.host      the host's facts (run.html sets it from its document): hidden() is false here.
  *   GifOS.runtime   the app runtime (js/runtime.js) is a page library. At start the core reads its page-header table
  *                   only to hand the choice to the view; the shim is an empty table, so the (absent) view gets none.
  *   WEBKIT_ENGINE   the page sets it in a head script from navigator.vendor; a Node host is not WebKit: false.
@@ -126,7 +130,7 @@ function createMeeting(opts) {
   const platform = JSON.parse(fs.readFileSync(path.join(appRoot, 'js', 'core', 'platform.json'), 'utf8'));
   const log = typeof opts.log === 'function' ? opts.log : null;
 
-  const pageCounts = new Map();
+  const pageCounts = new Map(), hostCounts = new Map();
   const count = (note, k) => { const key = note + (k != null ? '.' + String(k) : ''); pageCounts.set(key, (pageCounts.get(key) || 0) + 1); };
   const errors = [];
   const fail = (where, e) => { errors.push({ where, at: Date.now(), error: String((e && e.stack) || e) }); if (log) log('error', where, e); };
@@ -174,7 +178,6 @@ function createMeeting(opts) {
     change: (oldHash, newHash) => { if (oldHash !== newHash) setT(() => g.dispatchEvent(new Event('hashchange'))); },
   });
 
-  const place = (note) => require('./host.js').placeholder(note, count);
   const subtle = nodeCrypto.webcrypto.subtle;
 
   Object.assign(g, {
@@ -200,15 +203,29 @@ function createMeeting(opts) {
 
   // every name the core reads off its platform: a Node host without it reads undefined (never a ReferenceError)
   for (const part of ['core']) for (const n of platform[part].platform) if (!(n in g) && n !== 'GifOS') g[n] = undefined;
-  // what the core still asks of the page: counted placeholders
-  for (const n of platform.core.page) if (!(n in g) && n !== 'window' && n !== 'Event') g[n] = place('page:' + n);
-  // document.currentScript: the host knows which library it is running (the libraries find their own folder by it)
+  // the page globals the core still names: every use throws, naming the global and the member (see THE PAGE IS NOT HERE)
+  const noPage = (name, what) => { count('page:' + name, what); throw new Error('GifOS core: the page global ' + name + (what != null ? '.' + String(what) : '') + ' was used, and this host has no page (js/core/node.js)'); };
+  const pageGlobal = (name, shims) => new Proxy(function () {}, {
+    get(t, k) {
+      if (shims && Object.prototype.hasOwnProperty.call(shims, k)) { hostCounts.set(name + '.' + String(k), (hostCounts.get(name + '.' + String(k)) || 0) + 1); return shims[k](); }
+      if (k === 'then' || typeof k === 'symbol') return undefined;   // an await or an inspection is not a use
+      return noPage(name, k);
+    },
+    set(t, k) { noPage(name, k); return false; },
+    has(t, k) { return noPage(name, k); },
+    apply() { return noPage(name, '()'); },
+    construct() { return noPage(name, 'new'); },
+  });
   let current = null;
-  if (g.document) {
-    const docPh = g.document;
-    const known = { hidden: () => false, visibilityState: () => 'visible', currentScript: () => current };
-    g.document = new Proxy(docPh, { get: (t, k) => (Object.prototype.hasOwnProperty.call(known, k) ? (count('page:document', k), known[k]()) : docPh[k]) });
-  }
+  const docShims = {
+    currentScript: () => current,
+    hidden: () => false,
+    visibilityState: () => 'visible',
+    addEventListener: () => () => {},
+    removeEventListener: () => () => {},
+  };
+  for (const n of platform.core.page) if (!(n in g) && n !== 'window' && n !== 'Event') g[n] = pageGlobal(n, n === 'document' ? docShims : null);
+  if (!g.document) g.document = pageGlobal('document', docShims);   // the core libraries name it even when the meeting does not
 
   const context = vm.createContext(g, { name: 'gifos participant' });
   g.window = g.self = g.globalThis = g.parent = g.top = context;
@@ -238,12 +255,15 @@ function createMeeting(opts) {
   }
   // GifOS.runtime (see HOST SHIMS)
   if (!GifOS.runtime) GifOS.runtime = { SYSTEM_HEADER: {} };
+  // GifOS.host: the host's facts the meeting asks about. A host with no screen is never a hidden tab (the core's
+  // background-tab paths are for a browser that hides the page).
+  if (!GifOS.host) GifOS.host = { hidden: () => false };
   // THE HEADLESS VIEW: a view part of this host's own, in place of the page's. Every name the core asks of the view
   // is the linker's counted stand-in (a function does nothing and returns undefined), except the view functions
   // whose result the core takes apart, which return a record of counted placeholders (VIEW_RECORDS).
   const corePart = GifOS.coreParts.core;
   const viewCounts = new Map();
-  const viewNames = GifOS.core.standIn('view', (corePart.needs && corePart.needs.view) || {}, viewCounts);
+  const viewNames = GifOS.core.standIn('view', (corePart.needs && corePart.needs.view) || {}, viewCounts, true);
   for (const [fn, fields] of Object.entries(VIEW_RECORDS)) {
     if (!Object.prototype.hasOwnProperty.call(viewNames, fn)) continue;
     const vcount = (note, k) => { const key = note + (k != null ? '.' + String(k) : ''); viewCounts.set(key, (viewCounts.get(key) || 0) + 1); };
@@ -282,6 +302,7 @@ function createMeeting(opts) {
     hooks: () => context.__gifosVideo,
     standIns: () => meeting.standIns().concat(Array.from(viewCounts)).sort((a, b) => b[1] - a[1]),
     pageUses: () => Array.from(pageCounts).sort((a, b) => b[1] - a[1]),
+    hostShims: () => Array.from(hostCounts).sort((a, b) => b[1] - a[1]),
     errors: () => errors.slice(),
     close,
   };

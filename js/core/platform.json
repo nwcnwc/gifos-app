@@ -31,15 +31,10 @@
    "setTimeout"
   ],
   "page": [
-   "Event",
-   "HTMLVideoElement",
-   "MutationObserver",
    "document",
    "getComputedStyle",
-   "history",
    "innerHeight",
    "innerWidth",
-   "requestAnimationFrame",
    "window"
   ]
  },
@@ -101,6 +96,7 @@
   ],
   "page": [
    "CSS",
+   "Event",
    "FileReader",
    "HTMLCanvasElement",
    "HTMLVideoElement",
