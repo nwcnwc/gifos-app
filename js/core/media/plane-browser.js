@@ -1,6 +1,6 @@
 /*
  * GifOS Core: the meeting, part "media". Copyright (c) 2026 Crowd Concepts, Inc. All rights reserved.
- * Lifted from the meeting page by the core lift (stamp cab55c97).
+ * Lifted from the meeting page by the core lift (stamp fff1aed1).
  * The statements below are the meeting page's own, in the page's order. A name another part owns is read
  * through that part (__C the core, __M the media plane, __V the view). The linker is host.js.
  */
@@ -15,18 +15,10 @@
       "CC_TRANSLATE_KEY": { get: function () { return CC_TRANSLATE_KEY; }, enumerable: true, configurable: true },
       "CC_WHISPER_ANYWAY_KEY": { get: function () { return CC_WHISPER_ANYWAY_KEY; }, enumerable: true, configurable: true },
       "CC_WORDS_KEY": { get: function () { return CC_WORDS_KEY; }, enumerable: true, configurable: true },
-      "IS_MOBILE": { get: function () { return IS_MOBILE; }, enumerable: true, configurable: true },
       "MP": { get: function () { return MP; }, enumerable: true, configurable: true },
       "MPipe": { get: function () { return MPipe; }, enumerable: true, configurable: true },
-      "MX_IDS_MAX": { get: function () { return MX_IDS_MAX; }, enumerable: true, configurable: true },
-      "PEER_SILENT_MS": { get: function () { return PEER_SILENT_MS; }, enumerable: true, configurable: true },
-      "RECOVER_MEDIA_KEY": { get: function () { return RECOVER_MEDIA_KEY; }, enumerable: true, configurable: true },
       "STAGE_FACE_PX": { get: function () { return STAGE_FACE_PX; }, enumerable: true, configurable: true },
       "STAGE_FACE_SETTLE_MS": { get: function () { return STAGE_FACE_SETTLE_MS; }, enumerable: true, configurable: true },
-      "TIMING_KEY": { get: function () { return TIMING_KEY; }, enumerable: true, configurable: true },
-      "TURN_ASK_MS": { get: function () { return TURN_ASK_MS; }, enumerable: true, configurable: true },
-      "TURN_BUSY_MS": { get: function () { return TURN_BUSY_MS; }, enumerable: true, configurable: true },
-      "TURN_MS": { get: function () { return TURN_MS; }, enumerable: true, configurable: true },
       "WEBKIT_TILE": { get: function () { return WEBKIT_TILE; }, enumerable: true, configurable: true },
       "WHISPER_APP_ID": { get: function () { return WHISPER_APP_ID; }, enumerable: true, configurable: true },
       "WHISPER_SEED_KEY": { get: function () { return WHISPER_SEED_KEY; }, enumerable: true, configurable: true },
@@ -108,7 +100,6 @@
       "gridApplied": { get: function () { return gridApplied; }, enumerable: true, configurable: true },
       "gumRefused": { get: function () { return gumRefused; }, enumerable: true, configurable: true },
       "gumWithMicFallback": { get: function () { return gumWithMicFallback; }, enumerable: true, configurable: true },
-      "hasPendingTx": { get: function () { return hasPendingTx; }, enumerable: true, configurable: true },
       "headLinkUp": { get: function () { return headLinkUp; }, enumerable: true, configurable: true },
       "headSendsStale": { get: function () { return headSendsStale; }, enumerable: true, configurable: true },
       "headerCount": { get: function () { return headerCount; }, enumerable: true, configurable: true },
@@ -119,7 +110,6 @@
       "isRedun": { get: function () { return isRedun; }, enumerable: true, configurable: true },
       "keepAwake": { get: function () { return keepAwake; }, enumerable: true, configurable: true },
       "keepMeetingAudio": { get: function () { return keepMeetingAudio; }, enumerable: true, configurable: true },
-      "kfAsker": { get: function () { return kfAsker; }, set: function (v) { kfAsker = v; }, enumerable: true, configurable: true },
       "kfNeed": { get: function () { return kfNeed; }, enumerable: true, configurable: true },
       "kickMainAudio": { get: function () { return kickMainAudio; }, enumerable: true, configurable: true },
       "kickMainVideo": { get: function () { return kickMainVideo; }, enumerable: true, configurable: true },
@@ -130,8 +120,6 @@
       "lateMedia": { get: function () { return lateMedia; }, enumerable: true, configurable: true },
       "leafCount": { get: function () { return leafCount; }, enumerable: true, configurable: true },
       "livePeerCount": { get: function () { return livePeerCount; }, enumerable: true, configurable: true },
-      "lsGet": { get: function () { return lsGet; }, enumerable: true, configurable: true },
-      "lsSet": { get: function () { return lsSet; }, enumerable: true, configurable: true },
       "mainAudioTrack": { get: function () { return mainAudioTrack; }, enumerable: true, configurable: true },
       "mainGone": { get: function () { return mainGone; }, enumerable: true, configurable: true },
       "maybeShowFlip": { get: function () { return maybeShowFlip; }, enumerable: true, configurable: true },
@@ -147,12 +135,10 @@
       "mosIn": { get: function () { return mosIn; }, enumerable: true, configurable: true },
       "mosJobs": { get: function () { return mosJobs; }, enumerable: true, configurable: true },
       "mosStandby": { get: function () { return mosStandby; }, enumerable: true, configurable: true },
-      "multiSection": { get: function () { return multiSection; }, enumerable: true, configurable: true },
       "mxIds": { get: function () { return mxIds; }, enumerable: true, configurable: true },
       "mxPath": { get: function () { return mxPath; }, enumerable: true, configurable: true },
       "normStageFrame": { get: function () { return normStageFrame; }, enumerable: true, configurable: true },
       "noteAudioDevices": { get: function () { return noteAudioDevices; }, enumerable: true, configurable: true },
-      "occPid": { get: function () { return occPid; }, enumerable: true, configurable: true },
       "onMeetDeviceChange": { get: function () { return onMeetDeviceChange; }, enumerable: true, configurable: true },
       "onStageNow": { get: function () { return onStageNow; }, enumerable: true, configurable: true },
       "openCamChooser": { get: function () { return openCamChooser; }, enumerable: true, configurable: true },
@@ -174,8 +160,6 @@
       "placeStageMarks": { get: function () { return placeStageMarks; }, enumerable: true, configurable: true },
       "playTileVideo": { get: function () { return playTileVideo; }, enumerable: true, configurable: true },
       "poke": { get: function () { return poke; }, enumerable: true, configurable: true },
-      "powDials": { get: function () { return powDials; }, set: function (v) { powDials = v; }, enumerable: true, configurable: true },
-      "powNow": { get: function () { return powNow; }, set: function (v) { powNow = v; }, enumerable: true, configurable: true },
       "presenceSweep": { get: function () { return presenceSweep; }, enumerable: true, configurable: true },
       "prodPack": { get: function () { return prodPack; }, set: function (v) { prodPack = v; }, enumerable: true, configurable: true },
       "qaStageSt": { get: function () { return qaStageSt; }, set: function (v) { qaStageSt = v; }, enumerable: true, configurable: true },
@@ -232,7 +216,6 @@
       "stageEarLiveTrack": { get: function () { return stageEarLiveTrack; }, enumerable: true, configurable: true },
       "stageEarRawPeak": { get: function () { return stageEarRawPeak; }, enumerable: true, configurable: true },
       "stageFrameVal": { get: function () { return stageFrameVal; }, set: function (v) { stageFrameVal = v; }, enumerable: true, configurable: true },
-      "stageViewNow": { get: function () { return stageViewNow; }, set: function (v) { stageViewNow = v; }, enumerable: true, configurable: true },
       "stagedSelfWas": { get: function () { return stagedSelfWas; }, set: function (v) { stagedSelfWas = v; }, enumerable: true, configurable: true },
       "startLocalView": { get: function () { return startLocalView; }, enumerable: true, configurable: true },
       "startRec": { get: function () { return startRec; }, enumerable: true, configurable: true },
@@ -249,7 +232,6 @@
       "stopSpeech": { get: function () { return stopSpeech; }, enumerable: true, configurable: true },
       "stopWhisper": { get: function () { return stopWhisper; }, enumerable: true, configurable: true },
       "stripPack": { get: function () { return stripPack; }, set: function (v) { stripPack = v; }, enumerable: true, configurable: true },
-      "subWant": { get: function () { return subWant; }, enumerable: true, configurable: true },
       "swapPicRing": { get: function () { return swapPicRing; }, enumerable: true, configurable: true },
       "syncAvatarFeed": { get: function () { return syncAvatarFeed; }, enumerable: true, configurable: true },
       "syncSpeech": { get: function () { return syncSpeech; }, enumerable: true, configurable: true },
@@ -1238,15 +1220,7 @@
     function participantCount() {
       return Math.max(leafCount(), (0, /*()*/__C.knownTotal)() || 0);
     }
-    // A TILE ON THE GRID IS A PERSON IN THE COUNT. The relay frees a seat only
-    // when its socket closes, so a frozen browser (sockets open, nothing sent)
-    // is pruned by each client on its own clock, and its tile stays until
-    // dropPeer. The roster and occ gossip drop such a peer sooner and can
-    // flap while they settle, so a header read from them alone can disagree
-    // with the faces on screen. The header counts every tile on the grid, a
-    // silent peer's tile says it is reconnecting, and dropPeer removes the
-    // tile and updates the header in one step.
-    const PEER_SILENT_MS = GifOS.timings.PEER_SILENT_MS; // the count's own freshness window (knownTotal)
+    yield 770; // the count's own freshness window (knownTotal)
     // When this peer itself last sent anything: any sealed frame, a mesh
     // frame, or a status (statuses come only from their author). Only real
     // frames move it, so silence is a steady verdict, not a gossip flap.
@@ -1256,7 +1230,7 @@
     }
     function peerReconnecting(pid) {
       const p = __C.peers.get(pid);
-      return !!(p && !p.headless && Date.now() - peerHeardAt(p) > PEER_SILENT_MS);
+      return !!(p && !p.headless && Date.now() - peerHeardAt(p) > __C.PEER_SILENT_MS);
     }
     function shownPeerCount() {
       // A tile is not a person until a frame arrives. The birth stamp on
@@ -1372,15 +1346,15 @@
     // Browsers without the Battery API (iOS Safari, Firefox) report no battery: a phone
     // there is still at least save, and a parked one is low.
     const MP = GifOS.meetPower;
-    const IS_MOBILE = MP.mobileDevice(navigator);
+    yield 781;
     let battNow = null; // { charging, level } from the Battery API, or null where there is none
     const drainState = { losing: false, last: null, falls: 0, trip: null };
-    let powNow = { level: 'full', why: 'unknown' }, powDials = MP.dials('full');
+    yield 784;
     function powerUpdate() {
-      const was = powNow.level;
-      powNow = MP.level({ mobile: IS_MOBILE, battery: battNow, losing: drainState.losing, parked: idleNow });
-      powDials = MP.dials(powNow.level);
-      return was !== powNow.level;
+      const was = __C.powNow.level;
+      __C.powNow = MP.level({ mobile: __C.IS_MOBILE, battery: battNow, losing: drainState.losing, parked: idleNow });
+      __C.powDials = MP.dials(__C.powNow.level);
+      return was !== __C.powNow.level;
     }
     if (navigator.getBattery) navigator.getBattery().then((b) => {
       const upd = () => {
@@ -1484,7 +1458,7 @@
       // A playing stage, stadium, or remote tile means someone is watching.
       // Do not park under that. A cam-off tile does not count: audio-only
       // is the default, and a live audio track would never release the lock.
-      const idle = IS_MOBILE && !viewerWatching() && Date.now() - lastActive > IDLE_MS;
+      const idle = __C.IS_MOBILE && !viewerWatching() && Date.now() - lastActive > IDLE_MS;
       if (idle === idleNow) return;
       setParked(idle);
       if (idle) {
@@ -1513,7 +1487,7 @@
       // The power level's camera dial: steps down the ladder (each rung has its own fps).
       // A phone saves even on its charger: a phone's meeting load is close to
       // what a USB charger gives, so full-rung video loses to it plugged in.
-      if (!manual && powDials.rungShift) q = __C.LADDER[Math.min(__C.LADDER.indexOf(q) + powDials.rungShift, __C.LADDER.length - 1)];
+      if (!manual && __C.powDials.rungShift) q = __C.LADDER[Math.min(__C.LADDER.indexOf(q) + __C.powDials.rungShift, __C.LADDER.length - 1)];
       // BLUR IS ALREADY A BLUR — DON'T PAY FOR FRAMES (Nathan, 2026-07-30).
       // A blurred feed has deliberately destroyed its spatial detail, so
       // spending 15-30 fps preserving TEMPORAL detail is paying to transmit
@@ -1610,7 +1584,7 @@
       // ONCE per sweep, not once per sender: stageCeilingKbps walks the roster
       // through participantCount(), and adapt() runs on every connect and every
       // sweep — evaluating it inside the sender loop is quadratic in a big room.
-      const stageBudget = Math.round((0, /*()*/__C.stageCeilingKbps)() * powDials.stageKbps) * 1000;   // the power level's Stage/screen budget dial
+      const stageBudget = Math.round((0, /*()*/__C.stageCeilingKbps)() * __C.powDials.stageKbps) * 1000;   // the power level's Stage/screen budget dial
       // MY OWN screen rides the MAIN row-mesh senders, because a share is a
       // source swap and not a second channel (sentVideoTrack) — so those
       // senders are carrying a document while still being budgeted from `q`,
@@ -1618,7 +1592,7 @@
       // 3-person room's 450k face budget is scaled to mush by the encoder
       // before it ever leaves. Screens get the screen lane.
       const myScreen = !!(__C.myStatus.scr && __C.screenStream && __C.screenStream.getVideoTracks()[0]);
-      const screenBudget = Math.round((0, /*()*/__C.screenCeilingKbps)() * powDials.stageKbps) * 1000;
+      const screenBudget = Math.round((0, /*()*/__C.screenCeilingKbps)() * __C.powDials.stageKbps) * 1000;
       // And the same question one hop out: is the thing this node is FORWARDING
       // on the Stage a screen? Gossip already says so on every heartbeat (`scr`),
       // so a forwarder does not have to inspect pixels to know not to squeeze it.
@@ -1727,7 +1701,7 @@
     function compFps() {
       const base = (__C.net.SCALE && __C.net.SCALE.COMP_FPS) || 8;
       if (__C.meshNode && __C.meshNode.raw && __C.meshNode.raw.lgLvl >= 2) return 1;   // L29.1: nothing is encoding these
-      return Math.max(powDials.compFpsMin, Math.round(base * powDials.compFps));
+      return Math.max(__C.powDials.compFpsMin, Math.round(base * __C.powDials.compFps));
     }
     yield 1472;
 
@@ -2477,40 +2451,17 @@
       if (sender.track !== at) { seat(); return; }
       sender.replaceTrack(null).then(seat).catch(() => {});
     }
-    // OFFER TURNS. Both ends of a link may offer (a fold sender opens its own
-    // m-lines), and two offers that cross are a glare: one side rolls its own
-    // back. Chromium does not survive that rollback on a live link. At link
-    // birth it leaves the polite side's received mic MUTED for good (RTP
-    // decodes, 'unmute' never comes: e2e-glare-first-offer); later it stops a
-    // video sink (the dead-sink watchdog rebuilds the pair). A new row starts
-    // jobs on every row link at once, so the sixth person's arrival collided
-    // offers all over row 0 (e2e-sixth-audio).
-    //   So offers on a link take turns. The initiator offers when it likes.
-    // The polite side asks first ('rreq') and offers on 'rgo'. The initiator
-    // gives a turn only while stable and not offering, and makes no offer of
-    // its own until the polite offer arrives (or the turn runs out). Busy, it
-    // says 'rwait' and gives the turn when it is stable. An older initiator
-    // says nothing: after TURN_ASK_MS the polite side offers as it always did
-    // (glare rules still apply), and stops asking that peer.
-    const TURN_ASK_MS = GifOS.timings.TURN_ASK_MS, TURN_BUSY_MS = GifOS.timings.TURN_BUSY_MS, TURN_MS = GifOS.timings.TURN_MS;
     yield 1881;
     const compOf = new Map(); // feed tiles: key -> { via, streamId, ids, names, stream } (3b)
     const isStageKey = (row) => typeof row === 'string' && row.indexOf('s:') === 0;
-    // Do I hold sender m-lines that never made it into a negotiation? (Rolled
-    // back in a glare, or added while an offer was in flight.)
-    const hasPendingTx = (p) => {
-      try {
-        return p.pc.getTransceivers().some((t) => t.sender && t.sender.track
-          && (!t.mid || !t.currentDirection || t.currentDirection.indexOf('send') < 0));
-      } catch (e) { return false; }
-    };
+    yield 1884;
     // Ask the far side to re-offer when a mapped stream's m-lines never made it
     // into a negotiation (rolled back / raced) \u2014 used by the aux-track paths.
     function compKick(pid) {
       const p = __C.peers.get(pid);
       if (!p || !p.dc || p.dc.readyState !== 'open') return;
       (0, /*()*/__C.dcSend)(p, { k: 'rkick' });
-      if (hasPendingTx(p)) (0, /*()*/__C.renegotiate)(p);
+      if ((0, /*()*/__C.hasPendingTx)(p)) (0, /*()*/__C.renegotiate)(p);
     }
 
     // ================== THE NESTED MOSAIC (3b, docs/media-plane.md) =========
@@ -2542,8 +2493,8 @@
     // MOS_GRACE; the standby takes the slot the moment it demonstrably FLOWS.
     // Failback to the preferred path is make-before-break with hysteresis
     // (see claimRedun).
-    const mosStandby = new Map(); // resolvedKey -> { via, streamId, stream, el, meta } (parked 2nd claim)
-    const subWant = new Map();    // from + '|' + key + '|' + sid -> 'w'|'i' (last demand sent — debounce)
+    const mosStandby = new Map();
+    yield 1890;    // from + '|' + key + '|' + sid -> 'w'|'i' (last demand sent — debounce)
     const mosJobs = new Map();  // key + '>' + to -> { senders, trackList, active, sig, to, key, meta } (outbound ships)
     const pipePacks = new Map();   // SUB.4: pipe peer -> the room pack without that pipe's part (a vouched pipe only)
     const pipePacksStop = (keep) => { for (const [h, pk] of [...pipePacks]) if (!keep || !keep(h)) { try { pk.stop(); } catch (e) {} pipePacks.delete(h); } };
@@ -2715,7 +2666,7 @@
       if (el && meta && meta.n) {
         // Own-row hiding stops at section size (Nathan): a Stadium of more than C×C people shows everyone and hides nothing.
         const hide = [];
-        if (c && meta.n <= __C.SCALE.C * __C.SCALE.C) for (let j = 0; j < __C.SCALE.C; j++) { const pid = j === c.i ? __C.myId : occPid({ pc: c.pc, r: c.r, i: j }); if (pid) hide.push(String(pid)); }
+        if (c && meta.n <= __C.SCALE.C * __C.SCALE.C) for (let j = 0; j < __C.SCALE.C; j++) { const pid = j === c.i ? __C.myId : (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: j }); if (pid) hide.push(String(pid)); }
         // SUB.4 PIPE HOLDERS: the two ends of a vouched pipe see each other on a full tile (my camera crosses to my pipe peer,
         // camPeer), so each leaves the other out of its own Stadium; everyone else sees the far room in the Stadium only.
         // (only while its tile shows its own live camera: under a TURN step the camera gives way and the composite shows it again)
@@ -3013,7 +2964,7 @@
         held: __C.stageHeldAt.has(id), feedAt: __C.stageFeedAt.get(id) || 0, beatAge: beat ? Date.now() - beat.at : null,
         claim: null, lost: true, bound: false, trackLive: false, modMuted: !!(mute && mute.on), earOpen: false,
         rawPeak: null, foldPeak: null, peakAge: null, tries: 0, lapsed: false,
-        strip: !!(compOf.get('sgs') && (compOf.get('sgs').names || []).includes(id)), view: stageViewNow };
+        strip: !!(compOf.get('sgs') && (compOf.get('sgs').names || []).includes(id)), view: __C.stageViewNow };
       if (out.me) {
         const t = (__C.rbNow && __C.rbNow.v) ? (__C.rbNow.a || null) : ((__C.localStream && __C.localStream.getAudioTracks()[0]) || null);
         out.trackLive = !!t && t.readyState === 'live' && t.enabled !== false;
@@ -3134,15 +3085,14 @@
       }
       return selfShipMemo.stream;
     };
-    const multiSection = () => { const s = (0, /*()*/__C.meshSeat)(); if (!s || !s.hasCoord) return false; for (const k of s.occ.keys()) if (!(k.charCodeAt(0) === 48 && k.charCodeAt(1) === 95)) return true; return false; };
-    const occPid = (c) => { const s = (0, /*()*/__C.meshSeat)(); return s ? s.occGet(__C.net.topo.ckey(c)) : null; };
+    yield 1943;
     // W7 rook: my deterministic column partner at Section 1 — the first
     // OCCUPIED seat in my column, scanning rows cyclically below mine. Ring
     // coverage: with full rows every seat receives exactly one column copy
     // (from its cyclic predecessor), so each S1 seat holds a second sd source
     // from a DIFFERENT row's compositor chain.
     const nextColMate = (c) => {
-      for (let d = 1; d < __C.SCALE.C; d++) { const co = { pc: 0, r: (c.r + d) % __C.SCALE.C, i: c.i }; if (occPid(co)) return co; }
+      for (let d = 1; d < __C.SCALE.C; d++) { const co = { pc: 0, r: (c.r + d) % __C.SCALE.C, i: c.i }; if ((0, /*()*/__C.occPid)(co)) return co; }
       return null;
     };
     // A hidden, playing <video> for a claimed stream — the drawImage source.
@@ -3310,8 +3260,8 @@
     // on the next paint; the resolution change is the one JS-reachable
     // keyframe trigger). A camera source has no canvas — its direct receivers'
     // ordinary PLI is the lever there, so the walk simply ends.
-    const kfLast = new Map(); // key -> last relay ms (loop + storm guard)
-    let kfAsker = null; // mx-kf sets this for the duration of kfNeed(key)
+    const kfLast = new Map();
+    yield 1965; // mx-kf sets this for the duration of kfNeed(key)
     const jiggleState = new WeakMap(); // sender -> { base, busy }
     function noteJiggleBase(sd, base) {
       const st = jiggleState.get(sd);
@@ -3383,7 +3333,7 @@
     const kfEv = (key, act, x) => { kfLog.push(Object.assign({ t: Date.now(), key: String(key).slice(0, 18), act }, x || {})); if (kfLog.length > 300) kfLog.shift(); };
     function kfNeed(key) {
       const now = Date.now();
-      const fromPid = kfAsker;
+      const fromPid = __C.kfAsker;
       // Rate-limited per key AND asker: the producer's jiggle below keys only
       // the asker's own sender, so one hop's ask must not spend another's
       // window (chaos-1019: H's ask at +6.6 keyed S's sender toward H; A's
@@ -4356,7 +4306,7 @@
     let rowMixDeaf = false; // L49: the mix's sound is not arriving. A live head still sends picture bytes, so heard:feed must not clear this out.
     function rowHeadIsOut(c) {
       const s = (0, /*()*/__C.meshSeat)(); if (!c || !s || c.i === 0 || !s.rowHeir) { rowHeadOut = null; return false; }
-      const pid = occPid({ pc: c.pc, r: c.r, i: 0 }), now = Date.now();
+      const pid = (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: 0 }), now = Date.now();
       if (rowHeadOut && rowHeadOut.pc === c.pc && rowHeadOut.r === c.r) {
         if (rowHeadOut.pid !== pid) { dbgRowHead('new-head'); rowHeadOut = null; }
         else if (rowHeadOut.deaf) { if (!rowMixDeaf) { dbgRowHead('heard:level'); rowHeadOut = null; } }
@@ -4383,7 +4333,7 @@
     // new head's view does not go dark between the carried copy and the direct one.
     let rowX2To = null;
     function x2Target(cell) {
-      const pid = occPid(cell), now = Date.now(), ck = __C.net.topo.ckey(cell);
+      const pid = (0, /*()*/__C.occPid)(cell), now = Date.now(), ck = __C.net.topo.ckey(cell);
       if (pid) { rowX2To = { pid, ck, at: now }; return pid; }
       if (!rowX2To || rowX2To.ck !== ck || now - rowX2To.at > 15000) return null;
       const p = __C.peers.get(rowX2To.pid), s = (0, /*()*/__C.meshSeat)(); if (!p || !p.connected) return null;
@@ -4490,14 +4440,14 @@
     }
     function rowMixOnVtalk(p, m) {
       if (!p || !m || m.row == null) return;
-      const row = m.row | 0, pc = m.pc | 0, head = occPid({ pc, r: row, i: 0 });
+      const row = m.row | 0, pc = m.pc | 0, head = (0, /*()*/__C.occPid)({ pc, r: row, i: 0 });
       if (p.id === head) return;
       if (m.elect === 1 || m.elect === 0) {
         const c = (0, /*()*/__C.meshCoord)(), s = (0, /*()*/__C.meshSeat)();
         const mine = c && s && c.pc === pc && c.r === row && s.rowHeir && s.rowHeir() === __C.myId;
         if (mine) {
           if (m.elect === 0) { if (rowHeadOut && rowHeadOut.deaf) { rowMixDeaf = false; dbgRowHead('heard:level'); schedReconcile(); } return; }
-          const headPid = occPid({ pc: c.pc, r: c.r, i: 0 });
+          const headPid = (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: 0 });
           rowMixElected = true; rowMixDeaf = true; rowMixShipUntil = 0;
           if (!rowHeadOut || !rowHeadOut.deaf) { rowHeadOut = { pid: headPid, tick: s.seatTick, pc: c.pc, r: c.r, deaf: true }; dbgRowHead('out:deaf'); schedReconcile(); }
           return;
@@ -4524,7 +4474,7 @@
     }
     window.__rowMixOn = rowMixOnVtalk;
     function rowMixHeadArrives(q) {
-      const head = occPid({ pc: 0, r: q, i: 0 });
+      const head = (0, /*()*/__C.occPid)({ pc: 0, r: q, i: 0 });
       const pri = mosIn.get('sdrow:' + q), std = mosStandby.get('sdrow:' + q);
       const src = pri && pri.via === head ? pri : (std && std.via === head ? std : null);
       if (!src || !src.stream) return -1;
@@ -4538,13 +4488,13 @@
       // One 180 ms sample misses a breath inside an utterance (over a second, under the 4 s pull).
       // Refresh the flag while a recent hot sample still says this seat is talking. Silence stays silent.
       if (c && (__C.speakingOf.get('me') || (__C.rowMixTalkAt && now - __C.rowMixTalkAt <= ROW_MIX_TALK))) {
-        const head = occPid({ pc: c.pc, r: c.r, i: 0 });
+        const head = (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: 0 });
         vtalkSeen.set(__C.myId, { at: now, hop: 0, via: __C.myId, row: c.r, pc: c.pc });
         const msg = { k: 'vtalk', on: 1, src: __C.myId, hop: 0, row: c.r, pc: c.pc };
         for (const [id, p] of __C.peers) { if (id === head) continue; (0, /*()*/__C.dcSend)(p, msg); }
       }
       if (c && s && c.i !== 0 && c.pc === 0 && s.rowHeir && s.rowHeir() === __C.myId) {
-        const head = occPid({ pc: c.pc, r: c.r, i: 0 });
+        const head = (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: 0 });
         const x1 = mosIn.get('x1');
         const level = (x1 && !x1.deadAt && x1.via === head && x1.stream) ? rowMixArrives(rowMixAn || (rowMixAn = {}), x1) : -1;   // 1 arrives, 0 the picture comes and the sound does not, -1 nothing to judge
         const flagged = rowMixFresh(c.r, c.pc);
@@ -4581,7 +4531,7 @@
           const slot = rowSdLv.get(q) || {}; rowSdLv.set(q, slot);
           const level = (f && f.stream) ? rowMixArrives(slot, f) : -1;
           slot.rx = level;
-          const head = occPid({ pc: 0, r: q, i: 0 });
+          const head = (0, /*()*/__C.occPid)({ pc: 0, r: q, i: 0 });
           // A CARRIED COPY'S PACKETS ARE NOT ITS SOUND. Arrival is evidence on the mixer's own pipe only: a seat that
           // carries a copy encodes what it received, silence included, so the copy of a stopped mix arrives at 50
           // packets a second with nothing in it. Read as "arrives", it ended the pull, dropped the pulled mic and
@@ -4631,7 +4581,7 @@
     }
     setInterval(() => { try { rowMixTick(); } catch (e) { window.__rowMix = { err: String(e && e.message || e) }; } }, ROW_MIX_MS);
     function rowHeadPid(c) {
-      const s = (0, /*()*/__C.meshSeat)(), head = occPid({ pc: c.pc, r: c.r, i: 0 });
+      const s = (0, /*()*/__C.meshSeat)(), head = (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: 0 });
       return rowHeadIsOut(c) && s && s.rowHeir ? (s.rowHeir() || head) : head;
     }
     // A NEW HEAD IN MY ROW: my jobs to my row's head ('sub', 'sdrow') follow rowHeadPid, which stays on the heir until my
@@ -4641,7 +4591,7 @@
     function headSendsStale() { const c = (0, /*()*/__C.meshCoord)(); return !!c && c.i !== 0 && rowHeadPid(c) !== headShipTo; }
     function headLinkUp(pid) {
       const c = (0, /*()*/__C.meshCoord)(); if (!c || c.i === 0 || !pid) return;
-      if (pid === occPid({ pc: c.pc, r: c.r, i: 0 }) || pid === rowHeadPid(c)) schedReconcile();
+      if (pid === (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: 0 }) || pid === rowHeadPid(c)) schedReconcile();
     }
     function actingHead() {
       const c = (0, /*()*/__C.meshCoord)(), s = (0, /*()*/__C.meshSeat)(); if (!c || !s || c.i === 0 || !s.rowHeir) return false;
@@ -4679,7 +4629,7 @@
       if (key === 'x2') return !iAmHead && meta && meta.row != null && meta.row !== c.r ? 'x2:' + meta.row : null;
       if (key.indexOf('sdrow') === 0) return iAmHead && meta && meta.row != null && meta.row !== c.r ? 'sdrow:' + meta.row : null;
       // MIX-MINUS streams (docs/media-plane.md): per-branch, single-producer.
-      if (key === 'sdm') return c.i === 0 || (iAmHead && from !== occPid({ pc: c.pc, r: c.r, i: 0 })) ? null : 'sdm'; // my head's finished row view — my Stadium. An heir standing in keeps its head's copy (the feed may come back) and takes no other: a mate's would be its own echo
+      if (key === 'sdm') return c.i === 0 || (iAmHead && from !== (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: 0 })) ? null : 'sdm'; // my head's finished row view — my Stadium. An heir standing in keeps its head's copy (the feed may come back) and takes no other: a mate's would be its own echo
       // sdx: my column's child-branch ingredient (direct, or the 'sdx^x' copy a
       // carrier row-mate hands me — same slot, second pipe in the row). sdxc: a
       // NEIGHBOUR column's copy I carry sideways to its target seat.
@@ -4741,15 +4691,7 @@
     // (sub/x1/x2) keep the plain single sticky claim.
     const isRedun = (rk) => rk === 'sdm' || rk === 'sdx' || rk === 'sdn' || rk === 'sgs' || rk.indexOf('stg:') === 0 || rk.indexOf('sdrow:') === 0;
     const annMeta = (ann) => { const m = { col: ann.col, row: ann.row, n: ann.n, cols: ann.cols, mt: ann.mt, h: ann.h, ids: ann.ids, ao: ann.ao, sb: ann.sb, vp: ann.vp, alag: ann.alag, l14: ann.l14, via: ann.via, pipe: ann.pipe, pv: ann.pv }; if (ann.src) m.src = String(ann.src).slice(0, 64); return m; };
-    // The strip's CELL ORDER (STAGE-FACES): who sits in cell 0..n-1, as the
-    // compositing seat packed it. At most C peer ids, each a short string;
-    // anything else is dropped, and a receiver without it falls back to the
-    // stage order or to the whole strip.
-    // A mosaic feed carries an ejected forger's picture when its key names
-    // them (stg:<pid>) or its cell list does. A composite cannot be cut apart,
-    // so the whole feed is refused; an honest producer has dropped the forger
-    // too and its next composite comes without them.
-    const MX_IDS_MAX = 64; // the longest cell list an announce may carry: a stadium pack past this (dense-packed) names no cells, and its receivers fall back to the count rule
+    yield 2065; // the longest cell list an announce may carry: a stadium pack past this (dense-packed) names no cells, and its receivers fall back to the count rule
     function mosHasEjected(key, ids) {
       if (!__C.ejected.size) return false;
       if (typeof key === 'string' && key.startsWith('stg:') && (typeof __C.isEjected === 'function' && (0, /*()*/__C.isEjected)(key.slice(4).split('^')[0]) === true)) return true;
@@ -4803,11 +4745,11 @@
     // only the copy's video; the next want brings it back. An older sender reads it as a plain idle.
     function demand(from, key, sid, want, prim, vOnly) {
       const dk = from + '|' + key + '|' + sid, st = want ? (prim ? 'p' : 'w') : (vOnly ? 'v' : 'i'), now = Date.now();
-      const cur = subWant.get(dk);
+      const cur = __C.subWant.get(dk);
       if (cur && cur.st === st && now - cur.at < 6000) return;
       const p = __C.peers.get(from);
       if (!(p && p.dc && p.dc.readyState === 'open')) return;
-      subWant.set(dk, { st, at: now });
+      __C.subWant.set(dk, { st, at: now });
       if (want) stgFoNote(key, 'want', from);
       (0, /*()*/__C.dcSend)(p, want ? (prim ? { k: 'mx-want', key, streamId: sid, pr: 1 } : { k: 'mx-want', key, streamId: sid }) : (vOnly ? { k: 'mx-idle', key, streamId: sid, v: 1 } : { k: 'mx-idle', key, streamId: sid }));
     }
@@ -5536,7 +5478,7 @@
       if (rk === 'sgs') { const hot = (0, /*()*/__C.meshSeat)(); if (hot && hot.u2Hot) { const e2 = cand.find((x) => x.live && x.from === hot.u2Id); if (e2) return e2; } }
       if (rk === 'sdx' || rk === 'sdn') {
         const src = rk === 'sdn' ? __C.net.topo.up(c) : { pc: c.pc, r: c.r, i: 0 };
-        const srcPid = src ? occPid(src) : null;
+        const srcPid = src ? (0, /*()*/__C.occPid)(src) : null;
         return (srcPid && cand.find((x) => x.live && x.key === rk && x.from === srcPid))
           || cand.find((x) => x.live && x.key === rk) || null;
       }
@@ -5562,7 +5504,7 @@
           // back off it each settle window and u2Over swaps on again: every feed I relay flaps with it.
           const hot = (0, /*()*/__C.meshSeat)();
           if (hot && hot.u2Hot) { const e2 = cand.find((x) => x.live && x.from === hot.u2Id && x.key.indexOf('^') < 0); if (e2) return e2; }
-          const hop = occPid(c.i === 0 ? __C.net.topo.up(c) : { pc: c.pc, r: c.r, i: 0 });
+          const hop = (0, /*()*/__C.occPid)(c.i === 0 ? __C.net.topo.up(c) : { pc: c.pc, r: c.r, i: 0 });
           const e1 = hop ? cand.find((x) => x.live && x.from === hop) : null;
           if (e1) return e1;
         }
@@ -5600,7 +5542,7 @@
       if (rk === 'sdm') co = { pc: c.pc, r: c.r, i: 0 };                                        // my head's own fan
       else if (rk === 'sgs') co = c.i === 0 ? __C.net.topo.up(c) : { pc: c.pc, r: c.r, i: 0 };      // the tree hop (my head, or a head's parent)
       else if (rk.indexOf('sdrow:') === 0) {
-        const q = +rk.slice(6), head = occPid({ pc: 0, r: q, i: 0 });
+        const q = +rk.slice(6), head = (0, /*()*/__C.occPid)({ pc: 0, r: q, i: 0 });
         // L49: while that row's mix does not arrive, the carrier is the copy. Byte flow on the head's picture must not win it back.
         if (rowMixHold(q)) { const alt = cand.find((x) => x.live && head && x.from !== head); if (alt) return alt; }
         // The head's own copy is the path while it is live and not dark (bytes flat on a pipe that flowed: a frozen head
@@ -5627,12 +5569,12 @@
         if (headDark) return null;
         co = { pc: 0, r: q, i: 0 };
       }
-      const pid = rk === 'sdm' ? rowHeadPid(c) : (co ? occPid(co) : null);
+      const pid = rk === 'sdm' ? rowHeadPid(c) : (co ? (0, /*()*/__C.occPid)(co) : null);
       return pid ? cand.find((x) => x.live && x.from === pid) || null : null;
     }
     // L50.4.2: a deep head's anchor for the room's sound from above ('sdn') is its up seat; "answers" is the seat's own
     // test (the anchor sits in its cell and answered within two beats).
-    function sdnAnchorPid() { const c = (0, /*()*/__C.meshCoord)(); const src = c ? __C.net.topo.up(c) : null; return src ? occPid(src) : null; }
+    function sdnAnchorPid() { const c = (0, /*()*/__C.meshCoord)(); const src = c ? __C.net.topo.up(c) : null; return src ? (0, /*()*/__C.occPid)(src) : null; }
     function anchorAnswers() { const sv = (0, /*()*/__C.meshSeat)(); return !!(sv && sv.anchorAnswers); }
     function claimRedun(rk, arr) {
       const now = Date.now();
@@ -5713,14 +5655,14 @@
       // until the window lapses (fbTried); a failover (primary gone or dark) is not held by it.
       const stdFbOk = !!std && !stdTried(fb, std.via + '|' + std.streamId, now, 'fbTried');
       // L49: the playing sdrow is the row head and its sound does not arrive. Not fb.dark — picture bytes are still moving, and the watchdog would clear that.
-      const mixDeaf = !!(pri && rk.indexOf('sdrow:') === 0 && rowMixHold(+rk.slice(6)) && pri.via === occPid({ pc: 0, r: +rk.slice(6), i: 0 }));
+      const mixDeaf = !!(pri && rk.indexOf('sdrow:') === 0 && rowMixHold(+rk.slice(6)) && pri.via === (0, /*()*/__C.occPid)({ pc: 0, r: +rk.slice(6), i: 0 }));
       // L49, the way back. The hold moved this row off its head's pipe onto a carried copy. The hold ends on the head's
       // own evidence (its sound arrives again, rowMixHeadArrives), and the carried copy is then only a stand-in: its
       // chain may hold nothing (a parked copy, a heir that stood down). So the row goes back to the head at once: not
       // after the settle window, and not held by an older failed wake of that pipe (fbTried), which says nothing about
       // the sound that now arrives. One try per hold: a wake of the head that fails after the row left it is remembered
       // as any other.
-      const sdQ = rk.indexOf('sdrow:') === 0 ? +rk.slice(6) : -1, sdHead = sdQ >= 0 ? occPid({ pc: 0, r: sdQ, i: 0 }) : null;
+      const sdQ = rk.indexOf('sdrow:') === 0 ? +rk.slice(6) : -1, sdHead = sdQ >= 0 ? (0, /*()*/__C.occPid)({ pc: 0, r: sdQ, i: 0 }) : null;
       const mixBack = !!(pri && std && sdHead && fb.mixLeftAt && !rowMixHold(sdQ) && std.via === sdHead && pri.via !== sdHead && rowMixHeadArrives(sdQ) === 1
         && !(((fb.fbTried && fb.fbTried.get(std.via + '|' + std.streamId)) || 0) > fb.mixLeftAt));
       // L50.4.2, the way back for a branch. While its anchor was silent this head left the anchor's copy of the room's
@@ -5937,10 +5879,10 @@
       // announcers stop being claim candidates / demand targets forever.
       const nowA = Date.now();
       for (const [ak, ann] of mosAnn) if (nowA - (ann.at || 0) > 12000) mosAnn.delete(ak);
-      for (const dk of [...subWant.keys()]) {
+      for (const dk of [...__C.subWant.keys()]) {
         const a = dk.indexOf('|'), b = dk.lastIndexOf('|');
         const ann = mosAnn.get(dk.slice(0, a) + '|' + dk.slice(a + 1, b));
-        if (!ann || ann.streamId !== dk.slice(b + 1)) subWant.delete(dk);
+        if (!ann || ann.streamId !== dk.slice(b + 1)) __C.subWant.delete(dk);
       }
       const redun = new Map(); // rk -> [{from,key,ann}]
       const structuralSeen = new Set(); // non-redundant slots an announcer still names
@@ -6023,7 +5965,7 @@
     // outbound one ("your self-view shows EXACTLY the track you broadcast"), so
     // this shows the BROADCAST — blur baked in — never a private clear copy.
     let selfStageSt = null, stageDirectSt = null;
-    let stageViewNow = null; // what the stage element shows: 'self' | 'screen' | 'strip' (stageFacesForTest)
+    yield 2147; // what the stage element shows: 'self' | 'screen' | 'strip' (stageFacesForTest)
     function selfStageStream() {
       const st = __C.meTile && __C.meTile.video && __C.meTile.video.srcObject;
       // A share from the Row: my Row tile is the camera, my Stage is the screen.
@@ -6067,7 +6009,7 @@
       for (const jk of [...mosJobs.keys()]) unshipMos(jk, true);
       for (const rk of [...mosIn.keys()]) dropMosIn(rk);
       for (const rk of [...mosStandby.keys()]) dropStandby(rk);
-      subWant.clear();
+      __C.subWant.clear();
       mosAnn.clear();
       mosFb.clear();
       pipeDeny.clear(); pipeDenyUntil.clear(); pipeDenyN.clear();
@@ -6355,11 +6297,11 @@
       // SUB.4: my pipe peers are served children too: their product rides in as 'subu:<peer>', and each gets everything I hold
       // but its own part (below, at the Section-1 head that ends it).
       const pipes = beyondRow ? (0, /*()*/__C.pipePeers)() : [];
-      const l14Heads = l14DownHeads((0, /*()*/__C.meshSeat)(), beyondRow, occPid(T.down(c))).filter((h) => pipes.indexOf(h) < 0).concat(pipes);
+      const l14Heads = l14DownHeads((0, /*()*/__C.meshSeat)(), beyondRow, (0, /*()*/__C.occPid)(T.down(c))).filter((h) => pipes.indexOf(h) < 0).concat(pipes);
       // A branch one of my row-mates serves reaches me as that mate's relay (sub {l14, via}): the mate relays only the
       // branches it serves, and its announce ages out when it stops. A head packs those as its own, so the branch
       // goes up in the row product and into the stadium.
-      const rowMatePid = (pid) => { if (!pid) return false; for (let j = 0; j < C; j++) { if (j === c.i) continue; if (occPid({ pc: c.pc, r: c.r, i: j }) === pid) return true; } return false; };
+      const rowMatePid = (pid) => { if (!pid) return false; for (let j = 0; j < C; j++) { if (j === c.i) continue; if ((0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: j }) === pid) return true; } return false; };
       const l14Keep = (h, uf) => l14Heads.includes(h) || (!!uf && uf.via !== h && (iAmHead || actHead) && rowMatePid(uf.via));
       // SOUND NEVER DEPENDS ON A PICTURE, at any hop. A block whose product carries no video (an unvouched or paused link,
       // TURN.11-13) draws no tile, never a black block, and its sound still enters the pack as a sound-only part (setSound):
@@ -6394,7 +6336,7 @@
         if (!prodPack) prodPack = MM.createPacker({ shape: 'grid', fps: compFps(), ac: mixCtx() }).start();
         dbgRowFaces = []; // test observability: which pid the packer drew at each row seat
         for (let j = 0; j < C; j++) {
-          let pid0 = j === c.i ? __C.myId : (actHead && j === 0 ? null : occPid({ pc: c.pc, r: c.r, i: j }));
+          let pid0 = j === c.i ? __C.myId : (actHead && j === 0 ? null : (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: j }));
           // A SEAT'S FACE BELONGS TO ITS SELF-REPORTED OWNER (2026-07-29: a
           // moved bot rendered TWICE in the stadium all session). occ gossip
           // never evicts (E2) and tlSweep can't kill an entry whose pid still
@@ -6429,7 +6371,7 @@
         const prodMeta = () => packMeta(prodPack);
         if (c.pc !== 0 && beyondRow) {
           // ship my product UP (the up-seat relays it to ITS head)
-          const up = T.up(hc); const upPid = up ? occPid(up) : null;
+          const up = T.up(hc); const upPid = up ? (0, /*()*/__C.occPid)(up) : null;
           const jk = shipMos('sub', upPid, prodPack.stream, prodMeta()); if (jk) wanted.add(jk);
           { const sv = (0, /*()*/__C.meshSeat)(); if (sv && sv.l14Up && sv.l14Up !== upPid && sv.l14Cut) { const ju = shipMos('sub', sv.l14Up, prodPack.stream, Object.assign({ l14: 1 }, prodMeta())); if (ju) wanted.add(ju); } } // L14: fast media, the branch rides its uplink
         } else if (c.pc === 0 && beyondRow) { // Stadium forms whenever the room is MULTI-ROW (not just multi-section) — the Section channel is gone, so cross-row visibility relies entirely on this
@@ -6444,16 +6386,16 @@
           // current.
           // Every row copy names its packer (src) and its carries (h: 0 here, +1 per relay), so a head ranks copies by path.
           for (const hm of T.colMates(hc)) {
-            const jk0 = shipMos('sdrow:' + c.r, occPid(hm), prodPack.stream, Object.assign({ row: c.r, h: 0, src: __C.myId }, prodMeta())); if (jk0) wanted.add(jk0);
+            const jk0 = shipMos('sdrow:' + c.r, (0, /*()*/__C.occPid)(hm), prodPack.stream, Object.assign({ row: c.r, h: 0, src: __C.myId }, prodMeta())); if (jk0) wanted.add(jk0);
           }
           // L2.15: my product also crosses each Section-1 bridge of mine (an empty cell's two nearest seats): the far end is the head
           // (or the heir standing in) of another row whose corner with mine may be silent; it keeps this copy parked as a standby
           // (one-pipe law) and plays it when the head-column copy stops
           { const sb = (0, /*()*/__C.meshSeat)(); for (const t of (sb && sb.s1Bridges ? sb.s1Bridges() : [])) { const jb = shipMos('sdrow:' + c.r, t, prodPack.stream, Object.assign({ row: c.r, h: 1, src: __C.myId }, prodMeta())); if (jb) wanted.add(jb); } }
           // L2.7 at Section 1: the heir has no pc to the other heads; its column-mates carry its product to their heads (x2 -> sdrow), as a mate carries its head's x1
-          if (actHead) for (const cm of T.colMates(c)) { const jx = shipMos('x2', occPid(cm), prodPack.stream, Object.assign({ row: c.r, h: 0, src: __C.myId }, prodMeta())); if (jx) wanted.add(jx); }
+          if (actHead) for (const cm of T.colMates(c)) { const jx = shipMos('x2', (0, /*()*/__C.occPid)(cm), prodPack.stream, Object.assign({ row: c.r, h: 0, src: __C.myId }, prodMeta())); if (jx) wanted.add(jx); }
           for (let j = 1; j < C; j++) {
-            const mate = occPid({ pc: 0, r: c.r, i: j });
+            const mate = (0, /*()*/__C.occPid)({ pc: 0, r: c.r, i: j });
             const jk = shipMos('x1', mate, prodPack.stream, Object.assign({ row: c.r, h: 0, src: __C.myId }, prodMeta())); if (jk) wanted.add(jk);
           }
         }
@@ -6484,12 +6426,12 @@
               for (let q = 0; q < C; q++) {
                 const rowIn = q === c.r ? null : mosIn.get('sdrow:' + q);
                 if (rowIn) setBlock(pk, 'q' + q, 'c' + q, rowIn); else pk.delTile('q' + q);
-                if (!skip && rowIn && rowIn.via !== occPid({ pc: 0, r: q, i: 0 })) { const sk = (0, /*()*/__C.meshSeat)(); if (sk && sk.keepAdd) sk.keepAdd(rowIn.via, 16); } // L28: a carried copy stays until the direct one lands
+                if (!skip && rowIn && rowIn.via !== (0, /*()*/__C.occPid)({ pc: 0, r: q, i: 0 })) { const sk = (0, /*()*/__C.meshSeat)(); if (sk && sk.keepAdd) sk.keepAdd(rowIn.via, 16); } // L28: a carried copy stays until the direct one lands
               }
               // My row straight from its sources (faces and child blocks), not through my product's canvas: one paint, not two in series.
               pk.delTile('p');
               for (let j = 0; j < C; j++) {
-                const fp0 = j === c.i ? __C.myId : (actHead && j === 0 ? null : occPid({ pc: c.pc, r: c.r, i: j }));
+                const fp0 = j === c.i ? __C.myId : (actHead && j === 0 ? null : (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: j }));
                 const fp = fp0 && stagers.includes(fp0) ? null : fp0;
                 const sc = fp ? srcFor(fp) : null;
                 if (sc && sc.el) pk.setTile('f' + j, 'c' + c.r + 'a' + j, sc.el, null, { n: 1, cols: 1, lbl: stadLbl(fp), fit: (0, /*()*/__C.fitFor)(fp), pid: fp });
@@ -6534,7 +6476,7 @@
             let rapN = 0;
             for (const [mk, rf] of mosIn) {
               if (mk.indexOf('rap:') !== 0 || !rf || !rf.stream) continue;
-              const q = +mk.slice(4), slot = rowSdLv.get(q), head = occPid({ pc: 0, r: q, i: 0 });
+              const q = +mk.slice(4), slot = rowSdLv.get(q), head = (0, /*()*/__C.occPid)({ pc: 0, r: q, i: 0 });
               const played = mosIn.get('sdrow:' + q);
               if (played && played.via !== head && slot && slot.hot) continue;
               if (rapN >= 2) continue;
@@ -6544,7 +6486,7 @@
           // Deeper: the pack from above, the same rule (its slot is 'sdn').
           else if (dn && dn.stream && !dn.deadAt && !((mosFb.get('sdn') || {}).dark)) outA.set('dn', dn.stream);
           for (let j = 0; j < C; j++) {
-            const fp0 = j === c.i ? __C.myId : (actHead && j === 0 ? null : occPid({ pc: c.pc, r: c.r, i: j }));
+            const fp0 = j === c.i ? __C.myId : (actHead && j === 0 ? null : (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: j }));
             const fp = fp0 && stagers.includes(fp0) ? null : fp0;
             const sc = fp ? srcFor(fp) : null;
             if (sc && sc.stream) rowA.set('f' + j, sc.stream);
@@ -6558,7 +6500,7 @@
           // MY ROW (and my own ear): everything but my row's voices.
           const earSt = avOf('ear', mixOf(false, null));
           if (roomV) for (let j = 1; j < C; j++) {
-            const mate = occPid({ pc: c.pc, r: c.r, i: j });
+            const mate = (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: j });
             const jk3 = shipMos('sdm', mate, earSt, roomMeta); if (jk3) wanted.add(jk3);
           }
           // MY CHILD ROWS. The picture reaches a child row the way it reaches me:
@@ -6572,20 +6514,20 @@
           // ROW-MATES' columns only (i !== c.i): my own child is directly linked.
           const heirOf = (cell) => { const s = (0, /*()*/__C.meshSeat)(); if (!s || !s.childOf) return null; const v = s.childOf.get(__C.net.topo.ckey(cell)); return v == null ? null : v; };
           for (let i = 0; i < C; i++) {
-            const childPid = occPid(T.down({ pc: c.pc, r: c.r, i })) || (i !== c.i ? heirOf({ pc: c.pc, r: c.r, i }) : null);
+            const childPid = (0, /*()*/__C.occPid)(T.down({ pc: c.pc, r: c.r, i })) || (i !== c.i ? heirOf({ pc: c.pc, r: c.r, i }) : null);
             if (!childPid || !roomV) continue;
             const own = i === c.i, m = roomMeta;
             foldsNow.add('c' + i); const fi = fold('c' + i, mixOf(true, 's' + i));
             const st = downStream('c' + i, own ? roomV : null, fi ? fi.track() : null);
             const jk4 = own ? shipMos('sdn', childPid, st, m)
-              : shipMos('sdx', occPid({ pc: c.pc, r: c.r, i }), st, Object.assign({ col: i }, m));
+              : shipMos('sdx', (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i }), st, Object.assign({ col: i }, m));
             if (jk4) wanted.add(jk4);
             // >2-REDUNDANCY: the SAME stream over a second link-disjoint pipe —
             // me → a carrier row-mate → seat i ('sdxc' → 'sdx^x', same slot),
             // parked (ONE-PIPE law) until a failure demand-wakes it.
             if (i !== c.i) {
               let carrier = null;
-              for (let d = 1; d < C; d++) { const k2 = (i + d) % C; if (k2 === 0 || k2 === i) continue; const cp = occPid({ pc: c.pc, r: c.r, i: k2 }); if (cp) { carrier = cp; break; } }
+              for (let d = 1; d < C; d++) { const k2 = (i + d) % C; if (k2 === 0 || k2 === i) continue; const cp = (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: k2 }); if (cp) { carrier = cp; break; } }
               if (carrier) { const jk6 = shipMos('sdxc', carrier, st, Object.assign({ col: i }, m)); if (jk6) wanted.add(jk6); }
             }
           }
@@ -6660,7 +6602,7 @@
           for (const h of l14Heads) { const rel = mosIn.get('sdxu:' + h); if (!rel || !rel.stream) continue; relDirect.add(h); const jr = shipMos('sdn', h, rel.stream, blockMeta(rel), 'sdxu:' + h); if (jr) wanted.add(jr); }
           l14Down((pk, h) => {
             // no pack from my head for this branch yet: my row's faces, packed here
-            for (let j = 0; j < C; j++) { const fp0 = j === c.i ? __C.myId : occPid({ pc: c.pc, r: c.r, i: j }); const fp = fp0 && stagers.includes(fp0) ? null : fp0; const sc = fp ? srcFor(fp) : null; if (sc && sc.el) pk.setTile('f' + j, 10 + j, sc.el, sc.stream, { n: 1, cols: 1, lbl: stadLbl(fp), fit: (0, /*()*/__C.fitFor)(fp), pid: fp }); else pk.delTile('f' + j); }
+            for (let j = 0; j < C; j++) { const fp0 = j === c.i ? __C.myId : (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: j }); const fp = fp0 && stagers.includes(fp0) ? null : fp0; const sc = fp ? srcFor(fp) : null; if (sc && sc.el) pk.setTile('f' + j, 10 + j, sc.el, sc.stream, { n: 1, cols: 1, lbl: stadLbl(fp), fit: (0, /*()*/__C.fitFor)(fp), pid: fp }); else pk.delTile('f' + j); }
           }, packMetaM, relDirect);
         } else l14Down(null);
         const subraw = mosIn.get('subraw');
@@ -6704,13 +6646,13 @@
         const fwdSt = fwdV ? downStream('fwd', fwdV, fwdA) : null;
         // the sound passes through me (decoded, sent again): my audio hop adds to its lag; the picture does not wait
         const fwdLag = Math.round(((sdx && sdx.meta && typeof sdx.meta.alag === 'number') ? sdx.meta.alag : ((sdmF && sdmF.meta && sdmF.meta.alag) || 0)) + (fwdA ? audioHopMs(fwdA) : 0));
-        if (fwdSt) { const jn = shipMos('sdn', occPid(T.down(c)), fwdSt, Object.assign(blockMeta(sdmF), { alag: fwdLag }), 'sdx'); if (jn) wanted.add(jn); }
+        if (fwdSt) { const jn = shipMos('sdn', (0, /*()*/__C.occPid)(T.down(c)), fwdSt, Object.assign(blockMeta(sdmF), { alag: fwdLag }), 'sdx'); if (jn) wanted.add(jn); }
         // Carrier leg of the sdx redundancy: hand my head's 'sdxc' copies to
         // their target seat as 'sdx^x' — the same slot over a second pipe.
         for (const [mk, xc] of mosIn) {
           if (mk.indexOf('sdxc:') !== 0) continue;
           const tcol = +mk.slice(5);
-          const jc = shipMos('sdx^x', occPid({ pc: c.pc, r: c.r, i: tcol }), xc.stream, Object.assign({ col: tcol }, blockMeta(xc)), mk); if (jc) wanted.add(jc);
+          const jc = shipMos('sdx^x', (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: tcol }), xc.stream, Object.assign({ col: tcol }, blockMeta(xc)), mk); if (jc) wanted.add(jc);
         }
         // Lateral second pipe for the row view: re-fan my claimed 'sdm' to my
         // row-mates (skip the head, skip whoever it came from). Same mix over
@@ -6724,7 +6666,7 @@
         // closes a ring of mates holding a dead head's view, which nothing breaks while the new head is not reachable.
         if (sdmH && !sdmH.deadAt && sdmH.via === headPid) for (let j = 1; j < C; j++) {
           if (j === c.i) continue;
-          const mate = occPid({ pc: c.pc, r: c.r, i: j });
+          const mate = (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: j });
           if (!mate || mate === sdmH.via) continue;
           { const mq = __C.peers.get(mate); if (!mq || !mq.connected) continue; }
           const jr = shipMos('sdm', mate, sdmH.stream, blockMeta(sdmH)); if (jr) wanted.add(jr);
@@ -6746,10 +6688,10 @@
       if (c.pc !== 0) {
         // relay every stage feed I hold (and my own) UP toward Section 1. E2 is the
         // second path; the S1 flood dedups by streamId, so it never double-composites.
-        const upTgt = iAmHead ? (T.up(c) ? occPid(T.up(c)) : null) : occPid({ pc: c.pc, r: c.r, i: 0 });
+        const upTgt = iAmHead ? (T.up(c) ? (0, /*()*/__C.occPid)(T.up(c)) : null) : (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: 0 });
         const seatE2 = (0, /*()*/__C.meshSeat)();
         const e2Up = seatE2 ? [seatE2.u2Id, seatE2.u3Id, seatE2.l14Up].filter(Boolean) : []; // L2.3, L2.6: I am my row's E2 source; L14: my branch's uplink
-        const e2Fan = (seatE2 && (seatE2.u2Id || (seatE2.l14Up && !iAmHead))) ? T.rowMates(c).map((m) => occPid(m)).filter((t) => t && t !== __C.myId) : []; // L14: a mate holds an uplink only as the first live mate of a headless row
+        const e2Fan = (seatE2 && (seatE2.u2Id || (seatE2.l14Up && !iAmHead))) ? T.rowMates(c).map((m) => (0, /*()*/__C.occPid)(m)).filter((t) => t && t !== __C.myId) : []; // L14: a mate holds an uplink only as the first live mate of a headless row
         const e2Kids = seatE2 ? seatE2.u2Heirs().concat(seatE2.l14Served()) : []; // the rows I back up (E2), the heads whose uplink I took (L14)
         // Same owner rule as the S1 flood: a stager already HAS its own face —
         // shipping it back is waste at best, and (before the mosResolve guard)
@@ -6771,7 +6713,7 @@
           }
           // and DOWN: the strip is video-only — the per-stager feeds must
           // reach EVERY subtree so Stage audio can fold at each ear.
-          const dnP = occPid(T.down(c));
+          const dnP = (0, /*()*/__C.occPid)(T.down(c));
           if (dnP && !skip(dnP) && dnP !== upTgt) {
             const dnSt = stgDownShip(key, stream, !!(owner && (0, /*()*/__C.sharingScreen)(owner)), stgAudioMemo);
             if (dnSt) { const jk = shipMos(key, dnP, dnSt, stgDownMeta(hm, dnSt, stream), key); if (jk) wanted.add(jk); }
@@ -6795,7 +6737,7 @@
           const f = mosIn.get(k);
           const owner = k.slice(4).split('^')[0];
           for (let j = 1; j < C; j++) {
-            const mate = occPid({ pc: c.pc, r: c.r, i: j });
+            const mate = (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: j });
             if (!mate || mate === f.via || mate === owner) continue; // never back to the sender, never to the stager itself
             const earSt = stgDownShip(k, f.stream, (0, /*()*/__C.sharingScreen)(owner), stgAudioMemo);
             if (!earSt) continue;
@@ -6808,7 +6750,7 @@
         // so any single dead S1 seat cannot starve the spread. Receivers keep
         // ONE hot pipe + a parked standby + dormant spares (ONE-PIPE
         // multi-subscribe), so the extra announces cost nothing until demanded.
-        const s1peers = [...T.rowMates(c), ...T.colMates(c)].map((m) => occPid(m)).filter(Boolean);
+        const s1peers = [...T.rowMates(c), ...T.colMates(c)].map((m) => (0, /*()*/__C.occPid)(m)).filter(Boolean);
         { const sb = (0, /*()*/__C.meshSeat)(); for (const t of (sb && sb.s1Bridges ? sb.s1Bridges() : [])) if (s1peers.indexOf(t) < 0) s1peers.push(t); }   // L2.15: an empty Section-1 cell's bridge carries the flood around a silent corner (parked at the receiver by the one-pipe law, as E2)
         for (const t of (0, /*()*/__C.pipePeers)()) if (s1peers.indexOf(t) < 0) s1peers.push(t);   // SUB.4: every stager's own feed crosses my pipes, both ways (split horizon in floodOne)
         const flooded = new Set(); // PER-SWEEP dedup (one feed may resolve via two keys). The old
@@ -6839,12 +6781,12 @@
           };
           // My OWN feed: two neighbours watch it directly, the rest get an
           // sb:1 copy they keep parked (STG-DIRECT).
-          const direct = owner === __C.myId ? stgDirectSet(T.rowMates(c).map((m) => occPid(m)), T.colMates(c).map((m) => occPid(m)),
+          const direct = owner === __C.myId ? stgDirectSet(T.rowMates(c).map((m) => (0, /*()*/__C.occPid)(m)), T.colMates(c).map((m) => (0, /*()*/__C.occPid)(m)),
             (t) => { const q = __C.peers.get(t); return !!(q && q.pc && q.connected); }) : null;
           const hmSb = { h, sb: 1 };
           // SUB.4.1: a free pipe hears the Stage inside its one mix (the pipes loop above), so no stage feed is shipped to it
           for (const t of s1peers) { if (owner && pipesNow.indexOf(t) >= 0 && (__C.pipeStg.get(owner) === t || mosAnn.has(t + '|' + key) || !(0, /*()*/__C.pipeVideo)(t))) continue; if (owner !== __C.myId && relayHeldForTest(key, t)) continue; if (oneRootSkipForTest(owner, t, s1peers)) continue; const s = pick(t); if (!s) continue; const jk = shipMos(key, t, s.st, (direct && !direct.has(t)) ? hmSb : s.m, up); if (jk) wanted.add(jk); }
-          const dnP = occPid(T.down(c)); // and DOWN — Stage audio folds at every ear
+          const dnP = (0, /*()*/__C.occPid)(T.down(c)); // and DOWN — Stage audio folds at every ear
           const sd = pick(dnP);
           if (sd) {
             const dnSt = stgDownShip(key, sd.st, !!(owner && (0, /*()*/__C.sharingScreen)(owner)), stgAudioMemo);
@@ -6907,13 +6849,13 @@
         const stripIds = stagers.filter((sid) => stgKeep.has(sid)); // the cell order, as packed (ord = stage index)
         const scrSt = selfSt ? null : (myScreenBeside() || stageDirect());
         const s1Faces = scrSt ? stageFaceSet(stageScreenSid(), stagers, null) : null;
-        stageViewNow = selfSt ? 'self' : (s1Faces ? 'screen' : 'strip');
+        __C.stageViewNow = selfSt ? 'self' : (s1Faces ? 'screen' : 'strip');
         (0, /*()*/__V.paintStageStrip)(selfSt || (s1Faces ? scrSt : null) || stripPack.stream);
         paintStageFaces(s1Faces);
         // Fan the strip DOWN only: every S1 seat composites its OWN strip from
         // the flooded stg feeds, so sideways sgs ships between S1 seats were
         // dead weight (receivers own stripPack and never paint them) — gone.
-        const jgs = shipMos('sgs', occPid(T.down(c)), stripPack.stream, { n: stripPack.count(), cols: stripPack.cols(), ids: stripIds }); if (jgs) wanted.add(jgs);
+        const jgs = shipMos('sgs', (0, /*()*/__C.occPid)(T.down(c)), stripPack.stream, { n: stripPack.count(), cols: stripPack.cols(), ids: stripIds }); if (jgs) wanted.add(jgs);
         for (const t of ((0, /*()*/__C.meshSeat)() ? (0, /*()*/__C.meshSeat)().u2Heirs().concat((0, /*()*/__C.meshSeat)().l14Served()) : [])) { const j2 = shipMos('sgs', t, stripPack.stream, { n: stripPack.count(), cols: stripPack.cols(), ids: stripIds }); if (j2) wanted.add(j2); } // E2
         }
       }
@@ -6928,14 +6870,14 @@
         const deepSelf = soloSelf && selfStageStream();
         const scrSt = deepSelf ? null : (myScreenBeside() || stageDirect());
         const deepFaces = scrSt ? stageFaceSet(stageScreenSid(), stagers, sgs) : null;
-        stageViewNow = deepSelf ? 'self' : (deepFaces ? 'screen' : 'strip');
+        __C.stageViewNow = deepSelf ? 'self' : (deepFaces ? 'screen' : 'strip');
         (0, /*()*/__V.paintStageStrip)((soloSelf && selfStageStream()) || (deepFaces ? scrSt : null) || sgs.stream);
         paintStageFaces(deepFaces);
-        const dj = shipMos('sgs', occPid(T.down(c)), sgs.stream, stripMeta(sgs)); if (dj) wanted.add(dj);
-        if (iAmHead) for (let j = 1; j < C; j++) { const mate = occPid({ pc: c.pc, r: c.r, i: j }); if (mate === sgs.via) continue; const jk = shipMos('sgs', mate, sgs.stream, stripMeta(sgs)); if (jk) wanted.add(jk); }
+        const dj = shipMos('sgs', (0, /*()*/__C.occPid)(T.down(c)), sgs.stream, stripMeta(sgs)); if (dj) wanted.add(dj);
+        if (iAmHead) for (let j = 1; j < C; j++) { const mate = (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: j }); if (mate === sgs.via) continue; const jk = shipMos('sgs', mate, sgs.stream, stripMeta(sgs)); if (jk) wanted.add(jk); }
         { // E2: the rows I back up, and my row if I am its source. Parked at the far end. Never back to my own source.
           const sv = (0, /*()*/__C.meshSeat)();
-          const fanS = (sv && (sv.u2Id || (sv.l14Up && !iAmHead))) ? T.rowMates(c).map((m) => occPid(m)).filter((t) => t && t !== __C.myId) : [];
+          const fanS = (sv && (sv.u2Id || (sv.l14Up && !iAmHead))) ? T.rowMates(c).map((m) => (0, /*()*/__C.occPid)(m)).filter((t) => t && t !== __C.myId) : [];
           for (const t of (sv ? sv.u2Heirs().concat(sv.l14Served()) : []).concat(fanS)) { if (t === sgs.via) continue; const jk = shipMos('sgs', t, sgs.stream, stripMeta(sgs)); if (jk) wanted.add(jk); }
           const onE2 = sv && sv.u2Id && mosStandby.get('sgs') && mosStandby.get('sgs').via === sv.u2Id ? mosStandby.get('sgs') : null;
           if (onE2 && sgs.via !== sv.u2Id) { const h0 = fanS.find((t) => t === sgs.via); if (h0) { const jk = shipMos('sgs', h0, onE2.stream, stripMeta(onE2)); if (jk) wanted.add(jk); } }
@@ -7100,7 +7042,7 @@
     // and mic muted, stagers too (Nathan 2026-11-08: privacy first, always).
     let shareRecoverMode = false;
     let recoverShareTimer = 0;
-    const RECOVER_MEDIA_KEY = 'gifos_recover_media';
+    yield 2250;
     const RECOVER_MEDIA_TTL = GifOS.timings.RECOVER_MEDIA_TTL;
     // myStatus.stg is what I last claimed, and it outlives a revoked grant by two beats (reactStageLost).
     // A note needs the stage itself: the room's own list, or the wait for it after a reload (stageResumeUntil).
@@ -7112,11 +7054,11 @@
       // "this tab had joined" and whether a screen share was up. It never names the mic or the camera: a
       // reload of any kind comes back camera off and mic muted (Nathan 2026-11-08, privacy first, stagers too).
       if (__C.pwBlocked || __C.bannedOut || !(__C.mediaJoined || onStageNow())) {
-        try { sessionStorage.removeItem(RECOVER_MEDIA_KEY); } catch (e) {}
+        try { sessionStorage.removeItem(__C.RECOVER_MEDIA_KEY); } catch (e) {}
         return;
       }
       try {
-        sessionStorage.setItem(RECOVER_MEDIA_KEY, JSON.stringify({
+        sessionStorage.setItem(__C.RECOVER_MEDIA_KEY, JSON.stringify({
           v: 2, // a v1 note (older build) carried the devices; the v2 reader does not take it
           // A share does not ride a discard: coming back must not re-ask for
           // the screen. A freeze or update reload (away false) still does.
@@ -7141,8 +7083,8 @@
       }
       if (typeof __C.localStream === 'undefined' || !__C.localStream) return;
       try {
-        const raw = sessionStorage.getItem(RECOVER_MEDIA_KEY);
-        if (raw && JSON.parse(raw).away === true) sessionStorage.removeItem(RECOVER_MEDIA_KEY);
+        const raw = sessionStorage.getItem(__C.RECOVER_MEDIA_KEY);
+        if (raw && JSON.parse(raw).away === true) sessionStorage.removeItem(__C.RECOVER_MEDIA_KEY);
       } catch (e) {}
     });
     document.addEventListener('freeze', () => {
@@ -7186,8 +7128,8 @@
     function takeRecoverMedia(peek) {
       let raw = null;
       try {
-        raw = sessionStorage.getItem(RECOVER_MEDIA_KEY);
-        if (!peek) sessionStorage.removeItem(RECOVER_MEDIA_KEY);
+        raw = sessionStorage.getItem(__C.RECOVER_MEDIA_KEY);
+        if (!peek) sessionStorage.removeItem(__C.RECOVER_MEDIA_KEY);
       } catch (e) { return null; }
       if (!raw) return null;
       let o = null;
@@ -7202,7 +7144,7 @@
     // restore, and on again only by a tap. Runs for a page that came back on its note and then found the door shut.
     function quietAtDoor() {
       __C.mediaJoined = false;
-      try { sessionStorage.removeItem(RECOVER_MEDIA_KEY); } catch (e) {}
+      try { sessionStorage.removeItem(__C.RECOVER_MEDIA_KEY); } catch (e) {}
       if (!__C.localStream) return;
       for (const tr of __C.localStream.getTracks()) tr.enabled = false;
       __C.myStatus.muted = true;
@@ -7691,22 +7633,9 @@
       HOP_ENC: 40,      // what a relay hop adds beyond its own playout: decode → re-encode + one Opus frame
       CK_EVERY: 5000, APPLY_EVERY: 3000,
     };
-    // Timing is a PERSONAL, receiver-side setting (your ears, your knob — like
-    // the faders), three moods:
-    //   chat (default) — snappiest replies: the target derives from MY links
-    //     only. Per-listener alignment already de-smears each listener's ears;
-    //     the default optimizes the common case — conversation — and never
-    //     taxes a whole room for one slow link.
-    //   unison — everyone hears everyone at the same synced instant: the
-    //     near-field target is the ROOM's slowest gossiped need (capped), so
-    //     reactions, responsive readings and spontaneous song are GENERATED in
-    //     sync across the room, not just tidied at each ear. Worth its latency
-    //     when the room is a congregation rather than a meeting.
-    //   song — not a knob: entered by a leader's 🎵, it overrides both with
-    //     the deep cathedral tiers below.
-    const TIMING_KEY = 'gifos_timing';
+    yield 2353;
     let timing = 'chat';
-    try { const t = localStorage.getItem(TIMING_KEY); if (t === 'chat' || t === 'unison') timing = t; } catch (e) {}
+    try { const t = localStorage.getItem(__C.TIMING_KEY); if (t === 'chat' || t === 'unison') timing = t; } catch (e) {}
     let gdOverride = 0; // test hook: pretend this device needs a slower grid
     const clk = new Map(); // pid -> { rtt, off, n } — the best (min-rtt) sample, slowly decayed
     function clockSample(pid, t0, t1, t2) {
@@ -7750,7 +7679,7 @@
         // the moment of the kick. Consult it here too — stable + pending is an
         // impossible resting state, so re-offer. Idempotent: it is a no-op the
         // instant the m-line negotiates.
-        if (p.pc && p.pc.signalingState === 'stable' && hasPendingTx(p)) {
+        if (p.pc && p.pc.signalingState === 'stable' && (0, /*()*/__C.hasPendingTx)(p)) {
           p.renegAgain = false;
           if (typeof __C.clog === 'function') (0, /*()*/__C.clog)('stranded-tx heal → ' + String(p.id).slice(0, 6));
           (0, /*()*/__C.renegotiate)(p);
@@ -7995,8 +7924,7 @@
     // clip is in the provider at a time; a backlog past three drops the
     // oldest and says so.
     const CC_ENGINE_KEY = 'gifos_cc_engine', CC_TRANSLATE_KEY = 'gifos_cc_translate', CC_WORDS_KEY = 'gifos_cc_words';
-    const lsGet = (k) => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
-    const lsSet = (k, v) => { try { if (v) localStorage.setItem(k, v); else localStorage.removeItem(k); } catch (e) {} };
+    yield 2472;
     // WHO MAY RUN WHISPER. Whisper runs on the processor that also encodes the
     // call and answers its heartbeats. On a phone, or a computer with few cores
     // or little memory, it starves the meeting and drains the battery, so such
@@ -8012,8 +7940,8 @@
       return '';
     }
     const WSP_WEAK = whisperWeakWhy(navigator);
-    const whisperAllowed = () => !WSP_WEAK || lsGet(CC_WHISPER_ANYWAY_KEY) === '1';
-    const ccEngine = () => (phoneCaptions() ? 'browser' : (__C.CC_ON_PHONE ? 'local' : (lsGet(CC_ENGINE_KEY) === 'whisper' && whisperAllowed() ? 'whisper' : 'browser')));
+    const whisperAllowed = () => !WSP_WEAK || (0, /*()*/__C.lsGet)(CC_WHISPER_ANYWAY_KEY) === '1';
+    const ccEngine = () => (phoneCaptions() ? 'browser' : (__C.CC_ON_PHONE ? 'local' : ((0, /*()*/__C.lsGet)(CC_ENGINE_KEY) === 'whisper' && whisperAllowed() ? 'whisper' : 'browser')));
     const WHISPER_APP_ID = 'offline-stt-whisper';
     const whisperReady = () => !!(window.GifOS && GifOS.providers && GifOS.providers.assigned('stt'));
     // Can this browser run Whisper at all: allowed on this device, and an
@@ -8285,7 +8213,7 @@
     // ('tiny'|'base'|'small') wins. typeof: a lifted queue has no WSP_WEAK.
     function wspModel() {
       let pick = '';
-      try { pick = String(lsGet('gifos_cc_whisper_model') || ''); } catch (e) {}
+      try { pick = String((0, /*()*/__C.lsGet)('gifos_cc_whisper_model') || ''); } catch (e) {}
       if (pick === 'tiny' || pick === 'base' || pick === 'small') return pick;
       if (typeof WSP_WEAK !== 'undefined' && WSP_WEAK) return 'tiny';
       if (typeof whisperWeakWhy === 'function') {
@@ -8355,7 +8283,7 @@
             localStorage.setItem('gifos_ai_config', JSON.stringify(cfg));
           }
         } catch (e) {}
-        try { lsSet(CC_ENGINE_KEY, ''); } catch (e) {}
+        try { (0, /*()*/__C.lsSet)(CC_ENGINE_KEY, ''); } catch (e) {}
         (0, /*()*/__C.setStatus)((0, /*()*/__C.uiText)('stWhisperAppMissingBrowserCaptions', 'Whisper app missing — browser captions on'), 10000);
       }
       try { stopWhisper(); } catch (e) {}
@@ -8399,7 +8327,7 @@
     // provider is unloaded. The choice is saved, so the next meeting starts
     // with browser captions too.
     function wspToBrowser(say) {
-      lsSet(CC_ENGINE_KEY, '');
+      (0, /*()*/__C.lsSet)(CC_ENGINE_KEY, '');
       speechGaveUp = false;
       try { stopWhisper(); } catch (e) {}
       wspRelease();
@@ -8429,7 +8357,7 @@
       const cont = (!told && cap0 && cap0.lastLang && cap0.lastEnd && job.at - cap0.lastEnd < 1500) ? cap0.lastLang : '';
       const contFound = told ? !!job.found : !!(cont && cap0.lastFound); // the inherited language was found by Whisper on the previous cut
       const local = ccEngine() === 'local';
-      const lang = local ? __C.ccLocalQ.lang() : (told || cont || (job.id === 'me' ? (lsGet(__C.CC_LANG_KEY) || 'auto') : 'auto'));
+      const lang = local ? __C.ccLocalQ.lang() : (told || cont || (job.id === 'me' ? ((0, /*()*/__C.lsGet)(__C.CC_LANG_KEY) || 'auto') : 'auto'));
       // Translating, my own voice is transcribed first while I send my captions
       // (the room's line goes out as soon as it would without translating),
       // and every other voice is translated.
@@ -8441,7 +8369,7 @@
         if (picked === 'tiny' || picked === 'base' || picked === 'small') model = picked;
       }
       const req = { bytes: pcm.buffer, mime: 'audio/pcm;rate=16000;bits=32', language: lang === 'auto' ? 'auto' : lang,
-        task: task, prompt: lsGet(CC_WORDS_KEY).slice(0, 400), model: model };
+        task: task, prompt: (0, /*()*/__C.lsGet)(CC_WORDS_KEY).slice(0, 400), model: model };
       wspQ.sent++;
       let done = false, abandoned = false;
       const t0 = Date.now();
@@ -8478,7 +8406,7 @@
       // is offered as keeping the voice here, so the clip is never posted to
       // another machine. Any other address is ignored and the app answers.
       let url = '';
-      try { url = wspLocalUrl(lsGet('gifos_cc_stt_url')); } catch (e) {}
+      try { url = wspLocalUrl((0, /*()*/__C.lsGet)('gifos_cc_stt_url')); } catch (e) {}
       const remote = !!url && typeof fetch === 'function' && !local;
       let pending;
       if (local) {
@@ -8628,7 +8556,7 @@
     // and running. Then this page translates every voice it hears, and its
     // captions and transcript hold English lines only: lines sent in English,
     // and its own translations. What it sends stays in the speaker's language.
-    function trEn() { return lsGet(CC_TRANSLATE_KEY) === '1' && ccEngine() === 'whisper' && whisperReady() && !wspPaused; }
+    function trEn() { return (0, /*()*/__C.lsGet)(CC_TRANSLATE_KEY) === '1' && ccEngine() === 'whisper' && whisperReady() && !wspPaused; }
     function trEnSync() {
       const on = trEn();
       if (on && !__C.trEnOn) { __C.trEnOn = true; (0, /*()*/__C.trEnOnlyEnglish)(); }
@@ -8725,12 +8653,12 @@
       };
       whisperInstalling = GifOS.providers.install(WHISPER_APP_ID, (t, f) => note(t, f)).then((p) => {
         if (!GifOS.providers.assigned('stt')) GifOS.providers.assign('stt', p);
-        lsSet(WHISPER_SEED_KEY, 'done');
+        (0, /*()*/__C.lsSet)(WHISPER_SEED_KEY, 'done');
         if (say) (0, /*()*/__C.setStatus)((0, /*()*/__C.uiText)('stOfflineCaptionsWhisperIsInstalled', '✅ Offline Captions (Whisper) is installed and ready — the model itself downloads once from gifos.app the first time captions run.'), 10000);
         return p;
       }).catch((e) => {
         const msg = (e && e.message) || String(e);
-        note('⚠ ' + msg); lsSet(WHISPER_SEED_KEY, 'tried:' + Date.now());
+        note('⚠ ' + msg); (0, /*()*/__C.lsSet)(WHISPER_SEED_KEY, 'tried:' + Date.now());
         // A fetch that never reached the server says "Failed to fetch": name it.
         st.err = /failed to fetch|networkerror|load failed|network/i.test(msg) ? (0, /*()*/__C.uiText)('wspErrNetwork', 'network error, check the connection') : msg.slice(0, 160);
         if (say) (0, /*()*/__C.setStatus)('Could not install Whisper captions: ' + msg.slice(0, 160), 10000);
@@ -8763,7 +8691,7 @@
     yield 2537;
     function whisperSeedBlocked() {
       // A phone or a weak computer, a data-saver flag, or a cellular link does not fetch the 13 MB app on its own.
-      if (IS_MOBILE || WSP_WEAK) return true;
+      if (__C.IS_MOBILE || WSP_WEAK) return true;
       const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
       if (c && (c.saveData || c.type === 'cellular' || c.type === 'wimax')) return true;
       return false;
@@ -8774,7 +8702,7 @@
     // model / a stall in this meeting, with Retry). Whisper is "chosen" by the
     // saved choice, so a device where it cannot run still says why.
     let wspFailWhy = ''; // why Whisper stood down in this meeting
-    const whisperChosen = () => lsGet(CC_ENGINE_KEY) === 'whisper';
+    const whisperChosen = () => (0, /*()*/__C.lsGet)(CC_ENGINE_KEY) === 'whisper';
     function wspState() {
       if (!whisperSupported()) return { k: 'unsupported' };
       if (whisperInstalling) return { k: 'installing', frac: wspInst.frac };
@@ -9915,7 +9843,7 @@
       // only place an error lives.
       const fail = (msg) => { (0, /*()*/__C.setStatus)(msg); return msg; };
       try {
-        opts = opts || { scope: 'all', quality: recDefaultQuality(IS_MOBILE), matchMix: true };
+        opts = opts || { scope: 'all', quality: recDefaultQuality(__C.IS_MOBILE), matchMix: true };
         if (!(0, /*()*/__C.ensureAc)()) return fail('This browser cannot record sound.');
         let scope = opts.scope || 'all';
         // A service is the stage. The row and the stadium are not on screen,
@@ -9925,7 +9853,7 @@
         // first try and put "nothing to record" on the live host's line.
         if (__C.BROADCAST && scope !== 'app' && scope !== 'program') scope = 'stage';
         recMatchMix = opts.matchMix !== false;
-        recQuality = REC_QUALITY[opts.quality] ? opts.quality : recDefaultQuality(IS_MOBILE);
+        recQuality = REC_QUALITY[opts.quality] ? opts.quality : recDefaultQuality(__C.IS_MOBILE);
         recToLib = !!opts.toLibrary;
         const q = REC_QUALITY[recQuality];
         recMode = scope;
@@ -10832,7 +10760,7 @@
     }
     return __L.END;
   }
-  var api = { name: "media", run: part, count: 717, exports: {"AVATAR_H":0,"AVATAR_W":0,"CC_ENGINE_KEY":0,"CC_TRANSLATE_KEY":0,"CC_WHISPER_ANYWAY_KEY":0,"CC_WORDS_KEY":0,"IS_MOBILE":0,"MP":0,"MPipe":0,"MX_IDS_MAX":0,"PEER_SILENT_MS":0,"RECOVER_MEDIA_KEY":0,"STAGE_FACE_PX":0,"STAGE_FACE_SETTLE_MS":0,"TIMING_KEY":0,"TURN_ASK_MS":0,"TURN_BUSY_MS":0,"TURN_MS":0,"WEBKIT_TILE":0,"WHISPER_APP_ID":0,"WHISPER_SEED_KEY":0,"WK_STAGE_KEY":0,"WSP_CHIP_MS":0,"WSP_STARVE_MS":0,"WSP_STARVE_N":0,"WSP_STARVE_WIN":0,"WSP_TICK_MS":0,"WSP_WEAK":0,"acClockInfo":1,"adapt":1,"applyBuses":1,"applyCcAll":1,"applyGrid":1,"applyRecoverMedia":1,"armAudioKeepAlive":1,"armWhisperRescan":1,"attachLocalTracks":1,"audioKickArmed":0,"avHold":0,"avatarPipe":0,"avatarSharp":0,"battNow":0,"blockedAudio":0,"blurDraw":1,"blurPipe":0,"blurSenderFrac":1,"blurSized":1,"blurViewFrac":1,"bootWantsCamera":1,"botVoiceTrack":0,"browserCaptionsMissing":1,"callStateBox":0,"camChooserAnchor":0,"camChooserOpen":1,"camDeviceId":0,"camFacing":0,"camIdleT":0,"camPickThen":0,"camTrackForTest":1,"camVideoConstraints":0,"canRaiseHand":1,"canScreenRecord":0,"canScreenShare":0,"capCovered":1,"capPaused":1,"capsRunningNow":1,"carryVoiceTrack":0,"ccDefGroup":0,"ccEngine":0,"ccMix":0,"ccMixStop":1,"ccMixSync":1,"chainDemandUp":1,"claimMos":1,"clk":0,"clockSample":1,"closeCamChooser":1,"closeMicChooser":1,"compFps":1,"compOf":0,"dbgRowFaces":0,"deepInView":1,"degOf":0,"dismissCamChooser":1,"displayCount":1,"downFolds":0,"downStreams":0,"dropEndedRemoteTracks":1,"dropMosIn":1,"dropStandby":1,"earLangOk":1,"earState":1,"endSongOnStepDown":1,"facesOnScreen":1,"gdOverride":0,"goLiveStoredLevel":1,"gridApplied":0,"gumRefused":1,"gumWithMicFallback":1,"hasPendingTx":0,"headLinkUp":1,"headSendsStale":1,"headerCount":1,"heardStage":1,"holdMainVideo":1,"idleNow":0,"installWhisper":1,"isRedun":0,"keepAwake":1,"keepMeetingAudio":1,"kfAsker":0,"kfNeed":1,"kickMainAudio":1,"kickMainVideo":1,"kickStageMic":1,"l14Packs":0,"lastActive":0,"lastQ":0,"lateMedia":1,"leafCount":1,"livePeerCount":1,"lsGet":0,"lsSet":0,"mainAudioTrack":1,"mainGone":1,"maybeShowFlip":1,"meOnStage":1,"micChooserOpen":1,"micMode":0,"micTap":1,"mix":0,"mixAc":0,"mosAnn":0,"mosFb":0,"mosHasEjected":1,"mosIn":0,"mosJobs":0,"mosStandby":0,"multiSection":0,"mxIds":1,"mxPath":0,"normStageFrame":1,"noteAudioDevices":1,"occPid":0,"onMeetDeviceChange":1,"onStageNow":1,"openCamChooser":1,"openKeys":1,"openModal":1,"packLoop":0,"paintTiming":1,"parkJobVideo":1,"participantCount":1,"peerAudioTracks":1,"peerHeardAt":1,"peerReconnecting":1,"personOnStage":1,"phoneCaptions":1,"pickCamera":1,"pipeDeny":0,"pipeEnabled":0,"pipeJobs":0,"placeStageMarks":1,"playTileVideo":1,"poke":0,"powDials":0,"powNow":0,"presenceSweep":1,"prodPack":0,"qaStageSt":0,"quietAtDoor":1,"reactSing":1,"recDefaultQuality":1,"recDownload":1,"recDraw":0,"recFileName":1,"recLibraryOption":1,"recMatchMix":0,"recMode":0,"recNoteStruct":1,"recQuality":0,"recRec":0,"recRelease":1,"recScopeSources":1,"recSources":1,"recStarting":0,"reconcileMosaic":1,"recoverShareTimer":0,"refreshOutbound":1,"refreshTrBtn":1,"regrabCamera":1,"releaseAudio":1,"rememberMix":1,"resumeReload":1,"retireMixTracks":1,"reviveCamera":1,"roomPack":0,"roomSingOn":0,"schedClaim":1,"schedReconcile":1,"screenSharers":0,"sdView":0,"sdViewSt":0,"sentVideoTrack":1,"setJobActive":1,"setStageFrame":1,"shareOnlyStage":1,"shareRecoverMode":0,"shipContainers":0,"shipTracks":1,"shownPeerCount":1,"speakerChoices":1,"speech":0,"speechGaveUp":0,"speechProved":0,"speechRunning":1,"spkDeviceId":0,"stageAudible":0,"stageEar":0,"stageEarFoldPeak":1,"stageEarLiveTrack":1,"stageEarRawPeak":1,"stageFrameVal":0,"stageViewNow":0,"stagedSelfWas":0,"startLocalView":1,"startRec":1,"startScreenShare":1,"startWhisper":1,"stashRecoverMedia":1,"stgBeatCost":0,"stgBeatIn":1,"stgBeats":0,"stgLost":1,"stgStale":1,"stopBlurPipe":1,"stopScreenShare":1,"stopSpeech":1,"stopWhisper":1,"stripPack":0,"subWant":0,"swapPicRing":0,"syncAvatarFeed":1,"syncSpeech":1,"tileHolds":1,"timing":0,"toggleSing":1,"trEnSync":1,"trWrites":1,"trackAspect":1,"trackQ":0,"transcriptFile":1,"tuneCfg":1,"unshipMos":1,"updateAir":1,"wakeLock":0,"warnRecorderNewApp":1,"whisperAllowed":0,"whisperChosen":0,"whisperInstalling":0,"whisperReady":0,"whisperRescan":0,"whisperSeedBlocked":1,"whisperSupported":0,"withScrPipe":1,"wkBindVideo":1,"wkEar":0,"wkFwdCopies":0,"wkFwdNeeded":1,"wkHolds":1,"wkQuietBind":1,"wkRemoteTrack":1,"wsp":0,"wspCaps":0,"wspChip":0,"wspChipGone":1,"wspChipRoom":0,"wspEnqueue":1,"wspInst":0,"wspModel":1,"wspPaintSafe":1,"wspPaused":0,"wspQ":0,"wspRebind":1,"wspRelease":1,"wspResume":1,"wspRetry":1,"wspSource":1,"wspStSig":0,"wspStarved":0,"wspState":1,"wspStateText":1,"wspStop":1,"wspSync":1,"wspTickAt":0,"wspToBrowser":1,"wspWorking":0}, needs: {"core":{"leaving":0,"localStream":0,"capClone":1,"WK_H264_BLIND":0,"nameInitial":1,"shareBlocked":0,"turnLinks":0,"turnFacts":0,"myId":0,"rowFaceDark":0,"myName":0,"blurLevelFor":1,"mediaOk":0,"relayVia":0,"displayName":1,"myStatus":0,"stageIds":0,"statusOf":0,"screenStream":0,"sharingScreen":0,"BROADCAST":0,"bcMayPublishAv":1,"rbNow":0,"mayShareScreen":0,"outgoingHeld":0,"bcRole":1,"peers":0,"meTile":0,"camPeer":0,"clog":0,"micPeer":0,"addMainTrack":1,"renegotiate":1,"rosterIds":0,"seatStranger":1,"knownTotal":1,"rosterTiles":0,"updateTile":1,"updateStatus":1,"meshSeat":0,"meshNode":0,"roomDig":1,"roomPastSection":0,"SCALE":0,"setStatus":0,"uiText":1,"stHold":0,"seatDark":0,"forcedCamOff":0,"vqRung":0,"rung":0,"LADDER":0,"stageCeilingKbps":1,"screenCeilingKbps":1,"stageSenders":0,"auxSenders":0,"lowSenders":0,"net":0,"meterFor":1,"sayState":0,"IS_ANDROID":0,"botParks":1,"visParkSent":0,"dcSend":0,"ensureAc":1,"ac":0,"newMeetAudioContext":1,"pipePeers":1,"preferHwVideo":1,"modOf":1,"stageSeats":0,"digLists":0,"stageHeldAt":0,"stageFeedAt":0,"addAux":0,"isStageJob":0,"auxDrop":1,"stopAuxTx":1,"DEBUG_ON":0,"modBlurOn":0,"meshCoord":0,"speakingOf":0,"rowMixTalkAt":0,"isPipePeer":0,"ejected":0,"isEjected":0,"myIdentity":0,"labelFor":0,"iAmWaiting":1,"peerWaits":1,"fitFor":0,"pipeVideo":0,"pipeStg":0,"STAGE_FPS":0,"stageCell":1,"STAGE_MAXW":0,"stageFps":1,"freshSt":0,"notTomb":0,"stageResumeUntil":0,"pwBlocked":0,"bannedOut":0,"mediaJoined":0,"updateRoomKey":0,"params":0,"joinAvChoice":0,"bcHostStored":0,"updateResume":0,"paintOnAir":1,"broadcastStatus":1,"updateMediaSession":1,"screenSteppedUp":0,"setStage":1,"refreshAllTiles":1,"serviceHeard":0,"rowMates":0,"isHeld":1,"botHidden":1,"digStageEntry":0,"rosterNames":0,"foldName":1,"canStage":0,"CC_ON_PHONE":0,"meters":0,"myVoiceAt":0,"ccLocalQ":0,"CC_LANG_KEY":0,"trEnOn":0,"capSend":1,"trLangOf":0,"addTranscriptLine":1,"capEarsOnly":1,"capTrust":0,"trLang":1,"trKeeps":1,"trEnOnlyEnglish":1,"capSpotQueue":1,"capPublish":1,"trForget":1,"trLangLearned":0,"ccLang":0,"trDrops":0,"capTraceGate":1,"myVoiceFrom":0,"trLangKnown":1,"myVoiceSinceFinal":0,"ccDevNotice":1,"trEchoHeld":1,"ccShow":0,"trBlocks":1,"trNote":1,"modTable":0,"setMod":1,"AI_SPARK_SVG":0,"chatOpen":0,"room":0,"recRoomWord":1,"bcLastService":0,"BC_INTENT":0,"bcSeeding":0,"recSrcDirty":0,"recStructSig":0,"bcKeepUserStop":0,"amGloballyMuted":1,"micLockWords":1,"capClosed":0,"bcWatchingViewer":1,"enforceBroadcastSeat":1,"lateAsk":0,"lateWant":0,"bootGumPending":0,"reactRoomState":1,"camOnWords":1,"statusWords":0,"lateGen":0,"lateWon":0,"lateTimer":0,"LATE_ASK_MS":0,"carryOutAc":0,"blurLevel":0,"setPersonalBlur":1},"view":{"blurA":0,"blurActx":0,"blurB":0,"blurBctx":0,"paintAvatarCanvas":1,"phoneLayout":1,"showAvatarTrack":1,"stagefeedEl":0,"stadiumEl":0,"showFlipButton":1,"showCamBack":1,"paintSpkBtn":1,"paintStadiumTile":1,"paintStageStrip":1,"paintControls":1,"showResharePrompt":1,"hideResharePrompt":1,"paintShare":1,"dropStaleShareWin":1,"paintFaders":0,"timingRow":0,"paintWspChip":1,"paintCcState":1,"paintTxMark":1,"paintWspStatus":1,"paintCcView":1,"showCaption":1,"ccDockBtn":0,"hideCaptions":1,"renderTranscript":1,"renderChat":1,"chatPanel":0,"paintChatBtn":1,"paintRoomTrust":1,"showServiceEnded":1,"showRecReplay":1,"recBtn":0,"showRecOptions":1,"roomAudioOn":1,"micBtn":0,"placeDockPopover":1,"unmuteBtn":0,"camBtn":0,"topNameModal":1,"handBtn":0,"chatPanelOpen":1,"keysModal":0,"syncModalFocus":1}}, stamp: "cab55c97" };
+  var api = { name: "media", run: part, count: 702, exports: {"AVATAR_H":0,"AVATAR_W":0,"CC_ENGINE_KEY":0,"CC_TRANSLATE_KEY":0,"CC_WHISPER_ANYWAY_KEY":0,"CC_WORDS_KEY":0,"MP":0,"MPipe":0,"STAGE_FACE_PX":0,"STAGE_FACE_SETTLE_MS":0,"WEBKIT_TILE":0,"WHISPER_APP_ID":0,"WHISPER_SEED_KEY":0,"WK_STAGE_KEY":0,"WSP_CHIP_MS":0,"WSP_STARVE_MS":0,"WSP_STARVE_N":0,"WSP_STARVE_WIN":0,"WSP_TICK_MS":0,"WSP_WEAK":0,"acClockInfo":1,"adapt":1,"applyBuses":1,"applyCcAll":1,"applyGrid":1,"applyRecoverMedia":1,"armAudioKeepAlive":1,"armWhisperRescan":1,"attachLocalTracks":1,"audioKickArmed":0,"avHold":0,"avatarPipe":0,"avatarSharp":0,"battNow":0,"blockedAudio":0,"blurDraw":1,"blurPipe":0,"blurSenderFrac":1,"blurSized":1,"blurViewFrac":1,"bootWantsCamera":1,"botVoiceTrack":0,"browserCaptionsMissing":1,"callStateBox":0,"camChooserAnchor":0,"camChooserOpen":1,"camDeviceId":0,"camFacing":0,"camIdleT":0,"camPickThen":0,"camTrackForTest":1,"camVideoConstraints":0,"canRaiseHand":1,"canScreenRecord":0,"canScreenShare":0,"capCovered":1,"capPaused":1,"capsRunningNow":1,"carryVoiceTrack":0,"ccDefGroup":0,"ccEngine":0,"ccMix":0,"ccMixStop":1,"ccMixSync":1,"chainDemandUp":1,"claimMos":1,"clk":0,"clockSample":1,"closeCamChooser":1,"closeMicChooser":1,"compFps":1,"compOf":0,"dbgRowFaces":0,"deepInView":1,"degOf":0,"dismissCamChooser":1,"displayCount":1,"downFolds":0,"downStreams":0,"dropEndedRemoteTracks":1,"dropMosIn":1,"dropStandby":1,"earLangOk":1,"earState":1,"endSongOnStepDown":1,"facesOnScreen":1,"gdOverride":0,"goLiveStoredLevel":1,"gridApplied":0,"gumRefused":1,"gumWithMicFallback":1,"headLinkUp":1,"headSendsStale":1,"headerCount":1,"heardStage":1,"holdMainVideo":1,"idleNow":0,"installWhisper":1,"isRedun":0,"keepAwake":1,"keepMeetingAudio":1,"kfNeed":1,"kickMainAudio":1,"kickMainVideo":1,"kickStageMic":1,"l14Packs":0,"lastActive":0,"lastQ":0,"lateMedia":1,"leafCount":1,"livePeerCount":1,"mainAudioTrack":1,"mainGone":1,"maybeShowFlip":1,"meOnStage":1,"micChooserOpen":1,"micMode":0,"micTap":1,"mix":0,"mixAc":0,"mosAnn":0,"mosFb":0,"mosHasEjected":1,"mosIn":0,"mosJobs":0,"mosStandby":0,"mxIds":1,"mxPath":0,"normStageFrame":1,"noteAudioDevices":1,"onMeetDeviceChange":1,"onStageNow":1,"openCamChooser":1,"openKeys":1,"openModal":1,"packLoop":0,"paintTiming":1,"parkJobVideo":1,"participantCount":1,"peerAudioTracks":1,"peerHeardAt":1,"peerReconnecting":1,"personOnStage":1,"phoneCaptions":1,"pickCamera":1,"pipeDeny":0,"pipeEnabled":0,"pipeJobs":0,"placeStageMarks":1,"playTileVideo":1,"poke":0,"presenceSweep":1,"prodPack":0,"qaStageSt":0,"quietAtDoor":1,"reactSing":1,"recDefaultQuality":1,"recDownload":1,"recDraw":0,"recFileName":1,"recLibraryOption":1,"recMatchMix":0,"recMode":0,"recNoteStruct":1,"recQuality":0,"recRec":0,"recRelease":1,"recScopeSources":1,"recSources":1,"recStarting":0,"reconcileMosaic":1,"recoverShareTimer":0,"refreshOutbound":1,"refreshTrBtn":1,"regrabCamera":1,"releaseAudio":1,"rememberMix":1,"resumeReload":1,"retireMixTracks":1,"reviveCamera":1,"roomPack":0,"roomSingOn":0,"schedClaim":1,"schedReconcile":1,"screenSharers":0,"sdView":0,"sdViewSt":0,"sentVideoTrack":1,"setJobActive":1,"setStageFrame":1,"shareOnlyStage":1,"shareRecoverMode":0,"shipContainers":0,"shipTracks":1,"shownPeerCount":1,"speakerChoices":1,"speech":0,"speechGaveUp":0,"speechProved":0,"speechRunning":1,"spkDeviceId":0,"stageAudible":0,"stageEar":0,"stageEarFoldPeak":1,"stageEarLiveTrack":1,"stageEarRawPeak":1,"stageFrameVal":0,"stagedSelfWas":0,"startLocalView":1,"startRec":1,"startScreenShare":1,"startWhisper":1,"stashRecoverMedia":1,"stgBeatCost":0,"stgBeatIn":1,"stgBeats":0,"stgLost":1,"stgStale":1,"stopBlurPipe":1,"stopScreenShare":1,"stopSpeech":1,"stopWhisper":1,"stripPack":0,"swapPicRing":0,"syncAvatarFeed":1,"syncSpeech":1,"tileHolds":1,"timing":0,"toggleSing":1,"trEnSync":1,"trWrites":1,"trackAspect":1,"trackQ":0,"transcriptFile":1,"tuneCfg":1,"unshipMos":1,"updateAir":1,"wakeLock":0,"warnRecorderNewApp":1,"whisperAllowed":0,"whisperChosen":0,"whisperInstalling":0,"whisperReady":0,"whisperRescan":0,"whisperSeedBlocked":1,"whisperSupported":0,"withScrPipe":1,"wkBindVideo":1,"wkEar":0,"wkFwdCopies":0,"wkFwdNeeded":1,"wkHolds":1,"wkQuietBind":1,"wkRemoteTrack":1,"wsp":0,"wspCaps":0,"wspChip":0,"wspChipGone":1,"wspChipRoom":0,"wspEnqueue":1,"wspInst":0,"wspModel":1,"wspPaintSafe":1,"wspPaused":0,"wspQ":0,"wspRebind":1,"wspRelease":1,"wspResume":1,"wspRetry":1,"wspSource":1,"wspStSig":0,"wspStarved":0,"wspState":1,"wspStateText":1,"wspStop":1,"wspSync":1,"wspTickAt":0,"wspToBrowser":1,"wspWorking":0}, needs: {"core":{"leaving":0,"localStream":0,"capClone":1,"WK_H264_BLIND":0,"nameInitial":1,"shareBlocked":0,"turnLinks":0,"turnFacts":0,"myId":0,"rowFaceDark":0,"myName":0,"blurLevelFor":1,"mediaOk":0,"relayVia":0,"displayName":1,"myStatus":0,"stageIds":0,"statusOf":0,"screenStream":0,"sharingScreen":0,"BROADCAST":0,"bcMayPublishAv":1,"rbNow":0,"mayShareScreen":0,"outgoingHeld":0,"bcRole":1,"peers":0,"meTile":0,"camPeer":0,"clog":0,"micPeer":0,"addMainTrack":1,"renegotiate":1,"rosterIds":0,"seatStranger":1,"knownTotal":1,"PEER_SILENT_MS":0,"rosterTiles":0,"updateTile":1,"updateStatus":1,"meshSeat":0,"meshNode":0,"roomDig":1,"roomPastSection":0,"SCALE":0,"powNow":0,"IS_MOBILE":0,"powDials":0,"setStatus":0,"uiText":1,"stHold":0,"seatDark":0,"forcedCamOff":0,"vqRung":0,"rung":0,"LADDER":0,"stageCeilingKbps":1,"screenCeilingKbps":1,"stageSenders":0,"auxSenders":0,"lowSenders":0,"net":0,"meterFor":1,"sayState":0,"IS_ANDROID":0,"botParks":1,"visParkSent":0,"dcSend":0,"hasPendingTx":0,"ensureAc":1,"ac":0,"newMeetAudioContext":1,"occPid":0,"pipePeers":1,"preferHwVideo":1,"modOf":1,"stageSeats":0,"digLists":0,"stageHeldAt":0,"stageFeedAt":0,"stageViewNow":0,"kfAsker":0,"addAux":0,"isStageJob":0,"auxDrop":1,"stopAuxTx":1,"DEBUG_ON":0,"modBlurOn":0,"meshCoord":0,"speakingOf":0,"rowMixTalkAt":0,"isPipePeer":0,"ejected":0,"isEjected":0,"subWant":0,"myIdentity":0,"labelFor":0,"iAmWaiting":1,"peerWaits":1,"fitFor":0,"pipeVideo":0,"pipeStg":0,"STAGE_FPS":0,"stageCell":1,"STAGE_MAXW":0,"stageFps":1,"freshSt":0,"notTomb":0,"stageResumeUntil":0,"pwBlocked":0,"bannedOut":0,"mediaJoined":0,"RECOVER_MEDIA_KEY":0,"updateRoomKey":0,"params":0,"joinAvChoice":0,"bcHostStored":0,"updateResume":0,"paintOnAir":1,"broadcastStatus":1,"updateMediaSession":1,"screenSteppedUp":0,"setStage":1,"refreshAllTiles":1,"serviceHeard":0,"rowMates":0,"isHeld":1,"botHidden":1,"TIMING_KEY":0,"digStageEntry":0,"rosterNames":0,"foldName":1,"canStage":0,"lsGet":0,"CC_ON_PHONE":0,"meters":0,"myVoiceAt":0,"lsSet":0,"ccLocalQ":0,"CC_LANG_KEY":0,"trEnOn":0,"capSend":1,"trLangOf":0,"addTranscriptLine":1,"capEarsOnly":1,"capTrust":0,"trLang":1,"trKeeps":1,"trEnOnlyEnglish":1,"capSpotQueue":1,"capPublish":1,"trForget":1,"trLangLearned":0,"ccLang":0,"trDrops":0,"capTraceGate":1,"myVoiceFrom":0,"trLangKnown":1,"myVoiceSinceFinal":0,"ccDevNotice":1,"trEchoHeld":1,"ccShow":0,"trBlocks":1,"trNote":1,"modTable":0,"setMod":1,"AI_SPARK_SVG":0,"chatOpen":0,"room":0,"recRoomWord":1,"bcLastService":0,"BC_INTENT":0,"bcSeeding":0,"recSrcDirty":0,"recStructSig":0,"bcKeepUserStop":0,"amGloballyMuted":1,"micLockWords":1,"capClosed":0,"bcWatchingViewer":1,"enforceBroadcastSeat":1,"lateAsk":0,"lateWant":0,"bootGumPending":0,"reactRoomState":1,"camOnWords":1,"statusWords":0,"lateGen":0,"lateWon":0,"lateTimer":0,"LATE_ASK_MS":0,"carryOutAc":0,"blurLevel":0,"setPersonalBlur":1},"view":{"blurA":0,"blurActx":0,"blurB":0,"blurBctx":0,"paintAvatarCanvas":1,"phoneLayout":1,"showAvatarTrack":1,"stagefeedEl":0,"stadiumEl":0,"showFlipButton":1,"showCamBack":1,"paintSpkBtn":1,"paintStadiumTile":1,"paintStageStrip":1,"paintControls":1,"showResharePrompt":1,"hideResharePrompt":1,"paintShare":1,"dropStaleShareWin":1,"paintFaders":0,"timingRow":0,"paintWspChip":1,"paintCcState":1,"paintTxMark":1,"paintWspStatus":1,"paintCcView":1,"showCaption":1,"ccDockBtn":0,"hideCaptions":1,"renderTranscript":1,"renderChat":1,"chatPanel":0,"paintChatBtn":1,"paintRoomTrust":1,"showServiceEnded":1,"showRecReplay":1,"recBtn":0,"showRecOptions":1,"roomAudioOn":1,"micBtn":0,"placeDockPopover":1,"unmuteBtn":0,"camBtn":0,"topNameModal":1,"handBtn":0,"chatPanelOpen":1,"keysModal":0,"syncModalFocus":1}}, stamp: "fff1aed1" };
   (GifOS.coreParts = GifOS.coreParts || {})["media"] = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
