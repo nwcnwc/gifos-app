@@ -1,0 +1,21 @@
+{
+  "empty.title": "No hay cámara en este ordenador",
+  "empty.why": "Permite el acceso a la cámara en el navegador y actívala en el chip de Capacidades de esta app, en la parte superior de la pestaña.",
+  "stage.tap": "Toca el obturador",
+  "mm.title": "Abrir My Media",
+  "mm.label": "🖼️ My Media",
+  "shutter.aria": "Abrir la cámara",
+  "roll.title": "Recientes",
+  "name.video": "Vídeo · {when}",
+  "name.burst": "Ráfaga · {when}",
+  "name.boomerang": "Boomerang · {when}",
+  "name.slowmo": "Cámara lenta · {when}",
+  "name.timelapse": "Time-lapse · {when}",
+  "name.clip": "Clip · {when}",
+  "name.photo": "Foto · {when}",
+  "name.photoBare": "Foto",
+  "hint.inLibrary": "{name} — en My Media",
+  "hint.openToPlay": "Abre My Media para reproducir este clip.",
+  "hint.saved": "{n, plural, =1 {Guardado en My Media} many {# de capturas guardadas en My Media} other {# capturas guardadas en My Media}}: toca My Media abajo para verlas",
+  "toast.saved": "Guardado en My Media"
+}

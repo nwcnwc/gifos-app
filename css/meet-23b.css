@@ -770,3 +770,9 @@ html.ui-large .bar:not(.collapsed) #barmore .moregroup > .morerow > button { fon
 
 /* Host popup: Show host password. The box is a flex row, so hidden needs saying. */
 #adm-hpw-box[hidden], #adm-hpw[hidden] { display: none !important; }
+
+/* The window's header stays on screen while the rest scrolls (Close never scrolls away). Stage window: one Captions line per person. */
+#tilewin .tw-head { position: sticky; top: 0; z-index: 2; background: #f7f8fa; padding: 4px 0; }
+#tilewin .tw-cap { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+#tilewin .tw-cap-name { flex: 1 1 auto; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#tilewin .tw-cap button.tw-btn { flex: 0 0 auto; }
