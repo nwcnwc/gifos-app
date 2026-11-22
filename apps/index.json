@@ -3202,7 +3202,7 @@
       "appId": "hangman",
       "name": "Hangman",
       "shortName": "Hangman",
-      "version": "1.0.0",
+      "version": "1.1",
       "tagline": "Hangman for two: race a friend, or share the rope on one phone.",
       "author": {
         "name": "simonjsuh",
@@ -3216,7 +3216,7 @@
         "name": "Vanilla Javascript Hangman Game",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -3236,15 +3236,15 @@
         176
       ],
       "cover": "/apps/hangman/cover.jpg",
-      "bytes": 172124,
+      "bytes": 173335,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-22"
       },
-      "sha256": "ad8a20933d8f8b1f67ac9fcd78b27a766813b8fc525b5463d6ca242fad015998"
+      "sha256": "9ecbe0c7930bd9826af812980afb1eaf871163e6cbc3c6865514e61c00fb7d7d"
     },
     {
       "slug": "hanzi-writer",

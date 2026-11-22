@@ -4,8 +4,8 @@
   "appId": "hangman",
   "name": "Hangman",
   "shortName": "Hangman",
-  "version": "1.0.0",
-  "minBuild": 947,
+  "version": "1.1",
+  "minBuild": 5861,
   "tagline": "Hangman for two: race a friend, or share the rope on one phone.",
   "description": "One invite, two phones, the same word. Race, and the first to finish it wins — each of you has your own rope, and you never see the other person's letters, only how many wrong guesses they have used. Or share the rope: every letter anyone tries is on the same gallows, so you sink or swim together.\n\nOn your own it is that game, on this device. A programming language is hiding. Pick a letter. Right ones fill in; six wrong ones and the drawing is finished. Close it and come back: a game in progress is still there.\n\nThe words are the original fourteen — Python, Ruby, Java, and the rest.\n\nAn unofficial port of Vanilla Javascript Hangman Game by simonjsuh.",
   "author": {
@@ -39,14 +39,14 @@
   "cover": "/apps/hangman/cover.jpg",
   "screenshots": [],
   "gif": "/apps/hangman/hangman.gif",
-  "bytes": 172124,
+  "bytes": 173335,
   "download": 0,
   "provides": null,
-  "sha256": "ad8a20933d8f8b1f67ac9fcd78b27a766813b8fc525b5463d6ca242fad015998",
+  "sha256": "9ecbe0c7930bd9826af812980afb1eaf871163e6cbc3c6865514e61c00fb7d7d",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-22"
   },
   "porter": {
     "name": "GifOS",
