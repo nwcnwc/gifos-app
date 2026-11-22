@@ -36288,6 +36288,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       } catch (e) {}
       return '';
     }
+    let recFloor = null;   // the silent source under the record mix (startRec)
+    function recStopFloor() { const f = recFloor; recFloor = null; if (f) { try { f.stop(); } catch (e) {} try { f.disconnect(); } catch (e) {} } }
     async function startRec(opts) {
       if (recStarting || (recRec && recRec.state !== 'inactive')) return;
       recStarting = true;
@@ -36388,6 +36390,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           armDraw = () => metroSub(draw);
           videoTrack = canvas.captureStream(15).getVideoTracks()[0];
         }
+        // A silent floor under the mix. A MediaStreamDestination with nothing
+        // connected carries no audio frames at all (Chromium), and the webm
+        // muxer holds every video frame until the first audio frame: a meeting
+        // where nobody in scope has a mic track (all muted, or a camera-only
+        // room) recorded a 0-byte file. A zero-offset source keeps frames coming.
+        try { recFloor = ac.createConstantSource(); recFloor.offset.value = 0; recFloor.connect(recDest); recFloor.start(); } catch (e) { recFloor = null; }
         const stream = new MediaStream();
         if (videoTrack) stream.addTrack(videoTrack);
         for (const tr of recDest.stream.getAudioTracks()) stream.addTrack(tr);
@@ -36411,6 +36419,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           stopVideo();
           const srcs = recSrcs;
           recSrcs = new Map();
+          recStopFloor();
           recDest = null;
           recMode = null;
           for (const m of srcs.values()) { try { m.node.disconnect(); } catch (e) {} }
@@ -36470,6 +36479,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (s && s.abort) { try { s.abort(); } catch (e) {} }
           for (const m of recSrcs.values()) { try { m.node.disconnect(); } catch (e) {} }
           recSrcs = new Map();
+          recStopFloor();
           if (made && recRec === made) { try { made.onstop = null; made.ondataavailable = null; } catch (e) {} recRec = null; }
           recDest = null; recMode = null;
           if (myStatus.rec) {
