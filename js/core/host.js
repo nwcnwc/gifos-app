@@ -12,9 +12,12 @@
  * statements in steps. The linker runs the steps of all parts in the one order the meeting was written in, so a
  * page with all three parts runs the same program as a single script would.
  *
- * A PART THAT IS NOT THERE. Its names are stood in for: a function does nothing and returns undefined; a
- * variable reads as a placeholder that accepts any use (property, call, iteration) and does nothing. Every use
- * of a stand-in is counted (meeting.standIns()), so a host can see what the core asked of a part it did not get.
+ * A PART THAT IS NOT THERE. Its names are stood in for: a function does nothing and returns undefined. A variable
+ * of a missing VIEW throws when it is read (the view's variables are its elements: a core that reads one asks the
+ * screen a question it cannot answer, so the read must surface, not be absorbed). A variable of a missing media
+ * part reads as a placeholder that accepts any use (property, call, iteration) and does nothing, until the media
+ * port is narrowed. Every use of a stand-in is counted (meeting.standIns()), so a host can see what the core asked
+ * of a part it did not get.
  */
 (function (root) {
   'use strict';
@@ -54,8 +57,8 @@
   }
 
   // the object that stands for a part that was not loaded: `needs` is { name: 1 function | 0 variable } (the union of
-  // what the loaded parts ask of it)
-  function standIn(partName, needs, counts) {
+  // what the loaded parts ask of it). strictVars: reading a variable that no part has set throws.
+  function standIn(partName, needs, counts, strictVars) {
     const o = {};
     const count = (note, k) => { const key = note + (k != null ? '.' + String(k) : ''); counts.set(key, (counts.get(key) || 0) + 1); };
     for (const n of Object.keys(needs)) {
@@ -65,7 +68,13 @@
       } else {
         let held, has = false;
         const ph = placeholder(partName + '.' + n, count);
-        Object.defineProperty(o, n, { get: () => { count(partName + '.' + n); return has ? held : ph; }, set: (v) => { held = v; has = true; }, enumerable: true, configurable: true });
+        const read = () => {
+          count(partName + '.' + n);
+          if (has) return held;
+          if (strictVars) throw new Error('GifOS core: the ' + partName + ' variable "' + n + '" was read, and this host has no ' + partName + ' (the core must not ask the screen)');
+          return ph;
+        };
+        Object.defineProperty(o, n, { get: read, set: (v) => { held = v; has = true; }, enumerable: true, configurable: true });
       }
     }
     return o;
@@ -88,7 +97,7 @@
       if (parts[n]) { L[n] = {}; continue; }
       const needs = {};
       for (const p of present) Object.assign(needs, (parts[p].needs && parts[p].needs[n]) || {});
-      L[n] = standIn(n, needs, counts);
+      L[n] = standIn(n, needs, counts, n === 'view');
     }
     let ran = false, ended = false;
     function run() {

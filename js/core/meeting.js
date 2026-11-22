@@ -1,6 +1,6 @@
 /*
  * GifOS Core: the meeting, part "core". Copyright (c) 2026 Crowd Concepts, Inc. All rights reserved.
- * Lifted from the meeting page by the core lift (stamp a602d715).
+ * Lifted from the meeting page by the core lift (stamp a8777ded).
  * The statements below are the meeting page's own, in the page's order. A name another part owns is read
  * through that part (__C the core, __M the media plane, __V the view). The linker is host.js.
  */
@@ -36,6 +36,7 @@
       "FS_ZOOM_MAX": { get: function () { return FS_ZOOM_MAX; }, enumerable: true, configurable: true },
       "FS_ZOOM_PAD": { get: function () { return FS_ZOOM_PAD; }, enumerable: true, configurable: true },
       "IS_ANDROID": { get: function () { return IS_ANDROID; }, enumerable: true, configurable: true },
+      "IS_MOBILE": { get: function () { return IS_MOBILE; }, enumerable: true, configurable: true },
       "LADDER": { get: function () { return LADDER; }, enumerable: true, configurable: true },
       "LATE_ASK_MS": { get: function () { return LATE_ASK_MS; }, enumerable: true, configurable: true },
       "MASS_MANY": { get: function () { return MASS_MANY; }, enumerable: true, configurable: true },
@@ -44,6 +45,8 @@
       "MEET_MARKS": { get: function () { return MEET_MARKS; }, enumerable: true, configurable: true },
       "MEET_PATH": { get: function () { return MEET_PATH; }, enumerable: true, configurable: true },
       "MODBAR_HTML": { get: function () { return MODBAR_HTML; }, enumerable: true, configurable: true },
+      "PEER_SILENT_MS": { get: function () { return PEER_SILENT_MS; }, enumerable: true, configurable: true },
+      "PIP_AUTO_FALLBACK_MS": { get: function () { return PIP_AUTO_FALLBACK_MS; }, enumerable: true, configurable: true },
       "PIP_CARD_H": { get: function () { return PIP_CARD_H; }, enumerable: true, configurable: true },
       "PIP_CARD_ROWS": { get: function () { return PIP_CARD_ROWS; }, enumerable: true, configurable: true },
       "PIP_CARD_W": { get: function () { return PIP_CARD_W; }, enumerable: true, configurable: true },
@@ -51,6 +54,8 @@
       "PWEYE_SVG": { get: function () { return PWEYE_SVG; }, enumerable: true, configurable: true },
       "PW_ADMIN_ONLY": { get: function () { return PW_ADMIN_ONLY; }, enumerable: true, configurable: true },
       "PW_GRANT_HOLD_MS": { get: function () { return PW_GRANT_HOLD_MS; }, enumerable: true, configurable: true },
+      "REACTS": { get: function () { return REACTS; }, enumerable: true, configurable: true },
+      "RECOVER_MEDIA_KEY": { get: function () { return RECOVER_MEDIA_KEY; }, enumerable: true, configurable: true },
       "RENAME_RESET": { get: function () { return RENAME_RESET; }, enumerable: true, configurable: true },
       "ROOM": { get: function () { return ROOM; }, enumerable: true, configurable: true },
       "RUN_DEFAULTS": { get: function () { return RUN_DEFAULTS; }, enumerable: true, configurable: true },
@@ -60,12 +65,12 @@
       "STAGE_HEAR_MS": { get: function () { return STAGE_HEAR_MS; }, enumerable: true, configurable: true },
       "STAGE_MAXW": { get: function () { return STAGE_MAXW; }, enumerable: true, configurable: true },
       "STALL_MS": { get: function () { return STALL_MS; }, enumerable: true, configurable: true },
+      "TIMING_KEY": { get: function () { return TIMING_KEY; }, enumerable: true, configurable: true },
       "UPDATE_RESUME_KEY": { get: function () { return UPDATE_RESUME_KEY; }, enumerable: true, configurable: true },
       "VIEW_ICONS": { get: function () { return VIEW_ICONS; }, enumerable: true, configurable: true },
       "VMODE": { get: function () { return VMODE; }, enumerable: true, configurable: true },
       "WHO_GROUPS": { get: function () { return WHO_GROUPS; }, enumerable: true, configurable: true },
       "WK_H264_BLIND": { get: function () { return WK_H264_BLIND; }, enumerable: true, configurable: true },
-      "_runtimeSrc": { get: function () { return _runtimeSrc; }, enumerable: true, configurable: true },
       "ac": { get: function () { return ac; }, set: function (v) { ac = v; }, enumerable: true, configurable: true },
       "addAux": { get: function () { return addAux; }, enumerable: true, configurable: true },
       "addMainTrack": { get: function () { return addMainTrack; }, enumerable: true, configurable: true },
@@ -76,6 +81,7 @@
       "admSigned": { get: function () { return admSigned; }, enumerable: true, configurable: true },
       "admStoreKey": { get: function () { return admStoreKey; }, enumerable: true, configurable: true },
       "admTickT": { get: function () { return admTickT; }, set: function (v) { admTickT = v; }, enumerable: true, configurable: true },
+      "adminFace": { get: function () { return adminFace; }, set: function (v) { adminFace = v; }, enumerable: true, configurable: true },
       "admins": { get: function () { return admins; }, set: function (v) { admins = v; }, enumerable: true, configurable: true },
       "adminsNow": { get: function () { return adminsNow; }, enumerable: true, configurable: true },
       "admitGuest": { get: function () { return admitGuest; }, enumerable: true, configurable: true },
@@ -102,6 +108,9 @@
       "appLeadSet": { get: function () { return appLeadSet; }, set: function (v) { appLeadSet = v; }, enumerable: true, configurable: true },
       "appLeadable": { get: function () { return appLeadable; }, set: function (v) { appLeadable = v; }, enumerable: true, configurable: true },
       "appMode": { get: function () { return appMode; }, set: function (v) { appMode = v; }, enumerable: true, configurable: true },
+      "appPaneName": { get: function () { return appPaneName; }, set: function (v) { appPaneName = v; }, enumerable: true, configurable: true },
+      "appPaneOn": { get: function () { return appPaneOn; }, set: function (v) { appPaneOn = v; }, enumerable: true, configurable: true },
+      "appRoomOn": { get: function () { return appRoomOn; }, set: function (v) { appRoomOn = v; }, enumerable: true, configurable: true },
       "appStageApply": { get: function () { return appStageApply; }, enumerable: true, configurable: true },
       "appStageConsent": { get: function () { return appStageConsent; }, set: function (v) { appStageConsent = v; }, enumerable: true, configurable: true },
       "appStagePlan": { get: function () { return appStagePlan; }, enumerable: true, configurable: true },
@@ -109,15 +118,16 @@
       "appWaitSince": { get: function () { return appWaitSince; }, set: function (v) { appWaitSince = v; }, enumerable: true, configurable: true },
       "applyAvatarFile": { get: function () { return applyAvatarFile; }, enumerable: true, configurable: true },
       "applyBcAct": { get: function () { return applyBcAct; }, enumerable: true, configurable: true },
-      "applyComfy": { get: function () { return applyComfy; }, enumerable: true, configurable: true },
+      "applyCdel": { get: function () { return applyCdel; }, enumerable: true, configurable: true },
+      "applyOwnDelete": { get: function () { return applyOwnDelete; }, enumerable: true, configurable: true },
       "applyPageHeader": { get: function () { return applyPageHeader; }, enumerable: true, configurable: true },
       "applyRaiseAct": { get: function () { return applyRaiseAct; }, enumerable: true, configurable: true },
       "applyViewerCrop": { get: function () { return applyViewerCrop; }, enumerable: true, configurable: true },
+      "armAppRoomTick": { get: function () { return armAppRoomTick; }, enumerable: true, configurable: true },
       "armCopiedLabel": { get: function () { return armCopiedLabel; }, enumerable: true, configurable: true },
-      "armPipAuto": { get: function () { return armPipAuto; }, enumerable: true, configurable: true },
       "audienceReactCounts": { get: function () { return audienceReactCounts; }, enumerable: true, configurable: true },
       "audienceReactFade": { get: function () { return audienceReactFade; }, set: function (v) { audienceReactFade = v; }, enumerable: true, configurable: true },
-      "autoFsWanted": { get: function () { return autoFsWanted; }, enumerable: true, configurable: true },
+      "autoFsOff": { get: function () { return autoFsOff; }, set: function (v) { autoFsOff = v; }, enumerable: true, configurable: true },
       "auxDrop": { get: function () { return auxDrop; }, enumerable: true, configurable: true },
       "auxSenders": { get: function () { return auxSenders; }, enumerable: true, configurable: true },
       "av": { get: function () { return av; }, set: function (v) { av = v; }, enumerable: true, configurable: true },
@@ -131,6 +141,8 @@
       "barPlan": { get: function () { return barPlan; }, enumerable: true, configurable: true },
       "barPlanKey": { get: function () { return barPlanKey; }, set: function (v) { barPlanKey = v; }, enumerable: true, configurable: true },
       "bcActButtons": { get: function () { return bcActButtons; }, enumerable: true, configurable: true },
+      "bcCalFor": { get: function () { return bcCalFor; }, set: function (v) { bcCalFor = v; }, enumerable: true, configurable: true },
+      "bcCalUrl": { get: function () { return bcCalUrl; }, set: function (v) { bcCalUrl = v; }, enumerable: true, configurable: true },
       "bcEndedInRoom": { get: function () { return bcEndedInRoom; }, enumerable: true, configurable: true },
       "bcHostStored": { get: function () { return bcHostStored; }, enumerable: true, configurable: true },
       "bcKeepUserStop": { get: function () { return bcKeepUserStop; }, set: function (v) { bcKeepUserStop = v; }, enumerable: true, configurable: true },
@@ -156,7 +168,7 @@
       "botViewOn": { get: function () { return botViewOn; }, set: function (v) { botViewOn = v; }, enumerable: true, configurable: true },
       "botViewWant": { get: function () { return botViewWant; }, set: function (v) { botViewWant = v; }, enumerable: true, configurable: true },
       "broadcastStatus": { get: function () { return broadcastStatus; }, enumerable: true, configurable: true },
-      "callStateWatch": { get: function () { return callStateWatch; }, enumerable: true, configurable: true },
+      "callOn": { get: function () { return callOn; }, set: function (v) { callOn = v; }, enumerable: true, configurable: true },
       "camOnWords": { get: function () { return camOnWords; }, enumerable: true, configurable: true },
       "camPeer": { get: function () { return camPeer; }, enumerable: true, configurable: true },
       "canIRunApp": { get: function () { return canIRunApp; }, enumerable: true, configurable: true },
@@ -165,6 +177,10 @@
       "capClone": { get: function () { return capClone; }, enumerable: true, configurable: true },
       "capClosed": { get: function () { return capClosed; }, set: function (v) { capClosed = v; }, enumerable: true, configurable: true },
       "capEarsOnly": { get: function () { return capEarsOnly; }, enumerable: true, configurable: true },
+      "capLang": { get: function () { return capLang; }, set: function (v) { capLang = v; }, enumerable: true, configurable: true },
+      "capLangMine": { get: function () { return capLangMine; }, enumerable: true, configurable: true },
+      "capLangName": { get: function () { return capLangName; }, enumerable: true, configurable: true },
+      "capLangTag": { get: function () { return capLangTag; }, enumerable: true, configurable: true },
       "capName": { get: function () { return capName; }, enumerable: true, configurable: true },
       "capNowNote": { get: function () { return capNowNote; }, enumerable: true, configurable: true },
       "capOn": { get: function () { return capOn; }, enumerable: true, configurable: true },
@@ -176,6 +192,8 @@
       "capTraceGate": { get: function () { return capTraceGate; }, enumerable: true, configurable: true },
       "capTrust": { get: function () { return capTrust; }, set: function (v) { capTrust = v; }, enumerable: true, configurable: true },
       "capTry": { get: function () { return capTry; }, enumerable: true, configurable: true },
+      "carryG": { get: function () { return carryG; }, set: function (v) { carryG = v; }, enumerable: true, configurable: true },
+      "carryHosts": { get: function () { return carryHosts; }, enumerable: true, configurable: true },
       "carryOutAc": { get: function () { return carryOutAc; }, set: function (v) { carryOutAc = v; }, enumerable: true, configurable: true },
       "castVote": { get: function () { return castVote; }, enumerable: true, configurable: true },
       "ccDevNotice": { get: function () { return ccDevNotice; }, enumerable: true, configurable: true },
@@ -190,29 +208,32 @@
       "chatGateOverride": { get: function () { return chatGateOverride; }, set: function (v) { chatGateOverride = v; }, enumerable: true, configurable: true },
       "chatLinksOn": { get: function () { return chatLinksOn; }, enumerable: true, configurable: true },
       "chatOffInfo": { get: function () { return chatOffInfo; }, enumerable: true, configurable: true },
+      "chatOpen": { get: function () { return chatOpen; }, set: function (v) { chatOpen = v; }, enumerable: true, configurable: true },
       "chatPeople": { get: function () { return chatPeople; }, enumerable: true, configurable: true },
+      "chatReacts": { get: function () { return chatReacts; }, enumerable: true, configurable: true },
+      "chatTombs": { get: function () { return chatTombs; }, enumerable: true, configurable: true },
+      "chatWhen": { get: function () { return chatWhen; }, enumerable: true, configurable: true },
       "clearPipAuto": { get: function () { return clearPipAuto; }, enumerable: true, configurable: true },
       "clearRosterTiles": { get: function () { return clearRosterTiles; }, enumerable: true, configurable: true },
       "clog": { get: function () { return clog; }, enumerable: true, configurable: true },
-      "closeInvModal": { get: function () { return closeInvModal; }, set: function (v) { closeInvModal = v; }, enumerable: true, configurable: true },
       "closeRoomNoHost": { get: function () { return closeRoomNoHost; }, enumerable: true, configurable: true },
-      "closeVoteModal": { get: function () { return closeVoteModal; }, set: function (v) { closeVoteModal = v; }, enumerable: true, configurable: true },
+      "contentHas": { get: function () { return contentHas; }, enumerable: true, configurable: true },
       "createAdminRoom": { get: function () { return createAdminRoom; }, enumerable: true, configurable: true },
       "ctAgCtx": { get: function () { return ctAgCtx; }, enumerable: true, configurable: true },
       "ctAgHidden": { get: function () { return ctAgHidden; }, enumerable: true, configurable: true },
       "ctAgendaHide": { get: function () { return ctAgendaHide; }, enumerable: true, configurable: true },
+      "ctAgendaOver": { get: function () { return ctAgendaOver; }, enumerable: true, configurable: true },
       "ctAgendaPublish": { get: function () { return ctAgendaPublish; }, enumerable: true, configurable: true },
       "ctAgendaShortTime": { get: function () { return ctAgendaShortTime; }, enumerable: true, configurable: true },
       "ctAgendaTickArm": { get: function () { return ctAgendaTickArm; }, enumerable: true, configurable: true },
       "ctAgendaWhoText": { get: function () { return ctAgendaWhoText; }, enumerable: true, configurable: true },
       "ctAspect": { get: function () { return ctAspect; }, enumerable: true, configurable: true },
+      "ctBring": { get: function () { return ctBring; }, enumerable: true, configurable: true },
       "ctCanEditAgenda": { get: function () { return ctCanEditAgenda; }, enumerable: true, configurable: true },
       "ctFocusSources": { get: function () { return ctFocusSources; }, enumerable: true, configurable: true },
-      "ctFocusSync": { get: function () { return ctFocusSync; }, enumerable: true, configurable: true },
       "ctLabel": { get: function () { return ctLabel; }, enumerable: true, configurable: true },
       "ctNote": { get: function () { return ctNote; }, enumerable: true, configurable: true },
       "ctPaintAgendaClock": { get: function () { return ctPaintAgendaClock; }, enumerable: true, configurable: true },
-      "ctPaintBar": { get: function () { return ctPaintBar; }, enumerable: true, configurable: true },
       "ctRefresh": { get: function () { return ctRefresh; }, enumerable: true, configurable: true },
       "ctScreenTrack": { get: function () { return ctScreenTrack; }, enumerable: true, configurable: true },
       "ctSelect": { get: function () { return ctSelect; }, enumerable: true, configurable: true },
@@ -227,6 +248,7 @@
       "devOf": { get: function () { return devOf; }, set: function (v) { devOf = v; }, enumerable: true, configurable: true },
       "digLists": { get: function () { return digLists; }, enumerable: true, configurable: true },
       "digStageEntry": { get: function () { return digStageEntry; }, enumerable: true, configurable: true },
+      "digestMode": { get: function () { return digestMode; }, enumerable: true, configurable: true },
       "displayName": { get: function () { return displayName; }, enumerable: true, configurable: true },
       "dlogOut": { get: function () { return dlogOut; }, enumerable: true, configurable: true },
       "dlogRec": { get: function () { return dlogRec; }, set: function (v) { dlogRec = v; }, enumerable: true, configurable: true },
@@ -234,7 +256,6 @@
       "dlogStoreGet": { get: function () { return dlogStoreGet; }, enumerable: true, configurable: true },
       "docPip": { get: function () { return docPip; }, set: function (v) { docPip = v; }, enumerable: true, configurable: true },
       "docPipAim": { get: function () { return docPipAim; }, enumerable: true, configurable: true },
-      "docPipOk": { get: function () { return docPipOk; }, enumerable: true, configurable: true },
       "docPipReq": { get: function () { return docPipReq; }, set: function (v) { docPipReq = v; }, enumerable: true, configurable: true },
       "dockCalmMs": { get: function () { return dockCalmMs; }, set: function (v) { dockCalmMs = v; }, enumerable: true, configurable: true },
       "dockLabelSet": { get: function () { return dockLabelSet; }, enumerable: true, configurable: true },
@@ -273,11 +294,11 @@
       "fsFollowT": { get: function () { return fsFollowT; }, set: function (v) { fsFollowT = v; }, enumerable: true, configurable: true },
       "fsFull": { get: function () { return fsFull; }, set: function (v) { fsFull = v; }, enumerable: true, configurable: true },
       "fsInline": { get: function () { return fsInline; }, set: function (v) { fsInline = v; }, enumerable: true, configurable: true },
+      "fsOpen": { get: function () { return fsOpen; }, set: function (v) { fsOpen = v; }, enumerable: true, configurable: true },
       "fsOverlay": { get: function () { return fsOverlay; }, set: function (v) { fsOverlay = v; }, enumerable: true, configurable: true },
       "fsOwnExit": { get: function () { return fsOwnExit; }, set: function (v) { fsOwnExit = v; }, enumerable: true, configurable: true },
       "fsPickAuto": { get: function () { return fsPickAuto; }, enumerable: true, configurable: true },
       "fsSel": { get: function () { return fsSel; }, set: function (v) { fsSel = v; }, enumerable: true, configurable: true },
-      "fsSources": { get: function () { return fsSources; }, enumerable: true, configurable: true },
       "fsStripAsk": { get: function () { return fsStripAsk; }, set: function (v) { fsStripAsk = v; }, enumerable: true, configurable: true },
       "fsTick": { get: function () { return fsTick; }, set: function (v) { fsTick = v; }, enumerable: true, configurable: true },
       "fsZoomBox": { get: function () { return fsZoomBox; }, set: function (v) { fsZoomBox = v; }, enumerable: true, configurable: true },
@@ -289,6 +310,7 @@
       "handTotal": { get: function () { return handTotal; }, enumerable: true, configurable: true },
       "handqHtml": { get: function () { return handqHtml; }, set: function (v) { handqHtml = v; }, enumerable: true, configurable: true },
       "hasAdminRoom": { get: function () { return hasAdminRoom; }, enumerable: true, configurable: true },
+      "hasPendingTx": { get: function () { return hasPendingTx; }, enumerable: true, configurable: true },
       "hbLastAt": { get: function () { return hbLastAt; }, set: function (v) { hbLastAt = v; }, enumerable: true, configurable: true },
       "hbLastMono": { get: function () { return hbLastMono; }, set: function (v) { hbLastMono = v; }, enumerable: true, configurable: true },
       "hdrHandSays": { get: function () { return hdrHandSays; }, set: function (v) { hdrHandSays = v; }, enumerable: true, configurable: true },
@@ -317,7 +339,7 @@
       "islandNoteEl": { get: function () { return islandNoteEl; }, set: function (v) { islandNoteEl = v; }, enumerable: true, configurable: true },
       "joinAv": { get: function () { return joinAv; }, enumerable: true, configurable: true },
       "joinAvChoice": { get: function () { return joinAvChoice; }, enumerable: true, configurable: true },
-      "joinVeilEl": { get: function () { return joinVeilEl; }, set: function (v) { joinVeilEl = v; }, enumerable: true, configurable: true },
+      "kfAsker": { get: function () { return kfAsker; }, set: function (v) { kfAsker = v; }, enumerable: true, configurable: true },
       "knownTotal": { get: function () { return knownTotal; }, enumerable: true, configurable: true },
       "labelFor": { get: function () { return labelFor; }, enumerable: true, configurable: true },
       "lastChatLine": { get: function () { return lastChatLine; }, set: function (v) { lastChatLine = v; }, enumerable: true, configurable: true },
@@ -327,13 +349,15 @@
       "lateTimer": { get: function () { return lateTimer; }, set: function (v) { lateTimer = v; }, enumerable: true, configurable: true },
       "lateWant": { get: function () { return lateWant; }, set: function (v) { lateWant = v; }, enumerable: true, configurable: true },
       "lateWon": { get: function () { return lateWon; }, set: function (v) { lateWon = v; }, enumerable: true, configurable: true },
-      "layoutSheet": { get: function () { return layoutSheet; }, enumerable: true, configurable: true },
       "learnFoldedNames": { get: function () { return learnFoldedNames; }, enumerable: true, configurable: true },
       "leaveMeeting": { get: function () { return leaveMeeting; }, enumerable: true, configurable: true },
       "leaveSeededService": { get: function () { return leaveSeededService; }, enumerable: true, configurable: true },
       "leaving": { get: function () { return leaving; }, set: function (v) { leaving = v; }, enumerable: true, configurable: true },
+      "leftDialogUp": { get: function () { return leftDialogUp; }, enumerable: true, configurable: true },
       "lgNoteEl": { get: function () { return lgNoteEl; }, set: function (v) { lgNoteEl = v; }, enumerable: true, configurable: true },
+      "lineOpen": { get: function () { return lineOpen; }, set: function (v) { lineOpen = v; }, enumerable: true, configurable: true },
       "linkRowHtml": { get: function () { return linkRowHtml; }, enumerable: true, configurable: true },
+      "linksAllowed": { get: function () { return linksAllowed; }, enumerable: true, configurable: true },
       "liveInCall": { get: function () { return liveInCall; }, enumerable: true, configurable: true },
       "loadList": { get: function () { return loadList; }, enumerable: true, configurable: true },
       "lobRow": { get: function () { return lobRow; }, enumerable: true, configurable: true },
@@ -345,6 +369,8 @@
       "localStream": { get: function () { return localStream; }, set: function (v) { localStream = v; }, enumerable: true, configurable: true },
       "logNearBottom": { get: function () { return logNearBottom; }, enumerable: true, configurable: true },
       "lowSenders": { get: function () { return lowSenders; }, enumerable: true, configurable: true },
+      "lsGet": { get: function () { return lsGet; }, enumerable: true, configurable: true },
+      "lsSet": { get: function () { return lsSet; }, enumerable: true, configurable: true },
       "markHeldNote": { get: function () { return markHeldNote; }, enumerable: true, configurable: true },
       "massBannerAt": { get: function () { return massBannerAt; }, set: function (v) { massBannerAt = v; }, enumerable: true, configurable: true },
       "massBannerEl": { get: function () { return massBannerEl; }, set: function (v) { massBannerEl = v; }, enumerable: true, configurable: true },
@@ -375,7 +401,10 @@
       "modTable": { get: function () { return modTable; }, enumerable: true, configurable: true },
       "modalDismissBtn": { get: function () { return modalDismissBtn; }, enumerable: true, configurable: true },
       "modalFocusables": { get: function () { return modalFocusables; }, enumerable: true, configurable: true },
+      "modalOpener": { get: function () { return modalOpener; }, set: function (v) { modalOpener = v; }, enumerable: true, configurable: true },
       "modalOutside": { get: function () { return modalOutside; }, set: function (v) { modalOutside = v; }, enumerable: true, configurable: true },
+      "modalTracked": { get: function () { return modalTracked; }, set: function (v) { modalTracked = v; }, enumerable: true, configurable: true },
+      "multiSection": { get: function () { return multiSection; }, enumerable: true, configurable: true },
       "myDevHash": { get: function () { return myDevHash; }, set: function (v) { myDevHash = v; }, enumerable: true, configurable: true },
       "myId": { get: function () { return myId; }, set: function (v) { myId = v; }, enumerable: true, configurable: true },
       "myIdentity": { get: function () { return myIdentity; }, set: function (v) { myIdentity = v; }, enumerable: true, configurable: true },
@@ -383,19 +412,18 @@
       "myName": { get: function () { return myName; }, enumerable: true, configurable: true },
       "myStageVotes": { get: function () { return myStageVotes; }, enumerable: true, configurable: true },
       "myStatus": { get: function () { return myStatus; }, enumerable: true, configurable: true },
+      "myUpVoteSig": { get: function () { return myUpVoteSig; }, enumerable: true, configurable: true },
       "myVoiceAt": { get: function () { return myVoiceAt; }, set: function (v) { myVoiceAt = v; }, enumerable: true, configurable: true },
       "myVoiceFrom": { get: function () { return myVoiceFrom; }, set: function (v) { myVoiceFrom = v; }, enumerable: true, configurable: true },
       "myVoiceSinceFinal": { get: function () { return myVoiceSinceFinal; }, set: function (v) { myVoiceSinceFinal = v; }, enumerable: true, configurable: true },
       "nameInitial": { get: function () { return nameInitial; }, enumerable: true, configurable: true },
       "net": { get: function () { return net; }, enumerable: true, configurable: true },
       "newMeetAudioContext": { get: function () { return newMeetAudioContext; }, enumerable: true, configurable: true },
+      "newNeg": { get: function () { return newNeg; }, enumerable: true, configurable: true },
       "notTomb": { get: function () { return notTomb; }, enumerable: true, configurable: true },
+      "occPid": { get: function () { return occPid; }, enumerable: true, configurable: true },
       "outgoingHeld": { get: function () { return outgoingHeld; }, set: function (v) { outgoingHeld = v; }, enumerable: true, configurable: true },
-      "pageFull": { get: function () { return pageFull; }, enumerable: true, configurable: true },
-      "paintBcCalendar": { get: function () { return paintBcCalendar; }, enumerable: true, configurable: true },
-      "paintBlurWhy": { get: function () { return paintBlurWhy; }, enumerable: true, configurable: true },
       "paintBroadcastAir": { get: function () { return paintBroadcastAir; }, enumerable: true, configurable: true },
-      "paintFaders": { get: function () { return paintFaders; }, enumerable: true, configurable: true },
       "paintLog": { get: function () { return paintLog; }, enumerable: true, configurable: true },
       "paintModbarButtons": { get: function () { return paintModbarButtons; }, enumerable: true, configurable: true },
       "paintOnAir": { get: function () { return paintOnAir; }, enumerable: true, configurable: true },
@@ -407,10 +435,10 @@
       "peers": { get: function () { return peers; }, enumerable: true, configurable: true },
       "pendingReply": { get: function () { return pendingReply; }, set: function (v) { pendingReply = v; }, enumerable: true, configurable: true },
       "pipAimed": { get: function () { return pipAimed; }, set: function (v) { pipAimed = v; }, enumerable: true, configurable: true },
+      "pipAutoT": { get: function () { return pipAutoT; }, set: function (v) { pipAutoT = v; }, enumerable: true, configurable: true },
       "pipAwayAt": { get: function () { return pipAwayAt; }, set: function (v) { pipAwayAt = v; }, enumerable: true, configurable: true },
       "pipAwayT": { get: function () { return pipAwayT; }, set: function (v) { pipAwayT = v; }, enumerable: true, configurable: true },
       "pipBrowserAsked": { get: function () { return pipBrowserAsked; }, enumerable: true, configurable: true },
-      "pipBtnShown": { get: function () { return pipBtnShown; }, enumerable: true, configurable: true },
       "pipByBrowser": { get: function () { return pipByBrowser; }, set: function (v) { pipByBrowser = v; }, enumerable: true, configurable: true },
       "pipCard": { get: function () { return pipCard; }, set: function (v) { pipCard = v; }, enumerable: true, configurable: true },
       "pipCardPaint": { get: function () { return pipCardPaint; }, enumerable: true, configurable: true },
@@ -418,12 +446,11 @@
       "pipCardRun": { get: function () { return pipCardRun; }, enumerable: true, configurable: true },
       "pipEpoch": { get: function () { return pipEpoch; }, set: function (v) { pipEpoch = v; }, enumerable: true, configurable: true },
       "pipFallback": { get: function () { return pipFallback; }, enumerable: true, configurable: true },
-      "pipFloating": { get: function () { return pipFloating; }, enumerable: true, configurable: true },
       "pipHintArmed": { get: function () { return pipHintArmed; }, set: function (v) { pipHintArmed = v; }, enumerable: true, configurable: true },
       "pipHintDone": { get: function () { return pipHintDone; }, set: function (v) { pipHintDone = v; }, enumerable: true, configurable: true },
       "pipManual": { get: function () { return pipManual; }, set: function (v) { pipManual = v; }, enumerable: true, configurable: true },
+      "pipReady": { get: function () { return pipReady; }, enumerable: true, configurable: true },
       "pipReturnT": { get: function () { return pipReturnT; }, set: function (v) { pipReturnT = v; }, enumerable: true, configurable: true },
-      "pipSource": { get: function () { return pipSource; }, enumerable: true, configurable: true },
       "pipTrace": { get: function () { return pipTrace; }, enumerable: true, configurable: true },
       "pipePeers": { get: function () { return pipePeers; }, enumerable: true, configurable: true },
       "pipeStg": { get: function () { return pipeStg; }, enumerable: true, configurable: true },
@@ -431,6 +458,8 @@
       "placeViewerHand": { get: function () { return placeViewerHand; }, enumerable: true, configurable: true },
       "platePaintT": { get: function () { return platePaintT; }, set: function (v) { platePaintT = v; }, enumerable: true, configurable: true },
       "postChat": { get: function () { return postChat; }, enumerable: true, configurable: true },
+      "powDials": { get: function () { return powDials; }, set: function (v) { powDials = v; }, enumerable: true, configurable: true },
+      "powNow": { get: function () { return powNow; }, set: function (v) { powNow = v; }, enumerable: true, configurable: true },
       "prayOn": { get: function () { return prayOn; }, enumerable: true, configurable: true },
       "preferHwVideo": { get: function () { return preferHwVideo; }, enumerable: true, configurable: true },
       "prevRoomE2E": { get: function () { return prevRoomE2E; }, set: function (v) { prevRoomE2E = v; }, enumerable: true, configurable: true },
@@ -439,6 +468,7 @@
       "progressWords": { get: function () { return progressWords; }, enumerable: true, configurable: true },
       "purgeAllFiles": { get: function () { return purgeAllFiles; }, enumerable: true, configurable: true },
       "pushLeaf": { get: function () { return pushLeaf; }, enumerable: true, configurable: true },
+      "pwBan": { get: function () { return pwBan; }, enumerable: true, configurable: true },
       "pwBlocked": { get: function () { return pwBlocked; }, set: function (v) { pwBlocked = v; }, enumerable: true, configurable: true },
       "pwChainFailed": { get: function () { return pwChainFailed; }, enumerable: true, configurable: true },
       "pwEpoch": { get: function () { return pwEpoch; }, set: function (v) { pwEpoch = v; }, enumerable: true, configurable: true },
@@ -450,19 +480,25 @@
       "qaChatOn": { get: function () { return qaChatOn; }, enumerable: true, configurable: true },
       "qaList": { get: function () { return qaList; }, enumerable: true, configurable: true },
       "qaSend": { get: function () { return qaSend; }, enumerable: true, configurable: true },
+      "qaShowOk": { get: function () { return qaShowOk; }, enumerable: true, configurable: true },
       "qaShownId": { get: function () { return qaShownId; }, enumerable: true, configurable: true },
       "raisedHandRows": { get: function () { return raisedHandRows; }, enumerable: true, configurable: true },
+      "rbCap": { get: function () { return rbCap; }, enumerable: true, configurable: true },
+      "rbDrop": { get: function () { return rbDrop; }, enumerable: true, configurable: true },
       "rbFmt": { get: function () { return rbFmt; }, enumerable: true, configurable: true },
+      "rbLength": { get: function () { return rbLength; }, enumerable: true, configurable: true },
       "rbNoun": { get: function () { return rbNoun; }, enumerable: true, configurable: true },
       "rbNow": { get: function () { return rbNow; }, set: function (v) { rbNow = v; }, enumerable: true, configurable: true },
-      "rbStart": { get: function () { return rbStart; }, enumerable: true, configurable: true },
       "rbStop": { get: function () { return rbStop; }, enumerable: true, configurable: true },
       "rbTitle": { get: function () { return rbTitle; }, enumerable: true, configurable: true },
       "rbToggle": { get: function () { return rbToggle; }, enumerable: true, configurable: true },
+      "rbTracks": { get: function () { return rbTracks; }, enumerable: true, configurable: true },
       "reactAlert": { get: function () { return reactAlert; }, set: function (v) { reactAlert = v; }, enumerable: true, configurable: true },
+      "reactOpen": { get: function () { return reactOpen; }, set: function (v) { reactOpen = v; }, enumerable: true, configurable: true },
       "reactRateOk": { get: function () { return reactRateOk; }, enumerable: true, configurable: true },
       "reactRoomState": { get: function () { return reactRoomState; }, enumerable: true, configurable: true },
       "reactStats": { get: function () { return reactStats; }, enumerable: true, configurable: true },
+      "reactorNames": { get: function () { return reactorNames; }, enumerable: true, configurable: true },
       "recNoticeTitle": { get: function () { return recNoticeTitle; }, enumerable: true, configurable: true },
       "recRoomWord": { get: function () { return recRoomWord; }, enumerable: true, configurable: true },
       "recSrcDirty": { get: function () { return recSrcDirty; }, set: function (v) { recSrcDirty = v; }, enumerable: true, configurable: true },
@@ -477,9 +513,9 @@
       "releaseLeaveAsk": { get: function () { return releaseLeaveAsk; }, enumerable: true, configurable: true },
       "renameEditId": { get: function () { return renameEditId; }, set: function (v) { renameEditId = v; }, enumerable: true, configurable: true },
       "renameGuest": { get: function () { return renameGuest; }, enumerable: true, configurable: true },
-      "renderChat": { get: function () { return renderChat; }, enumerable: true, configurable: true },
       "renegotiate": { get: function () { return renegotiate; }, enumerable: true, configurable: true },
       "room": { get: function () { return room; }, set: function (v) { room = v; }, enumerable: true, configurable: true },
+      "roomConsentIds": { get: function () { return roomConsentIds; }, enumerable: true, configurable: true },
       "roomDig": { get: function () { return roomDig; }, enumerable: true, configurable: true },
       "roomE2E": { get: function () { return roomE2E; }, set: function (v) { roomE2E = v; }, enumerable: true, configurable: true },
       "roomHeadCount": { get: function () { return roomHeadCount; }, enumerable: true, configurable: true },
@@ -498,6 +534,7 @@
       "runLinkTarget": { get: function () { return runLinkTarget; }, enumerable: true, configurable: true },
       "rung": { get: function () { return rung; }, enumerable: true, configurable: true },
       "saveList": { get: function () { return saveList; }, enumerable: true, configurable: true },
+      "saveVcrops": { get: function () { return saveVcrops; }, enumerable: true, configurable: true },
       "sayState": { get: function () { return sayState; }, enumerable: true, configurable: true },
       "screenCeilingKbps": { get: function () { return screenCeilingKbps; }, enumerable: true, configurable: true },
       "screenSteppedUp": { get: function () { return screenSteppedUp; }, set: function (v) { screenSteppedUp = v; }, enumerable: true, configurable: true },
@@ -523,6 +560,7 @@
       "setVq": { get: function () { return setVq; }, enumerable: true, configurable: true },
       "setWaitingRoom": { get: function () { return setWaitingRoom; }, enumerable: true, configurable: true },
       "sgaAOP": { get: function () { return sgaAOP; }, set: function (v) { sgaAOP = v; }, enumerable: true, configurable: true },
+      "shadeKey": { get: function () { return shadeKey; }, enumerable: true, configurable: true },
       "shareBlocked": { get: function () { return shareBlocked; }, enumerable: true, configurable: true },
       "shareFirewallWords": { get: function () { return shareFirewallWords; }, enumerable: true, configurable: true },
       "shareSheetFocusId": { get: function () { return shareSheetFocusId; }, enumerable: true, configurable: true },
@@ -530,7 +568,6 @@
       "sharingScreen": { get: function () { return sharingScreen; }, enumerable: true, configurable: true },
       "shortCode": { get: function () { return shortCode; }, enumerable: true, configurable: true },
       "shortcutTyping": { get: function () { return shortcutTyping; }, enumerable: true, configurable: true },
-      "showCaption": { get: function () { return showCaption; }, enumerable: true, configurable: true },
       "slowModeOn": { get: function () { return slowModeOn; }, enumerable: true, configurable: true },
       "slugRoom": { get: function () { return slugRoom; }, enumerable: true, configurable: true },
       "soloCtl": { get: function () { return soloCtl; }, set: function (v) { soloCtl = v; }, enumerable: true, configurable: true },
@@ -543,14 +580,17 @@
       "stageCell": { get: function () { return stageCell; }, enumerable: true, configurable: true },
       "stageClaimOf": { get: function () { return stageClaimOf; }, enumerable: true, configurable: true },
       "stageFeedAt": { get: function () { return stageFeedAt; }, enumerable: true, configurable: true },
+      "stageFeedVideo": { get: function () { return stageFeedVideo; }, enumerable: true, configurable: true },
       "stageFps": { get: function () { return stageFps; }, enumerable: true, configurable: true },
       "stageGrantLive": { get: function () { return stageGrantLive; }, enumerable: true, configurable: true },
       "stageHeldAt": { get: function () { return stageHeldAt; }, enumerable: true, configurable: true },
       "stageIds": { get: function () { return stageIds; }, enumerable: true, configurable: true },
       "stageModList": { get: function () { return stageModList; }, enumerable: true, configurable: true },
+      "stageNeed": { get: function () { return stageNeed; }, enumerable: true, configurable: true },
       "stageResumeUntil": { get: function () { return stageResumeUntil; }, set: function (v) { stageResumeUntil = v; }, enumerable: true, configurable: true },
       "stageSeats": { get: function () { return stageSeats; }, enumerable: true, configurable: true },
       "stageSenders": { get: function () { return stageSenders; }, enumerable: true, configurable: true },
+      "stageViewNow": { get: function () { return stageViewNow; }, set: function (v) { stageViewNow = v; }, enumerable: true, configurable: true },
       "stageVoteTallies": { get: function () { return stageVoteTallies; }, enumerable: true, configurable: true },
       "stallOf": { get: function () { return stallOf; }, enumerable: true, configurable: true },
       "startMesh": { get: function () { return startMesh; }, enumerable: true, configurable: true },
@@ -566,10 +606,11 @@
       "stopAuxTx": { get: function () { return stopAuxTx; }, enumerable: true, configurable: true },
       "stopRoomApp": { get: function () { return stopRoomApp; }, enumerable: true, configurable: true },
       "storePw": { get: function () { return storePw; }, enumerable: true, configurable: true },
+      "subWant": { get: function () { return subWant; }, enumerable: true, configurable: true },
       "subsMeetId": { get: function () { return subsMeetId; }, enumerable: true, configurable: true },
       "subsOn": { get: function () { return subsOn; }, enumerable: true, configurable: true },
       "syncFocus": { get: function () { return syncFocus; }, enumerable: true, configurable: true },
-      "syncModalFocus": { get: function () { return syncModalFocus; }, enumerable: true, configurable: true },
+      "takeReact": { get: function () { return takeReact; }, enumerable: true, configurable: true },
       "takeTomb": { get: function () { return takeTomb; }, enumerable: true, configurable: true },
       "tileBlurWhy": { get: function () { return tileBlurWhy; }, enumerable: true, configurable: true },
       "tileWin": { get: function () { return tileWin; }, enumerable: true, configurable: true },
@@ -591,14 +632,13 @@
       "trLangOf": { get: function () { return trLangOf; }, enumerable: true, configurable: true },
       "trMode": { get: function () { return trMode; }, enumerable: true, configurable: true },
       "trNote": { get: function () { return trNote; }, enumerable: true, configurable: true },
+      "trs": { get: function () { return trs; }, enumerable: true, configurable: true },
       "turnFacts": { get: function () { return turnFacts; }, enumerable: true, configurable: true },
       "turnHeld": { get: function () { return turnHeld; }, enumerable: true, configurable: true },
       "turnLinks": { get: function () { return turnLinks; }, set: function (v) { turnLinks = v; }, enumerable: true, configurable: true },
       "turnNote": { get: function () { return turnNote; }, enumerable: true, configurable: true },
-      "twCropSection": { get: function () { return twCropSection; }, enumerable: true, configurable: true },
       "twIdOf": { get: function () { return twIdOf; }, enumerable: true, configurable: true },
       "twPeer": { get: function () { return twPeer; }, enumerable: true, configurable: true },
-      "twStageFrameSection": { get: function () { return twStageFrameSection; }, enumerable: true, configurable: true },
       "txMarkWhy": { get: function () { return txMarkWhy; }, enumerable: true, configurable: true },
       "uiLang": { get: function () { return uiLang; }, enumerable: true, configurable: true },
       "uiText": { get: function () { return uiText; }, enumerable: true, configurable: true },
@@ -610,14 +650,18 @@
       "updateRoomKey": { get: function () { return updateRoomKey; }, enumerable: true, configurable: true },
       "updateStatus": { get: function () { return updateStatus; }, enumerable: true, configurable: true },
       "updateTile": { get: function () { return updateTile; }, enumerable: true, configurable: true },
+      "vcrops": { get: function () { return vcrops; }, set: function (v) { vcrops = v; }, enumerable: true, configurable: true },
       "viewNote": { get: function () { return viewNote; }, enumerable: true, configurable: true },
       "viewStore": { get: function () { return viewStore; }, set: function (v) { viewStore = v; }, enumerable: true, configurable: true },
       "viewWord": { get: function () { return viewWord; }, enumerable: true, configurable: true },
+      "viewerCropOf": { get: function () { return viewerCropOf; }, enumerable: true, configurable: true },
+      "viewerMayReact": { get: function () { return viewerMayReact; }, enumerable: true, configurable: true },
       "viewerShareUrl": { get: function () { return viewerShareUrl; }, enumerable: true, configurable: true },
       "visParkSent": { get: function () { return visParkSent; }, enumerable: true, configurable: true },
       "voteMode": { get: function () { return voteMode; }, set: function (v) { voteMode = v; }, enumerable: true, configurable: true },
       "vqManual": { get: function () { return vqManual; }, set: function (v) { vqManual = v; }, enumerable: true, configurable: true },
       "vqRung": { get: function () { return vqRung; }, enumerable: true, configurable: true },
+      "vupDismissedSig": { get: function () { return vupDismissedSig; }, set: function (v) { vupDismissedSig = v; }, enumerable: true, configurable: true },
       "waitAdmitted": { get: function () { return waitAdmitted; }, enumerable: true, configurable: true },
       "waitDeclined": { get: function () { return waitDeclined; }, enumerable: true, configurable: true },
       "waitQueue": { get: function () { return waitQueue; }, enumerable: true, configurable: true },
@@ -629,7 +673,8 @@
       "whoObserve": { get: function () { return whoObserve; }, enumerable: true, configurable: true },
       "whoRefresh": { get: function () { return whoRefresh; }, set: function (v) { whoRefresh = v; }, enumerable: true, configurable: true },
       "whoRows": { get: function () { return whoRows; }, enumerable: true, configurable: true },
-      "wireModbar": { get: function () { return wireModbar; }, enumerable: true, configurable: true }
+      "wireModbar": { get: function () { return wireModbar; }, enumerable: true, configurable: true },
+      "withMentions": { get: function () { return withMentions; }, enumerable: true, configurable: true }
     });
     yield 0;
 
@@ -641,11 +686,20 @@
     // first paint is already in that language.
     const L10N = GifOS.i18n || null;
     function uiLang() { return (L10N && L10N.ui()) || 'en'; }
+    // Answers the meeting keeps for itself that the page's elements used to hold: the "you left" screen is up
+    // (#left-modal: a leave, or a full door's screen), and it is a full door's (the subscription library takes that one
+    // down again); the host face is on (body.amadmin, painted by applyAdminUi); this page is an app room (body.app-room);
+    // the chat panel is open (#chatpanel.open); the full-screen view is open (#fsview.on). The page sets the last two
+    // where it opens and closes them.
+    let leftScreenUp = false, leftScreenFull = false, adminFace = false, appRoomOn = false, chatOpen = false, fsOpen = false;
+    // A solo app is open on this page (body.solo-app: set when it boots, cleared when Invite turns it into an app room);
+    // an app's pane is up (body.has-app), with the name it shows; the call layer of an app room is on (body.call-on).
+    let soloAppOn = false, appPaneOn = false, appPaneName = '', callOn = false;
     function uiText(key, en) {
       if (L10N && L10N.ui() !== 'en' && L10N.has('meet.' + key)) return L10N.t('meet.' + key);
       return en || '';
     }
-    yield 4;
+    yield 6;
 
     const net = GifOS.net; // the shared transport fabric (also under runtime.js)
     const ICE_SERVERS = net.ICE_SERVERS;
@@ -711,7 +765,7 @@
       (0, /*()*/__V.paintVq)();
       (0, /*()*/__M.adapt)(); // re-ask the camera + re-cap every sender now, not on the next beat
     }
-    yield 17;
+    yield 19;
 
     const params = new URLSearchParams(location.hash.slice(1));
     // A session document is srcdoc (the host page's frame-src is about: only).
@@ -730,8 +784,7 @@
     // document is same-origin with the page that framed it.
     const pageOrigin = () => {
       if (location.origin && location.origin !== 'null') return location.origin;
-      try { if (window.parent && window.parent !== window && window.parent.location && window.parent.location.origin) return window.parent.location.origin; } catch (e) {}
-      return '';
+      return GifOS.host.parentOrigin();
     };
     // ---- ONE RUNTIME: the entry mints the room's TRAITS (docs/one-runtime.md).
     // The link is the promise — which component is pinned is decided HERE, at
@@ -778,7 +831,7 @@
     })();
     const BROADCAST = BC_INTENT && !!params.get('v') && /^[a-f0-9]{16,64}$/.test((params.get('av') || '').toLowerCase());
     const BC_WATCH_COPY = 'Watching the broadcast. You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.';
-    yield 27;
+    yield 29;
     // The lobby is renamed when you arrive wanting a broadcast. The room used
     // to keep saying "meeting" on the chat, the leave dialog, and Help, and
     // nothing told a host they were on air. Paint that chrome once the host
@@ -797,7 +850,7 @@
     // A service mute is this device only. It does not write the shared mix,
     // so a small group still opens at the fader the person last set.
     let serviceHeard = true;
-    yield 30;
+    yield 32;
     let headCountOverride = 0; // headCountForTest: stands in for the live count
     function roomHeadCount() {
       if (headCountOverride > 0) return headCountOverride;
@@ -809,7 +862,7 @@
       } catch (e) {}
       return 1;
     }
-    yield 34;
+    yield 36;
     function recRoomWord() {
       return (BROADCAST) ? 'broadcast' : 'meeting';
     }
@@ -828,7 +881,7 @@
       const kind = recRoomWord();
       return subject ? (subject + ' recording this ' + kind) : ('This ' + kind + ' is being recorded');
     }
-    yield 38;
+    yield 40;
     // The full-width bar names the room and the seat. Its colour follows the
     // lamp: live only while a camera or a microphone is actually sending.
     function paintBroadcastAir() {
@@ -852,7 +905,7 @@
       // host key, pending or verified, takes the seat off bc-watching.
       return bcRoleSafe() === 'viewer';
     }
-    yield 43;
+    yield 45;
     // THE BAR IS THE SCREEN'S (Nathan 2026-11-09): one width, one set of
     // buttons, one order and one set of words per screen size/orientation.
     // barPlan (slots) and dockLabelSet (words) are pure: phone or wide, a
@@ -926,11 +979,11 @@
         if (was && el.title === was) el.title = '';
       }
     }
-    yield 49;
-    let barPlanKey = '';
     yield 51;
-    window.addEventListener('resize', () => { try { (0, /*()*/__V.placeDockForWidth)(); } catch (e) {} });
+    let barPlanKey = '';
     yield 53;
+    window.addEventListener('resize', () => { try { (0, /*()*/__V.placeDockForWidth)(); } catch (e) {} });
+    yield 55;
     // The HOST is whoever holds this room's stored admin key — known before
     // any network exists, which is what lets the boot skip the viewer's
     // camera ask entirely (below) while the host boots like a meeting.
@@ -995,7 +1048,7 @@
     let bcSeatLock = false;
     let bcTestGrant = false; // broadcastGrantForTest on a frame that holds no seat id yet
     let bcCamLiveForTest = false;
-    yield 66;
+    yield 68;
     // A broadcast seat. Hosts hold the admin key (or are still proving it).
     // Stage guests hold the signed app grant. Everyone else watches.
     // canStage is true for the whole page until joinRoom sets `av`, so a
@@ -1013,7 +1066,7 @@
       const r = bcRole();
       return r === 'host' || r === 'stage' || r === 'meet';
     }
-    yield 69;
+    yield 71;
     function bcSending() {
       if (bcCamLiveForTest) return true;
       const live = (kind) => {
@@ -1038,23 +1091,16 @@
     // guest who is sending a camera or a microphone reads Live, and one who
     // is not reads Off air. Meetings hide the lamp.
     function paintOnAir() {
-      const el = document.getElementById('onair');
-      if (!el) return;
-      if (!BROADCAST) { el.hidden = true; return; }
+      if (!BROADCAST) { (0, /*()*/__V.paintOnAirBadge)(null); return; }
       const role = bcRoleSafe();
       let kind = 'off', words = 'Off air';
       if (role === 'viewer') { kind = 'watch'; words = 'Watching'; }
       else if (bcSendingSafe()) { kind = 'live'; words = 'Live'; }
-      el.hidden = false;
-      el.className = kind;
-      el.setAttribute('role', 'status');
-      const w = el.querySelector('.words');
-      if (w && w.textContent !== words) w.textContent = words;
-      el.setAttribute('aria-label', words);
+      (0, /*()*/__V.paintOnAirBadge)(kind, words);
           try { (0, /*()*/__V.paintOnAirSide)(); } catch (e) {}
       try { bcKeepSync(); } catch (e) {}
     }
-    yield 74;
+    yield 77;
     // A viewer publishes nothing, including after a bypass. Stops tracks and
     // parks the main senders. Does not run against a host whose key is still
     // being checked (bcRole stays 'host' while the adopt is pending).
@@ -1078,16 +1124,18 @@
       } finally { bcSeatLock = false; }
     }
     (0, /*()*/__V.paintBroadcastChrome)();
-    yield 78;
-    // The text lives in an inner span: a phone makes the button a flex box
-    // for its 44px tap, and "…" is never drawn on a flex box (or on a
-    // WebKit button), so a long message was cut mid-word.
-    const writeStatus = (t) => {
-      let span = __V.statusEl.querySelector('.statustext');
-      if (!span) { span = document.createElement('span'); span.className = 'statustext'; __V.statusEl.replaceChildren(span); }
-      span.textContent = t;
-    };
     yield 81;
+    // THE STATUS LINE'S WORDS live in the meeting: count (the tap that opens People), rest (the sentence), title (the
+    // whole line) and its named state. setStatus and updateStatus write them here and the page paints them
+    // (paintStatusNotice, paintStatusLine); the agent contract reads them here. The page fits the rest to its row
+    // (fitStatusRest), so the words here are always the whole sentence.
+    const statusLine = { count: 'Joining\u2026', rest: '', title: '', state: '' };
+    // When the room link went down (0 while it is up): the status line's reconnecting note waits for a quiet time.
+    let statusLinkDownAt = 0;
+    yield 86;
+    // The meeting's own link (what #share-url shows): set at the knock, read wherever the link is shared.
+    let shareLink = '';
+    yield 89;
     // The address of the meeting this page joined (set at the knock). Rejoin goes back to it, whatever the address
     // bar says by then: a history Back inside the meeting (Android app 0.9.26 audit) left the bar on /run.html,
     // and a plain reload there opened the lobby instead of the meeting.
@@ -1122,23 +1170,14 @@
       // gave every message its own voice; the alert colour and the hold are
       // what say "this stopped you", and they are decided above.
       m = String(m).replace(/^(?:[\u2600-\u27BF]|[\uD83C-\uD83E][\uDC00-\uDFFF])\uFE0F?\s*/, '');
-      const countEl = document.getElementById('statuscount');
-      const restEl = document.getElementById('statusrest');
-      // #status is the phone's line, #statusrest the wide window's. Write
-      // both: a phone hides #statusrest, and a refusal there went unread.
-      // The count and the rest are children of #status: writing the span's own
-      // text would delete them (and Invite) for good.
-      if (countEl && restEl) { countEl.textContent = ''; countEl.hidden = true; restEl.textContent = m; }
-      else __V.statusEl.textContent = m;
-      if (__V.statusEl.title !== String(m)) __V.statusEl.title = String(m);
-      // Why this line is on screen is state (data-why / data-link / data-back), not words: the live badge reads these, never the sentence.
-      if (__V.statusEl.dataset) { __V.statusEl.dataset.why = ''; __V.statusEl.dataset.link = ''; __V.statusEl.dataset.back = ''; __V.statusEl.dataset.state = state || 'notice'; }
-      __V.statusEl.classList.toggle('alert', blocking || !!hold);
+      Object.assign(statusLine, { count: '', rest: m, title: String(m), state: state || 'notice' });
+      (0, /*()*/__V.paintStatusNotice)(m, state || 'notice', blocking || !!hold);
       statusHoldUntil = Date.now() + (hold || (blocking ? 12000 : 4000));
       // The OFF AIR / LIVE banner follows the line (and the camera) on every paint.
       if (typeof __V.paintLiveBadge === 'function') (0, /*()*/__V.paintLiveBadge)();
       try { (0, /*()*/__V.paintStatusSheet)(); } catch (e) {}
     };
+    yield 98;
     // THE NAMED STATES (js/meet-status.js): one sentence and one tone per
     // state, the same every time it is said. statusWords is the sentence for
     // a state; sayState puts the state on the line.
@@ -1152,7 +1191,7 @@
       if (!st) return;
       setStatus(M.words(id, vars, uiText), hold, st.tone, id);
     };
-    yield 100;
+    yield 109;
     const uid = (p) => p + '_' + Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6);
     // The one standard row-delete glyph (see button.row-del in the styles).
     const DEL_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
@@ -1215,9 +1254,9 @@
     const avInboxes = new Map(); // peer id -> avatar chunk inbox (gifos-avatar.js)
     const UNOWNED_PC_MS = GifOS.timings.UNOWNED_PC_MS; // a pc nobody names and no transport: past a dial's time it is retired (the sweeper)
     const ABSENT_GRACE = GifOS.timings.ABSENT_GRACE;
-    yield 119;
+    yield 128;
     (0, /*()*/__V.applyChrome)();
-    yield 121;
+    yield 130;
     function applyAvatarFile(file) {
       if (!file || !window.GifOS || !GifOS.avatar) return Promise.resolve(null);
       return GifOS.avatar.prepareFile(file).then(async (res) => {
@@ -1247,67 +1286,19 @@
         seed = 'Guest ' + (1000 + Math.floor(Math.random() * 9000));
         GifOS.store.setName(seed);
       }
-      const bg = document.createElement('div'); bg.className = 'name-modal';
-      bg.id = 'appear-modal';
-      bg.setAttribute('role', 'dialog'); bg.setAttribute('aria-modal', 'true');
-      bg.setAttribute('aria-labelledby', 'appear-title');
-      const viewerJoin = (BROADCAST) && !(typeof bcHostStored === 'function' && bcHostStored());
-      if (viewerJoin) bg.setAttribute('aria-describedby', 'appear-note');
-      bg.innerHTML = '<div class="name-box appear-box"><h3 id="appear-title">' + (viewerJoin ? 'Watching the broadcast' : uiText('appearTitle', 'This is how you\'ll appear')) + '</h3>' +
-        (viewerJoin ? '<p id="appear-note">You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.</p>' : '') +
-        '<div class="appear-face" id="appear-face"></div>' +
-        '<div class="appear-name" id="appear-name"></div>' +
-        '<input id="nm" data-agent="name-input" name="nickname" maxlength="40" autocomplete="nickname" aria-label="Your name">' +
-        '<label class="appear-file">' + uiText('changePic', 'Change picture') + '<input id="appear-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp" hidden></label>' +
-        '<div class="appear-actions"><button id="nmcancel" type="button" class="appear-secondary">' + uiText('appearClear', 'Clear') + '</button>' +
-        '<button id="nmok" data-agent="name-save" type="button" class="appear-primary">' + uiText('appearSave', 'Save') + '</button></div></div>';
-      document.body.appendChild(bg);
-      const input = bg.querySelector('#nm');
-      input.value = seed;
-      const face = bg.querySelector('#appear-face');
-      const nameEl = bg.querySelector('#appear-name');
-      const paint = () => {
-        (0, /*()*/__V.paintAppearFace)(face, input.value.trim(), GifOS.store.identity().avatar);
-        if (nameEl) nameEl.textContent = input.value.trim();
-      };
-      paint();
-      input.addEventListener('input', paint);
-      bg.querySelector('#appear-file').addEventListener('change', (e) => {
-        const file = e.target.files && e.target.files[0];
-        applyAvatarFile(file).then(() => paint());
-      });
-      input.focus();
-      {
-        const save = () => {
-          GifOS.store.setName(input.value.trim());
-          try { sessionStorage.setItem('gifos_appear_ok', '1'); sessionStorage.setItem('gifos_appeared', '1'); } catch (e) {}
-          bg.remove();
-          try { refreshAllTiles(); broadcastStatus(); pushLeaf(); } catch (e) {}
-        };
-        bg.querySelector('#nmok').onclick = save;
-        // Clear blanks the name and the picture, then closes (qa-meet-desktop).
-        bg.querySelector('#nmcancel').onclick = () => {
-          input.value = '';
-          try { GifOS.store.setName(''); GifOS.store.setAvatar(null); } catch (e) {}
-          paint();
-          try { sessionStorage.setItem('gifos_appear_ok', '1'); sessionStorage.setItem('gifos_appeared', '1'); } catch (e) {}
-          bg.remove();
-          try { refreshAllTiles(); broadcastStatus(); pushLeaf(); } catch (e) {}
-        };
-        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
-      }
+      (0, /*()*/__V.showAppearCard)(seed);
       // The knock does not wait on the card: the seeded or stored name goes
       // now, and Save or Clear re-announce the one chosen.
       return Promise.resolve(GifOS.store.identity());
     }
-    yield 124;
+    yield 134;
 
     // Someone on the stage says they are playing a recording (Q77).
     function bcPreInRoom() {
       try { for (const id of stageIds()) { const st = statusOf.get(id); if (st && st.rb) return true; } } catch (e) {}
       return false;
     }
-    yield 127;
+    yield 137;
 
     // ---- everyone's live status + room moderation ------------------------------
     // myStatus travels to every peer (and rides in offers/answers so newcomers
@@ -1390,7 +1381,7 @@
     // before joining; the meeting has no switch (it covered the last tile's name).
     // The camera and microphone stay off, so neither press asks for them.
     let blurBeforeAssistant = null;
-    yield 136;
+    yield 146;
     function becomeAssistant(on) {
       if (on === undefined) on = true;
       on = !!on;
@@ -1416,7 +1407,7 @@
       try { (0, /*()*/__V.paintControls)(); } catch (e) {}
       try { (0, /*()*/__V.setBotView)(on); } catch (e) {}   // a lobby Off press takes back a bot view it asked for
     }
-    yield 138;
+    yield 148;
     // The Stage seat comes back with its original claim time, so the person
     // keeps their place in step-up order. A grant that has not arrived yet
     // must not disarm it (reactStageLost waits out stageResumeUntil).
@@ -1732,7 +1723,7 @@
       for (const id of ids(w.declined)) waitDeclined.add(id);
       if (Array.isArray(w.queue)) for (const q of w.queue.slice(0, 200)) if (Array.isArray(q) && q[0]) waitQueue.set(String(q[0]), String(q[1] || '').slice(0, 40) || 'Someone waiting');
     }
-    yield 187;
+    yield 197;
     // The Worker sends a held knocker no 'wait' frame: the hold is a signed room order that every seated door obeys. So the
     // door that withholds a knocker's HOME says so over the knocker's own authenticated channel ({k:'held'}), and the knocker
     // shows the screen from that. Only a page with no seat of its own, and only from a peer it asked, ever shows it.
@@ -1759,7 +1750,7 @@
     }
     const doorHoldsMe = () => !!subsRefused || (doorToldAt > 0 && Date.now() - doorToldAt < doorToldMs());
     let heldWatch = 0;
-    yield 195;
+    yield 205;
     function onHeldSaid(p, dc) {
       if (!dc || dc.__authBy !== p.id) return;                 // an authenticated channel only
       const s = meshSeat(); if (s && s.hasCoord) return;      // a seated page is never put behind the screen
@@ -1771,6 +1762,7 @@
         if (t && t.hasCoord) { clearInterval(heldWatch); heldWatch = 0; meetWait.waiting(false); }
       }, 500);
     }
+    yield 207;
     const meetWait = {
       hold(on) {
         if (!hasAdminRoom()) { holdDoor = false; (0, /*()*/__V.waitPaint)(); return false; }   // no waiting room in an open room
@@ -1839,9 +1831,7 @@
       },
       waiting(on) {
         atWaitDoor = !!on;
-        const el = document.getElementById('waitdoor');
-        if (el) el.hidden = !atWaitDoor;
-        document.body.classList.toggle('wait-door', atWaitDoor);
+        (0, /*()*/__V.paintWaitDoor)(atWaitDoor);
         return atWaitDoor;
       },
       atDoor() { return atWaitDoor; },
@@ -2592,7 +2582,7 @@
       if (frozeThisBeat(beatGap, nowMono - hbLastMono, peers.size)) frozeGap = beatGap;
       hbLastAt = nowBeat;
       hbLastMono = nowMono;
-      if (frozeGap && !document.hidden) { (0, /*()*/__M.resumeReload)(); return; }
+      if (frozeGap && !GifOS.host.hidden()) { (0, /*()*/__M.resumeReload)(); return; }
       // THE WAKE PROBE: a beat this late means the page was away — frozen,
       // suspended, blocked — for longer than every peer's receive-silence
       // threshold, and each of them has judged that silence (see wakeProbe).
@@ -2634,7 +2624,7 @@
       // freshness window): a phone in a pocket keeps its seat without waking
       // the relay 21,600 times a day. The worker clock makes the 12s REAL —
       // under the old DOM timer a pocketed phone actually beat every 25-60s.
-      const throttled = document.hidden && hbTick % 3 !== 0;
+      const throttled = GifOS.host.hidden() && hbTick % 3 !== 0;
       // Beat whenever anyone can hear us: the relay socket, or any live
       // DataChannel (status prefers DCs — see sendSig — so a healing relay
       // socket no longer silences the room's pulse).
@@ -2845,7 +2835,7 @@
         }
       } catch (e) {}
       if (typeof reconcileApp === 'function') reconcileApp();
-      pipReaim(); // keep Safari's auto-PiP flag on the current best candidate
+      (0, /*()*/__V.pipReaim)(); // keep Safari's auto-PiP flag on the current best candidate
     })) hbVia = 'worker';
     // Tell the room when this phone steps away (screen off / another app) —
     // the browser fires visibilitychange before it freezes us, so the last
@@ -2863,32 +2853,7 @@
         return localStream.getTracks().some((t) => t.readyState === 'live' && (t.kind === 'audio' || t.kind === 'video'));
       } catch (e) { return false; }
     }
-    yield 279;
-    // The blur note (tileBlurWhy): a face its sender wants clear, kept soft by
-    // the room, says why in a few words. CSS shows it only while the meeting
-    // controls are up, never on a resting screen.
-    function paintBlurWhy(t, why) {
-      if (!t || !t.tile || typeof t.tile.querySelector !== 'function') return;
-      let el = t.tile.querySelector(':scope > .blurwhy');
-      // Only the element the selector named counts: a blur note is .blurwhy,
-      // and the free-link sentence is .tpause, not the busy line.
-      if (el && !/(^|\s)blurwhy(\s|$)/.test(String(el.className || ''))) el = null;
-      const held = t.tile.querySelector(':scope > .tpause:not(.tpause-busy)');
-      const heldOn = !!(held && /(^|\s)tpause(\s|$)/.test(String(held.className || '')) && !/(^|\s)tpause-busy(\s|$)/.test(String(held.className || '')));
-      // The pause sentence fills the middle of this host (a tile, a Stage
-      // view, or the stadium strip). The video is not flowing, so a blur
-      // reason there would cover the sentence and explain nothing.
-      if (!why || heldOn) { if (el) el.remove(); return; }
-      if (!el) {
-        el = document.createElement('span');
-        el.className = 'blurwhy';
-        t.tile.appendChild(el);
-      }
-      const words = blurWhyWords(why, 'tile');
-      if (el.textContent !== words) el.textContent = words;
-      if (el.dataset.why !== why) el.dataset.why = why;
-    }
-    yield 284;
+    yield 295;
     // ---- Picture-in-Picture: stepping out to another app must not mean
     // leaving the room — a floating overlay keeps the meeting's best face on
     // screen, the way every native call app does. Video only: audio already
@@ -2908,34 +2873,7 @@
     // exempt from Chrome's intensive timer throttling, so the float also
     // keeps our status heartbeat inside the 15s freshness window (see G1).
     const pipReady = (v) => !!(v && v.srcObject && v.videoWidth > 0);
-    function pipSource() {
-      // The stage is the room's chosen broadcast — float it when live (the
-      // composited strip beyond S1, individual stager feeds inside S1).
-      for (const v of __V.stagefeedEl.querySelectorAll('.rowtile video')) if (pipReady(v) && !v.classList.contains('stageface')) return v;
-      let first = null;
-      for (const [pid, p] of peers) {
-        // A camera-off seat (a bot included) still decodes black frames — skip
-        // by status. A relayed or sponsor-forwarded tile is that picture with
-        // the direct pair down, so p.connected is not required once video is ready.
-        // A screen sharer is the best float target, not a skipped one.
-        if (seatDark(statusOf.get(pid)) || !pipReady(p.video)) continue;
-        // Moderation reaches the float: the PiP window paints the RAW frames
-        // (no CSS there), so a peer an admin turned off, or one a moderator
-        // blurred, is never floated — the receiver-side rule holds in every
-        // sink, not only the grid tile.
-        if (forcedCamOff(pid) || modBlurOn(pid) || (typeof shareBlocked === 'function' && shareBlocked(pid))) continue;
-        if (speakingOf.get(pid)) return p.video; // the talker beats first-connected
-        first = first || p.video;
-      }
-      if (first) return first;
-      const sd = __V.stadiumEl.querySelector('[data-row="sd"] video');
-      if (pipReady(sd)) return sd;
-      // Alone in the room (or nobody else's video is up yet): float my OWN
-      // preview — it shows the camera is still live and the room still open
-      // while I'm in another app. Only when the camera is actually ON: the
-      // join-quiet default (camOff) would float a black box.
-      return (meTile && !seatDark(myStatus) && pipReady(meTile.video)) ? meTile.video : null;
-    }
+    yield 297;
     // pipManual: the float was asked for with the Float button while the tab
     // was in view. Only then may it stay up while the meeting is on screen.
     let pipManual = false;
@@ -2986,9 +2924,7 @@
     // each close and why. Read it from Settings > Debug > Export after a few
     // real switches on the device the trouble is on.
     const pipTrace = (window.__pipTrace = window.__pipTrace || []);
-    yield 297;
-    const pageFull = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
-    yield 299;
+    yield 310;
     // ---- The MEETING CARD float. A phone has no document float and can only
     // float a <video>; with every camera off (the privacy-first reload brings
     // everyone back that way) pipSource() offers none. Then the float is a
@@ -3008,7 +2944,7 @@
       if (o.cardOk) return 'card';
       return 'none';
     }
-    yield 304;
+    yield 315;
     function pipCardPaint(force) {
       const c = pipCard; if (!c || !c.ctx) return false;
       const m = (0, /*()*/__V.pipCardModel)();
@@ -3041,7 +2977,7 @@
       if (c.track && typeof c.track.requestFrame === 'function') { try { c.track.requestFrame(); } catch (e) {} }
       return true;
     }
-    yield 306;
+    yield 317;
     // Bounded: a card that has no frame yet is waited for at most PIP_CARD_READY_MS.
     function pipCardReady(c) {
       if (c.video.readyState >= 1) return Promise.resolve(true);
@@ -3065,21 +3001,13 @@
         pipCardPaint(true);
       } else if (!on && c.stop) { const s = c.stop; c.stop = null; s(); (0, /*()*/__V.pipNote)('card-stop'); }
     }
-    yield 310;
+    yield 321;
     function clearPipAuto() {
       if (!pipAutoT) return;
       clearTimeout(pipAutoT);
       pipAutoT = 0;
     }
-    yield 312;
-    function armPipAuto() {
-      if (pipAutoT || docPip || docPipReq || pipFloating()) return;
-      (0, /*()*/__V.pipNote)('auto-arm');
-      pipAutoT = setTimeout(() => { pipAutoT = 0; (0, /*()*/__V.elementFloat)(); }, PIP_AUTO_FALLBACK_MS);
-    }
-    yield 314;
-    const pipFloating = () => !!(docPip || document.pictureInPictureElement
-      || Array.from(document.querySelectorAll('video')).some((v) => v.webkitPresentationMode === 'picture-in-picture'));
+    yield 326;
     // ---- The desktop float (Document Picture-in-Picture: Chrome, Edge). A
     // small always-on-top window with the talker or the stage, your mic and
     // Leave. It plays its OWN <video> on the same stream, so the tile in the
@@ -3087,7 +3015,7 @@
     // (moderation included); it never turns a camera or microphone on.
     // Phones keep the video element's float (no document float there).
     let docPip = null;
-    const docPipOk = () => !__M.IS_MOBILE && !!(window.documentPictureInPicture && typeof window.documentPictureInPicture.requestWindow === 'function');
+    yield 328;
     function docPipName(v) {
       if (!v) return '';
       const t = v.closest('[data-peer]');
@@ -3095,12 +3023,12 @@
       if (v.closest('.rowtile, #stagefeed')) return uiText('stage', 'Stage');
       return v === (meTile && meTile.video) ? uiText('you', 'You') : '';
     }
-    yield 319;
+    yield 330;
     // Re-aimed when the talker or the stage changes (the heartbeat), and when
     // a float is asked for again while one is up.
     function docPipAim() {
       if (!docPip) return;
-      const v = pipSource();
+      const v = (0, /*()*/__V.pipSource)();
       const src = v ? v.srcObject : null;
       if (docPip.video.srcObject !== src) {
         docPip.video.srcObject = src;
@@ -3117,7 +3045,7 @@
     // settles at once and is never shared. A newer window replaces an older.
     // A window that arrives after the person has come back is closed.
     let docPipReq = null;
-    yield 324;
+    yield 335;
     // Coming back to the meeting. The browser closes its own float on the
     // way back and says so (leavepictureinpicture); its word goes first. An
     // exit asked at the same moment can cancel that word: Android Chrome,
@@ -3127,9 +3055,9 @@
     // still up after PIP_RETURN_WAIT_MS. A document window has no such word
     // and closes at once.
     let pipReturnT = 0;
-    yield 327;
+    yield 338;
     try { navigator.mediaSession.setActionHandler('enterpictureinpicture', () => { (0, /*()*/__V.pipNote)('ms-action'); (0, /*()*/__V.awayFull)(true); (0, /*()*/__V.enterPip)(false, true); }); } catch (e) {}
-    yield 329;
+    yield 340;
     // BACK KEEPS THE MEETING (Nathan, 2026-11-15: "back key should float the
     // meeting"). Android Chrome's Back walked the page history and left the
     // meeting. In a meeting a CloseWatcher (Chrome's own API for Back: no
@@ -3145,34 +3073,17 @@
     function inMeetingNow() {
       try { return !!roomJoinedAt && !leaving && !leftMesh; } catch (e) { return false; }
     }
-    yield 332;
+    yield 343;
     function backGuardDrop() {
       if (!backWatch) return;
       const w = backWatch; backWatch = null;
       try { w.destroy(); } catch (e) {}
     }
-    yield 334;
+    yield 345;
     // Safari's auto-PiP flag rides the current best candidate; re-aimed on the
     // heartbeat since who's on stage / who's talking drifts.
     let pipAimed = null;
-    function pipReaim() {
-      (0, /*()*/__V.backGuardSync)();
-      const v = pipSource();
-      sendVisPark(); // hidden-viewer dormancy re-aims with the float (and catches mates that connected while hidden)
-      docPipAim();
-      // No picture and no document float: keep the meeting card ready (one
-      // frame on change, no clock) so the next ask can open it at once.
-      let aim = v;
-      try {
-        if (v) (0, /*()*/__V.pipCardDrop)();
-        else if (meTile && !docPipOk() && (0, /*()*/__V.pipCardEnsure)()) { pipCardPaint(false); aim = pipCard.video; }
-      } catch (e) {}
-      if (typeof botViewOn !== 'undefined' && botViewOn) aim = null;   // the bot view draws no tile, so nothing floats by itself
-      if (aim === pipAimed) return;
-      try { if (pipAimed) pipAimed.autoPictureInPicture = false; } catch (e) {}
-      try { if (aim) aim.autoPictureInPicture = true; } catch (e) {}
-      pipAimed = aim;
-    }
+    yield 347;
     // HIDDEN-VIEWER DORMANCY (media-plane's demand law, applied to mains): a
     // hidden tab still made every row-mate run a full camera encoder AT it —
     // N pocketed phones = N invisible encoders burning on every sender, and
@@ -3186,9 +3097,9 @@
     function sendVisPark() {
       for (const k of [...visParkSent.keys()]) if (!peers.has(k)) visParkSent.delete(k);
       const recording = !!(typeof __M.recRec !== 'undefined' && __M.recRec && __M.recRec.state !== 'inactive');
-      const hidden = document.hidden && !recording;
+      const hidden = GifOS.host.hidden() && !recording;
       let floatPid = null;
-      if (hidden) { const v = pipSource(); for (const [pid, p] of peers) if (p.video === v) { floatPid = pid; break; } }
+      if (hidden) { const v = (0, /*()*/__V.pipSource)(); for (const [pid, p] of peers) if (p.video === v) { floatPid = pid; break; } }
       for (const [pid, p] of peers) {
         // The bot view (js/meet-agent.js) wants no video it has not opened: the same park, asked for the same way.
         const park = (hidden && pid !== floatPid) || (typeof botParks === 'function' && botParks(pid, recording));
@@ -3197,15 +3108,14 @@
         else visParkSent.delete(pid); // never mark unsent state as delivered
       }
     }
-    yield 339;
+    yield 350;
     // A phone grid does not float on its own. Full screen can: Android floats
     // a page that holds the screen (FULL SCREEN ON THE FIRST TAP). Someone
     // who left with no float, while one was there to show, is told once where
     // Float is when they come back.
     let pipHintArmed = false, pipHintDone = false;
-    const pipBtnShown = () => { const b = document.getElementById('pipbtn'); return !!b && b.style.display !== 'none'; };
-    yield 344;
-    window.addEventListener('pageshow', () => { (0, /*()*/__V.awayFull)(false); if (__M.IS_MOBILE) (0, /*()*/__V.pipReturn)('pageshow'); });
+    yield 355;
+    window.addEventListener('pageshow', () => { (0, /*()*/__V.awayFull)(false); if (IS_MOBILE) (0, /*()*/__V.pipReturn)('pageshow'); });
     // ANDROID: FULL SCREEN ON THE FIRST TAP. Android Chrome floats a page on
     // Home or an app switch only when it is in full screen (the media-session
     // action and autoPictureInPicture never fire there, and a float asked for
@@ -3227,15 +3137,7 @@
       try { if (on) sessionStorage.setItem(AUTO_FS_OFF_KEY, '1'); else sessionStorage.removeItem(AUTO_FS_OFF_KEY); } catch (e) {}
     }
     const AUTO_FS_SKIP = '#appfull, #pipbtn, [data-pip], #cam, #mic, [id^="campick"], #sharebtn, a[href], input, textarea, select, [contenteditable="true"]';
-    // Never under a float: the float means the person is on the way out, and
-    // full screen would hide the system bars they leave by.
-    function autoFsWanted() {
-      if (!IS_ANDROID || !__M.IS_MOBILE || autoFsOff || ROOM.solo || leaving || pageFull() || pipFloating()) return false;
-      if (mediaAskPending > 0) return false;
-      const FS = window.GifOS && GifOS.fullscreen;
-      return !!(FS && FS.supported());
-    }
-    yield 354;
+    yield 365;
     // Switching to another window (the tab stays visible) uses the same
     // auto path as a hide: the browser's own action where it sends one,
     // otherwise the video element's float. Coming back closes it. Desktop
@@ -3253,7 +3155,7 @@
     // evidence/pip-0925/phones-matrix). A real trip Home hides the page, so
     // the visible return still closes the float.
     let pipAwayAt = 0, pipAwayT = 0;
-    yield 358;
+    yield 369;
     // A peer whose gossip has gone silent is effectively away even if their
     // browser never got to say so (hard freeze). ms defaults to 13s, which is
     // what keeps the firewall chip off a slow phone. The away CHIP passes
@@ -3825,7 +3727,7 @@
     const ADMIN_GRACE_MS = GifOS.timings.ADMIN_GRACE_MS, ADMIN_CLOSE_MS = GifOS.timings.ADMIN_CLOSE_MS;
     let admGraceT = null, admTickT = null, admDeadline = 0;
     const fmtLeft = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
-    yield 416;
+    yield 427;
     function startAdminCountdown() {
       admGraceT = null;
       admDeadline = Date.now() + ADMIN_CLOSE_MS;
@@ -3876,7 +3778,7 @@
     // stopped and saved first. On a snapshot address the page moves to the
     // same path on the new release; elsewhere a reload follows gifos_current.
     let updateLeaving = false;
-    yield 424;
+    yield 435;
     // The blur level comes back before the camera does (gum below), through
     // the slider's own path, so the first frames leave at the level the person
     // had chosen in this meeting before the reload.
@@ -3903,7 +3805,7 @@
       // A stager's reload keeps the STAGE SEAT and nothing else: mic and camera come back OFF, and the stager turns them on
       // (privacy; a reload never turns a device on by itself). The hidden/freeze writers may have left a media note a moment
       // ago, so drop it here; an update reload (updateLeaving) keeps its own note.
-      try { if (!stageLeaving && (0, /*()*/__M.onStageNow)()) { sessionStorage.setItem(STAGE_RELOAD_KEY, JSON.stringify({ room: updateRoomKey(), at: Date.now(), stg: +myStatus.stg })); if (!updateLeaving) sessionStorage.removeItem(__M.RECOVER_MEDIA_KEY); } } catch (e) {}
+      try { if (!stageLeaving && (0, /*()*/__M.onStageNow)()) { sessionStorage.setItem(STAGE_RELOAD_KEY, JSON.stringify({ room: updateRoomKey(), at: Date.now(), stg: +myStatus.stg })); if (!updateLeaving) sessionStorage.removeItem(RECOVER_MEDIA_KEY); } } catch (e) {}
       if (updateLeaving) return;
       try { sessionStorage.removeItem(UPDATE_RESUME_KEY); } catch (e) {}
     });
@@ -3915,7 +3817,7 @@
       const here = window.GifOS && GifOS.update ? GifOS.update.running().version : null;
       return (pin && /^\d+\.\d+\.\d+(\.\d+)?$/.test(pin) && here !== pin) ? '/versions/' + pin + '/index.html' : 'index.html';
     }
-    yield 430;
+    yield 442;
     function closeRoomNoHost() {
       (0, /*()*/__V.clearAdminClose)();
       leaving = true;                          // stop the auto-reconnect loop
@@ -3926,7 +3828,7 @@
       try { stopRoomClocks(); } catch (e) {}
       for (const pid of Array.from(peers.keys())) { try { dropPeer(pid); } catch (e) {} } if (typeof clearRosterTiles === 'function') clearRosterTiles();
       try { releaseAudioContext(); } catch (e) {}
-      const cm = document.getElementById('closed-modal'); if (cm) cm.style.display = 'flex';
+      (0, /*()*/__V.showClosedDialog)();
     }
     // One path whether the admin never came or has left: `admins` is adminsNow(),
     // built from the signed proofs this page has seen (admSeen), not from the
@@ -3944,7 +3846,7 @@
       if (admGraceT || admTickT) return;       // already in grace or counting
       admGraceT = setTimeout(startAdminCountdown, ADMIN_GRACE_MS); // silent 10s grace
     }
-    yield 455;
+    yield 467;
     let fsSel = null, fsTick = null, fsAutoPid = null;
     // Cross-row Follow: fsAutoKey is the followed key ('peer:<pid>', or 'sd:<pid>' for a face in my Stadium); fsZoomIds the
     // far talkers the big view zooms to while it shows the Stadium, fsZoomBox their box in Stadium picture pixels.
@@ -3960,7 +3862,7 @@
       viewTrace.push(Object.assign({ t: Date.now(), k }, x || {}));
       if (viewTrace.length > 200) viewTrace.shift();
     }
-    yield 462;
+    yield 474;
     // CROSS-ROW FOLLOW. A page holds a person's own camera and voice only from row-mates (camPeer); everyone else is a face
     // in my Stadium, the room pack less my row. Two things this page already has say who talks out there and where they
     // sit: the fold's talk set (L6.2, each seat's own voice verdict, rolled up the digests as a short capped list with its
@@ -4001,13 +3903,13 @@
       const w = Math.min(pw, vw * s), h = Math.min(ph, vh * s);
       return { x: (pw - w) / 2, y: (ph - h) / 2, w, h, fill: s >= cover, shown: (w * h) / (vw * s * vh * s) };
     }
-    yield 469;   // the sender turned the phone: a new picture size
+    yield 481;   // the sender turned the phone: a new picture size
     window.addEventListener('resize', __V.fsFitPaint);
-    yield 471;
+    yield 483;
     // The big view's zoom onto Stadium cells: a CSS transform on #fsmain, the picture itself unchanged. The box of the
     // cells, padded, fills the view as far as FS_ZOOM_MAX allows, and the picture never slides off its own edge.
     const FS_ZOOM_MAX = 8, FS_ZOOM_PAD = 0.1;
-    yield 473;
+    yield 485;
     // The grid videos stay attached while #fsview is open; body.fsopen only
     // hides their paint. busVolume, the row head's packer, selfStageStream
     // and the recorder all read those elements, so detaching them would
@@ -4041,7 +3943,7 @@
         fsAutoPid = fsAutoKey ? fsAutoKey.slice(fsAutoKey.indexOf(':') + 1) : null;
         if (step.changed) viewNote('follow', { to: fsAutoPid, key: fsAutoKey, talking: talking });
         if (fsFollowT) { clearTimeout(fsFollowT); fsFollowT = 0; }
-        if (step.wakeAt) fsFollowT = setTimeout(() => { fsFollowT = 0; if (fsSel === 'auto' && __V.fsview.classList.contains('on')) (0, /*()*/__V.fsRefresh)(); }, Math.max(0, step.wakeAt - Date.now()));
+        if (step.wakeAt) fsFollowT = setTimeout(() => { fsFollowT = 0; if (fsSel === 'auto' && fsOpen) (0, /*()*/__V.fsRefresh)(); }, Math.max(0, step.wakeAt - Date.now()));
       } else if (!(fsAutoPid && speakingKey('peer:' + fsAutoPid))) {
         for (const s of src) if (speakingKey(s.key)) { fsAutoPid = s.key.slice(5); break; }
         fsAutoKey = fsAutoPid ? 'peer:' + fsAutoPid : null;
@@ -4069,67 +3971,14 @@
       const t = st && typeof st.getVideoTracks === 'function' ? st.getVideoTracks()[0] : null;
       return !!(t && t.readyState === 'live' && !t.muted);
     }
-    function fsSources() {
-      const out = [];
-      // The content region first (content tabs, js/meet-viewmode.js content):
-      // in Focus the big view can be a content item as well as a person.
-      try {
-        const VMc = window.GifOS && GifOS.meetViewMode && GifOS.meetViewMode.content;
-        if (VMc && !BROADCAST) for (const it of VMc.items()) if (it.stream || it.v) out.push({ key: it.key, label: it.label || '', v: it.v || null, stream: it.stream || null, fit: 'contain', content: true });
-      } catch (e) {}
-      let stageFit = null;
-      for (const v of __V.stagefeedEl.querySelectorAll('.rowtile video')) {
-        if (v.classList.contains('stageface')) continue;
-        // The Stage strip is a hidden element now that shares show in the
-        // content area, and WebKit never starts a hidden video: a live,
-        // unmuted feed counts, and the view's own big video plays it.
-        if (!pipReady(v) && !fsFeedLive(v)) continue;
-        if (!stageFit) stageFit = (BROADCAST || (0, /*()*/__M.screenSharers)().length || stageIds().length !== 1) ? 'contain' : 'cover';
-        out.push({ key: 'stage:' + ((v.closest('.rowtile') || {}).dataset || {}).row, label: 'On stage', v, fit: stageFit });
-      }
-      if (BROADCAST) return out;
-      // Focus has every tile, camera on or off (Nathan 2026-11-18): a camera-off person is a card with their Settings
-      // picture (the one their grid tile shows) or their initial, so Focus is never a black screen.
-      const picOf = (pid, p) => {
-        try {
-          if (pid === 'me') { const a = (GifOS.store.identity() || {}).avatar; return (a && a.url) || ''; }
-          return (GifOS.meetViews && GifOS.meetViews.avatarUrl && GifOS.meetViews.avatarUrl(statusOf.get(pid), p)) || '';
-        } catch (e) { return ''; }
-      };
-      for (const [pid, p] of peers) {
-        // Every peer the grid shows is listed: a live link, or a tile on the grid while the link is still coming up
-        // (applyComfy's own rule for a tile that takes a slot).
-        const onGrid = !!(p && p.tile && !p.headless && !p.held && p.tile.parentNode && !(p.tile.style && p.tile.style.display === 'none'));
-        if (!p.connected && !onGrid) continue;
-        // A dark one (camera off, admin video-off, blocked share, or no ready
-        // picture) is a name card: v stays null so the raw frames are never
-        // painted. Its picture wears the same blur as the tile's avatar. A live
-        // peer still carries the receiver blur level.
-        const label = displayName(pid);
-        const blocked = forcedCamOff(pid) || (typeof shareBlocked === 'function' && shareBlocked(pid));
-        const dark = !pipReady(p.video) || seatDark(statusOf.get(pid)) || blocked;
-        if (dark) out.push({ key: 'peer:' + pid, label: label, v: null, dark: true, pic: picOf(pid, p), pbl: blurLevelFor(pid, true) });
-        else out.push({ key: 'peer:' + pid, label: label, v: p.video, bl: blurLevelFor(pid), fit: sharingScreen(pid) ? 'contain' : 'cover' });
-      }
-      const sd = __V.stadiumEl.querySelector('[data-row="sd"] video');
-      if (pipReady(sd)) out.push({ key: 'sd', label: uiText('setStadium', 'The stadium'), v: sd, fit: 'contain' });
-      // My tile shows my screen only when I share from the Stage; a share from the Row keeps my camera there.
-      // With my camera off it is my card (my picture, or my initial).
-      if (meTile) {
-        const you = uiText('lobPreviewName', 'You');
-        if (!seatDark(myStatus) && pipReady(meTile.video)) out.push({ key: 'me', label: you, v: meTile.video, fit: (myStatus.scr && !(0, /*()*/__M.shareOnlyStage)('me')) ? 'contain' : 'cover' });
-        else out.push({ key: 'me', label: you, v: null, dark: true, pic: picOf('me'), initial: (() => { try { return nameInitial(myName()); } catch (e) { return ''; } })() });
-      }
-      return out;
-    }
-    yield 479;
+    yield 491;
     function fsBlurClass(v, bl) { v.classList.remove('blur1', 'blur2'); if (bl) { v.classList.add('blur' + bl); try { (0, /*()*/__M.blurSized)(v); } catch (e) {} } }
     let fsOwnExit = false; // an exit closeFsView asked for is on its way
     let fsFull = false; // the view was the full-screen element at the last change
     let fsAskAt = 0; // when the view last asked the browser for full screen
     let fsOverlay = false; // the filmstrip is painted inside a document that already holds the screen
     let fsStripAsk = false;
-    yield 487;
+    yield 499;
     // A tap on a thumb pins a person and the Follow chip follows again: the
     // view picker's switch shows the same choice.
     function fsFollowChanged() {
@@ -4138,34 +3987,14 @@
       try { if (window.GifOS && GifOS.meetViewMode) GifOS.meetViewMode.saveFollow(localStorage, on); } catch (e) {}
       if (typeof window.__meetPaintView === 'function') window.__meetPaintView();
     }
-    yield 494;
+    yield 506;
 
     // ---- tiles ---------------------------------------------------------------
     function nameInitial(name) {
       const ch = Array.from(String(name || ''))[0];
       return ch ? ch.toUpperCase() : '\u2022';
     }
-    yield 496;
-    function paintAvatarImg(avatar, url, hash) {
-      if (!avatar || typeof avatar.querySelector !== 'function') return;
-      let img = avatar.querySelector('img.avatar-img');
-      if (!url) {
-        if (img) img.remove();
-        avatar.classList.remove('has-img');
-        return;
-      }
-      if (!img) {
-        img = document.createElement('img');
-        img.className = 'avatar-img';
-        img.alt = '';
-        avatar.appendChild(img);
-      }
-      if (img.getAttribute('data-hash') !== (hash || '')) {
-        img.src = url;
-        img.setAttribute('data-hash', hash || '');
-      }
-      avatar.classList.add('has-img');
-    }
+    yield 509;
     function displayName(pid) {
       const renamed = hostRename(pid);
       if (renamed) return renamed;
@@ -4254,7 +4083,7 @@
       stageModExtra.forEach(push);
       return ids;
     }
-    yield 506;
+    yield 518;
     function raisedHandRows() {
       const rows = [];
       const seen = new Set();
@@ -4267,7 +4096,7 @@
       handRaiseExtra.forEach((name, id) => push(id, name));
       return rows;
     }
-    yield 508;
+    yield 520;
     function applyRaiseAct(id, act) {
       if (!id || id === myId) return;
       if (act === 'promote') {
@@ -4295,7 +4124,7 @@
         pwBan(id);
       }
     }
-    yield 512;
+    yield 524;
 
     // Open rooms: anyone may blur anyone else. Admin rooms: only an admin.
     // Never yourself (setMod refuses myId). The corner box is that power,
@@ -4332,7 +4161,7 @@
       // Their own blur already softens the face: nothing to blur (qa-meet-desktop).
       return (typeof ownBlurOn === 'function' && ownBlurOn(id)) ? '' : 'blur';
     }
-    yield 517;
+    yield 529;
     // Repaint one tile's overlay: mute/camera icons (attributed when the
     // group applied them), receiver-side ENFORCEMENT of group mute/blur, and
     // the moderation menu's labels. Blur level is not a chip.
@@ -4505,12 +4334,12 @@
       t.tile.classList.toggle('noroute', !isMe && !!t.noRoute);
       t.tile.classList.toggle('reconnecting', reconnecting);
       t.tile.classList.toggle('cam-off', dark); // admin video-off, and an unpermitted screen claim, hide the tile on every receiver; a permitted share is not a dark seat
-      try { paintBlurWhy(t, dark ? '' : tileBlurWhy(id, st)); } catch (e) {}
+      try { (0, /*()*/__V.paintBlurWhy)(t, dark ? '' : tileBlurWhy(id, st)); } catch (e) {}
       if (t.avatar && typeof t.avatar.querySelector === 'function') {
         if (isMe) {
           const mine = (GifOS.store.identity() || {}).avatar;
-          paintAvatarImg(t.avatar, mine && mine.url, mine && mine.hash);
-        } else paintAvatarImg(t.avatar, t.avatarUrl || '', t.avatarHash || '');
+          (0, /*()*/__V.paintAvatarImg)(t.avatar, mine && mine.url, mine && mine.hash);
+        } else (0, /*()*/__V.paintAvatarImg)(t.avatar, t.avatarUrl || '', t.avatarHash || '');
         if (typeof __V.setTileLetter === 'function') (0, /*()*/__V.setTileLetter)(t.avatar, nameInitial(isMe ? myName() : (hostRename(id) || displayName(id))));
       }
       if (BROADCAST) (0, /*()*/__V.paintBroadcastIdent)();
@@ -4569,61 +4398,7 @@
 
     // ---- feed ordering: focus feed on top, then raised hands in raise order --
     let focusId = null;
-    yield 522;
-
-    // Members hidden from the row are the stadium. Stagers stay in the row
-    // while comfy is on (their direct tile is the face; the strip is not).
-    function comfyStadRoster() {
-      // While I wait I see no one; a held person is no one's face here.
-      if (iAmWaiting()) return [];
-      const shown = {};
-      if (myId) shown[myId] = true;
-      for (const [pid, p] of peers) {
-        if (p && p.held) { shown[pid] = true; continue; }
-        if (!p || p.headless || !p.tile) continue;
-        if (p.tile.style.display !== 'none') shown[pid] = true;
-      }
-      if (typeof rosterTiles === 'object' && rosterTiles) for (const [pid, t] of rosterTiles) if (t && t.parentNode) shown[pid] = true;   // a held face is on screen: not a stadium face too
-      const out = [], seen = {};
-      const push = (id) => {
-        if (!id || seen[id] || shown[id]) return;
-        seen[id] = true;
-        out.push(id);
-      };
-      // STADIUM.ROSTER: the faces are the members the count reads (rosterIds), never a pc object. A pair outlives its
-      // person (a crashed or departed page parks disconnected until the ring lets it go, and the tile of a pair outside my
-      // row is hidden), so reading `peers` drew "Stadium \u00b7 N" over an empty box beside a header that had already let
-      // them go. A page gone whose cell is held (byeIsHeld) is no face, as it is no head in the header.
-      for (const id of (Array.isArray(rosterIds) ? rosterIds : [])) {
-        if (meshNode && meshNode.byeIsHeld && meshNode.byeIsHeld(id)) continue;
-        push(id);
-      }
-      return out;
-    }
-    function comfyStadMeta() {
-      let n = 0, cols = 0, video = null, srcEl = null, ids = null, w = 0, h = 0;
-      try {
-        srcEl = document.querySelector('#stadium [data-row="sd"]');
-        video = srcEl ? srcEl.querySelector('video') : null;
-      } catch (e) {}
-      try {
-        if (__M.sdView && __M.sdView.count && __M.sdView.count() > 0) {
-          n = __M.sdView.count(); cols = __M.sdView.cols() || 0; const ci = __M.sdView.cellIds ? __M.sdView.cellIds() : null; if (ci && ci.length === n) ids = ci;
-          // The composite's own canvas is the frame size (the hidden source
-          // <video> lies on an engine that never loads it, or stops following
-          // its growth: chaos-1019, the lone row-3 letters).
-          if (video && __M.sdView.canvas && video.srcObject && video.srcObject.getVideoTracks()[0] === __M.sdView.track) { w = __M.sdView.canvas.width | 0; h = __M.sdView.canvas.height | 0; }
-        }
-      } catch (e) {}
-      try {
-        if (!(n > 0) && __M.mosIn) {
-          const m = __M.mosIn.get('sdm') || __M.mosIn.get('sd');
-          if (m && m.meta) { if (m.meta.n) n = m.meta.n; if (m.meta.cols) cols = m.meta.cols; if (Array.isArray(m.meta.ids) && m.meta.ids.length === m.meta.n) ids = m.meta.ids.slice(); }
-        }
-      } catch (e) {}
-      return { n: n | 0, cols: cols | 0, ids: ids, video: video, srcEl: srcEl, w: w > 2 ? w : 0, h: h > 2 ? h : 0 };
-    }
-    let comfyBusy = false;
+    yield 537;
     // A live stage picture for one person: my own broadcast, or the stg: feed.
     // The row <video> is parked while they are on stage, so it is not used.
     // readyState >= 2 and a live track, or this person is not ready and the
@@ -4644,358 +4419,7 @@
       if (!(v.readyState >= 2) || !(v.videoWidth > 0) || !(v.videoHeight > 0)) return null;
       return { track: vt, aspect: v.videoWidth / v.videoHeight };
     }
-    yield 527;
-    function dropStageViews(keep) {
-      if (!applyComfy.views) return;
-      for (const [id, el] of [...applyComfy.views]) {
-        if (keep && keep.has(id)) continue;
-        const vid = el.querySelector && el.querySelector('video');
-        if (vid) { try { vid.srcObject = null; } catch (e) {} }
-        try { if (el.remove) el.remove(); } catch (e) {}
-        applyComfy.views.delete(id);
-      }
-    }
-    function applyComfy() {
-      if (comfyBusy) return;
-      const MV = (typeof GifOS !== 'undefined' && GifOS.meetViews) || null;
-      if (!MV || !MV.apply) return;
-      const feed = document.getElementById('feed');
-      const allowed = !!meTile && MV.comfyAllowed(document.body);
-      document.body.classList.toggle('comfy', allowed);
-      if (!allowed || !feed) {
-        try { MV.clearRoot(feed); } catch (e) {}
-        try { dropStageViews(null); } catch (e) {}
-        return;
-      }
-      comfyBusy = true;
-      try {
-        const tiles = [];
-        const stg = stageIds();
-        if (meTile && meTile.tile && meTile.tile.style.display !== 'none') {
-          const selfPin = !!(window.__meetSwapSelf || (window.__meetSelf && window.__meetSelf.onStage));
-          tiles.push({ id: 'me', el: meTile.tile, tier: myStatus.bot ? 'bot' : 'row', me: true, bot: !!myStatus.bot, shade: shadeKey('me'),
-            hand: !!myStatus.hand, handOrd: myStatus.hand || 0,
-            // A self-view pin can place your tile on your own stage. It is not room membership.
-            stage: selfPin,
-            shareFace: !myStatus.bot && !!myStatus.scr,
-            stageOrd: Math.max(0, stg.indexOf(myId)),
-            speaker: !myStatus.bot && !!(speakingOf && speakingOf.get && speakingOf.get('me')), pz: 'peer:me' });
-        }
-        for (const [pid, p] of peers) {
-          if (!p || !p.tile || p.headless || p.held || !p.tile.parentNode || p.tile.style.display === 'none') continue;   // a tile off the grid takes no slot
-          const st = statusOf.get(pid) || {};
-          const si = stg.indexOf(pid);
-          const bot = !!st.bot;
-          tiles.push({ id: pid, el: p.tile, tier: bot ? 'bot' : 'row', bot: bot, shade: shadeKey(pid),
-            hand: !!st.hand, handOrd: st.hand || 0,
-            stage: si >= 0, stageOrd: Math.max(0, si),
-            // A sharer's screen is the Stage (the sgs strip below); their face stays in the Row.
-            shareFace: !bot && (() => { try { return !!sharingScreen(pid); } catch (e) { return false; } })(),
-            speaker: !bot && !!(speakingOf && speakingOf.get && speakingOf.get(pid)), pz: 'peer:' + pid });
-        }
-        // A held face is on the grid too: it takes a slot of its own in the pack, or it keeps the box of the pass before
-        // and the next face is drawn over it (two names in one slot).
-        if (typeof rosterTiles === 'object' && rosterTiles) for (const [pid, el] of rosterTiles) {
-          if (!el || !el.parentNode || tiles.some((x) => x.id === pid)) continue;
-          tiles.push({ id: pid, el: el, tier: 'row', bot: false, shade: shadeKey(pid), hand: false, handOrd: 0, stage: false, stageOrd: 0, shareFace: false, speaker: false, pz: 'peer:' + pid });
-        }
-        for (const t of tiles) if (t.shareFace) t.stage = false;
-        // Pin (the tile window) puts that person on my Stage only.
-        for (const t of tiles) if (focusId && t.id === focusId) t.stage = true;
-        // The Stage strip (a shared screen, or the stage composite) at its true aspect.
-        const sgs = document.querySelector('#stagefeed [data-row="sgs"]');
-        const sgsV = sgs && sgs.querySelector('video');
-        const sgsOn = !!(sgsV && sgsV.srcObject);
-        for (let i = 0; i < tiles.length; i++) {
-          tiles[i].seatHeld = false;
-          try { if (tiles[i].el) tiles[i].el.classList.remove('seat-held'); } catch (e) {}
-        }
-        let stagersNow = [];
-        try { stagersNow = stageIds(); } catch (e) {}
-        let sharersNow = [];
-        try { sharersNow = (0, /*()*/__M.screenSharers)(); } catch (e) {}
-        const screenOn = !!(sgsOn && sharersNow.length);
-        // People on stage, in stage order, excluding whoever is sharing
-        // (their camera stays in the row; the screen is the share).
-        const packIds = [];
-        for (let i = 0; i < stagersNow.length; i++) {
-          if (sharersNow.indexOf(stagersNow[i]) >= 0) continue;
-          packIds.push(stagersNow[i]);
-        }
-        let packSources = [];
-        let packOn = packIds.length > 0;
-        if (packOn) {
-          for (let i = 0; i < packIds.length; i++) {
-            const src = stageFeedVideo(packIds[i]);
-            if (!src) { packOn = false; packSources = []; break; }
-            packSources.push({ id: packIds[i], track: src.track, aspect: src.aspect });
-          }
-        }
-        if (sgsV && !sgsV._packMeta) {
-          sgsV._packMeta = true;
-          const again = () => { try { (0, /*()*/__V.layout)(); } catch (e) {} };
-          sgsV.addEventListener('loadedmetadata', again);
-          sgsV.addEventListener('resize', again);
-        }
-        let sgsAspect = 16 / 9;
-        if (sgsV && sgsV.videoWidth > 0 && sgsV.videoHeight > 0) sgsAspect = sgsV.videoWidth / sgsV.videoHeight;
-        // The strip is placed when it is the picture: a screen share, or the
-        // people bar because a per-person feed is not ready yet. A per-person
-        // pack parks the strip (show-stage off) unless the strip element is
-        // the screen itself.
-        let placeStrip = false;
-        if (sgsOn && packOn) {
-          const row = [];
-          const keepViews = new Set();
-          for (let i = 0; i < tiles.length; i++) {
-            const t = tiles[i];
-            const sid = t.me ? myId : t.id;
-            const onStrip = !!(sid && packIds.indexOf(sid) >= 0 && !t.shareFace && !(focusId && t.id === focusId));
-            t.seatHeld = onStrip;
-            try {
-              if (t.el) {
-                t.el.classList.toggle('seat-held', onStrip);
-                if (onStrip) t.el.classList.add('comfy-off');
-              }
-            } catch (e) {}
-            if (onStrip) { t.stage = false; continue; }
-            row.push(t);
-          }
-          tiles.length = 0;
-          const views = [];
-          for (let i = 0; i < packSources.length; i++) {
-            const src = packSources[i];
-            // A focused row tile is already in the list. Do not draw them twice.
-            if (focusId && src.id === focusId) continue;
-            keepViews.add(src.id);
-            const el = (0, /*()*/__V.ensureStageView)(feed, src.id, src.track);
-            views.push({ id: 'stg:' + src.id, el: el, tier: 'row', stage: true, kind: 'person', aspect: src.aspect, shade: shadeKey(src.id), pz: 'stage:' + src.id });
-          }
-          for (let i = 0; i < views.length; i++) tiles.push(views[i]);
-          for (let i = 0; i < row.length; i++) tiles.push(row[i]);
-          dropStageViews(keepViews);
-          // A shared screen is content (Nathan 2026-11-11): it shows in the
-          // content area's tab, from its own stage feed, not as this strip.
-          if (sgs && sgs.dataset) sgs.dataset.pack = '1';
-        } else if (sgsOn) {
-          // The strip is this person's picture. Their row tile leaves the
-          // layout so the others close up. A sharer keeps their face (their
-          // camera is not the stage picture). A Pin keeps its tile.
-          // comfy-off hides the element without setting style.display, so the
-          // stadium roster still counts a row-mate as already shown.
-          const row = [];
-          for (let i = 0; i < tiles.length; i++) {
-            const t = tiles[i];
-            const sid = t.me ? myId : t.id;
-            const onStrip = !!(sid && stagersNow.indexOf(sid) >= 0 && !t.shareFace && !(focusId && t.id === focusId));
-            t.seatHeld = onStrip;
-            try {
-              if (t.el) {
-                t.el.classList.toggle('seat-held', onStrip);
-                if (onStrip) t.el.classList.add('comfy-off');
-              }
-            } catch (e) {}
-            if (onStrip) { t.stage = false; continue; }
-            row.push(t);
-          }
-          tiles.length = 0;
-          for (let i = 0; i < row.length; i++) tiles.push(row[i]);
-          // Screens are content (their tabs). The strip stays the stage
-          // picture only while it carries faces: people on stage whose own
-          // feeds are not here yet.
-          if (packIds.length || !screenOn) {
-            placeStrip = true;
-            tiles.unshift({ id: 'stage:sgs', el: sgs, tier: 'row', stage: true, share: true, kind: 'strip', aspect: sgsAspect, pz: 'stage:sgs' });
-          }
-          dropStageViews(null);
-          if (sgs && sgs.dataset) delete sgs.dataset.pack;
-        } else {
-          for (let i = 0; i < tiles.length; i++) {
-            tiles[i].seatHeld = false;
-            try { if (tiles[i].el) tiles[i].el.classList.remove('seat-held'); } catch (e) {}
-          }
-          dropStageViews(null);
-          if (sgs && sgs.dataset) delete sgs.dataset.pack;
-        }
-        // An app in the meeting takes the seat a shared screen takes. Its
-        // pane stays where it is in the page (moving an iframe reloads it):
-        // a stand-in holds the seat in the layout and the pane is pinned on it.
-        const appSeat = document.getElementById('appseat');
-        const appOn = !!appSeat && document.body.classList.contains('has-app');
-        // Screens, the app and the agenda are one content area with tabs
-        // (contentTile, below): none of them takes a stage seat.
-        const ctOn = contentHas();
-        // A share, or an app in that seat, fills the left side. Show me on
-        // stage keeps your tile with the people until that share ends.
-        // A people strip does not: those faces are the stage.
-        if (screenOn || appOn || ctOn) {
-          for (let i = 0; i < tiles.length; i++) if (tiles[i].me) tiles[i].stage = false;
-        }
-        document.body.classList.toggle('show-stage', placeStrip);
-        const meta = comfyStadMeta();
-        const roster = comfyStadRoster();
-        // Faces are the people not already on screen. The packer's count
-        // only drives the crop, and only when it names this same set.
-        const faces = [];
-        // Once per pass, not once per face (a 240 roster called it 240 times).
-        let stagersFace = [];
-        try { stagersFace = stageIds(); } catch (e) {}
-        for (let j = 0; j < roster.length; j++) {
-          const id = roster[j];
-          let name = '\u2026';
-          try { name = displayName(id) || name; } catch (e) {}
-          // A camera-off face (or one we have not heard from yet) shows
-          // initials. The composite cell for that person is black. A share
-          // does not change that: the screen is the stage strip, and the
-          // parked camera sender would paint this cell black over the letter.
-          const st = statusOf.get(id) || null;
-          const off = !st || (!!st.camOff && !st.rb);
-          let avatar = '';
-          try { avatar = (MV.avatarUrl && MV.avatarUrl(st || {}, null)) || ''; } catch (e2) {}
-          // A camera on the Stage is left out of this drawing. A screen
-          // share whose camera is not on stage is unchanged.
-          let held = false;
-          try {
-            const sharing = id === myId ? !!myStatus.scr : (typeof sharingScreen === 'function' && !!sharingScreen(id));
-            held = stagersFace.indexOf(id) >= 0 && !sharing;
-          } catch (e3) { held = false; }
-          faces.push({ id: id, name: name, initials: held ? '' : nameInitial(name), off: off || held, avatar: held ? '' : avatar, shade: shadeKey(id), held: held });
-        }
-        // A camera on the Stage is not a stadium face here. Nothing is sent
-        // back. When this browser's picture already has one cell per person
-        // still in the stadium, the box is that count. A cell it still names
-        // is left out of the drawing. A picture this page cannot cut stays
-        // whole, so the box is not a slit around a larger frame.
-        let cellOf = null;
-        if (Array.isArray(meta.ids) && meta.ids.length === meta.n && meta.n > 0) {
-          const at = new Map();
-          for (let k = meta.ids.length - 1; k >= 0; k--) {
-            if (meta.ids[k] == null || meta.ids[k] === '') continue;
-            at.set(meta.ids[k], k); // first cell wins, as indexOf did
-          }
-          cellOf = faces.map((f) => (at.has(f.id) ? at.get(f.id) : -1));
-        }
-        const shownFaces = [];
-        const skipCells = [];
-        const restIx = [];
-        const heldIx = [];
-        for (let fi = 0; fi < faces.length; fi++) (faces[fi].held ? heldIx : restIx).push(fi);
-        const nPic = meta.n | 0;
-        let pictureCells = 0;
-        let cut = false;
-        if (restIx.length === 0) {
-          // Everyone past the row is on the stage. No stadium box.
-        } else if (nPic === restIx.length || nPic === 0) {
-          for (let ri = 0; ri < restIx.length; ri++) shownFaces.push(faces[restIx[ri]]);
-        } else if (cellOf && nPic > restIx.length) {
-          const skip = [];
-          const seen = {};
-          let unnamedHeld = 0;
-          for (let hi = 0; hi < heldIx.length; hi++) {
-            const ix = cellOf[heldIx[hi]];
-            if (ix >= 0) { if (!seen[ix]) { seen[ix] = true; skip.push(ix); } }
-            else unnamedHeld++;
-          }
-          const nulls = [];
-          if (Array.isArray(meta.ids)) {
-            for (let ni = 0; ni < meta.ids.length; ni++) if ((meta.ids[ni] == null || meta.ids[ni] === '') && !seen[ni]) nulls.push(ni);
-          }
-          const namedOk = unnamedHeld === 0 && skip.length + restIx.length === nPic;
-          const paired = unnamedHeld > 0 && unnamedHeld === nulls.length && skip.length + nulls.length + restIx.length === nPic;
-          if (paired) for (let ni = 0; ni < nulls.length; ni++) skip.push(nulls[ni]);
-          let restFound = restIx.length > 0;
-          for (let ri = 0; ri < restIx.length; ri++) if (!(cellOf[restIx[ri]] >= 0)) restFound = false;
-          const MM = (typeof GifOS !== 'undefined' && GifOS.meshMedia) || null;
-          let square = false;
-          if (MM && typeof MM.faceSrcRect === 'function' && (meta.cols | 0) > 0 && meta.w > 2 && meta.h > 2) {
-            const s = MM.faceSrcRect(0, nPic, meta.cols | 0, meta.w, meta.h);
-            square = !!(s && s.sw > 0 && Math.abs(s.sw - s.sh) <= 0.08 * s.sw);
-          }
-          if (restFound && square && (paired || namedOk) && skip.length > 0) {
-            for (let si = 0; si < skip.length; si++) skipCells.push(skip[si]);
-            for (let ri = 0; ri < restIx.length; ri++) shownFaces.push(faces[restIx[ri]]);
-            cut = true;
-          }
-        }
-        if (!cut && restIx.length > 0 && shownFaces.length === 0) {
-          if (nPic === faces.length) {
-            for (let fi = 0; fi < faces.length; fi++) shownFaces.push(faces[fi]);
-          } else if (nPic > restIx.length) {
-            // The frame still has more cells than the people left. Size the
-            // box to the frame. Do not squeeze it down to the shorter count.
-            for (let ri = 0; ri < restIx.length; ri++) shownFaces.push(faces[restIx[ri]]);
-            pictureCells = nPic;
-          }
-        }
-        const cols = (skipCells.length && (meta.cols | 0) > 0) ? (meta.cols | 0) : cellOf ? (meta.cols || 0) : (meta.n === roster.length) ? (meta.cols || 0) : 0;
-        if (meta.video && !meta.video._comfyRz) {
-          meta.video._comfyRz = true;
-          meta.video.addEventListener('resize', () => { try { (0, /*()*/__V.layout)(); } catch (e) {} });
-        }
-        const vwNow = window.innerWidth, vhNow = window.innerHeight;
-        // A sideways phone is short whatever its width (a Pixel 7 is 915x412);
-        // a short desktop window under 900px wide is treated like one too.
-        const shortLand = vhNow < 500 && vwNow > vhNow && (vwNow < 900 || !document.body.classList.contains('desk-ptr'));
-        const phone = vwNow < 600 || shortLand;
-        let holdMs = 2500;
-        try { holdMs = __M.STAGE_FACE_SETTLE_MS; } catch (e) {}
-        // The dock and the header float over the tiles. Passing a measured
-        // band here used to reserve that band in the gallery, so the tiles
-        // stopped short of the screen and a wake could resize them.
-        let floor = 0;
-        // An app is something you work, not a face. On an upright phone its
-        // pane starts under the meeting's header chip, so the chip never sits
-        // on the app's own header (Invite, Help, Stop app). The faces keep the
-        // full screen (the layout ignores insets); the chip does not move when
-        // the controls wake or tuck, so this never resizes on a wake.
-        let topInset = 0;
-        if (phone && !shortLand && appOn) {
-          const chipEl = document.querySelector('.topchip');
-          if (chipEl && chipEl.getClientRects().length && getComputedStyle(chipEl).display !== 'none') {
-            topInset = Math.ceil(chipEl.getBoundingClientRect().bottom + 8);
-          }
-        }
-        const ctTile = contentTile(phone);
-        if (ctTile) tiles.unshift(ctTile);
-        window.__comfyLast = MV.apply({
-          feed: feed, tiles: tiles, faces: shownFaces, video: meta.video, srcW: meta.w, srcH: meta.h, cols: cols, cellN: cellOf ? meta.n : 0, cellOf: cellOf, skipCells: skipCells, pictureCells: pictureCells,
-          holdMs: holdMs, floor: floor,
-          vw: window.innerWidth, vh: window.innerHeight, phone: phone, selfId: shadeKey('me'),
-          pill: document.body.classList.contains('has-pill'), bottom: 0, holdBottom: 0, top: 0,
-          mode: window.__meetViewMode || 'gallery',
-          swapSelf: !!(window.__meetSwapSelf || (window.__meetSelf && window.__meetSelf.onStage)),
-          self: window.__meetSelf || 'tile',
-          gallery: window.__meetGallery || 'fit', float: window.__meetView === 'drag', now: Date.now(),
-          content: ctTile ? contentOpts(phone) : null,
-          // Scroll only: the Row and the Stadium carry a label (S7). The words are display text; the code keeps row and stadium.
-          heads: window.__meetGallery === 'scroll' ? { row: uiText('zoneRowHead', 'Direct connections'), stad: uiText('zoneStadHead', 'Stadium connections') } : null,
-          onSettle: () => { try { (0, /*()*/__V.layout)(); } catch (e) {} },
-        });
-        // Content on screen (a shared screen now; the content tabs later):
-        // the one-step presentation button shows only then.
-        const hasContent = !!(window.__comfyLast && window.__comfyLast.content);
-        if (document.body.classList.contains('has-content') !== hasContent) document.body.classList.toggle('has-content', hasContent);
-        try { (0, /*()*/__V.contentPlace)(phone); } catch (e) { ctNote('place-err', { e: String(e && e.message || e).slice(0, 120) }); }
-        const pane = document.getElementById('apppane');
-        if (pane) {
-          for (const [k, v] of [['--seat-x', 'left'], ['--seat-y', 'top'], ['--seat-w', 'width'], ['--seat-h', 'height']]) {
-            if (appOn && appSeat.style[v]) pane.style.setProperty(k, appSeat.style[v]);
-            else pane.style.removeProperty(k);
-          }
-          if (appOn && topInset > 0) {
-            const sy = parseFloat(appSeat.style.top) || 0, sh = parseFloat(appSeat.style.height) || 0;
-            if (sh > 0 && sy < topInset) {
-              pane.style.setProperty('--seat-y', topInset + 'px');
-              pane.style.setProperty('--seat-h', Math.max(1, Math.round(sh - (topInset - sy))) + 'px');
-            }
-          }
-        }
-        // Park the source while the feed shows the stadium, and while the
-        // only people past the row are on stage (the strip must not pop back).
-        if (meta.srcEl) meta.srcEl.classList.toggle('stad-src', shownFaces.length > 0 || heldIx.length > 0);
-        try { (0, /*()*/__V.applyViewerCrops)(); } catch (e) {}
-      } finally { comfyBusy = false; }
-    }
+    yield 541;
     // ---- the meeting's views: Scroll, Fit, Drag, Focus (Nathan 2026-11-11) ----
     // Scroll: the gallery you scroll. Fit: everyone on one screen, nothing
     // floats. Drag: every person tile moves and resizes (Float is picture-in-picture).
@@ -5017,9 +4441,9 @@
     window.__meetView = VMODE ? VMODE.load(viewStore) : 'fit';
     window.__meetGallery = VMODE ? VMODE.gallery(window.__meetView) : 'fit';
     let viewBefore = window.__meetView === 'focus' ? 'fit' : window.__meetView;
-    yield 540;
+    yield 552;
     function viewWord(m) { const w = VIEW_WORDS[m] || VIEW_WORDS.fit; return uiText(w[0], w[1]); }
-    yield 542;
+    yield 554;
     window.__meetPaintView = __V.paintFit;
     // Focus is #fsview in the page. It shows only where a meeting is up: a
     // broadcast or an app keeps its own picture (fsStripOk's rule, without the phone test).
@@ -5027,7 +4451,7 @@
     function focusAllowed() { return !BROADCAST; }
     function syncFocus() {
       const want = window.__meetView === 'focus' && focusAllowed();
-      const on = __V.fsview.classList.contains('on');
+      const on = fsOpen;
       if (want && !(on && fsInline)) {
         if (on) (0, /*()*/__V.closeFsView)(true);
         (0, /*()*/__V.openFsView)((!VMODE || VMODE.loadFollow(viewStore)) ? 'auto' : null, true);
@@ -5047,7 +4471,7 @@
     }
     window.__meetSetView = setView;
     window.__meetLeaveFocus = () => { if (window.__meetView === 'focus') setView(viewBefore || 'fit', 'closed'); };
-    yield 556;
+    yield 568;
     (0, /*()*/__V.paintFit)();
     try { syncFocus(); } catch (e) {}
     window.__meetRelayout = () => { try { (0, /*()*/__V.layout)(); } catch (e) {} };
@@ -5082,7 +4506,7 @@
       if (vars) for (const k in vars) s = s.split('{' + k + '}').join(String(vars[k]));
       return s;
     }
-    yield 565;
+    yield 577;
     function ctScreens() {
       let ids = [];
       try { ids = (0, /*()*/__M.screenSharers)(); } catch (e) { ids = []; }
@@ -5110,7 +4534,7 @@
       ctRefresh();
       try { (0, /*()*/__V.layout)(); } catch (e) {}
     }
-    yield 570;
+    yield 582;
     function ctAgendaOn() { return !!(CT && !ctAgHidden() && ((CT.ag && CT.ag.items.length) || CT.agLocal)); }
     function ctAgCtx(who) { return { adminRoom: hasAdminRoom(), isAdmin: who === myId ? !!amAdmin : (Array.isArray(admins) && admins.indexOf(who) >= 0) }; }
     function ctCanEditAgenda() { return !!(CT && myId && GifOS.meetAgenda.canEdit(CT.ag, myId, ctAgCtx(myId))); }
@@ -5137,7 +4561,7 @@
       if (CT && CT.present) return 'present';
       return window.__meetView || 'fit';
     }
-    yield 578;
+    yield 590;
 
     // ---- the tile the layout places (one share slot), and its options ----
     function ctAspect(it, w) {
@@ -5155,38 +4579,7 @@
       }
       return 0; // the app fills what it is given
     }
-    function contentTile(phone) {
-      if (!CT || !CT.items.length) { if (CT) { CT.el.hidden = true; document.body.classList.remove('ct-on', 'ct-app-off', 'ct-present'); } return null; }
-      CT.phone = !!phone;
-      // Presentation view and Focus place the area themselves: it takes no
-      // share slot in the gallery under them.
-      if (CT.present || (0, /*()*/__V.ctFocusOnContent)()) return null;
-      const scroll = window.__meetGallery === 'scroll';
-      const t = { id: 'stage:content', el: CT.el, tier: 'row', stage: true, share: true, kind: 'app', fill: true, content: true, pz: 'stage:content' };
-      if (scroll) {
-        t.stackH = (w, maxH) => {
-          const asp = CT.items.map((it) => ctAspect(it, w) || 16 / 9);
-          return GifOS.meetContent.stack({ x: 0, y: 0, w: w, h: maxH }, asp, 8).h;
-        };
-      }
-      return t;
-    }
-    function contentOpts(phone) {
-      const v = window.__meetView || 'fit';
-      // Drag is the meeting's own layout (the content takes the screen, the
-      // people inset); a phone's Fit is the content full with a face strip.
-      // R2: an agenda needs only its list (and the tab row); a screen or an
-      // app is sized by its aspect in the zones. The rest goes to the faces.
-      let needH = 0;
-      try {
-        const it = CT && CT.st && !CT.st.all ? CT.items.find((i) => i.key === CT.st.sel) : null;
-        if (it && it.kind === 'agenda') needH = Math.round(1000 / ctAspect(it, 1000)); // the list's own height (ctAspect)
-      } catch (e) {}
-      // Beside the faces (a wide screen) a list reads well at a column's width; the faces take the rest.
-      const needW = needH ? 640 : 0;
-      return { phone: !!phone && v !== 'scroll' && v !== 'drag', hideFaces: !!(CT && CT.facesHidden && phone), needH: needH > 40 ? needH : 0, needW: needW };
-    }
-    yield 582;
+    yield 594;
     // A screen's picture: my own capture, else the sharer's stage feed, else
     // the stage strip (a seat that does not hold the feed paints the strip).
     function ctScreenTrack(sid) {
@@ -5210,82 +4603,7 @@
       if (t && t.readyState !== 'ended') return { track: t, from: 'strip' };
       return null;
     }
-    yield 584;
-
-    // ---- the tab bar ----
-    function ctPaintBar(plan) {
-      const MC = GifOS.meetContent;
-      const st = CT.st;
-      const have = new Map();
-      for (const b of Array.from(CT.tabs.children)) have.set(b.dataset.key, b);
-      let pos = 0;
-      for (const it of CT.items) {
-        let b = have.get(it.key);
-        if (!b) {
-          b = document.createElement('button');
-          b.type = 'button'; b.className = 'ct-tab'; b.dataset.key = it.key; b.setAttribute('role', 'tab');
-          b.innerHTML = '<span class="ct-tabnm"></span><span class="ct-tabtime"></span><span class="ct-dot" aria-hidden="true"></span>';
-          const key = it.key;
-          b.addEventListener('click', () => ctSelect(key, 'tab'));
-          b.addEventListener('keydown', (e) => {
-            if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-            const list = Array.from(CT.tabs.children);
-            const i = list.indexOf(b);
-            const n = list[(i + (e.key === 'ArrowRight' ? 1 : list.length - 1)) % list.length];
-            if (n) { e.preventDefault(); n.focus(); ctSelect(n.dataset.key, 'key'); }
-          });
-        }
-        have.delete(it.key);
-        if (CT.tabs.children[pos] !== b) CT.tabs.insertBefore(b, CT.tabs.children[pos] || null);
-        pos++;
-        const label = ctLabel(it);
-        const nm = b.querySelector('.ct-tabnm');
-        if (nm.textContent !== label) nm.textContent = label;
-        const sel = plan.show.indexOf(it.key) >= 0 && (plan.show.length === 1 || st.all);
-        const on = st.all ? plan.show.indexOf(it.key) >= 0 : it.key === st.sel;
-        b.setAttribute('aria-selected', on ? 'true' : 'false');
-        b.tabIndex = it.key === st.sel ? 0 : -1;
-        const dot = MC.badged(st, it.key);
-        b.classList.toggle('changed', dot);
-        b.setAttribute('aria-label', dot ? ctText('ctChanged', '{tab}, changed', { tab: label }) : label);
-        b.dataset.sel = sel ? '1' : '0';
-        const tm = b.querySelector('.ct-tabtime');
-        const t = it.kind === 'agenda' ? ctAgendaShortTime() : '';
-        if (tm.textContent !== t) tm.textContent = t;
-        tm.classList.toggle('over', it.kind === 'agenda' && ctAgendaOver());
-      }
-      for (const b of have.values()) b.remove();
-      // Tools: bring everyone, see everything, faces (phone), presentation view.
-      const selIt = CT.items.find((i) => i.key === st.sel) || null;
-      const mayBring = !!(selIt && myId && MC.canBring(myId, selIt, { adminRoom: hasAdminRoom(), isAdmin: !!amAdmin, agendaEditor: ctCanEditAgenda() }));
-      ctTool('bring', mayBring && !st.all, CT_ICONS.bring, ctText('ctBring', 'Bring everyone here'), ctText('ctBringTip', 'Everyone in the meeting switches to this tab. They can switch back.'), () => ctBring(st.sel));
-      ctTool('all', CT.items.length > 1, st.all ? CT_ICONS.tabs : CT_ICONS.all, st.all ? ctText('ctTabs', 'One at a time') : ctText('ctSeeAll', 'See everything'), st.all ? ctText('ctTabsTip', 'Show one tab at a time') : ctText('ctSeeAllTip', 'Show every tab side by side'), () => { st.all = !st.all; ctNote('all', { on: st.all }); GifOS.meetContent.sync(st, CT.items); try { (0, /*()*/__V.layout)(); } catch (e) {} });
-      ctTool('faces', CT.phone && window.__meetView !== 'drag', CT_ICONS.faces, CT.facesHidden ? ctText('ctShowFaces', 'Show faces') : ctText('ctHideFaces', 'Hide faces'), '', () => {
-        CT.facesHidden = !CT.facesHidden;
-        try { localStorage.setItem('meet.content.v1.faces', CT.facesHidden ? 'off' : 'on'); } catch (e) {}
-        ctNote('faces', { hidden: CT.facesHidden });
-        try { (0, /*()*/__V.layout)(); } catch (e) {}
-      }, CT.facesHidden);
-      ctTool('present', true, CT_ICONS.present, ctText('ctPresent', 'Presentation view'), ctText('ctPresentTip', 'Fill the screen with this tab and the speaker in the corner (double-click works too)'), () => (0, /*()*/__V.ctPresent)(true, 'button'));
-    }
-    function ctTool(id, show, icon, word, tip, act, pressed) {
-      let b = CT.tools.querySelector('[data-tool="' + id + '"]');
-      if (!b) {
-        b = document.createElement('button'); b.type = 'button'; b.className = 'ct-tool'; b.dataset.tool = id;
-        b.innerHTML = '<span class="ct-ic"></span><span class="ct-word"></span>';
-        b.addEventListener('click', () => { if (b._act) b._act(); });
-        CT.tools.appendChild(b);
-      }
-      b._act = act;
-      b.hidden = !show;
-      const ic = b.querySelector('.ct-ic');
-      if (ic.dataset.icon !== icon) { ic.innerHTML = icon; ic.dataset.icon = icon; }
-      const wd = b.querySelector('.ct-word');
-      if (wd.textContent !== word) wd.textContent = word;
-      b.setAttribute('aria-label', word);
-      if (tip) b.title = tip; else b.removeAttribute('title');
-      if (pressed != null) b.setAttribute('aria-pressed', pressed ? 'true' : 'false');
-    }
+    yield 598;
     function ctSelect(key, why) {
       if (!CT) return;
       if (GifOS.meetContent.select(CT.st, key)) {
@@ -5294,7 +4612,7 @@
         try { (0, /*()*/__V.layout)(); } catch (e) {}
       }
     }
-    yield 589;
+    yield 601;
 
     // ---- Focus: the content tabs are in the picker strip ----
     function ctFocusSources() {
@@ -5317,24 +4635,7 @@
       }
       return out;
     }
-    // Focus moved on or off a content tab: the area goes back to the gallery,
-    // or onto the big view.
-    function ctFocusSync() {
-      if (!CT) return;
-      const on = (0, /*()*/__V.ctFocusOnContent)();
-      if (on) {
-        const k = String(__V.fsmain.dataset.key).slice(8);
-        if (CT.st.sel !== k) GifOS.meetContent.select(CT.st, k);
-        if (!CT.focusC) { CT.focusC = true; ctNote('focus-content', { key: k }); try { (0, /*()*/__V.layout)(); } catch (e) {} }
-        else (0, /*()*/__V.contentPlace)(CT.phone);
-      } else if (CT.focusC) {
-        CT.focusC = false;
-        ctNote('focus-content', { key: null });
-        if (!CT.present) { CT.el.classList.remove('ct-fixed'); CT.el.style.position = ''; }
-        try { (0, /*()*/__V.layout)(); } catch (e) {}
-      }
-    }
-    yield 592;
+    yield 604;
     // The speaker in the corner: whoever talks now (not the person whose
     // screen fills the view: their picture is the screen), held a moment so a
     // cough does not flip it, else the last talker, else someone on stage.
@@ -5359,7 +4660,7 @@
       for (const pid of stg) if (pid !== myId && live(pid)) { CT.speaker = pid; CT.speakerAt = now; return pid; }
       return null;
     }
-    yield 594;
+    yield 606;
 
     // ---- bring everyone to a tab: a signed request, never an order ----
     async function ctBring(key) {
@@ -5532,7 +4833,7 @@
           try {
             const p = CT.panes.get('agenda');
             if (p && !p.hidden) ctPaintAgendaClock(p);
-            if (CT.plan && CT.plan.tabs) ctPaintBar(CT.plan);
+            if (CT.plan && CT.plan.tabs) (0, /*()*/__V.ctPaintBar)(CT.plan);
           } catch (e) {}
         }, every);
       } else if (!run && CT && CT.agTick) { clearInterval(CT.agTick); CT.agTick = 0; }
@@ -5559,7 +4860,7 @@
         left.textContent = MA.mmss(c.ms);
       }
     }
-    yield 616;
+    yield 628;
     window.__meetContentDo = {
       select: (k) => ctSelect(k, 'test'), all: (on) => { if (CT) { CT.st.all = !!on; try { (0, /*()*/__V.layout)(); } catch (e) {} } },
       present: (on) => (0, /*()*/__V.ctPresent)(!!on, 'test'), bring: (k) => ctBring(k), agendaOpen: () => (0, /*()*/__V.ctAgendaOpen)(),
@@ -5573,11 +4874,11 @@
     // scroll, mouse move or key wakes the info (body.meet-awake) for 3 s.
     const AWAKE_MS = GifOS.timings.AWAKE_MS;
     let awakeT = 0;
-    yield 620;
+    yield 632;
     for (const ev of ['pointermove', 'pointerdown', 'touchstart', 'wheel', 'keydown']) {
       window.addEventListener(ev, __V.wakeMeet, { capture: true, passive: true });
     }
-    yield 622;
+    yield 634;
 
     // Viewer crop: local only, applied to video already received (no bandwidth).
     const VCROP_KEY = 'meet.vcrop.v1';
@@ -5605,7 +4906,7 @@
       v.style.position = 'absolute'; v.style.maxWidth = 'none'; v.style.maxHeight = 'none';
       v.style.left = box.x + 'px'; v.style.top = box.y + 'px'; v.style.width = box.w + 'px'; v.style.height = box.h + 'px';
     }
-    yield 629;
+    yield 641;
 
     // Tap a tile: it grows in place, then its control window opens. It stays
     // big until the window closes. Per-person buttons live here, not on tiles.
@@ -5615,121 +4916,9 @@
       return '';
     }
     function twPeer(id) { return id && peers.get(id); }
-    yield 635;
-    function twCropSection(win, el, isMe) {
-      const MZ = GifOS.meetZones;
-      const tv = el.querySelector(':scope > video');
-      let stream = null;
-      if (isMe) stream = localStream && localStream.getVideoTracks()[0] ? new MediaStream([localStream.getVideoTracks()[0]]) : null;
-      else stream = tv && tv.srcObject;
-      if (!MZ || !stream || el.classList.contains('cam-off')) return;
-      const sec = document.createElement('div'); sec.className = 'tw-sec';
-      sec.innerHTML = '<b></b><p class="tw-help"></p><div class="tw-split"><div class="tw-pad"><video muted playsinline autoplay></video><div class="tw-win"></div></div>'
-        + '<div class="tw-side"><div class="tw-zoom"><span aria-hidden="true">−</span><input type="range" min="30" max="100" step="1"><span aria-hidden="true">+</span></div><div class="tw-row"></div></div></div>';
-      sec.querySelector('b').textContent = isMe ? 'Crop what everyone sees' : 'Pan, zoom and crop';
-      sec.querySelector('.tw-help').textContent = isMe
-        ? 'Drag the square. Everyone gets exactly this part of your camera.'
-        : 'Drag the square. Only your screen changes; it costs no bandwidth.';
-      const pad = sec.querySelector('.tw-pad'), pv = pad.querySelector('video'), win2 = pad.querySelector('.tw-win');
-      const zoom = sec.querySelector('input');
-      zoom.setAttribute('aria-label', 'Zoom');
-      pv.muted = true; pv.srcObject = stream; const pr = pv.play(); if (pr && pr.catch) pr.catch(() => {});
-      let crop = Object.assign({ x: 0.5, y: 0.5, s: 1 }, isMe ? (window.__senderCrop.get() || {}) : (viewerCropOf(el.dataset.pzkey) || {}));
-      let pushT = 0;
-      const push = () => {
-        if (isMe) {
-          if (pushT) clearTimeout(pushT);
-          pushT = setTimeout(() => { pushT = 0; window.__senderCrop.set(crop); }, 120);
-        } else {
-          if (MZ.isDefault(crop)) delete vcrops[el.dataset.pzkey]; else vcrops[el.dataset.pzkey] = { x: crop.x, y: crop.y, s: crop.s };
-          saveVcrops();
-          applyViewerCrop(el);
-        }
-      };
-      const paint = () => {
-        // The preview never shows more than the tile does: same blur.
-        if (!isMe && tv) { try { const f = getComputedStyle(tv).filter; pv.style.filter = f && f !== 'none' ? f : ''; } catch (e) {} }
-        const vw = pv.videoWidth || (tv && tv.videoWidth) || 16, vh = pv.videoHeight || (tv && tv.videoHeight) || 9;
-        (0, /*()*/__V.twSizePad)(pad, vw, vh);
-        crop = MZ.normCrop(crop, vw, vh);
-        const pw = pad.clientWidth || 300, ph = pw * vh / vw;
-        const side = crop.s * Math.min(vw, vh) * (pw / vw);
-        win2.style.width = side + 'px'; win2.style.height = side + 'px';
-        win2.style.left = (crop.x * pw - side / 2) + 'px'; win2.style.top = (crop.y * ph - side / 2) + 'px';
-        zoom.value = String(Math.round(crop.s * 100));
-      };
-      pv.addEventListener('loadedmetadata', paint); pv.addEventListener('resize', paint);
-      let drag = null;
-      pad.addEventListener('pointerdown', (e) => {
-        e.preventDefault(); e.stopPropagation();
-        try { pad.setPointerCapture(e.pointerId); } catch (err) {}
-        drag = { x: e.clientX, y: e.clientY, cx: crop.x, cy: crop.y };
-      });
-      pad.addEventListener('pointermove', (e) => {
-        if (!drag) return;
-        const r = pad.getBoundingClientRect();
-        crop.x = drag.cx + (e.clientX - drag.x) / Math.max(1, r.width);
-        crop.y = drag.cy + (e.clientY - drag.y) / Math.max(1, r.height);
-        paint(); push();
-      });
-      const end = () => { drag = null; };
-      pad.addEventListener('pointerup', end); pad.addEventListener('pointercancel', end);
-      zoom.addEventListener('input', () => { crop.s = (+zoom.value || 100) / 100; paint(); push(); });
-      sec.querySelector('.tw-row').appendChild((0, /*()*/__V.twButton)('Reset', false, () => { crop = { x: 0.5, y: 0.5, s: 1 }; paint(); push(); }));
-      win.appendChild(sec);
-      requestAnimationFrame(paint);
-    }
-    // On the Stage: frame what the Stage shows, any shape. Drag the frame to
-    // move it, drag its corner to resize it; Whole picture sends it all.
-    function twStageFrameSection(win) {
-      const cam = localStream && localStream.getVideoTracks()[0];
-      if (!cam || myStatus.camOff) return;
-      const sec = document.createElement('div'); sec.className = 'tw-sec tw-stageframe';
-      sec.innerHTML = '<b>Frame what the Stage shows</b><p class="tw-help">On the Stage everyone sees your whole camera at its own shape. Drag the frame to show less, or its corner to change its size and shape.</p>'
-        + '<div class="tw-split"><div class="tw-pad"><video muted playsinline autoplay></video><div class="tw-win tw-rect"><i class="tw-grip" aria-hidden="true"></i></div></div><div class="tw-side"><div class="tw-row"></div></div></div>';
-      const pad = sec.querySelector('.tw-pad'), pv = pad.querySelector('video'), box = pad.querySelector('.tw-rect');
-      pv.muted = true; pv.srcObject = new MediaStream([cam]); const pr = pv.play(); if (pr && pr.catch) pr.catch(() => {});
-      let f = Object.assign({ x: 0.5, y: 0.5, w: 1, h: 1 }, __M.stageFrameVal || {});
-      let pushT = 0;
-      const push = () => { if (pushT) clearTimeout(pushT); pushT = setTimeout(() => { pushT = 0; (0, /*()*/__M.setStageFrame)(f); }, 120); };
-      const paint = () => {
-        const vw = pv.videoWidth || 16, vh = pv.videoHeight || 9;
-        (0, /*()*/__V.twSizePad)(pad, vw, vh);
-        const n = (0, /*()*/__M.normStageFrame)(f) || { x: 0.5, y: 0.5, w: 1, h: 1 };
-        f = n;
-        box.style.left = ((n.x - n.w / 2) * 100) + '%'; box.style.top = ((n.y - n.h / 2) * 100) + '%';
-        box.style.width = (n.w * 100) + '%'; box.style.height = (n.h * 100) + '%';
-      };
-      pv.addEventListener('loadedmetadata', paint); pv.addEventListener('resize', paint);
-      let drag = null;
-      pad.addEventListener('pointerdown', (e) => {
-        e.preventDefault(); e.stopPropagation();
-        try { pad.setPointerCapture(e.pointerId); } catch (err) {}
-        const br = box.getBoundingClientRect();
-        const corner = Math.abs(e.clientX - br.right) < 28 && Math.abs(e.clientY - br.bottom) < 28;
-        drag = { corner: corner, x: e.clientX, y: e.clientY, f: Object.assign({}, f) };
-      });
-      pad.addEventListener('pointermove', (e) => {
-        if (!drag) return;
-        const r = pad.getBoundingClientRect();
-        const dx = (e.clientX - drag.x) / Math.max(1, r.width), dy = (e.clientY - drag.y) / Math.max(1, r.height);
-        if (drag.corner) {
-          // The top-left corner stays put; the frame grows or shrinks.
-          const l = drag.f.x - drag.f.w / 2, t = drag.f.y - drag.f.h / 2;
-          const w = Math.min(1 - l, Math.max(0.2, drag.f.w + dx)), h = Math.min(1 - t, Math.max(0.2, drag.f.h + dy));
-          f = { x: l + w / 2, y: t + h / 2, w: w, h: h };
-        } else f = { x: drag.f.x + dx, y: drag.f.y + dy, w: drag.f.w, h: drag.f.h };
-        paint(); push();
-      });
-      const end = () => { drag = null; };
-      pad.addEventListener('pointerup', end); pad.addEventListener('pointercancel', end);
-      sec.querySelector('.tw-row').appendChild((0, /*()*/__V.twButton)('Whole picture', !__M.stageFrameVal, () => { f = { x: 0.5, y: 0.5, w: 1, h: 1 }; paint(); push(); }));
-      win.appendChild(sec);
-      requestAnimationFrame(paint);
-    }
-    yield 644;
+    yield 656;
     window.__tileWin = { open: __V.openTileWin, close: __V.closeTileWin, isOpen: () => !!tileWin.el, applyViewerCrops: __V.applyViewerCrops, openStageAdjust: __V.openStageAdjust };
-    yield 648;
+    yield 660;
     (0, /*()*/__V.placeFit)();
     window.addEventListener('load', __V.placeFit);
     window.addEventListener('resize', __V.placeFit);
@@ -5738,7 +4927,7 @@
       if (comfyResizeT) clearTimeout(comfyResizeT);
       comfyResizeT = setTimeout(() => { comfyResizeT = 0; try { (0, /*()*/__V.layout)(); } catch (e) {} }, 150);
     });
-    yield 654;
+    yield 666;
 
     // ---- who's talking: per-stream audio meters → glowing tile border --------
     let ac = null;
@@ -5833,14 +5022,14 @@
     function onMeetAudioState() {
       if (ac && (ac.state === 'suspended' || ac.state === 'interrupted')) ac.resume().catch(() => {});
     }
-    yield 666;
+    yield 678;
     // Where a carried voice is HEARD (docs/turn-carry.md). Every other voice plays through an element; a carried voice is
     // decoded in the page, so it plays from an AudioContext. The meeting context plays to no device where the browser allows
     // that, so there the voice gets a context of its own that plays to the speaker (and follows the speaker pick:
     // applySpeaker). Its own jitter buffer runs on that context's clock: no resampler between the two clocks, no pitch drift.
     // Elsewhere the meeting context is the speaker's already.
     let carryOutAc = null;
-    yield 668;
+    yield 680;
     var myVoiceAt = 0; // last tick my OWN echo-cancelled mic carried voice (the caption gate reads it)
     var leafTalk = false; // my talk verdict as the fold last heard it (L6.2; pushLeaf repeats it to a new seat)
     var myVoiceFrom = 0; // when the current stretch of my voice began (a caption line's span starts here)
@@ -5868,7 +5057,7 @@
       // Hidden tab: sample at 900ms, not 180ms — the only hidden consumer is
       // the PiP re-aim (worker heartbeat, 4s), and five WebAudio reads/sec
       // per participant is real power on a pocketed phone.
-      if (document.hidden && ++meterHiddenTick % 5) return;
+      if (GifOS.host.hidden() && ++meterHiddenTick % 5) return;
       // ALL-MUTED ROOM: 720ms, not 180ms (2026-07-30 power work). The read is
       // already skipped per-muted-participant below, but the WAKEUP was not —
       // and a room where nobody has unmuted (the default: join-quiet) spun
@@ -5921,16 +5110,30 @@
       // than FOLLOW_GAP_MS is the same turn; the seat keeps the start, the hold and the expiry. Sent on a change only.
       const talkNow = !!myVoiceAt && Date.now() - myVoiceAt <= GifOS.timings.FOLLOW_GAP_MS;
       if (talkNow !== leafTalk) { leafTalk = talkNow; try { if (digestMode()) meshNode.setLeaf({ talk: talkNow }); } catch (e) {} }
-      if (fsSel === 'auto' && __V.fsview.classList.contains('on')) (0, /*()*/__V.fsRefresh)();
+      if (fsSel === 'auto' && fsOpen) (0, /*()*/__V.fsRefresh)();
     }, 180);
-    yield 754;
+    yield 766;
     function reactStageSelf() {
       const staged = stageIds().includes(myId);
       if (staged === __M.stagedSelfWas) return;
       __M.stagedSelfWas = staged;
       (0, /*()*/__M.refreshOutbound)(); // park (staged) or restore (stepped down) my MAIN senders
     }
-    yield 794;
+    yield 770;
+    // A TILE ON THE GRID IS A PERSON IN THE COUNT. The relay frees a seat only
+    // when its socket closes, so a frozen browser (sockets open, nothing sent)
+    // is pruned by each client on its own clock, and its tile stays until
+    // dropPeer. The roster and occ gossip drop such a peer sooner and can
+    // flap while they settle, so a header read from them alone can disagree
+    // with the faces on screen. The header counts every tile on the grid, a
+    // silent peer's tile says it is reconnecting, and dropPeer removes the
+    // tile and updates the header in one step.
+    const PEER_SILENT_MS = GifOS.timings.PEER_SILENT_MS;
+    yield 781;
+    const IS_MOBILE = __M.MP.mobileDevice(navigator);
+    yield 784;
+    let powNow = { level: 'full', why: 'unknown' }, powDials = __M.MP.dials('full');
+    yield 806;
     // ---- THE STAGE IS NOT A SECONDARY TILE (2026-08-04) ----------------------
     // The Stage is the ONE feed the whole stadium is looking AT, and both of the
     // constants that sized it were inherited from machinery built for the things
@@ -5978,7 +5181,7 @@
     const STAGE_FPS = GifOS.timings.STAGE_FPS;    // strip paint/capture rate — the live tier, not a tapestry
     function stageCell() {
       const base = stageIds().some(sharingScreen) ? STAGE_CELL_SCREEN : STAGE_CELL;
-      return Math.round(base * __M.powDials.stageCell);
+      return Math.round(base * powDials.stageCell);
     }
     // The strip's rate, by power level — STAGE_FPS is the ceiling captureStream
     // is built at, and stripPack.setFps() moves the paint rate under it without
@@ -5986,7 +5189,7 @@
     // POWER_LOW_STAGE_FPS_PCT; the floor stays above compFps() because a stuttery broadcast
     // is the bug being fixed, not a saving.
     function stageFps() {
-      return Math.round(STAGE_FPS * __M.powDials.stageFps);
+      return Math.round(STAGE_FPS * powDials.stageFps);
     }
     function stageCeilingKbps() {
       if (BROADCAST) return 3500;      // viewers bring NO media — the whole local budget is the stage's, at any scale
@@ -6059,10 +5262,7 @@
       }
       Promise.all(jobs).then(() => { powerStats = { at: Date.now(), senders: out }; });
     }, 10000);
-    // A broadcast viewer with nothing on air: the
-    // Stage says whether it has not started, when it starts (with a
-    // countdown), or that it has ended. "Ended" is the host's one gossiped
-    // flag, the schedule, or this tab having seen company and now alone.
+    yield 820;
     function bcQuietLine(shown, reachBlocked, atDoor) {
       const host0 = typeof bcHostStored === 'function' && bcHostStored();
       const viewer = !!(BROADCAST && !host0);
@@ -6072,7 +5272,7 @@
       // rebroadcast. A host waiting off air is not on air.
       let onAir = false;
       try {
-        onAir = !!document.querySelector('#stagefeed .rowtile') && stageIds().some((id) => {
+        onAir = !!(0, /*()*/__V.stageFeedShows)() && stageIds().some((id) => {
           const st = id === myId ? myStatus : statusOf.get(id);
           return stagePersonLive(id) || !!(st && (st.scr || st.rb));
         });
@@ -6094,18 +5294,20 @@
       }
       return out;
     }
-    yield 810;
+    yield 822;
+    function leftDialogUp() { return leftScreenUp; }
+    yield 824;
     // How many people are still in the room after this page leaves. Taken
     // before the farewell drops the tiles, so the header does not keep the
     // old total and does not fall back to "Just you".
     let leftBehind = 0;
-    yield 812;
+    yield 826;
     function updateStatus() {
       (0, /*()*/__M.refreshTrBtn)();
       if (bannedOut) return;                      // the ban notice is permanent
       if (Date.now() < statusHoldUntil) return;   // an explicit message is showing
       try { if (__M.blockedAudio && __M.blockedAudio.size) return; } catch (e) {} // a refused play stays on the line until the sound starts
-      __V.statusEl.classList.remove('alert');
+      (0, /*()*/__V.paintStatusAlert)(false);
       // Faces on the wall are people, even before their transport has vouched.
       // participantCount() stays the ladder's input; the label may only go up.
       let seen = 1;
@@ -6125,23 +5327,23 @@
       const q = __M.lastQ || rung(linked);
       // You left on purpose. A dead pair after that is not a network the
       // device cannot reach, and that long line was cut off in the header.
-      const leftUp = (0, /*()*/__V.leftDialogUp)();
+      const leftUp = leftDialogUp();
       // A blip is not news: the reconnecting note shows only once the room link
       // has been down this long, so a socket that comes back on its first or
       // second retry never touches the line (the calm rule: nothing flickers).
       // The down time lives on the line itself; a timer repaints at the mark.
       const STATUS_RECONNECT_QUIET_MS = GifOS.timings.STATUS_RECONNECT_QUIET_MS;
       const linkDown = !leftUp && !(relayUp() || (meshSeat() && meshSeat().state === 3 && meshCoord() && meshCoord().pc !== 0));
-      if (!linkDown) __V.statusEl._linkDownAt = 0;
-      else if (!__V.statusEl._linkDownAt) {
-        __V.statusEl._linkDownAt = Date.now();
+      if (!linkDown) statusLinkDownAt = 0;
+      else if (!statusLinkDownAt) {
+        statusLinkDownAt = Date.now();
         setTimeout(() => { try { updateStatus(); } catch (e) {} }, STATUS_RECONNECT_QUIET_MS);
       }
-      const link = (linkDown && Date.now() - __V.statusEl._linkDownAt >= STATUS_RECONNECT_QUIET_MS) ? ' · reconnecting to the room…' : '';
+      const link = (linkDown && Date.now() - statusLinkDownAt >= STATUS_RECONNECT_QUIET_MS) ? ' · reconnecting to the room…' : '';
       // A SERVICE VIEWER sends no video: the quality rung and the password
       // hint are the host's business, and the room bar counts who is watching.
       const bcWatcher = !!(BROADCAST && !(typeof bcHostStored === 'function' && bcHostStored())
-        && !document.body.classList.contains('amadmin') && !(typeof myStatus !== 'undefined' && myStatus.stg));
+        && !adminFace && !(typeof myStatus !== 'undefined' && myStatus.stg));
       // The badge and the room bar already say watching, so a viewer's line
       // names who is live: a host here, or failing that the first other
       // person on the stage. Nobody known yet keeps the watching sentence.
@@ -6156,7 +5358,7 @@
       // watching, and the password she typed to go live is the host one, so
       // the hint names the VIEWER password (without it the broadcast stays
       // blurred, see blurLevelFor).
-      const bcLive = !!(BROADCAST && ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin')));
+      const bcLive = !!(BROADCAST && ((typeof bcHostStored === 'function' && bcHostStored()) || adminFace));
       let extra = '';
       if (n > 1 && !bcWatcher) {
         if (!roomPw) extra = bcLive ? ' · blurred until you set a room password' : ' · ' + uiText('unlockClear', 'faces stay blurred until a password');
@@ -6212,16 +5414,7 @@
         for (const [id, f] of fs) if (!was || was.get(id) !== f) updateTile(id);
         updateStatus.foldSt = fs;
       } catch (e) {}
-      // SUB.11: the People panel and this count read one fold, so an open panel follows it too. (A far person's name can
-      // arrive after the panel was painted: the row said "Guest" until something else repainted it.)
-      try {
-        const rEl = document.getElementById('roster');
-        if (rEl && rEl.classList.contains('open')) {
-          const all = rosterRows();
-          const sig = all.map((x) => x.id + '\t' + x.name + '\t' + (x.muted ? 1 : 0) + (x.camOff ? 1 : 0) + (x.hand ? 1 : 0)).join('\n') + '\n' + (all.more || 0);
-          if (sig !== updateStatus.peopleSig) { updateStatus.peopleSig = sig; paintRosterSoon(); }
-        } else updateStatus.peopleSig = null;
-      } catch (e) {}
+      try { (0, /*()*/__V.paintPeopleIfOpen)(); } catch (e) {}
       // The password and ready-count sentences are longer than the row Fit
       // leaves, so they were cut off after you left. The count and quality stay.
       const tail = partial + link + savedLock + (leftUp ? '' : extra);
@@ -6313,50 +5506,31 @@
         : (link && !leftUp) ? 'reconnecting' : waitingHere ? 'waitingRoom' : shown === 1 ? (atDoor ? 'backIn' : 'alone') : 'meeting';
       const statusShown = statusText;
       const shownDetail = phoneDetail;
-      if (__V.statusEl.dataset) {
-        if (__V.statusEl.dataset.kind !== statusKind) __V.statusEl.dataset.kind = statusKind;
-        const dr = leftUp ? '' : (reachState || ''), du = !leftUp && reachState === 'partial' ? String(reach.dead) : '';
-        if (__V.statusEl.dataset.reach !== dr) __V.statusEl.dataset.reach = dr;
-        // The badge's inputs, written with the line: a link note shows in every branch but the refusal and the password prompt.
-        __V.statusEl.dataset.why = '';
-        __V.statusEl.dataset.link = (link && !refused && !(0, /*()*/__V.atPwPrompt)()) ? '1' : '';
-        __V.statusEl.dataset.back = gettingBack ? '1' : '';
-        if (__V.statusEl.dataset.state !== restState) __V.statusEl.dataset.state = restState;
-        const pf = prog ? prog.flow : '', ps = prog ? prog.step : '', px = prog ? prog.x + '/' + prog.y : '';
-        if (__V.statusEl.dataset.flow !== pf) __V.statusEl.dataset.flow = pf;
-        if (__V.statusEl.dataset.step !== ps) __V.statusEl.dataset.step = ps;
-        if (__V.statusEl.dataset.progress !== px) __V.statusEl.dataset.progress = px;
-        if (__V.statusEl.dataset.unreached !== du) __V.statusEl.dataset.unreached = du;
-      }
-      if ((reachLine || relayNo) && !prog) __V.statusEl.classList.add('alert');
-      if (__V.statusEl.title !== shownDetail) __V.statusEl.title = shownDetail;
-      const countEl = document.getElementById('statuscount');
-      const restEl = document.getElementById('statusrest');
-      if (countEl && restEl) {
-        if (countEl.textContent !== countText) countEl.textContent = countText;
-        // An empty count is no button: Tab must not stop on nothing.
-        if (countEl.hidden !== !countText) countEl.hidden = !countText;
-        if (restEl.textContent !== restText) restEl.textContent = restText;
-        // Fitting the line to its row is layout only: it must never stop the
-        // status line from being written.
-        try {
-          const lead = q && q.label ? ' · ' + q.label : '';
-          // a wait's line that does not fit drops its reason first, then its seconds: the step and phase always stay
-          if (prog) (0, /*()*/__V.fitStatusRest)(restText, prog.head, prog.stepOnly + '…');
-          else (0, /*()*/__V.fitStatusRest)(restText, lead && restText.indexOf(lead) === 0 ? restText.slice(lead.length) : '');
-        } catch (e) {}
-      }
+      // The line as the meeting knows it (statusLine): its kind, the reach and progress facts and the badge's inputs (a
+      // link note shows in every branch but the refusal and the password prompt), and its words.
+      const line = {
+        kind: statusKind, reach: leftUp ? '' : (reachState || ''), why: '', link: (link && !refused && !(0, /*()*/__V.atPwPrompt)()) ? '1' : '', back: gettingBack ? '1' : '',
+        state: restState, flow: prog ? prog.flow : '', step: prog ? prog.step : '', progress: prog ? prog.x + '/' + prog.y : '',
+        unreached: !leftUp && reachState === 'partial' ? String(reach.dead) : '', alert: !!((reachLine || relayNo) && !prog),
+        title: shownDetail, count: countText, rest: restText, fit: null,
+      };
+      // What the rest falls back to when the row is too short: a wait's line drops its reason first, then its seconds
+      // (the step and phase always stay); a resting line drops its quality.
+      try {
+        const lead = q && q.label ? ' · ' + q.label : '';
+        line.fit = prog ? [prog.head, prog.stepOnly + '…'] : [lead && restText.indexOf(lead) === 0 ? restText.slice(lead.length) : ''];
+      } catch (e) {}
+      Object.assign(statusLine, line);
+      (0, /*()*/__V.paintStatusLine)(line);
       (0, /*()*/__V.paintBcQuiet)(bq);
       if (typeof __V.paintLiveBadge === 'function') (0, /*()*/__V.paintLiveBadge)();
       (0, /*()*/__V.paintStatusSheet)();
       try { paintOnAir(); } catch (e) {}
-      try {
-        const chip = document.querySelector('body.broadcast .topchip');
-        if (chip) document.documentElement.style.setProperty('--chip-bottom', Math.ceil(chip.getBoundingClientRect().bottom) + 'px');
-      } catch (e2) {}
+      try { (0, /*()*/__V.paintChipBottom)(); } catch (e2) {}
       try { (0, /*()*/__V.paintInviteSlot)(); } catch (e3) {}
       try { (0, /*()*/__V.paintAloneCard)(); } catch (e4) {}
     }
+    yield 831;
     // The host's start time can arrive by gossip after the
     // line was painted; the countdown moves on its own.
     if (BROADCAST && !(typeof bcHostStored === 'function' && bcHostStored())) setInterval(() => {
@@ -6375,9 +5549,9 @@
     // and then the sentence leaves the row. The whole line stays the
     // header's title and a phone's status sheet.
     let statusRestFull = '', statusRestShort = '', statusRestTiny = '';
-    yield 816;
+    yield 834;
     let fitRestFrame = 0;
-    yield 819;
+    yield 837;
 
     function stagePersonLive(id) {
       if (!id) return false;
@@ -6390,7 +5564,7 @@
       const p = peers.get(id);
       return (p && p.name) || rosterNames[id] || 'Guest';
     }
-    yield 822;
+    yield 840;
     const pageArrived = Date.now();
     function mayHost() {
       return !(typeof hasAdminRoom === 'function' && hasAdminRoom() && !amAdmin);
@@ -6476,7 +5650,7 @@
       }
       if (p.tile.parentNode) p.tile.remove();
     }
-    yield 838;
+    yield 856;
     function hostFlood() {
       const adm = typeof hasAdminRoom === 'function' && hasAdminRoom();
       const signed = (adm && amAdmin && typeof refreshModSig === 'function') ? refreshModSig() : (!adm && typeof modSignMine === 'function') ? modSignMine() : null;   // an open room: signed by me
@@ -6601,7 +5775,7 @@
       rows.sort((a, b) => String(a.name).localeCompare(String(b.name)));
       return rows;
     }
-    yield 857;
+    yield 875;
 
     // ---- mesh plumbing ---------------------------------------------------------
     // EVERY content frame — signaling gossip over the relay AND everything on
@@ -7783,7 +6957,7 @@
       }
       return chain.then(() => finish(!aborted && p._avGen === gen), () => finish(false));
     }
-    yield 965;
+    yield 983;
     function takeAvatar(p, m) {
       if (!p || !GifOS.avatar) return;
       let ib = avInboxes.get(p.id);
@@ -7793,7 +6967,7 @@
       if (box.clear) {
         p.avatarUrl = '';
         p.avatarHash = '';
-        paintAvatarImg(p.avatar, '', '');
+        (0, /*()*/__V.paintAvatarImg)(p.avatar, '', '');
         (0, /*()*/__V.refreshAvatarSurfaces)();
         return;
       }
@@ -7804,13 +6978,13 @@
         const url = 'data:' + mime + ';base64,' + GifOS.avatar.toB64(bytes);
         p.avatarUrl = url;
         p.avatarHash = h;
-        paintAvatarImg(p.avatar, url, h);
+        (0, /*()*/__V.paintAvatarImg)(p.avatar, url, h);
         (0, /*()*/__V.refreshAvatarSurfaces)();
       }).catch(() => {});
     }
     const STAGE_HEAR_MS = GifOS.timings.STAGE_HEAR_MS;
     let platePaintT = 0;
-    yield 970;
+    yield 988;
     function avatarChip(byId) {
       let url = '', hash = '';
       if (byId === myId) {
@@ -7848,7 +7022,7 @@
       if (meshNode && !(opts && opts.scope)) txStats.roomFlood = (txStats.roomFlood || 0) + 1; // room-wide floods I ORIGINATED (flags a message sent to everyone instead of its own section)
       if (meshNode) meshNode.gossip({ a: 1, msg }, opts); // opts: { scope: 'section', ephemeral } for the heartbeat — see THE STATUS PLANE
     }
-    const myName = () => (typeof window !== 'undefined' && window.__gifosMeetName) || GifOS.store.identity().name || 'Guest';
+    const myName = () => window.__gifosMeetName || GifOS.store.identity().name || 'Guest';
 
     // Exactly ONE side initiates each pairing, chosen by peer-id order — the
     // same rule no matter who joined, rejoined, or reloaded first. No glare.
@@ -8246,10 +7420,10 @@
         sendTvDoor: (pid, f) => relaySendSealed(pid, 'tv', f),
         plainFriend: (pid) => turnFriend(pid),   // TURN.5.3: a friend carries pid off TURN at both hops   // TURN.5.3: the question of a cut and its answer go by the door, never into a channel a silent firewall may have killed
         askVouch: (dev, l) => relaySendObj({ t: 'tvouch', to: dev, l }),
-        ask: GifOS.meetTurn.askIce(window.fetch.bind(window)),
+        ask: GifOS.meetTurn.askIce(window.fetch),   // called plainly: a page's fetch needs no receiver
         // THE SUBROOM ASK (js/meet-turn.js): who asks, the relay's signed list of the meeting's doors, my door, the plan's
         // limit for a NEW pipe, and the seat of my room that ends a pipe's warm standby on my side.
-        askSub: GifOS.meetTurn.askSub(window.fetch.bind(window)),
+        askSub: GifOS.meetTurn.askSub(window.fetch),
         asker: () => {
           if (!meshNode) return null;
           if (meshNode.sub === 0 && Date.now() - turnSubWantAt < K.TURN_WAIT * meshNode.tickMs()) return 'joiner';   // my seat asked (opts.sub.ask) lately: it asks again each silent round
@@ -8428,7 +7602,7 @@
       if (!turnLinks || !pid || pid === myId) return false;
       return GifOS.meetTurn.pausedBy(facts || Array.from(turnFacts.values()), myId, pid) || (turnLinks.isLink(pid) && !turnLinks.standby(pid) && !turnLinks.video(pid));
     }
-    yield 1023;
+    yield 1041;
     // S6 (Nathan 2026-11-17): a screen shared by someone whose video reaches me only over the free audio-only TURN link
     // cannot arrive; its pane says so, with Subscribe, instead of a dark stage with their big initial. The TURN rule is
     // unchanged: this is only the words on the pane.
@@ -8444,7 +7618,7 @@
         (0, /*()*/__V.pauseNote)(pane, held, held ? shareFirewallWords(it.name) : '');
       }
     }
-    yield 1026;
+    yield 1044;
     // The subroom ask's answer: my door is r (a listed room I reached: no grant; a new room or a re-pipe: its grant).
     // The seat takes it (meshNode.subGo knocks at the new door inside the call; the relay socket follows the door).
     let turnSubDone = '';
@@ -8783,7 +7957,7 @@
         claimRelayStreams();   // explicitly mapped forwarded media → the target's tile
         (0, /*()*/__M.claimMos)();            // explicitly mapped mosaic hops → bands/frames (3b)
         (0, /*()*/__V.fsRefreshIfOpen)();
-        if (p.video && __V.fsview.classList.contains('on')) p.video.addEventListener('resize', () => (0, /*()*/__V.fsRefreshIfOpen)(), { once: true });
+        (0, /*()*/__V.wireFsResize)(p);
       };
       pc.onicecandidate = (ev) => { if (p.pc !== pc) return; if (ev.candidate && / typ relay/.test(ev.candidate.candidate || '')) { pc.__relayCand = true; if (!pc.__turnSeenAt) pc.__turnSeenAt = Date.now(); } noteIce(p.id, ev.candidate || null); };
       pc.addEventListener('icecandidateerror', (ev) => { if (!pc.__turnSeenAt && turnServerWord(pc, ev && ev.url)) pc.__turnSeenAt = Date.now(); });   // the browser looked my TURN servers' names up and tried one: the web path's clock (turnWebClock)
@@ -8838,12 +8012,13 @@
     // Seated, a pair my seat does not link is no one in the room by its transport alone: an admission pair, a backup uplink, a feed carrier. Their person counts when their status reaches me, not because a channel is open.
     function pairOnly(p) { const s = meshSeat(); return !!(s && s.hasCoord && s.state === 3 && !p.headless && !linkTo(p.id)); }
     function seatStranger(p) { const s = meshSeat(); return !!(s && s.hasCoord && s.state === 3 && !p.headless && !linkTo(p.id) && !meshKnows(p.id)); }
+    yield 1063;
     function restoreDoorTile(p) {
       if (!p || !doorOffGrid.has(p.id)) return;
       doorOffGrid.delete(p.id);
       if (p.headless || !p.tile || p.tile.parentNode) return;
       if (typeof dropRosterTile === 'function') dropRosterTile(p.id, 'own-tile');   // one tile per member: their own replaces the held one
-      __V.grid.appendChild(p.tile);
+      (0, /*()*/__V.paintTileOnGrid)(p.tile);
       // The returning tile replaces the held one in the grid, so lay the grid out now: until a pass places it, the tile
       // has no slot and no tier of its own (a bot showed its badge on a plain row square until the next beat).
       try { (0, /*()*/__V.layout)(); } catch (e) {}
@@ -8853,6 +8028,7 @@
     // death, and that tick rebuilds the tile. The id stays dead. A reload
     // mints a new id, which is the person coming back after unban.
     const bannedSeat = new Set();
+    yield 1066;
     function makePeer(peerId, name, headless) {
       if (bannedSeat.has(peerId)) return null;
       if (peers.has(peerId)) return peers.get(peerId);
@@ -8949,7 +8125,7 @@
           let t = null;
           try { t = (0, /*()*/__V.makeTile)(pid, (rosterNames && rosterNames[pid]) || (q && q.name) || null, false, false); } catch (e) { t = null; }
           if (!t || !t.tile) continue;
-          try { if (!t.tile.parentNode) __V.grid.appendChild(t.tile); } catch (e) {}
+          try { (0, /*()*/__V.paintTileOnGrid)(t.tile); } catch (e) {}
           holdRosterTile(pid, { tile: t.tile, video: t.video });   // no chips writer here: the empty chips of a held tile read "Reconnecting…" (CSS .rhold)
           changed = true;
         }
@@ -8998,7 +8174,7 @@
       // it fed us over to the hot standby IMMEDIATELY (don't wait for the sweep).
       if (typeof __M.mosAnn !== 'undefined') {
         for (const k of [...__M.mosAnn.keys()]) if (k.slice(0, k.indexOf('|')) === peerId) __M.mosAnn.delete(k);
-        for (const k of [...__M.subWant.keys()]) if (k.slice(0, k.indexOf('|')) === peerId) __M.subWant.delete(k);
+        for (const k of [...subWant.keys()]) if (k.slice(0, k.indexOf('|')) === peerId) subWant.delete(k);
         try { (0, /*()*/__M.claimMos)(); } catch (e) {}
       }
       if (focusId === peerId) focusId = null;
@@ -10461,7 +9637,7 @@
     function roomStillNames(pid) {
       const st = statusOf.get(pid), p = peers.get(pid);
       const at = Math.max(stSeen(st), p ? (0, /*()*/__M.peerHeardAt)(p) : 0);
-      return at > 0 && Date.now() - at - holdDebtSince(at) < __M.PEER_SILENT_MS;
+      return at > 0 && Date.now() - at - holdDebtSince(at) < PEER_SILENT_MS;
     }
     // A drained death the guard skipped is kept (pid -> first skip time) and judged again each sweep: once the room stops naming
     // the member (their presence past the window) it is confirmed gone d5, once. Back in the seat's occ, or already confirmed: forgotten.
@@ -10711,7 +9887,7 @@
       // that has not noticed yet: nothing reaches the server through a dark network
       const offline = !!netDarkAt || navigator.onLine === false;
       return { dp: directPath, relay: relayUp() && !offline, list, greeters, pw: (0, /*()*/__V.atPwPrompt)(),
-        wait: document.body.classList.contains('wait-door') || (typeof iAmWaiting === 'function' && iAmWaiting()),
+        wait: atWaitDoor || (typeof iAmWaiting === 'function' && iAmWaiting()),
         doorUp, st, coord, turn, web: turnWebUp, client: turnClient, webMine, farIn, n, live, nAtRelay: progNAtRelay, offline,
         saved: progRun && progRun.flow === 'update', reloaded: !!updateResume };
     }
@@ -10757,13 +9933,13 @@
     function progressBeat(seated, now) {
       if (!progRun && !progEndedJoin) progressStart(updateResume ? 'update' : 'join');
       else if (!progRun && progEndedJoin) {
-        const linkDown = !!(__V.statusEl._linkDownAt && now - __V.statusEl._linkDownAt >= GifOS.timings.STATUS_RECONNECT_QUIET_MS);
+        const linkDown = !!(statusLinkDownAt && now - statusLinkDownAt >= GifOS.timings.STATUS_RECONNECT_QUIET_MS);
         // lost: the seat is gone, or it is kept and I am alone while my room's joining connection is made again (wayBack)
         const mending = seated && wayBack();
         const lost = (!seated || mending) && !leaving;
         if (lost) { if (!progBackSince) progBackSince = now; } else progBackSince = 0;
         const dark = !!(netDarkAt && now - netDarkAt >= GifOS.timings.STATUS_RECONNECT_QUIET_MS);
-        if ((linkDown || dark || (lost && now - progBackSince >= GifOS.timings.STATUS_RECONNECT_QUIET_MS)) && !leaving && !(typeof __V.leftDialogUp === 'function' && (0, /*()*/__V.leftDialogUp)())) { progressStart('reconnect'); progMend = mending && !linkDown && !dark; }
+        if ((linkDown || dark || (lost && now - progBackSince >= GifOS.timings.STATUS_RECONNECT_QUIET_MS)) && !leaving && !(typeof leftDialogUp === 'function' && leftDialogUp())) { progressStart('reconnect'); progMend = mending && !linkDown && !dark; }
       }
       // A flow that began because the joining connection was being made again ends with that: the connection is up (the
       // flow's own end), or nothing is being made any more (the ask was refused or closed: the line says what is true now).
@@ -10805,7 +9981,8 @@
       if (w) return { step: w.stepOnly + (w.secs ? ' \u00b7 ' + w.secs : ''), title: w.what + '\u2026', body: why, spin: true };
       return { step: Math.max(1, Math.ceil(waited / 1000)) + ' s', title: uiText('pgDoor', 'Finding your meeting') + '\u2026', body: why, spin: true };
     }
-    let joinVeilEl = null, unseatedSince = 0, veilCeilLogged = false;
+    let unseatedSince = 0, veilCeilLogged = false, joinVeilUp = false;
+    yield 1195;
     setInterval(() => {
       if (!room || typeof meshSeat !== 'function') return;
       const s = meshSeat();
@@ -10813,36 +9990,17 @@
       const now = Date.now();
       let w = null;
       try { if (typeof progressBeat === 'function') w = progressBeat(seated, now); } catch (e) {}
-      if (seated || (0, /*()*/__V.leftDialogUp)()) { unseatedSince = 0; veilCeilLogged = false; if (joinVeilEl) { joinVeilEl.remove(); joinVeilEl = null; } return; }   // a page that left (or was turned away) is not connecting
+      if (seated || leftDialogUp()) { unseatedSince = 0; veilCeilLogged = false; if (joinVeilUp) { joinVeilUp = false; (0, /*()*/__V.paintJoinVeil)(null); } return; }   // a page that left (or was turned away) is not connecting
       if (!unseatedSince) { unseatedSince = now; return; }
       if (now - unseatedSince < 4000) return; // fast joins never see it
-      if (!joinVeilEl) {
-        joinVeilEl = document.createElement('div');
-        joinVeilEl.id = 'joinveil';
-        joinVeilEl.innerHTML = '<div class="jv-box" role="status" aria-live="polite"><div class="jv-spin"></div><p class="pg-step" id="jv-s"></p><h3 id="jv-t"></h3><p id="jv-p"></p></div>';
-        document.body.appendChild(joinVeilEl);
-      }
+      joinVeilUp = true;
       const waited = now - unseatedSince;
-      const veilSay = (step, title, body) => {
-        const hs = joinVeilEl.querySelector('#jv-s');
-        const ht = joinVeilEl.querySelector('#jv-t');
-        const hp = joinVeilEl.querySelector('#jv-p');
-        if (hs && hs.textContent !== step) hs.textContent = step;
-        if (ht && ht.textContent !== title) ht.textContent = title;
-        if (hp && hp.textContent !== body) hp.textContent = body;
-      };
-      if (w) {
-        joinVeilEl.dataset.flow = w.flow; joinVeilEl.dataset.step = w.step; joinVeilEl.dataset.x = String(w.x); joinVeilEl.dataset.y = String(w.y);
-      }
       if (waited > 8000 && !veilCeilLogged) { veilCeilLogged = true; try { console.debug('seat ceiling 210s'); } catch (e) {} }
       const refusal = relaySaidNo();
       const vw = joinVeilWords({ w, waited, now, busyAt: relayBusyAt, busyShowMs: GifOS.timings.RELAY_BUSY_SHOW_MS, unreachAt: doorUnreachAt, relayUp: relayUp(), refusal });
-      joinVeilEl.dataset.refused = refusal ? String(refusal.code) : '';
-      const spin = joinVeilEl.querySelector('.jv-spin');
-      if (spin && spin.hidden !== !vw.spin) spin.hidden = !vw.spin;
-      veilSay(vw.step, vw.title, vw.body);
+      (0, /*()*/__V.paintJoinVeil)({ w, vw, refusal });
     }, 1000);
-    yield 1175;
+    yield 1197;
 
     // ---- THE EMPTY APP ROOM (#appwait) ---------------------------------------
     // A guest opening an app invite gets the app from WHOEVER IS IN THE ROOM
@@ -10860,7 +10018,7 @@
     // It never shows for a founder (their own runApp mounts has-app) and
     // never over the call layer (call-on: the room is visibly alive).
     let appWaitEl = null, appWaitSince = 0;
-    yield 1177;
+    yield 1199;
 
     // The directory is DERIVED, every tick, from the mesh: occ (coord → peer,
     // maintained by the healing laws) plus fresh status gossip. Replaces the
@@ -11022,6 +10180,9 @@
     // unclassifiable — a not-yet-synced row-mate must not blink out).
     // Seated, a peer my seat links but names at no cell (isRowMate's backup-uplink case).
     const linkOnly = (s, pid) => !!(s && s.hasCoord && s.state === 3 && typeof s.linkPeers === 'function' && s.linkPeers().has(pid));
+    // A room the comfy layout draws (meet-views comfyAllowed's rule, from the meeting's own facts): not a broadcast,
+    // not an app room, not a solo app (the page's body.broadcast / app-room / solo-app).
+    function comfyRoom() { return !BROADCAST && !appRoomOn && !soloAppOn; }
     function reconcileGrid() {
       const s = meshSeat(), c = meshCoord();
       if (!s || !c) return; // pre-seat: show whatever linked (bootstrap)
@@ -11044,7 +10205,7 @@
           // (hard-bugs-1019-1108 bug 1). The stadium face stays instead.
           let show = false;
           try {
-            const comfy = !!(meTile && typeof GifOS !== 'undefined' && GifOS.meetViews && GifOS.meetViews.comfyAllowed(document.body));
+            const comfy = !!(meTile && typeof GifOS !== 'undefined' && GifOS.meetViews && comfyRoom());
             const k0 = coordOfPeer.get(pid);
             let mate = !k0 && !linkOnly(s, pid);
             if (k0) { const cc0 = net.topo.unck(k0); mate = cc0.pc === c.pc && cc0.r === c.r; }
@@ -11094,7 +10255,7 @@
     // (localStorage, off by default); the link still turns it on for its page.
     const DEBUG_ON = (() => {
       const D = GifOS.debugLog;
-      if (D && D.pageWants) { try { return D.pageWants(window).on; } catch (e) {} }
+      if (D && D.pageWants) { try { return D.pageWants().on; } catch (e) {} }   // the page's own location and storage
       const on = /(?:^|[#&?])debug=(?:on|1|true)/i.test(location.hash + location.search);
       try { if (on) sessionStorage.setItem('gifos_debug', '1'); } catch (e) {}
       try { return on || sessionStorage.getItem('gifos_debug') === '1'; } catch (e) { return on; }
@@ -11105,11 +10266,8 @@
     // re-pair wedge hunt was flying blind. DEBUG pages log them now (drills
     // tap the console); production stays exactly as silent as before (null →
     // typeof 'object' → every guard stays false).
-    const DEBUGFAIL_AT_LOAD = (() => { const m = /(?:^|[#&?])debugfail=([a-z-]+)/i.exec(location.hash + location.search); return m ? m[1].toLowerCase() : ''; })();   // read at load: the boot rewrites the hash later
-    // MEM SAMPLES (DEBUG only): every 30 s one small record of what this page holds, so a long room shows what only grows.
-    // JS heap (performance.memory where it exists), mesh/pc maps, pipe-worker queues, media element tracks, pcs by state.
-    // It never calls into a live RTCPeerConnection (no getSenders/getReceivers) and never wraps Worker: suspected in a 40-page room whose renderers crashed (rtp_sender CHECK).
-    // Own ring (window.__memSamples, 240 records = 2 h), plus one MEM line in the mesh trace so it rides the participant's trace file. Numbers only: no ids, no names.
+    const DEBUGFAIL_AT_LOAD = (() => { const m = /(?:^|[#&?])debugfail=([a-z-]+)/i.exec(location.hash + location.search); return m ? m[1].toLowerCase() : ''; })();
+    yield 1209;
     if (DEBUG_ON) {
       const MS = window.__memSamples = window.__memSamples || [];
       const sz = (x) => { try { return x == null ? null : (typeof x.size === 'number' ? x.size : (typeof x.length === 'number' ? x.length : null)); } catch (e) { return null; } };
@@ -11120,9 +10278,7 @@
           const pcs = {}; let recv = 0, send = 0, live = 0;
           for (const v of peers.values()) { const pc = v && v.pc; if (!pc) continue; pcs[pc.connectionState] = (pcs[pc.connectionState] || 0) + 1; }
           o.pcs = pcs;
-          const els = document.querySelectorAll('video,audio'); let withStream = 0, tracks = 0, liveTracks = 0;
-          for (const el of els) { const ms = el.srcObject; if (ms && ms.getTracks) { withStream++; for (const t of ms.getTracks()) { tracks++; if (t.readyState === 'live') liveTracks++; } } }
-          o.mediaEls = els.length; o.elStreams = withStream; o.elTracks = tracks; o.elLiveTracks = liveTracks;
+          Object.assign(o, (0, /*()*/__M.mediaElCensus)());
         } catch (e) {}
         try { o.maps = { peers: sz(peers), seatAskAt: sz(seatAskAt), seatMark: sz(seatMark), bcTrace: sz(window.__bcTrace), traceRing: window.__meshTraceRing ? window.__meshTraceRing.ring.length : 0 }; } catch (e) {}
         try { const s = meshSeat(); if (s) o.seat = { occ: sz(s.occ), sitting: sz(s.sitting) }; } catch (e) {}
@@ -11161,11 +10317,11 @@
         // away, the power level, who I asked to park, my PiP aim, the
         // worker-vs-DOM heartbeat clock, and each sender's negotiated codec +
         // encoder implementation (SoC hardware name vs libvpx/OpenH264).
-        hidden: !!document.hidden, hbVia,
-        pow: { level: __M.powNow.level, why: __M.powNow.why },
+        hidden: !!GifOS.host.hidden(), hbVia,
+        pow: { level: powNow.level, why: powNow.why },
         parkAsked: Array.from(visParkSent.entries()).filter(([, v]) => v).map(([id]) => String(id).slice(0, 8)),
         parked: Array.from(peers.entries()).filter(([, p]) => p.remoteParkMain).map(([id]) => String(id).slice(0, 8)),
-        pipAim: (() => { try { const v = pipSource(); if (!v) return null; const t = v.closest('[data-peer]'); return t ? 'peer:' + String(t.dataset.peer).slice(0, 8) : 'comp'; } catch (e) { return 'err'; } })(),
+        pipAim: (() => { try { const v = (0, /*()*/__V.pipSource)(); if (!v) return null; const t = v.closest('[data-peer]'); return t ? 'peer:' + String(t.dataset.peer).slice(0, 8) : 'comp'; } catch (e) { return 'err'; } })(),
         power: (notePowerRead(), (powerStats.senders || []).map((s) => ({ to: s.to, codec: s.codec, impl: s.impl, limit: s.limit }))) };
     }
 
@@ -11876,7 +11032,7 @@
           if (Date.now() < until) setTimeout(tick, 500);
           return;
         }
-        (0, /*()*/__M.startRec)({ scope: 'program', quality: (0, /*()*/__M.recDefaultQuality)(__M.IS_MOBILE), matchMix: false, keep: true }).then((err) => {
+        (0, /*()*/__M.startRec)({ scope: 'program', quality: (0, /*()*/__M.recDefaultQuality)(IS_MOBILE), matchMix: false, keep: true }).then((err) => {
           bcKeepLog.push({ t: Date.now(), err: err || '' });
           if (typeof err === 'string' && err && Date.now() < until) setTimeout(tick, 1000);
         }, () => {});
@@ -11998,7 +11154,7 @@
       if (m.on === 0) { capServerKey = null; capClear('server'); return; }
       if (m.ok === 0) { pwLog('capture-refused ' + m.why); if (m.why === 'taken') setStatus(uiText('capTaken', 'Someone else has taken charge of this meeting')); else if (m.why === 'ended' && amAdmin) capClear('server ended'); else if (m.why !== 'ended') setStatus(uiText('capFailed', 'Could not make you admin of this room')); }
     }
-    yield 1316;
+    yield 1340;
     if (DEBUG_ON) window.__capTry = () => capTry();   // DEBUG=on only: a test taps "Make me admin"
     if (DEBUG_ON) window.__capState = () => ({ on: capOn(), key: capKey, exp: capExp, mine: amAdmin, pw: !!roomPw, ep: pwEpoch });
     async function admSigned(act, extra) {
@@ -12233,7 +11389,7 @@
     function loadAdm() {
       try { admKey = localStorage.getItem(admStoreKey()); } catch (e) { admKey = null; }
     }
-    yield 1344;
+    yield 1368;
 
     // A signed order's `by` is a peer id; a name is looked up here.
     function nameForPeer(pid) { return (peers.get(pid) || {}).name || rosterNames[pid] || ''; }
@@ -12528,6 +11684,7 @@
     // LOAD COMPLETENESS: a page that missed one of its own scripts (a flaky network) must not seat: a seat without every unit throws "is not a function" in the middle of a room.
     // A missing script is loaded again (in page order, with backoff); if it still fails the page refuses to join, says so on screen and in the DEBUG trace.
     const UNITS_BACKOFF = [0, 400, 1200, 2400];
+    yield 1416;
     function unitsGate() {
       const g = window.__gifosLoadGate;
       // A published page opened on the lobby runs its meeting scripts in two parts and the second is still on its
@@ -12538,9 +11695,9 @@
         g.state = 'retry';
         if (!g.running) {
           g.running = true;
-          const order = Array.from(document.querySelectorAll('script[src]')).map((el) => { try { return new URL(el.src, location.href).pathname.replace(/^\//, ''); } catch (e) { return ''; } });
+          const order = GifOS.host.scriptOrder();
           const note = (m) => { g.trace.push(m); if (typeof clog === 'function') clog('load-gate ' + m); };
-          const load = (src) => new Promise((res) => { const el = document.createElement('script'); el.async = false; el.src = src + '?lc=' + g.tries; el.onload = () => res(true); /* a failure is its error event; a size of 0 is a Safari 304, not a missing body (see #gifos-load-gate) */ el.onerror = () => { el.remove(); res(false); }; document.head.appendChild(el); });
+          const load = (src) => GifOS.host.loadScript(src + '?lc=' + g.tries);
           (async () => {
             note('missing ' + g.failed.join(',') + (g.threw.length ? ' threw ' + g.threw.join(',') : ''));
             let todo = g.failed.slice();
@@ -12572,7 +11729,7 @@
             note('refuse ' + todo.join(','));
             // the status line is rewritten by the page's own ticks: the refusal also lives in a banner nothing else touches
             const msg = uiText('stLoadIncomplete', 'This page did not finish loading, so it cannot join safely. Reload the page to try again.');
-            try { const d = document.createElement('div'); d.id = 'load-gate-msg'; d.setAttribute('role', 'alert'); d.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:2147483647;padding:14px 16px;background:#b00020;color:#fff;font:16px system-ui,sans-serif;text-align:center'; d.textContent = msg; document.body.appendChild(d); } catch (e) {}
+            try { (0, /*()*/__V.showLoadRefusal)(msg); } catch (e) {}
             setStatus(msg, true);
           })();
         }
@@ -12622,7 +11779,7 @@
         urlParams: () => '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash),
         holdDoor: () => pwWaitProof && !meshCoord(),
         netTag: () => netTagNow,
-        capable: () => { const hc = navigator.hardwareConcurrency | 0; return !__M.IS_MOBILE && !(hc > 0 && hc <= 2); },   // a relayed pipe may end at my seat when it heads a row (the device class the mesh's tier reads)   // my registration at the door says which network I am on (the tag my beat carries)
+        capable: () => { const hc = navigator.hardwareConcurrency | 0; return !IS_MOBILE && !(hc > 0 && hc <= 2); },   // a relayed pipe may end at my seat when it heads a row (the device class the mesh's tier reads)   // my registration at the door says which network I am on (the tag my beat carries)
         netKind: () => (directPath === 'blocked' ? 2 : directPath === 'strict' ? 1 : directPath === 'ok' ? 0 : -1),   // and what it measured as (the seat's NAT kinds)
         doorHeld: (id) => { try { if (DEBUG_ON && window.__doorHoldAll) return true;   /* DEBUG=on only: this door answers no knock (a test picks the doors) */ const b = meetWait.blocks(id); if (b && id && amAdmin) meetWait.note(id, rosterNames[id] || 'Someone waiting'); if (b && id) sayHeld(id); return b; } catch (e) { return false; } },   // a withheld knock goes on the host's list: nothing else names a plain room's knocker
         onDoor: (kind, frame) => {
@@ -12670,7 +11827,7 @@
           claims: (r, x) => (connsOf.get(r) || []).includes(x), relayed: (pid) => relayVia.has(pid),
         },
         measure: {   // the device class and the network's verdict this page already keeps (L4)
-          tier: () => { const E = GifOS.meshConsts.enums, hc = navigator.hardwareConcurrency | 0; return __M.IS_MOBILE || (hc > 0 && hc <= 2) ? E.TIER_MOBILE : E.TIER_DESKTOP; },   // a 2-core desktop carries like a phone
+          tier: () => { const E = GifOS.meshConsts.enums, hc = navigator.hardwareConcurrency | 0; return IS_MOBILE || (hc > 0 && hc <= 2) ? E.TIER_MOBILE : E.TIER_DESKTOP; },   // a 2-core desktop carries like a phone
           nat: () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' ? E.NAT_BLOCKED : directPath === 'strict' ? E.NAT_STRICT : E.NAT_OPEN; },
           probed: () => directPath === 'ok' || directPath === 'strict' || directPath === 'blocked',   // L8.54.4: my own network's verdict is in
           noCand: () => pcGathers === false,   // L8.54.10: my probe connection finished gathering with no candidate: I meet nobody
@@ -12920,7 +12077,7 @@
     // so in its own words, held so the ambient line does not eat it between
     // tries; the join veil says it too (relayBusyAt).
     var relayBusyAt = 0;
-    yield 1395;
+    yield 1420;
     function onRelayFrame(m) {
       if (m.t === 'joined') relayTv = m.tv === 1;   // this relay vouches for TURN links (see relayTv)
       if (m.t === 'joined' && !av) capServerKey = m.cap && m.cap.ck ? m.cap.ck : null;   // the server's word on the capture at this join
@@ -13074,10 +12231,10 @@
         // person can actually trigger in the same words the button uses \u2014 one
         // rule, one sentence \u2014 and never show the raw wire text for it.
         else if (/admins only/.test(m.error || '')) setStatus(PW_ADMIN_ONLY);
-        else if (!/password required|session is full/.test(m.error || '')) { setStatus('Connection trouble: ' + m.error); try { __V.statusEl.dataset.why = 'trouble'; (0, /*()*/__V.paintLiveBadge)(); } catch (e) {} }
+        else if (!/password required|session is full/.test(m.error || '')) { setStatus('Connection trouble: ' + m.error); try { statusLine.why = 'trouble'; (0, /*()*/__V.paintStatusWhy)('trouble'); (0, /*()*/__V.paintLiveBadge)(); } catch (e) {} }
       }
     }
-    yield 1398;
+    yield 1423;
     // Its own 1s clock (the sweep's 2s beat would add up to 2s to every
     // detection), over the same pairs the sweep walks.
     function frozenTileTick(pid, p) {
@@ -13132,7 +12289,8 @@
             // rebuild the pair, once per 30s like the dead sink.
             {
               const v = p.video, q = v.getVideoPlaybackQuality ? v.getVideoPlaybackQuality() : null, r = v.getBoundingClientRect();
-              const inView = r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth;
+              const vp = GifOS.host.viewport();
+              const inView = r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < vp.h && r.left < vp.w;
               const pv = q ? q.totalVideoFrames : -1, sp = p.paintProbe;
               if (!judged || !inView || pv < 0) p.paintProbe = null;
               else if (!sp || sp.pc !== pc0 || sp.track !== vtr || pv !== sp.pv || v.currentTime !== sp.ct) p.paintProbe = { pc: pc0, track: vtr, pv, ct: v.currentTime, fd, at: t };
@@ -13180,7 +12338,7 @@
     function lgRead() {
       if (lgReadOff()) return;
       const beat = Date.now(), lag = lgBeatAt ? Math.max(0, beat - lgBeatAt - 2000) : 0; lgBeatAt = beat;
-      if (document.hidden) { lgHealthNow = 1; return; }
+      if (GifOS.host.hidden()) { lgHealthNow = 1; return; }
       const jobs = [];
       for (const p of peers.values()) if (p.pc && p.connected) jobs.push(p.pc.getStats().then((rep) => ({ p, rep })).catch(() => null));
       Promise.all(jobs).then((list) => {
@@ -13246,7 +12404,7 @@
     GifOS.meshMedia.workerClock(1000, () => { try { lgLevelTick(); } catch (e) {} });
     // L29.4: my receivers and my own reading agree: leave with the reason and knock again as a newcomer (sim: lguard rejoin 40).
     let lgNoteEl = null;
-    yield 1417;
+    yield 1442;
     // A picture that stops says so, never a silent frozen tile. A Stage strip or Stadium that had frames and has shown none
     // for STALL_MS while the tab is in view gets a plain line; a shared screen may rightly stand still. The banner adds why,
     // and only when both hold: this seat's picture stalled, and its own mass-leave sense names many people gone. Two goodbyes
@@ -13255,7 +12413,7 @@
     const stallOf = new WeakMap();
     let massMany = false, massBannerEl = null, massBannerAt = 0;
     const BANNER_HOLD = GifOS.timings.BANNER_HOLD;
-    yield 1423;
+    yield 1448;
     // L8.3: a room that split says so. The seat's own word that islands exist here stays set after a merge, so the note
     // also wants a greeter of this room that my seat has no cell for: the door list the seat re-asks for (E3) is what ends it.
     // islandApart() → true while my seat knows islands exist here and the door still lists a greeter my seat has no
@@ -13265,7 +12423,7 @@
       return !!(r && r.hasCoord && r.state === 3 && r.islandSeen() && (() => { const held = new Set(r.occ.values()); return r.lastGreeters.some((g) => g !== r.id && !held.has(g)); })());
     }
     let islandNoteEl = null;
-    yield 1426;
+    yield 1451;
     GifOS.meshMedia.workerClock(1000, () => { try { (0, /*()*/__V.massBannerTick)(); } catch (e) {} try { (0, /*()*/__V.islandNoteTick)(); } catch (e) {} });
     // A WEBKIT SENDER THAT NEVER ENCODES. Measured 2026-10-21 (gate-1812
     // diag d1/d5): a WebKit seat's camera track was live and playing on its
@@ -13522,7 +12680,7 @@
         // Nothing on this pc revives that track. Two samples 4s apart with
         // frames decoded and none shown: rebuild the pair; the far side
         // takes a new fingerprint as a new pc (the NEW-PC RULE).
-        if (p.connected && !document.hidden && p.stream && !p.relayed && p.video && (0, /*()*/__M.tileHolds)(p.video, p.stream)
+        if (p.connected && !GifOS.host.hidden() && p.stream && !p.relayed && p.video && (0, /*()*/__M.tileHolds)(p.video, p.stream)
             && !p.video.paused && p.video.readyState === 0 && mediaOk(pid) !== false && now - (p.sinkRebuiltAt || 0) > 30000) {
           const vtr = p.stream.getVideoTracks()[0];
           const rx = vtr && vtr.readyState === 'live' && p.pc.getReceivers().find((r) => r.track === vtr);
@@ -13535,7 +12693,7 @@
               if (p.pc !== pc0 || t - prev.at < 4000) return;
               p.sinkProbe = { fd, at: t, pc: pc0 };
               if (fd - prev.fd < 3) return;
-              if (p.video.readyState !== 0 || p.video.paused || !(0, /*()*/__M.tileHolds)(p.video, p.stream) || document.hidden) return;
+              if (p.video.readyState !== 0 || p.video.paused || !(0, /*()*/__M.tileHolds)(p.video, p.stream) || GifOS.host.hidden()) return;
               // ON WEBKIT THIS IS THE ELEMENT, NOT THE PC (see WEBKIT_TILE): a
               // rebuild re-binds the tile on a flowing track, which stalls the
               // page and never paints. Ask the sender for a held re-seat and
@@ -13651,7 +12809,7 @@
       (0, /*()*/__V.renderHandq)();   // the room-wide hand queue, freshest fold wins
       updateStatus();
     });
-    yield 1432;
+    yield 1457;
     // The banner repaints ONLY when the derived line actually changed — the
     // 2s beat costs one string compare, never idle DOM churn.
     let handqHtml = '';
@@ -13693,7 +12851,7 @@
       if (opts.ban) add('ban', 'Ban');
       return parts.join('');
     }
-    yield 1438;
+    yield 1464;
     function applyBcAct(id, act) {
       if (!id || id === myId || !amAdmin) return;
       if (act === 'ban') {
@@ -13707,38 +12865,17 @@
       else return;
       try { (0, /*()*/__V.renderHandq)(); } catch (e) {}
       try { (0, /*()*/__V.paintBroadcastSeats)(); } catch (e) {}
-      try { if (__V.whoModal && __V.whoModal.style.display === 'flex') (0, /*()*/__V.showWhoModal)(); } catch (e) {}
+      try { (0, /*()*/__V.showWhoIfOpen)(); } catch (e) {}
     }
-    yield 1441;
+    yield 1467;
     window.addEventListener('resize', __V.placeHandq);
-    yield 1444;
+    yield 1470;
     let hdrHandSays = '';
-    yield 1449;
-    // ADMIN rooms, signed-in admins only: tapping a queued name CALLS THEM UP —
-    // the tap issues the same individually-signed mod-table 'app' grant that
-    // gates apps and the Stage (§SIG; setMod refuses non-admins locally, and
-    // every RECEIVER verifies the signature, so a forged tap changes nothing
-    // anywhere). Open rooms: the queue stays informational — self step-up is
-    // the only stage entry. One delegated listener; it survives repaints.
-    __V.handqEl.addEventListener('click', (e) => {
-      const act = e.target.closest && e.target.closest('[data-bc-act]');
-      if (act) {
-        e.preventDefault();
-        e.stopPropagation();
-        applyBcAct(act.dataset.pid, act.dataset.bcAct);
-        return;
-      }
-      const el = e.target.closest('.hq');
-      if (!el || !hasAdminRoom() || !amAdmin) return;
-      const id = el.dataset.id;
-      if (!id || id === myId) return;
-      setMod(id, 'app', true);
-    });
-    yield 1485;
+    yield 1511;
     if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
       navigator.mediaDevices.addEventListener('devicechange', __M.onMeetDeviceChange);
     }
-    yield 1489;
+    yield 1515;
     // DEBUG/tests: inject a fork pick UI
     window.__gifosShowForkPick = __V.showForkPick;
 
@@ -13748,7 +12885,7 @@
     // (pwEyeHide). The focusin delegate catches dynamically built fields
     // (the Invite modal's mint) with no per-site wiring.
     const PWEYE_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/><line class="slash" x1="3" y1="3" x2="21" y2="21" style="display:none"/></svg>';
-    yield 1496;
+    yield 1523;
     // LOBBY PASSWORDS (Start a public open-floor meeting, Join a link). Typed in
     // the lobby, they cross the reload enterMeeting does in THIS tab's
     // sessionStorage, and the very next load reads them into memory and removes
@@ -13779,7 +12916,7 @@
       return { kind: o.kind, room: String(o.room || ''), av: String(o.av || ''), pw: o.pw };
     })();
     const lobbyPwFor = (kind) => !!(lobbyPw && lobbyPw.kind === kind && lobbyPw.room === room && lobbyPw.av === (av || ''));
-    yield 1507;
+    yield 1534;
     // THE ROOM'S PASSWORD CHANGES (the Password button's Save, and the re-key after a vote-out): the relay's door gets the
     // proof, the people inside get the password (an open room) or the order (an admin room), then this page moves to the new key.
     // vo (the re-key after a vote-out): the voted-out ids it follows. A hint only: a page that reads it does not re-key
@@ -13862,14 +12999,14 @@
       reactRoomState(); // the password is the key to clear video — re-derive MY tiles now, not on the next heartbeat
     }
     let pwSaveWaited = false;
-    yield 1514;
+    yield 1541;
     // Show host password (a private meeting's host only). The password is the
     // one this device kept (gifos_vhpw_<room>.<verifier>) when it created the
     // meeting or signed in as host. It is never logged, mirrored or put in a
     // link, and it leaves the page again whenever the popup closes. It cannot
     // change: the meeting's link carries the verifier made from it.
     const hostPwKey = () => 'gifos_vhpw_' + roomKey();
-    yield 1523;
+    yield 1550;
     // Is this participant forging? Decided in whoHeard, once, and kept: their
     // device presented a relay statement that cannot be genuine (verifyIpAtt),
     // or sent an address that differs from the relay's statement in the same
@@ -13939,99 +13076,14 @@
       if (st.camOff && !st.scr) bits.push('Camera off');
       return bits.join(', ');
     }
-    yield 1534;
-    document.getElementById('who-list').addEventListener('click', (e) => {
-      const b = e.target.closest && e.target.closest('[data-bc-mod]');
-      if (!b || !amAdmin) return;
-      e.stopPropagation();
-      const id = b.dataset.pid;
-      const act = b.dataset.bcMod;
-      if (!id) return;
-      if (act === 'ban') {
-        pwBan(id);
-        return;
-      }
-      if (act === 'stage') setMod(id, 'app', !(modOf(id).app && modOf(id).app.on));
-      else if (act === 'mute') setMod(id, 'mute', !(modOf(id).mute && modOf(id).mute.on));
-      else if (act === 'blur') setMod(id, 'blur', !(modOf(id).blur && modOf(id).blur.on));
-      else return;
-      (0, /*()*/__V.showWhoModal)();
-    });
-    yield 1541;
-    // The Help screen matches WHAT THIS PAGE IS: a meeting keeps the authored
-    // stadium explainer in the markup; a BROADCAST and an APP ROOM each swap
-    // in their own story (one page, three products — the traits decide).
-    function applyRoomHelp() {
-      const h3 = document.querySelector('#help-modal h3');
-      const hs = document.querySelector('#help-modal .help-scroll');
-      (0, /*()*/__V.paintHelpTip)();
-      // Two columns fit the meeting list. A broadcast or app story is longer
-      // and keeps the vertical scroller; columns there spill sideways.
-      hs.classList.toggle('help-meet', !BROADCAST && ROOM.kind !== 'app');
-      if (BROADCAST) {
-        h3.textContent = 'How this broadcast works';
-        hs.innerHTML =
-          '<p class="help-lead">This is a <b>broadcast</b>: one host (and anyone they call up) on the <b>Stage</b>, and everyone else watching. Two people or a full room, it runs the same — every phone talks only to a handful of neighbors, and the broadcast reaches everyone.</p>'
-          + '<h4>Watching</h4>'
-          + '<ul class="help-list">'
-          + '<li>The link is all you need. Your <b>camera and microphone are not used</b> — watching asks no permissions at all.</li>'
-          + '<li>The video stays <b>blurred</b> until the host sets a <b>room password</b>. If you’re asked for one, the host shares it separately — it’s the ticket, and it does not ride the link.</li>'
-          + '<li><b>Chat</b> is live to everyone here, is not stored on any server, and is gone when the broadcast ends.</li>'
-          + '<li><b>Sound on</b> on the room bar mutes the stage on this device. Everyone else still hears it.</li>'
-          + '</ul>'
-          + '<h4>Speaking up</h4>'
-          + '<ul class="help-list">'
-          + '<li>Tap <b>Raise hand</b> to ask for the Stage. The host can call you up — your own phone then asks for your camera and mic (your choice to grant), and you join the host on Stage for the whole room.</li>'
-          + '<li><b>Step off</b> is yours to do at any time; the host can also take the Stage back.</li>'
-          + '<li><b>Stepping away?</b> Tap <b>Float</b> before you pocket your phone or switch apps, so the broadcast keeps running in a small window and you keep your place on the Stage.</li>'
-          + '</ul>'
-          + '<h4>For the host</h4>'
-          + '<ul class="help-list">'
-          + '<li>Your <b>host password</b> is yours alone — it IS your control of this broadcast. Do not send it to viewers.</li>'
-          + '<li>The <b>Password</b> button sets or changes the <b>room password</b>: without one the broadcast stays blurred; with one, whoever you give it to sees you clear.</li>'
-          + '<li>The hand queue floats to the top — tap a name to call them up on Stage. Revoking their grant pulls them back down.</li>'
-          + '<li>Chat has a <b>Turn chat off</b> switch (your messages still land) and per-message delete. Ban lives on each tile’s controls.</li>'
-          + '<li>A broadcast lives while its host is present. <b>End</b> it, and everyone watching sees a five-minute countdown, then the room closes.</li>'
-          + '</ul>'
-          + '<p>Underneath it is the same thing as a GifOS Meeting: everything goes straight between the people here, no accounts, no company keeping your video.</p>';
-      } else if (ROOM.kind === 'app') {
-        h3.textContent = 'How this app room works';
-        hs.innerHTML =
-          '<p class="help-lead">This room exists around a <b>shared app</b>: everyone here sees and uses the <b>same live app together</b> — moves, edits and state flow between every phone directly.</p>'
-          + '<h4>The app is the show</h4>'
-          + '<ul class="help-list">'
-          + '<li>The app fills the screen. One person <b>hosts</b> it (their device runs its engine); everyone else interacts live.</li>'
-          + '<li>If the host drops off, what happens is the room’s choice at creation: an <b>owned</b> app pauses until its owner returns; a <b>resilient</b> one lets a friend still here take over hosting.</li>'
-          + '</ul>'
-          + '<h4>No camera</h4>'
-          + '<ul class="help-list">'
-          + '<li>This room has <b>no camera and no video</b>. Nothing here is blurred, because there is no picture to blur.</li>'
-          + '<li><b>Talk</b>, when the host turns it on, is voice only. You can use the app and chat without joining it.</li>'
-          + '</ul>'
-          + '<h4>Chat, files, invites</h4>'
-          + '<ul class="help-list">'
-          + '<li><b>Chat</b> stays between the people here — no server ever sees it; it’s gone when the room empties.</li>'
-          + '<li><b>Files</b> can be pinned once the room has a password.</li>'
-          + '<li><b>Invite</b> copies the one link that brings a friend straight in. The link is the whole key — share it deliberately.</li>'
-          + '</ul>'
-          + '<p>Underneath it is the same thing as a GifOS Meeting: everything goes straight between the people here, no accounts, no limit on how many.</p>';
-      }
-      if (uiLang() === 'en') return;
-      if (BROADCAST) {
-        h3.textContent = uiText('bcHelpTitle', 'How this broadcast works');
-        hs.innerHTML = (0, /*()*/__V.richHtml)(uiText('helpBcBody', hs.innerHTML));
-      } else if (ROOM.kind === 'app') {
-        h3.textContent = uiText('appHelpTitle', 'How this app room works');
-        hs.innerHTML = (0, /*()*/__V.richHtml)(uiText('helpAppBody', hs.innerHTML));
-      }
-    }
-    applyRoomHelp();
+    yield 1569;
+    (0, /*()*/__V.applyRoomHelp)();
     // The person chose another language (Settings in another tab): load the
     // meeting's catalog for it and repaint the fixed words.
-    const repaintWords = () => { try { (0, /*()*/__V.applyChrome)(); applyRoomHelp(); } catch (e) {} };
+    const repaintWords = () => { try { (0, /*()*/__V.applyChrome)(); (0, /*()*/__V.applyRoomHelp)(); } catch (e) {} };
     window.__meetRepaintWords = repaintWords;
     if (L10N) L10N.onChange(() => { if (L10N.ui() === 'en') repaintWords(); else L10N.load('meet').then(repaintWords); });
-    yield 1547; // tap the backdrop to dismiss
+    yield 1574; // tap the backdrop to dismiss
     // The download is meant to be handed to the police: every time in UTC,
     // the port wherever one was seen (a provider sharing one address among
     // many customers needs address, port AND time), and the relay's signed
@@ -14096,7 +13148,7 @@
       }
       return lines.join('\n') + '\n';
     }
-    yield 1555;
+    yield 1582;
 
     function joinRoom() {
       roomJoinedAt = Date.now();
@@ -14192,13 +13244,14 @@
       // A srcdoc session cannot always retarget its address. The mesh does
       // not depend on that; a thrown replaceState must not skip the knock.
       rejoinHref = canonical;
-      try { if (location.pathname + location.search + location.hash !== canonical) history.replaceState(null, '', canonical); } catch (e) {}
-      __V.shareUrl.value = pretty ? pageOrigin() + prettyPath + prettyQs
+      try { if (location.pathname + location.search + location.hash !== canonical) (0, /*()*/__V.replaceAddress)(canonical); } catch (e) {}
+      shareLink = pretty ? pageOrigin() + prettyPath + prettyQs
         : pageOrigin() + MEET_PATH + '#v=' + room + avPartAt + (relay ? '&relay=' + encodeURIComponent(relay) : '');
+      (0, /*()*/__V.paintShareUrl)(shareLink);
       try { (0, /*()*/__V.paintStreamLink)(); } catch (e) {}
-      if (!params.get('v')) __V.share.classList.add('show'); // fresh room → surface the link
-      else recordMeetingInvite(room, __V.shareUrl.value); // joined someone's link → log it in the desktop's Invites
-      recordMeetHistory(room, __V.shareUrl.value, av); // lobby's "Recent" — every room, created OR joined, in ITS OWN surface's list
+      if (!params.get('v')) (0, /*()*/__V.showShareLink)(); // fresh room → surface the link
+      else recordMeetingInvite(room, shareLink); // joined someone's link → log it in the desktop's Invites
+      recordMeetHistory(room, shareLink, av); // lobby's "Recent" — every room, created OR joined, in ITS OWN surface's list
       // Derive the relay-facing identity + the room key from the room code
       // ("derive, don't send"), then connect. The relay never sees the code.
       // The device tag is ROOM-SALTED here too: the relay only ever receives a
@@ -14212,7 +13265,7 @@
         sessId = d.sid; sessTok = d.tok; roomE2E = d.key; pwProof = pr;
         myDevHash = dh.slice(0, 16);
         startMesh();
-      }).catch((err) => { setStatus('Could not join the meeting (' + ((err && err.name) || 'Error') + ').'); try { __V.statusEl.dataset.why = 'nojoin'; (0, /*()*/__V.paintLiveBadge)(); } catch (e2) {} });
+      }).catch((err) => { setStatus('Could not join the meeting (' + ((err && err.name) || 'Error') + ').'); try { statusLine.why = 'nojoin'; (0, /*()*/__V.paintStatusWhy)('nojoin'); (0, /*()*/__V.paintLiveBadge)(); } catch (e2) {} });
     }
 
     // Meetings joined via a shared link go in the same list the desktop's
@@ -14321,7 +13374,7 @@
         '<button type="button" class="row-del" data-del="' + esc(e.url) + '" title="Remove" aria-label="Remove">' + DEL_ICON + '</button>' +
       '</div>';
     }
-    yield 1573;
+    yield 1600;
     function toggleBookmark(url) {
       let marks = loadList(MEET_MARKS);
       if (marks.some((m) => m.url === url)) marks = marks.filter((m) => m.url !== url);
@@ -14382,7 +13435,7 @@
     // and the line says a meeting may still keep the picture blurred.
     const joinAv = { cam: false, mic: false };
     let lobbyCamGen = 0;
-    yield 1580;
+    yield 1607;
     // Handed to the call through sessionStorage: enterMeeting writes it, boot
     // takes it once (joinAvChoice). Nothing on means nothing written.
     const JOIN_AV_KEY = 'gifos_join_av';
@@ -14396,7 +13449,7 @@
         else sessionStorage.removeItem(JOIN_AV_KEY);
       } catch (e) {}
     }
-    yield 1584;
+    yield 1611;
     function mintHostKey() {
       const words = ['amber', 'birch', 'cedar', 'daisy', 'ember', 'fern', 'grove', 'harbor', 'iris', 'juniper', 'kelp', 'linen', 'maple', 'north', 'olive', 'pebble', 'quartz', 'river', 'spruce', 'tide', 'violet', 'willow', 'yarrow', 'meadow'];
       const buf = new Uint32Array(4);
@@ -14404,26 +13457,9 @@
       const pick = (i) => words[buf[i] % words.length];
       return pick(0) + '-' + pick(1) + '-' + pick(2) + '-' + String(10 + (buf[3] % 90));
     }
-    yield 1590;
+    yield 1617;
     window.addEventListener('resize', () => { try { (0, /*()*/__V.placeDeskName)(); (0, /*()*/__V.placeClearLine)(); } catch (e) {} });
-
-    // ---- boot ------------------------------------------------------------------
-    // Camera trouble must never lock anyone out of the room: no permission →
-    // join view-only. The room doesn't care what you bring.
-    //
-    // THE KNOCK WAITS FOR NOBODY (2026-08-05). getUserMedia used to gate
-    // joinRoom(): on a desktop the prompt settles in seconds either way, so
-    // the ordering looked harmless — but a permission prompt is allowed to
-    // NEVER settle. iOS leaves it pending until a human decides, and a link
-    // opened inside another app's in-app viewer can hang it indefinitely — and
-    // a joiner wedged there never sends the FIRST entry frame. The monitor
-    // bot watched three straight hours of demo-night join attempts in which
-    // not one knock reached the room (door counters frozen end to end) while
-    // phones sat on a page that looked like it was connecting. View-only join
-    // is already a fully supported state — a denied camera lands there — so
-    // the entry dance and the camera have no ordering dependency at all:
-    // knock NOW, and media attaches whenever it lands, through the same
-    // transceiver path lateMedia uses for a camera granted mid-call.
+    yield 1621;
     function bootIntoRoom() {
       // The mirror runs beside the socket. applyAdminBoot waits on
       // roomStateReady. The appearance card resolves before the knock,
@@ -14438,11 +13474,9 @@
           updateTile('me');
           joinRoom();
           updateStatus();
-          document.title = BROADCAST ? 'Broadcast — GifOS' : 'Meeting — GifOS';
+          (0, /*()*/__V.paintRoomTitle)();
           if (BROADCAST) {
-            const hint = document.querySelector('.share .hint');
-            if (hint) hint.textContent = 'Share this link — anyone who opens it is watching:';
-            if (!bcHostStored()) { sayState('joiningBroadcast'); try { __V.statusEl.dataset.why = 'joining'; (0, /*()*/__V.paintLiveBadge)(); } catch (e) {} }
+            if (!bcHostStored()) { sayState('joiningBroadcast'); try { statusLine.why = 'joining'; (0, /*()*/__V.paintStatusWhy)('joining'); (0, /*()*/__V.paintLiveBadge)(); } catch (e) {} }
             else {
               // The HOST auto-steps onto the Stage: a broadcast page's whole
               // point, and the Stage is where their camera reaches the room.
@@ -14466,7 +13500,7 @@
           // view-only join a denied camera lands in; a viewer the host later
           // calls up gets media through lateMedia (a user gesture), exactly
           // like any view-only guest tapping the mic button.
-          if (params.get('agent') === '1' || (typeof window !== 'undefined' && window.__gifosAgentQ === true)) params.set('bot', '1');   // agent mode (gifosAgent) is bot mode, and it cannot be untagged
+          if (params.get('agent') === '1' || window.__gifosAgentQ === true) params.set('bot', '1');   // agent mode (gifosAgent) is bot mode, and it cannot be untagged
           let assistantBoot = params.get('bot') === '1';
           try { assistantBoot = assistantBoot || sessionStorage.getItem('gifos_bot') === '1'; } catch (e) {}
           if (assistantBoot) {
@@ -14645,12 +13679,12 @@
       // slug + appId ride along for the Help's "Report a problem" link (apps/<slug>).
       return { installedAt: sm.installedAt || '', signedBy, slug: sm.slug || '', appId: sm.appId || rec.appId || '' };
     }
-    yield 1600;
+    yield 1630;
     // The store lookup is local and normally answers at once; past this, the
     // person is told it is still looking rather than left on a black page.
     const SOLO_LOOKUP_SLOW_MS = GifOS.timings.SOLO_LOOKUP_SLOW_MS;
     function bootSoloApp() {
-      document.body.classList.add('solo-app');
+      soloAppOn = true; (0, /*()*/__V.paintSoloApp)(true);
       // Off the camera FIRST: a solo entry is never a meeting, and the file may
       // be missing or slow — the ornament replaces this again once bytes land.
       (0, /*()*/__V.setAppFavicon)(null);
@@ -14670,13 +13704,13 @@
         (0, /*()*/__V.hideAppMissing)();
         appInstall = installFactsOf(rec);
         const nm = (rec.name && rec.name.replace(/\.gif$/i, '')) || 'App';
-        document.title = nm + ' — GifOS';
+        (0, /*()*/__V.paintTabTitle)(nm + ' — GifOS');
         const raw = rec.bytes instanceof Uint8Array ? rec.bytes : new Uint8Array(rec.bytes || []);
         const noted = noteSoloShare(raw);
         const mount = () => {
           (0, /*()*/__V.showAppPane)(nm, uiText('appWhoDevice', 'on this device'));
-          setAppGif(raw, nm);
-          return GifOS.runtime.boot(__V.appMountEl, ROOM.fileId, __V.statusEl, ROOM.solo ? LAUNCH : null).then((ctl) => {
+          (0, /*()*/__V.setAppGif)(raw, nm);
+          return (0, /*()*/__V.appRuntimeBoot)(ROOM.fileId, true, ROOM.solo ? LAUNCH : null).then((ctl) => {
             soloCtl = ctl;
             // AFTER the app is up, never before: is there a newer version of a
             // store-installed app in the catalog? (app-update.js — one small
@@ -14717,10 +13751,11 @@
     // app STATE only (the lane's owner key), never the door.
     const appRoomStr = (j) => 'app~' + (j.owned ? j.short + '~' + j.av + '~' : '') + j.k;
     let appRoomTicking = false;
-    const armAppRoomTick = () => { if (!appRoomTicking) { appRoomTicking = true; setInterval(appRoomTick, 2000); } }; // only an app room runs it
+    const armAppRoomTick = () => { if (!appRoomTicking) { appRoomTicking = true; setInterval(appRoomTick, 2000); } };
+    yield 1636;
     function bootAppRoom() {
       armAppRoomTick();
-      document.body.classList.add('app-room');
+      appRoomOn = true; (0, /*()*/__V.paintAppRoomBody)();
       try { (0, /*()*/__V.refreshAudioBtn)(); } catch (e) {}
       // A solo app that Invite turns into a room now speaks for the room.
       try { (0, /*()*/__V.paintHelpTip)(); } catch (e) {}
@@ -14736,10 +13771,11 @@
         const pretty = /(^|\.)gifos\.app$/.test(location.hostname) && !custom;
         const prettyPath = j.owned ? '/join/' + j.short + '/' + j.av + '/' + j.k : '/join/' + j.k;
         const hashForm = MEET_PATH + (j.owned ? '#s=' + j.short + '.' + j.av + '&k=' + j.k : '#j=' + j.k);
-        __V.shareUrl.value = location.origin + (pretty ? prettyPath : hashForm + (custom ? '&relay=' + encodeURIComponent(relay) : ''));
+        shareLink = location.origin + (pretty ? prettyPath : hashForm + (custom ? '&relay=' + encodeURIComponent(relay) : ''));
+        (0, /*()*/__V.paintShareUrl)(shareLink);
         const canonical = pretty ? prettyPath : hashForm + (custom ? '&relay=' + encodeURIComponent(relay) : '');
-        if (location.pathname + location.hash !== canonical) history.replaceState(null, '', canonical);
-        if (!ROOM.founder) recordMeetingInvite(j.owned ? j.short : 'app', __V.shareUrl.value);
+        if (location.pathname + location.hash !== canonical) (0, /*()*/__V.replaceAddress)(canonical);
+        if (!ROOM.founder) recordMeetingInvite(j.owned ? j.short : 'app', shareLink);
         return Promise.all([
           net.deriveMeet(room, av, roomPw),
           net.meetPwProof(room, av, roomPw),
@@ -14787,7 +13823,7 @@
         return null;
       }).then((row) => {
         try { (0, /*()*/__V.paintInviteSlot)(); } catch (e) {}
-        if (!row || document.body.classList.contains('has-app')) return !!row;
+        if (!row || appPaneOn) return !!row;
         const waitMyId = () => {
           if (myId) return Promise.resolve();
           const timeout = new Promise((res) => setTimeout(res, 10000));
@@ -14802,10 +13838,7 @@
         }).catch(() => true).then((ok) => { try { (0, /*()*/__V.paintInviteSlot)(); } catch (e) {} return ok; });
       });
     }
-    // Solo → shared: mint the room (stable per file — re-inviting reuses the
-    // same link), flip the page's traits in place, and host the app on the
-    // room's lane. The owned/resilient choice IS the succession class:
-    // owned rooms freeze when the owner leaves; resilient rooms heal.
+    yield 1640;
     function inviteFromSolo() {
       if (!ROOM.solo) return; // an app inside a room never mints a room of its own
       // capabilities.multiplayer false: no share from an app the user ran
@@ -14836,23 +13869,7 @@
         if (!got) return;
         const rec = got.rec, saved = got.saved;
         const nm = ((rec && rec.name) || 'App').replace(/\.gif$/i, '');
-        const bg = document.createElement('div'); bg.className = 'name-modal';
-        bg.innerHTML = '<div class="name-box" style="max-width:440px;text-align:left"><h3>Share ' + esc(nm) + ' live</h3>' +
-          '<p>Friends join you with one link. If you drop off (close the tab, lose battery)…</p>' +
-          '<label class="perm-row"><input type="radio" name="rmcls" value="owned"' + (!saved || saved.owned ? ' checked' : '') + '><span><b>Only I can host it</b> — the app pauses for everyone until I return. Safest for private data.</span></label>' +
-          '<label class="perm-row"><input type="radio" name="rmcls" value="heal"' + (saved && !saved.owned ? ' checked' : '') + '><span><b>Let a friend keep it going</b> — someone still connected takes over hosting. Best for casual shared apps and games.</span></label>' +
-          (saved
-            ? '<p style="margin-top:.9rem"><b>This app already has a link</b> — friends you invited before may still hold it.</p>' +
-              '<label class="perm-row"><input type="radio" name="rmlink" value="same" checked><span><b>Keep the same link</b> — everyone you already invited can come right back.</span></label>' +
-              '<label class="perm-row"><input type="radio" name="rmlink" value="fresh"><span><b>Start a fresh link</b> — the old link goes dead for good. For when it reached someone it shouldn’t have.</span></label>'
-            : '') +
-          '<div style="display:flex;gap:.6rem;justify-content:flex-end;margin-top:1rem"><button id="inv-cancel">Cancel</button><button id="inv-go">Create link</button></div></div>';
-        document.body.appendChild(bg);
-        bg.querySelector('#inv-cancel').onclick = () => bg.remove();
-        bg.querySelector('#inv-go').onclick = () => {
-          const owned = bg.querySelector('input[name="rmcls"]:checked').value === 'owned';
-          const fresh = !!(saved && bg.querySelector('input[name="rmlink"][value="fresh"]').checked);
-          bg.remove();
+        (0, /*()*/__V.openShareLiveModal)(nm, saved, (owned, fresh) => {
           GifOS.store.getState(ROOM.fileId + '::room').then((saved2) => {
             if (!fresh && saved2 && saved2.owned === owned && saved2.k) {
               if (!saved2.owner) {
@@ -14872,8 +13889,8 @@
           }).then((m) => {
             ROOM.solo = false; ROOM.founder = true;
             ROOM.join = m.owned ? { short: m.short, av: m.av, k: m.k, owned: true } : { short: null, av: null, k: m.k, owned: false };
-            document.body.classList.remove('solo-app');
-            // …AND THE <html> MIRROR. The entry-chrome block in <head> stamps
+            soloAppOn = false;
+            // paintSoloApp(false) takes body.solo-app …AND THE <html> MIRROR. The entry-chrome block in <head> stamps
             // `solo-app` on documentElement so a #id= launch never paints the
             // meeting chrome and takes it away again — and its comment says the
             // mirror "can never go stale" because the solo rules are
@@ -14887,7 +13904,7 @@
             // nothing appeared. Found by e2e-screen-share.js asserting the bar
             // is really RENDERED in an app room (its point is that Share screen
             // is missing BY RULE, not because no bar was drawn).
-            document.documentElement.classList.remove('solo-app');
+            (0, /*()*/__V.paintSoloApp)(false);
             // startMesh() mints the S4 identity ASYNC — myId lands a beat after
             // bootAppRoom resolves, and runApp refuses without it (canIRunApp).
             const ID_WAIT_MS = GifOS.timings.ID_WAIT_MS;
@@ -14901,12 +13918,12 @@
                 throw new Error('no identity yet');
               });
             };
-            return bootAppRoom().then(waitMyId).then(() => runApp(ROOM.fileId, nm)).then(() => { __V.share.classList.add('show'); (0, /*()*/__V.showInviteModal)(); });
+            return bootAppRoom().then(waitMyId).then(() => runApp(ROOM.fileId, nm)).then(() => { (0, /*()*/__V.showShareLink)(); (0, /*()*/__V.showInviteModal)(); });
           }).catch((e) => setStatus('Could not share the app: ' + (e && e.message || e)));
-        };
+        });
       }).catch((e) => setStatus('Could not share the app: ' + (e && e.message || e)));
     }
-    yield 1613;
+    yield 1645;
     function applyPageHeader() {
       if (window.__gifosHeaderApp) { (0, /*()*/__V.applyHeaderChoice)(window.__gifosHeaderApp); return; }
       if (BROADCAST) { (0, /*()*/__V.applyHeaderChoice)(''); return; }
@@ -14922,12 +13939,12 @@
     };
     applyPageHeader();
     (0, /*()*/__V.paintInviteSlot)();
-    yield 1618;
+    yield 1650;
     // The CALL LAYER in an app room is opt-in, always: the plane being
     // available obligates nobody's camera. A quiet member sees who's live and
     // chooses; their own mic/cam tap opts them in too. Never silent tiles.
     const appRoomTick = () => {
-      if (!document.body.classList.contains('app-room')) return;
+      if (!appRoomOn) return;
       // App rooms may go beat-quiet (a 2-person room whose owner died sends
       // nothing) — reconcile on the tick so owner-away is TIME-driven, not
       // only event-driven. Idempotent when nothing changed.
@@ -14937,21 +13954,14 @@
       try { (0, /*()*/__V.appCopyPaint)(); } catch (e) {}
       // Guest thumbnail: the app bytes land asynchronously over the lane —
       // paint the bar's GIF the first tick they exist (no-op afterwards).
-      if (!appGifUrl && appClientCtl && appClientCtl.gifBytes) {
-        try { const b = appClientCtl.gifBytes(); if (b) setAppGif(b, document.getElementById('appname').textContent); } catch (e) {}
-      }
+      (0, /*()*/__V.paintAppGifFromLane)();
       try { (0, /*()*/__V.applyRoomAudio)(); (0, /*()*/__V.refreshAudioBtn)(); } catch (e) {}
-      const on = document.body.classList.contains('call-on');
-      if (!myStatus.camOff || !myStatus.muted) { if (!on) document.body.classList.add('call-on'); return; }
+      if (!myStatus.camOff || !myStatus.muted) { if (!callOn) { callOn = true; (0, /*()*/__V.paintCallOn)(); } return; }
       let live = 0;
       for (const pid of roomConsentIds()) { const st = statusOf.get(pid); if (st && stHold(pid) && (!st.camOff || !st.muted)) live++; }
-      const b = document.getElementById('callbanner');
-      if (!on && live > 0) {
-        document.getElementById('callbanner-txt').textContent = live + (live === 1 ? ' person is' : ' people are') + ' on the call in this room';
-        b.style.display = 'flex';
-      } else b.style.display = 'none';
+      (0, /*()*/__V.paintCallBanner)(!callOn && live > 0 ? live : 0);
     };
-    yield 1620;
+    yield 1655;
 
     // ---- ONE RUNTIME entry dispatch (docs/one-runtime.md) -------------------
     // An app entry never runs the meeting boot: no lobby, no camera consent
@@ -14964,11 +13974,8 @@
     // which early-returns without one — can never arm behind the explanation.
     // SOLO is deliberately ungated: a solo app is one tab and no network, and
     // it works fine on a browser that could never meet.
-    const preflighted = (f) => {
-      const P = window.GifOSPreflight;
-      if (P && typeof P.whenSupported === 'function') P.whenSupported(f); else f();
-    };
-    yield 1622;
+    const preflighted = (f) => GifOS.host.whenSupported(f);
+    yield 1657;
     if (params.get('mb') === '1') (0, /*()*/__V.bootMeetSession)();
     else if (ROOM.solo) bootSoloApp();
     else if (ROOM.kind === 'app') preflighted(bootAppRoom);
@@ -15001,7 +14008,7 @@
     const CHAT_SLOW_MS = GifOS.timings.CHAT_SLOW_MS, CHAT_SLOW_LAG_MS = GifOS.timings.CHAT_SLOW_LAG_MS;
     let chatSlowLast = 0;
     const chatSlowSeen = new Map();
-    yield 1632;
+    yield 1667;
     let chatOptOverride = null; // chatOptForTest
     function modStarOn(field, ifAdminUnset) {
       if (chatOptOverride && Object.prototype.hasOwnProperty.call(chatOptOverride, field))
@@ -15183,7 +14190,7 @@
     function noteReactToMe(id, e, on) {
       const line = chat.get(String(id));
       if (!on || !line || line.byId !== myId) return;
-      if (__V.chatPanel && __V.chatPanel.classList.contains('open')) return;
+      if (chatOpen) return;
       const per = chatReacts.get(line.id);
       const who = new Set(per && per.get(e) ? per.get(e) : []);
       who.delete(myId);
@@ -15203,14 +14210,14 @@
       }
       return o;
     }
-    yield 1669;
+    yield 1704;
     function messageMentionsMe(text) {
       const name = String(myName() || '').trim();
       if (!name) return false;
       const safe = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       return new RegExp('(?:^|\\s)@' + safe + '(?=$|[\\s.,!?;:])', 'i').test(String(text || ''));
     }
-    yield 1675;
+    yield 1710;
     const fmtSize = (n) => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : n > 1024 ? (n / 1024 | 0) + ' KB' : n + ' B';
     const b64ofPart = (part) => { let s = ''; for (let i = 0; i < part.length; i += 8192) s += String.fromCharCode.apply(null, part.subarray(i, i + 8192)); return btoa(s); };
     const partOfB64 = (b) => { const s = atob(b); const out = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i); return out; };
@@ -15510,8 +14517,8 @@
         for (const id in m.ctombs || {}) {
           if (chatTombs.has(id)) continue;
           const w = m.ctombs[id];
-          if (w && w.ownBy && p && p.id === w.ownBy) { if (applyOwnDelete(id, w.ownBy)) renderChat(); continue; }
-          admVerify(w, 'cdel', Infinity).then((o) => { if (o && o.id === id && applyCdel(id, w)) renderChat(); });
+          if (w && w.ownBy && p && p.id === w.ownBy) { if (applyOwnDelete(id, w.ownBy)) (0, /*()*/__V.renderChat)(); continue; }
+          admVerify(w, 'cdel', Infinity).then((o) => { if (o && o.id === id && applyCdel(id, w)) (0, /*()*/__V.renderChat)(); });
         }
         let reacted = false;
         if (p && p.id && m.reacts && typeof m.reacts === 'object') {
@@ -15523,7 +14530,7 @@
         (m.metas || []).forEach((meta) => takeMeta(meta, p));
         // The meeting's agenda rides the history: a latecomer sees it at once.
         if (m.ag && typeof m.ag === 'object') { try { ctAgendaIn(m.ag, 'hi'); } catch (e) {} }
-        if (freshChats.length || reacted) renderChat();
+        if (freshChats.length || reacted) (0, /*()*/__V.renderChat)();
         (0, /*()*/__V.renderFiles)();
       } else if (m.k === 'av') {
         takeAvatar(p, m);
@@ -15537,10 +14544,10 @@
         const took = takeChat(m.m);
         if (took && isQaLine(chat.get(m.m.id))) qaChanged(); // a question or a vote: the Questions sheet, never the chat badge
         else if (took) {
-          renderChat();
-          if (m.m && typeof window !== 'undefined' && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'chat', text: m.m.text, by: m.m.by, byId: m.m.byId, at: m.m.at });
+          (0, /*()*/__V.renderChat)();
+          if (m.m && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'chat', text: m.m.text, by: m.m.by, byId: m.m.byId, at: m.m.at });
           (0, /*()*/__V.countClosedChat)(m.m);
-          if (!__V.chatPanel.classList.contains('open')) (0, /*()*/__V.paintChatCount)();
+          if (!chatOpen) (0, /*()*/__V.paintChatCount)();
           // A frame the sender marked ackReq (today: only the follow-me link)
           // gets a delivery ack back over the mesh/DC — see FOLLOW-ME DELIVERY
           // WAIT. Ordinary chat carries none: this is not a read receipt.
@@ -15559,7 +14566,7 @@
         // person's face (takeFaceReact).
         const who = p && p.id;
         if (who && who !== myId && audienceReactFresh(m.id)) { if (BROADCAST) takeAudienceReact(m.e, who); else (0, /*()*/__V.takeFaceReact)(m.e, who); }
-      } else if (m.k === 'bx' && typeof window !== 'undefined' && window.GifOS && GifOS.meetSession && typeof window.__gifosMeetEmit === 'function') {
+      } else if (m.k === 'bx' && window.GifOS && GifOS.meetSession && typeof window.__gifosMeetEmit === 'function') {
         GifOS.meetSession.takeXfer(m, window.__gifosMeetEmit);
       } else if (m.k === 'chatack') {
         // Delivery ack for an ackReq chat frame (see FOLLOW-ME DELIVERY WAIT).
@@ -15568,17 +14575,17 @@
         recvChatAck(m);
       } else if (m.k === 'creact') {
         // Only the person who reacted can put on or take off their reaction.
-        if (p && p.id && m.by === p.id && actorMayReact(p.id) && takeReact(m.id, m.e, m.by, !!m.on)) { renderChat(); noteReactToMe(m.id, m.e, !!m.on); }
+        if (p && p.id && m.by === p.id && actorMayReact(p.id) && takeReact(m.id, m.e, m.by, !!m.on)) { (0, /*()*/__V.renderChat)(); noteReactToMe(m.id, m.e, !!m.on); }
       } else if (m.k === 'cdel') {
         // The author may take their own line back. That frame is accepted
         // only from their channel. Anyone else's copy is ignored.
         // A signed admin delete still verifies, and an unverified one
         // never lands anywhere honest.
         if (m.own && m.id && !m.w && p && p.id === m.own) {
-          if (applyOwnDelete(m.id, m.own)) renderChat();
+          if (applyOwnDelete(m.id, m.own)) (0, /*()*/__V.renderChat)();
         } else if (m.w && m.id && !chatTombs.has(m.id)) {
           admVerify(m.w, 'cdel', Infinity).then((o) => {
-            if (o && o.id === m.id && applyCdel(m.id, m.w)) renderChat(); // one flood from its author — never re-broadcast (see chat)
+            if (o && o.id === m.id && applyCdel(m.id, m.w)) (0, /*()*/__V.renderChat)(); // one flood from its author — never re-broadcast (see chat)
           });
         }
       } else if (m.k === 'tlhint') {
@@ -15637,10 +14644,10 @@
       } else if (m.k === 'tr') {
         if (takeTr(m.m)) {
           if (trKeeps()) (0, /*()*/__V.renderTranscript)(); // a page that keeps no transcript shows the line (CC) and lets it go (trForget)
-          if (capShows(m.m)) showCaption(m.m.byId, trNote(m.m) + m.m.text, capLabel(m.m));
+          if (capShows(m.m)) (0, /*()*/__V.showCaption)(m.m.byId, trNote(m.m) + m.m.text, capLabel(m.m));
           (0, /*()*/__V.paintTxMark)();
           // not gossiped onward (see chat): a caption line is one flood
-        } else if (capChosen(m.m)) showCaption(m.m.byId, trNote(m.m) + m.m.text, capLabel(m.m));   // folded into a held line, but it is the source this page shows for that voice
+        } else if (capChosen(m.m)) (0, /*()*/__V.showCaption)(m.m.byId, trNote(m.m) + m.m.text, capLabel(m.m));   // folded into a held line, but it is the source this page shows for that voice
       } else if (m.k === 'vtalk') { if (window.__rowMixOn) window.__rowMixOn(p, m);
       } else if (m.k === 'pres') { if (typeof pipeResAsk === 'function') pipeResAsk(p, m);   // SUB.7: a row-mate's pipe or standby: keep its send back down reserved
       } else if (m.k === 'sig') {
@@ -15735,7 +14742,7 @@
         const ak = p.id + '|' + m.key;
         const prevAnn = __M.mosAnn.get(ak);
         const annNew = !prevAnn || prevAnn.streamId !== m.streamId;
-        const annIds = (0, /*()*/__M.mxIds)(m.ids, m.key === 'sgs' ? SCALE.C : __M.MX_IDS_MAX); // a stadium composite names up to MX_IDS_MAX cells (STADIUM-FACES); the stage strip at most C
+        const annIds = (0, /*()*/__M.mxIds)(m.ids, m.key === 'sgs' ? SCALE.C : MX_IDS_MAX); // a stadium composite names up to MX_IDS_MAX cells (STADIUM-FACES); the stage strip at most C
         if ((typeof __M.mosHasEjected === 'function' && (0, /*()*/__M.mosHasEjected)(m.key, annIds) === true)) return; // a feed carrying a forger's picture: refused
         if ((typeof mediaOk === 'function' && mediaOk(p.id) === false)) return; // a feed from a forwarder this page has not verified: refused
         // STAGE-FACES: the strip's cell order (or count, or grid) changed under
@@ -15805,7 +14812,7 @@
         // Rate-limited per key inside kfNeed, so storms and loops die there.
         // The asker's id picks THEIR sender. kfNeed's signature stays (key)
         // so the pipe guard can find it; the asker rides kfAsker for the call.
-        __M.kfAsker = p.id; try { (0, /*()*/__M.kfNeed)(m.key); } finally { __M.kfAsker = null; }
+        kfAsker = p.id; try { (0, /*()*/__M.kfNeed)(m.key); } finally { kfAsker = null; }
       } else if (m.k === 'vis') {
         // HIDDEN-VIEWER DORMANCY (the demand law applied to mains): the far
         // side is a hidden tab that isn't showing my face (its PiP floats
@@ -15936,7 +14943,7 @@
         // The far side has a streamless mapping from me: if any of my sender
         // m-lines toward them never negotiated (rolled back in a glare),
         // re-offer so they exist on the wire. No-op when all is settled.
-        if (p.pc && (0, /*()*/__M.hasPendingTx)(p)) renegotiate(p);
+        if (p.pc && hasPendingTx(p)) renegotiate(p);
       } else if (m.k === 'pwreset') {
         // ADMIN ROOMS: the admin set or changed the password. The order names
         // the new generation and carries no password. A page that does not
@@ -16042,7 +15049,7 @@
           if (wasBlocked) {
             await rk;
             pwBlocked = false;
-            if (__V.pwModal.dataset.mode === 'join') __V.pwModal.style.display = 'none';
+            (0, /*()*/__V.hideJoinPwModal)();
             if (restart) startMesh(); // same re-entry as typing it — state intact
             else if (meshNode && meshNode.setKey) meshNode.setKey(roomE2E); // the proof is ready now: a socket the door refused re-arms with it
           }
@@ -16515,7 +15522,7 @@
       if (!log) return true;
       return log.scrollHeight - log.clientHeight - log.scrollTop <= 40;
     }
-    yield 1714;
+    yield 1749;
     function paintLog(log, html) {
       if (!log) return;
       const stick = logNearBottom(log);
@@ -16524,7 +15531,7 @@
       log.scrollTop = stick ? log.scrollHeight : prev;
       if (log.id === 'chatlog') (0, /*()*/__V.paintChatNew)(stick);
     }
-    yield 1717;
+    yield 1752;
     function chatWhen(at) {
       const n = Number(at);
       if (!n) return '';
@@ -16577,144 +15584,18 @@
       if (!m) return null;
       return { query: m[1].toLowerCase(), start: upto.length - m[1].length - 1 };
     }
-    yield 1725;
-    function renderChat() {
-      if (!(0, /*()*/__V.chatPanelOpen)() || (0, /*()*/__V.transcriptShown)()) return;
-      const log = document.getElementById('chatlog');
-      const q = (0, /*()*/__V.chatQuery)();
-      const all = Array.from(chat.values()).sort((a, b) => a.at - b.at);
-      // With nothing typed, the newest 200 are the log. A search looks
-      // through the lines this browser still holds, not only the ones on screen.
-      const ms = (q
-        ? all.filter((m) => (String(m.text || '') + ' ' + String(m.by || '')).toLowerCase().indexOf(q) >= 0)
-        : all).slice(-200);
-      let html = ms.map((m) => {
-        const allowLinks = linksAllowed(m.byId);
-        const showReact = viewerMayReact();
-        const body = (allowLinks && m.link)
-          ? withMentions(m.text, true) + ' <a href="' + esc(m.link) + '" style="color:inherit;font-weight:700;text-decoration:underline">Join →</a>'
-          : withMentions(m.text, allowLinks);
-        // The signed-in admin moderates line by line: the standard row-delete
-        // glyph mints a signed 'cdel' (see the #chatlog click delegate).
-        const del = amAdmin ? '<button class="row-del" data-cdel="' + esc(m.id) + '" title="Delete this message for everyone">' + DEL_ICON + '</button>' : '';
-        const when = chatWhen(m.at);
-        const stamp = when ? '<small class="cwhen">' + esc(when) + '</small>' : '';
-        const who = '<span class="cwho"><b>' + (typeof avatarChip === 'function' ? (avatarChip(m.byId) || '') : '') + esc(m.by) + (m.prayer ? ' <span class="praytag">Prayer</span>' : '') + '</b>' + stamp + '</span>';
-        const quote = (m.reply && m.reply.text)
-          ? '<blockquote class="cquote"><b>' + esc(m.reply.by || '') + '</b><span>' + esc(m.reply.text) + '</span></blockquote>'
-          : '';
-        const attr = String(m.id).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-        const replyBtn = '<button type="button" class="creply" data-reply="' + attr + '">Reply</button>';
-        const ownDel = m.byId === myId ? '<button type="button" class="cdel" data-own-del="' + attr + '">Delete</button>' : '';
-        const per = chatReacts.get(m.id);
-        const chips = per && per.size
-          ? '<div class="cchips">' + REACTS.filter((e) => per.has(e)).map((e) => {
-            const who = per.get(e);
-            const mineR = who.has(myId);
-            return '<button type="button" class="cchip" data-react-chip="' + e + '" data-react-id="' + attr + '" aria-pressed="' + mineR + '" aria-label="' + e + ' ' + who.size + ': ' + esc(reactorNames(who)) + '">' + e + '<span>' + who.size + '</span></button>';
-          }).join('') + '</div>'
-          : '';
-        // Your own line takes a reaction too ("👍 if Tuesday works").
-        const reactBtn = showReact ? '<button type="button" class="creact" data-react-open="' + attr + '" aria-expanded="' + (reactOpen === m.id) + '">React</button>' : '';
-        const open = lineOpen === m.id || reactOpen === m.id;
-        const whoR = open && per && per.size
-          ? '<div class="cwhorx">' + REACTS.filter((e) => per.has(e)).map((e) => '<span>' + e + ' ' + esc(reactorNames(per.get(e))) + '</span>').join('') + '</div>'
-          : '';
-        const acts = open ? '<div class="cacts">' + replyBtn + reactBtn + ownDel + '</div>' : '';
-        const picks = showReact && reactOpen === m.id
-          ? '<div class="cpicks">' + REACTS.map((e) => '<button type="button" class="cpick" data-react-pick="' + e + '" data-react-id="' + attr + '" aria-label="React ' + e + '">' + e + '</button>').join('') + '</div>'
-          : '';
-        return '<div class="cmsg' + (m.byId === myId ? ' mine' : '') + (m.prayer ? ' prayer' : '') + '" data-line="' + attr + '" tabindex="0" aria-expanded="' + open + '" title="Tap for Reply and React">' + who + quote + '<span class="cbody">' + body + '</span>' + chips + whoR + acts + del + picks + '</div>';
-      }).join('');
-      const co = chatOffInfo();
-      if (q && !ms.length) html = '<div class="cempty" id="chatnomatch">No matches</div>';
-      else if (co && !q) {
-        const line = co.by
-          ? uiText('chatWasOffBy', 'Chat was turned off by {name}.').split('{name}').join(esc(co.by))
-          : uiText('chatWasOff', 'Chat was turned off.');
-        const tail = amAdmin ? '' : (' ' + uiText('chatHostOnly', 'Only the host can post.'));
-        html += '<div class="cmsg" style="opacity:.65"><b>🔇</b>' + line + tail + '</div>';
-      }
-      (0, /*()*/__V.paintChatFind)();
-      paintLog(log, html);
-      // A tapped last line grows by its buttons; keep them in the log.
-      if (lineOpen) {
-        const el = Array.from(log.querySelectorAll('.cmsg[data-line]')).find((x) => x.getAttribute('data-line') === lineOpen);
-        if (el && el.scrollIntoView) try { el.scrollIntoView({ block: 'nearest' }); } catch (e) {}
-      }
-    }
+    yield 1761;
     function toggleLine(id) {
       lineOpen = lineOpen === id ? null : id;
       if (reactOpen && reactOpen !== lineOpen) reactOpen = null;
-      renderChat();
+      (0, /*()*/__V.renderChat)();
     }
-    yield 1728;
+    yield 1763;
     // The chat gate: repainted on every mod merge and admin-state flip. The
     // admin keeps a live input while chat is off (announcements still flow);
     // everyone else's composer locks, with the reason in the placeholder.
     let chatGateOverride = null;
-    yield 1745;
-    document.getElementById('chatlog').addEventListener('click', (e) => {
-      const replyBtn = e.target.closest('[data-reply]');
-      if (replyBtn) {
-        const id = replyBtn.getAttribute('data-reply');
-        const src = id ? chat.get(id) : null;
-        if (!src) return;
-        pendingReply = { id: String(src.id).slice(0, 80), by: String(src.by || '').slice(0, 40), text: String(src.text || '').slice(0, 160) };
-        (0, /*()*/__V.paintReply)();
-        const inp = document.getElementById('chat-in');
-        if (inp && inp.focus) inp.focus();
-        return;
-      }
-      const rOpen = e.target.closest('[data-react-open]');
-      if (rOpen) {
-        const id = rOpen.getAttribute('data-react-open');
-        reactOpen = reactOpen === id ? null : id;
-        renderChat();
-        return;
-      }
-      const rTap = e.target.closest('[data-react-pick], [data-react-chip]');
-      if (rTap) {
-        const id = rTap.getAttribute('data-react-id');
-        const em = rTap.getAttribute('data-react-pick') || rTap.getAttribute('data-react-chip');
-        if (!id || !chat.has(id)) return;
-        if (!viewerMayReact()) return;
-        const per = chatReacts.get(id);
-        const on = !(per && per.get(em) && per.get(em).has(myId));
-        reactOpen = null;
-        lineOpen = null;
-        if (takeReact(id, em, myId, on)) sendAll({ k: 'creact', id: id, e: em, on: on, by: myId });
-        renderChat();
-        return;
-      }
-      const ownDel = e.target.closest('[data-own-del]');
-      if (ownDel) {
-        const id = ownDel.getAttribute('data-own-del');
-        const src = id ? chat.get(id) : null;
-        if (!src || src.byId !== myId) return;
-        if (applyOwnDelete(id, myId)) {
-          sendAll({ k: 'cdel', id: id, own: myId });
-          renderChat();
-        }
-        return;
-      }
-      const b = e.target.closest('[data-cdel]');
-      if (!b) {
-        // A tap on the words (not a link) shows or hides that line's buttons.
-        const line = e.target.closest('.cmsg[data-line]');
-        if (line && !e.target.closest('a, button')) toggleLine(line.getAttribute('data-line'));
-        return;
-      }
-      const id = b.getAttribute('data-cdel');
-      if (!amAdmin || chatTombs.has(id)) return;
-      admSigned('cdel', { id }).then((w) => {
-        if (!w) return;
-        applyCdel(id, w);
-        sendAll({ k: 'cdel', id, w });
-        renderChat();
-      });
-    });
-    yield 1749;
+    yield 1784;
     // MY LINE GOES OUT ONE WAY: postChat. Slow mode paces the sender, and it
     // never throws a line away. A line said inside the wait is held, in order,
     // and goes out the moment its slot comes; it joins my chat log as it goes,
@@ -16741,7 +15622,7 @@
         chatHeld.shift();
         m.at = Date.now();   // said now: its slot is when the room hears it
         chatGo(m);
-        renderChat();
+        (0, /*()*/__V.renderChat)();
       }
     }
     function postChat(m) {
@@ -16756,7 +15637,7 @@
       chatGo(m);
       return 'sent';
     }
-    yield 1773;
+    yield 1808;
     window.__gifosChat = {
       note: function (o) {
         const msg = {
@@ -16767,7 +15648,7 @@
           text: String((o && o.text) || '').slice(0, 2000),
         };
         if (!takeChat(msg, !!(o && o.backfill), { fixture: true })) return unread;
-        renderChat();
+        (0, /*()*/__V.renderChat)();
         (0, /*()*/__V.countClosedChat)(msg);
         return unread;
       },
@@ -16778,7 +15659,7 @@
         const want = String((o && o.text) || '');
         const line = Array.from(chat.values()).reverse().find((m) => String(m.text || '').indexOf(want) >= 0);
         if (!line || !takeReact(line.id, o && o.e, String((o && o.byId) || 'qa-peer'), !(o && o.on === false))) return false;
-        renderChat();
+        (0, /*()*/__V.renderChat)();
         return true;
       },
       pin: function (o) {
@@ -16798,7 +15679,7 @@
         return f.id;
       },
     };
-    yield 1776;
+    yield 1811;
     const qaShowOk = new Map(); // line id -> { qid, ts } once its admin signature checked out
     function qaList() {
       const qs = new Map();
@@ -16831,39 +15712,15 @@
       }
     }
     function qaChanged() { qaCheckShows(); (0, /*()*/__V.renderQa)(); (0, /*()*/__V.paintQaBand)(); }
-    yield 1783;
+    yield 1818;
     window.addEventListener('resize', () => { try { (0, /*()*/__V.placeQaBand)(); } catch (e) {} });
-    yield 1786;
+    yield 1821;
     function qaSend(m) {
       chat.set(m.id, m);
       sendAll({ k: 'chat', m });
       qaChanged();
     }
-    yield 1792;
-    document.getElementById('qa-list').addEventListener('click', (e) => {
-      const row = e.target.closest('.qrow'); if (!row) return;
-      const qid = row.getAttribute('data-q');
-      if (e.target.closest('.qvote')) {
-        const q = qaList().find((x) => x.id === qid); if (!q) return;
-        const v = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text: '', qv: qid };
-        if (q.mine) v.qx = 1;
-        qaSend(v);
-      } else if (e.target.closest('.qshow') && amAdmin) {
-        const next = qaShownId() === qid ? '' : qid;
-        admSigned('qshow', { qid: next }).then((w) => {
-          if (!w) return;
-          const m = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text: '', qs: next, w };
-          qaShowOk.set(m.id, { qid: next, ts: JSON.parse(w.sp).ts });
-          qaSend(m);
-        });
-      } else if (e.target.closest('.qdel') && amAdmin && !chatTombs.has(qid)) {
-        admSigned('cdel', { id: qid }).then((w) => {
-          if (!w) return;
-          applyCdel(qid, w);
-          sendAll({ k: 'cdel', id: qid, w });
-        });
-      }
-    });
+    yield 1828;
 
     // ---- peer relay: a mutual friend forwards media between blocked pairs ----
     // When B and C can't reach each other but both reach A, B asks A (the
@@ -17094,7 +15951,23 @@
         dcSend(viaP, { k: 'relay-stop', target });
       }
     }
-    yield 1842;
+    yield 1876;
+    // OFFER TURNS. Both ends of a link may offer (a fold sender opens its own
+    // m-lines), and two offers that cross are a glare: one side rolls its own
+    // back. Chromium does not survive that rollback on a live link. At link
+    // birth it leaves the polite side's received mic MUTED for good (RTP
+    // decodes, 'unmute' never comes: e2e-glare-first-offer); later it stops a
+    // video sink (the dead-sink watchdog rebuilds the pair). A new row starts
+    // jobs on every row link at once, so the sixth person's arrival collided
+    // offers all over row 0 (e2e-sixth-audio).
+    //   So offers on a link take turns. The initiator offers when it likes.
+    // The polite side asks first ('rreq') and offers on 'rgo'. The initiator
+    // gives a turn only while stable and not offering, and makes no offer of
+    // its own until the polite offer arrives (or the turn runs out). Busy, it
+    // says 'rwait' and gives the turn when it is stable. An older initiator
+    // says nothing: after TURN_ASK_MS the polite side offers as it always did
+    // (glare rules still apply), and stops asking that peer.
+    const TURN_ASK_MS = GifOS.timings.TURN_ASK_MS, TURN_BUSY_MS = GifOS.timings.TURN_BUSY_MS, TURN_MS = GifOS.timings.TURN_MS;
     function askTurn(p) {
       if (p.neg.turnAskT || !p.dc || p.dc.readyState !== 'open') return;
       dcSend(p, { k: 'rreq' });
@@ -17105,14 +15978,14 @@
         if (!p.turnSeen) p.turnLegacy = true; // never answered: an older client
         p.neg.turnOk = true; // offer anyway, as before turns
         renegotiate(p);
-      }, __M.TURN_ASK_MS);
+      }, TURN_ASK_MS);
     }
     function gotTurn(p) {
       clearTimeout(p.neg.turnAskT); p.neg.turnAskT = null;
       p.turnSeen = true; p.turnLegacy = false;
       p.neg.turnOk = true;
       clearTimeout(p.neg.turnOkT);
-      p.neg.turnOkT = setTimeout(() => { p.neg.turnOk = false; p.neg.turnOkT = null; }, __M.TURN_MS - 500);
+      p.neg.turnOkT = setTimeout(() => { p.neg.turnOk = false; p.neg.turnOkT = null; }, TURN_MS - 500);
       renegotiate(p); // even with nothing new: the offer hands the turn back
     }
     function turnWait(p) { // the initiator is busy; it will give the turn
@@ -17120,7 +15993,7 @@
       if (!p.neg.turnAskT) return;
       clearTimeout(p.neg.turnAskT);
       const pc0 = p.pc;
-      p.neg.turnAskT = setTimeout(() => { p.neg.turnAskT = null; if (p.pc !== pc0 || leaving) return; p.neg.turnOk = true; renegotiate(p); }, __M.TURN_BUSY_MS);
+      p.neg.turnAskT = setTimeout(() => { p.neg.turnAskT = null; if (p.pc !== pc0 || leaving) return; p.neg.turnOk = true; renegotiate(p); }, TURN_BUSY_MS);
     }
     function endTurn(p) {
       if (iInitiate(p.id)) return;
@@ -17137,7 +16010,7 @@
       p.neg.turnGiven = true;
       clearTimeout(p.neg.turnGivenT);
       const pc0 = p.pc;
-      p.neg.turnGivenT = setTimeout(() => { p.neg.turnGivenT = null; p.neg.turnGiven = false; if (p.pc === pc0) afterNeg(p); }, __M.TURN_MS);
+      p.neg.turnGivenT = setTimeout(() => { p.neg.turnGivenT = null; p.neg.turnGiven = false; if (p.pc === pc0) afterNeg(p); }, TURN_MS);
       dcSend(p, { k: 'rgo' });
     }
     function turnBack(p) { // their offer arrived: the turn is over
@@ -17156,7 +16029,7 @@
       // must not be sent again. Repeating it is how a fresh link's channel
       // closes (fault 2b): the answer did not clear the pending set, so the
       // next offer is the same one, and the pair dies a few seconds in.
-      const pend = (0, /*()*/__M.hasPendingTx)(p);
+      const pend = hasPendingTx(p);
       const sig = pend ? pendingSig(p) : "";
       if (p.renegAgain || (pend && sig !== p.neg.offeredPend)) {
         p.renegAgain = false;
@@ -17315,7 +16188,35 @@
       endPcRelayRoles(pid, 'gone');
       if (relayVia.has(pid)) stopRelayFor(pid, true);
     }
-    yield 2131;
+    yield 1895;
+    // Do I hold sender m-lines that never made it into a negotiation? (Rolled
+    // back in a glare, or added while an offer was in flight.)
+    const hasPendingTx = (p) => {
+      try {
+        return p.pc.getTransceivers().some((t) => t.sender && t.sender.track
+          && (!t.mid || !t.currentDirection || t.currentDirection.indexOf('send') < 0));
+      } catch (e) { return false; }
+    };
+    yield 1901; // resolvedKey -> { via, streamId, stream, el, meta } (parked 2nd claim)
+    const subWant = new Map();
+    yield 1953;
+    const multiSection = () => { const s = meshSeat(); if (!s || !s.hasCoord) return false; for (const k of s.occ.keys()) if (!(k.charCodeAt(0) === 48 && k.charCodeAt(1) === 95)) return true; return false; };
+    const occPid = (c) => { const s = meshSeat(); return s ? s.occGet(net.topo.ckey(c)) : null; };
+    yield 1976; // key -> last relay ms (loop + storm guard)
+    let kfAsker = null;
+    yield 2076;
+    // The strip's CELL ORDER (STAGE-FACES): who sits in cell 0..n-1, as the
+    // compositing seat packed it. At most C peer ids, each a short string;
+    // anything else is dropped, and a receiver without it falls back to the
+    // stage order or to the whole strip.
+    // A mosaic feed carries an ejected forger's picture when its key names
+    // them (stg:<pid>) or its cell list does. A composite cannot be cut apart,
+    // so the whole feed is refused; an honest producer has dropped the forger
+    // too and its next composite comes without them.
+    const MX_IDS_MAX = 64;
+    yield 2158;
+    let stageViewNow = null;
+    yield 2166;
 
     // ============ THE STAGE DATA LANE (§11 — docs/media-plane.md, Channel St):
     // "An APP on Stage carries a DATA stream, not A/V." Small app-state frames
@@ -17447,12 +16348,12 @@
     // A row-mate that ends (or stands by for) a pipe asks me, its head, to keep the send back down reserved too.
     function pipeResAsk(p, m) {
       const c = meshCoord(); if (!p || !m || typeof m.via !== 'string' || !c || c.pc !== 0 || c.i !== 0) return;
-      let mate = false; for (let j = 1; j < SCALE.C; j++) if ((0, /*()*/__M.occPid)({ pc: 0, r: c.r, i: j }) === p.id) mate = true;
+      let mate = false; for (let j = 1; j < SCALE.C; j++) if (occPid({ pc: 0, r: c.r, i: j }) === p.id) mate = true;
       if (mate) pipeReserve(p, 'sdxu:' + m.via.slice(0, 64));
     }
     const pipeResSent = new Map();   // head pid|far -> the head's pc my ask went to
     function pipeWatch() {
-      const cme = meshCoord(), headPid = cme && cme.pc === 0 && cme.i !== 0 ? (0, /*()*/__M.occPid)({ pc: 0, r: cme.r, i: 0 }) : null, hp = headPid ? peers.get(headPid) : null;
+      const cme = meshCoord(), headPid = cme && cme.pc === 0 && cme.i !== 0 ? occPid({ pc: 0, r: cme.r, i: 0 }) : null, hp = headPid ? peers.get(headPid) : null;
       for (const e of turnLinks.pipeEnds()) {
         if (!e || e.peer === myId) continue;
         if (hp && hp.pc && hp.connected && hp.dc && hp.dc.readyState === 'open') {
@@ -17471,7 +16372,7 @@
       if (sgaIsolated) return [];
       const c = meshCoord(); if (!c) return [];
       const T = net.topo, out = new Set();
-      const add = (co) => { const pid = co ? (0, /*()*/__M.occPid)(co) : null; if (pid && pid !== myId) out.add(pid); };
+      const add = (co) => { const pid = co ? occPid(co) : null; if (pid && pid !== myId) out.add(pid); };
       if (c.pc === 0) { for (const m of T.rowMates(c)) add(m); for (const m of T.colMates(c)) add(m); for (const t of pipePeers()) out.add(t); }   // SUB.4: app frames cross my pipes (deduped by frame id)
       else {
         add(c.i === 0 ? T.up(c) : { pc: c.pc, r: c.r, i: 0 });
@@ -17545,25 +16446,10 @@
     // the gate (app-owner makeVerifier, the pk pinned from the app ad where
     // the ad carries one, else the sid's own binding): a frame that fails it
     // is dropped and the chase goes on. My OWN broadcast is retained as is.
-    const sgaAppVer = new Map(); // sid -> { pk, ver } (one pin per sid and ad key)
-    // Anchor the lane's on-demand load to the page's own js/ folder, captured now, while this script is evaluating and the
-    // document base is still this page. joinRoom() later rewrites the address to /meet/<room> or /join/… (history.replaceState)
-    // and moves the base; a bare 'js/app-owner.js' then resolves to /meet/js/app-owner.js (or /join/js/…) and 404s, the
-    // verifier never builds, and the lane does not retain the app frame. Reading a script's src inside sgaAppOwner is too
-    // late: the reflected URL re-resolves the relative attribute against the new base. The anchor is a script of this page
-    // in js/: runtime.js on the repo page, or the bundle that carries it on the published page (js/run.bundle.js,
-    // js/run.lobby.js, beside the files). With neither, this page's own address now. appOwnerLib in runtime.js anchors the
-    // same way from its own currentScript, at static-load time.
-    const _runtimeSrc = (() => {
-      const nodes = document.getElementsByTagName('script');
-      for (let i = 0; i < nodes.length; i++) {
-        const raw = nodes[i].getAttribute('src') || '';
-        if (/(^|\/)(runtime|run\.bundle|run\.lobby)\.js(?:[?#]|$)/.test(raw)) return nodes[i].src || '';
-      }
-      try { return new URL('js/runtime.js', document.baseURI).href; } catch (e) { return ''; }
-    })();
+    const sgaAppVer = new Map();
+    yield 2195;
     let sgaAOP = null;
-    yield 2162;
+    yield 2197;
     // The owner pk the room's ad names for this sid, if any ad does.
     function sgaAdPk(sid) {
       if (myStatus.app && myStatus.app.s === sid) return myStatus.app.pk || null;
@@ -17966,7 +16852,7 @@
       },
     };
     if (window.GifOS) GifOS.meetStageData = stageData;
-    yield 2205;
+    yield 2240;
     // Hand's slot is the screen's (barPlan), never the seat's.
     function viewerHandOnDock() {
       return barPlan({ phone: (0, /*()*/__V.phoneLayout)(), kind: barKind() }).dock.indexOf('hand') >= 0;
@@ -17974,14 +16860,7 @@
     function placeViewerHand() {
       try { (0, /*()*/__V.placeDockForWidth)(); } catch (e) {}
     }
-    yield 2209;
-    __V.handBtn.onclick = () => {
-      myStatus.hand = myStatus.hand ? null : Date.now();
-      (0, /*()*/__V.paintHand)();
-      broadcastStatus();
-      (0, /*()*/__V.layout)();
-      (0, /*()*/__V.renderHandq)();
-    };
+    yield 2245;
     // AUTO-LOWER (docs/meeting.md, the hand queue): the moment MY id enters
     // the Stage set — self step-up or an admin's call-up — my raised hand has
     // been answered, so it lowers ITSELF. STRICTLY SELF-OWNED: only my own
@@ -18025,7 +16904,7 @@
       handCallAt = at;
       setStage(true); // parks MAIN senders, lowers my hand, broadcasts
     }
-    yield 2215;
+    yield 2250;
     // THE CAP IS DECIDED BY ARITHMETIC, NOT BY MY TAP. stageIds() keeps the C
     // earliest claims on every phone, so a step-up that lost a same-moment
     // race (or whose admin grant was withdrawn) is set here yet painted
@@ -18062,23 +16941,9 @@
       reactStageSelf(); // don't wait for the beat: park/restore my MAIN senders now
       if (songEnded) (0, /*()*/__M.reactSing)();
     }
-    __V.stageBtn.onclick = () => {
-      if (bcWatchingViewer()) return;
-      if (myStatus.stg) {
-        // Declining a vote-up: remember the exact voter set, so the same
-        // standing votes don't bounce me straight back onto the stage. A NEW
-        // voter re-arms the invitation.
-        const vt = stageVoteTallies();
-        if ((vt.up[myDevHash] || 0) >= stageNeed(vt, myDevHash)) vupDismissedSig = myUpVoteSig();
-        if (myStatus.scr) (0, /*()*/__M.stopScreenShare)('you stepped down');
-        if (myStatus.stg) setStage(false);
-        return;
-      }
-      if (!canStage(myId)) { sayState('stageNotAllowed'); return; }
-      if (stageIds().length >= SCALE.C) { sayState('stageFull', { n: SCALE.C }); return; }
-      setStage(true);
-    };
-    yield 2248;
+    yield 2261;
+    const RECOVER_MEDIA_KEY = 'gifos_recover_media';
+    yield 2283;
     const rbNoun = () => 'broadcast';
     function rbFmt(sec) {
       const t = Math.max(0, Math.floor(sec || 0));
@@ -18116,7 +16981,7 @@
       } catch (e) {}
       r.v = (0, /*()*/__V.rbCanvas)(r);
     }
-    yield 2255;
+    yield 2290;
     function rbDrop(r) {
       try { r.vid.pause(); } catch (e) {}
       try { if (r.v) r.v.stop(); } catch (e) {}
@@ -18125,63 +16990,7 @@
       try { if (r.url) URL.revokeObjectURL(r.url); } catch (e) {}
       try { if (r.actx) r.actx.close(); } catch (e) {}
     }
-    // o: { blob (or a promise of one), title, last, saved }. Called inside
-    // the tap, so the sound can start without another one.
-    async function rbStart(o) {
-      if (rbNow || !BROADCAST || !bcHostStored()) return;
-      if (myStatus.scr) (0, /*()*/__M.stopScreenShare)('a rebroadcast is starting');
-      const vid = document.createElement('video');
-      vid.playsInline = true; vid.preload = 'auto';
-      const r = rbNow = { vid, title: o.title, last: !!o.last, saved: o.saved || null, v: null, a: null, actx: null, url: '', starting: true };
-      // The capture still carries the sound of a muted element, so the
-      // host's phone stays quiet and its mic hears nothing back.
-      if (rbCap(vid)) vid.muted = true;
-      else try {
-        // Plays nothing (it only routes the clip into a stream): no output device.
-        r.actx = newMeetAudioContext();
-        const dst = r.actx.createMediaStreamDestination();
-        r.actx.createMediaElementSource(vid).connect(dst);
-        r.a = dst.stream.getAudioTracks()[0] || null;
-        const pr = r.actx.resume(); if (pr && pr.catch) pr.catch(() => {});
-      } catch (e) {}
-      (0, /*()*/__V.paintRb)();
-      try {
-        const blob = await o.blob;
-        if (rbNow !== r) return;
-        r.url = URL.createObjectURL(blob);
-        vid.src = r.url;
-        await new Promise((ok, no) => {
-          vid.addEventListener('loadedmetadata', ok, { once: true });
-          vid.addEventListener('error', () => no(new Error('unplayable')), { once: true });
-        });
-        await rbLength(vid);
-        await vid.play();
-        if (rbNow !== r) return;
-        if (rbCap(vid)) rbTracks(r); else r.v = (0, /*()*/__V.rbCanvas)(r);
-        if (!r.v) throw new Error('no picture');
-      } catch (e) {
-        if (rbNow === r) { rbNow = null; rbDrop(r); (0, /*()*/__V.paintRb)(); }
-        setStatus(uiText('stThatVideoCanTBe', 'That video can’t be played here. Pick another file.'), 8000);
-        return;
-      }
-      // From the ended screen (Q72): lift the hold the Leave left, without
-      // the mic or camera, and put the seat back on the stage.
-      r.wasEnded = !!(bcSeeding && myStatus.bcend);
-      if (outgoingHeld) releaseLeaveAsk();
-      myStatus.bcend = 0;
-      myStatus.rb = Date.now();
-      r.starting = false;
-      vid.addEventListener('ended', () => { if (rbNow === r) rbStop('ended'); });
-      vid.addEventListener('timeupdate', __V.paintRbNow);
-      vid.addEventListener('pause', __V.paintRbNow);
-      vid.addEventListener('play', __V.paintRbNow);
-      if (!myStatus.stg) { r.steppedUp = true; setStage(true); }
-      (0, /*()*/__M.refreshOutbound)();
-      if (!r.steppedUp) broadcastStatus();
-      refreshAllTiles();
-      (0, /*()*/__V.paintRb)();
-      setStatus('Rebroadcasting ' + (r.last ? 'the last ' + rbNoun() : r.title) + '. Viewers see Prerecorded.', 6000);
-    }
+    yield 2292;
     function rbStop(why) {
       const r = rbNow;
       if (!r) return;
@@ -18219,10 +17028,10 @@
       else r.vid.pause();
       (0, /*()*/__V.paintRbNow)();
     }
-    yield 2265;
+    yield 2300;
     let shareSheetOpener = null;
     function shareSheetFocusId(blocked) { return blocked ? 'share-cancel' : 'share-go'; }
-    yield 2293;
+    yield 2328;
     (0, /*()*/__M.armAudioKeepAlive)();
     // END-AUDIO-KEEPALIVE
     // ---- DEBUG LOG (Settings → Debug) ----------------------------------------
@@ -18307,20 +17116,24 @@
     }
     const dlogOut = () => { if (dlogRec && dlogRec.live()) dlogRec.flush(true); };
     window.addEventListener('pagehide', dlogOut);
-    yield 2316;
+    yield 2351;
     (0, /*()*/__V.paintMyAvatarPreview)();
-    yield 2327;
-    const paintFaders = () => { for (const b of ['stage', 'row', 'stadium']) { const i = document.getElementById('mix-' + b); if (i) i.value = Math.round(__M.mix[b] * 100); } };
-    yield 2350;
-    __V.timingRow.addEventListener('click', (e) => {
-      const t = e.target && e.target.dataset ? e.target.dataset.timing : null;
-      if (t === 'song') { (0, /*()*/__M.toggleSing)(); (0, /*()*/__M.paintTiming)(); return; }
-      if (t !== 'chat' && t !== 'unison') return;
-      __M.timing = t;
-      try { localStorage.setItem(__M.TIMING_KEY, t); } catch (e2) {}
-      (0, /*()*/__M.paintTiming)();
-      (0, /*()*/__M.applyGrid)();
-    });
+    yield 2364;
+    // Timing is a PERSONAL, receiver-side setting (your ears, your knob — like
+    // the faders), three moods:
+    //   chat (default) — snappiest replies: the target derives from MY links
+    //     only. Per-listener alignment already de-smears each listener's ears;
+    //     the default optimizes the common case — conversation — and never
+    //     taxes a whole room for one slow link.
+    //   unison — everyone hears everyone at the same synced instant: the
+    //     near-field target is the ROOM's slowest gossiped need (capped), so
+    //     reactions, responsive readings and spontaneous song are GENERATED in
+    //     sync across the room, not just tidied at each ear. Worth its latency
+    //     when the room is a congregation rather than a meeting.
+    //   song — not a knob: entered by a leader's 🎵, it overrides both with
+    //     the deep cathedral tiers below.
+    const TIMING_KEY = 'gifos_timing';
+    yield 2386;
     (0, /*()*/__M.paintTiming)();
 
     // ---- live transcript: one line kind, one merge rule (2026-11-06) ----------
@@ -18344,7 +17157,7 @@
     // Translate everything to English is live on this page (trEnSync keeps it).
     let trEnOn = false;
     // Remembered on this device like the other caption settings (lsGet).
-    function capSend() { return (0, /*()*/__M.lsGet)(TR_SEND_KEY) !== 'off'; }
+    function capSend() { return lsGet(TR_SEND_KEY) !== 'off'; }
     // 'keep' (the default): lines are stored and shown here, and this page
     // writes down the voices nobody captions, so a late joiner always finds
     // the history on someone's page. 'share': keep, and those lines go to the
@@ -18352,7 +17165,7 @@
     // thrown away.
     let trModeSet = null; // this meeting's choice, when storage cannot hold it (a bot's frame)
     function trMode() {
-      const v = trModeSet !== null ? trModeSet : (0, /*()*/__M.lsGet)(TR_MODE_KEY);
+      const v = trModeSet !== null ? trModeSet : lsGet(TR_MODE_KEY);
       if (v === 'keep' || v === 'share') return v;
       return v === 'off' ? '' : 'keep';
     }
@@ -18437,6 +17250,7 @@
     }
     // CAPTION TRUST: the tracker (js/meet-captrust.js) is made with the warning card further down; until then nothing is judged.
     let capTrust = null;
+    let capLang = null;   // the speaker's side: the captions language others hear me in (docs/caption-trust.md section 7)
     // A line whose source this page does not trust (the speaker's own engine, or a writer) is kept and marked.
     function capDoubts(l) { return !!(capTrust && l && l.byId && l.byId !== myId && l.w && capTrust.stateOf(l.byId, l.w) === 'distrusted'); }
     function capName(id) {
@@ -18577,7 +17391,7 @@
       if (at > 0) m.at = at;
       return same[0];
     }
-    yield 2391;
+    yield 2427;
     function takeTr(m, backfill) { // backfill: a 'hi' replay — see takeChat
       if (!m || !m.id || trs.has(m.id) || ((m.at || 0) > 0 && (m.at || 0) <= (trs.floorAt || 0))) { if (clog && m && m.w === myId) clog('tr own drop', trs.has(m.id) ? 'held' : 'floor', m.at, trs.floorAt || 0); if (m && m.id) if (typeof capTrace === 'function') capTrace(m, trs.has(m.id) ? 'held' : 'floor'); return false; }
       const w = String(m.w || m.byId);
@@ -18603,6 +17417,7 @@
       if (via) Object.defineProperty(line, 'via', { value: via });
       // Every source is seen by the trust check before the merge folds two lines of one sentence into one.
       if (capTrust && !backfill) capTrust.observe({ byId: line.byId, w: line.w, src: line.src, eng: line.eng, at: line.at, end: line.end, text: line.text, tl: line.tl, vt: m.vt });
+      if (capLang && !backfill && line.byId === myId && w !== myId) { capLang.observe({ byId: line.byId, w, src: line.src, lang: line.lang, ld: line.ld, vt: m.vt, tl: line.tl }); (0, /*()*/__V.capLangAsk)(); }
       const merged = trMerge(line);
       if (merged === 'dup' || merged === 'echo') { if (typeof capTrace === 'function') capTrace(line, merged); return false; }
       if (typeof capTrace === 'function') capTrace(line, backfill ? 'replay' : 'kept');
@@ -18640,7 +17455,7 @@
     // picked language, or one learned from detected lines (the room's or
     // its own Whisper). A device default is a guess and is not advertised,
     // so a writer's Whisper is left to find the language itself.
-    function trLangKnown() { const v = ccLang(); return trLangOf(trLangLearned || ((0, /*()*/__M.lsGet)(CC_LANG_KEY) && v !== 'auto' ? v : '')); }
+    function trLangKnown() { const v = ccLang(); return trLangOf(trLangLearned || (lsGet(CC_LANG_KEY) && v !== 'auto' ? v : '')); }
     function trLearnLang(line) {
       if (!line || !line.ld || line.byId !== myId || !line.lang || trLangLearned === line.lang) return;
       if (line.lang === trLangKnown()) return; // nothing new: already picked or learned
@@ -18668,32 +17483,9 @@
     }
     let ccShow = false;
     try { ccShow = localStorage.getItem('gifos_cc_view') === '1'; } catch (e) {}
-    yield 2402;
-    function showCaption(byId, text, label) {
-      if (!ccShow) return;
-      const bar = document.getElementById('livecap');
-      if (bar) {
-        let name = label || '';
-        try {
-          if (!name) { if (byId === myId) name = myName(); else { const p = peers.get(byId); name = (p && p.name) || ''; } }
-        } catch (e) {}
-        bar.textContent = (name ? name + '. ' : '') + String(text || '');
-        if (bar.dataset) bar.dataset.voice = byId || '';
-        if (!bar.onclick) bar.onclick = () => (0, /*()*/__V.capSourceOpen)(bar.dataset.voice);   // a tap: whose captions to show for this person
-        bar.classList.add('show');
-        bar.scrollTop = 0;
-        clearTimeout(bar._hide);
-        bar._hide = setTimeout(() => bar.classList.remove('show'), 6000);
-      }
-      const t = byId === myId ? meTile : peers.get(byId);
-      if (!t || !t.cap) return;
-      t.cap.textContent = text;
-      t.cap.classList.add('show');
-      clearTimeout(t.capT);
-      t.capT = setTimeout(() => t.cap.classList.remove('show'), 6000);
-    }
+    yield 2439;
     let trDirty = false;
-    yield 2405;
+    yield 2441;
     // Lines the bot played. A caption of that voice is not written down again.
     const botSpokenLines = [];
     function rememberBotSpoken(text) {
@@ -18746,12 +17538,12 @@
         // the same sentence is already held by a better line. An ear line that is sent still goes: it is the
         // evidence other pages use to judge the speaker's own captions (they fold it into the line they hold).
         if (send && !mine && m.src === 'ear' && capTrust) sendAll({ k: 'tr', m });
-        if (capChosen(m)) showCaption(m.byId, trNote(m) + m.text, capLabel(m));   // the live captions follow the chosen source
+        if (capChosen(m)) (0, /*()*/__V.showCaption)(m.byId, trNote(m) + m.text, capLabel(m));   // the live captions follow the chosen source
         return;
       }
       if (send) sendAll({ k: 'tr', m });
       (0, /*()*/__V.renderTranscript)();
-      if (capShows(m)) showCaption(m.byId, trNote(m) + m.text, mine ? '' : capLabel(m));
+      if (capShows(m)) (0, /*()*/__V.showCaption)(m.byId, trNote(m) + m.text, mine ? '' : capLabel(m));
     }
     // What the bot SAYS is written down by the bot, from the words it was
     // handed: its microphone is never captioned (above), so this is the only
@@ -18788,7 +17580,7 @@
       earsFor: (v) => typeof __M.wspCaps !== 'undefined' && __M.wspCaps.has(v),
       onWarn: (v, info) => { try { capWarn(v, info); } catch (e) {} },
     }) : null;
-    yield 2412;
+    yield 2448;
     // EARS ONLY ARE SPOT CHECKS. A page whose own engine is the browser's listens, by default, to one talking voice at a
     // time for CT_SPOT_MS, then rests until CT_SPOT_EVERY_MS has passed: a quarter of one Whisper capture at most. A voice
     // whose own captions lost this page's trust, or that its user put on this device's ears, is heard full time.
@@ -18825,12 +17617,13 @@
     function capNowNote(v) {
       const c = capTrust.choice(v);
       const auto = c.mode === 'auto' ? uiText('capNowAuto', ' (decided for you)') : '';
-      if (c.show === myId) return uiText('capNowMine', 'Showing what this device hears.').replace(/\.$/, auto + '.');
-      if (c.show === v) return uiText('capNowOwnPlain', 'Showing {name}\'s own captions.').replace('{name}', capName(v)).replace(/\.$/, auto + '.');
-      if (c.show !== 'all') return uiText('capNowTheirs', 'Showing {name}\'s captions.').replace('{name}', capName(c.show)).replace(/\.$/, auto + '.');
+      const tail = (t) => t.replace(/([.\u3002])$/, auto + '$1');   // the note goes before the full stop, in any script
+      if (c.show === myId) return tail(uiText('capNowMine', 'Showing what this device hears.'));
+      if (c.show === v) return tail(uiText('capNowOwnPlain', 'Showing {name}\'s own captions.').replace('{name}', capName(v)));
+      if (c.show !== 'all') return tail(uiText('capNowTheirs', 'Showing {name}\'s captions.').replace('{name}', capName(c.show)));
       return capTrust.stateOf(v, v) === 'distrusted' ? uiText('capNowNone', 'Hiding {name}\'s own captions: no better source yet.').replace('{name}', capName(v)) : '';
     }
-    yield 2418;
+    yield 2454;
     function capWarn(v, info) { (0, /*()*/__V.capSourceOpen)(v, info || { why: '' }); }
     function capPick(v, src) {
       if (!capTrust) return;
@@ -18844,7 +17637,39 @@
     const CC_LANG_KEY = 'gifos_cc_lang';
     const ccLang = () => { let v = ''; try { v = localStorage.getItem(CC_LANG_KEY) || ''; } catch (e) {} return v || navigator.language || 'en-US'; };
     const ccLangLabel = () => { const v = ccLang(); const hit = CC_LANGS.find((x) => x[0] === v); return hit ? hit[1] : v; };
-    yield 2424;
+    yield 2461;
+    // THE SPEAKER'S SUGGESTION (docs/caption-trust.md section 7). Other pages' ears vote, on the ear lines they already
+    // send about my voice, for the language they hear me in; when enough of them agree on one my captions do not listen
+    // for, this page asks me. Only my tap switches; Keep quiets that language for the meeting.
+    capLang = (GifOS.capTrust && GifOS.capTrust.langHint && GifOS.timings) ? GifOS.capTrust.langHint({
+      me: () => myId,
+      keepMs: GifOS.timings.CT_KEEP_MS,
+      mine: capLangMine,
+      others: () => { try { return Math.max(0, (0, /*()*/__M.participantCount)() - 1); } catch (e) { return peers.size; } },
+    }) : null;
+    // The language my captions listen for, '' when my engine finds it itself (Whisper, nothing picked or 'auto').
+    function capLangMine() {
+      const saved = lsGet(CC_LANG_KEY);
+      if (saved === 'auto' || (!saved && (0, /*()*/__M.ccEngine)() === 'whisper')) return '';
+      return trLang();
+    }
+    // A language's name in this person's UI language ('en' -> "English", in German "Englisch").
+    function capLangName(code) {
+      code = trLangOf(code);
+      if (!code) return '';
+      try { const n = new Intl.DisplayNames([uiLang(), 'en'], { type: 'language' }).of(code); if (n && n.toLowerCase() !== code) return n; } catch (e) {}
+      const hit = CC_LANGS.find(([v]) => v && v !== 'auto' && trLangOf(v) === code);
+      return hit ? hit[1] : code;
+    }
+    // The picker value for a language: this device's own variant when the picker has it, else the picker's first.
+    function capLangTag(code) {
+      const navs = (navigator.languages && navigator.languages.length) ? Array.from(navigator.languages) : [navigator.language || ''];
+      const nav = navs.find((t) => trLangOf(t) === code && CC_LANGS.some(([v]) => v === t));
+      if (nav) return nav;
+      const hit = CC_LANGS.find(([v]) => v && v !== 'auto' && trLangOf(v) === code);
+      return hit ? hit[0] : code;
+    }
+    yield 2466;
     // ON-DEVICE CAPTIONS ON AN ANDROID PHONE. The phone writes its captions
     // with a speech model that runs in this browser (GifOS.ondevice, a Web
     // Worker): the voice never leaves the phone. Android only (2026-11-18,
@@ -18876,7 +17701,7 @@
       ccLocalWhyV = GifOS.ondevice.unsupported(navigator);
       return ccLocalWhyV;
     }
-    function ccLocalLang() { const v = (0, /*()*/__M.lsGet)(CC_LANG_KEY); return (v && v !== 'auto') ? v : (navigator.language || 'en-US'); }
+    function ccLocalLang() { const v = lsGet(CC_LANG_KEY); return (v && v !== 'auto') ? v : (navigator.language || 'en-US'); }
     const ccLocalShort = (l) => String(l || '').toLowerCase().split(/[-_]/)[0];
     const ccMB = (n) => Math.max(1, Math.round((n || 0) / 1e6));
     // The first download says how far it has got, in steps of a tenth, and
@@ -18957,7 +17782,7 @@
       (0, /*()*/__V.paintTxMark)();
       (0, /*()*/__V.paintCcLocal)();
     }
-    yield 2438;
+    yield 2480;
     // The one name the shared caption code calls for the on-device engine.
     const ccLocalQ = {
       lang: () => ccLocalShort(ccLocalLang()),
@@ -18976,7 +17801,10 @@
       paint: __V.paintCcLocal,
       test: () => ({ state: ccLocal.state, lang: ccLocal.lang, loaded: ccLocal.loaded, total: ccLocal.total, cached: !!ccLocal.cached, why: ccLocalWhy(), blocked: ccLocalBlocked(), model: ccLocal.eng ? ccLocal.eng.model : '', err: ccLocal.err }),
     };
-    yield 2527;
+    yield 2482;
+    const lsGet = (k) => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
+    const lsSet = (k, v) => { try { if (v) localStorage.setItem(k, v); else localStorage.removeItem(k); } catch (e) {} };
+    yield 2569;
     // ---- WHAT THIS PAGE TELLS THE ROOM ----------------------------------------
     // cap: 1 while this page sends its own captions and its engine is live (a
     // real line has come, or Whisper captures the mic); a keep/share page reads
@@ -19036,14 +17864,14 @@
       if (trRxAt && Date.now() - trRxAt < 20000) return 'receiving';
       return '';
     }
-    yield 2533;
+    yield 2575;
     // The two settings, remembered on this device: Send my captions (default
     // on) and Transcript off | keep | share (default off). A change restarts
     // the engines and tells the room.
     function setTrMode(v) {
       v = v === 'keep' || v === 'share' ? v : '';
       trModeSet = v || 'off'; // off is a choice: held and saved as 'off', never as "nothing chosen"
-      (0, /*()*/__M.lsSet)(TR_MODE_KEY, v || 'off');
+      lsSet(TR_MODE_KEY, v || 'off');
       if (!v) { for (const id of Array.from(trs.keys())) trs.delete(id); trDirty = true; }
       (0, /*()*/__M.refreshTrBtn)();
       try { (0, /*()*/__M.syncSpeech)(); } catch (e) {}
@@ -19051,50 +17879,21 @@
       (0, /*()*/__V.paintTranscriptControls)();
     }
     function setCapSend(on) {
-      (0, /*()*/__M.lsSet)(TR_SEND_KEY, on ? '' : 'off');
+      lsSet(TR_SEND_KEY, on ? '' : 'off');
       try { (0, /*()*/__M.syncSpeech)(); } catch (e) {}
       capPublish();
       (0, /*()*/__V.paintTranscriptControls)();
     }
-    yield 2641;
-    const callStateWatch = new MutationObserver(() => { try { (0, /*()*/__V.paintCallState)(); } catch (e) {} });
-    yield 2647;
+    yield 2689;
     (0, /*()*/__V.paintCallState)();
-    yield 2649;
-    // Every open popover of the dock, placed again: on open, on a drag, on a
-    // resize or rotation, and when the keyboard comes or goes.
-    // Columns for each group of the More sheet: the fewest lines that fit
-    // the sheet's width, with the items spread evenly over them, so a group
-    // never leaves one item alone on its last line (6 items are 3 and 3,
-    // not 5 and 1). The grid itself is in css/meet-23b.css (--mcols).
-    function layoutSheet() {
-      const sheet = document.getElementById('barmore');
-      if (!sheet || !sheet.getClientRects().length) return;
-      const phone = (0, /*()*/__V.phoneLayout)();
-      const minW = phone ? 76 : 150, gap = 6;
-      for (const row of sheet.querySelectorAll('.moregroup > .morerow')) {
-        let n = 0;
-        for (const el of row.children) if (el.tagName === 'BUTTON' && el.getClientRects().length) n++;
-        if (!n) continue;
-        const most = Math.max(1, Math.floor((row.clientWidth + gap) / (minW + gap)));
-        const lines = Math.ceil(n / most);
-        let cols = Math.ceil(n / lines);
-        for (let c = cols; c <= most; c++) {
-          if (n <= c || n % c !== 1) { cols = c; break; }
-        }
-        const v = String(Math.min(cols, most));
-        if (row.style.getPropertyValue('--mcols') !== v) row.style.setProperty('--mcols', v);
-        if (row.style.getPropertyValue('--mmax') !== String(most)) row.style.setProperty('--mmax', String(most));
-      }
-    }
-    yield 2659;
+    yield 2701;
 
     // A small call is a room, not a product: with 2–4 people on a desktop,
     // nothing open, and no mouse or key for a few seconds, the dock fades and
     // only faces are left (FaceTime and Meet do the same). Any move or key
     // brings it back. The layout does not change, so faces never jump.
     let dockCalmMs = 3000;
-    yield 2661;
+    yield 2703;
 
     // Audience reactions on a service. Each clap is one small frame. The stage
     // adds them up, so a room of claps is one pill, not a pile of emojis.
@@ -19113,7 +17912,7 @@
       if (audienceReactRate.size > 400) audienceReactRate.clear();
       return true;
     }
-    yield 2668;
+    yield 2710;
     // A REACTION IN A MEETING IS SEEN LIKE A RAISED HAND: by the whole room,
     // wherever the person's face is drawn. It flashes on their tile, and the
     // packers that draw their face burn it on (labelFor): their row's Stadium
@@ -19131,7 +17930,7 @@
     function inMySection(pid) {
       try {
         const c = meshCoord(); if (!c || !pid) return false;
-        for (let r = 0; r < SCALE.C; r++) for (let i = 0; i < SCALE.C; i++) if ((0, /*()*/__M.occPid)({ pc: c.pc, r, i }) === pid) return true;
+        for (let r = 0; r < SCALE.C; r++) for (let i = 0; i < SCALE.C; i++) if (occPid({ pc: c.pc, r, i }) === pid) return true;
       } catch (e) {}
       return false;
     }
@@ -19145,11 +17944,11 @@
       if (pid === myId) return true;
       try {
         const c = meshCoord();
-        if (c) for (let j = 0; j < SCALE.C; j++) if ((0, /*()*/__M.occPid)({ pc: c.pc, r: c.r, i: j }) === pid) return true;
+        if (c) for (let j = 0; j < SCALE.C; j++) if (occPid({ pc: c.pc, r: c.r, i: j }) === pid) return true;
         return stageIds().includes(pid);
       } catch (e) { return false; }
     }
-    yield 2675;
+    yield 2717;
     // One reaction frame to the room: the mesh flood, plus every open link the
     // roster has not caught up with yet. The id drops the copy a peer gets both ways.
     function sendReactFrame(emoji) {
@@ -19177,7 +17976,7 @@
         for (const p of peers.values()) if (p && p.id && p.dc && p.dc.readyState === 'open' && (staged || inMySection(p.id))) dcSend(p, msg);
       } catch (e) {}
     }
-    yield 2678;
+    yield 2720;
     function takeAudienceReact(emoji, fromId) {
       if (!BROADCAST) return false;
       emoji = String(emoji || '');
@@ -19201,7 +18000,7 @@
       (0, /*()*/__V.paintAudienceReacts)();
       return true;
     }
-    yield 2680;
+    yield 2722;
     // Clap ids already counted. A frame without an id (an older device)
     // still counts.
     const audienceReactSeen = new Set();
@@ -19217,7 +18016,7 @@
       takeAudienceReact(emoji, (typeof myId !== 'undefined' && myId) || 'me');
       sendReactFrame(emoji);
     }
-    yield 2684;
+    yield 2726;
 
     function amGloballyMuted() { const m = modOf('me').mute; return !!(m && m.on); }
     function micLockWords() {
@@ -19228,9 +18027,9 @@
     function focusOf(el) {
       return el.querySelector('input:not([type="hidden"]), select, textarea, button');
     }
-    yield 2688;
+    yield 2730;
     (0, /*()*/__V.armMeetDialogs)();
-    yield 2691;
+    yield 2733;
     if (window.__gifosRoomTrust) {
       window.__gifosRoomTrust.setDevices = (muted, camOff) => {
         myStatus.muted = !!muted;
@@ -19259,7 +18058,7 @@
     // goes on with it when it lands (a room order still holds it off).
     let lateWant = null;
     let bootGumPending = null;
-    yield 2748;
+    yield 2790;
 
     // ---- stay in the meeting when the tab is hidden ---------------------------
     // Registering as a CALL with the OS (Media Session) is the other half of
@@ -19277,33 +18076,15 @@
       try { const r = ms.setCameraActive(!myStatus.camOff); if (r && r.catch) r.catch(() => {}); } catch (e) {}
       try { ms.playbackState = 'playing'; } catch (e) {}
     }
-    (function wireMediaSession() {
-      const ms = navigator.mediaSession; if (!ms || !ms.setActionHandler) return;
-      const wire = (action, fn) => { try { ms.setActionHandler(action, fn); } catch (e) { /* action unsupported here */ } };
-      wire('togglemicrophone', () => (0, /*()*/__M.micTap)(false));   // the OS control: no chooser out of sight
-      wire('togglecamera', () => {
-        if (!myStatus.camOff) { __V.camBtn.onclick(); return; }
-        if (document.hidden) return;
-        __V.camBtn.onclick();
-      });
-      // The OS hang-up is the Leave button: a recording in flight is flushed
-      // and handed over first, and the page stays on the card for it.
-      wire('hangup', () => { if (!leaveMeeting()) location.replace(homeHref()); });
-      // Chrome auto-enters picture-in-picture for call sites that handle this —
-      // flip away and the stage follows you as a floating tile. MUST route
-      // through enterPip(): registering a second handler here used to CLOBBER
-      // the ranked source picker (last setActionHandler wins) with a dumb
-      // tile query that could float a black camOff tile.
-      wire('enterpictureinpicture', () => { (0, /*()*/__V.pipNote)('ms-action'); (0, /*()*/__V.awayFull)(true); (0, /*()*/__V.enterPip)(false, true); });
-      updateMediaSession();
-    })();
+    yield 2792;
+    (0, /*()*/__V.wireMediaSession)();
     // The blur slider: pick Max / Min / No blur directly. It records YOUR choice;
     // whether a tile actually goes clear is the room rule's meeting — when your
     // No blur can't show yet, the status line says exactly why.
     // A note under the blur buttons that goes away on its own.
     const BLUR_NOTE_MS = GifOS.timings.BLUR_NOTE_MS;
     let blurNoteTimer = 0;
-    yield 2753;
+    yield 2796;
     // Why a No blur pick is not clear video yet, or '' when nothing holds it
     // back. The camera-on line repeats it: turning the camera on is when the
     // person looks for clear video, and a bare "Camera on." hid the reason.
@@ -19345,9 +18126,7 @@
     function markHeldNote() {
       try { sessionStorage.setItem(heldNoteKey(), '1'); } catch (e) {}
     }
-    yield 2764;
-    // asked: the person picked this level themselves (the camera button's
-    // chooser), so a hold on No blur is explained in the dialog.
+    yield 2808;
     function setPersonalBlur(v, asked) {
       if (BROADCAST && !bcMayPublishAv()) return;
       myStatus.blur = v;
@@ -19368,59 +18147,22 @@
       } else if (why) {
         // The dialog already says this and stays until they dismiss it.
         // The fading note would sit on the picture under that dialog.
-        const whyDlg = document.getElementById('blurwhy-modal');
-        if (!(whyDlg && whyDlg.style.display !== 'none')) (0, /*()*/__V.blurNote)(why);
+        (0, /*()*/__V.showBlurNoteUnlessDialog)(why);
         setStatus(why);
       } else {
         setStatus(uiText('stBlurOff', 'Blur off.'));
       }
     }
-    yield 2766;
-    const camPicks = __V.camChooserEl ? Array.from(__V.camChooserEl.querySelectorAll('button')) : [];
-    for (const pick of camPicks) {
-      pick.onclick = () => {
-        const lvl = +pick.dataset.camBlur;
-        const then = __M.camPickThen;
-        const back = __M.camChooserAnchor || __V.camBtn;
-        (0, /*()*/__M.closeCamChooser)();
-        if (then) { then(lvl); try { if (back && back.focus) back.focus(); } catch (e) {} return; }
-        (0, /*()*/__M.pickCamera)(lvl);
-      };
-    }
-    yield 2771;
+    yield 2815;
     const modAllOn = (f) => { const m = modTable['*'] && modTable['*'][f]; return !!(m && m.on); };
     function allGuestsBlocked() { return modAllOn('blur'); }
-    yield 2774;
-    __V.blurAllBtn.onclick = () => {
-      if (!amAdmin) return;
-      const on = !allGuestsBlocked(); // flip: block all, or unblock all
-      setMod('*', 'blur', on);       // one entry, one flood, whatever the room's size
-      (0, /*()*/__V.updateBlurAllBtn)();
-      setStatus(on ? 'Blurred every guest.' : 'Unblurred every guest.');
-    };
-    yield 2776;
+    yield 2820;
     function allGuestsCamOff() { return modAllOn('cam'); }
-    yield 2778;
-    __V.camAllBtn.onclick = () => {
-      if (!amAdmin) return;
-      const on = !allGuestsCamOff(); // flip: video off for all, or allow all
-      setMod('*', 'cam', on);        // one entry, one flood, whatever the room's size
-      (0, /*()*/__V.updateCamAllBtn)();
-      setStatus(on ? 'Turned every guest\'s video off.' : 'Guests may turn their video back on.');
-    };
-    yield 2780;
+    yield 2824;
     function allGuestsMuted() { return modAllOn('mute'); }
-    yield 2782;
-    __V.muteAllBtn.onclick = () => {
-      if (!amAdmin) return;
-      const on = !allGuestsMuted();
-      setMod('*', 'mute', on);       // one entry, one flood, whatever the room's size
-      (0, /*()*/__V.updateMuteAllBtn)();
-      setStatus(on ? 'Muted every guest.' : 'Guests may unmute again.');
-    };
-    yield 2784;
+    yield 2828;
     function guestsMayShare() { const m = modTable['*'] && modTable['*'].share; return !!(m && m.on); }
-    yield 2787;
+    yield 2831;
     // L27 VOTE-OFF ON THE MESH: my vote-offs (device tags) name every peer on that device; the seat signs the
     // statement and it rides PHONE; the seat's fold is the tally, its threshold the need, its verdict the kick.
     const devClaimAt = new Map();   // peer -> when I first saw it hold a device tag
@@ -19516,7 +18258,7 @@
     }
     // ---- vote MODE: pick what you're voting on, then tap the targets ---------
     let voteMode = null;
-    yield 2803;
+    yield 2847;
     function castVote(id) {
       if (!voteMode || hasAdminRoom()) return;
       if (voteMode === 'kick') { toggleVote(id); refreshAllTiles(); return; }
@@ -19553,8 +18295,7 @@
       broadcastStatus();
       refreshAllTiles();
     }
-    let closeVoteModal = () => { const m = document.getElementById('vote-modal'); if (m) m.style.display = 'none'; };
-    yield 2810;
+    yield 2854;
     // One dismiss rule for every .name-modal. Escape and a backdrop tap run
     // the cancel control when one is visible. A locked-room password join
     // hides Close, so it stays until Join. A fork pick has no cancel.
@@ -19575,7 +18316,7 @@
       }
       return null;
     }
-    yield 2812;
+    yield 2856;
     function modalFocusables(el) {
       const out = [];
       for (const n of el.querySelectorAll('button, a[href], input, select, textarea')) {
@@ -19589,28 +18330,10 @@
       return out;
     }
     let modalTracked = null, modalOpener = null, modalOutside = null;
-    function syncModalFocus() {
-      const top = (0, /*()*/__V.topNameModal)();
-      if (top && top !== modalTracked) {
-        if (top.getAttribute('role') !== 'alertdialog') top.setAttribute('role', 'dialog');
-        top.setAttribute('aria-modal', 'true');
-        modalOpener = modalOutside;
-        modalTracked = top;
-        if (!top.contains(document.activeElement)) {
-          const f = modalFocusables(top)[0];
-          if (f) { try { f.focus(); } catch (e) {} }
-        }
-      } else if (!top && modalTracked) {
-        const back = modalOpener;
-        modalTracked = null; modalOpener = null;
-        if (back && back.isConnected) { try { back.focus(); } catch (e) {} }
-      }
-    }
-    yield 2819;
+    yield 2863;
     (0, /*()*/__V.paintControls)();
     try { (0, /*()*/__V.paintBroadcastRole)(); } catch (e) {}
-    yield 2822;
-    let closeInvModal = () => { __V.invModal.style.display = 'none'; };
+    yield 2867;
     function armCopiedLabel(btn, later) {
       const copied = uiText('invCopied', 'Copied ✓');
       const copy = uiText('invCopy', 'Copy');
@@ -19622,11 +18345,11 @@
         if (btn.dataset) delete btn.dataset.copied;
       }, 2000);
     }
-    yield 2826;
+    yield 2870;
     function linkRowHtml() {
       return '<div class="inv-link"><textarea id="inv-url" readonly rows="1" spellcheck="false">' + esc((0, /*()*/__V.inviteLinkForModal)()) + '</textarea><div class="inv-btns"><button id="inv-copy" type="button" class="appear-primary">' + esc(uiText('invCopy', 'Copy')) + '</button><button id="inv-share" type="button" class="appear-secondary" style="display:none">' + esc(uiText('invShare', 'Share')) + '</button></div></div>';
     }
-    yield 2828;
+    yield 2872;
 
     // FOLLOW-ME DELIVERY WAIT (Nathan, 11 Oct 2026). The admin's page used to
     // reload into the new room ~600ms after posting the follow-me link
@@ -19689,7 +18412,7 @@
     async function postMoveNotice(newLink) {
       const m = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text: 'I moved this meeting to a room I run — follow me:', link: newLink, ackReq: true };
       const needAck = Array.from(peers.keys());
-      chat.set(m.id, m); sendAll({ k: 'chat', m }); renderChat();
+      chat.set(m.id, m); sendAll({ k: 'chat', m }); (0, /*()*/__V.renderChat)();
       await flushOutbound(600); // seals queued, channels drained, never longer than 600 ms
       await waitForFollowAcks(m.id, needAck);
     }
@@ -19739,7 +18462,7 @@
     const subsFreeWords = () => GifOS.sub.fullFreeWords(subsTier);
     const subsProven = new Set(), subsAsked = new Map();   // knocker -> {n, at}
     const subsOn = () => !!(window.GifOS && GifOS.meetSubs && GifOS.sub);
-    yield 2840;
+    yield 2884;
     // The meeting a subscription ticket names: the room's relay session (a one-way hash of the room code), the same
     // room the relay's TURN vouches name, so the TURN Worker can check a paid ask's ticket against its vouches.
     const subsMeetId = () => sessId || roomKey();
@@ -19887,7 +18610,7 @@
       if (first) subsRefused = { limit, free: !!(m && m.free), at: Date.now(), n: 0, t: 0, tick: meshNode ? meshNode.tickMs() : 0 };
       if (DEBUG_ON) { try { clog('subs turned away at a full door limit=' + limit + (first ? '' : ' again, knock ' + subsRefused.n)); } catch (e) {} }
       subsStandAside();
-      if (first) GifOS.meetSubs.showFull({ limit, free: subsRefused.free, onRight: subsKnockAgain });
+      if (first) { leftScreenUp = leftScreenFull = true; GifOS.meetSubs.showFull({ limit, free: subsRefused.free, onRight: subsKnockAgain }); }   // the full screen is the "left" screen, marked full
       subsReknockArm();
       try { updateStatus(); } catch (e) {}
     }
@@ -19934,10 +18657,12 @@
       subsReknockClear();
       subsRefused = null; subsTurnedAway = false; doorToldAt = 0;
       leaving = false; capClosed = false;   // seated: devices may be opened again, each one by a tap
+      if (leftScreenFull) leftScreenUp = leftScreenFull = false;   // hideFull takes down a full door's screen (only that one)
       try { GifOS.meetSubs.hideFull(); } catch (e) {}
       try { updateStatus(); } catch (e) {}
     }
-    if (DEBUG_ON) window.__subsReknockForTest = () => (subsRefused ? { n: subsRefused.n, armed: !!subsRefused.t, aside: subsTurnedAway, sinceMs: Date.now() - subsRefused.at } : null);   // DEBUG=on only: a test reads the re-knock state
+    if (DEBUG_ON) window.__subsReknockForTest = () => (subsRefused ? { n: subsRefused.n, armed: !!subsRefused.t, aside: subsTurnedAway, sinceMs: Date.now() - subsRefused.at } : null);
+    yield 2910;
     function subsStandAside() {
       leaving = true;   // the mesh re-arms and reconnects stand down
       try { GifOS.meetSubs.leaveMeeting(); } catch (e) {}
@@ -19948,7 +18673,7 @@
       for (const pid of Array.from(peers.keys())) { try { dropPeer(pid); } catch (e) {} }
       try { if (typeof clearRosterTiles === 'function') clearRosterTiles(); } catch (e) {}
       // Only the full screen is up: a dialog a tap opened before the refusal (Your video is still blurred) goes.
-      for (const id of ['blurwhy-modal', 'status-full']) { const d = document.getElementById(id); if (d) d.style.display = 'none'; }
+      (0, /*()*/__V.hideDialogs)(['blurwhy-modal', 'status-full']);
     }
     function subsKnockAgain() {
       if (!subsRefused) return;
@@ -19957,6 +18682,7 @@
       if (!subsTurnedAway) subsStandAside();   // a knock without the right is under way: it ends, and the new knock shows the right from its first word
       subsRefused = null; subsTurnedAway = false; doorToldAt = 0;
       leaving = false; capClosed = false;   // a new knock may open devices again (each one asked by a tap)
+      if (leftScreenFull) leftScreenUp = leftScreenFull = false;   // hideFull takes down a full door's screen (only that one)
       try { GifOS.meetSubs.hideFull(); } catch (e) {}
       try { startMesh(); } catch (e) {}
       try { updateStatus(); } catch (e) {}
@@ -20010,7 +18736,7 @@
     // link and out of the words next to it. A phone with a share sheet gets
     // that sheet. Otherwise the link is copied. Same path as the phone Invite.
     function viewerShareUrl() {
-      let raw = (__V.shareUrl && __V.shareUrl.value) || '';
+      let raw = shareLink || '';
       const named = (typeof room === 'string' && room) ? room : (params.get('v') || '');
       if (!raw && named) {
         const avBit = (params.get('av') || '').toLowerCase();
@@ -20054,31 +18780,7 @@
     // A viewer early for a scheduled service gets Add to calendar: a one-event
     // .ics with the viewer link, which a phone opens in its calendar.
     let bcCalUrl = null, bcCalFor = '';
-    function paintBcCalendar(show) {
-      const a = document.getElementById('bc-cal');
-      if (!a) return;
-      a.hidden = !show;
-      if (!show) return;
-      const at = bcStartAt(), link = viewerShareUrl();
-      if (bcCalFor === at + link) return;
-      bcCalFor = at + link;
-      const stamp = (ms) => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
-      const esc = (s) => String(s).replace(/([\\;,])/g, '\\$1').replace(/\n/g, '\\n');
-      const noun = 'broadcast';
-      const name = String(params.get('v') || '').trim();
-      const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//GifOS//Broadcast//EN', 'BEGIN:VEVENT',
-        'UID:' + at + '-' + name.replace(/[^a-z0-9]/gi, '') + '@gifos.app', 'DTSTAMP:' + stamp(Date.now()),
-        'DTSTART:' + stamp(at), 'DTEND:' + stamp(at + 90 * 60000),
-        'SUMMARY:' + esc((name ? name + ' · ' : '') + 'live ' + noun),
-        'DESCRIPTION:' + esc('Watch here: ' + link), 'URL:' + link,
-        'BEGIN:VALARM', 'TRIGGER:-PT15M', 'ACTION:DISPLAY', 'DESCRIPTION:' + esc('The ' + noun + ' starts in 15 minutes'), 'END:VALARM',
-        'END:VEVENT', 'END:VCALENDAR', ''].join('\r\n');
-      if (bcCalUrl) { try { URL.revokeObjectURL(bcCalUrl); } catch (e) {} }
-      bcCalUrl = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
-      a.href = bcCalUrl;
-      a.download = (name || noun).replace(/[^\w.-]+/g, '-') + '.ics';
-    }
-    yield 2882;
+    yield 2927;
     // D2 "goodbyes are instant" — graceful-close coverage. pagehide fires on
     // every real unload path (close, swipe-away, navigation, reload), so it
     // alone says goodbye. Never beforeunload: it fires BEFORE a navigation is
@@ -20291,11 +18993,11 @@
       afterFarewell(() => { for (const pid of Array.from(peers.keys())) { try { dropPeer(pid); } catch (e) {} } if (typeof clearRosterTiles === 'function') clearRosterTiles(); });
       try { releaseAudioContext(); } catch (e) {}
       try { if (typeof __V.paintBroadcastChrome === 'function') (0, /*()*/__V.paintBroadcastChrome)(); } catch (e) {}   // the plain leave words, before the dialog shows (a door's refusal writes its own after)
-      const lm = document.getElementById('left-modal'); if (lm) lm.style.display = 'flex';
+      leftScreenUp = true; (0, /*()*/__V.showLeftDialog)();
       try { updateStatus(); } catch (e) {}
       return flushing;
     }
-    yield 2908;
+    yield 2953;
     // Keyboard: Alt+A mic, Alt+V camera, Alt+S share, Alt+C chat, Alt+K captions,
     // Alt+H hand, Alt+F view, Alt+Q leave confirm, and the rest of More
     // (Who, Invite, Run app, Vote, Password, Stage, Record, Settings, Transcript, Help).
@@ -20306,9 +19008,9 @@
       const t = e.target;
       return !!(t && t.closest && t.closest('input, textarea, select, [contenteditable="true"]'));
     }
-    yield 2910;
+    yield 2955;
     const SHORTCUT_IDS = { KeyA: 'mic', KeyV: 'cam', KeyS: 'sharebtn', KeyC: 'chatbtn', KeyK: 'ccdock', KeyH: 'hand', KeyF: 'fitbtn', KeyQ: 'leavebtn', KeyW: 'whobtn', KeyI: 'appinvite', KeyY: 'appbtn', KeyU: 'votebtn', KeyL: 'pwbtn', KeyG: 'stagebtn', KeyR: 'recbtn', Comma: 'setbtn', KeyT: 'trbtn', KeyJ: 'agendabtn', Slash: 'apphelp', KeyM: 'muteall', KeyB: 'blurall', KeyX: 'camall', KeyP: 'shareall' };
-    yield 2919;
+    yield 2964;
     // Snapshot and silence every outgoing sender while the confirm is up.
     // Cancel puts back exactly that snapshot. Confirm keeps the hold and
     // leaves through leaveMeeting(). Defined after the buttons so a lifted
@@ -20371,7 +19073,7 @@
       try { broadcastStatus(); } catch (e) {}
       try { (0, /*()*/__M.refreshOutbound)(); } catch (e) {}
     }
-    yield 2927;
+    yield 2978;
     let appMode = null;      // 'host' | 'client' | null
     let appKey = null;       // sid of the app session currently mounted here
 
@@ -20410,7 +19112,7 @@
       if (Date.now() - appCopy.paintedAt < 150) return; // ~62 parts in 7s; don't thrash layout
       (0, /*()*/__V.appCopyPaint)();
     }
-    yield 2932;
+    yield 2983;
 
     let appHiddenSid = null; // personal opt-out: this sid stays off MY stage only
     let appLeadSet = null, appLeadOn = false, appLeadable = false; // sharer's led-records switch
@@ -20431,30 +19133,7 @@
       return !!(g && g.on);
     }
     const canIRunApp = () => !!myId && appAllowed(myId);
-    yield 2939;
-
-    // The bar shows the app's GIF beside its name — the file IS the app, and
-    // on a guest's screen the thumbnail doubles as proof the bytes have
-    // arrived (they are the exact bytes Steal copies). The host and every
-    // guest read the same name.
-    let appGifUrl = null;
-    function setAppGif(bytes, name) {
-      if (!bytes || !bytes.length) return;
-      const img = document.getElementById('appgif');
-      // Display-only <img>: strip the packed filesystem (gifos-gif.js
-      // stripForDisplay — sanctioned for exactly this) so the app-bar icon
-      // blobs the animation, not a 20 MB archive the decoder must step over.
-      let stripped = false;
-      try { if (GifOS.gif && GifOS.gif.stripForDisplay) { bytes = GifOS.gif.stripForDisplay(bytes); stripped = true; } } catch (e) {}
-      if (appGifUrl) { try { URL.revokeObjectURL(appGifUrl); } catch (e) {} }
-      appGifUrl = URL.createObjectURL(new Blob([bytes], { type: 'image/gif' }));
-      img.src = appGifUrl; img.alt = name || 'App'; img.title = name || 'App';
-      // The tab takes the same blob: one object URL, revoked and re-pointed
-      // together above. Only ever the STRIPPED bytes.
-      if (stripped) (0, /*()*/__V.setAppFavicon)(appGifUrl, 'image/gif');
-      img.style.display = 'block';
-    }
-    yield 2948;
+    yield 2999;
     function currentAppHelpMd() {
       try {
         const ctl = soloCtl || appHostCtl || appClientCtl;
@@ -20474,58 +19153,7 @@
       if (!c) return null;
       return Object.assign({}, c, appInstall || {});
     }
-    yield 2957;
-    // Steal is TWO different wants — take the game AND the scoreboard, or
-    // take just the game — so the first press asks which, right where the
-    // finger already is: the button splits into the two choices, and Esc-like
-    // second thoughts (clicking anything else) fold it back.
-    document.getElementById('appsteal').onclick = () => {
-      if (!(appClientCtl && appClientCtl.stealToDesktop)) return;
-      const b = document.getElementById('appsteal');
-      if (b.dataset.armed) return;
-      b.dataset.armed = '1';
-      const label = b.textContent;
-      const fold = () => {
-        delete b.dataset.armed;
-        [d1, d2, d3].forEach((x) => x.remove());
-        b.style.display = '';
-      };
-      // The confirmation lives ON THE BUTTON. The status line is a span at
-      // the far end of the top bar, and a successful steal read as SILENCE
-      // at the point of click (reported 2026-08-08: the copy was saved,
-      // nothing said so where the user was looking). The button is where
-      // their eyes already are — morph it, hold it, restore it.
-      const go = (data, btn) => {
-        [d1, d2, d3].forEach((x) => { x.disabled = true; });
-        btn.textContent = uiText('stealBusy', 'Stealing…');
-        appClientCtl.stealToDesktop({ data })
-          .then(() => {
-            fold();
-            b.textContent = uiText('stealDone', '🥷 Stolen ✓');
-            b.disabled = true;
-            setStatus(data === 'none'
-              ? uiText('stealNone', '🥷 Yours now — a clean copy in your desktop’s Stolen Apps, none of the room’s data.')
-              : data === 'connect'
-                ? uiText('stealConnect', '🥷 Yours now — the room as it stood when you joined, in your Stolen Apps.')
-                : uiText('stealAll', '🥷 Yours now — saved to your desktop’s Stolen Apps, data and all.'));
-            setTimeout(() => { b.textContent = label; b.disabled = false; }, 4000);
-          })
-          .catch((e) => { fold(); setStatus(uiText('stealFail', 'Could not steal: {err}').split('{err}').join(e && e.message || e)); });
-      };
-      const mk = (txt, title, data) => {
-        const x = document.createElement('button');
-        x.textContent = txt; x.title = title; x.className = b.className; x.dataset.steal = data; x.style.fontSize = '16px';
-        x.onclick = () => go(data, x);
-        b.parentNode.insertBefore(x, b.nextSibling);
-        return x;
-      };
-      b.style.display = 'none';
-      // Insertion order: reversed, since each lands at b.nextSibling —
-      // reads left-to-right as: + data · as I joined · app only.
-      const d3 = mk(uiText('stealApp', 'app only'), uiText('stealAppTip', 'A clean copy — the app alone, none of the room’s data'), 'none');
-      const d2 = mk(uiText('stealJoined', 'as I joined'), uiText('stealJoinedTip', 'The app and the room as it stood when you came in'), 'connect');
-      const d1 = mk(uiText('stealData', '+ data'), uiText('stealDataTip', 'The app and everything in it right now'), 'current');
-    };
+    yield 3009;
     let appClientStop = null; // live client mount's teardown (unsubscribes its sga lane)
     let appClientCtl = null;  // the client mount's control: snapshot() + setFrozen() (one-runtime freeze/succession)
     let appHostCtl = null;    // the host boot's control: save/steal (one-runtime chrome)
@@ -20539,7 +19167,7 @@
       window.__appRemounts.push(Object.assign({ t: Date.now(), ev, mode: appMode, key: appKey ? String(appKey).slice(0, 8) : null }, x || {}));
       if (window.__appRemounts.length > 60) window.__appRemounts.shift();
     } catch (e) {} };
-    yield 2963;
+    yield 3014;
     // TAKEOVER GUARD: runApp's boot (runtime boot + becomeHost) is async, and
     // until it settles myStatus.app is still null — so an incoming status tick
     // would see the room's CURRENT ad as the winner and reconcileApp would
@@ -20571,20 +19199,9 @@
         name = name || (rec && rec.name && rec.name.replace(/\.gif$/i, '')) || 'App';
         appMode = 'host'; appKey = null;
         (0, /*()*/__V.showAppPane)(name, ROOM.appPinned ? uiText('appWhoPinned', 'you host it') : uiText('appWhoHost', '· you are hosting it for the meeting'));
-        // Run app lives in the More sheet; left open it is a grid of buttons
-        // over the app. Fold it without rewriting the saved preference.
-        const barEl = document.querySelector('.bar');
-        const toggle = document.getElementById('bartoggle');
-        if (barEl && toggle && !barEl.classList.contains('collapsed')) {
-          barEl.classList.add('collapsed');
-          toggle.setAttribute('aria-expanded', 'false');
-          toggle.setAttribute('aria-label', uiText('more', 'More'));
-          toggle.title = uiText('more', 'More');
-          const word = toggle.querySelector('.dockword');
-          if (word) word.textContent = uiText('more', 'More');
-        }
-        if (rec && rec.bytes) setAppGif(rec.bytes instanceof Uint8Array ? rec.bytes : new Uint8Array(rec.bytes), name);
-        const ctl = await GifOS.runtime.boot(__V.appMountEl, fileId, null);
+        (0, /*()*/__V.foldBarForApp)();
+        if (rec && rec.bytes) (0, /*()*/__V.setAppGif)(rec.bytes instanceof Uint8Array ? rec.bytes : new Uint8Array(rec.bytes), name);
+        const ctl = await (0, /*()*/__V.appRuntimeBoot)(fileId, false);
         appHostCtl = ctl; // Save/snapshot chrome (one-runtime)
         // Admin rooms: the sharer LEADS by default (their runtime fences the
         // app's led records). Open rooms: communal by default — today's warmth.
@@ -20658,13 +19275,13 @@
         // relay session below is the transport until the runtime adapter lands.
         if (app.mesh && GifOS.runtime.bootClientBus) {
           const sidNow = app.s;
-          GifOS.runtime.bootClientBus(__V.appMountEl, {
+          (0, /*()*/__V.appRuntimeClient)({
             s: app.s,
             pk: app.pk || null, // owner pk from the ad — pre-pins the verifier
             self: myId,         // pool claim ordering (see attachStageBus above)
             send: (kind, d) => stageData.broadcast(app.s, kind, d),
             subscribe: (cb) => stageData.subscribe(app.s, cb),
-          }, null, {}).then((c) => {
+          }).then((c) => {
             // keep the teardown so a later clear/takeover unsubscribes the lane;
             // if this mount was already superseded while booting, stop it now.
             if (!c || typeof c.stop !== 'function') return;
@@ -20793,8 +19410,7 @@
       if (best) { appOwnerPid = bestPid; appOwnerSeenAt = Date.now(); }
       return best;
     }
-    // Converge THIS phone's app view onto whatever the room is sharing. Runs on
-    // every status tick and on peer departure, so it self-heals like the mesh.
+    yield 3023;
     function reconcileApp() {
       sgaPromoteSnaps(); // a snap that raced the successor's ad
       sgaEdgeSync();     // a neighbour I did not have: the frames I may have missed while my edges moved
@@ -20840,7 +19456,7 @@
         succSince = 0;
         if (succT) { clearTimeout(succT); succT = null; }
         if (appClientCtl && appClientCtl.setFrozen) appClientCtl.setFrozen(false);
-        document.getElementById('appwho').textContent = '· shared with the room' + (want.byName ? ' by ' + want.byName : '');
+        (0, /*()*/__V.paintAppWho)('· shared with the room' + (want.byName ? ' by ' + want.byName : ''));
       }
       (0, /*()*/__V.updateAppButtons)(want);
     }
@@ -20903,7 +19519,7 @@
         appEv('owner-away-freeze');
         appFrozen = true;
         if (appClientCtl && appClientCtl.setFrozen) appClientCtl.setFrozen(true);
-        document.getElementById('appwho').textContent = '⏸ paused — the host is away';
+        (0, /*()*/__V.paintAppWho)('⏸ paused — the host is away');
       }
       if (ROOM.join && ROOM.join.owned) return; // owned room: freeze is the whole story
       if (succT || succBusy || myStatus.app) return;
@@ -20938,7 +19554,7 @@
         succSince = 0;
         const ctl = appClientCtl;
         if (!ctl || !ctl.snapshot) return;
-        const nm = document.getElementById('appname').textContent || 'App';
+        const nm = appPaneName || 'App';
         succBusy = true; // succT is spent and the app not yet mine: without this the next beat arms a second seize, two files and two runApp on one mount
         ctl.snapshot().then((bytes) => {
           const fid = GifOS.store.uid('file');
@@ -20953,7 +19569,7 @@
         }).catch(() => {}).then(() => { succBusy = false; });
       }, 6000); // grace: a blip must not trigger a takeover
     }
-    yield 2987;
+    yield 3039;
     // ---- THE "stage" APP CAPABILITY (docs/app-mesh.md "Apps that order the stage") ----
     // An app that declares capabilities.stage, running in THIS meeting, names
     // up to two people in stage order (first = on now, second = up next). Each
@@ -20998,8 +19614,8 @@
     // OK the app never stages them; "Not me" keeps them in the app's turn order
     // and off the stage for as long as this app runs here.
     let appStageConsent = null, appStageFor = null;
-    yield 2993;
-    const appStageOn = () => !!appKey && !!myId && !BROADCAST && !document.body.classList.contains('app-room');
+    yield 3045;
+    const appStageOn = () => !!appKey && !!myId && !BROADCAST && !appRoomOn;
     function appStageState() {
       const p = appStageLast;
       return { on: appStageOn(), me: appStageOn() ? myId : '', adminRoom: hasAdminRoom(), admin: !!amAdmin, cap: SCALE.C,
@@ -21048,7 +19664,7 @@
       }
       return appStageState();
     };
-    yield 2998;
+    yield 3050;
     // gifos.room (js/app-room.js): the people an app's session may seat are this page's own roster, nothing else.
     // Each person is named by the room id their OWN status carries (rk): a person whose status this page does not
     // hold, or whose status names no room id, is nobody the app can seat. The runtime hands this page the room id of
@@ -21071,7 +19687,7 @@
       }
       return { on: true, kind: hasAdminRoom() ? 'admin' : 'open', admin: !!amAdmin, me: myId, people: people.filter((x) => x.k) };
     };
-    yield 3000;
+    yield 3052;
     // Put a GIF app on this device: { fileId, name } or { error }.
     async function importGif(bytes, rawName) {
       const buf = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
@@ -21089,7 +19705,7 @@
       } catch (e) { return { error: 'Could not save that app on this device.' }; }
       return { fileId, name };
     }
-    yield 3002;
+    yield 3054;
     // S16 (Nathan 2026-11-17): an official run link (https://gifos.app/?run=connect-four, or this site's own /?run= or
     // #run=) names an app, not a GIF file. It is read the way GifOS Home reads it (desktop.js resolveRunTarget): a slug
     // is that app in this site's /apps/, a GitHub page link is its raw file. null: not a run link.
@@ -21112,7 +19728,7 @@
     // code (sample-apps.js, loaded only then). Survey and Whiteboard are App Store GIFs on this site.
     const RUN_DEFAULTS = [{ appId: 'taketurns', name: 'Take Turns', from: 'sample' }, { appId: 'survey', name: 'Survey', from: 'store' }, { appId: 'whiteboard', name: 'Whiteboard', from: 'store' }];
     const scriptOnce = {};
-    yield 3007;
+    yield 3059;
     async function installRunApp(d) {
       if (d.from === 'sample') {
         try { await (0, /*()*/__V.loadScriptOnce)('js/gifos-icons.js'); } catch (e) {}   // its tile art; a plain tile without it
@@ -21144,7 +19760,7 @@
       for (const f of rest) out.push({ name: label(f), fileId: f.id });
       return out;
     }
-    yield 3010;
+    yield 3062;
     // The same ceiling as the desktop's ?run= path (desktop.js RUN_MAX_BYTES):
     // an App GIF can be half a gigabyte and that is a feature, not a limit —
     // but the bytes are read WHILE they stream and refused past the ceiling,
@@ -21183,7 +19799,7 @@
       name = (name || 'app').replace(/[^\w.\-]+/g, '_'); if (!/\.gif$/i.test(name)) name += '.gif';
       return { bytes: buf, name };
     }
-    yield 3017;
+    yield 3069;
     // Second entry point: an app tab's "Meeting" toggle opens meet.html#app=<fileId>.
     // Auto-host that app once we're set up (its state lives in this same browser).
     // canIRunApp() needs myId, which S4 mints ASYNCHRONOUSLY — a fixed 900ms
@@ -21222,7 +19838,7 @@
     function roomControls() {
       return { hand: !!myStatus.hand, mic: !myStatus.muted, camera: !myStatus.camOff, people: roomPeople() };
     }
-
+    yield 3073;
     // Session frame (#mb=1): the parent meet-host drives this document.
     // Ordinary meetings never take this branch.
     if (params.get('mb') === '1' && window.GifOS && GifOS.meetSession) {
@@ -21361,8 +19977,7 @@
               try { p = bootIntoRoom(); } catch (e) { reject(e); return; }
               const done = () => {
                 meetJoined = true;
-                const linkEl = document.getElementById('share-url');
-                resolve({ room: room, link: linkEl ? linkEl.value : '' });
+                resolve({ room: room, link: shareLink });
               };
               if (p && typeof p.then === 'function') p.then(done, reject);
               else done();
@@ -21415,7 +20030,7 @@
             how = postChat(m);
             if (!how) return { ok: false, error: 'Slow mode: this meeting allows one chat line per ' + Math.round(CHAT_SLOW_MS / 1000) + ' seconds, and ' + CHAT_HELD_MAX + ' are already waiting to go out.' };
           }
-          try { renderChat(); } catch (e) {}
+          try { (0, /*()*/__V.renderChat)(); } catch (e) {}
           try {
             if (typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'chat', text: text, by: m.by, byId: m.byId, at: m.at, self: true });
           } catch (e) {}
@@ -21568,8 +20183,9 @@
         },
         stopSpeaking() { return stopBotSpeech(); },
         watch(msg) {
-          document.body.classList.toggle('bot-eyes', !!(msg && msg.on));
-          return { watch: document.body.classList.contains('bot-eyes') };
+          const on = !!(msg && msg.on);
+          (0, /*()*/__V.paintBotEyes)(on);
+          return { watch: on };
         }
       });
       setInterval(() => {
@@ -21604,7 +20220,7 @@
       const v = m && m.on;
       return v === 'off' || v === 'ask' ? v : 'allowed';
     }
-    yield 3029;
+    yield 3082;
     function agentPeople() {
       const out = [];
       const stg = stageIds();
@@ -21658,9 +20274,7 @@
       } catch (e) { agenda = null; }
       let app = null;
       for (const p of people) { const st = p.me ? myStatus : statusOf.get(p.id); if (st && st.app && st.app.name) { app = { running: { id: p.id, name: String(st.app.name) }, room: null }; break; } }
-      const lm = document.getElementById('left-modal');
-      const left = bannedOut ? 'removed' : (lm && lm.style.display !== 'none') ? 'manual' : '';
-      const sc = document.getElementById('statuscount'), sr = document.getElementById('statusrest');
+      const left = bannedOut ? 'removed' : leftDialogUp() ? 'manual' : '';
       return {
         me: Object.assign({}, mine, { hand: !!myStatus.hand, camera: !myStatus.camOff, muted: !!myStatus.muted }),
         room: { id: room ? String(room) : '', kind: hasAdminRoom() ? 'admin' : 'open', locked: !!roomPw, aiNotes: aiNotesSetting() },
@@ -21668,7 +20282,7 @@
         people: people, stage: { ids: stageIds(), mode: hasAdminRoom() ? 'host' : 'open' }, agenda: agenda, app: app, video: agentVideoList(),
         host: { muted: typeof amGloballyMuted === 'function' && amGloballyMuted(), camOff: !!forcedCamOff('me'), removed: !!bannedOut },
         left: left, botView: !!botViewOn, forced: AGENT_FORCED,
-        status: ((sc && sc.textContent) || '') + ((sr && sr.textContent) ? ' ' + sr.textContent : ''),
+        status: (statusLine.count || '') + (statusLine.rest ? ' ' + statusLine.rest : ''),
       };
     }
     // The agent's voice: one track rides every main audio sender while it speaks (mainAudioTrack), as the
@@ -21712,7 +20326,7 @@
       const m = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text: text };
       const how = postChat(m);   // the one road for a line: slow mode paces it, and holds it rather than lose it
       if (!how) return agentFail('Slow mode: this meeting allows one chat line per ' + Math.round(CHAT_SLOW_MS / 1000) + ' seconds, and ' + CHAT_HELD_MAX + ' are already waiting to go out.');
-      try { renderChat(); } catch (e) {}
+      try { (0, /*()*/__V.renderChat)(); } catch (e) {}
       return agentOk({ id: m.id, held: how === 'held' });
     }
     function agentHand(up) {
@@ -21807,6 +20421,7 @@
       try { refreshAllTiles(); broadcastStatus(); if (typeof pushLeaf === 'function') pushLeaf(); } catch (e) {}
       return agentOk(out);
     }
+    yield 3098;
     function agentHost() {
       const T = GifOS.timings;
       return {
@@ -21823,7 +20438,7 @@
         hostMuted: () => typeof amGloballyMuted === 'function' && amGloballyMuted(), camForcedOff: () => !!forcedCamOff('me'),
         playVoice: agentVoice, writeSpoken: (text) => { rememberBotSpoken(text); writeBotSpoken(text); },
         audioTracks: agentAudioTracks, videoSource: agentVideoSource,
-        blurFrac: (id) => (0, /*()*/__M.blurViewFrac)(blurLevelFor(id)), blurDraw: __M.blurDraw, makeCanvas: () => document.createElement('canvas'),
+        blurFrac: (id) => (0, /*()*/__M.blurViewFrac)(blurLevelFor(id)), blurDraw: __M.blurDraw, makeCanvas: () => (0, /*()*/__V.newCanvas)(),
         setCamera: agentCamera, chat: agentChat, hand: agentHand, mic: agentMic, stage: agentStage,
         appRun: agentAppRun,
         appStop: () => { if (!myStatus.app) return agentFail('You are not sharing an app.'); stopApp(); return agentOk(); },
@@ -21833,16 +20448,16 @@
         leave: () => { try { leaveMeeting(); } catch (e) {} return agentOk(); },
         renderBotView: (st) => {
           if (!botViewOn) return;
-          const rows = (m) => Array.from(m.values()).filter((l) => l && !/^gb1 /.test(String(l.text || ''))).sort((x, y) => (x.at || 0) - (y.at || 0)).map((l) => ({ name: l.by || '', text: l.text || '' }));
-          GifOS.meetAgent.renderBotView(document.getElementById('botview'), Object.assign({}, st, { transcript: rows(trs), chat: rows(chat) }), uiText);
+          (0, /*()*/__V.paintBotView)(st);
         },
         reaim: () => { try { sendVisPark(); } catch (e) {} },
       };
     }
+    yield 3100;
     function agentStart() {
       if (!agentCore && window.GifOS && GifOS.meetAgent && GifOS.timings) {
         agentCore = GifOS.meetAgent.make(agentHost());
-        try { GifOS.meetAgent.postMessageBridge(agentCore, window); } catch (e) {}
+        try { (0, /*()*/__V.bridgeAgentToPage)(agentCore); } catch (e) {}
       }
       if (!agentCore) {
         // A bare visit runs the lobby's scripts first and the rest (this module among them) right after: look again.
@@ -21853,7 +20468,7 @@
       agentCore.start();
       return agentCore;
     }
-    yield 3046;
+    yield 3102;
     // BACK TO NORMAL VIEW: one tap, no reload, no reseat. The seat, its links, keys, sound and history stay; the
     // camera stays off and the mic muted (on only when the person turns them on); every link is asked for video
     // again with a fresh key frame, and the tiles are drawn from the roster as it is now. A reload stays normal.
@@ -21872,7 +20487,7 @@
       try { refreshAllTiles(); updateTile('me'); broadcastStatus(); (0, /*()*/__V.paintControls)(); reactRoomState(); (0, /*()*/__V.layout)(); (0, /*()*/__M.applyBuses)(); } catch (e) {}
       return true;
     }
-    yield 3048;
+    yield 3104;
     if (AGENT_FORCED) agentStart();   // the API is there from the first moment; it says joined when the seat is
     if (botViewWant && room) (0, /*()*/__V.setBotView)(true);
 
@@ -21926,7 +20541,7 @@
         const apple = /Apple/.test((navigator.vendor || ''));
         try {
           if (apple) throw new Error('no captureStream on this engine');
-          const c = document.createElement('canvas');
+          const c = (0, /*()*/__V.newCanvas)();
           c.width = 640; c.height = 360;
           const x = c.getContext('2d');
           const hue = (i * 47) % 360;
@@ -21989,7 +20604,7 @@
       let stream = null;
       try {
         if (apple) throw new Error('no captureStream on this engine');
-        const c = document.createElement('canvas');
+        const c = (0, /*()*/__V.newCanvas)();
         c.width = 320; c.height = 180;
         const x = c.getContext('2d');
         x.fillStyle = '#1d3a5f';
@@ -22017,7 +20632,7 @@
       try { (0, /*()*/__V.layout)(); updateStatus(); (0, /*()*/__V.paintRoster)(); } catch (e) {}
       return { ok: true, id: id, held: !!p.held };
     }
-    yield 3054;
+    yield 3110;
     // ---- DEBUG AUDIO METERS (js/meet-meters.js; debug mode only) -------------
     // Who this page hears, read where each voice PLAYS: a person's tile
     // (direct), a voice a friend carries (friend), a row tile (rowmix), the
@@ -22037,7 +20652,7 @@
     let carryG = null;
     const carryHosts = new Map();      // carried page's peer id -> { link, voice, name, far, mix }
     const carryOwnLines = new Set();
-    yield 3061;
+    yield 3117;
     // NO USABLE PC, ONE PATH: no RTCPeerConnection at all (the boot), or one that gathers no candidate, neither its own nor a
     // relay one (meet-turn webStart: the moment the web path would start, whose in-page pair needs a candidate too). The page
     // leaves the mesh it began (an island of one at most: nothing can connect to it) and is carried. Never back: a reload is.
@@ -22132,7 +20747,7 @@
       G.link.sendText({ k: 'chat', m: { id: msg.m.id, text: String(msg.m.text || '').slice(0, 2000) } });
     }
     function carryGuestText(m) {
-      if (m.k === 'chat' && m.m && typeof m.m === 'object') { if (takeChat(m.m)) renderChat(); }
+      if (m.k === 'chat' && m.m && typeof m.m === 'object') { if (takeChat(m.m)) (0, /*()*/__V.renderChat)(); }
     }
     // --- the carrier end: one carried page, its voice in mine, what I hear in its ear, its chat lines as my word
     function carryHostTv(from, f) {
@@ -22171,7 +20786,7 @@
     function carryHostSync(c) {
       const ac = ensureAc(); if (!ac || !c.voice || !c.voice.input) return;
       const want = new Map();
-      for (const s of dbgMeterSources()) { if (s.path === 'send' || s.path === 'carry' || !(s.g > 0)) continue; want.set(s.node || s.track, s); }
+      for (const s of (0, /*()*/__M.dbgMeterSources)()) { if (s.path === 'send' || s.path === 'carry' || !(s.g > 0)) continue; want.set(s.node || s.track, s); }
       const mic = localStream && localStream.getAudioTracks()[0];
       if (mic) want.set(mic, { track: mic, g: 1, mic: true });
       for (const [obj, x] of [...c.srcs]) { const w = want.get(obj); if (!w || w.g !== x.g) { try { x.n.disconnect(); } catch (e) {} try { if (x.gn) x.gn.disconnect(); } catch (e) {} c.srcs.delete(obj); } }
@@ -22193,7 +20808,7 @@
         // byId: its own peer id, which its key statement proved to me on this link: the room's per-author rules (slow mode, rate) see its own author
         const line = { id: uid('m'), by: (c.name || 'Guest').slice(0, 40), byId: c.far, at: Date.now(), text: m.m.text.slice(0, 2000) };
         carryOwnLines.add(line.id);
-        chat.set(line.id, line); sendAll({ k: 'chat', m: line }); renderChat();
+        chat.set(line.id, line); sendAll({ k: 'chat', m: line }); (0, /*()*/__V.renderChat)();
       }
     }
     function carryHostTell(obj) {
@@ -22218,46 +20833,18 @@
       for (const c of carryHosts.values()) out.push(Object.assign({ far: c.far, name: c.name, mic: c.mic == null ? null : !!c.mic, srcs: c.srcs.size, track: !!__M.carryVoiceTrack }, await one(c.link, c.voice)));
       return { role: out.length ? 'carrier' : 'none', pcGathers, muted: !!myStatus.muted, saysMuted: !!carryStatusOut(myStatus).muted, carried: out, log };
     }
-    function dbgMeterSources() {
-      const out = [];
-      const nm = (id) => (id ? (rosterNames[id] || String(id).slice(0, 8)) : null);
-      const live = (st) => { const ts = st && st.getAudioTracks ? st.getAudioTracks().filter((t) => t.readyState === 'live') : []; return ts.length ? ts[ts.length - 1] : null; };
-      const wk = (typeof __M.wkEar !== 'undefined' && __M.wkEar && __M.wkEar.fold && __M.wkEar.fold.gainOf) ? __M.wkEar : null;
-      for (const v of document.querySelectorAll('video')) {
-        const t = v.closest && v.closest('[data-peer],[data-row]');
-        if (!t) continue;
-        const pid = t.dataset.peer || null;
-        let path = v.closest('#stadium') ? 'stadium' : v.closest('#stagefeed') ? 'stagefeed' : t.dataset.row != null && !pid ? 'rowmix' : 'direct';
-        if (path === 'direct' && (!pid || pid === myId)) continue;
-        const p = pid ? peers.get(pid) : null;
-        if (path === 'direct' && p && p.relayed) path = 'friend';
-        const who = pid ? String(pid).slice(0, 8) : (t.dataset.row != null ? 'row' + t.dataset.row : path);
-        if (wk && v._wkVoice && v._wkKey) { const g = wk.fold.gainOf(v._wkKey); if (g) out.push({ path, who, name: nm(pid), node: g, g: g.gain.value, post: true }); continue; }
-        const a = v._aud; const tr = a && a.srcObject ? live(a.srcObject) : null;
-        if (tr) out.push({ path, who, name: nm(pid), track: tr, g: (a.muted || a.paused) ? 0 : a.volume });
-      }
-      if (__M.stageEar && __M.stageEar.el) {
-        const g = wk && wk.fold.has(__M.WK_STAGE_KEY) ? wk.fold.gainOf(__M.WK_STAGE_KEY) : null;
-        if (g) out.push({ path: 'stage', who: 'stage', node: g, g: g.gain.value, post: true });
-        else { const tr = live(__M.stageEar.el.srcObject); if (tr) out.push({ path: 'stage', who: 'stage', track: tr, g: (__M.stageEar.el.muted || __M.stageEar.el.paused) ? 0 : __M.stageEar.el.volume }); }
-      }
-      for (const c of carryHosts.values()) if (c.voice && c.voice.output) out.push({ path: 'carry', who: String(c.far).slice(0, 8), name: c.name || 'carried', node: c.voice.output, g: 1 });   // the page I carry
-      if (carryG && carryG.voice && carryG.voice.output) out.push({ path: 'carry', who: String(carryG.far || 'carrier').slice(0, 8), name: 'carrier', node: carryG.voice.output, g: 1 });   // what my carrier hears, carried to me
-      for (const [k, f] of __M.downFolds) { const tr = f && f.track ? f.track() : null; if (tr) out.push({ path: 'send', who: String(k), track: tr, g: 1 }); }
-      { const tr = __M.prodPack && __M.prodPack.stream && __M.prodPack.stream.getAudioTracks ? __M.prodPack.stream.getAudioTracks()[0] : null; if (tr) out.push({ path: 'send', who: 'prod', track: tr, g: 1 }); }   // my row's product, as it leaves
-      return out;
-    }
+    yield 3135;
     function dbgMeters() {
       if (!DEBUG_ON || !GifOS.meetMeters) return null;
       if (!dbgMeterKit) {
-        dbgMeterKit = GifOS.meetMeters.create({ ac: () => ac, sources: dbgMeterSources });
+        dbgMeterKit = GifOS.meetMeters.create({ ac: () => ac, sources: __M.dbgMeterSources });
         dbgMeterKit.start(500);
         setInterval(() => { if (dbgMeterPanel) GifOS.meetMeters.paint(dbgMeterPanel, dbgMeterKit.read()); }, 1000);
         if (dbgMeterAsked) (0, /*()*/__V.dbgMeterShow)(true);
       }
       return dbgMeterKit;
     }
-    yield 3081;
+    yield 3137;
     if (DEBUG_ON) setTimeout(function dbgMeterBoot() { if (!dbgMeters()) setTimeout(dbgMeterBoot, 2000); }, 1000);
     window.__gifosVideo = {
       carryForTest: () => carryForTest(),
@@ -22334,12 +20921,6 @@
       },
       liveTracksForTest: () => (localStream && localStream.getTracks ? localStream.getTracks().filter((t) => t.readyState === 'live').length : 0),
       awayForTest: () => !!myStatus.away,
-      setTabHiddenForTest: (hidden) => {
-        try { Object.defineProperty(document, 'hidden', { configurable: true, get: () => !!hidden }); } catch (e) {}
-        document.dispatchEvent(new Event('visibilitychange'));
-        const el = document.getElementById('still');
-        return { ok: true, away: !!myStatus.away, still: !!(el && el.classList.contains('on')) };
-      },
       killCameraForTest: () => {
         const stopped = [];
         const stopAll = (stream) => {
@@ -22415,7 +20996,7 @@
       // scheduled) from "the beat happened and the flood never delivered it"
       // (this age small while an observer's statusPeek age for me is large).
       beatPeekForTest: () => ({ atAgeMs: Date.now() - (myStatus.at || 0), tick: hbTick, via: hbVia,
-        veiled: !!joinVeilEl,
+        veiled: joinVeilUp,
         seated: (() => { try { const s = meshSeat(); return !!(s && s.state === 3 && s.hasCoord); } catch (e) { return null; } })() }),
       mosInKeysForTest: () => [...__M.mosIn.keys()].filter((k) => k.indexOf('stg') === 0 || k === 'sgs'),
       // ENCODED PASSTHROUGH (§9a) forensics: which jobs ride the pipe lane vs
@@ -22452,12 +21033,6 @@
         const dn = __M.mosIn.get('sdn'), sdx = __M.mosIn.get('sdx');
         return { coord: meshCoord(), ac: ac ? ac.state : null, ear: at(__M.downStreams.get('ear')), fwd: at(__M.downStreams.get('fwd')),
           sdn: dn ? { via: String(dn.via).slice(0, 8), tracks: at(dn.stream) } : null, sdx: sdx ? { via: String(sdx.via).slice(0, 8), tracks: at(sdx.stream) } : null };
-      },
-      // What my Stadium shows, by the cell ids it carries, and my row.
-      stadIdsForTest: () => {
-        const c = meshCoord(), m = comfyStadMeta(), v = m.video;
-        const row = []; if (c) for (let j = 0; j < SCALE.C; j++) { const pid = j === c.i ? myId : (0, /*()*/__M.occPid)({ pc: c.pc, r: c.r, i: j }); if (pid) row.push(String(pid)); }
-        return { coord: c, me: String(myId || ''), n: m.n, ids: m.ids, live: !!(v && v.videoWidth > 0), w: v ? v.videoWidth : 0, h: v ? v.videoHeight : 0, row, stagers: stageIds().map(String), hold: (typeof __M.avHold !== 'undefined' && __M.avHold) ? __M.avHold.ms : 0 };
       },
       // Debug: the Stadium's packers and received blocks, for a recorder that stamps when a picture or a sound reaches each of them.
       latTapsForTest: () => (DEBUG_ON ? { prodPack: /*=*/__M.prodPack, roomPack: /*=*/__M.roomPack, sdView: /*=*/__M.sdView, l14Packs: /*=*/__M.l14Packs, mosIn: /*=*/__M.mosIn, downStreams: /*=*/__M.downStreams, packLoop: /*=*/__M.packLoop, coord: meshCoord(), me: String(myId || '') } : null),
@@ -22566,7 +21141,6 @@
         mixNow: Object.assign({}, __M.mix),
       }),
       singForTest: (on) => { if (!!on !== !!myStatus.sing) (0, /*()*/__M.toggleSing)(); },
-      timingForTest: (t) => { const b = __V.timingRow.querySelector('[data-timing="' + t + '"]'); if (b) b.click(); },
       gdForTest: (v) => { __M.gdOverride = +v || 0; (0, /*()*/__M.applyGrid)(); broadcastStatus(); },
       // app-in-meeting
       appActive: () => !!appKey,
@@ -22580,20 +21154,11 @@
       sgaInjectForTest: (msg) => { if (!msg || msg.k !== 'sga-app' || !msg.m || typeof msg.m.sid !== 'string') return false; sgaRecvApp(msg.m); return true; }, // a frame as the wire would hand it in
       appSid: () => appKey,
       sgaPullState: (sid) => ({ snap: sgaSnap.has(sid), app: sgaApp.has(sid), reqTries: sgaReqTries.get(sid) || 0, appTries: sgaAppReqTries.get(sid) || 0 }),
-      appName: () => document.getElementById('appname').textContent,
       appIsHost: () => appMode === 'host',
       runAppForTest: (fileId, name) => runApp(fileId, name),
       stopAppForTest: () => stopApp(),
       capOf: (id) => capOf(id),
       scale: () => Object.assign({}, SCALE),
-      // The Stage (Channel St) — inspect + drive it from the meeting CLI.
-      stageInfo: () => ({
-        stagers: stageIds().map((id) => ({ id: String(id).slice(0, 12), name: id === myId ? myName() : (rosterNames[id] || null), me: id === myId })),
-        myStg: myStatus.stg || 0, canStage: canStage(myId), cap: SCALE.C,
-        held: [...__M.mosIn.keys()].filter((k) => k.indexOf('stg:') === 0),
-        strip: (typeof __M.stripPack !== 'undefined' && __M.stripPack) ? __M.stripPack.stats() : null,
-        stripPainted: !!document.querySelector('[data-row="sgs"] video'),
-      }),
       // Per-feed ground truth: every claimed mosaic feed's element + track state.
       feedsInfo: () => [...__M.mosIn.entries()].map(([rk, f]) => ({
         key: rk, via: String(f.via).slice(0, 8), meta: f.meta || null,
@@ -22606,59 +21171,6 @@
         vState: f.stream && f.stream.getVideoTracks()[0] ? f.stream.getVideoTracks()[0].readyState : null,
       })),
       stageForTest: (on) => { if (!!on === !!myStatus.stg) return stageIds().includes(myId); if (on && (!canStage(myId) || stageIds().length >= SCALE.C)) return false; setStage(!!on); return true; },
-      // SCREEN SHARE (docs/media-plane.md Channel St). Read the state a
-      // receiver can actually act on: who the room believes is sharing, and —
-      // for the sharer — what is really on the outbound sender right now. The
-      // track's `label`/`displaySurface` is the only place the browser admits
-      // a track came from getDisplayMedia rather than a camera, which is what
-      // makes "the screen really is what is being published" provable at all.
-      screenInfo: () => {
-        const vt = (typeof __M.sentVideoTrack === 'function') ? (0, /*()*/__M.sentVideoTrack)() : null;
-        let surface = null; try { surface = vt && vt.getSettings ? (vt.getSettings().displaySurface || null) : null; } catch (e) {}
-        const mainTracks = [];
-        for (const p of peers.values()) if (p.mainV && p.mainV.track) mainTracks.push(p.mainV.track.id);
-        return {
-          sharing: !!myStatus.scr, sharers: (0, /*()*/__M.screenSharers)(),
-          capable: (0, /*()*/__M.canScreenShare)(),
-          steppedUp: screenSteppedUp,
-          onStage: stageIds().includes(myId),
-          sentTrackId: vt ? vt.id : null,
-          sentLabel: vt ? String(vt.label || '') : null,
-          surface,
-          mainTrackIds: mainTracks,
-          // THE RESOLUTION SURFACE. A share that arrives unreadable fails none
-          // of the checks above — it is on the stage, it is a display capture,
-          // it is letterboxed — so the numbers that decide legibility are
-          // published here rather than inferred from pixels (a composited
-          // canvas cannot tell a downscale from a blurry desktop).
-          sentHint: vt ? String(vt.contentHint || '') : '',
-          // What the Stage element is ACTUALLY painting. The strip's canvas is
-          // square (one screen tile ⇒ cell x cell); the direct feed keeps the
-          // shared display's own shape. So the aspect alone says which one the
-          // viewer is looking at, and the width says at what cost.
-          stagePaint: (() => {
-            const v = __V.stagefeedEl && __V.stagefeedEl.querySelector('[data-row="sgs"] video');
-            return v ? { w: v.videoWidth, h: v.videoHeight } : null;
-          })(),
-          // Every outbound video sender's lane, as adapt() last left it.
-          senders: (() => {
-            const out = [];
-            for (const p of peers.values()) for (const sd of p.pc.getSenders()) {
-              if (!sd.track || sd.track.kind !== 'video') continue;
-              let prm = null; try { prm = sd.getParameters(); } catch (e) {}
-              const e0 = prm && prm.encodings && prm.encodings[0];
-              out.push({
-                stage: stageSenders.has(sd), aux: auxSenders.has(sd),
-                kbps: e0 && e0.maxBitrate ? Math.round(e0.maxBitrate / 1000) : 0,
-                deg: __M.degOf.get(sd) || (prm && prm.degradationPreference) || '',
-              });
-            }
-            return out;
-          })(),
-          shareBtnShown: !!(__V.shareBtn && __V.shareBtn.offsetParent !== null),
-          bodyScreenOn: document.body.classList.contains('screen-on'),
-        };
-      },
       // The exact call the strip compositor makes when it packs a seat's cell.
       // Asserted directly because the alternative — reading pixels out of a
       // composited canvas — cannot tell a letterbox from a dark room, and the
@@ -22671,60 +21183,6 @@
       // can tell a live face from an empty box.
       // Why this page reads a stager as sharing: its fresh status, the fold's bit, the grant.
       shareWhyForTest: (id) => { const st = statusOf.get(id), e = digStageEntry(id); return { share: !!sharingScreen(id), fresh: freshSt(id), scr: st ? st.scr || 0 : null, age: st ? Date.now() - stSeen(st) : -1, dig: e ? e.f : null, may: !!mayShareScreen(id) }; },
-      stageFacesForTest: () => {
-        const host = __V.stagefeedEl && __V.stagefeedEl.querySelector('[data-row="sgs"]');
-        const out = { view: __M.stageViewNow, stagers: stageIds().slice(), screenSid: null, faces: [] };
-        for (const id of out.stagers) if (sharingScreen(id)) { out.screenSid = out.screenSid ? 'many' : id; }
-        // Same 24x24 mean the overlay uses. A pack tile is the raw track, so it is not cropped.
-        const lumaOf = (v, cell) => {
-          try {
-            if (!v.videoWidth) return null;
-            const cv = document.createElement('canvas'); cv.width = 24; cv.height = 24;
-            const x = cv.getContext('2d');
-            const k = v.videoWidth / (parseFloat(v.style.width) || __M.STAGE_FACE_PX);
-            const sx = cell ? -(parseFloat(v.style.left) || 0) * k : 0, sy = cell ? -(parseFloat(v.style.top) || 0) * k : 0;
-            const sw = cell ? __M.STAGE_FACE_PX * k : v.videoWidth, sh = cell ? __M.STAGE_FACE_PX * k : v.videoHeight;
-            x.drawImage(v, sx, sy, sw, sh, 0, 0, 24, 24);
-            const d = x.getImageData(0, 0, 24, 24).data; let sum = 0;
-            for (let i = 0; i < d.length; i += 4) sum += d[i] + d[i + 1] + d[i + 2];
-            return +(sum / (d.length / 4) / 765).toFixed(4);
-          } catch (e) { return null; }
-        };
-        const pushFace = (id, v, cell, named, name, pack) => {
-          const face = { id, cell: !!cell, live: v.videoWidth > 0, w: v.videoWidth, h: v.videoHeight,
-            named: !!named, name: name || '',
-            bl: v.classList.contains('blur2') ? 2 : v.classList.contains('blur1') ? 1 : 0, luma: lumaOf(v, !!cell) };
-          if (pack) face.pack = true;
-          out.faces.push(face);
-        };
-        const box = host && host.querySelector('.stagefaces');
-        if (box) {
-          for (const w of box.children) {
-            const v = w.querySelector('video');
-            if (!v) continue;
-            // named=true: the box shows the name on dark, no picture (camera
-            // off, admin video-off, or a crop the current frame does not fit).
-            const nm = w.querySelector('.stagefacename');
-            pushFace(w.dataset.face, v, v.dataset.cell, nm && nm.style.display !== 'none', nm ? nm.textContent : '', false);
-          }
-        }
-        // The per-person pack draws each co-presenter as its own tile and
-        // removes the overlay, so the face is not painted twice. It is still
-        // on screen: read that tile.
-        if (host && host.dataset.pack === '1') {
-          const seen = new Set(out.faces.map((f) => f.id));
-          const feed = document.getElementById('feed');
-          if (feed) for (const el of feed.querySelectorAll('[data-stageview]')) {
-            const id = el.dataset.stageview;
-            if (!id || seen.has(id)) continue;
-            const v = el.querySelector('video');
-            if (!v) continue;
-            seen.add(id);
-            pushFace(id, v, false, false, '', true);
-          }
-        }
-        return out;
-      },
       startScreenShareForTest: () => { (0, /*()*/__M.startScreenShare)(); return true; },
       // Seated guests share their screens and the stage shows `stream` as
       // the strip a viewer gets; ids [] ends it.
@@ -22744,30 +21202,6 @@
         return true;
       },
       stopScreenShareForTest: () => { (0, /*()*/__M.stopScreenShare)(); return true; },
-      // The sheet's copy, as rendered — the app-pin preference is a PROMISE the
-      // product makes in words, so the guard reads the words.
-      shareSheetForTest: () => {
-        (0, /*()*/__V.openShareSheet)();
-        const m = document.getElementById('share-modal');
-        const n = document.getElementById('share-appnote');
-        const r = document.getElementById('share-runapp');
-        // Not `style.display !== "none"`: that is TRUE for a sheet that was
-        // never shown at all, so a broken openShareSheet would still "pass".
-        // And not offsetParent either — it is null for ANY position:fixed
-        // element, which the sheet is, so that reads every open sheet as
-        // closed. The honest test is a real box on screen plus a computed
-        // display: both are false only when the thing genuinely is not there.
-        const shown = (el) => {
-          const r2 = el.getBoundingClientRect();
-          return r2.width > 0 && r2.height > 0 && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden';
-        };
-        const denied = document.getElementById('share-denied');
-        const go = document.getElementById('share-go');
-        return { open: shown(m), note: n.textContent || '',
-          runAppShown: shown(r), runAppLabel: r.textContent || '',
-          denied: shown(denied), goShown: shown(go) };
-      },
-      closeShareSheetForTest: () => { document.getElementById('share-modal').style.display = 'none'; return true; },
       // TEST: what the stage EAR actually PLAYS — peak level over `ms` of the
       // folded per-stager audio. -1 = no ear/no stream. The 2026-07-29 bar:
       // a room must HEAR its stage, not merely hold the feed (held keys and
@@ -22825,30 +21259,6 @@
         return { t: now, me: six(myId), o, jobs, ear, lvl };
       },
       stgHiccupForTest: (ms) => { const jobs = [...__M.mosJobs.values()].filter((b) => b.key.indexOf("stg:") === 0 && b.active); for (const b of jobs) b.senders.forEach((sd, i) => { const t = b.trackList[i]; if (t && t.kind === "audio") { try { sd.replaceTrack(null); } catch (e) {} } }); setTimeout(() => { for (const b of jobs) b.senders.forEach((sd, i) => { const t = b.trackList[i]; if (t && t.kind === "audio") { try { sd.replaceTrack(t); } catch (e) {} } }); }, ms); return jobs.length; },
-      // PRIVACY PROBE (test-only): what this page actually receives as VIDEO from one stager's stage feed, read off the track itself
-      // (not the roster, not a status): { feed, track, state, w, luma }. luma is the mean brightness (0..1) of up to 4 decoded frames,
-      // the max seen; null when the track is live but no frame decoded in the window. A camera-off stager must read dark (<= 0.05) or no track.
-      stageVideoProbeForTest: async (idPrefix) => {
-        const pre = String(idPrefix || '').slice(0, 8); let f = null;
-        for (const [k, v] of __M.mosIn) { if (k.indexOf('stg:' + pre) === 0 && k !== 'stg:' + myId && v.stream) { f = v; break; } }
-        if (!f) return { feed: false, track: false };
-        const vt = f.stream.getVideoTracks()[0];
-        if (!vt) return { feed: true, track: false };
-        const out = { feed: true, track: true, state: vt.readyState, enabled: vt.enabled, w: 0, luma: null };
-        if (vt.readyState !== 'live') return out;
-        const el = document.createElement('video'); el.muted = true; el.playsInline = true; el.srcObject = new MediaStream([vt]);
-        try { await el.play(); } catch (e) {}
-        const cv = document.createElement('canvas'); cv.width = 24; cv.height = 24; const x = cv.getContext('2d');
-        for (let i = 0; i < 12 && (out.luma === null || i < 6); i++) {
-          await new Promise((r) => setTimeout(r, 250));
-          if (!el.videoWidth) continue;
-          out.w = el.videoWidth;
-          try { x.drawImage(el, 0, 0, 24, 24); const d = x.getImageData(0, 0, 24, 24).data; let sum = 0; for (let j = 0; j < d.length; j += 4) sum += d[j] + d[j + 1] + d[j + 2];
-            out.luma = Math.max(out.luma || 0, +(sum / (d.length / 4) / 765).toFixed(4)); } catch (e) {}
-        }
-        try { el.srcObject = null; } catch (e) {}
-        return out;
-      },
       // DEBUG AUDIO METERS: meters() = the last reading (rows by path, who, level, tones heard; hears = talker -> paths),
       // meterTones({name: hz}) names the pitches to tell apart inside a mix, meterLog(sinceMs) the per-second ring, meterPanel(on) the on-screen list.
       meters: () => { const k = dbgMeters(); return k ? k.read() : null; },
@@ -23172,81 +21582,6 @@
           meters: (() => { try { return dbgMeterKit ? { hears: dbgMeterKit.hears(), tones: dbgMeterKit.tones() } : null; } catch (e) { return { err: String(e).slice(0, 80) }; } })(),
         };
       },
-      mosaic: () => { const c = meshCoord(); const T = net.topo; const tgt = (co) => { if (!co) return null; const pid = (0, /*()*/__M.occPid)(co); const p = pid && peers.get(pid); return { pid: (pid||'').slice(0,6), has: !!p, conn: p && p.connected, dc: !!(p && p.dc && p.dc.readyState === 'open') }; };
-        return { multi: (0, /*()*/__M.multiSection)(), coord: c, head: c && c.i === 0, s1: c && c.pc === 0,
-        // WHO AM I, in the same 8-char form feedsInfo() reports `via` in. A
-        // receiver can see which peer it is claiming FROM, but nothing let an
-        // observer turn that back into a seat — so a stall could never be
-        // followed one hop upstream to ask what the sender was doing. Needed to
-        // resolve pipeStats() across seats (the stg-freeze hunt,
-        // docs/bug-pipe-stg-freeze-2026-08-05.md).
-        me: String(myId || '').slice(0, 8),
-        up: c ? tgt(T.up(c)) : null, down: c ? tgt(T.down(c)) : null,
-        prodStream: !!(__M.prodPack && __M.prodPack.stream), sdStream: !!(__M.sdView && __M.sdView.stream), roomStream: !!(__M.roomPack && __M.roomPack.stream), loop: !!(__M.packLoop && __M.packLoop.rx),
-        restarts: [...__M.mosIn.entries(), ...__M.mosStandby.entries()].filter(([, e]) => e && e.el).map(([rk, e]) => ({ key: rk, sid: e.el.srcObject ? String(e.el.srcObject.id).slice(0, 8) : null, vw: e.el.videoWidth, rs: e.el.readyState, n: e.el._mosRestarts || 0, held: !!e.el._mosHold })), // decoders restarted (parked, re-bound, resumed) because they showed no picture while the feed flowed (WebKit)
-        jobs: [...__M.mosJobs.keys()], claims: [...__M.mosIn.keys()], ann: [...__M.mosAnn.keys()],
-        claimMeta: [...__M.mosIn.entries()].map(([rk, e]) => rk.slice(-12) + ' n' + (e.meta ? e.meta.n : '-') + ' ids' + (e.meta && e.meta.ids ? e.meta.ids.map((x) => String(x).slice(2, 6)).join(',') : '-') + ' el' + (e.el ? (e.el.videoWidth || 0) : 'x') + ' a' + (e.stream ? e.stream.getAudioTracks().map((t) => t.readyState[0] + (t.muted ? 'M' : '')).join('') : '-')),   // what each claim says it holds: cells, named ids, picture width, sound tracks
-        view: { hasView: !!__M.sdView, n: __M.sdView ? __M.sdView.count() : null, sound: (typeof __M.sdViewSt !== 'undefined' && __M.sdViewSt) ? __M.sdViewSt.getAudioTracks().length : null },   // my own Stadium view: its faces after hiding my row, and whether it holds a sound track
-        // An announcer is only a CANDIDATE if its announced streamId resolves
-        // to one of that peer's incoming streams (claimRedun's `live`). The
-        // keys alone cannot show a MISMATCH — an announce whose stream never
-        // arrives, or a stale id re-announced after a transport swap — which
-        // is exactly the state that silently blocks failback, so surface the id.
-        // Every re-ship of an ALREADY-ESTABLISHED job, with the reason — see
-        // the note in shipMos. A receiver can only observe that the id changed;
-        // this says why it changed, on the side that changed it.
-        reship: (window.__mosReship || []).slice(-12),
-        // Why my OWN outbound stg stream changed identity — the root event the
-        // reship cascade above hangs off. See mySelfStream.
-        selfMemo: (window.__selfMemoLog || []).slice(-8),
-        regrab: (window.__regrabLog || []).slice(-8),
-        annSid: [...__M.mosAnn.entries()].map(([k, v]) => k.slice(0, 14) + '|' + k.slice(k.indexOf('|') + 1) + '=' + String(v && v.streamId).slice(0, 8)
-          // mt = the mirror's TRANSIT ROW. A carrier recomputes the route from
-          // it, and slotFor/the forwarder both bail SILENTLY when it is absent
-          // (`if (t == null) return null`), so an announce that lost mt looks
-          // exactly like one that was never sent. Surface it.
-          + (v && v.mt != null ? ' mt=' + v.mt : ' mt=MISSING')),
-        // multi-subscribe forensics: hot standby slots, outbound jobs' active/dormant
-        // state, and the last want/idle demand I sent per announcer.
-        standby: [...__M.mosStandby.keys()],
-        jobsActive: [...__M.mosJobs.entries()].map(([k, j]) => k + (j.active ? '+' : '·')),
-        // per-job IDENTITY: sig = the SOURCE stream this job ships, streamId =
-        // the container minted for it. A changing sig means the producer
-        // handed us a new stream; a changing container with a STABLE sig means
-        // the job was reaped and re-created. (2026-07-29 stage re-ship churn.)
-        jobSig: [...__M.mosJobs.entries()].map(([k, j]) => k.slice(0, 18) + '|s' + String(j.sig).slice(0, 6) + '|c' + String(j.streamId).slice(0, 6)),
-        demand: [...__M.subWant.entries()].map(([k, v]) => k + '=' + v.st),
-        // per-slot primary/standby VIA (peer id) — lets a probe kill the exact
-        // feeding peer and watch the hot standby promote with no black-out.
-        claimVia: [...__M.mosIn.entries()].map(([rk, c]) => ({ rk, via: c.via, sid: c.streamId })),
-        // WHY AN ANNOUNCER IS NOT A CANDIDATE. claimRedun only claims from an
-        // announcer whose announced streamId resolves to one of that peer's
-        // INCOMING streams (`live`), and when nothing resolves it claims
-        // NOTHING — the seat holds announcers, has no feed, and every seat
-        // below it starves with no announcer of its own to explain why.
-        // Measured 2026-08-10 (e2e-mosaic): a mid-tree seat sat on TWO stg
-        // announcers with an empty claim list, and nothing anywhere could say
-        // which half of the resolution failed. This recomputes it and reports
-        // the comparison itself: what was announced, against the stream ids
-        // that peer actually has.
-        cands: [...__M.mosAnn.entries()].map(([k, v]) => {
-          const bar = k.indexOf('|'), from = k.slice(0, bar), key = k.slice(bar + 1);
-          const p = peers.get(from);
-          const inc = (p && p.incoming) ? p.incoming.map((s) => String(s.id).slice(0, 8)) : null;
-          const want = String(v && v.streamId).slice(0, 8);
-          return { key, from: from.slice(0, 8), want,
-            peer: !!p, conn: !!(p && p.connected), own: String(p && p.ownSid).slice(0, 8),
-            incoming: inc, h: v ? v.h : undefined, sb: v ? v.sb : undefined, vp: v ? v.vp : undefined, at: v ? v.at : undefined,
-            live: !!(p && p.incoming && p.incoming.find((s) => s.id === (v && v.streamId) && s.id !== p.ownSid)) };
-        }),
-        standbyVia: [...__M.mosStandby.entries()].map(([rk, c]) => ({ rk, via: c.via, sid: c.streamId })),
-        // wake/failback forensics: per-slot wake-in-progress + settle stamps
-        fb: [...__M.mosFb.entries()].map(([rk, f]) => ({ rk, wakeAt: f.wakeAt, prefSince: f.prefSince, lastSwitch: f.lastSwitch, dark: !!f.dark, lastAdvanceAt: f.lastAdvanceAt || 0, lastBytes: f.lastBytes != null ? f.lastBytes : -1, d0: f.d0 != null ? f.d0 : -1, stdFdec: f.stdFdec != null ? f.stdFdec : -1, flowSince: f.flowSince || 0, q: f.q || 0, fp: f.fp || 0 })),
-        prod: __M.prodPack && __M.prodPack.stats(), sd: __M.sdView && __M.sdView.stats(), room: __M.roomPack && __M.roomPack.stats(),
-        rowFaces: __M.dbgRowFaces.slice(), // which pid the packer drew at each of my row's seats (test observability, 2026-07-29 stale-seat dup)
-        // w/h: the hidden source <video>'s own size; pack: the local composite's canvas; src: what the face cut used (chaos-1019: the two disagreed, 330 against 440)
-        tile: (() => { const v = __V.stadiumEl.querySelector('[data-row="sd"] video'); const cl = window.__comfyLast; return v ? { live: v.videoWidth > 0, w: v.videoWidth, h: v.videoHeight, pack: (__M.sdView && __M.sdView.canvas) ? [__M.sdView.canvas.width, __M.sdView.canvas.height] : null, src: cl && cl.src ? cl.src : null } : null; })(),
-        strip: (() => { const v = __V.stagefeedEl.querySelector('[data-row="sgs"] video'); return v ? { live: v.videoWidth > 0 } : null; })(), stagers: stageIds().length }; },
       relayUpNow: () => relayUp(),
       rosterIdsNow: () => rosterIds.slice(),
       linkToPeer: (pid) => linkTo(pid),
@@ -23255,25 +21590,6 @@
       stadium: () => Array.from(__M.compOf.entries())
         .map(([row, c]) => ({ row, via: c.via, ids: (c.ids || []).slice(), names: (c.names || []).slice(), rws: (c.rws || []).slice(), cnt: c.cnt || 0, live: !!c.stream }))
         .sort((a, b) => a.row - b.row),
-      stadiumShown: () => __V.stadiumEl.classList.contains('on'),
-      stadiumVideoLive: (row) => { const el = __V.stadiumEl.querySelector('[data-row="' + row + '"] video'); return !!(el && el.srcObject && el.videoWidth > 0); },
-      // PiP forensics: what the overlay would float right now, and whether one is up.
-      pip: () => ({
-        aimed: (() => { const v = pipSource(); if (!v) return null; const t = v.closest('[data-peer]'); if (t) return 'peer:' + t.dataset.peer; const r = v.closest('.rowtile'); return r ? 'row:' + r.dataset.row : 'other'; })(),
-        active: pipFloating(),
-        byBrowser: pipByBrowser,
-        trace: pipTrace.slice(-40),
-        doc: docPip ? { name: docPip.name.textContent, live: !!docPip.video.srcObject, frames: (() => { try { return docPip.video.getVideoPlaybackQuality().totalVideoFrames; } catch (e) { return -1; } })(), mic: docPip.mic.textContent } : null,
-        // capability forensics: which PiP doors exist on THIS browser
-        caps: {
-          api: !!document.pictureInPictureEnabled,
-          req: typeof HTMLVideoElement.prototype.requestPictureInPicture === 'function',
-          webkit: typeof document.createElement('video').webkitSetPresentationMode === 'function',
-          autoAttr: 'autoPictureInPicture' in HTMLVideoElement.prototype,
-          doc: !!window.documentPictureInPicture,
-        },
-        btnShown: (() => { const b = document.getElementById('pipbtn'); return !!b && b.style.display !== 'none'; })(),
-      }),
       pipEnterForTest: () => (0, /*()*/__V.enterPip)(true),
       audienceReactForTest: (emoji, fromId) => takeAudienceReact(emoji, fromId || 'viewer'),
       // the reactions this page shows on faces now: { peerId: emoji }
@@ -23290,9 +21606,6 @@
       camOffPeerForTest: (id, name, scr) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [], neg: newNeg() }); peers.get(id).name = name; rosterNames[id] = name; statusOf.set(id, { camOff: true, muted: true, scr: scr ? 1 : 0, at: Date.now() }); (0, /*()*/__V.paintBroadcastIdent)(); },
       // a linked, recently heard peer: the status line counts it as here
       livePeerForTest: (id, name) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, dc: { readyState: 'open', label: 'test' }, testTx: [], neg: newNeg() }); const p = peers.get(id); p.connected = true; p.lastHeard = Date.now(); if (name) { p.name = name; rosterNames[id] = name; } updateStatus(); return (0, /*()*/__M.participantCount)(); },
-      // a joined peer by name whose fresh status has a hand up, as the host's queue line reads it
-      handPeerForTest: (id, name) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [], neg: newNeg() }); peers.get(id).name = name; rosterNames[id] = name; if (!rosterIds.includes(id)) rosterIds.push(id); const t = Date.now(); statusOf.set(id, { camOff: true, muted: true, hand: t, at: t, rx: t }); (0, /*()*/__V.renderHandq)(); return __V.handqEl.textContent; },
-      chatGateForTest: (off, admin) => { chatGateOverride = { off: !!off, admin: !!admin }; (0, /*()*/__V.paintChatGate)(); return document.getElementById('chat-in').placeholder; },
       stageHostForTest: (id, name, stg) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [], neg: newNeg() }); peers.get(id).name = name; rosterNames[id] = name; if (!admins.includes(id)) admins.push(id); if (!rosterIds.includes(id)) rosterIds.push(id); statusOf.set(id, { camOff: false, muted: false, stg: stg === undefined ? 1 : stg, at: Date.now(), rx: Date.now() }); (0, /*()*/__V.paintBroadcastIdent)(); return stageIds().slice(); }, // a host whose status says on stage, camera on, before any feed
       hostPeerForTest: (id) => { id = String(id); admSeen.set(id, Date.now()); if (!admins.includes(id)) admins.push(id); updateStatus(); return admins.slice(); }, // admSeen, as a verified host frame does, so the watch count leaves them out
       linkFramesForTest: (id) => { const p = peers.get(String(id)); return p && p.testTx ? p.testTx.slice() : null; },
@@ -23304,11 +21617,8 @@
       // moderation SINKS (e2e-meet-mod.js): what the filmstrip would list and how
       // blurred, and a sender that defies the admin's video-off — the DOM-hacked
       // guest the receiver-side rule exists for (it only re-enables MY track).
-      fsSourcesForTest: () => fsSources().map((s) => ({ key: s.key, bl: s.bl || 0 })),
       openFsForTest: (key) => (0, /*()*/__V.openFsView)(key),
       closeFsForTest: () => (0, /*()*/__V.closeFsView)(),
-      fsMain: () => ({ key: __V.fsmain.dataset.key || null, bl: __V.fsmain.classList.contains('blur2') ? 2 : __V.fsmain.classList.contains('blur1') ? 1 : 0, fit: getComputedStyle(__V.fsmain).objectFit }),
-      fsThumbBlur: (key) => { const th = Array.from(__V.fsstrip.children).find((t) => t.dataset.key === key); const tv = th && th.querySelector('video'); if (!tv) return null; return tv.classList.contains('blur2') ? 2 : tv.classList.contains('blur1') ? 1 : 0; },
       peerCamOff: (pid) => seatDark(statusOf.get(pid)),
       // A camera that is off is not open, so these two open one first, past every order check (an honest page never does).
       defyCamOffForTest: () => { if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return Promise.resolve(false); return (0, /*()*/__M.camTrackForTest)().then((t) => { if (!t) return false; camDefiant = true; t.enabled = true; myStatus.camOff = false; (0, /*()*/__M.refreshOutbound)(); broadcastStatus(); return true; }); },
@@ -23316,28 +21626,6 @@
       slipCamOnForTest: () => (0, /*()*/__M.camTrackForTest)().then((t) => { if (!t) return false; t.enabled = true; myStatus.camOff = false; try { paintOnAir(); } catch (e) {} return true; }),
       slipCamOffForTest: () => { const t = localStream && localStream.getVideoTracks()[0]; if (t) t.enabled = false; myStatus.camOff = true; try { paintOnAir(); } catch (e) {} return true; },
       recOnForTest: () => !!(__M.recRec && __M.recRec.state !== 'inactive'),
-      // The blob Rebroadcast plays: the file saved when the host left the air.
-      lastServiceForTest: async () => {
-        if (!bcLastService || !bcLastService.blob) return null;
-        const b = await bcLastService.blob;
-        const url = URL.createObjectURL(b);
-        const sec = await new Promise((res) => {
-          const v = document.createElement('video');
-          let done = false;
-          const finish = (n) => { if (done) return; done = true; try { v.removeAttribute('src'); v.load(); } catch (e) {} res(n); };
-          v.preload = 'metadata';
-          v.onloadedmetadata = () => {
-            if (isFinite(v.duration) && v.duration > 0 && v.duration < 1e6) finish(v.duration);
-            else { try { v.currentTime = 1e10; } catch (e) {} }
-          };
-          v.ontimeupdate = () => { if (isFinite(v.duration) && v.duration > 0 && v.duration < 1e6) finish(v.duration); };
-          v.onerror = () => finish(0);
-          setTimeout(() => finish(isFinite(v.duration) && v.duration < 1e6 ? v.duration : 0), 4000);
-          v.src = url;
-        });
-        try { URL.revokeObjectURL(url); } catch (e) {}
-        return { bytes: b.size, sec: sec };
-      },
       // freeze my outgoing pulses (simulates a phone that has throttled itself)
       haltPulseForTest: (on) => { pulseHalt = !!on; },
       // backdate the beat clock (simulates a renderer that froze and then resumed)
@@ -23345,16 +21633,8 @@
       // sleep is a wall gap with a near-zero monotonic gap.
       freezeGapForTest: (ms, mono) => { hbLastAt = Date.now() - (ms | 0); hbLastMono -= (mono === undefined ? ms : mono) | 0; },
       stageVoteNeed: () => stageVoteTallies().need,
-      // THE STATUS PLANE, as this seat sees it.
-      statusPlane: () => { const d = roomDig(); return { id: myId, mode: digestMode(), past: roomPastSection(), n: d ? d.n : null, age: d ? d.age : null,
-        refuse: d ? d.refuse : null, part: d ? !!d.part : null, handN: d ? d.handN : null, hands: d ? d.hands.map((e) => e.id) : [], stage: d ? d.stage.map((e) => e.id) : [],
-        apps: d ? d.apps.map((e) => e.id) : [], votes: d ? d.votes.length : 0, display: (0, /*()*/__M.displayCount)(), consentIds: roomConsentIds().length,
-        fresh: Array.from(statusOf.keys()).filter((id) => id !== myId && freshSt(id)), coord: meshCoord(), label: __V.statusEl.textContent,
-        statusN: statusOf.size, dcLinks: Array.from(peers.values()).filter((p) => p.dc && p.dc.readyState === 'open').length }; },
       totalCount: () => knownTotal() || 0,
       handQueue: () => handQueue().map((e) => ({ id: e.i, name: e.n, t: e.t })),
-      handqShown: () => __V.handqEl.classList.contains('on'),
-      handqText: () => __V.handqEl.textContent,
       handRaised: () => !!myStatus.hand,
       raiseHand: (on) => { myStatus.hand = on ? Date.now() : null; (0, /*()*/__V.paintHand)(); broadcastStatus(); (0, /*()*/__V.layout)(); (0, /*()*/__V.renderHandq)(); },
       // exact raise stamp — lets tests force a same-millisecond tie and assert the id tie-break
@@ -23394,15 +21674,6 @@
       stageFlagForTest: () => myStatus.stg || 0,   // my raw step-up claim, painted or not
       stageFlipsForTest: () => stgFlips,          // how many times setStage ran
       setStageForTest: (on) => setStage(!!on),
-      armBroadcastHostForTest: () => {
-        amAdmin = true;
-        document.body.classList.remove('notadmin');
-        if (myId && admins.indexOf(myId) < 0) admins.push(myId);
-        myStatus.camOff = true;
-        try { setStage(true); } catch (e) { myStatus.stg = Date.now(); }
-        paintOnAir();
-        return { ok: !!myStatus.stg };
-      },
       setClearForTest: (on) => { clearForTest = !!on; (0, /*()*/__M.refreshOutbound)(); return blurLevelFor('me'); },
       setCamLiveForTest: (on) => {
         myStatus.camOff = !on;
@@ -23505,7 +21776,7 @@
       stopRoomAppForTest: () => { const w = findSharedApp(); if (w) stopRoomApp(w); },
       quality: () => rung((0, /*()*/__M.participantCount)()).label,
       power: () => { notePowerRead(); return powerStats; }, // per-sender codec/encoderImplementation/qualityLimitationReason (10s cache, demand-gated)
-      powerLevel: () => ({ level: __M.powNow.level, why: __M.powNow.why, dials: __M.powDials, battery: __M.battNow, parked: __M.idleNow, rung: __M.lastQ && { label: __M.lastQ.label, fps: __M.lastQ.fps, kbps: __M.lastQ.kbps }, tune: (0, /*()*/__M.tuneCfg)() }),
+      powerLevel: () => ({ level: powNow.level, why: powNow.why, dials: powDials, battery: __M.battNow, parked: __M.idleNow, rung: __M.lastQ && { label: __M.lastQ.label, fps: __M.lastQ.fps, kbps: __M.lastQ.kbps }, tune: (0, /*()*/__M.tuneCfg)() }),
       pokeForTest: () => (0, /*()*/__M.poke)(),
       idleForTest: (ms) => { __M.lastActive = Date.now() - (ms | 0); },
       camTrackLive: () => !!(localStream && localStream.getVideoTracks()[0] && localStream.getVideoTracks()[0].readyState === 'live'),
@@ -23577,7 +21848,6 @@
       // FOLLOW-ME DELIVERY WAIT forensics: the admin's own view of who it is
       // still waiting on, mid-wait (null once resolved — acked or capped).
       followWaitState: () => followWait ? { id: followWait.id, needed: Array.from(followWait.needed), acked: Array.from(followWait.acked) } : null,
-      statusText: () => __V.statusEl.textContent,
       addTranscript: (t) => addTranscriptLine(t),
       transcriptTexts: () => (trKeeps() ? Array.from(trs.values()).sort((a, b) => a.at - b.at) : []).map((l) => l.by + ': ' + trNote(l) + l.text), // a page with Transcript off holds only a 20 s window for the CC overlay: it reads as nothing here, as in its Transcript window
       transcriptBlocks: () => trBlocks().map((l) => l.by + ': ' + trNote(l) + l.text),
@@ -23593,93 +21863,6 @@
         return { send: capSend(), show: !!ccShow, speech: (0, /*()*/__M.speechRunning)() };
       },
       whoFileForTest: () => whoFileText(),
-      appStopForTest: (mine) => {
-        if (mine) { appKey = 'qa-stop'; myStatus.app = { s: 'qa-stop', name: 'Notes' }; }
-        else { appKey = null; myStatus.app = null; }
-        (0, /*()*/__V.showAppPane)('Notes', '');
-        (0, /*()*/__V.updateAppButtons)(myStatus.app);
-        const b = document.getElementById('appstop');
-        return { text: b.textContent, title: b.title, font: parseFloat(getComputedStyle(b).fontSize), display: getComputedStyle(b).display };
-      },
-      appBarForTest: (talkOn) => {
-        document.body.classList.add('has-app');
-        if (talkOn) {
-          armAppRoomTick();
-          document.body.classList.add('app-room');
-          appMode = 'host';
-          myStatus.app = Object.assign(myStatus.app || { s: 'qa-talk' }, { audio: true });
-        } else if (myStatus.app) {
-          myStatus.app.audio = false;
-        }
-        (0, /*()*/__V.paintTalkBtn)();
-        ['appsave', 'appsteal', 'apphide', 'appaudio'].forEach((id) => { document.getElementById(id).style.display = ''; });
-        const read = (id) => {
-          const b = document.getElementById(id);
-          return { text: b.textContent, title: b.title, font: parseFloat(getComputedStyle(b).fontSize) };
-        };
-        return { save: read('appsave'), steal: read('appsteal'), hide: read('apphide'), talk: read('appaudio') };
-      },
-      // The sharer's own app bar: Invite, the lead switch (tapped once when
-      // tap is set), and Full screen, as the sharer reads them.
-      appWordsForTest: (tap) => {
-        document.body.classList.add('has-app');
-        appKey = 'qa-words'; myStatus.app = { s: 'qa-words' };
-        (0, /*()*/__V.showAppPane)('Notes', '');
-        appLeadable = true; appLeadOn = false; appLeadSet = () => {};
-        (0, /*()*/__V.updateAppButtons)(myStatus.app);
-        // Invite follows the room (paintInviteSlot). A meeting must not force it on.
-        if (tap) document.getElementById('applead').click();
-        const read = (id) => {
-          const b = document.getElementById(id);
-          return { text: b.textContent.trim(), title: b.title, label: b.getAttribute('aria-label') || '', font: parseFloat(getComputedStyle(b).fontSize), display: getComputedStyle(b).display };
-        };
-        return { invite: read('appinvite'), lead: read('applead'), full: read('appfull'), status: document.getElementById('status').textContent };
-      },
-      stealChoicesForTest: () => {
-        appClientCtl = appClientCtl || { stealToDesktop: () => new Promise(() => {}) };
-        const b = document.getElementById('appsteal');
-        b.style.display = '';
-        if (b.dataset.armed) delete b.dataset.armed;
-        document.querySelectorAll('#appbar [data-steal]').forEach((el) => el.remove());
-        b.click();
-        return [...document.querySelectorAll('#appbar [data-steal]')].map((el) => ({ text: el.textContent, title: el.title, data: el.dataset.steal }));
-      },
-      chatModForTest: (off) => {
-        amAdmin = true;
-        if (off) modTable['*'] = { chat: { on: true, by: 'Pastor Kim' } };
-        else delete modTable['*'];
-        (0, /*()*/__V.applyAdminUi)();
-        try { renderChat(); } catch (e) {}
-        document.getElementById('chatpanel').classList.add('open');
-        const b = document.getElementById('chatmod');
-        const row = document.querySelector('#chatlog .cmsg');
-        return {
-          text: b.textContent, title: b.title,
-          font: parseFloat(getComputedStyle(b).fontSize),
-          display: getComputedStyle(b).display,
-          line: row ? row.textContent : '',
-        };
-      },
-      // PAINT ONLY: the dock's words and icon for a mic state. It never turns
-      // the mic track on or off, so it is no way to unmute a seat in a test
-      // (tap #mic, and pick a row when the chooser opens). With a live mic
-      // track that says otherwise it refuses, so no test reads a painted
-      // "on" over a mic that sends nothing (0.9.26.19 phone runs).
-      setOwnMicForTest: (live) => {
-        const tr = localStream && localStream.getAudioTracks()[0];
-        if (tr && tr.readyState === 'live' && tr.enabled !== !!live) return { refused: 'the live mic track is ' + (tr.enabled ? 'on' : 'off') + ': setOwnMicForTest only paints; tap #mic to change it', muted: !!myStatus.muted, trackEnabled: tr.enabled };
-        myStatus.muted = !live;
-        (0, /*()*/__V.paintControls)();
-        const word = __V.micBtn.querySelector('.dockword');
-        return {
-          muted: !!myStatus.muted,
-          word: word ? word.textContent : '',
-          label: __V.micBtn.getAttribute('aria-label'),
-          svg: !!__V.micBtn.querySelector('svg'),
-          headerUnmute: !!document.getElementById('unmute'),
-          headerCam: !!document.getElementById('showcam'),
-        };
-      },
       // caption trust on this page: per peer the state of its own captions, the choice, whether my ears are on it
       capTrustForTest: () => {
         if (!capTrust) return null;
@@ -23692,6 +21875,7 @@
         return o;
       },
       capSourceOpen: (v) => (0, /*()*/__V.capSourceOpen)(v),
+      capLangForTest: () => (capLang ? Object.assign(capLang.dump(), { ask: capLang.suggestion() }) : null),
       whisperForTest: () => ({ engine: (0, /*()*/__M.ccEngine)(), live: !!__M.wsp, ready: (0, /*()*/__M.whisperReady)(), queue: __M.wspQ.items.length, sent: __M.wspQ.sent, dropped: __M.wspQ.dropped, rate: __M.wsp ? __M.wsp.rate : 0, captures: Array.from(__M.wspCaps.keys()), writes: (0, /*()*/__M.trWrites)(), inFlight: !!__M.wspQ.busy, behind: !!__M.wspQ.behind, paused: !!__M.wspPaused, lastLatencyMs: __M.wspQ.lastLatencyMs || 0, model: (0, /*()*/__M.wspModel)(), local: ccLocalQ.test() }),
       whisperFeedForTest: (f32, rate, forId) => { const w = __M.wspCaps.get(forId || 'me'); if (!w) return false; (0, /*()*/__M.wspEnqueue)(w, [Float32Array.from(f32)], Date.now(), rate || 16000, true); return true; },
       ccViewOn: () => !!ccShow,
@@ -23709,41 +21893,6 @@
         try { broadcastStatus(); } catch (e) {}
         try { (0, /*()*/__V.layout)(); } catch (e) {}
         return !!myStatus.bot;
-      },
-      comfyForTest: () => {
-        const feed = document.getElementById('feed');
-        const nodes = [];
-        const take = (el) => {
-          if (!el || el.classList.contains('stad-src')) return;
-          const cs = getComputedStyle(el);
-          if (cs.display === 'none' || cs.visibility === 'hidden') return;
-          const r = el.getBoundingClientRect();
-          if (r.width < 2 || r.height < 2) return;
-          nodes.push({
-            id: el.dataset.peer || el.dataset.stad || el.id || '',
-            tier: el.dataset.tier || '',
-            x: r.x, y: r.y, w: r.width, h: r.height,
-          });
-        };
-        document.querySelectorAll('#feed .tile').forEach(take);
-        document.querySelectorAll('#stadwhole').forEach(take);
-        const bar = document.querySelector('.bar');
-        const br = bar ? bar.getBoundingClientRect() : null;
-        let box = null;
-        try {
-          const landscape = window.innerWidth > window.innerHeight;
-          box = GifOS.meetLayout.viewBox(window.innerWidth, window.innerHeight, { phone: !landscape && window.innerWidth < 700, pill: document.body.classList.contains('has-pill') });
-        } catch (e) {}
-        return {
-          on: document.body.classList.contains('comfy'),
-          mode: window.__meetViewMode || 'gallery',
-          last: window.__comfyLast || null,
-          box: box,
-          nodes: nodes,
-          scroll: feed ? feed.scrollHeight - feed.clientHeight : null,
-          overflow: feed ? getComputedStyle(feed).overflow : null,
-          bar: br ? { x: br.x, y: br.y, w: br.width, h: br.height, free: bar.dataset.barfree || '', barx: bar.dataset.barx || '', bary: bar.dataset.bary || '' } : null,
-        };
       },
       outgoingHoldForTest: () => {
         const senders = [];
@@ -23820,8 +21969,8 @@
       chatOffForTest: (on) => setMod('*', 'chat', !!on),
       prayOn: () => prayOn(),
       prayGateForTest: (on) => { chatOptOverride = on == null ? null : { pray: !!on }; (0, /*()*/__V.paintChatGate)(); return prayOn(); },
-      chatOptForTest: (o) => { chatOptOverride = o == null ? null : Object.assign({}, o); (0, /*()*/__V.paintChatGate)(); renderChat(); return { prayOn: prayOn(), guestsMayReact: guestsMayReact(), lateJoinerSeesHistory: lateJoinerSeesHistory(), slowModeOn: slowModeOn(), chatLinksOn: chatLinksOn(), mayPinFiles: mayPinFiles(), qaChatOn: qaChatOn() }; },
-      sayForTest: (text) => { const m = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text: String(text) }; chat.set(m.id, m); sendAll({ k: 'chat', m }); renderChat(); return m.id; },
+      chatOptForTest: (o) => { chatOptOverride = o == null ? null : Object.assign({}, o); (0, /*()*/__V.paintChatGate)(); (0, /*()*/__V.renderChat)(); return { prayOn: prayOn(), guestsMayReact: guestsMayReact(), lateJoinerSeesHistory: lateJoinerSeesHistory(), slowModeOn: slowModeOn(), chatLinksOn: chatLinksOn(), mayPinFiles: mayPinFiles(), qaChatOn: qaChatOn() }; },
+      sayForTest: (text) => { const m = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text: String(text) }; chat.set(m.id, m); sendAll({ k: 'chat', m }); (0, /*()*/__V.renderChat)(); return m.id; },
       chatHas: (id) => chat.has(id),
       nameOf: (pid) => rosterNames[pid] || (peers.get(pid) || {}).name || '', // what this seat calls a peer (the sealed pulse teaches it)
       poisonEpochForTest: (n) => { myStatus.pwEp = n; broadcastStatus(); }, // a hostile client's pulse claiming generation n (its own epoch is untouched)
@@ -23843,7 +21992,6 @@
       verifier: () => av,
       modOn: (pid, field) => { const m = modOf(pid); return !!(m[field] && m[field].on); },
       adminsHere: () => admins.slice(),
-      countdownShown: () => { const el = document.getElementById('admcount'); return !!el && el.style.display !== 'none'; },
       // Absence-chain forensics: every link from a dead admin to the visible
       // countdown (admSeen age → confirmGone tombstone → grace timer), so a
       // missing countdown is attributable to ONE link from the test harness.
@@ -23880,46 +22028,6 @@
         if (myStatus.camOff) return 'avatar';
         return 'raw';
       },
-      // A camera-off seat with no transport, so the gate can watch per-tile
-      // blur and blur-all land on the avatar's video. The tile is the real
-      // one (makeTile + updateTile); nothing here is a second painter.
-      avatarSeatForTest: (opts) => {
-        opts = opts || {};
-        const id = String(opts.id || 'avatar_seat');
-        const name = String(opts.name || 'Ada').slice(0, 40);
-        let p = peers.get(id);
-        if (!p) {
-          const tile = (0, /*()*/__V.makeTile)(id, name, false);
-          p = { id, pc: null, neg: newNeg(), tile: tile.tile, video: tile.video, label: tile.label, avatar: tile.avatar, chips: tile.chips, cap: tile.cap, modbar: tile.modbar, voteBtn: tile.voteBtn,
-            name, headless: false, connected: true, pendingIce: [], absentSince: 0, lastKick: 0, lastHeard: Date.now(), bornAt: Date.now(), incoming: [], neverUp: false, stream: null };
-          peers.set(id, p);
-        }
-        p.name = name;
-        if (p.label) p.label.textContent = name;
-        if (p.avatar) p.avatar.textContent = nameInitial(name);
-        rosterNames[id] = name;
-        statusOf.set(id, { muted: true, camOff: opts.camOff !== false, blur: opts.blur == null ? 0 : (opts.blur | 0), at: Date.now(), rx: Date.now(), scr: 0 });
-        if (opts.useWire) {
-          const canvas = document.createElement('canvas');
-          (0, /*()*/__V.paintAvatarCanvas)(canvas, name, 0);
-          const stream = canvas.captureStream(0);
-          const track = stream.getVideoTracks()[0];
-          if (track && track.requestFrame) { try { track.requestFrame(); } catch (e) {} }
-          p.stream = stream;
-          p._wireHold = { canvas, stream, track };
-        }
-        if (opts.perTileBlur) setMod(id, 'blur', true);
-        if (opts.blurAll) setMod('*', 'blur', true);
-        updateTile(id);
-        const mod = modOf(id);
-        return { id, blur: blurLevelFor(id), blocked: !!(mod.blur && mod.blur.on) };
-      },
-      // read-only blur-pipe forensics (e2e-pipe-freeze): how often the canvas
-      // that IS the outbound camera was painted, by which driver, at what cost
-      blurPipeForTest: () => (__M.blurPipe ? { painted: __M.blurPipe.painted || 0, rvfcN: __M.blurPipe.rvfcN || 0, metroN: __M.blurPipe.metroN || 0,
-        cost: Math.round(__M.blurPipe.cost || 0), sinceMs: __M.blurPipe.lastPaintAt ? Date.now() - __M.blurPipe.lastPaintAt : null,
-        w: __M.blurPipe.canvas.width, h: __M.blurPipe.canvas.height, srcW: __M.blurPipe.src.videoWidth, srcState: __M.blurPipe.srcTrack && __M.blurPipe.srcTrack.readyState,
-        srcMuted: !!(__M.blurPipe.srcTrack && __M.blurPipe.srcTrack.muted), hidden: document.hidden } : null),
       voteNeed: () => voteNeed,
       stageVotes: () => {
         const vt = stageVoteTallies(), needOf = {};
@@ -24067,35 +22175,6 @@
       peerCount: () => peers.size,
       _corruptSid: (id) => { const p = peers.get(id); if (p) { p.ownSid = null; } },
       _failPeer: (id) => { const p = peers.get(id); if (p) { try { p.pc.close(); } catch (e) {} } },
-      // ---- A/V feed monitor hooks (READ-ONLY — test/meet.js `mon`) ----------
-      // monInfo(): one synchronous snapshot of everything the flap monitor
-      // diffs: the Stadium/Stage tiles' paint state (present/src/dims/frame
-      // counter), every claimed mosaic slot's element health, the standby set,
-      // outbound job active/dormant states, the demand map, packer stats and
-      // the stage ear's input set. No side effects.
-      monInfo: () => {
-        const vidInfo = (v) => v ? { sid: v.srcObject ? String(v.srcObject.id) : null,
-          w: v.videoWidth, h: v.videoHeight, paused: v.paused, ready: v.readyState,
-          frames: v.getVideoPlaybackQuality ? v.getVideoPlaybackQuality().totalVideoFrames : -1 } : null;
-        const c = meshCoord();
-        return {
-          t: Date.now(), coord: c ? (c.pc + '/' + c.r + '.' + c.i) : null, head: !!(c && c.i === 0), s1: !!(c && c.pc === 0),
-          tiles: { sd: vidInfo(__V.stadiumEl.querySelector('[data-row="sd"] video')), sgs: vidInfo(__V.stagefeedEl.querySelector('[data-row="sgs"] video')) },
-          claims: [...__M.mosIn.entries()].map(([rk, f]) => ({ rk, via: String(f.via).slice(0, 8), sid: String(f.streamId).slice(0, 8),
-            vw: f.el ? f.el.videoWidth : -1, vh: f.el ? f.el.videoHeight : -1,
-            frames: (f.el && f.el.getVideoPlaybackQuality) ? f.el.getVideoPlaybackQuality().totalVideoFrames : -1,
-            aTrk: f.stream ? f.stream.getAudioTracks().length : 0,
-            vMuted: f.stream && f.stream.getVideoTracks()[0] ? f.stream.getVideoTracks()[0].muted : null })),
-          standby: [...__M.mosStandby.entries()].map(([rk, f]) => ({ rk, via: String(f.via).slice(0, 8), sid: String(f.streamId).slice(0, 8) })),
-          jobs: [...__M.mosJobs.entries()].map(([jk, j]) => ({ jk: j.key + '>' + String(j.to).slice(0, 8), active: !!j.active })),
-          demand: [...__M.subWant.entries()].map(([k, v]) => { const a = k.split('|'); return { k: String(a[0]).slice(0, 8) + '|' + a[1], v: v.st }; }),
-          ear: (typeof __M.stageEar !== 'undefined' && __M.stageEar) ? [...__M.stageEar.sids.keys()] : [],
-          packs: { prod: __M.prodPack ? Object.assign({ w: __M.prodPack.canvas.width, h: __M.prodPack.canvas.height }, __M.prodPack.stats()) : null,
-                   sd: __M.sdView ? Object.assign({ w: __M.sdView.canvas.width, h: __M.sdView.canvas.height }, __M.sdView.stats()) : null,
-                   room: __M.roomPack ? __M.roomPack.stats() : null, folds: __M.downFolds.size, strip: __M.stripPack ? __M.stripPack.stats() : null },
-          stagers: stageIds().length, peers: peers.size,
-        };
-      },
       // avStats(): per-receiver WebRTC inbound stats (frames/packets/audio
       // energy) + per-sender outbound frames, each labeled with the mosaic
       // slot / job / tile it feeds, so a stall is attributable to ONE pipe.
@@ -24227,10 +22306,11 @@
         return out;
       },
     };
-  
+    // The test hooks that read the page's elements: the page adds them to the same hook object.
+    (0, /*()*/__V.viewTestHooks)(window.__gifosVideo);
     return __L.END;
   }
-  var api = { name: "core", run: part, count: 1808, exports: {"AGENT_FORCED":0,"AI_SPARK_SVG":0,"AUDIENCE_REACTS":0,"AUDIENCE_REACT_NAME":0,"AUTO_FS_SKIP":0,"AWAKE_MS":0,"BANNER_HOLD":0,"BC_AT_KEY":0,"BC_INTENT":0,"BC_WATCH_COPY":0,"BLUR_NOTE_MS":0,"BLUR_WHY_ASK":0,"BROADCAST":0,"CAST_SURFACE":0,"CC_LANGS":0,"CC_LANG_KEY":0,"CC_ON_PHONE":0,"CT":0,"CT_ICONS":0,"DEBUG_ON":0,"DEL_ICON":0,"DLOG":0,"FACE_REACT_MS":0,"FS_CROP_MAX":0,"FS_ZOOM_MAX":0,"FS_ZOOM_PAD":0,"IS_ANDROID":0,"LADDER":0,"LATE_ASK_MS":0,"MASS_MANY":0,"MAX_FILE":0,"MEET_HIST":0,"MEET_MARKS":0,"MEET_PATH":0,"MODBAR_HTML":0,"PIP_CARD_H":0,"PIP_CARD_ROWS":0,"PIP_CARD_W":0,"PIP_RETURN_WAIT_MS":0,"PWEYE_SVG":0,"PW_ADMIN_ONLY":0,"PW_GRANT_HOLD_MS":0,"RENAME_RESET":0,"ROOM":0,"RUN_DEFAULTS":0,"SCALE":0,"SHORTCUT_IDS":0,"STAGE_FPS":0,"STAGE_HEAR_MS":0,"STAGE_MAXW":0,"STALL_MS":0,"UPDATE_RESUME_KEY":0,"VIEW_ICONS":0,"VMODE":0,"WHO_GROUPS":0,"WK_H264_BLIND":0,"_runtimeSrc":0,"ac":0,"addAux":0,"addMainTrack":1,"addTranscriptLine":1,"admDeadline":0,"admGraceT":0,"admKey":0,"admSigned":1,"admStoreKey":0,"admTickT":0,"admins":0,"adminsNow":0,"admitGuest":1,"adoptAdmKey":1,"agentChat":1,"agentCore":0,"agentHand":1,"agentStart":1,"aiNotesSetting":1,"allGuestsBlocked":1,"allGuestsCamOff":1,"allGuestsMuted":1,"aloneCardShut":0,"amAdmin":0,"amGloballyMuted":1,"appClientCtl":0,"appClientStop":0,"appCopy":0,"appEv":0,"appHiddenSid":0,"appHostCtl":0,"appKey":0,"appLeadOn":0,"appLeadSet":0,"appLeadable":0,"appMode":0,"appStageApply":1,"appStageConsent":0,"appStagePlan":1,"appWaitEl":0,"appWaitSince":0,"applyAvatarFile":1,"applyBcAct":1,"applyComfy":1,"applyPageHeader":1,"applyRaiseAct":1,"applyViewerCrop":1,"armCopiedLabel":1,"armPipAuto":1,"audienceReactCounts":0,"audienceReactFade":0,"autoFsWanted":1,"auxDrop":1,"auxSenders":0,"av":0,"avatarChip":1,"awakeT":0,"backGuardDrop":1,"backToNormalView":1,"backWatch":0,"bannedOut":0,"barKind":1,"barPlan":1,"barPlanKey":0,"bcActButtons":1,"bcEndedInRoom":1,"bcHostStored":0,"bcKeepUserStop":0,"bcLastService":0,"bcMayPublishAv":1,"bcOnAir":1,"bcPreInRoom":1,"bcRole":1,"bcSeeding":0,"bcStartAt":1,"bcWatchingViewer":1,"bcWhenWords":1,"becomeAssistant":1,"blurHold":1,"blurLevel":0,"blurLevelFor":1,"blurNoteTimer":0,"blurOffer":1,"blurWhyWords":1,"bootGumPending":0,"botHidden":1,"botParks":1,"botViewOn":0,"botViewWant":0,"broadcastStatus":1,"callStateWatch":0,"camOnWords":1,"camPeer":0,"canIRunApp":0,"canStage":0,"capBusy":0,"capClone":1,"capClosed":0,"capEarsOnly":1,"capName":1,"capNowNote":1,"capOn":0,"capPick":1,"capPublish":1,"capRows":1,"capSend":1,"capSpotQueue":1,"capTraceGate":1,"capTrust":0,"capTry":1,"carryOutAc":0,"castVote":1,"ccDevNotice":1,"ccLang":0,"ccLangLabel":0,"ccLocal":0,"ccLocalBlocked":1,"ccLocalQ":0,"ccMB":0,"ccShow":0,"chat":0,"chatGateOverride":0,"chatLinksOn":0,"chatOffInfo":0,"chatPeople":1,"clearPipAuto":1,"clearRosterTiles":1,"clog":0,"closeInvModal":0,"closeRoomNoHost":1,"closeVoteModal":0,"createAdminRoom":1,"ctAgCtx":1,"ctAgHidden":1,"ctAgendaHide":1,"ctAgendaPublish":1,"ctAgendaShortTime":1,"ctAgendaTickArm":1,"ctAgendaWhoText":1,"ctAspect":1,"ctCanEditAgenda":1,"ctFocusSources":1,"ctFocusSync":1,"ctLabel":1,"ctNote":1,"ctPaintAgendaClock":1,"ctPaintBar":1,"ctRefresh":1,"ctScreenTrack":1,"ctSelect":1,"ctSpeakerPick":1,"ctText":1,"ctTurnPaint":1,"currentAppCredits":1,"currentAppHelpMd":1,"dbgMeterPanel":0,"dcSend":0,"deriveAdminKey":1,"devOf":0,"digLists":0,"digStageEntry":0,"displayName":1,"dlogOut":0,"dlogRec":0,"dlogRecStart":1,"dlogStoreGet":1,"docPip":0,"docPipAim":1,"docPipOk":0,"docPipReq":0,"dockCalmMs":0,"dockLabelSet":1,"dropPeer":1,"ejected":0,"enforceBroadcastSeat":1,"ensureAc":1,"esc":0,"faceDrawnHere":1,"faceReactRx":0,"faceReacts":0,"fetchGifFromUrl":1,"files":0,"findSharedApp":1,"fitFor":0,"fitRestFrame":0,"fmtLeft":0,"fmtSize":0,"focusId":0,"focusOf":1,"foldName":1,"forcedCamOff":0,"freshSt":0,"frozeGap":0,"frozeThisBeat":1,"fsAskAt":0,"fsAutoKey":0,"fsAutoPid":0,"fsBlurClass":1,"fsCropBox":1,"fsFarCells":1,"fsFarTalkers":1,"fsFeedLive":1,"fsFollow":0,"fsFollowChanged":1,"fsFollowT":0,"fsFull":0,"fsInline":0,"fsOverlay":0,"fsOwnExit":0,"fsPickAuto":1,"fsSel":0,"fsSources":1,"fsStripAsk":0,"fsTick":0,"fsZoomBox":0,"fsZoomIds":0,"grantHoldUntil":0,"guestsMayReact":0,"guestsMayShare":1,"handQueue":1,"handTotal":1,"handqHtml":0,"hasAdminRoom":0,"hbLastAt":0,"hbLastMono":0,"hdrHandSays":0,"heldNoteSeen":1,"hideBotsOn":0,"hideBotsT":0,"holdDoor":0,"holdLeaveAsk":1,"homeHref":1,"hostPwKey":0,"hostRename":1,"hostSpot":1,"hostWords":1,"iAmWaiting":1,"idleDock":1,"importGif":1,"inMeetingNow":1,"installRunApp":1,"inviteFromSolo":1,"isCastEntry":1,"isEjected":0,"isHeld":1,"isPipePeer":0,"isStageJob":0,"islandApart":1,"islandNoteEl":0,"joinAv":0,"joinAvChoice":0,"joinVeilEl":0,"knownTotal":1,"labelFor":0,"lastChatLine":0,"lateAsk":0,"lateGen":0,"lateJoinerSeesHistory":0,"lateTimer":0,"lateWant":0,"lateWon":0,"layoutSheet":1,"learnFoldedNames":1,"leaveMeeting":1,"leaveSeededService":1,"leaving":0,"lgNoteEl":0,"linkRowHtml":1,"liveInCall":1,"loadList":1,"lobRow":1,"lobbyCamGen":0,"lobbyPw":0,"lobbyPwFor":0,"lobbyPwHandOver":1,"localBlurPower":1,"localStream":0,"logNearBottom":1,"lowSenders":0,"markHeldNote":1,"massBannerAt":0,"massBannerEl":0,"massMany":0,"mayHost":1,"mayPinFiles":1,"mayShareScreen":0,"meTile":0,"mediaAskPending":0,"mediaJoined":0,"mediaOk":0,"meetWait":0,"mentionAlert":0,"mentionToken":1,"meshCoord":0,"meshNode":0,"meshSeat":0,"messageMentionsMe":1,"meterFor":1,"meters":0,"micLockWords":1,"micPeer":0,"mintHostKey":1,"mirrorRoomState":1,"modBlurOn":0,"modOf":1,"modStarOn":1,"modTable":0,"modalDismissBtn":1,"modalFocusables":1,"modalOutside":0,"myDevHash":0,"myId":0,"myIdentity":0,"myIdentitySeed":0,"myName":0,"myStageVotes":0,"myStatus":0,"myVoiceAt":0,"myVoiceFrom":0,"myVoiceSinceFinal":0,"nameInitial":1,"net":0,"newMeetAudioContext":1,"notTomb":0,"outgoingHeld":0,"pageFull":0,"paintBcCalendar":1,"paintBlurWhy":1,"paintBroadcastAir":1,"paintFaders":0,"paintLog":1,"paintModbarButtons":1,"paintOnAir":1,"paintRosterSoon":1,"params":0,"parseMeetInput":1,"peerAway":0,"peerWaits":1,"peers":0,"pendingReply":0,"pipAimed":0,"pipAwayAt":0,"pipAwayT":0,"pipBrowserAsked":0,"pipBtnShown":0,"pipByBrowser":0,"pipCard":0,"pipCardPaint":1,"pipCardReady":1,"pipCardRun":1,"pipEpoch":0,"pipFallback":1,"pipFloating":0,"pipHintArmed":0,"pipHintDone":0,"pipManual":0,"pipReturnT":0,"pipSource":1,"pipTrace":0,"pipePeers":1,"pipeStg":0,"pipeVideo":0,"placeViewerHand":1,"platePaintT":0,"postChat":1,"prayOn":0,"preferHwVideo":1,"prevRoomE2E":0,"progressStart":1,"progressTick":1,"progressWords":1,"purgeAllFiles":1,"pushLeaf":1,"pwBlocked":0,"pwChainFailed":1,"pwEpoch":0,"pwHeldOnTyping":1,"pwProof":0,"pwProvisional":0,"pwSaveWaited":0,"pwSetRoom":1,"qaChatOn":1,"qaList":1,"qaSend":1,"qaShownId":1,"raisedHandRows":1,"rbFmt":1,"rbNoun":0,"rbNow":0,"rbStart":1,"rbStop":1,"rbTitle":1,"rbToggle":1,"reactAlert":0,"reactRateOk":1,"reactRoomState":1,"reactStats":0,"recNoticeTitle":1,"recRoomWord":1,"recSrcDirty":0,"recStructSig":0,"reconcileApp":1,"refreshAllTiles":1,"rejoinHref":0,"rekeyRoom":1,"relayBusyAt":0,"relayJobs":0,"relayVia":0,"releaseLeaveAsk":1,"renameEditId":0,"renameGuest":1,"renderChat":1,"renegotiate":1,"room":0,"roomDig":1,"roomE2E":0,"roomHeadCount":1,"roomJoinedAt":0,"roomPastSection":0,"roomPw":0,"rosterIds":0,"rosterNames":0,"rosterRows":1,"rosterTiles":0,"rowFaceDark":0,"rowMates":0,"rowMixTalkAt":0,"runApp":1,"runChoices":1,"runLinkTarget":1,"rung":0,"saveList":1,"sayState":0,"screenCeilingKbps":1,"screenSteppedUp":0,"screenStream":0,"scriptOnce":0,"seatDark":0,"seatStranger":1,"sendAll":1,"sendAudienceReact":1,"sendAvatarTo":1,"sendFaceFrame":1,"sendVisPark":1,"serviceHeard":0,"sessId":0,"setAutoFsOff":1,"setCapSend":1,"setMod":1,"setPersonalBlur":1,"setStage":1,"setStatus":0,"setTrMode":1,"setView":1,"setVq":1,"setWaitingRoom":1,"sgaAOP":0,"shareBlocked":0,"shareFirewallWords":1,"shareSheetFocusId":1,"shareSheetOpener":0,"sharingScreen":0,"shortCode":0,"shortcutTyping":1,"showCaption":1,"slowModeOn":0,"slugRoom":1,"soloCtl":0,"soloShare":0,"someoneRecording":1,"speakingOf":0,"spotlightGuest":1,"stHold":0,"stageCeilingKbps":1,"stageCell":1,"stageClaimOf":0,"stageFeedAt":0,"stageFps":1,"stageGrantLive":0,"stageHeldAt":0,"stageIds":0,"stageModList":1,"stageResumeUntil":0,"stageSeats":0,"stageSenders":0,"stageVoteTallies":1,"stallOf":0,"startMesh":1,"stashJoinAv":1,"statusHoldUntil":0,"statusOf":0,"statusRestFull":0,"statusRestShort":0,"statusRestTiny":0,"statusWords":0,"stillTimer":0,"stopApp":1,"stopAuxTx":1,"stopRoomApp":1,"storePw":1,"subsMeetId":0,"subsOn":0,"syncFocus":1,"syncModalFocus":1,"takeTomb":1,"tileBlurWhy":1,"tileWin":0,"toggleBookmark":1,"toggleLine":1,"trBlocks":1,"trDirty":0,"trDrops":0,"trEchoHeld":1,"trEnOn":0,"trEnOnlyEnglish":1,"trForget":1,"trHeardLang":0,"trHeardN":0,"trKeeps":1,"trLang":1,"trLangKnown":1,"trLangLearned":0,"trLangOf":0,"trMode":1,"trNote":1,"turnFacts":0,"turnHeld":1,"turnLinks":0,"turnNote":1,"twCropSection":1,"twIdOf":1,"twPeer":1,"twStageFrameSection":1,"txMarkWhy":1,"uiLang":1,"uiText":1,"uid":0,"unread":0,"updateLeaving":0,"updateMediaSession":1,"updateResume":0,"updateRoomKey":0,"updateStatus":1,"updateTile":1,"viewNote":1,"viewStore":0,"viewWord":1,"viewerShareUrl":1,"visParkSent":0,"voteMode":0,"vqManual":0,"vqRung":0,"waitAdmitted":0,"waitDeclined":0,"waitQueue":0,"waitingRows":1,"waitingSince":1,"whoAddrLines":1,"whoFaceState":1,"whoFileText":1,"whoObserve":1,"whoRefresh":0,"whoRows":1,"wireModbar":1}, needs: {"media":{"adapt":1,"displayCount":1,"stopScreenShare":1,"refreshOutbound":1,"ccMix":0,"ccMixSync":1,"stgBeats":0,"stgStale":1,"stgLost":1,"mosIn":0,"mosFb":0,"deepInView":1,"participantCount":1,"resumeReload":1,"IS_MOBILE":0,"recRec":0,"applyCcAll":1,"onStageNow":1,"RECOVER_MEDIA_KEY":0,"sdView":0,"screenSharers":0,"shareOnlyStage":1,"blurSized":1,"peerReconnecting":1,"syncAvatarFeed":1,"STAGE_FACE_SETTLE_MS":0,"stageFrameVal":0,"setStageFrame":1,"normStageFrame":1,"wspRebind":1,"lastActive":0,"stagedSelfWas":0,"powDials":0,"refreshTrBtn":1,"blockedAudio":0,"lastQ":0,"headerCount":1,"applyBuses":1,"tileHolds":1,"releaseAudio":1,"playTileVideo":1,"peerHeardAt":1,"mainAudioTrack":1,"sentVideoTrack":1,"mosJobs":0,"unshipMos":1,"mosAnn":0,"dropMosIn":1,"mosStandby":0,"dropStandby":1,"claimMos":1,"schedReconcile":1,"retireMixTracks":1,"peerAudioTracks":1,"gridApplied":0,"dropEndedRemoteTracks":1,"headLinkUp":1,"subWant":0,"PEER_SILENT_MS":0,"recNoteStruct":1,"WEBKIT_TILE":0,"shipContainers":0,"prodPack":0,"roomPack":0,"stripPack":0,"l14Packs":0,"powNow":0,"quietAtDoor":1,"mosHasEjected":1,"recStarting":0,"recDraw":0,"recScopeSources":1,"startRec":1,"recDefaultQuality":1,"headSendsStale":1,"setJobActive":1,"compFps":1,"personOnStage":1,"presenceSweep":1,"mainGone":1,"wkQuietBind":1,"reconcileMosaic":1,"onMeetDeviceChange":1,"bootWantsCamera":1,"gumWithMicFallback":1,"camVideoConstraints":0,"applyRecoverMedia":1,"noteAudioDevices":1,"goLiveStoredLevel":1,"updateAir":1,"syncSpeech":1,"keepMeetingAudio":1,"maybeShowFlip":1,"attachLocalTracks":1,"gumRefused":1,"clockSample":1,"mxIds":1,"MX_IDS_MAX":0,"mxPath":0,"schedClaim":1,"stgBeatIn":1,"isRedun":0,"chainDemandUp":1,"parkJobVideo":1,"kfAsker":0,"kfNeed":1,"holdMainVideo":1,"kickMainVideo":1,"hasPendingTx":0,"shipTracks":1,"TURN_ASK_MS":0,"TURN_MS":0,"TURN_BUSY_MS":0,"kickMainAudio":1,"wkRemoteTrack":1,"occPid":0,"endSongOnStepDown":1,"reactSing":1,"armAudioKeepAlive":1,"swapPicRing":0,"ccDefGroup":0,"mix":0,"toggleSing":1,"paintTiming":1,"timing":0,"TIMING_KEY":0,"applyGrid":1,"lsGet":0,"ccEngine":0,"phoneCaptions":1,"WSP_WEAK":0,"whisperReady":0,"wspPaused":0,"speechRunning":1,"stopSpeech":1,"capPaused":1,"wspCaps":0,"whisperSupported":0,"installWhisper":1,"wspSync":1,"MP":0,"ccMixStop":1,"startWhisper":1,"wspStop":1,"speech":0,"speechProved":0,"lsSet":0,"micTap":1,"camPickThen":0,"camChooserAnchor":0,"closeCamChooser":1,"pickCamera":1,"stopWhisper":1,"whisperRescan":0,"camIdleT":0,"wakeLock":0,"stopBlurPipe":1,"withScrPipe":1,"mixAc":0,"keepAwake":1,"warnRecorderNewApp":1,"botVoiceTrack":0,"wspResume":1,"kickStageMic":1,"blurViewFrac":1,"blurDraw":1,"carryVoiceTrack":0,"wkEar":0,"stageEar":0,"WK_STAGE_KEY":0,"downFolds":0,"pipeEnabled":0,"pipeJobs":0,"pipeDeny":0,"wkFwdNeeded":1,"wkFwdCopies":0,"packLoop":0,"downStreams":0,"avHold":0,"MPipe":0,"roomSingOn":0,"micMode":0,"clk":0,"gdOverride":0,"canScreenShare":0,"degOf":0,"stageViewNow":0,"STAGE_FACE_PX":0,"startScreenShare":1,"qaStageSt":0,"stgBeatCost":0,"stageEarLiveTrack":1,"stageEarRawPeak":1,"stageEarFoldPeak":1,"leafCount":1,"livePeerCount":1,"shownPeerCount":1,"facesOnScreen":1,"multiSection":0,"sdViewSt":0,"dbgRowFaces":0,"compOf":0,"blurPipe":0,"heardStage":1,"camTrackForTest":1,"earState":1,"stageAudible":0,"battNow":0,"idleNow":0,"tuneCfg":1,"poke":0,"wsp":0,"wspQ":0,"trWrites":1,"wspModel":1,"wspEnqueue":1,"capCovered":1,"earLangOk":1,"wspSource":1,"recMode":0,"recMatchMix":0,"recQuality":0,"recSources":1,"camChooserOpen":1,"trackQ":0,"avatarPipe":0},"view":{"paintVq":1,"paintAirKind":1,"placeDockForWidth":1,"paintOnAirSide":1,"paintBroadcastRole":1,"paintBroadcastChrome":1,"statusEl":0,"paintLiveBadge":1,"paintStatusSheet":1,"applyChrome":1,"paintAppearFace":1,"paintAssistant":1,"paintControls":1,"setBotView":1,"paintRoomTrust":1,"showHeldScreen":1,"waitPaint":1,"closeMoreForWait":1,"stagefeedEl":0,"stadiumEl":0,"pipCardModel":1,"pipNote":1,"elementFloat":1,"docPipPaint":1,"awayFull":1,"enterPip":1,"backGuardSync":1,"pipCardDrop":1,"pipCardEnsure":1,"pipReturn":1,"paintChatGate":1,"paintStage":1,"layout":1,"updateMuteAllBtn":1,"updateBlurAllBtn":1,"updateCamAllBtn":1,"updateShareAllBtn":1,"paintStageMod":1,"paintStageBlurWhy":1,"explainHeldVideo":1,"paintShare":1,"fsRefreshIfOpen":1,"tickAdminClose":1,"updateReload":1,"clearAdminClose":1,"fsFitPaint":1,"fsview":0,"fsRefresh":1,"paintRaisedHands":1,"phoneLayout":1,"setTileLetter":1,"paintAwayMark":1,"paintTileChrome":1,"paintBroadcastIdent":1,"ensureStageView":1,"contentPlace":1,"applyViewerCrops":1,"paintFit":1,"closeFsView":1,"openFsView":1,"ctInit":1,"ctAppInfo":1,"ctPaintAgendaBtn":1,"ctFocusOnContent":1,"ctPresent":1,"fsmain":0,"ctAgendaOpen":1,"wakeMeet":1,"twSizePad":1,"twButton":1,"openTileWin":1,"closeTileWin":1,"openStageAdjust":1,"placeFit":1,"leftDialogUp":1,"atPwPrompt":1,"fitStatusRest":1,"paintBcQuiet":1,"paintInviteSlot":1,"paintAloneCard":1,"paintRoster":1,"releaseHeld":1,"paintWaitingSelf":1,"refreshAvatarSurfaces":1,"turnPaint":1,"pauseNote":1,"grid":0,"makeTile":1,"reassertVisLift":1,"renderHandq":1,"paintProgressSteps":1,"lobbyPwOpenRoom":1,"renderFiles":1,"showPwModal":1,"paintBroadcastJoinNote":1,"capPaint":1,"lgLeave":1,"showForkPick":1,"showRelayBusy":1,"applyAdminUi":1,"frozenTileSkip":1,"massBannerTick":1,"islandNoteTick":1,"paintStageVoteTargets":1,"paintBroadcastSeats":1,"whoModal":0,"showWhoModal":1,"placeHandq":1,"handqEl":0,"paintHelpTip":1,"richHtml":1,"paintStagePlate":1,"shareUrl":0,"paintStreamLink":1,"share":0,"renderLobbyList":1,"placeDeskName":1,"placeClearLine":1,"tileNote":1,"setAppFavicon":1,"showAppMissing":1,"hideAppMissing":1,"showAppPane":1,"appMountEl":0,"refreshAudioBtn":1,"showInviteModal":1,"applyHeaderChoice":1,"appCopyPaint":1,"applyRoomAudio":1,"bootMeetSession":1,"showLobby":1,"chatTrace":1,"chatPanel":0,"paintChatBadge":1,"renderTranscript":1,"countClosedChat":1,"paintChatCount":1,"takeFaceReact":1,"paintTxMark":1,"pwModal":0,"paintChatNew":1,"chatPanelOpen":1,"transcriptShown":1,"chatQuery":1,"paintChatFind":1,"paintReply":1,"paintQaBand":1,"renderQa":1,"placeQaBand":1,"sgaAppOwner":1,"handBtn":0,"paintHand":1,"stageBtn":0,"rbCanvas":1,"paintRb":1,"paintRbNow":1,"showRecReplay":1,"paintMyAvatarPreview":1,"timingRow":0,"emitLiveTranscript":1,"capSourceOpen":1,"paintCcLocal":1,"paintTranscriptControls":1,"paintCallState":1,"paintAudienceReacts":1,"armMeetDialogs":1,"camBtn":0,"blurNote":1,"openBlurWhy":1,"camChooserEl":0,"blurAllBtn":0,"camAllBtn":0,"muteAllBtn":0,"topNameModal":1,"invModal":0,"inviteLinkForModal":1,"stopLobbyPreview":1,"clearAppView":1,"updateAppButtons":1,"appStageAskClose":1,"appStageAsk":1,"loadScriptOnce":1,"carryIo":1,"carryEarAc":1,"dbgMeterShow":1,"shareBtn":0,"paintStageStrip":1,"openShareSheet":1,"audioDump":1,"fsstrip":0,"paintTalkBtn":1,"micBtn":0,"paintAvatarCanvas":1}}, stamp: "a602d715" };
+  var api = { name: "core", run: part, count: 1784, exports: {"AGENT_FORCED":0,"AI_SPARK_SVG":0,"AUDIENCE_REACTS":0,"AUDIENCE_REACT_NAME":0,"AUTO_FS_SKIP":0,"AWAKE_MS":0,"BANNER_HOLD":0,"BC_AT_KEY":0,"BC_INTENT":0,"BC_WATCH_COPY":0,"BLUR_NOTE_MS":0,"BLUR_WHY_ASK":0,"BROADCAST":0,"CAST_SURFACE":0,"CC_LANGS":0,"CC_LANG_KEY":0,"CC_ON_PHONE":0,"CT":0,"CT_ICONS":0,"DEBUG_ON":0,"DEL_ICON":0,"DLOG":0,"FACE_REACT_MS":0,"FS_CROP_MAX":0,"FS_ZOOM_MAX":0,"FS_ZOOM_PAD":0,"IS_ANDROID":0,"IS_MOBILE":0,"LADDER":0,"LATE_ASK_MS":0,"MASS_MANY":0,"MAX_FILE":0,"MEET_HIST":0,"MEET_MARKS":0,"MEET_PATH":0,"MODBAR_HTML":0,"PEER_SILENT_MS":0,"PIP_AUTO_FALLBACK_MS":0,"PIP_CARD_H":0,"PIP_CARD_ROWS":0,"PIP_CARD_W":0,"PIP_RETURN_WAIT_MS":0,"PWEYE_SVG":0,"PW_ADMIN_ONLY":0,"PW_GRANT_HOLD_MS":0,"REACTS":0,"RECOVER_MEDIA_KEY":0,"RENAME_RESET":0,"ROOM":0,"RUN_DEFAULTS":0,"SCALE":0,"SHORTCUT_IDS":0,"STAGE_FPS":0,"STAGE_HEAR_MS":0,"STAGE_MAXW":0,"STALL_MS":0,"TIMING_KEY":0,"UPDATE_RESUME_KEY":0,"VIEW_ICONS":0,"VMODE":0,"WHO_GROUPS":0,"WK_H264_BLIND":0,"ac":0,"addAux":0,"addMainTrack":1,"addTranscriptLine":1,"admDeadline":0,"admGraceT":0,"admKey":0,"admSigned":1,"admStoreKey":0,"admTickT":0,"adminFace":0,"admins":0,"adminsNow":0,"admitGuest":1,"adoptAdmKey":1,"agentChat":1,"agentCore":0,"agentHand":1,"agentStart":1,"aiNotesSetting":1,"allGuestsBlocked":1,"allGuestsCamOff":1,"allGuestsMuted":1,"aloneCardShut":0,"amAdmin":0,"amGloballyMuted":1,"appClientCtl":0,"appClientStop":0,"appCopy":0,"appEv":0,"appHiddenSid":0,"appHostCtl":0,"appKey":0,"appLeadOn":0,"appLeadSet":0,"appLeadable":0,"appMode":0,"appPaneName":0,"appPaneOn":0,"appRoomOn":0,"appStageApply":1,"appStageConsent":0,"appStagePlan":1,"appWaitEl":0,"appWaitSince":0,"applyAvatarFile":1,"applyBcAct":1,"applyCdel":1,"applyOwnDelete":1,"applyPageHeader":1,"applyRaiseAct":1,"applyViewerCrop":1,"armAppRoomTick":0,"armCopiedLabel":1,"audienceReactCounts":0,"audienceReactFade":0,"autoFsOff":0,"auxDrop":1,"auxSenders":0,"av":0,"avatarChip":1,"awakeT":0,"backGuardDrop":1,"backToNormalView":1,"backWatch":0,"bannedOut":0,"barKind":1,"barPlan":1,"barPlanKey":0,"bcActButtons":1,"bcCalFor":0,"bcCalUrl":0,"bcEndedInRoom":1,"bcHostStored":0,"bcKeepUserStop":0,"bcLastService":0,"bcMayPublishAv":1,"bcOnAir":1,"bcPreInRoom":1,"bcRole":1,"bcSeeding":0,"bcStartAt":1,"bcWatchingViewer":1,"bcWhenWords":1,"becomeAssistant":1,"blurHold":1,"blurLevel":0,"blurLevelFor":1,"blurNoteTimer":0,"blurOffer":1,"blurWhyWords":1,"bootGumPending":0,"botHidden":1,"botParks":1,"botViewOn":0,"botViewWant":0,"broadcastStatus":1,"callOn":0,"camOnWords":1,"camPeer":0,"canIRunApp":0,"canStage":0,"capBusy":0,"capClone":1,"capClosed":0,"capEarsOnly":1,"capLang":0,"capLangMine":1,"capLangName":1,"capLangTag":1,"capName":1,"capNowNote":1,"capOn":0,"capPick":1,"capPublish":1,"capRows":1,"capSend":1,"capSpotQueue":1,"capTraceGate":1,"capTrust":0,"capTry":1,"carryG":0,"carryHosts":0,"carryOutAc":0,"castVote":1,"ccDevNotice":1,"ccLang":0,"ccLangLabel":0,"ccLocal":0,"ccLocalBlocked":1,"ccLocalQ":0,"ccMB":0,"ccShow":0,"chat":0,"chatGateOverride":0,"chatLinksOn":0,"chatOffInfo":0,"chatOpen":0,"chatPeople":1,"chatReacts":0,"chatTombs":0,"chatWhen":1,"clearPipAuto":1,"clearRosterTiles":1,"clog":0,"closeRoomNoHost":1,"contentHas":1,"createAdminRoom":1,"ctAgCtx":1,"ctAgHidden":1,"ctAgendaHide":1,"ctAgendaOver":1,"ctAgendaPublish":1,"ctAgendaShortTime":1,"ctAgendaTickArm":1,"ctAgendaWhoText":1,"ctAspect":1,"ctBring":1,"ctCanEditAgenda":1,"ctFocusSources":1,"ctLabel":1,"ctNote":1,"ctPaintAgendaClock":1,"ctRefresh":1,"ctScreenTrack":1,"ctSelect":1,"ctSpeakerPick":1,"ctText":1,"ctTurnPaint":1,"currentAppCredits":1,"currentAppHelpMd":1,"dbgMeterPanel":0,"dcSend":0,"deriveAdminKey":1,"devOf":0,"digLists":0,"digStageEntry":0,"digestMode":0,"displayName":1,"dlogOut":0,"dlogRec":0,"dlogRecStart":1,"dlogStoreGet":1,"docPip":0,"docPipAim":1,"docPipReq":0,"dockCalmMs":0,"dockLabelSet":1,"dropPeer":1,"ejected":0,"enforceBroadcastSeat":1,"ensureAc":1,"esc":0,"faceDrawnHere":1,"faceReactRx":0,"faceReacts":0,"fetchGifFromUrl":1,"files":0,"findSharedApp":1,"fitFor":0,"fitRestFrame":0,"fmtLeft":0,"fmtSize":0,"focusId":0,"focusOf":1,"foldName":1,"forcedCamOff":0,"freshSt":0,"frozeGap":0,"frozeThisBeat":1,"fsAskAt":0,"fsAutoKey":0,"fsAutoPid":0,"fsBlurClass":1,"fsCropBox":1,"fsFarCells":1,"fsFarTalkers":1,"fsFeedLive":1,"fsFollow":0,"fsFollowChanged":1,"fsFollowT":0,"fsFull":0,"fsInline":0,"fsOpen":0,"fsOverlay":0,"fsOwnExit":0,"fsPickAuto":1,"fsSel":0,"fsStripAsk":0,"fsTick":0,"fsZoomBox":0,"fsZoomIds":0,"grantHoldUntil":0,"guestsMayReact":0,"guestsMayShare":1,"handQueue":1,"handTotal":1,"handqHtml":0,"hasAdminRoom":0,"hasPendingTx":0,"hbLastAt":0,"hbLastMono":0,"hdrHandSays":0,"heldNoteSeen":1,"hideBotsOn":0,"hideBotsT":0,"holdDoor":0,"holdLeaveAsk":1,"homeHref":1,"hostPwKey":0,"hostRename":1,"hostSpot":1,"hostWords":1,"iAmWaiting":1,"idleDock":1,"importGif":1,"inMeetingNow":1,"installRunApp":1,"inviteFromSolo":1,"isCastEntry":1,"isEjected":0,"isHeld":1,"isPipePeer":0,"isStageJob":0,"islandApart":1,"islandNoteEl":0,"joinAv":0,"joinAvChoice":0,"kfAsker":0,"knownTotal":1,"labelFor":0,"lastChatLine":0,"lateAsk":0,"lateGen":0,"lateJoinerSeesHistory":0,"lateTimer":0,"lateWant":0,"lateWon":0,"learnFoldedNames":1,"leaveMeeting":1,"leaveSeededService":1,"leaving":0,"leftDialogUp":1,"lgNoteEl":0,"lineOpen":0,"linkRowHtml":1,"linksAllowed":1,"liveInCall":1,"loadList":1,"lobRow":1,"lobbyCamGen":0,"lobbyPw":0,"lobbyPwFor":0,"lobbyPwHandOver":1,"localBlurPower":1,"localStream":0,"logNearBottom":1,"lowSenders":0,"lsGet":0,"lsSet":0,"markHeldNote":1,"massBannerAt":0,"massBannerEl":0,"massMany":0,"mayHost":1,"mayPinFiles":1,"mayShareScreen":0,"meTile":0,"mediaAskPending":0,"mediaJoined":0,"mediaOk":0,"meetWait":0,"mentionAlert":0,"mentionToken":1,"meshCoord":0,"meshNode":0,"meshSeat":0,"messageMentionsMe":1,"meterFor":1,"meters":0,"micLockWords":1,"micPeer":0,"mintHostKey":1,"mirrorRoomState":1,"modBlurOn":0,"modOf":1,"modStarOn":1,"modTable":0,"modalDismissBtn":1,"modalFocusables":1,"modalOpener":0,"modalOutside":0,"modalTracked":0,"multiSection":0,"myDevHash":0,"myId":0,"myIdentity":0,"myIdentitySeed":0,"myName":0,"myStageVotes":0,"myStatus":0,"myUpVoteSig":0,"myVoiceAt":0,"myVoiceFrom":0,"myVoiceSinceFinal":0,"nameInitial":1,"net":0,"newMeetAudioContext":1,"newNeg":0,"notTomb":0,"occPid":0,"outgoingHeld":0,"paintBroadcastAir":1,"paintLog":1,"paintModbarButtons":1,"paintOnAir":1,"paintRosterSoon":1,"params":0,"parseMeetInput":1,"peerAway":0,"peerWaits":1,"peers":0,"pendingReply":0,"pipAimed":0,"pipAutoT":0,"pipAwayAt":0,"pipAwayT":0,"pipBrowserAsked":0,"pipByBrowser":0,"pipCard":0,"pipCardPaint":1,"pipCardReady":1,"pipCardRun":1,"pipEpoch":0,"pipFallback":1,"pipHintArmed":0,"pipHintDone":0,"pipManual":0,"pipReady":0,"pipReturnT":0,"pipTrace":0,"pipePeers":1,"pipeStg":0,"pipeVideo":0,"placeViewerHand":1,"platePaintT":0,"postChat":1,"powDials":0,"powNow":0,"prayOn":0,"preferHwVideo":1,"prevRoomE2E":0,"progressStart":1,"progressTick":1,"progressWords":1,"purgeAllFiles":1,"pushLeaf":1,"pwBan":1,"pwBlocked":0,"pwChainFailed":1,"pwEpoch":0,"pwHeldOnTyping":1,"pwProof":0,"pwProvisional":0,"pwSaveWaited":0,"pwSetRoom":1,"qaChatOn":1,"qaList":1,"qaSend":1,"qaShowOk":0,"qaShownId":1,"raisedHandRows":1,"rbCap":0,"rbDrop":1,"rbFmt":1,"rbLength":1,"rbNoun":0,"rbNow":0,"rbStop":1,"rbTitle":1,"rbToggle":1,"rbTracks":1,"reactAlert":0,"reactOpen":0,"reactRateOk":1,"reactRoomState":1,"reactStats":0,"reactorNames":1,"recNoticeTitle":1,"recRoomWord":1,"recSrcDirty":0,"recStructSig":0,"reconcileApp":1,"refreshAllTiles":1,"rejoinHref":0,"rekeyRoom":1,"relayBusyAt":0,"relayJobs":0,"relayVia":0,"releaseLeaveAsk":1,"renameEditId":0,"renameGuest":1,"renegotiate":1,"room":0,"roomConsentIds":0,"roomDig":1,"roomE2E":0,"roomHeadCount":1,"roomJoinedAt":0,"roomPastSection":0,"roomPw":0,"rosterIds":0,"rosterNames":0,"rosterRows":1,"rosterTiles":0,"rowFaceDark":0,"rowMates":0,"rowMixTalkAt":0,"runApp":1,"runChoices":1,"runLinkTarget":1,"rung":0,"saveList":1,"saveVcrops":1,"sayState":0,"screenCeilingKbps":1,"screenSteppedUp":0,"screenStream":0,"scriptOnce":0,"seatDark":0,"seatStranger":1,"sendAll":1,"sendAudienceReact":1,"sendAvatarTo":1,"sendFaceFrame":1,"sendVisPark":1,"serviceHeard":0,"sessId":0,"setAutoFsOff":1,"setCapSend":1,"setMod":1,"setPersonalBlur":1,"setStage":1,"setStatus":0,"setTrMode":1,"setView":1,"setVq":1,"setWaitingRoom":1,"sgaAOP":0,"shadeKey":1,"shareBlocked":0,"shareFirewallWords":1,"shareSheetFocusId":1,"shareSheetOpener":0,"sharingScreen":0,"shortCode":0,"shortcutTyping":1,"slowModeOn":0,"slugRoom":1,"soloCtl":0,"soloShare":0,"someoneRecording":1,"speakingOf":0,"spotlightGuest":1,"stHold":0,"stageCeilingKbps":1,"stageCell":1,"stageClaimOf":0,"stageFeedAt":0,"stageFeedVideo":1,"stageFps":1,"stageGrantLive":0,"stageHeldAt":0,"stageIds":0,"stageModList":1,"stageNeed":0,"stageResumeUntil":0,"stageSeats":0,"stageSenders":0,"stageViewNow":0,"stageVoteTallies":1,"stallOf":0,"startMesh":1,"stashJoinAv":1,"statusHoldUntil":0,"statusOf":0,"statusRestFull":0,"statusRestShort":0,"statusRestTiny":0,"statusWords":0,"stillTimer":0,"stopApp":1,"stopAuxTx":1,"stopRoomApp":1,"storePw":1,"subWant":0,"subsMeetId":0,"subsOn":0,"syncFocus":1,"takeReact":1,"takeTomb":1,"tileBlurWhy":1,"tileWin":0,"toggleBookmark":1,"toggleLine":1,"trBlocks":1,"trDirty":0,"trDrops":0,"trEchoHeld":1,"trEnOn":0,"trEnOnlyEnglish":1,"trForget":1,"trHeardLang":0,"trHeardN":0,"trKeeps":1,"trLang":1,"trLangKnown":1,"trLangLearned":0,"trLangOf":0,"trMode":1,"trNote":1,"trs":0,"turnFacts":0,"turnHeld":1,"turnLinks":0,"turnNote":1,"twIdOf":1,"twPeer":1,"txMarkWhy":1,"uiLang":1,"uiText":1,"uid":0,"unread":0,"updateLeaving":0,"updateMediaSession":1,"updateResume":0,"updateRoomKey":0,"updateStatus":1,"updateTile":1,"vcrops":0,"viewNote":1,"viewStore":0,"viewWord":1,"viewerCropOf":1,"viewerMayReact":1,"viewerShareUrl":1,"visParkSent":0,"voteMode":0,"vqManual":0,"vqRung":0,"vupDismissedSig":0,"waitAdmitted":0,"waitDeclined":0,"waitQueue":0,"waitingRows":1,"waitingSince":1,"whoAddrLines":1,"whoFaceState":1,"whoFileText":1,"whoObserve":1,"whoRefresh":0,"whoRows":1,"wireModbar":1,"withMentions":1}, needs: {"media":{"adapt":1,"displayCount":1,"stopScreenShare":1,"refreshOutbound":1,"ccMix":0,"ccMixSync":1,"stgBeats":0,"stgStale":1,"stgLost":1,"mosIn":0,"mosFb":0,"deepInView":1,"participantCount":1,"resumeReload":1,"recRec":0,"applyCcAll":1,"onStageNow":1,"sdView":0,"blurSized":1,"peerReconnecting":1,"syncAvatarFeed":1,"screenSharers":0,"wspRebind":1,"lastActive":0,"stagedSelfWas":0,"MP":0,"refreshTrBtn":1,"blockedAudio":0,"lastQ":0,"headerCount":1,"applyBuses":1,"tileHolds":1,"releaseAudio":1,"playTileVideo":1,"peerHeardAt":1,"mainAudioTrack":1,"sentVideoTrack":1,"mosJobs":0,"unshipMos":1,"mosAnn":0,"dropMosIn":1,"mosStandby":0,"dropStandby":1,"claimMos":1,"schedReconcile":1,"retireMixTracks":1,"peerAudioTracks":1,"gridApplied":0,"dropEndedRemoteTracks":1,"headLinkUp":1,"recNoteStruct":1,"shareOnlyStage":1,"WEBKIT_TILE":0,"mediaElCensus":1,"shipContainers":0,"prodPack":0,"roomPack":0,"stripPack":0,"l14Packs":0,"quietAtDoor":1,"mosHasEjected":1,"recStarting":0,"recDraw":0,"recScopeSources":1,"startRec":1,"recDefaultQuality":1,"headSendsStale":1,"setJobActive":1,"compFps":1,"personOnStage":1,"presenceSweep":1,"mainGone":1,"wkQuietBind":1,"reconcileMosaic":1,"onMeetDeviceChange":1,"bootWantsCamera":1,"gumWithMicFallback":1,"camVideoConstraints":0,"applyRecoverMedia":1,"noteAudioDevices":1,"goLiveStoredLevel":1,"updateAir":1,"syncSpeech":1,"keepMeetingAudio":1,"maybeShowFlip":1,"attachLocalTracks":1,"gumRefused":1,"clockSample":1,"mxIds":1,"mxPath":0,"schedClaim":1,"stgBeatIn":1,"isRedun":0,"chainDemandUp":1,"parkJobVideo":1,"kfNeed":1,"holdMainVideo":1,"kickMainVideo":1,"shipTracks":1,"kickMainAudio":1,"wkRemoteTrack":1,"endSongOnStepDown":1,"reactSing":1,"armAudioKeepAlive":1,"swapPicRing":0,"ccDefGroup":0,"paintTiming":1,"ccEngine":0,"phoneCaptions":1,"WSP_WEAK":0,"whisperReady":0,"wspPaused":0,"speechRunning":1,"stopSpeech":1,"capPaused":1,"wspCaps":0,"whisperSupported":0,"installWhisper":1,"wspSync":1,"ccMixStop":1,"startWhisper":1,"wspStop":1,"speech":0,"speechProved":0,"stopWhisper":1,"whisperRescan":0,"camIdleT":0,"wakeLock":0,"stopBlurPipe":1,"withScrPipe":1,"mixAc":0,"keepAwake":1,"warnRecorderNewApp":1,"botVoiceTrack":0,"wspResume":1,"kickStageMic":1,"closeCamChooser":1,"blurViewFrac":1,"blurDraw":1,"carryVoiceTrack":0,"dbgMeterSources":1,"pipeEnabled":0,"pipeJobs":0,"pipeDeny":0,"wkFwdNeeded":1,"wkFwdCopies":0,"packLoop":0,"downStreams":0,"MPipe":0,"roomSingOn":0,"micMode":0,"timing":0,"clk":0,"mix":0,"toggleSing":1,"gdOverride":0,"applyGrid":1,"startScreenShare":1,"qaStageSt":0,"stageEar":0,"stgBeatCost":0,"stageEarLiveTrack":1,"stageEarRawPeak":1,"stageEarFoldPeak":1,"leafCount":1,"livePeerCount":1,"shownPeerCount":1,"facesOnScreen":1,"compOf":0,"blurPipe":0,"heardStage":1,"camTrackForTest":1,"earState":1,"stageAudible":0,"battNow":0,"idleNow":0,"tuneCfg":1,"poke":0,"wsp":0,"wspQ":0,"trWrites":1,"wspModel":1,"wspEnqueue":1,"capCovered":1,"earLangOk":1,"wspSource":1,"recMode":0,"recMatchMix":0,"recQuality":0,"recSources":1,"camChooserOpen":1,"trackQ":0,"avatarPipe":0},"view":{"paintVq":1,"paintAirKind":1,"placeDockForWidth":1,"paintOnAirBadge":1,"paintOnAirSide":1,"paintBroadcastRole":1,"paintBroadcastChrome":1,"paintStatusNotice":1,"paintLiveBadge":1,"paintStatusSheet":1,"applyChrome":1,"showAppearCard":1,"paintAssistant":1,"paintControls":1,"setBotView":1,"paintRoomTrust":1,"showHeldScreen":1,"waitPaint":1,"closeMoreForWait":1,"paintWaitDoor":1,"pipReaim":1,"pipCardModel":1,"pipNote":1,"pipSource":1,"docPipPaint":1,"awayFull":1,"enterPip":1,"pipReturn":1,"paintChatGate":1,"paintStage":1,"layout":1,"updateMuteAllBtn":1,"updateBlurAllBtn":1,"updateCamAllBtn":1,"updateShareAllBtn":1,"paintStageMod":1,"paintStageBlurWhy":1,"explainHeldVideo":1,"paintShare":1,"fsRefreshIfOpen":1,"tickAdminClose":1,"updateReload":1,"clearAdminClose":1,"showClosedDialog":1,"fsFitPaint":1,"fsRefresh":1,"paintRaisedHands":1,"phoneLayout":1,"setTileLetter":1,"paintAwayMark":1,"paintTileChrome":1,"paintBlurWhy":1,"paintAvatarImg":1,"paintBroadcastIdent":1,"paintFit":1,"closeFsView":1,"openFsView":1,"ctInit":1,"ctAppInfo":1,"ctPaintAgendaBtn":1,"ctPaintBar":1,"ctPresent":1,"ctAgendaOpen":1,"wakeMeet":1,"openTileWin":1,"closeTileWin":1,"applyViewerCrops":1,"openStageAdjust":1,"placeFit":1,"stageFeedShows":1,"paintStatusAlert":1,"paintPeopleIfOpen":1,"atPwPrompt":1,"paintStatusLine":1,"paintBcQuiet":1,"paintChipBottom":1,"paintInviteSlot":1,"paintAloneCard":1,"paintRoster":1,"releaseHeld":1,"paintWaitingSelf":1,"refreshAvatarSurfaces":1,"turnPaint":1,"pauseNote":1,"wireFsResize":1,"paintTileOnGrid":1,"makeTile":1,"reassertVisLift":1,"renderHandq":1,"paintProgressSteps":1,"paintJoinVeil":1,"lobbyPwOpenRoom":1,"renderFiles":1,"showPwModal":1,"paintBroadcastJoinNote":1,"capPaint":1,"showLoadRefusal":1,"lgLeave":1,"showForkPick":1,"showRelayBusy":1,"applyAdminUi":1,"paintStatusWhy":1,"frozenTileSkip":1,"massBannerTick":1,"islandNoteTick":1,"paintStageVoteTargets":1,"paintBroadcastSeats":1,"showWhoIfOpen":1,"placeHandq":1,"applyRoomHelp":1,"paintStagePlate":1,"replaceAddress":1,"paintShareUrl":1,"paintStreamLink":1,"showShareLink":1,"renderLobbyList":1,"placeDeskName":1,"placeClearLine":1,"paintRoomTitle":1,"tileNote":1,"paintSoloApp":1,"setAppFavicon":1,"showAppMissing":1,"hideAppMissing":1,"paintTabTitle":1,"showAppPane":1,"setAppGif":1,"appRuntimeBoot":1,"paintAppRoomBody":1,"refreshAudioBtn":1,"paintHelpTip":1,"openShareLiveModal":1,"showInviteModal":1,"applyHeaderChoice":1,"appCopyPaint":1,"paintAppGifFromLane":1,"applyRoomAudio":1,"paintCallOn":1,"paintCallBanner":1,"bootMeetSession":1,"showLobby":1,"chatTrace":1,"paintChatBadge":1,"renderTranscript":1,"renderChat":1,"countClosedChat":1,"paintChatCount":1,"takeFaceReact":1,"showCaption":1,"paintTxMark":1,"hideJoinPwModal":1,"paintChatNew":1,"paintQaBand":1,"renderQa":1,"placeQaBand":1,"sgaAppOwner":1,"paintHand":1,"rbCanvas":1,"paintRb":1,"showRecReplay":1,"paintRbNow":1,"paintMyAvatarPreview":1,"capLangAsk":1,"emitLiveTranscript":1,"capSourceOpen":1,"paintCcLocal":1,"paintTranscriptControls":1,"paintCallState":1,"paintAudienceReacts":1,"armMeetDialogs":1,"wireMediaSession":1,"blurNote":1,"openBlurWhy":1,"showBlurNoteUnlessDialog":1,"inviteLinkForModal":1,"hideDialogs":1,"stopLobbyPreview":1,"showLeftDialog":1,"foldBarForApp":1,"clearAppView":1,"appRuntimeClient":1,"updateAppButtons":1,"paintAppWho":1,"appStageAskClose":1,"appStageAsk":1,"loadScriptOnce":1,"paintBotEyes":1,"newCanvas":1,"paintBotView":1,"bridgeAgentToPage":1,"carryIo":1,"carryEarAc":1,"dbgMeterShow":1,"paintStageStrip":1,"audioDump":1,"viewTestHooks":1}}, stamp: "a8777ded" };
   (GifOS.coreParts = GifOS.coreParts || {})["core"] = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
