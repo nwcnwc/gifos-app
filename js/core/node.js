@@ -105,12 +105,12 @@ async function loadSite(origin, opts) {
   const files = JSON.parse(await get('js/core/files.json'));
   const platform = JSON.parse(await get('js/core/platform.json'));
   const text = new Map();
-  await Promise.all(files.core.map(async (rel) => { text.set(rel, await get(rel)); }));
+  await Promise.all(files.core.concat(files.apps || []).map(async (rel) => { text.set(rel, await get(rel)); }));
   const stamp = (/stamp ([0-9a-f]+)/.exec(text.get('js/core/meeting.js') || '') || [])[1] || '';
   return {
     id: 'web:' + base + '@' + stamp + ':' + nodeCrypto.createHash('sha256').update(files.core.map((r) => text.get(r)).join('\n')).digest('hex').slice(0, 16),
     files, platform, stamp,
-    read: (rel) => { if (!text.has(rel)) throw new Error('GifOS core: ' + rel + ' is not a core file of ' + base); return text.get(rel); },
+    read: (rel) => { if (!text.has(rel)) throw new Error('GifOS core: ' + rel + ' is not a core or app runtime file of ' + base); return text.get(rel); },
     name: (rel) => new URL(rel, base).href,
   };
 }
@@ -253,6 +253,7 @@ function createMeeting(opts) {
     Response: globalThis.Response, Request: globalThis.Request, Headers: globalThis.Headers,
     WebSocket: WebSocketHost, TextDecoder, URL, URLSearchParams, performance, structuredClone, atob, btoa,
     AbortController, AbortSignal, Blob, Event, CustomEvent, EventTarget, MessageChannel, DOMException,
+    CompressionStream, DecompressionStream, ReadableStream, WritableStream, TransformStream,
     addEventListener: (t, f, o) => bus.addEventListener(t, typeof f === 'function' ? (f.__g || (f.__g = guard('event ' + t, f))) : f, o),
     removeEventListener: (t, f, o) => bus.removeEventListener(t, (f && f.__g) || f, o),
     dispatchEvent: (e) => bus.dispatchEvent(e),
@@ -321,7 +322,8 @@ function createMeeting(opts) {
 
   // what a page's head scripts set before the meeting's scripts run (a host's own settings, e.g. GIFOS_SCALE)
   if (opts.globals) for (const k of Object.keys(opts.globals)) g[k] = opts.globals[k];
-  for (const rel of files.core) {
+  // the core, then the app runtime (files.json "apps": apps' data, signatures and gifos.room, with no app frame)
+  for (const rel of files.core.concat(files.apps || [])) {
     current = { src: new URL(rel, location.href).href };
     try { script(site, rel).runInContext(context); } finally { current = null; }
   }
@@ -352,6 +354,16 @@ function createMeeting(opts) {
     if (!Object.prototype.hasOwnProperty.call(viewNames, fn)) continue;
     const vcount = (note, k) => { const key = note + (k != null ? '.' + String(k) : ''); viewCounts.set(key, (viewCounts.get(key) || 0) + 1); };
     const f = function () { vcount('view.' + fn + '()'); const r = {}; for (const k of fields) r[k] = GifOS.core.placeholder('view.' + fn + '().' + k, vcount); return r; };
+    Object.defineProperty(viewNames, fn, { get: () => f, enumerable: true, configurable: true });
+  }
+  // What a host with no screen has for apps: the app runtime's client with no app frame (it takes part through the
+  // app's data and gifos.room), and the app-owner library already loaded (files.json "apps").
+  const APP_VIEW = {
+    appRuntimeClient: (params) => GifOS.runtime.bootClientBus(null, params, null, {}),
+    sgaAppOwner: () => (GifOS.appOwner ? Promise.resolve(GifOS.appOwner) : Promise.reject(new Error('no app-owner library'))),
+  };
+  for (const [fn, f] of Object.entries(APP_VIEW)) {
+    if (!Object.prototype.hasOwnProperty.call(viewNames, fn) || !GifOS.runtime || !GifOS.runtime.bootClientBus) continue;
     Object.defineProperty(viewNames, fn, { get: () => f, enumerable: true, configurable: true });
   }
   const headlessView = { name: 'view', stamp: corePart.stamp, needs: {}, run: function* (L) { Object.defineProperties(L.view, Object.getOwnPropertyDescriptors(viewNames)); return L.END; } };

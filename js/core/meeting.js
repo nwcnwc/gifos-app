@@ -20456,7 +20456,20 @@
         setCamera: agentCamera, chat: agentChat, hand: agentHand, mic: agentMic, stage: agentStage,
         appRun: agentAppRun,
         appStop: () => { if (!myStatus.app) return agentFail('You are not sharing an app.'); stopApp(); return agentOk(); },
-        appRoom: (op, args) => { if (typeof window.__gifosRoom !== 'function') return agentFail('No app room here.'); return agentOk({ result: window.__gifosRoom(String(op || ''), args || {}) }); },
+        // gifos.room and the app's data, through the app runtime's client of the room's shared app (an app frame's
+        // own road; with no screen the client has no frame): the same requests, mirror and signed writes as the app's.
+        appRoom: (op, args) => {
+          if (op !== 'roster' && appClientCtl && typeof appClientCtl.room === 'function') {
+            return Promise.resolve(appClientCtl.room(Object.assign({}, args || {}, { op: String(op || 'state') }))).then((r) => agentOk({ result: r }), (e) => agentFail(String((e && e.message) || e)));
+          }
+          if (typeof window.__gifosRoom !== 'function') return agentFail('No app room here.');
+          return agentOk({ result: window.__gifosRoom(String(op || ''), args || {}) });
+        },
+        appData: (op, collection, key, value) => {
+          if (!(appClientCtl && appClientCtl.db)) return agentFail('There is no shared app here to take part in.');
+          if (['get', 'getAll', 'put', 'delete'].indexOf(op) < 0) return agentFail('An app data request is get, getAll, put or delete.');
+          return Promise.resolve(appClientCtl.db.op(op, String(collection || ''), key, value)).then((r) => agentOk({ result: r }), (e) => agentFail(String((e && e.message) || e)));
+        },
         agendaNext: () => { if (!ctCanEditAgenda()) return agentFail('Only the agenda’s owner or the host can move it here.'); return Promise.resolve(ctAgendaPublish(GifOS.meetAgenda.next(CT && CT.ag, myId), 'agent-next')).then((r) => r ? agentOk() : agentFail('There is no next item.')); },
         agendaSet: agentAgendaSet, profile: agentProfile,
         leave: () => { try { leaveMeeting(); } catch (e) {} return agentOk(); },
