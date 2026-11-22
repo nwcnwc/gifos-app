@@ -32,7 +32,6 @@
   ],
   "page": [
    "document",
-   "getComputedStyle",
    "window"
   ]
  },

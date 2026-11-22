@@ -43180,12 +43180,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return { coord: meshCoord(), ac: ac ? ac.state : null, ear: at(downStreams.get('ear')), fwd: at(downStreams.get('fwd')),
           sdn: dn ? { via: String(dn.via).slice(0, 8), tracks: at(dn.stream) } : null, sdx: sdx ? { via: String(sdx.via).slice(0, 8), tracks: at(sdx.stream) } : null };
       },
-      // What my Stadium shows, by the cell ids it carries, and my row.
-      stadIdsForTest: () => {
-        const c = meshCoord(), m = comfyStadMeta(), v = m.video;
-        const row = []; if (c) for (let j = 0; j < SCALE.C; j++) { const pid = j === c.i ? myId : occPid({ pc: c.pc, r: c.r, i: j }); if (pid) row.push(String(pid)); }
-        return { coord: c, me: String(myId || ''), n: m.n, ids: m.ids, live: !!(v && v.videoWidth > 0), w: v ? v.videoWidth : 0, h: v ? v.videoHeight : 0, row, stagers: stageIds().map(String), hold: (typeof avHold !== 'undefined' && avHold) ? avHold.ms : 0 };
-      },
       // Debug: the Stadium's packers and received blocks, for a recorder that stamps when a picture or a sound reaches each of them.
       latTapsForTest: () => (DEBUG_ON ? { prodPack, roomPack, sdView, l14Packs, mosIn, downStreams, packLoop, coord: meshCoord(), me: String(myId || '') } : null),
       pipeStats: () => (MPipe ? MPipe.stats() : Promise.resolve({})),
@@ -44462,6 +44456,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     viewTestHooks(window.__gifosVideo);
     function viewTestHooks(v) {
       Object.assign(v, {
+      // What my Stadium shows, by the cell ids it carries, and my row.
+      stadIdsForTest: () => {
+        const c = meshCoord(), m = comfyStadMeta(), v = m.video;
+        const row = []; if (c) for (let j = 0; j < SCALE.C; j++) { const pid = j === c.i ? myId : occPid({ pc: c.pc, r: c.r, i: j }); if (pid) row.push(String(pid)); }
+        return { coord: c, me: String(myId || ''), n: m.n, ids: m.ids, live: !!(v && v.videoWidth > 0), w: v ? v.videoWidth : 0, h: v ? v.videoHeight : 0, row, stagers: stageIds().map(String), hold: (typeof avHold !== 'undefined' && avHold) ? avHold.ms : 0 };
+      },
       fsSourcesForTest: () => fsSources().map((s) => ({ key: s.key, bl: s.bl || 0 })),
       setTabHiddenForTest: (hidden) => {
         try { Object.defineProperty(document, 'hidden', { configurable: true, get: () => !!hidden }); } catch (e) {}
