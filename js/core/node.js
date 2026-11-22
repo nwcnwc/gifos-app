@@ -7,7 +7,8 @@
  * OPTIONS: url (a meeting link or the page address: routed as the site's router does, pageUrl), site (loadSite(origin):
  * the core's files from the meeting's own site, as a browser loads them; or siteDir(tree)), else appRoot (a site tree on
  * disk), webrtc (the media port, below), storage / session (plain objects backing localStorage / sessionStorage, read
- * at start and written through: the participant's profile), log(level, ...args), onClose(context).
+ * at start and written through: the participant's profile), globals (names set on the participant's global before
+ * the scripts run, as a page's head script would), log(level, ...args), onClose(context).
  * Returns { context, meeting, agent(), hooks(), standIns(), pageUses(), hostShims(), errors(), close(), kill() }:
  * close() leaves the meeting (its farewell drains first; a promise), kill() vanishes with no goodbye.
  *
@@ -318,6 +319,8 @@ function createMeeting(opts) {
   const te = new TextEncoder();
   g.TextEncoder = class TextEncoder { get encoding() { return 'utf-8'; } encode(s) { return new R.Uint8Array(te.encode(s)); } };
 
+  // what a page's head scripts set before the meeting's scripts run (a host's own settings, e.g. GIFOS_SCALE)
+  if (opts.globals) for (const k of Object.keys(opts.globals)) g[k] = opts.globals[k];
   for (const rel of files.core) {
     current = { src: new URL(rel, location.href).href };
     try { script(site, rel).runInContext(context); } finally { current = null; }
