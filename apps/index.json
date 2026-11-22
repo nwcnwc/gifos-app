@@ -1797,7 +1797,7 @@
       "appId": "css-doodle",
       "name": "CSS Doodle",
       "shortName": "Doodle",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "tagline": "A little pattern toy. Remix a snippet. Share it with a friend.",
       "author": {
         "name": "css-doodle",
@@ -1834,7 +1834,7 @@
         158
       ],
       "cover": "/apps/css-doodle/cover.jpg",
-      "bytes": 244302,
+      "bytes": 326825,
       "download": 0,
       "provides": null,
       "signature": {
@@ -1842,14 +1842,14 @@
         "id": "gifos.app",
         "ts": "2026-11-22"
       },
-      "sha256": "bd7257e69b7dadc22bb60e3aa0c394e6503ae17f396d3f6c14872f7553b13d2a"
+      "sha256": "b3ed53da22280ad005f5f521411bd373aa463f407b135ffe423ba99903bc5e5a"
     },
     {
       "slug": "cube-composer",
       "appId": "cube-composer",
       "name": "Cube Composer",
       "shortName": "Cubes",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "Stack and transform the cubes. Race a friend on the same puzzles.",
       "author": {
         "name": "sharkdp",
@@ -1863,7 +1863,7 @@
         "name": "Cube Composer",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -1884,15 +1884,15 @@
         65
       ],
       "cover": "/apps/cube-composer/cover.jpg",
-      "bytes": 172186,
+      "bytes": 173314,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-22"
       },
-      "sha256": "4d7cc64ff1f5977f0661b20e21e12d42a9d91a18e368ef295efbadfbd33ece8c"
+      "sha256": "e2738f387e27d8fccd7afa73e28d90f9e72201ffa0265fe6bf65bb6b504b055f"
     },
     {
       "slug": "cyberchef",
@@ -2002,7 +2002,7 @@
       "appId": "digitaljs",
       "name": "DigitalJS",
       "shortName": "DigitalJS",
-      "version": "0.14.2",
+      "version": "0.14.3",
       "tagline": "The circuit lives in the GIF. Invite shares the bench. It works on a plane.",
       "author": {
         "name": "Marek Materzok",
@@ -2016,7 +2016,7 @@
         "name": "DigitalJS",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-30",
       "updated": "2026-08-30",
@@ -2039,15 +2039,15 @@
         138
       ],
       "cover": "/apps/digitaljs/cover.jpg",
-      "bytes": 625342,
+      "bytes": 626353,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-22"
       },
-      "sha256": "627b1b01e21029ba24c1ba98a36a3af383f886499af552467bc956b544f7e9b3"
+      "sha256": "68b4f9a609e1766f59bab5a0572dd25dfe1384dacd6531aeeb2292436423c5ad"
     },
     {
       "slug": "drawnix",
