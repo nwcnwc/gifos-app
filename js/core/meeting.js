@@ -9014,7 +9014,10 @@
         // polite peer (lower id) rolls back its local offer and accepts; the
         // impolite peer ignores the remote offer and keeps its own.
         const accept = () => { const pc = p.pc; const took = offerKey ? { key: offerKey, pc, answer: null } : null; if (took) p.neg.tookOffer = took;
-          return answerOffer(pc, p, msg, true, (sdp) => { if (took) took.answer = sdp; sendSig(from, Object.assign({ kind: 'answer', sdp, ib: 1, dr: doorWord() }, sigMeta())); })
+          return answerOffer(pc, p, msg, true, (sdp) => { if (took) took.answer = sdp; sendSig(from, Object.assign({ kind: 'answer', sdp, ib: 1, dr: doorWord() }, sigMeta()));
+            // DIAL.ICE: a dial of my seat that the far end offered (the lower id asks, the higher offers) has crossed when my
+            // answer leaves: the wire counts only a dial of mine, so a pc I merely answer starts no clock
+            if (p.pc === pc && meshNode && meshNode.penv && meshNode.penv.crossed) { try { meshNode.penv.crossed(from); } catch (e) {} } })
           .catch((e) => { if (took && p.neg.tookOffer === took) p.neg.tookOffer = null; if (p.pc !== pc) return; noteNegFail('accept', from, e); if (/extension ID reassignment/i.test(String((e && e.message) || ''))) maybeRebuildNeg(p, e); }); };
         // A COLLISION is my own offer applied (have-local-offer) or, on a pair
         // with no live transport, still being minted (p.neg.minting — see
@@ -9095,7 +9098,8 @@
             if (negA && p.neg === negA) { clearTimeout(negA.glareTimer); negA.glareTimer = null; negA.glareOffer = null; }
             for (const c of p.pendingIce.splice(0)) p.pc.addIceCandidate(c).catch(() => {});
             // DIAL.ICE: the offer and the answer have crossed: the seat's dial counts LINK_DIAL_ICE from here (a pair that finds
-            // no path never opens the channel that carries the far end's mark)
+            // no path never opens the channel that carries the far end's mark). The answering end keeps no clock of its own: it
+            // holds no dial until the channel opens, and the seeker's own clock is the one its founding reads
             if (p.pc === pcA && meshNode && meshNode.penv && meshNode.penv.crossed) { try { meshNode.penv.crossed(from); } catch (e) {} }
           })
           .catch((e) => { if (negA) negA.answerIn = false; noteNegFail('answer', from, e);
