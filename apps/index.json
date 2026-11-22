@@ -2758,8 +2758,8 @@
       "appId": "floppy-bird",
       "name": "Floppy Bird",
       "shortName": "Floppy",
-      "version": "1.0",
-      "tagline": "Flappy Bird, plus a race mode — a friend flies beside you from one link.",
+      "version": "1.2",
+      "tagline": "Floppy Bird, plus a race mode — a friend flies beside you from one link.",
       "author": {
         "name": "nebez",
         "url": "https://github.com/nebez/floppybird"
@@ -2772,7 +2772,7 @@
         "name": "Floppy Bird",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -2792,15 +2792,15 @@
         202
       ],
       "cover": "/apps/floppy-bird/cover.jpg",
-      "bytes": 303318,
+      "bytes": 304935,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-22"
       },
-      "sha256": "3de78467c5d00dec6ad014a0ac49fe840ae3b099b8386fd20223345dedd36b97"
+      "sha256": "d828471b0301b3cc0fcff10b8a4fe226c47ef4e6fb0497a5948970ba0b3f0282"
     },
     {
       "slug": "fluence",
