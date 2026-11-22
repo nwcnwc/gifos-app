@@ -300,7 +300,7 @@
       const next = Object.assign({}, cur, { passes: list }); delete next.pending;
       writeJson(WALLET_KEY, next);
       passWatch().catch(() => {});
-      if (meet) passJoin(meet.room, true);
+      if (meet) passJoin(meet.room, true, true);
       return j;
     })();
   }
@@ -338,26 +338,29 @@
     return got;
   }
 
-  // UPGRADE RULE (said on /subscription): a new plan starts when PayPal confirms it, and the PayPal plan it replaces is
-  // then cancelled with that plan's own key, so nobody is billed twice. The time left on the old plan is not carried
-  // over. A store plan is managed in the store; a pass is never cancelled (it runs beside any plan).
-  async function cancelReplaced(prev, nextId) {
-    if (!prev || prev.subId === nextId || !/^I-/.test(prev.subId)) return;
-    const k = await GifOS.ed.keysFromSeed(fromB64(prev.seed));
-    const at = nowS();
-    const sig = b64(await GifOS.ed.sign(k.priv, new TextEncoder().encode(SUB.askMessage('cancel', prev.subId, at))));
-    await post('/gifos/sub/cancel', { subId: prev.subId, buyerKey: b64(k.pubRaw), at, sig }).catch(() => null);
+  // UPGRADES (said on /subscription and in the Terms; Nathan 2026-11-22). Buying a plan while this browser holds an active
+  // PayPal subscription is an upgrade or nothing: the pay Worker gives the new plan's FIRST charge a prorated credit for
+  // the unused time of the old one (every later charge is the full price) and cancels the old one at PayPal once the
+  // new one is on. The old key signs that consent. A store plan changes in the store; a pass is never replaced.
+  // -> {upgrade} for the create request, null when nothing is held, or throws when the move is not an upgrade.
+  async function upgradeAsk(tier, period) {
+    const cur = SUB.credentialOk(readJson(CRED_KEY));
+    const lic = cur ? await verifiedLicense().catch(() => null) : null;
+    const st = readState();
+    if (!cur || !lic || !/^I-/.test(cur.subId) || st.status === 'CANCELLED') return null;
+    if (!SUB.upgradeOk({ tier: cur.tier, period: cur.period }, { tier, period })) throw new Error(tx('subNotUpgrade', 'That is not an upgrade of your plan. A bigger plan replaces yours; to change to another, cancel yours first.'));
+    const k = await myKey(), at = nowS();
+    return { subId: cur.subId, buyerKey: k.pub, at, sig: await signText(SUB.askMessage('upgrade:' + tier + ':' + period, cur.subId, at)) };
   }
   async function subscribe(tier, period, say) {
     if (RAIL()) return subscribeInApp(tier, period, say || (() => {}));
-    const prev = SUB.credentialOk(readJson(CRED_KEY));   // the plan this one replaces (cancelled once the new one is on)
-    const prevLive = prev && (await verifiedLicense().catch(() => null)) ? prev : null;
+    const upgrade = await upgradeAsk(tier, period);   // before the new key replaces the old one here
     const seed = new Uint8Array(32); crypto.getRandomValues(seed);
     const k = await GifOS.ed.keysFromSeed(seed);
     const buyerKey = b64(k.pubRaw);
     const popup = root.open('about:blank', 'gifos-sub', 'width=480,height=720');
     let j;
-    try { j = await post('/gifos/sub/create', { tier, period, buyerKey }); }
+    try { j = await post('/gifos/sub/create', Object.assign({ tier, period, buyerKey }, upgrade ? { upgrade } : {})); }
     catch (e) { try { popup && popup.close(); } catch (x) {} throw e; }
     writeJson(CRED_KEY, { v: 1, kind: SUB.CRED_KIND, subId: j.id, tier, period, seed: b64(seed), buyerKey });
     keyMemo = { seed: null, p: null };
@@ -368,7 +371,7 @@
     while (Date.now() < until) {
       await new Promise((r) => setTimeout(r, POLL_MS));
       let st = null; try { st = await refresh(); } catch (e) {}
-      if (st && st.licenseJson) { await cancelReplaced(prevLive, j.id); rejoin(true); return st; }
+      if (st && st.licenseJson) { rejoin(true); return st; }
       if (st && st.status && st.status !== 'APPROVAL_PENDING' && st.status !== 'APPROVED') return st;
     }
     return readState();
@@ -448,7 +451,7 @@
       // A pass that started here (a file opened, a window begun) joins this
       // meeting; one that moved to another meeting is never taken back by a
       // watch (only a join the person makes takes it: a page start or a purchase).
-      if (lp && meet && !(pmeet && pmeet.room === meet.room && (pmeet.ticket || pmeet.pending || pmeet.moved === 'moved'))) passJoin(meet.room, true);
+      if (lp && meet && !(pmeet && pmeet.room === meet.room && (pmeet.ticket || pmeet.pending || pmeet.moved === 'moved'))) passJoin(meet.room, true, !(meet && meet.ticket));
       passChanged();
     }
   }
@@ -472,7 +475,7 @@
     const next = Object.assign({}, cur, { passes: list }); delete next.pending;
     writeJson(WALLET_KEY, next);
     passWatch().catch(() => {});
-    if (meet) passJoin(meet.room, true);   // a new pass (or one stacked on the window): the meeting this page is in takes it now
+    if (meet) passJoin(meet.room, true, true);   // a new pass (or one stacked on the window): the meeting this page is in takes it now
     return j;
   }
   // Buy: a PayPal order for $1, approved in PayPal's window, then claimed.
@@ -558,7 +561,7 @@
     leaveMeeting(!!(pmeet && pmeet.room === room));
     hooks = keep || {};
     const m = meet = { room, tag: null, subId: null, tier: null, ticket: null, exp: 0, gen: 0, timer: null, moved: null, joining: null, pending: true };
-    passJoin(room);   // a four-hour pass held here joins this meeting too, one meeting at a time
+    passJoin(room);   // a pass held here joins this meeting too, if it has a free place (counts stack)
     m.joining = (async () => {
       const c = await credential();
       if (!c) return null;
@@ -568,8 +571,19 @@
       m.subId = paidLic ? paidLic.subId : c.subId;
       if (!m.subId) return null;
       m.tag = await SUB.meetingTag(room);
-      const j = await post('/gifos/sub/join', await signed('join:' + m.tag, { meeting: m.tag }, m.subId));
+      // COUNTS STACK (Nathan 2026-11-22): with a pass held too, ask for a place only if one is free (ifFree); when the
+      // subscription is full and the pass holds this meeting, the pass carries it; when every right is full, the
+      // subscription takes it from its oldest meeting.
+      const withPass = !!(await livePass().catch(() => null));
+      let j = await post('/gifos/sub/join', await signed('join:' + m.tag, { meeting: m.tag, ifFree: withPass }, m.subId));
       if (meet !== m) return null;
+      if (j.full) {
+        const pt = pmeet && pmeet.room === room ? await pmeet.joining : null;
+        if (meet !== m) return null;
+        if (pt) { m.moved = 'full'; return null; }
+        j = await post('/gifos/sub/join', await signed('join:' + m.tag, { meeting: m.tag }, m.subId));
+        if (meet !== m) return null;
+      }
       if (!j.active) { m.moved = 'inactive'; return null; }
       take(j);
       return m.ticket;
@@ -625,7 +639,7 @@
       if (j.moved) return passLose(m, 'moved');
       if (j.ended || !j.active) {
         // The window ran out; a pass bought since may carry on (a new join).
-        if (await livePass().catch(() => null)) { passJoin(m.room, true); return; }
+        if (await livePass().catch(() => null)) { passJoin(m.room, true, true); return; }
         return passLose(m, 'ended');
       }
       passTake(m, j);
@@ -633,7 +647,9 @@
       if (pmeet === m) { if (nowS() >= (m.exp || 0)) passLose(m, 'unreachable'); else passSchedule(m, RETRY_MS); }
     }
   }
-  function passJoin(room, force) {
+  // evict: a person's act (a pass bought or begun here) takes the meeting even when every place is held; otherwise, with a
+  // subscription held too, the pass asks for a place only if one is free (ifFree: counts stack).
+  function passJoin(room, force, evict) {
     if (!force && pmeet && pmeet.room === room && (pmeet.ticket || pmeet.moved || pmeet.pending)) return pmeet.joining;
     passStop();
     const m = pmeet = { room, tag: null, ticket: null, exp: 0, gen: 0, until: 0, timer: null, moved: null, joining: null, pending: true };
@@ -641,8 +657,10 @@
       if (!(await livePass())) return null;
       const w = await wallet();
       m.tag = await SUB.meetingTag(room);
-      const j = await post('/gifos/pass/join', await passSigned('pass-join:' + m.tag, { meeting: m.tag, passes: w.passes }));
+      const ifFree = !evict && !!(await credential());
+      const j = await post('/gifos/pass/join', await passSigned('pass-join:' + m.tag, { meeting: m.tag, passes: w.passes, ifFree }));
       if (pmeet !== m) return null;
+      if (j.full) { m.moved = 'full'; return null; }
       if (!j.active) { m.moved = 'inactive'; return null; }
       passTake(m, j);
       return m.ticket;
@@ -740,10 +758,10 @@
   // date; each pass not yet run out with its window; and the rights in effect
   // now with the reason (the best of them wins).
   const PLAN_SHORT = { room20: ['planRoom20', 'Room 20'], unlimited: ['planUnlimited', 'Unlimited'], streamer: ['planStreamer', 'Streamer'], free: ['planFree', 'Free'],
-    family: ['planFamily', 'Family business'], smallBusiness: ['planSmallBusiness', 'Small business'], business: ['planBusiness', 'Business'], enterprise: ['planEnterprise', 'Enterprise'] };
+    family: ['planFamily', 'Family business'], smallBusiness: ['planSmallBusiness', 'Small business'], business: ['planBusiness', 'Business'], largeBusiness: ['planLargeBusiness', 'Large business'], enterprise: ['planEnterprise', 'Enterprise'] };
   // A plan's long name, as Settings and the plan buttons show it (the two kinds of meeting: private meetings, public open-floor meetings).
   const PLAN_NAME = { room20: 'planNameRoom20', unlimited: 'planNameUnlimited', streamer: 'planNameStreamer', free: 'planNameFree',
-    family: 'planNameFamily', smallBusiness: 'planNameSmallBusiness', business: 'planNameBusiness', enterprise: 'planNameEnterprise' };
+    family: 'planNameFamily', smallBusiness: 'planNameSmallBusiness', business: 'planNameBusiness', largeBusiness: 'planNameLargeBusiness', enterprise: 'planNameEnterprise' };
   // How many meetings at once the subscription powers, in Settings (n from the license's line items).
   const meetingsWords = (n) => (n > 1 ? fill(tx('subMeetingsN', 'Your subscription works in up to {n} meetings at once. Joining one more, here or in another browser with your subscription file, moves it from the oldest.'), { n })
     : tx('subMeetings1', 'Your subscription works in one meeting at a time. Joining a meeting, here or in another browser with your subscription file, moves it there.'));

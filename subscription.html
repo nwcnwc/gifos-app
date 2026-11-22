@@ -14,7 +14,7 @@
 <meta name="color-scheme" content="dark">
 <script src="js/sw-register.js" defer></script>
 <title>Plans — GifOS</title>
-<meta name="description" content="Every GifOS Meet plan: Free, the four-hour pass, Room 20, Unlimited, Streamer and the plans for many meetings at once, with the one this browser holds and the way up.">
+<meta name="description" content="Every GifOS Meet plan: Free, the four-hour pass, Room 20, Unlimited, Streamer, the plans for many meetings at once and the add-ons, with the one this browser holds and the way up.">
 <link rel="canonical" href="https://gifos.app/subscription">
 <link rel="icon" href="icon.svg">
 <style>
@@ -44,6 +44,7 @@
   .plan .what { flex: 1 1 16rem; min-width: 0; }
   .plan .price { color: var(--c-label); font-size: var(--fs-label); margin-top: 2px; }
   .plan .acts { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; }
+  .badge.soon { background: var(--c-chip); color: var(--c-label); }
   .badge { display: inline-block; font-size: var(--fs-label); font-weight: 600; padding: 2px 10px; border-radius: var(--r-pill); background: var(--c-white); color: var(--c-black); margin-left: var(--s-2); vertical-align: middle; }
   button, a.btn { font: inherit; font-size: var(--fs-label); font-weight: 600; color: var(--c-white); background: var(--c-chip); border: 0; border-radius: var(--r-sm); padding: var(--s-2) 12px; min-height: 44px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
   button.go { background: var(--c-red); }
@@ -64,10 +65,12 @@
   <p id="say" class="notice" role="status" aria-live="polite" hidden></p>
   <ul id="plans" class="plans"></ul>
   <section class="note" id="upgrade-note">
-    <h2 data-t="subscription.upgradeTitle">Changing to a bigger plan</h2>
-    <p data-t="subscription.upgradeNow">Your new plan starts as soon as PayPal confirms it.</p>
-    <p data-t="subscription.upgradeCancel">We then cancel the plan it replaces, so you are never billed twice. Time left on the old plan is not carried over; the 14-day refund in our Terms still applies to it.</p>
-    <p data-t="subscription.upgradePass">A four-hour pass is never cancelled: it keeps running beside any plan, and the better of the two is the one in use.</p>
+    <h2 data-t="subscription.upgradeTitle">Moving to a bigger plan</h2>
+    <p data-t="subscription.upgradeNow">A bigger plan replaces yours. Its first charge is smaller: we take off a credit for the unused time of your current plan. Every charge after that is the full price.</p>
+    <p data-t="subscription.upgradeCancel">We cancel the plan it replaces as soon as the new one starts, so you are never billed twice.</p>
+    <p data-t="subscription.upgradeRule">A yearly plan can move only to a bigger yearly plan. A monthly plan can move to a bigger monthly or yearly plan.</p>
+    <p data-t="subscription.upgradeStack">Plans add up: a pass or an add-on you hold counts on top of your plan, so their meetings at once add together.</p>
+    <p data-t="subscription.upgradePass">A four-hour pass is never cancelled: it keeps running beside any plan.</p>
     <p data-t="subscription.fileNote">Your plan lives in this browser. Keep a copy: download your subscription file from Settings in a meeting.</p>
   </section>
   <p class="quiet" id="legal"></p>
