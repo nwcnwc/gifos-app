@@ -690,6 +690,39 @@
     drawStadClose(stadClose);
   }
 
+  // Who is under a point on the Stadium picture: the person whose face the tap landed on, or null. The picture is drawn
+  // object-fit contain in el; with a cut (the canvas) the faces are the kept cells repacked, else the whole frame's cells.
+  // opts: { ids: the pack's cell list, cols: its columns }.
+  function stadFaceAt(el, cx, cy, opts) {
+    opts = opts || {};
+    const MM = GifOS.meshMedia;
+    const video = el && el.querySelector && el.querySelector('video');
+    if (!video || !el.getBoundingClientRect) return null;
+    const r = el.getBoundingClientRect();
+    if (!(r.width > 0 && r.height > 0)) return null;
+    const sc = stadClose && stadClose.el === el && stadClose.canvas && stadClose.canvas.isConnected && stadClose.keep ? stadClose : null;
+    const fw = sc ? sc.canvas.width : (video.videoWidth || 0), fh = sc ? sc.canvas.height : (video.videoHeight || 0);
+    if (!(fw > 2 && fh > 2)) return null;
+    const k = Math.min(r.width / fw, r.height / fh);
+    const x = (cx - (r.left + (r.width - fw * k) / 2)) / k, y = (cy - (r.top + (r.height - fh * k) / 2)) / k;
+    if (!(x >= 0 && y >= 0 && x < fw && y < fh)) return null;
+    let cell = -1;
+    if (sc) {
+      if (!MM || typeof MM.packGrid !== 'function') return null;
+      const g = MM.packGrid(sc.keep.length, 'stad'), c = fw / g.cols;
+      const i = Math.floor(y / c) * g.cols + Math.floor(x / c);
+      cell = i >= 0 && i < sc.keep.length ? sc.keep[i] : -1;
+    } else {
+      const cols = opts.cols | 0;
+      if (!(cols > 0)) return null;
+      const c = fw / cols;
+      cell = Math.floor(y / c) * cols + Math.floor(x / c);
+    }
+    const ids = opts.ids;
+    const id = Array.isArray(ids) && cell >= 0 ? ids[cell] : null;
+    return id ? String(id) : null;
+  }
+
   // One resize listener, on the stadium <video>. Debounced, so a burst
   // of resizes is one relayout.
   let rzVid = null, rzCb = null, rzTimer = 0;
@@ -1496,6 +1529,7 @@
 
   const api = {
     comfyAllowed: comfyAllowed,
+    stadFaceAt: stadFaceAt,
     placeEl: placeEl,
     parkEl: parkEl,
     markSelf: markSelf,

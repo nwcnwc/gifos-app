@@ -1,6 +1,6 @@
 /*
  * GifOS Core: the meeting, part "media". Copyright (c) 2026 Crowd Concepts, Inc. All rights reserved.
- * Lifted from the meeting page by the core lift (stamp 7d5b00f1).
+ * Lifted from the meeting page by the core lift (stamp 114cf6eb).
  * The statements below are the meeting page's own, in the page's order. A name another part owns is read
  * through that part (__C the core, __M the media plane, __V the view). The linker is host.js.
  */
@@ -291,7 +291,7 @@
       "wspToBrowser": { get: function () { return wspToBrowser; }, enumerable: true, configurable: true },
       "wspWorking": { get: function () { return wspWorking; }, enumerable: true, configurable: true }
     });
-    yield 688;
+    yield 690;
 
 
     // ---- sender-side blur: broadcast blurred pixels, not just CSS ------------
@@ -412,7 +412,7 @@
         return x.getImageData(2, 2, 1, 1).data[0] > 8; // white bled outward → filter applies
       } catch (e) { return false; }
     })();
-    yield 713;
+    yield 715;
     // frac: the blur's Gaussian sigma as a fraction of the drawn width dw, so
     // the look is the same at every picture size and on every engine (Nathan,
     // 2026-11-15: blur depends on picture size). blurSenderFrac and
@@ -726,7 +726,7 @@
     // receiver who strips the CSS class must still see a blur.
     const AVATAR_W = 640, AVATAR_H = 360;
     let avatarPipe = null, avatarSharp = null;
-    yield 728;
+    yield 730;
     function stopAvatarPipe() {
       if (!avatarPipe) return;
       try { avatarPipe.track.stop(); } catch (e) {}
@@ -769,7 +769,7 @@
         if (n < 3) startLocalView(video, track, n + 1);
       }, 700 * (n + 1));
     }
-    yield 732;
+    yield 734;
     function remoteWireTrack(t) {
       const real = t && t.stream;
       const tr = real && real.getVideoTracks && real.getVideoTracks()[0];
@@ -1196,7 +1196,7 @@
     // step-up/step-down click for immediacy. Idempotent: it only acts when the
     // staged bit actually flips.
     let stagedSelfWas = false;
-    yield 767;
+    yield 769;
 
     // ---- adaptive quality ----------------------------------------------------
     // The COUNT is the room (leaf, or the aggregated total once the tree
@@ -1222,7 +1222,7 @@
     function participantCount() {
       return Math.max(leafCount(), (0, /*()*/__C.knownTotal)() || 0);
     }
-    yield 771; // the count's own freshness window (knownTotal)
+    yield 773; // the count's own freshness window (knownTotal)
     // When this peer itself last sent anything: any sealed frame, a mesh
     // frame, or a status (statuses come only from their author). Only real
     // frames move it, so silence is a steady verdict, not a gossip flap.
@@ -1348,10 +1348,10 @@
     // Browsers without the Battery API (iOS Safari, Firefox) report no battery: a phone
     // there is still at least save, and a parked one is low.
     const MP = GifOS.meetPower;
-    yield 782;
+    yield 784;
     let battNow = null; // { charging, level } from the Battery API, or null where there is none
     const drainState = { losing: false, last: null, falls: 0, trip: null };
-    yield 785;
+    yield 787;
     function powerUpdate() {
       const was = __C.powNow.level;
       __C.powNow = MP.level({ mobile: __C.IS_MOBILE, battery: battNow, losing: drainState.losing, parked: idleNow });
@@ -1705,7 +1705,7 @@
       if (__C.meshNode && __C.meshNode.raw && __C.meshNode.raw.lgLvl >= 2) return 1;   // L29.1: nothing is encoding these
       return Math.max(__C.powDials.compFpsMin, Math.round(base * __C.powDials.compFps));
     }
-    yield 1208;   // read at load: the boot rewrites the hash later
+    yield 1210;   // read at load: the boot rewrites the hash later
     // MEM SAMPLES (DEBUG only): every 30 s one small record of what this page holds, so a long room shows what only grows.
     // JS heap (performance.memory where it exists), mesh/pc maps, pipe-worker queues, media element tracks, pcs by state.
     // It never calls into a live RTCPeerConnection (no getSenders/getReceivers) and never wraps Worker: suspected in a 40-page room whose renderers crashed (rtp_sender CHECK).
@@ -1717,7 +1717,7 @@
       for (const el of els) { const ms = el.srcObject; if (ms && ms.getTracks) { withStream++; for (const t of ms.getTracks()) { tracks++; if (t.readyState === 'live') liveTracks++; } } }
       return { mediaEls: els.length, elStreams: withStream, elTracks: tracks, elLiveTracks: liveTracks };
     }
-    yield 1478;
+    yield 1480;
 
     // ---- which camera: front or back (the standard mobile flip) -------------
     // facingMode is an IDEAL, so desktops with one webcam are unaffected.
@@ -1771,7 +1771,7 @@
       return c;
     };
     let flipChecked = false;
-    yield 1486;
+    yield 1488;
     // A phone should offer flip before the camera permission dialog. Desktops
     // still wait until enumerateDevices reports a second camera.
     function phoneWantsFlip() {
@@ -1788,7 +1788,7 @@
       }).catch(() => {});
     }
     maybeShowFlip();
-    yield 1490;
+    yield 1492;
     // One grab at a time. The watchdog and a return-to-the-tab can both notice
     // the same dead track; a second getUserMedia would mint a new stage id.
     let camGrabbing = false;
@@ -2185,7 +2185,7 @@
         }, () => { setMicMode(micMode, true); kick(); });
       }, 400); // devices settle in a burst — act once
     }
-    yield 1859;
+    yield 1861;
     // Picture-only. Sound is the companion Audio (busVolume); the element has
     // to be muted BEFORE play or a late claim (no user gesture left) stays
     // paused and videoWidth never moves.
@@ -2465,10 +2465,10 @@
       if (sender.track !== at) { seat(); return; }
       sender.replaceTrack(null).then(seat).catch(() => {});
     }
-    yield 1893;
+    yield 1895;
     const compOf = new Map(); // feed tiles: key -> { via, streamId, ids, names, stream } (3b)
     const isStageKey = (row) => typeof row === 'string' && row.indexOf('s:') === 0;
-    yield 1896;
+    yield 1898;
     // Ask the far side to re-offer when a mapped stream's m-lines never made it
     // into a negotiation (rolled back / raced) \u2014 used by the aux-track paths.
     function compKick(pid) {
@@ -2508,7 +2508,7 @@
     // Failback to the preferred path is make-before-break with hysteresis
     // (see claimRedun).
     const mosStandby = new Map();
-    yield 1902;    // from + '|' + key + '|' + sid -> 'w'|'i' (last demand sent — debounce)
+    yield 1904;    // from + '|' + key + '|' + sid -> 'w'|'i' (last demand sent — debounce)
     const mosJobs = new Map();  // key + '>' + to -> { senders, trackList, active, sig, to, key, meta } (outbound ships)
     const pipePacks = new Map();   // SUB.4: pipe peer -> the room pack without that pipe's part (a vouched pipe only)
     const pipePacksStop = (keep) => { for (const [h, pk] of [...pipePacks]) if (!keep || !keep(h)) { try { pk.stop(); } catch (e) {} pipePacks.delete(h); } };
@@ -3099,7 +3099,7 @@
       }
       return selfShipMemo.stream;
     };
-    yield 1955;
+    yield 1957;
     // W7 rook: my deterministic column partner at Section 1 — the first
     // OCCUPIED seat in my column, scanning rows cyclically below mine. Ring
     // coverage: with full rows every seat receives exactly one column copy
@@ -3275,7 +3275,7 @@
     // keyframe trigger). A camera source has no canvas — its direct receivers'
     // ordinary PLI is the lever there, so the walk simply ends.
     const kfLast = new Map();
-    yield 1977; // mx-kf sets this for the duration of kfNeed(key)
+    yield 1979; // mx-kf sets this for the duration of kfNeed(key)
     const jiggleState = new WeakMap(); // sender -> { base, busy }
     function noteJiggleBase(sd, base) {
       const st = jiggleState.get(sd);
@@ -4705,7 +4705,7 @@
     // (sub/x1/x2) keep the plain single sticky claim.
     const isRedun = (rk) => rk === 'sdm' || rk === 'sdx' || rk === 'sdn' || rk === 'sgs' || rk.indexOf('stg:') === 0 || rk.indexOf('sdrow:') === 0;
     const annMeta = (ann) => { const m = { col: ann.col, row: ann.row, n: ann.n, cols: ann.cols, mt: ann.mt, h: ann.h, ids: ann.ids, ao: ann.ao, sb: ann.sb, vp: ann.vp, alag: ann.alag, l14: ann.l14, via: ann.via, pipe: ann.pipe, pv: ann.pv }; if (ann.src) m.src = String(ann.src).slice(0, 64); return m; };
-    yield 2077; // the longest cell list an announce may carry: a stadium pack past this (dense-packed) names no cells, and its receivers fall back to the count rule
+    yield 2079; // the longest cell list an announce may carry: a stadium pack past this (dense-packed) names no cells, and its receivers fall back to the count rule
     function mosHasEjected(key, ids) {
       if (!__C.ejected.size) return false;
       if (typeof key === 'string' && key.startsWith('stg:') && (typeof __C.isEjected === 'function' && (0, /*()*/__C.isEjected)(key.slice(4).split('^')[0]) === true)) return true;
@@ -5963,7 +5963,7 @@
       const set = () => { if (v.videoWidth && v.videoHeight) el.style.aspectRatio = (v.videoWidth / v.videoHeight).toFixed(4); };
       v.addEventListener('resize', set); v.addEventListener('loadedmetadata', set); set();
     }
-    yield 2157;
+    yield 2159;
     // A STAGER NEVER WATCHES ITSELF THROUGH ITS OWN COMPOSITE.
     //
     // When the Stage holds exactly ONE member and that member is me, the strip
@@ -5979,7 +5979,7 @@
     // outbound one ("your self-view shows EXACTLY the track you broadcast"), so
     // this shows the BROADCAST — blur baked in — never a private clear copy.
     let selfStageSt = null, stageDirectSt = null;
-    yield 2159; // what the stage element shows: 'self' | 'screen' | 'strip' (stageFacesForTest)
+    yield 2161; // what the stage element shows: 'self' | 'screen' | 'strip' (stageFacesForTest)
     function selfStageStream() {
       const st = __C.meTile && __C.meTile.video && __C.meTile.video.srcObject;
       // A share from the Row: my Row tile is the camera, my Stage is the screen.
@@ -6017,7 +6017,7 @@
     }
     // A guest's share as a viewer sees it (debug only; remoteShareForTest).
     let qaStageSt = null;
-    yield 2164;
+    yield 2166;
     function stopMosaic() {
       mosBeyondAt = 0;
       for (const jk of [...mosJobs.keys()]) unshipMos(jk, true);
@@ -6978,7 +6978,7 @@
       for (const pk of l14Packs.values()) gatePack(pk);
       for (const pk of pipePacks.values()) gatePack(pk);
     }
-    yield 2255;
+    yield 2257;
 
     // ---- SCREEN SHARING (docs/media-plane.md Channel St; roadmap §4g) ---------
     //
@@ -7033,7 +7033,7 @@
     // "share tab audio" checkbox in the picker that does nothing, which is
     // worse than not offering it. So: `audio: false`, and the sheet says so.
     const canScreenShare = () => !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
-    yield 2257;
+    yield 2259;
     const screenSharers = () => {
       const out = [];
       for (const id of new Set([__C.myId, ...__C.rosterIds])) {
@@ -7049,14 +7049,14 @@
       if (dg) for (const e of dg.stage) if (e.id && (0, /*()*/__C.sharingScreen)(e.id) && out.indexOf(e.id) < 0 && e.id !== __C.myId && !(0, /*()*/__C.freshSt)(e.id) && (0, /*()*/__C.notTomb)(e.id)) out.push(e.id);
       return out;
     };
-    yield 2259;
+    yield 2261;
     // A freeze reloads the tab. The note written here lets the next boot know the
     // person had joined and whether a screen share was up (one tap to share again).
     // It carries NO mic or camera state: a reload of any kind comes back camera off
     // and mic muted, stagers too (Nathan 2026-11-08: privacy first, always).
     let shareRecoverMode = false;
     let recoverShareTimer = 0;
-    yield 2262;
+    yield 2264;
     const RECOVER_MEDIA_TTL = GifOS.timings.RECOVER_MEDIA_TTL;
     // myStatus.stg is what I last claimed, and it outlives a revoked grant by two beats (reactStageLost).
     // A note needs the stage itself: the room's own list, or the wait for it after a reload (stageResumeUntil).
@@ -7165,7 +7165,7 @@
       __C.myStatus.camOff = true;
       try { (0, /*()*/__V.paintControls)(); (0, /*()*/__C.paintOnAir)(); refreshOutbound(); (0, /*()*/__C.broadcastStatus)(); syncSpeech(); (0, /*()*/__C.updateMediaSession)(); } catch (e) {}
     }
-    yield 2274;
+    yield 2276;
     function recoverScreenShare() {
       if (typeof __C.mayShareScreen === 'function' && !(0, /*()*/__C.mayShareScreen)(__C.myId)) return;
       if (typeof __C.forcedCamOff === 'function' && (0, /*()*/__C.forcedCamOff)('me')) return;
@@ -7307,7 +7307,7 @@
       const st = selfStageStream();
       if (st) (0, /*()*/__V.paintStageStrip)(st);
     }
-    yield 2291;
+    yield 2293;
     // o: { blob (or a promise of one), title, last, saved }. Called inside
     // the tap, so the sound can start without another one.
     async function rbStart(o) {
@@ -7365,7 +7365,7 @@
       (0, /*()*/__V.paintRb)();
       (0, /*()*/__C.setStatus)('Rebroadcasting ' + (r.last ? 'the last ' + (0, /*()*/__C.rbNoun)() : r.title) + '. Viewers see Prerecorded.', 6000);
     }
-    yield 2304;
+    yield 2306;
 
     // ---- audio: three buses, receiver-side (docs/media-plane.md) --------------
     // Stage / My row / The stadium are a grouping by LINK CLASS, not a sender
@@ -7677,7 +7677,7 @@
       window.addEventListener('focus', kick);
       setInterval(kick, 3000);
     }
-    yield 2363;
+    yield 2365;
 
     // ---- the grid: clock sync + per-stream delay alignment --------------------
     // Voices over the internet don't smear because they're LATE — they smear
@@ -7705,7 +7705,7 @@
       HOP_ENC: 40,      // what a relay hop adds beyond its own playout: decode → re-encode + one Opus frame
       CK_EVERY: 5000, APPLY_EVERY: 3000,
     };
-    yield 2365;
+    yield 2367;
     let timing = 'chat';
     try { const t = localStorage.getItem(__C.TIMING_KEY); if (t === 'chat' || t === 'unison') timing = t; } catch (e) {}
     let gdOverride = 0; // test hook: pretend this device needs a slower grid
@@ -7946,7 +7946,7 @@
       // swapped stream re-feeds its companion there. This tick is the grid.
       if (typeof __C.updateMediaSession === 'function') (0, /*()*/__C.updateMediaSession)(); // keep the OS call card's count fresh
     }, GRID.APPLY_EVERY);
-    yield 2382;
+    yield 2384;
     const SONG_PILL_TITLE = 'Lead the room in song — steps you onto the stage with a music-grade mic and lines everyone\'s sound up to you; tap again to end (earbuds recommended for singers)';
     function paintTiming() {
       const sing = roomSingOn();
@@ -7981,7 +7981,7 @@
       }
       reactSing();
     }
-    yield 2479;
+    yield 2482;
     // ---- WHISPER CAPTIONS: the OS's speech-to-text provider, fed my own mic ----
     // (2026-10-02, the first customer meeting.) The browser engine listens in
     // ONE fixed language and cannot detect it, writes two-word fragments,
@@ -7996,7 +7996,7 @@
     // clip is in the provider at a time; a backlog past three drops the
     // oldest and says so.
     const CC_ENGINE_KEY = 'gifos_cc_engine', CC_TRANSLATE_KEY = 'gifos_cc_translate', CC_WORDS_KEY = 'gifos_cc_words';
-    yield 2482;
+    yield 2485;
     // WHO MAY RUN WHISPER. Whisper runs on the processor that also encodes the
     // call and answers its heartbeats. On a phone, or a computer with few cores
     // or little memory, it starves the meeting and drains the battery, so such
@@ -8571,7 +8571,7 @@
             }
           }
           else if (job.id === 'fold') { if (trWrites() || __C.trEnOn) (0, /*()*/__C.addTranscriptLine)(text, job.at, 'stadium', 'Stadium', 'mix', ll, lf, end, how, { eng: wEng, inp: 'rx' }); }   // a far-row line, labelled by its channel
-          else if ((0, /*()*/__C.capEarsOnly)() && (__C.peers.has(job.id) || job.stage) && __C.capTrust.stateOf(job.id, job.id) !== 'distrusted' && __C.capTrust.choice(job.id).mode !== 'me') {
+          else if ((0, /*()*/__C.capEarsOnly)() && (__C.peers.has(job.id) || job.stage) && __C.capTrust.stateOf(job.id, job.id) !== 'distrusted' && __C.capTrust.choice(job.id).lean !== 'me') {
             // ears only: a sample for the trust check, not a line
             __C.capTrust.observe({ byId: job.id, w: __C.myId, src: 'ear', eng: wEng, at: job.at, end, text, tl: how === 'tl' ? 1 : 0 });
           }
@@ -8658,10 +8658,10 @@
           // captions this page distrusts, or that its user put on this device's ears: those
           // are heard full time, so the page shows what was really said and sees
           // when the speaker's captions come right again (then trust returns and the page goes back to them).
-          if (localEar && capCovered(pid) && !(__C.capTrust && (__C.capTrust.stateOf(pid, pid) === 'distrusted' || __C.capTrust.choice(pid).mode === 'me'))) return;
+          if (localEar && capCovered(pid) && !(__C.capTrust && (__C.capTrust.stateOf(pid, pid) === 'distrusted' || __C.capTrust.choice(pid).lean === 'me'))) return;
           // Ears only listen to voices someone else captions (that is what they check), and a voice whose own
           // captions are trusted only during a spot check.
-          if (earsOnly && !capCovered(pid) && !(__C.capTrust && __C.capTrust.choice(pid).mode === 'me')) return;
+          if (earsOnly && !capCovered(pid) && !(__C.capTrust && __C.capTrust.choice(pid).lean === 'me')) return;
           if (__C.capTrust && !en && !__C.capTrust.earWanted(pid)) return;
           const p = __C.peers.get(pid);
           const onStage = stageSet.has(pid) && !!wspStageSid(pid);
@@ -8703,7 +8703,7 @@
       if (ccMix.dest) { ccMixSync(); if (!ccMix.ins.size) syncSpeech(); return; }
       if (trWrites() && !(ccEngine() === 'whisper' && whisperReady()) && !(speech && speech.input) && ccTrackInput() && ccMixVoices().size) syncSpeech();
     }
-    setInterval(() => { trEnSync(); if (wspCaps.size || __C.trEnOn || (0, /*()*/__C.capEarsOnly)() || (trWrites() && ((ccEngine() === 'whisper' && whisperReady()) || ccEngine() === 'local'))) wspSync(); earTick(); (0, /*()*/__C.trForget)(); (0, /*()*/__V.paintTxMark)(); if (__C.capTrust) __C.capTrust.tick(); }, 2000);
+    setInterval(() => { trEnSync(); if (wspCaps.size || __C.trEnOn || (0, /*()*/__C.capEarsOnly)() || (trWrites() && ((ccEngine() === 'whisper' && whisperReady()) || ccEngine() === 'local'))) wspSync(); earTick(); (0, /*()*/__C.trForget)(); (0, /*()*/__V.paintTxMark)(); if (__C.capTrust) { __C.capTrust.tick(); (0, /*()*/__V.capCardRefresh)(); } }, 2000);
     // ONE TAP TO INSTALL. The provider is a signed 13 MB GIF on this very site:
     // GifOS.providers.install downloads, checks the catalog hash and the
     // gifos.app signature, files it into the Providers folder and we assign it
@@ -8760,7 +8760,7 @@
     function phoneCaptions() {
       try { const N = window.GifosNative; return !!(N && N.info && N.info().captions === 'device'); } catch (e) { return false; }
     }
-    yield 2547;
+    yield 2550;
     function whisperSeedBlocked() {
       // A phone or a weak computer, a data-saver flag, or a cellular link does not fetch the 13 MB app on its own.
       if (__C.IS_MOBILE || WSP_WEAK) return true;
@@ -8801,7 +8801,7 @@
     }
     const wspWorking = (k) => k === 'ready' || k === 'downloading';
     let wspStSig = '';
-    yield 2556;
+    yield 2559;
     // The page boots in steps, and the captions engines it reads are declared
     // further down: until they exist the status waits for the next tick.
     function wspPaintSafe() {
@@ -8826,7 +8826,7 @@
       try { if (sessionStorage.getItem('gifos_wsp_chip_gone') === wspChipRoom()) wspChip.gone = true; } catch (e) {}
       return wspChip.gone;
     }
-    yield 2563;
+    yield 2566;
     // THE MEETING COMES FIRST. A 250 ms tick that lands more than a second late
     // means the page missed its heartbeats and media work; on a phone the
     // provider runs on this very thread. Two such stalls within 30 s while
@@ -8834,7 +8834,7 @@
     // tick keeps the chip in step with the engine.
     const WSP_TICK_MS = GifOS.timings.WSP_TICK_MS, WSP_STARVE_MS = GifOS.timings.WSP_STARVE_MS, WSP_STARVE_N = GifOS.timings.WSP_STARVE_N, WSP_STARVE_WIN = GifOS.timings.WSP_STARVE_WIN;
     let wspTickAt = 0, wspStarved = [];
-    yield 2577;
+    yield 2580;
     // ---- THE ROOM EAR: one browser engine hears every voice ------------------
     // A browser runs ONE speech session at a time (a second start aborts the
     // first), so CC cannot open an engine per voice. Where start() takes a
@@ -9241,7 +9241,7 @@
       if (!mine && speechRunning()) stopSpeech();
       (0, /*()*/__C.capPublish)();
     }
-    yield 2609;
+    yield 2612;
     function paintCcButtons() { (0, /*()*/__V.paintCcView)(); }
     document.getElementById('ccbtn').onclick = () => {
       __C.ccShow = !__C.ccShow;
@@ -9261,7 +9261,7 @@
       const last = lines.length ? lines[lines.length - 1] : null;
       if (last) (0, /*()*/__V.showCaption)(last.byId, (0, /*()*/__C.trNote)(last) + last.text);
     };
-    yield 2612;
+    yield 2615;
     if (__V.ccDockBtn) __V.ccDockBtn.onclick = () => document.getElementById('ccbtn').click();
     // CAPTIONS FOR EVERYONE. Each person had to find CC alone, and one never
     // did. An admin's room-wide 'cc' order (pseudo-target '*', the same signed
@@ -9343,7 +9343,7 @@
       const lines = blocks.map((l) => '[' + new Date(l.at).toLocaleTimeString() + '] ' + l.by + (l.lang && l.lang !== mine ? ' (' + l.lang + ')' : '') + ': ' + (0, /*()*/__C.trNote)(l) + l.text);
       return { blob: new Blob([lines.join('\n') + '\n'], { type: 'text/plain' }), name: meetDownloadName('Transcript', __C.room, blocks.length ? blocks[0].at : 0, 'txt'), lines: lines.length };
     }
-    yield 2625;
+    yield 2628;
 
     // ---- recording: this meeting, composited ON YOUR DEVICE ---------------------
     // A popup asks WHAT to capture (scope) and at what QUALITY. Tiles are drawn
@@ -9361,7 +9361,7 @@
     let recMode = null, recRestart = null, recMatchMix = true, recQuality = 'std', recType = 'video/webm'; // recType = the container MediaRecorder writes; recMode = scope; recRestart = opts after a stop
     let recToLib = false;   // this recording goes to My library (Streamer) when it stops
     let recStarting = false, recReloadAfterStop = false, recIndWatch = null;
-    yield 2630;
+    yield 2633;
     const REC_QUALITY = { low: { w: 1280, h: 720, v: 1000000 }, std: { w: 1920, h: 1080, v: 3000000 }, high: { w: 1920, h: 1080, v: 6000000 } };
     // Every source I can record, grouped by BUS. Direct peers + me are live
     // tiles; folds (compOf) are already consent-baked composites of many people.
@@ -9505,7 +9505,7 @@
         if (typeof saved.drop === 'function') { try { Promise.resolve(saved.drop()).catch(() => {}); } catch (e) {} }
       }, 60000);
     }
-    yield 2646;
+    yield 2649;
     // ---- My library (Streamer): the finished recording is uploaded, with the
     // transcript beside it. If the library refuses it (full, plan ended) or
     // the upload cannot be kept to finish later, the file is saved on this
@@ -10001,6 +10001,12 @@
           armDraw = () => metroSub(draw);
           videoTrack = canvas.captureStream(15).getVideoTracks()[0];
         }
+        // A silent floor under the mix. A MediaStreamDestination with nothing
+        // connected carries no audio frames at all (Chromium), and the webm
+        // muxer holds every video frame until the first audio frame: a meeting
+        // where nobody in scope has a mic track (all muted, or a camera-only
+        // room) recorded a 0-byte file. A zero-offset source keeps frames coming.
+        try { recFloor = __C.ac.createConstantSource(); recFloor.offset.value = 0; recFloor.connect(recDest); recFloor.start(); } catch (e) { recFloor = null; }
         const stream = new MediaStream();
         if (videoTrack) stream.addTrack(videoTrack);
         for (const tr of recDest.stream.getAudioTracks()) stream.addTrack(tr);
@@ -10024,6 +10030,7 @@
           stopVideo();
           const srcs = recSrcs;
           recSrcs = new Map();
+          recStopFloor();
           recDest = null;
           recMode = null;
           for (const m of srcs.values()) { try { m.node.disconnect(); } catch (e) {} }
@@ -10083,6 +10090,7 @@
           if (s && s.abort) { try { s.abort(); } catch (e) {} }
           for (const m of recSrcs.values()) { try { m.node.disconnect(); } catch (e) {} }
           recSrcs = new Map();
+          recStopFloor();
           if (made && recRec === made) { try { made.onstop = null; made.ondataavailable = null; } catch (e) {} recRec = null; }
           recDest = null; recMode = null;
           if (__C.myStatus.rec) {
@@ -10093,7 +10101,9 @@
         recStarting = false;
       }
     }
-    yield 2674;
+    let recFloor = null;   // the silent source under the record mix (startRec)
+    function recStopFloor() { const f = recFloor; recFloor = null; if (f) { try { f.stop(); } catch (e) {} try { f.disconnect(); } catch (e) {} } }
+    yield 2679;
     function warnRecorderNewApp() {
       if (!(recRec && recRec.state !== 'inactive')) return;
       if (recMode === 'app' || !canScreenRecord()) return;
@@ -10129,7 +10139,7 @@
       (0, /*()*/__V.showRecOptions)();
     };
     let callStateBox = '';
-    yield 2738; // knock-first: the boot's own getUserMedia while it is in flight — THE one ask; lateMedia must join it, never race it
+    yield 2743; // knock-first: the boot's own getUserMedia while it is in flight — THE one ask; lateMedia must join it, never race it
     // NO CAMERA IS NOT NO MICROPHONE. A combined camera+mic ask rejects as a
     // whole when the camera is missing, disabled by policy or held by another
     // app (NotFoundError / NotReadableError / OverconstrainedError), and the
@@ -10440,7 +10450,7 @@
       try { const sb = document.getElementById('spkbtn'); if (sb) sb.setAttribute('aria-expanded', 'false'); } catch (e) {}
       if (refocus && from) { try { from.focus(); } catch (e) {} }
     }
-    yield 2753;
+    yield 2758;
     { const sb = document.getElementById('spkbtn'); if (sb) sb.onclick = () => { if (micChooserOpen()) closeMicChooser(true); else openSpkChooser(); }; }
     function openSpkChooser() {
       const el = document.getElementById('micchooser'), sb = document.getElementById('spkbtn');
@@ -10801,7 +10811,7 @@
       if (b.getAttribute('aria-disabled') === 'true') return false;
       return b.classList.contains('inmore') || getComputedStyle(b).display !== 'none';
     }
-    yield 2784;
+    yield 2789;
     function openKeys() {
       const rows = [];
       // A grayed slot is shown but not usable, so its key is not listed.
@@ -10829,7 +10839,7 @@
       __V.keysModal.style.display = 'flex';
       queueMicrotask(__V.syncModalFocus);
     }
-    yield 3132;
+    yield 3137;
     function dbgMeterSources() {
       const out = [];
       const nm = (id) => (id ? (__C.rosterNames[id] || String(id).slice(0, 8)) : null);
@@ -10861,7 +10871,7 @@
     }
     return __L.END;
   }
-  var api = { name: "media", run: part, count: 705, exports: {"AVATAR_H":0,"AVATAR_W":0,"CC_ENGINE_KEY":0,"CC_TRANSLATE_KEY":0,"CC_WHISPER_ANYWAY_KEY":0,"CC_WORDS_KEY":0,"MP":0,"MPipe":0,"STAGE_FACE_PX":0,"STAGE_FACE_SETTLE_MS":0,"WEBKIT_TILE":0,"WHISPER_APP_ID":0,"WHISPER_SEED_KEY":0,"WSP_CHIP_MS":0,"WSP_STARVE_MS":0,"WSP_STARVE_N":0,"WSP_STARVE_WIN":0,"WSP_TICK_MS":0,"WSP_WEAK":0,"acClockInfo":1,"adapt":1,"applyBuses":1,"applyCcAll":1,"applyGrid":1,"applyRecoverMedia":1,"armAudioKeepAlive":1,"armWhisperRescan":1,"attachLocalTracks":1,"audioKickArmed":0,"avHold":0,"avatarPipe":0,"avatarSharp":0,"battNow":0,"blockedAudio":0,"blurDraw":1,"blurPipe":0,"blurSenderFrac":1,"blurSized":1,"blurViewFrac":1,"bootWantsCamera":1,"botVoiceTrack":0,"browserCaptionsMissing":1,"callStateBox":0,"camChooserAnchor":0,"camChooserOpen":1,"camDeviceId":0,"camFacing":0,"camIdleT":0,"camPickThen":0,"camTrackForTest":1,"camVideoConstraints":0,"canRaiseHand":1,"canScreenRecord":0,"canScreenShare":0,"capCovered":1,"capPaused":1,"capsRunningNow":1,"carryVoiceTrack":0,"ccDefGroup":0,"ccEngine":0,"ccMix":0,"ccMixStop":1,"ccMixSync":1,"chainDemandUp":1,"claimMos":1,"clk":0,"clockSample":1,"closeCamChooser":1,"closeMicChooser":1,"compFps":1,"compOf":0,"dbgMeterSources":1,"dbgRowFaces":0,"deepInView":1,"degOf":0,"dismissCamChooser":1,"displayCount":1,"downFolds":0,"downStreams":0,"dropEndedRemoteTracks":1,"dropMosIn":1,"dropStandby":1,"earLangOk":1,"earState":1,"endSongOnStepDown":1,"facesOnScreen":1,"gdOverride":0,"goLiveStoredLevel":1,"gridApplied":0,"gumRefused":1,"gumWithMicFallback":1,"headLinkUp":1,"headSendsStale":1,"headerCount":1,"heardStage":1,"holdMainVideo":1,"idleNow":0,"installWhisper":1,"isRedun":0,"keepAwake":1,"keepMeetingAudio":1,"kfNeed":1,"kickMainAudio":1,"kickMainVideo":1,"kickStageMic":1,"l14Packs":0,"lastActive":0,"lastQ":0,"lateMedia":1,"leafCount":1,"livePeerCount":1,"mainAudioTrack":1,"mainGone":1,"maybeShowFlip":1,"meOnStage":1,"mediaElCensus":1,"micChooserOpen":1,"micMode":0,"micTap":1,"mix":0,"mixAc":0,"mosAnn":0,"mosFb":0,"mosHasEjected":1,"mosIn":0,"mosJobs":0,"mosStandby":0,"mxIds":1,"mxPath":0,"normStageFrame":1,"noteAudioDevices":1,"onMeetDeviceChange":1,"onStageNow":1,"openCamChooser":1,"openKeys":1,"openModal":1,"packLoop":0,"paintTiming":1,"parkJobVideo":1,"participantCount":1,"peerAudioTracks":1,"peerHeardAt":1,"peerReconnecting":1,"personOnStage":1,"phoneCaptions":1,"pickCamera":1,"pipeDeny":0,"pipeEnabled":0,"pipeJobs":0,"placeStageMarks":1,"playTileVideo":1,"poke":0,"presenceSweep":1,"prodPack":0,"qaStageSt":0,"quietAtDoor":1,"rbStart":1,"reactSing":1,"recDefaultQuality":1,"recDownload":1,"recDraw":0,"recFileName":1,"recLibraryOption":1,"recMatchMix":0,"recMode":0,"recNoteStruct":1,"recQuality":0,"recRec":0,"recRelease":1,"recScopeSources":1,"recSources":1,"recStarting":0,"reconcileMosaic":1,"recoverShareTimer":0,"refreshOutbound":1,"refreshTrBtn":1,"regrabCamera":1,"releaseAudio":1,"rememberMix":1,"resumeReload":1,"retireMixTracks":1,"reviveCamera":1,"roomPack":0,"roomSingOn":0,"schedClaim":1,"schedReconcile":1,"screenSharers":0,"sdView":0,"sdViewSt":0,"sentVideoTrack":1,"setJobActive":1,"setStageFrame":1,"shareOnlyStage":1,"shareRecoverMode":0,"shipContainers":0,"shipTracks":1,"shownPeerCount":1,"speakerChoices":1,"speech":0,"speechGaveUp":0,"speechProved":0,"speechRunning":1,"spkDeviceId":0,"stageAudible":0,"stageEar":0,"stageEarFoldPeak":1,"stageEarLiveTrack":1,"stageEarRawPeak":1,"stageFrameVal":0,"stagedSelfWas":0,"startLocalView":1,"startRec":1,"startScreenShare":1,"startWhisper":1,"stashRecoverMedia":1,"stgBeatCost":0,"stgBeatIn":1,"stgBeats":0,"stgLost":1,"stgStale":1,"stopBlurPipe":1,"stopScreenShare":1,"stopSpeech":1,"stopWhisper":1,"stripPack":0,"swapPicRing":0,"syncAvatarFeed":1,"syncSpeech":1,"tileHolds":1,"timing":0,"toggleSing":1,"trEnSync":1,"trWrites":1,"trackAspect":1,"trackQ":0,"transcriptFile":1,"tuneCfg":1,"unshipMos":1,"updateAir":1,"wakeLock":0,"warnRecorderNewApp":1,"whisperAllowed":0,"whisperChosen":0,"whisperInstalling":0,"whisperReady":0,"whisperRescan":0,"whisperSeedBlocked":1,"whisperSupported":0,"withScrPipe":1,"wkBindVideo":1,"wkEar":0,"wkFwdCopies":0,"wkFwdNeeded":1,"wkHolds":1,"wkQuietBind":1,"wkRemoteTrack":1,"wsp":0,"wspCaps":0,"wspChip":0,"wspChipGone":1,"wspChipRoom":0,"wspEnqueue":1,"wspInst":0,"wspModel":1,"wspPaintSafe":1,"wspPaused":0,"wspQ":0,"wspRebind":1,"wspRelease":1,"wspResume":1,"wspRetry":1,"wspSource":1,"wspStSig":0,"wspStarved":0,"wspState":1,"wspStateText":1,"wspStop":1,"wspSync":1,"wspTickAt":0,"wspToBrowser":1,"wspWorking":0}, needs: {"core":{"leaving":0,"localStream":0,"capClone":1,"WK_H264_BLIND":0,"nameInitial":1,"shareBlocked":0,"turnLinks":0,"turnFacts":0,"myId":0,"rowFaceDark":0,"myName":0,"blurLevelFor":1,"mediaOk":0,"relayVia":0,"displayName":1,"myStatus":0,"stageIds":0,"statusOf":0,"screenStream":0,"sharingScreen":0,"BROADCAST":0,"bcMayPublishAv":1,"rbNow":0,"mayShareScreen":0,"outgoingHeld":0,"bcRole":1,"peers":0,"meTile":0,"camPeer":0,"clog":0,"micPeer":0,"addMainTrack":1,"renegotiate":1,"rosterIds":0,"seatStranger":1,"knownTotal":1,"PEER_SILENT_MS":0,"rosterTiles":0,"updateTile":1,"updateStatus":1,"meshSeat":0,"meshNode":0,"roomDig":1,"roomPastSection":0,"SCALE":0,"powNow":0,"IS_MOBILE":0,"powDials":0,"setStatus":0,"uiText":1,"stHold":0,"seatDark":0,"forcedCamOff":0,"vqRung":0,"rung":0,"LADDER":0,"stageCeilingKbps":1,"screenCeilingKbps":1,"stageSenders":0,"auxSenders":0,"lowSenders":0,"net":0,"meterFor":1,"sayState":0,"IS_ANDROID":0,"botParks":1,"visParkSent":0,"dcSend":0,"hasPendingTx":0,"ensureAc":1,"ac":0,"newMeetAudioContext":1,"occPid":0,"pipePeers":1,"preferHwVideo":1,"modOf":1,"stageSeats":0,"digLists":0,"stageHeldAt":0,"stageFeedAt":0,"stageViewNow":0,"kfAsker":0,"addAux":0,"isStageJob":0,"auxDrop":1,"stopAuxTx":1,"DEBUG_ON":0,"modBlurOn":0,"meshCoord":0,"speakingOf":0,"rowMixTalkAt":0,"isPipePeer":0,"ejected":0,"isEjected":0,"subWant":0,"myIdentity":0,"labelFor":0,"iAmWaiting":1,"peerWaits":1,"fitFor":0,"pipeVideo":0,"pipeStg":0,"STAGE_FPS":0,"stageCell":1,"STAGE_MAXW":0,"stageFps":1,"freshSt":0,"notTomb":0,"stageResumeUntil":0,"pwBlocked":0,"bannedOut":0,"mediaJoined":0,"RECOVER_MEDIA_KEY":0,"updateRoomKey":0,"params":0,"joinAvChoice":0,"bcHostStored":0,"updateResume":0,"paintOnAir":1,"broadcastStatus":1,"updateMediaSession":1,"screenSteppedUp":0,"setStage":1,"refreshAllTiles":1,"rbCap":0,"rbLength":1,"rbTracks":1,"rbDrop":1,"bcSeeding":0,"releaseLeaveAsk":1,"rbStop":1,"rbNoun":0,"serviceHeard":0,"rowMates":0,"isHeld":1,"botHidden":1,"TIMING_KEY":0,"digStageEntry":0,"rosterNames":0,"foldName":1,"canStage":0,"lsGet":0,"CC_ON_PHONE":0,"meters":0,"myVoiceAt":0,"lsSet":0,"ccLocalQ":0,"CC_LANG_KEY":0,"trEnOn":0,"capSend":1,"trLangOf":0,"addTranscriptLine":1,"capEarsOnly":1,"capTrust":0,"trLang":1,"trKeeps":1,"trEnOnlyEnglish":1,"capSpotQueue":1,"capPublish":1,"trForget":1,"ccLang":0,"trDrops":0,"capTraceGate":1,"myVoiceFrom":0,"trLangKnown":1,"myVoiceSinceFinal":0,"ccDevNotice":1,"trEchoHeld":1,"ccShow":0,"trBlocks":1,"trNote":1,"modTable":0,"setMod":1,"AI_SPARK_SVG":0,"chatOpen":0,"room":0,"recRoomWord":1,"bcLastService":0,"BC_INTENT":0,"recSrcDirty":0,"recStructSig":0,"bcKeepUserStop":0,"amGloballyMuted":1,"micLockWords":1,"capClosed":0,"bcWatchingViewer":1,"enforceBroadcastSeat":1,"lateAsk":0,"lateWant":0,"bootGumPending":0,"reactRoomState":1,"camOnWords":1,"statusWords":0,"lateGen":0,"lateWon":0,"lateTimer":0,"LATE_ASK_MS":0,"carryOutAc":0,"blurLevel":0,"setPersonalBlur":1,"carryHosts":0,"carryG":0},"view":{"blurA":0,"blurActx":0,"blurB":0,"blurBctx":0,"paintAvatarCanvas":1,"phoneLayout":1,"showAvatarTrack":1,"stagefeedEl":0,"stadiumEl":0,"showFlipButton":1,"showCamBack":1,"paintSpkBtn":1,"paintStadiumTile":1,"paintStageStrip":1,"paintControls":1,"showResharePrompt":1,"hideResharePrompt":1,"paintShare":1,"dropStaleShareWin":1,"paintRb":1,"rbCanvas":1,"paintRbNow":1,"paintFaders":0,"timingRow":0,"paintWspChip":1,"paintCcState":1,"paintTxMark":1,"paintWspStatus":1,"paintCcView":1,"showCaption":1,"ccDockBtn":0,"hideCaptions":1,"renderTranscript":1,"renderChat":1,"chatPanel":0,"paintChatBtn":1,"paintRoomTrust":1,"showServiceEnded":1,"showRecReplay":1,"recBtn":0,"showRecOptions":1,"roomAudioOn":1,"micBtn":0,"placeDockPopover":1,"unmuteBtn":0,"camBtn":0,"topNameModal":1,"handBtn":0,"chatPanelOpen":1,"keysModal":0,"syncModalFocus":1}}, stamp: "7d5b00f1" };
+  var api = { name: "media", run: part, count: 707, exports: {"AVATAR_H":0,"AVATAR_W":0,"CC_ENGINE_KEY":0,"CC_TRANSLATE_KEY":0,"CC_WHISPER_ANYWAY_KEY":0,"CC_WORDS_KEY":0,"MP":0,"MPipe":0,"STAGE_FACE_PX":0,"STAGE_FACE_SETTLE_MS":0,"WEBKIT_TILE":0,"WHISPER_APP_ID":0,"WHISPER_SEED_KEY":0,"WSP_CHIP_MS":0,"WSP_STARVE_MS":0,"WSP_STARVE_N":0,"WSP_STARVE_WIN":0,"WSP_TICK_MS":0,"WSP_WEAK":0,"acClockInfo":1,"adapt":1,"applyBuses":1,"applyCcAll":1,"applyGrid":1,"applyRecoverMedia":1,"armAudioKeepAlive":1,"armWhisperRescan":1,"attachLocalTracks":1,"audioKickArmed":0,"avHold":0,"avatarPipe":0,"avatarSharp":0,"battNow":0,"blockedAudio":0,"blurDraw":1,"blurPipe":0,"blurSenderFrac":1,"blurSized":1,"blurViewFrac":1,"bootWantsCamera":1,"botVoiceTrack":0,"browserCaptionsMissing":1,"callStateBox":0,"camChooserAnchor":0,"camChooserOpen":1,"camDeviceId":0,"camFacing":0,"camIdleT":0,"camPickThen":0,"camTrackForTest":1,"camVideoConstraints":0,"canRaiseHand":1,"canScreenRecord":0,"canScreenShare":0,"capCovered":1,"capPaused":1,"capsRunningNow":1,"carryVoiceTrack":0,"ccDefGroup":0,"ccEngine":0,"ccMix":0,"ccMixStop":1,"ccMixSync":1,"chainDemandUp":1,"claimMos":1,"clk":0,"clockSample":1,"closeCamChooser":1,"closeMicChooser":1,"compFps":1,"compOf":0,"dbgMeterSources":1,"dbgRowFaces":0,"deepInView":1,"degOf":0,"dismissCamChooser":1,"displayCount":1,"downFolds":0,"downStreams":0,"dropEndedRemoteTracks":1,"dropMosIn":1,"dropStandby":1,"earLangOk":1,"earState":1,"endSongOnStepDown":1,"facesOnScreen":1,"gdOverride":0,"goLiveStoredLevel":1,"gridApplied":0,"gumRefused":1,"gumWithMicFallback":1,"headLinkUp":1,"headSendsStale":1,"headerCount":1,"heardStage":1,"holdMainVideo":1,"idleNow":0,"installWhisper":1,"isRedun":0,"keepAwake":1,"keepMeetingAudio":1,"kfNeed":1,"kickMainAudio":1,"kickMainVideo":1,"kickStageMic":1,"l14Packs":0,"lastActive":0,"lastQ":0,"lateMedia":1,"leafCount":1,"livePeerCount":1,"mainAudioTrack":1,"mainGone":1,"maybeShowFlip":1,"meOnStage":1,"mediaElCensus":1,"micChooserOpen":1,"micMode":0,"micTap":1,"mix":0,"mixAc":0,"mosAnn":0,"mosFb":0,"mosHasEjected":1,"mosIn":0,"mosJobs":0,"mosStandby":0,"mxIds":1,"mxPath":0,"normStageFrame":1,"noteAudioDevices":1,"onMeetDeviceChange":1,"onStageNow":1,"openCamChooser":1,"openKeys":1,"openModal":1,"packLoop":0,"paintTiming":1,"parkJobVideo":1,"participantCount":1,"peerAudioTracks":1,"peerHeardAt":1,"peerReconnecting":1,"personOnStage":1,"phoneCaptions":1,"pickCamera":1,"pipeDeny":0,"pipeEnabled":0,"pipeJobs":0,"placeStageMarks":1,"playTileVideo":1,"poke":0,"presenceSweep":1,"prodPack":0,"qaStageSt":0,"quietAtDoor":1,"rbStart":1,"reactSing":1,"recDefaultQuality":1,"recDownload":1,"recDraw":0,"recFileName":1,"recLibraryOption":1,"recMatchMix":0,"recMode":0,"recNoteStruct":1,"recQuality":0,"recRec":0,"recRelease":1,"recScopeSources":1,"recSources":1,"recStarting":0,"reconcileMosaic":1,"recoverShareTimer":0,"refreshOutbound":1,"refreshTrBtn":1,"regrabCamera":1,"releaseAudio":1,"rememberMix":1,"resumeReload":1,"retireMixTracks":1,"reviveCamera":1,"roomPack":0,"roomSingOn":0,"schedClaim":1,"schedReconcile":1,"screenSharers":0,"sdView":0,"sdViewSt":0,"sentVideoTrack":1,"setJobActive":1,"setStageFrame":1,"shareOnlyStage":1,"shareRecoverMode":0,"shipContainers":0,"shipTracks":1,"shownPeerCount":1,"speakerChoices":1,"speech":0,"speechGaveUp":0,"speechProved":0,"speechRunning":1,"spkDeviceId":0,"stageAudible":0,"stageEar":0,"stageEarFoldPeak":1,"stageEarLiveTrack":1,"stageEarRawPeak":1,"stageFrameVal":0,"stagedSelfWas":0,"startLocalView":1,"startRec":1,"startScreenShare":1,"startWhisper":1,"stashRecoverMedia":1,"stgBeatCost":0,"stgBeatIn":1,"stgBeats":0,"stgLost":1,"stgStale":1,"stopBlurPipe":1,"stopScreenShare":1,"stopSpeech":1,"stopWhisper":1,"stripPack":0,"swapPicRing":0,"syncAvatarFeed":1,"syncSpeech":1,"tileHolds":1,"timing":0,"toggleSing":1,"trEnSync":1,"trWrites":1,"trackAspect":1,"trackQ":0,"transcriptFile":1,"tuneCfg":1,"unshipMos":1,"updateAir":1,"wakeLock":0,"warnRecorderNewApp":1,"whisperAllowed":0,"whisperChosen":0,"whisperInstalling":0,"whisperReady":0,"whisperRescan":0,"whisperSeedBlocked":1,"whisperSupported":0,"withScrPipe":1,"wkBindVideo":1,"wkEar":0,"wkFwdCopies":0,"wkFwdNeeded":1,"wkHolds":1,"wkQuietBind":1,"wkRemoteTrack":1,"wsp":0,"wspCaps":0,"wspChip":0,"wspChipGone":1,"wspChipRoom":0,"wspEnqueue":1,"wspInst":0,"wspModel":1,"wspPaintSafe":1,"wspPaused":0,"wspQ":0,"wspRebind":1,"wspRelease":1,"wspResume":1,"wspRetry":1,"wspSource":1,"wspStSig":0,"wspStarved":0,"wspState":1,"wspStateText":1,"wspStop":1,"wspSync":1,"wspTickAt":0,"wspToBrowser":1,"wspWorking":0}, needs: {"core":{"leaving":0,"localStream":0,"capClone":1,"WK_H264_BLIND":0,"nameInitial":1,"shareBlocked":0,"turnLinks":0,"turnFacts":0,"myId":0,"rowFaceDark":0,"myName":0,"blurLevelFor":1,"mediaOk":0,"relayVia":0,"displayName":1,"myStatus":0,"stageIds":0,"statusOf":0,"screenStream":0,"sharingScreen":0,"BROADCAST":0,"bcMayPublishAv":1,"rbNow":0,"mayShareScreen":0,"outgoingHeld":0,"bcRole":1,"peers":0,"meTile":0,"camPeer":0,"clog":0,"micPeer":0,"addMainTrack":1,"renegotiate":1,"rosterIds":0,"seatStranger":1,"knownTotal":1,"PEER_SILENT_MS":0,"rosterTiles":0,"updateTile":1,"updateStatus":1,"meshSeat":0,"meshNode":0,"roomDig":1,"roomPastSection":0,"SCALE":0,"powNow":0,"IS_MOBILE":0,"powDials":0,"setStatus":0,"uiText":1,"stHold":0,"seatDark":0,"forcedCamOff":0,"vqRung":0,"rung":0,"LADDER":0,"stageCeilingKbps":1,"screenCeilingKbps":1,"stageSenders":0,"auxSenders":0,"lowSenders":0,"net":0,"meterFor":1,"sayState":0,"IS_ANDROID":0,"botParks":1,"visParkSent":0,"dcSend":0,"hasPendingTx":0,"ensureAc":1,"ac":0,"newMeetAudioContext":1,"occPid":0,"pipePeers":1,"preferHwVideo":1,"modOf":1,"stageSeats":0,"digLists":0,"stageHeldAt":0,"stageFeedAt":0,"stageViewNow":0,"kfAsker":0,"addAux":0,"isStageJob":0,"auxDrop":1,"stopAuxTx":1,"DEBUG_ON":0,"modBlurOn":0,"meshCoord":0,"speakingOf":0,"rowMixTalkAt":0,"isPipePeer":0,"ejected":0,"isEjected":0,"subWant":0,"myIdentity":0,"labelFor":0,"iAmWaiting":1,"peerWaits":1,"fitFor":0,"pipeVideo":0,"pipeStg":0,"STAGE_FPS":0,"stageCell":1,"STAGE_MAXW":0,"stageFps":1,"freshSt":0,"notTomb":0,"stageResumeUntil":0,"pwBlocked":0,"bannedOut":0,"mediaJoined":0,"RECOVER_MEDIA_KEY":0,"updateRoomKey":0,"params":0,"joinAvChoice":0,"bcHostStored":0,"updateResume":0,"paintOnAir":1,"broadcastStatus":1,"updateMediaSession":1,"screenSteppedUp":0,"setStage":1,"refreshAllTiles":1,"rbCap":0,"rbLength":1,"rbTracks":1,"rbDrop":1,"bcSeeding":0,"releaseLeaveAsk":1,"rbStop":1,"rbNoun":0,"serviceHeard":0,"rowMates":0,"isHeld":1,"botHidden":1,"TIMING_KEY":0,"digStageEntry":0,"rosterNames":0,"foldName":1,"canStage":0,"lsGet":0,"CC_ON_PHONE":0,"meters":0,"myVoiceAt":0,"lsSet":0,"ccLocalQ":0,"CC_LANG_KEY":0,"trEnOn":0,"capSend":1,"trLangOf":0,"addTranscriptLine":1,"capEarsOnly":1,"capTrust":0,"trLang":1,"trKeeps":1,"trEnOnlyEnglish":1,"capSpotQueue":1,"capPublish":1,"trForget":1,"ccLang":0,"trDrops":0,"capTraceGate":1,"myVoiceFrom":0,"trLangKnown":1,"myVoiceSinceFinal":0,"ccDevNotice":1,"trEchoHeld":1,"ccShow":0,"trBlocks":1,"trNote":1,"modTable":0,"setMod":1,"AI_SPARK_SVG":0,"chatOpen":0,"room":0,"recRoomWord":1,"bcLastService":0,"BC_INTENT":0,"recSrcDirty":0,"recStructSig":0,"bcKeepUserStop":0,"amGloballyMuted":1,"micLockWords":1,"capClosed":0,"bcWatchingViewer":1,"enforceBroadcastSeat":1,"lateAsk":0,"lateWant":0,"bootGumPending":0,"reactRoomState":1,"camOnWords":1,"statusWords":0,"lateGen":0,"lateWon":0,"lateTimer":0,"LATE_ASK_MS":0,"carryOutAc":0,"blurLevel":0,"setPersonalBlur":1,"carryHosts":0,"carryG":0},"view":{"blurA":0,"blurActx":0,"blurB":0,"blurBctx":0,"paintAvatarCanvas":1,"phoneLayout":1,"showAvatarTrack":1,"stagefeedEl":0,"stadiumEl":0,"showFlipButton":1,"showCamBack":1,"paintSpkBtn":1,"paintStadiumTile":1,"paintStageStrip":1,"paintControls":1,"showResharePrompt":1,"hideResharePrompt":1,"paintShare":1,"dropStaleShareWin":1,"paintRb":1,"rbCanvas":1,"paintRbNow":1,"paintFaders":0,"timingRow":0,"paintWspChip":1,"paintCcState":1,"paintTxMark":1,"capCardRefresh":1,"paintWspStatus":1,"paintCcView":1,"showCaption":1,"ccDockBtn":0,"hideCaptions":1,"renderTranscript":1,"renderChat":1,"chatPanel":0,"paintChatBtn":1,"paintRoomTrust":1,"showServiceEnded":1,"showRecReplay":1,"recBtn":0,"showRecOptions":1,"roomAudioOn":1,"micBtn":0,"placeDockPopover":1,"unmuteBtn":0,"camBtn":0,"topNameModal":1,"handBtn":0,"chatPanelOpen":1,"keysModal":0,"syncModalFocus":1}}, stamp: "114cf6eb" };
   (GifOS.coreParts = GifOS.coreParts || {})["media"] = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
