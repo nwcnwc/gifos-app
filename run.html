@@ -1705,6 +1705,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // first paint is already in that language.
     const L10N = GifOS.i18n || null;
     function uiLang() { return (L10N && L10N.ui()) || 'en'; }
+    // Answers the meeting keeps for itself that the page's elements used to hold: the "you left" screen is up
+    // (#left-modal: a leave, or a full door's screen), and it is a full door's (the subscription library takes that one
+    // down again); the host face is on (body.amadmin, painted by applyAdminUi).
+    let leftScreenUp = false, leftScreenFull = false, adminFace = false;
     function uiText(key, en) {
       if (L10N && L10N.ui() !== 'en' && L10N.has('meet.' + key)) return L10N.t('meet.' + key);
       return en || '';
@@ -1972,8 +1976,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       let seen = false;
       try { seen = sessionStorage.getItem('gifos_rec_seen') === '1'; } catch (e) {}
       if (seen) { if (existing) existing.remove(); return; }
-      const left = document.getElementById('left-modal');
-      if (left && left.style.display === 'flex') { if (existing) existing.remove(); return; }
+      if (leftDialogUp()) { if (existing) existing.remove(); return; }
       if (existing) {
         // The recorder's name can land after their status.
         const t = existing.querySelector('#rec-notice-title');
@@ -2271,8 +2274,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const end = mode === 'end';
         // The "left" dialog on screen keeps its words: a door that turned this person away ("This room is full on
         // the free plan") wrote them, and this paint runs again on every admin-state change.
-        const lm = document.getElementById('left-modal');
-        const leftShown = !!(lm && lm.style.display === 'flex');
+        const leftShown = leftDialogUp();
         const sayLeft = (id, text) => { if (!leftShown) say(id, text); };
         if (leave) {
           if (end) {
@@ -2600,6 +2602,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     paintBroadcastChrome();
     const grid = document.getElementById('grid');
     const statusEl = document.getElementById('status');
+    // THE STATUS LINE'S WORDS live in the meeting: count (the tap that opens People), rest (the sentence), title (the
+    // whole line) and its named state. setStatus and updateStatus write them here and the page paints them
+    // (paintStatusNotice, paintStatusLine); the agent contract reads them here. The page fits the rest to its row
+    // (fitStatusRest), so the words here are always the whole sentence.
+    const statusLine = { count: 'Joining\u2026', rest: '', title: '', state: '' };
+    // When the room link went down (0 while it is up): the status line's reconnecting note waits for a quiet time.
+    let statusLinkDownAt = 0;
     // The text lives in an inner span: a phone makes the button a flex box
     // for its 44px tap, and "…" is never drawn on a flex box (or on a
     // WebKit button), so a long message was cut mid-word.
@@ -2644,6 +2653,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // gave every message its own voice; the alert colour and the hold are
       // what say "this stopped you", and they are decided above.
       m = String(m).replace(/^(?:[\u2600-\u27BF]|[\uD83C-\uD83E][\uDC00-\uDFFF])\uFE0F?\s*/, '');
+      Object.assign(statusLine, { count: '', rest: m, title: String(m), state: state || 'notice' });
+      paintStatusNotice(m, state || 'notice', blocking || !!hold);
+      statusHoldUntil = Date.now() + (hold || (blocking ? 12000 : 4000));
+      // The OFF AIR / LIVE banner follows the line (and the camera) on every paint.
+      if (typeof paintLiveBadge === 'function') paintLiveBadge();
+      try { paintStatusSheet(); } catch (e) {}
+    };
+    // A notice on the status line (setStatus's words, its state and whether it stopped someone).
+    function paintStatusNotice(m, state, alert) {
       const countEl = document.getElementById('statuscount');
       const restEl = document.getElementById('statusrest');
       // #status is the phone's line, #statusrest the wide window's. Write
@@ -2654,13 +2672,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       else statusEl.textContent = m;
       if (statusEl.title !== String(m)) statusEl.title = String(m);
       // Why this line is on screen is state (data-why / data-link / data-back), not words: the live badge reads these, never the sentence.
-      if (statusEl.dataset) { statusEl.dataset.why = ''; statusEl.dataset.link = ''; statusEl.dataset.back = ''; statusEl.dataset.state = state || 'notice'; }
-      statusEl.classList.toggle('alert', blocking || !!hold);
-      statusHoldUntil = Date.now() + (hold || (blocking ? 12000 : 4000));
-      // The OFF AIR / LIVE banner follows the line (and the camera) on every paint.
-      if (typeof paintLiveBadge === 'function') paintLiveBadge();
-      try { paintStatusSheet(); } catch (e) {}
-    };
+      if (statusEl.dataset) { statusEl.dataset.why = ''; statusEl.dataset.link = ''; statusEl.dataset.back = ''; statusEl.dataset.state = state; }
+      statusEl.classList.toggle('alert', alert);
+    }
     // THE NAMED STATES (js/meet-status.js): one sentence and one tone per
     // state, the same every time it is said. statusWords is the sentence for
     // a state; sayState puts the state on the line.
@@ -11699,10 +11713,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { paintBcCalendar(on && bq.viewer && !!bq.sched && bq.sched.phase === 'future'); } catch (e) {}
       try { if (typeof paintStagePlate === 'function') paintStagePlate(); } catch (e) {}
     }
-    function leftDialogUp() {
-      const lm = document.getElementById('left-modal');
-      return !!(lm && lm.style.display && lm.style.display !== 'none');
-    }
+    function leftDialogUp() { return leftScreenUp; }
+    // The "you left" screen on the page (leaveMeeting).
+    function showLeftDialog() { const lm = document.getElementById('left-modal'); if (lm) lm.style.display = 'flex'; }
     // How many people are still in the room after this page leaves. Taken
     // before the farewell drops the tiles, so the header does not keep the
     // old total and does not fall back to "Just you".
@@ -11714,7 +11727,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (bannedOut) return;                      // the ban notice is permanent
       if (Date.now() < statusHoldUntil) return;   // an explicit message is showing
       try { if (blockedAudio && blockedAudio.size) return; } catch (e) {} // a refused play stays on the line until the sound starts
-      statusEl.classList.remove('alert');
+      paintStatusAlert(false);
       // Faces on the wall are people, even before their transport has vouched.
       // participantCount() stays the ladder's input; the label may only go up.
       let seen = 1;
@@ -11741,16 +11754,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // The down time lives on the line itself; a timer repaints at the mark.
       const STATUS_RECONNECT_QUIET_MS = GifOS.timings.STATUS_RECONNECT_QUIET_MS;
       const linkDown = !leftUp && !(relayUp() || (meshSeat() && meshSeat().state === 3 && meshCoord() && meshCoord().pc !== 0));
-      if (!linkDown) statusEl._linkDownAt = 0;
-      else if (!statusEl._linkDownAt) {
-        statusEl._linkDownAt = Date.now();
+      if (!linkDown) statusLinkDownAt = 0;
+      else if (!statusLinkDownAt) {
+        statusLinkDownAt = Date.now();
         setTimeout(() => { try { updateStatus(); } catch (e) {} }, STATUS_RECONNECT_QUIET_MS);
       }
-      const link = (linkDown && Date.now() - statusEl._linkDownAt >= STATUS_RECONNECT_QUIET_MS) ? ' · reconnecting to the room…' : '';
+      const link = (linkDown && Date.now() - statusLinkDownAt >= STATUS_RECONNECT_QUIET_MS) ? ' · reconnecting to the room…' : '';
       // A SERVICE VIEWER sends no video: the quality rung and the password
       // hint are the host's business, and the room bar counts who is watching.
       const bcWatcher = !!(BROADCAST && !(typeof bcHostStored === 'function' && bcHostStored())
-        && !document.body.classList.contains('amadmin') && !(typeof myStatus !== 'undefined' && myStatus.stg));
+        && !adminFace && !(typeof myStatus !== 'undefined' && myStatus.stg));
       // The badge and the room bar already say watching, so a viewer's line
       // names who is live: a host here, or failing that the first other
       // person on the stage. Nobody known yet keeps the watching sentence.
@@ -11765,7 +11778,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // watching, and the password she typed to go live is the host one, so
       // the hint names the VIEWER password (without it the broadcast stays
       // blurred, see blurLevelFor).
-      const bcLive = !!(BROADCAST && ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin')));
+      const bcLive = !!(BROADCAST && ((typeof bcHostStored === 'function' && bcHostStored()) || adminFace));
       let extra = '';
       if (n > 1 && !bcWatcher) {
         if (!roomPw) extra = bcLive ? ' · blurred until you set a room password' : ' · ' + uiText('unlockClear', 'faces stay blurred until a password');
@@ -11821,16 +11834,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         for (const [id, f] of fs) if (!was || was.get(id) !== f) updateTile(id);
         updateStatus.foldSt = fs;
       } catch (e) {}
-      // SUB.11: the People panel and this count read one fold, so an open panel follows it too. (A far person's name can
-      // arrive after the panel was painted: the row said "Guest" until something else repainted it.)
-      try {
-        const rEl = document.getElementById('roster');
-        if (rEl && rEl.classList.contains('open')) {
-          const all = rosterRows();
-          const sig = all.map((x) => x.id + '\t' + x.name + '\t' + (x.muted ? 1 : 0) + (x.camOff ? 1 : 0) + (x.hand ? 1 : 0)).join('\n') + '\n' + (all.more || 0);
-          if (sig !== updateStatus.peopleSig) { updateStatus.peopleSig = sig; paintRosterSoon(); }
-        } else updateStatus.peopleSig = null;
-      } catch (e) {}
+      try { paintPeopleIfOpen(); } catch (e) {}
       // The password and ready-count sentences are longer than the row Fit
       // leaves, so they were cut off after you left. The count and quality stay.
       const tail = partial + link + savedLock + (leftUp ? '' : extra);
@@ -11922,49 +11926,73 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         : (link && !leftUp) ? 'reconnecting' : waitingHere ? 'waitingRoom' : shown === 1 ? (atDoor ? 'backIn' : 'alone') : 'meeting';
       const statusShown = statusText;
       const shownDetail = phoneDetail;
-      if (statusEl.dataset) {
-        if (statusEl.dataset.kind !== statusKind) statusEl.dataset.kind = statusKind;
-        const dr = leftUp ? '' : (reachState || ''), du = !leftUp && reachState === 'partial' ? String(reach.dead) : '';
-        if (statusEl.dataset.reach !== dr) statusEl.dataset.reach = dr;
-        // The badge's inputs, written with the line: a link note shows in every branch but the refusal and the password prompt.
-        statusEl.dataset.why = '';
-        statusEl.dataset.link = (link && !refused && !atPwPrompt()) ? '1' : '';
-        statusEl.dataset.back = gettingBack ? '1' : '';
-        if (statusEl.dataset.state !== restState) statusEl.dataset.state = restState;
-        const pf = prog ? prog.flow : '', ps = prog ? prog.step : '', px = prog ? prog.x + '/' + prog.y : '';
-        if (statusEl.dataset.flow !== pf) statusEl.dataset.flow = pf;
-        if (statusEl.dataset.step !== ps) statusEl.dataset.step = ps;
-        if (statusEl.dataset.progress !== px) statusEl.dataset.progress = px;
-        if (statusEl.dataset.unreached !== du) statusEl.dataset.unreached = du;
-      }
-      if ((reachLine || relayNo) && !prog) statusEl.classList.add('alert');
-      if (statusEl.title !== shownDetail) statusEl.title = shownDetail;
-      const countEl = document.getElementById('statuscount');
-      const restEl = document.getElementById('statusrest');
-      if (countEl && restEl) {
-        if (countEl.textContent !== countText) countEl.textContent = countText;
-        // An empty count is no button: Tab must not stop on nothing.
-        if (countEl.hidden !== !countText) countEl.hidden = !countText;
-        if (restEl.textContent !== restText) restEl.textContent = restText;
-        // Fitting the line to its row is layout only: it must never stop the
-        // status line from being written.
-        try {
-          const lead = q && q.label ? ' · ' + q.label : '';
-          // a wait's line that does not fit drops its reason first, then its seconds: the step and phase always stay
-          if (prog) fitStatusRest(restText, prog.head, prog.stepOnly + '…');
-          else fitStatusRest(restText, lead && restText.indexOf(lead) === 0 ? restText.slice(lead.length) : '');
-        } catch (e) {}
-      }
+      // The line as the meeting knows it (statusLine): its kind, the reach and progress facts and the badge's inputs (a
+      // link note shows in every branch but the refusal and the password prompt), and its words.
+      const line = {
+        kind: statusKind, reach: leftUp ? '' : (reachState || ''), why: '', link: (link && !refused && !atPwPrompt()) ? '1' : '', back: gettingBack ? '1' : '',
+        state: restState, flow: prog ? prog.flow : '', step: prog ? prog.step : '', progress: prog ? prog.x + '/' + prog.y : '',
+        unreached: !leftUp && reachState === 'partial' ? String(reach.dead) : '', alert: !!((reachLine || relayNo) && !prog),
+        title: shownDetail, count: countText, rest: restText, fit: null,
+      };
+      // What the rest falls back to when the row is too short: a wait's line drops its reason first, then its seconds
+      // (the step and phase always stay); a resting line drops its quality.
+      try {
+        const lead = q && q.label ? ' · ' + q.label : '';
+        line.fit = prog ? [prog.head, prog.stepOnly + '…'] : [lead && restText.indexOf(lead) === 0 ? restText.slice(lead.length) : ''];
+      } catch (e) {}
+      Object.assign(statusLine, line);
+      paintStatusLine(line);
       paintBcQuiet(bq);
       if (typeof paintLiveBadge === 'function') paintLiveBadge();
       paintStatusSheet();
       try { paintOnAir(); } catch (e) {}
-      try {
-        const chip = document.querySelector('body.broadcast .topchip');
-        if (chip) document.documentElement.style.setProperty('--chip-bottom', Math.ceil(chip.getBoundingClientRect().bottom) + 'px');
-      } catch (e2) {}
+      try { paintChipBottom(); } catch (e2) {}
       try { paintInviteSlot(); } catch (e3) {}
       try { paintAloneCard(); } catch (e4) {}
+    }
+    function paintStatusAlert(on) { statusEl.classList.toggle('alert', on); }
+    // SUB.11: the People panel and the status count read one fold, so an open panel follows it too. (A far person's name
+    // can arrive after the panel was painted: the row said "Guest" until something else repainted it.)
+    function paintPeopleIfOpen() {
+      const rEl = document.getElementById('roster');
+      if (rEl && rEl.classList.contains('open')) {
+        const all = rosterRows();
+        const sig = all.map((x) => x.id + '\t' + x.name + '\t' + (x.muted ? 1 : 0) + (x.camOff ? 1 : 0) + (x.hand ? 1 : 0)).join('\n') + '\n' + (all.more || 0);
+        if (sig !== updateStatus.peopleSig) { updateStatus.peopleSig = sig; paintRosterSoon(); }
+      } else updateStatus.peopleSig = null;
+    }
+    // The status line as updateStatus composed it (statusLine's fields).
+    function paintStatusLine(s) {
+      if (statusEl.dataset) {
+        if (statusEl.dataset.kind !== s.kind) statusEl.dataset.kind = s.kind;
+        if (statusEl.dataset.reach !== s.reach) statusEl.dataset.reach = s.reach;
+        statusEl.dataset.why = s.why;
+        statusEl.dataset.link = s.link;
+        statusEl.dataset.back = s.back;
+        if (statusEl.dataset.state !== s.state) statusEl.dataset.state = s.state;
+        if (statusEl.dataset.flow !== s.flow) statusEl.dataset.flow = s.flow;
+        if (statusEl.dataset.step !== s.step) statusEl.dataset.step = s.step;
+        if (statusEl.dataset.progress !== s.progress) statusEl.dataset.progress = s.progress;
+        if (statusEl.dataset.unreached !== s.unreached) statusEl.dataset.unreached = s.unreached;
+      }
+      if (s.alert) statusEl.classList.add('alert');
+      if (statusEl.title !== s.title) statusEl.title = s.title;
+      const countEl = document.getElementById('statuscount');
+      const restEl = document.getElementById('statusrest');
+      if (countEl && restEl) {
+        if (countEl.textContent !== s.count) countEl.textContent = s.count;
+        // An empty count is no button: Tab must not stop on nothing.
+        if (countEl.hidden !== !s.count) countEl.hidden = !s.count;
+        if (restEl.textContent !== s.rest) restEl.textContent = s.rest;
+        // Fitting the line to its row is layout only: it must never stop the
+        // status line from being written.
+        try { if (s.fit) fitStatusRest(s.rest, s.fit[0], s.fit[1]); } catch (e) {}
+      }
+    }
+    // A service's top chip: the room below it starts where it ends.
+    function paintChipBottom() {
+      const chip = document.querySelector('body.broadcast .topchip');
+      if (chip) document.documentElement.style.setProperty('--chip-bottom', Math.ceil(chip.getBoundingClientRect().bottom) + 'px');
     }
     // The host's start time can arrive by gossip after the
     // line was painted; the countdown moves on its own.
@@ -16769,7 +16797,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function progressBeat(seated, now) {
       if (!progRun && !progEndedJoin) progressStart(updateResume ? 'update' : 'join');
       else if (!progRun && progEndedJoin) {
-        const linkDown = !!(statusEl._linkDownAt && now - statusEl._linkDownAt >= GifOS.timings.STATUS_RECONNECT_QUIET_MS);
+        const linkDown = !!(statusLinkDownAt && now - statusLinkDownAt >= GifOS.timings.STATUS_RECONNECT_QUIET_MS);
         // lost: the seat is gone, or it is kept and I am alone while my room's joining connection is made again (wayBack)
         const mending = seated && wayBack();
         const lost = (!seated || mending) && !leaving;
@@ -18301,6 +18329,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const hasAdmin = hasAdminRoom();
       document.body.classList.toggle('admroom', hasAdmin);
       document.body.classList.toggle('notadmin', hasAdmin && !amAdmin);
+      adminFace = amAdmin;
       document.body.classList.toggle('amadmin', amAdmin);
       const ab = document.getElementById('admbtn');
       // The Admin button only exists INSIDE an admin room now — it's sign-in +
@@ -39686,7 +39715,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (first) subsRefused = { limit, free: !!(m && m.free), at: Date.now(), n: 0, t: 0, tick: meshNode ? meshNode.tickMs() : 0 };
       if (DEBUG_ON) { try { clog('subs turned away at a full door limit=' + limit + (first ? '' : ' again, knock ' + subsRefused.n)); } catch (e) {} }
       subsStandAside();
-      if (first) GifOS.meetSubs.showFull({ limit, free: subsRefused.free, onRight: subsKnockAgain });
+      if (first) { leftScreenUp = leftScreenFull = true; GifOS.meetSubs.showFull({ limit, free: subsRefused.free, onRight: subsKnockAgain }); }   // the full screen is the "left" screen, marked full
       subsReknockArm();
       try { updateStatus(); } catch (e) {}
     }
@@ -39733,6 +39762,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       subsReknockClear();
       subsRefused = null; subsTurnedAway = false; doorToldAt = 0;
       leaving = false; capClosed = false;   // seated: devices may be opened again, each one by a tap
+      if (leftScreenFull) leftScreenUp = leftScreenFull = false;   // hideFull takes down a full door's screen (only that one)
       try { GifOS.meetSubs.hideFull(); } catch (e) {}
       try { updateStatus(); } catch (e) {}
     }
@@ -39756,6 +39786,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!subsTurnedAway) subsStandAside();   // a knock without the right is under way: it ends, and the new knock shows the right from its first word
       subsRefused = null; subsTurnedAway = false; doorToldAt = 0;
       leaving = false; capClosed = false;   // a new knock may open devices again (each one asked by a tap)
+      if (leftScreenFull) leftScreenUp = leftScreenFull = false;   // hideFull takes down a full door's screen (only that one)
       try { GifOS.meetSubs.hideFull(); } catch (e) {}
       try { startMesh(); } catch (e) {}
       try { updateStatus(); } catch (e) {}
@@ -40125,7 +40156,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       afterFarewell(() => { for (const pid of Array.from(peers.keys())) { try { dropPeer(pid); } catch (e) {} } if (typeof clearRosterTiles === 'function') clearRosterTiles(); });
       try { releaseAudioContext(); } catch (e) {}
       try { if (typeof paintBroadcastChrome === 'function') paintBroadcastChrome(); } catch (e) {}   // the plain leave words, before the dialog shows (a door's refusal writes its own after)
-      const lm = document.getElementById('left-modal'); if (lm) lm.style.display = 'flex';
+      leftScreenUp = true; showLeftDialog();
       try { updateStatus(); } catch (e) {}
       return flushing;
     }
@@ -42061,9 +42092,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       } catch (e) { agenda = null; }
       let app = null;
       for (const p of people) { const st = p.me ? myStatus : statusOf.get(p.id); if (st && st.app && st.app.name) { app = { running: { id: p.id, name: String(st.app.name) }, room: null }; break; } }
-      const lm = document.getElementById('left-modal');
-      const left = bannedOut ? 'removed' : (lm && lm.style.display !== 'none') ? 'manual' : '';
-      const sc = document.getElementById('statuscount'), sr = document.getElementById('statusrest');
+      const left = bannedOut ? 'removed' : leftDialogUp() ? 'manual' : '';
       return {
         me: Object.assign({}, mine, { hand: !!myStatus.hand, camera: !myStatus.camOff, muted: !!myStatus.muted }),
         room: { id: room ? String(room) : '', kind: hasAdminRoom() ? 'admin' : 'open', locked: !!roomPw, aiNotes: aiNotesSetting() },
@@ -42071,7 +42100,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         people: people, stage: { ids: stageIds(), mode: hasAdminRoom() ? 'host' : 'open' }, agenda: agenda, app: app, video: agentVideoList(),
         host: { muted: typeof amGloballyMuted === 'function' && amGloballyMuted(), camOff: !!forcedCamOff('me'), removed: !!bannedOut },
         left: left, botView: !!botViewOn, forced: AGENT_FORCED,
-        status: ((sc && sc.textContent) || '') + ((sr && sr.textContent) ? ' ' + sr.textContent : ''),
+        status: (statusLine.count || '') + (statusLine.rest ? ' ' + statusLine.rest : ''),
       };
     }
     // The agent's voice: one track rides every main audio sender while it speaks (mainAudioTrack), as the
