@@ -665,7 +665,7 @@
       "appId": "beepbox",
       "name": "BeepBox",
       "shortName": "BeepBox",
-      "version": "4.2.2",
+      "version": "4.2.3",
       "tagline": "The chiptune song lives in the GIF. Invite, and you jam the same track.",
       "author": {
         "name": "John Nesky",
@@ -679,7 +679,7 @@
         "name": "BeepBox",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-30",
       "updated": "2026-08-30",
@@ -702,15 +702,15 @@
         255
       ],
       "cover": "/apps/beepbox/cover.jpg",
-      "bytes": 428158,
+      "bytes": 429530,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-22"
       },
-      "sha256": "d656825ad12f12b83f6ab7130e4c97ebf7fd9f01f517bfc6ca7ce6433bd971c8"
+      "sha256": "3ae914919ee26aeb8c924d6c002411bd301dcaec264b8392fc37fc03fd88a711"
     },
     {
       "slug": "besogo",
