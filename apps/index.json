@@ -1508,7 +1508,7 @@
       "appId": "civiclock",
       "name": "Civiclock",
       "shortName": "Civiclock",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "tagline": "Paint a little city and watch it grow month by month. Invite a co-mayor.",
       "author": {
         "name": "GifOS",
@@ -1518,7 +1518,7 @@
         "name": "SimCity",
         "by": "Maxis / Electronic Arts"
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -1539,15 +1539,15 @@
         72
       ],
       "cover": "/apps/civiclock/cover.jpg",
-      "bytes": 237155,
+      "bytes": 238252,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-22"
       },
-      "sha256": "b5145ccddd7505dd8bd74dcf56e4e9d1da49a82a70726bf0d046a21b499578ee"
+      "sha256": "5f578bab3c23046b68879ced94cae370cf2775783f3e76033b1c4d87ce863fe7"
     },
     {
       "slug": "coil",
