@@ -1,17 +1,23 @@
 /*
  * gifos-sub.js — the rules of GifOS subscriptions, one copy for every side.
  *
- * Plans (monthly, through PayPal):
- *   room20     $2   admin rooms of up to 20 people
- *   unlimited  $5   admin rooms with no people limit
- *   streamer   $10  unlimited admin rooms and a storage budget for
+ * Plans (through PayPal; the catalog, TIERS below, is the ONE table of names and prices):
+ *   room20     $2/mo  admin rooms of up to 20 people
+ *   unlimited  $5/mo  admin rooms with no people limit
+ *   streamer   $10/mo unlimited admin rooms and a storage budget for
  *                   recordings and transcripts. Sold and managed ONLY in
  *                   the Broadcast app (Nathan 2026-11-13); the Meet app
  *                   never sells it or shows its files, but honors it with
  *                   everything Unlimited gives (APP_TIERS below).
+ *   family / smallBusiness / business  $199 / $349 / $2,999 a year:
+ *                   Unlimited's meeting rights in up to 5 / 10 / 100
+ *                   meetings at once (Nathan 2026-11-22)
+ *   enterprise $199,000 a year, 10,000 meetings at once: by invoice, fulfilled
+ *                   as a minted one-year pass (PayPal cannot take one payment
+ *                   that large); more than 10,000: negotiated (NEGOTIATED).
  * Every license, meeting ticket and pass carries its LINE ITEMS (grants:
  * room line, past a full door, open-room capture, TURN video links, storage,
- * one meeting at a time), signed by the payment service, and its own end.
+ * how many meetings at once), signed by the payment service, and its own end.
  * Every check reads those line items, never the name of a plan or pass; a
  * product is only a preset of them (TIERS[..].grants, PASS_PRESETS);
  * without one, everyone has the DEFAULTS (free is no plan at all), read where it is sold. Passes have a window that may never
@@ -42,10 +48,10 @@
  * The line is a place in the room's seating order, not a count: the mesh
  * gives nobody without a ticket that place or one after it (js/mesh/wall.js).
  *
- * One meeting at a time: a subscription powers one meeting (open or admin
- * room) at a time. Joining a meeting gets a short meeting ticket from the
- * payment service, renewed every couple of minutes while that meeting is the
- * subscription's newest; joining another meeting moves it there.
+ * How many meetings at once (the `meetings` line item; 1 unless a plan says
+ * more): joining a meeting gets a short meeting ticket from the payment
+ * service, renewed every couple of minutes while that meeting is among the
+ * key's `meetings` newest; joining one more drops the oldest joined.
  *
  * How the room's plan is known: the admin puts their meeting ticket in the
  * room's signed admin orders, with a signature from their subscription key
@@ -85,23 +91,42 @@
   // The catalog (sales and display). Each row's `grants` is its PRESET: the line items the payment service signs into
   // a license, ticket or pass when it is sold (LINE ITEMS below). Nothing that decides reads a row: verifiers read the
   // signed line items only.
-  const g = (roomLimit, admitAtFullDoor, captureOpenRoom, turnVideoLinks, storage) => Object.freeze({ roomLimit, admitAtFullDoor, captureOpenRoom, turnVideoLinks, storage, oneMeeting: true });
+  const g = (roomLimit, admitAtFullDoor, captureOpenRoom, turnVideoLinks, storage, meetings) => Object.freeze({ roomLimit, admitAtFullDoor, captureOpenRoom, turnVideoLinks, storage, meetings: meetings || 1 });
+  // THE CATALOG: the ONE table of plan names, prices and periods (the coordinator changes a price here; a PayPal-sold
+  // row's PayPal plan must be made at PayPal for the same price). Row fields beside the preset:
+  //   price / priceYear  the display prices per month / per year (null: not sold for that period)
+  //   periods            the billing periods sold, first one required in GIFOS_SUBSCRIPTIONS (pay/src/subs.js)
+  //   sale               'paypal': a PayPal subscription; 'invoice': sold by invoice and fulfilled as a minted pass
+  //   window             listed in the Subscribe window (Settings); every row is listed on /subscription
+  //   meetings           how many meetings at once (display; the preset's `meetings` line item decides)
   const TIERS = {
-    room20: { id: 'room20', name: 'Private meetings, up to 20 people', price: '$2', priceYear: '$20', adminRooms: true, roomLimit: PEOPLE_LIMIT, turnVideo: true, storage: false, vouches: 3, paid: true, grants: g(PEOPLE_LIMIT, true, false, 3, false) },
-    unlimited: { id: 'unlimited', name: 'Private meetings, unlimited people', price: '$5', priceYear: '$50', adminRooms: true, roomLimit: null, turnVideo: true, storage: false, vouches: 6, paid: true, grants: g(null, true, true, 6, false) },
-    streamer: { id: 'streamer', name: 'Streamer: unlimited private meetings and storage', price: '$10', priceYear: '$100', adminRooms: true, roomLimit: null, turnVideo: true, storage: true, vouches: 20, paid: true, grants: g(null, true, true, 20, true) },
+    room20: { id: 'room20', name: 'Private meetings, up to 20 people', price: '$2', priceYear: '$20', periods: ['monthly', 'yearly'], sale: 'paypal', window: true, meetings: 1, adminRooms: true, roomLimit: PEOPLE_LIMIT, turnVideo: true, storage: false, vouches: 3, paid: true, grants: g(PEOPLE_LIMIT, true, false, 3, false, 1) },
+    unlimited: { id: 'unlimited', name: 'Private meetings, unlimited people', price: '$5', priceYear: '$50', periods: ['monthly', 'yearly'], sale: 'paypal', window: true, meetings: 1, adminRooms: true, roomLimit: null, turnVideo: true, storage: false, vouches: 6, paid: true, grants: g(null, true, true, 6, false, 1) },
+    streamer: { id: 'streamer', name: 'Streamer: unlimited private meetings and storage', price: '$10', priceYear: '$100', periods: ['monthly', 'yearly'], sale: 'paypal', window: true, meetings: 1, adminRooms: true, roomLimit: null, turnVideo: true, storage: true, vouches: 20, paid: true, grants: g(null, true, true, 20, true, 1) },
+    // The meeting-count plans (Nathan 2026-11-22): Unlimited's meeting rights ("unlimited hosting") in N meetings at
+    // once, annual only. Vouches stay Unlimited's 6: the vouch is per meeting, so N meetings already vouch N times over.
+    family: { id: 'family', name: 'Family business: up to 5 meetings at once', price: null, priceYear: '$199', periods: ['yearly'], sale: 'paypal', window: true, meetings: 5, adminRooms: true, roomLimit: null, turnVideo: true, storage: false, vouches: 6, paid: true, grants: g(null, true, true, 6, false, 5) },
+    smallBusiness: { id: 'smallBusiness', name: 'Small business: up to 10 meetings at once', price: null, priceYear: '$349', periods: ['yearly'], sale: 'paypal', window: false, meetings: 10, adminRooms: true, roomLimit: null, turnVideo: true, storage: false, vouches: 6, paid: true, grants: g(null, true, true, 6, false, 10) },
+    business: { id: 'business', name: 'Business: up to 100 meetings at once', price: null, priceYear: '$2,999', periods: ['yearly'], sale: 'paypal', window: false, meetings: 100, adminRooms: true, roomLimit: null, turnVideo: true, storage: false, vouches: 6, paid: true, grants: g(null, true, true, 6, false, 100) },
+    // Above PayPal's one-payment ceiling ($60,000, or $10,000 for some accounts): sold by invoice, fulfilled as a
+    // one-year pass of this preset (PASS_PRESETS.enterprise, pay/mint-pass.mjs --preset enterprise).
+    enterprise: { id: 'enterprise', name: 'Enterprise: up to 10,000 meetings at once', price: null, priceYear: '$199,000', periods: ['yearly'], sale: 'invoice', window: false, meetings: 10000, adminRooms: true, roomLimit: null, turnVideo: true, storage: false, vouches: 6, paid: true, grants: g(null, true, true, 6, false, 10000) },
   };
-  const TIER_IDS = Object.keys(TIERS);              // the plans sold through PayPal
-  // Which app sells which plan (Nathan 2026-11-13): Meet sells Room 20 and
-  // Unlimited only; the Broadcast app (the /cast skin of the meeting page)
-  // sells every plan, Streamer and its storage included. Every plan is
-  // HONORED everywhere: this is only what each app offers.
-  const APP_TIERS = Object.freeze({ meet: Object.freeze(TIER_IDS.filter((t) => !TIERS[t].storage)), broadcast: Object.freeze(TIER_IDS.slice()) });
+  const TIER_IDS = Object.keys(TIERS);              // every plan in the catalog (a license or ticket may name any)
+  const PAYPAL_TIERS = TIER_IDS.filter((t) => TIERS[t].sale === 'paypal');   // the plans sold through PayPal subscriptions
+  // More than the largest plan: no row, no preset; a contract, fulfilled as a pass with hand-picked line items.
+  const NEGOTIATED = Object.freeze({ id: 'negotiated', name: 'Negotiated: more than 10,000 meetings at once', meetingsOver: 10000, contact: 'support@gifos.app' });
+  // Which app sells which plan (Nathan 2026-11-13): Meet sells every PayPal plan but Streamer; the Broadcast app (the
+  // /cast skin of the meeting page) sells every PayPal plan, Streamer and its storage included. Every plan is HONORED
+  // everywhere: this is only what each app offers. tiersListed: the part of it the Subscribe window lists (the rest is
+  // on /subscription).
+  const APP_TIERS = Object.freeze({ meet: Object.freeze(PAYPAL_TIERS.filter((t) => !TIERS[t].storage)), broadcast: Object.freeze(PAYPAL_TIERS.slice()) });
   const tiersSoldIn = (app) => APP_TIERS[app === 'broadcast' ? 'broadcast' : 'meet'];
+  const tiersListed = (app) => tiersSoldIn(app).filter((t) => TIERS[t].window);
   // FREE is no plan at all (Nathan 2026-11-20: "free plan should be whatever the defaults are in the ABSENCE of a signed
   // ticket"): the DEFAULTS below, with no license, no record and nothing to cancel. This row only names it in the plan
   // list (display).
-  const FREE_PLAN = Object.freeze({ id: 'free', name: 'Free: private meetings, up to 5 people', price: '$0', priceYear: '$0', adminRooms: true, roomLimit: FREE_LIMIT, turnVideo: false, storage: false, vouches: 0, paid: false });
+  const FREE_PLAN = Object.freeze({ id: 'free', name: 'Free: private meetings, up to 5 people', price: '$0', priceYear: '$0', meetings: 1, adminRooms: true, roomLimit: FREE_LIMIT, turnVideo: false, storage: false, vouches: 0, paid: false });
   const PLANS = TIERS;   // every product a license or ticket may name (display/sales label)
   const PLAN_IDS = Object.keys(PLANS);
   const isPlan = (t) => typeof t === 'string' && Object.prototype.hasOwnProperty.call(PLANS, t);
@@ -120,8 +145,9 @@
   //   captureOpenRoom  may take an open room as its admin
   //   turnVideoLinks   TURN video links one holder vouches for per slot (0: voice only across TURN)
   //   storage          a storage budget (its size rides the license: storage settings)
-  //   oneMeeting       one meeting at a time (the payment service keeps only the newest meeting)
-  // Every word must be present: an unknown word, a missing one or a bad value makes the set unreadable (refused), so a
+  //   meetings         how many meetings at once: 1..MEETINGS_MAX (the payment service keeps the key's N newest meetings)
+  // Every word but `meetings` must be present; `meetings` missing reads as 1 (Nathan 2026-11-22). An unknown word (the
+  // retired `oneMeeting` among them), a missing required one or a bad value makes the set unreadable (refused), so a
   // checker never guesses.
   //
   // THE DEFAULTS (Nathan 2026-11-20): what everyone has WITHOUT a valid signed right, and what every verifier (door,
@@ -130,31 +156,38 @@
   // nothing past a line. A signed right can only ADD to them or RAISE them (effective): a smaller signed line never
   // lowers the default one. Nothing a client writes changes them.
   const ROOM_LIMIT_MAX = 25;   // a signed room line is 1..25 people, or null: no line (Nathan 2026-11-20)
-  const GRANT_WORDS = Object.freeze(['roomLimit', 'admitAtFullDoor', 'captureOpenRoom', 'turnVideoLinks', 'storage', 'oneMeeting']);
-  const DEFAULTS = g(FREE_LIMIT, false, false, 0, false);
+  const MEETINGS_MAX = 1000000;   // a signed meeting count is 1..1,000,000
+  const GRANT_WORDS = Object.freeze(['roomLimit', 'admitAtFullDoor', 'captureOpenRoom', 'turnVideoLinks', 'storage', 'meetings']);
+  const OPTIONAL_WORDS = Object.freeze({ meetings: 1 });   // word -> what it reads as when the set does not name it
+  const DEFAULTS = g(FREE_LIMIT, false, false, 0, false, 1);
   // effective(grants) -> the defaults raised by a signed right's line items (null roomLimit: no line).
   function effective(x) {
     if (!x) return DEFAULTS;
     return { roomLimit: x.roomLimit === null ? null : Math.max(x.roomLimit, DEFAULTS.roomLimit), admitAtFullDoor: !!x.admitAtFullDoor, captureOpenRoom: !!x.captureOpenRoom,
-      turnVideoLinks: Math.max(x.turnVideoLinks | 0, DEFAULTS.turnVideoLinks), storage: !!x.storage, oneMeeting: x.oneMeeting !== false };
+      turnVideoLinks: Math.max(x.turnVideoLinks | 0, DEFAULTS.turnVideoLinks), storage: !!x.storage, meetings: Math.max(x.meetings | 0, DEFAULTS.meetings) };
   }
+  const meetingsOk = (v) => intS(v) && v >= 1 && v <= MEETINGS_MAX;
+  // grantsOk(x) -> a clean copy with every word (a missing optional word filled with what it reads as), or null.
   function grantsOk(x) {
     if (!x || typeof x !== 'object' || Array.isArray(x)) return null;
     const keys = Object.keys(x);
-    if (keys.length !== GRANT_WORDS.length || keys.some((k) => GRANT_WORDS.indexOf(k) < 0)) return null;
+    if (keys.some((k) => GRANT_WORDS.indexOf(k) < 0)) return null;
+    if (GRANT_WORDS.some((k) => !(k in x) && !(k in OPTIONAL_WORDS))) return null;
     if (!(x.roomLimit === null || (intS(x.roomLimit) && x.roomLimit >= 1 && x.roomLimit <= ROOM_LIMIT_MAX))) return null;
     if (!(intS(x.turnVideoLinks) && x.turnVideoLinks >= 0 && x.turnVideoLinks <= 1000)) return null;
-    for (const k of ['admitAtFullDoor', 'captureOpenRoom', 'storage', 'oneMeeting']) if (typeof x[k] !== 'boolean') return null;
-    return { roomLimit: x.roomLimit, admitAtFullDoor: x.admitAtFullDoor, captureOpenRoom: x.captureOpenRoom, turnVideoLinks: x.turnVideoLinks, storage: x.storage, oneMeeting: x.oneMeeting };
+    for (const k of ['admitAtFullDoor', 'captureOpenRoom', 'storage']) if (typeof x[k] !== 'boolean') return null;
+    const meetings = 'meetings' in x ? x.meetings : OPTIONAL_WORDS.meetings;
+    if (!meetingsOk(meetings)) return null;
+    return { roomLimit: x.roomLimit, admitAtFullDoor: x.admitAtFullDoor, captureOpenRoom: x.captureOpenRoom, turnVideoLinks: x.turnVideoLinks, storage: x.storage, meetings };
   }
   // parseGrantList("roomLimit=12,captureOpenRoom,turnVideoLinks=6") -> { grants } | { error }: the text form of a hand-picked
   // set of line items (pay/mint-pass.mjs --grants). A name alone is true; name=true|false for the flags; roomLimit=1..25 or
-  // none (no line); turnVideoLinks=whole number. Strict: an unknown name, a repeated one or a bad value is an error. A word not
+  // none (no line); turnVideoLinks=whole number; meetings=1..MEETINGS_MAX. Strict: an unknown name, a repeated one or a bad value is an error. A word not
   // named takes the no-grant value (nothing added: line 5, no flags, 0 links, one meeting): defaults fill nothing. The
   // result must also pass grantsOk, the one validator every verifier runs.
   function parseGrantList(text) {
     if (typeof text !== 'string' || !text.trim()) return { error: 'empty grant list' };
-    const g = { roomLimit: FREE_LIMIT, admitAtFullDoor: false, captureOpenRoom: false, turnVideoLinks: 0, storage: false, oneMeeting: true };
+    const g = { roomLimit: FREE_LIMIT, admitAtFullDoor: false, captureOpenRoom: false, turnVideoLinks: 0, storage: false, meetings: 1 };
     const seen = {};
     for (const raw of text.split(',')) {
       const m = /^([A-Za-z]+)(?:=([A-Za-z0-9]+))?$/.exec(raw.trim());
@@ -170,6 +203,9 @@
       } else if (k === 'turnVideoLinks') {
         if (v !== undefined && /^[0-9]{1,4}$/.test(v) && +v <= 1000) g.turnVideoLinks = +v;
         else return { error: 'turnVideoLinks needs a whole number 0-1000' };
+      } else if (k === 'meetings') {
+        if (v !== undefined && /^[0-9]{1,7}$/.test(v) && meetingsOk(+v)) g.meetings = +v;
+        else return { error: 'meetings needs a whole number 1-' + MEETINGS_MAX };
       } else if (v === undefined || v === 'true') g[k] = true;
       else if (v === 'false') g[k] = false;
       else return { error: k + ' is a flag: use ' + k + ', ' + k + '=true or ' + k + '=false' };
@@ -185,7 +221,7 @@
   function grantsRights(signed, label, until) {
     const x = effective(signed);
     return { tier: label || null, subscribed: x.admitAtFullDoor, adminRooms: true, openRooms: true, roomLimit: x.roomLimit, turnAudio: true, turnVideo: x.turnVideoLinks > 0,
-      storage: null, bypassLimit: x.admitAtFullDoor, until, vouches: x.turnVideoLinks, capture: x.captureOpenRoom, oneMeeting: x.oneMeeting, grants: signed || null };
+      storage: null, bypassLimit: x.admitAtFullDoor, until, vouches: x.turnVideoLinks, capture: x.captureOpenRoom, meetings: x.meetings, grants: signed || null };
   }
   // What everyone has with no signed right: the defaults, in the rights shape.
   const FREE = Object.freeze(grantsRights(null, null, 0));
@@ -321,14 +357,14 @@
   const doorContext = (room) => 'door:' + String(room);
   // The admin's room order: {lic:{licenseJson,sig}, proof, at}. proof signs
   // proofMessage(roomContext(room), 'at:' + at) with the license's key.
-  // ---- one meeting at a time: the meeting ticket -----------------------------
-  // A subscription powers ONE meeting at a time, admin room or open room.
-  // Joining a meeting asks the payment service for a ticket naming that
-  // meeting (meetingTag: the service never learns the room's name). The
-  // service keeps only the subscription's newest meeting: a ticket lasts
-  // TICKET_S and is renewed every RENEW_EVERY_S, and a renewal for any older
-  // meeting is refused, so an old meeting loses the subscription within
-  // TICKET_S. Payment is checked when the meeting is JOINED, never on a
+  // ---- meetings at once: the meeting ticket ----------------------------------
+  // A subscription powers `meetings` meetings at once (its line item; 1 unless
+  // the plan says more), admin rooms or open rooms. Joining a meeting asks the
+  // payment service for a ticket naming that meeting (meetingTag: the service
+  // never learns the room's name). The service keeps the key's `meetings`
+  // newest meetings: a ticket lasts TICKET_S and is renewed every
+  // RENEW_EVERY_S, and a renewal for a meeting dropped from that list is
+  // refused, so a dropped meeting loses the subscription within TICKET_S. Payment is checked when the meeting is JOINED, never on a
   // renewal: a meeting that started paid runs to its end.
   const TICKET_KIND = 'gifos-sub-ticket';
   const TICKET_S = 300;
@@ -399,15 +435,15 @@
   // (PASS_PRESETS). A new product is a new row there and a price: no check
   // anywhere changes.
   //
-  // ONE MEETING AT A TIME, when grants.oneMeeting (Nathan 2026-11-12:
+  // ONE MEETING AT A TIME, or grants.meetings at once (Nathan 2026-11-12:
   // "otherwise we've just created a very costly attack path"). The pass's
   // key and its passes ride in the provider GIF, so a copy of that file is the
   // whole credential. The pass itself is therefore never a meeting right:
   // joining a meeting shows the held passes to the payment service, which
-  // keeps the pass key's newest meeting (one record per pass key, passRecId)
+  // keeps the pass key's `meetings` newest meetings (one record per pass key, passRecId)
   // and signs a PASS MEETING TICKET for it (passTicket below), renewed like a
-  // subscription's; joining another meeting moves it there and the older
-  // meeting's ticket stops renewing, so that meeting loses the pass within
+  // subscription's; joining a meeting past the count drops the oldest, whose
+  // ticket stops renewing, so that meeting loses the pass within
   // TICKET_S. Rooms, the door and the TURN Worker read only that ticket, and
   // the line items it carries. Passes of one key and the same line items
   // stack into one window (passChain).
@@ -429,12 +465,15 @@
   // THE PRESETS: every pass we sell or mint. seconds: its length (a function
   // of the timings table), or null: it never ends. sold: offered to buyers.
   const PASS_PRESETS = Object.freeze({
-    // $1, one PayPal order (or a store purchase): Unlimited's meeting rights for four hours, one meeting at a time,
+    // $1, one PayPal order (or a store purchase): Unlimited's meeting rights for four hours, one meeting at a time (meetings 1),
     // past any full door, but never capturing an open room (that stays with the $5 and $10 subscriptions).
     pass4h: Object.freeze({ plan: 'unlimited', grants: Object.freeze(Object.assign({}, TIERS.unlimited.grants, { captureOpenRoom: false })), seconds: passSeconds, price: '$1', value: '1.00', sold: true }),
     // Ours, minted with the pay key for our own bots, never sold: Unlimited, captures an open room, never ends; one
     // meeting at a time (several sessions of one pass in the SAME meeting all renew: sibling bots may share one pass).
     staff: Object.freeze({ plan: 'unlimited', grants: TIERS.unlimited.grants, seconds: () => null, sold: false }),
+    // An Enterprise year, minted with the pay key once its invoice is paid (never sold online): the Enterprise row's
+    // line items for 366 days; the next year is a new pass that stacks on it (passStart).
+    enterprise: Object.freeze({ plan: 'enterprise', grants: TIERS.enterprise.grants, seconds: () => 366 * 86400, sold: false }),
   });
   // presetPass(name, start) -> {plan, grants, end} for a new pass of that preset.
   function presetPass(name, start) {
@@ -510,7 +549,7 @@
   }
   // ---- the pass's meeting ticket ------------------------------------------------
   // passRecId(buyerKey) -> 'K-' + 24 hex: the payment service's one record
-  // for a pass key (its newest meeting). Every pass of that key, stacked or
+  // for a pass key (its newest meetings). Every pass of that key, stacked or
   // copied, shares it.
   const PASS_TICKET_KIND = 'gifos-pass-ticket';
   const PASS_TICKET_TAG = 'gifos-pass-ticket';
@@ -611,12 +650,13 @@
   }
   // bestRights(list) -> the best of several rights held at once (a
   // subscription's, a pass's): the larger room wins, then the larger vouch
-  // count, then capture. A $2 subscriber holding a pass reads Unlimited
-  // for the pass's window, then Room 20 again.
+  // count, then capture, then more meetings at once. A $2 subscriber holding
+  // a pass reads Unlimited for the pass's window, then Room 20 again.
+  // rank(r) -> a number that orders rights that way (room 0..1e6, vouches 0..1000, meetings 0..1e6 all fit in 2^53).
   function rank(r) {
     if (!r || !r.tier) return 0;
-    const room = r.roomLimit == null ? 1e6 : r.roomLimit;
-    return room * 1000 + (r.vouches || 0) * 2 + (r.capture ? 1 : 0);
+    const room = r.roomLimit == null ? 1000 : r.roomLimit;   // no line beats any line (ROOM_LIMIT_MAX 25)
+    return ((room * 1001 + (r.vouches || 0)) * 2 + (r.capture ? 1 : 0)) * (MEETINGS_MAX + 1) + Math.min(r.meetings || 1, MEETINGS_MAX);
   }
   function bestRights(list) {
     let best = null;
@@ -645,8 +685,8 @@
   // The subscription lives in a file the person keeps and can move: a GifOS
   // GIF whose manifest says it provides the meeting subscription, holding the
   // subscription id, its plan and the 32-byte seed of the subscriber's key.
-  // Anyone holding the file holds the subscription; the one-meeting-at-a-time
-  // rule is what stops a copy from being shared (each join moves it).
+  // Anyone holding the file holds the subscription; the meeting count is what
+  // stops a copy from being shared (each join past it drops the oldest meeting).
   const CRED_KIND = 'gifos-sub-credential';
   const SEED_RE = /^[A-Za-z0-9+/]{43}=$/;
   function credentialOk(c) {
@@ -687,7 +727,7 @@
       'index.html': '<!doctype html><meta charset="utf-8"><title>GifOS subscription</title>' +
         '<body style="font:15px/1.5 system-ui;padding:1.2rem"><h2>GifOS subscription</h2><p>' + (t ? t.name + '.' : '') + (w ? ' Four-hour passes: ' + w.passes.length + '.' : '') + '</p>' +
         '<p>Keep this file in the Providers folder on your Home Screen, or open it in a meeting\u2019s Settings on another browser. ' +
-        'A subscription works in one meeting at a time: joining a meeting moves it there.</p><p>Anyone with this file can use your subscription and passes. Keep it private.</p>',
+        'A subscription works in as many meetings at once as its plan says (one, unless it says more): joining one more moves it from the oldest.</p><p>Anyone with this file can use your subscription and passes. Keep it private.</p>',
     };
     if (ok) files['subscription.json'] = JSON.stringify(ok);
     if (w) files['passes.json'] = JSON.stringify(w);
@@ -821,14 +861,14 @@
   }
 
   GifOS.sub = {
-    TIERS, TIER_IDS, APP_TIERS, tiersSoldIn, FREE, TEXT, PEOPLE_LIMIT, LICENSE_KIND, SELLER, KEY_RE, SUB_ID_RE, ASK_WINDOW_S,
+    TIERS, TIER_IDS, PAYPAL_TIERS, NEGOTIATED, APP_TIERS, tiersSoldIn, tiersListed, FREE, TEXT, PEOPLE_LIMIT, LICENSE_KIND, SELLER, KEY_RE, SUB_ID_RE, ASK_WINDOW_S,
     FREE_PLAN, FREE_LIMIT, PLANS, PLAN_IDS, isPlan, isPaid,
     checkLicense, verifyLicense, rightsOf, storageAfterLapse, proofMessage, verifyProof, askMessage, askFresh,
     admission, roomContext, doorContext, roomTierOf, doorVerdict, doorProofOk,
     TICKET_KIND, TICKET_S, RENEW_EVERY_S, meetingTag, checkTicket, verifyTicket, ticketRights,
     PASS_KIND, passSeconds, PASS_PLAN, PASS_PRICE, PASS_VALUE, ORDER_ID_RE, PASS_ID_RE, passMessage, checkPass, passLive, passEnd, verifyPass,
-    passStart, passRights, meetingRight, bestRights,
-    ROOM_LIMIT_MAX, GRANT_WORDS, DEFAULTS, effective, grantsOk, parseGrantList, grantsRights, ownTicketGrants, fullFreeWords, PASS_PRESETS, presetPass, revokedSet, rightRevoked, captureRight,
+    passStart, passRights, meetingRight, bestRights, rank,
+    ROOM_LIMIT_MAX, MEETINGS_MAX, GRANT_WORDS, OPTIONAL_WORDS, DEFAULTS, effective, grantsOk, parseGrantList, grantsRights, ownTicketGrants, fullFreeWords, PASS_PRESETS, presetPass, revokedSet, rightRevoked, captureRight,
     PASS_TICKET_KIND, PASS_REC_RE, passRecId, passTicketMessage, passChain, checkPassTicket, verifyPassTicket, isPassTicket,
     WALLET_KIND, walletOk,
     CRED_KIND, credentialOk, credentialFiles, credentialFromFiles, walletFromFiles,

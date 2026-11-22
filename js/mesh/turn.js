@@ -33,8 +33,8 @@
   }
   // C++: mesh_turn.inc:turnVouchOrder   (does x come before y: on the stage first, then the lower seat, then the older connection)
   function turnVouchOrder(stageX, cellX, serialX, stageY, cellY, serialY) { if (stageX !== stageY) return stageX; if (cellX !== cellY) return cellX < cellY; return serialX < serialY; }
-  // C++: mesh_turn.inc:turnTierLinks   (0: no such tier)
-  function turnTierLinks(tier) { return tier === 'room20' ? K.TURN_VOUCH_ROOM20 : tier === 'unlimited' ? K.TURN_VOUCH_UNLIMITED : tier === 'streamer' ? K.TURN_VOUCH_STREAMER : 0; }
+  // C++: mesh_turn.inc:turnTierLinks   (0: no such tier; the meeting-count plans vouch as Unlimited in each meeting)
+  function turnTierLinks(tier) { return tier === 'room20' ? K.TURN_VOUCH_ROOM20 : (tier === 'unlimited' || tier === 'family' || tier === 'smallBusiness' || tier === 'business' || tier === 'enterprise') ? K.TURN_VOUCH_UNLIMITED : tier === 'streamer' ? K.TURN_VOUCH_STREAMER : 0; }
 
   const api = Object.freeze({ turnClients, turnSessionBytes, turnVideoBytes, turnVouchOrder, turnTierLinks });
   if (isNode) module.exports = api; else GifOS.meshTurn = api;
