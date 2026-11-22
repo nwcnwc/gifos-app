@@ -39,7 +39,9 @@
  *   GifOS.meshMedia.workerClock  the core's background-proof interval lives in the media library (js/mesh-media.js),
  *                   which a host without the browser media part does not load. The shim is that library's own path
  *                   when there is no Worker: a plain interval, with the same { via, stop() } handle.
- *   GifOS.host      the host's facts (run.html sets it from its document): hidden() is false here.
+ *   GifOS.host      the host's facts (run.html sets them from its document): never a hidden tab, framed by no page,
+ *                   always able to hold a meeting, no page scripts to reload (this host loads files.json itself), and no
+ *                   screen (a viewport of 0 x 0: nothing is in view).
  *   GifOS.runtime   the app runtime (js/runtime.js) is a page library. At start the core reads its page-header table
  *                   only to hand the choice to the view; the shim is an empty table, so the (absent) view gets none.
  *   WEBKIT_ENGINE   the page sets it in a head script from navigator.vendor; a Node host is not WebKit: false.
@@ -257,7 +259,14 @@ function createMeeting(opts) {
   if (!GifOS.runtime) GifOS.runtime = { SYSTEM_HEADER: {} };
   // GifOS.host: the host's facts the meeting asks about. A host with no screen is never a hidden tab (the core's
   // background-tab paths are for a browser that hides the page).
-  if (!GifOS.host) GifOS.host = { hidden: () => false };
+  if (!GifOS.host) GifOS.host = {
+    hidden: () => false,
+    parentOrigin: () => '',
+    whenSupported: (f) => f(),
+    scriptOrder: () => [],
+    loadScript: () => Promise.resolve(false),
+    viewport: () => ({ w: 0, h: 0 }),
+  };
   // THE HEADLESS VIEW: a view part of this host's own, in place of the page's. Every name the core asks of the view
   // is the linker's counted stand-in (a function does nothing and returns undefined), except the view functions
   // whose result the core takes apart, which return a record of counted placeholders (VIEW_RECORDS).

@@ -1697,8 +1697,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   // executed, and before DOMContentLoaded.
   window.__startMeet = function () {
   // THE HOST'S FACTS the meeting asks about (GifOS.host): whether the page is hidden from its person (a background
-  // tab). A browser page answers from its document; a host with no screen brings its own answers.
-  if (!GifOS.host) GifOS.host = { hidden: () => document.hidden };
+  // tab); the origin of the page that frames this one (a meeting session in about:srcdoc has none of its own); whether
+  // this browser can hold a meeting at all (the preflight gate runs `f` only then); the page's own scripts in page order
+  // and loading one again (the load gate); the size of the screen it draws on. A browser page answers from its
+  // document; a host with no screen brings its own answers.
+  if (!GifOS.host) GifOS.host = {
+    hidden: () => document.hidden,
+    parentOrigin: () => {
+      try { if (window.parent && window.parent !== window && window.parent.location && window.parent.location.origin) return window.parent.location.origin; } catch (e) {}
+      return '';
+    },
+    whenSupported: (f) => {
+      const P = window.GifOSPreflight;
+      if (P && typeof P.whenSupported === 'function') P.whenSupported(f); else f();
+    },
+    scriptOrder: () => Array.from(document.querySelectorAll('script[src]')).map((el) => { try { return new URL(el.src, location.href).pathname.replace(/^\//, ''); } catch (e) { return ''; } }),
+    loadScript: (src) => new Promise((res) => { const el = document.createElement('script'); el.async = false; el.src = src; el.onload = () => res(true); /* a failure is its error event; a size of 0 is a Safari 304, not a missing body (see #gifos-load-gate) */ el.onerror = () => { el.remove(); res(false); }; document.head.appendChild(el); }),
+    viewport: () => ({ w: window.innerWidth, h: window.innerHeight }),
+  };
   (function () {
     // The meeting's words come from the meet catalog (i18n/<locale>/meet.json),
     // keyed by the name each call site and data-t/-ph/-al/-ti attribute carries.
@@ -1714,6 +1730,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // the chat panel is open (#chatpanel.open); the full-screen view is open (#fsview.on). The page sets the last two
     // where it opens and closes them.
     let leftScreenUp = false, leftScreenFull = false, adminFace = false, appRoomOn = false, chatOpen = false, fsOpen = false;
+    // A solo app is open on this page (body.solo-app: set when it boots, cleared when Invite turns it into an app room);
+    // an app's pane is up (body.has-app), with the name it shows; the call layer of an app room is on (body.call-on).
+    let soloAppOn = false, appPaneOn = false, appPaneName = '', callOn = false;
     function uiText(key, en) {
       if (L10N && L10N.ui() !== 'en' && L10N.has('meet.' + key)) return L10N.t('meet.' + key);
       return en || '';
@@ -1821,8 +1840,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // document is same-origin with the page that framed it.
     const pageOrigin = () => {
       if (location.origin && location.origin !== 'null') return location.origin;
-      try { if (window.parent && window.parent !== window && window.parent.location && window.parent.location.origin) return window.parent.location.origin; } catch (e) {}
-      return '';
+      return GifOS.host.parentOrigin();
     };
     // ---- ONE RUNTIME: the entry mints the room's TRAITS (docs/one-runtime.md).
     // The link is the promise — which component is pinned is decided HERE, at
@@ -14245,10 +14263,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         sendTvDoor: (pid, f) => relaySendSealed(pid, 'tv', f),
         plainFriend: (pid) => turnFriend(pid),   // TURN.5.3: a friend carries pid off TURN at both hops   // TURN.5.3: the question of a cut and its answer go by the door, never into a channel a silent firewall may have killed
         askVouch: (dev, l) => relaySendObj({ t: 'tvouch', to: dev, l }),
-        ask: GifOS.meetTurn.askIce(window.fetch.bind(window)),
+        ask: GifOS.meetTurn.askIce(window.fetch),   // called plainly: a page's fetch needs no receiver
         // THE SUBROOM ASK (js/meet-turn.js): who asks, the relay's signed list of the meeting's doors, my door, the plan's
         // limit for a NEW pipe, and the seat of my room that ends a pipe's warm standby on my side.
-        askSub: GifOS.meetTurn.askSub(window.fetch.bind(window)),
+        askSub: GifOS.meetTurn.askSub(window.fetch),
         asker: () => {
           if (!meshNode) return null;
           if (meshNode.sub === 0 && Date.now() - turnSubWantAt < K.TURN_WAIT * meshNode.tickMs()) return 'joiner';   // my seat asked (opts.sub.ask) lately: it asks again each silent round
@@ -16876,24 +16894,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (w) return { step: w.stepOnly + (w.secs ? ' \u00b7 ' + w.secs : ''), title: w.what + '\u2026', body: why, spin: true };
       return { step: Math.max(1, Math.ceil(waited / 1000)) + ' s', title: uiText('pgDoor', 'Finding your meeting') + '\u2026', body: why, spin: true };
     }
-    let joinVeilEl = null, unseatedSince = 0, veilCeilLogged = false;
-    setInterval(() => {
-      if (!room || typeof meshSeat !== 'function') return;
-      const s = meshSeat();
-      const seated = !!(s && s.state === 3 && s.hasCoord);
-      const now = Date.now();
-      let w = null;
-      try { if (typeof progressBeat === 'function') w = progressBeat(seated, now); } catch (e) {}
-      if (seated || leftDialogUp()) { unseatedSince = 0; veilCeilLogged = false; if (joinVeilEl) { joinVeilEl.remove(); joinVeilEl = null; } return; }   // a page that left (or was turned away) is not connecting
-      if (!unseatedSince) { unseatedSince = now; return; }
-      if (now - unseatedSince < 4000) return; // fast joins never see it
+    let unseatedSince = 0, veilCeilLogged = false, joinVeilUp = false;
+    // The joining veil, drawn from the meeting's model: null takes it down; else { w, vw, refusal } (the progress beat,
+    // its words, the relay's refusal).
+    let joinVeilEl = null;
+    function paintJoinVeil(m) {
+      if (!m) { if (joinVeilEl) { joinVeilEl.remove(); joinVeilEl = null; } return; }
       if (!joinVeilEl) {
         joinVeilEl = document.createElement('div');
         joinVeilEl.id = 'joinveil';
         joinVeilEl.innerHTML = '<div class="jv-box" role="status" aria-live="polite"><div class="jv-spin"></div><p class="pg-step" id="jv-s"></p><h3 id="jv-t"></h3><p id="jv-p"></p></div>';
         document.body.appendChild(joinVeilEl);
       }
-      const waited = now - unseatedSince;
+      const w = m.w, vw = m.vw, refusal = m.refusal;
       const veilSay = (step, title, body) => {
         const hs = joinVeilEl.querySelector('#jv-s');
         const ht = joinVeilEl.querySelector('#jv-t');
@@ -16905,13 +16918,27 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (w) {
         joinVeilEl.dataset.flow = w.flow; joinVeilEl.dataset.step = w.step; joinVeilEl.dataset.x = String(w.x); joinVeilEl.dataset.y = String(w.y);
       }
-      if (waited > 8000 && !veilCeilLogged) { veilCeilLogged = true; try { console.debug('seat ceiling 210s'); } catch (e) {} }
-      const refusal = relaySaidNo();
-      const vw = joinVeilWords({ w, waited, now, busyAt: relayBusyAt, busyShowMs: GifOS.timings.RELAY_BUSY_SHOW_MS, unreachAt: doorUnreachAt, relayUp: relayUp(), refusal });
       joinVeilEl.dataset.refused = refusal ? String(refusal.code) : '';
       const spin = joinVeilEl.querySelector('.jv-spin');
       if (spin && spin.hidden !== !vw.spin) spin.hidden = !vw.spin;
       veilSay(vw.step, vw.title, vw.body);
+    }
+    setInterval(() => {
+      if (!room || typeof meshSeat !== 'function') return;
+      const s = meshSeat();
+      const seated = !!(s && s.state === 3 && s.hasCoord);
+      const now = Date.now();
+      let w = null;
+      try { if (typeof progressBeat === 'function') w = progressBeat(seated, now); } catch (e) {}
+      if (seated || leftDialogUp()) { unseatedSince = 0; veilCeilLogged = false; if (joinVeilUp) { joinVeilUp = false; paintJoinVeil(null); } return; }   // a page that left (or was turned away) is not connecting
+      if (!unseatedSince) { unseatedSince = now; return; }
+      if (now - unseatedSince < 4000) return; // fast joins never see it
+      joinVeilUp = true;
+      const waited = now - unseatedSince;
+      if (waited > 8000 && !veilCeilLogged) { veilCeilLogged = true; try { console.debug('seat ceiling 210s'); } catch (e) {} }
+      const refusal = relaySaidNo();
+      const vw = joinVeilWords({ w, waited, now, busyAt: relayBusyAt, busyShowMs: GifOS.timings.RELAY_BUSY_SHOW_MS, unreachAt: doorUnreachAt, relayUp: relayUp(), refusal });
+      paintJoinVeil({ w, vw, refusal });
     }, 1000);
     // The step line in the places a wait shows that are not the status line:
     // the password prompt and the waiting room screen.
@@ -17138,6 +17165,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // unclassifiable — a not-yet-synced row-mate must not blink out).
     // Seated, a peer my seat links but names at no cell (isRowMate's backup-uplink case).
     const linkOnly = (s, pid) => !!(s && s.hasCoord && s.state === 3 && typeof s.linkPeers === 'function' && s.linkPeers().has(pid));
+    // A room the comfy layout draws (meet-views comfyAllowed's rule, from the meeting's own facts): not a broadcast,
+    // not an app room, not a solo app (the page's body.broadcast / app-room / solo-app).
+    function comfyRoom() { return !BROADCAST && !appRoomOn && !soloAppOn; }
     function reconcileGrid() {
       const s = meshSeat(), c = meshCoord();
       if (!s || !c) return; // pre-seat: show whatever linked (bootstrap)
@@ -17160,7 +17190,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // (hard-bugs-1019-1108 bug 1). The stadium face stays instead.
           let show = false;
           try {
-            const comfy = !!(meTile && typeof GifOS !== 'undefined' && GifOS.meetViews && GifOS.meetViews.comfyAllowed(document.body));
+            const comfy = !!(meTile && typeof GifOS !== 'undefined' && GifOS.meetViews && comfyRoom());
             const k0 = coordOfPeer.get(pid);
             let mate = !k0 && !linkOnly(s, pid);
             if (k0) { const cc0 = net.topo.unck(k0); mate = cc0.pc === c.pc && cc0.r === c.r; }
@@ -17210,7 +17240,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // (localStorage, off by default); the link still turns it on for its page.
     const DEBUG_ON = (() => {
       const D = GifOS.debugLog;
-      if (D && D.pageWants) { try { return D.pageWants(window).on; } catch (e) {} }
+      if (D && D.pageWants) { try { return D.pageWants().on; } catch (e) {} }   // the page's own location and storage
       const on = /(?:^|[#&?])debug=(?:on|1|true)/i.test(location.hash + location.search);
       try { if (on) sessionStorage.setItem('gifos_debug', '1'); } catch (e) {}
       try { return on || sessionStorage.getItem('gifos_debug') === '1'; } catch (e) { return on; }
@@ -17226,6 +17256,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // JS heap (performance.memory where it exists), mesh/pc maps, pipe-worker queues, media element tracks, pcs by state.
     // It never calls into a live RTCPeerConnection (no getSenders/getReceivers) and never wraps Worker: suspected in a 40-page room whose renderers crashed (rtp_sender CHECK).
     // Own ring (window.__memSamples, 240 records = 2 h), plus one MEM line in the mesh trace so it rides the participant's trace file. Numbers only: no ids, no names.
+    // The page's media elements, counted for the DEBUG memory sample: how many, how many hold a stream, their tracks
+    // and the live ones.
+    function mediaElCensus() {
+      const els = document.querySelectorAll('video,audio'); let withStream = 0, tracks = 0, liveTracks = 0;
+      for (const el of els) { const ms = el.srcObject; if (ms && ms.getTracks) { withStream++; for (const t of ms.getTracks()) { tracks++; if (t.readyState === 'live') liveTracks++; } } }
+      return { mediaEls: els.length, elStreams: withStream, elTracks: tracks, elLiveTracks: liveTracks };
+    }
     if (DEBUG_ON) {
       const MS = window.__memSamples = window.__memSamples || [];
       const sz = (x) => { try { return x == null ? null : (typeof x.size === 'number' ? x.size : (typeof x.length === 'number' ? x.length : null)); } catch (e) { return null; } };
@@ -17236,9 +17273,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const pcs = {}; let recv = 0, send = 0, live = 0;
           for (const v of peers.values()) { const pc = v && v.pc; if (!pc) continue; pcs[pc.connectionState] = (pcs[pc.connectionState] || 0) + 1; }
           o.pcs = pcs;
-          const els = document.querySelectorAll('video,audio'); let withStream = 0, tracks = 0, liveTracks = 0;
-          for (const el of els) { const ms = el.srcObject; if (ms && ms.getTracks) { withStream++; for (const t of ms.getTracks()) { tracks++; if (t.readyState === 'live') liveTracks++; } } }
-          o.mediaEls = els.length; o.elStreams = withStream; o.elTracks = tracks; o.elLiveTracks = liveTracks;
+          Object.assign(o, mediaElCensus());
         } catch (e) {}
         try { o.maps = { peers: sz(peers), seatAskAt: sz(seatAskAt), seatMark: sz(seatMark), bcTrace: sz(window.__bcTrace), traceRing: window.__meshTraceRing ? window.__meshTraceRing.ring.length : 0 }; } catch (e) {}
         try { const s = meshSeat(); if (s) o.seat = { occ: sz(s.occ), sitting: sz(s.sitting) }; } catch (e) {}
@@ -18681,6 +18716,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // LOAD COMPLETENESS: a page that missed one of its own scripts (a flaky network) must not seat: a seat without every unit throws "is not a function" in the middle of a room.
     // A missing script is loaded again (in page order, with backoff); if it still fails the page refuses to join, says so on screen and in the DEBUG trace.
     const UNITS_BACKOFF = [0, 400, 1200, 2400];
+    function showLoadRefusal(msg) { const d = document.createElement('div'); d.id = 'load-gate-msg'; d.setAttribute('role', 'alert'); d.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:2147483647;padding:14px 16px;background:#b00020;color:#fff;font:16px system-ui,sans-serif;text-align:center'; d.textContent = msg; document.body.appendChild(d); }
     function unitsGate() {
       const g = window.__gifosLoadGate;
       // A published page opened on the lobby runs its meeting scripts in two parts and the second is still on its
@@ -18691,9 +18727,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         g.state = 'retry';
         if (!g.running) {
           g.running = true;
-          const order = Array.from(document.querySelectorAll('script[src]')).map((el) => { try { return new URL(el.src, location.href).pathname.replace(/^\//, ''); } catch (e) { return ''; } });
+          const order = GifOS.host.scriptOrder();
           const note = (m) => { g.trace.push(m); if (typeof clog === 'function') clog('load-gate ' + m); };
-          const load = (src) => new Promise((res) => { const el = document.createElement('script'); el.async = false; el.src = src + '?lc=' + g.tries; el.onload = () => res(true); /* a failure is its error event; a size of 0 is a Safari 304, not a missing body (see #gifos-load-gate) */ el.onerror = () => { el.remove(); res(false); }; document.head.appendChild(el); });
+          const load = (src) => GifOS.host.loadScript(src + '?lc=' + g.tries);
           (async () => {
             note('missing ' + g.failed.join(',') + (g.threw.length ? ' threw ' + g.threw.join(',') : ''));
             let todo = g.failed.slice();
@@ -18725,7 +18761,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             note('refuse ' + todo.join(','));
             // the status line is rewritten by the page's own ticks: the refusal also lives in a banner nothing else touches
             const msg = uiText('stLoadIncomplete', 'This page did not finish loading, so it cannot join safely. Reload the page to try again.');
-            try { const d = document.createElement('div'); d.id = 'load-gate-msg'; d.setAttribute('role', 'alert'); d.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:2147483647;padding:14px 16px;background:#b00020;color:#fff;font:16px system-ui,sans-serif;text-align:center'; d.textContent = msg; document.body.appendChild(d); } catch (e) {}
+            try { showLoadRefusal(msg); } catch (e) {}
             setStatus(msg, true);
           })();
         }
@@ -19316,7 +19352,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             // rebuild the pair, once per 30s like the dead sink.
             {
               const v = p.video, q = v.getVideoPlaybackQuality ? v.getVideoPlaybackQuality() : null, r = v.getBoundingClientRect();
-              const inView = r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth;
+              const vp = GifOS.host.viewport();
+              const inView = r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < vp.h && r.left < vp.w;
               const pv = q ? q.totalVideoFrames : -1, sp = p.paintProbe;
               if (!judged || !inView || pv < 0) p.paintProbe = null;
               else if (!sp || sp.pc !== pc0 || sp.track !== vtr || pv !== sp.pv || v.currentTime !== sp.ct) p.paintProbe = { pc: pc0, track: vtr, pv, ct: v.currentTime, fd, at: t };
@@ -20682,6 +20719,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
 
     // ---- room password UI: one modal, two moods -------------------------------
     const pwModal = document.getElementById('pw-modal');
+    function hideJoinPwModal() { if (pwModal.dataset.mode === 'join') pwModal.style.display = 'none'; }
     // LOBBY PASSWORDS (Start a public open-floor meeting, Join a link). Typed in
     // the lobby, they cross the reload enterMeeting does in THIS tab's
     // sessionStorage, and the very next load reads them into memory and removes
@@ -21479,7 +21517,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         : pageOrigin() + MEET_PATH + '#v=' + room + avPartAt + (relay ? '&relay=' + encodeURIComponent(relay) : '');
       paintShareUrl(shareLink);
       try { paintStreamLink(); } catch (e) {}
-      if (!params.get('v')) share.classList.add('show'); // fresh room → surface the link
+      if (!params.get('v')) showShareLink(); // fresh room → surface the link
       else recordMeetingInvite(room, shareLink); // joined someone's link → log it in the desktop's Invites
       recordMeetHistory(room, shareLink, av); // lobby's "Recent" — every room, created OR joined, in ITS OWN surface's list
       // Derive the relay-facing identity + the room key from the room code
@@ -21495,7 +21533,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         sessId = d.sid; sessTok = d.tok; roomE2E = d.key; pwProof = pr;
         myDevHash = dh.slice(0, 16);
         startMesh();
-      }).catch((err) => { setStatus('Could not join the meeting (' + ((err && err.name) || 'Error') + ').'); try { statusEl.dataset.why = 'nojoin'; paintLiveBadge(); } catch (e2) {} });
+      }).catch((err) => { setStatus('Could not join the meeting (' + ((err && err.name) || 'Error') + ').'); try { statusLine.why = 'nojoin'; paintStatusWhy('nojoin'); paintLiveBadge(); } catch (e2) {} });
     }
 
     // Meetings joined via a shared link go in the same list the desktop's
@@ -22224,6 +22262,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // Why the status line is up (data-why: the live badge reads it).
     function paintStatusWhy(why) { statusEl.dataset.why = why; }
+    function showShareLink() { share.classList.add('show'); }
     function bootIntoRoom() {
       // The mirror runs beside the socket. applyAdminBoot waits on
       // roomStateReady. The appearance card resolves before the knock,
@@ -22465,7 +22504,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // person is told it is still looking rather than left on a black page.
     const SOLO_LOOKUP_SLOW_MS = GifOS.timings.SOLO_LOOKUP_SLOW_MS;
     function bootSoloApp() {
-      document.body.classList.add('solo-app');
+      soloAppOn = true; paintSoloApp(true);
       // Off the camera FIRST: a solo entry is never a meeting, and the file may
       // be missing or slow — the ornament replaces this again once bytes land.
       setAppFavicon(null);
@@ -22485,13 +22524,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         hideAppMissing();
         appInstall = installFactsOf(rec);
         const nm = (rec.name && rec.name.replace(/\.gif$/i, '')) || 'App';
-        document.title = nm + ' — GifOS';
+        paintTabTitle(nm + ' — GifOS');
         const raw = rec.bytes instanceof Uint8Array ? rec.bytes : new Uint8Array(rec.bytes || []);
         const noted = noteSoloShare(raw);
         const mount = () => {
           showAppPane(nm, uiText('appWhoDevice', 'on this device'));
           setAppGif(raw, nm);
-          return GifOS.runtime.boot(appMountEl, ROOM.fileId, statusEl, ROOM.solo ? LAUNCH : null).then((ctl) => {
+          return appRuntimeBoot(ROOM.fileId, true, ROOM.solo ? LAUNCH : null).then((ctl) => {
             soloCtl = ctl;
             // AFTER the app is up, never before: is there a newer version of a
             // store-installed app in the catalog? (app-update.js — one small
@@ -22604,7 +22643,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return null;
       }).then((row) => {
         try { paintInviteSlot(); } catch (e) {}
-        if (!row || document.body.classList.contains('has-app')) return !!row;
+        if (!row || appPaneOn) return !!row;
         const waitMyId = () => {
           if (myId) return Promise.resolve();
           const timeout = new Promise((res) => setTimeout(res, 10000));
@@ -22623,6 +22662,29 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // same link), flip the page's traits in place, and host the app on the
     // room's lane. The owned/resilient choice IS the succession class:
     // owned rooms freeze when the owner leaves; resilient rooms heal.
+    // "Share <app> live": who may host it while I am away and, for an app that already has a link, keep that link or
+    // start a fresh one. The choice goes to go(owned, fresh).
+    function openShareLiveModal(nm, saved, go) {
+      const bg = document.createElement('div'); bg.className = 'name-modal';
+      bg.innerHTML = '<div class="name-box" style="max-width:440px;text-align:left"><h3>Share ' + esc(nm) + ' live</h3>' +
+        '<p>Friends join you with one link. If you drop off (close the tab, lose battery)…</p>' +
+        '<label class="perm-row"><input type="radio" name="rmcls" value="owned"' + (!saved || saved.owned ? ' checked' : '') + '><span><b>Only I can host it</b> — the app pauses for everyone until I return. Safest for private data.</span></label>' +
+        '<label class="perm-row"><input type="radio" name="rmcls" value="heal"' + (saved && !saved.owned ? ' checked' : '') + '><span><b>Let a friend keep it going</b> — someone still connected takes over hosting. Best for casual shared apps and games.</span></label>' +
+        (saved
+          ? '<p style="margin-top:.9rem"><b>This app already has a link</b> — friends you invited before may still hold it.</p>' +
+            '<label class="perm-row"><input type="radio" name="rmlink" value="same" checked><span><b>Keep the same link</b> — everyone you already invited can come right back.</span></label>' +
+            '<label class="perm-row"><input type="radio" name="rmlink" value="fresh"><span><b>Start a fresh link</b> — the old link goes dead for good. For when it reached someone it shouldn’t have.</span></label>'
+          : '') +
+        '<div style="display:flex;gap:.6rem;justify-content:flex-end;margin-top:1rem"><button id="inv-cancel">Cancel</button><button id="inv-go">Create link</button></div></div>';
+      document.body.appendChild(bg);
+      bg.querySelector('#inv-cancel').onclick = () => bg.remove();
+      bg.querySelector('#inv-go').onclick = () => {
+        const owned = bg.querySelector('input[name="rmcls"]:checked').value === 'owned';
+        const fresh = !!(saved && bg.querySelector('input[name="rmlink"][value="fresh"]').checked);
+        bg.remove();
+        go(owned, fresh);
+      };
+    }
     function inviteFromSolo() {
       if (!ROOM.solo) return; // an app inside a room never mints a room of its own
       // capabilities.multiplayer false: no share from an app the user ran
@@ -22653,23 +22715,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!got) return;
         const rec = got.rec, saved = got.saved;
         const nm = ((rec && rec.name) || 'App').replace(/\.gif$/i, '');
-        const bg = document.createElement('div'); bg.className = 'name-modal';
-        bg.innerHTML = '<div class="name-box" style="max-width:440px;text-align:left"><h3>Share ' + esc(nm) + ' live</h3>' +
-          '<p>Friends join you with one link. If you drop off (close the tab, lose battery)…</p>' +
-          '<label class="perm-row"><input type="radio" name="rmcls" value="owned"' + (!saved || saved.owned ? ' checked' : '') + '><span><b>Only I can host it</b> — the app pauses for everyone until I return. Safest for private data.</span></label>' +
-          '<label class="perm-row"><input type="radio" name="rmcls" value="heal"' + (saved && !saved.owned ? ' checked' : '') + '><span><b>Let a friend keep it going</b> — someone still connected takes over hosting. Best for casual shared apps and games.</span></label>' +
-          (saved
-            ? '<p style="margin-top:.9rem"><b>This app already has a link</b> — friends you invited before may still hold it.</p>' +
-              '<label class="perm-row"><input type="radio" name="rmlink" value="same" checked><span><b>Keep the same link</b> — everyone you already invited can come right back.</span></label>' +
-              '<label class="perm-row"><input type="radio" name="rmlink" value="fresh"><span><b>Start a fresh link</b> — the old link goes dead for good. For when it reached someone it shouldn’t have.</span></label>'
-            : '') +
-          '<div style="display:flex;gap:.6rem;justify-content:flex-end;margin-top:1rem"><button id="inv-cancel">Cancel</button><button id="inv-go">Create link</button></div></div>';
-        document.body.appendChild(bg);
-        bg.querySelector('#inv-cancel').onclick = () => bg.remove();
-        bg.querySelector('#inv-go').onclick = () => {
-          const owned = bg.querySelector('input[name="rmcls"]:checked').value === 'owned';
-          const fresh = !!(saved && bg.querySelector('input[name="rmlink"][value="fresh"]').checked);
-          bg.remove();
+        openShareLiveModal(nm, saved, (owned, fresh) => {
           GifOS.store.getState(ROOM.fileId + '::room').then((saved2) => {
             if (!fresh && saved2 && saved2.owned === owned && saved2.k) {
               if (!saved2.owner) {
@@ -22689,8 +22735,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           }).then((m) => {
             ROOM.solo = false; ROOM.founder = true;
             ROOM.join = m.owned ? { short: m.short, av: m.av, k: m.k, owned: true } : { short: null, av: null, k: m.k, owned: false };
-            document.body.classList.remove('solo-app');
-            // …AND THE <html> MIRROR. The entry-chrome block in <head> stamps
+            soloAppOn = false;
+            // paintSoloApp(false) takes body.solo-app …AND THE <html> MIRROR. The entry-chrome block in <head> stamps
             // `solo-app` on documentElement so a #id= launch never paints the
             // meeting chrome and takes it away again — and its comment says the
             // mirror "can never go stale" because the solo rules are
@@ -22704,7 +22750,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             // nothing appeared. Found by e2e-screen-share.js asserting the bar
             // is really RENDERED in an app room (its point is that Share screen
             // is missing BY RULE, not because no bar was drawn).
-            document.documentElement.classList.remove('solo-app');
+            paintSoloApp(false);
             // startMesh() mints the S4 identity ASYNC — myId lands a beat after
             // bootAppRoom resolves, and runApp refuses without it (canIRunApp).
             const ID_WAIT_MS = GifOS.timings.ID_WAIT_MS;
@@ -22718,9 +22764,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
                 throw new Error('no identity yet');
               });
             };
-            return bootAppRoom().then(waitMyId).then(() => runApp(ROOM.fileId, nm)).then(() => { share.classList.add('show'); showInviteModal(); });
+            return bootAppRoom().then(waitMyId).then(() => runApp(ROOM.fileId, nm)).then(() => { showShareLink(); showInviteModal(); });
           }).catch((e) => setStatus('Could not share the app: ' + (e && e.message || e)));
-        };
+        });
       }).catch((e) => setStatus('Could not share the app: ' + (e && e.message || e)));
     }
     // THE HEADER'S INVITE is the same slot in every app. Solo: mint the
@@ -22847,22 +22893,29 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { appCopyPaint(); } catch (e) {}
       // Guest thumbnail: the app bytes land asynchronously over the lane —
       // paint the bar's GIF the first tick they exist (no-op afterwards).
+      paintAppGifFromLane();
+      try { applyRoomAudio(); refreshAudioBtn(); } catch (e) {}
+      if (!myStatus.camOff || !myStatus.muted) { if (!callOn) { callOn = true; paintCallOn(); } return; }
+      let live = 0;
+      for (const pid of roomConsentIds()) { const st = statusOf.get(pid); if (st && stHold(pid) && (!st.camOff || !st.muted)) live++; }
+      paintCallBanner(!callOn && live > 0 ? live : 0);
+    };
+    function paintAppGifFromLane() {
       if (!appGifUrl && appClientCtl && appClientCtl.gifBytes) {
         try { const b = appClientCtl.gifBytes(); if (b) setAppGif(b, document.getElementById('appname').textContent); } catch (e) {}
       }
-      try { applyRoomAudio(); refreshAudioBtn(); } catch (e) {}
-      const on = document.body.classList.contains('call-on');
-      if (!myStatus.camOff || !myStatus.muted) { if (!on) document.body.classList.add('call-on'); return; }
-      let live = 0;
-      for (const pid of roomConsentIds()) { const st = statusOf.get(pid); if (st && stHold(pid) && (!st.camOff || !st.muted)) live++; }
+    }
+    function paintCallOn() { document.body.classList.add('call-on'); }
+    // The banner over a quiet app room: how many people are on its call (0 hides it).
+    function paintCallBanner(live) {
       const b = document.getElementById('callbanner');
-      if (!on && live > 0) {
+      if (live > 0) {
         document.getElementById('callbanner-txt').textContent = live + (live === 1 ? ' person is' : ' people are') + ' on the call in this room';
         b.style.display = 'flex';
       } else b.style.display = 'none';
-    };
+    }
     document.getElementById('callbanner-join').onclick = () => {
-      document.body.classList.add('call-on');
+      callOn = true; paintCallOn();
       document.getElementById('callbanner').style.display = 'none';
       lateMedia('mic'); // asks for mic+cam permission; joins quiet-camera, live mic
     };
@@ -22878,10 +22931,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // which early-returns without one — can never arm behind the explanation.
     // SOLO is deliberately ungated: a solo app is one tab and no network, and
     // it works fine on a browser that could never meet.
-    const preflighted = (f) => {
-      const P = window.GifOSPreflight;
-      if (P && typeof P.whenSupported === 'function') P.whenSupported(f); else f();
-    };
+    const preflighted = (f) => GifOS.host.whenSupported(f);
     function bootMeetSession() {
       // A session frame waits for its parent. The lobby would open a camera
       // preview, and a hash with no room would too. Neither may run here.
@@ -23534,7 +23584,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (took && isQaLine(chat.get(m.m.id))) qaChanged(); // a question or a vote: the Questions sheet, never the chat badge
         else if (took) {
           renderChat();
-          if (m.m && typeof window !== 'undefined' && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'chat', text: m.m.text, by: m.m.by, byId: m.m.byId, at: m.m.at });
+          if (m.m && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'chat', text: m.m.text, by: m.m.by, byId: m.m.byId, at: m.m.at });
           countClosedChat(m.m);
           if (!chatOpen) paintChatCount();
           // A frame the sender marked ackReq (today: only the follow-me link)
@@ -23555,7 +23605,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // person's face (takeFaceReact).
         const who = p && p.id;
         if (who && who !== myId && audienceReactFresh(m.id)) { if (BROADCAST) takeAudienceReact(m.e, who); else takeFaceReact(m.e, who); }
-      } else if (m.k === 'bx' && typeof window !== 'undefined' && window.GifOS && GifOS.meetSession && typeof window.__gifosMeetEmit === 'function') {
+      } else if (m.k === 'bx' && window.GifOS && GifOS.meetSession && typeof window.__gifosMeetEmit === 'function') {
         GifOS.meetSession.takeXfer(m, window.__gifosMeetEmit);
       } else if (m.k === 'chatack') {
         // Delivery ack for an ackReq chat frame (see FOLLOW-ME DELIVERY WAIT).
@@ -24038,7 +24088,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (wasBlocked) {
             await rk;
             pwBlocked = false;
-            if (pwModal.dataset.mode === 'join') pwModal.style.display = 'none';
+            hideJoinPwModal();
             if (restart) startMesh(); // same re-entry as typing it — state intact
             else if (meshNode && meshNode.setKey) meshNode.setKey(roomE2E); // the proof is ready now: a socket the door refused re-arms with it
           }
@@ -38689,7 +38739,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { const r = ms.setCameraActive(!myStatus.camOff); if (r && r.catch) r.catch(() => {}); } catch (e) {}
       try { ms.playbackState = 'playing'; } catch (e) {}
     }
-    (function wireMediaSession() {
+    function wireMediaSession() {
       const ms = navigator.mediaSession; if (!ms || !ms.setActionHandler) return;
       const wire = (action, fn) => { try { ms.setActionHandler(action, fn); } catch (e) { /* action unsupported here */ } };
       wire('togglemicrophone', () => micTap(false));   // the OS control: no chooser out of sight
@@ -38708,7 +38758,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // tile query that could float a black camOff tile.
       wire('enterpictureinpicture', () => { pipNote('ms-action'); awayFull(true); enterPip(false, true); });
       updateMediaSession();
-    })();
+    }
+    wireMediaSession();
     // The blur slider: pick Max / Min / No blur directly. It records YOUR choice;
     // whether a tile actually goes clear is the room rule's meeting — when your
     // No blur can't show yet, the status line says exactly why.
@@ -40482,6 +40533,28 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     //          one place no remote DOM hack can reach). Open rooms default
     //          communal; admin rooms default leading.
     const appMountEl = document.getElementById('appmount');
+    // The app runtime (js/runtime.js, a page script) mounts an app in the page's app pane: as its host (the status line
+    // takes the runtime's words when withStatus), or as a client of the host's Stage data lane. The meeting asks only
+    // where the runtime is loaded, and gets the runtime's controller back.
+    function appRuntimeBoot(fileId, withStatus, launch) { return GifOS.runtime.boot(appMountEl, fileId, withStatus ? statusEl : null, launch); }
+    function appRuntimeClient(params) { return GifOS.runtime.bootClientBus(appMountEl, params, null, {}); }
+    function paintSoloApp(on) { if (on) document.body.classList.add('solo-app'); else { document.body.classList.remove('solo-app'); document.documentElement.classList.remove('solo-app'); } }
+    function paintTabTitle(t) { document.title = t; }
+    function paintAppWho(t) { document.getElementById('appwho').textContent = t; }
+    // Run app lives in the More sheet; left open it is a grid of buttons over the app. Fold it without rewriting the
+    // saved preference.
+    function foldBarForApp() {
+      const barEl = document.querySelector('.bar');
+      const toggle = document.getElementById('bartoggle');
+      if (barEl && toggle && !barEl.classList.contains('collapsed')) {
+        barEl.classList.add('collapsed');
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.setAttribute('aria-label', uiText('more', 'More'));
+        toggle.title = uiText('more', 'More');
+        const word = toggle.querySelector('.dockword');
+        if (word) word.textContent = uiText('more', 'More');
+      }
+    }
     // The runtime calls window.__gifosPermissions on every app mount (host or
     // client). Wire it to the in-meeting Abilities chip so an app running inside
     // a meeting gets the SAME acknowledgement + per-app opt-out panel it gets in
@@ -40634,6 +40707,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       img.style.display = 'block';
     }
     function showAppPane(name, who) {
+      appPaneOn = true; appPaneName = name || 'App';
       document.body.classList.add('has-app');
       try { window.__meetRelayout(); } catch (e) {}
       document.getElementById('appname').textContent = name || 'App';
@@ -40902,6 +40976,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       appClientCtl = null; appHostCtl = null; try { delete window.__appClientCtl; } catch (e) {}
       refreshStealBtn();
       appMountEl.innerHTML = '';
+      appPaneOn = false;
       document.body.classList.remove('has-app');
       window.__gifosHeaderApp = '';
       try { applyPageHeader(); } catch (e) {}
@@ -40941,20 +41016,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         name = name || (rec && rec.name && rec.name.replace(/\.gif$/i, '')) || 'App';
         appMode = 'host'; appKey = null;
         showAppPane(name, ROOM.appPinned ? uiText('appWhoPinned', 'you host it') : uiText('appWhoHost', '· you are hosting it for the meeting'));
-        // Run app lives in the More sheet; left open it is a grid of buttons
-        // over the app. Fold it without rewriting the saved preference.
-        const barEl = document.querySelector('.bar');
-        const toggle = document.getElementById('bartoggle');
-        if (barEl && toggle && !barEl.classList.contains('collapsed')) {
-          barEl.classList.add('collapsed');
-          toggle.setAttribute('aria-expanded', 'false');
-          toggle.setAttribute('aria-label', uiText('more', 'More'));
-          toggle.title = uiText('more', 'More');
-          const word = toggle.querySelector('.dockword');
-          if (word) word.textContent = uiText('more', 'More');
-        }
+        foldBarForApp();
         if (rec && rec.bytes) setAppGif(rec.bytes instanceof Uint8Array ? rec.bytes : new Uint8Array(rec.bytes), name);
-        const ctl = await GifOS.runtime.boot(appMountEl, fileId, null);
+        const ctl = await appRuntimeBoot(fileId, false);
         appHostCtl = ctl; // Save/snapshot chrome (one-runtime)
         // Admin rooms: the sharer LEADS by default (their runtime fences the
         // app's led records). Open rooms: communal by default — today's warmth.
@@ -41028,13 +41092,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // relay session below is the transport until the runtime adapter lands.
         if (app.mesh && GifOS.runtime.bootClientBus) {
           const sidNow = app.s;
-          GifOS.runtime.bootClientBus(appMountEl, {
+          appRuntimeClient({
             s: app.s,
             pk: app.pk || null, // owner pk from the ad — pre-pins the verifier
             self: myId,         // pool claim ordering (see attachStageBus above)
             send: (kind, d) => stageData.broadcast(app.s, kind, d),
             subscribe: (cb) => stageData.subscribe(app.s, cb),
-          }, null, {}).then((c) => {
+          }).then((c) => {
             // keep the teardown so a later clear/takeover unsubscribes the lane;
             // if this mount was already superseded while booting, stop it now.
             if (!c || typeof c.stop !== 'function') return;
@@ -41274,7 +41338,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         appEv('owner-away-freeze');
         appFrozen = true;
         if (appClientCtl && appClientCtl.setFrozen) appClientCtl.setFrozen(true);
-        document.getElementById('appwho').textContent = '⏸ paused — the host is away';
+        paintAppWho('⏸ paused — the host is away');
       }
       if (ROOM.join && ROOM.join.owned) return; // owned room: freeze is the whole story
       if (succT || succBusy || myStatus.app) return;
@@ -41309,7 +41373,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         succSince = 0;
         const ctl = appClientCtl;
         if (!ctl || !ctl.snapshot) return;
-        const nm = document.getElementById('appname').textContent || 'App';
+        const nm = appPaneName || 'App';
         succBusy = true; // succT is spent and the app not yet mine: without this the next beat arms a second seize, two files and two runApp on one mount
         ctl.snapshot().then((bytes) => {
           const fid = GifOS.store.uid('file');
@@ -41751,6 +41815,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return { hand: !!myStatus.hand, mic: !myStatus.muted, camera: !myStatus.camOff, people: roomPeople() };
     }
 
+    // The bot's eyes (the agent's watch): the page marks itself watched.
+    function paintBotEyes(on) { document.body.classList.toggle('bot-eyes', on); }
     // Session frame (#mb=1): the parent meet-host drives this document.
     // Ordinary meetings never take this branch.
     if (params.get('mb') === '1' && window.GifOS && GifOS.meetSession) {
@@ -42095,8 +42161,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         },
         stopSpeaking() { return stopBotSpeech(); },
         watch(msg) {
-          document.body.classList.toggle('bot-eyes', !!(msg && msg.on));
-          return { watch: document.body.classList.contains('bot-eyes') };
+          const on = !!(msg && msg.on);
+          paintBotEyes(on);
+          return { watch: on };
         }
       });
       setInterval(() => {
@@ -43075,7 +43142,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // scheduled) from "the beat happened and the flood never delivered it"
       // (this age small while an observer's statusPeek age for me is large).
       beatPeekForTest: () => ({ atAgeMs: Date.now() - (myStatus.at || 0), tick: hbTick, via: hbVia,
-        veiled: !!joinVeilEl,
+        veiled: joinVeilUp,
         seated: (() => { try { const s = meshSeat(); return !!(s && s.state === 3 && s.hasCoord); } catch (e) { return null; } })() }),
       mosInKeysForTest: () => [...mosIn.keys()].filter((k) => k.indexOf('stg') === 0 || k === 'sgs'),
       // ENCODED PASSTHROUGH (§9a) forensics: which jobs ride the pipe lane vs
@@ -43702,7 +43769,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // moderation SINKS (e2e-meet-mod.js): what the filmstrip would list and how
       // blurred, and a sender that defies the admin's video-off — the DOM-hacked
       // guest the receiver-side rule exists for (it only re-enables MY track).
-      fsSourcesForTest: () => fsSources().map((s) => ({ key: s.key, bl: s.bl || 0 })),
       openFsForTest: (key) => openFsView(key),
       closeFsForTest: () => closeFsView(),
       peerCamOff: (pid) => seatDark(statusOf.get(pid)),
@@ -44396,6 +44462,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     viewTestHooks(window.__gifosVideo);
     function viewTestHooks(v) {
       Object.assign(v, {
+      fsSourcesForTest: () => fsSources().map((s) => ({ key: s.key, bl: s.bl || 0 })),
       setTabHiddenForTest: (hidden) => {
         try { Object.defineProperty(document, 'hidden', { configurable: true, get: () => !!hidden }); } catch (e) {}
         document.dispatchEvent(new Event('visibilitychange'));
@@ -44715,6 +44782,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return { text: b.textContent, title: b.title, font: parseFloat(getComputedStyle(b).fontSize), display: getComputedStyle(b).display };
       },
       appBarForTest: (talkOn) => {
+        appPaneOn = true;
         document.body.classList.add('has-app');
         if (talkOn) {
           armAppRoomTick();
