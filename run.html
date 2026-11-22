@@ -636,6 +636,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
 <script src="js/runtime.js" defer></script>
 <script src="js/meet-host.js" defer></script>
 <script src="js/gifos-perms.js" defer></script>
+    <script src="js/core/meeting.js" defer></script>
+    <script src="js/core/media/plane-browser.js" defer></script>
+    <script src="js/core/view/view.js" defer></script>
+    <script src="js/core/host.js" defer></script>
 <!-- the lobby's scripts end here -->
 <script>/* Global UI text size (Settings → Text size). Scales the meeting chrome; applied early, live across tabs. */(function(){function ap(){try{var s=parseFloat(localStorage.getItem('gifos_ui_scale'))||1;s=Math.max(0.2,Math.min(3,s));document.documentElement.style.fontSize=(s===1?'':(16*s).toFixed(2)+'px');document.documentElement.classList.toggle('ui-large',s>=1.5);}catch(e){}}ap();try{window.addEventListener('storage',function(e){if(!e||e.key==='gifos_ui_scale')ap();});}catch(e){}})();</script>
 <title>Meeting — GifOS</title>
@@ -1660,10 +1664,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/meet-agent.js" defer></script>
   <script src="js/camera-studio.js" defer></script>
   <script src="js/gifos-ondevice.js" defer></script>
-    <script src="js/core/meeting.js" defer></script>
-    <script src="js/core/media/plane-browser.js" defer></script>
-    <script src="js/core/view/view.js" defer></script>
-    <script src="js/core/host.js" defer></script>
   <script>
   // THE ENGINE, read before anything else runs (a var, so early callers never
   // hit a TDZ). WebKit — Safari, and the Playwright WebKit shell under any UA
