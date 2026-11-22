@@ -810,7 +810,7 @@
       "appId": "bingo",
       "name": "Bingo",
       "shortName": "Bingo",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "tagline": "Call bingo over a meeting. Everyone who opens the invite gets a card.",
       "author": {
         "name": "mihailgaberov",
@@ -824,7 +824,7 @@
         "name": "bingo",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -844,15 +844,15 @@
         48
       ],
       "cover": "/apps/bingo/cover.jpg",
-      "bytes": 204444,
+      "bytes": 205526,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-22"
       },
-      "sha256": "5e209570c9481069e74b8cf941c524490ff1e29fabc437201816941194018537"
+      "sha256": "c0618dc524bdcb7bc19ee17ad021130c3594c33754ef51d76167ddf57de95bc6"
     },
     {
       "slug": "bip39",
