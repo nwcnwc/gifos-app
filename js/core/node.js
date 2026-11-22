@@ -4,6 +4,13 @@
  * createMeeting(opts) runs ONE meeting participant with no browser: the core part (meeting.js) and the page
  * libraries it is built on (files.json "core"), linked by host.js with no media part and no view.
  *
+ * OPTIONS: url (a meeting link or the page address: routed as the site's router does, pageUrl), site (loadSite(origin):
+ * the core's files from the meeting's own site, as a browser loads them; or siteDir(tree)), else appRoot (a site tree on
+ * disk), webrtc (the media port, below), storage / session (plain objects backing localStorage / sessionStorage, read
+ * at start and written through: the participant's profile), log(level, ...args), onClose(context).
+ * Returns { context, meeting, agent(), hooks(), standIns(), pageUses(), hostShims(), errors(), close(), kill() }:
+ * close() leaves the meeting (its farewell drains first; a promise), kill() vanishes with no goodbye.
+ *
  * ONE CONTEXT PER PARTICIPANT. The libraries keep their state on `GifOS`, and `location`, `localStorage` and the
  * timers belong to one page, so every participant gets its own vm context. The scripts are compiled once per process
  * and run in each context.
@@ -253,7 +260,7 @@ function createMeeting(opts) {
     location,
     navigator: { userAgent: 'Mozilla/5.0 (X11; Linux x86_64) GifOS-Core/1 Node/' + process.versions.node, vendor: '', onLine: true,
       hardwareConcurrency: require('os').cpus().length, language: 'en-US', languages: ['en-US'], platform: 'Linux' },
-    localStorage: makeStorage(opts.storage), sessionStorage: makeStorage(null),
+    localStorage: makeStorage(opts.storage), sessionStorage: makeStorage(opts.session),
     WEBKIT_ENGINE: false,
   });
   const realmOf = (ctx) => vm.runInContext('({ Uint8Array, ArrayBuffer, Map, Promise, Array, Object, Error })', ctx);
