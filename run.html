@@ -3353,8 +3353,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // whose hidden-tab beat merely landed late must not be torn out of
       // every phone's strip and rebuilt on the next beat.
       const out = [];
-      // A meeting bot never takes the stage. It stays a small tile.
-      const botOf = (id) => id === myId ? !!myStatus.bot : !!((statusOf.get(id) || {}).bot);
+      // A declared bot is a person to the stage: the same rules, no refusal and no privilege.
       // Receiver-side vote enforcement: a device the room has majority-voted
       // OFF the stage is excluded on EVERY phone, whatever its own stg flag
       // says — a hacked client can refuse to step down, but nobody paints or
@@ -3366,7 +3365,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const t = stageClaimOf(id);
         // A share grant is a stage seat only while they are actually sharing.
         // It is not a general pass onto the stage.
-        if (botOf(id)) continue;
         if (!t || !(canStage(id) || hostSpot(id) || (shareClaim(id) && mayShareScreen(id)))) continue;
         if (vt) { const dv = devFor(id); if (dv && (vt.down[dv] || 0) >= stageNeed(vt, dv)) continue; }
         out.push([id, t]);
@@ -3378,7 +3376,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (dg) {
         const have = new Set(out.map((x) => x[0]));
         for (const e of dg.stage) {
-          if (!e.id || have.has(e.id) || e.id === myId || botOf(e.id) || stHold(e.id) || !notTomb(e.id) || !(canStage(e.id) || ((e.f & 2) && mayShareScreen(e.id)))) continue;
+          if (!e.id || have.has(e.id) || e.id === myId || stHold(e.id) || !notTomb(e.id) || !(canStage(e.id) || ((e.f & 2) && mayShareScreen(e.id)))) continue;
           if (vt) { const dv = e.dv || devFor(e.id); if (dv && (vt.down[dv] || 0) >= stageNeed(vt, dv)) continue; }
           out.push([e.id, e.k]);
         }
@@ -7699,7 +7697,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           tiles.push({ id: 'me', el: meTile.tile, tier: myStatus.bot ? 'bot' : 'row', me: true, bot: !!myStatus.bot, shade: shadeKey('me'),
             hand: !!myStatus.hand, handOrd: myStatus.hand || 0,
             // A self-view pin can place your tile on your own stage. It is not room membership.
-            stage: !myStatus.bot && selfPin,
+            stage: selfPin,
             shareFace: !myStatus.bot && !!myStatus.scr,
             stageOrd: Math.max(0, stg.indexOf(myId)),
             speaker: !myStatus.bot && !!(speakingOf && speakingOf.get && speakingOf.get('me')), pz: 'peer:me' });
@@ -7711,7 +7709,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const bot = !!st.bot;
           tiles.push({ id: pid, el: p.tile, tier: bot ? 'bot' : 'row', bot: bot, shade: shadeKey(pid),
             hand: !!st.hand, handOrd: st.hand || 0,
-            stage: !bot && si >= 0, stageOrd: Math.max(0, si),
+            stage: si >= 0, stageOrd: Math.max(0, si),
             // A sharer's screen is the Stage (the sgs strip below); their face stays in the Row.
             shareFace: !bot && (() => { try { return !!sharingScreen(pid); } catch (e) { return false; } })(),
             speaker: !bot && !!(speakingOf && speakingOf.get && speakingOf.get(pid)), pz: 'peer:' + pid });
@@ -9515,6 +9513,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           closeTileWin();
           try { layout(); } catch (e) {}
         }));
+        // Whose captions this page shows for this person: the same card as the caption warning, any time.
+        let ct = null; try { ct = (typeof capTrust !== 'undefined' && capTrust && capTrust.known(id)) ? capTrust : null; } catch (e) {}
+        if (ct) {
+          const doubt = ct.stateOf(id, id) === 'distrusted';
+          const cb = twButton(uiText('twCaptions', 'Captions') + (doubt ? ' \u26a0' : ''), false, () => { closeTileWin(); capSourceOpen(id); });
+          cb.dataset.captions = '1';
+          row.appendChild(cb);
+        }
       }
       // Beside a preview, Mute, Camera and the recording pill stay in the
       // narrow column. They used to be full-width rows under a 72px frame.
@@ -33169,6 +33175,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // CAPTION TRUST: the tracker (js/meet-captrust.js) is made with the warning card further down; until then nothing is judged.
     let capTrust = null;
+    let capLang = null;   // the speaker's side: the captions language others hear me in (docs/caption-trust.md section 7)
     // A line whose source this page does not trust (the speaker's own engine, or a writer) is kept and marked.
     function capDoubts(l) { return !!(capTrust && l && l.byId && l.byId !== myId && l.w && capTrust.stateOf(l.byId, l.w) === 'distrusted'); }
     function capName(id) {
@@ -33344,13 +33351,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (via) Object.defineProperty(line, 'via', { value: via });
       // Every source is seen by the trust check before the merge folds two lines of one sentence into one.
       if (capTrust && !backfill) capTrust.observe({ byId: line.byId, w: line.w, src: line.src, eng: line.eng, at: line.at, end: line.end, text: line.text, tl: line.tl, vt: m.vt });
+      if (capLang && !backfill && line.byId === myId && w !== myId) { capLang.observe({ byId: line.byId, w, src: line.src, lang: line.lang, ld: line.ld, vt: m.vt, tl: line.tl }); capLangAsk(); }
       const merged = trMerge(line);
       if (merged === 'dup' || merged === 'echo') { if (typeof capTrace === 'function') capTrace(line, merged); return false; }
       if (typeof capTrace === 'function') capTrace(line, backfill ? 'replay' : 'kept');
       trs.set(m.id, line);
       trimMap(trs, CHAT_MAX);
       if (!backfill && w !== myId) trRxAt = Date.now();
-      if (!backfill) trLearnLang(line); // the room's Whisper pages teach me my language, and so does my own
       if (!backfill) emitLiveTranscript(line);
       return true;
     }
@@ -33370,29 +33377,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // THE SPEAKER'S OWN LANGUAGE. A browser engine listens in ONE language
     // and cannot detect it: the saved picker, else the device's language
-    // (trLang). A person who speaks another language on that device sends
-    // nonsense captions — unless a Whisper page in the room hears them and
-    // detects the language: two detected lines about ME in a row that agree
-    // on a language other than my engine's, and my engine restarts in theirs
-    // (this meeting only; the picker is still the person's choice).
-    let trHeardLang = '', trHeardN = 0, trLangLearned = '';
-    function trLang() { const v = trLangLearned || ccLang(); return trLangOf(v === 'auto' ? (navigator.language || 'en') : v); }
+    // (trLang). When the room hears me in another one, my page ASKS me (the
+    // suggestion card, docs/caption-trust.md section 7: two listeners agree,
+    // or the only other person); nothing switches it without my tap.
+    function trLang() { const v = ccLang(); return trLangOf(v === 'auto' ? (navigator.language || 'en') : v); }
     // What this page KNOWS about the speaker's language, for the room: a
-    // picked language, or one learned from detected lines (the room's or
-    // its own Whisper). A device default is a guess and is not advertised,
+    // picked language. A device default is a guess and is not advertised,
     // so a writer's Whisper is left to find the language itself.
-    function trLangKnown() { const v = ccLang(); return trLangOf(trLangLearned || (lsGet(CC_LANG_KEY) && v !== 'auto' ? v : '')); }
-    function trLearnLang(line) {
-      if (!line || !line.ld || line.byId !== myId || !line.lang || trLangLearned === line.lang) return;
-      if (line.lang === trLangKnown()) return; // nothing new: already picked or learned
-      if (trHeardLang === line.lang) trHeardN++; else { trHeardLang = line.lang; trHeardN = 1; }
-      if (trHeardN < 2) return;
-      trLangLearned = line.lang;
-      if (clog) clog('tr lang learned', line.lang);
-      try { if (typeof speechRunning === 'function' && speechRunning()) { stopSpeech(); syncSpeech(); } } catch (e) {}
-      try { if (typeof capPublish === 'function') capPublish(); } catch (e) {} // the room's writers ask Whisper for my language from now on
-      try { setStatus(uiText('stCaptionsNowListenFor', 'Captions now listen for {lang}.').replace('{lang}', line.lang), 6000); } catch (e) {}
-    }
+    function trLangKnown() { const v = ccLang(); return trLangOf(lsGet(CC_LANG_KEY) && v !== 'auto' ? v : ''); }
     // Consecutive lines from one person, close together, read as one
     // paragraph. The engine hands over two-word finals with no punctuation;
     // the lines stay as they came (ids, times), only the reading view joins them.
@@ -33543,16 +33535,28 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       onWarn: (v, info) => { try { capWarn(v, info); } catch (e) {} },
     }) : null;
     // THE WARNING CARD and THE SOURCE CHOOSER: one small card over the call, one tap per source.
-    function capCard(id, v, title, note, rows) {
+    // ex: { theirs, ours, by } from capTrust.evidence(v): shown side by side so the person can judge who is right.
+    function capCard(id, v, title, note, rows, ex) {
       let c = document.getElementById(id);
       if (!c) {
         c = document.createElement('div'); c.id = id; c.className = 'capcard'; c.setAttribute('role', 'dialog');
         document.body.appendChild(c);
       }
       c.dataset.voice = v;
-      c.innerHTML = '<div class="capcard-t"></div><div class="capcard-n"></div><div class="capcard-b dlg-actions"></div>';
+      c.innerHTML = '<div class="capcard-t"></div><div class="capcard-body"><div class="capcard-n"></div><div class="capcard-ex"></div><div class="capcard-h"></div></div><div class="capcard-b dlg-actions"></div>';
       c.querySelector('.capcard-t').textContent = title;
       c.querySelector('.capcard-n').textContent = note || '';
+      const exEl = c.querySelector('.capcard-ex');
+      if (ex && (ex.theirs || ex.ours)) {
+        const heardBy = !ex.by || ex.by === myId ? uiText('capExMine', 'This device heard') : uiText('capExTheirs', '{name}\'s device heard').replace('{name}', capName(ex.by));
+        for (const [cls, lab, txt] of [['theirs', uiText('capExSaid', '{name}\'s captions said').replace('{name}', capName(v)), ex.theirs], ['ours', heardBy, ex.ours]]) {
+          const q = document.createElement('div'); q.className = 'capcard-q capcard-q-' + cls;
+          const l = document.createElement('b'); l.textContent = lab;
+          const t = document.createElement('span'); t.textContent = '\u201c' + (txt || '\u2026') + '\u201d';
+          q.appendChild(l); q.appendChild(t); exEl.appendChild(q);
+        }
+      }
+      c.querySelector('.capcard-h').textContent = uiText('capLater', 'You can change this any time: tap {name}\'s tile, then Captions.').replace('{name}', capName(v));
       const b = c.querySelector('.capcard-b');
       for (const r of rows) {
         const x = document.createElement('button'); x.type = 'button'; x.textContent = r.t; x.dataset.src = r.src;
@@ -33564,6 +33568,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       done.onclick = () => { c.hidden = true; };
       b.appendChild(done);
       c.hidden = false;
+      if (window.__gifosBarAvoid) window.__gifosBarAvoid();   // made lazily: lift it over the floating bar now
       return c;
     }
     // EARS ONLY ARE SPOT CHECKS. A page whose own engine is the browser's listens, by default, to one talking voice at a
@@ -33588,32 +33593,45 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function capCanEar() { return whisperSupported() && !phoneCaptions() && !CC_ON_PHONE; }
     // Sources for v other than the one shown: this device's ears, each writer with lines for v, the speaker's own.
-    function capRows(v, withAuto) {
+    // The choices for v, in plain words: let the page decide, show this device's ears, the speaker's own, another
+    // participant's lines. The one in force is pressed.
+    function capRows(v) {
       const c = capTrust.choice(v), rows = [], name = capName(v);
-      if (withAuto) rows.push({ src: 'auto', t: uiText('capAuto', 'Automatic'), on: c.mode === 'auto' });
-      rows.push({ src: 'own', t: uiText('capOwn', '{name}\'s own captions').replace('{name}', name), on: c.mode === 'own' });
-      if (capTrust.hasEars(v) || capCanEar()) rows.push({ src: 'me', t: uiText('capMine', 'What this device hears'), on: c.mode === 'me' });
-      for (const s of capTrust.sources(v)) if (s.kind === 'ear') rows.push({ src: s.w, t: uiText('capTheirs', '{name}\'s captions').replace('{name}', capName(s.w)), on: c.mode === s.w });
+      rows.push({ src: 'auto', t: uiText('capAutoPlain', 'Decide for me (recommended)'), on: c.mode === 'auto' });
+      if (capTrust.hasEars(v) || capCanEar()) rows.push({ src: 'me', t: uiText('capMinePlain', 'Show what this device hears'), on: c.mode === 'me' });
+      rows.push({ src: 'own', t: uiText('capOwnPlain', 'Show {name}\'s own captions').replace('{name}', name), on: c.mode === 'own' });
+      for (const s of capTrust.sources(v)) if (s.kind === 'ear') rows.push({ src: s.w, t: uiText('capTheirsPlain', 'Show {name}\'s captions').replace('{name}', capName(s.w)), on: c.mode === s.w });
       return rows;
     }
-    function capWarn(v, info) {
-      const name = capName(v), c = capTrust.choice(v);
-      const ear = info && info.by && info.by !== 'me' && info.by !== myId ? capName(info.by) : '';
-      const title = ear ? uiText('capWarnEar', '{name}\'s captions don\'t match what {ear}\'s device hears').replace('{name}', name).replace('{ear}', ear)
-        : uiText('capWarn', '{name}\'s captions don\'t match what you\'re hearing').replace('{name}', name);
-      const note = c.show === myId ? uiText('capNowMine', 'Showing what this device hears.')
-        : (c.show !== 'all' && c.show !== v) ? uiText('capNowTheirs', 'Showing {name}\'s captions.').replace('{name}', capName(c.show)) : '';
-      const rows = capRows(v, false);
-      if (clog) clog('captrust warn', String(v).slice(0, 6), info && info.why, String(c.show).slice(0, 6));
-      capCard('capwarn', v, title, note, rows);
+    // What the page shows for v right now, in one sentence.
+    function capNowNote(v) {
+      const c = capTrust.choice(v);
+      const auto = c.mode === 'auto' ? uiText('capNowAuto', ' (decided for you)') : '';
+      const tail = (t) => t.replace(/([.\u3002])$/, auto + '$1');   // the note goes before the full stop, in any script
+      if (c.show === myId) return tail(uiText('capNowMine', 'Showing what this device hears.'));
+      if (c.show === v) return tail(uiText('capNowOwnPlain', 'Showing {name}\'s own captions.').replace('{name}', capName(v)));
+      if (c.show !== 'all') return tail(uiText('capNowTheirs', 'Showing {name}\'s captions.').replace('{name}', capName(c.show)));
+      return capTrust.stateOf(v, v) === 'distrusted' ? uiText('capNowNone', 'Hiding {name}\'s own captions: no better source yet.').replace('{name}', capName(v)) : '';
     }
-    function capSourceOpen(v) {
+    // ONE CARD for a person's captions. The warning (info set: this page just stopped trusting their captions) and the
+    // chooser (opened from their tile or the caption bar) are the same card: what was said vs what was heard, what is
+    // shown now, and one tap per choice.
+    function capSourceOpen(v, info) {
       if (!capTrust || !v || v === myId) return;
-      const name = capName(v);
-      const rows = capRows(v, true);
-      rows.push({ src: 'flag', t: uiText('capFlag', 'These captions are wrong') });
-      capCard('capsrc', v, uiText('capSrcTitle', 'Captions for {name}').replace('{name}', name), '', rows);
+      const name = capName(v), ex = capTrust.evidence(v);
+      const ear = ex && ex.by && ex.by !== myId ? capName(ex.by) : (info && info.by && info.by !== 'me' && info.by !== myId ? capName(info.by) : '');
+      let title;
+      if (info || capTrust.stateOf(v, v) === 'distrusted') {
+        title = ear ? uiText('capWarnEarPlain', '{name}\'s captions don\'t match what {ear}\'s device hears. Which should you see?').replace('{name}', name).replace('{ear}', ear)
+          : uiText('capWarnPlain', '{name}\'s captions don\'t match what your device hears. Which should you see?').replace('{name}', name);
+      } else title = uiText('capSrcTitle', 'Captions for {name}').replace('{name}', name);
+      const rows = capRows(v);
+      if (!info) rows.push({ src: 'flag', t: uiText('capFlag', 'These captions are wrong') });
+      if (info && clog) clog('captrust warn', String(v).slice(0, 6), info.why, String(capTrust.choice(v).show).slice(0, 6));
+      const other = document.getElementById(info ? 'capsrc' : 'capwarn'); if (other) other.hidden = true;
+      capCard(info ? 'capwarn' : 'capsrc', v, title, capNowNote(v), rows, ex);
     }
+    function capWarn(v, info) { capSourceOpen(v, info || { why: '' }); }
     function capPick(v, src) {
       if (!capTrust) return;
       if (src === 'flag') { const c = capTrust.choice(v); capTrust.flag(v, c.show === 'all' ? v : c.show); }
@@ -33632,15 +33650,75 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       sel.innerHTML = CC_LANGS.map(([v, l]) => '<option value="' + v + '">' + l + '</option>').join('');
       if (saved && !CC_LANGS.some(([v]) => v === saved)) sel.insertAdjacentHTML('beforeend', '<option value="' + esc(saved) + '">' + esc(saved) + '</option>');
       sel.value = saved;
-      sel.onchange = () => {
-        try { if (sel.value) localStorage.setItem(CC_LANG_KEY, sel.value); else localStorage.removeItem(CC_LANG_KEY); } catch (e) {}
-        trLangLearned = ''; trHeardLang = ''; trHeardN = 0;
-        if (speechRunning()) { stopSpeech(); syncSpeech(); }
-        if (ccEngine() === 'local') syncSpeech(); // the next clip opens this language's model
-        capPublish();
-        setStatus('Captions now listen for ' + ccLangLabel() + '.');
-      };
+      sel.onchange = () => ccLangSet(sel.value);
     })();
+    // Settings > Captions language, picked there or by the speaker's suggestion (one path): the engine restarts in it,
+    // the room is told.
+    function ccLangSet(v) {
+      v = String(v || '');
+      try { if (v) localStorage.setItem(CC_LANG_KEY, v); else localStorage.removeItem(CC_LANG_KEY); } catch (e) {}
+      const sel = document.getElementById('cclang');
+      if (sel && sel.value !== v) {
+        if (v && !CC_LANGS.some(([x]) => x === v)) sel.insertAdjacentHTML('beforeend', '<option value="' + esc(v) + '">' + esc(v) + '</option>');
+        sel.value = v;
+      }
+      if (speechRunning()) { stopSpeech(); syncSpeech(); }
+      if (ccEngine() === 'local') syncSpeech(); // the next clip opens this language's model
+      capPublish();
+      setStatus(uiText('stCaptionsNowListenFor', 'Captions now listen for {lang}.').replace('{lang}', ccLangLabel()));
+      try { capLangAsk(); } catch (e) {}
+    }
+    // THE SPEAKER'S SUGGESTION (docs/caption-trust.md section 7). Other pages' ears vote, on the ear lines they already
+    // send about my voice, for the language they hear me in; when enough of them agree on one my captions do not listen
+    // for, this page asks me. Only my tap switches; Keep quiets that language for the meeting.
+    capLang = (GifOS.capTrust && GifOS.capTrust.langHint && GifOS.timings) ? GifOS.capTrust.langHint({
+      me: () => myId,
+      keepMs: GifOS.timings.CT_KEEP_MS,
+      mine: capLangMine,
+      others: () => { try { return Math.max(0, participantCount() - 1); } catch (e) { return peers.size; } },
+    }) : null;
+    // The language my captions listen for, '' when my engine finds it itself (Whisper, nothing picked or 'auto').
+    function capLangMine() {
+      const saved = lsGet(CC_LANG_KEY);
+      if (saved === 'auto' || (!saved && ccEngine() === 'whisper')) return '';
+      return trLang();
+    }
+    // A language's name in this person's UI language ('en' -> "English", in German "Englisch").
+    function capLangName(code) {
+      code = trLangOf(code);
+      if (!code) return '';
+      try { const n = new Intl.DisplayNames([uiLang(), 'en'], { type: 'language' }).of(code); if (n && n.toLowerCase() !== code) return n; } catch (e) {}
+      const hit = CC_LANGS.find(([v]) => v && v !== 'auto' && trLangOf(v) === code);
+      return hit ? hit[1] : code;
+    }
+    // The picker value for a language: this device's own variant when the picker has it, else the picker's first.
+    function capLangTag(code) {
+      const navs = (navigator.languages && navigator.languages.length) ? Array.from(navigator.languages) : [navigator.language || ''];
+      const nav = navs.find((t) => trLangOf(t) === code && CC_LANGS.some(([v]) => v === t));
+      if (nav) return nav;
+      const hit = CC_LANGS.find(([v]) => v && v !== 'auto' && trLangOf(v) === code);
+      return hit ? hit[0] : code;
+    }
+    function capLangAsk() {
+      if (!capLang) return;
+      const s = capLang.suggestion();
+      let c = document.getElementById('caplang');
+      if (c && !c.hidden) { if (!s || s.lang !== c.dataset.lang) c.hidden = true; return; }   // asking already, or no longer true
+      if (!s) return;
+      const heard = capLangName(s.lang), mine = capLangName(capLangMine());
+      if (!c) { c = document.createElement('div'); c.id = 'caplang'; c.className = 'capcard'; c.setAttribute('role', 'dialog'); document.body.appendChild(c); }
+      c.dataset.lang = s.lang;
+      c.innerHTML = '<div class="capcard-t"></div><div class="capcard-body"><div class="capcard-h"></div></div><div class="capcard-b dlg-actions"></div>';
+      c.querySelector('.capcard-t').textContent = uiText('capLangAsk', 'Others hear you speaking {heard}, but your captions listen for {mine}. Switch your captions to {heard}?').split('{heard}').join(heard).split('{mine}').join(mine);
+      c.querySelector('.capcard-h').textContent = uiText('capLangLater', 'You can change this any time: Settings, then Captions language.');
+      const b = c.querySelector('.capcard-b');
+      const btn = (src, t, fn) => { const x = document.createElement('button'); x.type = 'button'; x.dataset.src = src; x.textContent = t; x.onclick = () => { c.hidden = true; fn(); }; b.appendChild(x); };
+      btn('switch', uiText('capLangSwitch', 'Switch to {heard}').split('{heard}').join(heard), () => { if (clog) clog('caplang switch', s.lang); ccLangSet(capLangTag(s.lang)); });
+      btn('keep', uiText('capLangKeep', 'Keep {mine}').split('{mine}').join(mine), () => { if (clog) clog('caplang keep', s.lang); capLang.keep(s.lang); });
+      c.hidden = false;
+      if (window.__gifosBarAvoid) window.__gifosBarAvoid();   // above the floating bar, like the captions card
+      if (clog) clog('caplang ask', s.lang, s.n, s.need, trLangOf(capLangMine()));
+    }
     // ON-DEVICE CAPTIONS ON AN ANDROID PHONE. The phone writes its captions
     // with a speech model that runs in this browser (GifOS.ondevice, a Web
     // Worker): the voice never leaves the phone. Android only (2026-11-18,
@@ -34454,7 +34532,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (!pid || (typeof myId !== 'undefined' && pid === myId) || queued.indexOf(pid) >= 0) return;
           const st = statusOf.get(pid) || {};
           if (st.muted || st.bot || (modOf(pid).mute && modOf(pid).mute.on)) return;
-          if (localEar && capCovered(pid)) return;
+          // The on-device ears leave a voice its own page captions (cap 1) to that page, except a voice whose own
+          // captions this page distrusts, or that its user put on this device's ears: those
+          // are heard full time, so the page shows what was really said and sees
+          // when the speaker's captions come right again (then trust returns and the page goes back to them).
+          if (localEar && capCovered(pid) && !(capTrust && (capTrust.stateOf(pid, pid) === 'distrusted' || capTrust.choice(pid).mode === 'me'))) return;
           // Ears only listen to voices someone else captions (that is what they check), and a voice whose own
           // captions are trusted only during a spot check.
           if (earsOnly && !capCovered(pid) && !(capTrust && capTrust.choice(pid).mode === 'me')) return;
@@ -35131,9 +35213,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function speechRunning() { return !!speech; }
     function speechRetryDelay(n) { return Math.min(30000, 1000 * Math.pow(2, Math.max(0, n - 1))); }
     // The language the browser engine is asked for: the picker, else the
-    // device's language, else one the room's Whisper pages detected for me.
+    // device's language (the room's suggestion changes the picker, on a tap).
     function speechLangFor() {
-      if (trLangLearned) return trLangLearned;
       const v = ccLang();
       return v === 'auto' ? (navigator.language || 'en-US') : v;
     }
@@ -36643,7 +36724,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // A tucked or faded bar keeps the last values, so nothing jumps when it wakes.
     function placeBarAvoiders() {
       const FLOATERS = [['callstate', ''], ['chatnote', 'callstate'], ['livecap', 'callstate'], 
-        ['waitlist', ''], ['rb-now', ''], ['bc-cap', ''], ['bc-reacts', '']];
+        ['waitlist', ''], ['rb-now', ''], ['bc-cap', ''], ['bc-reacts', ''],
+        ['capwarn', ''], ['capsrc', ''], ['caplang', '']];   // the captions cards: every button above the floating bar
       const PANELS = [['chatpanel', 'pad'], ['qa', 'pad'], ['bc-ended', 'bottom'], ['bc-ident', 'bottom'], ['fsstrip', 'strip']];
       const bar = document.querySelector('.bar');
       if (!bar || bar.classList.contains('tucked') || document.body.classList.contains('chrome-away')) return;
@@ -42115,12 +42197,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }, () => agentFail('This page cannot open a microphone.'));
     }
     function agentStage(on) {
-      if (!on) { if (myStatus.stg) { if (myStatus.scr) stopScreenShare('you stepped down'); setStage(false); } return agentOk({ onStage: false }); }
+      if (!on) { if (myStatus.stg) { if (myStatus.scr) stopScreenShare('you stepped down'); setStage(false); } else if (myStatus.hand) agentHand(false); return agentOk({ onStage: false }); }
       if (myStatus.stg) return agentOk({ onStage: true });
-      if (!canStage(myId)) return agentFail('Only a host can put you on the stage here. Raise your hand to ask.');
+      // The same road as a person: a seat that may step up does (the Stage button), a seat that may not asks with a raised
+      // hand and the host's answer (the call-up, reactHandCall) puts it on. Ok only when the request was really made.
       if (stageIds().length >= SCALE.C) return agentFail('The stage is full (' + SCALE.C + ' people).');
+      if (!canStage(myId)) {
+        if (!myStatus.hand) agentHand(true);
+        return myStatus.hand ? agentOk({ onStage: false, asked: true }) : agentFail('Your request for the stage could not be made.');
+      }
       setStage(true);
-      return agentOk({ onStage: true });
+      return stageIds().includes(myId) ? agentOk({ onStage: true }) : agentOk({ onStage: false, asked: true });
     }
     async function agentAgendaSet(items) {
       const MA = GifOS.meetAgenda;
@@ -42536,7 +42623,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // the line names why I am carried: no RTCPeerConnection at all, or one whose connection gathers no candidate (a policy, the network)
       G.said = /no candidate/.test(G.why) ? uiText('stCarryLookingNoPath', 'Joining through a seat of the meeting (this browser\'s connections find no network path)…') : uiText('stCarryLooking', 'Joining through a seat of the meeting (this browser has no WebRTC)…');
       setStatus(G.said, 0, 'note');
-      const url = () => (ticket ? ticket.prepare(myDevHash).catch(() => null) : Promise.resolve()).then(() => relayBase + '/s/' + sessId + '?role=mesh&pv=0.9.25&token=' + encodeURIComponent(sessTok || '')
+      const url = () => (ticket ? ticket.prepare(myDevHash).catch(() => null) : Promise.resolve()).then(() => relayBase + '/s/' + sessId + '?role=mesh&pv=' + encodeURIComponent(GifOS.meshWire.WIRE_VERSION) + '&token=' + encodeURIComponent(sessTok || '')
         + '&peer=' + encodeURIComponent(myId) + '&gk=' + encodeURIComponent(gk) + '&dev=' + encodeURIComponent(myDevHash) + '&pw=' + encodeURIComponent(pwProof)
         + (ticket && ticket.token(myDevHash) ? '&jt=' + encodeURIComponent(ticket.token(myDevHash)) : ''));
       G.door = C.createDoor({ url, gk, key: roomE2E, net, log: turnNote,
@@ -44060,7 +44147,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       captionsForTest: () => ({ mix: Array.from(ccMix.ins.keys()), drops: trDrops, show: !!ccShow, send: capSend(), mode: trMode(),
         lines: Array.from(trs.values()).sort((a, b) => a.at - b.at).map((l) => ({ by: l.by, byId: l.byId, w: l.w, src: l.src, lang: l.lang || '', ld: l.ld || 0, at: l.at, text: l.text })) }),
       // The transcript settings and what they produced on this page.
-      transcriptForTest: () => ({ send: capSend(), mode: trMode(), cap: !!myStatus.cap, lang: trLang(), known: trLangKnown(), learned: trLangLearned, mark: txMarkWhy(), speech: speechRunning(), ear: !!(speech && speech.input),
+      transcriptForTest: () => ({ send: capSend(), mode: trMode(), cap: !!myStatus.cap, lang: trLang(), known: trLangKnown(), mark: txMarkWhy(), speech: speechRunning(), ear: !!(speech && speech.input),
         lines: Array.from(trs.values()).sort((a, b) => a.at - b.at).map((l) => ({ id: l.id, by: l.by, byId: l.byId, w: l.w, src: l.src, lang: l.lang || '', ld: l.ld || 0, at: l.at, end: l.end || 0, text: l.text })) }),
       setTranscriptForTest: (o) => { o = o || {}; if ('send' in o) setCapSend(!!o.send); if ('mode' in o) setTrMode(o.mode); return { send: capSend(), mode: trMode() }; },
       ownVoiceForTest: () => {
@@ -44168,6 +44255,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return o;
       },
       capSourceOpen: (v) => capSourceOpen(v),
+      capLangForTest: () => (capLang ? Object.assign(capLang.dump(), { ask: capLang.suggestion() }) : null),
       whisperForTest: () => ({ engine: ccEngine(), live: !!wsp, ready: whisperReady(), queue: wspQ.items.length, sent: wspQ.sent, dropped: wspQ.dropped, rate: wsp ? wsp.rate : 0, captures: Array.from(wspCaps.keys()), writes: trWrites(), inFlight: !!wspQ.busy, behind: !!wspQ.behind, paused: !!wspPaused, lastLatencyMs: wspQ.lastLatencyMs || 0, model: wspModel(), local: ccLocalQ.test() }),
       whisperFeedForTest: (f32, rate, forId) => { const w = wspCaps.get(forId || 'me'); if (!w) return false; wspEnqueue(w, [Float32Array.from(f32)], Date.now(), rate || 16000, true); return true; },
       ccViewOn: () => !!ccShow,

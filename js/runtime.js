@@ -459,7 +459,8 @@
       }
       return Promise.resolve({ order, catalogs });
     }
-    const appId = String((manifest && manifest.appId) || '').replace(/[^a-z0-9_-]/gi, '');
+    // A copy saved when the one-phone games had their own ids ('imposter-1p') reads the words of the game that took over.
+    const appId = String((manifest && manifest.appId) || '').replace(/[^a-z0-9_-]/gi, '').replace(/^(imposter|spy|dial|roulette)-1p$/, '$1');
     if (!appId || !manifest || manifest.i18n !== 'gifos') return Promise.resolve({ order: loc.catalogs, catalogs });
     const order = loc.catalogs.indexOf('en') === -1 ? loc.catalogs.concat(['en']) : loc.catalogs;
     return Promise.all(order.map((l) => root.fetch(I.catalogUrl(l, 'apps/' + appId))

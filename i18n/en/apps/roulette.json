@@ -21,5 +21,9 @@
   "needsNewer": "This game needs a newer GifOS to play together. Reload the page to update.",
   "hint.line": "You are next in line: you get the first seat that opens.",
   "hint.asking": "The host has been asked to seat you.",
-  "hint.watch": "You are watching. When a seat opens, the next person in line gets it."
+  "hint.watch": "You are watching. When a seat opens, the next person in line gets it.",
+  "mode.title": "How do you want to play?",
+  "mode.together": "Play together (everyone on their own phone)",
+  "mode.one": "One phone, pass it around",
+  "mode.change": "Change how you play"
 }

@@ -29,7 +29,7 @@
   const GifOS = root.GifOS = root.GifOS || {};
 
   // Word-overlap dials (ratios and counts; the times come from the timings table).
-  const DIALS = { MATCH: 0.5, MISS: 0.25, BIG_MISS: 0.1, MIN_WORDS: 4, BIG_WORDS: 8, TRUST_N: 2, LOSE_N: 2, RING: 60 };
+  const DIALS = { MATCH: 0.5, MISS: 0.25, BIG_MISS: 0.1, MIN_WORDS: 4, BIG_WORDS: 8, TRUST_N: 2, LOSE_N: 2, RING: 60, EX_CHARS: 160, CL_AGREE_N: 2 };
   const STOP = new Set(['the', 'and', 'for', 'you', 'that', 'this', 'with', 'are', 'was', 'but', 'not', 'have', 'has', 'had',
     'our', 'all', 'its', 'his', 'her', 'she', 'they', 'them', 'then', 'than', 'from', 'what', 'will', 'can', 'just', 'into',
     'one', 'too', 'there', 'their', 'your', 'who', 'how', 'any', 'out', 'yes', 'okay']);
@@ -89,9 +89,11 @@
       warned.add(v);
       try { if (opts.onWarn) opts.onWarn(v, { why: r.why, by: r.by, show: choice(v).show }); } catch (e) {}
     }
-    function sample(v, w, verdict, by) {
+    function sample(v, w, verdict, by, ex) {
       if (!verdict) return;
       const r = rec(v, w);
+      // the pair this verdict came from: what source w wrote and what the reference heard, over the same span
+      if (ex) { r.ex = ex; if (verdict !== 'match') r.exBad = ex; }
       if (r.why === 'flag' && r.s === 'distrusted') return;   // the user's flag stands for the meeting
       if (verdict === 'match') {
         r.bad = 0; r.ok++;
@@ -115,7 +117,8 @@
       const at = +l.at || now();
       // this device's ears: Whisper (or the phone's model) on the received audio; no other engine of mine is a reference
       const mine = w === me() && ear && (l.eng === 'whisper' || l.eng === 'local');
-      a.push({ w, at, end: Math.max(at, +l.end || 0), ws, ear, mine, seen: new Set(), t: now() });
+      // tx: the line's words as shown, kept in this page's memory so the chooser can show what each source said
+      a.push({ w, at, end: Math.max(at, +l.end || 0), ws, ear, mine, seen: new Set(), t: now(), tx: String(l.text || '').slice(0, d.EX_CHARS) });
       if (a.length > d.RING) a.splice(0, a.length - d.RING);
       if (ear && w !== me() && (l.vt === 0 || l.vt === 1)) { vts.set(key(v, w), l.vt); applyVouch(v, w); }
     }
@@ -129,6 +132,12 @@
     function hasEars(v) {
       if (opts.earsFor && opts.earsFor(v)) return true;
       return recent(v).some((x) => x.mine);
+    }
+    // Text of writer w on voice v over [a, b] (for the example the chooser shows).
+    function textIn(v, w, a, b) {
+      const out = [];
+      for (const x of lines.get(v) || []) if (x.w === w && x.end >= a && x.at <= b && x.tx && out.indexOf(x.tx) < 0) out.push(x.tx);
+      return out.join(' ').slice(-d.EX_CHARS);
     }
     // Words of writer w on voice v over [a, b].
     function wordsIn(v, w, a, b) {
@@ -158,7 +167,7 @@
               if (!ws) continue;
               r.seen.add(w);
               const vd = judge(r.ws, ws, d);
-              sample(v, w, vd, 'me');
+              sample(v, w, vd, 'me', vd ? { theirs: textIn(v, w, lo, hi), ours: r.tx, by: my } : null);
               if (w !== v && vd) { if (vd === 'match') earOk.set(w, (earOk.get(w) || 0) + 1); else earBad.add(w); }
             }
           } else if (!refMine && r.ear && r.w !== v) {
@@ -167,8 +176,9 @@
             if (own) {
               r.seen.add(v);
               const vd = judge(r.ws, own, d);
-              if (trustedEar(r.w)) sample(v, v, vd, r.w);
-              else if (vd === 'match') { earOk.set(r.w, (earOk.get(r.w) || 0) + 1); sample(v, v, vd, r.w); }
+              const ex = vd ? { theirs: textIn(v, v, lo, hi), ours: r.tx, by: r.w } : null;
+              if (trustedEar(r.w)) sample(v, v, vd, r.w, ex);
+              else if (vd === 'match') { earOk.set(r.w, (earOk.get(r.w) || 0) + 1); sample(v, v, vd, r.w, ex); }
             }
           }
         }
@@ -227,6 +237,15 @@
       }
       return out;
     }
+    // The example behind this page's view of v's own captions: the last pair that disagreed, else the last pair judged.
+    // -> { theirs, ours, by } (by: whose ears heard 'ours'), or null when nothing was compared yet.
+    function evidence(v) {
+      const r = st.get(key(String(v), String(v)));
+      const e = r && (r.s === 'trusted' ? r.ex : (r.exBad || r.ex));
+      return e ? { theirs: e.theirs || '', ours: e.ours || '', by: e.by || '' } : null;
+    }
+    // Has this page ever held a caption line for v, or judged v's captions? (The tile's Captions row is offered then.)
+    function known(v) { v = String(v); return lines.has(v) || st.has(key(v, v)); }
     function dump() {
       const o = { states: {}, picks: Object.fromEntries(picks), ears: {}, earBad: Array.from(earBad), warned: Array.from(warned) };
       for (const [k, r] of st) o.states[k] = { s: r.s, ok: r.ok, bad: r.bad, why: r.why, by: r.by };
@@ -244,9 +263,54 @@
       if (c.show === w) return true;
       return c.show !== 'all' && shows(l);
     }
-    return { observe, tick, choice, shows, showsHeld, earWanted, verdict, pick, flag, sources, stateOf, hasEars, dump };
+    return { observe, tick, choice, shows, showsHeld, earWanted, verdict, pick, flag, sources, stateOf, hasEars, evidence, known, dump };
   }
 
-  GifOS.capTrust = { make, words, overlap, judge, DIALS };
+  // THE SPEAKER'S SIDE (docs/caption-trust.md section 7): the language other pages' ears hear MY voice in.
+  // An ear line about me that another page sends is that page's vote when it carries ld (Whisper detected the language)
+  // or vt 0 (their ears do not match my captions); vt 1 withdraws it. Only the writer, the language and those flags are
+  // read. A language is suggested when CL_AGREE_N distinct others agree on it (the only other person, in a meeting of two).
+  // opts: { me() my id, now(), keepMs, mine() the language my captions listen for ('' when my engine detects it),
+  //         others() how many other people are in the meeting }
+  function langHint(opts) {
+    const d = Object.assign({}, DIALS, opts.dials || {});
+    const now = opts.now || (() => Date.now());
+    const short = (l) => String(l || '').toLowerCase().split(/[-_]/)[0];
+    const votes = new Map();   // writer -> { lang, at }
+    const kept = new Set();    // languages the speaker chose to keep, for this meeting
+    function observe(l) {
+      const me = String(opts.me() || '');
+      if (!l || l.tl || l.src !== 'ear' || !me || String(l.byId) !== me || !l.w || String(l.w) === me) return;
+      const w = String(l.w);
+      if (l.vt === 1) { votes.delete(w); return; }
+      const lang = short(l.lang);
+      if (!lang || !(l.ld || l.vt === 0)) return;   // a guess with nothing in doubt says nothing
+      votes.set(w, { lang, at: now() });
+    }
+    function need() { return Math.max(1, Math.min(d.CL_AGREE_N, Math.floor(+opts.others() || 0))); }
+    // -> { lang, n, need } when enough others agree on a language my captions do not listen for, else null
+    function suggestion() {
+      const y = short(opts.mine());
+      if (!y) return null;
+      const cut = now() - opts.keepMs, count = new Map();
+      for (const [w, v] of votes) {
+        if (v.at < cut) { votes.delete(w); continue; }
+        if (v.lang !== y && !kept.has(v.lang)) count.set(v.lang, (count.get(v.lang) || 0) + 1);
+      }
+      let best = null;
+      for (const [lang, n] of count) if (!best || n > best.n) best = { lang, n };
+      const k = need();
+      return best && best.n >= k ? Object.assign(best, { need: k }) : null;
+    }
+    function keep(lang) { if (lang) kept.add(short(lang)); }
+    function dump() {
+      const o = { votes: {}, kept: Array.from(kept), need: need(), mine: short(opts.mine()) };
+      for (const [w, v] of votes) o.votes[w] = v.lang;
+      return o;
+    }
+    return { observe, suggestion, keep, need, dump };
+  }
+
+  GifOS.capTrust = { make, langHint, words, overlap, judge, DIALS };
   if (typeof module !== 'undefined' && module.exports) module.exports = GifOS.capTrust;
 })(typeof window !== 'undefined' ? window : globalThis);

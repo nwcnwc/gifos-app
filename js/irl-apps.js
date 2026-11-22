@@ -1984,31 +1984,85 @@ The shared deck lives in this icon for the room. A pass-the-phone deal is on thi
   const PARTY = { data: { party: { visibility: 'read-write' } } };
   // Every game reads who plays from the room: IRL.expose lets the checks read the shared game (window.__<appId>.state()).
   // Four games play two ways from one source: own phone (the room, no typed names) and one phone passed around
-  // (no room, no shared data). //@NET and //@SOLO blocks are kept for one way only; each page carries one mode's code.
+  // (no room, no shared data). //@NET and //@SOLO blocks are kept for one way only; a mode's code is built apart.
   const mode = (html, solo) => html
     .replace(solo ? /\/\/@NET\n[\s\S]*?\/\/@END\n/g : /\/\/@SOLO\n[\s\S]*?\/\/@END\n/g, '')
     .replace(/\/\/@(SOLO|NET|END)\n/g, '');
   const X = (id, html) => mode(html, false) + '<script>IRL.expose(\'' + id + '\');</script>';
   const ONE = (html) => mode(html, true).replace('<script>\n', '<script>window.IRL_SOLO=true;</script>\n<script>\n');
+  // The opening page of a two-way game. Both modes' code ride in the page as text and only the chosen one runs, in its
+  // own function, so the two never share a name. With others already in the room it goes straight to playing together;
+  // a start of 'one' (a launcher saved when the one-phone game had its own id) goes straight to one phone.
+  const SHELL = `
+const EN = { 'mode.title': 'How do you want to play?', 'mode.together': 'Play together (everyone on their own phone)', 'mode.one': 'One phone, pass it around', 'mode.change': 'Change how you play' };
+const T = (k) => { const v = window.gifos && gifos.i18n ? gifos.i18n.t(k) : k; return v === k ? EN[k] : v; };
+const main = () => document.getElementById('m'), bar = document.getElementById('modebar');
+let live = null, watch = null;
+function paintBar() {
+  bar.innerHTML = '';
+  if (!live) return;
+  const b = document.createElement('button'); b.className = 'btn alt small';
+  b.textContent = T(live === 'net' ? 'mode.one' : 'mode.change');
+  b.onclick = live === 'net' ? function () { launch('one'); } : choose;
+  bar.appendChild(b);
+  // together: only while the lobby shows, never in the middle of a game
+  bar.hidden = live === 'net' && !main().querySelector('#start');
+}
+function launch(m) {
+  if (watch) { watch.disconnect(); watch = null; }
+  const old = main(); old.replaceWith(old.cloneNode(false));
+  live = m; window.IRL_SOLO = m === 'one';
+  const s = document.createElement('script'); s.text = '(function(){' + CODE[m] + '\\n})();'; document.body.appendChild(s);
+  watch = new MutationObserver(paintBar); watch.observe(main(), { childList: true, subtree: true });
+  paintBar();
+}
+function choose() {
+  if (watch) { watch.disconnect(); watch = null; }
+  const old = main(); old.replaceWith(old.cloneNode(false));
+  live = null; paintBar();
+  main().innerHTML = '<div class="card"><h2>' + T('mode.title') + '</h2></div>'
+    + '<button class="btn" id="mt">' + T('mode.together') + '</button><button class="btn alt" id="mo">' + T('mode.one') + '</button>';
+  document.getElementById('mt').onclick = function () { launch('net'); };
+  document.getElementById('mo').onclick = function () { launch('one'); };
+}
+const go = function () {
+  if (START === 'one') { launch('one'); return; }
+  choose();
+  // someone else is already here (the invite link, or a friend arriving): play together
+  gifos.room.subscribe(function (r) {
+    if (live === null && (r.seats || []).some(function (x) { return x.id && r.me && x.id !== r.me.id; })) launch('net');
+  });
+};
+if (window.gifos && gifos.i18n) { gifos.i18n.load().then(go, go); if (gifos.onLocaleChange) gifos.onLocaleChange(function () { if (live === null) choose(); else paintBar(); }); }
+else go();
+`;
+  const BOTH = (id, html, start) => {
+    const i = html.indexOf('<script>\n'), j = html.lastIndexOf('</script>');
+    const body = html.slice(i + 9, j);
+    const code = { net: mode(body, false) + "\nIRL.expose('" + id + "');", one: mode(body, true) };
+    return html.slice(0, i).replace('<main id="m"></main>', '<main id="m"></main><div id="modebar" class="center"></div>')
+      + '<script>\nconst CODE = ' + JSON.stringify(code).replace(/</g, '\\u003c') + ', START = ' + JSON.stringify(start || '') + ';\n' + SHELL + '</script>';
+  };
+  const TWO_WAY = [
+    { name: 'Odd Word Out',   appId: 'imposter', accent: [59, 165, 93],   html: ODDWORD_HTML,  help: ODDWORD_HELP },
+    { name: 'Catch the Spy',  appId: 'spy',      accent: [77, 124, 214],  html: SPY_HTML,      help: SPY_HELP },
+    { name: 'The Dial',       appId: 'dial',     accent: [198, 92, 204],  html: DIAL_HTML,     help: DIAL_HELP },
+    { name: 'Party Roulette', appId: 'roulette', accent: [123, 92, 255],  html: ROULETTE_HTML, help: ROULETTE_HELP },
+  ];
   GifOS.irl = {
     netApps: [
       { name: 'Fake Facts',       appId: 'fakefacts', accent: [212, 112, 61],  html: X('fakefacts', FAKEFACTS_HTML), help: FAKEFACTS_HELP },
       { name: 'One Clue',         appId: 'oneclue',   accent: [59, 165, 160],  html: X('oneclue', ONECLUE_HTML),   help: ONECLUE_HELP },
       { name: 'Same Brain',       appId: 'samebrain', accent: [224, 92, 138],  html: X('samebrain', SAMEBRAIN_HTML), help: SAMEBRAIN_HELP },
       { name: 'One Night Wolves', appId: 'wolves',    accent: [90, 74, 138],   html: X('wolves', WOLVES_HTML),    help: WOLVES_HELP },
-      { name: 'Odd Word Out',   appId: 'imposter', accent: [59, 165, 93],   html: X('imposter', ODDWORD_HTML),  help: ODDWORD_HELP },
-      { name: 'Catch the Spy',  appId: 'spy',      accent: [77, 124, 214],  html: X('spy', SPY_HTML),      help: SPY_HELP },
-      { name: 'The Dial',       appId: 'dial',     accent: [198, 92, 204],  html: X('dial', DIAL_HTML),     help: DIAL_HELP },
-      { name: 'Party Roulette', appId: 'roulette', accent: [123, 92, 255],  html: X('roulette', ROULETTE_HTML), help: ROULETTE_HELP },
-    ],
-    // One phone passed around: no room, no shared data, names typed on the device (they are not people of a room).
+    ].concat(TWO_WAY.map((g) => Object.assign({}, g, { html: BOTH(g.appId, g.html) }))),
+    // One phone only (no room, no shared data, names typed on the device).
     apps: [
-      { name: 'Odd Word Out',   appId: 'imposter-1p', accent: [59, 165, 93],   html: ONE(ODDWORD_HTML),  help: ODDWORD_HELP },
-      { name: 'Catch the Spy',  appId: 'spy-1p',      accent: [77, 124, 214],  html: ONE(SPY_HTML),      help: SPY_HELP },
       { name: 'Tilt',           appId: 'tilt',     accent: [232, 163, 60],  html: ONE(TILT_HTML),     help: TILT_HELP,
         manifest: { capabilities: { db: true, multiplayer: true, network: [], motion: true, fullscreen: true } } },
-      { name: 'The Dial',       appId: 'dial-1p',     accent: [198, 92, 204],  html: ONE(DIAL_HTML),     help: DIAL_HELP },
-      { name: 'Party Roulette', appId: 'roulette-1p', accent: [123, 92, 255],  html: ONE(ROULETTE_HTML), help: ROULETTE_HELP },
     ],
+    // The one-phone games used to have their own ids ('imposter-1p', ...). A launcher saved under one becomes the two-way
+    // game, opening on one phone (desktop.js rebuildDefaultApps). retired: old id -> the game that took its place.
+    retired: TWO_WAY.map((g) => ({ oldId: g.appId + '-1p', name: g.name, appId: g.appId, accent: g.accent, html: BOTH(g.appId, g.html, 'one'), help: g.help })),
   };
 })(typeof window !== 'undefined' ? window : globalThis);

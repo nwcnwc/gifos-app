@@ -382,6 +382,9 @@
     const add = (a) => { if (a && a.appId && !(a.appId in fresh)) fresh[a.appId] = a; };
     (seed.loose || []).forEach(add);
     (function walk(list) { (list || []).forEach((f) => { (f.apps || []).forEach(add); walk(f.sub); }); })(seed.folders);
+    // A launcher saved under a retired id (the one-phone twins 'imposter-1p', ...) becomes the game that took its place,
+    // opening on one phone. The seed carries those only when asked for (samples.build({ retired: true })).
+    const retired = {}; (seed.retired || []).forEach((r) => { retired[r.oldId] = r; });
     const files = await store.allFileMeta(); // flags and ids only — the bytes of every app are not the question
     const fileById = {}; for (const f of files) fileById[f.id] = f;
     const seenAppIds = new Set();
@@ -391,6 +394,12 @@
       const f = fileById[it.fileId];
       if (!f || !f.isApp || !f.appId) continue;
       seenAppIds.add(f.appId);
+      const r = retired[f.appId];
+      if (r && f.isDefault === true) {
+        await store.putFile(Object.assign({}, f, { bytes: r.bytes, accent: r.accent, appId: r.appId, isDefault: true }));
+        updated++;
+        continue;
+      }
       const a = fresh[f.appId];
       if (!a) continue;                                  // user-built/renamed app, or a default this build dropped
       // Only a file the seed itself stamped is the seed's to refresh. A copy
@@ -666,7 +675,7 @@
     } catch (e) {}
     if (!flagged && !(stored && stored !== stamp)) return;
     try {
-      const seed = await GifOS.samples.build();
+      const seed = await GifOS.samples.build({ retired: true });
       const { updated, added, purged } = await rebuildDefaultApps(seed);
       const moved = await placeBroadcastBelowMeeting();
       const cam = await placeCameraBetweenWelcomeAndMyMedia();
