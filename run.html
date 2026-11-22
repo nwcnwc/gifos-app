@@ -3353,8 +3353,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // whose hidden-tab beat merely landed late must not be torn out of
       // every phone's strip and rebuilt on the next beat.
       const out = [];
-      // A meeting bot never takes the stage. It stays a small tile.
-      const botOf = (id) => id === myId ? !!myStatus.bot : !!((statusOf.get(id) || {}).bot);
+      // A declared bot is a person to the stage: the same rules, no refusal and no privilege.
       // Receiver-side vote enforcement: a device the room has majority-voted
       // OFF the stage is excluded on EVERY phone, whatever its own stg flag
       // says — a hacked client can refuse to step down, but nobody paints or
@@ -3366,7 +3365,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const t = stageClaimOf(id);
         // A share grant is a stage seat only while they are actually sharing.
         // It is not a general pass onto the stage.
-        if (botOf(id)) continue;
         if (!t || !(canStage(id) || hostSpot(id) || (shareClaim(id) && mayShareScreen(id)))) continue;
         if (vt) { const dv = devFor(id); if (dv && (vt.down[dv] || 0) >= stageNeed(vt, dv)) continue; }
         out.push([id, t]);
@@ -3378,7 +3376,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (dg) {
         const have = new Set(out.map((x) => x[0]));
         for (const e of dg.stage) {
-          if (!e.id || have.has(e.id) || e.id === myId || botOf(e.id) || stHold(e.id) || !notTomb(e.id) || !(canStage(e.id) || ((e.f & 2) && mayShareScreen(e.id)))) continue;
+          if (!e.id || have.has(e.id) || e.id === myId || stHold(e.id) || !notTomb(e.id) || !(canStage(e.id) || ((e.f & 2) && mayShareScreen(e.id)))) continue;
           if (vt) { const dv = e.dv || devFor(e.id); if (dv && (vt.down[dv] || 0) >= stageNeed(vt, dv)) continue; }
           out.push([e.id, e.k]);
         }
@@ -7699,7 +7697,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           tiles.push({ id: 'me', el: meTile.tile, tier: myStatus.bot ? 'bot' : 'row', me: true, bot: !!myStatus.bot, shade: shadeKey('me'),
             hand: !!myStatus.hand, handOrd: myStatus.hand || 0,
             // A self-view pin can place your tile on your own stage. It is not room membership.
-            stage: !myStatus.bot && selfPin,
+            stage: selfPin,
             shareFace: !myStatus.bot && !!myStatus.scr,
             stageOrd: Math.max(0, stg.indexOf(myId)),
             speaker: !myStatus.bot && !!(speakingOf && speakingOf.get && speakingOf.get('me')), pz: 'peer:me' });
@@ -7711,7 +7709,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const bot = !!st.bot;
           tiles.push({ id: pid, el: p.tile, tier: bot ? 'bot' : 'row', bot: bot, shade: shadeKey(pid),
             hand: !!st.hand, handOrd: st.hand || 0,
-            stage: !bot && si >= 0, stageOrd: Math.max(0, si),
+            stage: si >= 0, stageOrd: Math.max(0, si),
             // A sharer's screen is the Stage (the sgs strip below); their face stays in the Row.
             shareFace: !bot && (() => { try { return !!sharingScreen(pid); } catch (e) { return false; } })(),
             speaker: !bot && !!(speakingOf && speakingOf.get && speakingOf.get(pid)), pz: 'peer:' + pid });
@@ -42151,12 +42149,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }, () => agentFail('This page cannot open a microphone.'));
     }
     function agentStage(on) {
-      if (!on) { if (myStatus.stg) { if (myStatus.scr) stopScreenShare('you stepped down'); setStage(false); } return agentOk({ onStage: false }); }
+      if (!on) { if (myStatus.stg) { if (myStatus.scr) stopScreenShare('you stepped down'); setStage(false); } else if (myStatus.hand) agentHand(false); return agentOk({ onStage: false }); }
       if (myStatus.stg) return agentOk({ onStage: true });
-      if (!canStage(myId)) return agentFail('Only a host can put you on the stage here. Raise your hand to ask.');
+      // The same road as a person: a seat that may step up does (the Stage button), a seat that may not asks with a raised
+      // hand and the host's answer (the call-up, reactHandCall) puts it on. Ok only when the request was really made.
       if (stageIds().length >= SCALE.C) return agentFail('The stage is full (' + SCALE.C + ' people).');
+      if (!canStage(myId)) {
+        if (!myStatus.hand) agentHand(true);
+        return myStatus.hand ? agentOk({ onStage: false, asked: true }) : agentFail('Your request for the stage could not be made.');
+      }
       setStage(true);
-      return agentOk({ onStage: true });
+      return stageIds().includes(myId) ? agentOk({ onStage: true }) : agentOk({ onStage: false, asked: true });
     }
     async function agentAgendaSet(items) {
       const MA = GifOS.meetAgenda;
