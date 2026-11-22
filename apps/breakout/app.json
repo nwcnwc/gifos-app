@@ -4,8 +4,8 @@
   "appId": "breakout",
   "name": "Breakout",
   "shortName": "Breakout",
-  "version": "1.0.0",
-  "minBuild": 947,
+  "version": "1.1.0",
+  "minBuild": 5861,
   "tagline": "High score lives in the file. Invite a friend: two paddles, one wall.",
   "description": "Send the Invite in the bar above. A second paddle appears on the same brick wall — you both keep the ball up, you both clear the same bricks. Your high score is saved in this file, so close it and come back still on the same run of luck.\n\nOn your own it is the original: an orange paddle, a wall of colourful bricks, three lives. Drag the paddle or use the arrows. Space launches the ball. Up and down pick a level from the menu before you start.\n\nOn a phone the paddle follows your finger. There is no account and nothing to install. A third person who opens the link can watch; they do not get a paddle.\n\nAn unofficial port of Jake Gordon's JavaScript Breakout, MIT-licensed. This copy adds the extra paddle, and keeps the score in the file.",
   "author": {
@@ -40,14 +40,14 @@
   "cover": "/apps/breakout/cover.jpg",
   "screenshots": [],
   "gif": "/apps/breakout/breakout.gif",
-  "bytes": 273059,
+  "bytes": 273899,
   "download": 0,
   "provides": null,
-  "sha256": "ae8f91b2c6603c554f8fe5e67977c98287a8cdd7b80c010660ed1cb2161da6fc",
+  "sha256": "57ff9c1b02d425507e48424e61424ccc7b4e5f9a28591ada79e17e59247e394c",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-22"
   },
   "porter": {
     "name": "GifOS",

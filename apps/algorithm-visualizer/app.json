@@ -4,8 +4,8 @@
   "appId": "algorithm-visualizer",
   "name": "Algorithm Visualizer",
   "shortName": "Algos",
-  "version": "1.0.0",
-  "minBuild": 947,
+  "version": "1.1.0",
+  "minBuild": 5861,
   "tagline": "Watch the swaps on a plane — close it, the last algorithm is still there.",
   "description": "Pick Bubble Sort, Dijkstra, N-Queens. Play walks every comparison, visit and backtrack. Shuffle the input. Step when a pass is too fast. It all runs on this device; nothing is compiled on a server.\n\nClose the app and open it again: the last algorithm and its input are still loaded, because they live in the file. Send the Invite in the bar above and a friend follows the same walk-through — they see your cursor, they cannot steal the clicker.\n\nNineteen algorithms: six sorts, two searches, five graph walks, four dynamic-programming tables, N-Queens and flood fill. The tracers are the original ones — chart, array, graph, log — without the account or the compile server the website needed.\n\nAn unofficial port of Algorithm Visualizer by Jinseo Jason Park. The tracer API is theirs. This copy adds the save inside the GIF and the follow-along invite.",
   "author": {
@@ -41,14 +41,14 @@
   "cover": "/apps/algorithm-visualizer/cover.jpg",
   "screenshots": [],
   "gif": "/apps/algorithm-visualizer/algorithm-visualizer.gif",
-  "bytes": 212069,
+  "bytes": 212800,
   "download": 0,
   "provides": null,
-  "sha256": "7a000ca6a39e803bdb85371c6ebd2c41b09627172a7573765cc692cf1bc4adde",
+  "sha256": "e00cbb650afb25cf0c7875efda502a3996d38771617df7012f2c1715fc02665f",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-22"
   },
   "porter": {
     "name": "GifOS",

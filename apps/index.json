@@ -213,7 +213,7 @@
       "appId": "algorithm-visualizer",
       "name": "Algorithm Visualizer",
       "shortName": "Algos",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "tagline": "Watch the swaps on a plane — close it, the last algorithm is still there.",
       "author": {
         "name": "Jinseo Jason Park",
@@ -227,7 +227,7 @@
         "name": "Algorithm Visualizer",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-30",
       "updated": "2026-08-30",
@@ -249,15 +249,15 @@
         253
       ],
       "cover": "/apps/algorithm-visualizer/cover.jpg",
-      "bytes": 212069,
+      "bytes": 212800,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-22"
       },
-      "sha256": "7a000ca6a39e803bdb85371c6ebd2c41b09627172a7573765cc692cf1bc4adde"
+      "sha256": "e00cbb650afb25cf0c7875efda502a3996d38771617df7012f2c1715fc02665f"
     },
     {
       "slug": "alphatab",
@@ -316,7 +316,7 @@
       "appId": "anyroad",
       "name": "Anyroad",
       "shortName": "Anyroad",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "tagline": "Drive any road on Earth, built from live map data.",
       "author": {
         "name": "GifOS",
@@ -326,7 +326,7 @@
         "name": "Hop.Earth",
         "by": "Pawel Misiurski / DVLP"
       },
-      "minBuild": 1089,
+      "minBuild": 5861,
       "offline": false,
       "releaseDate": "2026-08-06",
       "updated": "2026-08-07",
@@ -349,22 +349,22 @@
         255
       ],
       "cover": "/apps/anyroad/cover.jpg",
-      "bytes": 411402,
+      "bytes": 411044,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-22"
       },
-      "sha256": "042a633cb318b27caf1f05df821bef3516f1009c8bbaff7892a0e45a640c7e91"
+      "sha256": "a245b4118f392432ef5a96980a05eac9ba50d15a15919c39a97c8d47e2da3dfb"
     },
     {
       "slug": "asteroids",
       "appId": "asteroids",
       "name": "Asteroids",
       "shortName": "Asteroids",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "tagline": "Asteroids with friends — everyone who opens your invite flies another ship.",
       "author": {
         "name": "dmcinnes",
@@ -378,7 +378,7 @@
         "name": "HTML5 Asteroids",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -399,22 +399,22 @@
         255
       ],
       "cover": "/apps/asteroids/cover.jpg",
-      "bytes": 263369,
+      "bytes": 264490,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-22"
       },
-      "sha256": "5e087a63115d11078f1d0d6d698e09cc649bf1c301a59a58834b6bb8d9282f45"
+      "sha256": "fc9b64a507efe1fdb0f469bcb550a93a6c5c4f2b09d8a8a783daeaa6cbc90467"
     },
     {
       "slug": "backdooms",
       "appId": "backdooms",
       "name": "Backdooms",
       "shortName": "Backdooms",
-      "version": "1.2",
+      "version": "1.3",
       "tagline": "DOOM in the Backrooms, running inside a single GIF file.",
       "author": {
         "name": "Kuberwastaken",
@@ -428,7 +428,7 @@
         "name": "Backdooms",
         "blessed": false
       },
-      "minBuild": 1314,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-24",
       "updated": "2026-08-24",
@@ -450,15 +450,15 @@
         36
       ],
       "cover": "/apps/backdooms/cover.jpg",
-      "bytes": 268579,
+      "bytes": 269646,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-22"
       },
-      "sha256": "a030ccfd6d55ddc2229bee684f46d5e2cd64270fc0d4591f9b65a26add0d4591"
+      "sha256": "5a66415db37db57224f30e1e1ca3f924ab58d55a70ebdd5fabe0b5ae3caefab1"
     },
     {
       "slug": "backgammon",
@@ -909,7 +909,7 @@
       "appId": "bitsy",
       "name": "Bitsy",
       "shortName": "Bitsy",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "A tiny world. Walk around. Make one. Share it.",
       "author": {
         "name": "le-doux",
@@ -923,7 +923,7 @@
         "name": "Bitsy",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -946,15 +946,15 @@
         204
       ],
       "cover": "/apps/bitsy/cover.jpg",
-      "bytes": 296014,
+      "bytes": 296802,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-22"
       },
-      "sha256": "37ea8bb1c1d1387ecd6113b6906cd8b7f8dea036bfe878e282a509d8115f6216"
+      "sha256": "4a0653083b285cd131fba96ee50a8bf43eaad05bad019ff7803178c0c27f548d"
     },
     {
       "slug": "blackjack",
@@ -1010,7 +1010,7 @@
       "appId": "blockly-games",
       "name": "Blockly Games",
       "shortName": "Blockly",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "tagline": "Puzzle, Maze, Turtle — offline, your stars live in the file, an invite opens the same level.",
       "author": {
         "name": "Google",
@@ -1024,7 +1024,7 @@
         "name": "Blockly Games",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-30",
       "updated": "2026-08-30",
@@ -1048,15 +1048,15 @@
         92
       ],
       "cover": "/apps/blockly-games/cover.jpg",
-      "bytes": 559785,
+      "bytes": 560735,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-22"
       },
-      "sha256": "a567112455bf05f44abca35408789499afb5e9d3894e873c7a935adfe1827a0d"
+      "sha256": "c172161d402000cc9637807906788bf6275d91af7539844a38fef0c528e6d47e"
     },
     {
       "slug": "bowling",
@@ -1162,7 +1162,7 @@
       "appId": "breakout",
       "name": "Breakout",
       "shortName": "Breakout",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "tagline": "High score lives in the file. Invite a friend: two paddles, one wall.",
       "author": {
         "name": "Jake Gordon",
@@ -1176,7 +1176,7 @@
         "name": "JavaScript Breakout",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-30",
       "updated": "2026-08-30",
@@ -1197,15 +1197,15 @@
         37
       ],
       "cover": "/apps/breakout/cover.jpg",
-      "bytes": 273059,
+      "bytes": 273899,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-22"
       },
-      "sha256": "ae8f91b2c6603c554f8fe5e67977c98287a8cdd7b80c010660ed1cb2161da6fc"
+      "sha256": "57ff9c1b02d425507e48424e61424ccc7b4e5f9a28591ada79e17e59247e394c"
     },
     {
       "slug": "carbon",
@@ -1317,7 +1317,7 @@
       "appId": "catch-the-cat",
       "name": "Catch the Cat",
       "shortName": "Cat",
-      "version": "1.2.0",
+      "version": "1.3.0",
       "tagline": "Tap the dots. Wall the cat in — alone, against a friend, or together.",
       "author": {
         "name": "ganlvtech",
@@ -1331,7 +1331,7 @@
         "name": "Catch The Cat",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-25",
@@ -1353,15 +1353,15 @@
         90
       ],
       "cover": "/apps/catch-the-cat/cover.jpg",
-      "bytes": 618972,
+      "bytes": 619642,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-22"
       },
-      "sha256": "f4c0bbc332cadbd7d8b5106eeaa2c5a2632e9610f8296a1eefe3affe6d4f5ae5"
+      "sha256": "551b661e1513ac499d25f4d303880ec933b92a5a36ac22f4a864cba19a6d0d20"
     },
     {
       "slug": "checkers",
@@ -3050,7 +3050,7 @@
       "appId": "gomoku",
       "name": "Gomoku",
       "shortName": "Gomoku",
-      "version": "1.1",
+      "version": "1.2",
       "tagline": "Five in a row. Play the computer, or a friend from one invite.",
       "author": {
         "name": "yyjhao",
@@ -3084,15 +3084,15 @@
         70
       ],
       "cover": "/apps/gomoku/cover.jpg",
-      "bytes": 263893,
+      "bytes": 266315,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-11-21"
+        "ts": "2026-11-22"
       },
-      "sha256": "da77f1c311d647cd1bc1ca6525bfafcba890dd7d7963a6fbd8928c46d7a1729e"
+      "sha256": "55fd6778ff6421b45ecd6ce2c8367a49de22198cb81369e2761e73499091d0ea"
     },
     {
       "slug": "grid-garden",
