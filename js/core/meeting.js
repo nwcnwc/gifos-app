@@ -9094,6 +9094,9 @@
             // next renegotiation, roll it back to answer a dead offer and rebuild a live pc (pk42: the pipe, 'glare-failed').
             if (negA && p.neg === negA) { clearTimeout(negA.glareTimer); negA.glareTimer = null; negA.glareOffer = null; }
             for (const c of p.pendingIce.splice(0)) p.pc.addIceCandidate(c).catch(() => {});
+            // DIAL.ICE: the offer and the answer have crossed: the seat's dial counts LINK_DIAL_ICE from here (a pair that finds
+            // no path never opens the channel that carries the far end's mark)
+            if (p.pc === pcA && meshNode && meshNode.penv && meshNode.penv.crossed) { try { meshNode.penv.crossed(from); } catch (e) {} }
           })
           .catch((e) => { if (negA) negA.answerIn = false; noteNegFail('answer', from, e);
             const em = String((e && e.message) || ''), q = peers.get(from);
