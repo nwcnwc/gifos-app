@@ -29,7 +29,7 @@
   const GifOS = root.GifOS = root.GifOS || {};
 
   // Word-overlap dials (ratios and counts; the times come from the timings table).
-  const DIALS = { MATCH: 0.5, MISS: 0.25, BIG_MISS: 0.1, MIN_WORDS: 4, BIG_WORDS: 8, TRUST_N: 2, LOSE_N: 2, RING: 60, EX_CHARS: 160 };
+  const DIALS = { MATCH: 0.5, MISS: 0.25, BIG_MISS: 0.1, MIN_WORDS: 4, BIG_WORDS: 8, TRUST_N: 2, LOSE_N: 2, RING: 60, EX_CHARS: 160, CL_AGREE_N: 2 };
   const STOP = new Set(['the', 'and', 'for', 'you', 'that', 'this', 'with', 'are', 'was', 'but', 'not', 'have', 'has', 'had',
     'our', 'all', 'its', 'his', 'her', 'she', 'they', 'them', 'then', 'than', 'from', 'what', 'will', 'can', 'just', 'into',
     'one', 'too', 'there', 'their', 'your', 'who', 'how', 'any', 'out', 'yes', 'okay']);
@@ -266,6 +266,51 @@
     return { observe, tick, choice, shows, showsHeld, earWanted, verdict, pick, flag, sources, stateOf, hasEars, evidence, known, dump };
   }
 
-  GifOS.capTrust = { make, words, overlap, judge, DIALS };
+  // THE SPEAKER'S SIDE (docs/caption-trust.md section 7): the language other pages' ears hear MY voice in.
+  // An ear line about me that another page sends is that page's vote when it carries ld (Whisper detected the language)
+  // or vt 0 (their ears do not match my captions); vt 1 withdraws it. Only the writer, the language and those flags are
+  // read. A language is suggested when CL_AGREE_N distinct others agree on it (the only other person, in a meeting of two).
+  // opts: { me() my id, now(), keepMs, mine() the language my captions listen for ('' when my engine detects it),
+  //         others() how many other people are in the meeting }
+  function langHint(opts) {
+    const d = Object.assign({}, DIALS, opts.dials || {});
+    const now = opts.now || (() => Date.now());
+    const short = (l) => String(l || '').toLowerCase().split(/[-_]/)[0];
+    const votes = new Map();   // writer -> { lang, at }
+    const kept = new Set();    // languages the speaker chose to keep, for this meeting
+    function observe(l) {
+      const me = String(opts.me() || '');
+      if (!l || l.tl || l.src !== 'ear' || !me || String(l.byId) !== me || !l.w || String(l.w) === me) return;
+      const w = String(l.w);
+      if (l.vt === 1) { votes.delete(w); return; }
+      const lang = short(l.lang);
+      if (!lang || !(l.ld || l.vt === 0)) return;   // a guess with nothing in doubt says nothing
+      votes.set(w, { lang, at: now() });
+    }
+    function need() { return Math.max(1, Math.min(d.CL_AGREE_N, Math.floor(+opts.others() || 0))); }
+    // -> { lang, n, need } when enough others agree on a language my captions do not listen for, else null
+    function suggestion() {
+      const y = short(opts.mine());
+      if (!y) return null;
+      const cut = now() - opts.keepMs, count = new Map();
+      for (const [w, v] of votes) {
+        if (v.at < cut) { votes.delete(w); continue; }
+        if (v.lang !== y && !kept.has(v.lang)) count.set(v.lang, (count.get(v.lang) || 0) + 1);
+      }
+      let best = null;
+      for (const [lang, n] of count) if (!best || n > best.n) best = { lang, n };
+      const k = need();
+      return best && best.n >= k ? Object.assign(best, { need: k }) : null;
+    }
+    function keep(lang) { if (lang) kept.add(short(lang)); }
+    function dump() {
+      const o = { votes: {}, kept: Array.from(kept), need: need(), mine: short(opts.mine()) };
+      for (const [w, v] of votes) o.votes[w] = v.lang;
+      return o;
+    }
+    return { observe, suggestion, keep, need, dump };
+  }
+
+  GifOS.capTrust = { make, langHint, words, overlap, judge, DIALS };
   if (typeof module !== 'undefined' && module.exports) module.exports = GifOS.capTrust;
 })(typeof window !== 'undefined' ? window : globalThis);
