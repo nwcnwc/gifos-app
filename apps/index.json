@@ -1077,7 +1077,7 @@
         "name": "bowling",
         "blessed": false
       },
-      "minBuild": 5861,
+      "minBuild": 5995,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -1097,15 +1097,15 @@
         40
       ],
       "cover": "/apps/bowling/cover.jpg",
-      "bytes": 201663,
+      "bytes": 202066,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-11-21"
+        "ts": "2026-11-22"
       },
-      "sha256": "a7617b4b891082cad8c98770dc5ec46bc932fe4c56e6f6386a1dd2a7163696fd"
+      "sha256": "9e2a3f1b1784ce028596bf06a8787efeae8cd1136acc22b34c0740651eee0a47"
     },
     {
       "slug": "breaklock",
@@ -4548,7 +4548,7 @@
         "name": "Ludo",
         "blessed": false
       },
-      "minBuild": 5861,
+      "minBuild": 5995,
       "offline": true,
       "releaseDate": "2026-08-24",
       "updated": "2026-08-24",
@@ -4567,15 +4567,15 @@
         74
       ],
       "cover": "/apps/ludo/cover.jpg",
-      "bytes": 191758,
+      "bytes": 192041,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-11-21"
+        "ts": "2026-11-22"
       },
-      "sha256": "96fbda1c771b585a909cd018a7db9baa68fec348db6cce515928120d3b64b8d1"
+      "sha256": "b23a15413dfff7d7200b9753c15f75b1f039bec0304581cf0ab2fc1cc5cb31eb"
     },
     {
       "slug": "math-race",
