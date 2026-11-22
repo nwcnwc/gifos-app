@@ -33586,6 +33586,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       done.onclick = () => { c.hidden = true; };
       b.appendChild(done);
       c.hidden = false;
+      if (window.__gifosBarAvoid) window.__gifosBarAvoid();   // made lazily: lift it over the floating bar now
       return c;
     }
     // EARS ONLY ARE SPOT CHECKS. A page whose own engine is the browser's listens, by default, to one talking voice at a
@@ -33734,6 +33735,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       btn('switch', uiText('capLangSwitch', 'Switch to {heard}').split('{heard}').join(heard), () => { if (clog) clog('caplang switch', s.lang); ccLangSet(capLangTag(s.lang)); });
       btn('keep', uiText('capLangKeep', 'Keep {mine}').split('{mine}').join(mine), () => { if (clog) clog('caplang keep', s.lang); capLang.keep(s.lang); });
       c.hidden = false;
+      if (window.__gifosBarAvoid) window.__gifosBarAvoid();   // above the floating bar, like the captions card
       if (clog) clog('caplang ask', s.lang, s.n, s.need, trLangOf(capLangMine()));
     }
     // ON-DEVICE CAPTIONS ON AN ANDROID PHONE. The phone writes its captions
@@ -36742,7 +36744,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // A tucked or faded bar keeps the last values, so nothing jumps when it wakes.
     function placeBarAvoiders() {
       const FLOATERS = [['callstate', ''], ['chatnote', 'callstate'], ['livecap', 'callstate'], 
-        ['waitlist', ''], ['rb-now', ''], ['bc-cap', ''], ['bc-reacts', '']];
+        ['waitlist', ''], ['rb-now', ''], ['bc-cap', ''], ['bc-reacts', ''],
+        ['capwarn', ''], ['capsrc', ''], ['caplang', '']];   // the captions cards: every button above the floating bar
       const PANELS = [['chatpanel', 'pad'], ['qa', 'pad'], ['bc-ended', 'bottom'], ['bc-ident', 'bottom'], ['fsstrip', 'strip']];
       const bar = document.querySelector('.bar');
       if (!bar || bar.classList.contains('tucked') || document.body.classList.contains('chrome-away')) return;
