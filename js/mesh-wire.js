@@ -72,7 +72,7 @@
     FINDLEAF: { by: 'fo', flag: 'fo', only: ['fo', 'foAt', 'hole'] },   // the decider's order (L25.7); ttl, nbrs, tag change down the cascade
     RECLAIM: { by: 'id', flag: 't' },   // L3.10: always claimed: the signature under m.id is the proof of identity (the seat's tok is the sim's stand-in, anyone can compute it)
   };
-  const WIRE_VERSION = '0.9.25';   // sent as ?pv= on every relay socket (makeUrl): the relay's flag-day floor
+  const WIRE_VERSION = '0.9.27.4';   // the ONE page wire version, sent as ?pv= on every relay socket (makeUrl here, the door socket in run.html reads GifOS.meshWire.WIRE_VERSION): the relay's flag-day floor. Moves with each release.
   const FILL_WINDOW_MS = TM.FILL_WINDOW_MS;   // mesh-identity.js: a signature's time must lie this close to mine
   const REPLAY_MS = TM.REPLAY_MS;   // the seat's own goodbye window: 60 ticks (recv-seated.js)
   const BY_ID = { by: 'id' };   // a type no seat signs today: a claim on it still has to verify as m.id's whole frame
@@ -1575,5 +1575,5 @@
     return { n, at: at + n * tickMs, absent: 0 };
   }
 
-  GifOS.meshWire = { createMeshNode, goodbyeLive, wallTicks, wire: { toWire, fromWire, ppOf }, claims: { CLAIMS, STAMPS, claimOf, coreOf, relayCoreOf, relayForm } };
+  GifOS.meshWire = { WIRE_VERSION, createMeshNode, goodbyeLive, wallTicks, wire: { toWire, fromWire, ppOf }, claims: { CLAIMS, STAMPS, claimOf, coreOf, relayCoreOf, relayForm } };
 })(typeof window !== 'undefined' ? window : globalThis);
