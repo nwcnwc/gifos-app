@@ -3151,7 +3151,7 @@
       "appId": "guitar-bro",
       "name": "Guitar Bro",
       "shortName": "Guitar",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "Notes fall down the neck. Play them on your guitar, or tap the fret.",
       "author": {
         "name": "makaroni4",
@@ -3165,7 +3165,7 @@
         "name": "Guitar Bro",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -3187,15 +3187,15 @@
         244
       ],
       "cover": "/apps/guitar-bro/cover.jpg",
-      "bytes": 173547,
+      "bytes": 174978,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-22"
       },
-      "sha256": "bff2e6bbb4bfb1ee939e53dba25960afe409d341d367a0fabc5f4f47d75419f5"
+      "sha256": "acaf0ea4aeecb54d0998cc09ed5421ca6aa33a562b908bcf56b3c70f3b77365d"
     },
     {
       "slug": "hangman",
