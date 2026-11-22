@@ -44079,7 +44079,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return o;
       },
       capSourceOpen: (v) => capSourceOpen(v),
-      stadFaceAtForTest: (x, y) => { const w = document.getElementById('stadwhole'); return w ? stadFaceIdAt(w, x, y) : null; },
       capLangForTest: () => (capLang ? Object.assign(capLang.dump(), { ask: capLang.suggestion() }) : null),
       whisperForTest: () => ({ engine: ccEngine(), live: !!wsp, ready: whisperReady(), queue: wspQ.items.length, sent: wspQ.sent, dropped: wspQ.dropped, rate: wsp ? wsp.rate : 0, captures: Array.from(wspCaps.keys()), writes: trWrites(), inFlight: !!wspQ.busy, behind: !!wspQ.behind, paused: !!wspPaused, lastLatencyMs: wspQ.lastLatencyMs || 0, model: wspModel(), local: ccLocalQ.test() }),
       whisperFeedForTest: (f32, rate, forId) => { const w = wspCaps.get(forId || 'me'); if (!w) return false; wspEnqueue(w, [Float32Array.from(f32)], Date.now(), rate || 16000, true); return true; },
@@ -44515,6 +44514,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     viewTestHooks(window.__gifosVideo);
     function viewTestHooks(v) {
       Object.assign(v, {
+      stadFaceAtForTest: (x, y) => { const w = document.getElementById('stadwhole'); return w ? stadFaceIdAt(w, x, y) : null; },
       // What my Stadium shows, by the cell ids it carries, and my row.
       stadIdsForTest: () => {
         const c = meshCoord(), m = comfyStadMeta(), v = m.video;
