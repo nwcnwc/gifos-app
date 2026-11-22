@@ -7428,6 +7428,7 @@ The Store itself does not keep a shopping cart in this icon.
     const ROOM_MIN_BUILD = 5861;
     // The IRL party games: whoever is here holds a seat (up to 16, no turns); the game doc 'g' stays plain data.
     const IRL_ROOM = { seats: 16, min: 1, turns: 'free', moves: [] };
+    const irlExtra = (g) => Object.assign({ minBuild: ROOM_MIN_BUILD, data: { party: RW }, room: IRL_ROOM, help: g.help }, g.manifest);
     const RO = { visibility: 'read-only' };
     const PRIV = { visibility: 'private' };
 
@@ -7494,7 +7495,8 @@ The Store itself does not keep a shopping cart in this icon.
         // Each own-phone game shares one heartbeat collection ('party'): the
         // game doc + everyone's player docs, all read-write. (The Single Phone
         // versions run on one device, so they need no shared visibility.)
-        apps: (GifOS.irl ? GifOS.irl.netApps : []).map((g) => app(g.name, g.appId, g.accent, g.html, Object.assign({ minBuild: ROOM_MIN_BUILD, data: { party: RW }, room: IRL_ROOM, help: g.help }, g.manifest))),
+        apps: (GifOS.irl ? GifOS.irl.netApps : []).map((g) => app(g.name, g.appId, g.accent, g.html, irlExtra(g))),
+        // Tilt is the one game that only plays on one phone.
         sub: [{ name: 'Single Phone',
           apps: (GifOS.irl ? GifOS.irl.apps : []).map((g) => app(g.name, g.appId, g.accent, g.html, Object.assign({ help: g.help }, g.manifest || {}))) }] },
     ];
@@ -7560,10 +7562,14 @@ The Store itself does not keep a shopping cart in this icon.
       Promise.all(g.apps.filter(want).map(enc)),
       Promise.all((g.sub || []).map(encGroup)),
     ]).then((r) => ({ name: g.name, apps: r[0], sub: r[1] }));
+    // opts.retired: also the games that once had their own ids, built as the game that took their place, opening on one
+    // phone (desktop.js uses them to move a saved launcher over). Not part of the catalog.
+    const retired = opts && opts.retired ? (GifOS.irl ? GifOS.irl.retired : []) : [];
     return Promise.all([
       Promise.all(groups.map(encGroup)),
       Promise.all(loose.filter(want).map(enc)),
-    ]).then((r) => ({ folders: r[0], loose: r[1] }));
+      Promise.all(retired.map((g) => enc(app(g.name, g.appId, g.accent, g.html, irlExtra(g))).then((e) => Object.assign(e, { oldId: g.oldId })))),
+    ]).then((r) => ({ folders: r[0], loose: r[1], retired: r[2] }));
   }
 
   GifOS.samples = { build };
