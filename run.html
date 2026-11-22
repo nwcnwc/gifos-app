@@ -42575,7 +42575,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // the line names why I am carried: no RTCPeerConnection at all, or one whose connection gathers no candidate (a policy, the network)
       G.said = /no candidate/.test(G.why) ? uiText('stCarryLookingNoPath', 'Joining through a seat of the meeting (this browser\'s connections find no network path)…') : uiText('stCarryLooking', 'Joining through a seat of the meeting (this browser has no WebRTC)…');
       setStatus(G.said, 0, 'note');
-      const url = () => (ticket ? ticket.prepare(myDevHash).catch(() => null) : Promise.resolve()).then(() => relayBase + '/s/' + sessId + '?role=mesh&pv=0.9.25&token=' + encodeURIComponent(sessTok || '')
+      const url = () => (ticket ? ticket.prepare(myDevHash).catch(() => null) : Promise.resolve()).then(() => relayBase + '/s/' + sessId + '?role=mesh&pv=' + encodeURIComponent(GifOS.meshWire.WIRE_VERSION) + '&token=' + encodeURIComponent(sessTok || '')
         + '&peer=' + encodeURIComponent(myId) + '&gk=' + encodeURIComponent(gk) + '&dev=' + encodeURIComponent(myDevHash) + '&pw=' + encodeURIComponent(pwProof)
         + (ticket && ticket.token(myDevHash) ? '&jt=' + encodeURIComponent(ticket.token(myDevHash)) : ''));
       G.door = C.createDoor({ url, gk, key: roomE2E, net, log: turnNote,
