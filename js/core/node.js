@@ -53,22 +53,76 @@
  */
 'use strict';
 const vm = require('vm');
-const fs = require('fs');
-const path = require('path');
 const nodeCrypto = require('crypto');
 
-const HERE = __dirname;
-const scripts = new Map();   // absolute path -> vm.Script (compiled once per process)
+const HERE = typeof __dirname === 'string' ? __dirname : '';
+const scripts = new Map();   // site id + file -> vm.Script (compiled once per process)
 
 // View functions whose result the core takes apart: what each returns in the headless view (all counted placeholders).
 const VIEW_RECORDS = {
   makeTile: ['tile', 'video', 'label', 'avatar', 'chips', 'cap', 'modbar', 'voteBtn'],   // a participant's tile and its parts
 };
 
-function script(file) {
-  let s = scripts.get(file);
-  if (!s) { s = new vm.Script(fs.readFileSync(file, 'utf8'), { filename: file }); scripts.set(file, s); }
+function script(site, rel) {
+  const key = site.id + '\n' + rel;
+  let s = scripts.get(key);
+  if (!s) { s = new vm.Script(site.read(rel), { filename: site.name(rel) }); scripts.set(key, s); }
   return s;
+}
+
+// ---- the site --------------------------------------------------------------------------------------------------
+// A participant runs the scripts the meeting page loads, from the same site: { id, files, platform, read(rel) -> text,
+// name(rel) -> where it came from, root? }. A site tree on disk (a checkout, a test copy) is read in place, and the
+// page's own same-origin fetches read that tree too. A site on the web is loaded once, as a browser loads the page:
+// files.json, platform.json and the core's scripts from the meeting's origin, and the page's fetches go to that origin.
+function siteDir(appRoot) {
+  const fs = require('fs'), path = require('path');
+  const root = path.resolve(appRoot);
+  const read = (rel) => fs.readFileSync(path.join(root, rel), 'utf8');
+  return {
+    id: 'dir:' + root, root,
+    files: JSON.parse(read('js/core/files.json')), platform: JSON.parse(read('js/core/platform.json')),
+    read, name: (rel) => path.join(root, rel),
+  };
+}
+async function loadSite(origin, opts) {
+  opts = opts || {};
+  const f = opts.fetch || globalThis.fetch;
+  const base = new URL('/', origin).href;
+  const get = async (rel) => {
+    const r = await f(new URL(rel, base).href, { cache: 'no-store' });
+    if (!r.ok) throw new Error('GifOS core: ' + new URL(rel, base).href + ' answered ' + r.status);
+    return r.text();
+  };
+  const files = JSON.parse(await get('js/core/files.json'));
+  const platform = JSON.parse(await get('js/core/platform.json'));
+  const text = new Map();
+  await Promise.all(files.core.map(async (rel) => { text.set(rel, await get(rel)); }));
+  const stamp = (/stamp ([0-9a-f]+)/.exec(text.get('js/core/meeting.js') || '') || [])[1] || '';
+  return {
+    id: 'web:' + base + '@' + stamp + ':' + nodeCrypto.createHash('sha256').update(files.core.map((r) => text.get(r)).join('\n')).digest('hex').slice(0, 16),
+    files, platform, stamp,
+    read: (rel) => { if (!text.has(rel)) throw new Error('GifOS core: ' + rel + ' is not a core file of ' + base); return text.get(rel); },
+    name: (rel) => new URL(rel, base).href,
+  };
+}
+
+// The meeting page's address for a meeting link, as the site's router (route.html) makes it: /meet/<room>[/<verifier>]
+// is a meeting, /join/<code> a self-healing app room, /join/<room>/<verifier>/<secret> an owned one. A link that is
+// already the page (run.html#...) is kept.
+function pageUrl(link) {
+  const u = new URL(link);
+  const m = u.pathname.match(/^\/(?:join|meet|cast)\/([a-z0-9-]{1,64})(?:\/([a-f0-9]{16,64})(?:\/([a-z0-9]{1,64}))?)?\/?$/i);
+  if (!m) return u.href;
+  const code = m[1], verifier = m[2] ? m[2].toLowerCase() : '', secret = m[3] || '';
+  const extra = u.search ? '&' + u.search.slice(1) : '';
+  let hash;
+  if (/^\/(?:meet|cast)\//i.test(u.pathname)) hash = 'v=' + code + (verifier ? '&av=' + verifier : '') + (/^\/cast\//i.test(u.pathname) ? '&bc=1' : '') + extra;
+  else if (verifier && secret) hash = 's=' + code + '.' + verifier + '&k=' + secret + extra;
+  else if (!verifier) hash = 'j=' + code + extra;
+  else throw new Error('GifOS core: an owned app link needs its secret (' + link + ')');
+  const h = u.hash.replace(/^#/, '');
+  return u.origin + '/run.html#' + hash + (h ? '&' + h : '');
 }
 
 // ---- storage -------------------------------------------------------------------------------------------------
@@ -109,6 +163,7 @@ function makeLocation(href, note) {
 
 // The site's own files: a fetch of the page's origin reads the app tree (the files a site server would serve).
 function siteFetch(appRoot, location, realFetch) {
+  const fs = appRoot && require('fs'), path = appRoot && require('path');
   return function fetch(input, init) {
     const raw = typeof input === 'string' ? input : (input && input.url) || String(input);
     const u = new URL(raw, location.href);
@@ -127,9 +182,9 @@ function siteFetch(appRoot, location, realFetch) {
 function createMeeting(opts) {
   opts = opts || {};
   if (!opts.url) throw new Error('createMeeting: opts.url is the meeting URL');
-  const appRoot = path.resolve(opts.appRoot || path.join(HERE, '..', '..'));
-  const files = JSON.parse(fs.readFileSync(path.join(appRoot, 'js', 'core', 'files.json'), 'utf8'));
-  const platform = JSON.parse(fs.readFileSync(path.join(appRoot, 'js', 'core', 'platform.json'), 'utf8'));
+  const site = opts.site || siteDir(opts.appRoot || require('path').join(HERE, '..', '..'));
+  const appRoot = site.root || null;
+  const files = site.files, platform = site.platform;
   const log = typeof opts.log === 'function' ? opts.log : null;
 
   const pageCounts = new Map(), hostCounts = new Map();
@@ -175,7 +230,7 @@ function createMeeting(opts) {
     });
   }
 
-  const location = makeLocation(opts.url, {
+  const location = makeLocation(pageUrl(opts.url), {
     use: (what) => count('page:' + what),
     change: (oldHash, newHash) => { if (oldHash !== newHash) setT(() => g.dispatchEvent(new Event('hashchange'))); },
   });
@@ -248,7 +303,7 @@ function createMeeting(opts) {
 
   for (const rel of files.core) {
     current = { src: new URL(rel, location.href).href };
-    try { script(path.join(appRoot, rel)).runInContext(context); } finally { current = null; }
+    try { script(site, rel).runInContext(context); } finally { current = null; }
   }
   const GifOS = context.GifOS;
   // GifOS.meshMedia.workerClock (see HOST SHIMS)
@@ -317,4 +372,4 @@ function createMeeting(opts) {
   };
 }
 
-module.exports = { createMeeting, makeStorage };
+module.exports = { createMeeting, makeStorage, loadSite, siteDir, pageUrl };
