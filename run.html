@@ -9284,18 +9284,39 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
 
     // Tap a tile: it grows in place, then its control window opens. It stays
     // big until the window closes. Per-person buttons live here, not on tiles.
-    const tileWin = { el: null, modbar: null, home: null, winT: 0 };
+    // faceId: the person a tap on the Stadium picture landed on (the picture is one element; the window is that person's).
+    const tileWin = { el: null, modbar: null, home: null, winT: 0, faceId: '' };
     function twIdOf(el) {
       if (el.classList.contains('tile')) return el.dataset.peer || '';
+      if (el.id === 'stadwhole' && tileWin.faceId) return tileWin.faceId;
       return '';
     }
     function twPeer(id) { return id && peers.get(id); }
     function twName(el, id) {
+      if (el.id === 'stadwhole' && id) return displayName(id) || id;
       if (el.id === 'bc-ident') { const n = document.getElementById('bc-ident-name'); return (n && n.textContent) || uiText('stageLabel', 'On stage'); }
       if (el.classList.contains('rowtile')) { const lb = el.querySelector('.rlabel'); return (lb && lb.textContent) || uiText('stageLabel', 'On stage'); }
       if (el.classList.contains('me')) { try { return myName() + ' ' + uiText('youParen', '(you)'); } catch (e) { return 'You'; } }
       const nm = el.querySelector('.name');
       return (nm && nm.textContent) || (id && displayName(id)) || '';
+    }
+    // Who is under a point on the Stadium picture (meetViews.stadFaceAt, fed this page's cell list), or null.
+    function stadFaceIdAt(w, x, y) {
+      const MV = window.GifOS && GifOS.meetViews;
+      if (!MV || !MV.stadFaceAt) return null;
+      const m = comfyStadMeta();
+      return MV.stadFaceAt(w, x, y, { ids: m.ids || (m.n > 0 && m.n === comfyStadRoster().length ? comfyStadRoster() : null), cols: m.cols });
+    }
+    // The Captions button for person id: opens the one captions card (capSourceOpen), with a warning mark while their own
+    // captions are in doubt. null when this page has no caption trust, for yourself, or (unless always) for a person this
+    // page has never held a caption line for.
+    function twCaptionsButton(id, always) {
+      let ct = null; try { ct = (typeof capTrust !== 'undefined' && capTrust && id && id !== myId && (always || capTrust.known(id))) ? capTrust : null; } catch (e) {}
+      if (!ct) return null;
+      const doubt = ct.stateOf(id, id) === 'distrusted';
+      const cb = twButton(uiText('twCaptions', 'Captions') + (doubt ? ' \u26a0' : ''), false, () => { closeTileWin(); capSourceOpen(id); });
+      cb.dataset.captions = '1'; cb.dataset.who = id;
+      return cb;
     }
     function twButton(label, on, fn, extra) {
       const b = document.createElement('button');
@@ -9489,6 +9510,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const face = document.createElement('div'); face.className = 'tw-face';
         const av = el.querySelector('.avatar');
         if (av) { const c = av.cloneNode(true); c.removeAttribute('style'); c.className = 'tw-face-av'; face.appendChild(c); }
+        else if (id && el.id === 'stadwhole') { const c = document.createElement('div'); c.className = 'tw-face-av'; try { c.textContent = nameInitial(twName(el, id)); } catch (e) {} face.appendChild(c); }
         win.appendChild(face);
       }
       const side = win.querySelector('.tw-side');
@@ -9508,19 +9530,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (sb) row.appendChild(twButton('Step off the stage', false, () => { sb.click(); closeTileWin(); }));
         }
       } else if (id) {
-        row.appendChild(twButton(focusId === id ? 'Unpin' : 'Pin', focusId === id, () => {
+        // Pin puts a person's own tile on my Stage. A Stadium face has no tile of its own here, so it offers none.
+        const pinnable = el.id !== 'stadwhole' || !!(twPeer(id) && twPeer(id).tile && twPeer(id).tile.style.display !== 'none');
+        if (pinnable) row.appendChild(twButton(focusId === id ? 'Unpin' : 'Pin', focusId === id, () => {
           focusId = focusId === id ? null : id;
           closeTileWin();
           try { layout(); } catch (e) {}
         }));
         // Whose captions this page shows for this person: the same card as the caption warning, any time.
-        let ct = null; try { ct = (typeof capTrust !== 'undefined' && capTrust && capTrust.known(id)) ? capTrust : null; } catch (e) {}
-        if (ct) {
-          const doubt = ct.stateOf(id, id) === 'distrusted';
-          const cb = twButton(uiText('twCaptions', 'Captions') + (doubt ? ' \u26a0' : ''), false, () => { closeTileWin(); capSourceOpen(id); });
-          cb.dataset.captions = '1';
-          row.appendChild(cb);
-        }
+        // A Stadium face always offers it (the caption bar is only a shortcut to whoever is speaking).
+        const cb = twCaptionsButton(id, el.id === 'stadwhole');
+        if (cb) row.appendChild(cb);
       }
       // Beside a preview, Mute, Camera and the recording pill stay in the
       // narrow column. They used to be full-width rows under a 72px frame.
@@ -9534,6 +9554,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         (side || sec).appendChild(p.modbar);
       }
       if (!side && sec.childNodes.length > 1) win.appendChild(sec);
+      // The Stage strip is one picture of several people: the window lists them, each with their own Captions.
+      if (isStage) {
+        let on = []; try { on = stageIds().filter((x) => x && x !== myId); } catch (e) {}
+        const who = on.map((x) => ({ x, b: twCaptionsButton(x, true) })).filter((r) => r.b);
+        if (who.length) {
+          const cs = document.createElement('div'); cs.className = 'tw-sec tw-stagecap';
+          const cl = document.createElement('b'); cl.textContent = uiText('twStageCaptions', 'Captions on stage'); cs.appendChild(cl);
+          for (const r of who) {
+            const line = document.createElement('div'); line.className = 'tw-cap';
+            const nm = document.createElement('span'); nm.className = 'tw-cap-name'; nm.textContent = displayName(r.x) || r.x;
+            line.appendChild(nm); line.appendChild(r.b); cs.appendChild(line);
+          }
+          win.appendChild(cs);
+        }
+      }
       // Broadcast: what a watcher can do with the Stage.
       if (document.body.classList.contains('broadcast')) {
         const w = document.createElement('div'); w.className = 'tw-sec';
@@ -9604,7 +9639,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function closeTileWin() {
       const el = tileWin.el;
       if (!el) return;
-      tileWin.el = null;
+      tileWin.el = null; tileWin.faceId = '';
       if (tileWin.winT) { clearTimeout(tileWin.winT); tileWin.winT = 0; }
       const win = document.getElementById('tilewin'), veil = document.getElementById('tilewin-veil');
       if (tileWin.modbar && tileWin.home) { try { tileWin.home.appendChild(tileWin.modbar); } catch (e) {} }
@@ -9702,6 +9737,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!el) return;
         e.stopPropagation();
       }, true);
+      // A tap on a Stadium face opens that person's small window (Captions). The Stadium is one picture: the tap's place
+      // in it names the person (meetViews.stadFaceAt).
+      feed.addEventListener('click', (e) => {
+        if (!document.body.classList.contains('comfy')) return;
+        const t = e.target, w = t && t.closest ? t.closest('#stadwhole') : null;
+        if (!w || t.closest('button, a, input, select, textarea, label, [role="button"]')) return;
+        const id = stadFaceIdAt(w, e.clientX, e.clientY);
+        if (!id || id === myId) return;
+        e.stopPropagation();
+        if (tileWin.el) closeTileWin();
+        tileWin.faceId = String(id);
+        openTileWin(w);
+      });
       const stampFeedOpens = () => {
         feed.querySelectorAll('.tile, #stagefeed > .rowtile').forEach(stampTileOpen);
       };
@@ -33543,8 +33591,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         document.body.appendChild(c);
       }
       c.dataset.voice = v;
-      c.innerHTML = '<div class="capcard-t"></div><div class="capcard-body"><div class="capcard-n"></div><div class="capcard-ex"></div><div class="capcard-h"></div></div><div class="capcard-b dlg-actions"></div>';
+      c.innerHTML = '<div class="capcard-t"></div><div class="capcard-body"><div class="capcard-n"></div><div class="capcard-ex"></div><div class="capcard-w"></div><div class="capcard-h"></div></div><div class="capcard-b dlg-actions"></div>';
       c.querySelector('.capcard-t').textContent = title;
+      c.querySelector('.capcard-w').textContent = uiText('capWhich', 'Which is right?');
       c.querySelector('.capcard-n').textContent = note || '';
       const exEl = c.querySelector('.capcard-ex');
       if (ex && (ex.theirs || ex.ours)) {
@@ -33556,7 +33605,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           q.appendChild(l); q.appendChild(t); exEl.appendChild(q);
         }
       }
-      c.querySelector('.capcard-h').textContent = uiText('capLater', 'You can change this any time: tap {name}\'s tile, then Captions.').replace('{name}', capName(v));
+      c.querySelector('.capcard-h').textContent = uiText('capLater', 'You can change this any time: tap {name}\'s tile or face, then Captions.').replace('{name}', capName(v));
       const b = c.querySelector('.capcard-b');
       for (const r of rows) {
         const x = document.createElement('button'); x.type = 'button'; x.textContent = r.t; x.dataset.src = r.src;
@@ -33577,7 +33626,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const capSpot = { id: '', until: 0, rest: 0, last: '' };
     function capSpotQueue(queued, talking) {
       const T = GifOS.timings, now = Date.now();
-      const full = queued.filter((pid) => capTrust.stateOf(pid, pid) === 'distrusted' || capTrust.choice(pid).mode === 'me');
+      const full = queued.filter((pid) => capTrust.stateOf(pid, pid) === 'distrusted' || capTrust.choice(pid).lean === 'me');
       const rest = queued.filter((pid) => full.indexOf(pid) < 0);
       if (capSpot.id && (now >= capSpot.until || rest.indexOf(capSpot.id) < 0)) {
         capSpot.last = capSpot.id; capSpot.id = ''; capSpot.rest = now + T.CT_SPOT_EVERY_MS - T.CT_SPOT_MS;
@@ -33597,10 +33646,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // participant's lines. The one in force is pressed.
     function capRows(v) {
       const c = capTrust.choice(v), rows = [], name = capName(v);
-      rows.push({ src: 'auto', t: uiText('capAutoPlain', 'Decide for me (recommended)'), on: c.mode === 'auto' });
-      if (capTrust.hasEars(v) || capCanEar()) rows.push({ src: 'me', t: uiText('capMinePlain', 'Show what this device hears'), on: c.mode === 'me' });
-      rows.push({ src: 'own', t: uiText('capOwnPlain', 'Show {name}\'s own captions').replace('{name}', name), on: c.mode === 'own' });
-      for (const s of capTrust.sources(v)) if (s.kind === 'ear') rows.push({ src: s.w, t: uiText('capTheirsPlain', 'Show {name}\'s captions').replace('{name}', capName(s.w)), on: c.mode === s.w });
+      // A pick is a starting point: the row of the pick is pressed, the evidence may still move what is shown (capNowNote says so).
+      rows.push({ src: 'auto', t: uiText('capAutoPlain', 'Decide for me (recommended)'), on: !c.lean });
+      if (capTrust.hasEars(v) || capCanEar()) rows.push({ src: 'me', t: uiText('capMinePlain', 'Show what this device hears'), on: c.lean === 'me' });
+      rows.push({ src: 'own', t: uiText('capOwnPlain', 'Show {name}\'s own captions').replace('{name}', name), on: c.lean === 'own' });
+      for (const s of capTrust.sources(v)) if (s.kind === 'ear') rows.push({ src: s.w, t: uiText('capTheirsPlain', 'Show {name}\'s captions').replace('{name}', capName(s.w)), on: c.lean === s.w });
       return rows;
     }
     // What the page shows for v right now, in one sentence.
@@ -33608,10 +33658,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const c = capTrust.choice(v);
       const auto = c.mode === 'auto' ? uiText('capNowAuto', ' (decided for you)') : '';
       const tail = (t) => t.replace(/([.\u3002])$/, auto + '$1');   // the note goes before the full stop, in any script
-      if (c.show === myId) return tail(uiText('capNowMine', 'Showing what this device hears.'));
-      if (c.show === v) return tail(uiText('capNowOwnPlain', 'Showing {name}\'s own captions.').replace('{name}', capName(v)));
-      if (c.show !== 'all') return tail(uiText('capNowTheirs', 'Showing {name}\'s captions.').replace('{name}', capName(c.show)));
-      return capTrust.stateOf(v, v) === 'distrusted' ? uiText('capNowNone', 'Hiding {name}\'s own captions: no better source yet.').replace('{name}', capName(v)) : '';
+      let now = '';
+      if (c.show === myId) now = tail(uiText('capNowMine', 'Showing what this device hears.'));
+      else if (c.show === v) now = tail(uiText('capNowOwnPlain', 'Showing {name}\'s own captions.').replace('{name}', capName(v)));
+      else if (c.show !== 'all') now = tail(uiText('capNowTheirs', 'Showing {name}\'s captions.').replace('{name}', capName(c.show)));
+      else if (capTrust.stateOf(v, v) === 'distrusted') now = uiText('capNowNone', 'Hiding {name}\'s own captions: no better source yet.').replace('{name}', capName(v));
+      // A pick is a starting point: say what the evidence has done since.
+      const mv = capTrust.moved(v), who = (w) => (!w || w === myId ? uiText('capThisDevice', 'this device') : capName(w));
+      let more = '';
+      if (mv) more = mv.what === 'ownBack' ? uiText('capMovedBack', '{name}\'s own captions match what {who} hears again, so they are shown again.').replace('{name}', capName(v)).replace('{who}', who(mv.w))
+        : mv.what === 'ownLost' ? uiText('capMovedLost', '{name}\'s own captions stopped matching what was heard since you picked them, so this page changed its mind.').replace('{name}', capName(v))
+        : uiText('capMovedEar', '{who} stopped matching what this device hears, so this page decides again.').replace('{who}', who(mv.w));
+      else if (c.lean) more = uiText('capLean', 'You picked this as a starting point. This page keeps checking, and changes if anyone\'s captions get better or worse.');
+      return (now + ' ' + more).trim();
     }
     // ONE CARD for a person's captions. The warning (info set: this page just stopped trusting their captions) and the
     // chooser (opened from their tile or the caption bar) are the same card: what was said vs what was heard, what is
@@ -33630,6 +33689,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (info && clog) clog('captrust warn', String(v).slice(0, 6), info.why, String(capTrust.choice(v).show).slice(0, 6));
       const other = document.getElementById(info ? 'capsrc' : 'capwarn'); if (other) other.hidden = true;
       capCard(info ? 'capwarn' : 'capsrc', v, title, capNowNote(v), rows, ex);
+    }
+    // An open card says what the evidence did since the pick, live: it is painted again when that note changes.
+    function capCardRefresh() {
+      const c = document.getElementById('capsrc');
+      if (!c || c.hidden || !c.dataset.voice || !capTrust) return;
+      const n = c.querySelector('.capcard-n'), v = c.dataset.voice, now = capNowNote(v);
+      if (n && n.textContent !== now) capSourceOpen(v);
     }
     function capWarn(v, info) { capSourceOpen(v, info || { why: '' }); }
     function capPick(v, src) {
@@ -34449,7 +34515,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             }
           }
           else if (job.id === 'fold') { if (trWrites() || trEnOn) addTranscriptLine(text, job.at, 'stadium', 'Stadium', 'mix', ll, lf, end, how, { eng: wEng, inp: 'rx' }); }   // a far-row line, labelled by its channel
-          else if (capEarsOnly() && (peers.has(job.id) || job.stage) && capTrust.stateOf(job.id, job.id) !== 'distrusted' && capTrust.choice(job.id).mode !== 'me') {
+          else if (capEarsOnly() && (peers.has(job.id) || job.stage) && capTrust.stateOf(job.id, job.id) !== 'distrusted' && capTrust.choice(job.id).lean !== 'me') {
             // ears only: a sample for the trust check, not a line
             capTrust.observe({ byId: job.id, w: myId, src: 'ear', eng: wEng, at: job.at, end, text, tl: how === 'tl' ? 1 : 0 });
           }
@@ -34536,10 +34602,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // captions this page distrusts, or that its user put on this device's ears: those
           // are heard full time, so the page shows what was really said and sees
           // when the speaker's captions come right again (then trust returns and the page goes back to them).
-          if (localEar && capCovered(pid) && !(capTrust && (capTrust.stateOf(pid, pid) === 'distrusted' || capTrust.choice(pid).mode === 'me'))) return;
+          if (localEar && capCovered(pid) && !(capTrust && (capTrust.stateOf(pid, pid) === 'distrusted' || capTrust.choice(pid).lean === 'me'))) return;
           // Ears only listen to voices someone else captions (that is what they check), and a voice whose own
           // captions are trusted only during a spot check.
-          if (earsOnly && !capCovered(pid) && !(capTrust && capTrust.choice(pid).mode === 'me')) return;
+          if (earsOnly && !capCovered(pid) && !(capTrust && capTrust.choice(pid).lean === 'me')) return;
           if (capTrust && !en && !capTrust.earWanted(pid)) return;
           const p = peers.get(pid);
           const onStage = stageSet.has(pid) && !!wspStageSid(pid);
@@ -34581,7 +34647,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (ccMix.dest) { ccMixSync(); if (!ccMix.ins.size) syncSpeech(); return; }
       if (trWrites() && !(ccEngine() === 'whisper' && whisperReady()) && !(speech && speech.input) && ccTrackInput() && ccMixVoices().size) syncSpeech();
     }
-    setInterval(() => { trEnSync(); if (wspCaps.size || trEnOn || capEarsOnly() || (trWrites() && ((ccEngine() === 'whisper' && whisperReady()) || ccEngine() === 'local'))) wspSync(); earTick(); trForget(); paintTxMark(); if (capTrust) capTrust.tick(); }, 2000);
+    setInterval(() => { trEnSync(); if (wspCaps.size || trEnOn || capEarsOnly() || (trWrites() && ((ccEngine() === 'whisper' && whisperReady()) || ccEngine() === 'local'))) wspSync(); earTick(); trForget(); paintTxMark(); if (capTrust) { capTrust.tick(); capCardRefresh(); } }, 2000);
     // ONE TAP TO INSTALL. The provider is a signed 13 MB GIF on this very site:
     // GifOS.providers.install downloads, checks the catalog hash and the
     // gifos.app signature, files it into the Providers folder and we assign it
@@ -44246,15 +44312,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // caption trust on this page: per peer the state of its own captions, the choice, whether my ears are on it
       capTrustForTest: () => {
         if (!capTrust) return null;
-        const o = { state: {}, choice: {}, spot: {}, listening: {}, ears: {}, dump: capTrust.dump() };
+        const o = { state: {}, choice: {}, moved: {}, spot: {}, listening: {}, ears: {}, dump: capTrust.dump() };
         for (const pid of peers.keys()) {
-          o.state[pid] = capTrust.stateOf(pid, pid); o.choice[pid] = capTrust.choice(pid);
+          o.state[pid] = capTrust.stateOf(pid, pid); o.choice[pid] = capTrust.choice(pid); o.moved[pid] = capTrust.moved(pid);
           o.spot[pid] = o.state[pid] === 'trusted'; o.listening[pid] = wspCaps.has(pid);
         }
         o.ears = o.dump.ears;
         return o;
       },
       capSourceOpen: (v) => capSourceOpen(v),
+      stadFaceAtForTest: (x, y) => { const w = document.getElementById('stadwhole'); return w ? stadFaceIdAt(w, x, y) : null; },
       capLangForTest: () => (capLang ? Object.assign(capLang.dump(), { ask: capLang.suggestion() }) : null),
       whisperForTest: () => ({ engine: ccEngine(), live: !!wsp, ready: whisperReady(), queue: wspQ.items.length, sent: wspQ.sent, dropped: wspQ.dropped, rate: wsp ? wsp.rate : 0, captures: Array.from(wspCaps.keys()), writes: trWrites(), inFlight: !!wspQ.busy, behind: !!wspQ.behind, paused: !!wspPaused, lastLatencyMs: wspQ.lastLatencyMs || 0, model: wspModel(), local: ccLocalQ.test() }),
       whisperFeedForTest: (f32, rate, forId) => { const w = wspCaps.get(forId || 'me'); if (!w) return false; wspEnqueue(w, [Float32Array.from(f32)], Date.now(), rate || 16000, true); return true; },

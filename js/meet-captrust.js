@@ -73,12 +73,21 @@
     const earOk = new Map();      // writer -> agreeing samples as an ear (when this page had no ears)
     const earBad = new Set();     // writers whose ear lines disagreed with this device's ears
     const vts = new Map();        // voice + '|' + writer -> the writer's last vt on that voice
-    const picks = new Map();      // voice -> 'own' | 'me' | writer id (no entry: auto)
+    // A pick is a STARTING POINT, never a lock (docs/caption-trust.md section 8): voice -> { kind: 'own' | 'me' | 'ear', w, at }.
+    // Auto keeps judging with this page's own ears and the ears it trusts; the pick leans it until the evidence moves.
+    const taught = new Map();
+    const earBadV = new Set();    // voice|writer: a taught ear whose lines disagreed with this device's ears, for that voice
     const warned = new Set();
     const key = (v, w) => v + '|' + w;
     const rec = (v, w) => { let r = st.get(key(v, w)); if (!r) { r = { s: 'unknown', ok: 0, bad: 0, at: 0, why: '', by: '' }; st.set(key(v, w), r); } return r; };
     const stateOf = (v, w) => { const r = st.get(key(String(v), String(w))); return r ? r.s : 'unknown'; };
     const trustedEar = (w) => w !== me() && !earBad.has(w) && (earOk.get(w) || 0) >= d.TRUST_N;
+    // An ear this page trusts for voice v: earned on the evidence, or taught by the user's pick (until this device's ears disagree with it).
+    const trustedFor = (v, w) => {
+      const t = taught.get(v);
+      if (t && t.kind === 'ear' && t.w === w && w !== me()) return !earBadV.has(key(v, w));
+      return trustedEar(w);
+    };
 
     function setState(v, w, s, why, by) {
       const r = rec(v, w), was = r.s;
@@ -124,7 +133,7 @@
     }
     function applyVouch(v, w) {
       const vt = vts.get(key(v, w));
-      if (vt !== 0 || !trustedEar(w) || stateOf(v, v) === 'distrusted' || hasEars(v)) return;
+      if (vt !== 0 || !trustedFor(v, w) || stateOf(v, v) === 'distrusted' || hasEars(v)) return;
       sample(v, v, 'big', w);
       const r = st.get(key(v, v)); if (r && r.s === 'distrusted') r.why = 'vouch';
     }
@@ -168,7 +177,10 @@
               r.seen.add(w);
               const vd = judge(r.ws, ws, d);
               sample(v, w, vd, 'me', vd ? { theirs: textIn(v, w, lo, hi), ours: r.tx, by: my } : null);
-              if (w !== v && vd) { if (vd === 'match') earOk.set(w, (earOk.get(w) || 0) + 1); else earBad.add(w); }
+              if (w !== v && vd) {
+                if (vd === 'match') { earOk.set(w, (earOk.get(w) || 0) + 1); earBadV.delete(key(v, w)); }
+                else { earBad.add(w); earBadV.add(key(v, w)); }
+              }
             }
           } else if (!refMine && r.ear && r.w !== v) {
             // no ears here: another page's ear line for v
@@ -177,7 +189,7 @@
               r.seen.add(v);
               const vd = judge(r.ws, own, d);
               const ex = vd ? { theirs: textIn(v, v, lo, hi), ours: r.tx, by: r.w } : null;
-              if (trustedEar(r.w)) sample(v, v, vd, r.w, ex);
+              if (trustedFor(v, r.w)) sample(v, v, vd, r.w, ex);
               else if (vd === 'match') { earOk.set(r.w, (earOk.get(r.w) || 0) + 1); sample(v, v, vd, r.w, ex); }
             }
           }
@@ -185,21 +197,46 @@
       }
       for (const k of vts.keys()) { const i = k.indexOf('|'); applyVouch(k.slice(0, i), k.slice(i + 1)); }
     }
-    // -> { mode, show } : show 'all', or the one writer whose lines are shown for v.
+    // Where the speaker's own captions stand since the user's pick: 'back' (evidence trusts them again after the user put
+    // another source first), 'lost' (evidence distrusts them after the user put them first), or ''.
+    function sincePick(v) {
+      const t = taught.get(v); if (!t) return '';
+      const o = st.get(key(v, v));
+      if (t.kind === 'own') return o && o.s === 'distrusted' && o.at > t.at ? 'lost' : '';
+      return o && o.s === 'trusted' && o.at > t.at ? 'back' : '';
+    }
+    // -> { mode, show, lean } : show 'all', or the one writer whose lines are shown for v. mode is always 'auto': a pick
+    // only leans it (lean: 'own' | 'me' | the writer's id | ''), and the evidence can move it.
     function choice(v) {
       v = String(v);
       const my = me();
-      const p = picks.get(v);
-      if (p) return { mode: p, show: p === 'own' ? v : p === 'me' ? my : p };
+      const t = taught.get(v);
+      const lean = t ? (t.kind === 'ear' ? t.w : t.kind) : '';
+      const since = sincePick(v);
+      if (t && t.kind === 'own' && !since) return { mode: 'auto', show: v, lean };
+      if (t && t.kind === 'ear' && !since && trustedFor(v, t.w) && stateOf(v, t.w) !== 'distrusted') return { mode: 'auto', show: t.w, lean };
+      if (t && t.kind === 'me' && !since && hasEars(v)) return { mode: 'auto', show: my, lean };
       const own = stateOf(v, v);
-      if (own === 'trusted') return { mode: 'auto', show: v };
-      if (own !== 'distrusted') return { mode: 'auto', show: 'all' };
-      if (hasEars(v)) return { mode: 'auto', show: my };
+      if (own === 'trusted') return { mode: 'auto', show: v, lean };
+      if (own !== 'distrusted') return { mode: 'auto', show: 'all', lean };
+      if (hasEars(v)) return { mode: 'auto', show: my, lean };
       const ws = Array.from(new Set(recent(v).map((x) => x.w))).filter((w) => w !== v && w !== my);
-      const ear = ws.find((w) => trustedEar(w) && stateOf(v, w) !== 'distrusted');
-      if (ear) return { mode: 'auto', show: ear };
+      const ear = ws.find((w) => trustedFor(v, w) && stateOf(v, w) !== 'distrusted');
+      if (ear) return { mode: 'auto', show: ear, lean };
       const any = ws.find((w) => stateOf(v, w) !== 'distrusted');
-      return { mode: 'auto', show: any || 'all' };
+      return { mode: 'auto', show: any || 'all', lean };
+    }
+    // What changed since the user's pick, for the card to say: null, or { kind, w, what }, what = 'ownBack' (the speaker's own
+    // captions earned trust again), 'ownLost' (they lost it), 'earLost' (the writer the user preferred stopped matching this
+    // device's ears).
+    function moved(v) {
+      v = String(v);
+      const t = taught.get(v); if (!t) return null;
+      const since = sincePick(v);
+      if (t.kind === 'own') return since === 'lost' ? { kind: 'own', w: v, what: 'ownLost' } : null;
+      if (since === 'back') return { kind: t.kind, w: t.w || '', what: 'ownBack' };
+      if (t.kind === 'ear' && (!trustedFor(v, t.w) || stateOf(v, t.w) === 'distrusted')) return { kind: 'ear', w: t.w, what: 'earLost' };
+      return null;
     }
     // Is this line shown in the live captions on this page?
     function shows(l) {
@@ -218,22 +255,47 @@
     // own captions are trusted; then one spot check of CT_SPOT_MS every CT_SPOT_EVERY_MS.
     function earWanted(v) {
       v = String(v);
-      if (picks.get(v) === 'me') return true;
       const r = st.get(key(v, v));
       if (!r || r.s !== 'trusted') return true;
       return ((now() - r.at) % T.CT_SPOT_EVERY_MS) < T.CT_SPOT_MS;   // the first check right away, then one a period
     }
     // vt for this page's own ear line about v: its verdict on v's own captions.
     function verdict(v) { const s = stateOf(v, v); return s === 'distrusted' ? 0 : s === 'trusted' ? 1 : undefined; }
-    function pick(v, p) { v = String(v); if (!p || p === 'auto') picks.delete(v); else picks.set(v, String(p)); }
-    function flag(v, w) { v = String(v); w = String(w || v); setState(v, w, 'distrusted', 'flag', me()); if (w !== v && w !== me()) earBad.add(w); }
+    // The user's pick (local, never sent). Another writer's version: that writer is a trusted ear for this voice; the
+    // speaker's own: the doubt is cleared; this device's ears: they lead. Each is a starting point: auto keeps judging.
+    function pick(v, p) {
+      v = String(v);
+      if (!p || p === 'auto') {
+        // Automatic drops the pick; a doubt the pick cleared (or a trust it reset) comes back, if nothing has been judged since
+        const t = taught.get(v), o = st.get(key(v, v));
+        taught.delete(v);
+        if (t && t.before && o && o.why === 'pick') { o.s = t.before.s; o.ok = t.before.ok; o.bad = t.before.bad; o.why = t.before.why; o.at = t.before.at; }
+        return;
+      }
+      p = String(p);
+      const my = me(), at = now();
+      const o = rec(v, v);
+      const before = taught.get(v) ? taught.get(v).before : { s: o.s, ok: o.ok, bad: o.bad, why: o.why, at: o.at };   // what Automatic goes back to
+      if (p === 'own') {
+        taught.set(v, { kind: 'own', w: v, at, before });
+        if (o.s === 'distrusted') { o.s = 'unknown'; o.ok = 0; o.bad = 0; o.why = 'pick'; o.at = at; }   // clears the doubt, and a flag
+        else o.at = at;
+      } else {
+        taught.set(v, p === 'me' || p === my ? { kind: 'me', w: my, at, before } : { kind: 'ear', w: p, at, before });
+        if (p !== 'me' && p !== my) earBadV.delete(key(v, p));
+        if (o.s === 'trusted') { o.s = 'unknown'; o.ok = 0; o.bad = 0; o.why = 'pick'; }   // the user doubts them: they must earn it again
+        o.at = at;
+      }
+      warned.add(v);   // the user already knows: no warning card for this voice
+    }
+    function flag(v, w) { v = String(v); w = String(w || v); taught.delete(v); setState(v, w, 'distrusted', 'flag', me()); if (w !== v && w !== me()) earBad.add(w); }
     // Every source this page holds for v: [{ w, kind: 'own' | 'me' | 'ear', state }]
     function sources(v) {
       v = String(v);
       const my = me(), out = [], seen = new Set();
       for (const x of recent(v)) {
         if (seen.has(x.w)) continue; seen.add(x.w);
-        out.push({ w: x.w, kind: x.w === v ? 'own' : x.w === my ? 'me' : 'ear', state: stateOf(v, x.w), ear: x.w !== v && trustedEar(x.w) });
+        out.push({ w: x.w, kind: x.w === v ? 'own' : x.w === my ? 'me' : 'ear', state: stateOf(v, x.w), ear: x.w !== v && trustedFor(v, x.w) });
       }
       return out;
     }
@@ -247,7 +309,7 @@
     // Has this page ever held a caption line for v, or judged v's captions? (The tile's Captions row is offered then.)
     function known(v) { v = String(v); return lines.has(v) || st.has(key(v, v)); }
     function dump() {
-      const o = { states: {}, picks: Object.fromEntries(picks), ears: {}, earBad: Array.from(earBad), warned: Array.from(warned) };
+      const o = { states: {}, picks: Object.fromEntries(Array.from(taught, ([k, t]) => [k, t.kind === 'ear' ? t.w : t.kind])), ears: {}, earBad: Array.from(earBad), warned: Array.from(warned) };
       for (const [k, r] of st) o.states[k] = { s: r.s, ok: r.ok, bad: r.bad, why: r.why, by: r.by };
       for (const [w, n] of earOk) o.ears[w] = n;
       return o;
@@ -263,7 +325,7 @@
       if (c.show === w) return true;
       return c.show !== 'all' && shows(l);
     }
-    return { observe, tick, choice, shows, showsHeld, earWanted, verdict, pick, flag, sources, stateOf, hasEars, evidence, known, dump };
+    return { observe, tick, choice, shows, showsHeld, earWanted, verdict, pick, moved, flag, sources, stateOf, hasEars, evidence, known, dump };
   }
 
   // THE SPEAKER'S SIDE (docs/caption-trust.md section 7): the language other pages' ears hear MY voice in.
