@@ -3099,7 +3099,7 @@
       "appId": "grid-garden",
       "name": "Grid Garden",
       "shortName": "Garden",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "tagline": "Write CSS grid, grow carrots — offline, and one invite shares the garden.",
       "author": {
         "name": "Thomas Park",
@@ -3113,7 +3113,7 @@
         "name": "Grid Garden",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-30",
       "updated": "2026-08-30",
@@ -3136,15 +3136,15 @@
         73
       ],
       "cover": "/apps/grid-garden/cover.jpg",
-      "bytes": 422986,
+      "bytes": 423950,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-22"
       },
-      "sha256": "814980a7bcebdea7d53a6b69825c742616fd21877c605d51254eda80c6a6723f"
+      "sha256": "507abdfdfc4f67aed0cb27095679ffc6f0f0f3af1e229aa9e6474be854184526"
     },
     {
       "slug": "guitar-bro",
