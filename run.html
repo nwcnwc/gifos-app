@@ -33358,7 +33358,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       trs.set(m.id, line);
       trimMap(trs, CHAT_MAX);
       if (!backfill && w !== myId) trRxAt = Date.now();
-      if (!backfill) trLearnLang(line); // the room's Whisper pages teach me my language, and so does my own
       if (!backfill) emitLiveTranscript(line);
       return true;
     }
@@ -33378,29 +33377,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // THE SPEAKER'S OWN LANGUAGE. A browser engine listens in ONE language
     // and cannot detect it: the saved picker, else the device's language
-    // (trLang). A person who speaks another language on that device sends
-    // nonsense captions — unless a Whisper page in the room hears them and
-    // detects the language: two detected lines about ME in a row that agree
-    // on a language other than my engine's, and my engine restarts in theirs
-    // (this meeting only; the picker is still the person's choice).
-    let trHeardLang = '', trHeardN = 0, trLangLearned = '';
-    function trLang() { const v = trLangLearned || ccLang(); return trLangOf(v === 'auto' ? (navigator.language || 'en') : v); }
+    // (trLang). When the room hears me in another one, my page ASKS me (the
+    // suggestion card, docs/caption-trust.md section 7: two listeners agree,
+    // or the only other person); nothing switches it without my tap.
+    function trLang() { const v = ccLang(); return trLangOf(v === 'auto' ? (navigator.language || 'en') : v); }
     // What this page KNOWS about the speaker's language, for the room: a
-    // picked language, or one learned from detected lines (the room's or
-    // its own Whisper). A device default is a guess and is not advertised,
+    // picked language. A device default is a guess and is not advertised,
     // so a writer's Whisper is left to find the language itself.
-    function trLangKnown() { const v = ccLang(); return trLangOf(trLangLearned || (lsGet(CC_LANG_KEY) && v !== 'auto' ? v : '')); }
-    function trLearnLang(line) {
-      if (!line || !line.ld || line.byId !== myId || !line.lang || trLangLearned === line.lang) return;
-      if (line.lang === trLangKnown()) return; // nothing new: already picked or learned
-      if (trHeardLang === line.lang) trHeardN++; else { trHeardLang = line.lang; trHeardN = 1; }
-      if (trHeardN < 2) return;
-      trLangLearned = line.lang;
-      if (clog) clog('tr lang learned', line.lang);
-      try { if (typeof speechRunning === 'function' && speechRunning()) { stopSpeech(); syncSpeech(); } } catch (e) {}
-      try { if (typeof capPublish === 'function') capPublish(); } catch (e) {} // the room's writers ask Whisper for my language from now on
-      try { setStatus(uiText('stCaptionsNowListenFor', 'Captions now listen for {lang}.').replace('{lang}', line.lang), 6000); } catch (e) {}
-    }
+    function trLangKnown() { const v = ccLang(); return trLangOf(lsGet(CC_LANG_KEY) && v !== 'auto' ? v : ''); }
     // Consecutive lines from one person, close together, read as one
     // paragraph. The engine hands over two-word finals with no punctuation;
     // the lines stay as they came (ids, times), only the reading view joins them.
@@ -33678,7 +33662,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (v && !CC_LANGS.some(([x]) => x === v)) sel.insertAdjacentHTML('beforeend', '<option value="' + esc(v) + '">' + esc(v) + '</option>');
         sel.value = v;
       }
-      trLangLearned = ''; trHeardLang = ''; trHeardN = 0;
       if (speechRunning()) { stopSpeech(); syncSpeech(); }
       if (ccEngine() === 'local') syncSpeech(); // the next clip opens this language's model
       capPublish();
@@ -35230,9 +35213,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function speechRunning() { return !!speech; }
     function speechRetryDelay(n) { return Math.min(30000, 1000 * Math.pow(2, Math.max(0, n - 1))); }
     // The language the browser engine is asked for: the picker, else the
-    // device's language, else one the room's Whisper pages detected for me.
+    // device's language (the room's suggestion changes the picker, on a tap).
     function speechLangFor() {
-      if (trLangLearned) return trLangLearned;
       const v = ccLang();
       return v === 'auto' ? (navigator.language || 'en-US') : v;
     }
@@ -44165,7 +44147,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       captionsForTest: () => ({ mix: Array.from(ccMix.ins.keys()), drops: trDrops, show: !!ccShow, send: capSend(), mode: trMode(),
         lines: Array.from(trs.values()).sort((a, b) => a.at - b.at).map((l) => ({ by: l.by, byId: l.byId, w: l.w, src: l.src, lang: l.lang || '', ld: l.ld || 0, at: l.at, text: l.text })) }),
       // The transcript settings and what they produced on this page.
-      transcriptForTest: () => ({ send: capSend(), mode: trMode(), cap: !!myStatus.cap, lang: trLang(), known: trLangKnown(), learned: trLangLearned, mark: txMarkWhy(), speech: speechRunning(), ear: !!(speech && speech.input),
+      transcriptForTest: () => ({ send: capSend(), mode: trMode(), cap: !!myStatus.cap, lang: trLang(), known: trLangKnown(), mark: txMarkWhy(), speech: speechRunning(), ear: !!(speech && speech.input),
         lines: Array.from(trs.values()).sort((a, b) => a.at - b.at).map((l) => ({ id: l.id, by: l.by, byId: l.byId, w: l.w, src: l.src, lang: l.lang || '', ld: l.ld || 0, at: l.at, end: l.end || 0, text: l.text })) }),
       setTranscriptForTest: (o) => { o = o || {}; if ('send' in o) setCapSend(!!o.send); if ('mode' in o) setTrMode(o.mode); return { send: capSend(), mode: trMode() }; },
       ownVoiceForTest: () => {
