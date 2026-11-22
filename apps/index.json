@@ -1797,7 +1797,7 @@
       "appId": "css-doodle",
       "name": "CSS Doodle",
       "shortName": "Doodle",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "tagline": "A little pattern toy. Remix a snippet. Share it with a friend.",
       "author": {
         "name": "css-doodle",
@@ -1811,7 +1811,7 @@
         "name": "css-doodle",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -1834,15 +1834,15 @@
         158
       ],
       "cover": "/apps/css-doodle/cover.jpg",
-      "bytes": 243771,
+      "bytes": 244302,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-22"
       },
-      "sha256": "0d16815002d1399790b0e0e99cffaf423c09711e21c51211605429f96b9b1dc8"
+      "sha256": "bd7257e69b7dadc22bb60e3aa0c394e6503ae17f396d3f6c14872f7553b13d2a"
     },
     {
       "slug": "cube-composer",

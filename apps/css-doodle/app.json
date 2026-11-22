@@ -4,8 +4,8 @@
   "appId": "css-doodle",
   "name": "CSS Doodle",
   "shortName": "Doodle",
-  "version": "1.0.0",
-  "minBuild": 947,
+  "version": "1.1.0",
+  "minBuild": 5861,
   "tagline": "A little pattern toy. Remix a snippet. Share it with a friend.",
   "description": "A square that fills with a pattern — checkers, stripes, a spiral, a handful of coloured tiles. Tap a snippet to drop one in. Change a colour or a number in the recipe underneath, press Apply, and the square becomes yours. Shuffle rolls the random bits again so the same recipe lands a new way. Tap the square itself to shuffle too.\n\nThe last pattern you left stays on this device, inside the app. Close it, come back, it is still there.\n\nWant a friend looking at the same square? Press Share the pattern, then Invite (in the GifOS menu) and send the link. You both see the same recipe. When you apply a new one, they get it. When they apply one, you get it. Playing alone is the original toy.\n\nAn unofficial port of css-doodle. Bugs go to GifOS, not upstream.",
   "author": {
@@ -42,14 +42,14 @@
   "cover": "/apps/css-doodle/cover.jpg",
   "screenshots": [],
   "gif": "/apps/css-doodle/css-doodle.gif",
-  "bytes": 243771,
+  "bytes": 244302,
   "download": 0,
   "provides": null,
-  "sha256": "0d16815002d1399790b0e0e99cffaf423c09711e21c51211605429f96b9b1dc8",
+  "sha256": "bd7257e69b7dadc22bb60e3aa0c394e6503ae17f396d3f6c14872f7553b13d2a",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-22"
   },
   "porter": {
     "name": "GifOS",
