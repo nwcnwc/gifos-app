@@ -11,6 +11,9 @@
  *   - A holder the room stops hearing is "away" and keeps the seat for exactly as long as the roster keeps them; the
  *     seat frees in the same pass as the roster lets them go.
  *   - A freed seat goes to the first person in line; the turn stays with the seat.
+ *   - turns "order": the turn rests only on a held seat. It passes to the next HELD seat in seat order, skipping open
+ *     seats; if the holder of the turn leaves and nobody is in line, it moves on at once. (Alone with `solo`, the
+ *     player also plays the open seats, so the turn may rest on one.)
  *   - Open room: a join takes a free seat at once. Admin room: a guest's join is an ask; an admin seats people.
  */
 (function (root, factory) {
@@ -119,8 +122,21 @@
       for (const x of s.asks) x.nm = nameOf(x.k) || x.nm;
       for (const k of Object.keys(s.res)) if (!roster.has(k) && seatOf(k) < 0) delete s.res[k];
       handOff();
+      settleTurn();
     }
     const solo = () => sp.solo && roster.size === 1;
+    // The next held seat after seat i (i itself last, round the table); with `incl`, seat i counts first. -1 when none.
+    function nextHeld(i, incl) {
+      const n = s.seats.length;
+      for (let d = incl ? 0 : 1; d <= n; d++) { const j = (i + d) % n; if (s.seats[j].k) return j; }
+      return -1;
+    }
+    // turns "order": the turn rests on a held seat (never an open one), except in a solo player's practice.
+    function settleTurn() {
+      if (sp.turns !== 'order' || solo() || s.seats[s.turn].k) return;
+      const j = nextHeld(s.turn, true);
+      if (j >= 0) s.turn = j;
+    }
 
     // The roster the owner's page hears: [{ k, name, admin, here: 'here' | 'away' }], and the room type.
     function tick(ros, roomKind, now) {
@@ -189,7 +205,7 @@
           if (sp.turns === 'order') {
             const at = s.seats[s.turn];
             if (s.turn !== mine && !(solo() && !at.k)) return { ok: false, why: 'notYourTurn', turn: at.seat, who: at.nm };
-            if (!q.keep) s.turn = (s.turn + 1) % s.seats.length;
+            if (!q.keep) s.turn = solo() ? (s.turn + 1) % s.seats.length : nextHeld(s.turn);
           }
           s.moved = true;
           return { ok: true };
@@ -199,7 +215,7 @@
           if (mine < 0 && !isAdmin(k)) return { ok: false, why: 'watching' };
           const f = q.first != null ? sp.seats.indexOf(String(q.first)) : (s.first + 1) % s.seats.length;
           if (f < 0) return { ok: false, why: 'noSeat' };
-          s.first = f; s.turn = f; s.round += 1; s.moved = false;
+          s.first = f; s.turn = f; s.round += 1; settleTurn(); s.moved = false;
           return { ok: true };
         }
         case 'seat': case 'unseat': case 'deny': {
