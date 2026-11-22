@@ -1157,5 +1157,9 @@
   "meet.admAiAsk": "Ask first",
   "meet.admAiOff": "Off",
   "meet.admAiWaiting": "Waiting for your OK:",
-  "meet.admAiAllow": "Allow notes"
+  "meet.admAiAllow": "Allow notes",
+  "meet.capLangAsk": "Others hear you speaking {heard}, but your captions listen for {mine}. Switch your captions to {heard}?",
+  "meet.capLangSwitch": "Switch to {heard}",
+  "meet.capLangKeep": "Keep {mine}",
+  "meet.capLangLater": "You can change this any time: Settings, then Captions language."
 }
