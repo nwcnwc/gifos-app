@@ -2205,7 +2205,7 @@
       "appId": "emoji-minesweeper",
       "name": "Emoji Minesweeper",
       "shortName": "Minesweeper",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "Minesweeper with emoji. Race a friend on the same board.",
       "author": {
         "name": "muan",
@@ -2219,7 +2219,7 @@
         "name": "emoji-minesweeper",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -2240,15 +2240,15 @@
         48
       ],
       "cover": "/apps/emoji-minesweeper/cover.jpg",
-      "bytes": 195640,
+      "bytes": 196708,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-22"
       },
-      "sha256": "9a604324008d7d40ae0e52293a27e485c47634df1e3f7e33c214e7aac8cf4312"
+      "sha256": "1c56639d38f63bb35af4c323acf3920426fc665cc509543ae05306eb1ccb94dd"
     },
     {
       "slug": "epub-reader",
@@ -2305,7 +2305,7 @@
       "appId": "evolution-of-trust",
       "name": "The Evolution of Trust",
       "shortName": "Trust",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "tagline": "Close it mid-essay and you are still on that chapter. Send the invite and a friend watches the same tournament.",
       "author": {
         "name": "Nicky Case",
@@ -2319,7 +2319,7 @@
         "name": "The Evolution of Trust",
         "blessed": false
       },
-      "minBuild": 2154,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-30",
       "updated": "2026-08-30",
@@ -2341,15 +2341,15 @@
         221
       ],
       "cover": "/apps/evolution-of-trust/cover.jpg",
-      "bytes": 4785792,
+      "bytes": 4786946,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-22"
       },
-      "sha256": "87c93e5ff99c2150965d51eb1cdf8efc736d53369e3ac7c85ae474eb7fcbfb07"
+      "sha256": "a83593bf999ee9bbc67f7e6eae50a8d340cd8550bb9c849fb028e4233b48ddca"
     },
     {
       "slug": "excalidraw",
