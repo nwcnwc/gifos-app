@@ -2706,7 +2706,7 @@
       "appId": "flexbox-froggy",
       "name": "Flexbox Froggy",
       "shortName": "Froggy",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "tagline": "Write CSS. The frogs hop. Close it, come back still on the same pad — or invite a friend into this pond.",
       "author": {
         "name": "Thomas Park",
@@ -2720,7 +2720,7 @@
         "name": "Flexbox Froggy",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-30",
       "updated": "2026-08-30",
@@ -2743,15 +2743,15 @@
         71
       ],
       "cover": "/apps/flexbox-froggy/cover.jpg",
-      "bytes": 254185,
+      "bytes": 255217,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-22"
       },
-      "sha256": "595a159a9f454d7ffdcad6078020f9b79a06375681913e6ca6e43d100be0fd19"
+      "sha256": "363bd04ee085d401adb7c4dc5d81755e71594b5bf0ef226f51945cc3c2cc7fa6"
     },
     {
       "slug": "floppy-bird",
