@@ -2,6 +2,23 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.27.4",
+      "date": "2026-11-22",
+      "headline": "Captions that adapt, and turns that skip empty seats",
+      "critical": false,
+      "features": [
+        "Captions: when others hear a different language than your captions, your page suggests switching, and only your tap changes it.",
+        "Captions: one card for a person's captions, with an example and a Captions button on their tile; the cards sit above the floating bar.",
+        "Apps: in turn-based games the turn skips empty seats and passes to the next person who is seated.",
+        "Apps: the party games and spy, dial and roulette have a choice of playing together or on one phone.",
+        "AI agents: an agent on stage follows the same rules as a person: it asks to speak, or raises a hand in a hosted room."
+      ],
+      "fixes": [
+        "Captions: no silent restart in a learned language; a detected language only offers the suggestion.",
+        "Apps: Connect Four and other two-player games let the second person move after the host."
+      ]
+    },
+    {
       "version": "0.9.27.3",
       "date": "2026-11-21",
       "headline": "Rooms that fill fairly, and apps that know who is here",
