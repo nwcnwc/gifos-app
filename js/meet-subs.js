@@ -11,10 +11,11 @@
  *     the room has the defaults every verifier applies when no signed right
  *     is shown (Free is no plan at all): up to 5 people. When the door turns
  *     someone away for that, the host sees a one-tap "Subscribe for up to 20".
- *   - ONE MEETING AT A TIME: joining a meeting (open or admin room) asks the
- *     payment service for a short ticket for that meeting. Joining another
- *     meeting, here or in any browser holding the same file, moves the
- *     subscription there; this meeting loses it within a few minutes.
+ *   - MEETINGS AT ONCE (the plan's `meetings` line item, 1 unless it says
+ *     more): joining a meeting (open or admin room) asks the payment service
+ *     for a short ticket for that meeting. Joining one more meeting than the
+ *     plan allows, here or in any browser holding the same file, drops the
+ *     oldest joined; that meeting loses it within a few minutes.
  *     Payment is checked when a meeting is joined; a meeting that started
  *     paid keeps the subscription to its end.
  *   - The admin's ticket travels with the room (a signed room order), so the
@@ -337,8 +338,20 @@
     return got;
   }
 
+  // UPGRADE RULE (said on /subscription): a new plan starts when PayPal confirms it, and the PayPal plan it replaces is
+  // then cancelled with that plan's own key, so nobody is billed twice. The time left on the old plan is not carried
+  // over. A store plan is managed in the store; a pass is never cancelled (it runs beside any plan).
+  async function cancelReplaced(prev, nextId) {
+    if (!prev || prev.subId === nextId || !/^I-/.test(prev.subId)) return;
+    const k = await GifOS.ed.keysFromSeed(fromB64(prev.seed));
+    const at = nowS();
+    const sig = b64(await GifOS.ed.sign(k.priv, new TextEncoder().encode(SUB.askMessage('cancel', prev.subId, at))));
+    await post('/gifos/sub/cancel', { subId: prev.subId, buyerKey: b64(k.pubRaw), at, sig }).catch(() => null);
+  }
   async function subscribe(tier, period, say) {
     if (RAIL()) return subscribeInApp(tier, period, say || (() => {}));
+    const prev = SUB.credentialOk(readJson(CRED_KEY));   // the plan this one replaces (cancelled once the new one is on)
+    const prevLive = prev && (await verifiedLicense().catch(() => null)) ? prev : null;
     const seed = new Uint8Array(32); crypto.getRandomValues(seed);
     const k = await GifOS.ed.keysFromSeed(seed);
     const buyerKey = b64(k.pubRaw);
@@ -355,7 +368,7 @@
     while (Date.now() < until) {
       await new Promise((r) => setTimeout(r, POLL_MS));
       let st = null; try { st = await refresh(); } catch (e) {}
-      if (st && st.licenseJson) { rejoin(true); return st; }
+      if (st && st.licenseJson) { await cancelReplaced(prevLive, j.id); rejoin(true); return st; }
       if (st && st.status && st.status !== 'APPROVAL_PENDING' && st.status !== 'APPROVED') return st;
     }
     return readState();
@@ -501,7 +514,7 @@
     return readState();
   }
 
-  // ---- one meeting at a time --------------------------------------------------
+  // ---- meetings at once (the plan's `meetings`; one unless it says more) ---------
   // meet: {room, tag, subId, tier, ticket:{ticketJson,sig}, exp, gen, joining, timer, moved}
   let meet = null;
   let hooks = {};
@@ -726,9 +739,14 @@
   // Providers folder): each subscription with its plan, period, standing and
   // date; each pass not yet run out with its window; and the rights in effect
   // now with the reason (the best of them wins).
-  const PLAN_SHORT = { room20: ['planRoom20', 'Room 20'], unlimited: ['planUnlimited', 'Unlimited'], streamer: ['planStreamer', 'Streamer'], free: ['planFree', 'Free'] };
+  const PLAN_SHORT = { room20: ['planRoom20', 'Room 20'], unlimited: ['planUnlimited', 'Unlimited'], streamer: ['planStreamer', 'Streamer'], free: ['planFree', 'Free'],
+    family: ['planFamily', 'Family business'], smallBusiness: ['planSmallBusiness', 'Small business'], business: ['planBusiness', 'Business'], enterprise: ['planEnterprise', 'Enterprise'] };
   // A plan's long name, as Settings and the plan buttons show it (the two kinds of meeting: private meetings, public open-floor meetings).
-  const PLAN_NAME = { room20: 'planNameRoom20', unlimited: 'planNameUnlimited', streamer: 'planNameStreamer', free: 'planNameFree' };
+  const PLAN_NAME = { room20: 'planNameRoom20', unlimited: 'planNameUnlimited', streamer: 'planNameStreamer', free: 'planNameFree',
+    family: 'planNameFamily', smallBusiness: 'planNameSmallBusiness', business: 'planNameBusiness', enterprise: 'planNameEnterprise' };
+  // How many meetings at once the subscription powers, in Settings (n from the license's line items).
+  const meetingsWords = (n) => (n > 1 ? fill(tx('subMeetingsN', 'Your subscription works in up to {n} meetings at once. Joining one more, here or in another browser with your subscription file, moves it from the oldest.'), { n })
+    : tx('subMeetings1', 'Your subscription works in one meeting at a time. Joining a meeting, here or in another browser with your subscription file, moves it there.'));
   const planName = (tier, t) => (PLAN_NAME[tier] ? tx(PLAN_NAME[tier], t.name) : t.name);
   const planShort = (tier) => { const x = PLAN_SHORT[tier]; return x ? tx(x[0], x[1]) : tx('planNone', 'No plan'); };
   const clockOf = (s) => { try { return new Date(s * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } };
@@ -866,11 +884,11 @@
       const viaStore = /^[GA]-/.test(String(lic.subId || ''));
       if (elsewhere) {
         row.appendChild(el('p', { class: 'set-help', id: 'sub-plan-elsewhere' }, tx('subFromBroadcast', '{plan}, from the Broadcast app. In meetings it gives everything Unlimited gives.').replace('{plan}', planShort(lic.tier))));
-        row.appendChild(el('p', { class: 'set-help' }, 'Your subscription works in one meeting at a time. Joining a meeting, here or in another browser with your subscription file, moves it there.'));
+        row.appendChild(el('p', { class: 'set-help', id: 'sub-meetings' }, meetingsWords(SUB.rightsOf(lic, nowS()).meetings)));
         if (!inApp) row.appendChild(el('a', { class: BTN, style: BTN_STYLE + ';display:inline-block;text-decoration:none', id: 'sub-manage-broadcast', href: '/cast', target: '_blank', rel: 'noopener' }, tx('subManageBroadcast', 'Manage it in the Broadcast app')));
       } else {
         row.appendChild(el('p', { class: 'set-help' }, st.status === 'CANCELLED' ? SUB.TEXT.cancelled + ' Ends ' + dateOf(st.until || lic.exp) + '.' : inApp || viaStore ? tx('subRenewsAuto', 'Renews automatically.') : 'Renews through PayPal.'));
-        row.appendChild(el('p', { class: 'set-help' }, 'Your subscription works in one meeting at a time. Joining a meeting, here or in another browser with your subscription file, moves it there.'));
+        row.appendChild(el('p', { class: 'set-help', id: 'sub-meetings' }, meetingsWords(SUB.rightsOf(lic, nowS()).meetings)));
         if (meet && meet.moved === 'moved') row.appendChild(el('p', { class: 'set-help' }, 'It is in use in another meeting now.'));
         // The library is a web page, offered only in the Broadcast app; the
         // native apps are the meeting only.
@@ -947,13 +965,14 @@
         for (const x of row.querySelectorAll('button[data-tier]')) x.disabled = false;
       }
     };
-    for (const id of SUB.tiersSoldIn(app)) {
+    // The window lists Room 20, Unlimited (Streamer in Broadcast) and Family business; every plan is on /subscription.
+    for (const id of SUB.tiersListed(app)) {
       const t = SUB.TIERS[id];
       const tr = el('tr', { 'data-tier': id });
       tr.appendChild(el('td', { class: 'sub-plan-desc' }, planName(id, t)));
       for (const period of ['monthly', 'yearly']) {
         const td = el('td', { class: 'sub-plan-buy' });
-        if (!(inApp && !SUB.storeSku(RAIL().store(), { what: 'sub', tier: id, period }))) {
+        if (t.periods.indexOf(period) >= 0 && !(inApp && !SUB.storeSku(RAIL().store(), { what: 'sub', tier: id, period }))) {
           const sp = skuOf({ what: 'sub', tier: id, period });
           const label = period === 'yearly' ? (sp || t.priceYear) + ' a year' : (sp || t.price) + ' a month';
           const b = el('button', { type: 'button', class: BTN, style: BTN_STYLE, 'data-tier': id, 'data-period': period }, label);
@@ -968,6 +987,8 @@
     row.appendChild(table);
     if (!inApp) row.appendChild(el('p', { class: 'set-help', id: 'sub-how' }, tx('passHow', 'Pay by card or PayPal.')));
     row.appendChild(legalLine('sub-legal', inApp));
+    // Every plan (the bigger business plans, Enterprise, Negotiated), the one held and the way up: /subscription.
+    row.appendChild(el('a', { class: BTN, style: BTN_STYLE + ';display:inline-block;text-decoration:none', id: 'sub-all-plans', href: '/subscription', target: '_blank', rel: 'noopener' }, tx('subAllPlans', 'All plans')));
     applySubSelection(row, sel);
     if (inApp) {
       // In the app: restore, and the credentials file through the system's own
@@ -999,7 +1020,7 @@
             const r = await N.request('file.pick', { mime: 'image/gif' });
             if (!r || r.ok === false || r.state !== 'picked') return;
             const st2 = await useFile(fromB64(r.b64));
-            say(st2 && st2.licenseJson ? tx('credsLoadedSub', 'Your credentials are loaded. A subscription works in one meeting at a time.') : tx('credsLoaded', 'Your credentials are loaded.'));
+            say(st2 && st2.licenseJson ? tx('credsLoadedSub', 'Your credentials are loaded. A subscription works in as many meetings at once as its plan says.') : tx('credsLoaded', 'Your credentials are loaded.'));
             paintSettings();
           } catch (e) { say(/not a GifOS/.test(String(e && e.message)) ? tx('credsNot', 'That file does not hold GifOS Meet credentials.') : String(e.message || e)); }
         };
@@ -1021,7 +1042,7 @@
       say('Reading the file…');
       try {
         const r = await useFile(new Uint8Array(await f.arrayBuffer()));
-        say(r && r.licenseJson ? 'This browser now uses your subscription. It works in one meeting at a time.' : 'The file was read, but the subscription is not active.');
+        say(r && r.licenseJson ? 'This browser now uses your subscription. It works in as many meetings at once as its plan says.' : 'The file was read, but the subscription is not active.');
         paintSettings();
       } catch (e) { say(String(e.message || e)); }
     };
