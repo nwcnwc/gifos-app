@@ -6105,7 +6105,7 @@
       "appId": "particle-life",
       "name": "Particle Life",
       "shortName": "Life",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "tagline": "Watch particles form little creatures. Share the jar with a friend.",
       "author": {
         "name": "hunar4321",
@@ -6119,7 +6119,7 @@
         "name": "Particle Life",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -6141,15 +6141,15 @@
         204
       ],
       "cover": "/apps/particle-life/cover.jpg",
-      "bytes": 193591,
+      "bytes": 194736,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "d08e9994d8d5ce31efc7fb884782c9d0f1fd866e6ecbeaaef326b27610d826fc"
+      "sha256": "5cd57efffc286d21f95bcb596500d345e79722007dcdacf72df017877c9226b0"
     },
     {
       "slug": "pdf-read-aloud",
