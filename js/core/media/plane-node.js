@@ -110,6 +110,9 @@
       const h = C.actingHead(c); return c.i === 0 || (h != null && String(h) === String(C.myId));
     }
     function rowHeadPid(c) { return C.actingHead(c); }
+    // PLI upstream arrives with the Node executor (forward step 6)
+    function keyUp(claim, key) { return false; }
+    function producerKey(key, fromPid) {}
 
     def('mainAudioTrack', mainAudioTrack);
     def('sentVideoTrack', sentVideoTrack);
@@ -128,7 +131,10 @@
     def('picRead', picRead);
     def('iActAsHead', iActAsHead);
     def('rowHeadPid', rowHeadPid);
-    return { names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties', 'bindClaim', 'unbindClaim', 'adoptClaim', 'picRead', 'iActAsHead', 'rowHeadPid'] };
+    def('keyUp', keyUp);
+    def('producerKey', producerKey);
+    def('kfEv', () => {});   // keyframe forensics: the browser plane logs them (window.__kfLog); nothing to log here
+    return { names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties', 'bindClaim', 'unbindClaim', 'adoptClaim', 'picRead', 'iActAsHead', 'rowHeadPid', 'keyUp', 'producerKey', 'kfEv'] };
   }
 
   GifOS.planeNode = { install };
