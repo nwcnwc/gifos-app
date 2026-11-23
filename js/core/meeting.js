@@ -10643,9 +10643,9 @@
       if (seatedHere) for (const [pid, p] of peers) if (!p.qa && !ids.has(pid) && !linkTo(pid) && !p.absentSince) p.absentSince = Date.now();
       for (const pid of Object.keys(rosterNames)) if (!ids.has(pid)) delete rosterNames[pid];
       reconcileGrid();
-      // A new row-mate gets my mic and camera (rowMateCheck) and I play its voice (applyBuses: a row-mate's tile is on the row bus)
+      // A NEW row-mate gets my mic and camera (rowMateCheck) and I play its voice (applyBuses: a row-mate's tile is on the row bus)
       // this tick, not on the 2 s sweep: a joiner seated just after its own sweep played nobody for 2 s (TIMINGS28, join-time.js).
-      try { rowMateCheck(); (0, /*()*/__M.applyBuses)(); } catch (e) {}
+      try { tickMates(); } catch (e) {}
       updateStatus();
       (0, /*()*/__M.recNoteStruct)();
     }
@@ -12949,6 +12949,16 @@
       for (const [pid, q] of peers) if (q.pc && q.mediaOn) { const v = (micPeer(pid) ? 'm' : '') + (camPeer(pid) ? 'c' : ''); if (v) rmSig += '|' + pid + v; }
       rmSig += '#' + dutySlots().map((d) => d.join(':')).sort().join(',');   // a duty my cell takes on or lets go of is reported at once
       if (rmSig !== lastRmSig) { lastRmSig = rmSig; (0, /*()*/__M.refreshOutbound)(); }
+    }, tickMateSig = new Set(), tickMates = () => {
+      // ADDITIONS ONLY, ON CHANGE ONLY: a mate (or a mate's voice stream) my last tick did not have. A mate that drops out of
+      // the view for one tick (a move, a contest, a merge) is not muted here: removals stay on the sweep's held verdict, as before.
+      const now = new Set();
+      for (const pid of rowMates()) { const q = peers.get(pid); now.add(pid + ':' + (q && q.stream ? q.stream.id : '') + (q && q.mediaOn ? 'm' : '')); }
+      let grew = false; for (const k of now) if (!tickMateSig.has(k)) { grew = true; break; }
+      tickMateSig = now;
+      if (!grew) return;
+      try { rowMateCheck(); } catch (e) { if (!tickMates.err) { tickMates.err = 1; if (typeof clog === 'function') clog('tickMates rowMateCheck ' + String(e).slice(0, 120)); } }
+      try { (0, /*()*/__M.applyBuses)(); } catch (e) { if (!tickMates.err2) { tickMates.err2 = 1; if (typeof clog === 'function') clog('tickMates applyBuses ' + String(e).slice(0, 120)); } }
     };
     // THE SWEEP RIDES A WORKER CLOCK (2026-10-03). It was a page setInterval,
     // which Chrome throttles to once a minute after five minutes hidden; the
