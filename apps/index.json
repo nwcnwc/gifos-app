@@ -9316,7 +9316,7 @@
       "appId": "tower-game",
       "name": "Tower Game",
       "shortName": "Tower",
-      "version": "1.0",
+      "version": "1.0.1",
       "tagline": "Tap to drop each floor. Race a friend to the tallest tower.",
       "author": {
         "name": "iamkun",
@@ -9330,7 +9330,7 @@
         "name": "Tower Building Game",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -9350,15 +9350,15 @@
         64
       ],
       "cover": "/apps/tower-game/cover.jpg",
-      "bytes": 875666,
+      "bytes": 876512,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "cb25e53f65db1fbd1d7ee7bf104c1e62f57b325b2ad13698faa18578ff68652f"
+      "sha256": "60a96ad54ac0377c21f76bedabcd413fd419f5561c81b2b7316604e2069aee75"
     },
     {
       "slug": "trianglify-studio",
