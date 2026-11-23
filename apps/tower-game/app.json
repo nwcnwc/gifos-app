@@ -4,8 +4,8 @@
   "appId": "tower-game",
   "name": "Tower Game",
   "shortName": "Tower",
-  "version": "1.0",
-  "minBuild": 947,
+  "version": "1.0.1",
+  "minBuild": 5861,
   "tagline": "Tap to drop each floor. Race a friend to the tallest tower.",
   "description": "Press Invite in the bar above the app and send the link. You each build your own tower. Live heights as you go, tallest when the hearts run out wins. Your best score is saved.\n\nOn your own it is the original game. A crane swings a floor out. Tap to drop it. Land it on the floor below and you climb. Miss three times and it is over. A perfect stack scores more, and a streak of perfects more still. The crane gets meaner the higher you go. A thumb on a phone works the same as a click.\n\nAn unofficial port of Tower Building Game by iamkun. This copy adds the race. Bugs go to GifOS, not upstream.",
   "author": {
@@ -39,14 +39,14 @@
   "cover": "/apps/tower-game/cover.jpg",
   "screenshots": [],
   "gif": "/apps/tower-game/tower-game.gif",
-  "bytes": 875666,
+  "bytes": 876512,
   "download": 0,
   "provides": null,
-  "sha256": "cb25e53f65db1fbd1d7ee7bf104c1e62f57b325b2ad13698faa18578ff68652f",
+  "sha256": "60a96ad54ac0377c21f76bedabcd413fd419f5561c81b2b7316604e2069aee75",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-23"
   },
   "porter": {
     "name": "GifOS",

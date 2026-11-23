@@ -4,8 +4,8 @@
   "appId": "underrun",
   "name": "Underrun",
   "shortName": "Underrun",
-  "version": "1.0.0",
-  "minBuild": 947,
+  "version": "1.0.1",
+  "minBuild": 5861,
   "tagline": "Underrun: the corridor shooter, complete in one GIF.",
   "description": "This is Underrun in a GIF you keep. Close it and your best floor is still there. Send the invite and extra soldiers drop into the same halls.\n\nThe year is 2718. The facility went dark. Spiders in the corridors, turrets around the corners, and every computer that runs the place is offline. Walk the halls, shoot what comes for you, and reboot each machine. When the last one on a floor comes back, you hop to the next.\n\nThree floors. Health packs on the ground. The things in the dark do not wait.\n\nOn a phone it is a twin-stick: left thumb walks, right thumb aims and fires. On a computer it is WASD or the arrows, and the mouse to shoot.\n\nAn unofficial port of Underrun by phoboslab, the 2018 js13kGames entry. Music by Andreas Lösch. This copy adds the sticks a phone needs, the extra soldiers, and a save.",
   "author": {
@@ -40,14 +40,14 @@
   "cover": "/apps/underrun/cover.jpg",
   "screenshots": [],
   "gif": "/apps/underrun/underrun.gif",
-  "bytes": 215879,
+  "bytes": 216983,
   "download": 0,
   "provides": null,
-  "sha256": "11623ea6122b59099d443356fb1a1d29ef970526d9f0870bf270c02fcdd213f8",
+  "sha256": "661cbae25bb5453fd3e2f2bf18a8b4f5152968821e48ce63f0d46277dfa83c67",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-23"
   },
   "porter": {
     "name": "GifOS",
