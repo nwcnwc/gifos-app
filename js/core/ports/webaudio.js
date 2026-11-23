@@ -20,17 +20,20 @@
  * THE CODEC comes from the host (opts.Opus: an opusscript-shaped constructor (rate, channels, application) with
  * encode(Buffer int16, frames) and decode(Buffer)): wasm by default, so the participant's sandbox loads no native code.
  *
- * Usage: const wa = require('./ports/webaudio.js').port({ Opus, werift }); then wa.AudioContext.
+ * Usage: const wa = require('./ports/webaudio.js').port({ Opus, werift, timings: GifOS.timings }); then wa.AudioContext.
  */
 (function (root) {
   'use strict';
-  const RTP_RATE = 48000, FRAME = 960;   // Opus on the wire: 48 kHz, 20 ms
-  const QUANTUM_MS = 20, MAX_CATCHUP = 5, FIFO_MAX = RTP_RATE / 2;   // a source keeps at most 0.5 s queued
+  const RTP_RATE = 48000, MAX_CATCHUP = 5, FIFO_MAX = RTP_RATE / 2;   // Opus on the wire is 48 kHz; a source keeps at most 0.5 s queued
 
   function port(opts) {
     const Opus = opts && opts.Opus, W = opts && opts.werift;
     if (typeof Opus !== 'function') throw new Error('webaudio port: opts.Opus (an Opus codec constructor) is required');
     if (!W || typeof W.MediaStreamTrack !== 'function') throw new Error('webaudio port: opts.werift is required');
+    // the render quantum is one Opus frame (timings.json AUDIO_QUANTUM_MS)
+    const QUANTUM_MS = opts.timings && +opts.timings.AUDIO_QUANTUM_MS;
+    if (!(QUANTUM_MS > 0)) throw new Error('webaudio port: opts.timings.AUDIO_QUANTUM_MS is required');
+    const FRAME = Math.round(RTP_RATE * QUANTUM_MS / 1000);
     const made = new WeakMap();   // a track this port made -> its tap (the samples it carries, for a local source)
 
     // linear resampling of a mono Float32Array
@@ -104,7 +107,7 @@
       constructor(ctx) { super(ctx); this.buffer = null; this.onended = null; this._at = null; this._pos = 0; this._done = false; this._data = null; this.playbackRate = new AudioParam(1); this.loop = false; }
       start(when) { if (this._at != null) throw new Error('InvalidStateError: start called twice'); this._at = Math.max(+when || 0, this.context.currentTime); this.context._active.add(this); }
       stop() { if (this._done) return; this._end(); }
-      _end() { if (this._done) return; this._done = true; this.context._active.delete(this); const f = this.onended; if (typeof f === 'function') setTimeout(() => { try { f.call(this, { type: 'ended', target: this }); } catch (e) { this.context._fail(e); } }, 0); }
+      _end() { if (this._done) return; this._done = true; this.context._active.delete(this); const f = this.onended; if (typeof f === 'function') Promise.resolve().then(() => { try { f.call(this, { type: 'ended', target: this }); } catch (e) { this.context._fail(e); } }); }
       _render(q, n) {
         const out = new Float32Array(n), ctx = this.context;
         if (this._at == null || this._done || !this.buffer) return out;
@@ -244,7 +247,7 @@
     return { AudioContext, webkitAudioContext: AudioContext, AudioBuffer, AudioNode, GainNode, AnalyserNode, decodeWav, made: (t) => made.has(t) };
   }
 
-  const api = { port, RTP_RATE, FRAME };
+  const api = { port, RTP_RATE };
   const GifOS = root.GifOS = root.GifOS || {};
   GifOS.webaudioPort = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

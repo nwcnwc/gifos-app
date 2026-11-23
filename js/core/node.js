@@ -371,13 +371,7 @@ function createMeeting(opts) {
   const media = opts.media && opts.media.Opus && opts.webrtc && nm && nm.host && nm.plane ? opts.media : null;
   if (opts.media && !media) throw new Error('GifOS core: opts.media needs { Opus }, a webrtc port and a site with a Node media plane (files.json "nodeMedia")');
   let audio = null;
-  if (media) {
-    const wr = g.MediaStreamTrack && g.RtpPacket ? { MediaStreamTrack: g.MediaStreamTrack, MediaStream: g.MediaStream, RtpPacket: g.RtpPacket, RtpHeader: g.RtpHeader } : null;
-    if (!wr) throw new Error('GifOS core: the media plane needs a webrtc port with RTP tracks (werift)');
-    audio = hostModule(site, nm.host).port({ Opus: media.Opus, werift: wr });
-    audio.AudioContext.onerror = (e) => fail('audio', e);
-    g.AudioContext = g.webkitAudioContext = audio.AudioContext;
-  }
+  if (media && !(g.MediaStreamTrack && g.RtpPacket)) throw new Error('GifOS core: the media plane needs a webrtc port with RTP tracks (werift)');
   if (opts.globals) for (const k of Object.keys(opts.globals)) g[k] = opts.globals[k];
   // the core, then the app runtime (files.json "apps": apps' data, signatures and gifos.room, with no app frame)
   for (const rel of files.core.concat(files.apps || [], media ? [nm.plane] : [])) {
@@ -451,6 +445,11 @@ function createMeeting(opts) {
   }
   let plane = null;
   if (media) {
+    // the AudioContext over Opus, on the participant's global before the meeting runs (the libraries read it at use)
+    audio = hostModule(site, nm.host).port({ Opus: media.Opus, timings: GifOS.timings,
+      werift: { MediaStreamTrack: g.MediaStreamTrack, MediaStream: g.MediaStream, RtpPacket: g.RtpPacket, RtpHeader: g.RtpHeader } });
+    audio.AudioContext.onerror = (e) => fail('audio', e);
+    g.AudioContext = g.webkitAudioContext = audio.AudioContext;
     if (!GifOS.planeNode) throw new Error('GifOS core: ' + nm.plane + ' did not define the media plane');
     plane = GifOS.planeNode.install(meeting.media, meeting.core);
   }
