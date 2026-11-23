@@ -4,8 +4,8 @@
   "appId": "math-race",
   "name": "Math Race",
   "shortName": "Math Race",
-  "version": "1.0.0",
-  "minBuild": 947,
+  "version": "1.1.4",
+  "minBuild": 5861,
   "tagline": "Same equation on every phone — first correct answer scores.",
   "description": "An equation lands on every phone at once. Type the answer on the number pad. First correct scores, and the next one is already there. Thirty, sixty, or ninety seconds.\n\nOn your own it is you against the clock, on this device. Easy is plus and minus of small numbers; medium is times tables; hard mixes them. Mid-race you can see You versus Best. Close it and come back — last runs and your best are saved.\n\nPress Play a friend, then Invite in the bar above the app. Live scores. When the clock hits zero, the round is over.\n\nA wrong answer does not freeze you. It flashes. Same equation. Try again.\n\nAn unofficial port of math-race by iloire.",
   "author": {
@@ -40,14 +40,14 @@
   "cover": "/apps/math-race/cover.jpg",
   "screenshots": [],
   "gif": "/apps/math-race/math-race.gif",
-  "bytes": 197994,
+  "bytes": 199515,
   "download": 0,
   "provides": null,
-  "sha256": "9d6ce16fdc8848bcaafa22ee3cf256af804472a1a49f600873202a824c3a38d1",
+  "sha256": "dff34266fc2d81cbfbc57fd8d7cc6394cbce4cf2ddbbdf56e571c009f7fd5f4e",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-23"
   },
   "porter": {
     "name": "GifOS",
