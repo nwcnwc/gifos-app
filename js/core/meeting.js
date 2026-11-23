@@ -20422,6 +20422,8 @@
     const scriptOnce = {};
     yield 3089;
     async function installRunApp(d) {
+      // A host with no App Store (the GifOS Meet phone apps set GifOS.noAppStore) runs only the apps it carries.
+      if (GifOS.noAppStore === true) return { error: 'no-store' };
       if (d.from === 'sample') {
         try { await (0, /*()*/__V.loadScriptOnce)('js/gifos-icons.js'); } catch (e) {}   // its tile art; a plain tile without it
         await (0, /*()*/__V.loadScriptOnce)('js/sample-apps.js');
@@ -20445,6 +20447,7 @@
       for (const d of RUN_DEFAULTS) {
         const f = apps.find((x) => x.appId === d.appId && !used.has(x.id));
         if (f) used.add(f.id);
+        if (!f && GifOS.noAppStore === true) continue;   // nothing to install from on this host: offer only what is here
         out.push(f ? { name: d.name, fileId: f.id } : { name: d.name, install: d });
       }
       const rest = apps.filter((f) => !used.has(f.id));
