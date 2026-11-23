@@ -1458,7 +1458,7 @@
       "appId": "chrome-dino",
       "name": "Chrome Dino",
       "shortName": "Dino",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "tagline": "chrome://dino, always offline — high score in the file, Invite is a side-by-side run.",
       "author": {
         "name": "The Chromium Authors",
@@ -1472,7 +1472,7 @@
         "name": "T-Rex Runner",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-30",
       "updated": "2026-08-30",
@@ -1493,15 +1493,15 @@
         83
       ],
       "cover": "/apps/chrome-dino/cover.jpg",
-      "bytes": 180708,
+      "bytes": 181881,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "d19b7f87b5de8a306ab73f9ddc192dac4ca70173bc441870c14f6b1448711609"
+      "sha256": "fe67f673af2480d468e01b1cab7c83fc1b7290d242c8ebeff57c03be052419eb"
     },
     {
       "slug": "civiclock",
