@@ -56,21 +56,8 @@
       const plan = C.outboundPlan();   // a held plan or a viewer's park is the reconcile's too
       C.reconcileMain(plan, M.sentVideoTrack(), M.mainAudioTrack(), kick);   // through the published names (a test may stand a builder in)
     }
-    // A late track (a voice that starts, a camera the host hands over): seat it on every camera link, as the browser does.
-    function attachLocalTracks() {
-      if (!C.localStream || (C.BROADCAST && !C.bcMayPublishAv())) return;
-      for (const [pid, p] of C.peers) {
-        if (!p.pc || !C.camPeer(pid) || p.headless) continue;
-        let added = false;
-        for (const tr of C.localStream.getTracks()) {
-          if (tr.kind === 'video' ? p.mainV : (p.mainA || !C.micPeer(pid))) continue;
-          const t = tr.kind === 'audio' ? (M.mainAudioTrack() || tr) : M.sentVideoTrack();
-          if (!t) continue;
-          try { const x = p.pc.addTransceiver(t, { streams: [C.localStream] }); if (tr.kind === 'video') p.mainV = x.sender; else p.mainA = x.sender; added = true; } catch (e) {}
-        }
-        if (added) kick(p);
-      }
-    }
+    // A late track (a voice that starts, a camera the host hands over): the plan's reconcile opens the missing main senders.
+    function attachLocalTracks() { refreshOutbound(); }
     // A RECEIVED STREAM: a copy that comes back lands in the stream it left, so its old, ended track goes first.
     function dropEndedRemoteTracks(stream, track) {
       if (!stream || !track) return;

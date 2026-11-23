@@ -132,22 +132,22 @@
     // decoder and one RTP subscription; the first listener opens them, the last one gone frees them.
     const decoded = new WeakMap();   // a remote track -> its tap
     let decoders = 0;
-    function decodedTap(t, ctx) {
+    function decodedTap(t) {
       let tap = decoded.get(t);
       if (tap) return tap;
-      const listeners = new Set();
+      const listeners = new Map();   // listener -> the context it reads for (a decode error is that context's)
       let dec = null, sub = null, said = false;
       const open = () => {
         dec = new Opus(RTP_RATE, 1); decoders++;
         sub = t.onReceiveRtp.subscribe((rtp, ext, info) => {
           if (info && info.type && info.type !== 'media') return;
           if (!rtp || !rtp.payload || !rtp.payload.length) return;
-          let x; try { x = fromI16(dec.decode(rtp.payload)); } catch (e) { if (!said) { said = true; ctx._fail(new Error('webaudio: an Opus packet did not decode (' + String(e && e.message || e) + ')')); } return; }
-          for (const f of listeners) { try { f(x); } catch (e) {} }
+          let x; try { x = fromI16(dec.decode(rtp.payload)); } catch (e) { if (!said) { said = true; const err = new Error('webaudio: an Opus packet did not decode (' + String(e && e.message || e) + ')'); for (const c of new Set(listeners.values())) c._fail(err); } return; }
+          for (const f of listeners.keys()) { try { f(x); } catch (e) {} }
         });
       };
       const close = () => { try { sub.unSubscribe(); } catch (e) {} try { if (dec.delete) dec.delete(); } catch (e) {} sub = null; dec = null; decoders--; decoded.delete(t); };
-      tap = { listen: (f) => { if (!listeners.size) open(); listeners.add(f); return () => { if (listeners.delete(f) && !listeners.size) close(); }; } };
+      tap = { listen: (f, c) => { if (!listeners.size) open(); listeners.set(f, c); return () => { if (listeners.delete(f) && !listeners.size) close(); }; } };
       decoded.set(t, tap);
       return tap;
     }
@@ -160,7 +160,7 @@
         this.mediaStream = s; this._fifo = new Fifo(); this._rate = RTP_RATE;
         const tap = made.get(t);
         if (tap) { this._unsub = tap.listen((x) => this._fifo.push(x)); this._rate = RTP_RATE; }
-        else if (t.onReceiveRtp && typeof t.onReceiveRtp.subscribe === 'function') this._unsub = decodedTap(t, ctx).listen((x) => this._fifo.push(x));
+        else if (t.onReceiveRtp && typeof t.onReceiveRtp.subscribe === 'function') this._unsub = decodedTap(t).listen((x) => this._fifo.push(x), ctx);
         else throw new Error('InvalidStateError: this host cannot read that track');
         ctx._srcs.add(this);
       }

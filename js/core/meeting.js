@@ -7277,10 +7277,11 @@
       if (outgoingHeld) return { v: 1, hold: true };
       const plan = { v: 1, hold: false, park: null, capture: { video: mainVideoChoice(), stage: stageVideoChoice() }, links: [] };
       if (BROADCAST && bcRole() === 'viewer') plan.park = 'viewer';
+      const noPicture = plan.capture.video.src === 'none';   // a seat that may not publish owes no picture (a policy, not a fault)
       const staged = personOnStage(myId), voiceStaged = stageIds().includes(myId), leased = seatSelfLeased(), now = Date.now();
       for (const p of peers.values()) {
         const viewer = plan.park === 'viewer';
-        const cam = !viewer && camPeer(p.id) && !staged, mic = !viewer && micPeer(p.id);
+        const cam = !viewer && !noPicture && camPeer(p.id) && !staged, mic = !viewer && micPeer(p.id);
         const camPark = !cam ? null : leased ? 'leased' : (p.mainHoldUntil && p.mainHoldUntil > now) ? 'held' : p.remoteParkMain ? 'hidden' : null;
         const micPark = !mic ? null : voiceStaged ? 'stage' : leased ? 'leased' : null;
         plan.links.push([String(p.id), { cam: { source: cam ? 'own-cam' : 'none', kind: 'video', park: camPark }, mic: { source: mic ? 'own-mic' : 'none', kind: 'audio', park: micPark } }]);
@@ -7356,15 +7357,19 @@
     // A park is replaceTrack(null) and a return a pure replaceTrack: no renegotiation, the m-lines never left. My mic
     // goes to row-mates only, like my camera: a pipe's side hears me in its mix, so a main audio sender a late camera
     // grant put on a pipe's pc (attachLocalTracks) would carry my voice a second time.
-    // A held plan (a leave in progress) changes nothing; a broadcast viewer's parks every main sender and opens none.
+    // A held plan (a leave in progress) changes nothing and reports nothing; a broadcast viewer's parks every main sender,
+    // opens none and reports every slot parked.
     function reconcileMain(plan, vt, at, kick) {
-      if (plan.hold) return null;
+      if (plan.hold) { planReported(null); return null; }
       if (plan.park === 'viewer') {
+        const parked = [];
         for (const p of peers.values()) {
           if (p.mainV && p.mainV.track) p.mainV.replaceTrack(null).catch(() => {});
           if (p.mainA && p.mainA.track) p.mainA.replaceTrack(null).catch(() => {});
+          parked.push([String(p.id), { cam: 'park', mic: 'park' }]);
         }
-        return null;
+        planReported({ links: parked });
+        return parked;
       }
       const want = new Map(plan.links);
       const report = [];
@@ -7392,7 +7397,7 @@
         if (p.mainA) {
           if (!micOwed) { r.mic = 'park'; if (p.mainA.track) p.mainA.replaceTrack(null).catch(() => {}); }
           else if (at) { r.mic = 'seat'; if (p.mainA.track !== at) p.mainA.replaceTrack(at).catch(() => {}); }
-          else r.mic = 'no-track';
+          else { r.mic = 'no-track'; if (p.mainA.track) p.mainA.replaceTrack(null).catch(() => {}); }
         } else if (micOwed && !at && p.pc && !p.headless) r.mic = 'no-track';
         report.push([String(p.id), r]);
       }
