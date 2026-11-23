@@ -3641,7 +3641,7 @@
       "appId": "io-808",
       "name": "iO-808",
       "shortName": "808",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "tagline": "A silver 808 on the table. Tap the steps. Share a beat.",
       "author": {
         "name": "vincentriemer",
@@ -3655,7 +3655,7 @@
         "name": "io-808",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -3677,15 +3677,15 @@
         0
       ],
       "cover": "/apps/io-808/cover.jpg",
-      "bytes": 203741,
+      "bytes": 204776,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "8f9e14be54d4e41c78c7a0e6e45dcadd4bf8f750cebfba09b545bdad63094401"
+      "sha256": "9831e453ff007afec85799a7b7139e0191bd9e3d32968b774ab1ec099591da5d"
     },
     {
       "slug": "io-blobs",
