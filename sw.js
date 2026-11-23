@@ -20,13 +20,21 @@
  *  - RELEASE / pinned users live entirely under /versions/<x.y.z>/, which are
  *    IMMUTABLE snapshots: cache-first forever, NO background revalidation. Updates
  *    are OPT-IN and never happen behind their back — a plain (or hard) refresh
- *    serves the SAME installed shell, and a new sw.js installs but WAITS (it does
- *    not skipWaiting over an existing shell). The desktop learns a release exists
+ *    serves the SAME installed shell. The desktop learns a release exists
  *    by fetching version.json + changelog.json network-first, and shows it in
  *    Settings → Advanced → Version with a changelog (critical items called out).
- *    Only when the user chooses "Upgrade this computer" does the page activate the
- *    waiting worker or send 'gifos-refresh-shell' to re-fetch the ENTIRE shell
- *    fresh (the computer is far more than index.html) and reload.
+ *    "Upgrade this computer" sends 'gifos-refresh-shell' to re-fetch the ENTIRE
+ *    shell fresh (the computer is far more than index.html) and reloads.
+ *
+ * THIS WORKER ITSELF is not a build, so it never waits. A new sw.js takes over
+ * as soon as it has installed (skipWaiting + clients.claim), and no page is
+ * reloaded for it: a running page keeps the code it loaded, and only its later
+ * requests go through the new worker. A worker that waits for every GifOS tab
+ * to close never takes over on a device that keeps its Home Screen open, and
+ * that device then runs an old worker, with old bugs, indefinitely. Taking over
+ * changes nothing the user chose: which build runs is decided by the pages
+ * (/versions/<x.y.z>/ is still served cache-first), and activate carries every
+ * copy the old worker had saved into the new cache, so offline keeps working.
  *
  *  - EDGE users (localStorage gifos_channel='edge') are served from the site ROOT
  *    and have asked to track the newest build on GitHub Pages. Root assets are
@@ -175,20 +183,14 @@ self.addEventListener('install', function (e) {
     // allSettled + per-file shelve: one missing/renamed asset can't abort the
     // whole precache (a half-cached shell is still better than none).
     await Promise.allSettled(urls.map(function (u) { return shelve(cache, u); }));
-    // First-ever install (no prior shell): activate immediately so the very first
-    // visit is offline-ready. An UPDATE — a new sw.js landing over an existing
-    // shell — deliberately does NOT skipWaiting: it stays WAITING until the user
-    // opts in from Settings → Advanced → Version. That's what stops a deploy from
-    // updating a running computer without the user's knowledge.
-    var keys = await caches.keys();
-    var hadShell = keys.some(function (k) { return k.indexOf('gifos-shell-') === 0 && k !== CACHE; });
-    if (!hadShell) await self.skipWaiting();
+    // Take over at once, first install and update alike (see the note at the top).
+    await self.skipWaiting();
   })());
 });
 
 // The desktop drives the opt-in update from Settings → Advanced → Version:
-//  - 'gifos-apply-update'  : a newer sw.js is WAITING — take over now (the user
-//                            asked to upgrade). activate sweeps the old cache.
+//  - 'gifos-apply-update'  : take over now, for a worker an older page finds
+//                            waiting (an older worker could wait).
 //  - 'gifos-refresh-shell' : re-fetch EVERY shell asset fresh into the cache,
 //                            even under the same worker (covers a deploy that
 //                            changed js/css/html but not sw.js). Acks each client
@@ -351,12 +353,31 @@ async function degrade(req, url, cache) {
   return Response.error();
 }
 
+// Everything an older worker saved moves into this worker's cache before its
+// cache is dropped: a pinned build's pages and files, apps' assets, the last
+// catalog. Without this, taking over from a running computer would leave it
+// unable to start offline until each file was fetched again. Copies this
+// worker already holds (its fresh precache) win; every copy is moved plain.
+async function adopt(from, into) {
+  var old = await caches.open(from);
+  var reqs = await old.keys();
+  for (var i = 0; i < reqs.length; i++) {
+    var u; try { u = new URL(reqs[i].url); } catch (err) { continue; }
+    if (u.search || await into.match(keyOf(u))) continue;
+    var res = await old.match(reqs[i]);
+    if (res) await keep(into, keyOf(u), res).catch(function () {});
+  }
+}
+
 self.addEventListener('activate', function (e) {
   e.waitUntil((async function () {
     var keys = await caches.keys();
-    await Promise.all(keys.map(function (k) {
-      if (k.indexOf('gifos-shell-') === 0 && k !== CACHE) return caches.delete(k);
-    }));
+    var mine = await caches.open(CACHE);
+    for (var i = 0; i < keys.length; i++) {
+      if (keys[i].indexOf('gifos-shell-') !== 0 || keys[i] === CACHE) continue;
+      try { await adopt(keys[i], mine); } catch (err) { /* keep what moved */ }
+      await caches.delete(keys[i]);
+    }
     // Sweep any entry keyed with a query string. Every key is a bare pathname
     // now (keyOf); a queried key is a twin left by a caller or a worker that
     // cached by full URL — the shape that answered offline from the oldest
