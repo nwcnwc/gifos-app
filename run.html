@@ -761,7 +761,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <div id="tophead" role="banner"></div>
   <div class="topchip">
     <span data-al="livebadgeAria" id="livebadge" data-state="off" aria-label="You are off air"><i class="livedot" aria-hidden="true"></i><span data-t="livebadgeTxt" id="livebadge-txt">OFF AIR</span></span>
-    <a data-ti="openYourGifosComputerTip" class="title" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
+    <a data-ti="openYourGifosComputerTip" class="title" href="./" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
     <span data-ti="txmarkTip" data-al="sendingCaptions" id="txmark" role="status" aria-label="Sending captions" style="display:none" title="Your voice is written down and sent to the meeting as captions while your mic is on. Your browser's speech service (Google, Apple or Microsoft) hears you, unless you picked Whisper. Settings → Captions to change this.">📝 <span data-t="sendingCaptions">Sending captions</span><small id="txwsp"></small></span>
     <span id="onair" hidden><i class="lamp" aria-hidden="true"></i><span class="words"></span></span>
     <span class="status" id="status"><button data-t="statuscount" type="button" id="statuscount" data-agent="status" aria-expanded="false" aria-controls="roster">Joining…</button><span id="statusrest" class="statustext"></span></span>
@@ -999,7 +999,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <div id="appmissing" hidden role="alert">
     <h1></h1>
     <p></p>
-    <a data-t="appMissingHome" id="appmissing-home" href="index.html">Go to Home Screen</a>
+    <a data-t="appMissingHome" id="appmissing-home" href="./">Go to Home Screen</a>
   </div>
   <div class="share" id="share">
     <span data-t="sendThisLinkTo" class="hint">Send this link to friends — opening it brings them right in:</span>
@@ -1015,7 +1015,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <div id="ccwsp-off" role="status" style="display:none"><button data-ti="ccwspOffTip" id="ccwsp-use" type="button" title="Pick browser captions for this device. Whisper stays installed; Settings → Captions turns it back on."><span data-t="ccwspOff">Whisper isn't running</span> · <b data-t="ccwspUse">Use browser captions</b></button><button data-al="ccwspHide" id="ccwsp-x" type="button" aria-label="Hide">✕</button></div>
   <div id="apppane">
     <div id="appbar">
-      <a data-ti="openYourGifosComputerTip" class="brand" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
+      <a data-ti="openYourGifosComputerTip" class="brand" href="./" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
       <img id="appgif" alt="">
       <span data-t="appname" id="appname">App</span>
       <span id="appwho"></span>
@@ -1249,7 +1249,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         </div>
         <div id="app-add-err" style="color:#e0574a;font-size:16px;margin-top:.45rem;display:none"></div>
         <!-- Always the live site, in a new tab: the GifOS Meet apps open every non-meeting page in the browser. -->
-        <a id="app-make-own" href="https://gifos.app/make-apps.html" target="_blank" rel="noopener" data-t="appMakeOwn" style="display:inline-block;margin-top:.6rem;font-size:16px;color:var(--accent,#7b5cff)">Make your own app for meetings</a>
+        <a id="app-make-own" href="https://gifos.app/make-apps" target="_blank" rel="noopener" data-t="appMakeOwn" style="display:inline-block;margin-top:.6rem;font-size:16px;color:var(--accent,#7b5cff)">Make your own app for meetings</a>
       </div>
       <button id="app-cancel" data-t="shareCancel" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Cancel</button>
     </div>
@@ -1754,7 +1754,7 @@ if (typeof window.__startMeet === 'function') {
      test/unit/agent-links.js holds the copies to one text. -->
 <nav id="agent-links" aria-label="Links for AI agents" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap">
   <p>For AI agents and assistants: <a href="https://gifos.app/llms.txt">llms.txt</a> is the complete spec for building a GifOS app as a real .gif file (packing recipe, manifest, the window.gifos API).
-  Also: <a href="https://gifos.app/about.html">what GifOS is</a> ·
+  Also: <a href="https://gifos.app/about">what GifOS is</a> ·
   <a href="https://gifos.app/store">the App Store</a> (machine-readable catalog: <a href="https://gifos.app/apps/index.json">/apps/index.json</a>; one listing: /apps/&lt;slug&gt;/app.json) ·
   open any store app in one tap: https://gifos.app/?run=&lt;slug&gt; — or your own hosted GIF: https://gifos.app/?run=&lt;gif-url&gt; ·
   <a href="https://gifos.app/browser-support.json">browser support</a> ·

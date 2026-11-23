@@ -41,7 +41,7 @@
  */
 'use strict';
 
-var SHELL_VERSION = 'v26'; // v26: the meeting page runs from js/core (core, media plane, view, linker; in the page bundle when published); (v25: My library streams sealed recordings through this worker; (v24: My library (the /library page and its client); (v23: js/timings.js joins the shell (the meeting page's waits and timeouts) (v22: css/meet-polish.css joins the shell (v21: css/meet.css joins the shell (the meeting styles moved out of run.html) (v20: js/dialog.js joins the shell (the dialogs' scroll frame, parsed by every page) (v19: 0.9.25 cut (shell now holds every en catalog and the new version.json/changelog) (v18: every surface's en catalog joins the shell, plus meet.json and the built-in apps (v17: gifos-i18n.js and the en catalogs join the shell (v16: 0.9.24 hotfix, gifos-update.js reads a four-part `latest`; v15: gifos-charge.js joins the shell)
+var SHELL_VERSION = 'v27'; // v27: pages are kept under the clean address the host serves them at (/store, not only /store.html), never with a redirect mark, and an offline .html address is redirected to it; (v26: the meeting page runs from js/core (core, media plane, view, linker; in the page bundle when published); (v25: My library streams sealed recordings through this worker; (v24: My library (the /library page and its client); (v23: js/timings.js joins the shell (the meeting page's waits and timeouts) (v22: css/meet-polish.css joins the shell (v21: css/meet.css joins the shell (the meeting styles moved out of run.html) (v20: js/dialog.js joins the shell (the dialogs' scroll frame, parsed by every page) (v19: 0.9.25 cut (shell now holds every en catalog and the new version.json/changelog) (v18: every surface's en catalog joins the shell, plus meet.json and the built-in apps (v17: gifos-i18n.js and the en catalogs join the shell (v16: 0.9.24 hotfix, gifos-update.js reads a four-part `latest`; v15: gifos-charge.js joins the shell)
 var CACHE = 'gifos-shell-' + SHELL_VERSION;
 
 // ONE CACHE KEY PER FILE. pages.yml stamps `?v=<sha>` onto every local css/js
@@ -80,6 +80,28 @@ function keep(cache, key, res) {
 function fromCache(cache, key, res) {
   if (!res || !res.redirected) return Promise.resolve(res);
   return plain(res).then(function (r) { cache.put(key, r.clone()).catch(function () {}); return r; });
+}
+
+// Put one shell file in the cache, fresh from the network. The host 308s a
+// page's .html address to its clean path (/store.html -> /store, /index.html
+// -> /), and every link and navigation uses the clean path, so the page is
+// kept under the address the host actually served it at (res.url) as well as
+// under the asked name (a page's own fetch('run.html') still finds it). Both
+// copies are plain: a copy with the redirect mark is refused by a navigation.
+// On a host with no clean paths nothing is redirected and only the asked name
+// is kept.
+function shelve(cache, u) {
+  return fetch(new Request(u, { cache: 'reload' })).then(function (res) {
+    if (!res || !res.ok) throw new Error(u + ' answered ' + (res && res.status));
+    var at = '';
+    try { at = new URL(res.url).pathname; } catch (e) { at = ''; }
+    return plain(res).then(function (r) {
+      var puts = [];
+      if (at && at !== new URL(u, self.location.href).pathname) puts.push(cache.put(at, r.clone()));
+      puts.push(cache.put(u, r));
+      return Promise.all(puts);
+    });
+  });
 }
 
 // The universal shell — identical on gifos.app and every theme subdomain. Per-
@@ -150,11 +172,9 @@ self.addEventListener('install', function (e) {
   e.waitUntil((async function () {
     var cache = await caches.open(CACHE);
     var urls = await installUrls();
-    // allSettled + per-file add: one missing/renamed asset can't abort the whole
-    // precache (a half-cached shell is still better than none).
-    await Promise.allSettled(urls.map(function (u) {
-      return cache.add(new Request(u, { cache: 'reload' }));
-    }));
+    // allSettled + per-file shelve: one missing/renamed asset can't abort the
+    // whole precache (a half-cached shell is still better than none).
+    await Promise.allSettled(urls.map(function (u) { return shelve(cache, u); }));
     // First-ever install (no prior shell): activate immediately so the very first
     // visit is offline-ready. An UPDATE — a new sw.js landing over an existing
     // shell — deliberately does NOT skipWaiting: it stays WAITING until the user
@@ -179,11 +199,7 @@ self.addEventListener('message', function (e) {
   if (data.type === 'gifos-refresh-shell') {
     e.waitUntil((async function () {
       var cache = await caches.open(CACHE);
-      await Promise.allSettled(CORE.concat(DESKTOP_SHELL).concat(themeOverride()).map(function (u) {
-        return fetch(new Request(u, { cache: 'reload' })).then(function (r) {
-          if (r && r.ok) return keep(cache, u, r);
-        }).catch(function () {});
-      }));
+      await Promise.allSettled(CORE.concat(DESKTOP_SHELL).concat(themeOverride()).map(function (u) { return shelve(cache, u); }));
       var cs = await self.clients.matchAll();
       cs.forEach(function (c) { c.postMessage({ type: 'gifos-shell-refreshed' }); });
     })());
@@ -315,7 +331,11 @@ function cleanOf(path) {
 async function degrade(req, url, cache) {
   if (req.mode === 'navigate') {
     var pin = url.pathname.match(/^\/versions\/([0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?)\//);   // x.y.z or x.y.z.w
-    var idx = await cache.match(pin ? '/versions/' + pin[1] + '/index.html' : '/index.html');
+    // The Home Screen's clean address (the build's directory) first, then its
+    // .html name; either copy is served plain.
+    var dir = pin ? '/versions/' + pin[1] + '/' : '/';
+    var idx = await fromCache(cache, dir, await cache.match(dir))
+      || await fromCache(cache, dir + 'index.html', await cache.match(dir + 'index.html'));
     if (idx) return idx;
     if (pin) return notInstalled(pin[1]);
   }
@@ -567,6 +587,10 @@ self.addEventListener('fetch', function (e) {
     // router. See revalidate()'s note. The key is the bare path — see keyOf.
     var fresh = await revalidate(req, cache, 4000, req.mode === 'navigate', keyOf(url));
     if (fresh) return fresh;
+    // An offline .html address gets the host's own answer, a redirect to the
+    // clean path, whenever this device has the page there (as /versions/ does).
+    var clean = req.mode === 'navigate' ? cleanOf(url.pathname) : '';
+    if (clean && await cache.match(clean)) return Response.redirect(url.origin + clean + url.search, 308);
     var cached = await fromCache(cache, keyOf(url), await cache.match(keyOf(url)));
     if (cached) return cached;                      // offline / stalled → the newest copy this device ran
     return degrade(req, url, cache);
