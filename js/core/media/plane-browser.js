@@ -9310,7 +9310,7 @@
       let st = 'none';
       try { st = await L.status(); } catch (e) {}
       if (!slot.isConnected) return;
-      if (st !== 'streamer') {
+      if (st !== 'storage') {
         const p = document.createElement('p');
         p.className = 'rec-upsell';
         p.style.cssText = 'margin:.4rem 0 0;font-size:13px;color:var(--c-gray)';
