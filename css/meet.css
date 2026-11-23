@@ -883,12 +883,13 @@
      paints UNDER its positioned children (the camera-off letter, a blurred or
      self video), so on a camera-off tile it vanished and on a camera tile it
      was 3px. z 1 is above the picture and under the name (2) and chips (3).
-     The width follows the tile's long side (--bw, the size observer) with a
-     4px floor, so a phone square and a full desktop half both show it. A dark
+     The width is 2% of the tile's long side (--bw, the size observer), 4px to
+     10px: about the frame the Stage and Stadium composites draw on a face
+     (3.5% of a cell), so a phone square and a desktop half both show it. A dark
      hairline inside keeps it readable over a bright or green picture.
      Painted inside the tile, so no tile moves. */
   .tile.speaking::before {
-    --ring-w: clamp(4px, calc(var(--bw, 400px) * .011), 8px);
+    --ring-w: clamp(4px, calc(var(--bw, 400px) * .02), 10px);
     content: ''; position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; z-index: 1;
     pointer-events: none; border: var(--ring-w) solid #34d672; border-radius: inherit;
     box-shadow: inset 0 0 0 1px rgba(0,0,0,.45); }
