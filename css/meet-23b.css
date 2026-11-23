@@ -34,10 +34,8 @@ body.comfy .tile[data-fit="cover"] > video { object-fit: cover; object-position:
 body.comfy .tile[data-vcrop="1"] > video { object-fit: fill !important; }
 /* The old "you are in the row" dot is a badge; names say who is who. */
 body.comfy .tile[data-tier="row"]::after { display: none !important; }
-/* Speaking: a green frame, drawn above the picture. */
-body.comfy .tile.speaking, body.comfy .tile.me.speaking {
-  outline: 3px solid #34d672 !important; outline-offset: -3px;
-  box-shadow: inset 0 0 0 3px #34d672, inset 0 0 22px rgba(52,214,114,.3) !important; }
+/* Speaking: the green frame is css/meet.css .tile.speaking::before, one layer
+   above the picture for every tile kind. */
 
 /* ---- calm by default ------------------------------------------------ */
 /* Badges and info show while you touch, scroll or move the mouse, then

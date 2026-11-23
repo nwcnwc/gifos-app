@@ -878,8 +878,20 @@
   #lob-watch-note { margin: 8px 0 0; color: var(--c-ink-2); font-size: .92rem; line-height: 1.4; }
   .tile.noroute { opacity: .8; border-style: dashed; }
   .tile.reconnecting > video { opacity: .35; }
-  /* live audio → glowing border (never while muted) */
-  .tile.speaking { border-color: #5cff7b; box-shadow: 0 0 0 2px #5cff7b, 0 0 18px rgba(92,255,123,.4); }
+  /* Speaking: one green frame on every tile kind (never while muted). It is a
+     layer of its own above the picture: an outline or inset shadow on the tile
+     paints UNDER its positioned children (the camera-off letter, a blurred or
+     self video), so on a camera-off tile it vanished and on a camera tile it
+     was 3px. z 1 is above the picture and under the name (2) and chips (3).
+     The width follows the tile's long side (--bw, the size observer) with a
+     4px floor, so a phone square and a full desktop half both show it. A dark
+     hairline inside keeps it readable over a bright or green picture.
+     Painted inside the tile, so no tile moves. */
+  .tile.speaking::before {
+    --ring-w: clamp(4px, calc(var(--bw, 400px) * .011), 8px);
+    content: ''; position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; z-index: 1;
+    pointer-events: none; border: var(--ring-w) solid #34d672; border-radius: inherit;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.45); }
   /* the focused feed spans the full row, others wrap below */
   /* On a phone the corner control was 28×32 and sat on the name. 44px, and
      the name stops before it. */
@@ -2439,15 +2451,7 @@
   body.comfy .tile.seat-held .avatar { display: none !important; }
   body.comfy .tile.seat-held { background: #0d0f14 !important; }
   .bar:not(.collapsed) .barmore .blurctl[hidden] { display: none !important; }
-  /* The tile rules above zero the shadow at a higher specificity than
-     `.tile.speaking`, and an inset shadow would sit under the video that
-     fills the tile. Outline paints above the picture. A negative offset
-     keeps the frame inside this tile, where the neighbour cannot cover it. */
-  body.comfy:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) .tile.speaking,
-  body.comfy.has-peers:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) .tile.me.speaking {
-    outline: 3px solid #7bffcf;
-    outline-offset: -3px;
-    box-shadow: inset 0 0 0 3px #7bffcf, inset 0 0 24px rgba(123,255,207,.35); }
+  /* The speaking frame is .tile.speaking::before (above), for comfy tiles too. */
   body.comfy .tile video { object-fit: cover; object-position: 50% 40%; }
   body.comfy .tile.cam-off .avatar.has-img {
     color: transparent; }
