@@ -7970,7 +7970,9 @@
           const row = cs.find((c) => !c.head);
           return row ? { pid: row.pid, dev: row.dev } : null;
         },
-        dial: (pid) => { seatAskAt.set(pid, Date.now()); seatMark.set(pid, cleanMark({ s: 1 })); seatDial(pid); },
+        // A dial ask I sent for an older pc of this pair (the door's, before the link's reset) does not hold back the link's
+        // ask for its fresh pc: the polite end's ask leaves now, not after DIAL_ASK_GAP_MS and the next sweep (+5.5 s, G5).
+        dial: (pid) => { const p = peers.get(pid); if (p && p.dialReqAt && p.dialReqAt < pcBuiltAt(p)) { p.dialReqAt = 0; if (typeof clog === 'function') clog('turn-dial old ask dropped ' + String(pid).slice(0, 6)); } seatAskAt.set(pid, Date.now()); seatMark.set(pid, cleanMark({ s: 1 })); seatDial(pid); },
         reset: (pid) => { const p = peers.get(pid); if (p && p.pc && !p.connected) rebuildPc(p, 'turn-settings'); },
         // my end of the pair's pc takes its current settings now (no restart): the next move's candidates come from them
         settings: (pid) => { const p = peers.get(pid); if (!p || !p.pc) return; try { p.pc.setConfiguration(turnPcConfig(p)); } catch (e) { turnNote('turn-setconf ' + String(e).slice(0, 60)); } },
