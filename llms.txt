@@ -906,7 +906,7 @@ could do in one tap anyway; nothing that spends money or destroys data.
 
 Any GifOS app GIF can be SIGNED so recipients see "Signed by <domain>" or
 "Signed by <email>" — and "Tampered" if the bytes were changed after
-signing. The user signs it themselves at https://gifos.app/sign.html,
+signing. The user signs it themselves at https://gifos.app/sign,
 AFTER the GIF is final:
 - domain: an Ed25519 key generated on that page; they publish the public
   half (one line of base64) in EITHER place, and one is enough:
