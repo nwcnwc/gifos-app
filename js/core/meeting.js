@@ -10643,7 +10643,9 @@
       if (seatedHere) for (const [pid, p] of peers) if (!p.qa && !ids.has(pid) && !linkTo(pid) && !p.absentSince) p.absentSince = Date.now();
       for (const pid of Object.keys(rosterNames)) if (!ids.has(pid)) delete rosterNames[pid];
       reconcileGrid();
-      try { rowMateCheck(); } catch (e) {}   // a new row-mate gets my mic and camera this tick (see rowMateCheck)
+      // A new row-mate gets my mic and camera (rowMateCheck) and I play its voice (applyBuses: a row-mate's tile is on the row bus)
+      // this tick, not on the 2 s sweep: a joiner seated just after its own sweep played nobody for 2 s (TIMINGS28, join-time.js).
+      try { rowMateCheck(); (0, /*()*/__M.applyBuses)(); } catch (e) {}
       updateStatus();
       (0, /*()*/__M.recNoteStruct)();
     }
