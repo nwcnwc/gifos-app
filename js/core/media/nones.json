@@ -43,6 +43,7 @@
   "mosJobs": {
    "$": "Map"
   },
+  "mySelfStream": null,
   "packLoop": null,
   "pipeDeny": {
    "$": "Set"
@@ -67,6 +68,8 @@
   "speechProved": false,
   "stageEar": null,
   "stagedSelfWas": false,
+  "stgHop": null,
+  "stgPath": null,
   "stripPack": null,
   "trackQ": null,
   "vpId": null,
