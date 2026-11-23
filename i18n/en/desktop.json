@@ -151,7 +151,7 @@
  "desktop.place.nothingTitle": "Nothing to install",
  "desktop.place.nothingBody": "That install didn’t finish — the app’s file isn’t on this computer. Try installing it again.",
  "desktop.place.installed": "{name} is installed",
- "desktop.place.providerBody": "It’s in your <b>Providers</b> folder — it can now serve your computer. Assign it to an AI type in <b>Settings → AI models</b> and every app that asks for that ability will use it.",
+ "desktop.place.providerBody": "It’s in your <b>Providers</b> folder — it can now serve your computer. Assign it to an AI type in <b>Settings → AI</b> and every app that asks for that ability will use it.",
  "desktop.place.homeBody": "It’s on your Home Screen now — a GIF file you own. Copy it anywhere; it runs anywhere.",
  "desktop.place.open": "Open {name}",
  "desktop.place.backToStore": "Back to the Store",

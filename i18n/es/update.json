@@ -23,7 +23,7 @@
   "update.app.updateGifosFirst": "Primero actualiza GifOS: pasa a la versión {release} o posterior en <b>{path}</b> y después actualiza la app desde la tienda.",
   "update.app.edgeOnly": "Todavía no la incluye ninguna versión; solo está en la compilación experimental sin publicar. Elige <b>{edge}</b> en <b>{path}</b> primero, o espera a la próxima versión.",
   "update.app.edgeBuild": "Compilación experimental",
-  "update.app.versionPath": "GifOS ▾ → Ajustes → Avanzado → Versión",
+  "update.app.versionPath": "GifOS ▾ → Ajustes → Sistema → Actualizaciones",
   "update.app.available": "<b>Hay una actualización disponible de {name}.</b>",
   "update.app.link": "Actualizar — conserva tus datos",
   "update.app.dismiss": "Descartar"

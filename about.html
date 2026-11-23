@@ -99,16 +99,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     copy (best for games, so a dead battery doesn't end game night). <b>New
     link</b> revokes the old one instantly.</p>
 
-    <h2>Meetings, strictly peer-to-peer</h2>
+    <h2>Meetings, peer-to-peer first</h2>
     <p>The built-in Meeting connects everyone directly, browser to browser.
     The relay only performs introductions — it physically refuses to carry
-    audio or video. Quality adapts automatically as more people join. A meeting is
-    a <b>host-less room</b>: the link carries no expiry, whoever created it and
+    audio or video. Only when a network blocks direct connections does a
+    separate relay server carry the call: voice for everyone, video with a
+    plan. Quality adapts automatically as more people join. A public
+    open-floor meeting is a <b>host-less room</b>: the link carries no expiry, whoever created it and
     whoever left. Everyone joins muted with the camera off, you can fully
     <b>blur</b> your video, anyone can mute or blur a misbehaving participant
     for the whole room (with attribution), and any participant can lock the
-    room with a <b>password</b> that only the people in the meeting hold. Audio-only
-    is fine — the camera is optional.</p>
+    room with a <b>password</b> that only the people in the meeting hold. A
+    private meeting has a <b>host</b> instead, who can lock the room and remove
+    people. Audio-only is fine — the camera is optional.</p>
     <p>Meetings ask more of a browser than the rest of GifOS does, so if yours is
     a few years behind it will say so plainly instead of leaving you watching a
     spinner. <a href="browser-support.html">See which browsers work</a> — the
