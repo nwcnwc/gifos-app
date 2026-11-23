@@ -275,7 +275,7 @@
   async function putDefaultApp(a, parent, pos) {
     const fileId = store.uid('file');
     await store.putFile({ id: fileId, name: a.name, bytes: a.bytes, kind: 'gif',
-      isApp: true, appId: a.appId, accent: a.accent, mime: 'image/gif', isDefault: true });
+      isApp: true, appId: a.appId, accent: a.accent, mime: 'image/gif', isDefault: true, system: a.system || null });
     await saveItem({ id: store.uid('item'), kind: 'file', fileId, name: a.name,
       parent: parent || null, x: pos.x, y: pos.y, iconSize: 64 }, { at: pos });
   }
@@ -396,7 +396,7 @@
       seenAppIds.add(f.appId);
       const r = retired[f.appId];
       if (r && f.isDefault === true) {
-        await store.putFile(Object.assign({}, f, { bytes: r.bytes, accent: r.accent, appId: r.appId, isDefault: true }));
+        await store.putFile(Object.assign({}, f, { bytes: r.bytes, accent: r.accent, appId: r.appId, isDefault: true, system: r.system || null }));
         updated++;
         continue;
       }
@@ -409,7 +409,7 @@
       // in says nothing about who wrote the bytes. putDefaultApp has always
       // written isDefault: true, so the flag is the whole test.
       if (f.isDefault !== true) continue;
-      await store.putFile(Object.assign({}, f, { bytes: a.bytes, accent: a.accent, isDefault: true }));
+      await store.putFile(Object.assign({}, f, { bytes: a.bytes, accent: a.accent, isDefault: true, system: a.system || null }));
       updated++;                                         // code swapped in place; the app's saved data (by fileId) is untouched
     }
 
@@ -1091,6 +1091,11 @@
       // Stash what openItem needs to decide SYNCHRONOUSLY (in the tap gesture) —
       // an app GIF must open without an await first, or iOS blocks the tab.
       it._isApp = !!(files[i] && files[i].isApp && files[i].kind === 'gif');
+      // A BUILT-IN system app (Meeting, Broadcast, App Store) is a launcher for
+      // a first-party page: openItem opens that page itself, so the tab never
+      // has to find the GIF in storage first (a first visit on an iPhone hit
+      // "This app isn't on this device" on Meeting when that lookup missed).
+      it._sysPage = (arts[i] && arts[i].isDefault === true && arts[i].system) ? gif.systemPage(arts[i].system, store.dbName) : null;
       const key = iconKey(it, files[i], fresh[i], metas[i], !!arts[i]) + (mirrors[i] ? '|mir' : '');
       let entry = iconCache.get(it.id);
       if (!entry || entry.key !== key) {
@@ -1840,6 +1845,7 @@
     // open it SYNCHRONOUSLY in the tap gesture. iOS/WebKit blocks window.open()
     // after any await, which is why double-tap and "Open" did nothing on iPhone.
     // (render() stashed it._isApp so we don't need to read the file first here.)
+    if (it._sysPage) { root.open(it._sysPage, '_blank'); return; }
     if (it._isApp) {
       root.open('run.html#id=' + encodeURIComponent(it.fileId) + nsParam('&db='), '_blank');
       return;
