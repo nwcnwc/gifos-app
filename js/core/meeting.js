@@ -19145,9 +19145,9 @@
     // is counted at the door, so many people knocking in the same second, at
     // one door or at several, cannot pass the line, and a person who has left
     // holds no place.
-    let subsTurnedAway = false, subsTierKey = '', subsTier = null, subsTierExp = 0, subsGrants = null;   // subsTier: the plan's name (display); subsGrants: its signed line items (every decision)
+    let subsTurnedAway = false, subsTierKey = '', subsTier = null, subsTierExp = 0, subsGrants = null;   // subsTier: the room's verified right (undefined: being checked; null: none), never read by its name; subsGrants: its signed line items (every decision)
     // The free line's words and the host's upgrade offer (display only): a room whose plan is the free one, or none shown.
-    const subsFreeWords = () => GifOS.sub.fullFreeWords(subsTier);
+    const subsFreeWords = () => GifOS.sub.fullFreeWords(subsTier ? subsGrants : null);   // from the room's line items, never its plan's name
     const subsProven = new Set(), subsAsked = new Map();   // knocker -> {n, at}
     const subsOn = () => !!(window.GifOS && GifOS.meetSubs && GifOS.sub);
     yield 2924;
@@ -19173,7 +19173,7 @@
       const k = o ? String(o.at) + '|' + String(o.proof || '') : '';
       if (k !== subsTierKey) {
         subsTierKey = k; subsTier = o ? undefined : null; subsTierExp = 0; subsGrants = null;
-        if (o) GifOS.meetSubs.roomTier(o, subsMeetId()).then((t) => { if (subsTierKey === k) { subsTier = t ? (t.tier || 'custom') : null; subsGrants = t ? t.grants : null; subsTierExp = t ? t.exp : 0; } }, () => { if (subsTierKey === k) { subsTier = null; } });
+        if (o) GifOS.meetSubs.roomTier(o, subsMeetId()).then((t) => { if (subsTierKey === k) { subsTier = t || null; subsGrants = t ? t.grants : null; subsTierExp = t ? t.exp : 0; } }, () => { if (subsTierKey === k) { subsTier = null; } });
       }
       if (subsTier && Date.now() / 1000 >= subsTierExp) { subsTier = null; subsGrants = null; }   // the admin's ticket ran out: no plan, the free line
       return subsTier;

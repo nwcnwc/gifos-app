@@ -77,9 +77,13 @@
       var replaceable = !!(from && c.sub.status !== 'cancelled');
       // A live pass: the four-hour pass (plan unlimited), or a pass minted with a plan's line items.
       var pass = c.now && c.now.why === 'pass' ? c.now : null;
-      var passRow = pass ? (pass.tier && pass.tier !== 'unlimited' && SUB.TIERS[pass.tier] ? pass.tier : 'pass') : null;
+      // Its row: the plan it names when it carries exactly that plan's line items (the name is only the row to show;
+      // the line items decide), else the pass row (the four-hour pass, or any other mix).
+      var same = function (a, b) { return !!a && !!b && SUB.covers(a, b) && SUB.covers(b, a); };
+      var passRow = pass ? (SUB.TIERS[pass.tier] && same(pass.passGrants, grantsOf(pass.tier)) ? pass.tier : 'pass') : null;
       // What the held plans give (the four-hour pass is never replaced, so not here).
-      var heldPlans = [subTier, passRow && passRow !== 'pass' ? passRow : null].filter(Boolean);
+      // What is held, as signed line items (the subscription's license, the live pass): what "included" reads.
+      var heldGrants = [c.sub && c.sub.grants, pass && pass.passGrants].filter(Boolean);
       var held = $('held');
       held.textContent = '';
       if (subTier) held.appendChild(document.createTextNode(t(c.sub.status === 'cancelled' ? 'heldSubEnds' : 'heldSub', { plan: t(subTier + '.name'), until: day(c.sub.until) })));
@@ -107,7 +111,7 @@
         what.appendChild(el('p', 'price', priceLine(r)));
         li.appendChild(what);
         var acts = el('div', 'acts');
-        var included = SUB.TIERS[r.id] && heldPlans.some(function (hp) { return SUB.covers(grantsOf(hp), grantsOf(r.id)); });
+        var included = SUB.TIERS[r.id] && heldGrants.some(function (hg) { return SUB.covers(hg, grantsOf(r.id)); });
         if (r.kind === 'paypal' && !isHeld) {
           // Each period this plan is sold in: bought outright with nothing replaceable held, else only as an upgrade
           // (GifOS.sub.upgradeOk), with its smaller first charge shown.
