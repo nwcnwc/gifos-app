@@ -4,8 +4,8 @@
   "appId": "piano-trainer",
   "name": "Piano Trainer",
   "shortName": "Piano",
-  "version": "1.1",
-  "minBuild": 947,
+  "version": "1.2",
+  "minBuild": 5861,
   "tagline": "Scales, chords, the circle of fifths, and a quiz to drill them.",
   "description": "Practice scales, triads, sevenths, and the circle of fifths on a two-octave keyboard. Your quiz score and finished rounds are saved.\n\nTap the keys on a phone, or use the home row (A to quote). A MIDI keyboard is optional. Hard mode hides the next note. Shuffle starts each round on a new degree. Hear plays the notes you are about to find.\n\nThe quiz asks which fifth, the key signature, the name of a chord, or to play a named note — tap an answer, no MIDI required.\n\nPress Practice together, then Invite in the bar above, and a friend sees the same prompt.\n\nAn unofficial port of Piano Trainer by Zane Helton. The piano sounds are built in.",
   "author": {
@@ -40,14 +40,14 @@
   "cover": "/apps/piano-trainer/cover.jpg",
   "screenshots": [],
   "gif": "/apps/piano-trainer/piano-trainer.gif",
-  "bytes": 199591,
+  "bytes": 200812,
   "download": 0,
   "provides": null,
-  "sha256": "ba87f2be66089755b17f8a2aaf55a73fdc0275e9539bc1ee3460ac43fb3c113e",
+  "sha256": "db84671ab5a2e40b36c7632f21e3931b013071ad8864d3f906b53f827f8a79f0",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-23"
   },
   "porter": {
     "name": "GifOS",

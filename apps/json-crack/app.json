@@ -4,8 +4,8 @@
   "appId": "json-crack",
   "name": "JSON Crack",
   "shortName": "JSON",
-  "version": "1.0",
-  "minBuild": 947,
+  "version": "1.0.1",
+  "minBuild": 5861,
   "tagline": "Paste JSON, see it as a graph. Your data stays on your device.",
   "description": "Paste JSON on the left and it becomes a graph of cards on the right: each object or array is a card, nested values hang off to the side, primitives stay on the parent. The last document is remembered, and your data stays on this device.\n\nOn a phone, Text and Graph swap so the keyboard does not cover the cards. Drag to pan, pinch or the +/− buttons to zoom. A bad paste shows a short error; the last good graph stays until you fix it. Tap a row to copy that value. Format, minify, or open a file from this device.\n\nPress Invite in the GifOS bar to show the same document in a meeting. Either of you can type; you both see the graph.\n\nAn unofficial port of JSON Crack by Aykut Saraç. Graph view only.",
   "author": {
@@ -41,14 +41,14 @@
   "cover": "/apps/json-crack/cover.jpg",
   "screenshots": [],
   "gif": "/apps/json-crack/json-crack.gif",
-  "bytes": 198834,
+  "bytes": 199865,
   "download": 0,
   "provides": null,
-  "sha256": "884883464742e4115583905dec9bfe8584e73d8ef04f50c0494d5850d1261c98",
+  "sha256": "78da68168570d887cf8a4b289c0892f52eb4446cbc8cb8c30c16522c00a2f27b",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-23"
   },
   "porter": {
     "name": "GifOS",
