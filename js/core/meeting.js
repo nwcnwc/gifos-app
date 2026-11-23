@@ -20618,10 +20618,10 @@
         const dest = ctx.createMediaStreamDestination();
         src.connect(dest);
         // Every main audio sender carries this track until the next line or
-        // a stop, including a pair that opens while the bot is talking.
-        __M.botVoiceTrack = dest.stream.getAudioTracks()[0] || null;
-        try { (0, /*()*/__M.refreshOutbound)(); } catch (e) {}
-        try { if (__M.wspCaps.has('me')) (0, /*()*/__M.wspStop)('me'); (0, /*()*/__M.wspSync)(); } catch (e) {}
+        // a stop, including a pair that opens while the bot is talking. A bot
+        // session joins with no local stream (bot=1), so it seats the voice the
+        // way an agent does: without a stream there is no main sender to carry it.
+        agentVoice(dest.stream.getAudioTracks()[0] || null);
         // The line is over: the mic takes the senders back, muted as before.
         audio.addEventListener('ended', () => {
           if (botSpeechAudio !== audio) return;
@@ -20645,8 +20645,21 @@
         let wrote = false;
         const writeOnce = () => { if (filler || wrote) return; wrote = true; try { writeBotSpoken(said.text); } catch (e) {} };
         const go = () => audio.play().then(() => { if (!filler && !wrote) { wrote = true; try { writeBotSpoken(said.text); } catch (e) {} } return said; });
-        const played = go().catch(() => ctx.resume().then(go)).catch(() => { writeOnce(); return said; });
-        const late = new Promise((resolve) => setTimeout(() => { writeOnce(); resolve(said); }, 1500));
+        // A bot seat has no audio sender until its first line, so that line opens them: wait (at most 6 s) until
+        // every connected peer's sender carries the voice and the answer that carries it is in, or the start of the line is lost.
+        const voice = __M.botVoiceTrack;
+        const seated = () => {
+          for (const p of peers.values()) {
+            const pc = p && p.pc;
+            if (!pc || pc.connectionState !== 'connected') continue;
+            // currentDirection says send only once the answer that carries this sender is applied
+            if (!pc.getTransceivers().some((tx) => tx.sender.track === voice && /send/.test(tx.currentDirection || ''))) return false;
+          }
+          return true;
+        };
+        const ready = new Promise((resolve) => { const t0 = Date.now(); (function look() { if (!voice || seated() || Date.now() - t0 > 6000) resolve(); else setTimeout(look, 100); })(); });
+        const played = ready.then(go).catch(() => ctx.resume().then(go)).catch(() => { writeOnce(); return said; });
+        const late = new Promise((resolve) => setTimeout(() => { writeOnce(); resolve(said); }, 7500));
         return Promise.race([played, late]);
       }
       // The thought bubble on the bot's tile rides its status, so every
