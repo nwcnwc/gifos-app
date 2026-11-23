@@ -596,10 +596,11 @@
     leaveMeeting(!!(pmeet && pmeet.room === room));
     hooks = keep || {};
     const m = meet = { room, tag: null, subId: null, tier: null, ticket: null, exp: 0, gen: 0, timer: null, moved: null, joining: null, pending: true };
-    passJoin(room);   // a pass held here joins this meeting too, if it has a free place (counts stack)
+    // COUNTS STACK: the subscription goes first; a pass held too joins this meeting only when the subscription has no
+    // place for it, or when the pass grants more here (so a pass place is never spent on a meeting the plan covers).
     m.joining = (async () => {
       const c = await credential();
-      if (!c) return null;
+      if (!c) { passJoin(room); return null; }
       // This browser's subscription (or one just bought: the service checks payment at the join). Without one there
       // is nothing to join with: the defaults need no ticket.
       const paidLic = await verifiedLicense();
@@ -613,11 +614,12 @@
       // right is full, the person chooses which meeting gives up its place, or keeps this one on the free defaults.
       // A page with no screen (and no chooser) is never asked: its newest meeting wins, as before.
       const choose = hooks.choose || (root.document && root.document.body ? askMove : null);
-      const withPass = !!(await livePass().catch(() => null));
-      let j = await post('/gifos/sub/join', await signed('join:' + m.tag, { meeting: m.tag, ifFree: withPass || !!choose }, m.subId));
+      const lp = await livePass().catch(() => null);
+      let j = await post('/gifos/sub/join', await signed('join:' + m.tag, { meeting: m.tag, ifFree: !!lp || !!choose }, m.subId));
       if (meet !== m) return null;
       if (j.full) {
-        const pt = pmeet && pmeet.room === room ? await pmeet.joining : null;
+        // The plan is full: a pass with a free place carries this meeting.
+        const pt = lp ? await passJoin(room, true, false) : null;
         if (meet !== m) return null;
         if (pt) { m.moved = 'full'; return null; }
         let drop;
@@ -635,8 +637,9 @@
         j = await post('/gifos/sub/join', await signed('join:' + m.tag, drop ? { meeting: m.tag, drop } : { meeting: m.tag }, m.subId));
         if (meet !== m) return null;
       }
-      if (!j.active) { m.moved = 'inactive'; return null; }
+      if (!j.active) { m.moved = 'inactive'; if (lp) passJoin(room, true, true); return null; }   // no paid plan here: the pass alone
       take(j);
+      if (lp && !beatsPass(meet.grants, lp.o)) passJoin(room, true, false);   // the pass grants more here: it joins too (if it has a place)
       return m.ticket;
     })().catch(() => null).then((t) => { m.pending = false; return t; });
     return m.joining;
@@ -733,7 +736,7 @@
   // The admin's order that carries their plan into the room, or null.
   // A live four-hour pass rides instead of a ticket whose plan is below it
   // (none, free, $2): the best right held is the one the room reads.
-  const beatsPass = (grants, pass) => !!grants && !!pass && !SUB.bestRights([SUB.ticketRights({ grants, exp: 1 }), SUB.passRights(Object.assign({}, pass, { end: 1 }))]).pass;
+  const beatsPass = (grants, pass) => !!grants && !!pass && !SUB.bestRights([SUB.ticketRights({ grants, exp: 1, tier: 'subscription' }), SUB.passRights(Object.assign({}, pass, { end: 1 }))]).pass;   // a right with no tier label ranks 0, so the ticket gets one
   async function roomOrder(room) {
     const ticket = await currentTicket(room);
     const lp = ticket && meet ? await livePass().catch(() => null) : null;
