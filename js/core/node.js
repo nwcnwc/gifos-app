@@ -27,6 +27,12 @@
  * builtins so a port can hand the page values of its own realm. ports/loopback.js is an in-process port that carries
  * data channels only. With no port the participant has no peer connections.
  *
+ * THE MEDIA PLANE (opts.media = { Opus }: an Opus codec constructor, opusscript-shaped; needs a webrtc port with real
+ * tracks, werift). The host builds the site's ports/webaudio.js (files.json "nodeMedia".host) in its own realm and puts
+ * its AudioContext on the participant's global, then links the site's media/plane-node.js ("nodeMedia".plane) as the
+ * media plane: the core's media plan is carried out on werift senders (main senders, the agent's voice), received audio
+ * is heard (meters, audio.in), exactly as a page does. Without opts.media the participant carries data only.
+ *
  * THE VIEW. A host with no screen links a headless view of its own (see THE HEADLESS VIEW below): the view's names
  * are counted stand-ins, so standIns() counts both what the core asked of the view and of the media plane.
  *
@@ -128,7 +134,7 @@ async function loadSite(origin, opts) {
   const platform = JSON.parse(await get('js/core/platform.json'));
   const nones = JSON.parse(await get('js/core/media/nones.json')).nones;
   const text = new Map();
-  const todo = files.core.concat(files.apps || []).slice();
+  const todo = files.core.concat(files.apps || [], nodeMediaFiles(files)).slice();
   await Promise.all(Array.from({ length: 6 }, async () => { while (todo.length) { const rel = todo.shift(); text.set(rel, await get(rel)); } }));
   const stamp = (/stamp ([0-9a-f]+)/.exec(text.get('js/core/meeting.js') || '') || [])[1] || '';
   return {
@@ -142,6 +148,16 @@ async function loadSite(origin, opts) {
 // The meeting page's address for a meeting link, as the site's router (route.html) makes it: /meet/<room>[/<verifier>]
 // is a meeting, /join/<code> a self-healing app room, /join/<room>/<verifier>/<secret> an owned one. A link that is
 // already the page (run.html#...) is kept.
+// The Node media port's files (files.json "nodeMedia"): host = the AudioContext over Opus (this realm), plane = the
+// participant's media plane (its realm). Absent in a core that predates them.
+function nodeMediaFiles(files) { const m = files && files.nodeMedia; return m && m.host && m.plane ? [m.host, m.plane] : []; }
+// A site file that runs in THIS realm, as a CommonJS module (only its exports come out: it sees no require).
+function hostModule(site, rel) {
+  const mod = { exports: {} };
+  vm.compileFunction(site.read(rel), ['module', 'exports'], { filename: site.name(rel) })(mod, mod.exports);
+  return mod.exports;
+}
+
 function pageUrl(link) {
   const u = new URL(link);
   const m = u.pathname.match(/^\/(?:join|meet|cast)\/([a-z0-9-]{1,64})(?:\/([a-f0-9]{16,64})(?:\/([a-z0-9]{1,64}))?)?\/?$/i);
@@ -351,9 +367,20 @@ function createMeeting(opts) {
   g.TextEncoder = class TextEncoder { get encoding() { return 'utf-8'; } encode(s) { return new R.Uint8Array(te.encode(s)); } };
 
   // what a page's head scripts set before the meeting's scripts run (a host's own settings, e.g. GIFOS_SCALE)
+  const nm = files.nodeMedia;
+  const media = opts.media && opts.media.Opus && opts.webrtc && nm && nm.host && nm.plane ? opts.media : null;
+  if (opts.media && !media) throw new Error('GifOS core: opts.media needs { Opus }, a webrtc port and a site with a Node media plane (files.json "nodeMedia")');
+  let audio = null;
+  if (media) {
+    const wr = g.MediaStreamTrack && g.RtpPacket ? { MediaStreamTrack: g.MediaStreamTrack, MediaStream: g.MediaStream, RtpPacket: g.RtpPacket, RtpHeader: g.RtpHeader } : null;
+    if (!wr) throw new Error('GifOS core: the media plane needs a webrtc port with RTP tracks (werift)');
+    audio = hostModule(site, nm.host).port({ Opus: media.Opus, werift: wr });
+    audio.AudioContext.onerror = (e) => fail('audio', e);
+    g.AudioContext = g.webkitAudioContext = audio.AudioContext;
+  }
   if (opts.globals) for (const k of Object.keys(opts.globals)) g[k] = opts.globals[k];
   // the core, then the app runtime (files.json "apps": apps' data, signatures and gifos.room, with no app frame)
-  for (const rel of files.core.concat(files.apps || [])) {
+  for (const rel of files.core.concat(files.apps || [], media ? [nm.plane] : [])) {
     current = { src: new URL(rel, location.href).href };
     try { script(site, rel).runInContext(context); } finally { current = null; }
   }
@@ -422,6 +449,11 @@ function createMeeting(opts) {
     let held = fresh(nones[name]);
     Object.defineProperty(meeting.media, name, { get: () => held, set: (v) => { held = v; }, enumerable: true, configurable: true });
   }
+  let plane = null;
+  if (media) {
+    if (!GifOS.planeNode) throw new Error('GifOS core: ' + nm.plane + ' did not define the media plane');
+    plane = GifOS.planeNode.install(meeting.media, meeting.core);
+  }
   GifOS.core.meeting = meeting;
   let ran = false;
   try { ran = meeting.run(); } catch (e) { fail('run', e); }
@@ -447,6 +479,7 @@ function createMeeting(opts) {
     timers.clear();
     for (const s of sockets) { try { s.close(); } catch (e) {} }
     for (const pc of Array.from(pcs)) { try { pc.close(); } catch (e) {} }
+    if (audio) for (const ac of Array.from(audio.AudioContext._live)) { try { ac.close(); } catch (e) {} }
     try { if (typeof opts.onClose === 'function') opts.onClose(context); } catch (e) {}
   }
   function end(polite) {
@@ -462,6 +495,7 @@ function createMeeting(opts) {
   return {
     context, meeting, ran,
     agent: () => context.gifosAgent,
+    plane: () => plane,
     hooks: () => context.__gifosVideo,
     standIns: () => meeting.standIns().concat(Array.from(viewCounts)).sort((a, b) => b[1] - a[1]),
     pageUses: () => Array.from(pageCounts).sort((a, b) => b[1] - a[1]),
