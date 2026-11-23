@@ -4096,10 +4096,11 @@
       const head = (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: 0 }), out = a !== head, now = Date.now();
       if (out && !rowWasOut) {
         const s = (0, /*()*/__C.meshSeat)();
-        dbgRowHead(s && s.headGoneView ? 'out:gone' : rowDeaf && String(rowDeaf.pid) === String(head) ? 'out:deaf' : 'out:mute');
+        const why = s && s.headGoneView ? 'out:gone' : rowDeaf && String(rowDeaf.pid) === String(head) ? 'out:deaf' : 'out:mute';
+        dbgRowHead(why); if (typeof __C.clog === 'function') (0, /*()*/__C.clog)('row-head ' + why + ' ' + String(head).slice(0, 6) + ' acting ' + String(a).slice(0, 6));
         const fb = mosFb.get('sdm'); if (fb) fb.dark = true;
         schedReconcile();
-      } else if (!out && rowWasOut) { dbgRowHead('back'); rowHoldUntil = now + MOS_SETTLE + 2000; schedReconcile(); }   // the heir's copy stays while the row fails back
+      } else if (!out && rowWasOut) { dbgRowHead('back'); if (typeof __C.clog === 'function') (0, /*()*/__C.clog)('row-head back ' + String(head).slice(0, 6)); rowHoldUntil = now + MOS_SETTLE + 2000; schedReconcile(); }   // the heir's copy stays while the row fails back
       rowWasOut = out; return a;
     }
     // L49's verdict, up to the core (actingHead reads it): the head whose row mix I hold deaf, or nobody.

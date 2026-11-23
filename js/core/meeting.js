@@ -7543,7 +7543,10 @@
       }
       for (const k of Array.from(owedWatch.keys())) if (!seen.has(k)) owedWatch.delete(k);
       if (!fresh) return owedAt.last.filter((pid) => Array.from(seen).some((k) => k.indexOf(pid + '|') === 0));   // still owed, link still live
-      owedAt.last = Array.from(mute); return owedAt.last;
+      const now = Array.from(mute);
+      if (typeof clog === 'function') for (const pid of now) if (owedAt.last.indexOf(pid) < 0) clog('l295 mute ' + String(pid).slice(0, 6));   // DEBUG trace: each edge of my reading, once
+      if (typeof clog === 'function') for (const pid of owedAt.last) if (now.indexOf(pid) < 0) clog('l295 back ' + String(pid).slice(0, 6));
+      owedAt.last = now; return now;
     }
     // MY OWN WORD (L29.5 word 5, the seat's l295No): I hold a head cell and make none of the duty slots I make myself (my
     // row's view 'sdm', and a deep head's product 'sub'): each owed, unparked one reported 'no-track' by my plane for
