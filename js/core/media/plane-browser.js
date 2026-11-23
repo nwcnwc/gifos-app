@@ -8851,18 +8851,31 @@
     // start(track) and processLocally, and each brings its own speech engine:
     // Microsoft Edge's writes words nobody said from a track that Chrome's
     // writes correctly (measured 2026-11-18, Edge 157 and Chrome 158, the same
-    // audio; Edge's engine is right on its plain microphone). So a track goes
-    // only to an engine measured to hear one: Google Chrome's. Every other
-    // browser keeps the plain microphone, and never claims the voice (cap 0).
-    function ccTrackInput() {
+    // audio; Edge's engine is right on its plain microphone). The fault was the
+    // RATE: Edge's engine reads a 48 kHz track as 16 kHz. Fed the same audio
+    // through a 16 kHz AudioContext it wrote 0.965 of the script, Chrome's
+    // 0.70-0.77 on every input (test/tools/cc-track-ab.js, leg mix16). And the
+    // plain microphone is the system's DEFAULT device, not the one this meeting
+    // uses: on a real Windows Edge (2026-11-22) a meeting whose mic carried
+    // sound got 'audio-capture' from it at every unmute, so Captions paused.
+    // So the engines measured to hear a track get one: Google Chrome's as the
+    // meeting's context makes it, Microsoft Edge's at the rate it reads
+    // (ccTrackRate, used by ccMixStart). Every other browser keeps the plain
+    // microphone, and never claims the voice (cap 0).
+    const CC_EDGE_TRACK_RATE = 16000;
+    function ccTrackBrand() {
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!(SR && SR.prototype && 'processLocally' in SR.prototype)) return false;
+      if (!(SR && SR.prototype && 'processLocally' in SR.prototype)) return '';
       const brands = (typeof navigator !== 'undefined' && navigator.userAgentData && navigator.userAgentData.brands) || [];
-      for (let i = 0; i < brands.length; i++) if (/^Google Chrome\b/.test(String(brands[i] && brands[i].brand))) return true;
-      return false;
+      for (let i = 0; i < brands.length; i++) { const m = /^(Google Chrome|Microsoft Edge)\b/.exec(String(brands[i] && brands[i].brand)); if (m) return m[1]; }
+      return '';
     }
+    function ccTrackInput() { return !!ccTrackBrand(); }
+    // The sample rate the engine must be handed, 0 = the meeting context's own.
+    function ccTrackRate() { return ccTrackBrand() === 'Microsoft Edge' ? CC_EDGE_TRACK_RATE : 0; }
     // mine / wrote: my own voice in the mix (ms) and the letters the engine wrote, since the last check (ccMixHears)
-    const ccMix = { dest: null, ins: new Map(), talk: new Map(), tick: null, at: 0, last: null, lastAt: 0, mine: 0, wrote: 0 };
+    // dest: the mix in the meeting's context; out: the track the engine gets (dest's own, or through ac16 at ccTrackRate)
+    const ccMix = { dest: null, ac16: null, out: null, ins: new Map(), talk: new Map(), tick: null, at: 0, last: null, lastAt: 0, mine: 0, wrote: 0 };
     const CC_TALK_RMS = 5 / 128; // the talking ring's threshold (meter loop), on float samples
     function ccMixVoices() { // id ('me' | pid) -> a source node in ac
       const out = new Map();
@@ -8923,13 +8936,30 @@
       (0, /*()*/__C.capPublish)();
     }
     function ccMixStart() {
-      if (ccMix.dest) return ccMix.dest.stream.getAudioTracks()[0] || null;
+      if (ccMix.dest) return ccMix.out;
       if (!ccTrackInput() || !(0, /*()*/__C.ensureAc)()) return null;
       try { ccMix.dest = __C.ac.createMediaStreamDestination(); } catch (e) { ccMix.dest = null; return null; }
+      // An engine that reads one rate (ccTrackRate) hears the mix through a context of its own at that rate, with no
+      // output (like the meeting's). No such context, no track: no room ear (null), never a track the engine misreads.
+      const rate = ccTrackRate();
+      if (!rate) ccMix.out = ccMix.dest.stream.getAudioTracks()[0] || null;
+      else {
+        try {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          const sink = AC.prototype && typeof AC.prototype.setSinkId === 'function';
+          try { ccMix.ac16 = new AC(sink ? { sampleRate: rate, sinkId: { type: 'none' } } : { sampleRate: rate }); } catch (e) { ccMix.ac16 = new AC({ sampleRate: rate }); }
+          const dst = ccMix.ac16.createMediaStreamDestination();
+          ccMix.ac16.createMediaStreamSource(ccMix.dest.stream).connect(dst);
+          ccMix.ac16.resume().catch(() => {});
+          ccMix.out = dst.stream.getAudioTracks()[0] || null;
+        } catch (e) { ccMix.out = null; }
+      }
+      if (!ccMix.out) { if (ccMix.ac16) { try { ccMix.ac16.close(); } catch (e) {} } ccMix.ac16 = null; ccMix.dest = null; return null; }
       ccMix.at = Date.now();
       ccMixSync();
       ccMix.tick = setInterval(() => {
         const now = Date.now(), dt = now - ccMix.at; ccMix.at = now;
+        if (ccMix.ac16 && ccMix.ac16.state !== 'running' && ccMix.ac16.state !== 'closed') ccMix.ac16.resume().catch(() => {});   // a suspended context hands the engine silence
         for (const [id, i] of ccMix.ins) {
           i.an.getFloatTimeDomainData(i.buf);
           let acc = 0; for (let k = 0; k < i.buf.length; k++) acc += i.buf[k] * i.buf[k];
@@ -8940,13 +8970,14 @@
         }
         ccMixHears();
       }, 150);
-      return ccMix.dest.stream.getAudioTracks()[0] || null;
+      return ccMix.out;
     }
     function ccMixStop() {
       if (!ccMix.dest) return;
       for (const id of Array.from(ccMix.ins.keys())) ccMixDrop(id);
       clearInterval(ccMix.tick); ccMix.tick = null;
-      ccMix.dest = null; ccMix.talk.clear(); ccMix.last = null;
+      if (ccMix.ac16) { try { ccMix.ac16.close(); } catch (e) {} }
+      ccMix.dest = null; ccMix.ac16 = null; ccMix.out = null; ccMix.talk.clear(); ccMix.last = null;
       ccMix.mine = 0; ccMix.wrote = 0;
       (0, /*()*/__C.capPublish)();
     }
