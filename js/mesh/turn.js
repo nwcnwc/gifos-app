@@ -7,7 +7,6 @@
  *   turnSessionBytes  what one relayed connection may carry per tick and direction
  *   turnVideoBytes    the video a vouched connection carries when the server is busy (0: paused)
  *   turnVouchOrder    which connection gets video first when subscribers vouch for fewer than there are
- *   turnTierLinks     how many video connections one subscriber of a tier vouches for
  */
 (function (root) {
   'use strict';
@@ -33,9 +32,7 @@
   }
   // C++: mesh_turn.inc:turnVouchOrder   (does x come before y: on the stage first, then the lower seat, then the older connection)
   function turnVouchOrder(stageX, cellX, serialX, stageY, cellY, serialY) { if (stageX !== stageY) return stageX; if (cellX !== cellY) return cellX < cellY; return serialX < serialY; }
-  // C++: mesh_turn.inc:turnTierLinks   (0: no such tier; the meeting-count plans vouch as Unlimited in each meeting)
-  function turnTierLinks(tier) { return tier === 'room20' ? K.TURN_VOUCH_ROOM20 : (tier === 'unlimited' || tier === 'family' || tier === 'smallBusiness' || tier === 'business' || tier === 'largeBusiness' || tier === 'enterprise') ? K.TURN_VOUCH_UNLIMITED : tier === 'streamer' ? K.TURN_VOUCH_STREAMER : 0; }
 
-  const api = Object.freeze({ turnClients, turnSessionBytes, turnVideoBytes, turnVouchOrder, turnTierLinks });
+  const api = Object.freeze({ turnClients, turnSessionBytes, turnVideoBytes, turnVouchOrder });
   if (isNode) module.exports = api; else GifOS.meshTurn = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
