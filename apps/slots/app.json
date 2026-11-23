@@ -4,8 +4,8 @@
   "appId": "slots",
   "name": "Slots",
   "shortName": "Slots",
-  "version": "1.1",
-  "minBuild": 947,
+  "version": "1.2",
+  "minBuild": 5861,
   "tagline": "Five fruit reels and a lever. Friends watch the same spin from one link.",
   "description": "Five fruit reels, a gold payline, a lever. Land three of a kind and the credits jump. Auto keeps pulling. Stake 10, 25, 50 or 100. Go broke and Top up restores your credits.\n\nSend one link and everyone at the table watches the same spin — anyone can pull. Your credits are saved with your copy of the app.\n\nAn unofficial port of html5-slot-machine by johakr.",
   "author": {
@@ -40,14 +40,14 @@
   "cover": "/apps/slots/cover.jpg",
   "screenshots": [],
   "gif": "/apps/slots/slots.gif",
-  "bytes": 194552,
+  "bytes": 195737,
   "download": 0,
   "provides": null,
-  "sha256": "9481c7d8869caad86ea45ee5c291907c202b2f1d10e6e18db47d90fd1ac3a298",
+  "sha256": "1894390859eee76eaa71fa732463993280daff4e49d4aaafc83e1f7339520207",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-11-11"
+    "ts": "2026-11-23"
   },
   "porter": {
     "name": "GifOS",

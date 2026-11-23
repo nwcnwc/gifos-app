@@ -543,6 +543,13 @@
       if (oo !== L.outside) { doorEndCount(L); L.dUncounted = false; L.dG = -1; doorInit(L, L.dialBy, L.dialBy === me ? x : me, oo); if (!oo) l1611Mine(x, L); }
       if (L.state === LK_DIALING) fhDoorNote(x, L);   // FHOP.8: a knocker answered my dial: the door's ICE clock starts
     }
+    // DIAL.ICE (C++: mesh_link.inc sigAt, "the tick the answer lands at the dialler"): the far page's answer to MY dial reached
+    // me over the relay. Its clock starts here, not at the data channel's mark: a pair that finds no path never opens its
+    // channel, so a clock fed only by the mark never ran, the dial lasted LINK_DIAL_FAIL and no L8.54.12 verdict was kept
+    function crossed(x) {
+      const L = LINKS.get(x); if (!L || L.state !== LK_DIALING || L.dialBy !== me || L.ansAt >= 0) return;
+      L.ans = true; L.ansAt = T(); trace('DIAL-CROSSED', me, null, 'peer=%d', x);
+    }
     // C++: mesh_link.inc:linkOpenNow   [my end]
     function opened(x) {
       FHDOOR.delete(x);   // C++: mesh_fhop.inc:fhDoorOpened (FHOP.8: the door opened)
@@ -643,7 +650,7 @@
     delete fns.fabricNoSock;   // A1: the relay's bounce
     return {
       fhDcRaw: (x) => { const L = LINKS.get(x); return !!L && L.view[mine(x)] === LK_OPEN; }, fhState: (x) => { const L = LINKS.get(x); return L ? L.state : LK_NONE; }, fhDialBehind,
-      fns, lv, send: (x, m) => linkSchedule(me, x, m), tick, mark, offer, answered, opened, frame, lost, doorNote: fhDoorOuter,
+      fns, lv, send: (x, m) => linkSchedule(me, x, m), tick, mark, offer, answered, crossed, opened, frame, lost, doorNote: fhDoorOuter,
       byeIn: (x, why) => byeIn(x, BYE.includes(why) ? why : 'call'), dialFailed, refused, leaveAll, pageClosed,
       busyFrom: (x) => refused(x, { busy: 1 }),
       link: (x) => LINKS.get(x) || null, dump: () => [...LINKS].map(([x, L]) => ({ x, state: L.state, view: L.view[mine(x)], outside: L.outside, gone: L.gone, q: L.q.length })),

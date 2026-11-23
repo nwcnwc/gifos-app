@@ -800,6 +800,7 @@
     const env = {
       me, world: w, traces: () => ring.slice(), ids: ID, f: F, pcw, tick, frame, transport, doorNet: (x) => fabricDoorNet(me, x), doorForgive: (peer) => { const x = learnPeer(peer); if (x >= 0 && pcw.doorForgive) pcw.doorForgive(x); }, dialHeld: (peer) => { const x = learnPeer(peer); return x >= 0 && !!pcw.dialHeld && pcw.dialHeld(x); }, relayFrame, absence, leave, stats, links,
       dirFor, learnDir, relayBusyList,
+      crossed: (peer) => { const x = learnPeer(peer); if (x >= 0 && x !== me && pcw.crossed) guard('crossed', pcw.crossed)(x); },   // DIAL.ICE: the answer to my dial reached me over the relay (C++: mesh_link.inc sigAt)
       doorNote: (peer) => { const x = learnPeer(peer); if (x >= 0 && x !== me && pcw.doorNote) guard('doorNote', pcw.doorNote)(x); },   // FHOP.8: a door page's offer, or its answer to my offer, reached me over the relay (run.html onRelayPeer)
       doorCallIn: (fromPeer, kind, knockerPeer) => guard('doorCallIn', doorCallIn)(fromPeer, kind, knockerPeer),   // FHOP.8 kinds 7 and 8 off a dc
       doorDialIn: (fromPeer) => guard('doorDialIn', doorDialIn)(fromPeer),   // TURN.5.4: a seated page's dial off the relay (run.html onRelayPeer)

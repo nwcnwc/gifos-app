@@ -4,8 +4,8 @@
   "appId": "monkeytype",
   "name": "Monkeytype",
   "shortName": "Monkeytype",
-  "version": "1.0.0",
-  "minBuild": 947,
+  "version": "1.0.1",
+  "minBuild": 5861,
   "tagline": "The typing test, offline — personal bests live in the file, one invite is a live race.",
   "description": "No account. It works on a plane. Your history and personal bests stay inside this GIF, and the invite link is a live race with no server.\n\nWords or a quote appear. Type. A yellow caret follows you. Speed is characters you got right, five to a word; accuracy sits next to it. Time 15 / 30 / 60 / 120, or a set number of words, or a quote. Punctuation and numbers if you want them. Themes without downloading a font. Tab restarts. Escape opens commands.\n\nPress race a friend, then Invite in the bar above the app, and send the link. Everyone gets the same words. Live bars. Highest WPM when the clock hits zero — or first to finish a words/quote test — wins.\n\nAn unofficial port of Monkeytype by Miodec. The original needs the site and an account to keep a record. This copy keeps the test and puts the record in the file.",
   "author": {
@@ -40,14 +40,14 @@
   "cover": "/apps/monkeytype/cover.jpg",
   "screenshots": [],
   "gif": "/apps/monkeytype/monkeytype.gif",
-  "bytes": 238304,
+  "bytes": 239169,
   "download": 0,
   "provides": null,
-  "sha256": "f07c6ede590633197ac5b835a1386efff4993348ea99039855b544bde25871ea",
+  "sha256": "0dc899aa2f26bec5b3d382722acede6310803066953fe30bafefd1081162bee6",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-23"
   },
   "porter": {
     "name": "GifOS",
