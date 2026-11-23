@@ -36,7 +36,7 @@
  "desktop.sig.unpinned": "⚠️ This is an older signature: {n, plural, one {# sealed file under <span class=\"mono\">.assets/</span> is} other {# sealed files under <span class=\"mono\">.assets/</span> are}} not covered by it. Ask the author for a re-signed copy.",
  "desktop.sig.tamperedBody": "⚠️ <b>Tampered.</b> This GIF claims to be signed by {id}, but its contents were <b>changed after signing</b>. Do not trust it as coming from them.",
  "desktop.sig.unverifiedHead": "🛡 <b>Signed by {id}</b>, but the signature couldn't be checked right now: {detail}.",
- "desktop.sig.unverifiedDomain": "The key must be published at <span class=\"mono\">https://{id}/gifos.key</span> (with CORS).",
+ "desktop.sig.unverifiedDomain": "The key must be published at <span class=\"mono\">https://{id}/gifos.key</span> (with CORS) or in the DNS TXT record <span class=\"mono\">_gifos.{id}</span>.",
  "desktop.sig.unverifiedEmail": "Their key must be on keys.openpgp.org.",
  "desktop.sig.unsignedBody": "This GIF is unsigned.",
  "desktop.sig.unknown": "Unknown signature state.",

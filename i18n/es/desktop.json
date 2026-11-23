@@ -36,7 +36,7 @@
  "desktop.sig.unpinned": "⚠️ Es una firma antigua: {n, plural, one {# archivo sellado de <span class=\"mono\">.assets/</span> no está cubierto} other {# archivos sellados de <span class=\"mono\">.assets/</span> no están cubiertos}} por ella. Pide al autor una copia con firma actualizada.",
  "desktop.sig.tamperedBody": "⚠️ <b>Alterado.</b> Este GIF dice estar firmado por {id}, pero su contenido <b>cambió después de la firma</b>. No confíes en que proceda de esa persona.",
  "desktop.sig.unverifiedHead": "🛡 <b>Firmado por {id}</b>, pero ahora no se pudo comprobar la firma: {detail}.",
- "desktop.sig.unverifiedDomain": "La clave debe estar publicada en <span class=\"mono\">https://{id}/gifos.key</span> (con CORS).",
+ "desktop.sig.unverifiedDomain": "La clave debe estar publicada en <span class=\"mono\">https://{id}/gifos.key</span> (con CORS) o en el registro DNS TXT <span class=\"mono\">_gifos.{id}</span>.",
  "desktop.sig.unverifiedEmail": "Su clave debe estar en keys.openpgp.org.",
  "desktop.sig.unsignedBody": "Este GIF no está firmado.",
  "desktop.sig.unknown": "Estado de firma desconocido.",

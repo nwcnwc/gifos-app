@@ -9,7 +9,8 @@
  *
  * Design decisions that make it secure:
  *  1. The key location is DERIVED from the identity, never embedded. A domain
- *     identity's key MUST live at https://<domain>/gifos.key; an email
+ *     identity's key MUST live at https://<domain>/gifos.key or in the DNS
+ *     TXT record _gifos.<domain> (either is enough, domainKeys); an email
  *     identity's key MUST come from a public keyserver for that exact address.
  *     So "Signed by X" is exactly as strong as controlling X.
  *  2. The identity is INSIDE the signed statement, so a signature can't be
@@ -23,8 +24,8 @@
  *
  * Two identity types:
  *  - domain: Ed25519 (native WebCrypto). Key = base64 of the 32-byte public key
- *    at https://<domain>/gifos.key. Signature = 64-byte Ed25519 over the
- *    statement. Zero dependencies.
+ *    at https://<domain>/gifos.key or in TXT _gifos.<domain>. Signature =
+ *    64-byte Ed25519 over the statement. Zero dependencies.
  *  - email:  OpenPGP. The signer signs the statement with their own PGP key
  *    (gpg). We verify a detached OpenPGP Ed25519 signature against the key
  *    fetched from keys.openpgp.org by email — parsed here by hand (validated
@@ -504,14 +505,116 @@
     const all = new Uint8Array(n); let o = 0; for (const c of chunks) { all.set(c, o); o += c.length; }
     return new TextDecoder().decode(all);
   }
-  async function fetchDomainKey(domain) {
-    const url = 'https://' + domain + '/gifos.key';
-    const r = await fetch(url, { mode: 'cors', redirect: 'error' });
-    if (!r.ok) throw new Error('no gifos.key at ' + domain + ' (HTTP ' + r.status + ')');
-    return parseDomainKey(await readCapped(r, KEY_READ_MAX));
+  // ---- a domain's key: the FILE or the DNS RECORD, either is enough ---------
+  // A domain proves its key in either of two places (Nathan, 2026-11-14:
+  // "support BOTH"):
+  //   the file    https://<domain>/gifos.key, read cross-origin (CORS), no
+  //               redirect: the key lives AT the derived location;
+  //   the record  TXT _gifos.<domain>, holding the same text as the file,
+  //               read over DNS-over-HTTPS from Cloudflare and Google at once
+  //               (both send CORS); the first resolver that answers is used.
+  //               A value longer than one 255-byte TXT string comes as
+  //               several strings of one record; they are joined.
+  // Both are asked at once, straight from this computer: never through a
+  // GifOS server, so "Signed by X" stays exactly as strong as controlling X.
+  // Each place may hold several keys (a rotation keeps the old and the new
+  // one side by side), and a signature is the domain's if ANY of them
+  // verifies it.
+  //
+  // domainKeys(domain, opts) -> { keys: every key found, hit: the first key
+  // opts.accept(key) took, or null }. It returns as soon as accept takes one
+  // (a slow or blocked place costs nothing then), else when both places are
+  // done. It throws when neither place gave a key, naming both reasons.
+  // opts.fetch: the caller's fetch (the pay Worker's); opts.timeoutMs: the
+  // limit on each request (default GifOS.timings.SIGN_KEY_MS); opts.fileUrl
+  // and opts.doh: a test's stand-ins for the file location and the
+  // resolvers (an empty list asks no resolver).
+  const DOH = ['https://cloudflare-dns.com/dns-query', 'https://dns.google/resolve'];
+  const DNS_LABEL = '_gifos.';
+  const DNS_READ_MAX = 65536;
+  // TXT answers by name, kept for the TTL the answer gave (a name with no
+  // record: the TTL of its zone's negative answer).
+  const dnsCache = new Map();
+  const DNS_CACHE_MAX = 1000;
+  const withLimit = (o, ms) => (ms && typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? Object.assign({ signal: AbortSignal.timeout(ms) }, o) : o);
+  // One TXT record as a DoH JSON answer spells it -> its text. Cloudflare
+  // quotes each string ("a" "b", with \" \\ \DDD escapes, RFC 1035 5.1);
+  // Google hands the strings over already joined.
+  function txtText(data) {
+    const s = String(data == null ? '' : data);
+    if (s[0] !== '"') return s;
+    let out = '', i = 0;
+    while (i < s.length) {
+      if (s[i++] !== '"') continue;                     // the gap between two strings
+      while (i < s.length && s[i] !== '"') {
+        if (s[i] === '\\' && i + 1 < s.length) {
+          const d = /^[0-9]{3}/.exec(s.slice(i + 1, i + 4));
+          if (d) { out += String.fromCharCode(+d[0]); i += 4; } else { out += s[i + 1]; i += 2; }
+        } else out += s[i++];
+      }
+      i++;                                               // the closing quote
+    }
+    return out;
+  }
+  async function dnsTexts(name, F, ms, doh) {
+    const hit = dnsCache.get(name);
+    if (hit && hit.until > Date.now()) return hit.texts;
+    const ask = async (base) => {
+      const r = await F(base + '?name=' + encodeURIComponent(name) + '&type=TXT', withLimit({ headers: { accept: 'application/dns-json' } }, ms));
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const j = JSON.parse(await readCapped(r, DNS_READ_MAX));
+      // 0 = an answer, 3 = the name does not exist: an answer too (no record).
+      if (!j || (j.Status !== 0 && j.Status !== 3)) throw new Error('DNS status ' + (j && j.Status));
+      return j;
+    };
+    let j;
+    try { j = await Promise.any(doh.map(ask)); }
+    catch (e) { throw new Error('the DNS lookup of ' + name + ' failed (' + (e.errors || [e]).map((x) => String(x && x.message || x)).join('; ') + ')'); }
+    const txt = (j.Answer || []).filter((a) => a && a.type === 16);
+    const texts = txt.map((a) => txtText(a.data));
+    const ttls = (txt.length ? txt : (j.Authority || [])).map((a) => Number(a && a.TTL)).filter((t) => t > 0);
+    if (ttls.length) {
+      if (dnsCache.size >= DNS_CACHE_MAX) dnsCache.clear();
+      dnsCache.set(name, { until: Date.now() + Math.min.apply(null, ttls) * 1e3, texts });
+    }
+    return texts;
+  }
+  async function domainKeys(domain, opts) {
+    opts = opts || {};
+    const F = opts.fetch || ((u, o) => fetch(u, o));
+    const T = root.GifOS && root.GifOS.timings;
+    const ms = opts.timeoutMs != null ? opts.timeoutMs : (T && T.SIGN_KEY_MS);
+    const doh = opts.doh || DOH;
+    const keys = [], why = ['', ''];
+    let hit = null;
+    const take = async (k) => { keys.push(k); if (!hit && opts.accept && await opts.accept(k)) hit = k; };
+    const fromFile = async () => {
+      const url = opts.fileUrl ? opts.fileUrl(domain) : 'https://' + domain + '/gifos.key';
+      const r = await F(url, withLimit({ mode: 'cors', redirect: 'error' }, ms));
+      if (!r.ok) throw new Error('no gifos.key at ' + domain + ' (HTTP ' + r.status + ')');
+      await take(parseDomainKey(await readCapped(r, KEY_READ_MAX)));
+    };
+    const fromDns = async () => {
+      const name = DNS_LABEL + domain;
+      if (!doh.length) throw new Error('');
+      const texts = await dnsTexts(name, F, ms, doh);
+      let n = 0;
+      for (const t of texts) {
+        let k; try { k = parseDomainKey(t); } catch (e) { continue; }   // another kind of record, or a broken one
+        n++; await take(k);
+      }
+      if (!n) throw new Error(texts.length ? 'the TXT record ' + name + ' holds no Ed25519 key' : 'no TXT record ' + name);
+    };
+    await new Promise((resolve) => {
+      let left = 2;
+      const settle = (i, e) => { if (e) why[i] = String(e && e.message || e); if (hit || --left === 0) resolve(); };
+      [fromFile, fromDns].forEach((run, i) => run().then(() => settle(i), (e) => settle(i, e)));
+    });
+    if (!keys.length) throw new Error(why.filter(Boolean).join('; '));
+    return { keys: keys.slice(), hit };
   }
   // A gifos.key file's text -> the 32 raw key bytes (bare base64, optionally
-  // PEM-fenced). Shared with the pay Worker, which fetches keys itself.
+  // PEM-fenced). The same text is what a _gifos TXT record holds.
   function parseDomainKey(text) {
     const b64 = String(text).trim().replace(/^-----BEGIN[^-]*-----/, '').replace(/-----END[^-]*-----$/, '').trim();
     const key = b64ToBytes(b64);
@@ -586,22 +689,23 @@
     const valid = (extra) => Object.assign({ status: 'valid', id: shown, type, ts: sig.ts, rules }, unpinned ? { unpinned } : null, extra);
     try {
       if (type === 'domain') {
-        let pub;
-        try { pub = await fetchDomainKey(id); }
+        let found;
+        try { found = await domainKeys(id, { accept: (k) => ed25519Verify(k, sigBytes, msg) }); }
         catch (e) {
-          // Offline, or the host is down: the pin IS the key we saw before
-          // (hex of the raw public key), so a GIF from an identity this
-          // computer already trusts still verifies. A mismatch here is not
-          // called tampered — it may be a rotation we cannot confirm yet.
+          // Neither the file nor the record gave a key (offline, or both
+          // down): the pin IS the key we saw before (hex of the raw public
+          // key), so a GIF from an identity this computer already trusts
+          // still verifies. A mismatch here is not called tampered — it may
+          // be a rotation we cannot confirm yet.
           const pinned = pinnedKey('domain:' + id);
           if (!pinned) throw e;
           const okPinned = await ed25519Verify(pinned, sigBytes, msg);
           if (!okPinned) throw e;
           return valid({ keyChanged: false, offline: true });
         }
-        const ok = await ed25519Verify(pub, sigBytes, msg);
-        if (!ok) return { status: 'tampered', id, type, ts: sig.ts, detail: 'signature does not match these contents' };
-        const pin = pinKey('domain:' + id, hex(pub));
+        // Keys were found and none of them signed these bytes.
+        if (!found.hit) return { status: 'tampered', id, type, ts: sig.ts, detail: 'signature does not match these contents' };
+        const pin = pinKey('domain:' + id, hex(found.hit));
         return valid({ keyChanged: pin.changed });
       }
       if (type === 'email') {
@@ -654,9 +758,10 @@
     const visual = stripBlock(stripBlock(bytes, 'GIFOS1.0'), SIG_MARKER);
     return { v: 1, sig, manifest: bytesToB64(manifest), visual: bytesToB64(visual), hashes: out };
   }
-  // keyFor(type, id) -> the author's key: 32 raw bytes for a domain, the
-  // dearmored OpenPGP key for an email. Injected, because the Worker fetches
-  // (and caches) keys its own way. Verdicts match verify(): valid / tampered
+  // keyFor(type, id) -> the author's key: 32 raw bytes for a domain (or a
+  // list of them: every key the domain publishes, domainKeys), the dearmored
+  // OpenPGP key for an email. Injected, because the Worker fetches (and
+  // caches) keys its own way. Verdicts match verify(): valid / tampered
   // / unverified (the key could not be fetched) / unsigned.
   async function checkProof(proof, keyFor) {
     const tampered = (detail, extra) => Object.assign({ status: 'tampered', detail }, extra);
@@ -692,9 +797,9 @@
     const msg = statement(type, id, hex(await sha256(concat([visual, new Uint8Array([0]), filesDigest]))));
     let key;
     try { key = await keyFor(type, id); } catch (e) { return { status: 'unverified', id, type, detail: String(e && e.message || e) }; }
-    const ok = type === 'domain' ? await ed25519Verify(key, sigBytes, msg)
-      : type === 'email' ? await pgpVerify(msg, sigBytes, key)
-      : false;
+    let ok = false;
+    if (type === 'domain') { for (const k of [].concat(key)) if (!ok && k) ok = await ed25519Verify(k, sigBytes, msg); }
+    else if (type === 'email') ok = await pgpVerify(msg, sigBytes, key);
     if (!ok) return tampered('signature does not match this proof', { id, type });
     let manifest = null;
     try { manifest = JSON.parse(gif.bytesToText(manifestBytes)); } catch (e) {}
@@ -726,10 +831,10 @@
 
   GifOS.sign = {
     verify, readSig, writeSig, contentHash, statement, unpinnedAssets, rulesOfSig, RULES_CURRENT,
-    proofOf, checkProof, parseDomainKey, KEYSERVER,
+    proofOf, checkProof, parseDomainKey, domainKeys, KEYSERVER,
     generateDomainKey, signDomain, emailStatement, attachEmailSig,
     isDomain, isEmail,
     // exposed for tests
-    _pinnedAssetPaths: pinnedAssetPaths, _hashFilesFrom: hashFilesFrom, _digestFromHashes: digestFromHashes, _filesDigestOf: filesDigestOf, _ed25519SignFor: ed25519Sign, _pgpVerify: pgpVerify, _pgpSigningKeys: pgpSigningKeys, _ed25519Verify: ed25519Verify, _b64ToBytes: b64ToBytes, _bytesToB64: bytesToB64, _dearmor: dearmor,
+    _pinnedAssetPaths: pinnedAssetPaths, _hashFilesFrom: hashFilesFrom, _digestFromHashes: digestFromHashes, _filesDigestOf: filesDigestOf, _ed25519SignFor: ed25519Sign, _pgpVerify: pgpVerify, _pgpSigningKeys: pgpSigningKeys, _ed25519Verify: ed25519Verify, _b64ToBytes: b64ToBytes, _bytesToB64: bytesToB64, _dearmor: dearmor, _txtText: txtText, _dnsCache: dnsCache,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
