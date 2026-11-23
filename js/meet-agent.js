@@ -484,6 +484,16 @@
     const actions = {
       state: () => ok({ state: snapshot() }),
       people: () => ok({ people: host.state().people }),
+      // What this seat may do: the signed line items it holds now (GifOS.rights(): plain JSON; label is display only).
+      rights: async () => ok({ rights: typeof GifOS.rights === 'function' ? await GifOS.rights() : null }),
+      // Use a credentials GIF (a subscription file or a pass) in this seat: {gif_b64}. Then rights() reads what it grants.
+      credentials: async (a) => {
+        const M = GifOS.meetSubs;
+        if (!M || typeof M.useFile !== 'function') return fail('This page takes no credentials file (it has no subscription code).');
+        let bytes; try { bytes = Uint8Array.from(root.atob(String((a && a.gif_b64) || '')), (c) => c.charCodeAt(0)); } catch (e) { return fail('That is not a file in base64.'); }
+        try { await M.useFile(bytes); } catch (e) { return fail(String((e && e.message) || e)); }
+        return ok({ rights: typeof GifOS.rights === 'function' ? await GifOS.rights() : null });
+      },
       lines: (a) => {
         // Lines so far (the transcript and chat this page holds), for an agent that joins late or polls.
         const rule = notesOk(); if (!rule.ok) return rule;
@@ -541,6 +551,8 @@
       on: on, off: off, call: call,
       state: () => snapshot(),
       people: () => host.state().people,
+      rights: () => call('rights'),
+      credentials: (gifB64) => call('credentials', { gif_b64: gifB64 }),
       lines: (a) => call('lines', a),
       say: (text, o) => call('say', Object.assign({ text: text }, o || {})),
       chat: (text) => call('chat', { text: text }),

@@ -756,6 +756,21 @@
       sources: held.map((r) => ({ tier: r.tier, pass: !!r.pass, key: r.key, until: r.until })) });
   }
 
+  // rightsJson(r) -> the plain JSON every interface reads (GifOS.rights(), the SDKs, the MCP servers, the hosted-bot
+  // host): the signed line items in effect and where they come from. label is the product's name, for display only;
+  // decide on the line items. A time that never ends is null; no right held is the defaults with signed false.
+  const endJson = (t) => (t == null || !Number.isFinite(t) ? null : t);
+  function rightsJson(r) {
+    const x = r && r.signed ? r : FREE;
+    return { signed: !!x.signed, label: x.tier || null, roomLimit: x.roomLimit, admitAtFullDoor: !!x.bypassLimit, captureOpenRoom: !!x.capture,
+      turnVideoLinks: x.vouches | 0, storage: !!(x.grants && x.grants.storage), meetings: x.meetings || 1, agentHost: x.agentHost | 0, overflow: x.overflow === 'keep' ? 'keep' : 'ask',
+      until: x.signed ? endJson(x.until) : null,
+      sources: (x.sources || (x.signed ? [{ tier: x.tier, pass: !!x.pass, until: x.until }] : [])).map((s) => ({ label: s.tier || null, pass: !!s.pass, until: endJson(s.until) })) };
+  }
+  // GifOS.rights() -> Promise of rightsJson: THE one rights call. Here (the core, which takes no credentials yet) it is
+  // the defaults; the meeting page's subscription code (meet-subs.js) replaces it with what this person holds.
+  if (typeof GifOS.rights !== 'function') GifOS.rights = async () => rightsJson(FREE);
+
   // doorVerdict: what a greeter does with a knocker it has no proof from.
   // -> 'let-in' (no limit applies, or the room has space, or the count is not
   // readable yet) | 'ask' (the room is at its line: the knocker must show a plan)
@@ -959,7 +974,7 @@
     admission, roomContext, doorContext, roomTierOf, doorVerdict, doorProofOk,
     TICKET_KIND, TICKET_S, RENEW_EVERY_S, meetingTag, checkTicket, verifyTicket, ticketRights,
     PASS_KIND, passSeconds, PASS_PLAN, PASS_PRICE, PASS_VALUE, ORDER_ID_RE, PASS_ID_RE, passMessage, checkPass, passLive, passEnd, verifyPass,
-    passStart, passRights, meetingRight, heldRights, rank,
+    passStart, passRights, meetingRight, heldRights, rank, rightsJson,
     ROOM_LIMIT_MAX, MEETINGS_MAX, AGENT_HOST_MAX, OVERFLOWS, GRANT_WORDS, OPTIONAL_WORDS, LEGACY_WORDS, DEFAULTS, effective, grantsOk, parseGrantList, grantsRights, ownTicketGrants, fullFreeWords, PASS_PRESETS, presetPass, revokedSet, rightRevoked, captureRight,
     PASS_TICKET_KIND, PASS_REC_RE, passRecId, passTicketMessage, passChain, checkPassTicket, verifyPassTicket, isPassTicket,
     WALLET_KIND, walletOk,

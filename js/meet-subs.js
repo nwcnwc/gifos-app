@@ -1408,6 +1408,8 @@
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
   }
 
+  // THE one rights call every interface reads (SDKs, MCP, the hosted-bot host): the union held now, as plain JSON.
+  GifOS.rights = async () => SUB.rightsJson(await rights());
   GifOS.meetSubs = {
     askMove, moveOptions, showOverflowNote,
     rights, planRights, refresh, keepFresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, subSelection, applySubSelection, paintNow, paintSettings, openSettings, openSubscribe, mayCreateAdminRoom, showFull, hideFull, fullWaiting, fullOffers, hostOffer, doorRight, showHostPrompt,
