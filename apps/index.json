@@ -3741,7 +3741,7 @@
       "appId": "isocity",
       "name": "IsoCity",
       "shortName": "IsoCity",
-      "version": "1.1",
+      "version": "1.8",
       "tagline": "Build an isometric city, and invite a friend to build on the same map.",
       "author": {
         "name": "victorqribeiro",
@@ -3755,7 +3755,7 @@
         "name": "IsoCity",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -3776,15 +3776,15 @@
         85
       ],
       "cover": "/apps/isocity/cover.jpg",
-      "bytes": 649114,
+      "bytes": 650319,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "c348c26ac3e6f27404f5e32f951db91771ee326c5f8f5389d227614e3dae2cfc"
+      "sha256": "a4593c370259f5398a735912f4978f9b9acf90ca515351d5ab79e4e722b67b7f"
     },
     {
       "slug": "jpg-glitch",
@@ -4582,7 +4582,7 @@
       "appId": "math-race",
       "name": "Math Race",
       "shortName": "Math Race",
-      "version": "1.0.0",
+      "version": "1.1.4",
       "tagline": "Same equation on every phone — first correct answer scores.",
       "author": {
         "name": "iloire",
@@ -4596,7 +4596,7 @@
         "name": "math-race",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -4617,15 +4617,15 @@
         154
       ],
       "cover": "/apps/math-race/cover.jpg",
-      "bytes": 197994,
+      "bytes": 199515,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "9d6ce16fdc8848bcaafa22ee3cf256af804472a1a49f600873202a824c3a38d1"
+      "sha256": "dff34266fc2d81cbfbc57fd8d7cc6394cbce4cf2ddbbdf56e571c009f7fd5f4e"
     },
     {
       "slug": "matter-sandbox",
@@ -5956,7 +5956,7 @@
       "appId": "pacman",
       "name": "Pellets",
       "shortName": "Pellets",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "tagline": "Twelve mazes and a thumb pad. Your high score is saved.",
       "author": {
         "name": "Haole Zheng",
@@ -5970,7 +5970,7 @@
         "name": "Pacman",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-24",
       "updated": "2026-08-24",
@@ -5989,15 +5989,15 @@
         0
       ],
       "cover": "/apps/pacman/cover.jpg",
-      "bytes": 174122,
+      "bytes": 175118,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "a7b7c9106310495788cca69125ff83eccccbda15d0cb59abe1a5c4c0ee5a5cd8"
+      "sha256": "4809b7e77a54b3b1d1cc04209097e66ccffddbf17b07f803f14be57850a6cbb9"
     },
     {
       "slug": "paint-board",
@@ -7345,7 +7345,7 @@
       "appId": "regexr",
       "name": "RegExr",
       "shortName": "RegExr",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "tagline": "The pattern and the test text live in this file — works on a plane, one Invite shares it.",
       "author": {
         "name": "Grant Skinner",
@@ -7359,7 +7359,7 @@
         "name": "RegExr",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-30",
       "updated": "2026-08-30",
@@ -7381,15 +7381,15 @@
         224
       ],
       "cover": "/apps/regexr/cover.jpg",
-      "bytes": 192430,
+      "bytes": 193190,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "077147045bc8fddce1c89a085f3347e8c530cb0da646e6a81b433c915a75e9a3"
+      "sha256": "2a020edf41c613e2e24e785ea6345c40be29de6991051fb6dbef7bad57850119"
     },
     {
       "slug": "restfox",
@@ -9365,7 +9365,7 @@
       "appId": "trianglify-studio",
       "name": "Trianglify",
       "shortName": "Trianglify",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "tagline": "Low-poly triangle wallpapers. The seed lives in the file. One invite shares it.",
       "author": {
         "name": "Quinn Rohlf",
@@ -9379,7 +9379,7 @@
         "name": "Trianglify",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-30",
       "updated": "2026-08-30",
@@ -9403,15 +9403,15 @@
         196
       ],
       "cover": "/apps/trianglify-studio/cover.jpg",
-      "bytes": 251747,
+      "bytes": 252797,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "6e659165e17569b9405d1e1768d3f94b9286f21a3b4b5366001bc51cb02dd523"
+      "sha256": "9afd291fa19739dd8569c9d0614fe54cc4935a6f86765e59350cfbd4a0209f8c"
     },
     {
       "slug": "tuner",
@@ -9932,7 +9932,7 @@
       "appId": "wifi-card",
       "name": "WiFi Card",
       "shortName": "WiFi",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "Print a little card with your WiFi name, password and a QR code.",
       "author": {
         "name": "bndw",
@@ -9946,7 +9946,7 @@
         "name": "wifi-card",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -9967,15 +9967,15 @@
         199
       ],
       "cover": "/apps/wifi-card/cover.jpg",
-      "bytes": 210308,
+      "bytes": 211126,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "bb71081ea6e6980d0a8e47acfd8ac128f89351ad9d7a6accc86c2592a6a0eb3c"
+      "sha256": "d015be591a1291b322ed8f927d47ceeb12ce5770edc809eaa208c74e3d4131e6"
     },
     {
       "slug": "word-master",

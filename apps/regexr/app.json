@@ -4,8 +4,8 @@
   "appId": "regexr",
   "name": "RegExr",
   "shortName": "RegExr",
-  "version": "1.0.0",
-  "minBuild": 947,
+  "version": "1.0.1",
+  "minBuild": 5861,
   "tagline": "The pattern and the test text live in this file — works on a plane, one Invite shares it.",
   "description": "No account, no tab to lose. Type a pattern, see matches light up in the text as you type, and close the app — they are still here next time, because the pattern lives in this file. Press Invite in the bar above and a friend is on the same expression with you. regexr.com cannot do that offline.\n\nCheatsheet and the full Reference sit beside the editor; click a token to insert it. Tools: Replace, List, Details (capture groups), Explain. Tests check that the expression matches (or does not). JavaScript RegExp in this tab — nothing is uploaded.\n\nAn unofficial port of RegExr by Grant Skinner and gskinner.com. Bugs go to GifOS, not upstream. Community catalog and the PHP/PCRE engine are not in this copy.",
   "author": {
@@ -41,14 +41,14 @@
   "cover": "/apps/regexr/cover.jpg",
   "screenshots": [],
   "gif": "/apps/regexr/regexr.gif",
-  "bytes": 192430,
+  "bytes": 193190,
   "download": 0,
   "provides": null,
-  "sha256": "077147045bc8fddce1c89a085f3347e8c530cb0da646e6a81b433c915a75e9a3",
+  "sha256": "2a020edf41c613e2e24e785ea6345c40be29de6991051fb6dbef7bad57850119",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-23"
   },
   "porter": {
     "name": "GifOS",

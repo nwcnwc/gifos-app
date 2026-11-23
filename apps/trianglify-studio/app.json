@@ -4,8 +4,8 @@
   "appId": "trianglify-studio",
   "name": "Trianglify",
   "shortName": "Trianglify",
-  "version": "1.0.0",
-  "minBuild": 947,
+  "version": "1.0.1",
+  "minBuild": 5861,
   "tagline": "Low-poly triangle wallpapers. The seed lives in the file. One invite shares it.",
   "description": "trianglify.io needs a tab on the internet, and a paid download for a high-res file. This is a GIF on your Home Screen: it works on a plane, the last palette and seed stay in the file so close-and-come-back is the same wallpaper, and a friend who opens your invite is looking at the same one — roll a new seed, they get the roll.\n\nPick a palette, type a seed (or roll one), drag how chunky the triangles are. Download a PNG or SVG at wallpaper size, no account.\n\nAn unofficial port of Trianglify by Quinn Rohlf, GPL-3.0. Bugs go to GifOS, not upstream.",
   "author": {
@@ -43,14 +43,14 @@
   "cover": "/apps/trianglify-studio/cover.jpg",
   "screenshots": [],
   "gif": "/apps/trianglify-studio/trianglify-studio.gif",
-  "bytes": 251747,
+  "bytes": 252797,
   "download": 0,
   "provides": null,
-  "sha256": "6e659165e17569b9405d1e1768d3f94b9286f21a3b4b5366001bc51cb02dd523",
+  "sha256": "9afd291fa19739dd8569c9d0614fe54cc4935a6f86765e59350cfbd4a0209f8c",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-23"
   },
   "porter": {
     "name": "GifOS",
