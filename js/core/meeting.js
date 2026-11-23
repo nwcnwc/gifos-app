@@ -19176,22 +19176,20 @@
     // "no admin" too, and its closing countdown is no evidence. Every member
     // re-sends the admin's last signed orders, so a door seated after the admin
     // left still hears them; a room whose admin never sent any closes anyway.
-    // L52.6.1 NO ORDER IS AN ORDER (the people line, js/mesh/wall.js): a hosted room's line is unknown to a seat until the host's
-    // signed order reaches it, and an unknown line holds every knocker at the door. With the host away (a guest sat down first,
-    // or the host's tab closed) no order exists in the room and none can arrive, so the line stayed unknown and nobody, the
-    // host included, could get in. A seated seat that has heard no order for MOD_ORDER_WAIT_MS (two status beats: an order
-    // its peers hold reaches it inside them) reads the room as having no plan: the free line. The host's order, when it comes,
-    // sets the line as before; the wall never puts anyone out (L52.8).
-    const subsPlanKnown = (() => {
-      let noOrderAt = 0;   // when my seat sat down with no signed order heard (0: not seated)
-      return () => {
-        if (amAdmin || modWSeen) return true;
-        const ms = typeof meshSeat === 'function' ? meshSeat() : null;
-        if (!(ms && ms.state === 3 && ms.hasCoord)) { noOrderAt = 0; return false; }
-        if (!noOrderAt) noOrderAt = Date.now();
-        return Date.now() - noOrderAt >= GifOS.timings.MOD_ORDER_WAIT_MS;
-      };
-    })();
+    // L52.6.1 NO HOST, THE FREE LINE (the people line, js/mesh/wall.js): a hosted room's line is unknown to a seat until the
+    // host's signed order reaches it, and an unknown line holds every knocker at the door ("not yet"). With the host away
+    // (a guest sat down first, or the host's tab closed) no order exists and none can come: the line stayed unknown and
+    // nobody, the host included, got in. So the line is pending only while an order is surely on its way, and is otherwise
+    // the free line at once (Nathan 2026-11-23: no wait): pending while a host is in this page's view (its signed proof is
+    // here, its order rides the same beats), or while the room already seats more people than the free line (a plan let
+    // them in: a fresh greeter of a big paid meeting must not refuse the next knocker on the free size). No host and no more
+    // than the free line: the free line now. The host's order, when it comes, sets the line; the wall puts nobody out (L52.8).
+    const subsPlanKnown = () => {
+      if (amAdmin || modWSeen) return true;
+      if (admins.length > 0) return false;
+      try { const n = meshNode && typeof meshNode.meetingCount === 'function' ? meshNode.meetingCount() : null; if (n != null && n > GifOS.sub.effective(null).roomLimit) return false; } catch (e) {}
+      return true;
+    };
     // The room's plan, verified once per order: undefined while it is being
     // checked, null when none is valid. It is checked ahead of any knock (the
     // timer below), so a door does not meet its first knock with no answer.
