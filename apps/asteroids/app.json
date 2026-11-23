@@ -4,8 +4,8 @@
   "appId": "asteroids",
   "name": "Asteroids",
   "shortName": "Asteroids",
-  "version": "1.0.0",
-  "minBuild": 947,
+  "version": "1.1.0",
+  "minBuild": 5861,
   "tagline": "Asteroids with friends — everyone who opens your invite flies another ship.",
   "description": "Send the Invite in the bar above. Extra ships appear in the same field — everyone flies their own, everyone shoots the same rocks. Your high score is saved.\n\nOn your own it is the original: a triangle against rocks. Turn, thrust, shoot. A big one breaks into medium ones, those into pebbles, and a saucer will wander through if you linger. Three lives, a score in the corner, the next wave one rock heavier.\n\nOn a phone the buttons sit under your thumbs — turn, thrust, fire. On a computer it is the arrows and the space bar, the way it always was. Friendly fire stays off unless the host turns it on.\n\nAn unofficial port of HTML5 Asteroids by Doug McInnes, MIT-licensed. This copy adds the extra ships.",
   "author": {
@@ -40,14 +40,14 @@
   "cover": "/apps/asteroids/cover.jpg",
   "screenshots": [],
   "gif": "/apps/asteroids/asteroids.gif",
-  "bytes": 263369,
+  "bytes": 264490,
   "download": 0,
   "provides": null,
-  "sha256": "5e087a63115d11078f1d0d6d698e09cc649bf1c301a59a58834b6bb8d9282f45",
+  "sha256": "fc9b64a507efe1fdb0f469bcb550a93a6c5c4f2b09d8a8a783daeaa6cbc90467",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-22"
   },
   "porter": {
     "name": "GifOS",

@@ -4,8 +4,8 @@
   "appId": "hexgl",
   "name": "HexGL",
   "shortName": "HexGL",
-  "version": "1.0.0",
-  "minBuild": 1314,
+  "version": "1.1.1",
+  "minBuild": 5861,
   "tagline": "The original futuristic racer, offline — your best lap lives in the GIF, and Invite is a ghost race.",
   "description": "Works on a plane: every texture, every building, the ship and the music ride in the file. Close it and your best time is still there, because the GIF is the save. Send the Invite in the bar above and whoever opens it races a ghost of you on the same Cityscape track — no account, no server.\n\nThree laps. Boost pads light the hull cyan. Hit a wall and the shield drops; lose it and you are destroyed. On a computer the arrows or WASD drive; Q and E air-brake. On a phone the left thumb steers and the right thumb goes. A weaker GPU gets a smaller picture instead of a black screen.\n\nAn unofficial port of HexGL by Thibaut Despoulain (BKcore), MIT-licensed. The original needed a web server for its textures and stored records in the browser; this copy vendors them and keeps the times in the file.",
   "author": {
@@ -41,14 +41,14 @@
   "cover": "/apps/hexgl/cover.jpg",
   "screenshots": [],
   "gif": "/apps/hexgl/hexgl.gif",
-  "bytes": 4191268,
+  "bytes": 4192333,
   "download": 0,
   "provides": null,
-  "sha256": "b066598a9fe0a467b5ca0644e2e8c79fdc2ba51c389abaed9fd4cb4af6923740",
+  "sha256": "9357a982a8a3a07c89b6d1e3b292a90e45c7560aa0e1f43df52c6f69896f05f7",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-23"
   },
   "porter": {
     "name": "GifOS",

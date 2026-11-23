@@ -4,8 +4,8 @@
   "appId": "mermaid",
   "name": "Mermaid",
   "shortName": "Mermaid",
-  "version": "1.0.0",
-  "minBuild": 947,
+  "version": "1.1.1",
+  "minBuild": 5861,
   "tagline": "Type a Mermaid diagram, see it render live.",
   "description": "A box on the left, a picture on the right. Type a flowchart, a sequence, a class diagram — mermaid's own language — and the picture updates as you type. The last diagram is saved on this device.\n\nOn a phone, Recipe and Picture swap so the keyboard does not cover the chart. A bad line shows a short error; the last good picture stays until you fix it. Sample drops in a starter. Copy SVG takes the picture with you.\n\nWant a friend looking at the same chart? Press Play together, then Invite (in the GifOS menu) and send the link. When you type, they see it.\n\nAn unofficial wrap of the mermaid engine, not the mermaid live editor website.",
   "author": {
@@ -39,14 +39,14 @@
   "cover": "/apps/mermaid/cover.jpg",
   "screenshots": [],
   "gif": "/apps/mermaid/mermaid.gif",
-  "bytes": 1691676,
+  "bytes": 1693390,
   "download": 0,
   "provides": null,
-  "sha256": "ae23bb9498113c6a072930c8e285bded991aef87bd421851b493cd548a32a690",
+  "sha256": "812a34d1a258869922813525b688cdb78f9207f798a33a96383055e726695272",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-23"
   },
   "porter": {
     "name": "GifOS",

@@ -4,8 +4,8 @@
   "appId": "beepbox",
   "name": "BeepBox",
   "shortName": "BeepBox",
-  "version": "4.2.2",
-  "minBuild": 947,
+  "version": "4.2.3",
+  "minBuild": 5861,
   "tagline": "The chiptune song lives in the GIF. Invite, and you jam the same track.",
   "description": "Close it, come back — the same notes are still on the grid. The song is saved inside this file, so handing someone the GIF hands them the song.\n\nBeepBox itself: click the grey rows to drop notes, drag to change length, stack them for chords. Patterns along the bottom are the bars of the song; the purple loop is what repeats. Chip, FM, noise, supersaw — the original tracker, offline, with no URL to copy and no account.\n\nOn a phone, pinch or tap + / − to zoom the grid, then pan. Press Invite in the bar above and a friend lands on this same song; either of you can change it, you both hear it.\n\nAn unofficial port of BeepBox by John Nesky. Bugs go to GifOS, not upstream.",
   "author": {
@@ -42,14 +42,14 @@
   "cover": "/apps/beepbox/cover.jpg",
   "screenshots": [],
   "gif": "/apps/beepbox/beepbox.gif",
-  "bytes": 428158,
+  "bytes": 429530,
   "download": 0,
   "provides": null,
-  "sha256": "d656825ad12f12b83f6ab7130e4c97ebf7fd9f01f517bfc6ca7ce6433bd971c8",
+  "sha256": "3ae914919ee26aeb8c924d6c002411bd301dcaec264b8392fc37fc03fd88a711",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-22"
   },
   "porter": {
     "name": "GifOS",

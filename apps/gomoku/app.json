@@ -4,7 +4,7 @@
   "appId": "gomoku",
   "name": "Gomoku",
   "shortName": "Gomoku",
-  "version": "1.1",
+  "version": "1.2",
   "minBuild": 5861,
   "tagline": "Five in a row. Play the computer, or a friend from one invite.",
   "description": "Five in a row. The computer thinks on this device. Press Play a friend, send the invite, and they sit the other colour on the same board.\n\nA wooden 15-by-15. Black and white take turns putting a stone down. First to get five in a line — across, down, or diagonal — wins. Play the computer at novice, medium, or expert, or pass the phone. Close it and come back: the game keeps.\n\nAn unofficial port of HTML5 Gomoku by yyjhao. The computer is the same one that shipped with that game.",
@@ -39,14 +39,14 @@
   "cover": "/apps/gomoku/cover.jpg",
   "screenshots": [],
   "gif": "/apps/gomoku/gomoku.gif",
-  "bytes": 263893,
+  "bytes": 266315,
   "download": 0,
   "provides": null,
-  "sha256": "da77f1c311d647cd1bc1ca6525bfafcba890dd7d7963a6fbd8928c46d7a1729e",
+  "sha256": "55fd6778ff6421b45ecd6ce2c8367a49de22198cb81369e2761e73499091d0ea",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-11-21"
+    "ts": "2026-11-22"
   },
   "porter": {
     "name": "GifOS",
