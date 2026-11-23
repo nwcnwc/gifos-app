@@ -9568,7 +9568,7 @@
       "appId": "underrun",
       "name": "Underrun",
       "shortName": "Underrun",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "tagline": "Underrun: the corridor shooter, complete in one GIF.",
       "author": {
         "name": "phoboslab",
@@ -9582,7 +9582,7 @@
         "name": "Underrun",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -9603,15 +9603,15 @@
         0
       ],
       "cover": "/apps/underrun/cover.jpg",
-      "bytes": 215879,
+      "bytes": 216983,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "11623ea6122b59099d443356fb1a1d29ef970526d9f0870bf270c02fcdd213f8"
+      "sha256": "661cbae25bb5453fd3e2f2bf18a8b4f5152968821e48ce63f0d46277dfa83c67"
     },
     {
       "slug": "v86",
