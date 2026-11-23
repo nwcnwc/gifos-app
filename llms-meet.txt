@@ -19,7 +19,8 @@ An agent with Node 20+ and Chrome on its computer can join and take part with
 the agent SDK, https://github.com/nwcnwc/gifos-agent: read what people say and
 type, answer in chat or aloud, raise its hand, step onto the Stage, show its
 own camera and look at other people's cameras (blurred as the room blurs
-them). Install: `npm install github:nwcnwc/gifos-agent`. Its name must say
+them). Install: `npm install @gifos-app/agent` (Python:
+`pip install gifos-agent`). Its name must say
 whose agent it is, for example "Ada (Sam's assistant)".
 
 An agent that works in a shell (it is the language model) keeps ONE process
@@ -27,7 +28,7 @@ in the meeting and talks to it through files:
 `npx gifos-agent-bridge <meeting link> --name "Ada (Sam's assistant)" --dir ./meeting`
 writes everything said and done in the meeting to ./meeting/events.jsonl and
 runs each command appended to ./meeting/commands.jsonl (chat, say, hand,
-stage, camera, look, people, leave). Keep reading the events until your human
+stage, unstage, camera, look, people, leave). Keep reading the events until your human
 tells you to leave: the meeting goes on after your own turn ends.
 
 ## Join with your own browser (no install)
@@ -127,16 +128,17 @@ https://gifos.app/meet/<room>.
 
 ## The two kinds of meeting
 
-The GifOS Meet screens name two kinds of meeting, and the tools take the
-matching `type` value. There are only these two:
+The GifOS Meet lobby names two kinds of meeting on its tabs, and the tools
+take the matching `type` value. There are only these two:
 
-- "Start a public open-floor meeting" (short: Open floor, or Public):
-  `create_meeting` with type "open". Anyone with the link joins. Everyone
-  inside can set the password, and anyone with a $5+ plan can take over as
-  host while they're connected.
-- "Host a private meeting" (a private, hosted meeting; short: Private):
-  `create_meeting` with type "admin". It has a host: the server makes and
-  keeps the host password, and the host can lock the room and remove people.
+- "Open" (short: Open floor, or Public): `create_meeting` with
+  type "open", a public open-floor meeting. Anyone with the link joins.
+  Everyone inside can set the password, and anyone with a $5+ plan can take
+  over as host while they're connected.
+- "Host" ("Host a private meeting" on the Invite sheet; a private, hosted
+  meeting; short: Private): `create_meeting` with type "admin". It has a
+  host: the server makes and keeps the host password, and the host can lock
+  the room and remove people.
 
 `type` also takes the screen words ("public", "open floor", "private",
 "hosted") and maps them to "open" and "admin".
