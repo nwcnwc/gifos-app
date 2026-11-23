@@ -4,8 +4,8 @@
   "appId": "shapez",
   "name": "shapez.io",
   "shortName": "shapez",
-  "version": "1.0.0",
-  "minBuild": 947,
+  "version": "1.0.1",
+  "minBuild": 5861,
   "tagline": "The factory lives in the GIF. One invite, and a friend is on the same belts.",
   "description": "shapez.io on the web is a tab that forgets you. This copy keeps the factory inside the file — close it, come back, every belt and machine is where you left it. Send Invite and a friend builds on that same floor with you. No account, no install, it works on a plane.\n\nExtract circles and rectangles, belt them in, cut them in half, rotate the pieces, paint them red or blue. The hub asks for a new shape each level and unlocks the next machine. This is the opening of shapez — extractor, belt, cutter, rotator, painter — not the 26-level wires-and-stackers campaign.\n\nAn unofficial port of shapez by tobspr Games, GPL-3.0. Bugs go to GifOS, not upstream.",
   "author": {
@@ -42,14 +42,14 @@
   "cover": "/apps/shapez/cover.jpg",
   "screenshots": [],
   "gif": "/apps/shapez/shapez.gif",
-  "bytes": 253019,
+  "bytes": 254282,
   "download": 0,
   "provides": null,
-  "sha256": "e73df83c4538df26300664381dd8c49b8f16e54f35d9f51d84680434bf4af95b",
+  "sha256": "ba37a1a1997b0f6480e1afaa0e76004b5399e5e7aea3ddb0325b35a3c875492e",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-23"
   },
   "porter": {
     "name": "GifOS",
