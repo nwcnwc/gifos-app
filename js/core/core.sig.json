@@ -1,11 +1,11 @@
 {
  "v": 1,
- "build": "0.9.28.3",
+ "build": "0.9.28.4",
  "signer": "gifos.app",
  "files": {
   "js/core/files.json": "9a8bd6dafa1609f00828c04cbd8af8217943cff2acf49089a4d247d6a8dfa5f7",
   "js/core/host.js": "ab8946a8ca374ab05cf02ffcb605cda9ffd8af5c3ca1dc2df0aab91a82459e5e",
-  "js/core/meeting.js": "fb724fa7e8267696537904e69cc33bfe4f4e73e5b91954d6396008e865200dc6",
+  "js/core/meeting.js": "336b930c13e3563d2545d20bda13386a4c8813ef0f9057d0e984fb5155f82f40",
   "js/core/node.js": "80c6745a858948c5976f9582f16925c43fd354546a7b14b1ada08ab00be40020",
   "js/core/platform.json": "5a824a943fdb4e31509f5d6bf68cb6c7dec17c2969d6beda1be2d0277703b82f",
   "js/gifos-ed.js": "99e1e602c9ab147c7833b407fbef93f8e1c397db8e99023e8ce7005515730584",
@@ -31,7 +31,7 @@
   "js/meet-viewmode.js": "44f2da9f252eb610144b3326ac105405df7d19527cff2ce697d84d5a1b5c6ca2",
   "js/meet-zones.js": "677a6a0afaaab4fe110c141ce773d2fc0e554d9ecdf897c1cc9bf88d5ef0e2eb",
   "js/mesh-identity.js": "e7c41650476bf262b0ba41d9970072b77eb748c16d1d9267c73fb4af8e5e1a79",
-  "js/mesh-wire.js": "7837e01b04c7824390d7454addbf4f4f07e27e5e4aa9454c19153439db45f7d4",
+  "js/mesh-wire.js": "fd6a2855d2b6ded0ca5cd66abddd2f606156de166f340c989bcb855600ab0d73",
   "js/mesh/books.js": "092db7b0f42029f95830cfc42f5f3180466832730e7a3510364785d3b97b8c6e",
   "js/mesh/burst.js": "70e72093587a0f383f199c799cd55eb952ecf3d18d88b401500db52a10dcec25",
   "js/mesh/c7proof.js": "defc7b5cc309af34d6b04a052704cdf9cf5080f1a99d68ffdd7318a6cd1591ac",
@@ -63,9 +63,9 @@
   "js/mesh/live.js": "024f216d3231dac6b795778782ed0e30696eb499f3f0565a0932001d9ab97b3d",
   "js/mesh/mltail.js": "253d75e0d5bd0f27748e22866c80e61fcd7df21ee6ad99889aa5a7d3c67f4af5",
   "js/mesh/msg.js": "c66411733a09de4f1713f0f3553b105939af024cc763bb732a2a17d9bb47c6fd",
-  "js/mesh/page/env.js": "fa9085ba64944aa8b541f29e4290ddac341df5fc18da763e87336da10fcef71e",
+  "js/mesh/page/env.js": "1c6297409ad889461dce79029bb786c0811a1b8b47b8270c29f234f6b952f20c",
   "js/mesh/page/layer.js": "50559462f02a2d833679e7ec0d213c3b621e881e9b3ffd9c2b460026271b8a2c",
-  "js/mesh/page/pclaws-wire.js": "10ff771d2e65808f95cbd23c0798bdd198a8fbc710dc50011d7e4ae6eae7029d",
+  "js/mesh/page/pclaws-wire.js": "23cc2accf5a93f7a9c8bd4ecf9e6380fe642540e72a76fec570b3a607f080748",
   "js/mesh/pclaws.js": "1652625137302203610a3aaec65db695e6cd50cc001c917be7fe79ef16028fef",
   "js/mesh/rcdead.js": "b384f839382b45a5914d5fd033ab14db00602b4e0469c9eeb36ceb9aacd6d72c",
   "js/mesh/rcfollow.js": "9c55311ea17363536df0ee01ca4134b7c2165af655265fdfb49671e93b141747",
@@ -95,5 +95,5 @@
   "js/relay-config.js": "75ab84cf3e3b9c1f13a1c534a14a771a4477a4a2a9772dc79e35e9b9111d66e8",
   "js/timings.js": "11b55d6905417abf4ba5fac62e33520005b09bbc0676110320d0121c9f928c74"
  },
- "sig": "1pQCSRFtmT8arTKcLVZlWG1xRGOjufxo9r1fQXAQbAZvyFjjvp6jeL/p1KOKdrbEgEMW1ctIHa7R9pIIDeixAA=="
+ "sig": "uGk9wOUJ/tf/y/UkMQ4FQS91MZNODd+CXXO/KFYI89KJ9svdDFY27awVHvD0WSz2TJKxRWf+JLqJduQYxaMLDw=="
 }
