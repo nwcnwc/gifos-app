@@ -9,9 +9,9 @@
 ## Meetings for AI agents
 
 GifOS Meet is free browser video meetings at https://meet.gifos.app (the same
-as https://gifos.app/meet). There are two kinds of meeting, named on screen
-"Start a public open-floor meeting" (anyone with the link joins; everyone inside can set the password, and anyone with a $5+ plan can take over as host while they're connected) and
-"Host a private meeting" (a private, hosted meeting: the host has a host
+as https://gifos.app/meet). There are two kinds of meeting, named on the
+lobby's tabs "Open" (a public open-floor meeting: anyone with the link joins; everyone inside can set the password, and anyone with a $5+ plan can take over as host while they're connected) and
+"Host" ("Host a private meeting" on the Invite sheet; a private, hosted meeting: the host has a host
 password and can lock the room and remove people). To host or run meetings
 with a bot (welcome bot, scheduled meetings, public open-floor meetings,
 private meetings, room passwords, transcripts), install the MCP server from
@@ -24,7 +24,7 @@ answers them for your provider.
 An agent that can run code (Node 20+ and Chrome) can take part in a meeting
 with the agent SDK, https://github.com/nwcnwc/gifos-agent: chat, speech,
 hand, Stage, its own camera, and frames of other people's cameras. Install it
-with `npm install github:nwcnwc/gifos-agent`. An agent that works in a shell
+with `npm install @gifos-app/agent` (Python: `pip install gifos-agent`). An agent that works in a shell
 keeps one `npx gifos-agent-bridge <meeting link> --name "Ada (Sam's assistant)"`
 process in the meeting and talks to it through files (the SDK README has it).
 
@@ -35,7 +35,7 @@ any app .gif they upload can be remixed (see "Modding" below). This
 document is the complete guide: the packing recipe, the app rules, the
 full manifest reference, and the complete window.gifos API — every
 signature and return shape below is taken from the running runtime
-(site/js/runtime.js in the public repo), not paraphrased.
+(js/runtime.js in the public repo), not paraphrased.
 
 Two build paths, in order of preference:
 
@@ -96,7 +96,7 @@ it builds, so whoever unpacks one already has the recipe, the manifest
 reference and the API — no hunt for docs before they can mod it. Do the
 same: add {"llms.txt": open("llms.txt").read()} (fetch it if you have
 network, or write out the parts of this document you were given) to the
-files you pack. It costs about 11 KB compressed.
+files you pack. It costs about 24 KB compressed.
 
 ## Path B (fallback): hand the user HTML to paste
 
@@ -147,10 +147,9 @@ a .zip for multi-file apps). GifOS packs the GIF there.
    (P2P, permanent room links, moderation, room passwords) — and note that
    ANY app can be RUN INSIDE a Meeting, so all participants share it live
    with audio/video around it without the app touching the camera.
-   The same page also starts a Broadcast (one host on the stage, everyone
-   else watches and chats) and a Town hall (a meeting you host where people
-   with the link watch off camera, ask questions, and come on stage when the
-   host calls them up). Meeting captions can be turned on, and a transcript
+   The Broadcast app (https://gifos.app/cast, the same meeting page) starts
+   a Broadcast (one host on the stage, everyone else watches and chats).
+   Meeting captions can be turned on, and a transcript
    is kept on the device by default or shared with the room. None of this changes
    what an app can do.
 9. Every gifos.* call can REJECT — the user can turn any declared capability
@@ -427,7 +426,7 @@ MOTION  [capabilities.motion]
    Handles the iOS permission dance; returns an unsubscribe function.
 
 AI — gifos.ai  [capabilities.ai — declare the ROLES you use as an array]
-   The user wires each role in Settings -> AI models: any OpenAI-compatible
+   The user wires each role in Settings -> AI: any OpenAI-compatible
    endpoint + key, OR an installed Provider app that answers on-device. The
    app never sees a key and cannot tell the two apart.
    await gifos.ai.models() -> { available: ['cheapest','tts',...] }
@@ -472,7 +471,7 @@ PAYMENTS — gifos.charge / entitled / license  [capabilities.pay]
      handle quietly, not an error to show. Also rejects: unsigned or
      tampered app, sku not priced in the manifest or amount not its
      price, sku already bought, amount over the person's per-app ceiling
-     (default $20), no method available right now.
+     (default $25), no method available right now.
    appId must be plain ([A-Za-z0-9_.-], <= 64) — a paying app needs one.
    A purchase belongs to (the SIGNER that was paid, appId, sku). Re-sign
    the app under another identity and its earlier purchases do not
@@ -513,7 +512,7 @@ PAYMENTS — gifos.charge / entitled / license  [capabilities.pay]
 THIRD-PARTY APIs — gifos.api  [capabilities.api: ["<name>", ...]]
    For ANY keyed API that isn't OpenAI-shaped (Deepgram, MapTiler, a
    trading API...). The user configures each name in Settings ->
-   Third-party APIs (base URL + auth scheme + key); the runtime attaches
+   Connected accounts (base URL + auth scheme + key); the runtime attaches
    the credential, PINS the request to that API's own host (an off-host
    path is refused), and the app never sees the key.
    await gifos.api('deepgram', {
@@ -765,8 +764,8 @@ app's shared state. The host chooses the link lifetime (dies-on-close /
 
 A manifest with "provides" names a PROVIDER: install the GIF, and the
 user's computer gains an AI ability every other app can use — an on-device
-TTS voice, a local LLM. The user assigns it to a role in Settings -> AI
-models; every app's gifos.ai.* then gets answers from it, on-device, no
+TTS voice, a local LLM. The user assigns it to a role in Settings -> AI;
+every app's gifos.ai.* then gets answers from it, on-device, no
 key, nothing leaving the browser.
 
    "provides": { "ai": ["tts"] }     // roles: smartest, cheapest, tts,
@@ -910,7 +909,18 @@ Any GifOS app GIF can be SIGNED so recipients see "Signed by <domain>" or
 signing. The user signs it themselves at https://gifos.app/sign.html,
 AFTER the GIF is final:
 - domain: an Ed25519 key generated on that page; they publish the public
-  half at https://<their-domain>/gifos.key.
+  half (one line of base64) in EITHER place, and one is enough:
+    file:   https://<their-domain>/gifos.key, served as plain text with
+            the header Access-Control-Allow-Origin: * and no redirect;
+    or DNS: a TXT record named _gifos.<their-domain> whose value is that
+            same line (no prefix; it fits one TXT string, and a value split
+            into several strings is joined). Pick DNS when they cannot set
+            headers on their web server.
+  Verifiers read both straight from the domain and from public
+  DNS-over-HTTPS (Cloudflare, Google), never through a GifOS server. If
+  both are published, keep them the same key (a rotation may list the old
+  and the new key as two TXT records); a key in either place that signed
+  the GIF makes it "Signed by" the domain.
 - email: their own PGP key (gpg detach-signs a statement the page
   provides) — Ed25519 and RSA (2048+) keys both work; recipients verify
   against keys.openpgp.org, so the key must be uploaded there with the

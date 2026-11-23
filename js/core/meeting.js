@@ -19222,6 +19222,10 @@
     function subsJoin() {
       if (!subsOn()) return;
       GifOS.meetSubs.joinMeeting(subsMeetId(), {
+        // The room's name as this person sees it and how many are in it: kept in this browser's memory of the meetings its
+        // plan powers, so a later "move your plan here?" can name this one (the payment service never learns names).
+        name: () => String(params.get('v') || '').replace(/\s+/g, ' ').trim() || null,
+        people: () => { try { return participantCount() || null; } catch (e) { return null; } },
         onTicket: () => { if (amAdmin && !!av) subsPublishRoomPlan(); turnSubAt = 0; capMineCheck().catch(() => false).then(() => capTicketPublish(true)); try { (0, /*()*/__V.capPaint)(); } catch (e) {} },   // a captor re-presents each renewed ticket   // a fresh ticket is a fresh TURN vouch: say it at the next step
         onPass: () => { if (amAdmin && !!av) subsPublishRoomPlan(); turnSubAt = 0; capMineCheck().catch(() => false).then(() => capTicketPublish(true)); try { (0, /*()*/__V.capPaint)(); } catch (e) {} },   // a pass bought, started, renewed or ended: the room's plan, the TURN vouch and a pass captor's ticket now
         onLost: (why) => {

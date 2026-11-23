@@ -7415,7 +7415,12 @@ The Store itself does not keep a shopping cart in this icon.
     const enc = (a) => Promise.resolve(iconFor(a))
       .catch(() => null)
       .then((preview) => gif.encode(a.files, { accent: a.accent, preview }))
-      .then((bytes) => ({ name: a.name, appId: a.appId, accent: a.accent, bytes }));
+      .then((bytes) => ({ name: a.name, appId: a.appId, accent: a.accent, bytes, system: systemOf(a) }));
+    // manifest.system of a built-in (Meeting, Broadcast, App Store), so the Home
+    // Screen can open its page without reading the GIF back.
+    function systemOf(a) {
+      try { const m = JSON.parse(a.files['manifest.json']); return typeof m.system === 'string' ? m.system : null; } catch (e) { return null; }
+    }
 
     // Collection visibility (the sharing axis). An UNDECLARED collection is
     // private, so every app that means to share state must say so:

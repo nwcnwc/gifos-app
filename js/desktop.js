@@ -118,7 +118,7 @@
     '   Attach the resulting "My App.gif" for me to download. Remember: when the host GIF is mine, the result still looks and animates EXACTLY like my original everywhere — that is the point.',
     'B. If you cannot run code: reply with a complete single-file index.html in a ```html code block (the paste box takes one file; multi-file needs a .zip) and tell me to paste it into GifOS → ＋ Add → the app builder.',
     '',
-    'SIGNING (optional, recommended when I plan to share the app): after delivering the .gif, mention that I can sign it at https://gifos.app/sign.html with my domain (publishes a key at https://mydomain/gifos.key) or my email (my own PGP key via keys.openpgp.org — Ed25519 or RSA), so everyone who receives it sees "Signed by me" — and tampering is detected. Signing is done BY ME on that page, after the GIF is final. NEVER ask for my private key.',
+    'SIGNING (optional, recommended when I plan to share the app): after delivering the .gif, mention that I can sign it at https://gifos.app/sign.html with my domain (publishes a key at https://mydomain/gifos.key or in a DNS TXT record _gifos.mydomain) or my email (my own PGP key via keys.openpgp.org — Ed25519 or RSA), so everyone who receives it sees "Signed by me" — and tampering is detected. Signing is done BY ME on that page, after the GIF is final. NEVER ask for my private key.',
     'IDENTITY (manifest "shortName" and "version"): set "shortName" to a compact label (≤ ~20 chars, e.g. "Chess" for "Chess Grandmaster") and "version" to a short string like "1.0" or "2.3". On the Home Screen the shortName becomes the tile\'s NAMEPLATE, taking the place of the filename entirely — a tidy tile shows the name you signed, not whatever the file was saved as — and the version rides the tile\'s "new" pill until the app is first used, then bows out. Both appear again in the app\'s runtime header. ALL OF THIS ONLY ONCE THE APP IS SIGNED: an unsigned GIF could claim any name, so GifOS never vouches for one, and its tile just shows the filename. Bump "version" whenever you ship a change.',
     '',
     'MODDING IS ENCOURAGED: if I hand you an EXISTING GifOS app .gif and ask for changes, do not rebuild from scratch — extract its files, apply my changes, and splice them back into the SAME GIF so its animation and my saved data survive. To extract (Python): find b"\\x21\\xff\\x0bGIFOS1.0GOS" in the bytes; after those 14 header bytes read length-prefixed sub-blocks until a zero byte; the joined payload (skipping its first flag byte) is raw-deflate JSON {"files": {path: base64}}. Cut that whole block out of the GIF, modify the files, keep every ".state/…" entry unchanged (my data), then run pack_gifos on the remaining bytes. Cut out any "GIFOSSIG" block the same way — a mod is a new work I can re-sign.',
@@ -275,7 +275,7 @@
   async function putDefaultApp(a, parent, pos) {
     const fileId = store.uid('file');
     await store.putFile({ id: fileId, name: a.name, bytes: a.bytes, kind: 'gif',
-      isApp: true, appId: a.appId, accent: a.accent, mime: 'image/gif', isDefault: true });
+      isApp: true, appId: a.appId, accent: a.accent, mime: 'image/gif', isDefault: true, system: a.system || null });
     await saveItem({ id: store.uid('item'), kind: 'file', fileId, name: a.name,
       parent: parent || null, x: pos.x, y: pos.y, iconSize: 64 }, { at: pos });
   }
@@ -396,7 +396,7 @@
       seenAppIds.add(f.appId);
       const r = retired[f.appId];
       if (r && f.isDefault === true) {
-        await store.putFile(Object.assign({}, f, { bytes: r.bytes, accent: r.accent, appId: r.appId, isDefault: true }));
+        await store.putFile(Object.assign({}, f, { bytes: r.bytes, accent: r.accent, appId: r.appId, isDefault: true, system: r.system || null }));
         updated++;
         continue;
       }
@@ -409,7 +409,7 @@
       // in says nothing about who wrote the bytes. putDefaultApp has always
       // written isDefault: true, so the flag is the whole test.
       if (f.isDefault !== true) continue;
-      await store.putFile(Object.assign({}, f, { bytes: a.bytes, accent: a.accent, isDefault: true }));
+      await store.putFile(Object.assign({}, f, { bytes: a.bytes, accent: a.accent, isDefault: true, system: a.system || null }));
       updated++;                                         // code swapped in place; the app's saved data (by fileId) is untouched
     }
 
@@ -1091,6 +1091,11 @@
       // Stash what openItem needs to decide SYNCHRONOUSLY (in the tap gesture) —
       // an app GIF must open without an await first, or iOS blocks the tab.
       it._isApp = !!(files[i] && files[i].isApp && files[i].kind === 'gif');
+      // A BUILT-IN system app (Meeting, Broadcast, App Store) is a launcher for
+      // a first-party page: openItem opens that page itself, so the tab never
+      // has to find the GIF in storage first (a first visit on an iPhone hit
+      // "This app isn't on this device" on Meeting when that lookup missed).
+      it._sysPage = (arts[i] && arts[i].isDefault === true && arts[i].system) ? gif.systemPage(arts[i].system, store.dbName) : null;
       const key = iconKey(it, files[i], fresh[i], metas[i], !!arts[i]) + (mirrors[i] ? '|mir' : '');
       let entry = iconCache.get(it.id);
       if (!entry || entry.key !== key) {
@@ -1840,6 +1845,7 @@
     // open it SYNCHRONOUSLY in the tap gesture. iOS/WebKit blocks window.open()
     // after any await, which is why double-tap and "Open" did nothing on iPhone.
     // (render() stashed it._isApp so we don't need to read the file first here.)
+    if (it._sysPage) { root.open(it._sysPage, '_blank'); return; }
     if (it._isApp) {
       root.open('run.html#id=' + encodeURIComponent(it.fileId) + nsParam('&db='), '_blank');
       return;
@@ -3503,7 +3509,7 @@
   // storage of its own. localStorage is deliberate: the desktop backup GIF
   // packs IndexedDB and nothing else, so none of this can travel in a share.
   const PAY_POLICY_KEY = 'gifos_pay_policy';
-  const PAY_DEFAULT_MAX = '20000000'; // $20 per charge — keep in step with gifos-pay-broker.js
+  const PAY_DEFAULT_MAX = '25000000'; // $25 per charge — keep in step with gifos-pay-broker.js
   function payUsd(units) {
     try { const c = BigInt(units) / 10000n; return '$' + (c / 100n) + '.' + String(c % 100n).padStart(2, '0'); } catch (e) { return '$?'; }
   }

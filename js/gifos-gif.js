@@ -1121,8 +1121,25 @@
     return w.done();
   }
 
+  // WHERE A SYSTEM APP RUNS. Meeting, Broadcast and the App Store are
+  // launchers for trusted first-party pages (manifest.system): live media and
+  // installs are impossible from the app sandbox. The table is shared by the
+  // runtime (which hops an opened system GIF to its page) and the Home Screen
+  // (which opens a built-in system app's page directly, so a built-in never
+  // depends on a store lookup in the tab it opens). Whitelist only: a manifest
+  // cannot route to an arbitrary URL. Null for anything else.
+  // 'video' = pre-rename seeds; 'broadcast' = the meet page's broadcast skin.
+  const SYSTEM_PAGES = { meet: 'run.html', video: 'run.html', broadcast: 'run.html#bc=1', store: 'store.html' };
+  function systemPage(system, dbName) {
+    if (typeof system !== 'string' || !Object.prototype.hasOwnProperty.call(SYSTEM_PAGES, system)) return null;
+    // The store installs INTO a computer, so it has to land on the one this
+    // app was opened from: a booted computer image keeps its own namespace.
+    const ns = (system === 'store' && dbName && dbName !== 'gifos') ? '?db=' + encodeURIComponent(dbName) : '';
+    return SYSTEM_PAGES[system] + ns;
+  }
+
   GifOS.gif = {
-    encode, decode, repack, embed, looksLikeGifosGif, readManifest, readManifestFrom, readFilesFrom,
+    encode, decode, repack, embed, looksLikeGifosGif, readManifest, readManifestFrom, readFilesFrom, systemPage,
     b64encode, b64decode, textToBytes, bytesToText,
     findAppExtSpan, appExtBlock, stripForDisplay,
     setRemixDoc, REMIX_DOC, inflateMaxBytes, inflate,
