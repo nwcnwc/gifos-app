@@ -14020,8 +14020,26 @@
           // (lateMedia). A held, disabled camera keeps the camera light on.
           const wantMic = typeof joinAvChoice !== 'undefined' && joinAvChoice && joinAvChoice.mic;
           const bothOff = !bootWantsCamera() && !wantMic;
+          // A MUTED PERSON HOLDS A SILENT MIC. Desktop browsers float a meeting
+          // into picture-in-picture when its tab is hidden only while the tab is
+          // capturing, so a quiet join with no device open never floated. When
+          // this site already has the microphone permission (the person allowed
+          // it before), the quiet join opens the mic DISABLED: it sends silence,
+          // the Mic button stays red, and unmuting is a plain switch. Without that
+          // permission nothing is asked (no prompt on a quiet join), and a mic that
+          // cannot be opened leaves the join quiet and silent, as before.
+          let quietHold = false;   // the stream is that silent mic alone: it turns nothing on
+          const micAllowed = () => {
+            try {
+              const pq = navigator.permissions;
+              if (!pq || typeof pq.query !== 'function') return Promise.resolve(false);
+              return pq.query({ name: 'microphone' }).then((s) => !!s && s.state === 'granted', () => false);
+            } catch (e) { return Promise.resolve(false); }
+          };
           const gum = bothOff
-            ? Promise.resolve(null)
+            ? ((md && md.getUserMedia)
+              ? micAllowed().then((ok) => ok ? (0, /*()*/__M.gumWithMicFallback)(md, { audio: true }).then((r) => { quietHold = !!r.stream; return r.stream || null; }, () => null) : null)
+              : Promise.resolve(null))
             : (md && md.getUserMedia)
             ? (0, /*()*/__M.gumWithMicFallback)(md, bootWantsCamera() ? { video: (0, /*()*/__M.camVideoConstraints)(), audio: true } : { audio: true }).then((r) => {
               if (r.camErr) { try { window.__gumBootNoCam = r.camErr.name || String(r.camErr); } catch (e) {} } // harness breadcrumb: mic-only boot, and why
@@ -14065,7 +14083,7 @@
             try { goLiveLevel = goLiveStoredLevel(false); } catch (e) {}
             // A host who was on the air when an update reloaded this tab comes
             // back on the air: the camera and mic as they were sending.
-            const air = typeof updateAir === 'function' ? updateAir() : null;
+            const air = !quietHold && typeof updateAir === 'function' ? updateAir() : null;
             if (air) {
               const cam = localStream.getVideoTracks()[0], mic = localStream.getAudioTracks()[0];
               if (air.cam && cam && !(typeof forcedCamOff === 'function' && forcedCamOff('me'))) { cam.enabled = true; myStatus.camOff = false; }
