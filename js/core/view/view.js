@@ -8384,7 +8384,7 @@
       };
       paintTranscriptControls();
     }
-    yield 2613;
+    yield 2616;
     // CC only shows or hides captions on this screen. The More button and the
     // dock button are one switch.
     function paintCcView() {
@@ -8406,9 +8406,9 @@
         for (let i = 0; i < caps.length; i++) caps[i].classList.remove('show');
       }
     }
-    yield 2616;
+    yield 2619;
     const ccDockBtn = document.getElementById('ccdock');
-    yield 2629;
+    yield 2632;
     document.getElementById('trdl').onclick = () => {
       const f = (0, /*()*/__M.transcriptFile)();
       const a = document.createElement('a');
@@ -8417,9 +8417,9 @@
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     };
-    yield 2634;
+    yield 2637;
     const recBtn = document.getElementById('recbtn');
-    yield 2649;
+    yield 2652;
     function showRecReplay(saved) {
       const old = document.getElementById('rec-replay');
       if (old) old.remove();
@@ -8540,7 +8540,7 @@
       };
       bg.querySelector('#se-leave').onclick = () => { bg.remove(); (0, /*()*/__M.recRelease)(saved); (0, /*()*/__C.leaveSeededService)(); };
     }
-    yield 2680;
+    yield 2683;
     function showRecOptions() {
       if (__M.recStarting) return;
       if (document.getElementById('rec-options')) return;
@@ -8612,7 +8612,7 @@
         close();
       };
     }
-    yield 2684;
+    yield 2687;
     // A sideways phone puts Live and Record in a column left of the dock
     // and steps the dock right if the column needs the room. Live (a
     // broadcast) makes the column taller than the dock, and a dragged dock
@@ -8704,7 +8704,7 @@
     if (ccWatch) callStateWatch.observe(ccWatch, { attributes: true, attributeFilter: ['class'] });
     const lobWatch = document.getElementById('lobby');
     if (lobWatch) callStateWatch.observe(lobWatch, { attributes: true, attributeFilter: ['class'] });
-    yield 2695;
+    yield 2698;
 
     // ---- popovers that hang off the dock (More, Reactions) ---------------------
     // The dock can be dragged anywhere, so a popover is placed from where the
@@ -9510,7 +9510,7 @@
       // dialog closes) still ends: look once a second, softly.
       setInterval(() => { try { syncChrome(true); } catch (e) {} }, 1000);
     })();
-    yield 2707; // 0.9.23b: calm after 3 s
+    yield 2710; // 0.9.23b: calm after 3 s
     (function () {
       document.body.classList.toggle('desk-ptr', !__C.IS_MOBILE);
       (0, /*()*/__C.applyPageHeader)(); // Meet's manifest says auto-hide; an app's manifest can say otherwise
@@ -9562,7 +9562,7 @@
         if (head !== document.body.classList.contains('head-calm')) document.body.classList.toggle('head-calm', head);
       }, 250);
     })();
-    yield 2714;
+    yield 2717;
     // The burst over a tile (or the service stage). The stylesheet owns the
     // 1.6 s fade, so a second tap starts it again without a timer here.
     function flashReactBurst(parent, label) {
@@ -9574,7 +9574,7 @@
       void burst.offsetWidth;
       burst.classList.add('show');
     }
-    yield 2721;
+    yield 2724;
     function takeFaceReact(emoji, fromId) {
       emoji = String(emoji || '');
       if (__C.AUDIENCE_REACTS.indexOf(emoji) < 0) return false;
@@ -9589,12 +9589,12 @@
       if ((0, /*()*/__C.faceDrawnHere)(who) && typeof __M.schedReconcile === 'function') { (0, /*()*/__M.schedReconcile)(); setTimeout(__M.schedReconcile, __C.FACE_REACT_MS + 60); }
       return true;
     }
-    yield 2724;
+    yield 2727;
     function sendFaceReact(emoji) {
       if (__C.myId && takeFaceReact(emoji, __C.myId)) (0, /*()*/__C.sendFaceFrame)(emoji);
       else flashReactBurst(document.querySelector('.tile.me'), emoji);
     }
-    yield 2726;
+    yield 2729;
     function paintAudienceReacts() {
       const host = document.getElementById('bc-reacts');
       if (!host) return;
@@ -9635,7 +9635,7 @@
       clearTimeout(__C.audienceReactFade);
       if (soon < Infinity) __C.audienceReactFade = setTimeout(paintAudienceReacts, Math.max(0, soon - now) + 40);
     }
-    yield 2730;
+    yield 2733;
     (function () {
       const btn = document.getElementById('reactbtn');
       const tray = document.getElementById('reacttray');
@@ -9691,7 +9691,7 @@
         } else sendFaceReact(label);
       });
     })();
-    yield 2734;
+    yield 2737;
     function armMeetDialogs() {
       const modals = document.querySelectorAll('.name-modal');
       for (const el of modals) {
@@ -9732,7 +9732,7 @@
       });
       for (const el of modals) obs.observe(el, { attributes: true, attributeFilter: ['style'] });
     }
-    yield 2736;
+    yield 2739;
 
     function paintControls() {
       // mic — one labeled control. The word is the action. There is no header Unmute pill.
@@ -9797,7 +9797,7 @@
       bar.hidden = !show;
       bar.className = show ? 'on' : '';
     }
-    yield 2759;
+    yield 2762;
     // THE SPEAKER CHOICE in More: only where a page can move the sound
     // (speakerChoices: setSinkId and more than one output). It opens the mic
     // pop-up's own element with the speaker rows alone.
@@ -9805,11 +9805,11 @@
       const b = document.getElementById('spkbtn');
       if (b) b.hidden = !(0, /*()*/__M.speakerChoices)().length;
     }
-    yield 2790;
+    yield 2793;
     // ? lists the keys that work for this person right now (a viewer has
     // no mic or camera on the dock, so M and V are left out).
     const keysModal = document.getElementById('keys-modal');
-    yield 2792;
+    yield 2795;
     document.getElementById('keys-close').onclick = () => { keysModal.style.display = 'none'; };
     // One shortcut list: ? and Help's Keys open the same localized sheet
     // (toggleShortcutSheet); this older list stays for a caller that asks.
@@ -9826,7 +9826,7 @@
       __M.camDeviceId = '';
       (0, /*()*/__M.regrabCamera)('flip');
     };
-    yield 2796;
+    yield 2799;
     function wireMediaSession() {
       const ms = navigator.mediaSession; if (!ms || !ms.setActionHandler) return;
       const wire = (action, fn) => { try { ms.setActionHandler(action, fn); } catch (e) { /* action unsupported here */ } };
@@ -9847,7 +9847,7 @@
       wire('enterpictureinpicture', () => { pipNote('ms-action'); awayFull(true); enterPip(false, true); });
       (0, /*()*/__C.updateMediaSession)();
     }
-    yield 2800;
+    yield 2803;
     function blurNote(text) {
       const el = document.getElementById('blurnote');
       if (!el) return;
@@ -9856,7 +9856,7 @@
       el.hidden = !text;
       if (text) __C.blurNoteTimer = setTimeout(() => { el.hidden = true; el.textContent = ''; }, __C.BLUR_NOTE_MS);
     }
-    yield 2807;
+    yield 2810;
     function canSetRoomPw() {
       const pwb = document.getElementById('pwbtn');
       return !!pwb && !pwb.disabled;
@@ -9914,7 +9914,7 @@
       const whyDlg = document.getElementById('blurwhy-modal');
       if (!(whyDlg && whyDlg.style.display !== 'none')) blurNote(why);
     }
-    yield 2814;
+    yield 2817;
     // Each choice is an explicit pick. A lobby or Go live opener supplies
     // then(); the dock pick turns the camera on at that level.
     const camChooserEl = document.getElementById('camchooser');
@@ -9953,7 +9953,7 @@
     // non-admin in the room, linked to me or not, and everyone who joins while
     // it stands; turning it off lifts it for all of them at once.
     const blurAllBtn = document.getElementById('blurall');
-    yield 2822;
+    yield 2825;
     function updateBlurAllBtn() {
       blurAllBtn.style.display = __C.amAdmin ? '' : 'none';
       for (const li of document.querySelectorAll('#shortcutsheet .hostkey')) li.hidden = !__C.amAdmin; // the host keys are listed for a host only
@@ -9972,7 +9972,7 @@
     // "Video off" (admin) — the harder hammer: kills every guest's camera
     // room-wide, not just blurs it. The same one room-wide order, modTable['*'].cam.
     const camAllBtn = document.getElementById('camall');
-    yield 2826;
+    yield 2829;
     function updateCamAllBtn() {
       camAllBtn.style.display = __C.amAdmin ? '' : 'none';
       if (!__C.amAdmin) return;
@@ -9991,7 +9991,7 @@
     // receiver drops a muted guest's voice (modOf), and an honest guest's mic
     // locks until an admin lifts it, for one guest from the tile or for all here.
     const muteAllBtn = document.getElementById('muteall');
-    yield 2830;
+    yield 2833;
     function updateMuteAllBtn() {
       muteAllBtn.style.display = __C.amAdmin ? '' : 'none';
       if (!__C.amAdmin) return;
@@ -10011,7 +10011,7 @@
     // it is later, so one guest can be stopped while the room is allowed, or
     // allowed while the room is not.
     const shareAllBtn = document.getElementById('shareall');
-    yield 2834;
+    yield 2837;
     function updateShareAllBtn() {
       if (!shareAllBtn) return;
       shareAllBtn.style.display = __C.amAdmin ? '' : 'none';
@@ -10027,7 +10027,7 @@
       updateShareAllBtn();
       (0, /*()*/__C.setStatus)(on ? 'Guests may share their screen.' : 'Guests can no longer share their screen.');
     };
-    yield 2850; // null | 'up' | 'down' | 'kick'
+    yield 2853; // null | 'up' | 'down' | 'kick'
     function setVoteMode(m) {
       __C.voteMode = m;
       for (const k of ['up', 'down', 'kick']) document.body.classList.toggle('vm-' + k, __C.voteMode === k);
@@ -10084,7 +10084,7 @@
         }
       }
     }
-    yield 2854;
+    yield 2857;
     let closeVoteModal = () => { const m = document.getElementById('vote-modal'); if (m) m.style.display = 'none'; };
     document.getElementById('votebtn').onclick = () => {
       const m = document.getElementById('vote-modal');
@@ -10097,7 +10097,7 @@
     for (const el of document.querySelectorAll('#vote-modal .voteopt')) {
       el.onclick = () => { closeVoteModal(); setVoteMode(el.dataset.vm); };
     }
-    yield 2860;
+    yield 2863;
     function topNameModal() {
       let top = null;
       for (const el of document.querySelectorAll('.name-modal')) {
@@ -10106,7 +10106,7 @@
       }
       return top;
     }
-    yield 2863;
+    yield 2866;
     function syncModalFocus() {
       const top = topNameModal();
       if (top && top !== __C.modalTracked) {
@@ -10241,7 +10241,7 @@
       if (el.getAttribute('role') !== 'alertdialog') el.setAttribute('role', 'dialog');
       el.setAttribute('aria-modal', 'true');
     }
-    yield 2870;
+    yield 2873;
     // ---- Invite: the one place every meeting link is made ----------------------
     // A meeting's room IS its URL and is host-less, so "sharing" is handing out
     // the link you already hold. The ONE governance choice is open vs a room you
@@ -10253,7 +10253,7 @@
     // button is now sign-in + bans, and shows only inside an admin room.
     const invModal = document.getElementById('inv-modal');
     let closeInvModal = () => { invModal.style.display = 'none'; };
-    yield 2873;
+    yield 2876;
     function shareMeetingLink(btn) {
       const url = (0, /*()*/__C.viewerShareUrl)();
       if (!url) return;
@@ -10298,7 +10298,7 @@
       }
       return (shareUrl && shareUrl.value) || '';
     }
-    yield 2876;
+    yield 2879;
     function showInviteModal() {
       const body = document.getElementById('inv-body');
       const others = Math.max(0, (0, /*()*/__M.displayCount)() - 1);
@@ -10461,12 +10461,12 @@
       }
       closeInvModal = (0, /*()*/__M.openModal)(invModal, () => { invModal.style.display = 'none'; });
     }
-    yield 2888;   // the subscription code is loaded (always on)
+    yield 2891;   // the subscription code is loaded (always on)
     // The Subscription entry in More (Settings and help): opens the Subscription dialog.
     { const sb = document.getElementById('subbtn'); if (sb) sb.addEventListener('click', () => { if (window.GifOS && GifOS.meetSubs && GifOS.meetSubs.openSubscribe) GifOS.meetSubs.openSubscribe(); }); }
-    yield 2914;   // DEBUG=on only: a test reads the re-knock state
+    yield 2917;   // DEBUG=on only: a test reads the re-knock state
     function hideDialogs(ids) { for (const id of ids) { const d = document.getElementById(id); if (d) d.style.display = 'none'; } }
-    yield 2925;
+    yield 2928;
     function paintBcCalendar(show) {
       const a = document.getElementById('bc-cal');
       if (!a) return;
@@ -10527,7 +10527,7 @@
       setTimeout(() => { if (btn.textContent === 'Copied') btn.textContent = 'Copy'; }, 1600);
     };
     document.getElementById('closed-reload').onclick = () => location.reload();
-    yield 2951;
+    yield 2954;
     const leaveBtn = document.getElementById('leavebtn');
     const leaveAsk = document.getElementById('leave-ask');
     // A small group leaves on the red button. leaveMeeting() is already
@@ -10545,7 +10545,7 @@
     if (leaveCancel) leaveCancel.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'none'; try { (0, /*()*/__C.releaseLeaveAsk)(); } catch (e) {} };
     const leaveGo = document.getElementById('leave-go');
     if (leaveGo) leaveGo.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'none'; (0, /*()*/__C.leaveMeeting)(); };
-    yield 2959;
+    yield 2962;
     function shortcutBlocked() {
       for (const el of document.querySelectorAll('.name-modal')) {
         if (!el.isConnected || el.style.display === 'none') continue;
@@ -10553,7 +10553,7 @@
       }
       return false;
     }
-    yield 2961;
+    yield 2964;
     // The control an Alt chord presses, or null when that chord does nothing
     // for this person right now.
     function shortcutTarget(id) {
@@ -10627,7 +10627,7 @@
       e.preventDefault();
       btn.click();
     });
-    yield 2971;
+    yield 2974;
     const leftRejoin = document.getElementById('left-rejoin');
     if (leftRejoin) leftRejoin.onclick = () => {
       let to = null;
@@ -10694,7 +10694,7 @@
     // its own tab — including when you JOIN a meeting where someone shares an app.
     // Closing a REQUIRED-setup gate here stops the shared app rather than the tab.
     if (window.GifOS && GifOS.perms) GifOS.perms.attach(document.getElementById('appperms'), { onLeave: function () { (0, /*()*/__C.stopApp)(); }, skipCaps: function () { return __C.appMode === 'client' ? ['stage'] : []; } });
-    yield 2987;
+    yield 2990;
     // Also driven by the app-room beat below, so a copy that STOPS (the holder
     // left mid-transfer) stops claiming to be in progress.
     function appCopyPaint() {
@@ -10737,7 +10737,7 @@
         ? 'Unpacking it on this device.'
         : 'About ' + mb.toFixed(1) + ' MB crossing from someone already in the room — it comes over once, then it is yours.';
     }
-    yield 2994;
+    yield 2997;
 
     // ---- THE TAB'S ICON ------------------------------------------------
     // This page is the MEETING page wearing the runner's hat, so its <head>
@@ -10857,7 +10857,7 @@
     function refreshStealBtn() {
       document.getElementById('appsteal').style.display = (__C.ROOM.kind === 'app' && __C.appMode === 'client') ? '' : 'none';
     }
-    yield 3006;
+    yield 3009;
     function openAppHelp() {
       if (!(__C.soloCtl || __C.appHostCtl || __C.appClientCtl) && !__C.ROOM.solo) { openMeetHelp(); return; }
       const H = window.GifOS && GifOS.help;
@@ -11016,7 +11016,7 @@
       const d2 = mk((0, /*()*/__C.uiText)('stealJoined', 'as I joined'), (0, /*()*/__C.uiText)('stealJoinedTip', 'The app and the room as it stood when you came in'), 'connect');
       const d1 = mk((0, /*()*/__C.uiText)('stealData', '+ data'), (0, /*()*/__C.uiText)('stealDataTip', 'The app and everything in it right now'), 'current');
     };
-    yield 3018;
+    yield 3021;
     function clearAppView(why) {
       (0, /*()*/__C.appEv)('clear', { why: why || 'unstated' });
       if (__C.appClientStop) { try { (0, /*()*/__C.appClientStop)(); } catch (e) {} __C.appClientStop = null; }
@@ -11032,11 +11032,11 @@
       const ap = document.getElementById('appperms'); if (ap) ap.style.display = 'none';
       __C.appMode = null; __C.appKey = null;
     }
-    yield 3027;
+    yield 3030;
     // Converge THIS phone's app view onto whatever the room is sharing. Runs on
     // every status tick and on peer departure, so it self-heals like the mesh.
     function paintAppWho(text) { document.getElementById('appwho').textContent = text; }
-    yield 3038;
+    yield 3041;
     // Keep the app buttons honest about what a tap will do.
     function updateAppButtons(want) {
       const isMine = !!(__C.myStatus.app && __C.appKey === __C.myStatus.app.s);
@@ -11099,7 +11099,7 @@
         : (0, /*()*/__C.uiText)('barCommunalStatus', '🧩 Communal control — anyone here can drive the shared app.'));
     };
     document.getElementById('app-cancel').onclick = () => { document.getElementById('app-modal').style.display = 'none'; };
-    yield 3048;
+    yield 3051;
     function appStageAskClose() { const el = document.getElementById('appstage-ask'); if (el) el.remove(); }
     function appStageAsk() {
       if (__C.appStageConsent !== null || document.getElementById('appstage-ask')) return;
@@ -11117,12 +11117,12 @@
       el.append(t, ok, no);
       document.body.appendChild(el);
     }
-    yield 3054;
+    yield 3057;
     window.appStagePlanForTest = __C.appStagePlan;
-    yield 3056;
+    yield 3059;
     // ---- run a GIF app that isn't on this computer (file or link) ----
     function showAddErr(msg) { const el = document.getElementById('app-add-err'); if (!el) return; el.textContent = msg || ''; el.style.display = msg ? '' : 'none'; }
-    yield 3058;
+    yield 3061;
     async function importAndRunGif(bytes, rawName) {
       showAddErr('');
       const r = await (0, /*()*/__C.importGif)(bytes, rawName);
@@ -11130,12 +11130,12 @@
       document.getElementById('app-modal').style.display = 'none';
       (0, /*()*/__C.runApp)(r.fileId, r.name);
     }
-    yield 3063;
+    yield 3066;
     function loadScriptOnce(src) {
       if (!__C.scriptOnce[src]) __C.scriptOnce[src] = new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.onload = () => res(); el.onerror = () => { delete __C.scriptOnce[src]; rej(new Error('load ' + src)); }; document.head.appendChild(el); });
       return __C.scriptOnce[src];
     }
-    yield 3066;
+    yield 3069;
     async function runChoice(c, say) {
       if (c.fileId) { document.getElementById('app-modal').style.display = 'none'; (0, /*()*/__C.runApp)(c.fileId, c.name); return true; }
       say((0, /*()*/__C.uiText)('appInstalling', 'Getting {name}…').split('{name}').join(c.name));
@@ -11145,7 +11145,7 @@
       (0, /*()*/__C.runApp)(r.fileId, r.name);
       return true;
     }
-    yield 3069;
+    yield 3072;
     document.getElementById('app-file').onclick = () => document.getElementById('app-file-input').click();
     document.getElementById('app-file-input').onchange = async (e) => {
       const f = e.target.files && e.target.files[0]; e.target.value = ''; if (!f) return;
@@ -11209,11 +11209,11 @@
       const more = document.createElement('a'); more.className = 'app-empty-link app-empty-store'; more.href = 'store.html'; more.target = '_blank'; more.rel = 'noopener';
       more.textContent = (0, /*()*/__C.uiText)('appEmptyStore', 'Find more apps in the App Store'); list.appendChild(more);
     }
-    yield 3077;
+    yield 3080;
 
     // The bot's eyes (the agent's watch): the page marks itself watched.
     function paintBotEyes(on) { document.body.classList.toggle('bot-eyes', on); }
-    yield 3086;
+    yield 3089;
     function paintAiNotesAdmin() {
       const sel = document.getElementById('adm-ai-notes');
       if (sel) { sel.value = (0, /*()*/__C.aiNotesSetting)(); sel.disabled = !((0, /*()*/__C.hasAdminRoom)() && __C.amAdmin); }
@@ -11236,7 +11236,7 @@
       }
       box.hidden = !n;
     }
-    yield 3101;
+    yield 3104;
     // A canvas for the agent's picture (the page's; a host with no screen has none).
     function newCanvas() { return document.createElement('canvas'); }
     // The bot's own view (#botview): its state, the transcript and the chat.
@@ -11244,10 +11244,10 @@
       const rows = (m) => Array.from(m.values()).filter((l) => l && !/^gb1 /.test(String(l.text || ''))).sort((x, y) => (x.at || 0) - (y.at || 0)).map((l) => ({ name: l.by || '', text: l.text || '' }));
       GifOS.meetAgent.renderBotView(document.getElementById('botview'), Object.assign({}, st, { transcript: rows(__C.trs), chat: rows(__C.chat) }), __C.uiText);
     }
-    yield 3104;
+    yield 3107;
     // The agent contract over the page's postMessage (a host page or extension talks to it); a host with no page has none.
     function bridgeAgentToPage(core) { GifOS.meetAgent.postMessageBridge(core, window); }
-    yield 3106;
+    yield 3109;
     function setBotView(on) {
       on = !!on;
       if (!__C.room) { __C.botViewWant = on; return; }   // the lobby: the meeting's boot turns it on (an Off press there takes it back)
@@ -11267,7 +11267,7 @@
       try { if (__C.pipAimed) { __C.pipAimed.autoPictureInPicture = false; __C.pipAimed = null; } } catch (e) {}
       try { (0, /*()*/__C.sendVisPark)(); } catch (e) {}
     }
-    yield 3108;
+    yield 3111;
     (function wireBotView() {
       const back = document.getElementById('bot-back');
       if (back) back.onclick = () => (0, /*()*/__C.backToNormalView)();
@@ -11315,7 +11315,7 @@
       if (hb) { hb.checked = saved; hb.onchange = () => setHide(hb.checked); }
       if (saved) setHide(true);
     })();
-    yield 3114;
+    yield 3117;
 
     // Test hook: lets the e2e suite observe mesh + quality state.
     // AUDIO-OUT FORENSICS (debugDump audio, read-only): where each voice should leave the page. Every media
@@ -11350,7 +11350,7 @@
         folds, comp, standby: sb,
       };
     }
-    yield 3121;   // chat line ids I posted for the page I carry: never sent back to it
+    yield 3124;   // chat line ids I posted for the page I carry: never sent back to it
     function carryIo(far, l, sendTv, askVouch, guest) {
       return { guest, me: __C.myId, far, l, dev: () => __C.myDevHash, sub: () => (__C.meshNode && __C.meshNode.sub) | 0, sid: () => __C.sessId, sendTv, askVouch,
         ask: GifOS.meetTurn.askIce(window.fetch.bind(window)), webScheme: () => 'wss://', log: __C.turnNote,
@@ -11359,7 +11359,7 @@
         sign: (text) => __C.net.edSign(__C.myIdentity.priv, text).then((sig) => ({ sig, pub: __C.myIdentity.pubB64 })),
         verify: (id, pub, sig, text) => GifOS.meshIdentity.peerIdOf(pub).then((got) => (got === id ? __C.net.edVerify(pub, sig, text) : false)) };
     }
-    yield 3141;
+    yield 3144;
     function dbgMeterShow(on) {
       if (!on) { if (__C.dbgMeterPanel) __C.dbgMeterPanel.remove(); __C.dbgMeterPanel = null; return false; }
       if (!__C.dbgMeterPanel) {
@@ -11369,7 +11369,7 @@
       }
       return true;
     }
-    yield 3145;
+    yield 3148;
     function viewTestHooks(v) {
       Object.assign(v, {
       stadFaceAtForTest: (x, y) => { const w = document.getElementById('stadwhole'); return w ? (0, /*()*/__C.stadFaceIdAt)(w, x, y) : null; },
