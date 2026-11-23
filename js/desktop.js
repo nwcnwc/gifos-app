@@ -3503,7 +3503,7 @@
   // storage of its own. localStorage is deliberate: the desktop backup GIF
   // packs IndexedDB and nothing else, so none of this can travel in a share.
   const PAY_POLICY_KEY = 'gifos_pay_policy';
-  const PAY_DEFAULT_MAX = '20000000'; // $20 per charge — keep in step with gifos-pay-broker.js
+  const PAY_DEFAULT_MAX = '25000000'; // $25 per charge — keep in step with gifos-pay-broker.js
   function payUsd(units) {
     try { const c = BigInt(units) / 10000n; return '$' + (c / 100n) + '.' + String(c % 100n).padStart(2, '0'); } catch (e) { return '$?'; }
   }
