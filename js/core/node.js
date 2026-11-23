@@ -326,8 +326,14 @@ function createMeeting(opts) {
     for (const k of Object.keys(port || {})) g[k] = port[k];
     const PC = g.RTCPeerConnection;
     if (typeof PC === 'function') {
+      // THE MESSAGE CEILING. The core cuts a big frame into 100 KB pieces (gifos-net.js FRAG_PART) because every browser
+      // takes data channel messages of 256 KB (Chrome, Safari) or more (Firefox). A port that declares less in its SDP is
+      // sent nothing bigger: the far browser's send() refuses the piece, the core drops it, and the frame never lands
+      // (werift declares 64 KB by default: a core seat got every small frame but never an app's bytes, so Take Turns
+      // never mounted there). So the host asks the port for the browsers' ceiling; a port without the option ignores it.
+      const BROWSER_MAX_MESSAGE = 262144;
       g.RTCPeerConnection = class RTCPeerConnection extends PC {
-        constructor(...a) { super(...a); pcs.add(this); }
+        constructor(cfg, ...a) { super(Object.assign({ maxMessageSize: BROWSER_MAX_MESSAGE }, cfg || {}), ...a); pcs.add(this); }
         close() { pcs.delete(this); return super.close(); }
       };
       for (const k of Object.getOwnPropertyNames(PC)) if (!(k in g.RTCPeerConnection)) try { g.RTCPeerConnection[k] = PC[k]; } catch (e) {}
