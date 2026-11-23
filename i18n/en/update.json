@@ -23,7 +23,7 @@
   "update.app.updateGifosFirst": "Update GifOS first — move to release {release} or later in <b>{path}</b> — then update the app from the store.",
   "update.app.edgeOnly": "No release has it yet — it is only in the unreleased edge build. Pick <b>{edge}</b> in <b>{path}</b> first, or wait for the next release.",
   "update.app.edgeBuild": "Edge build",
-  "update.app.versionPath": "GifOS ▾ → Settings → Advanced → Version",
+  "update.app.versionPath": "GifOS ▾ → Settings → System → Updates",
   "update.app.available": "<b>Update available for {name}.</b>",
   "update.app.link": "Update — keeps your data",
   "update.app.dismiss": "Dismiss"

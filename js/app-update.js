@@ -110,7 +110,7 @@
   const rich = (s) => esc(s).replace(/&lt;(\/?)b&gt;/g, '<$1b>');
   function message(d) {
     if (d.kind === 'gifos') {
-      const path = tr('update.app.versionPath', 'GifOS ▾ → Settings → Advanced → Version');
+      const path = tr('update.app.versionPath', 'GifOS ▾ → Settings → System → Updates');
       return rich(tr('update.app.needsBuild', '<b>A newer {name} is in the App Store, but it needs GifOS build {need} or newer.</b>', { name: d.name, need: String(d.need) })) + ' ' +
         (d.rel
           ? rich(tr('update.app.updateGifosFirst', 'Update GifOS first — move to release {release} or later in <b>{path}</b> — then update the app from the store.', { release: d.rel, path }))

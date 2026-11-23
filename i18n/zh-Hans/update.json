@@ -23,7 +23,7 @@
   "update.app.updateGifosFirst": "请先更新 GifOS：在 <b>{path}</b> 中切换到 {release} 或更高版本，然后再从商店更新这个应用。",
   "update.app.edgeOnly": "目前还没有任何正式版本包含它——它只存在于尚未发布的边缘构建中。请先在 <b>{path}</b> 中选择 <b>{edge}</b>，或等待下一个版本。",
   "update.app.edgeBuild": "边缘构建",
-  "update.app.versionPath": "GifOS ▾ → 设置 → 高级 → 版本",
+  "update.app.versionPath": "GifOS ▾ → 设置 → 系统 → 更新",
   "update.app.available": "<b>{name} 有可用更新。</b>",
   "update.app.link": "更新 — 保留你的数据",
   "update.app.dismiss": "关闭"
