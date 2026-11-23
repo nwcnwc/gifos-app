@@ -386,6 +386,7 @@
         if (pc.l15Names(me, x) || pc.l15NamedBy(me, x)) continue;
         { let other = false; for (const [p, O] of LINKS) if (p !== x && O.state === LK_OPEN && (!O.outside || pc.l15Names(me, p) || pc.l15NamedBy(me, p))) { other = true; break; } if (!other) continue; }   // my only channel carries the setup of my first link
         if (L.backAt[mine(x)] >= 0 && T() - L.backAt[mine(x)] < K.L15_BACK_HOLD) continue;
+        if (pc.l157Swept(me, x)) continue;   // L15.7: a seat I swept without its goodbye is back: its door is how it hears its fate (L11.5)
         L.state = LK_CLOSED; L.epoch = (L.epoch + 1) >>> 0; L.q = []; L.half = 0; L.halfAt = -1; L.view[mine(x)] = LK_CLOSED;
         trace('DOOR-CLOSE', me, null, 'peer=%d', x); lv.L15_CLOSED = (lv.L15_CLOSED || 0) + 1;
         bye(x, 'door', L); L.outside = 0;

@@ -62,6 +62,7 @@
       this.rowGen = 0; this.rowLedgerLast = ''; this.rowGenSeenId = -1; this.rowGenSeen = -1;   // V7b
       this.rcRound2 = false; this.rcRound2At = -1; this.rcPendWait = K.RC_WAIT;
       this.f.fabricDupMint(id, c, owner);   // MESH_DUPLOG forensics: the fabric compares against its own table
+      this.l115Note(c);   // L11.5 (heal.js)
       this.byeByDoor();   // D6c.4: the goodbye for the place I left while cut off goes out as I sit again
       this.trace('TAKE', id, c, 'placer=%d from=%s', owner, this.hasCoord ? coordStr(this.coord) : '-');
       this.myPlacer = owner;
