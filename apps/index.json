@@ -4773,7 +4773,7 @@
       "appId": "mermaid",
       "name": "Mermaid",
       "shortName": "Mermaid",
-      "version": "1.0.0",
+      "version": "1.1.1",
       "tagline": "Type a Mermaid diagram, see it render live.",
       "author": {
         "name": "mermaid-js",
@@ -4787,7 +4787,7 @@
         "name": "mermaid",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-24",
       "updated": "2026-08-24",
@@ -4807,15 +4807,15 @@
         135
       ],
       "cover": "/apps/mermaid/cover.jpg",
-      "bytes": 1691676,
+      "bytes": 1693390,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "ae23bb9498113c6a072930c8e285bded991aef87bd421851b493cd548a32a690"
+      "sha256": "812a34d1a258869922813525b688cdb78f9207f798a33a96383055e726695272"
     },
     {
       "slug": "metronome",
