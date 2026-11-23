@@ -4335,7 +4335,7 @@
       "appId": "koil",
       "name": "Koil",
       "shortName": "Koil",
-      "version": "1.0.0",
+      "version": "1.1.1",
       "tagline": "A mint-green corridor, a handful of keys, and whoever walks in with you.",
       "author": {
         "name": "tsoding",
@@ -4349,7 +4349,7 @@
         "name": "Koil",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -4369,15 +4369,15 @@
         176
       ],
       "cover": "/apps/koil/cover.jpg",
-      "bytes": 274839,
+      "bytes": 275695,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "3c4f85c2017cc0d68917fc3a7aa8a28b9d1f82cf722bfb9d1d22482dfcabae14"
+      "sha256": "fb82bc6f398a2129757306cb77b0b36b96c52591f460845390f60b35fb17a854"
     },
     {
       "slug": "learn-git-branching",
