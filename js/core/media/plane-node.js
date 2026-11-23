@@ -108,7 +108,7 @@
         let added = false;
         for (const tr of C.localStream.getTracks()) {
           if (tr.kind === 'video' ? p.mainV : (p.mainA || !C.micPeer(pid))) continue;
-          const t = tr.kind === 'audio' ? (mainAudioTrack() || tr) : sentVideoTrack();
+          const t = tr.kind === 'audio' ? (M.mainAudioTrack() || tr) : M.sentVideoTrack();
           if (!t) continue;
           try { const x = p.pc.addTransceiver(t, { streams: [C.localStream] }); if (tr.kind === 'video') p.mainV = x.sender; else p.mainA = x.sender; added = true; } catch (e) {}
         }

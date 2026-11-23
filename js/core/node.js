@@ -354,6 +354,7 @@ function createMeeting(opts) {
       // browser's camera arrives after its voice, and the voice was lost. The host keeps one object per stream id per
       // connection and hands the page that object, with the new track added to it.
       const ONTRACK = Object.getOwnPropertyDescriptor(PC.prototype, 'ontrack');
+      if (opts.media && !(ONTRACK && ONTRACK.get && ONTRACK.set)) throw new Error('GifOS core: the media plane needs a webrtc port whose RTCPeerConnection has an ontrack accessor (one stream per remote stream is kept there)');
       g.RTCPeerConnection = class RTCPeerConnection extends PC {
         constructor(cfg, ...a) { super(Object.assign({ maxMessageSize: BROWSER_MAX_MESSAGE }, cfg || {}), ...a); pcs.add(this); this._gifosStreams = new Map(); this._gifosOnTrack = null; }
         close() { pcs.delete(this); return super.close(); }
@@ -516,6 +517,7 @@ function createMeeting(opts) {
     context, meeting, ran,
     agent: () => context.gifosAgent,
     plane: () => plane,
+    audioStats: () => (audio ? audio.stats() : null),
     hooks: () => context.__gifosVideo,
     standIns: () => meeting.standIns().concat(Array.from(viewCounts)).sort((a, b) => b[1] - a[1]),
     pageUses: () => Array.from(pageCounts).sort((a, b) => b[1] - a[1]),

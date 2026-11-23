@@ -11,7 +11,9 @@
  * createMediaStreamSource (a remote werift track: its Opus decoded; a track this port made: its samples),
  * createMediaStreamDestination (.stream: a werift MediaStream whose track carries the mix as Opus RTP), createBuffer,
  * createBufferSource (start/stop/onended, linear resampling) and decodeAudioData (PCM WAV, 16-bit or float).
- * Everything else a page might ask (panners, worklets, element sources) is absent: a use is a TypeError, never a no-op.
+ * Everything else a page might ask (panners, worklets, element sources) is absent: a use is a TypeError. Inert here,
+ * by design: AudioParam automation (a ramp lands at once), playbackRate and loop (read, never applied), and the analyser's
+ * frequency reads (silence): the core and the agent never use them on this host.
  *
  * THE CLOCK. One 20 ms tick per context, corrected against the wall clock (a late tick renders the quanta it owes, at
  * most 5). Each tick pulls the graph from its sinks (destination, stream destinations, analysers, script processors);
@@ -65,8 +67,10 @@
     class AudioParam { constructor(v) { this.value = v; this.defaultValue = v; } setValueAtTime(v) { this.value = v; return this; } linearRampToValueAtTime(v) { this.value = v; return this; } setTargetAtTime(v) { this.value = v; return this; } cancelScheduledValues() { return this; } }
     class AudioNode {
       constructor(ctx) { this.context = ctx; this.inputs = new Set(); this.outputs = new Set(); this._q = -1; this._out = null; this.channelCount = 1; this.numberOfInputs = 1; this.numberOfOutputs = 1; }
-      connect(dst) { if (dst instanceof AudioParam) return dst; if (!(dst instanceof AudioNode)) throw new TypeError('connect: not an AudioNode'); this.outputs.add(dst); dst.inputs.add(this); return dst; }
-      disconnect(dst) { for (const d of Array.from(this.outputs)) if (!dst || d === dst) { this.outputs.delete(d); d.inputs.delete(this); } }
+      // a sink (destination, analyser, processor, stream destination) is pulled each quantum only while something feeds it,
+      // so a meter or a voice that was let go costs nothing and is collected
+      connect(dst) { if (dst instanceof AudioParam) return dst; if (!(dst instanceof AudioNode)) throw new TypeError('connect: not an AudioNode'); this.outputs.add(dst); dst.inputs.add(this); if (dst._sink) dst.context._sinks.add(dst); return dst; }
+      disconnect(dst) { for (const d of Array.from(this.outputs)) if (!dst || d === dst) { this.outputs.delete(d); d.inputs.delete(this); if (d._sink && !d.inputs.size) d.context._sinks.delete(d); } }
       _mix(q, n) { const out = new Float32Array(n); for (const i of this.inputs) { const x = i._pull(q, n); for (let k = 0; k < n; k++) out[k] += x[k]; } return out; }
       _pull(q, n) { if (this._q !== q) { this._q = q; this._out = this._render(q, n); } return this._out; }
       _render(q, n) { return this._mix(q, n); }
@@ -76,16 +80,20 @@
       _render(q, n) { const x = this._mix(q, n), g = +this.gain.value; if (g !== 1) for (let k = 0; k < n; k++) x[k] *= g; return x; }
     }
     class AnalyserNode extends AudioNode {
-      constructor(ctx) { super(ctx); this.fftSize = 2048; this._hist = new Float32Array(32768); this.smoothingTimeConstant = 0.8; this.minDecibels = -100; this.maxDecibels = -30; ctx._sinks.add(this); }
+      constructor(ctx) { super(ctx); this._sink = true; this.fftSize = 2048; this._hist = new Float32Array(2048); this.smoothingTimeConstant = 0.8; this.minDecibels = -100; this.maxDecibels = -30; }
       get frequencyBinCount() { return this.fftSize / 2; }
-      _render(q, n) { const x = this._mix(q, n), h = this._hist; h.copyWithin(0, n); h.set(x.subarray(Math.max(0, x.length - h.length)), h.length - Math.min(n, h.length)); return x; }
+      _render(q, n) {
+        const x = this._mix(q, n);
+        if (this._hist.length !== this.fftSize) { const h2 = new Float32Array(this.fftSize); h2.set(this._hist.subarray(Math.max(0, this._hist.length - h2.length)), Math.max(0, h2.length - this._hist.length)); this._hist = h2; }
+        const h = this._hist, m = Math.min(n, h.length); h.copyWithin(0, m); h.set(x.subarray(x.length - m), h.length - m); return x;
+      }
       getFloatTimeDomainData(a) { const h = this._hist, m = Math.min(a.length, this.fftSize); a.set(h.subarray(h.length - m), 0); }
       getByteTimeDomainData(a) { const h = this._hist, m = Math.min(a.length, this.fftSize), s = h.length - m; for (let i = 0; i < m; i++) a[i] = Math.max(0, Math.min(255, Math.round(128 + h[s + i] * 128))); }
       getByteFrequencyData(a) { a.fill(0); }
       getFloatFrequencyData(a) { a.fill(-Infinity); }
     }
     class ScriptProcessorNode extends AudioNode {
-      constructor(ctx, size) { super(ctx); this.bufferSize = size || 1024; this.onaudioprocess = null; this._acc = new Fifo(); ctx._sinks.add(this); }
+      constructor(ctx, size) { super(ctx); this._sink = true; this.bufferSize = size || 1024; this.onaudioprocess = null; this._acc = new Fifo(); }
       _render(q, n) {
         const x = this._mix(q, n); this._acc.push(x);
         while (this._acc.len >= this.bufferSize) {
@@ -131,10 +139,11 @@
         if (tap) { this._unsub = tap.listen((x) => this._fifo.push(x)); this._rate = RTP_RATE; }
         else if (t.onReceiveRtp && typeof t.onReceiveRtp.subscribe === 'function') {
           const dec = new Opus(RTP_RATE, 1);
+          let said = false;
           const sub = t.onReceiveRtp.subscribe((rtp, ext, info) => {
             if (info && info.type && info.type !== 'media') return;
             if (!rtp || !rtp.payload || !rtp.payload.length) return;
-            try { this._fifo.push(fromI16(dec.decode(rtp.payload))); } catch (e) {}
+            try { this._fifo.push(fromI16(dec.decode(rtp.payload))); } catch (e) { if (!said) { said = true; ctx._fail(new Error('webaudio: an Opus packet did not decode (' + String(e && e.message || e) + ')')); } }
           });
           this._unsub = () => { try { sub.unSubscribe(); } catch (e) {} try { if (dec.delete) dec.delete(); } catch (e) {} };
         } else throw new Error('InvalidStateError: this host cannot read that track');
@@ -154,26 +163,27 @@
         this.stream = new W.MediaStream([track]);
         this._enc = new Opus(RTP_RATE, 1, Opus.Application ? Opus.Application.VOIP : 2048);
         this._seq = Math.floor(Math.random() * 65535); this._ts = Math.floor(Math.random() * 0xffffffff); this._ssrc = 1 + Math.floor(Math.random() * 0x7ffffffe);
-        this._pend = new Fifo();
-        ctx._sinks.add(this);
+        this._pend = new Fifo(); this._sink = true; this._said = false;
+        ctx._codecs.add(this);
       }
+      _free() { try { if (this._enc && this._enc.delete) this._enc.delete(); } catch (e) {} this._enc = null; }
       _render(q, n) {
         const x = this._mix(q, n), y = resample(x, this.context.sampleRate, RTP_RATE);
         for (const f of this._listeners) { try { f(y); } catch (e) {} }
-        if (this._track.stopped) return x;
+        if (this._track.stopped || !this._enc) return x;   // a stopped voice encodes nothing
         this._pend.push(y);
         while (this._pend.len >= FRAME) {
           const pcm = this._pend.take(FRAME);
-          let payload; try { payload = this._enc.encode(toI16(pcm), FRAME); } catch (e) { this.context._fail(e); continue; }
+          let payload; try { payload = this._enc.encode(toI16(pcm), FRAME); } catch (e) { if (!this._said) { this._said = true; this.context._fail(e); } continue; }
           const pkt = new W.RtpPacket(new W.RtpHeader({ payloadType: 111, sequenceNumber: this._seq, timestamp: this._ts >>> 0, marker: false, ssrc: this._ssrc }), Buffer.from(payload));
           this._seq = (this._seq + 1) & 0xffff; this._ts = (this._ts + FRAME) >>> 0;
-          try { this._track.writeRtp(pkt); } catch (e) {}
+          try { this._track.writeRtp(pkt); } catch (e) { if (!this._said) { this._said = true; this.context._fail(new Error('webaudio: a voice packet could not be sent (' + String(e && e.message || e) + ')')); } }
         }
         return x;
       }
     }
     class AudioDestinationNode extends AudioNode {
-      constructor(ctx) { super(ctx); this.numberOfOutputs = 0; this.maxChannelCount = 2; }
+      constructor(ctx) { super(ctx); this._sink = true; this.numberOfOutputs = 0; this.maxChannelCount = 2; }
     }
 
     // ---- the context ------------------------------------------------------------------------------------------
@@ -181,9 +191,9 @@
       constructor(o) {
         const r = o && +o.sampleRate;
         this.sampleRate = r >= 8000 && r <= 96000 ? r : RTP_RATE;
-        this._sinks = new Set(); this._active = new Set(); this._srcs = new Set(); this._q = 0; this.state = 'running'; this.onstatechange = null;
+        this._sinks = new Set(); this._active = new Set(); this._srcs = new Set(); this._codecs = new Set(); this._q = 0; this.state = 'running'; this.onstatechange = null;
         this._t0 = Date.now(); this.baseLatency = QUANTUM_MS / 1000; this.outputLatency = 0;
-        this.destination = new AudioDestinationNode(this); this._sinks.add(this.destination);
+        this.destination = new AudioDestinationNode(this);
         this._timer = setInterval(() => this._tick(), QUANTUM_MS); if (this._timer.unref) this._timer.unref();
         AudioContext._live.add(this);
       }
@@ -192,8 +202,9 @@
       _tick() {
         if (this.state !== 'running') { this._t0 = Date.now() - this._q * QUANTUM_MS; return; }
         const owed = Math.floor((Date.now() - this._t0) / QUANTUM_MS) - this._q;
-        if (owed > MAX_CATCHUP) { this._t0 = Date.now() - (this._q + 1) * QUANTUM_MS; }
-        const k = Math.max(1, Math.min(MAX_CATCHUP, owed));
+        if (owed <= 0) return;
+        if (owed > MAX_CATCHUP) this._t0 = Date.now() - (this._q + MAX_CATCHUP) * QUANTUM_MS;   // a long stall: render what fits, drop the rest
+        const k = Math.min(MAX_CATCHUP, owed);
         const n = Math.round(this.sampleRate * QUANTUM_MS / 1000);
         for (let i = 0; i < k; i++) {
           for (const s of this._sinks) if (s.inputs.size) { try { s._pull(this._q, n); } catch (e) { this._fail(e); } }
@@ -206,7 +217,13 @@
       _state(s) { if (this.state === s) return; this.state = s; if (typeof this.onstatechange === 'function') try { this.onstatechange({ type: 'statechange', target: this }); } catch (e) {} }
       resume() { if (this.state !== 'closed') this._state('running'); return Promise.resolve(); }
       suspend() { if (this.state !== 'closed') this._state('suspended'); return Promise.resolve(); }
-      close() { clearInterval(this._timer); for (const s of Array.from(this._srcs)) { try { s.disconnect(); } catch (e) {} } this._state('closed'); AudioContext._live.delete(this); return Promise.resolve(); }
+      close() {
+        clearInterval(this._timer);
+        for (const s of Array.from(this._srcs)) { try { s.disconnect(); } catch (e) {} }   // frees each source's decoder
+        for (const d of this._codecs) d._free();                                           // and each voice's encoder
+        this._codecs.clear(); this._sinks.clear(); this._active.clear();
+        this._state('closed'); AudioContext._live.delete(this); return Promise.resolve();
+      }
       createGain() { return new GainNode(this); }
       createAnalyser() { return new AnalyserNode(this); }
       createScriptProcessor(size) { return new ScriptProcessorNode(this, size); }
@@ -244,11 +261,12 @@
       }
       return new AudioBuffer({ numberOfChannels: ch, length: frames, sampleRate: rate, data: chans });
     }
-    return { AudioContext, webkitAudioContext: AudioContext, AudioBuffer, AudioNode, GainNode, AnalyserNode, decodeWav, made: (t) => made.has(t) };
+    // what is alive (for a host's leak check): open contexts, and across them the sinks pulled, sources decoding, voices encoding
+    const stats = () => { let sinks = 0, sources = 0, codecs = 0; for (const c of AudioContext._live) { sinks += c._sinks.size; sources += c._srcs.size; codecs += c._codecs.size; } return { contexts: AudioContext._live.size, sinks, sources, codecs }; };
+    return { AudioContext, webkitAudioContext: AudioContext, AudioBuffer, AudioNode, GainNode, AnalyserNode, decodeWav, stats, made: (t) => made.has(t) };
   }
 
   const api = { port, RTP_RATE };
-  const GifOS = root.GifOS = root.GifOS || {};
-  GifOS.webaudioPort = api;
-  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;   // a host module: nothing on the host's global
+  else { const GifOS = root.GifOS = root.GifOS || {}; GifOS.webaudioPort = api; }
 })(typeof window !== 'undefined' ? window : globalThis);
