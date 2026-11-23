@@ -12,8 +12,9 @@
  * the host gave me), and my camera when the host gave me one and no blur applies. Received tracks reach the core
  * through the pc's ontrack as on a page (claims, meters through the port's AudioContext, the agent's audio.in).
  * WHAT IT CANNOT MAKE YET: a picture of its own (avatar, blur, screen, rebroadcast) needs a video encoder: those
- * sources report no-track (never the raw camera in place of a blur). The mosaic, Stage and row-mix duties are plan
- * slots still to be cut from the browser plane; until then those acts do nothing here.
+ * sources report no-track (never the raw camera in place of a blur). The mosaic, Stage and row-mix duties (the plan's
+ * duty slots sdm / sub / sgs) are not carried here yet: the reconcile reports each owed one 'no-track', this seat's own
+ * word that it does not carry it.
  *
  * Install: the host links the core with no media part, hands the declared nones, then calls
  * GifOS.planeNode.install(meeting.media, meeting.core) before meeting.run(). Each name below replaces its stand-in.
@@ -51,10 +52,15 @@
       if (p.dc && p.dc.readyState === 'open') { C.dcSend(p, { k: 'rkick' }); if (C.hasPendingTx(p)) C.renegotiate(p); }
       else C.renegotiate(p);
     }
+    // MY DUTY SENDERS (the plan's sdm / sub / sgs slots): this plane forwards none yet, so no duty slot carries a track.
+    function dutyTrack(pid, slot) { return null; }
+    // DEBUG LEVER (owed-duty evidence): while on, my duties are stubbed: forwarding, when this plane has it, sends nothing
+    // on a duty slot. Today nothing is forwarded, so only the flag changes; the report stays 'no-track' either way.
+    function stubDuties(on) { stubDuties.on = !!on; refreshOutbound(); return stubDuties.on; }
     // THE PLANE'S SIDE OF THE MEDIA PLAN: the core's one reconcile (reconcileMain, as the browser plane), on werift senders.
     function refreshOutbound() {
       const plan = C.outboundPlan();   // a held plan or a viewer's park is the reconcile's too
-      C.reconcileMain(plan, M.sentVideoTrack(), M.mainAudioTrack(), kick);   // through the published names (a test may stand a builder in)
+      C.reconcileMain(plan, M.sentVideoTrack(), M.mainAudioTrack(), kick, dutyTrack);   // through the published names (a test may stand a builder in)
     }
     // A late track (a voice that starts, a camera the host hands over): the plan's reconcile opens the missing main senders.
     function attachLocalTracks() { refreshOutbound(); }
@@ -79,7 +85,8 @@
     def('retireMixTracks', () => {});   // no fold mixes here yet (mix-minus is a later plan slot)
     def('adapt', () => {});             // no encoder of my own to tune: forwarded and Opus tracks keep their own rate
     def('tileHolds', () => false);      // no tiles: no screen holds a stream
-    return { names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds'] };
+    def('stubDuties', stubDuties);
+    return { names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties'] };
   }
 
   GifOS.planeNode = { install };
