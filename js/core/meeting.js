@@ -19170,14 +19170,16 @@
     // host included, could get in. A seated seat that has heard no order for MOD_ORDER_WAIT_MS (two status beats: an order
     // its peers hold reaches it inside them) reads the room as having no plan: the free line. The host's order, when it comes,
     // sets the line as before; the wall never puts anyone out (L52.8).
-    let subsNoOrderAt = 0;   // when my seat sat down with no signed order heard (0: not seated)
-    const subsPlanKnown = () => {
-      if (amAdmin || modWSeen) return true;
-      const ms = typeof meshSeat === 'function' ? meshSeat() : null;
-      if (!(ms && ms.state === 3 && ms.hasCoord)) { subsNoOrderAt = 0; return false; }
-      if (!subsNoOrderAt) subsNoOrderAt = Date.now();
-      return Date.now() - subsNoOrderAt >= GifOS.timings.MOD_ORDER_WAIT_MS;
-    };
+    const subsPlanKnown = (() => {
+      let noOrderAt = 0;   // when my seat sat down with no signed order heard (0: not seated)
+      return () => {
+        if (amAdmin || modWSeen) return true;
+        const ms = typeof meshSeat === 'function' ? meshSeat() : null;
+        if (!(ms && ms.state === 3 && ms.hasCoord)) { noOrderAt = 0; return false; }
+        if (!noOrderAt) noOrderAt = Date.now();
+        return Date.now() - noOrderAt >= GifOS.timings.MOD_ORDER_WAIT_MS;
+      };
+    })();
     // The room's plan, verified once per order: undefined while it is being
     // checked, null when none is valid. It is checked ahead of any knock (the
     // timer below), so a door does not meet its first knock with no answer.
