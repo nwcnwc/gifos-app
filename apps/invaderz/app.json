@@ -4,8 +4,8 @@
   "appId": "invaderz",
   "name": "InvaderZ",
   "shortName": "InvaderZ",
-  "version": "1.0.0",
-  "minBuild": 947,
+  "version": "1.1.2",
+  "minBuild": 5861,
   "tagline": "Space Invaders where every friend who joins gets another cannon.",
   "description": "Send the invite and extra cannons appear on the same ground — each person aiming their own, everyone shooting the same wave.\n\nOn your own it is InvaderZ: the invaders change shape as you play. Each body is how it moves. Miss one and it teaches the next wave. You get one shot at a time. Five through the line and the sky is lost.\n\nOn a phone the buttons sit under the board — left, right, fire. On a computer it is the arrows (or A and D) and the space bar.\n\nAn unofficial port of InvaderZ by victorqribeiro, MIT-licensed. This copy adds the extra cannons over a meeting.",
   "author": {
@@ -39,14 +39,14 @@
   "cover": "/apps/invaderz/cover.jpg",
   "screenshots": [],
   "gif": "/apps/invaderz/invaderz.gif",
-  "bytes": 196473,
+  "bytes": 197452,
   "download": 0,
   "provides": null,
-  "sha256": "85f652750f73cce1e9fb2c153f7590f35369f3a47e04d1995e217be3054ffe9f",
+  "sha256": "e34266bcfd4458725d4f4c92aaedb5027b18d0654b38eaf62b349a7f57c2167c",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-23"
   },
   "porter": {
     "name": "GifOS",

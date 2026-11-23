@@ -4,8 +4,8 @@
   "appId": "civiclock",
   "name": "Civiclock",
   "shortName": "Civiclock",
-  "version": "1.0.0",
-  "minBuild": 947,
+  "version": "1.1.0",
+  "minBuild": 5861,
   "tagline": "Paint a little city and watch it grow month by month. Invite a co-mayor.",
   "description": "Close it and the streets are still there. Send someone your copy and they get the city too. Press Invite in the bar above the app and a friend is co-mayor on the same land, live.\n\nPaint homes, shops and works. Run a plant and a river pump. Time ticks in months you can watch: buildings grow when the city works, people walk the roads to jobs, windows light up at night. Cut the power, jack the tax, or isolate a neighbourhood, and they leave. Tap Look and a lot will tell you why it will not grow.\n\nInspired by SimCity (Maxis / Electronic Arts). This is our own engine and our own pictures — not a port of theirs.",
   "author": {
@@ -40,14 +40,14 @@
   "cover": "/apps/civiclock/cover.jpg",
   "screenshots": [],
   "gif": "/apps/civiclock/civiclock.gif",
-  "bytes": 237155,
+  "bytes": 238252,
   "download": 0,
   "provides": null,
-  "sha256": "b5145ccddd7505dd8bd74dcf56e4e9d1da49a82a70726bf0d046a21b499578ee",
+  "sha256": "5f578bab3c23046b68879ced94cae370cf2775783f3e76033b1c4d87ce863fe7",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-22"
   },
   "inspiredBy": {
     "name": "SimCity",

@@ -5,7 +5,7 @@
   "name": "Ludo",
   "shortName": "Ludo",
   "version": "1.2",
-  "minBuild": 5861,
+  "minBuild": 5995,
   "tagline": "Ludo. Four seats fill as friends open your invite.",
   "description": "Send the invite. The people who open it sit Red, Green, Yellow, and Blue — you only roll on your colour.\n\nEach colour has four tokens. Roll a six to leave the yard. Race them clockwise around the board and up your own home stretch. Land on someone who is not on a start square and they go back to the yard. You stay. A six is another roll, unless you throw three in a row. An exact count takes a token home. First to get all four home wins.\n\nOn your own, pass the phone — two, three, or four colours, all on this device. A game in progress is saved; close it and Continue picks it up.\n\nAn unofficial port of Ludo by chukwumaijem.",
   "author": {
@@ -38,14 +38,14 @@
   "cover": "/apps/ludo/cover.jpg",
   "screenshots": [],
   "gif": "/apps/ludo/ludo.gif",
-  "bytes": 191758,
+  "bytes": 192041,
   "download": 0,
   "provides": null,
-  "sha256": "96fbda1c771b585a909cd018a7db9baa68fec348db6cce515928120d3b64b8d1",
+  "sha256": "b23a15413dfff7d7200b9753c15f75b1f039bec0304581cf0ab2fc1cc5cb31eb",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-11-21"
+    "ts": "2026-11-22"
   },
   "porter": {
     "name": "GifOS",

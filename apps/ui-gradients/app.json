@@ -4,8 +4,8 @@
   "appId": "ui-gradients",
   "name": "uiGradients",
   "shortName": "Gradients",
-  "version": "1.0.0",
-  "minBuild": 947,
+  "version": "1.0.1",
+  "minBuild": 5861,
   "tagline": "Beautiful colour gradients. Browse, copy the CSS, keep favourites.",
   "description": "A gallery of colour ramps people have made for each other. Flip through, or open the list and pick one by name. Tap a colour to copy it. Copy the recipe if you want the whole ramp. Turn the direction if you want it to run the other way.\n\nHearts stay on this device — close the app, come back, they are still there. Nobody else sees them.\n\nWant a friend looking at the same ramp? Press Share this pick, then Invite (in the GifOS menu) and send the link. You both see the same one. When you pick another, they get it. Browsing alone is the original gallery.\n\nAn unofficial port of uiGradients. Bugs go to GifOS, not upstream.",
   "author": {
@@ -41,14 +41,14 @@
   "cover": "/apps/ui-gradients/cover.jpg",
   "screenshots": [],
   "gif": "/apps/ui-gradients/ui-gradients.gif",
-  "bytes": 202675,
+  "bytes": 203680,
   "download": 0,
   "provides": null,
-  "sha256": "0b0136666da05c95f28c206c7984c735f44ecd853d33847b7487e90361826135",
+  "sha256": "f6639680d4237507e1c977b2dce49c318c8ce1deca3c30e4c3aa18273cf35ecb",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-23"
   },
   "porter": {
     "name": "GifOS",

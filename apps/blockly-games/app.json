@@ -4,8 +4,8 @@
   "appId": "blockly-games",
   "name": "Blockly Games",
   "shortName": "Blockly",
-  "version": "1.0.0",
-  "minBuild": 947,
+  "version": "1.1.0",
+  "minBuild": 5861,
   "tagline": "Puzzle, Maze, Turtle — offline, your stars live in the file, an invite opens the same level.",
   "description": "Works on a plane. Close it on Maze 7, open it tomorrow — still on 7, still with the blocks you stacked. No account. Send the Invite in the bar above and a friend lands on the same game and level, looking at the same blocks.\n\nOn your own it is Blockly Games. Puzzle snaps pictures and traits onto animals. Maze is loops and ifs — ten paths, a little walker, a block limit that forces you to think. Turtle is nested loops that paint: square, star, moon. The toolbox is fat enough for a thumb.\n\nAn unofficial port of Blockly Games by Google. The puzzles, the mazes and the turtle drawings are theirs.",
   "author": {
@@ -43,14 +43,14 @@
   "cover": "/apps/blockly-games/cover.jpg",
   "screenshots": [],
   "gif": "/apps/blockly-games/blockly-games.gif",
-  "bytes": 559785,
+  "bytes": 560735,
   "download": 0,
   "provides": null,
-  "sha256": "a567112455bf05f44abca35408789499afb5e9d3894e873c7a935adfe1827a0d",
+  "sha256": "c172161d402000cc9637807906788bf6275d91af7539844a38fef0c528e6d47e",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-22"
   },
   "porter": {
     "name": "GifOS",

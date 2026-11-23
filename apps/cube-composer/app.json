@@ -4,8 +4,8 @@
   "appId": "cube-composer",
   "name": "Cube Composer",
   "shortName": "Cubes",
-  "version": "1.0",
-  "minBuild": 947,
+  "version": "1.1",
+  "minBuild": 5861,
   "tagline": "Stack and transform the cubes. Race a friend on the same puzzles.",
   "description": "Press Play a friend, then Invite in the bar above the app, and send the link. You both get the same picture. First to match it wins. Your progress is saved.\n\nOn your own it is Cube Composer. You have a row of coloured cubes and a picture of how they should look. Tap a function to add it, tap it again to take it out, drag to change the order. Watch the cubes change with each step. Six short chapters; skip around if you like.\n\nYou never see each other's functions — only who finished, and how many steps they used.\n\nAn unofficial port of Cube Composer by David Peter. The puzzles, the cubes and the functions are his.",
   "author": {
@@ -40,14 +40,14 @@
   "cover": "/apps/cube-composer/cover.jpg",
   "screenshots": [],
   "gif": "/apps/cube-composer/cube-composer.gif",
-  "bytes": 172186,
+  "bytes": 173314,
   "download": 0,
   "provides": null,
-  "sha256": "4d7cc64ff1f5977f0661b20e21e12d42a9d91a18e368ef295efbadfbd33ece8c",
+  "sha256": "e2738f387e27d8fccd7afa73e28d90f9e72201ffa0265fe6bf65bb6b504b055f",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-22"
   },
   "porter": {
     "name": "GifOS",
