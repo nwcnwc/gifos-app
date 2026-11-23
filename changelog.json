@@ -2,6 +2,19 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.12",
+      "date": "2026-11-23",
+      "headline": "A clear green frame on whoever is talking",
+      "critical": false,
+      "features": [
+        "Whoever is talking now gets a clear green frame on their tile, the other people in the meeting included, not just your own tile."
+      ],
+      "fixes": [
+        "iPhone and iPad: when Safari holds the meeting's sound, the \"tap to hear\" line stays until sound really plays, and one tap brings it back.",
+        "More now says \"Sound plays from this device's speaker\" when there is no speaker to choose."
+      ]
+    },
+    {
       "version": "0.9.28.11",
       "date": "2026-11-23",
       "headline": "App signing keys can live in DNS",
