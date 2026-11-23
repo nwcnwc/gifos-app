@@ -293,7 +293,11 @@
       try { art = codec.stripForDisplay(rec.bytes); } catch (e) { return null; }
       return { fileId: rec.id, art: art, srcLen: rec.bytes.length,
                name: rec.name || '', kind: rec.kind, mime: rec.mime || 'image/gif',
-               isApp: !!rec.isApp, appId: rec.appId || null, updatedAt: nowISO() };
+               isApp: !!rec.isApp, appId: rec.appId || null,
+               // A built-in system app (seeded, manifest.system): the Home Screen
+               // opens its page directly from these two (desktop.js openItem).
+               system: (rec.isDefault === true && rec.system) || null, isDefault: rec.isDefault === true,
+               updatedAt: nowISO() };
     }
 
     // The SIBLING assets database — '<dbName>::assets', its own version line,
