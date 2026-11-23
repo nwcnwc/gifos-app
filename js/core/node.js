@@ -348,9 +348,30 @@ function createMeeting(opts) {
       // (werift declares 64 KB by default: a core seat got every small frame but never an app's bytes, so Take Turns
       // never mounted there). So the host asks the port for the browsers' ceiling; a port without the option ignores it.
       const BROWSER_MAX_MESSAGE = 262144;
+      // ONE MediaStream PER REMOTE STREAM, as a browser gives it: every track a peer sends in one stream (its voice and its
+      // camera) arrives in the same object, so the page's claim of that stream holds both. A port that hands a new
+      // single-track stream with each track event (werift does) would leave the claim holding the last track only: a
+      // browser's camera arrives after its voice, and the voice was lost. The host keeps one object per stream id per
+      // connection and hands the page that object, with the new track added to it.
+      const ONTRACK = Object.getOwnPropertyDescriptor(PC.prototype, 'ontrack');
       g.RTCPeerConnection = class RTCPeerConnection extends PC {
-        constructor(cfg, ...a) { super(Object.assign({ maxMessageSize: BROWSER_MAX_MESSAGE }, cfg || {}), ...a); pcs.add(this); }
+        constructor(cfg, ...a) { super(Object.assign({ maxMessageSize: BROWSER_MAX_MESSAGE }, cfg || {}), ...a); pcs.add(this); this._gifosStreams = new Map(); this._gifosOnTrack = null; }
         close() { pcs.delete(this); return super.close(); }
+        get ontrack() { return ONTRACK && ONTRACK.get ? ONTRACK.get.call(this) : super.ontrack; }   // the port calls the handler through this getter: it must get the wrapped one
+        set ontrack(fn) {
+          if (!ONTRACK || !ONTRACK.set) { super.ontrack = fn; return; }
+          this._gifosOnTrack = typeof fn === 'function' ? fn : null;
+          ONTRACK.set.call(this, this._gifosOnTrack ? (ev) => this._gifosOnTrack.call(this, this._gifosTrackEvent(ev)) : null);
+        }
+        _gifosTrackEvent(ev) {
+          const streams = (ev.streams || []).map((st) => {
+            const held = this._gifosStreams.get(st.id);
+            if (!held) { this._gifosStreams.set(st.id, st); return st; }
+            for (const t of st.getTracks()) if (!held.getTracks().includes(t)) held.addTrack(t);
+            return held;
+          });
+          return { type: 'track', track: ev.track, streams, transceiver: ev.transceiver, receiver: ev.receiver, target: this };
+        }
       };
       for (const k of Object.getOwnPropertyNames(PC)) if (!(k in g.RTCPeerConnection)) try { g.RTCPeerConnection[k] = PC[k]; } catch (e) {}
     }
