@@ -110,7 +110,9 @@
     },
 
     // C++: mesh_seat.inc:Seat::d6cOther
-    d6cOther() { for (const g of this.lastGreeters) if (g >= 0 && g !== this.id) return true; return false; },
+    d6cOther() { let one = -1; for (const g of this.lastGreeters) if (g >= 0 && g !== this.id) { if (one < 0) one = g; else if (g !== one) return true; } if (one < 0) return false; for (const [d, at] of this.doorAt) if (d !== this.sr && this.TICK - at <= K.LEASE_T && !this.d681Mine(d)) return true; return false; },
+    // C++: mesh_seat.inc:Seat::d681Mine   (D6c.8.1: a far door whose fold reaches me over a pipe I hold is no third seat: the far office hears me)
+    d681Mine(door) { for (const p of this.pipeDig.values()) { if (p.rx < 0 || this.TICK - p.rx > K.DIG_TTL) continue; for (const d of p.doors) if (d.id === door) return true; } return false; },   // D6c.8: a room lives without me only with a third seat (a link I am not an end of): a second name at the door, or a far door my room fold listed within a lease
 
     // C++: mesh_seat.inc:Seat::darkSeat
     darkSeat() {

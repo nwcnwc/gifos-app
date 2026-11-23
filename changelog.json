@@ -2,6 +2,19 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.8",
+      "date": "2026-11-23",
+      "headline": "You keep your seat when a laptop in the meeting goes to sleep",
+      "critical": false,
+      "features": [],
+      "fixes": [
+        "In a meeting of two, the person who stays keeps their seat while the other's laptop sleeps.",
+        "A person whose laptop slept comes back to their own seat, and whoever stood in for them steps back instead of being sent out.",
+        "A seat that already sat elsewhere no longer holds up the line at a second door.",
+        "Two offices joined over a relay link rejoin their meeting when their own link breaks."
+      ]
+    },
+    {
       "version": "0.9.28.7",
       "date": "2026-11-23",
       "headline": "Sound recovers faster when someone passing it along goes quiet",

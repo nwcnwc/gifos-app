@@ -222,6 +222,12 @@
     // C++: mesh_link.inc:l15LastLink
     function l15LastLink(x, y) { for (const p of P.LINKPEERS[x]) { if (p === y) continue; const L = linkFind(x, p); if (L && L.state === LK_OPEN && (!L.outside || l15Names(x, p) || l15NamedBy(x, p))) return false; } return true; }
     // C++: mesh_link.inc:l15Doors   [fabric]
+    // C++: mesh_link.inc:l157Swept   [L15.7: the door from the seat my own fill's record names (L11.5) is held]
+    function l157Swept(x, y) {
+      const s = seats[x]; if (!s) return false;
+      if (s.l115X === y && s.TICK - s.l115At <= K.RELAY_TTL) return true;
+      return false;
+    }
     function l15Doors() {
       for (const pk of ldoorsAsc()) {
         const a = pkA(pk), b = pkB(pk); const L = linkFind(a, b);
@@ -235,6 +241,7 @@
           if (l15Names(x, y) || l15NamedBy(x, y)) continue;
           if (l15LastLink(x, y)) continue;
           if (L.backAt[lEnd(x, y)] >= 0 && T() - L.backAt[lEnd(x, y)] < K.L15_BACK_HOLD) continue;
+          if (l157Swept(x, y)) continue;   // L15.7
           k = x; break;
         }
         if (k < 0) continue;
@@ -770,7 +777,7 @@
       // the fabric halves, called by the tick (linkTick)
       l15Doors, l16Doors, l22Tick, l1611Guard,
       // the pieces the physics and the checks reach
-      pcBudget, l14Budget, l16Refuse, l16101Refuse, l16101Full, l23Refused, l23GreetSlot, l23GreetRelease, l23Full, l23Stretch, l1610Full, l1610Held, noteCall, dialHeld, doorEnd, doorHeard, l15Seated, l15Names, l15NamedBy,
+      pcBudget, l14Budget, l16Refuse, l16101Refuse, l16101Full, l23Refused, l23GreetSlot, l23GreetRelease, l23Full, l23Stretch, l1610Full, l1610Held, noteCall, dialHeld, doorEnd, doorHeard, l15Seated, l157Swept, l15Names, l15NamedBy,
       l16Mobile, l16MobBudget, l16Close, l22Release, l23CloseAlone, l23MakeRoom, l23Suspect, l23RealRole, l23Word, l23WordPeek, linkWhy, l22Beside, l18Role, l18Dist, l18NoDial,
       fabricDoorFrom, linkHeld, l221Sent,
     };
