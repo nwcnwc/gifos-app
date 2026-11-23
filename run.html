@@ -60,6 +60,8 @@
                                     a seat carries the page, docs/turn-carry.md)
        TextEncoder / TextDecoder .. the byte<->string boundary everywhere
        Promise / Map / Set ........ the ES6 floor the runtime is written on
+       RegExp \p{..} + Object.fromEntries .. the language the meeting's scripts parse and load with
+                                    (a regex literal the browser cannot parse stops the whole bundle)
 
      NOT required, deliberately:
        getUserMedia ............... view-only join is a supported, first-class
@@ -116,22 +118,22 @@
      not verified it. Their UA carries the Chrome build they are made of, so we
      quote THAT and stay truthful. */
   /* ==== BEGIN GENERATED from site/browser-support.json — scripts/build-browser-support.mjs ==== */
-  /* Source of truth: site/browser-support.json (updated 2026-08-05).
+  /* Source of truth: site/browser-support.json (updated 2026-11-23).
      DO NOT EDIT BY HAND — edit the JSON and re-run the script; the release
      gate fails on drift (test/gate2/node/sections/page-guards/browser-support.js).
-     These numbers are set by Modern JavaScript (Promise, Map, Set, async/await):
-       Chrome            71   (2018-12)
+     These numbers are set by Modern JavaScript (Promise, Map, Set, async/await, Unicode regular expressions, Object.fromEntries):
+       Chrome            73   (2019-03)
        Microsoft Edge    79   (2020-01)
-       Firefox           65   (2019-01)
+       Firefox           78   (2020-06)
        Safari            12.1   (2019-03)
      COPY ONLY. The verdict below is feature detection and never this table. */
   var MIN = {
-    chrome:   { label: "Chrome",         min: "71" },
+    chrome:   { label: "Chrome",         min: "73" },
     edge:     { label: "Microsoft Edge", min: "79" },
-    firefox:  { label: "Firefox",        min: "65" },
+    firefox:  { label: "Firefox",        min: "78" },
     safari:   { label: "Safari",         min: "12.1" }
   };
-  var GENERIC_MINS = "Safari 12.1, Chrome 71 or Firefox 65 — and up";
+  var GENERIC_MINS = "Safari 12.1, Chrome 73 or Firefox 78 — and up";
   var WHY = {
     "webcrypto-subtle": "Everything in a meeting is scrambled on your own device before it leaves, so nobody in the middle can read it — and this browser is missing tools from the box that does the scrambling.",
     "webrtc-peerconnection": "In a meeting here, sound, pictures and everything else travel straight between people's browsers — no company server in the middle. This browser is missing part of what makes those direct browser-to-browser connections work.",
@@ -146,6 +148,10 @@
   function syncGaps() {
     var g = [], w = window;
     if (!fn(w, 'Promise') || !fn(w, 'Map') || !fn(w, 'Set')) g.push('modern JavaScript (Promise/Map/Set)');
+    // The meeting's scripts use Unicode property escapes in regular expressions (a browser without them cannot parse
+    // the script bundle at all) and call Object.fromEntries as they load: without either the page stays blank.
+    try { new RegExp('\\p{L}', 'u'); } catch (e) { g.push('modern JavaScript (Unicode regular expressions)'); }
+    if (!fn(Object, 'fromEntries')) g.push('modern JavaScript (Object.fromEntries)');
     if (typeof w.WebSocket === 'undefined') g.push('WebSocket');
     if (!fn(w, 'TextEncoder') || !fn(w, 'TextDecoder')) g.push('TextEncoder/TextDecoder');
     var c = w.crypto;
