@@ -68,6 +68,7 @@
     DISCONNECTED_DEAD_MS: 90000,   // ms
     DISCONNECTED_DEAD_SMALL_MS: 78000,   // ms
     DOOR_FIRST_FRAME: 4,   // tick
+    DOOR_PING_MS: 20000,   // ms
     DOOR_REDIAL_CAP: 40000,   // ms
     DOOR_SHUT_MS: 30000,   // ms
     DRAIN_MS: 2000,   // ms
