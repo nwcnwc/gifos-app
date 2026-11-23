@@ -28,6 +28,7 @@
     APP_STAGE_GRANT_RENEW_MS: 20000,   // ms
     APP_STAGE_GRANT_TTL_MS: 60000,   // ms
     APP_STAGE_NEXT_WAIT_MS: 2000,   // ms
+    AUDIO_QUANTUM_MS: 20,   // ms
     AWAKE_MS: 3000,   // ms
     BANNER_HOLD: 5000,   // ms
     BG_BEAT_MS: 50,   // ms
@@ -128,6 +129,7 @@
     NEW_PEER_BEAT_GAP_MS: 2000,   // ms
     NEW_PEER_BEAT_MS: 400,   // ms
     NOSOCK_WIN: 40,   // tick
+    OWED_SAMPLE_MS: 400,   // ms
     PACK_CLOCK_YIELD_PCT: 150,   // count
     PACK_GAP_PCT: 50,   // count
     PACK_REST_MAX_MS: 1000,   // ms
@@ -191,7 +193,6 @@
     ROW_MIX_PULL: 8,   // tick
     ROW_MIX_TALK: 2000,   // ms
     ROW_MIX_TTL: 1000,   // ms
-    ROW_SILENT_MS: 1500,   // ms
     ROW_STEP: 4,   // count
     RZ_DEBOUNCE_MS: 120,   // ms
     "SCALE.HB": 4000,   // ms
