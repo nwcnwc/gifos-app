@@ -641,7 +641,7 @@
       const row = cell(this.coord.pc, this.coord.r, 0); const src = roles.e2SrcOf(row, view); const haveSrc = !!src; const amSrc = haveSrc && ckey(src) === ckey(this.coord);
       if (this.u2Row !== ckey(row)) { this.u2Row = ckey(row); this.u2SrcAt = -1; this.u2UpAt = -1000; this.headAckAt = TICK; this.headEver = false; this.bkId = -1; this.bkCk = 0; this.sbId = -1; this.sbCk = 0; this.e1Dn = false; this.e1DnAt = -1; this.headE1Dn = false; this.headE1At = -1; this.u2Told = -1; this.hdE2Dn = false; this.hdE2Id = -1; this.e2Told = -1; if (this.u2Hot) { this.u2Hot = false; this.trace('UP2-PARK', id, this.coord, 'why=new-row'); } }   // a seat that moved starts its row's roles afresh
       if (this.coord.i === 0) {   // the head judges its own E1 and tells the E2 source at once
-        const dn = this.e1Down();
+        const dn = this.e1Down() || (lv.LG_ON && this.l295Mu.has(this.ownerId()));   // L29.5: my owner's down feed to me reads mute in my own reading: my source is out
         if (dn !== this.e1Dn) { this.e1Dn = dn; this.e1DnAt = TICK; if (!dn) this.hdE2Dn = false; this.trace(dn ? 'E1-DOWN' : 'E1-UP', id, this.coord, 'owner=%d', this.ownerId()); this.u2Told = -1; }
         if (haveSrc && !amSrc) { const h = this.occGet(ckey(src)); if (h >= 0 && h !== id && h !== this.u2Told) { this.u2Told = h; const m = newMsg('E1STATE'); m.id = id; m.coord = cc(this.coord); m.e1dn = this.e1Dn; m.e1At = this.e1DnAt; this.emit(h, m); } }
       }   // on every change, and to a new E2 source at once
@@ -650,7 +650,7 @@
       let dn, jat;
       if (this.coord.i === 0) { dn = this.e1Dn; jat = this.e1DnAt; }
       else {
-        const gone = this.headGone();   // the head itself is gone, leased or silent: its duties pass to me
+        const gone = this.headOut();   // the head itself is gone, leased or silent (L29.5: or ships me nothing it owes): its duties pass to me
         if (gone) { dn = true; jat = TICK; } else { dn = this.headE1Dn; jat = this.headE1At; }
       }
       if (dn) {
