@@ -1201,5 +1201,6 @@
   "meet.capNowMine": "Gezeigt wird, was dieses Gerät hört.",
   "meet.capNowTheirs": "Die Untertitel von {name} werden gezeigt.",
   "meet.capFlag": "Diese Untertitel sind falsch",
-  "meet.capSrcTitle": "Untertitel für {name}"
+  "meet.capSrcTitle": "Untertitel für {name}",
+  "meet.subReceiptName": "Beleg — GifOS-Meet-Abo"
 }

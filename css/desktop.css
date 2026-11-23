@@ -214,6 +214,12 @@ details.adv.danger-zone[open] summary { color: color-mix(in srgb, #ff5c5c 62%, v
 
 /* provenance shield on signed GIFs (bottom-right of the thumbnail) */
 .icon .thumb { position: relative; }
+/* A RECEIPT (Purchases): its own icon, a paper slip, never an app tile. */
+.icon .thumb.receipt-thumb {
+  font-size: calc(var(--isize, 64px) * .58); line-height: 1;
+  background: linear-gradient(#fffaf0, #efe3c0); border-radius: .55rem;
+  box-shadow: inset 0 0 0 2px #d9c68f;
+}
 .sig-badge {
   position: absolute; right: -3px; bottom: -3px; width: 1.05rem; height: 1.05rem;
   display: flex; align-items: center; justify-content: center; border-radius: 50%;

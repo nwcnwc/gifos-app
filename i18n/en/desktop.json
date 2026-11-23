@@ -195,5 +195,6 @@
  "desktop.bar.add": "＋ Add",
  "desktop.arrange.title": "Arranging icons",
  "desktop.arrange.hint": "— drag them anywhere",
- "desktop.arrange.done": "Done"
+ "desktop.arrange.done": "Done",
+ "desktop.badge.receiptTip": "Receipt: open it to see the purchase and its signed proof."
 }

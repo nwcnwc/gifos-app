@@ -63,7 +63,10 @@
   const TREASURY = '0xBB6Ee87BBFF5F7AB6E8Fb4f38Fe6fE69B500b2d0';
   // The PayPal button's words, from i18n/<locale>/charge.json (gifos-charge.js
   // loads that catalog). PayPal's page opens on its card form, so no account is needed.
-  const trPay = (key, en) => { try { const I = GifOS.i18n; if (I && I.has(key)) return I.t(key); } catch (e) {} return en; };
+  const trPay = (key, en, p) => {
+    try { const I = GifOS.i18n; if (I && I.has(key)) return I.t(key, p); } catch (e) {}
+    return String(en).replace(/\{(\w+)\}/g, (m, k) => (p && p[k] != null ? p[k] : m));
+  };
   function treasuryAddress() {
     const pinned = GifOS.baseNet && GifOS.baseNet.FEE_ADDRESS;
     if (typeof pinned === 'string' && pinned.toLowerCase() !== TREASURY.toLowerCase()) {
@@ -156,6 +159,42 @@
   function fmtUsdcExact(units) {
     const n = BigInt(units);
     return (n / 1000000n) + '.' + String(n % 1000000n).padStart(6, '0');
+  }
+  // A leg's amount for the approval words: whole cents as "$0.15", a 3% of
+  // an odd amount to the millionth ("$0.0303"), never rounded.
+  function fmtLeg(units) {
+    const n = BigInt(units);
+    return n % CENT === 0n ? fmtUsd(n) : '$' + fmtUsdcExact(n).replace(/0+$/, '');
+  }
+
+  // ---- the x402 split: ONE rule for the sheet's words and the transfers ------
+  // The author leg pays the signed payee, the fee leg GifOS's treasury. A
+  // payee that IS the fee address (GifOS's own tip jar) is paid in one leg:
+  // a 3% leg from GifOS to GifOS would only ask for a second signature. The
+  // pay Worker applies the same rule (x402Legs) and reads the legs BY
+  // POSITION (index 0 = author, 1 = fee), so the array keeps that order.
+  // The wallet is asked fee-first (signOrder), the order the Worker settles.
+  function x402Split(payTo, amount) {
+    const treasury = treasuryAddress();
+    const fee = String(payTo).toLowerCase() === treasury.toLowerCase() ? 0n : (BigInt(amount) * FEE_BPS) / 10000n;
+    return { fee, rest: BigInt(amount) - fee, treasury, signOrder: fee > 0n ? [1, 0] : [0] };
+  }
+  // What the person reads BEFORE the wallet opens. The payee is the sheet's
+  // payingTo: the verified signing identity, never a word the app chose.
+  function approvalWords(sheetData, amount) {
+    const addr = sheetData && sheetData.rails && sheetData.rails.x402 && sheetData.rails.x402.address;
+    if (!addr) return '';
+    const sp = x402Split(addr, amount);
+    const payee = String(sheetData.payingTo || '');
+    return sp.fee > 0n
+      ? trPay('charge.approvals.two', 'Two approvals in your wallet: 1) {fee} GifOS fee (3%), 2) {rest} to {payee} (the creator). Your wallet will show “GifOS” as the site asking for both.', { fee: fmtLeg(sp.fee), rest: fmtLeg(sp.rest), payee })
+      : trPay('charge.approvals.one', 'One approval in your wallet: {amount} to {payee}. Your wallet will show “GifOS” as the site asking.', { amount: fmtLeg(sp.rest), payee });
+  }
+  // The busy line while the wallet is open: which approval this is.
+  function approvalStep(k, n, isFee, units, payee) {
+    return isFee
+      ? trPay('charge.approvals.stepFee', 'Approval {k} of {n} in your wallet: {amount} GifOS fee (3%).', { k, n, amount: fmtLeg(units) })
+      : trPay('charge.approvals.stepPayee', 'Approval {k} of {n} in your wallet: {amount} to {payee}.', { k, n, amount: fmtLeg(units), payee });
   }
 
   // ---- the signature verdict, once per BYTES ---------------------------------
@@ -391,6 +430,7 @@
             '<div style="display:flex;justify-content:space-between;gap:.6rem"><span style="color:#9a9ab5">Amount</span><b id="gp-usdc-amt"></b></div>' +
             '<div style="display:flex;justify-content:space-between;gap:.6rem;margin-top:.45rem"><span style="color:#9a9ab5">Paying</span><span><b>' + esc(sheetData.payingTo) + '</b> <span style="color:#7ddb91">✓ verified</span></span></div>' +
             '<div style="display:flex;justify-content:space-between;gap:.6rem;margin-top:.45rem"><span style="color:#9a9ab5">Your USDC</span><b id="gp-usdc-bal">…</b></div>' +
+            '<div id="gp-usdc-approvals" style="color:#e8e8f4;font-size:.84rem;margin-top:.6rem;padding-top:.55rem;border-top:1px solid #23233a"></div>' +
             (onMainnet() ? '' : '<div style="color:#9a9ab5;font-size:.78rem;margin-top:.55rem">' + esc('USDC on ' + (sheetData.chain || 'a test network') + ', a test network.') + '</div>') +
             (GifOS.onramp && GifOS.onramp.available && GifOS.onramp.available() ? '<button id="gp-topup" type="button" style="margin-top:.6rem;padding:.4rem .8rem;border-radius:.4rem;border:1px solid #2a2a3f;background:transparent;color:#b6b6cf;cursor:pointer;font:inherit">Add USDC</button>' : '') +
           '</div>' +
@@ -460,6 +500,8 @@
         usdcAmt = amt;
         box.querySelector('#gp-usdc-amt').textContent = usdcLabel(amt);
         box.querySelector('#gp-usdc-pay').textContent = 'Pay ' + usdcLabel(amt);
+        const ap = box.querySelector('#gp-usdc-approvals');
+        if (ap) ap.textContent = approvalWords(sheetData, amt);
         showView(true);
         readBal();
       };
@@ -746,17 +788,19 @@
       const signed = GifOS.charge.assertSignedPayTo(manifest, sheetData && sheetData.address);
       const railAddr = sheetData && sheetData.rails && sheetData.rails.x402 && sheetData.rails.x402.address;
       GifOS.charge.assertSignedPayTo(manifest, railAddr);
-      // A payee that IS the fee address (GifOS's own tip jar) is paid in one
-      // leg: a 3% leg from GifOS to GifOS would only ask for a second
-      // signature. The pay Worker applies the same rule (x402Legs).
-      const treasury = treasuryAddress();
-      const fee = signed.to.toLowerCase() === treasury.toLowerCase() ? 0n : (amount * FEE_BPS) / 10000n;
+      // One rule for the split (x402Split), the same as the Worker's x402Legs.
+      const sp = x402Split(signed.to, amount);
       const transfers = [
-        { to: signed.to, amount: String(amount - fee), asset, network },
+        { to: signed.to, amount: String(sp.rest), asset, network },
       ];
-      if (fee > 0n) transfers.push({ to: treasury, amount: String(fee), asset, network });
-      // The human authenticates HERE: one EIP-3009 signature per leg.
-      const payloads = await wallet.signTransfers(transfers);
+      if (sp.fee > 0n) transfers.push({ to: sp.treasury, amount: String(sp.fee), asset, network });
+      // The human authenticates HERE: one EIP-3009 signature per leg, the fee
+      // leg asked FIRST (the order the Worker settles in); the payloads come
+      // back in transfers order, which is the order the Worker reads.
+      const payloads = await wallet.signTransfers(transfers, {
+        order: sp.signOrder,
+        onStep: (k, n) => { const i = sp.signOrder[k - 1]; busyUi.say(approvalStep(k, n, i === 1, transfers[i].amount, sheetData.payingTo)); },
+      });
       if (busyUi.cancelled()) throw new Error(GifOS.charge.DECLINED);
       busyUi.say('Settling on ' + chainName() + '…');
       const settleBody = { proof, sku: sheetData.sku || null, amount: String(amount), transfers, payloads };
@@ -1268,5 +1312,7 @@
     PAYPAL_PARTNER, offeredRails,
     // The same payment service and key, for anything else that needs them.
     workerBase, verifyReceipt,
+    // pure, for the unit tier: the split and the words the sheet shows
+    x402Split, approvalWords,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

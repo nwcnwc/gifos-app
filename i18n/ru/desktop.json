@@ -195,5 +195,6 @@
  "desktop.bar.add": "＋ Добавить",
  "desktop.arrange.title": "Упорядочивание значков",
  "desktop.arrange.hint": "— перетаскивайте их куда угодно",
- "desktop.arrange.done": "Готово"
+ "desktop.arrange.done": "Готово",
+ "desktop.badge.receiptTip": "Чек: откройте, чтобы увидеть покупку и её подписанное подтверждение."
 }

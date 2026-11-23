@@ -912,7 +912,7 @@
         // The NEW tag and the MIRROR band are about SAVED STATE, not bytes, so
         // they are cheap — but they are still not worth withholding a desktop
         // for, and they can change under us, so they are re-read per pass.
-        if (rec.isApp && !SYSTEM_LAUNCHERS[rec.appId]) {
+        if (rec.isApp && !SYSTEM_LAUNCHERS[rec.appId] && rec.appId !== RECEIPT_APP_ID) {
           // Asked as a COUNT: assembling the state pulls every row into memory
           // — for My Media that is every photo and clip — after every repaint.
           const has = store.appHasData
@@ -1027,6 +1027,15 @@
   }
 
   const FILE_EMOJI = { gif: '🖼️', other: '📄' };
+  // THE RECEIPT KIND (docs/payments.md "The receipt is a file"). A purchase,
+  // a tip or a Meet subscription lands in Purchases as a GIF whose manifest
+  // is appId 'gifos-receipt' (receipt: true); every receipt ever issued has
+  // that appId, the old App-GIF form included, so old files read as receipts
+  // too. A receipt is never run as an app and never offered as a Provider:
+  // it opens in the receipt view (receipt.html), which verifies the signed
+  // proof inside and restores the purchase, as opening it always did.
+  const RECEIPT_APP_ID = 'gifos-receipt';
+  const isReceiptFile = (f) => !!f && f.kind === 'gif' && f.appId === RECEIPT_APP_ID;
 
   // Renders can be triggered concurrently (create, import, cross-tab sync).
   // Read every visible icon's bytes in ONE cached batch, reuse the DOM nodes
@@ -1097,6 +1106,7 @@
       // Stash what openItem needs to decide SYNCHRONOUSLY (in the tap gesture) —
       // an app GIF must open without an await first, or iOS blocks the tab.
       it._isApp = !!(files[i] && files[i].isApp && files[i].kind === 'gif');
+      it._receipt = isReceiptFile(files[i]);
       // A BUILT-IN system app (Meeting, Broadcast, App Store) is a launcher for
       // a first-party page: openItem opens that page itself, so the tab never
       // has to find the GIF in storage first (a first visit on an iPhone hit
@@ -1278,7 +1288,12 @@
         thumb.textContent = '📁';
       }
     } else {
-      if (file && file.kind === 'gif') {
+      if (isReceiptFile(file)) {
+        // Its own icon: a receipt, not an app tile (no NEW pill, no plate).
+        thumb.classList.add('receipt-thumb');
+        thumb.textContent = '🧾';
+        thumb.title = dt('desktop.badge.receiptTip');
+      } else if (file && file.kind === 'gif') {
         if (art) thumb.appendChild(thumbImg(it.fileId, art, it.name));
         else thumb.textContent = FILE_EMOJI.gif;   // until its ornament is cut
         signableFiles.add(it.fileId); // it's a GIF — signing/verifying applies
@@ -1852,6 +1867,7 @@
     // after any await, which is why double-tap and "Open" did nothing on iPhone.
     // (render() stashed it._isApp so we don't need to read the file first here.)
     if (it._sysPage) { root.open(it._sysPage, '_blank'); return; }
+    if (it._receipt) { root.open('receipt.html#id=' + encodeURIComponent(it.fileId) + nsParam('&db='), '_blank'); return; }
     if (it._isApp) {
       root.open('run.html#id=' + encodeURIComponent(it.fileId) + nsParam('&db='), '_blank');
       return;
@@ -1864,6 +1880,7 @@
     const bail = () => { try { if (win && !win.closed) win.close(); } catch (e) { /* already gone */ } };
     store.getFile(it.fileId).then(async (file) => {
       if (!file) { bail(); return; }
+      if (isReceiptFile(file)) { go('receipt.html#id=' + encodeURIComponent(it.fileId) + nsParam('&db=')); return; }
       if (file.kind === 'gif' && file.isApp) {
         go('run.html#id=' + encodeURIComponent(it.fileId) + nsParam('&db='));
         return;
@@ -3071,7 +3088,7 @@
       for (const it of (list || items)) {
         if ((it.parent || null) !== 'sys_providers' || it.kind !== 'file' || !it.fileId) continue;
         const f = fileById[it.fileId];
-        if (!f || !f.isApp || f.kind !== 'gif' || !f.bytes) continue;
+        if (!f || !f.isApp || f.kind !== 'gif' || !f.bytes || isReceiptFile(f)) continue;
         const bytes = f.bytes instanceof Uint8Array ? f.bytes : new Uint8Array(f.bytes);
         const m = await getAppMeta(it.fileId, bytes).catch(() => null);
         if (!m || !m.provides || !m.provides.length || m.networky) continue;
