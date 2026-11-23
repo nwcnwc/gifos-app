@@ -1212,7 +1212,7 @@
       "appId": "carbon",
       "name": "Carbon",
       "shortName": "Carbon",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "tagline": "Pretty code images, no account — the snippet lives in this file.",
       "author": {
         "name": "Carbon",
@@ -1226,7 +1226,7 @@
         "name": "Carbon",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-30",
       "updated": "2026-08-30",
@@ -1250,15 +1250,15 @@
         195
       ],
       "cover": "/apps/carbon/cover.jpg",
-      "bytes": 287498,
+      "bytes": 288151,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "98e4030ae097e13dc5a24dd00507d1b8d355cd1917635b8788073ab9a8621fea"
+      "sha256": "960a4571e43644e5d81fb0550d55a8f1bb6f4947c98b491008d511bff09f3663"
     },
     {
       "slug": "cascade-studio",

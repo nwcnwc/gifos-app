@@ -4,8 +4,8 @@
   "appId": "carbon",
   "name": "Carbon",
   "shortName": "Carbon",
-  "version": "1.0.0",
-  "minBuild": 947,
+  "version": "1.0.1",
+  "minBuild": 5861,
   "tagline": "Pretty code images, no account — the snippet lives in this file.",
   "description": "No account, no tab to lose. The snippet and the theme live in this file, so close it and come back still on the same image. Export a PNG from here. Press Invite in the bar above and a friend types on the same snippet with you — carbon.now.sh cannot do that.\n\nPick a theme (Seti, Dracula, Night Owl, Nord…), a language, a background, padding, window dots, line numbers. Type or drop a file. The window is the picture.\n\nAn unofficial port of Carbon by Mike Fix, Brian Dennis, and Jake Dexheimer. Bugs go to GifOS, not upstream.",
   "author": {
@@ -43,14 +43,14 @@
   "cover": "/apps/carbon/cover.jpg",
   "screenshots": [],
   "gif": "/apps/carbon/carbon.gif",
-  "bytes": 287498,
+  "bytes": 288151,
   "download": 0,
   "provides": null,
-  "sha256": "98e4030ae097e13dc5a24dd00507d1b8d355cd1917635b8788073ab9a8621fea",
+  "sha256": "960a4571e43644e5d81fb0550d55a8f1bb6f4947c98b491008d511bff09f3663",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-23"
   },
   "porter": {
     "name": "GifOS",
