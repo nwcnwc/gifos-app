@@ -14394,7 +14394,14 @@
         try { dcSend(p, { k: 'sig', msg: statusPayload() }); txStats.dcStatus++; } catch (e) {}
         try { sendAvatarTo(p); } catch (e) {}
         if (amAdmin) { try { dcSend(p, { k: 'sig', msg: { kind: 'mod', mod: modTable, modw: gossipModW() } }); } catch (e) {} }
-        try { const media = enableMedia(p); if (media || pipeSlotOwed(p)) renegotiate(p); } catch (e) {}   // a pipe's (or standby's) sound slot: the first negotiation on this channel
+        try {
+          const media = enableMedia(p);
+          // DEBUG lever (forced race, SUB.7 one slot): __pipeSlotLateMs holds a pipe pc's first own-channel negotiation, so the
+          // pipe's mix attaches (addAux) before that negotiation births the sound slot, as a slow box or an offer turn can order it
+          const late = DEBUG_ON && turnHolds(p.id) ? +window.__pipeSlotLateMs || 0 : 0;
+          if (late > 0 && (media || pipeSlotOwed(p))) { const pc0 = p.pc; setTimeout(() => { if (p.pc === pc0) renegotiate(p); }, late); }
+          else if (media || pipeSlotOwed(p)) renegotiate(p);
+        } catch (e) {}   // a pipe's (or standby's) sound slot: the first negotiation on this channel
         try { (0, /*()*/__M.headLinkUp)(p.id); } catch (e) {}   // the channel to my row's head is up: my sends to it go now
         try { if (linkTo(p.id)) retireBootPairs(); } catch (e) {} // a seat's own link is open: the door I came in by closes
         dcSend(p, historyHi());
@@ -15932,6 +15939,7 @@
       const t = pc.addTransceiver(tr, init);
       auxSenders.add(t.sender);
       if (tr && tr.kind) t.sender._auxKind = tr.kind;
+      t.sender.__ct = container;   // the stream this m-line names (pipeSlotMixFirst: a pipe's mix that came before its slot is the slot)
       return t.sender;
     };
 
@@ -16336,8 +16344,23 @@
       try { return !p.pc.getTransceivers().some((t) => t.sender && t.sender.__pipeSlot); } catch (e) { return false; }   // __pipeSlot outlives the attach (addAux clears __pipeRes)
     }
     function pipeSlotCt(pid) { const jk = 'sdn>' + pid, ct = __M.shipContainers.get(jk) || new MediaStream(); __M.shipContainers.set(jk, ct); return ct; }
+    // ONE SOUND SLOT PER PIPE PC, WHICHEVER COMES FIRST. The pipe counts as mine at link-up (pc connected), and its own
+    // channel's first negotiation comes after the channel opens and, on the polite end, after an offer turn: the mix can
+    // attach (addAux) in that gap. It then made an m-line of its own for the pipe's container, the birth added the slot as
+    // a second one, and both named the same stream: the far end got one stream with a live and a silent track and played
+    // whichever its audio graph took first (0.9.28.x venue room, 2 of 3 runs deaf one way across the pipe). A sender of
+    // mine that already carries the pipe's container on this pc IS the slot: the birth marks it, and an answer adopts no
+    // second one (the far end's slot m-line is answered without a sender of mine, my mix rides its own).
+    // (the sound sender only: the job's video sender names the same container, and a parked one keeps its direction, not its track)
+    function auxNaming(pc, ct) {
+      if (!ct) return null;
+      try { for (const t of pc.getTransceivers()) if (t.sender && t.sender.__ct === ct && t.sender._auxKind === 'audio' && /send/.test(t.direction) && !t.stopped && t.currentDirection !== 'stopped') return t.sender; } catch (e) {}
+      return null;
+    }
+    function pipeSlotMixFirst(pc, pid) { return auxNaming(pc, __M.shipContainers.get('sdn>' + pid)); }
     function pipeSlotBirth(p, pc) {
       if (!p || !pc || p.pc !== pc || !pipeSlotOwed(p)) return;   // no own channel yet (the relay bootstrap stays data only), or the pc has its slot
+      const mf = pipeSlotMixFirst(pc, p.id); if (mf) { mf.__pipeSlot = true; return; }   // the mix came first: its m-line is the slot
       const ct = pipeSlotCt(p.id);
       try { const t = pc.addTransceiver('audio', { direction: 'sendrecv', streams: [ct], sendEncodings: [{ maxBitrate: AUX_AUDIO_BPS }] }); t.sender.__pipeRes = ct; t.sender.__pipeSlot = true; t.sender._auxKind = 'audio'; auxSenders.add(t.sender); } catch (e) {}
     }
@@ -16345,6 +16368,7 @@
       if (!p || !pc || !turnHolds(p.id)) return;
       let trs = []; try { trs = pc.getTransceivers(); } catch (e) { return; }
       if (trs.some((t) => t.sender && t.sender.__pipeSlot)) return;   // the pc has its slot (used or not)
+      { const mf = pipeSlotMixFirst(pc, p.id); if (mf) { mf.__pipeSlot = true; return; } }   // my mix came first: it is my slot, no second m-line names its stream
       const sdp = (pc.remoteDescription && pc.remoteDescription.sdp) || '';
       const sendrecv = (mid) => { const sec = sdp.split(/\r?\nm=/).find((x) => new RegExp('\\r?\\na=mid:' + mid + '\\r?(\\n|$)').test('\n' + x)); return !!sec && /\na=sendrecv/.test('\n' + sec); };
       for (const t of trs) {
@@ -16366,6 +16390,7 @@
       if (done.get(key) === p.pc) return;
       const jk = key + '>' + p.id, ct = __M.shipContainers.get(jk) || new MediaStream();
       __M.shipContainers.set(jk, ct);
+      if (auxNaming(p.pc, ct)) { done.set(key, p.pc); return; }   // its job shipped first: that m-line is the reservation (one name per stream)
       try {
         const t = p.pc.addTransceiver('audio', { direction: 'sendrecv', streams: [ct], sendEncodings: [{ maxBitrate: AUX_AUDIO_BPS }] });
         t.sender.__pipeRes = ct; t.sender._auxKind = 'audio'; auxSenders.add(t.sender);
