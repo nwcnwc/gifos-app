@@ -4,9 +4,6 @@
   "WEBKIT_TILE": false,
   "WSP_WEAK": null,
   "avatarPipe": null,
-  "blockedAudio": {
-   "$": "Set"
-  },
   "blurPipe": null,
   "botVoiceTrack": null,
   "camIdleT": null,

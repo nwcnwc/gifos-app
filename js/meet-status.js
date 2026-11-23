@@ -50,6 +50,7 @@
     micWaitRoom:    { tone: 'stop', key: 'waitMic', en: 'You are in the waiting room. Your mic opens when the host lets you in.' },
     videoOffByHost: { tone: 'stop', key: 'stAnAdminTurnedYourVideo2', en: 'A host turned your video off for the room. Only a host can turn it back on.' },
     videoPausedRelay: { tone: 'stop', key: 'sttVideoPausedRelay', en: 'Video is paused on this connection. Sound still works. A subscriber in the meeting can turn video on.' },
+    soundHeld:      { tone: 'stop', key: 'sttSoundHeld', en: 'This device is holding back the meeting’s sound. Tap anywhere on the page to hear it.' },
     soundBack:      { tone: 'note', key: 'stSoundIsBack', en: 'Sound is back.' },
 
     // ---- the stage -------------------------------------------------------
