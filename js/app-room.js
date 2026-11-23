@@ -8,6 +8,10 @@
  *   - A seat is held only by a person on the owner's roster (heard by the room, never through app data), or, right
  *     after a session is (re)started from saved state, by a saved holder the room has not yet heard, until the room's
  *     own hold (resumeMs) runs out.
+ *   - The seats belong to the meeting, the game to the app: a session records the meeting it runs in (mt). Started
+ *     again in the SAME meeting (a reload, a re-share) it keeps its seats; in another meeting a saved seat stays only
+ *     with a holder this meeting's room hears (the owner herself, a player who came along): every other saved seat
+ *     is open from the moment the owner knows which meeting it is in. The game (turn, round) carries on.
  *   - A holder the room stops hearing is "away" and keeps the seat for exactly as long as the roster keeps them; the
  *     seat frees in the same pass as the roster lets them go.
  *   - A freed seat goes to the first person in line; the turn stays with the seat.
@@ -48,13 +52,14 @@
   }
 
   function fresh(sp) {
-    return { id: 'session', v: 1, seats: sp.seats.map((s) => ({ seat: s, k: null, nm: '', h: 'open' })), turn: 0, first: 0, round: 1, moved: false, line: [], asks: [], res: {} };
+    return { id: 'session', v: 1, mt: '', seats: sp.seats.map((s) => ({ seat: s, k: null, nm: '', h: 'open' })), turn: 0, first: 0, round: 1, moved: false, line: [], asks: [], res: {} };
   }
 
   // A saved record, checked against the declared seats. Anything that does not fit starts fresh.
   function adopt(sp, saved) {
     const s = fresh(sp);
     if (!saved || typeof saved !== 'object' || !Array.isArray(saved.seats)) return s;
+    s.mt = str(saved.mt, 64);   // the meeting these seats were taken in
     for (const x of saved.seats) {
       const i = sp.seats.indexOf(x && x.seat);
       // one person, one seat: a record naming the same person twice keeps the first seat only
@@ -81,6 +86,7 @@
   function create(sp, saved, o) {
     o = o || {};
     let s = sp.resume ? adopt(sp, saved) : fresh(sp);
+    const savedK = new Set(s.seats.filter((x) => x.k).map((x) => x.k));   // holders from the saved record, until the meeting is known
     const startedAt = o.now || 0;
     const resumeMs = o.resumeMs || 0;
     const heard = new Set();   // persons this share has heard on the roster: once they go, their seat goes
@@ -140,12 +146,22 @@
       if (j >= 0) s.turn = j;
     }
 
-    // The roster the owner's page hears: [{ k, name, admin, here: 'here' | 'away' }], and the room type.
-    function tick(ros, roomKind, now) {
+    // The meeting this share runs in (mt: an id the owner's page derives from the meeting, '' while unknown or with
+    // none): saved seats from another meeting are open unless their holder is here; from this one they stay.
+    function meet(mt) {
+      if (!mt || typeof mt !== 'string') return;
+      mt = str(mt, 64);
+      if (mt !== s.mt) { for (let i = 0; i < s.seats.length; i++) if (savedK.has(s.seats[i].k) && !heard.has(s.seats[i].k)) free(i); s.mt = mt; }
+      savedK.clear();
+    }
+
+    // The roster the owner's page hears: [{ k, name, admin, here: 'here' | 'away' }], the room type and the meeting.
+    function tick(ros, roomKind, now, mt) {
       roster = new Map();
       for (const r of ros || []) if (r && typeof r.k === 'string' && r.k) { roster.set(r.k, { k: r.k, name: str(r.name, 40), admin: !!r.admin, here: r.here === 'away' ? 'away' : 'here' }); heard.add(r.k); }
       kind = roomKind === 'admin' ? 'admin' : 'open';
       const before = copy(s);
+      meet(mt);
       sync(now);
       return !same(before, s);
     }

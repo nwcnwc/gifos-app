@@ -681,8 +681,12 @@ MULTIPLAYER: gifos.room — GifOS runs the session; you draw the game.
 Any app where people take part (games, turns, seats, "N here") declares
 its session and lets GifOS do all of it: who is in the room, who plays and
 who watches, whose turn it is, a seat held while its player reconnects, the
-same seat after a reload or after the owner shares the app again, and the
-next person in line seated when a player leaves. People come from the room
+same seat after a reload or after the owner shares the app again in the same
+meeting, and the next person in line seated when a player leaves. Seats
+belong to the meeting, the game to the app: shared again in another meeting,
+the saved game (your data, the turn, the round) comes along, and a saved seat
+waits only for a player who is in that meeting: every other seat is open for
+the people there at once. People come from the room
 (the meeting or the app room's Invite), never from typed names.
 
    "minBuild": 5861,
@@ -692,7 +696,7 @@ next person in line seated when a player leaves. People come from the room
              "turns": "order",             // "order": GifOS keeps the turn; "free": any player, any time
              "watchers": true,             // others watch and wait in line (default true)
              "joinLate": true,             // a free seat may be taken mid-round (default true)
-             "resume": true,               // seats and turn survive reloads and re-shares (default true)
+             "resume": true,               // seats and turn survive reloads and re-shares in the same meeting (default true)
              "solo": true,                 // alone, one person may play every open seat
              "moves": ["game"] }           // collections only players write, through room.move
 
