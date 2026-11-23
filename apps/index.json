@@ -4725,7 +4725,7 @@
       "appId": "memory",
       "name": "Memory",
       "shortName": "Memory",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "tagline": "Watch the pads light up, tap them back. Each round adds one more.",
       "author": {
         "name": "Sepand Haghighi",
@@ -4739,7 +4739,7 @@
         "name": "Mnimi",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-24",
       "updated": "2026-08-24",
@@ -4758,15 +4758,15 @@
         220
       ],
       "cover": "/apps/memory/cover.jpg",
-      "bytes": 128536,
+      "bytes": 130156,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "76030e53db8e564b29190af05540f63401adcbfbabaf3c420c9fdb06ec4d270b"
+      "sha256": "ca9af1742a11cf6c52655f38a13f9e8dea7fe65304dae354c8dfacd0fd7b563f"
     },
     {
       "slug": "mermaid",
