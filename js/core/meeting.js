@@ -19217,9 +19217,9 @@
     function subsRoomLimit() {
       if (!subsOn() || !av) return null;
       if (!subsPlanKnown()) return undefined;
-      const tier = subsRoomTier();
-      if (tier === undefined) return undefined;
-      const n = GifOS.sub.effective(tier ? subsGrants : null).roomLimit;   // the signed roomLimit line item (1..25, null = no line); no ticket: the free default
+      const held = subsRoomTier();   // the room's verified right: undefined while it is checked, null for none
+      if (held === undefined) return undefined;
+      const n = GifOS.sub.effective(held ? subsGrants : null).roomLimit;   // the signed roomLimit line item (1..25, null = no line); no ticket: the free default
       return n == null ? null : n;
     }
     // What the mesh seat reads (js/mesh/wall.js): 0 no line, below 0 not known
