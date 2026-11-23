@@ -1890,9 +1890,9 @@
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-11-22"
+        "ts": "2026-11-23"
       },
-      "sha256": "e2738f387e27d8fccd7afa73e28d90f9e72201ffa0265fe6bf65bb6b504b055f"
+      "sha256": "7e34fcc2badaca61f6abe85bc306ffad4ab467f3079e86c454366bbd2ec63b67"
     },
     {
       "slug": "cyberchef",
@@ -2602,9 +2602,9 @@
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-11-22"
+        "ts": "2026-11-23"
       },
-      "sha256": "0bab059c91de24ba0b1ed95e4e59a3427f2b4974e500ec45080ddc3624b91fcd"
+      "sha256": "946d1a87ac48e5b7d69ab609c1b3a533f995422dfcd5cd912c9057467f900d0a"
     },
     {
       "slug": "finance",
@@ -4484,7 +4484,7 @@
       "appId": "lrc-maker",
       "name": "LRC Maker",
       "shortName": "LRC",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "tagline": "Tap lyric timings along to a song, export the LRC file.",
       "author": {
         "name": "magic-akari",
@@ -4498,7 +4498,7 @@
         "name": "lrc-maker",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-24",
       "updated": "2026-08-24",
@@ -4519,15 +4519,15 @@
         197
       ],
       "cover": "/apps/lrc-maker/cover.jpg",
-      "bytes": 193100,
+      "bytes": 194326,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "013af7f123192829ceaf5079757163207131d5f1393b00bd76bc236c7d2ca152"
+      "sha256": "dd961924c743848732f1b0ce18cd8bc42d764326744b5826643a9332c0b59bd1"
     },
     {
       "slug": "ludo",
@@ -4872,7 +4872,7 @@
       "appId": "milkdown",
       "name": "Milkdown",
       "shortName": "Milkdown",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "tagline": "WYSIWYG markdown that lives in this file — Invite is the same document.",
       "author": {
         "name": "Mirone",
@@ -4886,7 +4886,7 @@
         "name": "Milkdown",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-30",
       "updated": "2026-08-30",
@@ -4909,15 +4909,15 @@
         208
       ],
       "cover": "/apps/milkdown/cover.jpg",
-      "bytes": 351202,
+      "bytes": 351930,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "a1c9547633a2e2d0e842aacf02d04259504a1a847cdf9b2e4d1e50638a3756f3"
+      "sha256": "0eae3daecb8f4743d4fd8a5822a75865d4c13557630d43f89c4f1fbba65af36a"
     },
     {
       "slug": "mini-photo-editor",
@@ -5028,7 +5028,7 @@
       "appId": "monkeytype",
       "name": "Monkeytype",
       "shortName": "Monkeytype",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "tagline": "The typing test, offline — personal bests live in the file, one invite is a live race.",
       "author": {
         "name": "Miodec",
@@ -5042,7 +5042,7 @@
         "name": "Monkeytype",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-30",
       "updated": "2026-08-30",
@@ -5063,15 +5063,15 @@
         20
       ],
       "cover": "/apps/monkeytype/cover.jpg",
-      "bytes": 238304,
+      "bytes": 239169,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "f07c6ede590633197ac5b835a1386efff4993348ea99039855b544bde25871ea"
+      "sha256": "0dc899aa2f26bec5b3d382722acede6310803066953fe30bafefd1081162bee6"
     },
     {
       "slug": "my-mind",
@@ -5227,7 +5227,7 @@
       "appId": "nullboard",
       "name": "Nullboard",
       "shortName": "Nullboard",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "tagline": "The board is the file. One invite is the room — no Trello account.",
       "author": {
         "name": "Alexander Pankratov",
@@ -5241,7 +5241,7 @@
         "name": "Nullboard",
         "blessed": false
       },
-      "minBuild": 2154,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-30",
       "updated": "2026-08-30",
@@ -5262,22 +5262,22 @@
         219
       ],
       "cover": "/apps/nullboard/cover.jpg",
-      "bytes": 400351,
+      "bytes": 401261,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "9881d34a638e09985c6a973302d71e6b1a0414d7f6cc34bf83067a1614beb6db"
+      "sha256": "a12b95a239b6faa9363757daf90ae61e70eacbcf234bf985aee5d25effefa2cf"
     },
     {
       "slug": "nxn-cube",
       "appId": "nxn-cube",
       "name": "NxN Cube",
       "shortName": "NxN Cube",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "A colourful cube. Drag a face to turn it. Race the same scramble.",
       "author": {
         "name": "pengfeiw",
@@ -5291,7 +5291,7 @@
         "name": "rubiks-cube",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -5312,15 +5312,15 @@
         54
       ],
       "cover": "/apps/nxn-cube/cover.jpg",
-      "bytes": 406583,
+      "bytes": 407992,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "dbda947a3e45b2d58f7993a745f120e8bd203605c724d30321d687a5788a0272"
+      "sha256": "e58177e336acf6c5e013fc46229d41b77affaea3756db131bf7f725518dd2ca4"
     },
     {
       "slug": "offline-bible-study",
@@ -6699,7 +6699,7 @@
       "appId": "polygon-shredder",
       "name": "Polygon Shredder",
       "shortName": "Shredder",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "tagline": "Cubes shred into confetti. Twiddle the knobs, save the look.",
       "author": {
         "name": "spite",
@@ -6713,7 +6713,7 @@
         "name": "The Polygon Shredder",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-24",
       "updated": "2026-08-24",
@@ -6735,15 +6735,15 @@
         90
       ],
       "cover": "/apps/polygon-shredder/cover.jpg",
-      "bytes": 409946,
+      "bytes": 411336,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "f57b4dee445354ba15708f10dc978950815e56d56e9fb2681a3e6baeb8087013"
+      "sha256": "a9d994054911b590583649ccc3c80348d12c0e5578030394293f5dc2086c83a9"
     },
     {
       "slug": "pong",
@@ -6898,7 +6898,7 @@
       "appId": "q1k3",
       "name": "Q1K3",
       "shortName": "Q1K3",
-      "version": "1.0.1",
+      "version": "1.0.3",
       "tagline": "Quake in 13 kB: a shotgun and two torch-lit halls.",
       "author": {
         "name": "phoboslab",
@@ -6912,7 +6912,7 @@
         "name": "Q1K3",
         "blessed": false
       },
-      "minBuild": 1314,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -6933,15 +6933,15 @@
         36
       ],
       "cover": "/apps/q1k3/cover.jpg",
-      "bytes": 234644,
+      "bytes": 235943,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "f7274129b4ae7c760a286703f689e7fd11b00a61a6d00bae43420df520e368c8"
+      "sha256": "7ca3a4d924dd4493271d55c72080a1f962c1644df872f599c62aa90206dcdb28"
     },
     {
       "slug": "qr-code",
@@ -7143,7 +7143,7 @@
       "appId": "racer",
       "name": "Racer",
       "shortName": "Racer",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "tagline": "A sunset highway, a red car, and whoever you send the link to.",
       "author": {
         "name": "Jake Gordon",
@@ -7157,7 +7157,7 @@
         "name": "JavaScript Racer",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -7178,22 +7178,22 @@
         64
       ],
       "cover": "/apps/racer/cover.jpg",
-      "bytes": 514278,
+      "bytes": 514810,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "2dc7171cdb6743e0acc10cd2cf488b1e101f471299fb389def949e63297c4ff0"
+      "sha256": "060ec9a4340c7dcd91f65b4356234db75a35ff6ec9785f9057819ac6ea81927d"
     },
     {
       "slug": "radius-raid",
       "appId": "radius-raid",
       "name": "Radius Raid",
       "shortName": "Raid",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "tagline": "A tiny ship, a swarm of enemies, and a friend on the other stick.",
       "author": {
         "name": "jackrugile",
@@ -7207,7 +7207,7 @@
         "name": "Radius Raid",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -7228,15 +7228,15 @@
         255
       ],
       "cover": "/apps/radius-raid/cover.jpg",
-      "bytes": 225638,
+      "bytes": 226941,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "2db5cce8738a96cb9eedc8ada7a6fceab86eead60600d2354c1746ab57b7fb8a"
+      "sha256": "bed7ddbae80891da677098875ed8cf3691990aa9b894ee04c89bcf3279372250"
     },
     {
       "slug": "rawgraphs",
@@ -7543,7 +7543,7 @@
       "appId": "rockets",
       "name": "Rockets",
       "shortName": "Rockets",
-      "version": "1.0",
+      "version": "1.0.1",
       "tagline": "Catch stars in a dark sky. One link puts a friend in it with you.",
       "author": {
         "name": "lauthieb",
@@ -7557,7 +7557,7 @@
         "name": "Rocket Universe",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -7576,15 +7576,15 @@
         64
       ],
       "cover": "/apps/rockets/cover.jpg",
-      "bytes": 204831,
+      "bytes": 205933,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "0960ed29f50458ba4cf8451024f062171d741690b934c145767b00ef62ad8566"
+      "sha256": "9709223356f06a4ffbf7b2f63b92097db0d72bdb07fbfc7797eaae8af7fdfba7"
     },
     {
       "slug": "sandspiel",
@@ -7693,7 +7693,7 @@
       "appId": "shapez",
       "name": "shapez.io",
       "shortName": "shapez",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "tagline": "The factory lives in the GIF. One invite, and a friend is on the same belts.",
       "author": {
         "name": "tobspr Games",
@@ -7707,7 +7707,7 @@
         "name": "shapez.io",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-30",
       "updated": "2026-08-30",
@@ -7730,22 +7730,22 @@
         255
       ],
       "cover": "/apps/shapez/cover.jpg",
-      "bytes": 253019,
+      "bytes": 254282,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "e73df83c4538df26300664381dd8c49b8f16e54f35d9f51d84680434bf4af95b"
+      "sha256": "ba37a1a1997b0f6480e1afaa0e76004b5399e5e7aea3ddb0325b35a3c875492e"
     },
     {
       "slug": "signature-pad",
       "appId": "signature-pad",
       "name": "Signature Pad",
       "shortName": "Sign",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "Sign with a finger, save the picture. Your signature stays on your device.",
       "author": {
         "name": "szimek",
@@ -7759,7 +7759,7 @@
         "name": "signature_pad",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -7780,22 +7780,22 @@
         156
       ],
       "cover": "/apps/signature-pad/cover.jpg",
-      "bytes": 201051,
+      "bytes": 201973,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "8c1f5be6b145da267b18fa3eb7e53cdbf60caae6767d1b7e91b5725adb2c34f4"
+      "sha256": "4d6652e437861d009486317cb1f479d065e680b122094b379c4d6d763206995a"
     },
     {
       "slug": "skifree",
       "appId": "skifree",
       "name": "SkiFree",
       "shortName": "Ski",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "SkiFree on a phone: tilt to steer, race a friend's ghost.",
       "author": {
         "name": "basicallydan",
@@ -7809,7 +7809,7 @@
         "name": "SkiFree.js",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -7831,15 +7831,15 @@
         196
       ],
       "cover": "/apps/skifree/cover.jpg",
-      "bytes": 215234,
+      "bytes": 215864,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "9ccf41e444f8c19d5f1778fe31c599b830e7bc5dc1ff82af7f705ea6e3588677"
+      "sha256": "c918c169f575a04509a7950de5d92a844b4993c7507055168ad8aa897735dc25"
     },
     {
       "slug": "slots",
@@ -7995,7 +7995,7 @@
       "appId": "sokoban",
       "name": "Sokoban",
       "shortName": "Sokoban",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "Push the boxes onto the spots. Race a friend on the same warehouse.",
       "author": {
         "name": "klevze",
@@ -8009,7 +8009,7 @@
         "name": "sokoban",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -8030,15 +8030,15 @@
         58
       ],
       "cover": "/apps/sokoban/cover.jpg",
-      "bytes": 200969,
+      "bytes": 201912,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "dfa1bd13d46bf6be4380875cc47ef9e6cd964331562cd52f80dee9bffdd52467"
+      "sha256": "ca704e1a3c0746473813bb7136383c863e91001bd477d9ec42bb9674cced73fc"
     },
     {
       "slug": "solitaire",
@@ -8393,7 +8393,7 @@
       "appId": "stolen-sword",
       "name": "Stolen Sword",
       "shortName": "Sword",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "tagline": "One finger, a stolen blade, and a thief who will not stop running.",
       "author": {
         "name": "chiaogu",
@@ -8407,7 +8407,7 @@
         "name": "Stolen Sword",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -8429,15 +8429,15 @@
         131
       ],
       "cover": "/apps/stolen-sword/cover.jpg",
-      "bytes": 196773,
+      "bytes": 197818,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "8c3e5ea3e5f9b134b256c3f89a855397bf65e095e7d11339874f595a3fc40ee4"
+      "sha256": "7818ae604e460d7ce7f35c7dadff3820d0a676056659f67b461faa1b00fc3ee5"
     },
     {
       "slug": "super-sudoku",
@@ -8637,7 +8637,7 @@
       "appId": "tanks",
       "name": "Tanks",
       "shortName": "Tanks",
-      "version": "1.1",
+      "version": "1.1.1",
       "tagline": "Drive a tank. Friends who open your link drive the rest.",
       "author": {
         "name": "Sven Bergström",
@@ -8651,7 +8651,7 @@
         "name": "Realtime Multiplayer in HTML5",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-24",
       "updated": "2026-08-24",
@@ -8671,15 +8671,15 @@
         40
       ],
       "cover": "/apps/tanks/cover.jpg",
-      "bytes": 195511,
+      "bytes": 196419,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "9efd2feb4972f228802bd36bb3aa452c35e21e7f69fbd70e6e9dec56155fd88c"
+      "sha256": "cb66fc857456a824953b666c910b896949e743cd572e56c12af20ab85dc9ada9"
     },
     {
       "slug": "tesseract",
@@ -8977,7 +8977,7 @@
       "appId": "tic80",
       "name": "TIC-80",
       "shortName": "TIC-80",
-      "version": "1.1.2837",
+      "version": "1.1.2838",
       "tagline": "The cart lives in this GIF. Close it, the game is still in there. Invite, and they play the one you just made.",
       "author": {
         "name": "Vadim Grigoruk",
@@ -8991,7 +8991,7 @@
         "name": "TIC-80",
         "blessed": false
       },
-      "minBuild": 1314,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-30",
       "updated": "2026-08-30",
@@ -9015,15 +9015,15 @@
         246
       ],
       "cover": "/apps/tic80/cover.jpg",
-      "bytes": 2940348,
+      "bytes": 2941361,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "c7fea62dba764758f75f97550d92ca74f37c6833dbb08b6559dc04a6b9997dbb"
+      "sha256": "21c1a6cb59cf1ff5cb79eecfbff102a07226bb3efc4370c241fc56d3e6912eb9"
     },
     {
       "slug": "tiddlywiki",
@@ -9217,7 +9217,7 @@
       "appId": "tosios",
       "name": "TOSIOS",
       "shortName": "TOSIOS",
-      "version": "1.0",
+      "version": "1.0.1",
       "tagline": "A top-down dungeon, a staff, and whoever you send the link to.",
       "author": {
         "name": "halftheopposite",
@@ -9231,7 +9231,7 @@
         "name": "TOSIOS",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -9252,15 +9252,15 @@
         88
       ],
       "cover": "/apps/tosios/cover.jpg",
-      "bytes": 200620,
+      "bytes": 201674,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "1aedf78962fcad490b1349b6072a1ba799531fb2897b9126ee6bb6d2496d6c02"
+      "sha256": "8e23a196e154819633e903945772a5111016655d4591d4c78258f08ff1cd95b1"
     },
     {
       "slug": "tower-defense",

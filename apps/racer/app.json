@@ -4,8 +4,8 @@
   "appId": "racer",
   "name": "Racer",
   "shortName": "Racer",
-  "version": "1.0.0",
-  "minBuild": 947,
+  "version": "1.0.1",
+  "minBuild": 5861,
   "tagline": "A sunset highway, a red car, and whoever you send the link to.",
   "description": "You drop onto a long coastal road at dusk and drive. Hills rise and fall, curves pull you sideways, and the other cars on the road take the racing line whether you are ready or not. Speed is on the dash; so is this lap, and the best you have done on this device.\n\nOn a phone it is a phone game: left thumb to steer, right thumb to go. On a computer the arrows or WASD do the same job.\n\nSend the invite and the same road has everyone else on it, as cars you can see and pass. The host taps Start and you all leave the line together; whoever finishes first is first on the board.\n\nAn unofficial port of Jake Gordon's JavaScript Racer, MIT-licensed. This copy adds the thumb controls and the race over a link. The original could not be played on a phone.",
   "author": {
@@ -40,14 +40,14 @@
   "cover": "/apps/racer/cover.jpg",
   "screenshots": [],
   "gif": "/apps/racer/racer.gif",
-  "bytes": 514278,
+  "bytes": 514810,
   "download": 0,
   "provides": null,
-  "sha256": "2dc7171cdb6743e0acc10cd2cf488b1e101f471299fb389def949e63297c4ff0",
+  "sha256": "060ec9a4340c7dcd91f65b4356234db75a35ff6ec9785f9057819ac6ea81927d",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-23"
   },
   "porter": {
     "name": "GifOS",
