@@ -112,16 +112,24 @@ async function loadSite(origin, opts) {
   opts = opts || {};
   const f = opts.fetch || globalThis.fetch;
   const base = new URL('/', origin).href;
+  // a few at a time, each tried again on a dropped connection (a small site server takes a handful of connections at once)
   const get = async (rel) => {
-    const r = await f(new URL(rel, base).href, { cache: 'no-store' });
-    if (!r.ok) throw new Error('GifOS core: ' + new URL(rel, base).href + ' answered ' + r.status);
-    return r.text();
+    let last = null;
+    for (let i = 0; i < 4; i++) {
+      try {
+        const r = await f(new URL(rel, base).href, { cache: 'no-store' });
+        if (!r.ok) throw new Error('GifOS core: ' + new URL(rel, base).href + ' answered ' + r.status);
+        return await r.text();
+      } catch (e) { last = e; if (/ answered /.test(String(e && e.message))) throw e; await new Promise((res) => setTimeout(res, 250 * (i + 1))); }
+    }
+    throw last;
   };
   const files = JSON.parse(await get('js/core/files.json'));
   const platform = JSON.parse(await get('js/core/platform.json'));
   const nones = JSON.parse(await get('js/core/media/nones.json')).nones;
   const text = new Map();
-  await Promise.all(files.core.concat(files.apps || []).map(async (rel) => { text.set(rel, await get(rel)); }));
+  const todo = files.core.concat(files.apps || []).slice();
+  await Promise.all(Array.from({ length: 6 }, async () => { while (todo.length) { const rel = todo.shift(); text.set(rel, await get(rel)); } }));
   const stamp = (/stamp ([0-9a-f]+)/.exec(text.get('js/core/meeting.js') || '') || [])[1] || '';
   return {
     id: 'web:' + base + '@' + stamp + ':' + nodeCrypto.createHash('sha256').update(files.core.map((r) => text.get(r)).join('\n')).digest('hex').slice(0, 16),
