@@ -185,13 +185,25 @@
       frames.forEach((f) => { try { const w = f.contentWindow; if (w) w.postMessage({ ns: 'gifos', type: 'room', state: v }, '*'); else frames.delete(f); } catch (e) {} });
     };
     const save = () => db.op('put', ROOM_COL, null, eng.session()).catch(() => {});
+    // The meeting this share runs in, as this app's own id for it: a hash of the app and the meeting key of the room's
+    // link (the roster's `meeting`), so an app never learns the link and two apps never share an id. The session's
+    // seats belong to that meeting (app-room.js); '' while the hash is in flight or with no meeting.
+    let mk = '', mt = '';
+    const meetingOf = (r) => {
+      const k = r && r.on && typeof r.meeting === 'string' ? r.meeting : '';
+      if (k !== mk) {
+        mk = k; mt = '';
+        if (k) sha256hex('gifos-room-meeting|' + roomAppKey(manifest) + '|' + k).then((h) => { if (mk === k) { mt = String(h).slice(0, 32); tick(); } }, () => {});
+      }
+      return mt;
+    };
     let mounted = false;
     const tick = () => {
       if (!eng) return;
       // the app was stopped (its frame left the page): this share's session ends here
       if (mounted && ![...frames].some((f) => f.isConnected)) { if (timer) clearInterval(timer); timer = null; roomAskBar(null); return; }
       ros = roomRoster(me);
-      if (eng.tick(ros.people, ros.kind, Date.now())) save();
+      if (eng.tick(ros.people, ros.kind, Date.now(), meetingOf(ros))) save();
       push();
     };
     // one request from person k: the engine's verdict, the move's record written with it

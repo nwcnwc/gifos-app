@@ -12244,7 +12244,7 @@
       if (myIdReadyResolve) { const resolveId = myIdReadyResolve; myIdReadyResolve = null; resolveId(); }
       try { tryBroadcastStage(); } catch (e) {}
       pwReasserted = false;  // a fresh socket re-asserts the admin's door lock once
-      carryBoot = { relay: relay.replace(/\/$/, ''), gk: 'g' + ((parseInt(String(urlKeyHex).slice(0, 8), 16) | 1) >>> 0).toString(16) };   // where a carried join knocks (carryInstead)
+      carryBoot = { relay: relay.replace(/\/$/, ''), gk: 'g' + ((parseInt(String(urlKeyHex).slice(0, 8), 16) | 1) >>> 0).toString(16), mk: String(urlKeyHex || '') };   // where a carried join knocks (carryInstead); mk: the meeting key, for gifos.room (__gifosRoom)
       if (typeof RTCPeerConnection !== 'function') { carryInstead('no RTCPeerConnection'); return; }   // no connection at all: carried by a seat (docs/turn-carry.md)
       meshNode = GifOS.meshWire.createMeshNode({
         relayUrl: relay.replace(/\/$/, ''),
@@ -20377,7 +20377,9 @@
         const p = peers.get(pid);
         people.push({ k: st.rk, pid, name: (p && p.name) || rosterNames[pid] || '', admin: admins.includes(pid), here: Date.now() - stSeen(st) < GifOS.timings.APP_ROOM_AWAY_MS ? 'here' : 'away', me: false });
       }
-      return { on: true, kind: hasAdminRoom() ? 'admin' : 'open', admin: !!amAdmin, me: myId, people: people.filter((x) => x.k) };
+      // meeting: the meeting key of the room's link (startMesh), the same across a reload or a rejoin of this meeting;
+      // the runtime ties an app session's seats to it (js/app-room.js), so another meeting starts with open seats.
+      return { on: true, kind: hasAdminRoom() ? 'admin' : 'open', admin: !!amAdmin, me: myId, meeting: (carryBoot && carryBoot.mk) || '', people: people.filter((x) => x.k) };
     };
     yield 3082;
     // Put a GIF app on this device: { fileId, name } or { error }.
