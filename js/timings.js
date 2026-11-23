@@ -69,6 +69,7 @@
     DISCONNECTED_DEAD_SMALL_MS: 78000,   // ms
     DOOR_FIRST_FRAME: 4,   // tick
     DOOR_PING_MS: 4000,   // ms
+    DOOR_PONG_WAIT_MS: 5100,   // ms
     DOOR_REDIAL_CAP: 40000,   // ms
     DOOR_SHUT_MS: 30000,   // ms
     DRAIN_MS: 2000,   // ms
@@ -208,6 +209,7 @@
     SGA_PEND_TTL: 30000,   // ms
     SGA_WANT_TTL: 30000,   // ms
     SGA_WIDEN_AFTER: 3,   // count
+    SIGN_KEY_MS: 2200,   // ms
     SIG_RETRY_CURE_MS: 8500,   // ms (SIG_RETRY_CURE)
     SNAP_MIN_MS: 3000,   // ms
     SNAP_MS: 1200,   // ms
