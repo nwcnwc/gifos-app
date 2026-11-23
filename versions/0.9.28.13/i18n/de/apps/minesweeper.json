@@ -1,0 +1,21 @@
+{
+  "title": "Minesweeper",
+  "new": "Neues Spiel",
+  "keep": "Weiterspielen",
+  "loading": "Wird geladen …",
+  "dens.easy": "Leicht",
+  "dens.medium": "Mittel",
+  "dens.hard": "Schwer",
+  "dens.expert": "Experte",
+  "mode.off": "🚩 Flaggenmodus: aus",
+  "mode.on": "🚩 Flaggenmodus: an",
+  "status.cleared": "Geräumt in {time}. Alle gewinnen.",
+  "status.boom": "💥 Bumm — das Gesicht startet ein neues Feld.",
+  "status.flagMode": "Flaggenmodus an — tippen Sie auf ein Feld, um eine Flagge zu setzen oder zu entfernen.",
+  "status.play": "Tippen zum Öffnen · lang drücken / Rechtsklick für eine Flagge · auf eine Zahl tippen für Akkord.",
+  "status.start": "Tippen Sie auf ein beliebiges Feld. Der erste Zug ist sicher. Laden Sie einen Freund ein, um dieses Feld zu teilen.",
+  "best.boards": "Felder: {wins}/{games} geräumt.",
+  "best.time": "Bestzeit {level}: {time}.",
+  "ask.dens": "Ein neues Feld auf der Stufe „{level}“ starten?",
+  "ask.new": "Neues Spiel starten?"
+}

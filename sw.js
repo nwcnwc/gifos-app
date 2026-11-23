@@ -20,13 +20,21 @@
  *  - RELEASE / pinned users live entirely under /versions/<x.y.z>/, which are
  *    IMMUTABLE snapshots: cache-first forever, NO background revalidation. Updates
  *    are OPT-IN and never happen behind their back — a plain (or hard) refresh
- *    serves the SAME installed shell, and a new sw.js installs but WAITS (it does
- *    not skipWaiting over an existing shell). The desktop learns a release exists
+ *    serves the SAME installed shell. The desktop learns a release exists
  *    by fetching version.json + changelog.json network-first, and shows it in
  *    Settings → Advanced → Version with a changelog (critical items called out).
- *    Only when the user chooses "Upgrade this computer" does the page activate the
- *    waiting worker or send 'gifos-refresh-shell' to re-fetch the ENTIRE shell
- *    fresh (the computer is far more than index.html) and reload.
+ *    "Upgrade this computer" sends 'gifos-refresh-shell' to re-fetch the ENTIRE
+ *    shell fresh (the computer is far more than index.html) and reloads.
+ *
+ * THIS WORKER ITSELF is not a build, so it never waits. A new sw.js takes over
+ * as soon as it has installed (skipWaiting + clients.claim), and no page is
+ * reloaded for it: a running page keeps the code it loaded, and only its later
+ * requests go through the new worker. A worker that waits for every GifOS tab
+ * to close never takes over on a device that keeps its Home Screen open, and
+ * that device then runs an old worker, with old bugs, indefinitely. Taking over
+ * changes nothing the user chose: which build runs is decided by the pages
+ * (/versions/<x.y.z>/ is still served cache-first), and activate carries every
+ * copy the old worker had saved into the new cache, so offline keeps working.
  *
  *  - EDGE users (localStorage gifos_channel='edge') are served from the site ROOT
  *    and have asked to track the newest build on GitHub Pages. Root assets are
@@ -41,7 +49,7 @@
  */
 'use strict';
 
-var SHELL_VERSION = 'v26'; // v26: the meeting page runs from js/core (core, media plane, view, linker; in the page bundle when published); (v25: My library streams sealed recordings through this worker; (v24: My library (the /library page and its client); (v23: js/timings.js joins the shell (the meeting page's waits and timeouts) (v22: css/meet-polish.css joins the shell (v21: css/meet.css joins the shell (the meeting styles moved out of run.html) (v20: js/dialog.js joins the shell (the dialogs' scroll frame, parsed by every page) (v19: 0.9.25 cut (shell now holds every en catalog and the new version.json/changelog) (v18: every surface's en catalog joins the shell, plus meet.json and the built-in apps (v17: gifos-i18n.js and the en catalogs join the shell (v16: 0.9.24 hotfix, gifos-update.js reads a four-part `latest`; v15: gifos-charge.js joins the shell)
+var SHELL_VERSION = 'v27'; // v27: the subscription page's words join the shell; pages are kept under the clean address the host serves them at (/store, not only /store.html), never with a redirect mark, and an offline .html address is redirected to it; (v26: the meeting page runs from js/core (core, media plane, view, linker; in the page bundle when published); (v25: My library streams sealed recordings through this worker; (v24: My library (the /library page and its client); (v23: js/timings.js joins the shell (the meeting page's waits and timeouts) (v22: css/meet-polish.css joins the shell (v21: css/meet.css joins the shell (the meeting styles moved out of run.html) (v20: js/dialog.js joins the shell (the dialogs' scroll frame, parsed by every page) (v19: 0.9.25 cut (shell now holds every en catalog and the new version.json/changelog) (v18: every surface's en catalog joins the shell, plus meet.json and the built-in apps (v17: gifos-i18n.js and the en catalogs join the shell (v16: 0.9.24 hotfix, gifos-update.js reads a four-part `latest`; v15: gifos-charge.js joins the shell)
 var CACHE = 'gifos-shell-' + SHELL_VERSION;
 
 // ONE CACHE KEY PER FILE. pages.yml stamps `?v=<sha>` onto every local css/js
@@ -82,6 +90,28 @@ function fromCache(cache, key, res) {
   return plain(res).then(function (r) { cache.put(key, r.clone()).catch(function () {}); return r; });
 }
 
+// Put one shell file in the cache, fresh from the network. The host 308s a
+// page's .html address to its clean path (/store.html -> /store, /index.html
+// -> /), and every link and navigation uses the clean path, so the page is
+// kept under the address the host actually served it at (res.url) as well as
+// under the asked name (a page's own fetch('run.html') still finds it). Both
+// copies are plain: a copy with the redirect mark is refused by a navigation.
+// On a host with no clean paths nothing is redirected and only the asked name
+// is kept.
+function shelve(cache, u) {
+  return fetch(new Request(u, { cache: 'reload' })).then(function (res) {
+    if (!res || !res.ok) throw new Error(u + ' answered ' + (res && res.status));
+    var at = '';
+    try { at = new URL(res.url).pathname; } catch (e) { at = ''; }
+    return plain(res).then(function (r) {
+      var puts = [];
+      if (at && at !== new URL(u, self.location.href).pathname) puts.push(cache.put(at, r.clone()));
+      puts.push(cache.put(u, r));
+      return Promise.all(puts);
+    });
+  });
+}
+
 // The universal shell — identical on gifos.app and every theme subdomain. Per-
 // computer extras (archived builds under /versions/) are runtime-cached on first
 // visit, so a computer you have actually opened keeps working offline too.
@@ -95,7 +125,7 @@ var CORE = [
   '/js/gifos-themes.js', '/js/gifos-avatar.js', '/js/gifos-store.js', '/js/gifos-install.js', '/js/gifos-fullscreen.js', '/js/irl-apps.js', '/js/sample-apps.js', '/js/store.js', '/js/gifos-cash.js',
   '/js/dialog.js', '/js/desktop.js', '/js/runtime.js', '/js/meet-host.js', '/js/camera-studio.js', '/js/relay-config.js', '/js/sw-register.js', '/js/build.js', '/js/build-badge.js', '/js/gifos-update.js', '/js/timings.js',
   '/js/gifos-i18n.js', '/js/gifos-library.js', '/js/library.js', '/i18n/en/library.json', '/i18n/en/common.json', '/i18n/en/settings.json', '/i18n/en/desktop.json', '/i18n/en/store.json', '/i18n/en/runtime.json',
-  '/i18n/en/boot.json', '/i18n/en/sign.json', '/i18n/en/help.json', '/i18n/en/update.json', '/i18n/en/charge.json', '/i18n/en/install.json',
+  '/i18n/en/boot.json', '/i18n/en/sign.json', '/i18n/en/help.json', '/i18n/en/update.json', '/i18n/en/charge.json', '/i18n/en/install.json', '/i18n/en/subscription.json',
   '/i18n/en/meet.json',
   '/i18n/en/apps/appstore.json', '/i18n/en/apps/askai.json', '/i18n/en/apps/bible.json', '/i18n/en/apps/broadcast.json', '/i18n/en/apps/calc.json', '/i18n/en/apps/camera.json', '/i18n/en/apps/chat.json', '/i18n/en/apps/chess.json', '/i18n/en/apps/connect4.json', '/i18n/en/apps/dial.json', '/i18n/en/apps/fakefacts.json', '/i18n/en/apps/fortune.json', '/i18n/en/apps/guestbook.json', '/i18n/en/apps/imposter.json', '/i18n/en/apps/meet.json', '/i18n/en/apps/minesweeper.json', '/i18n/en/apps/mymedia.json', '/i18n/en/apps/notes.json', '/i18n/en/apps/oneclue.json', '/i18n/en/apps/paint.json', '/i18n/en/apps/reader.json', '/i18n/en/apps/roulette.json', '/i18n/en/apps/samebrain.json', '/i18n/en/apps/speechcoach.json', '/i18n/en/apps/spy.json', '/i18n/en/apps/taketurns.json', '/i18n/en/apps/tictactoe.json', '/i18n/en/apps/tilt.json', '/i18n/en/apps/timer.json', '/i18n/en/apps/welcome.json', '/i18n/en/apps/wolves.json',
   '/themes/theme.js', '/themes/icons.js', '/themes/eggs.js',
@@ -150,25 +180,17 @@ self.addEventListener('install', function (e) {
   e.waitUntil((async function () {
     var cache = await caches.open(CACHE);
     var urls = await installUrls();
-    // allSettled + per-file add: one missing/renamed asset can't abort the whole
-    // precache (a half-cached shell is still better than none).
-    await Promise.allSettled(urls.map(function (u) {
-      return cache.add(new Request(u, { cache: 'reload' }));
-    }));
-    // First-ever install (no prior shell): activate immediately so the very first
-    // visit is offline-ready. An UPDATE — a new sw.js landing over an existing
-    // shell — deliberately does NOT skipWaiting: it stays WAITING until the user
-    // opts in from Settings → Advanced → Version. That's what stops a deploy from
-    // updating a running computer without the user's knowledge.
-    var keys = await caches.keys();
-    var hadShell = keys.some(function (k) { return k.indexOf('gifos-shell-') === 0 && k !== CACHE; });
-    if (!hadShell) await self.skipWaiting();
+    // allSettled + per-file shelve: one missing/renamed asset can't abort the
+    // whole precache (a half-cached shell is still better than none).
+    await Promise.allSettled(urls.map(function (u) { return shelve(cache, u); }));
+    // Take over at once, first install and update alike (see the note at the top).
+    await self.skipWaiting();
   })());
 });
 
 // The desktop drives the opt-in update from Settings → Advanced → Version:
-//  - 'gifos-apply-update'  : a newer sw.js is WAITING — take over now (the user
-//                            asked to upgrade). activate sweeps the old cache.
+//  - 'gifos-apply-update'  : take over now, for a worker an older page finds
+//                            waiting (an older worker could wait).
 //  - 'gifos-refresh-shell' : re-fetch EVERY shell asset fresh into the cache,
 //                            even under the same worker (covers a deploy that
 //                            changed js/css/html but not sw.js). Acks each client
@@ -179,11 +201,7 @@ self.addEventListener('message', function (e) {
   if (data.type === 'gifos-refresh-shell') {
     e.waitUntil((async function () {
       var cache = await caches.open(CACHE);
-      await Promise.allSettled(CORE.concat(DESKTOP_SHELL).concat(themeOverride()).map(function (u) {
-        return fetch(new Request(u, { cache: 'reload' })).then(function (r) {
-          if (r && r.ok) return keep(cache, u, r);
-        }).catch(function () {});
-      }));
+      await Promise.allSettled(CORE.concat(DESKTOP_SHELL).concat(themeOverride()).map(function (u) { return shelve(cache, u); }));
       var cs = await self.clients.matchAll();
       cs.forEach(function (c) { c.postMessage({ type: 'gifos-shell-refreshed' }); });
     })());
@@ -315,7 +333,11 @@ function cleanOf(path) {
 async function degrade(req, url, cache) {
   if (req.mode === 'navigate') {
     var pin = url.pathname.match(/^\/versions\/([0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?)\//);   // x.y.z or x.y.z.w
-    var idx = await cache.match(pin ? '/versions/' + pin[1] + '/index.html' : '/index.html');
+    // The Home Screen's clean address (the build's directory) first, then its
+    // .html name; either copy is served plain.
+    var dir = pin ? '/versions/' + pin[1] + '/' : '/';
+    var idx = await fromCache(cache, dir, await cache.match(dir))
+      || await fromCache(cache, dir + 'index.html', await cache.match(dir + 'index.html'));
     if (idx) return idx;
     if (pin) return notInstalled(pin[1]);
   }
@@ -331,12 +353,31 @@ async function degrade(req, url, cache) {
   return Response.error();
 }
 
+// Everything an older worker saved moves into this worker's cache before its
+// cache is dropped: a pinned build's pages and files, apps' assets, the last
+// catalog. Without this, taking over from a running computer would leave it
+// unable to start offline until each file was fetched again. Copies this
+// worker already holds (its fresh precache) win; every copy is moved plain.
+async function adopt(from, into) {
+  var old = await caches.open(from);
+  var reqs = await old.keys();
+  for (var i = 0; i < reqs.length; i++) {
+    var u; try { u = new URL(reqs[i].url); } catch (err) { continue; }
+    if (u.search || await into.match(keyOf(u))) continue;
+    var res = await old.match(reqs[i]);
+    if (res) await keep(into, keyOf(u), res).catch(function () {});
+  }
+}
+
 self.addEventListener('activate', function (e) {
   e.waitUntil((async function () {
     var keys = await caches.keys();
-    await Promise.all(keys.map(function (k) {
-      if (k.indexOf('gifos-shell-') === 0 && k !== CACHE) return caches.delete(k);
-    }));
+    var mine = await caches.open(CACHE);
+    for (var i = 0; i < keys.length; i++) {
+      if (keys[i].indexOf('gifos-shell-') !== 0 || keys[i] === CACHE) continue;
+      try { await adopt(keys[i], mine); } catch (err) { /* keep what moved */ }
+      await caches.delete(keys[i]);
+    }
     // Sweep any entry keyed with a query string. Every key is a bare pathname
     // now (keyOf); a queried key is a twin left by a caller or a worker that
     // cached by full URL — the shape that answered offline from the oldest
@@ -567,6 +608,10 @@ self.addEventListener('fetch', function (e) {
     // router. See revalidate()'s note. The key is the bare path — see keyOf.
     var fresh = await revalidate(req, cache, 4000, req.mode === 'navigate', keyOf(url));
     if (fresh) return fresh;
+    // An offline .html address gets the host's own answer, a redirect to the
+    // clean path, whenever this device has the page there (as /versions/ does).
+    var clean = req.mode === 'navigate' ? cleanOf(url.pathname) : '';
+    if (clean && await cache.match(clean)) return Response.redirect(url.origin + clean + url.search, 308);
     var cached = await fromCache(cache, keyOf(url), await cache.match(keyOf(url)));
     if (cached) return cached;                      // offline / stalled → the newest copy this device ran
     return degrade(req, url, cache);

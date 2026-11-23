@@ -2,6 +2,20 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.13",
+      "date": "2026-11-23",
+      "headline": "You hear the people beside you as soon as you sit down",
+      "critical": false,
+      "features": [
+        "When you join, you hear the people in your row as soon as you are seated, about two seconds sooner than before."
+      ],
+      "fixes": [
+        "Store links open the store page directly, and the Update bar and home screen store icon take you there.",
+        "A new version of GifOS takes over without reloading your open pages, and the subscription page's words work offline.",
+        "A browser too old to run meetings (Firefox before 78, Chrome before 73) now says so clearly instead of hanging on \"Joining\u2026\"."
+      ]
+    },
+    {
       "version": "0.9.28.12",
       "date": "2026-11-23",
       "headline": "A clear green frame on whoever is talking",
