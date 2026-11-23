@@ -13,7 +13,7 @@
  * through the pc's ontrack as on a page (claims, meters through the port's AudioContext, the agent's audio.in).
  * WHAT IT CANNOT MAKE YET: a picture of its own (avatar, blur, screen, rebroadcast) needs a video encoder: those
  * sources report no-track (never the raw camera in place of a blur). The mosaic, Stage and row-mix duties are plan
- * slots still to be cut from the browser plane (H28-NODEMEDIA phases 2-5); until then those acts do nothing here.
+ * slots still to be cut from the browser plane; until then those acts do nothing here.
  *
  * Install: the host links the core with no media part, hands the declared nones, then calls
  * GifOS.planeNode.install(meeting.media, meeting.core) before meeting.run(). Each name below replaces its stand-in.
@@ -69,7 +69,7 @@
         }
         return;
       }
-      const vt = sentVideoTrack(), at = mainAudioTrack();
+      const vt = M.sentVideoTrack(), at = M.mainAudioTrack();   // through the published names (a test may stand a builder in)
       const want = new Map(plan.links);
       const report = [];
       for (const p of C.peers.values()) {
