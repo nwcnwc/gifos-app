@@ -12237,7 +12237,9 @@
       // meeting that reaches no seat founds its island under the key every page holds from its link, so the door lists
       // its greeters beside the room's. Without it an island registers under a private key, the door refuses it, nobody
       // learns it exists, and no TURN link can be asked or vouched for (docs/turn-0926.md TURN.1, section 5).
-      Promise.all([debugFail('identity', ensureIdentity()), debugFail('adminkey', adminOpenKeyNow()), sha256hex('gifos-meeting-key|' + room + '|' + (av || ''))]).then(([identity, openKey, urlKeyHex]) => {
+      Promise.all([debugFail('identity', ensureIdentity()), debugFail('adminkey', adminOpenKeyNow()), sha256hex('gifos-meeting-key|' + room + '|' + (av || ''))]).then(([identity, openKey, urlKeyHex]) => (amAdmin && av   // DOOR.HOST: the first connection already carries the host's proof
+        ? admSigned('hostknock', { sid: sessId, by: identity.peerId }).then((w) => { if (w) admSigned.hk = { at: Date.now(), by: identity.peerId, q: '&hp=' + encodeURIComponent(JSON.stringify(w)) }; return [identity, openKey, urlKeyHex]; }, () => [identity, openKey, urlKeyHex])
+        : [identity, openKey, urlKeyHex])).then(([identity, openKey, urlKeyHex]) => {
       if (bootGen !== meshBootGen) return;   // superseded while the identity was minting
       booted = true; meshBootRetry = 0; clearTimeout(bootWatch);
       myId = identity.peerId; // S4: peer id = H(pubkey), unforgeable
@@ -12253,7 +12255,17 @@
         levers: { ISLAND_MODE: 1, URL_KEY: (parseInt(String(urlKeyHex).slice(0, 8), 16) | 1) >>> 0 },   // islands found under the meeting key (above)
         oldKeys: [prevRoomE2E, openKey].filter((k, i, all) => k && k !== roomE2E && all.indexOf(k) === i),   // a door blob one of these opens is behind me, not ahead (mesh-wire R6)
         excluded: isEjected, // ejected forgers: their mesh frames never reach the seat
-        urlParams: () => '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash),
+        // DOOR.HOST: the host's connections carry a host-key order ({act:'hostknock', sid}, by = my peer id), so the door never
+        // holds the host (its restart hold waits for greeters a relay restart cut; the host founds as their first would). Signed
+        // ahead, kept on admSigned.hk, re-signed every HOST_KNOCK_REFRESH_MS (the relay takes an order inside 5 minutes).
+        urlParams: () => {
+          const hk = admSigned.hk;
+          if (amAdmin && av && myId && (!hk || hk.by !== myId || Date.now() - hk.at > GifOS.timings.HOST_KNOCK_REFRESH_MS)) {
+            admSigned.hk = { at: Date.now(), by: myId, q: hk && hk.by === myId ? hk.q : '' };
+            admSigned('hostknock', { sid: sessId }).then((w) => { if (w && admSigned.hk && admSigned.hk.by === myId) admSigned.hk.q = '&hp=' + encodeURIComponent(JSON.stringify(w)); }, () => {});
+          }
+          return '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash) + (amAdmin && admSigned.hk && admSigned.hk.by === myId ? admSigned.hk.q : '');
+        },
         holdDoor: () => pwWaitProof && !meshCoord(),
         netTag: () => netTagNow,
         capable: () => { const hc = navigator.hardwareConcurrency | 0; return !IS_MOBILE && !(hc > 0 && hc <= 2); },   // a relayed pipe may end at my seat when it heads a row (the device class the mesh's tier reads)   // my registration at the door says which network I am on (the tag my beat carries)
@@ -19164,7 +19176,20 @@
     // "no admin" too, and its closing countdown is no evidence. Every member
     // re-sends the admin's last signed orders, so a door seated after the admin
     // left still hears them; a room whose admin never sent any closes anyway.
-    const subsPlanKnown = () => amAdmin || !!modWSeen;
+    // L52.6.1 NO HOST, THE FREE LINE (the people line, js/mesh/wall.js): a hosted room's line is unknown to a seat until the
+    // host's signed order reaches it, and an unknown line holds every knocker at the door ("not yet"). With the host away
+    // (a guest sat down first, or the host's tab closed) no order exists and none can come: the line stayed unknown and
+    // nobody, the host included, got in. So the line is pending only while an order is surely on its way, and is otherwise
+    // the free line at once (Nathan 2026-11-23: no wait): pending while a host is in this page's view (its signed proof is
+    // here, its order rides the same beats), or while the room already seats more people than the free line (a plan let
+    // them in: a fresh greeter of a big paid meeting must not refuse the next knocker on the free size). No host and no more
+    // than the free line: the free line now. The host's order, when it comes, sets the line; the wall puts nobody out (L52.8).
+    const subsPlanKnown = () => {
+      if (amAdmin || modWSeen) return true;
+      if (admins.length > 0) return false;
+      try { const n = meshNode && typeof meshNode.meetingCount === 'function' ? meshNode.meetingCount() : null; if (n != null && n > GifOS.sub.effective(null).roomLimit) return false; } catch (e) {}
+      return true;
+    };
     // The room's plan, verified once per order: undefined while it is being
     // checked, null when none is valid. It is checked ahead of any knock (the
     // timer below), so a door does not meet its first knock with no answer.

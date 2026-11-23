@@ -186,6 +186,8 @@
   // than ~10 s ahead of the leaver's).
   const PRELEAVE_MS = TM.PRELEAVE_MS;
   const RELOAD_HOLD_MS = TM.RELOAD_HOLD_MS;   // a closed tab's goodbye waits this long; with PRELEAVE_MS it must stay inside REPLAY_MS or its relay reads stale
+  const DOOR_PING_MS = TM.DOOR_PING_MS;   // door keepers: how often a page that holds a door registration pings the relay
+  const DOOR_PONG_WAIT_MS = TM.DOOR_PONG_WAIT_MS;   // door keepers: past this with no pong I was late at the relay (or the socket is dead)
   function goodbyeLive(nowMs, tsMs, off) {
     if (!Number.isFinite(tsMs) || tsMs <= 0) return false;
     if (off == null || !Number.isFinite(off)) return Math.abs(nowMs - tsMs) <= 120000;
@@ -240,6 +242,7 @@
     const dropDeep = opts.dropDeepSocket !== false;
     const ident = GifOS.meshIdentity || null;
     let stopped = false, lockedFired = false, doorFired = false, strandedFired = false, rejFired = false;
+    let doorPingAt = 0, doorPongDue = 0;   // door keepers: when I last pinged the relay; since when a ping waits for its pong (0: none)
     let sock = null, deepSince = -1, dcWas = false, wasNetDark = false, netDarkAt = 0;   // dcWas: FHOP.8, I stood at the door last tick   // netDarkAt: wall clock of the offline edge (the dark span is an absence — see tick())
     let lastTickAt = 0, workerClock = false;   // wall clock of the last tick run; workerClock: the tick timer is a Worker (the wall-time clock applies: see tick())
     // Wire-level greeter registration health (production only — the sim has no
@@ -378,6 +381,7 @@
         + '&gk=' + encodeURIComponent(gkStr()) + (hadAtConnect() ? '&had=1' : '')
         + doorParams()
         + (rs ? '&rs=' + rs : '')
+        + '&dp=1'   // door keepers: I ping while I hold a registration (the relay then reads my silence: late, then gone)
         + (/[&?]dev=/.test(extra) ? '' : '&dev=' + encodeURIComponent(devOf(extra)))
         + (ipp && identity ? '&pk=' + encodeURIComponent(identity.pubB64) + '&ipp=' + encodeURIComponent(ipp) : '')
         + extra
@@ -794,6 +798,7 @@
       // address, so without this the pool stays empty until E3 (100-200s):
       // exactly the window the tear drill founds a second meeting in.
       sock.onopen = () => {
+        doorPongDue = 0;   // door keepers: a pong owed on the old socket never comes on this one
         if (opts.onRelayOpen) { try { opts.onRelayOpen(); } catch (e) {} }
         // A reopened socket has NO pool entry (the entry was the old socket's attachment). The 8 s throttle
         // exists to stop a reply chain looping, not to cover a reopen: a greeter that registered 3 s ago and
@@ -804,6 +809,7 @@
         if (stopped) return;
         lastRelayRx = Date.now();
         let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+        if (m.t === 'pong') { doorPongDue = 0; return; }   // door keepers: the edge's answer to my ping
         if (m.t === 'joined' && m.rt && ticket) ticket.setRejoin(m.rt);   // reconnects and reloads of this tab need no new proof of work
         if (m.t === 'greeters') {
           if (atDoor !== doorNow()) return;   // a door's answer counts only while that door is mine: my door moved since this socket knocked there
@@ -1223,6 +1229,21 @@
         // live seat: every greeter closed its connection to it as a lost one, and the seat left its cell as cut off (D6c) a lease later.
         if (dropDeep && !needsRelay && sock && deepSince >= 0 && env.TICK - deepSince > 20) { try { sendRaw({ t: 'unlist' }); } catch (e) {} try { sock.close(); } catch (e) {} sock = null; }
         if (needsRelay && !sock) makeSock(); // re-arm reachability (a policy-REJECTED socket stays down — see sendRaw)
+        // DOOR KEEPERS: while I hold a door registration I ping the relay every DOOR_PING_MS from this tick. The edge answers
+        // without waking the relay. One missed ping (DOOR_LATE_MS) and the relay sends nobody to me (a phone that froze me in
+        // the background, socket still open), until my next ping, which makes me eligible again at once; silent for the room's
+        // lease (DOOR_GONE_MS) and my claim on the room goes too. A tick that stalls is a silent door, which is the point.
+        // Never queued: a ping on a socket that is down is not sent (it would only wake a reconnect).
+        if (sock && sock.state === 'up' && iAmAGreeter() && Date.now() - doorPingAt >= DOOR_PING_MS) {
+          const now = Date.now();
+          if (doorPingAt && now - doorPingAt >= DOOR_PONG_WAIT_MS) {   // my own beat stalled past the relay's late verdict (a frozen tab came back):
+            doorPingAt = now; doorPongDue = 0; lastRegAt = 0; reregister('door-late');   // a knock with my blob is my return, and it wakes the knockers that waited behind me (a ping wakes nobody)
+          } else if (doorPongDue && now - doorPongDue >= DOOR_PONG_WAIT_MS) {   // no pong for the relay's whole late window: the socket is dead
+            doorPingAt = 0; doorPongDue = 0; try { sock.close(); } catch (e) {} sock = null;   // the next tick opens a new one, which re-registers on open
+          } else {
+            doorPingAt = now; if (!doorPongDue) doorPongDue = now; try { sock.send('{"t":"ping"}'); } catch (e) {}
+          }
+        }
         // The door refused my socket for want of the room's password (4003):
         // a password changed while I was away, the same verdict as a sealed
         // door (R6), so the same challenge. Not within 15 s of my own key

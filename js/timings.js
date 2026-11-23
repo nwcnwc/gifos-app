@@ -68,6 +68,8 @@
     DISCONNECTED_DEAD_MS: 90000,   // ms
     DISCONNECTED_DEAD_SMALL_MS: 78000,   // ms
     DOOR_FIRST_FRAME: 4,   // tick
+    DOOR_PING_MS: 4000,   // ms
+    DOOR_PONG_WAIT_MS: 5100,   // ms
     DOOR_REDIAL_CAP: 40000,   // ms
     DOOR_SHUT_MS: 30000,   // ms
     DRAIN_MS: 2000,   // ms
@@ -102,6 +104,7 @@
     HOLDOVER_MS: 60000,   // ms
     HOLD_MAX_MS: 5000,   // ms
     HOLD_SECONDS: 60,   // s
+    HOST_KNOCK_REFRESH_MS: 150000,   // ms
     HOT_VOID_MS: 12000,   // ms
     ICE_BATCH_MS: 50,   // ms
     ICE_FINISH_MS: 12000,   // ms
