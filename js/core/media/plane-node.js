@@ -47,58 +47,14 @@
       const c = C.stageVideoChoice();
       return c && c.src === 'main' ? sentVideoTrack() : null;
     }
-    function mainGone(pc, sd) {
-      try {
-        const tx = pc.getTransceivers().find((t) => t.sender === sd);
-        return !tx || tx.stopped === true || tx.currentDirection === 'stopped' || tx.direction === 'stopped';
-      } catch (e) { return false; }
-    }
     function kick(p) {
       if (p.dc && p.dc.readyState === 'open') { C.dcSend(p, { k: 'rkick' }); if (C.hasPendingTx(p)) C.renegotiate(p); }
       else C.renegotiate(p);
     }
-    // THE PLANE'S SIDE OF THE MEDIA PLAN: the same reconcile as the browser plane's refreshOutbound, on werift senders.
+    // THE PLANE'S SIDE OF THE MEDIA PLAN: the core's one reconcile (reconcileMain, as the browser plane), on werift senders.
     function refreshOutbound() {
-      if (C.outgoingHeld) return;
-      const plan = C.outboundPlan();
-      if (plan.hold) return;
-      if (plan.park === 'viewer') {
-        for (const p of C.peers.values()) {
-          if (p.mainV && p.mainV.track) p.mainV.replaceTrack(null).catch(() => {});
-          if (p.mainA && p.mainA.track) p.mainA.replaceTrack(null).catch(() => {});
-        }
-        return;
-      }
-      const vt = M.sentVideoTrack(), at = M.mainAudioTrack();   // through the published names (a test may stand a builder in)
-      const want = new Map(plan.links);
-      const report = [];
-      for (const p of C.peers.values()) {
-        const slots = want.get(String(p.id));
-        if (!slots) continue;
-        const cam = slots.cam.source !== 'none', mic = slots.mic.source !== 'none';
-        if (p.pc && p.mainV && mainGone(p.pc, p.mainV)) { C.clog('main-gone ' + String(p.id).slice(0, 6) + ' video: re-add'); p.mainV = null; }
-        if (p.pc && p.mainA && mainGone(p.pc, p.mainA)) { C.clog('main-gone ' + String(p.id).slice(0, 6) + ' audio: re-add'); p.mainA = null; }
-        if (cam && C.localStream && p.pc && !p.headless && (!p.mainV || (!p.mainA && mic))) {
-          let added = false;
-          try {
-            if (!p.mainA && at && mic) { p.mainA = C.addMainTrack(p.pc, at, C.localStream); added = true; }
-            if (!p.mainV && vt) { p.mainV = C.addMainTrack(p.pc, vt, C.localStream); added = true; }
-          } catch (e) {}
-          if (added) kick(p);
-        }
-        const r = { cam: 'absent', mic: 'absent' };
-        if (p.mainV) {
-          if (!cam || !vt || slots.cam.park) { r.cam = 'park'; if (p.mainV.track) p.mainV.replaceTrack(null).catch(() => {}); }
-          else { r.cam = 'seat'; if (p.mainV.track !== vt) p.mainV.replaceTrack(vt).catch(() => {}); }
-        }
-        if (p.mainA) {
-          if (!mic || slots.mic.park) { r.mic = 'park'; if (p.mainA.track) p.mainA.replaceTrack(null).catch(() => {}); }
-          else if (at) { r.mic = 'seat'; if (p.mainA.track !== at) p.mainA.replaceTrack(at).catch(() => {}); }
-          else r.mic = 'no-track';
-        }
-        report.push([String(p.id), r]);
-      }
-      C.planReported({ links: report });
+      const plan = C.outboundPlan();   // a held plan or a viewer's park is the reconcile's too
+      C.reconcileMain(plan, M.sentVideoTrack(), M.mainAudioTrack(), kick);   // through the published names (a test may stand a builder in)
     }
     // A late track (a voice that starts, a camera the host hands over): seat it on every camera link, as the browser does.
     function attachLocalTracks() {
@@ -129,7 +85,6 @@
     def('mainAudioTrack', mainAudioTrack);
     def('sentVideoTrack', sentVideoTrack);
     def('stageVideoTrack', stageVideoTrack);
-    def('mainGone', mainGone);
     def('refreshOutbound', refreshOutbound);
     def('attachLocalTracks', attachLocalTracks);
     def('dropEndedRemoteTracks', dropEndedRemoteTracks);
@@ -137,7 +92,7 @@
     def('retireMixTracks', () => {});   // no fold mixes here yet (mix-minus is a later plan slot)
     def('adapt', () => {});             // no encoder of my own to tune: forwarded and Opus tracks keep their own rate
     def('tileHolds', () => false);      // no tiles: no screen holds a stream
-    return { names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'mainGone', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds'] };
+    return { names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds'] };
   }
 
   GifOS.planeNode = { install };

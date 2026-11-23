@@ -128,6 +128,29 @@
         return out;
       }
     }
+    // ONE DECODER PER REMOTE TRACK: every source reading a track (the meter, the agent's ears, a mix) shares one Opus
+    // decoder and one RTP subscription; the first listener opens them, the last one gone frees them.
+    const decoded = new WeakMap();   // a remote track -> its tap
+    let decoders = 0;
+    function decodedTap(t, ctx) {
+      let tap = decoded.get(t);
+      if (tap) return tap;
+      const listeners = new Set();
+      let dec = null, sub = null, said = false;
+      const open = () => {
+        dec = new Opus(RTP_RATE, 1); decoders++;
+        sub = t.onReceiveRtp.subscribe((rtp, ext, info) => {
+          if (info && info.type && info.type !== 'media') return;
+          if (!rtp || !rtp.payload || !rtp.payload.length) return;
+          let x; try { x = fromI16(dec.decode(rtp.payload)); } catch (e) { if (!said) { said = true; ctx._fail(new Error('webaudio: an Opus packet did not decode (' + String(e && e.message || e) + ')')); } return; }
+          for (const f of listeners) { try { f(x); } catch (e) {} }
+        });
+      };
+      const close = () => { try { sub.unSubscribe(); } catch (e) {} try { if (dec.delete) dec.delete(); } catch (e) {} sub = null; dec = null; decoders--; decoded.delete(t); };
+      tap = { listen: (f) => { if (!listeners.size) open(); listeners.add(f); return () => { if (listeners.delete(f) && !listeners.size) close(); }; } };
+      decoded.set(t, tap);
+      return tap;
+    }
     // a source from a MediaStream: a remote werift track (its Opus RTP decoded) or a track this port made (its samples)
     class MediaStreamAudioSourceNode extends AudioNode {
       constructor(ctx, o) {
@@ -137,16 +160,8 @@
         this.mediaStream = s; this._fifo = new Fifo(); this._rate = RTP_RATE;
         const tap = made.get(t);
         if (tap) { this._unsub = tap.listen((x) => this._fifo.push(x)); this._rate = RTP_RATE; }
-        else if (t.onReceiveRtp && typeof t.onReceiveRtp.subscribe === 'function') {
-          const dec = new Opus(RTP_RATE, 1);
-          let said = false;
-          const sub = t.onReceiveRtp.subscribe((rtp, ext, info) => {
-            if (info && info.type && info.type !== 'media') return;
-            if (!rtp || !rtp.payload || !rtp.payload.length) return;
-            try { this._fifo.push(fromI16(dec.decode(rtp.payload))); } catch (e) { if (!said) { said = true; ctx._fail(new Error('webaudio: an Opus packet did not decode (' + String(e && e.message || e) + ')')); } }
-          });
-          this._unsub = () => { try { sub.unSubscribe(); } catch (e) {} try { if (dec.delete) dec.delete(); } catch (e) {} };
-        } else throw new Error('InvalidStateError: this host cannot read that track');
+        else if (t.onReceiveRtp && typeof t.onReceiveRtp.subscribe === 'function') this._unsub = decodedTap(t, ctx).listen((x) => this._fifo.push(x));
+        else throw new Error('InvalidStateError: this host cannot read that track');
         ctx._srcs.add(this);
       }
       disconnect(d) { super.disconnect(d); if (!this.outputs.size && this._unsub) { this._unsub(); this._unsub = null; this.context._srcs.delete(this); } }
@@ -261,8 +276,9 @@
       }
       return new AudioBuffer({ numberOfChannels: ch, length: frames, sampleRate: rate, data: chans });
     }
-    // what is alive (for a host's leak check): open contexts, and across them the sinks pulled, sources decoding, voices encoding
-    const stats = () => { let sinks = 0, sources = 0, codecs = 0; for (const c of AudioContext._live) { sinks += c._sinks.size; sources += c._srcs.size; codecs += c._codecs.size; } return { contexts: AudioContext._live.size, sinks, sources, codecs }; };
+    // what is alive (for a host's leak check): open contexts, and across them the sinks pulled, sources reading, voices encoding;
+    // decoders: remote tracks being decoded (one per track, however many sources read it)
+    const stats = () => { let sinks = 0, sources = 0, codecs = 0; for (const c of AudioContext._live) { sinks += c._sinks.size; sources += c._srcs.size; codecs += c._codecs.size; } return { contexts: AudioContext._live.size, sinks, sources, codecs, decoders }; };
     return { AudioContext, webkitAudioContext: AudioContext, AudioBuffer, AudioNode, GainNode, AnalyserNode, decodeWav, stats, made: (t) => made.has(t) };
   }
 
