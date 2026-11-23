@@ -241,7 +241,7 @@
             var apis = apiNames(manifest);
             var names = apis.map(function (n) { return escapeText(n.charAt(0).toUpperCase() + n.slice(1)); });
             // Per-account: is it wired up in Settings, and if so to which host?
-            var apiStatus = apis.map(function (n) { return capStatusLine(apiAcctState(n), 'add it in <b>Settings → Third-party APIs</b>'); }).join('');
+            var apiStatus = apis.map(function (n) { return capStatusLine(apiAcctState(n), 'add it in <b>Settings → Connected accounts</b>'); }).join('');
             return capRow('api', 'Use your ' + names.join(', ') + ' account' + (names.length > 1 ? 's' : ''), CAP_DESC.api, apiStatus);
           }
           if (k === 'ai') {
@@ -250,7 +250,7 @@
               ? ' <span class="host" style="font-weight:400">— ' + roles.map(function (r) { return escapeText(AI_ROLE_LABELS[r]); }).join(', ') + '</span>'
               : '';
             // Per-role: is a model set up, and if so which one? (else where to set it)
-            var aiStatus = roles.map(function (r) { return capStatusLine(aiRoleState(r), 'add it in <b>Settings → AI models</b>'); }).join('');
+            var aiStatus = roles.map(function (r) { return capStatusLine(aiRoleState(r), 'add it in <b>Settings → AI</b>'); }).join('');
             return capRow('ai', CAP_LABELS.ai + which, CAP_DESC.ai, aiStatus);
           }
           if (k === 'pool') {
@@ -480,10 +480,10 @@
       function missingRequired() {
         var out = [];
         requires.forEach(function (r) {
-          if (r === 'ai') { if (!aiConfigured()) out.push({ what: 'an AI model', where: 'Settings → AI models' }); }
-          else if (AI_ROLE_LABELS[r]) { if (!aiRoleConfigured(r)) out.push({ what: 'the ' + AI_ROLE_LABELS[r] + ' model', where: 'Settings → AI models' }); }
+          if (r === 'ai') { if (!aiConfigured()) out.push({ what: 'an AI model', where: 'Settings → AI' }); }
+          else if (AI_ROLE_LABELS[r]) { if (!aiRoleConfigured(r)) out.push({ what: 'the ' + AI_ROLE_LABELS[r] + ' model', where: 'Settings → AI' }); }
           else if (r === 'microphone' || r === 'camera' || r === 'motion' || r === 'network') { /* granted at use */ }
-          else if (!apiConfigured(r)) out.push({ what: 'your ' + titleCase(r) + ' account', name: r, where: 'Settings → Third-party APIs' });
+          else if (!apiConfigured(r)) out.push({ what: 'your ' + titleCase(r) + ' account', name: r, where: 'Settings → Connected accounts' });
         });
         return out;
       }

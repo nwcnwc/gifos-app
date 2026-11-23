@@ -23,7 +23,7 @@
   "update.app.updateGifosFirst": "Aktualisieren Sie zuerst GifOS — wechseln Sie unter <b>{path}</b> zu Release {release} oder neuer — und aktualisieren Sie dann die App im Store.",
   "update.app.edgeOnly": "Noch kein Release enthält sie — sie ist nur im unveröffentlichten Edge-Build. Wählen Sie zuerst <b>{edge}</b> unter <b>{path}</b> oder warten Sie auf das nächste Release.",
   "update.app.edgeBuild": "Edge-Build",
-  "update.app.versionPath": "GifOS ▾ → Einstellungen → Erweitert → Version",
+  "update.app.versionPath": "GifOS ▾ → Einstellungen → System → Updates",
   "update.app.available": "<b>Update für {name} verfügbar.</b>",
   "update.app.link": "Aktualisieren — Ihre Daten bleiben erhalten",
   "update.app.dismiss": "Schließen"

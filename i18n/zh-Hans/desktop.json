@@ -151,7 +151,7 @@
  "desktop.place.nothingTitle": "没有可安装的内容",
  "desktop.place.nothingBody": "安装未完成：此电脑上没有该应用的文件。请重新安装。",
  "desktop.place.installed": "{name} 已安装",
- "desktop.place.providerBody": "它已在你的<b>Providers</b>文件夹中，现在可以为你的电脑提供服务。请在<b>设置 → AI 模型</b>中把它指定给某个 AI 类型，之后所有请求该能力的应用都会使用它。",
+ "desktop.place.providerBody": "它已在你的<b>Providers</b>文件夹中，现在可以为你的电脑提供服务。请在<b>设置 → AI</b>中把它指定给某个 AI 类型，之后所有请求该能力的应用都会使用它。",
  "desktop.place.homeBody": "它现在已在你的主屏幕上，是一个归你所有的 GIF 文件。可以复制到任何地方，随处都能运行。",
  "desktop.place.open": "打开 {name}",
  "desktop.place.backToStore": "返回应用商店",

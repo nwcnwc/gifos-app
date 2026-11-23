@@ -9745,7 +9745,7 @@
       // The dock word stays the screen's ("Mic"); the action is aria-label and title, the state is the colour.
       micBtn.title = micLocked
         ? ((0, /*()*/__C.modOf)('me').mute.wait ? (0, /*()*/__C.micLockWords)() : 'Muted for all' + ((0, /*()*/__C.modOf)('me').mute.by ? ' by ' + (0, /*()*/__C.modOf)('me').mute.by : '') + ' — someone else has to lift it')
-        : (muted ? 'You are muted — tap to speak. Shortcut: M' : 'Your mic is on — tap to mute. Shortcut: M');
+        : (muted ? 'You are muted — tap to speak. Shortcut: Alt+A' : 'Your mic is on — tap to mute. Shortcut: Alt+A');
       if (unmuteBtn) {
         const lob = document.getElementById('lobby');
         const inCall = !(lob && lob.classList.contains('show'));
@@ -9767,7 +9767,7 @@
       camBtn.setAttribute('aria-label', __C.myStatus.camOff
         ? (choosing ? (0, /*()*/__C.uiText)('camChooseAria', 'Choose how you appear') : 'Start video')
         : (lvl === 2 ? (0, /*()*/__C.uiText)('camMaxBlur', 'Max blur') : lvl === 1 ? (0, /*()*/__C.uiText)('camMinBlur', 'Min blur') : 'Stop video'));
-      camBtn.title = __C.myStatus.camOff ? 'Camera off — tap to choose Max blur, Min blur, or No blur. Shortcut: V' : 'Camera on — tap to turn off. Shortcut: V';
+      camBtn.title = __C.myStatus.camOff ? 'Camera off — tap to choose Max blur, Min blur, or No blur. Shortcut: Alt+V' : 'Camera on — tap to turn off. Shortcut: Alt+V';
       paintShare();
       try { paintBarIdle(); } catch (e) {}
       if (typeof paintLiveBadge === 'function') paintLiveBadge();

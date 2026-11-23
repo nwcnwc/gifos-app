@@ -36,7 +36,7 @@
   "store.err.tooLarge": "Esta pestaña del navegador no puede almacenar un archivo tan grande. Una pestaña privada o de incógnito lo guarda todo en memoria y limita lo que admite, y olvidaría la instalación al cerrarse. Abre gifos.app en una pestaña normal e instala de nuevo. ({msg})",
   "store.err.tooLargeSized": "Esta pestaña del navegador no puede almacenar un archivo tan grande ({size}). Una pestaña privada o de incógnito lo guarda todo en memoria y limita lo que admite, y olvidaría la instalación al cerrarse. Abre gifos.app en una pestaña normal e instala de nuevo. ({msg})",
   "store.err.saveFailed": "No se pudo guardar en este equipo — {msg}",
-  "store.path.version": "GifOS ▾ → Ajustes → Avanzado → Versión",
+  "store.path.version": "GifOS ▾ → Ajustes → Sistema → Actualizaciones",
   "store.legacy.notice": "Tu pantalla de inicio usa la versión {release}, creada antes de que existiera la App Store, así que todavía no puede recibir instalaciones. Actualiza desde {path} y vuelve aquí.",
   "store.tooOld.title": "{name} necesita la compilación {need} de GifOS o una posterior.",
   "store.tooOld.body": "Tu pantalla de inicio usa {owner}, así que esta app todavía no puede ejecutarse allí: al instalarla tendrías un icono que no abre nada.",

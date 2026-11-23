@@ -36,7 +36,7 @@
   "store.err.tooLarge": "此浏览器标签页无法存储这么大的文件。隐私（无痕）标签页会把所有内容放在内存中并限制容量，关闭后还会丢失这次安装。请在普通标签页中打开 gifos.app 后重新安装。（{msg}）",
   "store.err.tooLargeSized": "此浏览器标签页无法存储这么大的文件（{size}）。隐私（无痕）标签页会把所有内容放在内存中并限制容量，关闭后还会丢失这次安装。请在普通标签页中打开 gifos.app 后重新安装。（{msg}）",
   "store.err.saveFailed": "无法保存到这台电脑 — {msg}",
-  "store.path.version": "GifOS ▾ → 设置 → 高级 → 版本",
+  "store.path.version": "GifOS ▾ → 设置 → 系统 → 更新",
   "store.legacy.notice": "你的主屏幕运行的是版本 {release}，它发布于应用商店出现之前，因此暂时无法接收安装。请通过 {path} 更新，然后再回来。",
   "store.tooOld.title": "{name} 需要 GifOS 构建号 {need} 或更高。",
   "store.tooOld.body": "你的主屏幕运行的是{owner}，所以这个应用暂时无法在其中运行——安装后只会得到一个打不开任何内容的图标。",

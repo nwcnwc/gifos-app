@@ -151,7 +151,7 @@
  "desktop.place.nothingTitle": "Nada que instalar",
  "desktop.place.nothingBody": "La instalación no terminó: el archivo de la app no está en este ordenador. Intenta instalarla de nuevo.",
  "desktop.place.installed": "{name} está instalada",
- "desktop.place.providerBody": "Está en tu carpeta <b>Providers</b>: ya puede dar servicio a tu ordenador. Asígnala a un tipo de IA en <b>Ajustes → Modelos de IA</b> y todas las apps que pidan esa capacidad la usarán.",
+ "desktop.place.providerBody": "Está en tu carpeta <b>Providers</b>: ya puede dar servicio a tu ordenador. Asígnala a un tipo de IA en <b>Ajustes → IA</b> y todas las apps que pidan esa capacidad la usarán.",
  "desktop.place.homeBody": "Ya está en tu pantalla de inicio: un archivo GIF que es tuyo. Cópialo donde quieras; funciona en cualquier sitio.",
  "desktop.place.open": "Abrir {name}",
  "desktop.place.backToStore": "Volver a la tienda",

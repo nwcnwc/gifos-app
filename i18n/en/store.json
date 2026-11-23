@@ -36,7 +36,7 @@
   "store.err.tooLarge": "This browser tab can’t store a file this large. A private or incognito tab keeps everything in memory and caps what it will hold — and it would forget the install when it closes. Open gifos.app in a normal tab and install again. ({msg})",
   "store.err.tooLargeSized": "This browser tab can’t store a file this large ({size}). A private or incognito tab keeps everything in memory and caps what it will hold — and it would forget the install when it closes. Open gifos.app in a normal tab and install again. ({msg})",
   "store.err.saveFailed": "Couldn’t save it to this computer — {msg}",
-  "store.path.version": "GifOS ▾ → Settings → Advanced → Version",
+  "store.path.version": "GifOS ▾ → Settings → System → Updates",
   "store.legacy.notice": "Your Home Screen is running release {release}, which was built before the App Store existed — it can’t receive an install yet. Update from {path}, then come back.",
   "store.tooOld.title": "{name} needs GifOS build {need} or newer.",
   "store.tooOld.body": "Your Home Screen runs {owner}, so this app can’t run there yet — installing it would leave you an icon that opens onto nothing.",

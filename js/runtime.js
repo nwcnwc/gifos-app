@@ -2682,7 +2682,7 @@
     return providerArchive(c.app).then((arc) => {
       if (!arc || !arc.files) {
         showSystemSetup({ kind: 'provider', name: cfgName, role, problem: 'missing' });
-        return Promise.reject(new Error('PROVIDER_MISSING: ' + cfgName + ' is assigned to this AI type but its file is no longer on this computer. Re-install it, or pick another model in Settings → AI models.'));
+        return Promise.reject(new Error('PROVIDER_MISSING: ' + cfgName + ' is assigned to this AI type but its file is no longer on this computer. Re-install it, or pick another model in Settings → AI.'));
       }
       const m = arc.manifest || {};
       const name = m.name || cfgName;
