@@ -750,7 +750,7 @@
     // WebKit button), so a long message was cut mid-word.
     const writeStatus = (t) => {
       let span = statusEl.querySelector('.statustext');
-      if (!span) { span = document.createElement('span'); span.className = 'statustext'; statusEl.replaceChildren(span); }
+      if (!span) { span = document.createElement('span'); span.className = 'statustext'; statusEl.textContent = ''; statusEl.appendChild(span); } // replaceChildren is Safari 14 / Chrome 86 / Firefox 78
       span.textContent = t;
     };
     const share = document.getElementById('share');
