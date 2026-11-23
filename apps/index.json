@@ -6004,7 +6004,7 @@
       "appId": "paint-board",
       "name": "Paint Board",
       "shortName": "Paint Board",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "A freehand board with wild brushes. Draw together.",
       "author": {
         "name": "LHRUN",
@@ -6018,7 +6018,7 @@
         "name": "paint-board",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -6040,15 +6040,15 @@
         99
       ],
       "cover": "/apps/paint-board/cover.jpg",
-      "bytes": 194146,
+      "bytes": 195292,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "3fc11bc94aa834e4bb4d9e755b634187e248a595a4dd2b6559f93a9695dd553b"
+      "sha256": "a064ab6afa3b3797d8aa1ed05cf61d36eb5397952db4a0b092ee4cb093b1e9b9"
     },
     {
       "slug": "parable-of-polygons",
@@ -9517,7 +9517,7 @@
       "appId": "ui-gradients",
       "name": "uiGradients",
       "shortName": "Gradients",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "tagline": "Beautiful colour gradients. Browse, copy the CSS, keep favourites.",
       "author": {
         "name": "ghosh",
@@ -9531,7 +9531,7 @@
         "name": "uiGradients",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -9553,15 +9553,15 @@
         118
       ],
       "cover": "/apps/ui-gradients/cover.jpg",
-      "bytes": 202675,
+      "bytes": 203680,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "0b0136666da05c95f28c206c7984c735f44ecd853d33847b7487e90361826135"
+      "sha256": "f6639680d4237507e1c977b2dce49c318c8ce1deca3c30e4c3aa18273cf35ecb"
     },
     {
       "slug": "underrun",
