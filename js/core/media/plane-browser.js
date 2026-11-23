@@ -7232,7 +7232,7 @@
     // not, so the person hears. The verdict and its numbers are in debugDump().audio.hear and the debug trace.
     let wkEarOff = null; // why the one ear was retired on this page; null while it stands
     let hearBusy = false;
-    const HEAR_WIN_MS = 600, HEAR_RX_ENERGY = 0.0003, HEAR_MIX_ZERO = 0.00001, HEAR_MIN_GAIN = 0.1, HEAR_SWEEPS = 3, HEAR_STATS_MS = 2000;
+    const HEAR_WIN_MS = GifOS.timings.HEAR_WIN_MS, HEAR_STATS_MS = GifOS.timings.HEAR_STATS_WAIT_MS, HEAR_RX_ENERGY = 0.0003, HEAR_MIX_ZERO = 0.00001, HEAR_MIN_GAIN = 0.1, HEAR_SWEEPS = 3;
     const hearSt = { state: 'idle', silent: 0, frozen: 0, rx: null, mix: null, acT: null, wallT: 0, at: 0, n: 0, rebound: 0, retired: null };
     function hearReset(state) { hearSt.state = state; hearSt.silent = 0; hearSt.frozen = 0; hearSt.acT = null; hearSt.wallT = 0; }
     // The receivers that carry these tracks, on any pair (a relayed voice arrives on the friend's pair).
