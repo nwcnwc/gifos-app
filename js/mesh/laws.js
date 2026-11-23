@@ -66,6 +66,7 @@
     L11_ARRIVE: 32,              // L11: a seat that took its cell less than this long ago is an ARRIVAL: a live rival holder of its cell heard first-hand wins over it at once (two claim windows: a move's claim and the witness's answer)
     L13_CHAIN_MAX: 6,            // L13.15: a mass-leave witness chain holds this many cells (owner, its witness, ...): enough to reach the home cell from depth 4
     L16_17_DOOR: 10,             // L16.17: a seat outside Section 1 that admits a seeker holds its door socket this long (the longest dial: the offer, the answer and the candidates of the pc to the seat it placed cross on the relay; without a socket they walk up the tree and back)
+    L295_START: 3,               // L29.5: an owed duty slot that never arrived is read mute only this long after it became owed plus L29_STARVE: the renegotiation floor, the re-offer and answer (FH_RENEG) plus the first media (MEDIA_WAKE_T)
     L29_ACCUSE: 120,             // L29.4: a receiver complains (signed, to the seat itself) only after the seat's own feed has starved this long (a minute): longer than the ladder takes to shed and to move
     L29_ASK_T: 8,                // L29.1: a seat that has shed both classes this long asks its row head to move it to a cell that carries less (one beat)
     L29_BEAT: 16,                // L29.3: a light seat repeats its word to its head this often (two beats); the head forgets the word after three of these
