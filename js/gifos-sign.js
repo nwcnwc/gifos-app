@@ -590,7 +590,13 @@
     const take = async (k) => { keys.push(k); if (!hit && opts.accept && await opts.accept(k)) hit = k; };
     const fromFile = async () => {
       const url = opts.fileUrl ? opts.fileUrl(domain) : 'https://' + domain + '/gifos.key';
-      const r = await F(url, withLimit({ mode: 'cors', redirect: 'error' }, ms));
+      let r;
+      try { r = await F(url, withLimit({ mode: 'cors', redirect: 'error' }, ms)); }
+      catch (e) {
+        // A browser does not say which: no answer, a redirect, or a file
+        // served without Access-Control-Allow-Origin all read the same.
+        throw new Error('could not read https://' + domain + '/gifos.key (' + (e && e.name === 'TimeoutError' ? 'no answer in time' : 'unreachable, redirected, or served without CORS') + ')');
+      }
       if (!r.ok) throw new Error('no gifos.key at ' + domain + ' (HTTP ' + r.status + ')');
       await take(parseDomainKey(await readCapped(r, KEY_READ_MAX)));
     };
