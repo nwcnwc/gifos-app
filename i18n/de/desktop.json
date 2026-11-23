@@ -36,7 +36,7 @@
  "desktop.sig.unpinned": "⚠️ Dies ist eine ältere Signatur: {n, plural, one {# versiegelte Datei unter <span class=\"mono\">.assets/</span> wird} other {# versiegelte Dateien unter <span class=\"mono\">.assets/</span> werden}} nicht davon abgedeckt. Bitten Sie den Autor um eine neu signierte Kopie.",
  "desktop.sig.tamperedBody": "⚠️ <b>Manipuliert.</b> Dieses GIF gibt vor, von {id} signiert zu sein, doch sein Inhalt wurde <b>nach der Signatur geändert</b>. Vertrauen Sie nicht darauf, dass es von dieser Person stammt.",
  "desktop.sig.unverifiedHead": "🛡 <b>Signiert von {id}</b>, aber die Signatur konnte derzeit nicht geprüft werden: {detail}.",
- "desktop.sig.unverifiedDomain": "Der Schlüssel muss unter <span class=\"mono\">https://{id}/gifos.key</span> veröffentlicht sein (mit CORS).",
+ "desktop.sig.unverifiedDomain": "Der Schlüssel muss unter <span class=\"mono\">https://{id}/gifos.key</span> (mit CORS) oder im DNS-TXT-Eintrag <span class=\"mono\">_gifos.{id}</span> veröffentlicht sein.",
  "desktop.sig.unverifiedEmail": "Der Schlüssel der Person muss auf keys.openpgp.org liegen.",
  "desktop.sig.unsignedBody": "Dieses GIF ist nicht signiert.",
  "desktop.sig.unknown": "Unbekannter Signaturstatus.",

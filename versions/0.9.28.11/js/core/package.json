@@ -1,0 +1,9 @@
+{
+  "name": "@gifos-app/core",
+  "version": "0.9.28-pre.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "description": "The GifOS client core: everything a meeting participant is apart from drawing and input. All rights reserved; not published.",
+  "main": "node.js",
+  "note": "The package is assembled from the site tree: files.json lists what it holds."
+}
