@@ -54,6 +54,7 @@
    "addEventListener",
    "clearInterval",
    "clearTimeout",
+   "console",
    "fetch",
    "localStorage",
    "location",
@@ -65,6 +66,7 @@
    "setTimeout"
   ],
   "page": [
+   "HTMLMediaElement",
    "ResizeObserver",
    "document",
    "getComputedStyle",

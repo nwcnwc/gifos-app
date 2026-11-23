@@ -101,6 +101,8 @@
     GSP_RATE: 10,   // count
     GSP_SRC_BURST: 80,   // count
     GSP_SRC_RATE: 2,   // count
+    HEAR_STATS_WAIT_MS: 1000,   // ms
+    HEAR_WIN_MS: 543,   // ms
     HOLDOVER_MS: 60000,   // ms
     HOLD_MAX_MS: 5000,   // ms
     HOLD_SECONDS: 60,   // s
