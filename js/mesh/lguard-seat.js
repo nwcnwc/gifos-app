@@ -161,7 +161,7 @@
       const bud = this.lgBud; const over = this.lgLvl >= 2;
       // L29.5 a cell change ends the complaints about my old cell (they named it), and a cell or head change sends my word at once
       { const ck = ckey(this.coord); const h = this.occGet(ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 }));
-        if (this.l295CellAt < 0 || ck !== this.l295CellK) { this.l295CellK = ck; this.l295CellAt = this.TICK; this.l295Comp.clear(); this.lgAskSent = -1000000; }
+        if (this.l295CellAt < 0 || ck !== this.l295CellK) { this.l295CellK = ck; this.l295CellAt = this.TICK; this.l295DutyAt = -1; this.l295Comp.clear(); this.lgAskSent = -1000000; }
         if (h !== this.l295HeadK) { this.l295HeadK = h; this.lgAskSent = -1000000; } }
       if ((this.lgLight || this.l295Light()) && this.coord.i !== 0 && this.TICK - this.lgAskSent >= K.L29_BEAT) { const h = this.occGet(ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 })); if (h >= 0 && h !== this.id) { const a = newMsg('LGASK'); a.id = this.id; a.ck = ckey(this.coord); a.tag = this.lgWord(); this.emit(h, a); } this.lgAskSent = this.TICK; }
       if (this.lgAsk.size && this.coord.i !== 0) this.lgAsk.clear();
@@ -188,10 +188,11 @@
         for (const [k, v] of this.l295Comp) { if (this.TICK - v > K.L29_WIN) this.l295Comp.delete(k); }
         const dc = this.l295DutyCells(this.coord); let w = 0, agree = 0;
         for (const k of dc) { const x = this.occGet(k); if (x < 0 || x === this.id || !this.linkRole(x, Seat.LR_OWNED)) continue; w++; if (this.l295Comp.has(x)) agree++; }
+        if (w >= 1) { if (this.l295DutyAt < 0) this.l295DutyAt = this.TICK; } else this.l295DutyAt = -1;   // the hold runs only while a duty receiver is there to read me
         const q = w >= 2 && agree >= Math.max(K.L29_QMIN, Math.trunc(w / 2) + 1) && !this.l295Deaf;   // `lguard mutehold`: a hostile head ignores its receivers
         if (q && !this.l295Q) { this.l295Q = true; this.l295QAt = this.TICK; this.trace('L295-QUORUM', this.id, this.coord, 'agree=%d of %d', agree, w); }
-        // The reading is refuted only by delivering: it clears only at a cell with duty receivers held for L295_HOLD with no complaint.
-        else if (this.l295Q && w >= 1 && this.l295Comp.size === 0 && this.TICK - this.l295CellAt > K.L295_HOLD) { this.l295Q = false; this.trace('L295-CLEAR', this.id, this.coord, 'held=%lld', this.TICK - this.l295QAt); }
+        // The reading is refuted only by delivering: it clears only after L295_HOLD with a duty receiver there all along and no complaint.
+        else if (this.l295Q && w >= 1 && this.l295DutyAt >= 0 && this.l295Comp.size === 0 && this.TICK - this.l295DutyAt > K.L295_HOLD) { this.l295Q = false; this.trace('L295-CLEAR', this.id, this.coord, 'held=%lld', this.TICK - this.l295QAt); }
       }
       if (this.lgComp.size && !this.lgQuit) {
         const rc = this.lgRecvCells(); const n = rc.length; let w = 0, agree = 0;

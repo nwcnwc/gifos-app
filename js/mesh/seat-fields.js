@@ -980,6 +980,7 @@
     ["l295LiarAt", "i64"],   // long long = -1000000  (line 1998)
     ["l295CompN", "i64"],   // long long = 0  (line 1998)
     ["l295CellAt", "i64"],   // long long = -1  (line 1998)
+    ["l295DutyAt", "i64"],   // long long = -1  (line 1998)
     ["l295LiarT", "i32"],   // int = -1  (line 1998)
     ["l295HeadK", "i32"],   // int = -2  (line 1998)
     ["l295CellK", "u64"],   // uint64_t = 0  (line 1998)
@@ -1545,6 +1546,7 @@
     l295LiarAt: -1000000,
     l295CompN: 0,
     l295CellAt: -1,
+    l295DutyAt: -1,
     l295LiarT: -1,
     l295HeadK: -2,
     l295CellK: 0,
