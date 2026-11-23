@@ -110,7 +110,7 @@
     },
 
     // C++: mesh_seat.inc:Seat::d6cOther
-    d6cOther() { let one = -1; for (const g of this.lastGreeters) if (g >= 0 && g !== this.id) { if (one < 0) one = g; else if (g !== one) return true; } return false; },   // D6c.8: a room lives without me only with two other seats (a link I am not an end of)
+    d6cOther() { let one = -1; for (const g of this.lastGreeters) if (g >= 0 && g !== this.id) { if (one < 0) one = g; else if (g !== one) return true; } if (one < 0) return false; for (const [d, at] of this.doorAt) if (d !== this.sr && this.TICK - at <= K.LEASE_T) return true; return false; },   // D6c.8: a room lives without me only with a third seat (a link I am not an end of): a second name at the door, or a far door my room fold listed within a lease
 
     // C++: mesh_seat.inc:Seat::darkSeat
     darkSeat() {
