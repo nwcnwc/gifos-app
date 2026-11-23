@@ -909,7 +909,18 @@ Any GifOS app GIF can be SIGNED so recipients see "Signed by <domain>" or
 signing. The user signs it themselves at https://gifos.app/sign,
 AFTER the GIF is final:
 - domain: an Ed25519 key generated on that page; they publish the public
-  half at https://<their-domain>/gifos.key.
+  half (one line of base64) in EITHER place, and one is enough:
+    file:   https://<their-domain>/gifos.key, served as plain text with
+            the header Access-Control-Allow-Origin: * and no redirect;
+    or DNS: a TXT record named _gifos.<their-domain> whose value is that
+            same line (no prefix; it fits one TXT string, and a value split
+            into several strings is joined). Pick DNS when they cannot set
+            headers on their web server.
+  Verifiers read both straight from the domain and from public
+  DNS-over-HTTPS (Cloudflare, Google), never through a GifOS server. If
+  both are published, keep them the same key (a rotation may list the old
+  and the new key as two TXT records); a key in either place that signed
+  the GIF makes it "Signed by" the domain.
 - email: their own PGP key (gpg detach-signs a statement the page
   provides) — Ed25519 and RSA (2048+) keys both work; recipients verify
   against keys.openpgp.org, so the key must be uploaded there with the

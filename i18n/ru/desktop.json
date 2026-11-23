@@ -36,7 +36,7 @@
  "desktop.sig.unpinned": "⚠️ Это устаревшая подпись: {n, plural, one {# запечатанный файл в <span class=\"mono\">.assets/</span> ею не охвачен} few {# запечатанных файла в <span class=\"mono\">.assets/</span> ею не охвачены} many {# запечатанных файлов в <span class=\"mono\">.assets/</span> ею не охвачены} other {# запечатанного файла в <span class=\"mono\">.assets/</span> ею не охвачены}}. Попросите автора прислать заново подписанную копию.",
  "desktop.sig.tamperedBody": "⚠️ <b>Изменено.</b> Этот GIF подписан как принадлежащий {id}, но его содержимое <b>изменилось после подписания</b>. Не считайте его исходящим от этого автора.",
  "desktop.sig.unverifiedHead": "🛡 <b>Подписано: {id}</b>, но сейчас проверить подпись не удалось: {detail}.",
- "desktop.sig.unverifiedDomain": "Ключ должен быть опубликован по адресу <span class=\"mono\">https://{id}/gifos.key</span> (с CORS).",
+ "desktop.sig.unverifiedDomain": "Ключ должен быть опубликован по адресу <span class=\"mono\">https://{id}/gifos.key</span> (с CORS) или в DNS-записи TXT <span class=\"mono\">_gifos.{id}</span>.",
  "desktop.sig.unverifiedEmail": "Их ключ должен находиться на keys.openpgp.org.",
  "desktop.sig.unsignedBody": "Этот GIF не подписан.",
  "desktop.sig.unknown": "Неизвестное состояние подписи.",

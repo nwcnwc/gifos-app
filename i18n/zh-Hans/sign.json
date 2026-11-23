@@ -13,6 +13,7 @@
   "sign.domain.generate": "生成新密钥",
   "sign.domain.load": "载入我保存的密钥…",
   "sign.domain.putAt": "把这个放到 {url}（公开内容，可放心分享）：",
+  "sign.domain.orDns": "或者不用文件：把同样的文本放进名为 {name} 的 DNS TXT 记录。两处有一处即可；DNS 无需任何 Web 服务器设置。",
   "sign.domain.downloadPublic": "下载 gifos.key",
   "sign.domain.downloadPrivate": "下载我的私钥（请保密！）",
   "sign.domain.keepSafe": "请妥善保管私钥文件——你靠它签名。丢失后只需重新生成密钥并重新发布 gifos.key。",

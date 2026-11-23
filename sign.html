@@ -247,6 +247,7 @@
         <div id="keyout" style="display:none">
           <label data-rich="sign.domain.putAt" data-slots="url">Put THIS at <code id="keyurl2"></code> (public — safe to share):</label>
           <textarea id="pubkey" rows="2" readonly></textarea>
+          <p style="font-size:.82rem;margin:.4rem 0" data-rich="sign.domain.orDns" data-slots="name">Or, instead of the file, put the same text in a DNS TXT record named <code id="txtname">_gifos.yourdomain</code>. Either place is enough; DNS needs no web server settings.</p>
           <button class="act ghost" id="dl-pub" data-i18n="sign.domain.downloadPublic">Download gifos.key</button>
           <button class="act ghost" id="dl-priv" data-i18n="sign.domain.downloadPrivate">Download my private key (keep secret!)</button>
           <p style="font-size:.82rem;color:#ffcc44;margin:.5rem 0 0" data-i18n="sign.domain.keepSafe">Keep the private key file safe — it's how you sign. Losing it just means generating a new one and re-publishing gifos.key.</p>
@@ -298,6 +299,7 @@
 <script src="js/gifos-i18n.js"></script>
 <script src="js/gifos-gif.js"></script>
 <script src="js/gifos-ed.js"></script>
+<script src="js/timings.js"></script>
 <script src="js/gifos-sign.js"></script>
 <script src="js/gifos-store.js"></script>
 <!-- A newer GifOS release: the Home Screen's check and bar (js/gifos-update.js).
@@ -323,6 +325,7 @@
   const SLOTS = {
     'sign.domain.intro': () => ({ url: '<code id="keyurl">' + esc(keyUrl()) + '</code>' }),
     'sign.domain.putAt': () => ({ url: '<code id="keyurl2">' + esc(keyUrl()) + '</code>' }),
+    'sign.domain.orDns': () => ({ name: '<code id="txtname">' + esc(txtName()) + '</code>' }),
     'sign.email.intro': () => ({ link: '<a href="https://keys.openpgp.org" target="_blank">keys.openpgp.org</a>' }),
     'sign.foot': () => ({ back: '<a href="/">' + esc(T('sign.foot.back')) + '</a>' }),
     'sign.contact': () => ({ email: '<a href="mailto:support@gifos.app">support@gifos.app</a>' }),
@@ -404,9 +407,11 @@
   // ---- domain flow ----
   const dom = () => $('domain').value.trim().toLowerCase();
   const keyUrl = () => 'https://' + (dom() || 'yourdomain') + '/gifos.key';
+  const txtName = () => '_gifos.' + (dom() || 'yourdomain');
   function refresh() {
     $('keyurl').textContent = keyUrl();
     $('keyurl2').textContent = keyUrl();
+    $('txtname').textContent = txtName();
     const d = dom();
     $('sign-domain').disabled = !(gifBytes && keyPair && GifOS.sign.isDomain(d));
     $('dl-stmt').disabled = !(gifBytes && GifOS.sign.isEmail($('email').value.trim()));
