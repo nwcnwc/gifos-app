@@ -10643,6 +10643,7 @@
       if (seatedHere) for (const [pid, p] of peers) if (!p.qa && !ids.has(pid) && !linkTo(pid) && !p.absentSince) p.absentSince = Date.now();
       for (const pid of Object.keys(rosterNames)) if (!ids.has(pid)) delete rosterNames[pid];
       reconcileGrid();
+      try { rowMateCheck(); } catch (e) {}   // a new row-mate gets my mic and camera this tick (see rowMateCheck)
       updateStatus();
       (0, /*()*/__M.recNoteStruct)();
     }
@@ -12938,7 +12939,15 @@
       }).catch(() => {});
     }
     GifOS.meshMedia.workerClock(2000, () => { for (const [pid, p] of peers) { try { txStallTick(pid, p); } catch (e) {} } });
-    let lastRmSig = ''; // row-mate set signature — refreshOutbound on change (became/stopped-being a mate)
+    // lastRmSig: the row-mate set signature, refreshOutbound on change (became/stopped-being a mate).
+    // SEATED TO HEARING (TIMINGS28): the row-mate check runs on every mesh update (renderFromOcc, each tick) as well as on the
+    // sweep below. On the sweep alone (a 2 s clock) a newcomer my view had just placed in my row waited up to 2 s for my mic.
+    let lastRmSig = '', rowMateCheck = () => {
+      let rmSig = rowMates().sort().join(',');
+      for (const [pid, q] of peers) if (q.pc && q.mediaOn) { const v = (micPeer(pid) ? 'm' : '') + (camPeer(pid) ? 'c' : ''); if (v) rmSig += '|' + pid + v; }
+      rmSig += '#' + dutySlots().map((d) => d.join(':')).sort().join(',');   // a duty my cell takes on or lets go of is reported at once
+      if (rmSig !== lastRmSig) { lastRmSig = rmSig; (0, /*()*/__M.refreshOutbound)(); }
+    };
     // THE SWEEP RIDES A WORKER CLOCK (2026-10-03). It was a page setInterval,
     // which Chrome throttles to once a minute after five minutes hidden; the
     // reconcile it runs (reconcileMosaic, re-claims, renegotiation) then
@@ -13273,10 +13282,7 @@
       // joiner whose view named its linked mates at no cell yet withheld its mic there, the row set had already settled, and
       // nothing re-ran it, so nobody heard the joiner for 30 s (echo-tones steady: p1 never heard p5). Only pcs past
       // enableMedia, only a verdict that holds: a newcomer outside my row or a pc still being born is not a change of mine.
-      let rmSig = rowMates().sort().join(',');
-      for (const [pid, q] of peers) if (q.pc && q.mediaOn) { const v = (micPeer(pid) ? 'm' : '') + (camPeer(pid) ? 'c' : ''); if (v) rmSig += '|' + pid + v; }
-      rmSig += '#' + dutySlots().map((d) => d.join(':')).sort().join(',');   // a duty my cell takes on or lets go of is reported at once
-      if (rmSig !== lastRmSig) { lastRmSig = rmSig; (0, /*()*/__M.refreshOutbound)(); }
+      rowMateCheck();
       (0, /*()*/__M.reconcileMosaic)(); // the nested mosaic follows the same occ (3b)
       (0, /*()*/__M.applyBuses)();    // bus membership follows the same arithmetic
       (0, /*()*/__V.paintStage)();    // remote grants/roster moves can change my stage rights
