@@ -5455,7 +5455,7 @@
       (0, /*()*/__M.refreshTrBtn)();
       if (bannedOut) return;                      // the ban notice is permanent
       if (Date.now() < statusHoldUntil) return;   // an explicit message is showing
-      try { if ((0, /*()*/__M.soundHeld)()) return; } catch (e) {} // held sound (a refused play, a stopped ear context) stays on the line until it plays
+      if (typeof __M.soundHeld === 'function' && (0, /*()*/__M.soundHeld)()) return; // held sound (a refused play, a stopped ear context) stays on the line until it plays
       (0, /*()*/__V.paintStatusAlert)(false);
       // Faces on the wall are people, even before their transport has vouched.
       // participantCount() stays the ladder's input; the label may only go up.
