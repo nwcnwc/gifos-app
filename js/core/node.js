@@ -206,7 +206,11 @@ function siteFetch(appRoot, location, realFetch) {
         (b) => new Response(b, { status: 200, headers: { 'content-type': /\.json$/.test(file) ? 'application/json' : 'application/octet-stream' } }),
         () => new Response('not found', { status: 404 }));
     }
-    return realFetch(u.href, init);
+    // Off the site: the page's Origin goes with the ask, as a browser sends it (the relay's /t and door refuse an ask
+    // with none). The participant still solves the proof of work like every page.
+    const h = new Headers((init && init.headers) || (input && typeof input !== 'string' && input.headers) || undefined);
+    if (!h.has('origin')) h.set('origin', location.origin);
+    return realFetch(u.href, Object.assign({}, init, { headers: h }));
   };
 }
 
@@ -251,7 +255,8 @@ function createMeeting(opts) {
   const sockets = new Set();
   const RealWS = globalThis.WebSocket;
   class WebSocketHost extends RealWS {
-    constructor(url, protocols) { super(url, protocols); sockets.add(this); this.addEventListener('close', () => sockets.delete(this)); }
+    // the page's Origin on the upgrade, as a browser sends it (the relay refuses a socket with none)
+    constructor(url, protocols) { super(url, Object.assign(protocols === undefined ? {} : { protocols }, { headers: { Origin: location.origin } })); sockets.add(this); this.addEventListener('close', () => sockets.delete(this)); }
     addEventListener(t, f, o) { return super.addEventListener(t, typeof f === 'function' ? (f.__g || (f.__g = guard('socket ' + t, f))) : f, o); }
     removeEventListener(t, f, o) { return super.removeEventListener(t, (f && f.__g) || f, o); }
   }
