@@ -554,6 +554,14 @@
       this.findAck(mm); if (this.f.fabricDoors()) this.f.fabricHoldDial(this.id, mm.nc);   /* L7.16 */ this.f.wake(this.id); return true;   // L16.3
     },
 
+    // C++: mesh_seat.inc:Seat::l717End
+    // L7.17: a held FIND ends with its seeker's door: the far end's close of it (a hard TRANSLOST) ends every FIND I hold for that seeker
+    l717End(m) {
+      if (!m.hard || m.id < 0) return;
+      const n = this.held.length; this.held = this.held.filter((h) => h.m.nc !== m.id);
+      if (this.held.length !== n) this.trace('L7.17-END', this.id, this.hasCoord ? this.coord : null, 'nc=%d', m.id);
+    },
+
     // C++: mesh_seat.inc:Seat::serveHeld
     serveHeld() {
       if (!this.held.length || !this.hasCoord || this.state !== 3) return;
