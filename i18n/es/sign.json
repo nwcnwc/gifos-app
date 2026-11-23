@@ -13,6 +13,7 @@
   "sign.domain.generate": "Generar una clave nueva",
   "sign.domain.load": "Cargar mi clave guardada…",
   "sign.domain.putAt": "Pon ESTO en {url} (pública, se puede compartir):",
+  "sign.domain.orDns": "O, en lugar del archivo, pon el mismo texto en un registro DNS TXT llamado {name}. Basta con uno de los dos; el DNS no necesita ajustes del servidor web.",
   "sign.domain.downloadPublic": "Descargar gifos.key",
   "sign.domain.downloadPrivate": "Descargar mi clave privada (¡mantenla en secreto!)",
   "sign.domain.keepSafe": "Guarda a salvo el archivo de la clave privada: es con lo que firmas. Si lo pierdes, solo tendrás que generar una clave nueva y volver a publicar gifos.key.",

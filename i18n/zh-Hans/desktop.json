@@ -36,7 +36,7 @@
  "desktop.sig.unpinned": "⚠️ 这是较旧的签名：<span class=\"mono\">.assets/</span> 下有 {n} 个密封文件不在其覆盖范围内。请向作者索取重新签名的副本。",
  "desktop.sig.tamperedBody": "⚠️ <b>已被篡改。</b>此 GIF 声称由 {id} 签名，但其内容在<b>签名后被更改</b>。请勿相信它来自对方。",
  "desktop.sig.unverifiedHead": "🛡 <b>签名者：{id}</b>，但目前无法检查签名：{detail}。",
- "desktop.sig.unverifiedDomain": "密钥必须发布在 <span class=\"mono\">https://{id}/gifos.key</span>（并启用 CORS）。",
+ "desktop.sig.unverifiedDomain": "密钥必须发布在 <span class=\"mono\">https://{id}/gifos.key</span>（并启用 CORS），或发布在 DNS TXT 记录 <span class=\"mono\">_gifos.{id}</span> 中。",
  "desktop.sig.unverifiedEmail": "对方的密钥必须位于 keys.openpgp.org。",
  "desktop.sig.unsignedBody": "此 GIF 未签名。",
  "desktop.sig.unknown": "未知的签名状态。",
