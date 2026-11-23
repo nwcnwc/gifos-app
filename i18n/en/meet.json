@@ -1015,6 +1015,8 @@
   "meet.subMoveFreeNote": "A meeting your plan does not power runs on the free plan: up to {free} people, voice only through firewalls.",
   "meet.subMoveUp": "More meetings at once: {plan} powers {n} at once, from {price} a month.",
   "meet.subMoveOther": "another meeting",
+  "meet.subOverflowKeep": "All {n} of your organization’s meetings are in use; this one runs on the free limits.",
+  "meet.subOverflowKeep0": "Every meeting your organization’s plan covers is in use; this one runs on the free limits.",
   "meet.subMeetings1": "Your subscription works in one meeting at a time. Joining a meeting, here or in another browser with your subscription file, moves it there.",
   "meet.subMeetingsN": "Your subscription works in up to {n} meetings at once. Joining one more, here or in another browser with your subscription file, moves it from the oldest.",
   "meet.planFamily": "Family business",

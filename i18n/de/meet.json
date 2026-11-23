@@ -1014,6 +1014,8 @@
   "meet.subMoveFreeNote": "Ein Meeting, das Ihr Tarif nicht versorgt, läuft im kostenlosen Tarif: bis zu {free} Personen, durch Firewalls nur Sprache.",
   "meet.subMoveUp": "Mehr Meetings gleichzeitig: {plan} versorgt {n} gleichzeitig, ab {price} pro Monat.",
   "meet.subMoveOther": "ein anderes Meeting",
+  "meet.subOverflowKeep": "Alle {n} Meetings Ihrer Organisation sind belegt; dieses läuft mit den kostenlosen Grenzen.",
+  "meet.subOverflowKeep0": "Alle Meetings, die der Tarif Ihrer Organisation abdeckt, sind belegt; dieses läuft mit den kostenlosen Grenzen.",
   "meet.subMeetings1": "Ihr Abo gilt immer nur in einem Meeting. Wenn Sie einem Meeting beitreten, hier oder in einem anderen Browser mit Ihrer Abo-Datei, wechselt es dorthin.",
   "meet.subMeetingsN": "Ihr Abo gilt in bis zu {n} Meetings gleichzeitig. Ein weiteres Meeting, hier oder in einem anderen Browser mit Ihrer Abo-Datei, nimmt es dem ältesten weg.",
   "meet.planFamily": "Familienbetrieb",

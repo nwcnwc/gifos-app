@@ -1014,6 +1014,8 @@
   "meet.subMoveFreeNote": "Una reunión sin tu plan funciona con el plan gratis: hasta {free} personas, solo voz a través de cortafuegos.",
   "meet.subMoveUp": "Más reuniones a la vez: {plan} cubre {n} a la vez, desde {price} al mes.",
   "meet.subMoveOther": "otra reunión",
+  "meet.subOverflowKeep": "Las {n} reuniones de tu organización están en uso; esta funciona con los límites gratuitos.",
+  "meet.subOverflowKeep0": "Todas las reuniones que cubre el plan de tu organización están en uso; esta funciona con los límites gratuitos.",
   "meet.subMeetings1": "Tu suscripción funciona en una sola reunión a la vez. Al unirte a una reunión, aquí o en otro navegador con tu archivo de suscripción, se mueve allí.",
   "meet.subMeetingsN": "Tu suscripción funciona en hasta {n} reuniones a la vez. Al unirte a una más, aquí o en otro navegador con tu archivo de suscripción, deja la más antigua.",
   "meet.planFamily": "Negocio familiar",

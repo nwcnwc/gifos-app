@@ -541,13 +541,21 @@
     if (keys.length > MEM_MAX) keys.sort((a, b) => (mem[a].at || 0) - (mem[b].at || 0)).slice(0, keys.length - MEM_MAX).forEach((k) => { delete mem[k]; });
     writeJson(MEM_KEY, mem);
   }
-  // moveOptions(subFull, passFull) -> {places, entries:[{right, meeting, name, people, at}]}: what the question lists.
+  // moveOptions(subFull, passFull) -> {places, keptPlaces, entries:[{right, meeting, name, people, at}]}: what the
+  // question lists. Only rights whose signed overflow is 'ask' are listed; a right that keeps (an organization's plan)
+  // never gives up another meeting, so its places only count in keptPlaces (the note "all N … are in use").
   function moveOptions(subFull, passFull) {
     const mem = readJson(MEM_KEY) || {};
     const entries = [];
-    const add = (right, f) => { for (const x of (f && f.meetings) || []) { const k = mem[x.meeting] || {}; entries.push({ right, meeting: x.meeting, name: k.name || null, people: k.people || null, at: x.at || k.at || null }); } };
+    let places = 0, keptPlaces = 0;
+    const add = (right, f) => {
+      if (!f) return;
+      if (f.overflow === 'keep') { keptPlaces += f.keep || 0; return; }
+      places += f.keep || 0;
+      for (const x of f.meetings || []) { const k = mem[x.meeting] || {}; entries.push({ right, meeting: x.meeting, name: k.name || null, people: k.people || null, at: x.at || k.at || null }); }
+    };
     add('sub', subFull); add('pass', passFull);
-    return { places: ((subFull && subFull.keep) || 0) + ((passFull && passFull.keep) || 0), entries };
+    return { places, keptPlaces, entries };
   }
   function take(j) {
     meet.ticket = { ticketJson: j.ticketJson, sig: j.sig }; meet.exp = j.exp; meet.gen = j.gen; meet.tier = j.tier || meet.tier;
@@ -613,8 +621,12 @@
         if (meet !== m) return null;
         if (pt) { m.moved = 'full'; return null; }
         let drop;
+        const opts = moveOptions(j, pmeet && pmeet.room === room ? pmeet.full : null);
+        // OVERFLOW 'keep' (an organization's plan): nothing to ask and nothing moves; this meeting runs on the free
+        // defaults, with a plain note. The payment service refuses to drop another meeting for such a right anyway.
+        if (!opts.entries.length) { m.moved = 'kept'; if (root.document && root.document.body) showOverflowNote(opts.keptPlaces); return null; }
         if (choose) {
-          const pick = await choose(moveOptions(j, pmeet && pmeet.room === room ? pmeet.full : null)).catch(() => null);
+          const pick = await choose(opts).catch(() => null);
           if (meet !== m) return null;
           if (!pick || pick.keep) { m.moved = 'kept'; return null; }   // this meeting runs on the free defaults
           if (pick.right === 'pass') { m.moved = 'full'; passJoin(room, true, true, pick.meeting); return null; }
@@ -701,7 +713,7 @@
       const ifFree = !evict && !!(await credential());
       const j = await post('/gifos/pass/join', await passSigned('pass-join:' + m.tag, Object.assign({ meeting: m.tag, passes: w.passes, ifFree }, drop ? { drop } : {})));
       if (pmeet !== m) return null;
-      if (j.full) { m.moved = 'full'; m.full = { keep: j.keep || 1, meetings: j.meetings || [] }; return null; }
+      if (j.full) { m.moved = 'full'; m.full = { keep: j.keep || 1, overflow: j.overflow === 'keep' ? 'keep' : 'ask', meetings: j.meetings || [] }; return null; }
       if (!j.active) { m.moved = 'inactive'; return null; }
       passTake(m, j);
       return m.ticket;
@@ -1277,6 +1289,19 @@
   // The small card the host's prompts use (the turned-away prompt, the move question).
   const CARD_STYLE = 'position:fixed;left:50%;bottom:5.5rem;transform:translateX(-50%);z-index:41;max-width:min(92vw,28rem);background:var(--c-white,#fff);color:var(--c-ink,#1d1d1f);border:1px solid var(--c-line,#e8ecf1);border-radius:.6rem;padding:.6rem .8rem;box-shadow:0 12px 32px rgba(0,0,0,.5);font:14px/1.4 system-ui,sans-serif;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap';
 
+  // An organization's plan (overflow 'keep') with every meeting in use: say so plainly; nothing is asked or moved.
+  function showOverflowNote(n) {
+    if (typeof document === 'undefined' || !document.body) return false;
+    const old = document.getElementById('sub-overflow'); if (old) old.remove();
+    const box = el('div', { id: 'sub-overflow', role: 'status', 'aria-live': 'polite', style: CARD_STYLE });
+    box.appendChild(el('span', { id: 'sub-overflow-msg', style: 'flex:1 1 12rem' }, n > 0 ? fill(tx('subOverflowKeep', 'All {n} of your organization\u2019s meetings are in use; this one runs on the free limits.'), { n }) : tx('subOverflowKeep0', 'Every meeting your organization\u2019s plan covers is in use; this one runs on the free limits.')));
+    const x = el('button', { type: 'button', id: 'sub-overflow-x', class: BTN, style: BTN_STYLE, 'aria-label': tx('subUpClose', 'Close') }, '\u00d7');
+    x.onclick = () => { box.remove(); };
+    box.appendChild(x);
+    document.body.appendChild(box);
+    return true;
+  }
+
   // ASK BEFORE MOVING (Nathan 2026-11-22): every place of every right this browser holds is in use, and this meeting
   // has just started. opts: {places, entries:[{right, meeting, name, people, at}]} (moveOptions). One place: "Your plan
   // is powering 'X' (N people). Move it here?" with Move it here / Keep it there; several: which meeting to take it
@@ -1371,7 +1396,7 @@
   }
 
   GifOS.meetSubs = {
-    askMove, moveOptions,
+    askMove, moveOptions, showOverflowNote,
     rights, planRights, refresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, subSelection, applySubSelection, paintNow, paintSettings, openSettings, openSubscribe, mayCreateAdminRoom, showFull, hideFull, fullWaiting, fullOffers, hostOffer, doorRight, showHostPrompt,
     roomOrder, roomTier, proveAtDoor, checkShown, newNonce,
     appNow, joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureCurrent, captureOrder, captureKeys, fileBytes, downloadFile, useFile, librarySigner, restoreInApp,

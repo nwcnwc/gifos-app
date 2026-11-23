@@ -93,7 +93,8 @@
   // a license, ticket or pass when it is sold (LINE ITEMS below). Nothing that decides reads a row: verifiers read the
   // signed line items only.
   // agentHost is written only when granted (a set that does not name it reads as 0).
-  const g = (roomLimit, admitAtFullDoor, captureOpenRoom, turnVideoLinks, storage, meetings, agentHost) => Object.freeze(Object.assign({ roomLimit, admitAtFullDoor, captureOpenRoom, turnVideoLinks, storage, meetings: meetings || 1 }, agentHost ? { agentHost } : {}));
+  // overflow is written only when 'keep' (a set that does not name it reads as 'ask').
+  const g = (roomLimit, admitAtFullDoor, captureOpenRoom, turnVideoLinks, storage, meetings, agentHost, overflow) => Object.freeze(Object.assign({ roomLimit, admitAtFullDoor, captureOpenRoom, turnVideoLinks, storage, meetings: meetings || 1 }, agentHost ? { agentHost } : {}, overflow === 'keep' ? { overflow } : {}));
   // Money for display, from whole cents: 1990 -> "$19.90", 19900 -> "$199", 299900 -> "$2,999".
   const usd = (c) => '$' + (c % 100 ? (c / 100).toFixed(2) : String(c / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   // THE BILLING PERIODS: monthly, yearly, and monthly12 (an annual subscription billed as 12 monthly payments, so no
@@ -114,17 +115,18 @@
     return Object.freeze(r);
   }
   // The meeting-count plans: Unlimited's meeting rights ("unlimited hosting") in N meetings at once. Vouches stay
-  // Unlimited's 6: the vouch is per meeting, so N meetings already vouch N times over.
-  const many = (n) => g(null, true, true, 6, false, n);
+  // Unlimited's 6: the vouch is per meeting, so N meetings already vouch N times over. overflow: Family business asks
+  // (personal and family scale); the organization plans keep (nobody pulls the plan from a colleague's meeting).
+  const many = (n, overflow) => g(null, true, true, 6, false, n, 0, overflow);
   const TIERS = {
     room20: tier('room20', 'Private meetings, up to 20 people', { monthly: 200, yearly: 2000 }, true, g(PEOPLE_LIMIT, true, false, 3, false, 1)),
     unlimited: tier('unlimited', 'Private meetings, unlimited people', { monthly: 500, yearly: 5000 }, true, g(null, true, true, 6, false, 1)),
     streamer: tier('streamer', 'Streamer: unlimited private meetings and storage', { monthly: 1000, yearly: 10000 }, true, g(null, true, true, 20, true, 1)),
     family: tier('family', 'Family business: up to 5 meetings at once', { monthly: 1990, yearly: 19900 }, true, many(5)),
-    smallBusiness: tier('smallBusiness', 'Small business: up to 10 meetings at once', { monthly: 3490, yearly: 34900 }, false, many(10)),
-    business: tier('business', 'Business: up to 100 meetings at once', { yearly: 299900 }, false, many(100)),
-    largeBusiness: tier('largeBusiness', 'Large business: up to 1,000 meetings at once', { yearly: 2499900 }, false, many(1000)),
-    enterprise: tier('enterprise', 'Enterprise: up to 10,000 meetings at once', { monthly12: 1658333 }, false, many(10000)),
+    smallBusiness: tier('smallBusiness', 'Small business: up to 10 meetings at once', { monthly: 3490, yearly: 34900 }, false, many(10, 'keep')),
+    business: tier('business', 'Business: up to 100 meetings at once', { yearly: 299900 }, false, many(100, 'keep')),
+    largeBusiness: tier('largeBusiness', 'Large business: up to 1,000 meetings at once', { yearly: 2499900 }, false, many(1000, 'keep')),
+    enterprise: tier('enterprise', 'Enterprise: up to 10,000 meetings at once', { monthly12: 1658333 }, false, many(10000, 'keep')),
   };
   const TIER_IDS = Object.keys(TIERS);              // every plan, every one a PayPal subscription
   // More than the largest plan: no row, no preset; a contract.
@@ -192,8 +194,10 @@
   //   storage          a storage budget (its size rides the license: storage settings)
   //   meetings         how many meetings at once: 1..MEETINGS_MAX (the payment service keeps the key's N newest meetings)
   //   agentHost        hosted bot sessions at once: 0..1000 (the hosted bot add-on; nothing grants or reads it yet)
-  // Every word but the optional ones must be present: `meetings` missing reads as 1, `agentHost` missing as 0 (Nathan
-  // 2026-11-22). ISSUED CREDENTIALS NEVER BREAK (Nathan: "we cannot break people's credentials"): the flag every right
+  //   overflow         'ask' | 'keep': a new meeting past the count asks which meeting gives up its place ('ask'), or
+  //                    runs on the free defaults and nothing moves ('keep', enforced by the payment service)
+  // Every word but the optional ones must be present: `meetings` missing reads as 1, `agentHost` missing as 0, `overflow`
+  // missing as 'ask' (Nathan 2026-11-22). ISSUED CREDENTIALS NEVER BREAK (Nathan: "we cannot break people's credentials"): the flag every right
   // signed before 0.9.28.x carries, `oneMeeting`, is read forever as what it meant: true = meetings 1, false = no limit
   // on meetings (MEETINGS_MAX); a set naming both is unreadable. Any other unknown word, a missing required one or a bad
   // value makes the set unreadable (refused), so a checker never guesses.
@@ -206,8 +210,9 @@
   const ROOM_LIMIT_MAX = 25;   // a signed room line is 1..25 people, or null: no line (Nathan 2026-11-20)
   const MEETINGS_MAX = 1000000;   // a signed meeting count is 1..1,000,000
   const AGENT_HOST_MAX = 1000;
-  const GRANT_WORDS = Object.freeze(['roomLimit', 'admitAtFullDoor', 'captureOpenRoom', 'turnVideoLinks', 'storage', 'meetings', 'agentHost']);
-  const OPTIONAL_WORDS = Object.freeze({ meetings: 1, agentHost: 0 });   // word -> what it reads as when the set does not name it
+  const GRANT_WORDS = Object.freeze(['roomLimit', 'admitAtFullDoor', 'captureOpenRoom', 'turnVideoLinks', 'storage', 'meetings', 'agentHost', 'overflow']);
+  const OPTIONAL_WORDS = Object.freeze({ meetings: 1, agentHost: 0, overflow: 'ask' });
+  const OVERFLOWS = Object.freeze(['ask', 'keep']);   // word -> what it reads as when the set does not name it
   const LEGACY_WORDS = Object.freeze(['oneMeeting']);   // read forever (issued credentials), never written
   const DEFAULTS = g(FREE_LIMIT, false, false, 0, false, 1, 0);
   // effective(grants) -> the defaults raised by a signed right's line items (null roomLimit: no line).
@@ -215,11 +220,11 @@
     if (!x) return DEFAULTS;
     return { roomLimit: x.roomLimit === null ? null : Math.max(x.roomLimit, DEFAULTS.roomLimit), admitAtFullDoor: !!x.admitAtFullDoor, captureOpenRoom: !!x.captureOpenRoom,
       turnVideoLinks: Math.max(x.turnVideoLinks | 0, DEFAULTS.turnVideoLinks), storage: !!x.storage, meetings: Math.max(x.meetings | 0, DEFAULTS.meetings),
-      agentHost: Math.max(x.agentHost | 0, 0) };
+      agentHost: Math.max(x.agentHost | 0, 0), overflow: x.overflow === 'keep' ? 'keep' : 'ask' };
   }
   const meetingsOk = (v) => intS(v) && v >= 1 && v <= MEETINGS_MAX;
   // grantsOk(x) -> a clean copy in today's words (meetings always written, the legacy oneMeeting turned into it;
-  // agentHost written only when above 0), or null.
+  // agentHost written only when above 0, overflow only when 'keep'), or null.
   function grantsOk(x) {
     if (!x || typeof x !== 'object' || Array.isArray(x)) return null;
     const keys = Object.keys(x);
@@ -233,13 +238,16 @@
     if (!meetingsOk(meetings)) return null;
     const agentHost = 'agentHost' in x ? x.agentHost : OPTIONAL_WORDS.agentHost;
     if (!(intS(agentHost) && agentHost >= 0 && agentHost <= AGENT_HOST_MAX)) return null;
+    const overflow = 'overflow' in x ? x.overflow : OPTIONAL_WORDS.overflow;
+    if (OVERFLOWS.indexOf(overflow) < 0) return null;
     const out = { roomLimit: x.roomLimit, admitAtFullDoor: x.admitAtFullDoor, captureOpenRoom: x.captureOpenRoom, turnVideoLinks: x.turnVideoLinks, storage: x.storage, meetings };
     if (agentHost) out.agentHost = agentHost;   // written only when granted
+    if (overflow === 'keep') out.overflow = overflow;   // written only when not the default
     return out;
   }
   // parseGrantList("roomLimit=12,captureOpenRoom,turnVideoLinks=6") -> { grants } | { error }: the text form of a hand-picked
   // set of line items (pay/mint-pass.mjs --grants). A name alone is true; name=true|false for the flags; roomLimit=1..25 or
-  // none (no line); turnVideoLinks=whole number; meetings=1..MEETINGS_MAX; agentHost=0..1000. Strict: an unknown name, a repeated one or a bad value is an error. A word not
+  // none (no line); turnVideoLinks=whole number; meetings=1..MEETINGS_MAX; agentHost=0..1000; overflow=ask|keep. Strict: an unknown name, a repeated one or a bad value is an error. A word not
   // named takes the no-grant value (nothing added: line 5, no flags, 0 links, one meeting): defaults fill nothing. The
   // result must also pass grantsOk, the one validator every verifier runs.
   function parseGrantList(text) {
@@ -263,6 +271,9 @@
       } else if (k === 'meetings') {
         if (v !== undefined && /^[0-9]{1,7}$/.test(v) && meetingsOk(+v)) g.meetings = +v;
         else return { error: 'meetings needs a whole number 1-' + MEETINGS_MAX };
+      } else if (k === 'overflow') {
+        if (v === 'ask' || v === 'keep') g.overflow = v;
+        else return { error: 'overflow needs ask or keep' };
       } else if (k === 'agentHost') {
         if (v !== undefined && /^[0-9]{1,4}$/.test(v) && +v <= AGENT_HOST_MAX) g.agentHost = +v;
         else return { error: 'agentHost needs a whole number 0-' + AGENT_HOST_MAX };
@@ -281,7 +292,7 @@
   function grantsRights(signed, label, until) {
     const x = effective(signed);
     return { tier: label || null, subscribed: x.admitAtFullDoor, adminRooms: true, openRooms: true, roomLimit: x.roomLimit, turnAudio: true, turnVideo: x.turnVideoLinks > 0,
-      storage: null, bypassLimit: x.admitAtFullDoor, until, vouches: x.turnVideoLinks, capture: x.captureOpenRoom, meetings: x.meetings, agentHost: x.agentHost || 0, grants: signed || null };
+      storage: null, bypassLimit: x.admitAtFullDoor, until, vouches: x.turnVideoLinks, capture: x.captureOpenRoom, meetings: x.meetings, agentHost: x.agentHost || 0, overflow: x.overflow === 'keep' ? 'keep' : 'ask', grants: signed || null };
   }
   // What everyone has with no signed right: the defaults, in the rights shape.
   const FREE = Object.freeze(grantsRights(null, null, 0));
@@ -925,7 +936,7 @@
     TICKET_KIND, TICKET_S, RENEW_EVERY_S, meetingTag, checkTicket, verifyTicket, ticketRights,
     PASS_KIND, passSeconds, PASS_PLAN, PASS_PRICE, PASS_VALUE, ORDER_ID_RE, PASS_ID_RE, passMessage, checkPass, passLive, passEnd, verifyPass,
     passStart, passRights, meetingRight, bestRights, rank,
-    ROOM_LIMIT_MAX, MEETINGS_MAX, AGENT_HOST_MAX, GRANT_WORDS, OPTIONAL_WORDS, LEGACY_WORDS, DEFAULTS, effective, grantsOk, parseGrantList, grantsRights, ownTicketGrants, fullFreeWords, PASS_PRESETS, presetPass, revokedSet, rightRevoked, captureRight,
+    ROOM_LIMIT_MAX, MEETINGS_MAX, AGENT_HOST_MAX, OVERFLOWS, GRANT_WORDS, OPTIONAL_WORDS, LEGACY_WORDS, DEFAULTS, effective, grantsOk, parseGrantList, grantsRights, ownTicketGrants, fullFreeWords, PASS_PRESETS, presetPass, revokedSet, rightRevoked, captureRight,
     PASS_TICKET_KIND, PASS_REC_RE, passRecId, passTicketMessage, passChain, checkPassTicket, verifyPassTicket, isPassTicket,
     WALLET_KIND, walletOk,
     CRED_KIND, credentialOk, credentialFiles, credentialFromFiles, walletFromFiles,
