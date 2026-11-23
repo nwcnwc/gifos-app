@@ -567,9 +567,15 @@
       if (!j || (j.Status !== 0 && j.Status !== 3)) throw new Error('DNS status ' + (j && j.Status));
       return j;
     };
+    // The first resolver that answers wins (Promise.any, spelled out for
+    // browsers older than it); both failing names both reasons.
     let j;
-    try { j = await Promise.any(doh.map(ask)); }
-    catch (e) { throw new Error('the DNS lookup of ' + name + ' failed (' + (e.errors || [e]).map((x) => String(x && x.message || x)).join('; ') + ')'); }
+    try {
+      j = await new Promise((resolve, reject) => {
+        const errs = []; let left = doh.length;
+        doh.forEach((base, i) => ask(base).then(resolve, (e) => { errs[i] = e; if (--left === 0) reject(errs); }));
+      });
+    } catch (errs) { throw new Error('the DNS lookup of ' + name + ' failed (' + [].concat(errs).map((x) => String(x && x.message || x)).join('; ') + ')'); }
     const txt = (j.Answer || []).filter((a) => a && a.type === 16);
     const texts = txt.map((a) => txtText(a.data));
     const ttls = (txt.length ? txt : (j.Authority || [])).map((a) => Number(a && a.TTL)).filter((t) => t > 0);
