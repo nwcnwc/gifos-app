@@ -1753,7 +1753,7 @@
       (0, /*()*/__M.resumeReload)();
     }
     yield 440;
-    document.querySelectorAll('a.title[href="index.html"], a.brand[href="index.html"]').forEach((a) => { a.setAttribute('href', (0, /*()*/__C.homeHref)()); });
+    document.querySelectorAll('a.title[href="./"], a.brand[href="./"]').forEach((a) => { a.setAttribute('href', (0, /*()*/__C.homeHref)()); });
     // The "meeting closed" screen (closeRoomNoHost).
     function showClosedDialog() { const cm = document.getElementById('closed-modal'); if (cm) cm.style.display = 'flex'; }
     yield 444;
@@ -8214,7 +8214,7 @@
       const failed = !__M.whisperInstalling && !!__M.wspInst.err;
       state.innerHTML = (0, /*()*/__C.uiText)('setCcNeed', 'Needs the <b>Offline Captions (Whisper)</b> app — 13 MB, once per computer; the model itself downloads once from gifos.app the first time captions run, and stays on this device.')
         + (failed ? ' ' : ' <button id="ccwhisper-install" class="seg" style="border:1px solid var(--accent,#7b5cff);border-radius:.4rem;color:#fff;background:var(--accent,#7b5cff)"' + (__M.whisperInstalling ? ' disabled' : '') + '>' + (0, /*()*/__C.uiText)('setCcInstall', 'Install it now') + '</button> ')
-        + '<span id="ccwhisper-prog">' + (__M.whisperInstalling ? (0, /*()*/__C.esc)(__M.wspInst.note) : '') + '</span> <a href="store.html#app=' + __M.WHISPER_APP_ID + '" target="_blank" rel="noopener" style="color:var(--accent2,#ff5caa);font-size:.8rem">' + (0, /*()*/__C.uiText)('setCcStore', 'or from the App Store') + '</a>';
+        + '<span id="ccwhisper-prog">' + (__M.whisperInstalling ? (0, /*()*/__C.esc)(__M.wspInst.note) : '') + '</span> <a href="/store#app=' + __M.WHISPER_APP_ID + '" target="_blank" rel="noopener" style="color:var(--accent2,#ff5caa);font-size:.8rem">' + (0, /*()*/__C.uiText)('setCcStore', 'or from the App Store') + '</a>';
       const ib = document.getElementById('ccwhisper-install');
       if (ib) ib.onclick = () => { (0, /*()*/__M.installWhisper)(true).catch(() => {}); paintCcState(); };
       (0, /*()*/__M.armWhisperRescan)();
@@ -11212,7 +11212,7 @@
       list.appendChild(row); list.appendChild(note);
       noteFor();
       // More apps: the App Store, in a new tab (the meeting stays open; Run app lists what it adds).
-      const more = document.createElement('a'); more.className = 'app-empty-link app-empty-store'; more.href = 'store.html'; more.target = '_blank'; more.rel = 'noopener';
+      const more = document.createElement('a'); more.className = 'app-empty-link app-empty-store'; more.href = '/store'; more.target = '_blank'; more.rel = 'noopener';
       more.textContent = (0, /*()*/__C.uiText)('appEmptyStore', 'Find more apps in the App Store'); list.appendChild(more);
     }
     yield 3112;

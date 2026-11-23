@@ -3843,10 +3843,11 @@
     // HOME IS THE PINNED BUILD. A pinned person can be in a meeting on the live
     // release (the room rule above); the relative index.html would open THIS
     // build's Home Screen and quietly undo the pin. So Home goes to the pin.
+    // Clean paths ('./', '/versions/<pin>/'): the host 308s index.html to them.
     function homeHref() {
       let pin = null; try { pin = localStorage.getItem('gifos_pin'); } catch (e) {}
       const here = window.GifOS && GifOS.update ? GifOS.update.running().version : null;
-      return (pin && /^\d+\.\d+\.\d+(\.\d+)?$/.test(pin) && here !== pin) ? '/versions/' + pin + '/index.html' : 'index.html';
+      return (pin && /^\d+\.\d+\.\d+(\.\d+)?$/.test(pin) && here !== pin) ? '/versions/' + pin + '/' : './';
     }
     yield 442;
     function closeRoomNoHost() {

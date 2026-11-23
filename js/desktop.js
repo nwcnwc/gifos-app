@@ -118,7 +118,7 @@
     '   Attach the resulting "My App.gif" for me to download. Remember: when the host GIF is mine, the result still looks and animates EXACTLY like my original everywhere — that is the point.',
     'B. If you cannot run code: reply with a complete single-file index.html in a ```html code block (the paste box takes one file; multi-file needs a .zip) and tell me to paste it into GifOS → ＋ Add → the app builder.',
     '',
-    'SIGNING (optional, recommended when I plan to share the app): after delivering the .gif, mention that I can sign it at https://gifos.app/sign.html with my domain (publishes a key at https://mydomain/gifos.key or in a DNS TXT record _gifos.mydomain) or my email (my own PGP key via keys.openpgp.org — Ed25519 or RSA), so everyone who receives it sees "Signed by me" — and tampering is detected. Signing is done BY ME on that page, after the GIF is final. NEVER ask for my private key.',
+    'SIGNING (optional, recommended when I plan to share the app): after delivering the .gif, mention that I can sign it at https://gifos.app/sign with my domain (publishes a key at https://mydomain/gifos.key or in a DNS TXT record _gifos.mydomain) or my email (my own PGP key via keys.openpgp.org — Ed25519 or RSA), so everyone who receives it sees "Signed by me" — and tampering is detected. Signing is done BY ME on that page, after the GIF is final. NEVER ask for my private key.',
     'IDENTITY (manifest "shortName" and "version"): set "shortName" to a compact label (≤ ~20 chars, e.g. "Chess" for "Chess Grandmaster") and "version" to a short string like "1.0" or "2.3". On the Home Screen the shortName becomes the tile\'s NAMEPLATE, taking the place of the filename entirely — a tidy tile shows the name you signed, not whatever the file was saved as — and the version rides the tile\'s "new" pill until the app is first used, then bows out. Both appear again in the app\'s runtime header. ALL OF THIS ONLY ONCE THE APP IS SIGNED: an unsigned GIF could claim any name, so GifOS never vouches for one, and its tile just shows the filename. Bump "version" whenever you ship a change.',
     '',
     'MODDING IS ENCOURAGED: if I hand you an EXISTING GifOS app .gif and ask for changes, do not rebuild from scratch — extract its files, apply my changes, and splice them back into the SAME GIF so its animation and my saved data survive. To extract (Python): find b"\\x21\\xff\\x0bGIFOS1.0GOS" in the bytes; after those 14 header bytes read length-prefixed sub-blocks until a zero byte; the joined payload (skipping its first flag byte) is raw-deflate JSON {"files": {path: base64}}. Cut that whole block out of the GIF, modify the files, keep every ".state/…" entry unchanged (my data), then run pack_gifos on the remaining bytes. Cut out any "GIFOSSIG" block the same way — a mod is a new work I can re-sign.',
@@ -234,6 +234,12 @@
   // default desktop emits clean URLs; a booted computer image threads its
   // own database name through so apps and nested boots stay inside it.
   const nsParam = (key) => (store.dbName === 'gifos' ? '' : key + encodeURIComponent(store.dbName));
+  // THE APP STORE IS ONE PAGE AT THE ROOT, /store, for every build: store.js
+  // works out which build owns this Home Screen and hands the install back to
+  // it through index.html's channel loader. A relative 'store.html' sent a
+  // release Home Screen to /versions/<v>/store.html, the FROZEN store that
+  // store.js warns about, and paid the host's 308 to the clean path first.
+  const storeHref = () => '/store' + (nsParam('#db=') || '');
 
   function gridPosition(index) {
     const cols = Math.max(1, Math.floor((surface.clientWidth - 20) / GRID.pitch));
@@ -1393,7 +1399,7 @@
   // so the user lands ready to sign — no re-download/re-drop needed.
   function signItem(it) {
     closeContext();
-    root.open('sign.html#id=' + encodeURIComponent(it.fileId) + nsParam('&db='), '_blank');
+    root.open('sign#id=' + encodeURIComponent(it.fileId) + nsParam('&db='), '_blank');
   }
   async function verifyItem(it) {
     if (!GifOS.sign) return;
@@ -2715,7 +2721,7 @@
     // Where more apps come from. Also on the Home Screen as a launcher icon,
     // but an icon can be moved into a folder or trashed — the menu is the one
     // route to the store that a user can't misplace.
-    { label: dt('desktop.menu.appStore'), fn: () => { location.href = 'store.html' + (nsParam('#db=') || ''); } },
+    { label: dt('desktop.menu.appStore'), fn: () => { location.href = storeHref(); } },
     'sep',
     { label: dt('desktop.menu.arrange'), fn: () => setArrangeMode(true) },
     'sep',
@@ -4708,7 +4714,7 @@
       isProvider ? dt('desktop.place.providerBody') : dt('desktop.place.homeBody'),
       [
         { label: dt('desktop.place.open', { name }), fn: () => { location.href = 'run.html#id=' + encodeURIComponent(fileId) + nsParam('&db='); } },
-        from === 'store' ? { label: dt('desktop.place.backToStore'), fn: () => { location.href = 'store.html' + (nsParam('#db=') || ''); } } : null,
+        from === 'store' ? { label: dt('desktop.place.backToStore'), fn: () => { location.href = storeHref(); } } : null,
       ].filter(Boolean));
   }
 
@@ -4753,7 +4759,7 @@
     const dlg = armDialog(bg, box, { label: dt('desktop.add.title') });
     const shut = () => dlg.close();
 
-    box.querySelector('#ad-store').onclick = () => { location.href = 'store.html' + (nsParam('#db=') || ''); };
+    box.querySelector('#ad-store').onclick = () => { location.href = storeHref(); };
     box.querySelector('#ad-file').onclick = () => { shut(); fileInput.click(); };
     box.querySelector('#ad-folder').onclick = () => { shut(); newFolder(60, 60); };
     const urlInput = box.querySelector('#ad-url'), urlBtn = box.querySelector('#ad-url-go'), urlMsg = box.querySelector('#ad-url-msg');

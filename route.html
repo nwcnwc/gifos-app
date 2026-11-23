@@ -92,8 +92,12 @@
     // Into the HASH, like every other pretty route here: store.html's channel
     // loader carries `pathname + hash` across a version redirect and drops the
     // query, so a slug in ?app= would vanish for anyone on a pinned build.
+    // The CLEAN path, never /store.html: the host 308s every .html address to
+    // its clean form, so /store.html cost every store link (the app Update bar
+    // included) a second round trip, and a service worker that cached the
+    // redirected copy could answer that hop with a page the browser refuses.
     var q = location.search ? '&' + location.search.slice(1) : '';
-    go('/store.html' + (s[1] ? '#app=' + encodeURIComponent(s[1].toLowerCase()) + q : (q ? '#' + q.slice(1) : '')));
+    go('/store' + (s[1] ? '#app=' + encodeURIComponent(s[1].toLowerCase()) + q : (q ? '#' + q.slice(1) : '')));
     return;
   }
   // Bare /meet, no room = START A FRESH MEETING, identical to double-clicking

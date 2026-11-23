@@ -529,11 +529,11 @@
     }).join('');
   }
 
-  const browseUrl = () => (FROZEN ? BASE + 'store.html' + (ns('#db=') || '') : '/store' + (ns('#db=') || ''));
+  const browseUrl = () => (FROZEN ? BASE + 'store' + (ns('#db=') || '') : '/store' + (ns('#db=') || ''));
   // At the root the shareable pretty path IS the URL; frozen builds have no
   // pretty route into a snapshot, so they carry the slug in the hash.
   const detailUrl = (slug) => (FROZEN
-    ? BASE + 'store.html#app=' + encodeURIComponent(slug) + ns('&db=')
+    ? BASE + 'store#app=' + encodeURIComponent(slug) + ns('&db=')
     : '/store/' + encodeURIComponent(slug) + (ns('#db=') || ''));
 
   // The link you SEND SOMEONE, which is not the URL you happen to be reading.
@@ -1073,8 +1073,9 @@
       await fetchAssets(fileId);
       // Hand the placement to desktop.js's saveItem — the only writer of items.
       // Relative, so a frozen build's store finishes on that same build's
-      // desktop; in the hash, so the channel loader can't drop it.
-      location.href = BASE + 'index.html#place=' + encodeURIComponent(fileId) + ns('&db=') + '&from=store';
+      // desktop; in the hash, so the channel loader can't drop it. The build's
+      // directory itself, never index.html: the host 308s that to the directory.
+      location.href = BASE + '#place=' + encodeURIComponent(fileId) + ns('&db=') + '&from=store';
     } catch (e) { return fail(saveFailure(e, bytes ? bytes.length : 0)); }
   }
 
