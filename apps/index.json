@@ -3441,7 +3441,7 @@
       "appId": "hexgl",
       "name": "HexGL",
       "shortName": "HexGL",
-      "version": "1.0.0",
+      "version": "1.1.1",
       "tagline": "The original futuristic racer, offline — your best lap lives in the GIF, and Invite is a ghost race.",
       "author": {
         "name": "Thibaut Despoulain",
@@ -3455,7 +3455,7 @@
         "name": "HexGL",
         "blessed": false
       },
-      "minBuild": 1314,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-30",
       "updated": "2026-08-30",
@@ -3476,15 +3476,15 @@
         187
       ],
       "cover": "/apps/hexgl/cover.jpg",
-      "bytes": 4191268,
+      "bytes": 4192333,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "b066598a9fe0a467b5ca0644e2e8c79fdc2ba51c389abaed9fd4cb4af6923740"
+      "sha256": "9357a982a8a3a07c89b6d1e3b292a90e45c7560aa0e1f43df52c6f69896f05f7"
     },
     {
       "slug": "hextris",
