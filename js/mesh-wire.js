@@ -72,7 +72,7 @@
     FINDLEAF: { by: 'fo', flag: 'fo', only: ['fo', 'foAt', 'hole'] },   // the decider's order (L25.7); ttl, nbrs, tag change down the cascade
     RECLAIM: { by: 'id', flag: 't' },   // L3.10: always claimed: the signature under m.id is the proof of identity (the seat's tok is the sim's stand-in, anyone can compute it)
   };
-  const WIRE_VERSION = '0.9.28';   // the ONE page wire version, sent as ?pv= on every relay socket (makeUrl here, the door socket in run.html reads GifOS.meshWire.WIRE_VERSION): the relay's flag-day floor. Moves with each release.
+  const WIRE_VERSION = '0.9.28.7';   // the ONE page wire version, sent as ?pv= on every relay socket (makeUrl here, the door socket in run.html reads GifOS.meshWire.WIRE_VERSION): the relay's flag-day floor. Moves with each release.
   const FILL_WINDOW_MS = TM.FILL_WINDOW_MS;   // mesh-identity.js: a signature's time must lie this close to mine
   const REPLAY_MS = TM.REPLAY_MS;   // the seat's own goodbye window: 60 ticks (recv-seated.js)
   const BY_ID = { by: 'id' };   // a type no seat signs today: a claim on it still has to verify as m.id's whole frame
@@ -132,8 +132,14 @@
     if (Array.isArray(o.digs)) o.digs.forEach((e, i) => { if (e && e.d) put(e.d, 'digs' + i); });
   }
   const ppOf = (f) => PP.get(f) || null;
-  function toWire(o) { eachDig(o, goOut); const pp = pplOut(o); if (pp) PP.set(o, pp); return o; }
+  // WIRE SKEW (L29.5, 0.9.28). A duty complaint is an LGCOMP with tag 1 (the seat's Msg, no new field). A 0.9.28.x page
+  // before L29.5 reads every LGCOMP as an L29.4 own-feed complaint (its lgRecv has no tag branch), so a duty complaint
+  // must never reach one: on the wire it carries one more key, `l295`, which no older msg.js knows, so an older page drops
+  // the frame whole (rejectUnknown) and nothing else changes; fromWire takes the key off, so the seat and its signature
+  // core read the seat's frame (fromWire(toWire(o)) is o).
+  function toWire(o) { eachDig(o, goOut); const pp = pplOut(o); if (pp) PP.set(o, pp); if (o && o.t === 'LGCOMP' && o.tag === 1) o.l295 = 1; return o; }
   function fromWire(o, pp) {
+    if (o && o.l295 !== undefined) { o = Object.assign({}, o); delete o.l295; }
     let has = !!(pp && typeof pp === 'object' && !Array.isArray(pp)); const names = has;
     eachDig(o, (d) => { if (Array.isArray(d.doors) && d.doors.some((e) => e && ((e.f | 0) & 2))) has = true; if (d && d.ppl !== undefined) has = true; });
     if (!has) return o;

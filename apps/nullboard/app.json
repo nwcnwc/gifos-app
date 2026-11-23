@@ -4,8 +4,8 @@
   "appId": "nullboard",
   "name": "Nullboard",
   "shortName": "Nullboard",
-  "version": "1.0.0",
-  "minBuild": 2154,
+  "version": "1.0.1",
+  "minBuild": 5861,
   "tagline": "The board is the file. One invite is the room — no Trello account.",
   "description": "Close it, come back, or hand someone the GIF — the same lists are there. Press Invite in the bar above so a friend lands on this board with you. No account, no cloud, no Trello.\n\nA column of notes is a list. A set of lists is a board. Click a note to type; click outside (or Shift-Enter) when you are done. Drag notes between lists. Hover ≡ — or tap it on a phone — for delete, raw look, and collapse. Ctrl-Z / Ctrl-Y walk the last fifty revisions.\n\nOn a phone the lists swipe sideways and + Note / + List / Undo / Boards sit under your thumbs.\n\nAn unofficial port of Nullboard by Alexander Pankratov. Same compact board, now a file you can keep and a room you can share.",
   "author": {
@@ -41,14 +41,14 @@
   "cover": "/apps/nullboard/cover.jpg",
   "screenshots": [],
   "gif": "/apps/nullboard/nullboard.gif",
-  "bytes": 400351,
+  "bytes": 401261,
   "download": 0,
   "provides": null,
-  "sha256": "9881d34a638e09985c6a973302d71e6b1a0414d7f6cc34bf83067a1614beb6db",
+  "sha256": "a12b95a239b6faa9363757daf90ae61e70eacbcf234bf985aee5d25effefa2cf",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-23"
   },
   "porter": {
     "name": "GifOS",

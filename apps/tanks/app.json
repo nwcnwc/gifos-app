@@ -4,8 +4,8 @@
   "appId": "tanks",
   "name": "Tanks",
   "shortName": "Tanks",
-  "version": "1.1",
-  "minBuild": 947,
+  "version": "1.1.1",
+  "minBuild": 5861,
   "tagline": "Drive a tank. Friends who open your link drive the rest.",
   "description": "Everyone who opens your invite link lands in the same walled yard.\n\nA top-down tank, a turret, shells. Three hits and you respawn behind a brief shield. Walls and other tanks stop you. On your own, two drones patrol and shoot back; when a friend arrives they stand down.\n\nOn a phone, left thumb drives, right thumb aims; holding the right stick fires. On a computer it is WASD to drive, the mouse to aim, click or space to shoot. Tab (or the tally) opens the scoreboard. Career kills are saved.\n\nAn unofficial port of Realtime Multiplayer in HTML5 by Sven Bergström.",
   "author": {
@@ -39,14 +39,14 @@
   "cover": "/apps/tanks/cover.jpg",
   "screenshots": [],
   "gif": "/apps/tanks/tanks.gif",
-  "bytes": 195511,
+  "bytes": 196419,
   "download": 0,
   "provides": null,
-  "sha256": "9efd2feb4972f228802bd36bb3aa452c35e21e7f69fbd70e6e9dec56155fd88c",
+  "sha256": "cb66fc857456a824953b666c910b896949e743cd572e56c12af20ab85dc9ada9",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-23"
   },
   "porter": {
     "name": "GifOS",

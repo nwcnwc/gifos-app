@@ -4,8 +4,8 @@
   "appId": "q1k3",
   "name": "Q1K3",
   "shortName": "Q1K3",
-  "version": "1.0.1",
-  "minBuild": 1314,
+  "version": "1.0.3",
+  "minBuild": 5861,
   "tagline": "Quake in 13 kB: a shotgun and two torch-lit halls.",
   "description": "This is Q1K3 in a GIF. Open the file and you are in the halls. Close it, come back — your settings and the map you reached are saved.\n\nYou wake up in a brown stone hall with a shotgun in your hands and something waiting around the corner. Grunts, ogres, a hound that runs at you. Doors that need a key. A nailgun and a handful of grenades if you live long enough to pick them up. Two maps, then the end.\n\nOn a phone the left thumb walks and the right thumb looks; tap to shoot, jump with the button. On a computer it is WASD, the mouse, and a click.\n\nSend the invite and extra people appear in the same halls.\n\nAn unofficial port of Q1K3 by phoboslab. Music by Andy Lösch.",
   "author": {
@@ -42,14 +42,14 @@
   "cover": "/apps/q1k3/cover.jpg",
   "screenshots": [],
   "gif": "/apps/q1k3/q1k3.gif",
-  "bytes": 234644,
+  "bytes": 235943,
   "download": 0,
   "provides": null,
-  "sha256": "f7274129b4ae7c760a286703f689e7fd11b00a61a6d00bae43420df520e368c8",
+  "sha256": "7ca3a4d924dd4493271d55c72080a1f962c1644df872f599c62aa90206dcdb28",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-23"
   },
   "porter": {
     "name": "GifOS",

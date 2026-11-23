@@ -168,6 +168,12 @@
         const hk = tp.ckey({ pc: s.coord.pc, r: s.coord.r, i: 0 }), h = s.occGet(hk);
         return s.coord.pc !== 0 ? s.headGone() : (h < 0 || h === s.id || s.darkMate(hk) || s.f.fabricLinkState(s.id, h) === GifOS.meshConsts.enums.LS_CLOSED);
       },
+      // L29.5: my row's head is out in my own view: gone (headGoneView), or a deep head whose owed slot reads mute in my own
+      // reading (the seat's headMute, fed by the core's duty watch). The core's actingHead reads it (read only).
+      get headOutView() {
+        const s = raw(); if (!s || !s.hasCoord || s.state !== 3 || s.coord.i === 0) return false;
+        return this.headGoneView || (s.coord.pc !== 0 && typeof s.headMute === 'function' && s.headMute());
+      },
       // The row's heir as my view names it: its lowest live column past the head, me included (read only).
       rowHeir() {
         const s = raw(), tp = TP(); if (!s || !s.hasCoord || s.state !== 3 || s.coord.i === 0) return null;

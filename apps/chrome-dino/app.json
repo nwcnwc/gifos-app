@@ -4,8 +4,8 @@
   "appId": "chrome-dino",
   "name": "Chrome Dino",
   "shortName": "Dino",
-  "version": "1.0.0",
-  "minBuild": 947,
+  "version": "1.0.1",
+  "minBuild": 5861,
   "tagline": "chrome://dino, always offline — high score in the file, Invite is a side-by-side run.",
   "description": "This copy is always offline, on purpose. Close it, come back: the high score is still in the file. Send the invite and a friend runs the same desert beside you — their dino is a ghost, a little ahead or a little behind.\n\nOn your own it is the Chrome dinosaur. Space or tap to jump, down to duck under the pterodactyls. Cacti first, then birds. Night falls every 700. There is no network because there never was one.\n\nAn unofficial port of Chromium's T-Rex Runner (extracted by wayou). This copy keeps the score in the GIF and adds the race. Bugs go to GifOS, not Chromium.",
   "author": {
@@ -40,14 +40,14 @@
   "cover": "/apps/chrome-dino/cover.jpg",
   "screenshots": [],
   "gif": "/apps/chrome-dino/chrome-dino.gif",
-  "bytes": 180708,
+  "bytes": 181881,
   "download": 0,
   "provides": null,
-  "sha256": "d19b7f87b5de8a306ab73f9ddc192dac4ca70173bc441870c14f6b1448711609",
+  "sha256": "fe67f673af2480d468e01b1cab7c83fc1b7290d242c8ebeff57c03be052419eb",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-23"
   },
   "porter": {
     "name": "GifOS",

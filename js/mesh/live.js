@@ -205,7 +205,7 @@
       { const lb = this.l152Bye.get(m.id); if (lb !== undefined && lb[0] === ckey(m.coord) && TICK - lb[1] <= 2) return; }
       if (!this.hasCoord && this.state !== 3 && this.leftCk && m.tock === this.leftCk && TICK - this.leftAt <= 220 && sure && this.f.fabricDoors()) { const gone = this.leftCk; const l = newMsg('LEAVE'); l.ck = gone; l.id = id; this.emit(m.id, l); this.trace('GONE-ANSWER', id, null, 'to=%d cell=%s', m.id, coordStr(unck(gone))); return; }   // a call for the cell I left: my goodbye again
       if (!this.hasCoord || m.tock !== ckey(this.coord)) return;   // tock is always set for a PHONE
-      if (m.tag === 5 && (!this.headGone())) return;   // L2.7: I stand in for my head only while I judge it gone myself
+      if (m.tag === 5 && (!this.headOut())) return;   // L2.7: I stand in for my head only while I judge it gone myself (L29.5: or its owed slot mute in my own reading, headOut)
       // Every honest PHONE comes from one of MY owned links; an UNPROVEN one may only refresh a pairing I already hold.
       if (!this.ownedLinkCell(ckey(m.coord))) return;
       if (!sure && this.occGet(ckey(m.coord)) !== m.id) return;

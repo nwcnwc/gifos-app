@@ -274,9 +274,26 @@
     return keep.length ? Math.min(...keep.map((h) => h.t0)) + GifOS.timings.APP_ROOM_GIVEUP_MS - now : 0;
   }
 
+  // One gifos.room request ({ op, seat, collection, keep, first, who, value }), from an app frame or from a participant
+  // with no screen (bootClientBus with no mount): the session's state, or a request the owner answers.
+  function roomRequest(db, d) {
+    const q = { op: String(d.op || 'state') };
+    if (d.seat != null) q.seat = String(d.seat);
+    if (d.collection != null) q.collection = String(d.collection);
+    if (d.keep) q.keep = true;
+    if (d.first != null) q.first = String(d.first);
+    if (d.who != null) q.who = String(d.who);
+    const rec = d.value && typeof d.value === 'object' ? d.value : null;
+    return (db && db.roomP ? db.roomP : Promise.resolve(null)).then((rh) => {
+      if (rh) return q.op === 'state' ? rh.state() : rh.call(q, rec);
+      if (q.op !== 'state') throw new Error('This app declares no room.');
+      // No session declared: the room's people, read-only (gifos.people()).
+      return personKey().then((me) => ({ on: false, people: roomRoster(me).people.map((x) => ({ id: x.k, name: x.name || '', me: !!x.me, host: !!x.admin, here: x.here === 'away' ? 'away' : 'here' })) }));
+    });
+  }
   // THE GUEST SIDE: requests go to the owner signed with the person key; the session comes back owner-signed in
   // the app's state (mirror). A request is sent again until the owner's session answers it.
-  function makeRoomClient(manifest, AR, me, send, sid, sessionOf) {
+  function makeRoomClient(manifest, AR, me, send, sid, sessionOf, headless) {
     const sp = AR.spec(manifest.room);
     const key = roomAppKey(manifest);
     let frames = new Set(), lastView = '', seq = 0, stopped = false;
@@ -286,7 +303,7 @@
     const push = () => {
       const v = view(); const j = JSON.stringify(v);
       if (j === lastView) return; lastView = j;
-      if (api) roomAskBar(v, manifest.name, api.call);
+      if (api && !headless) roomAskBar(v, manifest.name, api.call);   // a host with no screen answers asks through its own API
       frames.forEach((f) => { try { const w = f.contentWindow; if (w) w.postMessage({ ns: 'gifos', type: 'room', state: v }, '*'); else frames.delete(f); } catch (e) {} });
     };
     // Caught up: the room hears this page, and for a request an earlier copy made, this copy has the owner's session
@@ -4228,19 +4245,7 @@
       else if (d.type === 'info') reply({ ok: true, result: { appId: manifest.appId, name: manifest.name, version: manifest.version, owner: !!(db && db.owner) } });
       else if (d.type === 'me') reply({ ok: true, result: identity() });
       else if (d.type === 'room') {
-        const q = { op: String(d.op || 'state') };
-        if (d.seat != null) q.seat = String(d.seat);
-        if (d.collection != null) q.collection = String(d.collection);
-        if (d.keep) q.keep = true;
-        if (d.first != null) q.first = String(d.first);
-        if (d.who != null) q.who = String(d.who);
-        const rec = d.value && typeof d.value === 'object' ? d.value : null;
-        (db && db.roomP ? db.roomP : Promise.resolve(null)).then((rh) => {
-          if (rh) return q.op === 'state' ? rh.state() : rh.call(q, rec);
-          if (q.op !== 'state') throw new Error('This app declares no room.');
-          // No session declared: the room's people, read-only (gifos.people()).
-          return personKey().then((me) => ({ on: false, people: roomRoster(me).people.map((x) => ({ id: x.k, name: x.name || '', me: !!x.me, host: !!x.admin, here: x.here === 'away' ? 'away' : 'here' })) }));
-        }).then((result) => reply({ ok: true, result }), (err) => reply({ ok: false, error: String(err && err.message || err) }));
+        roomRequest(db, d).then((result) => reply({ ok: true, result }), (err) => reply({ ok: false, error: String(err && err.message || err) }));
       }
       else if (d.type === 'stage') {
         const verdict = stageGate(manifest, capDisabled(manifest, 'stage'), typeof root.__gifosStage === 'function');
@@ -5219,6 +5224,8 @@
   // run.html calls this (mountClientApp) when the shared app advertises mesh
   // and this runtime exposes bootClientBus.
   //   params = { s: <sid namespace>, send(kind,d), subscribe(cb)->unsub }
+  // mountEl null: a participant with no screen takes part in the app through its data alone (the same mirror, writes
+  // and gifos.room requests, no app frame); the returned control then carries db, room(request) and manifest().
   function bootClientBus(mountEl, params, statusEl, hooks) {
     hooks = hooks || {};
     const sid = params && params.s;
@@ -5403,14 +5410,16 @@
         // Pool AFTER the manifest lands — capabilities.pool is the app's own
         // declaration, and until the bytes arrive this client does not know
         // what app it is running, let alone what it is allowed to share.
-        if (poolHosts(manifestRef).length && !capDisabled(manifestRef, 'pool')) poolAttach({ send: send }, params.self);
-        iframe = makeIframe(); mountEl.innerHTML = ''; mountEl.appendChild(iframe);
+        if (mountEl && poolHosts(manifestRef).length && !capDisabled(manifestRef, 'pool')) poolAttach({ send: send }, params.self);
+        if (mountEl) { iframe = makeIframe(); mountEl.innerHTML = ''; mountEl.appendChild(iframe); }
         if (manifestRef && manifestRef.room) db.roomP = Promise.all([roomLib(), personKey()]).then(([AR, me]) => {
           if (!AR.spec(manifestRef.room)) return null;
-          roomC = makeRoomClient(manifestRef, AR, me, send, sid, () => itemsOf(ROOM_COL).session || null);
+          roomC = makeRoomClient(manifestRef, AR, me, send, sid, () => itemsOf(ROOM_COL).session || null, !mountEl);
           return roomC;
         }).catch(() => null);
-        mountApp(iframe, filesRef, manifestRef, db, appBytes, makeNetPolicy(null, manifestRef));
+        if (mountEl) mountApp(iframe, filesRef, manifestRef, db, appBytes, makeNetPolicy(null, manifestRef));
+        // with no app frame, this person is in the app's roster from the mount (an app frame's gifos.people() does it)
+        else personKey().then((me) => roomRoster(me)).catch(() => {});
         if (root.__gifosOnApp) root.__gifosOnApp(appBytes, manifestRef);
         notify('*');
       };
@@ -5453,7 +5462,7 @@
           if (!archive) { setStatus(T('runtime.status.badMesh')); try { console.error('[bootClientBus] app frame DECODE failed (bytes ' + (appBytes ? appBytes.length : 0) + ')'); } catch (e2) {} appBytes = null; return; }
           filesRef = archive.files; manifestRef = gif.readManifest(archive) || { name: name || 'App' };
           dataVis = manifestRef.data || {};
-          if (typeof document !== 'undefined') document.title = (manifestRef.name || 'App') + ' — GifOS (mesh)';
+          if (mountEl && typeof document !== 'undefined') document.title = (manifestRef.name || 'App') + ' — GifOS (mesh)';
           mount();
         });
       };
@@ -5531,6 +5540,10 @@
         },
         // The live mirror, for suites to watch convergence without stealing.
         mirrorState: () => mirror,
+        // a participant with no screen (mountEl null) acts through these: the app's data, its gifos.room, its manifest
+        db: db,
+        room: (d) => roomRequest(db, d || {}),
+        manifest: () => manifestRef,
         setFrozen: (f) => { frozen = !!f; },
         // The mounted app's GIF bytes (null until they land). The app bar
         // renders these as the thumbnail — seeing it IS seeing that a Steal

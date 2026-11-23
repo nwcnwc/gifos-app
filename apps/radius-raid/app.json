@@ -4,8 +4,8 @@
   "appId": "radius-raid",
   "name": "Radius Raid",
   "shortName": "Raid",
-  "version": "1.0.0",
-  "minBuild": 947,
+  "version": "1.0.1",
+  "minBuild": 5861,
   "tagline": "A tiny ship, a swarm of enemies, and a friend on the other stick.",
   "description": "You are a small white ship in a dark arena, and the arena does not stay empty. Thirteen kinds of enemy come in from the edges — splitters, growers, stealth, towers, things that circle you — and you shoot them before they chew through the hull. Power-ups drop as you go: more health, a slower swarm, a faster shot, three shots at once, a shot that keeps going. The longer you last, the denser it gets.\n\nAlone it is the original game. Send the link and extra ships drop into the same arena, firing on the same swarm, adding to one score.\n\nOn a phone it is a twin-stick: left thumb to move, right thumb to aim and fire. On a computer it is WASD and the mouse, the way it always was. F toggles autofire, P pauses, M mutes.\n\nAn unofficial port of Radius Raid by jackrugile, the 2013 js13kGames entry. This copy adds the sticks a phone needs, and the extra ships.",
   "author": {
@@ -40,14 +40,14 @@
   "cover": "/apps/radius-raid/cover.jpg",
   "screenshots": [],
   "gif": "/apps/radius-raid/radius-raid.gif",
-  "bytes": 225638,
+  "bytes": 226941,
   "download": 0,
   "provides": null,
-  "sha256": "2db5cce8738a96cb9eedc8ada7a6fceab86eead60600d2354c1746ab57b7fb8a",
+  "sha256": "bed7ddbae80891da677098875ed8cf3691990aa9b894ee04c89bcf3279372250",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-23"
   },
   "porter": {
     "name": "GifOS",

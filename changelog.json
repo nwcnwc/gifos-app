@@ -2,6 +2,67 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.7",
+      "date": "2026-11-23",
+      "headline": "Sound recovers faster when someone passing it along goes quiet",
+      "critical": false,
+      "features": [],
+      "fixes": [
+        "Sound recovers faster when someone passing it along to your part of a big meeting goes quiet."
+      ]
+    },
+    {
+      "version": "0.9.28.6",
+      "date": "2026-11-23",
+      "headline": "Under the hood: more groundwork for lighter meeting bots",
+      "critical": false,
+      "features": [],
+      "fixes": [
+        "Under the hood: more groundwork for lighter meeting bots."
+      ]
+    },
+    {
+      "version": "0.9.28.5",
+      "date": "2026-11-23",
+      "headline": "Under the hood: groundwork for lighter meeting bots",
+      "critical": false,
+      "features": [
+        "Under the hood: groundwork for lighter meeting bots."
+      ],
+      "fixes": []
+    },
+    {
+      "version": "0.9.28.4",
+      "date": "2026-11-23",
+      "headline": "Guests on hotel and venue Wi-Fi join faster",
+      "critical": false,
+      "features": [],
+      "fixes": [
+        "Meetings: Guests on hotel and venue Wi-Fi join much faster.",
+        "Meetings: Sound between linked offices no longer drops one way."
+      ]
+    },
+    {
+      "version": "0.9.28.3",
+      "date": "2026-11-23",
+      "headline": "Live captions work in Microsoft Edge",
+      "critical": false,
+      "features": [],
+      "fixes": [
+        "Meetings: Live captions now work in Microsoft Edge. Edge listens to your meeting microphone, the same one everyone hears."
+      ]
+    },
+    {
+      "version": "0.9.28.1",
+      "date": "2026-11-22",
+      "headline": "Follow the speaker keeps up",
+      "critical": false,
+      "features": [],
+      "fixes": [
+        "Meetings: Follow the speaker now moves to a new talker even when your page is busy, and a short pause still ends a turn so the view moves on."
+      ]
+    },
+    {
       "version": "0.9.28",
       "date": "2026-11-22",
       "headline": "A faster, cleaner meeting page, and more multiplayer apps",

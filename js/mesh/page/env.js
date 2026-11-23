@@ -653,11 +653,15 @@
     }
     // L29, the fabric's half (sim mesh_lguard.inc lguardFabTick): the duties my cell owes in load units, the budget my
     // device shows it can carry, the ladder, the inbound watch, and the leave when my receivers and my own reading agree.
-    let lgCap = -1, lgReadAt = 0, lgLeft = false; const lgStarved = new Set();
+    let lgCap = -1, lgReadAt = 0, lgLeft = false; const lgStarved = new Set(), lgMuted = new Set();
     function lgFabric(s) {
       const K = C_.consts, full = s.tier === C_.enums.TIER_MOBILE ? K.L29_BUD_M : K.L29_BUD_D;
       if (s.lgQuit && !lgLeft) { lgLeft = true; if (measure.lgLeave) measure.lgLeave(); return; }
-      if (!s.hasCoord || s.state !== 3) { s.lgLadder(); return; }
+      if (!s.hasCoord || s.state !== 3) {   // no cell: no duty is owed me and I owe none; my readings end with my seat
+        s.l295No = false;
+        for (const pid of [...lgMuted]) { const m = msg.newMsg('LGSTARVE'); m.tag = 1; m.id = ID.nid(pid); m.to = me; m.from = -1; m.hold = 0; busAt(w.TICK + 1, m); }
+        lgMuted.clear(); s.lgLadder(); return;
+      }
       const c = s.coord, held = (x) => { const v = s.occGet(topo.ckey(x)); return v >= 0 && v !== s.id; };
       let rx = 0;
       for (let j = 0; j < topo.C; j++) {
@@ -683,9 +687,17 @@
       if (w.TICK >= lgReadAt) { lgReadAt = w.TICK + K.L29_STARVE; const h = measure.lgHealth(); lgCap = h < 1 ? Math.min(lgCap, Math.ceil(s.lgLd[s.lgLvl] * h)) : Math.min(full, lgCap + 1); }
       s.lgBud = lgCap;
       s.lgLadder();
+      const say = (pid, hold, tag) => { const m = msg.newMsg('LGSTARVE'); if (tag) m.tag = tag; m.id = ID.nid(pid); m.to = me; m.from = -1; m.hold = hold ? 1 : 0; busAt(w.TICK + 1, m); };
+      // L29.5, the duty watch: my own word (I make none of my duty slots) and my reading of every
+      // owed inbound duty slot, from the core's per-slot arrival report (measure.lgNoMake / lgDutyMute), as tag 1.
+      if (measure.lgNoMake) s.l295No = !!measure.lgNoMake();
+      if (measure.lgDutyMute) {
+        const mu = new Set(measure.lgDutyMute());
+        for (const pid of mu) if (!lgMuted.has(pid)) { lgMuted.add(pid); say(pid, true, 1); }
+        for (const pid of [...lgMuted]) if (!mu.has(pid)) { lgMuted.delete(pid); say(pid, false, 1); }
+      }
       if (!measure.lgStarve) return;
       const now = new Set(measure.lgStarve());
-      const say = (pid, hold) => { const m = msg.newMsg('LGSTARVE'); m.id = ID.nid(pid); m.to = me; m.from = -1; m.hold = hold ? 1 : 0; busAt(w.TICK + 1, m); };
       for (const pid of now) if (!lgStarved.has(pid)) { lgStarved.add(pid); say(pid, true); }
       for (const pid of [...lgStarved]) if (!now.has(pid)) { lgStarved.delete(pid); say(pid, false); }
     }
@@ -800,6 +812,7 @@
     const env = {
       me, world: w, traces: () => ring.slice(), ids: ID, f: F, pcw, tick, frame, transport, doorNet: (x) => fabricDoorNet(me, x), doorForgive: (peer) => { const x = learnPeer(peer); if (x >= 0 && pcw.doorForgive) pcw.doorForgive(x); }, dialHeld: (peer) => { const x = learnPeer(peer); return x >= 0 && !!pcw.dialHeld && pcw.dialHeld(x); }, relayFrame, absence, leave, stats, links,
       dirFor, learnDir, relayBusyList,
+      crossed: (peer) => { const x = learnPeer(peer); if (x >= 0 && x !== me && pcw.crossed) guard('crossed', pcw.crossed)(x); },   // DIAL.ICE: the answer to my dial reached me over the relay (C++: mesh_link.inc sigAt)
       doorNote: (peer) => { const x = learnPeer(peer); if (x >= 0 && x !== me && pcw.doorNote) guard('doorNote', pcw.doorNote)(x); },   // FHOP.8: a door page's offer, or its answer to my offer, reached me over the relay (run.html onRelayPeer)
       doorCallIn: (fromPeer, kind, knockerPeer) => guard('doorCallIn', doorCallIn)(fromPeer, kind, knockerPeer),   // FHOP.8 kinds 7 and 8 off a dc
       doorDialIn: (fromPeer) => guard('doorDialIn', doorDialIn)(fromPeer),   // TURN.5.4: a seated page's dial off the relay (run.html onRelayPeer)

@@ -1,0 +1,14 @@
+{
+  "common.size.B": "{n} B",
+  "common.size.KB": "{n} KB",
+  "common.size.MB": "{n} MB",
+  "common.size.GB": "{n} GB",
+  "common.size.TB": "{n} TB",
+  "common.dur.s": "{s} s",
+  "common.dur.m": "{m} min",
+  "common.dur.ms": "{m} min {s} s",
+  "common.ago.now": "ahora mismo",
+  "common.ago.m": "hace {n} min",
+  "common.ago.h": "hace {n} h",
+  "common.ago.d": "hace {n} d"
+}

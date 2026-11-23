@@ -4,8 +4,8 @@
   "appId": "lrc-maker",
   "name": "LRC Maker",
   "shortName": "LRC",
-  "version": "1.1.0",
-  "minBuild": 947,
+  "version": "1.1.1",
+  "minBuild": 5861,
   "tagline": "Tap lyric timings along to a song, export the LRC file.",
   "description": "Close it and come back still mid-song — the song and the lyrics are saved.\n\nOpen an audio file, paste the unsung words, press Play, and tap Stamp as each line is sung. The times land on the line. Export writes an .lrc you can take to a player. During playback the current line lights up.\n\nOn a phone the Stamp button sits under your thumb, big enough to hit while the song plays.\n\nPress Invite in the bar above and a friend sees the same lyrics and times. The song stays on each device.\n\nAn unofficial port of lrc-maker by magic-akari.",
   "author": {
@@ -40,14 +40,14 @@
   "cover": "/apps/lrc-maker/cover.jpg",
   "screenshots": [],
   "gif": "/apps/lrc-maker/lrc-maker.gif",
-  "bytes": 193100,
+  "bytes": 194326,
   "download": 0,
   "provides": null,
-  "sha256": "013af7f123192829ceaf5079757163207131d5f1393b00bd76bc236c7d2ca152",
+  "sha256": "dd961924c743848732f1b0ce18cd8bc42d764326744b5826643a9332c0b59bd1",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-23"
   },
   "porter": {
     "name": "GifOS",
