@@ -155,6 +155,7 @@
     L29_REPEAT: 16,   // C++: mesh.cpp:L29_REPEAT  (LAW_L29_REPEAT)
     L29_WIN: 48,   // C++: mesh.cpp:L29_WIN  (LAW_L29_WIN)
     L295_START: 3,   // C++: mesh.cpp:L295_START  (LAW_L295_START)
+    L295_HOLD: 23,   // C++: mesh.cpp:L295_HOLD  (LAW_L295_HOLD)
     L9_ACK_WAIT: 6,   // C++: mesh.cpp:L9_ACK_WAIT  (LAW_L9_ACK_WAIT)
     L9_KID_WAIT: 12,   // C++: mesh.cpp:L9_KID_WAIT  (LAW_L9_KID_WAIT)
     L9_RETRY: 16,   // C++: mesh.cpp:L9_RETRY  (LAW_L9_RETRY)
@@ -576,7 +577,6 @@
     LG_WOKEMAX: 0,   // C++: mesh_lguard.inc:LG_WOKEMAX
     LG_NBRPCT: 0,   // C++: mesh_lguard.inc:LG_NBRPCT
     LG_NBRPCT_AT: -1,   // C++: mesh_lguard.inc:LG_NBRPCT_AT
-    l295off: -1,   // C++: mesh_lguard.inc:l295off
     FH_WEBKIT: 0,   // C++: mesh_fhop.inc:FH_WEBKIT
     FH_SEQ: 0,   // C++: mesh_fhop.inc:FH_SEQ
     FHMEAS: false,   // C++: mesh_fhop.inc:FHMEAS

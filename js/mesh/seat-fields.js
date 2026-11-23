@@ -975,10 +975,14 @@
     ["lgAsk", "{i32:(i64,i32)}"],   // OMap<int,pair<long long,int>>  (line 1996)
     ["l295No", "bool"],   // bool = false  (line 1998)
     ["l295Q", "bool"],   // bool = false  (line 1998)
+    ["l295Deaf", "bool"],   // bool = false  (line 1998)
     ["l295QAt", "i64"],   // long long = -1  (line 1998)
     ["l295LiarAt", "i64"],   // long long = -1000000  (line 1998)
     ["l295CompN", "i64"],   // long long = 0  (line 1998)
+    ["l295CellAt", "i64"],   // long long = -1  (line 1998)
     ["l295LiarT", "i32"],   // int = -1  (line 1998)
+    ["l295HeadK", "i32"],   // int = -2  (line 1998)
+    ["l295CellK", "u64"],   // uint64_t = 0  (line 1998)
     ["l295Mu", "{i32:i64}"],   // OMap<int,long long>  (line 1999)
     ["l295Sent", "{i32:i64}"],   // OMap<int,long long>  (line 1999)
     ["l295Comp", "{i32:i64}"],   // OMap<int,long long>  (line 1999)
@@ -1536,10 +1540,14 @@
     lgQuitAt: -1,
     l295No: false,
     l295Q: false,
+    l295Deaf: false,
     l295QAt: -1,
     l295LiarAt: -1000000,
     l295CompN: 0,
+    l295CellAt: -1,
     l295LiarT: -1,
+    l295HeadK: -2,
+    l295CellK: 0,
     l828At: -1,
     lineAt: -1,
     l851Ep: -1,
