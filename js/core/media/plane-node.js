@@ -98,6 +98,18 @@
       for (const s of [p && p.stream].concat((p && p.incoming) || [])) for (const t of (s && s.getAudioTracks ? s.getAudioTracks() : [])) if (out.indexOf(t) < 0) out.push(t);
       return out;
     }
+    // No picture consumer on this plane yet: a claim's element stays empty.
+    function bindClaim(rk, claim) { if (claim) claim.el = null; }
+    function unbindClaim(rk, claim) { if (claim) claim.el = null; }
+    function adoptClaim(rk, neu, old) { if (neu) neu.el = null; }
+    function picRead(claim) { return { w: 0, frames: 0 }; }
+    // The fail-back hold is plane-browser only for now.
+    function iActAsHead() {
+      const c = C.meshCoord();
+      if (!c) return false;
+      const h = C.actingHead(c); return c.i === 0 || (h != null && String(h) === String(C.myId));
+    }
+    function rowHeadPid(c) { return C.actingHead(c); }
 
     def('mainAudioTrack', mainAudioTrack);
     def('sentVideoTrack', sentVideoTrack);
@@ -110,7 +122,13 @@
     def('adapt', () => {});             // no encoder of my own to tune: forwarded and Opus tracks keep their own rate
     def('tileHolds', () => false);      // no tiles: no screen holds a stream
     def('stubDuties', stubDuties);
-    return { names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties'] };
+    def('bindClaim', bindClaim);
+    def('unbindClaim', unbindClaim);
+    def('adoptClaim', adoptClaim);
+    def('picRead', picRead);
+    def('iActAsHead', iActAsHead);
+    def('rowHeadPid', rowHeadPid);
+    return { names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties', 'bindClaim', 'unbindClaim', 'adoptClaim', 'picRead', 'iActAsHead', 'rowHeadPid'] };
   }
 
   GifOS.planeNode = { install };

@@ -15,8 +15,12 @@
       "CC_TRANSLATE_KEY": { get: function () { return CC_TRANSLATE_KEY; }, enumerable: true, configurable: true },
       "CC_WHISPER_ANYWAY_KEY": { get: function () { return CC_WHISPER_ANYWAY_KEY; }, enumerable: true, configurable: true },
       "CC_WORDS_KEY": { get: function () { return CC_WORDS_KEY; }, enumerable: true, configurable: true },
+      "MOS_GRACE": { get: function () { return MOS_GRACE; }, enumerable: true, configurable: true },
+      "MOS_SETTLE": { get: function () { return MOS_SETTLE; }, enumerable: true, configurable: true },
       "STAGE_FACE_PX": { get: function () { return STAGE_FACE_PX; }, enumerable: true, configurable: true },
       "STAGE_FACE_SETTLE_MS": { get: function () { return STAGE_FACE_SETTLE_MS; }, enumerable: true, configurable: true },
+      "STG_PIC_LIVE_MS": { get: function () { return STG_PIC_LIVE_MS; }, enumerable: true, configurable: true },
+      "STG_ZERO_MS": { get: function () { return STG_ZERO_MS; }, enumerable: true, configurable: true },
       "WEBKIT_TILE": { get: function () { return WEBKIT_TILE; }, enumerable: true, configurable: true },
       "WHISPER_APP_ID": { get: function () { return WHISPER_APP_ID; }, enumerable: true, configurable: true },
       "WHISPER_SEED_KEY": { get: function () { return WHISPER_SEED_KEY; }, enumerable: true, configurable: true },
@@ -28,6 +32,7 @@
       "WSP_WEAK": { get: function () { return WSP_WEAK; }, enumerable: true, configurable: true },
       "acClockInfo": { get: function () { return acClockInfo; }, enumerable: true, configurable: true },
       "adapt": { get: function () { return adapt; }, enumerable: true, configurable: true },
+      "adoptClaim": { get: function () { return adoptClaim; }, enumerable: true, configurable: true },
       "applyBuses": { get: function () { return applyBuses; }, enumerable: true, configurable: true },
       "applyCcAll": { get: function () { return applyCcAll; }, enumerable: true, configurable: true },
       "applyGrid": { get: function () { return applyGrid; }, enumerable: true, configurable: true },
@@ -39,6 +44,7 @@
       "avHold": { get: function () { return avHold; }, set: function (v) { avHold = v; }, enumerable: true, configurable: true },
       "avatarPipe": { get: function () { return avatarPipe; }, set: function (v) { avatarPipe = v; }, enumerable: true, configurable: true },
       "avatarSharp": { get: function () { return avatarSharp; }, set: function (v) { avatarSharp = v; }, enumerable: true, configurable: true },
+      "bindClaim": { get: function () { return bindClaim; }, enumerable: true, configurable: true },
       "blockedAudio": { get: function () { return blockedAudio; }, enumerable: true, configurable: true },
       "blurDraw": { get: function () { return blurDraw; }, enumerable: true, configurable: true },
       "blurPipe": { get: function () { return blurPipe; }, set: function (v) { blurPipe = v; }, enumerable: true, configurable: true },
@@ -67,7 +73,6 @@
       "ccMixStop": { get: function () { return ccMixStop; }, enumerable: true, configurable: true },
       "ccMixSync": { get: function () { return ccMixSync; }, enumerable: true, configurable: true },
       "chainDemandUp": { get: function () { return chainDemandUp; }, enumerable: true, configurable: true },
-      "claimMos": { get: function () { return claimMos; }, enumerable: true, configurable: true },
       "clk": { get: function () { return clk; }, enumerable: true, configurable: true },
       "clockSample": { get: function () { return clockSample; }, enumerable: true, configurable: true },
       "closeCamChooser": { get: function () { return closeCamChooser; }, enumerable: true, configurable: true },
@@ -78,13 +83,12 @@
       "dbgMeterSources": { get: function () { return dbgMeterSources; }, enumerable: true, configurable: true },
       "dbgRowFaces": { get: function () { return dbgRowFaces; }, set: function (v) { dbgRowFaces = v; }, enumerable: true, configurable: true },
       "degOf": { get: function () { return degOf; }, enumerable: true, configurable: true },
+      "demand": { get: function () { return demand; }, enumerable: true, configurable: true },
       "dismissCamChooser": { get: function () { return dismissCamChooser; }, enumerable: true, configurable: true },
       "displayCount": { get: function () { return displayCount; }, enumerable: true, configurable: true },
       "downFolds": { get: function () { return downFolds; }, enumerable: true, configurable: true },
       "downStreams": { get: function () { return downStreams; }, enumerable: true, configurable: true },
       "dropEndedRemoteTracks": { get: function () { return dropEndedRemoteTracks; }, enumerable: true, configurable: true },
-      "dropMosIn": { get: function () { return dropMosIn; }, enumerable: true, configurable: true },
-      "dropStandby": { get: function () { return dropStandby; }, enumerable: true, configurable: true },
       "earState": { get: function () { return earState; }, enumerable: true, configurable: true },
       "endSongOnStepDown": { get: function () { return endSongOnStepDown; }, enumerable: true, configurable: true },
       "facesOnScreen": { get: function () { return facesOnScreen; }, enumerable: true, configurable: true },
@@ -97,6 +101,7 @@
       "headerCount": { get: function () { return headerCount; }, enumerable: true, configurable: true },
       "heardStage": { get: function () { return heardStage; }, enumerable: true, configurable: true },
       "holdMainVideo": { get: function () { return holdMainVideo; }, enumerable: true, configurable: true },
+      "iActAsHead": { get: function () { return iActAsHead; }, enumerable: true, configurable: true },
       "installWhisper": { get: function () { return installWhisper; }, enumerable: true, configurable: true },
       "keepAwake": { get: function () { return keepAwake; }, enumerable: true, configurable: true },
       "keepMeetingAudio": { get: function () { return keepMeetingAudio; }, enumerable: true, configurable: true },
@@ -114,9 +119,8 @@
       "mix": { get: function () { return mix; }, enumerable: true, configurable: true },
       "mixAc": { get: function () { return mixAc; }, set: function (v) { mixAc = v; }, enumerable: true, configurable: true },
       "mosFb": { get: function () { return mosFb; }, enumerable: true, configurable: true },
-      "mosIn": { get: function () { return mosIn; }, enumerable: true, configurable: true },
+      "mosHeld": { get: function () { return mosHeld; }, enumerable: true, configurable: true },
       "mosJobs": { get: function () { return mosJobs; }, enumerable: true, configurable: true },
-      "mosStandby": { get: function () { return mosStandby; }, enumerable: true, configurable: true },
       "normStageFrame": { get: function () { return normStageFrame; }, enumerable: true, configurable: true },
       "noteAudioDevices": { get: function () { return noteAudioDevices; }, enumerable: true, configurable: true },
       "onMeetDeviceChange": { get: function () { return onMeetDeviceChange; }, enumerable: true, configurable: true },
@@ -128,6 +132,7 @@
       "parkJobVideo": { get: function () { return parkJobVideo; }, enumerable: true, configurable: true },
       "peerAudioTracks": { get: function () { return peerAudioTracks; }, enumerable: true, configurable: true },
       "phoneCaptions": { get: function () { return phoneCaptions; }, enumerable: true, configurable: true },
+      "picRead": { get: function () { return picRead; }, enumerable: true, configurable: true },
       "pickCamera": { get: function () { return pickCamera; }, enumerable: true, configurable: true },
       "pipeDeny": { get: function () { return pipeDeny; }, enumerable: true, configurable: true },
       "pipeJobs": { get: function () { return pipeJobs; }, enumerable: true, configurable: true },
@@ -160,10 +165,14 @@
       "regrabCamera": { get: function () { return regrabCamera; }, enumerable: true, configurable: true },
       "releaseAudio": { get: function () { return releaseAudio; }, enumerable: true, configurable: true },
       "rememberMix": { get: function () { return rememberMix; }, enumerable: true, configurable: true },
+      "repaintRedun": { get: function () { return repaintRedun; }, enumerable: true, configurable: true },
       "resumeReload": { get: function () { return resumeReload; }, enumerable: true, configurable: true },
       "retireMixTracks": { get: function () { return retireMixTracks; }, enumerable: true, configurable: true },
       "reviveCamera": { get: function () { return reviveCamera; }, enumerable: true, configurable: true },
       "roomPack": { get: function () { return roomPack; }, set: function (v) { roomPack = v; }, enumerable: true, configurable: true },
+      "rowHeadPid": { get: function () { return rowHeadPid; }, enumerable: true, configurable: true },
+      "rowMixHeadArrives": { get: function () { return rowMixHeadArrives; }, enumerable: true, configurable: true },
+      "rowMixHold": { get: function () { return rowMixHold; }, enumerable: true, configurable: true },
       "schedClaim": { get: function () { return schedClaim; }, enumerable: true, configurable: true },
       "schedReconcile": { get: function () { return schedReconcile; }, enumerable: true, configurable: true },
       "sdView": { get: function () { return sdView; }, set: function (v) { sdView = v; }, enumerable: true, configurable: true },
@@ -194,14 +203,17 @@
       "startWhisper": { get: function () { return startWhisper; }, enumerable: true, configurable: true },
       "stashRecoverMedia": { get: function () { return stashRecoverMedia; }, enumerable: true, configurable: true },
       "stgBeatIn": { get: function () { return stgBeatIn; }, enumerable: true, configurable: true },
+      "stgCarry": { get: function () { return stgCarry; }, enumerable: true, configurable: true },
+      "stgFedBy": { get: function () { return stgFedBy; }, enumerable: true, configurable: true },
+      "stgFoNote": { get: function () { return stgFoNote; }, enumerable: true, configurable: true },
       "stgLost": { get: function () { return stgLost; }, enumerable: true, configurable: true },
-      "stgStale": { get: function () { return stgStale; }, enumerable: true, configurable: true },
       "stopBlurPipe": { get: function () { return stopBlurPipe; }, enumerable: true, configurable: true },
       "stopScreenShare": { get: function () { return stopScreenShare; }, enumerable: true, configurable: true },
       "stopSpeech": { get: function () { return stopSpeech; }, enumerable: true, configurable: true },
       "stopWhisper": { get: function () { return stopWhisper; }, enumerable: true, configurable: true },
       "stripPack": { get: function () { return stripPack; }, set: function (v) { stripPack = v; }, enumerable: true, configurable: true },
       "stubDuties": { get: function () { return stubDuties; }, enumerable: true, configurable: true },
+      "swapPicNote": { get: function () { return swapPicNote; }, enumerable: true, configurable: true },
       "syncAvatarFeed": { get: function () { return syncAvatarFeed; }, enumerable: true, configurable: true },
       "syncSpeech": { get: function () { return syncSpeech; }, enumerable: true, configurable: true },
       "tileHolds": { get: function () { return tileHolds; }, enumerable: true, configurable: true },
@@ -211,7 +223,9 @@
       "trackQ": { get: function () { return trackQ; }, enumerable: true, configurable: true },
       "transcriptFile": { get: function () { return transcriptFile; }, enumerable: true, configurable: true },
       "tuneCfg": { get: function () { return tuneCfg; }, enumerable: true, configurable: true },
+      "unbindClaim": { get: function () { return unbindClaim; }, enumerable: true, configurable: true },
       "unshipMos": { get: function () { return unshipMos; }, enumerable: true, configurable: true },
+      "vpId": { get: function () { return vpId; }, enumerable: true, configurable: true },
       "wakeLock": { get: function () { return wakeLock; }, set: function (v) { wakeLock = v; }, enumerable: true, configurable: true },
       "warnRecorderNewApp": { get: function () { return warnRecorderNewApp; }, enumerable: true, configurable: true },
       "whisperAllowed": { get: function () { return whisperAllowed; }, enumerable: true, configurable: true },
@@ -268,7 +282,7 @@
       // hidden element (a browser that never decodes a hidden video): the
       // track is live, so the tab plays it itself.
       try {
-        const m = mosIn && mosIn.get('stg:' + sid);
+        const m = __C.mosIn && __C.mosIn.get('stg:' + sid);
         const t = m && m.stream && m.stream.getVideoTracks && m.stream.getVideoTracks()[0];
         if (t && t.readyState !== 'ended') return { track: t, from: 'stg' };
       } catch (e) {}
@@ -2277,21 +2291,6 @@
     // discipline. All of it gates on beyondRow: a room that IS just my row
     // renders everyone directly on Channel R and pays nothing here.
     const MM = GifOS.meshMedia;
-    yield 1920;
-    const mosIn = new Map();    // resolvedKey -> { via, streamId, stream, el, meta } (claimed PRIMARY — rendered + re-shipped)
-    // MULTI-SUBSCRIBE — the ONE-PIPE law (docs/media-plane.md): for every
-    // redundant slot ('sdm', 'sdx', 'sgs', per-stager 'stg:*', the W7 sdrow
-    // products) exactly ONE pipe moves bits — the PRIMARY (mosIn, rendered).
-    // ONE alternate announcer stays SELECTED as a parked STANDBY (mosStandby:
-    // claimed, negotiated, <video> ready — but demanded idle, so the sender
-    // replaceTrack(null)s it and it carries ZERO media); every further
-    // announcer is a dormant spare with no local claim at all. A primary death
-    // demand-wakes the standby (mx-want — a pure replaceTrack at the sender,
-    // no renegotiation) while the dead pipe lingers its last frame under
-    // MOS_GRACE; the standby takes the slot the moment it demonstrably FLOWS.
-    // Failback to the preferred path is make-before-break with hysteresis
-    // (see claimRedun).
-    const mosStandby = new Map();
     yield 1923;    // from + '|' + key + '|' + sid -> 'w'|'i' (last demand sent — debounce)
     const mosJobs = new Map();  // key + '>' + to -> { senders, trackList, active, sig, to, key, meta } (outbound ships)
     const pipePacks = new Map();   // SUB.4: pipe peer -> the room pack without that pipe's part (a vouched pipe only)
@@ -2614,7 +2613,7 @@
       if (!stageEar) return;
       const onStage = new Set(stagers);
       const want2 = new Map();
-      for (const [k2, f2] of mosIn) {
+      for (const [k2, f2] of __C.mosIn) {
         if (k2.indexOf('stg:') !== 0 || k2 === 'stg:' + __C.myId || !f2.stream) continue;
         if (!onStage.has(k2.slice(4).split('^')[0])) continue;
         want2.set(k2, f2.stream);
@@ -2691,7 +2690,7 @@
         try {
           for (const k2 of [...stageEar.watch.keys()]) {
             if (!stageEar.sids.has(k2)) { stageEar.watch.delete(k2); continue; }
-            const f = mosIn.get(k2);
+            const f = __C.mosIn.get(k2);
             const sid = stageEar.sids.get(k2);
             if (!f || !f.stream || f.stream.id !== sid) { delay = 700; continue; }
             const owner = k2.slice(4).split('^')[0];
@@ -2709,7 +2708,7 @@
             // A moderator mute that lands meanwhile holds too: the repair below re-adds the source at gain 1.
             const still = () => {
               if (!stageEar || !stageEar.watch || stageEar.watch.get(k2) !== w || stageEar.sids.get(k2) !== sid) return false;
-              if (mosIn.get(k2) !== f || !stageEar.bound || stageEar.bound.get(k2) !== f.stream) return false;
+              if (__C.mosIn.get(k2) !== f || !stageEar.bound || stageEar.bound.get(k2) !== f.stream) return false;
               let m = null; try { m = (0, /*()*/__C.modOf)(owner).mute; } catch (e) { m = null; }
               return !(m && m.on);
             };
@@ -2769,10 +2768,10 @@
         out.audible = listed && out.trackLive && !__C.myStatus.muted && !out.modMuted;
         return out;
       }
-      const keys = [...mosIn.keys()].filter((k) => k.indexOf('stg:') === 0 && k.slice(4).split('^')[0] === id);
+      const keys = [...__C.mosIn.keys()].filter((k) => k.indexOf('stg:') === 0 && k.slice(4).split('^')[0] === id);
       const ear = stageEar;
       const k2 = keys.find((k) => ear && ear.sids.has(k)) || keys[0];
-      const f = k2 ? mosIn.get(k2) : null;
+      const f = k2 ? __C.mosIn.get(k2) : null;
       if (!f) return out;
       const fb = mosFb.get(k2);
       out.claim = { key: k2, via: String(f.via).slice(0, 8), dead: !!f.deadAt, dark: !!(fb && fb.dark), hop: f.meta ? f.meta.h : null };
@@ -2893,13 +2892,7 @@
       for (let d = 1; d < __C.SCALE.C; d++) { const co = { pc: 0, r: (c.r + d) % __C.SCALE.C, i: c.i }; if ((0, /*()*/__C.occPid)(co)) return co; }
       return null;
     };
-    // A hidden, playing <video> for a claimed stream — the drawImage source.
-    // STAGE-MOS-EL
-    function mosNeedsVideo(rk) {
-      if (rk === 'subraw' || rk === 'x1') return false;
-      if (typeof rk === 'string' && (rk.indexOf('x2:') === 0 || rk.indexOf('sdxc:') === 0 || rk.indexOf('ra:') === 0 || rk.indexOf('rap:') === 0)) return false;
-      return true;
-    }
+    yield 1978;
     // END-STAGE-MOS-EL
     function mosVideo(stream) {
       const v = document.createElement('video');
@@ -2910,6 +2903,25 @@
       const pr = v.play(); if (pr && pr.catch) pr.catch(() => {});
       v._mosFlowAt = 0; v._mosRestarts = 0;
       return v;
+    }
+    // The claim's consumer. A new claim gets today's hidden <video>; a claim that already has one is re-bound in place.
+    function bindClaim(rk, claim) {
+      if (!claim) return;
+      if (!claim.el) { claim.el = mosVideo(claim.stream); return; }
+      try { wkBindVideo(claim.el, claim.stream); const pr = claim.el.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {}
+    }
+    function unbindClaim(rk, claim) {
+      const el = claim && claim.el;
+      try { releaseAudio(el); el.srcObject = null; el.remove(); } catch (e) {}
+    }
+    // The same consumer follows a new claim object (make-before-break re-park). A fresh bind would rebuild the decoder.
+    function adoptClaim(rk, neu, old) {
+      neu.el = old.el;
+    }
+    // Picture read for the choice. w is the element's videoWidth, or 0. frames is the playback count, or the videoWidth fallback the choice used.
+    function picRead(claim) {
+      const el = claim && claim.el;
+      return { w: (el && el.videoWidth) || 0, frames: (el && el.getVideoPlaybackQuality) ? el.getVideoPlaybackQuality().totalVideoFrames : (el && el.videoWidth > 0 ? 1 : 0) };
     }
     // A DECODER THAT SHOWS NO PICTURE WHILE ITS FEED FLOWS IS RESTARTED
     // THROUGH THE SENDER. WebKit starts a newly bound stream <video> only
@@ -2962,7 +2974,7 @@
     }
     function mosDecoderSweep() {
       const now = Date.now();
-      const ents = [...mosIn.entries(), ...mosStandby.entries()];
+      const ents = [...__C.mosIn.entries(), ...__C.mosStandby.entries()];
       for (const [rk, ent] of ents) {
         const v = ent && ent.el, st = v && (ent.stream || v.srcObject);
         if (!st || !v.isConnected) continue;
@@ -2977,7 +2989,7 @@
             v._mosHold = 0; v._mosRebound = false; v._mosFlowAt = 0;
             // The silence was ours, not the pipe's: only the held pipe's clock moves. A primary that never
             // delivered a byte is credited the hold, not a fresh void window, or each restart restarts the void.
-            const fb = mosIn.get(rk) === ent ? mosFb.get(rk) : null;
+            const fb = __C.mosIn.get(rk) === ent ? mosFb.get(rk) : null;
             if (fb) { fb.lastAdvanceAt = fb.lastBytes > 0 ? now : Math.min(now, (fb.lastAdvanceAt || now) + MOS_RESTART_HOLD); fb.q = 0; }
             dmd(true);
           }
@@ -2996,7 +3008,7 @@
       }
     }
     setInterval(mosDecoderSweep, 1000);
-    yield 1985;
+    yield 1989;
     const pipeJobs = new Map(); // jk -> { srcId, carrier, srcTrack, w0, stale }
     const pipeDeny = new Set(); // jobs that must use the transcode path (mismatch / dead pipe)
     const pipeDenyUntil = new Map(); // jk -> ms when the deny lapses
@@ -3022,7 +3034,7 @@
       if (until && Date.now() >= until) { pipeDeny.delete(jk); pipeDenyUntil.delete(jk); return false; }
       return true;
     }
-    yield 1995;
+    yield 1999;
     if (__C.MPipe) __C.MPipe.on('codec-mismatch', (m) => {
       const jk = m.pipeId;
       if (pipeJobs.has(jk)) { pipeDenyStamp(jk); pipeDeny.add(jk); unshipMos(jk, true); } // next sweep re-ships transcoded
@@ -3038,7 +3050,7 @@
     // keyframe trigger). A camera source has no canvas — its direct receivers'
     // ordinary PLI is the lever there, so the walk simply ends.
     const kfLast = new Map();
-    yield 1998; // mx-kf sets this for the duration of kfNeed(key)
+    yield 2002; // mx-kf sets this for the duration of kfNeed(key)
     const jiggleState = new WeakMap(); // sender -> { base, busy }
     function noteJiggleBase(sd, base) {
       const st = jiggleState.get(sd);
@@ -3123,15 +3135,15 @@
       // for this key is the fallback.
       let cl = null;
       const prefJob = fromPid ? mosJobs.get(key + '>' + fromPid) : null;
-      if (prefJob && prefJob.upKey) cl = mosIn.get(prefJob.upKey);
+      if (prefJob && prefJob.upKey) cl = __C.mosIn.get(prefJob.upKey);
       if (!cl || !cl.via) {
         for (const job2 of mosJobs.values()) {
           if (job2.key !== key || !job2.upKey) continue;
-          const c2 = mosIn.get(job2.upKey);
+          const c2 = __C.mosIn.get(job2.upKey);
           if (c2 && c2.via) { cl = c2; break; }
         }
       }
-      if (!cl) cl = mosIn.get(key);
+      if (!cl) cl = __C.mosIn.get(key);
       if (cl && cl.via) {
         const vp = __C.peers.get(cl.via);
         if (vp && vp.dc && vp.dc.readyState === 'open') { kfEv(key, 'relay', { via: String(cl.via).slice(0, 6) }); (0, /*()*/__C.dcSend)(vp, { k: 'mx-kf', key }); return; }
@@ -3808,10 +3820,10 @@
     // copy that feeds it says so too, or a sender at its load budget refuses it as a spare and the receiver plays the
     // silence a parked source relays.
     function chainDemandUp(job, want) {
-      const parked = job ? mosStandby.get(job.upKey) : null; // E2 up: the copy I climb with can be one I hold parked
+      const parked = job ? __C.mosStandby.get(job.upKey) : null; // E2 up: the copy I climb with can be one I hold parked
       if (want && parked && stgFedBy(job, parked)) demand(parked.via, parked.key, parked.streamId, true, !!job.prim);
       const uk = job ? chainUpKey(job.upKey) : null; if (!uk) return;
-      const up = mosIn.get(job.upKey);
+      const up = __C.mosIn.get(job.upKey);
       if (up) demand(up.via, uk, up.streamId, want);
     }
     // END-CHAIN-PARK
@@ -3846,7 +3858,7 @@
       let sig = ''; for (const [jk, job] of mosJobs) if (dutyJob(jk)) sig += jk + (dutyTrack(job.to, job.key) ? '+' : '-') + ',';
       if (sig !== dutyTick.sig) { dutyTick.sig = sig; refreshOutbound(); }
     }
-    yield 2040;
+    yield 2044;
     let leaseShown = false; const leaseJobs = new Set();
     function selfLeaseTick() {
       const on = (0, /*()*/__C.seatSelfLeased)(); if (on === leaseShown) return;
@@ -4001,7 +4013,7 @@
       let st = null;
       if (id === __C.myId) st = __C.meTile && __C.meTile.video ? __C.meTile.video.srcObject : null;
       else {
-        const f = mosIn.get('stg:' + id);
+        const f = __C.mosIn.get('stg:' + id);
         if (f) { if (f.meta && f.meta.ao) return null; st = f.stream; }
         else if (s1) { const p = __C.peers.get(id); st = p && p.video ? p.video.srcObject : null; }
       }
@@ -4066,17 +4078,7 @@
       if (nm) nm.style.display = css ? 'none' : 'flex';
       return !!css;
     }
-    // END-STAGE-FACES
-    function dropMosIn(rk) {
-      const c = mosIn.get(rk); if (!c) return;
-      mosIn.delete(rk);
-      try { releaseAudio(c.el); c.el.srcObject = null; c.el.remove(); } catch (e) {}
-    }
-    function dropStandby(rk) {
-      const c = mosStandby.get(rk); if (!c) return;
-      mosStandby.delete(rk);
-      try { releaseAudio(c.el); c.el.srcObject = null; c.el.remove(); } catch (e) {}
-    }
+    yield 2065;
     // Claim announced streams off the announcing peer's incoming list, and
     // RESOLVE each to its routing slot (the mosaic's whole routing table):
     //   sub (+col from a relaying row-mate) -> a head's stack slot
@@ -4136,7 +4138,7 @@
     // track or element): who carries it, which stream, dead or not; whether the row mix's sound is missing; whether the
     // watchdog holds the claim dark; and L49's verdict (deafOut: the head whose row mix I hold deaf, or null).
     function rowMeasure() {
-      const pri = mosIn.get('sdm'), fb = mosFb.get('sdm'), str = (v) => (v == null ? null : String(v));
+      const pri = __C.mosIn.get('sdm'), fb = mosFb.get('sdm'), str = (v) => (v == null ? null : String(v));
       return {
         sdm: pri ? { via: str(pri.via), sid: str(pri.streamId), dead: !!pri.deadAt } : null,
         deaf: !!rowMixDeaf, dark: !!(fb && fb.dark), deafOut: rowDeaf ? str(rowDeaf.pid) : null,
@@ -4234,13 +4236,13 @@
       let rap = 0, rapRms = -1;
       if (c && c.i === 0) {
         for (let q = 0; q < nC; q++) {
-          const f = mosIn.get('sdrow:' + q);
+          const f = __C.mosIn.get('sdrow:' + q);
           if (f && f.via) vias[q] = String(f.via).slice(0, 8);
           const slot = rowSdLv.get(q);
           if (slot && typeof slot.rx === 'number') rms[q] = slot.rx;
           if (slot && slot.hot) hot.push(q);
         }
-        for (const [mk, rf] of mosIn) {
+        for (const [mk, rf] of __C.mosIn) {
           if (String(mk).indexOf('rap:') !== 0 || !rf || !rf.stream) continue;
           rap++;
           const ps = rowSdLv.get('p' + mk) || {}; rowSdLv.set('p' + mk, ps);
@@ -4288,7 +4290,7 @@
     window.__rowMixOn = rowMixOnVtalk;
     function rowMixHeadArrives(q) {
       const head = (0, /*()*/__C.occPid)({ pc: 0, r: q, i: 0 });
-      const pri = mosIn.get('sdrow:' + q), std = mosStandby.get('sdrow:' + q);
+      const pri = __C.mosIn.get('sdrow:' + q), std = __C.mosStandby.get('sdrow:' + q);
       const src = pri && pri.via === head ? pri : (std && std.via === head ? std : null);
       if (!src || !src.stream) return -1;
       const slot = rowSdLv.get('h' + q) || {}; rowSdLv.set('h' + q, slot);
@@ -4308,7 +4310,7 @@
       }
       if (c && s && c.i !== 0 && c.pc === 0 && s.rowHeir && s.rowHeir() === __C.myId) {
         const head = (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: 0 });
-        const x1 = mosIn.get('x1');
+        const x1 = __C.mosIn.get('x1');
         const level = (x1 && !x1.deadAt && x1.via === head && x1.stream) ? rowMixArrives(rowMixAn || (rowMixAn = {}), x1) : -1;   // 1 arrives, 0 the picture comes and the sound does not, -1 nothing to judge
         const flagged = rowMixFresh(c.r, c.pc);
         rowMixWhy = (x1 ? (x1.deadAt ? 'xdead' : (x1.via === head ? 'xhead' : 'xvia')) : 'nox1') + ' rx=' + level + (rowMixArmed ? ' arm' : ' warm') + (flagged ? ' flag' : ' noflag');
@@ -4339,7 +4341,7 @@
         const nC = __C.SCALE.C;
         for (let q = 0; q < nC; q++) {
           if (q === c.r) continue;
-          const f = mosIn.get('sdrow:' + q);
+          const f = __C.mosIn.get('sdrow:' + q);
           const slot = rowSdLv.get(q) || {}; rowSdLv.set(q, slot);
           const level = (f && f.stream) ? rowMixArrives(slot, f) : -1;
           slot.rx = level;
@@ -4407,95 +4409,7 @@
       const c = (0, /*()*/__C.meshCoord)(), s = (0, /*()*/__C.meshSeat)(); if (!c || !s || c.i === 0 || !s.rowHeir) return false;
       return rowActing(c) === __C.myId || (rowHoldUntil > Date.now() && s.rowHeir() === __C.myId);
     }
-    function mosResolve(key, meta, from) {
-      const c = (0, /*()*/__C.meshCoord)(); if (!c) return null;
-      // SUB.4: what my pipe peer sends me is a child's product: its side's room pack and the sound of its side ('sdn', its
-      // send to one more child of its own), held as a served branch ('subu:<pipe peer>'), and every stager's own feed.
-      if (from && (0, /*()*/__C.isPipePeer)(from)) { if (key === 'sdn') return 'subu:' + from; if (key.indexOf('stg:') !== 0) return null; }
-      const iAmHead = c.i === 0 || iActAsHead(); // L2.7: the heir stands in for a gone head
-      // A branch a row-mate serves (an L14 branch, a pipe), relayed to me under its own key: one job per branch, never sharing
-      // the mate's 'sub' (its own down-child's product) or another branch's.
-      if (key.indexOf('subl:') === 0) return iAmHead ? 'subu:' + key.slice(5, 69) : null;
-      if (key === 'sub') {
-        if (meta && meta.l14) return 'subu:' + String(meta.via || from).slice(0, 64); // L14: a cut-off branch's product over its uplink
-        if (meta && meta.col != null) return iAmHead ? 'sub:' + meta.col : null;
-        return iAmHead ? 'sub:' + c.i : 'subraw'; // my own down-child's product (a head is column 0)
-      }
-      if (key === 'x1') return iAmHead ? null : 'x1';
-      if (key === 'x2' && iAmHead) return meta && meta.row != null && meta.row !== c.r ? 'sdrow:' + meta.row : null; // a head (an heir standing in, or a mate just moved into the head's cell) uses the other rows' products its column still carries, until the direct copy lands
-      // x2 is per-origin-row now (W7): one carrier delivers several rows'
-      // products through the same column, so the slots must not collide.
-      // MY OWN ROW'S PRODUCT IS NEVER MINE TO CLAIM (2026-07-29, the sibling of
-      // the stage echo). In a static full grid the routing arithmetic already
-      // guarantees a row product never comes home — but a seat that MOVES
-      // (compaction, heal) keeps carrying an x2 stamped with its old row, and
-      // after the move that row can be its own. Then it relays my-row-product
-      // to its head as sdrow:<head's own row>. The stadium packer skips q ===
-      // c.r so nothing is mispainted (mix-minus holds), which is exactly why
-      // this stayed invisible: the cost is a HOT PIPE carrying a mix nobody
-      // ever draws — wasted radio and watts on a phone, plus a claim slot the
-      // watchdog will dutifully failover forever. Same rule as x1/sdm/sdn:
-      // never claim what you produced.
-      if (key === 'x2') return !iAmHead && meta && meta.row != null && meta.row !== c.r ? 'x2:' + meta.row : null;
-      if (key.indexOf('sdrow') === 0) return iAmHead && meta && meta.row != null && meta.row !== c.r ? 'sdrow:' + meta.row : null;
-      // MIX-MINUS streams (docs/media-plane.md): per-branch, single-producer.
-      if (key === 'sdm') return c.i === 0 || (iAmHead && from !== (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: 0 })) ? null : 'sdm'; // my head's finished row view — my Stadium. An heir standing in keeps its head's copy (the feed may come back) and takes no other: a mate's would be its own echo
-      // sdx: my column's child-branch ingredient (direct, or the 'sdx^x' copy a
-      // carrier row-mate hands me — same slot, second pipe in the row). sdxc: a
-      // NEIGHBOUR column's copy I carry sideways to its target seat.
-      if (key.indexOf('sdxu:') === 0) return !iAmHead ? key.slice(0, 69) : null; // L14 / SUB.4: my head's send for a branch I serve, one job per branch
-      if (key === 'sdx' || key === 'sdx^x') return !iAmHead && meta && meta.col === c.i ? 'sdx' : null;
-      if (key === 'sdxc') return !iAmHead && meta && meta.col != null && meta.col !== c.i ? 'sdxc:' + meta.col : null;
-      if (key === 'sdn') return iAmHead ? 'sdn' : null;  // my branch's outside-world ingredient (from above)
-      // L49: a talker's mic pulled past a row head whose mix does not arrive. Audio only. The head claims rap:<row>; a mate relays ra:<row>.
-      if (key === 'ra') {
-        if (c.pc !== 0 || !meta || meta.row == null) return null;
-        if (c.i === 0) return meta.row !== c.r ? 'rap:' + meta.row : null;
-        return 'ra:' + meta.row;
-      }
-      if (key === 'sgs') return 'sgs';        // the composited Stage strip, fanned down
-      // an individual stager feed (per-stager slot); an older client's '^' suffix
-      // resolves to the same slot.
-      if (key.indexOf('stg:') === 0) {
-        const q = key.indexOf('^'); const base = q < 0 ? key : key.slice(0, q);
-        // NEVER CLAIM AN ECHO OF MYSELF (2026-07-29, the stage nobody could
-        // ever see). The S1 flood spreads each stager feed across the whole
-        // rook fabric, so a copy comes BACK to the stager. Claiming it put
-        // 'stg:<me>' in my own mosIn, and the flood loop below then re-shipped
-        // that echo under the SAME job key as my own feed — a different stream
-        // id, so shipMos tore the job down and rebuilt it EVERY 2s sweep,
-        // yanking the tracks out from under every receiver in the room and
-        // killing every relayed copy with them. Nothing needs the echo: the
-        // strip compositor draws me from my own meTile (srcFor short-circuits
-        // on myId) and the stage ear explicitly skips my own feed.
-        if (base === 'stg:' + __C.myId) return null;
-        return base;
-      }
-      return null;
-    }
-    // Is a claimed source still LIVE? (its announcer still connected, still
-    // offering that stream, AND the stream still carries a live media track.)
-    // The basis for STICKINESS below.
-    // (A trackLive() guard lived here for a night — 2026-07-29 — requiring a
-    // claimed stream to carry a live media track, on the theory that the black
-    // stage came from claims pinned to track-dead "husk" containers. The husks
-    // were a SYMPTOM: the stager was re-shipping every 2s because it claimed an
-    // echo of its own feed (see mosResolve). With the echo fixed the churn is
-    // gone — and the guard did real harm, because a PARKED STANDBY is
-    // indistinguishable from a husk by track state: it has a negotiated
-    // transceiver carrying no media, so it can legitimately hold zero live
-    // tracks. Rejecting it threw the standby away with the husk and FAILOVER
-    // NEVER COMPLETED — redun-drill leg B, 'freeze gap = NEVER RESUMED', on
-    // both gate hosts. Liveness of a CLAIM is announcer-presence; liveness of a
-    // PIPE is bytes, which the watchdog already measures.)
-    function mosLive(via, sid) {
-      const p = __C.peers.get(via);
-      const st = p && p.incoming && p.incoming.find((s) => s.id === sid && s.id !== p.ownSid);
-      return !!st;
-    }
-    yield 2099;
-    const annMeta = (ann) => { const m = { col: ann.col, row: ann.row, n: ann.n, cols: ann.cols, mt: ann.mt, h: ann.h, ids: ann.ids, ao: ann.ao, sb: ann.sb, vp: ann.vp, alag: ann.alag, l14: ann.l14, via: ann.via, pipe: ann.pipe, pv: ann.pv }; if (ann.src) m.src = String(ann.src).slice(0, 64); return m; };
-    yield 2103;
+    yield 2107;
     // Hop count of a held stg copy for re-flooding: my copy's announced h + 1.
     // A copy with NO h (an old client's announce) re-floods as far (998+1) —
     // claimable when it is the only path, always outranked by a counted chain.
@@ -4508,11 +4422,10 @@
     // ~10 s into a stationary stage (e2e-stage-onerow, 4 Oct 2026). One rank
     // per holder, whichever of its two paths it holds: no second hop of churn.
     const stgHop = (f) => ((f && f.meta && typeof f.meta.h === 'number') ? f.meta.h : 998) + 1 + ((f && f.meta && f.meta.sb === 1) ? 1 : 0);
-    yield 2105;
+    yield 2109;
     const vpId = (pid) => String(pid || '').slice(0, 10);
     const stgPath = (f) => ((f && f.meta && Array.isArray(f.meta.vp)) ? f.meta.vp : []).concat(vpId(__C.myId)).slice(-__C.STG_VP_MAX);
-    const stgLoopsBack = (key, ann) => typeof key === 'string' && key.indexOf('stg:') === 0 && !!ann && Array.isArray(ann.vp) && ann.vp.indexOf(vpId(__C.myId)) >= 0;
-    yield 2109;
+    yield 2113;
     // Send a want/idle demand to a redundant feed's announcer, debounced so the
     // message only rides the DC on a state flip — but RE-ASSERTED every few
     // seconds even without one: a demand that raced a closed DC or a transport
@@ -4570,7 +4483,7 @@
     let claimT = 0;
     function schedClaim() {
       if (claimT) return;
-      claimT = setTimeout(() => { claimT = 0; try { claimMos(); } catch (e) {} }, 60);
+      claimT = setTimeout(() => { claimT = 0; try { (0, /*()*/__C.claimMos)(); } catch (e) {} }, 60);
     }
     // THE PIPE WATCHDOG v2 (task #3; v1 0d9c530 reverted 80856f0): the receiver
     // measures its own hot pipes on a ~300ms loop, but on BYTES — the inbound-rtp
@@ -4603,7 +4516,7 @@
       if (l.length > 200) l.shift();
       if (__C.DEBUG_ON && rk.indexOf('stg:') === 0) swapPicNote(rk, e, why || '');
     }
-    yield 2120;
+    yield 2124;
     function stgPicOf(ent) {
       if (!ent) return null;
       const el = ent.el, st = ent.stream || (el && el.srcObject) || null, o = { via: String(ent.via || '').slice(0, 8) };
@@ -4628,7 +4541,7 @@
         const now = Date.now();
         if (e === 'want' || e === 'hold') { const hk = e + rk; if (now - (__C.swapPicHoldAt.get(hk) || 0) < 3000) return; if (__C.swapPicHoldAt.size > 64) __C.swapPicHoldAt.delete(__C.swapPicHoldAt.keys().next().value); __C.swapPicHoldAt.set(hk, now); }
         const fb = mosFb.get(rk) || {};
-        const r = { t: now, k: rk.slice(4, 12), e: e === 'want' ? 'wake' : e, why: String(why || '').slice(0, 90), p: stgPicOf(mosIn.get(rk)), s: stgPicOf(mosStandby.get(rk)),
+        const r = { t: now, k: rk.slice(4, 12), e: e === 'want' ? 'wake' : e, why: String(why || '').slice(0, 90), p: stgPicOf(__C.mosIn.get(rk)), s: stgPicOf(__C.mosStandby.get(rk)),
           lb: fb.lastBytes, sb: fb.stdB, fd: fb.stdFdec, d0: fb.d0, dark: fb.dark ? 1 : 0, sus: fb.suspect ? 1 : 0, pd: fb.picDead ? 1 : 0 };
         // np: no picture is owed. A camera-off sender keeps a live, unmuted video track that sends only black frames, so a still
         // or empty picture from its slot is the one promised. Set only when the owner's own status says camera off and no screen share.
@@ -4639,7 +4552,7 @@
     }
     async function sampleStandby(rk, fb) {
       if (fb.dark || fb.wakeAt) {
-        const std = mosStandby.get(rk);
+        const std = __C.mosStandby.get(rk);
         const s = std ? await pipeBytes(std, rk.indexOf('stg:') === 0) : -1;
         if (s !== -1 && s.d >= 0) {
           // First post-wake sample IS the baseline; a sample BELOW the
@@ -4648,7 +4561,7 @@
           // never pass and the dark swap wedges (seen live: d0=16, fdec=13).
           if (fb.d0 === -1 || s.d < fb.d0) { fb.d0 = s.d; fb.b0 = s.b; fb.stdAdvAt = 0; }
           if (fb.stdFdec >= 0 && s.d > fb.stdFdec) fb.stdAdvAt = Date.now(); // the last decode-side advance (the failback gate reads it)
-          const pg = mosIn.get(rk); // a gone primary (deadAt) swaps on the first flow as a dark one does
+          const pg = __C.mosIn.get(rk); // a gone primary (deadAt) swaps on the first flow as a dark one does
           if ((fb.dark || (pg && pg.deadAt)) && s.d > fb.d0 && fb.stdFdec <= fb.d0) { stgFoNote(rk, 'first'); schedReconcile(); } // the swap waits for no sweep
           fb.stdFdec = s.d; fb.stdB = s.b;
         }
@@ -4661,7 +4574,7 @@
         const now = Date.now();
         { const sv = (0, /*()*/__C.meshSeat)(), hot = !!(sv && sv.u2Hot); if (hot !== dogU2Hot) { dogU2Hot = hot; schedReconcile(); } } // L2.7
         dogPass++;
-        for (const [rk, pri] of mosIn) {
+        for (const [rk, pri] of __C.mosIn) {
           if (!(0, /*()*/__C.isRedun)(rk)) continue;
           const fb = mosFb.get(rk); if (!fb) continue; // claimRedun mints it; no claim, no watch
           // Stage audio sets the fast beat; every other slot keeps its own, one pass in three.
@@ -4702,7 +4615,7 @@
             dl.push({ t: now, rk: rk.slice(0, 14), b: (bytes < 0 ? -1 : bytes.b), q: fb.q || 0,
               la: fb.lastAdvanceAt ? now - fb.lastAdvanceAt : -1, ca: fb.claimAt ? now - fb.claimAt : -1,
               fs: fb.flowSince ? now - fb.flowSince : -1, fp: fb.fp || 0,
-              dark: !!fb.dark, wk: !!fb.wakeAt, std: !!mosStandby.get(rk) });
+              dark: !!fb.dark, wk: !!fb.wakeAt, std: !!__C.mosStandby.get(rk) });
             if (dl.length > 400) dl.shift();
           }
           if (bytes < 0) {
@@ -4713,7 +4626,7 @@
             // standby, because this bail skipped the void rail. A claim this
             // old with NO stats row is the deepest void there is.
             if (!fb.dark && fb.claimAt && now - fb.claimAt > HOT_VOID_MS) {
-              const std0 = mosStandby.get(rk);
+              const std0 = __C.mosStandby.get(rk);
               if (std0 && std0.key) { fb.dark = true; demand(std0.via, std0.key, std0.streamId, true); schedReconcile(); }
             }
             // A primary whose transport closed (its seat died) has no stats row either. Its woken standby is still
@@ -4774,7 +4687,7 @@
             // protection gap the wall-clock version fixed is graveyard
             // territory (known-unfixed.sh FAILOVER-WAKE) and moves to the
             // sender-side campaign. flowSince stays as pure forensics.)
-            const std = mosStandby.get(rk);
+            const std = __C.mosStandby.get(rk);
             if (!fb.suspect && ((std && std.key) || rk.indexOf('stg:') === 0) && fb.lastAdvanceAt
                 && now - fb.lastAdvanceAt > MOS_DARK_MS
                 && now - fb.lastAdvanceAt < MOS_FLOWED_RECENT) {
@@ -4804,7 +4717,7 @@
             // fired on SLOW pipes under load and spiraled. A merely-starved
             // pipe ships SOMETHING inside 12s; a piped husk is RTP-silent —
             // zero bytes for HOT_VOID_MS with a live standby is death.
-            const std = mosStandby.get(rk);
+            const std = __C.mosStandby.get(rk);
             if (!fb.suspect && std && std.key) {
               fb.dark = true; stgFoNote(rk, 'dark', std.via, 'void: zero bytes HOT_VOID');
               demand(std.via, std.key, std.streamId, true); // wake NOW — don't wait for the sweep
@@ -4816,7 +4729,7 @@
           // delivered: a primary that flowed and froze is judged by the qualified dark rail above.
           if (rk.indexOf('stg:') === 0 && !fb.dark && !fb.suspect && bytes.b <= 0 && !(fb.lastBytes > 0)
               && fb.claimAt && now - fb.claimAt > STG_ZERO_MS) {
-            const std = mosStandby.get(rk);
+            const std = __C.mosStandby.get(rk);
             if (std && std.key) {
               fb.dark = true; stgFoNote(rk, 'dark', std.via, 'zero-byte dead rule');
               demand(std.via, std.key, std.streamId, true); // wake NOW — don't wait for the sweep
@@ -4848,12 +4761,12 @@
         // The guarantee is unchanged: darkness is still declared on byte
         // silence, and the fast path still exists exactly when it can act.
         let urgent = false, watchable = false; dogVoiceFast = false;
-        for (const [rk, pv] of mosIn) {
+        for (const [rk, pv] of __C.mosIn) {
           if (!(0, /*()*/__C.isRedun)(rk)) continue;
           const fb = mosFb.get(rk); if (!fb) continue;
           if (stgVoiceClaim(rk, pv)) dogVoiceFast = true;
           if ((fb.dark || fb.wakeAt) && !fb.suspect) { urgent = true; break; }
-          if (fb.suspect || mosStandby.get(rk) || rk.indexOf('stg:') === 0) watchable = true;
+          if (fb.suspect || __C.mosStandby.get(rk) || rk.indexOf('stg:') === 0) watchable = true;
         }
         dogEvery = (urgent || dogVoiceFast) ? 300 : (watchable ? 900 : 3000);
       } catch (e) {}
@@ -4902,94 +4815,7 @@
       } catch (e) { return -1; }
     }
     let dogT = setTimeout(mosWatchdog, 300);
-    // ONE-PIPE multi-subscribe for one redundant slot (docs/media-plane.md):
-    // one pipe moves bits (the PRIMARY); ONE alternate announcer is kept
-    // SELECTED as a parked STANDBY (claimed + negotiated + <video> ready, but
-    // demanded idle — zero media); every further announcer is a dormant spare.
-    //   FAILOVER — the primary dies: the standby is demand-woken (mx-want, a
-    //   pure replaceTrack at the sender) while the dead primary LINGERS its
-    //   last frame under MOS_GRACE; the moment the standby demonstrably FLOWS
-    //   (frames observed) it takes the slot. Wake target ≤2s — inside grace.
-    //   FAILBACK — the PREFERRED path (the tree-direct announcer, prefCand)
-    //   returns: make-before-break. The preferred feed is staged as the
-    //   standby, demand-woken ALONGSIDE the live primary (the one sanctioned
-    //   two-pipe overlap), and only after it is FLOWING and has been back a
-    //   full settle window (MOS_SETTLE — a bouncing link cannot oscillate the
-    //   roles) do the roles swap; the loser re-parks as the standby.
-    // MOS_GRACE (claim linger): a primary that goes dark with NO flowing
-    // replacement is NOT torn down for a few seconds — renegotiation glare, a
-    // transport rebuild (p.incoming reset) or an announce beat all resolve
-    // within a sweep or two, and tearing the tile down and rebuilding it for
-    // each is exactly the user-visible flap. A frozen last frame for a beat,
-    // never a torn-down tile; the mix-minus law holds (the lingering stream IS
-    // my legitimate mix — never a neighbour's). Grace only ever delays
-    // destruction, never recovery.
-    // STAGE-DARK-HOLD
-    // A primary that has never delivered a byte is a husk, not a pipe that froze: no advance will ever clear
-    // its suspicion, so it lapses after one wake window and the rails re-arm. The standby that did not flow
-    // is remembered (stdTried), so the next wake goes to another candidate, not the same dead copy.
-    // quickMs (stage): a standby woken for a dark primary that has not moved one byte quickMs after the
-    // wake is as dead as a stale wake, so the next candidate gets its turn in seconds.
-    // A wake while the primary still flows (failback to the preferred copy, a picture complaint) that has not
-    // ended in a swap within wakeMax failed the same way: it is parked at once and the copy is remembered
-    // (fb.fbTried, the same window), so no failback or picture wake goes to it until the window lapses. A
-    // failover (primary gone or dark) still may: there the copy is judged on its voice, not on the picture
-    // the failback waited for. Without it a failback that never completed held its second pipe hot with no
-    // retry, and a copy left because it failed was staged and woken again on every swap.
-    // gone: the primary's announce or stream is gone (not merely dark). Its woken standby is judged the same quick way,
-    // and one that did not flow is passed over for the next candidate at once; there is no primary left to re-arm, so
-    // no suspicion is latched (a latch would keep every later standby parked until the grace drops the claim).
-    function standbyStaysHot(fb, now, wakeMax, stdId, quickMs, gone) {
-      if (fb.suspect && !(fb.lastBytes > 0) && now - (fb.suspectAt || 0) > wakeMax) fb.suspect = false;
-      const quickDead = !!(quickMs && (fb.dark || gone) && fb.wakeAt && now - fb.wakeAt > quickMs && fb.d0 >= 0 && fb.b0 >= 0 && !(fb.stdB > fb.b0));
-      const wakeStale = !!(fb.wakeAt && now - fb.wakeAt > wakeMax) || quickDead;
-      const flowed = fb.d0 >= 0 && fb.stdFdec > fb.d0;
-      if (gone && wakeStale && !flowed) { // first: a gone primary that also went dark latches nothing either
-        fb.wakeAt = 0; fb.goneTriedAt = now;
-        if (stdId) (fb.stdTried = fb.stdTried || new Map()).set(stdId, now);
-      } else if (fb.dark && wakeStale && !flowed) {
-        fb.dark = false; fb.suspect = true; fb.suspectAt = now; fb.wakeAt = 0;
-        if (stdId) (fb.stdTried = fb.stdTried || new Map()).set(stdId, now);
-      } else if (!fb.dark && wakeStale) {
-        fb.wakeAt = 0; fb.prefSince = 0;
-        if (stdId) (fb.fbTried = fb.fbTried || new Map()).set(stdId, now);
-      }
-      const wakeLive = !!(fb.wakeAt && now - fb.wakeAt <= wakeMax);
-      return !fb.suspect && (wakeLive || !!fb.dark);
-    }
-    // A standby whose wake did not flow sits out for a while; failback to it is tried again later.
-    // which: 'stdTried' (failover order, the default) or 'fbTried' (failback and picture wakes).
-    function stdTried(fb, id, now, which) {
-      const m = fb[which || 'stdTried'], at = m && m.get(id);
-      return !!at && now - at < 120000;
-    }
-    // THE STANDBY TAKES ANOTHER ROAD. A slot's standby is the preferred path when the primary is not it (failback
-    // staging), else a live candidate on a different path; a candidate whose wake already failed waits until every
-    // other path has had its turn. A stage copy names the seats it came through (vp). A standby whose path shares a
-    // seat with the primary's dies with that seat: in Section 1 every copy that entered through the stager's up seat
-    // dies with it, and a slot that held such a standby (or failed over onto one) got its voice back only after
-    // zero-byte timeouts down the fabric, hop by hop. So the standby is a copy whose path shares no seat with the
-    // primary's whenever one is live, and a failover (primary gone or dark) never goes to one that shares a seat
-    // while another is live: the copy that failed may have died at any seat on its path. A failback to the
-    // preferred path is staged only while the primary still flows. A copy that names no path (the stager's own,
-    // or an older page) shares no seat anyone can name.
-    function stdPick(rk, cand, pri, pref, fb, now, failover) {
-      const fresh = (x) => !stdTried(fb, x.from + '|' + x.sid, now);
-      const isPri = (x) => !!pri && x.from === pri.via && x.sid === pri.streamId;
-      const others = cand.filter((x) => x.live && !isPri(x));
-      if (fb.stdTried && !others.some(fresh)) fb.stdTried = null; // every path has had its turn: start the round again
-      const pp = (rk.indexOf('stg:') === 0 && pri && pri.meta && Array.isArray(pri.meta.vp)) ? pri.meta.vp : [];
-      // Where a copy parts from my primary's path: 0 when it shares no seat, else 1 + the place on that path of the
-      // last seat they share. Every copy often shares the first seats (the stager's own way up), so "shares a seat"
-      // alone picked by list order and kept a copy through my own carrier, the seat most likely to die. The copy that
-      // parts earliest survives a death at any seat after that point, my carrier included.
-      const deep = (x) => (x.ann && Array.isArray(x.ann.vp)) ? x.ann.vp.reduce((m, s) => Math.max(m, pp.indexOf(s) + 1), 0) : 0;
-      const apart = (x) => deep(x) === 0;
-      const ownStd = stgOwnStandby(rk, cand, pri);
-      if (pref && pri && !isPri(pref) && fresh(pref) && (!failover || apart(pref))) return pref;
-      const best = others.filter(fresh).reduce((b, x) => (!b || deep(x) < deep(b) ? x : b), null);
-      return (ownStd && fresh(ownStd) ? ownStd : null) || best || ownStd || others[0];
-    }
+    yield 2135;
     // END-STAGE-DARK-HOLD
     const MOS_GRACE = GifOS.timings.MOS_GRACE;
     const MOS_SETTLE = GifOS.timings.MOS_SETTLE; // failback hysteresis: preferred must be back this long
@@ -5003,8 +4829,8 @@
     const STG_PIC_LIVE_MS = GifOS.timings.STG_PIC_LIVE_MS; // a stage primary's picture still arrives: its video bytes advanced this recently
     const STG_ZERO_MS = GifOS.timings.STG_ZERO_MS;  // stage audio gets no grace: a stage copy with zero bytes this long after its claim, or after its wake, is dead
     const HOT_VOID_MS = GifOS.timings.HOT_VOID_MS; // hot-and-VOID: a hot primary with ZERO bytes this long is a husk, not a slow pipe (frza5)
-    const mosFb = new Map(); // rk -> { wakeAt, f0, prefSince, lastSwitch, dark, lastBytes, lastAdvanceAt, q, fp, fpDecayAt, flowSince, b0, d0, stdFdec, claimAt } (wake/failback/watchdog state)
-    const mkFb = () => ({ wakeAt: 0, f0: 0, prefSince: 0, lastSwitch: 0, dark: false, lastBytes: -1, lastAdvanceAt: 0, q: 0, fp: 0, fpDecayAt: 0, flowSince: 0, b0: -1, d0: -1, stdFdec: -1, stdB: -1, stdAdvAt: 0, claimAt: 0, hadPref: false, left: null, pvB: -1, pvAt: 0 });
+    const mosFb = new Map();
+    yield 2145;
     // The PREFERRED announcer of a redundant slot: the tree-direct path the
     // media plane names as the producer's own leg. Failback aims here; any
     // other live path is a legitimate carrier but only a stand-in.
@@ -5025,20 +4851,7 @@
       const k = colPids.find((t) => t && linked(t)); if (k) out.add(k);
       return out;
     }
-    // The hop rank of a stg candidate: its announced h (999 when absent); an
-    // sb:1 copy from the stager itself ranks 1.5.
-    function stgRank(x, owner) {
-      if (x.from === owner && x.ann && x.ann.sb === 1) return 1.5;
-      return (x.ann && typeof x.ann.h === 'number') ? x.ann.h : 999;
-    }
-    // The parked standby of a stg slot whose primary is a relay: the stager's
-    // own copy, the one path that shares no seat with the relay.
-    function stgOwnStandby(rk, cand, pri) {
-      if (rk.indexOf('stg:') !== 0) return null;
-      const owner = rk.slice(4).split('^')[0];
-      return cand.find((x) => x.live && x.from === owner && x.key.indexOf('^') < 0
-        && !(pri && x.from === pri.via && x.sid === pri.streamId)) || null;
-    }
+    yield 2148;
     // END-STG-DIRECT
     // STG-SECOND-ROOT
     // EVERY SECTION 1 SEAT HOLDS A COPY BY A SECOND ROOT. A stage feed enters Section 1 at the stager's up seat
@@ -5068,7 +4881,7 @@
     function stgRootHold(jk, slot, to) {
       const job = mosJobs.get(jk);
       if (!job || !job.active || !job.srcTracks || !job.srcTracks.length) return null;
-      const ent = [mosIn.get(slot), mosStandby.get(slot)].find((e) => !!(e && e.stream && stgFedBy(job, e)));
+      const ent = [__C.mosIn.get(slot), __C.mosStandby.get(slot)].find((e) => !!(e && e.stream && stgFedBy(job, e)));
       if (ent && stgPath(ent).indexOf(vpId(to)) < 0) return ent;
       unshipMos(jk, true); shipContainers.delete(jk); // the next copy gets a fresh id, never the one the receiver played
       return false;
@@ -5096,11 +4909,11 @@
     // gone. A dark claim that kept announcing let a whole Section 1 row keep "live" claims on a
     // dead stager, with no media at all, for as long as the fold listed it (room v3ring).
     function stgLost(rk) {
-      const f = mosIn.get(rk); if (!f) return true;
+      const f = __C.mosIn.get(rk); if (!f) return true;
       const fb = mosFb.get(rk);
-      return !!(f.deadAt || (fb && fb.dark) || stgStale(rk));
+      return !!(f.deadAt || (fb && fb.dark) || (0, /*()*/__C.stgStale)(rk));
     }
-    yield 2152;
+    yield 2156;
     function stgBeatSeen(key, b) { const e = __C.stgBeats.get(key); return !!e && e.seen.indexOf(b) >= 0; }
     const stgBeatT = (b) => (b >= STG_PIC_MIN_B ? Math.floor(b / STG_PIC_WORD) : b); // the stager's clock, from either form of the value (stgPicNote)
     // The mark holds only while the stager is heard (a beat accepted within the stale window). A stager whose clock
@@ -5159,7 +4972,7 @@
         schedReconcile();
       }
       if (fb.picDead) {
-        const std = mosStandby.get(rk);
+        const std = __C.mosStandby.get(rk);
         if (std) { const sv = await pipeBytes(std, false); if (sv !== -1) { if (fb.picStd0 == null || sv.d < fb.picStd0) fb.picStd0 = sv.d; else if (sv.d > fb.picStd0 && !fb.picStdOk) { fb.picStdOk = true; schedReconcile(); } } }
         if (now - fb.picDeadAt > STG_PIC_RETRY_MS) { fb.picDead = false; fb.picRef = null; schedReconcile(); }   // no copy showed a picture: judge afresh
       }
@@ -5174,7 +4987,7 @@
     function stgBeatFlood(key, b, from, sig, pub) {
       for (const [pid, p] of __C.peers) if (pid !== from && p.dc && p.dc.readyState === 'open') { (0, /*()*/__C.dcSend)(p, { k: 'mx-beat', key, b, sig, pub }); if (__C.stgBeatCost) __C.stgBeatCost.out++; }
     }
-    yield 2167;
+    yield 2171;
     function stgBeatIn(p, m) {
       const t0 = __C.stgBeatCost ? performance.now() : 0;
       if (__C.stgBeatCost) __C.stgBeatCost.in++;
@@ -5186,37 +4999,7 @@
         .catch(() => {});
       if (__C.stgBeatCost) __C.stgBeatCost.ms += performance.now() - t0;
     }
-    // A stager that never beat (an older page) is judged as before.
-    function stgStale(rk) { const e = __C.stgBeats.get(rk); return !!e && Date.now() - e.at > __C.STG_BEAT_STALE_MS; }
-    // A STAGE THAT ENDED ENDS ON EVERY ROAD. The beat is the stager's own word that its feed is there, so once it has
-    // gone stale here (or, on the stager's page, once I am off the stage) this page relays no copy of that stage by any
-    // road (the flood of its primary, its second-root copy, a copy a receiver plays), ends the copies it ships at once,
-    // and takes none as a claim or standby. Gating the primary flood alone (stgLost) left the second-root copies:
-    // each Section 1 seat kept passing its parked standby on, and that standby was another seat's second-root copy,
-    // so the copies fed each other in a ring that outlived the stager by 40 s in a 40-page meeting, with pages
-    // waking and swapping between copies of a stage that had ended. A relayed track keeps sending (silence), so no
-    // media test can see the end: only the beat can.
-    // A STAGE FEED LIVES ONLY WHILE ITS OWNER IS ON THE STAGE. A stager who steps down and is called up again before
-    // the beat goes stale would otherwise find every seat still holding the old feed's copies, passed seat to seat with
-    // nobody fed by the stager, and the room hears the voice from before the step-down (muted on stage, yet audible)
-    // until those copies age out. So the stage list this page plays from ends the stage too: off the list, a seat holds
-    // no claim or standby of the feed, relays none and ends what it ships, and a call-up starts from the stager's own
-    // fresh flood. The list keeps its own holdover, so a flicker does not end a stage.
-    // AND A NEW STAGE TURN IS A NEW FEED. Ship containers keep their id across an unship (shipContainers), so a stager
-    // called up again re-shipped the old turn's stream ids, and a seat still holding that turn's claim, decoder or ear
-    // source took the new copy for the old one: bound to the old turn's ended track, the room heard nothing from the
-    // stager after a quick call-up (e2e-mute-leak ring, gap 1.5 s: deaf at four ears on alternate cycles). A copy of an
-    // ended stage drops its container with the job.
-    function stgOffStage(rk) {
-      if (typeof rk !== 'string' || rk.indexOf('stg:') !== 0) return false;
-      const owner = rk.slice(4).split('^')[0];
-      return !!owner && !(0, /*()*/__C.stageIds)().includes(owner);
-    }
-    function stgEnded(rk) {
-      if (typeof rk !== 'string' || rk.indexOf('stg:') !== 0) return false;
-      const base = rk.split('^')[0];
-      return base === 'stg:' + __C.myId ? !(0, /*()*/__C.stageIds)().includes(__C.myId) : (stgStale(base) || stgOffStage(base));
-    }
+    yield 2175;
     // On the worker clock: a stale beat stops relayed media and delists the stager, so a hidden stager's throttled page timer must not reach it.
     GifOS.meshMedia.workerClock(__C.STG_BEAT_MS, () => {
       try {
@@ -5226,490 +5009,7 @@
         for (const [k, e] of __C.stgBeats) if (Date.now() - e.at > 300000) __C.stgBeats.delete(k);
       } catch (e) {}
     });
-    function prefCand(rk, cand) {
-      const c = (0, /*()*/__C.meshCoord)(); if (!c) return null;
-      // IDENTITY, NOT JUST KEY (2026-08-01). These two used to match on the
-      // KEY alone and take whichever announcer happened to be FIRST in the
-      // candidate array — and that order is mosAnn's Map insertion order, i.e.
-      // arbitrary. Every other slot below resolves a COORD and identity-checks
-      // `x.from === pid`; sdn/sdx were the odd ones out. So a stale announcer
-      // that is no longer my up-seat (or head) could win the PRIMARY slot while
-      // the real one was demoted to standby, roughly half the time. Measured on
-      // the mirror drill: E claimed a third sdn-class announcer as primary
-      // (via=k_5203c5) while its actual up-seat B (k_1d5209) sat in the standby
-      // slot — the "build-time claim ORDERING" red, and the coin flip was
-      // literally Map ordering. Prefer the announcer that IS the seat the feed
-      // is supposed to come from; fall back to the old key-only match when that
-      // cell's occupant is not known yet, so a gap in occ cannot leave a head
-      // with no primary at all.
-      // L2.7: while the seat holds E2 hot, E2's copy of the strip is the path too (the stage feed's rule below).
-      if (rk === 'sgs') { const hot = (0, /*()*/__C.meshSeat)(); if (hot && hot.u2Hot) { const e2 = cand.find((x) => x.live && x.from === hot.u2Id); if (e2) return e2; } }
-      if (rk === 'sdx' || rk === 'sdn') {
-        const src = rk === 'sdn' ? __C.net.topo.up(c) : { pc: c.pc, r: c.r, i: 0 };
-        const srcPid = src ? (0, /*()*/__C.occPid)(src) : null;
-        return (srcPid && cand.find((x) => x.live && x.key === rk && x.from === srcPid))
-          || cand.find((x) => x.live && x.key === rk) || null;
-      }
-      if (rk.indexOf('stg:') === 0) {
-        // IDENTITY, NOT JUST KEY — the stg edition (2026-08-04, frza runs).
-        // The key literally names the producer: stg:<pid>. When the OWNER
-        // announces to me I am a direct receiver, and the owner's leg is the
-        // one true source — preferring "first live non-^x" (Map insertion
-        // order) let a RELAYED flood copy win, so direct receivers mx-idled
-        // the producer's only real encode. On the pipe lane a relayed copy of
-        // a parked source still LOOKS live (the carrier never mutes), so the
-        // whole fabric starved behind a parked producer, dark-woke it, and
-        // re-idled it — the 14-24s room-wide stg freeze oscillation.
-        const owner = rk.slice(4).split('^')[0];
-        const own = cand.find((x) => x.live && x.from === owner && x.key.indexOf('^') < 0);
-        // ...unless the stager announced this copy sb:1 (STG-DIRECT below):
-        // then a one-hop relay from a direct receiver wins, and the stager's
-        // own copy ranks between one hop and two.
-        if (own && !(own.ann && own.ann.sb === 1)) return own;
-        // Below Section 1 the preferred path is E1, the tree hop; E2's copy is the second path.
-        if (c.pc !== 0) {
-          // L2.7: while the seat holds E2 hot, E2's copy is the path. Ranking anything else first swaps
-          // back off it each settle window and u2Over swaps on again: every feed I relay flaps with it.
-          const hot = (0, /*()*/__C.meshSeat)();
-          if (hot && hot.u2Hot) { const e2 = cand.find((x) => x.live && x.from === hot.u2Id && x.key.indexOf('^') < 0); if (e2) return e2; }
-          const hop = (0, /*()*/__C.occPid)(c.i === 0 ? __C.net.topo.up(c) : { pc: c.pc, r: c.r, i: 0 });
-          const e1 = hop ? cand.find((x) => x.live && x.from === hop) : null;
-          if (e1) return e1;
-        }
-        // Not a direct receiver: prefer the SHORTEST live chain (min announced
-        // hop count, frza4). "First live non-^x" was Map insertion order, and
-        // the failback machinery treated that order as tree-truth — nva1 was
-        // dragged back onto a husk copy (fdec 0, 105 unanswered PLIs) for the
-        // rest of the run. A husk CYCLE's members re-announce each other's
-        // copies with h growing every sweep, so min-h escapes to the real
-        // chain by itself; an old client's h-less announce ranks as far (999)
-        // — claimable when it is the only path.
-        const hOf = (x) => stgRank(x, owner);
-        // TIES ARE STICKY (frza9). mosAnn ages entries out at 12s and re-adds
-        // them, so Map order SHUFFLES — "min-h, first found" flipped between
-        // h-tied candidates every few sweeps, and each flip ran the whole
-        // failback dance: swap, re-park, and a fresh container id shipped to
-        // every downstream seat (measured: one seat saw 8 sid changes from
-        // ONE via in 3 minutes — each a decoder teardown). At equal h the
-        // CURRENT PRIMARY wins; with no primary among the ties, the lowest
-        // pid does (deterministic on every seat, immune to Map order).
-        const cur = mosIn.get(rk);
-        let best = null;
-        for (const x of cand) {
-          if (!x.live || x.key.indexOf('^') >= 0) continue;
-          if (!best || hOf(x) < hOf(best)) { best = x; continue; }
-          if (hOf(x) > hOf(best)) continue;
-          const bestIsCur = !!(cur && best.from === cur.via && best.sid === cur.streamId);
-          const xIsCur = !!(cur && x.from === cur.via && x.sid === cur.streamId);
-          if (xIsCur && !bestIsCur) best = x;
-          else if (!xIsCur && !bestIsCur && String(x.from) < String(best.from)) best = x;
-        }
-        return best || null;
-      }
-      let co = null;
-      if (rk === 'sdm') co = { pc: c.pc, r: c.r, i: 0 };                                        // my head's own fan
-      else if (rk === 'sgs') co = c.i === 0 ? __C.net.topo.up(c) : { pc: c.pc, r: c.r, i: 0 };      // the tree hop (my head, or a head's parent)
-      else if (rk.indexOf('sdrow:') === 0) {
-        const q = +rk.slice(6), head = (0, /*()*/__C.occPid)({ pc: 0, r: q, i: 0 });
-        // L49: while that row's mix does not arrive, the carrier is the copy. Byte flow on the head's picture must not win it back.
-        if (rowMixHold(q)) { const alt = cand.find((x) => x.live && head && x.from !== head); if (alt) return alt; }
-        // The head's own copy is the path while it is live and not dark (bytes flat on a pipe that flowed: a frozen head
-        // keeps its stream in `incoming` for the whole ICE timeout, and every copy of its product is the same stopped
-        // picture). Otherwise, L2.7: the heir's product reaches me through my row-mate on the heir's column, one carry
-        // (announced h 1, src the heir). That copy is the path. A copy relayed twice (x1 -> x2 -> sdrow, h 2) or a
-        // carried copy of the head's own product is a stand-in: claimed when nothing better is live, left for the path
-        // the moment it flows. Ties: the current primary, then the lowest pid (the stgRank rule, the same on every head).
-        const cur = mosIn.get(rk), fbq = mosFb.get(rk);
-        const headCopy = head ? cand.find((x) => x.live && x.from === head) : null;
-        const headDark = !!(fbq && fbq.dark && cur && cur.via === head);
-        if (headCopy && !headDark) return headCopy;
-        const hopOf = (x) => (x.ann && typeof x.ann.h === 'number') ? x.ann.h : 999;
-        const isCur = (x) => !!(cur && x.from === cur.via && x.sid === cur.streamId);
-        let best = null;
-        for (const x of cand) {
-          if (!x.live || !x.ann || !x.ann.src || x.ann.src === head || hopOf(x) > 1) continue;
-          if (!best || hopOf(x) < hopOf(best)) { best = x; continue; }
-          if (hopOf(x) > hopOf(best)) continue;
-          if (isCur(x) && !isCur(best)) best = x;
-          else if (!isCur(x) && !isCur(best) && String(x.from) < String(best.from)) best = x;
-        }
-        if (best) return best;
-        if (headDark) return null;
-        co = { pc: 0, r: q, i: 0 };
-      }
-      const pid = rk === 'sdm' ? rowHeadPid(c) : (co ? (0, /*()*/__C.occPid)(co) : null);
-      return pid ? cand.find((x) => x.live && x.from === pid) || null : null;
-    }
-    // L50.4.2: a deep head's anchor for the room's sound from above ('sdn') is its up seat; "answers" is the seat's own
-    // test (the anchor sits in its cell and answered within two beats).
-    function sdnAnchorPid() { const c = (0, /*()*/__C.meshCoord)(); const src = c ? __C.net.topo.up(c) : null; return src ? (0, /*()*/__C.occPid)(src) : null; }
-    function anchorAnswers() { const sv = (0, /*()*/__C.meshSeat)(); return !!(sv && sv.anchorAnswers); }
-    function claimRedun(rk, arr) {
-      const now = Date.now();
-      // Resolve every announcer to its (possibly parked) incoming stream.
-      const cand = [];
-      for (const a of (stgEnded(rk) ? [] : arr)) { // an ended stage has no copy to claim: the standby goes now, the claim after MOS_GRACE
-        const p = __C.peers.get(a.from);
-        const st = (p && p.incoming) ? p.incoming.find((s) => s.id === a.ann.streamId && s.id !== p.ownSid) : null;
-        cand.push({ from: a.from, key: a.key, sid: a.ann.streamId, ann: a.ann, st, live: !!st && !stgLoopsBack(rk, a.ann) });
-      }
-      const inCand = (e) => e && cand.some((x) => x.from === e.via && x.sid === e.streamId && x.live);
-      const mkEnt = (pick) => ({ via: pick.from, key: pick.key, streamId: pick.sid, stream: pick.st, el: mosVideo(pick.st), meta: annMeta(pick.ann), deadAt: 0 });
-      // "FLOWING" = the standby's decoder has produced frames. A parked pipe
-      // shows zero progress; only a woken, actually-delivering pipe advances.
-      const frames = (el) => (el && el.getVideoPlaybackQuality) ? el.getVideoPlaybackQuality().totalVideoFrames : (el && el.videoWidth > 0 ? 1 : 0);
-      let fb = mosFb.get(rk);
-      if (!fb) { fb = mkFb(); mosFb.set(rk, fb); }
-      let pri = mosIn.get(rk), std = mosStandby.get(rk);
-      if (std && !inCand(std)) { dropStandby(rk); std = null; fb.wakeAt = 0; } // standby is invisible — no linger needed
-      const priLive = !!(pri && inCand(pri));
-      if (priLive) pri.deadAt = 0;
-      else if (pri && !pri.deadAt) pri.deadAt = now;
-      const pref = prefCand(rk, cand);
-      const priIsPref = !!(priLive && pref && pri.via === pref.from && pri.streamId === pref.sid);
-      // First claim (no primary held): take the preferred path, else any live
-      // one. A fresh ship starts ACTIVE at the sender, so first claims flow.
-      if (!pri) {
-        const pick = pref || cand.find((x) => x.live);
-        if (pick) {
-          pri = mkEnt(pick); mosIn.set(rk, pri); repaintRedun(rk, pri.stream);
-          if (__C.DEBUG_ON && rk.indexOf('stg:') === 0) swapPicNote(rk, 'claim', 'first claim ' + (pref && pick === pref ? 'pref' : 'live'));
-          fb.claimAt = now; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; fb.suspect = false; fb.stdTried = null; fb.pvB = -1; fb.pvAt = 0; // fresh primary — the watchdog re-baselines
-          fb.hadPref = !!(pref && pick === pref); // a stand-in claimed while nothing was preferred is not a failback anchor
-          if (std && std.via === pri.via && std.streamId === pri.streamId) { dropStandby(rk); std = null; }
-        }
-      }
-      // Refresh primary meta from its own announcer (counts change, id doesn't).
-      // And refresh the OBJECT: with sids per-job constants, a transport
-      // rebuild can resolve the same (via, sid) to a NEW remote stream — a
-      // claim pinning the corpse would stay "live" by id while painting a
-      // dead stream forever, with the grace never arming. Re-bind in place.
-      if (pri) {
-        const own = cand.find((x) => x.from === pri.via && x.sid === pri.streamId);
-        if (own) {
-          pri.meta = annMeta(own.ann);
-          if (own.st && own.st !== pri.stream) {
-            pri.stream = own.st;
-            try { wkBindVideo(pri.el, own.st); const pr = pri.el.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {}
-            repaintRedun(rk, pri.stream);
-          }
-        }
-      }
-      // STANDBY SELECTION (parked): stdPick. A failover is a primary that is gone or dark.
-      const wantStd = stdPick(rk, cand, pri, pref, fb, now, !!(pri && (!priLive || fb.dark)));
-      if (pri && wantStd && (!std || std.via !== wantStd.from || std.streamId !== wantStd.sid || std.stream !== wantStd.st)) {
-        if (std) dropStandby(rk);
-        std = { via: wantStd.from, key: wantStd.key, streamId: wantStd.sid, stream: wantStd.st, el: null, meta: annMeta(wantStd.ann) };
-        mosStandby.set(rk, std); fb.wakeAt = 0; fb.d0 = -1; fb.stdFdec = -1; fb.stdAdvAt = 0; // fresh standby — the watchdog re-baselines its flow evidence
-        // A husk primary after a failed wake: the new standby is untried, so the rails re-arm at once, and a
-        // stage copy past STG_ZERO_MS wakes it in this pass (dark -> wantSwap below).
-        if (fb.suspect && !(fb.lastBytes > 0)) { fb.suspect = false; if (rk.indexOf('stg:') === 0 && fb.claimAt && now - fb.claimAt > STG_ZERO_MS) fb.dark = true; }
-      }
-      // FAILOVER / FAILBACK — make-before-break. The old primary stays painted
-      // (dead ⇒ frozen last frame under the grace linger; alive-but-secondary
-      // ⇒ still flowing) while the standby is demand-woken; the swap happens
-      // only once the standby demonstrably FLOWS.
-      const stdIsPref = !!(std && pref && std.via === pref.from && std.streamId === pref.sid);
-      // fb.dark: the pipe watchdog observed the primary byte-flat while
-      // previously flowing — treat like a dead primary for WAKE and SWAP
-      // purposes (never for teardown; see the watchdog comment above).
-      // L2.7: the seat holds E2 hot, so E2's copy takes over even while E1's still moves packets. E2's copy is the one
-      // prefCand names (it ranks it first while E2 is hot): any other copy from that seat (a second-root copy, a copy
-      // whose path loops back) is no takeover. Taking one swapped a row-mate off the stager's own copy, which never
-      // used E1, onto a parked chain rooted at the dead up seat that carried silence, and failback swapped it back.
-      const seatE2 = (0, /*()*/__C.meshSeat)();
-      const u2Over = !!(pri && std && seatE2 && seatE2.u2Hot && std.via === seatE2.u2Id && pri.via !== std.via && stdIsPref && !priIsPref && (rk.indexOf('stg:') === 0 || rk === 'sgs'));
-      // A failback or picture wake never goes to a copy whose last such wake failed, or that was just left for failing,
-      // until the window lapses (fbTried); a failover (primary gone or dark) is not held by it.
-      const stdFbOk = !!std && !stdTried(fb, std.via + '|' + std.streamId, now, 'fbTried');
-      // L49: the playing sdrow is the row head and its sound does not arrive. Not fb.dark — picture bytes are still moving, and the watchdog would clear that.
-      const mixDeaf = !!(pri && rk.indexOf('sdrow:') === 0 && rowMixHold(+rk.slice(6)) && pri.via === (0, /*()*/__C.occPid)({ pc: 0, r: +rk.slice(6), i: 0 }));
-      // L49, the way back. The hold moved this row off its head's pipe onto a carried copy. The hold ends on the head's
-      // own evidence (its sound arrives again, rowMixHeadArrives), and the carried copy is then only a stand-in: its
-      // chain may hold nothing (a parked copy, a heir that stood down). So the row goes back to the head at once: not
-      // after the settle window, and not held by an older failed wake of that pipe (fbTried), which says nothing about
-      // the sound that now arrives. One try per hold: a wake of the head that fails after the row left it is remembered
-      // as any other.
-      const sdQ = rk.indexOf('sdrow:') === 0 ? +rk.slice(6) : -1, sdHead = sdQ >= 0 ? (0, /*()*/__C.occPid)({ pc: 0, r: sdQ, i: 0 }) : null;
-      const mixBack = !!(pri && std && sdHead && fb.mixLeftAt && !rowMixHold(sdQ) && std.via === sdHead && pri.via !== sdHead && rowMixHeadArrives(sdQ) === 1
-        && !(((fb.fbTried && fb.fbTried.get(std.via + '|' + std.streamId)) || 0) > fb.mixLeftAt));
-      // L50.4.2, the way back for a branch. While its anchor was silent this head left the anchor's copy of the room's
-      // sound for a stand-in's (its uplink). A stand-in fills its copy only while it stands in: afterwards the copy may
-      // hold nothing while its packets still flow, so nothing reads it dark. When the anchor answers again the head
-      // returns to the anchor's copy at once: not after the settle window, and not held by the mark an older wake left
-      // on that pipe (fbTried), which says the pipe was dark during the silence and nothing about a seat that answers
-      // now. One try per spell: a wake of the anchor's copy that fails after the head left it is remembered as any other.
-      const upPid = rk === 'sdn' ? sdnAnchorPid() : null;
-      const upBack = !!(pri && std && upPid && fb.upLeftAt && std.via === upPid && pri.via !== upPid && anchorAnswers()
-        && !(((fb.fbTried && fb.fbTried.get(std.via + '|' + std.streamId)) || 0) > fb.upLeftAt));
-      const wantSwap = !!(pri && std && (!priLive || fb.dark || mixDeaf || mixBack || upBack || u2Over || (stdFbOk && (fb.picDead || (stdIsPref && !priIsPref)))));
-      if (wantSwap) {
-        if (std && !std.el && std.stream) std.el = mosVideo(std.stream); // mint the decoder on wake, not while parked
-        if (!fb.wakeAt) { fb.wakeAt = now; fb.f0 = frames(std.el); if (__C.DEBUG_ON && rk.indexOf('stg:') === 0) swapPicNote(rk, 'wake', 'wantSwap priLive=' + (priLive ? 1 : 0) + ' dark=' + (fb.dark ? 1 : 0) + ' picDead=' + (fb.picDead ? 1 : 0)); }
-        if (mixDeaf && std && std.key) demand(std.via, std.key, std.streamId, true);
-        if (stdIsPref && !fb.prefSince) fb.prefSince = now;
-        // A DARK-initiated swap (primary transport still alive) demands STRICT
-        // flow evidence: the standby's stats-side framesDecoded advancing since
-        // wake. The rendered-frames/videoWidth gate is a lie exactly here — a
-        // camOff stager's woken standby holds a STALE last frame (videoWidth>0)
-        // while delivering nothing, and v1 swapped on it, breaking re-park.
-        // A dead-transport failover keeps the old gate: its standby never has
-        // a stale frame to lie with, and the videoWidth fallback covers els
-        // the render path hasn't started counting yet.
-        // (2026-08-08: a stricter husk-immune ladder was tried here and
-        // REVERTED the same night — it stalled the mirror FAILBACK leg and
-        // tore the audio-only stg claim in the gate. The husk-promotion case
-        // it targeted (redun hunt hr2) belongs to the SENDER-side container-
-        // identity campaign; see known-unfixed.sh FAILOVER-WAKE.)
-        // A VOICE-ONLY standby has no frames to count: its evidence is the
-        // audio packets the watchdog sampled since the wake. Without it a
-        // camera-off stager's slot never swapped at all — a primary that had
-        // become a relay ring (members re-flooding the feed to each other,
-        // none still fed by the stager) stayed claimed for good, and the
-        // ring kept replaying the stager's voice after they muted.
-        const voiceOnly = !!(std.stream && !std.stream.getVideoTracks().length);
-        // A PURE FAILBACK (the primary alive and not dark) ALSO WANTS THE
-        // STATS SIDE, AND RECENT (2026-10-19, chaos-1019 share black): the
-        // standby's <video> had decoded the hop's birth key, then its receive
-        // stream was rebuilt in the share-start renegotiation and that key was
-        // gone; the element still read 2 frames and 480x270 five seconds
-        // later, the swap went through on them, and the viewer sat on a copy
-        // whose inbound read framesDecoded 0 for the rest of the meeting. The
-        // element's count is the RENDER path and cannot fall; the receiver's
-        // framesDecoded is the DECODE path, re-baselined by the sampler on a
-        // rebuild. So a failback swap needs that counter to have advanced in
-        // the last few seconds. A dead primary keeps the old gate: there is
-        // no stale frame to lie with and the swap is the recovery.
-        const stdAdvanced = fb.d0 >= 0 && fb.stdFdec > fb.d0;
-        const stdRecent = stdAdvanced && fb.stdAdvAt && now - fb.stdAdvAt < 3000;
-        // A PICTURE IS NOT TRADED FOR A BLACK ONE. Make-before-break holds for the picture too: while the primary is
-        // announced, its picture is up and its video bytes still arrive, a copy that carries a video track takes the
-        // slot only once its own picture is up (a frame since the wake). Voice packets alone are no evidence here: a
-        // relay sends silence frames for a stager who sends no voice at all, and swapping on them put a black stage in
-        // front of the viewer while the stager's own copy still showed them. A primary that is gone, or whose picture
-        // stopped arriving, fails over on the gates below unchanged.
-        const priPicUp = !!(priLive && !fb.picDead && pri.el && pri.el.videoWidth > 0 && pri.stream && pri.stream.getVideoTracks().length
-          && fb.pvAt && now - fb.pvAt < STG_PIC_LIVE_MS);
-        const stdPicUp = !!(std.el && std.el.videoWidth > 0 && frames(std.el) > fb.f0);
-        const keepPic = priPicUp && !voiceOnly && !stdPicUp;
-        const flowing = keepPic ? false : (fb.picDead && priLive && !voiceOnly) ? !!fb.picStdOk   // the picture is the complaint, so its frames are the evidence
-          // A stage slot is judged on its voice (pipeBytes): with the primary gone, the standby's audio packets since
-          // the wake are the evidence, not its <video> (a stager without a camera has a video track that never draws;
-          // tv-chain 1325: that gate held a dead copy for the 5 s grace).
-          // A primary that is gone, or shows no picture, is also replaced by a standby whose own picture has started since
-          // the wake: a stager who sends no voice still has a copy to show, and waiting on voice that never comes left the
-          // stage black (a received stream whose element never decodes stayed up 15 s until the dead-picture rail).
-          : (voiceOnly || ((fb.dark || mixDeaf || u2Over) && priLive) || (!priLive && rk.indexOf('stg:') === 0))
-          ? (stdAdvanced || (!voiceOnly && stdPicUp && (!priLive || !(pri.el && pri.el.videoWidth > 0))))
-          : ((frames(std.el) > fb.f0 || (std.el && std.el.videoWidth > 0 && now - fb.wakeAt > 1500)) && (!priLive || stdRecent));
-        // A dead-or-dark primary swaps the moment the standby flows; a live one
-        // (pure failback) additionally waits out the settle window — hysteresis
-        // (dark skips it: dark IS a failover, and MOS_SETTLE on lastSwitch
-        // still bounds any stall/recover oscillation to one swap per window).
-        // A primary installed while nothing was preferred is a stand-in. The first
-        // preferred copy is not a return to a path we left, so neither hold applies.
-        // Coming back to the copy just left, or leaving one preference for another,
-        // still waits. The timer itself is unchanged.
-        const firstPref = !!(stdIsPref && !priIsPref && !fb.hadPref && (!pref || fb.left !== pref.from));
-        const settled = !priLive || fb.dark || mixDeaf || mixBack || upBack || fb.picDead || u2Over || firstPref || ((now - fb.prefSince >= MOS_SETTLE) && (now - fb.lastSwitch >= MOS_SETTLE));
-        if (__C.DEBUG_ON && !(flowing && settled) && rk.indexOf('stg:') === 0) swapPicNote(rk, 'hold', 'flowing=' + (flowing ? 1 : 0) + ' settled=' + (settled ? 1 : 0) + ' f0=' + fb.f0 + ' stdAdv=' + (stdAdvanced ? 1 : 0) + (keepPic ? ' keepPic=1' : ''));
-        if (flowing && settled) {
-          const old = pri;
-          // The copy left because it failed (dark, picture dead) is not the next failback.
-          if (fb.dark || fb.picDead) (fb.fbTried = fb.fbTried || new Map()).set(old.via + '|' + old.streamId, now);
-          mosIn.set(rk, std); mosStandby.delete(rk); pri = std; std = null; stgFoNote(rk, 'swap', pri.via, 'flowing=' + (flowing ? 1 : 0) + ' dark=' + (fb.dark ? 1 : 0) + ' priLive=' + (priLive ? 1 : 0) + ' picDead=' + (fb.picDead ? 1 : 0) + ' u2=' + (u2Over ? 1 : 0));
-          // My new source may still hold my old copy of this feed: its source is gone, and it looks
-          // alive for 12 s, so that seat would fail back onto it. End it.
-          if (rk.indexOf('stg:') === 0 && mosJobs.has(rk + '>' + pri.via)) unshipMos(rk + '>' + pri.via, true);
-          // A share on the new path: seats below me need a key frame to decode my new source, so ask now.
-          if (rk.indexOf('stg:') === 0 && pri.stream && pri.stream.getVideoTracks().length) { try { kfNeed(rk); } catch (e) {} }
-          pri.deadAt = 0; fb.lastSwitch = now; fb.wakeAt = 0; fb.prefSince = 0; fb.pvB = -1; fb.pvAt = 0;
-          fb.mixLeftAt = mixDeaf ? now : 0; // L49: this row left its head's pipe for a silent mix (mixBack)
-          fb.upLeftAt = (upPid && old.via === upPid && !anchorAnswers()) ? now : 0; // L50.4.2: this head left its silent anchor's copy for a stand-in's (upBack)
-          fb.left = old.via; fb.hadPref = !!stdIsPref; // the copy just installed is the anchor; the one left is not a fresh preference
-          fb.picDead = false; fb.picStdOk = false; fb.picStd0 = null; fb.picRef = null;
-          fb.dark = false; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; fb.fp = 0; fb.fpDecayAt = 0; fb.b0 = -1; fb.d0 = -1; fb.stdFdec = -1; fb.stdAdvAt = 0; fb.claimAt = now; fb.suspect = false; fb.stdTried = null; // fresh primary — the watchdog re-baselines and the penalty clears
-          repaintRedun(rk, pri.stream);
-          if (inCand(old)) { std = { via: old.via, key: old.key, streamId: old.streamId, stream: old.stream, el: old.el, meta: old.meta }; mosStandby.set(rk, std); } // failback: the loser re-parks as the standby
-          else { try { releaseAudio(old.el); old.el.srcObject = null; old.el.remove(); } catch (e) {} }
-        }
-      } else { fb.wakeAt = 0; if (!stdIsPref) fb.prefSince = 0; }
-      // GRACE teardown: a dead primary whose standby never materialized/flowed.
-      if (pri && !inCand(pri) && pri.deadAt && now - pri.deadAt > MOS_GRACE) { dropMosIn(rk); pri = null; repaintRedun(rk, null); }
-      // A copy flows only while its sender holds the feed (stgCarry).
-      if (rk.indexOf('stg:') === 0) {
-        // Every pass: a stopped copy is restored even after this slot's state was rebuilt.
-        // A relayed track whose source stopped sends silence with every packet, so nobody below
-        // can tell. Dark or gone, my copies of it stop; they start again with my next flowing claim.
-        if (pri && (fb.dark || !inCand(pri) || stgStale(rk))) stgCarry(rk, false, pri); else stgCarry(rk, true);
-      }
-      if (!cand.length) { mosFb.delete(rk); return; }
-      // DEMAND — the ONE-PIPE law: only the primary moves bits. The standby is
-      // parked (mx-idle ⇒ sender replaceTrack(null), zero media) EXCEPT while
-      // a wake/failback overlap is in progress; every other announcer idles.
-      // A WAKE IS A PROMISE, AND AN UNKEPT PROMISE MUST LAPSE (2026-07-31 —
-      // the redun-drill leg C red, healing-laws R3a applied to the media plane).
-      // `fb.wakeAt` held the standby HOT for as long as a wake was in flight,
-      // with no bound. The swap that ends a wake requires the standby to
-      // demonstrably FLOW, so a woken standby that never produces a frame
-      // (announcer camOff, husk container, a path that will never carry) armed
-      // the wake once and then kept a SECOND pipe demanded hot forever. That is
-      // the ONE-PIPE law broken by the very machinery meant to serve it, and it
-      // is what the drill caught:
-      //
-      //   claim/standby same via, distinct streams, annForSlot 1,
-      //   fb.wakeAt set, stdFdec -1, lastBytes 0, stdHot TRUE, for 300s.
-      //
-      // Bound it. Past WAKE_MAX a wake that has produced nothing stops being
-      // paid for: the standby re-parks and the slot is one-pipe again. This
-      // does NOT strand the slot — a primary whose announcement has lapsed is
-      // still torn down by the GRACE teardown above, and the next sweep
-      // re-claims the live candidate as a fresh ACTIVE primary, which is the
-      // recovery path that was being starved while the husk was held hot.
-      // `dark` is deliberately NOT bounded here: a dark primary is still
-      // announced and still the thing we are failing away from, and that case
-      // is bounded by its own swap.
-      const WAKE_MAX = MOS_GRACE * 3;
-      // A dark primary whose standby never flows used to hold the second pipe
-      // hot with no bound (the swap that was supposed to end it never came).
-      // Past WAKE_MAX with no decoded advance, park it and remember suspect:
-      // the cadence drops to the 900ms watch, and dark stays disarmed until
-      // the primary advances again.
-      // One read per pass: the call parks a stale wake as it answers, so a
-      // second read would see the state the first one just changed.
-      const priGone = !!(pri && !inCand(pri));
-      const stdHot = standbyStaysHot(fb, now, WAKE_MAX, std ? std.via + '|' + std.streamId : null, rk.indexOf('stg:') === 0 ? STG_ZERO_MS : 0, priGone && rk.indexOf('stg:') === 0);
-      if (fb.suspect && fb.suspectAt === now && __C.DEBUG_ON && rk.indexOf('stg:') === 0) swapPicNote(rk, 'wake-failed', 'standbyStaysHot: wake stale, standby never flowed');
-      if ((fb.suspect && fb.suspectAt === now) || fb.goneTriedAt === now) schedReconcile(); // a wake just failed: the next pass picks the next candidate
-      const hot = new Set();
-      const primSet = new Set(); // the copy I play and relay on: a duty to its sender, not a spare (demand)
-      if (pri && inCand(pri) && !mosHeld(pri)) { hot.add(pri.via + '|' + pri.streamId); primSet.add(pri.via + '|' + pri.streamId); } // a held feed (mosDecoderSweep) stays parked until its decoder is re-bound
-      if (std && stdHot && !mosHeld(std)) hot.add(std.via + '|' + std.streamId);
-      // A standby woken because my primary is gone or dark is the copy I am about to play, not a spare: its sender
-      // must not refuse it to shed load (L29.2), or the slot stays silent until the grace re-claims that same copy.
-      if (std && stdHot && rk.indexOf('stg:') === 0 && (priGone || fb.dark)) primSet.add(std.via + '|' + std.streamId);
-      const picOnly = new Set(); // a held feed is parked for its picture only: its voice keeps flowing (demand vOnly)
-      if (pri && inCand(pri) && mosHeld(pri)) picOnly.add(pri.via + '|' + pri.streamId);
-      if (std && stdHot && mosHeld(std)) picOnly.add(std.via + '|' + std.streamId);
-      if (std && u2Over) hot.add(std.via + '|' + std.streamId);
-      // A standby that feeds a copy someone plays stays hot (a picture-only park keeps the job active), and is my
-      // primary's duty to its sender while that receiver plays it as its own primary (chainDemandUp).
-      if (std && (rk.indexOf('stg:') === 0 || rk === 'sgs')) for (const job of mosJobs.values()) if (job.active && job.upKey === rk && stgFedBy(job, std)) { hot.add(std.via + '|' + std.streamId); if (job.prim) primSet.add(std.via + '|' + std.streamId); }
-      // YOU CANNOT CLAIM WHAT YOU HAVE TOLD THE SENDER NOT TO SEND.
-      //
-      // With no primary, `hot` was EMPTY, so every announcer for this slot was
-      // sent mx-IDLE — "park it, I don't want it". The sender parks
-      // (replaceTrack(null)), the stream therefore never lands in p.incoming,
-      // so the candidate never goes `live`, so claimRedun's first-claim
-      // (`cand.find(x => x.live)`) never fires, so there is still no primary
-      // and the next sweep sends mx-idle again. A seat that has not claimed
-      // yet actively guarantees it never will.
-      //
-      // It hides in the common case because a fresh ship starts ACTIVE at the
-      // sender ("so first claims flow"), so the track is usually already there
-      // when the announce arrives. It bites when the track is LATE (announce
-      // ahead of renegotiation) or was parked by an earlier idle — and then it
-      // is permanent, because nothing in the loop ever asks again. Measured
-      // 2026-08-10 in e2e-mosaic: a mid-tree seat sat on TWO stg announcers
-      // with an empty claim list, up-link healthy and the stage set known,
-      // while every seat BELOW it starved with no announcer of its own to
-      // explain why.
-      //
-      // So when a slot has no primary, demand ONE candidate hot. That is the
-      // only way the stream it needs can ever arrive. The ONE-PIPE law is
-      // intact: exactly one entry is added, and only while there is no primary
-      // at all — the moment it lands the normal preference logic takes over.
-      // The seed is chosen deterministically (shortest announced chain, then
-      // peer id) so repeated sweeps ask the SAME peer instead of rotating.
-      if (!pri && cand.length) {
-        const seed = cand.slice().sort((a, b) => {
-          const ha = (a.ann && typeof a.ann.h === 'number') ? a.ann.h : 998;
-          const hb = (b.ann && typeof b.ann.h === 'number') ? b.ann.h : 998;
-          return ha !== hb ? ha - hb : String(a.from).localeCompare(String(b.from));
-        })[0];
-        if (seed) { hot.add(seed.from + '|' + seed.sid); primSet.add(seed.from + '|' + seed.sid); }
-      }
-      for (const x of cand) demand(x.from, x.key, x.sid, hot.has(x.from + '|' + x.sid), primSet.has(x.from + '|' + x.sid), picOnly.has(x.from + '|' + x.sid));
-    }
-    // keep: an announcer still names the slot and its stream is on that peer.
-    // Otherwise stamp deadAt and drop once MOS_GRACE has passed. A fresh stamp
-    // does not drop in the same sweep.
-    function structuralClaimGrace(cur, keep, now, grace) {
-      if (!cur) return false;
-      if (keep) { cur.deadAt = 0; return false; }
-      if (!cur.deadAt) { cur.deadAt = now; return false; }
-      return now - cur.deadAt > grace;
-    }
-    function claimMos() {
-      // ANNOUNCE AGEING: a live job re-announces every sweep (~2s); an entry
-      // not refreshed for 12s has a dead sender (silent DC death — mx-end never
-      // came). Reap it, and prune its demand-debounce entries, so stale
-      // announcers stop being claim candidates / demand targets forever.
-      const nowA = Date.now();
-      for (const [ak, ann] of __C.mosAnn) if (nowA - (ann.at || 0) > 12000) __C.mosAnn.delete(ak);
-      for (const dk of [...__C.subWant.keys()]) {
-        const a = dk.indexOf('|'), b = dk.lastIndexOf('|');
-        const ann = __C.mosAnn.get(dk.slice(0, a) + '|' + dk.slice(a + 1, b));
-        if (!ann || ann.streamId !== dk.slice(b + 1)) __C.subWant.delete(dk);
-      }
-      const redun = new Map(); // rk -> [{from,key,ann}]
-      const structuralSeen = new Set(); // non-redundant slots an announcer still names
-      // A redundant slot we HOLD but nobody announces any more must still run
-      // claimRedun (with zero candidates) so its claim-linger grace expires —
-      // otherwise an orphaned claim would paint a dead frame forever.
-      for (const rk of new Set([...mosIn.keys(), ...mosStandby.keys()])) if ((0, /*()*/__C.isRedun)(rk)) redun.set(rk, []);
-      for (const [ak, ann] of __C.mosAnn) {
-        const from = ak.slice(0, ak.indexOf('|')), key = ak.slice(ak.indexOf('|') + 1);
-        const rk = mosResolve(key, ann, from);
-        if (!rk) continue;
-        if ((0, /*()*/__C.isRedun)(rk)) { let a = redun.get(rk); if (!a) { a = []; redun.set(rk, a); } a.push({ from, key, ann }); continue; }
-        structuralSeen.add(rk);
-        const cur = mosIn.get(rk);
-        // STICKY single claim for structural relay slots: keep the live source,
-        // only its own announcer refreshes meta. Same corpse-rebind rule as
-        // claimRedun: a constant sid can resolve to a NEW object after a
-        // transport rebuild — follow the object, keep the claim.
-        if (cur && mosLive(cur.via, cur.streamId)) {
-          if (cur.via === from && cur.streamId === ann.streamId) {
-            cur.meta = annMeta(ann);
-            const vp2 = __C.peers.get(cur.via);
-            const st2 = vp2 && vp2.incoming ? vp2.incoming.find((s) => s.id === cur.streamId && s.id !== vp2.ownSid) : null;
-            if (st2 && cur.stream !== st2) {
-              cur.stream = st2;
-              try { wkBindVideo(cur.el, st2); const pr = cur.el.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {}
-            }
-          }
-          continue;
-        }
-        const p = __C.peers.get(from);
-        if (!p || !p.incoming) continue;
-        const st = p.incoming.find((s) => s.id === ann.streamId && s.id !== p.ownSid);
-        if (!st) continue;
-        if (cur) dropMosIn(rk);
-        mosIn.set(rk, { via: from, streamId: ann.streamId, stream: st, el: mosNeedsVideo(rk) ? mosVideo(st) : null, meta: annMeta(ann) });
-      }
-      // A structural slot (sub, x1, x2, sdxc) has no second announcer
-      // and no claimRedun pass. Once its announce ages out, or the peer is
-      // gone, nothing in the announcer loop visits it, and the last frame
-      // stays painted. Keep it only while someone still announces it AND the
-      // stream is still on that peer; otherwise the same MOS_GRACE as a
-      // redundant primary, then drop. dropPeer calls claimMos, so a departure
-      // starts this clock immediately.
-      for (const [rk, cur] of [...mosIn]) {
-        if ((0, /*()*/__C.isRedun)(rk) || !cur) continue;
-        const keep = structuralSeen.has(rk) && mosLive(cur.via, cur.streamId);
-        if (structuralClaimGrace(cur, keep, nowA, MOS_GRACE)) dropMosIn(rk);
-      }
-      for (const rk of [...mosIn.keys(), ...mosStandby.keys()]) if (stgOffStage(rk)) dropOffStageClaim(rk);
-      for (const [rk, arr] of redun) { if (stgOffStage(rk)) continue; claimRedun(rk, arr); }
-    }
-    // An off-stage owner's claim goes at once, primary, standby and failover state together, so nothing of the old
-    // feed is left to win the next call-up (stgOffStage).
-    function dropOffStageClaim(rk) {
-      const had = mosIn.has(rk);
-      dropMosIn(rk); dropStandby(rk); mosFb.delete(rk);
-      if (had) repaintRedun(rk, null);
-    }
+    yield 2183;
     // A packed mosaic's tile takes the SHAPE of its content: the packer sizes
     // its canvas to the gapless grid (k×1 bar, near-square frame), so the tile
     // just mirrors the stream's real dimensions — no fixed 5×5, no letterbox.
@@ -5717,7 +5017,7 @@
       const set = () => { if (v.videoWidth && v.videoHeight) el.style.aspectRatio = (v.videoWidth / v.videoHeight).toFixed(4); };
       v.addEventListener('resize', set); v.addEventListener('loadedmetadata', set); set();
     }
-    yield 2181;
+    yield 2185;
     // A STAGER NEVER WATCHES ITSELF THROUGH ITS OWN COMPOSITE.
     //
     // When the Stage holds exactly ONE member and that member is me, the strip
@@ -5733,7 +5033,7 @@
     // outbound one ("your self-view shows EXACTLY the track you broadcast"), so
     // this shows the BROADCAST — blur baked in — never a private clear copy.
     let selfStageSt = null, stageDirectSt = null;
-    yield 2183; // what the stage element shows: 'self' | 'screen' | 'strip' (stageFacesForTest)
+    yield 2187; // what the stage element shows: 'self' | 'screen' | 'strip' (stageFacesForTest)
     function selfStageStream() {
       const st = __C.meTile && __C.meTile.video && __C.meTile.video.srcObject;
       // A share from the Row: my Row tile is the camera, my Stage is the screen.
@@ -5771,12 +5071,12 @@
     }
     // A guest's share as a viewer sees it (debug only; remoteShareForTest).
     let qaStageSt = null;
-    yield 2188;
+    yield 2192;
     function stopMosaic() {
       mosBeyondAt = 0;
       for (const jk of [...mosJobs.keys()]) unshipMos(jk, true);
-      for (const rk of [...mosIn.keys()]) dropMosIn(rk);
-      for (const rk of [...mosStandby.keys()]) dropStandby(rk);
+      for (const rk of [...__C.mosIn.keys()]) (0, /*()*/__C.dropMosIn)(rk);
+      for (const rk of [...__C.mosStandby.keys()]) (0, /*()*/__C.dropStandby)(rk);
       __C.subWant.clear();
       __C.mosAnn.clear();
       mosFb.clear();
@@ -5851,12 +5151,12 @@
         // strip here left the stage blank until the mesh caught up (or
         // forever, with no seat). Keep the slide.
         const localShare = !!(__C.myStatus.scr && __C.screenStream);
-        if (mosJobs.size || mosIn.size || mosStandby.size || prodPack || roomPack || sdView || downFolds.size || l14Packs.size || stripPack) stopMosaic();
+        if (mosJobs.size || __C.mosIn.size || __C.mosStandby.size || prodPack || roomPack || sdView || downFolds.size || l14Packs.size || stripPack) stopMosaic();
         else if (compOf.size && !localShare) { (0, /*()*/__V.paintStadiumTile)(null); (0, /*()*/__V.paintStageStrip)(null); }
         if (localShare) (0, /*()*/__V.paintStageStrip)(selfStageStream());
         return;
       }
-      claimMos();
+      (0, /*()*/__C.claimMos)();
       const C = __C.SCALE.C, iAmHead = c.i === 0, wanted = new Set();
       const T = __C.net.topo;
       // L2.7: the heir of a row whose head is gone makes the row's Stadium product in its place; head geometry from the head's cell
@@ -5881,7 +5181,7 @@
       const srcFor = (pid, feedKey, feedOnly) => {
         // Someone in the waiting room is in no composite: no face, no voice.
         if (pid === __C.myId) return (0, /*()*/__C.iAmWaiting)() ? { el: null, stream: null } : { el: __C.meTile.video, stream: selfFoldStream() };
-        const f = feedKey ? mosIn.get(feedKey) : null;
+        const f = feedKey ? __C.mosIn.get(feedKey) : null;
         if (f) return { el: f.el, stream: f.stream };
         if (feedOnly) return { el: null, stream: null };
         if ((0, /*()*/__C.peerWaits)(pid)) return { el: null, stream: null };
@@ -6079,7 +5379,7 @@
       const blockHasPicture = (f) => !!(f && f.stream && f.stream.getVideoTracks().some((t) => t.readyState !== 'ended'));
       const l14Blocks = (pk, skip, ordOf) => {
         let q = 0; const heard = new Set();
-        for (const [mk, uf] of mosIn) {
+        for (const [mk, uf] of __C.mosIn) {
           if (mk.indexOf('subu:') !== 0) continue; const h = mk.slice(5);
           if (h === skip || !l14Keep(h, uf)) { pk.delTile('u' + h); continue; }
           if (!blockHasPicture(uf)) { pk.delTile('u' + h); if (pk.setSound && uf && uf.stream) { pk.setSound('u' + h, uf.stream); heard.add('u' + h); } continue; }
@@ -6124,7 +5424,7 @@
           // A share from the Row keeps the face here; the voice rides the Stage feed, so it is not summed twice.
           if (sc && sc.el) prodPack.setTile('r' + j, 'a' + j, sc.el, pid && stagers.includes(pid) ? null : sc.stream, { n: 1, cols: 1, lbl: stadLbl(pid), fit: (0, /*()*/__C.fitFor)(pid), pid });
           else prodPack.delTile('r' + j);
-          const sub = mosIn.get('sub:' + j);
+          const sub = __C.mosIn.get('sub:' + j);
           if (sub) setBlock(prodPack, 's' + j, 'b' + j, sub); else prodPack.delTile('s' + j);
         }
         l14Blocks(prodPack, null, (i) => 'b' + (C + i));
@@ -6179,20 +5479,20 @@
           // THE ROOM'S PICTURE: built here at Section 1 (the other rows' products
           // and mine, cell for cell), received from above deeper down.
           let roomV = null, roomEl = null, roomMeta = null;
-          const dn = c.pc === 0 ? null : mosIn.get('sdn');
+          const dn = c.pc === 0 ? null : __C.mosIn.get('sdn');
           // SUB.4: the pipes of my row-mates (Section-1 seats that are not the head): each mate relays its pipe's product to me
           // marked {pipe, pv}, and I build that pipe's send (the sound and, while vouched, the pack without its block) as for
           // my own pipes; the mate hands it on ('sdxu:<pipe peer>').
           const matePipes = [];
-          for (const [mk, uf] of mosIn) { if (mk.indexOf('subu:') !== 0 || !uf || !uf.meta || uf.meta.pipe !== 1) continue; const h = mk.slice(5); if (uf.via !== h && rowMatePid(uf.via) && pipes.indexOf(h) < 0) matePipes.push(h); }
+          for (const [mk, uf] of __C.mosIn) { if (mk.indexOf('subu:') !== 0 || !uf || !uf.meta || uf.meta.pipe !== 1) continue; const h = mk.slice(5); if (uf.via !== h && rowMatePid(uf.via) && pipes.indexOf(h) < 0) matePipes.push(h); }
           const pipeKids = pipes.concat(matePipes);
-          const kidVideo = (h) => (pipes.indexOf(h) >= 0 ? (0, /*()*/__C.pipeVideo)(h) : ((mosIn.get('subu:' + h) || {}).meta || {}).pv === 1);
+          const kidVideo = (h) => (pipes.indexOf(h) >= 0 ? (0, /*()*/__C.pipeVideo)(h) : ((__C.mosIn.get('subu:' + h) || {}).meta || {}).pv === 1);
           if (c.pc === 0) {
             // One fill for the room pack and for each pipe's pack: the same parts, a pipe's pack leaving that pipe's own block out
             // (SUB.4 split horizon: a part is left out, never taken away).
             const fillRoom = (pk, skip) => {
               for (let q = 0; q < C; q++) {
-                const rowIn = q === c.r ? null : mosIn.get('sdrow:' + q);
+                const rowIn = q === c.r ? null : __C.mosIn.get('sdrow:' + q);
                 if (rowIn) setBlock(pk, 'q' + q, 'c' + q, rowIn); else pk.delTile('q' + q);
                 if (!skip && rowIn && rowIn.via !== (0, /*()*/__C.occPid)({ pc: 0, r: q, i: 0 })) { const sk = (0, /*()*/__C.meshSeat)(); if (sk && sk.keepAdd) sk.keepAdd(rowIn.via, 16); } // L28: a carried copy stays until the direct one lands
               }
@@ -6204,7 +5504,7 @@
                 const sc = fp ? srcFor(fp) : null;
                 if (sc && sc.el) pk.setTile('f' + j, 'c' + c.r + 'a' + j, sc.el, null, { n: 1, cols: 1, lbl: stadLbl(fp), fit: (0, /*()*/__C.fitFor)(fp), pid: fp });
                 else pk.delTile('f' + j);
-                const sub = mosIn.get('sub:' + j);
+                const sub = __C.mosIn.get('sub:' + j);
                 if (sub) setBlock(pk, 's' + j, 'c' + c.r + 'b' + j, sub); else pk.delTile('s' + j);
               }
               l14Blocks(pk, skip, (i) => 'c' + c.r + 'd' + i);
@@ -6239,13 +5539,13 @@
             // SOUND FIRST. A row copy the watchdog found dark (bytes flat 700 ms on a pipe that flowed) or whose sender is
             // gone (deadAt, under the 5 s grace) is not summed: its picture may hold the last frame under the grace, its
             // sound would be concealment. Dark clears itself when bytes advance, so a stall comes back on its own.
-            for (let q = 0; q < C; q++) { if (q === c.r) continue; const f = mosIn.get('sdrow:' + q), fq = mosFb.get('sdrow:' + q); if (f && f.stream && !f.deadAt && !(fq && fq.dark)) outA.set('q' + q, f.stream); }
+            for (let q = 0; q < C; q++) { if (q === c.r) continue; const f = __C.mosIn.get('sdrow:' + q), fq = mosFb.get('sdrow:' + q); if (f && f.stream && !f.deadAt && !(fq && fq.dark)) outA.set('q' + q, f.stream); }
             // L49: the pulled mic, until the carried copy of that row is the one playing and it is hot. Cap 2.
             let rapN = 0;
-            for (const [mk, rf] of mosIn) {
+            for (const [mk, rf] of __C.mosIn) {
               if (mk.indexOf('rap:') !== 0 || !rf || !rf.stream) continue;
               const q = +mk.slice(4), slot = rowSdLv.get(q), head = (0, /*()*/__C.occPid)({ pc: 0, r: q, i: 0 });
-              const played = mosIn.get('sdrow:' + q);
+              const played = __C.mosIn.get('sdrow:' + q);
               if (played && played.via !== head && slot && slot.hot) continue;
               if (rapN >= 2) continue;
               outA.set('rap' + q, rf.stream); rapN++;
@@ -6258,9 +5558,9 @@
             const fp = fp0 && stagers.includes(fp0) ? null : fp0;
             const sc = fp ? srcFor(fp) : null;
             if (sc && sc.stream) rowA.set('f' + j, sc.stream);
-            const sub = mosIn.get('sub:' + j); if (sub && sub.stream) subA.set('s' + j, sub.stream);
+            const sub = __C.mosIn.get('sub:' + j); if (sub && sub.stream) subA.set('s' + j, sub.stream);
           }
-          for (const [mk, uf] of mosIn) { if (mk.indexOf('subu:') !== 0) continue; const h = mk.slice(5); if (uf && uf.stream && l14Keep(h, uf)) l14A.set('u' + h, uf.stream); }
+          for (const [mk, uf] of __C.mosIn) { if (mk.indexOf('subu:') !== 0) continue; const h = mk.slice(5); if (uf && uf.stream && l14Keep(h, uf)) l14A.set('u' + h, uf.stream); }
           const mixOf = (row, skip) => { const m = new Map(outA); if (row) for (const [k, v] of rowA) m.set(k, v); for (const [k, v] of subA) if (k !== skip) m.set(k, v); for (const [k, v] of l14A) if (k !== skip) m.set(k, v); return m; };
           const fold = (key, parts) => { let f = downFolds.get(key); if (!f) { const mc = mixCtx(); if (!mc) return null; f = MM.createAudioFold(mc); downFolds.set(key, f); } foldSync(f, parts); return f; };
           const foldsNow = new Set();
@@ -6313,20 +5613,20 @@
             const parts = mixOf(true, 'u' + h);
             if (!(0, /*()*/__C.pipeVideo)(h)) {
               if (amStager) { const st = mySelfStream(); if (st) parts.set('g' + __C.myId, st); }
-              for (const [mk, sf] of mosIn) { if (mk.indexOf('stg:') !== 0 || stgEnded(mk) || !sf || !sf.stream) continue; const o = mk.slice(4).split('^')[0]; if (o === __C.myId || __C.pipeStg.get(o) === h || parts.has('g' + o)) continue; parts.set('g' + o, sf.stream); }
+              for (const [mk, sf] of __C.mosIn) { if (mk.indexOf('stg:') !== 0 || (0, /*()*/__C.stgEnded)(mk) || !sf || !sf.stream) continue; const o = mk.slice(4).split('^')[0]; if (o === __C.myId || __C.pipeStg.get(o) === h || parts.has('g' + o)) continue; parts.set('g' + o, sf.stream); }
             }
             foldsNow.add('u' + h); const fh = fold('u' + h, parts);
             const pk = (0, /*()*/__C.pipeVideo)(h) ? pipePacks.get(h) : null, pv = pk && pk.count() > 0 ? pk.track : null;
             const st = downStream('u' + h, pv, fh ? fh.track() : null);
             const jk = st ? shipMos('sdn', h, st, pv ? Object.assign(packMeta(pk), { alag: 0 }) : { n: 0, cols: 0, alag: 0 }) : null; if (jk) wanted.add(jk);
           }
-          if (roomV) for (const [mk, uf] of mosIn) {
+          if (roomV) for (const [mk, uf] of __C.mosIn) {
             if (mk.indexOf('subu:') !== 0) continue; const h = mk.slice(5); if (l14Heads.includes(h) || matePipes.indexOf(h) >= 0 || !uf || uf.via === h || !rowMatePid(uf.via)) continue;
             const jr = shipMos('sdxu:' + h, uf.via, avOf('r' + h, mixOf(true, 'u' + h)), Object.assign({ via: h }, roomMeta)); if (jr) wanted.add(jr);
           }
           // A mate's pipe: its sound with or without a picture, the picture only while that pipe is vouched (its own pack).
           for (const h of matePipes) {
-            const uf = mosIn.get('subu:' + h); foldsNow.add('r' + h); const fh = fold('r' + h, mixOf(true, 'u' + h));
+            const uf = __C.mosIn.get('subu:' + h); foldsNow.add('r' + h); const fh = fold('r' + h, mixOf(true, 'u' + h));
             const pk = kidVideo(h) ? pipePacks.get(h) : null, pv = pk && pk.count() > 0 ? pk.track : null;
             const st = downStream('r' + h, pv, fh ? fh.track() : null);
             const jr = st ? shipMos('sdxu:' + h, uf.via, st, Object.assign({ via: h }, pv ? packMeta(pk) : { n: 0, cols: 0 }, { alag: 0 })) : null; if (jr) wanted.add(jr);
@@ -6334,7 +5634,7 @@
           for (const [k, f] of [...downFolds]) if (!foldsNow.has(k)) { f.clear(); downFolds.delete(k); downStreams.delete(k); }
           // MY OWN STADIUM: the room's picture less my row, and my ear. The heir
           // standing in keeps its head's copy while it flows.
-          const headView = actHead ? mosIn.get('sdm') : null, headFlows = !!headView && !(mosFb.get('sdm') || {}).dark && !headView.deadAt; // a false alarm must not take the heir's own ears off its head's view
+          const headView = actHead ? __C.mosIn.get('sdm') : null, headFlows = !!headView && !(mosFb.get('sdm') || {}).dark && !headView.deadAt; // a false alarm must not take the heir's own ears off its head's view
           if (headFlows) paintRoomView(headView.el, blockMeta(headView), headView.stream, c, (headView.meta && headView.meta.alag) || 0);
           else paintRoomView(roomEl, roomMeta, earSt, c, alag);
         } else {
@@ -6362,20 +5662,20 @@
         // to my head as sdrow:q. Meta {n, cols} is FORWARDED so the far end
         // can unpack faces.
         const headPid = rowHeadPid(c); // the head, or the heir while the head's feed is gone
-        for (const [mk, uf] of mosIn) { if (mk.indexOf('subu:') !== 0) continue; const bh = mk.slice(5), pm = pipes.indexOf(bh) >= 0 ? { pipe: 1, pv: (0, /*()*/__C.pipeVideo)(bh) ? 1 : 0 } : {}; const ju = shipMos('subl:' + bh, headPid, uf.stream, Object.assign({ l14: 1, via: bh }, pm, blockMeta(uf)), mk); if (ju) wanted.add(ju); } // L14: a branch I serve, into my row's product (SUB.4: a pipe says so, and whether it carries video)
+        for (const [mk, uf] of __C.mosIn) { if (mk.indexOf('subu:') !== 0) continue; const bh = mk.slice(5), pm = pipes.indexOf(bh) >= 0 ? { pipe: 1, pv: (0, /*()*/__C.pipeVideo)(bh) ? 1 : 0 } : {}; const ju = shipMos('subl:' + bh, headPid, uf.stream, Object.assign({ l14: 1, via: bh }, pm, blockMeta(uf)), mk); if (ju) wanted.add(ju); } // L14: a branch I serve, into my row's product (SUB.4: a pipe says so, and whether it carries video)
         if (beyondRow) {
           const packMetaM = (pk) => ({ n: pk.count(), cols: pk.cols() });
           // A branch I serve gets my head's pack as it came (the same encoded picture, its own sound), handed down as is.
           const relDirect = new Set();
-          for (const h of l14Heads) { const rel = mosIn.get('sdxu:' + h); if (!rel || !rel.stream) continue; relDirect.add(h); const jr = shipMos('sdn', h, rel.stream, blockMeta(rel), 'sdxu:' + h); if (jr) wanted.add(jr); }
+          for (const h of l14Heads) { const rel = __C.mosIn.get('sdxu:' + h); if (!rel || !rel.stream) continue; relDirect.add(h); const jr = shipMos('sdn', h, rel.stream, blockMeta(rel), 'sdxu:' + h); if (jr) wanted.add(jr); }
           l14Down((pk, h) => {
             // no pack from my head for this branch yet: my row's faces, packed here
             for (let j = 0; j < C; j++) { const fp0 = j === c.i ? __C.myId : (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: j }); const fp = fp0 && stagers.includes(fp0) ? null : fp0; const sc = fp ? srcFor(fp) : null; if (sc && sc.el) pk.setTile('f' + j, 10 + j, sc.el, sc.stream, { n: 1, cols: 1, lbl: stadLbl(fp), fit: (0, /*()*/__C.fitFor)(fp), pid: fp }); else pk.delTile('f' + j); }
           }, packMetaM, relDirect);
         } else l14Down(null);
-        const subraw = mosIn.get('subraw');
+        const subraw = __C.mosIn.get('subraw');
         if (subraw) { const jk = shipMos('sub', headPid, subraw.stream, Object.assign({ col: c.i }, blockMeta(subraw)), 'subraw'); if (jk) wanted.add(jk); }
-        const x1 = mosIn.get('x1');
+        const x1 = __C.mosIn.get('x1');
         // Carry only my row's live product: an x1 that died with its head, or came from a seat no longer my row's head,
         // is a husk that other heads would claim as this row and play as silence.
         // ...nor a frozen head's: while my row reads its head out (the core's actingHead), headPid is the heir, and the
@@ -6390,14 +5690,14 @@
           const xPid = x2Target({ pc: 0, r: dest, i: c.i });
           const jk = shipMos('x2', xPid, x1.stream, Object.assign({ row: x1.meta.row, h: (x1.meta && typeof x1.meta.h === 'number' ? x1.meta.h : 0) + 1, src: x1.meta && x1.meta.src }, blockMeta(x1)), 'x1'); if (jk) wanted.add(jk);
         }
-        if (c.pc === 0) for (const [mk, xf] of mosIn) {
+        if (c.pc === 0) for (const [mk, xf] of __C.mosIn) {
           if (mk.indexOf('x2:') !== 0 || !xf.meta || xf.meta.row == null) continue;
           if (xf.meta.row === c.r) continue; // never hand my head its own row back (a pre-move claim outlives the move)
           const jk = shipMos('sdrow:' + xf.meta.row, headPid, xf.stream, Object.assign({ row: xf.meta.row, h: (typeof xf.meta.h === 'number' ? xf.meta.h : 1) + 1, src: xf.meta.src }, blockMeta(xf)), mk); if (jk) wanted.add(jk);
         }
         // L49: relay a pulled mic up to my head, and ship my own while a consumer has asked.
         if (c.pc === 0) {
-          for (const [mk, rf] of mosIn) {
+          for (const [mk, rf] of __C.mosIn) {
             if (mk.indexOf('ra:') !== 0 || !rf || !rf.stream || !rf.meta || rf.meta.row == null || rf.meta.row === c.r) continue;
             const jr = shipMos('ra', headPid, rf.stream, { row: rf.meta.row, src: rf.meta.src }, mk); if (jr) wanted.add(jr);
           }
@@ -6408,7 +5708,7 @@
         // ONE PACK DOWN THE TREE: the stadium I hold ('sdm') goes on to my down
         // link unchanged (the same encoded frames), with the sound my head made
         // for that branch ('sdx'), which leaves the branch's own voices out.
-        const sdx = mosIn.get('sdx'), sdmF = mosIn.get('sdm');
+        const sdx = __C.mosIn.get('sdx'), sdmF = __C.mosIn.get('sdm');
         const fwdV = sdmF && !sdmF.deadAt && sdmF.stream ? sdmF.stream.getVideoTracks()[0] || null : null;
         const fwdA = sdx && sdx.stream ? sdx.stream.getAudioTracks()[0] || null : null;
         const fwdSt = fwdV ? downStream('fwd', fwdV, fwdA) : null;
@@ -6417,7 +5717,7 @@
         if (fwdSt) { const jn = shipMos('sdn', (0, /*()*/__C.occPid)(T.down(c)), fwdSt, Object.assign(blockMeta(sdmF), { alag: fwdLag }), 'sdx'); if (jn) wanted.add(jn); }
         // Carrier leg of the sdx redundancy: hand my head's 'sdxc' copies to
         // their target seat as 'sdx^x' — the same slot over a second pipe.
-        for (const [mk, xc] of mosIn) {
+        for (const [mk, xc] of __C.mosIn) {
           if (mk.indexOf('sdxc:') !== 0) continue;
           const tcol = +mk.slice(5);
           const jc = shipMos('sdx^x', (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: tcol }), xc.stream, Object.assign({ col: tcol }, blockMeta(xc)), mk); if (jc) wanted.add(jc);
@@ -6429,7 +5729,7 @@
         // linger); while the head's pipe lives, this spare carries zero media
         // (ONE-PIPE law), and after a heal the mate fails back to the head's
         // direct pipe make-before-break.
-        const sdmH = mosIn.get('sdm');
+        const sdmH = __C.mosIn.get('sdm');
         // Re-fan only the copy that came from my row's head (or the heir standing in): a copy a mate re-fanned to me, fanned on,
         // closes a ring of mates holding a dead head's view, which nothing breaks while the new head is not reachable.
         if (sdmH && !sdmH.deadAt && sdmH.via === headPid) for (let j = 1; j < C; j++) {
@@ -6451,7 +5751,7 @@
       // per-stager key); at S1 they FLOOD the row+cross mesh (dedup by streamId,
       // exactly like mesh gossip) so every S1 seat holds every stager; each S1
       // seat composites the strip itself and fans it down the SAME tree as 'sd'.
-      const heldStg = [...mosIn.keys()].filter((k) => k.indexOf('stg:') === 0 && !stgEnded(k)); // an ended stage is relayed by no road
+      const heldStg = [...__C.mosIn.keys()].filter((k) => k.indexOf('stg:') === 0 && !(0, /*()*/__C.stgEnded)(k)); // an ended stage is relayed by no road
       if (c.pc !== 0 && stripPack) { stripPack.stop(); stripPack = null; } // role-change hygiene: left Section 1
       if (c.pc !== 0) {
         // relay every stage feed I hold (and my own) UP toward Section 1. E2 is the
@@ -6495,14 +5795,14 @@
           if (st && src2 && src2 !== __C.myId) { const jk = shipMos('stg:' + __C.myId, src2, st, { h: 0, sb: 1 }, 'stg:' + __C.myId); if (jk) wanted.add(jk); }
         }
         for (const k of heldStg) {
-          const f = mosIn.get(k), sb = mosStandby.get(k);
+          const f = __C.mosIn.get(k), sb = __C.mosStandby.get(k);
           if (!f.meta || !f.meta.ao || !sb || !sb.meta || sb.meta.ao) continue;
           for (const t of e2Up) if (t !== sb.via && stgPath(sb).indexOf(vpId(t)) < 0) { const jk = shipMos(k, t, sb.stream, { h: stgHop(sb), vp: stgPath(sb) }, k); if (jk) wanted.add(jk); }
         }
-        for (const k of heldStg) { if (stgLost(k)) continue; const f = mosIn.get(k); relayStg(k, f.stream, f.via, stgHop(f), !!(f.meta && f.meta.ao), stgPath(f)); }
+        for (const k of heldStg) { if (stgLost(k)) continue; const f = __C.mosIn.get(k); relayStg(k, f.stream, f.via, stgHop(f), !!(f.meta && f.meta.ao), stgPath(f)); }
         if (iAmHead) for (const k of heldStg) { // my row folds at its ears too
           if (stgLost(k)) continue;
-          const f = mosIn.get(k);
+          const f = __C.mosIn.get(k);
           const owner = k.slice(4).split('^')[0];
           for (let j = 1; j < C; j++) {
             const mate = (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: j });
@@ -6569,9 +5869,9 @@
         };
         if (amStager) { const st = mySelfStream(); if (st) floodOne('stg:' + __C.myId, st, null, 0); }
         for (const k of heldStg) {
-          const hf = mosIn.get(k);
+          const hf = __C.mosIn.get(k);
           if (!stgLost(k)) floodOne(k, hf.stream, hf.via, stgHop(hf), stgPath(hf));
-          const sb2 = stgSecondRoot(hf, mosStandby.get(k)); // STG-SECOND-ROOT (with none, a copy a receiver plays is still kept)
+          const sb2 = stgSecondRoot(hf, __C.mosStandby.get(k)); // STG-SECOND-ROOT (with none, a copy a receiver plays is still kept)
           floodOne(k + STG_ROOT2, sb2 ? sb2.stream : null, sb2 ? sb2.via : null, sb2 ? stgHop(sb2) : 0, sb2 ? stgPath(sb2) : null, k);
         }
         // composite the strip in stage order; fan 'sgs' down my subtree
@@ -6628,7 +5928,7 @@
         }
       }
       // Every seat: render the received strip and fan it down (heads -> row-mates).
-      const sgs = mosIn.get('sgs');
+      const sgs = __C.mosIn.get('sgs');
       if (sgs && c.pc !== 0 && stagers.length) {
         // Relay it regardless (my subtree needs it) — but if the only face in
         // it is mine, look at the local track instead of at my own pixels
@@ -6647,7 +5947,7 @@
           const sv = (0, /*()*/__C.meshSeat)();
           const fanS = (sv && (sv.u2Id || (sv.l14Up && !iAmHead))) ? T.rowMates(c).map((m) => (0, /*()*/__C.occPid)(m)).filter((t) => t && t !== __C.myId) : [];
           for (const t of (sv ? sv.u2Heirs().concat(sv.l14Served()) : []).concat(fanS)) { if (t === sgs.via) continue; const jk = shipMos('sgs', t, sgs.stream, stripMeta(sgs)); if (jk) wanted.add(jk); }
-          const onE2 = sv && sv.u2Id && mosStandby.get('sgs') && mosStandby.get('sgs').via === sv.u2Id ? mosStandby.get('sgs') : null;
+          const onE2 = sv && sv.u2Id && __C.mosStandby.get('sgs') && __C.mosStandby.get('sgs').via === sv.u2Id ? __C.mosStandby.get('sgs') : null;
           if (onE2 && sgs.via !== sv.u2Id) { const h0 = fanS.find((t) => t === sgs.via); if (h0) { const jk = shipMos('sgs', h0, onE2.stream, stripMeta(onE2)); if (jk) wanted.add(jk); } }
         }
       } else if (c.pc !== 0 && stagers.length === 0) {
@@ -6669,7 +5969,7 @@
       // construction (a neighbour's mix would contain MY row), so the old
       // verbatim re-fan of the shared 'sd' is gone with the shared 'sd'.
       // Non-heads: my head's room pack ('sdm') is my Stadium, less my row (hidden here, by the ids it carries).
-      if (!iAmHead && !actHead) { const sdm = mosIn.get('sdm'); paintRoomView(sdm ? sdm.el : null, sdm ? blockMeta(sdm) : null, sdm ? sdm.stream : null, c, sdm && sdm.meta ? (sdm.meta.alag || 0) : 0); }
+      if (!iAmHead && !actHead) { const sdm = __C.mosIn.get('sdm'); paintRoomView(sdm ? sdm.el : null, sdm ? blockMeta(sdm) : null, sdm ? sdm.stream : null, c, sdm && sdm.meta ? (sdm.meta.alag || 0) : 0); }
       // STAGE EAR: sum the per-stager feeds I hold, skipping my own.
       if (stagers.length) ensureStageEar();
       syncStageEar(stagers);
@@ -6695,7 +5995,7 @@
       const ckU = c.pc + '/' + c.r + '.' + c.i;
       for (const [jk, job] of [...mosJobs]) {
         if (wanted.has(jk)) { job.unwantedAt = 0; job.wantCk = ckU; continue; }
-        if (!__C.peers.has(job.to) || stgEnded(job.key)) { unshipMos(jk, true); if (stgEnded(job.key)) shipContainers.delete(jk); continue; } // a copy of an ended stage has no flicker to wait out: the beat already waited
+        if (!__C.peers.has(job.to) || (0, /*()*/__C.stgEnded)(job.key)) { unshipMos(jk, true); if ((0, /*()*/__C.stgEnded)(job.key)) shipContainers.delete(jk); continue; } // a copy of an ended stage has no flicker to wait out: the beat already waited
         if (job.wantCk && job.wantCk !== ckU && job.key.indexOf('stg:') !== 0 && job.key !== 'sgs') { unshipMos(jk, true); continue; }
         if (!job.unwantedAt) job.unwantedAt = nowU;
         else if (nowU - job.unwantedAt > MOS_GRACE) unshipMos(jk, true);
@@ -6732,7 +6032,7 @@
       for (const pk of l14Packs.values()) gatePack(pk);
       for (const pk of pipePacks.values()) gatePack(pk);
     }
-    yield 2281;
+    yield 2285;
 
     // ---- SCREEN SHARING (docs/media-plane.md Channel St; roadmap §4g) ---------
     //
@@ -6787,16 +6087,16 @@
     // "share tab audio" checkbox in the picker that does nothing, which is
     // worse than not offering it. So: `audio: false`, and the sheet says so.
     const canScreenShare = () => !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
-    yield 2285;
+    yield 2289;
     // A freeze reloads the tab. The note written here lets the next boot know the
     // person had joined and whether a screen share was up (one tap to share again).
     // It carries NO mic or camera state: a reload of any kind comes back camera off
     // and mic muted, stagers too (Nathan 2026-11-08: privacy first, always).
     let shareRecoverMode = false;
     let recoverShareTimer = 0;
-    yield 2288;
+    yield 2292;
     const RECOVER_MEDIA_TTL = GifOS.timings.RECOVER_MEDIA_TTL;
-    yield 2290;
+    yield 2294;
     function stashRecoverMedia(away) {
       // Only a person past the door leaves a note, whichever way out of the page wrote it. The note says
       // "this tab had joined" and whether a screen share was up. It never names the mic or the camera: a
@@ -6838,7 +6138,7 @@
     document.addEventListener('freeze', () => {
       if (typeof __C.localStream !== 'undefined' && __C.localStream && !__C.leaving) stashRecoverMedia(true);
     });
-    yield 2296;
+    yield 2300;
     // peek: read the note without taking it.
     function takeRecoverMedia(peek) {
       let raw = null;
@@ -6866,7 +6166,7 @@
       __C.myStatus.camOff = true;
       try { (0, /*()*/__V.paintControls)(); (0, /*()*/__C.paintOnAir)(); refreshOutbound(); (0, /*()*/__C.broadcastStatus)(); syncSpeech(); (0, /*()*/__C.updateMediaSession)(); } catch (e) {}
     }
-    yield 2300;
+    yield 2304;
     function recoverScreenShare() {
       if (typeof __C.mayShareScreen === 'function' && !(0, /*()*/__C.mayShareScreen)(__C.myId)) return;
       if (typeof __C.forcedCamOff === 'function' && (0, /*()*/__C.forcedCamOff)('me')) return;
@@ -7008,7 +6308,7 @@
       const st = selfStageStream();
       if (st) (0, /*()*/__V.paintStageStrip)(st);
     }
-    yield 2317;
+    yield 2321;
     // o: { blob (or a promise of one), title, last, saved }. Called inside
     // the tap, so the sound can start without another one.
     async function rbStart(o) {
@@ -7066,7 +6366,7 @@
       (0, /*()*/__V.paintRb)();
       (0, /*()*/__C.setStatus)('Rebroadcasting ' + (r.last ? 'the last ' + (0, /*()*/__C.rbNoun)() : r.title) + '. Viewers see Prerecorded.', 6000);
     }
-    yield 2330;
+    yield 2334;
 
     // ---- audio: three buses, receiver-side (docs/media-plane.md) --------------
     // Stage / My row / The stadium are a grouping by LINK CLASS, not a sender
@@ -7378,7 +6678,7 @@
       window.addEventListener('focus', kick);
       setInterval(kick, 3000);
     }
-    yield 2389;
+    yield 2393;
 
     // ---- the grid: clock sync + per-stream delay alignment --------------------
     // Voices over the internet don't smear because they're LATE — they smear
@@ -7406,7 +6706,7 @@
       HOP_ENC: 40,      // what a relay hop adds beyond its own playout: decode → re-encode + one Opus frame
       CK_EVERY: 5000, APPLY_EVERY: 3000,
     };
-    yield 2392;
+    yield 2396;
     try { const t = localStorage.getItem(__C.TIMING_KEY); if (t === 'chat' || t === 'unison') __C.timing = t; } catch (e) {}
     let gdOverride = 0; // test hook: pretend this device needs a slower grid
     const clk = new Map(); // pid -> { rtt, off, n } — the best (min-rtt) sample, slowly decayed
@@ -7460,7 +6760,7 @@
         if (p.dc && p.dc.readyState === 'open') (0, /*()*/__C.dcSend)(p, { k: 'ck', t0: performance.now() });
       }
     }, GRID.CK_EVERY);
-    yield 2399;
+    yield 2403;
     const singLeaderName = () => {
       const pid = (0, /*()*/__C.stageIds)().find(__C.singOf);
       if (!pid || pid === __C.myId) return (0, /*()*/__C.myName)();
@@ -7522,7 +6822,7 @@
       let stageT = GRID.SONG_STAGE, stageNeed = GRID.SONG_STAGE;
       if (sing) {
         const feedNeed = {};
-        for (const [k, f] of mosIn) {
+        for (const [k, f] of __C.mosIn) {
           if (k.indexOf('stg:') !== 0 || !f || !f.stream || !f.via) continue;
           const owner = k.slice(4).split('^')[0];
           for (const t of f.stream.getAudioTracks()) stgTracks.set(t.id, { via: f.via, owner, direct: f.via === owner });
@@ -7636,7 +6936,7 @@
       // swapped stream re-feeds its companion there. This tick is the grid.
       if (typeof __C.updateMediaSession === 'function') (0, /*()*/__C.updateMediaSession)(); // keep the OS call card's count fresh
     }, GRID.APPLY_EVERY);
-    yield 2408;
+    yield 2412;
     const SONG_PILL_TITLE = 'Lead the room in song — steps you onto the stage with a music-grade mic and lines everyone\'s sound up to you; tap again to end (earbuds recommended for singers)';
     function paintTiming() {
       const sing = (0, /*()*/__C.roomSingOn)();
@@ -7671,7 +6971,7 @@
       }
       reactSing();
     }
-    yield 2506;
+    yield 2510;
     // ---- WHISPER CAPTIONS: the OS's speech-to-text provider, fed my own mic ----
     // (2026-10-02, the first customer meeting.) The browser engine listens in
     // ONE fixed language and cannot detect it, writes two-word fragments,
@@ -7686,7 +6986,7 @@
     // clip is in the provider at a time; a backlog past three drops the
     // oldest and says so.
     const CC_ENGINE_KEY = 'gifos_cc_engine', CC_TRANSLATE_KEY = 'gifos_cc_translate', CC_WORDS_KEY = 'gifos_cc_words';
-    yield 2509;
+    yield 2513;
     // WHO MAY RUN WHISPER. Whisper runs on the processor that also encodes the
     // call and answers its heartbeats. On a phone, or a computer with few cores
     // or little memory, it starves the meeting and drains the battery, so such
@@ -7705,7 +7005,7 @@
     const whisperAllowed = () => !WSP_WEAK || (0, /*()*/__C.lsGet)(CC_WHISPER_ANYWAY_KEY) === '1';
     function ccEngine() { return (phoneCaptions() ? 'browser' : (__C.CC_ON_PHONE ? 'local' : ((0, /*()*/__C.lsGet)(CC_ENGINE_KEY) === 'whisper' && whisperAllowed() ? 'whisper' : 'browser'))); }
     const WHISPER_APP_ID = 'offline-stt-whisper';
-    yield 2516;
+    yield 2520;
     // Can this browser run Whisper at all: allowed on this device, and an
     // audio graph to cut the voices from.
     function whisperSupported() { return whisperAllowed() && !!(window.AudioContext || window.webkitAudioContext); }
@@ -7771,8 +7071,8 @@
     // The stage aux feed (mosIn 'stg:<id>') is the only audio a non-neighbour
     // stager still sends. Direct main audio is parked while they are on stage.
     function wspStageStream(id) {
-      if (typeof mosIn === 'undefined' || !mosIn || !mosIn.get) return null;
-      const c = mosIn.get('stg:' + id);
+      if (typeof __C.mosIn === 'undefined' || !__C.mosIn || !__C.mosIn.get) return null;
+      const c = __C.mosIn.get('stg:' + id);
       const tr = c && c.stream && c.stream.getAudioTracks && c.stream.getAudioTracks()[0];
       return tr ? c.stream : null;
     }
@@ -8289,7 +7589,7 @@
         (0, /*()*/__C.setStatus)('Whisper captions failed: ' + msg.slice(0, 160), 10000);
       }).then(() => { if (!done) release(); });
     }
-    yield 2559;
+    yield 2563;
     // Translating everything to English, the page hears EVERY voice through
     // its own Whisper: my own (even with Send off, for my own captions),
     // every first-hand voice whether captioned or not, and the Stadium mix
@@ -8432,7 +7732,7 @@
     function phoneCaptions() {
       try { const N = window.GifosNative; return !!(N && N.info && N.info().captions === 'device'); } catch (e) { return false; }
     }
-    yield 2574;
+    yield 2578;
     function whisperSeedBlocked() {
       // A phone or a weak computer, a data-saver flag, or a cellular link does not fetch the 13 MB app on its own.
       if (__C.IS_MOBILE || WSP_WEAK) return true;
@@ -8473,7 +7773,7 @@
     }
     const wspWorking = (k) => k === 'ready' || k === 'downloading';
     let wspStSig = '';
-    yield 2583;
+    yield 2587;
     // The page boots in steps, and the captions engines it reads are declared
     // further down: until they exist the status waits for the next tick.
     function wspPaintSafe() {
@@ -8498,7 +7798,7 @@
       try { if (sessionStorage.getItem('gifos_wsp_chip_gone') === wspChipRoom()) wspChip.gone = true; } catch (e) {}
       return wspChip.gone;
     }
-    yield 2590;
+    yield 2594;
     // THE MEETING COMES FIRST. A 250 ms tick that lands more than a second late
     // means the page missed its heartbeats and media work; on a phone the
     // provider runs on this very thread. Two such stalls within 30 s while
@@ -8506,7 +7806,7 @@
     // tick keeps the chip in step with the engine.
     const WSP_TICK_MS = GifOS.timings.WSP_TICK_MS, WSP_STARVE_MS = GifOS.timings.WSP_STARVE_MS, WSP_STARVE_N = GifOS.timings.WSP_STARVE_N, WSP_STARVE_WIN = GifOS.timings.WSP_STARVE_WIN;
     let wspTickAt = 0, wspStarved = [];
-    yield 2604;
+    yield 2608;
     // ---- THE ROOM EAR: one browser engine hears every voice ------------------
     // A browser runs ONE speech session at a time (a second start aborts the
     // first), so CC cannot open an engine per voice. Where start() takes a
@@ -8944,7 +8244,7 @@
       if (!mine && speechRunning()) stopSpeech();
       (0, /*()*/__C.capPublish)();
     }
-    yield 2639;
+    yield 2643;
     function paintCcButtons() { (0, /*()*/__V.paintCcView)(); }
     document.getElementById('ccbtn').onclick = () => {
       __C.ccShow = !__C.ccShow;
@@ -8964,7 +8264,7 @@
       const last = lines.length ? lines[lines.length - 1] : null;
       if (last) (0, /*()*/__V.showCaption)(last.byId, (0, /*()*/__C.trNote)(last) + last.text);
     };
-    yield 2642;
+    yield 2646;
     if (__V.ccDockBtn) __V.ccDockBtn.onclick = () => document.getElementById('ccbtn').click();
     // CAPTIONS FOR EVERYONE. Each person had to find CC alone, and one never
     // did. An admin's room-wide 'cc' order (pseudo-target '*', the same signed
@@ -9046,7 +8346,7 @@
       const lines = blocks.map((l) => '[' + new Date(l.at).toLocaleTimeString() + '] ' + l.by + (l.lang && l.lang !== mine ? ' (' + l.lang + ')' : '') + ': ' + (0, /*()*/__C.trNote)(l) + l.text);
       return { blob: new Blob([lines.join('\n') + '\n'], { type: 'text/plain' }), name: meetDownloadName('Transcript', __C.room, blocks.length ? blocks[0].at : 0, 'txt'), lines: lines.length };
     }
-    yield 2655;
+    yield 2659;
 
     // ---- recording: this meeting, composited ON YOUR DEVICE ---------------------
     // A popup asks WHAT to capture (scope) and at what QUALITY. Tiles are drawn
@@ -9064,7 +8364,7 @@
     let recMode = null, recRestart = null, recMatchMix = true, recQuality = 'std', recType = 'video/webm'; // recType = the container MediaRecorder writes; recMode = scope; recRestart = opts after a stop
     let recToLib = false;   // this recording goes to My library (Streamer) when it stops
     let recStarting = false, recReloadAfterStop = false, recIndWatch = null;
-    yield 2660;
+    yield 2664;
     const REC_QUALITY = { low: { w: 1280, h: 720, v: 1000000 }, std: { w: 1920, h: 1080, v: 3000000 }, high: { w: 1920, h: 1080, v: 6000000 } };
     // Every source I can record, grouped by BUS. Direct peers + me are live
     // tiles; folds (compOf) are already consent-baked composites of many people.
@@ -9208,7 +8508,7 @@
         if (typeof saved.drop === 'function') { try { Promise.resolve(saved.drop()).catch(() => {}); } catch (e) {} }
       }, 60000);
     }
-    yield 2676;
+    yield 2680;
     // ---- My library (Streamer): the finished recording is uploaded, with the
     // transcript beside it. If the library refuses it (full, plan ended) or
     // the upload cannot be kept to finish later, the file is saved on this
@@ -9427,7 +8727,7 @@
         src.stream = p.video ? p.video.srcObject : null;
       }
       if (src.bus === 'stage') {
-        const f = mosIn.get('stg:' + pid);
+        const f = __C.mosIn.get('stg:' + pid);
         if (f && f.stream) { src.video = recStageVideo(f); src.stream = f.stream; }
       }
     }
@@ -9457,7 +8757,7 @@
         const src = { key: pid, video: p.video, label: p.name || '…', blur: (0, /*()*/__C.blurLevelFor)(pid), stream: p.video.srcObject,
           mute: !!((0, /*()*/__C.modOf)(pid).mute && (0, /*()*/__C.modOf)(pid).mute.on), camOff: (0, /*()*/__C.seatDark)(st) || (typeof __C.shareBlocked === 'function' && !!(0, /*()*/__C.shareBlocked)(pid)) };
         if (stg.has(pid)) {
-          const f = mosIn.get('stg:' + pid);
+          const f = __C.mosIn.get('stg:' + pid);
           if (f && f.stream) { src.video = recStageVideo(f); src.stream = f.stream; }
           src.bus = 'stage'; g.stage.push(src);
         } else if (mates.has(pid)) { src.bus = 'row'; g.row.push(src); }
@@ -9806,7 +9106,7 @@
     }
     let recFloor = null;   // the silent source under the record mix (startRec)
     function recStopFloor() { const f = recFloor; recFloor = null; if (f) { try { f.stop(); } catch (e) {} try { f.disconnect(); } catch (e) {} } }
-    yield 2706;
+    yield 2710;
     function warnRecorderNewApp() {
       if (!(recRec && recRec.state !== 'inactive')) return;
       if (recMode === 'app' || !canScreenRecord()) return;
@@ -9842,7 +9142,7 @@
       (0, /*()*/__V.showRecOptions)();
     };
     let callStateBox = '';
-    yield 2770; // knock-first: the boot's own getUserMedia while it is in flight — THE one ask; lateMedia must join it, never race it
+    yield 2774; // knock-first: the boot's own getUserMedia while it is in flight — THE one ask; lateMedia must join it, never race it
     // NO CAMERA IS NOT NO MICROPHONE. A combined camera+mic ask rejects as a
     // whole when the camera is missing, disabled by policy or held by another
     // app (NotFoundError / NotReadableError / OverconstrainedError), and the
@@ -10153,7 +9453,7 @@
       try { const sb = document.getElementById('spkbtn'); if (sb) sb.setAttribute('aria-expanded', 'false'); } catch (e) {}
       if (refocus && from) { try { from.focus(); } catch (e) {} }
     }
-    yield 2785;
+    yield 2789;
     { const sb = document.getElementById('spkbtn'); if (sb) sb.onclick = () => { if (micChooserOpen()) closeMicChooser(true); else openSpkChooser(); }; }
     function openSpkChooser() {
       const el = document.getElementById('micchooser'), sb = document.getElementById('spkbtn');
@@ -10256,7 +9556,7 @@
       for (const v of document.querySelectorAll('video')) if (v._aud) out.add(v._aud);
       try { if (stageEar && stageEar.el) out.add(stageEar.el); } catch (e) {}
       try { if (typeof wkEar !== 'undefined' && wkEar && wkEar.el) out.add(wkEar.el); } catch (e) {}
-      try { for (const m of mosIn.values()) if (m && m.el && !m.el.muted) out.add(m.el); } catch (e) {}
+      try { for (const m of __C.mosIn.values()) if (m && m.el && !m.el.muted) out.add(m.el); } catch (e) {}
       return out;
     }
     window.__meetSpeaker = () => { const els = [...audioCarriers()]; return { want: spkDeviceId, sinks: els.map((e) => String(e.sinkId || '')), voice: els.map((e) => { try { const st = e.srcObject; return !!(st && st.getAudioTracks && st.getAudioTracks().some((t) => t.readyState === 'live')); } catch (x) { return false; } }) }; };   // read-only: where each playing element sends sound, and whether it carries a voice at all
@@ -10514,7 +9814,7 @@
       if (b.getAttribute('aria-disabled') === 'true') return false;
       return b.classList.contains('inmore') || getComputedStyle(b).display !== 'none';
     }
-    yield 2816;
+    yield 2820;
     function openKeys() {
       const rows = [];
       // A grayed slot is shown but not usable, so its key is not listed.
@@ -10542,7 +9842,7 @@
       __V.keysModal.style.display = 'flex';
       queueMicrotask(__V.syncModalFocus);
     }
-    yield 3164;
+    yield 3168;
     function dbgMeterSources() {
       const out = [];
       const nm = (id) => (id ? (__C.rosterNames[id] || String(id).slice(0, 8)) : null);
@@ -10574,7 +9874,7 @@
     }
     return __L.END;
   }
-  var api = { name: "media", run: part, count: 673, exports: {"AVATAR_H":0,"AVATAR_W":0,"CC_ENGINE_KEY":0,"CC_TRANSLATE_KEY":0,"CC_WHISPER_ANYWAY_KEY":0,"CC_WORDS_KEY":0,"STAGE_FACE_PX":0,"STAGE_FACE_SETTLE_MS":0,"WEBKIT_TILE":0,"WHISPER_APP_ID":0,"WHISPER_SEED_KEY":0,"WSP_CHIP_MS":0,"WSP_STARVE_MS":0,"WSP_STARVE_N":0,"WSP_STARVE_WIN":0,"WSP_TICK_MS":0,"WSP_WEAK":0,"acClockInfo":1,"adapt":1,"applyBuses":1,"applyCcAll":1,"applyGrid":1,"applyRecoverMedia":1,"armAudioKeepAlive":1,"armWhisperRescan":1,"attachLocalTracks":1,"audioKickArmed":0,"avHold":0,"avatarPipe":0,"avatarSharp":0,"blockedAudio":0,"blurDraw":1,"blurPipe":0,"blurSenderFrac":1,"blurSized":1,"blurViewFrac":1,"botVoiceTrack":0,"browserCaptionsMissing":1,"callStateBox":0,"camChooserAnchor":0,"camChooserOpen":1,"camDeviceId":0,"camFacing":0,"camIdleT":0,"camPickThen":0,"camTrackForTest":1,"camVideoConstraints":1,"canRaiseHand":1,"canScreenRecord":0,"canScreenShare":0,"capsRunningNow":1,"carryVoiceTrack":0,"ccDefGroup":0,"ccEngine":1,"ccMix":0,"ccMixStop":1,"ccMixSync":1,"chainDemandUp":1,"claimMos":1,"clk":0,"clockSample":1,"closeCamChooser":1,"closeMicChooser":1,"compFps":1,"compOf":0,"ctScreenTrack":1,"dbgMeterSources":1,"dbgRowFaces":0,"degOf":0,"dismissCamChooser":1,"displayCount":1,"downFolds":0,"downStreams":0,"dropEndedRemoteTracks":1,"dropMosIn":1,"dropStandby":1,"earState":1,"endSongOnStepDown":1,"facesOnScreen":1,"gdOverride":0,"gridApplied":0,"gumRefused":1,"gumWithMicFallback":1,"headLinkUp":1,"headSendsStale":1,"headerCount":1,"heardStage":1,"holdMainVideo":1,"installWhisper":1,"keepAwake":1,"keepMeetingAudio":1,"kfNeed":1,"kickMainAudio":1,"kickMainVideo":1,"kickStageMic":1,"l14Packs":0,"lateMedia":1,"mainAudioTrack":1,"maybeShowFlip":1,"mediaElCensus":1,"micChooserOpen":1,"micTap":1,"mix":0,"mixAc":0,"mosFb":0,"mosIn":0,"mosJobs":0,"mosStandby":0,"normStageFrame":1,"noteAudioDevices":1,"onMeetDeviceChange":1,"openCamChooser":1,"openKeys":1,"openModal":1,"packLoop":0,"paintTiming":1,"parkJobVideo":1,"peerAudioTracks":1,"phoneCaptions":1,"pickCamera":1,"pipeDeny":0,"pipeJobs":0,"placeStageMarks":1,"playTileVideo":1,"poke":1,"prodPack":0,"qaStageSt":0,"quietAtDoor":1,"rbStart":1,"reactSing":1,"recDefaultQuality":1,"recDownload":1,"recDraw":0,"recFileName":1,"recLibraryOption":1,"recMatchMix":0,"recMode":0,"recNoteStruct":1,"recQuality":0,"recRec":0,"recRelease":1,"recScopeSources":1,"recSources":1,"recStarting":0,"reconcileMosaic":1,"recoverShareTimer":0,"refreshOutbound":1,"refreshTrBtn":1,"regrabCamera":1,"releaseAudio":1,"rememberMix":1,"resumeReload":1,"retireMixTracks":1,"reviveCamera":1,"roomPack":0,"schedClaim":1,"schedReconcile":1,"sdView":0,"sdViewSt":0,"sentVideoTrack":1,"setJobActive":1,"setStageFrame":1,"shareRecoverMode":0,"shipContainers":0,"shipTracks":1,"shownPeerCount":1,"speakerChoices":1,"speech":0,"speechGaveUp":0,"speechProved":0,"speechRunning":1,"spkDeviceId":0,"stageAudible":1,"stageEar":0,"stageEarFoldPeak":1,"stageEarLiveTrack":1,"stageEarRawPeak":1,"stageFrameVal":0,"stagedSelfWas":0,"startLocalView":1,"startRec":1,"startScreenShare":1,"startWhisper":1,"stashRecoverMedia":1,"stgBeatIn":1,"stgLost":1,"stgStale":1,"stopBlurPipe":1,"stopScreenShare":1,"stopSpeech":1,"stopWhisper":1,"stripPack":0,"stubDuties":1,"syncAvatarFeed":1,"syncSpeech":1,"tileHolds":1,"toggleSing":1,"trEnSync":1,"trackAspect":1,"trackQ":0,"transcriptFile":1,"tuneCfg":1,"unshipMos":1,"wakeLock":0,"warnRecorderNewApp":1,"whisperAllowed":0,"whisperChosen":0,"whisperInstalling":0,"whisperRescan":0,"whisperSeedBlocked":1,"whisperSupported":1,"withScrPipe":1,"wkBindVideo":1,"wkEar":0,"wkFwdCopies":0,"wkFwdNeeded":1,"wkHolds":1,"wkQuietBind":1,"wkRemoteTrack":1,"wsp":0,"wspCaps":0,"wspChip":0,"wspChipGone":1,"wspChipRoom":0,"wspEnqueue":1,"wspInst":0,"wspModel":1,"wspPaintSafe":1,"wspPaused":0,"wspQ":0,"wspRebind":1,"wspRelease":1,"wspResume":1,"wspRetry":1,"wspSource":1,"wspStSig":0,"wspStarved":0,"wspState":1,"wspStateText":1,"wspStop":1,"wspSync":1,"wspTickAt":0,"wspToBrowser":1,"wspWorking":0}, needs: {"core":{"leaving":0,"localStream":0,"capClone":1,"WK_H264_BLIND":0,"nameInitial":1,"shareBlocked":0,"turnLinks":0,"turnFacts":0,"myId":0,"rowFaceDark":0,"myName":0,"blurLevelFor":1,"mediaOk":0,"relayVia":0,"displayName":1,"myStatus":0,"stageIds":0,"statusOf":0,"screenStream":0,"sharingScreen":0,"BROADCAST":0,"bcMayPublishAv":1,"rbNow":0,"mayShareScreen":0,"outgoingHeld":0,"bcRole":1,"peers":0,"meTile":0,"camPeer":0,"clog":0,"micPeer":0,"renegotiate":1,"rosterIds":0,"knownTotal":1,"rosterTiles":0,"updateTile":1,"updateStatus":1,"meshSeat":0,"meshNode":0,"roomDig":1,"roomPastSection":0,"SCALE":0,"powNow":0,"IS_MOBILE":0,"powDials":0,"setStatus":0,"uiText":1,"stHold":0,"seatDark":0,"forcedCamOff":0,"vqRung":0,"rung":0,"LADDER":0,"stageCeilingKbps":1,"screenCeilingKbps":1,"stageSenders":0,"auxSenders":0,"lowSenders":0,"net":0,"meterFor":1,"sayState":0,"IS_ANDROID":0,"botParks":1,"visParkSent":0,"dcSend":0,"hasPendingTx":0,"ensureAc":1,"ac":0,"newMeetAudioContext":1,"occPid":0,"pipePeers":1,"preferHwVideo":1,"modOf":1,"stageSeats":0,"digLists":0,"stageHeldAt":0,"stageFeedAt":0,"stageViewNow":0,"kfAsker":0,"addAux":0,"isStageJob":0,"auxDrop":1,"stopAuxTx":1,"DEBUG_ON":0,"modBlurOn":0,"meshCoord":0,"speakingOf":0,"rowMixTalkAt":0,"isPipePeer":0,"subWant":0,"myIdentity":0,"labelFor":0,"iAmWaiting":1,"peerWaits":1,"fitFor":0,"pipeVideo":0,"pipeStg":0,"STAGE_FPS":0,"stageCell":1,"STAGE_MAXW":0,"stageFps":1,"freshSt":0,"pwBlocked":0,"bannedOut":0,"mediaJoined":0,"RECOVER_MEDIA_KEY":0,"updateRoomKey":0,"bcHostStored":0,"paintOnAir":1,"broadcastStatus":1,"updateMediaSession":1,"screenSteppedUp":0,"setStage":1,"refreshAllTiles":1,"rbCap":0,"rbLength":1,"rbTracks":1,"rbDrop":1,"bcSeeding":0,"releaseLeaveAsk":1,"rbStop":1,"rbNoun":0,"serviceHeard":0,"rowMates":0,"isHeld":1,"botHidden":1,"TIMING_KEY":0,"digStageEntry":0,"rosterNames":0,"foldName":1,"canStage":0,"lsGet":0,"CC_ON_PHONE":0,"meters":0,"myVoiceAt":0,"lsSet":0,"ccLocalQ":0,"CC_LANG_KEY":0,"trEnOn":0,"capSend":1,"trLangOf":0,"addTranscriptLine":1,"capEarsOnly":1,"capTrust":0,"trLang":1,"trKeeps":1,"trEnOnlyEnglish":1,"capSpotQueue":1,"capPublish":1,"trForget":1,"ccLang":0,"trDrops":0,"capTraceGate":1,"myVoiceFrom":0,"trLangKnown":1,"myVoiceSinceFinal":0,"ccDevNotice":1,"trEchoHeld":1,"ccShow":0,"trBlocks":1,"trNote":1,"modTable":0,"setMod":1,"AI_SPARK_SVG":0,"chatOpen":0,"room":0,"recRoomWord":1,"bcLastService":0,"BC_INTENT":0,"recSrcDirty":0,"recStructSig":0,"bcKeepUserStop":0,"amGloballyMuted":1,"micLockWords":1,"capClosed":0,"bcWatchingViewer":1,"enforceBroadcastSeat":1,"lateAsk":0,"lateWant":0,"bootGumPending":0,"reactRoomState":1,"camOnWords":1,"statusWords":0,"lateGen":0,"lateWon":0,"lateTimer":0,"LATE_ASK_MS":0,"carryOutAc":0,"blurLevel":0,"setPersonalBlur":1,"carryHosts":0,"carryG":0,"meOnStage":1,"shareOnlyStage":1,"personOnStage":1,"seatSelfLeased":0,"mainVideoChoice":1,"outboundPlan":1,"stageFeedVideo":1,"stageVideoChoice":1,"participantCount":1,"deepInView":1,"isRedun":0,"onStageNow":1,"screenSharers":0,"roomSingOn":0,"singOf":0,"capCovered":1,"trWrites":1,"idleNow":0,"lastActive":0,"lastQ":0,"MP":0,"battNow":0,"micGrabbing":0,"micWant":0,"micMode":0,"micUnmuteAfter":0,"micPickPrev":0,"pipeEnabled":0,"MPipe":0,"stgBeats":0,"STG_VP_MAX":0,"swapPicLast":0,"swapPicHoldAt":0,"swapPicRing":0,"STG_BEAT_STALE_MS":0,"STG_BEAT_SEEN":0,"stgBeatCost":0,"STG_BEAT_MS":0,"timing":0,"whisperReady":0,"planMeasured":1,"reconcileMain":1,"actingHead":1,"inboundPlan":1,"owedStream":1,"mosAnn":0},"view":{"blurA":0,"blurActx":0,"blurB":0,"blurBctx":0,"paintAvatarCanvas":1,"phoneLayout":1,"showAvatarTrack":1,"stagefeedEl":0,"stadiumEl":0,"showFlipButton":1,"showCamBack":1,"paintSpkBtn":1,"paintStadiumTile":1,"paintStageStrip":1,"paintControls":1,"showResharePrompt":1,"hideResharePrompt":1,"paintShare":1,"dropStaleShareWin":1,"paintRb":1,"rbCanvas":1,"paintRbNow":1,"paintFaders":0,"timingRow":0,"paintWspChip":1,"paintCcState":1,"paintTxMark":1,"capCardRefresh":1,"paintWspStatus":1,"paintCcView":1,"showCaption":1,"ccDockBtn":0,"hideCaptions":1,"renderTranscript":1,"renderChat":1,"chatPanel":0,"paintChatBtn":1,"paintRoomTrust":1,"showServiceEnded":1,"showRecReplay":1,"recBtn":0,"showRecOptions":1,"roomAudioOn":1,"micBtn":0,"placeDockPopover":1,"unmuteBtn":0,"camBtn":0,"topNameModal":1,"handBtn":0,"chatPanelOpen":1,"keysModal":0,"syncModalFocus":1}}, stamp: "d49d42da" };
+  var api = { name: "media", run: part, count: 652, exports: {"AVATAR_H":0,"AVATAR_W":0,"CC_ENGINE_KEY":0,"CC_TRANSLATE_KEY":0,"CC_WHISPER_ANYWAY_KEY":0,"CC_WORDS_KEY":0,"MOS_GRACE":0,"MOS_SETTLE":0,"STAGE_FACE_PX":0,"STAGE_FACE_SETTLE_MS":0,"STG_PIC_LIVE_MS":0,"STG_ZERO_MS":0,"WEBKIT_TILE":0,"WHISPER_APP_ID":0,"WHISPER_SEED_KEY":0,"WSP_CHIP_MS":0,"WSP_STARVE_MS":0,"WSP_STARVE_N":0,"WSP_STARVE_WIN":0,"WSP_TICK_MS":0,"WSP_WEAK":0,"acClockInfo":1,"adapt":1,"adoptClaim":1,"applyBuses":1,"applyCcAll":1,"applyGrid":1,"applyRecoverMedia":1,"armAudioKeepAlive":1,"armWhisperRescan":1,"attachLocalTracks":1,"audioKickArmed":0,"avHold":0,"avatarPipe":0,"avatarSharp":0,"bindClaim":1,"blockedAudio":0,"blurDraw":1,"blurPipe":0,"blurSenderFrac":1,"blurSized":1,"blurViewFrac":1,"botVoiceTrack":0,"browserCaptionsMissing":1,"callStateBox":0,"camChooserAnchor":0,"camChooserOpen":1,"camDeviceId":0,"camFacing":0,"camIdleT":0,"camPickThen":0,"camTrackForTest":1,"camVideoConstraints":1,"canRaiseHand":1,"canScreenRecord":0,"canScreenShare":0,"capsRunningNow":1,"carryVoiceTrack":0,"ccDefGroup":0,"ccEngine":1,"ccMix":0,"ccMixStop":1,"ccMixSync":1,"chainDemandUp":1,"clk":0,"clockSample":1,"closeCamChooser":1,"closeMicChooser":1,"compFps":1,"compOf":0,"ctScreenTrack":1,"dbgMeterSources":1,"dbgRowFaces":0,"degOf":0,"demand":1,"dismissCamChooser":1,"displayCount":1,"downFolds":0,"downStreams":0,"dropEndedRemoteTracks":1,"earState":1,"endSongOnStepDown":1,"facesOnScreen":1,"gdOverride":0,"gridApplied":0,"gumRefused":1,"gumWithMicFallback":1,"headLinkUp":1,"headSendsStale":1,"headerCount":1,"heardStage":1,"holdMainVideo":1,"iActAsHead":1,"installWhisper":1,"keepAwake":1,"keepMeetingAudio":1,"kfNeed":1,"kickMainAudio":1,"kickMainVideo":1,"kickStageMic":1,"l14Packs":0,"lateMedia":1,"mainAudioTrack":1,"maybeShowFlip":1,"mediaElCensus":1,"micChooserOpen":1,"micTap":1,"mix":0,"mixAc":0,"mosFb":0,"mosHeld":0,"mosJobs":0,"normStageFrame":1,"noteAudioDevices":1,"onMeetDeviceChange":1,"openCamChooser":1,"openKeys":1,"openModal":1,"packLoop":0,"paintTiming":1,"parkJobVideo":1,"peerAudioTracks":1,"phoneCaptions":1,"picRead":1,"pickCamera":1,"pipeDeny":0,"pipeJobs":0,"placeStageMarks":1,"playTileVideo":1,"poke":1,"prodPack":0,"qaStageSt":0,"quietAtDoor":1,"rbStart":1,"reactSing":1,"recDefaultQuality":1,"recDownload":1,"recDraw":0,"recFileName":1,"recLibraryOption":1,"recMatchMix":0,"recMode":0,"recNoteStruct":1,"recQuality":0,"recRec":0,"recRelease":1,"recScopeSources":1,"recSources":1,"recStarting":0,"reconcileMosaic":1,"recoverShareTimer":0,"refreshOutbound":1,"refreshTrBtn":1,"regrabCamera":1,"releaseAudio":1,"rememberMix":1,"repaintRedun":1,"resumeReload":1,"retireMixTracks":1,"reviveCamera":1,"roomPack":0,"rowHeadPid":1,"rowMixHeadArrives":1,"rowMixHold":1,"schedClaim":1,"schedReconcile":1,"sdView":0,"sdViewSt":0,"sentVideoTrack":1,"setJobActive":1,"setStageFrame":1,"shareRecoverMode":0,"shipContainers":0,"shipTracks":1,"shownPeerCount":1,"speakerChoices":1,"speech":0,"speechGaveUp":0,"speechProved":0,"speechRunning":1,"spkDeviceId":0,"stageAudible":1,"stageEar":0,"stageEarFoldPeak":1,"stageEarLiveTrack":1,"stageEarRawPeak":1,"stageFrameVal":0,"stagedSelfWas":0,"startLocalView":1,"startRec":1,"startScreenShare":1,"startWhisper":1,"stashRecoverMedia":1,"stgBeatIn":1,"stgCarry":1,"stgFedBy":1,"stgFoNote":1,"stgLost":1,"stopBlurPipe":1,"stopScreenShare":1,"stopSpeech":1,"stopWhisper":1,"stripPack":0,"stubDuties":1,"swapPicNote":1,"syncAvatarFeed":1,"syncSpeech":1,"tileHolds":1,"toggleSing":1,"trEnSync":1,"trackAspect":1,"trackQ":0,"transcriptFile":1,"tuneCfg":1,"unbindClaim":1,"unshipMos":1,"vpId":0,"wakeLock":0,"warnRecorderNewApp":1,"whisperAllowed":0,"whisperChosen":0,"whisperInstalling":0,"whisperRescan":0,"whisperSeedBlocked":1,"whisperSupported":1,"withScrPipe":1,"wkBindVideo":1,"wkEar":0,"wkFwdCopies":0,"wkFwdNeeded":1,"wkHolds":1,"wkQuietBind":1,"wkRemoteTrack":1,"wsp":0,"wspCaps":0,"wspChip":0,"wspChipGone":1,"wspChipRoom":0,"wspEnqueue":1,"wspInst":0,"wspModel":1,"wspPaintSafe":1,"wspPaused":0,"wspQ":0,"wspRebind":1,"wspRelease":1,"wspResume":1,"wspRetry":1,"wspSource":1,"wspStSig":0,"wspStarved":0,"wspState":1,"wspStateText":1,"wspStop":1,"wspSync":1,"wspTickAt":0,"wspToBrowser":1,"wspWorking":0}, needs: {"core":{"leaving":0,"localStream":0,"capClone":1,"WK_H264_BLIND":0,"nameInitial":1,"shareBlocked":0,"turnLinks":0,"turnFacts":0,"myId":0,"rowFaceDark":0,"myName":0,"blurLevelFor":1,"mediaOk":0,"relayVia":0,"displayName":1,"myStatus":0,"stageIds":0,"statusOf":0,"screenStream":0,"sharingScreen":0,"BROADCAST":0,"bcMayPublishAv":1,"rbNow":0,"mayShareScreen":0,"outgoingHeld":0,"bcRole":1,"peers":0,"meTile":0,"camPeer":0,"clog":0,"micPeer":0,"renegotiate":1,"rosterIds":0,"knownTotal":1,"rosterTiles":0,"updateTile":1,"updateStatus":1,"meshSeat":0,"meshNode":0,"roomDig":1,"roomPastSection":0,"SCALE":0,"powNow":0,"IS_MOBILE":0,"powDials":0,"setStatus":0,"uiText":1,"stHold":0,"seatDark":0,"forcedCamOff":0,"vqRung":0,"rung":0,"LADDER":0,"stageCeilingKbps":1,"screenCeilingKbps":1,"stageSenders":0,"auxSenders":0,"lowSenders":0,"net":0,"meterFor":1,"sayState":0,"IS_ANDROID":0,"botParks":1,"visParkSent":0,"dcSend":0,"hasPendingTx":0,"ensureAc":1,"ac":0,"newMeetAudioContext":1,"occPid":0,"pipePeers":1,"preferHwVideo":1,"modOf":1,"stageSeats":0,"digLists":0,"stageHeldAt":0,"stageFeedAt":0,"stageViewNow":0,"kfAsker":0,"addAux":0,"isStageJob":0,"auxDrop":1,"stopAuxTx":1,"DEBUG_ON":0,"modBlurOn":0,"meshCoord":0,"speakingOf":0,"rowMixTalkAt":0,"subWant":0,"myIdentity":0,"labelFor":0,"iAmWaiting":1,"peerWaits":1,"fitFor":0,"pipeVideo":0,"pipeStg":0,"STAGE_FPS":0,"stageCell":1,"STAGE_MAXW":0,"stageFps":1,"freshSt":0,"pwBlocked":0,"bannedOut":0,"mediaJoined":0,"RECOVER_MEDIA_KEY":0,"updateRoomKey":0,"bcHostStored":0,"paintOnAir":1,"broadcastStatus":1,"updateMediaSession":1,"screenSteppedUp":0,"setStage":1,"refreshAllTiles":1,"rbCap":0,"rbLength":1,"rbTracks":1,"rbDrop":1,"bcSeeding":0,"releaseLeaveAsk":1,"rbStop":1,"rbNoun":0,"serviceHeard":0,"rowMates":0,"isHeld":1,"botHidden":1,"TIMING_KEY":0,"digStageEntry":0,"rosterNames":0,"foldName":1,"canStage":0,"lsGet":0,"CC_ON_PHONE":0,"meters":0,"myVoiceAt":0,"lsSet":0,"ccLocalQ":0,"CC_LANG_KEY":0,"trEnOn":0,"capSend":1,"trLangOf":0,"addTranscriptLine":1,"capEarsOnly":1,"capTrust":0,"trLang":1,"trKeeps":1,"trEnOnlyEnglish":1,"capSpotQueue":1,"capPublish":1,"trForget":1,"ccLang":0,"trDrops":0,"capTraceGate":1,"myVoiceFrom":0,"trLangKnown":1,"myVoiceSinceFinal":0,"ccDevNotice":1,"trEchoHeld":1,"ccShow":0,"trBlocks":1,"trNote":1,"modTable":0,"setMod":1,"AI_SPARK_SVG":0,"chatOpen":0,"room":0,"recRoomWord":1,"bcLastService":0,"BC_INTENT":0,"recSrcDirty":0,"recStructSig":0,"bcKeepUserStop":0,"amGloballyMuted":1,"micLockWords":1,"capClosed":0,"bcWatchingViewer":1,"enforceBroadcastSeat":1,"lateAsk":0,"lateWant":0,"bootGumPending":0,"reactRoomState":1,"camOnWords":1,"statusWords":0,"lateGen":0,"lateWon":0,"lateTimer":0,"LATE_ASK_MS":0,"carryOutAc":0,"blurLevel":0,"setPersonalBlur":1,"carryHosts":0,"carryG":0,"meOnStage":1,"shareOnlyStage":1,"personOnStage":1,"seatSelfLeased":0,"mainVideoChoice":1,"outboundPlan":1,"stageFeedVideo":1,"stageVideoChoice":1,"participantCount":1,"deepInView":1,"isRedun":0,"onStageNow":1,"screenSharers":0,"roomSingOn":0,"singOf":0,"capCovered":1,"trWrites":1,"idleNow":0,"lastActive":0,"lastQ":0,"MP":0,"battNow":0,"micGrabbing":0,"micWant":0,"micMode":0,"micUnmuteAfter":0,"micPickPrev":0,"pipeEnabled":0,"MPipe":0,"stgBeats":0,"STG_VP_MAX":0,"swapPicLast":0,"swapPicHoldAt":0,"swapPicRing":0,"STG_BEAT_STALE_MS":0,"STG_BEAT_SEEN":0,"stgBeatCost":0,"STG_BEAT_MS":0,"timing":0,"whisperReady":0,"planMeasured":1,"reconcileMain":1,"actingHead":1,"inboundPlan":1,"owedStream":1,"mosAnn":0,"mosIn":0,"mosStandby":0,"claimMos":1,"stgStale":1,"dropMosIn":1,"dropStandby":1,"stgEnded":1},"view":{"blurA":0,"blurActx":0,"blurB":0,"blurBctx":0,"paintAvatarCanvas":1,"phoneLayout":1,"showAvatarTrack":1,"stagefeedEl":0,"stadiumEl":0,"showFlipButton":1,"showCamBack":1,"paintSpkBtn":1,"paintStadiumTile":1,"paintStageStrip":1,"paintControls":1,"showResharePrompt":1,"hideResharePrompt":1,"paintShare":1,"dropStaleShareWin":1,"paintRb":1,"rbCanvas":1,"paintRbNow":1,"paintFaders":0,"timingRow":0,"paintWspChip":1,"paintCcState":1,"paintTxMark":1,"capCardRefresh":1,"paintWspStatus":1,"paintCcView":1,"showCaption":1,"ccDockBtn":0,"hideCaptions":1,"renderTranscript":1,"renderChat":1,"chatPanel":0,"paintChatBtn":1,"paintRoomTrust":1,"showServiceEnded":1,"showRecReplay":1,"recBtn":0,"showRecOptions":1,"roomAudioOn":1,"micBtn":0,"placeDockPopover":1,"unmuteBtn":0,"camBtn":0,"topNameModal":1,"handBtn":0,"chatPanelOpen":1,"keysModal":0,"syncModalFocus":1}}, stamp: "d49d42da" };
   (GifOS.coreParts = GifOS.coreParts || {})["media"] = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

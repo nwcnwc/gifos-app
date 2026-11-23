@@ -1,6 +1,10 @@
 {
  "note": "The none of each media-plane variable the core reads: what a host without the browser media part hands the core in its place (null | false | 0 | '' | [] | {} | {\"$\":\"Map\"} | {\"$\":\"Set\"}). Checked by gifos core28/nones.js.",
  "nones": {
+  "MOS_GRACE": null,
+  "MOS_SETTLE": null,
+  "STG_PIC_LIVE_MS": null,
+  "STG_ZERO_MS": null,
   "WEBKIT_TILE": false,
   "WSP_WEAK": null,
   "avatarPipe": null,
@@ -34,13 +38,8 @@
   "mosFb": {
    "$": "Map"
   },
-  "mosIn": {
-   "$": "Map"
-  },
+  "mosHeld": null,
   "mosJobs": {
-   "$": "Map"
-  },
-  "mosStandby": {
    "$": "Map"
   },
   "packLoop": null,
@@ -69,6 +68,7 @@
   "stagedSelfWas": false,
   "stripPack": null,
   "trackQ": null,
+  "vpId": null,
   "wakeLock": null,
   "whisperRescan": null,
   "wkFwdCopies": {
