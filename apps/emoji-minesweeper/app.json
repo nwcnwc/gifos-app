@@ -4,8 +4,8 @@
   "appId": "emoji-minesweeper",
   "name": "Emoji Minesweeper",
   "shortName": "Minesweeper",
-  "version": "1.0",
-  "minBuild": 947,
+  "version": "1.1",
+  "minBuild": 5861,
   "tagline": "Minesweeper with emoji. Race a friend on the same board.",
   "description": "A minesweeper board made of emoji — chicks, cake, flowers, storms, whichever set you pick. Tap a square to step on it. Hold (or right-click) to plant a flag. Double-tap a number to open the squares around it. Change the size and how many mines before you start.\n\nOn your own it is the original game. Send the invite and you both get the same board: first to clear it wins, and you can see each other's times as you go.\n\nYour last board size is remembered.\n\nAn unofficial port of emoji-minesweeper by muan. This copy adds the race, and a long-press so a phone can plant a flag.",
   "author": {
@@ -40,14 +40,14 @@
   "cover": "/apps/emoji-minesweeper/cover.jpg",
   "screenshots": [],
   "gif": "/apps/emoji-minesweeper/emoji-minesweeper.gif",
-  "bytes": 195640,
+  "bytes": 196708,
   "download": 0,
   "provides": null,
-  "sha256": "9a604324008d7d40ae0e52293a27e485c47634df1e3f7e33c214e7aac8cf4312",
+  "sha256": "1c56639d38f63bb35af4c323acf3920426fc665cc509543ae05306eb1ccb94dd",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-22"
   },
   "porter": {
     "name": "GifOS",

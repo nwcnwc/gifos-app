@@ -4,8 +4,8 @@
   "appId": "io-808",
   "name": "iO-808",
   "shortName": "808",
-  "version": "1.0.0",
-  "minBuild": 947,
+  "version": "1.0.1",
+  "minBuild": 5861,
   "tagline": "A silver 808 on the table. Tap the steps. Share a beat.",
   "description": "Sixteen yellow buttons in a row, cream labels, orange knobs. Bass drum, snare, toms, hats, cowbell, clap — the usual kit. Tap a step to put a hit on it, twist a knob for tone or decay, press Start, and the lights walk.\n\nYour patterns stay on this device, inside the app. Close it, come back, the beat is where you left it.\n\nPress Share a pattern, then Invite (in the GifOS menu), and send the link. The friend who opens it gets the same beat — same steps, same knobs, same tempo.\n\nAn unofficial port of io-808 by Vincent Riemer. Bugs go to GifOS, not upstream.",
   "author": {
@@ -41,14 +41,14 @@
   "cover": "/apps/io-808/cover.jpg",
   "screenshots": [],
   "gif": "/apps/io-808/io-808.gif",
-  "bytes": 203741,
+  "bytes": 204776,
   "download": 0,
   "provides": null,
-  "sha256": "8f9e14be54d4e41c78c7a0e6e45dcadd4bf8f750cebfba09b545bdad63094401",
+  "sha256": "9831e453ff007afec85799a7b7139e0191bd9e3d32968b774ab1ec099591da5d",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-23"
   },
   "porter": {
     "name": "GifOS",

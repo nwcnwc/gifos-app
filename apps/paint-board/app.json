@@ -4,8 +4,8 @@
   "appId": "paint-board",
   "name": "Paint Board",
   "shortName": "Paint Board",
-  "version": "1.0",
-  "minBuild": 947,
+  "version": "1.1",
+  "minBuild": 5861,
   "tagline": "A freehand board with wild brushes. Draw together.",
   "description": "Paint with a dozen brushes — a plain pencil, a rainbow, a spray of pixels, a mesh that knits itself, thorns, waves, stars. Change the colour, the thickness, undo, and when you want a picture in your hands, save it as a PNG on this device.\n\nWhat you draw stays on this device, inside the app. Close it, open it later, the picture is where you left it.\n\nPress Draw together, then Invite (in the GifOS menu), and everyone who opens the link paints on the same board. Each person draws their own strokes; they land on the shared board.\n\nAn unofficial port of paint-board by LHRUN. Bugs go to GifOS, not upstream.",
   "author": {
@@ -41,14 +41,14 @@
   "cover": "/apps/paint-board/cover.jpg",
   "screenshots": [],
   "gif": "/apps/paint-board/paint-board.gif",
-  "bytes": 194146,
+  "bytes": 195292,
   "download": 0,
   "provides": null,
-  "sha256": "3fc11bc94aa834e4bb4d9e755b634187e248a595a4dd2b6559f93a9695dd553b",
+  "sha256": "a064ab6afa3b3797d8aa1ed05cf61d36eb5397952db4a0b092ee4cb093b1e9b9",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-23"
   },
   "porter": {
     "name": "GifOS",

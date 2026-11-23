@@ -4,8 +4,8 @@
   "appId": "js-gauntlet",
   "name": "Dungeon Party",
   "shortName": "Dungeon",
-  "version": "1.0.1",
-  "minBuild": 947,
+  "version": "1.1.0",
+  "minBuild": 5861,
   "tagline": "Gauntlet: four classes, one dungeon, friends join from one invite.",
   "description": "Send Invite in the bar above. Extra adventurers walk into the same dungeon — warrior, valkyrie, wizard, elf.\n\nOn your own it is Jake Gordon's HTML5 dungeon crawler: pick a class, shoot the generators, grab the key, find the exit. Health ticks down on its own. Potions clear the room.\n\nOn a phone the pad is move, fire, and potion. On a computer it is the arrows or WASD, space to fire, enter for a potion. Your high score and how far you got are saved.\n\nAn unofficial port of HTML5 Gauntlet by Jake Gordon, MIT-licensed. This copy adds the extra adventurers. The dungeon is silent: the original music was licensed only for that project. Not affiliated with Namco.",
   "author": {
@@ -38,14 +38,14 @@
   "cover": "/apps/js-gauntlet/cover.jpg",
   "screenshots": [],
   "gif": "/apps/js-gauntlet/js-gauntlet.gif",
-  "bytes": 1144624,
+  "bytes": 1145819,
   "download": 0,
   "provides": null,
-  "sha256": "4c37b492ba71c29b94769828d3a854581560c49e1f350e511a58c4e9e4114ee7",
+  "sha256": "c400c5956a3441fcbdd45b88bf8f6aac42f864b44bc5761de74f9d4dc89bbe83",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-22"
   },
   "porter": {
     "name": "GifOS",

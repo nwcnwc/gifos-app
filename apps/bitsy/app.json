@@ -4,8 +4,8 @@
   "appId": "bitsy",
   "name": "Bitsy",
   "shortName": "Bitsy",
-  "version": "1.0",
-  "minBuild": 947,
+  "version": "1.1",
+  "minBuild": 5861,
   "tagline": "A tiny world. Walk around. Make one. Share it.",
   "description": "A little room you can walk around in. Arrows or a swipe. Talk to whoever is there. Pick things up.\n\nA few worlds already live here. Open one and wander. If you want a world of your own, press Make: draw the floor, draw a friend, write what they say. The whole world is a short piece of writing you can copy.\n\nYour world stays on this device, inside the app. Close it, come back, the room is where you left it.\n\nPress Share the world, then Invite (in the GifOS menu), and everyone who opens the link walks in the same room. When you change the world, they see it. When they change it, you see it.\n\nAn unofficial port of Bitsy by Adam le Doux. Bugs go to GifOS, not upstream.",
   "author": {
@@ -42,14 +42,14 @@
   "cover": "/apps/bitsy/cover.jpg",
   "screenshots": [],
   "gif": "/apps/bitsy/bitsy.gif",
-  "bytes": 296014,
+  "bytes": 296802,
   "download": 0,
   "provides": null,
-  "sha256": "37ea8bb1c1d1387ecd6113b6906cd8b7f8dea036bfe878e282a509d8115f6216",
+  "sha256": "4a0653083b285cd131fba96ee50a8bf43eaad05bad019ff7803178c0c27f548d",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-22"
   },
   "porter": {
     "name": "GifOS",

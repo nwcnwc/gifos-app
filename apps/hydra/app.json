@@ -4,8 +4,8 @@
   "appId": "hydra",
   "name": "Hydra",
   "shortName": "Hydra",
-  "version": "1.0.0",
-  "minBuild": 947,
+  "version": "1.1",
+  "minBuild": 5861,
   "tagline": "The patch lives in the GIF. Invite jams the same synth — no account, no server.",
   "description": "A live-coded video synth: oscillators, kaleidoscopes, noise, feedback. The picture is the window — type a chain on it, press Run, it moves. Close it and come back — the last patch is still there, inside the file.\n\nWant a friend on the same synth? Press Jam together, then Invite in the bar above the app, and send the link. You both run this patch. When anyone presses Run, everyone sees it. Playing alone is the original toy.\n\nThere is no camera and no microphone in this copy: generated sources only (osc, noise, voronoi, shape), plus the last frame (src(o0)). Offline, no account.\n\nAn unofficial port of Hydra by Olivia Jack. Bugs go to GifOS, not upstream.",
   "author": {
@@ -41,14 +41,14 @@
   "cover": "/apps/hydra/cover.jpg",
   "screenshots": [],
   "gif": "/apps/hydra/hydra.gif",
-  "bytes": 229739,
+  "bytes": 230916,
   "download": 0,
   "provides": null,
-  "sha256": "286b72af52a3196a28c0134dc0354fad77eebf164fe602c06a32cb4127b09214",
+  "sha256": "c68db2f0f9c263a084873287d63c6dcfea0d439afa6686a03241ad004c3a3d29",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-22"
   },
   "porter": {
     "name": "GifOS",

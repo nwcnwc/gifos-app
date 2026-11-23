@@ -110,6 +110,8 @@ jobs:
             --exclude '/package.json' \
             --exclude '/apps/pdf-tables-ocr/pdf-tables-ocr.gif' \
             ./ dist/
+          # Pages takes at most 20,000 files: older release lines keep only their base and last hotfix.
+          node .github/scripts/prune-versions.mjs dist
           # Test, proof and design files are never published.
           for d in test qa proof evidence docs design; do
             if [ -e "dist/$d" ]; then echo "::error::$d was staged for the site"; exit 1; fi
@@ -157,6 +159,10 @@ jobs:
         if: ${{ !inputs.models_only }}
         run: |
           set -euo pipefail
+          # Cloudflare Pages refuses more than 20,000 files. Fail here with headroom, before the upload.
+          n=$(find dist -type f | wc -l)
+          echo "site files = $n"
+          if [ "$n" -gt 19000 ]; then echo "::error::site copy has $n files; Pages takes at most 20,000 (see .github/scripts/prune-versions.mjs)"; exit 1; fi
           W="$RUNNER_TEMP/tools/node_modules/.bin/wrangler"
           "$W" pages deploy dist \
             --project-name gifos \

@@ -4,8 +4,8 @@
   "appId": "fieldplay",
   "name": "Field Play",
   "shortName": "Field",
-  "version": "1.0.0",
-  "minBuild": 947,
+  "version": "1.1.0",
+  "minBuild": 5861,
   "tagline": "A plane of arrows. Pour particles with a finger and watch them flow.",
   "description": "The last field, camera, and knobs are saved with the app. Press Play together, then Invite in the bar above the app, and a friend lands on the same recipe.\n\nEvery point on the plane has a little arrow. Particles follow those arrows: spirals, cogs, rain, a black hole. Tap a named field to try one. Tap the picture to pour more particles. Drag to pan, pinch or scroll to zoom. Change a number in the recipe, press Apply, and the flow becomes yours.\n\nOn a phone the recipe sheet starts closed so the field fills the screen. Recipe opens the program and the knobs.\n\nAn unofficial port of Field Play by anvaka.",
   "author": {
@@ -42,14 +42,14 @@
   "cover": "/apps/fieldplay/cover.jpg",
   "screenshots": [],
   "gif": "/apps/fieldplay/fieldplay.gif",
-  "bytes": 206317,
+  "bytes": 207634,
   "download": 0,
   "provides": null,
-  "sha256": "87e71c5c8000d779f0bab501324b2c971ad3df06cb7fa99d2310234db5e9db0d",
+  "sha256": "0bab059c91de24ba0b1ed95e4e59a3427f2b4974e500ec45080ddc3624b91fcd",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-22"
   },
   "porter": {
     "name": "GifOS",
