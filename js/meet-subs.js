@@ -523,8 +523,35 @@
   let hooks = {};
   function stopTimer() { if (meet && meet.timer) { clearTimeout(meet.timer); meet.timer = null; } }
   function schedule(ms) { stopTimer(); if (meet) meet.timer = setTimeout(renewNow, ms); }
+  // ---- this browser's memory of the meetings its rights power -------------------------------
+  // The payment service knows only meeting tags (never a room's name), so the question "move your plan here?" names the
+  // other meetings from this memory: tag -> {name (as the person saw it), people (last count), at}. Every tab of this
+  // browser shares it; a meeting powered from another browser is not in it.
+  const MEM_KEY = 'gifos-sub-meetings';
+  const MEM_MAX = 100;
+  function noteMeeting(tag) {
+    if (!tag) return;
+    let name = null, people = null;
+    try { name = hooks.name ? String(hooks.name() || '').slice(0, 80) : null; } catch (e) {}
+    try { const n = hooks.people ? Number(hooks.people()) : NaN; people = Number.isInteger(n) && n > 0 ? n : null; } catch (e) {}
+    const mem = readJson(MEM_KEY) || {};
+    const old = mem[tag] || {};
+    mem[tag] = { name: name || old.name || null, people: people || old.people || null, at: nowS() };
+    const keys = Object.keys(mem);
+    if (keys.length > MEM_MAX) keys.sort((a, b) => (mem[a].at || 0) - (mem[b].at || 0)).slice(0, keys.length - MEM_MAX).forEach((k) => { delete mem[k]; });
+    writeJson(MEM_KEY, mem);
+  }
+  // moveOptions(subFull, passFull) -> {places, entries:[{right, meeting, name, people, at}]}: what the question lists.
+  function moveOptions(subFull, passFull) {
+    const mem = readJson(MEM_KEY) || {};
+    const entries = [];
+    const add = (right, f) => { for (const x of (f && f.meetings) || []) { const k = mem[x.meeting] || {}; entries.push({ right, meeting: x.meeting, name: k.name || null, people: k.people || null, at: x.at || k.at || null }); } };
+    add('sub', subFull); add('pass', passFull);
+    return { places: ((subFull && subFull.keep) || 0) + ((passFull && passFull.keep) || 0), entries };
+  }
   function take(j) {
     meet.ticket = { ticketJson: j.ticketJson, sig: j.sig }; meet.exp = j.exp; meet.gen = j.gen; meet.tier = j.tier || meet.tier;
+    noteMeeting(meet.tag);
     meet.grants = SUB.ownTicketGrants(j.ticketJson);   // what this ticket grants in this meeting (its signed line items)
     schedule((j.renewEvery || SUB.RENEW_EVERY_S) * 1000);
     try { if (hooks.onTicket) hooks.onTicket(meet.ticket); } catch (e) {}
@@ -574,14 +601,26 @@
       // COUNTS STACK (Nathan 2026-11-22): with a pass held too, ask for a place only if one is free (ifFree); when the
       // subscription is full and the pass holds this meeting, the pass carries it; when every right is full, the
       // subscription takes it from its oldest meeting.
+      // ASK BEFORE MOVING (Nathan 2026-11-22): while a place is free it is simply taken; when every place of every
+      // right is full, the person chooses which meeting gives up its place, or keeps this one on the free defaults.
+      // A page with no screen (and no chooser) is never asked: its newest meeting wins, as before.
+      const choose = hooks.choose || (root.document && root.document.body ? askMove : null);
       const withPass = !!(await livePass().catch(() => null));
-      let j = await post('/gifos/sub/join', await signed('join:' + m.tag, { meeting: m.tag, ifFree: withPass }, m.subId));
+      let j = await post('/gifos/sub/join', await signed('join:' + m.tag, { meeting: m.tag, ifFree: withPass || !!choose }, m.subId));
       if (meet !== m) return null;
       if (j.full) {
         const pt = pmeet && pmeet.room === room ? await pmeet.joining : null;
         if (meet !== m) return null;
         if (pt) { m.moved = 'full'; return null; }
-        j = await post('/gifos/sub/join', await signed('join:' + m.tag, { meeting: m.tag }, m.subId));
+        let drop;
+        if (choose) {
+          const pick = await choose(moveOptions(j, pmeet && pmeet.room === room ? pmeet.full : null)).catch(() => null);
+          if (meet !== m) return null;
+          if (!pick || pick.keep) { m.moved = 'kept'; return null; }   // this meeting runs on the free defaults
+          if (pick.right === 'pass') { m.moved = 'full'; passJoin(room, true, true, pick.meeting); return null; }
+          drop = pick.meeting;
+        }
+        j = await post('/gifos/sub/join', await signed('join:' + m.tag, drop ? { meeting: m.tag, drop } : { meeting: m.tag }, m.subId));
         if (meet !== m) return null;
       }
       if (!j.active) { m.moved = 'inactive'; return null; }
@@ -619,6 +658,7 @@
   }
   function passTake(m, j) {
     m.ticket = { ticketJson: j.ticketJson, sig: j.sig }; m.exp = j.exp; m.gen = j.gen; m.until = j.until || m.until; m.moved = null;
+    noteMeeting(m.tag);
     m.grants = SUB.ownTicketGrants(j.ticketJson);   // what this pass grants in this meeting (its signed line items)
     passSchedule(m, (j.renewEvery || SUB.RENEW_EVERY_S) * 1000);
     passChanged();
@@ -649,7 +689,8 @@
   }
   // evict: a person's act (a pass bought or begun here) takes the meeting even when every place is held; otherwise, with a
   // subscription held too, the pass asks for a place only if one is free (ifFree: counts stack).
-  function passJoin(room, force, evict) {
+  // drop: the meeting the person chose to take the pass from (when every place is full).
+  function passJoin(room, force, evict, drop) {
     if (!force && pmeet && pmeet.room === room && (pmeet.ticket || pmeet.moved || pmeet.pending)) return pmeet.joining;
     passStop();
     const m = pmeet = { room, tag: null, ticket: null, exp: 0, gen: 0, until: 0, timer: null, moved: null, joining: null, pending: true };
@@ -658,9 +699,9 @@
       const w = await wallet();
       m.tag = await SUB.meetingTag(room);
       const ifFree = !evict && !!(await credential());
-      const j = await post('/gifos/pass/join', await passSigned('pass-join:' + m.tag, { meeting: m.tag, passes: w.passes, ifFree }));
+      const j = await post('/gifos/pass/join', await passSigned('pass-join:' + m.tag, Object.assign({ meeting: m.tag, passes: w.passes, ifFree }, drop ? { drop } : {})));
       if (pmeet !== m) return null;
-      if (j.full) { m.moved = 'full'; return null; }
+      if (j.full) { m.moved = 'full'; m.full = { keep: j.keep || 1, meetings: j.meetings || [] }; return null; }
       if (!j.active) { m.moved = 'inactive'; return null; }
       passTake(m, j);
       return m.ticket;
@@ -1233,6 +1274,46 @@
     if (m && m.dataset.full) { delete m.dataset.full; m.style.display = 'none'; }
   }
 
+  // The small card the host's prompts use (the turned-away prompt, the move question).
+  const CARD_STYLE = 'position:fixed;left:50%;bottom:5.5rem;transform:translateX(-50%);z-index:41;max-width:min(92vw,28rem);background:var(--c-white,#fff);color:var(--c-ink,#1d1d1f);border:1px solid var(--c-line,#e8ecf1);border-radius:.6rem;padding:.6rem .8rem;box-shadow:0 12px 32px rgba(0,0,0,.5);font:14px/1.4 system-ui,sans-serif;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap';
+
+  // ASK BEFORE MOVING (Nathan 2026-11-22): every place of every right this browser holds is in use, and this meeting
+  // has just started. opts: {places, entries:[{right, meeting, name, people, at}]} (moveOptions). One place: "Your plan
+  // is powering 'X' (N people). Move it here?" with Move it here / Keep it there; several: which meeting to take it
+  // from, or keep this one free. Both offer more meetings at once. -> {right, meeting} | {keep: true}.
+  function askMove(opts) {
+    return new Promise((resolve) => {
+      if (typeof document === 'undefined' || !document.body || !opts || !opts.entries || !opts.entries.length) return resolve(null);
+      const old = document.getElementById('sub-move'); if (old) old.remove();
+      const box = el('div', { id: 'sub-move', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'sub-move-title', style: CARD_STYLE });
+      const done = (v) => { box.remove(); resolve(v); };
+      const nameOf = (e) => e.name || tx('subMoveOther', 'another meeting');
+      const line = (id, text, strong) => { const p = el('p', { id, style: 'flex:1 1 100%;margin:0' + (strong ? ';font-weight:600' : '') }, text); box.appendChild(p); return p; };
+      const btn = (id, text, v) => { const b = el('button', { type: 'button', id, class: BTN, style: BTN_STYLE }, text); b.onclick = () => done(v); box.appendChild(b); return b; };
+      const free = SUB.FREE_LIMIT;
+      if (opts.entries.length === 1 && opts.places <= 1) {
+        const e = opts.entries[0];
+        line('sub-move-title', fill(e.people ? tx('subMoveOne', 'Your plan is powering \u201c{name}\u201d ({n} people). Move it here?') : tx('subMoveOneNoCount', 'Your plan is powering \u201c{name}\u201d. Move it here?'), { name: nameOf(e), n: e.people }), true);
+        line('sub-move-note', fill(tx('subMoveNote', 'That meeting will then let in only {free} new people and lose firewall video.'), { free }));
+        line('sub-move-teach', tx('subMoveTeach', 'Your plan powers one meeting at a time.'));
+        btn('sub-move-go', tx('subMoveGo', 'Move it here'), { right: e.right, meeting: e.meeting });
+        btn('sub-move-keep', tx('subMoveKeep', 'Keep it there'), { keep: true });
+      } else {
+        line('sub-move-title', tx('subMoveMany', 'Every meeting your plans cover is in use. Take one for this meeting?'), true);
+        opts.entries.forEach((e, i) => btn('sub-move-from-' + i, e.people ? fill(tx('subMoveFrom', 'Take it from \u201c{name}\u201d ({n} people)'), { name: nameOf(e), n: e.people }) : fill(tx('subMoveFromNoCount', 'Take it from \u201c{name}\u201d'), { name: nameOf(e) }), { right: e.right, meeting: e.meeting }));
+        btn('sub-move-keep', tx('subMoveKeepFree', 'Keep this meeting free'), { keep: true });
+      }
+      line('sub-move-free', fill(tx('subMoveFreeNote', 'A meeting your plan does not power runs on the free plan: up to {free} people, voice only through firewalls.'), { free }));
+      // More meetings at once: the smallest plan with more places than these rights have, or every plan.
+      const up = SUB.TIER_IDS.map((t) => SUB.TIERS[t]).filter((t) => t.meetings > Math.max(1, opts.places) && t.cents.monthly && SUB.tiersSoldIn(appNow()).indexOf(t.id) >= 0)[0];
+      const p = line('sub-move-up', up ? fill(tx('subMoveUp', 'More meetings at once: {plan} powers {n} at once, from {price} a month.'), { plan: planShort(up.id), n: up.meetings, price: up.price }) + ' ' : '');
+      const a = el('a', { id: 'sub-move-plans', href: '/subscription', target: '_blank', rel: 'noopener' }, tx('subAllPlans', 'All plans'));
+      p.appendChild(a);
+      document.body.appendChild(box);
+      const first = box.querySelector('button'); if (first) try { first.focus(); } catch (e) {}
+    });
+  }
+
   // The host of a room with a people line, when its doors turned people away:
   // how many, and the plan whose rights carry no line, in one tap.
   // n: how many people could not get in (1 when not counted).
@@ -1249,7 +1330,7 @@
       if (msg && !(go && go.disabled)) msg.textContent = words();   // a purchase under way keeps its own words
       return true;
     }
-    bar = el('div', { id: 'sub-host-up', role: 'status', 'aria-live': 'polite', style: 'position:fixed;left:50%;bottom:5.5rem;transform:translateX(-50%);z-index:41;max-width:min(92vw,28rem);background:var(--c-white,#fff);color:var(--c-ink,#1d1d1f);border:1px solid var(--c-line,#e8ecf1);border-radius:.6rem;padding:.6rem .8rem;box-shadow:0 12px 32px rgba(0,0,0,.5);font:14px/1.4 system-ui,sans-serif;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap' });
+    bar = el('div', { id: 'sub-host-up', role: 'status', 'aria-live': 'polite', style: CARD_STYLE });
     const msg = el('span', { id: 'sub-host-up-msg', style: 'flex:1 1 12rem' }, words());
     bar.appendChild(msg);
     if (up) {
@@ -1290,6 +1371,7 @@
   }
 
   GifOS.meetSubs = {
+    askMove, moveOptions,
     rights, planRights, refresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, subSelection, applySubSelection, paintNow, paintSettings, openSettings, openSubscribe, mayCreateAdminRoom, showFull, hideFull, fullWaiting, fullOffers, hostOffer, doorRight, showHostPrompt,
     roomOrder, roomTier, proveAtDoor, checkShown, newNonce,
     appNow, joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureCurrent, captureOrder, captureKeys, fileBytes, downloadFile, useFile, librarySigner, restoreInApp,
