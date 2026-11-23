@@ -2,12 +2,22 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.6",
+      "date": "2026-11-23",
+      "headline": "Under the hood: more groundwork for lighter meeting bots",
+      "critical": false,
+      "features": [],
+      "fixes": [
+        "Under the hood: more groundwork for lighter meeting bots."
+      ]
+    },
+    {
       "version": "0.9.28.5",
       "date": "2026-11-23",
-      "headline": "Agents and bots can join meetings without a browser",
+      "headline": "Under the hood: groundwork for lighter meeting bots",
       "critical": false,
       "features": [
-        "Bots and AI agents can now join a meeting without a browser: they show up in the people list, chat, and take their turn in shared apps like everyone else."
+        "Under the hood: groundwork for lighter meeting bots."
       ],
       "fixes": []
     },
