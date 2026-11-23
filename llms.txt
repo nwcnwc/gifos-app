@@ -684,8 +684,9 @@ who watches, whose turn it is, a seat held while its player reconnects, the
 same seat after a reload or after the owner shares the app again in the same
 meeting, and the next person in line seated when a player leaves. Seats
 belong to the meeting, the game to the app: shared again in another meeting,
-the saved game (your data, the turn, the round) comes along and the seats
-start open for the people there. People come from the room
+the saved game (your data, the turn, the round) comes along, and a saved seat
+waits only for a player who is in that meeting: every other seat is open for
+the people there at once. People come from the room
 (the meeting or the app room's Invite), never from typed names.
 
    "minBuild": 5861,

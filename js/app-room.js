@@ -9,8 +9,9 @@
  *     after a session is (re)started from saved state, by a saved holder the room has not yet heard, until the room's
  *     own hold (resumeMs) runs out.
  *   - The seats belong to the meeting, the game to the app: a session records the meeting it runs in (mt). Started
- *     again in the SAME meeting (a reload, a re-share) it keeps its seats; in another meeting its saved seats are
- *     open from the moment the owner knows which meeting it is in, and the game (turn, round) carries on.
+ *     again in the SAME meeting (a reload, a re-share) it keeps its seats; in another meeting a saved seat stays only
+ *     with a holder this meeting's room hears (the owner herself, a player who came along): every other saved seat
+ *     is open from the moment the owner knows which meeting it is in. The game (turn, round) carries on.
  *   - A holder the room stops hearing is "away" and keeps the seat for exactly as long as the roster keeps them; the
  *     seat frees in the same pass as the roster lets them go.
  *   - A freed seat goes to the first person in line; the turn stays with the seat.
@@ -146,11 +147,11 @@
     }
 
     // The meeting this share runs in (mt: an id the owner's page derives from the meeting, '' while unknown or with
-    // none): saved seats from another meeting are open; from this one they stay.
+    // none): saved seats from another meeting are open unless their holder is here; from this one they stay.
     function meet(mt) {
       if (!mt || typeof mt !== 'string') return;
       mt = str(mt, 64);
-      if (mt !== s.mt) { for (let i = 0; i < s.seats.length; i++) if (savedK.has(s.seats[i].k)) free(i); s.mt = mt; }
+      if (mt !== s.mt) { for (let i = 0; i < s.seats.length; i++) if (savedK.has(s.seats[i].k) && !heard.has(s.seats[i].k)) free(i); s.mt = mt; }
       savedK.clear();
     }
 
