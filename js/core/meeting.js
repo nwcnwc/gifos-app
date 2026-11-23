@@ -12237,7 +12237,9 @@
       // meeting that reaches no seat founds its island under the key every page holds from its link, so the door lists
       // its greeters beside the room's. Without it an island registers under a private key, the door refuses it, nobody
       // learns it exists, and no TURN link can be asked or vouched for (docs/turn-0926.md TURN.1, section 5).
-      Promise.all([debugFail('identity', ensureIdentity()), debugFail('adminkey', adminOpenKeyNow()), sha256hex('gifos-meeting-key|' + room + '|' + (av || ''))]).then(([identity, openKey, urlKeyHex]) => {
+      Promise.all([debugFail('identity', ensureIdentity()), debugFail('adminkey', adminOpenKeyNow()), sha256hex('gifos-meeting-key|' + room + '|' + (av || ''))]).then(([identity, openKey, urlKeyHex]) => (amAdmin && av   // DOOR.HOST: the first connection already carries the host's proof
+        ? admSigned('hostknock', { sid: sessId, by: identity.peerId }).then((w) => { if (w) admSigned.hk = { at: Date.now(), by: identity.peerId, q: '&hp=' + encodeURIComponent(JSON.stringify(w)) }; return [identity, openKey, urlKeyHex]; }, () => [identity, openKey, urlKeyHex])
+        : [identity, openKey, urlKeyHex])).then(([identity, openKey, urlKeyHex]) => {
       if (bootGen !== meshBootGen) return;   // superseded while the identity was minting
       booted = true; meshBootRetry = 0; clearTimeout(bootWatch);
       myId = identity.peerId; // S4: peer id = H(pubkey), unforgeable
@@ -12253,7 +12255,17 @@
         levers: { ISLAND_MODE: 1, URL_KEY: (parseInt(String(urlKeyHex).slice(0, 8), 16) | 1) >>> 0 },   // islands found under the meeting key (above)
         oldKeys: [prevRoomE2E, openKey].filter((k, i, all) => k && k !== roomE2E && all.indexOf(k) === i),   // a door blob one of these opens is behind me, not ahead (mesh-wire R6)
         excluded: isEjected, // ejected forgers: their mesh frames never reach the seat
-        urlParams: () => '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash),
+        // DOOR.HOST: the host's connections carry a host-key order ({act:'hostknock', sid}, by = my peer id), so the door never
+        // holds the host (its restart hold waits for greeters a relay restart cut; the host founds as their first would). Signed
+        // ahead, kept on admSigned.hk, re-signed every HOST_KNOCK_REFRESH_MS (the relay takes an order inside 5 minutes).
+        urlParams: () => {
+          const hk = admSigned.hk;
+          if (amAdmin && av && myId && (!hk || hk.by !== myId || Date.now() - hk.at > GifOS.timings.HOST_KNOCK_REFRESH_MS)) {
+            admSigned.hk = { at: Date.now(), by: myId, q: hk && hk.by === myId ? hk.q : '' };
+            admSigned('hostknock', { sid: sessId }).then((w) => { if (w && admSigned.hk && admSigned.hk.by === myId) admSigned.hk.q = '&hp=' + encodeURIComponent(JSON.stringify(w)); }, () => {});
+          }
+          return '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash) + (amAdmin && admSigned.hk && admSigned.hk.by === myId ? admSigned.hk.q : '');
+        },
         holdDoor: () => pwWaitProof && !meshCoord(),
         netTag: () => netTagNow,
         capable: () => { const hc = navigator.hardwareConcurrency | 0; return !IS_MOBILE && !(hc > 0 && hc <= 2); },   // a relayed pipe may end at my seat when it heads a row (the device class the mesh's tier reads)   // my registration at the door says which network I am on (the tag my beat carries)
