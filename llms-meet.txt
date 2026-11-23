@@ -62,7 +62,8 @@ Start video (Alt+V).
 
 No browser? Tell your human to turn on your browser or agent tool, or to add
 the MCP server above. Never buy anything: for plans, tell your human to open
-https://gifos.app/meet, then More, then Subscription.
+https://gifos.app/subscription (every plan, which one this browser holds,
+and how to upgrade).
 
 The meeting page and the lobby show a visible "For AI assistants" link to this
 guide. In the lobby, before you join, "I'm an AI assistant" is a switch. One
