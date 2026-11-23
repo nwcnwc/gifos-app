@@ -653,7 +653,7 @@
     }
     // L29, the fabric's half (sim mesh_lguard.inc lguardFabTick): the duties my cell owes in load units, the budget my
     // device shows it can carry, the ladder, the inbound watch, and the leave when my receivers and my own reading agree.
-    let lgCap = -1, lgReadAt = 0, lgLeft = false; const lgStarved = new Set();
+    let lgCap = -1, lgReadAt = 0, lgLeft = false; const lgStarved = new Set(), lgMuted = new Set();
     function lgFabric(s) {
       const K = C_.consts, full = s.tier === C_.enums.TIER_MOBILE ? K.L29_BUD_M : K.L29_BUD_D;
       if (s.lgQuit && !lgLeft) { lgLeft = true; if (measure.lgLeave) measure.lgLeave(); return; }
@@ -683,9 +683,17 @@
       if (w.TICK >= lgReadAt) { lgReadAt = w.TICK + K.L29_STARVE; const h = measure.lgHealth(); lgCap = h < 1 ? Math.min(lgCap, Math.ceil(s.lgLd[s.lgLvl] * h)) : Math.min(full, lgCap + 1); }
       s.lgBud = lgCap;
       s.lgLadder();
+      const say = (pid, hold, tag) => { const m = msg.newMsg('LGSTARVE'); if (tag) m.tag = tag; m.id = ID.nid(pid); m.to = me; m.from = -1; m.hold = hold ? 1 : 0; busAt(w.TICK + 1, m); };
+      // L29.5, the duty watch: my own word (I make none of my duty slots) and my reading of every
+      // owed inbound duty slot, from the core's per-slot arrival report (measure.lgNoMake / lgDutyMute), as tag 1.
+      if (measure.lgNoMake) s.l295No = !!measure.lgNoMake();
+      if (measure.lgDutyMute) {
+        const mu = new Set(measure.lgDutyMute());
+        for (const pid of mu) if (!lgMuted.has(pid)) { lgMuted.add(pid); say(pid, true, 1); }
+        for (const pid of [...lgMuted]) if (!mu.has(pid)) { lgMuted.delete(pid); say(pid, false, 1); }
+      }
       if (!measure.lgStarve) return;
       const now = new Set(measure.lgStarve());
-      const say = (pid, hold) => { const m = msg.newMsg('LGSTARVE'); m.id = ID.nid(pid); m.to = me; m.from = -1; m.hold = hold ? 1 : 0; busAt(w.TICK + 1, m); };
       for (const pid of now) if (!lgStarved.has(pid)) { lgStarved.add(pid); say(pid, true); }
       for (const pid of [...lgStarved]) if (!now.has(pid)) { lgStarved.delete(pid); say(pid, false); }
     }

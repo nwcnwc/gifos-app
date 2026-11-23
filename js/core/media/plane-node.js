@@ -69,6 +69,30 @@
       if (!stream || !track) return;
       for (const t of stream.getTracks()) if (t !== track && t.kind === track.kind && !live(t)) { try { stream.removeTrack(t); } catch (e) {} }
     }
+    // THE OWED SLOTS, MEASURED (L29.5), as the browser plane does: per owed inbound duty slot of the core's inboundPlan,
+    // arriving when the RTP packets the port counted on its stream's tracks (werift onReceiveRtp) moved since my last
+    // sample. Arrival, never level; nothing announced or delivered reads not arriving.
+    const rtpN = new WeakMap(), owedPk = new Map();
+    function rtpCount(t) {
+      if (!t) return 0;
+      let c = rtpN.get(t);
+      if (!c) { c = { n: 0 }; rtpN.set(t, c); try { if (t.onReceiveRtp && typeof t.onReceiveRtp.subscribe === 'function') t.onReceiveRtp.subscribe(() => { c.n++; }); } catch (e) {} }
+      return c.n;
+    }
+    function owedMeasure() {
+      if (typeof C.inboundPlan !== 'function' || typeof C.planMeasured !== 'function') return;
+      const out = [], seen = new Set();
+      for (const [pid, slot] of C.inboundPlan()) {
+        const k = pid + '|' + slot, st = C.owedStream(pid, slot); seen.add(k);
+        let n = -1; if (st) { n = 0; for (const t of st.getTracks()) n += rtpCount(t); }
+        const was = owedPk.get(k), sid = st ? st.id : null; owedPk.set(k, { sid, n });
+        out.push([pid, slot, n > 0 && !!was && was.sid === sid && n > was.n]);
+      }
+      for (const k of Array.from(owedPk.keys())) if (!seen.has(k)) owedPk.delete(k);
+      C.planMeasured('owed', out);
+    }
+    const owedT = setInterval(() => { try { owedMeasure(); } catch (e) {} }, GifOS.timings.OWED_SAMPLE_MS);
+    if (owedT && typeof owedT.unref === 'function') owedT.unref();   // a measurement never keeps the host alive
     function peerAudioTracks(p) {
       const out = [];
       for (const s of [p && p.stream].concat((p && p.incoming) || [])) for (const t of (s && s.getAudioTracks ? s.getAudioTracks() : [])) if (out.indexOf(t) < 0) out.push(t);
