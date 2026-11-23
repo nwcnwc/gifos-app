@@ -247,12 +247,21 @@
     writeState(next);
     return next;
   }
-  async function keepFresh() {
-    const c = await credential();
-    if (!c) return;
-    const lic = await verifiedLicense();
-    const st = readState();
-    if (!lic || lic.exp - nowS() < REFRESH_BEFORE_S || st.status === 'APPROVAL_PENDING') { try { await refresh(); } catch (e) {} }
+  // keepFresh() -> once this browser's license is fresh (fetched when missing or near its end). One check at a time: the
+  // page's boot starts it, and every reader of the license (Settings, the /subscription page) awaits the same one, so
+  // a returning subscriber whose license is not stored yet is never shown "no plan" while it is on its way.
+  let freshP = null;
+  function keepFresh() {
+    if (!freshP) {
+      freshP = (async () => {
+        const c = await credential();
+        if (!c) return;
+        const lic = await verifiedLicense();
+        const st = readState();
+        if (!lic || lic.exp - nowS() < REFRESH_BEFORE_S || st.status === 'APPROVAL_PENDING') { try { await refresh(); } catch (e) {} }
+      })().finally(() => { freshP = null; });
+    }
+    return freshP;
   }
 
   // ---- bought in the app: the store's purchase sheet ---------------------------
@@ -1400,7 +1409,7 @@
 
   GifOS.meetSubs = {
     askMove, moveOptions, showOverflowNote,
-    rights, planRights, refresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, subSelection, applySubSelection, paintNow, paintSettings, openSettings, openSubscribe, mayCreateAdminRoom, showFull, hideFull, fullWaiting, fullOffers, hostOffer, doorRight, showHostPrompt,
+    rights, planRights, refresh, keepFresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, subSelection, applySubSelection, paintNow, paintSettings, openSettings, openSubscribe, mayCreateAdminRoom, showFull, hideFull, fullWaiting, fullOffers, hostOffer, doorRight, showHostPrompt,
     roomOrder, roomTier, proveAtDoor, checkShown, newNonce,
     appNow, joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureCurrent, captureOrder, captureKeys, fileBytes, downloadFile, useFile, librarySigner, restoreInApp,
     passMeeting: () => (pmeet ? { grants: pmeet.grants || null, room: pmeet.room, gen: pmeet.gen, exp: pmeet.exp, until: pmeet.until, moved: pmeet.moved, held: !!pmeet.ticket } : null),

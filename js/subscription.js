@@ -69,7 +69,8 @@
   }
 
   function paint() {
-    return MS().credentialsNow().catch(function () { return { sub: null, passes: [], now: { why: 'none' } }; }).then(function (c) {
+    // The license first (as Settings does): the page's boot may still be fetching it, and the held plan is read from it.
+    return MS().keepFresh().catch(function () {}).then(function () { return MS().credentialsNow(); }).catch(function () { return { sub: null, passes: [], now: { why: 'none' } }; }).then(function (c) {
       var subTier = c.sub && c.sub.tier && SUB.TIERS[c.sub.tier] ? c.sub.tier : null;
       var from = subTier ? { tier: subTier, period: c.sub.period || 'monthly' } : null;
       // A cancelled plan is not replaced: a new plan is simply bought (it runs out by itself).
