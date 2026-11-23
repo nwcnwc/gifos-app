@@ -98,6 +98,7 @@
         const t = tr[j] === E.TIER_DESKTOP ? 0 : 1; if (t < pickT) { pickT = t; pick = j; }
       }
       if (pick < 0 && askW === 5 && heir >= 0 && heir !== ask && this.coord.pc !== 0 && col[heir] >= 0 && !this.lgLightSeat(col[heir]) && (ask !== 0 || own < 0 || own === col[heir] || l4Meet(this.l4NatOf(col[heir]), this.l4NatOf(own)))) pick = heir;   // L29.5: a seat that makes no duty slot trades even with the heir when no other mate can (a row of two)
+      if (pick < 0 && askW === 5 && ask === 0 && this.coord.pc !== 0) { for (let j = 1; j < C; j++) { const x = col[j]; if (x < 0 || j === ask || j === heir || this.lgLightSeat(x)) continue; if (ask === 0 && own >= 0 && own !== x && !l4Meet(this.l4NatOf(x), this.l4NatOf(own))) continue; const t = tr[j] === E.TIER_DESKTOP ? 0 : 1; if (t < pickT) { pickT = t; pick = j; } } }   // L29.5: then a carrying mate in a cell with a child row: still better than none
       if (pick < 0) return null;
       const a = ask === 0 ? this.id : col[Math.min(ask, pick)], b = ask === 0 ? col[pick] : col[Math.max(ask, pick)];
       this.trace('LG-PICK', this.id, this.coord, 'ask=%d with=%d', col[ask], col[pick]);
