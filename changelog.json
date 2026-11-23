@@ -2,6 +2,18 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.14",
+      "date": "2026-11-23",
+      "headline": "No more getting stuck knocking at the door",
+      "critical": false,
+      "features": [],
+      "fixes": [
+        "Coming back to a meeting while another of your devices sleeps (say, an iPad left open) no longer leaves you knocking: you get in within seconds.",
+        "The host gets straight into their own meeting, even when they arrive after a guest.",
+        "A meeting with no host present lets people in at once, up to the free size, instead of waiting for the host's plan."
+      ]
+    },
+    {
       "version": "0.9.28.13",
       "date": "2026-11-23",
       "headline": "You hear the people beside you as soon as you sit down",
