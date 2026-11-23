@@ -1330,14 +1330,14 @@
       const free = SUB.FREE_LIMIT;
       if (opts.entries.length === 1 && opts.places <= 1) {
         const e = opts.entries[0];
-        line('sub-move-title', fill(e.people ? tx('subMoveOne', 'Your plan is powering \u201c{name}\u201d ({n} people). Move it here?') : tx('subMoveOneNoCount', 'Your plan is powering \u201c{name}\u201d. Move it here?'), { name: nameOf(e), n: e.people }), true);
+        line('sub-move-title', fill(e.people === 1 ? tx('subMoveOne1', 'Your plan is powering \u201c{name}\u201d (1 person). Move it here?') : e.people ? tx('subMoveOne', 'Your plan is powering \u201c{name}\u201d ({n} people). Move it here?') : tx('subMoveOneNoCount', 'Your plan is powering \u201c{name}\u201d. Move it here?'), { name: nameOf(e), n: e.people }), true);
         line('sub-move-note', fill(tx('subMoveNote', 'That meeting will then let in only {free} new people and lose firewall video.'), { free }));
         line('sub-move-teach', tx('subMoveTeach', 'Your plan powers one meeting at a time.'));
         btn('sub-move-go', tx('subMoveGo', 'Move it here'), { right: e.right, meeting: e.meeting });
         btn('sub-move-keep', tx('subMoveKeep', 'Keep it there'), { keep: true });
       } else {
         line('sub-move-title', tx('subMoveMany', 'Every meeting your plans cover is in use. Take one for this meeting?'), true);
-        opts.entries.forEach((e, i) => btn('sub-move-from-' + i, e.people ? fill(tx('subMoveFrom', 'Take it from \u201c{name}\u201d ({n} people)'), { name: nameOf(e), n: e.people }) : fill(tx('subMoveFromNoCount', 'Take it from \u201c{name}\u201d'), { name: nameOf(e) }), { right: e.right, meeting: e.meeting }));
+        opts.entries.forEach((e, i) => btn('sub-move-from-' + i, e.people === 1 ? fill(tx('subMoveFrom1', 'Take it from \u201c{name}\u201d (1 person)'), { name: nameOf(e) }) : e.people ? fill(tx('subMoveFrom', 'Take it from \u201c{name}\u201d ({n} people)'), { name: nameOf(e), n: e.people }) : fill(tx('subMoveFromNoCount', 'Take it from \u201c{name}\u201d'), { name: nameOf(e) }), { right: e.right, meeting: e.meeting }));
         btn('sub-move-keep', tx('subMoveKeepFree', 'Keep this meeting free'), { keep: true });
       }
       line('sub-move-free', fill(tx('subMoveFreeNote', 'A meeting your plan does not power runs on the free plan: up to {free} people, voice only through firewalls.'), { free }));
