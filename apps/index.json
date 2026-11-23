@@ -6597,7 +6597,7 @@
       "appId": "pixel-paint",
       "name": "Pixel Paint",
       "shortName": "Pixel Paint",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "A tiny 32×32 pixel canvas. Draw a sprite. Draw together.",
       "author": {
         "name": "Kully",
@@ -6611,7 +6611,7 @@
         "name": "Pixel Paint",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -6634,15 +6634,15 @@
         252
       ],
       "cover": "/apps/pixel-paint/cover.jpg",
-      "bytes": 213731,
+      "bytes": 215189,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "5dac74fea6515205524c92fe8cf2febc6fa0c786df8d8159d0cc32a6df9c5e01"
+      "sha256": "e485413151015f8f2dd0c215f0073cb21b65490cc51574bf585f7ad6507f9422"
     },
     {
       "slug": "pixelit",
