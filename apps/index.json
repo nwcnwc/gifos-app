@@ -3692,7 +3692,7 @@
       "appId": "io-blobs",
       "name": "IO Blobs",
       "shortName": "Blobs",
-      "version": "1.1",
+      "version": "1.2",
       "tagline": "An agar-style arena. Everyone who opens your link swims in it with you.",
       "author": {
         "name": "vzhou842",
@@ -3706,7 +3706,7 @@
         "name": "example-.io-game",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -3726,15 +3726,15 @@
         168
       ],
       "cover": "/apps/io-blobs/cover.jpg",
-      "bytes": 202752,
+      "bytes": 203958,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "09a1a6ecb0a75678c06b4375560be403dc4dedf694c31ec0dd95dd9193a61d1f"
+      "sha256": "c168e21e4d97725e4ab939ad6f1e27cfc4ae14836e36565666fdea88c520443a"
     },
     {
       "slug": "isocity",
@@ -3939,7 +3939,7 @@
       "appId": "json-crack",
       "name": "JSON Crack",
       "shortName": "JSON",
-      "version": "1.0",
+      "version": "1.0.1",
       "tagline": "Paste JSON, see it as a graph. Your data stays on your device.",
       "author": {
         "name": "Aykut Saraç",
@@ -3953,7 +3953,7 @@
         "name": "JSON Crack",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-24",
       "updated": "2026-08-24",
@@ -3975,15 +3975,15 @@
         241
       ],
       "cover": "/apps/json-crack/cover.jpg",
-      "bytes": 198834,
+      "bytes": 199865,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "884883464742e4115583905dec9bfe8584e73d8ef04f50c0494d5850d1261c98"
+      "sha256": "78da68168570d887cf8a4b289c0892f52eb4446cbc8cb8c30c16522c00a2f27b"
     },
     {
       "slug": "json-diff",
@@ -5127,7 +5127,7 @@
       "appId": "mykonos",
       "name": "Mykonos",
       "shortName": "Mykonos",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "tagline": "White houses, a blue dome, and a little island to walk.",
       "author": {
         "name": "boona13",
@@ -5141,7 +5141,7 @@
         "name": "Mykonos Island Voxels",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -5162,15 +5162,15 @@
         168
       ],
       "cover": "/apps/mykonos/cover.jpg",
-      "bytes": 198658,
+      "bytes": 199793,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "4f7e41ca4933bce16b956b129461482232a2d9559e7f4a52734053eaf4b34f14"
+      "sha256": "1fdd89d047e6835d486c8488de63c57bfd58e2353e43e97a37e83a1e4084e9f5"
     },
     {
       "slug": "nonogram",
@@ -6394,7 +6394,7 @@
       "appId": "piano-trainer",
       "name": "Piano Trainer",
       "shortName": "Piano",
-      "version": "1.1",
+      "version": "1.2",
       "tagline": "Scales, chords, the circle of fifths, and a quiz to drill them.",
       "author": {
         "name": "Zane Helton",
@@ -6408,7 +6408,7 @@
         "name": "Piano Trainer",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-24",
       "updated": "2026-08-24",
@@ -6429,15 +6429,15 @@
         96
       ],
       "cover": "/apps/piano-trainer/cover.jpg",
-      "bytes": 199591,
+      "bytes": 200812,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "ba87f2be66089755b17f8a2aaf55a73fdc0275e9539bc1ee3460ac43fb3c113e"
+      "sha256": "db84671ab5a2e40b36c7632f21e3931b013071ad8864d3f906b53f827f8a79f0"
     },
     {
       "slug": "pickr",
@@ -7846,7 +7846,7 @@
       "appId": "slots",
       "name": "Slots",
       "shortName": "Slots",
-      "version": "1.1",
+      "version": "1.2",
       "tagline": "Five fruit reels and a lever. Friends watch the same spin from one link.",
       "author": {
         "name": "johakr",
@@ -7860,7 +7860,7 @@
         "name": "html5-slot-machine",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-24",
       "updated": "2026-08-24",
@@ -7881,15 +7881,15 @@
         48
       ],
       "cover": "/apps/slots/cover.jpg",
-      "bytes": 194552,
+      "bytes": 195737,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-11-11"
+        "ts": "2026-11-23"
       },
-      "sha256": "9481c7d8869caad86ea45ee5c291907c202b2f1d10e6e18db47d90fd1ac3a298"
+      "sha256": "1894390859eee76eaa71fa732463993280daff4e49d4aaafc83e1f7339520207"
     },
     {
       "slug": "smartcrop",
