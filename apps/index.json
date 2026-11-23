@@ -4233,7 +4233,7 @@
       "appId": "kana-quiz",
       "name": "Kana Quiz",
       "shortName": "Kana",
-      "version": "1.0.0",
+      "version": "1.1.2",
       "tagline": "Learn hiragana and katakana. Quiz yourself, or race a friend.",
       "author": {
         "name": "anzzstuff",
@@ -4247,7 +4247,7 @@
         "name": "Kana Quiz",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -4269,15 +4269,15 @@
         88
       ],
       "cover": "/apps/kana-quiz/cover.jpg",
-      "bytes": 202417,
+      "bytes": 203443,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "70fffe9b42e389dd6e0e7715d76101504588917ed001eb7d590238611734b61f"
+      "sha256": "521048f3ee72cca90908cb706c5321cdbe578f8952ebcf57dc26a81867ee4093"
     },
     {
       "slug": "keeweb",
