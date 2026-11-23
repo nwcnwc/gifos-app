@@ -4755,14 +4755,9 @@
       // System apps run as trusted first-party pages, not in the sandbox —
       // live media (camera/mic + WebRTC) is impossible from an opaque origin.
       // Whitelist only; a manifest can't route to arbitrary URLs.
-      const SYSTEM_PAGES = { meet: 'run.html', video: 'run.html', broadcast: 'run.html#bc=1', store: 'store.html' }; // 'video' = pre-rename seeds; 'broadcast' = the meet page's broadcast skin
-      if (manifest.system && SYSTEM_PAGES[manifest.system]) {
-        // The store installs INTO a computer, so it has to land on the one this
-        // app was opened from — a booted computer image (boot.html) keeps its
-        // own namespace, and an install must not leak into the host desktop.
-        const ns = (manifest.system === 'store' && store.dbName && store.dbName !== 'gifos')
-          ? '?db=' + encodeURIComponent(store.dbName) : '';
-        const target = SYSTEM_PAGES[manifest.system] + ns;
+      // (gif.systemPage: the one table, shared with the Home Screen.)
+      const target = gif.systemPage(manifest.system, store.dbName);
+      if (target) {
         // Reload ONLY when the target is a same-document fragment hop (same
         // path and query, new hash): that hop never re-boots on its own. Any
         // other target is a real navigation, and a reload would race it and

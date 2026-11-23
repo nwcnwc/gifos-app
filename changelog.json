@@ -2,6 +2,17 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.10",
+      "date": "2026-11-23",
+      "headline": "Meeting, Broadcast and the App Store open straight from the Home Screen",
+      "critical": false,
+      "features": [],
+      "fixes": [
+        "On a first visit, tapping Meeting on the Home Screen could say \"This app isn't on this device\". Meeting, Broadcast and the App Store now open their page directly.",
+        "The Terms and Privacy pages list every plan, and Broadcast points to the Meet terms and privacy policy."
+      ]
+    },
+    {
       "version": "0.9.28.9",
       "date": "2026-11-23",
       "headline": "New plans for running several meetings at once, and a Plans page",
