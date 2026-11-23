@@ -28,5 +28,9 @@
   "charge.receipt.transaction": "交易",
   "charge.receipt.proof": "这个文件就是凭证：其中带有 gifos.app 签名的收据，在任何 GifOS 电脑上打开它都会验证签名并在那里登记这次购买。分享它就是分享你的许可：应用会把持有这张收据的人视为同一位买家（同样的存档、同样的身份）。请把它和你的备份放在一起。",
   "charge.receipt.labelSku": "收据 — {app} — {sku}",
-  "charge.receipt.labelTip": "收据 — {app} — 小费"
+  "charge.receipt.labelTip": "收据 — {app} — 小费",
+  "charge.wallet.title": "钱包",
+  "charge.wallet.disconnect": "断开钱包",
+  "charge.wallet.switch": "使用其他钱包",
+  "charge.wallet.extension": "也请在你的钱包扩展中断开连接。"
 }
