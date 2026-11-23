@@ -284,6 +284,7 @@
     // C++: mesh.cpp:Seat::occDrop
     // (the L13DBG / MESH_CELLLOG debug prints of the C++ are left out: they write only under those env switches)
     occDrop(k, why) {
+      if (why !== 'leave' && why !== 'goodbye') { const o = this.occ.get(k); if (o !== undefined && o >= 0 && o !== this.id) { if (this.l115Gone.size >= 8 && !this.l115Gone.has(k)) eraseFirst(this.l115Gone); this.l115Gone.set(k, { id: o, tok: 0, at: this.TICK }); } }   // L11.5: who I last held there, emptied without its goodbye
       if (this.occ.has(k)) this.f.fabricVerdict(this.id, k, this.occGet(k), why);
       if (this.occ.has(k) && deathWhy(why) && k === 0 && this.hasCoord && this.coord.pc === 0) { const st = this.s1tab.get(0); if (st !== undefined && st.at >= 0 && st.by >= 0 && st.by !== this.id) { this.cutBy = st.by; this.cutRx = st.rx; } }   // TURN.5.3.1: silence read as death drops the root's report before DIG_TTL; the name and the clock stay for the dial
       if (this.occ.has(k) && deathWhy(why)) { if (this.hasCoord && this.coord.pc === 0 && ckPc(k) === 0 && this.occGet(k) >= 0) this.digGone.set(k, [this.occGet(k), this.TICK]); this.digForget(k); if (this.hasCoord && this.coord.pc === 0) this.rootFold(true); }

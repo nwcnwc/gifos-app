@@ -16,6 +16,8 @@
   const newMsg = (t) => msg.newMsg(t);
 
   Seat.unit('mesh_witness.inc', {
+    // C++: mesh_witness.inc:Seat::l25Judges   (L11.5: can my cell's rook judge a contest with x: the count, else -1)
+    l25Judges(x) { const ol = ownedLinks(this.coord); let rook = 0; for (const c of ol) { const w = this.occGet(ckey(c)); if (w >= 0 && w !== this.id && w !== x) rook++; } return rook >= 2 ? rook : -1; },   // an arbiter and a witness besides x and me
     // C++: mesh_witness.inc:Seat::l25WitHeard
     l25WitHeard(k) { const o = this.occGet(k); if (o < 0 || o === this.id) return -1; return this.heardAt(k); },
 

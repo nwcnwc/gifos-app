@@ -730,6 +730,25 @@
       if (!anyNbr) this.confirmMove();
     },
     // A frame that evidences my new neighbourhood.
+    // C++: mesh_heal.inc:Seat::l115Note   (L11.5: the cell I filled by my own move, whom I judged gone from it, the cell I left)
+    l115Note(c) {
+      this.l115X = -1; this.l115Ck = 0; this.l115Old = 0; this.l115At = -1;
+      if (!this.hasCoord) return;
+      const g = this.l115Gone.get(ckey(c)); if (g === undefined || this.TICK - g.at > K.LEASE_T) return;
+      this.l115Ck = ckey(c); this.l115X = g.id; this.l115Old = ckey(this.coord); this.l115At = this.TICK | 0; this.trace('L11.5-NOTE', this.id, c, 'gone=%d from=%s', this.l115X, FREE.coordStr(this.coord));
+    },
+    // C++: mesh_heal.inc:Seat::l115Back   (L11.5: that very seat speaks first-hand at the cell: I step back to the cell I left if it is free)
+    l115Back(m) {
+      if (this.l115X < 0 || m.id !== this.l115X || m.from !== m.id || !m.sig || m.mv || m.ck !== this.l115Ck || !this.hasCoord || this.state !== 3 || this.moving || ckey(this.coord) !== this.l115Ck) return;
+      const x = this.l115X; this.l115X = -1;
+      if (this.TICK - this.l115At > K.RELAY_TTL) return;
+      const old = unck(this.l115Old);
+      { const rook = this.l25Judges(x); if (rook >= 0) { this.trace('L11.5-ROOM', this.id, this.coord, 'x=%d rook=%d', x, rook); return; } }   // the cell's rook can judge the contest (L25.9)
+      if (this.occGet(this.l115Old) >= 0) { this.trace('L11.5-STAND', this.id, this.coord, 'x=%d old=%s', x, FREE.coordStr(old)); return; }
+      this.trace('L11.5-BACK', this.id, this.coord, 'x=%d to=%s', x, FREE.coordStr(old));
+      const nb = [{ k: m.ck, v: m.id }]; this.doMove(old, -1, nb, -1, -1, -1);
+    },
+
     // C++: mesh_heal.inc:Seat::moveEvidence
     moveEvidence(m) {
       if (m.t === 'PONG') return m.tag !== 7 && this.linkIs(m, m.id >= 0 ? m.id : m.lk);

@@ -73,6 +73,7 @@
 
     // C++: mesh_seat.inc:Seat::onHello
     onHello(m) {
+      this.l115Back(m);   // L11.5 (heal.js)
       const id = this.id, TICK = this.TICK, lv = this.w.lv;
       // A HELLO is FIRST-HAND: its sender (m.id) is speaking on a link it holds to me, claiming coord m.ck.
       if (m.id < 0 || !cellOk(m.ck)) return;
