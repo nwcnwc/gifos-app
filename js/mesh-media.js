@@ -903,6 +903,15 @@
     // it) and keeps pulling its track, so a node per read grows memory and CPU for the whole meeting.
     const tap = ac.createAnalyser(); tap.fftSize = 2048;
     const tapBuf = new Float32Array(tap.fftSize);
+    // Safari before 14.1 has no getFloatTimeDomainData: read bytes there (128 is silence). null: no read at all.
+    const tapBytes = typeof tap.getFloatTimeDomainData === 'function' ? null : new Uint8Array(tap.fftSize);
+    function tapPeak() {
+      let pk = 0;
+      if (!tapBytes) { tap.getFloatTimeDomainData(tapBuf); for (let i = 0; i < tapBuf.length; i++) { const a = Math.abs(tapBuf[i]); if (a > pk) pk = a; } return pk; }
+      if (typeof tap.getByteTimeDomainData !== 'function') return null;
+      tap.getByteTimeDomainData(tapBytes); for (let i = 0; i < tapBytes.length; i++) { const a = Math.abs(tapBytes[i] - 128) / 128; if (a > pk) pk = a; }
+      return pk;
+    }
     // HEADROOM. The fold is additive (mix-minus, never subtraction), so several people talking at once can sum past
     // full scale, and the encoder's int16 input clips: everyone downstream hears the distortion. Every source joins
     // one bus, and the bus reaches the destination through a limiter that only acts on the loudest moments (above
@@ -973,12 +982,13 @@
     const api = {
       dest, track: () => dest.stream.getAudioTracks()[0] || null,
       has: (key) => srcs.has(key),
-      // Peak sample level of the folded sound over ms milliseconds (0..1), read from the one tap.
+      // Peak sample level of the folded sound over ms milliseconds (0..1), read from the one tap; null when the tap
+      // cannot be read on this browser.
       peak(ms) {
         return new Promise((resolve) => {
           let peak = 0; const t0 = Date.now();
           const step = () => {
-            try { tap.getFloatTimeDomainData(tapBuf); for (let i = 0; i < tapBuf.length; i++) { const a = Math.abs(tapBuf[i]); if (a > peak) peak = a; } } catch (e) {}
+            try { const p = tapPeak(); if (p == null) { resolve(null); return; } if (p > peak) peak = p; } catch (e) { resolve(null); return; }
             if (Date.now() - t0 < (ms || 0)) { setTimeout(step, 40); return; }
             resolve(peak);
           };
@@ -1092,7 +1102,7 @@
       // Debug meters: a source's gain node (its level as the fold plays it). Read-only use; null for an unknown key.
       gainOf: (key) => { const s = srcs.get(key); return s ? s.gain : null; },
       // Forensics (debugDump audio): the bus's peak in the tap's current window, and each source's track and gain.
-      peakNow() { let pk = 0; try { tap.getFloatTimeDomainData(tapBuf); for (let i = 0; i < tapBuf.length; i++) { const a = Math.abs(tapBuf[i]); if (a > pk) pk = a; } } catch (e) {} return +pk.toFixed(3); },
+      peakNow() { let pk = 0; try { pk = tapPeak() || 0; } catch (e) {} return +pk.toFixed(3); },
       info() { const o = []; for (const [k, r] of srcs) o.push({ k, g: +r.gain.gain.value.toFixed(2), tr: r.track ? r.track.readyState + (r.track.muted ? '/muted' : '') + (r.track.enabled ? '' : '/off') : null, tid: r.track && r.track.id ? String(r.track.id).slice(0, 12) : null, seat: r.seat || null }); for (const k of waiting.keys()) o.push({ k, wait: true }); return o; },
       // What the fold sums right now, for a player that plays the same voices without the fold (createFoldPlayer).
       parts() { const o = []; for (const [k, r] of srcs) if (r.track && !trackDead(r.track)) o.push({ k, track: r.track, gain: +r.gain.gain.value }); return o; },
