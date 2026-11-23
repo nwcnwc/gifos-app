@@ -13,6 +13,7 @@
   "sign.domain.generate": "Neuen Schlüssel erzeugen",
   "sign.domain.load": "Meinen gespeicherten Schlüssel laden…",
   "sign.domain.putAt": "Legen Sie DIES unter {url} ab (öffentlich — kann bedenkenlos geteilt werden):",
+  "sign.domain.orDns": "Oder statt der Datei: denselben Text in einen DNS-TXT-Eintrag namens {name} setzen. Eine der beiden Stellen genügt; DNS braucht keine Webserver-Einstellungen.",
   "sign.domain.downloadPublic": "gifos.key herunterladen",
   "sign.domain.downloadPrivate": "Meinen privaten Schlüssel herunterladen (geheim halten!)",
   "sign.domain.keepSafe": "Bewahren Sie die Datei mit dem privaten Schlüssel sicher auf — damit signieren Sie. Geht sie verloren, erzeugen Sie einfach einen neuen Schlüssel und veröffentlichen gifos.key erneut.",
