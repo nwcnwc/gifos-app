@@ -325,6 +325,8 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
   mask: var(--mi) center / contain no-repeat;
 }
 .bar:not(.collapsed) #barmore .morerow > button { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle fill='black' cx='12' cy='12' r='5'/%3E%3C/svg%3E"); }
+/* Where no speaker can be chosen (no setSinkId, or one output: iOS), More says where the sound plays. */
+#barmore .morenote { margin: 4px 2px 0; font-size: 12px; line-height: 1.3; opacity: .75; }
 /* Every item in More carries a line icon drawn like the bar's (2px stroke). */
 #barmore #hand { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8a8 8 0 0 0 8 8h0a6 6 0 0 0 6-6v-5a2 2 0 0 0-4 0'/%3E%3C/svg%3E"); }
 #barmore #ccbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='14' rx='2'/%3E%3Cpath d='M10 10a2 2 0 1 0 0 4M17 10a2 2 0 1 0 0 4'/%3E%3C/svg%3E"); }
