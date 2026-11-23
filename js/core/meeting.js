@@ -7329,7 +7329,7 @@
         const kid = pidAt(T.down(c)) || (() => { const v = s.childOf ? s.childOf.get(T.ckey(c)) : null; return v == null || v === -1 ? null : String(v); })();
         let beyond = false;
         if (!BROADCAST) {
-          beyond = pipePeers().length > 0 || !!kid;
+          beyond = (cell ? false : pipePeers().length > 0) || !!kid;   // my pipes say nothing of another seat's cell (the mirror)
           try { if (!beyond && meshNode && typeof meshNode.meetingFar === 'function' && meshNode.meetingFar() > 0) beyond = true; } catch (e) {}
           if (!beyond) for (const k of s.occ.keys()) { const q = T.unck(k); if (q.pc !== c.pc || q.r !== c.r) { beyond = true; break; } }
           if (!beyond && s.childOf) for (let j = 0; j < C && !beyond; j++) { const v = s.childOf.get(T.ckey(row(j))); if (v != null && v !== -1 && String(v) !== me) beyond = true; }
@@ -7489,12 +7489,15 @@
     function planMeasured(kind, m) {
       planMeasures[kind] = m;
       if (kind !== 'owed' || !Array.isArray(m)) return;
-      const t = owedTick();
+      const t = owedTick(); owedAt.report = t;
       for (const r of m) if (r && r[2]) owedArrive.set(String(r[0]) + '|' + r[1], t);
+      if (owedArrive.size > 256) owedArrive.clear();   // keys of slots no longer owed: a bound, the next sample refills
     }
     // ---- L29.5 THE SILENT DUTY, the core's reading (docs/healing-laws.md L29.5) -----------------------------------------
-    // WHAT I AM OWED: [[peerId, slot]], the mirror of dutySlots: every seat my view names whose cell owes my cell a duty
-    // slot (dutySlots of that cell, from my own view of it: derived, never a claim), sorted.
+    // WHAT I AM OWED: [[peerId, slot, senderCell, made]], the mirror of dutySlots: every seat my view names whose cell owes
+    // my cell a duty slot (dutySlots of that cell, from my own view of it: derived, never a claim), sorted. made: the
+    // sender makes that slot itself (a head's 'sdm', a deep head's 'sub'); the rest ('sgs', a mate's relayed 'sub') carry
+    // what reached the sender from further up, so their silence is not the sender's and they are measured, never judged.
     function inboundPlan() {
       const out = [];
       try {
@@ -7502,7 +7505,7 @@
         const T = net.topo, me = String(myId);
         for (const k of s.occ.keys()) {
           const q = T.unck(k), v = occPid(q); if (v == null || v === -1 || String(v) === me) continue;
-          for (const [to, slot] of dutySlots(q)) if (to === me) out.push([String(v), slot]);
+          for (const [to, slot] of dutySlots(q)) if (to === me) out.push([String(v), slot, k, slot === 'sdm' || (slot === 'sub' && q.i === 0 && q.pc !== 0)]);
         }
       } catch (e) { return []; }
       return out.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0));
@@ -7518,31 +7521,38 @@
     // now - max(owed + L295_START, arrival) >= L29_STARVE ticks (L295_START: the renegotiation floor). A sender with any
     // mute slot is mute in my reading: the seat hears it as LGSTARVE tag 1 (js/mesh/page/env.js).
     // Only a live, ready link is read: a dead link is the heal laws', and drops the reading.
-    var owedArrive = new Map(), owedWatch = new Map(), dutyMade = new Map();
+    var owedArrive = new Map(), owedWatch = new Map(), dutyMade = new Map(), owedAt = { report: -1, cell: null };
     function owedTick() { try { const s = meshSeat(); return s ? s.seatTick : 0; } catch (e) { return 0; } }
+    // A reading needs fresh evidence: a page throttled or frozen comes back with its tick far past its last sample, and must
+    // not read every sender mute before the next sample lands. With no 'owed' report in the last 2 ticks every clock starts
+    // over (owed = now) and nothing is judged. My own cell changing starts every clock over too (new duties, new floors);
+    // a sender's cell changing is a new key (the slot is owed anew).
     function owedMuteNow() {
-      const K = GifOS.meshConsts.consts, t = owedTick(), mute = new Set(), seen = new Set();
-      for (const [pid, slot] of inboundPlan()) {
-        const p = peers.get(pid), k = pid + '|' + slot;
+      const K = GifOS.meshConsts.consts, t = owedTick(), mute = new Set(), seen = new Set(), c = meshCoord();
+      const ck = c ? net.topo.ckey(c) : null;
+      if (ck !== owedAt.cell) { owedAt.cell = ck; owedWatch.clear(); owedArrive.clear(); }
+      const fresh = owedAt.report >= 0 && t - owedAt.report <= 2;
+      for (const [pid, slot, sk, made] of inboundPlan()) {
+        const p = peers.get(pid), k = pid + '|' + slot + '|' + sk;
         if (!p || !p.pc || !p.connected) continue;
         seen.add(k);
         let w = owedWatch.get(k); if (!w) { w = { owed: t }; owedWatch.set(k, w); }
-        const a = owedArrive.get(k);
-        if (t - Math.max(w.owed + K.L295_START, a == null ? -1 : a) >= K.L29_STARVE) mute.add(pid);
+        if (!fresh) { w.owed = t; continue; }
+        const a = owedArrive.get(pid + '|' + slot);
+        if (made && t - Math.max(w.owed + K.L295_START, a == null ? -1 : a) >= K.L29_STARVE) mute.add(pid);
       }
       for (const k of Array.from(owedWatch.keys())) if (!seen.has(k)) owedWatch.delete(k);
-      for (const k of Array.from(owedArrive.keys())) if (!seen.has(k)) owedArrive.delete(k);
       return Array.from(mute);
     }
-    // MY OWN WORD (L29.5 word 5, the seat's l295No): I hold a deep head cell and make none of the duty slots it owes (each
-    // owed, unparked slot reported 'no-track' by my plane for L29_STARVE past owed + L295_START). A deep head's slots are
-    // the ones it makes itself (the row's view, its product); a relay of what never reached me is not my fault, and its
-    // receivers' reading covers it.
+    // MY OWN WORD (L29.5 word 5, the seat's l295No): I hold a head cell and make none of the duty slots I make myself (my
+    // row's view 'sdm', and a deep head's product 'sub'): each owed, unparked one reported 'no-track' by my plane for
+    // L29_STARVE past owed + L295_START. A relay of what never reached me ('sgs') is not my fault: its receivers' reading
+    // covers it.
     function dutyNoMakeNow() {
       const K = GifOS.meshConsts.consts, t = owedTick(), c = meshCoord(), seen = new Set();
-      if (!c || c.pc === 0 || c.i !== 0) { dutyMade.clear(); return false; }
+      if (!c || c.i !== 0) { dutyMade.clear(); return false; }
       let owed = 0, unmade = 0;
-      for (const [to, r] of (planReport && planReport.duties) || []) for (const slot of ['sdm', 'sub', 'sgs']) {
+      for (const [to, r] of (planReport && planReport.duties) || []) for (const slot of c.pc !== 0 ? ['sdm', 'sub'] : ['sdm']) {
         const v = r && r[slot]; if (v !== 'seat' && v !== 'no-track') continue;
         const k = to + '|' + slot; seen.add(k); owed++;
         let w = dutyMade.get(k); if (!w) { w = { owed: t, seat: -1 }; dutyMade.set(k, w); }

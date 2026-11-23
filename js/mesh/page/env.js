@@ -657,7 +657,11 @@
     function lgFabric(s) {
       const K = C_.consts, full = s.tier === C_.enums.TIER_MOBILE ? K.L29_BUD_M : K.L29_BUD_D;
       if (s.lgQuit && !lgLeft) { lgLeft = true; if (measure.lgLeave) measure.lgLeave(); return; }
-      if (!s.hasCoord || s.state !== 3) { s.lgLadder(); return; }
+      if (!s.hasCoord || s.state !== 3) {   // no cell: no duty is owed me and I owe none; my readings end with my seat
+        s.l295No = false;
+        for (const pid of [...lgMuted]) { const m = msg.newMsg('LGSTARVE'); m.tag = 1; m.id = ID.nid(pid); m.to = me; m.from = -1; m.hold = 0; busAt(w.TICK + 1, m); }
+        lgMuted.clear(); s.lgLadder(); return;
+      }
       const c = s.coord, held = (x) => { const v = s.occGet(topo.ckey(x)); return v >= 0 && v !== s.id; };
       let rx = 0;
       for (let j = 0; j < topo.C; j++) {

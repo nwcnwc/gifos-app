@@ -4111,7 +4111,7 @@
     // stream its sender announced for it (owedStream): arriving when the slot's packets moved since my last sample.
     // Arrival, never level (L49.1); a slot with nothing announced or delivered reads not arriving.
     const owedPk = new Map(); let owedBusy = false;
-    setInterval(async () => {
+    GifOS.meshMedia.workerClock(GifOS.timings.OWED_SAMPLE_MS, async () => {   // the worker clock: a hidden tab keeps sampling
       try { (0, /*()*/__C.planMeasured)('row', rowMeasure()); } catch (e) {}   // up to the core, as data (rowMeasure)
       try { rowActing((0, /*()*/__C.meshCoord)()); } catch (e) {}   // an out or back edge acts now, not at the next sweep
       if (owedBusy) return; owedBusy = true;
@@ -4130,7 +4130,7 @@
         for (const k of Array.from(owedPk.keys())) if (!seen.has(k)) owedPk.delete(k);
         (0, /*()*/__C.planMeasured)('owed', out);
       } catch (e) {} finally { owedBusy = false; }
-    }, GifOS.timings.OWED_SAMPLE_MS);
+    });
     let rowMixDeaf = false; // L49: the mix's sound is not arriving. A live head still sends picture bytes, so heard:feed must not clear this out.
     // UP FROM THE PLANE (media port v1): my row-view claim as this plane holds it, as plain data for the core (no stream,
     // track or element): who carries it, which stream, dead or not; whether the row mix's sound is missing; whether the
