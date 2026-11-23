@@ -7521,16 +7521,16 @@
     // now - max(owed + L295_START, arrival) >= L29_STARVE ticks (L295_START: the renegotiation floor). A sender with any
     // mute slot is mute in my reading: the seat hears it as LGSTARVE tag 1 (js/mesh/page/env.js).
     // Only a live, ready link is read: a dead link is the heal laws', and drops the reading.
-    var owedArrive = new Map(), owedWatch = new Map(), dutyMade = new Map(), owedAt = { report: -1, cell: null };
+    var owedArrive = new Map(), owedWatch = new Map(), dutyMade = new Map(), owedAt = { report: -1, cell: null, last: [] };
     function owedTick() { try { const s = meshSeat(); return s ? s.seatTick : 0; } catch (e) { return 0; } }
     // A reading needs fresh evidence: a page throttled or frozen comes back with its tick far past its last sample, and must
     // not read every sender mute before the next sample lands. With no 'owed' report in the last 2 ticks every clock starts
-    // over (owed = now) and nothing is judged. My own cell changing starts every clock over too (new duties, new floors);
+    // over (owed = now) and the last verdict stands (no back-then-out flap per stall). My own cell changing starts every clock over too (new duties, new floors);
     // a sender's cell changing is a new key (the slot is owed anew).
     function owedMuteNow() {
       const K = GifOS.meshConsts.consts, t = owedTick(), mute = new Set(), seen = new Set(), c = meshCoord();
       const ck = c ? net.topo.ckey(c) : null;
-      if (ck !== owedAt.cell) { owedAt.cell = ck; owedWatch.clear(); owedArrive.clear(); }
+      if (ck !== owedAt.cell) { owedAt.cell = ck; owedWatch.clear(); owedArrive.clear(); owedAt.last = []; }
       const fresh = owedAt.report >= 0 && t - owedAt.report <= 2;
       for (const [pid, slot, sk, made] of inboundPlan()) {
         const p = peers.get(pid), k = pid + '|' + slot + '|' + sk;
@@ -7542,7 +7542,8 @@
         if (made && t - Math.max(w.owed + K.L295_START, a == null ? -1 : a) >= K.L29_STARVE) mute.add(pid);
       }
       for (const k of Array.from(owedWatch.keys())) if (!seen.has(k)) owedWatch.delete(k);
-      return Array.from(mute);
+      if (!fresh) return owedAt.last.filter((pid) => Array.from(seen).some((k) => k.indexOf(pid + '|') === 0));   // still owed, link still live
+      owedAt.last = Array.from(mute); return owedAt.last;
     }
     // MY OWN WORD (L29.5 word 5, the seat's l295No): I hold a head cell and make none of the duty slots I make myself (my
     // row's view 'sdm', and a deep head's product 'sub'): each owed, unparked one reported 'no-track' by my plane for
