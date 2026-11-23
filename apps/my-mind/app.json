@@ -4,8 +4,8 @@
   "appId": "my-mind",
   "name": "My Mind",
   "shortName": "Mind",
-  "version": "1.1",
-  "minBuild": 947,
+  "version": "1.2",
+  "minBuild": 5861,
   "tagline": "Mind maps at typing speed: Tab for a child, Enter for a sibling.",
   "description": "Close it, come back, or send someone your copy — the same bubbles are there.\n\nClick a bubble and type. Tab inserts a child, Enter a sibling, arrows walk the map, Delete removes a node. Drag to pan, wheel to zoom. Colours, layouts (map, graph, tree), shapes, and a yes/no status live on each item. New starts a blank map.\n\nOn a phone, tap a bubble to select it, tap again to type, and use Child / Sibling / Edit / Delete at the bottom.\n\nPress Invite in the bar above so a friend can watch the same map.\n\nAn unofficial port of My Mind by Ondřej Žára. Same map, same keys.",
   "author": {
@@ -39,14 +39,14 @@
   "cover": "/apps/my-mind/cover.jpg",
   "screenshots": [],
   "gif": "/apps/my-mind/my-mind.gif",
-  "bytes": 394602,
+  "bytes": 395603,
   "download": 0,
   "provides": null,
-  "sha256": "2c2b55df5ce74b099c5513157182359e29732ce996ad5e4ecbd1fe2088eadc4a",
+  "sha256": "d376588e434c3b527e74ac1581cfb6d0b1425cdb0625fc6b3512f42207d385d6",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-08"
+    "ts": "2026-11-23"
   },
   "porter": {
     "name": "GifOS",

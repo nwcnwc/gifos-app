@@ -3592,7 +3592,7 @@
       "appId": "invaderz",
       "name": "InvaderZ",
       "shortName": "InvaderZ",
-      "version": "1.0.0",
+      "version": "1.1.2",
       "tagline": "Space Invaders where every friend who joins gets another cannon.",
       "author": {
         "name": "victorqribeiro",
@@ -3606,7 +3606,7 @@
         "name": "InvaderZ",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-23",
       "updated": "2026-08-23",
@@ -3626,15 +3626,15 @@
         186
       ],
       "cover": "/apps/invaderz/cover.jpg",
-      "bytes": 196473,
+      "bytes": 197452,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "85f652750f73cce1e9fb2c153f7590f35369f3a47e04d1995e217be3054ffe9f"
+      "sha256": "e34266bcfd4458725d4f4c92aaedb5027b18d0654b38eaf62b349a7f57c2167c"
     },
     {
       "slug": "io-808",
@@ -5078,7 +5078,7 @@
       "appId": "my-mind",
       "name": "My Mind",
       "shortName": "Mind",
-      "version": "1.1",
+      "version": "1.2",
       "tagline": "Mind maps at typing speed: Tab for a child, Enter for a sibling.",
       "author": {
         "name": "Ondřej Žára",
@@ -5092,7 +5092,7 @@
         "name": "My Mind",
         "blessed": false
       },
-      "minBuild": 947,
+      "minBuild": 5861,
       "offline": true,
       "releaseDate": "2026-08-24",
       "updated": "2026-08-24",
@@ -5112,15 +5112,15 @@
         221
       ],
       "cover": "/apps/my-mind/cover.jpg",
-      "bytes": 394602,
+      "bytes": 395603,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-23"
       },
-      "sha256": "2c2b55df5ce74b099c5513157182359e29732ce996ad5e4ecbd1fe2088eadc4a"
+      "sha256": "d376588e434c3b527e74ac1581cfb6d0b1425cdb0625fc6b3512f42207d385d6"
     },
     {
       "slug": "mykonos",
