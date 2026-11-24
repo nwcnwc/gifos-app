@@ -191,16 +191,19 @@
       const c = SUB.credentialOk(readJson(CRED_KEY));
       const w = SUB.walletOk(readJson(WALLET_KEY));
       const st = readState();
-      const live = !!(c && st.licenseJson && st.subId === c.subId);
-      const passN = w ? w.passes.length : 0;
-      if (!live && !passN) return;   // nothing bought yet: no receipt
-      const mark = [live ? c.subId : '', live ? c.tier : '', passN].join('|');
       const held = readJson(SUB_RECEIPT_KEY) || {};
+      const live = !!(c && st.licenseJson && st.subId === c.subId);
+      // A credential goes in once its plan was paid for, and STAYS in after
+      // the plan lapses: its key is what reopens a Streamer library.
+      const keepSub = !!c && (live || held.sub === c.subId);
+      const passN = w ? w.passes.length : 0;
+      if (!keepSub && !passN) return;   // nothing bought yet: no receipt
+      const mark = [keepSub ? c.subId : '', live ? c.tier : '', passN].join('|');
       if (held.mark === mark && held.fileId) return;
       const fileId = typeof held.fileId === 'string' && held.fileId ? held.fileId : store.uid('file');
-      const bytes = await gif.encode(subReceiptFiles(live ? c : null, w, st), { accent: [120, 200, 255] });
+      const bytes = await gif.encode(subReceiptFiles(keepSub ? c : null, w, st), { accent: [120, 200, 255] });
       await store.putFile({ id: fileId, name: tx('subReceiptName', 'Receipt — GifOS Meet subscription') + '.gif', bytes, kind: 'gif', isApp: true, appId: RECEIPT_APP_ID, mime: 'image/gif' });
-      writeJson(SUB_RECEIPT_KEY, { fileId, mark });
+      writeJson(SUB_RECEIPT_KEY, { fileId, mark, sub: keepSub ? c.subId : null });
       // Queued every time: the desktop skips a fileId it already placed.
       const q = readJson(PAY_PENDING);
       const list = Array.isArray(q) ? q : [];
