@@ -7196,22 +7196,32 @@
       });
     }
     // UP FROM THE PLANE: measurements as plain data, by kind. 'row': my row-view claim and the L49 verdict (the plane's
-    // rowMeasure); 'owed': [[peerId, slot, arriving]], one per owed inbound duty slot of inboundPlan, arriving when the
-    // slot's packets moved since the plane's last sample (arrival, never level: L49.1). Both planes send 'owed' (the browser
-    // from getStats inbound-rtp on the slot's receivers, Node from the port's per-track RTP count).
+    // rowMeasure); 'owed': [[peerId, slot, {video, audio}]], one per owed inbound duty slot of inboundPlan, each kind true
+    // when that kind's packets moved since the plane's last sample (arrival, never level: L49.1). Both planes send 'owed'
+    // (the browser from getStats inbound-rtp on the slot's receivers, Node from the port's per-track RTP count). The core
+    // keeps a last-arrival tick per kind (owedArriveA, owedArriveV, key pid|slot). Opus DTX sends 1 packet per 400 ms of
+    // silence, inside one L29_STARVE reading.
     var planMeasures = {};   // var, as planLast
     function planMeasured(kind, m) {
       planMeasures[kind] = m;
       if (kind !== 'owed' || !Array.isArray(m)) return;
       const t = owedTick(); owedAt.report = t;
-      for (const r of m) if (r && r[2]) owedArrive.set(String(r[0]) + '|' + r[1], t);
-      if (owedArrive.size > 256) owedArrive.clear();   // keys of slots no longer owed: a bound, the next sample refills
+      for (const r of m) if (r && r[2]) {
+        const key = String(r[0]) + '|' + r[1];
+        if (r[2].audio) owedArriveA.set(key, t);
+        if (r[2].video) owedArriveV.set(key, t);
+      }
+      if (owedArriveA.size > 256 || owedArriveV.size > 256) { owedArriveA.clear(); owedArriveV.clear(); }   // keys of slots no longer owed: a bound, the next sample refills
     }
     // ---- L29.5 THE SILENT DUTY, the core's reading (docs/healing-laws.md L29.5) -----------------------------------------
-    // WHAT I AM OWED: [[peerId, slot, senderCell, made]], the mirror of dutySlots: every seat my view names whose cell owes
-    // my cell a duty slot (dutySlots of that cell, from my own view of it: derived, never a claim), sorted. made: the
+    // WHAT I AM OWED: [[peerId, slot, senderCell, made, kinds]], the mirror of dutySlots: every seat my view names whose cell
+    // owes my cell a duty slot (dutySlots of that cell, from my own view of it: derived, never a claim), sorted. made: the
     // sender makes that slot itself (a head's 'sdm', a deep head's 'sub'); the rest ('sgs', a mate's relayed 'sub') carry
     // what reached the sender from further up, so their silence is not the sender's and they are measured, never judged.
+    // kinds: a made slot always owes audio. It owes video only where the sender packs the picture itself. 'sub' from a deep
+    // head (made) owes video. 'sdm' owes video only when the sender's cell is Section 1 (pc === 0: that head packs the row
+    // view). A deep head's 'sdm' carries the picture from above, so it owes audio only. pc comes from the sender cell key
+    // (net.topo.unck), not from a slot table. Callers that read the first columns are unchanged.
     function inboundPlan() {
       const out = [];
       try {
@@ -7219,7 +7229,11 @@
         const T = net.topo, me = String(myId);
         for (const k of s.occ.keys()) {
           const q = T.unck(k), v = occPid(q); if (v == null || v === -1 || String(v) === me) continue;
-          for (const [to, slot] of dutySlots(q)) if (to === me) out.push([String(v), slot, k, slot === 'sdm' || (slot === 'sub' && q.i === 0 && q.pc !== 0)]);
+          for (const [to, slot] of dutySlots(q)) if (to === me) {
+            const made = slot === 'sdm' || (slot === 'sub' && q.i === 0 && q.pc !== 0);
+            const pc = T.unck(k).pc;   // the sender's section, from the cell key
+            out.push([String(v), slot, k, made, { audio: made, video: made && (slot === 'sub' || pc === 0) }]);
+          }
         }
       } catch (e) { return []; }
       return out.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0));
@@ -7231,11 +7245,16 @@
       if (!p || !ann || !Array.isArray(p.incoming)) return null;
       return p.incoming.find((st) => st && st.id === ann.streamId && st.id !== p.ownSid) || null;
     }
-    // Per owed slot {owed: tick first owed on a live link, arrival: tick of the last measured arrival}; a slot is MUTE when
-    // now - max(owed + L295_START, arrival) >= L29_STARVE ticks (L295_START: the renegotiation floor). A sender with any
-    // mute slot is mute in my reading: the seat hears it as LGSTARVE tag 1 (js/mesh/page/env.js).
+    // Per owed slot {owed: tick first owed on a live link} and a last-arrival tick per kind (owedArriveA, owedArriveV).
+    // A made slot always owes audio. It owes video only where the sender packs the picture (inboundPlan's kinds: a
+    // Section-1 head's 'sdm', a deep head's 'sub'; a deep head's 'sdm' carries the picture from above and owes audio only).
+    // Audio is mute when now - max(owed + L295_START, last audio) >= L29_STARVE (L295_START: the renegotiation floor).
+    // Video, when owed, is mute when now - max(owed + L295_START, last video) >= L295_VFLOOR (four STILL_MAX_MS, so a
+    // still row, one frame per STILL_MAX_MS, never reads mute). The slot is mute when either owed kind is. A sender with
+    // any mute slot is mute in my reading: the seat hears it as LGSTARVE tag 1 (js/mesh/page/env.js).
     // Only a live, ready link is read: a dead link is the heal laws', and drops the reading.
-    var owedArrive = new Map(), owedWatch = new Map(), dutyMade = new Map(), owedAt = { report: -1, cell: null, last: [] };
+    // Opus DTX sends 1 packet per 400 ms of silence, inside one L29_STARVE reading.
+    var owedArriveA = new Map(), owedArriveV = new Map(), owedWatch = new Map(), dutyMade = new Map(), owedAt = { report: -1, cell: null, last: [] };
     function owedTick() { try { const s = meshSeat(); return s ? s.seatTick : 0; } catch (e) { return 0; } }
     // A reading needs fresh evidence: a page throttled or frozen comes back with its tick far past its last sample, and must
     // not read every sender mute before the next sample lands. With no 'owed' report in the last 2 ticks every clock starts
@@ -7244,16 +7263,24 @@
     function owedMuteNow() {
       const K = GifOS.meshConsts.consts, t = owedTick(), mute = new Set(), seen = new Set(), c = meshCoord();
       const ck = c ? net.topo.ckey(c) : null;
-      if (ck !== owedAt.cell) { owedAt.cell = ck; owedWatch.clear(); owedArrive.clear(); owedAt.last = []; }
+      if (ck !== owedAt.cell) { owedAt.cell = ck; owedWatch.clear(); owedArriveA.clear(); owedArriveV.clear(); owedAt.last = []; }
       const fresh = owedAt.report >= 0 && t - owedAt.report <= 2;
-      for (const [pid, slot, sk, made] of inboundPlan()) {
+      for (const [pid, slot, sk, made, kinds] of inboundPlan()) {
         const p = peers.get(pid), k = pid + '|' + slot + '|' + sk;
         if (!p || !p.pc || !p.connected) continue;
         seen.add(k);
         let w = owedWatch.get(k); if (!w) { w = { owed: t }; owedWatch.set(k, w); }
         if (!fresh) { w.owed = t; continue; }
-        const a = owedArrive.get(pid + '|' + slot);
-        if (made && t - Math.max(w.owed + K.L295_START, a == null ? -1 : a) >= K.L29_STARVE) mute.add(pid);
+        if (!made) continue;
+        const ak = pid + '|' + slot, lastA = owedArriveA.get(ak);
+        const refA = Math.max(w.owed + K.L295_START, lastA == null ? -1 : lastA);
+        let slotMute = t - refA >= K.L29_STARVE;
+        if (kinds && kinds.video) {
+          const lastV = owedArriveV.get(ak);
+          const refV = Math.max(w.owed + K.L295_START, lastV == null ? -1 : lastV);
+          if (t - refV >= K.L295_VFLOOR) slotMute = true;
+        }
+        if (slotMute) mute.add(pid);
       }
       for (const k of Array.from(owedWatch.keys())) if (!seen.has(k)) owedWatch.delete(k);
       if (!fresh) return owedAt.last.filter((pid) => Array.from(seen).some((k) => k.indexOf(pid + '|') === 0));   // still owed, link still live

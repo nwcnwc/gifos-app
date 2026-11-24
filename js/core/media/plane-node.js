@@ -106,8 +106,8 @@
       for (const t of stream.getTracks()) if (t !== track && t.kind === track.kind && !live(t)) { try { stream.removeTrack(t); } catch (e) {} }
     }
     // THE OWED SLOTS, MEASURED (L29.5), as the browser plane does: per owed inbound duty slot of the core's inboundPlan,
-    // arriving when the RTP packets the port counted on its stream's tracks (werift onReceiveRtp) moved since my last
-    // sample. Arrival, never level; nothing announced or delivered reads not arriving.
+    // {video, audio} each true when the RTP packets the port counted on that kind (werift onReceiveRtp) moved since my
+    // last sample. Arrival, never level; nothing announced or delivered reads not arriving.
     const rtpN = new WeakMap(), owedPk = new Map();
     function rtpCount(t) {
       if (!t) return 0;
@@ -131,9 +131,11 @@
       const out = [], seen = new Set();
       for (const [pid, slot] of C.inboundPlan()) {
         const k = pid + '|' + slot, st = C.owedStream(pid, slot); seen.add(k);
-        let n = -1; if (st) { n = 0; for (const t of st.getTracks()) n += rtpCount(t); }
+        const n = { video: -1, audio: -1 };   // per kind (L29.5): the core keeps a tick for each
+        if (st) for (const t of st.getTracks()) if (t && t.kind in n) { if (n[t.kind] < 0) n[t.kind] = 0; n[t.kind] += rtpCount(t); }
         const was = owedPk.get(k), sid = st ? st.id : null; owedPk.set(k, { sid, n });
-        out.push([pid, slot, n > 0 && !!was && was.sid === sid && n > was.n]);
+        const moved = (kd) => n[kd] > 0 && !!was && was.sid === sid && n[kd] > was.n[kd];
+        out.push([pid, slot, { video: moved('video'), audio: moved('audio') }]);
       }
       for (const k of Array.from(owedPk.keys())) if (!seen.has(k)) owedPk.delete(k);
       C.planMeasured('owed', out);

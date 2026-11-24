@@ -3855,8 +3855,8 @@
       if (was !== pid) { try { (0, /*()*/__C.planMeasured)('row', rowMeasure()); } catch (e) {} }
     }
     // THE OWED SLOTS, MEASURED (L29.5): every owed inbound duty slot of the core's inboundPlan, read on the receivers of the
-    // stream its sender announced for it (owedStream): arriving when the slot's packets moved since my last sample.
-    // Arrival, never level (L49.1); a slot with nothing announced or delivered reads not arriving.
+    // stream its sender announced for it (owedStream): {video, audio}, each kind true when that kind's packets moved since
+    // my last sample. Arrival, never level (L49.1); a slot with nothing announced or delivered reads not arriving.
     const owedPk = new Map(); let owedBusy = false;
     GifOS.meshMedia.workerClock(GifOS.timings.OWED_SAMPLE_MS, async () => {   // the worker clock: a hidden tab keeps sampling
       try { (0, /*()*/__C.planMeasured)('row', rowMeasure()); } catch (e) {}   // up to the core, as data (rowMeasure)
@@ -3866,13 +3866,18 @@
         const out = [], seen = new Set();
         for (const [pid, slot] of (0, /*()*/__C.inboundPlan)()) {
           const k = pid + '|' + slot, p = __C.peers.get(pid), st = (0, /*()*/__C.owedStream)(pid, slot); seen.add(k);
-          let n = -1;
+          const n = { video: -1, audio: -1 };   // per kind (L29.5): the core keeps a tick for each
           if (p && p.pc && st) {
-            const tr = st.getTracks(); n = 0;
-            for (const r of p.pc.getReceivers()) { if (!r.track || tr.indexOf(r.track) < 0) continue; (await r.getStats()).forEach((x) => { if (x.type === 'inbound-rtp') n += x.packetsReceived || 0; }); }
+            const tr = st.getTracks();
+            for (const r of p.pc.getReceivers()) {
+              if (!r.track || tr.indexOf(r.track) < 0 || !(r.track.kind in n)) continue;
+              const kd = r.track.kind; if (n[kd] < 0) n[kd] = 0;
+              (await r.getStats()).forEach((x) => { if (x.type === 'inbound-rtp') n[kd] += x.packetsReceived || 0; });
+            }
           }
           const was = owedPk.get(k), sid = st ? st.id : null; owedPk.set(k, { sid, n });
-          out.push([pid, slot, n > 0 && !!was && was.sid === sid && n > was.n]);
+          const moved = (kd) => n[kd] > 0 && !!was && was.sid === sid && n[kd] > was.n[kd];
+          out.push([pid, slot, { video: moved('video'), audio: moved('audio') }]);
         }
         for (const k of Array.from(owedPk.keys())) if (!seen.has(k)) owedPk.delete(k);
         (0, /*()*/__C.planMeasured)('owed', out);
