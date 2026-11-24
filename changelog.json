@@ -9,7 +9,9 @@
       "features": [],
       "fixes": [
         "The green talking frame now lights for someone sharing a screen or on the Stage.",
-        "A person with the camera off shows their letter, not a black square, in a packed row."
+        "A person with the camera off shows their letter, not a black square, in a packed row.",
+        "A subscriber's plan now keeps their meeting open and at its full size even when they are not signed in as its host.",
+        "The PayPal window closes by itself after paying."
       ]
     },
     {
