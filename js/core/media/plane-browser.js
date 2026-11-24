@@ -5701,7 +5701,38 @@
       // at once. Stage copies carry their stager whatever my cell, so they keep
       // the grace.
       (0, /*()*/__C.reapJobs)(wanted);
-      if (__C.DEBUG_ON && __C.clog) { const mk = Array.from(__C.mosJobs.keys()).sort().join(' '); if (mk !== reconcileMosaic.lastKeys) { reconcileMosaic.lastKeys = mk; (0, /*()*/__C.clog)('mos-keys ' + mk); } }   // DEBUG: the job key set on each change (pre/post flip room diff)
+      if (__C.DEBUG_ON && __C.clog) {
+        const mk = Array.from(__C.mosJobs.keys()).sort().join(' ');
+        if (mk !== reconcileMosaic.lastKeys) { reconcileMosaic.lastKeys = mk; (0, /*()*/__C.clog)('mos-keys ' + mk); }
+        // Live packer tiles (ord=id, sorted by id; a null ord is "=id") and the product jobs this sweep still holds.
+        // Product jobs are sub, x1, x2, sdrow:*, and an sdn whose tracks are an l14 packer's (a mix sdn is not).
+        const tileTok = (pk) => {
+          const rows = pk && pk.tilesForTest ? pk.tilesForTest().slice() : [];
+          rows.sort((a, b) => (String(a.id) < String(b.id) ? -1 : String(a.id) > String(b.id) ? 1 : 0));
+          return rows.map((t) => (t.ord == null ? '' : t.ord) + '=' + t.id).join(',');
+        };
+        const pkParts = [];
+        if (prodPack) pkParts.push('prod:' + tileTok(prodPack));
+        if (roomPack) pkParts.push('room:' + tileTok(roomPack));
+        for (const h of [...pipePacks.keys()].sort()) pkParts.push('pipe:' + h + ':' + tileTok(pipePacks.get(h)));
+        for (const h of [...l14Packs.keys()].sort()) pkParts.push('l14:' + h + ':' + tileTok(l14Packs.get(h)));
+        const l14Tr = new Set();
+        for (const pk of l14Packs.values()) {
+          if (!pk) continue;
+          if (pk.track) l14Tr.add(pk.track);
+          const trs = pk.stream && pk.stream.getTracks ? pk.stream.getTracks() : [];
+          for (let ti = 0; ti < trs.length; ti++) l14Tr.add(trs[ti]);
+        }
+        const prodJobs = [];
+        for (const [jk, job] of __C.mosJobs) {
+          const k = job && job.key;
+          if (k === 'sub' || k === 'x1' || k === 'x2' || (k && k.indexOf('sdrow:') === 0)) prodJobs.push(jk);
+          else if (k === 'sdn' && job.srcTracks && job.srcTracks.some((t) => l14Tr.has(t))) prodJobs.push(jk);
+        }
+        prodJobs.sort();
+        const psig = pkParts.join('|') + ' ' + prodJobs.join(' ');
+        if (psig !== reconcileMosaic.lastPackKeys) { reconcileMosaic.lastPackKeys = psig; (0, /*()*/__C.clog)('pack-keys ' + psig); }
+      }   // DEBUG: job keys and packer tiles on each change (pre/post flip room diff)
       // ---- DEMAND GATE: a composite nobody ships and nobody looks at ---------
       // createPacker has carried setActive since the day it was written ("a
       // composite that has no consumer (not shipped, not displayed) isn't
