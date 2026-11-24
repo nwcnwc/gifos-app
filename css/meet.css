@@ -3817,3 +3817,15 @@ body.bot-view { overflow: auto; background: var(--bg); }
 #botview .bv-row { margin: .6rem 0; }
 #botview .bv-row input { font: inherit; min-width: 16rem; }
 #botview .bv-row button { font: inherit; }
+  /* Clear video without a password (a host's signed plan item): the viewer's own "Tap to unblur" on a blurred tile,
+     shown whenever the face is blurred for that reason (not only with the controls up), and the room's small bar
+     with "Blur again" and Report. */
+  :is(.tile, .rowtile) > .blurwhy[data-why="tap"] { pointer-events: auto; cursor: pointer; min-height: 32px; padding: 6px 12px; font-size: 14px; }
+  body.dock-calm :is(.tile, .rowtile) > .blurwhy[data-why="tap"], body.chrome-away :is(.tile, .rowtile) > .blurwhy[data-why="tap"] { display: block; }
+  #clearnopw-bar { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 74px); right: 12px; z-index: 40; display: flex; gap: 8px; }
+  #clearnopw-bar button { min-height: 36px; padding: 0 12px; border-radius: var(--r-pill); border: 1px solid rgba(255,255,255,.2); background: rgba(10,10,15,.82); color: #eceef8; font: 600 13px/1 system-ui, sans-serif; }
+  #clearnopw-report { display: flex; }
+  #clearnopw-report .name-box a { color: inherit; text-decoration: underline; }
+  body.cnp-veil-stage #stagefeed > .rowtile video,
+  body.cnp-veil-rows .rowtile:not(#stagefeed > .rowtile) video,
+  body.cnp-veil-rows #stadium video { filter: blur(calc(var(--bw, 100vmin) * var(--blur-max, .045))) saturate(.75); }
