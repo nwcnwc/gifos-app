@@ -336,7 +336,7 @@
     $('loading').hidden = false;
     lib().status().then(function (st) {
       $('loading').hidden = true;
-      if (st !== 'streamer') {
+      if (st !== 'storage') {
         $('noplan').hidden = false;
         $('noplan-hint').hidden = !lib().enabled() || st !== 'none';
         return;

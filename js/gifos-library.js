@@ -27,7 +27,7 @@
  * any byte is sent.
  *
  * GifOS.library:
- *   enabled(), status() -> 'streamer' | 'other' | 'none'
+ *   enabled(), status() -> 'storage' (a signed storage line item, live or in its keep window) | 'other' | 'none'
  *   list() -> {usage, files, uploads}   files carry the opened details
  *           (name, type, kind, of, plainSize) or locked: true when this
  *           subscription file cannot open them
@@ -96,10 +96,10 @@
   async function status() {
     if (!enabled()) return 'none';
     const r = await SUBS().rights().catch(() => null);
-    if (r && r.grants && r.grants.storage && r.storage) return 'streamer';   // the license's signed storage line item
+    if (r && r.grants && r.grants.storage && r.storage) return 'storage';   // the license's signed storage line item
     // A plan that ended still reaches its library during the keep window.
     const sg = SUBS().librarySigner ? await SUBS().librarySigner().catch(() => null) : null;
-    if (sg && sg.grants && sg.grants.storage) return 'streamer';
+    if (sg && sg.grants && sg.grants.storage) return 'storage';
     return r && r.subscribed ? 'other' : 'none';
   }
 

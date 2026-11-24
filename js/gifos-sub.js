@@ -285,13 +285,17 @@
     return ok ? { grants: ok } : { error: 'the grants fail the line-item check' };
   }
   // The words of a refusal at a full door and the host's upgrade offer (display only, never a decision): the free
-  // line's words in a room on the free plan or with no plan shown.
-  const fullFreeWords = (label) => !isPaid(label) && label !== 'custom';
+  // line's words when the room's signed line items (grants; null: none shown) leave its people line at the default.
+  // Read from line items, never the product's name: the same grants under any label (or none) get the same words.
+  const fullFreeWords = (grants) => { const x = grants && grantsOk(grants); return !x || (x.roomLimit !== null && x.roomLimit <= FREE_LIMIT); };
   const grantsKey = (x) => GRANT_WORDS.map((k) => String(x[k] == null && k in OPTIONAL_WORDS ? OPTIONAL_WORDS[k] : x[k])).join('|');
-  // The rights shape a page reads, from line items. label: the product's name, for display only.
-  function grantsRights(signed, label, until) {
+  // The rights shape a page reads, from line items. label: the product's name, for display only. signed: a valid signed
+  // right backs these rights (true whenever line items were given): every "is a right held" test reads it, never tier.
+  // key: the payment service's record the right counts against (a subscription id, a pass key's K- record): rights
+  // from different keys add their meeting counts in heldRights.
+  function grantsRights(signed, label, until, key) {
     const x = effective(signed);
-    return { tier: label || null, subscribed: x.admitAtFullDoor, adminRooms: true, openRooms: true, roomLimit: x.roomLimit, turnAudio: true, turnVideo: x.turnVideoLinks > 0,
+    return { signed: !!signed, key: signed && key || null, tier: label || null, subscribed: x.admitAtFullDoor, adminRooms: true, openRooms: true, roomLimit: x.roomLimit, turnAudio: true, turnVideo: x.turnVideoLinks > 0,
       storage: null, bypassLimit: x.admitAtFullDoor, until, vouches: x.turnVideoLinks, capture: x.captureOpenRoom, meetings: x.meetings, agentHost: x.agentHost || 0, overflow: x.overflow === 'keep' ? 'keep' : 'ask', grants: signed || null };
   }
   // What everyone has with no signed right: the defaults, in the rights shape.
@@ -355,7 +359,7 @@
     const lic = o && checkLicense(o, nowS);
     if (!lic) return Object.assign({}, FREE);
     const x = grantsOk(lic.grants);
-    const r = grantsRights(x, lic.tier, lic.exp);
+    const r = grantsRights(x, lic.tier, lic.exp, lic.subId);
     r.storage = x.storage && lic.storage && typeof lic.storage === 'object' ? {
       gb: Number(lic.storage.gb) || 0,
       lapseKeepDays: lic.storage.lapseKeepDays == null ? 30 : Number(lic.storage.lapseKeepDays),
@@ -473,7 +477,7 @@
   // What a meeting right grants in its meeting: its line items (FREE when it carries none readable).
   function ticketRights(t) {
     const x = t && grantsOk(t.grants);
-    return x ? grantsRights(x, t.tier, t.exp) : Object.assign({}, FREE);
+    return x ? grantsRights(x, t.tier, t.exp, t.subId) : Object.assign({}, FREE);
   }
 
   // The admin's room order: {ticket:{ticketJson,sig}, proof, at}. The ticket
@@ -613,7 +617,7 @@
   // What a live pass grants, as a ticket would: its line items.
   function passRights(o) {
     const x = o && grantsOk(o.grants);
-    return x ? Object.assign(grantsRights(x, o.plan, passEnd(o)), { pass: true }) : Object.assign({}, FREE);
+    return x ? Object.assign(grantsRights(x, o.plan, passEnd(o), 'K:' + o.buyerKey), { pass: true }) : Object.assign({}, FREE);
   }
   // ---- the pass's meeting ticket ------------------------------------------------
   // passRecId(buyerKey) -> 'K-' + 24 hex: the payment service's one record
@@ -716,21 +720,56 @@
     const t = await meetingRight(tk, verify, nowS, meeting);
     return t && t.grants && t.grants.captureOpenRoom && !rightRevoked(t, revoked) ? t : null;
   }
-  // bestRights(list) -> the best of several rights held at once (a
-  // subscription's, a pass's): the larger room wins, then the larger vouch
-  // count, then capture, then more meetings at once. A $2 subscriber holding
-  // a pass reads Unlimited for the pass's window, then Room 20 again.
-  // rank(r) -> a number that orders rights that way (room 0..1e6, vouches 0..1000, meetings 0..1e6 all fit in 2^53).
+  // rank(r) -> a number that orders one right against another: the larger room first, then the larger vouch count, then
+  // capture, then more meetings at once (room 0..1e6, vouches 0..1000, meetings 0..1e6 all fit in 2^53). A right no
+  // valid signature backs (r.signed false: the defaults, a forged or run-out right) is 0. Never reads the label.
   function rank(r) {
-    if (!r || !r.tier) return 0;
+    if (!r || !r.signed) return 0;
     const room = r.roomLimit == null ? 1000 : r.roomLimit;   // no line beats any line (ROOM_LIMIT_MAX 25)
     return ((room * 1001 + (r.vouches || 0)) * 2 + (r.capture ? 1 : 0)) * (MEETINGS_MAX + 1) + Math.min(r.meetings || 1, MEETINGS_MAX);
   }
-  function bestRights(list) {
-    let best = null;
-    for (const r of list || []) if (r && r.tier && (!best || rank(r) > rank(best))) best = r;
-    return best || Object.assign({}, FREE);
+  // heldRights(list) -> what several rights held at once give together (a subscription's, a pass's, a stack): the
+  // UNION of their line items. roomLimit: the largest (no line wins); flags: any; vouches: the most; meetings and
+  // agentHost: ADD across distinct keys (each key is its own record at the payment service; two rights on one key,
+  // a stack, are time, not count: the larger one); overflow: 'keep' if any keeps; unionUntil: the first end (the union
+  // changes then). Rights no signature backs add nothing; none at all is the defaults. The display fields (tier,
+  // pass, until, storage, key) follow the top-ranked right (the first of equals), and sources lists every one. A $2
+  // subscriber holding a pass reads the pass's line items for its window, then Room 20 again.
+  function heldRights(list) {
+    const held = (list || []).filter((r) => r && r.signed);
+    if (!held.length) return Object.assign({}, FREE);
+    let top = held[0];
+    for (const r of held) if (rank(r) > rank(top)) top = r;
+    const perKey = new Map();
+    const addUp = (word) => { perKey.clear(); held.forEach((r, i) => { const k = r.key || '#' + i; perKey.set(k, Math.max(perKey.get(k) || 0, r[word] | 0)); }); let n = 0; perKey.forEach((v) => { n += v; }); return n; };
+    const meetings = Math.min(Math.max(addUp('meetings'), 1), MEETINGS_MAX), agentHost = Math.min(addUp('agentHost'), AGENT_HOST_MAX);
+    const roomLimit = held.some((r) => r.roomLimit === null) ? null : Math.max.apply(null, held.map((r) => r.roomLimit));
+    const any = (w) => held.some((r) => !!r[w]);
+    const vouches = Math.max.apply(null, held.map((r) => r.vouches | 0));
+    const overflow = held.some((r) => r.overflow === 'keep') ? 'keep' : 'ask';
+    const grants = { roomLimit, admitAtFullDoor: any('bypassLimit'), captureOpenRoom: any('capture'), turnVideoLinks: vouches, storage: held.some((r) => r.grants && r.grants.storage), meetings };
+    if (agentHost) grants.agentHost = agentHost;
+    if (overflow === 'keep') grants.overflow = overflow;
+    const until = Math.min.apply(null, held.map((r) => (r.until == null ? Infinity : r.until)));
+    return Object.assign({}, top, { signed: true, roomLimit, subscribed: any('subscribed'), bypassLimit: grants.admitAtFullDoor, turnVideo: vouches > 0, vouches, capture: grants.captureOpenRoom,
+      meetings, agentHost, overflow, grants, storage: top.storage || (held.find((r) => r.storage) || {}).storage || null, until: top.until, unionUntil: until,
+      sources: held.map((r) => ({ tier: r.tier, pass: !!r.pass, key: r.key, until: r.until })) });
   }
+
+  // rightsJson(r) -> the plain JSON every interface reads (GifOS.rights(), the SDKs, the MCP servers, the hosted-bot
+  // host): the signed line items in effect and where they come from. label is the product's name, for display only;
+  // decide on the line items. A time that never ends is null; no right held is the defaults with signed false.
+  const endJson = (t) => (t == null || !Number.isFinite(t) ? null : t);
+  function rightsJson(r) {
+    const x = r && r.signed ? r : FREE;
+    return { signed: !!x.signed, label: x.tier || null, roomLimit: x.roomLimit, admitAtFullDoor: !!x.bypassLimit, captureOpenRoom: !!x.capture,
+      turnVideoLinks: x.vouches | 0, storage: !!(x.grants && x.grants.storage), meetings: x.meetings || 1, agentHost: x.agentHost | 0, overflow: x.overflow === 'keep' ? 'keep' : 'ask',
+      until: x.signed ? endJson(x.until) : null,
+      sources: (x.sources || (x.signed ? [{ tier: x.tier, pass: !!x.pass, until: x.until }] : [])).map((s) => ({ label: s.tier || null, pass: !!s.pass, until: endJson(s.until) })) };
+  }
+  // GifOS.rights() -> Promise of rightsJson: THE one rights call. Here (the core, which takes no credentials yet) it is
+  // the defaults; the meeting page's subscription code (meet-subs.js) replaces it with what this person holds.
+  if (typeof GifOS.rights !== 'function') GifOS.rights = async () => rightsJson(FREE);
 
   // doorVerdict: what a greeter does with a knocker it has no proof from.
   // -> 'let-in' (no limit applies, or the room has space, or the count is not
@@ -935,7 +974,7 @@
     admission, roomContext, doorContext, roomTierOf, doorVerdict, doorProofOk,
     TICKET_KIND, TICKET_S, RENEW_EVERY_S, meetingTag, checkTicket, verifyTicket, ticketRights,
     PASS_KIND, passSeconds, PASS_PLAN, PASS_PRICE, PASS_VALUE, ORDER_ID_RE, PASS_ID_RE, passMessage, checkPass, passLive, passEnd, verifyPass,
-    passStart, passRights, meetingRight, bestRights, rank,
+    passStart, passRights, meetingRight, heldRights, rank, rightsJson,
     ROOM_LIMIT_MAX, MEETINGS_MAX, AGENT_HOST_MAX, OVERFLOWS, GRANT_WORDS, OPTIONAL_WORDS, LEGACY_WORDS, DEFAULTS, effective, grantsOk, parseGrantList, grantsRights, ownTicketGrants, fullFreeWords, PASS_PRESETS, presetPass, revokedSet, rightRevoked, captureRight,
     PASS_TICKET_KIND, PASS_REC_RE, passRecId, passTicketMessage, passChain, checkPassTicket, verifyPassTicket, isPassTicket,
     WALLET_KIND, walletOk,
