@@ -3657,6 +3657,17 @@
         }
         return downStream(e.audio.mix, v, a);
       }
+      // A product row has no mix fold. The ship is the packer's own stream (picture plus the fold it was born with).
+      if (e.video && e.video.pack && !e.audio) {
+        const kind = e.video.pack, skip = e.video.skip;
+        let pk = null;
+        if (kind === 'prod') pk = prodPack;
+        else if (kind === 'room') pk = roomPack;
+        else if (kind === 'pipe') pk = pipePacks.get(skip);
+        else if (kind === 'l14') pk = l14Packs.get(skip);
+        if (!pk || !(pk.count() > 0) || !pk.track || !pk.stream) return null;
+        return pk.stream;
+      }
       if (e.key === 'sdn' && e.video && e.video.in === 'sdm' && (!e.audio || e.audio.in === 'sdx')) {
         const sdmF = __C.mosIn.get('sdm');
         const sdx = __C.mosIn.get('sdx');
@@ -4921,14 +4932,6 @@
         const jk = (0, /*()*/__C.shipJob)(e.key, e.to, streamFor(e), meta, e.upKey);
         if (jk) wanted.add(jk);
       }
-      const hc = actHead ? { pc: c.pc, r: c.r, i: 0 } : c;
-      // STADIUM overlay threshold: past ~STAD_CAP people every square is too
-      // small for a burned name/frame — bake only the tapestry + a talking dot.
-      // Driven by the gossiped room size, so every seat AND every up-tree
-      // compositor (where a face's overlay is burned) agrees on tiny-or-not.
-      const stadTiny = MM.stadiumTiny((0, /*()*/__C.roomPastSection)() ? displayCount() : (0, /*()*/__C.knownTotal)()); // a display threshold — the fold's n is a label (G2)
-      // Past the cap only the NAME goes: talking, a hand and a reaction stay as colour marks (mesh-media drawOverlay).
-      const stadLbl = (pid) => { const l = (0, /*()*/__C.labelFor)(pid); return stadTiny ? { dot: true, talking: l.talking, hand: l.hand, react: l.react } : l; };
       const stagers = (0, /*()*/__C.stageIds)();               // gossiped, ordered, <=C
       const amStager = stagers.includes(__C.myId);
       // The Stage is me and nobody else ⇒ every strip in this sweep is a
@@ -5109,136 +5112,11 @@
         return { n: k, cols: k }; // legacy bar self-describes via aspect (5 − max/min = free)
       };
       const setBlock = (pk, id, ord, f) => { const m = blockMeta(f); pk.setTile(id, ord, f.el, f.stream, m); };
-      // L14 (fast media, slow tidy): the cut-off branches that took me as their uplink. Their products ride into what I
-      // make ('subu:<head>'); each gets one down pack of everything I hold but itself, as 'sdn' (its outside).
-      // My own down-child is never a cut-off branch: its outside is the mix-minus my head builds for my column (sdx,
-      // relayed down as sdn). A head that dialled me while cut off and then settled under me stays in the seat's served
-      // list (the mesh keeps the uplink), but a second 'sdn' from the L14 pack would replace that relay in the same job
-      // with a pack of my row's faces only, and the child's whole branch would hear nobody outside the row.
-      // SUB.4: my pipe peers are served children too: their product rides in as 'subu:<peer>', and each gets everything I hold
-      // but its own part (below, at the Section-1 head that ends it).
       const pipes = beyondRow ? (0, /*()*/__C.pipePeers)() : [];
-      const l14Heads = (0, /*()*/__C.l14DownHeads)((0, /*()*/__C.meshSeat)(), beyondRow, (0, /*()*/__C.occPid)(T.down(c))).filter((h) => pipes.indexOf(h) < 0).concat(pipes);
-      // A branch one of my row-mates serves reaches me as that mate's relay (sub {l14, via}): the mate relays only the
-      // branches it serves, and its announce ages out when it stops. A head packs those as its own, so the branch
-      // goes up in the row product and into the stadium.
       const rowMatePid = (pid) => { if (!pid) return false; for (let j = 0; j < C; j++) { if (j === c.i) continue; if ((0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: j }) === pid) return true; } return false; };
-      const l14Keep = (h, uf) => l14Heads.includes(h) || (!!uf && uf.via !== h && (iAmHead || actHead) && rowMatePid(uf.via));
-      // SOUND NEVER DEPENDS ON A PICTURE, at any hop. A block whose product carries no video (an unvouched or paused link,
-      // TURN.11-13) draws no tile, never a black block, and its sound still enters the pack as a sound-only part (setSound):
-      // a head's row product sums its sound from the pack, so without it the other rows would hear nothing from that branch.
-      // The other hops read those streams through mixIn, and the relay up 'subl:' forwards the claim, so none of them looks at a picture.
-      const blockHasPicture = (f) => !!(f && f.stream && f.stream.getVideoTracks().some((t) => t.readyState !== 'ended'));
-      const l14Blocks = (pk, skip, ordOf) => {
-        let q = 0; const heard = new Set();
-        for (const [mk, uf] of __C.mosIn) {
-          if (mk.indexOf('subu:') !== 0) continue; const h = mk.slice(5);
-          if (h === skip || !l14Keep(h, uf)) { pk.delTile('u' + h); continue; }
-          if (!blockHasPicture(uf)) { pk.delTile('u' + h); if (pk.setSound && uf && uf.stream) { pk.setSound('u' + h, uf.stream); heard.add('u' + h); } continue; }
-          setBlock(pk, 'u' + h, ordOf(q++), uf);
-        }
-        if (pk.soundIds) for (const k of pk.soundIds()) if (k[0] === 'u' && !heard.has(k)) pk.delSound(k);
-      };
-      // Hand ships of the product, recorded so the plan's rows can be compared this sweep. The flip deletes the ships.
-      const prodShips = [];
-      const noteProd = (key, to, meta) => { prodShips.push({ key: key, to: to == null ? null : to, meta: meta || {} }); };
-      const l14Down = (fill, metaOf, direct) => {
-        for (const [h, pk] of [...l14Packs]) if (!fill || !l14Heads.includes(h) || (direct && direct.has(h))) { pk.stop(); l14Packs.delete(h); }
-        if (!fill) return;
-        for (const h of l14Heads) {
-          if (direct && direct.has(h)) continue;
-          let pk = l14Packs.get(h);
-          if (!pk) { pk = MM.createPacker({ shape: 'stad', fps: compFps(), ac: mixCtx() }).start(); l14Packs.set(h, pk); }
-          fill(pk, h); l14Blocks(pk, h, (q) => 20 + C + q);
-          if (pk.count() > 0) { const meta = metaOf(pk); noteProd('sdn', h, meta); const jk = (0, /*()*/__C.shipJob)('sdn', h, pk.stream, meta); if (jk) wanted.add(jk); }
-        }
-      };
       let roomEl = null, roomMeta = null, alag = 0;
       if (iAmHead || actHead) {
-        // PRODUCT = my row's live faces + my row's sub-blocks, PACKED near-square
-        // (no fixed C+1 slots — the tall-product blowup is gone).
-        if (!prodPack) prodPack = MM.createPacker({ shape: 'grid', fps: compFps(), ac: mixCtx() }).start();
-        dbgRowFaces = []; // test observability: which pid the packer drew at each row seat
-        for (let j = 0; j < C; j++) {
-          let pid0 = j === c.i ? __C.myId : (actHead && j === 0 ? null : (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: j }));
-          // A SEAT'S FACE BELONGS TO ITS SELF-REPORTED OWNER (2026-07-29: a
-          // moved bot rendered TWICE in the stadium all session). occ gossip
-          // never evicts (E2) and tlSweep can't kill an entry whose pid still
-          // ANSWERS (alive, just seated elsewhere) — so wherever the LEAVE was
-          // missed, the old entry lingers and its face gets composed at both
-          // seats. The peer's own heartbeat carries its seat (myStatus.seat);
-          // a FRESH self-report that disowns this seat vetoes the draw. An
-          // absent or stale report changes nothing — occ stands (E2 intact:
-          // this evicts nothing, it only declines to PAINT a disowned seat).
-          if (pid0 && pid0 !== __C.myId && (0, /*()*/__C.stHold)(pid0)) {
-            const ss = (__C.statusOf.get(pid0) || {}).seat;
-            if (ss && !(ss.pc === c.pc && ss.r === c.r && ss.i === j)) pid0 = null;
-          }
-          const pid = pid0 && (0, /*()*/__C.personOnStage)(pid0, stagers) ? null : pid0; // stagers live on the Stage ONLY (docs/media-plane.md); a share from the Row keeps its face here
-          const sc = pid ? srcFor(pid) : null;
-          if (sc && sc.el) dbgRowFaces.push({ i: j, pid: String(pid).slice(0, 8) });
-          // A share from the Row keeps the face here; the voice rides the Stage feed, so it is not summed twice.
-          if (sc && sc.el) prodPack.setTile('r' + j, 'a' + j, sc.el, pid && stagers.includes(pid) ? null : sc.stream, { n: 1, cols: 1, lbl: stadLbl(pid), fit: (0, /*()*/__C.fitFor)(pid), pid });
-          else prodPack.delTile('r' + j);
-          const sub = __C.mosIn.get('sub:' + j);
-          if (sub) setBlock(prodPack, 's' + j, 'b' + j, sub); else prodPack.delTile('s' + j);
-        }
-        l14Blocks(prodPack, null, (i) => 'b' + (C + i));
-        // STADIUM-FACES: a pack's meta names who sits in cell 0..n-1 as it
-        // packed them (cellIds; absent while dense-packed), so a receiver cuts
-        // each face out BY ID. Before, a receiver matched its own roster to
-        // the cells by count and position: a different order drew faces under
-        // the wrong names, and a different count (a stager left out of the
-        // composite under a share) turned EVERY face into initials (2026-10-18
-        // fleet stadium: letter avatars under a share; the rejoiner's strip).
-        const packMeta = (pk) => { const m = { n: pk.count(), cols: pk.cols() }; const ids = pk.cellIds ? pk.cellIds() : null; if (ids && ids.length === m.n && ids.every((x) => typeof x === 'string' && x)) m.ids = ids; return m; }; // every cell named, or none: a receiver's mxIds takes only a whole list of ids
-        const prodMeta = () => packMeta(prodPack);
-        if (c.pc !== 0 && beyondRow) {
-          // ship my product UP (the up-seat relays it to ITS head)
-          const up = T.up(hc); const upPid = up ? (0, /*()*/__C.occPid)(up) : null;
-          const upMeta = prodMeta(); noteProd('sub', upPid, upMeta);
-          const jk = (0, /*()*/__C.shipJob)('sub', upPid, prodPack.stream, upMeta); if (jk) wanted.add(jk);
-          { const sv = (0, /*()*/__C.meshSeat)(); if (sv && sv.l14Up && sv.l14Up !== upPid && sv.l14Cut) { const l14Meta = Object.assign({ l14: 1 }, prodMeta()); noteProd('sub', sv.l14Up, l14Meta); const ju = (0, /*()*/__C.shipJob)('sub', sv.l14Up, prodPack.stream, l14Meta); if (ju) wanted.add(ju); } } // L14: fast media, the branch rides its uplink
-        } else if (c.pc === 0 && beyondRow) { // Stadium forms whenever the room is MULTI-ROW (not just multi-section) — the Section channel is gone, so cross-row visibility relies entirely on this
-          // SECTION-1 FINISH (W7 rook): my product goes DIRECT to every other
-          // head over the head column — colMates of a head ARE the other heads
-          // — the 1-hop primary. A second, fully link-disjoint copy relays
-          // through the row+column fabric: x1 to each row-mate, who carries it
-          // down its COLUMN to the destination row (x2), whose holder hands it
-          // to its head (sdrow). Both announce the same sdrow:q slot; the
-          // receiving head multi-subscribes (primary + hot standby, S3). Then
-          // PACK into THE STADIUM, fan it down my down-link + keep my row
-          // current.
-          // Every row copy names its packer (src) and its carries (h: 0 here, +1 per relay), so a head ranks copies by path.
-          for (const hm of T.colMates(hc)) {
-            const rowMeta = Object.assign({ row: c.r, h: 0, src: __C.myId }, prodMeta()); noteProd('sdrow:' + c.r, (0, /*()*/__C.occPid)(hm), rowMeta);
-            const jk0 = (0, /*()*/__C.shipJob)('sdrow:' + c.r, (0, /*()*/__C.occPid)(hm), prodPack.stream, rowMeta); if (jk0) wanted.add(jk0);
-          }
-          // L2.15: my product also crosses each Section-1 bridge of mine (an empty cell's two nearest seats): the far end is the head
-          // (or the heir standing in) of another row whose corner with mine may be silent; it keeps this copy parked as a standby
-          // (one-pipe law) and plays it when the head-column copy stops
-          { const sb = (0, /*()*/__C.meshSeat)(); for (const t of (sb && sb.s1Bridges ? sb.s1Bridges() : [])) { const brMeta = Object.assign({ row: c.r, h: 1, src: __C.myId }, prodMeta()); noteProd('sdrow:' + c.r, t, brMeta); const jb = (0, /*()*/__C.shipJob)('sdrow:' + c.r, t, prodPack.stream, brMeta); if (jb) wanted.add(jb); } }
-          // L2.7 at Section 1: the heir has no pc to the other heads; its column-mates carry its product to their heads (x2 -> sdrow), as a mate carries its head's x1
-          if (actHead) for (const cm of T.colMates(c)) { const x2Meta = Object.assign({ row: c.r, h: 0, src: __C.myId }, prodMeta()); noteProd('x2', (0, /*()*/__C.occPid)(cm), x2Meta); const jx = (0, /*()*/__C.shipJob)('x2', (0, /*()*/__C.occPid)(cm), prodPack.stream, x2Meta); if (jx) wanted.add(jx); }
-          for (let j = 1; j < C; j++) {
-            const mate = (0, /*()*/__C.occPid)({ pc: 0, r: c.r, i: j });
-            const x1Meta = Object.assign({ row: c.r, h: 0, src: __C.myId }, prodMeta()); noteProd('x1', mate, x1Meta);
-            const jk = (0, /*()*/__C.shipJob)('x1', mate, prodPack.stream, x1Meta); if (jk) wanted.add(jk);
-          }
-        }
-        // ---- ONE PACK DOWN THE TREE (docs/media-plane.md) ----------------------
-        // The whole-room pack is composited once, at Section 1, and goes down the
-        // tree as one encoded stream. Every head forwards the SAME encoded pack to
-        // its row and to its child rows unchanged: no re-encode and no per-branch
-        // re-composite on the way down (the forwarded bytes ride the pipe lane).
-        // Each receiver hides its own row's tiles itself, by the cell ids the pack
-        // carries. Mixed audio cannot be un-mixed, so the sound stays per receiver:
-        // one audio fold each, leaving out that receiver's own voices.
         if (beyondRow) {
-          // THE ROOM'S PICTURE: built here at Section 1 (the other rows' products
-          // and mine, cell for cell), received from above deeper down.
-          let roomV = null;
-          const dn = c.pc === 0 ? null : __C.mosIn.get('sdn');
           // SUB.4: the pipes of my row-mates (Section-1 seats that are not the head): each mate relays its pipe's product to me
           // marked {pipe, pv}, and I build that pipe's send (the sound and, while vouched, the pack without its block) as for
           // my own pipes; the mate hands it on ('sdxu:<pipe peer>').
@@ -5247,63 +5125,28 @@
           const pipeKids = pipes.concat(matePipes);
           const kidVideo = (h) => (pipes.indexOf(h) >= 0 ? (0, /*()*/__C.pipeVideo)(h) : ((__C.mosIn.get('subu:' + h) || {}).meta || {}).pv === 1);
           if (c.pc === 0) {
-            // One fill for the room pack and for each pipe's pack: the same parts, a pipe's pack leaving that pipe's own block out
-            // (SUB.4 split horizon: a part is left out, never taken away).
-            const fillRoom = (pk, skip) => {
-              for (let q = 0; q < C; q++) {
-                const rowIn = q === c.r ? null : __C.mosIn.get('sdrow:' + q);
-                if (rowIn) setBlock(pk, 'q' + q, 'c' + q, rowIn); else pk.delTile('q' + q);
-                if (!skip && rowIn && rowIn.via !== (0, /*()*/__C.occPid)({ pc: 0, r: q, i: 0 })) { const sk = (0, /*()*/__C.meshSeat)(); if (sk && sk.keepAdd) sk.keepAdd(rowIn.via, 16); } // L28: a carried copy stays until the direct one lands
-              }
-              // My row straight from its sources (faces and child blocks), not through my product's canvas: one paint, not two in series.
-              pk.delTile('p');
-              for (let j = 0; j < C; j++) {
-                const fp0 = j === c.i ? __C.myId : (actHead && j === 0 ? null : (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: j }));
-                const fp = fp0 && stagers.includes(fp0) ? null : fp0;
-                const sc = fp ? srcFor(fp) : null;
-                if (sc && sc.el) pk.setTile('f' + j, 'c' + c.r + 'a' + j, sc.el, null, { n: 1, cols: 1, lbl: stadLbl(fp), fit: (0, /*()*/__C.fitFor)(fp), pid: fp });
-                else pk.delTile('f' + j);
-                const sub = __C.mosIn.get('sub:' + j);
-                if (sub) setBlock(pk, 's' + j, 'c' + c.r + 'b' + j, sub); else pk.delTile('s' + j);
-              }
-              l14Blocks(pk, skip, (i) => 'c' + c.r + 'd' + i);
-            };
-            if (!roomPack) roomPack = MM.createPacker({ shape: 'stad', fps: compFps() }).start();   // video only
-            fillRoom(roomPack, null);
-            if (roomPack.count() > 0) { roomEl = roomPack.canvas; roomMeta = packMeta(roomPack); roomV = packLoopTrack(roomPack.track) || roomPack.track; }
-            // A pipe that carries no video (unvouched, TURN.11-13) gets no picture composited for it at all.
             pipePacksStop((h) => pipeKids.indexOf(h) >= 0 && kidVideo(h));
-            for (const h of pipeKids) {
-              if (!kidVideo(h)) continue;
-              let pk = pipePacks.get(h);
-              if (!pk) { pk = MM.createPacker({ shape: 'stad', fps: compFps() }).start(); pipePacks.set(h, pk); }
-              fillRoom(pk, h);
-            }
           } else {
             if (roomPack) { roomPack.stop(); roomPack = null; }
             pipePacksStop();
             packLoopStop();
+            const dn = __C.mosIn.get('sdn');
             const dv = dn && dn.stream ? dn.stream.getVideoTracks()[0] : null;
-            if (dv && dv.readyState !== 'ended') { roomV = dv; roomEl = dn.el; roomMeta = blockMeta(dn); }
+            if (dv && dv.readyState !== 'ended') { roomEl = dn.el; roomMeta = blockMeta(dn); }
+            // Deeper, the picture passes through and the sound is re-mixed here: my audio hop adds to what came down.
+            alag = Math.round(((dn && dn.meta && dn.meta.alag) || 0) + audioHopMs(dn && dn.stream ? dn.stream.getAudioTracks()[0] : null));
+            if (roomMeta) roomMeta = Object.assign({}, roomMeta, { alag });
           }
-          // LIP SYNC: Section 1 re-makes both the picture and the sound, so its pack starts level (alag 0).
-          // Deeper, the picture passes through and the sound is re-mixed here: my audio hop adds to what came down.
-          alag = c.pc === 0 ? 0 : Math.round(((dn && dn.meta && dn.meta.alag) || 0) + audioHopMs(dn && dn.stream ? dn.stream.getAudioTracks()[0] : null));
-          if (roomMeta) roomMeta = Object.assign({}, roomMeta, { alag });
-          l14Down(null);
         } else {
           if (roomPack) { roomPack.stop(); roomPack = null; }
           pipePacksStop();
           packLoopStop();
           for (const f of downFolds.values()) f.clear();
           downFolds.clear(); downStreams.clear();
-          l14Down(null);
           paintRoomView(null, null, null, c, 0);
         }
       } else {
-        // ROLE-CHANGE hygiene: a seat that moved head → non-head (heal,
-        // teleport) must not keep its head packers painting + encoding
-        // forever. Receivers of the old streams re-claim the new head's mixes.
+        // A seat that left the head must not keep the head packers. Receivers re-claim the new head's mixes.
         if (prodPack) { prodPack.stop(); prodPack = null; }
         if (roomPack) { roomPack.stop(); roomPack = null; }
         pipePacksStop();
@@ -5311,84 +5154,107 @@
         for (const f of downFolds.values()) f.clear();
         downFolds.clear();
         for (const k of [...downStreams.keys()]) if (k !== 'fwd') downStreams.delete(k);
-        if (beyondRow) {
-          const packMetaM = (pk) => ({ n: pk.count(), cols: pk.cols() });
-          // A branch I serve gets my head's pack as it came (the same encoded picture, its own sound), handed down as is.
-          const relDirect = new Set();
-          // the same test as the carry plan's: a husk with no track gets the packer's sdn
-          for (const h of l14Heads) { const rel = __C.mosIn.get('sdxu:' + h); if (!rel || !rel.stream || !rel.stream.getTracks().length) continue; relDirect.add(h); }
-          l14Down((pk, h) => {
-            // no pack from my head for this branch yet: my row's faces, packed here
-            for (let j = 0; j < C; j++) { const fp0 = j === c.i ? __C.myId : (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: j }); const fp = fp0 && stagers.includes(fp0) ? null : fp0; const sc = fp ? srcFor(fp) : null; if (sc && sc.el) pk.setTile('f' + j, 10 + j, sc.el, sc.stream, { n: 1, cols: 1, lbl: stadLbl(fp), fit: (0, /*()*/__C.fitFor)(fp), pid: fp }); else pk.delTile('f' + j); }
-          }, packMetaM, relDirect);
-        } else l14Down(null);
       }
-      // Shadow: the plan against the packers this sweep filled. A diff is a log line. The paint is unchanged.
-      if (__C.DEBUG_ON) {
-        if (!reconcileMosaic.packDiff) reconcileMosaic.packDiff = { sweeps: 0, diffSweeps: 0, compares: 0, last: null };
-        const st = reconcileMosaic.packDiff;
-        let plan = null, threw = null;
-        try { plan = (0, /*()*/__C.packIn)() || []; } catch (e) { threw = String(e && e.message || e).slice(0, 80); }
-        const live = new Map();
-        if (prodPack) live.set('prod', prodPack);
-        if (roomPack) live.set('room', roomPack);
-        if (pipePacks) for (const [h, pk] of pipePacks) if (pk) live.set('pipe:' + h, pk);
-        if (l14Packs) for (const [h, pk] of l14Packs) if (pk) live.set('l14:' + h, pk);
-        const want = new Map();
-        if (plan) for (const p of plan) if (p && p.key) want.set(p.key, p);
-        const keys = [...new Set([...live.keys(), ...want.keys()])].sort();
-        let compared = 0;
-        let reason = threw ? ('threw ' + threw) : null;
-        const same = (a, b) => JSON.stringify(a == null ? null : a) === JSON.stringify(b == null ? null : b);
-        for (const key of keys) {
-          const pk = live.get(key), pl = want.get(key);
-          if (!pk || !pl) {
-            const n = (pl && pl.tiles) ? pl.tiles.length : 0;
-            const g = (pk && pk.tilesForTest) ? pk.tilesForTest().length : 0;
-            compared += n + g;
-            if (!reason) reason = (!pk ? 'no packer ' : 'no plan ') + key;
-            continue;
-          }
-          const got = pk.tilesForTest ? pk.tilesForTest() : [];
-          const tiles = pl.tiles || [];
-          if (!got.length && !tiles.length) continue;
-          const gm = new Map(), wm = new Map();
-          for (const t of got) if (t && t.id != null) gm.set(t.id, t);
-          for (const t of tiles) if (t && t.id != null) wm.set(t.id, t);
-          const ids = [...new Set([...gm.keys(), ...wm.keys()])].sort();
-          compared += ids.length;
-          for (const id of ids) {
-            const g = gm.get(id), w = wm.get(id);
-            if (!g || !w) { if (!reason) reason = (!w ? 'extra ' : 'missing ') + key + ' ' + id; continue; }
-            if (g.ord !== w.ord) { if (!reason) reason = 'ord ' + key + ' ' + id; continue; }
-            if (w.ref && w.ref.face != null) {
-              const pid = g.pid != null ? String(g.pid) : '';
-              if (pid !== String(w.ref.face)) { if (!reason) reason = 'ref ' + key + ' ' + id; continue; }
-            } else if (w.ref && w.ref.in) {
-              const ent = __C.mosIn.get(w.ref.in);
-              const hit = w.sound ? (ent && g.stream === ent.stream) : (ent && g.el === ent.el);
-              if (!hit) { if (!reason) reason = 'ref ' + key + ' ' + id; continue; }
-            }
-            if (!same(g.fit, w.fit)) { if (!reason) reason = 'fit ' + key + ' ' + id; continue; }
-            if (!same(g.lbl, w.lbl)) { if (!reason) reason = 'lbl ' + key + ' ' + id; continue; }
-            if (w.mute === 1 && g.stream) { if (!reason) reason = 'mute ' + key + ' ' + id; }
+      // The plan names every packer this sweep fills. A key that left the plan is stopped. keepAdd stays here: it is this plane's side effect for a carried sdrow copy, not a plan decision.
+      const ensurePack = (key, shape) => {
+        if (key === 'prod') {
+          if (!prodPack) prodPack = MM.createPacker({ shape: shape, fps: compFps(), ac: mixCtx() }).start();
+          return prodPack;
+        }
+        if (key === 'room') {
+          if (!roomPack) roomPack = MM.createPacker({ shape: shape, fps: compFps() }).start();   // video only
+          return roomPack;
+        }
+        if (key.indexOf('pipe:') === 0) {
+          const h = key.slice(5);
+          let pk = pipePacks.get(h);
+          if (!pk) { pk = MM.createPacker({ shape: shape, fps: compFps() }).start(); pipePacks.set(h, pk); }
+          return pk;
+        }
+        if (key.indexOf('l14:') === 0) {
+          const h = key.slice(4);
+          let pk = l14Packs.get(h);
+          if (!pk) { pk = MM.createPacker({ shape: shape, fps: compFps(), ac: mixCtx() }).start(); l14Packs.set(h, pk); }
+          return pk;
+        }
+        return null;
+      };
+      const applyTiles = (pk, tiles) => {
+        const pics = new Set(), sounds = new Set();
+        const list = tiles || [];
+        for (let i = 0; i < list.length; i++) {
+          const t = list[i];
+          if (!t || t.id == null || t.sound) continue;
+          pics.add(t.id);
+          const ref = t.ref || {};
+          if (ref.face != null) {
+            const sc = srcFor(ref.face);
+            if (!sc || !sc.el) { pk.delTile(t.id); continue; }
+            pk.setTile(t.id, t.ord, sc.el, t.mute ? null : sc.stream, { n: t.n, cols: t.cols, ids: t.ids, lbl: t.lbl, fit: t.fit, pid: t.pid });
+          } else if (ref.in) {
+            const ent = __C.mosIn.get(ref.in);
+            if (!ent || !ent.el) { pk.delTile(t.id); continue; }
+            setBlock(pk, t.id, t.ord, ent);
+          } else pk.delTile(t.id);
+        }
+        if (pk.ids) for (const id of pk.ids()) if (!pics.has(id)) pk.delTile(id);
+        for (let i = 0; i < list.length; i++) {
+          const t = list[i];
+          if (!t || t.id == null || !t.sound) continue;
+          sounds.add(t.id);
+          const ent = t.ref && t.ref.in ? __C.mosIn.get(t.ref.in) : null;
+          if (ent && ent.stream && pk.setSound) pk.setSound(t.id, ent.stream);
+          else if (pk.delSound) pk.delSound(t.id);
+        }
+        if (pk.soundIds) for (const id of pk.soundIds()) if (!sounds.has(id)) pk.delSound(id);
+      };
+      const plan = (0, /*()*/__C.packIn)() || [];
+      const want = new Set();
+      let sawProd = false;
+      for (let pi = 0; pi < plan.length; pi++) {
+        const pack = plan[pi];
+        if (!pack || !pack.key) continue;
+        want.add(pack.key);
+        const pk = ensurePack(pack.key, pack.shape);
+        if (!pk) continue;
+        if (pack.key === 'prod' && !sawProd) {
+          sawProd = true;
+          dbgRowFaces = [];
+          const tiles = pack.tiles || [];
+          for (let i = 0; i < tiles.length; i++) {
+            const t = tiles[i];
+            if (!t || t.sound || t.id == null || String(t.id).charAt(0) !== 'r') continue;
+            const pid = t.ref && t.ref.face;
+            if (!pid) continue;
+            const sc = srcFor(pid);
+            if (sc && sc.el) dbgRowFaces.push({ i: Number(String(t.id).slice(1)), pid: String(pid).slice(0, 8) });
           }
         }
-        if (compared > 0) {
-          st.sweeps++;
-          st.compares += compared;
-          const now = Date.now();
-          if (!reconcileMosaic.packCmpAt || now - reconcileMosaic.packCmpAt >= MOS_GRACE) {
-            reconcileMosaic.packCmpAt = now;
-            if (__C.clog) (0, /*()*/__C.clog)('pack-cmp n=' + st.compares);
+        if (pack.key === 'room') {
+          for (let q = 0; q < C; q++) {
+            if (q === c.r) continue;
+            const rowIn = __C.mosIn.get('sdrow:' + q);
+            if (rowIn && rowIn.via !== (0, /*()*/__C.occPid)({ pc: 0, r: q, i: 0 })) { const sk = (0, /*()*/__C.meshSeat)(); if (sk && sk.keepAdd) sk.keepAdd(rowIn.via, 16); } // L28: a carried copy stays until the direct one lands
           }
         }
-        if (reason) {
-          st.diffSweeps++;
-          st.last = reason;
-          if (__C.clog) (0, /*()*/__C.clog)('pack-diff ' + reason);
+        applyTiles(pk, pack.tiles);
+      }
+      if (prodPack && !want.has('prod')) { try { prodPack.stop(); } catch (e) {} prodPack = null; }
+      if (roomPack && !want.has('room')) { try { roomPack.stop(); } catch (e) {} roomPack = null; }
+      for (const [h, pk] of [...pipePacks]) if (!want.has('pipe:' + h)) { try { pk.stop(); } catch (e) {} pipePacks.delete(h); }
+      for (const [h, pk] of [...l14Packs]) if (!want.has('l14:' + h)) { try { pk.stop(); } catch (e) {} l14Packs.delete(h); }
+      // Section 1 re-makes the picture and the sound, so its pack starts level (alag 0). The encode-once loop runs only while the room pack has a tile.
+      if ((iAmHead || actHead) && beyondRow && c.pc === 0) {
+        if (roomPack && roomPack.count() > 0) {
+          roomEl = roomPack.canvas;
+          const m = { n: roomPack.count(), cols: roomPack.cols() };
+          const ids = roomPack.cellIds ? roomPack.cellIds() : null;
+          if (ids && ids.length === m.n && ids.every((x) => typeof x === 'string' && x)) m.ids = ids;
+          roomMeta = m;
+          packLoopTrack(roomPack.track);
         }
-        if (typeof window !== 'undefined' && window.__gifosVideo) window.__gifosVideo.__packDiff = st;
+        alag = 0;
+        if (roomMeta) roomMeta = Object.assign({}, roomMeta, { alag });
       }
       // One mixIn per sweep, after the packs exist. The early loop shipped passthrough only.
       function foldAlive(f) {
@@ -5442,28 +5308,6 @@
       }
       if (c.pc === 0 && rowMixOpen()) rowMixVia(); // the 15s stamp, once; mixIn peeks and does not stamp
       const mixPlan = (0, /*()*/__C.mixIn)() || [];
-      // Product rows: the hand ships against the plan. An empty pack (n 0) is not a row, because packFor is null.
-      if (__C.DEBUG_ON) {
-        const sigOf = (key, to, meta) => {
-          const m = meta || {};
-          const ids = Array.isArray(m.ids) ? m.ids.join('\u0001') : '';
-          return key + '\u0000' + (to == null ? '' : to) + '\u0000' + [m.n, m.cols, m.row, m.h, m.src, m.l14, ids].join('\u0000');
-        };
-        const hands = prodShips.filter((s) => s.meta && s.meta.n > 0).map((s) => sigOf(s.key, s.to, s.meta)).sort();
-        const planned = [];
-        for (const e of mixPlan) if (e && e.video && (e.video.pack === 'prod' || e.video.pack === 'l14')) planned.push(sigOf(e.key, e.to, e.meta));
-        planned.sort();
-        let prodReason = null;
-        if (hands.length !== planned.length) prodReason = 'count hand ' + hands.length + ' plan ' + planned.length;
-        else for (let i = 0; i < hands.length; i++) if (hands[i] !== planned[i]) { prodReason = 'meta'; break; }
-        if (!reconcileMosaic.prodDiff) reconcileMosaic.prodDiff = { sweeps: 0, diffSweeps: 0, last: null };
-        if (hands.length || planned.length) reconcileMosaic.prodDiff.sweeps++;
-        if (prodReason) {
-          reconcileMosaic.prodDiff.diffSweeps++;
-          reconcileMosaic.prodDiff.last = prodReason;
-          if (__C.clog) (0, /*()*/__C.clog)('prod-diff ' + prodReason);
-        }
-      }
       const keep = new Set();
       for (const e of mixPlan) {
         if (!e || !e.audio || !e.audio.mix) continue;
@@ -5482,7 +5326,6 @@
       }
       for (const e of mixPlan) {
         if (!e || !e.key || !e.to) continue; // the ear is folded and not shipped
-        if (e.video && (e.video.pack === 'prod' || e.video.pack === 'l14')) continue; // still hand-shipped above; the flip deletes those ships
         if (e.video && e.video.pack && !(packFor(e.video.pack, e.video.skip) || {}).track) continue;
         const jk = (0, /*()*/__C.shipJob)(e.key, e.to, streamFor(e), e.meta, e.upKey);
         if (!jk) continue;
@@ -9731,7 +9574,7 @@
     }
     return __L.END;
   }
-  var api = { name: "media", run: part, count: 674, exports: {"AVATAR_H":0,"AVATAR_W":0,"CC_ENGINE_KEY":0,"CC_TRANSLATE_KEY":0,"CC_WHISPER_ANYWAY_KEY":0,"CC_WORDS_KEY":0,"MOS_GRACE":0,"MOS_SETTLE":0,"STAGE_FACE_PX":0,"STAGE_FACE_SETTLE_MS":0,"STG_PIC_LIVE_MS":0,"STG_ZERO_MS":0,"WEBKIT_TILE":0,"WHISPER_APP_ID":0,"WHISPER_SEED_KEY":0,"WSP_CHIP_MS":0,"WSP_STARVE_MS":0,"WSP_STARVE_N":0,"WSP_STARVE_WIN":0,"WSP_TICK_MS":0,"WSP_WEAK":0,"acClockInfo":1,"adapt":1,"adoptClaim":1,"applyBuses":1,"applyCcAll":1,"applyGrid":1,"applyRecoverMedia":1,"armAudioKeepAlive":1,"armWhisperRescan":1,"attachFailed":1,"attachLocalTracks":1,"attachTrack":1,"audioKickArmed":0,"avHold":0,"avatarPipe":0,"avatarSharp":0,"bindClaim":1,"blockLive":1,"blockOf":1,"blockPicture":1,"blockedAudio":0,"blurDraw":1,"blurPipe":0,"blurSenderFrac":1,"blurSized":1,"blurViewFrac":1,"botVoiceTrack":0,"browserCaptionsMissing":1,"callStateBox":0,"camChooserAnchor":0,"camChooserOpen":1,"camDeviceId":0,"camFacing":0,"camIdleT":0,"camPickThen":0,"camTrackForTest":1,"camVideoConstraints":1,"canRaiseHand":1,"canScreenRecord":0,"canScreenShare":0,"capsRunningNow":1,"carriedHot":1,"carryVoiceTrack":0,"ccDefGroup":0,"ccEngine":1,"ccMix":0,"ccMixStop":1,"ccMixSync":1,"clk":0,"clockSample":1,"closeCamChooser":1,"closeMicChooser":1,"compFps":1,"compOf":0,"containerFor":1,"ctScreenTrack":1,"dbgMeterSources":1,"dbgRowFaces":0,"degOf":0,"detachTrack":1,"dismissCamChooser":1,"displayCount":1,"downFolds":0,"downStreams":0,"dropContainer":1,"dropEndedRemoteTracks":1,"dutyJob":1,"dutyMuteTick":1,"earState":1,"endSongOnStepDown":1,"faceLive":1,"facesOnScreen":1,"gdOverride":0,"gridApplied":0,"gumRefused":1,"gumWithMicFallback":1,"headLinkUp":1,"headSendsStale":1,"headerCount":1,"hearState":1,"heardStage":1,"holdMainVideo":1,"hopMs":1,"installWhisper":1,"jobPinned":0,"jobVideoAt":0,"keepAwake":1,"keepMeetingAudio":1,"keyUp":1,"kfEv":0,"kickJob":1,"kickMainAudio":1,"kickMainVideo":1,"kickStageMic":1,"l14Packs":0,"lateMedia":1,"mainAudioTrack":1,"maybeShowFlip":1,"mediaElCensus":1,"micChooserOpen":1,"micTap":1,"mix":0,"mixAc":0,"mixReady":1,"mosFb":0,"mosHeld":0,"mySelfStream":0,"normStageFrame":1,"noteAudioDevices":1,"noteReship":1,"onMeetDeviceChange":1,"openCamChooser":1,"openKeys":1,"openModal":1,"orphaned":1,"overlayTiny":1,"packFor":1,"packLoop":0,"paintTiming":1,"parkSender":1,"partStream":1,"peerAudioTracks":1,"phoneCaptions":1,"picRead":1,"pickCamera":1,"pipeDeny":0,"pipeJobs":0,"placeStageMarks":1,"playTileVideo":1,"poke":1,"prodPack":0,"producerKey":1,"qaStageSt":0,"quietAtDoor":1,"rbStart":1,"reactSing":1,"recDefaultQuality":1,"recDownload":1,"recDraw":0,"recFileName":1,"recLibraryOption":1,"recMatchMix":0,"recMode":0,"recNoteStruct":1,"recQuality":0,"recRec":0,"recRelease":1,"recScopeSources":1,"recSources":1,"recStarting":0,"reconcileMosaic":1,"recoverShareTimer":0,"refreshOutbound":1,"refreshTrBtn":1,"regrabCamera":1,"releaseAudio":1,"rememberMix":1,"repaintRedun":1,"resumeReload":1,"retireMixTracks":1,"reviveCamera":1,"roomPack":0,"rowEdge":1,"rowMixHeadArrives":1,"rowMixHold":1,"rowMixOpen":1,"rowMixViaPeek":1,"schedClaim":1,"schedReconcile":1,"sdView":0,"sdViewSt":0,"sentVideoTrack":1,"setStageFrame":1,"shareRecoverMode":0,"shipContainers":0,"shownPeerCount":1,"slotDark":1,"soundHeld":1,"speakerChoices":1,"speech":0,"speechGaveUp":0,"speechProved":0,"speechRunning":1,"spkDeviceId":0,"stageAudible":1,"stageEar":0,"stageEarFoldPeak":1,"stageEarLiveTrack":1,"stageEarRawPeak":1,"stageFrameVal":0,"stagedSelfWas":0,"startLocalView":1,"startRec":1,"startScreenShare":1,"startWhisper":1,"stashRecoverMedia":1,"stgBeatIn":1,"stgCarry":1,"stgFoNote":1,"stgLost":1,"stopBlurPipe":1,"stopScreenShare":1,"stopSpeech":1,"stopWhisper":1,"stripPack":0,"stubDuties":1,"swapPicNote":1,"swapTrack":1,"syncAvatarFeed":1,"syncSpeech":1,"tileHolds":1,"toggleSing":1,"trEnSync":1,"trackAspect":1,"trackQ":0,"transcriptFile":1,"tuneCfg":1,"unbindClaim":1,"wakeLock":0,"warnRecorderNewApp":1,"whisperAllowed":0,"whisperChosen":0,"whisperInstalling":0,"whisperRescan":0,"whisperSeedBlocked":1,"whisperSupported":1,"withScrPipe":1,"wkBindVideo":1,"wkEar":0,"wkFwdCopies":0,"wkFwdNeeded":1,"wkHolds":1,"wkQuietBind":1,"wkRemoteTrack":1,"wsp":0,"wspCaps":0,"wspChip":0,"wspChipGone":1,"wspChipRoom":0,"wspEnqueue":1,"wspInst":0,"wspModel":1,"wspPaintSafe":1,"wspPaused":0,"wspQ":0,"wspRebind":1,"wspRelease":1,"wspResume":1,"wspRetry":1,"wspSource":1,"wspStSig":0,"wspStarved":0,"wspState":1,"wspStateText":1,"wspStop":1,"wspSync":1,"wspTickAt":0,"wspToBrowser":1,"wspWorking":0,"x2Target":1}, needs: {"core":{"leaving":0,"localStream":0,"capClone":1,"WK_H264_BLIND":0,"nameInitial":1,"shareBlocked":0,"turnLinks":0,"turnFacts":0,"myId":0,"rowFaceDark":0,"myName":0,"blurLevelFor":1,"mediaOk":0,"relayVia":0,"displayName":1,"myStatus":0,"stageIds":0,"statusOf":0,"screenStream":0,"sharingScreen":0,"BROADCAST":0,"bcMayPublishAv":1,"rbNow":0,"mayShareScreen":0,"outgoingHeld":0,"bcRole":1,"peers":0,"meTile":0,"camPeer":0,"clog":0,"micPeer":0,"renegotiate":1,"rosterIds":0,"knownTotal":1,"rosterTiles":0,"updateTile":1,"updateStatus":1,"meshSeat":0,"meshNode":0,"roomDig":1,"roomPastSection":0,"SCALE":0,"powNow":0,"IS_MOBILE":0,"powDials":0,"setStatus":0,"uiText":1,"stHold":0,"seatDark":0,"forcedCamOff":0,"vqRung":0,"rung":0,"LADDER":0,"stageCeilingKbps":1,"screenCeilingKbps":1,"stageSenders":0,"auxSenders":0,"lowSenders":0,"net":0,"meterFor":1,"sayState":0,"IS_ANDROID":0,"botParks":1,"visParkSent":0,"dcSend":0,"hasPendingTx":0,"ensureAc":1,"ac":0,"newMeetAudioContext":1,"occPid":0,"pipePeers":1,"preferHwVideo":1,"modOf":1,"stageSeats":0,"digLists":0,"stageHeldAt":0,"stageFeedAt":0,"stageViewNow":0,"addAux":0,"isStageJob":0,"auxDrop":1,"stopAuxTx":1,"DEBUG_ON":0,"modBlurOn":0,"meshCoord":0,"speakingOf":0,"rowMixTalkAt":0,"subWant":0,"myIdentity":0,"labelFor":0,"iAmWaiting":1,"peerWaits":1,"fitFor":0,"pipeVideo":0,"pipeStg":0,"STAGE_FPS":0,"stageCell":1,"STAGE_MAXW":0,"stageFps":1,"freshSt":0,"pwBlocked":0,"bannedOut":0,"mediaJoined":0,"RECOVER_MEDIA_KEY":0,"updateRoomKey":0,"bcHostStored":0,"paintOnAir":1,"broadcastStatus":1,"updateMediaSession":1,"screenSteppedUp":0,"setStage":1,"refreshAllTiles":1,"rbCap":0,"rbLength":1,"rbTracks":1,"rbDrop":1,"bcSeeding":0,"releaseLeaveAsk":1,"rbStop":1,"rbNoun":0,"serviceHeard":0,"rowMates":0,"isHeld":1,"botHidden":1,"TIMING_KEY":0,"digStageEntry":0,"rosterNames":0,"foldName":1,"canStage":0,"lsGet":0,"CC_ON_PHONE":0,"meters":0,"myVoiceAt":0,"lsSet":0,"ccLocalQ":0,"CC_LANG_KEY":0,"trEnOn":0,"capSend":1,"trLangOf":0,"addTranscriptLine":1,"capEarsOnly":1,"capTrust":0,"trLang":1,"trKeeps":1,"trEnOnlyEnglish":1,"capSpotQueue":1,"capPublish":1,"trForget":1,"ccLang":0,"trDrops":0,"capTraceGate":1,"myVoiceFrom":0,"trLangKnown":1,"myVoiceSinceFinal":0,"ccDevNotice":1,"trEchoHeld":1,"ccShow":0,"trBlocks":1,"trNote":1,"modTable":0,"setMod":1,"AI_SPARK_SVG":0,"chatOpen":0,"room":0,"recRoomWord":1,"bcLastService":0,"BC_INTENT":0,"recSrcDirty":0,"recStructSig":0,"bcKeepUserStop":0,"amGloballyMuted":1,"micLockWords":1,"capClosed":0,"bcWatchingViewer":1,"enforceBroadcastSeat":1,"lateAsk":0,"lateWant":0,"bootGumPending":0,"reactRoomState":1,"camOnWords":1,"statusWords":0,"lateGen":0,"lateWon":0,"lateTimer":0,"LATE_ASK_MS":0,"carryOutAc":0,"blurLevel":0,"setPersonalBlur":1,"carryHosts":0,"carryG":0,"meOnStage":1,"shareOnlyStage":1,"personOnStage":1,"seatSelfLeased":0,"mainVideoChoice":1,"outboundPlan":1,"stageFeedVideo":1,"stageVideoChoice":1,"participantCount":1,"deepInView":1,"isRedun":0,"onStageNow":1,"screenSharers":0,"roomSingOn":0,"singOf":0,"capCovered":1,"trWrites":1,"idleNow":0,"lastActive":0,"lastQ":0,"MP":0,"battNow":0,"micGrabbing":0,"micWant":0,"micMode":0,"micUnmuteAfter":0,"micPickPrev":0,"pipeEnabled":0,"MPipe":0,"stgBeats":0,"swapPicLast":0,"swapPicHoldAt":0,"swapPicRing":0,"STG_BEAT_STALE_MS":0,"STG_BEAT_SEEN":0,"stgBeatCost":0,"STG_BEAT_MS":0,"timing":0,"whisperReady":0,"planMeasured":1,"reconcileMain":1,"inboundPlan":1,"owedStream":1,"mosIn":0,"mosJobs":0,"mosStandby":0,"demand":1,"unshipJob":1,"kfNeed":1,"setJobActive":1,"claimMos":1,"stgFedBy":1,"stgPath":0,"vpId":0,"stgStale":1,"mosBeyondAt":0,"dropMosIn":1,"dropStandby":1,"mosAnn":0,"roomBeyondRow":1,"carryIn":1,"l14DownHeads":1,"shipJob":1,"stgEnded":1,"stgHop":0,"stgDirectSet":1,"STG_ROOT2":0,"reapJobs":1,"rowActing":1,"rowHeadPid":1,"iActAsHead":1,"mixIn":1,"packIn":1},"view":{"blurA":0,"blurActx":0,"blurB":0,"blurBctx":0,"paintAvatarCanvas":1,"phoneLayout":1,"showAvatarTrack":1,"stagefeedEl":0,"stadiumEl":0,"showFlipButton":1,"showCamBack":1,"paintSpkBtn":1,"paintStadiumTile":1,"paintStageStrip":1,"paintControls":1,"showResharePrompt":1,"hideResharePrompt":1,"paintShare":1,"dropStaleShareWin":1,"paintRb":1,"rbCanvas":1,"paintRbNow":1,"paintFaders":0,"timingRow":0,"paintWspChip":1,"paintCcState":1,"paintTxMark":1,"capCardRefresh":1,"paintWspStatus":1,"paintCcView":1,"showCaption":1,"ccDockBtn":0,"hideCaptions":1,"renderTranscript":1,"renderChat":1,"chatPanel":0,"paintChatBtn":1,"paintRoomTrust":1,"showServiceEnded":1,"showRecReplay":1,"recBtn":0,"showRecOptions":1,"roomAudioOn":1,"micBtn":0,"placeDockPopover":1,"unmuteBtn":0,"camBtn":0,"topNameModal":1,"handBtn":0,"chatPanelOpen":1,"keysModal":0,"syncModalFocus":1}}, stamp: "d49d42da" };
+  var api = { name: "media", run: part, count: 674, exports: {"AVATAR_H":0,"AVATAR_W":0,"CC_ENGINE_KEY":0,"CC_TRANSLATE_KEY":0,"CC_WHISPER_ANYWAY_KEY":0,"CC_WORDS_KEY":0,"MOS_GRACE":0,"MOS_SETTLE":0,"STAGE_FACE_PX":0,"STAGE_FACE_SETTLE_MS":0,"STG_PIC_LIVE_MS":0,"STG_ZERO_MS":0,"WEBKIT_TILE":0,"WHISPER_APP_ID":0,"WHISPER_SEED_KEY":0,"WSP_CHIP_MS":0,"WSP_STARVE_MS":0,"WSP_STARVE_N":0,"WSP_STARVE_WIN":0,"WSP_TICK_MS":0,"WSP_WEAK":0,"acClockInfo":1,"adapt":1,"adoptClaim":1,"applyBuses":1,"applyCcAll":1,"applyGrid":1,"applyRecoverMedia":1,"armAudioKeepAlive":1,"armWhisperRescan":1,"attachFailed":1,"attachLocalTracks":1,"attachTrack":1,"audioKickArmed":0,"avHold":0,"avatarPipe":0,"avatarSharp":0,"bindClaim":1,"blockLive":1,"blockOf":1,"blockPicture":1,"blockedAudio":0,"blurDraw":1,"blurPipe":0,"blurSenderFrac":1,"blurSized":1,"blurViewFrac":1,"botVoiceTrack":0,"browserCaptionsMissing":1,"callStateBox":0,"camChooserAnchor":0,"camChooserOpen":1,"camDeviceId":0,"camFacing":0,"camIdleT":0,"camPickThen":0,"camTrackForTest":1,"camVideoConstraints":1,"canRaiseHand":1,"canScreenRecord":0,"canScreenShare":0,"capsRunningNow":1,"carriedHot":1,"carryVoiceTrack":0,"ccDefGroup":0,"ccEngine":1,"ccMix":0,"ccMixStop":1,"ccMixSync":1,"clk":0,"clockSample":1,"closeCamChooser":1,"closeMicChooser":1,"compFps":1,"compOf":0,"containerFor":1,"ctScreenTrack":1,"dbgMeterSources":1,"dbgRowFaces":0,"degOf":0,"detachTrack":1,"dismissCamChooser":1,"displayCount":1,"downFolds":0,"downStreams":0,"dropContainer":1,"dropEndedRemoteTracks":1,"dutyJob":1,"dutyMuteTick":1,"earState":1,"endSongOnStepDown":1,"faceLive":1,"facesOnScreen":1,"gdOverride":0,"gridApplied":0,"gumRefused":1,"gumWithMicFallback":1,"headLinkUp":1,"headSendsStale":1,"headerCount":1,"hearState":1,"heardStage":1,"holdMainVideo":1,"hopMs":1,"installWhisper":1,"jobPinned":0,"jobVideoAt":0,"keepAwake":1,"keepMeetingAudio":1,"keyUp":1,"kfEv":0,"kickJob":1,"kickMainAudio":1,"kickMainVideo":1,"kickStageMic":1,"l14Packs":0,"lateMedia":1,"mainAudioTrack":1,"maybeShowFlip":1,"mediaElCensus":1,"micChooserOpen":1,"micTap":1,"mix":0,"mixAc":0,"mixReady":1,"mosFb":0,"mosHeld":0,"mySelfStream":0,"normStageFrame":1,"noteAudioDevices":1,"noteReship":1,"onMeetDeviceChange":1,"openCamChooser":1,"openKeys":1,"openModal":1,"orphaned":1,"overlayTiny":1,"packFor":1,"packLoop":0,"paintTiming":1,"parkSender":1,"partStream":1,"peerAudioTracks":1,"phoneCaptions":1,"picRead":1,"pickCamera":1,"pipeDeny":0,"pipeJobs":0,"placeStageMarks":1,"playTileVideo":1,"poke":1,"prodPack":0,"producerKey":1,"qaStageSt":0,"quietAtDoor":1,"rbStart":1,"reactSing":1,"recDefaultQuality":1,"recDownload":1,"recDraw":0,"recFileName":1,"recLibraryOption":1,"recMatchMix":0,"recMode":0,"recNoteStruct":1,"recQuality":0,"recRec":0,"recRelease":1,"recScopeSources":1,"recSources":1,"recStarting":0,"reconcileMosaic":1,"recoverShareTimer":0,"refreshOutbound":1,"refreshTrBtn":1,"regrabCamera":1,"releaseAudio":1,"rememberMix":1,"repaintRedun":1,"resumeReload":1,"retireMixTracks":1,"reviveCamera":1,"roomPack":0,"rowEdge":1,"rowMixHeadArrives":1,"rowMixHold":1,"rowMixOpen":1,"rowMixViaPeek":1,"schedClaim":1,"schedReconcile":1,"sdView":0,"sdViewSt":0,"sentVideoTrack":1,"setStageFrame":1,"shareRecoverMode":0,"shipContainers":0,"shownPeerCount":1,"slotDark":1,"soundHeld":1,"speakerChoices":1,"speech":0,"speechGaveUp":0,"speechProved":0,"speechRunning":1,"spkDeviceId":0,"stageAudible":1,"stageEar":0,"stageEarFoldPeak":1,"stageEarLiveTrack":1,"stageEarRawPeak":1,"stageFrameVal":0,"stagedSelfWas":0,"startLocalView":1,"startRec":1,"startScreenShare":1,"startWhisper":1,"stashRecoverMedia":1,"stgBeatIn":1,"stgCarry":1,"stgFoNote":1,"stgLost":1,"stopBlurPipe":1,"stopScreenShare":1,"stopSpeech":1,"stopWhisper":1,"stripPack":0,"stubDuties":1,"swapPicNote":1,"swapTrack":1,"syncAvatarFeed":1,"syncSpeech":1,"tileHolds":1,"toggleSing":1,"trEnSync":1,"trackAspect":1,"trackQ":0,"transcriptFile":1,"tuneCfg":1,"unbindClaim":1,"wakeLock":0,"warnRecorderNewApp":1,"whisperAllowed":0,"whisperChosen":0,"whisperInstalling":0,"whisperRescan":0,"whisperSeedBlocked":1,"whisperSupported":1,"withScrPipe":1,"wkBindVideo":1,"wkEar":0,"wkFwdCopies":0,"wkFwdNeeded":1,"wkHolds":1,"wkQuietBind":1,"wkRemoteTrack":1,"wsp":0,"wspCaps":0,"wspChip":0,"wspChipGone":1,"wspChipRoom":0,"wspEnqueue":1,"wspInst":0,"wspModel":1,"wspPaintSafe":1,"wspPaused":0,"wspQ":0,"wspRebind":1,"wspRelease":1,"wspResume":1,"wspRetry":1,"wspSource":1,"wspStSig":0,"wspStarved":0,"wspState":1,"wspStateText":1,"wspStop":1,"wspSync":1,"wspTickAt":0,"wspToBrowser":1,"wspWorking":0,"x2Target":1}, needs: {"core":{"leaving":0,"localStream":0,"capClone":1,"WK_H264_BLIND":0,"nameInitial":1,"shareBlocked":0,"turnLinks":0,"turnFacts":0,"myId":0,"rowFaceDark":0,"myName":0,"blurLevelFor":1,"mediaOk":0,"relayVia":0,"displayName":1,"myStatus":0,"stageIds":0,"statusOf":0,"screenStream":0,"sharingScreen":0,"BROADCAST":0,"bcMayPublishAv":1,"rbNow":0,"mayShareScreen":0,"outgoingHeld":0,"bcRole":1,"peers":0,"meTile":0,"camPeer":0,"clog":0,"micPeer":0,"renegotiate":1,"rosterIds":0,"knownTotal":1,"rosterTiles":0,"updateTile":1,"updateStatus":1,"meshSeat":0,"meshNode":0,"roomDig":1,"roomPastSection":0,"SCALE":0,"powNow":0,"IS_MOBILE":0,"powDials":0,"setStatus":0,"uiText":1,"stHold":0,"seatDark":0,"forcedCamOff":0,"vqRung":0,"rung":0,"LADDER":0,"stageCeilingKbps":1,"screenCeilingKbps":1,"stageSenders":0,"auxSenders":0,"lowSenders":0,"net":0,"meterFor":1,"sayState":0,"IS_ANDROID":0,"botParks":1,"visParkSent":0,"dcSend":0,"hasPendingTx":0,"ensureAc":1,"ac":0,"newMeetAudioContext":1,"occPid":0,"pipePeers":1,"preferHwVideo":1,"modOf":1,"stageSeats":0,"digLists":0,"stageHeldAt":0,"stageFeedAt":0,"stageViewNow":0,"addAux":0,"isStageJob":0,"auxDrop":1,"stopAuxTx":1,"DEBUG_ON":0,"modBlurOn":0,"meshCoord":0,"speakingOf":0,"rowMixTalkAt":0,"subWant":0,"myIdentity":0,"labelFor":0,"iAmWaiting":1,"peerWaits":1,"fitFor":0,"pipeVideo":0,"pipeStg":0,"STAGE_FPS":0,"stageCell":1,"STAGE_MAXW":0,"stageFps":1,"freshSt":0,"pwBlocked":0,"bannedOut":0,"mediaJoined":0,"RECOVER_MEDIA_KEY":0,"updateRoomKey":0,"bcHostStored":0,"paintOnAir":1,"broadcastStatus":1,"updateMediaSession":1,"screenSteppedUp":0,"setStage":1,"refreshAllTiles":1,"rbCap":0,"rbLength":1,"rbTracks":1,"rbDrop":1,"bcSeeding":0,"releaseLeaveAsk":1,"rbStop":1,"rbNoun":0,"serviceHeard":0,"rowMates":0,"isHeld":1,"botHidden":1,"TIMING_KEY":0,"digStageEntry":0,"rosterNames":0,"foldName":1,"canStage":0,"lsGet":0,"CC_ON_PHONE":0,"meters":0,"myVoiceAt":0,"lsSet":0,"ccLocalQ":0,"CC_LANG_KEY":0,"trEnOn":0,"capSend":1,"trLangOf":0,"addTranscriptLine":1,"capEarsOnly":1,"capTrust":0,"trLang":1,"trKeeps":1,"trEnOnlyEnglish":1,"capSpotQueue":1,"capPublish":1,"trForget":1,"ccLang":0,"trDrops":0,"capTraceGate":1,"myVoiceFrom":0,"trLangKnown":1,"myVoiceSinceFinal":0,"ccDevNotice":1,"trEchoHeld":1,"ccShow":0,"trBlocks":1,"trNote":1,"modTable":0,"setMod":1,"AI_SPARK_SVG":0,"chatOpen":0,"room":0,"recRoomWord":1,"bcLastService":0,"BC_INTENT":0,"recSrcDirty":0,"recStructSig":0,"bcKeepUserStop":0,"amGloballyMuted":1,"micLockWords":1,"capClosed":0,"bcWatchingViewer":1,"enforceBroadcastSeat":1,"lateAsk":0,"lateWant":0,"bootGumPending":0,"reactRoomState":1,"camOnWords":1,"statusWords":0,"lateGen":0,"lateWon":0,"lateTimer":0,"LATE_ASK_MS":0,"carryOutAc":0,"blurLevel":0,"setPersonalBlur":1,"carryHosts":0,"carryG":0,"meOnStage":1,"shareOnlyStage":1,"personOnStage":1,"seatSelfLeased":0,"mainVideoChoice":1,"outboundPlan":1,"stageFeedVideo":1,"stageVideoChoice":1,"participantCount":1,"deepInView":1,"isRedun":0,"onStageNow":1,"screenSharers":0,"roomSingOn":0,"singOf":0,"capCovered":1,"trWrites":1,"idleNow":0,"lastActive":0,"lastQ":0,"MP":0,"battNow":0,"micGrabbing":0,"micWant":0,"micMode":0,"micUnmuteAfter":0,"micPickPrev":0,"pipeEnabled":0,"MPipe":0,"stgBeats":0,"swapPicLast":0,"swapPicHoldAt":0,"swapPicRing":0,"STG_BEAT_STALE_MS":0,"STG_BEAT_SEEN":0,"stgBeatCost":0,"STG_BEAT_MS":0,"timing":0,"whisperReady":0,"planMeasured":1,"reconcileMain":1,"inboundPlan":1,"owedStream":1,"mosIn":0,"mosJobs":0,"mosStandby":0,"demand":1,"unshipJob":1,"kfNeed":1,"setJobActive":1,"claimMos":1,"stgFedBy":1,"stgPath":0,"vpId":0,"stgStale":1,"mosBeyondAt":0,"dropMosIn":1,"dropStandby":1,"mosAnn":0,"roomBeyondRow":1,"carryIn":1,"shipJob":1,"stgEnded":1,"stgHop":0,"stgDirectSet":1,"STG_ROOT2":0,"reapJobs":1,"rowActing":1,"rowHeadPid":1,"iActAsHead":1,"mixIn":1,"packIn":1},"view":{"blurA":0,"blurActx":0,"blurB":0,"blurBctx":0,"paintAvatarCanvas":1,"phoneLayout":1,"showAvatarTrack":1,"stagefeedEl":0,"stadiumEl":0,"showFlipButton":1,"showCamBack":1,"paintSpkBtn":1,"paintStadiumTile":1,"paintStageStrip":1,"paintControls":1,"showResharePrompt":1,"hideResharePrompt":1,"paintShare":1,"dropStaleShareWin":1,"paintRb":1,"rbCanvas":1,"paintRbNow":1,"paintFaders":0,"timingRow":0,"paintWspChip":1,"paintCcState":1,"paintTxMark":1,"capCardRefresh":1,"paintWspStatus":1,"paintCcView":1,"showCaption":1,"ccDockBtn":0,"hideCaptions":1,"renderTranscript":1,"renderChat":1,"chatPanel":0,"paintChatBtn":1,"paintRoomTrust":1,"showServiceEnded":1,"showRecReplay":1,"recBtn":0,"showRecOptions":1,"roomAudioOn":1,"micBtn":0,"placeDockPopover":1,"unmuteBtn":0,"camBtn":0,"topNameModal":1,"handBtn":0,"chatPanelOpen":1,"keysModal":0,"syncModalFocus":1}}, stamp: "d49d42da" };
   (GifOS.coreParts = GifOS.coreParts || {})["media"] = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
