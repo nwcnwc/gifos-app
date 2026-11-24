@@ -56,7 +56,7 @@
 
     // ---- the player ------------------------------------------------------------------------------------------
     // The gear menu is presentation only. It never changes what the core decides (who is hosted, the password, the sound gate).
-    // Keys come from the hash the embedder wrote. The core rebuilds C.params from its own whitelist and drops this one.
+    // Keys come from the hash the embedder wrote. The core rebuilds its params from its own whitelist and drops this one.
     var CONTROL_KEYS = ['volume', 'captions', 'tabs', 'inset', 'fullscreen', 'pip', 'watch'];
     function controlsFromHash(hash) {
       var set = new Set();
@@ -88,7 +88,7 @@
     function entry() {
       if (ready) return;
       ready = true;
-      var params = C.params;
+      var params = C.model.room.params();   // the core's room model (0.9.28 thin page: params is no longer a bare core export)
       why = params.get('embed') || 'name';
       room = params.get('v') || params.get('room') || '';
       av = params.get('av') || '';
