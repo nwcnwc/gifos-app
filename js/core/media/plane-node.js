@@ -297,9 +297,10 @@
       countOnto(job, track);
       return 'swap';
     }
-    // Questions carryIn asks that the browser plane answers inside its own sweep. Node does not run that sweep, so
-    // these are the same answers here. A throw inside carryIn drops the whole plan.
+    // Questions carryIn asks that the browser plane answers inside its own sweep. The pure routing answers live in
+    // the core. What remains here is Node machinery. A throw inside carryIn drops the whole plan.
     let mosBeyondAt = 0;
+    // No mosaic sweep: the browser returns the flag reconcileMosaic sets; this computes the same linger from the seat.
     function beyondRowNow() {
       const s = typeof C.meshSeat === 'function' ? C.meshSeat() : null;
       const c = typeof C.meshCoord === 'function' ? C.meshCoord() : null;
@@ -323,37 +324,21 @@
       const grace = GifOS.timings.MOS_GRACE;
       return !!(raw || (mosBeyondAt && Date.now() - mosBeyondAt < grace && s && c));
     }
-    function l14DownHeads(sv, beyondRow, ownChild) {
-      if (!sv || !beyondRow || typeof sv.l14Served !== 'function') return [];
-      return sv.l14Served().filter((h) => h !== ownChild);
-    }
-    const vpId = (pid) => String(pid || '').slice(0, 10);
-    const stgHop = (f) => ((f && f.meta && typeof f.meta.h === 'number') ? f.meta.h : 998) + 1 + ((f && f.meta && f.meta.sb === 1) ? 1 : 0);
-    const stgPath = (f) => ((f && f.meta && Array.isArray(f.meta.vp)) ? f.meta.vp : []).concat(vpId(C.myId)).slice(-(C.STG_VP_MAX || 0));
-    function stgSecondRoot(f, sb) {
-      if (!f || !sb || !sb.stream || sb.stream === f.stream || !sb.meta || sb.meta.ao) return null;
-      const sv = Array.isArray(sb.meta.vp) ? sb.meta.vp : null; if (!sv || !sv.length) return null;
-      const pv = f.meta && Array.isArray(f.meta.vp) ? f.meta.vp : [];
-      return sv.some((s) => pv.indexOf(s) >= 0) ? null : sb;
-    }
+    // No watchdog: Node never marks a claim dark, so lost is a missing claim, deadAt, or a stale beat.
     function stgLost(rk) {
       const f = C.mosIn && C.mosIn.get(rk); if (!f) return true;
       const fb = M.mosFb && typeof M.mosFb.get === 'function' ? M.mosFb.get(rk) : null;
       let stale = false; try { stale = typeof C.stgStale === 'function' && C.stgStale(rk); } catch (e) {}
       return !!(f.deadAt || (fb && fb.dark) || stale);
     }
-    function stgRootKey(key) { return typeof key === 'string' && key.indexOf('stg:') === 0 && key.slice(-2) === '^r'; }
-    function stgFedBy(job, ent) {
-      const trs = ent && ent.stream && typeof ent.stream.getTracks === 'function' ? ent.stream.getTracks() : [];
-      return !!(job && job.srcTracks && job.srcTracks.some((t) => trs.indexOf(t) >= 0));
-    }
+    // No tiles: a null-safe kind check for parkSender. The browser reads trackList on a painted job.
     function jobVideoAt(job, i) { return !!(job && job.trackList && job.trackList[i] && job.trackList[i].kind === 'video'); }
-    // A dark stage claim stops the copies it feeds. No pipe lane on this plane.
+    // No pipe lane and no tiles: replaceTrack on the job only. The browser also pauses the picture pipe.
     function stgCarry(rk, on, pri, onlyTo) {
       if (!C.mosJobs) return;
       for (const job of C.mosJobs.values()) {
         if (job.upKey !== rk || !job.active || !job.senders) continue;
-        if (on ? !job.carryOff : !(pri && stgFedBy(job, pri))) continue;
+        if (on ? !job.carryOff : !(pri && C.stgFedBy(job, pri))) continue;
         if (!on && onlyTo && job.to !== onlyTo) {
           if (job.carryOff) {
             job.carryOff = false;
@@ -369,12 +354,18 @@
         }
       }
     }
+    // No tiles: nothing to repaint.
     function repaintRedun() {}
+    // No tiles and no watchdog: nothing to record.
     function swapPicNote() {}
     function stgFoNote() {}
+    // No row mix: there is no hold map.
     function rowMixHold() { return false; }
+    // No row mix: there is no arrival sample.
     function rowMixHeadArrives() { return -1; }
+    // No rowX2To memory and no keepAdd: the cell's occupant, or nobody.
     function x2Target(cell) { try { return typeof C.occPid === 'function' ? C.occPid(cell) : null; } catch (e) { return null; } }
+    // No elements: a claim never carries a hold on a tile.
     function mosHeld(e) { return !!(e && e.el && e.el._mosHold); }
     // claimMos, then every carry entry, then the reaper, then the duty lever. The browser does this inside reconcileMosaic.
     function sweepJobs() {
@@ -440,15 +431,8 @@
     def('schedClaim', schedClaim);
     def('schedReconcile', schedReconcile);
     def('beyondRowNow', beyondRowNow);
-    def('l14DownHeads', l14DownHeads);
-    def('vpId', vpId);
-    def('stgHop', stgHop);
-    def('stgPath', stgPath);
-    def('stgSecondRoot', stgSecondRoot);
     def('stgLost', stgLost);
     def('mySelfStream', mySelfStream);
-    def('stgRootKey', stgRootKey);
-    def('stgFedBy', stgFedBy);
     def('jobVideoAt', jobVideoAt);
     def('stgCarry', stgCarry);
     def('repaintRedun', repaintRedun);
@@ -462,7 +446,7 @@
     // The host's setInterval returns a number, so unref runs only when the timer object itself is what came back.
     const sweepT = setInterval(() => { try { M.schedReconcile(); } catch (e) {} }, GifOS.meshLaws.FHOP_SWEEP * GifOS.timings.tickMs);
     if (sweepT && typeof sweepT.unref === 'function') sweepT.unref();
-    return { names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties', 'bindClaim', 'unbindClaim', 'adoptClaim', 'picRead', 'iActAsHead', 'rowHeadPid', 'keyUp', 'producerKey', 'kfEv', 'attachTrack', 'detachTrack', 'parkSender', 'kickJob', 'noteReship', 'dropContainer', 'orphaned', 'attachFailed', 'containerFor', 'jobPinned', 'swapTrack', 'dutyJob', 'dutyMuteTick', 'schedClaim', 'schedReconcile', 'beyondRowNow', 'l14DownHeads', 'vpId', 'stgHop', 'stgPath', 'stgSecondRoot', 'stgLost', 'mySelfStream', 'stgRootKey', 'stgFedBy', 'jobVideoAt', 'stgCarry', 'repaintRedun', 'swapPicNote', 'stgFoNote', 'rowMixHold', 'rowMixHeadArrives', 'x2Target', 'mosHeld'] };
+    return { names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties', 'bindClaim', 'unbindClaim', 'adoptClaim', 'picRead', 'iActAsHead', 'rowHeadPid', 'keyUp', 'producerKey', 'kfEv', 'attachTrack', 'detachTrack', 'parkSender', 'kickJob', 'noteReship', 'dropContainer', 'orphaned', 'attachFailed', 'containerFor', 'jobPinned', 'swapTrack', 'dutyJob', 'dutyMuteTick', 'schedClaim', 'schedReconcile', 'beyondRowNow', 'stgLost', 'mySelfStream', 'jobVideoAt', 'stgCarry', 'repaintRedun', 'swapPicNote', 'stgFoNote', 'rowMixHold', 'rowMixHeadArrives', 'x2Target', 'mosHeld'] };
   }
 
   GifOS.planeNode = { install };

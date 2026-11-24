@@ -119,7 +119,6 @@
       "kickMainAudio": { get: function () { return kickMainAudio; }, enumerable: true, configurable: true },
       "kickMainVideo": { get: function () { return kickMainVideo; }, enumerable: true, configurable: true },
       "kickStageMic": { get: function () { return kickStageMic; }, enumerable: true, configurable: true },
-      "l14DownHeads": { get: function () { return l14DownHeads; }, enumerable: true, configurable: true },
       "l14Packs": { get: function () { return l14Packs; }, enumerable: true, configurable: true },
       "lateMedia": { get: function () { return lateMedia; }, enumerable: true, configurable: true },
       "mainAudioTrack": { get: function () { return mainAudioTrack; }, enumerable: true, configurable: true },
@@ -216,13 +215,8 @@
       "stashRecoverMedia": { get: function () { return stashRecoverMedia; }, enumerable: true, configurable: true },
       "stgBeatIn": { get: function () { return stgBeatIn; }, enumerable: true, configurable: true },
       "stgCarry": { get: function () { return stgCarry; }, enumerable: true, configurable: true },
-      "stgFedBy": { get: function () { return stgFedBy; }, enumerable: true, configurable: true },
       "stgFoNote": { get: function () { return stgFoNote; }, enumerable: true, configurable: true },
-      "stgHop": { get: function () { return stgHop; }, enumerable: true, configurable: true },
       "stgLost": { get: function () { return stgLost; }, enumerable: true, configurable: true },
-      "stgPath": { get: function () { return stgPath; }, enumerable: true, configurable: true },
-      "stgRootKey": { get: function () { return stgRootKey; }, enumerable: true, configurable: true },
-      "stgSecondRoot": { get: function () { return stgSecondRoot; }, enumerable: true, configurable: true },
       "stopBlurPipe": { get: function () { return stopBlurPipe; }, enumerable: true, configurable: true },
       "stopScreenShare": { get: function () { return stopScreenShare; }, enumerable: true, configurable: true },
       "stopSpeech": { get: function () { return stopSpeech; }, enumerable: true, configurable: true },
@@ -241,7 +235,6 @@
       "transcriptFile": { get: function () { return transcriptFile; }, enumerable: true, configurable: true },
       "tuneCfg": { get: function () { return tuneCfg; }, enumerable: true, configurable: true },
       "unbindClaim": { get: function () { return unbindClaim; }, enumerable: true, configurable: true },
-      "vpId": { get: function () { return vpId; }, enumerable: true, configurable: true },
       "wakeLock": { get: function () { return wakeLock; }, set: function (v) { wakeLock = v; }, enumerable: true, configurable: true },
       "warnRecorderNewApp": { get: function () { return warnRecorderNewApp; }, enumerable: true, configurable: true },
       "whisperAllowed": { get: function () { return whisperAllowed; }, enumerable: true, configurable: true },
@@ -2592,14 +2585,8 @@
     }
     // Every pc a forwarded track can arrive on: the peer links, and the loop.
     const pipePcs = () => { const out = [...__C.peers.values()].map((q) => q.pc).filter(Boolean); if (packLoop && packLoop.b) out.push(packLoop.b); return out; };
-    const l14Packs = new Map(); // head -> packer: the down ingredient of a cut-off branch I serve (L14)
-    // The cut-off branches this seat packs an 'sdn' for: the heads its seat serves an uplink to, minus its own
-    // down-child. That child rides the sdx -> sdn relay (the head's mix-minus for my column), and one down pipe
-    // has one source.
-    function l14DownHeads(sv, beyondRow, ownChild) {
-      if (!sv || !beyondRow || typeof sv.l14Served !== 'function') return [];
-      return sv.l14Served().filter((h) => h !== ownChild);
-    }
+    const l14Packs = new Map();
+    yield 1960;
     // STAGE AUDIO folds AT THE EAR (mix-minus): the strip is video-only; every
     // device sums the per-stager feeds it holds, skipping its OWN — a stager
     // never hears their own voice come back.
@@ -4089,22 +4076,6 @@
       const c = (0, /*()*/__C.meshCoord)(), s = (0, /*()*/__C.meshSeat)(); if (!c || !s || c.i === 0 || !s.rowHeir) return false;
       return rowActing(c) === __C.myId || (rowHoldUntil > Date.now() && s.rowHeir() === __C.myId);
     }
-    yield 2119;
-    // Hop count of a held stg copy for re-flooding: my copy's announced h + 1.
-    // A copy with NO h (an old client's announce) re-floods as far (998+1) —
-    // claimable when it is the only path, always outranked by a counted chain.
-    // A held sb:1 copy (the stager's parked-standby copy, STG-DIRECT) re-floods
-    // as h 2, not h 1: its holder is not a direct receiver and moves to a
-    // direct receiver's one-hop relay as soon as one is live, and that relay
-    // re-floods at h 2 too. With h 1 the holder's copy tied the direct
-    // receiver's relay, won the tie on pid order, then dropped to h 2 when its
-    // holder moved, so every seat behind it re-claimed with a new stream id
-    // ~10 s into a stationary stage (e2e-stage-onerow, 4 Oct 2026). One rank
-    // per holder, whichever of its two paths it holds: no second hop of churn.
-    const stgHop = (f) => ((f && f.meta && typeof f.meta.h === 'number') ? f.meta.h : 998) + 1 + ((f && f.meta && f.meta.sb === 1) ? 1 : 0);
-    yield 2121;
-    const vpId = (pid) => String(pid || '').slice(0, 10);
-    const stgPath = (f) => ((f && f.meta && Array.isArray(f.meta.vp)) ? f.meta.vp : []).concat(vpId(__C.myId)).slice(-__C.STG_VP_MAX);
     yield 2126;
     function repaintRedun(rk, stream) {
       // Respect the same position guards reconcileMosaic paints under, so an
@@ -4487,25 +4458,7 @@
     const STG_ZERO_MS = GifOS.timings.STG_ZERO_MS;  // stage audio gets no grace: a stage copy with zero bytes this long after its claim, or after its wake, is dead
     const HOT_VOID_MS = GifOS.timings.HOT_VOID_MS; // hot-and-VOID: a hot primary with ZERO bytes this long is a husk, not a slow pipe (frza5)
     const mosFb = new Map();
-    yield 2160;
-    // END-STG-DIRECT
-    // STG-SECOND-ROOT
-    // EVERY SECTION 1 SEAT HOLDS A COPY BY A SECOND ROOT. A stage feed enters Section 1 at the stager's up seat
-    // and at its second way up, and the flood passes on only each seat's claimed primary, so most of Section 1
-    // holds copies that all entered at the one seat: when it leaves, those seats have no other copy to fail over
-    // to until the fabric re-routes, seconds later. So a Section 1 seat whose parked standby entered by another
-    // root (its path shares no seat with the primary's) passes that standby on too, beside the primary, under the
-    // slot's second-root key (stg:<id>^r, the same slot at every receiver). One extra copy per held feed. The copy
-    // is born parked: a receiver that wants it wakes it, and that want wakes my parked standby upstream
-    // (chainDemandUp), so it costs nothing until a failover needs it.
-    const STG_ROOT2 = '^r';
-    function stgSecondRoot(f, sb) {
-      if (!f || !sb || !sb.stream || sb.stream === f.stream || !sb.meta || sb.meta.ao) return null;
-      const sv = Array.isArray(sb.meta.vp) ? sb.meta.vp : null; if (!sv || !sv.length) return null; // a copy with no path names no root
-      const pv = f.meta && Array.isArray(f.meta.vp) ? f.meta.vp : [];
-      return sv.some((s) => pv.indexOf(s) >= 0) ? null : sb;
-    }
-    function stgRootKey(key) { return typeof key === 'string' && key.indexOf('stg:') === 0 && key.slice(-STG_ROOT2.length) === STG_ROOT2; }
+    yield 2163;
     // A SECOND-ROOT COPY A RECEIVER PLAYS KEEPS ITS SOURCE. My parked standby is re-picked as paths come and go, and a
     // failover makes it my primary. Re-pointing a played copy at whatever I hold parked next changed its root under the
     // same stream id: the receiver kept playing what it took for the root it had chosen and heard a parked chain that
@@ -4517,16 +4470,12 @@
     function stgRootHold(jk, slot, to) {
       const job = __C.mosJobs.get(jk);
       if (!job || !job.active || !job.srcTracks || !job.srcTracks.length) return null;
-      const ent = [__C.mosIn.get(slot), __C.mosStandby.get(slot)].find((e) => !!(e && e.stream && stgFedBy(job, e)));
-      if (ent && stgPath(ent).indexOf(vpId(to)) < 0) return ent;
+      const ent = [__C.mosIn.get(slot), __C.mosStandby.get(slot)].find((e) => !!(e && e.stream && (0, /*()*/__C.stgFedBy)(job, e)));
+      if (ent && (0, /*()*/__C.stgPath)(ent).indexOf((0, /*()*/__C.vpId)(to)) < 0) return ent;
       (0, /*()*/__C.unshipJob)(jk, true); shipContainers.delete(jk); // the next copy gets a fresh id, never the one the receiver played
       return false;
     }
-    // END-STG-SECOND-ROOT
-    function stgFedBy(job, ent) {
-      const trs = ent.stream ? ent.stream.getTracks() : [];
-      return !!job.srcTracks && job.srcTracks.some((t) => trs.indexOf(t) >= 0);
-    }
+    yield 2165;
     // A copy flows only while its sender holds the feed (mesh_media.inc: the feed is a search
     // from a live source). Every copy I relay from this claim stops while the claim is dark or
     // gone, and starts again the moment it flows. Without this, Section 1's rook flood keeps a
@@ -4534,7 +4483,7 @@
     function stgCarry(rk, on, pri, onlyTo) {
       for (const job of __C.mosJobs.values()) {
         if (job.upKey !== rk || !job.active || !job.senders) continue;
-        if (on ? !job.carryOff : !(pri && stgFedBy(job, pri))) continue; // a copy fed by my parked standby is the way out: never stop it
+        if (on ? !job.carryOff : !(pri && (0, /*()*/__C.stgFedBy)(job, pri))) continue; // a copy fed by my parked standby is the way out: never stop it
         if (!on && onlyTo && job.to !== onlyTo) { if (job.carryOff) { job.carryOff = false; job.senders.forEach((sd, i) => { const t = job.trackList[i]; if (t && jobSendsAt(job, i)) { try { sd.replaceTrack(t); } catch (e) {} } }); } continue; }
         job.carryOff = !on;
         job.senders.forEach((sd, i) => { const t = job.trackList[i]; if (t) { try { sd.replaceTrack(on && jobSendsAt(job, i) ? t : null); } catch (e) {} } });
@@ -5005,7 +4954,7 @@
       // SUB.4: my pipe peers are served children too: their product rides in as 'subu:<peer>', and each gets everything I hold
       // but its own part (below, at the Section-1 head that ends it).
       const pipes = beyondRow ? (0, /*()*/__C.pipePeers)() : [];
-      const l14Heads = l14DownHeads((0, /*()*/__C.meshSeat)(), beyondRow, (0, /*()*/__C.occPid)(T.down(c))).filter((h) => pipes.indexOf(h) < 0).concat(pipes);
+      const l14Heads = (0, /*()*/__C.l14DownHeads)((0, /*()*/__C.meshSeat)(), beyondRow, (0, /*()*/__C.occPid)(T.down(c))).filter((h) => pipes.indexOf(h) < 0).concat(pipes);
       // A branch one of my row-mates serves reaches me as that mate's relay (sub {l14, via}): the mate relays only the
       // branches it serves, and its announce ages out when it stops. A head packs those as its own, so the branch
       // goes up in the row product and into the stadium.
@@ -5437,9 +5386,9 @@
         for (const k of heldStg) {
           const f = __C.mosIn.get(k), sb = __C.mosStandby.get(k);
           if (!f.meta || !f.meta.ao || !sb || !sb.meta || sb.meta.ao) continue;
-          for (const t of e2Up) if (t !== sb.via && stgPath(sb).indexOf(vpId(t)) < 0) { const jk = (0, /*()*/__C.shipJob)(k, t, sb.stream, { h: stgHop(sb), vp: stgPath(sb) }, k); if (jk) wanted.add(jk); }
+          for (const t of e2Up) if (t !== sb.via && (0, /*()*/__C.stgPath)(sb).indexOf((0, /*()*/__C.vpId)(t)) < 0) { const jk = (0, /*()*/__C.shipJob)(k, t, sb.stream, { h: (0, /*()*/__C.stgHop)(sb), vp: (0, /*()*/__C.stgPath)(sb) }, k); if (jk) wanted.add(jk); }
         }
-        for (const k of heldStg) { if (stgLost(k)) continue; const f = __C.mosIn.get(k); relayStg(k, f.stream, f.via, stgHop(f), !!(f.meta && f.meta.ao), stgPath(f)); }
+        for (const k of heldStg) { if (stgLost(k)) continue; const f = __C.mosIn.get(k); relayStg(k, f.stream, f.via, (0, /*()*/__C.stgHop)(f), !!(f.meta && f.meta.ao), (0, /*()*/__C.stgPath)(f)); }
         if (iAmHead) for (const k of heldStg) { // my row folds at its ears too
           if (stgLost(k)) continue;
           const f = __C.mosIn.get(k);
@@ -5449,7 +5398,7 @@
             if (!mate || mate === f.via || mate === owner) continue; // never back to the sender, never to the stager itself
             const earSt = stgDownShip(k, f.stream, (0, /*()*/__C.sharingScreen)(owner), stgAudioMemo);
             if (!earSt) continue;
-            const jm = (0, /*()*/__C.shipJob)(k, mate, earSt, stgDownMeta({ h: stgHop(f), vp: stgPath(f) }, earSt, f.stream), k); if (jm) wanted.add(jm);
+            const jm = (0, /*()*/__C.shipJob)(k, mate, earSt, stgDownMeta({ h: (0, /*()*/__C.stgHop)(f), vp: (0, /*()*/__C.stgPath)(f) }, earSt, f.stream), k); if (jm) wanted.add(jm);
           }
         }
       } else {
@@ -5478,13 +5427,13 @@
           if (stream) { if (flooded.has(stream.id)) return; flooded.add(stream.id); } else if (!upKey) return;
           const owner = key.indexOf('stg:') === 0 ? key.slice(4).split('^')[0] : null;
           const pipesNow = (0, /*()*/__C.pipePeers)();   // SUB.4: a feed from a pipe's side never goes back over that pipe (below)
-          const skip = (t) => !t || (owner && t === owner) || (!!upKey && !!vp && vp.indexOf(vpId(t)) >= 0);
+          const skip = (t) => !t || (owner && t === owner) || (!!upKey && !!vp && vp.indexOf((0, /*()*/__C.vpId)(t)) >= 0);
           const up = upKey || key;
           const hm = vp ? { h, vp } : { h }; // hop count from the producer — claims prefer min-h (see prefCand); vp: the seats this copy came through
           // What goes to t: a played second-root copy's own source, else this stream.
           const pick = (t) => {
             const held = upKey && t ? stgRootHold(key + '>' + t, upKey, t) : null;
-            if (held) return { st: held.stream, m: { h: stgHop(held), vp: stgPath(held) } };
+            if (held) return { st: held.stream, m: { h: (0, /*()*/__C.stgHop)(held), vp: (0, /*()*/__C.stgPath)(held) } };
             return stream && !skip(t) ? { st: stream, m: hm } : null;
           };
           // My OWN feed: two neighbours watch it directly, the rest get an
@@ -5510,9 +5459,9 @@
         if (amStager) { const st = mySelfStream(); if (st) floodOne('stg:' + __C.myId, st, null, 0); }
         for (const k of heldStg) {
           const hf = __C.mosIn.get(k);
-          if (!stgLost(k)) floodOne(k, hf.stream, hf.via, stgHop(hf), stgPath(hf));
-          const sb2 = stgSecondRoot(hf, __C.mosStandby.get(k)); // STG-SECOND-ROOT (with none, a copy a receiver plays is still kept)
-          floodOne(k + STG_ROOT2, sb2 ? sb2.stream : null, sb2 ? sb2.via : null, sb2 ? stgHop(sb2) : 0, sb2 ? stgPath(sb2) : null, k);
+          if (!stgLost(k)) floodOne(k, hf.stream, hf.via, (0, /*()*/__C.stgHop)(hf), (0, /*()*/__C.stgPath)(hf));
+          const sb2 = (0, /*()*/__C.stgSecondRoot)(hf, __C.mosStandby.get(k)); // STG-SECOND-ROOT (with none, a copy a receiver plays is still kept)
+          floodOne(k + __C.STG_ROOT2, sb2 ? sb2.stream : null, sb2 ? sb2.via : null, sb2 ? (0, /*()*/__C.stgHop)(sb2) : 0, sb2 ? (0, /*()*/__C.stgPath)(sb2) : null, k);
         }
         // composite the strip in stage order; fan 'sgs' down my subtree
         const selfSt = soloSelf ? selfStageStream() : null;
@@ -9581,7 +9530,7 @@
     }
     return __L.END;
   }
-  var api = { name: "media", run: part, count: 650, exports: {"AVATAR_H":0,"AVATAR_W":0,"CC_ENGINE_KEY":0,"CC_TRANSLATE_KEY":0,"CC_WHISPER_ANYWAY_KEY":0,"CC_WORDS_KEY":0,"MOS_GRACE":0,"MOS_SETTLE":0,"STAGE_FACE_PX":0,"STAGE_FACE_SETTLE_MS":0,"STG_PIC_LIVE_MS":0,"STG_ZERO_MS":0,"WEBKIT_TILE":0,"WHISPER_APP_ID":0,"WHISPER_SEED_KEY":0,"WSP_CHIP_MS":0,"WSP_STARVE_MS":0,"WSP_STARVE_N":0,"WSP_STARVE_WIN":0,"WSP_TICK_MS":0,"WSP_WEAK":0,"acClockInfo":1,"adapt":1,"adoptClaim":1,"applyBuses":1,"applyCcAll":1,"applyGrid":1,"applyRecoverMedia":1,"armAudioKeepAlive":1,"armWhisperRescan":1,"attachFailed":1,"attachLocalTracks":1,"attachTrack":1,"audioKickArmed":0,"avHold":0,"avatarPipe":0,"avatarSharp":0,"beyondRowNow":1,"bindClaim":1,"blockedAudio":0,"blurDraw":1,"blurPipe":0,"blurSenderFrac":1,"blurSized":1,"blurViewFrac":1,"botVoiceTrack":0,"browserCaptionsMissing":1,"callStateBox":0,"camChooserAnchor":0,"camChooserOpen":1,"camDeviceId":0,"camFacing":0,"camIdleT":0,"camPickThen":0,"camTrackForTest":1,"camVideoConstraints":1,"canRaiseHand":1,"canScreenRecord":0,"canScreenShare":0,"capsRunningNow":1,"carryVoiceTrack":0,"ccDefGroup":0,"ccEngine":1,"ccMix":0,"ccMixStop":1,"ccMixSync":1,"clk":0,"clockSample":1,"closeCamChooser":1,"closeMicChooser":1,"compFps":1,"compOf":0,"containerFor":1,"ctScreenTrack":1,"dbgMeterSources":1,"dbgRowFaces":0,"degOf":0,"detachTrack":1,"dismissCamChooser":1,"displayCount":1,"downFolds":0,"downStreams":0,"dropContainer":1,"dropEndedRemoteTracks":1,"dutyJob":1,"dutyMuteTick":1,"earState":1,"endSongOnStepDown":1,"facesOnScreen":1,"gdOverride":0,"gridApplied":0,"gumRefused":1,"gumWithMicFallback":1,"headLinkUp":1,"headSendsStale":1,"headerCount":1,"heardStage":1,"holdMainVideo":1,"iActAsHead":1,"installWhisper":1,"jobPinned":0,"jobVideoAt":0,"keepAwake":1,"keepMeetingAudio":1,"keyUp":1,"kfEv":0,"kickJob":1,"kickMainAudio":1,"kickMainVideo":1,"kickStageMic":1,"l14DownHeads":1,"l14Packs":0,"lateMedia":1,"mainAudioTrack":1,"maybeShowFlip":1,"mediaElCensus":1,"micChooserOpen":1,"micTap":1,"mix":0,"mixAc":0,"mosFb":0,"mosHeld":0,"mySelfStream":0,"normStageFrame":1,"noteAudioDevices":1,"noteReship":1,"onMeetDeviceChange":1,"openCamChooser":1,"openKeys":1,"openModal":1,"orphaned":1,"packLoop":0,"paintTiming":1,"parkSender":1,"peerAudioTracks":1,"phoneCaptions":1,"picRead":1,"pickCamera":1,"pipeDeny":0,"pipeJobs":0,"placeStageMarks":1,"playTileVideo":1,"poke":1,"prodPack":0,"producerKey":1,"qaStageSt":0,"quietAtDoor":1,"rbStart":1,"reactSing":1,"recDefaultQuality":1,"recDownload":1,"recDraw":0,"recFileName":1,"recLibraryOption":1,"recMatchMix":0,"recMode":0,"recNoteStruct":1,"recQuality":0,"recRec":0,"recRelease":1,"recScopeSources":1,"recSources":1,"recStarting":0,"reconcileMosaic":1,"recoverShareTimer":0,"refreshOutbound":1,"refreshTrBtn":1,"regrabCamera":1,"releaseAudio":1,"rememberMix":1,"repaintRedun":1,"resumeReload":1,"retireMixTracks":1,"reviveCamera":1,"roomPack":0,"rowHeadPid":1,"rowMixHeadArrives":1,"rowMixHold":1,"schedClaim":1,"schedReconcile":1,"sdView":0,"sdViewSt":0,"sentVideoTrack":1,"setStageFrame":1,"shareRecoverMode":0,"shipContainers":0,"shownPeerCount":1,"speakerChoices":1,"speech":0,"speechGaveUp":0,"speechProved":0,"speechRunning":1,"spkDeviceId":0,"stageAudible":1,"stageEar":0,"stageEarFoldPeak":1,"stageEarLiveTrack":1,"stageEarRawPeak":1,"stageFrameVal":0,"stagedSelfWas":0,"startLocalView":1,"startRec":1,"startScreenShare":1,"startWhisper":1,"stashRecoverMedia":1,"stgBeatIn":1,"stgCarry":1,"stgFedBy":1,"stgFoNote":1,"stgHop":0,"stgLost":1,"stgPath":0,"stgRootKey":1,"stgSecondRoot":1,"stopBlurPipe":1,"stopScreenShare":1,"stopSpeech":1,"stopWhisper":1,"stripPack":0,"stubDuties":1,"swapPicNote":1,"swapTrack":1,"syncAvatarFeed":1,"syncSpeech":1,"tileHolds":1,"toggleSing":1,"trEnSync":1,"trackAspect":1,"trackQ":0,"transcriptFile":1,"tuneCfg":1,"unbindClaim":1,"vpId":0,"wakeLock":0,"warnRecorderNewApp":1,"whisperAllowed":0,"whisperChosen":0,"whisperInstalling":0,"whisperRescan":0,"whisperSeedBlocked":1,"whisperSupported":1,"withScrPipe":1,"wkBindVideo":1,"wkEar":0,"wkFwdCopies":0,"wkFwdNeeded":1,"wkHolds":1,"wkQuietBind":1,"wkRemoteTrack":1,"wsp":0,"wspCaps":0,"wspChip":0,"wspChipGone":1,"wspChipRoom":0,"wspEnqueue":1,"wspInst":0,"wspModel":1,"wspPaintSafe":1,"wspPaused":0,"wspQ":0,"wspRebind":1,"wspRelease":1,"wspResume":1,"wspRetry":1,"wspSource":1,"wspStSig":0,"wspStarved":0,"wspState":1,"wspStateText":1,"wspStop":1,"wspSync":1,"wspTickAt":0,"wspToBrowser":1,"wspWorking":0,"x2Target":1}, needs: {"core":{"leaving":0,"localStream":0,"capClone":1,"WK_H264_BLIND":0,"nameInitial":1,"shareBlocked":0,"turnLinks":0,"turnFacts":0,"myId":0,"rowFaceDark":0,"myName":0,"blurLevelFor":1,"mediaOk":0,"relayVia":0,"displayName":1,"myStatus":0,"stageIds":0,"statusOf":0,"screenStream":0,"sharingScreen":0,"BROADCAST":0,"bcMayPublishAv":1,"rbNow":0,"mayShareScreen":0,"outgoingHeld":0,"bcRole":1,"peers":0,"meTile":0,"camPeer":0,"clog":0,"micPeer":0,"renegotiate":1,"rosterIds":0,"knownTotal":1,"rosterTiles":0,"updateTile":1,"updateStatus":1,"meshSeat":0,"meshNode":0,"roomDig":1,"roomPastSection":0,"SCALE":0,"powNow":0,"IS_MOBILE":0,"powDials":0,"setStatus":0,"uiText":1,"stHold":0,"seatDark":0,"forcedCamOff":0,"vqRung":0,"rung":0,"LADDER":0,"stageCeilingKbps":1,"screenCeilingKbps":1,"stageSenders":0,"auxSenders":0,"lowSenders":0,"net":0,"meterFor":1,"sayState":0,"IS_ANDROID":0,"botParks":1,"visParkSent":0,"dcSend":0,"hasPendingTx":0,"ensureAc":1,"ac":0,"newMeetAudioContext":1,"occPid":0,"pipePeers":1,"preferHwVideo":1,"modOf":1,"stageSeats":0,"digLists":0,"stageHeldAt":0,"stageFeedAt":0,"stageViewNow":0,"addAux":0,"isStageJob":0,"auxDrop":1,"stopAuxTx":1,"DEBUG_ON":0,"modBlurOn":0,"meshCoord":0,"speakingOf":0,"rowMixTalkAt":0,"subWant":0,"myIdentity":0,"labelFor":0,"iAmWaiting":1,"peerWaits":1,"fitFor":0,"pipeVideo":0,"pipeStg":0,"STAGE_FPS":0,"stageCell":1,"STAGE_MAXW":0,"stageFps":1,"freshSt":0,"pwBlocked":0,"bannedOut":0,"mediaJoined":0,"RECOVER_MEDIA_KEY":0,"updateRoomKey":0,"bcHostStored":0,"paintOnAir":1,"broadcastStatus":1,"updateMediaSession":1,"screenSteppedUp":0,"setStage":1,"refreshAllTiles":1,"rbCap":0,"rbLength":1,"rbTracks":1,"rbDrop":1,"bcSeeding":0,"releaseLeaveAsk":1,"rbStop":1,"rbNoun":0,"serviceHeard":0,"rowMates":0,"isHeld":1,"botHidden":1,"TIMING_KEY":0,"digStageEntry":0,"rosterNames":0,"foldName":1,"canStage":0,"lsGet":0,"CC_ON_PHONE":0,"meters":0,"myVoiceAt":0,"lsSet":0,"ccLocalQ":0,"CC_LANG_KEY":0,"trEnOn":0,"capSend":1,"trLangOf":0,"addTranscriptLine":1,"capEarsOnly":1,"capTrust":0,"trLang":1,"trKeeps":1,"trEnOnlyEnglish":1,"capSpotQueue":1,"capPublish":1,"trForget":1,"ccLang":0,"trDrops":0,"capTraceGate":1,"myVoiceFrom":0,"trLangKnown":1,"myVoiceSinceFinal":0,"ccDevNotice":1,"trEchoHeld":1,"ccShow":0,"trBlocks":1,"trNote":1,"modTable":0,"setMod":1,"AI_SPARK_SVG":0,"chatOpen":0,"room":0,"recRoomWord":1,"bcLastService":0,"BC_INTENT":0,"recSrcDirty":0,"recStructSig":0,"bcKeepUserStop":0,"amGloballyMuted":1,"micLockWords":1,"capClosed":0,"bcWatchingViewer":1,"enforceBroadcastSeat":1,"lateAsk":0,"lateWant":0,"bootGumPending":0,"reactRoomState":1,"camOnWords":1,"statusWords":0,"lateGen":0,"lateWon":0,"lateTimer":0,"LATE_ASK_MS":0,"carryOutAc":0,"blurLevel":0,"setPersonalBlur":1,"carryHosts":0,"carryG":0,"meOnStage":1,"shareOnlyStage":1,"personOnStage":1,"seatSelfLeased":0,"mainVideoChoice":1,"outboundPlan":1,"stageFeedVideo":1,"stageVideoChoice":1,"participantCount":1,"deepInView":1,"isRedun":0,"onStageNow":1,"screenSharers":0,"roomSingOn":0,"singOf":0,"capCovered":1,"trWrites":1,"idleNow":0,"lastActive":0,"lastQ":0,"MP":0,"battNow":0,"micGrabbing":0,"micWant":0,"micMode":0,"micUnmuteAfter":0,"micPickPrev":0,"pipeEnabled":0,"MPipe":0,"stgBeats":0,"STG_VP_MAX":0,"swapPicLast":0,"swapPicHoldAt":0,"swapPicRing":0,"STG_BEAT_STALE_MS":0,"STG_BEAT_SEEN":0,"stgBeatCost":0,"STG_BEAT_MS":0,"timing":0,"whisperReady":0,"planMeasured":1,"reconcileMain":1,"actingHead":1,"inboundPlan":1,"owedStream":1,"mosAnn":0,"mosIn":0,"mosStandby":0,"claimMos":1,"stgStale":1,"dropMosIn":1,"dropStandby":1,"stgEnded":1,"demand":1,"kfNeed":1,"carryIn":1,"mosJobs":0,"unshipJob":1,"setJobActive":1,"shipJob":1,"reapJobs":1,"chainBornParked":1,"stgDirectSet":1},"view":{"blurA":0,"blurActx":0,"blurB":0,"blurBctx":0,"paintAvatarCanvas":1,"phoneLayout":1,"showAvatarTrack":1,"stagefeedEl":0,"stadiumEl":0,"showFlipButton":1,"showCamBack":1,"paintSpkBtn":1,"paintStadiumTile":1,"paintStageStrip":1,"paintControls":1,"showResharePrompt":1,"hideResharePrompt":1,"paintShare":1,"dropStaleShareWin":1,"paintRb":1,"rbCanvas":1,"paintRbNow":1,"paintFaders":0,"timingRow":0,"paintWspChip":1,"paintCcState":1,"paintTxMark":1,"capCardRefresh":1,"paintWspStatus":1,"paintCcView":1,"showCaption":1,"ccDockBtn":0,"hideCaptions":1,"renderTranscript":1,"renderChat":1,"chatPanel":0,"paintChatBtn":1,"paintRoomTrust":1,"showServiceEnded":1,"showRecReplay":1,"recBtn":0,"showRecOptions":1,"roomAudioOn":1,"micBtn":0,"placeDockPopover":1,"unmuteBtn":0,"camBtn":0,"topNameModal":1,"handBtn":0,"chatPanelOpen":1,"keysModal":0,"syncModalFocus":1}}, stamp: "d49d42da" };
+  var api = { name: "media", run: part, count: 642, exports: {"AVATAR_H":0,"AVATAR_W":0,"CC_ENGINE_KEY":0,"CC_TRANSLATE_KEY":0,"CC_WHISPER_ANYWAY_KEY":0,"CC_WORDS_KEY":0,"MOS_GRACE":0,"MOS_SETTLE":0,"STAGE_FACE_PX":0,"STAGE_FACE_SETTLE_MS":0,"STG_PIC_LIVE_MS":0,"STG_ZERO_MS":0,"WEBKIT_TILE":0,"WHISPER_APP_ID":0,"WHISPER_SEED_KEY":0,"WSP_CHIP_MS":0,"WSP_STARVE_MS":0,"WSP_STARVE_N":0,"WSP_STARVE_WIN":0,"WSP_TICK_MS":0,"WSP_WEAK":0,"acClockInfo":1,"adapt":1,"adoptClaim":1,"applyBuses":1,"applyCcAll":1,"applyGrid":1,"applyRecoverMedia":1,"armAudioKeepAlive":1,"armWhisperRescan":1,"attachFailed":1,"attachLocalTracks":1,"attachTrack":1,"audioKickArmed":0,"avHold":0,"avatarPipe":0,"avatarSharp":0,"beyondRowNow":1,"bindClaim":1,"blockedAudio":0,"blurDraw":1,"blurPipe":0,"blurSenderFrac":1,"blurSized":1,"blurViewFrac":1,"botVoiceTrack":0,"browserCaptionsMissing":1,"callStateBox":0,"camChooserAnchor":0,"camChooserOpen":1,"camDeviceId":0,"camFacing":0,"camIdleT":0,"camPickThen":0,"camTrackForTest":1,"camVideoConstraints":1,"canRaiseHand":1,"canScreenRecord":0,"canScreenShare":0,"capsRunningNow":1,"carryVoiceTrack":0,"ccDefGroup":0,"ccEngine":1,"ccMix":0,"ccMixStop":1,"ccMixSync":1,"clk":0,"clockSample":1,"closeCamChooser":1,"closeMicChooser":1,"compFps":1,"compOf":0,"containerFor":1,"ctScreenTrack":1,"dbgMeterSources":1,"dbgRowFaces":0,"degOf":0,"detachTrack":1,"dismissCamChooser":1,"displayCount":1,"downFolds":0,"downStreams":0,"dropContainer":1,"dropEndedRemoteTracks":1,"dutyJob":1,"dutyMuteTick":1,"earState":1,"endSongOnStepDown":1,"facesOnScreen":1,"gdOverride":0,"gridApplied":0,"gumRefused":1,"gumWithMicFallback":1,"headLinkUp":1,"headSendsStale":1,"headerCount":1,"heardStage":1,"holdMainVideo":1,"iActAsHead":1,"installWhisper":1,"jobPinned":0,"jobVideoAt":0,"keepAwake":1,"keepMeetingAudio":1,"keyUp":1,"kfEv":0,"kickJob":1,"kickMainAudio":1,"kickMainVideo":1,"kickStageMic":1,"l14Packs":0,"lateMedia":1,"mainAudioTrack":1,"maybeShowFlip":1,"mediaElCensus":1,"micChooserOpen":1,"micTap":1,"mix":0,"mixAc":0,"mosFb":0,"mosHeld":0,"mySelfStream":0,"normStageFrame":1,"noteAudioDevices":1,"noteReship":1,"onMeetDeviceChange":1,"openCamChooser":1,"openKeys":1,"openModal":1,"orphaned":1,"packLoop":0,"paintTiming":1,"parkSender":1,"peerAudioTracks":1,"phoneCaptions":1,"picRead":1,"pickCamera":1,"pipeDeny":0,"pipeJobs":0,"placeStageMarks":1,"playTileVideo":1,"poke":1,"prodPack":0,"producerKey":1,"qaStageSt":0,"quietAtDoor":1,"rbStart":1,"reactSing":1,"recDefaultQuality":1,"recDownload":1,"recDraw":0,"recFileName":1,"recLibraryOption":1,"recMatchMix":0,"recMode":0,"recNoteStruct":1,"recQuality":0,"recRec":0,"recRelease":1,"recScopeSources":1,"recSources":1,"recStarting":0,"reconcileMosaic":1,"recoverShareTimer":0,"refreshOutbound":1,"refreshTrBtn":1,"regrabCamera":1,"releaseAudio":1,"rememberMix":1,"repaintRedun":1,"resumeReload":1,"retireMixTracks":1,"reviveCamera":1,"roomPack":0,"rowHeadPid":1,"rowMixHeadArrives":1,"rowMixHold":1,"schedClaim":1,"schedReconcile":1,"sdView":0,"sdViewSt":0,"sentVideoTrack":1,"setStageFrame":1,"shareRecoverMode":0,"shipContainers":0,"shownPeerCount":1,"speakerChoices":1,"speech":0,"speechGaveUp":0,"speechProved":0,"speechRunning":1,"spkDeviceId":0,"stageAudible":1,"stageEar":0,"stageEarFoldPeak":1,"stageEarLiveTrack":1,"stageEarRawPeak":1,"stageFrameVal":0,"stagedSelfWas":0,"startLocalView":1,"startRec":1,"startScreenShare":1,"startWhisper":1,"stashRecoverMedia":1,"stgBeatIn":1,"stgCarry":1,"stgFoNote":1,"stgLost":1,"stopBlurPipe":1,"stopScreenShare":1,"stopSpeech":1,"stopWhisper":1,"stripPack":0,"stubDuties":1,"swapPicNote":1,"swapTrack":1,"syncAvatarFeed":1,"syncSpeech":1,"tileHolds":1,"toggleSing":1,"trEnSync":1,"trackAspect":1,"trackQ":0,"transcriptFile":1,"tuneCfg":1,"unbindClaim":1,"wakeLock":0,"warnRecorderNewApp":1,"whisperAllowed":0,"whisperChosen":0,"whisperInstalling":0,"whisperRescan":0,"whisperSeedBlocked":1,"whisperSupported":1,"withScrPipe":1,"wkBindVideo":1,"wkEar":0,"wkFwdCopies":0,"wkFwdNeeded":1,"wkHolds":1,"wkQuietBind":1,"wkRemoteTrack":1,"wsp":0,"wspCaps":0,"wspChip":0,"wspChipGone":1,"wspChipRoom":0,"wspEnqueue":1,"wspInst":0,"wspModel":1,"wspPaintSafe":1,"wspPaused":0,"wspQ":0,"wspRebind":1,"wspRelease":1,"wspResume":1,"wspRetry":1,"wspSource":1,"wspStSig":0,"wspStarved":0,"wspState":1,"wspStateText":1,"wspStop":1,"wspSync":1,"wspTickAt":0,"wspToBrowser":1,"wspWorking":0,"x2Target":1}, needs: {"core":{"leaving":0,"localStream":0,"capClone":1,"WK_H264_BLIND":0,"nameInitial":1,"shareBlocked":0,"turnLinks":0,"turnFacts":0,"myId":0,"rowFaceDark":0,"myName":0,"blurLevelFor":1,"mediaOk":0,"relayVia":0,"displayName":1,"myStatus":0,"stageIds":0,"statusOf":0,"screenStream":0,"sharingScreen":0,"BROADCAST":0,"bcMayPublishAv":1,"rbNow":0,"mayShareScreen":0,"outgoingHeld":0,"bcRole":1,"peers":0,"meTile":0,"camPeer":0,"clog":0,"micPeer":0,"renegotiate":1,"rosterIds":0,"knownTotal":1,"rosterTiles":0,"updateTile":1,"updateStatus":1,"meshSeat":0,"meshNode":0,"roomDig":1,"roomPastSection":0,"SCALE":0,"powNow":0,"IS_MOBILE":0,"powDials":0,"setStatus":0,"uiText":1,"stHold":0,"seatDark":0,"forcedCamOff":0,"vqRung":0,"rung":0,"LADDER":0,"stageCeilingKbps":1,"screenCeilingKbps":1,"stageSenders":0,"auxSenders":0,"lowSenders":0,"net":0,"meterFor":1,"sayState":0,"IS_ANDROID":0,"botParks":1,"visParkSent":0,"dcSend":0,"hasPendingTx":0,"ensureAc":1,"ac":0,"newMeetAudioContext":1,"occPid":0,"pipePeers":1,"preferHwVideo":1,"modOf":1,"stageSeats":0,"digLists":0,"stageHeldAt":0,"stageFeedAt":0,"stageViewNow":0,"addAux":0,"isStageJob":0,"auxDrop":1,"stopAuxTx":1,"DEBUG_ON":0,"modBlurOn":0,"meshCoord":0,"speakingOf":0,"rowMixTalkAt":0,"subWant":0,"myIdentity":0,"labelFor":0,"iAmWaiting":1,"peerWaits":1,"fitFor":0,"pipeVideo":0,"pipeStg":0,"STAGE_FPS":0,"stageCell":1,"STAGE_MAXW":0,"stageFps":1,"freshSt":0,"pwBlocked":0,"bannedOut":0,"mediaJoined":0,"RECOVER_MEDIA_KEY":0,"updateRoomKey":0,"bcHostStored":0,"paintOnAir":1,"broadcastStatus":1,"updateMediaSession":1,"screenSteppedUp":0,"setStage":1,"refreshAllTiles":1,"rbCap":0,"rbLength":1,"rbTracks":1,"rbDrop":1,"bcSeeding":0,"releaseLeaveAsk":1,"rbStop":1,"rbNoun":0,"serviceHeard":0,"rowMates":0,"isHeld":1,"botHidden":1,"TIMING_KEY":0,"digStageEntry":0,"rosterNames":0,"foldName":1,"canStage":0,"lsGet":0,"CC_ON_PHONE":0,"meters":0,"myVoiceAt":0,"lsSet":0,"ccLocalQ":0,"CC_LANG_KEY":0,"trEnOn":0,"capSend":1,"trLangOf":0,"addTranscriptLine":1,"capEarsOnly":1,"capTrust":0,"trLang":1,"trKeeps":1,"trEnOnlyEnglish":1,"capSpotQueue":1,"capPublish":1,"trForget":1,"ccLang":0,"trDrops":0,"capTraceGate":1,"myVoiceFrom":0,"trLangKnown":1,"myVoiceSinceFinal":0,"ccDevNotice":1,"trEchoHeld":1,"ccShow":0,"trBlocks":1,"trNote":1,"modTable":0,"setMod":1,"AI_SPARK_SVG":0,"chatOpen":0,"room":0,"recRoomWord":1,"bcLastService":0,"BC_INTENT":0,"recSrcDirty":0,"recStructSig":0,"bcKeepUserStop":0,"amGloballyMuted":1,"micLockWords":1,"capClosed":0,"bcWatchingViewer":1,"enforceBroadcastSeat":1,"lateAsk":0,"lateWant":0,"bootGumPending":0,"reactRoomState":1,"camOnWords":1,"statusWords":0,"lateGen":0,"lateWon":0,"lateTimer":0,"LATE_ASK_MS":0,"carryOutAc":0,"blurLevel":0,"setPersonalBlur":1,"carryHosts":0,"carryG":0,"meOnStage":1,"shareOnlyStage":1,"personOnStage":1,"seatSelfLeased":0,"mainVideoChoice":1,"outboundPlan":1,"stageFeedVideo":1,"stageVideoChoice":1,"participantCount":1,"deepInView":1,"isRedun":0,"onStageNow":1,"screenSharers":0,"roomSingOn":0,"singOf":0,"capCovered":1,"trWrites":1,"idleNow":0,"lastActive":0,"lastQ":0,"MP":0,"battNow":0,"micGrabbing":0,"micWant":0,"micMode":0,"micUnmuteAfter":0,"micPickPrev":0,"pipeEnabled":0,"MPipe":0,"stgBeats":0,"swapPicLast":0,"swapPicHoldAt":0,"swapPicRing":0,"STG_BEAT_STALE_MS":0,"STG_BEAT_SEEN":0,"stgBeatCost":0,"STG_BEAT_MS":0,"timing":0,"whisperReady":0,"planMeasured":1,"reconcileMain":1,"actingHead":1,"inboundPlan":1,"owedStream":1,"mosAnn":0,"mosIn":0,"mosStandby":0,"claimMos":1,"stgStale":1,"dropMosIn":1,"dropStandby":1,"stgEnded":1,"demand":1,"kfNeed":1,"carryIn":1,"mosJobs":0,"unshipJob":1,"setJobActive":1,"shipJob":1,"reapJobs":1,"chainBornParked":1,"stgDirectSet":1,"stgFedBy":1,"stgPath":0,"vpId":0,"l14DownHeads":1,"stgHop":0,"stgSecondRoot":1,"STG_ROOT2":0},"view":{"blurA":0,"blurActx":0,"blurB":0,"blurBctx":0,"paintAvatarCanvas":1,"phoneLayout":1,"showAvatarTrack":1,"stagefeedEl":0,"stadiumEl":0,"showFlipButton":1,"showCamBack":1,"paintSpkBtn":1,"paintStadiumTile":1,"paintStageStrip":1,"paintControls":1,"showResharePrompt":1,"hideResharePrompt":1,"paintShare":1,"dropStaleShareWin":1,"paintRb":1,"rbCanvas":1,"paintRbNow":1,"paintFaders":0,"timingRow":0,"paintWspChip":1,"paintCcState":1,"paintTxMark":1,"capCardRefresh":1,"paintWspStatus":1,"paintCcView":1,"showCaption":1,"ccDockBtn":0,"hideCaptions":1,"renderTranscript":1,"renderChat":1,"chatPanel":0,"paintChatBtn":1,"paintRoomTrust":1,"showServiceEnded":1,"showRecReplay":1,"recBtn":0,"showRecOptions":1,"roomAudioOn":1,"micBtn":0,"placeDockPopover":1,"unmuteBtn":0,"camBtn":0,"topNameModal":1,"handBtn":0,"chatPanelOpen":1,"keysModal":0,"syncModalFocus":1}}, stamp: "d49d42da" };
   (GifOS.coreParts = GifOS.coreParts || {})["media"] = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
