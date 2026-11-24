@@ -52,6 +52,25 @@
   button:focus-visible, a:focus-visible { outline: 2px solid var(--c-white); outline-offset: 2px; }
   section.note { margin-top: var(--s-4); }
   section.note h2 { margin-bottom: var(--s-2); }
+  .pm { display: grid; gap: var(--s-3); margin: var(--s-3) 0 var(--s-4); }
+  .pm h2 { margin: 0; }
+  .pm h3 { font-size: var(--fs-body); font-weight: 600; margin: 0 0 var(--s-2); }
+  .pm .row { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; }
+  .pm p { margin: 0; }
+  .pm ul { margin: 0; padding-left: 1.1rem; }
+  .pm input[type="text"], .pm input[type="number"], #pm-code {
+    font: inherit; color: var(--c-white); background: var(--c-night); border: 1px solid var(--c-chip);
+    border-radius: var(--r-sm); min-height: 44px; padding: 0 12px; width: 100%; max-width: 16rem;
+  }
+  #pm-file-use { font: inherit; min-height: 44px; max-width: 100%; color: var(--c-label); }
+  #pm-recv-code { font-size: 2rem; font-weight: 700; letter-spacing: .25em; margin: var(--s-2) 0; }
+  #pm-link { word-break: break-all; }
+  #pm-qr { background: var(--c-white); border-radius: var(--r-sm); padding: var(--s-2); max-width: 280px; }
+  #pm-qr svg { display: block; width: 100%; height: auto; }
+  @media (max-width: 360px) {
+    .wrap { padding-left: 12px; padding-right: 12px; }
+    .pm button, .pm a.btn, #pm-code, #pm-file-use { max-width: 100%; }
+  }
 </style>
 </head>
 <body>
@@ -63,6 +82,76 @@
   <p class="quiet" data-t="subscription.intro">Every plan works on gifos.app/meet. Public open-floor meetings are always free.</p>
   <p id="held" class="notice" role="status" aria-live="polite"></p>
   <p id="say" class="notice" role="status" aria-live="polite" hidden></p>
+  <section class="pm" id="get">
+    <h2 data-t="subscription.pmTitle">Your plan</h2>
+    <div id="pm-meetings" hidden>
+      <h3 data-t="subscription.pmMeetings">Meetings holding this plan</h3>
+      <ul id="pm-meetings-list"></ul>
+      <p data-t="subscription.pmMoveHow">Start or join the meeting on this device; you will be asked which meeting gives up its place.</p>
+    </div>
+    <div class="row" id="pm-files">
+      <button type="button" id="pm-file-get" hidden data-t="subscription.pmFileGet">Download subscription file</button>
+      <label class="row"><span data-t="subscription.pmFileUse">Use a subscription file</span>
+        <input id="pm-file-use" type="file" accept="image/gif,.gif">
+      </label>
+    </div>
+    <div id="pm-move" hidden>
+      <h3 data-t="subscription.pmMove">Use on another device</h3>
+      <button type="button" class="go" id="pm-move-go" data-t="subscription.pmMoveGo">Use on another device</button>
+      <div id="pm-move-live" hidden>
+        <div id="pm-qr"></div>
+        <p id="pm-link"></p>
+        <div class="row">
+          <button type="button" id="pm-copy" data-t="subscription.pmCopy">Copy</button>
+        </div>
+        <label class="row"><span data-t="subscription.pmCodeLabel">Code from the other device</span>
+          <input id="pm-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6">
+        </label>
+        <button type="button" id="pm-code-go" data-t="subscription.pmCodeGo">Continue</button>
+        <p id="pm-move-status" role="status"></p>
+      </div>
+    </div>
+    <div id="pm-recv" hidden>
+      <p data-t="subscription.pmRecvLead">Type this code on the device that has your plan</p>
+      <p id="pm-recv-code"></p>
+      <p id="pm-recv-status" role="status"></p>
+    </div>
+    <div id="pm-replace" hidden>
+      <p id="pm-replace-q" data-t="subscription.pmReplace">Replace the plan on this device?</p>
+      <div class="row">
+        <button type="button" class="go" id="pm-replace-yes" data-t="subscription.pmReplaceYes">Replace</button>
+        <button type="button" id="pm-replace-no" data-t="subscription.pmReplaceNo">Keep the plan on this device</button>
+      </div>
+    </div>
+    <div id="pm-restore-block">
+      <button type="button" id="pm-restore" data-t="subscription.pmRestore">Restore with PayPal</button>
+      <div id="pm-restore-ask" hidden>
+        <p id="pm-restore-q"></p>
+        <p id="pm-restore-lib" hidden data-t="subscription.pmLibWarn">Your library opens only on a device that still has your old plan file or that you move the plan from.</p>
+        <div id="pm-restore-acts" class="row">
+          <button type="button" class="go" id="pm-restore-yes" hidden data-t="subscription.pmRestoreYes">Move it here</button>
+        </div>
+      </div>
+    </div>
+    <div class="row" id="pm-pay" hidden>
+      <button type="button" id="pm-cancel" data-t="subscription.pmCancel">Cancel subscription</button>
+      <a class="btn" id="pm-manage" href="https://www.paypal.com/myaccount/autopay/" target="_blank" rel="noopener" data-t="subscription.pmManage">Manage at PayPal</a>
+    </div>
+    <div id="pm-receipts">
+      <h3 data-t="subscription.pmReceipts">Receipts and purchases</h3>
+      <div class="row">
+        <a class="btn" id="pm-purchases" href="/" data-t="subscription.pmPurchases">Purchases on your Home Screen</a>
+        <a class="btn" id="pm-activity" href="https://www.paypal.com/myaccount/activities" target="_blank" rel="noopener" data-t="subscription.pmActivity">PayPal activity</a>
+      </div>
+    </div>
+    <div id="pm-signout-wrap" hidden>
+      <button type="button" id="pm-signout" data-t="subscription.pmSignout">Sign out other devices</button>
+      <div id="pm-signout-ask" hidden>
+        <p data-t="subscription.pmSignoutAsk">Sign out every other device? This device keeps the plan. The others stop until you move it again or restore it.</p>
+        <button type="button" id="pm-signout-yes" data-t="subscription.pmSignoutYes">Sign out</button>
+      </div>
+    </div>
+  </section>
   <ul id="plans" class="plans"></ul>
   <section class="note" id="upgrade-note">
     <h2 data-t="subscription.upgradeTitle">Moving to a bigger plan</h2>
@@ -71,7 +160,7 @@
     <p data-t="subscription.upgradeRule">A yearly plan can move only to a bigger yearly plan. A monthly plan can move to a bigger monthly or yearly plan.</p>
     <p data-t="subscription.upgradeStack">Plans add up: a pass or an add-on you hold counts on top of your plan, so their meetings at once add together.</p>
     <p data-t="subscription.upgradePass">A four-hour pass is never cancelled: it keeps running beside any plan.</p>
-    <p data-t="subscription.fileNote">Your plan lives in this browser. Keep a copy: download your subscription file from Settings in a meeting.</p>
+    <p data-t="subscription.fileNote">Your plan lives in this browser. Keep a copy: download your subscription file here, or choose Use on another device on gifos.app/subscription.</p>
   </section>
   <p class="quiet" id="legal"></p>
 </div>
@@ -83,6 +172,8 @@
 <script src="js/gifos-store.js"></script>
 <script src="js/gifos-sub.js"></script>
 <script src="js/meet-subs.js"></script>
+<script src="js/vendor/qrcode.js"></script>
+<script src="js/gifos-planmove.js"></script>
 <script src="js/subscription.js"></script>
 </body>
 </html>

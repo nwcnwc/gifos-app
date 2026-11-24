@@ -1019,8 +1019,8 @@
   "meet.subMoveOther": "otra reunión",
   "meet.subOverflowKeep": "Las {n} reuniones de tu organización están en uso; esta funciona con los límites gratuitos.",
   "meet.subOverflowKeep0": "Todas las reuniones que cubre el plan de tu organización están en uso; esta funciona con los límites gratuitos.",
-  "meet.subMeetings1": "Tu suscripción funciona en una sola reunión a la vez. Al unirte a una reunión, aquí o en otro navegador con tu archivo de suscripción, se mueve allí.",
-  "meet.subMeetingsN": "Tu suscripción funciona en hasta {n} reuniones a la vez. Al unirte a una más, aquí o en otro navegador con tu archivo de suscripción, deja la más antigua.",
+  "meet.subMeetings1": "Tu suscripción funciona en una sola reunión a la vez. Al unirte a una reunión, aquí o en otro navegador, se mueve allí. Para usarla en otro dispositivo, elige Usar en otro dispositivo en gifos.app/subscription.",
+  "meet.subMeetingsN": "Tu suscripción funciona en hasta {n} reuniones a la vez. Al unirte a una más, aquí o en otro navegador, deja la más antigua. Para usarla en otro dispositivo, elige Usar en otro dispositivo en gifos.app/subscription.",
   "meet.planFamily": "Negocio familiar",
   "meet.planSmallBusiness": "Pequeña empresa",
   "meet.planBusiness": "Empresa",
@@ -1216,5 +1216,12 @@
   "meet.capNowTheirs": "Se muestran los subtítulos de {name}.",
   "meet.capFlag": "Estos subtítulos están mal",
   "meet.capSrcTitle": "Subtítulos de {name}",
-  "meet.subReceiptName": "Recibo — suscripción de GifOS Meet"
+  "meet.subReceiptName": "Recibo — suscripción de GifOS Meet",
+  "meet.lobPlans": "Planes y tu suscripción",
+  "meet.subAway": "Tu plan está en uso en otra reunión.",
+  "meet.subAwayHere": "Traerlo aquí",
+  "meet.subAwayManage": "Gestionar",
+  "meet.subHostElsewhere": "¿Tienes un plan en otro dispositivo? Muévelo aquí o restáuralo con PayPal.",
+  "meet.subMoveLink": "Usar en otro dispositivo",
+  "meet.subRestoreLink": "Restaurar con PayPal"
 }

@@ -1020,8 +1020,8 @@
   "meet.subMoveOther": "another meeting",
   "meet.subOverflowKeep": "All {n} of your organization’s meetings are in use; this one runs on the free limits.",
   "meet.subOverflowKeep0": "Every meeting your organization’s plan covers is in use; this one runs on the free limits.",
-  "meet.subMeetings1": "Your subscription works in one meeting at a time. Joining a meeting, here or in another browser with your subscription file, moves it there.",
-  "meet.subMeetingsN": "Your subscription works in up to {n} meetings at once. Joining one more, here or in another browser with your subscription file, moves it from the oldest.",
+  "meet.subMeetings1": "Your subscription works in one meeting at a time. Joining a meeting, here or in another browser, moves it there. To use it on another device, choose Use on another device on gifos.app/subscription.",
+  "meet.subMeetingsN": "Your subscription works in up to {n} meetings at once. Joining one more, here or in another browser, moves it from the oldest. To use it on another device, choose Use on another device on gifos.app/subscription.",
   "meet.planFamily": "Family business",
   "meet.planSmallBusiness": "Small business",
   "meet.planBusiness": "Business",
@@ -1216,5 +1216,12 @@
   "meet.capLangSwitch": "Switch to {heard}",
   "meet.capLangKeep": "Keep {mine}",
   "meet.capLangLater": "You can change this any time: Settings, then Captions language.",
-  "meet.subReceiptName": "Receipt — GifOS Meet subscription"
+  "meet.subReceiptName": "Receipt — GifOS Meet subscription",
+  "meet.lobPlans": "Plans and your subscription",
+  "meet.subAway": "Your plan is in use in another meeting.",
+  "meet.subAwayHere": "Move it here",
+  "meet.subAwayManage": "Manage",
+  "meet.subHostElsewhere": "Have a plan on another device? Move it here or restore it with PayPal.",
+  "meet.subMoveLink": "Use on another device",
+  "meet.subRestoreLink": "Restore with PayPal"
 }

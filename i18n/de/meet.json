@@ -1019,8 +1019,8 @@
   "meet.subMoveOther": "ein anderes Meeting",
   "meet.subOverflowKeep": "Alle {n} Meetings Ihrer Organisation sind belegt; dieses läuft mit den kostenlosen Grenzen.",
   "meet.subOverflowKeep0": "Alle Meetings, die der Tarif Ihrer Organisation abdeckt, sind belegt; dieses läuft mit den kostenlosen Grenzen.",
-  "meet.subMeetings1": "Ihr Abo gilt immer nur in einem Meeting. Wenn Sie einem Meeting beitreten, hier oder in einem anderen Browser mit Ihrer Abo-Datei, wechselt es dorthin.",
-  "meet.subMeetingsN": "Ihr Abo gilt in bis zu {n} Meetings gleichzeitig. Ein weiteres Meeting, hier oder in einem anderen Browser mit Ihrer Abo-Datei, nimmt es dem ältesten weg.",
+  "meet.subMeetings1": "Ihr Abo gilt immer nur in einem Meeting. Wenn Sie einem Meeting beitreten, hier oder in einem anderen Browser, wechselt es dorthin. Für ein anderes Gerät wählen Sie Auf einem anderen Gerät verwenden auf gifos.app/subscription.",
+  "meet.subMeetingsN": "Ihr Abo gilt in bis zu {n} Meetings gleichzeitig. Ein weiteres Meeting, hier oder in einem anderen Browser, nimmt es dem ältesten weg. Für ein anderes Gerät wählen Sie Auf einem anderen Gerät verwenden auf gifos.app/subscription.",
   "meet.planFamily": "Familienbetrieb",
   "meet.planSmallBusiness": "Kleinunternehmen",
   "meet.planBusiness": "Business",
@@ -1216,5 +1216,12 @@
   "meet.capNowTheirs": "Die Untertitel von {name} werden gezeigt.",
   "meet.capFlag": "Diese Untertitel sind falsch",
   "meet.capSrcTitle": "Untertitel für {name}",
-  "meet.subReceiptName": "Beleg — GifOS-Meet-Abo"
+  "meet.subReceiptName": "Beleg — GifOS-Meet-Abo",
+  "meet.lobPlans": "Tarife und Ihr Abo",
+  "meet.subAway": "Ihr Tarif wird in einem anderen Meeting verwendet.",
+  "meet.subAwayHere": "Hierher holen",
+  "meet.subAwayManage": "Verwalten",
+  "meet.subHostElsewhere": "Haben Sie einen Tarif auf einem anderen Gerät? Holen Sie ihn hierher oder stellen Sie ihn mit PayPal wieder her.",
+  "meet.subMoveLink": "Auf einem anderen Gerät verwenden",
+  "meet.subRestoreLink": "Mit PayPal wiederherstellen"
 }

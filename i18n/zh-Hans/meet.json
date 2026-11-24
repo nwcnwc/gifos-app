@@ -1019,8 +1019,8 @@
   "meet.subMoveOther": "另一场会议",
   "meet.subOverflowKeep": "您组织的全部 {n} 场会议都在使用中；这场会议按免费版限制运行。",
   "meet.subOverflowKeep0": "您组织方案涵盖的会议都在使用中；这场会议按免费版限制运行。",
-  "meet.subMeetings1": "您的订阅一次只能在一场会议中使用。在此处或在另一个带有订阅文件的浏览器中加入会议，订阅就会转到那里。",
-  "meet.subMeetingsN": "您的订阅最多可同时在 {n} 场会议中使用。在此处或在另一个带有订阅文件的浏览器中再加入一场，最早的那场会议将失去订阅。",
+  "meet.subMeetings1": "您的订阅一次只能在一场会议中使用。在此处或在另一个浏览器中加入会议，订阅就会转到那里。要在另一台设备上使用，请在 gifos.app/subscription 上选择「在另一台设备上使用」。",
+  "meet.subMeetingsN": "您的订阅最多可同时在 {n} 场会议中使用。在此处或在另一个浏览器中再加入一场，最早的那场会议将失去订阅。要在另一台设备上使用，请在 gifos.app/subscription 上选择「在另一台设备上使用」。",
   "meet.planFamily": "家庭企业",
   "meet.planSmallBusiness": "小型企业",
   "meet.planBusiness": "企业",
@@ -1216,5 +1216,12 @@
  "meet.capNowTheirs": "正在显示 {name} 的字幕。",
  "meet.capFlag": "这些字幕不对",
  "meet.capSrcTitle": "{name} 的字幕",
- "meet.subReceiptName": "收据 — GifOS Meet 订阅"
+ "meet.subReceiptName": "收据 — GifOS Meet 订阅",
+ "meet.lobPlans": "方案与您的订阅",
+ "meet.subAway": "您的方案正在另一场会议中使用。",
+ "meet.subAwayHere": "移到这里",
+ "meet.subAwayManage": "管理",
+ "meet.subHostElsewhere": "方案在另一台设备上？把它移到这里，或通过 PayPal 恢复。",
+ "meet.subMoveLink": "在另一台设备上使用",
+ "meet.subRestoreLink": "通过 PayPal 恢复"
 }

@@ -841,7 +841,13 @@
     if (typeof c.seed !== 'string' || !SEED_RE.test(c.seed)) return null;
     let raw; try { raw = b64ToBytes(c.seed); } catch (e) { return null; }
     if (raw.length !== 32) return null;
-    return { v: 1, kind: CRED_KIND, subId: c.subId, tier: c.tier, period: c.period === 'yearly' || c.period === 'monthly12' ? c.period : 'monthly', seed: c.seed, buyerKey: typeof c.buyerKey === 'string' && KEY_RE.test(c.buyerKey) ? c.buyerKey : undefined };
+    const out = { v: 1, kind: CRED_KIND, subId: c.subId, tier: c.tier, period: c.period === 'yearly' || c.period === 'monthly12' ? c.period : 'monthly', seed: c.seed, buyerKey: typeof c.buyerKey === 'string' && KEY_RE.test(c.buyerKey) ? c.buyerKey : undefined };
+    // libSeed is the library key's seed. A move keeps it; a PayPal restore sets it to the new seed.
+    // Unknown fields are otherwise dropped, so this one has to be copied or the library key dies on the way.
+    if (typeof c.libSeed === 'string' && SEED_RE.test(c.libSeed)) {
+      try { if (b64ToBytes(c.libSeed).length === 32) out.libSeed = c.libSeed; } catch (e) {}
+    }
+    return out;
   }
   // The four-hour passes live in the same file, beside any subscription
   // (passes.json): the seed of the key they are bound to and the signed
