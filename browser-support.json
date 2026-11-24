@@ -67,7 +67,7 @@
     "meet": {
       "label": "Meetings",
       "plain": "Seeing and hearing each other on a shared link.",
-      "where": "run.html — /meet/<room>, or run.html#v=<room>",
+      "where": "run.html — /meet#room=<room>, or run.html#v=<room>",
       "gatedBy": "es6-baseline",
       "requires": [
         "es6-baseline",
@@ -87,7 +87,7 @@
     "cast": {
       "label": "Broadcast",
       "plain": "One person on stage, everyone else watching.",
-      "where": "run.html wearing its broadcast skin — /cast/<room>, or run.html#v=<room>&bc=1",
+      "where": "run.html wearing its broadcast skin — /cast#room=<room>, or run.html#v=<room>&bc=1",
       "gatedBy": "es6-baseline",
       "sameAs": "meet",
       "requires": [
