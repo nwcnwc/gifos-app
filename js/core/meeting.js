@@ -550,7 +550,7 @@
       rec: Object.freeze({ someone: () => someoneRecording(), title: () => recNoticeTitle() }),
       me: Object.freeze({ myId: () => myId, myStatus: () => myStatus, myIdentitySeed: () => myIdentitySeed, myIdentity: () => myIdentity, myDevHash: () => myDevHash, meTile: () => meTile, localStream: () => localStream, joinAv: () => joinAv, av: () => av, leaving: () => leaving, mediaAskPending: () => mediaAskPending, visParkSent: () => visParkSent, screenSteppedUp: () => screenSteppedUp }),
       room: Object.freeze({ room: () => room, params: () => params, rejoinHref: () => rejoinHref, roomJoinedAt: () => roomJoinedAt, roomE2E: () => roomE2E, prevRoomE2E: () => prevRoomE2E, sessId: () => sessId, BROADCAST: () => BROADCAST, bcLastService: () => bcLastService, rbNow: () => rbNow, bannedOut: () => bannedOut, files: () => files, turnLinks: () => turnLinks, turnFacts: () => turnFacts }),
-      roster: Object.freeze({ peers: () => peers, statusOf: () => statusOf, rosterNames: () => rosterNames, rosterTiles: () => rosterTiles, rosterIds: () => rosterIds, speakingOf: () => speakingOf, devOf: () => devOf, hbLastAt: () => hbLastAt, hbLastMono: () => hbLastMono, frozeGap: () => frozeGap, tileWin: () => tileWin, vcrops: () => vcrops, reactStats: () => reactStats, faceReactRx: () => faceReactRx, faceReacts: () => faceReacts, audienceReactCounts: () => audienceReactCounts }),
+      roster: Object.freeze({ peers: () => peers, statusOf: () => statusOf, rosterNames: () => rosterNames, rosterTiles: () => rosterTiles, rosterIds: () => rosterIds, speakingOf: () => speakingOf, stageViewEls: () => stageViewEls, devOf: () => devOf, hbLastAt: () => hbLastAt, hbLastMono: () => hbLastMono, frozeGap: () => frozeGap, tileWin: () => tileWin, vcrops: () => vcrops, reactStats: () => reactStats, faceReactRx: () => faceReactRx, faceReacts: () => faceReacts, audienceReactCounts: () => audienceReactCounts }),
       door: Object.freeze({ waitQueue: () => waitQueue, meetWait: () => meetWait, waitDeclined: () => waitDeclined, modTable: () => modTable, admins: () => admins, admKey: () => admKey, roomPw: () => roomPw, pwProvisional: () => pwProvisional, pwEpoch: () => pwEpoch, statusHoldUntil: () => statusHoldUntil, dockCalmMs: () => dockCalmMs }),
       apps: Object.freeze({ appCopy: () => appCopy, soloCtl: () => soloCtl, agentCore: () => agentCore, viewStore: () => viewStore }),
       net: Object.freeze({ net: () => net, meshNode: () => meshNode, relayVia: () => relayVia, relayJobs: () => relayJobs, stageSenders: () => stageSenders, auxSenders: () => auxSenders, subWant: () => subWant, ac: () => ac, DLOG: () => DLOG, dlogRec: () => dlogRec }),
@@ -4684,7 +4684,43 @@
 
     // ---- who's talking: per-stream audio meters → glowing tile border --------
     let ac = null;
-    const meters = new Map(); // id -> { an, src, data }
+    // A VOICE IS METERED WHERE IT ARRIVES. Anyone holding a Stage seat (on the Stage, or sharing from the Row) sends their
+    // voice on their Stage feed only (outboundPlan), and their Row link audio is parked silence. So their talking verdict
+    // reads the Stage feed's audio ('stg:<id>', stageVoice); everyone else's reads the Row link (meters). One verdict per
+    // person, and every surface reads it: the Row tile ring, speakingOf (the Stage strip frame, the packer overlay), Follow.
+    const meters = new Map(), // id -> { an, src, data }: the Row link's audio
+      stageViewEls = new Map(), // pid -> that person's own Stage picture, registered by the view (ensureStageView)
+      stageVoice = (() => {
+        const all = new Map(); // pid -> { an, src, data, tid }: the Stage feed's audio, for a Stage seat holder
+        const drop = (id) => {
+          const m = all.get(id);
+          if (!m) return;
+          try { m.src.disconnect(); } catch (e) {}
+          try { m.an.disconnect(); } catch (e) {}
+          all.delete(id);
+        };
+        const meter = (id) => {
+          let tr = null;
+          try {
+            const c = __M.mosIn && __M.mosIn.get('stg:' + id);
+            const ts = c && c.stream && c.stream.getAudioTracks ? c.stream.getAudioTracks() : [];
+            for (const t of ts) if (t.readyState === 'live') { tr = t; break; }
+          } catch (e) { tr = null; }
+          const old = all.get(id);
+          if (old && tr && old.tid === tr.id) return old;
+          drop(id);
+          if (!tr || !ensureAc()) return null;
+          try {
+            const src = ac.createMediaStreamSource(new MediaStream([tr]));
+            const an = ac.createAnalyser(); an.fftSize = 256;
+            src.connect(an);
+            const m = { an, src, data: new Uint8Array(an.fftSize), tid: tr.id };
+            all.set(id, m);
+            return m;
+          } catch (e) { return null; }
+        };
+        return { all, drop, meter };
+      })();
     const speakingOf = new Map(); // id ('me'|pid) -> bool, for the composite overlay
     let rowMixTalkAt = 0; // L49: last hot sample of my own meter. A breath is not "stopped talking".
     function releaseMeter(id) {
@@ -4693,6 +4729,7 @@
         try { if (m.src && m.src.disconnect) m.src.disconnect(); } catch (e) {}
         try { if (m.an && m.an.disconnect) m.an.disconnect(); } catch (e) {}
       }
+      stageVoice.drop(id);
       meters.delete(id);
       speakingOf.delete(id);
     }
@@ -4829,35 +4866,65 @@
       // most of the room is exactly that. Stagers keep their meter (their tile
       // hides but the Stage strip frames them); anything I cannot classify
       // keeps its meter too — never go quiet on a face that might be painted.
+      // A Stage seat holder's verdict reads their Stage feed (stageVoice): their Row link carries no voice. stageIds is
+      // still priced only when asked: by a hidden tile, or by a person whose Stage feed reaches me.
       let stgSet = null;
+      const stgNow = () => {
+        if (stgSet === null) { try { stgSet = new Set(stageIds()); } catch (e) { stgSet = false; } }
+        return stgSet;
+      };
+      let mos = null;
+      try { mos = __M.mosIn && typeof __M.mosIn.get === 'function' ? __M.mosIn : null; } catch (e) { mos = null; }
+      const holdsStage = (id) => !!mos && id !== 'me' && id !== myId && !!mos.get('stg:' + id) && !!stgNow() && stgSet.has(id);
+      // The same verdict frames a person's own Stage picture (the view's Stage tile, registered in stageViewEls).
+      const frameStage = (pid, on) => {
+        const el = stageViewEls.get(pid);
+        if (el) el.classList.toggle('speaking', on);
+      };
+      const voiceOn = (id, m) => {
+        const st = (id === 'me' ? myStatus : statusOf.get(id)) || {};
+        const gm = modOf(id).mute && modOf(id).mute.on;
+        if (st.muted || gm) return false;
+        meterAnyLive = true; // a live mic exists ⇒ keep the fast beat
+        if (!m) return false;
+        m.an.getByteTimeDomainData(m.data);
+        let dev = 0;
+        for (let i = 0; i < m.data.length; i++) { const d = m.data[i] - 128; dev += d * d; }
+        return Math.sqrt(dev / m.data.length) > 5;
+      };
       for (const [id, m] of meters) {
         const t = id === 'me' ? meTile : peers.get(id);
         if (!t) { releaseMeter(id); continue; }
         const hiddenTile = id !== 'me' && !!(t.tile && t.tile.style.display === 'none');
-        if (hiddenTile && stgSet === null) {
-          try { stgSet = new Set(stageIds()); } catch (e) { stgSet = false; }
-        }
-        const unpainted = hiddenTile && stgSet && !stgSet.has(id);
+        const unpainted = hiddenTile && stgNow() && !stgSet.has(id);
         if (unpainted) {
           // Don't measure, but don't lie either: a peer nobody paints is not
           // "speaking", and the stale ring must not survive the tile going dark.
           if (speakingOf.get(id)) { t.tile.classList.remove('speaking'); speakingOf.set(id, false); }
           continue;
         }
-        const st = (id === 'me' ? myStatus : statusOf.get(id)) || {};
-        const gm = modOf(id).mute && modOf(id).mute.on;
-        let speaking = false;
-        if (!st.muted && !gm) {
-          meterAnyLive = true; // a live mic exists ⇒ keep the fast beat
-          m.an.getByteTimeDomainData(m.data);
-          let dev = 0;
-          for (let i = 0; i < m.data.length; i++) { const d = m.data[i] - 128; dev += d * d; }
-          speaking = Math.sqrt(dev / m.data.length) > 5;
-        }
+        const speaking = voiceOn(id, holdsStage(id) ? (stageVoice.meter(id) || m) : m);
         t.tile.classList.toggle('speaking', speaking);
+        if (id === 'me' ? !!(myStatus.stg || myStatus.sso) : holdsStage(id)) frameStage(id === 'me' ? myId : id, speaking);
         if (id === 'me' && speaking) { lastActive = Date.now(); if (lastActive - myVoiceAt > 1500) myVoiceFrom = lastActive; myVoiceAt = lastActive; myVoiceSinceFinal = true; } // talking IS activity — a speaker's phone is never "parked"
         speakingOf.set(id, speaking); // fed to the packer overlay (green talking frame on composite faces)
         if (id === 'me' && speaking) rowMixTalkAt = Date.now();
+      }
+      // A Stage seat holder I hold no Row link for has no tile, but the Stage strip still frames them: the verdict comes
+      // from their feed alone. A meter whose person no longer holds a Stage seat goes, and with it a tile-less verdict.
+      if (mos && mos.size) for (const k of mos.keys()) {
+        if (typeof k !== 'string' || k.indexOf('stg:') !== 0) continue;
+        const id = k.slice(4);
+        if (meters.has(id) || !holdsStage(id)) continue;
+        const m = stageVoice.meter(id);
+        const on = !!m && voiceOn(id, m);
+        if (m) speakingOf.set(id, on); else speakingOf.delete(id);
+        frameStage(id, on);
+      }
+      if (stageVoice.all.size) for (const id of Array.from(stageVoice.all.keys())) {
+        if (holdsStage(id)) continue;
+        stageVoice.drop(id);
+        if (!meters.has(id)) speakingOf.delete(id);
       }
       // L6.2: my own voice verdict into the fold's talk set, which every page reads for cross-row Follow. A pause shorter
       // than FOLLOW_GAP_MS is the same turn; the seat keeps the start, the hold and the expiry. Sent on a change only.

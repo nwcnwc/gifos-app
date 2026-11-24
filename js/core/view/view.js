@@ -2788,6 +2788,7 @@
         el.appendChild(nm);
         feed.appendChild(el);
         applyComfy.views.set(id, el);
+        __C.model.roster.stageViewEls().set(id, el);   // the meter frames it while this person talks
       }
       const vid = el.querySelector('video');
       if (vid && vid._vt !== track) {
@@ -2811,6 +2812,7 @@
         if (vid) { try { vid.srcObject = null; } catch (e) {} }
         try { if (el.remove) el.remove(); } catch (e) {}
         applyComfy.views.delete(id);
+        __C.model.roster.stageViewEls().delete(id);
       }
     }
     function applyComfy() {
