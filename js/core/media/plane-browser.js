@@ -3915,7 +3915,7 @@
     }
     // The remembered carrier target for cell key ck, still connected, or null (read only: x2Target and rowMixViaPeek).
     function x2Kept(ck, now) {
-      if (!rowX2To || rowX2To.ck !== ck || now - rowX2To.at > 15000) return null;
+      if (!rowX2To || rowX2To.ck !== ck || now - rowX2To.at > GifOS.timings.X2_KEEP_MS) return null;
       const p = __C.peers.get(rowX2To.pid); return p && p.connected ? rowX2To.pid : null;
     }
     const dbgRowHead = (e) => { const l = (window.__rowViewLog = window.__rowViewLog || []); l.push({ t: Date.now(), e }); if (l.length > 100) l.shift(); };

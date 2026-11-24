@@ -390,9 +390,22 @@
     function rowMixHold() { return false; }
     // No row mix: there is no arrival sample.
     function rowMixHeadArrives() { return -1; }
-    // The browser remembers a carrier for 15 s after its cell empties (rowX2To / x2Kept). No named timing is that
-    // window, and this file may not grow a bare millisecond literal, so the memory stays out until one is named.
-    function x2Target(cell) { try { return typeof C.occPid === 'function' ? C.occPid(cell) : null; } catch (e) { return null; } }
+    // A carrier whose target just moved up keeps handing it the row's product for X2_KEEP_MS (the browser's rowX2To /
+    // x2Kept, L28 at both ends), so the new head's view does not go dark between the carried copy and the direct one.
+    let rowX2To = null;
+    function x2Kept(ck, now) {
+      if (!rowX2To || rowX2To.ck !== ck || now - rowX2To.at > GifOS.timings.X2_KEEP_MS) return null;
+      const p = C.peers && C.peers.get(rowX2To.pid); return p && p.connected ? rowX2To.pid : null;
+    }
+    function x2Target(cell) {
+      try {
+        const pid = typeof C.occPid === 'function' ? C.occPid(cell) : null, now = Date.now(), ck = C.net.topo.ckey(cell);
+        if (pid) { rowX2To = { pid, ck, at: now }; return pid; }
+        const kept = x2Kept(ck, now); if (!kept) return null;
+        const s = typeof C.meshSeat === 'function' ? C.meshSeat() : null; if (s && s.keepAdd) s.keepAdd(kept, 16);
+        return kept;
+      } catch (e) { return null; }
+    }
     // Mix-minus questions. A throw inside carryIn drops the whole plan, so each answer stays inside its own try.
     // MY MIC AS A FOLD SOURCE. Cached by track identity: a fresh stream id would re-fold every sweep. Waiting
     // still asks iAmWaiting, and answers null until the voice exists.
@@ -595,7 +608,8 @@
         const c = typeof C.meshCoord === 'function' ? C.meshCoord() : null;
         if (!c || c.pc !== 0) return null;
         const dest = (c.i === c.r) ? 0 : c.i;
-        return typeof C.occPid === 'function' ? C.occPid({ pc: 0, r: dest, i: c.i }) : null;
+        const cell = { pc: 0, r: dest, i: c.i }, pid = typeof C.occPid === 'function' ? C.occPid(cell) : null;
+        return pid || x2Kept(C.net.topo.ckey(cell), Date.now());   // the same answer as x2Target, with no memory write or keepAdd
       } catch (e) { return null; }
     }
     // No elements: a claim never carries a hold on a tile.

@@ -286,6 +286,7 @@
     WSP_STARVE_N: 2,   // count
     WSP_STARVE_WIN: 30000,   // ms
     WSP_TICK_MS: 250,   // ms
+    X2_KEEP_MS: 15000,   // ms
     X402_RESUME_MS: 6000,   // ms
     X402_RESUME_TRIES: 3,   // count
     holdMs: 2500,   // ms
