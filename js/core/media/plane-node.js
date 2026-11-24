@@ -362,6 +362,52 @@
     function rowMixHeadArrives() { return -1; }
     // No rowX2To memory and no keepAdd: the cell's occupant, or nobody.
     function x2Target(cell) { try { return typeof C.occPid === 'function' ? C.occPid(cell) : null; } catch (e) { return null; } }
+    // Mix-minus questions. Constants: this plane does not fold yet. A throw inside carryIn drops the whole plan.
+    function partStream(ref) {
+      if (!ref) return null;
+      try {
+        if (ref.own === 'mic') return (typeof C.iAmWaiting === 'function' && C.iAmWaiting()) ? null : null;
+        if (ref.own === 'stage') return mySelfStream();
+        if (ref.seat) {
+          if (typeof C.peerWaits === 'function' && C.peerWaits(ref.seat)) return null;
+          const p = C.peers && typeof C.peers.get === 'function' ? C.peers.get(ref.seat) : null;
+          if (!p) return null;
+          let carried = null;
+          try { carried = C.relayVia && typeof C.relayVia.get === 'function' ? C.relayVia.get(ref.seat) : null; } catch (e1) {}
+          if (p.relayed) return (carried && carried.stream) || (p.video && p.video.srcObject) || null;
+          return p.stream || (p.video && p.video.srcObject) || null;
+        }
+        if (ref.in) {
+          const ent = C.mosIn && typeof C.mosIn.get === 'function' ? C.mosIn.get(ref.in) : null;
+          return ent && ent.stream ? ent.stream : null;
+        }
+      } catch (e) {}
+      return null;
+    }
+    function slotDark() { return false; }
+    function carriedHot() { return false; }
+    function hopMs() { return 0; }
+    function packFor() { return null; }
+    function blockOf(rk) {
+      try {
+        const f = C.mosIn && typeof C.mosIn.get === 'function' ? C.mosIn.get(rk) : null;
+        if (!(f && f.meta && f.meta.n)) return {};
+        const m = { n: f.meta.n, cols: f.meta.cols || f.meta.n };
+        if (Array.isArray(f.meta.ids) && f.meta.ids.length === m.n) m.ids = f.meta.ids.slice();
+        if (typeof f.meta.alag === 'number') m.alag = f.meta.alag;
+        return m;
+      } catch (e) { return {}; }
+    }
+    function rowMixOpen() { return false; }
+    function mixReady() { return false; }
+    function rowMixViaPeek() {
+      try {
+        const c = typeof C.meshCoord === 'function' ? C.meshCoord() : null;
+        if (!c || c.pc !== 0) return null;
+        const dest = (c.i === c.r) ? 0 : c.i;
+        return typeof C.occPid === 'function' ? C.occPid({ pc: 0, r: dest, i: c.i }) : null;
+      } catch (e) { return null; }
+    }
     // No elements: a claim never carries a hold on a tile.
     function mosHeld(e) { return !!(e && e.el && e.el._mosHold); }
     // claimMos, then every carry entry, then the reaper, then the duty lever. The browser does this inside reconcileMosaic.
@@ -373,6 +419,7 @@
       try { plan = C.carryIn() || []; } catch (e) { plan = []; }
       for (const e of plan) {
         if (!e || !e.key || !e.to) continue;
+        if (e.audio && (e.audio.mix || e.audio.own === 'mic')) continue;
         let jk = null;
         try { jk = C.shipJob(e.key, e.to, streamFor(e), e.meta, e.upKey); } catch (err) { jk = null; }
         if (jk) wanted.add(jk);
@@ -437,12 +484,21 @@
     def('rowMixHold', rowMixHold);
     def('rowMixHeadArrives', rowMixHeadArrives);
     def('x2Target', x2Target);
+    def('partStream', partStream);
+    def('slotDark', slotDark);
+    def('carriedHot', carriedHot);
+    def('hopMs', hopMs);
+    def('packFor', packFor);
+    def('blockOf', blockOf);
+    def('rowMixOpen', rowMixOpen);
+    def('mixReady', mixReady);
+    def('rowMixViaPeek', rowMixViaPeek);
     def('mosHeld', mosHeld);
     // The browser's mosaic sweep is workerClock(2000): FHOP_SWEEP ticks times tickMs. Announces refresh on that beat.
     // The host's setInterval returns a number, so unref runs only when the timer object itself is what came back.
     const sweepT = setInterval(() => { try { M.schedReconcile(); } catch (e) {} }, GifOS.meshLaws.FHOP_SWEEP * GifOS.timings.tickMs);
     if (sweepT && typeof sweepT.unref === 'function') sweepT.unref();
-    return { names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties', 'bindClaim', 'unbindClaim', 'adoptClaim', 'picRead', 'rowEdge', 'keyUp', 'producerKey', 'kfEv', 'attachTrack', 'detachTrack', 'parkSender', 'kickJob', 'noteReship', 'dropContainer', 'orphaned', 'attachFailed', 'containerFor', 'jobPinned', 'swapTrack', 'dutyJob', 'dutyMuteTick', 'schedClaim', 'schedReconcile', 'stgLost', 'mySelfStream', 'jobVideoAt', 'stgCarry', 'repaintRedun', 'swapPicNote', 'stgFoNote', 'rowMixHold', 'rowMixHeadArrives', 'x2Target', 'mosHeld'] };
+    return { names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties', 'bindClaim', 'unbindClaim', 'adoptClaim', 'picRead', 'rowEdge', 'keyUp', 'producerKey', 'kfEv', 'attachTrack', 'detachTrack', 'parkSender', 'kickJob', 'noteReship', 'dropContainer', 'orphaned', 'attachFailed', 'containerFor', 'jobPinned', 'swapTrack', 'dutyJob', 'dutyMuteTick', 'schedClaim', 'schedReconcile', 'stgLost', 'mySelfStream', 'jobVideoAt', 'stgCarry', 'repaintRedun', 'swapPicNote', 'stgFoNote', 'rowMixHold', 'rowMixHeadArrives', 'x2Target', 'partStream', 'slotDark', 'carriedHot', 'hopMs', 'packFor', 'blockOf', 'rowMixOpen', 'mixReady', 'rowMixViaPeek', 'mosHeld'] };
   }
 
   GifOS.planeNode = { install };
