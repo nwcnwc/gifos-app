@@ -2,6 +2,10 @@
 /meet/* /route 200
 /meet /route 200
 /cast/* /route 200
+# gifos.app/embed: a live broadcast inside another site's page (embed.js writes the iframe). The root page's channel
+# loader moves it to /versions/<latest>/embed, which is the same release's run.html in its embed skin.
+/embed /run 200
+/versions/:v/embed /versions/:v/run 200
 /cast /route 200
 /join/* /route 200
 # Bare /store is the store page itself (never rewrite it: the host 308s /store.html there): route.html hands /store/<slug> to /store#app=<slug>.

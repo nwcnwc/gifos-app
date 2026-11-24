@@ -152,6 +152,37 @@ public open-floor meeting while they're connected, with the "Make me host"
 button (`guard_room` does this for a bot). The room is private for that
 time; the URL does not change.
 
+## Embed a live broadcast in a web page
+
+A hosted GifOS Broadcast (gifos.app/cast) can play inside any web page, like
+a video player. Only a HOSTED broadcast embeds: its viewer link is
+https://gifos.app/cast/ROOM/VERIFIER. An open-floor room (a /cast link with no
+verifier) cannot be embedded; the player says so and joins nothing.
+
+Paste one tag where the player should go:
+
+    <script src="https://gifos.app/embed.js" data-room="ROOM" data-verifier="VERIFIER" data-title="My show"></script>
+
+Or the plain iframe, with no script:
+
+    <iframe src="https://gifos.app/embed#room=ROOM&v=VERIFIER" style="width:100%;aspect-ratio:16/9;border:0"
+      allow="autoplay; fullscreen; picture-in-picture" allowfullscreen title="GifOS Broadcast"></iframe>
+
+data-room may also hold the whole viewer link. The player shows a red LIVE
+badge with how many are watching, the title, a big button to unmute (browsers
+only autoplay muted), full screen, and "Watch on GifOS" (opens the broadcast
+in its own tab). Before the broadcast starts or after it ends it says so.
+
+Viewers are ordinary watchers of the broadcast: no camera or microphone is
+ever asked for. The usual blur rule holds: the picture is blurred unless the
+viewer has the room password. They type it inside the player, so the page
+around it never sees it. `data-password` (or `&pw=` in the iframe address)
+makes the player clear for everyone who opens the page, and is then public in
+that page's source.
+
+Only gifos.app/embed may be framed by another site; every other GifOS page
+refuses to run inside another site's page.
+
 ## What people ask, and the tool to use
 
 - "set up meet.gifos.app for me": install the MCP server above, then

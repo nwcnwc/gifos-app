@@ -1,3 +1,14 @@
+# FRAMING. Only gifos.app/embed may be framed by another site (a live broadcast in
+# someone's page; the page there is a locked viewer, see run.html's frame guard).
+# Every other path is same-origin only. The embed paths only DETACH the header:
+# no frame-ancestors at all means any site may frame them. The inline frame guard
+# on every page stays as the second lock (test/gate2 page-guards frame-guard).
+/*
+  Content-Security-Policy: frame-ancestors 'self'
+/embed
+  ! Content-Security-Policy
+/versions/*/embed
+  ! Content-Security-Policy
 # A published app is what an install checks. The file is good for a minute,
 # so the next publish is the file an install sees. One asterisk matches the
 # rest of the path, so this covers every app file.

@@ -9,7 +9,7 @@
      allowed; anything else sees a link to open the page itself. Parser-
      blocking and ES5 on purpose: it runs before any chrome paints.
      Guarded by test/unit/frame-guard.js. -->
-<script id="gifos-frame-guard">(function(){try{if(window.top===window.self)return;var ok=false;try{ok=window.top.location.origin===window.location.origin;if(!ok&&window.location.origin==='null')ok=window.top.location.origin===window.parent.location.origin;}catch(e){}if(ok)return;var h=document.documentElement;h.style.visibility='hidden';function show(){var b=document.body;if(!b)return;while(b.firstChild)b.removeChild(b.firstChild);var p=document.createElement('p');p.style.cssText='font:16px system-ui,sans-serif;padding:24px;color:#eee;background:#111;margin:0';p.appendChild(document.createTextNode('GifOS does not run inside another site\'s page. '));var a=document.createElement('a');a.href=location.href;a.target='_blank';a.rel='noopener';a.textContent='Open it in its own tab';a.style.color='#9db4ff';p.appendChild(a);b.appendChild(p);h.style.visibility='';}if(document.body)show();else document.addEventListener('DOMContentLoaded',show);}catch(e){}})();</script>
+<script id="gifos-frame-guard">(function(){try{var E=/^\/(versions\/\d+(\.\d+){2,3}\/)?embed$/.test(location.pathname);window.__gifosEmbed=E;if(E)return;if(window.top===window.self)return;var ok=false;try{ok=window.top.location.origin===window.location.origin;if(!ok&&window.location.origin==='null')ok=window.top.location.origin===window.parent.location.origin;}catch(e){}if(ok)return;var h=document.documentElement;h.style.visibility='hidden';function show(){var b=document.body;if(!b)return;while(b.firstChild)b.removeChild(b.firstChild);var p=document.createElement('p');p.style.cssText='font:16px system-ui,sans-serif;padding:24px;color:#eee;background:#111;margin:0';p.appendChild(document.createTextNode('GifOS does not run inside another site\'s page. '));var a=document.createElement('a');a.href=location.href;a.target='_blank';a.rel='noopener';a.textContent='Open it in its own tab';a.style.color='#9db4ff';p.appendChild(a);b.appendChild(p);h.style.visibility='';}if(document.body)show();else document.addEventListener('DOMContentLoaded',show);}catch(e){}})();</script>
 <!-- The ONLY frames this page ever holds are srcdoc app mounts. A sandboxed
      frame may still navigate ITSELF, and the replacement document would keep
      the runtime's bridge with none of the app CSP (site/js/runtime.js,
@@ -510,11 +510,14 @@
   }
   // ?agent=1 is read here, before the meeting rewrites its own address (agent mode reads window.__gifosAgentQ).
   // A driver that loads the page with its own start script (the agent SDK) may set the flag before this line.
-  try { window.__gifosAgentQ = window.__gifosAgentQ === true || /[?&]agent=1(?:&|$)/.test(location.search); } catch (e) {}
+  // An embed (gifos.app/embed, the frame guard's exact path) takes nothing from the address but its broadcast: no agent, no bot, no query.
+  var EMB = window.__gifosEmbed === true;
+  try { if (!EMB) window.__gifosAgentQ = window.__gifosAgentQ === true || /[?&]agent=1(?:&|$)/.test(location.search); } catch (e) {}
   // bot=1 (query or hash) is assistant mode for this tab; agent=1 is assistant mode too (plus the agent API).
   // Read here, before the meeting rewrites its own address, and kept per tab so a reload stays an assistant.
+  // (An embed ignores this tab flag in the core: assistant mode never boots there.)
   try { if (/[?#&](?:bot|agent)=1(?:&|$)/.test(location.search + '&' + location.hash)) sessionStorage.setItem('gifos_bot', '1'); } catch (e) {}
-  var decision = pinTarget(location.pathname, location.search, location.hash);
+  var decision = pinTarget(location.pathname, EMB ? '' : location.search, location.hash);
   if (decision && decision.ask) askLive(decision);
   else if (decision && decision.redirect) location.replace(decision.redirect);
   // A document that stays refreshes gifos_current for the next visit.
@@ -571,7 +574,8 @@
   // Read the HASH only: the channel loader carries pathname + hash and DROPS the
   // query, so #id= is the only form that survives a version redirect.
   var p=new URLSearchParams((location.hash||'').replace(/^#/,''));
-  if(p.get('id'))document.documentElement.classList.add('solo-app');
+  if(window.__gifosEmbed===true)document.documentElement.classList.add('gifos-embed');
+  else if(p.get('id'))document.documentElement.classList.add('solo-app');
   // THE LOBBY ENTRY, decided by the same rule as the boot dispatch far below
   // (no session frame, no app, no room): the page will show the lobby and
   // nothing else. The meeting starts only after every deferred script has run
@@ -671,6 +675,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
 <link rel="stylesheet" href="css/meet.css">
 <link rel="stylesheet" href="css/meet-23b.css">
 <link rel="stylesheet" href="css/meet-polish.css">
+<link rel="stylesheet" href="css/meet-embed.css">
 <script src="js/gifos-themes.js"></script>
 </head>
 <body>
