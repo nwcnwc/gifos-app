@@ -326,7 +326,7 @@
         // Another device answered this code first: never show or use a code for it (the holder would see a mismatch anyway).
         if (r && r.status === 409) { var big = $('pm-recv-code'); if (big) big.textContent = ''; throw new Error(t('pmUsed')); }
         if (Date.now() >= until) throw new Error(t('pmExpired'));
-        return new Promise(function (res) { setTimeout(res, 400); }).then(once);
+        return new Promise(function (res) { setTimeout(res, GifOS.timings.MOVE_HELLO_RETRY_MS); }).then(once);
       });
     }
     return once();

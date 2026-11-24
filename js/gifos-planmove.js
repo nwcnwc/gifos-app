@@ -8,7 +8,7 @@
 (function (root) {
   'use strict';
   var GifOS = root.GifOS = root.GifOS || {};
-  var LIFE_MS = 120000;
+  var LIFE_MS = (GifOS.timings || require('./timings.js')).MOVE_PAGE_LIFE_MS;   // timings.json (the mailbox's life; required where there is no page)
 
   function cryptoObj() { return root.crypto; }
   function subtle() { return cryptoObj().subtle; }
