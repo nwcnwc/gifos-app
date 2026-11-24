@@ -887,6 +887,7 @@
       let plan = [];
       try { C.roomBeyondRow(true); } catch (e) {}
       try { plan = C.carryIn() || []; } catch (e) { plan = []; }
+      try { const mix = C.mixIn() || []; plan = plan.concat(mix); } catch (e) {}
       // carryIn already chose the ^r routes. Hold a played second root on its source before this sweep ships, so a
       // copy whose source is gone ends here and the next ship mints a fresh id (the browser's holdSecondRoots).
       try { holdSecondRoots(); } catch (e) {}

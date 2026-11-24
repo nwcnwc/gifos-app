@@ -3627,6 +3627,32 @@
     function streamFor(e) {
       if (!e || e.own) return null;
       if ((e.video && e.video.own === 'stage') || (e.audio && e.audio.own === 'stage')) return null;
+      if (e.audio && e.audio.own === 'mic') {
+        const mic = selfFoldStream();
+        const tr = mic && typeof mic.getAudioTracks === 'function' ? mic.getAudioTracks()[0] : null;
+        if (!tr || tr.readyState === 'ended') return null;
+        return mic;
+      }
+      if (e.audio && e.audio.mix) {
+        const f = downFolds.get(e.audio.mix);
+        const t = f && typeof f.track === 'function' ? f.track() : null;
+        const a = t && t.readyState !== 'ended' ? t : null;
+        if (e.video && e.video.pack) {
+          const pk = packFor(e.video.pack, e.video.skip);
+          let v = pk && pk.track;
+          if (v && e.video.pack === 'room') v = packLoopTrack(v) || v;
+          if (!v || !a) return null;
+          return downStream(e.audio.mix, v, a);
+        }
+        let v = null;
+        if (e.video && e.video.in) {
+          const ent = __C.mosIn.get(e.video.in);
+          const vts = ent && ent.stream && typeof ent.stream.getVideoTracks === 'function' ? ent.stream.getVideoTracks() : [];
+          const v0 = vts[0] || null;
+          if (v0 && v0.readyState !== 'ended') v = v0;
+        }
+        return downStream(e.audio.mix, v, a);
+      }
       if (e.key === 'sdn' && e.video && e.video.in === 'sdm' && (!e.audio || e.audio.in === 'sdx')) {
         const sdmF = __C.mosIn.get('sdm');
         const sdx = __C.mosIn.get('sdx');
@@ -4817,11 +4843,6 @@
       return x2Kept(__C.net.topo.ckey(cell), Date.now());
     }
     function reconcileMosaic() {
-      if (!reconcileMosaic.mixDiff) reconcileMosaic.mixDiff = { sweeps: 0, diffSweeps: 0, compares: 0, last: null };
-      if (typeof window !== 'undefined' && window.__gifosVideo && !window.__gifosVideo.mixDiffForTest) window.__gifosVideo.mixDiffForTest = function () {
-        const d = reconcileMosaic.mixDiff;
-        return { sweeps: d.sweeps, diffSweeps: d.diffSweeps, compares: d.compares, last: d.last };
-      };
       const s = (0, /*()*/__C.meshSeat)(), c = (0, /*()*/__C.meshCoord)();
       headShipTo = c && c.i !== 0 ? (0, /*()*/__C.rowHeadPid)(c) : null;
       // Container-registry hygiene: a job key's forever-container survives
@@ -4870,7 +4891,6 @@
       holdSecondRoots();
       for (const e of carryPlan) {
         if (!e || !e.key || !e.to || e.own) continue;
-        if (e.audio && (e.audio.mix || e.audio.own === 'mic')) continue;
         if (section1Neighbour(e) && debugSkip(e)) continue;
         const meta = sdnAlag(e);
         const jk = (0, /*()*/__C.shipJob)(e.key, e.to, streamFor(e), meta, e.upKey);
@@ -5082,8 +5102,7 @@
       // SOUND NEVER DEPENDS ON A PICTURE, at any hop. A block whose product carries no video (an unvouched or paused link,
       // TURN.11-13) draws no tile, never a black block, and its sound still enters the pack as a sound-only part (setSound):
       // a head's row product sums its sound from the pack, so without it the other rows would hear nothing from that branch.
-      // The other hops read the sound from the streams themselves (mixOf over l14A for the ear, the row and every child; the
-      // relay up 'subl:' and 'sdxu:' forward streams), so none of them looks at a picture.
+      // The other hops read those streams through mixIn, and the relay up 'subl:' forwards the claim, so none of them looks at a picture.
       const blockHasPicture = (f) => !!(f && f.stream && f.stream.getVideoTracks().some((t) => t.readyState !== 'ended'));
       const l14Blocks = (pk, skip, ordOf) => {
         let q = 0; const heard = new Set();
@@ -5106,6 +5125,7 @@
           if (pk.count() > 0) { const jk = (0, /*()*/__C.shipJob)('sdn', h, pk.stream, metaOf(pk)); if (jk) wanted.add(jk); }
         }
       };
+      let roomEl = null, roomMeta = null, alag = 0;
       if (iAmHead || actHead) {
         // PRODUCT = my row's live faces + my row's sub-blocks, PACKED near-square
         // (no fixed C+1 slots — the tall-product blowup is gone).
@@ -5186,7 +5206,7 @@
         if (beyondRow) {
           // THE ROOM'S PICTURE: built here at Section 1 (the other rows' products
           // and mine, cell for cell), received from above deeper down.
-          let roomV = null, roomEl = null, roomMeta = null;
+          let roomV = null;
           const dn = c.pc === 0 ? null : __C.mosIn.get('sdn');
           // SUB.4: the pipes of my row-mates (Section-1 seats that are not the head): each mate relays its pipe's product to me
           // marked {pipe, pv}, and I build that pipe's send (the sound and, while vouched, the pack without its block) as for
@@ -5237,114 +5257,9 @@
           }
           // LIP SYNC: Section 1 re-makes both the picture and the sound, so its pack starts level (alag 0).
           // Deeper, the picture passes through and the sound is re-mixed here: my audio hop adds to what came down.
-          const alag = c.pc === 0 ? 0 : Math.round(((dn && dn.meta && dn.meta.alag) || 0) + audioHopMs(dn && dn.stream ? dn.stream.getAudioTracks()[0] : null));
+          alag = c.pc === 0 ? 0 : Math.round(((dn && dn.meta && dn.meta.alag) || 0) + audioHopMs(dn && dn.stream ? dn.stream.getAudioTracks()[0] : null));
           if (roomMeta) roomMeta = Object.assign({}, roomMeta, { alag });
-          // THE SOUND, per receiver. Pieces: the outside (Section 1: the other
-          // rows; deeper: the pack from above, whose sound already leaves my
-          // branch out), my row's voices, each child row's block, each L14 branch.
-          const outA = new Map(), rowA = new Map(), subA = new Map(), l14A = new Map();
-          if (c.pc === 0) {
-            // SOUND FIRST. A row copy the watchdog found dark (bytes flat 700 ms on a pipe that flowed) or whose sender is
-            // gone (deadAt, under the 5 s grace) is not summed: its picture may hold the last frame under the grace, its
-            // sound would be concealment. Dark clears itself when bytes advance, so a stall comes back on its own.
-            for (let q = 0; q < C; q++) { if (q === c.r) continue; const f = __C.mosIn.get('sdrow:' + q), fq = mosFb.get('sdrow:' + q); if (f && f.stream && !f.deadAt && !(fq && fq.dark)) outA.set('q' + q, f.stream); }
-            // L49: the pulled mic, until the carried copy of that row is the one playing and it is hot. Cap 2.
-            let rapN = 0;
-            for (const [mk, rf] of __C.mosIn) {
-              if (mk.indexOf('rap:') !== 0 || !rf || !rf.stream) continue;
-              const q = +mk.slice(4), slot = rowSdLv.get(q), head = (0, /*()*/__C.occPid)({ pc: 0, r: q, i: 0 });
-              const played = __C.mosIn.get('sdrow:' + q);
-              if (played && played.via !== head && slot && slot.hot) continue;
-              if (rapN >= 2) continue;
-              outA.set('rap' + q, rf.stream); rapN++;
-            }
-          }
-          // Deeper: the pack from above, the same rule (its slot is 'sdn').
-          else if (dn && dn.stream && !dn.deadAt && !((mosFb.get('sdn') || {}).dark)) outA.set('dn', dn.stream);
-          for (let j = 0; j < C; j++) {
-            const fp0 = j === c.i ? __C.myId : (actHead && j === 0 ? null : (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: j }));
-            const fp = fp0 && stagers.includes(fp0) ? null : fp0;
-            const sc = fp ? srcFor(fp) : null;
-            if (sc && sc.stream) rowA.set('f' + j, sc.stream);
-            const sub = __C.mosIn.get('sub:' + j); if (sub && sub.stream) subA.set('s' + j, sub.stream);
-          }
-          for (const [mk, uf] of __C.mosIn) { if (mk.indexOf('subu:') !== 0) continue; const h = mk.slice(5); if (uf && uf.stream && l14Keep(h, uf)) l14A.set('u' + h, uf.stream); }
-          const mixOf = (row, skip) => { const m = new Map(outA); if (row) for (const [k, v] of rowA) m.set(k, v); for (const [k, v] of subA) if (k !== skip) m.set(k, v); for (const [k, v] of l14A) if (k !== skip) m.set(k, v); return m; };
-          const fold = (key, parts) => { let f = downFolds.get(key); if (!f) { const mc = mixCtx(); if (!mc) return null; f = MM.createAudioFold(mc); downFolds.set(key, f); } foldSync(f, parts); return f; };
-          const foldsNow = new Set();
-          const avOf = (key, parts) => { foldsNow.add(key); const f = fold(key, parts); return downStream(key, roomV, f ? f.track() : null); };
-          // MY ROW (and my own ear): everything but my row's voices.
-          const earSt = avOf('ear', mixOf(false, null));
-          if (roomV) for (let j = 1; j < C; j++) {
-            const mate = (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: j });
-            const jk3 = (0, /*()*/__C.shipJob)('sdm', mate, earSt, roomMeta); if (jk3) wanted.add(jk3);
-          }
-          // MY CHILD ROWS. The picture reaches a child row the way it reaches me:
-          // the seat above it forwards the stadium it holds (my own child: me, as
-          // 'sdn'; a row-mate's child: that mate, from its 'sdm'). Only the sound
-          // is mine to make per branch: 'sdx' carries it to the mate (sound only),
-          // who joins it to the picture it forwards. childPid: occ first, then the HEIR (Nathan, 2026-07-28 —
-          // "every node should use every bit of info they possess"): a head's occ
-          // never converges its ROW-MATES' down-children (occ gossip is S1-only by
-          // design), but every PONG carries m.child (Seat.childOf). Heir serves
-          // ROW-MATES' columns only (i !== c.i): my own child is directly linked.
-          const heirOf = (cell) => { const s = (0, /*()*/__C.meshSeat)(); if (!s || !s.childOf) return null; const v = s.childOf.get(__C.net.topo.ckey(cell)); return v == null ? null : v; };
-          for (let i = 0; i < C; i++) {
-            const childPid = (0, /*()*/__C.occPid)(T.down({ pc: c.pc, r: c.r, i })) || (i !== c.i ? heirOf({ pc: c.pc, r: c.r, i }) : null);
-            if (!childPid || !roomV) continue;
-            const own = i === c.i, m = roomMeta;
-            foldsNow.add('c' + i); const fi = fold('c' + i, mixOf(true, 's' + i));
-            const st = downStream('c' + i, own ? roomV : null, fi ? fi.track() : null);
-            const jk4 = own ? (0, /*()*/__C.shipJob)('sdn', childPid, st, m)
-              : (0, /*()*/__C.shipJob)('sdx', (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i }), st, Object.assign({ col: i }, m));
-            if (jk4) wanted.add(jk4);
-            // >2-REDUNDANCY: the SAME stream over a second link-disjoint pipe —
-            // me → a carrier row-mate → seat i ('sdxc' → 'sdx^x', same slot),
-            // parked (ONE-PIPE law) until a failure demand-wakes it.
-            if (i !== c.i) {
-              let carrier = null;
-              for (let d = 1; d < C; d++) { const k2 = (i + d) % C; if (k2 === 0 || k2 === i) continue; const cp = (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: k2 }); if (cp) { carrier = cp; break; } }
-              if (carrier) { const jk6 = (0, /*()*/__C.shipJob)('sdxc', carrier, st, Object.assign({ col: i }, m)); if (jk6) wanted.add(jk6); }
-            }
-          }
-          // L14: a cut-off head that dialled me, and a branch a row-mate serves
-          // (the mate hands it down): the same pack, with a sound that leaves
-          // that branch out.
           l14Down(null);
-          if (roomV) for (const h of l14Heads) { if (pipes.indexOf(h) >= 0) continue; const jk = (0, /*()*/__C.shipJob)('sdn', h, avOf('u' + h, mixOf(true, 'u' + h)), roomMeta); if (jk) wanted.add(jk); }
-          // SUB.4: to each pipe peer, as to one more child: the sound of everything I hold but its own part, and, while the pipe
-          // is vouched, the room pack without its block. Sound goes with or without a picture (sound first).
-          for (const h of pipes) {
-            // SUB.4.1 (Nathan 11-15): over a FREE pipe the Stage sound rides this one mix: every stage feed I hold or make,
-            // but one that came over this pipe (pipeStg: mix-minus), and no stage feed of its own crosses (floodOne). Vouched,
-            // the stage feeds cross as they are, with their pictures.
-            const parts = mixOf(true, 'u' + h);
-            if (!(0, /*()*/__C.pipeVideo)(h)) {
-              if (amStager) { const st = mySelfStream(); if (st) parts.set('g' + __C.myId, st); }
-              for (const [mk, sf] of __C.mosIn) { if (mk.indexOf('stg:') !== 0 || (0, /*()*/__C.stgEnded)(mk) || !sf || !sf.stream) continue; const o = mk.slice(4).split('^')[0]; if (o === __C.myId || __C.pipeStg.get(o) === h || parts.has('g' + o)) continue; parts.set('g' + o, sf.stream); }
-            }
-            foldsNow.add('u' + h); const fh = fold('u' + h, parts);
-            const pk = (0, /*()*/__C.pipeVideo)(h) ? pipePacks.get(h) : null, pv = pk && pk.count() > 0 ? pk.track : null;
-            const st = downStream('u' + h, pv, fh ? fh.track() : null);
-            const jk = st ? (0, /*()*/__C.shipJob)('sdn', h, st, pv ? Object.assign(packMeta(pk), { alag: 0 }) : { n: 0, cols: 0, alag: 0 }) : null; if (jk) wanted.add(jk);
-          }
-          if (roomV) for (const [mk, uf] of __C.mosIn) {
-            if (mk.indexOf('subu:') !== 0) continue; const h = mk.slice(5); if (l14Heads.includes(h) || matePipes.indexOf(h) >= 0 || !uf || uf.via === h || !rowMatePid(uf.via)) continue;
-            const jr = (0, /*()*/__C.shipJob)('sdxu:' + h, uf.via, avOf('r' + h, mixOf(true, 'u' + h)), Object.assign({ via: h }, roomMeta)); if (jr) wanted.add(jr);
-          }
-          // A mate's pipe: its sound with or without a picture, the picture only while that pipe is vouched (its own pack).
-          for (const h of matePipes) {
-            const uf = __C.mosIn.get('subu:' + h); foldsNow.add('r' + h); const fh = fold('r' + h, mixOf(true, 'u' + h));
-            const pk = kidVideo(h) ? pipePacks.get(h) : null, pv = pk && pk.count() > 0 ? pk.track : null;
-            const st = downStream('r' + h, pv, fh ? fh.track() : null);
-            const jr = st ? (0, /*()*/__C.shipJob)('sdxu:' + h, uf.via, st, Object.assign({ via: h }, pv ? packMeta(pk) : { n: 0, cols: 0 }, { alag: 0 })) : null; if (jr) wanted.add(jr);
-          }
-          for (const [k, f] of [...downFolds]) if (!foldsNow.has(k)) { f.clear(); downFolds.delete(k); downStreams.delete(k); }
-          // MY OWN STADIUM: the room's picture less my row, and my ear. The heir
-          // standing in keeps its head's copy while it flows.
-          const headView = actHead ? __C.mosIn.get('sdm') : null, headFlows = !!headView && !(mosFb.get('sdm') || {}).dark && !headView.deadAt; // a false alarm must not take the heir's own ears off its head's view
-          if (headFlows) paintRoomView(headView.el, blockMeta(headView), headView.stream, c, (headView.meta && headView.meta.alag) || 0);
-          else paintRoomView(roomEl, roomMeta, earSt, c, alag);
         } else {
           if (roomPack) { roomPack.stop(); roomPack = null; }
           pipePacksStop();
@@ -5377,91 +5292,82 @@
           }, packMetaM, relDirect);
         } else l14Down(null);
       }
-      // L49: the asked-for mic keeps shipping after this seat stands in as head. The relay of someone else's pull stays above, on a non-head.
-      if (c.pc === 0 && rowMixShipUntil > Date.now()) {
-        const via = rowMixVia(), mic = selfFoldStream();
-        const tr = mic && mic.getAudioTracks && mic.getAudioTracks()[0];
-        if (via && tr && tr.readyState !== 'ended') { const jr = (0, /*()*/__C.shipJob)('ra', via, mic, { row: c.r, src: __C.myId }); if (jr) { wanted.add(jr); rowMixSent++; } }
+      // One mixIn per sweep, after the packs exist. The early loop shipped passthrough only.
+      function foldAlive(f) {
+        try { const ctx = f && f.dest && f.dest.context; return !!(ctx && ctx.state !== 'closed'); } catch (e) { return false; }
       }
-      // Shadow: the late mixIn, after this sweep's folds and packs. A null ship is not a diff.
-      (function mixShadow() {
-        const plan = (0, /*()*/__C.mixIn)() || [];
-        const headSweep = (iAmHead || actHead) && beyondRow;
-        const mixKey = (key) => key === 'sdm' || key === 'sdx' || key === 'sdxc' || key === 'sdn' || key === 'ra' || (typeof key === 'string' && key.indexOf('sdxu:') === 0);
-        let reason = null, n = 0;
-        const diff = (w) => { if (!reason) reason = w; };
-        const keysOf = (parts) => { const s = []; for (let i = 0; i < parts.length; i++) s.push(parts[i][0]); s.sort(); return s.join('\n'); };
-        const planFolds = new Map();
-        for (let i = 0; i < plan.length; i++) {
-          const e = plan[i]; if (!e || !e.audio || !e.audio.mix) continue;
-          const prev = planFolds.get(e.audio.mix), parts = e.audio.parts || [];
-          if (!prev) planFolds.set(e.audio.mix, parts);
-          else if (keysOf(prev) !== keysOf(parts)) diff('fold-split ' + e.audio.mix);
+      function foldFor(foldKey, parts) {
+        if (foldKey == null) return null;
+        const ac = mixCtx();
+        if (!ac || !MM || typeof MM.createAudioFold !== 'function') return null;
+        let f = downFolds.get(foldKey);
+        if (f && !foldAlive(f)) {
+          try { f.clear(); } catch (e) {}
+          downFolds.delete(foldKey);
+          downStreams.delete(foldKey);
+          if (foldKey === 'ear') downStreams.delete('earView');
+          f = null;
         }
-        for (const [k, parts] of planFolds) {
-          n++;
-          const live = downFolds.get(k);
-          if (!live) { if (mixReady()) diff('fold-miss ' + k); continue; }
-          const sid = live._sid || new Map();
-          const liveKeys = Array.from(sid.keys()).sort();
-          if (keysOf(parts) !== liveKeys.join('\n')) { diff('fold-keys ' + k); continue; }
-          for (let i = 0; i < parts.length; i++) {
-            const st = partStream(parts[i][1]);
-            if ((st && st.id) !== sid.get(parts[i][0])) { diff('fold-sid ' + k + ' ' + parts[i][0]); break; }
+        if (!f) {
+          f = MM.createAudioFold(ac);
+          if (!f) return null;
+          downFolds.set(foldKey, f);
+        }
+        foldSync(f, parts || new Map());
+        const tr = f.track ? f.track() : null;
+        return tr && tr.readyState !== 'ended' ? tr : null;
+      }
+      function foldsKeep(keep) {
+        for (const [k, f] of [...downFolds]) {
+          if (keep && keep.has(k)) continue;
+          let tr = null;
+          try { tr = f.track && f.track(); } catch (e) {}
+          try { f.clear(); } catch (e) {}
+          if (tr && MM && typeof MM.retireAudioTracks === 'function') {
+            try { MM.retireAudioTracks([tr]); } catch (e) {}
           }
+          downFolds.delete(k);
+          downStreams.delete(k);
+          if (k === 'ear') downStreams.delete('earView');
         }
-        if (headSweep) for (const k of downFolds.keys()) if (!planFolds.has(k)) { n++; diff('fold-extra ' + k); }
-        const seenJ = new Set();
-        const metaEq = (a, b) => {
-          const ak = Object.keys(a || {}).sort(), bk = Object.keys(b || {}).sort();
-          if (ak.length !== bk.length) return false;
-          for (let i = 0; i < ak.length; i++) if (ak[i] !== bk[i]) return false;
-          for (let i = 0; i < ak.length; i++) {
-            const key = ak[i];
-            if (key === 'alag') { if (typeof a.alag !== 'number' || typeof b.alag !== 'number' || a.alag !== b.alag) return false; }
-            else if (JSON.stringify(a[key]) !== JSON.stringify(b[key])) return false;
-          }
-          return true;
-        };
-        const videoKind = (v) => { if (v == null) return true; if (typeof v !== 'object') return false; if (v.pack === 'room' && v.skip == null && v.in == null) return true; if (v.pack === 'pipe' && v.skip != null && v.in == null) return true; return typeof v.in === 'string' && v.pack == null; };
-        const jobVideo = (job) => {
-          const list = job && job.srcTracks;
-          if (list) for (let i = 0; i < list.length; i++) if (list[i] && list[i].kind === 'video') return true;
-          const box = job && job.container;
-          if (box && box.getVideoTracks) { const v = box.getVideoTracks(); if (v && v.length && v[0]) return true; }
-          return false;
-        };
-        for (let i = 0; i < plan.length; i++) {
-          const e = plan[i];
-          if (!e || !e.to || e.upKey) continue;
-          if (!headSweep && e.key !== 'ra') continue;
-          if (!mixKey(e.key)) continue;
-          n++;
-          seenJ.add(e.key + '>' + e.to);
-          if (e.active !== !(0, /*()*/__C.chainBornParked)(e.key, null)) diff('active ' + e.key);
-          const job = __C.mosJobs.get(e.key + '>' + e.to);
-          if (!job) continue;
-          if (job.upKey) diff('upKey ' + e.key + '>' + e.to);
-          else if (job.key !== e.key || job.to !== e.to) diff('job ' + e.key + '>' + e.to);
-          else if (!metaEq(e.meta, job.meta)) diff('meta ' + e.key + '>' + e.to);
-          else if (!videoKind(e.video)) diff('video-kind ' + e.key);
-          else if (!!e.video !== jobVideo(job)) diff('video ' + e.key + '>' + e.to);
+      }
+      function mixParts(e) {
+        const parts = new Map();
+        const list = e && e.audio && Array.isArray(e.audio.parts) ? e.audio.parts : [];
+        for (let i = 0; i < list.length; i++) {
+          const pair = list[i];
+          if (!pair || pair[0] == null) continue;
+          const st = partStream(pair[1]);
+          if (st) parts.set(pair[0], st);
         }
-        for (const jk of wanted) {
-          const job = __C.mosJobs.get(jk);
-          if (!job || job.upKey || !mixKey(job.key)) continue;
-          if (!headSweep && job.key !== 'ra') continue;
-          if (seenJ.has(jk)) continue;
-          n++; diff('job-extra ' + jk);
-        }
-        const st = reconcileMosaic.mixDiff;
-        if (n > 0) {
-          st.sweeps++; st.compares += n;
-          if (__C.clog && st.sweeps % 20 === 1) (0, /*()*/__C.clog)('mix-shadow sweeps=' + st.sweeps + ' diff=' + st.diffSweeps + ' compares=' + st.compares);   // DEBUG: positive compare count (0 diffs is not 0 compares); goes with the shadow at the flip
-          if (reason) { st.diffSweeps++; st.last = reason; if (__C.clog) (0, /*()*/__C.clog)('mix-diff ' + reason); }
-          else st.last = null;
-        }
-      })();
+        return parts;
+      }
+      if (c.pc === 0 && rowMixOpen()) rowMixVia(); // the 15s stamp, once; mixIn peeks and does not stamp
+      const mixPlan = (0, /*()*/__C.mixIn)() || [];
+      const keep = new Set();
+      for (const e of mixPlan) {
+        if (!e || !e.audio || !e.audio.mix) continue;
+        foldFor(e.audio.mix, mixParts(e));
+        keep.add(e.audio.mix);
+      }
+      foldsKeep(keep);
+      const earF = downFolds.get('ear');
+      const earTr = earF && earF.track ? earF.track() : null;
+      // Paint memo is earView, not the fold key. sdm ships downStream('ear', picture, audio); the same key here would mint a new MediaStream every sweep.
+      const earSt = earTr ? downStream('earView', null, earTr) : null;
+      if ((iAmHead || actHead) && beyondRow) {
+        const headView = actHead ? __C.mosIn.get('sdm') : null, headFlows = !!headView && !(mosFb.get('sdm') || {}).dark && !headView.deadAt; // a false alarm must not take the heir's own ears off its head's view
+        if (headFlows) paintRoomView(headView.el, blockMeta(headView), headView.stream, c, (headView.meta && headView.meta.alag) || 0);
+        else paintRoomView(roomEl, roomMeta, earSt, c, alag);
+      }
+      for (const e of mixPlan) {
+        if (!e || !e.key || !e.to) continue; // the ear is folded and not shipped
+        if (e.video && e.video.pack && !(packFor(e.video.pack, e.video.skip) || {}).track) continue;
+        const jk = (0, /*()*/__C.shipJob)(e.key, e.to, streamFor(e), e.meta, e.upKey);
+        if (!jk) continue;
+        wanted.add(jk);
+        if (e.key === 'ra') rowMixSent++;
+      }
       // ---- STAGE lane: chosen <=C feeds -> S1 -> composited strip -> fan down --
       // Individual stager feeds ride UP to Section 1 (uncomposited passthrough,
       // per-stager key); at S1 they FLOOD the row+cross mesh (dedup by streamId,
@@ -9673,7 +9579,7 @@
     }
     return __L.END;
   }
-  var api = { name: "media", run: part, count: 670, exports: {"AVATAR_H":0,"AVATAR_W":0,"CC_ENGINE_KEY":0,"CC_TRANSLATE_KEY":0,"CC_WHISPER_ANYWAY_KEY":0,"CC_WORDS_KEY":0,"MOS_GRACE":0,"MOS_SETTLE":0,"STAGE_FACE_PX":0,"STAGE_FACE_SETTLE_MS":0,"STG_PIC_LIVE_MS":0,"STG_ZERO_MS":0,"WEBKIT_TILE":0,"WHISPER_APP_ID":0,"WHISPER_SEED_KEY":0,"WSP_CHIP_MS":0,"WSP_STARVE_MS":0,"WSP_STARVE_N":0,"WSP_STARVE_WIN":0,"WSP_TICK_MS":0,"WSP_WEAK":0,"acClockInfo":1,"adapt":1,"adoptClaim":1,"applyBuses":1,"applyCcAll":1,"applyGrid":1,"applyRecoverMedia":1,"armAudioKeepAlive":1,"armWhisperRescan":1,"attachFailed":1,"attachLocalTracks":1,"attachTrack":1,"audioKickArmed":0,"avHold":0,"avatarPipe":0,"avatarSharp":0,"bindClaim":1,"blockOf":1,"blockedAudio":0,"blurDraw":1,"blurPipe":0,"blurSenderFrac":1,"blurSized":1,"blurViewFrac":1,"botVoiceTrack":0,"browserCaptionsMissing":1,"callStateBox":0,"camChooserAnchor":0,"camChooserOpen":1,"camDeviceId":0,"camFacing":0,"camIdleT":0,"camPickThen":0,"camTrackForTest":1,"camVideoConstraints":1,"canRaiseHand":1,"canScreenRecord":0,"canScreenShare":0,"capsRunningNow":1,"carriedHot":1,"carryVoiceTrack":0,"ccDefGroup":0,"ccEngine":1,"ccMix":0,"ccMixStop":1,"ccMixSync":1,"clk":0,"clockSample":1,"closeCamChooser":1,"closeMicChooser":1,"compFps":1,"compOf":0,"containerFor":1,"ctScreenTrack":1,"dbgMeterSources":1,"dbgRowFaces":0,"degOf":0,"detachTrack":1,"dismissCamChooser":1,"displayCount":1,"downFolds":0,"downStreams":0,"dropContainer":1,"dropEndedRemoteTracks":1,"dutyJob":1,"dutyMuteTick":1,"earState":1,"endSongOnStepDown":1,"facesOnScreen":1,"gdOverride":0,"gridApplied":0,"gumRefused":1,"gumWithMicFallback":1,"headLinkUp":1,"headSendsStale":1,"headerCount":1,"hearState":1,"heardStage":1,"holdMainVideo":1,"hopMs":1,"installWhisper":1,"jobPinned":0,"jobVideoAt":0,"keepAwake":1,"keepMeetingAudio":1,"keyUp":1,"kfEv":0,"kickJob":1,"kickMainAudio":1,"kickMainVideo":1,"kickStageMic":1,"l14Packs":0,"lateMedia":1,"mainAudioTrack":1,"maybeShowFlip":1,"mediaElCensus":1,"micChooserOpen":1,"micTap":1,"mix":0,"mixAc":0,"mixReady":1,"mosFb":0,"mosHeld":0,"mySelfStream":0,"normStageFrame":1,"noteAudioDevices":1,"noteReship":1,"onMeetDeviceChange":1,"openCamChooser":1,"openKeys":1,"openModal":1,"orphaned":1,"packFor":1,"packLoop":0,"paintTiming":1,"parkSender":1,"partStream":1,"peerAudioTracks":1,"phoneCaptions":1,"picRead":1,"pickCamera":1,"pipeDeny":0,"pipeJobs":0,"placeStageMarks":1,"playTileVideo":1,"poke":1,"prodPack":0,"producerKey":1,"qaStageSt":0,"quietAtDoor":1,"rbStart":1,"reactSing":1,"recDefaultQuality":1,"recDownload":1,"recDraw":0,"recFileName":1,"recLibraryOption":1,"recMatchMix":0,"recMode":0,"recNoteStruct":1,"recQuality":0,"recRec":0,"recRelease":1,"recScopeSources":1,"recSources":1,"recStarting":0,"reconcileMosaic":1,"recoverShareTimer":0,"refreshOutbound":1,"refreshTrBtn":1,"regrabCamera":1,"releaseAudio":1,"rememberMix":1,"repaintRedun":1,"resumeReload":1,"retireMixTracks":1,"reviveCamera":1,"roomPack":0,"rowEdge":1,"rowMixHeadArrives":1,"rowMixHold":1,"rowMixOpen":1,"rowMixViaPeek":1,"schedClaim":1,"schedReconcile":1,"sdView":0,"sdViewSt":0,"sentVideoTrack":1,"setStageFrame":1,"shareRecoverMode":0,"shipContainers":0,"shownPeerCount":1,"slotDark":1,"soundHeld":1,"speakerChoices":1,"speech":0,"speechGaveUp":0,"speechProved":0,"speechRunning":1,"spkDeviceId":0,"stageAudible":1,"stageEar":0,"stageEarFoldPeak":1,"stageEarLiveTrack":1,"stageEarRawPeak":1,"stageFrameVal":0,"stagedSelfWas":0,"startLocalView":1,"startRec":1,"startScreenShare":1,"startWhisper":1,"stashRecoverMedia":1,"stgBeatIn":1,"stgCarry":1,"stgFoNote":1,"stgLost":1,"stopBlurPipe":1,"stopScreenShare":1,"stopSpeech":1,"stopWhisper":1,"stripPack":0,"stubDuties":1,"swapPicNote":1,"swapTrack":1,"syncAvatarFeed":1,"syncSpeech":1,"tileHolds":1,"toggleSing":1,"trEnSync":1,"trackAspect":1,"trackQ":0,"transcriptFile":1,"tuneCfg":1,"unbindClaim":1,"wakeLock":0,"warnRecorderNewApp":1,"whisperAllowed":0,"whisperChosen":0,"whisperInstalling":0,"whisperRescan":0,"whisperSeedBlocked":1,"whisperSupported":1,"withScrPipe":1,"wkBindVideo":1,"wkEar":0,"wkFwdCopies":0,"wkFwdNeeded":1,"wkHolds":1,"wkQuietBind":1,"wkRemoteTrack":1,"wsp":0,"wspCaps":0,"wspChip":0,"wspChipGone":1,"wspChipRoom":0,"wspEnqueue":1,"wspInst":0,"wspModel":1,"wspPaintSafe":1,"wspPaused":0,"wspQ":0,"wspRebind":1,"wspRelease":1,"wspResume":1,"wspRetry":1,"wspSource":1,"wspStSig":0,"wspStarved":0,"wspState":1,"wspStateText":1,"wspStop":1,"wspSync":1,"wspTickAt":0,"wspToBrowser":1,"wspWorking":0,"x2Target":1}, needs: {"core":{"leaving":0,"localStream":0,"capClone":1,"WK_H264_BLIND":0,"nameInitial":1,"shareBlocked":0,"turnLinks":0,"turnFacts":0,"myId":0,"rowFaceDark":0,"myName":0,"blurLevelFor":1,"mediaOk":0,"relayVia":0,"displayName":1,"myStatus":0,"stageIds":0,"statusOf":0,"screenStream":0,"sharingScreen":0,"BROADCAST":0,"bcMayPublishAv":1,"rbNow":0,"mayShareScreen":0,"outgoingHeld":0,"bcRole":1,"peers":0,"meTile":0,"camPeer":0,"clog":0,"micPeer":0,"renegotiate":1,"rosterIds":0,"knownTotal":1,"rosterTiles":0,"updateTile":1,"updateStatus":1,"meshSeat":0,"meshNode":0,"roomDig":1,"roomPastSection":0,"SCALE":0,"powNow":0,"IS_MOBILE":0,"powDials":0,"setStatus":0,"uiText":1,"stHold":0,"seatDark":0,"forcedCamOff":0,"vqRung":0,"rung":0,"LADDER":0,"stageCeilingKbps":1,"screenCeilingKbps":1,"stageSenders":0,"auxSenders":0,"lowSenders":0,"net":0,"meterFor":1,"sayState":0,"IS_ANDROID":0,"botParks":1,"visParkSent":0,"dcSend":0,"hasPendingTx":0,"ensureAc":1,"ac":0,"newMeetAudioContext":1,"occPid":0,"pipePeers":1,"preferHwVideo":1,"modOf":1,"stageSeats":0,"digLists":0,"stageHeldAt":0,"stageFeedAt":0,"stageViewNow":0,"addAux":0,"isStageJob":0,"auxDrop":1,"stopAuxTx":1,"DEBUG_ON":0,"modBlurOn":0,"meshCoord":0,"speakingOf":0,"rowMixTalkAt":0,"subWant":0,"myIdentity":0,"labelFor":0,"iAmWaiting":1,"peerWaits":1,"fitFor":0,"pipeVideo":0,"pipeStg":0,"STAGE_FPS":0,"stageCell":1,"STAGE_MAXW":0,"stageFps":1,"freshSt":0,"pwBlocked":0,"bannedOut":0,"mediaJoined":0,"RECOVER_MEDIA_KEY":0,"updateRoomKey":0,"bcHostStored":0,"paintOnAir":1,"broadcastStatus":1,"updateMediaSession":1,"screenSteppedUp":0,"setStage":1,"refreshAllTiles":1,"rbCap":0,"rbLength":1,"rbTracks":1,"rbDrop":1,"bcSeeding":0,"releaseLeaveAsk":1,"rbStop":1,"rbNoun":0,"serviceHeard":0,"rowMates":0,"isHeld":1,"botHidden":1,"TIMING_KEY":0,"digStageEntry":0,"rosterNames":0,"foldName":1,"canStage":0,"lsGet":0,"CC_ON_PHONE":0,"meters":0,"myVoiceAt":0,"lsSet":0,"ccLocalQ":0,"CC_LANG_KEY":0,"trEnOn":0,"capSend":1,"trLangOf":0,"addTranscriptLine":1,"capEarsOnly":1,"capTrust":0,"trLang":1,"trKeeps":1,"trEnOnlyEnglish":1,"capSpotQueue":1,"capPublish":1,"trForget":1,"ccLang":0,"trDrops":0,"capTraceGate":1,"myVoiceFrom":0,"trLangKnown":1,"myVoiceSinceFinal":0,"ccDevNotice":1,"trEchoHeld":1,"ccShow":0,"trBlocks":1,"trNote":1,"modTable":0,"setMod":1,"AI_SPARK_SVG":0,"chatOpen":0,"room":0,"recRoomWord":1,"bcLastService":0,"BC_INTENT":0,"recSrcDirty":0,"recStructSig":0,"bcKeepUserStop":0,"amGloballyMuted":1,"micLockWords":1,"capClosed":0,"bcWatchingViewer":1,"enforceBroadcastSeat":1,"lateAsk":0,"lateWant":0,"bootGumPending":0,"reactRoomState":1,"camOnWords":1,"statusWords":0,"lateGen":0,"lateWon":0,"lateTimer":0,"LATE_ASK_MS":0,"carryOutAc":0,"blurLevel":0,"setPersonalBlur":1,"carryHosts":0,"carryG":0,"meOnStage":1,"shareOnlyStage":1,"personOnStage":1,"seatSelfLeased":0,"mainVideoChoice":1,"outboundPlan":1,"stageFeedVideo":1,"stageVideoChoice":1,"participantCount":1,"deepInView":1,"isRedun":0,"onStageNow":1,"screenSharers":0,"roomSingOn":0,"singOf":0,"capCovered":1,"trWrites":1,"idleNow":0,"lastActive":0,"lastQ":0,"MP":0,"battNow":0,"micGrabbing":0,"micWant":0,"micMode":0,"micUnmuteAfter":0,"micPickPrev":0,"pipeEnabled":0,"MPipe":0,"stgBeats":0,"swapPicLast":0,"swapPicHoldAt":0,"swapPicRing":0,"STG_BEAT_STALE_MS":0,"STG_BEAT_SEEN":0,"stgBeatCost":0,"STG_BEAT_MS":0,"timing":0,"whisperReady":0,"planMeasured":1,"reconcileMain":1,"inboundPlan":1,"owedStream":1,"mosIn":0,"mosJobs":0,"mosStandby":0,"demand":1,"unshipJob":1,"kfNeed":1,"setJobActive":1,"claimMos":1,"stgFedBy":1,"stgPath":0,"vpId":0,"stgStale":1,"mosBeyondAt":0,"dropMosIn":1,"dropStandby":1,"mosAnn":0,"roomBeyondRow":1,"carryIn":1,"l14DownHeads":1,"shipJob":1,"stgEnded":1,"stgHop":0,"stgDirectSet":1,"STG_ROOT2":0,"reapJobs":1,"rowActing":1,"rowHeadPid":1,"iActAsHead":1,"mixIn":1,"chainBornParked":1},"view":{"blurA":0,"blurActx":0,"blurB":0,"blurBctx":0,"paintAvatarCanvas":1,"phoneLayout":1,"showAvatarTrack":1,"stagefeedEl":0,"stadiumEl":0,"showFlipButton":1,"showCamBack":1,"paintSpkBtn":1,"paintStadiumTile":1,"paintStageStrip":1,"paintControls":1,"showResharePrompt":1,"hideResharePrompt":1,"paintShare":1,"dropStaleShareWin":1,"paintRb":1,"rbCanvas":1,"paintRbNow":1,"paintFaders":0,"timingRow":0,"paintWspChip":1,"paintCcState":1,"paintTxMark":1,"capCardRefresh":1,"paintWspStatus":1,"paintCcView":1,"showCaption":1,"ccDockBtn":0,"hideCaptions":1,"renderTranscript":1,"renderChat":1,"chatPanel":0,"paintChatBtn":1,"paintRoomTrust":1,"showServiceEnded":1,"showRecReplay":1,"recBtn":0,"showRecOptions":1,"roomAudioOn":1,"micBtn":0,"placeDockPopover":1,"unmuteBtn":0,"camBtn":0,"topNameModal":1,"handBtn":0,"chatPanelOpen":1,"keysModal":0,"syncModalFocus":1}}, stamp: "d49d42da" };
+  var api = { name: "media", run: part, count: 670, exports: {"AVATAR_H":0,"AVATAR_W":0,"CC_ENGINE_KEY":0,"CC_TRANSLATE_KEY":0,"CC_WHISPER_ANYWAY_KEY":0,"CC_WORDS_KEY":0,"MOS_GRACE":0,"MOS_SETTLE":0,"STAGE_FACE_PX":0,"STAGE_FACE_SETTLE_MS":0,"STG_PIC_LIVE_MS":0,"STG_ZERO_MS":0,"WEBKIT_TILE":0,"WHISPER_APP_ID":0,"WHISPER_SEED_KEY":0,"WSP_CHIP_MS":0,"WSP_STARVE_MS":0,"WSP_STARVE_N":0,"WSP_STARVE_WIN":0,"WSP_TICK_MS":0,"WSP_WEAK":0,"acClockInfo":1,"adapt":1,"adoptClaim":1,"applyBuses":1,"applyCcAll":1,"applyGrid":1,"applyRecoverMedia":1,"armAudioKeepAlive":1,"armWhisperRescan":1,"attachFailed":1,"attachLocalTracks":1,"attachTrack":1,"audioKickArmed":0,"avHold":0,"avatarPipe":0,"avatarSharp":0,"bindClaim":1,"blockOf":1,"blockedAudio":0,"blurDraw":1,"blurPipe":0,"blurSenderFrac":1,"blurSized":1,"blurViewFrac":1,"botVoiceTrack":0,"browserCaptionsMissing":1,"callStateBox":0,"camChooserAnchor":0,"camChooserOpen":1,"camDeviceId":0,"camFacing":0,"camIdleT":0,"camPickThen":0,"camTrackForTest":1,"camVideoConstraints":1,"canRaiseHand":1,"canScreenRecord":0,"canScreenShare":0,"capsRunningNow":1,"carriedHot":1,"carryVoiceTrack":0,"ccDefGroup":0,"ccEngine":1,"ccMix":0,"ccMixStop":1,"ccMixSync":1,"clk":0,"clockSample":1,"closeCamChooser":1,"closeMicChooser":1,"compFps":1,"compOf":0,"containerFor":1,"ctScreenTrack":1,"dbgMeterSources":1,"dbgRowFaces":0,"degOf":0,"detachTrack":1,"dismissCamChooser":1,"displayCount":1,"downFolds":0,"downStreams":0,"dropContainer":1,"dropEndedRemoteTracks":1,"dutyJob":1,"dutyMuteTick":1,"earState":1,"endSongOnStepDown":1,"facesOnScreen":1,"gdOverride":0,"gridApplied":0,"gumRefused":1,"gumWithMicFallback":1,"headLinkUp":1,"headSendsStale":1,"headerCount":1,"hearState":1,"heardStage":1,"holdMainVideo":1,"hopMs":1,"installWhisper":1,"jobPinned":0,"jobVideoAt":0,"keepAwake":1,"keepMeetingAudio":1,"keyUp":1,"kfEv":0,"kickJob":1,"kickMainAudio":1,"kickMainVideo":1,"kickStageMic":1,"l14Packs":0,"lateMedia":1,"mainAudioTrack":1,"maybeShowFlip":1,"mediaElCensus":1,"micChooserOpen":1,"micTap":1,"mix":0,"mixAc":0,"mixReady":1,"mosFb":0,"mosHeld":0,"mySelfStream":0,"normStageFrame":1,"noteAudioDevices":1,"noteReship":1,"onMeetDeviceChange":1,"openCamChooser":1,"openKeys":1,"openModal":1,"orphaned":1,"packFor":1,"packLoop":0,"paintTiming":1,"parkSender":1,"partStream":1,"peerAudioTracks":1,"phoneCaptions":1,"picRead":1,"pickCamera":1,"pipeDeny":0,"pipeJobs":0,"placeStageMarks":1,"playTileVideo":1,"poke":1,"prodPack":0,"producerKey":1,"qaStageSt":0,"quietAtDoor":1,"rbStart":1,"reactSing":1,"recDefaultQuality":1,"recDownload":1,"recDraw":0,"recFileName":1,"recLibraryOption":1,"recMatchMix":0,"recMode":0,"recNoteStruct":1,"recQuality":0,"recRec":0,"recRelease":1,"recScopeSources":1,"recSources":1,"recStarting":0,"reconcileMosaic":1,"recoverShareTimer":0,"refreshOutbound":1,"refreshTrBtn":1,"regrabCamera":1,"releaseAudio":1,"rememberMix":1,"repaintRedun":1,"resumeReload":1,"retireMixTracks":1,"reviveCamera":1,"roomPack":0,"rowEdge":1,"rowMixHeadArrives":1,"rowMixHold":1,"rowMixOpen":1,"rowMixViaPeek":1,"schedClaim":1,"schedReconcile":1,"sdView":0,"sdViewSt":0,"sentVideoTrack":1,"setStageFrame":1,"shareRecoverMode":0,"shipContainers":0,"shownPeerCount":1,"slotDark":1,"soundHeld":1,"speakerChoices":1,"speech":0,"speechGaveUp":0,"speechProved":0,"speechRunning":1,"spkDeviceId":0,"stageAudible":1,"stageEar":0,"stageEarFoldPeak":1,"stageEarLiveTrack":1,"stageEarRawPeak":1,"stageFrameVal":0,"stagedSelfWas":0,"startLocalView":1,"startRec":1,"startScreenShare":1,"startWhisper":1,"stashRecoverMedia":1,"stgBeatIn":1,"stgCarry":1,"stgFoNote":1,"stgLost":1,"stopBlurPipe":1,"stopScreenShare":1,"stopSpeech":1,"stopWhisper":1,"stripPack":0,"stubDuties":1,"swapPicNote":1,"swapTrack":1,"syncAvatarFeed":1,"syncSpeech":1,"tileHolds":1,"toggleSing":1,"trEnSync":1,"trackAspect":1,"trackQ":0,"transcriptFile":1,"tuneCfg":1,"unbindClaim":1,"wakeLock":0,"warnRecorderNewApp":1,"whisperAllowed":0,"whisperChosen":0,"whisperInstalling":0,"whisperRescan":0,"whisperSeedBlocked":1,"whisperSupported":1,"withScrPipe":1,"wkBindVideo":1,"wkEar":0,"wkFwdCopies":0,"wkFwdNeeded":1,"wkHolds":1,"wkQuietBind":1,"wkRemoteTrack":1,"wsp":0,"wspCaps":0,"wspChip":0,"wspChipGone":1,"wspChipRoom":0,"wspEnqueue":1,"wspInst":0,"wspModel":1,"wspPaintSafe":1,"wspPaused":0,"wspQ":0,"wspRebind":1,"wspRelease":1,"wspResume":1,"wspRetry":1,"wspSource":1,"wspStSig":0,"wspStarved":0,"wspState":1,"wspStateText":1,"wspStop":1,"wspSync":1,"wspTickAt":0,"wspToBrowser":1,"wspWorking":0,"x2Target":1}, needs: {"core":{"leaving":0,"localStream":0,"capClone":1,"WK_H264_BLIND":0,"nameInitial":1,"shareBlocked":0,"turnLinks":0,"turnFacts":0,"myId":0,"rowFaceDark":0,"myName":0,"blurLevelFor":1,"mediaOk":0,"relayVia":0,"displayName":1,"myStatus":0,"stageIds":0,"statusOf":0,"screenStream":0,"sharingScreen":0,"BROADCAST":0,"bcMayPublishAv":1,"rbNow":0,"mayShareScreen":0,"outgoingHeld":0,"bcRole":1,"peers":0,"meTile":0,"camPeer":0,"clog":0,"micPeer":0,"renegotiate":1,"rosterIds":0,"knownTotal":1,"rosterTiles":0,"updateTile":1,"updateStatus":1,"meshSeat":0,"meshNode":0,"roomDig":1,"roomPastSection":0,"SCALE":0,"powNow":0,"IS_MOBILE":0,"powDials":0,"setStatus":0,"uiText":1,"stHold":0,"seatDark":0,"forcedCamOff":0,"vqRung":0,"rung":0,"LADDER":0,"stageCeilingKbps":1,"screenCeilingKbps":1,"stageSenders":0,"auxSenders":0,"lowSenders":0,"net":0,"meterFor":1,"sayState":0,"IS_ANDROID":0,"botParks":1,"visParkSent":0,"dcSend":0,"hasPendingTx":0,"ensureAc":1,"ac":0,"newMeetAudioContext":1,"occPid":0,"pipePeers":1,"preferHwVideo":1,"modOf":1,"stageSeats":0,"digLists":0,"stageHeldAt":0,"stageFeedAt":0,"stageViewNow":0,"addAux":0,"isStageJob":0,"auxDrop":1,"stopAuxTx":1,"DEBUG_ON":0,"modBlurOn":0,"meshCoord":0,"speakingOf":0,"rowMixTalkAt":0,"subWant":0,"myIdentity":0,"labelFor":0,"iAmWaiting":1,"peerWaits":1,"fitFor":0,"pipeVideo":0,"pipeStg":0,"STAGE_FPS":0,"stageCell":1,"STAGE_MAXW":0,"stageFps":1,"freshSt":0,"pwBlocked":0,"bannedOut":0,"mediaJoined":0,"RECOVER_MEDIA_KEY":0,"updateRoomKey":0,"bcHostStored":0,"paintOnAir":1,"broadcastStatus":1,"updateMediaSession":1,"screenSteppedUp":0,"setStage":1,"refreshAllTiles":1,"rbCap":0,"rbLength":1,"rbTracks":1,"rbDrop":1,"bcSeeding":0,"releaseLeaveAsk":1,"rbStop":1,"rbNoun":0,"serviceHeard":0,"rowMates":0,"isHeld":1,"botHidden":1,"TIMING_KEY":0,"digStageEntry":0,"rosterNames":0,"foldName":1,"canStage":0,"lsGet":0,"CC_ON_PHONE":0,"meters":0,"myVoiceAt":0,"lsSet":0,"ccLocalQ":0,"CC_LANG_KEY":0,"trEnOn":0,"capSend":1,"trLangOf":0,"addTranscriptLine":1,"capEarsOnly":1,"capTrust":0,"trLang":1,"trKeeps":1,"trEnOnlyEnglish":1,"capSpotQueue":1,"capPublish":1,"trForget":1,"ccLang":0,"trDrops":0,"capTraceGate":1,"myVoiceFrom":0,"trLangKnown":1,"myVoiceSinceFinal":0,"ccDevNotice":1,"trEchoHeld":1,"ccShow":0,"trBlocks":1,"trNote":1,"modTable":0,"setMod":1,"AI_SPARK_SVG":0,"chatOpen":0,"room":0,"recRoomWord":1,"bcLastService":0,"BC_INTENT":0,"recSrcDirty":0,"recStructSig":0,"bcKeepUserStop":0,"amGloballyMuted":1,"micLockWords":1,"capClosed":0,"bcWatchingViewer":1,"enforceBroadcastSeat":1,"lateAsk":0,"lateWant":0,"bootGumPending":0,"reactRoomState":1,"camOnWords":1,"statusWords":0,"lateGen":0,"lateWon":0,"lateTimer":0,"LATE_ASK_MS":0,"carryOutAc":0,"blurLevel":0,"setPersonalBlur":1,"carryHosts":0,"carryG":0,"meOnStage":1,"shareOnlyStage":1,"personOnStage":1,"seatSelfLeased":0,"mainVideoChoice":1,"outboundPlan":1,"stageFeedVideo":1,"stageVideoChoice":1,"participantCount":1,"deepInView":1,"isRedun":0,"onStageNow":1,"screenSharers":0,"roomSingOn":0,"singOf":0,"capCovered":1,"trWrites":1,"idleNow":0,"lastActive":0,"lastQ":0,"MP":0,"battNow":0,"micGrabbing":0,"micWant":0,"micMode":0,"micUnmuteAfter":0,"micPickPrev":0,"pipeEnabled":0,"MPipe":0,"stgBeats":0,"swapPicLast":0,"swapPicHoldAt":0,"swapPicRing":0,"STG_BEAT_STALE_MS":0,"STG_BEAT_SEEN":0,"stgBeatCost":0,"STG_BEAT_MS":0,"timing":0,"whisperReady":0,"planMeasured":1,"reconcileMain":1,"inboundPlan":1,"owedStream":1,"mosIn":0,"mosJobs":0,"mosStandby":0,"demand":1,"unshipJob":1,"kfNeed":1,"setJobActive":1,"claimMos":1,"stgFedBy":1,"stgPath":0,"vpId":0,"stgStale":1,"mosBeyondAt":0,"dropMosIn":1,"dropStandby":1,"mosAnn":0,"roomBeyondRow":1,"carryIn":1,"l14DownHeads":1,"shipJob":1,"stgEnded":1,"stgHop":0,"stgDirectSet":1,"STG_ROOT2":0,"reapJobs":1,"rowActing":1,"rowHeadPid":1,"iActAsHead":1,"mixIn":1},"view":{"blurA":0,"blurActx":0,"blurB":0,"blurBctx":0,"paintAvatarCanvas":1,"phoneLayout":1,"showAvatarTrack":1,"stagefeedEl":0,"stadiumEl":0,"showFlipButton":1,"showCamBack":1,"paintSpkBtn":1,"paintStadiumTile":1,"paintStageStrip":1,"paintControls":1,"showResharePrompt":1,"hideResharePrompt":1,"paintShare":1,"dropStaleShareWin":1,"paintRb":1,"rbCanvas":1,"paintRbNow":1,"paintFaders":0,"timingRow":0,"paintWspChip":1,"paintCcState":1,"paintTxMark":1,"capCardRefresh":1,"paintWspStatus":1,"paintCcView":1,"showCaption":1,"ccDockBtn":0,"hideCaptions":1,"renderTranscript":1,"renderChat":1,"chatPanel":0,"paintChatBtn":1,"paintRoomTrust":1,"showServiceEnded":1,"showRecReplay":1,"recBtn":0,"showRecOptions":1,"roomAudioOn":1,"micBtn":0,"placeDockPopover":1,"unmuteBtn":0,"camBtn":0,"topNameModal":1,"handBtn":0,"chatPanelOpen":1,"keysModal":0,"syncModalFocus":1}}, stamp: "d49d42da" };
   (GifOS.coreParts = GifOS.coreParts || {})["media"] = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
