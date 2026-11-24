@@ -516,13 +516,14 @@
       // preview paints before the mesh joins, so the paperclip is hidden here
       // too; paintChatGate repeats it once the call is up.
       // A private meeting is known by its verifier, not by the hash: on
-      // gifos.app joinRoom moves the address to /meet/<room>/<verifier> (no
-      // hash), and applyAdminUi runs this paint, so a hash-only test took the
+      // gifos.app joinRoom moves the address to /meet#room=<room>&v=<verifier>
+      // (no av=), and applyAdminUi runs this paint, so an av=-only test took the
       // Chat options out of an open Host popup a moment after it opened.
       // hasAdminRoom also counts an open-floor meeting someone took charge of.
       // Before the admin state exists (the desk preview), touching it throws
       // and the address decides.
-      let hasHost = /(?:^|[#&?])av=/.test(location.hash) || /^\/(?:meet|cast)\/[^/]+\/[a-f0-9]{16,64}\/?$/i.test(location.pathname);
+      let hasHost = /(?:^|[#&?])av=/.test(location.hash) || /^\/(?:meet|cast)\/[^/]+\/[a-f0-9]{16,64}\/?$/i.test(location.pathname)
+        || (/^\/(?:meet|cast)\/?$/i.test(location.pathname) && /(?:^#|&)v=[a-f0-9]{16,64}(?:&|$)/i.test(location.hash));
       try { if ((0, /*()*/__C.hasAdminRoom)()) hasHost = true; } catch (e) {}
       if (!hasHost) {
         const pinEarly = document.getElementById('cattach');

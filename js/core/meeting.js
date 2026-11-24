@@ -13387,12 +13387,13 @@
       const atBit = BROADCAST && /^\d+$/.test(params.get('at') || '') ? params.get('at') : '';
       const avPartAt = avPart + (atBit ? '&at=' + atBit : '');
       const pretty = /(^|\.)gifos\.app$/.test(location.hostname) && !custom;
-      // A broadcast's pretty form is /cast/<room>/<V> — same 404-router
-      // machinery as /meet, but the path itself carries the skin so the
-      // shared link opens as a broadcast for every viewer.
-      const prettyPath = (BROADCAST ? '/cast/' : '/meet/') + room + (av ? '/' + av : '');
-      const prettyQs0 = atBit ? '?at=' + atBit : '';
-      const prettyQs = prettyQs0;
+      // The link we hand out keeps the room in the FRAGMENT, which a browser
+      // never sends: /meet#room=<room>[&v=<V>], so no server and no log ever
+      // reads which meeting this is (route.html opens it). A broadcast's form is
+      // /cast#room=…: the path carries the skin, so the shared link opens as a
+      // broadcast for every viewer.
+      const prettyPath = (BROADCAST ? '/cast' : '/meet') + '#room=' + room + (av ? '&v=' + av : '') + (atBit ? '&at=' + atBit : '');
+      const prettyQs = '';
       // A RELEASE/pinned computer runs from /versions/<x.y.z>/, but prettyPath is
       // rooted at the domain. Rewriting the address bar to it MOVED THE DOCUMENT
       // BASE off the snapshot — document.baseURI became /meet/<room>, so every
@@ -13404,8 +13405,8 @@
       // its own meet.html#v=… — its base stays put — while still HANDING OUT the
       // pretty link below, which is what a fresh visitor should follow.
       // Keep the address bar as the SAME link we hand out. On prod that's the
-      // pretty /meet/<room>[/<verifier>] path — a reload of it 404-routes back
-      // through the runtime, so it stays put. Custom relays and local dev have no
+      // /meet#room=<room>[&v=<verifier>] form — a reload of it routes back
+      // through route.html, so it stays put. Custom relays and local dev have no
       // /meet routing (and need &relay=), so they keep the hash form on whatever
       // file they were served from (MEET_PATH: /run.html here, meet.html in a
       // frozen snapshot).
@@ -13488,7 +13489,7 @@
     // the hash's bc flag) say so plainly.
     function isCastEntry(e) {
       const u = (e && e.url) || '';
-      return /\/cast\//i.test(u) || /[#&]bc=/.test(u);
+      return /\/cast(?:\/|#)/i.test(u) || /[#&]bc=/.test(u);
     }
     // Everything written before the split went into the meeting keys, so sort the
     // two lists on every boot: broadcasts out of Meeting, meetings out of
@@ -13584,8 +13585,13 @@
           const pm = u.pathname.match(/\/(?:meet|join|cast)\/([a-z0-9-]{1,64})(?:\/([a-f0-9]{16,64}))?/i);
           if (pm) { room = pm[1]; av = (pm[2] || '').toLowerCase(); bc = /^\/cast\//i.test(u.pathname); }
           const hp = new URLSearchParams((u.hash || '').replace(/^#/, ''));
-          if (hp.get('v')) room = hp.get('v');
-          if (hp.get('av')) av = (hp.get('av') || '').toLowerCase();
+          // The link form (/meet#room=R&v=V) names the verifier v; the page's
+          // own hash (run.html#v=R&av=V) names the room v. Read each by its form.
+          if (hp.get('room')) { room = hp.get('room'); av = (hp.get('v') || '').toLowerCase(); bc = bc || /^\/cast\/?$/i.test(u.pathname); }
+          else {
+            if (hp.get('v')) room = hp.get('v');
+            if (hp.get('av')) av = (hp.get('av') || '').toLowerCase();
+          }
           if (hp.get('relay')) relay = hp.get('relay');
           if (hp.get('bc')) bc = true;
         }
@@ -13597,7 +13603,7 @@
       if (!room || !/^[a-z0-9-]{1,64}$/i.test(room)) return null;
       if (av && !/^[a-f0-9]{16,64}$/.test(av)) av = '';
       // Any room name joins, short words too ("test", "team"): the room is the
-      // name in the link, gifos.app/meet/<name>, and the lobby says "type a room name".
+      // name in the link, gifos.app/meet#room=<name>, and the lobby says "type a room name".
       // NEVER normalise the room id. It is the whole capability: the relay
       // session, token and end-to-end key are all DERIVED from this exact string
       // ("derive, don't send", gifos-net.js). joinRoom() reads it from the link
@@ -13967,7 +13973,7 @@
         const relay = relayUrl();
         const custom = relay && relay !== window.GIFOS_RELAY;
         const pretty = /(^|\.)gifos\.app$/.test(location.hostname) && !custom;
-        const prettyPath = j.owned ? '/join/' + j.short + '/' + j.av + '/' + j.k : '/join/' + j.k;
+        const prettyPath = j.owned ? '/join#room=' + j.short + '&v=' + j.av + '&code=' + j.k : '/join#code=' + j.k; // fragment: never sent to a server
         const hashForm = MEET_PATH + (j.owned ? '#s=' + j.short + '.' + j.av + '&k=' + j.k : '#j=' + j.k);
         shareLink = location.origin + (pretty ? prettyPath : hashForm + (custom ? '&relay=' + encodeURIComponent(relay) : ''));
         (0, /*()*/__V.paintShareUrl)(shareLink);
@@ -19103,7 +19109,7 @@
       const custom = relay && relay !== window.GIFOS_RELAY;
       const pretty = /(^|\.)gifos\.app$/.test(location.hostname) && !custom;
       const newLink = pretty
-        ? location.origin + '/meet/' + chosen + '/' + V
+        ? location.origin + '/meet#room=' + chosen + '&v=' + V
         : location.origin + MEET_PATH + '#v=' + chosen + '&av=' + V + (relay ? '&relay=' + encodeURIComponent(relay) : '');
       if (postToChat && peers.size > 0) await postMoveNotice(newLink);
       location.replace(MEET_PATH + '#v=' + chosen + '&av=' + V);

@@ -55,7 +55,7 @@
       pin = null; chan = null;
     }
     var stay = cleared ? { clear: true } : null;
-    // A PRETTY router path (/meet/<room>, /join/<code>[/…]) is NOT a
+    // A ROOM address (/meet#room=…, or an old /meet/<room>, /join/<code>[/…]) is NOT a
     // file — Pages 404s it and 404.html routes it to a real page. If we ever run at
     // one (an offline cached shell, or any substitution of index.html), prepending
     // /versions/<v> would build /versions/<v>/meet/<room>, which exists nowhere, and
@@ -71,13 +71,10 @@
     // per-version filename table is exactly the compat rot we refuse to
     // carry). Old meet.html#... links are dead the same way.
 
-    var pm = pathname.match(/^\/(?:join|meet|cast)\/([a-zA-Z0-9-]{1,64})(?:\/([a-fA-F0-9]{16,64})(?:\/([a-zA-Z0-9]{1,64}))?)?\/?$/);
+    var pm = roomHash(pathname, search, hash);
     var here;
     if (pm) {
-      var extra = search ? '&' + search.replace(/^\?/, '') : '';
-      here = /^\/(?:meet|cast)\//.test(pathname)
-        ? '/run.html#v=' + pm[1] + (pm[2] ? '&av=' + pm[2].toLowerCase() : '') + (/^\/cast\//.test(pathname) ? '&bc=1' : '') + extra
-        : '/run.html#' + (pm[2] && pm[3] ? 's=' + pm[1] + '.' + pm[2].toLowerCase() + '&k=' + pm[3] : 'j=' + pm[1]) + extra;
+      here = '/run.html#' + pm;
     } else {
       // Carry the page + invite hash across (snapshots ship run.html too —
       // flag day above) AND THE QUERY. The query used to be dropped here,
@@ -125,6 +122,39 @@
     if (once) return stay;
     // `clear`: ?stable/?unpin/?latest just cleared a pin (the page still asks for the live release).
     return { redirect: cur ? to(cur).redirect : null, ask: here, clear: cleared || undefined };
+  }
+  // A ROOM LINK, as the run.html hash it opens: null when the address names no
+  // room, '' when it names one badly. Every link GifOS hands out keeps the room
+  // in the FRAGMENT, which a browser never sends, so no server and no log ever
+  // reads it: /meet#room=R[&v=V], /cast#room=R[&v=V] (the Broadcast skin),
+  // /join#code=C (an app session) and /join#room=R&v=V&code=C (an owned app).
+  // The path forms shared before (/meet/R[/V], /cast/R[/V], /join/C,
+  // /join/R/V/C) open the same rooms forever. Everything else in the fragment
+  // or the query rides along. Room case is kept: the room id is the capability
+  // the key derives from. The same function sits in route.html and in every
+  // page's channel loader, byte for byte.
+  function roomHash(pathname, search, hash) {
+    var m = /^\/(meet|cast|join)(?:\/([a-z0-9-]{1,64})(?:\/([a-f0-9]{16,64})(?:\/([a-z0-9]{1,64}))?)?)?\/?$/i.exec(pathname || '');
+    if (!m) return null;
+    var kind = m[1].toLowerCase(), room = m[2] || '', ver = m[3] || '', code = m[4] || '', rest = [], bad = false;
+    if (kind === 'join' && room && !ver) { code = room; room = ''; }
+    var h = String(hash || '').replace(/^#/, ''), q = String(search || '').replace(/^\?/, '');
+    var hs = h ? h.split('&') : [], parts = hs.concat(q ? q.split('&') : []);
+    for (var i = 0; i < parts.length; i++) {
+      var p = parts[i], k = p.split('=')[0], val = p.slice(k.length + 1);
+      if (!p) continue;
+      if (m[2] || i >= hs.length || (k !== 'room' && k !== 'v' && k !== 'code')) { rest.push(p); continue; }
+      if (k === 'room') { room = val; bad = bad || !/^[a-z0-9-]{1,64}$/i.test(val); }
+      else if (k === 'v') { ver = val; bad = bad || !/^[a-f0-9]{16,64}$/i.test(val); }
+      else { code = val; bad = bad || !/^[a-z0-9]{1,64}$/i.test(val); }
+    }
+    var tail = rest.length ? '&' + rest.join('&') : '';
+    ver = ver.toLowerCase();
+    if (bad) return '';
+    if (kind !== 'join') return room ? 'v=' + room + (ver ? '&av=' + ver : '') + (kind === 'cast' ? '&bc=1' : '') + tail : (ver ? '' : null);
+    if (room && ver && code) return 's=' + room + '.' + ver + '&k=' + code + tail;
+    if (code && !room && !ver) return 'j=' + code + tail;
+    return room || ver ? '' : null;
   }
   window.gifosPinTarget = pinTarget;
   // GENERATED from gifos timings.json by scripts/gen-timings.mjs (the line below): do not edit by hand.
