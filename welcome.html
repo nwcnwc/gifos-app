@@ -101,6 +101,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <p class="lbl">The plain iframe (for sites that remove scripts)</p>
     <div class="code"><pre id="snip-iframe">&lt;iframe src="https://gifos.app/embed#room=ROOM" style="width:100%;aspect-ratio:16/9;border:0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen title="GifOS Broadcast"&gt;&lt;/iframe&gt;</pre><button class="copy" type="button" data-copy="snip-iframe">Copy</button></div>
 
+    <h2>Choose the controls</h2>
+    <p>The player starts as the picture, the live badge, unmute and a settings gear. You choose what else a viewer may do. When you set nothing, the gear offers <code>volume,fullscreen</code>.</p>
+    <p><code>volume</code> — a volume slider.</p>
+    <p><code>captions</code> — captions on or off. The row appears once a line has arrived. Captions stay off until the viewer turns them on.</p>
+    <p><code>tabs</code> — the share tabs, when the room shares something besides the Stage.</p>
+    <p><code>inset</code> — show, hide or move the Stage picture while a share fills the player.</p>
+    <p><code>fullscreen</code> — full screen.</p>
+    <p><code>pip</code> — picture in picture, when the browser supports it.</p>
+    <p><code>watch</code> — Watch on GifOS, in a new tab.</p>
+    <p><code>all</code> turns every control on. <code>none</code> leaves the gear off.</p>
+    <p>On the script tag, add <code>data-controls="tabs,inset,captions,fullscreen,watch"</code>. On the iframe, add it to the hash: <code>#room=ROOM&amp;controls=tabs,inset</code>.</p>
+    <p>The password prompt and the not-hosted notice always show.</p>
+
     <h2>Where to paste it</h2>
     <p>Pick your site builder for the short steps.</p>
     <div class="plats" id="plats" role="group" aria-label="Site builder"></div>

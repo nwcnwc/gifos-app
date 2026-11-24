@@ -46,8 +46,17 @@
     }
     function stageVideoTrack() {
       const c = C.stageVideoChoice();
-      return c && c.src === 'main' ? sentVideoTrack() : null;
+      if (!c || c.src === 'none' || c.src === 'own-screen') return null;
+      if (c.src === 'main' || c.src === 'rebroadcast') return sentVideoTrack();
+      if (c.src === 'own-cam') {
+        if (c.blur > 0) return null; // a blurred stage camera needs an encoder this plane does not have
+        const ls = C.localStream, t = ls && ls.getVideoTracks()[0];
+        return live(t) ? t : null;
+      }
+      return null;
     }
+    // The screen feed. No encoder here, so never the raw screen.
+    function screenFeedTrack() { return null; }
     function kick(p) {
       if (p.dc && p.dc.readyState === 'open') { C.dcSend(p, { k: 'rkick' }); if (C.hasPendingTx(p)) C.renegotiate(p); }
       else C.renegotiate(p);
@@ -102,6 +111,7 @@
     def('mainAudioTrack', mainAudioTrack);
     def('sentVideoTrack', sentVideoTrack);
     def('stageVideoTrack', stageVideoTrack);
+    def('screenFeedTrack', screenFeedTrack);
     def('refreshOutbound', refreshOutbound);
     def('attachLocalTracks', attachLocalTracks);
     def('dropEndedRemoteTracks', dropEndedRemoteTracks);
@@ -110,7 +120,7 @@
     def('adapt', () => {});             // no encoder of my own to tune: forwarded and Opus tracks keep their own rate
     def('tileHolds', () => false);      // no tiles: no screen holds a stream
     def('stubDuties', stubDuties);
-    return { names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties'] };
+    return { names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'screenFeedTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties'] };
   }
 
   GifOS.planeNode = { install };

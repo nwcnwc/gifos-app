@@ -168,6 +168,8 @@
       "roomPack": { get: function () { return roomPack; }, set: function (v) { roomPack = v; }, enumerable: true, configurable: true },
       "schedClaim": { get: function () { return schedClaim; }, enumerable: true, configurable: true },
       "schedReconcile": { get: function () { return schedReconcile; }, enumerable: true, configurable: true },
+      "screenFeedTrack": { get: function () { return screenFeedTrack; }, set: function (v) { screenFeedTrack = v; }, enumerable: true, configurable: true },
+      "screenModFor": { get: function () { return screenModFor; }, set: function (v) { screenModFor = v; }, enumerable: true, configurable: true },
       "sdView": { get: function () { return sdView; }, set: function (v) { sdView = v; }, enumerable: true, configurable: true },
       "sdViewSt": { get: function () { return sdViewSt; }, set: function (v) { sdViewSt = v; }, enumerable: true, configurable: true },
       "sentVideoTrack": { get: function () { return sentVideoTrack; }, enumerable: true, configurable: true },
@@ -259,27 +261,24 @@
       "wspWorking": { get: function () { return wspWorking; }, enumerable: true, configurable: true }
     });
     yield 594;
-    // A screen's picture: my own capture, else the sharer's stage feed, else
-    // the stage strip (a seat that does not hold the feed paints the strip).
+    // A screen's picture: my own capture, else the sharer's screen feed
+    // ('scr:'). The strip is faces; a face labelled as a screen is a lie, so
+    // there is no strip fallback. null means the picture is on its way.
     function ctScreenTrack(sid) {
+      const mod = screenModFor(sid);
+      if (mod && mod.dark) return null;
       if (sid === __C.myId) {
-        const t = typeof __C.screenStream !== 'undefined' && __C.screenStream && __C.screenStream.getVideoTracks()[0];
+        const t = screenFeedTrack();
         if (t && t.readyState !== 'ended') return { track: t, from: 'own' };
+        return null;
       }
-      const f = (0, /*()*/__C.stageFeedVideo)(sid);
-      if (f && f.track) return { track: f.track, from: 'stg' };
-      // The sharer's own stage feed, held here but not yet painted by its
-      // hidden element (a browser that never decodes a hidden video): the
-      // track is live, so the tab plays it itself.
+      const f = (0, /*()*/__C.screenFeedVideo)(sid);
+      if (f && f.track && f.track.readyState !== 'ended') return { track: f.track, from: 'scr' };
       try {
-        const m = mosIn && mosIn.get('stg:' + sid);
+        const m = mosIn && mosIn.get('scr:' + sid);
         const t = m && m.stream && m.stream.getVideoTracks && m.stream.getVideoTracks()[0];
-        if (t && t.readyState !== 'ended') return { track: t, from: 'stg' };
+        if (t && t.readyState !== 'ended') return { track: t, from: 'scr' };
       } catch (e) {}
-      const sgs = document.querySelector('#stagefeed [data-row="sgs"] video');
-      const st = sgs && sgs.srcObject;
-      const t = st && st.getVideoTracks && st.getVideoTracks()[0];
-      if (t && t.readyState !== 'ended') return { track: t, from: 'strip' };
       return null;
     }
     yield 690;
@@ -919,7 +918,11 @@
         stopBlurPipe();
         return rbv;
       }
-      if (!c.rowShare) withScrPipe(stopBlurPipe);
+      // The screen pipe belongs to screenFeedTrack. Stop it only when no screen
+      // is going out. A person on Stage who shares is not a row share, and
+      // stopping the pipe here killed the screen on every refresh.
+      const scChoice = (0, /*()*/__C.screenFeedChoice)();
+      if (!scChoice || scChoice.src === 'none') withScrPipe(stopBlurPipe);
       if (c.src === 'own-screen') {
         const scr = __C.screenStream.getVideoTracks()[0];
         stopAvatarPipe();
@@ -938,17 +941,22 @@
       stopBlurPipe();
       return cam;
     }
-    // What my Stage feed shows. A share from the Row sends the screen there
-    // (blurred by the same rule as any share, through its own pipe) while
-    // sentVideoTrack keeps the camera on the Row; otherwise the two are one.
+    // What my Stage feed shows: the camera (blur as the row tile), or nothing
+    // when the camera is off. The shared screen is screenFeedTrack ('scr:'),
+    // never this feed.
     function stageVideoTrack() {
-      const c = (0, /*()*/__C.stageVideoChoice)();   // the core's choice (the media plan's capture section)
-      if (c.src === 'main') return sentVideoTrack();
-      if (c.src === 'none') return null;
-      const scr = __C.screenStream.getVideoTracks()[0];
-      if (c.blur > 0) return withScrPipe(() => startBlurPipe(c.blur, scr)); // null if the pipe cannot run: never the raw screen
-      withScrPipe(stopBlurPipe);
-      return scr;
+      const c = (0, /*()*/__C.stageVideoChoice)();
+      if (!c || c.src === 'none') return null;
+      if (c.src === 'main' || c.src === 'rebroadcast') return sentVideoTrack();
+      if (c.src !== 'own-cam') return null;
+      const cam = __C.localStream && __C.localStream.getVideoTracks()[0];
+      if (!cam || cam.readyState !== 'live') return null;
+      const main = (0, /*()*/__C.mainVideoChoice)();
+      // The screen holds the blur pipe. Never start a second one on the camera,
+      // and never send the camera clear when a blur was asked.
+      if (main && main.src === 'own-screen') return c.blur > 0 ? null : cam;
+      if ((c.blur > 0 || !!senderCrop() || !!stageFrame()) && !__C.myStatus.camOff) return startBlurPipe(c.blur) || null;
+      return cam;
     }
     // CAMERA OFF STOPS THE CAMERA. A merely-disabled track keeps the sensor
     // open: the camera light stays on while the page says camera off (a
@@ -1041,7 +1049,7 @@
       // stays the broadcast track, because the Stage composite reads it.
       if (__C.meTile && __C.meTile.tile) {
         let camT = null;
-        if (__C.myStatus.scr && !__C.myStatus.camOff && __C.localStream && !(0, /*()*/__C.shareOnlyStage)('me')) {
+        if (__C.myStatus.scr && !__C.myStatus.camOff && __C.localStream && !(0, /*()*/__C.shareOnlyStage)('me') && !(0, /*()*/__C.meOnStage)()) {
           const c = __C.localStream.getVideoTracks()[0];
           if (c && c.readyState === 'live' && c !== vt) camT = c;
         }
@@ -1433,8 +1441,8 @@
           // The low power level still trims it: a phone forwarding the stage is
           // still a phone, and low is the state where it has already decided
           // that frames and pixels are what it is spending.
-          const isStageSd = __C.stageSenders.has(sender), isAuxSd = __C.auxSenders.has(sender);
-          let want = isStageSd ? (screenOnStage ? Math.max(stageBudget, screenBudget) : stageBudget)
+          const isStageSd = __C.stageSenders.has(sender), isAuxSd = __C.auxSenders.has(sender), isScrSd = scrSenders.has(sender);
+          let want = isScrSd ? Math.max(stageBudget, screenBudget) : isStageSd ? (screenOnStage ? Math.max(stageBudget, screenBudget) : stageBudget)
             : isAuxSd ? auxBudget
             : (myScreen ? screenBudget : blurred ? Math.min(q.kbps, 250) * 1000 : q.kbps * 1000);
           // A BUDGET ALONE DOES NOT KEEP THE PIXELS. Under the platform default
@@ -1445,7 +1453,7 @@
           // carrier track with no hint on it, so the preference is set here,
           // per sender, where the room already knows from `scr` what it is
           // carrying. Restored to 'balanced' the moment the share ends.
-          const carriesScreen = isStageSd ? screenOnStage : (!isAuxSd && myScreen);
+          const carriesScreen = isScrSd || (isStageSd ? screenOnStage : (!isAuxSd && myScreen));
           const wantDeg = carriesScreen ? 'maintain-resolution' : 'balanced';
           const degNow = degOf.has(sender) ? degOf.get(sender) : (prm.degradationPreference || 'balanced');
           const lowOn = !(__C.lowSenders.has(sender) && __C.meshNode && __C.meshNode.raw && __C.meshNode.raw.lgLvl >= 2);   // L29.1: level 2 stops the low-priority forwards' pictures
@@ -2850,7 +2858,31 @@
     //
     // So: ship what exists. Video+audio, audio-only, or video-only — nothing
     // to broadcast at all is the ONLY case that returns null.
-    let selfShipMemo = null;
+    let selfShipMemo = null, selfScreenMemo = null,
+      // The shared screen, through its own blur pipe. null if the pipe cannot run: never the raw screen.
+      screenFeedTrack = () => {
+        const c = (0, /*()*/__C.screenFeedChoice)();
+        if (!c || c.src === 'none') { withScrPipe(stopBlurPipe); return null; }
+        const scr = __C.screenStream && __C.screenStream.getVideoTracks()[0];
+        if (!scr || scr.readyState !== 'live') { withScrPipe(stopBlurPipe); return null; }
+        if (c.blur > 0) return withScrPipe(() => startBlurPipe(c.blur, scr)); // null if the pipe cannot run: never the raw screen
+        withScrPipe(stopBlurPipe);
+        return scr;
+      },
+      // Cached by track identity. A fresh MediaStream every sweep tears the scr job down.
+      myScreenStream = () => {
+        if (__C.BC_SEAT && !(0, /*()*/__C.bcMayPublishAv)()) { selfScreenMemo = null; return null; }
+        const v = screenFeedTrack();
+        if (!v || v.readyState === 'ended') { selfScreenMemo = null; return null; }
+        if (!selfScreenMemo || selfScreenMemo.v !== v) selfScreenMemo = { v, stream: new MediaStream([v]) };
+        return selfScreenMemo.stream;
+      },
+      // What a screen sink applies. dark: no picture. blur: the receiver blur (0 for me; mine is already in the pixels).
+      screenModFor = (sid) => {
+        const dark = !!((0, /*()*/__C.forcedCamOff)(sid) || (typeof __C.shareBlocked === 'function' && (0, /*()*/__C.shareBlocked)(sid)));
+        const blur = (!dark && sid !== __C.myId && (0, /*()*/__C.modBlurOn)(sid)) ? Math.max(1, Math.min(2, (0, /*()*/__C.blurLevelFor)(sid) | 0)) : 0;
+        return { dark: dark, blur: blur };
+      };
     const mySelfStream = () => {
       if (__C.BC_SEAT && !(0, /*()*/__C.bcMayPublishAv)()) return null;
       const v = stageVideoTrack();
@@ -3386,7 +3418,7 @@
             if (__C.MPipe.pipeSender(sd, srcId, jk, carrier)) {
               pipeJobs.set(jk, { srcId, carrier, srcTrack: tr, w0: null, stale: 0 });
               job.senders.push(sd); job.trackList.push(carrier.track); job.srcTracks.push(tr);
-              if ((0, /*()*/__C.isStageJob)(job.key)) __C.stageSenders.add(sd); else __C.lowSenders.add(sd);
+              if ((0, /*()*/__C.isStageJob)(job.key)) __C.stageSenders.add(sd); else __C.lowSenders.add(sd); if (isScrKey(job.key)) scrSenders.add(sd);
               if (!job.active || job.vParked) { try { sd.replaceTrack(null); } catch (e) {} try { __C.MPipe.pausePipe(jk, true); } catch (e) {} }
               else if (typeof __C.outgoingHeld !== 'undefined' && __C.outgoingHeld) { try { sd.replaceTrack(null); } catch (e) {} }
               job.attachErr = null;
@@ -3403,7 +3435,7 @@
         if (tr.kind === 'audio' && !(0, /*()*/__C.isStageJob)(job.key)) { try { job.container.__solo = true; } catch (e) {} }   // a block's sound: its picture does not wait for it (soloSdp)
         const sd = (0, /*()*/__C.addAux)(p.pc, st, job.container);
         job.senders.push(sd); job.trackList.push(st); job.srcTracks.push(tr);
-        if ((0, /*()*/__C.isStageJob)(job.key)) __C.stageSenders.add(sd); else __C.lowSenders.add(sd);
+        if ((0, /*()*/__C.isStageJob)(job.key)) __C.stageSenders.add(sd); else __C.lowSenders.add(sd); if (isScrKey(job.key)) scrSenders.add(sd);
         if (!job.active || (job.vParked && tr.kind === 'video')) { try { sd.replaceTrack(null); } catch (e) {} }
         else if (typeof __C.outgoingHeld !== 'undefined' && __C.outgoingHeld) { try { sd.replaceTrack(null); } catch (e) {} }
         job.attachErr = null;
@@ -3929,12 +3961,11 @@
       }
     }
     // STAGE-DOWN-SHIP
-    // Below Section 1 the strip already carries the picture. A down hop ships
-    // the stager's audio unless that stager is sharing a screen.
-    function stgDownShip(key, stream, screenOn, memo) {
+    // Below Section 1 the face rides the strip, so a person's feed goes down
+    // audio-only, always. The screen ('scr:') goes down whole: it is the picture.
+    function stgDownShip(key, stream, memo) {
       if (!stream) return null;
-      const owner = typeof key === 'string' && key.indexOf('stg:') === 0 ? key.slice(4).split('^')[0] : null;
-      if (owner && screenOn) return stream;
+      if (isScrKey(key)) return stream;
       const tracks = typeof stream.getAudioTracks === 'function' ? stream.getAudioTracks() : [];
       const aud = [];
       for (let i = 0; i < tracks.length; i++) {
@@ -4027,8 +4058,8 @@
       let order, svt = null, cols = 0;
       if (now === undefined) now = Date.now();
       for (const id of stagers) {
-        if (id === screenSid) continue;
-        if ((0, /*()*/__C.forcedCamOff)(id) || (typeof __C.shareBlocked === 'function' && (0, /*()*/__C.shareBlocked)(id))) { faces.push({ id, vt: null, crop: null, cell: null, bl: 0 }); continue; }
+        // The sharer's face stays. Their stage feed is the camera now; the screen is 'scr:'.
+        if ((0, /*()*/__C.forcedCamOff)(id)) { faces.push({ id, vt: null, crop: null, cell: null, bl: 0 }); continue; }
         const bl = stageFaceBlur(id);
         const vt = stageRawFace(id, !strip);
         if (vt) { faces.push({ id, vt, crop: null, cell: null, bl }); continue; }
@@ -4422,7 +4453,7 @@
       const c = (0, /*()*/__C.meshCoord)(); if (!c) return null;
       // SUB.4: what my pipe peer sends me is a child's product: its side's room pack and the sound of its side ('sdn', its
       // send to one more child of its own), held as a served branch ('subu:<pipe peer>'), and every stager's own feed.
-      if (from && (0, /*()*/__C.isPipePeer)(from)) { if (key === 'sdn') return 'subu:' + from; if (key.indexOf('stg:') !== 0) return null; }
+      if (from && (0, /*()*/__C.isPipePeer)(from)) { if (key === 'sdn') return 'subu:' + from; if (!isStgKey(key)) return null; }
       const iAmHead = c.i === 0 || iActAsHead(); // L2.7: the heir stands in for a gone head
       // A branch a row-mate serves (an L14 branch, a pipe), relayed to me under its own key: one job per branch, never sharing
       // the mate's 'sub' (its own down-child's product) or another branch's.
@@ -4467,7 +4498,7 @@
       if (key === 'sgs') return 'sgs';        // the composited Stage strip, fanned down
       // an individual stager feed (per-stager slot); an older client's '^' suffix
       // resolves to the same slot.
-      if (key.indexOf('stg:') === 0) {
+      if (isStgKey(key)) {
         const q = key.indexOf('^'); const base = q < 0 ? key : key.slice(0, q);
         // NEVER CLAIM AN ECHO OF MYSELF (2026-07-29, the stage nobody could
         // ever see). The S1 flood spreads each stager feed across the whole
@@ -4478,8 +4509,10 @@
         // yanking the tracks out from under every receiver in the room and
         // killing every relayed copy with them. Nothing needs the echo: the
         // strip compositor draws me from my own meTile (srcFor short-circuits
-        // on myId) and the stage ear explicitly skips my own feed.
-        if (base === 'stg:' + __C.myId) return null;
+        // on myId) and the stage ear explicitly skips my own feed. The screen
+        // feed ('scr:<me>') is the same echo: never claim it either. The prefix
+        // stays in the base, so a screen does not share a slot with the face.
+        if (base === 'stg:' + __C.myId || base === 'scr:' + __C.myId) return null;
         return base;
       }
       return null;
@@ -4522,7 +4555,7 @@
     yield 2105;
     const vpId = (pid) => String(pid || '').slice(0, 10);
     const stgPath = (f) => ((f && f.meta && Array.isArray(f.meta.vp)) ? f.meta.vp : []).concat(vpId(__C.myId)).slice(-__C.STG_VP_MAX);
-    const stgLoopsBack = (key, ann) => typeof key === 'string' && key.indexOf('stg:') === 0 && !!ann && Array.isArray(ann.vp) && ann.vp.indexOf(vpId(__C.myId)) >= 0;
+    const stgLoopsBack = (key, ann) => isStgKey(key) && !!ann && Array.isArray(ann.vp) && ann.vp.indexOf(vpId(__C.myId)) >= 0;
     yield 2109;
     // Send a want/idle demand to a redundant feed's announcer, debounced so the
     // message only rides the DC on a state flip — but RE-ASSERTED every few
@@ -4561,7 +4594,7 @@
       // sweep (an announce, a track, a departure) parks the old path at once,
       // so waiting for the next beat leaves the Stage on a frozen frame; on a
       // throttled clock that beat is many seconds away. Repaint now.
-      else if (rk.indexOf('stg:') === 0) schedReconcile();
+      else if (isStgKey(rk)) schedReconcile();
       // 'sdn'/'sdx' feed this head's packers, which re-read mosIn on the sweep;
       // schedule a fast off-stack sweep so a failover swap repaints in ~60ms
       // instead of waiting out the 2s reconcile beat.
@@ -4608,11 +4641,11 @@
     let dogVoiceFast = false;
     const stgVoiceClaim = (rk, pri) => rk.indexOf('stg:') === 0 && !!pri.stream && !pri.stream.getVideoTracks().length && !!pri.stream.getAudioTracks().length;
     function stgFoNote(rk, e, via, why) { // failover forensics, read by test hooks
-      if (rk.indexOf('stg:') !== 0 && rk !== 'sdm') return;
+      if (!isStgKey(rk) && rk !== 'sdm') return;
       const l = (window.__stgFoLog = window.__stgFoLog || []);
       l.push({ t: Date.now(), k: rk.slice(4, 12), e, via: via ? String(via).slice(0, 8) : undefined });
       if (l.length > 200) l.shift();
-      if (__C.DEBUG_ON && rk.indexOf('stg:') === 0) swapPicNote(rk, e, why || '');
+      if (__C.DEBUG_ON && isStgKey(rk)) swapPicNote(rk, e, why || '');
     }
     yield 2120;
     function stgPicOf(ent) {
@@ -4643,7 +4676,7 @@
           lb: fb.lastBytes, sb: fb.stdB, fd: fb.stdFdec, d0: fb.d0, dark: fb.dark ? 1 : 0, sus: fb.suspect ? 1 : 0, pd: fb.picDead ? 1 : 0 };
         // np: no picture is owed. A camera-off sender keeps a live, unmuted video track that sends only black frames, so a still
         // or empty picture from its slot is the one promised. Set only when the owner's own status says camera off and no screen share.
-        { const own = String(rk).slice(4).split('^')[0], st = own === __C.myId ? __C.myStatus : __C.statusOf.get(own); if (st && st.camOff && !(0, /*()*/__C.sharingScreen)(own)) r.np = 1; }
+        if (!isScrKey(rk)) { const own = String(rk).slice(4).split('^')[0], st = own === __C.myId ? __C.myStatus : __C.statusOf.get(own); if (st && st.camOff && !(0, /*()*/__C.sharingScreen)(own)) r.np = 1; }
         __C.swapPicRing.push(r); if (__C.swapPicRing.length > 40) __C.swapPicRing.shift();
         if (e === 'swap' && !follow) for (const ms of [1500, 3000]) setTimeout(() => swapPicNote(rk, 'after' + ms, 'swap +' + ms + 'ms', true), ms);
       } catch (err) {}
@@ -4675,6 +4708,10 @@
         for (const [rk, pri] of mosIn) {
           if (!(0, /*()*/__C.isRedun)(rk)) continue;
           const fb = mosFb.get(rk); if (!fb) continue; // claimRedun mints it; no claim, no watch
+          // A screen is video-only and a still one sends ~0 bytes. The picture
+          // rails below would call that dark and flap it. Transport death still
+          // fails over in claimRedun (the announcer leaves). A screen is never deaf.
+          if (isScrKey(rk)) continue;
           // Stage audio sets the fast beat; every other slot keeps its own, one pass in three.
           if (dogEvery === 300 && dogVoiceFast && dogPass % 3 && !fb.dark && !fb.wakeAt && !stgVoiceClaim(rk, pri)) continue;
           // A voice-only claim is judged on its own audio packets (pipeBytes). A
@@ -4861,6 +4898,7 @@
         let urgent = false, watchable = false; dogVoiceFast = false;
         for (const [rk, pv] of mosIn) {
           if (!(0, /*()*/__C.isRedun)(rk)) continue;
+          if (isScrKey(rk)) continue; // a still screen must not force the fast beat
           const fb = mosFb.get(rk); if (!fb) continue;
           if (stgVoiceClaim(rk, pv)) dogVoiceFast = true;
           if ((fb.dark || fb.wakeAt) && !fb.suspect) { urgent = true; break; }
@@ -4989,7 +5027,7 @@
       const isPri = (x) => !!pri && x.from === pri.via && x.sid === pri.streamId;
       const others = cand.filter((x) => x.live && !isPri(x));
       if (fb.stdTried && !others.some(fresh)) fb.stdTried = null; // every path has had its turn: start the round again
-      const pp = (rk.indexOf('stg:') === 0 && pri && pri.meta && Array.isArray(pri.meta.vp)) ? pri.meta.vp : [];
+      const pp = (isStgKey(rk) && pri && pri.meta && Array.isArray(pri.meta.vp)) ? pri.meta.vp : [];
       // Where a copy parts from my primary's path: 0 when it shares no seat, else 1 + the place on that path of the
       // last seat they share. Every copy often shares the first seats (the stager's own way up), so "shares a seat"
       // alone picked by list order and kept a copy through my own carrier, the seat most likely to die. The copy that
@@ -5045,8 +5083,8 @@
     // The parked standby of a stg slot whose primary is a relay: the stager's
     // own copy, the one path that shares no seat with the relay.
     function stgOwnStandby(rk, cand, pri) {
-      if (rk.indexOf('stg:') !== 0) return null;
-      const owner = rk.slice(4).split('^')[0];
+      if (!isStgKey(rk)) return null;
+      const owner = stgOwner(rk);
       return cand.find((x) => x.live && x.from === owner && x.key.indexOf('^') < 0
         && !(pri && x.from === pri.via && x.sid === pri.streamId)) || null;
     }
@@ -5060,14 +5098,18 @@
     // slot's second-root key (stg:<id>^r, the same slot at every receiver). One extra copy per held feed. The copy
     // is born parked: a receiver that wants it wakes it, and that want wakes my parked standby upstream
     // (chainDemandUp), so it costs nothing until a failover needs it.
-    const STG_ROOT2 = '^r';
+    const STG_ROOT2 = '^r',
+      isScrKey = (k) => typeof k === 'string' && k.indexOf('scr:') === 0,
+      scrSenders = new WeakSet(),   // the senders of 'scr:' jobs: a screen keeps its pixels (adapt: maintain-resolution, screen budget) wherever it is forwarded
+      isStgKey = (k) => typeof k === 'string' && (k.indexOf('stg:') === 0 || k.indexOf('scr:') === 0),
+      stgOwner = (k) => isStgKey(k) ? k.slice(4).split('^')[0] : '';
     function stgSecondRoot(f, sb) {
       if (!f || !sb || !sb.stream || sb.stream === f.stream || !sb.meta || sb.meta.ao) return null;
       const sv = Array.isArray(sb.meta.vp) ? sb.meta.vp : null; if (!sv || !sv.length) return null; // a copy with no path names no root
       const pv = f.meta && Array.isArray(f.meta.vp) ? f.meta.vp : [];
       return sv.some((s) => pv.indexOf(s) >= 0) ? null : sb;
     }
-    function stgRootKey(key) { return typeof key === 'string' && key.indexOf('stg:') === 0 && key.slice(-STG_ROOT2.length) === STG_ROOT2; }
+    function stgRootKey(key) { return isStgKey(key) && key.slice(-STG_ROOT2.length) === STG_ROOT2; }
     // A SECOND-ROOT COPY A RECEIVER PLAYS KEEPS ITS SOURCE. My parked standby is re-picked as paths come and go, and a
     // failover makes it my primary. Re-pointing a played copy at whatever I hold parked next changed its root under the
     // same stream id: the receiver kept playing what it took for the root it had chosen and heard a parked chain that
@@ -5224,7 +5266,14 @@
       return !!owner && !(0, /*()*/__C.stageIds)().includes(owner);
     }
     function stgEnded(rk) {
-      if (typeof rk !== 'string' || rk.indexOf('stg:') !== 0) return false;
+      if (typeof rk !== 'string') return false;
+      // A screen ends when its owner's stage beat is stale, or the share stops.
+      // The beat lives on the person's 'stg:' key. A still screen is not dark.
+      if (isScrKey(rk)) {
+        const owner = stgOwner(rk);
+        return !owner || stgStale('stg:' + owner) || !(0, /*()*/__C.sharingScreen)(owner);
+      }
+      if (rk.indexOf('stg:') !== 0) return false;
       const base = rk.split('^')[0];
       return base === 'stg:' + __C.myId ? !(0, /*()*/__C.stageIds)().includes(__C.myId) : (stgStale(base) || stgOffStage(base));
     }
@@ -5261,17 +5310,16 @@
         return (srcPid && cand.find((x) => x.live && x.key === rk && x.from === srcPid))
           || cand.find((x) => x.live && x.key === rk) || null;
       }
-      if (rk.indexOf('stg:') === 0) {
+      if (isStgKey(rk)) {
         // IDENTITY, NOT JUST KEY — the stg edition (2026-08-04, frza runs).
-        // The key literally names the producer: stg:<pid>. When the OWNER
-        // announces to me I am a direct receiver, and the owner's leg is the
-        // one true source — preferring "first live non-^x" (Map insertion
-        // order) let a RELAYED flood copy win, so direct receivers mx-idled
-        // the producer's only real encode. On the pipe lane a relayed copy of
-        // a parked source still LOOKS live (the carrier never mutes), so the
-        // whole fabric starved behind a parked producer, dark-woke it, and
-        // re-idled it — the 14-24s room-wide stg freeze oscillation.
-        const owner = rk.slice(4).split('^')[0];
+        // The key literally names the producer: stg:<pid> (and scr:<pid>, the
+        // same road). When the OWNER announces to me I am a direct receiver,
+        // and the owner's leg is the one true source — preferring "first live
+        // non-^x" (Map insertion order) let a RELAYED flood copy win, so direct
+        // receivers mx-idled the producer's only real encode. On the pipe lane
+        // a relayed copy of a parked source still LOOKS live (the carrier never
+        // mutes), so the whole fabric starved behind a parked producer.
+        const owner = stgOwner(rk);
         const own = cand.find((x) => x.live && x.from === owner && x.key.indexOf('^') < 0);
         // ...unless the stager announced this copy sb:1 (STG-DIRECT below):
         // then a one-hop relay from a direct receiver wins, and the stager's
@@ -5384,7 +5432,7 @@
         const pick = pref || cand.find((x) => x.live);
         if (pick) {
           pri = mkEnt(pick); mosIn.set(rk, pri); repaintRedun(rk, pri.stream);
-          if (__C.DEBUG_ON && rk.indexOf('stg:') === 0) swapPicNote(rk, 'claim', 'first claim ' + (pref && pick === pref ? 'pref' : 'live'));
+          if (__C.DEBUG_ON && isStgKey(rk)) swapPicNote(rk, 'claim', 'first claim ' + (pref && pick === pref ? 'pref' : 'live'));
           fb.claimAt = now; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; fb.suspect = false; fb.stdTried = null; fb.pvB = -1; fb.pvAt = 0; // fresh primary — the watchdog re-baselines
           fb.hadPref = !!(pref && pick === pref); // a stand-in claimed while nothing was preferred is not a failback anchor
           if (std && std.via === pri.via && std.streamId === pri.streamId) { dropStandby(rk); std = null; }
@@ -5429,7 +5477,7 @@
       // whose path loops back) is no takeover. Taking one swapped a row-mate off the stager's own copy, which never
       // used E1, onto a parked chain rooted at the dead up seat that carried silence, and failback swapped it back.
       const seatE2 = (0, /*()*/__C.meshSeat)();
-      const u2Over = !!(pri && std && seatE2 && seatE2.u2Hot && std.via === seatE2.u2Id && pri.via !== std.via && stdIsPref && !priIsPref && (rk.indexOf('stg:') === 0 || rk === 'sgs'));
+      const u2Over = !!(pri && std && seatE2 && seatE2.u2Hot && std.via === seatE2.u2Id && pri.via !== std.via && stdIsPref && !priIsPref && (isStgKey(rk) || rk === 'sgs'));
       // A failback or picture wake never goes to a copy whose last such wake failed, or that was just left for failing,
       // until the window lapses (fbTried); a failover (primary gone or dark) is not held by it.
       const stdFbOk = !!std && !stdTried(fb, std.via + '|' + std.streamId, now, 'fbTried');
@@ -5456,7 +5504,7 @@
       const wantSwap = !!(pri && std && (!priLive || fb.dark || mixDeaf || mixBack || upBack || u2Over || (stdFbOk && (fb.picDead || (stdIsPref && !priIsPref)))));
       if (wantSwap) {
         if (std && !std.el && std.stream) std.el = mosVideo(std.stream); // mint the decoder on wake, not while parked
-        if (!fb.wakeAt) { fb.wakeAt = now; fb.f0 = frames(std.el); if (__C.DEBUG_ON && rk.indexOf('stg:') === 0) swapPicNote(rk, 'wake', 'wantSwap priLive=' + (priLive ? 1 : 0) + ' dark=' + (fb.dark ? 1 : 0) + ' picDead=' + (fb.picDead ? 1 : 0)); }
+        if (!fb.wakeAt) { fb.wakeAt = now; fb.f0 = frames(std.el); if (__C.DEBUG_ON && isStgKey(rk)) swapPicNote(rk, 'wake', 'wantSwap priLive=' + (priLive ? 1 : 0) + ' dark=' + (fb.dark ? 1 : 0) + ' picDead=' + (fb.picDead ? 1 : 0)); }
         if (mixDeaf && std && std.key) demand(std.via, std.key, std.streamId, true);
         if (stdIsPref && !fb.prefSince) fb.prefSince = now;
         // A DARK-initiated swap (primary transport still alive) demands STRICT
@@ -5510,7 +5558,7 @@
           // A primary that is gone, or shows no picture, is also replaced by a standby whose own picture has started since
           // the wake: a stager who sends no voice still has a copy to show, and waiting on voice that never comes left the
           // stage black (a received stream whose element never decodes stayed up 15 s until the dead-picture rail).
-          : (voiceOnly || ((fb.dark || mixDeaf || u2Over) && priLive) || (!priLive && rk.indexOf('stg:') === 0))
+          : (voiceOnly || ((fb.dark || mixDeaf || u2Over) && priLive) || (!priLive && isStgKey(rk)))
           ? (stdAdvanced || (!voiceOnly && stdPicUp && (!priLive || !(pri.el && pri.el.videoWidth > 0))))
           : ((frames(std.el) > fb.f0 || (std.el && std.el.videoWidth > 0 && now - fb.wakeAt > 1500)) && (!priLive || stdRecent));
         // A dead-or-dark primary swaps the moment the standby flows; a live one
@@ -5523,7 +5571,7 @@
         // still waits. The timer itself is unchanged.
         const firstPref = !!(stdIsPref && !priIsPref && !fb.hadPref && (!pref || fb.left !== pref.from));
         const settled = !priLive || fb.dark || mixDeaf || mixBack || upBack || fb.picDead || u2Over || firstPref || ((now - fb.prefSince >= MOS_SETTLE) && (now - fb.lastSwitch >= MOS_SETTLE));
-        if (__C.DEBUG_ON && !(flowing && settled) && rk.indexOf('stg:') === 0) swapPicNote(rk, 'hold', 'flowing=' + (flowing ? 1 : 0) + ' settled=' + (settled ? 1 : 0) + ' f0=' + fb.f0 + ' stdAdv=' + (stdAdvanced ? 1 : 0) + (keepPic ? ' keepPic=1' : ''));
+        if (__C.DEBUG_ON && !(flowing && settled) && isStgKey(rk)) swapPicNote(rk, 'hold', 'flowing=' + (flowing ? 1 : 0) + ' settled=' + (settled ? 1 : 0) + ' f0=' + fb.f0 + ' stdAdv=' + (stdAdvanced ? 1 : 0) + (keepPic ? ' keepPic=1' : ''));
         if (flowing && settled) {
           const old = pri;
           // The copy left because it failed (dark, picture dead) is not the next failback.
@@ -5531,9 +5579,9 @@
           mosIn.set(rk, std); mosStandby.delete(rk); pri = std; std = null; stgFoNote(rk, 'swap', pri.via, 'flowing=' + (flowing ? 1 : 0) + ' dark=' + (fb.dark ? 1 : 0) + ' priLive=' + (priLive ? 1 : 0) + ' picDead=' + (fb.picDead ? 1 : 0) + ' u2=' + (u2Over ? 1 : 0));
           // My new source may still hold my old copy of this feed: its source is gone, and it looks
           // alive for 12 s, so that seat would fail back onto it. End it.
-          if (rk.indexOf('stg:') === 0 && mosJobs.has(rk + '>' + pri.via)) unshipMos(rk + '>' + pri.via, true);
+          if (isStgKey(rk) && mosJobs.has(rk + '>' + pri.via)) unshipMos(rk + '>' + pri.via, true);
           // A share on the new path: seats below me need a key frame to decode my new source, so ask now.
-          if (rk.indexOf('stg:') === 0 && pri.stream && pri.stream.getVideoTracks().length) { try { kfNeed(rk); } catch (e) {} }
+          if (isStgKey(rk) && pri.stream && pri.stream.getVideoTracks().length) { try { kfNeed(rk); } catch (e) {} }
           pri.deadAt = 0; fb.lastSwitch = now; fb.wakeAt = 0; fb.prefSince = 0; fb.pvB = -1; fb.pvAt = 0;
           fb.mixLeftAt = mixDeaf ? now : 0; // L49: this row left its head's pipe for a silent mix (mixBack)
           fb.upLeftAt = (upPid && old.via === upPid && !anchorAnswers()) ? now : 0; // L50.4.2: this head left its silent anchor's copy for a stand-in's (upBack)
@@ -5548,11 +5596,14 @@
       // GRACE teardown: a dead primary whose standby never materialized/flowed.
       if (pri && !inCand(pri) && pri.deadAt && now - pri.deadAt > MOS_GRACE) { dropMosIn(rk); pri = null; repaintRedun(rk, null); }
       // A copy flows only while its sender holds the feed (stgCarry).
-      if (rk.indexOf('stg:') === 0) {
+      if (isStgKey(rk)) {
         // Every pass: a stopped copy is restored even after this slot's state was rebuilt.
         // A relayed track whose source stopped sends silence with every packet, so nobody below
-        // can tell. Dark or gone, my copies of it stop; they start again with my next flowing claim.
-        if (pri && (fb.dark || !inCand(pri) || stgStale(rk))) stgCarry(rk, false, pri); else stgCarry(rk, true);
+        // can tell. Dark or gone, my copies of a PERSON stop; they start again with my next flowing claim.
+        // A screen is not judged dark (a still one sends nothing): it stops only when the claim is
+        // gone or the share has ended.
+        if (isScrKey(rk)) { if (pri && (!inCand(pri) || stgEnded(rk))) stgCarry(rk, false, pri); else stgCarry(rk, true); }
+        else if (pri && (fb.dark || !inCand(pri) || stgStale(rk))) stgCarry(rk, false, pri); else stgCarry(rk, true);
       }
       if (!cand.length) { mosFb.delete(rk); return; }
       // DEMAND — the ONE-PIPE law: only the primary moves bits. The standby is
@@ -5589,8 +5640,8 @@
       // One read per pass: the call parks a stale wake as it answers, so a
       // second read would see the state the first one just changed.
       const priGone = !!(pri && !inCand(pri));
-      const stdHot = standbyStaysHot(fb, now, WAKE_MAX, std ? std.via + '|' + std.streamId : null, rk.indexOf('stg:') === 0 ? STG_ZERO_MS : 0, priGone && rk.indexOf('stg:') === 0);
-      if (fb.suspect && fb.suspectAt === now && __C.DEBUG_ON && rk.indexOf('stg:') === 0) swapPicNote(rk, 'wake-failed', 'standbyStaysHot: wake stale, standby never flowed');
+      const stdHot = standbyStaysHot(fb, now, WAKE_MAX, std ? std.via + '|' + std.streamId : null, rk.indexOf('stg:') === 0 ? STG_ZERO_MS : 0, priGone && isStgKey(rk));
+      if (fb.suspect && fb.suspectAt === now && __C.DEBUG_ON && isStgKey(rk)) swapPicNote(rk, 'wake-failed', 'standbyStaysHot: wake stale, standby never flowed');
       if ((fb.suspect && fb.suspectAt === now) || fb.goneTriedAt === now) schedReconcile(); // a wake just failed: the next pass picks the next candidate
       const hot = new Set();
       const primSet = new Set(); // the copy I play and relay on: a duty to its sender, not a spare (demand)
@@ -5598,14 +5649,14 @@
       if (std && stdHot && !mosHeld(std)) hot.add(std.via + '|' + std.streamId);
       // A standby woken because my primary is gone or dark is the copy I am about to play, not a spare: its sender
       // must not refuse it to shed load (L29.2), or the slot stays silent until the grace re-claims that same copy.
-      if (std && stdHot && rk.indexOf('stg:') === 0 && (priGone || fb.dark)) primSet.add(std.via + '|' + std.streamId);
+      if (std && stdHot && isStgKey(rk) && (priGone || (fb.dark && !isScrKey(rk)))) primSet.add(std.via + '|' + std.streamId);
       const picOnly = new Set(); // a held feed is parked for its picture only: its voice keeps flowing (demand vOnly)
       if (pri && inCand(pri) && mosHeld(pri)) picOnly.add(pri.via + '|' + pri.streamId);
       if (std && stdHot && mosHeld(std)) picOnly.add(std.via + '|' + std.streamId);
       if (std && u2Over) hot.add(std.via + '|' + std.streamId);
       // A standby that feeds a copy someone plays stays hot (a picture-only park keeps the job active), and is my
       // primary's duty to its sender while that receiver plays it as its own primary (chainDemandUp).
-      if (std && (rk.indexOf('stg:') === 0 || rk === 'sgs')) for (const job of mosJobs.values()) if (job.active && job.upKey === rk && stgFedBy(job, std)) { hot.add(std.via + '|' + std.streamId); if (job.prim) primSet.add(std.via + '|' + std.streamId); }
+      if (std && (isStgKey(rk) || rk === 'sgs')) for (const job of mosJobs.values()) if (job.active && job.upKey === rk && stgFedBy(job, std)) { hot.add(std.via + '|' + std.streamId); if (job.prim) primSet.add(std.via + '|' + std.streamId); }
       // YOU CANNOT CLAIM WHAT YOU HAVE TOLD THE SENDER NOT TO SEND.
       //
       // With no primary, `hot` was EMPTY, so every announcer for this slot was
@@ -5747,7 +5798,7 @@
     yield 2183; // what the stage element shows: 'self' | 'screen' | 'strip' (stageFacesForTest)
     function selfStageStream() {
       const st = __C.meTile && __C.meTile.video && __C.meTile.video.srcObject;
-      // A share from the Row: my Row tile is the camera, my Stage is the screen.
+      // The stage picture is my camera (blur baked in). The screen is its own feed.
       const vt = (0, /*()*/__C.shareOnlyStage)('me') ? stageVideoTrack() : (st && st.getVideoTracks()[0]);
       if (!vt || vt.readyState === 'ended') { selfStageSt = null; return null; }
       // CACHED BY TRACK IDENTITY: paintStageStrip re-assigns srcObject whenever
@@ -5812,6 +5863,11 @@
       }
       const v = el.querySelector('video');
       if (!(typeof wkHolds === 'function' ? wkHolds(v, stream) : v.srcObject === stream)) { if (typeof wkBindVideo === 'function') wkBindVideo(v, stream); else v.srcObject = stream; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); stripChanged = true; }
+      // A featured screen wears the receiver blur here. The faces strip does not: each face cell already has its own.
+      const scrBl = (stream && stream._scrBlur) | 0;
+      v.classList.toggle('blur1', scrBl === 1);
+      v.classList.toggle('blur2', scrBl === 2);
+      if (scrBl) { try { blurSized(v); } catch (e) {} }
       // NAME THE SHARE. A composited strip carries no attribution of its own —
       // the burned overlay names each face, but a shared screen's pixels are
       // somebody's spreadsheet, with nothing on them to say whose window this
@@ -5937,7 +5993,7 @@
         const localShare = !!(__C.myStatus.scr && __C.screenStream);
         if (mosJobs.size || mosIn.size || mosStandby.size || prodPack || roomPack || sdView || downFolds.size || l14Packs.size || stripPack) stopMosaic();
         else if (compOf.size && !localShare) { (0, /*()*/__V.paintStadiumTile)(null); paintStageStrip(null); }
-        if (localShare) paintStageStrip(selfStageStream());
+        if (localShare) paintStageStrip(myScreenStream() || selfStageStream());
         return;
       }
       claimMos();
@@ -5958,6 +6014,13 @@
       // The Stage is me and nobody else ⇒ every strip in this sweep is a
       // composite of my own face, and I must not WATCH it (selfStageStream).
       const soloSelf = amStager && stagers.length === 1;
+      // A view that shows the screen somewhere else (the embed's share tab) leaves the stage element as faces.
+      // view.js does not set this; an unset name stays falsy, so the meeting page is unchanged.
+      let stageElsewhere = false;
+      try { stageElsewhere = typeof __V.stageScreenElsewhere !== 'undefined' && !!__V.stageScreenElsewhere; } catch (e) { stageElsewhere = false; }
+      const soloFace = soloSelf ? selfStageStream() : null;
+      const soloScreen = soloSelf && !stageElsewhere && (0, /*()*/__C.sharingScreen)(__C.myId) ? myScreenStream() : null;
+      const selfShow = soloScreen || soloFace;
       // { el, stream } for a cell: my own live view, a claimed mosaic feed, or a
       // directly-linked peer. Stream carries the audio the fold sums; el is the
       // drawImage source (a <video> or a nested composite's <canvas>).
@@ -6016,36 +6079,31 @@
       // stageDirect refuses the self seat. soloSelf already covers "only me".
       // This is the sharer beside other faces.
       const myScreenBeside = () => {
+        if (stageElsewhere) return null;
         if (stagers.length < 2) return null;
         if (stageScreenSid() !== __C.myId) return null;
-        return selfStageStream();
+        return myScreenStream();
       };
       const stageDirect = () => {
+        if (stageElsewhere) return null;
         const sid = stageScreenSid();
         if (!sid) return null;
-        // My own screen is selfStageStream's job; a FACE stays on the strip,
-        // whose square crop is a deliberate choice about what a face is.
+        // My own screen is myScreenBeside's job; a FACE stays on the strip.
         if (sid === __C.myId || !(0, /*()*/__C.sharingScreen)(sid)) return null;
-        // An admin turned this sharer's video off. An honest sharer has already
-        // stopped (enforceForcedCam); a defiant one is shown by nobody honest.
-        // The strip stands, and its compositor paints that cell dark.
-        if ((0, /*()*/__C.forcedCamOff)(sid) || (typeof __C.shareBlocked === 'function' && (0, /*()*/__C.shareBlocked)(sid))) return null;
-        // A moderator blurred this sharer. The raw feed would show it clear,
-        // and the share bit is the sender's own claim; the strip stands, with
-        // the blur baked into that cell.
-        if ((0, /*()*/__C.modBlurOn)(sid)) return null;
-        // THE STG FEED OR THE STRIP, NEVER THE ROW VIDEO. A stager's row
-        // senders park (refreshOutbound), so their row <video> holds the last
-        // camera frame and never the screen. The share's status can arrive
-        // before the stg feed does, and in that gap a viewer's Stage showed
-        // the sharer's frozen camera picture labelled as their screen. The
-        // stg feed is the one that carries the screen.
-        const sc = srcFor(sid, 'stg:' + sid, true);
+        // No picture: an admin turned the video off, or the share is blocked.
+        // The blur is NOT baked into the strip any more, so it rides the element
+        // that plays this screen (paintStageStrip reads _scrBlur).
+        const mod = screenModFor(sid);
+        if (mod.dark) return null;
+        // THE SCREEN FEED, NEVER THE ROW VIDEO AND NEVER THE FACE. The share's
+        // status can arrive before 'scr:' does; in that gap the strip (faces) stands.
+        const sc = srcFor(sid, 'scr:' + sid, true);
         // A HELD decoder keeps the direct screen: the sweep parks the feed to restart a sink that never started (this strip), and the decoder has no pixels while parked. Falling back to the composite re-bound the strip mid-park and back after the resume, after flow both times, so the park could never cure it.
         if (!sc || !sc.el || !sc.stream || (!sc.el.videoWidth && !sc.el._mosHold)) return null; // no pixels yet — the strip stands, the next sweep switches
         const vt = sc.stream.getVideoTracks ? sc.stream.getVideoTracks()[0] : null;
         if (!vt || vt.readyState === 'ended') return null;
         if (!stageDirectSt || stageDirectSt.getVideoTracks()[0] !== vt) stageDirectSt = new MediaStream([vt]);
+        stageDirectSt._scrBlur = mod.blur;
         return stageDirectSt;
       };
       // Grid tiles of stagers are hidden. When the stage element is the raw
@@ -6535,7 +6593,7 @@
       // per-stager key); at S1 they FLOOD the row+cross mesh (dedup by streamId,
       // exactly like mesh gossip) so every S1 seat holds every stager; each S1
       // seat composites the strip itself and fans it down the SAME tree as 'sd'.
-      const heldStg = [...mosIn.keys()].filter((k) => k.indexOf('stg:') === 0 && !stgEnded(k)); // an ended stage is relayed by no road
+      const heldStg = [...mosIn.keys()].filter((k) => isStgKey(k) && !stgEnded(k)); // an ended stage, and a screen whose share stopped, is relayed by no road
       if (c.pc !== 0 && stripPack) { stripPack.stop(); stripPack = null; } // role-change hygiene: left Section 1
       if (c.pc !== 0) {
         // relay every stage feed I hold (and my own) UP toward Section 1. E2 is the
@@ -6552,7 +6610,7 @@
         // from above and has no face, so it goes down only; up or across it
         // would become a Section 1 standby that fails over to no picture.
         const relayStg = (key, stream, via, h, ao, vp) => {
-          const owner = key.indexOf('stg:') === 0 ? key.slice(4).split('^')[0] : null;
+          const owner = isStgKey(key) ? stgOwner(key) : null;
           const skip = (t) => !t || t === via || (owner && t === owner);
           const hm = vp ? { h, vp } : { h }; // hop count from the producer — claims prefer min-h (see prefCand); vp: the seats this copy came through
           if (!ao && upTgt && !skip(upTgt)) { const jk = shipMos(key, upTgt, stream, hm, key); if (jk) wanted.add(jk); }
@@ -6560,23 +6618,28 @@
           if (!ao) for (const t of e2Up) if (!skip(t) && t !== upTgt) { const jk = shipMos(key, t, stream, hm, key); if (jk) wanted.add(jk); }
           for (const t of e2Kids.concat(e2Fan)) {
             if (!t || (owner && t === owner) || (!ao && t === upTgt)) continue;
-            const dnSt = stgDownShip(key, stream, !!(owner && (0, /*()*/__C.sharingScreen)(owner)), stgAudioMemo);
+            const dnSt = stgDownShip(key, stream, stgAudioMemo);
             if (dnSt) { const jk = shipMos(key, t, dnSt, stgDownMeta(hm, dnSt, stream), key); if (jk) wanted.add(jk); }
           }
           // and DOWN: the strip is video-only — the per-stager feeds must
-          // reach EVERY subtree so Stage audio can fold at each ear.
+          // reach EVERY subtree so Stage audio can fold at each ear. A screen goes down whole.
           const dnP = (0, /*()*/__C.occPid)(T.down(c));
           if (dnP && !skip(dnP) && dnP !== upTgt) {
-            const dnSt = stgDownShip(key, stream, !!(owner && (0, /*()*/__C.sharingScreen)(owner)), stgAudioMemo);
+            const dnSt = stgDownShip(key, stream, stgAudioMemo);
             if (dnSt) { const jk = shipMos(key, dnP, dnSt, stgDownMeta(hm, dnSt, stream), key); if (jk) wanted.add(jk); }
           }
         };
-        if (amStager) { const st = mySelfStream(); if (st) relayStg('stg:' + __C.myId, st, null, 0); }
+        if (amStager) {
+          const st = mySelfStream(); if (st) relayStg('stg:' + __C.myId, st, null, 0);
+          const sc = myScreenStream(); if (sc) relayStg('scr:' + __C.myId, sc, null, 0);
+        }
         // E2 up holds a stager's full feed: a stager gives its row's source a parked copy,
         // and a source that hears the voice-only copy climbs with that parked one.
         if (amStager && seatE2 && !seatE2.u2Id) {
           const src2 = seatE2.e2Src(), st = mySelfStream();
           if (st && src2 && src2 !== __C.myId) { const jk = shipMos('stg:' + __C.myId, src2, st, { h: 0, sb: 1 }, 'stg:' + __C.myId); if (jk) wanted.add(jk); }
+          const sc = myScreenStream();
+          if (sc && src2 && src2 !== __C.myId) { const jk2 = shipMos('scr:' + __C.myId, src2, sc, { h: 0, sb: 1 }, 'scr:' + __C.myId); if (jk2) wanted.add(jk2); }
         }
         for (const k of heldStg) {
           const f = mosIn.get(k), sb = mosStandby.get(k);
@@ -6587,11 +6650,11 @@
         if (iAmHead) for (const k of heldStg) { // my row folds at its ears too
           if (stgLost(k)) continue;
           const f = mosIn.get(k);
-          const owner = k.slice(4).split('^')[0];
+          const owner = stgOwner(k);
           for (let j = 1; j < C; j++) {
             const mate = (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: j });
             if (!mate || mate === f.via || mate === owner) continue; // never back to the sender, never to the stager itself
-            const earSt = stgDownShip(k, f.stream, (0, /*()*/__C.sharingScreen)(owner), stgAudioMemo);
+            const earSt = stgDownShip(k, f.stream, stgAudioMemo);
             if (!earSt) continue;
             const jm = shipMos(k, mate, earSt, stgDownMeta({ h: stgHop(f), vp: stgPath(f) }, earSt, f.stream), k); if (jm) wanted.add(jm);
           }
@@ -6620,7 +6683,7 @@
         // A second-root copy is visited with no stream too, so a copy a receiver plays is kept (stgRootHold).
         const floodOne = (key, stream, via, h, vp, upKey) => {
           if (stream) { if (flooded.has(stream.id)) return; flooded.add(stream.id); } else if (!upKey) return;
-          const owner = key.indexOf('stg:') === 0 ? key.slice(4).split('^')[0] : null;
+          const owner = isStgKey(key) ? stgOwner(key) : null;
           const pipesNow = (0, /*()*/__C.pipePeers)();   // SUB.4: a feed from a pipe's side never goes back over that pipe (below)
           const skip = (t) => !t || (owner && t === owner) || (!!upKey && !!vp && vp.indexOf(vpId(t)) >= 0);
           const up = upKey || key;
@@ -6637,21 +6700,24 @@
             (t) => { const q = __C.peers.get(t); return !!(q && q.pc && q.connected); }) : null;
           const hmSb = { h, sb: 1 };
           // SUB.4.1: a free pipe hears the Stage inside its one mix (the pipes loop above), so no stage feed is shipped to it
-          for (const t of s1peers) { if (owner && pipesNow.indexOf(t) >= 0 && (__C.pipeStg.get(owner) === t || mosAnn.has(t + '|' + key) || !(0, /*()*/__C.pipeVideo)(t))) continue; if (owner !== __C.myId && relayHeldForTest(key, t)) continue; if (oneRootSkipForTest(owner, t, s1peers)) continue; const s = pick(t); if (!s) continue; const jk = shipMos(key, t, s.st, (direct && !direct.has(t)) ? hmSb : s.m, up); if (jk) wanted.add(jk); }
-          const dnP = (0, /*()*/__C.occPid)(T.down(c)); // and DOWN — Stage audio folds at every ear
+          for (const t of s1peers) { if (owner && pipesNow.indexOf(t) >= 0 && (__C.pipeStg.get(owner) === t || mosAnn.has(t + '|' + key) || (!isScrKey(key) && !(0, /*()*/__C.pipeVideo)(t)))) continue; if (owner !== __C.myId && relayHeldForTest(key, t)) continue; if (oneRootSkipForTest(owner, t, s1peers)) continue; const s = pick(t); if (!s) continue; const jk = shipMos(key, t, s.st, (direct && !direct.has(t)) ? hmSb : s.m, up); if (jk) wanted.add(jk); }
+          const dnP = (0, /*()*/__C.occPid)(T.down(c)); // and DOWN — a face is audio, a screen is the whole picture
           const sd = pick(dnP);
           if (sd) {
-            const dnSt = stgDownShip(key, sd.st, !!(owner && (0, /*()*/__C.sharingScreen)(owner)), stgAudioMemo);
+            const dnSt = stgDownShip(key, sd.st, stgAudioMemo);
             if (dnSt) { const jk = shipMos(key, dnP, dnSt, stgDownMeta(sd.m, dnSt, sd.st), up); if (jk) wanted.add(jk); }
           }
           // E2: the rows I back up hold a parked copy.
           for (const t of ((0, /*()*/__C.meshSeat)() ? (0, /*()*/__C.meshSeat)().u2Heirs().concat((0, /*()*/__C.meshSeat)().l14Served()) : [])) {
             const s = pick(t); if (!s) continue;
-            const dnSt = stgDownShip(key, s.st, !!(owner && (0, /*()*/__C.sharingScreen)(owner)), stgAudioMemo);
+            const dnSt = stgDownShip(key, s.st, stgAudioMemo);
             if (dnSt) { const jk = shipMos(key, t, dnSt, stgDownMeta(s.m, dnSt, s.st), up); if (jk) wanted.add(jk); }
           }
         };
-        if (amStager) { const st = mySelfStream(); if (st) floodOne('stg:' + __C.myId, st, null, 0); }
+        if (amStager) {
+          const st = mySelfStream(); if (st) floodOne('stg:' + __C.myId, st, null, 0);
+          const sc = myScreenStream(); if (sc) floodOne('scr:' + __C.myId, sc, null, 0);
+        }
         for (const k of heldStg) {
           const hf = mosIn.get(k);
           if (!stgLost(k)) floodOne(k, hf.stream, hf.via, stgHop(hf), stgPath(hf));
@@ -6659,7 +6725,7 @@
           floodOne(k + STG_ROOT2, sb2 ? sb2.stream : null, sb2 ? sb2.via : null, sb2 ? stgHop(sb2) : 0, sb2 ? stgPath(sb2) : null, k);
         }
         // composite the strip in stage order; fan 'sgs' down my subtree
-        const selfSt = soloSelf ? selfStageStream() : null;
+        const selfSt = selfShow;
         if (!stagers.length) { paintStageStrip(null); }
         else if (soloSelf && !__C.peers.size) {
           // NOBODY TO SHIP IT TO, AND NOBODY BUT ME ON IT. The strip has no
@@ -6690,12 +6756,24 @@
         // blocked sharer the same way. My own cell already carries my blur.
         stagers.forEach((sid, j) => {
           const sc = srcFor(sid, 'stg:' + sid);
-          if (sc && sc.el) {
-            const dark = ((0, /*()*/__C.forcedCamOff)(sid) || (typeof __C.shareBlocked === 'function' && (0, /*()*/__C.shareBlocked)(sid))) ? 1 : 0;
-            const blur = (!dark && sid !== __C.myId && (0, /*()*/__C.modBlurOn)(sid)) ? Math.max(1, (0, /*()*/__C.blurLevelFor)(sid)) : 0;
-            stripPack.setTile(sid, j, sc.el, sc.stream, { n: 1, cols: 1, lbl: (0, /*()*/__C.labelFor)(sid), fit: (0, /*()*/__C.fitFor)(sid), dark, blur });
-            stgKeep.add(sid);
+          const held = mosIn.get('stg:' + sid);
+          const ao = !!(held && held.meta && held.meta.ao);
+          const vt = sc && sc.stream && sc.stream.getVideoTracks ? sc.stream.getVideoTracks()[0] : null;
+          const liveV = !!(vt && vt.readyState !== 'ended' && !ao);
+          // The face cell. dark is the admin's video-off only: a blocked share
+          // darkens the screen sinks, not this face. A camera that is off, or
+          // an audio-only copy, is a named dark cell so the name keeps its place.
+          // fit stays cover: contain was the screen's letterbox, and a face is not a screen.
+          const forced = (0, /*()*/__C.forcedCamOff)(sid) ? 1 : 0;
+          const dark = (forced || !liveV) ? 1 : 0;
+          let el = (sc && sc.el) || null;
+          if (!el) {
+            if (!stripPack._darkEl) { const cv = document.createElement('canvas'); cv.width = 2; cv.height = 2; stripPack._darkEl = cv; }
+            el = stripPack._darkEl;
           }
+          const blur = (!forced && sid !== __C.myId && (0, /*()*/__C.modBlurOn)(sid)) ? Math.max(1, (0, /*()*/__C.blurLevelFor)(sid)) : 0;
+          stripPack.setTile(sid, j, el, (sc && sc.stream) || null, { n: 1, cols: 1, lbl: (0, /*()*/__C.labelFor)(sid), fit: null, dark, blur, pid: sid });
+          stgKeep.add(sid);
         });
         for (const id of stripPack.ids()) if (!stgKeep.has(id)) stripPack.delTile(id);
         const stripIds = stagers.filter((sid) => stgKeep.has(sid)); // the cell order, as packed (ord = stage index)
@@ -6719,11 +6797,11 @@
         // after a round trip up to Section 1 and back down.
         // A shared screen is shown only with every co-presenter on it; the
         // faces are cut out of this very strip (stageFaceSet), else the strip.
-        const deepSelf = soloSelf && selfStageStream();
+        const deepSelf = selfShow;
         const scrSt = deepSelf ? null : (myScreenBeside() || stageDirect());
         const deepFaces = scrSt ? stageFaceSet(stageScreenSid(), stagers, sgs) : null;
         __C.stageViewNow = deepSelf ? 'self' : (deepFaces ? 'screen' : 'strip');
-        paintStageStrip((soloSelf && selfStageStream()) || (deepFaces ? scrSt : null) || sgs.stream);
+        paintStageStrip(deepSelf || (deepFaces ? scrSt : null) || sgs.stream);
         paintStageFaces(deepFaces);
         const dj = shipMos('sgs', (0, /*()*/__C.occPid)(T.down(c)), sgs.stream, stripMeta(sgs)); if (dj) wanted.add(dj);
         if (iAmHead) for (let j = 1; j < C; j++) { const mate = (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: j }); if (mate === sgs.via) continue; const jk = shipMos('sgs', mate, sgs.stream, stripMeta(sgs)); if (jk) wanted.add(jk); }
@@ -6780,7 +6858,7 @@
       for (const [jk, job] of [...mosJobs]) {
         if (wanted.has(jk)) { job.unwantedAt = 0; job.wantCk = ckU; continue; }
         if (!__C.peers.has(job.to) || stgEnded(job.key)) { unshipMos(jk, true); if (stgEnded(job.key)) shipContainers.delete(jk); continue; } // a copy of an ended stage has no flicker to wait out: the beat already waited
-        if (job.wantCk && job.wantCk !== ckU && job.key.indexOf('stg:') !== 0 && job.key !== 'sgs') { unshipMos(jk, true); continue; }
+        if (job.wantCk && job.wantCk !== ckU && !isStgKey(job.key) && job.key !== 'sgs') { unshipMos(jk, true); continue; }
         if (!job.unwantedAt) job.unwantedAt = nowU;
         else if (nowU - job.unwantedAt > MOS_GRACE) unshipMos(jk, true);
       }
@@ -6833,14 +6911,11 @@
     // for what an app cannot be: a deck on your disk, a third-party tool, a
     // window from outside GifOS.
     //
-    // WHERE IT RIDES: nowhere new. Sharing swaps sentVideoTrack()'s answer from
-    // the camera to the display capture and steps onto the Stage — the existing
-    // chosen-≤C broadcast tier, which is exactly "the thing the whole room is
-    // looking at". Collect up the tree to Section 1, composite, fan down: the
-    // Stage path, unchanged, including its E2 redundancy and its
-    // one-pipe/parked-standby law. The only screen-specific bit anywhere is the
-    // gossiped `scr` bit telling the strip compositor to letterbox the cell
-    // instead of cropping it square (mesh-media fitBox).
+    // WHERE IT RIDES: the person's stage feed ('stg:') stays the camera and all
+    // the audio. The screen is its own feed ('scr:<pid>'), video only, on the
+    // same roads: up to Section 1, the S1 flood, down to every seat whole.
+    // Below Section 1 the face goes down audio-only and the screen goes down
+    // whole, so the bandwidth below Section 1 does not grow. The strip is faces.
     //
     // WHY THIS PAGE MAY SIMPLY ASK. Meeting and Broadcast are SYSTEM apps, and
     // a system app is not a sandboxed App GIF: `runtime.js` boot() sees
@@ -9621,6 +9696,24 @@
       modalStack[modalStack.length - 1]();
     }, true);
     function recTouchSource(src) {
+      if (src.screen) {
+        const pid = String(src.key).slice(4);
+        const mod = screenModFor(pid);
+        src.blur = mod.blur;
+        src.camOff = !!mod.dark;
+        src.mute = true;
+        if (pid === __C.myId) {
+          const st = myScreenStream();
+          src.stream = st;
+          if (st && myScreenStream.el && myScreenStream.el.srcObject !== st) myScreenStream.el.srcObject = st;
+          src.video = myScreenStream.el || null;
+        } else {
+          const f = mosIn.get('scr:' + pid);
+          src.stream = f && f.stream;
+          src.video = f && f.el;
+        }
+        return;
+      }
       if (src.fold) {
         const c = compOf.get(src.foldKey);
         if (!c) return;
@@ -9654,7 +9747,8 @@
     }
     // Below Section 1 a stg:X feed arrives audio-only (stgDownShip): the face
     // rides in the received stage strip. Its audio still feeds the mix; the
-    // picture falls back to the strip so the tile is not an empty letter.
+    // picture falls back to the strip (the FACE, not the screen). The screen
+    // is its own source ('scr:').
     function recStageVideo(f) {
       const vts = (f.stream && typeof f.stream.getVideoTracks === 'function') ? f.stream.getVideoTracks() : [];
       for (let i = 0; i < vts.length; i++) if (vts[i] && vts[i].readyState !== 'ended') return f.el;
@@ -9692,6 +9786,46 @@
         if (bus === 'stage') g.stage.push(src);
         else g.stadium.push(src);
       }
+      // The screen is its own stage-bus picture. Skip one whose video track is
+      // already the painted stage element (the meeting page features that screen
+      // in place of the strip, so adding it again would record it twice). Audio
+      // stays on the person's feed: a screen source is mute and has no audio track.
+      const stripHeld = compOf.get('sgs');
+      const stripVt = stripHeld && stripHeld.stream && stripHeld.stream.getVideoTracks ? stripHeld.stream.getVideoTracks()[0] : null;
+      for (const pid of stg) {
+        if (!(0, /*()*/__C.sharingScreen)(pid)) continue;
+        const mod = screenModFor(pid);
+        if (mod.dark) continue;
+        let video = null, stream = null, vt = null;
+        if (pid === __C.myId) {
+          stream = myScreenStream();
+          vt = stream && stream.getVideoTracks()[0];
+          if (!vt || vt.readyState === 'ended') continue;
+          if (!myScreenStream.el) {
+            const hv = document.createElement('video');
+            hv.muted = true; hv.autoplay = true; hv.playsInline = true;
+            hv.setAttribute('playsinline', '');
+            hv.style.cssText = 'position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1';
+            document.body.appendChild(hv);
+            myScreenStream.el = hv;
+          }
+          if (myScreenStream.el.srcObject !== stream) {
+            myScreenStream.el.srcObject = stream;
+            const pr = myScreenStream.el.play(); if (pr && pr.catch) pr.catch(() => {});
+          }
+          video = myScreenStream.el;
+        } else {
+          const f = mosIn.get('scr:' + pid);
+          if (!f || !f.stream) continue;
+          stream = f.stream;
+          vt = stream.getVideoTracks && stream.getVideoTracks()[0];
+          if (!vt || vt.readyState === 'ended') continue;
+          video = f.el || null;
+        }
+        if (stripVt && vt === stripVt) continue;
+        const name = pid === __C.myId ? (0, /*()*/__C.myName)() : ((__C.peers.get(pid) || {}).name || (0, /*()*/__C.displayName)(pid) || '');
+        g.stage.push({ key: 'scr:' + pid, video: video, label: name + ' — screen', blur: mod.blur, stream: stream, bus: 'stage', screen: true, camOff: false, mute: true });
+      }
       recSrcCache = { g: g, all: g.stage.concat(g.row, g.stadium) };
       __C.recSrcDirty = false;
       return g;
@@ -9718,6 +9852,7 @@
         const votes = dg && dg.votes;
         if (votes) for (let i = 0; i < votes.length; i++) parts.push('v' + (votes[i].tgt || '') + ':' + (votes[i].up || 0) + ':' + (votes[i].dn || 0));
         for (const [k, fold] of compOf) parts.push('f' + k + ':' + ((fold && fold.streamId) || '') + ':' + ((fold && fold.cnt) || 0));
+        try { parts.push('scr:' + ((0, /*()*/__C.screenSharers)() || []).join(',')); } catch (e2) {}
         const sig = parts.join('|');
         if (sig !== __C.recStructSig) { __C.recStructSig = sig; __C.recSrcDirty = true; }
       } catch (e) { __C.recSrcDirty = true; }
@@ -10795,7 +10930,7 @@
     }
     return __L.END;
   }
-  var api = { name: "media", run: part, count: 695, exports: {"AVATAR_H":0,"AVATAR_W":0,"CC_ENGINE_KEY":0,"CC_TRANSLATE_KEY":0,"CC_WHISPER_ANYWAY_KEY":0,"CC_WORDS_KEY":0,"STAGE_FACE_PX":0,"STAGE_FACE_SETTLE_MS":0,"WEBKIT_TILE":0,"WHISPER_APP_ID":0,"WHISPER_SEED_KEY":0,"WSP_CHIP_MS":0,"WSP_STARVE_MS":0,"WSP_STARVE_N":0,"WSP_STARVE_WIN":0,"WSP_TICK_MS":0,"WSP_WEAK":0,"acClockInfo":1,"adapt":1,"applyBuses":1,"applyCcAll":1,"applyGrid":1,"applyRecoverMedia":1,"armAudioKeepAlive":1,"armWhisperRescan":1,"attachLocalTracks":1,"audioKickArmed":0,"avHold":0,"avatarPipe":0,"avatarSharp":0,"blockedAudio":0,"blurDraw":1,"blurPipe":0,"blurSenderFrac":1,"blurSized":1,"blurViewFrac":1,"botVoiceTrack":0,"browserCaptionsMissing":1,"callStateBox":0,"camChooserAnchor":0,"camChooserOpen":1,"camDeviceId":0,"camFacing":0,"camIdleT":0,"camPickThen":0,"camTrackForTest":1,"camVideoConstraints":1,"canRaiseHand":1,"canScreenRecord":0,"canScreenShare":0,"capsRunningNow":1,"carryVoiceTrack":0,"ccDefGroup":0,"ccEngine":1,"ccMix":0,"ccMixStop":1,"ccMixSync":1,"chainDemandUp":1,"claimMos":1,"clk":0,"clockSample":1,"closeCamChooser":1,"closeMicChooser":1,"compFps":1,"compOf":0,"ctScreenTrack":1,"dbgMeterSources":1,"dbgRowFaces":0,"degOf":0,"dismissCamChooser":1,"displayCount":1,"downFolds":0,"downStreams":0,"dropEndedRemoteTracks":1,"dropMosIn":1,"dropStandby":1,"earState":1,"endSongOnStepDown":1,"facesOnScreen":1,"gdOverride":0,"gridApplied":0,"gumRefused":1,"gumWithMicFallback":1,"headLinkUp":1,"headSendsStale":1,"headerCount":1,"hearState":1,"heardStage":1,"holdMainVideo":1,"installWhisper":1,"keepAwake":1,"keepMeetingAudio":1,"kfNeed":1,"kickMainAudio":1,"kickMainVideo":1,"kickStageMic":1,"l14Packs":0,"lateMedia":1,"mainAudioTrack":1,"maybeShowFlip":1,"mediaElCensus":1,"micChooserOpen":1,"micTap":1,"mix":0,"mixAc":0,"mosAnn":0,"mosFb":0,"mosIn":0,"mosJobs":0,"mosStandby":0,"normStageFrame":1,"noteAudioDevices":1,"onMeetDeviceChange":1,"openCamChooser":1,"openKeys":1,"openModal":1,"packLoop":0,"paintStageStrip":1,"paintTiming":1,"parkJobVideo":1,"peerAudioTracks":1,"phoneCaptions":1,"pickCamera":1,"pipeDeny":0,"pipeJobs":0,"playTileVideo":1,"poke":1,"prodPack":0,"qaStageSt":0,"quietAtDoor":1,"rbStart":1,"reactSing":1,"recDefaultQuality":1,"recDownload":1,"recDraw":0,"recFileName":1,"recLibraryOption":1,"recMatchMix":0,"recMode":0,"recNoteStruct":1,"recQuality":0,"recRec":0,"recRelease":1,"recScopeSources":1,"recSources":1,"recStarting":0,"reconcileMosaic":1,"recoverShareTimer":0,"refreshOutbound":1,"refreshTrBtn":1,"regrabCamera":1,"releaseAudio":1,"rememberMix":1,"resumeReload":1,"retireMixTracks":1,"reviveCamera":1,"roomPack":0,"schedClaim":1,"schedReconcile":1,"sdView":0,"sdViewSt":0,"sentVideoTrack":1,"setJobActive":1,"setStageFrame":1,"shareRecoverMode":0,"shipContainers":0,"shipTracks":1,"shownPeerCount":1,"soundHeld":1,"speakerChoices":1,"speech":0,"speechGaveUp":0,"speechProved":0,"speechRunning":1,"spkDeviceId":0,"stageAudible":1,"stageEar":0,"stageEarFoldPeak":1,"stageEarLiveTrack":1,"stageEarRawPeak":1,"stageFeedShows":1,"stageFrameVal":0,"stagedSelfWas":0,"startLocalView":1,"startRec":1,"startScreenShare":1,"startWhisper":1,"stashRecoverMedia":1,"stgBeatIn":1,"stgLost":1,"stgStale":1,"stopBlurPipe":1,"stopScreenShare":1,"stopSpeech":1,"stopWhisper":1,"stripPack":0,"stubDuties":1,"syncAvatarFeed":1,"syncSpeech":1,"tileHolds":1,"toggleSing":1,"trEnSync":1,"trackAspect":1,"trackQ":0,"transcriptFile":1,"tuneCfg":1,"unshipMos":1,"wakeLock":0,"warnRecorderNewApp":1,"whisperAllowed":0,"whisperChosen":0,"whisperInstalling":0,"whisperRescan":0,"whisperSeedBlocked":1,"whisperSupported":1,"withScrPipe":1,"wkBindVideo":1,"wkEar":0,"wkFwdCopies":0,"wkFwdNeeded":1,"wkHolds":1,"wkQuietBind":1,"wkRemoteTrack":1,"wsp":0,"wspCaps":0,"wspChip":0,"wspChipGone":1,"wspChipRoom":0,"wspEnqueue":1,"wspInst":0,"wspModel":1,"wspPaintSafe":1,"wspPaused":0,"wspQ":0,"wspRebind":1,"wspRelease":1,"wspResume":1,"wspRetry":1,"wspSource":1,"wspStSig":0,"wspStarved":0,"wspState":1,"wspStateText":1,"wspStop":1,"wspSync":1,"wspTickAt":0,"wspToBrowser":1,"wspWorking":0}, needs: {"core":{"leaving":0,"localStream":0,"capClone":1,"WK_H264_BLIND":0,"nameInitial":1,"shareBlocked":0,"turnLinks":0,"turnFacts":0,"myId":0,"rowFaceDark":0,"myName":0,"blurLevelFor":1,"mediaOk":0,"relayVia":0,"displayName":1,"myStatus":0,"stageIds":0,"statusOf":0,"screenStream":0,"sharingScreen":0,"BROADCAST":0,"bcMayPublishAv":1,"rbNow":0,"mayShareScreen":0,"outgoingHeld":0,"bcRole":1,"peers":0,"meTile":0,"camPeer":0,"clog":0,"micPeer":0,"renegotiate":1,"rosterIds":0,"knownTotal":1,"rosterTiles":0,"updateTile":1,"updateStatus":1,"meshSeat":0,"meshNode":0,"roomDig":1,"roomPastSection":0,"SCALE":0,"powNow":0,"IS_MOBILE":0,"powDials":0,"setStatus":0,"uiText":1,"stHold":0,"seatDark":0,"forcedCamOff":0,"vqRung":0,"rung":0,"LADDER":0,"stageCeilingKbps":1,"screenCeilingKbps":1,"stageSenders":0,"auxSenders":0,"lowSenders":0,"net":0,"meterFor":1,"sayState":0,"IS_ANDROID":0,"botParks":1,"visParkSent":0,"dcSend":0,"hasPendingTx":0,"ensureAc":1,"ac":0,"newMeetAudioContext":1,"occPid":0,"pipePeers":1,"preferHwVideo":1,"modOf":1,"stageSeats":0,"digLists":0,"stageHeldAt":0,"stageFeedAt":0,"stageViewNow":0,"kfAsker":0,"addAux":0,"isStageJob":0,"auxDrop":1,"stopAuxTx":1,"DEBUG_ON":0,"modBlurOn":0,"meshCoord":0,"speakingOf":0,"rowMixTalkAt":0,"isPipePeer":0,"subWant":0,"myIdentity":0,"labelFor":0,"iAmWaiting":1,"peerWaits":1,"fitFor":0,"pipeVideo":0,"pipeStg":0,"STAGE_FPS":0,"stageCell":1,"STAGE_MAXW":0,"stageFps":1,"freshSt":0,"pwBlocked":0,"bannedOut":0,"mediaJoined":0,"RECOVER_MEDIA_KEY":0,"updateRoomKey":0,"bcHostStored":0,"paintOnAir":1,"broadcastStatus":1,"updateMediaSession":1,"screenSteppedUp":0,"setStage":1,"refreshAllTiles":1,"rbCap":0,"rbLength":1,"rbTracks":1,"rbDrop":1,"bcSeeding":0,"releaseLeaveAsk":1,"rbStop":1,"rbNoun":0,"serviceHeard":0,"rowMates":0,"isHeld":1,"botHidden":1,"TIMING_KEY":0,"digStageEntry":0,"rosterNames":0,"foldName":1,"canStage":0,"lsGet":0,"CC_ON_PHONE":0,"meters":0,"myVoiceAt":0,"lsSet":0,"ccLocalQ":0,"CC_LANG_KEY":0,"trEnOn":0,"capSend":1,"trLangOf":0,"addTranscriptLine":1,"capEarsOnly":1,"capTrust":0,"trLang":1,"trKeeps":1,"trEnOnlyEnglish":1,"capSpotQueue":1,"capPublish":1,"trForget":1,"ccLang":0,"trDrops":0,"capTraceGate":1,"myVoiceFrom":0,"trLangKnown":1,"myVoiceSinceFinal":0,"ccDevNotice":1,"trEchoHeld":1,"ccShow":0,"trBlocks":1,"trNote":1,"modTable":0,"setMod":1,"AI_SPARK_SVG":0,"chatOpen":0,"room":0,"recRoomWord":1,"bcLastService":0,"BC_INTENT":0,"recSrcDirty":0,"recStructSig":0,"bcKeepUserStop":0,"amGloballyMuted":1,"micLockWords":1,"capClosed":0,"bcWatchingViewer":1,"enforceBroadcastSeat":1,"lateAsk":0,"lateWant":0,"bootGumPending":0,"reactRoomState":1,"camOnWords":1,"statusWords":0,"lateGen":0,"lateWon":0,"lateTimer":0,"LATE_ASK_MS":0,"carryOutAc":0,"blurLevel":0,"setPersonalBlur":1,"carryHosts":0,"carryG":0,"meOnStage":1,"shareOnlyStage":1,"personOnStage":1,"seatSelfLeased":0,"mainVideoChoice":1,"outboundPlan":1,"stageFeedVideo":1,"stageVideoChoice":1,"participantCount":1,"deepInView":1,"isRedun":0,"onStageNow":1,"screenSharers":0,"roomSingOn":0,"singOf":0,"capCovered":1,"trWrites":1,"idleNow":0,"lastActive":0,"lastQ":0,"MP":0,"battNow":0,"micGrabbing":0,"micWant":0,"micMode":0,"micUnmuteAfter":0,"micPickPrev":0,"pipeEnabled":0,"MPipe":0,"stgBeats":0,"STG_VP_MAX":0,"swapPicLast":0,"swapPicHoldAt":0,"swapPicRing":0,"STG_BEAT_STALE_MS":0,"STG_BEAT_SEEN":0,"stgBeatCost":0,"STG_BEAT_MS":0,"timing":0,"whisperReady":0,"planMeasured":1,"reconcileMain":1,"actingHead":1,"inboundPlan":1,"owedStream":1,"BC_SEAT":0,"EMBED":0,"embedHosted":0},"view":{"blurA":0,"blurActx":0,"blurB":0,"blurBctx":0,"paintAvatarCanvas":1,"phoneLayout":1,"showAvatarTrack":1,"stagefeedEl":0,"stadiumEl":0,"showFlipButton":1,"showCamBack":1,"paintSpkBtn":1,"paintStadiumTile":1,"paintControls":1,"showResharePrompt":1,"hideResharePrompt":1,"paintShare":1,"dropStaleShareWin":1,"paintRb":1,"rbCanvas":1,"paintRbNow":1,"paintFaders":0,"timingRow":0,"paintWspChip":1,"paintCcState":1,"paintTxMark":1,"capCardRefresh":1,"paintWspStatus":1,"paintCcView":1,"showCaption":1,"ccDockBtn":0,"hideCaptions":1,"renderTranscript":1,"renderChat":1,"chatPanel":0,"paintChatBtn":1,"paintRoomTrust":1,"showServiceEnded":1,"showRecReplay":1,"recBtn":0,"showRecOptions":1,"roomAudioOn":1,"micBtn":0,"placeDockPopover":1,"unmuteBtn":0,"camBtn":0,"topNameModal":1,"handBtn":0,"chatPanelOpen":1,"keysModal":0,"syncModalFocus":1,"paintStagePlate":1,"layout":1}}, stamp: "d49d42da" };
+  var api = { name: "media", run: part, count: 695, exports: {"AVATAR_H":0,"AVATAR_W":0,"CC_ENGINE_KEY":0,"CC_TRANSLATE_KEY":0,"CC_WHISPER_ANYWAY_KEY":0,"CC_WORDS_KEY":0,"STAGE_FACE_PX":0,"STAGE_FACE_SETTLE_MS":0,"WEBKIT_TILE":0,"WHISPER_APP_ID":0,"WHISPER_SEED_KEY":0,"WSP_CHIP_MS":0,"WSP_STARVE_MS":0,"WSP_STARVE_N":0,"WSP_STARVE_WIN":0,"WSP_TICK_MS":0,"WSP_WEAK":0,"acClockInfo":1,"adapt":1,"applyBuses":1,"applyCcAll":1,"applyGrid":1,"applyRecoverMedia":1,"armAudioKeepAlive":1,"armWhisperRescan":1,"attachLocalTracks":1,"audioKickArmed":0,"avHold":0,"avatarPipe":0,"avatarSharp":0,"blockedAudio":0,"blurDraw":1,"blurPipe":0,"blurSenderFrac":1,"blurSized":1,"blurViewFrac":1,"botVoiceTrack":0,"browserCaptionsMissing":1,"callStateBox":0,"camChooserAnchor":0,"camChooserOpen":1,"camDeviceId":0,"camFacing":0,"camIdleT":0,"camPickThen":0,"camTrackForTest":1,"camVideoConstraints":1,"canRaiseHand":1,"canScreenRecord":0,"canScreenShare":0,"capsRunningNow":1,"carryVoiceTrack":0,"ccDefGroup":0,"ccEngine":1,"ccMix":0,"ccMixStop":1,"ccMixSync":1,"chainDemandUp":1,"claimMos":1,"clk":0,"clockSample":1,"closeCamChooser":1,"closeMicChooser":1,"compFps":1,"compOf":0,"ctScreenTrack":1,"dbgMeterSources":1,"dbgRowFaces":0,"degOf":0,"dismissCamChooser":1,"displayCount":1,"downFolds":0,"downStreams":0,"dropEndedRemoteTracks":1,"dropMosIn":1,"dropStandby":1,"earState":1,"endSongOnStepDown":1,"facesOnScreen":1,"gdOverride":0,"gridApplied":0,"gumRefused":1,"gumWithMicFallback":1,"headLinkUp":1,"headSendsStale":1,"headerCount":1,"hearState":1,"heardStage":1,"holdMainVideo":1,"installWhisper":1,"keepAwake":1,"keepMeetingAudio":1,"kfNeed":1,"kickMainAudio":1,"kickMainVideo":1,"kickStageMic":1,"l14Packs":0,"lateMedia":1,"mainAudioTrack":1,"maybeShowFlip":1,"mediaElCensus":1,"micChooserOpen":1,"micTap":1,"mix":0,"mixAc":0,"mosAnn":0,"mosFb":0,"mosIn":0,"mosJobs":0,"mosStandby":0,"normStageFrame":1,"noteAudioDevices":1,"onMeetDeviceChange":1,"openCamChooser":1,"openKeys":1,"openModal":1,"packLoop":0,"paintStageStrip":1,"paintTiming":1,"parkJobVideo":1,"peerAudioTracks":1,"phoneCaptions":1,"pickCamera":1,"pipeDeny":0,"pipeJobs":0,"playTileVideo":1,"poke":1,"prodPack":0,"qaStageSt":0,"quietAtDoor":1,"rbStart":1,"reactSing":1,"recDefaultQuality":1,"recDownload":1,"recDraw":0,"recFileName":1,"recLibraryOption":1,"recMatchMix":0,"recMode":0,"recNoteStruct":1,"recQuality":0,"recRec":0,"recRelease":1,"recScopeSources":1,"recSources":1,"recStarting":0,"reconcileMosaic":1,"recoverShareTimer":0,"refreshOutbound":1,"refreshTrBtn":1,"regrabCamera":1,"releaseAudio":1,"rememberMix":1,"resumeReload":1,"retireMixTracks":1,"reviveCamera":1,"roomPack":0,"schedClaim":1,"schedReconcile":1,"screenFeedTrack":0,"screenModFor":0,"sdView":0,"sdViewSt":0,"sentVideoTrack":1,"setJobActive":1,"setStageFrame":1,"shareRecoverMode":0,"shipContainers":0,"shipTracks":1,"shownPeerCount":1,"soundHeld":1,"speakerChoices":1,"speech":0,"speechGaveUp":0,"speechProved":0,"speechRunning":1,"spkDeviceId":0,"stageAudible":1,"stageEar":0,"stageEarFoldPeak":1,"stageEarLiveTrack":1,"stageEarRawPeak":1,"stageFeedShows":1,"stageFrameVal":0,"stagedSelfWas":0,"startLocalView":1,"startRec":1,"startScreenShare":1,"startWhisper":1,"stashRecoverMedia":1,"stgBeatIn":1,"stgLost":1,"stgStale":1,"stopBlurPipe":1,"stopScreenShare":1,"stopSpeech":1,"stopWhisper":1,"stripPack":0,"stubDuties":1,"syncAvatarFeed":1,"syncSpeech":1,"tileHolds":1,"toggleSing":1,"trEnSync":1,"trackAspect":1,"trackQ":0,"transcriptFile":1,"tuneCfg":1,"unshipMos":1,"wakeLock":0,"warnRecorderNewApp":1,"whisperAllowed":0,"whisperChosen":0,"whisperInstalling":0,"whisperRescan":0,"whisperSeedBlocked":1,"whisperSupported":1,"withScrPipe":1,"wkBindVideo":1,"wkEar":0,"wkFwdCopies":0,"wkFwdNeeded":1,"wkHolds":1,"wkQuietBind":1,"wkRemoteTrack":1,"wsp":0,"wspCaps":0,"wspChip":0,"wspChipGone":1,"wspChipRoom":0,"wspEnqueue":1,"wspInst":0,"wspModel":1,"wspPaintSafe":1,"wspPaused":0,"wspQ":0,"wspRebind":1,"wspRelease":1,"wspResume":1,"wspRetry":1,"wspSource":1,"wspStSig":0,"wspStarved":0,"wspState":1,"wspStateText":1,"wspStop":1,"wspSync":1,"wspTickAt":0,"wspToBrowser":1,"wspWorking":0}, needs: {"core":{"leaving":0,"localStream":0,"capClone":1,"WK_H264_BLIND":0,"nameInitial":1,"shareBlocked":0,"turnLinks":0,"turnFacts":0,"myId":0,"rowFaceDark":0,"myName":0,"blurLevelFor":1,"mediaOk":0,"relayVia":0,"displayName":1,"myStatus":0,"stageIds":0,"statusOf":0,"screenStream":0,"sharingScreen":0,"BROADCAST":0,"bcMayPublishAv":1,"rbNow":0,"mayShareScreen":0,"outgoingHeld":0,"bcRole":1,"peers":0,"meTile":0,"camPeer":0,"clog":0,"micPeer":0,"renegotiate":1,"rosterIds":0,"knownTotal":1,"rosterTiles":0,"updateTile":1,"updateStatus":1,"meshSeat":0,"meshNode":0,"roomDig":1,"roomPastSection":0,"SCALE":0,"powNow":0,"IS_MOBILE":0,"powDials":0,"setStatus":0,"uiText":1,"stHold":0,"seatDark":0,"forcedCamOff":0,"vqRung":0,"rung":0,"LADDER":0,"stageCeilingKbps":1,"screenCeilingKbps":1,"stageSenders":0,"auxSenders":0,"lowSenders":0,"net":0,"meterFor":1,"sayState":0,"IS_ANDROID":0,"botParks":1,"visParkSent":0,"dcSend":0,"hasPendingTx":0,"ensureAc":1,"ac":0,"newMeetAudioContext":1,"occPid":0,"pipePeers":1,"preferHwVideo":1,"modOf":1,"stageSeats":0,"digLists":0,"stageHeldAt":0,"stageFeedAt":0,"stageViewNow":0,"kfAsker":0,"addAux":0,"isStageJob":0,"auxDrop":1,"stopAuxTx":1,"DEBUG_ON":0,"modBlurOn":0,"meshCoord":0,"speakingOf":0,"rowMixTalkAt":0,"isPipePeer":0,"subWant":0,"myIdentity":0,"labelFor":0,"iAmWaiting":1,"peerWaits":1,"fitFor":0,"pipeVideo":0,"pipeStg":0,"STAGE_FPS":0,"stageCell":1,"STAGE_MAXW":0,"stageFps":1,"freshSt":0,"pwBlocked":0,"bannedOut":0,"mediaJoined":0,"RECOVER_MEDIA_KEY":0,"updateRoomKey":0,"bcHostStored":0,"paintOnAir":1,"broadcastStatus":1,"updateMediaSession":1,"screenSteppedUp":0,"setStage":1,"refreshAllTiles":1,"rbCap":0,"rbLength":1,"rbTracks":1,"rbDrop":1,"bcSeeding":0,"releaseLeaveAsk":1,"rbStop":1,"rbNoun":0,"serviceHeard":0,"rowMates":0,"isHeld":1,"botHidden":1,"TIMING_KEY":0,"digStageEntry":0,"rosterNames":0,"foldName":1,"canStage":0,"lsGet":0,"CC_ON_PHONE":0,"meters":0,"myVoiceAt":0,"lsSet":0,"ccLocalQ":0,"CC_LANG_KEY":0,"trEnOn":0,"capSend":1,"trLangOf":0,"addTranscriptLine":1,"capEarsOnly":1,"capTrust":0,"trLang":1,"trKeeps":1,"trEnOnlyEnglish":1,"capSpotQueue":1,"capPublish":1,"trForget":1,"ccLang":0,"trDrops":0,"capTraceGate":1,"myVoiceFrom":0,"trLangKnown":1,"myVoiceSinceFinal":0,"ccDevNotice":1,"trEchoHeld":1,"ccShow":0,"trBlocks":1,"trNote":1,"modTable":0,"setMod":1,"AI_SPARK_SVG":0,"chatOpen":0,"room":0,"recRoomWord":1,"bcLastService":0,"BC_INTENT":0,"recSrcDirty":0,"recStructSig":0,"bcKeepUserStop":0,"amGloballyMuted":1,"micLockWords":1,"capClosed":0,"bcWatchingViewer":1,"enforceBroadcastSeat":1,"lateAsk":0,"lateWant":0,"bootGumPending":0,"reactRoomState":1,"camOnWords":1,"statusWords":0,"lateGen":0,"lateWon":0,"lateTimer":0,"LATE_ASK_MS":0,"carryOutAc":0,"blurLevel":0,"setPersonalBlur":1,"carryHosts":0,"carryG":0,"meOnStage":1,"shareOnlyStage":1,"personOnStage":1,"seatSelfLeased":0,"mainVideoChoice":1,"outboundPlan":1,"stageVideoChoice":1,"participantCount":1,"deepInView":1,"isRedun":0,"onStageNow":1,"screenSharers":0,"roomSingOn":0,"singOf":0,"capCovered":1,"trWrites":1,"idleNow":0,"lastActive":0,"lastQ":0,"MP":0,"battNow":0,"micGrabbing":0,"micWant":0,"micMode":0,"micUnmuteAfter":0,"micPickPrev":0,"pipeEnabled":0,"MPipe":0,"stgBeats":0,"STG_VP_MAX":0,"swapPicLast":0,"swapPicHoldAt":0,"swapPicRing":0,"STG_BEAT_STALE_MS":0,"STG_BEAT_SEEN":0,"stgBeatCost":0,"STG_BEAT_MS":0,"timing":0,"whisperReady":0,"planMeasured":1,"reconcileMain":1,"actingHead":1,"inboundPlan":1,"owedStream":1,"BC_SEAT":0,"EMBED":0,"embedHosted":0,"screenFeedVideo":1,"screenFeedChoice":1},"view":{"blurA":0,"blurActx":0,"blurB":0,"blurBctx":0,"paintAvatarCanvas":1,"phoneLayout":1,"showAvatarTrack":1,"stagefeedEl":0,"stadiumEl":0,"showFlipButton":1,"showCamBack":1,"paintSpkBtn":1,"paintStadiumTile":1,"paintControls":1,"showResharePrompt":1,"hideResharePrompt":1,"paintShare":1,"dropStaleShareWin":1,"paintRb":1,"rbCanvas":1,"paintRbNow":1,"paintFaders":0,"timingRow":0,"paintWspChip":1,"paintCcState":1,"paintTxMark":1,"capCardRefresh":1,"paintWspStatus":1,"paintCcView":1,"showCaption":1,"ccDockBtn":0,"hideCaptions":1,"renderTranscript":1,"renderChat":1,"chatPanel":0,"paintChatBtn":1,"paintRoomTrust":1,"showServiceEnded":1,"showRecReplay":1,"recBtn":0,"showRecOptions":1,"roomAudioOn":1,"micBtn":0,"placeDockPopover":1,"unmuteBtn":0,"camBtn":0,"topNameModal":1,"handBtn":0,"chatPanelOpen":1,"keysModal":0,"syncModalFocus":1,"paintStagePlate":1,"layout":1,"stageScreenElsewhere":0}}, stamp: "d49d42da" };
   (GifOS.coreParts = GifOS.coreParts || {})["media"] = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

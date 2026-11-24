@@ -59,6 +59,7 @@
   "recRec": null,
   "recStarting": false,
   "roomPack": null,
+  "screenFeedTrack": null,
   "sdView": null,
   "shipContainers": {
    "$": "Map"

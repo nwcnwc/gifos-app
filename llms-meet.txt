@@ -172,9 +172,20 @@ Or the plain iframe, with no script:
       allow="autoplay; fullscreen; picture-in-picture" allowfullscreen title="GifOS Broadcast"></iframe>
 
 data-room may also hold the whole viewer link. The player shows a red LIVE
-badge with how many are watching, the title, a big button to unmute (browsers
-only autoplay muted), full screen, and "Watch on GifOS" (opens the broadcast
-in its own tab). Before the broadcast starts or after it ends it says so.
+badge with how many are watching and the title, and a big button to unmute
+(browsers only autoplay muted). Before the broadcast starts or after it ends
+it says so.
+
+The default player is the picture, the LIVE badge (count and title), unmute
+and a settings gear. You choose its rows, in this order: volume (a slider),
+captions (on or off; the row appears once a line has arrived, and stays off
+until the viewer turns them on), tabs (the share picker), inset (show, hide
+or move the Stage picture while a share fills the player), fullscreen, pip
+(picture in picture, when the browser supports it), watch (Watch on GifOS,
+a new tab). Nothing set means volume,fullscreen. all turns every key on.
+none, or an empty value, hides the gear. Unknown keys are ignored. Script:
+data-controls="tabs,inset". Iframe: #room=ROOM&controls=tabs,inset.
+The password prompt and the not-hosted notice always show.
 
 Viewers are ordinary watchers of the broadcast: no camera or microphone is
 ever asked for. The usual door rule holds: a viewer without the room password
