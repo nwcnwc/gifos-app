@@ -80,6 +80,7 @@
   "subscription.pmCodeBad": "Der Code stimmt nicht. Beginnen Sie erneut.",
   "subscription.pmWaiting": "Warten auf das andere Gerät…",
   "subscription.pmSent": "Gesendet. Das andere Gerät kann Ihren Tarif jetzt verwenden.",
+  "subscription.pmUsed": "Dieser Code wurde bereits auf einem anderen Gerät verwendet. Beginnen Sie erneut auf dem Gerät mit Ihrem Plan.",
   "subscription.pmExpired": "Der Code ist abgelaufen. Beginnen Sie erneut.",
   "subscription.pmRecvLead": "Geben Sie diesen Code auf dem Gerät ein, das Ihren Tarif hat",
   "subscription.pmRecvDone": "Fertig: Dieses Gerät verwendet jetzt Ihren Tarif",

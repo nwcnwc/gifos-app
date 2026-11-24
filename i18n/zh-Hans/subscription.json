@@ -80,6 +80,7 @@
   "subscription.pmCodeBad": "代码不匹配。请重新开始。",
   "subscription.pmWaiting": "正在等待另一台设备…",
   "subscription.pmSent": "已发送。另一台设备现在可以使用您的方案。",
+  "subscription.pmUsed": "此代码已在另一台设备上使用。请在有你的套餐的设备上重新开始。",
   "subscription.pmExpired": "代码已过期。请重新开始。",
   "subscription.pmRecvLead": "在持有您方案的设备上输入此代码",
   "subscription.pmRecvDone": "完成：此设备现在使用您的方案",

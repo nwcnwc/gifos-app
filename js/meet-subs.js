@@ -743,7 +743,7 @@
         const opts = moveOptions(j, pmeet && pmeet.room === room ? pmeet.full : null);
         // OVERFLOW 'keep' (an organization's plan): nothing to ask and nothing moves; this meeting runs on the free
         // defaults, with a plain note. The payment service refuses to drop another meeting for such a right anyway.
-        if (!opts.entries.length) { m.moved = 'kept'; if (root.document && root.document.body) { showOverflowNote(opts.keptPlaces); showAway(); } return null; }
+        if (!opts.entries.length) { m.moved = 'kept'; if (root.document && root.document.body) { showOverflowNote(opts.keptPlaces); } return null; }
         if (choose) {
           const pick = await choose(opts).catch(() => null);
           if (meet !== m) return null;
@@ -754,7 +754,7 @@
         j = await post('/gifos/sub/join', await signed('join:' + m.tag, drop ? { meeting: m.tag, drop } : { meeting: m.tag }, m.subId));
         if (meet !== m) return null;
       }
-      if (!j.active) { m.moved = 'inactive'; showAway(); if (lp) passJoin(room, true, true); return null; }   // no paid plan here: the pass alone
+      if (!j.active) { m.moved = 'inactive'; if (lp) passJoin(room, true, true); return null; }   // no paid plan here: the pass alone
       take(j);
       if (lp && !beatsPass(meet.grants, lp.o)) passJoin(room, true, false);   // the pass grants more here: it joins too (if it has a place)
       return m.ticket;
@@ -1470,7 +1470,8 @@
     });
   }
 
-  // This page's plan is powering a different meeting (moved, kept, or inactive). Dismissable.
+  // This page's plan is powering a different meeting (moved, or kept elsewhere by the person's choice). Dismissable.
+  // Not for 'inactive': a lapsed plan is in no meeting, and the Settings line says so.
   function showAway() {
     try {
       if (typeof document === 'undefined' || !document.body || !document.getElementById || !document.createElement) return false;
@@ -1554,6 +1555,15 @@
   function boot() {
     if (booted) return;
     booted = true;
+    // The lobby's link to /subscription (every plan, and moving or restoring yours): drawn here, not in run.html, so
+    // the thin page stays thin. Meet and Broadcast share the lobby.
+    try {
+      const card = document.querySelector('#lobby .lobby-card');
+      if (card && !document.getElementById('lob-plans')) {
+        const a = el('a', { id: 'lob-plans', class: 'lob-plans', href: '/subscription', target: '_blank', rel: 'noopener', 'data-t': 'lobPlans' }, tx('lobPlans', 'Plans and your subscription'));
+        card.appendChild(a);
+      }
+    } catch (e) {}
     wireSubModal();
     keepFresh().catch(() => {});
     resumePending().catch(() => {});

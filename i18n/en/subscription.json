@@ -80,6 +80,7 @@
   "subscription.pmCodeBad": "Code did not match. Start again.",
   "subscription.pmWaiting": "Waiting for the other device…",
   "subscription.pmSent": "Sent. The other device can use your plan now.",
+  "subscription.pmUsed": "This code was already used on another device. Start again on the device that has your plan.",
   "subscription.pmExpired": "The code expired. Start again.",
   "subscription.pmRecvLead": "Type this code on the device that has your plan",
   "subscription.pmRecvDone": "Done: this device now uses your plan",

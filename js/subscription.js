@@ -280,7 +280,9 @@
     var until = Date.now() + P.LIFE_MS;
     function once() {
       return P.put('hello', box, ct).then(function (r) {
-        if (r && (r.ok || r.status === 409)) return;
+        if (r && r.ok) return;
+        // Another device answered this code first: never show or use a code for it (the holder would see a mismatch anyway).
+        if (r && r.status === 409) { var big = $('pm-recv-code'); if (big) big.textContent = ''; throw new Error(t('pmUsed')); }
         if (Date.now() >= until) throw new Error(t('pmExpired'));
         return new Promise(function (res) { setTimeout(res, 400); }).then(once);
       });

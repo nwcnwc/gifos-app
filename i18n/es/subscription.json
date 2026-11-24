@@ -80,6 +80,7 @@
   "subscription.pmCodeBad": "El código no coincide. Empieza de nuevo.",
   "subscription.pmWaiting": "Esperando al otro dispositivo…",
   "subscription.pmSent": "Enviado. El otro dispositivo ya puede usar tu plan.",
+  "subscription.pmUsed": "Este código ya se usó en otro dispositivo. Empieza de nuevo en el dispositivo que tiene tu plan.",
   "subscription.pmExpired": "El código caducó. Empieza de nuevo.",
   "subscription.pmRecvLead": "Escribe este código en el dispositivo que tiene tu plan",
   "subscription.pmRecvDone": "Listo: este dispositivo ya usa tu plan",
