@@ -47,5 +47,11 @@
   "charge.receiptView.licenseOk": "La licencia del plan en este archivo está firmada por gifos.app.",
   "charge.receiptView.subNote": "GifOS Meet y la página de planes encuentran esta suscripción aquí, en Compras. Cualquiera con este archivo puede usar tu suscripción y tus pases: mantenlo en privado.",
   "charge.receiptView.openMeet": "Abrir GifOS Meet",
-  "charge.receiptView.openPlans": "Planes"
+  "charge.receiptView.openPlans": "Planes",
+  "charge.receiptView.legCreator": "Creador ({amount})",
+  "charge.receiptView.legFee": "Comisión de GifOS ({amount})",
+  "charge.receiptView.legTx": "Transacción {k}",
+  "charge.receiptView.paypalTx": "Transacción de PayPal",
+  "charge.receiptView.paypalOrder": "Pedido de PayPal",
+  "charge.receiptView.paypalFind": "Búscalo en tu actividad de PayPal"
 }

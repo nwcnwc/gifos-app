@@ -34,7 +34,11 @@
   const text = (v) => (v instanceof Uint8Array ? new TextDecoder().decode(v) : String(v == null ? '' : v));
   const json = (files, name) => { try { return files[name] != null ? JSON.parse(text(files[name])) : null; } catch (e) { return null; } };
   const fmtUsd = (units) => {
-    try { const n = BigInt(units); const c = n / 10000n; return '$' + (c / 100n) + '.' + String(c % 100n).padStart(2, '0'); } catch (e) { return String(units || ''); }
+    try {
+      const n = BigInt(units);
+      if (n % 10000n !== 0n) return '$' + (n / 1000000n) + '.' + String(n % 1000000n).padStart(6, '0').replace(/0+$/, '');   // a 3% leg of an odd amount, never rounded
+      const c = n / 10000n; return '$' + (c / 100n) + '.' + String(c % 100n).padStart(2, '0');
+    } catch (e) { return String(units || ''); }
   };
   const when = (ms) => { try { return (I && I.fmt) ? I.fmt.dateTime(ms) : new Date(ms).toLocaleString(); } catch (e) { return new Date(ms).toLocaleString(); } };
 
@@ -42,7 +46,13 @@
   function head(title, sub) { $('rv-title').textContent = title; $('rv-sub').textContent = sub || ''; doc.title = title + ' — GifOS'; }
   function slip(rows) {
     const box = el('div', 'slip'); box.id = 'rv-slip';
-    for (const [k, v] of rows) { if (v == null || v === '') continue; const r = el('div', 'row'); r.appendChild(el('span', null, k)); r.appendChild(el('b', null, String(v))); box.appendChild(r); }
+    for (const [k, v] of rows) {
+      if (v == null || v === '') continue;
+      const r = el('div', 'row'); r.appendChild(el('span', null, k));
+      // A value is text, or a node the view built (a link).
+      if (typeof v === 'object' && v.nodeType) { const b = el('b'); b.appendChild(v); r.appendChild(b); } else r.appendChild(el('b', null, String(v)));
+      box.appendChild(r);
+    }
     $('rv').appendChild(box);
   }
   function line(cls, t, id) { const p = el('p', cls, t); if (id) p.id = id; $('rv').appendChild(p); return p; }
@@ -65,8 +75,8 @@
       [tr('charge.receipt.paid', 'Paid'), ((GifOS.charge && GifOS.charge.PAID_BY) || {})[receipt.rail] || String(receipt.rail || '')],   // the same words the receipt file uses
       [tr('charge.receipt.to', 'To'), receipt.payeeId || ''],
       [tr('charge.receipt.when', 'When'), receipt.at ? when(receipt.at) : ''],
-      [tr('charge.receipt.transaction', 'Transaction'), receipt.tx || ''],
-    ]);
+    ].concat(txRows(receipt)));
+    paypalNote(receipt);
     line('seal ok', '✓ ' + tr('charge.receiptView.verified', 'Signed by gifos.app and verified on this computer.'), 'rv-seal');
     // Registering is what opening the file always did; a refusal (one
     // payment, one purchase) is said, and the receipt above still stands.
@@ -77,6 +87,39 @@
     } catch (e) { st.textContent = String((e && e.message) || e); }
     line('note', tr('charge.receipt.proof', 'This file IS the proof: it carries a receipt signed by gifos.app, and opening it on any GifOS computer verifies the signature and registers the purchase there. Sharing it shares your license — the app treats whoever holds this receipt as the same buyer (same saves, same identity). Keep it with your backups.'));
     doc.documentElement.dataset.receipt = 'purchase';
+  }
+
+  // EACH LEG, CHECKABLE BY ANYONE. On chain: one row per leg, labelled by
+  // what it paid (gifos-charge.js receiptLegs), linked to the chain's block
+  // explorer (gifos-base-net.js txUrl, the one table of explorers). PayPal
+  // has no public explorer: the ids are shown, and the only link is to the
+  // buyer's own PayPal activity, which carries no id at all.
+  const PAYPAL_ACTIVITY = 'https://www.paypal.com/myaccount/activities';
+  function link(href, t) { const a = el('a', 'tx-link', t); a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer'; return a; }
+  function txRows(receipt) {
+    const C = GifOS.charge, B = GifOS.baseNet;
+    if (!C || !C.receiptLegs) return [[tr('charge.receipt.transaction', 'Transaction'), receipt.tx || '']];
+    const got = C.receiptLegs(receipt, B && B.FEE_ADDRESS);
+    // A chain receipt without a network (the transfer rail) was paid on the
+    // network the payment service runs: the one this page pays on.
+    const net = got.network || (B && B.active ? (() => { try { return B.active().caip; } catch (e) { return null; } })() : null);
+    const many = got.legs.filter((l) => l.role === 'tx').length > 1;
+    let k = 0;
+    return got.legs.map((l) => {
+      const label = l.role === 'creator' ? tr('charge.receiptView.legCreator', 'Creator ({amount})', { amount: fmtUsd(l.amount) })
+        : l.role === 'fee' ? tr('charge.receiptView.legFee', 'GifOS fee ({amount})', { amount: fmtUsd(l.amount) })
+        : l.role === 'order' ? tr('charge.receiptView.paypalOrder', 'PayPal order')
+        : got.kind === 'paypal' ? tr('charge.receiptView.paypalTx', 'PayPal transaction')
+        : many ? tr('charge.receiptView.legTx', 'Transaction {k}', { k: ++k }) : tr('charge.receipt.transaction', 'Transaction');
+      const url = got.kind === 'chain' && B && B.txUrl ? B.txUrl(net, l.tx) : null;
+      return [label, url ? link(url, l.tx) : l.tx];
+    });
+  }
+  function paypalNote(receipt) {
+    if (receipt.rail !== 'paypal') return;
+    const p = el('p', 'note'); p.id = 'rv-paypal';
+    p.appendChild(link(PAYPAL_ACTIVITY, tr('charge.receiptView.paypalFind', 'Find it in your PayPal activity')));
+    $('rv').appendChild(p);
   }
 
   // The license verifies against the same key as a purchase receipt

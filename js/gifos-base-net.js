@@ -63,6 +63,20 @@
     explorer: 'https://basescan.org',
   });
 
+  // WHERE ANYONE CAN CHECK A TRANSACTION, by chain (CAIP-2). The one config
+  // spot for block explorers: a receipt links each on-chain leg through
+  // txUrl(). Another chain drops in as one more row.
+  const EXPLORERS = Object.freeze({
+    [MAINNET.caip]: MAINNET.explorer,
+    [SEPOLIA.caip]: SEPOLIA.explorer,
+  });
+  // -> 'https://basescan.org/tx/<hash>', or null for an unknown chain or a
+  // string that is not a transaction hash (nothing else is ever put in a URL).
+  function txUrl(caip, hash) {
+    const base = EXPLORERS[String(caip || '')];
+    return base && /^0x[0-9a-fA-F]{64}$/.test(String(hash || '')) ? base + '/tx/' + hash : null;
+  }
+
   const isAddress = (a) => typeof a === 'string' && /^0x[0-9a-fA-F]{40}$/.test(a);
 
   // A real fee address is a 20-byte hex address that is not the old
@@ -120,5 +134,6 @@
     FEE_ADDRESS, PLACEHOLDER_FEE, BASE_NETWORK,
     SEPOLIA, MAINNET,
     feeConfigured, mainnetFlag, resolve, active, policy,
+    EXPLORERS, txUrl,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

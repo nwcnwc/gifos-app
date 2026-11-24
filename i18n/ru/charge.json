@@ -47,5 +47,11 @@
   "charge.receiptView.licenseOk": "Лицензия тарифа в этом файле подписана gifos.app.",
   "charge.receiptView.subNote": "GifOS Meet и страница тарифов находят эту подписку здесь, в «Покупках». Любой, у кого есть этот файл, может пользоваться вашей подпиской и пропусками: храните его в тайне.",
   "charge.receiptView.openMeet": "Открыть GifOS Meet",
-  "charge.receiptView.openPlans": "Тарифы"
+  "charge.receiptView.openPlans": "Тарифы",
+  "charge.receiptView.legCreator": "Автору ({amount})",
+  "charge.receiptView.legFee": "Комиссия GifOS ({amount})",
+  "charge.receiptView.legTx": "Транзакция {k}",
+  "charge.receiptView.paypalTx": "Транзакция PayPal",
+  "charge.receiptView.paypalOrder": "Заказ PayPal",
+  "charge.receiptView.paypalFind": "Найти в истории операций PayPal"
 }
