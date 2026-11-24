@@ -22760,12 +22760,12 @@
       clearMode = m; clearTap = false; clearSince = Date.now();
       try { reactRoomState(); } catch (e) {}
     }
-    const clearTickT = setInterval(clearNoPwTick, 1000);   // the right's edges (on, off, expiry) repaint at once
+    const clearTickT = setInterval(clearNoPwTick, GifOS.timings.CLEAR_RIGHT_TICK_MS);   // the right's edges (on, off, expiry) repaint at once
     // THE AGE-GATE HOOK, before any unblur: empty and OFF (no age check is built). A jurisdiction's age assurance
     // replaces GifOS.ageGate: required(ctx) -> true when a check must run; check(ctx) -> Promise<true> when it passed.
     // It fails closed: a throw, a rejection, an answer other than true, or no answer within AGE_GATE_MS keeps the blur.
     const ageGateDefault = (window.GifOS && !GifOS.ageGate) ? (GifOS.ageGate = { required: () => false, check: async () => false }) : null;
-    const AGE_GATE_MS = 120000;
+    const AGE_GATE_MS = GifOS.timings.AGE_GATE_MS;
     async function ageGateOk(ctx) {
       try {
         const g = GifOS.ageGate;
