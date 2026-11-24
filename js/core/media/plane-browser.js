@@ -5581,7 +5581,7 @@
             (t.kind === 'video' ? vid : aud).push(hit);
           }
           if (!ok) continue;
-          plane.set(jk, { video: sideOf(vid), audio: sideOf(aud), active: !(0, /*()*/__C.chainBornParked)(job.key, job.upKey) });
+          plane.set(jk, { video: sideOf(vid), audio: sideOf(aud), active: !(0, /*()*/__C.chainBornParked)(job.key, job.upKey), upKey: job.upKey || null, meta: job.meta || null });
         }
         const core = new Map();
         for (const e of carryPlan) if (e && e.to) core.set(e.key + '>' + e.to, e);
@@ -5607,12 +5607,15 @@
             miss.push(jk);
             continue;
           }
-          const rv = same(e.video, j.video), ra = same(e.audio, j.audio), rb = !!e.active === !!j.active;
-          if (rv && ra && rb) continue;
+          const canon = (m) => { if (!m || typeof m !== 'object') return ''; const o = {}; for (const k of Object.keys(m).sort()) if (m[k] !== undefined) o[k] = m[k]; return JSON.stringify(o); };
+          const rv = same(e.video, j.video), ra = same(e.audio, j.audio), rb = !!e.active === !!j.active, ru = (e.upKey || null) === j.upKey, rm = canon(e.meta) === canon(j.meta);
+          if (rv && ra && rb && ru && rm) continue;
           let line = jk;
           if (!rv) line += ' video ' + tag(j.video) + '!=' + tag(e.video);
           if (!ra) line += ' audio ' + tag(j.audio) + '!=' + tag(e.audio);
           if (!rb) line += ' active ' + (j.active ? 1 : 0) + '!=' + (e.active ? 1 : 0);
+          if (!ru) line += ' up ' + j.upKey + '!=' + (e.upKey || null);
+          if (!rm) line += ' meta ' + canon(j.meta).slice(0, 120) + '!=' + canon(e.meta).slice(0, 120);
           src.push(line);
         }
         for (const jk of plane.keys()) if (!core.has(jk)) extra.push(jk);
