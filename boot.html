@@ -148,11 +148,11 @@ window.GIFOS_VERSION = 'edge';
     var kind = m[1].toLowerCase(), room = m[2] || '', ver = m[3] || '', code = m[4] || '', rest = [], bad = false;
     if (kind === 'join' && room && !ver) { code = room; room = ''; }
     var h = String(hash || '').replace(/^#/, ''), q = String(search || '').replace(/^\?/, '');
-    var hp = h ? h.split('&') : [], parts = hp.concat(q ? q.split('&') : []);
+    var hs = h ? h.split('&') : [], parts = hs.concat(q ? q.split('&') : []);
     for (var i = 0; i < parts.length; i++) {
       var p = parts[i], k = p.split('=')[0], val = p.slice(k.length + 1);
       if (!p) continue;
-      if (m[2] || i >= hp.length || (k !== 'room' && k !== 'v' && k !== 'code')) { rest.push(p); continue; }
+      if (m[2] || i >= hs.length || (k !== 'room' && k !== 'v' && k !== 'code')) { rest.push(p); continue; }
       if (k === 'room') { room = val; bad = bad || !/^[a-z0-9-]{1,64}$/i.test(val); }
       else if (k === 'v') { ver = val; bad = bad || !/^[a-f0-9]{16,64}$/i.test(val); }
       else { code = val; bad = bad || !/^[a-z0-9]{1,64}$/i.test(val); }
