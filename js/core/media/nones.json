@@ -30,6 +30,8 @@
   "gridApplied": {
    "$": "Map"
   },
+  "jobPinned": null,
+  "jobVideoAt": null,
   "kfEv": null,
   "l14Packs": {
    "$": "Map"
@@ -40,9 +42,6 @@
    "$": "Map"
   },
   "mosHeld": null,
-  "mosJobs": {
-   "$": "Map"
-  },
   "mySelfStream": null,
   "packLoop": null,
   "pipeDeny": {

@@ -113,6 +113,19 @@
     // PLI upstream arrives with the Node executor (forward step 6)
     function keyUp(claim, key) { return false; }
     function producerKey(key, fromPid) {}
+    // Job-protocol seams. Stand-ins only: the Node executor that runs them is step 6b.
+    function attachTrack() { return null; }
+    function detachTrack() {}
+    function parkSender() {}
+    function kickJob() {}
+    function noteReship() {}
+    function dropContainer() {}
+    function orphaned() { return false; }
+    function attachFailed() { return false; }
+    attachFailed.set = function () {};
+    function containerFor() { return null; }
+    function jobPinned() { return false; }
+    function swapTrack() { return 'swap'; }
 
     def('mainAudioTrack', mainAudioTrack);
     def('sentVideoTrack', sentVideoTrack);
@@ -134,7 +147,18 @@
     def('keyUp', keyUp);
     def('producerKey', producerKey);
     def('kfEv', () => {});   // keyframe forensics: the browser plane logs them (window.__kfLog); nothing to log here
-    return { names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties', 'bindClaim', 'unbindClaim', 'adoptClaim', 'picRead', 'iActAsHead', 'rowHeadPid', 'keyUp', 'producerKey', 'kfEv'] };
+    def('attachTrack', attachTrack);
+    def('detachTrack', detachTrack);
+    def('parkSender', parkSender);
+    def('kickJob', kickJob);
+    def('noteReship', noteReship);
+    def('dropContainer', dropContainer);
+    def('orphaned', orphaned);
+    def('attachFailed', attachFailed);
+    def('containerFor', containerFor);
+    def('jobPinned', jobPinned);
+    def('swapTrack', swapTrack);
+    return { names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties', 'bindClaim', 'unbindClaim', 'adoptClaim', 'picRead', 'iActAsHead', 'rowHeadPid', 'keyUp', 'producerKey', 'kfEv', 'attachTrack', 'detachTrack', 'parkSender', 'kickJob', 'noteReship', 'dropContainer', 'orphaned', 'attachFailed', 'containerFor', 'jobPinned', 'swapTrack'] };
   }
 
   GifOS.planeNode = { install };
