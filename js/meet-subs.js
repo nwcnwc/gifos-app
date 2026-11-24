@@ -169,13 +169,12 @@
   const SUB_RECEIPT_KEY = 'gifos-sub-receipt';   // { fileId, mark } of this browser's subscription receipt
   const PAY_PENDING = 'gifos_pay_pending';       // gifos-pay-broker.js PENDING_KEY: the desktop's placement queue
   function subReceiptFiles(c, w, st) {
-    const t = c ? SUB.TIERS[c.tier] : null;
     const name = tx('subReceiptName', 'Receipt — GifOS Meet subscription');
     const files = {
       'manifest.json': JSON.stringify({ gifos: '1.0', appId: RECEIPT_APP_ID, name, entry: 'index.html', receipt: true, subscription: true, accent: [120, 200, 255] }),
       // Shown only by a Home Screen too old to have the receipt view.
       'index.html': '<!doctype html><meta charset="utf-8"><title>' + name + '</title><body style="font:15px/1.5 system-ui;padding:1.2rem"><main><h2>' + name + '</h2><p>' +
-        (t ? t.name + '.' : '') + (w ? ' Four-hour passes: ' + w.passes.length + '.' : '') + '</p><p>Anyone with this file can use your subscription and passes. Keep it private.</p></main>',
+        (c ? 'A GifOS Meet subscription.' : '') + (w ? ' Four-hour passes: ' + w.passes.length + '.' : '') + '</p><p>Anyone with this file can use your subscription and passes. Keep it private.</p></main>',
     };
     if (c) files['subscription.json'] = JSON.stringify(c);
     if (w) files['passes.json'] = JSON.stringify(w);

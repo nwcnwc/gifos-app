@@ -62,7 +62,7 @@
       receipt.sku ? tr('charge.receipt.purchase', 'Purchase — unlocks {sku}', { sku: receipt.sku }) : tr('charge.receipt.tip', 'Tip — thank you!'));
     slip([
       [tr('charge.receipt.amount', 'Amount'), fmtUsd(receipt.amount)],
-      [tr('charge.receipt.paid', 'Paid'), tr('charge.paidBy.' + receipt.rail, String(receipt.rail || ''))],
+      [tr('charge.receipt.paid', 'Paid'), ((GifOS.charge && GifOS.charge.PAID_BY) || {})[receipt.rail] || String(receipt.rail || '')],   // the same words the receipt file uses
       [tr('charge.receipt.to', 'To'), receipt.payeeId || ''],
       [tr('charge.receipt.when', 'When'), receipt.at ? when(receipt.at) : ''],
       [tr('charge.receipt.transaction', 'Transaction'), receipt.tx || ''],
