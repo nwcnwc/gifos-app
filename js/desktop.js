@@ -1259,6 +1259,38 @@
     return nb;
   }
 
+  // Our receipt drawing: paper, a zigzag edge, a few lines, the word GifOS.
+  function receiptThumb(thumb) {
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 64 80');
+    svg.setAttribute('aria-hidden', 'true');
+    const paper = document.createElementNS(NS, 'path');
+    paper.setAttribute('fill', '#fffaf0');
+    paper.setAttribute('stroke', '#d9c68f');
+    paper.setAttribute('stroke-width', '2');
+    paper.setAttribute('d', 'M8 4H56V62L52 66L48 62L44 66L40 62L36 66L32 62L28 66L24 62L20 66L16 62L12 66L8 62Z');
+    svg.appendChild(paper);
+    [20, 30, 40].forEach((y) => {
+      const line = document.createElementNS(NS, 'path');
+      line.setAttribute('d', 'M16 ' + y + 'H48');
+      line.setAttribute('stroke', '#c4b48a');
+      line.setAttribute('stroke-width', '2');
+      line.setAttribute('stroke-linecap', 'round');
+      svg.appendChild(line);
+    });
+    const word = document.createElementNS(NS, 'text');
+    word.setAttribute('x', '32');
+    word.setAttribute('y', '54');
+    word.setAttribute('text-anchor', 'middle');
+    word.setAttribute('fill', '#3d3422');
+    word.setAttribute('font-size', '9');
+    word.setAttribute('font-family', 'system-ui,sans-serif');
+    word.textContent = 'GifOS';
+    svg.appendChild(word);
+    thumb.appendChild(svg);
+  }
+
   function buildIcon(it, file, fresh, meta, isMirror, art) {
     const el = document.createElement('div');
     el.className = 'icon' + (it.kind === 'folder' ? ' folder' : '') + (it.id === selectedId ? ' selected' : '');
@@ -1291,7 +1323,7 @@
       if (isReceiptFile(file)) {
         // Its own icon: a receipt, not an app tile (no NEW pill, no plate).
         thumb.classList.add('receipt-thumb');
-        thumb.textContent = '🧾';
+        try { receiptThumb(thumb); } catch (e) { thumb.textContent = 'GifOS'; thumb.style.fontSize = '12px'; }
         thumb.title = dt('desktop.badge.receiptTip');
       } else if (file && file.kind === 'gif') {
         if (art) thumb.appendChild(thumbImg(it.fileId, art, it.name));

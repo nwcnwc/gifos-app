@@ -157,8 +157,50 @@
         li.appendChild(acts);
         list.appendChild(li);
       });
-      return paintYour(c);
+      return Promise.resolve(paintYour(c)).then(function () { try { paintReceipt(); } catch (e) {} });
     });
+  }
+  // The same slip as a receipt GIF (js/receipt-plan.js), from the files this
+  // browser already holds. Nothing here calls the payment service.
+  function lsJson(k) {
+    try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; }
+  }
+  function receiptFiles() {
+    var files = {};
+    var c = lsJson('gifos-sub-cred');
+    var w = lsJson('gifos-pass-wallet');
+    var st = lsJson('gifos-sub-state') || {};
+    var bag = lsJson('gifos-sub-purchase');
+    if (c && typeof c === 'object') files['subscription.json'] = JSON.stringify(c);
+    if (w && typeof w === 'object') files['passes.json'] = JSON.stringify(w);
+    if (c && st && st.licenseJson && st.sig && st.subId === c.subId) files['license.json'] = JSON.stringify({ licenseJson: st.licenseJson, sig: st.sig });
+    if (st && (Number.isInteger(st.until) || Number.isInteger(st.paidThrough))) {
+      var state = {};
+      if (Number.isInteger(st.until)) state.until = st.until;
+      if (Number.isInteger(st.paidThrough)) state.paidThrough = st.paidThrough;
+      if (typeof st.status === 'string' && st.status) state.status = st.status;
+      files['state.json'] = JSON.stringify(state);
+    }
+    var flat = bag && typeof bag === 'object' ? (c ? bag.sub : bag.pass) : null;
+    if (flat && typeof flat === 'object') files['purchase.json'] = JSON.stringify(flat);
+    return files;
+  }
+  function paintReceipt() {
+    var host = $('pm-receipt');
+    if (!host) return;
+    host.textContent = '';
+    host.hidden = true;
+    var plan = GifOS.receiptPlan;
+    if (!plan || typeof plan.rows !== 'function' || typeof plan.mount !== 'function') return;
+    var files = null;
+    try { files = receiptFiles(); } catch (e) { return; }
+    var list = [];
+    try { list = plan.rows(files) || []; } catch (e2) { return; }
+    if (!list.length) return;
+    host.hidden = false;
+    host.appendChild(el('h3', null, t('pmReceipt')));
+    try { plan.mount(host, list, { files: files }); } catch (e3) { host.textContent = ''; host.hidden = true; return; }
+    try { if (typeof plan.foot === 'function') plan.foot(host); } catch (e4) {}
   }
 
   function show(id, on) { var n = $(id); if (n) n.hidden = !on; }
@@ -450,7 +492,7 @@
   }
   function boot() {
     if (!i18n || !SUB || !MS()) return;
-    i18n.load('subscription').then(start, start);
+    i18n.load(['subscription', 'charge']).then(start, start);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();

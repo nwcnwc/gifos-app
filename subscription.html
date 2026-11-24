@@ -67,6 +67,15 @@
   #pm-link { word-break: break-all; }
   #pm-qr { background: var(--c-white); border-radius: var(--r-sm); padding: var(--s-2); max-width: 280px; }
   #pm-qr svg { display: block; width: 100%; height: auto; }
+  /* The receipt slip, same rows as receipt.html. Scoped so .pm .row (the button row) stays as it is. */
+  #pm-receipt { margin-top: var(--s-3); }
+  #pm-receipt .slip { background: var(--c-night); border-radius: var(--r-md); padding: 12px var(--s-3); }
+  #pm-receipt .slip .row { display: flex; justify-content: space-between; gap: var(--s-3); padding: 6px 0; border-bottom: 1px solid #1c1f26; align-items: flex-start; }
+  #pm-receipt .slip .row:last-child { border-bottom: 0; }
+  #pm-receipt .slip .row span { color: var(--c-gray); }
+  #pm-receipt .slip .row b { text-align: right; word-break: break-all; font-weight: 600; }
+  #pm-receipt .note { color: var(--c-gray); font-size: var(--fs-label); margin-top: var(--s-2); }
+  #pm-receipt a.tx-link { color: #9db4ff; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
   @media (max-width: 360px) {
     .wrap { padding-left: 12px; padding-right: 12px; }
     .pm button, .pm a.btn, #pm-code, #pm-file-use { max-width: 100%; }
@@ -143,6 +152,7 @@
         <a class="btn" id="pm-purchases" href="/" data-t="subscription.pmPurchases">Purchases on your Home Screen</a>
         <a class="btn" id="pm-activity" href="https://www.paypal.com/myaccount/activities" target="_blank" rel="noopener" data-t="subscription.pmActivity">PayPal activity</a>
       </div>
+      <div id="pm-receipt" hidden></div>
     </div>
     <div id="pm-signout-wrap" hidden>
       <button type="button" id="pm-signout" data-t="subscription.pmSignout">Sign out other devices</button>
@@ -174,6 +184,7 @@
 <script src="js/meet-subs.js"></script>
 <script src="js/vendor/qrcode.js"></script>
 <script src="js/gifos-planmove.js"></script>
+<script src="js/receipt-plan.js"></script>
 <script src="js/subscription.js"></script>
 </body>
 </html>

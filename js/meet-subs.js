@@ -168,6 +168,102 @@
   // Best-effort: a page with no Home Screen store just skips it.
   const SUB_RECEIPT_KEY = 'gifos-sub-receipt';   // { fileId, mark } of this browser's subscription receipt
   const PAY_PENDING = 'gifos_pay_pending';       // gifos-pay-broker.js PENDING_KEY: the desktop's placement queue
+  const PURCHASE_KEY = 'gifos-sub-purchase';     // { sub, pass }: facts the payment answer actually returned
+  function readPurchase() {
+    const b = readJson(PURCHASE_KEY);
+    return b && typeof b === 'object' && !Array.isArray(b) ? b : {};
+  }
+  // Fixed key order, so a later keepReceipt sees the same mark for the same facts.
+  function cleanPurchase(p) {
+    if (!p || typeof p !== 'object' || Array.isArray(p)) return null;
+    const o = {};
+    if (Number.isFinite(p.boughtAt)) o.boughtAt = Math.round(Number(p.boughtAt));
+    if (typeof p.price === 'string' && p.price) o.price = p.price;
+    if (typeof p.currency === 'string' && p.currency) o.currency = p.currency;
+    if (typeof p.rail === 'string' && p.rail) o.rail = p.rail;
+    if (typeof p.period === 'string' && p.period) o.period = p.period;
+    if (typeof p.orderId === 'string' && p.orderId) o.orderId = p.orderId;
+    if (typeof p.captureId === 'string' && p.captureId) o.captureId = p.captureId;
+    return Object.keys(o).length ? o : null;
+  }
+  function savePurchase(bag) {
+    const out = {};
+    const sub = cleanPurchase(bag && bag.sub);
+    const pass = cleanPurchase(bag && bag.pass);
+    if (sub) out.sub = sub;
+    if (pass) out.pass = pass;
+    writeJson(PURCHASE_KEY, Object.keys(out).length ? out : null);
+  }
+  function mergePurchase(which, patch) {
+    const bag = readPurchase();
+    const next = cleanPurchase(Object.assign({}, cleanPurchase(bag[which]) || {}, patch || {}));
+    if (!next) return;
+    bag[which] = next;
+    savePurchase(bag);
+  }
+  function purchaseFlat(keepSub) {
+    const bag = readPurchase();
+    return cleanPurchase(keepSub ? bag.sub : bag.pass);
+  }
+  function centsPrice(cents) {
+    if (!Number.isInteger(cents) || cents < 0) return '';
+    return Math.floor(cents / 100) + '.' + String(cents % 100).padStart(2, '0');
+  }
+  // The signed issue time, and only for a purchase this browser already recorded.
+  function adoptIssued(licenseJson) {
+    if (!cleanPurchase(readPurchase().sub) || typeof licenseJson !== 'string') return;
+    let lic = null;
+    try { lic = JSON.parse(licenseJson); } catch (e) { return; }
+    if (!lic || !Number.isInteger(lic.issued)) return;
+    mergePurchase('sub', { boughtAt: lic.issued * 1000 });
+  }
+  function noteWebSub(j, period) {
+    const patch = { rail: 'paypal' };
+    if (typeof period === 'string' && period) patch.period = period;
+    const full = j && j.upgrade && j.upgrade.full;
+    if (Number.isInteger(full)) {
+      const price = centsPrice(full);
+      if (price) { patch.price = price; patch.currency = 'USD'; }
+    }
+    mergePurchase('sub', patch);
+  }
+  function noteStoreSub(r) {
+    const rail = RAIL();
+    const which = rail && typeof rail.store === 'function' ? rail.store() : '';
+    const patch = { boughtAt: Date.now() };
+    if (r && typeof r.period === 'string' && r.period) patch.period = r.period;
+    if (which === 'play' || which === 'appstore') patch.rail = which;
+    if (r && typeof r.orderId === 'string' && r.orderId) patch.orderId = r.orderId;
+    if (r && typeof r.captureId === 'string' && r.captureId) patch.captureId = r.captureId;
+    if (r && typeof r.price === 'string' && r.price) {
+      patch.price = r.price;
+      if (typeof r.currency === 'string' && r.currency) patch.currency = r.currency;
+    }
+    mergePurchase('sub', patch);
+  }
+  function notePassPurchase(o) {
+    if (!o || typeof o !== 'object') return;
+    const patch = {};
+    const sec = Number.isInteger(o.paid) ? o.paid : (Number.isInteger(o.start) ? o.start : null);
+    if (sec != null) patch.boughtAt = sec * 1000;
+    if (o.via === 'paypal-order') patch.rail = 'paypal';
+    else if (o.via === 'play' || o.via === 'appstore') patch.rail = o.via;
+    if (typeof o.order === 'string' && o.order && o.via !== 'mint') patch.orderId = o.order;
+    if (typeof o.captureId === 'string' && o.captureId) patch.captureId = o.captureId;
+    mergePurchase('pass', patch);
+  }
+  function licMark(st, c) {
+    let exp = '';
+    if (c && st && typeof st.licenseJson === 'string' && st.subId === c.subId) {
+      try {
+        const lic = JSON.parse(st.licenseJson);
+        if (lic && Number.isInteger(lic.exp)) exp = String(lic.exp);
+      } catch (e) {}
+    }
+    const paid = st && Number.isInteger(st.paidThrough) ? String(st.paidThrough) : '';
+    const until = st && Number.isInteger(st.until) ? String(st.until) : '';
+    return exp + ':' + paid + ':' + until;
+  }
   function subReceiptFiles(c, w, st) {
     const name = tx('subReceiptName', 'Receipt — GifOS Meet subscription');
     const files = {
@@ -179,6 +275,15 @@
     if (c) files['subscription.json'] = JSON.stringify(c);
     if (w) files['passes.json'] = JSON.stringify(w);
     if (c && st && st.licenseJson && st.sig && st.subId === c.subId) files['license.json'] = JSON.stringify({ licenseJson: st.licenseJson, sig: st.sig });
+    const bought = purchaseFlat(!!c);
+    if (bought) files['purchase.json'] = JSON.stringify(bought);
+    if (st && (Number.isInteger(st.until) || Number.isInteger(st.paidThrough))) {
+      const state = {};
+      if (Number.isInteger(st.until)) state.until = st.until;
+      if (Number.isInteger(st.paidThrough)) state.paidThrough = st.paidThrough;
+      if (typeof st.status === 'string' && st.status) state.status = st.status;
+      files['state.json'] = JSON.stringify(state);
+    }
     return files;
   }
   let receiptBusy = null;
@@ -197,7 +302,8 @@
       const keepSub = !!c && (live || held.sub === c.subId);
       const passN = w ? w.passes.length : 0;
       if (!keepSub && !passN) return;   // nothing bought yet: no receipt
-      const mark = [keepSub ? c.subId : '', live ? c.tier : '', passN].join('|');
+      const bought = purchaseFlat(keepSub);
+      const mark = [keepSub ? c.subId : '', live ? c.tier : '', passN, licMark(st, keepSub ? c : null), bought ? JSON.stringify(bought) : ''].join('|');
       if (held.mark === mark && held.fileId) return;
       const fileId = typeof held.fileId === 'string' && held.fileId ? held.fileId : store.uid('file');
       const bytes = await gif.encode(subReceiptFiles(keepSub ? c : null, w, st), { accent: [120, 200, 255] });
@@ -338,7 +444,7 @@
       delete next.licenseJson; delete next.sig;
     }
     writeState(next);
-    if (next.licenseJson) keepReceipt();
+    if (next.licenseJson) { adoptIssued(next.licenseJson); keepReceipt(); }
     return next;
   }
   // keepFresh() -> once this browser's license is fresh (fetched when missing or near its end). One check at a time: the
@@ -376,6 +482,7 @@
     writeJson(STORE_PENDING, null);
     keyMemo = { seed: null, p: null };
     writeState({ subId: r.subId, tier: r.tier, status: null });
+    noteStoreSub(r);
     const st = await refresh();
     rejoin(true);
     return st;
@@ -402,6 +509,7 @@
       const list = cur.passes.filter((p) => { const x = passOf(p); return x && x.order !== o.order; }).concat([{ passJson: j.passJson, sig: j.sig }]);
       const next = Object.assign({}, cur, { passes: list }); delete next.pending;
       writeJson(WALLET_KEY, next);
+      notePassPurchase(o);
       keepReceipt();
       passWatch().catch(() => {});
       if (meet) passJoin(meet.room, true, true);
@@ -469,6 +577,7 @@
     writeJson(CRED_KEY, { v: 1, kind: SUB.CRED_KIND, subId: j.id, tier, period, seed: b64(seed), buyerKey });
     keyMemo = { seed: null, p: null };
     writeState({ subId: j.id, tier, status: 'APPROVAL_PENDING' });
+    noteWebSub(j, period);
     if (popup) popup.location.href = j.approveUrl; else root.open(j.approveUrl, '_blank');
     say(SUB.TEXT.pending);
     const until = Date.now() + POLL_FOR_MS;
@@ -578,6 +687,7 @@
     const list = cur.passes.filter((p) => { const x = passOf(p); return x && x.order !== o.order; }).concat([{ passJson: j.passJson, sig: j.sig }]);
     const next = Object.assign({}, cur, { passes: list }); delete next.pending;
     writeJson(WALLET_KEY, next);
+    notePassPurchase(o);
     keepReceipt();
     passWatch().catch(() => {});
     if (meet) passJoin(meet.room, true, true);   // a new pass (or one stacked on the window): the meeting this page is in takes it now
@@ -647,7 +757,7 @@
     writeJson(MEM_KEY, mem);
   }
   // Meetings this plan is powering. The service returns tags; names come from this browser's memory.
-  // A tag this browser has never seen has no name (the page says it is a meeting on another device).
+  // A tag this browser has never seen has no name: the page says only that this browser has not been in it.
   async function heldMeetings() {
     const j = await post('/gifos/sub/held', await signed('held'));
     const mem = readJson(MEM_KEY) || {};
@@ -1500,13 +1610,18 @@
     meet = null;
     joinMeeting(room, keep);
   }
+  // (a) The host's browser holds NO plan: say only what this browser knows (Nathan 2026-11-24: never "your plan is on
+  // another device"; the page cannot know that), and offer the two ways a plan bought elsewhere gets here.
   function hostElsewhere(bar) {
     credential().then((c) => {
       if (c || typeof document === 'undefined' || !document.getElementById) return;
       const live = document.getElementById('sub-host-up');
       if (!live || document.getElementById('sub-host-elsewhere')) return;
-      const line = el('p', { id: 'sub-host-elsewhere', style: 'flex:1 1 100%;margin:.2rem 0 0' });
-      line.appendChild(el('a', { href: '/subscription#get', id: 'sub-host-elsewhere-link' }, tx('subHostElsewhere', 'Have a plan on another device? Move it here or restore it with PayPal.')));
+      const line = el('p', { id: 'sub-host-elsewhere', style: 'flex:1 1 100%;margin:.2rem 0 0' }, fill(tx('subHostElsewhere', 'This browser has no plan, so this meeting runs on Free (up to {n} people). Bought a plan on another phone or computer? Move it here.'), { n: SUB.FREE_LIMIT }));
+      line.appendChild(document.createTextNode(' '));
+      line.appendChild(el('a', { href: '/subscription#get', id: 'sub-host-elsewhere-link', target: '_blank', rel: 'noopener' }, tx('subHostMoveGo', 'Move it here with a code')));
+      line.appendChild(document.createTextNode(' · '));
+      line.appendChild(el('a', { href: '/subscription#restore', id: 'sub-host-restore-link', target: '_blank', rel: 'noopener' }, tx('subHostRestoreGo', 'Restore with PayPal')));
       live.appendChild(line);
     }).catch(() => {});
     return bar;
