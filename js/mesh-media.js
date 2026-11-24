@@ -529,49 +529,18 @@
       // colour marks that still read when a face is a few pixels, or one
       // (markOverlay below).
       if (lbl.dot) { markOverlay(dx, dy, cell, lbl); return; }
-      // The surface draws the same marks. The ctx calls stay in this function so a
-      // copy of it that has no surface (it only names ctx) still burns the label.
-      if (typeof surf !== 'undefined' && surf) {
-        if (lbl.talking) {
-          const lw = Math.max(2, cell * 0.035);
-          surf.stroke('#37d67a', lw, dx + lw / 2, dy + lw / 2, cell - lw, cell - lw);
-        }
-        if (lbl.name) surf.label(String(lbl.name), dx, dy, cell, cell);
-        if (lbl.hand) {
-          const r = Math.max(6, cell * 0.12);
-          surf.glyph('✋', dx + cell - r * 1.6, dy + r * 0.3, r * 1.4 | 0);
-        }
-        if (lbl.react) {
-          const r = Math.max(7, cell * 0.15);
-          surf.glyph(String(lbl.react).slice(0, 8), dx + r * 0.3, dy + r * 0.3, r * 1.4 | 0);
-        }
-        return;
-      }
       if (lbl.talking) {
         const lw = Math.max(2, cell * 0.035);
-        ctx.strokeStyle = '#37d67a'; ctx.lineWidth = lw;
-        ctx.strokeRect(dx + lw / 2, dy + lw / 2, cell - lw, cell - lw);
+        surf.stroke('#37d67a', lw, dx + lw / 2, dy + lw / 2, cell - lw, cell - lw);
       }
-      if (lbl.name) {
-        const fs = Math.max(8, Math.round(cell * 0.11)), pad = Math.round(cell * 0.03);
-        const bh = fs + pad * 2;
-        ctx.fillStyle = 'rgba(10,10,15,0.62)'; ctx.fillRect(dx, dy + cell - bh, cell, bh);
-        ctx.fillStyle = '#eef'; ctx.font = '600 ' + fs + 'px system-ui, sans-serif';
-        ctx.textBaseline = 'middle';
-        let nm = String(lbl.name); const maxW = cell - pad * 2;
-        while (nm.length > 1 && ctx.measureText(nm).width > maxW) nm = nm.slice(0, -1);
-        if (nm !== String(lbl.name)) nm = nm.slice(0, -1) + '…';
-        ctx.fillText(nm, dx + pad, dy + cell - bh / 2);
-      }
+      if (lbl.name) surf.label(String(lbl.name), dx, dy, cell, cell);
       if (lbl.hand) {
         const r = Math.max(6, cell * 0.12);
-        ctx.font = (r * 1.4 | 0) + 'px system-ui'; ctx.textBaseline = 'top';
-        ctx.fillText('✋', dx + cell - r * 1.6, dy + r * 0.3);
+        surf.glyph('✋', dx + cell - r * 1.6, dy + r * 0.3, r * 1.4 | 0);
       }
       if (lbl.react) {
         const r = Math.max(7, cell * 0.15);
-        ctx.font = (r * 1.4 | 0) + 'px system-ui'; ctx.textBaseline = 'top';
-        ctx.fillText(String(lbl.react).slice(0, 8), dx + r * 0.3, dy + r * 0.3);
+        surf.glyph(String(lbl.react).slice(0, 8), dx + r * 0.3, dy + r * 0.3, r * 1.4 | 0);
       }
     }
     // TAPESTRY MARKS. Each kind has its own bright hue, so a crowd reads at a
@@ -586,47 +555,24 @@
     function markOverlay(dx, dy, cell, lbl) {
       const mark = lbl.react ? (REACT_COLOR[lbl.react] || REACT_COLOR['?']) : lbl.hand ? HAND_COLOR : null;
       const px = Math.max(1, Math.round(cell));
-      if (typeof surf !== 'undefined' && surf) {
-        if (px <= 2) {
-          const c = mark || (lbl.talking ? TALK_COLOR : null);
-          if (c) surf.fill(c, dx, dy, px, px);
-          return;
-        }
-        const ring = lbl.talking ? Math.max(1, Math.round(px * 0.12)) : 0;
-        if (mark) {
-          const inner = px - ring * 2;
-          const side = px >= 12 ? Math.max(1, Math.round(px * 0.4)) : inner;
-          surf.fill(mark, dx + ring, dy + ring, side, side);
-          if (lbl.react && lbl.hand && px >= 6) {
-            const hs = Math.max(1, Math.round(px * 0.3));
-            surf.fill(HAND_COLOR, dx + px - ring - hs, dy + ring, hs, hs);
-          }
-        }
-        if (ring) {
-          surf.fill(TALK_COLOR, dx, dy, px, ring); surf.fill(TALK_COLOR, dx, dy + px - ring, px, ring);
-          surf.fill(TALK_COLOR, dx, dy + ring, ring, px - ring * 2); surf.fill(TALK_COLOR, dx + px - ring, dy + ring, ring, px - ring * 2);
-        }
-        return;
-      }
       if (px <= 2) {
         const c = mark || (lbl.talking ? TALK_COLOR : null);
-        if (c) { ctx.fillStyle = c; ctx.fillRect(dx, dy, px, px); }
+        if (c) surf.fill(c, dx, dy, px, px);
         return;
       }
       const ring = lbl.talking ? Math.max(1, Math.round(px * 0.12)) : 0;
       if (mark) {
         const inner = px - ring * 2;
         const side = px >= 12 ? Math.max(1, Math.round(px * 0.4)) : inner;
-        ctx.fillStyle = mark; ctx.fillRect(dx + ring, dy + ring, side, side);
+        surf.fill(mark, dx + ring, dy + ring, side, side);
         if (lbl.react && lbl.hand && px >= 6) {
           const hs = Math.max(1, Math.round(px * 0.3));
-          ctx.fillStyle = HAND_COLOR; ctx.fillRect(dx + px - ring - hs, dy + ring, hs, hs);
+          surf.fill(HAND_COLOR, dx + px - ring - hs, dy + ring, hs, hs);
         }
       }
       if (ring) {
-        ctx.fillStyle = TALK_COLOR;
-        ctx.fillRect(dx, dy, px, ring); ctx.fillRect(dx, dy + px - ring, px, ring);
-        ctx.fillRect(dx, dy + ring, ring, px - ring * 2); ctx.fillRect(dx + px - ring, dy + ring, ring, px - ring * 2);
+        surf.fill(TALK_COLOR, dx, dy, px, ring); surf.fill(TALK_COLOR, dx, dy + px - ring, px, ring);
+        surf.fill(TALK_COLOR, dx, dy + ring, ring, px - ring * 2); surf.fill(TALK_COLOR, dx + px - ring, dy + ring, ring, px - ring * 2);
       }
     }
     // STILL-FRAME SKIP (2026-07-30 power work). The governor below bounds how
