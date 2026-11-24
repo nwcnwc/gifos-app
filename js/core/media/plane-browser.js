@@ -4828,6 +4828,8 @@
       const metaOf = (pk) => { const m = { n: pk.count(), cols: pk.cols() }; const ids = pk.cellIds ? pk.cellIds() : null; if (ids && ids.length === m.n && ids.every((x) => typeof x === 'string' && x)) m.ids = ids; return m; };
       if (kind === 'room') { if (!roomPack || !(roomPack.count() > 0) || !roomPack.track) return null; return { track: roomPack.track, meta: metaOf(roomPack) }; }
       if (kind === 'pipe') { const pk = pipePacks.get(skip); if (!pk || !(pk.count() > 0) || !pk.track) return null; return { track: pk.track, meta: metaOf(pk) }; }
+      if (kind === 'prod') { if (!prodPack || !(prodPack.count() > 0) || !prodPack.track) return null; return { track: prodPack.track, meta: metaOf(prodPack) }; }
+      if (kind === 'l14') { const pk = l14Packs.get(skip); if (!pk || !(pk.count() > 0) || !pk.track) return null; return { track: pk.track, meta: metaOf(pk) }; }
       return null;
     }
     function blockOf(rk) {
@@ -5137,6 +5139,9 @@
         }
         if (pk.soundIds) for (const k of pk.soundIds()) if (k[0] === 'u' && !heard.has(k)) pk.delSound(k);
       };
+      // Hand ships of the product, recorded so the plan's rows can be compared this sweep. The flip deletes the ships.
+      const prodShips = [];
+      const noteProd = (key, to, meta) => { prodShips.push({ key: key, to: to == null ? null : to, meta: meta || {} }); };
       const l14Down = (fill, metaOf, direct) => {
         for (const [h, pk] of [...l14Packs]) if (!fill || !l14Heads.includes(h) || (direct && direct.has(h))) { pk.stop(); l14Packs.delete(h); }
         if (!fill) return;
@@ -5145,7 +5150,7 @@
           let pk = l14Packs.get(h);
           if (!pk) { pk = MM.createPacker({ shape: 'stad', fps: compFps(), ac: mixCtx() }).start(); l14Packs.set(h, pk); }
           fill(pk, h); l14Blocks(pk, h, (q) => 20 + C + q);
-          if (pk.count() > 0) { const jk = (0, /*()*/__C.shipJob)('sdn', h, pk.stream, metaOf(pk)); if (jk) wanted.add(jk); }
+          if (pk.count() > 0) { const meta = metaOf(pk); noteProd('sdn', h, meta); const jk = (0, /*()*/__C.shipJob)('sdn', h, pk.stream, meta); if (jk) wanted.add(jk); }
         }
       };
       let roomEl = null, roomMeta = null, alag = 0;
@@ -5191,8 +5196,9 @@
         if (c.pc !== 0 && beyondRow) {
           // ship my product UP (the up-seat relays it to ITS head)
           const up = T.up(hc); const upPid = up ? (0, /*()*/__C.occPid)(up) : null;
-          const jk = (0, /*()*/__C.shipJob)('sub', upPid, prodPack.stream, prodMeta()); if (jk) wanted.add(jk);
-          { const sv = (0, /*()*/__C.meshSeat)(); if (sv && sv.l14Up && sv.l14Up !== upPid && sv.l14Cut) { const ju = (0, /*()*/__C.shipJob)('sub', sv.l14Up, prodPack.stream, Object.assign({ l14: 1 }, prodMeta())); if (ju) wanted.add(ju); } } // L14: fast media, the branch rides its uplink
+          const upMeta = prodMeta(); noteProd('sub', upPid, upMeta);
+          const jk = (0, /*()*/__C.shipJob)('sub', upPid, prodPack.stream, upMeta); if (jk) wanted.add(jk);
+          { const sv = (0, /*()*/__C.meshSeat)(); if (sv && sv.l14Up && sv.l14Up !== upPid && sv.l14Cut) { const l14Meta = Object.assign({ l14: 1 }, prodMeta()); noteProd('sub', sv.l14Up, l14Meta); const ju = (0, /*()*/__C.shipJob)('sub', sv.l14Up, prodPack.stream, l14Meta); if (ju) wanted.add(ju); } } // L14: fast media, the branch rides its uplink
         } else if (c.pc === 0 && beyondRow) { // Stadium forms whenever the room is MULTI-ROW (not just multi-section) — the Section channel is gone, so cross-row visibility relies entirely on this
           // SECTION-1 FINISH (W7 rook): my product goes DIRECT to every other
           // head over the head column — colMates of a head ARE the other heads
@@ -5205,17 +5211,19 @@
           // current.
           // Every row copy names its packer (src) and its carries (h: 0 here, +1 per relay), so a head ranks copies by path.
           for (const hm of T.colMates(hc)) {
-            const jk0 = (0, /*()*/__C.shipJob)('sdrow:' + c.r, (0, /*()*/__C.occPid)(hm), prodPack.stream, Object.assign({ row: c.r, h: 0, src: __C.myId }, prodMeta())); if (jk0) wanted.add(jk0);
+            const rowMeta = Object.assign({ row: c.r, h: 0, src: __C.myId }, prodMeta()); noteProd('sdrow:' + c.r, (0, /*()*/__C.occPid)(hm), rowMeta);
+            const jk0 = (0, /*()*/__C.shipJob)('sdrow:' + c.r, (0, /*()*/__C.occPid)(hm), prodPack.stream, rowMeta); if (jk0) wanted.add(jk0);
           }
           // L2.15: my product also crosses each Section-1 bridge of mine (an empty cell's two nearest seats): the far end is the head
           // (or the heir standing in) of another row whose corner with mine may be silent; it keeps this copy parked as a standby
           // (one-pipe law) and plays it when the head-column copy stops
-          { const sb = (0, /*()*/__C.meshSeat)(); for (const t of (sb && sb.s1Bridges ? sb.s1Bridges() : [])) { const jb = (0, /*()*/__C.shipJob)('sdrow:' + c.r, t, prodPack.stream, Object.assign({ row: c.r, h: 1, src: __C.myId }, prodMeta())); if (jb) wanted.add(jb); } }
+          { const sb = (0, /*()*/__C.meshSeat)(); for (const t of (sb && sb.s1Bridges ? sb.s1Bridges() : [])) { const brMeta = Object.assign({ row: c.r, h: 1, src: __C.myId }, prodMeta()); noteProd('sdrow:' + c.r, t, brMeta); const jb = (0, /*()*/__C.shipJob)('sdrow:' + c.r, t, prodPack.stream, brMeta); if (jb) wanted.add(jb); } }
           // L2.7 at Section 1: the heir has no pc to the other heads; its column-mates carry its product to their heads (x2 -> sdrow), as a mate carries its head's x1
-          if (actHead) for (const cm of T.colMates(c)) { const jx = (0, /*()*/__C.shipJob)('x2', (0, /*()*/__C.occPid)(cm), prodPack.stream, Object.assign({ row: c.r, h: 0, src: __C.myId }, prodMeta())); if (jx) wanted.add(jx); }
+          if (actHead) for (const cm of T.colMates(c)) { const x2Meta = Object.assign({ row: c.r, h: 0, src: __C.myId }, prodMeta()); noteProd('x2', (0, /*()*/__C.occPid)(cm), x2Meta); const jx = (0, /*()*/__C.shipJob)('x2', (0, /*()*/__C.occPid)(cm), prodPack.stream, x2Meta); if (jx) wanted.add(jx); }
           for (let j = 1; j < C; j++) {
             const mate = (0, /*()*/__C.occPid)({ pc: 0, r: c.r, i: j });
-            const jk = (0, /*()*/__C.shipJob)('x1', mate, prodPack.stream, Object.assign({ row: c.r, h: 0, src: __C.myId }, prodMeta())); if (jk) wanted.add(jk);
+            const x1Meta = Object.assign({ row: c.r, h: 0, src: __C.myId }, prodMeta()); noteProd('x1', mate, x1Meta);
+            const jk = (0, /*()*/__C.shipJob)('x1', mate, prodPack.stream, x1Meta); if (jk) wanted.add(jk);
           }
         }
         // ---- ONE PACK DOWN THE TREE (docs/media-plane.md) ----------------------
@@ -5434,6 +5442,28 @@
       }
       if (c.pc === 0 && rowMixOpen()) rowMixVia(); // the 15s stamp, once; mixIn peeks and does not stamp
       const mixPlan = (0, /*()*/__C.mixIn)() || [];
+      // Product rows: the hand ships against the plan. An empty pack (n 0) is not a row, because packFor is null.
+      if (__C.DEBUG_ON) {
+        const sigOf = (key, to, meta) => {
+          const m = meta || {};
+          const ids = Array.isArray(m.ids) ? m.ids.join('\u0001') : '';
+          return key + '\u0000' + (to == null ? '' : to) + '\u0000' + [m.n, m.cols, m.row, m.h, m.src, m.l14, ids].join('\u0000');
+        };
+        const hands = prodShips.filter((s) => s.meta && s.meta.n > 0).map((s) => sigOf(s.key, s.to, s.meta)).sort();
+        const planned = [];
+        for (const e of mixPlan) if (e && e.video && (e.video.pack === 'prod' || e.video.pack === 'l14')) planned.push(sigOf(e.key, e.to, e.meta));
+        planned.sort();
+        let prodReason = null;
+        if (hands.length !== planned.length) prodReason = 'count hand ' + hands.length + ' plan ' + planned.length;
+        else for (let i = 0; i < hands.length; i++) if (hands[i] !== planned[i]) { prodReason = 'meta'; break; }
+        if (!reconcileMosaic.prodDiff) reconcileMosaic.prodDiff = { sweeps: 0, diffSweeps: 0, last: null };
+        if (hands.length || planned.length) reconcileMosaic.prodDiff.sweeps++;
+        if (prodReason) {
+          reconcileMosaic.prodDiff.diffSweeps++;
+          reconcileMosaic.prodDiff.last = prodReason;
+          if (__C.clog) (0, /*()*/__C.clog)('prod-diff ' + prodReason);
+        }
+      }
       const keep = new Set();
       for (const e of mixPlan) {
         if (!e || !e.audio || !e.audio.mix) continue;
@@ -5452,6 +5482,7 @@
       }
       for (const e of mixPlan) {
         if (!e || !e.key || !e.to) continue; // the ear is folded and not shipped
+        if (e.video && (e.video.pack === 'prod' || e.video.pack === 'l14')) continue; // still hand-shipped above; the flip deletes those ships
         if (e.video && e.video.pack && !(packFor(e.video.pack, e.video.skip) || {}).track) continue;
         const jk = (0, /*()*/__C.shipJob)(e.key, e.to, streamFor(e), e.meta, e.upKey);
         if (!jk) continue;

@@ -11,13 +11,14 @@
  * agent's voice track, botVoiceTrack, made by meet-agent through the port's AudioContext; else a microphone track
  * the host gave me), and my camera when the host gave me one and no blur applies. Received tracks reach the core
  * through the pc's ontrack as on a page (claims, meters through the port's AudioContext, the agent's audio.in).
- * WHAT IT CANNOT MAKE YET: a picture of its own (avatar, blur, screen, rebroadcast) needs a video encoder: those
- * sources report no-track (never the raw camera in place of a blur). A stager's own stage feed ships voice only.
+ * WHAT IT CANNOT MAKE YET: a picture of its own face from anything but a camera track the host gave (avatar, blur,
+ * screen, rebroadcast). Those sources report no-track. A stager's own stage feed ships voice only.
  * Duty slots (sdm / sub / sgs) are read off the jobs this plane actually holds. This plane folds a mix row's audio on
- * the port's AudioContext and ships that fold with a claimed picture when the row has one. It still composites no
- * strip and no picture pack: a row whose picture is {pack} ships only when packFor already returned a live track,
- * and then the fold rides with it. With no pack track the row ships nothing, so an owed duty stays 'no-track'.
- * The host may put a video port on this global (vp8Port). install holds it and does not paint with it.
+ * the port's AudioContext and ships that fold with a claimed picture when the row has one. A row whose picture is
+ * {pack} ships when packFor has a live track (room, pipe, prod, l14), and the fold rides with it. With no pack track
+ * the row ships nothing, so an owed duty stays 'no-track'.
+ * The host's video port (vp8Port) paints each pack in the core's packIn plan: one packer per key, tiles from decoded
+ * tracks, encoded in the port's worker. A cost governor slows a pack that spends more than its share of one core.
  *
  * Install: the host links the core with no media part, hands the declared nones, then calls
  * GifOS.planeNode.install(meeting.media, meeting.core) before meeting.run(). Each name below replaces its stand-in.
@@ -27,7 +28,7 @@
   const GifOS = root.GifOS = root.GifOS || {};
 
   function install(M, C) {
-    // Held for a later pack. This plane still composites no strip and does not call the port.
+    // The video port paints the packs. With no port, packFor stays null and a {pack} row ships nothing.
     const videoPort = root.vp8Port || null;
     const def = (name, value) => Object.defineProperty(M, name, { value, writable: true, configurable: true, enumerable: true });
     // The browser plane assigns these from GifOS.timings. A null none makes a core `>` true on the next pass.
@@ -246,14 +247,16 @@
       if (e.own === 'stage') return ownStageStream();
       const want = [];
       try {
-        // A picture pack this plane did not make: the fold must not leave without it, and the pack must not leave
-        // without the fold. packFor null (this plane, until a later step) answers neither, so the row ships nothing.
+        // A picture pack and its fold leave together. No pack track, no ship, so an owed duty stays no-track.
         if (e.video && e.video.pack) {
           const v = packVideo(e.video);
           let a = null;
           if (e.audio && e.audio.mix) a = mixAudioTrack(e);
           else if (e.audio && e.audio.own === 'mic') a = live(mainAudioTrack()) ? mainAudioTrack() : null;
           else if (e.audio) a = shipKind(e.audio.own === 'stage' ? ownStageStream() : claimStream(e.audio), 'audio');
+          // A product row names no fold. The browser hands the packer's whole stream to shipJob, and that stream
+          // carries the row's voice. Take the same audio track so a parent can fold it.
+          else a = packAudio(e.video);
           if (!v || (e.audio && !a)) return null;
           if (a) want.push(a);
           want.push(v);
@@ -502,7 +505,297 @@
       } catch (e) {}
       return fallback;
     }
-    function packFor() { return null; }
+    // werift writeRtp does not fire onReceiveRtp. A camera this seat encodes is decoded the same way a remote one is.
+    function hearLocal(track) {
+      if (!track || track.remote || track._gifosHear) return track;
+      const orig = track.writeRtp;
+      if (typeof orig !== 'function' || !track.onReceiveRtp || typeof track.onReceiveRtp.execute !== 'function') return track;
+      track.writeRtp = function (pkt) {
+        const r = orig.apply(this, arguments);
+        try { track.onReceiveRtp.execute(pkt); } catch (e) {}
+        return r;
+      };
+      track._gifosHear = 1;
+      return track;
+    }
+    function faceTrack(pid) {
+      if (!pid) return null;
+      if (pid === C.myId) {
+        if (typeof C.iAmWaiting === 'function' && C.iAmWaiting()) return null;
+        const ls = C.localStream;
+        const t = ls && typeof ls.getVideoTracks === 'function' ? ls.getVideoTracks()[0] : null;
+        return live(t) ? t : null;
+      }
+      if (typeof C.peerWaits === 'function' && C.peerWaits(pid)) return null;
+      const p = C.peers && typeof C.peers.get === 'function' ? C.peers.get(pid) : null;
+      const mine = p && p.stream && typeof p.stream.getVideoTracks === 'function' ? p.stream.getVideoTracks() : null;
+      if (mine) for (let i = 0; i < mine.length; i++) if (live(mine[i])) return mine[i];
+      const via = C.relayVia && typeof C.relayVia.get === 'function' ? C.relayVia.get(pid) : null;
+      const relayed = via && via.stream && typeof via.stream.getVideoTracks === 'function' ? via.stream.getVideoTracks() : null;
+      if (relayed) for (let i = 0; i < relayed.length; i++) if (live(relayed[i])) return relayed[i];
+      return null;
+    }
+    function blockTrack(mosKey) {
+      const f = C.mosIn && typeof C.mosIn.get === 'function' ? C.mosIn.get(mosKey) : null;
+      const tracks = f && f.stream && typeof f.stream.getVideoTracks === 'function' ? f.stream.getVideoTracks() : null;
+      if (!tracks) return null;
+      for (let i = 0; i < tracks.length; i++) if (live(tracks[i])) return tracks[i];
+      return null;
+    }
+    // The voice that belongs on a face tile. The video source is a decoder; this is the stream the fold sums.
+    function audioStream(pid) {
+      if (!pid) return null;
+      try {
+        if (pid === C.myId) return micFoldStream();
+        if (typeof C.peerWaits === 'function' && C.peerWaits(pid)) return null;
+        const p = C.peers && typeof C.peers.get === 'function' ? C.peers.get(pid) : null;
+        if (p && p.relayed) {
+          const via = C.relayVia && typeof C.relayVia.get === 'function' ? C.relayVia.get(pid) : null;
+          return (via && via.stream) || null;
+        }
+        return (p && p.stream) || null;
+      } catch (e) { return null; }
+    }
+    // One decoder per track, freed when the last tile drops it.
+    const readers = new Map();
+    function takeSource(track) {
+      if (!videoPort || typeof videoPort.source !== 'function') return null;
+      if (!track.remote) hearLocal(track);
+      let rec = readers.get(track);
+      if (!rec) { rec = { src: videoPort.source(track), n: 0 }; readers.set(track, rec); }
+      rec.n++;
+      return rec.src;
+    }
+    function dropSource(track) {
+      const rec = readers.get(track);
+      if (!rec) return;
+      rec.n--;
+      if (rec.n > 0) return;
+      try { if (rec.src && rec.src.close) rec.src.close(); } catch (e) {}
+      readers.delete(track);
+    }
+    function tnum(name) {
+      const n = GifOS.timings && GifOS.timings[name];
+      return (typeof n === 'number' && isFinite(n) && n > 0) ? n : 0;
+    }
+    function budget() {
+      let b = tnum('PACK_CPU_SHARE');
+      try { const n = Number(root.PACK_CPU_SHARE); if (isFinite(n) && n > 0) b = n; } catch (e) {}
+      try {
+        if (typeof process !== 'undefined' && process.env && process.env.PACK_CPU_SHARE != null && process.env.PACK_CPU_SHARE !== '') {
+          const n = Number(process.env.PACK_CPU_SHARE);
+          if (isFinite(n) && n > 0) b = n;
+        }
+      } catch (e) {}
+      return b;
+    }
+    function govOn() {
+      try { if (C && C.DEBUG_ON) return true; } catch (e) {}
+      try { if (root.DEBUG === 'on') return true; } catch (e) {}
+      try { if (typeof process !== 'undefined' && process.env && process.env.DEBUG === 'on') return true; } catch (e) {}
+      return false;
+    }
+    function govLog(key, fps, cell, share) {
+      if (!govOn()) return;
+      const s = (Math.round(share * 1000) / 1000).toFixed(3);
+      console.log('pack-gov ' + key + ' fps=' + fps + ' cell=' + cell + ' share=' + s);
+    }
+    const packers = new Map();
+    let govOverAt = 0, govUnderAt = 0;
+    function shareOf(held, now) {
+      const win = tnum('PACK_GOV_WINDOW_MS');
+      const keep = [];
+      let sum = 0;
+      for (let i = 0; i < held.samples.length; i++) {
+        const s = held.samples[i];
+        if (win && now - s.at > win) continue;
+        keep.push(s); sum += s.share;
+      }
+      held.samples = keep;
+      return keep.length ? sum / keep.length : 0;
+    }
+    function takeFrames(held) {
+      while (held.pend.length && held.enc.length) {
+        const p = held.pend.shift();
+        const enc = held.enc.shift() || 0;
+        const ms = (p.paint || 0) + (p.present || 0) + enc;
+        held.samples.push({ at: Date.now(), share: ms * p.fps / 1000 });
+      }
+    }
+    function stepDown(held) {
+      const floor = tnum('PACK_FPS_FLOOR'), div = tnum('PACK_FPS_DIV'), minCell = tnum('PACK_CELL_MIN_PX');
+      if (floor && div && held.fps > floor) {
+        const next = Math.max(floor, Math.floor(held.fps / div));
+        if (next < held.fps) { held.fps = next; try { held.pk.setFps(next); } catch (e) {} return true; }
+      }
+      if (minCell && held.cell > minCell) {
+        held.cell = minCell;
+        try { held.pk.setCell(minCell); } catch (e) {}
+        return true;
+      }
+      return false;
+    }
+    function stepUp(held) {
+      const ceil = tnum('PACK_FPS_CEIL'), div = tnum('PACK_FPS_DIV'), full = tnum('PACK_CELL_PX');
+      if (full && held.cell < full) { held.cell = full; try { held.pk.setCell(full); } catch (e) {} return true; }
+      if (ceil && div && held.fps < ceil) {
+        const next = Math.min(ceil, held.fps * div);
+        if (next > held.fps) { held.fps = next; try { held.pk.setFps(next); } catch (e) {} return true; }
+      }
+      return false;
+    }
+    function govern() {
+      const now = Date.now();
+      let sum = 0, hot = null, hotS = -1, cool = null;
+      for (const [key, held] of packers) {
+        takeFrames(held);
+        held.share = shareOf(held, now);
+        sum += held.share;
+        if (held.share > hotS) { hotS = held.share; hot = held; hot.keyName = key; }
+        const full = tnum('PACK_CELL_PX'), ceil = tnum('PACK_FPS_CEIL');
+        const room = (full && held.cell < full) || (ceil && held.fps < ceil);
+        if (room && (!cool || held.cell < cool.cell || (held.cell === cool.cell && held.fps < cool.fps))) { cool = held; cool.keyName = key; }
+      }
+      const cap = budget(), margin = tnum('PACK_CPU_MARGIN'), hold = tnum('PACK_GOV_HOLD_MS');
+      if (!(cap > 0) || !(hold > 0)) return;
+      if (sum > cap) {
+        govUnderAt = 0;
+        if (!govOverAt) govOverAt = now;
+        if (hot && now - govOverAt >= hold && stepDown(hot)) { govLog(hot.keyName, hot.fps, hot.cell, hot.share); govOverAt = now; }
+      } else if (sum < cap - margin) {
+        govOverAt = 0;
+        if (!govUnderAt) govUnderAt = now;
+        if (cool && now - govUnderAt >= hold && stepUp(cool)) { govLog(cool.keyName, cool.fps, cool.cell, cool.share); govUnderAt = now; }
+      } else { govOverAt = 0; govUnderAt = 0; }
+    }
+    function stopPack(key) {
+      const held = packers.get(key);
+      if (!held) return;
+      for (const rec of held.tiles.values()) dropSource(rec.track);
+      try { held.pk.stop(); } catch (e) {}
+      try { held.surf.close(); } catch (e) {}
+      packers.delete(key);
+    }
+    function metaOf(pk) {
+      const m = { n: pk.count(), cols: pk.cols() };
+      let ids = null;
+      try { ids = pk.cellIds ? pk.cellIds() : null; } catch (e) { ids = null; }
+      if (ids && ids.length === m.n && ids.every((x) => typeof x === 'string' && x)) m.ids = ids;
+      return m;
+    }
+    function syncTiles(held, tiles) {
+      const next = new Map();
+      const list = Array.isArray(tiles) ? tiles : [];
+      for (let i = 0; i < list.length; i++) {
+        const t = list[i];
+        if (!t || t.sound || t.id == null) continue;
+        const ref = t.ref || {};
+        let track = null;
+        try { track = ref.face ? faceTrack(ref.face) : (ref.in ? blockTrack(ref.in) : null); } catch (e) { track = null; }
+        if (!live(track)) { try { held.pk.delTile(t.id); } catch (e) {} continue; }
+        const prev = held.tiles.get(t.id);
+        let rec = prev && prev.track === track ? prev : null;
+        if (rec) held.tiles.delete(t.id);
+        else {
+          if (prev) dropSource(prev.track);
+          const src = takeSource(track);
+          if (!src) continue;
+          rec = { track: track, src: src };
+        }
+        next.set(t.id, rec);
+        let audioSt = null;
+        try {
+          if (ref.face) audioSt = audioStream(ref.face);
+          else if (ref.in) {
+            const f = C.mosIn && typeof C.mosIn.get === 'function' ? C.mosIn.get(ref.in) : null;
+            audioSt = f && f.stream;
+          }
+        } catch (e) { audioSt = null; }
+        try {
+          held.pk.setTile(t.id, t.ord, rec.src, audioSt, { n: t.n, cols: t.cols, ids: t.ids, lbl: t.lbl, fit: t.fit, pid: t.pid });
+        } catch (e) {}
+      }
+      for (const [id, prev] of held.tiles) {
+        try { held.pk.delTile(id); } catch (e) {}
+        dropSource(prev.track);
+      }
+      held.tiles = next;
+    }
+    function ensurePack(pack) {
+      let held = packers.get(pack.key);
+      if (held) return held;
+      const MM = GifOS.meshMedia;
+      const ceil = tnum('PACK_FPS_CEIL'), cell = tnum('PACK_CELL_PX');
+      if (!MM || typeof MM.createPacker !== 'function' || !videoPort || typeof videoPort.surface !== 'function' || !ceil) return null;
+      const surf = videoPort.surface({ fps: ceil });
+      let ac = null;
+      try {
+        if (!C.ac && typeof C.ensureAc === 'function') C.ensureAc();
+        ac = C.ac && C.ac.state !== 'closed' ? C.ac : null;
+      } catch (e) { ac = null; }
+      const pk = MM.createPacker({ shape: pack.shape, fps: ceil, surface: surf, ac: ac });
+      if (cell) { try { pk.setCell(cell); } catch (e) {} }
+      const orig = surf.present.bind(surf);
+      const enc = [];
+      if (surf.costs && typeof surf.costs.push === 'function') {
+        const push = surf.costs.push.bind(surf.costs);
+        surf.costs.push = function (v) { enc.push(v); return push(v); };
+      }
+      surf.present = function () {
+        const paint = pk.stats ? pk.stats().cost : 0;
+        const t0 = Date.now();
+        const r = orig();
+        held.pend.push({ paint: paint || 0, present: Date.now() - t0, fps: held.fps });
+        return r;
+      };
+      held = { pk: pk, surf: surf, tiles: new Map(), fps: ceil, cell: cell || 0, samples: [], pend: [], enc: enc, share: 0, keyName: pack.key };
+      packers.set(pack.key, held);
+      try { pk.start(); } catch (e) {}
+      govLog(pack.key, held.fps, held.cell, 0);
+      return held;
+    }
+    // A plan key with nothing to paint does not start an encoder. The clock would still fire.
+    function drawable(pack) {
+      const list = Array.isArray(pack && pack.tiles) ? pack.tiles : [];
+      for (let i = 0; i < list.length; i++) {
+        const t = list[i];
+        if (t && !t.sound && t.id != null) return true;
+      }
+      return false;
+    }
+    // After carryIn, before mixIn: this sweep's packFor reads the packers this sweep filled.
+    function syncPackers() {
+      if (!videoPort) return;
+      let plan = [];
+      try { plan = typeof C.packIn === 'function' ? (C.packIn() || []) : []; } catch (e) { plan = []; }
+      const want = new Set();
+      for (let i = 0; i < plan.length; i++) {
+        const pack = plan[i];
+        if (!pack || !pack.key || !drawable(pack)) continue;
+        want.add(pack.key);
+        const held = ensurePack(pack);
+        if (held) syncTiles(held, pack.tiles);
+      }
+      for (const key of [...packers.keys()]) if (!want.has(key)) stopPack(key);
+      try { govern(); } catch (e) {}
+    }
+    function packFor(kind, skip) {
+      if (!kind) return null;
+      let key = null;
+      if (kind === 'room') key = 'room';
+      else if (kind === 'pipe') key = 'pipe:' + skip;
+      else if (kind === 'prod') key = 'prod';
+      else if (kind === 'l14') key = 'l14:' + skip;
+      else return null;
+      const held = packers.get(key);
+      if (!held || !held.pk) return null;
+      let n = 0, track = null, cols = 0;
+      try { n = held.pk.count(); track = held.pk.track; cols = held.pk.cols(); } catch (e) { return null; }
+      if (!(n > 0) || !live(track)) return null;
+      const meta = metaOf(held.pk);
+      if (!(meta.cols > 0)) meta.cols = cols;
+      return { track: track, meta: meta };
+    }
     function blockOf(rk) {
       try {
         const f = C.mosIn && typeof C.mosIn.get === 'function' ? C.mosIn.get(rk) : null;
@@ -515,29 +808,13 @@
     }
     // packIn's read-only questions. No element on this host: a missing picture is false, and a throw is false.
     function faceLive(pid) {
-      try {
-        if (!pid) return false;
-        if (pid === C.myId) {
-          if (typeof C.iAmWaiting === 'function' && C.iAmWaiting()) return false;
-          return !!(C.meTile && C.meTile.video);
-        }
-        if (typeof C.peerWaits === 'function' && C.peerWaits(pid)) return false;
-        const p = C.peers && typeof C.peers.get === 'function' ? C.peers.get(pid) : null;
-        return !!(p && p.video);
-      } catch (e) { return false; }
+      try { return !!faceTrack(pid); } catch (e) { return false; }
     }
     function blockPicture(mosKey) {
-      try {
-        const f = C.mosIn && typeof C.mosIn.get === 'function' ? C.mosIn.get(mosKey) : null;
-        const tracks = f && f.stream && typeof f.stream.getVideoTracks === 'function' ? f.stream.getVideoTracks() : null;
-        return !!(tracks && tracks.some((t) => t && t.readyState !== 'ended'));
-      } catch (e) { return false; }
+      try { return !!blockTrack(mosKey); } catch (e) { return false; }
     }
     function blockLive(mosKey) {
-      try {
-        const f = C.mosIn && typeof C.mosIn.get === 'function' ? C.mosIn.get(mosKey) : null;
-        return !!(f && f.el);
-      } catch (e) { return false; }
+      try { return !!blockTrack(mosKey); } catch (e) { return false; }
     }
     function overlayTiny() {
       try {
@@ -640,6 +917,24 @@
       } catch (e) { return null; }
       const t = pk && pk.track;
       return live(t) ? t : null;
+    }
+    // The packer's own voice, for a row that names no fold. A mix row brings its own audio and does not use this.
+    function packKeyOf(video) {
+      if (!video || !video.pack) return null;
+      if (video.pack === 'room') return 'room';
+      if (video.pack === 'pipe') return 'pipe:' + video.skip;
+      if (video.pack === 'prod') return 'prod';
+      if (video.pack === 'l14') return 'l14:' + video.skip;
+      return null;
+    }
+    function packAudio(video) {
+      const key = packKeyOf(video);
+      const held = key ? packers.get(key) : null;
+      const st = held && held.pk && held.pk.stream;
+      if (!st || typeof st.getAudioTracks !== 'function') return null;
+      const ts = st.getAudioTracks();
+      for (let i = 0; i < ts.length; i++) if (live(ts[i])) return ts[i];
+      return null;
     }
     function rowMixViaPeek() {
       try {
@@ -925,6 +1220,7 @@
       let plan = [];
       try { C.roomBeyondRow(true); } catch (e) {}
       try { plan = C.carryIn() || []; } catch (e) { plan = []; }
+      try { syncPackers(); } catch (e) {}
       try { const mix = C.mixIn() || []; plan = plan.concat(mix); } catch (e) {}
       // carryIn already chose the ^r routes. Hold a played second root on its source before this sweep ships, so a
       // copy whose source is gone ends here and the next ship mints a fresh id (the browser's holdSecondRoots).

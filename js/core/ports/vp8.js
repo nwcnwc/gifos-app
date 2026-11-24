@@ -442,6 +442,9 @@
     return null;
   }
   function askKey(track) {
+    // A track this port encodes has no receiver. The local decoder asks the encoder it belongs to.
+    const local = pliOf.get(track);
+    if (typeof local === 'function') { local(); return; }
     const rx = receiverFor(track);
     if (!rx || typeof rx.sendRtcpPLI !== 'function') return;
     const ssrc = track && track.ssrc;

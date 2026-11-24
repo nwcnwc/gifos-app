@@ -18215,6 +18215,49 @@
           if (via) push('ra', via, { row: c.r, src: myId }, null, { own: 'mic' });
         }
       }
+      // The product ships the browser still sends by hand. A row is listed only when that pack has a
+      // track, the same answer packFor gives the sweep. No keepAdd. The browser ship loop skips these.
+      function prodPack(kind, skip) {
+        const pk = (0, /*()*/__M.packFor)(kind, skip);
+        return pk && pk.track ? pk : null;
+      }
+      function addProd() {
+        if (!beyondRow) return;
+        const hc = actHead ? { pc: c.pc, r: c.r, i: 0 } : c;
+        if (head) {
+          const pk = prodPack('prod');
+          if (!pk) return;
+          const base = pk.meta || {};
+          if (c.pc !== 0) {
+            const up = T.up(hc);
+            const upPid = up ? occPid(up) : null;
+            push('sub', upPid, base, { pack: 'prod' }, null);
+            const sv = meshSeat();
+            if (sv && sv.l14Up && sv.l14Up !== upPid && sv.l14Cut) push('sub', sv.l14Up, Object.assign({ l14: 1 }, base), { pack: 'prod' }, null);
+          } else {
+            const direct = { row: c.r, h: 0, src: myId };
+            for (const hm of T.colMates(hc)) push('sdrow:' + c.r, occPid(hm), Object.assign({}, direct, base), { pack: 'prod' }, null);
+            const sv = meshSeat();
+            const bridges = sv && sv.s1Bridges ? sv.s1Bridges() : [];
+            for (let i = 0; i < bridges.length; i++) push('sdrow:' + c.r, bridges[i], Object.assign({ row: c.r, h: 1, src: myId }, base), { pack: 'prod' }, null);
+            if (actHead) for (const cm of T.colMates(c)) push('x2', occPid(cm), Object.assign({}, direct, base), { pack: 'prod' }, null);
+            for (let j = 1; j < Cn; j++) push('x1', occPid({ pc: 0, r: c.r, i: j }), Object.assign({}, direct, base), { pack: 'prod' }, null);
+          }
+          return;
+        }
+        const pipes = pipePeers();
+        const l14Heads = l14DownHeads(meshSeat(), beyondRow, occPid(T.down(c))).filter((h) => pipes.indexOf(h) < 0).concat(pipes);
+        for (let i = 0; i < l14Heads.length; i++) {
+          const h = l14Heads[i];
+          const rel = mosIn.get('sdxu:' + h);
+          if (rel && rel.stream && rel.stream.getTracks().length) continue;
+          const pk = prodPack('l14', h);
+          if (!pk) continue;
+          const m = pk.meta || {};
+          push('sdn', h, { n: m.n, cols: m.cols }, { pack: 'l14', skip: h }, null);
+        }
+      }
+      addProd();
       return out;
     }
     // Pack rows only. One call per sweep, after the packers are filled; the sweep still paints from its own fill.
