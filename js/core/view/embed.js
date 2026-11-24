@@ -140,6 +140,7 @@
       paint();
     });
     fn('paintBcQuiet', function (bq) { quiet = bq || { text: '' }; paint(); });
+    fn('stageFeedShows', function () { return !!stagefeedEl.querySelector('.rowtile'); });   // the core's not-started line asks whether a picture shows
     fn('showPwModal', function () {   // the door wants the room password: the card, inside this frame only
       $('emb-card-hint').textContent = tried ? 'That password did not work. Try again.' : 'Enter the password to watch clearly.';
       $('emb-pw').value = '';
@@ -154,6 +155,9 @@
     Object.keys(own).forEach(function (n) { Object.defineProperty(names, n, { value: own[n], writable: true, enumerable: true, configurable: true }); });
 
     names.standInsForTest = function () { return Array.from(counts); };
+    // The player paints once the linker's run returns, even when the meeting's start stops early (an embed that names
+    // no hosted broadcast joins nothing, and says why).
+    queueMicrotask(function () { try { paint(); } catch (e) {} });
     return { names: names, setup: setup };
     // Input: unmute, mute, the password, full screen. No other control exists. Runs after the core's top level.
     function setup() {
