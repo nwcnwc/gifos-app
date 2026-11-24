@@ -881,7 +881,11 @@
       },
       clearTiles() { for (const id of [...tiles.keys()]) pk.delTile(id); },
       // Debug: each tile's source element and cells (a delay recorder watches the element a face is read from).
-      tilesForTest: () => [...tiles].map(([id, t]) => ({ id, ord: t.ord, el: t.el, n: t.n, cols: t.cols, ids: t.ids, hid: t.hid ? [...t.hid] : null })),
+      tilesForTest: () => {
+        const rows = [...tiles].map(([id, t]) => ({ id, ord: t.ord, el: t.el, n: t.n, cols: t.cols, ids: t.ids, hid: t.hid ? [...t.hid] : null, fit: t.fit || null, lbl: t.lbl || null, pid: (t.n === 1 && t.ids && t.ids[0] != null) ? t.ids[0] : null, sound: 0, stream: t.stream || null }));
+        for (const [id, stream] of sounds) rows.push({ id, ord: null, el: null, pid: null, sound: 1, stream: stream || null });
+        return rows;
+      },
       ids: () => [...tiles.keys()],
       // STADIUM-FACES: the person in each cell 0..count()-1, in paint order
       // (tiles by ord, a block's faces in its own order; null = unknown).

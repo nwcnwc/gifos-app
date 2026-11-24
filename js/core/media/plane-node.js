@@ -513,6 +513,41 @@
         return m;
       } catch (e) { return {}; }
     }
+    // packIn's read-only questions. No element on this host: a missing picture is false, and a throw is false.
+    function faceLive(pid) {
+      try {
+        if (!pid) return false;
+        if (pid === C.myId) {
+          if (typeof C.iAmWaiting === 'function' && C.iAmWaiting()) return false;
+          return !!(C.meTile && C.meTile.video);
+        }
+        if (typeof C.peerWaits === 'function' && C.peerWaits(pid)) return false;
+        const p = C.peers && typeof C.peers.get === 'function' ? C.peers.get(pid) : null;
+        return !!(p && p.video);
+      } catch (e) { return false; }
+    }
+    function blockPicture(mosKey) {
+      try {
+        const f = C.mosIn && typeof C.mosIn.get === 'function' ? C.mosIn.get(mosKey) : null;
+        const tracks = f && f.stream && typeof f.stream.getVideoTracks === 'function' ? f.stream.getVideoTracks() : null;
+        return !!(tracks && tracks.some((t) => t && t.readyState !== 'ended'));
+      } catch (e) { return false; }
+    }
+    function blockLive(mosKey) {
+      try {
+        const f = C.mosIn && typeof C.mosIn.get === 'function' ? C.mosIn.get(mosKey) : null;
+        return !!(f && f.el);
+      } catch (e) { return false; }
+    }
+    function overlayTiny() {
+      try {
+        const tiny = GifOS.meshMedia && GifOS.meshMedia.stadiumTiny;
+        if (typeof tiny !== 'function') return false;
+        const past = typeof C.roomPastSection === 'function' && C.roomPastSection();
+        const n = past ? (typeof M.displayCount === 'function' ? M.displayCount() : 0) : (typeof C.knownTotal === 'function' ? C.knownTotal() : 0);
+        return !!tiny(n);
+      } catch (e) { return false; }
+    }
     function rowMixOpen() { try { return rowMixShipUntil > Date.now(); } catch (e) { return false; } }
     // The meeting context, already open. Asking here must not create one: a fold that needs a context calls ensureAc.
     function mixReady() {
@@ -985,6 +1020,10 @@
     def('hopMs', hopMs);
     def('packFor', packFor);
     def('blockOf', blockOf);
+    def('faceLive', faceLive);
+    def('blockPicture', blockPicture);
+    def('blockLive', blockLive);
+    def('overlayTiny', overlayTiny);
     def('rowMixOpen', rowMixOpen);
     def('mixReady', mixReady);
     def('rowMixViaPeek', rowMixViaPeek);
@@ -993,7 +1032,7 @@
     // The host's setInterval returns a number, so unref runs only when the timer object itself is what came back.
     const sweepT = setInterval(() => { try { M.schedReconcile(); } catch (e) {} }, GifOS.meshLaws.FHOP_SWEEP * GifOS.timings.tickMs);
     if (sweepT && typeof sweepT.unref === 'function') sweepT.unref();
-    return { folds: foldParts, video: videoPort, names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties', 'bindClaim', 'unbindClaim', 'adoptClaim', 'picRead', 'rowEdge', 'keyUp', 'producerKey', 'kfEv', 'attachTrack', 'detachTrack', 'parkSender', 'kickJob', 'noteReship', 'dropContainer', 'orphaned', 'attachFailed', 'containerFor', 'jobPinned', 'swapTrack', 'dutyJob', 'dutyMuteTick', 'schedClaim', 'schedReconcile', 'stgLost', 'mySelfStream', 'jobVideoAt', 'stgCarry', 'repaintRedun', 'swapPicNote', 'stgFoNote', 'rowMixHold', 'rowMixHeadArrives', 'x2Target', 'partStream', 'slotDark', 'carriedHot', 'hopMs', 'packFor', 'blockOf', 'rowMixOpen', 'mixReady', 'rowMixViaPeek', 'mosHeld'] };
+    return { folds: foldParts, video: videoPort, names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties', 'bindClaim', 'unbindClaim', 'adoptClaim', 'picRead', 'rowEdge', 'keyUp', 'producerKey', 'kfEv', 'attachTrack', 'detachTrack', 'parkSender', 'kickJob', 'noteReship', 'dropContainer', 'orphaned', 'attachFailed', 'containerFor', 'jobPinned', 'swapTrack', 'dutyJob', 'dutyMuteTick', 'schedClaim', 'schedReconcile', 'stgLost', 'mySelfStream', 'jobVideoAt', 'stgCarry', 'repaintRedun', 'swapPicNote', 'stgFoNote', 'rowMixHold', 'rowMixHeadArrives', 'x2Target', 'partStream', 'slotDark', 'carriedHot', 'hopMs', 'packFor', 'blockOf', 'faceLive', 'blockPicture', 'blockLive', 'overlayTiny', 'rowMixOpen', 'mixReady', 'rowMixViaPeek', 'mosHeld'] };
   }
 
   GifOS.planeNode = { install };
