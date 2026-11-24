@@ -1155,6 +1155,13 @@
         // account to it and a shared receipt becomes a shared IDENTITY — the
         // buyer's own — rather than a free copy. null until purchased.
         license: function(sku){ return rpc({type:'license', sku:sku}); },
+        // THIS app's own payments on this computer, oldest first, read from
+        // the OS's records (no server call): every charge, tips with no sku
+        // included, and purchases restored from receipt files. Never another
+        // app's. Each: { at (ms or null for an old record), amount (base
+        // units string), currency ('USD'|'USDC'), rail, sku|null,
+        // txs: [{ rail, id, role, verifyUrl }] }.
+        purchases: function(){ return rpc({type:'purchases'}); },
         // Meetings (capabilities.meet). The app never touches WebRTC: the host
         // page runs each meeting and this object is only messages. passwordOrLink
         // is a room password, or a pasted invite when it contains : / or #.
@@ -4329,6 +4336,10 @@
       }
       else if (d.type === 'license') {
         (GifOS.payBroker ? GifOS.payBroker.license(manifest, d.sku, originalBytes) : Promise.reject(new Error('Payments are not available on this computer.')))
+          .then((result) => reply({ ok: true, result })).catch((err) => reply({ ok: false, error: String(err && err.message || err) }));
+      }
+      else if (d.type === 'purchases') {
+        (GifOS.payBroker ? GifOS.payBroker.purchases(manifest, originalBytes) : Promise.reject(new Error('Payments are not available on this computer.')))
           .then((result) => reply({ ok: true, result })).catch((err) => reply({ ok: false, error: String(err && err.message || err) }));
       }
       else if (d.type === 'meet') {
