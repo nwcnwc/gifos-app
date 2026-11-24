@@ -509,7 +509,7 @@
   // credId(meeting right) -> the id GifOS revokes it by, and nothing more: the subscription id (or a pass key's K-
   // record), and for a pass ticket the pass id (the revoked-pass list's word). Never the meeting, a key or a signature.
   function credId(t) {
-    const c = { subId: idFits(t && t.subId) ? t.subId : null };
+    const c = { subId: t && (idFits(t.subId) || (typeof t.subId === 'string' && /^K-[0-9a-f]{24}$/.test(t.subId))) ? t.subId : null };   // K-: a pass key's record
     if (t && t.pass && typeof t.pid === 'string' && PASS_ID_RE.test(t.pid)) c.pid = t.pid;
     return c;
   }

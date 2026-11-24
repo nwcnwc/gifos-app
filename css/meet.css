@@ -3824,3 +3824,6 @@ body.bot-view { overflow: auto; background: var(--bg); }
   #clearnopw-bar button { min-height: 36px; padding: 0 12px; border-radius: var(--r-pill); border: 1px solid rgba(255,255,255,.2); background: rgba(10,10,15,.82); color: #eceef8; font: 600 13px/1 system-ui, sans-serif; }
   #clearnopw-report { display: flex; }
   #clearnopw-report .name-box a { color: inherit; text-decoration: underline; }
+  body.cnp-veil-stage #stagefeed > .rowtile video,
+  body.cnp-veil-rows .rowtile:not(#stagefeed > .rowtile) video,
+  body.cnp-veil-rows #stadium video { filter: blur(calc(var(--bw, 100vmin) * var(--blur-max, .045))) saturate(.75); }

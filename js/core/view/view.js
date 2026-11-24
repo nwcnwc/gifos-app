@@ -1240,7 +1240,12 @@
     function pipSource() {
       // The stage is the room's chosen broadcast — float it when live (the
       // composited strip beyond S1, individual stager feeds inside S1).
-      for (const v of stagefeedEl.querySelectorAll('.rowtile video')) if (pipReady(v) && !v.classList.contains('stageface')) return v;
+      // A no-password room with a clear right: the float paints raw frames (no CSS blur there), so nothing this viewer
+      // sees blurred is floated: the Stage only once tapped, rows and the stadium only once tapped in a full-right room,
+      // a face only when its own level is clear.
+      const cnp = (0, /*()*/__C.clearNoPwState)();
+      const cnpStageVeil = !!cnp.mode && !cnp.tapped, cnpRowsVeil = !!cnp.mode && !(cnp.mode === 'all' && cnp.tapped);
+      if (!cnpStageVeil) for (const v of stagefeedEl.querySelectorAll('.rowtile video')) if (pipReady(v) && !v.classList.contains('stageface')) return v;
       let first = null;
       for (const [pid, p] of __C.model.roster.peers()) {
         // A camera-off seat (a bot included) still decodes black frames — skip
@@ -1253,12 +1258,13 @@
         // blurred, is never floated — the receiver-side rule holds in every
         // sink, not only the grid tile.
         if ((0, /*()*/__C.forcedCamOff)(pid) || (0, /*()*/__C.modBlurOn)(pid) || (typeof __C.shareBlocked === 'function' && (0, /*()*/__C.shareBlocked)(pid))) continue;
+        if (cnp.mode && (0, /*()*/__C.blurLevelFor)(pid) > 0) continue;
         if (__C.model.roster.speakingOf().get(pid)) return p.video; // the talker beats first-connected
         first = first || p.video;
       }
       if (first) return first;
       const sd = stadiumEl.querySelector('[data-row="sd"] video');
-      if (pipReady(sd)) return sd;
+      if (pipReady(sd) && !cnpRowsVeil) return sd;
       // Alone in the room (or nobody else's video is up yet): float my OWN
       // preview — it shows the camera is still live and the room still open
       // while I'm in another app. Only when the camera is actually ON: the
@@ -10004,6 +10010,10 @@
       // the host's credential id (reportClearHost).
       function paintClearNoPw() {
         const st = (0, /*()*/__C.clearNoPwState)();
+        // Composite pictures (rows, the stadium, the Stage strip) carry many faces in one stream, so they are veiled
+        // whole at the sender's Max: the Stage until this viewer taps, rows and the stadium until a tap under the full item.
+        document.body.classList.toggle('cnp-veil-stage', !!st.mode && !st.tapped);
+        document.body.classList.toggle('cnp-veil-rows', !!st.mode && !(st.mode === 'all' && st.tapped));
         let bar = document.getElementById('clearnopw-bar');
         if (!st.mode) { if (bar) bar.remove(); const m = document.getElementById('clearnopw-report'); if (m) m.remove(); return; }
         const T = (k, en) => (0, /*()*/__C.uiText)(k, en);

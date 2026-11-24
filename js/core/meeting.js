@@ -3403,7 +3403,7 @@
         if (!mode) return 'nopw';
         if (id === 'me') {
           if (mode === 'stage' && !meOnStage()) return 'stageonly';
-          if (!(myNoBlurAt > clearSince) && !myStatus.scr && !myStatus.rb) return 'repick';
+          if (!(myNoBlurAt > clearSince)) return 'repick';   // a share or rebroadcast too: only a No blur picked after the right came on
         } else {
           if (mode === 'stage' && !(where === 'stage' && personOnStage(id))) return 'stageonly';
           if (!clearTap) return 'tap';
@@ -18851,12 +18851,12 @@
     // timer below), so a door does not meet its first knock with no answer.
     function subsRoomTier() {
       const o = (modTable['*'] || {}).sublic;
-      const k = o ? String(o.at) + '|' + String(o.proof || '') : '';
+      const k = o ? subsMeetId() + '|' + String(o.at) + '|' + String(o.proof || '') : '';
       if (k !== subsTierKey) {
         // A RENEWAL KEEPS THE RIGHT: the host sends a fresh order every couple of minutes; the verified one stands
         // until its own end while the new one is checked (no flicker of the room's line or its clear right). An
         // order that turns the plan off drops it at once; a new order that fails or lacks an item replaces it.
-        const keep = o && o.on !== false && subsTier && Date.now() / 1000 < subsTierExp;
+        const keep = o && o.on !== false && subsTier && Date.now() / 1000 < subsTierExp && subsTierKey.split('|')[0] === subsMeetId();   // the same meeting only
         subsTierKey = k;
         if (!keep) { subsTier = o ? undefined : null; subsTierExp = 0; subsGrants = null; }
         if (o) roomTierVia(o, subsMeetId()).then((t) => { if (subsTierKey === k) { subsTier = t || null; subsGrants = t ? t.grants : null; subsTierExp = t ? t.exp : 0; clearNoPwTick(); } }, () => { if (subsTierKey === k) { subsTier = null; subsGrants = null; subsTierExp = 0; clearNoPwTick(); } });
@@ -22760,7 +22760,7 @@
       clearMode = m; clearTap = false; clearSince = Date.now();
       try { reactRoomState(); } catch (e) {}
     }
-    const clearTickT = setInterval(clearNoPwTick, GifOS.timings.CLEAR_RIGHT_TICK_MS);   // the right's edges (on, off, expiry) repaint at once
+    const clearTickT = ((t) => { if (t && typeof t.unref === 'function') t.unref(); return t; })(setInterval(clearNoPwTick, GifOS.timings.CLEAR_RIGHT_TICK_MS));   // the right's edges (on, off, expiry) repaint at once
     // THE AGE-GATE HOOK, before any unblur: empty and OFF (no age check is built). A jurisdiction's age assurance
     // replaces GifOS.ageGate: required(ctx) -> true when a check must run; check(ctx) -> Promise<true> when it passed.
     // It fails closed: a throw, a rejection, an answer other than true, or no answer within AGE_GATE_MS keeps the blur.
@@ -22796,7 +22796,7 @@
       if (subsTier.cred.pid) cred.pid = subsTier.cred.pid;
       const base = String(window.GIFOS_PAY_URL || 'https://pay.gifos.app').replace(/\/$/, '');
       try {
-        const r = await fetch(base + '/gifos/report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ v: 1, cred }) });
+        const r = await fetch(base + '/gifos/report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ v: 1, cred }), referrerPolicy: 'no-referrer', credentials: 'omit' });
         return r.ok ? 'sent' : 'failed';
       } catch (e) { return 'failed'; }
     }
