@@ -3194,6 +3194,10 @@
     const rows = Object.keys(cfg).map((n, i) => apiRowHtml(i, n, cfg[n])).join('');
     return '<details class="adv" id="set-api-adv" open><summary class="set-sr" tabindex="-1">' + escapeHtml(ST('settings.accounts.sr')) + '</summary>' +
       '<p class="add-help">' + STh('settings.accounts.help', { proxy: API_PROXY_DEFAULT }) + '</p>' +
+      // Shown only while a wallet is connected (wireApiSection fills and reveals it).
+      '<div id="set-wallet" hidden><p class="add-help"><b>' + escapeHtml(ST('charge.wallet.title')) + '</b> <span id="set-wallet-addr"></span></p>' +
+      '<button type="button" class="widebtn" id="set-wallet-off">' + escapeHtml(ST('charge.wallet.disconnect')) + '</button>' +
+      '<p class="add-help" id="set-wallet-note" hidden></p></div>' +
       '<div class="api-rows">' + rows + '</div>' +
       '<button type="button" class="widebtn" id="api-add">' + escapeHtml(ST('settings.accounts.add')) + '</button>' +
       '</details>';
@@ -3398,6 +3402,28 @@
       row.querySelectorAll('.api-f').forEach((i) => i.addEventListener('input', () => { if (st.hasAttribute('data-saved')) setSt(st, ''); }));
     };
     box.querySelectorAll('.api-row').forEach(wireRow);
+    // Connected wallet: peek (no prompt); offer Disconnect only if there is one.
+    const wBox = box.querySelector('#set-wallet'), wOff = box.querySelector('#set-wallet-off');
+    const W = GifOS.payWallet;
+    if (wBox && wOff && W && typeof W.peekAddress === 'function') {
+      const wNote = box.querySelector('#set-wallet-note');
+      const label = () => { box.querySelector('#set-wallet-addr').textContent = wBox.dataset.addr ? wBox.dataset.addr.slice(0, 6) + '…' + wBox.dataset.addr.slice(-4) : ''; };
+      Promise.resolve(I18N ? I18N.load('charge').catch(() => null) : null).then(() => W.peekAddress()).then((addr) => {
+        if (!addr || !wBox.isConnected) return;
+        // The words were loaded after the first paint: set them now.
+        box.querySelector('#set-wallet b').textContent = ST('charge.wallet.title');
+        wOff.textContent = ST('charge.wallet.disconnect');
+        wBox.dataset.addr = addr; label(); wBox.hidden = false;
+      }).catch(() => {});
+      wOff.onclick = () => {
+        wOff.disabled = true;
+        Promise.resolve(W.disconnect()).then((r) => {
+          if (r && r.manual) { wNote.textContent = ST('charge.wallet.extension'); wNote.hidden = false; wBox.querySelector('#set-wallet-off').hidden = true; }
+          else wBox.hidden = true;
+          wBox.dataset.addr = ''; label();
+        }).finally(() => { wOff.disabled = false; });
+      };
+    }
     const add = box.querySelector('#api-add');
     if (add) add.onclick = () => {
       const tmp = document.createElement('div');

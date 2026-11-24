@@ -391,6 +391,8 @@
             '<div style="display:flex;justify-content:space-between;gap:.6rem"><span style="color:#9a9ab5">Amount</span><b id="gp-usdc-amt"></b></div>' +
             '<div style="display:flex;justify-content:space-between;gap:.6rem;margin-top:.45rem"><span style="color:#9a9ab5">Paying</span><span><b>' + esc(sheetData.payingTo) + '</b> <span style="color:#7ddb91">✓ verified</span></span></div>' +
             '<div style="display:flex;justify-content:space-between;gap:.6rem;margin-top:.45rem"><span style="color:#9a9ab5">Your USDC</span><b id="gp-usdc-bal">…</b></div>' +
+            '<div id="gp-usdc-wallet" style="display:none;justify-content:space-between;gap:.6rem;margin-top:.45rem;font-size:.82rem"><span id="gp-usdc-addr" style="color:#9a9ab5"></span><a id="gp-usdc-switch" href="#" style="color:#9db4ff">' + esc(trPay('charge.wallet.switch', 'Use a different wallet')) + '</a></div>' +
+            '<div id="gp-usdc-wnote" style="display:none;color:#9a9ab5;font-size:.78rem;margin-top:.4rem"></div>' +
             (onMainnet() ? '' : '<div style="color:#9a9ab5;font-size:.78rem;margin-top:.55rem">' + esc('USDC on ' + (sheetData.chain || 'a test network') + ', a test network.') + '</div>') +
             (GifOS.onramp && GifOS.onramp.available && GifOS.onramp.available() ? '<button id="gp-topup" type="button" style="margin-top:.6rem;padding:.4rem .8rem;border-radius:.4rem;border:1px solid #2a2a3f;background:transparent;color:#b6b6cf;cursor:pointer;font:inherit">Add USDC</button>' : '') +
           '</div>' +
@@ -417,11 +419,20 @@
       const wallet = GifOS.payWallet;
       const usdcView = box.querySelector('#gp-usdc-view'), mainView = box.querySelector('#gp-main');
       const bal = box.querySelector('#gp-usdc-bal');
-      const showBal = (addr) => GifOS.onramp && GifOS.onramp.readUsdcBalance
-        ? GifOS.onramp.readUsdcBalance(addr).then((u) => { bal.textContent = GifOS.onramp.formatUsdc(u) + ' USDC'; }, () => { bal.textContent = 'unavailable'; })
-        : null;
+      const wRow = box.querySelector('#gp-usdc-wallet'), wNote = box.querySelector('#gp-usdc-wnote');
+      const showWallet = (addr) => {
+        if (!wRow) return;
+        box.querySelector('#gp-usdc-addr').textContent = addr ? addr.slice(0, 6) + '…' + addr.slice(-4) : '';
+        wRow.style.display = addr ? 'flex' : 'none';
+      };
+      const showBal = (addr) => {
+        showWallet(addr);
+        if (!(GifOS.onramp && GifOS.onramp.readUsdcBalance)) return null;
+        return GifOS.onramp.readUsdcBalance(addr).then((u) => { bal.textContent = GifOS.onramp.formatUsdc(u) + ' USDC'; }, () => { bal.textContent = 'unavailable'; });
+      };
       // Not connected yet: a button, so the wallet opens inside the tap.
       const offerConnect = () => {
+        showWallet(null);
         bal.innerHTML = '<button id="gp-usdc-connect" type="button" style="padding:.15rem .6rem;border-radius:.4rem;border:1px solid #2a2a3f;background:#1652f0;color:#fff;cursor:pointer;font:inherit">Connect wallet</button>';
         const cb = bal.querySelector ? bal.querySelector('#gp-usdc-connect') : null;
         if (cb) cb.onclick = () => {
@@ -429,6 +440,15 @@
           bal.textContent = '…';
           wallet.address().then(showBal, () => offerConnect());
         };
+      };
+      const sw = box.querySelector('#gp-usdc-switch');
+      if (sw) sw.onclick = (ev) => {
+        if (ev && ev.preventDefault) ev.preventDefault();
+        bal.textContent = '…';
+        Promise.resolve(wallet.disconnect()).then((r) => {
+          offerConnect();
+          if (wNote) { wNote.textContent = r && r.manual ? trPay('charge.wallet.extension', 'Disconnect it in your wallet extension too.') : ''; wNote.style.display = r && r.manual ? 'block' : 'none'; }
+        }, () => offerConnect());
       };
       let balRead = false;
       const readBal = () => {

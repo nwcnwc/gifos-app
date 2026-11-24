@@ -28,5 +28,9 @@
   "charge.receipt.transaction": "Transaction",
   "charge.receipt.proof": "This file IS the proof: it carries a receipt signed by gifos.app, and opening it on any GifOS computer verifies the signature and registers the purchase there. Sharing it shares your license — the app treats whoever holds this receipt as the same buyer (same saves, same identity). Keep it with your backups.",
   "charge.receipt.labelSku": "Receipt — {app} — {sku}",
-  "charge.receipt.labelTip": "Receipt — {app} — tip"
+  "charge.receipt.labelTip": "Receipt — {app} — tip",
+  "charge.wallet.title": "Wallet",
+  "charge.wallet.disconnect": "Disconnect wallet",
+  "charge.wallet.switch": "Use a different wallet",
+  "charge.wallet.extension": "Disconnect it in your wallet extension too."
 }
