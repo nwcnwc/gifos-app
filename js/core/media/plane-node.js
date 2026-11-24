@@ -149,7 +149,7 @@
     function bindClaim(rk, claim) { if (claim) claim.el = null; }
     function unbindClaim(rk, claim) { if (claim) claim.el = null; }
     function adoptClaim(rk, neu, old) { if (neu) neu.el = null; }
-    function picRead(claim) { return { w: 0, h: 0, frames: 0 }; }
+    function picRead(claim) { return { w: 0, frames: 0 }; }
     // An edge of my row's acting head (the core's rowActing, which also keeps the fail-back hold): re-sweep. No tiles, no rail.
     function rowEdge(why) { schedReconcile(); }
     // PLI upstream. True only when this claim's video receiver is allowed to send one; a refusal lets kfNeed fall through.
