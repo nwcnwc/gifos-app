@@ -243,6 +243,55 @@ function siteFetch(appRoot, location, realFetch) {
 }
 
 // ---- the participant -----------------------------------------------------------------------------------------
+// THE OPUS CODEC. opusscript's wasm handler moves PCM as one byte per 16-bit slot (encode packs pairs in place, decode
+// writes each sample as two slots), so its PCM buffers need 2 x (frame bytes) x 2. Its JS wrapper (0.1.x) mallocs only
+// frame bytes and then views them as HEAPU16.subarray(bytePointer), an ELEMENT index: every encode/decode reads and
+// writes at twice the malloc'd address, outside its allocation (corrupting whatever lives there), and once the heap
+// holds enough codecs, past the end of wasm memory ("memory access out of bounds" in a mix of many seats; any change
+// in allocation order, such as a codec pin, moves where it hits). Its views also detach when the heap grows. When the
+// host hands us that wrapper, drive the same wasm handler with right-sized buffers at their real addresses and views
+// read fresh per call. Any other codec is used as given.
+function opusCodec(Opus) {
+  if (typeof Opus !== 'function' || !Opus.MAX_PACKET_SIZE || !Opus.Application) return Opus;
+  const path = require('path');
+  const key = Object.keys(require.cache).find((k) => require.cache[k].exports === Opus);
+  if (!key) return Opus;
+  const native = require(path.join(path.dirname(key), 'build', 'opusscript_native_wasm.js'))();
+  const MAX_PACKET = Opus.MAX_PACKET_SIZE, MAX_FRAME = 48000 * 60 / 1000;
+  class Codec {
+    constructor(rate, channels, application) {
+      this.channels = channels || 1;
+      this.h = new native.OpusScriptHandler(rate, this.channels, application == null ? Opus.Application.AUDIO : application);
+      this.pcmBytes = MAX_FRAME * this.channels * 2;   // one frame of int16 PCM; the handler wants one 16-bit slot per byte
+      this.pcm = native._malloc(this.pcmBytes * 2); this.pkt = native._malloc(MAX_PACKET); this.out = native._malloc(MAX_PACKET);
+    }
+    encode(buf, frames) {
+      if (buf.length > this.pcmBytes) throw new Error('Opus encode: frame too large');
+      native.HEAPU16.set(buf, this.pcm >> 1);   // widen: each byte into its own slot
+      const n = this.h._encode(this.pcm, buf.length, this.out, frames);
+      if (n < 0) throw new Error('Opus encode error ' + n);
+      return Buffer.from(native.HEAPU8.slice(this.out, this.out + n));
+    }
+    decode(buf) {
+      if (buf.length > MAX_PACKET) throw new Error('Opus decode: packet too large');
+      native.HEAPU8.set(buf, this.pkt);
+      const n = this.h._decode(this.pkt, buf.length, this.pcm);
+      if (n < 0) throw new Error('Opus decode error ' + n);
+      return Buffer.from(Uint8Array.from(native.HEAPU16.subarray(this.pcm >> 1, (this.pcm >> 1) + n * this.channels * 2)));   // narrow
+    }
+    encoderCTL(ctl, arg) { const n = this.h._encoder_ctl(ctl, arg); if (n < 0) throw new Error('Opus encoder ctl error ' + n); }
+    decoderCTL(ctl, arg) { const n = this.h._decoder_ctl(ctl, arg); if (n < 0) throw new Error('Opus decoder ctl error ' + n); }
+    setBitrate(b) { this.encoderCTL(4002, b); }
+    delete() {
+      if (!this.h) return;
+      native.OpusScriptHandler.destroy_handler(this.h); this.h = null;
+      native._free(this.pcm); native._free(this.pkt); native._free(this.out);
+    }
+  }
+  Codec.Application = Opus.Application; Codec.MAX_PACKET_SIZE = MAX_PACKET;
+  return Codec;
+}
+
 function createMeeting(opts) {
   opts = opts || {};
   if (!opts.url) throw new Error('createMeeting: opts.url is the meeting URL');
@@ -365,6 +414,21 @@ function createMeeting(opts) {
       // (werift declares 64 KB by default: a core seat got every small frame but never an app's bytes, so Take Turns
       // never mounted there). So the host asks the port for the browsers' ceiling; a port without the option ignores it.
       const BROWSER_MAX_MESSAGE = 262144;
+      // VP8 AND OPUS ONLY. A browser offers H264 first (preferHwVideo in meeting.js). This host encodes neither H264
+      // nor anything but Opus, so a connection that answered the browser's whole list could settle on a codec it
+      // cannot send. Every connection offers and answers video/VP8 and audio/opus alone. The VP8 line keeps the
+      // feedback werift's codec carries (nack, nack pli, goog-remb, transport-cc). A port with no codec builders
+      // (the loopback port) is left as it is.
+      const nodeCodecs = () => {
+        if (!port || typeof port.useVP8 !== 'function' || typeof port.useOPUS !== 'function') return null;
+        const fb = [
+          { type: 'nack' },
+          { type: 'nack', parameter: 'pli' },
+          { type: 'goog-remb' },
+          { type: 'transport-cc' },
+        ];
+        return { video: [port.useVP8({ rtcpFeedback: fb })], audio: [port.useOPUS()] };
+      };
       // ONE MediaStream PER REMOTE STREAM, as a browser gives it: every track a peer sends in one stream (its voice and its
       // camera) arrives in the same object, so the page's claim of that stream holds both. A port that hands a new
       // single-track stream with each track event (werift does) would leave the claim holding the last track only: a
@@ -373,7 +437,13 @@ function createMeeting(opts) {
       const ONTRACK = Object.getOwnPropertyDescriptor(PC.prototype, 'ontrack');
       if (opts.media && !(ONTRACK && ONTRACK.get && ONTRACK.set)) throw new Error('GifOS core: the media plane needs a webrtc port whose RTCPeerConnection has an ontrack accessor (one stream per remote stream is kept there)');
       g.RTCPeerConnection = class RTCPeerConnection extends PC {
-        constructor(cfg, ...a) { super(Object.assign({ maxMessageSize: BROWSER_MAX_MESSAGE }, cfg || {}), ...a); pcs.add(this); this._gifosStreams = new Map(); this._gifosOnTrack = null; }
+        constructor(cfg, ...a) {
+          const merged = Object.assign({ maxMessageSize: BROWSER_MAX_MESSAGE }, cfg || {});
+          const codecs = nodeCodecs();
+          if (codecs) merged.codecs = codecs;   // after cfg, so a caller's list cannot put H264 or PCMU back
+          super(merged, ...a);
+          pcs.add(this); this._gifosStreams = new Map(); this._gifosOnTrack = null;
+        }
         close() { pcs.delete(this); return super.close(); }
         get ontrack() { return ONTRACK && ONTRACK.get ? ONTRACK.get.call(this) : super.ontrack; }   // the port calls the handler through this getter: it must get the wrapped one
         set ontrack(fn) {
@@ -489,7 +559,7 @@ function createMeeting(opts) {
   let plane = null;
   if (media) {
     // the AudioContext over Opus, on the participant's global before the meeting runs (the libraries read it at use)
-    audio = hostModule(site, nm.host).port({ Opus: media.Opus, timings: GifOS.timings,
+    audio = hostModule(site, nm.host).port({ Opus: opusCodec(media.Opus), timings: GifOS.timings,
       werift: { MediaStreamTrack: g.MediaStreamTrack, MediaStream: g.MediaStream, RtpPacket: g.RtpPacket, RtpHeader: g.RtpHeader } });
     audio.AudioContext.onerror = (e) => fail('audio', e);
     g.AudioContext = g.webkitAudioContext = audio.AudioContext;
