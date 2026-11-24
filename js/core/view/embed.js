@@ -55,6 +55,34 @@
     });
 
     // ---- the player ------------------------------------------------------------------------------------------
+    // The gear menu is presentation only. It never changes what the core decides (who is hosted, the password, the sound gate).
+    // Keys come from the hash the embedder wrote. The core rebuilds C.params from its own whitelist and drops this one.
+    var CONTROL_KEYS = ['volume', 'captions', 'tabs', 'inset', 'fullscreen', 'pip', 'watch'];
+    function controlsFromHash(hash) {
+      var set = new Set();
+      var has = false, raw = '';
+      try {
+        var q = new URLSearchParams(String(hash || '').slice(1));
+        has = q.has('controls');
+        raw = has ? String(q.get('controls') || '') : '';
+      } catch (e) { has = false; }
+      // The password card (#emb-card), the Enter password button (#emb-lock) and the not-hosted / no-broadcast / not-live message (#emb-msg) are never controls: they always show, whatever this list says.
+      if (!has) { set.add('volume'); set.add('fullscreen'); return set; }
+      var tokens = raw.toLowerCase().split(',').map(function (t) { return t.replace(/[^a-z]/g, ''); }).filter(Boolean);
+      if (!tokens.length || tokens.every(function (t) { return t === 'none'; })) return set;
+      if (tokens.indexOf('all') >= 0) { CONTROL_KEYS.forEach(function (k) { set.add(k); }); return set; }
+      CONTROL_KEYS.forEach(function (k) { if (tokens.indexOf(k) >= 0) set.add(k); });
+      return set;
+    }
+    var controls = controlsFromHash(location.hash);
+    root.__gifosEmbedControls = function () {
+      var out = [];
+      CONTROL_KEYS.forEach(function (k) { if (controls.has(k)) out.push(k); });
+      return out;
+    };
+    var ccOn = false, ccAvail = false, ccText = '', ccUntil = 0, ccTimer = 0;
+    try { ccOn = localStorage.getItem('gifos.embed.cc') === '1'; } catch (e) {}
+    document.body.classList.toggle('emb-inset-lock', !controls.has('inset'));
     // The entry the core parsed (its EMBED whitelist): read when first asked, after the core's first steps ran.
     var why = 'name', room = '', av = '', ready = false;
     function entry() {
@@ -65,7 +93,14 @@
       room = params.get('v') || params.get('room') || '';
       av = params.get('av') || '';
       $('emb-title').textContent = params.get('title') || room || 'GifOS Broadcast';
-      if (why === 'ok') { var w = $('emb-watch'); w.href = location.origin + '/cast#room=' + encodeURIComponent(room) + (av ? '&v=' + av : ''); w.hidden = false; $('emb-mute').hidden = false; }
+      if (why === 'ok') {
+        var w = $('emb-watch');
+        w.href = location.origin + '/cast#room=' + encodeURIComponent(room) + (av ? '&v=' + av : '');
+        var showWatch = controls.has('watch');
+        w.hidden = !showWatch;
+        var wr = $('emb-m-watch'); if (wr) wr.hidden = !showWatch;
+        $('emb-mute').hidden = false;
+      }
     }
     var quiet = { text: '' };
     var tried = false;
@@ -128,6 +163,8 @@
       if (msg.textContent !== mt) msg.textContent = mt;
       msg.hidden = !mt || !card.hidden;
       $('emb-lock').hidden = !(C.pwBlocked && card.hidden);
+      paintInsetRow();
+      syncRows();
     }
 
     // What the core asks of the view that a player answers.
@@ -169,8 +206,8 @@
           tabs.appendChild(b);
           var o = document.createElement('option'); o.value = it.key; o.textContent = shareLabel(it); o.selected = it.key === sel; menu.appendChild(o);
         });
-        $('emb-tabbar').hidden = !on;
       }
+      $('emb-tabbar').hidden = !on || !controls.has('tabs');
       var cur = items.filter(function (it) { return it.key === sel; })[0] || null;
       paintPane(cur);
     }
@@ -205,19 +242,194 @@
     // it settles in the nearest corner and remembers it (this browser only); the minimize button folds it to a chip.
     var INSET_KEY = 'gifos.embed.inset';
     var inset = { corner: 'br', min: false };
-    try { var sv = JSON.parse(localStorage.getItem(INSET_KEY) || 'null'); if (sv && /^(t|b)(l|r)$/.test(sv.corner)) inset = { corner: sv.corner, min: !!sv.min }; } catch (e) {}
+    try {
+      var sv = JSON.parse(localStorage.getItem(INSET_KEY) || 'null');
+      if (sv && /^(t|b)(l|r)$/.test(sv.corner)) {
+        inset.corner = sv.corner;                 // saved corner, default br
+        if (controls.has('inset')) inset.min = !!sv.min;   // without inset, a saved min=true is ignored
+      }
+    } catch (e) {}
     function saveInset() { try { localStorage.setItem(INSET_KEY, JSON.stringify(inset)); } catch (e) {} }
     function placeInset() {
       document.body.dataset.inset = inset.corner;
-      document.body.classList.toggle('emb-stage-folded', inset.min);
-      var mb = $('emb-inset-min'); if (mb) { mb.setAttribute('aria-pressed', inset.min ? 'true' : 'false'); mb.textContent = inset.min ? 'Stage' : '–'; mb.title = inset.min ? 'Show the Stage' : 'Minimize the Stage'; }
+      document.body.classList.toggle('emb-stage-folded', controls.has('inset') && inset.min);
+      var mb = $('emb-inset-min');
+      if (mb) {
+        mb.hidden = !controls.has('inset');
+        mb.setAttribute('aria-pressed', inset.min ? 'true' : 'false');
+        mb.textContent = inset.min ? 'Stage' : '–';
+        mb.title = inset.min ? 'Show the Stage' : 'Minimize the Stage';
+      }
+      paintInsetRow();
     }
     placeInset();
     root.__gifosEmbedInset = names.embedInsetForTest = function () {   // test read (the page's own state only)
       return insetState();
     };
     function insetState() { return { corner: inset.corner, min: inset.min, share: document.body.classList.contains('emb-has-share') }; };
+    function toggleInset() {
+      if (!controls.has('inset')) return;
+      if (!document.body.classList.contains('emb-has-share')) return;
+      inset.min = !inset.min;
+      saveInset();
+      placeInset();
+    }
+    function paintInsetRow() {
+      var row = $('emb-m-inset');
+      if (!row) return;
+      var share = document.body.classList.contains('emb-has-share');
+      row.disabled = !share;
+      row.setAttribute('aria-pressed', share && !inset.min ? 'true' : 'false');
+      var st = row.querySelector('.emb-mstate');
+      if (st) st.textContent = !share ? '' : (inset.min ? 'Hidden' : 'Shown');
+    }
+    function visibleVideo() {
+      if (document.body.classList.contains('emb-has-share')) return $('emb-share-video');
+      return stageVideo();
+    }
+    function pipOn() {
+      try { if (document.pictureInPictureEnabled) return 'std'; } catch (e) {}
+      var v = visibleVideo();
+      try { if (v && typeof v.webkitSupportsPresentationMode === 'function' && v.webkitSupportsPresentationMode('picture-in-picture')) return 'wk'; } catch (e) {}
+      return '';
+    }
+    function paintPip() {
+      var row = $('emb-m-pip');
+      if (!row) return;
+      row.hidden = !(controls.has('pip') && pipOn());
+    }
+    function togglePip() {
+      var v = visibleVideo();
+      if (!v) return;
+      try {
+        if (document.pictureInPictureEnabled) {
+          if (document.pictureInPictureElement) { var ex = document.exitPictureInPicture(); if (ex && ex.catch) ex.catch(function () {}); }
+          else if (typeof v.requestPictureInPicture === 'function') { var pr = v.requestPictureInPicture(); if (pr && pr.catch) pr.catch(function () {}); }
+          return;
+        }
+        if (typeof v.webkitSupportsPresentationMode === 'function' && v.webkitSupportsPresentationMode('picture-in-picture') && typeof v.webkitSetPresentationMode === 'function') {
+          v.webkitSetPresentationMode(v.webkitPresentationMode === 'picture-in-picture' ? 'inline' : 'picture-in-picture');
+        }
+      } catch (e) {}
+    }
+    function toggleFull() {   // the same three paths the old bar button used
+      try {
+        if (GifOS.fullscreen && GifOS.fullscreen.supported()) { GifOS.fullscreen.toggle(document.documentElement); return; }
+        var d = document, de = d.documentElement;
+        if (de.requestFullscreen || de.webkitRequestFullscreen) {
+          if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d);
+          else (de.requestFullscreen || de.webkitRequestFullscreen).call(de);
+          return;
+        }
+        var v = visibleVideo();   // iPhone: only a video element goes full screen
+        if (v && v.webkitEnterFullscreen) v.webkitEnterFullscreen();
+      } catch (e) {}
+    }
+    function paintFull() {
+      var b = $('emb-m-fullscreen');
+      if (!b) return;
+      var on = false;
+      try { on = !!(document.fullscreenElement || document.webkitFullscreenElement); } catch (e) {}
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
+    function capWho(byId, label) {
+      if (label) return String(label);
+      try {
+        if (byId && byId === C.myId && typeof C.myName === 'function') return String(C.myName() || '');
+        var p = C.peers && typeof C.peers.get === 'function' ? C.peers.get(byId) : null;
+        if (p && p.name) return String(p.name);
+      } catch (e) {}
+      return '';
+    }
+    function paintCapBar() {
+      var bar = $('emb-cap');
+      if (!bar) return;
+      if (!controls.has('captions') || !ccOn || !ccText) { bar.hidden = true; return; }
+      bar.textContent = ccText;
+      bar.hidden = false;
+    }
+    function armCap() {
+      clearTimeout(ccTimer);
+      var left = ccUntil - Date.now();
+      if (!(left > 0) || !ccText) { ccText = ''; paintCapBar(); return; }
+      paintCapBar();
+      ccTimer = setTimeout(function () { ccText = ''; paintCapBar(); }, left);
+    }
+    function paintCcRow() {
+      var b = $('emb-m-captions');
+      if (!b) return;
+      b.hidden = !(controls.has('captions') && ccAvail);
+      b.setAttribute('aria-pressed', ccOn ? 'true' : 'false');
+      var st = b.querySelector('.emb-mstate');
+      if (st) st.textContent = ccOn ? 'On' : 'Off';
+    }
+    function readVol() {
+      try {
+        var raw = localStorage.getItem('gifos.embed.vol');
+        if (raw == null || raw === '') return null;
+        var v = Number(raw);
+        if (!isFinite(v)) return null;
+        return Math.max(0, Math.min(1, v));
+      } catch (e) { return null; }
+    }
+    function applyVol(v, save) {   // the embed's own knob. Never write localStorage 'gifos_mix' (the meeting page's fader memory).
+      v = Math.max(0, Math.min(1, Number(v)));
+      if (!isFinite(v)) return;
+      try { M.mix.stage = v; } catch (e) {}
+      try { M.applyBuses(); } catch (e) {}
+      if (save) { try { localStorage.setItem('gifos.embed.vol', String(v)); } catch (e) {} }
+    }
+    function menuItems() {
+      var menu = $('emb-menu'), out = [];
+      if (!menu) return out;
+      Array.prototype.forEach.call(menu.children, function (row) {
+        if (row.hidden) return;
+        var el = (row.matches && row.matches('button, a, input')) ? row : row.querySelector('button, a, input');
+        if (!el || el.hidden || el.disabled) return;
+        out.push(el);
+      });
+      return out;
+    }
+    var menuOn = false;
+    function setMenu(on) {
+      var gear = $('emb-gear');
+      menuOn = !!on && !(gear && gear.hidden);
+      var menu = $('emb-menu');
+      if (menu) menu.hidden = !menuOn;
+      if (gear) gear.setAttribute('aria-expanded', menuOn ? 'true' : 'false');
+      if (!menuOn) return;
+      var items = menuItems();
+      if (items[0]) { try { items[0].focus(); } catch (e) {} }
+    }
+    function syncRows() {
+      var vol = $('emb-m-volume'); if (vol) vol.hidden = !controls.has('volume');
+      var ins = $('emb-m-inset'); if (ins) ins.hidden = !controls.has('inset');
+      var fs = $('emb-m-fullscreen'); if (fs) fs.hidden = !controls.has('fullscreen');
+      paintCcRow();
+      paintPip();
+      // The gear shows only when its menu has a row to show (captions not yet arrived, or PiP unsupported, is no row).
+      var on = false, menu = $('emb-menu');
+      if (menu) Array.prototype.forEach.call(menu.children, function (row) { if (!row.hidden) on = true; });
+      if (controls.has('watch') && why === 'ok') on = true;
+      var gear = $('emb-gear'); if (gear) { gear.hidden = !on; if (!on && menuOn) setMenu(false); }
+    }
+    syncRows();
 
+    fn('showCaption', function (byId, text, label) {   // the core and the media plane call this. The embed keeps its own on/off.
+      ccAvail = true;
+      syncRows();
+      var who = capWho(byId, label);
+      ccText = (who ? who + '. ' : '') + String(text == null ? '' : text);
+      ccUntil = Date.now() + 6000;
+      armCap();
+    });
+    fn('hideCaptions', function () {
+      clearTimeout(ccTimer);
+      ccText = '';
+      ccUntil = 0;
+      var bar = $('emb-cap');
+      if (bar) { bar.textContent = ''; bar.hidden = true; }
+    });
     fn('paintBcQuiet', function (bq) { quiet = bq || { text: '' }; paint(); });
     fn('showPwModal', function () {   // the door wants the room password: the card, inside this frame only
       $('emb-card-hint').textContent = tried ? 'That password did not work. Try again.' : 'Enter the password to watch clearly.';
@@ -237,17 +449,19 @@
     // no hosted broadcast joins nothing, and says why).
     queueMicrotask(function () { try { paint(); } catch (e) {} });
     return { names: names, setup: setup };
-    // Input: unmute, mute, the password, full screen. No other control exists. Runs after the core's top level.
+    // Input: unmute, mute, the password, and the gear menu. Runs after the core's top level.
     function setup() {
     $('emb-play').onclick = function () { if (hostedNow()) hear(true); };
     setInterval(function () { try { paint(); } catch (e) {} }, GifOS.timings.EMBED_HOSTED_MS);   // re-read the live host state
     $('emb-mute').onclick = function () { if (hostedNow() || C.serviceHeard) hear(!C.serviceHeard); };
     $('emb-lock').onclick = function () { names.showPwModal(true); };
     $('emb-tabmenu').onchange = function () { pick(this.value); };
-    $('emb-inset-min').onclick = function (e) { e.stopPropagation(); inset.min = !inset.min; saveInset(); placeInset(); };
+    $('emb-inset-min').onclick = function (e) { e.stopPropagation(); toggleInset(); };
+    $('emb-m-inset').onclick = function () { toggleInset(); };
     (function drag() {   // pointer drag of the inset; on release it snaps to the nearest corner
       var sf = stagefeedEl, start = null;
       sf.addEventListener('pointerdown', function (e) {
+        if (!controls.has('inset')) return;   // without inset the picture stays put
         if (e.target && e.target.closest && e.target.closest('#emb-inset-min')) return;   // the minimize button is a tap, not a drag
         if (!document.body.classList.contains('emb-has-share') || inset.min) return;
         var r = sf.getBoundingClientRect(); start = { x: e.clientX, y: e.clientY, l: r.left, t: r.top, moved: false };
@@ -283,23 +497,47 @@
       C.joinWithPw(pw);
       paint();
     };
-    var full = $('emb-full');
-    try {
-      if (GifOS.fullscreen && GifOS.fullscreen.supported()) { full.hidden = false; GifOS.fullscreen.attach(full, document.documentElement, {}); }
-      else if (document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen) {
-        full.hidden = false;
-        full.textContent = '⛶';
-        full.onclick = function () {
-          var d = document, de = d.documentElement;
-          if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d);
-          else (de.requestFullscreen || de.webkitRequestFullscreen).call(de);
-        };
-      } else {
-        var vv = function () { return stageVideo(); };   // iPhone: only a video element goes full screen
-        full.hidden = false; full.textContent = '⛶';
-        full.onclick = function () { var v = vv(); if (v && v.webkitEnterFullscreen) v.webkitEnterFullscreen(); };
-      }
-    } catch (e) {}
+    if (controls.has('volume')) {
+      var slider = $('emb-m-volume').querySelector('input');
+      var saved = readVol();
+      var start = saved;
+      if (start == null) { try { start = Number(M.mix.stage); } catch (e) { start = 1; } }
+      if (!isFinite(start)) start = 1;
+      slider.value = String(Math.max(0, Math.min(1, start)));
+      if (saved != null) applyVol(saved, false);
+      slider.oninput = function () { applyVol(this.value, true); };
+    }
+    $('emb-m-captions').onclick = function () {
+      if (!controls.has('captions')) return;
+      ccOn = !ccOn;
+      try { localStorage.setItem('gifos.embed.cc', ccOn ? '1' : '0'); } catch (e) {}
+      paintCcRow();
+      if (ccOn) armCap(); else paintCapBar();
+    };
+    $('emb-m-fullscreen').onclick = function () { toggleFull(); };
+    $('emb-m-pip').onclick = function () { togglePip(); };
+    $('emb-gear').onclick = function () { setMenu(!menuOn); };
+    document.addEventListener('pointerdown', function (e) {
+      if (!menuOn) return;
+      var t = e.target;
+      if (t && t.closest && (t.closest('#emb-menu') || t.closest('#emb-gear'))) return;
+      setMenu(false);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (!menuOn) return;
+      if (e.key === 'Escape') { setMenu(false); var g = $('emb-gear'); if (g && !g.hidden) g.focus(); return; }
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      var menu = $('emb-menu'), ae = document.activeElement;
+      if (!menu || (ae !== $('emb-gear') && !menu.contains(ae))) return;
+      var items = menuItems();
+      if (!items.length) return;
+      var i = items.indexOf(ae);
+      var n = e.key === 'ArrowDown' ? (i + 1) % items.length : (i <= 0 ? items.length - 1 : i - 1);
+      items[n].focus();
+      e.preventDefault();
+    });
+    document.addEventListener('fullscreenchange', paintFull);
+    document.addEventListener('webkitfullscreenchange', paintFull);
     paint();
     }
   }

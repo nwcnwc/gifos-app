@@ -18,6 +18,7 @@
  * until they type the room password inside the player (your page never sees
  * it). There is no way to put the password in this snippet, the address or a
  * query: a page with an embed cannot be shown to be protected.
+ * data-controls picks the gear menu (volume, captions, tabs, inset, fullscreen, pip, watch; default is volume,fullscreen).
  */
 (function () {
   var s = document.currentScript;
@@ -41,9 +42,12 @@
     return;
   }
   var title = String(s.getAttribute('data-title') || '').slice(0, 80);
+  // data-controls is optional. Only letters and commas reach the frame. Absent means the player uses its default.
+  var controlsAttr = s.getAttribute('data-controls');
+  var controlsQs = controlsAttr == null ? '' : '&controls=' + String(controlsAttr).toLowerCase().replace(/[^a-z,]/g, '');
   // No verifier is an open-floor room: the player decides live whether it is hosted (one place for that rule).
   var hash = '#room=' + m[1] + (m[2] ? '&v=' + m[2].toLowerCase() : '')
-    + (title ? '&title=' + encodeURIComponent(title) : '');
+    + (title ? '&title=' + encodeURIComponent(title) : '') + controlsQs;
   var f = document.createElement('iframe');
   f.src = origin + '/embed' + hash;
   f.title = title || 'GifOS Broadcast';
