@@ -658,7 +658,9 @@
         if(d.type==='pipframe'){
           (function(){
             var best = null, area = 0, els = document.querySelectorAll('canvas,video');
+            // the largest one on screen; a frame laid out at no size (the meeting shows something else) is judged by pixels
             for (var i = 0; i < els.length; i++) { var r = els[i].getBoundingClientRect(), a = Math.max(0, r.width) * Math.max(0, r.height); if (a > area && r.bottom > 0 && r.right > 0) { area = a; best = els[i]; } }
+            if (!best) for (var j = 0; j < els.length; j++) { var px = (els[j].videoWidth || els[j].width || 0) * (els[j].videoHeight || els[j].height || 0); if (px > area) { area = px; best = els[j]; } }
             var none = function(){ try { window.parent.postMessage({ ns:'gifos', type:'pipframe', none:1 }, '*'); } catch(e){} };
             if (!best || area < 64 || typeof createImageBitmap !== 'function') return none();
             var w = best.videoWidth || best.width, h = best.videoHeight || best.height;
