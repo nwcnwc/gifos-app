@@ -13672,13 +13672,40 @@
           // calls up gets media through lateMedia (a user gesture), exactly
           // like any view-only guest tapping the mic button.
           if (params.get('agent') === '1' || window.__gifosAgentQ === true) params.set('bot', '1');   // agent mode (gifosAgent) is bot mode, and it cannot be untagged
+          // A bot seat holds one silent, muted audio track from the moment it sits.
+          // enableMedia then adds a real audio sender, and a spoken line is only a
+          // replaceTrack on that sender (mainAudioTrack prefers the speech track).
+          // No microphone and no camera are opened. No audio context: stay view-only.
+          // The context holds the graph: a destination kept only by its track can be
+          // collected, and the sender's track ends.
+          const botQuietMic = () => {
+            let ctx = null;
+            try { ctx = ensureAc(); } catch (e) { ctx = null; }
+            if (!ctx || typeof ctx.createMediaStreamDestination !== 'function') return null;
+            try {
+              const dest = ctx.createMediaStreamDestination();
+              const gain = ctx.createGain();
+              gain.gain.value = 0;
+              const osc = ctx.createOscillator();
+              osc.connect(gain);
+              gain.connect(dest);
+              try { osc.start(); } catch (e) {}
+              const track = dest.stream && dest.stream.getAudioTracks()[0];
+              if (!track) return null;
+              track.enabled = false;
+              ctx._botQuiet = { dest: dest, gain: gain, osc: osc, track: track };
+              return new MediaStream([track]);
+            } catch (e) { return null; }
+          };
           let assistantBoot = params.get('bot') === '1';
           try { assistantBoot = assistantBoot || sessionStorage.getItem('gifos_bot') === '1'; } catch (e) {}
           if (assistantBoot) {
             // Assistant mode (bot=1, or the lobby switch, which sets it for this tab):
             // muted, camera off, no permission prompt, blur off. A tap can still open a mic later.
             becomeAssistant(true);
-            localStream = null;
+            const quiet = botQuietMic();
+            if (quiet) localStream = quiet;
+            else localStream = null;
             return;
           }
           if (BROADCAST && !bcHostStored()) {
@@ -20221,6 +20248,7 @@
         if (__M.botVoiceTrack) { try { __M.botVoiceTrack.stop(); } catch (e) {} __M.botVoiceTrack = null; }
         if (botSpeechCtx) { try { botSpeechCtx.close(); } catch (e) {} botSpeechCtx = null; }
         try { (0, /*()*/__M.refreshOutbound)(); } catch (e) {}
+        try { (0, /*()*/__M.schedReconcile)(); } catch (e) {} // a staged seat is heard on the stage feed; the row sender stays parked
         try { if (__M.wspCaps.has('me')) (0, /*()*/__M.wspStop)('me'); (0, /*()*/__M.wspSync)(); } catch (e) {}
         // Stopped means quiet, whether or not a line had already ended.
         const track = localStream && localStream.getAudioTracks()[0];
@@ -20250,12 +20278,14 @@
         // a stop, including a pair that opens while the bot is talking.
         __M.botVoiceTrack = dest.stream.getAudioTracks()[0] || null;
         try { (0, /*()*/__M.refreshOutbound)(); } catch (e) {}
+        try { (0, /*()*/__M.schedReconcile)(); } catch (e) {} // same stage-feed swap as stop: the row sender is parked while this seat is staged
         try { if (__M.wspCaps.has('me')) (0, /*()*/__M.wspStop)('me'); (0, /*()*/__M.wspSync)(); } catch (e) {}
         // The line is over: the mic takes the senders back, muted as before.
         audio.addEventListener('ended', () => {
           if (botSpeechAudio !== audio) return;
           if (__M.botVoiceTrack) { try { __M.botVoiceTrack.stop(); } catch (e) {} __M.botVoiceTrack = null; }
           try { (0, /*()*/__M.refreshOutbound)(); } catch (e) {}
+          try { (0, /*()*/__M.schedReconcile)(); } catch (e) {}
           try { if (__M.wspCaps.has('me')) (0, /*()*/__M.wspStop)('me'); (0, /*()*/__M.wspSync)(); } catch (e) {}
           const mic = localStream && localStream.getAudioTracks()[0];
           myStatus.muted = !(mic && mic.enabled);
@@ -20654,10 +20684,11 @@
     // meeting bot's does; the status says unmuted only while it plays.
     function agentVoice(track) {
       __M.botVoiceTrack = track || null;
-      // An agent joins with no camera or microphone, so the page holds no local stream, and the main senders that carry a
-      // voice to the row are made only beside one: give the voice a stream to ride, as the agent's camera does.
+      // The seat already holds a muted sender (the silent track from sit). This empty stream is only the fallback
+      // when that track could not be made, and a sender added this late still needs a renegotiation.
       if (track && !localStream) localStream = new MediaStream();
       try { (0, /*()*/__M.refreshOutbound)(); } catch (e) {}
+      try { (0, /*()*/__M.schedReconcile)(); } catch (e) {}
       try { if (__M.wspCaps.has('me')) (0, /*()*/__M.wspStop)('me'); (0, /*()*/__M.wspSync)(); } catch (e) {}
       if (track) myStatus.muted = false;
       else { const mic = localStream && localStream.getAudioTracks()[0]; myStatus.muted = !(mic && mic.enabled); }
