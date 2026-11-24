@@ -65,7 +65,7 @@
       room = params.get('v') || params.get('room') || '';
       av = params.get('av') || '';
       $('emb-title').textContent = params.get('title') || room || 'GifOS Broadcast';
-      if (why === 'ok') { var w = $('emb-watch'); w.href = location.origin + '/cast/' + room + '/' + av; w.hidden = false; $('emb-mute').hidden = false; }
+      if (why === 'ok') { var w = $('emb-watch'); w.href = location.origin + '/cast#room=' + room + '&v=' + av; w.hidden = false; $('emb-mute').hidden = false; }
     }
     var quiet = { text: '' };
     var tried = false;
