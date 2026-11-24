@@ -5674,6 +5674,7 @@
       // at once. Stage copies carry their stager whatever my cell, so they keep
       // the grace.
       (0, /*()*/__C.reapJobs)(wanted);
+      if (__C.DEBUG_ON && __C.clog) { const mk = Array.from(__C.mosJobs.keys()).sort().join(' '); if (mk !== reconcileMosaic.lastKeys) { reconcileMosaic.lastKeys = mk; (0, /*()*/__C.clog)('mos-keys ' + mk); } }   // DEBUG: the job key set on each change (pre/post flip room diff)
       // ---- DEMAND GATE: a composite nobody ships and nobody looks at ---------
       // createPacker has carried setActive since the day it was written ("a
       // composite that has no consumer (not shipped, not displayed) isn't
