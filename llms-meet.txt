@@ -173,11 +173,12 @@ only autoplay muted), full screen, and "Watch on GifOS" (opens the broadcast
 in its own tab). Before the broadcast starts or after it ends it says so.
 
 Viewers are ordinary watchers of the broadcast: no camera or microphone is
-ever asked for. The usual blur rule holds: the picture is blurred unless the
-viewer has the room password. They type it inside the player, so the page
-around it never sees it. `data-password` (or `&pw=` in the iframe address)
-makes the player clear for everyone who opens the page, and is then public in
-that page's source.
+ever asked for. The usual door rule holds: a viewer without the room password
+stays at the door. They type it inside the player, so the page
+around it never sees it. There is no way to put the password in the snippet,
+the address or a query: nothing can show that the page with the embed is a
+protected page, so a password broadcast holds the viewer at the door (the live
+poster and a password card) until the password is typed inside the player.
 
 Only gifos.app/embed may be framed by another site; every other GifOS page
 refuses to run inside another site's page.

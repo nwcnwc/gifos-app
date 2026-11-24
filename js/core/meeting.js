@@ -796,10 +796,10 @@
     // ---- EMBED: gifos.app/embed (embed.html), a broadcast inside someone else's page
     // The PATH decides it (the same exact rule as embed.html's frame guard),
     // never the hash: the embedding page writes the hash, so it may only name
-    // the broadcast (room=<name>&v=<verifier>), a title, and a room password.
+    // the broadcast (room=<name>&v=<verifier>) and a title. Never a password:
+    // the viewer types it inside the frame (no way to know the embedding page is protected).
     // Every other key it put there is dropped here, so the page can only ever
-    // be a viewer of that broadcast. The password never stays in the address
-    // or in storage: it lives in this page's memory (EMBED.pw) only.
+    // be a viewer of that broadcast.
     const params = new URLSearchParams(location.hash.slice(1)),
       EMBED = (() => {
         let on = false;
@@ -808,7 +808,7 @@
         // #room=<name>&v=<the room's admin verifier>. Only a HOSTED broadcast embeds (Nathan, 2026-11-24): in an open
         // room anyone may take the stage, which must never happen on someone's web page. No verifier: the 'open'
         // card, and nothing is joined.
-        const room = String(params.get('room') || ''), ver = String(params.get('v') || ''), title = String(params.get('title') || ''), pw = String(params.get('pw') || '');
+        const room = String(params.get('room') || ''), ver = String(params.get('v') || ''), title = String(params.get('title') || '');
         Array.from(params.keys()).forEach((k) => params.delete(k));
         const okRoom = /^[a-z0-9-]{1,64}$/i.test(room), okVer = /^[a-f0-9]{16,64}$/i.test(ver);
         if (okRoom && okVer) { params.set('v', room); params.set('av', ver.toLowerCase()); params.set('bc', '1'); }
@@ -818,7 +818,7 @@
         if (okRoom) params.set('room', room);
         const t = title.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 80);
         if (t) params.set('title', t);
-        return { bad: !(okRoom && okVer) ? (okRoom && !ver ? 'open' : 'name') : '', title: title.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 80), pw: pw.slice(0, 256), room: okRoom ? room : '', av: okVer ? ver.toLowerCase() : '' };
+        return { bad: !(okRoom && okVer) ? (okRoom && !ver ? 'open' : 'name') : '', title: title.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 80), room: okRoom ? room : '', av: okVer ? ver.toLowerCase() : '' };
       })();
     // A session document is srcdoc (the host page's frame-src is about: only).
     // The hash cannot carry mb=1, so the host stamps the flag before boot.
@@ -13724,9 +13724,6 @@
         });
       }
       loadPw();
-      // An embed's own password (data-password / #pw=) is this page's word for the room, in memory only: never stored,
-      // so an embedding page can never overwrite a password the viewer saved. A wrong one goes straight to the prompt.
-      if (EMBED && EMBED.pw) { roomPw = EMBED.pw; pwFromStore = false; pwProbe = ''; pwHeld = ''; }
       // An admin-room stored pw is PROVISIONAL until the door's verdict (the
       // roster's `locked` — see the roster handler). An admin's own device
       // (stored admin key) is exempt: her signed re-assert IS the authority,

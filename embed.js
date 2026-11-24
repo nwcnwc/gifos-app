@@ -14,8 +14,8 @@
  *
  * Viewers watch with no camera or microphone, and the video stays blurred
  * until they type the room password inside the player (your page never sees
- * it). data-password makes the player clear for everyone who opens your page;
- * it is then public in your page's source.
+ * it). There is no way to put the password in this snippet, the address or a
+ * query: a page with an embed cannot be shown to be protected.
  */
 (function () {
   var s = document.currentScript;
@@ -39,11 +39,9 @@
     return;
   }
   var title = String(s.getAttribute('data-title') || '').slice(0, 80);
-  var pw = s.getAttribute('data-password');
   // No verifier is an open room: the player itself says it cannot be embedded (one place for that rule).
   var hash = '#room=' + m[1] + (m[2] ? '&v=' + m[2].toLowerCase() : '')
-    + (title ? '&title=' + encodeURIComponent(title) : '')
-    + (pw ? '&pw=' + encodeURIComponent(pw) : '');
+    + (title ? '&title=' + encodeURIComponent(title) : '');
   var f = document.createElement('iframe');
   f.src = origin + '/embed' + hash;
   f.title = title || 'GifOS Broadcast';
