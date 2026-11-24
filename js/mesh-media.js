@@ -161,7 +161,7 @@
     return { w: vw * k, h: vh * k, x: -s.sx * k, y: -s.sy * k };
   }
 
-  // createPacker({ shape:'bar'|'grid', cell, maxW, fps, ac, gain }) →
+  // createPacker({ shape:'bar'|'grid', cell, maxW, fps, ac, gain, surface }) →
   //   { canvas, stream, setTile(id, ord, el, stream, {n, cols}), delTile(id),
   //     count(), cols(), rows(), start(), stop(), stats() }
   // A tile is a leaf face ({n:1, cols:1} — center-square cropped) or a packed
@@ -275,6 +275,101 @@
   let sharedBg = null; // one shared hidden-tab beat per page, minted on first use
   const bgClock = () => (sharedBg = sharedBg || createBgClock());
 
+  // A source the packer can read without knowing it is a <video> or a <canvas>.
+  // size() is the frame the layout crops (videoWidth, else width). onFrame is
+  // requestVideoFrameCallback where the element has it. raw is the element.
+  function sourceOf(el) {
+    if (!el) return null;
+    if (typeof el.size === 'function' && Object.prototype.hasOwnProperty.call(el, 'raw')) return el;
+    return {
+      size() { return { w: el.videoWidth || el.width || 0, h: el.videoHeight || el.height || 0 }; },
+      onFrame(cb) { if (typeof el.requestVideoFrameCallback === 'function') el.requestVideoFrameCallback(cb); },
+      raw: el,
+    };
+  }
+  // The browser paint target: the same 2D canvas the packer drew on directly.
+  // Every draw goes through these operations so another host can pass its own
+  // surface (opts.surface) and run the same layout. getFps is read at capture
+  // time: the fallback ceiling is twice the paint rate, capped at 60.
+  function canvas2dSurface(getFps) {
+    if (typeof document === 'undefined') return null;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas ? canvas.getContext('2d') : null;
+    if (!canvas) return null;
+    // A MODERATOR'S BLUR, BAKED. The face is drawn into a tiny canvas and
+    // stretched back, so its detail is gone before it reaches the composite.
+    // This works on every canvas; ctx.filter does not exist everywhere.
+    let blurCv = null, blurCx = null, request = null, vTrack = null, cap = null;
+    const api = {
+      canvas,
+      resize(w, h) {
+        if (canvas.width !== w) canvas.width = w;
+        if (canvas.height !== h) canvas.height = h;
+      },
+      size() { return { w: canvas.width, h: canvas.height }; },
+      fill(color, x, y, w, h) { if (!ctx) return; ctx.fillStyle = color; ctx.fillRect(x, y, w, h); },
+      stroke(color, lw, x, y, w, h) { if (!ctx) return; ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.strokeRect(x, y, w, h); },
+      blit(src, sx, sy, sw, sh, dx, dy, dw, dh) {
+        if (!ctx) return;
+        ctx.drawImage(src && src.raw, sx, sy, sw, sh, dx, dy, dw, dh);
+      },
+      // dw/dh are the cell, or the letterboxed rect a contain blur passes.
+      pixelate(src, sx, sy, sw, sh, q, dx, dy, dw, dh) {
+        if (!ctx) return;
+        if (!blurCv) { blurCv = document.createElement('canvas'); blurCx = blurCv && blurCv.getContext('2d'); }
+        if (!blurCx) { api.fill('#07090c', dx, dy, dw, dh); return; } // no scratch canvas: no face, never a clear one
+        if (blurCv.width !== q) { blurCv.width = q; blurCv.height = q; }
+        blurCx.drawImage(src && src.raw, sx, sy, sw, sh, 0, 0, q, q);
+        ctx.imageSmoothingEnabled = true;
+        ctx.drawImage(blurCv, 0, 0, q, q, dx, dy, dw, dh);
+      },
+      // The name bar: a dark band and the measured name, shrunk then ellipsised
+      // so it stays inside the cell.
+      label(text, x, y, w, h) {
+        if (!ctx) return;
+        const fs = Math.max(8, Math.round(w * 0.11)), pad = Math.round(w * 0.03);
+        const bh = fs + pad * 2;
+        ctx.fillStyle = 'rgba(10,10,15,0.62)'; ctx.fillRect(x, y + h - bh, w, bh);
+        ctx.fillStyle = '#eef'; ctx.font = '600 ' + fs + 'px system-ui, sans-serif';
+        ctx.textBaseline = 'middle';
+        let nm = String(text); const lim = w - pad * 2;
+        while (nm.length > 1 && ctx.measureText(nm).width > lim) nm = nm.slice(0, -1);
+        if (nm !== String(text)) nm = nm.slice(0, -1) + '…';
+        ctx.fillText(nm, x + pad, y + h - bh / 2);
+      },
+      glyph(ch, x, y, size) {
+        if (!ctx) return;
+        ctx.font = (size | 0) + 'px system-ui'; ctx.textBaseline = 'top';
+        ctx.fillText(ch, x, y);
+      },
+      // End of a paint that drew: ask the capture track for one frame. A still
+      // skip, a governor drop and an empty linger never call this, so they
+      // ship nothing.
+      present() { if (request) request(); },
+      track() {
+        if (vTrack) return vTrack;
+        // A FRAME PER PAINT. captureStream(fps) is a ceiling, and a ceiling equal to the paint rate leaves no margin:
+        // with the paint clock's jitter one browser (Firefox) captures only every other paint, so an 8 fps pack goes
+        // out at 4 fps and a forwarded picture waits up to 250 ms for its frame. Capture on demand instead: one frame
+        // for every real paint (none for a skipped still frame). An engine without requestFrame keeps a ceiling
+        // with headroom above the paint rate.
+        cap = canvas.captureStream(0);
+        vTrack = cap.getVideoTracks()[0];
+        if (!(vTrack && typeof vTrack.requestFrame === 'function') && typeof cap.requestFrame !== 'function') {
+          try { vTrack.stop(); } catch (e) {}
+          cap = canvas.captureStream(Math.min(60, getFps() * 2)); vTrack = cap.getVideoTracks()[0]; request = null;
+        } else {
+          const tr = vTrack, c = cap;
+          request = () => { try { if (typeof tr.requestFrame === 'function') tr.requestFrame(); else c.requestFrame(); } catch (e) {} };
+        }
+        api.stream = cap;
+        return vTrack;
+      },
+      stream: null,
+    };
+    return api;
+  }
+
   function createPacker(opts) {
     opts = opts || {};
     const shape = opts.shape || 'grid';
@@ -287,8 +382,8 @@
     // is what captureStream is told, and the paint loop may only run at or below
     // it. Construct at the highest rate this packer will ever want.
     let fps = opts.fps || (net && net.SCALE.COMP_FPS) || 12;
-    const canvas = (typeof document !== 'undefined') ? document.createElement('canvas') : null;
-    const ctx = canvas ? canvas.getContext('2d') : null;
+    const surf = opts.surface || canvas2dSurface(() => fps);
+    const canvas = (surf && surf.canvas) || null;
     const tiles = new Map(); // id -> { ord, el, streamId, n, cols }
     const sounds = new Map(); // id -> stream: parts summed into the pack's sound with no tile (setSound)
     let fold = (opts.ac && createAudioFold(opts.ac)) || null;
@@ -337,9 +432,9 @@
     }
     // A tile's geometry in face squares, and the source height holding them.
     function blockGeom(t) {
-      const el = t.el;
-      const sw = el ? (el.videoWidth || el.width || 0) : 0;
-      const sh = el ? (el.videoHeight || el.height || 0) : 0;
+      const src = sourceOf(t.el);
+      const sz = src ? src.size() : { w: 0, h: 0 };
+      const sw = sz.w, sh = sz.h;
       if (t.n === 1 && t.cols === 1) return { w: 1, h: 1, sw, sh, srcH: sh };
       const rows = Math.max(1, Math.ceil(t.n / t.cols));
       if (!sw || !sh) return { w: t.cols, h: rows, sw, sh, srcH: sh };
@@ -434,6 +529,24 @@
       // colour marks that still read when a face is a few pixels, or one
       // (markOverlay below).
       if (lbl.dot) { markOverlay(dx, dy, cell, lbl); return; }
+      // The surface draws the same marks. The ctx calls stay in this function so a
+      // copy of it that has no surface (it only names ctx) still burns the label.
+      if (typeof surf !== 'undefined' && surf) {
+        if (lbl.talking) {
+          const lw = Math.max(2, cell * 0.035);
+          surf.stroke('#37d67a', lw, dx + lw / 2, dy + lw / 2, cell - lw, cell - lw);
+        }
+        if (lbl.name) surf.label(String(lbl.name), dx, dy, cell, cell);
+        if (lbl.hand) {
+          const r = Math.max(6, cell * 0.12);
+          surf.glyph('✋', dx + cell - r * 1.6, dy + r * 0.3, r * 1.4 | 0);
+        }
+        if (lbl.react) {
+          const r = Math.max(7, cell * 0.15);
+          surf.glyph(String(lbl.react).slice(0, 8), dx + r * 0.3, dy + r * 0.3, r * 1.4 | 0);
+        }
+        return;
+      }
       if (lbl.talking) {
         const lw = Math.max(2, cell * 0.035);
         ctx.strokeStyle = '#37d67a'; ctx.lineWidth = lw;
@@ -473,6 +586,28 @@
     function markOverlay(dx, dy, cell, lbl) {
       const mark = lbl.react ? (REACT_COLOR[lbl.react] || REACT_COLOR['?']) : lbl.hand ? HAND_COLOR : null;
       const px = Math.max(1, Math.round(cell));
+      if (typeof surf !== 'undefined' && surf) {
+        if (px <= 2) {
+          const c = mark || (lbl.talking ? TALK_COLOR : null);
+          if (c) surf.fill(c, dx, dy, px, px);
+          return;
+        }
+        const ring = lbl.talking ? Math.max(1, Math.round(px * 0.12)) : 0;
+        if (mark) {
+          const inner = px - ring * 2;
+          const side = px >= 12 ? Math.max(1, Math.round(px * 0.4)) : inner;
+          surf.fill(mark, dx + ring, dy + ring, side, side);
+          if (lbl.react && lbl.hand && px >= 6) {
+            const hs = Math.max(1, Math.round(px * 0.3));
+            surf.fill(HAND_COLOR, dx + px - ring - hs, dy + ring, hs, hs);
+          }
+        }
+        if (ring) {
+          surf.fill(TALK_COLOR, dx, dy, px, ring); surf.fill(TALK_COLOR, dx, dy + px - ring, px, ring);
+          surf.fill(TALK_COLOR, dx, dy + ring, ring, px - ring * 2); surf.fill(TALK_COLOR, dx + px - ring, dy + ring, ring, px - ring * 2);
+        }
+        return;
+      }
       if (px <= 2) {
         const c = mark || (lbl.talking ? TALK_COLOR : null);
         if (c) { ctx.fillStyle = c; ctx.fillRect(dx, dy, px, px); }
@@ -523,46 +658,37 @@
       }
       return s;
     }
-    // A MODERATOR'S BLUR, BAKED. The face is drawn into a tiny canvas and
-    // stretched back, so its detail is gone before it reaches the composite.
-    // This works on every canvas; ctx.filter does not exist everywhere.
-    let blurCv = null, blurCx = null;
     // dw/dh default to the square cell; the letterboxed (contain) path passes
     // its own fitted rect so a blurred sharer is blurred there too.
     function blurBlit(el, b, dx, dy, cell, level, dw, dh) {
       if (dw == null) dw = cell;
       if (dh == null) dh = cell;
       const q = Math.max(3, Math.round(cell / (level >= 2 ? 40 : 16)));
-      if (!blurCv) { blurCv = document.createElement('canvas'); blurCx = blurCv && blurCv.getContext('2d'); }
-      if (!blurCx) { ctx.fillStyle = '#07090c'; ctx.fillRect(dx, dy, dw, dh); return; } // no scratch canvas: no face, never a clear one
-      if (blurCv.width !== q) { blurCv.width = q; blurCv.height = q; }
-      blurCx.drawImage(el, b.sx, b.sy, b.sw, b.sh, 0, 0, q, q);
-      ctx.imageSmoothingEnabled = true;
-      ctx.drawImage(blurCv, 0, 0, q, q, dx, dy, dw, dh);
+      surf.pixelate(sourceOf(el), b.sx, b.sy, b.sw, b.sh, q, dx, dy, dw, dh);
     }
     function drawLeaf(t, el, sw, sh, dx, dy, cell) {
+      const src = sourceOf(el);
       if (t.fit === 'contain') {
         // A SHARED SCREEN, LETTERBOXED (see fitBox): whole surface, no
         // crop. The bars are painted first so a re-aspect (a sharer
         // switching from a window to a monitor) can never leave the
         // previous source's pixels stranded in the margin.
         const f = fitBox('contain', sw, sh, cell);
-        ctx.fillStyle = '#07090c'; ctx.fillRect(dx, dy, cell, cell);
+        surf.fill('#07090c', dx, dy, cell, cell);
         // A moderator's blur reaches this path too: fitFor() turns
         // 'contain' on from the sender's own share claim, so a blurred
         // person who claims a share must never be drawn clear here.
         if (t.blur) blurBlit(el, { sx: 0, sy: 0, sw, sh }, dx + f.dx, dy + f.dy, cell, t.blur, f.dw, f.dh);
-        else ctx.drawImage(el, 0, 0, sw, sh, dx + f.dx, dy + f.dy, f.dw, f.dh);
+        else surf.blit(src, 0, 0, sw, sh, dx + f.dx, dy + f.dy, f.dw, f.dh);
       } else {
         const b = coverBox(sw, sh, { w: cell, h: cell });    // leaf camera → centered square
         if (t.blur) blurBlit(el, b, dx, dy, cell, t.blur);
-        else ctx.drawImage(el, b.sx, b.sy, b.sw, b.sh, dx, dy, cell, cell);
+        else surf.blit(src, b.sx, b.sy, b.sw, b.sh, dx, dy, cell, cell);
       }
       drawOverlay(dx, dy, cell, t.lbl);                       // BURN IN name/hand/talking (approach A: baked once at the leaf, rides pixels up the tree)
     }
-    // the paint clock's callback: paint, and capture a frame when the paint drew one (see start())
-    let reqFrame = null;
-    function tick(minMs) { const d0 = drawn; paint(minMs); if (reqFrame && drawn !== d0) reqFrame(); }
+    // the paint clock's callback. A frame is captured only when the paint drew one (surface.present).
+    function tick(minMs) { paint(minMs); }
     // A BLOCK IS PAINTED WHEN IT ARRIVES. A received block (another head's pack) moves at that head's paint rate, and a
     // clock of the same rate that runs on its own reads it up to a whole period late (half a period on average), again
     // at every head on the way up. So a block's new frame asks for a paint at once (requestVideoFrameCallback); the
@@ -572,16 +698,19 @@
     const PACK_GAP_PCT = TM.PACK_GAP_PCT, PACK_CLOCK_YIELD_PCT = TM.PACK_CLOCK_YIELD_PCT;
     const arriveOn = new WeakSet();
     function arriveArm(el) {
-      if (!el || typeof el.requestVideoFrameCallback !== 'function' || arriveOn.has(el)) return;
+      if (!el || arriveOn.has(el)) return;
+      const direct = typeof el.requestVideoFrameCallback === 'function';
+      if (!direct && typeof el.onFrame !== 'function') return;
       arriveOn.add(el);
+      const arm = (cb) => { if (direct) el.requestVideoFrameCallback(cb); else el.onFrame(cb); };
       const cb = () => {
         let held = false;
         for (const t of tiles.values()) if (t.el === el && !(t.n === 1 && t.cols === 1)) { held = true; break; }
         if (!held || !timer) { arriveOn.delete(el); return; }
-        try { el.requestVideoFrameCallback(cb); } catch (e) { arriveOn.delete(el); }
+        try { arm(cb); } catch (e) { arriveOn.delete(el); }
         arrive();
       };
-      try { el.requestVideoFrameCallback(cb); } catch (e) { arriveOn.delete(el); }
+      try { arm(cb); } catch (e) { arriveOn.delete(el); }
     }
     // An arrival inside the gap is painted when the gap ends, never dropped: a block that always lands just after
     // the clock's paint would otherwise wait for the next clock paint every time. While arrivals paint, the clock
@@ -597,7 +726,7 @@
       if (due <= 1) go(); else arriveT = setTimeout(go, due);
     }
     function paint(minMs) {
-      if (!ctx || active === false) return;                                    // demand-gated: a composite nobody ships or shows isn't painted (static canvas ⇒ ~0 encode too)
+      if (!surf || active === false) return;                                    // demand-gated: a composite nobody ships or shows isn't painted (static canvas ⇒ ~0 encode too)
       const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
       // THE CLOCK'S OWN TICK ALWAYS PAINTS. The clock fires once a period, and a tick that lands a hair early (the last
       // paint started a few ms after its tick) must not be dropped: it was, about every third tick, so an 8 fps pack
@@ -613,7 +742,7 @@
         // flash), then re-negotiate the size back up. Freeze the last frame +
         // dims for a few seconds; only a packer EMPTY for that long collapses.
         if (lastNonEmpty && now - lastNonEmpty < 5000) { last = now; return; }
-        if (canvas.width !== 2) { canvas.width = 2; canvas.height = 2; } heldRows = 0; pendingRows = 0; pendingSince = 0; last = now; return; // long-empty packer — don't paint a grid of nothing
+        if (surf.size().w !== 2) surf.resize(2, 2); heldRows = 0; pendingRows = 0; pendingSince = 0; last = now; return; // long-empty packer — don't paint a grid of nothing
       }
       lastNonEmpty = now;
       // Nothing moved and nothing was relabelled ⇒ the frame would be byte-identical.
@@ -626,7 +755,9 @@
       // screen (contain), a dark cell or a moderator's blur keeps the square.
       const solo = order[0];
       const soloEl = solo && solo.el;
-      const nsw = soloEl ? (soloEl.videoWidth || soloEl.width || 0) : 0, nsh = soloEl ? (soloEl.videoHeight || soloEl.height || 0) : 0;
+      const nsrc = sourceOf(soloEl);
+      const nd = nsrc ? nsrc.size() : { w: 0, h: 0 };
+      const nsw = nd.w, nsh = nd.h;
       const native = !!(opts.native && shape === 'bar' && T === 1 && solo && solo.n === 1 && solo.fit !== 'contain' && !solo.dark && !solo.blur && nsw > 0 && nsh > 0);
       if (native) {
         cell = cellSize(shape, cellPref, maxW, 1);
@@ -634,15 +765,14 @@
         W = alignW(Math.round(cell * Math.sqrt(a))); H = Math.max(2, Math.round(cell / Math.sqrt(a) / 2) * 2); // width a multiple of 16 (see alignW); the height is free
         denseNow = false; cellNow = cell;
         const sig = frameSig();
-        const sizeDue = canvas.width !== W || canvas.height !== H;
+        const sizeDue = surf.size().w !== W || surf.size().h !== H;
         if (!sizeDue && sig !== null && sig === lastSig && now - lastRealPaint < STILL_MAX_MS) { still++; last = now; return; }
         lastSig = sig === null ? '' : sig; lastRealPaint = now;
-        if (canvas.width !== W) canvas.width = W;
-        if (canvas.height !== H) canvas.height = H;
-        try { ctx.drawImage(soloEl, 0, 0, nsw, nsh, 0, 0, W, H); } catch (e) {}
+        surf.resize(W, H);
+        try { surf.blit(sourceOf(soloEl), 0, 0, nsw, nsh, 0, 0, W, H); } catch (e) {}
         const c = Math.min(W, H);
         drawOverlay(0, H - c, c, solo.lbl);
-        last = now; cost = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - now; costAvg = packAvg(costAvg, cost, costN++); drawn++;
+        last = now; cost = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - now; costAvg = packAvg(costAvg, cost, costN++); drawn++; surf.present();
         return;
       }
       if (dense) {
@@ -667,12 +797,11 @@
       denseNow = dense; cellNow = cell;
       const sig = frameSig();
       // A due resize is a different frame even when every source currentTime is frozen.
-      const sizeDue = canvas.width !== W || canvas.height !== H;
+      const sizeDue = surf.size().w !== W || surf.size().h !== H;
       if (!sizeDue && sig !== null && sig === lastSig && now - lastRealPaint < STILL_MAX_MS) { still++; last = now; return; }
       lastSig = sig === null ? '' : sig; lastRealPaint = now;
-      if (canvas.width !== W) canvas.width = W;
-      if (canvas.height !== H) canvas.height = H;
-      ctx.fillStyle = '#101418'; ctx.fillRect(0, 0, W, H);
+      surf.resize(W, H);
+      surf.fill('#101418', 0, 0, W, H);
       if (dense) {
         for (let i = 0; i < geo.length; i++) {
           const g = geo[i], t = g.t, p = dl.at[i];
@@ -680,18 +809,19 @@
           const dx = p.x * cell, dy = p.y * cell;
           try {
             if (t.n === 1 && t.cols === 1) drawLeaf(t, t.el, g.sw, g.sh, dx, dy, cell);
-            else if (g.src) ctx.drawImage(t.el, g.src.sx, g.src.sy, g.src.sw, g.src.sh, dx, dy, cell, cell); // one face of a split block
-            else ctx.drawImage(t.el, 0, 0, g.sw, g.srcH, dx, dy, g.w * cell, g.h * cell); // whole block, one blit
+            else if (g.src) surf.blit(sourceOf(t.el), g.src.sx, g.src.sy, g.src.sw, g.src.sh, dx, dy, cell, cell); // one face of a split block
+            else surf.blit(sourceOf(t.el), 0, 0, g.sw, g.srcH, dx, dy, g.w * cell, g.h * cell); // whole block, one blit
           } catch (e) {}
         }
-        last = now; cost = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - now; costAvg = packAvg(costAvg, cost, costN++); drawn++;
+        last = now; cost = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - now; costAvg = packAvg(costAvg, cost, costN++); drawn++; surf.present();
         return;
       }
       let f = 0;
       for (const t of order) {
         const el = t.el;
-        const sw = el ? (el.videoWidth || el.width || 0) : 0;
-        const sh = el ? (el.videoHeight || el.height || 0) : 0;
+        const es = sourceOf(el);
+        const ed = es ? es.size() : { w: 0, h: 0 };
+        const sw = ed.w, sh = ed.h;
         for (let j = 0; j < t.n; j++) {
           if (t.hid && t.hid.has(j)) continue; // a cell this receiver hides takes no place: the grid stays gapless
           const dx = (f % G) * cell, dy = Math.floor(f / G) * cell; f++;
@@ -699,7 +829,7 @@
           // cuts faces out by position, and it keeps the name. No pixel of the
           // source is drawn, whatever the source still sends.
           if (t.dark && t.n === 1) {
-            ctx.fillStyle = '#07090c'; ctx.fillRect(dx, dy, cell, cell);
+            surf.fill('#07090c', dx, dy, cell, cell);
             drawOverlay(dx, dy, cell, t.lbl);
             continue;
           }
@@ -708,7 +838,7 @@
           // cell. The name is the stager's own (lbl from labelFor(sid)), not the
           // picture's, so it never waits for pixels. Next paint fills the face.
           if (!sw || !sh) {
-            if (t.n === 1) { ctx.fillStyle = '#07090c'; ctx.fillRect(dx, dy, cell, cell); drawOverlay(dx, dy, cell, t.lbl); }
+            if (t.n === 1) { surf.fill('#07090c', dx, dy, cell, cell); drawOverlay(dx, dy, cell, t.lbl); }
             continue;
           }
           try {
@@ -716,12 +846,12 @@
               drawLeaf(t, el, sw, sh, dx, dy, cell);
             } else {
               const s = faceSrcRect(j, t.n, t.cols, sw, sh);         // block face → straight blit (overlay already baked by the sender)
-              ctx.drawImage(el, s.sx, s.sy, s.sw, s.sh, dx, dy, cell, cell);
+              surf.blit(sourceOf(el), s.sx, s.sy, s.sw, s.sh, dx, dy, cell, cell);
             }
           } catch (e) {}
         }
       }
-      last = now; cost = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - now; costAvg = packAvg(costAvg, cost, costN++); drawn++;
+      last = now; cost = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - now; costAvg = packAvg(costAvg, cost, costN++); drawn++; surf.present();
     }
 
     const pk = {
@@ -820,18 +950,8 @@
       },
       count: total, cols: () => G, rows: () => R,
       start() {
-        if (timer || !canvas) return pk;
-        // A FRAME PER PAINT. captureStream(fps) is a ceiling, and a ceiling equal to the paint rate leaves no margin:
-        // with the paint clock's jitter one browser (Firefox) captures only every other paint, so an 8 fps pack goes
-        // out at 4 fps and a forwarded picture waits up to 250 ms for its frame. Capture on demand instead: one frame
-        // for every real paint (none for a skipped still frame). An engine without requestFrame keeps a ceiling
-        // with headroom above the paint rate.
-        let cap = canvas.captureStream(0);
-        let vTrack = cap.getVideoTracks()[0];
-        if (!(vTrack && typeof vTrack.requestFrame === 'function') && typeof cap.requestFrame !== 'function') {
-          try { vTrack.stop(); } catch (e) {}
-          cap = canvas.captureStream(Math.min(60, fps * 2)); vTrack = cap.getVideoTracks()[0]; reqFrame = null;
-        } else reqFrame = () => { try { if (typeof vTrack.requestFrame === 'function') vTrack.requestFrame(); else cap.requestFrame(); } catch (e) {} };
+        if (timer || !surf) return pk;
+        const vTrack = surf.track();
         const aTrack = fold && fold.track();
         pk.stream = new MediaStream(aTrack ? [vTrack, aTrack] : [vTrack]);
         pk.track = vTrack;
@@ -878,7 +998,7 @@
       // still not know the Stage was going out at 110px. The cross-device
       // harnesses (test/README.md, "ONE BOX CANNOT ANSWER…") are where stage
       // sizing has to be confirmed, and they can only report what stats() says.
-      stats() { return { drawn, dropped, still, cost: Math.round(cost * 10) / 10, faces: total(), cols: G, rows: R, fps, active, dense: denseNow, cell: Math.round(cellNow * 100) / 100, w: canvas ? canvas.width : 0, h: canvas ? canvas.height : 0 }; },
+      stats() { const sz = surf ? surf.size() : { w: 0, h: 0 }; return { drawn, dropped, still, cost: Math.round(cost * 10) / 10, faces: total(), cols: G, rows: R, fps, active, dense: denseNow, cell: Math.round(cellNow * 100) / 100, w: sz.w, h: sz.h }; },
     };
     return pk;
   }
