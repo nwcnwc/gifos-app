@@ -2919,10 +2919,10 @@
     function adoptClaim(rk, neu, old) {
       neu.el = old.el;
     }
-    // Picture read for the choice. w is the element's videoWidth, or 0. frames is the playback count, or the videoWidth fallback the choice used.
+    // Picture read for the choice (and the carry plan's legacy block size). w/h are the element's video size, or 0. frames is the playback count, or the videoWidth fallback the choice used.
     function picRead(claim) {
       const el = claim && claim.el;
-      return { w: (el && el.videoWidth) || 0, frames: (el && el.getVideoPlaybackQuality) ? el.getVideoPlaybackQuality().totalVideoFrames : (el && el.videoWidth > 0 ? 1 : 0) };
+      return { w: (el && el.videoWidth) || 0, h: (el && el.videoHeight) || 0, frames: (el && el.getVideoPlaybackQuality) ? el.getVideoPlaybackQuality().totalVideoFrames : (el && el.videoWidth > 0 ? 1 : 0) };
     }
     // A DECODER THAT SHOWS NO PICTURE WHILE ITS FEED FLOWS IS RESTARTED
     // THROUGH THE SENDER. WebKit starts a newly bound stream <video> only

@@ -17776,7 +17776,10 @@
       }
       function blockMeta(f) {
         const m = {};
-        if (!(f && f.meta && f.meta.n)) return m;
+        if (!(f && f.meta && f.meta.n)) {   // a feed that does not say its block self-describes by its picture's aspect (5 − max/min = free), as the plane's sweep read it
+          const p = (0, /*()*/__M.picRead)(f), k = (p.w && p.h) ? Math.max(1, Math.round(Math.max(p.w, p.h) / Math.min(p.w, p.h))) : 1;
+          return { n: k, cols: k };
+        }
         m.n = f.meta.n; m.cols = f.meta.cols || f.meta.n;
         if (Array.isArray(f.meta.ids) && f.meta.ids.length === m.n) m.ids = f.meta.ids.slice();
         if (typeof f.meta.alag === 'number') m.alag = f.meta.alag;
