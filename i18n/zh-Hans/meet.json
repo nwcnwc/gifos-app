@@ -1201,5 +1201,6 @@
  "meet.capNowMine": "正在显示本设备听到的内容。",
  "meet.capNowTheirs": "正在显示 {name} 的字幕。",
  "meet.capFlag": "这些字幕不对",
- "meet.capSrcTitle": "{name} 的字幕"
+ "meet.capSrcTitle": "{name} 的字幕",
+ "meet.subReceiptName": "收据 — GifOS Meet 订阅"
 }

@@ -1201,5 +1201,6 @@
   "meet.capLangAsk": "Others hear you speaking {heard}, but your captions listen for {mine}. Switch your captions to {heard}?",
   "meet.capLangSwitch": "Switch to {heard}",
   "meet.capLangKeep": "Keep {mine}",
-  "meet.capLangLater": "You can change this any time: Settings, then Captions language."
+  "meet.capLangLater": "You can change this any time: Settings, then Captions language.",
+  "meet.subReceiptName": "Receipt — GifOS Meet subscription"
 }
