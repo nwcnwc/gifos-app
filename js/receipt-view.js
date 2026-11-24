@@ -95,7 +95,7 @@
   // has no public explorer: the ids are shown, and the only link is to the
   // buyer's own PayPal activity, which carries no id at all.
   const PAYPAL_ACTIVITY = 'https://www.paypal.com/myaccount/activities';
-  function link(href, t) { const a = el('a', 'tx-link', t); a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer'; return a; }
+  function link(href, t, cls) { const a = el('a', cls == null ? 'tx-link' : cls, t); a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer'; return a; }
   function txRows(receipt) {
     const C = GifOS.charge, B = GifOS.baseNet;
     if (!C || !C.receiptLegs) return [[tr('charge.receipt.transaction', 'Transaction'), receipt.tx || '']];
@@ -118,7 +118,7 @@
   function paypalNote(receipt) {
     if (receipt.rail !== 'paypal') return;
     const p = el('p', 'note'); p.id = 'rv-paypal';
-    p.appendChild(link(PAYPAL_ACTIVITY, tr('charge.receiptView.paypalFind', 'Find it in your PayPal activity')));
+    p.appendChild(link(PAYPAL_ACTIVITY, tr('charge.receiptView.paypalFind', 'Find it in your PayPal activity'), ''));
     $('rv').appendChild(p);
   }
 
