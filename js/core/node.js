@@ -145,9 +145,9 @@ async function loadSite(origin, opts) {
   };
 }
 
-// The meeting page's address for a meeting link, as the site's router (route.html) makes it: /meet/<room>[/<verifier>]
-// is a meeting, /join/<code> a self-healing app room, /join/<room>/<verifier>/<secret> an owned one. A link that is
-// already the page (run.html#...) is kept.
+// The meeting page's address for a meeting link, as the site's router (route.html) makes it: /meet#room=<room>[&v=<verifier>]
+// is a meeting, /join#code=<code> a self-healing app room, /join#room=<room>&v=<verifier>&code=<secret> an owned one (the
+// old path forms /meet/<room>[/<verifier>], /join/... still open). A link that is already the page (run.html#...) is kept.
 // The Node media port's files (files.json "nodeMedia"): host = the AudioContext over Opus (this realm), plane = the
 // participant's media plane (its realm). Absent in a core that predates them.
 function nodeMediaFiles(files) { const m = files && files.nodeMedia; return m && m.host && m.plane ? [m.host, m.plane] : []; }
@@ -158,19 +158,45 @@ function hostModule(site, rel) {
   return mod.exports;
 }
 
+// A ROOM LINK, as the run.html hash it opens: null when the address names no
+// room, '' when it names one badly. Every link GifOS hands out keeps the room
+// in the FRAGMENT, which a browser never sends, so no server and no log ever
+// reads it: /meet#room=R[&v=V], /cast#room=R[&v=V] (the Broadcast skin),
+// /join#code=C (an app session) and /join#room=R&v=V&code=C (an owned app).
+// The path forms shared before (/meet/R[/V], /cast/R[/V], /join/C,
+// /join/R/V/C) open the same rooms forever. Everything else in the fragment
+// or the query rides along. Room case is kept: the room id is the capability
+// the key derives from. The same rule as route.html's roomHash (the site's
+// router), which a page guard holds equal to this one.
+function roomHash(pathname, search, hash) {
+  var m = /^\/(meet|cast|join)(?:\/([a-z0-9-]{1,64})(?:\/([a-f0-9]{16,64})(?:\/([a-z0-9]{1,64}))?)?)?\/?$/i.exec(pathname || '');
+  if (!m) return null;
+  var kind = m[1].toLowerCase(), room = m[2] || '', ver = m[3] || '', code = m[4] || '', rest = [], bad = false;
+  if (kind === 'join' && room && !ver) { code = room; room = ''; }
+  var h = String(hash || '').replace(/^#/, ''), q = String(search || '').replace(/^\?/, '');
+  var hs = h ? h.split('&') : [], parts = hs.concat(q ? q.split('&') : []);
+  for (var i = 0; i < parts.length; i++) {
+    var p = parts[i], k = p.split('=')[0], val = p.slice(k.length + 1);
+    if (!p) continue;
+    if (m[2] || i >= hs.length || (k !== 'room' && k !== 'v' && k !== 'code')) { rest.push(p); continue; }
+    if (k === 'room') { room = val; bad = bad || !/^[a-z0-9-]{1,64}$/i.test(val); }
+    else if (k === 'v') { ver = val; bad = bad || !/^[a-f0-9]{16,64}$/i.test(val); }
+    else { code = val; bad = bad || !/^[a-z0-9]{1,64}$/i.test(val); }
+  }
+  var tail = rest.length ? '&' + rest.join('&') : '';
+  ver = ver.toLowerCase();
+  if (bad) return '';
+  if (kind !== 'join') return room ? 'v=' + room + (ver ? '&av=' + ver : '') + (kind === 'cast' ? '&bc=1' : '') + tail : (ver ? '' : null);
+  if (room && ver && code) return 's=' + room + '.' + ver + '&k=' + code + tail;
+  if (code && !room && !ver) return 'j=' + code + tail;
+  return room || ver ? '' : null;
+}
 function pageUrl(link) {
   const u = new URL(link);
-  const m = u.pathname.match(/^\/(?:join|meet|cast)\/([a-z0-9-]{1,64})(?:\/([a-f0-9]{16,64})(?:\/([a-z0-9]{1,64}))?)?\/?$/i);
-  if (!m) return u.href;
-  const code = m[1], verifier = m[2] ? m[2].toLowerCase() : '', secret = m[3] || '';
-  const extra = u.search ? '&' + u.search.slice(1) : '';
-  let hash;
-  if (/^\/(?:meet|cast)\//i.test(u.pathname)) hash = 'v=' + code + (verifier ? '&av=' + verifier : '') + (/^\/cast\//i.test(u.pathname) ? '&bc=1' : '') + extra;
-  else if (verifier && secret) hash = 's=' + code + '.' + verifier + '&k=' + secret + extra;
-  else if (!verifier) hash = 'j=' + code + extra;
-  else throw new Error('GifOS core: an owned app link needs its secret (' + link + ')');
-  const h = u.hash.replace(/^#/, '');
-  return u.origin + '/run.html#' + hash + (h ? '&' + h : '');
+  const hash = roomHash(u.pathname, u.search, u.hash);
+  if (hash === null) return u.href;
+  if (hash === '') throw new Error('GifOS core: not a whole meeting link (an owned app link needs its secret): ' + link);
+  return u.origin + '/run.html#' + hash;
 }
 
 // ---- storage -------------------------------------------------------------------------------------------------

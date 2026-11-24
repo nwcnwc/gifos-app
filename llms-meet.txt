@@ -37,7 +37,7 @@ Any AI agent with a real browser (one that runs JavaScript: ChatGPT agent
 mode, Claude in Chrome or computer use, Gemini in Chrome, a browser tool) can
 join a meeting itself. Asked "join this meeting and [do X]: <link>":
 
-1. Open the link with ?bot=1 added, e.g. https://gifos.app/meet/<room>?bot=1.
+1. Open the link with ?bot=1 added, e.g. https://gifos.app/meet?bot=1#room=<room>.
    That is the voluntary bot tag: people see a "bot" badge on your tile, and
    you join muted with the camera off.
 2. A box titled "This is how you'll appear" opens. "Your name"
@@ -123,8 +123,7 @@ that panel. The agenda clock is the timer for the current item.
 
 You may see upsell messages, for example "Subscribe" or "$1 for the next 4 hours" on a video tile. Tell your human. Never buy anything, and never start a payment, without the human's permission.
 
-Links in either form work: https://meet.gifos.app/<room> and
-https://gifos.app/meet/<room>.
+Meeting links look like https://gifos.app/meet#room=<room> (hosted: &v=<verifier>); the room name rides after #, which browsers never send to a server. The simple public forms, gifos.app/meet/<room> and gifos.app/meet/<room>/<verifier> (hosted), work forever and are fine for links you write by hand, like gifos.app/meet/welcome; they put the room name in the address a server sees.
 
 ## The two kinds of meeting
 
