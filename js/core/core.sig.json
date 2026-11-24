@@ -1,6 +1,6 @@
 {
  "v": 1,
- "build": "0.9.28.16",
+ "build": "0.9.28.17",
  "signer": "gifos.app",
  "files": {
   "js/app-owner.js": "7c709e7f9e553d5c4c38ef8925dc7841fe2b68a2f95ebce0846593f91eb54535",
@@ -9,7 +9,7 @@
   "js/core/host.js": "ab8946a8ca374ab05cf02ffcb605cda9ffd8af5c3ca1dc2df0aab91a82459e5e",
   "js/core/media/nones.json": "9a1f778d9688a6e8b458e77eccf25ca3173160c2c2f9294c1421199e121841b9",
   "js/core/media/plane-node.js": "a20ace1be30f99ace29a03e6f92a22b2ddbf6c2573d2303af22f8bbadf283003",
-  "js/core/meeting.js": "4ed87c4ed65ed263954b765ffa1e4a79fe0a75aaf0152e2e676283c34ecf9ae9",
+  "js/core/meeting.js": "253fc45dedef4d74f11c0cf7291251cab16cddf18fbed605ce6ed288eea51986",
   "js/core/node.js": "3f7d8f4d692af30c21557e0de9256c363da65a32aeb441f351d47699cca5ebdc",
   "js/core/platform.json": "097b3b6768412855778f85e8b0c7fc5a113a6651d46bc43948f57e33476c6404",
   "js/core/ports/webaudio.js": "a19a4b92009f5177abffc601ff030e0f0212b31a3b3d29e283608633fd2eb2c0",
@@ -37,7 +37,7 @@
   "js/meet-viewmode.js": "44f2da9f252eb610144b3326ac105405df7d19527cff2ce697d84d5a1b5c6ca2",
   "js/meet-zones.js": "677a6a0afaaab4fe110c141ce773d2fc0e554d9ecdf897c1cc9bf88d5ef0e2eb",
   "js/mesh-identity.js": "e7c41650476bf262b0ba41d9970072b77eb748c16d1d9267c73fb4af8e5e1a79",
-  "js/mesh-wire.js": "9c8256ae17f12f3be1f92263b65251dcfbba9f97c345c32ab29f20ea7c5b32a2",
+  "js/mesh-wire.js": "4de0e0686da11bbaf76392c2bbac4c443394279c1371a286589b99bbe1613992",
   "js/mesh/books.js": "092db7b0f42029f95830cfc42f5f3180466832730e7a3510364785d3b97b8c6e",
   "js/mesh/burst.js": "70e72093587a0f383f199c799cd55eb952ecf3d18d88b401500db52a10dcec25",
   "js/mesh/c7proof.js": "defc7b5cc309af34d6b04a052704cdf9cf5080f1a99d68ffdd7318a6cd1591ac",
@@ -102,5 +102,5 @@
   "js/runtime.js": "0928f5ba45f103541b5ef1da4beda289d025c5a44cf01fe522017962d192f878",
   "js/timings.js": "e400f03ccb8d32a14b58a937876c76a4139d0d1c3175bd9b03e380b299a4d1fe"
  },
- "sig": "HcuC12G9jzaiGYQnZtNcw/14hO4ZGMe5fHRclCTwg1z4odmfNT6VT6T833QI3ZoTLL99mwHy93E93CrPrwS0DA=="
+ "sig": "f+OycpZyHSGaJHNaGA0rYvRazcid7uC3enulob835xkDTb9c8QjeXyWogmzXzG8QD4I5VZQ46cSXEd1A/BLxCQ=="
 }
