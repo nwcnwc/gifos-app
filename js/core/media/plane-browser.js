@@ -5457,6 +5457,7 @@
         const st = reconcileMosaic.mixDiff;
         if (n > 0) {
           st.sweeps++; st.compares += n;
+          if (__C.clog && st.sweeps % 20 === 1) (0, /*()*/__C.clog)('mix-shadow sweeps=' + st.sweeps + ' diff=' + st.diffSweeps + ' compares=' + st.compares);   // DEBUG: positive compare count (0 diffs is not 0 compares); goes with the shadow at the flip
           if (reason) { st.diffSweeps++; st.last = reason; if (__C.clog) (0, /*()*/__C.clog)('mix-diff ' + reason); }
           else st.last = null;
         }
