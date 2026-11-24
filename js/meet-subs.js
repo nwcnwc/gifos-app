@@ -303,7 +303,8 @@
       const passN = w ? w.passes.length : 0;
       if (!keepSub && !passN) return;   // nothing bought yet: no receipt
       const bought = purchaseFlat(keepSub);
-      const mark = [keepSub ? c.subId : '', live ? c.tier : '', passN, licMark(st, keepSub ? c : null), bought ? JSON.stringify(bought) : ''].join('|');
+      // The key is in the mark (review H5): after a re-key the receipt must carry the new seed, never the dead one.
+      const mark = [keepSub ? c.subId : '', keepSub ? c.buyerKey || '' : '', live ? c.tier : '', passN, licMark(st, keepSub ? c : null), bought ? JSON.stringify(bought) : ''].join('|');
       if (held.mark === mark && held.fileId) return;
       const fileId = typeof held.fileId === 'string' && held.fileId ? held.fileId : store.uid('file');
       const bytes = await gif.encode(subReceiptFiles(keepSub ? c : null, w, st), { accent: [120, 200, 255] });

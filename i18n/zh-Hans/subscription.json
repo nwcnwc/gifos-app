@@ -88,6 +88,8 @@
   "subscription.pmReplaceYes": "替换",
   "subscription.pmReplaceNo": "保留此设备上的方案",
   "subscription.pmRestore": "通过 PayPal 恢复",
+  "subscription.pmRestoreSub": "找不到？请填写 PayPal 邮件中的订阅 ID（以 I- 开头），可选",
+  "subscription.pmRestoreSubBad": "这不是 PayPal 订阅 ID（以 I- 开头）。",
   "subscription.pmRestoreYes": "移到这里",
   "subscription.pmRestoreQ": "将 {plan} 移到这里？您的其他设备将停止使用它。",
   "subscription.pmLibWarn": "资料库只能在仍保留旧方案文件的设备上打开，或从您移出方案的那台设备打开。",

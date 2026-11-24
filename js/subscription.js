@@ -452,7 +452,10 @@
     on('pm-restore', function () {
       var P = PM();
       if (!P) return;
-      try { location.assign(P.restoreStartUrl()); } catch (e) { say(t('pmFailed')); }
+      var subIn = $('pm-restore-sub');
+      var subId = subIn ? String(subIn.value || '').trim() : '';
+      if (subId && !/^I-[A-Za-z0-9]{4,40}$/.test(subId)) { say(t('pmRestoreSubBad')); return; }
+      P.restoreStartUrl(subId || null).then(function (u) { location.assign(u); }, function (e) { say(String((e && e.message) || e) || t('pmFailed')); });
     });
     on('pm-cancel', function () {
       if (!MS().cancel) return;

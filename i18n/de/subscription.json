@@ -88,6 +88,8 @@
   "subscription.pmReplaceYes": "Ersetzen",
   "subscription.pmReplaceNo": "Den Tarif auf diesem Gerät behalten",
   "subscription.pmRestore": "Mit PayPal wiederherstellen",
+  "subscription.pmRestoreSub": "Nicht gefunden? Geben Sie die Abo-ID aus Ihrer PayPal-E-Mail ein (beginnt mit I-), optional",
+  "subscription.pmRestoreSubBad": "Das ist keine PayPal-Abo-ID (sie beginnt mit I-).",
   "subscription.pmRestoreYes": "Hierher holen",
   "subscription.pmRestoreQ": "{plan} hierher holen? Ihre anderen Geräte verwenden ihn nicht mehr.",
   "subscription.pmLibWarn": "Ihre Bibliothek öffnet sich nur auf einem Gerät, das noch Ihre alte Tarifdatei hat, oder von dem Sie den Tarif verschieben.",

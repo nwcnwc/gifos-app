@@ -57,6 +57,8 @@
     if (!Number.isFinite(ms)) return '';
     const d = new Date(ms);
     if (Number.isNaN(d.getTime())) return '';
+    // People read a date in their own language and time zone; with no page (Node tests) the exact UTC form.
+    try { if (typeof document !== 'undefined') return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }); } catch (e) {}
     return d.toISOString().replace('.000Z', 'Z');
   }
   function b64(u8) { let s = ''; for (const b of u8) s += String.fromCharCode(b); return btoa(s); }

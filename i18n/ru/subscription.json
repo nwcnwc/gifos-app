@@ -88,6 +88,8 @@
   "subscription.pmReplaceYes": "Заменить",
   "subscription.pmReplaceNo": "Оставить тариф на этом устройстве",
   "subscription.pmRestore": "Восстановить через PayPal",
+  "subscription.pmRestoreSub": "Не нашлось? Добавьте ID подписки из письма PayPal (начинается с I-), необязательно",
+  "subscription.pmRestoreSubBad": "Это не ID подписки PayPal (он начинается с I-).",
   "subscription.pmRestoreYes": "Перенести сюда",
   "subscription.pmRestoreQ": "Перенести {plan} сюда? Другие устройства перестанут его использовать.",
   "subscription.pmLibWarn": "Библиотека открывается только на устройстве, где ещё есть старый файл тарифа, или с которого вы переносите тариф.",

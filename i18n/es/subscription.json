@@ -88,6 +88,8 @@
   "subscription.pmReplaceYes": "Sustituir",
   "subscription.pmReplaceNo": "Conservar el plan de este dispositivo",
   "subscription.pmRestore": "Restaurar con PayPal",
+  "subscription.pmRestoreSub": "¿No aparece? Añade el ID de suscripción de tu correo de PayPal (empieza por I-), opcional",
+  "subscription.pmRestoreSubBad": "Eso no es un ID de suscripción de PayPal (empieza por I-).",
   "subscription.pmRestoreYes": "Traerlo aquí",
   "subscription.pmRestoreQ": "¿Mover {plan} aquí? Tus otros dispositivos dejarán de usarlo.",
   "subscription.pmLibWarn": "Tu biblioteca solo se abre en un dispositivo que aún tenga el archivo antiguo de tu plan o desde el que muevas el plan.",

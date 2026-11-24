@@ -1221,7 +1221,9 @@
  "meet.subAway": "您的方案正在另一场会议中使用。",
  "meet.subAwayHere": "移到这里",
  "meet.subAwayManage": "管理",
- "meet.subHostElsewhere": "方案在另一台设备上？把它移到这里，或通过 PayPal 恢复。",
+  "meet.subHostElsewhere": "此浏览器没有套餐，所以本会议使用免费版（最多 {n} 人）。在另一部手机或电脑上买了套餐？把它移到这里。",
+  "meet.subHostMoveGo": "用代码移到这里",
+  "meet.subHostRestoreGo": "通过 PayPal 恢复",
  "meet.subMoveLink": "在另一台设备上使用",
  "meet.subRestoreLink": "通过 PayPal 恢复"
 }

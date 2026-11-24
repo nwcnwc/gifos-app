@@ -1221,7 +1221,9 @@
   "meet.subAway": "Tu plan está en uso en otra reunión.",
   "meet.subAwayHere": "Traerlo aquí",
   "meet.subAwayManage": "Gestionar",
-  "meet.subHostElsewhere": "¿Tienes un plan en otro dispositivo? Muévelo aquí o restáuralo con PayPal.",
+  "meet.subHostElsewhere": "Este navegador no tiene plan, así que esta reunión usa Gratis (hasta {n} personas). ¿Compraste un plan en otro teléfono u ordenador? Muévelo aquí.",
+  "meet.subHostMoveGo": "Moverlo aquí con un código",
+  "meet.subHostRestoreGo": "Restaurar con PayPal",
   "meet.subMoveLink": "Usar en otro dispositivo",
   "meet.subRestoreLink": "Restaurar con PayPal"
 }

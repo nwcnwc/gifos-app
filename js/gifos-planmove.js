@@ -163,10 +163,24 @@
     throw exp;
   }
 
-  function restoreStartUrl(subId) {
-    var u = payBase() + '/gifos/sub/restore/start';
-    if (subId) u += '?sub=' + encodeURIComponent(subId);
+  // BOUND RESTORE (review H4): the new key is made BEFORE leaving for PayPal; only SHA-256 of its public key (k) goes out,
+  // and the grant that comes back works only for that key. The seed waits in this tab's sessionStorage.
+  var RESTORE_SEED = 'gifos-restore-seed';
+  async function restoreStartUrl(subId) {
+    var k = await freshSeed();
+    try { root.sessionStorage.setItem(RESTORE_SEED, k.seedB64); } catch (e) { throw new Error('This browser cannot keep the restore key for a moment (private mode?).'); }
+    var hash = b64u(await sha256(fromB64(k.buyerKey)));
+    var u = payBase() + '/gifos/sub/restore/start?k=' + hash;
+    if (subId) u += '&sub=' + encodeURIComponent(subId);
     return u;
+  }
+  async function restoreKey() {
+    var seedB64 = null;
+    try { seedB64 = root.sessionStorage.getItem(RESTORE_SEED); } catch (e) {}
+    if (!seedB64) throw new Error('Start the restore again from this tab.');
+    var seed = fromB64(seedB64);
+    var k = await GifOS.ed.keysFromSeed(seed);
+    return { seed: seed, seedB64: seedB64, buyerKey: b64(k.pubRaw), priv: k.priv };
   }
   function decodeGrant(grant) {
     var s = String(grant || '');
@@ -184,12 +198,13 @@
   }
   async function claim(grant, subId) {
     var g = decodeGrant(grant);
-    var k = await freshSeed();
+    var k = await restoreKey();
     var at = Math.floor(Date.now() / 1000);
     var msg = GifOS.sub.askMessage('restore:' + g.n, subId, at);
     var sig = b64(await GifOS.ed.sign(k.priv, utf8(msg)));
     var r = await post('/gifos/sub/restore/claim', { grant: grant, subId: subId, buyerKey: k.buyerKey, at: at, sig: sig });
     if (!r.ok) throw new Error((r.body && r.body.error) || ('restore ' + r.status));
+    try { root.sessionStorage.removeItem(RESTORE_SEED); } catch (e) {}
     var body = r.body || {};
     return {
       v: 1, kind: GifOS.sub.CRED_KIND, subId: body.subId || subId, tier: body.tier, period: body.period,

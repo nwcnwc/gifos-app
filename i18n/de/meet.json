@@ -1221,7 +1221,9 @@
   "meet.subAway": "Ihr Tarif wird in einem anderen Meeting verwendet.",
   "meet.subAwayHere": "Hierher holen",
   "meet.subAwayManage": "Verwalten",
-  "meet.subHostElsewhere": "Haben Sie einen Tarif auf einem anderen Gerät? Holen Sie ihn hierher oder stellen Sie ihn mit PayPal wieder her.",
+  "meet.subHostElsewhere": "Dieser Browser hat keinen Tarif, daher läuft dieses Meeting mit Kostenlos (bis zu {n} Personen). Tarif auf einem anderen Handy oder Computer gekauft? Holen Sie ihn hierher.",
+  "meet.subHostMoveGo": "Mit einem Code hierher holen",
+  "meet.subHostRestoreGo": "Mit PayPal wiederherstellen",
   "meet.subMoveLink": "Auf einem anderen Gerät verwenden",
   "meet.subRestoreLink": "Mit PayPal wiederherstellen"
 }

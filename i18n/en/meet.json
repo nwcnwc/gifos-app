@@ -1221,7 +1221,9 @@
   "meet.subAway": "Your plan is in use in another meeting.",
   "meet.subAwayHere": "Move it here",
   "meet.subAwayManage": "Manage",
-  "meet.subHostElsewhere": "Have a plan on another device? Move it here or restore it with PayPal.",
+  "meet.subHostElsewhere": "This browser has no plan, so this meeting runs on Free (up to {n} people). Bought a plan on another phone or computer? Move it here.",
+  "meet.subHostMoveGo": "Move it here with a code",
+  "meet.subHostRestoreGo": "Restore with PayPal",
   "meet.subMoveLink": "Use on another device",
   "meet.subRestoreLink": "Restore with PayPal"
 }
