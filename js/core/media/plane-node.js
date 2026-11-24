@@ -206,17 +206,41 @@
       return ent && ent.stream;
     }
     // One source stream per job. A new id every sweep would reconcile the ship forever.
+    // Ended track objects name a route but are not added: an empty memo keeps an established trackless job wanted.
     const fwdStreams = new Map();
+    function trackObject(side, kind) {
+      if (!side || side.own === 'stage') return false;
+      const st = claimStream(side);
+      if (!st) return false;
+      try {
+        const fn = kind === 'video' ? st.getVideoTracks : st.getAudioTracks;
+        if (typeof fn === 'function') {
+          const ts = fn.call(st);
+          return !!(ts && ts[0]);
+        }
+        if (typeof st.getTracks === 'function') {
+          for (const t of st.getTracks()) if (t && t.kind === kind) return true;
+        }
+      } catch (e) {}
+      return false;
+    }
     function streamFor(e) {
       if (!e) return null;
       if (e.own === 'stage') return ownStageStream();
       const want = [];
-      const a = e.audio && shipKind(e.audio.own === 'stage' ? ownStageStream() : claimStream(e.audio), 'audio');
-      const v = e.video && shipKind(e.video.own === 'stage' ? ownStageStream() : claimStream(e.video), 'video');
-      if (a) want.push(a);
-      if (v) want.push(v);
-      if (!want.length) return null;
+      try {
+        const a = e.audio && shipKind(e.audio.own === 'stage' ? ownStageStream() : claimStream(e.audio), 'audio');
+        const v = e.video && shipKind(e.video.own === 'stage' ? ownStageStream() : claimStream(e.video), 'video');
+        if (a) want.push(a);
+        if (v) want.push(v);
+      } catch (e1) {}
       const jk = e.key + '>' + e.to;
+      if (!want.length) {
+        if (!trackObject(e.audio, 'audio') && !trackObject(e.video, 'video')) return null;
+        let st = fwdStreams.get(jk);
+        if (!st) { st = new MediaStream(); fwdStreams.set(jk, st); }
+        return st;
+      }
       let st = fwdStreams.get(jk);
       if (!st) { st = new MediaStream(); fwdStreams.set(jk, st); }
       syncTracks(st, want);
