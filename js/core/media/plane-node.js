@@ -152,13 +152,8 @@
     function unbindClaim(rk, claim) { if (claim) claim.el = null; }
     function adoptClaim(rk, neu, old) { if (neu) neu.el = null; }
     function picRead(claim) { return { w: 0, frames: 0 }; }
-    // The fail-back hold is plane-browser only for now.
-    function iActAsHead() {
-      const c = C.meshCoord();
-      if (!c) return false;
-      const h = C.actingHead(c); return c.i === 0 || (h != null && String(h) === String(C.myId));
-    }
-    function rowHeadPid(c) { return C.actingHead(c); }
+    // An edge of my row's acting head (the core's rowActing, which also keeps the fail-back hold): re-sweep. No tiles, no rail.
+    function rowEdge(why) { schedReconcile(); }
     // PLI upstream. True only when this claim's video receiver is allowed to send one; a refusal lets kfNeed fall through.
     function keyUp(claim, key) {
       void key;
@@ -389,8 +384,7 @@
     def('unbindClaim', unbindClaim);
     def('adoptClaim', adoptClaim);
     def('picRead', picRead);
-    def('iActAsHead', iActAsHead);
-    def('rowHeadPid', rowHeadPid);
+    def('rowEdge', rowEdge);
     def('keyUp', keyUp);
     def('producerKey', producerKey);
     def('kfEv', () => {});   // keyframe forensics: the browser plane logs them (window.__kfLog); nothing to log here
@@ -424,7 +418,7 @@
     // The host's setInterval returns a number, so unref runs only when the timer object itself is what came back.
     const sweepT = setInterval(() => { try { M.schedReconcile(); } catch (e) {} }, GifOS.meshLaws.FHOP_SWEEP * GifOS.timings.tickMs);
     if (sweepT && typeof sweepT.unref === 'function') sweepT.unref();
-    return { names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties', 'bindClaim', 'unbindClaim', 'adoptClaim', 'picRead', 'iActAsHead', 'rowHeadPid', 'keyUp', 'producerKey', 'kfEv', 'attachTrack', 'detachTrack', 'parkSender', 'kickJob', 'noteReship', 'dropContainer', 'orphaned', 'attachFailed', 'containerFor', 'jobPinned', 'swapTrack', 'dutyJob', 'dutyMuteTick', 'schedClaim', 'schedReconcile', 'stgLost', 'mySelfStream', 'jobVideoAt', 'stgCarry', 'repaintRedun', 'swapPicNote', 'stgFoNote', 'rowMixHold', 'rowMixHeadArrives', 'x2Target', 'mosHeld'] };
+    return { names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties', 'bindClaim', 'unbindClaim', 'adoptClaim', 'picRead', 'rowEdge', 'keyUp', 'producerKey', 'kfEv', 'attachTrack', 'detachTrack', 'parkSender', 'kickJob', 'noteReship', 'dropContainer', 'orphaned', 'attachFailed', 'containerFor', 'jobPinned', 'swapTrack', 'dutyJob', 'dutyMuteTick', 'schedClaim', 'schedReconcile', 'stgLost', 'mySelfStream', 'jobVideoAt', 'stgCarry', 'repaintRedun', 'swapPicNote', 'stgFoNote', 'rowMixHold', 'rowMixHeadArrives', 'x2Target', 'mosHeld'] };
   }
 
   GifOS.planeNode = { install };
