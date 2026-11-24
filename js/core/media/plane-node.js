@@ -13,8 +13,10 @@
  * through the pc's ontrack as on a page (claims, meters through the port's AudioContext, the agent's audio.in).
  * WHAT IT CANNOT MAKE YET: a picture of its own (avatar, blur, screen, rebroadcast) needs a video encoder: those
  * sources report no-track (never the raw camera in place of a blur). A stager's own stage feed ships voice only.
- * Duty slots (sdm / sub / sgs) are read off the jobs this plane actually holds; this plane still composites no strip
- * and no row mix, so an owed duty with no job reads 'no-track'.
+ * Duty slots (sdm / sub / sgs) are read off the jobs this plane actually holds. This plane folds a mix row's audio on
+ * the port's AudioContext and ships that fold with a claimed picture when the row has one. It still composites no
+ * strip and no picture pack: a row whose picture is {pack} ships only when packFor already returned a live track,
+ * and then the fold rides with it. With no pack track the row ships nothing, so an owed duty stays 'no-track'.
  *
  * Install: the host links the core with no media part, hands the declared nones, then calls
  * GifOS.planeNode.install(meeting.media, meeting.core) before meeting.run(). Each name below replaces its stand-in.
@@ -229,10 +231,26 @@
       if (e.own === 'stage') return ownStageStream();
       const want = [];
       try {
-        const a = e.audio && shipKind(e.audio.own === 'stage' ? ownStageStream() : claimStream(e.audio), 'audio');
-        const v = e.video && shipKind(e.video.own === 'stage' ? ownStageStream() : claimStream(e.video), 'video');
-        if (a) want.push(a);
-        if (v) want.push(v);
+        // A picture pack this plane did not make: the fold must not leave without it, and the pack must not leave
+        // without the fold. packFor null (this plane, until a later step) answers neither, so the row ships nothing.
+        if (e.video && e.video.pack) {
+          const v = packVideo(e.video);
+          let a = null;
+          if (e.audio && e.audio.mix) a = mixAudioTrack(e);
+          else if (e.audio && e.audio.own === 'mic') a = live(mainAudioTrack()) ? mainAudioTrack() : null;
+          else if (e.audio) a = shipKind(e.audio.own === 'stage' ? ownStageStream() : claimStream(e.audio), 'audio');
+          if (!v || (e.audio && !a)) return null;
+          if (a) want.push(a);
+          want.push(v);
+        } else {
+          let a = null;
+          if (e.audio && e.audio.mix) a = mixAudioTrack(e);
+          else if (e.audio && e.audio.own === 'mic') a = live(mainAudioTrack()) ? mainAudioTrack() : null;
+          else if (e.audio) a = shipKind(e.audio.own === 'stage' ? ownStageStream() : claimStream(e.audio), 'audio');
+          const v = e.video && shipKind(e.video.own === 'stage' ? ownStageStream() : claimStream(e.video), 'video');
+          if (a) want.push(a);
+          if (v) want.push(v);
+        }
       } catch (e1) {}
       const jk = e.key + '>' + e.to;
       if (!want.length) {
@@ -362,12 +380,30 @@
     function rowMixHeadArrives() { return -1; }
     // No rowX2To memory and no keepAdd: the cell's occupant, or nobody.
     function x2Target(cell) { try { return typeof C.occPid === 'function' ? C.occPid(cell) : null; } catch (e) { return null; } }
-    // Mix-minus questions. Constants: this plane does not fold yet. A throw inside carryIn drops the whole plan.
+    // Mix-minus questions. A throw inside carryIn drops the whole plan, so each answer stays inside its own try.
+    // MY MIC AS A FOLD SOURCE. Cached by track identity: a fresh stream id would re-fold every sweep. Waiting
+    // still asks iAmWaiting, and answers null until the voice exists.
+    let micFoldSt = null, micFoldTr = null;
+    function micFoldStream() {
+      let waiting = false;
+      try { waiting = typeof C.iAmWaiting === 'function' && C.iAmWaiting(); } catch (e) { waiting = false; }
+      if (waiting) return null;
+      const at = mainAudioTrack();
+      if (!live(at)) { micFoldSt = null; micFoldTr = null; return null; }
+      if (!micFoldSt || micFoldTr !== at) { micFoldSt = new MediaStream([at]); micFoldTr = at; }
+      return micFoldSt;
+    }
+    function stageVoiceStream() {
+      const st = mySelfStream();
+      if (!st || typeof st.getAudioTracks !== 'function') return null;
+      for (const t of st.getAudioTracks()) if (live(t)) return st;
+      return null;
+    }
     function partStream(ref) {
       if (!ref) return null;
       try {
-        if (ref.own === 'mic') return (typeof C.iAmWaiting === 'function' && C.iAmWaiting()) ? null : null;
-        if (ref.own === 'stage') return mySelfStream();
+        if (ref.own === 'mic') return micFoldStream();
+        if (ref.own === 'stage') return stageVoiceStream();
         if (ref.seat) {
           if (typeof C.peerWaits === 'function' && C.peerWaits(ref.seat)) return null;
           const p = C.peers && typeof C.peers.get === 'function' ? C.peers.get(ref.seat) : null;
@@ -386,7 +422,36 @@
     }
     function slotDark() { return false; }
     function carriedHot() { return false; }
-    function hopMs() { return 0; }
+    // One Opus quantum, plus the samples still sitting in the port source that reads this slot's audio track.
+    // No source for that track: one more quantum. The port keeps the depth on the source node, not on stats().
+    function hopMs(slot) {
+      const q = (GifOS.timings && GifOS.timings.AUDIO_QUANTUM_MS) || 20;
+      const fallback = q + q;
+      try {
+        const ent = C.mosIn && typeof C.mosIn.get === 'function' ? C.mosIn.get(slot) : null;
+        const st = ent && ent.stream;
+        const tr = st && typeof st.getAudioTracks === 'function' ? st.getAudioTracks()[0] : null;
+        if (!tr) return fallback;
+        const contexts = [];
+        if (C.ac) contexts.push(C.ac);
+        const liveSet = root.AudioContext && root.AudioContext._live;
+        if (liveSet) for (const ctx of liveSet) if (contexts.indexOf(ctx) < 0) contexts.push(ctx);
+        for (const ctx of contexts) {
+          if (!ctx || !ctx._srcs) continue;
+          for (const src of ctx._srcs) {
+            const ms = src && src.mediaStream;
+            if (!ms || typeof ms.getAudioTracks !== 'function' || !src._fifo || typeof src._fifo.len !== 'number') continue;
+            let hit = false;
+            for (const t of ms.getAudioTracks()) if (t === tr) hit = true;
+            if (!hit) continue;
+            const rate = src._rate || ctx.sampleRate || 0;
+            if (!(rate > 0)) continue;
+            return q + Math.max(0, Math.round(src._fifo.len / rate * 1000));
+          }
+        }
+      } catch (e) {}
+      return fallback;
+    }
     function packFor() { return null; }
     function blockOf(rk) {
       try {
@@ -399,7 +464,98 @@
       } catch (e) { return {}; }
     }
     function rowMixOpen() { return false; }
-    function mixReady() { return false; }
+    // The meeting context, already open. Asking here must not create one: a fold that needs a context calls ensureAc.
+    function mixReady() {
+      try { return !!(C.ac && C.ac.state !== 'closed'); } catch (e) { return false; }
+    }
+    // ONE FOLD PER foldKey, on the meeting context. Sync matches the browser's foldSync: add a new part, follow a
+    // changed stream id, drop a part that left. f._sid is partKey -> stream.id. The ear fold is built and not shipped.
+    const downFolds = new Map();
+    function foldAc() {
+      try { if (!C.ac && typeof C.ensureAc === 'function') C.ensureAc(); } catch (e) {}
+      try { return (C.ac && C.ac.state !== 'closed') ? C.ac : null; } catch (e) { return null; }
+    }
+    function foldAlive(f) {
+      try { const c = f && f.dest && f.dest.context; return !!(c && c.state !== 'closed'); } catch (e) { return false; }
+    }
+    function foldSync(f, parts) {
+      const sid = f._sid || (f._sid = new Map());
+      for (const k of [...sid.keys()]) if (!parts.has(k)) { f.remove(k); sid.delete(k); }
+      for (const [k, st] of parts) {
+        if (!st || st.id == null) continue;
+        if (sid.get(k) !== st.id) { f.remove(k); sid.set(k, st.id); }
+        if (!f.has(k)) f.add(k, st, 1); else f.follow(k, st);
+      }
+      if (f.scrub) f.scrub();
+      if (f.dedupeTracks) f.dedupeTracks();
+    }
+    function foldFor(foldKey, parts) {
+      if (foldKey == null) return null;
+      const ac = foldAc();
+      if (!ac || !GifOS.meshMedia || typeof GifOS.meshMedia.createAudioFold !== 'function') return null;
+      let f = downFolds.get(foldKey);
+      if (f && !foldAlive(f)) {
+        try { f.clear(); } catch (e) {}
+        downFolds.delete(foldKey);
+        f = null;
+      }
+      if (!f) {
+        try { f = GifOS.meshMedia.createAudioFold(ac); } catch (e) { return null; }
+        if (!f) return null;
+        downFolds.set(foldKey, f);
+      }
+      try { foldSync(f, parts || new Map()); } catch (e) {}
+      try { const t = f.track(); return live(t) ? t : null; } catch (e) { return null; }
+    }
+    function foldsKeep(keep) {
+      for (const [k, f] of [...downFolds]) {
+        if (keep && keep.has(k)) continue;
+        let tr = null;
+        try { tr = f.track && f.track(); } catch (e) {}
+        try { f.clear(); } catch (e) {}
+        if (tr && GifOS.meshMedia && typeof GifOS.meshMedia.retireAudioTracks === 'function') {
+          try { GifOS.meshMedia.retireAudioTracks([tr]); } catch (e) {}
+        }
+        downFolds.delete(k);
+      }
+    }
+    function foldParts() {
+      const o = {};
+      for (const [k, f] of downFolds) {
+        const sid = f && f._sid;
+        o[k] = sid ? [...sid.keys()].sort() : [];
+      }
+      return o;
+    }
+    function mixParts(e) {
+      const parts = new Map();
+      const list = e && e.audio && Array.isArray(e.audio.parts) ? e.audio.parts : [];
+      const ask = typeof M.partStream === 'function' ? M.partStream : partStream;
+      for (let i = 0; i < list.length; i++) {
+        const pair = list[i];
+        if (!pair || pair[0] == null) continue;
+        const st = ask(pair[1]);
+        if (st) parts.set(pair[0], st);
+      }
+      return parts;
+    }
+    function mixAudioTrack(e) {
+      if (!e || !e.audio || !e.audio.mix) return null;
+      const f = downFolds.get(e.audio.mix);
+      if (!f || typeof f.track !== 'function') return null;
+      const t = f.track();
+      return live(t) ? t : null;
+    }
+    function packVideo(video) {
+      if (!video || !video.pack) return null;
+      let pk = null;
+      try {
+        const fn = M.packFor;
+        pk = typeof fn === 'function' ? fn(video.pack, video.skip) : null;
+      } catch (e) { return null; }
+      const t = pk && pk.track;
+      return live(t) ? t : null;
+    }
     function rowMixViaPeek() {
       try {
         const c = typeof C.meshCoord === 'function' ? C.meshCoord() : null;
@@ -417,9 +573,16 @@
       let plan = [];
       try { C.roomBeyondRow(true); } catch (e) {}
       try { plan = C.carryIn() || []; } catch (e) { plan = []; }
+      const keep = new Set();
+      for (const e of plan) {
+        if (!e || !e.audio || !e.audio.mix) continue;
+        try { foldFor(e.audio.mix, mixParts(e)); keep.add(e.audio.mix); } catch (err) {}
+      }
+      try { foldsKeep(keep); } catch (e) {}
       for (const e of plan) {
         if (!e || !e.key || !e.to) continue;
-        if (e.audio && (e.audio.mix || e.audio.own === 'mic')) continue;
+        // No pack track: do not ship the audio half. streamFor refuses the same row if asked on its own.
+        if (e.video && e.video.pack && !packVideo(e.video)) continue;
         let jk = null;
         try { jk = C.shipJob(e.key, e.to, streamFor(e), e.meta, e.upKey); } catch (err) { jk = null; }
         if (jk) wanted.add(jk);
@@ -447,7 +610,18 @@
     def('attachLocalTracks', attachLocalTracks);
     def('dropEndedRemoteTracks', dropEndedRemoteTracks);
     def('peerAudioTracks', peerAudioTracks);
-    def('retireMixTracks', () => {});   // no fold mixes here yet (mix-minus is a later plan slot)
+    // A leaving peer's tracks leave every live fold now. The output track stays: another fold may still be shipping it.
+    function retireMixTracks(tracks) {
+      if (!tracks || !tracks.length) return;
+      try { if (GifOS.meshMedia && GifOS.meshMedia.retireAudioTracks) GifOS.meshMedia.retireAudioTracks(tracks); } catch (e) {}
+      try {
+        for (const f of downFolds.values()) {
+          if (f && f.dropTracks) f.dropTracks(tracks);
+          if (f && f.scrub) f.scrub();
+        }
+      } catch (e) {}
+    }
+    def('retireMixTracks', retireMixTracks);
     def('adapt', () => {});             // no encoder of my own to tune: forwarded and Opus tracks keep their own rate
     def('tileHolds', () => false);      // no tiles: no screen holds a stream
     def('stubDuties', stubDuties);
@@ -498,7 +672,7 @@
     // The host's setInterval returns a number, so unref runs only when the timer object itself is what came back.
     const sweepT = setInterval(() => { try { M.schedReconcile(); } catch (e) {} }, GifOS.meshLaws.FHOP_SWEEP * GifOS.timings.tickMs);
     if (sweepT && typeof sweepT.unref === 'function') sweepT.unref();
-    return { names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties', 'bindClaim', 'unbindClaim', 'adoptClaim', 'picRead', 'rowEdge', 'keyUp', 'producerKey', 'kfEv', 'attachTrack', 'detachTrack', 'parkSender', 'kickJob', 'noteReship', 'dropContainer', 'orphaned', 'attachFailed', 'containerFor', 'jobPinned', 'swapTrack', 'dutyJob', 'dutyMuteTick', 'schedClaim', 'schedReconcile', 'stgLost', 'mySelfStream', 'jobVideoAt', 'stgCarry', 'repaintRedun', 'swapPicNote', 'stgFoNote', 'rowMixHold', 'rowMixHeadArrives', 'x2Target', 'partStream', 'slotDark', 'carriedHot', 'hopMs', 'packFor', 'blockOf', 'rowMixOpen', 'mixReady', 'rowMixViaPeek', 'mosHeld'] };
+    return { folds: foldParts, names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties', 'bindClaim', 'unbindClaim', 'adoptClaim', 'picRead', 'rowEdge', 'keyUp', 'producerKey', 'kfEv', 'attachTrack', 'detachTrack', 'parkSender', 'kickJob', 'noteReship', 'dropContainer', 'orphaned', 'attachFailed', 'containerFor', 'jobPinned', 'swapTrack', 'dutyJob', 'dutyMuteTick', 'schedClaim', 'schedReconcile', 'stgLost', 'mySelfStream', 'jobVideoAt', 'stgCarry', 'repaintRedun', 'swapPicNote', 'stgFoNote', 'rowMixHold', 'rowMixHeadArrives', 'x2Target', 'partStream', 'slotDark', 'carriedHot', 'hopMs', 'packFor', 'blockOf', 'rowMixOpen', 'mixReady', 'rowMixViaPeek', 'mosHeld'] };
   }
 
   GifOS.planeNode = { install };

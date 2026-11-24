@@ -50,9 +50,11 @@
  *   document.hidden, document.visibilityState, document.addEventListener/removeEventListener  for the core LIBRARIES'
  *                   typeof-guarded page paths (js/gifos-net.js wakes its socket on visibilitychange/resume): never a
  *                   hidden tab, and no event ever fires. The meeting itself asks GifOS.host.hidden() instead.
- *   GifOS.meshMedia.workerClock  the core's background-proof interval lives in the media library (js/mesh-media.js),
- *                   which a host without the browser media part does not load. The shim is that library's own path
- *                   when there is no Worker: a plain interval, with the same { via, stop() } handle.
+ *   GifOS.meshMedia.workerClock  the core's background-proof interval lives in the media library (js/mesh-media.js).
+ *                   A host with no media plane does not load that file: the shim is the library's own path when
+ *                   there is no Worker, a plain interval with the same { via, stop() } handle. A host with a media
+ *                   plane loads js/mesh-media.js in the participant (createAudioFold, retireAudioTracks) and not
+ *                   the browser plane. Worker is absent here, so that library's clock takes the same interval.
  *   GifOS.host      the host's facts (run.html sets them from its document): never a hidden tab, framed by no page,
  *                   always able to hold a meeting, no page scripts to reload (this host loads files.json itself), and no
  *                   screen (a viewport of 0 x 0: nothing is in view).
@@ -135,7 +137,8 @@ async function loadSite(origin, opts) {
   const platform = JSON.parse(await get('js/core/platform.json'));
   const nones = JSON.parse(await get('js/core/media/nones.json')).nones;
   const text = new Map();
-  const todo = files.core.concat(files.apps || [], nodeMediaFiles(files)).slice();
+  const fold = foldLib(files);
+  const todo = files.core.concat(files.apps || [], nodeMediaFiles(files), fold ? [fold] : []).slice();
   await Promise.all(Array.from({ length: 6 }, async () => { while (todo.length) { const rel = todo.shift(); text.set(rel, await get(rel)); } }));
   const stamp = (/stamp ([0-9a-f]+)/.exec(text.get('js/core/meeting.js') || '') || [])[1] || '';
   return {
@@ -152,6 +155,14 @@ async function loadSite(origin, opts) {
 // The Node media port's files (files.json "nodeMedia"): host = the AudioContext over Opus (this realm), plane = the
 // participant's media plane (its realm). Absent in a core that predates them.
 function nodeMediaFiles(files) { const m = files && files.nodeMedia; return m && m.host && m.plane ? [m.host, m.plane] : []; }
+// The fold library (files.json "media", mesh-media.js only). The browser plane stays out of this host. A web site
+// must have fetched the file before a media participant can run it (loadSite's read allows only what it fetched).
+function foldLib(files) {
+  const list = files && files.media;
+  if (!Array.isArray(list)) return null;
+  for (const rel of list) if (typeof rel === 'string' && rel.endsWith('mesh-media.js')) return rel;
+  return null;
+}
 // A site file that runs in THIS realm, as a CommonJS module (only its exports come out: it sees no require).
 function hostModule(site, rel) {
   const mod = { exports: {} };
@@ -401,13 +412,17 @@ function createMeeting(opts) {
   let audio = null;
   if (media && !(g.MediaStreamTrack && g.RtpPacket)) throw new Error('GifOS core: the media plane needs a webrtc port with RTP tracks (werift)');
   if (opts.globals) for (const k of Object.keys(opts.globals)) g[k] = opts.globals[k];
-  // the core, then the app runtime (files.json "apps": apps' data, signatures and gifos.room, with no app frame)
-  for (const rel of files.core.concat(files.apps || [], media ? [nm.plane] : [])) {
+  // the core, then the app runtime (files.json "apps": apps' data, signatures and gifos.room, with no app frame).
+  // A media participant then gets the fold library and the Node plane. The fold library needs GifOS.timings, which
+  // the core has already run. The browser plane is not loaded.
+  const run = files.core.concat(files.apps || []);
+  if (media) { const fold = foldLib(files); if (fold) run.push(fold); run.push(nm.plane); }
+  for (const rel of run) {
     current = { src: new URL(rel, location.href).href };
     try { script(site, rel).runInContext(context); } finally { current = null; }
   }
   const GifOS = context.GifOS;
-  // GifOS.meshMedia.workerClock (see HOST SHIMS)
+  // GifOS.meshMedia.workerClock (see HOST SHIMS). A media participant already has the library's clock.
   if (!GifOS.meshMedia) {
     GifOS.meshMedia = { workerClock(ms, fn) { const id = setI(fn, Math.max(1, ms | 0)); return { via: 'interval', stop() { clearT(id); } }; } };
   }
