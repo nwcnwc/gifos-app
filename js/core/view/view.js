@@ -1167,7 +1167,7 @@
       for (const el of document.querySelectorAll('#stagefeed > .rowtile')) paintBlurWhy({ tile: el }, why);
       // A stager's own Stage view (ensureStageView: one picture per person) says that person's reason.
       const views = (typeof applyComfy !== 'undefined' && applyComfy.views) || null;
-      if (views) for (const [pid, el] of views) paintBlurWhy({ tile: el }, pid === __C.model.me.myId() ? (0, /*()*/__C.tileBlurWhy)('me', __C.model.me.myStatus(), 'stage') : (0, /*()*/__C.tileBlurWhy)(pid, __C.model.roster.statusOf().get(pid), 'stage'));
+      if (views) for (const [pid, el] of views) { paintBlurWhy({ tile: el }, pid === __C.model.me.myId() ? (0, /*()*/__C.tileBlurWhy)('me', __C.model.me.myStatus(), 'stage') : (0, /*()*/__C.tileBlurWhy)(pid, __C.model.roster.statusOf().get(pid), 'stage')); if (typeof ensureStageView.paintBlur === 'function') ensureStageView.paintBlur(el, pid); }
     }
     const stillBtn = document.getElementById('still');
     if (stillBtn) stillBtn.onclick = () => { stillBtn.classList.remove('on'); clearTimeout(stillTimer); };
@@ -2732,6 +2732,20 @@
     let comfyBusy = false;
     yield 537;
     function ensureStageView(feed, id, track) {
+      // A Stage view wears the receiver's blur for that person on the Stage (blurLevelFor with where 'stage'), as a
+      // grid tile does: a sender that sends clear pixels where the room keeps them blurred stays blurred here. My own
+      // view shows my own track, which already carries my blur.
+      function paintStageViewBlur(el, id) {
+        const vid = el && el.querySelector && el.querySelector('video');
+        if (!vid) return;
+        let bl = 0;
+        try {
+          if (id !== __C.model.me.myId()) { bl = (0, /*()*/__C.blurLevelFor)(id, false, false, 'stage') | 0; if ((0, /*()*/__C.modBlurOn)(id)) bl = Math.max(1, bl); }
+        } catch (e) { bl = 2; }
+        vid.classList.toggle('blur1', bl === 1);
+        vid.classList.toggle('blur2', bl >= 2);
+      }
+      ensureStageView.paintBlur = paintStageViewBlur;   // paintStageBlurWhy repaints the views' blur too
       if (!applyComfy.views) applyComfy.views = new Map();
       let el = applyComfy.views.get(id);
       if (!el || (el.isConnected === false)) {
@@ -2758,7 +2772,8 @@
       let label = '';
       try { label = (0, /*()*/__C.displayName)(id) || ''; } catch (e) {}
       if (nm && nm.textContent !== label) nm.textContent = label;
-      try { paintBlurWhy({ tile: el }, id === __C.model.me.myId() ? (0, /*()*/__C.tileBlurWhy)('me', __C.model.me.myStatus()) : (0, /*()*/__C.tileBlurWhy)(id, __C.model.roster.statusOf().get(id))); } catch (e) {}
+      try { paintBlurWhy({ tile: el }, id === __C.model.me.myId() ? (0, /*()*/__C.tileBlurWhy)('me', __C.model.me.myStatus(), 'stage') : (0, /*()*/__C.tileBlurWhy)(id, __C.model.roster.statusOf().get(id), 'stage')); } catch (e) {}
+      paintStageViewBlur(el, id);
       return el;
     }
     function dropStageViews(keep) {
