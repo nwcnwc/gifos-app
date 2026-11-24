@@ -5300,7 +5300,8 @@
           const packMetaM = (pk) => ({ n: pk.count(), cols: pk.cols() });
           // A branch I serve gets my head's pack as it came (the same encoded picture, its own sound), handed down as is.
           const relDirect = new Set();
-          for (const h of l14Heads) { const rel = __C.mosIn.get('sdxu:' + h); if (!rel || !rel.stream) continue; relDirect.add(h); }
+          // the same test as the carry plan's: a husk with no track gets the packer's sdn
+          for (const h of l14Heads) { const rel = __C.mosIn.get('sdxu:' + h); if (!rel || !rel.stream || !rel.stream.getTracks().length) continue; relDirect.add(h); }
           l14Down((pk, h) => {
             // no pack from my head for this branch yet: my row's faces, packed here
             for (let j = 0; j < C; j++) { const fp0 = j === c.i ? __C.myId : (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: j }); const fp = fp0 && stagers.includes(fp0) ? null : fp0; const sc = fp ? srcFor(fp) : null; if (sc && sc.el) pk.setTile('f' + j, 10 + j, sc.el, sc.stream, { n: 1, cols: 1, lbl: stadLbl(fp), fit: (0, /*()*/__C.fitFor)(fp), pid: fp }); else pk.delTile('f' + j); }
