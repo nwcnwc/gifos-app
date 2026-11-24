@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!-- FRAME GUARD: the one GifOS page another site may frame is this one, at its exact path
+     (/embed, /versions/<x.y.z>/embed; Cloudflare serves embed.html there). Anywhere else
+     the guard refuses like every other page. Guarded by gifos page-guards frame-guard. -->
+<script id="gifos-frame-guard">(function(){try{var E=/^\/(versions\/\d+(\.\d+){2,3}\/)?embed(\.html)?$/.test(location.pathname);window.__gifosEmbed=E;if(E)return;if(window.top===window.self)return;var ok=false;try{ok=window.top.location.origin===window.location.origin;if(!ok&&window.location.origin==='null')ok=window.top.location.origin===window.parent.location.origin;}catch(e){}if(ok)return;var h=document.documentElement;h.style.visibility='hidden';function show(){var b=document.body;if(!b)return;while(b.firstChild)b.removeChild(b.firstChild);var p=document.createElement('p');p.style.cssText='font:16px system-ui,sans-serif;padding:24px;color:#eee;background:#111;margin:0';p.appendChild(document.createTextNode('GifOS does not run inside another site\'s page. '));var a=document.createElement('a');a.href=location.href;a.target='_blank';a.rel='noopener';a.textContent='Open it in its own tab';a.style.color='#9db4ff';p.appendChild(a);b.appendChild(p);h.style.visibility='';}if(document.body)show();else document.addEventListener('DOMContentLoaded',show);}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>GifOS Broadcast</title>
+<link rel="icon" href="/favicon.ico" sizes="16x16">
+<link rel="stylesheet" href="css/meet-embed.css">
+<!-- RELEASE POINTER. A broadcast runs the live release: the root page moves to
+     /versions/<latest>/embed (the same release's embed.html) with its hash. A snapshot
+     stays; a host that is not gifos.app (local, preview) stays on what it serves. -->
+<script>
+(function () {
+  if (location.pathname.indexOf('/versions/') !== -1 || !/(^|\.)gifos\.app$/.test(location.hostname)) return;
+  var done = false;
+  function stay() { done = true; }
+  try {
+    var x = new XMLHttpRequest();
+    x.open('GET', '/version.json?ts=' + Date.now(), true);
+    x.timeout = 3000;
+    x.onload = function () {
+      if (done) return;
+      try {
+        var j = JSON.parse(x.responseText) || {}, v = String(j.latest || '');
+        if (x.status >= 200 && x.status < 300 && /^\d+\.\d+\.\d+(\.\d+)?$/.test(v)) { done = true; location.replace('/versions/' + v + '/embed' + location.hash); return; }
+      } catch (e) {}
+      stay();
+    };
+    x.onerror = x.ontimeout = x.onabort = stay;
+    x.send();
+  } catch (e) { stay(); }
+})();
+</script>
+</head>
+<body>
+<div id="stagefeed"></div>
+<div id="embedui">
+  <div class="emb-top"><span class="emb-live" id="emb-live" data-state="off"><i></i><b id="emb-live-txt">OFFLINE</b></span><span class="emb-count" id="emb-count"></span><span class="emb-title" id="emb-title"></span></div>
+  <button type="button" class="emb-play" id="emb-play" aria-label="Unmute" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg><span>Tap to unmute</span></button>
+  <p class="emb-msg" id="emb-msg" hidden></p>
+  <div class="emb-bar"><button type="button" class="emb-btn" id="emb-mute" hidden>Unmute</button><button type="button" class="emb-btn" id="emb-lock" hidden>Enter password</button><span class="emb-fill"></span><a class="emb-btn emb-watch" id="emb-watch" target="_blank" rel="noopener noreferrer" hidden>Watch on GifOS</a><button type="button" class="emb-btn emb-full" id="emb-full" aria-label="Full screen" hidden></button></div>
+</div>
+<form id="emb-card" class="emb-card" hidden autocomplete="off">
+  <h3 id="emb-card-title">Watch clearly</h3>
+  <p id="emb-card-hint">Enter the password to watch clearly.</p>
+  <input id="emb-pw" type="password" maxlength="64" placeholder="Password" autocomplete="off" aria-label="Room password">
+  <div class="emb-card-row"><button type="submit" id="emb-pw-go">Watch</button><button type="button" id="emb-pw-later">Not now</button></div>
+</form>
+<!-- THE SAME SIGNED CORE as the meeting page (js/core/files.json "core", then "media"),
+     and this page's own view part (js/core/view/embed.js) in place of the meeting's view. -->
+<script src="js/gifos-store.js" defer></script>
+<script src="js/timings.js" defer></script>
+<script src="js/gifos-net.js" defer></script>
+<script src="js/meet-layout.js" defer></script>
+<script src="js/meet-debuglog.js" defer></script>
+<script src="js/meet-captrust.js" defer></script>
+<script src="js/meet-viewmode.js" defer></script>
+<script src="js/meet-power.js" defer></script>
+<script src="js/relay-config.js" defer></script>
+<script src="js/gifos-ed.js" defer></script>
+<script src="js/gifos-sign.js" defer></script>
+<script src="js/mesh/laws.js" defer></script>
+<script src="js/mesh/consts.js" defer></script>
+<script src="js/mesh/util.js" defer></script>
+<script src="js/mesh/books.js" defer></script>
+<script src="js/mesh/msg.js" defer></script>
+<script src="js/mesh/hash.js" defer></script>
+<script src="js/mesh/topo.js" defer></script>
+<script src="js/mesh/dig.js" defer></script>
+<script src="js/mesh/seat-fields.js" defer></script>
+<script src="js/mesh/fnv.js" defer></script>
+<script src="js/mesh/state.js" defer></script>
+<script src="js/mesh/rng.js" defer></script>
+<script src="js/mesh/fmt.js" defer></script>
+<script src="js/mesh/seat.js" defer></script>
+<script src="js/mesh/e2fold.js" defer></script>
+<script src="js/mesh/digest.js" defer></script>
+<script src="js/mesh/shared.js" defer></script>
+<script src="js/mesh/entry.js" defer></script>
+<script src="js/mesh/farview.js" defer></script>
+<script src="js/mesh/fhop.js" defer></script>
+<script src="js/mesh/turn.js" defer></script>
+<script src="js/mesh/c7proof.js" defer></script>
+<script src="js/mesh/gapa.js" defer></script>
+<script src="js/mesh/gaps.js" defer></script>
+<script src="js/mesh/gaps2.js" defer></script>
+<script src="js/mesh/gaps3.js" defer></script>
+<script src="js/mesh/gaps4.js" defer></script>
+<script src="js/mesh/heal.js" defer></script>
+<script src="js/mesh/hostile-laws.js" defer></script>
+<script src="js/mesh/id.js" defer></script>
+<script src="js/mesh/ijoin.js" defer></script>
+<script src="js/mesh/burst.js" defer></script>
+<script src="js/mesh/wall.js" defer></script>
+<script src="js/mesh/headword.js" defer></script>
+<script src="js/mesh/instant.js" defer></script>
+<script src="js/mesh/island.js" defer></script>
+<script src="js/mesh/lguard-seat.js" defer></script>
+<script src="js/mesh/linkset.js" defer></script>
+<script src="js/mesh/roles.js" defer></script>
+<script src="js/mesh/live.js" defer></script>
+<script src="js/mesh/mltail.js" defer></script>
+<script src="js/mesh/pclaws.js" defer></script>
+<script src="js/mesh/rcdead.js" defer></script>
+<script src="js/mesh/rcfollow.js" defer></script>
+<script src="js/mesh/rcleft-l25.js" defer></script>
+<script src="js/mesh/rcleft.js" defer></script>
+<script src="js/mesh/recv-entry.js" defer></script>
+<script src="js/mesh/recv-seated.js" defer></script>
+<script src="js/mesh/recv.js" defer></script>
+<script src="js/mesh/ring.js" defer></script>
+<script src="js/mesh/roomterm.js" defer></script>
+<script src="js/mesh/route.js" defer></script>
+<script src="js/mesh/seat-rest.js" defer></script>
+<script src="js/mesh/small.js" defer></script>
+<script src="js/mesh/tick.js" defer></script>
+<script src="js/mesh/tier.js" defer></script>
+<script src="js/mesh/witness.js" defer></script>
+<script src="js/mesh/page/env.js" defer></script>
+<script src="js/mesh/page/pclaws-wire.js" defer></script>
+<script src="js/mesh/page/layer.js" defer></script>
+<script src="js/mesh-identity.js" defer></script>
+<script src="js/mesh-wire.js" defer></script>
+<script src="js/meet-pack.js" defer></script>
+<script src="js/meet-turn.js" defer></script>
+<script src="js/meet-tunnel.js" defer></script>
+<script src="js/meet-carry.js" defer></script>
+<script src="js/meet-status.js" defer></script>
+<script src="js/meet-progress.js" defer></script>
+<script src="js/gifos-sub.js" defer></script>
+<script src="js/meet-leave.js" defer></script>
+<script src="js/meet-meters.js" defer></script>
+<script src="js/meet-zones.js" defer></script>
+<script src="js/meet-content.js" defer></script>
+<script src="js/meet-agenda.js" defer></script>
+<script src="js/meet-agent.js" defer></script>
+<script src="js/core/host.js" defer></script>
+<script src="js/core/meeting.js" defer></script>
+<script src="js/mesh-media.js" defer></script>
+<script src="js/mesh-pipe.js" defer></script>
+<script src="js/core/media/plane-browser.js" defer></script>
+<script src="js/core/view/embed.js" defer></script>
+<script>
+// THE HOST'S FACTS the core asks about (GifOS.host; run.html answers the same set).
+window.addEventListener('DOMContentLoaded', function () {
+  if (!window.GifOS || !GifOS.core) return;
+  GifOS.host = {
+    hidden: function () { return document.hidden; },
+    parentOrigin: function () { return ''; },
+    whenSupported: function (f) { f(); },
+    scriptOrder: function () { return Array.prototype.map.call(document.querySelectorAll('script[src]'), function (el) { try { return new URL(el.src, location.href).pathname.replace(/^\//, ''); } catch (e) { return ''; } }); },
+    loadScript: function (src) { return new Promise(function (res) { var el = document.createElement('script'); el.async = false; el.src = src; el.onload = function () { res(true); }; el.onerror = function () { res(false); }; document.head.appendChild(el); }); },
+    viewport: function () { return { w: window.innerWidth, h: window.innerHeight }; }
+  };
+  GifOS.core.startPage();
+});
+</script>
+</body>
+</html>

@@ -156,7 +156,7 @@ time; the URL does not change.
 
 A hosted GifOS Broadcast (gifos.app/cast) can play inside any web page, like
 a video player. Only a HOSTED broadcast embeds: its viewer link is
-https://gifos.app/cast/ROOM/VERIFIER. An open-floor room (a /cast link with no
+https://gifos.app/cast/ROOM/VERIFIER. A public open-floor broadcast (a /cast link with no
 verifier) cannot be embedded; the player says so and joins nothing.
 
 Paste one tag where the player should go:
