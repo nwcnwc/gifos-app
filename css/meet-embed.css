@@ -4,6 +4,7 @@ html, body { margin: 0; height: 100%; background: #111; overflow: hidden; }
 #stagefeed { position: fixed; inset: 0; background: #111; display: flex; align-items: center; justify-content: center; }
 #stagefeed .rowtile { width: 100%; height: 100%; position: relative; overflow: hidden; }
 #stagefeed video { width: 100%; height: 100%; object-fit: contain; display: block; }
+body.emb-unhosted #stagefeed { visibility: hidden; }   /* not hosted right now: no picture */
 /* The room's blur rule, drawn on the stage picture (the same strengths as the meeting's tiles: --bw from the
    media plane's size observer, the fractions from the global timings on the root). */
 #stagefeed video.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .009))) saturate(.9); transform: scale(1.07); }

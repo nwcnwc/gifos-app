@@ -65,7 +65,7 @@
       room = params.get('v') || params.get('room') || '';
       av = params.get('av') || '';
       $('emb-title').textContent = params.get('title') || room || 'GifOS Broadcast';
-      if (why === 'ok') { var w = $('emb-watch'); w.href = location.origin + '/cast#room=' + room + '&v=' + av; w.hidden = false; $('emb-mute').hidden = false; }
+      if (why === 'ok') { var w = $('emb-watch'); w.href = location.origin + '/cast#room=' + encodeURIComponent(room) + (av ? '&v=' + av : ''); w.hidden = false; $('emb-mute').hidden = false; }
     }
     var quiet = { text: '' };
     var tried = false;
@@ -87,10 +87,22 @@
       try { M.applyBuses(); } catch (e) {}
       paint();
     }
+    // HOSTED RIGHT NOW: the core's live answer from the room's signed host state (an admin room's host, or an open
+    // room's captor, present). Not hosted: the card, no picture, no sound (the media plane gates the sound on the same
+    // check); hosted again: the picture comes back by itself, muted until a tap.
+    function hostedNow() { try { return why === 'ok' && !!C.embedHosted(); } catch (e) { return false; } }
+    var wasHosted = null;
     function paint() {
       entry();
+      var hosted = hostedNow();
+      if (hosted !== wasHosted) {
+        wasHosted = hosted;
+        document.body.classList.toggle('emb-unhosted', !hosted);
+        if (!hosted && C.serviceHeard) { C.serviceHeard = false; try { M.applyBuses(); } catch (e) {} }
+        else { try { M.applyBuses(); } catch (e) {} }
+      }
       var v = stageVideo();
-      var picture = !!(v && v.srcObject);
+      var picture = hosted && !!(v && v.srcObject);
       if (v) { try { C.fsBlurClass(v, stageLevel()); } catch (e) {} }
       var pre = false;
       try { pre = picture && !!C.bcPreInRoom(); } catch (e) {}
@@ -106,8 +118,8 @@
       var mw = heard ? 'Mute' : 'Unmute';
       if ($('emb-mute').textContent !== mw) { $('emb-mute').textContent = mw; $('emb-mute').setAttribute('aria-pressed', heard ? 'false' : 'true'); }
       var card = $('emb-card');
-      var mt = why === 'open' ? 'This broadcast can’t be embedded: only hosted broadcasts can be embedded.'
-        : why !== 'ok' ? 'This embed does not name a GifOS broadcast.'
+      var mt = why !== 'ok' ? 'This embed does not name a GifOS broadcast.'
+        : !hosted ? 'This meeting isn’t hosted right now. The live view starts when a host takes charge.'
         : quiet.text ? quiet.text
         : (!picture && C.pwBlocked) ? 'This broadcast has a room password.'
         : !picture ? 'Not live right now.' : '';
@@ -149,7 +161,7 @@
     });
     fn('hideJoinPwModal', function () { $('emb-card').hidden = true; paint(); });
     fn('replaceAddress', function () {});     // an embed keeps its address (a framed /cast is refused)
-    ['paintLiveBadge', 'paintRoomTrust', 'paintControls', 'paintStagePlate', 'paintStatusLine', 'paintBroadcastRole'].forEach(function (n) {
+    ['paintLiveBadge', 'paintRoomTrust', 'paintControls', 'paintStagePlate', 'paintStatusLine', 'paintBroadcastRole', 'capPaint', 'applyAdminUi'].forEach(function (n) {
       if (Object.prototype.hasOwnProperty.call(needs, n)) fn(n, paint);
     });
     Object.keys(own).forEach(function (n) { Object.defineProperty(names, n, { value: own[n], writable: true, enumerable: true, configurable: true }); });
@@ -161,8 +173,9 @@
     return { names: names, setup: setup };
     // Input: unmute, mute, the password, full screen. No other control exists. Runs after the core's top level.
     function setup() {
-    $('emb-play').onclick = function () { hear(true); };
-    $('emb-mute').onclick = function () { hear(!C.serviceHeard); };
+    $('emb-play').onclick = function () { if (hostedNow()) hear(true); };
+    setInterval(function () { try { paint(); } catch (e) {} }, GifOS.timings.EMBED_HOSTED_MS);   // re-read the live host state
+    $('emb-mute').onclick = function () { if (hostedNow() || C.serviceHeard) hear(!C.serviceHeard); };
     $('emb-lock').onclick = function () { names.showPwModal(true); };
     $('emb-pw-later').onclick = function () { $('emb-card').hidden = true; paint(); };
     $('emb-card').onsubmit = function (e) {

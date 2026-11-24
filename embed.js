@@ -5,8 +5,10 @@
  *
  * Your hosted broadcast's viewer link is https://gifos.app/cast/ROOM/VERIFIER:
  * data-room is ROOM and data-verifier is VERIFIER (or put the whole link in
- * data-room). Only hosted broadcasts embed: an open room (no verifier) shows
- * a card saying so and joins nothing. The script puts a 16:9 player
+ * data-room); data-verifier is optional (an open-floor room has none). The
+ * player plays only while the room is hosted right now (its host, or the
+ * subscriber who took charge of an open room, is in it); until then it shows
+ * a card and plays nothing, and starts by itself. The script puts a 16:9 player
  * right where the tag is. The plain form, with no script:
  *
  *   <iframe src="https://gifos.app/embed#room=ROOM&v=VERIFIER" style="width:100%;aspect-ratio:16/9;border:0"
@@ -39,7 +41,7 @@
     return;
   }
   var title = String(s.getAttribute('data-title') || '').slice(0, 80);
-  // No verifier is an open room: the player itself says it cannot be embedded (one place for that rule).
+  // No verifier is an open-floor room: the player decides live whether it is hosted (one place for that rule).
   var hash = '#room=' + m[1] + (m[2] ? '&v=' + m[2].toLowerCase() : '')
     + (title ? '&title=' + encodeURIComponent(title) : '');
   var f = document.createElement('iframe');
