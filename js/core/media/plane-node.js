@@ -17,6 +17,7 @@
  * the port's AudioContext and ships that fold with a claimed picture when the row has one. It still composites no
  * strip and no picture pack: a row whose picture is {pack} ships only when packFor already returned a live track,
  * and then the fold rides with it. With no pack track the row ships nothing, so an owed duty stays 'no-track'.
+ * The host may put a video port on this global (vp8Port). install holds it and does not paint with it.
  *
  * Install: the host links the core with no media part, hands the declared nones, then calls
  * GifOS.planeNode.install(meeting.media, meeting.core) before meeting.run(). Each name below replaces its stand-in.
@@ -26,6 +27,8 @@
   const GifOS = root.GifOS = root.GifOS || {};
 
   function install(M, C) {
+    // Held for a later pack. This plane still composites no strip and does not call the port.
+    const videoPort = root.vp8Port || null;
     const def = (name, value) => Object.defineProperty(M, name, { value, writable: true, configurable: true, enumerable: true });
     // The browser plane assigns these from GifOS.timings. A null none makes a core `>` true on the next pass.
     M.MOS_GRACE = GifOS.timings.MOS_GRACE;
@@ -990,7 +993,7 @@
     // The host's setInterval returns a number, so unref runs only when the timer object itself is what came back.
     const sweepT = setInterval(() => { try { M.schedReconcile(); } catch (e) {} }, GifOS.meshLaws.FHOP_SWEEP * GifOS.timings.tickMs);
     if (sweepT && typeof sweepT.unref === 'function') sweepT.unref();
-    return { folds: foldParts, names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties', 'bindClaim', 'unbindClaim', 'adoptClaim', 'picRead', 'rowEdge', 'keyUp', 'producerKey', 'kfEv', 'attachTrack', 'detachTrack', 'parkSender', 'kickJob', 'noteReship', 'dropContainer', 'orphaned', 'attachFailed', 'containerFor', 'jobPinned', 'swapTrack', 'dutyJob', 'dutyMuteTick', 'schedClaim', 'schedReconcile', 'stgLost', 'mySelfStream', 'jobVideoAt', 'stgCarry', 'repaintRedun', 'swapPicNote', 'stgFoNote', 'rowMixHold', 'rowMixHeadArrives', 'x2Target', 'partStream', 'slotDark', 'carriedHot', 'hopMs', 'packFor', 'blockOf', 'rowMixOpen', 'mixReady', 'rowMixViaPeek', 'mosHeld'] };
+    return { folds: foldParts, video: videoPort, names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties', 'bindClaim', 'unbindClaim', 'adoptClaim', 'picRead', 'rowEdge', 'keyUp', 'producerKey', 'kfEv', 'attachTrack', 'detachTrack', 'parkSender', 'kickJob', 'noteReship', 'dropContainer', 'orphaned', 'attachFailed', 'containerFor', 'jobPinned', 'swapTrack', 'dutyJob', 'dutyMuteTick', 'schedClaim', 'schedReconcile', 'stgLost', 'mySelfStream', 'jobVideoAt', 'stgCarry', 'repaintRedun', 'swapPicNote', 'stgFoNote', 'rowMixHold', 'rowMixHeadArrives', 'x2Target', 'partStream', 'slotDark', 'carriedHot', 'hopMs', 'packFor', 'blockOf', 'rowMixOpen', 'mixReady', 'rowMixViaPeek', 'mosHeld'] };
   }
 
   GifOS.planeNode = { install };

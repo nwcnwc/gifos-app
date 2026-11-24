@@ -27,11 +27,14 @@
  * builtins so a port can hand the page values of its own realm. ports/loopback.js is an in-process port that carries
  * data channels only. With no port the participant has no peer connections.
  *
- * THE MEDIA PLANE (opts.media = { Opus }: an Opus codec constructor, opusscript-shaped; needs a webrtc port with real
- * tracks, werift). The host builds the site's ports/webaudio.js (files.json "nodeMedia".host) in its own realm and puts
- * its AudioContext on the participant's global, then links the site's media/plane-node.js ("nodeMedia".plane) as the
- * media plane: the core's media plan is carried out on werift senders (main senders, the agent's voice), received audio
- * is heard (meters, audio.in), exactly as a page does. Without opts.media the participant carries data only.
+ * THE MEDIA PLANE (opts.media = { Opus, libav }: an Opus codec constructor, opusscript-shaped, and, when a mosaic must
+ * be painted, libav, the path of the VP8 wasm build; needs a webrtc port with real tracks, werift). The host builds
+ * the site's ports/webaudio.js (files.json "nodeMedia".host) in its own realm and puts its AudioContext on the
+ * participant's global. When libav is set it builds ports/vp8.js ("nodeMedia".video) the same way and puts that port
+ * on the global for the plane to hold. It then links the site's media/plane-node.js ("nodeMedia".plane) as the media
+ * plane: the core's media plan is carried out on werift senders (main senders, the agent's voice), received audio is
+ * heard (meters, audio.in), exactly as a page does. The video port is held for a later pack; this host does not paint
+ * the meeting's mosaic yet. Without opts.media the participant carries data only.
  *
  * THE VIEW. A host with no screen links a headless view of its own (see THE HEADLESS VIEW below): the view's names
  * are counted stand-ins, so standIns() counts both what the core asked of the view and of the media plane.
@@ -153,8 +156,15 @@ async function loadSite(origin, opts) {
 // is a meeting, /join/<code> a self-healing app room, /join/<room>/<verifier>/<secret> an owned one. A link that is
 // already the page (run.html#...) is kept.
 // The Node media port's files (files.json "nodeMedia"): host = the AudioContext over Opus (this realm), plane = the
-// participant's media plane (its realm). Absent in a core that predates them.
-function nodeMediaFiles(files) { const m = files && files.nodeMedia; return m && m.host && m.plane ? [m.host, m.plane] : []; }
+// participant's media plane (its realm), video = the VP8 surface (this realm; fetched always, run only when the host
+// names a wasm build). Absent in a core that predates them.
+function nodeMediaFiles(files) {
+  const m = files && files.nodeMedia;
+  if (!(m && m.host && m.plane)) return [];
+  const out = [m.host, m.plane];
+  if (m.video) out.push(m.video);
+  return out;
+}
 // The fold library (files.json "media", mesh-media.js only). The browser plane stays out of this host. A web site
 // must have fetched the file before a media participant can run it (loadSite's read allows only what it fetched).
 function foldLib(files) {
@@ -563,6 +573,20 @@ function createMeeting(opts) {
       werift: { MediaStreamTrack: g.MediaStreamTrack, MediaStream: g.MediaStream, RtpPacket: g.RtpPacket, RtpHeader: g.RtpHeader } });
     audio.AudioContext.onerror = (e) => fail('audio', e);
     g.AudioContext = g.webkitAudioContext = audio.AudioContext;
+    if (typeof media.libav === 'string') {
+      if (!nm.video) throw new Error('GifOS core: opts.media.libav needs the site video port (files.json "nodeMedia".video)');
+      let WorkerCtor = null;
+      try { WorkerCtor = require('worker_threads').Worker; } catch (e) { WorkerCtor = null; }
+      let LibAV = null;
+      try { LibAV = require(media.libav); } catch (e) { LibAV = null; }
+      if (!LibAV || (typeof LibAV.LibAV !== 'function' && typeof LibAV !== 'function')) throw new Error('GifOS core: opts.media.libav did not load');
+      const videoApi = hostModule(site, nm.video);
+      if (!videoApi || typeof videoApi.port !== 'function') throw new Error('GifOS core: ' + nm.video + ' did not define the video port');
+      g.vp8Port = videoApi.port({
+        libav: media.libav, LibAV: LibAV, Worker: WorkerCtor, timings: GifOS.timings,
+        werift: { MediaStreamTrack: g.MediaStreamTrack, MediaStream: g.MediaStream, RtpPacket: g.RtpPacket, RtpHeader: g.RtpHeader, Vp8RtpPayload: g.Vp8RtpPayload, RTCPeerConnection: g.RTCPeerConnection },
+      });
+    }
     if (!GifOS.planeNode) throw new Error('GifOS core: ' + nm.plane + ' did not define the media plane');
     plane = GifOS.planeNode.install(meeting.media, meeting.core);
   }

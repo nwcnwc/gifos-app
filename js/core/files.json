@@ -113,6 +113,7 @@
  ],
  "nodeMedia": {
   "host": "js/core/ports/webaudio.js",
-  "plane": "js/core/media/plane-node.js"
+  "plane": "js/core/media/plane-node.js",
+  "video": "js/core/ports/vp8.js"
  }
 }

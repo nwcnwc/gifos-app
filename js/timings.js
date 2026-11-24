@@ -271,6 +271,7 @@
     VERSION_FIRST_ASK_MS: 3900,   // ms
     VIEW_FPS: 30,   // count
     VOUCH_MS: 180000,   // ms
+    VP8_PLI_GAP_MS: 500,   // ms
     WAKE_PROBE_MS: 1500,   // ms
     WAKE_SETTLE_MS: 6000,   // ms
     WAKE_SUSPECT_MS: 12000,   // ms
