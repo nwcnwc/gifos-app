@@ -4,5 +4,5 @@
 /cast/* /route 200
 /cast /route 200
 /join/* /route 200
-# Bare /store is the store page itself: route.html hands /store/<slug> to /store.html, and the host 308s that to /store.
+# Bare /store is the store page itself (never rewrite it: the host 308s /store.html there): route.html hands /store/<slug> to /store#app=<slug>.
 /store/* /route 200

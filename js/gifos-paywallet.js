@@ -244,6 +244,27 @@
     return null;
   }
 
+  // The one way out: forget this wallet here so the next payment asks for a
+  // wallet again (and may get a different address). Base Account: the SDK's own
+  // disconnect, which drops its cached connection. An injected wallet: revoke
+  // the site's eth_accounts permission where the wallet supports it; where it
+  // does not, `manual` is true and the caller says to disconnect in the
+  // extension too. Local state is cleared first, so a wallet that errors can
+  // never leave a stale connection here.
+  async function disconnect() {
+    let now = root.__gifosTestProvider ? { p: root.__gifosTestProvider, kind: 'test' } : providerNow;
+    if (!now && providerP) now = await providerP.catch(() => null);
+    providerP = null; providerNow = null; connectP = null;
+    let manual = false;
+    if (!now) return { ok: true, kind: null, manual };
+    if (now.kind === 'base-account') {
+      try { if (typeof now.p.disconnect === 'function') await now.p.disconnect(); } catch (e) { /* the cached connection is dropped with our handle */ }
+    } else {
+      try { await now.p.request({ method: 'wallet_revokePermissions', params: [{ eth_accounts: {} }] }); } catch (e) { manual = true; }
+    }
+    return { ok: true, kind: now.kind, manual };
+  }
+
   // ---- sign what the broker built -------------------------------------------
   // One signature per transfer. The Base Account / wallet shows its own
   // prompt for each; the trusted description of WHAT is being paid was
@@ -278,7 +299,7 @@
 
   GifOS.payWallet = {
     CHAIN_CAIP, CHAIN_ID,
-    available, address, peekAddress, signTransfers, paySplit, warm, connectNow,
+    available, address, peekAddress, disconnect, signTransfers, paySplit, warm, connectNow,
     // pure, for the unit tier
     buildAuthorization, typedData,
   };

@@ -60,6 +60,8 @@
                                     a seat carries the page, docs/turn-carry.md)
        TextEncoder / TextDecoder .. the byte<->string boundary everywhere
        Promise / Map / Set ........ the ES6 floor the runtime is written on
+       RegExp \p{..} + Object.fromEntries .. the language the meeting's scripts parse and load with
+                                    (a regex literal the browser cannot parse stops the whole bundle)
 
      NOT required, deliberately:
        getUserMedia ............... view-only join is a supported, first-class
@@ -116,22 +118,22 @@
      not verified it. Their UA carries the Chrome build they are made of, so we
      quote THAT and stay truthful. */
   /* ==== BEGIN GENERATED from site/browser-support.json — scripts/build-browser-support.mjs ==== */
-  /* Source of truth: site/browser-support.json (updated 2026-08-05).
+  /* Source of truth: site/browser-support.json (updated 2026-11-23).
      DO NOT EDIT BY HAND — edit the JSON and re-run the script; the release
      gate fails on drift (test/gate2/node/sections/page-guards/browser-support.js).
-     These numbers are set by Modern JavaScript (Promise, Map, Set, async/await):
-       Chrome            71   (2018-12)
+     These numbers are set by Modern JavaScript (Promise, Map, Set, async/await, Unicode regular expressions, Object.fromEntries):
+       Chrome            73   (2019-03)
        Microsoft Edge    79   (2020-01)
-       Firefox           65   (2019-01)
+       Firefox           78   (2020-06)
        Safari            12.1   (2019-03)
      COPY ONLY. The verdict below is feature detection and never this table. */
   var MIN = {
-    chrome:   { label: "Chrome",         min: "71" },
+    chrome:   { label: "Chrome",         min: "73" },
     edge:     { label: "Microsoft Edge", min: "79" },
-    firefox:  { label: "Firefox",        min: "65" },
+    firefox:  { label: "Firefox",        min: "78" },
     safari:   { label: "Safari",         min: "12.1" }
   };
-  var GENERIC_MINS = "Safari 12.1, Chrome 71 or Firefox 65 — and up";
+  var GENERIC_MINS = "Safari 12.1, Chrome 73 or Firefox 78 — and up";
   var WHY = {
     "webcrypto-subtle": "Everything in a meeting is scrambled on your own device before it leaves, so nobody in the middle can read it — and this browser is missing tools from the box that does the scrambling.",
     "webrtc-peerconnection": "In a meeting here, sound, pictures and everything else travel straight between people's browsers — no company server in the middle. This browser is missing part of what makes those direct browser-to-browser connections work.",
@@ -146,6 +148,10 @@
   function syncGaps() {
     var g = [], w = window;
     if (!fn(w, 'Promise') || !fn(w, 'Map') || !fn(w, 'Set')) g.push('modern JavaScript (Promise/Map/Set)');
+    // The meeting's scripts use Unicode property escapes in regular expressions (a browser without them cannot parse
+    // the script bundle at all) and call Object.fromEntries as they load: without either the page stays blank.
+    try { new RegExp('\\p{L}', 'u'); } catch (e) { g.push('modern JavaScript (Unicode regular expressions)'); }
+    if (!fn(Object, 'fromEntries')) g.push('modern JavaScript (Object.fromEntries)');
     if (typeof w.WebSocket === 'undefined') g.push('WebSocket');
     if (!fn(w, 'TextEncoder') || !fn(w, 'TextDecoder')) g.push('TextEncoder/TextDecoder');
     var c = w.crypto;
@@ -761,7 +767,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <div id="tophead" role="banner"></div>
   <div class="topchip">
     <span data-al="livebadgeAria" id="livebadge" data-state="off" aria-label="You are off air"><i class="livedot" aria-hidden="true"></i><span data-t="livebadgeTxt" id="livebadge-txt">OFF AIR</span></span>
-    <a data-ti="openYourGifosComputerTip" class="title" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
+    <a data-ti="openYourGifosComputerTip" class="title" href="./" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
     <span data-ti="txmarkTip" data-al="sendingCaptions" id="txmark" role="status" aria-label="Sending captions" style="display:none" title="Your voice is written down and sent to the meeting as captions while your mic is on. Your browser's speech service (Google, Apple or Microsoft) hears you, unless you picked Whisper. Settings → Captions to change this.">📝 <span data-t="sendingCaptions">Sending captions</span><small id="txwsp"></small></span>
     <span id="onair" hidden><i class="lamp" aria-hidden="true"></i><span class="words"></span></span>
     <span class="status" id="status"><button data-t="statuscount" type="button" id="statuscount" data-agent="status" aria-expanded="false" aria-controls="roster">Joining…</button><span id="statusrest" class="statustext"></span></span>
@@ -968,6 +974,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <button data-t="subOpen" data-ti="subOpenTip" id="subbtn" type="button" title="GifOS plans: the four-hour pass, private meetings, and unlimited people. Pay by card or PayPal.">Subscription</button>
         <button data-ti="shortcutTitle" id="keysbtn" data-t="keys" type="button" title="Keyboard shortcuts">Keys</button>
       </div>
+      <p id="spknote" class="morenote" data-t="spkThisDevice" hidden>Sound plays from this device's speaker</p>
     </section>
     </div>
     <!-- Outside #barmore: More folds after No blur (STEERING 22:45 #8), but the
@@ -999,7 +1006,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <div id="appmissing" hidden role="alert">
     <h1></h1>
     <p></p>
-    <a data-t="appMissingHome" id="appmissing-home" href="index.html">Go to Home Screen</a>
+    <a data-t="appMissingHome" id="appmissing-home" href="./">Go to Home Screen</a>
   </div>
   <div class="share" id="share">
     <span data-t="sendThisLinkTo" class="hint">Send this link to friends — opening it brings them right in:</span>
@@ -1015,7 +1022,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <div id="ccwsp-off" role="status" style="display:none"><button data-ti="ccwspOffTip" id="ccwsp-use" type="button" title="Pick browser captions for this device. Whisper stays installed; Settings → Captions turns it back on."><span data-t="ccwspOff">Whisper isn't running</span> · <b data-t="ccwspUse">Use browser captions</b></button><button data-al="ccwspHide" id="ccwsp-x" type="button" aria-label="Hide">✕</button></div>
   <div id="apppane">
     <div id="appbar">
-      <a data-ti="openYourGifosComputerTip" class="brand" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
+      <a data-ti="openYourGifosComputerTip" class="brand" href="./" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
       <img id="appgif" alt="">
       <span data-t="appname" id="appname">App</span>
       <span id="appwho"></span>
@@ -1249,7 +1256,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         </div>
         <div id="app-add-err" style="color:#e0574a;font-size:16px;margin-top:.45rem;display:none"></div>
         <!-- Always the live site, in a new tab: the GifOS Meet apps open every non-meeting page in the browser. -->
-        <a id="app-make-own" href="https://gifos.app/make-apps.html" target="_blank" rel="noopener" data-t="appMakeOwn" style="display:inline-block;margin-top:.6rem;font-size:16px;color:var(--accent,#7b5cff)">Make your own app for meetings</a>
+        <a id="app-make-own" href="https://gifos.app/make-apps" target="_blank" rel="noopener" data-t="appMakeOwn" style="display:inline-block;margin-top:.6rem;font-size:16px;color:var(--accent,#7b5cff)">Make your own app for meetings</a>
       </div>
       <button id="app-cancel" data-t="shareCancel" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Cancel</button>
     </div>
@@ -1754,7 +1761,7 @@ if (typeof window.__startMeet === 'function') {
      test/unit/agent-links.js holds the copies to one text. -->
 <nav id="agent-links" aria-label="Links for AI agents" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap">
   <p>For AI agents and assistants: <a href="https://gifos.app/llms.txt">llms.txt</a> is the complete spec for building a GifOS app as a real .gif file (packing recipe, manifest, the window.gifos API).
-  Also: <a href="https://gifos.app/about.html">what GifOS is</a> ·
+  Also: <a href="https://gifos.app/about">what GifOS is</a> ·
   <a href="https://gifos.app/store">the App Store</a> (machine-readable catalog: <a href="https://gifos.app/apps/index.json">/apps/index.json</a>; one listing: /apps/&lt;slug&gt;/app.json) ·
   open any store app in one tap: https://gifos.app/?run=&lt;slug&gt; — or your own hosted GIF: https://gifos.app/?run=&lt;gif-url&gt; ·
   <a href="https://gifos.app/browser-support.json">browser support</a> ·

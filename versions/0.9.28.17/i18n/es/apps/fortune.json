@@ -1,0 +1,17 @@
+{
+  "title": "Galleta de la fortuna",
+  "slip.initial": "Abre una galleta para recibir un poco de sabiduría…",
+  "crack": "Abrir una galleta",
+  "keep": "Guardar",
+  "kept.title": "Fortunas guardadas",
+  "foot": "Las fortunas llegan de adviceslip.com a través de internet: toca el botón «Internet» de arriba para verlo o cambiarlo. Esta app nunca se inventa una frase.",
+  "asking": "Consultando adviceslip.com…",
+  "from": "de adviceslip.com",
+  "quote": "«{text}»",
+  "err.nogifos": "Ábrela desde GifOS para acceder a internet. Esta app no se inventará una fortuna.",
+  "err.denied": "El acceso a internet está desactivado para esta app. Toca «Internet» en la barra superior para permitir adviceslip.com. Esta app no se inventará una fortuna.",
+  "err.timeout": "adviceslip.com tardó demasiado. Inténtalo de nuevo cuando tengas mejor conexión.",
+  "err.http": "adviceslip.com devolvió {code}: no es una fortuna.",
+  "err.empty": "Esa respuesta no traía ningún consejo. Prueba con otra galleta.",
+  "err.generic": "No se pudo conectar con adviceslip.com. Puede que no tengas conexión. Esta app no se inventará una fortuna."
+}

@@ -215,7 +215,7 @@
   async function rights() {
     const base = await planRights();
     const lp = await livePass();
-    return lp ? SUB.bestRights([base, SUB.passRights(lp.o)]) : base;
+    return lp ? SUB.heldRights([base, SUB.passRights(lp.o)]) : base;
   }
 
   async function post(path, body) {
@@ -745,7 +745,7 @@
   // The admin's order that carries their plan into the room, or null.
   // A live four-hour pass rides instead of a ticket whose plan is below it
   // (none, free, $2): the best right held is the one the room reads.
-  const beatsPass = (grants, pass) => !!grants && !!pass && !SUB.bestRights([SUB.ticketRights({ grants, exp: 1, tier: 'subscription' }), SUB.passRights(Object.assign({}, pass, { end: 1 }))]).pass;   // a right with no tier label ranks 0, so the ticket gets one
+  const beatsPass = (grants, pass) => !!grants && !!pass && SUB.rank(SUB.ticketRights({ grants, exp: 1 })) >= SUB.rank(SUB.passRights(Object.assign({}, pass, { end: 1 })));   // line items against line items (equal: the subscription's ticket rides)
   async function roomOrder(room) {
     const ticket = await currentTicket(room);
     const lp = ticket && meet ? await livePass().catch(() => null) : null;
@@ -847,18 +847,19 @@
     let sub = null;
     if (lic) {
       const status = st.status === 'CANCELLED' ? 'cancelled' : st.paidThrough && st.paidThrough < n ? 'grace' : 'active';
-      sub = { tier: lic.tier, period: cred && cred.period === 'yearly' ? 'yearly' : 'monthly', status, until: st.until || lic.exp, renews: status === 'active' ? st.paidThrough || null : null };
+      sub = { tier: lic.tier, grants: lic.grants || null, period: cred && cred.period === 'yearly' ? 'yearly' : 'monthly', status, until: st.until || lic.exp, renews: status === 'active' ? st.paidThrough || null : null };
     }
     const mine = (await passes().catch(() => [])).filter((x) => x.o.end > n);
-    const held = mine.map((x) => ({ id: x.o.id, start: x.o.start, end: x.o.end, live: SUB.passLive(x.o, n), never: !Number.isFinite(x.o.end), plan: x.o.plan, capture: x.o.grants.captureOpenRoom }));
+    const held = mine.map((x) => ({ id: x.o.id, start: x.o.start, end: x.o.end, live: SUB.passLive(x.o, n), never: !Number.isFinite(x.o.end), plan: x.o.plan, capture: x.o.grants.captureOpenRoom, grants: x.o.grants }));
     const base = SUB.rightsOf(lic, n);   // no license: the defaults
     // The passes run back to back: the window in effect ends with the last
     // pass of the same permissions that follows on without a gap (passChain).
     const chain = SUB.passChain(mine.map((x) => x.o), n);
     const passEnd = chain ? chain.until : 0;
-    const best = chain ? SUB.bestRights([base, SUB.passRights(Object.assign({}, chain.live, { end: Number.isFinite(passEnd) ? passEnd : null }))]) : base;
-    const now = best.pass ? { tier: best.tier, why: 'pass', until: passEnd } : base.tier ? { tier: base.tier, why: 'sub', until: base.until } : { tier: null, why: 'none' };
-    const then = best.pass && base.tier ? base.tier : null;
+    const best = chain ? SUB.heldRights([base, SUB.passRights(Object.assign({}, chain.live, { end: Number.isFinite(passEnd) ? passEnd : null }))]) : base;
+    // grants: the line items in effect now (the union held), what a page decides on; tier stays the name to show.
+    const now = best.pass ? { tier: best.tier, why: 'pass', until: passEnd, grants: best.grants, passGrants: chain.live.grants } : base.signed ? { tier: base.tier, why: 'sub', until: base.until, grants: base.grants } : { tier: null, why: 'none', grants: null };
+    const then = best.pass && base.signed ? base.tier : null;
     return { sub, free: !lic, passes: held, now, then };   // free: no plan, the defaults
   }
   // One line for the meeting's status: what is in effect, quietly.
@@ -1115,7 +1116,7 @@
     // The subscription file: download it, or use one from another browser.
     if (cred || (await wallet())) {
       const d = el('button', { type: 'button', class: BTN, style: BTN_STYLE, id: 'sub-file-get' }, 'Download subscription file');
-      d.onclick = () => { downloadFile().then(() => say('Saved. Keep it private: anyone with the file can use your subscription' + (lic && SUB.TIERS[lic.tier].storage && app === 'broadcast' ? ' and open your library. Keep a backup: if you lose it, nobody, not even GifOS, can recover your library.' : '.')), (e) => say(String(e.message || e))); };
+      d.onclick = () => { downloadFile().then(() => say('Saved. Keep it private: anyone with the file can use your subscription' + (lic && lic.grants && lic.grants.storage && app === 'broadcast' ? ' and open your library. Keep a backup: if you lose it, nobody, not even GifOS, can recover your library.' : '.')), (e) => say(String(e.message || e))); };
       row.appendChild(d);
     }
     const pick = el('input', { type: 'file', accept: 'image/gif,.gif', id: 'sub-file-use', 'aria-label': 'Use a subscription file' });
@@ -1407,6 +1408,8 @@
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
   }
 
+  // THE one rights call every interface reads (SDKs, MCP, the hosted-bot host): the union held now, as plain JSON.
+  GifOS.rights = async () => SUB.rightsJson(await rights());
   GifOS.meetSubs = {
     askMove, moveOptions, showOverflowNote,
     rights, planRights, refresh, keepFresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, subSelection, applySubSelection, paintNow, paintSettings, openSettings, openSubscribe, mayCreateAdminRoom, showFull, hideFull, fullWaiting, fullOffers, hostOffer, doorRight, showHostPrompt,

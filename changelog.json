@@ -2,6 +2,82 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.17",
+      "date": "2026-11-23",
+      "headline": "Tidier meeting code underneath",
+      "critical": false,
+      "features": [],
+      "fixes": [
+        "The meeting page's screen code now reads the meeting through one small table. Nothing you see or hear changes."
+      ]
+    },
+    {
+      "version": "0.9.28.16",
+      "date": "2026-11-23",
+      "headline": "Plans read the same everywhere, and disconnect your wallet",
+      "critical": false,
+      "features": [
+        "Settings shows the wallet you connected and a Disconnect wallet button. The pay sheet has Use a different wallet."
+      ],
+      "fixes": [
+        "Your plan or pass now gives the same rights in meetings, storage, TURN and bots, read from what you bought, not the plan's name.",
+        "The Plans page marks what your pass already includes."
+      ]
+    },
+    {
+      "version": "0.9.28.15",
+      "date": "2026-11-23",
+      "headline": "Sound on older iPhones and iPads, and muted listeners float",
+      "critical": false,
+      "features": [
+        "Muted? If you allowed the microphone before, hiding the meeting tab now floats it in a small window too. Your mic stays muted: nobody hears you until you tap Mic. The browser shows the microphone as in use while you are in the meeting."
+      ],
+      "fixes": [
+        "Older iPhones and iPads that played no meeting sound now hear everyone.",
+        "Game seats belong to the meeting you are in: players in another meeting no longer hold your seats.",
+        "Joining through a strict firewall connects about 6 seconds sooner when the other side starts the link."
+      ]
+    },
+    {
+      "version": "0.9.28.14",
+      "date": "2026-11-23",
+      "headline": "No more getting stuck knocking at the door",
+      "critical": false,
+      "features": [],
+      "fixes": [
+        "Coming back to a meeting while another of your devices sleeps (say, an iPad left open) no longer leaves you knocking: you get in within seconds.",
+        "The host gets straight into their own meeting, even when they arrive after a guest.",
+        "A meeting with no host present lets people in at once, up to the free size, instead of waiting for the host's plan."
+      ]
+    },
+    {
+      "version": "0.9.28.13",
+      "date": "2026-11-23",
+      "headline": "You hear the people beside you as soon as you sit down",
+      "critical": false,
+      "features": [
+        "When you join, you hear the people in your row as soon as you are seated, about two seconds sooner than before."
+      ],
+      "fixes": [
+        "Store links open the store page directly, and the Update bar and home screen store icon take you there.",
+        "A new version of GifOS takes over without reloading your open pages, and the subscription page's words work offline.",
+        "A browser too old to run meetings (Firefox before 78, Chrome before 73) now says so clearly instead of hanging on \"Joining\u2026\"."
+      ]
+    },
+    {
+      "version": "0.9.28.12",
+      "date": "2026-11-23",
+      "headline": "A clear green frame on whoever is talking",
+      "critical": false,
+      "features": [
+        "Whoever is talking now gets a clear green frame on their tile, the other people in the meeting included, not just your own tile."
+      ],
+      "fixes": [
+        "iPhone and iPad: when Safari holds the meeting's sound, the \"tap to hear\" line stays until sound really plays, and one tap brings it back.",
+        "More now says \"Sound plays from this device's speaker\" when there is no speaker to choose."
+      ]
+    },
+    {
       "version": "0.9.28.11",
       "date": "2026-11-23",
       "headline": "App signing keys can live in DNS",

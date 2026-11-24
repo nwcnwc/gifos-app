@@ -28,5 +28,9 @@
   "charge.receipt.transaction": "Transacción",
   "charge.receipt.proof": "Este archivo ES la prueba: contiene un recibo firmado por gifos.app, y al abrirlo en cualquier computadora con GifOS se verifica la firma y se registra la compra allí. Compartirlo comparte tu licencia: la app trata como el mismo comprador a quien tenga este recibo (mismos guardados, misma identidad). Guárdalo con tus copias de seguridad.",
   "charge.receipt.labelSku": "Recibo — {app} — {sku}",
-  "charge.receipt.labelTip": "Recibo — {app} — propina"
+  "charge.receipt.labelTip": "Recibo — {app} — propina",
+  "charge.wallet.title": "Billetera",
+  "charge.wallet.disconnect": "Desconectar billetera",
+  "charge.wallet.switch": "Usar otra billetera",
+  "charge.wallet.extension": "Desconéctala también en la extensión de tu billetera."
 }

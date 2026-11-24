@@ -28,5 +28,9 @@
   "charge.receipt.transaction": "Transaktion",
   "charge.receipt.proof": "Diese Datei IST der Nachweis: Sie enthält einen von gifos.app signierten Beleg, und wenn Sie sie auf einem beliebigen GifOS-Computer öffnen, wird die Signatur geprüft und der Kauf dort registriert. Wer die Datei weitergibt, gibt seine Lizenz weiter — die App behandelt jeden, der diesen Beleg besitzt, als denselben Käufer (gleiche Speicherstände, gleiche Identität). Bewahren Sie sie bei Ihren Sicherungen auf.",
   "charge.receipt.labelSku": "Beleg — {app} — {sku}",
-  "charge.receipt.labelTip": "Beleg — {app} — Trinkgeld"
+  "charge.receipt.labelTip": "Beleg — {app} — Trinkgeld",
+  "charge.wallet.title": "Wallet",
+  "charge.wallet.disconnect": "Wallet trennen",
+  "charge.wallet.switch": "Andere Wallet verwenden",
+  "charge.wallet.extension": "Trenne sie auch in deiner Wallet-Erweiterung."
 }

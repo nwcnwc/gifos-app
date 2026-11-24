@@ -1,0 +1,23 @@
+{
+  "title": "Malen",
+  "tool.brush.title": "Pinsel (B)",
+  "tool.brush.aria": "Pinsel",
+  "tool.erase.title": "Radierer (E)",
+  "tool.erase.aria": "Radierer",
+  "tool.fill.title": "Füllen (G)",
+  "tool.fill.aria": "Füllen",
+  "tool.pick.title": "Pipette (I)",
+  "tool.pick.aria": "Pipette",
+  "custom.title": "Eigene Farbe",
+  "size.title": "Pinselgröße",
+  "undo.title": "Rückgängig (Strg+Z)",
+  "undo.aria": "Rückgängig",
+  "redo.title": "Wiederholen (Strg+Umschalt+Z)",
+  "redo.aria": "Wiederholen",
+  "clear": "Leeren",
+  "hint": "Zeichnen Sie auf der Seite. „Rückgängig“ finden Sie in der Leiste. Das Bild lebt in diesem Symbol – mit „Einladen“ zeichnen Sie gemeinsam.",
+  "ask.text": "Das Bild leeren? Das lässt sich nicht rückgängig machen.",
+  "ask.keep": "Behalten",
+  "swatch.dark": "Dunkel",
+  "swatch.aria": "Farbe {color}"
+}
