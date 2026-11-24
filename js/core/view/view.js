@@ -1432,7 +1432,7 @@
         return;
       }
       const epoch = pipEpoch;
-      if (v.id === 'piplens' && v.readyState < 1 && !(await (0, /*()*/__C.pipCardReady)(pipFloatEl.lens))) { pipNote('lens-unready'); return; }
+      if (v.id === 'piplens' && v.readyState < 1 && !(await (0, /*()*/__C.pipCardReady)(pipFloatEl.lens))) { pipNote('lens-unready'); if (manual) await pipCardFloat(manual, byBrowser); return; }
       try {
         if (v.requestPictureInPicture) await v.requestPictureInPicture();
         else if (v.webkitSupportsPresentationMode && v.webkitSupportsPresentationMode('picture-in-picture')) v.webkitSetPresentationMode('picture-in-picture');
@@ -1663,6 +1663,14 @@
     function pipReaim() {
       backGuardSync();
       const v = pipSource();
+      // A picture this viewer sees blurred never floats raw: not through the browser's own float controls
+      // (disablePictureInPicture), and a raw float already up whose level rose (the password went, a moderator blurred
+      // it, a clear tap ended) is closed.
+      try {
+        for (const x of document.querySelectorAll('.tile video, #stagefeed video, #stadium video')) x.disablePictureInPicture = pipBlurLevel(x) > 0;
+        const up = document.pictureInPictureElement || Array.from(document.querySelectorAll('video')).find((x) => x.webkitPresentationMode === 'picture-in-picture');
+        if (up && up.id !== 'piplens' && up.id !== 'pipcard' && pipBlurLevel(up) > 0) exitPip('blur-rose');
+      } catch (e) {}
       (0, /*()*/__C.sendVisPark)(); // hidden-viewer dormancy re-aims with the float (and catches mates that connected while hidden)
       docPipAim();
       // No picture and no document float: keep the meeting card ready (one
@@ -12206,8 +12214,8 @@
       try {
         for (const [pid, p] of __C.model.roster.peers()) if (p.video === v) return bl(pid);
         if (stagefeedEl.contains(v)) {
-          const me = __C.model.me.myId(), all = (0, /*()*/__C.stageIds)(), ids = all.filter((id) => id !== me);
-          if (!ids.length) return all.length ? 0 : 2;   // only me on it: my own blurred pixels; nobody known: blurred
+          const me = __C.model.me.myId(), ids = (0, /*()*/__C.stageIds)().filter((id) => id !== me);
+          if (!ids.length) return 2;   // the strip's pixels come from its carrier: with nobody else known on it, blurred
           let lv = 0;
           for (const id of ids) lv = Math.max(lv, bl(id, 'stage'));
           return lv;
@@ -12227,7 +12235,13 @@
       const L = pipFloatEl.lens;
       const elUp = () => { const X = pipFloatEl.lens; return !!X && (document.pictureInPictureElement === X.video || X.video.webkitPresentationMode === 'picture-in-picture'); };
       const lv = pipBlurLevel(v);
-      if (!v) return elUp() ? L.video : null;
+      if (!v) {
+        if (!elUp()) return null;
+        // Nothing may float now (the seat went dark, was turned off...): the floating lens goes black, never a stale source.
+        L.src = null; pipLensPump(L, false);
+        try { L.ctx.fillStyle = '#000'; L.ctx.fillRect(0, 0, L.canvas.width, L.canvas.height); if (typeof L.track.requestFrame === 'function') L.track.requestFrame(); } catch (e) {}
+        return L.video;
+      }
       if (!(lv > 0) && !elUp()) { if (L && !(__C.docPip && __C.docPip.video.srcObject === L.stream)) pipLensDrop(); return v; }
       const M = pipFloatEl.lens || pipLensMake();
       if (!M) return lv > 0 ? null : v;
@@ -12248,6 +12262,10 @@
           video.muted = true; video.playsInline = true; video.setAttribute('playsinline', ''); video.setAttribute('aria-hidden', 'true');
           video.style.cssText = 'position:fixed;right:0;bottom:0;width:2px;height:2px;opacity:0;pointer-events:none;z-index:-1';
           video.srcObject = stream;
+          // Floating starts the paint clock at once (a Float tap in a tab still in view would else wait for the next re-aim).
+          const up = () => { const X = pipFloatEl.lens; if (X && X.video === video) pipLensRun(X, true); };
+          video.addEventListener('enterpictureinpicture', up);
+          video.addEventListener('webkitpresentationmodechanged', up);
           document.body.appendChild(video);
           const pr = video.play(); if (pr && pr.catch) pr.catch(() => {});
           return (pipFloatEl.lens = { canvas, ctx, stream, track, video, src: null, level: 2, stop: null, rd: null, clone: null, frame: null });
@@ -12280,8 +12298,14 @@
       function pipLensRun(M2, on) {
         if (on && !M2.stop) {
           const tick = () => {
-            const want = document.hidden || elUp() || (__C.docPip && __C.docPip.video.srcObject === M2.stream);
+            // Hidden with no float yet: only for the grace in which a hide's own float can still open (the element
+            // float waits PIP_AUTO_FALLBACK_MS, then a bounded ready wait); a float that opens later restarts the clock.
+            if (!document.hidden) M2.hidAt = 0; else if (!M2.hidAt) M2.hidAt = Date.now();
+            const grace = 2 * (GifOS.timings.PIP_AUTO_FALLBACK_MS + GifOS.timings.PIP_CARD_READY_MS);
+            const want = elUp() || (__C.docPip && __C.docPip.video.srcObject === M2.stream) || (document.hidden && Date.now() - M2.hidAt < grace);
             if (!want) { pipLensRun(M2, false); return; }
+            if (!M2.src) return;
+            M2.level = pipBlurLevel(M2.src);   // a level that rises while floating blurs on the next frame, not the next re-aim
             let cur = null; try { cur = M2.src && M2.src.srcObject && M2.src.srcObject.getVideoTracks()[0]; } catch (e) { cur = null; }
             if (!M2.rd || cur !== M2.srcTrack) pipLensPump(M2, true);   // a tile that changed its track is read anew
             try { pipLensPaint(M2); } catch (e) {}
@@ -12295,7 +12319,7 @@
       }
       function pipLensPaint(M2) {
         const f = M2.frame, src = f || M2.src;
-        if (!src) return;
+        if (!src || !M2.src) return;
         const sw = f ? f.displayWidth : src.videoWidth, sh = f ? f.displayHeight : src.videoHeight;
         if (!(sw > 0 && sh > 0)) return;
         const k = Math.min(1, 480 / Math.max(sw, sh));   // a float is small: 480 px on the long side is plenty
