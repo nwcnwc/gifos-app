@@ -84,8 +84,18 @@
   const writeState = (s) => writeJson(STATE_KEY, s || {});
 
   // ---- the subscription file -------------------------------------------------
-  // This browser's credential, else one in the Providers folder of this
-  // browser's Home Screen (recognised there only, like every provider).
+  // This browser's credential, else one on this browser's Home Screen: the
+  // subscription file in the Providers folder (recognised there only, like
+  // every provider), or the subscription RECEIPT in the Purchases folder.
+  // A receipt (appId 'gifos-receipt') is never a Provider, and Purchases
+  // holds receipts only.
+  const RECEIPT_APP_ID = 'gifos-receipt';
+  const fileText = (v) => (v instanceof Uint8Array ? new TextDecoder().decode(v) : String(v == null ? '' : v));
+  const fileJson = (files, name) => { try { return files && files[name] != null ? JSON.parse(fileText(files[name])) : null; } catch (e) { return null; } };
+  function isSubReceipt(files) {
+    const m = fileJson(files, 'manifest.json');
+    return !!m && m.appId === RECEIPT_APP_ID && m.receipt === true && m.subscription === true;
+  }
   let provP = null;
   function fromProvidersAll() {
     if (!provP) provP = (async () => {
@@ -94,14 +104,22 @@
       if (!st || !st.allItems || !st.getFile || !gif) return out;
       const items = await st.allItems();
       for (const it of items || []) {
-        if (!it || (it.parent || null) !== 'sys_providers' || it.kind !== 'file' || !it.fileId) continue;
+        const where = it ? (it.parent || null) : null;
+        if (!it || (where !== 'sys_providers' && where !== 'sys_purchases') || it.kind !== 'file' || !it.fileId) continue;
         const f = await st.getFile(it.fileId).catch(() => null);
         if (!f || f.kind !== 'gif' || !f.bytes) continue;
+        if (where === 'sys_providers' ? f.appId === RECEIPT_APP_ID : f.appId !== RECEIPT_APP_ID) continue;
         const bytes = f.bytes instanceof Uint8Array ? f.bytes : new Uint8Array(f.bytes);
         const arc = await gif.decode(bytes).catch(() => null);
         if (!arc) continue;
-        if (!out.cred) out.cred = SUB.credentialFromFiles(arc.files);
-        if (!out.wallet) out.wallet = SUB.walletFromFiles(arc.files);
+        if (where === 'sys_purchases') {
+          if (!isSubReceipt(arc.files)) continue;
+          if (!out.cred) out.cred = SUB.credentialOk(fileJson(arc.files, 'subscription.json'));
+          if (!out.wallet) out.wallet = SUB.walletOk(fileJson(arc.files, 'passes.json'));
+        } else {
+          if (!out.cred) out.cred = SUB.credentialFromFiles(arc.files);
+          if (!out.wallet) out.wallet = SUB.walletFromFiles(arc.files);
+        }
         if (out.cred && out.wallet) break;
       }
       return out;
@@ -140,6 +158,57 @@
     a.href = url; a.download = 'GifOS subscription.gif';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
+  }
+  // THE SUBSCRIPTION IN PURCHASES. A plan or pass bought here also lands in
+  // the Home Screen's Purchases folder as a RECEIPT: the same credential the
+  // subscription file holds (subscription.json, passes.json) plus the signed
+  // license, in a receipt GIF (appId 'gifos-receipt', subscription: true).
+  // One file per browser, rewritten in place when the plan or the passes
+  // change; the desktop places it (gifos_pay_pending, as for every receipt).
+  // Best-effort: a page with no Home Screen store just skips it.
+  const SUB_RECEIPT_KEY = 'gifos-sub-receipt';   // { fileId, mark } of this browser's subscription receipt
+  const PAY_PENDING = 'gifos_pay_pending';       // gifos-pay-broker.js PENDING_KEY: the desktop's placement queue
+  function subReceiptFiles(c, w, st) {
+    const name = tx('subReceiptName', 'Receipt — GifOS Meet subscription');
+    const files = {
+      'manifest.json': JSON.stringify({ gifos: '1.0', appId: RECEIPT_APP_ID, name, entry: 'index.html', receipt: true, subscription: true, accent: [120, 200, 255] }),
+      // Shown only by a Home Screen too old to have the receipt view.
+      'index.html': '<!doctype html><meta charset="utf-8"><title>' + name + '</title><body style="font:15px/1.5 system-ui;padding:1.2rem"><main><h2>' + name + '</h2><p>' +
+        (c ? 'A GifOS Meet subscription.' : '') + (w ? ' Four-hour passes: ' + w.passes.length + '.' : '') + '</p><p>Anyone with this file can use your subscription and passes. Keep it private.</p></main>',
+    };
+    if (c) files['subscription.json'] = JSON.stringify(c);
+    if (w) files['passes.json'] = JSON.stringify(w);
+    if (c && st && st.licenseJson && st.sig && st.subId === c.subId) files['license.json'] = JSON.stringify({ licenseJson: st.licenseJson, sig: st.sig });
+    return files;
+  }
+  let receiptBusy = null;
+  function keepReceipt() {
+    if (receiptBusy) return receiptBusy.then(keepReceipt);
+    receiptBusy = (async () => {
+      const store = GifOS.store, gif = GifOS.gif;
+      if (!store || !store.putFile || !store.uid || !gif || !gif.encode) return;
+      const c = SUB.credentialOk(readJson(CRED_KEY));
+      const w = SUB.walletOk(readJson(WALLET_KEY));
+      const st = readState();
+      const held = readJson(SUB_RECEIPT_KEY) || {};
+      const live = !!(c && st.licenseJson && st.subId === c.subId);
+      // A credential goes in once its plan was paid for, and STAYS in after
+      // the plan lapses: its key is what reopens a Streamer library.
+      const keepSub = !!c && (live || held.sub === c.subId);
+      const passN = w ? w.passes.length : 0;
+      if (!keepSub && !passN) return;   // nothing bought yet: no receipt
+      const mark = [keepSub ? c.subId : '', live ? c.tier : '', passN].join('|');
+      if (held.mark === mark && held.fileId) return;
+      const fileId = typeof held.fileId === 'string' && held.fileId ? held.fileId : store.uid('file');
+      const bytes = await gif.encode(subReceiptFiles(keepSub ? c : null, w, st), { accent: [120, 200, 255] });
+      await store.putFile({ id: fileId, name: tx('subReceiptName', 'Receipt — GifOS Meet subscription') + '.gif', bytes, kind: 'gif', isApp: true, appId: RECEIPT_APP_ID, mime: 'image/gif' });
+      writeJson(SUB_RECEIPT_KEY, { fileId, mark, sub: keepSub ? c.subId : null });
+      // Queued every time: the desktop skips a fileId it already placed.
+      const q = readJson(PAY_PENDING);
+      const list = Array.isArray(q) ? q : [];
+      if (list.indexOf(fileId) < 0) { list.push(fileId); writeJson(PAY_PENDING, list); }
+    })().catch(() => {}).finally(() => { receiptBusy = null; });
+    return receiptBusy;
   }
   // Use a file brought from another browser. Its key must be the key the
   // subscription was made for (checked by the payment service on every ask).
@@ -245,6 +314,7 @@
       delete next.licenseJson; delete next.sig;
     }
     writeState(next);
+    if (next.licenseJson) keepReceipt();
     return next;
   }
   // keepFresh() -> once this browser's license is fresh (fetched when missing or near its end). One check at a time: the
@@ -308,6 +378,7 @@
       const list = cur.passes.filter((p) => { const x = passOf(p); return x && x.order !== o.order; }).concat([{ passJson: j.passJson, sig: j.sig }]);
       const next = Object.assign({}, cur, { passes: list }); delete next.pending;
       writeJson(WALLET_KEY, next);
+      keepReceipt();
       passWatch().catch(() => {});
       if (meet) passJoin(meet.room, true, true);
       return j;
@@ -483,6 +554,7 @@
     const list = cur.passes.filter((p) => { const x = passOf(p); return x && x.order !== o.order; }).concat([{ passJson: j.passJson, sig: j.sig }]);
     const next = Object.assign({}, cur, { passes: list }); delete next.pending;
     writeJson(WALLET_KEY, next);
+    keepReceipt();
     passWatch().catch(() => {});
     if (meet) passJoin(meet.room, true, true);   // a new pass (or one stacked on the window): the meeting this page is in takes it now
     return j;
@@ -745,7 +817,10 @@
   // The admin's order that carries their plan into the room, or null.
   // A live four-hour pass rides instead of a ticket whose plan is below it
   // (none, free, $2): the best right held is the one the room reads.
-  const beatsPass = (grants, pass) => !!grants && !!pass && SUB.rank(SUB.ticketRights({ grants, exp: 1 })) >= SUB.rank(SUB.passRights(Object.assign({}, pass, { end: 1 })));   // line items against line items (equal: the subscription's ticket rides)
+  // A clear-video item rides with the credential that carries it: the room reads ONE ticket, so a pass that carries
+  // clearWithoutPassword / clearStageWithoutPassword (and a subscription that does not) rides instead.
+  const clearRank = (g) => { const x = g && SUB.grantsOk(g); return !x ? 0 : x.clearWithoutPassword ? 2 : x.clearStageWithoutPassword ? 1 : 0; };
+  const beatsPass = (grants, pass) => !!grants && !!pass && clearRank(grants) >= clearRank(pass.grants) && (clearRank(grants) > clearRank(pass.grants) || SUB.rank(SUB.ticketRights({ grants, exp: 1 })) >= SUB.rank(SUB.passRights(Object.assign({}, pass, { end: 1 }))));   // line items against line items (equal: the subscription's ticket rides)
   async function roomOrder(room) {
     const ticket = await currentTicket(room);
     const lp = ticket && meet ? await livePass().catch(() => null) : null;
@@ -1415,6 +1490,7 @@
     rights, planRights, refresh, keepFresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, subSelection, applySubSelection, paintNow, paintSettings, openSettings, openSubscribe, mayCreateAdminRoom, showFull, hideFull, fullWaiting, fullOffers, hostOffer, doorRight, showHostPrompt,
     roomOrder, roomTier, proveAtDoor, checkShown, newNonce,
     appNow, joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureCurrent, captureOrder, captureKeys, fileBytes, downloadFile, useFile, librarySigner, restoreInApp,
+    keepReceipt, subReceiptFiles,
     passMeeting: () => (pmeet ? { grants: pmeet.grants || null, room: pmeet.room, gen: pmeet.gen, exp: pmeet.exp, until: pmeet.until, moved: pmeet.moved, held: !!pmeet.ticket } : null),
     currentPassTicket,
     meeting: () => (meet ? { room: meet.room, gen: meet.gen, exp: meet.exp, moved: meet.moved, held: !!meet.ticket, tier: meet.tier, grants: meet.grants || null, paid: !!(meet.ticket && meet.grants && meet.grants.admitAtFullDoor) } : null),

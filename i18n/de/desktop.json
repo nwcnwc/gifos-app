@@ -195,5 +195,6 @@
  "desktop.bar.add": "＋ Hinzufügen",
  "desktop.arrange.title": "Symbole werden angeordnet",
  "desktop.arrange.hint": "— ziehen Sie sie beliebig",
- "desktop.arrange.done": "Fertig"
+ "desktop.arrange.done": "Fertig",
+ "desktop.badge.receiptTip": "Beleg: öffnen, um den Kauf und seinen signierten Nachweis zu sehen."
 }

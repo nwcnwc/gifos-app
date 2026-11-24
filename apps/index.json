@@ -5327,7 +5327,7 @@
       "appId": "offline-bible-study",
       "name": "Bible Study",
       "shortName": "Study",
-      "version": "0.9.1",
+      "version": "0.9.2",
       "tagline": "Read Henry, Calvin and the fathers, with scripture open beside them.",
       "author": {
         "name": "Crowd Concepts, Inc.",
@@ -5336,7 +5336,7 @@
       "minBuild": 2304,
       "offline": true,
       "releaseDate": "2026-10-03",
-      "updated": "2026-11-14",
+      "updated": "2026-11-24",
       "categories": [
         "Learning"
       ],
@@ -5354,7 +5354,7 @@
         39
       ],
       "cover": "/apps/offline-bible-study/cover.jpg",
-      "bytes": 139919725,
+      "bytes": 131920248,
       "download": 0,
       "optionalCount": 1469,
       "optionalDownload": 1310103070,
@@ -5362,9 +5362,9 @@
       "signature": {
         "type": "domain",
         "id": "crowdconceptsinc.com",
-        "ts": "2026-11-15"
+        "ts": "2026-11-24"
       },
-      "sha256": "b522284958f6d56ebe57041fa89955695237d6765100d794d846ed56f6d7f75f"
+      "sha256": "aaab6776c024cc5943e9a50195d136d4a2acd859a2de2021ba6120f357e80e4c"
     },
     {
       "slug": "offline-llm-bitnet",

@@ -17,6 +17,7 @@
     AGENT_KEEP_MS: 86400000,   // ms
     AGENT_TICK_MS: 250,   // ms
     AGENT_VOICE_TAIL_MS: 500,   // ms
+    AGE_GATE_MS: 120000,   // ms
     APP_PEOPLE_READ_MS: 2000,   // ms
     APP_ROOM_AWAY_MS: 15000,   // ms
     APP_ROOM_BEAT_MS: 1000,   // ms
@@ -53,6 +54,7 @@
     CHAT_SLOW_LAG_MS: 30000,   // ms
     CHAT_SLOW_MS: 10000,   // ms
     CHROME_IDLE_MS: 3000,   // ms
+    CLEAR_RIGHT_TICK_MS: 1000,   // ms
     CT_KEEP_MS: 60000,   // ms
     CT_PAD_MS: 2500,   // ms
     CT_SETTLE_MS: 3000,   // ms
@@ -147,6 +149,7 @@
     PIP_AUTO_FALLBACK_MS: 2000,   // ms
     PIP_CARD_FPS: 2,   // count
     PIP_CARD_READY_MS: 1500,   // ms
+    PIP_LENS_FPS: 15,   // count
     PIP_RETURN_WAIT_MS: 432,   // ms
     POOL_CLAIM_MS: 9000,   // ms
     POOL_SETTLE_MS: 300,   // ms

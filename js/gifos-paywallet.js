@@ -269,12 +269,24 @@
   // One signature per transfer. The Base Account / wallet shows its own
   // prompt for each; the trusted description of WHAT is being paid was
   // already shown by the broker's sheet — this step is authentication.
-  async function signTransfers(transfers) {
+  // opts.order: the order the wallet is ASKED in, as indexes into transfers
+  // (the broker asks for the fee leg first, the order the pay Worker settles
+  // in). The payloads always come back in TRANSFERS order, because the Worker
+  // reads them by position (index 0 pays the signed payee).
+  // opts.onStep(k, n): called before the k-th of n prompts (1-based).
+  async function signTransfers(transfers, opts) {
     if (!Array.isArray(transfers) || !transfers.length) throw new Error('payWallet: nothing to sign');
+    const o = opts || {};
+    const order = Array.isArray(o.order) ? o.order : transfers.map((_, i) => i);
+    if (order.length !== transfers.length || order.some((i, k) => !Number.isInteger(i) || i < 0 || i >= transfers.length || order.indexOf(i) !== k)) {
+      throw new Error('payWallet: the signing order must name every transfer once');
+    }
     const { p } = await provider();
     const from = await address();
-    const out = [];
-    for (const t of transfers) {
+    const out = new Array(transfers.length);
+    for (let k = 0; k < order.length; k++) {
+      const t = transfers[order[k]];
+      if (typeof o.onStep === 'function') { try { o.onStep(k + 1, order.length); } catch (e) {} }
       const nonce = new Uint8Array(32);
       (root.crypto || require('crypto').webcrypto).getRandomValues(nonce);
       const authorization = buildAuthorization(t, from, nonce, Date.now());
@@ -286,7 +298,7 @@
       if (typeof signature !== 'string' || !/^0x[0-9a-fA-F]+$/.test(signature)) {
         throw new Error('the wallet returned no signature');
       }
-      out.push({ signature, authorization });
+      out[order[k]] = { signature, authorization };
     }
     return out;
   }

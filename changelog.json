@@ -2,6 +2,71 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.22",
+      "date": "2026-11-24",
+      "headline": "Bots can speak right away",
+      "critical": false,
+      "features": [],
+      "fixes": [
+        "A bot in your meeting is heard from its first spoken line."
+      ]
+    },
+    {
+      "version": "0.9.28.21",
+      "date": "2026-11-24",
+      "headline": "Blurred pictures stay blurred when floated",
+      "critical": true,
+      "features": [],
+      "fixes": [
+        "A picture you see blurred now stays blurred in picture-in-picture, too."
+      ]
+    },
+    {
+      "version": "0.9.28.20",
+      "date": "2026-11-24",
+      "headline": "Private room links",
+      "critical": false,
+      "features": [
+        "Copied and shared meeting links now keep the room name after a #, so it is never sent to any server. Old links still open the same rooms."
+      ],
+      "fixes": []
+    },
+    {
+      "version": "0.9.28.19",
+      "date": "2026-11-24",
+      "headline": "Blur holds everywhere you watch",
+      "critical": false,
+      "features": [],
+      "fixes": [
+        "Blurred video now stays blurred in row and stadium views, the Stage strip, picture-in-picture and Stage views."
+      ]
+    },
+    {
+      "version": "0.9.28.18",
+      "date": "2026-11-23",
+      "headline": "Clearer payments and receipts",
+      "critical": false,
+      "features": [
+        "Paying with USDC now says up front that your wallet asks for two approvals: the GifOS fee first, then the creator.",
+        "Receipts open in their own receipt view, with a link to check each payment on the blockchain explorer, or to your PayPal activity.",
+        "Your GifOS Meet subscriptions are kept as receipts in Purchases."
+      ],
+      "fixes": [
+        "Broadcast: no extra red band under the top banner, and the on-air chip shows one dot.",
+        "Terms: updated content rules and the plan meeting count."
+      ]
+    },
+    {
+      "version": "0.9.28.17",
+      "date": "2026-11-23",
+      "headline": "Tidier meeting code underneath",
+      "critical": false,
+      "features": [],
+      "fixes": [
+        "The meeting page's screen code now reads the meeting through one small table. Nothing you see or hear changes."
+      ]
+    },
+    {
       "version": "0.9.28.16",
       "date": "2026-11-23",
       "headline": "Plans read the same everywhere, and disconnect your wallet",

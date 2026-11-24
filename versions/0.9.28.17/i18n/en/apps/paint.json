@@ -1,0 +1,23 @@
+{
+  "title": "Paint",
+  "tool.brush.title": "Brush (B)",
+  "tool.brush.aria": "Brush",
+  "tool.erase.title": "Eraser (E)",
+  "tool.erase.aria": "Eraser",
+  "tool.fill.title": "Fill (G)",
+  "tool.fill.aria": "Fill",
+  "tool.pick.title": "Eyedropper (I)",
+  "tool.pick.aria": "Eyedropper",
+  "custom.title": "Custom colour",
+  "size.title": "Brush size",
+  "undo.title": "Undo (Ctrl+Z)",
+  "undo.aria": "Undo",
+  "redo.title": "Redo (Ctrl+Shift+Z)",
+  "redo.aria": "Redo",
+  "clear": "Clear",
+  "hint": "Draw on the page. Undo is in the bar. The picture lives in this icon — Invite to draw together.",
+  "ask.text": "Clear the picture? This cannot be undone.",
+  "ask.keep": "Keep",
+  "swatch.dark": "Dark",
+  "swatch.aria": "Colour {color}"
+}
