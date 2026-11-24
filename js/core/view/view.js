@@ -12304,6 +12304,9 @@
             const grace = 2 * (GifOS.timings.PIP_AUTO_FALLBACK_MS + GifOS.timings.PIP_CARD_READY_MS);
             const want = elUp() || (__C.docPip && __C.docPip.video.srcObject === M2.stream) || (document.hidden && Date.now() - M2.hidAt < grace);
             if (!want) { pipLensRun(M2, false); return; }
+            // a floating window asks again what it should show (a share, the Stage), not only on the heartbeat's re-aim
+            const nowT = Date.now();
+            if (nowT - (M2.pickAt || 0) >= GifOS.timings.PIP_REPICK_MS) { M2.pickAt = nowT; try { if (__C.docPip) docPipAim(); else if (elUp()) pipFloatEl(pipPick()); } catch (e) {} }
             if (!M2.R) return;
             M2.level = pipLevel(M2.R);   // a level that rises while floating blurs on the next frame, not the next re-aim
             if (M2.src) {
