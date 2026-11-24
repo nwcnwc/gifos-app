@@ -298,32 +298,8 @@
       return 'swap';
     }
     // Questions carryIn asks that the browser plane answers inside its own sweep. The pure routing answers live in
-    // the core. What remains here is Node machinery. A throw inside carryIn drops the whole plan.
-    let mosBeyondAt = 0;
-    // No mosaic sweep: the browser returns the flag reconcileMosaic sets; this computes the same linger from the seat.
-    function beyondRowNow() {
-      const s = typeof C.meshSeat === 'function' ? C.meshSeat() : null;
-      const c = typeof C.meshCoord === 'function' ? C.meshCoord() : null;
-      const raw = (() => {
-        if (!s || !c || C.BROADCAST) return false;
-        try { if (typeof C.pipePeers === 'function' && C.pipePeers().length) return true; } catch (e) {}
-        try { if (C.meshNode && typeof C.meshNode.meetingFar === 'function' && C.meshNode.meetingFar() > 0) return true; } catch (e) {}
-        if (s.occ && C.net && C.net.topo) for (const [k, v] of s.occ) {
-          if (v === C.myId) continue;
-          const cc = C.net.topo.unck(k);
-          if (cc.pc !== c.pc || cc.r !== c.r) return true;
-        }
-        const kids = s.childOf, n = C.SCALE && C.SCALE.C;
-        if (kids && kids.size && n && C.net && C.net.topo) for (let j = 0; j < n; j++) {
-          const v = kids.get(C.net.topo.ckey({ pc: c.pc, r: c.r, i: j }));
-          if (v && v !== C.myId) return true;
-        }
-        return false;
-      })();
-      if (raw) mosBeyondAt = Date.now();
-      const grace = GifOS.timings.MOS_GRACE;
-      return !!(raw || (mosBeyondAt && Date.now() - mosBeyondAt < grace && s && c));
-    }
+    // the core, including whether the room extends past my row. What remains here is Node machinery. A throw inside
+    // carryIn drops the whole plan.
     // No watchdog: Node never marks a claim dark, so lost is a missing claim, deadAt, or a stale beat.
     function stgLost(rk) {
       const f = C.mosIn && C.mosIn.get(rk); if (!f) return true;
@@ -372,6 +348,7 @@
       try { C.claimMos(); } catch (e) {}
       const wanted = new Set();
       let plan = [];
+      try { C.roomBeyondRow(true); } catch (e) {}
       try { plan = C.carryIn() || []; } catch (e) { plan = []; }
       for (const e of plan) {
         if (!e || !e.key || !e.to) continue;
@@ -430,7 +407,6 @@
     def('dutyMuteTick', dutyMuteTick);
     def('schedClaim', schedClaim);
     def('schedReconcile', schedReconcile);
-    def('beyondRowNow', beyondRowNow);
     def('stgLost', stgLost);
     def('mySelfStream', mySelfStream);
     def('jobVideoAt', jobVideoAt);
@@ -446,7 +422,7 @@
     // The host's setInterval returns a number, so unref runs only when the timer object itself is what came back.
     const sweepT = setInterval(() => { try { M.schedReconcile(); } catch (e) {} }, GifOS.meshLaws.FHOP_SWEEP * GifOS.timings.tickMs);
     if (sweepT && typeof sweepT.unref === 'function') sweepT.unref();
-    return { names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties', 'bindClaim', 'unbindClaim', 'adoptClaim', 'picRead', 'iActAsHead', 'rowHeadPid', 'keyUp', 'producerKey', 'kfEv', 'attachTrack', 'detachTrack', 'parkSender', 'kickJob', 'noteReship', 'dropContainer', 'orphaned', 'attachFailed', 'containerFor', 'jobPinned', 'swapTrack', 'dutyJob', 'dutyMuteTick', 'schedClaim', 'schedReconcile', 'beyondRowNow', 'stgLost', 'mySelfStream', 'jobVideoAt', 'stgCarry', 'repaintRedun', 'swapPicNote', 'stgFoNote', 'rowMixHold', 'rowMixHeadArrives', 'x2Target', 'mosHeld'] };
+    return { names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties', 'bindClaim', 'unbindClaim', 'adoptClaim', 'picRead', 'iActAsHead', 'rowHeadPid', 'keyUp', 'producerKey', 'kfEv', 'attachTrack', 'detachTrack', 'parkSender', 'kickJob', 'noteReship', 'dropContainer', 'orphaned', 'attachFailed', 'containerFor', 'jobPinned', 'swapTrack', 'dutyJob', 'dutyMuteTick', 'schedClaim', 'schedReconcile', 'stgLost', 'mySelfStream', 'jobVideoAt', 'stgCarry', 'repaintRedun', 'swapPicNote', 'stgFoNote', 'rowMixHold', 'rowMixHeadArrives', 'x2Target', 'mosHeld'] };
   }
 
   GifOS.planeNode = { install };
