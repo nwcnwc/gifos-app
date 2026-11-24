@@ -12,67 +12,45 @@
       "AGENT_FORCED": { get: function () { return AGENT_FORCED; }, enumerable: true, configurable: true },
       "AI_SPARK_SVG": { get: function () { return AI_SPARK_SVG; }, enumerable: true, configurable: true },
       "AUDIENCE_REACTS": { get: function () { return AUDIENCE_REACTS; }, enumerable: true, configurable: true },
-      "AUDIENCE_REACT_NAME": { get: function () { return AUDIENCE_REACT_NAME; }, enumerable: true, configurable: true },
-      "AUTO_FS_SKIP": { get: function () { return AUTO_FS_SKIP; }, enumerable: true, configurable: true },
-      "AWAKE_MS": { get: function () { return AWAKE_MS; }, enumerable: true, configurable: true },
-      "BANNER_HOLD": { get: function () { return BANNER_HOLD; }, enumerable: true, configurable: true },
       "BC_AT_KEY": { get: function () { return BC_AT_KEY; }, enumerable: true, configurable: true },
       "BC_INTENT": { get: function () { return BC_INTENT; }, enumerable: true, configurable: true },
-      "BC_WATCH_COPY": { get: function () { return BC_WATCH_COPY; }, enumerable: true, configurable: true },
-      "BLUR_NOTE_MS": { get: function () { return BLUR_NOTE_MS; }, enumerable: true, configurable: true },
-      "BLUR_WHY_ASK": { get: function () { return BLUR_WHY_ASK; }, enumerable: true, configurable: true },
       "BROADCAST": { get: function () { return BROADCAST; }, enumerable: true, configurable: true },
       "CAST_SURFACE": { get: function () { return CAST_SURFACE; }, enumerable: true, configurable: true },
       "CC_LANGS": { get: function () { return CC_LANGS; }, enumerable: true, configurable: true },
       "CC_LANG_KEY": { get: function () { return CC_LANG_KEY; }, enumerable: true, configurable: true },
       "CC_ON_PHONE": { get: function () { return CC_ON_PHONE; }, enumerable: true, configurable: true },
       "CT": { get: function () { return CT; }, set: function (v) { CT = v; }, enumerable: true, configurable: true },
-      "CT_ICONS": { get: function () { return CT_ICONS; }, enumerable: true, configurable: true },
       "DEBUG_ON": { get: function () { return DEBUG_ON; }, enumerable: true, configurable: true },
       "DEL_ICON": { get: function () { return DEL_ICON; }, enumerable: true, configurable: true },
       "DLOG": { get: function () { return DLOG; }, enumerable: true, configurable: true },
-      "FACE_REACT_MS": { get: function () { return FACE_REACT_MS; }, enumerable: true, configurable: true },
-      "FS_CROP_MAX": { get: function () { return FS_CROP_MAX; }, enumerable: true, configurable: true },
-      "FS_ZOOM_MAX": { get: function () { return FS_ZOOM_MAX; }, enumerable: true, configurable: true },
-      "FS_ZOOM_PAD": { get: function () { return FS_ZOOM_PAD; }, enumerable: true, configurable: true },
       "IS_ANDROID": { get: function () { return IS_ANDROID; }, enumerable: true, configurable: true },
       "IS_MOBILE": { get: function () { return IS_MOBILE; }, enumerable: true, configurable: true },
       "LADDER": { get: function () { return LADDER; }, enumerable: true, configurable: true },
       "LATE_ASK_MS": { get: function () { return LATE_ASK_MS; }, enumerable: true, configurable: true },
-      "MASS_MANY": { get: function () { return MASS_MANY; }, enumerable: true, configurable: true },
       "MAX_FILE": { get: function () { return MAX_FILE; }, enumerable: true, configurable: true },
       "MEET_HIST": { get: function () { return MEET_HIST; }, enumerable: true, configurable: true },
       "MEET_MARKS": { get: function () { return MEET_MARKS; }, enumerable: true, configurable: true },
       "MEET_PATH": { get: function () { return MEET_PATH; }, enumerable: true, configurable: true },
-      "MODBAR_HTML": { get: function () { return MODBAR_HTML; }, enumerable: true, configurable: true },
       "MP": { get: function () { return MP; }, enumerable: true, configurable: true },
       "MPipe": { get: function () { return MPipe; }, enumerable: true, configurable: true },
-      "PIP_AUTO_FALLBACK_MS": { get: function () { return PIP_AUTO_FALLBACK_MS; }, enumerable: true, configurable: true },
       "PIP_CARD_H": { get: function () { return PIP_CARD_H; }, enumerable: true, configurable: true },
       "PIP_CARD_ROWS": { get: function () { return PIP_CARD_ROWS; }, enumerable: true, configurable: true },
       "PIP_CARD_W": { get: function () { return PIP_CARD_W; }, enumerable: true, configurable: true },
-      "PIP_RETURN_WAIT_MS": { get: function () { return PIP_RETURN_WAIT_MS; }, enumerable: true, configurable: true },
-      "PWEYE_SVG": { get: function () { return PWEYE_SVG; }, enumerable: true, configurable: true },
       "PW_ADMIN_ONLY": { get: function () { return PW_ADMIN_ONLY; }, enumerable: true, configurable: true },
-      "PW_GRANT_HOLD_MS": { get: function () { return PW_GRANT_HOLD_MS; }, enumerable: true, configurable: true },
       "REACTS": { get: function () { return REACTS; }, enumerable: true, configurable: true },
       "RECOVER_MEDIA_KEY": { get: function () { return RECOVER_MEDIA_KEY; }, enumerable: true, configurable: true },
       "RENAME_RESET": { get: function () { return RENAME_RESET; }, enumerable: true, configurable: true },
       "ROOM": { get: function () { return ROOM; }, enumerable: true, configurable: true },
       "RUN_DEFAULTS": { get: function () { return RUN_DEFAULTS; }, enumerable: true, configurable: true },
       "SCALE": { get: function () { return SCALE; }, enumerable: true, configurable: true },
-      "SHORTCUT_IDS": { get: function () { return SHORTCUT_IDS; }, enumerable: true, configurable: true },
       "STAGE_FPS": { get: function () { return STAGE_FPS; }, enumerable: true, configurable: true },
-      "STAGE_HEAR_MS": { get: function () { return STAGE_HEAR_MS; }, enumerable: true, configurable: true },
       "STAGE_MAXW": { get: function () { return STAGE_MAXW; }, enumerable: true, configurable: true },
-      "STALL_MS": { get: function () { return STALL_MS; }, enumerable: true, configurable: true },
       "STG_BEAT_MS": { get: function () { return STG_BEAT_MS; }, enumerable: true, configurable: true },
       "STG_BEAT_SEEN": { get: function () { return STG_BEAT_SEEN; }, enumerable: true, configurable: true },
       "STG_BEAT_STALE_MS": { get: function () { return STG_BEAT_STALE_MS; }, enumerable: true, configurable: true },
       "STG_VP_MAX": { get: function () { return STG_VP_MAX; }, enumerable: true, configurable: true },
       "TIMING_KEY": { get: function () { return TIMING_KEY; }, enumerable: true, configurable: true },
       "UPDATE_RESUME_KEY": { get: function () { return UPDATE_RESUME_KEY; }, enumerable: true, configurable: true },
-      "VIEW_ICONS": { get: function () { return VIEW_ICONS; }, enumerable: true, configurable: true },
       "VMODE": { get: function () { return VMODE; }, enumerable: true, configurable: true },
       "WHO_GROUPS": { get: function () { return WHO_GROUPS; }, enumerable: true, configurable: true },
       "WK_H264_BLIND": { get: function () { return WK_H264_BLIND; }, enumerable: true, configurable: true },
@@ -119,8 +97,6 @@
       "appStageApply": { get: function () { return appStageApply; }, enumerable: true, configurable: true },
       "appStageConsent": { get: function () { return appStageConsent; }, set: function (v) { appStageConsent = v; }, enumerable: true, configurable: true },
       "appStagePlan": { get: function () { return appStagePlan; }, enumerable: true, configurable: true },
-      "appWaitEl": { get: function () { return appWaitEl; }, set: function (v) { appWaitEl = v; }, enumerable: true, configurable: true },
-      "appWaitSince": { get: function () { return appWaitSince; }, set: function (v) { appWaitSince = v; }, enumerable: true, configurable: true },
       "applyAvatarFile": { get: function () { return applyAvatarFile; }, enumerable: true, configurable: true },
       "applyBcAct": { get: function () { return applyBcAct; }, enumerable: true, configurable: true },
       "applyCdel": { get: function () { return applyCdel; }, enumerable: true, configurable: true },
@@ -131,24 +107,19 @@
       "armAppRoomTick": { get: function () { return armAppRoomTick; }, enumerable: true, configurable: true },
       "armCopiedLabel": { get: function () { return armCopiedLabel; }, enumerable: true, configurable: true },
       "audienceReactCounts": { get: function () { return audienceReactCounts; }, enumerable: true, configurable: true },
-      "audienceReactFade": { get: function () { return audienceReactFade; }, set: function (v) { audienceReactFade = v; }, enumerable: true, configurable: true },
       "autoFsOff": { get: function () { return autoFsOff; }, set: function (v) { autoFsOff = v; }, enumerable: true, configurable: true },
       "auxDrop": { get: function () { return auxDrop; }, enumerable: true, configurable: true },
       "auxSenders": { get: function () { return auxSenders; }, enumerable: true, configurable: true },
       "av": { get: function () { return av; }, set: function (v) { av = v; }, enumerable: true, configurable: true },
       "avatarChip": { get: function () { return avatarChip; }, enumerable: true, configurable: true },
-      "awakeT": { get: function () { return awakeT; }, set: function (v) { awakeT = v; }, enumerable: true, configurable: true },
       "backGuardDrop": { get: function () { return backGuardDrop; }, enumerable: true, configurable: true },
       "backToNormalView": { get: function () { return backToNormalView; }, enumerable: true, configurable: true },
       "backWatch": { get: function () { return backWatch; }, set: function (v) { backWatch = v; }, enumerable: true, configurable: true },
       "bannedOut": { get: function () { return bannedOut; }, set: function (v) { bannedOut = v; }, enumerable: true, configurable: true },
       "barKind": { get: function () { return barKind; }, enumerable: true, configurable: true },
       "barPlan": { get: function () { return barPlan; }, enumerable: true, configurable: true },
-      "barPlanKey": { get: function () { return barPlanKey; }, set: function (v) { barPlanKey = v; }, enumerable: true, configurable: true },
       "battNow": { get: function () { return battNow; }, set: function (v) { battNow = v; }, enumerable: true, configurable: true },
       "bcActButtons": { get: function () { return bcActButtons; }, enumerable: true, configurable: true },
-      "bcCalFor": { get: function () { return bcCalFor; }, set: function (v) { bcCalFor = v; }, enumerable: true, configurable: true },
-      "bcCalUrl": { get: function () { return bcCalUrl; }, set: function (v) { bcCalUrl = v; }, enumerable: true, configurable: true },
       "bcEndedInRoom": { get: function () { return bcEndedInRoom; }, enumerable: true, configurable: true },
       "bcHostStored": { get: function () { return bcHostStored; }, enumerable: true, configurable: true },
       "bcKeepUserStop": { get: function () { return bcKeepUserStop; }, set: function (v) { bcKeepUserStop = v; }, enumerable: true, configurable: true },
@@ -165,7 +136,6 @@
       "blurHold": { get: function () { return blurHold; }, enumerable: true, configurable: true },
       "blurLevel": { get: function () { return blurLevel; }, enumerable: true, configurable: true },
       "blurLevelFor": { get: function () { return blurLevelFor; }, enumerable: true, configurable: true },
-      "blurNoteTimer": { get: function () { return blurNoteTimer; }, set: function (v) { blurNoteTimer = v; }, enumerable: true, configurable: true },
       "blurOffer": { get: function () { return blurOffer; }, enumerable: true, configurable: true },
       "blurWhyWords": { get: function () { return blurWhyWords; }, enumerable: true, configurable: true },
       "bootGumPending": { get: function () { return bootGumPending; }, set: function (v) { bootGumPending = v; }, enumerable: true, configurable: true },
@@ -212,7 +182,6 @@
       "ccMB": { get: function () { return ccMB; }, enumerable: true, configurable: true },
       "ccShow": { get: function () { return ccShow; }, set: function (v) { ccShow = v; }, enumerable: true, configurable: true },
       "chat": { get: function () { return chat; }, enumerable: true, configurable: true },
-      "chatGateOverride": { get: function () { return chatGateOverride; }, set: function (v) { chatGateOverride = v; }, enumerable: true, configurable: true },
       "chatLinksOn": { get: function () { return chatLinksOn; }, enumerable: true, configurable: true },
       "chatOffInfo": { get: function () { return chatOffInfo; }, enumerable: true, configurable: true },
       "chatOpen": { get: function () { return chatOpen; }, set: function (v) { chatOpen = v; }, enumerable: true, configurable: true },
@@ -263,7 +232,6 @@
       "dlogStoreGet": { get: function () { return dlogStoreGet; }, enumerable: true, configurable: true },
       "docPip": { get: function () { return docPip; }, set: function (v) { docPip = v; }, enumerable: true, configurable: true },
       "docPipAim": { get: function () { return docPipAim; }, enumerable: true, configurable: true },
-      "docPipReq": { get: function () { return docPipReq; }, set: function (v) { docPipReq = v; }, enumerable: true, configurable: true },
       "dockCalmMs": { get: function () { return dockCalmMs; }, set: function (v) { dockCalmMs = v; }, enumerable: true, configurable: true },
       "dockLabelSet": { get: function () { return dockLabelSet; }, enumerable: true, configurable: true },
       "dropPeer": { get: function () { return dropPeer; }, enumerable: true, configurable: true },
@@ -277,9 +245,6 @@
       "files": { get: function () { return files; }, enumerable: true, configurable: true },
       "findSharedApp": { get: function () { return findSharedApp; }, enumerable: true, configurable: true },
       "fitFor": { get: function () { return fitFor; }, enumerable: true, configurable: true },
-      "fitRestFrame": { get: function () { return fitRestFrame; }, set: function (v) { fitRestFrame = v; }, enumerable: true, configurable: true },
-      "fmtLeft": { get: function () { return fmtLeft; }, enumerable: true, configurable: true },
-      "fmtSize": { get: function () { return fmtSize; }, enumerable: true, configurable: true },
       "focusId": { get: function () { return focusId; }, set: function (v) { focusId = v; }, enumerable: true, configurable: true },
       "focusOf": { get: function () { return focusOf; }, enumerable: true, configurable: true },
       "foldName": { get: function () { return foldName; }, enumerable: true, configurable: true },
@@ -287,7 +252,6 @@
       "freshSt": { get: function () { return freshSt; }, enumerable: true, configurable: true },
       "frozeGap": { get: function () { return frozeGap; }, set: function (v) { frozeGap = v; }, enumerable: true, configurable: true },
       "frozeThisBeat": { get: function () { return frozeThisBeat; }, enumerable: true, configurable: true },
-      "fsAskAt": { get: function () { return fsAskAt; }, set: function (v) { fsAskAt = v; }, enumerable: true, configurable: true },
       "fsAutoKey": { get: function () { return fsAutoKey; }, set: function (v) { fsAutoKey = v; }, enumerable: true, configurable: true },
       "fsAutoPid": { get: function () { return fsAutoPid; }, set: function (v) { fsAutoPid = v; }, enumerable: true, configurable: true },
       "fsBlurClass": { get: function () { return fsBlurClass; }, enumerable: true, configurable: true },
@@ -298,14 +262,10 @@
       "fsFollow": { get: function () { return fsFollow; }, set: function (v) { fsFollow = v; }, enumerable: true, configurable: true },
       "fsFollowChanged": { get: function () { return fsFollowChanged; }, enumerable: true, configurable: true },
       "fsFollowT": { get: function () { return fsFollowT; }, set: function (v) { fsFollowT = v; }, enumerable: true, configurable: true },
-      "fsFull": { get: function () { return fsFull; }, set: function (v) { fsFull = v; }, enumerable: true, configurable: true },
       "fsInline": { get: function () { return fsInline; }, set: function (v) { fsInline = v; }, enumerable: true, configurable: true },
       "fsOpen": { get: function () { return fsOpen; }, set: function (v) { fsOpen = v; }, enumerable: true, configurable: true },
-      "fsOverlay": { get: function () { return fsOverlay; }, set: function (v) { fsOverlay = v; }, enumerable: true, configurable: true },
-      "fsOwnExit": { get: function () { return fsOwnExit; }, set: function (v) { fsOwnExit = v; }, enumerable: true, configurable: true },
       "fsPickAuto": { get: function () { return fsPickAuto; }, enumerable: true, configurable: true },
       "fsSel": { get: function () { return fsSel; }, set: function (v) { fsSel = v; }, enumerable: true, configurable: true },
-      "fsStripAsk": { get: function () { return fsStripAsk; }, set: function (v) { fsStripAsk = v; }, enumerable: true, configurable: true },
       "fsTick": { get: function () { return fsTick; }, set: function (v) { fsTick = v; }, enumerable: true, configurable: true },
       "fsZoomBox": { get: function () { return fsZoomBox; }, set: function (v) { fsZoomBox = v; }, enumerable: true, configurable: true },
       "fsZoomIds": { get: function () { return fsZoomIds; }, set: function (v) { fsZoomIds = v; }, enumerable: true, configurable: true },
@@ -314,19 +274,16 @@
       "guestsMayShare": { get: function () { return guestsMayShare; }, enumerable: true, configurable: true },
       "handQueue": { get: function () { return handQueue; }, enumerable: true, configurable: true },
       "handTotal": { get: function () { return handTotal; }, enumerable: true, configurable: true },
-      "handqHtml": { get: function () { return handqHtml; }, set: function (v) { handqHtml = v; }, enumerable: true, configurable: true },
       "hasAdminRoom": { get: function () { return hasAdminRoom; }, enumerable: true, configurable: true },
       "hasPendingTx": { get: function () { return hasPendingTx; }, enumerable: true, configurable: true },
       "hbLastAt": { get: function () { return hbLastAt; }, set: function (v) { hbLastAt = v; }, enumerable: true, configurable: true },
       "hbLastMono": { get: function () { return hbLastMono; }, set: function (v) { hbLastMono = v; }, enumerable: true, configurable: true },
-      "hdrHandSays": { get: function () { return hdrHandSays; }, set: function (v) { hdrHandSays = v; }, enumerable: true, configurable: true },
       "heldNoteSeen": { get: function () { return heldNoteSeen; }, enumerable: true, configurable: true },
       "hideBotsOn": { get: function () { return hideBotsOn; }, set: function (v) { hideBotsOn = v; }, enumerable: true, configurable: true },
       "hideBotsT": { get: function () { return hideBotsT; }, set: function (v) { hideBotsT = v; }, enumerable: true, configurable: true },
       "holdDoor": { get: function () { return holdDoor; }, set: function (v) { holdDoor = v; }, enumerable: true, configurable: true },
       "holdLeaveAsk": { get: function () { return holdLeaveAsk; }, enumerable: true, configurable: true },
       "homeHref": { get: function () { return homeHref; }, enumerable: true, configurable: true },
-      "hostPwKey": { get: function () { return hostPwKey; }, enumerable: true, configurable: true },
       "hostRename": { get: function () { return hostRename; }, enumerable: true, configurable: true },
       "hostSpot": { get: function () { return hostSpot; }, enumerable: true, configurable: true },
       "hostWords": { get: function () { return hostWords; }, enumerable: true, configurable: true },
@@ -344,13 +301,11 @@
       "isRedun": { get: function () { return isRedun; }, enumerable: true, configurable: true },
       "isStageJob": { get: function () { return isStageJob; }, enumerable: true, configurable: true },
       "islandApart": { get: function () { return islandApart; }, enumerable: true, configurable: true },
-      "islandNoteEl": { get: function () { return islandNoteEl; }, set: function (v) { islandNoteEl = v; }, enumerable: true, configurable: true },
       "joinAv": { get: function () { return joinAv; }, enumerable: true, configurable: true },
       "kfAsker": { get: function () { return kfAsker; }, set: function (v) { kfAsker = v; }, enumerable: true, configurable: true },
       "knownTotal": { get: function () { return knownTotal; }, enumerable: true, configurable: true },
       "labelFor": { get: function () { return labelFor; }, enumerable: true, configurable: true },
       "lastActive": { get: function () { return lastActive; }, set: function (v) { lastActive = v; }, enumerable: true, configurable: true },
-      "lastChatLine": { get: function () { return lastChatLine; }, set: function (v) { lastChatLine = v; }, enumerable: true, configurable: true },
       "lastQ": { get: function () { return lastQ; }, set: function (v) { lastQ = v; }, enumerable: true, configurable: true },
       "lateAsk": { get: function () { return lateAsk; }, set: function (v) { lateAsk = v; }, enumerable: true, configurable: true },
       "lateGen": { get: function () { return lateGen; }, set: function (v) { lateGen = v; }, enumerable: true, configurable: true },
@@ -363,16 +318,13 @@
       "leaveSeededService": { get: function () { return leaveSeededService; }, enumerable: true, configurable: true },
       "leaving": { get: function () { return leaving; }, set: function (v) { leaving = v; }, enumerable: true, configurable: true },
       "leftDialogUp": { get: function () { return leftDialogUp; }, enumerable: true, configurable: true },
-      "lgNoteEl": { get: function () { return lgNoteEl; }, set: function (v) { lgNoteEl = v; }, enumerable: true, configurable: true },
       "lineOpen": { get: function () { return lineOpen; }, set: function (v) { lineOpen = v; }, enumerable: true, configurable: true },
       "linkRowHtml": { get: function () { return linkRowHtml; }, enumerable: true, configurable: true },
       "linksAllowed": { get: function () { return linksAllowed; }, enumerable: true, configurable: true },
       "liveInCall": { get: function () { return liveInCall; }, enumerable: true, configurable: true },
       "loadList": { get: function () { return loadList; }, enumerable: true, configurable: true },
       "lobRow": { get: function () { return lobRow; }, enumerable: true, configurable: true },
-      "lobbyCamGen": { get: function () { return lobbyCamGen; }, set: function (v) { lobbyCamGen = v; }, enumerable: true, configurable: true },
       "lobbyPw": { get: function () { return lobbyPw; }, set: function (v) { lobbyPw = v; }, enumerable: true, configurable: true },
-      "lobbyPwFor": { get: function () { return lobbyPwFor; }, enumerable: true, configurable: true },
       "lobbyPwHandOver": { get: function () { return lobbyPwHandOver; }, enumerable: true, configurable: true },
       "localBlurPower": { get: function () { return localBlurPower; }, enumerable: true, configurable: true },
       "localStream": { get: function () { return localStream; }, set: function (v) { localStream = v; }, enumerable: true, configurable: true },
@@ -382,9 +334,6 @@
       "lsSet": { get: function () { return lsSet; }, enumerable: true, configurable: true },
       "mainVideoChoice": { get: function () { return mainVideoChoice; }, enumerable: true, configurable: true },
       "markHeldNote": { get: function () { return markHeldNote; }, enumerable: true, configurable: true },
-      "massBannerAt": { get: function () { return massBannerAt; }, set: function (v) { massBannerAt = v; }, enumerable: true, configurable: true },
-      "massBannerEl": { get: function () { return massBannerEl; }, set: function (v) { massBannerEl = v; }, enumerable: true, configurable: true },
-      "massMany": { get: function () { return massMany; }, set: function (v) { massMany = v; }, enumerable: true, configurable: true },
       "mayHost": { get: function () { return mayHost; }, enumerable: true, configurable: true },
       "mayPinFiles": { get: function () { return mayPinFiles; }, enumerable: true, configurable: true },
       "mayShareScreen": { get: function () { return mayShareScreen; }, enumerable: true, configurable: true },
@@ -394,7 +343,6 @@
       "mediaJoined": { get: function () { return mediaJoined; }, set: function (v) { mediaJoined = v; }, enumerable: true, configurable: true },
       "mediaOk": { get: function () { return mediaOk; }, enumerable: true, configurable: true },
       "meetWait": { get: function () { return meetWait; }, enumerable: true, configurable: true },
-      "mentionAlert": { get: function () { return mentionAlert; }, set: function (v) { mentionAlert = v; }, enumerable: true, configurable: true },
       "mentionToken": { get: function () { return mentionToken; }, enumerable: true, configurable: true },
       "meshCoord": { get: function () { return meshCoord; }, enumerable: true, configurable: true },
       "meshNode": { get: function () { return meshNode; }, set: function (v) { meshNode = v; }, enumerable: true, configurable: true },
@@ -417,10 +365,6 @@
       "modTable": { get: function () { return modTable; }, enumerable: true, configurable: true },
       "modalDismissBtn": { get: function () { return modalDismissBtn; }, enumerable: true, configurable: true },
       "modalFocusables": { get: function () { return modalFocusables; }, enumerable: true, configurable: true },
-      "modalOpener": { get: function () { return modalOpener; }, set: function (v) { modalOpener = v; }, enumerable: true, configurable: true },
-      "modalOutside": { get: function () { return modalOutside; }, set: function (v) { modalOutside = v; }, enumerable: true, configurable: true },
-      "modalTracked": { get: function () { return modalTracked; }, set: function (v) { modalTracked = v; }, enumerable: true, configurable: true },
-      "multiSection": { get: function () { return multiSection; }, enumerable: true, configurable: true },
       "myDevHash": { get: function () { return myDevHash; }, set: function (v) { myDevHash = v; }, enumerable: true, configurable: true },
       "myId": { get: function () { return myId; }, set: function (v) { myId = v; }, enumerable: true, configurable: true },
       "myIdentity": { get: function () { return myIdentity; }, set: function (v) { myIdentity = v; }, enumerable: true, configurable: true },
@@ -452,33 +396,20 @@
       "peerAway": { get: function () { return peerAway; }, enumerable: true, configurable: true },
       "peerWaits": { get: function () { return peerWaits; }, enumerable: true, configurable: true },
       "peers": { get: function () { return peers; }, enumerable: true, configurable: true },
-      "pendingReply": { get: function () { return pendingReply; }, set: function (v) { pendingReply = v; }, enumerable: true, configurable: true },
       "personOnStage": { get: function () { return personOnStage; }, enumerable: true, configurable: true },
-      "pipAimed": { get: function () { return pipAimed; }, set: function (v) { pipAimed = v; }, enumerable: true, configurable: true },
       "pipAutoT": { get: function () { return pipAutoT; }, set: function (v) { pipAutoT = v; }, enumerable: true, configurable: true },
-      "pipAwayAt": { get: function () { return pipAwayAt; }, set: function (v) { pipAwayAt = v; }, enumerable: true, configurable: true },
-      "pipAwayT": { get: function () { return pipAwayT; }, set: function (v) { pipAwayT = v; }, enumerable: true, configurable: true },
-      "pipBrowserAsked": { get: function () { return pipBrowserAsked; }, enumerable: true, configurable: true },
       "pipByBrowser": { get: function () { return pipByBrowser; }, set: function (v) { pipByBrowser = v; }, enumerable: true, configurable: true },
       "pipCard": { get: function () { return pipCard; }, set: function (v) { pipCard = v; }, enumerable: true, configurable: true },
       "pipCardPaint": { get: function () { return pipCardPaint; }, enumerable: true, configurable: true },
       "pipCardReady": { get: function () { return pipCardReady; }, enumerable: true, configurable: true },
       "pipCardRun": { get: function () { return pipCardRun; }, enumerable: true, configurable: true },
-      "pipEpoch": { get: function () { return pipEpoch; }, set: function (v) { pipEpoch = v; }, enumerable: true, configurable: true },
       "pipFallback": { get: function () { return pipFallback; }, enumerable: true, configurable: true },
-      "pipHintArmed": { get: function () { return pipHintArmed; }, set: function (v) { pipHintArmed = v; }, enumerable: true, configurable: true },
-      "pipHintDone": { get: function () { return pipHintDone; }, set: function (v) { pipHintDone = v; }, enumerable: true, configurable: true },
-      "pipManual": { get: function () { return pipManual; }, set: function (v) { pipManual = v; }, enumerable: true, configurable: true },
-      "pipReady": { get: function () { return pipReady; }, enumerable: true, configurable: true },
-      "pipReturnT": { get: function () { return pipReturnT; }, set: function (v) { pipReturnT = v; }, enumerable: true, configurable: true },
-      "pipTrace": { get: function () { return pipTrace; }, enumerable: true, configurable: true },
       "pipeEnabled": { get: function () { return pipeEnabled; }, enumerable: true, configurable: true },
       "pipePeers": { get: function () { return pipePeers; }, enumerable: true, configurable: true },
       "pipeStg": { get: function () { return pipeStg; }, enumerable: true, configurable: true },
       "pipeVideo": { get: function () { return pipeVideo; }, enumerable: true, configurable: true },
       "placeViewerHand": { get: function () { return placeViewerHand; }, enumerable: true, configurable: true },
       "planMeasured": { get: function () { return planMeasured; }, enumerable: true, configurable: true },
-      "platePaintT": { get: function () { return platePaintT; }, set: function (v) { platePaintT = v; }, enumerable: true, configurable: true },
       "postChat": { get: function () { return postChat; }, enumerable: true, configurable: true },
       "powDials": { get: function () { return powDials; }, set: function (v) { powDials = v; }, enumerable: true, configurable: true },
       "powNow": { get: function () { return powNow; }, set: function (v) { powNow = v; }, enumerable: true, configurable: true },
@@ -497,7 +428,6 @@
       "pwHeldOnTyping": { get: function () { return pwHeldOnTyping; }, enumerable: true, configurable: true },
       "pwProof": { get: function () { return pwProof; }, set: function (v) { pwProof = v; }, enumerable: true, configurable: true },
       "pwProvisional": { get: function () { return pwProvisional; }, set: function (v) { pwProvisional = v; }, enumerable: true, configurable: true },
-      "pwSaveWaited": { get: function () { return pwSaveWaited; }, set: function (v) { pwSaveWaited = v; }, enumerable: true, configurable: true },
       "pwSetRoom": { get: function () { return pwSetRoom; }, enumerable: true, configurable: true },
       "qaChatOn": { get: function () { return qaChatOn; }, enumerable: true, configurable: true },
       "qaList": { get: function () { return qaList; }, enumerable: true, configurable: true },
@@ -534,7 +464,6 @@
       "relayJobs": { get: function () { return relayJobs; }, enumerable: true, configurable: true },
       "relayVia": { get: function () { return relayVia; }, enumerable: true, configurable: true },
       "releaseLeaveAsk": { get: function () { return releaseLeaveAsk; }, enumerable: true, configurable: true },
-      "renameEditId": { get: function () { return renameEditId; }, set: function (v) { renameEditId = v; }, enumerable: true, configurable: true },
       "renameGuest": { get: function () { return renameGuest; }, enumerable: true, configurable: true },
       "renegotiate": { get: function () { return renegotiate; }, enumerable: true, configurable: true },
       "room": { get: function () { return room; }, set: function (v) { room = v; }, enumerable: true, configurable: true },
@@ -543,6 +472,7 @@
       "roomE2E": { get: function () { return roomE2E; }, set: function (v) { roomE2E = v; }, enumerable: true, configurable: true },
       "roomHeadCount": { get: function () { return roomHeadCount; }, enumerable: true, configurable: true },
       "roomJoinedAt": { get: function () { return roomJoinedAt; }, set: function (v) { roomJoinedAt = v; }, enumerable: true, configurable: true },
+      "roomKey": { get: function () { return roomKey; }, enumerable: true, configurable: true },
       "roomPastSection": { get: function () { return roomPastSection; }, enumerable: true, configurable: true },
       "roomPw": { get: function () { return roomPw; }, set: function (v) { roomPw = v; }, enumerable: true, configurable: true },
       "roomSingOn": { get: function () { return roomSingOn; }, enumerable: true, configurable: true },
@@ -564,7 +494,6 @@
       "screenSharers": { get: function () { return screenSharers; }, enumerable: true, configurable: true },
       "screenSteppedUp": { get: function () { return screenSteppedUp; }, set: function (v) { screenSteppedUp = v; }, enumerable: true, configurable: true },
       "screenStream": { get: function () { return screenStream; }, set: function (v) { screenStream = v; }, enumerable: true, configurable: true },
-      "scriptOnce": { get: function () { return scriptOnce; }, enumerable: true, configurable: true },
       "seatDark": { get: function () { return seatDark; }, enumerable: true, configurable: true },
       "seatSelfLeased": { get: function () { return seatSelfLeased; }, enumerable: true, configurable: true },
       "sendAll": { get: function () { return sendAll; }, enumerable: true, configurable: true },
@@ -584,13 +513,11 @@
       "setView": { get: function () { return setView; }, enumerable: true, configurable: true },
       "setVq": { get: function () { return setVq; }, enumerable: true, configurable: true },
       "setWaitingRoom": { get: function () { return setWaitingRoom; }, enumerable: true, configurable: true },
-      "sgaAOP": { get: function () { return sgaAOP; }, set: function (v) { sgaAOP = v; }, enumerable: true, configurable: true },
       "shadeKey": { get: function () { return shadeKey; }, enumerable: true, configurable: true },
       "shareBlocked": { get: function () { return shareBlocked; }, enumerable: true, configurable: true },
       "shareFirewallWords": { get: function () { return shareFirewallWords; }, enumerable: true, configurable: true },
       "shareOnlyStage": { get: function () { return shareOnlyStage; }, enumerable: true, configurable: true },
       "shareSheetFocusId": { get: function () { return shareSheetFocusId; }, enumerable: true, configurable: true },
-      "shareSheetOpener": { get: function () { return shareSheetOpener; }, set: function (v) { shareSheetOpener = v; }, enumerable: true, configurable: true },
       "sharingScreen": { get: function () { return sharingScreen; }, enumerable: true, configurable: true },
       "shortCode": { get: function () { return shortCode; }, enumerable: true, configurable: true },
       "shortcutTyping": { get: function () { return shortcutTyping; }, enumerable: true, configurable: true },
@@ -620,18 +547,13 @@
       "stageVideoChoice": { get: function () { return stageVideoChoice; }, enumerable: true, configurable: true },
       "stageViewNow": { get: function () { return stageViewNow; }, set: function (v) { stageViewNow = v; }, enumerable: true, configurable: true },
       "stageVoteTallies": { get: function () { return stageVoteTallies; }, enumerable: true, configurable: true },
-      "stallOf": { get: function () { return stallOf; }, enumerable: true, configurable: true },
       "startMesh": { get: function () { return startMesh; }, enumerable: true, configurable: true },
       "stashJoinAv": { get: function () { return stashJoinAv; }, enumerable: true, configurable: true },
       "statusHoldUntil": { get: function () { return statusHoldUntil; }, set: function (v) { statusHoldUntil = v; }, enumerable: true, configurable: true },
       "statusOf": { get: function () { return statusOf; }, enumerable: true, configurable: true },
-      "statusRestFull": { get: function () { return statusRestFull; }, set: function (v) { statusRestFull = v; }, enumerable: true, configurable: true },
-      "statusRestShort": { get: function () { return statusRestShort; }, set: function (v) { statusRestShort = v; }, enumerable: true, configurable: true },
-      "statusRestTiny": { get: function () { return statusRestTiny; }, set: function (v) { statusRestTiny = v; }, enumerable: true, configurable: true },
       "statusWords": { get: function () { return statusWords; }, enumerable: true, configurable: true },
       "stgBeatCost": { get: function () { return stgBeatCost; }, enumerable: true, configurable: true },
       "stgBeats": { get: function () { return stgBeats; }, enumerable: true, configurable: true },
-      "stillTimer": { get: function () { return stillTimer; }, set: function (v) { stillTimer = v; }, enumerable: true, configurable: true },
       "stopApp": { get: function () { return stopApp; }, enumerable: true, configurable: true },
       "stopAuxTx": { get: function () { return stopAuxTx; }, enumerable: true, configurable: true },
       "stopRoomApp": { get: function () { return stopRoomApp; }, enumerable: true, configurable: true },
@@ -863,7 +785,6 @@
       return n ? out : null;
     })();
     const BROADCAST = BC_INTENT && !!params.get('v') && /^[a-f0-9]{16,64}$/.test((params.get('av') || '').toLowerCase());
-    const BC_WATCH_COPY = 'Watching the broadcast. You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.';
     yield 29;
     // The lobby is renamed when you arrive wanting a broadcast. The room used
     // to keep saying "meeting" on the chat, the leave dialog, and Help, and
@@ -1010,8 +931,6 @@
         if (was && el.title === was) el.title = '';
       }
     }
-    yield 51;
-    let barPlanKey = '';
     yield 53;
     window.addEventListener('resize', () => { try { (0, /*()*/__V.placeDockForWidth)(); } catch (e) {} });
     yield 55;
@@ -1182,11 +1101,6 @@
     // The alone card (paintAloneCard), once closed, stays shut for this tab.
     let aloneCardShut = false;
     try { aloneCardShut = sessionStorage.getItem('gifos_alone_card') === 'shut'; } catch (e) {}
-    let statusDetail = '';
-    // A broadcast viewer who has shared the room with someone, then finds it
-    // empty, is watching an ending. A fresh visit is a service that has not
-    // started. The mark lives for this tab, so next week's visit starts clean.
-    let broadcastSawCompany = false;
     // A message that STOPS someone (🛡 a refusal, 📷 an admin's video-off) is
     // the one message that must be read: it holds 12s and wears the warn
     // colour. Ordinary notices keep the 4s beat. An explicit hold wins.
@@ -2868,10 +2782,7 @@
       if (typeof reconcileApp === 'function') reconcileApp();
       (0, /*()*/__V.pipReaim)(); // keep Safari's auto-PiP flag on the current best candidate
     })) hbVia = 'worker';
-    // Tell the room when this phone steps away (screen off / another app) —
-    // the browser fires visibilitychange before it freezes us, so the last
-    // thing we say is an honest "away", and the first thing back is "here".
-    let stillTimer = 0;
+    yield 287;
     // "Still in the call" tells the user they can be heard or seen, so it is
     // said only when that is true: this page joined a room, has not left it,
     // and holds a live mic or camera track. A solo app (#id=), the lobby and
@@ -2884,30 +2795,7 @@
         return localStream.getTracks().some((t) => t.readyState === 'live' && (t.kind === 'audio' || t.kind === 'video'));
       } catch (e) { return false; }
     }
-    yield 295;
-    // ---- Picture-in-Picture: stepping out to another app must not mean
-    // leaving the room — a floating overlay keeps the meeting's best face on
-    // screen, the way every native call app does. Video only: audio already
-    // survives backgrounding (the live mic capture keeps the audio graph
-    // running). Three AUTO entry paths, best-effort each: Chrome and Edge
-    // fire the MediaSession 'enterpictureinpicture' action when the user
-    // leaves a tab that is capturing cam/mic (permission + site-engagement
-    // gated), and that action opens the document window; iOS Safari honors
-    // autoPictureInPicture on the aimed candidate; anything else gets the
-    // video element's own float a moment after the hide. A hide never asks
-    // for the document window itself. That call can fail to return, and the
-    // tab would never finish going away. Plus one MANUAL path that works
-    // wherever the API exists: the #pipbtn Float button (a tap is a gesture).
-    // On Android the only unconditional AUTO path is the native
-    // fullscreen-video one, hence the button. Returning to the tab
-    // dismisses the float. Side-benefit: a page with an open PiP window is
-    // exempt from Chrome's intensive timer throttling, so the float also
-    // keeps our status heartbeat inside the 15s freshness window (see G1).
-    const pipReady = (v) => !!(v && v.srcObject && v.videoWidth > 0);
-    yield 297;
-    // pipManual: the float was asked for with the Float button while the tab
-    // was in view. Only then may it stay up while the meeting is on screen.
-    let pipManual = false;
+    yield 298;
     // pipByBrowser: when the browser's own auto-float action ran last
     // ('enterpictureinpicture' on the media session). Chrome sends it as
     // the tab leaves the tab strip, on its own channel, so it can land
@@ -2917,20 +2805,9 @@
     // guards the page's own late requests must never close it. Reading
     // "still visible" at that instant was the 1-in-3 on a tab switch.
     let pipByBrowser = 0;
-    const pipBrowserAsked = () => !!pipByBrowser && Date.now() - pipByBrowser < 3000;
-    // A hide must not call requestWindow. On some builds that call never
-    // returns, so the visibility handler would never finish. Chrome and Edge
-    // open the document window themselves, from the enterpictureinpicture
-    // action below. This is only how long a hide waits for that action
-    // before the video element's own float. The handler arms the timer and
-    // returns; it does not wait.
-    const PIP_AUTO_FALLBACK_MS = GifOS.timings.PIP_AUTO_FALLBACK_MS;
-    // How long a return waits for the browser to close its own float (see pipReturn).
-    const PIP_RETURN_WAIT_MS = GifOS.timings.PIP_RETURN_WAIT_MS;
+    yield 302;
     let pipAutoT = 0;
-    // Bumped when a float is cancelled. A document window that answers after
-    // that is closed instead of left over a tab the person is looking at.
-    let pipEpoch = 0;
+    yield 304;
     // mediaAskPending: a camera, mic or screen ask the browser is still
     // answering. Its permission prompt or picker takes the window's focus
     // while the tap's activation is live, and the blur rule below read that
@@ -2950,11 +2827,6 @@
         };
       }
     })();
-    // The float's own trace (a 200-line ring, in the debug record as 'pip'):
-    // every leave and return, the browser's action, each ask and its answer,
-    // each close and why. Read it from Settings > Debug > Export after a few
-    // real switches on the device the trouble is on.
-    const pipTrace = (window.__pipTrace = window.__pipTrace || []);
     yield 310;
     // ---- The MEETING CARD float. A phone has no document float and can only
     // float a <video>; with every camera off (the privacy-first reload brings
@@ -3069,23 +2941,6 @@
       docPip.root.classList.toggle('empty', !src);
       (0, /*()*/__V.docPipPaint)();
     }
-    // Each call asks at once, inside the caller's task: the browser allows the
-    // window only there (a tap, or its own auto-float action). A request the
-    // browser is still answering is shared with the next caller, so a tap and
-    // the action landing together do not open two windows. A refused ask
-    // settles at once and is never shared. A newer window replaces an older.
-    // A window that arrives after the person has come back is closed.
-    let docPipReq = null;
-    yield 335;
-    // Coming back to the meeting. The browser closes its own float on the
-    // way back and says so (leavepictureinpicture); its word goes first. An
-    // exit asked at the same moment can cancel that word: Android Chrome,
-    // back through the float's expand control, then never answers the exit
-    // and never says the float left, and the tile stayed black with a float
-    // nobody could close. The page closes the float itself only when it is
-    // still up after PIP_RETURN_WAIT_MS. A document window has no such word
-    // and closes at once.
-    let pipReturnT = 0;
     yield 338;
     try { navigator.mediaSession.setActionHandler('enterpictureinpicture', () => { (0, /*()*/__V.pipNote)('ms-action'); (0, /*()*/__V.awayFull)(true); (0, /*()*/__V.enterPip)(false, true); }); } catch (e) {}
     yield 340;
@@ -3110,10 +2965,6 @@
       const w = backWatch; backWatch = null;
       try { w.destroy(); } catch (e) {}
     }
-    yield 345;
-    // Safari's auto-PiP flag rides the current best candidate; re-aimed on the
-    // heartbeat since who's on stage / who's talking drifts.
-    let pipAimed = null;
     yield 347;
     // HIDDEN-VIEWER DORMANCY (media-plane's demand law, applied to mains): a
     // hidden tab still made every row-mate run a full camera encoder AT it —
@@ -3139,12 +2990,6 @@
         else visParkSent.delete(pid); // never mark unsent state as delivered
       }
     }
-    yield 350;
-    // A phone grid does not float on its own. Full screen can: Android floats
-    // a page that holds the screen (FULL SCREEN ON THE FIRST TAP). Someone
-    // who left with no float, while one was there to show, is told once where
-    // Float is when they come back.
-    let pipHintArmed = false, pipHintDone = false;
     yield 355;
     window.addEventListener('pageshow', () => { (0, /*()*/__V.awayFull)(false); if (IS_MOBILE) (0, /*()*/__V.pipReturn)('pageshow'); });
     // ANDROID: FULL SCREEN ON THE FIRST TAP. Android Chrome floats a page on
@@ -3167,25 +3012,6 @@
       autoFsOff = !!on;
       try { if (on) sessionStorage.setItem(AUTO_FS_OFF_KEY, '1'); else sessionStorage.removeItem(AUTO_FS_OFF_KEY); } catch (e) {}
     }
-    const AUTO_FS_SKIP = '#appfull, #pipbtn, [data-pip], #cam, #mic, [id^="campick"], #sharebtn, a[href], input, textarea, select, [contenteditable="true"]';
-    yield 365;
-    // Switching to another window (the tab stays visible) uses the same
-    // auto path as a hide: the browser's own action where it sends one,
-    // otherwise the video element's float. Coming back closes it. Desktop
-    // only: a phone's app switch hides the page, and
-    // its blur alone means a prompt, a picker or the float's own opening.
-    // A float the person asked for, or the browser asked for, is never
-    // closed by a blur or a focus: only a real return closes it, which is
-    // hidden -> visible (above), a touch on the meeting (a phone, above; never
-    // for a Float-button float), or the browser's own close. The focus-return
-    // close of a Float-button
-    // float (0.9.23-0.9.25) is gone: on Android the float's own opening
-    // blurs the window and gives the focus back 0.2-0.6 s later, in either
-    // order against the float coming up, and that rule closed the float the
-    // tap had just opened in 13 of 24 trials on two phones (tests
-    // evidence/pip-0925/phones-matrix). A real trip Home hides the page, so
-    // the visible return still closes the float.
-    let pipAwayAt = 0, pipAwayT = 0;
     yield 369;
     // A peer whose gossip has gone silent is effectively away even if their
     // browser never got to say so (hard freeze). ms defaults to 13s, which is
@@ -3757,7 +3583,6 @@
     // already blurred and unmoderated, so squatting one gains little.
     const ADMIN_GRACE_MS = GifOS.timings.ADMIN_GRACE_MS, ADMIN_CLOSE_MS = GifOS.timings.ADMIN_CLOSE_MS;
     let admGraceT = null, admTickT = null, admDeadline = 0;
-    const fmtLeft = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
     yield 427;
     function startAdminCountdown() {
       admGraceT = null;
@@ -3921,13 +3746,7 @@
       }
       return out;
     }
-    // A FACE IN THE BIG VIEW IS CROPPED A LITTLE, NEVER A LOT (Nathan 2026-11-18). A full crop to fill showed a portrait
-    // phone in a landscape pane as the top of a head; a whole fit leaves wide bars when the shapes are close. The big
-    // view scales a camera face so that at most FS_CROP_MAX of its picture is cut (on the side that overflows), and the
-    // rest of the pane is thin bars. Shapes close enough that a full fill cuts no more than that just fill the pane.
-    // Shared screens, content and the Stadium stay whole. #fsmain's box is the part shown, centred in the pane, and
-    // meet.css crops inside it (cover, 50% 40%). Repainted on every refresh, a pane resize and a picture size change.
-    const FS_CROP_MAX = 0.25;
+    yield 477;
     function fsCropBox(vw, vh, pw, ph, crop) {   // the shown box in pane px for a vw x vh picture, or null
       if (!(vw > 0 && vh > 0 && pw > 0 && ph > 0)) return null;
       const cover = Math.max(pw / vw, ph / vh), whole = Math.min(pw / vw, ph / vh);
@@ -3937,10 +3756,6 @@
     }
     yield 481;   // the sender turned the phone: a new picture size
     window.addEventListener('resize', __V.fsFitPaint);
-    yield 483;
-    // The big view's zoom onto Stadium cells: a CSS transform on #fsmain, the picture itself unchanged. The box of the
-    // cells, padded, fills the view as far as FS_ZOOM_MAX allows, and the picture never slides off its own edge.
-    const FS_ZOOM_MAX = 8, FS_ZOOM_PAD = 0.1;
     yield 485;
     // The grid videos stay attached while #fsview is open; body.fsopen only
     // hides their paint. busVolume, the row head's packer, selfStageStream
@@ -4005,11 +3820,6 @@
     }
     yield 491;
     function fsBlurClass(v, bl) { v.classList.remove('blur1', 'blur2'); if (bl) { v.classList.add('blur' + bl); try { (0, /*()*/__M.blurSized)(v); } catch (e) {} } }
-    let fsOwnExit = false; // an exit closeFsView asked for is on its way
-    let fsFull = false; // the view was the full-screen element at the last change
-    let fsAskAt = 0; // when the view last asked the browser for full screen
-    let fsOverlay = false; // the filmstrip is painted inside a document that already holds the screen
-    let fsStripAsk = false;
     yield 499;
     // A tap on a thumb pins a person and the Follow chip follows again: the
     // view picker's switch shows the same choice.
@@ -4040,11 +3850,7 @@
       if (p && p.connected) return 'Guest';
       return '\u2026';
     }
-    // A host's per-person controls say "for all" (hostWords, below).
-    const MODBAR_HTML = '<button data-mod="mute" aria-label="Mute for all">Mute for all</button><button data-mod="blur" aria-label="Blur for all">Blur for all</button>'
-      + '<button class="grantbtn" data-mod="app" title="Let this person run and lead apps in your room" aria-label="Allow apps & stage">Allow apps & stage</button>'
-      + '<button class="grantbtn" data-mod="share" title="Let this person share their screen" aria-label="Allow screen share">Allow screen share</button>'
-      + '<button class="banbtn" data-adm="ban" title="Ban this person from the room" aria-label="Ban this person">Ban</button>';
+    yield 511;
     function wireModbar(modbar, id) {
       modbar.addEventListener('click', (e) => {
         const t = e.target && e.target.closest ? e.target.closest('button') : e.target;
@@ -4461,13 +4267,7 @@
     // layout reader already uses.
     const VMODE = (window.GifOS && GifOS.meetViewMode) || null;
     const VIEW_WORDS = { scroll: ['viewScroll', 'Scroll'], fit: ['viewFit', 'Fit'], drag: ['viewDrag', 'Drag'], focus: ['viewFocus', 'Focus'] };
-    // Outline glyphs, one stroke, currentColor: the same family as the bar's icons.
-    const VIEW_ICONS = {
-      scroll: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="6" rx="1.5"/><rect x="13" y="3" width="8" height="6" rx="1.5"/><rect x="3" y="11" width="8" height="6" rx="1.5"/><rect x="13" y="11" width="8" height="6" rx="1.5"/><path d="M9 20.5l3 1.5 3-1.5"/></svg>',
-      fit: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="8" height="7" rx="1.5"/><rect x="13" y="4" width="8" height="7" rx="1.5"/><rect x="3" y="13" width="8" height="7" rx="1.5"/><rect x="13" y="13" width="8" height="7" rx="1.5"/></svg>',
-      drag: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3" width="11" height="8" rx="1.5"/><path d="M11 21l-2.6-3.6a1.3 1.3 0 0 1 2-1.6l1.1 1.1V10.5a1.3 1.3 0 0 1 2.6 0v4.2l3.3.6a1.7 1.7 0 0 1 1.4 1.9L18.3 21"/></svg>',
-      focus: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="14" height="16" rx="2"/><rect x="18.5" y="4" width="3" height="4" rx="1"/><rect x="18.5" y="10" width="3" height="4" rx="1"/><rect x="18.5" y="16" width="3" height="4" rx="1"/></svg>',
-    };
+    yield 544;
     let viewStore = null;
     try { viewStore = localStorage; } catch (e) {}
     window.__meetView = VMODE ? VMODE.load(viewStore) : 'fit';
@@ -4525,14 +4325,7 @@
       r.push(Object.assign({ t: Date.now(), k }, x || {}));
       if (r.length > 300) r.shift();
     }
-    const CT_ICONS = {
-      present: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4.5" width="19" height="13" rx="2"/><rect x="14" y="11" width="5.5" height="4.5" rx="1"/><path d="M8 21h8"/></svg>',
-      all: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="8.5" height="6" rx="1.2"/><rect x="13" y="5" width="8.5" height="6" rx="1.2"/><rect x="2.5" y="13" width="8.5" height="6" rx="1.2"/><rect x="13" y="13" width="8.5" height="6" rx="1.2"/></svg>',
-      tabs: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 8h7l1.5-3h10.5"/><rect x="2.5" y="8" width="19" height="11" rx="1.5"/></svg>',
-      bring: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="8" r="2.5"/><circle cx="17" cy="8" r="2.5"/><path d="M2.5 18c.6-2.6 2.4-4 4.5-4s3.9 1.4 4.5 4M12.5 18c.6-2.6 2.4-4 4.5-4s3.9 1.4 4.5 4"/></svg>',
-      faces: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="14" width="5.5" height="5.5" rx="1.2"/><rect x="9.25" y="14" width="5.5" height="5.5" rx="1.2"/><rect x="16" y="14" width="5.5" height="5.5" rx="1.2"/><path d="M4 10l8-5 8 5"/></svg>',
-      exit: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
-    };
+    yield 574;
     function ctText(key, en, vars) {
       let s = uiText(key, en);
       if (vars) for (const k in vars) s = s.split('{' + k + '}').join(String(vars[k]));
@@ -4588,10 +4381,6 @@
       if (it.kind === 'screen') return it.mine ? ctText('ctYourScreen', 'Your screen') : ctText('ctScreenOf', '{name}’s screen', { name: it.name || '…' });
       if (it.kind === 'app') return it.name || ctText('ctApp', 'App');
       return ctText('ctAgenda', 'Agenda');
-    }
-    function ctView() {
-      if (CT && CT.present) return 'present';
-      return window.__meetView || 'fit';
     }
     yield 590;
 
@@ -4877,11 +4666,6 @@
       agendaHand: (pid, on) => ctAgendaPublish(GifOS.meetAgenda.hand(CT && CT.ag, myId, pid, on !== false), 'test-hand'),
       faces: (hidden) => { if (CT) { CT.facesHidden = !!hidden; try { (0, /*()*/__V.layout)(); } catch (e) {} } },
     };
-    // ---- 0.9.23b: calm by default, tap a tile for its controls, viewer crop ----
-    // Calm: tiles show only the name and the green speaking frame. Any touch,
-    // scroll, mouse move or key wakes the info (body.meet-awake) for 3 s.
-    const AWAKE_MS = GifOS.timings.AWAKE_MS;
-    let awakeT = 0;
     yield 632;
     for (const ev of ['pointermove', 'pointerdown', 'touchstart', 'wheel', 'keydown']) {
       window.addEventListener(ev, __V.wakeMeet, { capture: true, passive: true });
@@ -5692,15 +5476,6 @@
       } catch (e) {}
       try { updateStatus(); } catch (e) {}
     }, 5000);
-    // A wide window's header line never shows a sentence cut in half (the
-    // same rule as the You-left line, 97854e1). The OS buttons take the
-    // right of the row (UI-0010), so when the line is longer than the room:
-    // the transcribing mark keeps only its icon, then the resolution drops,
-    // and then the sentence leaves the row. The whole line stays the
-    // header's title and a phone's status sheet.
-    let statusRestFull = '', statusRestShort = '', statusRestTiny = '';
-    yield 837;
-    let fitRestFrame = 0;
     yield 840;
 
     function stagePersonLive(id) {
@@ -5708,11 +5483,6 @@
       if (id === myId) return myStatus.camOff === false;
       const st = statusOf.get(id);
       return !!(st && st.camOff === false);
-    }
-    function onAirName(id) {
-      if (id === myId) return myName();
-      const p = peers.get(id);
-      return (p && p.name) || rosterNames[id] || 'Guest';
     }
     yield 843;
     const pageArrived = Date.now();
@@ -5876,7 +5646,7 @@
       try { refreshAllTiles(); } catch (e) {}
       (0, /*()*/__V.paintRoster)();
     }
-    let renameEditId = null;
+    yield 866;
     function rosterRows() {
       const rows = [];
       const seen = new Set();
@@ -7132,8 +6902,6 @@
         (0, /*()*/__V.refreshAvatarSurfaces)();
       }).catch(() => {});
     }
-    const STAGE_HEAR_MS = GifOS.timings.STAGE_HEAR_MS;
-    let platePaintT = 0;
     yield 991;
     function avatarChip(byId) {
       let url = '', hash = '';
@@ -10480,24 +10248,6 @@
       const vw = joinVeilWords({ w, waited, now, busyAt: relayBusyAt, busyShowMs: GifOS.timings.RELAY_BUSY_SHOW_MS, unreachAt: doorUnreachAt, relayUp: relayUp(), refusal });
       (0, /*()*/__V.paintJoinVeil)({ w, vw, refusal });
     }, 1000);
-    yield 1218;
-
-    // ---- THE EMPTY APP ROOM (#appwait) ---------------------------------------
-    // A guest opening an app invite gets the app from WHOEVER IS IN THE ROOM
-    // holding it — there is no server copy. So an invite opened after the
-    // friend closed the app lands in an empty room: seated fine, no ad ever
-    // comes, and until this panel existed the page just sat BLANK, explaining
-    // nothing (reported from a day-old invite link, 2026-08-25). The panel is
-    // the app-room counterpart of the join veil above and yields to it (z 30
-    // vs 35): the veil answers "am I in?", this answers "I'm in — where's the
-    // app?". Two honest escalations, decided each tick so a returning host
-    // dissolves it the moment their ad lands (mountClientApp → has-app):
-    //   < 12s   spinner — the ad normally lands in the first status beats
-    //   ≥ 12s   no ad + nobody else here  → the invite is dormant, say why
-    //           no ad + others waiting too → the HOST is the missing piece
-    // It never shows for a founder (their own runApp mounts has-app) and
-    // never over the call layer (call-on: the room is visibly alive).
-    let appWaitEl = null, appWaitSince = 0;
     yield 1220;
 
     // The directory is DERIVED, every tick, from the mesh: occ (coord → peer,
@@ -11050,8 +10800,8 @@
     // its generation releases the hold after PW_GRANT_HOLD_MS, and the old
     // rule applies. The hold is armed only by typing at the door.
     let heldGrant = null;     // { p, m, admOk } waiting for the room's generation
-    let grantHoldUntil = 0;   // the hold's deadline; 0 = no hold armed
-    const PW_GRANT_HOLD_MS = GifOS.timings.PW_GRANT_HOLD_MS;
+    let grantHoldUntil = 0;
+    yield 1284;
     let rekeyAt = 0;          // when the current key took over (heal eligibility: peers from before it)
     // THE RE-KEY WINDOW (§LOCK). A member who adopts a new password derives
     // its key with the slow password stretch: about half a second, seconds on
@@ -12013,14 +11763,6 @@
         } finally { landed(); }
       }, (err) => { landed(); throw err; });
     }
-    // A per-tab, per-room peer id: a reload reconnects AS the same peer and
-    // the relay's stale-close guard swaps the socket instead of duplicating us.
-    function myPeerId() {
-      const key = 'gifos_vpeer_' + roomKey();
-      let id = null; try { id = sessionStorage.getItem(key); } catch (e) {}
-      if (!id) { id = uid('v'); try { sessionStorage.setItem(key, id); } catch (e) {} }
-      return id;
-    }
 
     // THE FRONT DOOR (mesh-v2): the wire layer (mesh-wire.js) owns the ONE
     // relay socket — knock/greeters, founding (R3), greeter registration (E3),
@@ -12897,17 +12639,6 @@
       try { (0, /*()*/__M.adapt)(); } catch (e) {}
     }
     GifOS.meshMedia.workerClock(1000, () => { try { lgLevelTick(); } catch (e) {} });
-    // L29.4: my receivers and my own reading agree: leave with the reason and knock again as a newcomer (sim: lguard rejoin 40).
-    let lgNoteEl = null;
-    yield 1463;
-    // A picture that stops says so, never a silent frozen tile. A Stage strip or Stadium that had frames and has shown none
-    // for STALL_MS while the tab is in view gets a plain line; a shared screen may rightly stand still. The banner adds why,
-    // and only when both hold: this seat's picture stalled, and its own mass-leave sense names many people gone. Two goodbyes
-    // arm that sense for the seat's healing; ordinary churn does that, so the banner wants MASS_MANY of them.
-    const STALL_MS = GifOS.timings.STALL_MS, MASS_MANY = GifOS.timings.MASS_MANY;
-    const stallOf = new WeakMap();
-    let massMany = false, massBannerEl = null, massBannerAt = 0;
-    const BANNER_HOLD = GifOS.timings.BANNER_HOLD;
     yield 1469;
     // L8.3: a room that split says so. The seat's own word that islands exist here stays set after a merge, so the note
     // also wants a greeter of this room that my seat has no cell for: the door list the seat re-asks for (E3) is what ends it.
@@ -12917,7 +12648,6 @@
       const r = meshNode && meshNode.raw;
       return !!(r && r.hasCoord && r.state === 3 && r.islandSeen() && (() => { const held = new Set(r.occ.values()); return r.lastGreeters.some((g) => g !== r.id && !held.has(g)); })());
     }
-    let islandNoteEl = null;
     yield 1472;
     GifOS.meshMedia.workerClock(1000, () => { try { (0, /*()*/__V.massBannerTick)(); } catch (e) {} try { (0, /*()*/__V.islandNoteTick)(); } catch (e) {} });
     // A WEBKIT SENDER THAT NEVER ENCODES. Measured 2026-10-21 (gate-1812
@@ -13320,10 +13050,7 @@
       (0, /*()*/__V.renderHandq)();   // the room-wide hand queue, freshest fold wins
       updateStatus();
     });
-    yield 1478;
-    // The banner repaints ONLY when the derived line actually changed — the
-    // 2s beat costs one string compare, never idle DOM churn.
-    let handqHtml = '';
+    yield 1479;
     // A seat past this section never hears a rename on a direct pulse. The
     // fold already carries the current name (the hand queue shows it). Paint
     // that name onto the tile too. A fresh status of our own wins; a steady
@@ -13380,8 +13107,6 @@
     }
     yield 1488;
     window.addEventListener('resize', __V.placeHandq);
-    yield 1491;
-    let hdrHandSays = '';
     yield 1515;
 
     // ---- mic mode: voice vs music ---------------------------------------------
@@ -13401,13 +13126,6 @@
     yield 1536;
     // DEBUG/tests: inject a fork pick UI
     window.__gifosShowForkPick = __V.showForkPick;
-
-    // ---- the password-reveal EYE (every password field wears one) ------------
-    // Typing a password you cannot see is how typos mint wrong rooms. Tap to
-    // show, tap to hide; a revealed field re-hides when its modal reopens
-    // (pwEyeHide). The focusin delegate catches dynamically built fields
-    // (the Invite modal's mint) with no per-site wiring.
-    const PWEYE_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/><line class="slash" x1="3" y1="3" x2="21" y2="21" style="display:none"/></svg>';
     yield 1544;
     // LOBBY PASSWORDS (Start a public open-floor meeting, Join a link). Typed in
     // the lobby, they cross the reload enterMeeting does in THIS tab's
@@ -13438,7 +13156,6 @@
       if (!o || typeof o.pw !== 'string' || !o.pw) return null;
       return { kind: o.kind, room: String(o.room || ''), av: String(o.av || ''), pw: o.pw };
     })();
-    const lobbyPwFor = (kind) => !!(lobbyPw && lobbyPw.kind === kind && lobbyPw.room === room && lobbyPw.av === (av || ''));
     yield 1555;
     // THE ROOM'S PASSWORD CHANGES (the Password button's Save, and the re-key after a vote-out): the relay's door gets the
     // proof, the people inside get the password (an open room) or the order (an admin room), then this page moves to the new key.
@@ -13521,14 +13238,6 @@
       (0, /*()*/__V.renderFiles)(); // reflect the new password state (files allowed / the lock note)
       reactRoomState(); // the password is the key to clear video — re-derive MY tiles now, not on the next heartbeat
     }
-    let pwSaveWaited = false;
-    yield 1562;
-    // Show host password (a private meeting's host only). The password is the
-    // one this device kept (gifos_vhpw_<room>.<verifier>) when it created the
-    // meeting or signed in as host. It is never logged, mirrored or put in a
-    // link, and it leaves the page again whenever the popup closes. It cannot
-    // change: the meeting's link carries the verifier made from it.
-    const hostPwKey = () => 'gifos_vhpw_' + roomKey();
     yield 1571;
     // Is this participant forging? Decided in whoHeard, once, and kept: their
     // device presented a relay statement that cannot be genuine (verifyIpAtt),
@@ -13957,7 +13666,6 @@
     // the camera. The preview shows the blur you picked. No blur is clear here,
     // and the line says a meeting may still keep the picture blurred.
     const joinAv = { cam: false, mic: false };
-    let lobbyCamGen = 0;
     yield 1628;
     // Handed to the call through sessionStorage: enterMeeting writes it, boot
     // takes it once (joinAvChoice). Nothing on means nothing written.
@@ -14673,12 +14381,11 @@
     const MAX_FILE = 25 * 1024 * 1024;
     const FILE_PART = 32768;
     let unread = 0;
-    let lastChatLine = null;
-    let mentionAlert = null;
+    yield 1712;
     // Someone reacted to your line while chat was closed: the call says so.
     // It is not a new message, so the count stays as it was.
     let reactAlert = null;
-    let pendingReply = null;
+    yield 1714;
     // Reactions: one emoji from a short list, per person, per line.
     // A frame counts only from the person it names (like taking back a line).
     const REACTS = ['👍', '❤️', '😂', '🙏', '👏'];
@@ -14758,8 +14465,7 @@
       const safe = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       return new RegExp('(?:^|\\s)@' + safe + '(?=$|[\\s.,!?;:])', 'i').test(String(text || ''));
     }
-    yield 1731;
-    const fmtSize = (n) => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : n > 1024 ? (n / 1024 | 0) + ' KB' : n + ' B';
+    yield 1732;
     const b64ofPart = (part) => { let s = ''; for (let i = 0; i < part.length; i += 8192) s += String.fromCharCode.apply(null, part.subarray(i, i + 8192)); return btoa(s); };
     const partOfB64 = (b) => { const s = atob(b); const out = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i); return out; };
     // A chunk is addressed by the FILE's size, never by the peer's seq or
@@ -16138,11 +15844,6 @@
       if (reactOpen && reactOpen !== lineOpen) reactOpen = null;
       (0, /*()*/__V.renderChat)();
     }
-    yield 1784;
-    // The chat gate: repainted on every mod merge and admin-state flip. The
-    // admin keeps a live input while chat is off (announcements still flow);
-    // everyone else's composer locks, with the reason in the placeholder.
-    let chatGateOverride = null;
     yield 1805;
     // MY LINE GOES OUT ONE WAY: postChat. Slow mode paces the sender, and it
     // never throws a line away. A line said inside the wait is held, in order,
@@ -16748,8 +16449,7 @@
     };
     yield 1922; // resolvedKey -> { via, streamId, stream, el, meta } (parked 2nd claim)
     const subWant = new Map();
-    yield 1974;
-    const multiSection = () => { const s = meshSeat(); if (!s || !s.hasCoord) return false; for (const k of s.occ.keys()) if (!(k.charCodeAt(0) === 48 && k.charCodeAt(1) === 95)) return true; return false; };
+    yield 1975;
     const occPid = (c) => { const s = meshSeat(); return s ? s.occGet(net.topo.ckey(c)) : null; };
     yield 1984;
     // ---- ENCODED PASSTHROUGH (roadmap §9a, mesh-pipe.js) --------------------
@@ -17100,8 +16800,6 @@
     // the ad carries one, else the sid's own binding): a frame that fails it
     // is dropped and the chase goes on. My OWN broadcast is retained as is.
     const sgaAppVer = new Map();
-    yield 2221;
-    let sgaAOP = null;
     yield 2223;
     // The owner pk the room's ad names for this sid, if any ad does.
     function sgaAdPk(sid) {
@@ -17506,10 +17204,6 @@
     };
     if (window.GifOS) GifOS.meetStageData = stageData;
     yield 2266;
-    // Hand's slot is the screen's (barPlan), never the seat's.
-    function viewerHandOnDock() {
-      return barPlan({ phone: (0, /*()*/__V.phoneLayout)(), kind: barKind() }).dock.indexOf('hand') >= 0;
-    }
     function placeViewerHand() {
       try { (0, /*()*/__V.placeDockForWidth)(); } catch (e) {}
     }
@@ -17738,8 +17432,7 @@
       else r.vid.pause();
       (0, /*()*/__V.paintRbNow)();
     }
-    yield 2326;
-    let shareSheetOpener = null;
+    yield 2327;
     function shareSheetFocusId(blocked) { return blocked ? 'share-cancel' : 'share-go'; }
     yield 2373;
     (0, /*()*/__M.armAudioKeepAlive)();
@@ -18637,10 +18330,10 @@
     // Audience reactions on a service. Each clap is one small frame. The stage
     // adds them up, so a room of claps is one pill, not a pile of emojis.
     const AUDIENCE_REACTS = ['👏', '👍', '👎', '😂', '❤️'];
-    const AUDIENCE_REACT_NAME = { '👏': 'claps', '👍': 'yes', '👎': 'no', '😂': 'laughs', '❤️': 'hearts' };
+    yield 2754;
     const audienceReactCounts = new Map();
     const audienceReactRate = new Map();
-    let audienceReactFade = 0;
+    yield 2757;
     // At most 6 reactions in 10 s count from one person, on a service and in a meeting.
     function reactRateOk(who) {
       const now = Date.now();
@@ -18651,18 +18344,7 @@
       if (audienceReactRate.size > 400) audienceReactRate.clear();
       return true;
     }
-    yield 2759;
-    // A REACTION IN A MEETING IS SEEN LIKE A RAISED HAND: by the whole room,
-    // wherever the person's face is drawn. It flashes on their tile, and the
-    // packers that draw their face burn it on (labelFor): their row's Stadium
-    // product and, for a stager, the Stage. The Stadium picture carries that
-    // mark to every other row and section, so the frame itself goes only as
-    // far as the seats that draw the face: the person's own section (their row,
-    // its packer, the section's tiles), and for a stager also its own links
-    // (the Stage roots). Never a room-wide flood: half of a huge room reacting
-    // at once costs each seat only its own section's reactions. At most 6 in
-    // 10 s count from one person, sent or taken.
-    const FACE_REACT_MS = GifOS.timings.FACE_REACT_MS;
+    yield 2760;
     const faceReacts = new Map(); // peer id -> { e, until }
     const faceReactRx = new Map(); // peer id -> reaction frames taken from them (reactRxForTest)
     // Is this person seated in my section?
@@ -18817,12 +18499,6 @@
     }
     yield 2841;
     (0, /*()*/__V.wireMediaSession)();
-    // The blur slider: pick Max / Min / No blur directly. It records YOUR choice;
-    // whether a tile actually goes clear is the room rule's meeting — when your
-    // No blur can't show yet, the status line says exactly why.
-    // A note under the blur buttons that goes away on its own.
-    const BLUR_NOTE_MS = GifOS.timings.BLUR_NOTE_MS;
-    let blurNoteTimer = 0;
     yield 2845;
     // Why a No blur pick is not clear video yet, or '' when nothing holds it
     // back. The camera-on line repeats it: turning the camera on is when the
@@ -18845,15 +18521,7 @@
       const on = statusWords('camOn') || 'Camera on.';
       return why ? on + ' ' + why : on;
     }
-    // THE NO BLUR EXPLAINER. A No blur pick that a room rule still keeps blurred
-    // opens a dialog the person closes, instead of a note that faded before it
-    // was read. It says why (BLUR_WHY's words, the same as the tile note) and
-    // what to do. For a room with no password: a Set room password button when
-    // this person can set it (the Password button is theirs), otherwise who can.
-    // The blur rule itself (blurHold) is unchanged. One show per room in this
-    // tab: a reload of the same meeting does not open it again. The lobby
-    // preview carries its own line, so the dialog waits until the meeting.
-    const BLUR_WHY_ASK = { nopw: 1, guests: 1, forall: 1, noadmin: 1, ready: 1 };
+    yield 2848;
     function heldNoteKey() {
       let room = '';
       try { room = (typeof updateRoomKey === 'function') ? updateRoomKey() : ''; } catch (e) {}
@@ -19068,7 +18736,6 @@
       }
       return out;
     }
-    let modalTracked = null, modalOpener = null, modalOutside = null;
     yield 2912;
     (0, /*()*/__V.paintControls)();
     try { (0, /*()*/__V.paintBroadcastRole)(); } catch (e) {}
@@ -19533,9 +19200,6 @@
       });
       return raw;
     }
-    // A viewer early for a scheduled service gets Add to calendar: a one-event
-    // .ics with the viewer link, which a phone opens in its calendar.
-    let bcCalUrl = null, bcCalFor = '';
     yield 2976;
     // D2 "goodbyes are instant" — graceful-close coverage. pagehide fires on
     // every real unload path (close, swipe-away, navigation, reload), so it
@@ -19764,8 +19428,6 @@
       const t = e.target;
       return !!(t && t.closest && t.closest('input, textarea, select, [contenteditable="true"]'));
     }
-    yield 3004;
-    const SHORTCUT_IDS = { KeyA: 'mic', KeyV: 'cam', KeyS: 'sharebtn', KeyC: 'chatbtn', KeyK: 'ccdock', KeyH: 'hand', KeyF: 'fitbtn', KeyQ: 'leavebtn', KeyW: 'whobtn', KeyI: 'appinvite', KeyY: 'appbtn', KeyU: 'votebtn', KeyL: 'pwbtn', KeyG: 'stagebtn', KeyR: 'recbtn', Comma: 'setbtn', KeyT: 'trbtn', KeyJ: 'agendabtn', Slash: 'apphelp', KeyM: 'muteall', KeyB: 'blurall', KeyX: 'camall', KeyP: 'shareall' };
     yield 3013;
     // Snapshot and silence every outgoing sender while the confirm is up.
     // Cancel puts back exactly that snapshot. Confirm keeps the hold and
@@ -20485,7 +20147,6 @@
     // Picking one that is not on the device puts it here, then runs it. Take Turns is built from this site's starter
     // code (sample-apps.js, loaded only then). Survey and Whiteboard are App Store GIFs on this site.
     const RUN_DEFAULTS = [{ appId: 'taketurns', name: 'Take Turns', from: 'sample' }, { appId: 'survey', name: 'Survey', from: 'store' }, { appId: 'whiteboard', name: 'Whiteboard', from: 'store' }];
-    const scriptOnce = {};
     yield 3108;
     async function installRunApp(d) {
       if (d.from === 'sample') {
@@ -23109,7 +22770,7 @@
     }
     return __L.END;
   }
-  var api = { name: "core", run: part, count: 1847, exports: {"AGENT_FORCED":0,"AI_SPARK_SVG":0,"AUDIENCE_REACTS":0,"AUDIENCE_REACT_NAME":0,"AUTO_FS_SKIP":0,"AWAKE_MS":0,"BANNER_HOLD":0,"BC_AT_KEY":0,"BC_INTENT":0,"BC_WATCH_COPY":0,"BLUR_NOTE_MS":0,"BLUR_WHY_ASK":0,"BROADCAST":0,"CAST_SURFACE":0,"CC_LANGS":0,"CC_LANG_KEY":0,"CC_ON_PHONE":0,"CT":0,"CT_ICONS":0,"DEBUG_ON":0,"DEL_ICON":0,"DLOG":0,"FACE_REACT_MS":0,"FS_CROP_MAX":0,"FS_ZOOM_MAX":0,"FS_ZOOM_PAD":0,"IS_ANDROID":0,"IS_MOBILE":0,"LADDER":0,"LATE_ASK_MS":0,"MASS_MANY":0,"MAX_FILE":0,"MEET_HIST":0,"MEET_MARKS":0,"MEET_PATH":0,"MODBAR_HTML":0,"MP":0,"MPipe":0,"PIP_AUTO_FALLBACK_MS":0,"PIP_CARD_H":0,"PIP_CARD_ROWS":0,"PIP_CARD_W":0,"PIP_RETURN_WAIT_MS":0,"PWEYE_SVG":0,"PW_ADMIN_ONLY":0,"PW_GRANT_HOLD_MS":0,"REACTS":0,"RECOVER_MEDIA_KEY":0,"RENAME_RESET":0,"ROOM":0,"RUN_DEFAULTS":0,"SCALE":0,"SHORTCUT_IDS":0,"STAGE_FPS":0,"STAGE_HEAR_MS":0,"STAGE_MAXW":0,"STALL_MS":0,"STG_BEAT_MS":0,"STG_BEAT_SEEN":0,"STG_BEAT_STALE_MS":0,"STG_VP_MAX":0,"TIMING_KEY":0,"UPDATE_RESUME_KEY":0,"VIEW_ICONS":0,"VMODE":0,"WHO_GROUPS":0,"WK_H264_BLIND":0,"ac":0,"actingHead":1,"addAux":0,"addTranscriptLine":1,"admDeadline":0,"admGraceT":0,"admKey":0,"admSigned":1,"admStoreKey":0,"admTickT":0,"adminFace":0,"admins":0,"adminsNow":0,"admitGuest":1,"adoptAdmKey":1,"agentChat":1,"agentCore":0,"agentHand":1,"agentStart":1,"aiNotesSetting":1,"allGuestsBlocked":1,"allGuestsCamOff":1,"allGuestsMuted":1,"aloneCardShut":0,"amAdmin":0,"amGloballyMuted":1,"appClientCtl":0,"appClientStop":0,"appCopy":0,"appEv":0,"appHiddenSid":0,"appHostCtl":0,"appKey":0,"appLeadOn":0,"appLeadSet":0,"appLeadable":0,"appMode":0,"appPaneName":0,"appPaneOn":0,"appRoomOn":0,"appStageApply":1,"appStageConsent":0,"appStagePlan":1,"appWaitEl":0,"appWaitSince":0,"applyAvatarFile":1,"applyBcAct":1,"applyCdel":1,"applyOwnDelete":1,"applyPageHeader":1,"applyRaiseAct":1,"applyViewerCrop":1,"armAppRoomTick":0,"armCopiedLabel":1,"audienceReactCounts":0,"audienceReactFade":0,"autoFsOff":0,"auxDrop":1,"auxSenders":0,"av":0,"avatarChip":1,"awakeT":0,"backGuardDrop":1,"backToNormalView":1,"backWatch":0,"bannedOut":0,"barKind":1,"barPlan":1,"barPlanKey":0,"battNow":0,"bcActButtons":1,"bcCalFor":0,"bcCalUrl":0,"bcEndedInRoom":1,"bcHostStored":0,"bcKeepUserStop":0,"bcLastService":0,"bcMayPublishAv":1,"bcOnAir":1,"bcPreInRoom":1,"bcRole":1,"bcSeeding":0,"bcStartAt":1,"bcWatchingViewer":1,"bcWhenWords":1,"becomeAssistant":1,"blurHold":1,"blurLevel":0,"blurLevelFor":1,"blurNoteTimer":0,"blurOffer":1,"blurWhyWords":1,"bootGumPending":0,"botHidden":1,"botParks":1,"botViewOn":0,"botViewWant":0,"broadcastStatus":1,"callOn":0,"camOnWords":1,"camPeer":0,"canIRunApp":0,"canStage":0,"capBusy":0,"capClone":1,"capClosed":0,"capCovered":1,"capEarsOnly":1,"capLang":0,"capLangMine":1,"capLangName":1,"capLangTag":1,"capName":1,"capNowNote":1,"capOn":0,"capPick":1,"capPublish":1,"capRows":1,"capSend":1,"capSpotQueue":1,"capTraceGate":1,"capTrust":0,"capTry":1,"carryG":0,"carryHosts":0,"carryOutAc":0,"castVote":1,"ccDevNotice":1,"ccLang":0,"ccLangLabel":0,"ccLocal":0,"ccLocalBlocked":1,"ccLocalQ":0,"ccMB":0,"ccShow":0,"chat":0,"chatGateOverride":0,"chatLinksOn":0,"chatOffInfo":0,"chatOpen":0,"chatPeople":1,"chatReacts":0,"chatTombs":0,"chatWhen":1,"clearPipAuto":1,"clearRosterTiles":1,"clog":0,"closeRoomNoHost":1,"contentHas":1,"createAdminRoom":1,"ctAgCtx":1,"ctAgHidden":1,"ctAgendaHide":1,"ctAgendaOver":1,"ctAgendaPublish":1,"ctAgendaShortTime":1,"ctAgendaTickArm":1,"ctAgendaWhoText":1,"ctAspect":1,"ctBring":1,"ctCanEditAgenda":1,"ctFocusSources":1,"ctLabel":1,"ctNote":1,"ctPaintAgendaClock":1,"ctRefresh":1,"ctSelect":1,"ctSpeakerPick":1,"ctText":1,"ctTurnPaint":1,"currentAppCredits":1,"currentAppHelpMd":1,"dbgMeterPanel":0,"dcSend":0,"deepInView":1,"deriveAdminKey":1,"devOf":0,"digLists":0,"digStageEntry":0,"digestMode":0,"displayName":1,"dlogOut":0,"dlogRec":0,"dlogRecStart":1,"dlogStoreGet":1,"docPip":0,"docPipAim":1,"docPipReq":0,"dockCalmMs":0,"dockLabelSet":1,"dropPeer":1,"enforceBroadcastSeat":1,"ensureAc":1,"esc":0,"faceDrawnHere":1,"faceReactRx":0,"faceReacts":0,"fetchGifFromUrl":1,"files":0,"findSharedApp":1,"fitFor":0,"fitRestFrame":0,"fmtLeft":0,"fmtSize":0,"focusId":0,"focusOf":1,"foldName":1,"forcedCamOff":0,"freshSt":0,"frozeGap":0,"frozeThisBeat":1,"fsAskAt":0,"fsAutoKey":0,"fsAutoPid":0,"fsBlurClass":1,"fsCropBox":1,"fsFarCells":1,"fsFarTalkers":1,"fsFeedLive":1,"fsFollow":0,"fsFollowChanged":1,"fsFollowT":0,"fsFull":0,"fsInline":0,"fsOpen":0,"fsOverlay":0,"fsOwnExit":0,"fsPickAuto":1,"fsSel":0,"fsStripAsk":0,"fsTick":0,"fsZoomBox":0,"fsZoomIds":0,"grantHoldUntil":0,"guestsMayReact":0,"guestsMayShare":1,"handQueue":1,"handTotal":1,"handqHtml":0,"hasAdminRoom":0,"hasPendingTx":0,"hbLastAt":0,"hbLastMono":0,"hdrHandSays":0,"heldNoteSeen":1,"hideBotsOn":0,"hideBotsT":0,"holdDoor":0,"holdLeaveAsk":1,"homeHref":1,"hostPwKey":0,"hostRename":1,"hostSpot":1,"hostWords":1,"iAmWaiting":1,"idleDock":1,"idleNow":0,"importGif":1,"inMeetingNow":1,"inboundPlan":1,"installRunApp":1,"inviteFromSolo":1,"isCastEntry":1,"isHeld":1,"isPipePeer":0,"isRedun":0,"isStageJob":0,"islandApart":1,"islandNoteEl":0,"joinAv":0,"kfAsker":0,"knownTotal":1,"labelFor":0,"lastActive":0,"lastChatLine":0,"lastQ":0,"lateAsk":0,"lateGen":0,"lateJoinerSeesHistory":0,"lateTimer":0,"lateWant":0,"lateWon":0,"learnFoldedNames":1,"leaveMeeting":1,"leaveSeededService":1,"leaving":0,"leftDialogUp":1,"lgNoteEl":0,"lineOpen":0,"linkRowHtml":1,"linksAllowed":1,"liveInCall":1,"loadList":1,"lobRow":1,"lobbyCamGen":0,"lobbyPw":0,"lobbyPwFor":0,"lobbyPwHandOver":1,"localBlurPower":1,"localStream":0,"logNearBottom":1,"lowSenders":0,"lsGet":0,"lsSet":0,"mainVideoChoice":1,"markHeldNote":1,"massBannerAt":0,"massBannerEl":0,"massMany":0,"mayHost":1,"mayPinFiles":1,"mayShareScreen":0,"meOnStage":1,"meTile":0,"mediaAskPending":0,"mediaJoined":0,"mediaOk":0,"meetWait":0,"mentionAlert":0,"mentionToken":1,"meshCoord":0,"meshNode":0,"meshSeat":0,"messageMentionsMe":1,"meterFor":1,"meters":0,"micGrabbing":0,"micLockWords":1,"micMode":0,"micPeer":0,"micPickPrev":0,"micUnmuteAfter":0,"micWant":0,"mintHostKey":1,"mirrorRoomState":1,"modBlurOn":0,"modOf":1,"modStarOn":1,"modTable":0,"modalDismissBtn":1,"modalFocusables":1,"modalOpener":0,"modalOutside":0,"modalTracked":0,"multiSection":0,"myDevHash":0,"myId":0,"myIdentity":0,"myIdentitySeed":0,"myName":0,"myStageVotes":0,"myStatus":0,"myUpVoteSig":0,"myVoiceAt":0,"myVoiceFrom":0,"myVoiceSinceFinal":0,"nameInitial":1,"net":0,"newMeetAudioContext":1,"newNeg":0,"occPid":0,"onStageNow":1,"outboundPlan":1,"outgoingHeld":0,"owedStream":1,"paintBroadcastAir":1,"paintLog":1,"paintModbarButtons":1,"paintOnAir":1,"paintRosterSoon":1,"params":0,"parseMeetInput":1,"participantCount":1,"peerAway":0,"peerWaits":1,"peers":0,"pendingReply":0,"personOnStage":1,"pipAimed":0,"pipAutoT":0,"pipAwayAt":0,"pipAwayT":0,"pipBrowserAsked":0,"pipByBrowser":0,"pipCard":0,"pipCardPaint":1,"pipCardReady":1,"pipCardRun":1,"pipEpoch":0,"pipFallback":1,"pipHintArmed":0,"pipHintDone":0,"pipManual":0,"pipReady":0,"pipReturnT":0,"pipTrace":0,"pipeEnabled":0,"pipePeers":1,"pipeStg":0,"pipeVideo":0,"placeViewerHand":1,"planMeasured":1,"platePaintT":0,"postChat":1,"powDials":0,"powNow":0,"prayOn":0,"preferHwVideo":1,"prevRoomE2E":0,"progressStart":1,"progressTick":1,"progressWords":1,"purgeAllFiles":1,"pushLeaf":1,"pwBan":1,"pwBlocked":0,"pwChainFailed":1,"pwEpoch":0,"pwHeldOnTyping":1,"pwProof":0,"pwProvisional":0,"pwSaveWaited":0,"pwSetRoom":1,"qaChatOn":1,"qaList":1,"qaSend":1,"qaShowOk":0,"qaShownId":1,"raisedHandRows":1,"rbCap":0,"rbDrop":1,"rbFmt":1,"rbLength":1,"rbNoun":0,"rbNow":0,"rbStop":1,"rbTitle":1,"rbToggle":1,"rbTracks":1,"reactAlert":0,"reactOpen":0,"reactRateOk":1,"reactRoomState":1,"reactStats":0,"reactorNames":1,"recNoticeTitle":1,"recRoomWord":1,"recSrcDirty":0,"recStructSig":0,"reconcileApp":1,"reconcileMain":1,"refreshAllTiles":1,"rejoinHref":0,"rekeyRoom":1,"relayBusyAt":0,"relayJobs":0,"relayVia":0,"releaseLeaveAsk":1,"renameEditId":0,"renameGuest":1,"renegotiate":1,"room":0,"roomConsentIds":0,"roomDig":1,"roomE2E":0,"roomHeadCount":1,"roomJoinedAt":0,"roomPastSection":0,"roomPw":0,"roomSingOn":0,"rosterIds":0,"rosterNames":0,"rosterRows":1,"rosterTiles":0,"rowFaceDark":0,"rowMates":0,"rowMixTalkAt":0,"runApp":1,"runChoices":1,"runLinkTarget":1,"rung":0,"saveList":1,"saveVcrops":1,"sayState":0,"screenCeilingKbps":1,"screenSharers":0,"screenSteppedUp":0,"screenStream":0,"scriptOnce":0,"seatDark":0,"seatSelfLeased":0,"sendAll":1,"sendAudienceReact":1,"sendAvatarTo":1,"sendFaceFrame":1,"sendVisPark":1,"serviceHeard":0,"sessId":0,"setAutoFsOff":1,"setCapSend":1,"setMod":1,"setPersonalBlur":1,"setStage":1,"setStatus":0,"setTrMode":1,"setView":1,"setVq":1,"setWaitingRoom":1,"sgaAOP":0,"shadeKey":1,"shareBlocked":0,"shareFirewallWords":1,"shareOnlyStage":1,"shareSheetFocusId":1,"shareSheetOpener":0,"sharingScreen":0,"shortCode":0,"shortcutTyping":1,"singOf":0,"slowModeOn":0,"slugRoom":1,"soloCtl":0,"soloShare":0,"someoneRecording":1,"speakingOf":0,"spotlightGuest":1,"stHold":0,"stadFaceIdAt":1,"stageCeilingKbps":1,"stageCell":1,"stageClaimOf":0,"stageFeedAt":0,"stageFeedVideo":1,"stageFps":1,"stageGrantLive":0,"stageHeldAt":0,"stageIds":0,"stageModList":1,"stageNeed":0,"stageSeats":0,"stageSenders":0,"stageVideoChoice":1,"stageViewNow":0,"stageVoteTallies":1,"stallOf":0,"startMesh":1,"stashJoinAv":1,"statusHoldUntil":0,"statusOf":0,"statusRestFull":0,"statusRestShort":0,"statusRestTiny":0,"statusWords":0,"stgBeatCost":0,"stgBeats":0,"stillTimer":0,"stopApp":1,"stopAuxTx":1,"stopRoomApp":1,"storePw":1,"subWant":0,"subsMeetId":0,"subsOn":0,"swapPicHoldAt":0,"swapPicLast":0,"swapPicRing":0,"syncFocus":1,"takeReact":1,"takeTomb":1,"tileBlurWhy":1,"tileWin":0,"timing":0,"toggleBookmark":1,"toggleLine":1,"trBlocks":1,"trDirty":0,"trDrops":0,"trEchoHeld":1,"trEnOn":0,"trEnOnlyEnglish":1,"trForget":1,"trKeeps":1,"trLang":1,"trLangKnown":1,"trLangOf":0,"trMode":1,"trNote":1,"trWrites":1,"trs":0,"turnFacts":0,"turnHeld":1,"turnLinks":0,"turnNote":1,"twCaptionsButton":1,"twIdOf":1,"twPeer":1,"txMarkWhy":1,"uiLang":1,"uiText":1,"uid":0,"unread":0,"updateLeaving":0,"updateMediaSession":1,"updateRoomKey":0,"updateStatus":1,"updateTile":1,"vcrops":0,"viewNote":1,"viewStore":0,"viewWord":1,"viewerCropOf":1,"viewerMayReact":1,"viewerShareUrl":1,"visParkSent":0,"voteMode":0,"vqManual":0,"vqRung":0,"vupDismissedSig":0,"waitAdmitted":0,"waitDeclined":0,"waitQueue":0,"waitingRows":1,"waitingSince":1,"whisperReady":0,"whoAddrLines":1,"whoFaceState":1,"whoFileText":1,"whoObserve":1,"whoRefresh":0,"whoRows":1,"wireModbar":1,"withMentions":1}, needs: {"media":{"adapt":1,"displayCount":1,"stopScreenShare":1,"refreshOutbound":1,"ccMix":0,"ccMixSync":1,"stgStale":1,"stgLost":1,"mosIn":0,"mosFb":0,"resumeReload":1,"recRec":0,"applyCcAll":1,"sdView":0,"blurSized":1,"syncAvatarFeed":1,"wspRebind":1,"stagedSelfWas":0,"refreshTrBtn":1,"headerCount":1,"applyBuses":1,"tileHolds":1,"releaseAudio":1,"playTileVideo":1,"mainAudioTrack":1,"sentVideoTrack":1,"mosJobs":0,"unshipMos":1,"mosAnn":0,"dropMosIn":1,"mosStandby":0,"dropStandby":1,"claimMos":1,"schedReconcile":1,"retireMixTracks":1,"peerAudioTracks":1,"gridApplied":0,"dropEndedRemoteTracks":1,"headLinkUp":1,"recNoteStruct":1,"WEBKIT_TILE":0,"mediaElCensus":1,"shipContainers":0,"prodPack":0,"roomPack":0,"stripPack":0,"l14Packs":0,"quietAtDoor":1,"recStarting":0,"recDraw":0,"recScopeSources":1,"startRec":1,"recDefaultQuality":1,"headSendsStale":1,"setJobActive":1,"compFps":1,"wkQuietBind":1,"reconcileMosaic":1,"onMeetDeviceChange":1,"gumWithMicFallback":1,"camVideoConstraints":1,"applyRecoverMedia":1,"noteAudioDevices":1,"syncSpeech":1,"keepMeetingAudio":1,"maybeShowFlip":1,"attachLocalTracks":1,"gumRefused":1,"clockSample":1,"schedClaim":1,"stgBeatIn":1,"chainDemandUp":1,"parkJobVideo":1,"kfNeed":1,"holdMainVideo":1,"kickMainVideo":1,"shipTracks":1,"kickMainAudio":1,"wkRemoteTrack":1,"endSongOnStepDown":1,"reactSing":1,"armAudioKeepAlive":1,"ccDefGroup":0,"paintTiming":1,"ccEngine":1,"phoneCaptions":1,"WSP_WEAK":0,"wspPaused":0,"wspCaps":0,"whisperSupported":1,"installWhisper":1,"wspSync":1,"speechRunning":1,"stopSpeech":1,"ccMixStop":1,"startWhisper":1,"wspStop":1,"speech":0,"speechProved":0,"stopWhisper":1,"whisperRescan":0,"camIdleT":0,"wakeLock":0,"stopBlurPipe":1,"withScrPipe":1,"mixAc":0,"keepAwake":1,"warnRecorderNewApp":1,"botVoiceTrack":0,"wspResume":1,"kickStageMic":1,"closeCamChooser":1,"blurViewFrac":1,"blurDraw":1,"carryVoiceTrack":0,"dbgMeterSources":1,"pipeJobs":0,"pipeDeny":0,"wkFwdNeeded":1,"wkFwdCopies":0,"packLoop":0,"downStreams":0,"clk":0,"mix":0,"toggleSing":1,"gdOverride":0,"applyGrid":1,"startScreenShare":1,"qaStageSt":0,"stageEar":0,"stageEarLiveTrack":1,"stageEarRawPeak":1,"stageEarFoldPeak":1,"shownPeerCount":1,"facesOnScreen":1,"compOf":0,"blurPipe":0,"heardStage":1,"camTrackForTest":1,"earState":1,"stageAudible":1,"tuneCfg":1,"poke":1,"wsp":0,"wspQ":0,"wspModel":1,"wspEnqueue":1,"wspSource":1,"recMode":0,"recMatchMix":0,"recQuality":0,"recSources":1,"camChooserOpen":1,"trackQ":0,"avatarPipe":0,"ctScreenTrack":1,"stubDuties":1,"soundHeld":1},"view":{"paintVq":1,"paintAirKind":1,"placeDockForWidth":1,"paintOnAirBadge":1,"paintOnAirSide":1,"paintBroadcastRole":1,"paintBroadcastChrome":1,"paintStatusNotice":1,"paintLiveBadge":1,"paintStatusSheet":1,"applyChrome":1,"showAppearCard":1,"paintAssistant":1,"paintControls":1,"setBotView":1,"paintRoomTrust":1,"showHeldScreen":1,"waitPaint":1,"closeMoreForWait":1,"paintWaitDoor":1,"pipReaim":1,"pipCardModel":1,"pipNote":1,"pipSource":1,"docPipPaint":1,"awayFull":1,"enterPip":1,"pipReturn":1,"paintChatGate":1,"paintStage":1,"layout":1,"updateMuteAllBtn":1,"updateBlurAllBtn":1,"updateCamAllBtn":1,"updateShareAllBtn":1,"paintStageMod":1,"paintStageBlurWhy":1,"explainHeldVideo":1,"paintShare":1,"fsRefreshIfOpen":1,"tickAdminClose":1,"updateReload":1,"clearAdminClose":1,"showClosedDialog":1,"fsFitPaint":1,"fsRefresh":1,"paintRaisedHands":1,"phoneLayout":1,"setTileLetter":1,"paintAwayMark":1,"paintTileChrome":1,"paintBlurWhy":1,"paintAvatarImg":1,"paintBroadcastIdent":1,"paintFit":1,"closeFsView":1,"openFsView":1,"ctInit":1,"ctAppInfo":1,"ctPaintAgendaBtn":1,"ctPaintBar":1,"ctPresent":1,"ctAgendaOpen":1,"wakeMeet":1,"comfyStadMeta":1,"comfyStadRoster":1,"twButton":1,"closeTileWin":1,"capSourceOpen":1,"openTileWin":1,"applyViewerCrops":1,"openStageAdjust":1,"placeFit":1,"stageFeedShows":1,"paintStatusAlert":1,"paintPeopleIfOpen":1,"atPwPrompt":1,"paintStatusLine":1,"paintBcQuiet":1,"paintChipBottom":1,"paintInviteSlot":1,"paintAloneCard":1,"paintRoster":1,"releaseHeld":1,"paintWaitingSelf":1,"refreshAvatarSurfaces":1,"turnPaint":1,"pauseNote":1,"wireFsResize":1,"paintTileOnGrid":1,"makeTile":1,"reassertVisLift":1,"renderHandq":1,"paintProgressSteps":1,"paintJoinVeil":1,"lobbyPwOpenRoom":1,"renderFiles":1,"showPwModal":1,"paintBroadcastJoinNote":1,"capPaint":1,"showLoadRefusal":1,"lgLeave":1,"showForkPick":1,"showRelayBusy":1,"applyAdminUi":1,"paintStatusWhy":1,"frozenTileSkip":1,"massBannerTick":1,"islandNoteTick":1,"paintStageVoteTargets":1,"paintBroadcastSeats":1,"showWhoIfOpen":1,"placeHandq":1,"applyRoomHelp":1,"paintStagePlate":1,"replaceAddress":1,"paintShareUrl":1,"paintStreamLink":1,"showShareLink":1,"renderLobbyList":1,"placeDeskName":1,"placeClearLine":1,"paintRoomTitle":1,"tileNote":1,"paintSoloApp":1,"setAppFavicon":1,"showAppMissing":1,"hideAppMissing":1,"paintTabTitle":1,"showAppPane":1,"setAppGif":1,"appRuntimeBoot":1,"paintAppRoomBody":1,"refreshAudioBtn":1,"paintHelpTip":1,"openShareLiveModal":1,"showInviteModal":1,"applyHeaderChoice":1,"appCopyPaint":1,"paintAppGifFromLane":1,"applyRoomAudio":1,"paintCallOn":1,"paintCallBanner":1,"bootMeetSession":1,"showLobby":1,"chatTrace":1,"paintChatBadge":1,"renderTranscript":1,"renderChat":1,"countClosedChat":1,"paintChatCount":1,"takeFaceReact":1,"showCaption":1,"paintTxMark":1,"hideJoinPwModal":1,"paintChatNew":1,"paintQaBand":1,"renderQa":1,"placeQaBand":1,"sgaAppOwner":1,"paintHand":1,"rbCanvas":1,"paintRb":1,"showRecReplay":1,"paintRbNow":1,"paintMyAvatarPreview":1,"capLangAsk":1,"emitLiveTranscript":1,"paintCcLocal":1,"paintTranscriptControls":1,"paintCallState":1,"paintAudienceReacts":1,"armMeetDialogs":1,"wireMediaSession":1,"blurNote":1,"openBlurWhy":1,"showBlurNoteUnlessDialog":1,"inviteLinkForModal":1,"hideDialogs":1,"stopLobbyPreview":1,"showLeftDialog":1,"foldBarForApp":1,"clearAppView":1,"appRuntimeClient":1,"updateAppButtons":1,"paintAppWho":1,"appStageAskClose":1,"appStageAsk":1,"loadScriptOnce":1,"paintBotEyes":1,"newCanvas":1,"paintBotView":1,"bridgeAgentToPage":1,"carryIo":1,"carryEarAc":1,"dbgMeterShow":1,"paintStageStrip":1,"audioDump":1,"viewTestHooks":1}}, stamp: "d49d42da" };
+  var api = { name: "core", run: part, count: 1774, exports: {"AGENT_FORCED":0,"AI_SPARK_SVG":0,"AUDIENCE_REACTS":0,"BC_AT_KEY":0,"BC_INTENT":0,"BROADCAST":0,"CAST_SURFACE":0,"CC_LANGS":0,"CC_LANG_KEY":0,"CC_ON_PHONE":0,"CT":0,"DEBUG_ON":0,"DEL_ICON":0,"DLOG":0,"IS_ANDROID":0,"IS_MOBILE":0,"LADDER":0,"LATE_ASK_MS":0,"MAX_FILE":0,"MEET_HIST":0,"MEET_MARKS":0,"MEET_PATH":0,"MP":0,"MPipe":0,"PIP_CARD_H":0,"PIP_CARD_ROWS":0,"PIP_CARD_W":0,"PW_ADMIN_ONLY":0,"REACTS":0,"RECOVER_MEDIA_KEY":0,"RENAME_RESET":0,"ROOM":0,"RUN_DEFAULTS":0,"SCALE":0,"STAGE_FPS":0,"STAGE_MAXW":0,"STG_BEAT_MS":0,"STG_BEAT_SEEN":0,"STG_BEAT_STALE_MS":0,"STG_VP_MAX":0,"TIMING_KEY":0,"UPDATE_RESUME_KEY":0,"VMODE":0,"WHO_GROUPS":0,"WK_H264_BLIND":0,"ac":0,"actingHead":1,"addAux":0,"addTranscriptLine":1,"admDeadline":0,"admGraceT":0,"admKey":0,"admSigned":1,"admStoreKey":0,"admTickT":0,"adminFace":0,"admins":0,"adminsNow":0,"admitGuest":1,"adoptAdmKey":1,"agentChat":1,"agentCore":0,"agentHand":1,"agentStart":1,"aiNotesSetting":1,"allGuestsBlocked":1,"allGuestsCamOff":1,"allGuestsMuted":1,"aloneCardShut":0,"amAdmin":0,"amGloballyMuted":1,"appClientCtl":0,"appClientStop":0,"appCopy":0,"appEv":0,"appHiddenSid":0,"appHostCtl":0,"appKey":0,"appLeadOn":0,"appLeadSet":0,"appLeadable":0,"appMode":0,"appPaneName":0,"appPaneOn":0,"appRoomOn":0,"appStageApply":1,"appStageConsent":0,"appStagePlan":1,"applyAvatarFile":1,"applyBcAct":1,"applyCdel":1,"applyOwnDelete":1,"applyPageHeader":1,"applyRaiseAct":1,"applyViewerCrop":1,"armAppRoomTick":0,"armCopiedLabel":1,"audienceReactCounts":0,"autoFsOff":0,"auxDrop":1,"auxSenders":0,"av":0,"avatarChip":1,"backGuardDrop":1,"backToNormalView":1,"backWatch":0,"bannedOut":0,"barKind":1,"barPlan":1,"battNow":0,"bcActButtons":1,"bcEndedInRoom":1,"bcHostStored":0,"bcKeepUserStop":0,"bcLastService":0,"bcMayPublishAv":1,"bcOnAir":1,"bcPreInRoom":1,"bcRole":1,"bcSeeding":0,"bcStartAt":1,"bcWatchingViewer":1,"bcWhenWords":1,"becomeAssistant":1,"blurHold":1,"blurLevel":0,"blurLevelFor":1,"blurOffer":1,"blurWhyWords":1,"bootGumPending":0,"botHidden":1,"botParks":1,"botViewOn":0,"botViewWant":0,"broadcastStatus":1,"callOn":0,"camOnWords":1,"camPeer":0,"canIRunApp":0,"canStage":0,"capBusy":0,"capClone":1,"capClosed":0,"capCovered":1,"capEarsOnly":1,"capLang":0,"capLangMine":1,"capLangName":1,"capLangTag":1,"capName":1,"capNowNote":1,"capOn":0,"capPick":1,"capPublish":1,"capRows":1,"capSend":1,"capSpotQueue":1,"capTraceGate":1,"capTrust":0,"capTry":1,"carryG":0,"carryHosts":0,"carryOutAc":0,"castVote":1,"ccDevNotice":1,"ccLang":0,"ccLangLabel":0,"ccLocal":0,"ccLocalBlocked":1,"ccLocalQ":0,"ccMB":0,"ccShow":0,"chat":0,"chatLinksOn":0,"chatOffInfo":0,"chatOpen":0,"chatPeople":1,"chatReacts":0,"chatTombs":0,"chatWhen":1,"clearPipAuto":1,"clearRosterTiles":1,"clog":0,"closeRoomNoHost":1,"contentHas":1,"createAdminRoom":1,"ctAgCtx":1,"ctAgHidden":1,"ctAgendaHide":1,"ctAgendaOver":1,"ctAgendaPublish":1,"ctAgendaShortTime":1,"ctAgendaTickArm":1,"ctAgendaWhoText":1,"ctAspect":1,"ctBring":1,"ctCanEditAgenda":1,"ctFocusSources":1,"ctLabel":1,"ctNote":1,"ctPaintAgendaClock":1,"ctRefresh":1,"ctSelect":1,"ctSpeakerPick":1,"ctText":1,"ctTurnPaint":1,"currentAppCredits":1,"currentAppHelpMd":1,"dbgMeterPanel":0,"dcSend":0,"deepInView":1,"deriveAdminKey":1,"devOf":0,"digLists":0,"digStageEntry":0,"digestMode":0,"displayName":1,"dlogOut":0,"dlogRec":0,"dlogRecStart":1,"dlogStoreGet":1,"docPip":0,"docPipAim":1,"dockCalmMs":0,"dockLabelSet":1,"dropPeer":1,"enforceBroadcastSeat":1,"ensureAc":1,"esc":0,"faceDrawnHere":1,"faceReactRx":0,"faceReacts":0,"fetchGifFromUrl":1,"files":0,"findSharedApp":1,"fitFor":0,"focusId":0,"focusOf":1,"foldName":1,"forcedCamOff":0,"freshSt":0,"frozeGap":0,"frozeThisBeat":1,"fsAutoKey":0,"fsAutoPid":0,"fsBlurClass":1,"fsCropBox":1,"fsFarCells":1,"fsFarTalkers":1,"fsFeedLive":1,"fsFollow":0,"fsFollowChanged":1,"fsFollowT":0,"fsInline":0,"fsOpen":0,"fsPickAuto":1,"fsSel":0,"fsTick":0,"fsZoomBox":0,"fsZoomIds":0,"grantHoldUntil":0,"guestsMayReact":0,"guestsMayShare":1,"handQueue":1,"handTotal":1,"hasAdminRoom":0,"hasPendingTx":0,"hbLastAt":0,"hbLastMono":0,"heldNoteSeen":1,"hideBotsOn":0,"hideBotsT":0,"holdDoor":0,"holdLeaveAsk":1,"homeHref":1,"hostRename":1,"hostSpot":1,"hostWords":1,"iAmWaiting":1,"idleDock":1,"idleNow":0,"importGif":1,"inMeetingNow":1,"inboundPlan":1,"installRunApp":1,"inviteFromSolo":1,"isCastEntry":1,"isHeld":1,"isPipePeer":0,"isRedun":0,"isStageJob":0,"islandApart":1,"joinAv":0,"kfAsker":0,"knownTotal":1,"labelFor":0,"lastActive":0,"lastQ":0,"lateAsk":0,"lateGen":0,"lateJoinerSeesHistory":0,"lateTimer":0,"lateWant":0,"lateWon":0,"learnFoldedNames":1,"leaveMeeting":1,"leaveSeededService":1,"leaving":0,"leftDialogUp":1,"lineOpen":0,"linkRowHtml":1,"linksAllowed":1,"liveInCall":1,"loadList":1,"lobRow":1,"lobbyPw":0,"lobbyPwHandOver":1,"localBlurPower":1,"localStream":0,"logNearBottom":1,"lowSenders":0,"lsGet":0,"lsSet":0,"mainVideoChoice":1,"markHeldNote":1,"mayHost":1,"mayPinFiles":1,"mayShareScreen":0,"meOnStage":1,"meTile":0,"mediaAskPending":0,"mediaJoined":0,"mediaOk":0,"meetWait":0,"mentionToken":1,"meshCoord":0,"meshNode":0,"meshSeat":0,"messageMentionsMe":1,"meterFor":1,"meters":0,"micGrabbing":0,"micLockWords":1,"micMode":0,"micPeer":0,"micPickPrev":0,"micUnmuteAfter":0,"micWant":0,"mintHostKey":1,"mirrorRoomState":1,"modBlurOn":0,"modOf":1,"modStarOn":1,"modTable":0,"modalDismissBtn":1,"modalFocusables":1,"myDevHash":0,"myId":0,"myIdentity":0,"myIdentitySeed":0,"myName":0,"myStageVotes":0,"myStatus":0,"myUpVoteSig":0,"myVoiceAt":0,"myVoiceFrom":0,"myVoiceSinceFinal":0,"nameInitial":1,"net":0,"newMeetAudioContext":1,"newNeg":0,"occPid":0,"onStageNow":1,"outboundPlan":1,"outgoingHeld":0,"owedStream":1,"paintBroadcastAir":1,"paintLog":1,"paintModbarButtons":1,"paintOnAir":1,"paintRosterSoon":1,"params":0,"parseMeetInput":1,"participantCount":1,"peerAway":0,"peerWaits":1,"peers":0,"personOnStage":1,"pipAutoT":0,"pipByBrowser":0,"pipCard":0,"pipCardPaint":1,"pipCardReady":1,"pipCardRun":1,"pipFallback":1,"pipeEnabled":0,"pipePeers":1,"pipeStg":0,"pipeVideo":0,"placeViewerHand":1,"planMeasured":1,"postChat":1,"powDials":0,"powNow":0,"prayOn":0,"preferHwVideo":1,"prevRoomE2E":0,"progressStart":1,"progressTick":1,"progressWords":1,"purgeAllFiles":1,"pushLeaf":1,"pwBan":1,"pwBlocked":0,"pwChainFailed":1,"pwEpoch":0,"pwHeldOnTyping":1,"pwProof":0,"pwProvisional":0,"pwSetRoom":1,"qaChatOn":1,"qaList":1,"qaSend":1,"qaShowOk":0,"qaShownId":1,"raisedHandRows":1,"rbCap":0,"rbDrop":1,"rbFmt":1,"rbLength":1,"rbNoun":0,"rbNow":0,"rbStop":1,"rbTitle":1,"rbToggle":1,"rbTracks":1,"reactAlert":0,"reactOpen":0,"reactRateOk":1,"reactRoomState":1,"reactStats":0,"reactorNames":1,"recNoticeTitle":1,"recRoomWord":1,"recSrcDirty":0,"recStructSig":0,"reconcileApp":1,"reconcileMain":1,"refreshAllTiles":1,"rejoinHref":0,"rekeyRoom":1,"relayBusyAt":0,"relayJobs":0,"relayVia":0,"releaseLeaveAsk":1,"renameGuest":1,"renegotiate":1,"room":0,"roomConsentIds":0,"roomDig":1,"roomE2E":0,"roomHeadCount":1,"roomJoinedAt":0,"roomKey":0,"roomPastSection":0,"roomPw":0,"roomSingOn":0,"rosterIds":0,"rosterNames":0,"rosterRows":1,"rosterTiles":0,"rowFaceDark":0,"rowMates":0,"rowMixTalkAt":0,"runApp":1,"runChoices":1,"runLinkTarget":1,"rung":0,"saveList":1,"saveVcrops":1,"sayState":0,"screenCeilingKbps":1,"screenSharers":0,"screenSteppedUp":0,"screenStream":0,"seatDark":0,"seatSelfLeased":0,"sendAll":1,"sendAudienceReact":1,"sendAvatarTo":1,"sendFaceFrame":1,"sendVisPark":1,"serviceHeard":0,"sessId":0,"setAutoFsOff":1,"setCapSend":1,"setMod":1,"setPersonalBlur":1,"setStage":1,"setStatus":0,"setTrMode":1,"setView":1,"setVq":1,"setWaitingRoom":1,"shadeKey":1,"shareBlocked":0,"shareFirewallWords":1,"shareOnlyStage":1,"shareSheetFocusId":1,"sharingScreen":0,"shortCode":0,"shortcutTyping":1,"singOf":0,"slowModeOn":0,"slugRoom":1,"soloCtl":0,"soloShare":0,"someoneRecording":1,"speakingOf":0,"spotlightGuest":1,"stHold":0,"stadFaceIdAt":1,"stageCeilingKbps":1,"stageCell":1,"stageClaimOf":0,"stageFeedAt":0,"stageFeedVideo":1,"stageFps":1,"stageGrantLive":0,"stageHeldAt":0,"stageIds":0,"stageModList":1,"stageNeed":0,"stageSeats":0,"stageSenders":0,"stageVideoChoice":1,"stageViewNow":0,"stageVoteTallies":1,"startMesh":1,"stashJoinAv":1,"statusHoldUntil":0,"statusOf":0,"statusWords":0,"stgBeatCost":0,"stgBeats":0,"stopApp":1,"stopAuxTx":1,"stopRoomApp":1,"storePw":1,"subWant":0,"subsMeetId":0,"subsOn":0,"swapPicHoldAt":0,"swapPicLast":0,"swapPicRing":0,"syncFocus":1,"takeReact":1,"takeTomb":1,"tileBlurWhy":1,"tileWin":0,"timing":0,"toggleBookmark":1,"toggleLine":1,"trBlocks":1,"trDirty":0,"trDrops":0,"trEchoHeld":1,"trEnOn":0,"trEnOnlyEnglish":1,"trForget":1,"trKeeps":1,"trLang":1,"trLangKnown":1,"trLangOf":0,"trMode":1,"trNote":1,"trWrites":1,"trs":0,"turnFacts":0,"turnHeld":1,"turnLinks":0,"turnNote":1,"twCaptionsButton":1,"twIdOf":1,"twPeer":1,"txMarkWhy":1,"uiLang":1,"uiText":1,"uid":0,"unread":0,"updateLeaving":0,"updateMediaSession":1,"updateRoomKey":0,"updateStatus":1,"updateTile":1,"vcrops":0,"viewNote":1,"viewStore":0,"viewWord":1,"viewerCropOf":1,"viewerMayReact":1,"viewerShareUrl":1,"visParkSent":0,"voteMode":0,"vqManual":0,"vqRung":0,"vupDismissedSig":0,"waitAdmitted":0,"waitDeclined":0,"waitQueue":0,"waitingRows":1,"waitingSince":1,"whisperReady":0,"whoAddrLines":1,"whoFaceState":1,"whoFileText":1,"whoObserve":1,"whoRefresh":0,"whoRows":1,"wireModbar":1,"withMentions":1}, needs: {"media":{"adapt":1,"displayCount":1,"stopScreenShare":1,"refreshOutbound":1,"ccMix":0,"ccMixSync":1,"stgStale":1,"stgLost":1,"mosIn":0,"mosFb":0,"resumeReload":1,"recRec":0,"applyCcAll":1,"sdView":0,"blurSized":1,"syncAvatarFeed":1,"wspRebind":1,"stagedSelfWas":0,"refreshTrBtn":1,"headerCount":1,"applyBuses":1,"tileHolds":1,"releaseAudio":1,"playTileVideo":1,"mainAudioTrack":1,"sentVideoTrack":1,"mosJobs":0,"unshipMos":1,"mosAnn":0,"dropMosIn":1,"mosStandby":0,"dropStandby":1,"claimMos":1,"schedReconcile":1,"retireMixTracks":1,"peerAudioTracks":1,"gridApplied":0,"dropEndedRemoteTracks":1,"headLinkUp":1,"recNoteStruct":1,"WEBKIT_TILE":0,"mediaElCensus":1,"shipContainers":0,"prodPack":0,"roomPack":0,"stripPack":0,"l14Packs":0,"quietAtDoor":1,"recStarting":0,"recDraw":0,"recScopeSources":1,"startRec":1,"recDefaultQuality":1,"headSendsStale":1,"setJobActive":1,"compFps":1,"wkQuietBind":1,"reconcileMosaic":1,"onMeetDeviceChange":1,"gumWithMicFallback":1,"camVideoConstraints":1,"applyRecoverMedia":1,"noteAudioDevices":1,"syncSpeech":1,"keepMeetingAudio":1,"maybeShowFlip":1,"attachLocalTracks":1,"gumRefused":1,"clockSample":1,"schedClaim":1,"stgBeatIn":1,"chainDemandUp":1,"parkJobVideo":1,"kfNeed":1,"holdMainVideo":1,"kickMainVideo":1,"shipTracks":1,"kickMainAudio":1,"wkRemoteTrack":1,"endSongOnStepDown":1,"reactSing":1,"armAudioKeepAlive":1,"ccDefGroup":0,"paintTiming":1,"ccEngine":1,"phoneCaptions":1,"WSP_WEAK":0,"wspPaused":0,"wspCaps":0,"whisperSupported":1,"installWhisper":1,"wspSync":1,"speechRunning":1,"stopSpeech":1,"ccMixStop":1,"startWhisper":1,"wspStop":1,"speech":0,"speechProved":0,"stopWhisper":1,"whisperRescan":0,"camIdleT":0,"wakeLock":0,"stopBlurPipe":1,"withScrPipe":1,"mixAc":0,"keepAwake":1,"warnRecorderNewApp":1,"botVoiceTrack":0,"wspResume":1,"kickStageMic":1,"closeCamChooser":1,"blurViewFrac":1,"blurDraw":1,"carryVoiceTrack":0,"dbgMeterSources":1,"pipeJobs":0,"pipeDeny":0,"wkFwdNeeded":1,"wkFwdCopies":0,"packLoop":0,"downStreams":0,"clk":0,"mix":0,"toggleSing":1,"gdOverride":0,"applyGrid":1,"startScreenShare":1,"qaStageSt":0,"stageEar":0,"stageEarLiveTrack":1,"stageEarRawPeak":1,"stageEarFoldPeak":1,"shownPeerCount":1,"facesOnScreen":1,"compOf":0,"blurPipe":0,"heardStage":1,"camTrackForTest":1,"earState":1,"stageAudible":1,"tuneCfg":1,"poke":1,"wsp":0,"wspQ":0,"wspModel":1,"wspEnqueue":1,"wspSource":1,"recMode":0,"recMatchMix":0,"recQuality":0,"recSources":1,"camChooserOpen":1,"trackQ":0,"avatarPipe":0,"ctScreenTrack":1,"stubDuties":1,"soundHeld":1},"view":{"paintVq":1,"paintAirKind":1,"placeDockForWidth":1,"paintOnAirBadge":1,"paintOnAirSide":1,"paintBroadcastRole":1,"paintBroadcastChrome":1,"paintStatusNotice":1,"paintLiveBadge":1,"paintStatusSheet":1,"applyChrome":1,"showAppearCard":1,"paintAssistant":1,"paintControls":1,"setBotView":1,"paintRoomTrust":1,"showHeldScreen":1,"waitPaint":1,"closeMoreForWait":1,"paintWaitDoor":1,"pipReaim":1,"pipCardModel":1,"pipNote":1,"pipSource":1,"docPipPaint":1,"awayFull":1,"enterPip":1,"pipReturn":1,"paintChatGate":1,"paintStage":1,"layout":1,"updateMuteAllBtn":1,"updateBlurAllBtn":1,"updateCamAllBtn":1,"updateShareAllBtn":1,"paintStageMod":1,"paintStageBlurWhy":1,"explainHeldVideo":1,"paintShare":1,"fsRefreshIfOpen":1,"tickAdminClose":1,"updateReload":1,"clearAdminClose":1,"showClosedDialog":1,"fsFitPaint":1,"fsRefresh":1,"paintRaisedHands":1,"phoneLayout":1,"setTileLetter":1,"paintAwayMark":1,"paintTileChrome":1,"paintBlurWhy":1,"paintAvatarImg":1,"paintBroadcastIdent":1,"paintFit":1,"closeFsView":1,"openFsView":1,"ctInit":1,"ctAppInfo":1,"ctPaintAgendaBtn":1,"ctPaintBar":1,"ctPresent":1,"ctAgendaOpen":1,"wakeMeet":1,"comfyStadMeta":1,"comfyStadRoster":1,"twButton":1,"closeTileWin":1,"capSourceOpen":1,"openTileWin":1,"applyViewerCrops":1,"openStageAdjust":1,"placeFit":1,"stageFeedShows":1,"paintStatusAlert":1,"paintPeopleIfOpen":1,"atPwPrompt":1,"paintStatusLine":1,"paintBcQuiet":1,"paintChipBottom":1,"paintInviteSlot":1,"paintAloneCard":1,"paintRoster":1,"releaseHeld":1,"paintWaitingSelf":1,"refreshAvatarSurfaces":1,"turnPaint":1,"pauseNote":1,"wireFsResize":1,"paintTileOnGrid":1,"makeTile":1,"reassertVisLift":1,"renderHandq":1,"paintProgressSteps":1,"paintJoinVeil":1,"lobbyPwOpenRoom":1,"renderFiles":1,"showPwModal":1,"paintBroadcastJoinNote":1,"capPaint":1,"showLoadRefusal":1,"lgLeave":1,"showForkPick":1,"showRelayBusy":1,"applyAdminUi":1,"paintStatusWhy":1,"frozenTileSkip":1,"massBannerTick":1,"islandNoteTick":1,"paintStageVoteTargets":1,"paintBroadcastSeats":1,"showWhoIfOpen":1,"placeHandq":1,"applyRoomHelp":1,"paintStagePlate":1,"replaceAddress":1,"paintShareUrl":1,"paintStreamLink":1,"showShareLink":1,"renderLobbyList":1,"placeDeskName":1,"placeClearLine":1,"paintRoomTitle":1,"tileNote":1,"paintSoloApp":1,"setAppFavicon":1,"showAppMissing":1,"hideAppMissing":1,"paintTabTitle":1,"showAppPane":1,"setAppGif":1,"appRuntimeBoot":1,"paintAppRoomBody":1,"refreshAudioBtn":1,"paintHelpTip":1,"openShareLiveModal":1,"showInviteModal":1,"applyHeaderChoice":1,"appCopyPaint":1,"paintAppGifFromLane":1,"applyRoomAudio":1,"paintCallOn":1,"paintCallBanner":1,"bootMeetSession":1,"showLobby":1,"chatTrace":1,"paintChatBadge":1,"renderTranscript":1,"renderChat":1,"countClosedChat":1,"paintChatCount":1,"takeFaceReact":1,"showCaption":1,"paintTxMark":1,"hideJoinPwModal":1,"paintChatNew":1,"paintQaBand":1,"renderQa":1,"placeQaBand":1,"sgaAppOwner":1,"paintHand":1,"rbCanvas":1,"paintRb":1,"showRecReplay":1,"paintRbNow":1,"paintMyAvatarPreview":1,"capLangAsk":1,"emitLiveTranscript":1,"paintCcLocal":1,"paintTranscriptControls":1,"paintCallState":1,"paintAudienceReacts":1,"armMeetDialogs":1,"wireMediaSession":1,"blurNote":1,"openBlurWhy":1,"showBlurNoteUnlessDialog":1,"inviteLinkForModal":1,"hideDialogs":1,"stopLobbyPreview":1,"showLeftDialog":1,"foldBarForApp":1,"clearAppView":1,"appRuntimeClient":1,"updateAppButtons":1,"paintAppWho":1,"appStageAskClose":1,"appStageAsk":1,"loadScriptOnce":1,"paintBotEyes":1,"newCanvas":1,"paintBotView":1,"bridgeAgentToPage":1,"carryIo":1,"carryEarAc":1,"dbgMeterShow":1,"paintStageStrip":1,"audioDump":1,"viewTestHooks":1}}, stamp: "d49d42da" };
   (GifOS.coreParts = GifOS.coreParts || {})["core"] = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
