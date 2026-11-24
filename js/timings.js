@@ -148,6 +148,7 @@
     PIP_AUTO_FALLBACK_MS: 2000,   // ms
     PIP_CARD_FPS: 2,   // count
     PIP_CARD_READY_MS: 1500,   // ms
+    PIP_LENS_FPS: 15,   // count
     PIP_RETURN_WAIT_MS: 432,   // ms
     POOL_CLAIM_MS: 9000,   // ms
     POOL_SETTLE_MS: 300,   // ms
