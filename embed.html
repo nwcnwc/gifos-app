@@ -51,6 +51,10 @@
   <input id="emb-pw" type="password" maxlength="64" placeholder="Password" autocomplete="off" aria-label="Room password">
   <div class="emb-card-row"><button type="submit" id="emb-pw-go">Watch</button><button type="button" id="emb-pw-later">Not now</button></div>
 </form>
+<!-- THE MEDIA PLANE'S OWN ELEMENTS. js/core/media/plane-browser.js still reads these meeting-page ids directly
+     (it wires their buttons at load). A player has none of them: inert, hidden, never focusable. Until the media
+     part reads them through the view (the thin-host to-do), gifos page-guards frame-guard keeps this list whole. -->
+<div id="media-stubs" hidden inert aria-hidden="true"><div id="appfull"></div><div id="appmount"></div><div id="barrec"></div><button id="bartoggle" type="button"></button><div id="camchooser"></div><div id="camdevs"></div><div id="ccall"></div><button id="ccbtn" type="button"></button><div id="ccwhisper-prog"></div><input id="chat-in" type="text"><button id="chatbtn" type="button"></button><input id="chatfind" type="text"><div id="chatlog"></div><div id="keys-list"></div><div id="micchooser"></div><div id="mixlab-stadium"></div><div id="paneltitle"></div><button id="reactbtn" type="button"></button><div id="reacttray"></div><div id="rec-warn"></div><button id="sharebtn" type="button"></button><button id="spkbtn" type="button"></button><button id="trbtn" type="button"></button><button id="trtab" type="button"></button><div id="trwrap"></div></div>
 <!-- THE SAME SIGNED CORE as the meeting page (js/core/files.json "core", then "media"),
      and this page's own view part (js/core/view/embed.js) in place of the meeting's view. -->
 <script src="js/gifos-store.js" defer></script>
