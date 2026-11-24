@@ -451,7 +451,7 @@
     while (Date.now() < until) {
       await new Promise((r) => setTimeout(r, POLL_MS));
       let st = null; try { st = await refresh(); } catch (e) {}
-      if (st && st.licenseJson) { shut(popup); rejoin(true); return st; }
+      if (st && st.licenseJson) { rejoin(true); return st; }
       if (st && st.status && st.status !== 'APPROVAL_PENDING' && st.status !== 'APPROVED') return st;
     }
     return readState();
@@ -559,9 +559,6 @@
     if (meet) passJoin(meet.room, true, true);   // a new pass (or one stacked on the window): the meeting this page is in takes it now
     return j;
   }
-  // The PayPal window this page opened is closed by this page once the payment is confirmed: its last page is only a
-  // thank-you, and a person should never have to find and close it by hand.
-  function shut(w) { try { if (w && !w.closed) w.close(); } catch (e) {} }
   // Buy: a PayPal order for $1, approved in PayPal's window, then claimed.
   async function buyPass(say) {
     say = say || (() => {});
@@ -579,7 +576,7 @@
     while (Date.now() < until) {
       await new Promise((r) => setTimeout(r, POLL_MS));
       const r = await claimPass(j.id).catch(() => null);
-      if (r && r.passJson) { shut(popup); return r; }
+      if (r && r.passJson) return r;
       if (r && r.refused) return null;
     }
     return null;
