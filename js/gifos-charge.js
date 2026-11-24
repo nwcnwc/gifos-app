@@ -373,6 +373,43 @@
     get fednow() { return tr('charge.paidBy.fednow', 'by bank transfer (FedNow)'); },
     get mpp() { return tr('charge.paidBy.mpp', 'by card, through an AI agent (Stripe Link)'); },
   };
+  // ---- a receipt's transactions, leg by leg ----------------------------------
+  // receiptLegs(receipt, feeAddress) -> { kind, network, legs: [{ role, amount, tx }] }
+  //   kind 'chain'  : USDC on chain (x402, transfer); each leg is checkable on
+  //                   that chain's explorer (gifos-base-net.js txUrl).
+  //   kind 'paypal' : the PayPal capture and order ids; no public explorer.
+  //   kind 'other'  : ids shown as they are (FedNow, an AI agent's payment).
+  // role: 'creator' | 'fee' | 'tx' (unmatched: shown as Transaction k).
+  // The legs come from the receipt's OWN data: a receipt that names its
+  // legs (legs: [{role, tx, amount}]) is read as written. One that has only
+  // the Worker's "creatorTx,feeTx" string (pay/src/core.js settle: txs[i]
+  // is leg i, author first) is matched by the 97/3 rule against its amount
+  // and payee; a string that does not fit the rule stays unlabeled.
+  const RECEIPT_FEE_BPS = 300n;
+  const isTxHash = (h) => /^0x[0-9a-fA-F]{64}$/.test(String(h || ''));
+  function receiptLegs(receipt, feeAddress) {
+    const r = receipt || {};
+    const ids = String(r.tx == null ? '' : r.tx).split(',').map((x) => x.trim()).filter(Boolean);
+    if (r.rail === 'paypal') {
+      const legs = ids.map((tx) => ({ role: 'tx', amount: null, tx }));
+      if (r.orderId && ids.indexOf(String(r.orderId)) < 0) legs.push({ role: 'order', amount: null, tx: String(r.orderId) });
+      return { kind: 'paypal', network: null, legs };
+    }
+    if (r.rail !== 'x402' && r.rail !== 'transfer') return { kind: 'other', network: null, legs: ids.map((tx) => ({ role: 'tx', amount: null, tx })) };
+    const network = typeof r.network === 'string' ? r.network : null;
+    if (Array.isArray(r.legs) && r.legs.length && r.legs.every((l) => l && isTxHash(l.tx))) {
+      return { kind: 'chain', network, legs: r.legs.map((l) => ({ role: l.role === 'creator' || l.role === 'fee' ? l.role : 'tx', amount: /^[0-9]+$/.test(String(l.amount)) ? String(l.amount) : null, tx: l.tx })) };
+    }
+    const plain = { kind: 'chain', network, legs: ids.map((tx) => ({ role: 'tx', amount: null, tx })) };
+    if (!ids.every(isTxHash) || !/^[0-9]+$/.test(String(r.amount || ''))) return plain;
+    const amount = BigInt(r.amount);
+    const toFee = !!feeAddress && String(r.payee || '').toLowerCase() === String(feeAddress).toLowerCase();
+    const fee = r.rail === 'transfer' || r.feeCollected === false || toFee ? 0n : (amount * RECEIPT_FEE_BPS) / 10000n;
+    if (fee === 0n && ids.length === 1) return { kind: 'chain', network, legs: [{ role: 'creator', amount: String(amount), tx: ids[0] }] };
+    if (fee > 0n && ids.length === 2) return { kind: 'chain', network, legs: [{ role: 'creator', amount: String(amount - fee), tx: ids[0] }, { role: 'fee', amount: String(fee), tx: ids[1] }] };
+    return plain;
+  }
+
   function receiptViewerHtml(receipt, opts) {
     const row = (k, v) => '<div class="r"><span>' + escHtml(k) + '</span><b>' + escHtml(v) + '</b></div>';
     return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
@@ -422,7 +459,7 @@
   GifOS.charge = {
     CHAIN, CHAIN_NAME, DECLINED, PAID_BY,
     RAILS, railsAllowed, pricesOf, priceFor,
-    payeeOf, signedPayTo, assertSignedPayTo, paypalPayeeOf, eligibility, validateRequest, sheet, receipt, receiptFile,
+    payeeOf, signedPayTo, assertSignedPayTo, paypalPayeeOf, eligibility, validateRequest, sheet, receipt, receiptFile, receiptLegs,
     SUPPORT_EMAIL, paymentSupportText, paymentSupportHtml,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

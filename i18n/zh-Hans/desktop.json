@@ -195,5 +195,6 @@
  "desktop.bar.add": "＋ 添加",
  "desktop.arrange.title": "正在整理图标",
  "desktop.arrange.hint": "— 可将它们拖到任意位置",
- "desktop.arrange.done": "完成"
+ "desktop.arrange.done": "完成",
+ "desktop.badge.receiptTip": "收据：打开可查看购买及其签名凭证。"
 }

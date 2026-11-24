@@ -2,6 +2,21 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.18",
+      "date": "2026-11-23",
+      "headline": "Clearer payments and receipts",
+      "critical": false,
+      "features": [
+        "Paying with USDC now says up front that your wallet asks for two approvals: the GifOS fee first, then the creator.",
+        "Receipts open in their own receipt view, with a link to check each payment on the blockchain explorer, or to your PayPal activity.",
+        "Your GifOS Meet subscriptions are kept as receipts in Purchases."
+      ],
+      "fixes": [
+        "Broadcast: no extra red band under the top banner, and the on-air chip shows one dot.",
+        "Terms: updated content rules and the plan meeting count."
+      ]
+    },
+    {
       "version": "0.9.28.17",
       "date": "2026-11-23",
       "headline": "Tidier meeting code underneath",

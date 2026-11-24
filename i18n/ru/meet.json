@@ -1201,5 +1201,6 @@
  "meet.capNowMine": "Показано то, что слышит это устройство.",
  "meet.capNowTheirs": "Показаны субтитры участника {name}.",
  "meet.capFlag": "Эти субтитры неверны",
- "meet.capSrcTitle": "Субтитры участника {name}"
+ "meet.capSrcTitle": "Субтитры участника {name}",
+ "meet.subReceiptName": "Чек — подписка GifOS Meet"
 }

@@ -195,5 +195,6 @@
  "desktop.bar.add": "＋ Añadir",
  "desktop.arrange.title": "Organizando iconos",
  "desktop.arrange.hint": "— arrástralos donde quieras",
- "desktop.arrange.done": "Hecho"
+ "desktop.arrange.done": "Hecho",
+ "desktop.badge.receiptTip": "Recibo: ábrelo para ver la compra y su prueba firmada."
 }
