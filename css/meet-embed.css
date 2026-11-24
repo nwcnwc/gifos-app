@@ -55,3 +55,43 @@ body.emb-unhosted #stagefeed { visibility: hidden; }   /* not hosted right now: 
   #embedui .emb-bar { padding: 22px 6px 6px; gap: 6px; }
   #embedui .emb-btn { padding: 5px 8px; font-size: 13px; }
 }
+
+/* SHARES: tabs, the selected share fills the player, and the Stage floats in one squarish inset. No share: the Stage fills. */
+.emb-share { display: none; position: fixed; inset: 0; background: #111; z-index: 1; }
+body.emb-has-share .emb-share { display: block; }
+.emb-share video { width: 100%; height: 100%; object-fit: contain; display: block; }
+.emb-share-box { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 24px 60px;
+  color: #eceef8; font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; text-align: center; box-sizing: border-box; overflow: auto; }
+.emb-share-box h4 { margin: 0 0 8px; font-size: 17px; }
+.emb-share-box ol { margin: 0; padding-left: 1.4em; text-align: left; max-width: 520px; }
+.emb-share-box li { margin: 4px 0; }
+.emb-share-box li span { opacity: .65; font-size: 13px; }
+.emb-inset-min { display: none; }
+#stagefeed .rlabel { display: none; }
+body.emb-has-share #stagefeed { inset: auto; width: clamp(96px, 30vmin, 260px); aspect-ratio: 1 / 1; z-index: 2; border-radius: 8px; overflow: hidden;
+  box-shadow: 0 4px 22px rgba(0,0,0,.55); cursor: grab; touch-action: none; transition: left .25s, top .25s; }
+body.emb-has-share.emb-dragging #stagefeed { transition: none; cursor: grabbing; }
+body.emb-has-share[data-inset="br"] #stagefeed { right: 12px; bottom: 56px; }
+body.emb-has-share[data-inset="bl"] #stagefeed { left: 12px; bottom: 56px; }
+body.emb-has-share[data-inset="tr"] #stagefeed { right: 12px; top: 88px; }
+body.emb-has-share[data-inset="tl"] #stagefeed { left: 12px; top: 88px; }
+body.emb-has-share .emb-inset-min { display: block; position: absolute; top: 6px; right: 6px; z-index: 3; min-width: 28px; height: 28px; border: 0; border-radius: 14px;
+  background: rgba(0,0,0,.6); color: #fff; font: 600 14px/1 system-ui, sans-serif; cursor: pointer; padding: 0 8px; }
+body.emb-has-share.emb-inset-min #stagefeed { width: auto; height: auto; aspect-ratio: auto; background: transparent; box-shadow: none; overflow: visible; }
+body.emb-has-share.emb-inset-min #stagefeed .rowtile { display: none; }
+body.emb-has-share.emb-inset-min .emb-inset-min { position: static; height: 32px; padding: 0 14px; background: rgba(214,40,48,.92); }
+.emb-tabbar { position: fixed; top: 44px; left: 0; right: 0; z-index: 9001; display: flex; justify-content: center; padding: 0 10px; pointer-events: none; }
+.emb-tabs { display: flex; gap: 4px; padding: 3px; border-radius: 8px; background: rgba(0,0,0,.55); pointer-events: auto; max-width: 100%; overflow-x: auto; }
+.emb-tab { border: 0; border-radius: 6px; padding: 5px 12px; background: transparent; color: #dfe2f2; cursor: pointer; white-space: nowrap;
+  font: 500 13px/1.2 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.emb-tab[aria-selected="true"] { background: rgba(255,255,255,.22); color: #fff; }
+.emb-tabmenu { display: none; pointer-events: auto; max-width: 70vw; padding: 5px 8px; border-radius: 6px; border: 0; background: rgba(0,0,0,.65); color: #fff;
+  font: 500 13px system-ui, sans-serif; }
+@media (max-width: 480px) {
+  .emb-tabs { display: none; }
+  .emb-tabmenu { display: block; }
+  .emb-tabbar { top: 38px; justify-content: flex-end; }
+  body.emb-has-share #stagefeed { width: clamp(84px, 32vmin, 160px); }
+  body.emb-has-share[data-inset="tr"] #stagefeed, body.emb-has-share[data-inset="tl"] #stagefeed { top: 76px; }
+  body.emb-has-share[data-inset="br"] #stagefeed, body.emb-has-share[data-inset="bl"] #stagefeed { bottom: 50px; }
+}

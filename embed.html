@@ -38,7 +38,9 @@
 </script>
 </head>
 <body>
-<div id="stagefeed"></div>
+<div id="emb-share" class="emb-share" aria-live="polite"><video id="emb-share-video" muted autoplay playsinline hidden></video><div id="emb-share-box" class="emb-share-box" hidden></div></div>
+<div id="stagefeed"><button type="button" class="emb-inset-min" id="emb-inset-min" aria-pressed="false" title="Minimize the Stage">&ndash;</button></div>
+<div id="emb-tabbar" class="emb-tabbar" hidden><div id="emb-tabs" class="emb-tabs" role="tablist" aria-label="Shared now"></div><select id="emb-tabmenu" class="emb-tabmenu" aria-label="Shared now"></select></div>
 <div id="embedui">
   <div class="emb-top"><span class="emb-live" id="emb-live" data-state="off"><i></i><b id="emb-live-txt">OFFLINE</b></span><span class="emb-count" id="emb-count"></span><span class="emb-title" id="emb-title"></span></div>
   <button type="button" class="emb-play" id="emb-play" aria-label="Unmute" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg><span>Tap to unmute</span></button>

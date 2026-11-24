@@ -46,11 +46,11 @@ Two build paths, in order of preference:
 A hosted GifOS Broadcast (gifos.app/cast) can play inside any web page, like
 a video player. It plays only while the room is HOSTED RIGHT NOW: a hosted
 meeting or broadcast (link https://gifos.app/cast/ROOM/VERIFIER) whose host is
-in the room, or an open-floor room a subscriber has taken charge of, while
-they are in it. The player reads that live from the room's signed host
+in the room, or a public open-floor meeting a subscriber has taken charge
+of, while they are in it. The player reads that live from the room's signed host
 state; until then, and after the host leaves, it shows "This meeting isn't
 hosted right now" and plays nothing, then starts by itself. VERIFIER is
-optional: leave it out for an open-floor room.
+optional: leave it out for a public open-floor meeting.
 
 Paste one tag where the player should go:
 

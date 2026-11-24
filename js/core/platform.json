@@ -70,6 +70,7 @@
    "ResizeObserver",
    "document",
    "getComputedStyle",
+   "requestAnimationFrame",
    "window"
   ]
  },

@@ -101,6 +101,7 @@
         if (!hosted && C.serviceHeard) { C.serviceHeard = false; try { M.applyBuses(); } catch (e) {} }
         else { try { M.applyBuses(); } catch (e) {} }
       }
+      paintShares();
       var v = stageVideo();
       var picture = hosted && !!(v && v.srcObject);
       if (v) { try { C.fsBlurClass(v, stageLevel()); } catch (e) {} }
@@ -130,29 +131,91 @@
     }
 
     // What the core asks of the view that a player answers.
-    fn('paintStageStrip', function (stream) {   // the media plane's stage picture
-      var el = stagefeedEl.querySelector('[data-row="sgs"]');
-      if (!stream) {
-        if (el) { Array.prototype.forEach.call(el.querySelectorAll('video'), function (x) { try { x.pause(); x.srcObject = null; } catch (e) {} try { M.releaseAudio(x); } catch (e) {} }); el.remove(); }
-        try { M.compOf.delete('sgs'); } catch (e) {}
-        paint();
+    // The Stage picture: the media part's own paintStageStrip (shared with the meeting page) draws it into #stagefeed
+    // and asks the view to lay out again (layout, paintStagePlate), which repaints the player.
+    // ---- SHARES: screen, app and agenda as tabs; the selected one fills the player and the Stage floats in one inset --
+    // The core keeps the list and the choice (ctRefresh, GifOS.meetContent); this view only draws them. Viewers receive.
+    fn('ctInit', function () {
+      if (C.CT) return C.CT;
+      if (!GifOS.meetContent || !GifOS.meetAgenda) return null;
+      C.CT = { el: $('emb-share'), panes: new Map(), st: GifOS.meetContent.state(), items: [], plan: null,
+        ag: null, agW: null, agStart: 0, agLocal: false, agEdit: false, agTick: 0, present: false, presentFs: false,
+        facesHidden: false, speaker: null, speakerAt: 0, lastSig: '', phone: false, rect: null };
+      return C.CT;
+    });
+    fn('ctAppInfo', function () {   // an app someone in the room shares (this player runs no apps: it names it)
+      var by = null, nm = '';
+      try { C.statusOf.forEach(function (st, pid) { if (!by && st && st.app && st.app.s) { by = pid; nm = String(st.app.n || st.app.name || ''); } }); } catch (e) {}
+      return by ? { on: true, name: nm, by: by, mine: false } : null;
+    });
+    var shareSig = '';
+    function shareItems() { try { return hostedNow() ? (C.ctRefresh() || []) : []; } catch (e) { return []; } }
+    function shareLabel(it) { try { return C.ctLabel(it); } catch (e) { return it.kind; } }
+    function paintShares() {
+      var items = shareItems(), CT = C.CT;
+      var sel = CT && CT.st ? CT.st.sel : null;
+      if (items.length && !items.some(function (it) { return it.key === sel; })) { try { GifOS.meetContent.select(CT.st, items[0].key); } catch (e) {} sel = CT.st.sel; }
+      var on = items.length > 0;
+      document.body.classList.toggle('emb-has-share', on);
+      var sig = items.map(function (it) { return it.key + '=' + shareLabel(it); }).join('|') + '#' + sel;
+      if (sig !== shareSig) {
+        shareSig = sig;
+        var tabs = $('emb-tabs'), menu = $('emb-tabmenu');
+        tabs.textContent = ''; menu.textContent = '';
+        items.forEach(function (it) {
+          var b = document.createElement('button'); b.type = 'button'; b.className = 'emb-tab'; b.setAttribute('role', 'tab');
+          b.dataset.key = it.key; b.textContent = shareLabel(it); b.setAttribute('aria-selected', it.key === sel ? 'true' : 'false');
+          b.onclick = function () { pick(it.key); };
+          tabs.appendChild(b);
+          var o = document.createElement('option'); o.value = it.key; o.textContent = shareLabel(it); o.selected = it.key === sel; menu.appendChild(o);
+        });
+        $('emb-tabbar').hidden = !on;
+      }
+      var cur = items.filter(function (it) { return it.key === sel; })[0] || null;
+      paintPane(cur);
+    }
+    function pick(key) { try { C.ctSelect(key, 'embed'); } catch (e) {} shareSig = ''; paint(); }
+    function paintPane(it) {
+      var vid = $('emb-share-video'), box = $('emb-share-box');
+      if (!it) { if (vid.srcObject) { try { vid.srcObject = null; } catch (e) {} } vid.hidden = true; box.hidden = true; return; }
+      if (it.kind === 'screen') {
+        var src = null; try { src = M.ctScreenTrack(it.sid); } catch (e) {}
+        var tr = src && src.track;
+        var have = vid.srcObject && vid.srcObject.getVideoTracks()[0];
+        if (tr && have !== tr) { vid.srcObject = new MediaStream([tr]); try { var pr = vid.play(); if (pr && pr.catch) pr.catch(function () {}); } catch (e) {} }
+        vid.hidden = !tr; box.hidden = !!tr;
+        if (!tr) box.textContent = shareLabel(it) + ': the picture is on its way.';
         return;
       }
-      if (!el) {
-        el = document.createElement('div'); el.className = 'rowtile'; el.dataset.row = 'sgs';
-        var nv = document.createElement('video'); nv.muted = true; nv.autoplay = true; nv.setAttribute('playsinline', '');
-        el.appendChild(nv); stagefeedEl.appendChild(el);
-        try { M.trackAspect(el, nv); } catch (e) {}
+      vid.hidden = true; box.hidden = false;
+      if (it.kind === 'agenda') {
+        var ag = C.CT && C.CT.ag, list = (ag && ag.items) || [];
+        var html = '<h4>Agenda</h4><ol>' + list.map(function (x) {
+          var t = String((x && (x.title || x.text || x.t)) || '').replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; });
+          var m = x && (x.min || x.mins || x.m); return '<li>' + t + (m ? ' <span>' + (m | 0) + ' min</span>' : '') + '</li>';
+        }).join('') + '</ol>';
+        if (box.dataset.sig !== html) { box.innerHTML = html; box.dataset.sig = html; }
+        return;
       }
-      var v = el.querySelector('video');
-      var holds = typeof M.wkHolds === 'function' ? M.wkHolds(v, stream) : v.srcObject === stream;
-      if (!holds) { if (typeof M.wkBindVideo === 'function') M.wkBindVideo(v, stream); else v.srcObject = stream; }
-      try { var pr = v.play(); if (pr && pr.catch) pr.catch(function () {}); } catch (e) {}
-      try { M.compOf.set('sgs', { via: 'mosaic', streamId: stream.id, stream: stream, names: [], cnt: 0, el: v }); } catch (e) {}
-      paint();
-    });
+      var name = it.name || 'An app';
+      var w = name + ' is open in this meeting. Watch on GifOS to see it.';
+      if (box.textContent !== w) { box.textContent = w; box.dataset.sig = ''; }
+    }
+    // The Stage inset: one squarish floating box with every Stage face (the media part's one Stage picture). Drag it;
+    // it settles in the nearest corner and remembers it (this browser only); the minimize button folds it to a chip.
+    var INSET_KEY = 'gifos.embed.inset';
+    var inset = { corner: 'br', min: false };
+    try { var sv = JSON.parse(localStorage.getItem(INSET_KEY) || 'null'); if (sv && /^(t|b)(l|r)$/.test(sv.corner)) inset = { corner: sv.corner, min: !!sv.min }; } catch (e) {}
+    function saveInset() { try { localStorage.setItem(INSET_KEY, JSON.stringify(inset)); } catch (e) {} }
+    function placeInset() {
+      document.body.dataset.inset = inset.corner;
+      document.body.classList.toggle('emb-inset-min', inset.min);
+      var mb = $('emb-inset-min'); if (mb) { mb.setAttribute('aria-pressed', inset.min ? 'true' : 'false'); mb.textContent = inset.min ? 'Stage' : '–'; mb.title = inset.min ? 'Show the Stage' : 'Minimize the Stage'; }
+    }
+    placeInset();
+    names.embedInsetForTest = function () { return { corner: inset.corner, min: inset.min, share: document.body.classList.contains('emb-has-share') }; };
+
     fn('paintBcQuiet', function (bq) { quiet = bq || { text: '' }; paint(); });
-    fn('stageFeedShows', function () { return !!stagefeedEl.querySelector('.rowtile'); });   // the core's not-started line asks whether a picture shows
     fn('showPwModal', function () {   // the door wants the room password: the card, inside this frame only
       $('emb-card-hint').textContent = tried ? 'That password did not work. Try again.' : 'Enter the password to watch clearly.';
       $('emb-pw').value = '';
@@ -161,7 +224,7 @@
     });
     fn('hideJoinPwModal', function () { $('emb-card').hidden = true; paint(); });
     fn('replaceAddress', function () {});     // an embed keeps its address (a framed /cast is refused)
-    ['paintLiveBadge', 'paintRoomTrust', 'paintControls', 'paintStagePlate', 'paintStatusLine', 'paintBroadcastRole', 'capPaint', 'applyAdminUi'].forEach(function (n) {
+    ['paintLiveBadge', 'paintRoomTrust', 'paintControls', 'paintStagePlate', 'paintStatusLine', 'paintBroadcastRole', 'capPaint', 'applyAdminUi', 'layout'].forEach(function (n) {
       if (Object.prototype.hasOwnProperty.call(needs, n)) fn(n, paint);
     });
     Object.keys(own).forEach(function (n) { Object.defineProperty(names, n, { value: own[n], writable: true, enumerable: true, configurable: true }); });
@@ -177,6 +240,34 @@
     setInterval(function () { try { paint(); } catch (e) {} }, GifOS.timings.EMBED_HOSTED_MS);   // re-read the live host state
     $('emb-mute').onclick = function () { if (hostedNow() || C.serviceHeard) hear(!C.serviceHeard); };
     $('emb-lock').onclick = function () { names.showPwModal(true); };
+    $('emb-tabmenu').onchange = function () { pick(this.value); };
+    $('emb-inset-min').onclick = function (e) { e.stopPropagation(); inset.min = !inset.min; saveInset(); placeInset(); };
+    (function drag() {   // pointer drag of the inset; on release it snaps to the nearest corner
+      var sf = stagefeedEl, start = null;
+      sf.addEventListener('pointerdown', function (e) {
+        if (!document.body.classList.contains('emb-has-share') || inset.min) return;
+        var r = sf.getBoundingClientRect(); start = { x: e.clientX, y: e.clientY, l: r.left, t: r.top, moved: false };
+        try { sf.setPointerCapture(e.pointerId); } catch (x) {}
+      });
+      sf.addEventListener('pointermove', function (e) {
+        if (!start) return;
+        var dx = e.clientX - start.x, dy = e.clientY - start.y;
+        if (!start.moved && Math.abs(dx) + Math.abs(dy) < 6) return;
+        start.moved = true; document.body.classList.add('emb-dragging');
+        sf.style.left = (start.l + dx) + 'px'; sf.style.top = (start.t + dy) + 'px'; sf.style.right = 'auto'; sf.style.bottom = 'auto';
+      });
+      var end = function () {
+        if (!start) return;
+        if (start.moved) {
+          var r = sf.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+          inset.corner = (cy < innerHeight / 2 ? 't' : 'b') + (cx < innerWidth / 2 ? 'l' : 'r');
+          saveInset();
+        }
+        start = null; sf.style.left = sf.style.top = sf.style.right = sf.style.bottom = '';
+        document.body.classList.remove('emb-dragging'); placeInset();
+      };
+      sf.addEventListener('pointerup', end); sf.addEventListener('pointercancel', end);
+    })();
     $('emb-pw-later').onclick = function () { $('emb-card').hidden = true; paint(); };
     $('emb-card').onsubmit = function (e) {
       e.preventDefault();

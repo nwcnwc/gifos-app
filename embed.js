@@ -5,7 +5,7 @@
  *
  * Your hosted broadcast's viewer link is https://gifos.app/cast/ROOM/VERIFIER:
  * data-room is ROOM and data-verifier is VERIFIER (or put the whole link in
- * data-room); data-verifier is optional (an open-floor room has none). The
+ * data-room); data-verifier is optional (a public open-floor meeting has none). The
  * player plays only while the room is hosted right now (its host, or the
  * subscriber who took charge of an open room, is in it); until then it shows
  * a card and plays nothing, and starts by itself. The script puts a 16:9 player
