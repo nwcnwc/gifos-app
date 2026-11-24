@@ -209,11 +209,14 @@
     function saveInset() { try { localStorage.setItem(INSET_KEY, JSON.stringify(inset)); } catch (e) {} }
     function placeInset() {
       document.body.dataset.inset = inset.corner;
-      document.body.classList.toggle('emb-inset-min', inset.min);
+      document.body.classList.toggle('emb-stage-folded', inset.min);
       var mb = $('emb-inset-min'); if (mb) { mb.setAttribute('aria-pressed', inset.min ? 'true' : 'false'); mb.textContent = inset.min ? 'Stage' : '–'; mb.title = inset.min ? 'Show the Stage' : 'Minimize the Stage'; }
     }
     placeInset();
-    names.embedInsetForTest = function () { return { corner: inset.corner, min: inset.min, share: document.body.classList.contains('emb-has-share') }; };
+    root.__gifosEmbedInset = names.embedInsetForTest = function () {   // test read (the page's own state only)
+      return insetState();
+    };
+    function insetState() { return { corner: inset.corner, min: inset.min, share: document.body.classList.contains('emb-has-share') }; };
 
     fn('paintBcQuiet', function (bq) { quiet = bq || { text: '' }; paint(); });
     fn('showPwModal', function () {   // the door wants the room password: the card, inside this frame only
@@ -245,6 +248,7 @@
     (function drag() {   // pointer drag of the inset; on release it snaps to the nearest corner
       var sf = stagefeedEl, start = null;
       sf.addEventListener('pointerdown', function (e) {
+        if (e.target && e.target.closest && e.target.closest('#emb-inset-min')) return;   // the minimize button is a tap, not a drag
         if (!document.body.classList.contains('emb-has-share') || inset.min) return;
         var r = sf.getBoundingClientRect(); start = { x: e.clientX, y: e.clientY, l: r.left, t: r.top, moved: false };
         try { sf.setPointerCapture(e.pointerId); } catch (x) {}

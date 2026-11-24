@@ -75,11 +75,11 @@ body.emb-has-share[data-inset="br"] #stagefeed { right: 12px; bottom: 56px; }
 body.emb-has-share[data-inset="bl"] #stagefeed { left: 12px; bottom: 56px; }
 body.emb-has-share[data-inset="tr"] #stagefeed { right: 12px; top: 88px; }
 body.emb-has-share[data-inset="tl"] #stagefeed { left: 12px; top: 88px; }
-body.emb-has-share .emb-inset-min { display: block; position: absolute; top: 6px; right: 6px; z-index: 3; min-width: 28px; height: 28px; border: 0; border-radius: 14px;
+body.emb-has-share .emb-inset-min { display: block; position: absolute; top: 6px; left: 6px; z-index: 3; min-width: 28px; height: 28px; border: 0; border-radius: 14px;
   background: rgba(0,0,0,.6); color: #fff; font: 600 14px/1 system-ui, sans-serif; cursor: pointer; padding: 0 8px; }
-body.emb-has-share.emb-inset-min #stagefeed { width: auto; height: auto; aspect-ratio: auto; background: transparent; box-shadow: none; overflow: visible; }
-body.emb-has-share.emb-inset-min #stagefeed .rowtile { display: none; }
-body.emb-has-share.emb-inset-min .emb-inset-min { position: static; height: 32px; padding: 0 14px; background: rgba(214,40,48,.92); }
+body.emb-has-share.emb-stage-folded #stagefeed { width: auto; height: auto; aspect-ratio: auto; background: transparent; box-shadow: none; overflow: visible; }
+body.emb-has-share.emb-stage-folded #stagefeed .rowtile { display: none; }
+body.emb-has-share.emb-stage-folded .emb-inset-min { position: static; height: 32px; padding: 0 14px; background: rgba(214,40,48,.92); }
 .emb-tabbar { position: fixed; top: 44px; left: 0; right: 0; z-index: 9001; display: flex; justify-content: center; padding: 0 10px; pointer-events: none; }
 .emb-tabs { display: flex; gap: 4px; padding: 3px; border-radius: 8px; background: rgba(0,0,0,.55); pointer-events: auto; max-width: 100%; overflow-x: auto; }
 .emb-tab { border: 0; border-radius: 6px; padding: 5px 12px; background: transparent; color: #dfe2f2; cursor: pointer; white-space: nowrap;
