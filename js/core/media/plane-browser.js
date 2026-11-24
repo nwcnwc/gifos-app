@@ -10668,7 +10668,7 @@
       __V.keysModal.style.display = 'flex';
       queueMicrotask(__V.syncModalFocus);
     }
-    yield 3173;
+    yield 3176;
     function dbgMeterSources() {
       const out = [];
       const nm = (id) => (id ? (__C.rosterNames[id] || String(id).slice(0, 8)) : null);

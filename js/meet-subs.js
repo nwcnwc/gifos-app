@@ -1430,6 +1430,56 @@
     });
   }
 
+  // A member present is lending their plan to this meeting. Same card as the host's upgrade note: one line, dismissable,
+  // and a dismissed line stays down until the fact changes (another member, or the lender left).
+  let lendHide = '';
+  function lendFirstName(name) {
+    const raw = String(name || '').replace(/\s+/g, ' ').trim();
+    if (!raw || raw === '\u2026') return 'Someone';
+    return raw.split(' ')[0] || 'Someone';
+  }
+  function lendAnyTail() {
+    const s = tx('lendOnAny', '{name}\'s plan is powering this meeting: any number of people');
+    const i = Math.max(s.lastIndexOf(':'), s.lastIndexOf('\uff1a'));
+    return i >= 0 ? s.slice(i + 1).trim() : s;
+  }
+  function showLend(words, key) {
+    if (typeof document === 'undefined' || !document.body) return false;
+    if (lendHide === key) return false;
+    let bar = document.getElementById('sub-lend');
+    if (bar) {
+      bar.hidden = false;
+      bar.dataset.lend = key;
+      const msg = document.getElementById('sub-lend-msg');
+      if (msg && msg.textContent !== words) msg.textContent = words;
+      return true;
+    }
+    bar = el('div', { id: 'sub-lend', role: 'status', 'aria-live': 'polite', style: CARD_STYLE });
+    bar.dataset.lend = key;
+    bar.appendChild(el('span', { id: 'sub-lend-msg', style: 'flex:1 1 12rem' }, words));
+    const x = el('button', { type: 'button', id: 'sub-lend-x', class: BTN, style: BTN_STYLE, 'aria-label': tx('subUpClose', 'Close') }, '\u00d7');
+    x.onclick = () => { lendHide = bar.dataset.lend || key; bar.remove(); };
+    bar.appendChild(x);
+    document.body.appendChild(bar);
+    return true;
+  }
+  // opts: {name, limit}. limit null: the signed right has no people line. The name is already a first name.
+  function showLender(o) {
+    const name = lendFirstName(o && o.name);
+    const any = !o || o.limit == null;
+    const words = any
+      ? fill(tx('lendOnAny', '{name}\'s plan is powering this meeting: any number of people'), { name })
+      : fill(tx('lendOn', '{name}\'s plan is powering this meeting: up to {n} people'), { name, n: o.limit });
+    return showLend(words, 'on|' + name + '|' + (any ? '' : String(o.limit)));
+  }
+  // The lender stopped powering the room. limit is the line in effect now (the free default when nothing else is held).
+  function showLenderGone(o) {
+    const name = lendFirstName(o && o.name);
+    const n = !o || o.limit == null ? lendAnyTail() : o.limit;
+    const words = fill(tx('lendGone', '{name} left; this meeting is back to {n}'), { name, n });
+    return showLend(words, 'gone|' + name + '|' + String(n));
+  }
+
   // The host of a room with a people line, when its doors turned people away:
   // how many, and the plan whose rights carry no line, in one tap.
   // n: how many people could not get in (1 when not counted).
@@ -1490,7 +1540,7 @@
   GifOS.rights = async () => SUB.rightsJson(await rights());
   GifOS.meetSubs = {
     askMove, moveOptions, showOverflowNote,
-    rights, planRights, refresh, keepFresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, subSelection, applySubSelection, paintNow, paintSettings, openSettings, openSubscribe, mayCreateAdminRoom, showFull, hideFull, fullWaiting, fullOffers, hostOffer, doorRight, showHostPrompt,
+    rights, planRights, refresh, keepFresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, subSelection, applySubSelection, paintNow, paintSettings, openSettings, openSubscribe, mayCreateAdminRoom, showFull, hideFull, fullWaiting, fullOffers, hostOffer, doorRight, showHostPrompt, showLender, showLenderGone,
     roomOrder, roomTier, proveAtDoor, checkShown, newNonce,
     appNow, joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureCurrent, captureOrder, captureKeys, fileBytes, downloadFile, useFile, librarySigner, restoreInApp,
     keepReceipt, subReceiptFiles,
