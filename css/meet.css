@@ -1688,9 +1688,7 @@
     border-radius: var(--r-pill); padding: 3px 8px 3px 7px; line-height: 1.2; }
   #onair.live { background: var(--c-red); color: var(--c-white); }
   #onair.watch { background: var(--c-line); color: var(--c-ink); }
-  #onair.live::before, #onair.watch::before { content: ''; width: 8px; height: 8px; border-radius: 50%; flex: none; }
-  #onair.live::before { background: var(--c-white); }
-  #onair.watch::before { background: var(--c-blue); }
+  /* One dot: the <i class="lamp"> in the markup. A ::before here painted a second one ("● ● LIVE"). */
   /* The pill is easy to miss. This bar names the room and, for a service, whether you are on air. */
   #airbar { display: none; }
   #airbar[hidden] { display: none !important; }
@@ -1701,6 +1699,10 @@
   #airbar.watch { background: var(--c-line); color: var(--c-ink); }
   #airbar.group { background: #143024; color: #e7f6ec; }
   #airbar.off { background: #2a2a3f; color: #e0e0f0; }
+  /* Broadcast: the top banner (#livebadge) already says LIVE/WATCHING. The room line paints no coloured band
+     of its own (it showed as a second red bar at the video edges). Its controls stay; the bar reserves nothing visible. */
+  body.broadcast #airbar.on { background: transparent; }
+  body.broadcast #airbar.on::before { display: none; }
   /* A shared slide or an app needs the height: the room bar steps aside
      while a screen or an app is on the stage (a service keeps its on-air
      bar). Nothing of it pins over the content; recording shows on the
