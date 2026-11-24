@@ -142,7 +142,15 @@
       for (const k of Array.from(owedPk.keys())) if (!seen.has(k)) owedPk.delete(k);
       C.planMeasured('owed', out);
     }
-    const owedT = setInterval(() => { try { owedMeasure(); } catch (e) {} }, GifOS.timings.OWED_SAMPLE_MS);
+    // The claim watchdog's map. The host's none is an empty Map; this replaces it so the core and this plane share one.
+    const mosFb = new Map();
+    def('mosFb', mosFb);
+    // The row verdict and the dark rail sample on this same clock. A second timer would be a new bare wait, and a
+    // test that stretches OWED_SAMPLE_MS (so this measurement never runs) must not grow a faster loop beside it.
+    const owedT = setInterval(() => {
+      try { owedMeasure(); } catch (e) {}
+      try { rowAndWatch(); } catch (e) {}
+    }, GifOS.timings.OWED_SAMPLE_MS);
     if (owedT && typeof owedT.unref === 'function') owedT.unref();   // a measurement never keeps the host alive
     function peerAudioTracks(p) {
       const out = [];
@@ -154,8 +162,12 @@
     function unbindClaim(rk, claim) { if (claim) claim.el = null; }
     function adoptClaim(rk, neu, old) { if (neu) neu.el = null; }
     function picRead(claim) { return { w: 0, frames: 0 }; }
-    // An edge of my row's acting head (the core's rowActing, which also keeps the fail-back hold): re-sweep. No tiles, no rail.
-    function rowEdge(why) { schedReconcile(); }
+    // An edge of my row's acting head (the core's rowActing, which also keeps the fail-back hold). The browser sets the
+    // dark rail on the head's copy whenever the edge is not the way back, then re-sweeps. No tiles.
+    function rowEdge(why) {
+      if (why !== 'back') { const fb = mosFb.get('sdm'); if (fb) fb.dark = true; }
+      schedReconcile();
+    }
     // PLI upstream. True only when this claim's video receiver is allowed to send one; a refusal lets kfNeed fall through.
     function keyUp(claim, key) {
       void key;
@@ -339,7 +351,7 @@
     // Questions carryIn asks that the browser plane answers inside its own sweep. The pure routing answers live in
     // the core, including whether the room extends past my row. What remains here is Node machinery. A throw inside
     // carryIn drops the whole plan.
-    // No watchdog: Node never marks a claim dark, so lost is a missing claim, deadAt, or a stale beat.
+    // Lost is a missing claim, deadAt, the arrival watchdog's dark bit, or a stale beat.
     function stgLost(rk) {
       const f = C.mosIn && C.mosIn.get(rk); if (!f) return true;
       const fb = M.mosFb && typeof M.mosFb.get === 'function' ? M.mosFb.get(rk) : null;
@@ -371,14 +383,15 @@
     }
     // No tiles: nothing to repaint.
     function repaintRedun() {}
-    // No tiles and no watchdog: nothing to record.
+    // No tiles: the dark rail records itself on mosFb. Nothing else to note.
     function swapPicNote() {}
     function stgFoNote() {}
     // No row mix: there is no hold map.
     function rowMixHold() { return false; }
     // No row mix: there is no arrival sample.
     function rowMixHeadArrives() { return -1; }
-    // No rowX2To memory and no keepAdd: the cell's occupant, or nobody.
+    // The browser remembers a carrier for 15 s after its cell empties (rowX2To / x2Kept). No named timing is that
+    // window, and this file may not grow a bare millisecond literal, so the memory stays out until one is named.
     function x2Target(cell) { try { return typeof C.occPid === 'function' ? C.occPid(cell) : null; } catch (e) { return null; } }
     // Mix-minus questions. A throw inside carryIn drops the whole plan, so each answer stays inside its own try.
     // MY MIC AS A FOLD SOURCE. Cached by track identity: a fresh stream id would re-fold every sweep. Waiting
@@ -420,8 +433,29 @@
       } catch (e) {}
       return null;
     }
-    function slotDark() { return false; }
-    function carriedHot() { return false; }
+    function slotDark(rk) { try { const fb = mosFb.get(rk); return !!(fb && fb.dark); } catch (e) { return false; } }
+    // A carried sdrow:q (not the head's own pipe) is hot while its audio packets moved inside the stall window.
+    // Arrival, never a level: a quiet head still sends packets (2026-11-13).
+    function carriedHot(q) {
+      try {
+        if (q == null || q === '') return false;
+        const key = 'sdrow:' + q;
+        const f = C.mosIn && typeof C.mosIn.get === 'function' ? C.mosIn.get(key) : null;
+        if (!f || !f.stream) return false;
+        let head = null;
+        try { head = typeof C.occPid === 'function' ? C.occPid({ pc: 0, r: +q, i: 0 }) : null; } catch (e) { head = null; }
+        if (head && String(f.via) === String(head)) return false;
+        const n = kindCount(f.stream, 'audio');
+        if (!(n >= 0)) return false;
+        const now = Date.now();
+        let slot = carriedSeen.get(key);
+        if (!slot || slot.sid !== (f.stream.id || null)) { slot = { sid: f.stream.id || null, n: n, at: 0 }; carriedSeen.set(key, slot); return false; }
+        if (n > slot.n) slot.at = now;
+        slot.n = n;
+        const stall = rowStall();
+        return !!(slot.at && stall > 0 && now - slot.at <= stall);
+      } catch (e) { return false; }
+    }
     // One Opus quantum, plus the samples still sitting in the port source that reads this slot's audio track.
     // No source for that track: one more quantum. The port keeps the depth on the source node, not on stats().
     function hopMs(slot) {
@@ -463,7 +497,7 @@
         return m;
       } catch (e) { return {}; }
     }
-    function rowMixOpen() { return false; }
+    function rowMixOpen() { try { return rowMixShipUntil > Date.now(); } catch (e) { return false; } }
     // The meeting context, already open. Asking here must not create one: a fold that needs a context calls ensureAc.
     function mixReady() {
       try { return !!(C.ac && C.ac.state !== 'closed'); } catch (e) { return false; }
@@ -566,6 +600,272 @@
     }
     // No elements: a claim never carries a hold on a tile.
     function mosHeld(e) { return !!(e && e.el && e.el._mosHold); }
+    // THE ROW MEASURE AND THE DARK RAIL. Both read the port's per-track RTP count (rtpCount), the same arrival signal
+    // the owed sample uses. Thresholds are the named timings. The browser's dog cadence (300/900/3000) and its
+    // false-fire decay stay in that file: copying them here would be a new bare wait.
+    const ROW_MIX_MS = GifOS.timings.ROW_MIX_MS, ROW_MIX_PULL = GifOS.timings.ROW_MIX_PULL, ROW_MIX_TTL = GifOS.timings.ROW_MIX_TTL;
+    const MOS_DARK_MS = GifOS.timings.MOS_DARK_MS, MOS_FLOWED_RECENT = GifOS.timings.MOS_FLOWED_RECENT, MOS_QUALIFY = GifOS.timings.MOS_QUALIFY;
+    const HOT_VOID_MS = GifOS.timings.HOT_VOID_MS;
+    const rowStall = () => (ROW_MIX_MS > 0 ? (2 * ROW_MIX_MS + ROW_MIX_MS / 2) : 0);
+    const carriedSeen = new Map();
+    let rowLv = null, rowDeaf = null, rowMixDeaf = false, rowMixDeadN = 0, rowMixArmed = false, rowMixShipUntil = 0;
+    function kindCount(stream, kind) {
+      if (!stream || typeof stream.getTracks !== 'function') return -1;
+      let n = -1;
+      for (const t of stream.getTracks()) {
+        if (!t || t.kind !== kind || t.readyState === 'ended') continue;
+        if (n < 0) n = 0;
+        n += rtpCount(t);
+      }
+      return n;
+    }
+    // 1 = the sdm audio moved since the last sample, 0 = the picture moved and the audio did not, -1 = nothing to judge.
+    function rowLevel(ent, fromHead) {
+      const st = ent && ent.stream;
+      const sid = st && st.id || null;
+      const a = kindCount(st, 'audio'), v = kindCount(st, 'video');
+      const prev = rowLv;
+      rowLv = { sid: sid, a: a, v: v };
+      if (!fromHead || !prev || prev.sid !== sid || !(a >= 0)) return -1;
+      const aMoved = a > prev.a, vMoved = v >= 0 && v > prev.v;
+      if (aMoved) return 1;
+      if (vMoved) return 0;
+      return -1;
+    }
+    function rowMeasure() {
+      let pri = null;
+      try { pri = C.mosIn && typeof C.mosIn.get === 'function' ? C.mosIn.get('sdm') : null; } catch (e) { pri = null; }
+      const fb = mosFb.get('sdm'), str = (v) => (v == null ? null : String(v));
+      return {
+        sdm: pri ? { via: str(pri.via), sid: str(pri.streamId), dead: !!pri.deadAt } : null,
+        deaf: !!rowMixDeaf, dark: !!(fb && fb.dark), deafOut: rowDeaf ? str(rowDeaf.pid) : null,
+      };
+    }
+    // L49 on the owed clock: a non-head who holds the head's sdm. Armed once the audio has arrived. ROW_MIX_PULL
+    // samples with the picture still moving and the audio still are the verdict (deafOut) and the mic-pull window.
+    function judgeRow(now) {
+      let c = null;
+      try { c = typeof C.meshCoord === 'function' ? C.meshCoord() : null; } catch (e) { c = null; }
+      if (!c || c.i === 0) {
+        rowMixDeadN = 0;
+        if (c && c.i === 0 && (rowMixDeaf || rowDeaf)) { rowMixDeaf = false; rowDeaf = null; }
+        return;
+      }
+      let head = null, ent = null;
+      try { head = typeof C.occPid === 'function' ? C.occPid({ pc: c.pc, r: c.r, i: 0 }) : null; } catch (e) { head = null; }
+      try { ent = C.mosIn && C.mosIn.get('sdm'); } catch (e) { ent = null; }
+      const fromHead = !!(ent && !ent.deadAt && head && String(ent.via) === String(head));
+      const level = rowLevel(ent, fromHead);
+      if (level === 1) { rowMixArmed = true; rowMixDeaf = false; rowMixDeadN = 0; }
+      else if (rowMixArmed && level === 0) { rowMixDeadN++; rowMixDeaf = true; }
+      else rowMixDeadN = 0;
+      if (ROW_MIX_PULL > 0 && rowMixDeadN >= ROW_MIX_PULL && head) {
+        if (rowMixDeaf && ROW_MIX_TTL > 0 && ROW_MIX_MS > 0) rowMixShipUntil = now + ROW_MIX_TTL + ROW_MIX_MS;
+        rowDeaf = { pid: head };
+      }
+      if (rowDeaf && !rowMixDeaf) rowDeaf = null;
+    }
+    function pipeCount(ent, voice) {
+      try {
+        if (!ent || !ent.stream) return -1;
+        // The last live track of a kind: a renegotiated pair keeps the ended one first (the browser's liveOf).
+        const lastLive = (kind) => {
+          const fn = kind === 'audio' ? ent.stream.getAudioTracks : ent.stream.getVideoTracks;
+          if (typeof fn !== 'function') return null;
+          const all = fn.call(ent.stream) || [];
+          let t = null;
+          for (const x of all) if (x && x.readyState !== 'ended') t = x;
+          return t;
+        };
+        const audio = lastLive('audio'), video = lastLive('video');
+        const track = (voice && audio) ? audio : (video || audio);
+        if (!track) return -1;
+        const n = rtpCount(track);
+        return { b: n, d: n };
+      } catch (e) { return -1; }
+    }
+    function wakeStd(std) {
+      try { if (std && std.key && typeof C.demand === 'function') C.demand(std.via, std.key, std.streamId, true); } catch (e) {}
+    }
+    function stdOf(rk) { try { return C.mosStandby && typeof C.mosStandby.get === 'function' ? C.mosStandby.get(rk) : null; } catch (e) { return null; } }
+    // The standby's packet count, so a dark swap can see that the other pipe moved. Same re-baseline as the browser.
+    function sampleStandby(rk, fb) {
+      if (!(fb.dark || fb.wakeAt)) {
+        if (fb.d0 !== -1 || fb.stdFdec !== -1) { fb.d0 = -1; fb.stdFdec = -1; fb.stdB = -1; }
+        return;
+      }
+      const s = pipeCount(stdOf(rk), rk.indexOf('stg:') === 0);
+      if (s === -1 || !(s.d >= 0)) return;
+      if (fb.d0 === -1 || s.d < fb.d0) { fb.d0 = s.d; fb.b0 = s.b; fb.stdAdvAt = 0; }
+      if (fb.stdFdec >= 0 && s.d > fb.stdFdec) fb.stdAdvAt = Date.now();
+      let pri = null;
+      try { pri = C.mosIn && C.mosIn.get(rk); } catch (e) { pri = null; }
+      // No schedReconcile here. The mosaic sweep applies a dark bit. An extra one lands inside a receiver's idle
+      // window and wakes the pipe it just parked (the forward flat check).
+      fb.stdFdec = s.d; fb.stdB = s.b;
+    }
+    function watchOne(rk, pri, now) {
+      if (!pri || typeof C.isRedun !== 'function' || !C.isRedun(rk)) return;
+      const fb = mosFb.get(rk);
+      if (!fb) return;
+      if (typeof M.mosHeld === 'function' && M.mosHeld(pri)) return;
+      if (pri.stream && typeof pri.stream.getTracks === 'function' && !pri.stream.getTracks().length) { sampleStandby(rk, fb); return; }
+      const stage = rk.indexOf('stg:') === 0;
+      const bytes = pipeCount(pri, stage);
+      if (stage && pri.stream && typeof pri.stream.getVideoTracks === 'function' && pri.stream.getVideoTracks().length) {
+        const pv = pipeCount(pri, false);
+        if (pv !== -1 && pv.b > 0 && pv.b > (fb.pvB > 0 ? fb.pvB : 0)) { fb.pvAt = now; fb.pvB = pv.b; }
+        else if (pv !== -1 && fb.pvB !== pv.b) fb.pvB = pv.b;
+        const own = pri.via === rk.slice(4).split('^')[0] && String(pri.key || '').indexOf('^') < 0;
+        // No element on Node: video packets moving are the picture that is still arriving.
+        if (own && fb.pvAt && M.STG_PIC_LIVE_MS > 0 && now - fb.pvAt < M.STG_PIC_LIVE_MS) {
+          if (fb.dark) { fb.dark = false; fb.suspect = false; }
+          if (bytes !== -1 && bytes.b > (fb.lastBytes > 0 ? fb.lastBytes : 0)) fb.lastAdvanceAt = now;
+          if (bytes !== -1) fb.lastBytes = bytes.b;
+          fb.q = 0; fb.flowSince = 0;
+          sampleStandby(rk, fb);
+          return;
+        }
+      } else if (fb.pvB !== -1) { fb.pvB = -1; fb.pvAt = 0; }
+      if (bytes < 0) {
+        const std0 = stdOf(rk);
+        if (!fb.dark && fb.claimAt && HOT_VOID_MS > 0 && now - fb.claimAt > HOT_VOID_MS && std0 && std0.key) {
+          fb.dark = true; wakeStd(std0);
+        }
+        sampleStandby(rk, fb);
+        return;
+      }
+      // A first sample of zero is a baseline, not flow: rtpCount starts at 0, and calling that an advance would arm a stage that never sent.
+      if (fb.lastBytes === -1 && !(bytes.b > 0)) fb.lastBytes = bytes.b;
+      else if (!fb.dark && fb.lastBytes !== -1 && bytes.b < fb.lastBytes) {
+        fb.lastBytes = bytes.b; fb.lastAdvanceAt = now; fb.q = 0; fb.flowSince = 0;
+      } else if (fb.lastBytes === -1 || bytes.b > fb.lastBytes) {
+        if (!fb.flowSince) fb.flowSince = now;
+        fb.lastBytes = bytes.b; fb.lastAdvanceAt = now;
+        fb.q = Math.min(64, (fb.q || 0) + 1);
+        if (fb.suspect) fb.suspect = false;
+        if (fb.dark) {
+          fb.dark = false; fb.suspect = false; fb.q = 0; fb.flowSince = 0;
+          fb.fp = Math.min(3, (fb.fp || 0) + 1); fb.fpDecayAt = now;
+        }
+      } else if (!fb.dark && ((fb.q || 0) >= (MOS_QUALIFY << Math.min(3, fb.fp || 0)) || (stage && (fb.q || 0) > 0))) {
+        // The browser also requires a standby before it sets dark on a non-stage slot, because its only act is the wake.
+        // slotDark has to answer a pipe whose packets stopped, so the bit is set on the flat window either way; the wake still needs a standby.
+        // The sweep applies the bit. Reconciling here wakes a pipe a receiver just parked.
+        const std = stdOf(rk);
+        if (!fb.suspect && fb.lastAdvanceAt && now - fb.lastAdvanceAt > MOS_DARK_MS && now - fb.lastAdvanceAt < MOS_FLOWED_RECENT) {
+          fb.dark = true; if (std && std.key) wakeStd(std);
+        }
+      } else if (!fb.dark && fb.lastAdvanceAt && now - fb.lastAdvanceAt > MOS_FLOWED_RECENT && (fb.q || fb.flowSince)) {
+        fb.q = 0; fb.flowSince = 0;
+      } else if (!fb.dark && !(fb.q || 0) && fb.claimAt && HOT_VOID_MS > 0
+          && now - fb.claimAt > HOT_VOID_MS && now - Math.max(fb.lastAdvanceAt || 0, fb.claimAt) > HOT_VOID_MS) {
+        const std = stdOf(rk);
+        if (!fb.suspect && std && std.key) { fb.dark = true; wakeStd(std); }
+      }
+      if (stage && !fb.dark && !fb.suspect && bytes.b <= 0 && !(fb.lastBytes > 0) && fb.claimAt && M.STG_ZERO_MS > 0 && now - fb.claimAt > M.STG_ZERO_MS) {
+        const std = stdOf(rk);
+        if (std && std.key) { fb.dark = true; wakeStd(std); }
+      }
+      sampleStandby(rk, fb);
+    }
+    function watchClaims(now) {
+      if (!(MOS_DARK_MS > 0) || !(MOS_QUALIFY > 0) || !(MOS_FLOWED_RECENT > 0)) return;
+      if (!C.mosIn || typeof C.mosIn.entries !== 'function') return;
+      for (const [rk, pri] of C.mosIn) {
+        try { watchOne(rk, pri, now); } catch (e) {}
+      }
+    }
+    function rowAndWatch() {
+      const now = Date.now();
+      try { watchClaims(now); } catch (e) {}
+      try { judgeRow(now); } catch (e) {}
+      try { if (typeof C.planMeasured === 'function') C.planMeasured('row', rowMeasure()); } catch (e) {}
+      try {
+        if (typeof C.rowActing === 'function' && typeof C.meshCoord === 'function') C.rowActing(C.meshCoord());
+      } catch (e) {}
+    }
+    // A played second-root copy keeps its source. carryIn decides who receives ^r; this ends a played copy whose
+    // source I no longer hold, so the ship that follows mints a new id instead of re-pointing the one a receiver plays.
+    function stgRootHold(jk, slot, to) {
+      const jobs = C.mosJobs;
+      if (!jobs || typeof jobs.get !== 'function' || !to) return null;
+      const job = jobs.get(jk);
+      if (!job || !job.active || !job.srcTracks || !job.srcTracks.length) return null;
+      let ent = null;
+      for (const e of [C.mosIn && C.mosIn.get(slot), C.mosStandby && C.mosStandby.get(slot)]) {
+        if (e && e.stream && typeof C.stgFedBy === 'function' && C.stgFedBy(job, e)) { ent = e; break; }
+      }
+      let path = [];
+      try { path = ent && typeof C.stgPath === 'function' ? (C.stgPath(ent) || []) : []; } catch (e) { path = []; }
+      if (!Array.isArray(path)) path = [];
+      let hop = null;
+      try { hop = typeof C.vpId === 'function' ? C.vpId(to) : null; } catch (e) { hop = null; }
+      if (ent && path.indexOf(hop) < 0) return ent;
+      try { if (typeof C.unshipJob === 'function') C.unshipJob(jk, true); } catch (e) {}
+      dropContainer(jk);
+      return false;
+    }
+    function stagePipeSkip(owner, key, t) {
+      try {
+        if (!owner || !t || typeof C.pipePeers !== 'function') return false;
+        if (C.pipePeers().indexOf(t) < 0) return false;
+        if (C.pipeStg && typeof C.pipeStg.get === 'function' && C.pipeStg.get(owner) === t) return true;
+        if (C.mosAnn && typeof C.mosAnn.has === 'function' && C.mosAnn.has(t + '|' + key)) return true;
+        if (typeof C.pipeVideo === 'function' && !C.pipeVideo(t)) return true;
+        return false;
+      } catch (e) { return false; }
+    }
+    // The browser's test levers (a held relay, one root). Absent on a normal seat, so this is a no-op there.
+    function stageDebugSkip(owner, key, t, list) {
+      try {
+        if (!C.DEBUG_ON) return false;
+        const w = typeof globalThis !== 'undefined' ? globalThis : null;
+        if (!w) return false;
+        if (owner !== C.myId && w.__relayHoldUntil > Date.now() && C.mosJobs && !C.mosJobs.has(key + '>' + t)) return true;
+        const first = (list || []).filter(Boolean)[0];
+        if (owner === C.myId && w.__stgOneRootForTest && t !== first) return true;
+        return false;
+      } catch (e) { return false; }
+    }
+    function seatList(s, name) {
+      try {
+        const fn = s && s[name];
+        const v = typeof fn === 'function' ? fn.call(s) : [];
+        return Array.isArray(v) ? v : [];
+      } catch (e) { return []; }
+    }
+    function holdSecondRoots() {
+      let c = null;
+      try { c = typeof C.meshCoord === 'function' ? C.meshCoord() : null; } catch (e) { c = null; }
+      if (!c || c.pc !== 0) return;
+      const T = C.net && C.net.topo;
+      if (!T || typeof T.rowMates !== 'function' || typeof T.colMates !== 'function' || typeof C.occPid !== 'function') return;
+      let s = null;
+      try { s = typeof C.meshSeat === 'function' ? C.meshSeat() : null; } catch (e) { s = null; }
+      const list = [];
+      const add = (t) => { if (t && list.indexOf(t) < 0) list.push(t); };
+      try { for (const m of T.rowMates(c) || []) add(C.occPid(m)); } catch (e) {}
+      try { for (const m of T.colMates(c) || []) add(C.occPid(m)); } catch (e) {}
+      for (const t of seatList(s, 's1Bridges')) add(t);
+      try { if (typeof C.pipePeers === 'function') for (const t of C.pipePeers() || []) add(t); } catch (e) {}
+      let held = [];
+      try {
+        held = [...C.mosIn.keys()].filter((k) => k.indexOf('stg:') === 0 && !(typeof C.stgEnded === 'function' && C.stgEnded(k)));
+      } catch (e) { held = []; }
+      for (const k of held) {
+        const suffix = C.STG_ROOT2 || '^r';
+        const key = k + suffix;
+        const owner = key.slice(4).split('^')[0];
+        const hold = (t) => { if (t) stgRootHold(key + '>' + t, k, t); };
+        for (const t of list) {
+          if (stagePipeSkip(owner, key, t) || stageDebugSkip(owner, key, t, list)) continue;
+          hold(t);
+        }
+        try { const dn = typeof T.down === 'function' ? C.occPid(T.down(c)) : null; if (dn) hold(dn); } catch (e) {}
+        for (const t of seatList(s, 'u2Heirs').concat(seatList(s, 'l14Served'))) if (t) hold(t);
+      }
+    }
     // claimMos, then every carry entry, then the reaper, then the duty lever. The browser does this inside reconcileMosaic.
     function sweepJobs() {
       try { C.claimMos(); } catch (e) {}
@@ -573,6 +873,9 @@
       let plan = [];
       try { C.roomBeyondRow(true); } catch (e) {}
       try { plan = C.carryIn() || []; } catch (e) { plan = []; }
+      // carryIn already chose the ^r routes. Hold a played second root on its source before this sweep ships, so a
+      // copy whose source is gone ends here and the next ship mints a fresh id (the browser's holdSecondRoots).
+      try { holdSecondRoots(); } catch (e) {}
       const keep = new Set();
       for (const e of plan) {
         if (!e || !e.audio || !e.audio.mix) continue;
