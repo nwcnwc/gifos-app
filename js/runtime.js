@@ -652,6 +652,23 @@
           else refresh(d.collection);
         }
         if(d.type==='back'){ backCbs.forEach(function(cb){ try { cb(); } catch(e){} }); }
+        // The meeting's floating window shows a shared app: the OS asks for one picture of the app's own drawing (its
+        // largest visible canvas or video, at most 480 px on the long side). Nothing else in the page is read; an app
+        // that draws no canvas gets its name card in the float instead.
+        if(d.type==='pipframe'){
+          (function(){
+            var best = null, area = 0, els = document.querySelectorAll('canvas,video');
+            for (var i = 0; i < els.length; i++) { var r = els[i].getBoundingClientRect(), a = Math.max(0, r.width) * Math.max(0, r.height); if (a > area && r.bottom > 0 && r.right > 0) { area = a; best = els[i]; } }
+            var none = function(){ try { window.parent.postMessage({ ns:'gifos', type:'pipframe', none:1 }, '*'); } catch(e){} };
+            if (!best || area < 64 || typeof createImageBitmap !== 'function') return none();
+            var w = best.videoWidth || best.width, h = best.videoHeight || best.height;
+            if (!(w > 0 && h > 0)) return none();
+            var k = Math.min(1, 480 / Math.max(w, h));
+            createImageBitmap(best, { resizeWidth: Math.max(2, Math.round(w * k)), resizeHeight: Math.max(2, Math.round(h * k)) }).then(function(b){
+              try { window.parent.postMessage({ ns:'gifos', type:'pipframe', bmp:b }, '*', [b]); } catch(e){ none(); }
+            }, none);
+          })();
+        }
         if(d.type==='meet-event' && d.event){
           var ev = d.event, list = [];
           if (ev.type === 'transcript') list = meetSubs.tr;

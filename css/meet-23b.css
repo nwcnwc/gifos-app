@@ -776,3 +776,8 @@ html.ui-large .bar:not(.collapsed) #barmore .moregroup > .morerow > button { fon
 #tilewin .tw-cap { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
 #tilewin .tw-cap-name { flex: 1 1 auto; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #tilewin .tw-cap button.tw-btn { flex: 0 0 auto; }
+/* Settings > Floating window shows: one line per item, checkbox and name, then Up/Down */
+#set-modal #piporder { list-style: decimal; margin: 0; padding-left: 1.4em; }
+#set-modal #piporder li { display: flex; align-items: center; gap: 6px; min-height: 40px; }
+#set-modal #piporder li label { flex: 1; display: flex; align-items: center; gap: 6px; }
+#set-modal #piporder li button { min-width: 40px; min-height: 36px; border: 1px solid var(--border, #2a2a3f); border-radius: .4rem; }
