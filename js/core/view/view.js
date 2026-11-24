@@ -273,13 +273,13 @@
     }
     yield 29;
     const BC_WATCH_COPY = 'Watching the broadcast. You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.';
-    if (__C.BROADCAST) document.body.classList.add('broadcast');
+    if (__C.model.room.BROADCAST()) document.body.classList.add('broadcast');
     yield 33;
     function paintServiceSound() {
       const btn = document.getElementById('airsound');
       if (!btn) return;
       let bc = false;
-      try { bc = !!__C.BROADCAST; } catch (e) { bc = false; }
+      try { bc = !!__C.model.room.BROADCAST(); } catch (e) { bc = false; }
       btn.hidden = !bc;
       if (!bc) return;
       const muted = !__C.serviceHeard;
@@ -295,13 +295,13 @@
     // stage are not watching, so a host alone reads 0. null off a service.
     function serviceWatchCount() {
       let bc = false;
-      try { bc = !!__C.BROADCAST; } catch (e) { bc = false; }
+      try { bc = !!__C.model.room.BROADCAST(); } catch (e) { bc = false; }
       if (!bc) return null;
       const up = new Set();
       try { (0, /*()*/__C.stageIds)().forEach((id) => up.add(id)); } catch (e) {}
       try { (0, /*()*/__C.adminsNow)().forEach((id) => up.add(id)); } catch (e) {}
       try {
-        if ((typeof __C.bcHostStored === 'function' && (0, /*()*/__C.bcHostStored)()) || document.body.classList.contains('amadmin')) up.add(__C.myId || 'me');
+        if ((typeof __C.bcHostStored === 'function' && (0, /*()*/__C.bcHostStored)()) || document.body.classList.contains('amadmin')) up.add(__C.model.me.myId() || 'me');
       } catch (e) {}
       return Math.max(0, (0, /*()*/__C.roomHeadCount)() - up.size);
     }
@@ -352,10 +352,10 @@
       // is consent, and Leave is right there. The recorder, and a viewer who
       // is not in a service recording, only read it.
       let mine = false, onStage = false, host = false;
-      try { mine = !!(typeof __C.myStatus !== 'undefined' && __C.myStatus && __C.myStatus.rec); } catch (e) {}
-      try { onStage = typeof __C.myStatus !== 'undefined' && !!__C.myStatus.stg; } catch (e) {}
+      try { mine = !!(typeof __C.model.me.myStatus() !== 'undefined' && __C.model.me.myStatus() && __C.model.me.myStatus().rec); } catch (e) {}
+      try { onStage = typeof __C.model.me.myStatus() !== 'undefined' && !!__C.model.me.myStatus().stg; } catch (e) {}
       try { host = (typeof __C.bcHostStored === 'function' && !!(0, /*()*/__C.bcHostStored)()) || document.body.classList.contains('amadmin'); } catch (e) {}
-      const service = __C.BROADCAST;
+      const service = __C.model.room.BROADCAST();
       const ask = !mine && (!service || (onStage && !host));
       // A broadcast keeps its own service recording from the host's Go live:
       // the host who started it and a viewer who sends nothing read the REC mark
@@ -416,7 +416,7 @@
     function paintBarIdle() {
       const b = document.body.classList;
       let watching = false;
-      if (__C.BROADCAST) {
+      if (__C.model.room.BROADCAST()) {
         let pub = (0, /*()*/__C.barKind)() === 'bc-host';
         try { pub = (0, /*()*/__C.bcMayPublishAv)(); } catch (e) {}
         watching = !pub;
@@ -434,7 +434,7 @@
       if (!bar || !more || !toggle) return;
       const phone = phoneLayout();
       const kind = (0, /*()*/__C.barKind)();
-      const narrowKey = __C.BROADCAST && window.innerWidth < 1100;
+      const narrowKey = __C.model.room.BROADCAST() && window.innerWidth < 1100;
       const key = kind + '|' + (phone ? 'phone' : 'wide') + '|' + (narrowKey ? 'narrow' : 'full');
       if (!bar.dataset.idleGuard) {
         bar.dataset.idleGuard = '1';
@@ -495,7 +495,7 @@
       // Dock words: one set per screen (dockLabelSet). Short on a phone (five
       // buttons in 320px) and on a service window under 1100px; whole words
       // on a wide window where older eyes read them at 16px (qa-meet-desktop).
-      const narrowService = __C.BROADCAST && window.innerWidth < 1100;
+      const narrowService = __C.model.room.BROADCAST() && window.innerWidth < 1100;
       const labelSet = (0, /*()*/__C.dockLabelSet)({ short: phone || narrowService, end: (0, /*()*/__C.barKind)() === 'bc-host', t: __C.uiText });
       Object.keys(labelSet).forEach((id) => {
         const el = document.querySelector('#' + id + ' .docklab');
@@ -580,7 +580,7 @@
           sayLeft('left-note', 'Your camera and microphone are off. Rejoin to come back.');
         }
       };
-      if (!__C.BROADCAST) {
+      if (!__C.model.room.BROADCAST()) {
         if (!english) {
           // A German or Spanish device keeps the translated room name (applyChrome).
           paintAirKind('group', (0, /*()*/__C.uiText)('lobTitle', 'Meeting'));
@@ -707,10 +707,10 @@
       paintWatchingSeat();
     }
     yield 69; // setCamLiveForTest: a camera the test says is sending
-    if (__C.BROADCAST) document.body.classList.add((0, /*()*/__C.bcHostStored)() ? 'bc-host' : 'bc-viewer');
+    if (__C.model.room.BROADCAST()) document.body.classList.add((0, /*()*/__C.bcHostStored)() ? 'bc-host' : 'bc-viewer');
     yield 72;
     function paintBroadcastRole() {
-      if (!__C.BROADCAST) return;
+      if (!__C.model.room.BROADCAST()) return;
       const role = (0, /*()*/__C.bcRole)();
       document.body.classList.toggle('bc-viewer', role === 'viewer');
       document.body.classList.toggle('bc-stage', role === 'stage');
@@ -738,7 +738,7 @@
     function paintBroadcastJoinNote(role) {
       const note = document.getElementById('bc-join-note');
       if (!note) return;
-      if (!__C.BROADCAST || role !== 'viewer') { note.hidden = true; return; }
+      if (!__C.model.room.BROADCAST() || role !== 'viewer') { note.hidden = true; return; }
       if (note.textContent !== BC_WATCH_COPY) note.textContent = BC_WATCH_COPY;
       note.hidden = false;
     }
@@ -866,7 +866,7 @@
       bg.id = 'appear-modal';
       bg.setAttribute('role', 'dialog'); bg.setAttribute('aria-modal', 'true');
       bg.setAttribute('aria-labelledby', 'appear-title');
-      const viewerJoin = (__C.BROADCAST) && !(typeof __C.bcHostStored === 'function' && (0, /*()*/__C.bcHostStored)());
+      const viewerJoin = (__C.model.room.BROADCAST()) && !(typeof __C.bcHostStored === 'function' && (0, /*()*/__C.bcHostStored)());
       if (viewerJoin) bg.setAttribute('aria-describedby', 'appear-note');
       bg.innerHTML = '<div class="name-box appear-box"><h3 id="appear-title">' + (viewerJoin ? 'Watching the broadcast' : (0, /*()*/__C.uiText)('appearTitle', 'This is how you\'ll appear')) + '</h3>' +
         (viewerJoin ? '<p id="appear-note">You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.</p>' : '') +
@@ -930,10 +930,10 @@
       const alone = kind === 'alone';
       const linkDown = sd.link === '1' || sd.back === '1' || !!sd.why || reachDown;
       const host = typeof __C.bcHostStored === 'function' && (0, /*()*/__C.bcHostStored)();
-      const picture = __C.myStatus && !__C.myStatus.camOff;
+      const picture = __C.model.me.myStatus() && !__C.model.me.myStatus().camOff;
       // A rebroadcast is never LIVE (Q77): the host's own, or one on the
       // stage this viewer is watching.
-      const pre = host ? !!(__C.rbNow && __C.rbNow.v) : (!joining && !alone && (0, /*()*/__C.bcPreInRoom)());
+      const pre = host ? !!(__C.model.room.rbNow() && __C.model.room.rbNow().v) : (!joining && !alone && (0, /*()*/__C.bcPreInRoom)());
       let state, label, aria;
       if (pre) { state = 'pre'; label = 'PRERECORDED'; aria = 'Prerecorded, not live'; }
       else if (host && picture && linkDown) { state = 'reconnecting'; label = 'RECONNECTING'; aria = 'Reconnecting'; }
@@ -968,8 +968,8 @@
     function paintStreamLink() {
       const card = document.getElementById('bc-link');
       if (!card) return;
-      const host = __C.BROADCAST && typeof __C.bcHostStored === 'function' && (0, /*()*/__C.bcHostStored)();
-      const onAir = __C.myStatus && __C.myStatus.camOff === false;
+      const host = __C.model.room.BROADCAST() && typeof __C.bcHostStored === 'function' && (0, /*()*/__C.bcHostStored)();
+      const onAir = __C.model.me.myStatus() && __C.model.me.myStatus().camOff === false;
       const url = (typeof shareUrl !== 'undefined' && shareUrl && shareUrl.value) || '';
       const show = !!(host && url);
       card.classList.toggle('on', show);
@@ -1042,13 +1042,13 @@
       document.body.classList.toggle('hold-door', __C.holdDoor);
       if (!list) return;
       list.textContent = '';
-      if (!__C.waitQueue.size) { list.hidden = true; return; }
+      if (!__C.model.door.waitQueue().size) { list.hidden = true; return; }
       list.hidden = false;
       const head = document.createElement('div');
       head.className = 'wait-head';
-      head.textContent = __C.waitQueue.size === 1 ? '1 person waiting' : (__C.waitQueue.size + ' people waiting');
+      head.textContent = __C.model.door.waitQueue().size === 1 ? '1 person waiting' : (__C.model.door.waitQueue().size + ' people waiting');
       list.appendChild(head);
-      for (const [id, name] of __C.waitQueue) {
+      for (const [id, name] of __C.model.door.waitQueue()) {
         const row = document.createElement('div');
         row.className = 'wait-row';
         const nm = document.createElement('span');
@@ -1058,12 +1058,12 @@
         admit.type = 'button';
         admit.className = 'wait-admit';
         admit.textContent = 'Admit';
-        admit.addEventListener('click', () => { try { __C.meetWait.admit(id); } catch (e) {} });
+        admit.addEventListener('click', () => { try { __C.model.door.meetWait().admit(id); } catch (e) {} });
         const no = document.createElement('button');
         no.type = 'button';
         no.className = 'wait-no';
         no.textContent = 'Not now';
-        no.addEventListener('click', () => { try { __C.meetWait.decline(id); } catch (e) {} });
+        no.addEventListener('click', () => { try { __C.model.door.meetWait().decline(id); } catch (e) {} });
         row.appendChild(nm);
         row.appendChild(admit);
         row.appendChild(no);
@@ -1084,7 +1084,7 @@
     }
     yield 203;
     function showHeldScreen() {
-      __C.meetWait.waiting(true);
+      __C.model.door.meetWait().waiting(true);
       const h = document.querySelector('#waitdoor h1'), p = document.querySelector('#waitdoor p');
       if (h) h.textContent = (0, /*()*/__C.statusWords)('waitingHost') || (0, /*()*/__C.uiText)('waitingForTheHost', 'Waiting for the host');
       if (p) p.textContent = (0, /*()*/__C.uiText)('youLlJoinWhen', 'You\u2019ll join when the host lets you in. This meeting can\u2019t see or hear you yet.');
@@ -1156,17 +1156,17 @@
     // reasons, or one clear face, and the faces' own tiles say it instead.
     function paintStageBlurWhy() {
       const ids = (0, /*()*/__C.stageIds)();
-      const reasons = ids.map((pid) => (pid === __C.myId ? (0, /*()*/__C.tileBlurWhy)('me', __C.myStatus) : (0, /*()*/__C.tileBlurWhy)(pid, __C.statusOf.get(pid))));
+      const reasons = ids.map((pid) => (pid === __C.model.me.myId() ? (0, /*()*/__C.tileBlurWhy)('me', __C.model.me.myStatus()) : (0, /*()*/__C.tileBlurWhy)(pid, __C.model.roster.statusOf().get(pid))));
       const why = reasons.length && reasons.every((r) => r && r === reasons[0]) ? reasons[0] : '';
       for (const el of document.querySelectorAll('#stagefeed > .rowtile')) paintBlurWhy({ tile: el }, why);
       // A stager's own Stage view (ensureStageView: one picture per person) says that person's reason.
       const views = (typeof applyComfy !== 'undefined' && applyComfy.views) || null;
-      if (views) for (const [pid, el] of views) paintBlurWhy({ tile: el }, pid === __C.myId ? (0, /*()*/__C.tileBlurWhy)('me', __C.myStatus) : (0, /*()*/__C.tileBlurWhy)(pid, __C.statusOf.get(pid)));
+      if (views) for (const [pid, el] of views) paintBlurWhy({ tile: el }, pid === __C.model.me.myId() ? (0, /*()*/__C.tileBlurWhy)('me', __C.model.me.myStatus()) : (0, /*()*/__C.tileBlurWhy)(pid, __C.model.roster.statusOf().get(pid)));
     }
     const stillBtn = document.getElementById('still');
     if (stillBtn) stillBtn.onclick = () => { stillBtn.classList.remove('on'); clearTimeout(stillTimer); };
     document.addEventListener('visibilitychange', () => {
-      __C.myStatus.away = !!document.hidden;
+      __C.model.me.myStatus().away = !!document.hidden;
       (0, /*()*/__C.broadcastStatus)();
       if (document.hidden) return;
       showStill();
@@ -1181,9 +1181,9 @@
       // freeze that actually stales the room (statuses die at 60s holdover).
       // frozeGap: the beat handler may have measured (and latched) the gap
       // before this event fired — see the flush-order note at the clock.
-      const wallGap = Date.now() - __C.hbLastAt;
-      const monoNow = (typeof performance !== 'undefined' && performance.now) ? performance.now() : (__C.hbLastMono + wallGap);
-      if ((__C.frozeGap || (0, /*()*/__C.frozeThisBeat)(wallGap, monoNow - __C.hbLastMono, __C.peers.size)) && __C.peers.size) { (0, /*()*/__M.resumeReload)(); return; }
+      const wallGap = Date.now() - __C.model.roster.hbLastAt();
+      const monoNow = (typeof performance !== 'undefined' && performance.now) ? performance.now() : (__C.model.roster.hbLastMono() + wallGap);
+      if ((__C.model.roster.frozeGap() || (0, /*()*/__C.frozeThisBeat)(wallGap, monoNow - __C.model.roster.hbLastMono(), __C.model.roster.peers().size)) && __C.model.roster.peers().size) { (0, /*()*/__M.resumeReload)(); return; }
       (0, /*()*/__C.reactRoomState)();
       // Android freezes <video> elements consuming canvas-capture streams
       // while the tab is hidden — the TRACK stays live (others keep seeing
@@ -1196,7 +1196,7 @@
       const armKick = (v) => {
         // Desktop keeps a live element. Re-attaching srcObject flashes black.
         // A phone kicks only when frames have not moved 500 ms after return.
-        if (!v || !v.srcObject || !__C.IS_MOBILE) return;
+        if (!v || !v.srcObject || !__C.model.consts.IS_MOBILE()) return;
         let q0 = 0;
         try { q0 = v.getVideoPlaybackQuality().totalVideoFrames || 0; } catch (e) { q0 = 0; }
         setTimeout(() => {
@@ -1209,8 +1209,8 @@
           const pr = v.play(); if (pr && pr.catch) pr.catch(() => {});
         }, 500);
       };
-      if (__C.meTile) armKick(__C.meTile.video);
-      for (const p of __C.peers.values()) armKick(p.video);
+      if (__C.model.me.meTile()) armKick(__C.model.me.meTile().video);
+      for (const p of __C.model.roster.peers().values()) armKick(p.video);
     });
     // ---- Picture-in-Picture: stepping out to another app must not mean
     // leaving the room — a floating overlay keeps the meeting's best face on
@@ -1236,18 +1236,18 @@
       // composited strip beyond S1, individual stager feeds inside S1).
       for (const v of stagefeedEl.querySelectorAll('.rowtile video')) if (pipReady(v) && !v.classList.contains('stageface')) return v;
       let first = null;
-      for (const [pid, p] of __C.peers) {
+      for (const [pid, p] of __C.model.roster.peers()) {
         // A camera-off seat (a bot included) still decodes black frames — skip
         // by status. A relayed or sponsor-forwarded tile is that picture with
         // the direct pair down, so p.connected is not required once video is ready.
         // A screen sharer is the best float target, not a skipped one.
-        if ((0, /*()*/__C.seatDark)(__C.statusOf.get(pid)) || !pipReady(p.video)) continue;
+        if ((0, /*()*/__C.seatDark)(__C.model.roster.statusOf().get(pid)) || !pipReady(p.video)) continue;
         // Moderation reaches the float: the PiP window paints the RAW frames
         // (no CSS there), so a peer an admin turned off, or one a moderator
         // blurred, is never floated — the receiver-side rule holds in every
         // sink, not only the grid tile.
         if ((0, /*()*/__C.forcedCamOff)(pid) || (0, /*()*/__C.modBlurOn)(pid) || (typeof __C.shareBlocked === 'function' && (0, /*()*/__C.shareBlocked)(pid))) continue;
-        if (__C.speakingOf.get(pid)) return p.video; // the talker beats first-connected
+        if (__C.model.roster.speakingOf().get(pid)) return p.video; // the talker beats first-connected
         first = first || p.video;
       }
       if (first) return first;
@@ -1257,7 +1257,7 @@
       // preview — it shows the camera is still live and the room still open
       // while I'm in another app. Only when the camera is actually ON: the
       // join-quiet default (camOff) would float a black box.
-      return (__C.meTile && !(0, /*()*/__C.seatDark)(__C.myStatus) && pipReady(__C.meTile.video)) ? __C.meTile.video : null;
+      return (__C.model.me.meTile() && !(0, /*()*/__C.seatDark)(__C.model.me.myStatus()) && pipReady(__C.model.me.meTile().video)) ? __C.model.me.meTile().video : null;
     }
     // pipManual: the float was asked for with the Float button while the tab
     // was in view. Only then may it stay up while the meeting is on screen.
@@ -1300,7 +1300,7 @@
     // apps (Android Chrome, Nathan 2026-10-18). Its float shows the page, so
     // the dock and the call buttons leave it while the page is away.
     function awayFull(on) {
-      const next = !!on && __C.IS_MOBILE && pageFull();
+      const next = !!on && __C.model.consts.IS_MOBILE() && pageFull();
       if (document.body.classList.contains('away-full') === next) return;
       document.body.classList.toggle('away-full', next);
       // The header band is 0 while the browser is floating this page, so the
@@ -1317,24 +1317,24 @@
     function pipCardModel() {
       const words = { you: (0, /*()*/__C.uiText)('you', 'you'), on: (0, /*()*/__C.uiText)('micOn', 'Mic on'), off: (0, /*()*/__C.uiText)('micOff', 'Mic off'), more: (0, /*()*/__C.uiText)('more', 'more') };
       const room = String(document.title || '').replace(/\s*\u2014\s*GifOS\s*$/, '') || (0, /*()*/__C.uiText)('meeting', 'Meeting');
-      const me = { name: String((0, /*()*/__C.myName)() || ''), you: 1, muted: __C.myStatus.muted ? 1 : 0, talk: __C.speakingOf.get('me') ? 1 : 0 };
+      const me = { name: String((0, /*()*/__C.myName)() || ''), you: 1, muted: __C.model.me.myStatus().muted ? 1 : 0, talk: __C.model.roster.speakingOf().get('me') ? 1 : 0 };
       const talk = [], rest = [];
       let total = 1;
-      for (const pid of __C.peers.keys()) {
+      for (const pid of __C.model.roster.peers().keys()) {
         total++;
-        const talking = !!__C.speakingOf.get(pid);
-        if ((talking ? talk : rest).length >= __C.PIP_CARD_ROWS) continue;
-        const st = __C.statusOf.get(pid) || {};
+        const talking = !!__C.model.roster.speakingOf().get(pid);
+        if ((talking ? talk : rest).length >= __C.model.consts.PIP_CARD_ROWS()) continue;
+        const st = __C.model.roster.statusOf().get(pid) || {};
         (talking ? talk : rest).push({ name: String((0, /*()*/__C.displayName)(pid) || ''), muted: st.muted ? 1 : 0, talk: talking ? 1 : 0 });
       }
-      return { room, words, me, others: talk.concat(rest).slice(0, __C.PIP_CARD_ROWS - 1), total };
+      return { room, words, me, others: talk.concat(rest).slice(0, __C.model.consts.PIP_CARD_ROWS() - 1), total };
     }
     yield 315;
     function pipCardEnsure() {
       if (__C.pipCard) return __C.pipCard;
       if (!pipCardOk()) return null;
       const canvas = document.createElement('canvas');
-      canvas.width = __C.PIP_CARD_W; canvas.height = __C.PIP_CARD_H;
+      canvas.width = __C.model.consts.PIP_CARD_W(); canvas.height = __C.model.consts.PIP_CARD_H();
       const ctx = canvas.getContext('2d');
       let stream = null;
       try { stream = canvas.captureStream(0); } catch (e) { return null; }
@@ -1383,11 +1383,11 @@
     async function enterPip(manual, byBrowser) {
       if (byBrowser) pipByBrowser = Date.now();
       if (manual || byBrowser) (0, /*()*/__C.clearPipAuto)();
-      pipNote('enter', { manual: !!manual, browser: !!byBrowser, src: (() => { try { const v = pipSource(); return v ? (v === (__C.meTile && __C.meTile.video) ? 'me' : 'peer') : null; } catch (e) { return '?'; } })() });
+      pipNote('enter', { manual: !!manual, browser: !!byBrowser, src: (() => { try { const v = pipSource(); return v ? (v === (__C.model.me.meTile() && __C.model.me.meTile().video) ? 'me' : 'peer') : null; } catch (e) { return '?'; } })() });
       // A tile floated from that page only paints "Playing in
       // picture-in-picture" into the browser's float, and leaves the tile
       // black when you come back.
-      if (!manual && __C.IS_MOBILE && pageFull()) return;
+      if (!manual && __C.model.consts.IS_MOBILE() && pageFull()) return;
       if (__C.docPip) { (0, /*()*/__C.docPipAim)(); return; }
       // The action's grant is this turn only. Ask before any await.
       if (byBrowser && docPipOk()) {
@@ -1411,7 +1411,7 @@
           }
           pipManual = false;
         } else if (plan === 'card' && await pipCardFloat(manual, byBrowser)) return;
-        if (manual) (0, /*()*/__C.setStatus)((__C.BROADCAST) ? 'Nothing on the stage to float yet.' : 'Nothing to float yet.');
+        if (manual) (0, /*()*/__C.setStatus)((__C.model.room.BROADCAST()) ? 'Nothing on the stage to float yet.' : 'Nothing to float yet.');
         return;
       }
       if (!manual && !byBrowser) { armPipAuto(); return; }
@@ -1457,7 +1457,7 @@
     const pipFloating = () => !!(__C.docPip || document.pictureInPictureElement
       || Array.from(document.querySelectorAll('video')).some((v) => v.webkitPresentationMode === 'picture-in-picture'));
     yield 326;
-    const docPipOk = () => !__C.IS_MOBILE && !!(window.documentPictureInPicture && typeof window.documentPictureInPicture.requestWindow === 'function');
+    const docPipOk = () => !__C.model.consts.IS_MOBILE() && !!(window.documentPictureInPicture && typeof window.documentPictureInPicture.requestWindow === 'function');
     yield 328;
     function docPipPaint() {
       if (!__C.docPip) return;
@@ -1611,7 +1611,7 @@
     yield 341;
     function backGuardSync() {
       let want = false;   // IS_ANDROID is declared further down: a beat before it would throw, and the float's re-aim must not
-      try { want = __C.IS_ANDROID && __C.IS_MOBILE && typeof window.CloseWatcher === 'function' && !window.__gifosNativeBoot && (0, /*()*/__C.inMeetingNow)(); } catch (e) {}
+      try { want = __C.model.consts.IS_ANDROID() && __C.model.consts.IS_MOBILE() && typeof window.CloseWatcher === 'function' && !window.__gifosNativeBoot && (0, /*()*/__C.inMeetingNow)(); } catch (e) {}
       if (want && !__C.backWatch) {
         try {
           const w = new window.CloseWatcher();
@@ -1641,7 +1641,7 @@
       let aim = v;
       try {
         if (v) pipCardDrop();
-        else if (__C.meTile && !docPipOk() && pipCardEnsure()) { (0, /*()*/__C.pipCardPaint)(false); aim = __C.pipCard.video; }
+        else if (__C.model.me.meTile() && !docPipOk() && pipCardEnsure()) { (0, /*()*/__C.pipCardPaint)(false); aim = __C.pipCard.video; }
       } catch (e) {}
       if (typeof __C.botViewOn !== 'undefined' && __C.botViewOn) aim = null;   // the bot view draws no tile, so nothing floats by itself
       if (aim === pipAimed) return;
@@ -1653,11 +1653,11 @@
     // A visible tab never wants a mate's main parked. Re-send the lift to
     // one mate (idempotent on the far side: no park, nothing changes).
     function reassertVisLift(pid) {
-      const p = __C.peers.get(pid);
+      const p = __C.model.roster.peers().get(pid);
       if (!p || !p.dc || p.dc.readyState !== 'open' || document.hidden) return;
       if (typeof __C.botParks === 'function' && (0, /*()*/__C.botParks)(pid, false)) return;   // the bot view keeps its parks
       (0, /*()*/__C.dcSend)(p, { k: 'vis', park: false });
-      __C.visParkSent.set(pid, false);
+      __C.model.me.visParkSent().set(pid, false);
     }
     // A phone grid does not float on its own. Full screen can: Android floats
     // a page that holds the screen (FULL SCREEN ON THE FIRST TAP). Someone
@@ -1669,7 +1669,7 @@
       pipNote(document.hidden ? 'hidden' : 'visible');
       awayFull(document.hidden);
       if (document.hidden) {
-        pipHintArmed = __C.IS_MOBILE && !pipHintDone && !pipFloating() && pipBtnShown() && !!(pipSource() || (__C.pipCard && pipCardOk()));
+        pipHintArmed = __C.model.consts.IS_MOBILE() && !pipHintDone && !pipFloating() && pipBtnShown() && !!(pipSource() || (__C.pipCard && pipCardOk()));
         enterPip();
       } else {
         pipReturn('visible');
@@ -1692,7 +1692,7 @@
     // real return (hidden -> visible), Float again, the floated tile, or the
     // float's own close.
     document.addEventListener('pointerdown', (e) => {
-      if (!__C.IS_MOBILE) return;
+      if (!__C.model.consts.IS_MOBILE()) return;
       awayFull(false);
       if (pipManual) return;
       const t = e.target;
@@ -1705,13 +1705,13 @@
     // Never under a float: the float means the person is on the way out, and
     // full screen would hide the system bars they leave by.
     function autoFsWanted() {
-      if (!__C.IS_ANDROID || !__C.IS_MOBILE || __C.autoFsOff || __C.ROOM.solo || __C.leaving || pageFull() || pipFloating()) return false;
-      if (__C.mediaAskPending > 0) return false;
+      if (!__C.model.consts.IS_ANDROID() || !__C.model.consts.IS_MOBILE() || __C.autoFsOff || __C.ROOM.solo || __C.model.me.leaving() || pageFull() || pipFloating()) return false;
+      if (__C.model.me.mediaAskPending() > 0) return false;
       const FS = window.GifOS && GifOS.fullscreen;
       return !!(FS && FS.supported());
     }
     document.addEventListener('click', (e) => {
-      if (!__C.IS_ANDROID || !__C.IS_MOBILE) return;
+      if (!__C.model.consts.IS_ANDROID() || !__C.model.consts.IS_MOBILE()) return;
       const t = e.target;
       const fb = t && t.closest ? t.closest('#appfull') : null;
       if (fb) {
@@ -1777,7 +1777,7 @@
         const ae = document.activeElement;
         if (ae && ae.tagName === 'IFRAME') return;
         awayFull(true);
-        if (pipManual || __C.IS_MOBILE || __C.mediaAskPending) { pipNote('blur-skip', { manual: pipManual, ask: __C.mediaAskPending }); return; }
+        if (pipManual || __C.model.consts.IS_MOBILE() || __C.model.me.mediaAskPending()) { pipNote('blur-skip', { manual: pipManual, ask: __C.model.me.mediaAskPending() }); return; }
         pipAwayAt = Date.now();
         pipNote('blur-away');
         enterPip();
@@ -1818,16 +1818,16 @@
         const onAir = (0, /*()*/__C.bcOnAir)();
         // A live broadcast survives an update reload: the host comes back on
         // the air with the camera and mic exactly as they were sending.
-        const air = onAir ? { cam: !__C.myStatus.camOff, mic: !__C.myStatus.muted } : null;
-        const wait = (__C.holdDoor || __C.model.admin.waitAdmitted().size || __C.waitDeclined.size || __C.waitQueue.size)
-          ? { hold: __C.holdDoor, admitted: Array.from(__C.model.admin.waitAdmitted()), declined: Array.from(__C.waitDeclined), queue: Array.from(__C.waitQueue.entries()) }
+        const air = onAir ? { cam: !__C.model.me.myStatus().camOff, mic: !__C.model.me.myStatus().muted } : null;
+        const wait = (__C.holdDoor || __C.model.admin.waitAdmitted().size || __C.model.door.waitDeclined().size || __C.model.door.waitQueue().size)
+          ? { hold: __C.holdDoor, admitted: Array.from(__C.model.admin.waitAdmitted()), declined: Array.from(__C.model.door.waitDeclined()), queue: Array.from(__C.model.door.waitQueue().entries()) }
           : null;
-        sessionStorage.setItem(__C.UPDATE_RESUME_KEY, JSON.stringify({
+        sessionStorage.setItem(__C.model.consts.UPDATE_RESUME_KEY(), JSON.stringify({
           v: 1, at: Date.now(), room: (0, /*()*/__C.updateRoomKey)(), to: String(target.latest || ''),
           emergency: !!target.emergency, note: String(target.note || '').slice(0, 200),
-          blur: (0, /*()*/__C.blurLevel)(__C.myStatus.blur), stg: +__C.myStatus.stg || 0, onAir, air, wait,
-          sharing: !!__C.myStatus.scr, seed: __C.myIdentitySeed || '',
-          pwOk: !!__C.roomPw && !__C.pwProvisional, // this page holds the password as the room's (typed at the door, granted, or vouched by it)
+          blur: (0, /*()*/__C.blurLevel)(__C.model.me.myStatus().blur), stg: +__C.model.me.myStatus().stg || 0, onAir, air, wait,
+          sharing: !!__C.model.me.myStatus().scr, seed: __C.model.me.myIdentitySeed() || '',
+          pwOk: !!__C.model.door.roomPw() && !__C.model.door.pwProvisional(), // this page holds the password as the room's (typed at the door, granted, or vouched by it)
         }));
       } catch (e) {}
       try { (0, /*()*/__M.stashRecoverMedia)(); } catch (e) {}
@@ -1941,7 +1941,7 @@
       // in Focus the big view can be a content item as well as a person.
       try {
         const VMc = window.GifOS && GifOS.meetViewMode && GifOS.meetViewMode.content;
-        if (VMc && !__C.BROADCAST) for (const it of VMc.items()) if (it.stream || it.v) out.push({ key: it.key, label: it.label || '', v: it.v || null, stream: it.stream || null, fit: 'contain', content: true });
+        if (VMc && !__C.model.room.BROADCAST()) for (const it of VMc.items()) if (it.stream || it.v) out.push({ key: it.key, label: it.label || '', v: it.v || null, stream: it.stream || null, fit: 'contain', content: true });
       } catch (e) {}
       let stageFit = null;
       for (const v of stagefeedEl.querySelectorAll('.rowtile video')) {
@@ -1950,19 +1950,19 @@
         // content area, and WebKit never starts a hidden video: a live,
         // unmuted feed counts, and the view's own big video plays it.
         if (!pipReady(v) && !(0, /*()*/__C.fsFeedLive)(v)) continue;
-        if (!stageFit) stageFit = (__C.BROADCAST || (0, /*()*/__C.screenSharers)().length || (0, /*()*/__C.stageIds)().length !== 1) ? 'contain' : 'cover';
+        if (!stageFit) stageFit = (__C.model.room.BROADCAST() || (0, /*()*/__C.screenSharers)().length || (0, /*()*/__C.stageIds)().length !== 1) ? 'contain' : 'cover';
         out.push({ key: 'stage:' + ((v.closest('.rowtile') || {}).dataset || {}).row, label: 'On stage', v, fit: stageFit });
       }
-      if (__C.BROADCAST) return out;
+      if (__C.model.room.BROADCAST()) return out;
       // Focus has every tile, camera on or off (Nathan 2026-11-18): a camera-off person is a card with their Settings
       // picture (the one their grid tile shows) or their initial, so Focus is never a black screen.
       const picOf = (pid, p) => {
         try {
           if (pid === 'me') { const a = (GifOS.store.identity() || {}).avatar; return (a && a.url) || ''; }
-          return (GifOS.meetViews && GifOS.meetViews.avatarUrl && GifOS.meetViews.avatarUrl(__C.statusOf.get(pid), p)) || '';
+          return (GifOS.meetViews && GifOS.meetViews.avatarUrl && GifOS.meetViews.avatarUrl(__C.model.roster.statusOf().get(pid), p)) || '';
         } catch (e) { return ''; }
       };
-      for (const [pid, p] of __C.peers) {
+      for (const [pid, p] of __C.model.roster.peers()) {
         // Every peer the grid shows is listed: a live link, or a tile on the grid while the link is still coming up
         // (applyComfy's own rule for a tile that takes a slot).
         const onGrid = !!(p && p.tile && !p.headless && !p.held && p.tile.parentNode && !(p.tile.style && p.tile.style.display === 'none'));
@@ -1973,7 +1973,7 @@
         // peer still carries the receiver blur level.
         const label = (0, /*()*/__C.displayName)(pid);
         const blocked = (0, /*()*/__C.forcedCamOff)(pid) || (typeof __C.shareBlocked === 'function' && (0, /*()*/__C.shareBlocked)(pid));
-        const dark = !pipReady(p.video) || (0, /*()*/__C.seatDark)(__C.statusOf.get(pid)) || blocked;
+        const dark = !pipReady(p.video) || (0, /*()*/__C.seatDark)(__C.model.roster.statusOf().get(pid)) || blocked;
         if (dark) out.push({ key: 'peer:' + pid, label: label, v: null, dark: true, pic: picOf(pid, p), pbl: (0, /*()*/__C.blurLevelFor)(pid, true) });
         else out.push({ key: 'peer:' + pid, label: label, v: p.video, bl: (0, /*()*/__C.blurLevelFor)(pid), fit: (0, /*()*/__C.sharingScreen)(pid) ? 'contain' : 'cover' });
       }
@@ -1981,9 +1981,9 @@
       if (pipReady(sd)) out.push({ key: 'sd', label: (0, /*()*/__C.uiText)('setStadium', 'The stadium'), v: sd, fit: 'contain' });
       // My tile shows my screen only when I share from the Stage; a share from the Row keeps my camera there.
       // With my camera off it is my card (my picture, or my initial).
-      if (__C.meTile) {
+      if (__C.model.me.meTile()) {
         const you = (0, /*()*/__C.uiText)('lobPreviewName', 'You');
-        if (!(0, /*()*/__C.seatDark)(__C.myStatus) && pipReady(__C.meTile.video)) out.push({ key: 'me', label: you, v: __C.meTile.video, fit: (__C.myStatus.scr && !(0, /*()*/__C.shareOnlyStage)('me')) ? 'contain' : 'cover' });
+        if (!(0, /*()*/__C.seatDark)(__C.model.me.myStatus()) && pipReady(__C.model.me.meTile().video)) out.push({ key: 'me', label: you, v: __C.model.me.meTile().video, fit: (__C.model.me.myStatus().scr && !(0, /*()*/__C.shareOnlyStage)('me')) ? 'contain' : 'cover' });
         else out.push({ key: 'me', label: you, v: null, dark: true, pic: picOf('me'), initial: (() => { try { return (0, /*()*/__C.nameInitial)((0, /*()*/__C.myName)()); } catch (e) { return ''; } })() });
       }
       return out;
@@ -2008,7 +2008,7 @@
         if (letter) letter.textContent = ch ? ch.toUpperCase() : '\u2022';
         if (nm) nm.textContent = text;
       };
-      const broadcastFs = __C.BROADCAST;
+      const broadcastFs = __C.model.room.BROADCAST();
       // A service stage with the camera off wears its card (#bc-ident:
       // picture or initial, name, Camera off). Full screen shows that card,
       // not the black frame under it.
@@ -2180,12 +2180,12 @@
     // leaving the app can float it. An app or a broadcast keeps its own
     // picture.
     function fsStripOk() {
-      return __C.IS_MOBILE && !document.body.classList.contains('has-app') && !__C.BROADCAST;
+      return __C.model.consts.IS_MOBILE() && !document.body.classList.contains('has-app') && !__C.model.room.BROADCAST();
     }
     // Android's first tap takes the screen with no filmstrip. Full screen
     // then offers the filmstrip, and the filmstrip's close leaves.
     function fsQuiet() {
-      return __C.IS_ANDROID && fsStripOk() && pageFull() && !fsview.classList.contains('on');
+      return __C.model.consts.IS_ANDROID() && fsStripOk() && pageFull() && !fsview.classList.contains('on');
     }
     yield 499;
     function openFsView(key, inline) {
@@ -2242,7 +2242,7 @@
       fsOverlay = false;
       if (document.fullscreenElement === fsview) { fsOwnExit = true; document.exitFullscreen().then(refocus, () => { fsOwnExit = false; refocus(); }); }
       else if (overlay && document.fullscreenElement === document.documentElement) {
-        if (__C.IS_ANDROID) (0, /*()*/__C.setAutoFsOff)(true);   // leaving here is the person's choice, as with the Full screen button
+        if (__C.model.consts.IS_ANDROID()) (0, /*()*/__C.setAutoFsOff)(true);   // leaving here is the person's choice, as with the Full screen button
         fsOwnExit = true; document.exitFullscreen().then(refocus, () => { fsOwnExit = false; refocus(); });
       }
       else refocus();
@@ -2343,7 +2343,7 @@
     function paintStageMod() {
       const el = document.getElementById('stagemod');
       if (!el) return;
-      const broadcast = __C.BROADCAST;
+      const broadcast = __C.model.room.BROADCAST();
       const host = broadcast && ((typeof __C.bcHostStored === 'function' && (0, /*()*/__C.bcHostStored)()) || document.body.classList.contains('amadmin'));
       const blocked = document.body.classList.contains('admroom') && document.body.classList.contains('notadmin');
       const ids = (!broadcast || !host || blocked) ? [] : (0, /*()*/__C.stageModList)();
@@ -2390,7 +2390,7 @@
           card.appendChild(bar);
           el.appendChild(card);
         }
-        const nm = __C.rosterNames[id] || (__C.peers.get(id) || {}).name || 'Guest';
+        const nm = __C.model.roster.rosterNames()[id] || (__C.model.roster.peers().get(id) || {}).name || 'Guest';
         const nameEl = card.querySelector('.stagename');
         if (nameEl && nameEl.textContent !== nm) nameEl.textContent = nm;
         const aria = nm + '. Guest controls.';
@@ -2402,7 +2402,7 @@
     function paintRaisedHands() {
       const el = document.getElementById('handraise');
       if (!el) return;
-      const broadcast = __C.BROADCAST;
+      const broadcast = __C.model.room.BROADCAST();
       const host = broadcast && ((typeof __C.bcHostStored === 'function' && (0, /*()*/__C.bcHostStored)()) || document.body.classList.contains('amadmin'));
       const watching = document.body.classList.contains('bc-watching');
       const rows = (!broadcast || !host || watching) ? [] : __C.model.hands.rows();
@@ -2572,10 +2572,10 @@
           mark.setAttribute('data-mark', nm);
           if (nm === 'note') {
             mark.title = 'Note bot';
-            mark.innerHTML = __C.AI_SPARK_SVG + 'bot';
+            mark.innerHTML = __C.model.consts.AI_SPARK_SVG() + 'bot';
           } else {
             mark.title = '';
-            mark.innerHTML = __C.AI_SPARK_SVG;
+            mark.innerHTML = __C.model.consts.AI_SPARK_SVG();
             mark.appendChild(document.createTextNode(nm === 'notes' ? (0, /*()*/__C.uiText)('botTakingNotes', 'bot \u00b7 taking notes') : (0, /*()*/__C.uiText)('botNotesAsk', 'bot \u00b7 asks to take notes')));
           }
         }
@@ -2630,14 +2630,14 @@
     }
     yield 532;
     function layout() {
-      __C.reactStats.layouts++;
+      __C.model.roster.reactStats().layouts++;
       // One order: the banner's queue (handQueue), so a tile and the banner never disagree.
-      const rank = new Map(__C.model.hands.queue().map((e, i) => [e.i === __C.myId ? 'me' : e.i, i]));
+      const rank = new Map(__C.model.hands.queue().map((e, i) => [e.i === __C.model.me.myId() ? 'me' : e.i, i]));
       const stg = (0, /*()*/__C.stageIds)(); // the Stage floats first, in step-up order
       const apply = (id, t) => {
         const focused = __C.focusId === id;
         t.tile.classList.toggle('focus', focused);
-        const si = stg.indexOf(id === 'me' ? __C.myId : id);
+        const si = stg.indexOf(id === 'me' ? __C.model.me.myId() : id);
         t.tile.classList.toggle('onstage', si >= 0);
         let o = rank.has(id) ? -5000 + rank.get(id) : 0;
         if (si >= 0) o = -60000 + si;             // the stage outranks raised hands
@@ -2645,17 +2645,17 @@
         if (focused) o = -100000;                 // …unless you chose to focus them anyway
         t.tile.style.order = o;
       };
-      if (__C.meTile) apply('me', __C.meTile);
-      for (const [pid, p] of __C.peers) apply(pid, p);
+      if (__C.model.me.meTile()) apply('me', __C.model.me.meTile());
+      for (const [pid, p] of __C.model.roster.peers()) apply(pid, p);
       // Once someone else is here, you leave the grid and float. The count
       // is the other people, so one other person fills the stage.
       // A person held in the waiting room is off this screen: no space for them.
       const remoteTiles = [];
-      for (const [, p] of __C.peers) if (p && p.tile && !p.held) remoteTiles.push(p.tile);
+      for (const [, p] of __C.model.roster.peers()) if (p && p.tile && !p.held) remoteTiles.push(p.tile);
       remoteTiles.sort((a, b) => (parseFloat(a.style.order) || 0) - (parseFloat(b.style.order) || 0));
       let nRemote = 0;
-      for (const [, p] of __C.peers) if (!(p && p.held)) nRemote++;
-      if (typeof __C.rosterTiles === 'object' && __C.rosterTiles) for (const t of __C.rosterTiles.values()) if (t && t.parentNode) { remoteTiles.push(t); nRemote++; } // held "Reconnecting…" faces take their place in the row
+      for (const [, p] of __C.model.roster.peers()) if (!(p && p.held)) nRemote++;
+      if (typeof __C.model.roster.rosterTiles() === 'object' && __C.model.roster.rosterTiles()) for (const t of __C.model.roster.rosterTiles().values()) if (t && t.parentNode) { remoteTiles.push(t); nRemote++; } // held "Reconnecting…" faces take their place in the row
       document.body.classList.toggle('has-peers', nRemote > 0);
       if (grid) grid.setAttribute('data-remotes', String(nRemote));
       remoteTiles.forEach((t, i) => {
@@ -2671,13 +2671,13 @@
       // While I wait I see no one; a held person is no one's face here.
       if ((0, /*()*/__C.iAmWaiting)()) return [];
       const shown = {};
-      if (__C.myId) shown[__C.myId] = true;
-      for (const [pid, p] of __C.peers) {
+      if (__C.model.me.myId()) shown[__C.model.me.myId()] = true;
+      for (const [pid, p] of __C.model.roster.peers()) {
         if (p && p.held) { shown[pid] = true; continue; }
         if (!p || p.headless || !p.tile) continue;
         if (p.tile.style.display !== 'none') shown[pid] = true;
       }
-      if (typeof __C.rosterTiles === 'object' && __C.rosterTiles) for (const [pid, t] of __C.rosterTiles) if (t && t.parentNode) shown[pid] = true;   // a held face is on screen: not a stadium face too
+      if (typeof __C.model.roster.rosterTiles() === 'object' && __C.model.roster.rosterTiles()) for (const [pid, t] of __C.model.roster.rosterTiles()) if (t && t.parentNode) shown[pid] = true;   // a held face is on screen: not a stadium face too
       const out = [], seen = {};
       const push = (id) => {
         if (!id || seen[id] || shown[id]) return;
@@ -2688,8 +2688,8 @@
       // person (a crashed or departed page parks disconnected until the ring lets it go, and the tile of a pair outside my
       // row is hidden), so reading `peers` drew "Stadium \u00b7 N" over an empty box beside a header that had already let
       // them go. A page gone whose cell is held (byeIsHeld) is no face, as it is no head in the header.
-      for (const id of (Array.isArray(__C.rosterIds) ? __C.rosterIds : [])) {
-        if (__C.meshNode && __C.meshNode.byeIsHeld && __C.meshNode.byeIsHeld(id)) continue;
+      for (const id of (Array.isArray(__C.model.roster.rosterIds()) ? __C.model.roster.rosterIds() : [])) {
+        if (__C.model.net.meshNode() && __C.model.net.meshNode().byeIsHeld && __C.model.net.meshNode().byeIsHeld(id)) continue;
         push(id);
       }
       return out;
@@ -2746,7 +2746,7 @@
       let label = '';
       try { label = (0, /*()*/__C.displayName)(id) || ''; } catch (e) {}
       if (nm && nm.textContent !== label) nm.textContent = label;
-      try { paintBlurWhy({ tile: el }, id === __C.myId ? (0, /*()*/__C.tileBlurWhy)('me', __C.myStatus) : (0, /*()*/__C.tileBlurWhy)(id, __C.statusOf.get(id))); } catch (e) {}
+      try { paintBlurWhy({ tile: el }, id === __C.model.me.myId() ? (0, /*()*/__C.tileBlurWhy)('me', __C.model.me.myStatus()) : (0, /*()*/__C.tileBlurWhy)(id, __C.model.roster.statusOf().get(id))); } catch (e) {}
       return el;
     }
     function dropStageViews(keep) {
@@ -2764,7 +2764,7 @@
       const MV = (typeof GifOS !== 'undefined' && GifOS.meetViews) || null;
       if (!MV || !MV.apply) return;
       const feed = document.getElementById('feed');
-      const allowed = !!__C.meTile && MV.comfyAllowed(document.body);
+      const allowed = !!__C.model.me.meTile() && MV.comfyAllowed(document.body);
       document.body.classList.toggle('comfy', allowed);
       if (!allowed || !feed) {
         try { MV.clearRoot(feed); } catch (e) {}
@@ -2775,19 +2775,19 @@
       try {
         const tiles = [];
         const stg = (0, /*()*/__C.stageIds)();
-        if (__C.meTile && __C.meTile.tile && __C.meTile.tile.style.display !== 'none') {
+        if (__C.model.me.meTile() && __C.model.me.meTile().tile && __C.model.me.meTile().tile.style.display !== 'none') {
           const selfPin = !!(window.__meetSwapSelf || (window.__meetSelf && window.__meetSelf.onStage));
-          tiles.push({ id: 'me', el: __C.meTile.tile, tier: __C.myStatus.bot ? 'bot' : 'row', me: true, bot: !!__C.myStatus.bot, shade: (0, /*()*/__C.shadeKey)('me'),
-            hand: !!__C.myStatus.hand, handOrd: __C.myStatus.hand || 0,
+          tiles.push({ id: 'me', el: __C.model.me.meTile().tile, tier: __C.model.me.myStatus().bot ? 'bot' : 'row', me: true, bot: !!__C.model.me.myStatus().bot, shade: (0, /*()*/__C.shadeKey)('me'),
+            hand: !!__C.model.me.myStatus().hand, handOrd: __C.model.me.myStatus().hand || 0,
             // A self-view pin can place your tile on your own stage. It is not room membership.
             stage: selfPin,
-            shareFace: !__C.myStatus.bot && !!__C.myStatus.scr,
-            stageOrd: Math.max(0, stg.indexOf(__C.myId)),
-            speaker: !__C.myStatus.bot && !!(__C.speakingOf && __C.speakingOf.get && __C.speakingOf.get('me')), pz: 'peer:me' });
+            shareFace: !__C.model.me.myStatus().bot && !!__C.model.me.myStatus().scr,
+            stageOrd: Math.max(0, stg.indexOf(__C.model.me.myId())),
+            speaker: !__C.model.me.myStatus().bot && !!(__C.model.roster.speakingOf() && __C.model.roster.speakingOf().get && __C.model.roster.speakingOf().get('me')), pz: 'peer:me' });
         }
-        for (const [pid, p] of __C.peers) {
+        for (const [pid, p] of __C.model.roster.peers()) {
           if (!p || !p.tile || p.headless || p.held || !p.tile.parentNode || p.tile.style.display === 'none') continue;   // a tile off the grid takes no slot
-          const st = __C.statusOf.get(pid) || {};
+          const st = __C.model.roster.statusOf().get(pid) || {};
           const si = stg.indexOf(pid);
           const bot = !!st.bot;
           tiles.push({ id: pid, el: p.tile, tier: bot ? 'bot' : 'row', bot: bot, shade: (0, /*()*/__C.shadeKey)(pid),
@@ -2795,11 +2795,11 @@
             stage: si >= 0, stageOrd: Math.max(0, si),
             // A sharer's screen is the Stage (the sgs strip below); their face stays in the Row.
             shareFace: !bot && (() => { try { return !!(0, /*()*/__C.sharingScreen)(pid); } catch (e) { return false; } })(),
-            speaker: !bot && !!(__C.speakingOf && __C.speakingOf.get && __C.speakingOf.get(pid)), pz: 'peer:' + pid });
+            speaker: !bot && !!(__C.model.roster.speakingOf() && __C.model.roster.speakingOf().get && __C.model.roster.speakingOf().get(pid)), pz: 'peer:' + pid });
         }
         // A held face is on the grid too: it takes a slot of its own in the pack, or it keeps the box of the pass before
         // and the next face is drawn over it (two names in one slot).
-        if (typeof __C.rosterTiles === 'object' && __C.rosterTiles) for (const [pid, el] of __C.rosterTiles) {
+        if (typeof __C.model.roster.rosterTiles() === 'object' && __C.model.roster.rosterTiles()) for (const [pid, el] of __C.model.roster.rosterTiles()) {
           if (!el || !el.parentNode || tiles.some((x) => x.id === pid)) continue;
           tiles.push({ id: pid, el: el, tier: 'row', bot: false, shade: (0, /*()*/__C.shadeKey)(pid), hand: false, handOrd: 0, stage: false, stageOrd: 0, shareFace: false, speaker: false, pz: 'peer:' + pid });
         }
@@ -2853,7 +2853,7 @@
           const keepViews = new Set();
           for (let i = 0; i < tiles.length; i++) {
             const t = tiles[i];
-            const sid = t.me ? __C.myId : t.id;
+            const sid = t.me ? __C.model.me.myId() : t.id;
             const onStrip = !!(sid && packIds.indexOf(sid) >= 0 && !t.shareFace && !(__C.focusId && t.id === __C.focusId));
             t.seatHeld = onStrip;
             try {
@@ -2890,7 +2890,7 @@
           const row = [];
           for (let i = 0; i < tiles.length; i++) {
             const t = tiles[i];
-            const sid = t.me ? __C.myId : t.id;
+            const sid = t.me ? __C.model.me.myId() : t.id;
             const onStrip = !!(sid && stagersNow.indexOf(sid) >= 0 && !t.shareFace && !(__C.focusId && t.id === __C.focusId));
             t.seatHeld = onStrip;
             try {
@@ -2952,7 +2952,7 @@
           // initials. The composite cell for that person is black. A share
           // does not change that: the screen is the stage strip, and the
           // parked camera sender would paint this cell black over the letter.
-          const st = __C.statusOf.get(id) || null;
+          const st = __C.model.roster.statusOf().get(id) || null;
           const off = !st || (!!st.camOff && !st.rb);
           let avatar = '';
           try { avatar = (MV.avatarUrl && MV.avatarUrl(st || {}, null)) || ''; } catch (e2) {}
@@ -2960,7 +2960,7 @@
           // share whose camera is not on stage is unchanged.
           let held = false;
           try {
-            const sharing = id === __C.myId ? !!__C.myStatus.scr : (typeof __C.sharingScreen === 'function' && !!(0, /*()*/__C.sharingScreen)(id));
+            const sharing = id === __C.model.me.myId() ? !!__C.model.me.myStatus().scr : (typeof __C.sharingScreen === 'function' && !!(0, /*()*/__C.sharingScreen)(id));
             held = stagersFace.indexOf(id) >= 0 && !sharing;
           } catch (e3) { held = false; }
           faces.push({ id: id, name: name, initials: held ? '' : (0, /*()*/__C.nameInitial)(name), off: off || held, avatar: held ? '' : avatar, shade: (0, /*()*/__C.shadeKey)(id), held: held });
@@ -3143,7 +3143,7 @@
       }
       if (vpFollow) {
         vpFollow.hidden = m !== 'focus';
-        const on = fsview.classList.contains('on') ? __C.fsSel === 'auto' : (!__C.VMODE || __C.VMODE.loadFollow(__C.viewStore));
+        const on = fsview.classList.contains('on') ? __C.fsSel === 'auto' : (!__C.VMODE || __C.VMODE.loadFollow(__C.model.apps.viewStore()));
         vpFollow.setAttribute('aria-checked', on ? 'true' : 'false');
         const wd = vpFollow.querySelector('.vp-word');
         if (wd) wd.textContent = (0, /*()*/__C.uiText)('viewFollow', 'Follow the speaker');
@@ -3215,7 +3215,7 @@
     }
     if (vpFollow) vpFollow.addEventListener('click', () => {
       const on = vpFollow.getAttribute('aria-checked') !== 'true';
-      if (__C.VMODE) __C.VMODE.saveFollow(__C.viewStore, on);
+      if (__C.VMODE) __C.VMODE.saveFollow(__C.model.apps.viewStore(), on);
       if (fsview.classList.contains('on') && __C.fsInline) {
         if (on) { __C.fsSel = 'auto'; __C.fsAutoPid = null; __C.fsAutoKey = null; __C.fsFollow = null; }
         else __C.fsSel = fsmain.dataset.key || null; // pin whoever is on the big view now
@@ -3280,9 +3280,9 @@
     // ---- what is shared now ----
     function ctAppInfo() {
       if (!document.body.classList.contains('has-app') || !__C.appKey) return null;
-      const mine = !!(__C.myStatus.app && __C.appKey === __C.myStatus.app.s);
-      let by = mine ? __C.myId : null;
-      if (!by) for (const [pid, st] of __C.statusOf) if (st && st.app && st.app.s === __C.appKey) { by = pid; break; }
+      const mine = !!(__C.model.me.myStatus().app && __C.appKey === __C.model.me.myStatus().app.s);
+      let by = mine ? __C.model.me.myId() : null;
+      if (!by) for (const [pid, st] of __C.model.roster.statusOf()) if (st && st.app && st.app.s === __C.appKey) { by = pid; break; }
       const nm = document.getElementById('appname');
       return { on: true, name: (nm && nm.textContent) || '', by: by, mine: mine };
     }
@@ -3429,7 +3429,7 @@
       for (const b of have.values()) b.remove();
       // Tools: bring everyone, see everything, faces (phone), presentation view.
       const selIt = __C.CT.items.find((i) => i.key === st.sel) || null;
-      const mayBring = !!(selIt && __C.myId && MC.canBring(__C.myId, selIt, { adminRoom: (0, /*()*/__C.hasAdminRoom)(), isAdmin: !!__C.amAdmin, agendaEditor: (0, /*()*/__C.ctCanEditAgenda)() }));
+      const mayBring = !!(selIt && __C.model.me.myId() && MC.canBring(__C.model.me.myId(), selIt, { adminRoom: (0, /*()*/__C.hasAdminRoom)(), isAdmin: !!__C.amAdmin, agendaEditor: (0, /*()*/__C.ctCanEditAgenda)() }));
       ctTool('bring', mayBring && !st.all, CT_ICONS.bring, (0, /*()*/__C.ctText)('ctBring', 'Bring everyone here'), (0, /*()*/__C.ctText)('ctBringTip', 'Everyone in the meeting switches to this tab. They can switch back.'), () => (0, /*()*/__C.ctBring)(st.sel));
       ctTool('all', __C.CT.items.length > 1, st.all ? CT_ICONS.tabs : CT_ICONS.all, st.all ? (0, /*()*/__C.ctText)('ctTabs', 'One at a time') : (0, /*()*/__C.ctText)('ctSeeAll', 'See everything'), st.all ? (0, /*()*/__C.ctText)('ctTabsTip', 'Show one tab at a time') : (0, /*()*/__C.ctText)('ctSeeAllTip', 'Show every tab side by side'), () => { st.all = !st.all; (0, /*()*/__C.ctNote)('all', { on: st.all }); GifOS.meetContent.sync(st, __C.CT.items); try { layout(); } catch (e) {} });
       ctTool('faces', __C.CT.phone && window.__meetView !== 'drag', CT_ICONS.faces, __C.CT.facesHidden ? (0, /*()*/__C.ctText)('ctShowFaces', 'Show faces') : (0, /*()*/__C.ctText)('ctHideFaces', 'Hide faces'), '', () => {
@@ -3675,7 +3675,7 @@
       if (!box) return;
       const v = box.querySelector('video');
       const pid = on ? (0, /*()*/__C.ctSpeakerPick)(selIt) : null;
-      const p = pid ? __C.peers.get(pid) : null;
+      const p = pid ? __C.model.roster.peers().get(pid) : null;
       // A person on stage sends their camera on the stage feed; their row
       // picture is parked. Take the stage feed first, the tile second.
       let vt = null;
@@ -3749,12 +3749,12 @@
     // edit switch change (a clock tick only touches the clock).
     function ctPaintAgenda(p) {
       const MA = GifOS.meetAgenda;
-      const a = __C.CT.ag || MA.empty(__C.myId);
+      const a = __C.CT.ag || MA.empty(__C.model.me.myId());
       const may = (0, /*()*/__C.ctCanEditAgenda)();
-      const isOwner = !!(__C.CT.ag && __C.CT.ag.owner === __C.myId && __C.CT.ag.items.length);
-      const mayHand = MA.canHand(__C.CT.ag, __C.myId, (0, /*()*/__C.ctAgCtx)(__C.myId));
+      const isOwner = !!(__C.CT.ag && __C.CT.ag.owner === __C.model.me.myId() && __C.CT.ag.items.length);
+      const mayHand = MA.canHand(__C.CT.ag, __C.model.me.myId(), (0, /*()*/__C.ctAgCtx)(__C.model.me.myId()));
       if (!may && __C.CT.agEdit) __C.CT.agEdit = false;
-      const sig = [MA.body(a), may ? 1 : 0, __C.CT.agEdit ? 1 : 0, mayHand ? 1 : 0, (0, /*()*/__C.uiLang)(), mayHand ? __C.rosterIds.join(',') : ''].join('|');
+      const sig = [MA.body(a), may ? 1 : 0, __C.CT.agEdit ? 1 : 0, mayHand ? 1 : 0, (0, /*()*/__C.uiLang)(), mayHand ? __C.model.roster.rosterIds().join(',') : ''].join('|');
       if (p._sig === sig) { (0, /*()*/__C.ctPaintAgendaClock)(p); return; }
       p._sig = sig;
       const keepPv = p.querySelector(':scope > .ct-pview');
@@ -3771,12 +3771,12 @@
       }
       const tools = document.createElement('div'); tools.className = 'ag-tools';
       // Open-floor rooms: anyone but its owner may stop it for everyone, as with a shared app (the owner's own Stop is in Edit).
-      if (a.items.length && !__C.CT.agEdit && !isOwner && MA.canStop(__C.CT.ag, __C.myId, (0, /*()*/__C.ctAgCtx)(__C.myId)) && !(0, /*()*/__C.hasAdminRoom)()) tools.appendChild(ctAgBtn('ag-btn ag-stopall', (0, /*()*/__C.ctText)('agStopAll', 'Stop for everyone'), () => { (0, /*()*/__C.ctAgendaPublish)(MA.clear(__C.CT.ag, __C.myId), 'stop-all').then((ok) => { if (ok) (0, /*()*/__C.setStatus)((0, /*()*/__C.ctText)('agYouStopped', 'You stopped the agenda for everyone.')); }); }, (0, /*()*/__C.ctText)('agStopAllTip', 'Take the agenda off everyone\u2019s screen. Everyone sees that you did. Anyone can then share a new one.')));
+      if (a.items.length && !__C.CT.agEdit && !isOwner && MA.canStop(__C.CT.ag, __C.model.me.myId(), (0, /*()*/__C.ctAgCtx)(__C.model.me.myId())) && !(0, /*()*/__C.hasAdminRoom)()) tools.appendChild(ctAgBtn('ag-btn ag-stopall', (0, /*()*/__C.ctText)('agStopAll', 'Stop for everyone'), () => { (0, /*()*/__C.ctAgendaPublish)(MA.clear(__C.CT.ag, __C.model.me.myId()), 'stop-all').then((ok) => { if (ok) (0, /*()*/__C.setStatus)((0, /*()*/__C.ctText)('agYouStopped', 'You stopped the agenda for everyone.')); }); }, (0, /*()*/__C.ctText)('agStopAllTip', 'Take the agenda off everyone\u2019s screen. Everyone sees that you did. Anyone can then share a new one.')));
       if (a.items.length && !__C.CT.agEdit) tools.appendChild(ctAgBtn('ag-btn ag-hide', (0, /*()*/__C.ctText)('agHide', 'Hide agenda'), () => (0, /*()*/__C.ctAgendaHide)(true), (0, /*()*/__C.ctText)('agHideTip', 'Hide the agenda on your screen only. Nothing is deleted, and everyone else still sees it.')));
       if (may && a.items.length && !__C.CT.agEdit) {
-        if (a.cur > 0) tools.appendChild(ctAgBtn('ag-btn ag-back', (0, /*()*/__C.ctText)('agBack', 'Back'), () => (0, /*()*/__C.ctAgendaPublish)(MA.prev(__C.CT.ag, __C.myId), 'back')));
+        if (a.cur > 0) tools.appendChild(ctAgBtn('ag-btn ag-back', (0, /*()*/__C.ctText)('agBack', 'Back'), () => (0, /*()*/__C.ctAgendaPublish)(MA.prev(__C.CT.ag, __C.model.me.myId()), 'back')));
         const last = a.cur >= a.items.length - 1;
-        if (!last || a.cur < 0) tools.appendChild(ctAgBtn('ag-btn ag-next', a.cur < 0 ? (0, /*()*/__C.ctText)('agStart', 'Start') : (0, /*()*/__C.ctText)('agNext', 'Next'), () => (0, /*()*/__C.ctAgendaPublish)(MA.next(__C.CT.ag, __C.myId), 'next')));
+        if (!last || a.cur < 0) tools.appendChild(ctAgBtn('ag-btn ag-next', a.cur < 0 ? (0, /*()*/__C.ctText)('agStart', 'Start') : (0, /*()*/__C.ctText)('agNext', 'Next'), () => (0, /*()*/__C.ctAgendaPublish)(MA.next(__C.CT.ag, __C.model.me.myId()), 'next')));
       }
       if (may) tools.appendChild(ctAgBtn('ag-btn ag-edit', __C.CT.agEdit ? (0, /*()*/__C.ctText)('agDone', 'Done') : (0, /*()*/__C.ctText)('agEdit', 'Edit'), () => {
         __C.CT.agEdit = !__C.CT.agEdit;
@@ -3800,12 +3800,12 @@
           const t = words.t;
           const mn = document.createElement('input'); mn.type = 'number'; mn.className = 'ag-in-min'; mn.min = '0'; mn.max = String(MA.MAX_MIN); mn.value = it.min ? String(it.min) : '';
           mn.placeholder = (0, /*()*/__C.ctText)('agMinPh', 'min'); mn.setAttribute('aria-label', (0, /*()*/__C.ctText)('agItemMinutes', 'Item {n} minutes', { n: i + 1 }));
-          const commit = () => { if (t.value.trim() !== it.t || (+mn.value || 0) !== it.min) (0, /*()*/__C.ctAgendaPublish)(MA.edit(__C.CT.ag, __C.myId, it.id, t.value, +mn.value || 0), 'edit'); };
+          const commit = () => { if (t.value.trim() !== it.t || (+mn.value || 0) !== it.min) (0, /*()*/__C.ctAgendaPublish)(MA.edit(__C.CT.ag, __C.model.me.myId(), it.id, t.value, +mn.value || 0), 'edit'); };
           t.addEventListener('change', commit); mn.addEventListener('change', commit);
           li.appendChild(t); li.appendChild(words.count); li.appendChild(mn); li.appendChild(words.warn);
-          const up = ctAgBtn('ag-mini', '↑', () => (0, /*()*/__C.ctAgendaPublish)(MA.move(__C.CT.ag, __C.myId, it.id, -1), 'move'), (0, /*()*/__C.ctText)('agMoveUp', 'Move up'));
-          const dn = ctAgBtn('ag-mini', '↓', () => (0, /*()*/__C.ctAgendaPublish)(MA.move(__C.CT.ag, __C.myId, it.id, 1), 'move'), (0, /*()*/__C.ctText)('agMoveDown', 'Move down'));
-          const rm = ctAgBtn('ag-mini', '✕', () => (0, /*()*/__C.ctAgendaPublish)(MA.remove(__C.CT.ag, __C.myId, it.id), 'remove'), (0, /*()*/__C.ctText)('agRemove', 'Remove'));
+          const up = ctAgBtn('ag-mini', '↑', () => (0, /*()*/__C.ctAgendaPublish)(MA.move(__C.CT.ag, __C.model.me.myId(), it.id, -1), 'move'), (0, /*()*/__C.ctText)('agMoveUp', 'Move up'));
+          const dn = ctAgBtn('ag-mini', '↓', () => (0, /*()*/__C.ctAgendaPublish)(MA.move(__C.CT.ag, __C.model.me.myId(), it.id, 1), 'move'), (0, /*()*/__C.ctText)('agMoveDown', 'Move down'));
+          const rm = ctAgBtn('ag-mini', '✕', () => (0, /*()*/__C.ctAgendaPublish)(MA.remove(__C.CT.ag, __C.model.me.myId(), it.id), 'remove'), (0, /*()*/__C.ctText)('agRemove', 'Remove'));
           for (const b of [up, dn, rm]) b.setAttribute('aria-label', b.title);
           li.appendChild(up); li.appendChild(dn); li.appendChild(rm);
         } else {
@@ -3815,7 +3815,7 @@
           if (may) {
             li.tabIndex = 0;
             li.title = (0, /*()*/__C.ctText)('agGoTip', 'Make this the current item');
-            const go = () => { if (i !== __C.CT.ag.cur) (0, /*()*/__C.ctAgendaPublish)(MA.go(__C.CT.ag, __C.myId, i), 'go'); };
+            const go = () => { if (i !== __C.CT.ag.cur) (0, /*()*/__C.ctAgendaPublish)(MA.go(__C.CT.ag, __C.model.me.myId(), i), 'go'); };
             li.addEventListener('click', go);
             li.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
           }
@@ -3838,7 +3838,7 @@
         add.addEventListener('submit', (e) => {
           e.preventDefault();
           if (!t.value.trim()) return;
-          (0, /*()*/__C.ctAgendaPublish)(MA.add(__C.CT.ag, __C.myId, t.value, +mn.value || 0), 'add').then((ok) => {
+          (0, /*()*/__C.ctAgendaPublish)(MA.add(__C.CT.ag, __C.model.me.myId(), t.value, +mn.value || 0), 'add').then((ok) => {
             if (!ok) return;
             const f = __C.CT.panes.get('agenda'); const nt = f && f.querySelector('.ag-add .ag-in-t'); if (nt) try { nt.focus(); } catch (err) {}
           });
@@ -3849,10 +3849,10 @@
           const lb = document.createElement('div'); lb.className = 'ag-wholb'; lb.textContent = (0, /*()*/__C.ctText)('agWhoEdits', 'Who else can edit');
           who.appendChild(lb);
           const row = document.createElement('div'); row.className = 'ag-chips';
-          const ids = Array.from(new Set(__C.rosterIds)).filter((x) => x && x !== __C.myId).slice(0, 24);
+          const ids = Array.from(new Set(__C.model.roster.rosterIds())).filter((x) => x && x !== __C.model.me.myId()).slice(0, 24);
           for (const pid of ids) {
             const on = __C.CT.ag.ed.indexOf(pid) >= 0;
-            const c = ctAgBtn('ag-chip', (0, /*()*/__C.displayName)(pid), () => (0, /*()*/__C.ctAgendaPublish)(MA.hand(__C.CT.ag, __C.myId, pid, !on), on ? 'unhand' : 'hand'));
+            const c = ctAgBtn('ag-chip', (0, /*()*/__C.displayName)(pid), () => (0, /*()*/__C.ctAgendaPublish)(MA.hand(__C.CT.ag, __C.model.me.myId(), pid, !on), on ? 'unhand' : 'hand'));
             c.setAttribute('aria-pressed', on ? 'true' : 'false');
             row.appendChild(c);
           }
@@ -3860,7 +3860,7 @@
           p.appendChild(who);
         }
         if (__C.CT.ag && __C.CT.ag.items.length && (isOwner || ((0, /*()*/__C.hasAdminRoom)() && __C.amAdmin))) {
-          p.appendChild(ctAgBtn('ag-btn ag-stop', (0, /*()*/__C.ctText)('agStop', 'Stop sharing the agenda'), () => { __C.CT.agEdit = false; (0, /*()*/__C.ctAgendaPublish)(MA.clear(__C.CT.ag, __C.myId), 'clear'); }));
+          p.appendChild(ctAgBtn('ag-btn ag-stop', (0, /*()*/__C.ctText)('agStop', 'Stop sharing the agenda'), () => { __C.CT.agEdit = false; (0, /*()*/__C.ctAgendaPublish)(MA.clear(__C.CT.ag, __C.model.me.myId()), 'clear'); }));
         }
       }
       if (!may) {
@@ -3919,7 +3919,7 @@
       if (awakeT) clearTimeout(awakeT);
       awakeT = setTimeout(() => {
         awakeT = 0;
-        if (__C.tileWin.el) return; // an open control window keeps the info up
+        if (__C.model.roster.tileWin().el) return; // an open control window keeps the info up
         document.body.classList.remove('meet-awake');
       }, AWAKE_MS);
     }
@@ -3998,7 +3998,7 @@
       const MZ = GifOS.meetZones;
       const tv = el.querySelector(':scope > video');
       let stream = null;
-      if (isMe) stream = __C.localStream && __C.localStream.getVideoTracks()[0] ? new MediaStream([__C.localStream.getVideoTracks()[0]]) : null;
+      if (isMe) stream = __C.model.me.localStream() && __C.model.me.localStream().getVideoTracks()[0] ? new MediaStream([__C.model.me.localStream().getVideoTracks()[0]]) : null;
       else stream = tv && tv.srcObject;
       if (!MZ || !stream || el.classList.contains('cam-off')) return;
       const sec = document.createElement('div'); sec.className = 'tw-sec';
@@ -4019,7 +4019,7 @@
           if (pushT) clearTimeout(pushT);
           pushT = setTimeout(() => { pushT = 0; window.__senderCrop.set(crop); }, 120);
         } else {
-          if (MZ.isDefault(crop)) delete __C.vcrops[el.dataset.pzkey]; else __C.vcrops[el.dataset.pzkey] = { x: crop.x, y: crop.y, s: crop.s };
+          if (MZ.isDefault(crop)) delete __C.model.roster.vcrops()[el.dataset.pzkey]; else __C.model.roster.vcrops()[el.dataset.pzkey] = { x: crop.x, y: crop.y, s: crop.s };
           (0, /*()*/__C.saveVcrops)();
           (0, /*()*/__C.applyViewerCrop)(el);
         }
@@ -4060,8 +4060,8 @@
     // On the Stage: frame what the Stage shows, any shape. Drag the frame to
     // move it, drag its corner to resize it; Whole picture sends it all.
     function twStageFrameSection(win) {
-      const cam = __C.localStream && __C.localStream.getVideoTracks()[0];
-      if (!cam || __C.myStatus.camOff) return;
+      const cam = __C.model.me.localStream() && __C.model.me.localStream().getVideoTracks()[0];
+      if (!cam || __C.model.me.myStatus().camOff) return;
       const sec = document.createElement('div'); sec.className = 'tw-sec tw-stageframe';
       sec.innerHTML = '<b>Frame what the Stage shows</b><p class="tw-help">On the Stage everyone sees your whole camera at its own shape. Drag the frame to show less, or its corner to change its size and shape.</p>'
         + '<div class="tw-split"><div class="tw-pad"><video muted playsinline autoplay></video><div class="tw-win tw-rect"><i class="tw-grip" aria-hidden="true"></i></div></div><div class="tw-side"><div class="tw-row"></div></div></div>';
@@ -4123,7 +4123,7 @@
         if (/recording/i.test(t)) t = 'recording';
         if (t) { const sp = document.createElement('span'); sp.textContent = t; info.appendChild(sp); }
       });
-      if ((isMe || isStage) && (0, /*()*/__C.meOnStage)() && !__C.myStatus.scr) twStageFrameSection(win);
+      if ((isMe || isStage) && (0, /*()*/__C.meOnStage)() && !__C.model.me.myStatus().scr) twStageFrameSection(win);
       else if (!isStage && (el.dataset.tier === 'row' || isMe)) twCropSection(win, el, isMe);
       if (!isStage && !win.querySelector('.tw-pad')) {
         // No live picture to show (camera off, or a Stadium face): the
@@ -4141,11 +4141,11 @@
       const row = document.createElement('div'); row.className = 'tw-row';
       if (isMe) {
         const mic = document.getElementById('mic'), cam = document.getElementById('cam');
-        if (mic) row.appendChild(twButton(__C.myStatus.muted ? 'Unmute' : 'Mute', !__C.myStatus.muted, () => { mic.click(); closeTileWin(); }));
-        if (cam) row.appendChild(twButton(__C.myStatus.camOff ? 'Cam on' : 'Cam off', !__C.myStatus.camOff, () => { cam.click(); closeTileWin(); }));
-        if (__C.myStatus.scr) row.appendChild(twButton((0, /*()*/__C.uiText)('stopShare', 'Stop sharing'), false, () => { try { (0, /*()*/__M.stopScreenShare)(); } catch (e) {} closeTileWin(); }, 'danger'));
+        if (mic) row.appendChild(twButton(__C.model.me.myStatus().muted ? 'Unmute' : 'Mute', !__C.model.me.myStatus().muted, () => { mic.click(); closeTileWin(); }));
+        if (cam) row.appendChild(twButton(__C.model.me.myStatus().camOff ? 'Cam on' : 'Cam off', !__C.model.me.myStatus().camOff, () => { cam.click(); closeTileWin(); }));
+        if (__C.model.me.myStatus().scr) row.appendChild(twButton((0, /*()*/__C.uiText)('stopShare', 'Stop sharing'), false, () => { try { (0, /*()*/__M.stopScreenShare)(); } catch (e) {} closeTileWin(); }, 'danger'));
       } else if (isStage) {
-        if (__C.myStatus.scr) row.appendChild(twButton((0, /*()*/__C.uiText)('stopShare', 'Stop sharing'), false, () => { try { (0, /*()*/__M.stopScreenShare)(); } catch (e) {} closeTileWin(); }, 'danger'));
+        if (__C.model.me.myStatus().scr) row.appendChild(twButton((0, /*()*/__C.uiText)('stopShare', 'Stop sharing'), false, () => { try { (0, /*()*/__M.stopScreenShare)(); } catch (e) {} closeTileWin(); }, 'danger'));
         else if ((0, /*()*/__C.meOnStage)()) {
           const sb = document.getElementById('stagebtn');
           if (sb) row.appendChild(twButton('Step off the stage', false, () => { sb.click(); closeTileWin(); }));
@@ -4170,14 +4170,14 @@
       // The tile's own per-person controls (role-aware, painted by updateTile).
       const p = (0, /*()*/__C.twPeer)(id);
       if (!isMe && p && p.modbar) {
-        __C.tileWin.modbar = p.modbar; __C.tileWin.home = p.tile;
+        __C.model.roster.tileWin().modbar = p.modbar; __C.model.roster.tileWin().home = p.tile;
         try { (0, /*()*/__C.updateTile)(id); } catch (e) {}
         (side || sec).appendChild(p.modbar);
       }
       if (!side && sec.childNodes.length > 1) win.appendChild(sec);
       // The Stage strip is one picture of several people: the window lists them, each with their own Captions.
       if (isStage) {
-        let on = []; try { on = (0, /*()*/__C.stageIds)().filter((x) => x && x !== __C.myId); } catch (e) {}
+        let on = []; try { on = (0, /*()*/__C.stageIds)().filter((x) => x && x !== __C.model.me.myId()); } catch (e) {}
         const who = on.map((x) => ({ x, b: (0, /*()*/__C.twCaptionsButton)(x, true) })).filter((r) => r.b);
         if (who.length) {
           const cs = document.createElement('div'); cs.className = 'tw-sec tw-stagecap';
@@ -4219,11 +4219,11 @@
       win.style.left = left + 'px'; win.style.top = top + 'px';
     }
     function openTileWin(el) {
-      if (__C.tileWin.el === el) return;
-      if (__C.tileWin.el) closeTileWin();
+      if (__C.model.roster.tileWin().el === el) return;
+      if (__C.model.roster.tileWin().el) closeTileWin();
       const chrome = ensureTileChrome();
       const veil = chrome.veil, win = chrome.win;
-      __C.tileWin.el = el;
+      __C.model.roster.tileWin().el = el;
       const vw = window.innerWidth, vh = window.innerHeight;
       // A broadcast Stage already fills the screen: its window opens beside
       // it without growing anything.
@@ -4258,13 +4258,13 @@
       const first = win.querySelector('.tw-close'); if (first) try { first.focus({ preventScroll: true }); } catch (e) {}
     }
     function closeTileWin() {
-      const el = __C.tileWin.el;
+      const el = __C.model.roster.tileWin().el;
       if (!el) return;
-      __C.tileWin.el = null; __C.tileWin.faceId = '';
-      if (__C.tileWin.winT) { clearTimeout(__C.tileWin.winT); __C.tileWin.winT = 0; }
+      __C.model.roster.tileWin().el = null; __C.model.roster.tileWin().faceId = '';
+      if (__C.model.roster.tileWin().winT) { clearTimeout(__C.model.roster.tileWin().winT); __C.model.roster.tileWin().winT = 0; }
       const win = document.getElementById('tilewin'), veil = document.getElementById('tilewin-veil');
-      if (__C.tileWin.modbar && __C.tileWin.home) { try { __C.tileWin.home.appendChild(__C.tileWin.modbar); } catch (e) {} }
-      __C.tileWin.modbar = __C.tileWin.home = null;
+      if (__C.model.roster.tileWin().modbar && __C.model.roster.tileWin().home) { try { __C.model.roster.tileWin().home.appendChild(__C.model.roster.tileWin().modbar); } catch (e) {} }
+      __C.model.roster.tileWin().modbar = __C.model.roster.tileWin().home = null;
       if (win) { win.querySelectorAll('video').forEach((v) => { try { v.srcObject = null; } catch (e) {} }); win.hidden = true; win.textContent = ''; win.style.width = ''; }
       if (veil) veil.hidden = true;
       document.body.classList.remove('tw-open');
@@ -4278,8 +4278,8 @@
     // stopScreenShare lifted into a unit sandbox has no window, so the call
     // there is a no-op.
     function dropStaleShareWin() {
-      if (!__C.tileWin.el || __C.myStatus.scr) return;
-      const el = __C.tileWin.el;
+      if (!__C.model.roster.tileWin().el || __C.model.me.myStatus().scr) return;
+      const el = __C.model.roster.tileWin().el;
       const strip = el.classList && el.classList.contains('rowtile') && el.dataset && el.dataset.row === 'sgs';
       if (!el.isConnected || strip) { closeTileWin(); return; }
       const win = document.getElementById('tilewin');
@@ -4309,17 +4309,17 @@
     function openStageAdjust() {
       const modal = document.getElementById('set-modal');
       if (modal) modal.style.display = 'none';
-      if (__C.tileWin.el) closeTileWin();
+      if (__C.model.roster.tileWin().el) closeTileWin();
       const chrome = ensureTileChrome();
       const veil = chrome.veil, win = chrome.win;
-      const anchor = (__C.meTile && __C.meTile.tile) || document.getElementById('feed') || document.body;
-      __C.tileWin.el = anchor;
+      const anchor = (__C.model.me.meTile() && __C.model.me.meTile().tile) || document.getElementById('feed') || document.body;
+      __C.model.roster.tileWin().el = anchor;
       veil.hidden = false;
       document.body.classList.add('tw-open', 'meet-awake');
       win.textContent = '';
       const head = document.createElement('div'); head.className = 'tw-head';
       const nm = document.createElement('div'); nm.className = 'tw-name'; nm.id = 'tilewin-title';
-      nm.textContent = (__C.meTile && __C.meTile.tile) ? twName(__C.meTile.tile, 'me') : 'Stage video';
+      nm.textContent = (__C.model.me.meTile() && __C.model.me.meTile().tile) ? twName(__C.model.me.meTile().tile, 'me') : 'Stage video';
       const x = document.createElement('button'); x.type = 'button'; x.className = 'tw-close'; x.textContent = '✕';
       x.setAttribute('aria-label', 'Close'); x.addEventListener('click', (e) => { e.stopPropagation(); closeTileWin(); });
       head.appendChild(nm); head.appendChild(x); win.appendChild(head);
@@ -4365,10 +4365,10 @@
         const t = e.target, w = t && t.closest ? t.closest('#stadwhole') : null;
         if (!w || t.closest('button, a, input, select, textarea, label, [role="button"]')) return;
         const id = (0, /*()*/__C.stadFaceIdAt)(w, e.clientX, e.clientY);
-        if (!id || id === __C.myId) return;
+        if (!id || id === __C.model.me.myId()) return;
         e.stopPropagation();
-        if (__C.tileWin.el) closeTileWin();
-        __C.tileWin.faceId = String(id);
+        if (__C.model.roster.tileWin().el) closeTileWin();
+        __C.model.roster.tileWin().faceId = String(id);
         openTileWin(w);
       });
       const stampFeedOpens = () => {
@@ -4378,7 +4378,7 @@
       if (window.MutationObserver) {
         try { new MutationObserver(stampFeedOpens).observe(feed, { childList: true, subtree: true }); } catch (e) {}
       }
-      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && __C.tileWin.el) { e.stopPropagation(); closeTileWin(); } }, true);
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && __C.model.roster.tileWin().el) { e.stopPropagation(); closeTileWin(); } }, true);
     })();
     // The build label's width changes with the build, so Fit sits just left of it.
     function placeFit() {
@@ -4823,7 +4823,7 @@
         if (r.roomMute) flags.push((0, /*()*/__C.uiText)('forEveryone', 'For all'));
         else if (r.muted) flags.push((0, /*()*/__C.uiText)('muted', 'Muted'));
         if (r.camOff) flags.push((0, /*()*/__C.uiText)('camOffChip', 'Camera off'));
-        if (!r.me && !(0, /*()*/__C.hasAdminRoom)() && (0, /*()*/__C.hostRename)(r.id) === __C.RENAME_RESET) { const rn = (__C.modTable[r.id] || {}).rename; flags.push((0, /*()*/__C.uiText)('nameResetBy', 'Name reset by {name}').replace('{name}', String((rn && rn.by) || 'someone').slice(0, 40))); }   // attributed, like every open-room order
+        if (!r.me && !(0, /*()*/__C.hasAdminRoom)() && (0, /*()*/__C.hostRename)(r.id) === __C.model.consts.RENAME_RESET()) { const rn = (__C.model.door.modTable()[r.id] || {}).rename; flags.push((0, /*()*/__C.uiText)('nameResetBy', 'Name reset by {name}').replace('{name}', String((rn && rn.by) || 'someone').slice(0, 40))); }   // attributed, like every open-room order
         if (flags.length) {
           const f = document.createElement('span');
           f.className = 'flags';
@@ -4852,14 +4852,14 @@
           acts.className = 'acts';
           if (!(0, /*()*/__C.hasAdminRoom)()) {
             // An open-floor room: a name can only be reset to the neutral default, and nobody is spotlit.
-            if ((0, /*()*/__C.hostRename)(r.id) !== __C.RENAME_RESET) {
+            if ((0, /*()*/__C.hostRename)(r.id) !== __C.model.consts.RENAME_RESET()) {
               const reset = document.createElement('button');
               reset.type = 'button';
               reset.className = 'renamebtn';
               reset.textContent = (0, /*()*/__C.uiText)('resetName', 'Reset name');
               reset.title = (0, /*()*/__C.uiText)('resetNameTip', 'Show this person as Guest for everyone here. Everyone sees that you did it.');   // the roster says who (nameResetBy)
               reset.setAttribute('aria-label', (0, /*()*/__C.uiText)('resetName', 'Reset name') + ' ' + r.name);
-              reset.onclick = () => { __C.act.renameGuest(r.id, __C.RENAME_RESET); };
+              reset.onclick = () => { __C.act.renameGuest(r.id, __C.model.consts.RENAME_RESET()); };
               acts.appendChild(reset);
             }
           } else if (renameEditId === r.id) {
@@ -4936,13 +4936,13 @@
       const el = document.getElementById('bc-stage');
       const line = document.getElementById('bc-stage-line');
       if (!el || !line) return;
-      if (!__C.BROADCAST) { el.hidden = true; return; }
+      if (!__C.model.room.BROADCAST()) { el.hidden = true; return; }
       const ident = document.getElementById('bc-ident');
       const picture = !!document.querySelector('#stagefeed .rowtile') || !!(ident && ident.classList.contains('on'));
       el.hidden = picture;
       if (picture) return;
       let on = false;
-      try { on = typeof __C.myStatus !== 'undefined' && !!__C.myStatus.stg; } catch (e) { on = false; }
+      try { on = typeof __C.model.me.myStatus() !== 'undefined' && !!__C.model.me.myStatus().stg; } catch (e) { on = false; }
       if (on) { line.textContent = 'You are on stage. Your camera is off.'; return; }
       // An ended service has one sentence, the plate. The overlay stays off.
       if (typeof __C.bcEndedInRoom === 'function' && (0, /*()*/__C.bcEndedInRoom)()) {
@@ -4953,11 +4953,11 @@
       // with no picture yet: their feed is on its way. Nobody heard from yet,
       // before and just after joining: still joining (a silent room reads clear
       // STAGE_HEAR_MS after joinRoom, so the line never hangs on joining).
-      const nameOf = (id) => ((__C.peers.get(id) || {}).name || __C.rosterNames[id] || '').trim();
+      const nameOf = (id) => ((__C.model.roster.peers().get(id) || {}).name || __C.model.roster.rosterNames()[id] || '').trim();
       // A host whose live status says on stage counts before the roster
       // lists them (it lags their first status by a beat or more).
-      const others = (0, /*()*/__C.stageIds)().filter((id) => id !== __C.myId)
-        .concat(__C.admins.filter((id) => id !== __C.myId && (0, /*()*/__C.stageClaimOf)(id)));
+      const others = (0, /*()*/__C.stageIds)().filter((id) => id !== __C.model.me.myId())
+        .concat(__C.model.door.admins().filter((id) => id !== __C.model.me.myId() && (0, /*()*/__C.stageClaimOf)(id)));
       if (others.length) {
         const nm = others.map(nameOf).find((x) => x);
         line.textContent = nm ? 'Connecting to ' + nm + '…' : 'Connecting to the stage…';
@@ -4967,12 +4967,12 @@
       // them can land before their host proof, when they are not yet on the
       // stage), or in an open room anyone's status. The host knows its stage.
       const meHost = (typeof __C.bcHostStored === 'function' && (0, /*()*/__C.bcHostStored)()) || document.body.classList.contains('amadmin');
-      const heard = meHost || ((0, /*()*/__C.hasAdminRoom)() ? __C.admins.some((id) => id !== __C.myId) : Array.from(__C.statusOf.keys()).some((id) => id !== __C.myId));
-      const wait = __C.roomJoinedAt ? __C.roomJoinedAt + STAGE_HEAR_MS - Date.now() : 1;
+      const heard = meHost || ((0, /*()*/__C.hasAdminRoom)() ? __C.model.door.admins().some((id) => id !== __C.model.me.myId()) : Array.from(__C.model.roster.statusOf().keys()).some((id) => id !== __C.model.me.myId()));
+      const wait = __C.model.room.roomJoinedAt() ? __C.model.room.roomJoinedAt() + STAGE_HEAR_MS - Date.now() : 1;
       if (!heard && wait > 0) {
         line.textContent = 'Joining the broadcast…';
         clearTimeout(platePaintT);
-        if (__C.roomJoinedAt) platePaintT = setTimeout(paintStagePlate, wait + 50);
+        if (__C.model.room.roomJoinedAt()) platePaintT = setTimeout(paintStagePlate, wait + 50);
         return;
       }
       line.textContent = 'The stage is clear.';
@@ -4980,15 +4980,15 @@
     function paintBroadcastIdent() {
       const el = document.getElementById('bc-ident');
       if (!el) return;
-      if (!__C.BROADCAST) { el.classList.remove('on'); return; }
+      if (!__C.model.room.BROADCAST()) { el.classList.remove('on'); return; }
       const stage = (typeof __C.stageIds === 'function') ? (0, /*()*/__C.stageIds)() : [];
       let pid = stage.length ? stage[0] : null;
-      if (!pid && typeof __C.amAdmin !== 'undefined' && __C.amAdmin) pid = __C.myId;
-      if (!pid) { const it = __C.peers.values().next(); pid = it && it.value ? it.value.id : null; }
+      if (!pid && typeof __C.amAdmin !== 'undefined' && __C.amAdmin) pid = __C.model.me.myId();
+      if (!pid) { const it = __C.model.roster.peers().values().next(); pid = it && it.value ? it.value.id : null; }
       if (!pid) { el.classList.remove('on'); return; }
-      const isMe = pid === __C.myId;
-      const st = isMe ? __C.myStatus : (__C.statusOf.get(pid) || {});
-      const camOn = isMe ? __C.myStatus.camOff === false : st.camOff === false;
+      const isMe = pid === __C.model.me.myId();
+      const st = isMe ? __C.model.me.myStatus() : (__C.model.roster.statusOf().get(pid) || {});
+      const camOn = isMe ? __C.model.me.myStatus().camOff === false : st.camOff === false;
       // A screen share is a picture too, camera or not.
       if (camOn || st.scr) { el.classList.remove('on'); if (typeof paintStagePlate === 'function') paintStagePlate(); return; }
       let url = '', hash = '', name = '';
@@ -4997,10 +4997,10 @@
         if (a && a.url) { url = a.url; hash = a.hash || ''; }
         name = (0, /*()*/__C.myName)();
       } else {
-        const prefer = __C.peers.get(pid);
-        const pick = (prefer && prefer.avatarUrl) ? prefer : Array.from(__C.peers.values()).find((q) => q.avatarUrl);
-        if (pick && pick.avatarUrl) { url = pick.avatarUrl; hash = pick.avatarHash || ''; name = pick.name || __C.rosterNames[pick.id] || ''; }
-        else name = (prefer && prefer.name) || __C.rosterNames[pid] || '';
+        const prefer = __C.model.roster.peers().get(pid);
+        const pick = (prefer && prefer.avatarUrl) ? prefer : Array.from(__C.model.roster.peers().values()).find((q) => q.avatarUrl);
+        if (pick && pick.avatarUrl) { url = pick.avatarUrl; hash = pick.avatarHash || ''; name = pick.name || __C.model.roster.rosterNames()[pick.id] || ''; }
+        else name = (prefer && prefer.name) || __C.model.roster.rosterNames()[pid] || '';
       }
       const img = document.getElementById('bc-ident-img');
       const nm = document.getElementById('bc-ident-name');
@@ -5021,14 +5021,14 @@
     }
     yield 1058;
     function turnPaint() {
-      const facts = __C.turnLinks ? Array.from(__C.turnFacts.values()) : [];
+      const facts = __C.model.room.turnLinks() ? Array.from(__C.model.room.turnFacts().values()) : [];
       // every person tile, a pair's or a carried one (a person whose media a friend brings has no pair here)
       for (const tile of document.querySelectorAll('.tile[data-peer]')) {
-        const pid = tile.dataset.peer; if (!pid || pid === __C.myId) continue;
+        const pid = tile.dataset.peer; if (!pid || pid === __C.model.me.myId()) continue;
         const p = { id: pid, tile };
         const show = (0, /*()*/__C.turnHeld)(p.id, facts);
         // TURN.13: the far end paused its video because the server throttles (vouched: nothing to subscribe to)
-        const busy = !show && !!__C.turnLinks && __C.turnLinks.farBusy(p.id);
+        const busy = !show && !!__C.model.room.turnLinks() && __C.model.room.turnLinks().farBusy(p.id);
         let bel = p.tile.querySelector(':scope > .tpause-busy');
         if (busy && !bel) {
           bel = document.createElement('div'); bel.className = 'tpause tpause-busy'; bel.setAttribute('role', 'note');
@@ -5041,7 +5041,7 @@
       // SUB.4 + TURN.11 for every seat: the Stadium that shows a far room over a pipe with no video says so, with the same
       // note and Subscribe as a tile (Nathan 11-14: the note goes on the strip, not only on the pipe holders' tiles)
       const sd = document.querySelector('#stadium [data-row="sd"]');
-      if (sd) { let far = 0; try { far = __C.meshNode && typeof __C.meshNode.meetingFar === 'function' ? __C.meshNode.meetingFar() : 0; } catch (e) {} pauseNote(sd, !!__C.turnLinks && GifOS.meetTurn.stripPaused(facts, far)); }
+      if (sd) { let far = 0; try { far = __C.model.net.meshNode() && typeof __C.model.net.meshNode().meetingFar === 'function' ? __C.model.net.meshNode().meetingFar() : 0; } catch (e) {} pauseNote(sd, !!__C.model.room.turnLinks() && GifOS.meetTurn.stripPaused(facts, far)); }
       try { (0, /*()*/__C.ctTurnPaint)(facts); } catch (e) {}
     }
     yield 1061;
@@ -5159,8 +5159,8 @@
     let appWaitEl = null, appWaitSince = 0;
     setInterval(() => {
       const kill = () => { appWaitSince = 0; if (appWaitEl) { appWaitEl.remove(); appWaitEl = null; } };
-      if (!__C.ROOM.appPinned || __C.ROOM.solo || !__C.sessId) return kill();
-      if (document.body.classList.contains('has-app') || __C.appKey || __C.myStatus.app
+      if (!__C.ROOM.appPinned || __C.ROOM.solo || !__C.model.room.sessId()) return kill();
+      if (document.body.classList.contains('has-app') || __C.appKey || __C.model.me.myStatus().app
         || document.body.classList.contains('call-on')) return kill();
       const now = Date.now();
       if (!appWaitSince) { appWaitSince = now; return; }
@@ -5178,7 +5178,7 @@
       const spin = appWaitEl.querySelector('.jv-spin');
       if (spin) spin.remove();
       let others = 0;
-      for (const [pid] of __C.statusOf) if (String(pid) !== String(__C.myId)) others++;
+      for (const [pid] of __C.model.roster.statusOf()) if (String(pid) !== String(__C.model.me.myId())) others++;
       if (appWaitEl.dataset.said === String(others)) return; // same story — don't rewrite it every tick
       appWaitEl.dataset.said = String(others);
       if (others > 0) {
@@ -5196,8 +5196,8 @@
     yield 1356;
     function capPaint() {
       const b = document.getElementById('capbtn'), n = document.getElementById('capnote');
-      const show = !__C.av && !(0, /*()*/__C.capOn)() && (0, /*()*/__C.subsOn)() && GifOS.meetSubs.canCapture((0, /*()*/__C.subsMeetId)());
-      if (b) { b.style.display = show ? '' : 'none'; b.disabled = __C.capBusy; }
+      const show = !__C.model.me.av() && !(0, /*()*/__C.capOn)() && (0, /*()*/__C.subsOn)() && GifOS.meetSubs.canCapture((0, /*()*/__C.subsMeetId)());
+      if (b) { b.style.display = show ? '' : 'none'; b.disabled = __C.model.chat.capBusy(); }
       if (n) { n.style.display = (0, /*()*/__C.capOn)() ? '' : 'none'; n.textContent = __C.amAdmin ? (0, /*()*/__C.uiText)('capYou', 'You have taken charge of this meeting') : (0, /*()*/__C.uiText)('capNote', 'Someone has taken charge of this meeting'); }
       try { applyAdminUi(); } catch (e) {}
     }
@@ -5213,7 +5213,7 @@
       // The Admin button only exists INSIDE an admin room now — it's sign-in +
       // ban management. Creating an admin room lives in Invite. A plain room has
       // no admin and never can, so there's nothing for this button to do there.
-      ab.style.display = __C.av ? '' : 'none';   // sign-in to a room with a verifier (a captor is admin by its capture)
+      ab.style.display = __C.model.me.av() ? '' : 'none';   // sign-in to a room with a verifier (a captor is admin by its capture)
       ab.textContent = __C.amAdmin ? (0, /*()*/__C.uiText)('admBtn', 'Host') : (0, /*()*/__C.uiText)('admSignIn', 'Host sign-in');
       ab.title = __C.amAdmin ? (0, /*()*/__C.uiText)('admTipOn', 'Host controls: room password, chat and waiting room')
         : (0, /*()*/__C.uiText)('admTipOff', 'This room has a host — enter the host password to get the host controls');
@@ -5239,7 +5239,7 @@
     yield 1436;   // var: the join veil (above) reads it before this line runs
     function showRelayBusy() {
       __C.relayBusyAt = Date.now();
-      (0, /*()*/__C.setStatus)('\u23f3 ' + __C.net.BUSY_TEXT, GifOS.timings.RELAY_BUSY_SHOW_MS);
+      (0, /*()*/__C.setStatus)('\u23f3 ' + __C.model.net.net().BUSY_TEXT, GifOS.timings.RELAY_BUSY_SHOW_MS);
       try { const el = document.getElementById('status'); if (el && el.dataset) el.dataset.kind = 'busy'; } catch (e) {}
     }
     yield 1438;
@@ -5254,11 +5254,11 @@
     // only a visible row-mate tile that has painted, whose camera is meant
     // to be on and reaching me directly, can be judged frozen.
     function frozenTileSkip(pid, p) {
-      const fst = __C.statusOf.get(pid);
+      const fst = __C.model.roster.statusOf().get(pid);
       const vtr = p.stream && p.stream.getVideoTracks()[0];
       if (!p.connected || p.relayed) return 'link';
       if (document.hidden) return 'hidden';
-      if (typeof __C.botParks === 'function' && __C.visParkSent.get(pid) === true) return 'hidden';   // parked for the bot view: no frames is the ask
+      if (typeof __C.botParks === 'function' && __C.model.me.visParkSent().get(pid) === true) return 'hidden';   // parked for the bot view: no frames is the ask
       if (document.pictureInPictureElement && document.pictureInPictureElement === p.video) return 'pip'; // a floated tile paints in the float, not in the room: no frame count to judge here
       if (!vtr || vtr.readyState !== 'live') return 'track';
       if (!p.video || !(0, /*()*/__M.tileHolds)(p.video, p.stream) || p.video.paused || p.video.readyState === 0) return 'element';
@@ -5277,9 +5277,9 @@
     function lgLeave() {
       if (typeof __C.clog === 'function') (0, /*()*/__C.clog)('lg-leave device-overload');
       if (!lgNoteEl) { lgNoteEl = document.createElement('div'); lgNoteEl.id = 'massbanner'; lgNoteEl.setAttribute('role', 'status'); lgNoteEl.textContent = (0, /*()*/__C.uiText)('deviceOverload', 'Your device is refusing or unable to carry meeting traffic.'); document.body.appendChild(lgNoteEl); }
-      try { __C.meshNode && __C.meshNode.leave(false); } catch (e) {}
+      try { __C.model.net.meshNode() && __C.model.net.meshNode().leave(false); } catch (e) {}
       setTimeout(() => {
-        for (const pid of Array.from(__C.peers.keys())) { try { (0, /*()*/__C.dropPeer)(pid); } catch (e) {} } if (typeof __C.clearRosterTiles === 'function') (0, /*()*/__C.clearRosterTiles)();
+        for (const pid of Array.from(__C.model.roster.peers().keys())) { try { (0, /*()*/__C.dropPeer)(pid); } catch (e) {} } if (typeof __C.clearRosterTiles === 'function') (0, /*()*/__C.clearRosterTiles)();
         if (typeof __C.clog === 'function') (0, /*()*/__C.clog)('lg-rejoin');
         (0, /*()*/__C.startMesh)();
         setTimeout(() => { if (lgNoteEl) { lgNoteEl.remove(); lgNoteEl = null; } }, 30000);
@@ -5310,7 +5310,7 @@
       return n;
     }
     function massBannerTick() {
-      const stalled = stallSweep(), r = __C.meshNode && __C.meshNode.raw;
+      const stalled = stallSweep(), r = __C.model.net.meshNode() && __C.model.net.meshNode().raw;
       if (!r || !r.l13MassV) massMany = false;
       else if (!massMany) {
         let gone = 0; for (const at of r.byeIds.values()) if (r.TICK - at <= GifOS.meshConsts.consts.LEASE_T) gone++;
@@ -5343,8 +5343,8 @@
     function paintBroadcastSeats() {
       const el = document.getElementById('bc-seats');
       if (!el) return;
-      if (!__C.BROADCAST || !__C.amAdmin) { if (el.innerHTML) el.innerHTML = ''; el.classList.remove('on'); return; }
-      const ids = (0, /*()*/__C.stageIds)().filter((id) => id && id !== __C.myId);
+      if (!__C.model.room.BROADCAST() || !__C.amAdmin) { if (el.innerHTML) el.innerHTML = ''; el.classList.remove('on'); return; }
+      const ids = (0, /*()*/__C.stageIds)().filter((id) => id && id !== __C.model.me.myId());
       if (!ids.length) { if (el.innerHTML) el.innerHTML = ''; el.classList.remove('on'); return; }
       const html = '<div class="bc-hands-h">On stage</div>' + ids.map((id) => {
         return '<div class="bc-seat" data-id="' + (0, /*()*/__C.esc)(id) + '"><span class="bc-seat-name">' + (0, /*()*/__C.esc)((0, /*()*/__C.displayName)(id)) + '</span>'
@@ -5360,13 +5360,13 @@
       try { paintRaisedHands(); } catch (e) {}
       const q = __C.model.hands.queue();
       handqEl.classList.toggle('on', q.length > 0);
-      const stageFull = __C.amAdmin && (0, /*()*/__C.stageIds)().length >= __C.SCALE.C;
+      const stageFull = __C.amAdmin && (0, /*()*/__C.stageIds)().length >= __C.model.consts.SCALE().C;
       const tot = __C.model.hands.total(q), shown = Math.min(q.length, 8);
       paintHandBtn(q, tot);
       let html;
-      if (__C.BROADCAST) {
+      if (__C.model.room.BROADCAST()) {
         const rows = q.slice(0, 8).map((e) => {
-          const actions = (__C.amAdmin && e.i !== __C.myId) ? (0, /*()*/__C.bcActButtons)(e.i, { promote: true, mute: true, blur: true, ban: true }) : '';
+          const actions = (__C.amAdmin && e.i !== __C.model.me.myId()) ? (0, /*()*/__C.bcActButtons)(e.i, { promote: true, mute: true, blur: true, ban: true }) : '';
           return '<div class="bc-hand" data-id="' + (0, /*()*/__C.esc)(e.i) + '"><span class="hq" data-id="' + (0, /*()*/__C.esc)(e.i) + '">' + (0, /*()*/__C.esc)(e.n) + '</span>' + actions + '</div>';
         }).join('');
         html = !q.length ? ''
@@ -5495,7 +5495,7 @@
       const el = e.target.closest('.hq');
       if (!el || !(0, /*()*/__C.hasAdminRoom)() || !__C.amAdmin) return;
       const id = el.dataset.id;
-      if (!id || id === __C.myId) return;
+      if (!id || id === __C.model.me.myId()) return;
       (0, /*()*/__C.setMod)(id, 'app', true);
     });
     const bcSeatsEl = document.getElementById('bc-seats');
@@ -5516,13 +5516,13 @@
     // If the tab was backgrounded long enough for the OS to kill the camera,
     // grab it again and swap the fresh tracks into every live link.
     function showCamBack(on) {
-      if (!__C.meTile || !__C.meTile.tile) return;
-      __C.meTile.tile.classList.toggle('camback', !!on);
-      let el = __C.meTile.tile.querySelector('.cambackmark');
+      if (!__C.model.me.meTile() || !__C.model.me.meTile().tile) return;
+      __C.model.me.meTile().tile.classList.toggle('camback', !!on);
+      let el = __C.model.me.meTile().tile.querySelector('.cambackmark');
       if (on && !el) {
         el = document.createElement('div');
         el.className = 'cambackmark';
-        __C.meTile.tile.appendChild(el);
+        __C.model.me.meTile().tile.appendChild(el);
       }
       if (!el) return;
       const word = on === 'fail'
@@ -5559,7 +5559,7 @@
           forkModal.style.display = 'none';
           // Prefer option id (same-gkey clusters); fall back to gkey.
           const key = o.id || o.gkey;
-          try { if (__C.meshNode && __C.meshNode.chooseFork) __C.meshNode.chooseFork(key); } catch (e) {}
+          try { if (__C.model.net.meshNode() && __C.model.net.meshNode().chooseFork) __C.model.net.meshNode().chooseFork(key); } catch (e) {}
           (0, /*()*/__C.sayState)('joining');
         };
         forkChoices.appendChild(btn);
@@ -5622,14 +5622,14 @@
     yield 1542;
     let lobbyPw = (() => {
       let o = null;
-      try { o = JSON.parse(sessionStorage.getItem(__C.LOB_PW_KEY) || 'null'); sessionStorage.removeItem(__C.LOB_PW_KEY); } catch (e) { o = null; }
+      try { o = JSON.parse(sessionStorage.getItem(__C.model.consts.LOB_PW_KEY()) || 'null'); sessionStorage.removeItem(__C.model.consts.LOB_PW_KEY()); } catch (e) { o = null; }
       if (!o || typeof o.pw !== 'string' || !o.pw) return null;
       return { kind: o.kind, room: String(o.room || ''), av: String(o.av || ''), pw: o.pw };
     })();
-    const lobbyPwFor = (kind) => !!(lobbyPw && lobbyPw.kind === kind && lobbyPw.room === __C.room && lobbyPw.av === (__C.av || ''));
+    const lobbyPwFor = (kind) => !!(lobbyPw && lobbyPw.kind === kind && lobbyPw.room === __C.model.room.room() && lobbyPw.av === (__C.model.me.av() || ''));
     function lobbyPwOpenRoom() {
       if (!lobbyPw || lobbyPw.kind !== 'open') return;
-      if (!lobbyPwFor('open') || __C.av || __C.leaving || __C.bannedOut || __C.pwBlocked) { lobbyPw = null; return; }
+      if (!lobbyPwFor('open') || __C.model.me.av() || __C.model.me.leaving() || __C.model.room.bannedOut() || __C.pwBlocked) { lobbyPw = null; return; }
       const ms = (0, /*()*/__C.meshSeat)();
       if (!(ms && ms.hasCoord && ms.state === 3)) return;   // not seated yet: the seat tick calls again
       const v = lobbyPw.pw; lobbyPw = null;
@@ -5639,7 +5639,7 @@
       if (!pwSaveWaited) document.getElementById('pw-new').value = '';
     }
     function showPwModal(locked, why) {
-      const service = __C.BROADCAST;
+      const service = __C.model.room.BROADCAST();
       document.getElementById('pw-title').textContent = service ? (0, /*()*/__C.uiText)('pwTitle', 'Room password') : (locked ? (0, /*()*/__C.uiText)('pwTitleLocked', 'This room is locked') : (0, /*()*/__C.uiText)('pwTitle', 'Room password'));
       document.getElementById('pw-hint').textContent = service
         ? (locked
@@ -5650,11 +5650,11 @@
           ? (why === 'changed'
             ? (0, /*()*/__C.uiText)('pwHintChanged', 'The host changed the room password. Enter the new password to rejoin the meeting.')
             : (0, /*()*/__C.uiText)('pwHintLocked', 'Enter the room password to join the meeting.'))
-          : !!__C.av
+          : !!__C.model.me.av()
             ? (0, /*()*/__C.uiText)('pwHintAdmin', 'Only the host can set or change it. When it is set or changed, everyone else here goes back to the door and must enter it to rejoin. Leave empty to remove the lock.')
             : (0, /*()*/__C.uiText)('pwHint', 'Anyone in the meeting can set or change it. It reaches everyone here instantly, and new joiners must enter it. Leave empty to remove the lock.'));
       document.getElementById('pw-cur-row').style.display = locked ? 'none' : 'flex';
-      document.getElementById('pw-cur').value = __C.roomPw;
+      document.getElementById('pw-cur').value = __C.model.door.roomPw();
       pwEyeHide(document.getElementById('pw-cur')); // every open starts hidden — the eye reveals on demand
       pwEyeHide(document.getElementById('pw-new'));
       if (why === 'banned') { const cur = document.getElementById('pw-cur'), eye = document.getElementById('pweye-pw-cur'); if (eye) eye.click(); else cur.type = 'text'; }   // the admin needs to read it: nobody told them yet
@@ -5678,16 +5678,16 @@
     document.getElementById('waitbtn').onclick = () => {
       if (!(0, /*()*/__C.hasAdminRoom)()) return;
       if (!__C.amAdmin) { (0, /*()*/__C.setStatus)((0, /*()*/__C.uiText)('stOnlyAnAdminCanTurn', 'Only a host can turn the waiting room on.')); return; }
-      __C.meetWait.hold(!__C.holdDoor);
+      __C.model.door.meetWait().hold(!__C.holdDoor);
     };
-    document.getElementById('waitdoor-leave').onclick = () => { location.href = __C.MEET_PATH; };
+    document.getElementById('waitdoor-leave').onclick = () => { location.href = __C.model.consts.MEET_PATH(); };
     document.getElementById('pw-cancel').onclick = () => {
-      if (pwModal.dataset.mode === 'join') { location.href = __C.MEET_PATH; return; }
+      if (pwModal.dataset.mode === 'join') { location.href = __C.model.consts.MEET_PATH(); return; }
       pwModal.style.display = 'none';
     };
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape' || pwModal.style.display === 'none') return;
-      if (pwModal.dataset.mode === 'join') { location.href = __C.MEET_PATH; return; }
+      if (pwModal.dataset.mode === 'join') { location.href = __C.model.consts.MEET_PATH(); return; }
       pwModal.style.display = 'none';
     });
     yield 1552;
@@ -5699,20 +5699,20 @@
         (0, /*()*/__C.storePw)(v);
         __C.pwBlocked = false;
         (0, /*()*/__C.pwHeldOnTyping)();
-        if (__C.pwEpoch === 0) __C.grantHoldUntil = Date.now() + PW_GRANT_HOLD_MS; // typed at the door: grants wait for the room's generation (heldGrant)
+        if (__C.model.door.pwEpoch() === 0) __C.grantHoldUntil = Date.now() + PW_GRANT_HOLD_MS; // typed at the door: grants wait for the room's generation (heldGrant)
         pwModal.style.display = 'none';
         // on the way in the progress line says what comes next (js/meet-progress.js); the note would cover it
         if (!(typeof __C.progressWords === 'function' && (0, /*()*/__C.progressWords)())) (0, /*()*/__C.sayState)('passwordTrying');
         // The relay only ever sees the PROOF of this password, never the text —
         // and the key I read the room with now contains it (§8): a wrong
         // password doesn't just bounce at the courtesy gate, it can't decrypt.
-        Promise.all([__C.net.meetPwProof(__C.room, __C.av, __C.roomPw), (0, /*()*/__C.rekeyRoom)(true)])
+        Promise.all([__C.model.net.net().meetPwProof(__C.model.room.room(), __C.model.me.av(), __C.model.door.roomPw()), (0, /*()*/__C.rekeyRoom)(true)])
           .then(([pr]) => { __C.pwProof = pr; (0, /*()*/__C.startMesh)(); }).catch((err) => (0, /*()*/__C.pwChainFailed)(err, true)); // wrong password → bounced right back here
       } else {
         // A page still at the door (a reload a moment ago) re-keys only once seated: a re-key now seals its entry frames
         // under a key the room lacks, and a seated page holds a door's password frame until it is a member, so neither
         // side ever moves. The wait is bounded; a room with nobody to admit me seats at once.
-        { const ms0 = (0, /*()*/__C.meshSeat)(); if (__C.meshNode && !(ms0 && ms0.hasCoord && ms0.state === 3) && !pwSaveWaited) {
+        { const ms0 = (0, /*()*/__C.meshSeat)(); if (__C.model.net.meshNode() && !(ms0 && ms0.hasCoord && ms0.state === 3) && !pwSaveWaited) {
           pwSaveWaited = true; pwModal.style.display = 'none'; const t0 = Date.now();
           const again = () => { const ms1 = (0, /*()*/__C.meshSeat)(); if ((ms1 && ms1.hasCoord && ms1.state === 3) || Date.now() - t0 > 6000) { document.getElementById('pw-save').onclick(); pwSaveWaited = false; } else setTimeout(again, 200); };
           setTimeout(again, 200); return;
@@ -5730,15 +5730,15 @@
         // does exactly that to prove the relay refuses — but a client must
         // never eject itself on an order it knows it cannot issue.)
         if ((0, /*()*/__C.hasAdminRoom)() && !__C.amAdmin) {
-          (0, /*()*/__C.setStatus)(__C.PW_ADMIN_ONLY); // the same sentence the door's refusal shows — one message for one rule
+          (0, /*()*/__C.setStatus)(__C.model.consts.PW_ADMIN_ONLY()); // the same sentence the door's refusal shows — one message for one rule
           pwModal.style.display = 'none';
           return;
         }
         // Clearing the password opens the room. The purge stays BELOW the
         // admin refusal: a guest's rejected setpw used to tombstone every pin
         // for the room and then learn the relay would not take the order.
-        if (!v && __C.roomPw && __C.files.size > 0) {
-          const n = __C.files.size;
+        if (!v && __C.model.door.roomPw() && __C.model.room.files().size > 0) {
+          const n = __C.model.room.files().size;
           if (!confirm('Clearing the password opens this room to anyone — and DELETES the ' + n + ' file' + (n > 1 ? 's' : '') + ' shared here, for everyone. Continue?')) return;
           (0, /*()*/__C.purgeAllFiles)(true);
         }
@@ -5784,7 +5784,7 @@
       const none = document.getElementById('adm-hpw-none');
       const copy = document.getElementById('adm-hpw-copy');
       // A public open-floor meeting has no host password, even for whoever took charge of it.
-      sec.hidden = !(__C.amAdmin && __C.av);
+      sec.hidden = !(__C.amAdmin && __C.model.me.av());
       let pw = '';
       if (show && !sec.hidden) { try { pw = localStorage.getItem(hostPwKey()) || ''; } catch (e) { pw = ''; } }
       val.value = pw;
@@ -5817,7 +5817,7 @@
       btn.textContent = (0, /*()*/__C.uiText)('admChecking', 'Checking…');
       (0, /*()*/__C.sayState)('adminChecking');
       let K;
-      try { K = await (0, /*()*/__C.deriveAdminKey)(__C.room, v); }
+      try { K = await (0, /*()*/__C.deriveAdminKey)(__C.model.room.room(), v); }
       catch (err) {
         btn.disabled = false;
         btn.textContent = (0, /*()*/__C.uiText)('admEnable', 'Sign in as host');
@@ -5835,7 +5835,7 @@
       }
       btn.disabled = false;
       document.getElementById('adm-pass').value = '';
-      try { localStorage.setItem((0, /*()*/__C.admStoreKey)(), __C.admKey); } catch (e2) {}
+      try { localStorage.setItem((0, /*()*/__C.admStoreKey)(), __C.model.door.admKey()); } catch (e2) {}
       try { localStorage.setItem(hostPwKey(), v); } catch (e2) {}   // Show host password (never mirrored)
       (0, /*()*/__C.mirrorRoomState)({ admin: true });
       admModal.style.display = 'none';
@@ -5855,7 +5855,7 @@
       const list = document.getElementById('who-list');
       list.innerHTML = '';
       const rows = (0, /*()*/__C.whoRows)();
-      if (phoneLayout() && !__C.BROADCAST) {
+      if (phoneLayout() && !__C.model.room.BROADCAST()) {
         // A phone opens People as a list of names and what each one is doing
         // (qa-meet-mobile). The address list stays on a wide screen, where the
         // download for the police lives too.
@@ -5873,14 +5873,14 @@
         return;
       }
       const bcHere = (r) => !r.me && r.here && !r.ejected;
-      const groups = __C.BROADCAST ? [
+      const groups = __C.model.room.BROADCAST() ? [
         { k: 'me', test: (r) => r.me },
         { k: 'stage', title: 'On stage', note: 'On the stage the room is watching.', test: (r) => bcHere(r) && (0, /*()*/__C.stageIds)().indexOf(r.pid) >= 0 },
-        { k: 'hands', title: 'Raised hands', note: 'Asked to come on stage.', test: (r) => bcHere(r) && (0, /*()*/__C.stageIds)().indexOf(r.pid) < 0 && !!((__C.statusOf.get(r.pid) || {}).hand) },
-        { k: 'watching', title: 'Watching', note: 'In the audience. A name and picture show up here only after a hand and a promotion.', test: (r) => bcHere(r) && (0, /*()*/__C.stageIds)().indexOf(r.pid) < 0 && !((__C.statusOf.get(r.pid) || {}).hand) },
-        __C.WHO_GROUPS[3],
-        __C.WHO_GROUPS[4],
-      ] : __C.WHO_GROUPS;
+        { k: 'hands', title: 'Raised hands', note: 'Asked to come on stage.', test: (r) => bcHere(r) && (0, /*()*/__C.stageIds)().indexOf(r.pid) < 0 && !!((__C.model.roster.statusOf().get(r.pid) || {}).hand) },
+        { k: 'watching', title: 'Watching', note: 'In the audience. A name and picture show up here only after a hand and a promotion.', test: (r) => bcHere(r) && (0, /*()*/__C.stageIds)().indexOf(r.pid) < 0 && !((__C.model.roster.statusOf().get(r.pid) || {}).hand) },
+        __C.model.consts.WHO_GROUPS()[3],
+        __C.model.consts.WHO_GROUPS()[4],
+      ] : __C.model.consts.WHO_GROUPS();
       const groupOf = (r) => groups.find((g) => g.test(r)).k;
       for (const g of groups) {
         const inG = rows.filter((r) => groupOf(r) === g.k);
@@ -5896,7 +5896,7 @@
           const row = document.createElement('div'); row.className = 'brow'; row.dataset.group = g.k;
           if (!r.here) row.style.opacity = '.65';
           const nm = document.createElement('span'); nm.className = 'who-name'; nm.textContent = r.name;
-          const whoAv = r.me ? (GifOS.store.identity().avatar) : ((__C.peers.get(r.pid) && __C.peers.get(r.pid).avatarUrl) ? { url: __C.peers.get(r.pid).avatarUrl, hash: __C.peers.get(r.pid).avatarHash } : null);
+          const whoAv = r.me ? (GifOS.store.identity().avatar) : ((__C.model.roster.peers().get(r.pid) && __C.model.roster.peers().get(r.pid).avatarUrl) ? { url: __C.model.roster.peers().get(r.pid).avatarUrl, hash: __C.model.roster.peers().get(r.pid).avatarHash } : null);
           if (whoAv && whoAv.url) {
             const img = document.createElement('img');
             img.className = 'avchip'; img.alt = ''; img.src = whoAv.url;
@@ -5910,7 +5910,7 @@
             else ip.appendChild(document.createTextNode(t));
           });
           row.appendChild(nm); row.appendChild(ip);
-          if (__C.BROADCAST && __C.amAdmin && r.here && !r.me) {
+          if (__C.model.room.BROADCAST() && __C.amAdmin && r.here && !r.me) {
             row.style.flexWrap = 'wrap';
             const mods = document.createElement('div');
             mods.className = 'bc-mods';
@@ -5930,7 +5930,7 @@
             add('blur', blurred ? 'Unblur' : 'Blur');
             add('ban', 'Ban');
             row.appendChild(mods);
-          } else if (!__C.BROADCAST && (0, /*()*/__C.hasAdminRoom)() && __C.amAdmin && r.here && !r.me) {
+          } else if (!__C.model.room.BROADCAST() && (0, /*()*/__C.hasAdminRoom)() && __C.amAdmin && r.here && !r.me) {
             // Most of a big room has no tile on the admin's screen: this list is where she can reach them.
             row.style.flexWrap = 'wrap';
             const mods = document.createElement('div');
@@ -5980,7 +5980,7 @@
       const appRoom = (__C.ROOM.kind === 'app' && !__C.ROOM.solo) || document.body.classList.contains('app-room');
       el.title = appRoom ? ((0, /*()*/__C.uiLang)() === 'en' ? 'How this app room works' : (0, /*()*/__C.uiText)('appHelpTitle', 'How this app room works'))
         : document.body.classList.contains('has-app') ? (0, /*()*/__C.uiText)('appHelpTip', 'How this app works')
-        : __C.BROADCAST ? 'How this broadcast works' : 'How this meeting works';
+        : __C.model.room.BROADCAST() ? 'How this broadcast works' : 'How this meeting works';
     }
     document.getElementById('help-close').onclick = () => { helpModal.style.display = 'none'; };
     // The Help screen matches WHAT THIS PAGE IS: a meeting keeps the authored
@@ -5992,8 +5992,8 @@
       paintHelpTip();
       // Two columns fit the meeting list. A broadcast or app story is longer
       // and keeps the vertical scroller; columns there spill sideways.
-      hs.classList.toggle('help-meet', !__C.BROADCAST && __C.ROOM.kind !== 'app');
-      if (__C.BROADCAST) {
+      hs.classList.toggle('help-meet', !__C.model.room.BROADCAST() && __C.ROOM.kind !== 'app');
+      if (__C.model.room.BROADCAST()) {
         h3.textContent = 'How this broadcast works';
         hs.innerHTML =
           '<p class="help-lead">This is a <b>broadcast</b>: one host (and anyone they call up) on the <b>Stage</b>, and everyone else watching. Two people or a full room, it runs the same — every phone talks only to a handful of neighbors, and the broadcast reaches everyone.</p>'
@@ -6042,7 +6042,7 @@
           + '<p>Underneath it is the same thing as a GifOS Meeting: everything goes straight between the people here, no accounts, no limit on how many.</p>';
       }
       if ((0, /*()*/__C.uiLang)() === 'en') return;
-      if (__C.BROADCAST) {
+      if (__C.model.room.BROADCAST()) {
         h3.textContent = (0, /*()*/__C.uiText)('bcHelpTitle', 'How this broadcast works');
         hs.innerHTML = richHtml((0, /*()*/__C.uiText)('helpBcBody', hs.innerHTML));
       } else if (__C.ROOM.kind === 'app') {
@@ -6059,7 +6059,7 @@
       const blob = new Blob([(0, /*()*/__C.whoFileText)()], { type: 'text/plain' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'gifos-meeting-' + __C.room + '-' + stamp.replace(/[:.]/g, '-') + '.txt';
+      a.download = 'gifos-meeting-' + __C.model.room.room() + '-' + stamp.replace(/[:.]/g, '-') + '.txt';
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     };
@@ -6068,7 +6068,7 @@
     if (airWho) airWho.onclick = showWhoModal;
     const airSound = document.getElementById('airsound');
     if (airSound) airSound.onclick = () => {
-      if (!__C.BROADCAST) return;
+      if (!__C.model.room.BROADCAST()) return;
       __C.serviceHeard = !__C.serviceHeard;
       try { (0, /*()*/__M.applyBuses)(); } catch (e) {}
       try { paintServiceSound(); } catch (e) {}
@@ -6083,10 +6083,10 @@
       // Filtered by surface as well as read from the surface's own key: the list
       // you are looking at can NEVER show the other one's links, whatever ends up
       // in storage.
-      const mine = (e) => e && e.url && (0, /*()*/__C.isCastEntry)(e) === __C.CAST_SURFACE;
-      const marks = (0, /*()*/__C.loadList)(__C.MEET_MARKS).filter(mine);
+      const mine = (e) => e && e.url && (0, /*()*/__C.isCastEntry)(e) === __C.model.consts.CAST_SURFACE();
+      const marks = (0, /*()*/__C.loadList)(__C.model.consts.MEET_MARKS()).filter(mine);
       const markSet = new Set(marks.map((m) => m.url));
-      const recents = (0, /*()*/__C.loadList)(__C.MEET_HIST).filter((e) => mine(e) && !markSet.has(e.url));
+      const recents = (0, /*()*/__C.loadList)(__C.model.consts.MEET_HIST()).filter((e) => mine(e) && !markSet.has(e.url));
       const html = marks.map((m) => (0, /*()*/__C.lobRow)(m, true)).join('') + recents.map((e) => (0, /*()*/__C.lobRow)(e, false)).join('');
       document.getElementById('lob-list').innerHTML = html;
       document.getElementById('lob-empty').style.display = html ? 'none' : '';
@@ -6103,8 +6103,8 @@
     function paintLobbyAv() {
       const pv = document.getElementById('lob-preview');
       if (!pv) return;
-      pv.dataset.cam = __C.joinAv.cam ? 'on' : 'off';
-      pv.dataset.mic = __C.joinAv.mic ? 'on' : 'off';
+      pv.dataset.cam = __C.model.me.joinAv().cam ? 'on' : 'off';
+      pv.dataset.mic = __C.model.me.joinAv().mic ? 'on' : 'off';
       const word = (el, key, en) => { if (!el) return; el.setAttribute('data-t', key); el.textContent = (0, /*()*/__C.uiText)(key, en); };
       const btn = (id, on, onKey, onEn, offKey, offEn) => {
         const b = document.getElementById(id);
@@ -6113,14 +6113,14 @@
         word(b.querySelector('.lob-avtxt'), on ? onKey : offKey, on ? onEn : offEn);
       };
       let lvl = 2;
-      try { lvl = (0, /*()*/__C.blurLevel)(__C.myStatus.blur); } catch (e) {}
-      if (__C.joinAv.cam) {
+      try { lvl = (0, /*()*/__C.blurLevel)(__C.model.me.myStatus().blur); } catch (e) {}
+      if (__C.model.me.joinAv().cam) {
         const onSpec = lvl === 2 ? ['camMaxBlur', 'Max blur'] : lvl === 1 ? ['camMinBlur', 'Min blur'] : ['lobCamOn', 'Camera on'];
         btn('lob-cam', true, onSpec[0], onSpec[1], 'camOffChip', 'Camera off');
       } else btn('lob-cam', false, 'lobCamOn', 'Camera on', 'camOffChip', 'Camera off');
-      btn('lob-mic', __C.joinAv.mic, 'lobMicOn', 'Mic on', 'lobMicOff', 'Mic off');
-      const quiet = __C.joinAv.cam || __C.joinAv.mic;
-      const clearPick = !!(__C.joinAv.cam && lvl === 0);
+      btn('lob-mic', __C.model.me.joinAv().mic, 'lobMicOn', 'Mic on', 'lobMicOff', 'Mic off');
+      const quiet = __C.model.me.joinAv().cam || __C.model.me.joinAv().mic;
+      const clearPick = !!(__C.model.me.joinAv().cam && lvl === 0);
       const note = document.getElementById('lob-pv-note');
       word(note, !quiet ? 'youJoinMutedWith' : clearPick ? 'lobClearIf' : 'appearTitle',
         !quiet ? 'You join muted, with the camera off' : clearPick ? 'This is how you\'ll appear if the meeting you join allows clear video.' : 'This is how you\'ll appear');
@@ -6129,15 +6129,15 @@
       if (lobEl) lobEl.classList.toggle('lob-clear', clearPick);
       try { placeClearLine(); } catch (e) {}
       let joinKey = 'lobJoinOff', joinEn = "You'll join with your camera and microphone off.";
-      if (__C.joinAv.cam && __C.joinAv.mic) { joinKey = 'lobJoinBoth'; joinEn = "You'll join with your camera and microphone on."; }
-      else if (__C.joinAv.cam) { joinKey = 'lobJoinCam'; joinEn = "You'll join with your camera on and your microphone off."; }
-      else if (__C.joinAv.mic) { joinKey = 'lobJoinMic'; joinEn = "You'll join with your camera off and your microphone on."; }
-      if (!__C.BC_INTENT) word(document.getElementById('lob-quiet'), joinKey, joinEn);
+      if (__C.model.me.joinAv().cam && __C.model.me.joinAv().mic) { joinKey = 'lobJoinBoth'; joinEn = "You'll join with your camera and microphone on."; }
+      else if (__C.model.me.joinAv().cam) { joinKey = 'lobJoinCam'; joinEn = "You'll join with your camera on and your microphone off."; }
+      else if (__C.model.me.joinAv().mic) { joinKey = 'lobJoinMic'; joinEn = "You'll join with your camera off and your microphone on."; }
+      if (!__C.model.consts.BC_INTENT()) word(document.getElementById('lob-quiet'), joinKey, joinEn);
       const face = document.getElementById('lob-pv-face');
       if (face) { const me = GifOS.store.identity(); paintAppearFace(face, me.name, me.avatar); }
       const vid = document.getElementById('lob-preview-vid');
       if (vid) {
-        const bl = __C.joinAv.cam ? lvl : 0;
+        const bl = __C.model.me.joinAv().cam ? lvl : 0;
         vid.classList.toggle('blur1', bl === 1);
         vid.classList.toggle('blur2', bl === 2);
         if (bl) { try { (0, /*()*/__M.blurSized)(vid); } catch (e) {} }
@@ -6145,7 +6145,7 @@
       }
     }
     function setLobbyCam(on) {
-      if (!on) { __C.joinAv.cam = false; stopLobbyPreview(); paintLobbyAv(); return; }
+      if (!on) { __C.model.me.joinAv().cam = false; stopLobbyPreview(); paintLobbyAv(); return; }
       const md = navigator.mediaDevices;
       if (!md || !md.getUserMedia) return;
       const gen = ++lobbyCamGen;
@@ -6157,9 +6157,9 @@
           return;
         }
         vid.srcObject = stream;
-        __C.joinAv.cam = true;
+        __C.model.me.joinAv().cam = true;
         paintLobbyAv();
-      }).catch(() => { if (gen === lobbyCamGen) { __C.joinAv.cam = false; paintLobbyAv(); } });
+      }).catch(() => { if (gen === lobbyCamGen) { __C.model.me.joinAv().cam = false; paintLobbyAv(); } });
     }
     yield 1626;
     function enterMeeting(hashOrUrl) {
@@ -6175,7 +6175,7 @@
       // reload — but ONLY then: reloading while navigating to a DIFFERENT path
       // (a saved pretty /meet/<room> link) races the navigation and cancels it,
       // which left the Recent list dead on production.
-      const url = hashOrUrl.charAt(0) === '#' ? (__C.MEET_PATH + hashOrUrl) : hashOrUrl;
+      const url = hashOrUrl.charAt(0) === '#' ? (__C.model.consts.MEET_PATH() + hashOrUrl) : hashOrUrl;
       let samePage = false;
       try {
         const to = new URL(url, location.href);
@@ -6233,7 +6233,7 @@
         if (adminErr) adminErr.hidden = which !== 'lob-admin-btn';
         if (joinErr) joinErr.hidden = which !== 'lob-join-btn';
         const goBtn = document.getElementById('lob-go');
-        if (goBtn && !__C.BC_INTENT) {
+        if (goBtn && !__C.model.consts.BC_INTENT()) {
           if (which === 'lob-join-btn') {
             goBtn.setAttribute('data-t', 'join');
             goBtn.textContent = (0, /*()*/__C.uiText)('join', 'Join');
@@ -6267,20 +6267,20 @@
       const openName = document.getElementById('lob-open-name');
       if (openName) openName.addEventListener('keydown', (e) => { if (e.key === 'Enter') doOpen(); });
       const openSeg = document.getElementById('lob-open-seg');
-      if (openSeg) openSeg.onclick = () => { if (!__C.BC_INTENT) selectLob('lob-open-seg'); };
+      if (openSeg) openSeg.onclick = () => { if (!__C.model.consts.BC_INTENT()) selectLob('lob-open-seg'); };
       const lobCam = document.getElementById('lob-cam');
       if (lobCam) lobCam.onclick = () => {
-        if (__C.joinAv.cam) { setLobbyCam(false); return; }
+        if (__C.model.me.joinAv().cam) { setLobbyCam(false); return; }
         (0, /*()*/__M.openCamChooser)(lobCam, (level) => {
           try { (0, /*()*/__C.setPersonalBlur)(level); } catch (e) {}
           setLobbyCam(true);
         });
       };
       const lobMic = document.getElementById('lob-mic');
-      if (lobMic) lobMic.onclick = () => { __C.joinAv.mic = !__C.joinAv.mic; paintLobbyAv(); };
+      if (lobMic) lobMic.onclick = () => { __C.model.me.joinAv().mic = !__C.model.me.joinAv().mic; paintLobbyAv(); };
       // Host a private meeting mints the host key when that segment opens.
       document.getElementById('lob-admin-btn').onclick = () => {
-        if (__C.BC_INTENT) {
+        if (__C.model.consts.BC_INTENT()) {
           toggle('lob-admin');
           document.getElementById('lob-join').style.display = 'none';
           const open = document.getElementById('lob-admin').style.display !== 'none';
@@ -6315,7 +6315,7 @@
         more.setAttribute('aria-label', open ? 'Back to Go live' : 'Watch a link, or see the host password');
         if (!open) {
           document.getElementById('lob-join').style.display = 'none';
-          if (__C.BC_INTENT) {
+          if (__C.model.consts.BC_INTENT()) {
             document.getElementById('lob-admin').style.display = '';
             lob.classList.add('form-open', 'service-ready');
           }
@@ -6324,7 +6324,7 @@
       };
       const preview = document.getElementById('lob-preview');
       if (preview) preview.addEventListener('click', (e) => {
-        if (!__C.BC_INTENT || !lob.classList.contains('service-ready') || lob.classList.contains('desk-more')) return;
+        if (!__C.model.consts.BC_INTENT() || !lob.classList.contains('service-ready') || lob.classList.contains('desk-more')) return;
         if (e.target.closest('#lob-desk-more, button, a, input, textarea, select')) return;
         if (!window.matchMedia('(max-width: 700px) and (min-height: 421px)').matches) return;
         const go = document.getElementById('lob-go');
@@ -6373,7 +6373,7 @@
         let rawName = document.getElementById('lob-admin-name').value || '';
         // A broadcast's name is optional: a blank one is "broadcast" (the
         // host key makes the room its own). A call still needs a name.
-        if (__C.BC_INTENT && !/[A-Za-z0-9]/.test(rawName)) rawName = 'broadcast';
+        if (__C.model.consts.BC_INTENT() && !/[A-Za-z0-9]/.test(rawName)) rawName = 'broadcast';
         // slugRoom turns a blank into "room", so the empty check has to
         // happen on what was typed. A name with no letter or digit is blank.
         if (!/[A-Za-z0-9]/.test(rawName)) { err.textContent = (0, /*()*/__C.uiText)('needName', 'Give your room a name.'); return; }
@@ -6382,7 +6382,7 @@
         if (!chosen) { err.textContent = (0, /*()*/__C.uiText)('needName', 'Give your room a name.'); return; }
         if (!pass) { err.textContent = (0, /*()*/__C.uiText)('needPass', 'A host password is required.'); document.getElementById('lob-admin-pass').focus(); return; }
         let atSecs = '';
-        if (__C.BC_INTENT && bcLater) {
+        if (__C.model.consts.BC_INTENT() && bcLater) {
           const ms = new Date(document.getElementById('lob-bc-at').value || '').getTime();
           if (!Number.isFinite(ms) || ms < Date.now()) { err.textContent = (0, /*()*/__C.uiText)('bcNeedTime', 'Pick a start time that is still ahead.'); return; }
           atSecs = String(Math.floor(ms / 1000));
@@ -6391,12 +6391,12 @@
         // Go live is turning the camera on: the same blur choices as the
         // camera button, and that pick is the consent. A typed room password
         // locks the door. A blank one leaves the link open.
-        if (__C.BC_INTENT && !atSecs && goLiveBlurPick == null) {
+        if (__C.model.consts.BC_INTENT() && !atSecs && goLiveBlurPick == null) {
           if (typeof __M.camChooserOpen === 'function' && (0, /*()*/__M.camChooserOpen)()) { (0, /*()*/__M.dismissCamChooser)(); return; }
           (0, /*()*/__M.openCamChooser)(go, (level) => {
             goLiveBlurPick = (0, /*()*/__C.blurLevel)(level);
             try { (0, /*()*/__C.setPersonalBlur)(level); } catch (e) {}
-            try { __C.joinAv.cam = true; paintLobbyAv(); } catch (e) {}
+            try { __C.model.me.joinAv().cam = true; paintLobbyAv(); } catch (e) {}
             setLobbyCam(true);
             go.click();
           });
@@ -6408,7 +6408,7 @@
         go.disabled = true; go.textContent = (0, /*()*/__C.uiText)('creating', 'Creating…');
         try {
           const K = await (0, /*()*/__C.deriveAdminKey)(chosen, pass);
-          const V = (await __C.net.edKeysFromSeedHex(K)).verifier; // V commits to the PUBLIC key (§9)
+          const V = (await __C.model.net.net().edKeysFromSeedHex(K)).verifier; // V commits to the PUBLIC key (§9)
           try { localStorage.setItem('gifos_vadm_' + chosen + '.' + V, K); } catch (e) {}
           try { localStorage.setItem('gifos_vhpw_' + chosen + '.' + V, pass); } catch (e) {}   // Show host password (this device only, never mirrored)
           (0, /*()*/__C.mirrorRoomState)({ admin: true }, chosen + '.' + V);
@@ -6424,13 +6424,13 @@
           // Go live now is the deliberate tap: the stream boots with the
           // camera on. A scheduled one (and the host link opened later)
           // lands off air, with the start time riding the link.
-          if (__C.BC_INTENT && !atSecs) { try { sessionStorage.setItem('gifos_bc_golive_' + chosen + '.' + V, 'b' + (0, /*()*/__C.blurLevel)(picked)); } catch (e) {} }
+          if (__C.model.consts.BC_INTENT() && !atSecs) { try { sessionStorage.setItem('gifos_bc_golive_' + chosen + '.' + V, 'b' + (0, /*()*/__C.blurLevel)(picked)); } catch (e) {} }
           if (atSecs) { try { localStorage.setItem('gifos_bcat_' + chosen + '.' + V, atSecs); } catch (e) {} }
-          enterMeeting('#v=' + chosen + '&av=' + V + (__C.BC_INTENT ? '&bc=1' + (atSecs ? '&at=' + atSecs : '') : ''));
+          enterMeeting('#v=' + chosen + '&av=' + V + (__C.model.consts.BC_INTENT() ? '&bc=1' + (atSecs ? '&at=' + atSecs : '') : ''));
         } catch (e) { err.textContent = 'Could not create the room. Try again.'; go.disabled = false; go.textContent = go.dataset.label || 'Start'; }
       };
       document.getElementById('lob-join-btn').onclick = () => {
-        if (__C.BC_INTENT) { toggle('lob-join'); document.getElementById('lob-admin').style.display = 'none'; const i = document.getElementById('lob-join-in'); if (document.getElementById('lob-join').style.display !== 'none') i.focus(); return; }
+        if (__C.model.consts.BC_INTENT()) { toggle('lob-join'); document.getElementById('lob-admin').style.display = 'none'; const i = document.getElementById('lob-join-in'); if (document.getElementById('lob-join').style.display !== 'none') i.focus(); return; }
         selectLob('lob-join-btn');
       };
       const nameIn = document.getElementById('lob-name-in');
@@ -6456,7 +6456,7 @@
         enterMeeting('#v=' + p.room + (p.av ? '&av=' + p.av : '') + (p.bc ? '&bc=1' : '') + (p.relay ? '&relay=' + encodeURIComponent(p.relay) : ''));
       };
       document.getElementById('lob-go').onclick = () => {
-        if (__C.BC_INTENT) { doHost(); return; }
+        if (__C.model.consts.BC_INTENT()) { doHost(); return; }
         const sel = document.querySelector('#lobby .lob-segs .seg.sel');
         const id = sel ? sel.id : '';
         if (id === 'lob-join-btn') doJoin();
@@ -6474,8 +6474,8 @@
         if (del) {
           e.stopPropagation();
           const url = del.getAttribute('data-del');
-          (0, /*()*/__C.saveList)(__C.MEET_HIST, (0, /*()*/__C.loadList)(__C.MEET_HIST).filter((x) => !x || x.url !== url));
-          (0, /*()*/__C.saveList)(__C.MEET_MARKS, (0, /*()*/__C.loadList)(__C.MEET_MARKS).filter((x) => !x || x.url !== url));
+          (0, /*()*/__C.saveList)(__C.model.consts.MEET_HIST(), (0, /*()*/__C.loadList)(__C.model.consts.MEET_HIST()).filter((x) => !x || x.url !== url));
+          (0, /*()*/__C.saveList)(__C.model.consts.MEET_MARKS(), (0, /*()*/__C.loadList)(__C.model.consts.MEET_MARKS()).filter((x) => !x || x.url !== url));
           renderLobbyList();
           return;
         }
@@ -6494,12 +6494,12 @@
       if (legacy) legacy.textContent = me.name || '…';
     }
     function showLobby() {
-      document.title = (__C.BC_INTENT ? 'Broadcast' : 'Meeting') + ' — GifOS';
+      document.title = (__C.model.consts.BC_INTENT() ? 'Broadcast' : 'Meeting') + ' — GifOS';
       // The Broadcast app opens THIS page with #bc=1 and no room: same lobby,
       // reworded. Creating one mints the same admin room with &bc=1 riding the
       // link. A blank room password leaves the link open. Schedule is later.
       // The host password is minted and kept on this device; More shows it.
-      if (__C.BC_INTENT) {
+      if (__C.model.consts.BC_INTENT()) {
         document.querySelector('#lobby h1').textContent = (0, /*()*/__C.uiText)('bcTitle', 'Broadcast');
         const quiet = document.getElementById('lob-quiet');
         if (quiet) {
@@ -6541,7 +6541,7 @@
       paintLobbyAppear();
       renderLobbyList();
       wireLobby();
-      if (__C.BC_INTENT) {
+      if (__C.model.consts.BC_INTENT()) {
         document.getElementById('lob-admin').style.display = '';
         document.getElementById('lobby').classList.add('form-open', 'service-ready');
         const key = document.getElementById('lob-admin-pass');
@@ -6553,7 +6553,7 @@
       if (pvName) pvName.textContent = (0, /*()*/__C.myName)();
       // Go live is the broadcast's camera choice; its lobby has no switches.
       const avRow = document.getElementById('lob-av');
-      if (avRow) avRow.hidden = !!__C.BC_INTENT;
+      if (avRow) avRow.hidden = !!__C.model.consts.BC_INTENT();
       paintLobbyAv();
       placeDeskName();
     }
@@ -6566,7 +6566,7 @@
       const putBack = () => { if (note.parentElement !== preview) preview.appendChild(note); };
       if (!note.classList.contains('lob-pv-clear')) { putBack(); return; }
       let bc = false;
-      try { bc = !!__C.BC_INTENT; } catch (e) {}
+      try { bc = !!__C.model.consts.BC_INTENT(); } catch (e) {}
       const go = document.getElementById('lob-go');
       const parent = go && go.parentElement;
       if (!bc || !parent) { putBack(); return; }
@@ -6615,8 +6615,8 @@
     // transceiver path lateMedia uses for a camera granted mid-call.
     // The tab's title, and a service's share words, once the page is in its room (bootIntoRoom).
     function paintRoomTitle() {
-      document.title = __C.BROADCAST ? 'Broadcast — GifOS' : 'Meeting — GifOS';
-      if (__C.BROADCAST) {
+      document.title = __C.model.room.BROADCAST() ? 'Broadcast — GifOS' : 'Meeting — GifOS';
+      if (__C.model.room.BROADCAST()) {
         const hint = document.querySelector('.share .hint');
         if (hint) hint.textContent = 'Share this link — anyone who opens it is watching:';
       }
@@ -6692,7 +6692,7 @@
       const inv = document.getElementById('appinvite');
       const seat = (0, /*()*/__C.meshSeat)();
       const on = !__C.aloneCardShut && !!(statusEl.dataset && statusEl.dataset.state === 'alone') && !!(seat && seat.state === 3)
-        && !__C.BROADCAST && !__C.ROOM.solo && __C.ROOM.kind !== 'app' && !document.body.classList.contains('app-room')
+        && !__C.model.room.BROADCAST() && !__C.ROOM.solo && __C.ROOM.kind !== 'app' && !document.body.classList.contains('app-room')
         && !!inv && inv.style.display !== 'none' && !(0, /*()*/__C.leftDialogUp)();
       if (card.hidden === on) card.hidden = !on;
     }
@@ -6710,18 +6710,18 @@
       const btn = document.getElementById('appinvite');
       if (!btn) return;
       let show = false;
-      if (__C.ROOM.solo) show = __C.soloShare === true;
+      if (__C.ROOM.solo) show = __C.model.chat.soloShare() === true;
       else if (__C.ROOM.kind === 'app' && __C.ROOM.founder) show = true;
       else if (!document.body.classList.contains('app-room')) {
         const kind = (statusEl && statusEl.dataset && statusEl.dataset.kind) || '';
-        const hostHere = __C.BROADCAST
+        const hostHere = __C.model.room.BROADCAST()
           && (((typeof __C.bcHostStored === 'function' && (0, /*()*/__C.bcHostStored)()) || document.body.classList.contains('amadmin')));
         const hostAlone = !!(hostHere && kind === 'alone');
         const phoneAlone = kind === 'alone' && phoneLayout();
         // A meeting keeps Invite while an app is shared. Hiding it here
         // replaced the OS slot with the app bar (Help / Hide / Stop) and
         // left guests with no way to share the meeting link.
-        if (__C.BROADCAST) show = !document.body.classList.contains('has-app') && (hostAlone || phoneAlone);
+        if (__C.model.room.BROADCAST()) show = !document.body.classList.contains('has-app') && (hostAlone || phoneAlone);
         else show = true;
         // A person held in the waiting room is not in the meeting yet: no
         // Invite until they are admitted (the line says "In the waiting room").
@@ -6730,7 +6730,7 @@
       btn.style.display = show ? '' : 'none';
       const tip = (__C.ROOM.kind === 'app' || document.body.classList.contains('app-room'))
         ? 'barInviteTip'
-        : (__C.BROADCAST)
+        : (__C.model.room.BROADCAST())
           ? 'Invite someone to this broadcast — one link'
           : 'invTip';
       if (tip === 'invTip' || tip === 'barInviteTip') {
@@ -6865,7 +6865,7 @@
       const open = !!(chatPanel && chatPanel.classList.contains('open'));
       // A mention of this person stays on the call until they open chat.
       // A later line must not hide it. Naming someone else is an ordinary preview.
-      if (m && !open && m.byId !== __C.myId && (0, /*()*/__C.messageMentionsMe)(m.text)) {
+      if (m && !open && m.byId !== __C.model.me.myId() && (0, /*()*/__C.messageMentionsMe)(m.text)) {
         mentionAlert = { by: lastChatLine.by, text: lastChatLine.text };
       }
       if (open) return;
@@ -6931,7 +6931,7 @@
       // Sideways, Find steps aside while the keyboard is up. The title is
       // still on screen, so it says the log is cut down.
       const title = document.getElementById('paneltitle');
-      if (title && !transcriptShown()) title.textContent = text ? 'Lines with “' + text + '”' : (__C.BROADCAST ? 'Broadcast chat' : (0, /*()*/__C.uiText)('chatTitle', 'Meeting chat'));
+      if (title && !transcriptShown()) title.textContent = text ? 'Lines with “' + text + '”' : (__C.model.room.BROADCAST() ? 'Broadcast chat' : (0, /*()*/__C.uiText)('chatTitle', 'Meeting chat'));
     }
     function renderChat() {
       if (!chatPanelOpen() || transcriptShown()) return;
@@ -6951,7 +6951,7 @@
           : (0, /*()*/__C.withMentions)(m.text, allowLinks);
         // The signed-in admin moderates line by line: the standard row-delete
         // glyph mints a signed 'cdel' (see the #chatlog click delegate).
-        const del = __C.amAdmin ? '<button class="row-del" data-cdel="' + (0, /*()*/__C.esc)(m.id) + '" title="Delete this message for everyone">' + __C.DEL_ICON + '</button>' : '';
+        const del = __C.amAdmin ? '<button class="row-del" data-cdel="' + (0, /*()*/__C.esc)(m.id) + '" title="Delete this message for everyone">' + __C.model.consts.DEL_ICON() + '</button>' : '';
         const when = __C.model.chat.when(m.at);
         const stamp = when ? '<small class="cwhen">' + (0, /*()*/__C.esc)(when) + '</small>' : '';
         const who = '<span class="cwho"><b>' + (typeof __C.avatarChip === 'function' ? ((0, /*()*/__C.avatarChip)(m.byId) || '') : '') + (0, /*()*/__C.esc)(m.by) + (m.prayer ? ' <span class="praytag">Prayer</span>' : '') + '</b>' + stamp + '</span>';
@@ -6960,12 +6960,12 @@
           : '';
         const attr = String(m.id).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
         const replyBtn = '<button type="button" class="creply" data-reply="' + attr + '">Reply</button>';
-        const ownDel = m.byId === __C.myId ? '<button type="button" class="cdel" data-own-del="' + attr + '">Delete</button>' : '';
+        const ownDel = m.byId === __C.model.me.myId() ? '<button type="button" class="cdel" data-own-del="' + attr + '">Delete</button>' : '';
         const per = __C.model.chat.reacts().get(m.id);
         const chips = per && per.size
-          ? '<div class="cchips">' + __C.REACTS.filter((e) => per.has(e)).map((e) => {
+          ? '<div class="cchips">' + __C.model.consts.REACTS().filter((e) => per.has(e)).map((e) => {
             const who = per.get(e);
-            const mineR = who.has(__C.myId);
+            const mineR = who.has(__C.model.me.myId());
             return '<button type="button" class="cchip" data-react-chip="' + e + '" data-react-id="' + attr + '" aria-pressed="' + mineR + '" aria-label="' + e + ' ' + who.size + ': ' + (0, /*()*/__C.esc)((0, /*()*/__C.reactorNames)(who)) + '">' + e + '<span>' + who.size + '</span></button>';
           }).join('') + '</div>'
           : '';
@@ -6973,13 +6973,13 @@
         const reactBtn = showReact ? '<button type="button" class="creact" data-react-open="' + attr + '" aria-expanded="' + (__C.reactOpen === m.id) + '">React</button>' : '';
         const open = __C.lineOpen === m.id || __C.reactOpen === m.id;
         const whoR = open && per && per.size
-          ? '<div class="cwhorx">' + __C.REACTS.filter((e) => per.has(e)).map((e) => '<span>' + e + ' ' + (0, /*()*/__C.esc)((0, /*()*/__C.reactorNames)(per.get(e))) + '</span>').join('') + '</div>'
+          ? '<div class="cwhorx">' + __C.model.consts.REACTS().filter((e) => per.has(e)).map((e) => '<span>' + e + ' ' + (0, /*()*/__C.esc)((0, /*()*/__C.reactorNames)(per.get(e))) + '</span>').join('') + '</div>'
           : '';
         const acts = open ? '<div class="cacts">' + replyBtn + reactBtn + ownDel + '</div>' : '';
         const picks = showReact && __C.reactOpen === m.id
-          ? '<div class="cpicks">' + __C.REACTS.map((e) => '<button type="button" class="cpick" data-react-pick="' + e + '" data-react-id="' + attr + '" aria-label="React ' + e + '">' + e + '</button>').join('') + '</div>'
+          ? '<div class="cpicks">' + __C.model.consts.REACTS().map((e) => '<button type="button" class="cpick" data-react-pick="' + e + '" data-react-id="' + attr + '" aria-label="React ' + e + '">' + e + '</button>').join('') + '</div>'
           : '';
-        return '<div class="cmsg' + (m.byId === __C.myId ? ' mine' : '') + (m.prayer ? ' prayer' : '') + '" data-line="' + attr + '" tabindex="0" aria-expanded="' + open + '" title="Tap for Reply and React">' + who + quote + '<span class="cbody">' + body + '</span>' + chips + whoR + acts + del + picks + '</div>';
+        return '<div class="cmsg' + (m.byId === __C.model.me.myId() ? ' mine' : '') + (m.prayer ? ' prayer' : '') + '" data-line="' + attr + '" tabindex="0" aria-expanded="' + open + '" title="Tap for Reply and React">' + who + quote + '<span class="cbody">' + body + '</span>' + chips + whoR + acts + del + picks + '</div>';
       }).join('');
       const co = __C.model.chat.off();
       if (q && !ms.length) html = '<div class="cempty" id="chatnomatch">No matches</div>';
@@ -7033,8 +7033,8 @@
         attach.hidden = !(0, /*()*/__C.hasAdminRoom)();
         attach.disabled = locked;
       }
-      document.body.classList.toggle('chat-qa-on', __C.model.chat.qaOn() && (0, /*()*/__C.hasAdminRoom)() && !__C.BROADCAST);
-      document.body.classList.toggle('qa-chat-off', (0, /*()*/__C.hasAdminRoom)() && __C.BROADCAST && !__C.model.chat.qaOn());
+      document.body.classList.toggle('chat-qa-on', __C.model.chat.qaOn() && (0, /*()*/__C.hasAdminRoom)() && !__C.model.room.BROADCAST());
+      document.body.classList.toggle('qa-chat-off', (0, /*()*/__C.hasAdminRoom)() && __C.model.room.BROADCAST() && !__C.model.chat.qaOn());
       const b = document.getElementById('chatmod');
       b.style.display = ((0, /*()*/__C.hasAdminRoom)() && __C.amAdmin) ? '' : 'none';
       b.textContent = off ? (0, /*()*/__C.uiText)('chatModOn', 'Turn chat on') : (0, /*()*/__C.uiText)('chatModOff', 'Turn chat off');
@@ -7049,12 +7049,12 @@
       if (!g || !(0, /*()*/__C.hasAdminRoom)()) return;
       g.checked = !__C.model.chat.off();
       document.getElementById('adm-chat-pray').checked = (0, /*()*/__C.prayOn)();
-      document.getElementById('adm-chat-files-sub').textContent = __C.roomPw
+      document.getElementById('adm-chat-files-sub').textContent = __C.model.door.roomPw()
         ? (0, /*()*/__C.uiText)('admChatFilesOn', 'Allowed: this room has a password.')
         : (0, /*()*/__C.uiText)('admChatFilesOff', 'Only once the room has a password.');
       document.getElementById('adm-chat-pw').disabled = !__C.amAdmin;
       const gf = document.getElementById('adm-chat-gfile');
-      if (gf) { gf.checked = (0, /*()*/__C.modStarOn)('gfile', true); gf.disabled = !__C.roomPw; }
+      if (gf) { gf.checked = (0, /*()*/__C.modStarOn)('gfile', true); gf.disabled = !__C.model.door.roomPw(); }
       const gr = document.getElementById('adm-chat-greact');
       if (gr) gr.checked = __C.model.chat.mayReact();
       const qa = document.getElementById('adm-chat-qa');
@@ -7133,10 +7133,10 @@
         if (!id || !__C.model.chat.lines().has(id)) return;
         if (!(0, /*()*/__C.viewerMayReact)()) return;
         const per = __C.model.chat.reacts().get(id);
-        const on = !(per && per.get(em) && per.get(em).has(__C.myId));
+        const on = !(per && per.get(em) && per.get(em).has(__C.model.me.myId()));
         __C.reactOpen = null;
         __C.lineOpen = null;
-        if ((0, /*()*/__C.takeReact)(id, em, __C.myId, on)) (0, /*()*/__C.sendAll)({ k: 'creact', id: id, e: em, on: on, by: __C.myId });
+        if ((0, /*()*/__C.takeReact)(id, em, __C.model.me.myId(), on)) (0, /*()*/__C.sendAll)({ k: 'creact', id: id, e: em, on: on, by: __C.model.me.myId() });
         renderChat();
         return;
       }
@@ -7144,9 +7144,9 @@
       if (ownDel) {
         const id = ownDel.getAttribute('data-own-del');
         const src = id ? __C.model.chat.lines().get(id) : null;
-        if (!src || src.byId !== __C.myId) return;
-        if ((0, /*()*/__C.applyOwnDelete)(id, __C.myId)) {
-          (0, /*()*/__C.sendAll)({ k: 'cdel', id: id, own: __C.myId });
+        if (!src || src.byId !== __C.model.me.myId()) return;
+        if ((0, /*()*/__C.applyOwnDelete)(id, __C.model.me.myId())) {
+          (0, /*()*/__C.sendAll)({ k: 'cdel', id: id, own: __C.model.me.myId() });
           renderChat();
         }
         return;
@@ -7172,14 +7172,14 @@
       const el = document.getElementById('cfilelist');
       // Files are only allowed in a PASSWORD-PROTECTED meeting. The attach
       // button says so. An empty list does not sit between the messages and Send.
-      const fs = Array.from(__C.files.values()).sort((a, b) => a.at - b.at);
+      const fs = Array.from(__C.model.room.files().values()).sort((a, b) => a.at - b.at);
       if (!fs.length) { wrap.hidden = true; el.innerHTML = ''; return; }
       wrap.hidden = false;
       el.innerHTML = fs.map((f) => {
-        const mine = (f.byId && f.byId === __C.myId) || (!f.byId && f.by === (0, /*()*/__C.myName)());
+        const mine = (f.byId && f.byId === __C.model.me.myId()) || (!f.byId && f.by === (0, /*()*/__C.myName)());
         // The button follows the receive rule (fdelAllowed): an open room takes
         // anyone's unpin (attributed); an admin room takes the owner's or an admin's.
-        const unpin = (!(0, /*()*/__C.hasAdminRoom)() || __C.amAdmin || mine) ? '<button class="row-del" data-del="' + (0, /*()*/__C.esc)(f.id) + '" title="Unpin for everyone">' + __C.DEL_ICON + '</button>' : '';
+        const unpin = (!(0, /*()*/__C.hasAdminRoom)() || __C.amAdmin || mine) ? '<button class="row-del" data-del="' + (0, /*()*/__C.esc)(f.id) + '" title="Unpin for everyone">' + __C.model.consts.DEL_ICON() + '</button>' : '';
         return '<div class="cfile" data-f="' + (0, /*()*/__C.esc)(f.id) + '"><span class="nm">' + (0, /*()*/__C.esc)(f.name) + '</span><small>' + fmtSize(f.size) + ' · ' + (0, /*()*/__C.esc)(f.by || '?') + '</small>'
           + (f.bytes ? '<button data-dl="' + (0, /*()*/__C.esc)(f.id) + '">⬇</button>' : '<small>receiving…</small>')
           + unpin + '</div>';
@@ -7188,15 +7188,15 @@
     document.getElementById('cfilelist').addEventListener('click', (e) => {
       const dl = e.target.dataset.dl, del = e.target.dataset.del;
       if (dl) {
-        const f = __C.files.get(dl); if (!f || !f.bytes) return;
+        const f = __C.model.room.files().get(dl); if (!f || !f.bytes) return;
         const a = document.createElement('a');
         a.href = URL.createObjectURL(new Blob([f.bytes], { type: f.mime || 'application/octet-stream' }));
         a.download = f.name; a.click();
         setTimeout(() => URL.revokeObjectURL(a.href), 5000);
       } else if (del) {
-        const f = __C.files.get(del);
+        const f = __C.model.room.files().get(del);
         if (!f) return;
-        const mine = (f.byId && f.byId === __C.myId) || (!f.byId && f.by === (0, /*()*/__C.myName)());
+        const mine = (f.byId && f.byId === __C.model.me.myId()) || (!f.byId && f.by === (0, /*()*/__C.myName)());
         if ((0, /*()*/__C.hasAdminRoom)() && !(__C.amAdmin || mine)) return; // the same rule as the button and fdelAllowed
         const emit = (w) => {
           const t = { by: (0, /*()*/__C.myName)(), at: Date.now() };
@@ -7257,7 +7257,7 @@
       const text = inp.value.trim();
       if (!text) return;
       const prayBtn = document.getElementById('pray');
-      const m = { id: (0, /*()*/__C.uid)('m'), by: (0, /*()*/__C.myName)(), byId: __C.myId, at: Date.now(), text };
+      const m = { id: (0, /*()*/__C.uid)('m'), by: (0, /*()*/__C.myName)(), byId: __C.model.me.myId(), at: Date.now(), text };
       if ((0, /*()*/__C.prayOn)() && prayBtn && prayBtn.getAttribute('aria-pressed') === 'true') m.prayer = 1;
       if (pendingReply) m.reply = { id: pendingReply.id, by: pendingReply.by, text: pendingReply.text };
       if (!__C.act.postChat(m)) return;   // slow mode already holds as many lines as it keeps: this one stays in the box
@@ -7302,11 +7302,11 @@
     document.getElementById('cfile-in').addEventListener('change', (e) => {
       if (!(0, /*()*/__C.mayPinFiles)()) { (0, /*()*/__C.setStatus)((0, /*()*/__C.uiText)('stFilesAreNotAllowedHere', 'Files are not allowed here.')); e.target.value = ''; return; }
       for (const file of e.target.files) {
-        if (file.size > __C.MAX_FILE) { (0, /*()*/__C.setStatus)(file.name + ' is over the 25 MB pin limit.'); continue; }
+        if (file.size > __C.model.consts.MAX_FILE()) { (0, /*()*/__C.setStatus)(file.name + ' is over the 25 MB pin limit.'); continue; }
         const reader = new FileReader();
         reader.onload = () => {
-          const f = { id: (0, /*()*/__C.uid)('f'), name: file.name, size: file.size, mime: file.type, by: (0, /*()*/__C.myName)(), byId: __C.myId, at: Date.now(), bytes: new Uint8Array(reader.result) };
-          __C.files.set(f.id, f);
+          const f = { id: (0, /*()*/__C.uid)('f'), name: file.name, size: file.size, mime: file.type, by: (0, /*()*/__C.myName)(), byId: __C.model.me.myId(), at: Date.now(), bytes: new Uint8Array(reader.result) };
+          __C.model.room.files().set(f.id, f);
           (0, /*()*/__C.sendAll)({ k: 'fmeta', f: { id: f.id, name: f.name, size: f.size, mime: f.mime, by: f.by, byId: f.byId, at: f.at } });
           renderFiles();
         };
@@ -7455,7 +7455,7 @@
       const band = document.getElementById('bc-q');
       if (!band) return;
       const qid = __C.model.chat.qaShownId(), m = qid && __C.model.chat.lines().get(qid);
-      if (!m || !m.q || !__C.BROADCAST) { band.hidden = true; return; }
+      if (!m || !m.q || !__C.model.room.BROADCAST()) { band.hidden = true; return; }
       document.getElementById('bc-q-by').textContent = m.by + ' asks';
       document.getElementById('bc-q-txt').textContent = m.text;
       band.hidden = false;
@@ -7481,7 +7481,7 @@
           + '<button type="button" class="qvote" aria-pressed="' + (q.mine ? 'true' : 'false') + '" aria-label="Vote for this question, ' + q.votes + ' votes" title="Vote this up">▲ <span>' + q.votes + '</span></button>'
           + '<div class="qbody"><p>' + (0, /*()*/__C.esc)(q.text) + '</p><small>' + (0, /*()*/__C.esc)(q.by) + (on ? ' · on the picture' : '') + '</small></div>'
           + (__C.amAdmin ? '<button type="button" class="qshow" aria-pressed="' + (on ? 'true' : 'false') + '" title="' + (on ? 'Take it off the picture' : 'Put it on every viewer\'s picture') + '">' + (on ? 'Hide' : 'Show') + '</button>'
-            + '<button type="button" class="row-del qdel" title="Remove this question for everyone">' + __C.DEL_ICON + '</button>' : '')
+            + '<button type="button" class="row-del qdel" title="Remove this question for everyone">' + __C.model.consts.DEL_ICON() + '</button>' : '')
           + '</div>';
       }).join('') : '<p class="qempty">No questions yet. Ask one below, and vote up the ones you want answered.</p>';
     }
@@ -7504,7 +7504,7 @@
       const inp = document.getElementById('qa-in');
       const text = inp.value.trim().slice(0, 280);
       if (!text) return;
-      __C.act.qaSend({ id: (0, /*()*/__C.uid)('m'), by: (0, /*()*/__C.myName)(), byId: __C.myId, at: Date.now(), text, q: 1 });
+      __C.act.qaSend({ id: (0, /*()*/__C.uid)('m'), by: (0, /*()*/__C.myName)(), byId: __C.model.me.myId(), at: Date.now(), text, q: 1 });
       inp.value = '';
     });
     document.getElementById('qa-list').addEventListener('click', (e) => {
@@ -7512,15 +7512,15 @@
       const qid = row.getAttribute('data-q');
       if (e.target.closest('.qvote')) {
         const q = __C.model.chat.qaList().find((x) => x.id === qid); if (!q) return;
-        const v = { id: (0, /*()*/__C.uid)('m'), by: (0, /*()*/__C.myName)(), byId: __C.myId, at: Date.now(), text: '', qv: qid };
+        const v = { id: (0, /*()*/__C.uid)('m'), by: (0, /*()*/__C.myName)(), byId: __C.model.me.myId(), at: Date.now(), text: '', qv: qid };
         if (q.mine) v.qx = 1;
         __C.act.qaSend(v);
       } else if (e.target.closest('.qshow') && __C.amAdmin) {
         const next = __C.model.chat.qaShownId() === qid ? '' : qid;
         (0, /*()*/__C.admSigned)('qshow', { qid: next }).then((w) => {
           if (!w) return;
-          const m = { id: (0, /*()*/__C.uid)('m'), by: (0, /*()*/__C.myName)(), byId: __C.myId, at: Date.now(), text: '', qs: next, w };
-          __C.qaShowOk.set(m.id, { qid: next, ts: JSON.parse(w.sp).ts });
+          const m = { id: (0, /*()*/__C.uid)('m'), by: (0, /*()*/__C.myName)(), byId: __C.model.me.myId(), at: Date.now(), text: '', qs: next, w };
+          __C.model.chat.qaShowOk().set(m.id, { qid: next, ts: JSON.parse(w.sp).ts });
           __C.act.qaSend(m);
         });
       } else if (e.target.closest('.qdel') && __C.amAdmin && !__C.model.chat.tombs().has(qid)) {
@@ -7621,8 +7621,8 @@
       if (lbEl) {
         const guest = (0, /*()*/__C.uiText)('aGuest', 'A guest');
         const join = (0, /*()*/__C.uiText)('nameJoin', ' & ');
-        const others = shr.filter((id) => id !== __C.myId).map((id) => __C.rosterNames[id] || (__C.peers.get(id) || {}).name || guest);
-        const mine = shr.indexOf(__C.myId) !== -1;
+        const others = shr.filter((id) => id !== __C.model.me.myId()).map((id) => __C.model.roster.rosterNames()[id] || (__C.model.roster.peers().get(id) || {}).name || guest);
+        const mine = shr.indexOf(__C.model.me.myId()) !== -1;
         lbEl.textContent = shr.length
           ? '🖥 ' + (mine && !others.length
             ? (0, /*()*/__C.uiText)('shareMineStage', 'Your screen — on stage')
@@ -7636,7 +7636,7 @@
       // thumbnail has a small chip, but a client demo is looking at the
       // stage. The button is only mine to press.
       let stop = el.querySelector('.stagestop');
-      if (__C.myStatus.scr) {
+      if (__C.model.me.myStatus().scr) {
         if (!stop) {
           stop = document.createElement('button');
           stop.type = 'button';
@@ -7695,7 +7695,7 @@
       if (handMq.addEventListener) handMq.addEventListener('change', () => { try { __C.act.placeViewerHand(); } catch (e) {} });
     } catch (e) {}
     function paintHand() {
-      const up = !!__C.myStatus.hand;
+      const up = !!__C.model.me.myStatus().hand;
       const docked = handBtn.parentElement && handBtn.parentElement.classList.contains('bar');
       const lab = handBtn.querySelector('.docklab');
       if (docked && lab) {
@@ -7709,19 +7709,19 @@
       }
       // A broadcast viewer's hand asks the host for the stage (confirmed design).
       let ask = false;
-      try { ask = __C.BROADCAST && (0, /*()*/__C.bcRole)() === 'viewer'; } catch (e) { ask = false; }
+      try { ask = __C.model.room.BROADCAST() && (0, /*()*/__C.bcRole)() === 'viewer'; } catch (e) { ask = false; }
       if (ask) handBtn.title = 'Ask the host to invite you on stage';
       else if (!up) handBtn.title = 'Raise your hand — raised hands float to the top';
       const rh = document.getElementById('react-hand');
       if (rh) {
         rh.textContent = '✋';
-        rh.setAttribute('aria-label', __C.myStatus.hand ? 'Lower hand' : 'Raise hand');
-        rh.classList.toggle('on', !!__C.myStatus.hand);
-        rh.setAttribute('aria-pressed', __C.myStatus.hand ? 'true' : 'false');
+        rh.setAttribute('aria-label', __C.model.me.myStatus().hand ? 'Lower hand' : 'Raise hand');
+        rh.classList.toggle('on', !!__C.model.me.myStatus().hand);
+        rh.setAttribute('aria-pressed', __C.model.me.myStatus().hand ? 'true' : 'false');
       }
     }
     handBtn.onclick = () => {
-      __C.myStatus.hand = __C.myStatus.hand ? null : Date.now();
+      __C.model.me.myStatus().hand = __C.model.me.myStatus().hand ? null : Date.now();
       paintHand();
       (0, /*()*/__C.broadcastStatus)();
       layout();
@@ -7736,16 +7736,16 @@
     // enforcement lives in every receiver's stageIds() filter.
     const stageBtn = document.getElementById('stagebtn');
     function paintStage() {
-      const claimed = !!__C.myStatus.stg;
-      const seated = claimed && (0, /*()*/__C.stageIds)().includes(__C.myId);
-      const on = (__C.BROADCAST) ? claimed : seated;
+      const claimed = !!__C.model.me.myStatus().stg;
+      const seated = claimed && (0, /*()*/__C.stageIds)().includes(__C.model.me.myId());
+      const on = (__C.model.room.BROADCAST()) ? claimed : seated;
       stageBtn.classList.toggle('on', on);
-      const hostHere = (__C.BROADCAST) && ((typeof __C.bcHostStored === 'function' && (0, /*()*/__C.bcHostStored)()) || __C.amAdmin);
+      const hostHere = (__C.model.room.BROADCAST()) && ((typeof __C.bcHostStored === 'function' && (0, /*()*/__C.bcHostStored)()) || __C.amAdmin);
       // Stage keeps the slot barPlan gave it and the word dockLabelSet gave
       // it. A seat change only colours it, re-labels it for a screen reader,
       // and grays it when it cannot be used (Nathan 2026-11-09).
       const dockedNow = stageBtn.parentElement && stageBtn.parentElement.classList.contains('bar');
-      const mayStage = !!(!(0, /*()*/__C.hasAdminRoom)() || __C.amAdmin || hostHere || ((0, /*()*/__C.modOf)(__C.myId).app && (0, /*()*/__C.modOf)(__C.myId).app.on) || (0, /*()*/__C.stageGrantLive)(__C.myId) || __C.myStatus.stg);
+      const mayStage = !!(!(0, /*()*/__C.hasAdminRoom)() || __C.amAdmin || hostHere || ((0, /*()*/__C.modOf)(__C.model.me.myId()).app && (0, /*()*/__C.modOf)(__C.model.me.myId()).app.on) || (0, /*()*/__C.stageGrantLive)(__C.model.me.myId()) || __C.model.me.myStatus().stg);
       if (dockedNow) {
         stageBtn.setAttribute('aria-label', on ? 'Step off the stage' : 'Step on the stage');
         stageBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
@@ -7760,29 +7760,29 @@
       if (typeof __C.paintBroadcastAir === 'function') (0, /*()*/__C.paintBroadcastAir)();
       // Broadcast roles own the seat class. Meet still marks a stage grant
       // the old way; a broadcast viewer must not inherit it.
-      if (__C.BROADCAST) {
+      if (__C.model.room.BROADCAST()) {
         paintBroadcastRole();
         if ((0, /*()*/__C.bcRole)() === 'viewer') (0, /*()*/__C.enforceBroadcastSeat)();
         try { paintBroadcastSeats(); } catch (e) {}
-      } else document.body.classList.toggle('stage-granted', (0, /*()*/__C.canStage)(__C.myId));
+      } else document.body.classList.toggle('stage-granted', (0, /*()*/__C.canStage)(__C.model.me.myId()));
       try { paintWatchingSeat(); } catch (e) {}
       try { paintBarIdle(); } catch (e) {}
     }
     yield 2273;
     stageBtn.onclick = () => {
       if ((0, /*()*/__C.bcWatchingViewer)()) return;
-      if (__C.myStatus.stg) {
+      if (__C.model.me.myStatus().stg) {
         // Declining a vote-up: remember the exact voter set, so the same
         // standing votes don't bounce me straight back onto the stage. A NEW
         // voter re-arms the invitation.
         const vt = __C.model.votes.tallies();
-        if ((vt.up[__C.myDevHash] || 0) >= (0, /*()*/__C.stageNeed)(vt, __C.myDevHash)) __C.vupDismissedSig = __C.model.votes.upSig();
-        if (__C.myStatus.scr) (0, /*()*/__M.stopScreenShare)('you stepped down');
-        if (__C.myStatus.stg) (0, /*()*/__C.setStage)(false);
+        if ((vt.up[__C.model.me.myDevHash()] || 0) >= (0, /*()*/__C.stageNeed)(vt, __C.model.me.myDevHash())) __C.vupDismissedSig = __C.model.votes.upSig();
+        if (__C.model.me.myStatus().scr) (0, /*()*/__M.stopScreenShare)('you stepped down');
+        if (__C.model.me.myStatus().stg) (0, /*()*/__C.setStage)(false);
         return;
       }
-      if (!(0, /*()*/__C.canStage)(__C.myId)) { (0, /*()*/__C.sayState)('stageNotAllowed'); return; }
-      if ((0, /*()*/__C.stageIds)().length >= __C.SCALE.C) { (0, /*()*/__C.sayState)('stageFull', { n: __C.SCALE.C }); return; }
+      if (!(0, /*()*/__C.canStage)(__C.model.me.myId())) { (0, /*()*/__C.sayState)('stageNotAllowed'); return; }
+      if ((0, /*()*/__C.stageIds)().length >= __C.model.consts.SCALE().C) { (0, /*()*/__C.sayState)('stageFull', { n: __C.model.consts.SCALE().C }); return; }
       (0, /*()*/__C.setStage)(true);
     };
     yield 2275;
@@ -7790,13 +7790,13 @@
     yield 2277;
     function paintShare() {
       if (!shareBtn) return;
-      const on = !!__C.myStatus.scr;
+      const on = !!__C.model.me.myStatus().scr;
       shareBtn.classList.toggle('on', on);
       // The word is the screen's (dockLabelSet); sharing shows in colour, aria-label and title.
       const sharingLabel = on ? 'Stop sharing' : 'Share screen';
       shareBtn.setAttribute('aria-label', sharingLabel);
       shareBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
-      shareBtn.title = (__C.BROADCAST)
+      shareBtn.title = (__C.model.room.BROADCAST())
         ? (on ? 'You are sharing your screen on the stage. Tap to stop.' : 'Show the stage a window, a tab, or your desktop.')
         : (on
           ? (0, /*()*/__C.uiText)('shareTipOn', 'You are sharing your screen with the meeting — tap to stop')
@@ -7810,22 +7810,22 @@
       // grayed in place and the tooltip says why (Nathan 2026-11-09). In
       // More it stays out of the way for a browser or a role that cannot share.
       const shareDocked = !!(shareBtn.parentElement && shareBtn.parentElement.classList && shareBtn.parentElement.classList.contains('bar'));
-      const shareRoleOff = !!(__C.BROADCAST && (0, /*()*/__C.bcRole)() !== 'host');
+      const shareRoleOff = !!(__C.model.room.BROADCAST() && (0, /*()*/__C.bcRole)() !== 'host');
       let shareWhy = '';
       if (!(0, /*()*/__M.canScreenShare)()) shareWhy = (0, /*()*/__C.uiText)('shareNoGdm', 'This browser cannot share a screen.');
       else if (document.body.classList.contains('app-room')) shareWhy = 'Screen share is off while an app has the room.';
       else if (shareRoleOff) shareWhy = 'Only the host shares to the stage.';
-      else if (!on && !(0, /*()*/__C.mayShareScreen)(__C.myId)) shareWhy = (0, /*()*/__C.uiText)('shareNotAllowed', 'The host has not allowed you to share yet.');
+      else if (!on && !(0, /*()*/__C.mayShareScreen)(__C.model.me.myId())) shareWhy = (0, /*()*/__C.uiText)('shareNotAllowed', 'The host has not allowed you to share yet.');
       // Several people may share at once (Nathan 2026-11-11): each screen is a
       // tab of the content area. Only a full stage stops one more.
-      else if (!on && !__C.myStatus.stg && (0, /*()*/__C.stageIds)().length >= __C.SCALE.C) shareWhy = (0, /*()*/__C.uiText)('shareStageFull', 'The stage is full. Someone has to step down first.');
+      else if (!on && !__C.model.me.myStatus().stg && (0, /*()*/__C.stageIds)().length >= __C.model.consts.SCALE().C) shareWhy = (0, /*()*/__C.uiText)('shareStageFull', 'The stage is full. Someone has to step down first.');
       shareBtn.style.display = (!shareDocked && (!(0, /*()*/__M.canScreenShare)() || shareRoleOff)) ? 'none' : '';
       if (typeof __C.idleDock === 'function') (0, /*()*/__C.idleDock)(shareBtn, shareDocked ? shareWhy : '');
       // A screen on the Stage wants height. This does not rebuild the layout —
       // it lets the strip grow the way the broadcast skin already does.
       document.body.classList.toggle('screen-on', (0, /*()*/__C.screenSharers)().length > 0);
       // A broadcast viewer has no share button until an admin allows them.
-      document.body.classList.toggle('share-granted', (0, /*()*/__C.mayShareScreen)(__C.myId));
+      document.body.classList.toggle('share-granted', (0, /*()*/__C.mayShareScreen)(__C.model.me.myId()));
     }
     yield 2291;
     function showResharePrompt() {
@@ -7840,8 +7840,8 @@
     }
     yield 2298;
     if (shareBtn) shareBtn.onclick = () => {
-      if (__C.BROADCAST && (0, /*()*/__C.bcRole)() !== 'host') return;
-      if (__C.myStatus.scr) { (0, /*()*/__M.stopScreenShare)(); return; }
+      if (__C.model.room.BROADCAST() && (0, /*()*/__C.bcRole)() !== 'host') return;
+      if (__C.model.me.myStatus().scr) { (0, /*()*/__M.stopScreenShare)(); return; }
       if (!(0, /*()*/__M.canScreenShare)()) {
         const app = document.getElementById('appbtn');
         if (app) app.click();
@@ -7889,7 +7889,7 @@
       const g = cv.getContext('2d');
       if (!g || !cv.captureStream) return null;
       const step = () => {
-        if (__C.rbNow !== r) return;
+        if (__C.model.room.rbNow() !== r) return;
         try { g.drawImage(vid, 0, 0, cv.width, cv.height); } catch (e) {}
         if (vid.requestVideoFrameCallback) vid.requestVideoFrameCallback(step); else requestAnimationFrame(step);
       };
@@ -7898,7 +7898,7 @@
     }
     yield 2314;
     function paintRbNow() {
-      const r = __C.rbNow;
+      const r = __C.model.room.rbNow();
       const t = document.getElementById('rb-now-txt');
       if (!r || !t) return;
       const len = isFinite(r.vid.duration) ? ' / ' + (0, /*()*/__C.rbFmt)(r.vid.duration) : '';
@@ -7909,9 +7909,9 @@
       if (pb && pb.textContent !== w) pb.textContent = w;
     }
     function paintRb() {
-      document.body.classList.toggle('rb-on', !!__C.rbNow);
+      document.body.classList.toggle('rb-on', !!__C.model.room.rbNow());
       let bar = document.getElementById('rb-now');
-      if (!__C.rbNow) { if (bar) bar.remove(); }
+      if (!__C.model.room.rbNow()) { if (bar) bar.remove(); }
       else if (!bar) {
         bar = document.createElement('div');
         bar.id = 'rb-now';
@@ -7928,7 +7928,7 @@
     }
     // The host's choice: the service that just ended, or a file.
     function openRbSheet() {
-      if (__C.rbNow) return;
+      if (__C.model.room.rbNow()) return;
       const old = document.getElementById('rb-sheet');
       if (old) old.remove();
       const bg = document.createElement('div');
@@ -7939,7 +7939,7 @@
       bg.setAttribute('aria-label', 'Rebroadcast');
       bg.innerHTML = '<div class="rb-card"><p class="rb-title">Rebroadcast</p>' +
         '<p class="rb-why">Plays a video into the broadcast for everyone watching. Viewers see Prerecorded and can’t skip or save it.</p>' +
-        (__C.bcLastService ? '<button type="button" id="rb-last">Last ' + (0, /*()*/__C.rbNoun)() + '</button>' : '') +
+        (__C.model.room.bcLastService() ? '<button type="button" id="rb-last">Last ' + (0, /*()*/__C.rbNoun)() + '</button>' : '') +
         '<label id="rb-file-btn">Choose a video<input type="file" id="rb-file" accept="video/*"></label>' +
         '<button type="button" id="rb-cancel">Cancel</button></div>';
       document.body.appendChild(bg);
@@ -7947,7 +7947,7 @@
       bg.addEventListener('click', (e) => { if (e.target === bg) close(); });
       bg.querySelector('#rb-cancel').onclick = close;
       const last = bg.querySelector('#rb-last');
-      if (last) last.onclick = () => { close(); (0, /*()*/__M.rbStart)({ blob: __C.bcLastService.blob, title: 'Last ' + (0, /*()*/__C.rbNoun)(), last: true }); };
+      if (last) last.onclick = () => { close(); (0, /*()*/__M.rbStart)({ blob: __C.model.room.bcLastService().blob, title: 'Last ' + (0, /*()*/__C.rbNoun)(), last: true }); };
       const file = bg.querySelector('#rb-file');
       file.onchange = () => {
         const f = file.files && file.files[0];
@@ -7959,7 +7959,7 @@
     if (rbBtn) rbBtn.onclick = () => {
       const bt = document.getElementById('bartoggle');
       if (bt && bt.getAttribute('aria-expanded') === 'true') bt.click();
-      if (__C.rbNow) { (0, /*()*/__C.rbStop)(); return; }
+      if (__C.model.room.rbNow()) { (0, /*()*/__C.rbStop)(); return; }
       openRbSheet();
     };
     // THE SHEET THAT PREFERS THE APP PIN. It is not a nag screen: it is the
@@ -7984,7 +7984,7 @@
       // the picker button, then a 4s grey line in the bar — which she missed,
       // twice, while the sheet had already closed. The sheet itself now says
       // no, says who can fix it, and does not offer a picker that will refuse.
-      const blocked = !__C.myStatus.scr && !(0, /*()*/__C.mayShareScreen)(__C.myId);
+      const blocked = !__C.model.me.myStatus().scr && !(0, /*()*/__C.mayShareScreen)(__C.model.me.myId());
       document.getElementById('share-go').style.display = blocked ? 'none' : '';
       document.getElementById('share-denied').style.display = blocked ? '' : 'none';
       // From a key, focus goes back to Share, or to More when Share sits
@@ -8040,16 +8040,16 @@
       const sw = document.getElementById('dbglog-on'), st = document.getElementById('dbglog-state');
       const sz = document.getElementById('dbglog-size'), ex = document.getElementById('dbglog-export');
       const grp = document.getElementById('set-g-debug');
-      if (!__C.DLOG) { if (grp) grp.hidden = true; return; }
-      let saved = ''; try { saved = __C.DLOG.readSetting(localStorage); } catch (e) {}
-      const rec = !!(__C.dlogRec && __C.dlogRec.live());
+      if (!__C.model.net.DLOG()) { if (grp) grp.hidden = true; return; }
+      let saved = ''; try { saved = __C.model.net.DLOG().readSetting(localStorage); } catch (e) {}
+      const rec = !!(__C.model.net.dlogRec() && __C.model.net.dlogRec().live());
       if (sw) sw.checked = rec || saved === 'on';
       if (st) st.textContent = rec ? (saved === 'on' ? (0, /*()*/__C.uiText)('setDbgRec', 'Recording on this page.') : (0, /*()*/__C.uiText)('setDbgUrl', 'Recording on this page, because its link turned debug on.'))
         : (saved === 'on' ? (0, /*()*/__C.uiText)('setDbgNext', 'Recording starts the next time a meeting page opens.') : '');
       const s = (0, /*()*/__C.dlogStoreGet)();
       if (!s) { if (sz) sz.textContent = ''; return; }
       s.bytes().then((b) => {
-        if (sz) sz.textContent = (0, /*()*/__C.uiText)('setDbgSize', 'Debug log: {size}').split('{size}').join(__C.DLOG.fmtSize(b));
+        if (sz) sz.textContent = (0, /*()*/__C.uiText)('setDbgSize', 'Debug log: {size}').split('{size}').join(__C.model.net.DLOG().fmtSize(b));
         if (ex) ex.disabled = !(b > 0);
         const cl = document.getElementById('dbglog-clear'); if (cl) cl.disabled = !(b > 0);
       }).catch(() => { if (sz) sz.textContent = (0, /*()*/__C.uiText)('setDbgSize', 'Debug log: {size}').split('{size}').join('?'); });
@@ -8057,23 +8057,23 @@
     {
       const sw = document.getElementById('dbglog-on');
       if (sw) sw.addEventListener('change', () => {
-        if (!__C.DLOG) return;
-        if (sw.checked) { __C.DLOG.saveSetting(localStorage, true); (0, /*()*/__C.dlogRecStart)(); if (__C.dlogRec) __C.dlogRec.flush(true); }
-        else { __C.DLOG.turnOff(window); if (__C.dlogRec) { __C.dlogRec.flush(true); __C.dlogRec.stop(); } }
+        if (!__C.model.net.DLOG()) return;
+        if (sw.checked) { __C.model.net.DLOG().saveSetting(localStorage, true); (0, /*()*/__C.dlogRecStart)(); if (__C.model.net.dlogRec()) __C.model.net.dlogRec().flush(true); }
+        else { __C.model.net.DLOG().turnOff(window); if (__C.model.net.dlogRec()) { __C.model.net.dlogRec().flush(true); __C.model.net.dlogRec().stop(); } }
         paintDebugLog();
       });
       const ex = document.getElementById('dbglog-export');
       if (ex) ex.addEventListener('click', async () => {
-        const s = (0, /*()*/__C.dlogStoreGet)(); if (!s || !__C.DLOG) return;
+        const s = (0, /*()*/__C.dlogStoreGet)(); if (!s || !__C.model.net.DLOG()) return;
         const st = document.getElementById('dbglog-state');
         ex.disabled = true;
         try {
-          if (__C.dlogRec && __C.dlogRec.live()) await __C.dlogRec.flush(true);
+          if (__C.model.net.dlogRec() && __C.model.net.dlogRec().live()) await __C.model.net.dlogRec().flush(true);
           let ver = ''; try { ver = String(window.GIFOS_VERSION || 'edge') + ' build ' + String(window.GIFOS_BUILD || 0); } catch (e) {}
-          const out = await __C.DLOG.exportBlob(s, { ver: ver, ua: navigator.userAgent });
+          const out = await __C.model.net.DLOG().exportBlob(s, { ver: ver, ua: navigator.userAgent });
           const a = document.createElement('a');
           a.href = URL.createObjectURL(out.blob);
-          a.download = __C.DLOG.fileName(Date.now()) + (out.gzip ? '.gz' : '');
+          a.download = __C.model.net.DLOG().fileName(Date.now()) + (out.gzip ? '.gz' : '');
           a.style.display = 'none';
           document.body.appendChild(a); a.click();
           // release the file's memory once the browser has taken the download
@@ -8101,7 +8101,7 @@
       const nc = document.getElementById('set-name-cur'); if (nc) nc.textContent = (0, /*()*/__C.myName)();
       const car = document.getElementById('ccall-row'); if (car) car.style.display = ((0, /*()*/__C.hasAdminRoom)() && __C.amAdmin) ? '' : 'none';
       const ccNote = document.getElementById('ccall-note');
-      if (ccNote) ccNote.textContent = __C.BROADCAST
+      if (ccNote) ccNote.textContent = __C.model.room.BROADCAST()
         ? 'In a broadcast only this host\u2019s device writes captions. Viewers and stage guests do not.'
         : (0, /*()*/__C.uiText)('ccallNoteDev', 'Hosts only — every device starts writing down the voices it hears. Anyone can tap CC to opt out.');
       if (typeof __M.applyCcAll === 'function') (0, /*()*/__M.applyCcAll)();
@@ -8147,8 +8147,8 @@
       try { paintLobbyAppear(); } catch (e) {}
       const nc = document.getElementById('set-name-cur'); if (nc) nc.textContent = (0, /*()*/__C.myName)();
       try { (0, /*()*/__C.refreshAllTiles)(); } catch (e) {}
-      try { if (__C.myId) { (0, /*()*/__C.broadcastStatus)(); (0, /*()*/__C.pushLeaf)(); } } catch (e) {}
-      try { for (const p of __C.peers.values()) (0, /*()*/__C.sendAvatarTo)(p); } catch (e) {}
+      try { if (__C.model.me.myId()) { (0, /*()*/__C.broadcastStatus)(); (0, /*()*/__C.pushLeaf)(); } } catch (e) {}
+      try { for (const p of __C.model.roster.peers().values()) (0, /*()*/__C.sendAvatarTo)(p); } catch (e) {}
       try { paintBroadcastIdent(); } catch (e) {}
     });
     document.getElementById('set-close').onclick = () => { setModal.style.display = 'none'; };
@@ -8182,7 +8182,7 @@
       if (t === 'song') { (0, /*()*/__M.toggleSing)(); (0, /*()*/__M.paintTiming)(); return; }
       if (t !== 'chat' && t !== 'unison') return;
       __C.timing = t;
-      try { localStorage.setItem(__C.TIMING_KEY, t); } catch (e2) {}
+      try { localStorage.setItem(__C.model.consts.TIMING_KEY(), t); } catch (e2) {}
       (0, /*()*/__M.paintTiming)();
       (0, /*()*/__M.applyGrid)();
     });
@@ -8194,7 +8194,7 @@
       if (!line) return;
       // The bot's own voice is not news. Another person's line still is,
       // which is the whole reason a bot listens to takeTr.
-      if (__C.myStatus.bot && (!line.byId || line.byId === __C.myId)) return;
+      if (__C.model.me.myStatus().bot && (!line.byId || line.byId === __C.model.me.myId())) return;
       if (typeof window !== 'undefined' && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'transcript', line: { by: line.by, byId: line.byId, text: line.text, at: line.at, w: line.w, src: line.src, lang: line.lang || '' } });
     }
     yield 2463; // this screen's own choice (qa-meet-mobile)
@@ -8203,12 +8203,12 @@
       for (let i = 0; i < nodes.length; i++) nodes[i].classList.remove('show');
     }
     function showCaption(byId, text, label) {
-      if (!__C.ccShow) return;
+      if (!__C.model.chat.ccShow()) return;
       const bar = document.getElementById('livecap');
       if (bar) {
         let name = label || '';
         try {
-          if (!name) { if (byId === __C.myId) name = (0, /*()*/__C.myName)(); else { const p = __C.peers.get(byId); name = (p && p.name) || ''; } }
+          if (!name) { if (byId === __C.model.me.myId()) name = (0, /*()*/__C.myName)(); else { const p = __C.model.roster.peers().get(byId); name = (p && p.name) || ''; } }
         } catch (e) {}
         bar.textContent = (name ? name + '. ' : '') + String(text || '');
         if (bar.dataset) bar.dataset.voice = byId || '';
@@ -8218,7 +8218,7 @@
         clearTimeout(bar._hide);
         bar._hide = setTimeout(() => bar.classList.remove('show'), 6000);
       }
-      const t = byId === __C.myId ? __C.meTile : __C.peers.get(byId);
+      const t = byId === __C.model.me.myId() ? __C.model.me.meTile() : __C.model.roster.peers().get(byId);
       if (!t || !t.cap) return;
       t.cap.textContent = text;
       t.cap.classList.add('show');
@@ -8253,7 +8253,7 @@
       c.querySelector('.capcard-n').textContent = note || '';
       const exEl = c.querySelector('.capcard-ex');
       if (ex && (ex.theirs || ex.ours)) {
-        const heardBy = !ex.by || ex.by === __C.myId ? (0, /*()*/__C.uiText)('capExMine', 'This device heard') : (0, /*()*/__C.uiText)('capExTheirs', '{name}\'s device heard').replace('{name}', (0, /*()*/__C.capName)(ex.by));
+        const heardBy = !ex.by || ex.by === __C.model.me.myId() ? (0, /*()*/__C.uiText)('capExMine', 'This device heard') : (0, /*()*/__C.uiText)('capExTheirs', '{name}\'s device heard').replace('{name}', (0, /*()*/__C.capName)(ex.by));
         for (const [cls, lab, txt] of [['theirs', (0, /*()*/__C.uiText)('capExSaid', '{name}\'s captions said').replace('{name}', (0, /*()*/__C.capName)(v)), ex.theirs], ['ours', heardBy, ex.ours]]) {
           const q = document.createElement('div'); q.className = 'capcard-q capcard-q-' + cls;
           const l = document.createElement('b'); l.textContent = lab;
@@ -8281,33 +8281,33 @@
     // chooser (opened from their tile or the caption bar) are the same card: what was said vs what was heard, what is
     // shown now, and one tap per choice.
     function capSourceOpen(v, info) {
-      if (!__C.capTrust || !v || v === __C.myId) return;
-      const name = (0, /*()*/__C.capName)(v), ex = __C.capTrust.evidence(v);
-      const ear = ex && ex.by && ex.by !== __C.myId ? (0, /*()*/__C.capName)(ex.by) : (info && info.by && info.by !== 'me' && info.by !== __C.myId ? (0, /*()*/__C.capName)(info.by) : '');
+      if (!__C.model.chat.capTrust() || !v || v === __C.model.me.myId()) return;
+      const name = (0, /*()*/__C.capName)(v), ex = __C.model.chat.capTrust().evidence(v);
+      const ear = ex && ex.by && ex.by !== __C.model.me.myId() ? (0, /*()*/__C.capName)(ex.by) : (info && info.by && info.by !== 'me' && info.by !== __C.model.me.myId() ? (0, /*()*/__C.capName)(info.by) : '');
       let title;
-      if (info || __C.capTrust.stateOf(v, v) === 'distrusted') {
+      if (info || __C.model.chat.capTrust().stateOf(v, v) === 'distrusted') {
         title = ear ? (0, /*()*/__C.uiText)('capWarnEarPlain', '{name}\'s captions don\'t match what {ear}\'s device hears. Which should you see?').replace('{name}', name).replace('{ear}', ear)
           : (0, /*()*/__C.uiText)('capWarnPlain', '{name}\'s captions don\'t match what your device hears. Which should you see?').replace('{name}', name);
       } else title = (0, /*()*/__C.uiText)('capSrcTitle', 'Captions for {name}').replace('{name}', name);
       const rows = (0, /*()*/__C.capRows)(v);
       if (!info) rows.push({ src: 'flag', t: (0, /*()*/__C.uiText)('capFlag', 'These captions are wrong') });
-      if (info && __C.clog) (0, /*()*/__C.clog)('captrust warn', String(v).slice(0, 6), info.why, String(__C.capTrust.choice(v).show).slice(0, 6));
+      if (info && __C.clog) (0, /*()*/__C.clog)('captrust warn', String(v).slice(0, 6), info.why, String(__C.model.chat.capTrust().choice(v).show).slice(0, 6));
       const other = document.getElementById(info ? 'capsrc' : 'capwarn'); if (other) other.hidden = true;
       capCard(info ? 'capwarn' : 'capsrc', v, title, (0, /*()*/__C.capNowNote)(v), rows, ex);
     }
     // An open card says what the evidence did since the pick, live: it is painted again when that note changes.
     function capCardRefresh() {
       const c = document.getElementById('capsrc');
-      if (!c || c.hidden || !c.dataset.voice || !__C.capTrust) return;
+      if (!c || c.hidden || !c.dataset.voice || !__C.model.chat.capTrust()) return;
       const n = c.querySelector('.capcard-n'), v = c.dataset.voice, now = (0, /*()*/__C.capNowNote)(v);
       if (n && n.textContent !== now) capSourceOpen(v);
     }
     yield 2486;
     (function wireCcLang() {
       const sel = document.getElementById('cclang'); if (!sel) return;
-      let saved = ''; try { saved = localStorage.getItem(__C.CC_LANG_KEY) || ''; } catch (e) {}
-      sel.innerHTML = __C.CC_LANGS.map(([v, l]) => '<option value="' + v + '">' + l + '</option>').join('');
-      if (saved && !__C.CC_LANGS.some(([v]) => v === saved)) sel.insertAdjacentHTML('beforeend', '<option value="' + (0, /*()*/__C.esc)(saved) + '">' + (0, /*()*/__C.esc)(saved) + '</option>');
+      let saved = ''; try { saved = localStorage.getItem(__C.model.consts.CC_LANG_KEY()) || ''; } catch (e) {}
+      sel.innerHTML = __C.model.consts.CC_LANGS().map(([v, l]) => '<option value="' + v + '">' + l + '</option>').join('');
+      if (saved && !__C.model.consts.CC_LANGS().some(([v]) => v === saved)) sel.insertAdjacentHTML('beforeend', '<option value="' + (0, /*()*/__C.esc)(saved) + '">' + (0, /*()*/__C.esc)(saved) + '</option>');
       sel.value = saved;
       sel.onchange = () => ccLangSet(sel.value);
     })();
@@ -8315,10 +8315,10 @@
     // the room is told.
     function ccLangSet(v) {
       v = String(v || '');
-      try { if (v) localStorage.setItem(__C.CC_LANG_KEY, v); else localStorage.removeItem(__C.CC_LANG_KEY); } catch (e) {}
+      try { if (v) localStorage.setItem(__C.model.consts.CC_LANG_KEY(), v); else localStorage.removeItem(__C.model.consts.CC_LANG_KEY()); } catch (e) {}
       const sel = document.getElementById('cclang');
       if (sel && sel.value !== v) {
-        if (v && !__C.CC_LANGS.some(([x]) => x === v)) sel.insertAdjacentHTML('beforeend', '<option value="' + (0, /*()*/__C.esc)(v) + '">' + (0, /*()*/__C.esc)(v) + '</option>');
+        if (v && !__C.model.consts.CC_LANGS().some(([x]) => x === v)) sel.insertAdjacentHTML('beforeend', '<option value="' + (0, /*()*/__C.esc)(v) + '">' + (0, /*()*/__C.esc)(v) + '</option>');
         sel.value = v;
       }
       if ((0, /*()*/__M.speechRunning)()) { (0, /*()*/__M.stopSpeech)(); (0, /*()*/__M.syncSpeech)(); }
@@ -8329,8 +8329,8 @@
     }
     yield 2492;
     function capLangAsk() {
-      if (!__C.capLang) return;
-      const s = __C.capLang.suggestion();
+      if (!__C.model.chat.capLang()) return;
+      const s = __C.model.chat.capLang().suggestion();
       let c = document.getElementById('caplang');
       if (c && !c.hidden) { if (!s || s.lang !== c.dataset.lang) c.hidden = true; return; }   // asking already, or no longer true
       if (!s) return;
@@ -8343,7 +8343,7 @@
       const b = c.querySelector('.capcard-b');
       const btn = (src, t, fn) => { const x = document.createElement('button'); x.type = 'button'; x.dataset.src = src; x.textContent = t; x.onclick = () => { c.hidden = true; fn(); }; b.appendChild(x); };
       btn('switch', (0, /*()*/__C.uiText)('capLangSwitch', 'Switch to {heard}').split('{heard}').join(heard), () => { if (__C.clog) (0, /*()*/__C.clog)('caplang switch', s.lang); ccLangSet((0, /*()*/__C.capLangTag)(s.lang)); });
-      btn('keep', (0, /*()*/__C.uiText)('capLangKeep', 'Keep {mine}').split('{mine}').join(mine), () => { if (__C.clog) (0, /*()*/__C.clog)('caplang keep', s.lang); __C.capLang.keep(s.lang); });
+      btn('keep', (0, /*()*/__C.uiText)('capLangKeep', 'Keep {mine}').split('{mine}').join(mine), () => { if (__C.clog) (0, /*()*/__C.clog)('caplang keep', s.lang); __C.model.chat.capLang().keep(s.lang); });
       c.hidden = false;
       if (window.__gifosBarAvoid) window.__gifosBarAvoid();   // above the floating bar, like the captions card
       if (__C.clog) (0, /*()*/__C.clog)('caplang ask', s.lang, s.n, s.need, (0, /*()*/__C.trLangOf)((0, /*()*/__C.capLangMine)()));
@@ -8354,8 +8354,8 @@
       const blocked = (0, /*()*/__C.ccLocalBlocked)();
       let t;
       if (blocked) t = '⚠ ' + blocked;
-      else if (__C.ccLocal.state === 'ready') t = '✅ ' + (0, /*()*/__C.uiText)('setCcLocalReady', 'Ready. The speech model is on this phone.');
-      else if (__C.ccLocal.state === 'loading') t = __C.ccLocal.cached ? (0, /*()*/__C.uiText)('setCcLocalStarting', 'Starting the speech model…') : (0, /*()*/__C.uiText)('setCcLocalLoading', 'Downloading the speech model: {pct}% of {mb} MB, once.').replace('{pct}', String(__C.ccLocal.total ? Math.floor(100 * __C.ccLocal.loaded / __C.ccLocal.total) : 0)).replace('{mb}', String((0, /*()*/__C.ccMB)(__C.ccLocal.total)));
+      else if (__C.model.chat.ccLocal().state === 'ready') t = '✅ ' + (0, /*()*/__C.uiText)('setCcLocalReady', 'Ready. The speech model is on this phone.');
+      else if (__C.model.chat.ccLocal().state === 'loading') t = __C.model.chat.ccLocal().cached ? (0, /*()*/__C.uiText)('setCcLocalStarting', 'Starting the speech model…') : (0, /*()*/__C.uiText)('setCcLocalLoading', 'Downloading the speech model: {pct}% of {mb} MB, once.').replace('{pct}', String(__C.model.chat.ccLocal().total ? Math.floor(100 * __C.model.chat.ccLocal().loaded / __C.model.chat.ccLocal().total) : 0)).replace('{mb}', String((0, /*()*/__C.ccMB)(__C.model.chat.ccLocal().total)));
       else t = (0, /*()*/__C.uiText)('setCcLocalIdle', 'The speech model downloads once from gifos.app the first time your microphone is on, and stays on this phone.');
       if (el.textContent !== t) el.textContent = t;
     }
@@ -8372,11 +8372,11 @@
     function paintCcState() {
       // The Meet app's own on-device engine first (GifosNative), then the browser's on-phone model (CC_ON_PHONE).
       const lrow = document.getElementById('cclocal-row'), erow = document.getElementById('ccengine-row');
-      const ccLocalShown = __C.CC_ON_PHONE && !(0, /*()*/__M.phoneCaptions)();
+      const ccLocalShown = __C.model.consts.CC_ON_PHONE() && !(0, /*()*/__M.phoneCaptions)();
       if (lrow) lrow.style.display = ccLocalShown ? '' : 'none';
       if (erow) erow.style.display = ccLocalShown ? 'none' : '';
       if ((0, /*()*/__M.phoneCaptions)()) { const r = document.querySelector('input[name="ccengine"][value="browser"]'); if (r) r.checked = true; paintPhoneCaptions(); return; }
-      if (__C.CC_ON_PHONE) { __C.ccLocalQ.paint(); return; }
+      if (__C.model.consts.CC_ON_PHONE()) { __C.model.chat.ccLocalQ().paint(); return; }
       const radios = Array.from(document.querySelectorAll('input[name="ccengine"]')); if (!radios.length) return;
       const box = document.getElementById('ccwhisper'), state = document.getElementById('ccwhisper-state');
       const on = (0, /*()*/__M.ccEngine)() === 'whisper';
@@ -8411,7 +8411,7 @@
       const a = (0, /*()*/__C.whisperReady)() ? GifOS.providers.assigned('stt') : null;
       if (a) {
         state.innerHTML = '✅ ' + (0, /*()*/__C.uiText)('setCcReady', 'Ready:') + ' <b>' + (0, /*()*/__C.esc)(a.appName || 'your speech-to-text app') + '</b> ' + (0, /*()*/__C.uiText)('setCcReadyTail', 'answers on this device.')
-          + (__C.IS_MOBILE ? ' <span style="color:#ffd23c">' + (0, /*()*/__C.uiText)('setCcPhoneSlow', 'On a phone a sentence can take 5 to 10 seconds to appear, and it uses battery.') + '</span>' : '');
+          + (__C.model.consts.IS_MOBILE() ? ' <span style="color:#ffd23c">' + (0, /*()*/__C.uiText)('setCcPhoneSlow', 'On a phone a sentence can take 5 to 10 seconds to appear, and it uses battery.') + '</span>' : '');
         return;
       }
       // A failed install offers Retry on the status line above; one button, not two.
@@ -8471,10 +8471,10 @@
     yield 2590;
     function paintWspChip() {
       const chip = document.getElementById('ccwsp-off'); if (!chip) return;
-      if (__C.CC_ON_PHONE) { if (chip.style.display !== 'none') chip.style.display = 'none'; return; }
+      if (__C.model.consts.CC_ON_PHONE()) { if (chip.style.display !== 'none') chip.style.display = 'none'; return; }
       if (!(0, /*()*/__M.wspPaintSafe)()) return;
       let show = false;
-      if (__C.myId && (0, /*()*/__M.whisperChosen)() && ((0, /*()*/__C.capSend)() || (0, /*()*/__C.trWrites)()) && !(0, /*()*/__M.wspChipGone)()) {
+      if (__C.model.me.myId() && (0, /*()*/__M.whisperChosen)() && ((0, /*()*/__C.capSend)() || (0, /*()*/__C.trWrites)()) && !(0, /*()*/__M.wspChipGone)()) {
         const k = (0, /*()*/__M.wspState)().k;
         if (k === 'missing' || k === 'failed' || k === 'unsupported') {
           if (__M.wspChip.k !== k) { __M.wspChip.k = k; __M.wspChip.at = Date.now(); }
@@ -8527,7 +8527,7 @@
           (0, /*()*/__M.wspRelease)();
         }
         if (r.value === 'whisper') (0, /*()*/__M.wspResume)(); // a deliberate re-pick retries a stalled Whisper and forgets why it last stopped
-        if (r.value === 'whisper' && __C.IS_MOBILE) (0, /*()*/__C.setStatus)((0, /*()*/__C.uiText)('stOnAPhoneWhisperRuns', 'On a phone, Whisper runs on the processor: a sentence can take 5 to 10 seconds to appear, and it uses battery. Browser captions stay instant.'), 12000);
+        if (r.value === 'whisper' && __C.model.consts.IS_MOBILE()) (0, /*()*/__C.setStatus)((0, /*()*/__C.uiText)('stOnAPhoneWhisperRuns', 'On a phone, Whisper runs on the processor: a sentence can take 5 to 10 seconds to appear, and it uses battery. Browser captions stay instant.'), 12000);
         paintCcState();
         (0, /*()*/__M.syncSpeech)();
       };
@@ -8547,7 +8547,7 @@
           const triedAt = /^tried:(\d+)$/.test(seeded) ? Number(seeded.slice(6)) : 0;
           if (seeded === 'done' || (triedAt && Date.now() - triedAt < 86400000)) return;
           if ((0, /*()*/__M.whisperSeedBlocked)()) return;
-          if (!navigator.onLine || (0, /*()*/__C.whisperReady)() || !window.GifOS || !GifOS.providers || !__C.myId || document.body.classList.contains('app-room')) return;
+          if (!navigator.onLine || (0, /*()*/__C.whisperReady)() || !window.GifOS || !GifOS.providers || !__C.model.me.myId() || document.body.classList.contains('app-room')) return;
           (0, /*()*/__M.installWhisper)(false).catch(() => {});
         };
         if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 8000 });
@@ -8574,7 +8574,7 @@
       for (const r of document.querySelectorAll('input[name="trmode"]')) r.checked = (r.value || '') === (mode || 'off') || (r.value === 'off' && !mode);
       const can = document.getElementById('ccsend-can');
       if (can) {
-        const ok = __C.CC_ON_PHONE ? !__C.ccLocalQ.blocked() : (!(typeof __M.browserCaptionsMissing === 'function' && (0, /*()*/__M.browserCaptionsMissing)()) || ((0, /*()*/__M.ccEngine)() === 'whisper' && (0, /*()*/__C.whisperReady)()));
+        const ok = __C.model.consts.CC_ON_PHONE() ? !__C.model.chat.ccLocalQ().blocked() : (!(typeof __M.browserCaptionsMissing === 'function' && (0, /*()*/__M.browserCaptionsMissing)()) || ((0, /*()*/__M.ccEngine)() === 'whisper' && (0, /*()*/__C.whisperReady)()));
         can.style.display = ok ? 'none' : '';
       }
     }
@@ -8592,7 +8592,7 @@
     // CC only shows or hides captions on this screen. The More button and the
     // dock button are one switch.
     function paintCcView() {
-      const on = !!__C.ccShow;
+      const on = !!__C.model.chat.ccShow();
       const ccBtn = document.getElementById('ccbtn');
       const ccDock = document.getElementById('ccdock');
       if (ccBtn) {
@@ -8697,7 +8697,7 @@
       // The host plays it into the room again (Q77). The sheet comes back
       // when the rebroadcast stops, so Save and Close still wait here.
       const rbB = bg.querySelector('#rec-replay-rebroadcast');
-      if (__C.BROADCAST && (0, /*()*/__C.bcHostStored)()) {
+      if (__C.model.room.BROADCAST() && (0, /*()*/__C.bcHostStored)()) {
         rbB.hidden = false;
         rbB.onclick = () => {
           const blob = fetch(saved.href).then((r) => r.blob());
@@ -8739,7 +8739,7 @@
         bg.remove();
         // Back on air: the ended seat's outgoing hold lifts (camera and mic
         // stay off; the recording is the picture).
-        try { __C.bcSeeding = false; delete __C.myStatus.bcend; (0, /*()*/__C.releaseLeaveAsk)(); (0, /*()*/__C.broadcastStatus)(); } catch (e) {}
+        try { __C.bcSeeding = false; delete __C.model.me.myStatus().bcend; (0, /*()*/__C.releaseLeaveAsk)(); (0, /*()*/__C.broadcastStatus)(); } catch (e) {}
         (0, /*()*/__M.rbStart)({ blob: fetch(saved.href).then((r) => r.blob()), title: 'Last ' + noun, last: true });
       };
       bg.querySelector('#se-leave').onclick = () => { bg.remove(); (0, /*()*/__M.recRelease)(saved); (0, /*()*/__C.leaveSeededService)(); };
@@ -8754,22 +8754,22 @@
       // has people: the stadium needs "everything", a row records the row,
       // and an empty stage is never the default — Start used to pick it,
       // bail, and close the sheet before anyone could read why.
-      const service = __C.BROADCAST;
+      const service = __C.model.room.BROADCAST();
       const srcNow = (0, /*()*/__M.recSources)();
       const scopeDefault = service ? 'stage' : (srcNow.stage.length ? 'stage' : (srcNow.stadium.length ? 'all' : (srcNow.row.length ? 'row' : 'stage')));
       const stageSub = srcNow.stage.length
         ? 'Just the front — the reader or speaker, verbatim. One clean feed.'
         : 'Nobody is on the stage yet.';
       const opt = (val, name, ttl, sub) => '<label class="rec-opt"><input type="radio" name="' + name + '" value="' + val + '"' + (val === scopeDefault ? ' checked' : '') + '> <span><b>' + ttl + '</b><small>' + sub + '</small></span></label>';
-      const qDef = (0, /*()*/__M.recDefaultQuality)(__C.IS_MOBILE);
+      const qDef = (0, /*()*/__M.recDefaultQuality)(__C.model.consts.IS_MOBILE());
       const qRadio = (val, label) => '<label class="rec-opt inline"><input type="radio" name="rec-q" value="' + val + '"' + (qDef === val ? ' checked' : '') + '> ' + label + '</label>';
       const scopeLine = (v) => v === 'stage' ? 'This records the stage.'
         : v === 'row' ? 'This records you and the people with you.'
         : v === 'app' ? 'This records the shared app as well.'
         : 'This records everyone you can see.';
       bg.innerHTML = '<div class="name-box rec-box">' +
-        '<h3>Record this ' + (__C.BROADCAST ? 'broadcast' : 'meeting') + '</h3>' +
-        '<p class="rec-note">Saved on this device only. Everyone here will see that this ' + (__C.BROADCAST ? 'broadcast' : 'meeting') + ' is being recorded.</p>' +
+        '<h3>Record this ' + (__C.model.room.BROADCAST() ? 'broadcast' : 'meeting') + '</h3>' +
+        '<p class="rec-note">Saved on this device only. Everyone here will see that this ' + (__C.model.room.BROADCAST() ? 'broadcast' : 'meeting') + ' is being recorded.</p>' +
         '<p id="rec-now">' + scopeLine(scopeDefault) + '</p>' +
         '<div class="rec-scroll">' +
         '<div class="rec-sec"><b>What to capture</b>' +
@@ -8782,7 +8782,7 @@
         qRadio('low', 'Low · 720p') +
         qRadio('std', 'Standard · 1080p') +
         qRadio('high', 'High · 1080p') +
-        (__C.IS_MOBILE ? '<p>On a phone, 720p is the default. 1080p is drawn on the processor and fills memory fast.</p>' : '') +
+        (__C.model.consts.IS_MOBILE() ? '<p>On a phone, 720p is the default. 1080p is drawn on the processor and fills memory fast.</p>' : '') +
         '</div>' +
         '<label class="rec-opt inline" style="margin-top:.3rem"><input type="checkbox" id="rec-matchmix" checked> Match my sound mix (record what I hear)</label>' +
         '<div id="rec-lib"></div>' +
@@ -9125,7 +9125,7 @@
         if (!collapsed && wakeForSheet) wakeForSheet();
         bar.classList.toggle('collapsed', collapsed);
         toggle.setAttribute('aria-expanded', String(!collapsed));
-        const service = __C.BROADCAST;
+        const service = __C.model.room.BROADCAST();
         const surface = service ? 'broadcast' : 'meeting';
         bar.setAttribute('aria-label', service ? 'Broadcast controls' : 'Meeting controls');
         toggle.setAttribute('aria-label', collapsed ? 'More' : 'Hide ' + surface + ' controls');
@@ -9161,7 +9161,7 @@
       // A small group tucks the dock once the call sits quiet (qa-meet-mobile);
       // a wide window also fades it sooner (dock-calm, qa-meet-desktop). A service
       // keeps it: volunteers need the large controls without hunting for them.
-      const personalCall = () => !(__C.BROADCAST);
+      const personalCall = () => !(__C.model.room.BROADCAST());
       const dockShown = () => bar.getClientRects().length > 0;
       const dockBusy = () => {
         if (!bar.classList.contains('collapsed')) return true;
@@ -9581,7 +9581,7 @@
         if (!callOpen() || !phoneCall()) return true;
         // A service host alone keeps the link and the dock up to invite
         // people, as the desktop dock does (busy(): alone needs Invite).
-        if (__C.BROADCAST && document.body.classList.contains('bc-host') && (0, /*()*/__C.participantCount)() < 2) return true;
+        if (__C.model.room.BROADCAST() && document.body.classList.contains('bc-host') && (0, /*()*/__C.participantCount)() < 2) return true;
         if (bar && !bar.classList.contains('collapsed')) return true;
         const chat = document.getElementById('chatpanel');
         if (chat && chat.classList.contains('open')) return true;
@@ -9674,7 +9674,7 @@
         // A phone's second tap on empty screen hides at once. A control,
         // and Open, keep the chrome. A desktop hides only on the timeout,
         // including a short window (IS_MOBILE is false there).
-        if (!__C.IS_MOBILE || !callOpen() || !phoneCall()) return;
+        if (!__C.model.consts.IS_MOBILE() || !callOpen() || !phoneCall()) return;
         if (document.body.classList.contains('chrome-away') || chromeHeld()) return;
         const t = e.target;
         if (t && t.closest && t.closest('button, a, input, select, textarea, label, .bar, #appbar, .fitbtn, .topchip, .tile-open, .name-modal, #tilewin, #tilewin-veil, #waitlist, #chatpanel, #chatnote, #unmute, #showcam, #callstate, ' + CHROME_DIALOGS)) return;
@@ -9688,7 +9688,7 @@
       // A short desktop window matches the phone query too. Its mouse wakes
       // the dock on a move, as dock-calm does; a phone's touch still needs a tap.
       document.addEventListener('pointermove', (e) => {
-        if (__C.IS_MOBILE || e.pointerType !== 'mouse' || !callOpen() || !phoneCall()) return;
+        if (__C.model.consts.IS_MOBILE() || e.pointerType !== 'mouse' || !callOpen() || !phoneCall()) return;
         if (document.body.classList.contains('chrome-away')) showChrome();
         else if (chromeTimer) armChrome();
       }, { capture: true, passive: true });
@@ -9715,7 +9715,7 @@
     })();
     yield 2731; // 0.9.23b: calm after 3 s
     (function () {
-      document.body.classList.toggle('desk-ptr', !__C.IS_MOBILE);
+      document.body.classList.toggle('desk-ptr', !__C.model.consts.IS_MOBILE());
       (0, /*()*/__C.applyPageHeader)(); // Meet's manifest says auto-hide; an app's manifest can say otherwise
       const bar = document.querySelector('.bar');
       let lastInput = Date.now();
@@ -9727,7 +9727,7 @@
         window.addEventListener(ev, wake, { capture: true, passive: true });
       }
       function busy() {
-        if (__C.IS_MOBILE || document.hidden) return true; // a touch laptop wakes it on touchstart
+        if (__C.model.consts.IS_MOBILE() || document.hidden) return true; // a touch laptop wakes it on touchstart
         const n = (0, /*()*/__C.participantCount)();
         if (n < 2) return true; // alone needs Invite (0.9.23b: every larger room is calm too)
         if (joinVeilEl) return true;
@@ -9751,17 +9751,17 @@
       }
       setInterval(() => {
         let calm = false;
-        try { calm = Date.now() - lastInput >= __C.dockCalmMs && !busy(); } catch (e) {}
+        try { calm = Date.now() - lastInput >= __C.model.door.dockCalmMs() && !busy(); } catch (e) {}
         if (calm !== document.body.classList.contains('dock-calm')) document.body.classList.toggle('dock-calm', calm);
         // The header only goes while it is the plain count line.
         let head = calm;
         if (head) {
           const st = document.getElementById('status');
-          head = !!st && st.dataset.kind === 'meeting' && !st.classList.contains('alert') && Date.now() >= __C.statusHoldUntil;
+          head = !!st && st.dataset.kind === 'meeting' && !st.classList.contains('alert') && Date.now() >= __C.model.door.statusHoldUntil();
         }
         // A bot page has nobody to wake the header. The logo and the count
         // stay, or the page looks like it has only the transcribing mark.
-        if (head && typeof __C.myStatus !== 'undefined' && __C.myStatus.bot) head = false;
+        if (head && typeof __C.model.me.myStatus() !== 'undefined' && __C.model.me.myStatus().bot) head = false;
         if (head !== document.body.classList.contains('head-calm')) document.body.classList.toggle('head-calm', head);
       }, 250);
     })();
@@ -9795,21 +9795,21 @@
     yield 2745;
     function takeFaceReact(emoji, fromId) {
       emoji = String(emoji || '');
-      if (__C.AUDIENCE_REACTS.indexOf(emoji) < 0) return false;
+      if (__C.model.consts.AUDIENCE_REACTS().indexOf(emoji) < 0) return false;
       const who = String(fromId || '');
       if (!who || !(0, /*()*/__C.reactRateOk)(who)) return false;
       const now = Date.now();
-      if (who !== __C.myId) { __C.faceReactRx.set(who, (__C.faceReactRx.get(who) || 0) + 1); if (__C.faceReactRx.size > 400) __C.faceReactRx.clear(); }
-      __C.faceReacts.set(who, { e: emoji, until: now + FACE_REACT_MS });
-      if (__C.faceReacts.size > 400) for (const [k, v] of __C.faceReacts) if (now >= v.until) __C.faceReacts.delete(k);
-      const mine = who === __C.myId;
+      if (who !== __C.model.me.myId()) { __C.model.roster.faceReactRx().set(who, (__C.model.roster.faceReactRx().get(who) || 0) + 1); if (__C.model.roster.faceReactRx().size > 400) __C.model.roster.faceReactRx().clear(); }
+      __C.model.roster.faceReacts().set(who, { e: emoji, until: now + FACE_REACT_MS });
+      if (__C.model.roster.faceReacts().size > 400) for (const [k, v] of __C.model.roster.faceReacts()) if (now >= v.until) __C.model.roster.faceReacts().delete(k);
+      const mine = who === __C.model.me.myId();
       flashReactBurst(mine ? document.querySelector('.tile.me') : document.querySelector('.tile[data-peer="' + (window.CSS && CSS.escape ? CSS.escape(who) : who) + '"]'), emoji);
       if ((0, /*()*/__C.faceDrawnHere)(who) && typeof __M.schedReconcile === 'function') { (0, /*()*/__M.schedReconcile)(); setTimeout(__M.schedReconcile, FACE_REACT_MS + 60); }
       return true;
     }
     yield 2748;
     function sendFaceReact(emoji) {
-      if (__C.myId && takeFaceReact(emoji, __C.myId)) (0, /*()*/__C.sendFaceFrame)(emoji);
+      if (__C.model.me.myId() && takeFaceReact(emoji, __C.model.me.myId())) (0, /*()*/__C.sendFaceFrame)(emoji);
       else flashReactBurst(document.querySelector('.tile.me'), emoji);
     }
     yield 2750;
@@ -9820,9 +9820,9 @@
       host.textContent = '';
       let any = false;
       let soon = Infinity;
-      for (let i = 0; i < __C.AUDIENCE_REACTS.length; i++) {
-        const emoji = __C.AUDIENCE_REACTS[i];
-        const row = __C.audienceReactCounts.get(emoji);
+      for (let i = 0; i < __C.model.consts.AUDIENCE_REACTS().length; i++) {
+        const emoji = __C.model.consts.AUDIENCE_REACTS()[i];
+        const row = __C.model.roster.audienceReactCounts().get(emoji);
         if (!row || row.n < 1 || now > row.until) continue;
         any = true;
         if (row.until < soon) soon = row.until;
@@ -9902,7 +9902,7 @@
         // A service hides the gallery, so the same clap has to land on the
         // stage or the person who sent it never sees it. The count is what
         // everyone else sees: one pill per emoji, not one burst per person.
-        if (__C.BROADCAST) {
+        if (__C.model.room.BROADCAST()) {
           flashReactBurst(document.querySelector('.tile.me'), label);
           flashReactBurst(document.getElementById('bc-react'), label);
           (0, /*()*/__C.sendAudienceReact)(label);
@@ -9954,7 +9954,7 @@
 
     function paintControls() {
       // mic — one labeled control. The word is the action. There is no header Unmute pill.
-      const muted = __C.myStatus.muted, micLocked = (0, /*()*/__C.amGloballyMuted)();
+      const muted = __C.model.me.myStatus().muted, micLocked = (0, /*()*/__C.amGloballyMuted)();
       micBtn.classList.toggle('off', muted);
       micBtn.classList.toggle('locked', micLocked);
       micBtn.setAttribute('aria-pressed', muted ? 'false' : 'true');
@@ -9973,19 +9973,19 @@
       // never the blur the room is actually sending. A password or a viewer who
       // has not consented can keep the picture soft while the button stays on
       // the green they picked.
-      camBtn.classList.toggle('off', __C.myStatus.camOff);
+      camBtn.classList.toggle('off', __C.model.me.myStatus().camOff);
       camBtn.classList.remove('cam-max', 'cam-min');
-      const lvl = (0, /*()*/__C.blurLevel)(__C.myStatus.blur);
-      if (!__C.myStatus.camOff && lvl === 2) camBtn.classList.add('cam-max');
-      if (!__C.myStatus.camOff && lvl === 1) camBtn.classList.add('cam-min');
+      const lvl = (0, /*()*/__C.blurLevel)(__C.model.me.myStatus().blur);
+      if (!__C.model.me.myStatus().camOff && lvl === 2) camBtn.classList.add('cam-max');
+      if (!__C.model.me.myStatus().camOff && lvl === 1) camBtn.classList.add('cam-min');
       // The dock word stays the screen's (Video/Camera); the blur choice is the colour, aria-label and title.
       const choosing = typeof __M.camChooserOpen === 'function' && (0, /*()*/__M.camChooserOpen)();
-      camBtn.setAttribute('aria-pressed', __C.myStatus.camOff ? 'false' : 'true');
+      camBtn.setAttribute('aria-pressed', __C.model.me.myStatus().camOff ? 'false' : 'true');
       camBtn.setAttribute('aria-expanded', choosing ? 'true' : 'false');
-      camBtn.setAttribute('aria-label', __C.myStatus.camOff
+      camBtn.setAttribute('aria-label', __C.model.me.myStatus().camOff
         ? (choosing ? (0, /*()*/__C.uiText)('camChooseAria', 'Choose how you appear') : 'Start video')
         : (lvl === 2 ? (0, /*()*/__C.uiText)('camMaxBlur', 'Max blur') : lvl === 1 ? (0, /*()*/__C.uiText)('camMinBlur', 'Min blur') : 'Stop video'));
-      camBtn.title = __C.myStatus.camOff ? 'Camera off — tap to choose Max blur, Min blur, or No blur. Shortcut: Alt+V' : 'Camera on — tap to turn off. Shortcut: Alt+V';
+      camBtn.title = __C.model.me.myStatus().camOff ? 'Camera off — tap to choose Max blur, Min blur, or No blur. Shortcut: Alt+V' : 'Camera on — tap to turn off. Shortcut: Alt+V';
       paintShare();
       try { paintBarIdle(); } catch (e) {}
       if (typeof paintLiveBadge === 'function') paintLiveBadge();
@@ -9998,12 +9998,12 @@
       const mic = document.getElementById('avmic');
       const cam = document.getElementById('avcam');
       if (!bar || !mic || !cam) return;
-      const watching = __C.BROADCAST && !((0, /*()*/__C.bcHostStored)() || document.body.classList.contains('amadmin'));
+      const watching = __C.model.room.BROADCAST() && !((0, /*()*/__C.bcHostStored)() || document.body.classList.contains('amadmin'));
       let muted = false, camOff = false, locked = false;
       try {
-        if (!watching && typeof __C.myStatus !== 'undefined' && __C.myStatus) {
-          muted = !!__C.myStatus.muted;
-          camOff = !!__C.myStatus.camOff;
+        if (!watching && typeof __C.model.me.myStatus() !== 'undefined' && __C.model.me.myStatus()) {
+          muted = !!__C.model.me.myStatus().muted;
+          camOff = !!__C.model.me.myStatus().camOff;
           if (typeof __C.amGloballyMuted === 'function' && (0, /*()*/__C.amGloballyMuted)()) { muted = true; locked = true; }
         }
       } catch (e) {}
@@ -10044,8 +10044,8 @@
     // Flip front/back camera (mobile convention). regrabCamera does the whole
     // swap: same MediaStream identity, senders re-fed, blur pipe rebuilt.
     document.getElementById('flipcam').onclick = () => {
-      if (__C.BROADCAST && !(0, /*()*/__C.bcMayPublishAv)()) return;
-      if (!__C.localStream) return;
+      if (__C.model.room.BROADCAST() && !(0, /*()*/__C.bcMayPublishAv)()) return;
+      if (!__C.model.me.localStream()) return;
       __M.camFacing = __M.camFacing === 'user' ? 'environment' : 'user';
       __M.camDeviceId = '';
       (0, /*()*/__M.regrabCamera)('flip');
@@ -10056,7 +10056,7 @@
       const wire = (action, fn) => { try { ms.setActionHandler(action, fn); } catch (e) { /* action unsupported here */ } };
       wire('togglemicrophone', () => (0, /*()*/__M.micTap)(false));   // the OS control: no chooser out of sight
       wire('togglecamera', () => {
-        if (!__C.myStatus.camOff) { camBtn.onclick(); return; }
+        if (!__C.model.me.myStatus().camOff) { camBtn.onclick(); return; }
         if (GifOS.host.hidden()) return;
         camBtn.onclick();
       });
@@ -10129,8 +10129,8 @@
     function explainHeldVideo() {
       const lob = document.getElementById('lobby');
       if (lob && lob.classList.contains('show')) return;
-      if (!__C.myStatus || __C.myStatus.blur !== 0) return;
-      if (__C.myStatus.bot && __C.myStatus.camOff) return;   // an assistant with no camera shows no face: nothing is held
+      if (!__C.model.me.myStatus() || __C.model.me.myStatus().blur !== 0) return;
+      if (__C.model.me.myStatus().bot && __C.model.me.myStatus().camOff) return;   // an assistant with no camera shows no face: nothing is held
       let hold = '';
       try { hold = (0, /*()*/__C.blurHold)('me'); } catch (e) { return; }
       if (!hold) return;
@@ -10308,8 +10308,8 @@
         let box = host.querySelector('.stgvotes');
         if (__C.model.votes.mode() !== 'down' || (0, /*()*/__C.hasAdminRoom)()) { if (box) box.remove(); continue; }
         if (!box) { box = document.createElement('div'); box.className = 'stgvotes'; host.appendChild(box); }
-        const stg = (0, /*()*/__C.stageIds)().filter((id) => id !== __C.myId);
-        const want = stg.map((id) => id + '|' + (__C.rosterNames[id] || '…') + '|' + (__C.devOf[id] && __C.model.votes.mine().down.has(__C.devOf[id]) ? 1 : 0)).join(',');
+        const stg = (0, /*()*/__C.stageIds)().filter((id) => id !== __C.model.me.myId());
+        const want = stg.map((id) => id + '|' + (__C.model.roster.rosterNames()[id] || '…') + '|' + (__C.model.roster.devOf()[id] && __C.model.votes.mine().down.has(__C.model.roster.devOf()[id]) ? 1 : 0)).join(',');
         if (box.dataset.sig === want) continue;
         box.dataset.sig = want;
         box.innerHTML = '';
@@ -10317,8 +10317,8 @@
           const b = document.createElement('button');
           b.type = 'button';
           b.className = 'votedot';
-          b.setAttribute('aria-label', 'Vote ' + (__C.rosterNames[id] || 'them') + ' off the stage');
-          if (__C.devOf[id] && __C.model.votes.mine().down.has(__C.devOf[id])) b.classList.add('voted');
+          b.setAttribute('aria-label', 'Vote ' + (__C.model.roster.rosterNames()[id] || 'them') + ' off the stage');
+          if (__C.model.roster.devOf()[id] && __C.model.votes.mine().down.has(__C.model.roster.devOf()[id])) b.classList.add('voted');
           b.addEventListener('click', (e) => { e.stopPropagation(); __C.act.castVote(id); paintStageVoteTargets(); });
           box.appendChild(b);
         }
@@ -10514,35 +10514,35 @@
       // copy: a room you run is a meeting idea, so an app does not offer it.
       const isApp = __C.ROOM.kind === 'app' || document.body.classList.contains('app-room');
       document.querySelector('#inv-modal h3').textContent =
-        isApp ? (0, /*()*/__C.uiText)('invTitleApp', 'Share this app') : __C.BROADCAST ? 'Share this broadcast' : (0, /*()*/__C.uiText)('invTitle', 'Share this meeting');
+        isApp ? (0, /*()*/__C.uiText)('invTitleApp', 'Share this app') : __C.model.room.BROADCAST() ? 'Share this broadcast' : (0, /*()*/__C.uiText)('invTitle', 'Share this meeting');
       // Close is the dialog's action: it stays on screen below the body, outside its scroll.
       document.getElementById('inv-actions').innerHTML = '<button id="inv-done" type="button" class="appear-secondary">' + (0, /*()*/__C.esc)((0, /*()*/__C.uiText)('invClose', 'Close')) + '</button>';
       if (isApp) {
         body.innerHTML = '<p>' + (0, /*()*/__C.uiText)('invApp', 'Send this link. They join you live inside this app.') + '</p>' + (0, /*()*/__C.linkRowHtml)();
-      } else if ((0, /*()*/__C.hasAdminRoom)() || __C.BROADCAST) {
+      } else if ((0, /*()*/__C.hasAdminRoom)() || __C.model.room.BROADCAST()) {
         // The link never carries the host password. Say that only to a reader
         // who holds the key. An open room has no verifier and no host password,
         // even while a capture makes hasAdminRoom() true. A member is told the
         // host admits people only while the waiting room is holding the door:
         // dhold is on and an admin is here (meetWait.blocks).
-        const roomAv = (typeof __C.av === 'undefined') ? null : __C.av;
+        const roomAv = (typeof __C.model.me.av() === 'undefined') ? null : __C.model.me.av();
         const holdsKey = document.body.classList.contains('amadmin')
           || (typeof __C.amAdmin !== 'undefined' && !!__C.amAdmin)
           || (typeof __C.bcHostStored === 'function' && (0, /*()*/__C.bcHostStored)());
         let doorHolds = false;
         if (roomAv) {
           try {
-            const table = (typeof __C.modTable !== 'undefined' && __C.modTable) || {};
+            const table = (typeof __C.model.door.modTable() !== 'undefined' && __C.model.door.modTable()) || {};
             const h = (table['*'] || {}).dhold;
-            const here = (typeof __C.admins !== 'undefined' && __C.admins && __C.admins.length) || 0;
+            const here = (typeof __C.model.door.admins() !== 'undefined' && __C.model.door.admins() && __C.model.door.admins().length) || 0;
             doorHolds = !!(h && h.on && here);
           } catch (e) { doorHolds = false; }
         }
         const line = !roomAv
-          ? (__C.BROADCAST
+          ? (__C.model.room.BROADCAST()
             ? (0, /*()*/__C.uiText)('invBcWatch', 'Send this link. People who open it are watching.')
             : (0, /*()*/__C.uiText)('invOpen', 'Send this link. Anyone who opens it can join this public open-floor meeting.'))
-          : __C.BROADCAST
+          : __C.model.room.BROADCAST()
             ? (holdsKey
               ? (0, /*()*/__C.uiText)('invBcHost', 'Send this link. People who open it are watching. The host password stays with you.')
               : doorHolds
@@ -10564,7 +10564,7 @@
             (others
               ? '<p>' + (0, /*()*/__C.uiText)('invWarnHere', 'The {n} people here stay in this room. Leave the box ticked to drop the new link in chat so they can follow.').replace('{n}', others) + '</p>'
               : '<p>' + (0, /*()*/__C.uiText)('invWarnSolo', 'You will switch to it now.') + '</p>') +
-            '<input id="inv-adm-room" maxlength="40" placeholder="' + (0, /*()*/__C.esc)((0, /*()*/__C.uiText)('invRoomPh', 'Name this room')) + '" autocomplete="off" value="' + (0, /*()*/__C.esc)(__C.room) + '">' +
+            '<input id="inv-adm-room" maxlength="40" placeholder="' + (0, /*()*/__C.esc)((0, /*()*/__C.uiText)('invRoomPh', 'Name this room')) + '" autocomplete="off" value="' + (0, /*()*/__C.esc)(__C.model.room.room()) + '">' +
             '<label class="lob-pwlab"><b>Host password</b><small>Only you. People who join do not need it.</small></label>' +
             '<input id="inv-adm-pass" type="password" maxlength="64" placeholder="' + (0, /*()*/__C.esc)((0, /*()*/__C.uiText)('invAdminPh', 'Host password')) + '" autocomplete="new-password">' +
             '<label class="lob-pwlab"><b>Room password</b><small>Optional.</small></label>' +
@@ -10578,7 +10578,7 @@
       const inviteSharePayload = () => {
         const field = document.getElementById('inv-url');
         const url = (field && field.value) || inviteLinkForModal();
-        return { title: isApp ? 'Join me on GifOS' : __C.BROADCAST ? 'Watch my GifOS broadcast' : 'Join my GifOS meeting', text: 'Tap this link and you’re in:', url: url };
+        return { title: isApp ? 'Join me on GifOS' : __C.model.room.BROADCAST() ? 'Watch my GifOS broadcast' : 'Join my GifOS meeting', text: 'Tap this link and you’re in:', url: url };
       };
       if (shareInviteBtn && navigator.share) {
         shareInviteBtn.style.display = '';
@@ -10617,7 +10617,7 @@
       if (go) go.onclick = async () => {
         const name = (document.getElementById('inv-adm-room').value || '');
         const pass = (document.getElementById('inv-adm-pass').value || '').trim();
-        const chosen = (0, /*()*/__C.slugRoom)(name, __C.room);
+        const chosen = (0, /*()*/__C.slugRoom)(name, __C.model.room.room());
         if (!chosen) { document.getElementById('inv-adm-room').focus(); return; }
         if (!pass) { document.getElementById('inv-adm-pass').focus(); return; }
         const post = !!(document.getElementById('inv-adm-post') && document.getElementById('inv-adm-post').checked);
@@ -10688,7 +10688,7 @@
       const stamp = (ms) => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
       const esc = (s) => String(s).replace(/([\\;,])/g, '\\$1').replace(/\n/g, '\\n');
       const noun = 'broadcast';
-      const name = String(__C.params.get('v') || '').trim();
+      const name = String(__C.model.room.params().get('v') || '').trim();
       const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//GifOS//Broadcast//EN', 'BEGIN:VEVENT',
         'UID:' + at + '-' + name.replace(/[^a-z0-9]/gi, '') + '@gifos.app', 'DTSTAMP:' + stamp(Date.now()),
         'DTSTART:' + stamp(at), 'DTEND:' + stamp(at + 90 * 60000),
@@ -10713,12 +10713,12 @@
         bcWhenIn.value = d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + 'T' + z(d.getHours()) + ':' + z(d.getMinutes());
       }
     }
-    if (bcWhenIn && __C.BROADCAST) {
+    if (bcWhenIn && __C.model.room.BROADCAST()) {
       bcWhenIn.onchange = () => {
         const ms = bcWhenIn.value ? new Date(bcWhenIn.value).getTime() : NaN;
         const secs = Number.isFinite(ms) ? String(Math.floor(ms / 1000)) : '';
-        if (secs) __C.params.set('at', secs); else __C.params.delete('at');
-        try { secs ? localStorage.setItem(__C.BC_AT_KEY, secs) : localStorage.removeItem(__C.BC_AT_KEY); } catch (e) {}
+        if (secs) __C.model.room.params().set('at', secs); else __C.model.room.params().delete('at');
+        try { secs ? localStorage.setItem(__C.model.consts.BC_AT_KEY(), secs) : localStorage.removeItem(__C.model.consts.BC_AT_KEY()); } catch (e) {}
         paintBcWhen();
         try { (0, /*()*/__C.updateStatus)(); } catch (e) {}
       };
@@ -10744,7 +10744,7 @@
     // immediate, which is what a hang-up and the test hook use. A service
     // still asks: you are live, and Stay puts the microphone back.
     if (leaveBtn) leaveBtn.onclick = () => {
-      if (__C.BROADCAST) {
+      if (__C.model.room.BROADCAST()) {
         try { (0, /*()*/__C.holdLeaveAsk)(); } catch (e) {}
         if (leaveAsk) leaveAsk.style.display = 'flex';
         return;
@@ -10841,7 +10841,7 @@
     const leftRejoin = document.getElementById('left-rejoin');
     if (leftRejoin) leftRejoin.onclick = () => {
       let to = null;
-      try { to = __C.rejoinHref ? new URL(__C.rejoinHref, location.href) : null; } catch (e) {}
+      try { to = __C.model.room.rejoinHref() ? new URL(__C.model.room.rejoinHref(), location.href) : null; } catch (e) {}
       const here = location.pathname + location.search + location.hash;
       if (!to || to.origin !== location.origin || to.pathname + to.search + to.hash === here) { location.reload(); return; }
       // A hash-only change is not a load: reload after it (enterMeeting's rule).
@@ -10908,17 +10908,17 @@
     // Also driven by the app-room beat below, so a copy that STOPS (the holder
     // left mid-transfer) stops claiming to be in progress.
     function appCopyPaint() {
-      __C.appCopy.paintedAt = Date.now();
+      __C.model.apps.appCopy().paintedAt = Date.now();
       const el = document.getElementById('appcopy');
       const done = !appMountEl || appMountEl.querySelector('iframe') || __C.appMode !== 'client';
-      if (done) { if (el) el.remove(); __C.appCopy.streams.clear(); __C.appCopy.fid = null; __C.appCopy.shown = 0; return; }
+      if (done) { if (el) el.remove(); __C.model.apps.appCopy().streams.clear(); __C.model.apps.appCopy().fid = null; __C.model.apps.appCopy().shown = 0; return; }
       let big = null, bigFid = null;
-      for (const [fid, s] of __C.appCopy.streams) {
-        if (__C.appCopy.paintedAt - s.at > 30000) { __C.appCopy.streams.delete(fid); continue; } // matches defrag's own sweep
+      for (const [fid, s] of __C.model.apps.appCopy().streams) {
+        if (__C.model.apps.appCopy().paintedAt - s.at > 30000) { __C.model.apps.appCopy().streams.delete(fid); continue; } // matches defrag's own sweep
         if (!big || s.n > big.n) { big = s; bigFid = fid; }
       }
-      if (!big) { if (el) el.remove(); __C.appCopy.fid = null; __C.appCopy.shown = 0; return; }
-      if (bigFid !== __C.appCopy.fid) { __C.appCopy.fid = bigFid; __C.appCopy.shown = 0; }
+      if (!big) { if (el) el.remove(); __C.model.apps.appCopy().fid = null; __C.model.apps.appCopy().shown = 0; return; }
+      if (bigFid !== __C.model.apps.appCopy().fid) { __C.model.apps.appCopy().fid = bigFid; __C.model.apps.appCopy().shown = 0; }
       const got = big.got, n = big.n;
       const box = el || (() => {
         const d = document.createElement('div');
@@ -10932,13 +10932,13 @@
       // 8.9s measured above). Saying 100% and then sitting there is the same
       // lie as saying nothing, so the last phase gets its own word.
       const whole = got >= n;
-      __C.appCopy.shown = Math.max(__C.appCopy.shown, Math.max(1, Math.min(99, Math.round((got / n) * 100))));
-      const pct = __C.appCopy.shown;
+      __C.model.apps.appCopy().shown = Math.max(__C.model.apps.appCopy().shown, Math.max(1, Math.min(99, Math.round((got / n) * 100))));
+      const pct = __C.model.apps.appCopy().shown;
       // n × FRAG_PART is the SEALED wire size (the app's base64 is ciphertext-
       // base64'd again on top), so it reads larger than the App GIF on disk.
       // Say "crossing", not the app's size — the wire cost is the honest number
       // here, and the decoded size is not knowable until the bytes land.
-      const mb = (n * __C.net.FRAG_PART) / (1024 * 1024);
+      const mb = (n * __C.model.net.net().FRAG_PART) / (1024 * 1024);
       box.querySelector('.appcopy-t').textContent = whole
         ? 'Opening ' + name + '…'
         : 'Copying ' + name + ' — ' + pct + '%';
@@ -11025,7 +11025,7 @@
     // bar folds away; a guest cannot unmute. An app room has no video.
     function roomAudioOn() {
       if (!document.body.classList.contains('app-room')) return false;
-      if (__C.appMode === 'host') return !!(__C.myStatus.app && __C.myStatus.app.audio);
+      if (__C.appMode === 'host') return !!(__C.model.me.myStatus().app && __C.model.me.myStatus().app.audio);
       const w = (0, /*()*/__C.findSharedApp)();
       return !!(w && w.audio);
     }
@@ -11034,7 +11034,7 @@
       // Only once the host's ad EXISTS: the switch is a flag on that ad, and
       // appMode turns 'host' a beat before the ad is minted — a tap in that
       // window would be silently lost. The mint below refreshes right away.
-      const show = __C.ROOM.kind === 'app' && !__C.ROOM.solo && document.body.classList.contains('app-room') && __C.appMode === 'host' && !!__C.myStatus.app;
+      const show = __C.ROOM.kind === 'app' && !__C.ROOM.solo && document.body.classList.contains('app-room') && __C.appMode === 'host' && !!__C.model.me.myStatus().app;
       b.style.display = show ? '' : 'none';
       paintTalkBtn();
     }
@@ -11049,27 +11049,27 @@
       const on = roomAudioOn();
       const was = document.body.classList.contains('audio-on');
       document.body.classList.toggle('audio-on', on);
-      if (!on && __C.localStream) {
+      if (!on && __C.model.me.localStream()) {
         // Host turned the room quiet: my mic goes with it, and stays off
         // until the host opens the room again (micBtn refuses meanwhile).
-        const tr = __C.localStream.getAudioTracks()[0];
-        if (tr && tr.enabled) { tr.enabled = false; __C.myStatus.muted = true; paintControls(); (0, /*()*/__C.broadcastStatus)(); }
+        const tr = __C.model.me.localStream().getAudioTracks()[0];
+        if (tr && tr.enabled) { tr.enabled = false; __C.model.me.myStatus().muted = true; paintControls(); (0, /*()*/__C.broadcastStatus)(); }
       }
       if (was !== on) { refreshAudioBtn(); if (!on) (0, /*()*/__C.setStatus)((0, /*()*/__C.uiText)('barTalkHostOff', 'The app host turned Talk off.')); }
     }
     document.getElementById('appaudio').onclick = () => {
-      if (__C.appMode !== 'host' || !__C.myStatus.app) return;
-      __C.myStatus.app.audio = !__C.myStatus.app.audio;
+      if (__C.appMode !== 'host' || !__C.model.me.myStatus().app) return;
+      __C.model.me.myStatus().app.audio = !__C.model.me.myStatus().app.audio;
       (0, /*()*/__C.broadcastStatus)();
       applyRoomAudio(); refreshAudioBtn();
-      (0, /*()*/__C.setStatus)(__C.myStatus.app.audio ? (0, /*()*/__C.uiText)('barTalkOnStatus', 'Talk is on — everyone here can turn on their mic.') : (0, /*()*/__C.uiText)('barTalkOffStatus', 'Talk is off — every mic is quiet.'));
+      (0, /*()*/__C.setStatus)(__C.model.me.myStatus().app.audio ? (0, /*()*/__C.uiText)('barTalkOnStatus', 'Talk is on — everyone here can turn on their mic.') : (0, /*()*/__C.uiText)('barTalkOffStatus', 'Talk is off — every mic is quiet.'));
     };
     function refreshStealBtn() {
       document.getElementById('appsteal').style.display = (__C.ROOM.kind === 'app' && __C.appMode === 'client') ? '' : 'none';
     }
     yield 3029;
     function openAppHelp() {
-      if (!(__C.soloCtl || __C.appHostCtl || __C.appClientCtl) && !__C.ROOM.solo) { openMeetHelp(); return; }
+      if (!(__C.model.apps.soloCtl() || __C.appHostCtl || __C.appClientCtl) && !__C.ROOM.solo) { openMeetHelp(); return; }
       const H = window.GifOS && GifOS.help;
       const ctxName = (document.getElementById('appname').textContent || '').trim();
       const md = (H && H.withOsFooter) ? H.withOsFooter((0, /*()*/__C.currentAppHelpMd)(), (0, /*()*/__C.currentAppCredits)(), { from: 'app Help window', name: ctxName }) : ((0, /*()*/__C.currentAppHelpMd)() || '');
@@ -11171,7 +11171,7 @@
         a.download = (document.getElementById('appname').textContent || 'app') + '-snapshot.gif';
         a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
       }).catch((e) => (0, /*()*/__C.setStatus)((0, /*()*/__C.uiText)('barSaveFail', 'Could not save: {err}').split('{err}').join(e && e.message || e)));
-      if (__C.soloCtl && __C.ROOM.solo) __C.soloCtl.save();
+      if (__C.model.apps.soloCtl() && __C.ROOM.solo) __C.model.apps.soloCtl().save();
       else if (__C.appHostCtl) __C.appHostCtl.save();
       else if (__C.appClientCtl && __C.appClientCtl.snapshot) dl(__C.appClientCtl.snapshot());
     };
@@ -11249,7 +11249,7 @@
     yield 3061;
     // Keep the app buttons honest about what a tap will do.
     function updateAppButtons(want) {
-      const isMine = !!(__C.myStatus.app && __C.appKey === __C.myStatus.app.s);
+      const isMine = !!(__C.model.me.myStatus().app && __C.appKey === __C.model.me.myStatus().app.s);
       const btn = document.getElementById('appbtn');
       if (want && want.s === __C.appHiddenSid && !isMine) {
         btn.textContent = (0, /*()*/__C.uiText)('showApp', 'Show app');
@@ -11280,28 +11280,28 @@
     }
     document.getElementById('appbtn').onclick = () => {
       const want = (0, /*()*/__C.findSharedApp)();
-      if (want && want.s === __C.appHiddenSid && (!__C.myStatus.app || __C.myStatus.app.s !== want.s)) {
+      if (want && want.s === __C.appHiddenSid && (!__C.model.me.myStatus().app || __C.model.me.myStatus().app.s !== want.s)) {
         __C.appHiddenSid = null; (0, /*()*/__C.reconcileApp)(); return; // Show app (un-hide)
       }
-      if (__C.myStatus.app) { (0, /*()*/__C.stopApp)(); return; } // toggle my own share off
+      if (__C.model.me.myStatus().app) { (0, /*()*/__C.stopApp)(); return; } // toggle my own share off
       if (!(0, /*()*/__C.canIRunApp)()) { (0, /*()*/__C.setStatus)((0, /*()*/__C.uiText)('appDenied', '🛡 Only this room\u2019s hosts — or people they allow — can run an app here.')); return; }
       openAppPicker();
     };
     document.getElementById('appstop').onclick = () => {
-      if (__C.myStatus.app && __C.appKey === __C.myStatus.app.s) { (0, /*()*/__C.stopApp)(); return; }
+      if (__C.model.me.myStatus().app && __C.appKey === __C.model.me.myStatus().app.s) { (0, /*()*/__C.stopApp)(); return; }
       const want = (0, /*()*/__C.findSharedApp)();
       if (!want) return;
       if ((0, /*()*/__C.hasAdminRoom)() && !__C.amAdmin) { (0, /*()*/__C.setStatus)((0, /*()*/__C.uiText)('stOnlyThisRoomSAdmins2', '🛡 Only this room\u2019s hosts can stop the shared app.')); return; }
       (0, /*()*/__C.stopRoomApp)(want);
     };
     document.getElementById('apphide').onclick = () => {
-      if (!__C.appKey || (__C.myStatus.app && __C.appKey === __C.myStatus.app.s)) return;
+      if (!__C.appKey || (__C.model.me.myStatus().app && __C.appKey === __C.model.me.myStatus().app.s)) return;
       __C.appHiddenSid = __C.appKey;
       (0, /*()*/__C.setStatus)((0, /*()*/__C.uiText)('barHideStatus', '🧩 App hidden on your screen only — the meeting still shares it. \u201CShow app\u201D brings it back.'));
       (0, /*()*/__C.reconcileApp)();
     };
     document.getElementById('applead').onclick = () => {
-      if (!(__C.myStatus.app && __C.appLeadSet)) return;
+      if (!(__C.model.me.myStatus().app && __C.appLeadSet)) return;
       __C.appLeadOn = !__C.appLeadOn;
       (0, /*()*/__C.appLeadSet)(__C.appLeadOn);
       updateAppButtons((0, /*()*/__C.findSharedApp)());
@@ -11372,7 +11372,7 @@
           // the app named by an official run link: the copy already on this device, else the same install the picker does
           let files = []; try { files = await GifOS.store.allFileMeta(); } catch (e) {}
           const have = (files || []).find((f) => f && f.isApp && f.appId === run.slug);
-          const def = __C.RUN_DEFAULTS.find((d) => d.appId === run.slug);
+          const def = __C.model.consts.RUN_DEFAULTS().find((d) => d.appId === run.slug);
           if (have || def) { await runChoice(have ? { name: (have.name || run.slug).replace(/\.gif$/i, ''), fileId: have.id } : { name: def.name, install: def }, (w, bad) => showAddErr(bad ? w : '')); return; }
         }
         let r = await (0, /*()*/__C.fetchGifFromUrl)(run ? run.url : raw);
@@ -11434,12 +11434,12 @@
       ul.textContent = '';
       let n = 0;
       if ((0, /*()*/__C.aiNotesSetting)() === 'ask' && __C.amAdmin) {
-        for (const pid of __C.rosterIds) {
-          const st = __C.statusOf.get(pid);
+        for (const pid of __C.model.roster.rosterIds()) {
+          const st = __C.model.roster.statusOf().get(pid);
           if (!st || !st.bot || st.nts !== 2) continue;
           n++;
           const li = document.createElement('li');
-          li.textContent = (__C.rosterNames[pid] || (__C.peers.get(pid) || {}).name || '…') + ' ';
+          li.textContent = (__C.model.roster.rosterNames()[pid] || (__C.model.roster.peers().get(pid) || {}).name || '…') + ' ';
           const b = document.createElement('button'); b.type = 'button'; b.textContent = (0, /*()*/__C.uiText)('admAiAllow', 'Allow notes');
           b.onclick = () => { (0, /*()*/__C.setMod)(pid, 'ain', true); paintAiNotesAdmin(); };
           li.appendChild(b); ul.appendChild(li);
@@ -11453,7 +11453,7 @@
     // The bot's own view (#botview): its state, the transcript and the chat.
     function paintBotView(st) {
       const rows = (m) => Array.from(m.values()).filter((l) => l && !/^gb1 /.test(String(l.text || ''))).sort((x, y) => (x.at || 0) - (y.at || 0)).map((l) => ({ name: l.by || '', text: l.text || '' }));
-      GifOS.meetAgent.renderBotView(document.getElementById('botview'), Object.assign({}, st, { transcript: rows(__C.trs), chat: rows(__C.model.chat.lines()) }), __C.uiText);
+      GifOS.meetAgent.renderBotView(document.getElementById('botview'), Object.assign({}, st, { transcript: rows(__C.model.chat.trs()), chat: rows(__C.model.chat.lines()) }), __C.uiText);
     }
     yield 3127;
     // The agent contract over the page's postMessage (a host page or extension talks to it); a host with no page has none.
@@ -11461,16 +11461,16 @@
     yield 3129;
     function setBotView(on) {
       on = !!on;
-      if (!__C.room) { __C.botViewWant = on; return; }   // the lobby: the meeting's boot turns it on (an Off press there takes it back)
+      if (!__C.model.room.room()) { __C.botViewWant = on; return; }   // the lobby: the meeting's boot turns it on (an Off press there takes it back)
       if (on) (0, /*()*/__C.agentStart)();
       if (on === !!__C.botViewOn) return;
       __C.botViewOn = on;
       document.body.classList.toggle('bot-view', on);
       const bv = document.getElementById('botview'); if (bv) bv.hidden = !on;
       const back = document.getElementById('bot-back'), forced = document.getElementById('bot-forced');
-      if (back) back.hidden = __C.AGENT_FORCED;
-      if (forced) forced.hidden = !__C.AGENT_FORCED;
-      if (on && !__C.AGENT_FORCED) {
+      if (back) back.hidden = __C.model.consts.AGENT_FORCED();
+      if (forced) forced.hidden = !__C.model.consts.AGENT_FORCED();
+      if (on && !__C.model.consts.AGENT_FORCED()) {
         let seen = false;
         try { seen = sessionStorage.getItem('gifos_bot_seen') === '1'; sessionStorage.setItem('gifos_bot_seen', '1'); } catch (e) {}
         if (!seen) (0, /*()*/__C.setStatus)((0, /*()*/__C.uiText)('botFirstNote', 'This view is for AI assistants. Tap Back to normal view to return.'));
@@ -11490,7 +11490,7 @@
         // A voice needs speech audio. An embedder (or an extension) that makes it sets window.gifosAgentVoice(text) -> WAV
         // bytes (base64); with none, the words go to chat and the status says so, never silently.
         const tts = window.gifosAgentVoice;
-        if (typeof tts === 'function' && __C.agentCore) Promise.resolve(tts(text)).then((wav) => __C.agentCore.api.say(text, { wav: wav }));
+        if (typeof tts === 'function' && __C.model.apps.agentCore()) Promise.resolve(tts(text)).then((wav) => __C.model.apps.agentCore().api.say(text, { wav: wav }));
         else { (0, /*()*/__C.agentChat)(text); (0, /*()*/__C.setStatus)((0, /*()*/__C.uiText)('botNoVoice', 'No voice on this page, so it went to chat.')); }
       });
       if (chatF) chatF.addEventListener('submit', (e) => {
@@ -11499,14 +11499,14 @@
         if (r.ok) inp.value = ''; else (0, /*()*/__C.setStatus)(r.error);
       });
       const hand = document.getElementById('bot-hand');
-      if (hand) hand.onclick = () => __C.act.raiseHand(!__C.myStatus.hand);
+      if (hand) hand.onclick = () => __C.act.raiseHand(!__C.model.me.myStatus().hand);
       const lv = document.getElementById('bot-leave');
       if (lv) lv.onclick = () => { try { (0, /*()*/__C.leaveMeeting)(); } catch (e) {} };
       // HIDE BOTS (Settings, this device only): bot tiles off the grid, their own voices muted.
       const hb = document.getElementById('hidebots');
       const applyHideBots = () => {
         let moved = false;
-        for (const [pid, p] of __C.peers) {
+        for (const [pid, p] of __C.model.roster.peers()) {
           if (!p.tile) continue;
           const hide = (0, /*()*/__C.botHidden)(pid);
           if (hide && p.tile.style.display !== 'none') { p.tile.style.display = 'none'; p.tile.dataset.bothide = '1'; moved = true; }
@@ -11547,28 +11547,28 @@
       const folds = {}; for (const [k, f] of __M.downFolds) folds[k] = foldOf(f);
       const comp = {}; for (const [k, m] of __M.mosIn) comp[k] = { via: String(m.via || '').slice(0, 8), a: trs(m.stream), el: m.el ? { p: !!m.el.paused, rs: m.el.readyState } : null };
       const sb = {}; for (const [k, m] of __M.mosStandby) sb[k] = { via: String(m.via || '').slice(0, 8), a: trs(m.stream) };
-      let sink = null; try { sink = __C.ac && __C.ac.sinkId !== undefined ? (typeof __C.ac.sinkId === 'object' ? ((__C.ac.sinkId && __C.ac.sinkId.type) || 'obj') : String(__C.ac.sinkId)) : null; } catch (e) {}
+      let sink = null; try { sink = __C.model.net.ac() && __C.model.net.ac().sinkId !== undefined ? (typeof __C.model.net.ac().sinkId === 'object' ? ((__C.model.net.ac().sinkId && __C.model.net.ac().sinkId.type) || 'obj') : String(__C.model.net.ac().sinkId)) : null; } catch (e) {}
       return {
-        ac: __C.ac ? { st: __C.ac.state, sink, t: +(+__C.ac.currentTime || 0).toFixed(2), clock: (0, /*()*/__M.acClockInfo)() } : null,
+        ac: __C.model.net.ac() ? { st: __C.model.net.ac().state, sink, t: +(+__C.model.net.ac().currentTime || 0).toFixed(2), clock: (0, /*()*/__M.acClockInfo)() } : null,
         act: { sticky: !!(navigator.userActivation && navigator.userActivation.hasBeenActive), kickArmed: !!__M.audioKickArmed, blocked: __M.blockedAudio.size, held: (0, /*()*/__M.soundHeld)(), vis: document.visibilityState },
         mix: (() => { try { return Object.assign({}, __M.mix); } catch (e) { return null; } })(), waiting: (typeof __C.iAmWaiting === 'function') ? (0, /*()*/__C.iAmWaiting)() : null,
-        mic: __C.localStream ? trs(__C.localStream) : null,
+        mic: __C.model.me.localStream() ? trs(__C.model.me.localStream()) : null,
         els, wkEar: (typeof __M.wkEar !== 'undefined' && __M.wkEar) ? { el: el(__M.wkEar.el), fold: foldOf(__M.wkEar.fold) } : null,
         stageEar: __M.stageEar ? { el: el(__M.stageEar.el), fold: foldOf(__M.stageEar.fold) } : null,
         stadium: __M.sdViewSt ? { a: trs(__M.sdViewSt) } : null,
         prod: __M.prodPack && __M.prodPack.stream ? { a: trs(__M.prodPack.stream), pk: __M.prodPack.peakNow ? __M.prodPack.peakNow() : null, fold: __M.prodPack.foldInfo ? __M.prodPack.foldInfo() : null } : null,
-        relay: { via: [...__C.relayVia].map(([t, r]) => ({ t: String(t).slice(0, 8), via: String(r.via).slice(0, 8), st: r.stream ? trs(r.stream) : null })), jobs: [...__C.relayJobs.keys()].map((k) => k.split('>').map((x) => String(x).slice(0, 8)).join('>')) },
+        relay: { via: [...__C.model.net.relayVia()].map(([t, r]) => ({ t: String(t).slice(0, 8), via: String(r.via).slice(0, 8), st: r.stream ? trs(r.stream) : null })), jobs: [...__C.model.net.relayJobs().keys()].map((k) => k.split('>').map((x) => String(x).slice(0, 8)).join('>')) },
         folds, comp, standby: sb,
       };
     }
     yield 3144;   // chat line ids I posted for the page I carry: never sent back to it
     function carryIo(far, l, sendTv, askVouch, guest) {
-      return { guest, me: __C.myId, far, l, dev: () => __C.myDevHash, sub: () => (__C.meshNode && __C.meshNode.sub) | 0, sid: () => __C.sessId, sendTv, askVouch,
+      return { guest, me: __C.model.me.myId(), far, l, dev: () => __C.model.me.myDevHash(), sub: () => (__C.model.net.meshNode() && __C.model.net.meshNode().sub) | 0, sid: () => __C.model.room.sessId(), sendTv, askVouch,
         ask: GifOS.meetTurn.askIce(window.fetch.bind(window)), webScheme: () => 'wss://', log: __C.turnNote,
-        seal: (obj) => __C.net.seal(__C.roomE2E, obj),
-        open: (env) => __C.net.open(__C.roomE2E, env).then((m) => m || (__C.prevRoomE2E ? __C.net.open(__C.prevRoomE2E, env) : null)),
-        sign: (text) => __C.net.edSign(__C.myIdentity.priv, text).then((sig) => ({ sig, pub: __C.myIdentity.pubB64 })),
-        verify: (id, pub, sig, text) => GifOS.meshIdentity.peerIdOf(pub).then((got) => (got === id ? __C.net.edVerify(pub, sig, text) : false)) };
+        seal: (obj) => __C.model.net.net().seal(__C.model.room.roomE2E(), obj),
+        open: (env) => __C.model.net.net().open(__C.model.room.roomE2E(), env).then((m) => m || (__C.model.room.prevRoomE2E() ? __C.model.net.net().open(__C.model.room.prevRoomE2E(), env) : null)),
+        sign: (text) => __C.model.net.net().edSign(__C.model.me.myIdentity().priv, text).then((sig) => ({ sig, pub: __C.model.me.myIdentity().pubB64 })),
+        verify: (id, pub, sig, text) => GifOS.meshIdentity.peerIdOf(pub).then((got) => (got === id ? __C.model.net.net().edVerify(pub, sig, text) : false)) };
     }
     yield 3164;
     function dbgMeterShow(on) {
@@ -11587,22 +11587,22 @@
       // What my Stadium shows, by the cell ids it carries, and my row.
       stadIdsForTest: () => {
         const c = (0, /*()*/__C.meshCoord)(), m = comfyStadMeta(), v = m.video;
-        const row = []; if (c) for (let j = 0; j < __C.SCALE.C; j++) { const pid = j === c.i ? __C.myId : (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: j }); if (pid) row.push(String(pid)); }
-        return { coord: c, me: String(__C.myId || ''), n: m.n, ids: m.ids, live: !!(v && v.videoWidth > 0), w: v ? v.videoWidth : 0, h: v ? v.videoHeight : 0, row, stagers: (0, /*()*/__C.stageIds)().map(String), hold: (typeof __M.avHold !== 'undefined' && __M.avHold) ? __M.avHold.ms : 0 };
+        const row = []; if (c) for (let j = 0; j < __C.model.consts.SCALE().C; j++) { const pid = j === c.i ? __C.model.me.myId() : (0, /*()*/__C.occPid)({ pc: c.pc, r: c.r, i: j }); if (pid) row.push(String(pid)); }
+        return { coord: c, me: String(__C.model.me.myId() || ''), n: m.n, ids: m.ids, live: !!(v && v.videoWidth > 0), w: v ? v.videoWidth : 0, h: v ? v.videoHeight : 0, row, stagers: (0, /*()*/__C.stageIds)().map(String), hold: (typeof __M.avHold !== 'undefined' && __M.avHold) ? __M.avHold.ms : 0 };
       },
       fsSourcesForTest: () => fsSources().map((s) => ({ key: s.key, bl: s.bl || 0 })),
       setTabHiddenForTest: (hidden) => {
         try { Object.defineProperty(document, 'hidden', { configurable: true, get: () => !!hidden }); } catch (e) {}
         document.dispatchEvent(new Event('visibilitychange'));
         const el = document.getElementById('still');
-        return { ok: true, away: !!__C.myStatus.away, still: !!(el && el.classList.contains('on')) };
+        return { ok: true, away: !!__C.model.me.myStatus().away, still: !!(el && el.classList.contains('on')) };
       },
       timingForTest: (t) => { const b = timingRow.querySelector('[data-timing="' + t + '"]'); if (b) b.click(); },
       appName: () => document.getElementById('appname').textContent,
       // The Stage (Channel St) — inspect + drive it from the meeting CLI.
       stageInfo: () => ({
-        stagers: (0, /*()*/__C.stageIds)().map((id) => ({ id: String(id).slice(0, 12), name: id === __C.myId ? (0, /*()*/__C.myName)() : (__C.rosterNames[id] || null), me: id === __C.myId })),
-        myStg: __C.myStatus.stg || 0, canStage: (0, /*()*/__C.canStage)(__C.myId), cap: __C.SCALE.C,
+        stagers: (0, /*()*/__C.stageIds)().map((id) => ({ id: String(id).slice(0, 12), name: id === __C.model.me.myId() ? (0, /*()*/__C.myName)() : (__C.model.roster.rosterNames()[id] || null), me: id === __C.model.me.myId() })),
+        myStg: __C.model.me.myStatus().stg || 0, canStage: (0, /*()*/__C.canStage)(__C.model.me.myId()), cap: __C.model.consts.SCALE().C,
         held: [...__M.mosIn.keys()].filter((k) => k.indexOf('stg:') === 0),
         strip: (typeof __M.stripPack !== 'undefined' && __M.stripPack) ? __M.stripPack.stats() : null,
         stripPainted: !!document.querySelector('[data-row="sgs"] video'),
@@ -11617,12 +11617,12 @@
         const vt = (typeof __M.sentVideoTrack === 'function') ? (0, /*()*/__M.sentVideoTrack)() : null;
         let surface = null; try { surface = vt && vt.getSettings ? (vt.getSettings().displaySurface || null) : null; } catch (e) {}
         const mainTracks = [];
-        for (const p of __C.peers.values()) if (p.mainV && p.mainV.track) mainTracks.push(p.mainV.track.id);
+        for (const p of __C.model.roster.peers().values()) if (p.mainV && p.mainV.track) mainTracks.push(p.mainV.track.id);
         return {
-          sharing: !!__C.myStatus.scr, sharers: (0, /*()*/__C.screenSharers)(),
+          sharing: !!__C.model.me.myStatus().scr, sharers: (0, /*()*/__C.screenSharers)(),
           capable: (0, /*()*/__M.canScreenShare)(),
-          steppedUp: __C.screenSteppedUp,
-          onStage: (0, /*()*/__C.stageIds)().includes(__C.myId),
+          steppedUp: __C.model.me.screenSteppedUp(),
+          onStage: (0, /*()*/__C.stageIds)().includes(__C.model.me.myId()),
           sentTrackId: vt ? vt.id : null,
           sentLabel: vt ? String(vt.label || '') : null,
           surface,
@@ -11644,12 +11644,12 @@
           // Every outbound video sender's lane, as adapt() last left it.
           senders: (() => {
             const out = [];
-            for (const p of __C.peers.values()) for (const sd of p.pc.getSenders()) {
+            for (const p of __C.model.roster.peers().values()) for (const sd of p.pc.getSenders()) {
               if (!sd.track || sd.track.kind !== 'video') continue;
               let prm = null; try { prm = sd.getParameters(); } catch (e) {}
               const e0 = prm && prm.encodings && prm.encodings[0];
               out.push({
-                stage: __C.stageSenders.has(sd), aux: __C.auxSenders.has(sd),
+                stage: __C.model.net.stageSenders().has(sd), aux: __C.model.net.auxSenders().has(sd),
                 kbps: e0 && e0.maxBitrate ? Math.round(e0.maxBitrate / 1000) : 0,
                 deg: __M.degOf.get(sd) || (prm && prm.degradationPreference) || '',
               });
@@ -11743,7 +11743,7 @@
       // the max seen; null when the track is live but no frame decoded in the window. A camera-off stager must read dark (<= 0.05) or no track.
       stageVideoProbeForTest: async (idPrefix) => {
         const pre = String(idPrefix || '').slice(0, 8); let f = null;
-        for (const [k, v] of __M.mosIn) { if (k.indexOf('stg:' + pre) === 0 && k !== 'stg:' + __C.myId && v.stream) { f = v; break; } }
+        for (const [k, v] of __M.mosIn) { if (k.indexOf('stg:' + pre) === 0 && k !== 'stg:' + __C.model.me.myId() && v.stream) { f = v; break; } }
         if (!f) return { feed: false, track: false };
         const vt = f.stream.getVideoTracks()[0];
         if (!vt) return { feed: true, track: false };
@@ -11762,7 +11762,7 @@
         try { el.srcObject = null; } catch (e) {}
         return out;
       },
-      mosaic: () => { const c = (0, /*()*/__C.meshCoord)(); const T = __C.net.topo; const tgt = (co) => { if (!co) return null; const pid = (0, /*()*/__C.occPid)(co); const p = pid && __C.peers.get(pid); return { pid: (pid||'').slice(0,6), has: !!p, conn: p && p.connected, dc: !!(p && p.dc && p.dc.readyState === 'open') }; };
+      mosaic: () => { const c = (0, /*()*/__C.meshCoord)(); const T = __C.model.net.net().topo; const tgt = (co) => { if (!co) return null; const pid = (0, /*()*/__C.occPid)(co); const p = pid && __C.model.roster.peers().get(pid); return { pid: (pid||'').slice(0,6), has: !!p, conn: p && p.connected, dc: !!(p && p.dc && p.dc.readyState === 'open') }; };
         return { multi: multiSection(), coord: c, head: c && c.i === 0, s1: c && c.pc === 0,
         // WHO AM I, in the same 8-char form feedsInfo() reports `via` in. A
         // receiver can see which peer it is claiming FROM, but nothing let an
@@ -11770,7 +11770,7 @@
         // followed one hop upstream to ask what the sender was doing. Needed to
         // resolve pipeStats() across seats (the stg-freeze hunt,
         // docs/bug-pipe-stg-freeze-2026-08-05.md).
-        me: String(__C.myId || '').slice(0, 8),
+        me: String(__C.model.me.myId() || '').slice(0, 8),
         up: c ? tgt(T.up(c)) : null, down: c ? tgt(T.down(c)) : null,
         prodStream: !!(__M.prodPack && __M.prodPack.stream), sdStream: !!(__M.sdView && __M.sdView.stream), roomStream: !!(__M.roomPack && __M.roomPack.stream), loop: !!(__M.packLoop && __M.packLoop.rx),
         restarts: [...__M.mosIn.entries(), ...__M.mosStandby.entries()].filter(([, e]) => e && e.el).map(([rk, e]) => ({ key: rk, sid: e.el.srcObject ? String(e.el.srcObject.id).slice(0, 8) : null, vw: e.el.videoWidth, rs: e.el.readyState, n: e.el._mosRestarts || 0, held: !!e.el._mosHold })), // decoders restarted (parked, re-bound, resumed) because they showed no picture while the feed flowed (WebKit)
@@ -11805,7 +11805,7 @@
         // handed us a new stream; a changing container with a STABLE sig means
         // the job was reaped and re-created. (2026-07-29 stage re-ship churn.)
         jobSig: [...__M.mosJobs.entries()].map(([k, j]) => k.slice(0, 18) + '|s' + String(j.sig).slice(0, 6) + '|c' + String(j.streamId).slice(0, 6)),
-        demand: [...__C.subWant.entries()].map(([k, v]) => k + '=' + v.st),
+        demand: [...__C.model.net.subWant().entries()].map(([k, v]) => k + '=' + v.st),
         // per-slot primary/standby VIA (peer id) — lets a probe kill the exact
         // feeding peer and watch the hot standby promote with no black-out.
         claimVia: [...__M.mosIn.entries()].map(([rk, c]) => ({ rk, via: c.via, sid: c.streamId })),
@@ -11821,7 +11821,7 @@
         // that peer actually has.
         cands: [...__M.mosAnn.entries()].map(([k, v]) => {
           const bar = k.indexOf('|'), from = k.slice(0, bar), key = k.slice(bar + 1);
-          const p = __C.peers.get(from);
+          const p = __C.model.roster.peers().get(from);
           const inc = (p && p.incoming) ? p.incoming.map((s) => String(s.id).slice(0, 8)) : null;
           const want = String(v && v.streamId).slice(0, 8);
           return { key, from: from.slice(0, 8), want,
@@ -11857,14 +11857,14 @@
         btnShown: (() => { const b = document.getElementById('pipbtn'); return !!b && b.style.display !== 'none'; })(),
       }),
       // a joined peer by name whose fresh status has a hand up, as the host's queue line reads it
-      handPeerForTest: (id, name) => { id = String(id); if (!__C.peers.has(id)) __C.peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [], neg: (0, /*()*/__C.newNeg)() }); __C.peers.get(id).name = name; __C.rosterNames[id] = name; if (!__C.rosterIds.includes(id)) __C.rosterIds.push(id); const t = Date.now(); __C.statusOf.set(id, { camOff: true, muted: true, hand: t, at: t, rx: t }); renderHandq(); return handqEl.textContent; },
+      handPeerForTest: (id, name) => { id = String(id); if (!__C.model.roster.peers().has(id)) __C.model.roster.peers().set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [], neg: (0, /*()*/__C.newNeg)() }); __C.model.roster.peers().get(id).name = name; __C.model.roster.rosterNames()[id] = name; if (!__C.model.roster.rosterIds().includes(id)) __C.model.roster.rosterIds().push(id); const t = Date.now(); __C.model.roster.statusOf().set(id, { camOff: true, muted: true, hand: t, at: t, rx: t }); renderHandq(); return handqEl.textContent; },
       chatGateForTest: (off, admin) => { chatGateOverride = { off: !!off, admin: !!admin }; paintChatGate(); return document.getElementById('chat-in').placeholder; },
       fsMain: () => ({ key: fsmain.dataset.key || null, bl: fsmain.classList.contains('blur2') ? 2 : fsmain.classList.contains('blur1') ? 1 : 0, fit: getComputedStyle(fsmain).objectFit }),
       fsThumbBlur: (key) => { const th = Array.from(fsstrip.children).find((t) => t.dataset.key === key); const tv = th && th.querySelector('video'); if (!tv) return null; return tv.classList.contains('blur2') ? 2 : tv.classList.contains('blur1') ? 1 : 0; },
       // The blob Rebroadcast plays: the file saved when the host left the air.
       lastServiceForTest: async () => {
-        if (!__C.bcLastService || !__C.bcLastService.blob) return null;
-        const b = await __C.bcLastService.blob;
+        if (!__C.model.room.bcLastService() || !__C.model.room.bcLastService().blob) return null;
+        const b = await __C.model.room.bcLastService().blob;
         const url = URL.createObjectURL(b);
         const sec = await new Promise((res) => {
           const v = document.createElement('video');
@@ -11884,28 +11884,28 @@
         return { bytes: b.size, sec: sec };
       },
       // THE STATUS PLANE, as this seat sees it.
-      statusPlane: () => { const d = (0, /*()*/__C.roomDig)(); return { id: __C.myId, mode: (0, /*()*/__C.digestMode)(), past: (0, /*()*/__C.roomPastSection)(), n: d ? d.n : null, age: d ? d.age : null,
+      statusPlane: () => { const d = (0, /*()*/__C.roomDig)(); return { id: __C.model.me.myId(), mode: (0, /*()*/__C.digestMode)(), past: (0, /*()*/__C.roomPastSection)(), n: d ? d.n : null, age: d ? d.age : null,
         refuse: d ? d.refuse : null, part: d ? !!d.part : null, handN: d ? d.handN : null, hands: d ? d.hands.map((e) => e.id) : [], stage: d ? d.stage.map((e) => e.id) : [],
         apps: d ? d.apps.map((e) => e.id) : [], votes: d ? d.votes.length : 0, display: (0, /*()*/__M.displayCount)(), consentIds: (0, /*()*/__C.roomConsentIds)().length,
-        fresh: Array.from(__C.statusOf.keys()).filter((id) => id !== __C.myId && (0, /*()*/__C.freshSt)(id)), coord: (0, /*()*/__C.meshCoord)(), label: statusEl.textContent,
-        statusN: __C.statusOf.size, dcLinks: Array.from(__C.peers.values()).filter((p) => p.dc && p.dc.readyState === 'open').length }; },
+        fresh: Array.from(__C.model.roster.statusOf().keys()).filter((id) => id !== __C.model.me.myId() && (0, /*()*/__C.freshSt)(id)), coord: (0, /*()*/__C.meshCoord)(), label: statusEl.textContent,
+        statusN: __C.model.roster.statusOf().size, dcLinks: Array.from(__C.model.roster.peers().values()).filter((p) => p.dc && p.dc.readyState === 'open').length }; },
       handqShown: () => handqEl.classList.contains('on'),
       handqText: () => handqEl.textContent,
       armBroadcastHostForTest: () => {
         __C.amAdmin = true;
         document.body.classList.remove('notadmin');
-        if (__C.myId && __C.admins.indexOf(__C.myId) < 0) __C.admins.push(__C.myId);
-        __C.myStatus.camOff = true;
-        try { (0, /*()*/__C.setStage)(true); } catch (e) { __C.myStatus.stg = Date.now(); }
+        if (__C.model.me.myId() && __C.model.door.admins().indexOf(__C.model.me.myId()) < 0) __C.model.door.admins().push(__C.model.me.myId());
+        __C.model.me.myStatus().camOff = true;
+        try { (0, /*()*/__C.setStage)(true); } catch (e) { __C.model.me.myStatus().stg = Date.now(); }
         (0, /*()*/__C.paintOnAir)();
-        return { ok: !!__C.myStatus.stg };
+        return { ok: !!__C.model.me.myStatus().stg };
       },
       statusText: () => statusEl.textContent,
       appStopForTest: (mine) => {
-        if (mine) { __C.appKey = 'qa-stop'; __C.myStatus.app = { s: 'qa-stop', name: 'Notes' }; }
-        else { __C.appKey = null; __C.myStatus.app = null; }
+        if (mine) { __C.appKey = 'qa-stop'; __C.model.me.myStatus().app = { s: 'qa-stop', name: 'Notes' }; }
+        else { __C.appKey = null; __C.model.me.myStatus().app = null; }
         showAppPane('Notes', '');
-        updateAppButtons(__C.myStatus.app);
+        updateAppButtons(__C.model.me.myStatus().app);
         const b = document.getElementById('appstop');
         return { text: b.textContent, title: b.title, font: parseFloat(getComputedStyle(b).fontSize), display: getComputedStyle(b).display };
       },
@@ -11917,9 +11917,9 @@
           __C.appRoomOn = true;
           document.body.classList.add('app-room');
           __C.appMode = 'host';
-          __C.myStatus.app = Object.assign(__C.myStatus.app || { s: 'qa-talk' }, { audio: true });
-        } else if (__C.myStatus.app) {
-          __C.myStatus.app.audio = false;
+          __C.model.me.myStatus().app = Object.assign(__C.model.me.myStatus().app || { s: 'qa-talk' }, { audio: true });
+        } else if (__C.model.me.myStatus().app) {
+          __C.model.me.myStatus().app.audio = false;
         }
         paintTalkBtn();
         ['appsave', 'appsteal', 'apphide', 'appaudio'].forEach((id) => { document.getElementById(id).style.display = ''; });
@@ -11933,10 +11933,10 @@
       // tap is set), and Full screen, as the sharer reads them.
       appWordsForTest: (tap) => {
         document.body.classList.add('has-app');
-        __C.appKey = 'qa-words'; __C.myStatus.app = { s: 'qa-words' };
+        __C.appKey = 'qa-words'; __C.model.me.myStatus().app = { s: 'qa-words' };
         showAppPane('Notes', '');
         __C.appLeadable = true; __C.appLeadOn = false; __C.appLeadSet = () => {};
-        updateAppButtons(__C.myStatus.app);
+        updateAppButtons(__C.model.me.myStatus().app);
         // Invite follows the room (paintInviteSlot). A meeting must not force it on.
         if (tap) document.getElementById('applead').click();
         const read = (id) => {
@@ -11956,8 +11956,8 @@
       },
       chatModForTest: (off) => {
         __C.amAdmin = true;
-        if (off) __C.modTable['*'] = { chat: { on: true, by: 'Pastor Kim' } };
-        else delete __C.modTable['*'];
+        if (off) __C.model.door.modTable()['*'] = { chat: { on: true, by: 'Pastor Kim' } };
+        else delete __C.model.door.modTable()['*'];
         applyAdminUi();
         try { renderChat(); } catch (e) {}
         document.getElementById('chatpanel').classList.add('open');
@@ -11976,13 +11976,13 @@
       // track that says otherwise it refuses, so no test reads a painted
       // "on" over a mic that sends nothing (0.9.26.19 phone runs).
       setOwnMicForTest: (live) => {
-        const tr = __C.localStream && __C.localStream.getAudioTracks()[0];
-        if (tr && tr.readyState === 'live' && tr.enabled !== !!live) return { refused: 'the live mic track is ' + (tr.enabled ? 'on' : 'off') + ': setOwnMicForTest only paints; tap #mic to change it', muted: !!__C.myStatus.muted, trackEnabled: tr.enabled };
-        __C.myStatus.muted = !live;
+        const tr = __C.model.me.localStream() && __C.model.me.localStream().getAudioTracks()[0];
+        if (tr && tr.readyState === 'live' && tr.enabled !== !!live) return { refused: 'the live mic track is ' + (tr.enabled ? 'on' : 'off') + ': setOwnMicForTest only paints; tap #mic to change it', muted: !!__C.model.me.myStatus().muted, trackEnabled: tr.enabled };
+        __C.model.me.myStatus().muted = !live;
         paintControls();
         const word = micBtn.querySelector('.dockword');
         return {
-          muted: !!__C.myStatus.muted,
+          muted: !!__C.model.me.myStatus().muted,
           word: word ? word.textContent : '',
           label: micBtn.getAttribute('aria-label'),
           svg: !!micBtn.querySelector('svg'),
@@ -12033,18 +12033,18 @@
         opts = opts || {};
         const id = String(opts.id || 'avatar_seat');
         const name = String(opts.name || 'Ada').slice(0, 40);
-        let p = __C.peers.get(id);
+        let p = __C.model.roster.peers().get(id);
         if (!p) {
           const tile = makeTile(id, name, false);
           p = { id, pc: null, neg: (0, /*()*/__C.newNeg)(), tile: tile.tile, video: tile.video, label: tile.label, avatar: tile.avatar, chips: tile.chips, cap: tile.cap, modbar: tile.modbar, voteBtn: tile.voteBtn,
             name, headless: false, connected: true, pendingIce: [], absentSince: 0, lastKick: 0, lastHeard: Date.now(), bornAt: Date.now(), incoming: [], neverUp: false, stream: null };
-          __C.peers.set(id, p);
+          __C.model.roster.peers().set(id, p);
         }
         p.name = name;
         if (p.label) p.label.textContent = name;
         if (p.avatar) p.avatar.textContent = (0, /*()*/__C.nameInitial)(name);
-        __C.rosterNames[id] = name;
-        __C.statusOf.set(id, { muted: true, camOff: opts.camOff !== false, blur: opts.blur == null ? 0 : (opts.blur | 0), at: Date.now(), rx: Date.now(), scr: 0 });
+        __C.model.roster.rosterNames()[id] = name;
+        __C.model.roster.statusOf().set(id, { muted: true, camOff: opts.camOff !== false, blur: opts.blur == null ? 0 : (opts.blur | 0), at: Date.now(), rx: Date.now(), scr: 0 });
         if (opts.useWire) {
           const canvas = document.createElement('canvas');
           paintAvatarCanvas(canvas, name, 0);
@@ -12087,12 +12087,12 @@
             vMuted: f.stream && f.stream.getVideoTracks()[0] ? f.stream.getVideoTracks()[0].muted : null })),
           standby: [...__M.mosStandby.entries()].map(([rk, f]) => ({ rk, via: String(f.via).slice(0, 8), sid: String(f.streamId).slice(0, 8) })),
           jobs: [...__M.mosJobs.entries()].map(([jk, j]) => ({ jk: j.key + '>' + String(j.to).slice(0, 8), active: !!j.active })),
-          demand: [...__C.subWant.entries()].map(([k, v]) => { const a = k.split('|'); return { k: String(a[0]).slice(0, 8) + '|' + a[1], v: v.st }; }),
+          demand: [...__C.model.net.subWant().entries()].map(([k, v]) => { const a = k.split('|'); return { k: String(a[0]).slice(0, 8) + '|' + a[1], v: v.st }; }),
           ear: (typeof __M.stageEar !== 'undefined' && __M.stageEar) ? [...__M.stageEar.sids.keys()] : [],
           packs: { prod: __M.prodPack ? Object.assign({ w: __M.prodPack.canvas.width, h: __M.prodPack.canvas.height }, __M.prodPack.stats()) : null,
                    sd: __M.sdView ? Object.assign({ w: __M.sdView.canvas.width, h: __M.sdView.canvas.height }, __M.sdView.stats()) : null,
                    room: __M.roomPack ? __M.roomPack.stats() : null, folds: __M.downFolds.size, strip: __M.stripPack ? __M.stripPack.stats() : null },
-          stagers: (0, /*()*/__C.stageIds)().length, peers: __C.peers.size,
+          stagers: (0, /*()*/__C.stageIds)().length, peers: __C.model.roster.peers().size,
         };
       },
       });
@@ -12100,7 +12100,7 @@
   
     return __L.END;
   }
-  var api = { name: "view", run: part, count: 719, exports: {"appCopyPaint":1,"appRuntimeBoot":1,"appRuntimeClient":1,"appStageAsk":1,"appStageAskClose":1,"applyAdminUi":1,"applyChrome":1,"applyHeaderChoice":1,"applyRoomAudio":1,"applyRoomHelp":1,"applyViewerCrops":1,"armMeetDialogs":1,"atPwPrompt":1,"audioDump":1,"awayFull":1,"blurA":0,"blurActx":0,"blurB":0,"blurBctx":0,"blurNote":1,"bootMeetSession":1,"bridgeAgentToPage":1,"camBtn":0,"capCardRefresh":1,"capLangAsk":1,"capPaint":1,"capSourceOpen":1,"carryEarAc":1,"carryIo":1,"ccDockBtn":0,"chatPanel":0,"chatPanelOpen":1,"chatTrace":1,"clearAdminClose":1,"clearAppView":1,"closeFsView":1,"closeMoreForWait":1,"closeTileWin":1,"comfyStadMeta":1,"comfyStadRoster":1,"countClosedChat":1,"ctAgendaOpen":1,"ctAppInfo":1,"ctInit":1,"ctPaintAgendaBtn":1,"ctPaintBar":1,"ctPresent":1,"dbgMeterShow":1,"docPipPaint":1,"dropStaleShareWin":1,"emitLiveTranscript":1,"enterPip":1,"explainHeldVideo":1,"foldBarForApp":1,"frozenTileSkip":1,"fsFitPaint":1,"fsRefresh":1,"fsRefreshIfOpen":1,"handBtn":0,"hideAppMissing":1,"hideCaptions":1,"hideDialogs":1,"hideJoinPwModal":1,"hideResharePrompt":1,"inviteLinkForModal":1,"islandNoteTick":1,"keysModal":0,"layout":1,"lgLeave":1,"loadScriptOnce":1,"lobbyPwOpenRoom":1,"makeTile":1,"massBannerTick":1,"micBtn":0,"newCanvas":1,"openBlurWhy":1,"openFsView":1,"openShareLiveModal":1,"openStageAdjust":1,"openTileWin":1,"paintAirKind":1,"paintAloneCard":1,"paintAppGifFromLane":1,"paintAppRoomBody":1,"paintAppWho":1,"paintAssistant":1,"paintAudienceReacts":1,"paintAvatarCanvas":1,"paintAvatarImg":1,"paintAwayMark":1,"paintBcQuiet":1,"paintBlurWhy":1,"paintBotEyes":1,"paintBotView":1,"paintBroadcastChrome":1,"paintBroadcastIdent":1,"paintBroadcastJoinNote":1,"paintBroadcastRole":1,"paintBroadcastSeats":1,"paintCallBanner":1,"paintCallOn":1,"paintCallState":1,"paintCcLocal":1,"paintCcState":1,"paintCcView":1,"paintChatBadge":1,"paintChatBtn":1,"paintChatCount":1,"paintChatGate":1,"paintChatNew":1,"paintChipBottom":1,"paintControls":1,"paintFaders":0,"paintFit":1,"paintHand":1,"paintHelpTip":1,"paintInviteSlot":1,"paintJoinVeil":1,"paintLiveBadge":1,"paintMyAvatarPreview":1,"paintOnAirBadge":1,"paintOnAirSide":1,"paintPeopleIfOpen":1,"paintProgressSteps":1,"paintQaBand":1,"paintRaisedHands":1,"paintRb":1,"paintRbNow":1,"paintRoomTitle":1,"paintRoomTrust":1,"paintRoster":1,"paintShare":1,"paintShareUrl":1,"paintSoloApp":1,"paintSpkBtn":1,"paintStadiumTile":1,"paintStage":1,"paintStageBlurWhy":1,"paintStageMod":1,"paintStagePlate":1,"paintStageStrip":1,"paintStageVoteTargets":1,"paintStatusAlert":1,"paintStatusLine":1,"paintStatusNotice":1,"paintStatusSheet":1,"paintStatusWhy":1,"paintStreamLink":1,"paintTabTitle":1,"paintTileChrome":1,"paintTileOnGrid":1,"paintTranscriptControls":1,"paintTxMark":1,"paintVq":1,"paintWaitDoor":1,"paintWaitingSelf":1,"paintWspChip":1,"paintWspStatus":1,"pauseNote":1,"phoneLayout":1,"pipCardModel":1,"pipNote":1,"pipReaim":1,"pipReturn":1,"pipSource":1,"placeClearLine":1,"placeDeskName":1,"placeDockForWidth":1,"placeDockPopover":1,"placeFit":1,"placeHandq":1,"placeQaBand":1,"rbCanvas":1,"reassertVisLift":1,"recBtn":0,"refreshAudioBtn":1,"refreshAvatarSurfaces":1,"releaseHeld":1,"renderChat":1,"renderFiles":1,"renderHandq":1,"renderLobbyList":1,"renderQa":1,"renderTranscript":1,"replaceAddress":1,"roomAudioOn":1,"setAppFavicon":1,"setAppGif":1,"setBotView":1,"setTileLetter":1,"sgaAppOwner":1,"showAppMissing":1,"showAppPane":1,"showAppearCard":1,"showAvatarTrack":1,"showBlurNoteUnlessDialog":1,"showCamBack":1,"showCaption":1,"showClosedDialog":1,"showFlipButton":1,"showForkPick":1,"showHeldScreen":1,"showInviteModal":1,"showLeftDialog":1,"showLoadRefusal":1,"showLobby":1,"showPwModal":1,"showRecOptions":1,"showRecReplay":1,"showRelayBusy":1,"showResharePrompt":1,"showServiceEnded":1,"showShareLink":1,"showWhoIfOpen":1,"stadiumEl":0,"stageFeedShows":1,"stagefeedEl":0,"stopLobbyPreview":1,"syncModalFocus":1,"takeFaceReact":1,"tickAdminClose":1,"tileNote":1,"timingRow":0,"topNameModal":1,"turnPaint":1,"twButton":1,"unmuteBtn":0,"updateAppButtons":1,"updateBlurAllBtn":1,"updateCamAllBtn":1,"updateMuteAllBtn":1,"updateReload":1,"updateShareAllBtn":1,"viewTestHooks":1,"waitPaint":1,"wakeMeet":1,"wireFsResize":1,"wireMediaSession":1}, needs: {"core":{"vqManual":0,"BROADCAST":0,"serviceHeard":0,"stageIds":0,"adminsNow":0,"bcHostStored":0,"myId":0,"roomHeadCount":1,"leftDialogUp":1,"myStatus":0,"bcWatchingViewer":1,"barKind":1,"bcMayPublishAv":1,"idleDock":1,"barPlan":1,"uiText":1,"dockLabelSet":1,"hasAdminRoom":0,"uiLang":1,"ROOM":0,"paintBroadcastAir":1,"bcRole":1,"paintOnAir":1,"applyAvatarFile":1,"refreshAllTiles":1,"broadcastStatus":1,"pushLeaf":1,"rbNow":0,"bcPreInRoom":1,"becomeAssistant":1,"holdDoor":0,"amAdmin":0,"waitQueue":0,"meetWait":0,"statusWords":0,"sayState":0,"liveInCall":1,"blurWhyWords":1,"tileBlurWhy":1,"statusOf":0,"hbLastAt":0,"hbLastMono":0,"frozeGap":0,"frozeThisBeat":1,"peers":0,"reactRoomState":1,"IS_MOBILE":0,"meTile":0,"seatDark":0,"forcedCamOff":0,"modBlurOn":0,"shareBlocked":0,"speakingOf":0,"docPip":0,"myName":0,"PIP_CARD_ROWS":0,"displayName":1,"pipCard":0,"PIP_CARD_W":0,"PIP_CARD_H":0,"pipCardPaint":1,"pipCardRun":1,"pipCardReady":1,"clearPipAuto":1,"docPipAim":1,"pipFallback":1,"setStatus":0,"pipAutoT":0,"IS_ANDROID":0,"inMeetingNow":1,"backWatch":0,"backGuardDrop":1,"sendVisPark":1,"botViewOn":0,"botParks":1,"dcSend":0,"visParkSent":0,"autoFsOff":0,"leaving":0,"mediaAskPending":0,"setAutoFsOff":1,"admGraceT":0,"admTickT":0,"admDeadline":0,"closeRoomNoHost":1,"updateLeaving":0,"bcOnAir":1,"waitDeclined":0,"UPDATE_RESUME_KEY":0,"updateRoomKey":0,"blurLevel":0,"myIdentitySeed":0,"roomPw":0,"pwProvisional":0,"progressStart":1,"progressTick":1,"progressWords":1,"homeHref":1,"fsInline":0,"fsSel":0,"fsAutoPid":0,"fsZoomBox":0,"fsZoomIds":0,"fsFarTalkers":1,"fsFarCells":1,"fsCropBox":1,"viewNote":1,"fsFeedLive":1,"blurLevelFor":1,"sharingScreen":0,"nameInitial":1,"fsPickAuto":1,"fsBlurClass":1,"fsAutoKey":0,"fsFollow":0,"fsFollowChanged":1,"fsOpen":0,"fsTick":0,"fsFollowT":0,"stageModList":1,"wireModbar":1,"rosterNames":0,"paintModbarButtons":1,"modOf":1,"AI_SPARK_SVG":0,"localBlurPower":1,"setMod":1,"blurOffer":1,"hostWords":1,"reactStats":0,"focusId":0,"rosterTiles":0,"iAmWaiting":1,"rosterIds":0,"meshNode":0,"shadeKey":1,"stageFeedVideo":1,"contentHas":1,"ctNote":1,"VMODE":0,"viewWord":1,"viewStore":0,"setView":1,"syncFocus":1,"CT":0,"appKey":0,"ctAgHidden":1,"ctText":1,"ctAspect":1,"turnHeld":1,"shareFirewallWords":1,"ctLabel":1,"ctSelect":1,"ctAgendaShortTime":1,"ctAgendaOver":1,"ctCanEditAgenda":1,"ctBring":1,"ctAgendaTickArm":1,"ctSpeakerPick":1,"ctAgCtx":1,"ctPaintAgendaClock":1,"ctAgendaPublish":1,"ctAgendaHide":1,"ctRefresh":1,"ctAgendaWhoText":1,"ctFocusSources":1,"tileWin":0,"applyViewerCrop":1,"localStream":0,"viewerCropOf":1,"vcrops":0,"saveVcrops":1,"twIdOf":1,"twPeer":1,"twCaptionsButton":1,"updateTile":1,"stadFaceIdAt":1,"ensureAc":1,"carryOutAc":0,"newMeetAudioContext":1,"pwBlocked":0,"rosterRows":1,"updateStatus":1,"paintRosterSoon":1,"mayHost":1,"waitingSince":1,"setWaitingRoom":1,"waitingRows":1,"hostRename":1,"RENAME_RESET":0,"modTable":0,"hostSpot":1,"bcEndedInRoom":1,"admins":0,"stageClaimOf":0,"roomJoinedAt":0,"turnLinks":0,"turnFacts":0,"ctTurnPaint":1,"sessId":0,"av":0,"capOn":0,"subsOn":0,"subsMeetId":0,"capBusy":0,"capTry":1,"adminFace":0,"relayBusyAt":0,"net":0,"camPeer":0,"mediaOk":0,"meshCoord":0,"meshSeat":0,"peerAway":0,"clog":0,"dropPeer":1,"clearRosterTiles":1,"startMesh":1,"islandApart":1,"esc":0,"bcActButtons":1,"learnFoldedNames":1,"SCALE":0,"applyBcAct":1,"bannedOut":0,"MEET_PATH":0,"storePw":1,"pwHeldOnTyping":1,"pwEpoch":0,"grantHoldUntil":0,"room":0,"rekeyRoom":1,"pwProof":0,"pwChainFailed":1,"PW_ADMIN_ONLY":0,"files":0,"purgeAllFiles":1,"pwSetRoom":1,"deriveAdminKey":1,"adoptAdmKey":1,"admStoreKey":0,"admKey":0,"mirrorRoomState":1,"whoRows":1,"whoFaceState":1,"whoObserve":1,"whoRefresh":0,"WHO_GROUPS":0,"whoAddrLines":1,"pwBan":1,"whoFileText":1,"isCastEntry":1,"CAST_SURFACE":0,"loadList":1,"MEET_MARKS":0,"MEET_HIST":0,"lobRow":1,"joinAv":0,"BC_INTENT":0,"stashJoinAv":1,"mintHostKey":1,"shortCode":0,"slugRoom":1,"lobbyPwHandOver":1,"setPersonalBlur":1,"parseMeetInput":1,"toggleBookmark":1,"saveList":1,"aloneCardShut":0,"soloShare":0,"inviteFromSolo":1,"appClientCtl":0,"callOn":0,"DEBUG_ON":0,"unread":0,"reactAlert":0,"messageMentionsMe":1,"mentionToken":1,"linksAllowed":1,"viewerMayReact":1,"withMentions":1,"DEL_ICON":0,"avatarChip":1,"REACTS":0,"reactorNames":1,"reactOpen":0,"lineOpen":0,"paintLog":1,"prayOn":0,"modStarOn":1,"lateJoinerSeesHistory":0,"slowModeOn":0,"chatLinksOn":0,"logNearBottom":1,"toggleLine":1,"takeReact":1,"sendAll":1,"applyOwnDelete":1,"admSigned":1,"applyCdel":1,"takeTomb":1,"uid":0,"mayPinFiles":1,"MAX_FILE":0,"chatOpen":0,"qaShowOk":0,"recSrcDirty":0,"roomPastSection":0,"knownTotal":1,"stageViewNow":0,"stageGrantLive":0,"enforceBroadcastSeat":1,"canStage":0,"myDevHash":0,"stageNeed":0,"vupDismissedSig":0,"setStage":1,"mayShareScreen":0,"rbFmt":1,"rbToggle":1,"rbStop":1,"bcLastService":0,"rbNoun":0,"rbTitle":1,"findSharedApp":1,"canIRunApp":0,"shareSheetFocusId":1,"appHiddenSid":0,"reconcileApp":1,"dlogOut":0,"DLOG":0,"dlogRec":0,"dlogStoreGet":1,"dlogRecStart":1,"sendAvatarTo":1,"setVq":1,"TIMING_KEY":0,"ccShow":0,"trDirty":0,"trBlocks":1,"trLang":1,"trNote":1,"capName":1,"capPick":1,"capTrust":0,"capRows":1,"capNowNote":1,"CC_LANG_KEY":0,"CC_LANGS":0,"capPublish":1,"ccLangLabel":0,"capLang":0,"capLangName":1,"capLangMine":1,"capLangTag":1,"trLangOf":0,"ccLocalBlocked":1,"ccLocal":0,"ccMB":0,"CC_ON_PHONE":0,"ccLocalQ":0,"lsSet":0,"lsGet":0,"capSend":1,"txMarkWhy":1,"trMode":1,"setCapSend":1,"setTrMode":1,"leaveSeededService":1,"bcSeeding":0,"releaseLeaveAsk":1,"applyPageHeader":1,"dockCalmMs":0,"statusHoldUntil":0,"AUDIENCE_REACTS":0,"reactRateOk":1,"faceReactRx":0,"faceReacts":0,"faceDrawnHere":1,"sendFaceFrame":1,"audienceReactCounts":0,"sendAudienceReact":1,"focusOf":1,"amGloballyMuted":1,"micLockWords":1,"leaveMeeting":1,"updateMediaSession":1,"heldNoteSeen":1,"markHeldNote":1,"blurHold":1,"devOf":0,"modalFocusables":1,"modalDismissBtn":1,"viewerShareUrl":1,"bcStartAt":1,"bcWhenWords":1,"armCopiedLabel":1,"linkRowHtml":1,"createAdminRoom":1,"params":0,"BC_AT_KEY":0,"holdLeaveAsk":1,"shortcutTyping":1,"rejoinHref":0,"stopApp":1,"appMode":0,"appCopy":0,"appPaneOn":0,"appPaneName":0,"soloCtl":0,"appHostCtl":0,"currentAppHelpMd":1,"currentAppCredits":1,"appEv":0,"appClientStop":0,"appLeadable":0,"appLeadOn":0,"stopRoomApp":1,"appLeadSet":0,"appStageConsent":0,"appStageApply":1,"appStagePlan":1,"importGif":1,"runApp":1,"installRunApp":1,"runLinkTarget":1,"RUN_DEFAULTS":0,"fetchGifFromUrl":1,"runChoices":1,"aiNotesSetting":1,"trs":0,"botViewWant":0,"agentStart":1,"AGENT_FORCED":0,"backToNormalView":1,"agentCore":0,"agentChat":1,"botHidden":1,"hideBotsOn":0,"hideBotsT":0,"ac":0,"relayVia":0,"relayJobs":0,"turnNote":1,"roomE2E":0,"prevRoomE2E":0,"myIdentity":0,"dbgMeterPanel":0,"occPid":0,"screenSteppedUp":0,"stageSenders":0,"auxSenders":0,"subWant":0,"newNeg":0,"roomDig":1,"digestMode":0,"roomConsentIds":0,"freshSt":0,"armAppRoomTick":0,"appRoomOn":0,"shareOnlyStage":1,"meOnStage":1,"personOnStage":1,"screenSharers":0,"trWrites":1,"participantCount":1,"timing":0,"whisperReady":0,"roomKey":0,"LOB_PW_KEY":0,"model":0,"act":0},"media":{"resumeReload":1,"micTap":1,"stashRecoverMedia":1,"sdView":0,"mosIn":0,"STAGE_FACE_SETTLE_MS":0,"stopScreenShare":1,"stageFrameVal":0,"setStageFrame":1,"normStageFrame":1,"spkDeviceId":0,"AVATAR_W":0,"AVATAR_H":0,"avatarSharp":0,"blurSenderFrac":1,"blurDraw":1,"startLocalView":1,"refreshOutbound":1,"reviveCamera":1,"tileHolds":1,"applyBuses":1,"blurSized":1,"openCamChooser":1,"camChooserOpen":1,"dismissCamChooser":1,"lateMedia":1,"releaseAudio":1,"compOf":0,"trackAspect":1,"wkHolds":1,"wkBindVideo":1,"displayCount":1,"qaStageSt":0,"placeStageMarks":1,"canScreenShare":0,"shareRecoverMode":0,"startScreenShare":1,"rbStart":1,"recoverShareTimer":0,"applyCcAll":1,"mix":0,"rememberMix":1,"toggleSing":1,"paintTiming":1,"applyGrid":1,"speechRunning":1,"stopSpeech":1,"syncSpeech":1,"ccEngine":1,"phoneCaptions":1,"whisperAllowed":0,"wspPaintSafe":1,"WSP_WEAK":0,"CC_WHISPER_ANYWAY_KEY":0,"CC_ENGINE_KEY":0,"wspResume":1,"whisperInstalling":0,"wspInst":0,"WHISPER_APP_ID":0,"installWhisper":1,"armWhisperRescan":1,"whisperSupported":1,"CC_TRANSLATE_KEY":0,"whisperChosen":0,"wspState":1,"wspWorking":0,"capsRunningNow":1,"wspStateText":1,"wspStSig":0,"wspRetry":1,"wspChipGone":1,"wspChip":0,"WSP_CHIP_MS":0,"wspTickAt":0,"WSP_TICK_MS":0,"wspCaps":0,"wspQ":0,"wspStarved":0,"WSP_STARVE_MS":0,"WSP_STARVE_WIN":0,"WSP_STARVE_N":0,"wspToBrowser":1,"CC_WORDS_KEY":0,"trEnSync":1,"wspSync":1,"speechGaveUp":0,"stopWhisper":1,"wspRelease":1,"wspChipRoom":0,"WHISPER_SEED_KEY":0,"whisperSeedBlocked":1,"browserCaptionsMissing":1,"transcriptFile":1,"recDownload":1,"recFileName":1,"recRelease":1,"recStarting":0,"canScreenRecord":0,"recSources":1,"recDefaultQuality":1,"recLibraryOption":1,"openModal":1,"startRec":1,"refreshTrBtn":1,"callStateBox":0,"schedReconcile":1,"canRaiseHand":1,"speakerChoices":1,"openKeys":1,"camFacing":0,"camDeviceId":0,"regrabCamera":1,"camPickThen":0,"camChooserAnchor":0,"closeCamChooser":1,"pickCamera":1,"micChooserOpen":1,"closeMicChooser":1,"blockedAudio":0,"downFolds":0,"mosStandby":0,"acClockInfo":1,"audioKickArmed":0,"wkEar":0,"stageEar":0,"sdViewSt":0,"prodPack":0,"avHold":0,"stripPack":0,"sentVideoTrack":1,"degOf":0,"STAGE_FACE_PX":0,"roomPack":0,"packLoop":0,"mosJobs":0,"mosAnn":0,"mosFb":0,"dbgRowFaces":0,"blurPipe":0,"ctScreenTrack":1,"soundHeld":1}}, stamp: "d49d42da" };
+  var api = { name: "view", run: part, count: 719, exports: {"appCopyPaint":1,"appRuntimeBoot":1,"appRuntimeClient":1,"appStageAsk":1,"appStageAskClose":1,"applyAdminUi":1,"applyChrome":1,"applyHeaderChoice":1,"applyRoomAudio":1,"applyRoomHelp":1,"applyViewerCrops":1,"armMeetDialogs":1,"atPwPrompt":1,"audioDump":1,"awayFull":1,"blurA":0,"blurActx":0,"blurB":0,"blurBctx":0,"blurNote":1,"bootMeetSession":1,"bridgeAgentToPage":1,"camBtn":0,"capCardRefresh":1,"capLangAsk":1,"capPaint":1,"capSourceOpen":1,"carryEarAc":1,"carryIo":1,"ccDockBtn":0,"chatPanel":0,"chatPanelOpen":1,"chatTrace":1,"clearAdminClose":1,"clearAppView":1,"closeFsView":1,"closeMoreForWait":1,"closeTileWin":1,"comfyStadMeta":1,"comfyStadRoster":1,"countClosedChat":1,"ctAgendaOpen":1,"ctAppInfo":1,"ctInit":1,"ctPaintAgendaBtn":1,"ctPaintBar":1,"ctPresent":1,"dbgMeterShow":1,"docPipPaint":1,"dropStaleShareWin":1,"emitLiveTranscript":1,"enterPip":1,"explainHeldVideo":1,"foldBarForApp":1,"frozenTileSkip":1,"fsFitPaint":1,"fsRefresh":1,"fsRefreshIfOpen":1,"handBtn":0,"hideAppMissing":1,"hideCaptions":1,"hideDialogs":1,"hideJoinPwModal":1,"hideResharePrompt":1,"inviteLinkForModal":1,"islandNoteTick":1,"keysModal":0,"layout":1,"lgLeave":1,"loadScriptOnce":1,"lobbyPwOpenRoom":1,"makeTile":1,"massBannerTick":1,"micBtn":0,"newCanvas":1,"openBlurWhy":1,"openFsView":1,"openShareLiveModal":1,"openStageAdjust":1,"openTileWin":1,"paintAirKind":1,"paintAloneCard":1,"paintAppGifFromLane":1,"paintAppRoomBody":1,"paintAppWho":1,"paintAssistant":1,"paintAudienceReacts":1,"paintAvatarCanvas":1,"paintAvatarImg":1,"paintAwayMark":1,"paintBcQuiet":1,"paintBlurWhy":1,"paintBotEyes":1,"paintBotView":1,"paintBroadcastChrome":1,"paintBroadcastIdent":1,"paintBroadcastJoinNote":1,"paintBroadcastRole":1,"paintBroadcastSeats":1,"paintCallBanner":1,"paintCallOn":1,"paintCallState":1,"paintCcLocal":1,"paintCcState":1,"paintCcView":1,"paintChatBadge":1,"paintChatBtn":1,"paintChatCount":1,"paintChatGate":1,"paintChatNew":1,"paintChipBottom":1,"paintControls":1,"paintFaders":0,"paintFit":1,"paintHand":1,"paintHelpTip":1,"paintInviteSlot":1,"paintJoinVeil":1,"paintLiveBadge":1,"paintMyAvatarPreview":1,"paintOnAirBadge":1,"paintOnAirSide":1,"paintPeopleIfOpen":1,"paintProgressSteps":1,"paintQaBand":1,"paintRaisedHands":1,"paintRb":1,"paintRbNow":1,"paintRoomTitle":1,"paintRoomTrust":1,"paintRoster":1,"paintShare":1,"paintShareUrl":1,"paintSoloApp":1,"paintSpkBtn":1,"paintStadiumTile":1,"paintStage":1,"paintStageBlurWhy":1,"paintStageMod":1,"paintStagePlate":1,"paintStageStrip":1,"paintStageVoteTargets":1,"paintStatusAlert":1,"paintStatusLine":1,"paintStatusNotice":1,"paintStatusSheet":1,"paintStatusWhy":1,"paintStreamLink":1,"paintTabTitle":1,"paintTileChrome":1,"paintTileOnGrid":1,"paintTranscriptControls":1,"paintTxMark":1,"paintVq":1,"paintWaitDoor":1,"paintWaitingSelf":1,"paintWspChip":1,"paintWspStatus":1,"pauseNote":1,"phoneLayout":1,"pipCardModel":1,"pipNote":1,"pipReaim":1,"pipReturn":1,"pipSource":1,"placeClearLine":1,"placeDeskName":1,"placeDockForWidth":1,"placeDockPopover":1,"placeFit":1,"placeHandq":1,"placeQaBand":1,"rbCanvas":1,"reassertVisLift":1,"recBtn":0,"refreshAudioBtn":1,"refreshAvatarSurfaces":1,"releaseHeld":1,"renderChat":1,"renderFiles":1,"renderHandq":1,"renderLobbyList":1,"renderQa":1,"renderTranscript":1,"replaceAddress":1,"roomAudioOn":1,"setAppFavicon":1,"setAppGif":1,"setBotView":1,"setTileLetter":1,"sgaAppOwner":1,"showAppMissing":1,"showAppPane":1,"showAppearCard":1,"showAvatarTrack":1,"showBlurNoteUnlessDialog":1,"showCamBack":1,"showCaption":1,"showClosedDialog":1,"showFlipButton":1,"showForkPick":1,"showHeldScreen":1,"showInviteModal":1,"showLeftDialog":1,"showLoadRefusal":1,"showLobby":1,"showPwModal":1,"showRecOptions":1,"showRecReplay":1,"showRelayBusy":1,"showResharePrompt":1,"showServiceEnded":1,"showShareLink":1,"showWhoIfOpen":1,"stadiumEl":0,"stageFeedShows":1,"stagefeedEl":0,"stopLobbyPreview":1,"syncModalFocus":1,"takeFaceReact":1,"tickAdminClose":1,"tileNote":1,"timingRow":0,"topNameModal":1,"turnPaint":1,"twButton":1,"unmuteBtn":0,"updateAppButtons":1,"updateBlurAllBtn":1,"updateCamAllBtn":1,"updateMuteAllBtn":1,"updateReload":1,"updateShareAllBtn":1,"viewTestHooks":1,"waitPaint":1,"wakeMeet":1,"wireFsResize":1,"wireMediaSession":1}, needs: {"core":{"vqManual":0,"serviceHeard":0,"stageIds":0,"adminsNow":0,"bcHostStored":0,"roomHeadCount":1,"leftDialogUp":1,"bcWatchingViewer":1,"barKind":1,"bcMayPublishAv":1,"idleDock":1,"barPlan":1,"uiText":1,"dockLabelSet":1,"hasAdminRoom":0,"uiLang":1,"ROOM":0,"paintBroadcastAir":1,"bcRole":1,"paintOnAir":1,"applyAvatarFile":1,"refreshAllTiles":1,"broadcastStatus":1,"pushLeaf":1,"bcPreInRoom":1,"becomeAssistant":1,"holdDoor":0,"amAdmin":0,"statusWords":0,"sayState":0,"liveInCall":1,"blurWhyWords":1,"tileBlurWhy":1,"frozeThisBeat":1,"reactRoomState":1,"seatDark":0,"forcedCamOff":0,"modBlurOn":0,"shareBlocked":0,"docPip":0,"myName":0,"displayName":1,"pipCard":0,"pipCardPaint":1,"pipCardRun":1,"pipCardReady":1,"clearPipAuto":1,"docPipAim":1,"pipFallback":1,"setStatus":0,"pipAutoT":0,"inMeetingNow":1,"backWatch":0,"backGuardDrop":1,"sendVisPark":1,"botViewOn":0,"botParks":1,"dcSend":0,"autoFsOff":0,"setAutoFsOff":1,"admGraceT":0,"admTickT":0,"admDeadline":0,"closeRoomNoHost":1,"updateLeaving":0,"bcOnAir":1,"updateRoomKey":0,"blurLevel":0,"progressStart":1,"progressTick":1,"progressWords":1,"homeHref":1,"fsInline":0,"fsSel":0,"fsAutoPid":0,"fsZoomBox":0,"fsZoomIds":0,"fsFarTalkers":1,"fsFarCells":1,"fsCropBox":1,"viewNote":1,"fsFeedLive":1,"blurLevelFor":1,"sharingScreen":0,"nameInitial":1,"fsPickAuto":1,"fsBlurClass":1,"fsAutoKey":0,"fsFollow":0,"fsFollowChanged":1,"fsOpen":0,"fsTick":0,"fsFollowT":0,"stageModList":1,"wireModbar":1,"paintModbarButtons":1,"modOf":1,"localBlurPower":1,"setMod":1,"blurOffer":1,"hostWords":1,"focusId":0,"iAmWaiting":1,"shadeKey":1,"stageFeedVideo":1,"contentHas":1,"ctNote":1,"VMODE":0,"viewWord":1,"setView":1,"syncFocus":1,"CT":0,"appKey":0,"ctAgHidden":1,"ctText":1,"ctAspect":1,"turnHeld":1,"shareFirewallWords":1,"ctLabel":1,"ctSelect":1,"ctAgendaShortTime":1,"ctAgendaOver":1,"ctCanEditAgenda":1,"ctBring":1,"ctAgendaTickArm":1,"ctSpeakerPick":1,"ctAgCtx":1,"ctPaintAgendaClock":1,"ctAgendaPublish":1,"ctAgendaHide":1,"ctRefresh":1,"ctAgendaWhoText":1,"ctFocusSources":1,"applyViewerCrop":1,"viewerCropOf":1,"saveVcrops":1,"twIdOf":1,"twPeer":1,"twCaptionsButton":1,"updateTile":1,"stadFaceIdAt":1,"ensureAc":1,"carryOutAc":0,"newMeetAudioContext":1,"pwBlocked":0,"rosterRows":1,"updateStatus":1,"paintRosterSoon":1,"mayHost":1,"waitingSince":1,"setWaitingRoom":1,"waitingRows":1,"hostRename":1,"hostSpot":1,"bcEndedInRoom":1,"stageClaimOf":0,"ctTurnPaint":1,"capOn":0,"subsOn":0,"subsMeetId":0,"capTry":1,"adminFace":0,"relayBusyAt":0,"camPeer":0,"mediaOk":0,"meshCoord":0,"meshSeat":0,"peerAway":0,"clog":0,"dropPeer":1,"clearRosterTiles":1,"startMesh":1,"islandApart":1,"esc":0,"bcActButtons":1,"learnFoldedNames":1,"applyBcAct":1,"storePw":1,"pwHeldOnTyping":1,"grantHoldUntil":0,"rekeyRoom":1,"pwProof":0,"pwChainFailed":1,"purgeAllFiles":1,"pwSetRoom":1,"deriveAdminKey":1,"adoptAdmKey":1,"admStoreKey":0,"mirrorRoomState":1,"whoRows":1,"whoFaceState":1,"whoObserve":1,"whoRefresh":0,"whoAddrLines":1,"pwBan":1,"whoFileText":1,"isCastEntry":1,"loadList":1,"lobRow":1,"stashJoinAv":1,"mintHostKey":1,"shortCode":0,"slugRoom":1,"lobbyPwHandOver":1,"setPersonalBlur":1,"parseMeetInput":1,"toggleBookmark":1,"saveList":1,"aloneCardShut":0,"inviteFromSolo":1,"appClientCtl":0,"callOn":0,"DEBUG_ON":0,"unread":0,"reactAlert":0,"messageMentionsMe":1,"mentionToken":1,"linksAllowed":1,"viewerMayReact":1,"withMentions":1,"avatarChip":1,"reactorNames":1,"reactOpen":0,"lineOpen":0,"paintLog":1,"prayOn":0,"modStarOn":1,"lateJoinerSeesHistory":0,"slowModeOn":0,"chatLinksOn":0,"logNearBottom":1,"toggleLine":1,"takeReact":1,"sendAll":1,"applyOwnDelete":1,"admSigned":1,"applyCdel":1,"takeTomb":1,"uid":0,"mayPinFiles":1,"chatOpen":0,"recSrcDirty":0,"roomPastSection":0,"knownTotal":1,"stageViewNow":0,"stageGrantLive":0,"enforceBroadcastSeat":1,"canStage":0,"stageNeed":0,"vupDismissedSig":0,"setStage":1,"mayShareScreen":0,"rbFmt":1,"rbToggle":1,"rbStop":1,"rbNoun":0,"rbTitle":1,"findSharedApp":1,"canIRunApp":0,"shareSheetFocusId":1,"appHiddenSid":0,"reconcileApp":1,"dlogOut":0,"dlogStoreGet":1,"dlogRecStart":1,"sendAvatarTo":1,"setVq":1,"trDirty":0,"trBlocks":1,"trLang":1,"trNote":1,"capName":1,"capPick":1,"capRows":1,"capNowNote":1,"capPublish":1,"ccLangLabel":0,"capLangName":1,"capLangMine":1,"capLangTag":1,"trLangOf":0,"ccLocalBlocked":1,"ccMB":0,"lsSet":0,"lsGet":0,"capSend":1,"txMarkWhy":1,"trMode":1,"setCapSend":1,"setTrMode":1,"leaveSeededService":1,"bcSeeding":0,"releaseLeaveAsk":1,"applyPageHeader":1,"reactRateOk":1,"faceDrawnHere":1,"sendFaceFrame":1,"sendAudienceReact":1,"focusOf":1,"amGloballyMuted":1,"micLockWords":1,"leaveMeeting":1,"updateMediaSession":1,"heldNoteSeen":1,"markHeldNote":1,"blurHold":1,"modalFocusables":1,"modalDismissBtn":1,"viewerShareUrl":1,"bcStartAt":1,"bcWhenWords":1,"armCopiedLabel":1,"linkRowHtml":1,"createAdminRoom":1,"holdLeaveAsk":1,"shortcutTyping":1,"stopApp":1,"appMode":0,"appPaneOn":0,"appPaneName":0,"appHostCtl":0,"currentAppHelpMd":1,"currentAppCredits":1,"appEv":0,"appClientStop":0,"appLeadable":0,"appLeadOn":0,"stopRoomApp":1,"appLeadSet":0,"appStageConsent":0,"appStageApply":1,"appStagePlan":1,"importGif":1,"runApp":1,"installRunApp":1,"runLinkTarget":1,"fetchGifFromUrl":1,"runChoices":1,"aiNotesSetting":1,"botViewWant":0,"agentStart":1,"backToNormalView":1,"agentChat":1,"botHidden":1,"hideBotsOn":0,"hideBotsT":0,"turnNote":1,"dbgMeterPanel":0,"occPid":0,"newNeg":0,"roomDig":1,"digestMode":0,"roomConsentIds":0,"freshSt":0,"armAppRoomTick":0,"appRoomOn":0,"shareOnlyStage":1,"meOnStage":1,"personOnStage":1,"screenSharers":0,"trWrites":1,"participantCount":1,"timing":0,"whisperReady":0,"roomKey":0,"model":0,"act":0},"media":{"resumeReload":1,"micTap":1,"stashRecoverMedia":1,"sdView":0,"mosIn":0,"STAGE_FACE_SETTLE_MS":0,"stopScreenShare":1,"stageFrameVal":0,"setStageFrame":1,"normStageFrame":1,"spkDeviceId":0,"AVATAR_W":0,"AVATAR_H":0,"avatarSharp":0,"blurSenderFrac":1,"blurDraw":1,"startLocalView":1,"refreshOutbound":1,"reviveCamera":1,"tileHolds":1,"applyBuses":1,"blurSized":1,"openCamChooser":1,"camChooserOpen":1,"dismissCamChooser":1,"lateMedia":1,"releaseAudio":1,"compOf":0,"trackAspect":1,"wkHolds":1,"wkBindVideo":1,"displayCount":1,"qaStageSt":0,"placeStageMarks":1,"canScreenShare":0,"shareRecoverMode":0,"startScreenShare":1,"rbStart":1,"recoverShareTimer":0,"applyCcAll":1,"mix":0,"rememberMix":1,"toggleSing":1,"paintTiming":1,"applyGrid":1,"speechRunning":1,"stopSpeech":1,"syncSpeech":1,"ccEngine":1,"phoneCaptions":1,"whisperAllowed":0,"wspPaintSafe":1,"WSP_WEAK":0,"CC_WHISPER_ANYWAY_KEY":0,"CC_ENGINE_KEY":0,"wspResume":1,"whisperInstalling":0,"wspInst":0,"WHISPER_APP_ID":0,"installWhisper":1,"armWhisperRescan":1,"whisperSupported":1,"CC_TRANSLATE_KEY":0,"whisperChosen":0,"wspState":1,"wspWorking":0,"capsRunningNow":1,"wspStateText":1,"wspStSig":0,"wspRetry":1,"wspChipGone":1,"wspChip":0,"WSP_CHIP_MS":0,"wspTickAt":0,"WSP_TICK_MS":0,"wspCaps":0,"wspQ":0,"wspStarved":0,"WSP_STARVE_MS":0,"WSP_STARVE_WIN":0,"WSP_STARVE_N":0,"wspToBrowser":1,"CC_WORDS_KEY":0,"trEnSync":1,"wspSync":1,"speechGaveUp":0,"stopWhisper":1,"wspRelease":1,"wspChipRoom":0,"WHISPER_SEED_KEY":0,"whisperSeedBlocked":1,"browserCaptionsMissing":1,"transcriptFile":1,"recDownload":1,"recFileName":1,"recRelease":1,"recStarting":0,"canScreenRecord":0,"recSources":1,"recDefaultQuality":1,"recLibraryOption":1,"openModal":1,"startRec":1,"refreshTrBtn":1,"callStateBox":0,"schedReconcile":1,"canRaiseHand":1,"speakerChoices":1,"openKeys":1,"camFacing":0,"camDeviceId":0,"regrabCamera":1,"camPickThen":0,"camChooserAnchor":0,"closeCamChooser":1,"pickCamera":1,"micChooserOpen":1,"closeMicChooser":1,"blockedAudio":0,"downFolds":0,"mosStandby":0,"acClockInfo":1,"audioKickArmed":0,"wkEar":0,"stageEar":0,"sdViewSt":0,"prodPack":0,"avHold":0,"stripPack":0,"sentVideoTrack":1,"degOf":0,"STAGE_FACE_PX":0,"roomPack":0,"packLoop":0,"mosJobs":0,"mosAnn":0,"mosFb":0,"dbgRowFaces":0,"blurPipe":0,"ctScreenTrack":1,"soundHeld":1}}, stamp: "d49d42da" };
   (GifOS.coreParts = GifOS.coreParts || {})["view"] = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
