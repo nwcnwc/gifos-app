@@ -131,11 +131,9 @@
       const out = [], seen = new Set();
       for (const [pid, slot] of C.inboundPlan()) {
         const k = pid + '|' + slot, st = C.owedStream(pid, slot); seen.add(k);
-        const n = { video: -1, audio: -1 };   // per KIND (L29.5): the core folds which kinds the slot owes
-        if (st) for (const t of st.getTracks()) if (t && t.kind in n) { if (n[t.kind] < 0) n[t.kind] = 0; n[t.kind] += rtpCount(t); }
+        let n = -1; if (st) { n = 0; for (const t of st.getTracks()) n += rtpCount(t); }
         const was = owedPk.get(k), sid = st ? st.id : null; owedPk.set(k, { sid, n });
-        const moved = (kd) => n[kd] > 0 && !!was && was.sid === sid && n[kd] > was.n[kd];
-        out.push([pid, slot, { video: moved('video'), audio: moved('audio') }]);
+        out.push([pid, slot, n > 0 && !!was && was.sid === sid && n > was.n]);
       }
       for (const k of Array.from(owedPk.keys())) if (!seen.has(k)) owedPk.delete(k);
       C.planMeasured('owed', out);
