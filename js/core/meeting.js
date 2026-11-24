@@ -18932,8 +18932,8 @@
       });
     }
     // A subscriber restates its ticket (tsub) every half renewal period, TURN or not: the TURN vouch and the room's plan
-    // (memberPlan) both read it.
-    setInterval(() => { try { const every = GifOS.sub && GifOS.sub.RENEW_EVERY_S ? GifOS.sub.RENEW_EVERY_S * 1000 / 2 : 0; if (every && Date.now() - turnSubAt > every) { turnSubAt = Date.now(); turnSubOut(); } } catch (e) {} try { if (subsOn() && !!av) subsRoomTier(); } catch (e) {} try { capCheck(); (0, /*()*/__V.capPaint)(); } catch (e) {} }, 2000);   // the room's plan, and an open room's capture (capCheck)
+    // (memberPlan) both read it. DEBUG=on only: a test asks for the plan a member present holds (__memberPlanForTest).
+    setInterval(() => { if (DEBUG_ON) window.__memberPlanForTest = () => Object.assign({ grants: memberPlan() }, window.__memberPlanSeen); try { const every = GifOS.sub && GifOS.sub.RENEW_EVERY_S ? GifOS.sub.RENEW_EVERY_S * 1000 / 2 : 0; if (every && Date.now() - turnSubAt > every) { turnSubAt = Date.now(); turnSubOut(); } } catch (e) {} try { if (subsOn() && !!av) subsRoomTier(); } catch (e) {} try { capCheck(); (0, /*()*/__V.capPaint)(); } catch (e) {} }, 2000);   // the room's plan, and an open room's capture (capCheck)
     // THE ROOM'S PEOPLE LINE as a number: null when the room has none (an open
     // room, or a plan with no limit), undefined while it cannot be read yet
     // (the admin's signed orders have not come, or the plan on them is still
