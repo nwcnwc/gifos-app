@@ -2,6 +2,19 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.16",
+      "date": "2026-11-23",
+      "headline": "Plans read the same everywhere, and disconnect your wallet",
+      "critical": false,
+      "features": [
+        "Settings shows the wallet you connected and a Disconnect wallet button. The pay sheet has Use a different wallet."
+      ],
+      "fixes": [
+        "Your plan or pass now gives the same rights in meetings, storage, TURN and bots, read from what you bought, not the plan's name.",
+        "The Plans page marks what your pass already includes."
+      ]
+    },
+    {
       "version": "0.9.28.15",
       "date": "2026-11-23",
       "headline": "Sound on older iPhones and iPads, and muted listeners float",
