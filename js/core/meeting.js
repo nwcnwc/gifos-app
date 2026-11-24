@@ -14511,7 +14511,7 @@
     yield 1666;
     function applyPageHeader() {
       if (window.__gifosHeaderApp) { (0, /*()*/__V.applyHeaderChoice)(window.__gifosHeaderApp); return; }
-      if (BROADCAST) { (0, /*()*/__V.applyHeaderChoice)(''); return; }
+      if (BC_SEAT) { (0, /*()*/__V.applyHeaderChoice)(''); return; }   // a broadcast, or an embed (a player: no header)
       if (ROOM.kind === 'meet') (0, /*()*/__V.applyHeaderChoice)(GifOS.runtime.SYSTEM_HEADER.meet);
       else (0, /*()*/__V.applyHeaderChoice)('');
     }
