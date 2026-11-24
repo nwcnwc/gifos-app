@@ -9,7 +9,7 @@
   "js/core/host.js": "ab8946a8ca374ab05cf02ffcb605cda9ffd8af5c3ca1dc2df0aab91a82459e5e",
   "js/core/media/nones.json": "9a1f778d9688a6e8b458e77eccf25ca3173160c2c2f9294c1421199e121841b9",
   "js/core/media/plane-node.js": "a20ace1be30f99ace29a03e6f92a22b2ddbf6c2573d2303af22f8bbadf283003",
-  "js/core/meeting.js": "5d6ea5696f5f8b6b16b50e4b89a6e0567902723aebede206e97c2db4afc517a7",
+  "js/core/meeting.js": "149f489be6f2297db4a9ceb9a1c085790ec8f2ad8b264ce59796ed5125d748bf",
   "js/core/node.js": "02817f6885cbf699089b7b37658936eef6159b425c9a92b1057e1ef339e9edaa",
   "js/core/platform.json": "097b3b6768412855778f85e8b0c7fc5a113a6651d46bc43948f57e33476c6404",
   "js/core/ports/webaudio.js": "a19a4b92009f5177abffc601ff030e0f0212b31a3b3d29e283608633fd2eb2c0",
@@ -102,5 +102,5 @@
   "js/runtime.js": "54efd6c44f6bd137c6db6e97ebf3c565abd3ff71600ced098d654138e23f85a9",
   "js/timings.js": "94b08962e0f026112099c9ce3cf1ce6895f37c71dd75c36f3a43e0cc5da18673"
  },
- "sig": "km1g6w4KP9LH1e0IvBFP76yoQQiKIM1gUBTjlEgHO/9ps/FazMk9bn3ChTkI3ZVODyHLQs0hJcNXzKG35kwIAQ=="
+ "sig": "qqBQ08zJg1i7QlA4DECKem/5Mbdt9AscpFozFWUJGoOEe/P/+JyM73TdVWJE91PeYSEFLXG1qw5dFS81F3D7Cg=="
 }
