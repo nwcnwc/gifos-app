@@ -7646,7 +7646,7 @@
       if (!stream) {
         const had = !!el;
         if (el) { for (const v of el.querySelectorAll('video')) { try { v.pause(); v.srcObject = null; } catch (e) {} (0, /*()*/__M.releaseAudio)(v); } el.remove(); }
-        __C.act.surface({ stageViewNow: null });
+        __M.stageViewNow = null;
         __M.compOf.delete('sgs'); __C.recSrcDirty = true;
         if (typeof paintStagePlate === 'function') paintStagePlate();
         if (had) { try { layout(); } catch (e) {} }
@@ -8279,10 +8279,8 @@
       clearTimeout(t.capT);
       t.capT = setTimeout(() => t.cap.classList.remove('show'), 6000);
     }
-    yield 2476;
     function renderTranscript() {
-      if (!chatPanelOpen() || !transcriptShown()) { __C.act.surface({ trDirty: true }); return; } // rebuilt when the transcript is next shown
-      __C.act.surface({ trDirty: false });
+      if (!chatPanelOpen() || !transcriptShown()) return; // rebuilt when the transcript is next shown
       const log = document.getElementById('trlog');
       const lines = (0, /*()*/__C.trBlocks)();
       const mine = (0, /*()*/__C.trLang)();
@@ -8291,7 +8289,7 @@
         : '<small data-t="trEmpty" style="color:#667">' + (0, /*()*/__C.esc)((0, /*()*/__C.uiText)('trEmpty', 'This meeting is being written down. Lines gather here under each speaker\'s name. Anyone here can open this and download it.')) + '</small>';
       (0, /*()*/__C.paintLog)(log, html);
     }
-    yield 2483;
+    yield 2482;
     // THE WARNING CARD and THE SOURCE CHOOSER: one small card over the call, one tap per source.
     // ex: { theirs, ours, by } from capTrust.evidence(v): shown side by side so the person can judge who is right.
     function capCard(id, v, title, note, rows, ex) {
@@ -8330,7 +8328,7 @@
       if (window.__gifosBarAvoid) window.__gifosBarAvoid();   // made lazily: lift it over the floating bar now
       return c;
     }
-    yield 2489;
+    yield 2488;
     // ONE CARD for a person's captions. The warning (info set: this page just stopped trusting their captions) and the
     // chooser (opened from their tile or the caption bar) are the same card: what was said vs what was heard, what is
     // shown now, and one tap per choice.
@@ -8356,7 +8354,7 @@
       const n = c.querySelector('.capcard-n'), v = c.dataset.voice, now = (0, /*()*/__C.capNowNote)(v);
       if (n && n.textContent !== now) capSourceOpen(v);
     }
-    yield 2496;
+    yield 2495;
     (function wireCcLang() {
       const sel = document.getElementById('cclang'); if (!sel) return;
       let saved = ''; try { saved = localStorage.getItem(__C.model.consts.CC_LANG_KEY()) || ''; } catch (e) {}
@@ -8381,7 +8379,7 @@
       (0, /*()*/__C.setStatus)((0, /*()*/__C.uiText)('stCaptionsNowListenFor', 'Captions now listen for {lang}.').replace('{lang}', (0, /*()*/__C.ccLangLabel)()));
       try { capLangAsk(); } catch (e) {}
     }
-    yield 2502;
+    yield 2501;
     function capLangAsk() {
       if (!__C.model.chat.capLang()) return;
       const s = __C.model.chat.capLang().suggestion();
@@ -8402,7 +8400,7 @@
       if (window.__gifosBarAvoid) window.__gifosBarAvoid();   // above the floating bar, like the captions card
       if (__C.clog) (0, /*()*/__C.clog)('caplang ask', s.lang, s.n, s.need, (0, /*()*/__C.trLangOf)((0, /*()*/__C.capLangMine)()));
     }
-    yield 2516;
+    yield 2515;
     function paintCcLocal() {
       const el = document.getElementById('cclocal-st'); if (!el) return;
       const blocked = (0, /*()*/__C.ccLocalBlocked)();
@@ -8413,7 +8411,7 @@
       else t = (0, /*()*/__C.uiText)('setCcLocalIdle', 'The speech model downloads once from gifos.app the first time your microphone is on, and stays on this phone.');
       if (el.textContent !== t) el.textContent = t;
     }
-    yield 2582;
+    yield 2581;
     function paintPhoneCaptions() {
       const row = document.querySelector('input[name="ccengine"][value="browser"]');
       const lab = row && row.closest('label'); if (!lab) return;
@@ -8492,7 +8490,7 @@
       const need = document.getElementById('cctranslate-need');
       if (need) need.style.display = ok && !(0, /*()*/__C.whisperReady)() ? '' : 'none';
     }
-    yield 2593;
+    yield 2592;
     function paintWspStatus() {
       const chosen = (0, /*()*/__M.whisperChosen)();
       const s = chosen ? (0, /*()*/__M.wspState)() : { k: '' };
@@ -8522,7 +8520,7 @@
         tx.textContent = chosen ? ' · ' + label + (run === 'browser' ? (0, /*()*/__C.uiText)('wspRunBrowserShort', ', browser captions on') : run === 'none' ? (0, /*()*/__C.uiText)('wspRunNoneShort', ', no captions from you') : '') : '';
       }
     }
-    yield 2600;
+    yield 2599;
     function paintWspChip() {
       const chip = document.getElementById('ccwsp-off'); if (!chip) return;
       if (__C.model.consts.CC_ON_PHONE()) { if (chip.style.display !== 'none') chip.style.display = 'none'; return; }
@@ -8538,7 +8536,7 @@
       const want = show ? '' : 'none';
       if (chip.style.display !== want) chip.style.display = want;
     }
-    yield 2603;
+    yield 2602;
     setInterval(() => {
       paintWspChip();
       const now = Date.now();
@@ -8608,7 +8606,7 @@
         else run();
       }, 20000);
     })();
-    yield 2610;
+    yield 2609;
     function paintTxMark() {
       const el = document.getElementById('txmark'); if (!el) return;
       const why = (0, /*()*/__C.txMarkWhy)();
@@ -8621,7 +8619,7 @@
         el.setAttribute('aria-label', words);
       }
     }
-    yield 2613;
+    yield 2612;
     function paintTranscriptControls() {
       const send = document.getElementById('ccsend'); if (send) send.checked = (0, /*()*/__C.capSend)();
       const mode = (0, /*()*/__C.trMode)();
@@ -8642,7 +8640,7 @@
       };
       paintTranscriptControls();
     }
-    yield 2649;
+    yield 2648;
     // CC only shows or hides captions on this screen. The More button and the
     // dock button are one switch.
     function paintCcView() {
@@ -8664,9 +8662,9 @@
         for (let i = 0; i < caps.length; i++) caps[i].classList.remove('show');
       }
     }
-    yield 2652;
+    yield 2651;
     const ccDockBtn = document.getElementById('ccdock');
-    yield 2665;
+    yield 2664;
     document.getElementById('trdl').onclick = () => {
       const f = (0, /*()*/__M.transcriptFile)();
       const a = document.createElement('a');
@@ -8675,9 +8673,9 @@
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     };
-    yield 2670;
+    yield 2669;
     const recBtn = document.getElementById('recbtn');
-    yield 2684;
+    yield 2683;
     function showRecReplay(saved) {
       const old = document.getElementById('rec-replay');
       if (old) old.remove();
@@ -8798,7 +8796,7 @@
       };
       bg.querySelector('#se-leave').onclick = () => { bg.remove(); (0, /*()*/__M.recRelease)(saved); (0, /*()*/__C.leaveSeededService)(); };
     }
-    yield 2715;
+    yield 2714;
     function showRecOptions() {
       if (__M.recStarting) return;
       if (document.getElementById('rec-options')) return;
@@ -8870,7 +8868,7 @@
         close();
       };
     }
-    yield 2719;
+    yield 2718;
     // A sideways phone puts Live and Record in a column left of the dock
     // and steps the dock right if the column needs the room. Live (a
     // broadcast) makes the column taller than the dock, and a dragged dock
@@ -8962,7 +8960,7 @@
     if (ccWatch) callStateWatch.observe(ccWatch, { attributes: true, attributeFilter: ['class'] });
     const lobWatch = document.getElementById('lobby');
     if (lobWatch) callStateWatch.observe(lobWatch, { attributes: true, attributeFilter: ['class'] });
-    yield 2730;
+    yield 2729;
 
     // ---- popovers that hang off the dock (More, Reactions) ---------------------
     // The dock can be dragged anywhere, so a popover is placed from where the
@@ -9767,7 +9765,7 @@
       // dialog closes) still ends: look once a second, softly.
       setInterval(() => { try { syncChrome(true); } catch (e) {} }, 1000);
     })();
-    yield 2741; // 0.9.23b: calm after 3 s
+    yield 2740; // 0.9.23b: calm after 3 s
     (function () {
       document.body.classList.toggle('desk-ptr', !__C.model.consts.IS_MOBILE());
       (0, /*()*/__C.applyPageHeader)(); // Meet's manifest says auto-hide; an app's manifest can say otherwise
@@ -9819,11 +9817,11 @@
         if (head !== document.body.classList.contains('head-calm')) document.body.classList.toggle('head-calm', head);
       }, 250);
     })();
-    yield 2743;
+    yield 2742;
     const AUDIENCE_REACT_NAME = { '👏': 'claps', '👍': 'yes', '👎': 'no', '😂': 'laughs', '❤️': 'hearts' };
-    yield 2746;
+    yield 2745;
     let audienceReactFade = 0;
-    yield 2748;
+    yield 2747;
     // The burst over a tile (or the service stage). The stylesheet owns the
     // 1.6 s fade, so a second tap starts it again without a timer here.
     function flashReactBurst(parent, label) {
@@ -9846,7 +9844,7 @@
     // at once costs each seat only its own section's reactions. At most 6 in
     // 10 s count from one person, sent or taken.
     const FACE_REACT_MS = GifOS.timings.FACE_REACT_MS;
-    yield 2755;
+    yield 2754;
     function takeFaceReact(emoji, fromId) {
       emoji = String(emoji || '');
       if (__C.model.consts.AUDIENCE_REACTS().indexOf(emoji) < 0) return false;
@@ -9861,12 +9859,12 @@
       if ((0, /*()*/__C.faceDrawnHere)(who) && typeof __M.schedReconcile === 'function') { (0, /*()*/__M.schedReconcile)(); setTimeout(__M.schedReconcile, FACE_REACT_MS + 60); }
       return true;
     }
-    yield 2758;
+    yield 2757;
     function sendFaceReact(emoji) {
       if (__C.model.me.myId() && takeFaceReact(emoji, __C.model.me.myId())) (0, /*()*/__C.sendFaceFrame)(emoji);
       else flashReactBurst(document.querySelector('.tile.me'), emoji);
     }
-    yield 2760;
+    yield 2759;
     function paintAudienceReacts() {
       const host = document.getElementById('bc-reacts');
       if (!host) return;
@@ -9907,7 +9905,7 @@
       clearTimeout(audienceReactFade);
       if (soon < Infinity) audienceReactFade = setTimeout(paintAudienceReacts, Math.max(0, soon - now) + 40);
     }
-    yield 2764;
+    yield 2763;
     (function () {
       const btn = document.getElementById('reactbtn');
       const tray = document.getElementById('reacttray');
@@ -9963,7 +9961,7 @@
         } else sendFaceReact(label);
       });
     })();
-    yield 2768;
+    yield 2767;
     function armMeetDialogs() {
       const modals = document.querySelectorAll('.name-modal');
       for (const el of modals) {
@@ -10004,7 +10002,7 @@
       });
       for (const el of modals) obs.observe(el, { attributes: true, attributeFilter: ['style'] });
     }
-    yield 2770;
+    yield 2769;
 
     function paintControls() {
       // mic — one labeled control. The word is the action. There is no header Unmute pill.
@@ -10118,7 +10116,7 @@
       bar.hidden = !show;
       bar.className = show ? 'on' : '';
     }
-    yield 2793;
+    yield 2792;
     // THE SPEAKER CHOICE in More: only where a page can move the sound
     // (speakerChoices: setSinkId and more than one output). It opens the mic
     // pop-up's own element with the speaker rows alone. Where there is no
@@ -10132,11 +10130,11 @@
       const n = document.getElementById('spknote');
       if (n) n.hidden = !none;
     }
-    yield 2824;
+    yield 2823;
     // ? lists the keys that work for this person right now (a viewer has
     // no mic or camera on the dock, so M and V are left out).
     const keysModal = document.getElementById('keys-modal');
-    yield 2826;
+    yield 2825;
     document.getElementById('keys-close').onclick = () => { keysModal.style.display = 'none'; };
     // One shortcut list: ? and Help's Keys open the same localized sheet
     // (toggleShortcutSheet); this older list stays for a caller that asks.
@@ -10153,7 +10151,7 @@
       __M.camDeviceId = '';
       (0, /*()*/__M.regrabCamera)('flip');
     };
-    yield 2830;
+    yield 2829;
     function wireMediaSession() {
       const ms = navigator.mediaSession; if (!ms || !ms.setActionHandler) return;
       const wire = (action, fn) => { try { ms.setActionHandler(action, fn); } catch (e) { /* action unsupported here */ } };
@@ -10174,7 +10172,7 @@
       wire('enterpictureinpicture', () => { pipNote('ms-action'); awayFull(true); enterPip(false, true); });
       (0, /*()*/__C.updateMediaSession)();
     }
-    yield 2832;
+    yield 2831;
     // The blur slider: pick Max / Min / No blur directly. It records YOUR choice;
     // whether a tile actually goes clear is the room rule's meeting — when your
     // No blur can't show yet, the status line says exactly why.
@@ -10189,7 +10187,7 @@
       el.hidden = !text;
       if (text) blurNoteTimer = setTimeout(() => { el.hidden = true; el.textContent = ''; }, BLUR_NOTE_MS);
     }
-    yield 2837;
+    yield 2836;
     // THE NO BLUR EXPLAINER. A No blur pick that a room rule still keeps blurred
     // opens a dialog the person closes, instead of a note that faded before it
     // was read. It says why (BLUR_WHY's words, the same as the tile note) and
@@ -10199,7 +10197,7 @@
     // tab: a reload of the same meeting does not open it again. The lobby
     // preview carries its own line, so the dialog waits until the meeting.
     const BLUR_WHY_ASK = { nopw: 1, guests: 1, forall: 1, noadmin: 1, ready: 1 };
-    yield 2841;
+    yield 2840;
     function canSetRoomPw() {
       const pwb = document.getElementById('pwbtn');
       return !!pwb && !pwb.disabled;
@@ -10257,7 +10255,7 @@
       const whyDlg = document.getElementById('blurwhy-modal');
       if (!(whyDlg && whyDlg.style.display !== 'none')) blurNote(why);
     }
-    yield 2848;
+    yield 2847;
     // Each choice is an explicit pick. A lobby or Go live opener supplies
     // then(); the dock pick turns the camera on at that level.
     const camChooserEl = document.getElementById('camchooser');
@@ -10296,7 +10294,7 @@
     // non-admin in the room, linked to me or not, and everyone who joins while
     // it stands; turning it off lifts it for all of them at once.
     const blurAllBtn = document.getElementById('blurall');
-    yield 2856;
+    yield 2855;
     function updateBlurAllBtn() {
       blurAllBtn.style.display = __C.amAdmin ? '' : 'none';
       for (const li of document.querySelectorAll('#shortcutsheet .hostkey')) li.hidden = !__C.amAdmin; // the host keys are listed for a host only
@@ -10315,7 +10313,7 @@
     // "Video off" (admin) — the harder hammer: kills every guest's camera
     // room-wide, not just blurs it. The same one room-wide order, modTable['*'].cam.
     const camAllBtn = document.getElementById('camall');
-    yield 2860;
+    yield 2859;
     function updateCamAllBtn() {
       camAllBtn.style.display = __C.amAdmin ? '' : 'none';
       if (!__C.amAdmin) return;
@@ -10334,7 +10332,7 @@
     // receiver drops a muted guest's voice (modOf), and an honest guest's mic
     // locks until an admin lifts it, for one guest from the tile or for all here.
     const muteAllBtn = document.getElementById('muteall');
-    yield 2864;
+    yield 2863;
     function updateMuteAllBtn() {
       muteAllBtn.style.display = __C.amAdmin ? '' : 'none';
       if (!__C.amAdmin) return;
@@ -10354,7 +10352,7 @@
     // it is later, so one guest can be stopped while the room is allowed, or
     // allowed while the room is not.
     const shareAllBtn = document.getElementById('shareall');
-    yield 2868;
+    yield 2867;
     function updateShareAllBtn() {
       if (!shareAllBtn) return;
       shareAllBtn.style.display = __C.amAdmin ? '' : 'none';
@@ -10370,7 +10368,7 @@
       updateShareAllBtn();
       (0, /*()*/__C.setStatus)(on ? 'Guests may share their screen.' : 'Guests can no longer share their screen.');
     };
-    yield 2884; // null | 'up' | 'down' | 'kick'
+    yield 2883; // null | 'up' | 'down' | 'kick'
     function setVoteMode(m) {
       __C.act.setVoteMode(m);
       for (const k of ['up', 'down', 'kick']) document.body.classList.toggle('vm-' + k, __C.model.votes.mode() === k);
@@ -10427,7 +10425,7 @@
         }
       }
     }
-    yield 2888;
+    yield 2887;
     let closeVoteModal = () => { const m = document.getElementById('vote-modal'); if (m) m.style.display = 'none'; };
     document.getElementById('votebtn').onclick = () => {
       const m = document.getElementById('vote-modal');
@@ -10440,7 +10438,7 @@
     for (const el of document.querySelectorAll('#vote-modal .voteopt')) {
       el.onclick = () => { closeVoteModal(); setVoteMode(el.dataset.vm); };
     }
-    yield 2894;
+    yield 2893;
     function topNameModal() {
       let top = null;
       for (const el of document.querySelectorAll('.name-modal')) {
@@ -10449,7 +10447,7 @@
       }
       return top;
     }
-    yield 2896;
+    yield 2895;
     let modalTracked = null, modalOpener = null, modalOutside = null;
     function syncModalFocus() {
       const top = topNameModal();
@@ -10585,7 +10583,7 @@
       if (el.getAttribute('role') !== 'alertdialog') el.setAttribute('role', 'dialog');
       el.setAttribute('aria-modal', 'true');
     }
-    yield 2904;
+    yield 2903;
     // ---- Invite: the one place every meeting link is made ----------------------
     // A meeting's room IS its URL and is host-less, so "sharing" is handing out
     // the link you already hold. The ONE governance choice is open vs a room you
@@ -10597,7 +10595,7 @@
     // button is now sign-in + bans, and shows only inside an admin room.
     const invModal = document.getElementById('inv-modal');
     let closeInvModal = () => { invModal.style.display = 'none'; };
-    yield 2907;
+    yield 2906;
     // A meeting shares the viewer link (password stays off it). An app room
     // shares the room link it already holds.
     function inviteLinkForModal() {
@@ -10608,7 +10606,7 @@
       }
       return (shareUrl && shareUrl.value) || '';
     }
-    yield 2909;
+    yield 2908;
     function showInviteModal() {
       const body = document.getElementById('inv-body');
       const others = Math.max(0, (0, /*()*/__M.displayCount)() - 1);
@@ -10771,12 +10769,12 @@
       }
       closeInvModal = (0, /*()*/__M.openModal)(invModal, () => { invModal.style.display = 'none'; });
     }
-    yield 2921;   // the subscription code is loaded (always on)
+    yield 2920;   // the subscription code is loaded (always on)
     // The Subscription entry in More (Settings and help): opens the Subscription dialog.
     { const sb = document.getElementById('subbtn'); if (sb) sb.addEventListener('click', () => { if (window.GifOS && GifOS.meetSubs && GifOS.meetSubs.openSubscribe) GifOS.meetSubs.openSubscribe(); }); }
-    yield 2947;   // DEBUG=on only: a test reads the re-knock state
+    yield 2946;   // DEBUG=on only: a test reads the re-knock state
     function hideDialogs(ids) { for (const id of ids) { const d = document.getElementById(id); if (d) d.style.display = 'none'; } }
-    yield 2957;
+    yield 2956;
     // A viewer early for a scheduled service gets Add to calendar: a one-event
     // .ics with the viewer link, which a phone opens in its calendar.
     let bcCalUrl = null, bcCalFor = '';
@@ -10840,7 +10838,7 @@
       setTimeout(() => { if (btn.textContent === 'Copied') btn.textContent = 'Copy'; }, 1600);
     };
     document.getElementById('closed-reload').onclick = () => location.reload();
-    yield 2984;
+    yield 2983;
     const leaveBtn = document.getElementById('leavebtn');
     const leaveAsk = document.getElementById('leave-ask');
     // A small group leaves on the red button. leaveMeeting() is already
@@ -10858,7 +10856,7 @@
     if (leaveCancel) leaveCancel.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'none'; try { (0, /*()*/__C.releaseLeaveAsk)(); } catch (e) {} };
     const leaveGo = document.getElementById('leave-go');
     if (leaveGo) leaveGo.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'none'; (0, /*()*/__C.leaveMeeting)(); };
-    yield 2992;
+    yield 2991;
     function shortcutBlocked() {
       for (const el of document.querySelectorAll('.name-modal')) {
         if (!el.isConnected || el.style.display === 'none') continue;
@@ -10940,7 +10938,7 @@
       e.preventDefault();
       btn.click();
     });
-    yield 3004;
+    yield 3003;
     const leftRejoin = document.getElementById('left-rejoin');
     if (leftRejoin) leftRejoin.onclick = () => {
       let to = null;
@@ -11007,7 +11005,7 @@
     // its own tab — including when you JOIN a meeting where someone shares an app.
     // Closing a REQUIRED-setup gate here stops the shared app rather than the tab.
     if (window.GifOS && GifOS.perms) GifOS.perms.attach(document.getElementById('appperms'), { onLeave: function () { (0, /*()*/__C.stopApp)(); }, skipCaps: function () { return __C.appMode === 'client' ? ['stage'] : []; } });
-    yield 3020;
+    yield 3019;
     // Also driven by the app-room beat below, so a copy that STOPS (the holder
     // left mid-transfer) stops claiming to be in progress.
     function appCopyPaint() {
@@ -11050,7 +11048,7 @@
         ? 'Unpacking it on this device.'
         : 'About ' + mb.toFixed(1) + ' MB crossing from someone already in the room — it comes over once, then it is yours.';
     }
-    yield 3027;
+    yield 3026;
 
     // ---- THE TAB'S ICON ------------------------------------------------
     // This page is the MEETING page wearing the runner's hat, so its <head>
@@ -11170,7 +11168,7 @@
     function refreshStealBtn() {
       document.getElementById('appsteal').style.display = (__C.ROOM.kind === 'app' && __C.appMode === 'client') ? '' : 'none';
     }
-    yield 3039;
+    yield 3038;
     function openAppHelp() {
       if (!(__C.model.apps.soloCtl() || __C.appHostCtl || __C.appClientCtl) && !__C.ROOM.solo) { openMeetHelp(); return; }
       const H = window.GifOS && GifOS.help;
@@ -11329,7 +11327,7 @@
       const d2 = mk((0, /*()*/__C.uiText)('stealJoined', 'as I joined'), (0, /*()*/__C.uiText)('stealJoinedTip', 'The app and the room as it stood when you came in'), 'connect');
       const d1 = mk((0, /*()*/__C.uiText)('stealData', '+ data'), (0, /*()*/__C.uiText)('stealDataTip', 'The app and everything in it right now'), 'current');
     };
-    yield 3051;
+    yield 3050;
     function clearAppView(why) {
       (0, /*()*/__C.appEv)('clear', { why: why || 'unstated' });
       if (__C.appClientStop) { try { (0, /*()*/__C.appClientStop)(); } catch (e) {} __C.appClientStop = null; }
@@ -11345,11 +11343,11 @@
       const ap = document.getElementById('appperms'); if (ap) ap.style.display = 'none';
       __C.appMode = null; __C.appKey = null;
     }
-    yield 3060;
+    yield 3059;
     // Converge THIS phone's app view onto whatever the room is sharing. Runs on
     // every status tick and on peer departure, so it self-heals like the mesh.
     function paintAppWho(text) { document.getElementById('appwho').textContent = text; }
-    yield 3071;
+    yield 3070;
     // Keep the app buttons honest about what a tap will do.
     function updateAppButtons(want) {
       const isMine = !!(__C.model.me.myStatus().app && __C.appKey === __C.model.me.myStatus().app.s);
@@ -11412,7 +11410,7 @@
         : (0, /*()*/__C.uiText)('barCommunalStatus', '🧩 Communal control — anyone here can drive the shared app.'));
     };
     document.getElementById('app-cancel').onclick = () => { document.getElementById('app-modal').style.display = 'none'; };
-    yield 3081;
+    yield 3080;
     function appStageAskClose() { const el = document.getElementById('appstage-ask'); if (el) el.remove(); }
     function appStageAsk() {
       if (__C.appStageConsent !== null || document.getElementById('appstage-ask')) return;
@@ -11430,12 +11428,12 @@
       el.append(t, ok, no);
       document.body.appendChild(el);
     }
-    yield 3087;
+    yield 3086;
     window.appStagePlanForTest = __C.appStagePlan;
-    yield 3089;
+    yield 3088;
     // ---- run a GIF app that isn't on this computer (file or link) ----
     function showAddErr(msg) { const el = document.getElementById('app-add-err'); if (!el) return; el.textContent = msg || ''; el.style.display = msg ? '' : 'none'; }
-    yield 3091;
+    yield 3090;
     async function importAndRunGif(bytes, rawName) {
       showAddErr('');
       const r = await (0, /*()*/__C.importGif)(bytes, rawName);
@@ -11443,13 +11441,13 @@
       document.getElementById('app-modal').style.display = 'none';
       (0, /*()*/__C.runApp)(r.fileId, r.name);
     }
-    yield 3095;
+    yield 3094;
     const scriptOnce = {};
     function loadScriptOnce(src) {
       if (!scriptOnce[src]) scriptOnce[src] = new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.onload = () => res(); el.onerror = () => { delete scriptOnce[src]; rej(new Error('load ' + src)); }; document.head.appendChild(el); });
       return scriptOnce[src];
     }
-    yield 3099;
+    yield 3098;
     async function runChoice(c, say) {
       if (c.fileId) { document.getElementById('app-modal').style.display = 'none'; (0, /*()*/__C.runApp)(c.fileId, c.name); return true; }
       say((0, /*()*/__C.uiText)('appInstalling', 'Getting {name}…').split('{name}').join(c.name));
@@ -11459,7 +11457,7 @@
       (0, /*()*/__C.runApp)(r.fileId, r.name);
       return true;
     }
-    yield 3102;
+    yield 3101;
     document.getElementById('app-file').onclick = () => document.getElementById('app-file-input').click();
     document.getElementById('app-file-input').onchange = async (e) => {
       const f = e.target.files && e.target.files[0]; e.target.value = ''; if (!f) return;
@@ -11523,11 +11521,11 @@
       const more = document.createElement('a'); more.className = 'app-empty-link app-empty-store'; more.href = '/store'; more.target = '_blank'; more.rel = 'noopener';
       more.textContent = (0, /*()*/__C.uiText)('appEmptyStore', 'Find more apps in the App Store'); list.appendChild(more);
     }
-    yield 3110;
+    yield 3109;
 
     // The bot's eyes (the agent's watch): the page marks itself watched.
     function paintBotEyes(on) { document.body.classList.toggle('bot-eyes', on); }
-    yield 3119;
+    yield 3118;
     function paintAiNotesAdmin() {
       const sel = document.getElementById('adm-ai-notes');
       if (sel) { sel.value = (0, /*()*/__C.aiNotesSetting)(); sel.disabled = !((0, /*()*/__C.hasAdminRoom)() && __C.amAdmin); }
@@ -11550,7 +11548,7 @@
       }
       box.hidden = !n;
     }
-    yield 3134;
+    yield 3133;
     // A canvas for the agent's picture (the page's; a host with no screen has none).
     function newCanvas() { return document.createElement('canvas'); }
     // The bot's own view (#botview): its state, the transcript and the chat.
@@ -11558,16 +11556,13 @@
       const rows = (m) => Array.from(m.values()).filter((l) => l && !/^gb1 /.test(String(l.text || ''))).sort((x, y) => (x.at || 0) - (y.at || 0)).map((l) => ({ name: l.by || '', text: l.text || '' }));
       GifOS.meetAgent.renderBotView(document.getElementById('botview'), Object.assign({}, st, { transcript: rows(__C.model.chat.trs()), chat: rows(__C.model.chat.lines()) }), __C.uiText);
     }
-    yield 3137;
+    yield 3136;
     // The agent contract over the page's postMessage (a host page or extension talks to it); a host with no page has none.
     function bridgeAgentToPage(core) { GifOS.meetAgent.postMessageBridge(core, window); }
-    yield 3139;
+    yield 3138;
     function setBotView(on) {
       on = !!on;
-      if (!__C.model.room.room()) { __C.act.surface({ botViewWant: on }); return; }   // the lobby: the meeting's boot turns it on (an Off press there takes it back)
-      if (on) (0, /*()*/__C.agentStart)();
-      if (on === !!__C.botViewOn) return;
-      __C.act.surface({ botViewOn: on });
+      if (__C.act.botView(on) !== true) return;   // the core decides (lobby: kept for the boot; unchanged: nothing to paint)
       document.body.classList.toggle('bot-view', on);
       const bv = document.getElementById('botview'); if (bv) bv.hidden = !on;
       const back = document.getElementById('bot-back'), forced = document.getElementById('bot-forced');
@@ -11581,7 +11576,7 @@
       try { if (pipAimed) { pipAimed.autoPictureInPicture = false; pipAimed = null; } } catch (e) {}
       try { (0, /*()*/__C.sendVisPark)(); } catch (e) {}
     }
-    yield 3141;
+    yield 3140;
     (function wireBotView() {
       const back = document.getElementById('bot-back');
       if (back) back.onclick = () => (0, /*()*/__C.backToNormalView)();
@@ -11629,7 +11624,7 @@
       if (hb) { hb.checked = saved; hb.onchange = () => setHide(hb.checked); }
       if (saved) setHide(true);
     })();
-    yield 3147;
+    yield 3146;
 
     // Test hook: lets the e2e suite observe mesh + quality state.
     // AUDIO-OUT FORENSICS (debugDump audio, read-only): where each voice should leave the page. Every media
@@ -11664,7 +11659,7 @@
         folds, comp, standby: sb,
       };
     }
-    yield 3154;   // chat line ids I posted for the page I carry: never sent back to it
+    yield 3153;   // chat line ids I posted for the page I carry: never sent back to it
     function carryIo(far, l, sendTv, askVouch, guest) {
       return { guest, me: __C.model.me.myId(), far, l, dev: () => __C.model.me.myDevHash(), sub: () => (__C.model.net.meshNode() && __C.model.net.meshNode().sub) | 0, sid: () => __C.model.room.sessId(), sendTv, askVouch,
         ask: GifOS.meetTurn.askIce(window.fetch.bind(window)), webScheme: () => 'wss://', log: __C.turnNote,
@@ -11673,7 +11668,7 @@
         sign: (text) => __C.model.net.net().edSign(__C.model.me.myIdentity().priv, text).then((sig) => ({ sig, pub: __C.model.me.myIdentity().pubB64 })),
         verify: (id, pub, sig, text) => GifOS.meshIdentity.peerIdOf(pub).then((got) => (got === id ? __C.model.net.net().edVerify(pub, sig, text) : false)) };
     }
-    yield 3174;
+    yield 3173;
     function dbgMeterShow(on) {
       if (!on) { if (__C.dbgMeterPanel) __C.dbgMeterPanel.remove(); __C.dbgMeterPanel = null; return false; }
       if (!__C.dbgMeterPanel) {
@@ -11683,7 +11678,7 @@
       }
       return true;
     }
-    yield 3178;
+    yield 3177;
     function viewTestHooks(v) {
       Object.assign(v, {
       stadFaceAtForTest: (x, y) => { const w = document.getElementById('stadwhole'); return w ? (0, /*()*/__C.stadFaceIdAt)(w, x, y) : null; },
@@ -11765,7 +11760,7 @@
       },
       stageFacesForTest: () => {
         const host = stagefeedEl && stagefeedEl.querySelector('[data-row="sgs"]');
-        const out = { view: __C.stageViewNow, stagers: (0, /*()*/__C.stageIds)().slice(), screenSid: null, faces: [] };
+        const out = { view: __M.stageViewNow, stagers: (0, /*()*/__C.stageIds)().slice(), screenSid: null, faces: [] };
         for (const id of out.stagers) if ((0, /*()*/__C.sharingScreen)(id)) { out.screenSid = out.screenSid ? 'many' : id; }
         // Same 24x24 mean the overlay uses. A pack tile is the raw track, so it is not cropped.
         const lumaOf = (v, cell) => {
@@ -12200,7 +12195,7 @@
       },
       });
     }
-    yield 3194;
+    yield 3193;
     // THE FLOAT WEARS THE TILE'S BLUR (PIPBLUR, 2026-11-24). Every float paints a <video>'s RAW frames: an element float
     // has no CSS, and the document float's <video> is a new element. In an open room every remote picture is blurred
     // here (receiver-side blur), so a sender forced to send clear floated clear. pipBlurLevel is the level this viewer
@@ -12349,7 +12344,7 @@
   
     return __L.END;
   }
-  var api = { name: "view", run: part, count: 722, exports: {"appCopyPaint":1,"appRuntimeBoot":1,"appRuntimeClient":1,"appStageAsk":1,"appStageAskClose":1,"applyAdminUi":1,"applyChrome":1,"applyHeaderChoice":1,"applyRoomAudio":1,"applyRoomHelp":1,"applyViewerCrops":1,"armMeetDialogs":1,"atPwPrompt":1,"audioDump":1,"awayFull":1,"blurA":0,"blurActx":0,"blurB":0,"blurBctx":0,"blurNote":1,"bootMeetSession":1,"bridgeAgentToPage":1,"camBtn":0,"capCardRefresh":1,"capLangAsk":1,"capPaint":1,"capSourceOpen":1,"carryEarAc":1,"carryIo":1,"ccDockBtn":0,"chatPanel":0,"chatPanelOpen":1,"chatTrace":1,"clearAdminClose":1,"clearAppView":1,"closeFsView":1,"closeMoreForWait":1,"closeTileWin":1,"comfyStadMeta":1,"comfyStadRoster":1,"countClosedChat":1,"ctAgendaOpen":1,"ctAppInfo":1,"ctInit":1,"ctPaintAgendaBtn":1,"ctPaintBar":1,"ctPresent":1,"dbgMeterShow":1,"dropStaleShareWin":1,"emitLiveTranscript":1,"enterPip":1,"explainHeldVideo":1,"foldBarForApp":1,"frozenTileSkip":1,"fsFitPaint":1,"fsRefresh":1,"fsRefreshIfOpen":1,"handBtn":0,"hideAppMissing":1,"hideCaptions":1,"hideDialogs":1,"hideJoinPwModal":1,"hideResharePrompt":1,"inviteLinkForModal":1,"islandNoteTick":1,"keysModal":0,"layout":1,"lgLeave":1,"loadScriptOnce":1,"lobbyPwOpenRoom":1,"makeTile":1,"massBannerTick":1,"micBtn":0,"newCanvas":1,"openBlurWhy":1,"openFsView":1,"openShareLiveModal":1,"openStageAdjust":1,"openTileWin":1,"paintAirKind":1,"paintAloneCard":1,"paintAppGifFromLane":1,"paintAppRoomBody":1,"paintAppWho":1,"paintAssistant":1,"paintAudienceReacts":1,"paintAvatarCanvas":1,"paintAvatarImg":1,"paintAwayMark":1,"paintBcQuiet":1,"paintBlurWhy":1,"paintBotEyes":1,"paintBotView":1,"paintBroadcastChrome":1,"paintBroadcastIdent":1,"paintBroadcastJoinNote":1,"paintBroadcastRole":1,"paintBroadcastSeats":1,"paintCallBanner":1,"paintCallOn":1,"paintCallState":1,"paintCcLocal":1,"paintCcState":1,"paintCcView":1,"paintChatBadge":1,"paintChatBtn":1,"paintChatCount":1,"paintChatGate":1,"paintChatNew":1,"paintChipBottom":1,"paintControls":1,"paintFaders":0,"paintFit":1,"paintHand":1,"paintHelpTip":1,"paintInviteSlot":1,"paintJoinVeil":1,"paintLiveBadge":1,"paintMyAvatarPreview":1,"paintOnAirBadge":1,"paintOnAirSide":1,"paintPeopleIfOpen":1,"paintProgressSteps":1,"paintQaBand":1,"paintRaisedHands":1,"paintRb":1,"paintRbNow":1,"paintRoomTitle":1,"paintRoomTrust":1,"paintRoster":1,"paintShare":1,"paintShareUrl":1,"paintSoloApp":1,"paintSpkBtn":1,"paintStadiumTile":1,"paintStage":1,"paintStageBlurWhy":1,"paintStageMod":1,"paintStagePlate":1,"paintStageStrip":1,"paintStageVoteTargets":1,"paintStatusAlert":1,"paintStatusLine":1,"paintStatusNotice":1,"paintStatusSheet":1,"paintStatusWhy":1,"paintStreamLink":1,"paintTabTitle":1,"paintTileChrome":1,"paintTileOnGrid":1,"paintTranscriptControls":1,"paintTxMark":1,"paintVq":1,"paintWaitDoor":1,"paintWaitingSelf":1,"paintWspChip":1,"paintWspStatus":1,"pauseNote":1,"phoneLayout":1,"pipCardModel":1,"pipNote":1,"pipReaim":1,"pipReturn":1,"pipSource":1,"placeClearLine":1,"placeDeskName":1,"placeDockForWidth":1,"placeDockPopover":1,"placeFit":1,"placeHandq":1,"placeQaBand":1,"rbCanvas":1,"reassertVisLift":1,"recBtn":0,"refreshAudioBtn":1,"refreshAvatarSurfaces":1,"releaseHeld":1,"renderChat":1,"renderFiles":1,"renderHandq":1,"renderLobbyList":1,"renderQa":1,"renderTranscript":1,"replaceAddress":1,"roomAudioOn":1,"setAppFavicon":1,"setAppGif":1,"setBotView":1,"setTileLetter":1,"sgaAppOwner":1,"showAppMissing":1,"showAppPane":1,"showAppearCard":1,"showAvatarTrack":1,"showBlurNoteUnlessDialog":1,"showCamBack":1,"showCaption":1,"showClosedDialog":1,"showFlipButton":1,"showForkPick":1,"showHeldScreen":1,"showInviteModal":1,"showLeftDialog":1,"showLoadRefusal":1,"showLobby":1,"showPwModal":1,"showRecOptions":1,"showRecReplay":1,"showRelayBusy":1,"showResharePrompt":1,"showServiceEnded":1,"showShareLink":1,"showWhoIfOpen":1,"stadiumEl":0,"stageFeedShows":1,"stagefeedEl":0,"stopLobbyPreview":1,"syncModalFocus":1,"takeFaceReact":1,"tickAdminClose":1,"tileNote":1,"timingRow":0,"topNameModal":1,"turnPaint":1,"twButton":1,"unmuteBtn":0,"updateAppButtons":1,"updateBlurAllBtn":1,"updateCamAllBtn":1,"updateMuteAllBtn":1,"updateReload":1,"updateShareAllBtn":1,"viewTestHooks":1,"waitPaint":1,"wakeMeet":1,"wireFsResize":1,"wireMediaSession":1}, needs: {"core":{"vqManual":0,"serviceHeard":0,"stageIds":0,"adminsNow":0,"bcHostStored":0,"roomHeadCount":1,"leftDialogUp":1,"bcWatchingViewer":1,"barKind":1,"bcMayPublishAv":1,"idleDock":1,"barPlan":1,"uiText":1,"dockLabelSet":1,"hasAdminRoom":0,"uiLang":1,"ROOM":0,"paintBroadcastAir":1,"bcRole":1,"paintOnAir":1,"applyAvatarFile":1,"refreshAllTiles":1,"broadcastStatus":1,"pushLeaf":1,"bcPreInRoom":1,"becomeAssistant":1,"holdDoor":0,"amAdmin":0,"statusWords":0,"sayState":0,"liveInCall":1,"blurWhyWords":1,"tileBlurWhy":1,"frozeThisBeat":1,"reactRoomState":1,"seatDark":0,"forcedCamOff":0,"modBlurOn":0,"shareBlocked":0,"docPip":0,"myName":0,"displayName":1,"pipCard":0,"pipCardPaint":1,"pipCardRun":1,"pipCardReady":1,"clearPipAuto":1,"pipFallback":1,"setStatus":0,"pipAutoT":0,"inMeetingNow":1,"backWatch":0,"backGuardDrop":1,"sendVisPark":1,"botViewOn":0,"botParks":1,"dcSend":0,"autoFsOff":0,"setAutoFsOff":1,"admGraceT":0,"admTickT":0,"admDeadline":0,"closeRoomNoHost":1,"updateLeaving":0,"bcOnAir":1,"updateRoomKey":0,"blurLevel":0,"progressStart":1,"progressTick":1,"progressWords":1,"homeHref":1,"fsInline":0,"fsSel":0,"fsAutoPid":0,"fsZoomBox":0,"fsZoomIds":0,"fsFarTalkers":1,"fsFarCells":1,"fsCropBox":1,"viewNote":1,"fsFeedLive":1,"blurLevelFor":1,"sharingScreen":0,"nameInitial":1,"fsPickAuto":1,"fsBlurClass":1,"fsAutoKey":0,"fsFollow":0,"fsFollowChanged":1,"fsTick":0,"fsFollowT":0,"stageModList":1,"wireModbar":1,"paintModbarButtons":1,"modOf":1,"localBlurPower":1,"setMod":1,"blurOffer":1,"hostWords":1,"focusId":0,"iAmWaiting":1,"shadeKey":1,"stageFeedVideo":1,"contentHas":1,"ctNote":1,"VMODE":0,"viewWord":1,"setView":1,"syncFocus":1,"CT":0,"appKey":0,"ctAgHidden":1,"ctText":1,"ctAspect":1,"turnHeld":1,"shareFirewallWords":1,"ctLabel":1,"ctSelect":1,"ctAgendaShortTime":1,"ctAgendaOver":1,"ctCanEditAgenda":1,"ctBring":1,"ctAgendaTickArm":1,"ctSpeakerPick":1,"ctAgCtx":1,"ctPaintAgendaClock":1,"ctAgendaPublish":1,"ctAgendaHide":1,"ctRefresh":1,"ctAgendaWhoText":1,"ctFocusSources":1,"applyViewerCrop":1,"viewerCropOf":1,"saveVcrops":1,"twIdOf":1,"twPeer":1,"twCaptionsButton":1,"updateTile":1,"stadFaceIdAt":1,"ensureAc":1,"carryOutAc":0,"newMeetAudioContext":1,"pwBlocked":0,"rosterRows":1,"updateStatus":1,"paintRosterSoon":1,"mayHost":1,"waitingSince":1,"setWaitingRoom":1,"waitingRows":1,"hostRename":1,"hostSpot":1,"bcEndedInRoom":1,"stageClaimOf":0,"ctTurnPaint":1,"capOn":0,"subsOn":0,"subsMeetId":0,"capTry":1,"relayBusyAt":0,"camPeer":0,"mediaOk":0,"meshCoord":0,"meshSeat":0,"peerAway":0,"clog":0,"dropPeer":1,"clearRosterTiles":1,"startMesh":1,"islandApart":1,"esc":0,"bcActButtons":1,"learnFoldedNames":1,"applyBcAct":1,"storePw":1,"pwHeldOnTyping":1,"grantHoldUntil":0,"rekeyRoom":1,"pwProof":0,"pwChainFailed":1,"purgeAllFiles":1,"pwSetRoom":1,"deriveAdminKey":1,"adoptAdmKey":1,"admStoreKey":0,"mirrorRoomState":1,"whoRows":1,"whoFaceState":1,"whoObserve":1,"whoRefresh":0,"whoAddrLines":1,"pwBan":1,"whoFileText":1,"isCastEntry":1,"loadList":1,"lobRow":1,"stashJoinAv":1,"mintHostKey":1,"shortCode":0,"slugRoom":1,"lobbyPwHandOver":1,"setPersonalBlur":1,"parseMeetInput":1,"toggleBookmark":1,"saveList":1,"aloneCardShut":0,"inviteFromSolo":1,"appClientCtl":0,"DEBUG_ON":0,"unread":0,"reactAlert":0,"messageMentionsMe":1,"mentionToken":1,"linksAllowed":1,"viewerMayReact":1,"withMentions":1,"avatarChip":1,"reactorNames":1,"reactOpen":0,"lineOpen":0,"paintLog":1,"prayOn":0,"modStarOn":1,"lateJoinerSeesHistory":0,"slowModeOn":0,"chatLinksOn":0,"logNearBottom":1,"toggleLine":1,"takeReact":1,"sendAll":1,"applyOwnDelete":1,"admSigned":1,"applyCdel":1,"takeTomb":1,"uid":0,"mayPinFiles":1,"recSrcDirty":0,"roomPastSection":0,"knownTotal":1,"stageViewNow":0,"stageGrantLive":0,"enforceBroadcastSeat":1,"canStage":0,"stageNeed":0,"vupDismissedSig":0,"setStage":1,"mayShareScreen":0,"rbFmt":1,"rbToggle":1,"rbStop":1,"rbNoun":0,"rbTitle":1,"findSharedApp":1,"canIRunApp":0,"shareSheetFocusId":1,"appHiddenSid":0,"reconcileApp":1,"dlogOut":0,"dlogStoreGet":1,"dlogRecStart":1,"sendAvatarTo":1,"setVq":1,"trBlocks":1,"trLang":1,"trNote":1,"capName":1,"capPick":1,"capRows":1,"capNowNote":1,"capPublish":1,"ccLangLabel":0,"capLangName":1,"capLangMine":1,"capLangTag":1,"trLangOf":0,"ccLocalBlocked":1,"ccMB":0,"lsSet":0,"lsGet":0,"capSend":1,"txMarkWhy":1,"trMode":1,"setCapSend":1,"setTrMode":1,"leaveSeededService":1,"bcSeeding":0,"releaseLeaveAsk":1,"applyPageHeader":1,"reactRateOk":1,"faceDrawnHere":1,"sendFaceFrame":1,"sendAudienceReact":1,"focusOf":1,"amGloballyMuted":1,"micLockWords":1,"leaveMeeting":1,"updateMediaSession":1,"heldNoteSeen":1,"markHeldNote":1,"blurHold":1,"modalFocusables":1,"modalDismissBtn":1,"viewerShareUrl":1,"bcStartAt":1,"bcWhenWords":1,"armCopiedLabel":1,"linkRowHtml":1,"createAdminRoom":1,"holdLeaveAsk":1,"shortcutTyping":1,"stopApp":1,"appMode":0,"appHostCtl":0,"currentAppHelpMd":1,"currentAppCredits":1,"appEv":0,"appClientStop":0,"appLeadable":0,"appLeadOn":0,"stopRoomApp":1,"appLeadSet":0,"appStageConsent":0,"appStageApply":1,"appStagePlan":1,"importGif":1,"runApp":1,"installRunApp":1,"runLinkTarget":1,"fetchGifFromUrl":1,"runChoices":1,"aiNotesSetting":1,"agentStart":1,"backToNormalView":1,"agentChat":1,"botHidden":1,"hideBotsT":0,"turnNote":1,"dbgMeterPanel":0,"occPid":0,"newNeg":0,"roomDig":1,"digestMode":0,"roomConsentIds":0,"freshSt":0,"armAppRoomTick":0,"shareOnlyStage":1,"meOnStage":1,"personOnStage":1,"screenSharers":0,"trWrites":1,"participantCount":1,"timing":0,"whisperReady":0,"roomKey":0,"model":0,"act":0,"tapUnblur":1,"clearNoPwState":1,"blurAgain":1,"reportClearHost":1,"docPipName":1},"media":{"resumeReload":1,"micTap":1,"stashRecoverMedia":1,"sdView":0,"mosIn":0,"STAGE_FACE_SETTLE_MS":0,"stopScreenShare":1,"stageFrameVal":0,"setStageFrame":1,"normStageFrame":1,"spkDeviceId":0,"AVATAR_W":0,"AVATAR_H":0,"avatarSharp":0,"blurSenderFrac":1,"blurDraw":1,"startLocalView":1,"refreshOutbound":1,"reviveCamera":1,"tileHolds":1,"applyBuses":1,"blurSized":1,"openCamChooser":1,"camChooserOpen":1,"dismissCamChooser":1,"lateMedia":1,"releaseAudio":1,"compOf":0,"trackAspect":1,"wkHolds":1,"wkBindVideo":1,"displayCount":1,"qaStageSt":0,"placeStageMarks":1,"canScreenShare":0,"shareRecoverMode":0,"startScreenShare":1,"rbStart":1,"recoverShareTimer":0,"applyCcAll":1,"mix":0,"rememberMix":1,"toggleSing":1,"paintTiming":1,"applyGrid":1,"speechRunning":1,"stopSpeech":1,"syncSpeech":1,"ccEngine":1,"phoneCaptions":1,"whisperAllowed":0,"wspPaintSafe":1,"WSP_WEAK":0,"CC_WHISPER_ANYWAY_KEY":0,"CC_ENGINE_KEY":0,"wspResume":1,"whisperInstalling":0,"wspInst":0,"WHISPER_APP_ID":0,"installWhisper":1,"armWhisperRescan":1,"whisperSupported":1,"CC_TRANSLATE_KEY":0,"whisperChosen":0,"wspState":1,"wspWorking":0,"capsRunningNow":1,"wspStateText":1,"wspStSig":0,"wspRetry":1,"wspChipGone":1,"wspChip":0,"WSP_CHIP_MS":0,"wspTickAt":0,"WSP_TICK_MS":0,"wspCaps":0,"wspQ":0,"wspStarved":0,"WSP_STARVE_MS":0,"WSP_STARVE_WIN":0,"WSP_STARVE_N":0,"wspToBrowser":1,"CC_WORDS_KEY":0,"trEnSync":1,"wspSync":1,"speechGaveUp":0,"stopWhisper":1,"wspRelease":1,"wspChipRoom":0,"WHISPER_SEED_KEY":0,"whisperSeedBlocked":1,"browserCaptionsMissing":1,"transcriptFile":1,"recDownload":1,"recFileName":1,"recRelease":1,"recStarting":0,"canScreenRecord":0,"recSources":1,"recDefaultQuality":1,"recLibraryOption":1,"openModal":1,"startRec":1,"refreshTrBtn":1,"callStateBox":0,"schedReconcile":1,"canRaiseHand":1,"speakerChoices":1,"openKeys":1,"camFacing":0,"camDeviceId":0,"regrabCamera":1,"camPickThen":0,"camChooserAnchor":0,"closeCamChooser":1,"pickCamera":1,"micChooserOpen":1,"closeMicChooser":1,"blockedAudio":0,"downFolds":0,"mosStandby":0,"acClockInfo":1,"audioKickArmed":0,"wkEar":0,"stageEar":0,"sdViewSt":0,"prodPack":0,"avHold":0,"stripPack":0,"sentVideoTrack":1,"degOf":0,"STAGE_FACE_PX":0,"roomPack":0,"packLoop":0,"mosJobs":0,"mosAnn":0,"mosFb":0,"dbgRowFaces":0,"blurPipe":0,"ctScreenTrack":1,"soundHeld":1,"hearState":1}}, stamp: "d49d42da" };
+  var api = { name: "view", run: part, count: 722, exports: {"appCopyPaint":1,"appRuntimeBoot":1,"appRuntimeClient":1,"appStageAsk":1,"appStageAskClose":1,"applyAdminUi":1,"applyChrome":1,"applyHeaderChoice":1,"applyRoomAudio":1,"applyRoomHelp":1,"applyViewerCrops":1,"armMeetDialogs":1,"atPwPrompt":1,"audioDump":1,"awayFull":1,"blurA":0,"blurActx":0,"blurB":0,"blurBctx":0,"blurNote":1,"bootMeetSession":1,"bridgeAgentToPage":1,"camBtn":0,"capCardRefresh":1,"capLangAsk":1,"capPaint":1,"capSourceOpen":1,"carryEarAc":1,"carryIo":1,"ccDockBtn":0,"chatPanel":0,"chatPanelOpen":1,"chatTrace":1,"clearAdminClose":1,"clearAppView":1,"closeFsView":1,"closeMoreForWait":1,"closeTileWin":1,"comfyStadMeta":1,"comfyStadRoster":1,"countClosedChat":1,"ctAgendaOpen":1,"ctAppInfo":1,"ctInit":1,"ctPaintAgendaBtn":1,"ctPaintBar":1,"ctPresent":1,"dbgMeterShow":1,"dropStaleShareWin":1,"emitLiveTranscript":1,"enterPip":1,"explainHeldVideo":1,"foldBarForApp":1,"frozenTileSkip":1,"fsFitPaint":1,"fsRefresh":1,"fsRefreshIfOpen":1,"handBtn":0,"hideAppMissing":1,"hideCaptions":1,"hideDialogs":1,"hideJoinPwModal":1,"hideResharePrompt":1,"inviteLinkForModal":1,"islandNoteTick":1,"keysModal":0,"layout":1,"lgLeave":1,"loadScriptOnce":1,"lobbyPwOpenRoom":1,"makeTile":1,"massBannerTick":1,"micBtn":0,"newCanvas":1,"openBlurWhy":1,"openFsView":1,"openShareLiveModal":1,"openStageAdjust":1,"openTileWin":1,"paintAirKind":1,"paintAloneCard":1,"paintAppGifFromLane":1,"paintAppRoomBody":1,"paintAppWho":1,"paintAssistant":1,"paintAudienceReacts":1,"paintAvatarCanvas":1,"paintAvatarImg":1,"paintAwayMark":1,"paintBcQuiet":1,"paintBlurWhy":1,"paintBotEyes":1,"paintBotView":1,"paintBroadcastChrome":1,"paintBroadcastIdent":1,"paintBroadcastJoinNote":1,"paintBroadcastRole":1,"paintBroadcastSeats":1,"paintCallBanner":1,"paintCallOn":1,"paintCallState":1,"paintCcLocal":1,"paintCcState":1,"paintCcView":1,"paintChatBadge":1,"paintChatBtn":1,"paintChatCount":1,"paintChatGate":1,"paintChatNew":1,"paintChipBottom":1,"paintControls":1,"paintFaders":0,"paintFit":1,"paintHand":1,"paintHelpTip":1,"paintInviteSlot":1,"paintJoinVeil":1,"paintLiveBadge":1,"paintMyAvatarPreview":1,"paintOnAirBadge":1,"paintOnAirSide":1,"paintPeopleIfOpen":1,"paintProgressSteps":1,"paintQaBand":1,"paintRaisedHands":1,"paintRb":1,"paintRbNow":1,"paintRoomTitle":1,"paintRoomTrust":1,"paintRoster":1,"paintShare":1,"paintShareUrl":1,"paintSoloApp":1,"paintSpkBtn":1,"paintStadiumTile":1,"paintStage":1,"paintStageBlurWhy":1,"paintStageMod":1,"paintStagePlate":1,"paintStageStrip":1,"paintStageVoteTargets":1,"paintStatusAlert":1,"paintStatusLine":1,"paintStatusNotice":1,"paintStatusSheet":1,"paintStatusWhy":1,"paintStreamLink":1,"paintTabTitle":1,"paintTileChrome":1,"paintTileOnGrid":1,"paintTranscriptControls":1,"paintTxMark":1,"paintVq":1,"paintWaitDoor":1,"paintWaitingSelf":1,"paintWspChip":1,"paintWspStatus":1,"pauseNote":1,"phoneLayout":1,"pipCardModel":1,"pipNote":1,"pipReaim":1,"pipReturn":1,"pipSource":1,"placeClearLine":1,"placeDeskName":1,"placeDockForWidth":1,"placeDockPopover":1,"placeFit":1,"placeHandq":1,"placeQaBand":1,"rbCanvas":1,"reassertVisLift":1,"recBtn":0,"refreshAudioBtn":1,"refreshAvatarSurfaces":1,"releaseHeld":1,"renderChat":1,"renderFiles":1,"renderHandq":1,"renderLobbyList":1,"renderQa":1,"renderTranscript":1,"replaceAddress":1,"roomAudioOn":1,"setAppFavicon":1,"setAppGif":1,"setBotView":1,"setTileLetter":1,"sgaAppOwner":1,"showAppMissing":1,"showAppPane":1,"showAppearCard":1,"showAvatarTrack":1,"showBlurNoteUnlessDialog":1,"showCamBack":1,"showCaption":1,"showClosedDialog":1,"showFlipButton":1,"showForkPick":1,"showHeldScreen":1,"showInviteModal":1,"showLeftDialog":1,"showLoadRefusal":1,"showLobby":1,"showPwModal":1,"showRecOptions":1,"showRecReplay":1,"showRelayBusy":1,"showResharePrompt":1,"showServiceEnded":1,"showShareLink":1,"showWhoIfOpen":1,"stadiumEl":0,"stageFeedShows":1,"stagefeedEl":0,"stopLobbyPreview":1,"syncModalFocus":1,"takeFaceReact":1,"tickAdminClose":1,"tileNote":1,"timingRow":0,"topNameModal":1,"turnPaint":1,"twButton":1,"unmuteBtn":0,"updateAppButtons":1,"updateBlurAllBtn":1,"updateCamAllBtn":1,"updateMuteAllBtn":1,"updateReload":1,"updateShareAllBtn":1,"viewTestHooks":1,"waitPaint":1,"wakeMeet":1,"wireFsResize":1,"wireMediaSession":1}, needs: {"core":{"vqManual":0,"serviceHeard":0,"stageIds":0,"adminsNow":0,"bcHostStored":0,"roomHeadCount":1,"leftDialogUp":1,"bcWatchingViewer":1,"barKind":1,"bcMayPublishAv":1,"idleDock":1,"barPlan":1,"uiText":1,"dockLabelSet":1,"hasAdminRoom":0,"uiLang":1,"ROOM":0,"paintBroadcastAir":1,"bcRole":1,"paintOnAir":1,"applyAvatarFile":1,"refreshAllTiles":1,"broadcastStatus":1,"pushLeaf":1,"bcPreInRoom":1,"becomeAssistant":1,"holdDoor":0,"amAdmin":0,"statusWords":0,"sayState":0,"liveInCall":1,"blurWhyWords":1,"tileBlurWhy":1,"frozeThisBeat":1,"reactRoomState":1,"seatDark":0,"forcedCamOff":0,"modBlurOn":0,"shareBlocked":0,"docPip":0,"myName":0,"displayName":1,"pipCard":0,"pipCardPaint":1,"pipCardRun":1,"pipCardReady":1,"clearPipAuto":1,"pipFallback":1,"setStatus":0,"pipAutoT":0,"inMeetingNow":1,"backWatch":0,"backGuardDrop":1,"sendVisPark":1,"botViewOn":0,"botParks":1,"dcSend":0,"autoFsOff":0,"setAutoFsOff":1,"admGraceT":0,"admTickT":0,"admDeadline":0,"closeRoomNoHost":1,"updateLeaving":0,"bcOnAir":1,"updateRoomKey":0,"blurLevel":0,"progressStart":1,"progressTick":1,"progressWords":1,"homeHref":1,"fsInline":0,"fsSel":0,"fsAutoPid":0,"fsZoomBox":0,"fsZoomIds":0,"fsFarTalkers":1,"fsFarCells":1,"fsCropBox":1,"viewNote":1,"fsFeedLive":1,"blurLevelFor":1,"sharingScreen":0,"nameInitial":1,"fsPickAuto":1,"fsBlurClass":1,"fsAutoKey":0,"fsFollow":0,"fsFollowChanged":1,"fsTick":0,"fsFollowT":0,"stageModList":1,"wireModbar":1,"paintModbarButtons":1,"modOf":1,"localBlurPower":1,"setMod":1,"blurOffer":1,"hostWords":1,"focusId":0,"iAmWaiting":1,"shadeKey":1,"stageFeedVideo":1,"contentHas":1,"ctNote":1,"VMODE":0,"viewWord":1,"setView":1,"syncFocus":1,"CT":0,"appKey":0,"ctAgHidden":1,"ctText":1,"ctAspect":1,"turnHeld":1,"shareFirewallWords":1,"ctLabel":1,"ctSelect":1,"ctAgendaShortTime":1,"ctAgendaOver":1,"ctCanEditAgenda":1,"ctBring":1,"ctAgendaTickArm":1,"ctSpeakerPick":1,"ctAgCtx":1,"ctPaintAgendaClock":1,"ctAgendaPublish":1,"ctAgendaHide":1,"ctRefresh":1,"ctAgendaWhoText":1,"ctFocusSources":1,"applyViewerCrop":1,"viewerCropOf":1,"saveVcrops":1,"twIdOf":1,"twPeer":1,"twCaptionsButton":1,"updateTile":1,"stadFaceIdAt":1,"ensureAc":1,"carryOutAc":0,"newMeetAudioContext":1,"pwBlocked":0,"rosterRows":1,"updateStatus":1,"paintRosterSoon":1,"mayHost":1,"waitingSince":1,"setWaitingRoom":1,"waitingRows":1,"hostRename":1,"hostSpot":1,"bcEndedInRoom":1,"stageClaimOf":0,"ctTurnPaint":1,"capOn":0,"subsOn":0,"subsMeetId":0,"capTry":1,"relayBusyAt":0,"camPeer":0,"mediaOk":0,"meshCoord":0,"meshSeat":0,"peerAway":0,"clog":0,"dropPeer":1,"clearRosterTiles":1,"startMesh":1,"islandApart":1,"esc":0,"bcActButtons":1,"learnFoldedNames":1,"applyBcAct":1,"storePw":1,"pwHeldOnTyping":1,"grantHoldUntil":0,"rekeyRoom":1,"pwProof":0,"pwChainFailed":1,"purgeAllFiles":1,"pwSetRoom":1,"deriveAdminKey":1,"adoptAdmKey":1,"admStoreKey":0,"mirrorRoomState":1,"whoRows":1,"whoFaceState":1,"whoObserve":1,"whoRefresh":0,"whoAddrLines":1,"pwBan":1,"whoFileText":1,"isCastEntry":1,"loadList":1,"lobRow":1,"stashJoinAv":1,"mintHostKey":1,"shortCode":0,"slugRoom":1,"lobbyPwHandOver":1,"setPersonalBlur":1,"parseMeetInput":1,"toggleBookmark":1,"saveList":1,"aloneCardShut":0,"inviteFromSolo":1,"appClientCtl":0,"DEBUG_ON":0,"unread":0,"reactAlert":0,"messageMentionsMe":1,"mentionToken":1,"linksAllowed":1,"viewerMayReact":1,"withMentions":1,"avatarChip":1,"reactorNames":1,"reactOpen":0,"lineOpen":0,"paintLog":1,"prayOn":0,"modStarOn":1,"lateJoinerSeesHistory":0,"slowModeOn":0,"chatLinksOn":0,"logNearBottom":1,"toggleLine":1,"takeReact":1,"sendAll":1,"applyOwnDelete":1,"admSigned":1,"applyCdel":1,"takeTomb":1,"uid":0,"mayPinFiles":1,"recSrcDirty":0,"roomPastSection":0,"knownTotal":1,"stageGrantLive":0,"enforceBroadcastSeat":1,"canStage":0,"stageNeed":0,"vupDismissedSig":0,"setStage":1,"mayShareScreen":0,"rbFmt":1,"rbToggle":1,"rbStop":1,"rbNoun":0,"rbTitle":1,"findSharedApp":1,"canIRunApp":0,"shareSheetFocusId":1,"appHiddenSid":0,"reconcileApp":1,"dlogOut":0,"dlogStoreGet":1,"dlogRecStart":1,"sendAvatarTo":1,"setVq":1,"trBlocks":1,"trLang":1,"trNote":1,"capName":1,"capPick":1,"capRows":1,"capNowNote":1,"capPublish":1,"ccLangLabel":0,"capLangName":1,"capLangMine":1,"capLangTag":1,"trLangOf":0,"ccLocalBlocked":1,"ccMB":0,"lsSet":0,"lsGet":0,"capSend":1,"txMarkWhy":1,"trMode":1,"setCapSend":1,"setTrMode":1,"leaveSeededService":1,"bcSeeding":0,"releaseLeaveAsk":1,"applyPageHeader":1,"reactRateOk":1,"faceDrawnHere":1,"sendFaceFrame":1,"sendAudienceReact":1,"focusOf":1,"amGloballyMuted":1,"micLockWords":1,"leaveMeeting":1,"updateMediaSession":1,"heldNoteSeen":1,"markHeldNote":1,"blurHold":1,"modalFocusables":1,"modalDismissBtn":1,"viewerShareUrl":1,"bcStartAt":1,"bcWhenWords":1,"armCopiedLabel":1,"linkRowHtml":1,"createAdminRoom":1,"holdLeaveAsk":1,"shortcutTyping":1,"stopApp":1,"appMode":0,"appHostCtl":0,"currentAppHelpMd":1,"currentAppCredits":1,"appEv":0,"appClientStop":0,"appLeadable":0,"appLeadOn":0,"stopRoomApp":1,"appLeadSet":0,"appStageConsent":0,"appStageApply":1,"appStagePlan":1,"importGif":1,"runApp":1,"installRunApp":1,"runLinkTarget":1,"fetchGifFromUrl":1,"runChoices":1,"aiNotesSetting":1,"backToNormalView":1,"agentChat":1,"botHidden":1,"hideBotsT":0,"turnNote":1,"dbgMeterPanel":0,"occPid":0,"newNeg":0,"roomDig":1,"digestMode":0,"roomConsentIds":0,"freshSt":0,"armAppRoomTick":0,"shareOnlyStage":1,"meOnStage":1,"personOnStage":1,"screenSharers":0,"trWrites":1,"participantCount":1,"timing":0,"whisperReady":0,"roomKey":0,"model":0,"act":0,"tapUnblur":1,"clearNoPwState":1,"blurAgain":1,"reportClearHost":1,"docPipName":1},"media":{"resumeReload":1,"micTap":1,"stashRecoverMedia":1,"sdView":0,"mosIn":0,"STAGE_FACE_SETTLE_MS":0,"stopScreenShare":1,"stageFrameVal":0,"setStageFrame":1,"normStageFrame":1,"spkDeviceId":0,"AVATAR_W":0,"AVATAR_H":0,"avatarSharp":0,"blurSenderFrac":1,"blurDraw":1,"startLocalView":1,"refreshOutbound":1,"reviveCamera":1,"tileHolds":1,"applyBuses":1,"blurSized":1,"openCamChooser":1,"camChooserOpen":1,"dismissCamChooser":1,"lateMedia":1,"releaseAudio":1,"compOf":0,"trackAspect":1,"wkHolds":1,"wkBindVideo":1,"displayCount":1,"qaStageSt":0,"placeStageMarks":1,"canScreenShare":0,"shareRecoverMode":0,"startScreenShare":1,"rbStart":1,"recoverShareTimer":0,"applyCcAll":1,"mix":0,"rememberMix":1,"toggleSing":1,"paintTiming":1,"applyGrid":1,"speechRunning":1,"stopSpeech":1,"syncSpeech":1,"ccEngine":1,"phoneCaptions":1,"whisperAllowed":0,"wspPaintSafe":1,"WSP_WEAK":0,"CC_WHISPER_ANYWAY_KEY":0,"CC_ENGINE_KEY":0,"wspResume":1,"whisperInstalling":0,"wspInst":0,"WHISPER_APP_ID":0,"installWhisper":1,"armWhisperRescan":1,"whisperSupported":1,"CC_TRANSLATE_KEY":0,"whisperChosen":0,"wspState":1,"wspWorking":0,"capsRunningNow":1,"wspStateText":1,"wspStSig":0,"wspRetry":1,"wspChipGone":1,"wspChip":0,"WSP_CHIP_MS":0,"wspTickAt":0,"WSP_TICK_MS":0,"wspCaps":0,"wspQ":0,"wspStarved":0,"WSP_STARVE_MS":0,"WSP_STARVE_WIN":0,"WSP_STARVE_N":0,"wspToBrowser":1,"CC_WORDS_KEY":0,"trEnSync":1,"wspSync":1,"speechGaveUp":0,"stopWhisper":1,"wspRelease":1,"wspChipRoom":0,"WHISPER_SEED_KEY":0,"whisperSeedBlocked":1,"browserCaptionsMissing":1,"transcriptFile":1,"recDownload":1,"recFileName":1,"recRelease":1,"recStarting":0,"canScreenRecord":0,"recSources":1,"recDefaultQuality":1,"recLibraryOption":1,"openModal":1,"startRec":1,"refreshTrBtn":1,"callStateBox":0,"schedReconcile":1,"canRaiseHand":1,"speakerChoices":1,"openKeys":1,"camFacing":0,"camDeviceId":0,"regrabCamera":1,"camPickThen":0,"camChooserAnchor":0,"closeCamChooser":1,"pickCamera":1,"micChooserOpen":1,"closeMicChooser":1,"blockedAudio":0,"downFolds":0,"mosStandby":0,"acClockInfo":1,"audioKickArmed":0,"wkEar":0,"stageEar":0,"sdViewSt":0,"prodPack":0,"avHold":0,"stripPack":0,"sentVideoTrack":1,"degOf":0,"STAGE_FACE_PX":0,"roomPack":0,"packLoop":0,"mosJobs":0,"mosAnn":0,"mosFb":0,"dbgRowFaces":0,"blurPipe":0,"ctScreenTrack":1,"soundHeld":1,"hearState":1,"stageViewNow":0}}, stamp: "d49d42da" };
   (GifOS.coreParts = GifOS.coreParts || {})["view"] = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
