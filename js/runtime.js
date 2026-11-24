@@ -393,25 +393,25 @@
   // sid + lsec that becomeHost returns as shareUrl. run.html never puts that
   // string in the address bar or the invite sheet. The link people share is
   // minted in inviteFromSolo and printed by bootAppRoom from <fileId>::room:
-  //   owned room     /join/<short>/<av>/<k>   (#s=<short>.<av>&k=<k>)
-  //   resilient room /join/<k>                (#j=<k>)
+  //   owned room     /join#room=<short>&v=<av>&code=<k>   (#s=<short>.<av>&k=<k>)
+  //   resilient room /join#code=<k>                       (#j=<k>)
   // That k is a room code. It is not this lsec. runApp calls
   // becomeHost({lifetime:'forever', resilient:true, noRelay:true}), so the
   // lane sid is 'j' + lsec even inside an owned room.
   // Shapes THIS function still emits, from those session arguments:
-  //   resilient session — /join/<lsec>                 (#j=<lsec>)
-  //   dotted sid        — /join/<room>/<verifier>/<lsec>
+  //   resilient session — /join#code=<lsec>            (#j=<lsec>)
+  //   dotted sid        — /join#room=<room>&v=<verifier>&code=<lsec>
   //                       (#s=<room>.<verifier>&k=<lsec>)
   // A dotted sid holds no secret (the verifier is a public hash of a host
   // secret, a different key than lsec, and never in any link).
-  // gifos.app pretty paths route through 404.html; hash form everywhere else
-  // (local dev, custom relays). page 'meet' or legacy 'video' formats
-  // /meet/<sid> here; run.html builds the real meeting link itself.
+  // gifos.app links keep the session in the fragment (never sent to a server)
+  // and route through route.html; run.html's hash form everywhere else (local
+  // dev, custom relays). page 'meet' or legacy 'video' formats /meet#room=<sid> here; run.html builds the real meeting link itself.
   function buildJoinUrl(page, sid, lsec, relay) {
     const meet = page === 'video' || page === 'meet'; // 'video' kept as a legacy alias
     const onProd = /(^|\.)gifos\.app$/.test(location.hostname) && relay === root.GIFOS_RELAY;
     if (meet) {
-      return onProd ? location.origin + '/meet/' + sid
+      return onProd ? location.origin + '/meet#room=' + sid
         : location.origin + '/run.html#v=' + sid + '&relay=' + encodeURIComponent(relay);
     }
     // lastIndexOf so this can never diverge from the relay's split (which also
@@ -425,10 +425,10 @@
     // the shim was deleted on the 2026-08-05 no-shims flag day.)
     const dot = String(sid || '').lastIndexOf('.');
     if (dot > 0) {
-      if (onProd) return location.origin + '/join/' + sid.slice(0, dot) + '/' + sid.slice(dot + 1) + '/' + lsec;
+      if (onProd) return location.origin + '/join#room=' + sid.slice(0, dot) + '&v=' + sid.slice(dot + 1) + '&code=' + lsec;
       return location.origin + '/run.html#s=' + sid + '&k=' + lsec + '&relay=' + encodeURIComponent(relay);
     }
-    if (onProd) return location.origin + '/join/' + lsec;
+    if (onProd) return location.origin + '/join#code=' + lsec;
     return location.origin + '/run.html#j=' + lsec + '&relay=' + encodeURIComponent(relay);
   }
   GifOS.links = { shortCode, buildJoinUrl };

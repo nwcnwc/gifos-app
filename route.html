@@ -44,6 +44,40 @@
  * Anything unrecognized just goes home.
  */
 (function () {
+  // A ROOM LINK, as the run.html hash it opens: null when the address names no
+  // room, '' when it names one badly. Every link GifOS hands out keeps the room
+  // in the FRAGMENT, which a browser never sends, so no server and no log ever
+  // reads it: /meet#room=R[&v=V], /cast#room=R[&v=V] (the Broadcast skin),
+  // /join#code=C (an app session) and /join#room=R&v=V&code=C (an owned app).
+  // The path forms shared before (/meet/R[/V], /cast/R[/V], /join/C,
+  // /join/R/V/C) open the same rooms forever. Everything else in the fragment
+  // or the query rides along. Room case is kept: the room id is the capability
+  // the key derives from. The same function sits in route.html and in every
+  // page's channel loader, byte for byte.
+  function roomHash(pathname, search, hash) {
+    var m = /^\/(meet|cast|join)(?:\/([a-z0-9-]{1,64})(?:\/([a-f0-9]{16,64})(?:\/([a-z0-9]{1,64}))?)?)?\/?$/i.exec(pathname || '');
+    if (!m) return null;
+    var kind = m[1].toLowerCase(), room = m[2] || '', ver = m[3] || '', code = m[4] || '', rest = [], bad = false;
+    if (kind === 'join' && room && !ver) { code = room; room = ''; }
+    var h = String(hash || '').replace(/^#/, ''), q = String(search || '').replace(/^\?/, '');
+    var hp = h ? h.split('&') : [], parts = hp.concat(q ? q.split('&') : []);
+    for (var i = 0; i < parts.length; i++) {
+      var p = parts[i], k = p.split('=')[0], val = p.slice(k.length + 1);
+      if (!p) continue;
+      if (m[2] || i >= hp.length || (k !== 'room' && k !== 'v' && k !== 'code')) { rest.push(p); continue; }
+      if (k === 'room') { room = val; bad = bad || !/^[a-z0-9-]{1,64}$/i.test(val); }
+      else if (k === 'v') { ver = val; bad = bad || !/^[a-f0-9]{16,64}$/i.test(val); }
+      else { code = val; bad = bad || !/^[a-z0-9]{1,64}$/i.test(val); }
+    }
+    var tail = rest.length ? '&' + rest.join('&') : '';
+    ver = ver.toLowerCase();
+    if (bad) return '';
+    if (kind !== 'join') return room ? 'v=' + room + (ver ? '&av=' + ver : '') + (kind === 'cast' ? '&bc=1' : '') + tail : (ver ? '' : null);
+    if (room && ver && code) return 's=' + room + '.' + ver + '&k=' + code + tail;
+    if (code && !room && !ver) return 'j=' + code + tail;
+    return room || ver ? '' : null;
+  }
+
   // EVERY ROUTE BELOW REFRESHES THE RELEASE POINTER FIRST. The channel loader
   // a route lands on redirects a default-channel visitor on gifos_current, the
   // last-known release, without re-reading version.json. A device that only
@@ -100,6 +134,11 @@
     go('/store' + (s[1] ? '#app=' + encodeURIComponent(s[1].toLowerCase()) + q : (q ? '#' + q.slice(1) : '')));
     return;
   }
+  // A ROOM LINK, as the run.html hash it opens. roomHash() is copied byte for
+  // byte into every page's channel loader (pinTarget) so the two never differ.
+  var rh = roomHash(location.pathname, location.search, location.hash);
+  if (rh) { go('/run.html#' + rh, true); return; }
+  if (rh === '') { go('/'); return; } // a broken room link opens nothing
   // Bare /meet, no room = START A FRESH MEETING, identical to double-clicking
   // the Meeting app on the Home Screen (which loads run.html with no room and
   // mints one). Keeps the two entry points equal.
@@ -111,40 +150,6 @@
   // skin — see the BROADCAST block in run.html).
   if (/^\/cast\/?$/i.test(location.pathname)) {
     go('/run.html#bc=1', true);
-    return;
-  }
-  // /meet/<room>/<verifier> is an ADMIN-MANAGED room — a DIFFERENT room from
-  // /meet/<room>. The verifier segment is part of the room's identity (safe
-  // to share publicly); admin power is knowing the password it derives from.
-  // Room ids can be as short as ONE character: gifos.app/meet/a is a global
-  // public channel anyone in the world can wander into. Group moderation
-  // (anyone can mute/blur anyone) keeps the low channels civilized.
-  //
-  // App links: /join/<code> is a self-healing session (the code is the whole
-  // capability); /join/<room>/<verifier>/<code> is an OWNED app — the public
-  // room.verifier names the session (only the creator's app can host it), and
-  // the trailing code is the guests' join-and-decrypt secret.
-  var m = location.pathname.match(/^\/(?:join|meet|cast)\/([a-z0-9-]{1,64})(?:\/([a-f0-9]{16,64})(?:\/([a-z0-9]{1,64}))?)?\/?$/i);
-  if (m) {
-    var code = m[1];
-    var verifier = m[2] ? m[2].toLowerCase() : '';
-    var lsec = m[3] || '';
-    var extra = location.search ? '&' + location.search.slice(1) : '';
-    if (/^\/(?:meet|cast)\//.test(location.pathname)) {
-      // A meeting has no separate join token — the room id IS the capability, so
-      // no &k= (the app branch below still needs it: an owned app carries one).
-      // /cast/<room>/<V> is the SAME admin room worn as the Broadcast skin —
-      // the flag rides the hash, like everything that must survive a redirect.
-      go('/run.html#v=' + code + (verifier ? '&av=' + verifier : '')
-        + (/^\/cast\//i.test(location.pathname) ? '&bc=1' : '') + extra, true);
-    } else if (verifier && lsec) {
-      go('/run.html#s=' + code + '.' + verifier + '&k=' + lsec + extra, true);
-    } else if (!verifier) {
-      go('/run.html#j=' + code + extra, true);
-    } else {
-      go('/'); // an owned link without its secret opens nothing
-      return;
-    }
     return;
   }
   go('/');
