@@ -5012,8 +5012,8 @@
       const isMe = pid === __C.model.me.myId();
       const st = isMe ? __C.model.me.myStatus() : (__C.model.roster.statusOf().get(pid) || {});
       const camOn = isMe ? __C.model.me.myStatus().camOff === false : st.camOff === false;
-      // A screen share is a picture too, camera or not.
-      if (camOn || st.scr) { el.classList.remove('on'); if (typeof paintStagePlate === 'function') paintStagePlate(); return; }
+      // A screen share is a picture too, camera or not, and so is a rebroadcast (the clip is the picture).
+      if (camOn || st.scr || st.rb) { el.classList.remove('on'); if (typeof paintStagePlate === 'function') paintStagePlate(); return; }
       let url = '', hash = '', name = '';
       if (isMe) {
         const a = (GifOS.store.identity() || {}).avatar;
