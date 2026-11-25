@@ -22172,10 +22172,8 @@
         const st = statusOf.get(pid);
         people.push({ id: pid, name: (p && p.name) || rosterNames[pid] || '', bot: !!(st && st.bot), me: false });
       }
-      // SUB.11: and the people the fold names, so the bot's list and the People panel (rosterRows) are one list: my own room
-      // past my row (here) as well as the other rooms of the meeting (far: true). The list skipped the here-names, so a head
-      // agent never listed a deeper seat of its own room that every browser's People panel showed (rooms/core-sdk-pack: Dee).
-      for (const d of farPeople()) for (const x of d.people) { if (!x.id || seen.has(x.id)) continue; seen.add(x.id); const st = statusOf.get(x.id); people.push({ id: x.id, name: x.nm || rosterNames[x.id] || '', bot: !!(st && st.bot), me: false, far: !d.here }); }
+      // SUB.11: and the people of the other rooms of the meeting the fold names (far: true), so the bot's list and the People panel are one list
+      for (const d of farPeople()) for (const x of d.people) { if (d.here || !x.id || seen.has(x.id)) continue; seen.add(x.id); const st = statusOf.get(x.id); people.push({ id: x.id, name: x.nm || rosterNames[x.id] || '', bot: !!(st && st.bot), me: false, far: true }); }
       return people;
     }
     function roomControls() {
