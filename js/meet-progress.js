@@ -68,10 +68,10 @@
 
   // Short reasons, shown under the phase where they help.
   const HINT = {
-    blocked:   { key: 'pgHintBlocked',  en: 'Your network blocks direct calls, so this goes through a relay.' },
+    blocked:   { key: 'pgHintBlocked',  en: 'Your network blocks direct calls, so this goes through a relay, still end-to-end encrypted.' },
     strict:    { key: 'pgHintStrict',   en: 'Your network makes direct calls hard, so this can take a little longer.' },
     inspect:   { key: 'pgHintInspect',  en: 'Your network inspects web traffic, so the relay is reached as a web connection.' },
-    farBlocked: { key: 'pgHintFarBlocked', en: 'The other side\'s network blocks direct calls, so this goes through a relay.' },
+    farBlocked: { key: 'pgHintFarBlocked', en: 'The other side\'s network blocks direct calls, so this goes through a relay, still end-to-end encrypted.' },
     noAnswer:  { key: 'pgHintNoAnswer', en: 'Nobody has answered the door yet. We keep knocking.' },
     first:     { key: 'pgHintFirst',    en: 'Nobody else is here yet.' },
     noServer:  { key: 'pgHintNoServer', en: 'Your internet connection may be down. We keep trying.' },
