@@ -608,19 +608,11 @@
       for (let i = 0; i < tracks.length; i++) if (live(tracks[i])) return tracks[i];
       return null;
     }
-    // The voice that belongs on a face tile. The video source is a decoder; this is the stream the fold sums.
+    // The voice that belongs on a face tile: the same stream a mix part of that seat sums (partStream, one rule). The
+    // video source is a decoder; this is the stream the fold sums.
     function audioStream(pid) {
       if (!pid) return null;
-      try {
-        if (pid === C.myId) return micFoldStream();
-        if (typeof C.peerWaits === 'function' && C.peerWaits(pid)) return null;
-        const p = C.peers && typeof C.peers.get === 'function' ? C.peers.get(pid) : null;
-        if (p && p.relayed) {
-          const via = C.relayVia && typeof C.relayVia.get === 'function' ? C.relayVia.get(pid) : null;
-          return (via && via.stream) || null;
-        }
-        return (p && p.stream) || null;
-      } catch (e) { return null; }
+      return partStream(pid === C.myId ? { own: 'mic' } : { seat: pid });
     }
     // One decoder per track, freed when the last tile drops it.
     const readers = new Map();
@@ -749,34 +741,47 @@
       if (ids && ids.length === m.n && ids.every((x) => typeof x === 'string' && x)) m.ids = ids;
       return m;
     }
+    // The browser's applyTiles on this host. A tile with a picture is drawn and its voice summed with it; a tile whose
+    // picture has not arrived (or a sound tile: a relayed part that carries no video) is summed into the pack's sound
+    // and not drawn, and becomes a drawn tile when its picture arrives. A muted tile (its person is on Stage: the voice
+    // rides the Stage) is drawn without sound.
     function syncTiles(held, tiles) {
-      const next = new Map();
+      const next = new Map(), sounds = new Set();
       const list = Array.isArray(tiles) ? tiles : [];
+      const voice = (t, ref) => {
+        if (t.mute) return null;
+        try {
+          if (ref.face) return audioStream(ref.face);
+          if (ref.in) { const f = C.mosIn && typeof C.mosIn.get === 'function' ? C.mosIn.get(ref.in) : null; return (f && f.stream) || null; }
+        } catch (e) {}
+        return null;
+      };
+      const soundOnly = (t, st) => {
+        try { held.pk.delTile(t.id); } catch (e) {}
+        if (!st || typeof held.pk.setSound !== 'function') return;
+        try { held.pk.setSound(t.id, st); sounds.add(t.id); } catch (e) {}
+      };
       for (let i = 0; i < list.length; i++) {
         const t = list[i];
-        if (!t || t.sound || t.id == null) continue;
+        if (!t || t.id == null) continue;
         const ref = t.ref || {};
+        const audioSt = voice(t, ref);
+        if (t.sound) { soundOnly(t, audioSt); continue; }
         let track = null;
         try { track = ref.face ? faceTrack(ref.face) : (ref.in ? blockTrack(ref.in) : null); } catch (e) { track = null; }
-        if (!live(track)) { try { held.pk.delTile(t.id); } catch (e) {} continue; }
+        if (!live(track)) { soundOnly(t, audioSt); continue; }
         const prev = held.tiles.get(t.id);
         let rec = prev && prev.track === track ? prev : null;
         if (rec) held.tiles.delete(t.id);
         else {
-          if (prev) dropSource(prev.track);
+          // the old picture leaves here, so the sweep below does not drop the tile just set
+          if (prev) { dropSource(prev.track); held.tiles.delete(t.id); }
           const src = takeSource(track);
-          if (!src) continue;
+          if (!src) { soundOnly(t, audioSt); continue; }
           rec = { track: track, src: src };
         }
         next.set(t.id, rec);
-        let audioSt = null;
-        try {
-          if (ref.face) audioSt = audioStream(ref.face);
-          else if (ref.in) {
-            const f = C.mosIn && typeof C.mosIn.get === 'function' ? C.mosIn.get(ref.in) : null;
-            audioSt = f && f.stream;
-          }
-        } catch (e) { audioSt = null; }
+        try { if (typeof held.pk.delSound === 'function') held.pk.delSound(t.id); } catch (e) {}
         try {
           held.pk.setTile(t.id, t.ord, rec.src, audioSt, { n: t.n, cols: t.cols, ids: t.ids, lbl: t.lbl, fit: t.fit, pid: t.pid });
         } catch (e) {}
@@ -786,6 +791,7 @@
         dropSource(prev.track);
       }
       held.tiles = next;
+      try { if (typeof held.pk.soundIds === 'function') for (const id of held.pk.soundIds()) if (!sounds.has(id)) held.pk.delSound(id); } catch (e) {}
     }
     function ensurePack(pack) {
       let held = packers.get(pack.key);
@@ -872,15 +878,18 @@
         return m;
       } catch (e) { return {}; }
     }
-    // packIn's read-only questions. No element on this host: a missing picture is false, and a throw is false.
+    // packIn's read-only questions, answered as the browser answers them: a face or a block is in the pack as soon as
+    // there is something of it to carry (the browser: its element exists), not once its picture decodes. Its voice goes
+    // into the pack's sound at once and its picture joins when the track arrives (syncTiles), so a row's voice never
+    // waits for a picture. A throw is false.
     function faceLive(pid) {
-      try { return !!faceTrack(pid); } catch (e) { return false; }
+      try { return !!(faceTrack(pid) || audioStream(pid)); } catch (e) { return false; }
     }
     function blockPicture(mosKey) {
       try { return !!blockTrack(mosKey); } catch (e) { return false; }
     }
     function blockLive(mosKey) {
-      try { return !!blockTrack(mosKey); } catch (e) { return false; }
+      try { const f = C.mosIn && typeof C.mosIn.get === 'function' ? C.mosIn.get(mosKey) : null; return !!(f && f.stream); } catch (e) { return false; }
     }
     function overlayTiny() {
       try {
