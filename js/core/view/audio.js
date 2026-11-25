@@ -34,6 +34,15 @@
     function fullHref() {
       var p = new URLSearchParams(location.hash.replace(/^#/, ''));
       ['app', 'id', 'go'].forEach(function (k) { p.delete(k); });
+      // gifos.app's address bar holds the SHARE form (#room=R[&v=V]): the meeting page reads that as a lobby (one Join tap).
+      // This person is already a member, so it is handed the joined form (#v=R[&av=V]) that goes straight in.
+      if (p.has('room')) {
+        var ver = p.get('v');
+        p.set('v', p.get('room')); p.delete('room'); p.delete('av');
+        if (ver) p.set('av', ver);
+      }
+      // the name and picture were already chosen here: the meeting page does not ask again (same tab, same session)
+      try { if (GifOS.store.identity().name) { sessionStorage.setItem('gifos_appear_ok', '1'); sessionStorage.setItem('gifos_appeared', '1'); } } catch (e) {}
       // the page beside this one: the document base (a snapshot pins it), not the address, which the meeting may move
       var base = new URL('.', document.baseURI);
       var ours = /(^|\.)gifos\.app$/.test(location.hostname) && base.pathname.indexOf('/versions/') !== -1;
@@ -539,7 +548,15 @@
       $('abar').hidden = !on;
       $('afull').hidden = C.ROOM.kind === 'app';
       body.classList.toggle('abar-on', on);
+      paintAbarH();
     }
+    // the version label sits just above the bar, bottom-left (css/run.css), so it never lies on the app's own top bar buttons
+    var abarH = '';
+    function paintAbarH() {
+      var h = $('abar').hidden ? 0 : $('abar').offsetHeight, v = h + 'px';
+      if (v !== abarH) { abarH = v; document.documentElement.style.setProperty('--abar-h', v); }
+    }
+    try { new ResizeObserver(paintAbarH).observe($('abar')); } catch (e) { root.addEventListener('resize', paintAbarH); }
     $('afull').onclick = function (e) { e.preventDefault(); location.href = fullHref(); };
     $('anote-full').onclick = function (e) { e.preventDefault(); location.href = fullHref(); };
     $('anote-close').onclick = function () { $('anote').style.display = 'none'; };
