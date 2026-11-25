@@ -765,6 +765,10 @@
           G = viewCols; R = Math.ceil(T / viewCols);
         }
         cell = cellSize(shape, cellPref, maxW, G);
+        // A local view of 25 faces or under keeps the full cell whatever the
+        // columns: a one-line layout must not shrink each face to fit the
+        // encoded footprint (it is never encoded).
+        if (viewOn && shape === 'stad' && T <= 25) cell = cellPref;
         // Stad squares use the fixed footprint width. Other shapes use the maxW cap.
         // An encoded stad canvas rounds UP to a row step. The dark rows under the
         // real grid are not faces; faceSrcRect sizes a face from the block width.
