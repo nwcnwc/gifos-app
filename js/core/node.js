@@ -27,8 +27,13 @@
  * builtins so a port can hand the page values of its own realm. ports/loopback.js is an in-process port that carries
  * data channels only. With no port the participant has no peer connections.
  *
- * THE MEDIA PLANE (opts.media = { Opus, libav }: an Opus codec constructor, opusscript-shaped, and, when a mosaic must
- * be painted, libav, the path of the VP8 wasm build; needs a webrtc port with real tracks, werift). The host builds
+ * THE MEDIA PLANE (opts.media = { Opus, opusNative, libav, libavModule }: an Opus codec constructor, opusscript-
+ * shaped; opusNative, a factory for opusscript's own wasm module (() => its build/opusscript_native_wasm.js required
+ * and called); and, when a mosaic must be painted, libav, the path of the VP8 wasm build, with libavModule that
+ * path already required. opusNative and libavModule are needed only when this host's own require cannot see those
+ * installed packages itself (a host linked from a FETCHED site's code loads Node builtins only — see opusCodec
+ * below — so the caller resolves each with its own real require and hands the result in); needs a webrtc port with
+ * real tracks, werift. The host builds
  * the site's ports/webaudio.js (files.json "nodeMedia".host) in its own realm and puts its AudioContext on the
  * participant's global. When libav is set it builds ports/vp8.js ("nodeMedia".video) the same way and puts that port
  * on the global for the plane to hold. It then links the site's media/plane-node.js ("nodeMedia".plane) as the media
@@ -261,12 +266,21 @@ function siteFetch(appRoot, location, realFetch) {
 // in allocation order, such as a codec pin, moves where it hits). Its views also detach when the heap grows. When the
 // host hands us that wrapper, drive the same wasm handler with right-sized buffers at their real addresses and views
 // read fresh per call. Any other codec is used as given.
-function opusCodec(Opus) {
+// nativeFactory: an optional () => opusscript's own wasm module, already required by a caller with a real require
+// (opts.media.opusNative). This host's own require loads Node builtins only when linked from a fetched site's code
+// (THE PAGE IS NOT HERE, below), so require.cache is not there to find opusscript's installed folder; with neither,
+// it refuses: the unpatched wrapper corrupts the heap, so no host runs it.
+function opusCodec(Opus, nativeFactory) {
   if (typeof Opus !== 'function' || !Opus.MAX_PACKET_SIZE || !Opus.Application) return Opus;
-  const path = require('path');
-  const key = Object.keys(require.cache).find((k) => require.cache[k].exports === Opus);
-  if (!key) return Opus;
-  const native = require(path.join(path.dirname(key), 'build', 'opusscript_native_wasm.js'))();
+  let native = null;
+  if (typeof nativeFactory === 'function') {
+    native = nativeFactory();
+  } else if (require.cache && typeof require.cache === 'object') {
+    const path = require('path');
+    const key = Object.keys(require.cache).find((k) => require.cache[k].exports === Opus);
+    if (key) native = require(path.join(path.dirname(key), 'build', 'opusscript_native_wasm.js'))();
+  }
+  if (!native) throw new Error('GifOS core: opusscript needs opts.media.opusNative (its own wasm module) where require.cache is absent');
   const MAX_PACKET = Opus.MAX_PACKET_SIZE, MAX_FRAME = 48000 * 60 / 1000;
   class Codec {
     constructor(rate, channels, application) {
@@ -569,7 +583,7 @@ function createMeeting(opts) {
   let plane = null;
   if (media) {
     // the AudioContext over Opus, on the participant's global before the meeting runs (the libraries read it at use)
-    audio = hostModule(site, nm.host).port({ Opus: opusCodec(media.Opus), timings: GifOS.timings,
+    audio = hostModule(site, nm.host).port({ Opus: opusCodec(media.Opus, media.opusNative), timings: GifOS.timings,
       werift: { MediaStreamTrack: g.MediaStreamTrack, MediaStream: g.MediaStream, RtpPacket: g.RtpPacket, RtpHeader: g.RtpHeader } });
     audio.AudioContext.onerror = (e) => fail('audio', e);
     g.AudioContext = g.webkitAudioContext = audio.AudioContext;
@@ -577,8 +591,12 @@ function createMeeting(opts) {
       if (!nm.video) throw new Error('GifOS core: opts.media.libav needs the site video port (files.json "nodeMedia".video)');
       let WorkerCtor = null;
       try { WorkerCtor = require('worker_threads').Worker; } catch (e) { WorkerCtor = null; }
-      let LibAV = null;
-      try { LibAV = require(media.libav); } catch (e) { LibAV = null; }
+      // media.libav stays a path string (the Worker that runs the encoder needs it as one: workerData is structured-
+      // cloned, not a live module). require(media.libav) is an absolute path, not a builtin, so a host whose require
+      // loads builtins only (see opusCodec above) cannot load it here either — media.libavModule is that same
+      // caller's real require, already done, for exactly this line.
+      let LibAV = media.libavModule || null;
+      if (!LibAV) { try { LibAV = require(media.libav); } catch (e) { LibAV = null; } }
       if (!LibAV || (typeof LibAV.LibAV !== 'function' && typeof LibAV !== 'function')) throw new Error('GifOS core: opts.media.libav did not load');
       const videoApi = hostModule(site, nm.video);
       if (!videoApi || typeof videoApi.port !== 'function') throw new Error('GifOS core: ' + nm.video + ' did not define the video port');
