@@ -496,7 +496,7 @@ AI — gifos.ai  [capabilities.ai — declare the ROLES you use as an array]
    (video shapes are provider-specific — no settled standard; poll/render
     whatever comes back.)
 
-PAYMENTS — gifos.charge / entitled / license  [capabilities.pay]
+PAYMENTS — gifos.charge / entitled / license / purchases  [capabilities.pay]
    The app asks; GifOS shows ITS OWN payment sheet (verified author,
    amount, reason — the app cannot draw or see it); the person picks a
    method and approves; the money goes straight to the app's AUTHOR. The
@@ -530,6 +530,19 @@ PAYMENTS — gifos.charge / entitled / license  [capabilities.pay]
    await gifos.license(sku)  -> the purchase's transaction id, or null.
        Stable per purchase and the same wherever the receipt is restored —
        anchor saves / accounts / room identity to it.
+   await gifos.purchases()   -> THIS app's own payments on this computer,
+       oldest first, read from the OS's records (no server call): every
+       charge (tips with no sku too) and purchases restored from receipt
+       files. Never another app's or another signer's. Each entry:
+       { at, amount, currency, rail, sku, txs: [{ rail, id, role, verifyUrl }] }
+         at        ms since 1970, or null for an old record with no date
+         amount    base units string ($1 = "1000000"); currency "USD"
+                   (paypal, fednow, mpp) or "USDC" (x402, transfer)
+         sku       the sku bought, or null for a tip
+         txs       one per transaction (a USDC payment is two legs:
+                   role "creator" and "fee"); verifyUrl is where anyone
+                   can check it (basescan for USDC, PayPal's activity page
+                   for PayPal), or null.
    NEVER store "bought" in gifos.db: app state travels inside the shared
    GIF, and a purchase must not travel with it. Ask entitled() instead.
    Purchases become receipt FILES in a Purchases folder; opening one on
