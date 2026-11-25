@@ -1,11 +1,11 @@
 {
  "v": 1,
- "build": "0.9.28.28",
+ "build": "0.9.28.29",
  "signer": "gifos.app",
  "files": {
   "js/app-owner.js": "7c709e7f9e553d5c4c38ef8925dc7841fe2b68a2f95ebce0846593f91eb54535",
   "js/app-room.js": "f11fbdde9f9d15d5c239b1c6af0842837f5af084d28af60b885a16c67259cf23",
-  "js/core/files.json": "8d97662bfbd0c61f6794f9a9ee4de7c61393d3cc22abb9bae9011d19b93a65e5",
+  "js/core/files.json": "1d4a8221c87dac8d77a0a166b51500573f1122b9782458d3d776433e40e500ca",
   "js/core/host.js": "42a724efff207e3d92c1c39462e580903f8e4623e834dd811503867c94f645c2",
   "js/core/media/nones.json": "9a1f778d9688a6e8b458e77eccf25ca3173160c2c2f9294c1421199e121841b9",
   "js/core/media/plane-node.js": "a20ace1be30f99ace29a03e6f92a22b2ddbf6c2573d2303af22f8bbadf283003",
@@ -14,7 +14,7 @@
   "js/core/platform.json": "ff63aab6f5c875f1206fbcfa080d47e7e2af32b636700eb2fe9deb154287a20d",
   "js/core/ports/webaudio.js": "a19a4b92009f5177abffc601ff030e0f0212b31a3b3d29e283608633fd2eb2c0",
   "js/gifos-ed.js": "99e1e602c9ab147c7833b407fbef93f8e1c397db8e99023e8ce7005515730584",
-  "js/gifos-gif.js": "39ae1b6c29c7b207fca76f7264f432bcd42155dae8136080293249291d76cca4",
+  "js/gifos-gif.js": "610d6edad59041a3047ee014d09c557aab40a647bd959a42109d03b20e3f72a8",
   "js/gifos-net.js": "6718ad0f1089f63b357b3e8616a800b7e79b575be16ff7c55e381e5e66ef8383",
   "js/gifos-sign.js": "eb81ca9dcaf099ebf5c65a10ca6d52b2761cbd9d3be16ee5a1a7952b9ab68eda",
   "js/gifos-store.js": "e0bf3114e392287e44efe67248c1c43731912a3244bf8234cf558cd18f5eec34",
@@ -37,7 +37,7 @@
   "js/meet-viewmode.js": "851eae95762e026973bb707bcfe97f8aacbb5f76d0dc460dc8970ba4d52543e8",
   "js/meet-zones.js": "677a6a0afaaab4fe110c141ce773d2fc0e554d9ecdf897c1cc9bf88d5ef0e2eb",
   "js/mesh-identity.js": "e7c41650476bf262b0ba41d9970072b77eb748c16d1d9267c73fb4af8e5e1a79",
-  "js/mesh-wire.js": "502bf3a35534d8e9155ff0192496fc29bf4d0b1fbdab2ca5c577a1df6bd943f6",
+  "js/mesh-wire.js": "fb55eb40d040afcedc5b5f9a8152173b13806803841c3a4dceb423a358f04ddb",
   "js/mesh/books.js": "092db7b0f42029f95830cfc42f5f3180466832730e7a3510364785d3b97b8c6e",
   "js/mesh/burst.js": "70e72093587a0f383f199c799cd55eb952ecf3d18d88b401500db52a10dcec25",
   "js/mesh/c7proof.js": "defc7b5cc309af34d6b04a052704cdf9cf5080f1a99d68ffdd7318a6cd1591ac",
@@ -99,7 +99,7 @@
   "js/mesh/witness.js": "57fbb5be7700b06efab185322f1be7875ef8b64fcd9c8edb65b34410010135c6",
   "js/relay-config.js": "75ab84cf3e3b9c1f13a1c534a14a771a4477a4a2a9772dc79e35e9b9111d66e8",
   "js/runtime.js": "16953388689e6b3af5fa5bd2a38303547334d28f869c2de32a0272f49859a41b",
-  "js/timings.js": "93085ea6294879e886c6b8d38f5b8436b632c4ea522a42b00e024f8936f47d7b"
+  "js/timings.js": "dbe02061d1ad2dad2f20a29ce0d4195ce45d57bb35ab8ef3af8eb5db6df80a23"
  },
- "sig": "3900zXkCpIUFIQEY7Vahlv3TR/cMCt1KyZRfBFKKB+4lHrrzhNouE5TkQwa21ESG67xoOFdoSdI5/w/ePOPMAw=="
+ "sig": "eo/9v831Chx2ZJD0mK4jZy6TlDy8QS89rf6FDpzLSW7AceYnUq9L9TyjE+6KN3r7FEgUPkuhXSDUzlR0FlR4BQ=="
 }
