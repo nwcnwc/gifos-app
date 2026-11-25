@@ -22775,6 +22775,177 @@
     }
     yield 3164;
     function agentHost() {
+      // ---- the agent's room action (gifosAgent 'room' {op, args}): the room features a guard bot uses, on the core ----
+      // The same ops and answers as the browser Meeting Bot's own version (gifos-mcp-core src/room.js roomPageOp, which
+      // presses this page's buttons): { ok: true, v } or { ok: false, error }. Here they run on the meeting's state with no
+      // screen, so a seat on the core (an agent with no browser) can hold a room as its admin: the agenda, an app, the Stage,
+      // host sign-in, and guard.* (state, credentials, capture, password, blur_all). Every op acts as this seat, with the
+      // rights any person in this seat has: a guest cannot do what only a host may. The checks are the buttons' own.
+      const AGENT_ROOM_OPS = ['agenda.get', 'agenda.add', 'agenda.next', 'app.list', 'app.run', 'app.stop', 'app.state', 'stage.get', 'stage.set', 'stage.grant',
+        'host.signin', 'host.state', 'guard.state', 'guard.credentials', 'guard.capture', 'guard.password', 'guard.blur_all'];
+      async function agentRoomOp(op, a) {
+        a = a && typeof a === 'object' ? a : {};
+        const yes = (v) => ({ ok: true, v: v });
+        const no = (error) => ({ ok: false, error: String(error) });
+        const why = (base) => { const s = String((statusLine && statusLine.title) || '').trim(); return s ? base + ' The meeting says: ' + s : base; };
+        const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+        const until = async (test, ms) => { const end = Date.now() + ms; for (;;) { let v = false; try { v = await test(); } catch (e) { v = false; } if (v || Date.now() >= end) return !!v; await sleep(200); } };
+        const seated = () => { const s = meshSeat(); return !!(s && s.hasCoord && s.state === 3); };
+        const M = GifOS.meetSubs;
+        const appState = () => ({ running: !!appKey, name: appKey && myStatus.app ? String(myStatus.app.name || '') : '', started_by_bot: appMode === 'host', bot_may_run_apps: !!canIRunApp() });
+        const stageState = () => {
+          const ids = stageIds();
+          return { bot_on_stage: ids.includes(myId), bot_may_step_up: !!canStage(myId),
+            on_stage: ids.map((id) => ({ id: String(id).slice(0, 12), name: id === myId ? myName() : (rosterNames[id] || null), bot: id === myId })),
+            seats: SCALE.C, bot_is_host: !!amAdmin };
+        };
+        const apps = async () => {
+          let files = [];
+          try { files = (await GifOS.store.allFileMeta()) || []; } catch (e) { files = []; }
+          const system = { meet: 1, video: 1, broadcast: 1, appstore: 1 };
+          return files.filter((x) => x && x.isApp && !system[x.appId]).map((x) => ({ app_id: x.appId || '', name: String(x.name || x.appId || 'App').replace(/\.gif$/i, ''), file_id: x.id }));
+        };
+        const agendaNow = () => { const g = CT && CT.ag; return g ? { n: g.items.length, items: g.items.map((it) => ({ title: String(it.t || it.text || ''), minutes: +(it.min || 0) || 0 })), cur: g.cur == null ? null : g.cur } : null; };
+        // "Make me host" is offered to a $5+ subscriber in an open room nobody holds (view capPaint).
+        const canTake = () => !av && !capOn() && subsOn() && !!(M && typeof M.canCapture === 'function' && M.canCapture(subsMeetId())) && !capBusy;
+        try {
+          switch (op) {
+            case 'agenda.get': return yes({ supported: true, agenda: agendaNow() });
+            case 'agenda.add': {
+              const MA = GifOS.meetAgenda;
+              const now = CT && CT.ag;
+              if (now && now.items.length && !a.append) return no('This meeting already has an agenda (' + now.items.length + ' items). Pass append:true to add to it.');
+              if (!ctCanEditAgenda()) return no(why('GifOS did not take the agenda. In a private meeting only the host may change the agenda: sign the bot in with sign_in_as_host.'));
+              let ag = now && now.items.length ? now : MA.empty(myId);
+              const added = [];
+              for (const it of (Array.isArray(a.items) ? a.items : []).slice(0, 50)) {
+                const t = String((it && it.title) || '').trim(); if (!t) continue;
+                const next = MA.add(ag, myId, t, Math.max(0, Math.min(600, Math.round(Number(it.minutes) || 0))));
+                if (!next) return no((added.length ? 'Added ' + added.length + ' items, then ' : '') + 'GifOS did not take "' + t + '".');
+                ag = next; added.push(t);
+              }
+              if (added.length && !(await ctAgendaPublish(ag, 'agent-room-add'))) return no(why('The agenda could not be shared.'));
+              return yes({ added: added, agenda: agendaNow() });
+            }
+            case 'agenda.next': {
+              if (!(CT && CT.ag && CT.ag.items.length)) return no('This meeting has no agenda yet. Use set_agenda first.');
+              if (!ctCanEditAgenda()) return no(why('GifOS did not move the agenda on. Only the person who shared it (or the host) may.'));
+              if (!(await ctAgendaPublish(GifOS.meetAgenda.next(CT.ag, myId), 'agent-room-next'))) return no('There is no next item.');
+              return yes({ agenda: agendaNow() });
+            }
+            case 'app.list': return yes(Object.assign({ apps: await apps() }, appState()));
+            case 'app.state': return yes(appState());
+            case 'app.run': {
+              if (!canIRunApp()) return no(why('The bot may not run apps in this meeting. In a private meeting, only the host and people the host allows may.'));
+              const want = String(a.app || '').trim().toLowerCase();
+              const list = await apps();
+              const hit = list.find((x) => x.app_id.toLowerCase() === want) || list.find((x) => x.name.toLowerCase() === want)
+                || list.find((x) => x.name.toLowerCase().replace(/\s+/g, '') === want.replace(/\s+/g, ''));
+              if (!hit) return no('No app named "' + a.app + '" is installed for the bot. Installed: ' + list.map((x) => x.name).slice(0, 40).join(', ') + '.');
+              await runApp(hit.file_id, hit.name);
+              if (!(await until(() => !!appKey, +a.wait_ms || 15000))) return no(why(hit.name + ' did not start in the meeting.'));
+              return yes(Object.assign({ started: hit.name, app_id: hit.app_id }, appState()));
+            }
+            case 'app.stop': {
+              if (!appKey) return yes(Object.assign({ stopped: false, note: 'No app is running.' }, appState()));
+              if (appMode !== 'host') return no('Someone else started this app; the bot can only stop an app it started.');
+              stopApp();
+              await until(() => !appKey, 5000);
+              return yes(Object.assign({ stopped: true }, appState()));
+            }
+            case 'stage.get': return yes(stageState());
+            case 'stage.set': {
+              const on = !!a.on;
+              if (on && !canStage(myId)) return no(why('The bot may not step on the stage here. In a private meeting, the host has to allow it (or sign the bot in as host).'));
+              if (on && !stageIds().includes(myId) && stageIds().length >= SCALE.C) return no('The stage is full. Someone has to step down first.');
+              if (!on && myStatus.scr) (0, /*()*/__M.stopScreenShare)('you stepped down');
+              setStage(on);
+              await until(() => stageIds().includes(myId) === on, 5000);
+              return yes(stageState());
+            }
+            case 'stage.grant': {
+              if (!amAdmin) return no('Only a host can allow someone on the stage. Sign the bot in with sign_in_as_host first.');
+              const pid = String(a.person_id || '');
+              setMod(pid, 'app', !!a.on);
+              return yes(Object.assign({ person_id: pid, allowed: !!a.on }, stageState()));
+            }
+            case 'host.state': return yes({ bot_is_host: !!amAdmin, host_room: !!av });
+            case 'host.signin': {
+              if (amAdmin) return yes({ bot_is_host: true, note: 'Already signed in as host.' });
+              if (!av) return no('No one has taken over as host in this public open-floor meeting, so there is nothing to sign in to.');
+              const pw = String(a.password || '').trim();
+              if (!pw) return no('That host password did not sign the bot in.');
+              sayState('adminChecking');
+              const K = await deriveAdminKey(room, pw);
+              if (!(await adoptAdmKey(K))) { sayState('adminWrong'); return no('That host password did not sign the bot in.'); }
+              try { localStorage.setItem(admStoreKey(), admKey); } catch (e) {}
+              mirrorRoomState({ admin: true });
+              sayState('adminSignedIn');
+              try { (0, /*()*/__V.applyAdminUi)(); } catch (e) {}
+              broadcastStatus();   // the next signed heartbeat announces my adminship to every peer
+              return yes({ bot_is_host: true });
+            }
+            case 'guard.state': {
+              const mt = M && typeof M.meeting === 'function' ? M.meeting() : null;
+              const pm = M && typeof M.passMeeting === 'function' ? M.passMeeting() : null;
+              const rights = typeof GifOS.rights === 'function' ? await GifOS.rights().catch(() => null) : null;
+              const capIsOn = capOn();
+              const hands = new Map();
+              for (const h of handQueue()) if (h && h.i != null) hands.set(String(h.i), typeof h.t === 'number' && h.t > 0 ? h.t : null);
+              const adm = new Set(admins.map(String));
+              const s = meshSeat();
+              return yes({
+                supported: !!(M && typeof M.useFile === 'function'),
+                seated: !!(s && s.state === 3), participants: peopleShown(), me: myId,
+                admin_room: hasAdminRoom(), host: !!amAdmin,
+                // a captured room's password is its captor's alone (the password button is disabled for everyone else)
+                capture: { on: capIsOn, mine: capIsOn && !(hasAdminRoom() && !amAdmin), can_take: canTake() },
+                password_set: !!roomPw, password_ok: String(roomPw || '') === String(a.want || ''),
+                locked_out: !!pwBlocked,
+                subscription: (!mt && !pm) ? null : (() => {
+                  const sh = !!(mt && mt.held), ph = !!(pm && pm.held);
+                  return { held: sh || ph, via: sh ? 'sub' : ph ? 'pass' : null, pass: !!pm, moved: sh || ph ? null : ((pm && pm.moved) || (mt && mt.moved) || null),
+                    tier: (mt && mt.tier) || (ph ? 'pass' : null), paid: !!(mt && mt.paid) || ph };
+                })(),
+                rights: rights,
+                subs_on: !!subsOn(),
+                blur_all: { offered: !!amAdmin, on: !!amAdmin && !!allGuestsBlocked() },
+                people: rosterIds.map((pid) => ({ id: String(pid), name: rosterNames[pid] || (peers.get(pid) || {}).name || '', admin: adm.has(String(pid)), hand: hands.has(String(pid)) ? hands.get(String(pid)) : null })),
+              });
+            }
+            case 'guard.credentials': {
+              if (!M || typeof M.useFile !== 'function') return no('This page takes no credentials file (it has no subscription code).');
+              let bytes;
+              try { bytes = Uint8Array.from(atob(String(a.gif_b64 || '')), (c) => c.charCodeAt(0)); } catch (e) { return no('That is not a file in base64.'); }
+              const st = await M.useFile(bytes);
+              return yes({ loaded: true, status: st && st.status ? st.status : null });
+            }
+            case 'guard.capture': {
+              if (!canTake()) return no('The page does not offer "Make me host" now (the room is held, or the subscription has no ticket for this meeting yet).');
+              capTry();   // the server's answer (onCapFrame) says the rest, as for the button
+              return yes({ tapped: true });
+            }
+            case 'guard.password': {
+              if (hasAdminRoom() && !amAdmin) return no('The password belongs to whoever runs this meeting (its host, or whoever took charge of it), and the bot is not it.');
+              const v = String(a.value || '').trim();
+              // A seat still at the door re-keys only once seated (the Save button waits the same way).
+              if (meshNode && !seated()) await until(seated, 6000);
+              // Clearing the password opens the room and deletes the files shared here: a person confirms that; the bot does not.
+              if (!v && roomPw && files.size > 0) return no('Clearing the password would delete the ' + files.size + ' file' + (files.size > 1 ? 's' : '') + ' shared here, for everyone. Not done.');
+              pwSetRoom(v);
+              return yes({ set: !!v });
+            }
+            case 'guard.blur_all': {
+              if (!amAdmin) return no('The page does not offer Blur guests to the bot here (it is a host control in a private meeting).');
+              if (!!allGuestsBlocked() !== !!a.on) { setMod('*', 'blur', !!a.on); setStatus(a.on ? 'Blurred every guest.' : 'Unblurred every guest.'); }
+              return yes({ on: !!allGuestsBlocked() });
+            }
+            default: return no('Unknown room op.');
+          }
+        } catch (e) {
+          return no(why(String((e && e.message) || e)));
+        }
+      }
       const T = GifOS.timings;
       return {
         T: { AGENT_TICK_MS: T.AGENT_TICK_MS, AGENT_VOICE_TAIL_MS: T.AGENT_VOICE_TAIL_MS },
@@ -22816,6 +22987,7 @@
           (0, /*()*/__V.paintBotView)(st);
         },
         reaim: () => { try { sendVisPark(); } catch (e) {} },
+        roomOps: AGENT_ROOM_OPS, roomOp: agentRoomOp,
       };
     }
     yield 3166;

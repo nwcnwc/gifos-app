@@ -518,6 +518,15 @@
       'app.room': (a) => host.appRoom(a && a.op, a && a.args),
       'app.data': (a) => (host.appData ? host.appData(a && a.op, a && a.collection, a && a.key, a && a.value) : fail('This page has no app data road.')),
       'agenda.next': () => host.agendaNext(),
+      // The room features a guard bot uses, as one action: { op, args } -> { ok, v } (the agenda, an app, the Stage, host
+      // sign-in, guard.*). The same ops and answers as the browser Meeting Bot's (gifos-mcp-core src/room.js), on the
+      // meeting's own state, so a seat with no browser can do them. op lists them: host.roomOps.
+      room: (a) => {
+        if (typeof host.roomOp !== 'function') return fail('This page has no room actions.');
+        const op = String((a && a.op) || '');
+        if ((host.roomOps || []).indexOf(op) < 0) return fail('Unknown room op.');
+        return host.roomOp(op, (a && a.args) || {});
+      },
       'agenda.set': (a) => host.agendaSet(a && a.items),
       profile: (a) => host.profile(a || {}),
       leave: () => { stopAll(); return host.leave(); },
@@ -562,6 +571,7 @@
       app: { run: (id) => call('app.run', { id: id }), stop: () => call('app.stop'), room: (op, args) => call('app.room', { op: op, args: args }),
         data: (op, collection, key, value) => call('app.data', { op: op, collection: collection, key: key, value: value }) },
       agenda: { next: () => call('agenda.next'), set: (items) => call('agenda.set', { items: items }) },
+      room: (op, args) => call('room', { op: op, args: args }),
       profile: (p) => call('profile', p),
       leave: () => call('leave'),
       audio: {
