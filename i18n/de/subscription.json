@@ -169,5 +169,9 @@
   "subscription.restoreLead": "Das Gerät mit Ihrem Tarif verloren? Holen Sie ihn mit dem PayPal-Konto zurück, mit dem Sie bezahlt haben.",
   "subscription.pmRestoreGo": "Mit PayPal wiederherstellen",
   "subscription.howSizes": "Wer in einem Meeting einen Tarif hat, bestimmt die Größe des ganzen Meetings: Der beste anwesende Tarif gilt, solange sein Inhaber dabei ist.",
-  "subscription.howFirewall": "Kostenlos bringt Sprache und Chat durch Firmen- und Schul-Firewalls; bezahlte Tarife auch Video. Alles bleibt Ende-zu-Ende-verschlüsselt."
+  "subscription.howFirewall": "Kostenlos bringt Sprache und Chat durch Firmen- und Schul-Firewalls; bezahlte Tarife auch Video. Alles bleibt Ende-zu-Ende-verschlüsselt.",
+  "subscription.pendingNote": "Kauf nicht abgeschlossen: Es wurde nichts berechnet.",
+  "subscription.pendingLost": "Dieser Kauf hat den Plan ersetzt, den dieser Browser hatte. Um ihn hier wieder zu nutzen: Öffne deine Abo-Datei, kopiere den Plan von einem anderen Gerät, das ihn hat, oder nutze „Mit PayPal wiederherstellen“.",
+  "subscription.pendingContinue": "Kauf fortsetzen",
+  "subscription.pendingDismiss": "Schließen"
 }

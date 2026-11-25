@@ -169,5 +169,9 @@
   "subscription.restoreLead": "Lost the device that had your plan? Get it back with the PayPal account you paid with.",
   "subscription.pmRestoreGo": "Restore with PayPal",
   "subscription.howSizes": "Anyone in a meeting who holds a plan sizes the whole meeting: the best plan present wins, for as long as its holder is there.",
-  "subscription.howFirewall": "Free gets voice and chat through corporate and school firewalls; paid plans get video through too. Everything stays end-to-end encrypted."
+  "subscription.howFirewall": "Free gets voice and chat through corporate and school firewalls; paid plans get video through too. Everything stays end-to-end encrypted.",
+  "subscription.pendingNote": "Checkout not finished: nothing was charged.",
+  "subscription.pendingLost": "This checkout replaced the plan this browser had. To use that plan here again: open your subscription file, copy the plan from another device that has it, or use Restore with PayPal.",
+  "subscription.pendingContinue": "Continue checkout",
+  "subscription.pendingDismiss": "Dismiss"
 }

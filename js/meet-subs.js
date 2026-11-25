@@ -44,6 +44,7 @@
   const STATE_KEY = 'gifos-sub-state';     // the last license and what PayPal said
   const CRED_KEY = 'gifos-sub-cred';       // this browser's copy of the subscription file's contents
   const WALLET_KEY = 'gifos-pass-wallet';  // this browser's four-hour passes and their key (passes.json in the subscription file)
+  const WALLET_HISTORY_KEY = 'gifos-pass-wallets-old';   // wallets a file with another key replaced: kept, never removed
   // New words read the meeting's catalog (i18n/<lang>/meet.json); English stays beside the call.
   const tx = (key, en) => { try { const L = GifOS.i18n; if (L && L.ui() !== 'en' && L.has('meet.' + key)) return L.t('meet.' + key); } catch (e) {} return en; };
   const POLL_MS = TM.SUBS_POLL_MS;
@@ -80,8 +81,126 @@
 
   function readJson(k) { try { return JSON.parse(safeStore().getItem(k) || 'null'); } catch (e) { return null; } }
   function writeJson(k, v) { try { if (v == null) safeStore().removeItem(k); else safeStore().setItem(k, JSON.stringify(v)); } catch (e) {} }
-  const readState = () => readJson(STATE_KEY) || {};
-  const writeState = (s) => writeJson(STATE_KEY, s || {});
+
+  // ---- THE LEDGER: every plan this browser holds, ever held or started here (append-only) -----------------------
+  // A purchase is never overwritten or deleted. Each subscription is its own record, keyed by its id. A checkout
+  // started here is a record in state 'pending' until a license is issued for it; a lapsed, cancelled or re-keyed plan
+  // stays as history, with its receipt. A record only ever gains facts about itself: its key list grows (a new key
+  // marks the older ones superseded), its last word from the payment service is updated, Dismiss hides it.
+  // The plan in use is CHOSEN from the records (activeRec): the best one with a current license, else the latest one
+  // held; never a pending checkout and never "the last one written". gifos-sub-cred and gifos-sub-state hold a copy
+  // of the chosen record for pages from before the ledger; anything such a page writes there is taken in on load.
+  const LEDGER_KEY = 'gifos-sub-ledger';
+  const STATE_FIELDS = ['status', 'until', 'paidThrough', 'checkedAt', 'licenseJson', 'sig', 'lastLicenseJson', 'lastSig'];
+  const NOT_PAID = ['APPROVAL_PENDING', 'APPROVED', 'EXPIRED', 'CANCELLED'];   // a checkout's states before (or instead of) a first payment
+  function readLedger() {
+    const l = readJson(LEDGER_KEY);
+    return l && l.v === 1 && l.subs && typeof l.subs === 'object' && !Array.isArray(l.subs) ? l : { v: 1, subs: {} };
+  }
+  const recKey = (r) => { const ks = (r && Array.isArray(r.keys) ? r.keys : []).filter((k) => k && typeof k.seed === 'string' && !k.superseded); return ks[ks.length - 1] || null; };
+  function recCred(r) {
+    const k = recKey(r);
+    return k ? SUB.credentialOk({ v: 1, kind: SUB.CRED_KIND, subId: r.subId, tier: r.tier, period: r.period, seed: k.seed, buyerKey: k.buyerKey, libSeed: k.libSeed }) : null;
+  }
+  const licOf = (j) => { if (typeof j !== 'string' || !j) return null; try { const l = JSON.parse(j); return l && typeof l === 'object' ? l : null; } catch (e) { return null; } };
+  // Bought: a license was ever issued for it here (or it was paid through a date).
+  const everPaid = (r) => !!r && (!!r.paid || !!licOf(r.licenseJson) || !!licOf(r.lastLicenseJson) || (Number.isInteger(r.paidThrough) && r.paidThrough > 0));
+  function stateOf(r) {
+    if (!r) return {};
+    const st = { subId: r.subId, tier: r.tier };
+    for (const f of STATE_FIELDS) if (r[f] !== undefined && r[f] !== null) st[f] = r[f];
+    if (r.status === null) st.status = null;
+    return st;
+  }
+  function liveLicense(r, n) {
+    const lic = licOf(r.licenseJson), k = recKey(r);
+    return !!lic && lic.subId === r.subId && !!k && (!k.buyerKey || lic.buyerKey === k.buyerKey) && Number.isInteger(lic.exp) && lic.exp > n ? lic : null;
+  }
+  function activeRec(l) {
+    l = l || readLedger();
+    const n = nowS();
+    const held = Object.keys(l.subs).map((id) => l.subs[id]).filter((r) => r && r.state !== 'pending' && recCred(r));
+    const live = held.filter((r) => liveLicense(r, n));
+    if (live.length) {
+      return live.reduce((a, b) => {
+        const la = liveLicense(a, n), lb = liveLicense(b, n);
+        const bCov = !!(la.grants && lb.grants) && SUB.covers(lb.grants, la.grants), aCov = !!(la.grants && lb.grants) && SUB.covers(la.grants, lb.grants);
+        if (bCov !== aCov) return bCov ? b : a;
+        return (lb.issued || 0) > (la.issued || 0) ? b : a;
+      });
+    }
+    return held.reduce((a, b) => (!a || (b.at || 0) >= (a.at || 0) ? b : a), null);
+  }
+  // Change one record: its own fields only (undefined removes that field of it); a key is appended, never replaced.
+  function putRec(subId, patch, key) {
+    const l = readLedger();
+    const r = l.subs[subId] || { subId, at: Date.now(), keys: [], state: 'held' };
+    if (!Array.isArray(r.keys)) r.keys = [];
+    for (const f of Object.keys(patch || {})) {
+      if (f === 'keys' || f === 'subId') continue;
+      if (patch[f] === undefined) delete r[f]; else r[f] = patch[f];
+    }
+    if (key && typeof key.seed === 'string' && !r.keys.some((k) => k && k.seed === key.seed)) {
+      const at = Date.now();
+      for (const k of r.keys) if (k && !k.superseded) k.superseded = at;
+      const entry = { seed: key.seed, at };
+      if (key.buyerKey) entry.buyerKey = key.buyerKey;
+      if (key.libSeed) entry.libSeed = key.libSeed;
+      r.keys.push(entry);
+    }
+    if (everPaid(r)) { r.paid = true; if (r.state === 'pending') r.state = 'held'; }
+    l.subs[subId] = r;
+    writeJson(LEDGER_KEY, l);
+    project(l);
+    return r;
+  }
+  // The copy for pages from before the ledger: the chosen record's credential, state and purchase facts.
+  let projected = '';
+  function project(l) {
+    const r = activeRec(l);
+    const c = r ? recCred(r) : null;
+    writeJson(CRED_KEY, c);
+    writeJson(STATE_KEY, r ? stateOf(r) : null);
+    const bag = readJson(PURCHASE_KEY);
+    const out = bag && typeof bag === 'object' && !Array.isArray(bag) ? bag : {};
+    if (r && r.buy) out.sub = r.buy; else delete out.sub;
+    writeJson(PURCHASE_KEY, Object.keys(out).length ? out : null);
+    projected = c ? JSON.stringify(c) : '';
+  }
+  // Take in a credential found in gifos-sub-cred that the ledger does not hold yet (the ledger's first load, or a page
+  // from before the ledger wrote it). Never loses one: it becomes a record, or a new key of its record.
+  function ingestLegacy() {
+    let raw = null; try { raw = safeStore().getItem(CRED_KEY); } catch (e) {}
+    if (!raw || raw === projected) return;
+    const c = SUB.credentialOk(readJson(CRED_KEY));
+    if (!c) return;
+    const l = readLedger();
+    const had = l.subs[c.subId];
+    if (had && Array.isArray(had.keys) && had.keys.some((k) => k && k.seed === c.seed)) { projected = raw; return; }
+    const st = readJson(STATE_KEY) || {};
+    const mine = st.subId === c.subId;
+    const mark = readJson(SUB_RECEIPT_KEY) || {};
+    const fields = { tier: c.tier, period: c.period };
+    if (mine) for (const f of STATE_FIELDS) if (st[f] !== undefined) fields[f] = st[f];
+    const paid = (mine && (!!licOf(st.licenseJson) || !!licOf(st.lastLicenseJson) || (Number.isInteger(st.paidThrough) && st.paidThrough > 0))) || mark.sub === c.subId || !!(had && had.paid);
+    if (paid) fields.paid = true;
+    // A web checkout whose last word is a not-paid state and that never had a license: a checkout that was never
+    // finished (pages before the ledger saved one as the plan). Its state not known yet (a file just used): held.
+    if (!had) fields.state = !paid && /^I-/.test(c.subId) && mine && NOT_PAID.indexOf(st.status) >= 0 ? 'pending' : 'held';
+    if (!had && mine) { const b = readJson(PURCHASE_KEY); if (b && b.sub && typeof b.sub === 'object') fields.buy = b.sub; }
+    putRec(c.subId, fields, { seed: c.seed, buyerKey: c.buyerKey, libSeed: c.libSeed });
+  }
+  const readState = () => { ingestLegacy(); return stateOf(activeRec()); };
+  // The state of one record (the active one when s names none): what the payment service last said about it.
+  function writeState(s) {
+    s = s || {};
+    const id = s.subId || (activeRec() || {}).subId;
+    if (!id) return;
+    const patch = {};
+    if (s.tier) patch.tier = s.tier;
+    for (const f of STATE_FIELDS) patch[f] = s[f] === undefined ? undefined : s[f];
+    putRec(id, patch);
+  }
 
   // ---- the subscription file -------------------------------------------------
   // This browser's credential, else one on this browser's Home Screen: the
@@ -99,7 +218,7 @@
   let provP = null;
   function fromProvidersAll() {
     if (!provP) provP = (async () => {
-      const out = { cred: null, wallet: null };
+      const out = { cred: null, wallet: null, creds: [] };
       const st = GifOS.store, gif = GifOS.gif;
       if (!st || !st.allItems || !st.getFile || !gif) return out;
       const items = await st.allItems();
@@ -112,24 +231,34 @@
         const bytes = f.bytes instanceof Uint8Array ? f.bytes : new Uint8Array(f.bytes);
         const arc = await gif.decode(bytes).catch(() => null);
         if (!arc) continue;
+        let c = null;
         if (where === 'sys_purchases') {
           if (!isSubReceipt(arc.files)) continue;
-          if (!out.cred) out.cred = SUB.credentialOk(fileJson(arc.files, 'subscription.json'));
+          c = SUB.credentialOk(fileJson(arc.files, 'subscription.json'));
           if (!out.wallet) out.wallet = SUB.walletOk(fileJson(arc.files, 'passes.json'));
         } else {
-          if (!out.cred) out.cred = SUB.credentialFromFiles(arc.files);
+          c = SUB.credentialFromFiles(arc.files);
           if (!out.wallet) out.wallet = SUB.walletFromFiles(arc.files);
         }
-        if (out.cred && out.wallet) break;
+        // Every plan found is kept (a receipt in Purchases was paid for); the first is the old single answer.
+        if (c) { out.creds.push({ cred: c, paid: where === 'sys_purchases' }); if (!out.cred) out.cred = c; }
       }
       return out;
-    })().catch(() => ({ cred: null, wallet: null }));
+    })().catch(() => ({ cred: null, wallet: null, creds: [] }));
     return provP;
   }
-  const fromProviders = async () => (await fromProvidersAll()).cred;
+  function activeCred() { ingestLegacy(); const r = activeRec(); return r ? recCred(r) : null; }
   async function credential() {
-    const c = SUB.credentialOk(readJson(CRED_KEY));
-    return c || (await fromProviders());
+    const c = activeCred();
+    if (c) return c;
+    // A plan on this browser's Home Screen (the subscription file, a receipt in Purchases) becomes a record here.
+    const found = (await fromProvidersAll()).creds || [];
+    for (const f of found) {
+      const r = readLedger().subs[f.cred.subId];
+      if (r && Array.isArray(r.keys) && r.keys.some((k) => k && k.seed === f.cred.seed)) continue;
+      putRec(f.cred.subId, Object.assign({ tier: f.cred.tier, period: f.cred.period }, r ? {} : { state: 'held' }, f.paid ? { paid: true } : {}), { seed: f.cred.seed, buyerKey: f.cred.buyerKey, libSeed: f.cred.libSeed });
+    }
+    return activeCred();
   }
   let keyMemo = { seed: null, p: null };
   async function myKey() {
@@ -163,12 +292,15 @@
   // the Home Screen's Purchases folder as a RECEIPT: the same credential the
   // subscription file holds (subscription.json, passes.json) plus the signed
   // license, in a receipt GIF (appId 'gifos-receipt', subscription: true).
-  // One file per browser, rewritten in place when the plan or the passes
-  // change; the desktop places it (gifos_pay_pending, as for every receipt).
+  // One receipt per subscription, kept for good: a later plan never reuses an
+  // earlier plan's receipt. A receipt is brought up to date in place only with
+  // facts about its own plan (a renewed license, the passes it carries); the
+  // desktop places it (gifos_pay_pending, as for every receipt).
   // Best-effort: a page with no Home Screen store just skips it.
-  const SUB_RECEIPT_KEY = 'gifos-sub-receipt';   // { fileId, mark } of this browser's subscription receipt
+  const SUB_RECEIPT_KEY = 'gifos-sub-receipt';   // { fileId, mark, sub }: the chosen plan's receipt (pages before the ledger read it)
+  const RECEIPTS_KEY = 'gifos-sub-receipts';     // { <subId, or '' for passes alone>: { fileId, mark } }: every receipt, never removed
   const PAY_PENDING = 'gifos_pay_pending';       // gifos-pay-broker.js PENDING_KEY: the desktop's placement queue
-  const PURCHASE_KEY = 'gifos-sub-purchase';     // { sub, pass }: facts the payment answer actually returned
+  const PURCHASE_KEY = 'gifos-sub-purchase';     // { sub (copy of the chosen plan's), pass (the latest pass), passes: {<pass id>: facts} }
   function readPurchase() {
     const b = readJson(PURCHASE_KEY);
     return b && typeof b === 'object' && !Array.isArray(b) ? b : {};
@@ -186,48 +318,24 @@
     if (typeof p.captureId === 'string' && p.captureId) o.captureId = p.captureId;
     return Object.keys(o).length ? o : null;
   }
-  function savePurchase(bag) {
-    const out = {};
-    const sub = cleanPurchase(bag && bag.sub);
-    const pass = cleanPurchase(bag && bag.pass);
-    if (sub) out.sub = sub;
-    if (pass) out.pass = pass;
-    writeJson(PURCHASE_KEY, Object.keys(out).length ? out : null);
-  }
-  function mergePurchase(which, patch) {
-    const bag = readPurchase();
-    const next = cleanPurchase(Object.assign({}, cleanPurchase(bag[which]) || {}, patch || {}));
-    if (!next) return;
-    bag[which] = next;
-    savePurchase(bag);
-  }
-  function purchaseFlat(keepSub) {
-    const bag = readPurchase();
-    return cleanPurchase(keepSub ? bag.sub : bag.pass);
-  }
   function centsPrice(cents) {
     if (!Number.isInteger(cents) || cents < 0) return '';
     return Math.floor(cents / 100) + '.' + String(cents % 100).padStart(2, '0');
   }
+  // A subscription's purchase facts live in its own record.
+  function mergeSubFacts(subId, patch) {
+    const r = readLedger().subs[subId];
+    const next = cleanPurchase(Object.assign({}, cleanPurchase(r && r.buy) || {}, patch || {}));
+    if (next) putRec(subId, { buy: next });
+  }
   // The signed issue time, and only for a purchase this browser already recorded.
-  function adoptIssued(licenseJson) {
-    if (!cleanPurchase(readPurchase().sub) || typeof licenseJson !== 'string') return;
-    let lic = null;
-    try { lic = JSON.parse(licenseJson); } catch (e) { return; }
-    if (!lic || !Number.isInteger(lic.issued)) return;
-    mergePurchase('sub', { boughtAt: lic.issued * 1000 });
+  function adoptIssued(subId, licenseJson) {
+    const r = readLedger().subs[subId];
+    const lic = licOf(licenseJson);
+    if (!r || !cleanPurchase(r.buy) || cleanPurchase(r.buy).boughtAt || !lic || !Number.isInteger(lic.issued)) return;
+    mergeSubFacts(subId, { boughtAt: lic.issued * 1000 });
   }
-  function noteWebSub(j, period) {
-    const patch = { rail: 'paypal' };
-    if (typeof period === 'string' && period) patch.period = period;
-    const full = j && j.upgrade && j.upgrade.full;
-    if (Number.isInteger(full)) {
-      const price = centsPrice(full);
-      if (price) { patch.price = price; patch.currency = 'USD'; }
-    }
-    mergePurchase('sub', patch);
-  }
-  function noteStoreSub(r) {
+  function noteStoreSub(subId, r) {
     const rail = RAIL();
     const which = rail && typeof rail.store === 'function' ? rail.store() : '';
     const patch = { boughtAt: Date.now() };
@@ -239,8 +347,9 @@
       patch.price = r.price;
       if (typeof r.currency === 'string' && r.currency) patch.currency = r.currency;
     }
-    mergePurchase('sub', patch);
+    mergeSubFacts(subId, patch);
   }
+  // A pass's facts: kept under its own id for good; `pass` is the latest one (what a receipt without a plan shows).
   function notePassPurchase(o) {
     if (!o || typeof o !== 'object') return;
     const patch = {};
@@ -250,21 +359,25 @@
     else if (o.via === 'play' || o.via === 'appstore') patch.rail = o.via;
     if (typeof o.order === 'string' && o.order && o.via !== 'mint') patch.orderId = o.order;
     if (typeof o.captureId === 'string' && o.captureId) patch.captureId = o.captureId;
-    mergePurchase('pass', patch);
+    const bag = readPurchase();
+    const facts = cleanPurchase(Object.assign({}, (typeof o.id === 'string' && bag.passes && cleanPurchase(bag.passes[o.id])) || {}, patch));
+    if (!facts) return;
+    const passes = bag.passes && typeof bag.passes === 'object' && !Array.isArray(bag.passes) ? bag.passes : {};
+    if (typeof o.id === 'string' && o.id) passes[o.id] = facts;
+    writeJson(PURCHASE_KEY, Object.assign({}, bag, { pass: facts, passes }));
   }
   function licMark(st, c) {
     let exp = '';
     if (c && st && typeof st.licenseJson === 'string' && st.subId === c.subId) {
-      try {
-        const lic = JSON.parse(st.licenseJson);
-        if (lic && Number.isInteger(lic.exp)) exp = String(lic.exp);
-      } catch (e) {}
+      const lic = licOf(st.licenseJson);
+      if (lic && Number.isInteger(lic.exp)) exp = String(lic.exp);
     }
     const paid = st && Number.isInteger(st.paidThrough) ? String(st.paidThrough) : '';
     const until = st && Number.isInteger(st.until) ? String(st.until) : '';
     return exp + ':' + paid + ':' + until;
   }
-  function subReceiptFiles(c, w, st) {
+  // The files of one receipt: a plan (c, its state st, its purchase facts) and/or the passes (w).
+  function subReceiptFiles(c, w, st, bought) {
     const name = tx('subReceiptName', 'Receipt — GifOS Meet subscription');
     const files = {
       'manifest.json': JSON.stringify({ gifos: '1.0', appId: RECEIPT_APP_ID, name, entry: 'index.html', receipt: true, subscription: true, accent: [120, 200, 255] }),
@@ -275,9 +388,9 @@
     if (c) files['subscription.json'] = JSON.stringify(c);
     if (w) files['passes.json'] = JSON.stringify(w);
     if (c && st && st.licenseJson && st.sig && st.subId === c.subId) files['license.json'] = JSON.stringify({ licenseJson: st.licenseJson, sig: st.sig });
-    const bought = purchaseFlat(!!c);
+    if (bought === undefined) bought = c ? cleanPurchase(readPurchase().sub) : cleanPurchase(readPurchase().pass);
     if (bought) files['purchase.json'] = JSON.stringify(bought);
-    if (st && (Number.isInteger(st.until) || Number.isInteger(st.paidThrough))) {
+    if (c && st && (Number.isInteger(st.until) || Number.isInteger(st.paidThrough))) {
       const state = {};
       if (Number.isInteger(st.until)) state.until = st.until;
       if (Number.isInteger(st.paidThrough)) state.paidThrough = st.paidThrough;
@@ -286,34 +399,52 @@
     }
     return files;
   }
+  // Every receipt this browser has, as receipt files: one per plan that was paid for, newest first (a checkout never
+  // finished has none), then one for the passes. Each purchase keeps its own receipt.
+  function receiptSets() {
+    ingestLegacy();
+    const l = readLedger();
+    const w = SUB.walletOk(readJson(WALLET_KEY));
+    const passN = w ? w.passes.length : 0;
+    const paid = Object.keys(l.subs).map((id) => l.subs[id]).filter((r) => r && everPaid(r) && recCred(r)).sort((a, b) => (b.at || 0) - (a.at || 0));
+    const out = paid.map((r) => {
+      const c = recCred(r), st = stateOf(r);
+      const bought = cleanPurchase(r.buy);
+      return { id: r.subId, files: subReceiptFiles(c, null, st, bought), mark: [r.subId, c.buyerKey || '', liveLicense(r, nowS()) ? r.tier : '', 0, licMark(st, c), bought ? JSON.stringify(bought) : ''].join('|') };
+    });
+    if (passN) {
+      const bought = cleanPurchase(readPurchase().pass);
+      out.push({ id: '', files: subReceiptFiles(null, w, null, bought), mark: ['', '', '', passN, '', bought ? JSON.stringify(bought) : ''].join('|') });
+    }
+    return out;
+  }
   let receiptBusy = null;
   function keepReceipt() {
     if (receiptBusy) return receiptBusy.then(keepReceipt);
     receiptBusy = (async () => {
       const store = GifOS.store, gif = GifOS.gif;
       if (!store || !store.putFile || !store.uid || !gif || !gif.encode) return;
-      const c = SUB.credentialOk(readJson(CRED_KEY));
-      const w = SUB.walletOk(readJson(WALLET_KEY));
-      const st = readState();
-      const held = readJson(SUB_RECEIPT_KEY) || {};
-      const live = !!(c && st.licenseJson && st.subId === c.subId);
-      // A credential goes in once its plan was paid for, and STAYS in after
-      // the plan lapses: its key is what reopens a Streamer library.
-      const keepSub = !!c && (live || held.sub === c.subId);
-      const passN = w ? w.passes.length : 0;
-      if (!keepSub && !passN) return;   // nothing bought yet: no receipt
-      const bought = purchaseFlat(keepSub);
-      // The key is in the mark (review H5): after a re-key the receipt must carry the new seed, never the dead one.
-      const mark = [keepSub ? c.subId : '', keepSub ? c.buyerKey || '' : '', live ? c.tier : '', passN, licMark(st, keepSub ? c : null), bought ? JSON.stringify(bought) : ''].join('|');
-      if (held.mark === mark && held.fileId) return;
-      const fileId = typeof held.fileId === 'string' && held.fileId ? held.fileId : store.uid('file');
-      const bytes = await gif.encode(subReceiptFiles(keepSub ? c : null, w, st), { accent: [120, 200, 255] });
-      await store.putFile({ id: fileId, name: tx('subReceiptName', 'Receipt — GifOS Meet subscription') + '.gif', bytes, kind: 'gif', isApp: true, appId: RECEIPT_APP_ID, mime: 'image/gif' });
-      writeJson(SUB_RECEIPT_KEY, { fileId, mark, sub: keepSub ? c.subId : null });
-      // Queued every time: the desktop skips a fileId it already placed.
-      const q = readJson(PAY_PENDING);
-      const list = Array.isArray(q) ? q : [];
-      if (list.indexOf(fileId) < 0) { list.push(fileId); writeJson(PAY_PENDING, list); }
+      const map = readJson(RECEIPTS_KEY) || {};
+      // The single receipt of pages before the ledger stays the receipt of the plan it was made for.
+      const old = readJson(SUB_RECEIPT_KEY) || {};
+      if (typeof old.fileId === 'string' && old.fileId && !Object.keys(map).some((k) => map[k] && map[k].fileId === old.fileId)) map[typeof old.sub === 'string' ? old.sub : ''] = { fileId: old.fileId, mark: old.mark };
+      const act = activeRec();
+      for (const set of receiptSets()) {
+        const held = map[set.id] || {};
+        if (!(held.mark === set.mark && held.fileId)) {
+          const fileId = typeof held.fileId === 'string' && held.fileId ? held.fileId : store.uid('file');
+          const bytes = await gif.encode(set.files, { accent: [120, 200, 255] });
+          await store.putFile({ id: fileId, name: tx('subReceiptName', 'Receipt — GifOS Meet subscription') + '.gif', bytes, kind: 'gif', isApp: true, appId: RECEIPT_APP_ID, mime: 'image/gif' });
+          map[set.id] = { fileId, mark: set.mark };
+          writeJson(RECEIPTS_KEY, map);
+          // Queued every time: the desktop skips a fileId it already placed.
+          const q = readJson(PAY_PENDING);
+          const list = Array.isArray(q) ? q : [];
+          if (list.indexOf(fileId) < 0) { list.push(fileId); writeJson(PAY_PENDING, list); }
+        }
+        if ((act && set.id === act.subId) || (!act && set.id === '')) writeJson(SUB_RECEIPT_KEY, { fileId: map[set.id].fileId, mark: set.mark, sub: set.id || null });
+      }
+      writeJson(RECEIPTS_KEY, map);
     })().catch(() => {}).finally(() => { receiptBusy = null; });
     return receiptBusy;
   }
@@ -332,11 +463,12 @@
     }
     const ok = SUB.credentialOk(c);
     if (!ok) throw new Error('That file is not a GifOS subscription.');
-    writeJson(CRED_KEY, ok);
-    keyMemo = { seed: null, p: null };
-    libKeyMemo = { seed: null, p: null };
-    writeState({ subId: ok.subId, tier: ok.tier, status: null });
-    const st = await refresh();
+    // Its own record (a new key of the same plan, from a restore or a re-key, joins that record and supersedes the
+    // older keys); brought here on purpose, so it is the latest one held. No other record changes.
+    ingestLegacy();
+    putRec(ok.subId, { tier: ok.tier, period: ok.period, state: 'held', at: Date.now() }, { seed: ok.seed, buyerKey: ok.buyerKey, libSeed: ok.libSeed });
+    let st = null;
+    try { st = await refresh(ok.subId); } catch (e) { st = stateOf(readLedger().subs[ok.subId]); }
     rejoin(true);
     return st;
   }
@@ -430,23 +562,55 @@
     const at = nowS();
     return Object.assign({ subId, buyerKey: (await myKey()).pub, at, sig: await signText(SUB.askMessage(action, subId, at)) }, extra || {});
   }
-  // Ask the payment service for a fresh license; keep what it says.
-  async function refresh() {
-    const c0 = await credential();
-    if (!(await subIdNow())) return null;
-    const j = await post('/gifos/sub/license', await signed('license'));
-    const st = readState();
-    const next = Object.assign({}, st, { subId: await subIdNow(), status: j.status, tier: j.tier || st.tier, until: j.until || null, paidThrough: j.paidThrough || null, checkedAt: Date.now() });
-    if (j.active && j.licenseJson) { next.licenseJson = j.licenseJson; next.sig = j.sig; delete next.lastLicenseJson; delete next.lastSig; }
-    else {
+  // An ask signed by one record's own current key (a checkout, a plan that is not the one in use).
+  const recKeys = new Map();
+  function keyOfSeed(seed) {
+    if (!recKeys.has(seed)) recKeys.set(seed, GifOS.ed.keysFromSeed(fromB64(seed)).then((k) => ({ priv: k.priv, pub: b64(k.pubRaw) })));
+    return recKeys.get(seed);
+  }
+  async function signedBy(c, action) {
+    const k = await keyOfSeed(c.seed);
+    const at = nowS();
+    return { subId: c.subId, buyerKey: k.pub, at, sig: b64(await GifOS.ed.sign(k.priv, new TextEncoder().encode(SUB.askMessage(action, c.subId, at)))) };
+  }
+  // Ask the payment service for a fresh license for one record (the plan in use when none is named); keep what it
+  // says in that record. A license is kept only when it verifies: signed by the payment service, for this record's id
+  // and its current key. An "active" answer whose license does not verify changes nothing.
+  async function refresh(subId) {
+    if (!subId) await credential();
+    ingestLegacy();
+    const id = subId || (activeRec() || {}).subId;
+    const r = id ? readLedger().subs[id] : null;
+    const c = r ? recCred(r) : null;
+    if (!c) return null;
+    const ask = await signedBy(c, 'license');
+    const j = await post('/gifos/sub/license', ask);
+    const next = { status: j.status, tier: j.tier || r.tier, until: j.until || null, paidThrough: j.paidThrough || null, checkedAt: Date.now() };
+    let lic = null;
+    if (j.active && j.licenseJson && j.sig) {
+      lic = await SUB.verifyLicense({ licenseJson: j.licenseJson, sig: j.sig }, verifyPay, nowS()).catch(() => null);
+      if (lic && (lic.subId !== id || lic.buyerKey !== ask.buyerKey)) lic = null;
+    }
+    const cur = readLedger().subs[id] || r;
+    if (lic) { next.licenseJson = j.licenseJson; next.sig = j.sig; next.lastLicenseJson = undefined; next.lastSig = undefined; }
+    else if (!j.active) {
       // The last license is kept for My library: after a plan ends, its
       // files stay readable for the keep window, shown with that license.
-      if (st.licenseJson) { next.lastLicenseJson = st.licenseJson; next.lastSig = st.sig; }
-      delete next.licenseJson; delete next.sig;
+      if (cur.licenseJson) { next.lastLicenseJson = cur.licenseJson; next.lastSig = cur.sig; }
+      next.licenseJson = undefined; next.sig = undefined;
     }
-    writeState(next);
-    if (next.licenseJson) { adoptIssued(next.licenseJson); keepReceipt(); }
-    return next;
+    const was = (activeRec() || {}).subId;
+    putRec(id, next);
+    if (lic) { adoptIssued(id, j.licenseJson); keepReceipt(); }
+    // A plan's first license here: a plan it replaced (an upgrade, a store plan change) may have ended at the service
+    // before its license runs out. Ask once about every other record still holding a license, so the choice reads
+    // what the service says now, not a license it has replaced.
+    if (lic && !r.paid) {
+      const l = readLedger(), n = nowS();
+      for (const other of Object.keys(l.subs)) if (other !== id && liveLicense(l.subs[other], n)) { try { await refresh(other); } catch (e) {} }
+    }
+    if (lic && was !== (activeRec() || {}).subId) rejoin(true);   // a bigger plan is now the one in use
+    return stateOf(readLedger().subs[id]);
   }
   // keepFresh() -> once this browser's license is fresh (fetched when missing or near its end). One check at a time: the
   // page's boot starts it, and every reader of the license (Settings, the /subscription page) awaits the same one, so
@@ -455,6 +619,7 @@
   function keepFresh() {
     if (!freshP) {
       freshP = (async () => {
+        try { await checkPending(); } catch (e) {}
         const c = await credential();
         if (!c) return;
         const lic = await verifiedLicense();
@@ -471,7 +636,7 @@
   // started earlier and not yet confirmed, else a new one.
   const STORE_PENDING = 'gifos-store-pending';
   async function storeKey(fresh) {
-    const cur = SUB.credentialOk(readJson(CRED_KEY));
+    const cur = activeCred();
     const held = readJson(STORE_PENDING);
     let seedB64 = !fresh && cur ? cur.seed : held && typeof held.seed === 'string' ? held.seed : null;
     if (!seedB64) { const seed = new Uint8Array(32); crypto.getRandomValues(seed); seedB64 = b64(seed); writeJson(STORE_PENDING, { seed: seedB64 }); }
@@ -479,18 +644,18 @@
     return { seed: seedB64, buyerKey: b64(k.pubRaw), sign: async (text) => b64(await GifOS.ed.sign(k.priv, new TextEncoder().encode(text))) };
   }
   async function keepStoreSub(k, r) {
-    writeJson(CRED_KEY, { v: 1, kind: SUB.CRED_KIND, subId: r.subId, tier: r.tier, period: r.period, seed: k.seed, buyerKey: k.buyerKey });
+    // The store confirmed the purchase: its own record (the seed now lives there, so the scratch seed can go).
+    putRec(r.subId, { tier: r.tier, period: r.period, state: 'held', at: Date.now() }, { seed: k.seed, buyerKey: k.buyerKey });
     writeJson(STORE_PENDING, null);
-    keyMemo = { seed: null, p: null };
-    writeState({ subId: r.subId, tier: r.tier, status: null });
-    noteStoreSub(r);
-    const st = await refresh();
+    noteStoreSub(r.subId, r);
+    let st = null;
+    try { st = await refresh(r.subId); } catch (e) { st = stateOf(readLedger().subs[r.subId]); }
     rejoin(true);
     return st;
   }
   async function subscribeInApp(tier, period, say) {
     const rail = RAIL();
-    const cur = SUB.credentialOk(readJson(CRED_KEY));
+    const cur = activeCred();
     const k = await storeKey(false);
     // A change of plan replaces the running store subscription (the store prorates an upgrade and defers a downgrade).
     let replace;
@@ -507,7 +672,7 @@
   function keepPass(j, o) {
     return (async () => {
       const cur = (await wallet()) || (await ensureWallet());
-      const list = cur.passes.filter((p) => { const x = passOf(p); return x && x.order !== o.order; }).concat([{ passJson: j.passJson, sig: j.sig }]);
+      const list = cur.passes.filter((p) => { const x = passOf(p); return !x || x.order !== o.order; }).concat([{ passJson: j.passJson, sig: j.sig }]);
       const next = Object.assign({}, cur, { passes: list }); delete next.pending;
       writeJson(WALLET_KEY, next);
       notePassPurchase(o);
@@ -557,7 +722,7 @@
   // new one is on. The old key signs that consent. A store plan changes in the store; a pass is never replaced.
   // -> {upgrade} for the create request, null when nothing is held, or throws when the move is not an upgrade.
   async function upgradeAsk(tier, period) {
-    const cur = SUB.credentialOk(readJson(CRED_KEY));
+    const cur = activeCred();
     const lic = cur ? await verifiedLicense().catch(() => null) : null;
     const st = readState();
     if (!cur || !lic || !/^I-/.test(cur.subId) || st.status === 'CANCELLED') return null;
@@ -565,9 +730,66 @@
     const k = await myKey(), at = nowS();
     return { subId: cur.subId, buyerKey: k.pub, at, sig: await signText(SUB.askMessage('upgrade:' + tier + ':' + period, cur.subId, at)) };
   }
+  // ---- a checkout not finished yet ------------------------------------------------
+  // A PayPal checkout is a record of its own in state 'pending' from the moment it is created. It never touches the
+  // plan this browser holds; it becomes a plan here only when a verified license is issued for it (refresh). Dismiss
+  // hides it; nothing deletes it.
+  function pendingRecs() {
+    ingestLegacy();
+    const l = readLedger();
+    return Object.keys(l.subs).map((id) => l.subs[id]).filter((r) => r && r.state === 'pending' && !r.hidden && recCred(r)).sort((a, b) => (b.at || 0) - (a.at || 0));
+  }
+  // What /subscription shows about the newest one (no key). lost: pages before the ledger saved a checkout over a
+  // bought plan here, and that plan has not come back (its receipt mark, or a signed purchase time, names it).
+  function pendingCheckout() {
+    const r = pendingRecs()[0];
+    if (!r) return null;
+    const l = readLedger();
+    const mark = readJson(SUB_RECEIPT_KEY) || {};
+    const anyPaid = Object.keys(l.subs).some((id) => everPaid(l.subs[id]));
+    const legacyBought = !!(r.buy && Number.isFinite(r.buy.boughtAt));
+    const lost = (typeof mark.sub === 'string' && !!mark.sub && !l.subs[mark.sub]) || (legacyBought && !anyPaid);
+    return { subId: r.subId, tier: r.tier, period: r.period, at: r.at || null, status: r.status || null, lost };
+  }
+  // Ask about every checkout not finished yet (one with a final no from PayPal is not asked again): -> the state of
+  // the first that became a plan, else of the newest.
+  let pendingP = null;
+  function checkPending(subId) {
+    if (!pendingP) pendingP = (async () => {
+      const list = pendingRecs().filter((r) => (!subId || r.subId === subId) && r.status !== 'EXPIRED' && r.status !== 'CANCELLED');
+      let first = null;
+      for (const r of list) {
+        let st = null;
+        try { st = await refresh(r.subId); } catch (e) { st = null; }
+        if (st && st.licenseJson) return st;
+        if (!first) first = st || stateOf(r);
+      }
+      return first;
+    })().finally(() => { pendingP = null; });
+    return pendingP;
+  }
+  // Dismiss: one last look first (a checkout paid meanwhile becomes the plan), then the note is hidden. The record stays.
+  async function dismissPending() {
+    const r = pendingRecs()[0];
+    if (!r) return readState();
+    let st = null; try { st = await checkPending(r.subId); } catch (e) {}
+    if (st && st.licenseJson) return st;
+    putRec(r.subId, { hidden: true });
+    return readState();
+  }
+  // Continue: a fresh checkout of the same plan (PayPal's approval link of the old one may have run out; the old one
+  // was never approved, so it lapses at PayPal by itself, and its record stays).
+  async function continueCheckout(say) {
+    const r = pendingRecs()[0];
+    if (!r) return readState();
+    let st = null; try { st = await checkPending(r.subId); } catch (e) {}
+    if (st && st.licenseJson) return st;
+    putRec(r.subId, { hidden: true });
+    return subscribe(r.tier, r.period, say);
+  }
   async function subscribe(tier, period, say) {
     if (RAIL()) return subscribeInApp(tier, period, say || (() => {}));
-    const upgrade = await upgradeAsk(tier, period);   // before the new key replaces the old one here
+    const upgrade = await upgradeAsk(tier, period);   // signed by the plan in use (it stays in use until the new one is paid)
     const seed = new Uint8Array(32); crypto.getRandomValues(seed);
     const k = await GifOS.ed.keysFromSeed(seed);
     const buyerKey = b64(k.pubRaw);
@@ -575,20 +797,26 @@
     let j;
     try { j = await post('/gifos/sub/create', Object.assign({ tier, period, buyerKey }, upgrade ? { upgrade } : {})); }
     catch (e) { try { popup && popup.close(); } catch (x) {} throw e; }
-    writeJson(CRED_KEY, { v: 1, kind: SUB.CRED_KIND, subId: j.id, tier, period, seed: b64(seed), buyerKey });
-    keyMemo = { seed: null, p: null };
-    writeState({ subId: j.id, tier, status: 'APPROVAL_PENDING' });
-    noteWebSub(j, period);
+    const buy = { rail: 'paypal', period };
+    const full = j && j.upgrade && j.upgrade.full;
+    if (Number.isInteger(full) && centsPrice(full)) { buy.price = centsPrice(full); buy.currency = 'USD'; }
+    putRec(j.id, { tier, period, state: 'pending', status: 'APPROVAL_PENDING', at: Date.now(), buy }, { seed: b64(seed), buyerKey });
     if (popup) popup.location.href = j.approveUrl; else root.open(j.approveUrl, '_blank');
-    say(SUB.TEXT.pending);
+    if (say) say(SUB.TEXT.pending);
     const until = Date.now() + POLL_FOR_MS;
+    let last = { subId: j.id, tier, status: 'APPROVAL_PENDING' };
     while (Date.now() < until) {
       await new Promise((r) => setTimeout(r, POLL_MS));
-      let st = null; try { st = await refresh(); } catch (e) {}
-      if (st && st.licenseJson) { rejoin(true); return st; }
-      if (st && st.status && st.status !== 'APPROVAL_PENDING' && st.status !== 'APPROVED') return st;
+      const r = readLedger().subs[j.id];
+      if (r && r.state !== 'pending') return stateOf(r);   // became a plan (another tab, the next keepFresh)
+      if (r && r.hidden) return last;                       // dismissed, or replaced by Continue checkout
+      let st = null; try { st = await checkPending(j.id); } catch (e) {}
+      if (st && st.licenseJson && st.subId === j.id) return st;
+      const now = readLedger().subs[j.id];
+      if (now && now.status) last = stateOf(now);
+      if (now && (now.status === 'EXPIRED' || now.status === 'CANCELLED')) return last;
     }
-    return readState();
+    return last;
   }
   // ---- the four-hour pass ------------------------------------------------------
   // $1 through PayPal for the Unlimited plan's meeting rights for four hours
@@ -626,6 +854,8 @@
     // Still to use = readable under today's rules (checkPass: it carries line items) and not run out. A pass signed
     // before line items can never be used again, so it never keeps a new file out.
     if (cur && cur.seed !== w.seed && cur.passes.some((p) => { const o = SUB.checkPass(passOf(p)); return o && o.end > n; })) return false;
+    // A wallet with another key that replaces this one (none of its passes still to use) is kept as history.
+    if (cur && cur.seed !== w.seed) { const old = readJson(WALLET_HISTORY_KEY); const list = Array.isArray(old) ? old : []; if (!list.some((x) => x && x.seed === cur.seed)) { list.push(Object.assign({}, cur, { replacedAt: Date.now() })); writeJson(WALLET_HISTORY_KEY, list); } }
     const seen = new Set();
     const passes = (cur && cur.seed === w.seed ? cur.passes : []).concat(w.passes).filter((p) => !seen.has(p.passJson) && seen.add(p.passJson));
     writeJson(WALLET_KEY, Object.assign({}, w, { passes, pending: (cur && cur.seed === w.seed && cur.pending) || w.pending }));
@@ -685,7 +915,7 @@
     const o = await SUB.verifyPass({ passJson: j.passJson, sig: j.sig }, verifyPay).catch(() => null);
     if (!o || o.buyerKey !== k.pub) return { refused: true };
     const cur = (await wallet()) || w;
-    const list = cur.passes.filter((p) => { const x = passOf(p); return x && x.order !== o.order; }).concat([{ passJson: j.passJson, sig: j.sig }]);
+    const list = cur.passes.filter((p) => { const x = passOf(p); return !x || x.order !== o.order; }).concat([{ passJson: j.passJson, sig: j.sig }]);
     const next = Object.assign({}, cur, { passes: list }); delete next.pending;
     writeJson(WALLET_KEY, next);
     notePassPurchase(o);
@@ -1658,6 +1888,8 @@
     passWatch().catch(() => {});
     setInterval(() => { passWatch().catch(() => {}); paintNow().catch(() => {}); }, POLL_MS);   // a pass starting or ending re-presents the room's plan
   }
+  // Before anything reads the credential: what pages from before the ledger stored becomes records (never lost).
+  try { ingestLegacy(); } catch (e) {}
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
   }
@@ -1670,6 +1902,7 @@
     roomOrder, roomTier, meetingRight, proveAtDoor, checkShown, newNonce,
     appNow, joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureCurrent, captureOrder, captureKeys, fileBytes, downloadFile, useFile, installCreds, movePackage, heldMeetings, credential, librarySigner, restoreInApp,
     keepReceipt, subReceiptFiles,
+    pendingCheckout, checkPending, dismissPending, continueCheckout, receiptSets,
     passMeeting: () => (pmeet ? { grants: pmeet.grants || null, room: pmeet.room, gen: pmeet.gen, exp: pmeet.exp, until: pmeet.until, moved: pmeet.moved, held: !!pmeet.ticket } : null),
     currentPassTicket,
     meeting: () => (meet ? { room: meet.room, gen: meet.gen, exp: meet.exp, moved: meet.moved, held: !!meet.ticket, tier: meet.tier, grants: meet.grants || null, paid: !!(meet.ticket && meet.grants && meet.grants.admitAtFullDoor) } : null),

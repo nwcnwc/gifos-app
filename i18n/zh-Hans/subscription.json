@@ -169,5 +169,9 @@
   "subscription.restoreLead": "丢失了有您方案的设备？用您付款时的 PayPal 账户找回。",
   "subscription.pmRestoreGo": "通过 PayPal 恢复",
   "subscription.howSizes": "会议中任何持有方案的人都决定整场会议的规模：在场的最佳方案生效，只要其持有人在场。",
-  "subscription.howFirewall": "免费版让语音和聊天穿过公司和学校的防火墙；付费方案还能让视频穿过。一切依然端到端加密。"
+  "subscription.howFirewall": "免费版让语音和聊天穿过公司和学校的防火墙；付费方案还能让视频穿过。一切依然端到端加密。",
+  "subscription.pendingNote": "结账未完成：未收取任何费用。",
+  "subscription.pendingLost": "此次结账替换了此浏览器原有的套餐。要在这里重新使用该套餐：打开你的订阅文件、从拥有该套餐的另一台设备复制，或使用“通过 PayPal 恢复”。",
+  "subscription.pendingContinue": "继续结账",
+  "subscription.pendingDismiss": "关闭"
 }
