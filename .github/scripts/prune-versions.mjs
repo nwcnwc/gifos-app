@@ -3,7 +3,10 @@
 // release line older than the live one, only its x.y.z base and its last hotfix; the
 // superseded hotfixes in between redirect to that last hotfix of the same line. The
 // repo keeps every snapshot (git is the archive); only the deployed copy is thinned.
-// The live line (the x.y.z of version.json "latest") is never thinned, nor any snapshot version.json names.
+// In the live line (the x.y.z of version.json "latest") only the hotfixes below the meet floor (version.json
+// latestMeetFloor) are thinned: a page below that floor moves itself to the current release and the relay refuses it
+// (PAGE_FLOOR), so such a snapshot can no longer meet; its address goes to the floor's snapshot. No snapshot
+// version.json names is ever thinned.
 // Usage: node .github/scripts/prune-versions.mjs dist
 import fs from 'node:fs';
 import path from 'node:path';
@@ -28,8 +31,19 @@ for (const d of fs.readdirSync(vdir)) {
 const redirects = [];
 let removed = 0;
 for (const [l, vs] of Object.entries(groups)) {
-  if (cmp(l, liveLine) >= 0) continue;
   const hot = vs.filter((v) => v.split('.').length === 4).sort(cmp);
+  if (cmp(l, liveLine) >= 0) {
+    // the live line: hotfixes below the meet floor go to the floor's snapshot
+    const floor = vj.latestMeetFloor;
+    if (l !== liveLine || !/^\d+\.\d+\.\d+\.\d+$/.test(floor || '') || line(floor) !== l || !vs.includes(floor)) continue;
+    for (const v of hot) {
+      if (cmp(v, floor) >= 0 || named.has(v)) continue;
+      fs.rmSync(path.join(vdir, v), { recursive: true, force: true });
+      redirects.push('/versions/' + v + '/* /versions/' + floor + '/:splat 302');
+      removed++;
+    }
+    continue;
+  }
   if (hot.length < 2) continue;
   const keep = hot[hot.length - 1];
   for (const v of hot.slice(0, -1)) {
@@ -41,7 +55,7 @@ for (const [l, vs] of Object.entries(groups)) {
 }
 if (redirects.length) {
   fs.appendFileSync(path.join(dist, '_redirects'),
-    '# Superseded hotfix snapshots of older release lines are not deployed (Pages file limit); they go to the last hotfix of their line (.github/scripts/prune-versions.mjs).\n' +
+    '# Superseded hotfix snapshots are not deployed (Pages file limit): older lines go to the last hotfix of their line, the live line\'s below the meet floor to the floor (.github/scripts/prune-versions.mjs).\n' +
     redirects.join('\n') + '\n');
 }
 console.log('prune-versions: live line ' + liveLine + ', ' + removed + ' superseded snapshots left out of the site copy');
