@@ -75,14 +75,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 
     <h2>Meetings</h2>
     <ul>
-      <li><b>Audio, video, chat and files</b> go between the people in the meeting. WebRTC encrypts them in transit.
-      Our servers do not record or store them. The meeting server never carries audio or video.</li>
+      <li><b>Audio, video, chat and files</b> go between the people in the meeting, end-to-end encrypted so that only
+      they can read them. Our servers do not record or store them. The meeting server never carries audio or video.</li>
       <li><b>The meeting server (relay)</b> introduces people in a room to each other. It passes along the connection
       messages between them and sees temporary room and participant identifiers derived from the meeting link, and your
       IP address, which every internet connection reveals. It keeps nothing: a room exists only while people are in it,
       and the relay writes no request log and stores no address. The meeting's Who panel shows each participant's network
       address to the other participants, because a direct connection reveals it to the person on the other end.</li>
-      <li><b>The fallback relay (TURN)</b> is used only when a direct connection is impossible. It passes encrypted media
+      <li><b>The fallback relay (TURN)</b> is used only when a direct connection is impossible, for example behind a
+      corporate or school firewall. It passes encrypted media
       between two participants without being able to decrypt it, and sees the IP addresses of both ends while it does
       so. It writes no log of clients and keeps no address on disk. Its only record is a count of tickets issued and
       refused, which holds no address and no room name.</li>

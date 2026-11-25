@@ -2,6 +2,9 @@
  * meet-turn.js — the page side of a TURN link (0.9.26; gifos docs/turn-0926.md).
  *
  * A TURN link is an ordinary mesh link whose path runs through a TURN server.
+ * The TURN server is a fallback for peers a firewall blocks (corporate and
+ * school networks): meetings run peer to peer, and the media a TURN link
+ * carries stays end-to-end encrypted; the server cannot read it.
  * SUBROOMS: each TURN link (a pipe) makes its own subroom, an ordinary room at
  * the relay with its own door, joined to the subroom it hangs from by that one
  * pipe, so a meeting's subrooms and pipes form a tree. A page that reaches no

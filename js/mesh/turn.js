@@ -1,7 +1,8 @@
 /*
  * turn.js: the pure choices of a relayed connection between two parts of a meeting whose networks cannot
  * connect (C++: mesh_turn.inc). A relayed connection is the last resort, after a direct connection and a path
- * through a friend have both failed. It joins two rooms of one meeting, each end one more child of the other.
+ * through a friend have both failed (typically a corporate or school firewall). It joins two rooms of one meeting,
+ * each end one more child of the other. Its media stays end-to-end encrypted: the relay server cannot read it.
  * Without a subscriber's vouch it carries everything except video.
  *   turnClients       which end uses the relay server (never both, unless both are blocked)
  *   turnSessionBytes  what one relayed connection may carry per tick and direction

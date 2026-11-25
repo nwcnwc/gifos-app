@@ -47,8 +47,9 @@ join a meeting itself. Asked "join this meeting and [do X]: <link>":
    the meeting goes on without it.
 4. Wait until the top bar ([data-agent="status"]) says "N in this meeting",
    usually 5 to 15 seconds. "Step x of 11" means it is still connecting. A
-   blocked network is fine: the page switches to a free relay over port 443
-   by itself (voice and chat; video over a relay needs a plan).
+   firewall that blocks direct calls is fine: the page falls back by itself
+   to a relay over port 443 that passes only end-to-end encrypted media
+   (voice and chat free; video through a firewall needs a plan).
 5. If the page asks for a room password, ask your human. Never guess one.
 6. Chat: Alt+C or the Chat button ([data-agent="chat-open"]); type in
    "Message everyone" ([data-agent="chat-input"]) and press Enter or Send

@@ -108,12 +108,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 
     <h2>Plans, passes and tips</h2>
     <p>GifOS Meet itself is free: public open-floor meetings; private, hosted meetings of up to 5 people; and audio for
-    everyone even on networks that block direct connections. The paid options add more:</p>
+    everyone even behind firewalls that block direct connections. The paid options add more:</p>
     <ul>
-      <li><b>Room 20</b>, $2 a month or $20 a year: private, hosted meetings of up to 20 people, and video through our relay
-      servers on networks that block direct connections.</li>
-      <li><b>Unlimited</b>, $5 a month or $50 a year: private, hosted meetings with no people limit, video
-      through our relay servers, and taking charge of public open-floor meetings.</li>
+      <li><b>Room 20</b>, $2 a month or $20 a year: private, hosted meetings of up to 20 people, and video that gets
+      through corporate and school firewalls that block direct connections, still end-to-end encrypted.</li>
+      <li><b>Unlimited</b>, $5 a month or $50 a year: private, hosted meetings with no people limit, video that gets
+      through such firewalls, still end-to-end encrypted, and taking charge of public open-floor meetings.</li>
       <li><b>Family business</b>, $19.90 a month or $199 a year; <b>Small business</b>, $34.90 a month or $349 a year;
       <b>Business</b>, $2,999 a year; <b>Large business</b>, $24,999 a year: the Unlimited plan's meeting rights in up to
       5, 10, 100 or 1,000 meetings at once. <b>Enterprise</b>, $199,000 a year billed as 12 monthly payments of
@@ -124,8 +124,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       from purchase. Passes stack: a pass bought while you still hold pass time starts when that time ends.</li>
       <li><b>Tips</b> to GifOS, any amount offered. A tip is a thank-you; it buys nothing and grants no feature.</li>
     </ul>
-    <p>Prices are in US dollars; in the apps the store shows the price in your currency, with any tax it adds. Video
-    through our relay servers is shared capacity: at busy times it may be slowed, and video slows down before audio.</p>
+    <p>Prices are in US dollars; in the apps the store shows the price in your currency, with any tax it adds. Meetings
+    connect people directly. Only when a firewall blocks a direct connection does a fallback relay of ours (TURN) pass
+    the encrypted media, which it cannot read. That relay is shared capacity: at busy times it may be slowed, and video
+    slows down before audio.</p>
 
     <h2>Meetings at once</h2>
     <p>Each plan or pass gives its rights in a number of meetings at the same time: <b>one</b>, unless the plan says
@@ -194,9 +196,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       embed;</li>
       <li>harass, threaten, impersonate or defraud anyone;</li>
       <li>record people without the consent the law requires where you and they are;</li>
-      <li>abuse the service: overload or attack the meeting server (relay), the relay servers for media (TURN), the
+      <li>abuse the service: overload or attack the meeting server (relay), the fallback relays for firewalled media (TURN), the
       payment service or other people's devices; get around rate limits, room limits or the number of meetings your plan allows at once;
-      share or resell credentials; or use the relay servers for anything other than GifOS meetings.</li>
+      share or resell credentials; or use the fallback relays (TURN) for anything other than GifOS meetings.</li>
     </ul>
     <p>If you see illegal activity in a meeting, report it to your local police or authorities (in the US you can also
     report child exploitation to the <a href="https://report.cybertip.org/">NCMEC CyberTipline</a>). Please do not send
