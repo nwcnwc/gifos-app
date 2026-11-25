@@ -22531,11 +22531,18 @@
     }
     function agentAudioTracks(who) {
       const out = [];
-      const add = (st) => { const t = st && st.getAudioTracks && st.getAudioTracks()[0]; if (t && t.readyState === 'live' && out.indexOf(t) < 0) out.push(t); };
+      const add = (st) => { const t = st && st.getAudioTracks && st.getAudioTracks()[0]; if (t && t.readyState === 'live' && out.indexOf(t) < 0) { out.push(t); return true; } return false; };
       const mates = rowMates(), stg = stageIds();
       if (who !== 'room') { const p = peers.get(who); if (p && mates.includes(who) && !stg.includes(who)) add(p.relayed ? (relayVia.get(who) || {}).stream : p.stream); return out; }
       for (const pid of mates) { const p = peers.get(pid); if (p && !stg.includes(pid) && !isHeld(pid)) add(p.relayed ? (relayVia.get(pid) || {}).stream : p.stream); }
-      for (const [k, f] of mosIn) if (k === 'sdm' || k === 'sd' || k.indexOf('stg:') === 0) add(f && f.stream);
+      let stad = false;
+      for (const [k, f] of mosIn) {
+        if (k.indexOf('stg:') === 0) add(f && f.stream);
+        else if ((k === 'sdm' || k === 'sd') && add(f && f.stream)) stad = true;
+      }
+      // A head plays its own ear fold as the Stadium (mixIn 'ear': the rows past its own, its pipes and subs). A seat
+      // that holds a head's sdm plays that instead (paintRoomView), so the ear is read only when no sdm came.
+      if (!stad && __M.downStreams) add(__M.downStreams.get('earView'));
       return out;
     }
     function agentState() {

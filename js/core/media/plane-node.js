@@ -842,6 +842,18 @@
     // ONE FOLD PER foldKey, on the meeting context. Sync matches the browser's foldSync: add a new part, follow a
     // changed stream id, drop a part that left. f._sid is partKey -> stream.id. The ear fold is built and not shipped.
     const downFolds = new Map();
+    // earView: the ear fold as this seat plays it (the browser's downStreams key of the same name). One stream object
+    // while the fold's track stands, so a reader that opened it keeps hearing through part changes.
+    const downStreams = new Map();
+    function earViewSync() {
+      const f = downFolds.get('ear');
+      let t = null;
+      try { t = f && f.track ? f.track() : null; } catch (e) { t = null; }
+      if (!live(t)) { downStreams.delete('earView'); return; }
+      const cur = downStreams.get('earView');
+      if (cur && cur.getAudioTracks()[0] === t) return;
+      downStreams.set('earView', new MediaStream([t]));
+    }
     function foldAc() {
       try { if (!C.ac && typeof C.ensureAc === 'function') C.ensureAc(); } catch (e) {}
       try { return (C.ac && C.ac.state !== 'closed') ? C.ac : null; } catch (e) { return null; }
@@ -1240,6 +1252,7 @@
         try { foldFor(e.audio.mix, mixParts(e)); keep.add(e.audio.mix); } catch (err) {}
       }
       try { foldsKeep(keep); } catch (e) {}
+      try { earViewSync(); } catch (e) {}
       for (const e of plan) {
         if (!e || !e.key || !e.to) continue;
         // No pack track: do not ship the audio half. streamFor refuses the same row if asked on its own.
@@ -1333,11 +1346,12 @@
     def('mixReady', mixReady);
     def('rowMixViaPeek', rowMixViaPeek);
     def('mosHeld', mosHeld);
+    def('downStreams', downStreams);
     // The browser's mosaic sweep is workerClock(2000): FHOP_SWEEP ticks times tickMs. Announces refresh on that beat.
     // The host's setInterval returns a number, so unref runs only when the timer object itself is what came back.
     const sweepT = setInterval(() => { try { M.schedReconcile(); } catch (e) {} }, GifOS.meshLaws.FHOP_SWEEP * GifOS.timings.tickMs);
     if (sweepT && typeof sweepT.unref === 'function') sweepT.unref();
-    return { folds: foldParts, video: videoPort, names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties', 'bindClaim', 'unbindClaim', 'adoptClaim', 'picRead', 'rowEdge', 'keyUp', 'producerKey', 'kfEv', 'attachTrack', 'detachTrack', 'parkSender', 'kickJob', 'noteReship', 'dropContainer', 'orphaned', 'attachFailed', 'containerFor', 'jobPinned', 'swapTrack', 'dutyJob', 'dutyMuteTick', 'schedClaim', 'schedReconcile', 'stgLost', 'mySelfStream', 'jobVideoAt', 'stgCarry', 'repaintRedun', 'swapPicNote', 'stgFoNote', 'rowMixHold', 'rowMixHeadArrives', 'x2Target', 'partStream', 'slotDark', 'carriedHot', 'hopMs', 'packFor', 'blockOf', 'faceLive', 'blockPicture', 'blockLive', 'overlayTiny', 'rowMixOpen', 'mixReady', 'rowMixViaPeek', 'mosHeld'] };
+    return { folds: foldParts, video: videoPort, names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties', 'bindClaim', 'unbindClaim', 'adoptClaim', 'picRead', 'rowEdge', 'keyUp', 'producerKey', 'kfEv', 'attachTrack', 'detachTrack', 'parkSender', 'kickJob', 'noteReship', 'dropContainer', 'orphaned', 'attachFailed', 'containerFor', 'jobPinned', 'swapTrack', 'dutyJob', 'dutyMuteTick', 'schedClaim', 'schedReconcile', 'stgLost', 'mySelfStream', 'jobVideoAt', 'stgCarry', 'repaintRedun', 'swapPicNote', 'stgFoNote', 'rowMixHold', 'rowMixHeadArrives', 'x2Target', 'partStream', 'slotDark', 'carriedHot', 'hopMs', 'packFor', 'blockOf', 'faceLive', 'blockPicture', 'blockLive', 'overlayTiny', 'rowMixOpen', 'mixReady', 'rowMixViaPeek', 'mosHeld', 'downStreams'] };
   }
 
   GifOS.planeNode = { install };
