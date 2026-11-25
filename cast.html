@@ -1,0 +1,1844 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- GENERATED from meet.html by gifos scripts/build-pages.mjs: edit meet.html, then run the script. -->
+<head>
+<meta charset="UTF-8">
+<!--@shared:frame-guard-->
+<!-- FRAME GUARD. GitHub Pages sends no X-Frame-Options and a <meta> cannot
+     carry frame-ancestors, so this is the only thing that keeps a third-party
+     page from framing GifOS at opacity 0 and steering a click onto Allow,
+     Install or Approve. Same-origin framing (booted images, app mounts) is
+     allowed; anything else sees a link to open the page itself. Parser-
+     blocking and ES5 on purpose: it runs before any chrome paints.
+     Guarded by test/unit/frame-guard.js. -->
+<script id="gifos-frame-guard">(function(){try{if(window.top===window.self)return;var ok=false;try{ok=window.top.location.origin===window.location.origin;if(!ok&&window.location.origin==='null')ok=window.top.location.origin===window.parent.location.origin;}catch(e){}if(ok)return;var h=document.documentElement;h.style.visibility='hidden';function show(){var b=document.body;if(!b)return;while(b.firstChild)b.removeChild(b.firstChild);var p=document.createElement('p');p.style.cssText='font:16px system-ui,sans-serif;padding:24px;color:#eee;background:#111;margin:0';p.appendChild(document.createTextNode('GifOS does not run inside another site\'s page. '));var a=document.createElement('a');a.href=location.href;a.target='_blank';a.rel='noopener';a.textContent='Open it in its own tab';a.style.color='#9db4ff';p.appendChild(a);b.appendChild(p);h.style.visibility='';}if(document.body)show();else document.addEventListener('DOMContentLoaded',show);}catch(e){}})();</script>
+<!-- The ONLY frames this page ever holds are srcdoc app mounts. A sandboxed
+     frame may still navigate ITSELF, and the replacement document would keep
+     the runtime's bridge with none of the app CSP (site/js/runtime.js,
+     clientShim / mountApp): this policy makes every non-about: target a
+     refused navigation, in the browser, before any script runs. Guarded by
+     test/browser/e2e-app-frame-navigate.js. -->
+<meta http-equiv="Content-Security-Policy" content="frame-src about:">
+<meta name="referrer" content="same-origin">
+<!--@/shared:frame-guard-->
+<meta name="robots" content="noindex">
+<!-- AI assistants: the visible "For AI assistants" link points at the guide.
+     Nothing for an agent is clipped or hidden. -->
+<meta name="gifos:agent-instructions" content="https://gifos.app/meet/llms.txt">
+<link rel="help" type="text/plain" href="https://gifos.app/meet/llms.txt" title="How AI agents join a GifOS meeting">
+<meta name="gifos:agent-mcp" content="https://mcp.gifos.app/mcp">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0a0a0f">
+<!-- First paint is dark GROUND, immediately: the real theme gate lives ~400
+     lines down (#theme-gate), and on a slow phone the parser takes over a
+     second to get there — every frame before that painted WHITE. Same rule,
+     same fallback, hoisted above everything so no white frame can exist. -->
+<style>html{background:var(--bg,#0a0a0f)}</style>
+<!--@shared:preflight-->
+<!-- ════ PREFLIGHT: can this browser actually hold a meeting? ════════════════════
+     A browser that cannot run the meeting used to find that out the slow way:
+     it booted, knocked, never seated, and after four seconds got the joining
+     veil — "Reaching the meeting…" — forever. That is the worst possible
+     answer, because it is a lie of omission: nothing was ever going to reach
+     anything. A phone that cannot come needs to be TOLD, in words, in the
+     first instant.
+
+     So this runs FIRST — before the channel loader, before the theme gate,
+     before one line of app code — and it is written in ES5 on purpose: a
+     browser old enough to fail the check is old enough to choke on an arrow
+     function, and a preflight that dies of a SyntaxError explains nothing.
+
+     THE DECISION IS FEATURE DETECTION, NEVER THE USER-AGENT. UA sniffing is
+     wrong twice over: it blocks new browsers it has never heard of, and it
+     waves through old ones wearing a fashionable string. The UA is read for
+     exactly one purpose — to put a friendly NAME and NUMBER in the copy
+     ("Safari 14 … needs Safari 17") — and never touches the verdict.
+
+     THE REQUIRED SET, derived from the code, not from a wishlist:
+       WebSocket .................. the relay socket (gifos-net.js)
+       crypto.subtle + getRandomValues .. derive-don't-send: PBKDF2/HKDF-shaped
+                                    derivation, AES-GCM sealed frames, SHA-256
+       RTCPeerConnection + createDataChannel .. the mesh links themselves (or, with no
+                                    RTCPeerConnection at all, WebCodecs Opus + AudioWorklet:
+                                    a seat carries the page, docs/turn-carry.md)
+       TextEncoder / TextDecoder .. the byte<->string boundary everywhere
+       Promise / Map / Set ........ the ES6 floor the runtime is written on
+       RegExp \p{..} + Object.fromEntries .. the language the meeting's scripts parse and load with
+                                    (a regex literal the browser cannot parse stops the whole bundle)
+
+     NOT required, deliberately:
+       getUserMedia ............... view-only join is a supported, first-class
+                                    state (the knock never waits on media —
+                                    see e2e-knock-first.js). A browser with no
+                                    camera API still joins and still watches.
+       canvas.captureStream ....... same reason; it is a sending capability.
+       Insecure-origin http:// .... reported as ITS OWN problem (the link needs
+                                    https), never as "your browser is old".
+       WebCrypto Ed25519 .......... NO LONGER GATES. The S4 signing mandate
+                                    (mesh-wire.js, every join, no off switch)
+                                    is absolute, but the ENGINE is not: a
+                                    browser without native Ed25519 (Safari 16
+                                    and older — the old-iPhone case) signs
+                                    with the built-in byte-identical fallback
+                                    (js/gifos-ed.js + pinned vendor), and
+                                    interoperates in the same room. This is
+                                    what moved the whole table from Safari 17
+                                    era down to the syntax floor below.
+
+     Every check here is synchronous, so the verdict lands before anything
+     knocks: a blocked browser opens no socket and never sets `room`, so the
+     joining veil — which early-returns without a room — can never arm behind
+     this screen. (The old ASYNC half, the Ed25519 probe, is gone with the
+     fallback signer; GifOSPreflight.whenSupported stays for the dispatch.)
+
+     A SOLO entry (#id=<fileId>) NEVER SEES THIS SCREEN. A solo app is one tab
+     and no network — it runs fine on a browser that could never meet, and a
+     wall saying "too old for meetings" over a working app is a wrong answer
+     (measured on a real Safari 16, family demo 2026-08-05). The verdict is
+     still computed and RECORDED; the wall moves to the point of actual network
+     need — the Share-live button — via requireMeeting(), and there it is
+     dismissible, because the app around it still works.
+
+     Known gap, named honestly: a visitor on gifos.app whose channel loader
+     redirects to a FROZEN /versions/<x.y.z>/ snapshot cut before this landed
+     runs a build with no preflight. Snapshots are immutable by design; the
+     next release carries it and the gap closes itself.
+-->
+<script>
+(function () {
+  'use strict';
+
+  /* THE VERSION TABLE lives in site/browser-support.json — the single source of
+     truth for every browser × feature cutoff, rendered for humans at
+     /browser-support.html. This inline copy is GENERATED from it (the preflight
+     is ES5 and runs before anything: it cannot await a fetch, and the browser
+     it is talking to may have no Promise to fetch WITH). Same
+     generated-but-committed doctrine as the App Store catalog; the gate fails
+     on drift. Edit the JSON, never this block.
+
+     Chromium-derived browsers (Opera, Samsung Internet, …) deliberately get NO
+     number of their own here — their release numbering is theirs and we have
+     not verified it. Their UA carries the Chrome build they are made of, so we
+     quote THAT and stay truthful. */
+  /* ==== BEGIN GENERATED from site/browser-support.json — scripts/build-browser-support.mjs ==== */
+  /* Source of truth: site/browser-support.json (updated 2026-11-23).
+     DO NOT EDIT BY HAND — edit the JSON and re-run the script; the release
+     gate fails on drift (test/gate2/node/sections/page-guards/browser-support.js).
+     These numbers are set by Modern JavaScript (Promise, Map, Set, async/await, Unicode regular expressions, Object.fromEntries):
+       Chrome            73   (2019-03)
+       Microsoft Edge    79   (2020-01)
+       Firefox           78   (2020-06)
+       Safari            12.1   (2019-03)
+     COPY ONLY. The verdict below is feature detection and never this table. */
+  var MIN = {
+    chrome:   { label: "Chrome",         min: "73" },
+    edge:     { label: "Microsoft Edge", min: "79" },
+    firefox:  { label: "Firefox",        min: "78" },
+    safari:   { label: "Safari",         min: "12.1" }
+  };
+  var GENERIC_MINS = "Safari 12.1, Chrome 73 or Firefox 78 — and up";
+  var WHY = {
+    "webcrypto-subtle": "Everything in a meeting is scrambled on your own device before it leaves, so nobody in the middle can read it — and this browser is missing tools from the box that does the scrambling.",
+    "webrtc-peerconnection": "In a meeting here, sound, pictures and everything else travel straight between people's browsers — no company server in the middle. This browser is missing part of what makes those direct browser-to-browser connections work.",
+    "websocket": "To find the other people in a meeting, browsers introduce themselves through one small doorway connection — and this browser cannot open that kind of connection."
+  };
+  /* ==== END GENERATED ==== */
+
+  /* ---- the checks. Each returns a plain-language name for what is missing,
+     used in the small print so a support conversation has something to go on. */
+  function fn(o, k) { try { return typeof o[k] === 'function'; } catch (e) { return false; } }
+
+  function syncGaps() {
+    var g = [], w = window;
+    if (!fn(w, 'Promise') || !fn(w, 'Map') || !fn(w, 'Set')) g.push('modern JavaScript (Promise/Map/Set)');
+    // The meeting's scripts use Unicode property escapes in regular expressions (a browser without them cannot parse
+    // the script bundle at all) and call Object.fromEntries as they load: without either the page stays blank.
+    try { new RegExp('\\p{L}', 'u'); } catch (e) { g.push('modern JavaScript (Unicode regular expressions)'); }
+    if (!fn(Object, 'fromEntries')) g.push('modern JavaScript (Object.fromEntries)');
+    if (typeof w.WebSocket === 'undefined') g.push('WebSocket');
+    if (!fn(w, 'TextEncoder') || !fn(w, 'TextDecoder')) g.push('TextEncoder/TextDecoder');
+    var c = w.crypto;
+    if (!c || !fn(c, 'getRandomValues')) g.push('crypto.getRandomValues');
+    var s = c && c.subtle;
+    if (!s) g.push('WebCrypto (crypto.subtle)');
+    else {
+      var missing = [];
+      for (var i = 0, need = ['importKey', 'exportKey', 'sign', 'verify', 'encrypt', 'decrypt', 'digest', 'deriveBits']; i < need.length; i++) {
+        if (!fn(s, need[i])) missing.push(need[i]);
+      }
+      if (missing.length) g.push('WebCrypto ' + missing.join('/'));
+    }
+    // No RTCPeerConnection at all: a seat of the meeting carries this page (docs/turn-carry.md) when it can encode and
+    // decode Opus itself (WebCodecs) and run an AudioWorklet; js/meet-carry.js supported() is the same test.
+    var carry = typeof w.AudioEncoder === 'function' && typeof w.AudioDecoder === 'function' && typeof w.AudioWorkletNode === 'function' && typeof w.Worker === 'function';
+    if (typeof w.RTCPeerConnection === 'undefined') { if (!carry) g.push('WebRTC (RTCPeerConnection)'); }
+    else if (!w.RTCPeerConnection.prototype || !fn(w.RTCPeerConnection.prototype, 'createDataChannel')) g.push('WebRTC data channels (createDataChannel)');
+    return g;
+  }
+
+  /* Map a gap list to its plain-language WHY line (the WHY table above is
+     GENERATED from requirements[*].plain — see copy.plainDoctrine in the
+     JSON). Matched on the gap STRINGS syncGaps builds; order is truth-driven,
+     not severity-driven (see the comment at the paint site). */
+  function whyLine(gaps) {
+    var s = gaps.join(', ');
+    if (s.indexOf('WebCrypto') !== -1) return WHY['webcrypto-subtle'];
+    if (s.indexOf('WebRTC') !== -1) return WHY['webrtc-peerconnection'];
+    if (s.indexOf('WebSocket') !== -1) return WHY['websocket'];
+    return '';
+  }
+
+  /* An http:// page that is not localhost has NO crypto.subtle at all, in every
+     browser ever made. That is not an old browser, it is a bad address, and
+     saying "update your browser" to someone holding a working one is the kind
+     of wrong answer that ends the call. Detected separately, worded separately. */
+  function insecure() {
+    try {
+      if (window.isSecureContext) return false;
+      return !(window.crypto && window.crypto.subtle);
+    } catch (e) { return false; }
+  }
+
+  /* ---- who are you? COPY ONLY. Never consulted for the verdict. ------------ */
+  function ua() {
+    var u = '';
+    try { u = navigator.userAgent || ''; } catch (e) {}
+    var m;
+    // In-app browsers first: the same WKWebView/WebView wearing an app's name.
+    // When one of these fails, "open it in Safari" is the actual fix, so the
+    // copy changes shape entirely.
+    var inApp = /FBAN|FBAV|FB_IAB|Instagram|Line\/|MicroMessenger|Snapchat|Twitter|TikTok|Pinterest|GSA\//.test(u);
+    if ((m = u.match(/Edg(?:iOS|A)?\/(\d+)/))) return { key: 'edge', label: MIN.edge.label, ver: m[1], min: MIN.edge.min, inApp: inApp };
+    if ((m = u.match(/(?:OPR|OPiOS|Opera)\/(\d+)/))) return chromiumSkin('Opera', m[1], u, inApp);
+    if ((m = u.match(/SamsungBrowser\/(\d+)/))) return chromiumSkin('Samsung Internet', m[1], u, inApp);
+    if ((m = u.match(/(?:Firefox|FxiOS)\/(\d+)/))) return { key: 'firefox', label: MIN.firefox.label, ver: m[1], min: MIN.firefox.min, inApp: inApp };
+    if ((m = u.match(/CriOS\/(\d+)/))) return { key: 'chrome', label: MIN.chrome.label, ver: m[1], min: MIN.chrome.min, inApp: inApp };
+    if ((m = u.match(/Chrome\/(\d+)/))) return { key: 'chrome', label: MIN.chrome.label, ver: m[1], min: MIN.chrome.min, inApp: inApp };
+    if (/Safari\//.test(u) || /iPhone|iPad|iPod|Macintosh/.test(u)) {
+      m = u.match(/Version\/(\d+)/);
+      return { key: 'safari', label: MIN.safari.label, ver: m ? m[1] : '', min: MIN.safari.min, inApp: inApp };
+    }
+    return { key: '', label: '', ver: '', min: '', inApp: inApp };
+  }
+  // A Chromium skin: name the browser the person is holding, but state the
+  // requirement in the only number we can honestly stand behind — the Chrome
+  // build its own UA admits to being.
+  function chromiumSkin(label, ver, u, inApp) {
+    var c = u.match(/Chrome\/(\d+)/);
+    return { key: 'chromium-skin', label: label, ver: ver, min: '', chromeVer: c ? c[1] : '', inApp: inApp };
+  }
+
+  /* ---- the screen ---------------------------------------------------------- */
+  var CSS = 'position:fixed;top:0;right:0;bottom:0;left:0;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;' +
+    'padding:1.25rem;background:#0a0a0f;color:#e0e0f0;overflow:auto;' +
+    'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif';
+
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+  /* `dismiss` is the deferred-solo shape: the wall paints over a WORKING app
+     (the person tapped Share live), so it must offer a way back into it. The
+     load-time paints stay undismissable — there is nothing behind them. */
+  function paint(kind, gaps, dismiss) {
+    var who = ua(), head, body, extra = '';
+    if (kind === 'insecure') {
+      head = 'This link needs to start with https';
+      body = 'Meetings are scrambled from end to end, and a browser will only do that on a secure address. ' +
+             'Open the same link with <b>https://</b> at the front and it will work.';
+    } else if (who.inApp) {
+      head = 'Open this in your browser';
+      body = 'You are looking at this inside another app, and the little browser built into it cannot run meetings. ' +
+             'Tap the <b>⋯</b> or <b>share</b> button on this page and choose <b>Open in Safari</b> or <b>Open in Chrome</b> — ' +
+             'the meeting will work there.';
+    } else {
+      var youAre = who.label ? (who.ver ? who.label + ' ' + who.ver : who.label) : 'This browser';
+      var needs;
+      if (who.key === 'chromium-skin') {
+        needs = who.chromeVer
+          ? 'Meetings need a version built on Chrome ' + MIN.chrome.min + ' or newer, and this one is built on Chrome ' + esc(who.chromeVer) + '.'
+          : 'Meetings need ' + GENERIC_MINS + '.';
+      } else if (who.min) {
+        needs = 'Meetings need ' + who.label + ' ' + who.min + ' or newer.';
+      } else {
+        needs = 'Meetings need ' + GENERIC_MINS + '.';
+      }
+      head = (who.label ? 'Your ' + esc(who.label) + ' is too old for meetings' : 'This browser is too old for meetings');
+      body = '<b>' + esc(youAre) + '</b> cannot do meetings. ' + needs +
+             ' Updating your phone or computer is usually all it takes, and it costs nothing.';
+      extra = 'On a phone or tablet, meetings work in <b>Safari</b> (Apple) or <b>Chrome</b> (Android). ' +
+              'If someone sent you this link, they can still meet without you until you are updated — nothing is broken on their end.';
+    }
+    /* The one plain-language WHY paragraph under the verdict, picked for the
+       most telling gap. Every line must be TRUE for the browser it is shown
+       to. Ancient gaps (no Promise/TextEncoder) get no line — "too old,
+       update it" is already the whole truth there. (Ed25519 has no line
+       because it no longer walls anyone: the fallback signer took it off
+       the required-native list.) */
+    var why = (kind === 'old' && gaps) ? whyLine(gaps) : '';
+    var signed = why
+      ? '<p id="oldbrowser-why" style="margin:0 0 .9rem;font-size:.9rem;line-height:1.6;color:#9a9ab5">' + why + '</p>'
+      : '';
+    var small = gaps && gaps.length
+      ? '<p id="oldbrowser-gaps" style="margin:1.4rem 0 0;font-size:.72rem;line-height:1.5;color:#6a6a86">' +
+        'For anyone helping you fix this, the missing piece is: <span style="font-family:ui-monospace,Menlo,Consolas,monospace">' +
+        esc(gaps.join(', ')) + '</span>.</p>'
+      : '';
+    var el = document.createElement('div');
+    el.id = 'oldbrowser';
+    el.setAttribute('role', 'alert');
+    el.setAttribute('data-gaps', gaps ? gaps.join(', ') : '');
+    el.setAttribute('style', CSS);
+    el.innerHTML =
+      '<div style="max-width:30rem;text-align:left">' +
+      '<div style="font-size:2.4rem;line-height:1;margin-bottom:.9rem">🙁</div>' +
+      '<h1 id="oldbrowser-head" style="font-size:1.35rem;line-height:1.3;margin:0 0 .8rem;font-weight:600;color:#fff">' + head + '</h1>' +
+      '<p style="margin:0 0 .9rem;font-size:.98rem;line-height:1.6;color:#c8c8dc">' + body + '</p>' +
+      signed +
+      (extra ? '<p style="margin:0;font-size:.9rem;line-height:1.6;color:#9a9ab5">' + extra + '</p>' : '') +
+      small +
+      (dismiss
+        ? '<button id="oldbrowser-back" style="margin-top:1.4rem;padding:.55rem 1.1rem;font-size:.95rem;border:1px solid #3a3a52;border-radius:.5rem;background:#1a1a26;color:#e0e0f0;cursor:pointer">Keep using the app</button>'
+        : '') +
+      '</div>';
+    if (dismiss) {
+      var back = el.querySelector('#oldbrowser-back');
+      if (back) back.onclick = function () { if (el.parentNode) el.parentNode.removeChild(el); };
+    }
+    // The theme gate hides <body> until the theme cascade lands; a screen that
+    // says "your browser is too old" must never itself be invisible.
+    try { document.documentElement.className = String(document.documentElement.className).replace(/\bgifos-booting\b/g, ''); } catch (e) {}
+    // The dismissible wall floats over a RUNNING app: leave the page's own
+    // background and title alone, or dismissing it returns to a defaced app.
+    if (!dismiss) { try { document.documentElement.style.background = '#0a0a0f'; } catch (e) {} }
+    if (document.body) document.body.appendChild(el);
+    else if (document.addEventListener) document.addEventListener('DOMContentLoaded', function () { document.body.appendChild(el); });
+    if (!dismiss) { try { if (document.title) document.title = 'Meetings need a newer browser — GifOS'; } catch (e) {} }
+  }
+
+  /* ---- run it -------------------------------------------------------------- */
+  var API = { ok: true, gaps: [], kind: '', MIN: MIN, syncGaps: syncGaps, ua: ua };
+  window.GifOSPreflight = API;
+
+  /* A solo entry (#id=<fileId>) is one tab and NO network: it must run on a
+     browser that could never meet, so a failed verdict is RECORDED, not
+     painted — the wall waits for requireMeeting() at the Share-live button.
+     ES5-checked off the raw hash because ROOM parsing lives far downstream;
+     the [#&] anchor makes this exactly the entry ROOM calls solo (the `id`
+     param wins over every other in ROOM's own parse). */
+  var SOLO = /[#&]id=/.test(String(location.hash || ''));
+  function verdict(kind, gaps) {
+    API.ok = false; API.kind = kind; API.gaps = gaps;
+    if (!SOLO) paint(kind, gaps);
+  }
+
+  if (insecure()) {
+    verdict('insecure', ['secure context (https)']);
+  } else {
+    var gaps = syncGaps();
+    if (gaps.length) verdict('old', gaps);
+    // No async half anymore: the Ed25519 probe that used to live here (and
+    // set the Safari-17 floor) is retired — a browser without native Ed25519
+    // signs through the fallback engine (js/gifos-ed.js). The probe's exact
+    // shape lives on inside gifos-ed's own engine detection.
+  }
+
+  /* The one gate the runtime calls. `fn` runs only if this browser can really
+     hold a meeting — so a blocked browser never knocks, never opens a socket,
+     never sets `room`, and therefore can never reach the joining veil.
+     The Ed25519 probe is retired. There is no async half. */
+  API.whenSupported = function (f) {
+    if (!API.ok) return;
+    f();
+  };
+
+  /* The DEFERRED half of the solo doctrine: a network act taken from inside a
+     working solo app (Share live). Runs `f` only when this browser can hold a
+     meeting; otherwise the recorded verdict paints NOW — dismissible, because
+     the app underneath still works and the person must be able to go back to
+     it. */
+  API.requireMeeting = function (f) {
+    if (API.ok) f();
+    else paint(API.kind || 'old', API.gaps, true);
+  };
+})();
+</script>
+<!--@/shared:preflight-->
+<!--@shared:channel-loader-->
+<!-- CHANNEL LOADER — see index.html. Resolves the release pointer before any app
+     code so a meeting link opens on the right build. Identical across entry pages. -->
+<script>
+(function () {
+  // THE CHANNEL DECISION, exposed as a callable so it can be tested directly
+  // (test/browser/e2e.js). Returns null to stay on this build, {redirect:<url>}
+  // to move, or {clear:true} when ?stable/?unpin/?latest just cleared a pin and
+  // there is nowhere to go. The three lines at the bottom are the ONLY caller in
+  // the page, so a test of this function is a test of what actually ships —
+  // when this hook was dropped during a loader redesign, e2e.js's five pinning
+  // assertions died as a TypeError and version pinning silently lost its guard.
+  function pinTarget(pathname, search, hash) {
+    pathname = pathname || '/'; search = search || ''; hash = hash || '';
+    if (pathname.indexOf('/versions/') !== -1) return null;   // immutable build — never redirect
+    var q; try { q = new URLSearchParams(search); } catch (e) { q = null; }
+    // Flags may arrive IN THE HASH: the 404 pretty-URL router folds the query
+    // into the hash it builds (/meet/<room>?edge -> /run.html#v=<room>&edge),
+    // so a channel flag must be honored from either place.
+    function has(k) { return !!(q && q.has(k)) || new RegExp('[#&]' + k + '(&|=|$)').test(hash); }
+    // A LINK NEVER ATTACHES ANYONE. Everybody runs the latest release; the edge
+    // build and older releases are for testers, chosen only in Settings →
+    // Updates → Advanced / testing, behind a confirm. So ?edge stores nothing
+    // here: it rides along in the address, and the Home Screen may at most open
+    // that confirm. ?stable / ?unpin / ?latest still go back to latest.
+    var cleared = false;
+    try {
+      if (has('stable') || has('unpin') || has('latest')) { localStorage.removeItem('gifos_channel'); localStorage.removeItem('gifos_pin'); localStorage.removeItem('gifos_pin_until'); cleared = true; }
+    } catch (e) {}
+    var pin = null, chan = null, cur = null, until = null;
+    try { pin = localStorage.getItem('gifos_pin'); chan = localStorage.getItem('gifos_channel'); cur = localStorage.getItem('gifos_current'); until = localStorage.getItem('gifos_pin_until'); } catch (e) {}
+    // gifos_pin_until is only the confirm's receipt. Any stored value means
+    // this computer chose the pin on purpose, and the pin stays. The value
+    // is never an end. A choice with no record predates the confirm (a stray
+    // ?edge link could have made it), so on gifos.app it is reset once
+    // (RESET_UNCONFIRMED). The Home Screen says so once.
+    var RESET_UNCONFIRMED = true;
+    if ((pin || chan === 'edge') && until === null && RESET_UNCONFIRMED && /(^|\.)gifos\.app$/.test(location.hostname)) {
+      try { localStorage.setItem('gifos_pin_ended', 'reset:' + (pin || 'edge')); localStorage.removeItem('gifos_pin'); localStorage.removeItem('gifos_channel'); localStorage.removeItem('gifos_pin_until'); } catch (e) {}
+      pin = null; chan = null;
+    }
+    var stay = cleared ? { clear: true } : null;
+    // A ROOM address (/meet#room=…, or an old /meet/<room>, /join/<code>[/…]) is NOT a
+    // file — Pages 404s it and 404.html routes it to a real page. If we ever run at
+    // one (an offline cached shell, or any substitution of index.html), prepending
+    // /versions/<v> would build /versions/<v>/meet/<room>, which exists nowhere, and
+    // bounce the visitor to the desktop with their invite silently dropped. So
+    // translate a pretty path to its real target instead of decorating it. Room case
+    // is PRESERVED: the room id is the capability the key derives from.
+    //
+    // FLAG DAY 2026-08-05 (prelaunch, NO SHIMS): snapshots are addressed as
+    // run.html, PERIOD. The runtime was renamed meet.html -> run.html on
+    // 2026-08-04 and the compat shim is DELETED — snapshots cut before 0.9.3
+    // ship their runtime as meet.html and are therefore NO LONGER
+    // loader-addressable (deliberate: prelaunch, nobody real is pinned, and a
+    // per-version filename table is exactly the compat rot we refuse to
+    // carry). Old meet.html#... links are dead the same way.
+
+    var pm = roomHash(pathname, search, hash);
+    var here;
+    if (pm) {
+      here = '/run.html#' + pm;
+    } else {
+      // Carry the page + invite hash across (snapshots ship run.html too —
+      // flag day above) AND THE QUERY. The query used to be dropped here,
+      // which silently broke the one link built for strangers:
+      // gifos.app/?run=<gif url> ("open this app"). A first visit is exactly
+      // when the release redirect fires, so the visitor most likely to follow
+      // a shared run-link was the one guaranteed to lose it — they landed on
+      // a bare Home Screen with nothing said. It must be the QUERY and not
+      // the hash (the usual doctrine) for one decisive reason: released
+      // snapshots are immutable, and 0.9.5's desktop.js reads ?run= from
+      // location.search. Carrying the hash instead would fix nothing until
+      // the NEXT release, for links sent today.
+      here = pathname + search + hash;
+      // THE SURFACE PAGES (meet.html, cast.html, 0.9.28; the host serves them at /meet and /cast) are addressed as run.html too: every snapshot ships
+      // run.html, and a new one forwards a room to its surface page itself. A cast page keeps its skin (bc).
+      var sp = /\/(meet|cast)(\.html)?$/.exec(pathname);
+      if (sp) here = pathname.slice(0, sp.index) + '/run.html' + search + (sp[1] === 'cast' && !/[#&]bc(=|&|$)/.test(hash) ? (hash ? hash + '&bc=1' : '#bc=1') : hash);
+    }
+    function to(v) { return { redirect: '/versions/' + v + here }; }
+    // MEETINGS RUN THE LIVE RELEASE. Releases are not compatible with each
+    // other, so a room entry — a pretty /meet|/cast|/join path, or run.html
+    // with anything but a solo app (#id=) — skips the pin for THIS page and
+    // follows the release pointer like an unpinned visitor. gifos_pin is KEPT:
+    // the Home Screen and solo apps stay on the pinned build.
+    var room = !!pm || (/\/(run\.html|(meet|cast)(\.html)?)$/.test(pathname) && !/[#&]id=/.test(hash));
+    if (room) pin = null;
+    if (pin && pin !== window.GIFOS_VERSION) return to(pin);  // pinned to a DIFFERENT snapshot
+    if (pin) return stay;                                     // already running what we're pinned to
+    if (chan === 'edge') return stay;                         // opted into the edge build → run this root
+    // Default channel follows the live release — but only on the real domain. On
+    // localhost / preview hosts the root IS what you're developing, so stay edge.
+    if (!/(^|\.)gifos\.app$/.test(location.hostname)) return stay;
+    // Default: ASK for the release pointer, every entry, then redirect.
+    // gifos_current is only what the LAST visit read. Trusting it first sent
+    // every returning visitor to the release before the newest deploy (the first
+    // load after 0.9.26 shipped landed on /versions/0.9.25.3/), and that
+    // frozen snapshot can never move itself. The answer is under 2 KB
+    // and a redirect costs a round trip anyway.
+    // A visitor who HAS a stored release is asked without blocking, bounded by
+    // VERSION_ASK_MS (the caller below, askLive): a stalled network must not
+    // hold the page, so past the bound the stored release answers, as offline.
+    // A first visit (nothing stored) is asked the same way and never blocks
+    // either: a synchronous ask held a first visitor on a stalled network on a
+    // blank page until the browser gave up (23 min in a stalled-network run).
+    // With no answer in the bound it runs this edge build: the caller reloads
+    // the page once with gifos_ask_edge set, and that load stays here.
+    var once = null;
+    try { once = sessionStorage.getItem('gifos_ask_edge'); if (once) sessionStorage.removeItem('gifos_ask_edge'); } catch (e) {}
+    if (once) return stay;
+    // `clear`: ?stable/?unpin/?latest just cleared a pin (the page still asks for the live release).
+    return { redirect: cur ? to(cur).redirect : null, ask: here, clear: cleared || undefined };
+  }
+  // A ROOM LINK, as the run.html hash it opens: null when the address names no
+  // room, '' when it names one badly. Every link GifOS hands out keeps the room
+  // in the FRAGMENT, which a browser never sends, so no server and no log ever
+  // reads it: /meet#room=R[&v=V], /cast#room=R[&v=V] (the Broadcast skin),
+  // /join#code=C (an app session) and /join#room=R&v=V&code=C (an owned app).
+  // The path forms shared before (/meet/R[/V], /cast/R[/V], /join/C,
+  // /join/R/V/C) open the same rooms forever. Everything else in the fragment
+  // or the query rides along. Room case is kept: the room id is the capability
+  // the key derives from. The same function sits in route.html and in every
+  // page's channel loader, byte for byte.
+  function roomHash(pathname, search, hash) {
+    var m = /^\/(meet|cast|join)(?:\/([a-z0-9-]{1,64})(?:\/([a-f0-9]{16,64})(?:\/([a-z0-9]{1,64}))?)?)?\/?$/i.exec(pathname || '');
+    if (!m) return null;
+    var kind = m[1].toLowerCase(), room = m[2] || '', ver = m[3] || '', code = m[4] || '', rest = [], bad = false;
+    if (kind === 'join' && room && !ver) { code = room; room = ''; }
+    var h = String(hash || '').replace(/^#/, ''), q = String(search || '').replace(/^\?/, '');
+    var hs = h ? h.split('&') : [], parts = hs.concat(q ? q.split('&') : []);
+    for (var i = 0; i < parts.length; i++) {
+      var p = parts[i], k = p.split('=')[0], val = p.slice(k.length + 1);
+      if (!p) continue;
+      if (m[2] || i >= hs.length || (k !== 'room' && k !== 'v' && k !== 'code')) { rest.push(p); continue; }
+      if (k === 'room') { room = val; bad = bad || !/^[a-z0-9-]{1,64}$/i.test(val); }
+      else if (k === 'v') { ver = val; bad = bad || !/^[a-f0-9]{16,64}$/i.test(val); }
+      else { code = val; bad = bad || !/^[a-z0-9]{1,64}$/i.test(val); }
+    }
+    var tail = rest.length ? '&' + rest.join('&') : '';
+    ver = ver.toLowerCase();
+    if (bad) return '';
+    if (kind !== 'join') return room ? 'v=' + room + (ver ? '&av=' + ver : '') + (kind === 'cast' ? '&bc=1' : '') + tail : (ver ? '' : null);
+    if (room && ver && code) return 's=' + room + '.' + ver + '&k=' + code + tail;
+    if (code && !room && !ver) return 'j=' + code + tail;
+    return room || ver ? '' : null;
+  }
+  window.gifosPinTarget = pinTarget;
+  // GENERATED from gifos timings.json by scripts/gen-timings.mjs (the line below): do not edit by hand.
+  var LOADER_T = { VERSION_ASK_MS: 1900, VERSION_FIRST_ASK_MS: 3900 };
+  // The release is asked about without blocking: the rest of this page (the
+  // edge build) is stopped at once, version.json gets LOADER_T.VERSION_ASK_MS
+  // to answer, and the page moves to the live release or, on no answer, to the
+  // stored one (first visit: this edge build). Exactly one move either way.
+  function askLive(d) {
+    var moved = false;
+    function go(u) { if (moved) return; moved = true; location.replace(u); }
+    // No answer: the stored release, or (first visit) this edge build, reached
+    // by one marked reload. That edge build is the wrong build for a meeting,
+    // so a first visit waits longer (VERSION_FIRST_ASK_MS) than a returning one. Without session storage there is no mark, so that
+    // page is not stopped: it boots as the edge build unless the answer comes
+    // in the bound.
+    var mark = false;
+    try { sessionStorage.setItem('gifos_ask_probe', '1'); sessionStorage.removeItem('gifos_ask_probe'); mark = true; } catch (e) {}
+    function fallback() {
+      if (d.redirect) { go(d.redirect); return; }
+      if (moved || !mark) { moved = true; return; }
+      moved = true;
+      try { sessionStorage.setItem('gifos_ask_edge', '1'); } catch (e) {}
+      location.reload();
+    }
+    if (d.redirect || mark) { try { window.stop(); } catch (e) {} }
+    try {
+      var x = new XMLHttpRequest(); x.open('GET', '/version.json?ts=' + Date.now(), true); x.timeout = d.redirect ? LOADER_T.VERSION_ASK_MS : LOADER_T.VERSION_FIRST_ASK_MS;
+      x.onload = function () {
+        // `latest` (may be four-part, 0.9.24.1) first; `current` is the three-part legacy pointer.
+        var v = ''; try { var j = JSON.parse(x.responseText) || {}; v = (/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(j.latest || '')) ? j.latest : ''); } catch (e) {}
+        if (!/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(v))) { fallback(); return; }
+        try { localStorage.setItem('gifos_current', v); } catch (e) {}
+        go('/versions/' + v + d.ask);
+      };
+      x.onerror = x.ontimeout = x.onabort = fallback;
+      x.send();
+    } catch (e) { fallback(); }
+  }
+  // ?agent=1 is read here, before the meeting rewrites its own address (agent mode reads window.__gifosAgentQ).
+  // A driver that loads the page with its own start script (the agent SDK) may set the flag before this line.
+  try { window.__gifosAgentQ = window.__gifosAgentQ === true || /[?&]agent=1(?:&|$)/.test(location.search); } catch (e) {}
+  // bot=1 (query or hash) is assistant mode for this tab; agent=1 is assistant mode too (plus the agent API).
+  // Read here, before the meeting rewrites its own address, and kept per tab so a reload stays an assistant.
+  try { if (/[?#&](?:bot|agent)=1(?:&|$)/.test(location.search + '&' + location.hash)) sessionStorage.setItem('gifos_bot', '1'); } catch (e) {}
+  var decision = pinTarget(location.pathname, location.search, location.hash);
+  if (decision && decision.ask) askLive(decision);
+  else if (decision && decision.redirect) location.replace(decision.redirect);
+  // The meeting page and the broadcast page ARE /meet and /cast (0.9.28). A page that stays here (not gifos.app, or the
+  // edge build) reads a link's #room=R&v=V as the meeting's own #v=R&av=V before anything else reads the address.
+  else { try { var lp = roomHash(location.pathname, location.search, location.hash); if (lp && /^\/(meet|cast)$/.test(location.pathname)) history.replaceState(history.state, '', location.pathname + '#' + lp); } catch (e) {} }
+  // A meeting's address keeps the room in its fragment (/meet#room=…). Following
+  // or typing another room's link there changes only the fragment, which loads
+  // nothing, so the meeting would sit on under an address naming another room:
+  // load again, and route.html opens the room the address names. The meeting's
+  // own address moves use history.replaceState, which fires no hashchange.
+  try { window.addEventListener('hashchange', function () { if (/^\/(?:meet|cast|join)\/?$/i.test(location.pathname)) location.reload(); }); } catch (e) {}
+  // A document that stays refreshes gifos_current for the next visit.
+  // The redirect above is still immediate. desktop.js is the other writer.
+  try {
+    if (typeof fetch === 'function') {
+      fetch('/version.json', { cache: 'no-cache' }).then(function (r) {
+        return r && r.ok ? r.json() : null;
+      }).then(function (j) {
+        var v = j && (/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(j.latest || '')) ? j.latest : '');   // latest (may be 4-part) is the only pointer
+        if (!v || !/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(v))) return;
+        try { localStorage.setItem('gifos_current', String(v)); } catch (e2) {}
+      }).catch(function () {});
+    }
+  } catch (e) {}
+})();
+</script>
+<!--@/shared:channel-loader-->
+<!--@shared:theme-gate-->
+<!-- Theming gate: hide chrome behind the theme-color backdrop until the theme
+     cascade (gifos-themes.js) has applied real vars, so the fallback purple
+     (var(--accent,#7b5cff)) never paints first. Reveals the instant --accent is
+     set; a failsafe timeout guarantees we never stay hidden if a theme file
+     404s or hangs. See js/gifos-themes.js. -->
+<style id="theme-gate">html.gifos-booting body{visibility:hidden}html.gifos-booting{background:var(--bg,#0a0a0f)}</style>
+<!--@/shared:theme-gate-->
+<!-- THE ENTRY DECIDES THE CHROME, AND IT DECIDES IT BEFORE THE FIRST PAINT.
+     `body.solo-app` / `body.app-room` are added by the boot script thousands of
+     lines below, so an app launch used to paint the MEETING chrome — menubar,
+     grid, feed — and then take it away again. Nathan saw the flash launching the
+     App Store, and it is not only ugly: it is layout and paint work for a UI the
+     page has already decided it will not show.
+     ONE RUNTIME says the traits are minted at entry and immutable for the page's
+     life (docs/one-runtime.md), so the hash ALREADY holds the answer here, in
+     <head>, before <body> exists. Stamp the same classes on <html> now; the
+     rules below are written `.solo-app .bar` (descendant), so they match whether
+     the class sits on <html> or on <body>, and the boot script's later
+     body.classList.add stays exactly as it was — this is a paint-time head
+     start, not a second source of truth.
+     The header pill (.topchip: "GifOS · Joining…") and Fit sit OUTSIDE .bar
+     since the 0.9.23 header, so this list must name them too: a phone on a
+     slow link sat on a solo launch reading "GifOS Joining… / Fit" over a
+     black page — a meeting it was never in — until the boot script got here. -->
+<style id="entry-chrome">html.solo-app .bar,html.solo-app #grid,html.solo-app #feed,html.solo-app .topchip,html.solo-app .fitbtn{display:none!important}</style>
+<script>(function(){try{
+  // SOLO ONLY, deliberately. The three body.solo-app rules below hold for as
+  // long as the page IS solo — and there is exactly one path that ends that:
+  // Invite-from-solo turns this page into an app ROOM in place. That path must
+  // therefore clear BOTH copies, and it does (inviteFromSolo, far below) —
+  // clearing only the body one left this mirror hiding the meeting bar, the
+  // grid and the feed forever, so a call in such a room showed nothing. The
+  // app-room rules are NOT mirrored at all: an app-pinned room is audio-only
+  // (0.9.13: its grid and filmstrip never show, call-on or not — the tiles
+  // would be blank camera-off boxes under the app), so there is nothing to
+  // un-hide and no reason to touch <html> for them. A launch from the desktop
+  // is #id=, which is the solo case and the one that flashes.
+  // Read the HASH only: the channel loader carries pathname + hash and DROPS the
+  // query, so #id= is the only form that survives a version redirect.
+  var p=new URLSearchParams((location.hash||'').replace(/^#/,''));
+  if(p.get('id'))document.documentElement.classList.add('solo-app');
+  // THE LOBBY ENTRY, decided by the same rule as the boot dispatch far below
+  // (no session frame, no app, no room): the page will show the lobby and
+  // nothing else. The meeting starts only after every deferred script has run
+  // (and, in a translated language, after its catalog), which on a phone link
+  // is seconds; the room's markup is visible by default, so without this the
+  // person stared at an empty call with its control bar until the lobby came.
+  // The lobby's own sheet goes up now instead, empty, in the lobby's colour,
+  // over the room (it already sits above every piece of it), and showLobby()
+  // fills it. Nothing else changes: .show restyles the same element.
+  else if(window.__gifosMb!=='1'&&p.get('mb')!=='1'&&!(p.get('s')&&p.get('k'))&&!p.get('j')&&!p.get('v')&&!p.get('app'))document.documentElement.classList.add('lobby-entry');
+}catch(e){}})();</script>
+<style id="lobby-entry">html.lobby-entry #lobby:not(.show){display:block}html.lobby-entry #lobby:not(.show)>*{visibility:hidden}</style>
+<!--@shared:booting-->
+<script>(function(){var h=document.documentElement;h.className+=(h.className?' ':'')+'gifos-booting';var shown=0;
+function show(){if(shown)return;shown=1;h.classList.remove('gifos-booting');
+try{var bg=h.style.getPropertyValue('--bg');var m=document.querySelector('meta[name=theme-color]');if(bg&&m)m.setAttribute('content',bg.trim());}catch(e){}}
+function chk(){if(shown)return;if(h.style.getPropertyValue('--accent'))show();else requestAnimationFrame(chk);}
+requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
+<!--@/shared:booting-->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="GifOS">
+<!--@shared:load-gate-->
+<script id="gifos-load-gate">/* Load completeness: record every <script src> that failed to load (error events do not bubble: capture on window), and every script that threw while a failed one was missing. startMesh() checks this before it seats anything (see unitsGate). */(function(){var g=window.__gifosLoadGate={failed:[],threw:[],tries:0,state:'ok',trace:[],src:{}};
+function key(u){try{var x=new URL(u,location.href);return x.pathname.replace(/^\//,'');}catch(e){return String(u);}}
+/* Only this site's own scripts are units of the page. A script from another origin (an analytics beacon a host adds, which tracker blockers stop) is never a unit: its failure must not hold anyone at the door. */
+function own(u){try{return new URL(u,location.href).origin===location.origin;}catch(e){return false;}}
+/* OPTIONAL: a theme OVERRIDE file (themes/<label>/theme.js, icons.js, eggs.js, wallpaper.js; js/gifos-themes.js asks for one per host label, any label works) may be absent: that is a clean fallback to the base theme, never a failed load. The base themes/*.js stay required. */
+function opt(k){return /^(?:versions\/[^\/]+\/)?themes\/[^\/]+\/(?:theme|icons|eggs|wallpaper)\.js$/i.test(k);}
+/* A failed script is known by its ERROR EVENT only (the listener at the end). Resource Timing sizes are not a body: Safari reports decodedBodySize 0 for every script its HTTP cache revalidated (304), so reading 0 as "no body" called the whole page missing on each reload, ran the bundle a second time, and once every ?lc= retry address was cached too, refused the join for good ("did not finish loading", iPhone, 2026-11-15). The offline layer answers a script it cannot supply with a network error (sw.js degrade), which fires that event. */
+/* A script missing BEFORE the meeting starts (on the published page that is the bundle: nearly all of the page's code) leaves nothing that could draw the lobby or reach the join's own gate (unitsGate). The starter at the end of the page then calls this first: it loads the failed scripts again at the address they were asked at (in page order, with the join gate's backoff, and the scripts after them that threw), and resolves true when every one has run. When one stays missing it refuses: the trace says so and a banner says so on screen. */
+g.reload=function(){var BACK=[0,400,1200,2400],todo=g.failed.slice();
+function note(m){g.trace.push(m);try{console.log('[load-gate] '+m);}catch(x){}}
+function order(){var o=[],l=document.querySelectorAll('script[src]');for(var i=0;i<l.length;i++)o.push(key(l[i].src));return o;}
+function one(k){return new Promise(function(res){var el=document.createElement('script'),u;try{u=new URL(g.src[k]||k,location.href);u.searchParams.set('lc',String(g.tries));u=u.href;}catch(x){u=k+'?lc='+g.tries;}el.async=false;el.src=u;el.onload=function(){res(true);};el.onerror=function(){el.remove();res(false);};document.head.appendChild(el);});}
+function seq(list,bad){return list.reduce(function(p,k){return p.then(function(){return one(k).then(function(ok){if(!ok)bad.push(k);});});},Promise.resolve());}
+g.state='retry';note('missing '+g.failed.join(',')+(g.threw.length?' threw '+g.threw.join(','):'')+' before start');
+function step(i){var o=order(),first=Math.min.apply(null,todo.map(function(k){return o.indexOf(k);}).filter(function(n){return n>=0;}));
+var redo=todo.concat(g.threw.filter(function(k){return o.indexOf(k)>first&&todo.indexOf(k)<0;})).sort(function(x,y){return o.indexOf(x)-o.indexOf(y);}),bad=[];g.tries++;
+return seq(redo,bad).then(function(){note('try '+g.tries+' reloaded '+redo.length+' still-missing '+bad.length);todo=bad.filter(function(k){return g.failed.indexOf(k)>=0||todo.indexOf(k)>=0;});
+if(!bad.length||i+1>=BACK.length)return;return new Promise(function(r){setTimeout(r,BACK[i+1]);}).then(function(){return step(i+1);});});}
+return step(0).then(function(){if(!todo.length){g.failed.length=0;g.threw.length=0;g.state='ok';note('recovered');return true;}
+g.state='refused';g.missing=todo;note('refuse '+todo.join(','));
+var I=window.GifOS&&GifOS.i18n,msg='This page did not finish loading, so it cannot join safely. Reload the page to try again.';try{if(I&&I.ui()!=='en'&&I.has('meet.stLoadIncomplete'))msg=I.t('meet.stLoadIncomplete');}catch(x){}
+try{var d=document.createElement('div');d.id='load-gate-msg';d.setAttribute('role','alert');d.style.cssText='position:fixed;left:0;right:0;top:0;z-index:2147483647;padding:14px 16px;background:#b00020;color:#fff;font:16px system-ui,sans-serif;text-align:center';d.textContent=msg;document.body.appendChild(d);}catch(x){}
+return false;});};
+window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagName==='SCRIPT'&&t.src){if(!own(t.src))return;var k=key(t.src);if(!opt(k)&&g.failed.indexOf(k)<0){g.failed.push(k);g.src[k]=t.src;}}else if(e&&e.filename&&g.failed.length&&own(e.filename)){var f=key(e.filename);if(g.threw.indexOf(f)<0)g.threw.push(f);}}catch(x){}},true);})();</script>
+<!--@/shared:load-gate-->
+<!-- The lobby's scripts come first: everything the meeting reads until the lobby is on screen. A published
+     copy (.github/scripts/bundle/bundle.mjs) loads the scripts above the end mark as one bundle with the page
+     and the ones below it as a second bundle, right after the lobby starts. Keep that order here. -->
+<script src="js/sw-register.js" defer></script>
+<script src="js/dialog.js" defer></script>
+<script src="js/build.js" defer></script>
+<script src="js/build-badge.js" defer></script>
+<script src="js/gifos-i18n.js" defer></script>
+<script src="js/gifos-gif.js" defer></script>
+<script src="js/gifos-help.js" defer></script>
+<script src="js/gifos-fullscreen.js" defer></script>
+<script src="js/gifos-store.js" defer></script>
+<script src="js/timings.js" defer></script>
+<script src="js/gifos-update.js" defer></script>
+<script src="js/gifos-net.js" defer></script>
+<script src="js/mesh-media.js" defer></script>
+<script src="js/meet-layout.js" defer></script>
+<script src="js/meet-debuglog.js" defer></script>
+<script src="js/meet-captrust.js" defer></script>
+<script src="js/meet-views.js" defer></script>
+<script src="js/meet-viewmode.js" defer></script>
+<script src="js/meet-power.js" defer></script>
+<script src="js/mesh-pipe.js" defer></script>
+<script src="js/relay-config.js" defer></script>
+<script src="js/runtime.js" defer></script>
+<script src="js/meet-host.js" defer></script>
+<script src="js/gifos-perms.js" defer></script>
+    <script src="js/core/meeting.js" defer></script>
+    <script src="js/core/media/plane-browser.js" defer></script>
+    <script src="js/core/view/kit.js" defer></script>
+    <script src="js/core/view/view.js" defer></script>
+    <script src="js/core/host.js" defer></script>
+<!-- the lobby's scripts end here -->
+<!--@shared:text-size-->
+<script>/* Global UI text size (Settings → Text size). Scales the meeting chrome; applied early, live across tabs. */(function(){function ap(){try{var s=parseFloat(localStorage.getItem('gifos_ui_scale'))||1;s=Math.max(0.2,Math.min(3,s));document.documentElement.style.fontSize=(s===1?'':(16*s).toFixed(2)+'px');document.documentElement.classList.toggle('ui-large',s>=1.5);}catch(e){}}ap();try{window.addEventListener('storage',function(e){if(!e||e.key==='gifos_ui_scale')ap();});}catch(e){}})();</script>
+<!--@/shared:text-size-->
+<title>Broadcast — GifOS</title>
+<!-- Link-preview card for texted / posted invites. og:url is deliberately OMITTED
+     so scrapers use the actual fetched URL and keep the invite's subdomain (the
+     computer's theme) — the mirror Worker can later rewrite og:image per theme.
+     The image is a STATIC branded card: a meeting invite can't leak per-room info
+     to a scraper, and messaging previews never animate a URL anyway. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="GifOS">
+<meta property="og:title" content="Join the meeting on GifOS">
+<meta property="og:description" content="Peer-to-peer video, right in your browser. One link — no account, no installs.">
+<meta property="og:image" content="https://gifos.app/meet-og.png">
+<meta property="og:image:width" content="2400">
+<meta property="og:image:height" content="1260">
+<meta property="og:image:alt" content="Join the meeting on GifOS — one link, no account, no installs.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Join the meeting on GifOS">
+<meta name="twitter:description" content="Peer-to-peer video in your browser. One link · no account · no installs.">
+<meta name="twitter:image" content="https://gifos.app/meet-og.png">
+<link rel="icon" href="/favicon.ico" sizes="16x16">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%B9%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/meet.css">
+<link rel="stylesheet" href="css/meet-23b.css">
+<link rel="stylesheet" href="css/meet-polish.css">
+<script src="js/gifos-themes.js"></script>
+</head>
+<body>
+  <div id="lobby">
+    <!-- The preview is the join: your camera and mic as the call will open
+         them (off unless you turn them on here), blurred as the room sees you. -->
+    <div class="lob-preview" id="lob-preview" data-cam="off" data-mic="off">
+      <video id="lob-preview-vid" autoplay muted playsinline></video>
+      <div class="lob-pv-off" id="lob-pv-off"><span class="lob-pv-face" id="lob-pv-face" aria-hidden="true"></span><span data-t="camOffChip" class="lob-pv-offtxt">Camera off</span></div>
+      <span data-t="lobPreviewName" class="lob-pv-name" id="lob-preview-name">You</span>
+      <button data-al="lobDeskMoreAria" data-t="more" type="button" id="lob-desk-more" hidden aria-pressed="false" aria-label="Watch a link, or see the host password">More</button>
+      <span data-t="youJoinMutedWith" class="lob-pv-note" id="lob-pv-note">You join muted, with the camera off</span>
+      <div class="lob-av" id="lob-av">
+        <button type="button" id="lob-mic" class="lob-avbtn"><span class="lob-avico" aria-hidden="true">🎤</span><span data-t="lobMicOff" class="lob-avtxt">Mic off</span></button>
+        <button type="button" id="lob-cam" class="lob-avbtn"><span class="lob-avico" aria-hidden="true">📷</span><span data-t="camOffChip" class="lob-avtxt">Camera off</span></button>
+      </div>
+    </div>
+    <div class="lobby-card">
+      <h1 data-t="lobTitle">Meeting</h1>
+      <p class="lob-quiet" data-t="lobWelcome" id="lob-welcome">Join a meeting, or start your own in one tap.</p>
+      <p class="lob-quiet" data-t="lobJoinOff" id="lob-quiet">You'll join with your camera and microphone off.</p>
+      <div class="lob-tabs">
+      <div class="segwrap lob-segs" role="tablist" aria-label="Meeting choices">
+        <button type="button" id="lob-join-btn" class="seg" role="tab" aria-selected="false"><span data-t="lobJoinBtn">Join</span></button>
+        <button type="button" id="lob-admin-btn" class="seg" role="tab" aria-selected="false"><span data-t="lobAdminBtn">Host</span></button>
+        <button type="button" id="lob-open-seg" class="seg sel" role="tab" aria-selected="true" aria-describedby="lob-seg-note"><span data-t="lobStart">Open</span></button>
+      </div>
+      <div class="lob-tabpanel">
+      <p class="lob-seg-note" id="lob-seg-note" role="status" aria-live="polite" data-t="lobStartSub">Majority rules: vote people off the stage or out of the meeting.</p>
+      <div id="lob-admin" class="lob-expand" style="display:none">
+        <label class="lob-pwlab" id="lob-admin-name-lab" for="lob-admin-name" data-t="lobNameLab">Name</label>
+        <input data-ph="lobAdminNamePh" id="lob-admin-name" maxlength="40" placeholder="Name this meeting" autocomplete="off">
+        <div id="lob-guest-extra">
+          <label class="lob-pwlab" for="lob-guest-pass"><b data-t="lobGuestPassHead" id="lob-guest-pass-head">Room password</b> <span class="lob-flag" data-t="lobOpt">optional</span> <small data-t="lobGuestPassNote" id="lob-guest-pass-note">The one you share. People need it to get in.</small></label>
+          <input data-ph="lobRoomPwPh" id="lob-guest-pass" type="password" maxlength="64" placeholder="Room password" autocomplete="new-password">
+        </div>
+        <button data-t="lobKeyReveal" type="button" id="lob-key-reveal" class="lob-text" hidden>Host password</button>
+        <div id="lob-key-block">
+        <label class="lob-pwlab" for="lob-admin-pass"><b data-t="invAdminPh" id="lob-admin-pass-head">Host password</b> <span class="lob-flag" data-t="lobHostReq">required</span><small data-t="lobAdminPassNote" id="lob-admin-pass-note">This password controls the meeting, do not share it.</small></label>
+        <div class="lob-keyrow">
+          <input data-ph="invAdminPh" id="lob-admin-pass" type="password" maxlength="64" placeholder="Host password" autocomplete="new-password" aria-required="true">
+          <button data-t="lobKeygen" type="button" id="lob-keygen" class="lob-ghost">Generate</button>
+        </div>
+        </div>
+        <!-- A blank room password leaves the link open. A password locks the door. Schedule is now or later. -->
+        <div id="lob-bc" hidden>
+          <button data-t="bcSchedule" type="button" id="lob-bc-sched" class="lob-text" hidden>Schedule</button>
+          <label id="lob-bc-when" class="lob-bc-when" hidden><span data-t="bcWhenStarts">Starts</span><input type="datetime-local" id="lob-bc-at"></label>
+        </div>
+      </div>
+      <div id="lob-join" class="lob-expand" style="display:none">
+        <label class="lob-pwlab" for="lob-join-in" data-t="lobLinkLab">Link or room name</label>
+        <input data-ph="lobJoinInPh" id="lob-join-in" placeholder="Paste link or meeting id" autocomplete="off">
+        <label class="lob-pwlab" for="lob-join-pass"><b data-t="lobGuestPassHead">Room password</b> <span class="lob-flag" data-t="lobOpt">optional</span></label>
+        <input data-ph="lobJoinPassPh" data-al="lobGuestPassHead" id="lob-join-pass" type="password" maxlength="64" placeholder="Room password, if it has one" aria-label="Room password" autocomplete="new-password">
+        <p data-t="lobWatchNote" id="lob-watch-note" class="lob-watch-note" hidden>Watching the broadcast. You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.</p>
+      </div>
+      <div id="lob-open-panel">
+        <div class="lob-expand">
+          <label class="lob-pwlab" for="lob-open-name" data-t="lobNameLab">Name</label>
+          <input data-ph="lobAdminNamePh" id="lob-open-name" maxlength="40" placeholder="Name this meeting" autocomplete="off">
+          <div id="lob-open-extra">
+            <label class="lob-pwlab" for="lob-open-pass"><b data-t="lobGuestPassHead">Room password</b> <span class="lob-flag" data-t="lobOpt">optional</span> <small data-t="lobOpenPassNote">People need it to get in. Anyone inside can change it.</small></label>
+            <input data-ph="lobRoomPwPh" id="lob-open-pass" type="password" maxlength="64" placeholder="Room password" autocomplete="new-password">
+          </div>
+        </div>
+      </div>
+      <button id="lob-go" class="lob-primary" type="button" data-t="lobOpenGo">Open</button>
+      <div id="lob-admin-err" class="lob-err"></div>
+      <div id="lob-join-err" class="lob-err"></div>
+      </div>
+      </div>
+      <div class="lob-appear">
+        <div data-t="appearTitle" class="lob-appear-k">This is how you'll appear</div>
+        <div class="lob-appear-row">
+          <button data-al="lobFaceAria" type="button" id="lob-face" class="lob-face" aria-label="Change your picture"></button>
+          <input data-al="setName" data-ph="setName" id="lob-name-in" maxlength="40" autocomplete="nickname" aria-label="Your name" placeholder="Your name">
+        </div>
+        <input id="lob-face-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp" hidden>
+        <b id="lob-name" hidden>…</b>
+      </div>
+      <div class="lob-sep"></div>
+      <div class="lob-hist-h" data-t="lobRecent">Recent &amp; saved</div>
+      <div id="lob-list"></div>
+      <div id="lob-empty" class="lob-empty" data-t="lobEmpty">Calls you start or join show up here.</div>
+      <p class="for-ai" id="lob-for-ai">
+        <a href="/meet/llms.txt" data-t="forAi">For AI assistants</a>
+        <button type="button" id="ai-assist" class="ai-sw" role="switch" aria-checked="false" aria-pressed="false"><span class="ai-sw-word" data-t="imAi">I'm an AI assistant</span><span class="ai-sw-state" data-t="imAiOff">Off</span><span class="ai-knob" aria-hidden="true"></span></button>
+      </p>
+      <p class="for-ai-note" id="ai-assist-note" role="status"></p>
+    </div>
+  </div>
+  <!-- The one top bar (R1, 2026-11-15): every top control sits in this row, in flow, so none lands on another; its measured bottom is where the meeting box starts. -->
+  <div id="tophead" role="banner"></div>
+  <div class="topchip">
+    <span data-al="livebadgeAria" id="livebadge" data-state="off" aria-label="You are off air"><i class="livedot" aria-hidden="true"></i><span data-t="livebadgeTxt" id="livebadge-txt">OFF AIR</span></span>
+    <a data-ti="openYourGifosComputerTip" class="title" href="./" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
+    <span data-ti="txmarkTip" data-al="sendingCaptions" id="txmark" role="status" aria-label="Sending captions" style="display:none" title="Your voice is written down and sent to the meeting as captions while your mic is on. Your browser's speech service (Google, Apple or Microsoft) hears you, unless you picked Whisper. Settings → Captions to change this.">📝 <span data-t="sendingCaptions">Sending captions</span><small id="txwsp"></small></span>
+    <span id="onair" hidden><i class="lamp" aria-hidden="true"></i><span class="words"></span></span>
+    <span class="status" id="status"><button data-t="statuscount" type="button" id="statuscount" data-agent="status" aria-expanded="false" aria-controls="roster">Joining…</button><span id="statusrest" class="statustext"></span></span>
+    <a href="/meet/llms.txt" class="for-ai-link" id="meet-for-ai" data-t="forAi">For AI assistants</a>
+    <button type="button" id="hdrhand" aria-expanded="false" aria-controls="handq"></button>
+  </div>
+  <aside data-al="people" id="roster" aria-label="People">
+    <div class="roster-head"><h3 data-t="people" id="roster-title">People</h3><button data-t="setClose" type="button" id="roster-close">Close</button></div>
+    <input data-ph="rosterFind" id="roster-find" type="search" placeholder="Find a name" autocomplete="off">
+    <div id="roster-host" hidden></div>
+    <div id="roster-waitlist"></div>
+    <div id="roster-list"></div>
+  </aside>
+  <div id="waitself" aria-live="polite"><h3></h3><p></p></div>
+  <button data-t="stillHere" type="button" id="still">Still in the call</button>
+  <button type="button" id="fitbtn" class="fitbtn" aria-haspopup="dialog" aria-expanded="false" aria-controls="viewpick" aria-label="View: Fit" aria-keyshortcuts="Alt+F" title="Change the view (Alt+F)"><span class="vb-ic" aria-hidden="true"></span><span class="vb-word">Fit</span></button>
+  <button type="button" id="presentbtn" class="presentbtn" aria-label="Present: the content full screen, the speaker inset" title="Present: the content full screen, the speaker inset"><span class="vb-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="13" rx="2"/><rect x="14.5" y="11" width="5" height="4" rx="1"/><path d="M8 21h8M12 17v4"/></svg></span><span class="vb-word">Present</span></button>
+  <div id="viewpick" class="viewpick" role="dialog" aria-label="View" hidden>
+    <div class="vp-modes" role="radiogroup" aria-label="View">
+      <button type="button" role="radio" class="vp-mode" data-view="scroll" aria-checked="false"><span class="vp-ic" aria-hidden="true"></span><span class="vp-word">Scroll</span></button>
+      <button type="button" role="radio" class="vp-mode" data-view="fit" aria-checked="true"><span class="vp-ic" aria-hidden="true"></span><span class="vp-word">Fit</span></button>
+      <button type="button" role="radio" class="vp-mode" data-view="drag" aria-checked="false"><span class="vp-ic" aria-hidden="true"></span><span class="vp-word">Drag</span></button>
+      <button type="button" role="radio" class="vp-mode" data-view="focus" aria-checked="false"><span class="vp-ic" aria-hidden="true"></span><span class="vp-word">Focus</span></button>
+    </div>
+    <button type="button" role="switch" id="vp-follow" class="vp-follow" aria-checked="true" hidden><span class="vp-word">Follow the speaker</span><span class="vp-knob" aria-hidden="true"></span></button>
+  </div>
+  <div id="livecap"></div>
+  <div id="callstate" hidden>
+    <span data-t="callLive" id="call-live" role="status">Live</span>
+    <button data-t="record" type="button" id="call-rec" aria-pressed="false">Record</button>
+  </div>
+  <!-- Alone in a meeting: one card, one action. -->
+  <div id="alonecard" role="status" aria-labelledby="alonecard-title" hidden>
+    <button type="button" id="alonecard-x" class="alonecard-x" aria-label="Close">✕</button>
+    <h3 id="alonecard-title" data-t="aloneTitle">You’re the only one here</h3>
+    <p data-t="aloneNote">Invite people with the meeting link. They join you right here.</p>
+    <button type="button" id="alonecard-go" data-t="aloneInvite">Invite people</button>
+  </div>
+  <div id="chatnote" hidden>
+    <button type="button" id="chatpreview"><b id="chatpreview-by"></b><span id="chatpreview-txt"></span></button>
+    <button type="button" id="chatbadge" hidden aria-live="polite">0</button>
+  </div>
+  <div class="admcount" id="admcount" style="display:none"></div>
+  <!-- Room bar before the dock in the DOM so Tab runs top to bottom. -->
+  <div id="airbar" hidden>
+    <span id="airkind" role="status"></span>
+    <span class="airacts">
+      <button type="button" id="airwho">1 here</button>
+      <button data-t="airsound" type="button" id="airsound" hidden aria-pressed="false">Sound on</button>
+    </span>
+  </div>
+  <div data-al="callControlsPressForAria" class="bar collapsed" role="toolbar" aria-label="Call controls. Press ? for keyboard shortcuts">
+    <!-- Recording rides on the bar's top edge, so it moves with the bar and
+         never pins over the meeting. Not recording shows nothing. -->
+    <span data-t="recMark" id="barrec" role="status" hidden>REC</span>
+    <button data-ti="bargripTip" data-al="bargripAria" id="bargrip" type="button" aria-label="Move the controls" title="Drag to move. Double-tap to reset. Arrow keys nudge.">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 8h14M5 12h14M5 16h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <button data-ti="camTip" data-al="camAria" id="cam" class="iconbtn off" aria-label="Start video" aria-expanded="false" aria-keyshortcuts="Alt+V" title="Camera off — tap to choose Max blur, Min blur, or No blur. Shortcut: Alt+V">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="2" y="6" width="13" height="12" rx="2"/><path d="M15 10.5 22 7v10l-7-3.5"/>
+        <line class="slash" x1="3" y1="3" x2="21" y2="21"/></svg>
+      <span data-t="video" class="docklab dockword">Video</span>
+    </button>
+    <button data-ti="micTip" data-al="unmute" id="mic" class="iconbtn off" aria-label="Unmute" aria-keyshortcuts="Alt+A" title="You are muted — tap to speak. Shortcut: Alt+A">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/>
+        <line class="slash" x1="3" y1="3" x2="21" y2="21"/></svg>
+      <span data-t="unmute" class="docklab dockword">Unmute</span>
+    </button>
+    <!-- Smiley, on purpose. The sparkle (AI_SPARK_SVG) is only for AI: the transcript and the note bot. -->
+    <button data-ti="react" data-al="react" id="reactbtn" type="button" class="iconbtn" aria-label="Reactions" aria-expanded="false" aria-pressed="false" title="Reactions">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 14.2c1.1 1.4 2.4 2 4 2s2.9-.6 4-2"/><circle cx="9" cy="10" r=".9" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r=".9" fill="currentColor" stroke="none"/></svg>
+      <span class="docklab dockword" data-t="react">Reactions</span>
+    </button>
+    <button data-ti="chatbtnTip" data-al="chat" id="chatbtn" data-agent="chat-open" type="button" class="iconbtn" aria-label="Chat" aria-keyshortcuts="Alt+C" title="Chat and share files — stays between the people on this meeting, not on a server">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9l-4 3v-3H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/></svg>
+      <span data-t="chat" class="docklab dockword">Chat</span>
+      <span class="chatcount" hidden></span>
+    </button>
+    <button data-al="captions" id="ccdock" aria-keyshortcuts="Alt+K" data-ti="ccTip" type="button" class="iconbtn" aria-pressed="false" aria-label="Captions" title="Show or hide captions on your screen. This meeting is written down either way.">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 10a2 2 0 1 0 0 4M17 10a2 2 0 1 0 0 4"/></svg>
+      <span class="docklab dockword">CC</span>
+    </button>
+    <button data-ti="sharebtnTip" data-al="shareScreen" id="sharebtn" type="button" class="iconbtn" aria-label="Share screen" aria-keyshortcuts="Alt+S" title="Show the whole room a window, a tab or your desktop. To share a GifOS app, use Run app." style="display:none">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+      <span class="docklab dockword" data-t="shareScreen">Share screen</span>
+    </button>
+    <button data-ti="more" data-al="more" id="bartoggle" type="button" class="bartoggle" aria-expanded="false" aria-label="More" title="More">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
+      <span class="docklab dockword" data-t="more">More</span>
+    </button>
+    <button data-ti="leavebtnTip" data-al="leave" id="leavebtn" data-agent="leave" type="button" aria-label="Leave" aria-keyshortcuts="Alt+Q" title="Leave. Your camera and microphone stop.">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g transform="rotate(135 12 12)"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 3.1 2 2 0 0 1 4.1 1h3a2 2 0 0 1 2 1.7c.1 1 .3 1.9.6 2.8a2 2 0 0 1-.5 2.1L8.1 8.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.5 2.8.6a2 2 0 0 1 1.7 2.1z"/></g></svg>
+      <span class="docklab dockword" data-t="leave">Leave</span>
+    </button>
+    <div class="barmore" id="barmore">
+    <!-- Dock buttons that do not fit the window wait here (fitDock). -->
+    <div class="morerow dockrow" id="dockrow" hidden>
+      <button type="button" class="dockmore" data-dock="ccdock" hidden>CC</button>
+      <button data-t="chat" type="button" class="dockmore" data-dock="chatbtn" hidden>Chat</button>
+      <button data-t="shareScreen" type="button" class="dockmore" data-dock="sharebtn" hidden>Share screen</button>
+      <button data-t="react" type="button" class="dockmore" data-dock="reactbtn" hidden>Reactions</button>
+      <button data-t="stepOff" type="button" class="dockmore" data-dock="stagebtn" hidden>Step off</button>
+    </div>
+    <!-- One sheet for every width, grouped the way a meeting is used. A button
+         pick folds the sheet. A text field does not. placeDockForWidth
+         moves Chat and Share screen into their groups when the dock is a
+         phone's. -->
+    <section class="moregroup" data-group="use">
+      <h4 data-t="lobTitle">Meeting</h4>
+      <div class="morerow" id="userow">
+        <button data-ti="handTip" id="hand" data-t="hand" aria-keyshortcuts="Alt+H" title="Raise your hand — raised hands float to the top">Hand</button>
+        <button id="ccbtn" type="button" aria-pressed="false" data-t="captions" data-ti="ccTip" title="Show or hide captions on your screen. This meeting is written down either way.">Captions</button>
+        <button type="button" id="whobtn" data-t="people" data-ti="whoTip" aria-keyshortcuts="Alt+W" title="Who is on this meeting — names and internet addresses">People</button>
+        <button data-ti="trbtnTip" data-t="transcript" aria-keyshortcuts="Alt+T" title="The meeting's live transcript" id="trbtn"><svg class="ai-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>Transcript</button>
+        <button data-ti="qabtnTip" data-t="qabtn" id="qabtn" type="button" title="Questions for the host: ask one, and vote up the ones you want answered">Questions</button>
+        <button data-ti="agendaTip" data-t="agendaBtn" id="agendabtn" type="button" aria-keyshortcuts="Alt+J" title="Share an agenda: the items, how long each takes, and which one is on now">Agenda</button>
+      </div>
+    </section>
+    <section class="moregroup" data-group="video">
+      <h4 data-t="yourVideo">Your video</h4>
+      <div class="moresegs">
+    <span data-ti="selfctlTip" class="blurctl selfctl" id="selfctl" title="Where your own video sits. Tile is the default: you are a normal tile and you cover nobody.">
+      <span data-t="lobPreviewName" class="blurlbl">You</span>
+      <span data-al="yourVideo" class="segwrap" role="group" aria-label="Your video">
+        <button data-ti="aNormalTileFirstTip" data-t="tile" type="button" class="seg" data-self-arr="tile" title="A normal tile, first in the grid">Tile</button>
+        <button data-ti="aWindowYouCanTip" data-t="float" type="button" class="seg" data-self-arr="float" title="A window you can drag. Pick a size and a corner.">Float</button>
+        <button data-ti="aBandOnOneTip" data-t="strip" type="button" class="seg" data-self-arr="strip" title="A band on one edge. It does not cover anyone.">Strip</button>
+        <button data-ti="hideYourVideoOnTip" data-t="barHide" type="button" class="seg" data-self-arr="hidden" title="Hide your video on this screen. The camera still sends if it is on.">Hide</button>
+      </span>
+    </span>
+    <span data-ti="selfsizeTip" class="blurctl selfctl" id="selfsize" hidden title="How big your float or strip is">
+      <span data-t="size" class="blurlbl">Size</span>
+      <span data-al="yourVideoSizeAria" class="segwrap" role="group" aria-label="Your video size">
+        <button type="button" class="seg" data-self-size="s">S</button>
+        <button type="button" class="seg" data-self-size="m">M</button>
+        <button type="button" class="seg" data-self-size="l">L</button>
+      </span>
+    </span>
+    <span data-ti="selfcornerTip" class="blurctl selfctl" id="selfcorner" hidden title="Corner for the floating video. You can also drag it.">
+      <span data-t="selfcornerLbl" class="blurlbl" id="selfcorner-lbl">Corner</span>
+      <span data-al="floatingVideoCornerAria" class="segwrap" role="group" aria-label="Floating video corner">
+        <button type="button" class="seg" data-self-anchor="tl">TL</button>
+        <button type="button" class="seg" data-self-anchor="tr">TR</button>
+        <button type="button" class="seg" data-self-anchor="bl">BL</button>
+        <button type="button" class="seg" data-self-anchor="br">BR</button>
+      </span>
+    </span>
+    <span data-ti="selfedgeTip" class="blurctl selfctl" id="selfedge" hidden title="Which edge your strip uses. Bottom on a phone until you choose.">
+      <span data-t="selfedgeLbl" class="blurlbl" id="selfedge-lbl">Place</span>
+      <span data-al="yourStripEdgeAria" class="segwrap" role="group" aria-label="Your strip edge">
+        <button data-t="bottom" type="button" class="seg" data-self-edge="bottom">Bottom</button>
+        <button data-t="right" type="button" class="seg" data-self-edge="right">Right</button>
+        <button data-t="left" type="button" class="seg" data-self-edge="left">Left</button>
+        <button data-t="top" type="button" class="seg" data-self-edge="top">Top</button>
+      </span>
+    </span>
+      </div>
+      <div class="morerow">
+        <button data-ti="flipcamTip" data-al="flipcamAria" id="flipcam" class="iconbtn" aria-label="Switch camera" title="Switch between front and back camera" style="display:none">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 8a8 8 0 0 0-14.9-2"/><polyline points="5 2 5 6 9 6"/>
+            <path d="M4 16a8 8 0 0 0 14.9 2"/><polyline points="19 22 19 18 15 18"/></svg>
+          <span data-t="flip" class="blab">Flip</span>
+        </button>
+        <button data-ti="pipbtnTip" data-al="pipbtnAria" id="pipbtn" class="iconbtn" aria-label="Float the meeting" title="Float the meeting in a mini window — it stays on screen while you use other apps" style="display:none">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="2"/><rect x="12" y="12" width="7" height="5" rx="1" fill="currentColor" stroke="none"/></svg>
+          <span data-t="float" class="blab">Float</span>
+        </button>
+      </div>
+    </section>
+    <section class="moregroup" data-group="room">
+      <h4 data-t="room">Room</h4>
+      <div class="morerow">
+        <button id="pwbtn" data-t="password" data-ti="pwTip" aria-keyshortcuts="Alt+L" title="Lock this room with a password">Password</button>
+        <button data-ti="capbtnTip" data-t="capBtn" id="capbtn" type="button" title="Take charge of this public open-floor meeting: you set its password and can remove people" style="display:none">Make me host</button>
+        <span id="capnote" class="capnote" role="status" style="display:none">Someone has taken charge of this meeting</span>
+        <button data-ti="waitbtnTip" data-t="waitRoom" id="waitbtn" type="button" aria-pressed="false" title="Hold people at the door until you admit them" style="display:none">Waiting room</button>
+        <button data-ti="recbtnTip" id="recbtn" data-t="record" aria-keyshortcuts="Alt+R" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
+        <button id="votebtn" data-t="vote" data-ti="voteTip" aria-keyshortcuts="Alt+U" title="Vote someone onto the stage, off the stage, or out of the room — majorities decide">Vote</button>
+        <button data-ti="stagebtnTip" id="stagebtn" data-t="stage" aria-keyshortcuts="Alt+G" title="Step onto the stage — the whole room sees and hears the stage first">Stage</button>
+        <button data-ti="appTip" id="appbtn" data-t="runApp" aria-keyshortcuts="Alt+Y" title="Run an app inside this meeting. Most stay in sync. One that turns multiplayer off stays on the host's screen.">Run app</button>
+        <button data-ti="rbbtnTip" data-t="rbbtn" id="rbbtn" title="Play the last broadcast, or a video, into the broadcast. Viewers see Prerecorded.">Rebroadcast</button>
+        <label data-ti="bcwhenrowTip" id="bcwhenrow" title="When the broadcast starts. The viewer link and the room say so."><span data-t="bcwhenLbl" id="bcwhen-lbl">Start time</span><input type="datetime-local" id="bcwhen"></label>
+      </div>
+    </section>
+    <section class="moregroup" data-group="host">
+      <h4 data-t="host">Host</h4>
+      <div class="morerow">
+        <button data-ti="muteallTip" id="muteall" data-t="muteGuests" aria-keyshortcuts="Alt+M" title="Mute every guest at once (hosts). Only a host can lift it, for one guest from their tile or for all with the same button." style="display:none">Mute guests</button>
+        <button data-ti="blurallTip" id="blurall" data-t="blurGuests" aria-keyshortcuts="Alt+B" title="Blur every guest at once (hosts) — same as blocking each of them by hand" style="display:none">Blur guests</button>
+        <button data-ti="camallTip" id="camall" data-t="videoOff" aria-keyshortcuts="Alt+X" title="Turn video off for every guest at once (hosts) — stronger than blur" style="display:none">Turn video off</button>
+        <button data-ti="shareallTip" id="shareall" data-t="allowShare" aria-keyshortcuts="Alt+P" title="Let every guest share their screen (hosts). Off until you turn it on. One person can still be allowed or stopped from their tile." style="display:none">Allow screen share</button>
+        <button data-ti="admbtnTip" data-t="admBtn" id="admbtn" title="Room host controls" style="display:none">Host</button>
+      </div>
+    </section>
+    <section class="moregroup" data-group="setup">
+      <h4 data-t="setHelp">Settings and help</h4>
+      <div class="morerow">
+        <button data-ti="spkbtnTip" id="spkbtn" data-t="spkHead" type="button" aria-haspopup="menu" aria-expanded="false" title="Choose where the meeting's sound plays" hidden>Speaker</button>
+        <button data-ti="setbtnTip" id="setbtn" data-t="settings" aria-keyshortcuts="Alt+," title="Meeting settings — your sound mix, timing, and the video quality your camera records">Settings</button>
+        <button data-t="subOpen" data-ti="subOpenTip" id="subbtn" type="button" title="GifOS plans: the four-hour pass, private meetings, and unlimited people. Pay by card or PayPal.">Subscription</button>
+        <button data-ti="shortcutTitle" id="keysbtn" data-t="keys" type="button" title="Keyboard shortcuts">Keys</button>
+      </div>
+      <p id="spknote" class="morenote" data-t="spkThisDevice" hidden>Sound plays from this device's speaker</p>
+    </section>
+    </div>
+    <!-- Outside #barmore: More folds after No blur (STEERING 22:45 #8), but the
+         note must stay readable until its own timer clears it. -->
+    <p id="blurnote" role="status" hidden></p>
+    <div data-al="react" id="reacttray" class="reacttray" hidden role="group" aria-label="Reactions">
+      <button data-al="reactHandAria" type="button" id="react-hand" aria-label="Raise hand" aria-keyshortcuts="H">✋</button>
+      <button data-al="clapAria" type="button" data-burst="👏" aria-label="Clap">👏</button>
+      <button data-al="yesAria" type="button" data-burst="👍" aria-label="Yes">👍</button>
+      <button data-al="noAria" type="button" data-burst="👎" aria-label="No">👎</button>
+      <button data-al="laughAria" type="button" data-burst="😂" aria-label="Laugh">😂</button>
+      <button data-al="heartAria" type="button" data-burst="❤️" aria-label="Heart">❤️</button>
+    </div>
+  </div>
+  <div id="micchooser" class="camchooser" role="menu" data-al="micChooseAria" aria-label="Choose a microphone" hidden></div>
+  <div id="camchooser" class="camchooser" role="menu" aria-label="Choose how you appear" hidden>
+    <button type="button" role="menuitemradio" id="campick-max" data-cam-blur="2" data-t="camMaxBlur" aria-checked="false">Max blur</button>
+    <button type="button" role="menuitemradio" id="campick-min" data-cam-blur="1" data-t="camMinBlur" aria-checked="false">Min blur</button>
+    <button type="button" role="menuitemradio" id="campick-none" data-cam-blur="0" data-t="camNoBlur" aria-checked="false">No blur</button>
+    <div id="camdevs" role="group" data-al="camDevAria" aria-label="Camera" hidden></div>
+  </div>
+  <div data-al="waitRoom" id="waitlist" hidden role="region" aria-label="Waiting room"></div>
+  <div id="waitdoor" hidden role="status">
+    <p class="pg-step" id="waitdoor-step" hidden></p>
+    <h1 data-t="waitingForTheHost">Waiting for the host</h1>
+    <p data-t="youLlJoinWhen">You'll join when the host lets you in. This meeting can't see or hear you yet.</p>
+    <button data-t="leave" type="button" id="waitdoor-leave">Leave</button>
+  </div>
+  <div id="appmissing" hidden role="alert">
+    <h1></h1>
+    <p></p>
+    <a data-t="appMissingHome" id="appmissing-home" href="./">Go to Home Screen</a>
+  </div>
+  <div class="share" id="share">
+    <span data-t="sendThisLinkTo" class="hint">Send this link to friends — opening it brings them right in:</span>
+    <input id="share-url" readonly>
+    <button data-t="invCopy" id="copy">Copy</button>
+  </div>
+  <div data-al="bcLinkAria" id="bc-link" role="region" aria-label="Stream link">
+    <p data-t="peopleWatchWithThis">People watch with this link.</p>
+    <input data-al="bcLinkAria" id="bc-link-url" readonly aria-label="Stream link">
+    <button data-t="invCopy" type="button" id="bc-link-copy">Copy</button>
+  </div>
+  <div id="callbanner"><span id="callbanner-txt"></span><button data-t="callbannerJoin" id="callbanner-join">Join the call</button></div>
+  <div id="ccwsp-off" role="status" style="display:none"><button data-ti="ccwspOffTip" id="ccwsp-use" type="button" title="Pick browser captions for this device. Whisper stays installed; Settings → Captions turns it back on."><span data-t="ccwspOff">Whisper isn't running</span> · <b data-t="ccwspUse">Use browser captions</b></button><button data-al="ccwspHide" id="ccwsp-x" type="button" aria-label="Hide">✕</button></div>
+  <div id="apppane">
+    <div id="appbar">
+      <a data-ti="openYourGifosComputerTip" class="brand" href="./" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
+      <img id="appgif" alt="">
+      <span data-t="appname" id="appname">App</span>
+      <span id="appwho"></span>
+      <button id="appinvite" style="display:none" data-t="invite" data-ti="barInviteTip" aria-keyshortcuts="Alt+I" title="Share this app live — friends join with one link">Invite</button>
+      <button id="appsave" style="display:none" data-t="barSave" data-ti="barSaveTip" title="Save a snapshot GIF — the app with its data, yours to keep">Save</button>
+      <button data-ti="appHelpTip" id="apphelp" data-t="help" aria-keyshortcuts="Alt+/" title="How this app works">Help</button>
+      <button id="appaudio" style="display:none" data-t="barTalkOff" data-ti="barTalkTip" title="Talk with the people in this app — when on, everyone here gets their own mic control (host only)">Talk: off</button>
+      <button id="appsteal" style="display:none" data-t="barSteal" data-ti="barStealTip" title="Steal a copy of this app — it goes to your desktop's Stolen Apps, data and all">Steal</button>
+      <button data-ti="apppermsTip" class="perms" id="appperms" title="What this app can do — review or turn things off" style="display:none"></button>
+      <button id="applead" style="display:none"></button>
+      <button id="apphide" style="display:none" data-t="barHide" data-ti="barHideTip" title="Hide this app on my screen only — the meeting keeps sharing it">Hide</button>
+      <button id="appstop" data-t="stopApp" data-ti="stopAppTip" title="Stop sharing this app with the meeting">Stop app</button>
+      <button data-ti="fullScreen" data-al="fullScreen" class="fs-btn" id="appfull" style="display:none" title="Full screen" aria-label="Full screen" aria-keyshortcuts="F" aria-pressed="false"></button>
+    </div>
+    <div id="appmount"></div>
+  </div>
+  <div id="handq"></div>
+  <p id="bc-join-note" hidden></p>
+  <div id="feed">
+    <p data-t="bcPre" id="bc-pre" hidden>Prerecorded</p>
+    <div id="bc-ended" hidden><p id="bc-ended-txt"></p><a data-t="bcCal" id="bc-cal" hidden>Add to calendar</a></div>
+    <div id="bc-q" hidden aria-live="polite"><i id="bc-q-pad"></i><i id="bc-q-fit"></i><b id="bc-q-by"></b><p id="bc-q-txt"></p></div>
+    <div id="bc-cap" hidden><button data-ti="bcCapBtnTip" data-al="captions" type="button" id="bc-cap-btn" aria-pressed="true" aria-label="Captions" title="Show or hide the captions">CC</button><p id="bc-cap-txt" aria-live="polite"></p></div>
+    <div id="stagefeed"></div>
+    <div data-al="stageLabel" id="stagemod" hidden aria-label="On stage"></div>
+    <div id="bc-ident"><img id="bc-ident-img" alt=""><div id="bc-ident-init" aria-hidden="true"></div><div id="bc-ident-name"></div><div data-t="camOffChip" id="bc-ident-note">Camera off</div></div>
+    <div id="bc-stage" hidden><p data-t="bcStageLine" id="bc-stage-line">Joining the broadcast…</p></div>
+    <div id="bc-react" aria-hidden="true"></div>
+    <div data-al="bcReactsAria" id="bc-reacts" hidden role="status" aria-label="Audience reactions"></div>
+    <div id="appseat" aria-hidden="true"></div>
+    <div id="grid"></div>
+    <div id="stadium"></div>
+  </div>
+  <!-- Settings: a scrolling settings screen. Groups by meaning, one setting a
+       row (label, control, help under it); the title and Close stay put while
+       the body scrolls (.dlg). -->
+  <div class="name-modal" role="dialog" aria-modal="true" aria-labelledby="set-title" id="set-modal" style="display:none">
+    <div class="name-box dlg set-box">
+      <div class="dlg-head"><h3 id="set-title" data-t="setTitle">Settings</h3></div>
+      <div class="dlg-body">
+      <section class="set-group" id="set-g-you">
+        <h4 data-t="setGroupYou">Profile</h4>
+        <div class="set-sec set-row">
+          <b data-t="setName">Your name</b>
+          <div class="set-ctl">
+            <p class="set-help"><span data-t="setNameHelp">What everyone sees on your tile:</span> <b id="set-name-cur">…</b> <button id="set-rename" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem;margin-left:.4rem" data-t="setChange">Change</button></p>
+          </div>
+        </div>
+        <div class="set-sec set-row">
+          <b data-t="setPicture">Picture</b>
+          <div class="set-ctl">
+            <img id="set-avatar-preview" alt="" hidden style="width:72px;height:72px;object-fit:cover;border-radius:.5rem">
+            <input id="set-avatar-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp,.gif,.png,.jpg,.jpeg,.webp" aria-label="Picture" data-al="setPicture">
+            <button type="button" id="set-avatar-remove" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem" data-t="setRemove">Remove</button>
+            <p class="set-help" data-t="setPicHelp">Your picture, when the camera is off. An animated GIF stays animated.</p>
+            <p id="set-avatar-err" class="set-help" role="alert"></p>
+          </div>
+        </div>
+      </section>
+      <section class="set-group" id="set-g-av">
+        <h4 data-t="setGroupAv">Audio and video</h4>
+        <div class="set-sec set-row" id="set-video">
+          <b data-t="setVideo">Video quality</b>
+          <div class="set-ctl">
+            <span class="segwrap" id="vqrow" role="group" aria-label="Video quality" data-al="setVideo">
+          <button class="seg" data-vq="" data-t="setAuto">Auto</button>
+          <button class="seg" data-vq="1080p">1080p</button>
+          <button class="seg" data-vq="720p">720p</button>
+          <button class="seg" data-vq="480p">480p</button>
+          <button class="seg" data-vq="360p">360p</button>
+          <button class="seg" data-vq="240p">240p</button>
+          <button class="seg" data-vq="144p">144p</button>
+        </span>
+            <p class="set-help" data-t="setVideoHelp">What <b>your own camera</b> records and sends. <b>Auto</b> adapts to the room's size and your battery; a fixed choice pins it.</p>
+          </div>
+        </div>
+        <div class="set-sec set-row" id="set-stage-video">
+          <b data-t="setStageVid">Stage video</b>
+          <div class="set-ctl">
+            <button type="button" id="adjust-stage" class="seg" data-t="adjustStage" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Adjust stage video</button>
+            <p class="set-help" data-t="adjustStageHelp">Preview and frame what your camera would send on the stage. This does not put anyone on the stage.</p>
+          </div>
+        </div>
+        <div id="mixpanel">
+          <div class="set-row">
+            <b data-t="setMix">Sound mix</b>
+            <div class="set-ctl set-mix">
+              <label><span data-t="setStage">Stage</span> <input type="range" id="mix-stage" min="0" max="100" value="100"></label>
+              <label><span data-t="setRow">My row</span> <input type="range" id="mix-row" min="0" max="100" value="100"></label>
+              <label id="mixlab-stadium"><span data-t="setStadium">The stadium</span> <input type="range" id="mix-stadium" min="0" max="100" value="100"></label>
+            </div>
+          </div>
+          <div class="set-row">
+            <b data-t="setTiming">Timing</b>
+            <div class="set-ctl">
+            <div id="timingrow">
+          <button data-timing="chat" data-ti="setTalkTip" title="Snappiest replies — your ears align to your own links only; across the room, timing may stagger"><span data-t="setTalk">Conversation</span></button>
+          <button data-timing="unison" data-ti="setUnisonTip" title="Everyone hears everyone at the same synced instant — reactions, responses and spontaneous song land together (the room may wait for its slowest link, capped)"><span data-t="setUnison">Unison</span></button>
+          <button data-timing="song" data-ti="setSongTip" title="Lead the room in song — steps you onto the stage with a music-grade mic and lines everyone's sound up to you; tap again to end (earbuds recommended for singers)">🎵 <span data-t="rdSong">Song</span></button>
+        </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="set-group" id="set-captions">
+        <h4 data-t="setGroupCc">Captions and transcript</h4>
+        <div class="set-row set-wide">
+          <label class="rec-opt"><input type="checkbox" id="ccsend" checked><span><b data-t="setCcSend">Send my captions</b><small data-t="setCcSendHelp">Your voice is written down while your mic is on and sent to the meeting as captions, so everyone can read you. Your browser's speech service (Google, Apple or Microsoft) hears your voice unless you pick Whisper below, which keeps it on this device. Off: the others' devices may still write you down.</small></span></label>
+          <p class="set-help" id="ccsend-can" style="display:none;color:#ffd23c" data-t="setCcSendCant">This browser has no speech engine, so it cannot send your captions. A device in the meeting that keeps a transcript writes you down instead.</p>
+        </div>
+        <div class="set-row">
+          <b data-t="setTr">Transcript</b>
+          <div class="set-ctl" role="radiogroup" aria-label="Transcript" data-al="setTr">
+            <label class="rec-opt"><input type="radio" name="trmode" value="off"><span><b data-t="setTrOff">Off</b><small data-t="setTrOffHelp">Captions show on your screen when CC is on, and nothing is kept on this device.</small></span></label>
+            <label class="rec-opt"><input type="radio" name="trmode" value="keep"><span><b data-t="setTrKeep">Keep a transcript for me</b><small data-t="setTrKeepHelp">The usual setting. Every line is kept on this device, in the Transcript window, and can be downloaded. This device also writes down the people nobody is captioning, by name when it knows it, or as Stage or Stadium.</small></span></label>
+            <label class="rec-opt"><input type="radio" name="trmode" value="share"><span><b data-t="setTrShare">Keep and share with the room</b><small data-t="setTrShareHelp">The same, and the lines this device writes about others go to everyone. Your tile shows a transcript badge.</small></span></label>
+          </div>
+        </div>
+        <div class="set-row">
+          <b data-t="setCcLang">Captions language</b>
+          <div class="set-ctl">
+            <select id="cclang" style="padding:.35rem .5rem;border-radius:.4rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);max-width:100%"></select>
+            <p class="set-help" data-t="setCcHelp">What <b>your own device</b> listens for. The browser engine cannot guess: it uses this device's language unless you pick one here. Whisper finds the language by itself.</p>
+          </div>
+        </div>
+        <div id="cclocal-row" class="set-row" style="display:none">
+          <b data-t="setCcLocal">Captions on this phone</b>
+          <div class="set-ctl">
+            <p class="set-help" data-t="setCcLocalHelp">A speech model in your browser writes your captions. Your voice never leaves the phone; only the text goes to the meeting.</p>
+            <div id="cclocal-st" class="set-help" role="status"></div>
+          </div>
+        </div>
+        <div id="ccengine-row" class="set-row">
+          <b data-t="setCcEngine">Captions engine</b>
+          <div class="set-ctl">
+          <label class="rec-opt"><input type="radio" name="ccengine" value="browser"><span><b data-t="setCcBrowser">Browser captions</b><small data-t="setCcBrowserHelp">Instant. One fixed language, picked above; two-word lines without punctuation on some devices. Your browser may send your voice to its maker's speech service (Chrome: Google).</small></span></label>
+          <label class="rec-opt"><input type="radio" name="ccengine" value="whisper"><span><b data-t="setCcWhisper">Whisper on this device</b><small data-t="setCcWhisperHelp">Any language, found by itself. Real sentences with punctuation. Your own names and words. Can translate everything to English. A sentence appears a few seconds after it is said; on a phone it is slower and uses battery. Your voice stays on this device; only the written words can go to the meeting.</small></span></label>
+          <div id="ccwhisper-st" class="set-help" role="status" style="display:none;margin:.2rem 0 0 1.6rem"></div>
+          <div id="ccwhisper-weak" class="set-help" style="display:none;margin:.2rem 0 0 1.6rem"></div>
+          <div id="ccwhisper" style="display:none;margin:.2rem 0 0 1.6rem">
+            <div id="ccwhisper-state" class="set-help" style="margin-bottom:.4rem"></div>
+            <textarea id="ccwords" rows="2" data-ph="setCcWords" placeholder="Names and words to recognise: Siobhan, Kubernetes, GifOS…" style="width:100%;margin-top:.4rem;padding:.4rem .5rem;border-radius:.4rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);font:inherit;font-size:.85rem"></textarea>
+          </div>
+          <label class="rec-opt" id="cctranslate-row"><input type="checkbox" id="cctranslate"><span><b data-t="setCcEnglish">Translate everything to English</b><small data-t="setCcEnglishHelp">Whisper on this device translates every voice you hear. Your captions and your transcript show only English: lines others send in English, and this device's own translations. What you send to the meeting stays in your own language.</small></span></label>
+          <p class="set-help" id="cctranslate-no" style="display:none;margin:.1rem 0 0 1.6rem" data-t="setCcEnglishNo">Whisper not supported on this browser</p>
+          <p class="set-help" id="cctranslate-need" style="display:none;margin:.1rem 0 0 1.6rem" data-t="setCcEnglishNeed">Needs Whisper installed: nothing is translated until it is.</p>
+          </div>
+        </div>
+        <p class="set-help set-row set-wide" id="ccall-row" style="display:none"><button data-t="setCcAllOff" id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span data-t="ccallNote" id="ccall-note">Hosts only — every screen shows captions. Anyone can tap Captions to hide them.</span></p>
+      </section>
+      <!-- Debug: a log of this page kept on this device only, for finding
+           problems. Nothing leaves the device unless the person exports it. -->
+      <section class="set-group" id="set-g-bots">
+        <h4 data-t="setGroupBots">AI assistants</h4>
+        <div class="set-row set-wide">
+          <label class="rec-opt"><input type="checkbox" id="hidebots" role="switch"><span><b data-t="setHideBots">Hide bots</b><small data-t="setHideBotsHelp">On this device only: AI assistants' tiles are hidden and the voices this device gets from them on their own are muted. A voice already mixed into a row's sound still plays.</small></span></label>
+        </div>
+      </section>
+      <section class="set-group" id="set-g-debug">
+        <h4 data-t="setGroupDebug">Debug</h4>
+        <div class="set-row set-wide">
+          <label class="rec-opt"><input type="checkbox" id="dbglog-on" role="switch"><span><b data-t="setDbgOn">Debug logging</b><small data-t="setDbgOnHelp">The log stays on this device and may include meeting details, such as names and chat or transcript text.</small></span></label>
+          <p class="set-help" id="dbglog-state" role="status"></p>
+        </div>
+        <div class="set-row" id="dbglog-row">
+          <b data-t="setDbgLog">Debug log</b>
+          <div class="set-ctl">
+            <p class="set-help" id="dbglog-size">…</p>
+            <button type="button" id="dbglog-export" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem" data-t="setDbgExport">Export debug log</button>
+            <button type="button" id="dbglog-clear" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem" data-t="setDbgClear">Clear debug log</button>
+            <div id="dbglog-confirm" hidden>
+              <p class="set-help" data-t="setDbgClearAsk">Clear the whole debug log from this device?</p>
+              <span style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.4rem"><button type="button" id="dbglog-clear-yes" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem" data-t="setDbgClearYes">Clear it</button> <button type="button" id="dbglog-clear-no" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem" data-t="setDbgClearNo">Keep it</button></span>
+            </div>
+          </div>
+        </div>
+      </section>
+      </div>
+      <div class="dlg-actions">
+        <button id="set-close" data-t="setClose" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Subscription: the same window as Settings (header, body, Close). Opened
+       from More → Settings and help, not from inside Settings. -->
+  <div class="name-modal" role="dialog" aria-modal="true" aria-labelledby="sub-title" id="sub-modal" style="display:none">
+    <div class="name-box dlg set-box">
+      <div class="dlg-head"><h3 id="sub-title" data-t="subTitle">Subscription</h3></div>
+      <div class="dlg-body"></div>
+      <div class="dlg-actions">
+        <button id="sub-close" data-t="setClose" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- The share sheet. The app-pin note is not decoration: pinning an app is
+       the better answer whenever the thing being shown IS an app, and this is
+       the last moment to say so before a picker opens. -->
+  <div class="name-modal" role="dialog" aria-modal="true" id="share-modal" style="display:none">
+    <div class="name-box" style="max-width:430px;text-align:left">
+      <h3 data-t="shareTitle">Share your screen</h3>
+      <div id="share-appnote" class="share-note"></div>
+      <div id="share-denied" class="share-note" data-t="shareDenied" style="display:none;border-left-color:#ffd23c;background:rgba(255,210,60,.08)">Only this room’s hosts — or people they allow — can share a screen. Ask a host to allow you, on your tile or for the whole room, then open this again.</div>
+      <p class="share-body" data-t="shareBody">A screen share is for what an app can’t be: a deck on your disk, a tool that isn’t GifOS, a window from somewhere else. It shows on the stage, so the whole room sees it — and everyone can see that it’s you sharing.</p>
+      <p class="share-body" data-t="shareSound">Your camera stays on, and everyone sees your screen on the Stage. Sound from the shared tab doesn’t travel — talk over it.</p>
+      <div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin-top:.9rem">
+        <button id="share-go" data-t="shareGo">Choose what to share…</button>
+        <button id="share-runapp" data-t="runAppInstead" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Run app instead</button>
+        <button id="share-cancel" data-t="shareCancel" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="reshare-back" role="status">
+    <p data-t="reshareNote">Your screen share stopped when you came back.</p>
+    <button type="button" id="reshare-go" data-t="reshareGo">Share again</button>
+  </div>
+
+  <div class="name-modal" role="dialog" aria-modal="true" id="app-modal" style="display:none">
+    <div class="name-box" style="max-width:420px;text-align:left">
+      <h3 data-t="appSheetTitle">Run an app in this meeting</h3>
+      <p data-t="appSheetBody">Pick one of your apps. Most run live for everyone here — same state, same moves — with the meeting's audio, video and recording around it. An app that turns multiplayer off still opens on the host's screen, and everyone else watches.</p>
+      <div id="app-list" style="max-height:38vh;overflow-y:auto;margin:.4rem 0 .8rem"></div>
+      <div id="app-add" style="border-top:1px solid var(--border,#2a2a3f);padding-top:.7rem;margin-bottom:1rem">
+        <p data-t="appSheetOr" style="margin:.1rem 0 .5rem;font-size:16px;color:var(--muted,#8888aa)">Or run a GIF app that isn’t on this computer:</p>
+        <button id="app-file" data-t="appSheetFile" style="display:block;width:100%;text-align:left;padding:.5rem .7rem;border-radius:.5rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);cursor:pointer">＋ Choose a GIF file…</button>
+        <div style="display:flex;gap:.4rem;margin-top:.5rem">
+          <input id="app-url" type="url" data-ph="appSheetLink" placeholder="Paste a GIF app link" style="flex:1;min-width:0;padding:.5rem .6rem;border-radius:.5rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0)">
+          <button id="app-url-go" data-t="appSheetRun" style="padding:.5rem .9rem;border-radius:.5rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);cursor:pointer">Run</button>
+        </div>
+        <div id="app-add-err" style="color:#e0574a;font-size:16px;margin-top:.45rem;display:none"></div>
+        <!-- Always the live site, in a new tab: the GifOS Meet apps open every non-meeting page in the browser. -->
+        <a id="app-make-own" href="https://gifos.app/make-apps" target="_blank" rel="noopener" data-t="appMakeOwn" style="display:inline-block;margin-top:.6rem;font-size:16px;color:var(--accent,#7b5cff)">Make your own app for meetings</a>
+      </div>
+      <button id="app-cancel" data-t="shareCancel" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Cancel</button>
+    </div>
+  </div>
+  <input type="file" id="app-file-input" accept="image/gif,.gif" style="display:none">
+
+  <div id="chatpanel">
+    <div id="chathead"><span id="paneltitle" data-t="chatTitle">Meeting chat</span> <small id="chatprivacy" data-t="chatPrivate" style="color:#667;font-weight:400">Private. Gone when everyone leaves.</small>
+      <button id="trtab" data-agent="transcript-open" type="button" data-t="transcript"><svg class="ai-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>Transcript</button>
+      <button id="chatmod" style="display:none" data-t="chatModOff" data-ti="chatModTipOff" title="Silence the chat for everyone but you">Turn chat off</button>
+      <button data-al="chatcloseAria" id="chatclose" type="button" aria-label="Close chat">✕</button></div>
+    <div id="chatfind" role="search">
+      <input data-al="chatqAria" data-ph="chatqAria" id="chatq" type="text" placeholder="Find in chat" aria-label="Find in chat" autocomplete="off" enterkeyhint="search">
+      <button data-t="appearClear" type="button" id="chatqclear" hidden>Clear</button>
+    </div>
+    <div id="chatlog" data-agent="chat-log" role="region" data-al="chatLogAria" aria-label="Chat messages"></div>
+    <button data-t="chatnew" type="button" id="chatnew" hidden>New messages</button>
+    <div id="trwrap">
+      <div id="trlog" data-agent="transcript-log" role="region" data-al="transcript" aria-label="Transcript"><small data-t="trEmptyStatic" style="color:#667">This meeting is written down. Lines appear here under each name. Anyone here can read or download them.</small></div>
+      <div id="trfoot"><button id="trdl" type="button" data-t="trDownload">Download transcript</button></div>
+    </div>
+    <div id="cfiles" hidden><h4 data-t="filesPinnedToThis">Files pinned to this meeting</h4><div id="cfilelist"></div></div>
+    <div data-al="emojirowAria" id="emojirow" hidden role="group" aria-label="Emoji">
+      <button type="button" data-emoji="😀">😀</button>
+      <button type="button" data-emoji="😂">😂</button>
+      <button type="button" data-emoji="❤️">❤️</button>
+      <button type="button" data-emoji="👍">👍</button>
+      <button type="button" data-emoji="🙏">🙏</button>
+      <button type="button" data-emoji="🎉">🎉</button>
+      <button type="button" data-emoji="😢">😢</button>
+      <button type="button" data-emoji="👋">👋</button>
+      <button type="button" data-emoji="✅">✅</button>
+      <button type="button" data-emoji="🔥">🔥</button>
+    </div>
+    <div data-al="people" id="chatmentions" hidden role="listbox" aria-label="People"></div>
+    <div id="chatreply" hidden>
+      <div class="chatreply-body">
+        <b id="chatreply-by"></b>
+        <span id="chatreply-txt"></span>
+      </div>
+      <button data-t="shareCancel" type="button" id="chatreply-x">Cancel</button>
+    </div>
+    <form id="chatform">
+      <button data-ti="prayTip" data-al="prayer" type="button" id="pray" hidden aria-pressed="false" title="Mark messages as prayer requests" aria-label="Prayer"><span class="pray-ico" aria-hidden="true">🙏</span><span data-t="prayer" class="pray-word">Prayer</span></button>
+      <button data-ti="cattachTip" type="button" id="cattach" title="Pin a file to the meeting">📎</button>
+      <input type="file" id="cfile-in" multiple style="display:none">
+      <button data-ti="emojirowAria" data-al="emojirowAria" type="button" id="cemoji" aria-label="Emoji" aria-expanded="false" title="Emoji">😊</button>
+      <input data-ph="chatPlaceholder" data-al="chatPlaceholder" type="text" id="chat-in" data-agent="chat-input" aria-label="Message everyone…" placeholder="Message everyone…" autocomplete="off" maxlength="2000">
+      <button data-t="send" type="submit" id="chat-send" data-agent="chat-send">Send</button>
+    </form>
+  </div>
+
+  <div id="qa" role="dialog" aria-labelledby="qa-title" hidden>
+    <div id="qa-head"><span data-t="qabtn" id="qa-title">Questions</span><small data-t="mostVotesOnTop">Most votes on top. The host can put one on the picture.</small><button data-al="qaCloseAria" type="button" id="qa-close" aria-label="Close questions">✕</button></div>
+    <div id="qa-list"></div>
+    <form id="qa-form"><input data-al="qaInAria" data-ph="qaInPh" type="text" id="qa-in" placeholder="Ask the host…" autocomplete="off" maxlength="280" aria-label="Your question"><button data-t="qaAsk" type="submit" id="qa-ask">Ask</button></form>
+  </div>
+
+  <div class="name-modal" role="dialog" aria-modal="true" id="inv-modal" style="display:none">
+    <div class="name-box appear-box">
+      <h3 data-t="invTitle">Share this meeting</h3>
+      <div id="inv-body"></div>
+      <div id="inv-actions" class="appear-actions"></div>
+    </div>
+  </div>
+
+  <!-- R5 / E5§2: two door clusters (multi-genesis OR same-key torn halves) — pick ONE. -->
+  <div class="name-modal" role="dialog" aria-modal="true" id="fork-modal" style="display:none">
+    <div class="name-box" style="max-width:26rem;text-align:left">
+      <h3 data-t="whichMeeting">Which meeting?</h3>
+      <p data-t="thisLinkReachesMore" style="font-size:.9rem;opacity:.85;margin:.4rem 0 1rem">This link reaches more than one live room. Pick the one you want to join — they are not merged, and you are not placed between both.</p>
+      <div id="fork-choices" style="display:flex;flex-direction:column;gap:.55rem"></div>
+      <p style="font-size:.78rem;opacity:.55;margin-top:.9rem">We show people on the <b>Stage</b> when we can; if the stage is empty, the <b>Stadium</b> (everyone that room can see).</p>
+    </div>
+  </div>
+
+  <!-- VOTE picker (open rooms): choose what you are voting on, then tap the
+       targets on the tiles. One vote per person; majorities act; leaving the
+       room withdraws your stage votes automatically. -->
+  <div class="name-modal" role="dialog" aria-modal="true" id="vote-modal" style="display:none">
+    <div class="name-box" style="max-width:24rem;text-align:left">
+      <h3 data-t="voteTitle">Place a vote</h3>
+      <p class="vote-lead" data-t="voteLead">One vote each, while you are in the room. A majority acts.</p>
+      <button class="voteopt up" data-vm="up"><span class="vic" aria-hidden="true"></span><span data-t="voteUp">Vote onto stage</span><small data-t="voteUpNote">A green dot marks who you can send up. A majority puts them on stage.</small></button>
+      <button class="voteopt down" data-vm="down"><span class="vic" aria-hidden="true"></span><span data-t="voteDown">Vote off stage</span><small data-t="voteDownNote">An amber dot marks who you can send down. A majority takes them off.</small></button>
+      <button class="voteopt danger" data-vm="kick"><span class="vic" aria-hidden="true"></span><span data-t="voteKick">Vote out of room</span><small data-t="voteKickNote">A red outline marks who you can remove. Your vote follows them into rooms you share.</small></button>
+      <div style="display:flex;justify-content:flex-end;margin-top:.3rem"><button id="vote-cancel" data-t="shareCancel">Cancel</button></div>
+    </div>
+  </div>
+  <div id="votebanner" style="display:none"><span id="votebanner-text"></span><button id="vote-done" data-t="voteDone">Done</button></div>
+
+  <div class="name-modal" role="dialog" aria-modal="true" id="pw-modal" style="display:none">
+    <div class="name-box">
+      <p class="pg-step" id="pw-step" hidden></p>
+      <h3 data-t="pwTitle" id="pw-title">Room password</h3>
+      <p data-t="pwHint2" id="pw-hint">Anyone in the meeting can set or change it — it reaches everyone here instantly, and new joiners must enter it. Leave empty to remove the lock.</p>
+      <div id="pw-cur-row" style="display:flex;gap:.5rem;margin-bottom:.8rem">
+        <input id="pw-cur" type="password" readonly autocomplete="new-password">
+      </div>
+      <input data-ph="pwNew" id="pw-new" type="password" maxlength="64" placeholder="New password" autocomplete="new-password">
+      <div style="display:flex;gap:.5rem;justify-content:center">
+        <button data-t="barSave" id="pw-save">Save</button>
+        <button data-t="setClose" id="pw-cancel" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="name-modal" role="dialog" aria-modal="true" id="adm-modal" style="display:none">
+    <div class="name-box" style="max-width:420px">
+      <h3 data-t="admTitle">Room host</h3>
+      <p id="adm-hint"></p>
+      <div id="adm-setup">
+        <input id="adm-pass" type="password" maxlength="64" data-ph="admPassPh" placeholder="Host password" autocomplete="new-password">
+        <button id="adm-enable" data-t="admEnable">Sign in as host</button>
+      </div>
+      <div id="adm-panel" style="display:none;text-align:left">
+        <!-- A private meeting's host only: the host password this device kept when it created the meeting or signed in. -->
+        <section id="adm-hpw" aria-labelledby="adm-hpw-h" hidden>
+          <h4 id="adm-hpw-h" data-t="admHpwH">Host password</h4>
+          <button type="button" id="adm-hpw-show" data-t="admHpwShow" aria-expanded="false" aria-controls="adm-hpw-box">Show host password</button>
+          <div id="adm-hpw-box" hidden style="display:flex;gap:.5rem;align-items:center;margin:.45rem 0"><input id="adm-hpw-val" type="text" readonly autocomplete="off" spellcheck="false" data-al="admHpwH" aria-label="Host password" style="flex:1;min-width:0;font-family:monospace"><button type="button" id="adm-hpw-copy" data-t="admHpwCopy">Copy</button></div>
+          <p id="adm-hpw-none" hidden data-t="admHpwNone" style="margin:.45rem 0">This device did not keep the host password. A device keeps it only when it created this meeting, or signed in as host, after this update.</p>
+          <small id="adm-hpw-note" data-t="admHpwNote" style="display:block;margin-top:.4rem;opacity:.85">You can only change this by creating a new private meeting.</small>
+        </section>
+        <section id="adm-chat" aria-labelledby="adm-chat-h">
+          <h4 id="adm-chat-h" data-t="admChatH">Chat options</h4>
+          <label class="admopt"><input type="checkbox" id="adm-chat-guests"><span><span data-t="admChatGuests">Guests can chat</span><small data-t="admChatGuestsSub">Off: only hosts can post.</small></span></label>
+          <label class="admopt"><input type="checkbox" id="adm-chat-pray"><span><span data-t="admChatPray">Prayer button</span><small data-t="admChatPraySub">Anyone can mark a message as a prayer request.</small></span></label>
+          <div class="admopt" id="adm-chat-files"><span><span data-t="admChatFiles">Files in chat</span><small id="adm-chat-files-sub"></small></span><button type="button" id="adm-chat-pw" data-t="admChatPw">Password</button></div>
+          <label class="admopt"><input type="checkbox" id="adm-chat-gfile"><span><span data-t="admChatGfile">Guests can send files</span><small data-t="admChatGfileSub">Off even when the room has a password.</small></span></label>
+          <label class="admopt"><input type="checkbox" id="adm-chat-greact"><span><span data-t="admChatGreact">Guests can react</span><small data-t="admChatGreactSub">Emoji reactions on chat lines.</small></span></label>
+          <label class="admopt"><input type="checkbox" id="adm-chat-qa"><span><span data-t="admChatQa">Questions button</span><small data-t="admChatQaSub">Show Questions in the chat bar.</small></span></label>
+          <label class="admopt"><input type="checkbox" id="adm-chat-chist"><span><span data-t="admChatChist">Late joiners see earlier messages</span><small data-t="admChatChistSub">Off: new arrivals start with an empty chat.</small></span></label>
+          <label class="admopt"><input type="checkbox" id="adm-chat-slow"><span><span data-t="admChatSlow">Slow mode</span><small data-t="admChatSlowSub">Guests post at most one line every 10 seconds.</small></span></label>
+          <label class="admopt"><input type="checkbox" id="adm-chat-clink"><span><span data-t="admChatClink">Links in chat</span><small data-t="admChatClinkSub">Off: a guest's links stay plain text.</small></span></label>
+        </section>
+        <section id="adm-ai" aria-labelledby="adm-ai-h">
+          <h4 id="adm-ai-h" data-t="admAiNotes">AI notes</h4>
+          <div class="admopt"><span><span data-t="admAiNotesSub">May AI assistants keep notes of this meeting?</span><small data-t="admAiNotesHelp">Honest assistants obey this. An assistant taking notes is marked on its tile.</small></span>
+            <select id="adm-ai-notes" aria-labelledby="adm-ai-h"><option value="allowed" data-t="admAiAllowed">Allowed</option><option value="ask" data-t="admAiAsk">Ask first</option><option value="off" data-t="admAiOff">Off</option></select></div>
+          <div id="adm-ai-wait" hidden><small data-t="admAiWaiting">Waiting for your OK:</small><ul></ul></div>
+        </section>
+      </div>
+      <button id="adm-close" data-t="setClose" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
+    </div>
+  </div>
+
+  <div class="name-modal" role="dialog" aria-modal="true" id="who-modal" style="display:none">
+    <div class="name-box" style="max-width:480px;text-align:left">
+      <h3 data-t="whoTitle">People</h3>
+      <p class="who-lead" data-t="whoLead">There is no server in the middle storing this meeting. The phones and computers of the people in it are the servers: they connect straight to each other. That is also why everyone here can see everyone's internet address — nobody is anonymous. ✓ marks an address the GifOS relay verified or this device saw directly; anything else is only what that person's device reported. People who left stay on the list. To report illegal activity to law enforcement, download this list and include it.</p>
+      <div id="who-list"></div>
+      <div style="display:flex;gap:.5rem;justify-content:center;margin-top:.8rem">
+        <button id="who-dl" data-t="whoDl">Download this list</button>
+        <button id="who-close" data-t="rosterClose">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="name-modal" role="dialog" aria-modal="true" id="help-modal" style="display:none">
+    <div class="name-box help-box" style="max-width:600px;text-align:left">
+      <h3 style="text-align:center" data-t="helpTitle">How this meeting works</h3>
+      <p class="help-capnote" data-t="captionsNotice" id="help-capnote">Captions are on in this meeting. What you say may be written down by other people's devices.</p>
+      <div class="help-scroll help-meet">
+        <p class="help-lead">A public open-floor meeting has <b>no size limit</b>; a private meeting holds as many people as its host's plan allows. The dream: the <b>whole Earth in
+        one meeting at once</b> — everyone able to speak. Your phone talks only to a handful of neighbors.</p>
+        <h4>The room</h4>
+        <ul class="help-list">
+          <li><b>Stage</b> — step up to be seen and heard first by the whole room. Tap again to step down.</li>
+          <li><b>Stepping away?</b> Tap <b>Float</b> before you pocket your phone or switch apps. The meeting keeps running in a small window and you keep your place on the Stage. Without it, your phone may pause the page and take you off.</li>
+          <li><b>Row</b> — the people next to you.</li>
+          <li><b>The stadium</b> — everyone else, one mosaic and one roar.</li>
+        </ul>
+        <h4>Controls</h4>
+        <ul class="help-list">
+          <li><b>Camera</b> — tap it to choose Max blur, Min blur, or No blur. Only you control your camera.</li>
+          <li><b>Hand</b> — join the queue.</li>
+          <li><b>Password</b> — the key to clear video.</li>
+          <li><b>Invite</b> — one link brings people in.</li>
+          <li><b>Run app</b> — an app the room uses together.</li>
+          <li><b>Record / CC</b> — record here, or captions from your voice.</li>
+          <li><b>Settings</b> — mix for Stage, My row, and the stadium. Timing: Conversation, Unison, or Song.</li>
+          <li><b>Host</b> — in a private meeting, the host can moderate. In a public open-floor meeting, anyone with a $5+ plan can take over as host while they're connected.</li>
+        </ul>
+        <h4>Singing together</h4>
+        <p>Tap <b>Song</b> to lead. You step onto the stage as the song leader, and the room lines up so you are singing together, like a large hall.</p>
+      </div>
+      <div style="display:flex;justify-content:center;margin-top:1rem">
+        <button id="help-close" data-t="helpGot" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Got it</button>
+      </div>
+      <p style="text-align:center;margin:.6rem 0 0;font-size:.85rem"><button data-t="helpKeys" type="button" id="help-keys" class="linkbtn">Keyboard shortcuts (?)</button></p>
+    </div>
+  </div>
+
+  <div class="name-modal" role="dialog" aria-modal="true" aria-labelledby="keys-title" id="keys-modal" style="display:none">
+    <div class="name-box" style="max-width:480px;text-align:left">
+      <h3 data-t="shortcutTitle" id="keys-title" style="text-align:center">Keyboard shortcuts</h3>
+      <dl id="keys-list" class="keys-list"></dl>
+      <div style="display:flex;justify-content:center;margin-top:1rem">
+        <button data-t="helpGot" id="keys-close" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Got it</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="name-modal" role="dialog" aria-modal="true" id="apphelp-modal" style="display:none">
+    <div class="name-box help-box" style="max-width:600px;text-align:left">
+      <h3 data-t="help" id="apphelp-title" style="text-align:center">Help</h3>
+      <div class="help-scroll help-md" id="apphelp-body"></div>
+      <div style="display:flex;justify-content:center;margin-top:1rem">
+        <button id="apphelp-close" data-t="helpGot" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Got it</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="name-modal" role="dialog" aria-modal="true" id="closed-modal" style="display:none">
+    <div class="closed-box">
+      <h3 data-t="roomClosed">Room closed</h3>
+      <p data-t="closedMsg" id="closed-msg">This room’s host wasn’t here, so it closed. Reopen the same link when the host is back.</p>
+      <button data-t="closedReload" id="closed-reload">Rejoin</button>
+    </div>
+  </div>
+  <!-- BOT MODE: the text-first view for AI assistants (js/meet-agent.js renders it). The same page and seat; no tiles drawn. -->
+  <div id="botview" hidden role="main" aria-label="Bot mode" data-agent="bot-view">
+    <div class="bv-banner" role="region" aria-label="Bot mode"><span data-t="botBanner">Bot mode — for AI assistants.</span> <button type="button" id="bot-back" data-agent="bot-back" data-t="botBack">Back to normal view</button><span id="bot-forced" data-t="botForced" hidden>Agent mode: this page is an AI agent.</span></div>
+    <p class="bv-ver"><code data-agent="bot-version">gifosAgent v1</code> · <span data-t="botApiNote">window.gifosAgent is ready on this page.</span></p>
+    <p class="bv-status" data-agent="bot-status" role="status"></p>
+    <h2 data-t="botPeople">People</h2>
+    <table data-agent="bot-people"><thead><tr><th data-t="botColName">Name</th><th data-t="botColBot">Bot</th><th data-t="botColHost">Host</th><th data-t="botColMuted">Muted</th><th data-t="botColHand">Hand</th><th data-t="botColSpeaking">Speaking</th><th data-t="botColStage">On stage</th></tr></thead><tbody></tbody></table>
+    <h2 data-t="botTranscript">Transcript</h2>
+    <ol data-agent="bot-transcript"></ol>
+    <h2 data-t="botChat">Chat</h2>
+    <ol data-agent="bot-chat"></ol>
+    <form id="bot-say-form" class="bv-row"><label><span data-t="botSayAloud">Say aloud</span> <input id="bot-say" data-agent="bot-say" autocomplete="off"></label><button type="submit" data-agent="bot-say-send" data-t="botSayAloud">Say aloud</button></form>
+    <form id="bot-chat-form" class="bv-row"><label><span data-t="botSendChat">Send chat</span> <input id="bot-chat-in" data-agent="bot-chat-input" autocomplete="off"></label><button type="submit" data-agent="bot-chat-send" data-t="botSendChat">Send chat</button></form>
+    <p class="bv-row"><button type="button" id="bot-hand" data-agent="bot-hand" aria-pressed="false" data-t="botRaiseHand">Raise hand</button> <button type="button" id="bot-leave" data-agent="bot-leave" data-t="botLeave">Leave</button></p>
+    <script type="application/json" id="gifos-agent-state">{}</script>
+  </div>
+  <div class="name-modal" role="dialog" aria-modal="true" id="left-modal" style="display:none">
+    <div class="name-box">
+      <h3 data-t="leftTitle" id="left-title">You left</h3>
+      <p data-t="leftNote" id="left-note">Your camera and microphone are off.</p>
+      <button data-t="closedReload" id="left-rejoin" type="button">Rejoin</button>
+      <button data-t="setClose" id="left-close" type="button">Close</button>
+    </div>
+  </div>
+  <div class="name-modal" id="status-full" style="display:none" aria-labelledby="status-full-text">
+    <div class="name-box">
+      <p id="status-full-text"></p>
+      <div class="status-full-acts">
+        <button type="button" id="status-full-people" data-t="people" aria-controls="roster">People</button>
+        <button data-t="setClose" type="button" id="status-full-close">Close</button>
+      </div>
+    </div>
+  </div>
+  <div class="name-modal" role="alertdialog" aria-modal="true" aria-labelledby="blurwhy-title" aria-describedby="blurwhy-text" id="blurwhy-modal" style="display:none">
+    <div class="name-box">
+      <h3 data-t="blurWhyTitle" id="blurwhy-title">Your video is still blurred</h3>
+      <p id="blurwhy-text"></p>
+      <p id="blurwhy-do"></p>
+      <div class="blurwhy-acts">
+        <button data-t="blurWhySetPw" id="blurwhy-pw" type="button" style="display:none">Set room password</button>
+        <button data-t="blurWhyOk" id="blurwhy-ok" type="button">OK</button>
+      </div>
+    </div>
+  </div>
+  <div class="name-modal" role="alertdialog" aria-modal="true" id="leave-ask" style="display:none">
+    <div class="name-box">
+      <h3 data-t="leaveAskTitle" id="leave-ask-title">Leave the meeting?</h3>
+      <p id="leave-ask-note" hidden></p>
+      <button data-t="leaveCancel" id="leave-cancel" type="button">Stay</button>
+      <button data-t="leave" id="leave-go" type="button">Leave</button>
+    </div>
+  </div>
+  <div class="name-modal" role="dialog" aria-modal="true" id="shortcutsheet" aria-labelledby="shortcut-title" style="display:none">
+    <div class="name-box">
+      <h3 id="shortcut-title" data-t="shortcutTitle">Keyboard shortcuts</h3>
+      <ul>
+        <li><kbd>Alt+A</kbd> <span data-t="keyMic">Mute or unmute</span></li>
+        <li><kbd>Alt+V</kbd> <span data-t="keyCam">Choose Max blur, Min blur, or No blur, or turn video off</span></li>
+        <li><kbd>Alt+S</kbd> <span data-t="keyShare">Share or stop sharing</span></li>
+        <li><kbd>Alt+C</kbd> <span data-t="keyChat">Open or close chat</span></li>
+        <li><kbd>Alt+H</kbd> <span data-t="keyHand">Raise or lower your hand</span></li>
+        <li><kbd>Alt+F</kbd> <span data-t="keyView">Fit everyone or scroll</span></li>
+        <li><kbd>F</kbd> <span data-t="keyFull">Open or close Full screen</span></li>
+        <li><kbd>Alt+Q</kbd> <span data-t="keyLeave">Leave the meeting</span></li>
+        <li><kbd>Alt+W</kbd> <span data-t="keyWho">People</span></li>
+        <li><kbd>Alt+I</kbd> <span data-t="keyInvite">Invite</span></li>
+        <li><kbd>Alt+Y</kbd> <span data-t="keyApp">Run app</span></li>
+        <li><kbd>Alt+U</kbd> <span data-t="keyVote">Vote</span></li>
+        <li><kbd>Alt+L</kbd> <span data-t="keyLock">Password</span></li>
+        <li><kbd>Alt+G</kbd> <span data-t="keyStage">Stage</span></li>
+        <li><kbd>Alt+R</kbd> <span data-t="keyRecord">Record</span></li>
+        <li><kbd>Alt+K</kbd> <span data-t="keyCaptions">Show or hide captions</span></li>
+        <li><kbd>Alt+,</kbd> <span data-t="keySettings">Settings</span></li>
+        <li><kbd>Alt+T</kbd> <span data-t="keyTranscript">Transcript</span></li>
+        <li><kbd>Alt+J</kbd> <span data-t="keyAgenda">Agenda</span></li>
+        <li><kbd>Alt+/</kbd> <span data-t="keyHelp">Help</span></li>
+        <li class="hostkey" hidden><kbd>Alt+M</kbd> <span data-t="keyMuteAll">Mute or unmute every guest</span></li>
+        <li class="hostkey" hidden><kbd>Alt+B</kbd> <span data-t="keyBlurAll">Blur or unblur every guest</span></li>
+        <li class="hostkey" hidden><kbd>Alt+X</kbd> <span data-t="keyCamAll">Turn every guest’s video off or on</span></li>
+        <li class="hostkey" hidden><kbd>Alt+P</kbd> <span data-t="keyShareAll">Let guests share their screen, or stop them</span></li>
+        <li><kbd>Esc</kbd> <span data-t="keyEsc">Close a window or the chat</span></li>
+        <li><kbd>?</kbd> <span data-t="keyList">Show or hide this list</span></li>
+      </ul>
+      <button id="shortcut-cancel" type="button" data-t="rosterClose">Close</button>
+    </div>
+  </div>
+
+  <script>
+    // Bind to the right computer BEFORE the store loads: apps opened from a
+    // booted computer image (boot.html) carry their namespace in the URL so
+    // their files and saved state resolve inside that image, not the host.
+    // (Migrated from run.html — one-runtime step 6.)
+    (function () {
+      var db = new URLSearchParams(location.hash.slice(1)).get('db');
+      if (db && /^gifos_vm_[\w-]+$/.test(db)) window.GIFOS_DB_NAME = db;
+    })();
+  </script>
+  <script src="js/gifos-ed.js" defer></script>
+  <script src="js/gifos-sign.js" defer></script>
+  <script src="js/gifos-base-net.js" defer></script>
+  <script src="js/gifos-x402.js" defer></script>
+  <script src="js/gifos-charge.js" defer></script>
+  <script src="js/gifos-purse.js" defer></script>
+  <script src="js/gifos-paywallet.js" defer></script>
+  <script src="js/gifos-onramp.js" defer></script>
+  <script src="js/gifos-store-skus.js" defer></script>
+  <script src="js/gifos-store-rail.js" defer></script>
+  <script src="js/gifos-pay-broker.js" defer></script>
+  <script src="js/gifos-assets.js" defer></script>
+  <script src="js/gifos-avatar.js" defer></script>
+  <script src="js/gifos-install.js" defer></script>
+  <script src="js/gifos-lock.js" defer></script>
+  <script src="js/app-update.js" defer></script>
+  <!-- the mesh: the ported 0.9.25 seat (js/mesh/, dependency order), its page world and the page layer -->
+  <script src="js/mesh/laws.js" defer></script>
+  <script src="js/mesh/consts.js" defer></script>
+  <script src="js/mesh/util.js" defer></script>
+  <script src="js/mesh/books.js" defer></script>
+  <script src="js/mesh/msg.js" defer></script>
+  <script src="js/mesh/hash.js" defer></script>
+  <script src="js/mesh/topo.js" defer></script>
+  <script src="js/mesh/dig.js" defer></script>
+  <script src="js/mesh/seat-fields.js" defer></script>
+  <script src="js/mesh/fnv.js" defer></script>
+  <script src="js/mesh/state.js" defer></script>
+  <script src="js/mesh/rng.js" defer></script>
+  <script src="js/mesh/fmt.js" defer></script>
+  <script src="js/mesh/seat.js" defer></script>
+  <script src="js/mesh/e2fold.js" defer></script>
+  <script src="js/mesh/digest.js" defer></script>
+  <script src="js/mesh/shared.js" defer></script>
+  <script src="js/mesh/entry.js" defer></script>
+  <script src="js/mesh/farview.js" defer></script>
+  <script src="js/mesh/fhop.js" defer></script>
+  <script src="js/mesh/turn.js" defer></script>
+  <script src="js/mesh/c7proof.js" defer></script>
+  <script src="js/mesh/gapa.js" defer></script>
+  <script src="js/mesh/gaps.js" defer></script>
+  <script src="js/mesh/gaps2.js" defer></script>
+  <script src="js/mesh/gaps3.js" defer></script>
+  <script src="js/mesh/gaps4.js" defer></script>
+  <script src="js/mesh/heal.js" defer></script>
+  <script src="js/mesh/hostile-laws.js" defer></script>
+  <script src="js/mesh/id.js" defer></script>
+  <script src="js/mesh/ijoin.js" defer></script>
+  <script src="js/mesh/burst.js" defer></script>
+  <script src="js/mesh/headword.js" defer></script>
+  <script src="js/mesh/instant.js" defer></script>
+  <script src="js/mesh/island.js" defer></script>
+  <script src="js/mesh/lguard-seat.js" defer></script>
+  <script src="js/mesh/linkset.js" defer></script>
+  <script src="js/mesh/roles.js" defer></script>
+  <script src="js/mesh/live.js" defer></script>
+  <script src="js/mesh/mltail.js" defer></script>
+  <script src="js/mesh/pclaws.js" defer></script>
+  <script src="js/mesh/rcdead.js" defer></script>
+  <script src="js/mesh/rcfollow.js" defer></script>
+  <script src="js/mesh/rcleft-l25.js" defer></script>
+  <script src="js/mesh/rcleft.js" defer></script>
+  <script src="js/mesh/recv-entry.js" defer></script>
+  <script src="js/mesh/recv-seated.js" defer></script>
+  <script src="js/mesh/recv.js" defer></script>
+  <script src="js/mesh/ring.js" defer></script>
+  <script src="js/mesh/roomterm.js" defer></script>
+  <script src="js/mesh/route.js" defer></script>
+  <script src="js/mesh/seat-rest.js" defer></script>
+  <script src="js/mesh/small.js" defer></script>
+  <script src="js/mesh/tick.js" defer></script>
+  <script src="js/mesh/tier.js" defer></script>
+  <script src="js/mesh/witness.js" defer></script>
+  <script src="js/mesh/page/env.js" defer></script>
+  <script src="js/mesh/page/pclaws-wire.js" defer></script>
+  <script src="js/mesh/page/layer.js" defer></script>
+  <script src="js/mesh-identity.js" defer></script>
+  <script src="js/mesh-wire.js" defer></script>
+  <script src="js/meet-pack.js" defer></script>
+  <script src="js/meet-turn.js" defer></script>
+  <script src="js/meet-tunnel.js" defer></script>
+  <script src="js/meet-carry.js" defer></script>
+  <script src="js/meet-status.js" defer></script>
+  <script src="js/meet-progress.js" defer></script>
+  <script src="js/gifos-sub.js" defer></script>
+  <script src="js/meet-subs.js" defer></script>
+  <script src="js/gifos-library.js" defer></script>
+  <script src="js/meet-leave.js" defer></script>
+  <script src="js/meet-meters.js" defer></script>
+  <script src="js/meet-zones.js" defer></script>
+  <script src="js/meet-content.js" defer></script>
+  <script src="js/meet-agenda.js" defer></script>
+  <script src="js/meet-agent.js" defer></script>
+  <script src="js/camera-studio.js" defer></script>
+  <script src="js/gifos-ondevice.js" defer></script>
+  <!-- this page's surface (cast.html: js/core/view/cast.js), last: the published copy bundles every script above and keeps
+       this one as it is, so the meeting and broadcast pages share one bundle -->
+  <script src="js/core/view/cast.js" defer></script>
+<!--@shared:starter-->
+  <script>
+  // THE ENGINE, read before anything else runs (a var, so early callers never
+  // hit a TDZ). WebKit — Safari, and the Playwright WebKit shell under any UA
+  // (meet.js --profile phone wears an Android Chrome UA) — keeps
+  // navigator.vendor 'Apple Computer, Inc.'; Chromium says 'Google Inc.',
+  // Firefox ''. The UA test is the fallback for an engine that hides it.
+  var WEBKIT_ENGINE = (() => { try { const ua = navigator.userAgent || ''; if ((navigator.vendor || '').indexOf('Apple') === 0) return true; return /AppleWebKit/.test(ua) && !/Chrome|Chromium|CriOS|Edg\/|FxiOS|Android/.test(ua); } catch (e) { return false; } })();
+  /*
+   * GifOS Meeting — a SYSTEM app (first-party page, not a sandboxed GIF app).
+   * Sandboxed apps have WebRTC deliberately neutered and no network, and camera
+   * permission can't be granted to an opaque origin — so live media has to run
+   * at this trusted level. The desktop icon is still a real GIF; its manifest
+   * says { system: "video" } and the runtime routes it here.
+   *
+   * Topology: full mesh over a PERMANENT, HOST-LESS ROOM. The room IS its URL:
+   * nobody owns it, so nobody's departure (including the creator's) can break
+   * it — whoever opens the link joins whoever is there, forever. The relay's
+   * "mesh" role introduces browsers and carries ONLY SDP/ICE; it hard-throttles
+   * anything heavier, so media cannot fall back to it — P2P or nothing.
+   *
+   * Resilience, in order of likely failure:
+   *  - relay socket dies (phone locks, network blips) → auto-reconnect with
+   *    backoff, kicked instantly on visibility/online; live P2P links stay up
+   *  - a P2P link degrades → the deterministic initiator (larger peer id)
+   *    re-offers with an ICE restart until it heals
+   *  - a peer truly leaves → their tile is dropped only after a grace period,
+   *    so a phone-lock never kills a tile that's about to come back
+   *  - the camera dies in a background tab → re-acquired and re-plugged into
+   *    every link when the tab returns
+   *  - no camera permission at all → you still JOIN (view-only) instead of
+   *    being locked out
+   */
+  // The scripts above are deferred so they fetch together. This assigns the
+  // starter. The module after this script runs it once those libraries have
+  // executed, and before DOMContentLoaded.
+  window.__startMeet = function () {
+  // THE HOST'S FACTS the meeting asks about (GifOS.host): whether the page is hidden from its person (a background
+  // tab); the origin of the page that frames this one (a meeting session in about:srcdoc has none of its own); whether
+  // this browser can hold a meeting at all (the preflight gate runs `f` only then); the page's own scripts in page order
+  // and loading one again (the load gate); the size of the screen it draws on. A browser page answers from its
+  // document; a host with no screen brings its own answers.
+  if (!GifOS.host) GifOS.host = {
+    hidden: () => document.hidden,
+    parentOrigin: () => {
+      try { if (window.parent && window.parent !== window && window.parent.location && window.parent.location.origin) return window.parent.location.origin; } catch (e) {}
+      return '';
+    },
+    whenSupported: (f) => {
+      const P = window.GifOSPreflight;
+      if (P && typeof P.whenSupported === 'function') P.whenSupported(f); else f();
+    },
+    scriptOrder: () => Array.from(document.querySelectorAll('script[src]')).map((el) => { try { return new URL(el.src, location.href).pathname.replace(/^\//, ''); } catch (e) { return ''; } }),
+    loadScript: (src) => new Promise((res) => { const el = document.createElement('script'); el.async = false; el.src = src; el.onload = () => res(true); /* a failure is its error event; a size of 0 is a Safari 304, not a missing body (see #gifos-load-gate) */ el.onerror = () => { el.remove(); res(false); }; document.head.appendChild(el); }),
+    viewport: () => ({ w: window.innerWidth, h: window.innerHeight }),
+  };
+  GifOS.core.startPage();
+  };
+  </script>
+<script type="module">
+// The deferred libraries have run. Start the meeting. In a translated language
+// the first paint waits for the meeting's catalog (English never waits): the
+// words are in before anything is drawn, so nothing flashes English. A catalog
+// that has not landed after 8 s lets the meeting start in English, and the
+// words are repainted the moment the catalog does arrive.
+// A script of the page's own that failed to load is loaded again before anything starts (__gifosLoadGate.reload):
+// without it the start itself would throw, and no lobby, join gate or message would ever appear.
+const startMeet = () => {
+  const I = window.GifOS && GifOS.i18n;
+  if (I && I.ui() !== 'en') {
+    let started = false;
+    const go = () => { if (started) return; started = true; window.__startMeet(); };
+    const loaded = I.load('meet');
+    loaded.then(go, go);
+    setTimeout(go, 8000);
+    loaded.then(() => { if (window.__meetRepaintWords) window.__meetRepaintWords(); });
+  } else window.__startMeet();
+};
+// A page forwarding to another (run.html with a room for meet.html) never starts here.
+if (typeof window.__startMeet === 'function' && !window.__gifosForward) {
+  const lg = window.__gifosLoadGate;
+  if (lg && lg.failed.length && lg.reload) lg.reload().then((ok) => { if (ok) startMeet(); });
+  else startMeet();
+}
+</script>
+<!--@/shared:starter-->
+<!--@shared:agent-links-->
+<!-- FOR AI AGENTS. Off-screen, not display:none — most agent fetchers read
+     the raw HTML without running scripts (so the JS-painted build badge is
+     invisible to them), and readability-style extractors DROP display:none
+     but keep the screen-reader clip. Static, identical on every page;
+     test/unit/agent-links.js holds the copies to one text. -->
+<nav id="agent-links" aria-label="Links for AI agents" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap">
+  <p>For AI agents and assistants: <a href="https://gifos.app/llms.txt">llms.txt</a> is the complete spec for building a GifOS app as a real .gif file (packing recipe, manifest, the window.gifos API).
+  Also: <a href="https://gifos.app/about">what GifOS is</a> ·
+  <a href="https://gifos.app/store">the App Store</a> (machine-readable catalog: <a href="https://gifos.app/apps/index.json">/apps/index.json</a>; one listing: /apps/&lt;slug&gt;/app.json) ·
+  open any store app in one tap: https://gifos.app/?run=&lt;slug&gt; — or your own hosted GIF: https://gifos.app/?run=&lt;gif-url&gt; ·
+  <a href="https://gifos.app/browser-support.json">browser support</a> ·
+  <a href="https://gifos.app/sitemap.xml">sitemap</a> ·
+  <a href="https://github.com/nwcnwc/gifos-app">source on GitHub</a> ·
+  <a href="https://github.com/nwcnwc/gifos-app/issues/new">report a problem</a>. Contact: support@gifos.app.</p>
+</nav>
+<script>
+  // The agent links are clipped to 1px, so a Tab stop on one shows no
+  // focus. Keep them in the HTML and the landmark list, out of the Tab walk.
+  document.querySelectorAll('#agent-links a').forEach((a) => a.setAttribute('tabindex', '-1'));
+</script>
+<!--@/shared:agent-links-->
+</body>
+</html>

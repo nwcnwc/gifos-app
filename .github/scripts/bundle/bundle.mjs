@@ -1,4 +1,9 @@
-// Build the published meeting page: its scripts bundled and minified.
+// Build the published surface pages (run.html, meet.html, cast.html): their scripts bundled and minified.
+//
+// Each page gets bundles named after it (js/<name>.bundle.js, js/<name>.lobby.js, js/<page>.inline-N.js.map; below,
+// "run" stands for the name). meet.html and cast.html load the same scripts but for their surface (js/core/view/meet.js,
+// cast.js: the last tag of each page). That one tag stays as it is, so the two pages share the meeting's bundles
+// (name "meet").
 //
 //   node .github/scripts/bundle/bundle.mjs <site dir> [--sw] [--keep-inline]
 //
@@ -43,25 +48,14 @@ const acorn = require('acorn');
 
 const args = process.argv.slice(2);
 const SITE = path.resolve(args.find((a) => !a.startsWith('--')) || '.');
-const PAGE = 'run.html';
+const PAGES = [['run.html', 'run'], ['meet.html', 'meet'], ['cast.html', 'meet']];
+const SURFACE = /^js\/core\/view\/(meet|cast)\.js$/;   // a page's own surface: kept as its own tag, never bundled
 const TAG = /<script src="(js\/[A-Za-z0-9_\-/.]+\.js)" defer><\/script>/g;
-// run.html lists the lobby's scripts first and marks where they end: everything the meeting reads from the moment it
-// starts until the lobby is on screen (measured by recording every module the page reads before the lobby shows),
-// the scripts those read while they load, and the small ones that only set page-wide values. A script below the
-// mark is only late for the lobby, never missing: a join waits for the rest bundle. The order is the page's own,
-// so the bundles run the scripts in exactly the order the repo page does.
+// Each page lists the lobby's scripts first and marks where they end: everything the page reads from the moment it
+// starts until the lobby (or the app) is on screen, the scripts those read while they load, and the small ones that
+// only set page-wide values. A script below the mark is only late for the lobby, never missing: a join waits for the
+// rest bundle. The order is the page's own, so the bundles run the scripts in exactly the order the repo page does.
 const MARK = "<!-- the lobby's scripts end here -->";
-
-const pagePath = path.join(SITE, PAGE);
-const html = fs.readFileSync(pagePath, 'utf8');
-// Already bundled = the page's loader requests the hashed lobby bundle ("js/run.lobby.js?h=..."); a comment that names the file is not that.
-if (/["']js\/run\.lobby\.js\?h=/.test(html)) throw new Error(PAGE + ' is already bundled');
-const files = [...html.matchAll(TAG)].map((m) => m[1]);
-if (files.length < 2) throw new Error('no deferred scripts found in ' + PAGE);
-const markAt = html.indexOf(MARK);
-if (markAt < 0 || html.indexOf(MARK, markAt + 1) >= 0) throw new Error(PAGE + ' needs exactly one mark: ' + MARK);
-const LOBBY = [...html.slice(0, markAt).matchAll(TAG)].map((m) => m[1]);
-if (LOBBY.length < 1 || files.slice(0, LOBBY.length).join() !== LOBBY.join()) throw new Error(PAGE + ': the lobby scripts must be the first deferred scripts');
 
 // A file may be joined only if it declares nothing at its top level and is not a strict-mode file: inside the
 // bundle a top-level let/const/class/function would change scope and a 'use strict' prologue would stop being one.
@@ -109,42 +103,64 @@ function build(name, list) {
   // the address carries the content's hash, so a changed bundle is never answered from an old cache entry
   return 'js/' + name + '?h=' + crypto.createHash('sha256').update(out).digest('hex').slice(0, 10);
 }
-const lobbyUrl = build('run.lobby.js', LOBBY);
-const bundleUrl = build('run.bundle.js', files);
+const built = {};
+function bundlePage(PAGE, NAME) {
+  const pagePath = path.join(SITE, PAGE);
+  const html = fs.readFileSync(pagePath, 'utf8');
+  // Already bundled = the page's loader requests a hashed lobby bundle ("js/<name>.lobby.js?h=..."); a comment that names the file is not that.
+  if (/["']js\/[a-z]+\.lobby\.js\?h=/.test(html)) throw new Error(PAGE + ' is already bundled');
+  const own = (f) => !SURFACE.test(f);
+  const files = [...html.matchAll(TAG)].map((m) => m[1]).filter(own);
+  if (files.length < 2) throw new Error('no deferred scripts found in ' + PAGE);
+  const markAt = html.indexOf(MARK);
+  if (markAt < 0 || html.indexOf(MARK, markAt + 1) >= 0) throw new Error(PAGE + ' needs exactly one mark: ' + MARK);
+  const LOBBY = [...html.slice(0, markAt).matchAll(TAG)].map((m) => m[1]).filter(own);
+  if (LOBBY.length < 1 || files.slice(0, LOBBY.length).join() !== LOBBY.join()) throw new Error(PAGE + ': the lobby scripts must be the first deferred scripts');
+  const all = [...html.matchAll(TAG)].map((m) => m[1]);
+  if (all.filter((f) => !own(f)).some((f) => all.indexOf(f) !== all.length - 1)) throw new Error(PAGE + ': its surface script must be its last deferred script');
+  const key = files.join(',') + '|' + LOBBY.join(',');
+  if (built[NAME] && built[NAME].key !== key) throw new Error(PAGE + ' shares the ' + NAME + ' bundles with another page but loads other scripts');
+  if (!built[NAME]) built[NAME] = { key, lobby: build(NAME + '.lobby.js', LOBBY), bundle: build(NAME + '.bundle.js', files) };
+  const lobbyUrl = built[NAME].lobby, bundleUrl = built[NAME].bundle;
 
-// run.html's inline scripts, minified in place, each with a source map back to the lines of the readable run.html
-// (the map carries that text). Small ones are left as they are.
-let page = html, n = 0, before = 0, after = 0;
-if (!args.includes('--keep-inline')) {
-  page = html.replace(/<script(\s+id="[A-Za-z0-9_-]+")?>([\s\S]*?)<\/script>/g, (all, id, code, at) => {
-    if (code.length < 1024) return all;
-    const startLine = html.slice(0, at).split('\n').length - 1;
-    const mapName = 'run.inline-' + n + '.js.map';
-    const { code: mini, map } = minify('\n'.repeat(startLine) + code, '../run.html');
-    if (/<\/script/i.test(mini) || /<!--/.test(mini)) throw new Error('inline script ' + n + ': its minified text would end the script early');
-    fs.writeFileSync(path.join(SITE, 'js', mapName), JSON.stringify(map));
-    before += code.length; after += mini.length; n++;
-    return '<script' + (id || '') + '>' + mini + '\n//# sourceMappingURL=js/' + mapName + '\n</script>';
-  });
+  // The page's inline scripts, minified in place, each with a source map back to the lines of the readable page (the
+  // map carries that text). Small ones are left as they are.
+  const stem = PAGE.replace(/\.html$/, '');
+  let page = html, n = 0, before = 0, after = 0;
+  if (!args.includes('--keep-inline')) {
+    page = html.replace(/<script(\s+id="[A-Za-z0-9_-]+")?>([\s\S]*?)<\/script>/g, (all, id, code, at) => {
+      if (code.length < 1024) return all;
+      const startLine = html.slice(0, at).split('\n').length - 1;
+      const mapName = stem + '.inline-' + n + '.js.map';
+      const { code: mini, map } = minify('\n'.repeat(startLine) + code, '../' + PAGE);
+      if (/<\/script/i.test(mini) || /<!--/.test(mini)) throw new Error(PAGE + ' inline script ' + n + ': its minified text would end the script early');
+      fs.writeFileSync(path.join(SITE, 'js', mapName), JSON.stringify(map));
+      before += code.length; after += mini.length; n++;
+      return '<script' + (id || '') + '>' + mini + '\n//# sourceMappingURL=js/' + mapName + '\n</script>';
+    });
+  }
+
+  // The page: the first deferred tag becomes the loader, which writes the bundle tags for this visit; the other
+  // bundled tags go, and the surface's own tag stays. (Tag text inside the loader is split so nothing that scans the
+  // page for script tags mistakes it for one.)
+  const loader = '<script>/* gifos bundles: ' + JSON.stringify(files) + ' */(function(){try{' +
+    'function w(s){document.write(\'<scr\'+\'ipt src="\'+s+\'" defer></scr\'+\'ipt>\');}' +
+    'var B=' + JSON.stringify(bundleUrl) + ';if(location.hash.length>1){w(B);return;}w(' + JSON.stringify(lobbyUrl) + ');' +
+    'var g=self.__gifosLoadGate,done;var p=new Promise(function(r){done=r;});if(g)g.pending=p;' +
+    'document.addEventListener("DOMContentLoaded",function(){var s=document.createElement("script");s.src=B;s.async=false;' +
+    's.onload=s.onerror=function(){if(g&&g.pending===p)g.pending=null;done();};document.head.appendChild(s);});' +
+    '}catch(e){}})();</script>';
+  let first = true;
+  fs.writeFileSync(pagePath, page.replace(TAG, (tag, f) => { if (!own(f)) return tag; if (first) { first = false; return loader; } return ''; }));
+
+  if (args.includes('--sw')) {
+    const swPath = path.join(SITE, 'sw.js');
+    const sw = fs.readFileSync(swPath, 'utf8');
+    const at = "'/" + PAGE + "',";
+    if (!sw.includes(at)) throw new Error('sw.js: the offline shell does not list /' + PAGE);
+    const add = " '/js/" + NAME + ".lobby.js', '/js/" + NAME + ".bundle.js',";
+    if (!sw.includes(add)) fs.writeFileSync(swPath, sw.replace(at, at + add));
+  }
+  console.log(`${PAGE}: ${files.length} scripts -> js/${NAME}.bundle.js (${LOBBY.length} of them also in js/${NAME}.lobby.js); ${n} inline scripts ${before} -> ${after} bytes`);
 }
-
-// The page: the first deferred tag becomes the loader, which writes the bundle tags for this visit; the other tags go.
-// (Tag text inside the loader is split so nothing that scans the page for script tags mistakes it for one.)
-const loader = '<script>/* gifos bundles: ' + JSON.stringify(files) + ' */(function(){try{' +
-  'function w(s){document.write(\'<scr\'+\'ipt src="\'+s+\'" defer></scr\'+\'ipt>\');}' +
-  'var B=' + JSON.stringify(bundleUrl) + ';if(location.hash.length>1){w(B);return;}w(' + JSON.stringify(lobbyUrl) + ');' +
-  'var g=self.__gifosLoadGate,done;var p=new Promise(function(r){done=r;});if(g)g.pending=p;' +
-  'document.addEventListener("DOMContentLoaded",function(){var s=document.createElement("script");s.src=B;s.async=false;' +
-  's.onload=s.onerror=function(){if(g&&g.pending===p)g.pending=null;done();};document.head.appendChild(s);});' +
-  '}catch(e){}})();</script>';
-let first = true;
-fs.writeFileSync(pagePath, page.replace(TAG, () => { if (first) { first = false; return loader; } return ''; }));
-
-if (args.includes('--sw')) {
-  const swPath = path.join(SITE, 'sw.js');
-  const sw = fs.readFileSync(swPath, 'utf8');
-  const at = "'/run.html',";
-  if (!sw.includes(at)) throw new Error('sw.js: the offline shell does not list /run.html');
-  fs.writeFileSync(swPath, sw.replace(at, at + " '/js/run.lobby.js', '/js/run.bundle.js',"));
-}
-console.log(`${PAGE}: ${files.length} scripts -> js/run.bundle.js (${LOBBY.length} of them also in js/run.lobby.js); ${n} inline scripts ${before} -> ${after} bytes`);
+for (const [p, n] of PAGES) bundlePage(p, n);
