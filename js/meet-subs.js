@@ -1063,8 +1063,8 @@
   const PLAN_NAME = { room20: 'planNameRoom20', unlimited: 'planNameUnlimited', streamer: 'planNameStreamer', free: 'planNameFree',
     family: 'planNameFamily', smallBusiness: 'planNameSmallBusiness', business: 'planNameBusiness', largeBusiness: 'planNameLargeBusiness', enterprise: 'planNameEnterprise' };
   // How many meetings at once the subscription powers, in Settings (n from the license's line items).
-  const meetingsWords = (n) => (n > 1 ? fill(tx('subMeetingsN', 'Your plan works on all your devices, in up to {n} meetings at once. Joining one more takes the place of the oldest. To add it to another device, choose Add this plan to another device on gifos.app/subscription.'), { n })
-    : tx('subMeetings1', 'Your plan works on all your devices, in one meeting at a time. Joining a meeting on any of them uses it there. To add it to another device, choose Add this plan to another device on gifos.app/subscription.'));
+  const meetingsWords = (n) => (n > 1 ? fill(tx('subMeetingsN', 'Your plan works on all your devices, in up to {n} meetings at once. Joining one more takes the place of the oldest. To use it on another device, choose Copy my plan to another device on gifos.app/subscription.'), { n })
+    : tx('subMeetings1', 'Your plan works on all your devices, in one meeting at a time. Joining a meeting on any of them uses it there. To use it on another device, choose Copy my plan to another device on gifos.app/subscription.'));
   const planName = (tier, t) => (PLAN_NAME[tier] ? tx(PLAN_NAME[tier], t.name) : t.name);
   const planShort = (tier) => { const x = PLAN_SHORT[tier]; return x ? tx(x[0], x[1]) : tx('planNone', 'No plan'); };
   const clockOf = (s) => { try { return new Date(s * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } };
@@ -1173,7 +1173,7 @@
   const dateOf = (s) => { try { return new Date(s * 1000).toLocaleDateString(); } catch (e) { return ''; } };
   // The subscription page draws the move code. A meeting must not: the code would be on a shared screen.
   function planPageLinks(row) {
-    row.appendChild(el('a', { class: BTN, style: BTN_STYLE + ';display:inline-block;text-decoration:none', id: 'sub-move-link', href: '/subscription#move', target: '_blank', rel: 'noopener' }, tx('subMoveLink', 'Add this plan to another device')));
+    row.appendChild(el('a', { class: BTN, style: BTN_STYLE + ';display:inline-block;text-decoration:none', id: 'sub-move-link', href: '/subscription#move', target: '_blank', rel: 'noopener' }, tx('subMoveLink', 'Copy my plan to another device')));
     row.appendChild(el('a', { class: BTN, style: BTN_STYLE + ';display:inline-block;text-decoration:none', id: 'sub-restore-link', href: '/subscription#restore', target: '_blank', rel: 'noopener' }, tx('subRestoreLink', 'Restore with PayPal (lost device)')));
   }
   async function paintSettings(credNow) {
@@ -1594,7 +1594,7 @@
       if (!live || document.getElementById('sub-host-elsewhere')) return;
       const line = el('p', { id: 'sub-host-elsewhere', style: 'flex:1 1 100%;margin:.2rem 0 0' }, fill(tx('subHostElsewhere', 'This browser has no plan, so this meeting runs on Free (up to {n} people). Bought a plan on another phone or computer? Add it to this device.'), { n: SUB.FREE_LIMIT }));
       line.appendChild(document.createTextNode(' '));
-      line.appendChild(el('a', { href: '/subscription#get', id: 'sub-host-elsewhere-link', target: '_blank', rel: 'noopener' }, tx('subHostMoveGo', 'Add a plan from your other device')));
+      line.appendChild(el('a', { href: '/subscription#get', id: 'sub-host-elsewhere-link', target: '_blank', rel: 'noopener' }, tx('subHostMoveGo', 'Get my plan from another device')));
       line.appendChild(document.createTextNode(' · '));
       line.appendChild(el('a', { href: '/subscription#restore', id: 'sub-host-restore-link', target: '_blank', rel: 'noopener' }, tx('subHostRestoreGo', 'Restore with PayPal (lost device)')));
       live.appendChild(line);

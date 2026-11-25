@@ -79,7 +79,7 @@
   "charge.receiptView.heldNone": "Este plan no está en una reunión ahora",
   "charge.receiptView.heldOther": "una reunión en otro dispositivo",
   "charge.receiptView.heldFail": "No se pudo comprobar en qué reunión está.",
-  "charge.receiptView.move": "Añadir este plan a otro dispositivo",
+  "charge.receiptView.move": "Copiar mi plan a otro dispositivo",
   "charge.receiptView.moveHow": "Para usarlo en una reunión en este dispositivo, inicia esa reunión o únete a ella.",
   "charge.receiptView.noEnd": "Sin fin",
   "charge.receiptView.ended": "Terminado",

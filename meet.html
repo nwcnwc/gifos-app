@@ -1428,15 +1428,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <p id="adm-hint"></p>
       <div id="adm-setup">
         <input id="adm-pass" type="password" maxlength="64" data-ph="admPassPh" placeholder="Host password" autocomplete="new-password">
-        <button id="adm-enable" data-t="admEnable">Sign in as host</button>
+        <button id="adm-enable" data-t="admEnable">Use host password</button>
       </div>
       <div id="adm-panel" style="display:none;text-align:left">
-        <!-- A private meeting's host only: the host password this device kept when it created the meeting or signed in. -->
+        <!-- A private meeting's host only: the host password this device kept. -->
         <section id="adm-hpw" aria-labelledby="adm-hpw-h" hidden>
           <h4 id="adm-hpw-h" data-t="admHpwH">Host password</h4>
           <button type="button" id="adm-hpw-show" data-t="admHpwShow" aria-expanded="false" aria-controls="adm-hpw-box">Show host password</button>
           <div id="adm-hpw-box" hidden style="display:flex;gap:.5rem;align-items:center;margin:.45rem 0"><input id="adm-hpw-val" type="text" readonly autocomplete="off" spellcheck="false" data-al="admHpwH" aria-label="Host password" style="flex:1;min-width:0;font-family:monospace"><button type="button" id="adm-hpw-copy" data-t="admHpwCopy">Copy</button></div>
-          <p id="adm-hpw-none" hidden data-t="admHpwNone" style="margin:.45rem 0">This device did not keep the host password. A device keeps it only when it created this meeting, or signed in as host, after this update.</p>
+          <p id="adm-hpw-none" hidden data-t="admHpwNone" style="margin:.45rem 0">This device did not keep the host password. A device keeps it only when it created this meeting, or used the host password here, after this update.</p>
           <small id="adm-hpw-note" data-t="admHpwNote" style="display:block;margin-top:.4rem;opacity:.85">You can only change this by creating a new private meeting.</small>
         </section>
         <section id="adm-chat" aria-labelledby="adm-chat-h">

@@ -79,7 +79,7 @@
   "charge.receiptView.heldNone": "此方案当前不在任何会议中",
   "charge.receiptView.heldOther": "另一台设备上的会议",
   "charge.receiptView.heldFail": "无法查看它在哪场会议里。",
-  "charge.receiptView.move": "将此方案添加到另一台设备",
+  "charge.receiptView.move": "将我的方案复制到另一台设备",
   "charge.receiptView.moveHow": "要在此设备上的会议中使用它，请开始或加入该会议。",
   "charge.receiptView.noEnd": "没有到期日",
   "charge.receiptView.ended": "已结束",
