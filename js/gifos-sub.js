@@ -46,8 +46,10 @@
  * forged, run out, the host left, the subscription moved to another meeting),
  * has the free line of 5. Anyone holding any PAID plan is always let in, even
  * past the line. The line applies only at entry: nobody inside is removed.
- * The line is a place in the room's seating order, not a count: the mesh
- * gives nobody without a ticket that place or one after it (js/mesh/wall.js).
+ * WHO DECIDES: the meeting service, alone. It keeps one list of permissions
+ * per hosted meeting (the room ACL below) and refuses a joiner on the joining
+ * connection itself. No page holds a people line, a count or a refusal: a page
+ * shows the service the right it holds and shows the answer it gets back.
  *
  * How many meetings at once (the `meetings` line item; 1 unless a plan says
  * more): joining a meeting gets a short meeting ticket from the payment
