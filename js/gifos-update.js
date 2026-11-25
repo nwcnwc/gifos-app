@@ -87,6 +87,19 @@
     return { latest, emergency: ok(info.latestEmergency), meetFloor: pick(ok(info.latestMeetFloor), ok(info.meetFloor)) };
   }
 
+  // The releases a computer can be pinned to: version.json "versions" from the meet floor (latestMeetFloor) up to
+  // latest, the same set the site serves. One source of truth for the Settings list and the below-floor unpin.
+  function pinnable(info) {
+    const live = liveOf(info);
+    if (!live || !Array.isArray(info.versions)) return [];
+    return info.versions.filter((v) => VER.test(String(v)) && cmpVer(v, live.latest) <= 0 && (!live.meetFloor || cmpVer(v, live.meetFloor) >= 0));
+  }
+  // A pin (a release version, not 'edge') that sits under the meet floor can no longer join meetings.
+  function pinBelowFloor(pin, info) {
+    const live = liveOf(info);
+    return !!(live && live.meetFloor && pin && VER.test(String(pin)) && cmpVer(pin, live.meetFloor) < 0);
+  }
+
   // What THIS page is running. index.html and boot.html declare
   // GIFOS_VERSION ('edge' at the root, 'x.y.z' in a snapshot); run.html and
   // sign.html do not, but the archive step stamps <base href="/versions/x.y.z/">
@@ -436,5 +449,5 @@
     return { stop: () => { clearInterval(t); try { doc.removeEventListener('visibilitychange', onVis); } catch (e) {} }, tick };
   }
 
-  GifOS.update = { cmpVer, liveOf, running, criticalSince, notesOf, underFloor, decide, updateUrl, go, check, mount, paint, watch, MINUTE };
+  GifOS.update = { cmpVer, liveOf, pinnable, pinBelowFloor, running, criticalSince, notesOf, underFloor, decide, updateUrl, go, check, mount, paint, watch, MINUTE };
 })(typeof window !== 'undefined' ? window : globalThis);

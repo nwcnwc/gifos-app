@@ -199,6 +199,7 @@
   "settings.pin.endedTitle": "已回到最新版本",
   "settings.pin.endedExpired": "此电脑切换到 <b>{what}</b> 的设置已结束，因此重新运行最新版本。你的文件、应用和设置都没有受到影响。测试人员可在 <b>设置 → 系统 → 更新 → 高级 / 测试</b> 中再次切换。",
   "settings.pin.endedReset": "此电脑曾被设置为 <b>{what}</b>。现在这只供测试 GifOS 的人使用，因此重新运行最新版本。你的文件、应用和设置都没有受到影响。测试人员可在 <b>设置 → 系统 → 更新 → 高级 / 测试</b> 中再次切换。",
+  "settings.pin.endedFloor": "此版本已无法加入会议；你正在使用最新版本。（已取消固定 <b>{what}</b>。）",
   "settings.updates.couldntCheck": "无法检查哪个版本是最新的。",
   "settings.updates.checking": "正在从 gifos.app 检查最新版本…",
   "settings.updates.latestFollows": "v{version} · 此电脑跟随该版本",
