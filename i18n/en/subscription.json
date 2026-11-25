@@ -3,6 +3,7 @@
   "subscription.titleTab": "Plans — GifOS",
   "subscription.back": "GifOS Meet",
   "subscription.intro": "Every plan works on gifos.app/meet. Public open-floor meetings are always free.",
+  "subscription.noAccount": "No account needed. Your plan lives on your devices, and if you ever lose them, restore it with the PayPal account you paid with.",
   "subscription.upgradeTitle": "Changing to a bigger plan",
   "subscription.upgradeNow": "A bigger plan replaces yours. Its first charge is smaller: we take off a credit for the unused time of your current plan. Every charge after that is the full price.",
   "subscription.upgradeCancel": "We cancel the plan it replaces as soon as the new one starts, so you are never billed twice.",

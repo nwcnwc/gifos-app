@@ -3,6 +3,7 @@
   "subscription.titleTab": "方案 — GifOS",
   "subscription.back": "GifOS Meet",
   "subscription.intro": "所有方案都可在 gifos.app/meet 使用。公开的开放会议始终免费。",
+  "subscription.noAccount": "无需账号。您的方案保存在您的设备上；万一设备丢失，可用您付款时的 PayPal 账号恢复。",
   "subscription.upgradeTitle": "升级到更大的方案",
   "subscription.upgradeNow": "更大的方案会替换您的方案。它的首次扣款更少：我们会扣除您当前方案未使用时间的抵扣额。之后每次扣款都是全价。",
   "subscription.upgradeCancel": "新方案一开始，我们就取消被替换的方案，您绝不会被重复收费。",
