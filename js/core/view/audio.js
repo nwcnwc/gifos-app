@@ -361,6 +361,16 @@
     });
     fn('newCanvas', function () { return document.createElement('canvas'); });
     fn('chatPanelOpen', function () { return false; });
+    // the media plane's popovers (its microphone chooser) open above the control they belong to
+    fn('placeDockPopover', function (el, anchor) {
+      if (!el || !anchor || !el.getClientRects().length) return null;
+      var a = anchor.getBoundingClientRect(), pad = 8, w = el.offsetWidth, h = el.offsetHeight;
+      var left = Math.max(pad, Math.min(window.innerWidth - w - pad, a.left + a.width / 2 - w / 2));
+      var top = a.top - h - pad >= pad ? a.top - h - pad : Math.min(window.innerHeight - h - pad, a.bottom + pad);
+      el.style.left = Math.round(left) + 'px'; el.style.top = Math.round(Math.max(pad, top)) + 'px';
+      el.style.right = 'auto'; el.style.bottom = 'auto'; el.style.transform = 'none'; el.style.margin = '0';
+      return top < a.top ? 'above' : 'below';
+    });
 
     // ---- Invite: the room's link ------------------------------------------------------------------------------------
     var shareLink = '';

@@ -709,6 +709,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <a id="afull" href="#" data-t="audioFull" title="The same meeting with video, the Stage and everything else">Full meeting</a>
     <button id="leavebtn" type="button" data-agent="leave" data-t="leave" aria-label="Leave">Leave</button>
     <ul id="awho" hidden aria-label="People"></ul>
+    <!-- the media plane's microphone (and speaker) chooser: with two or more microphones a muted tap opens it -->
+    <div id="micchooser" role="menu" hidden></div>
   </div>
   <div id="ears" hidden aria-hidden="true"></div>
   <div class="name-modal" role="dialog" aria-modal="true" id="left-modal" style="display:none">
@@ -744,7 +746,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   </div>
   <!-- THE MEDIA PLANE'S OWN ELEMENTS. js/core/media/plane-browser.js still reads these meeting-page ids directly (it
        wires their buttons at load). This page has none of them: inert, hidden, never focusable. -->
-  <div id="media-stubs" hidden inert aria-hidden="true"><div id="barrec"></div><button id="bartoggle" type="button"></button><div id="camchooser"></div><div id="camdevs"></div><div id="ccall"></div><button id="ccbtn" type="button"></button><div id="ccwhisper-prog"></div><input id="chat-in" type="text"><button id="chatbtn" type="button"></button><input id="chatfind" type="text"><div id="chatlog"></div><div id="keys-list"></div><div id="micchooser"></div><div id="mixlab-stadium"></div><div id="paneltitle"></div><button id="reactbtn" type="button"></button><div id="reacttray"></div><div id="rec-warn"></div><button id="sharebtn" type="button"></button><button id="spkbtn" type="button"></button><button id="trbtn" type="button"></button><button id="trtab" type="button"></button><div id="trwrap"></div></div>
+  <div id="media-stubs" hidden inert aria-hidden="true"><div id="barrec"></div><button id="bartoggle" type="button"></button><div id="camchooser"></div><div id="camdevs"></div><div id="ccall"></div><button id="ccbtn" type="button"></button><div id="ccwhisper-prog"></div><input id="chat-in" type="text"><button id="chatbtn" type="button"></button><input id="chatfind" type="text"><div id="chatlog"></div><div id="keys-list"></div><div id="mixlab-stadium"></div><div id="paneltitle"></div><button id="reactbtn" type="button"></button><div id="reacttray"></div><div id="rec-warn"></div><button id="sharebtn" type="button"></button><button id="spkbtn" type="button"></button><button id="trbtn" type="button"></button><button id="trtab" type="button"></button><div id="trwrap"></div></div>
   <script src="js/gifos-ed.js" defer></script>
   <script src="js/gifos-sign.js" defer></script>
   <script src="js/gifos-base-net.js" defer></script>
