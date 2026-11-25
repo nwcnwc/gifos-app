@@ -5237,7 +5237,7 @@
       // ban management. Creating an admin room lives in Invite. A plain room has
       // no admin and never can, so there's nothing for this button to do there.
       ab.style.display = __C.model.me.av() ? '' : 'none';   // sign-in to a room with a verifier (a captor is admin by its capture)
-      ab.textContent = __C.amAdmin ? (0, /*()*/__C.uiText)('admBtn', 'Host') : (0, /*()*/__C.uiText)('admSignIn', 'Host sign-in');
+      ab.textContent = __C.amAdmin ? (0, /*()*/__C.uiText)('admBtn', 'Host') : (0, /*()*/__C.uiText)('admSignIn', 'Host password');
       ab.title = __C.amAdmin ? (0, /*()*/__C.uiText)('admTipOn', 'Host controls: room password, chat and waiting room')
         : (0, /*()*/__C.uiText)('admTipOff', 'This room has a host — enter the host password to get the host controls');
       const pwb = document.getElementById('pwbtn');
@@ -5773,10 +5773,10 @@
         setup.style.display = 'none'; panel.style.display = '';
         paintChatOptions();
         paintHostPw();
-        document.getElementById('adm-hint').textContent = (0, /*()*/__C.uiText)('admHintOn', 'You are a host of this room. Hosts can lock the room with a room password (the key to clear video), mute or blur someone for everyone, and ban people. Anyone who knows the host password can open Host and sign in too.');
+        document.getElementById('adm-hint').textContent = (0, /*()*/__C.uiText)('admHintOn', 'You are a host of this room. Hosts can lock the room with a room password (the key to clear video), mute or blur someone for everyone, and ban people. Anyone who knows the host password can open Host and use it too.');
       } else {
         setup.style.display = ''; panel.style.display = 'none';
-        btn.textContent = (0, /*()*/__C.uiText)('admEnable', 'Sign in as host');
+        btn.textContent = (0, /*()*/__C.uiText)('admEnable', 'Use host password');
         document.getElementById('adm-hint').textContent = (0, /*()*/__C.uiText)('admHintOff', 'This room has a host. If you know the host password, enter it here to get the host controls. Your password stays on this device.');
       }
       admModal.style.display = 'flex';
@@ -5833,7 +5833,7 @@
       try { K = await (0, /*()*/__C.deriveAdminKey)(__C.model.room.room(), v); }
       catch (err) {
         btn.disabled = false;
-        btn.textContent = (0, /*()*/__C.uiText)('admEnable', 'Sign in as host');
+        btn.textContent = (0, /*()*/__C.uiText)('admEnable', 'Use host password');
         hint.textContent = (0, /*()*/__C.uiText)('admCheckFail', 'Could not check the password ({err}).').split('{err}').join((err && err.name) || 'Error');
         return;
       }
@@ -5841,7 +5841,7 @@
       // is local, instant, and needs no relay round-trip.
       if (!(await (0, /*()*/__C.adoptAdmKey)(K))) {
         btn.disabled = false;
-        btn.textContent = (0, /*()*/__C.uiText)('admEnable', 'Sign in as host');
+        btn.textContent = (0, /*()*/__C.uiText)('admEnable', 'Use host password');
         hint.textContent = (0, /*()*/__C.uiText)('admWrong', 'Wrong host password.');
         (0, /*()*/__C.sayState)('adminWrong');
         return;

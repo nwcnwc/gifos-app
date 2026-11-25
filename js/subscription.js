@@ -460,7 +460,7 @@
       var subIn = $('pm-restore-sub');
       var subId = subIn ? String(subIn.value || '').trim() : '';
       if (subId && !/^I-[A-Za-z0-9]{4,40}$/.test(subId)) { say(t('pmRestoreSubBad')); return; }
-      // Restoring signs out every other device: ask first. Nothing is sent to PayPal until Continue.
+      // Restoring stops the plan on every other device: ask first. Nothing is sent to PayPal until Continue.
       show('pm-restore-confirm', true);
       var go = $('pm-restore-continue');
       if (go && go.focus) go.focus();

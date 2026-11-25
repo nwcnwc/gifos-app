@@ -79,7 +79,7 @@
   "charge.receiptView.heldNone": "Dieser Tarif ist gerade in keinem Meeting",
   "charge.receiptView.heldOther": "ein Meeting auf einem anderen Gerät",
   "charge.receiptView.heldFail": "Es ließ sich nicht prüfen, in welchem Meeting es ist.",
-  "charge.receiptView.move": "Diesen Tarif auf einem anderen Gerät hinzufügen",
+  "charge.receiptView.move": "Meinen Tarif auf ein anderes Gerät kopieren",
   "charge.receiptView.moveHow": "Um ihn in einem Meeting auf diesem Gerät zu verwenden, starten Sie das Meeting oder treten Sie ihm bei.",
   "charge.receiptView.noEnd": "Kein Ende",
   "charge.receiptView.ended": "Beendet",
