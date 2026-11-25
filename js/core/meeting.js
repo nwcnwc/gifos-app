@@ -5742,7 +5742,7 @@
       rows.more = more;
       return rows;
     }
-    // The other rooms' people by name, per door (js/mesh/page/layer.js meetingPeople): [] with no joined room.
+    // The people the fold names, per door (js/mesh/page/layer.js meetingPeople): my own room (here) and the other rooms of the meeting.
     // SUB.11.1: the status the fold tells of a person (null: the fold does not name them). A tile or row with no status
     // heard first-hand reads it: the people of a joined room past the connection's two ends.
     function foldStatusOf(id) { for (const d of farPeople()) for (const x of d.people) if (x.id === id) return { muted: x.muted, camOff: x.camOff, hand: x.hand, fold: true }; return null; }
@@ -22172,8 +22172,9 @@
         const st = statusOf.get(pid);
         people.push({ id: pid, name: (p && p.name) || rosterNames[pid] || '', bot: !!(st && st.bot), me: false });
       }
-      // SUB.11: and the people of the other rooms of the meeting the fold names (far: true), so the bot's list and the People panel are one list
-      for (const d of farPeople()) for (const x of d.people) { if (d.here || !x.id || seen.has(x.id)) continue; seen.add(x.id); const st = statusOf.get(x.id); people.push({ id: x.id, name: x.nm || rosterNames[x.id] || '', bot: !!(st && st.bot), me: false, far: true }); }
+      // SUB.11: and everyone else the fold names: my own room past my section (here) and the other rooms of the meeting
+      // (far: true). The People panel reads the same list (rosterRows), so the bot's list and the panel are one list.
+      for (const d of farPeople()) for (const x of d.people) { if (!x.id || seen.has(x.id)) continue; seen.add(x.id); const st = statusOf.get(x.id); people.push({ id: x.id, name: x.nm || rosterNames[x.id] || '', bot: !!(st && st.bot), me: false, far: !d.here }); }
       return people;
     }
     function roomControls() {

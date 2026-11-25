@@ -270,7 +270,7 @@
     mix(d.n); mix(d.refuse); mix(d.freeC); mix(d.dmin); mix(d.part); mix(d.leased);
     if (d.held) { mix(10); mix(d.held); }   // only while a mover is held
     for (const e of d.doors) { mix(11); mix(e.id); mix(e.k); if (e.f) { mix(13); mix(e.f); } }   // only with people in another room of the meeting
-    for (const e of d.ppl) { mix(14); mix(e.id); mix(e.k + 1); if (e.f) { mix(15); mix(e.f); } }   // SUB.11 (only with a joining connection)
+    for (const e of d.ppl) { mix(14); mix(e.id); mix(e.k + 1); if (e.f) { mix(15); mix(e.f); } }   // SUB.11
     if (d.go >= 0) { mix(12); mix(d.go); }   // SUB.10 (only while a subroom walks)
     return h;
   }
