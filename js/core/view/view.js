@@ -3105,6 +3105,11 @@
           heads: window.__meetGallery === 'scroll' ? { row: (0, /*()*/__C.uiText)('zoneRowHead', 'Direct connections'), stad: (0, /*()*/__C.uiText)('zoneStadHead', 'Stadium connections') } : null,
           onSettle: () => { try { layout(); } catch (e) {} },
         });
+        // The local Stadium view paints the columns this layout just chose.
+        try {
+          const sc = window.__comfyLast && window.__comfyLast.stadCols | 0;
+          if (sc > 0 && __M.sdView && typeof __M.sdView.setCols === 'function') __M.sdView.setCols(sc);
+        } catch (e) {}
         // Content on screen (a shared screen now; the content tabs later):
         // the one-step presentation button shows only then.
         const hasContent = !!(window.__comfyLast && window.__comfyLast.content);
