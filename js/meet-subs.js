@@ -1602,6 +1602,14 @@
     return bar;
   }
 
+  // The relay turned someone away at this hosted room's people line and told the host ({t:'turned', w}: w names the
+  // refused device for this room only). Distinct people are counted; the host sees how many could not get in.
+  const turnedSeen = new Set();
+  function hostTurned(w) {
+    const k = typeof w === 'string' && /^[0-9a-f]{1,16}$/.test(w) ? w : '?' + turnedSeen.size;
+    turnedSeen.add(k); if (turnedSeen.size > 256) turnedSeen.delete(turnedSeen.values().next().value);
+    return showHostPrompt(turnedSeen.size);
+  }
   // The host, when people were turned away: how many. The number only; the room's permissions are the License.
   // n: how many people could not get in (1 when not counted).
   function showHostPrompt(n) {
@@ -1658,7 +1666,7 @@
   GifOS.rights = async () => SUB.rightsJson(await rights());
   GifOS.meetSubs = {
     askMove, moveOptions, showOverflowNote,
-    rights, planRights, refresh, keepFresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, subSelection, applySubSelection, paintNow, paintSettings, openSettings, openSubscribe, mayCreateAdminRoom, showFull, hideFull, fullWaiting, fullOffers, hostOffer, doorRight, showHostPrompt,
+    rights, planRights, refresh, keepFresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, subSelection, applySubSelection, paintNow, paintSettings, openSettings, openSubscribe, mayCreateAdminRoom, showFull, hideFull, fullWaiting, fullOffers, hostOffer, doorRight, showHostPrompt, hostTurned,
     roomOrder, roomTier, meetingRight, proveAtDoor, checkShown, newNonce,
     appNow, joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureCurrent, captureOrder, captureKeys, fileBytes, downloadFile, useFile, installCreds, movePackage, heldMeetings, credential, librarySigner, restoreInApp,
     keepReceipt, subReceiptFiles,
