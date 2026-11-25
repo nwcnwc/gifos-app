@@ -115,7 +115,7 @@
   "meet.shareTitle": "Share your screen",
   "meet.shareDenied": "Only this room’s hosts — or people they allow — can share a screen. Ask a host to allow you, on your tile or for the whole room, then open this again.",
   "meet.shareBody": "A screen share is for what an app can’t be: a deck on your disk, a tool that isn’t GifOS, a window from somewhere else. It shows on the stage, so the whole room sees it — and everyone can see that it’s you sharing.",
-  "meet.shareSound": "Your camera pauses while you share, and comes back when you stop. Sound from the shared tab doesn’t travel — talk over it.",
+  "meet.shareSound": "Your camera stays on, and everyone sees your screen on the Stage. Sound from the shared tab doesn’t travel — talk over it.",
   "meet.shareGo": "Choose what to share…",
   "meet.shareCancel": "Cancel",
   "meet.reshareNote": "Your screen share stopped when you came back.",

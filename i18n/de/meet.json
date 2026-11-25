@@ -107,7 +107,7 @@
   "meet.shareTitle": "Bildschirm teilen",
   "meet.shareDenied": "Nur die Hosts dieses Raums — oder wen sie erlauben — können einen Bildschirm teilen. Bitten Sie einen Host, es zu erlauben, an Ihrem Feld oder für den ganzen Raum, und öffnen Sie dies dann erneut.",
   "meet.shareBody": "Ein Bildschirm ist für das, was keine App sein kann: eine Präsentation auf Ihrem Rechner, ein Werkzeug, das nicht GifOS ist, ein Fenster von woanders. Es liegt auf der Bühne, der ganze Raum sieht es, und alle sehen, dass Sie teilen.",
-  "meet.shareSound": "Ihre Kamera pausiert, während Sie teilen, und kommt zurück, wenn Sie aufhören. Ton aus dem geteilten Tab kommt nicht mit — sprechen Sie darüber.",
+  "meet.shareSound": "Ihre Kamera bleibt an, und alle sehen Ihren Bildschirm auf der Bühne. Ton aus dem geteilten Tab kommt nicht mit — sprechen Sie darüber.",
   "meet.shareGo": "Auswählen, was geteilt wird…",
   "meet.shareCancel": "Abbrechen",
   "meet.reshareNote": "Ihr Bildschirmteilen endete, als Sie zurückkamen.",

@@ -127,8 +127,11 @@ that panel. The agenda clock is the timer for the current item.
 3. The browser asks what to show: a tab, a window, or your whole screen.
    Pick one and confirm. Everyone in the meeting sees it.
 
-While you share, your camera pauses, and it comes back when you stop. Sound
-from the shared tab does not travel, so talk over it. To stop, press the same
+While you share, your camera stays on. The screen takes a seat on the Stage,
+so everyone sees it; if you share from your row, the people around you still
+see your camera on your own tile. If you were already on the Stage, your
+screen shows there in place of your camera until you stop. Sound from the
+shared tab does not travel, so talk over it. To stop, press the same
 button (it now reads Stop sharing), press Alt+S again, or use the browser's
 own Stop sharing bar.
 

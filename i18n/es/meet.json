@@ -107,7 +107,7 @@
   "meet.shareTitle": "Compartir pantalla",
   "meet.shareDenied": "Solo los anfitriones de esta sala — o quien ellos permitan — pueden compartir pantalla. Pide a un anfitrión que te lo permita, en tu recuadro o para toda la sala, y abre esto otra vez.",
   "meet.shareBody": "Compartir pantalla es para lo que una app no puede ser: una presentación en tu disco, una herramienta que no es GifOS, una ventana de otro sitio. Se ve en el escenario, toda la sala la ve, y todos ven que eres tú.",
-  "meet.shareSound": "Tu cámara se pausa mientras compartes y vuelve cuando paras. El sonido de la pestaña no viaja — habla por encima.",
+  "meet.shareSound": "Tu cámara sigue encendida y todos ven tu pantalla en el Escenario. El sonido de la pestaña compartida no viaja — habla por encima.",
   "meet.shareGo": "Elegir qué compartir…",
   "meet.shareCancel": "Cancelar",
   "meet.reshareNote": "Dejaste de compartir al volver.",
