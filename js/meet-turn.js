@@ -1078,14 +1078,14 @@
     const rg = { want: false, st: 'idle', retryAt: 0, out: null, gen: 0, net: false, gone: 0 };
     function regrantStep(now) {
       if (!rg.want || rg.st !== 'idle' || now < rg.retryAt || !io.askSub) return;
-      rg.st = 'busy'; const g = ++rg.gen;
+      rg.st = 'busy'; const g = ++rg.gen, ng = netGen; let noList = false;
       Promise.resolve(io.tdoors ? io.tdoors() : null).then((x) => {
         const d = x && typeof x === 'object' ? x.v : x;
-        if (!d) return null;
+        if (!d) { noList = true; return null; }
         return io.askSub({ room: String(io.sid()), doors: d, regrant: 1 });
       }).then((a) => {
         if (g !== rg.gen) return;
-        rg.st = 'idle'; rg.net = !a;   // no door list, or no answer: the wait that follows is for my own connection (relayBack ends it)
+        rg.st = 'idle'; rg.net = !a && ng === netGen;   // no door list, or no answer: the wait that follows is for my own connection (relayBack ends it; a socket that came back while this ask was out already has)
         if (a) netBack();   // the relay gave its door list and the service answered: my connection is back (TURN.10.1)
         if (a && Number.isInteger(a.r) && a.r > 0 && typeof a.sg === 'string') { rg.want = false; rg.out = { r: a.r, sg: a.sg }; log('turn-sub door ' + a.r + ' re-granted'); doorBack(); }
         else if (a && a.live) { rg.want = false; log('turn-sub door has greeters again'); doorBack(); }
@@ -1094,8 +1094,8 @@
         // that is no greeter of it. The subroom is gone; its seats are joiners of door 0 (the seat reads gone()).
         else if (a && a.unavailable === 'no-room' && io.sub && io.sub() > 0) { rg.want = false; rg.gone = io.sub(); sub.repipe = false; log('turn-sub door ' + rg.gone + ' is gone: the service holds no such subroom'); }
         else if (a && a.pending === 'opening') rg.retryAt = io.now() + RESEND_MS;
-        else rg.retryAt = io.now() + RETRY_MS;
-      }, () => { if (g === rg.gen) { rg.st = 'idle'; rg.net = true; rg.retryAt = io.now() + RETRY_MS; } });
+        else rg.retryAt = !a && ng !== netGen ? 0 : io.now() + (!a && noList ? RESEND_MS : RETRY_MS);   // my own relay gave no door list (the service was never asked): read it again soon
+      }, () => { if (g === rg.gen) { rg.st = 'idle'; const back = ng !== netGen; rg.net = !back; rg.retryAt = back ? 0 : io.now() + RETRY_MS; } });
     }
 
     // ---- THE WARM STANDBY ---------------------------------------------------------------------------------------------
@@ -1425,7 +1425,10 @@
     function subRefuse(now, why) {
       if (why !== sub.lastWhy) sub.mult = 1;
       sub.lastWhy = why;
-      const w = RETRY_MS * sub.mult;
+      // no door list: my own relay socket gave no answer and the service was never asked. The socket may have lived through
+      // the outage (no close, no reopen, no relayBack), so nothing else would say it answers again: the list is read again
+      // after a handshake's resend. Every other refusal is the service's (or names it) and waits TURN_RETRY, doubling.
+      const w = why === 'no-doors' ? RESEND_MS : RETRY_MS * sub.mult;
       const at = now + w + (sub.asker === 'joiner' ? Math.floor((io.rand ? io.rand() : Math.random()) * (w / 4)) : 0);
       sub.mult = Math.min(RETRY_MAX_X, sub.mult * 2);
       sub.ans = true;
@@ -1440,6 +1443,11 @@
     // nothing but that connection. It is back (my relay socket opened again, or the service answered an ask made with a
     // fresh door list): the wait ends and the ask goes again now.
     function netBack() { if (sub.lastWhy === 'no-doors' || sub.lastWhy === 'no-answer') { sub.lastWhy = ''; subChanged('my connection to the relay'); } }
+    // An ask that was out while my relay socket came back says nothing about the connection I have now: it was made on the
+    // socket that died. Its "no door list" or "no answer" starts no wait; the ask goes again on the new socket (netGen
+    // counts the socket's returns; an ask notes the count it started under).
+    let netGen = 0, netBackAt = 0;   // netBackAt: when my relay socket last came back (my own connection was away until then)
+    function ownLapse(ng, why) { if (ng !== netGen && (why === 'no-doors' || why === 'no-answer')) { sub.mult = Math.max(sub.mult, 2); netBack(); } }
     // ...and a refusal for want of my own door (no-room: the relay had forgotten my door, so I was no greeter of it) ends
     // when the door is mine again (its fresh grant came, or it has greeters again).
     function doorBack() { if (sub.lastWhy === 'no-room') { sub.lastWhy = ''; subChanged('my door'); } }
@@ -1448,7 +1456,7 @@
     function subChanged(what) { if (sub.mult > 1) { sub.mult = 1; if (sub.st === 'idle' && sub.retryAt > io.now()) sub.retryAt = io.now(); log('turn-sub ' + what + ' changed: ask again now'); } }
     function subIdle(now, out, retryAt) { sub.st = 'idle'; sub.token = null; sub.retryAt = retryAt || 0; sub.out = out; sub.gen++; }
     function subDoors(withToken) {
-      const g = ++sub.gen; sub.st = 'doors'; sub.out = busyOut;
+      const g = ++sub.gen, ng = netGen; sub.st = 'doors'; sub.out = busyOut;
       // a re-pipe ask with the list in hand has the relay say which ends on record still hold a socket (SUB.3: a pipe with a dead end is cut)
       const q = withToken && sub.asker === 'repipe' ? (sub.ends || []).slice(0, 16) : null;
       Promise.resolve(io.tdoors ? io.tdoors(q) : null).then((x) => {
@@ -1466,12 +1474,12 @@
           log('turn-sub probe ' + rs.join(',') + ': trying the doors');
           sub.gen++; sub.st = 'probe'; sub.out = busyOut; return;
         }
-        if (!d) { subRefuse(io.now(), 'no-doors'); return; }
+        if (!d) { subRefuse(io.now(), 'no-doors'); ownLapse(ng, 'no-doors'); return; }
         // before a new number is asked for: a listed room whose heads this fresh door list names and I have not dialled
         // yet (it opened while I tried the others) is tried first; the service would read its greeters as unreachable
         if (withToken && untried().length) { log('turn-sub a listed room opened: trying its heads'); sub.st = 'probe'; return; }
         subAsk(d, withToken ? sub.token : null);
-      }, () => { if (g !== sub.gen) return; if (sub.asker === 'probe') { sub.wantProbe = false; subIdle(io.now(), null, sub.retryAt); } else subRefuse(io.now(), 'no-doors'); });
+      }, () => { if (g !== sub.gen) return; if (sub.asker === 'probe') { sub.wantProbe = false; subIdle(io.now(), null, sub.retryAt); } else { subRefuse(io.now(), 'no-doors'); ownLapse(ng, 'no-doors'); } });
     }
     function subProbeDoors() {
       const g = ++sub.gen; sub.st = 'doors'; sub.out = busyOut;
@@ -1483,7 +1491,7 @@
       }, () => { if (g === sub.gen) { sub.gen++; sub.st = 'probe'; } });
     }
     function subAsk(doors, token) {
-      const g = ++sub.gen; sub.st = 'ask';
+      const g = ++sub.gen, ng = netGen; sub.st = 'ask';
       const b = { room: String(io.sid()), doors };
       if (token) b.token = token;
       if (sub.asker === 'repipe') b.rp = 1;   // SUB.3: a re-pipe ask, from either side of the lost pipe
@@ -1515,8 +1523,8 @@
         }
         const why = (a && a.unavailable) ? String(a.unavailable).slice(0, 40) : 'no-answer';
         log('turn-sub refused ' + why);
-        subRefuse(now, why);
-      }, () => { if (g === sub.gen) subRefuse(io.now(), 'no-answer'); });
+        subRefuse(now, why); ownLapse(ng, why);
+      }, () => { if (g === sub.gen) { subRefuse(io.now(), 'no-answer'); ownLapse(ng, 'no-answer'); } });
     }
     // The heads the relay's door list names per door, as peer ids (the answer's own map; the signed list holds device
     // tags only): at most PROBE_HEADS per door, in the list's order.
@@ -1597,11 +1605,13 @@
     // I ask for a re-pipe after the refused wait (TURN.10). A founder sits at its own door by then, so no other asker
     // of mine would ever ask again.
     function neverUp(L, why, quiet) {
-      if (L.opener && !L.sb && L.l[0] === 'l' && !(L.upAt > 0)) {
+      const across = netBackAt > 0 && L.askAt < netBackAt;   // the dial was out while my own connection was away: its failure says nothing of the far end
+      if (L.opener && !L.sb && L.l[0] === 'l' && !(L.upAt > 0) && across) { sub.repipe = true; }
+      else if (L.opener && !L.sb && L.l[0] === 'l' && !(L.upAt > 0)) {
         if (why !== sub.lastWhy) sub.mult = 1;
         sub.lastWhy = why; sub.retryAt = Math.max(sub.retryAt, io.now() + RETRY_MS * sub.mult); sub.mult = Math.min(RETRY_MAX_X, sub.mult * 2);
         sub.repipe = true;
-      } else if (L.opener && why === 'dialfail') sub.pipeRetryAt = io.now() + RETRY_MS;   // (a seated end's wait, see pipeRetryAt)
+      } else if (L.opener && why === 'dialfail' && !across) sub.pipeRetryAt = io.now() + RETRY_MS;   // (a seated end's wait, see pipeRetryAt)
       close(L, why, quiet);
     }
     function step() {
@@ -1633,7 +1643,7 @@
         // (down by the time the settle ran out and never up since: a link that drops later is the dial budget's, as before)
         if (L.state === 'up' && !io.pcUp(L.far)) {
           if (!L.downSince) L.downSince = now;
-          const wk = io.woke && io.wakeSettleMs > 0 ? io.woke() : 0;
+          const wk = io.wakeSettleMs > 0 ? Math.max(io.woke ? io.woke() : 0, netBackAt) : 0;   // a device that woke, or whose network came back (its relay socket opened again)
           if (wk > 0 && L.upAt > 0 && L.upAt < wk && now - wk >= io.wakeSettleMs && L.downSince - wk <= io.wakeSettleMs) { close(L, 'wake-lost'); continue; }
           if (now - L.downSince > DIAL_BUDGET_MS) { if (L.opener) sub.pipeRetryAt = now + RETRY_MS; close(L, 'lost'); continue; }
         }
@@ -1703,7 +1713,7 @@
       },
       // TURN.10.1: my relay socket is open again (netBack above). A refusal the service made (no far end, the budget, the
       // rate) is untouched; a door re-grant that failed for want of a connection is asked again too.
-      relayBack() { netBack(); if (rg.want && rg.net && rg.st === 'idle') { rg.net = false; rg.retryAt = 0; } },
+      relayBack() { netGen++; netBackAt = io.now(); netBack(); if (rg.want && rg.net && rg.st === 'idle') { rg.net = false; rg.retryAt = 0; } if (sub.pipeRetryAt > netBackAt) sub.pipeRetryAt = 0; },
       // The subroom ask stands refused (no far end, the budget, the pool down) and its wait has not run out: no relayed
       // connection can be had for now.
       refused() { const o = sub.out; return !!(o && o.refused && !ownWhy(o.refused) && io.now() < o.retryAt); },
@@ -1767,7 +1777,9 @@
           pool: L.paidMe ? 'paid' : 'free', paid: L.paid ? L.paid.state() : null, paidRefusal: L.paid ? L.paid.refusal() : null, paidFar: L.paidFar,
           vouched: L.vouched, video: L.video, upAt: L.upAt, side: L.side.length, web: L.web, webHost: L.webHost || null, webMoves: L.webMvN || 0,
           step: L.thr ? L.thr.step : null, cap: L.cap || null, busy: L.busy, farBusy: L.farBusy, standbyN: L.standbyN, lastSwitchMs: L.lastSwitchMs || null, direct: !!L.direct, sb: !!L.sb, sbUp: !!L.sbUp, probes: L.pr ? L.pr.n : 0, probeX: L.pr ? L.pr.x : 0 });
-        return { links: out, sub: { st: sub.st, out: sub.out, list: sub.list.slice(), retryAt: sub.retryAt, found: sub.found } };
+        const now = io.now();
+        return { links: out, sub: { st: sub.st, out: sub.out, list: sub.list.slice(), retryAt: sub.retryAt, found: sub.found, asker: sub.asker || null, repipe: !!sub.repipe, lastWhy: sub.lastWhy || '', mult: sub.mult,
+          waitMs: Math.max(0, sub.retryAt - now), pipeWaitMs: Math.max(0, (sub.pipeRetryAt || 0) - now), doorLost: !!(io.doorLost && io.doorLost()), rg: { want: !!rg.want, st: rg.st, net: !!rg.net, out: !!rg.out, waitMs: Math.max(0, (rg.retryAt || 0) - now) } } };
       },
     };
   }
