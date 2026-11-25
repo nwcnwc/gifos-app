@@ -207,7 +207,7 @@
     });
     var on = !!st.mode;
     var words = { 'clear-tap': say(C, 'blurWhyTap', 'Blurred: tap to unblur'), 'clear-reblur': say(C, 'clearBlurAgain', 'Blur again'), 'clear-rep': say(C, 'clearReport', 'Report') };
-    var show = { 'clear-tap': on && !st.tapped, 'clear-reblur': on && !!st.tapped, 'clear-rep': on };
+    var show = { 'clear-tap': on && !st.tapped && st.offer !== false, 'clear-reblur': on && !!st.tapped, 'clear-rep': on };
     ids.forEach(function (id) { var b = els[id]; if (b.textContent !== words[id]) b.textContent = words[id]; if (b.hidden !== !show[id]) b.hidden = !show[id]; });
     if (!on) { var m = document.getElementById('clearnopw-report'); if (m) m.remove(); }
   }

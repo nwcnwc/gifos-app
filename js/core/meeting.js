@@ -3411,7 +3411,8 @@
           if (!(myNoBlurAt > clearSince)) return 'repick';   // a share or rebroadcast too: only a No blur picked after the right came on
         } else {
           if (mode === 'stage' && !(where === 'stage' && personOnStage(id))) return 'stageonly';
-          if (!clearTap) return 'tap';
+          if (hasAdminRoom() && !adminPresent()) return 'noadmin';   // the room's own rule first: no tap is offered that could not clear
+          if (!(clearTap && clearMode === mode)) return 'tap';   // a tap counts only for the mode it was given in (never carried into a wider one)
         }
       }
       const m = modOf(id).blur;
@@ -22831,7 +22832,8 @@
       reactRoomState();
       return true;
     }
-    function clearNoPwState() { return { mode: clearNoPwMode(), tapped: clearTap }; }
+    // offer: a tap could clear something now (the room's other rules, like an admin room with no admin here, do not hold it)
+    function clearNoPwState() { const mode = clearNoPwMode(); return { mode, tapped: !!mode && clearTap && clearMode === mode, offer: !!mode && (!hasAdminRoom() || adminPresent()) }; }
     function blurAgain() { if (!clearTap) return; clearTap = false; reactRoomState(); }
     // TELL GIFOS ABOUT THIS HOST: the credential id that put the clear right in this room and nothing else (no room
     // name, link, meeting tag, key, signature or content; no uploads ever): the host's verified plan for 'all', the
