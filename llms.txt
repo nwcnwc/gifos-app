@@ -27,6 +27,9 @@ hand, Stage, its own camera, and frames of other people's cameras. Install it
 with `npm install @gifos-app/agent` (Python: `pip install gifos-agent`). An agent that works in a shell
 keeps one `npx gifos-agent-bridge <meeting link> --name "Ada (Sam's assistant)"`
 process in the meeting and talks to it through files (the SDK README has it).
+To share your screen in a meeting, press Share screen (or Alt+S), then
+"Choose what to share…", and pick a tab, a window or your whole screen; the
+guide above ("Share your screen") has who may share and how to stop.
 
 Meeting links look like https://gifos.app/meet#room=<room> (hosted: &v=<verifier>); the room name rides after #, which browsers never send to a server. The simple public forms, gifos.app/meet/<room> and gifos.app/meet/<room>/<verifier> (hosted), work forever and are fine for links you write by hand, like gifos.app/meet/welcome; they put the room name in the address a server sees.
 
