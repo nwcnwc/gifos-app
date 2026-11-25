@@ -535,5 +535,7 @@
     if (o && o.camera) nativeTrack = o.camera;
   }
 
-  GifOS.meetBgfx = { choice, setChoice, onChange, wants, nativeSync, paint, release, status, fillPicker, preview, configure, unsupported, useUpload };
+  GifOS.meetBgfx = { choice, setChoice, onChange, wants, nativeSync, paint, release, status, fillPicker, preview, configure, unsupported, useUpload,
+    // the load guard's readings, for its unit check
+    guardForTest: { noteSeg: (ms, gap) => noteSeg(ms, gap), notePaint: (ms, gap) => notePaint(ms, gap), mask: (on) => { hasMask = !!on; if (on && !maskC) { maskC = root.document.createElement('canvas'); } } } };
 })(typeof self !== 'undefined' ? self : this);
