@@ -10876,7 +10876,7 @@
         if (!document.getElementById('lic-modal')) {
           const m = document.createElement('div');
           m.id = 'lic-modal'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-labelledby', 'lic-title');
-          m.style.cssText = 'position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45)';
+          m.style.cssText = 'position:fixed;top:0;right:0;bottom:0;left:0;z-index:40;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45)';
           const card = document.createElement('div');
           card.style.cssText = 'max-width:min(92vw,28rem);background:var(--c-white,#fff);color:var(--c-ink,#1d1d1f);border-radius:.6rem;padding:1rem 1.1rem;font:16px/1.45 system-ui,sans-serif';
           const h = document.createElement('h2'); h.id = 'lic-title'; h.textContent = say('licItem', 'License'); h.style.margin = '0 0 .6rem';
