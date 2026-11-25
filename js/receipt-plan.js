@@ -140,11 +140,15 @@
     else if (r === 'x402' || r === 'transfer') key = 'usdc';
     else if (r === 'play' || /^G-/.test(s)) key = 'play';
     else if (r === 'appstore' || /^A-/.test(s)) key = 'appstore';
+    else if (r === 'mpp') key = 'mpp';
+    else if (r === 'fednow') key = 'fednow';
     else return '';
     if (key === 'paypal') return tr('charge.receiptView.method.paypal', 'PayPal');
     if (key === 'usdc') return tr('charge.receiptView.method.usdc', 'USDC on Base');
     if (key === 'play') return tr('charge.receiptView.method.play', 'Google Play');
     if (key === 'appstore') return tr('charge.receiptView.method.appstore', 'App Store');
+    if (key === 'mpp') return tr('charge.receiptView.method.mpp', 'Card, through an AI agent (Stripe Link)');
+    if (key === 'fednow') return tr('charge.receiptView.method.fednow', 'Bank transfer (FedNow)');
     return '';
   }
   function chainUrl(hash, network) {

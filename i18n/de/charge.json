@@ -73,6 +73,8 @@
   "charge.receiptView.method.usdc": "USDC auf Base",
   "charge.receiptView.method.play": "Google Play",
   "charge.receiptView.method.appstore": "App Store",
+  "charge.receiptView.method.mpp": "Karte, über einen KI-Agenten (Stripe Link)",
+  "charge.receiptView.method.fednow": "Banküberweisung (FedNow)",
   "charge.receiptView.heldAsk": "In welchem Meeting ist es?",
   "charge.receiptView.heldNone": "Dieser Tarif ist gerade in keinem Meeting",
   "charge.receiptView.heldOther": "ein Meeting auf einem anderen Gerät",
