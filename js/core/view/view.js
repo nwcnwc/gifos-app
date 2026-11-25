@@ -10752,16 +10752,22 @@
         }
         if (!document.getElementById('lic-modal')) {
           const m = document.createElement('div');
-          m.id = 'lic-modal'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-labelledby', 'lic-title');
-          m.style.cssText = 'position:fixed;top:0;right:0;bottom:0;left:0;z-index:40;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45)';
-          const card = document.createElement('div');
-          card.style.cssText = 'max-width:min(92vw,28rem);background:var(--c-white,#fff);color:var(--c-ink,#1d1d1f);border-radius:.6rem;padding:1rem 1.1rem;font:16px/1.45 system-ui,sans-serif';
-          const h = document.createElement('h2'); h.id = 'lic-title'; h.textContent = say('licItem', 'License'); h.style.margin = '0 0 .6rem';
-          const body = document.createElement('div'); body.id = 'lic-body';
+          // The same dialog as the page's others (run.html #sub-modal: name-modal > name-box with head, body and actions;
+          // dialog.js keeps the Close button outside the scroll), so Close wears the page's own button, not the browser's.
+          m.id = 'lic-modal'; m.className = 'name-modal'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-labelledby', 'lic-title');
+          m.style.display = 'none';
+          const card = document.createElement('div'); card.className = 'name-box dlg';
+          card.style.cssText = 'text-align:left;width:min(92vw,28rem);max-width:min(92vw,28rem)';
+          const head = document.createElement('div'); head.className = 'dlg-head';
+          const h = document.createElement('h3'); h.id = 'lic-title'; h.textContent = say('licItem', 'License');
+          head.appendChild(h);
+          const body = document.createElement('div'); body.id = 'lic-body'; body.className = 'dlg-body';
+          const acts = document.createElement('div'); acts.className = 'dlg-actions';
           const x = document.createElement('button'); x.type = 'button'; x.id = 'lic-close'; x.textContent = say('subUpClose', 'Close');
-          x.style.marginTop = '.8rem';
+          x.style.cssText = 'background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)';
           x.addEventListener('click', close);
-          card.appendChild(h); card.appendChild(body); card.appendChild(x);
+          acts.appendChild(x);
+          card.appendChild(head); card.appendChild(body); card.appendChild(acts);
           m.appendChild(card);
           m.addEventListener('click', (e) => { if (e.target === m) close(); });
           document.body.appendChild(m);

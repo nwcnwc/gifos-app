@@ -2,6 +2,19 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.28",
+      "date": "2026-11-25",
+      "headline": "Everyone in a meeting now runs the same GifOS",
+      "critical": false,
+      "features": [
+        "Older GifOS pages are asked to update before they join, so a meeting never mixes versions and a hosted meeting's size always comes from its permissions."
+      ],
+      "fixes": [
+        "The License dialog's Close button now looks like the other dialogs' buttons.",
+        "The embedded player shares its video controls and Stage blur reading with the meeting page."
+      ]
+    },
+    {
       "version": "0.9.28.27",
       "date": "2026-11-25",
       "headline": "Meeting size is now kept by the meeting service, from the permissions shown in the room",
