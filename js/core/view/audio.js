@@ -328,7 +328,12 @@
     $('apphelp-close').onclick = function () { $('apphelp-modal').style.display = 'none'; };
     (function wireAppFull() {
       var fb = $('appfull'), FS = GifOS.fullscreen;
-      if (FS && FS.supported()) { FS.attach(fb, document.documentElement, { fill: 'app-full', fillIf: hasApp, words: true, enterLabel: T('fullScreen', 'Full screen'), exitLabel: T('leaveFullScreen', 'Leave full screen') }); return; }
+      if (FS && FS.supported()) {
+        var repaint = FS.attach(fb, document.documentElement, { fill: 'app-full', fillIf: hasApp, words: true, enterLabel: T('fullScreen', 'Full screen'), exitLabel: T('leaveFullScreen', 'Leave full screen') });
+        // the app bar keeps the glyph while an app is up: repaint on every body class change, as the meeting page does
+        if (repaint && root.MutationObserver) { try { new MutationObserver(function () { try { repaint(); } catch (e) {} }).observe(body, { attributes: true, attributeFilter: ['class'] }); } catch (e) {} }
+        return;
+      }
       fb.style.display = 'none';
     })();
     if (GifOS.perms) GifOS.perms.attach($('appperms'), { onLeave: function () { C.stopApp(); }, skipCaps: function () { return C.appMode === 'client' ? ['stage'] : []; } });
