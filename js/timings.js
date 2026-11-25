@@ -143,8 +143,17 @@
     NEW_PEER_BEAT_MS: 400,   // ms
     NOSOCK_WIN: 40,   // tick
     OWED_SAMPLE_MS: 400,   // ms
+    PACK_CELL_MIN_PX: 56,   // count
+    PACK_CELL_PX: 112,   // count
     PACK_CLOCK_YIELD_PCT: 150,   // count
+    PACK_CPU_MARGIN: 0.1,   // ratio
+    PACK_CPU_SHARE: 0.5,   // ratio
+    PACK_FPS_CEIL: 8,   // count
+    PACK_FPS_DIV: 2,   // count
+    PACK_FPS_FLOOR: 1,   // count
     PACK_GAP_PCT: 50,   // count
+    PACK_GOV_HOLD_MS: 2000,   // ms
+    PACK_GOV_WINDOW_MS: 4000,   // ms
     PACK_REST_MAX_MS: 1000,   // ms
     PASS_S: 14400,   // s
     PAYPAL_KEEP_MS: 21600000,   // ms
@@ -282,6 +291,7 @@
     VERSION_FIRST_ASK_MS: 3900,   // ms
     VIEW_FPS: 30,   // count
     VOUCH_MS: 180000,   // ms
+    VP8_PLI_GAP_MS: 500,   // ms
     WAKE_PROBE_MS: 1500,   // ms
     WAKE_SETTLE_MS: 6000,   // ms
     WAKE_SUSPECT_MS: 12000,   // ms
@@ -297,6 +307,7 @@
     WSP_STARVE_N: 2,   // count
     WSP_STARVE_WIN: 30000,   // ms
     WSP_TICK_MS: 250,   // ms
+    X2_KEEP_MS: 15000,   // ms
     X402_RESUME_MS: 6000,   // ms
     X402_RESUME_TRIES: 3,   // count
     holdMs: 2500,   // ms

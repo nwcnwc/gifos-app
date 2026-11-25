@@ -2,6 +2,19 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.30",
+      "date": "2026-11-25",
+      "headline": "Bots can see and be seen without a browser",
+      "critical": false,
+      "features": [
+        "Meeting bots that run without a browser now send and receive pictures and sound like everyone else: they can lead a row of the meeting and show their face, or their letter when they have no camera."
+      ],
+      "fixes": [
+        "A person whose voice joins after their picture now lights the speaking dot.",
+        "A face with no picture in the Stadium shows its letter on every kind of seat."
+      ]
+    },
+    {
       "version": "0.9.28.29",
       "date": "2026-11-25",
       "headline": "Apps open straight into their room, with sound",
