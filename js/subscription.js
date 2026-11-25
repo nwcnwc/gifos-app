@@ -431,8 +431,15 @@
     var ask = $('pm-restore-ask');
     if (ask) ask.hidden = false;
     var subs = g.subs || [];
+    // One PayPal account can hold several plans, even two of the same plan: each button names its own plan, and two
+    // that read the same also name their PayPal subscription id (what PayPal itself shows), so no two buttons read alike.
+    var names = subs.map(function (s) { return planLabel(s.tier); });
+    var labels = subs.map(function (s, i) {
+      var same = names.filter(function (n) { return n === names[i]; }).length > 1;
+      return same && s.id ? t('pmRestorePlanId', { plan: names[i], id: s.id }) : names[i];
+    });
     var q = $('pm-restore-q');
-    if (q) q.textContent = t('pmRestoreQ', { plan: subs.map(function (s) { return planLabel(s.tier); }).filter(Boolean).join(', ') });
+    if (q) q.textContent = subs.length > 1 ? t('pmRestoreQMany', { n: subs.length }) : t('pmRestoreQ', { plan: labels.filter(Boolean).join(', ') });
     var storage = subs.some(function (s) { var row = SUB.TIERS[s.tier]; return !!(row && row.storage); });
     var lib = $('pm-restore-lib');
     if (lib) { lib.hidden = !storage; if (storage) lib.textContent = t('pmLibWarn'); }
@@ -445,7 +452,8 @@
       b.type = 'button';
       b.id = i === 0 ? 'pm-restore-yes' : ('pm-restore-yes-' + i);
       b.hidden = false;
-      b.textContent = t('pmRestoreYes');
+      b.textContent = subs.length > 1 ? t('pmRestoreUse', { plan: labels[i] }) : t('pmRestoreYes');
+      b.dataset.sub = s.id || '';
       b.onclick = function () { doClaim(grant, s); };
       if (acts) acts.appendChild(b);
     });
