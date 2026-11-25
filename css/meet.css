@@ -2218,6 +2218,8 @@
   #cambg .devhead { font: 700 13px/1.2 system-ui, sans-serif; color: var(--c-ink); padding: 4px 2px 0; }
   #camchooser #cambg button { background: var(--c-white); color: var(--c-ink); border: 1px solid var(--c-gray); display: flex; align-items: center; gap: 8px; max-width: calc(100vw - 32px); }
   #camchooser #cambg button[aria-checked="true"] { background: var(--c-ink); color: var(--c-white); border-color: var(--c-ink); }
+  #cambg .bgline { display: flex; gap: 6px; }
+  #camchooser #cambg .bgline button { flex: 1 1 0; min-width: 0; }
   #cambg .bgthumb { width: 48px; height: 27px; border-radius: 4px; flex: none; }
   #cambg .bgnote { font: 400 13px/1.3 system-ui, sans-serif; color: var(--c-ink); max-width: 240px; padding: 0 2px; }
   /* Device rows (camera, microphone, speaker) are not the blur greens: a pick

@@ -62,7 +62,7 @@
   const RUNGS_DESK = [1, 2, 3];     // a mask every Nth painted frame
   const RUNGS_PHONE = [2, 3, 4];
   const SHARE_HI = 0.5, SHARE_HI_PHONE = 0.35, SHARE_LO = 0.15;  // the model's share of one core
-  const MAIN_HI = 0.25;             // the composite's share of the main thread
+  const MAIN_HI = 0.25, MAIN_HI_PHONE = 0.35;   // the composite's share of the main thread
   const HOLD_N = 30, EASE_N = 90;   // frames over a limit before a step down / under it before a step up
 
   // ---- the device -------------------------------------------------------------------
@@ -117,7 +117,7 @@
     busy = ''; rungI = startRung();             // a pick of their own lifts a step back
     if (failed && failed.indexOf('unsupported') !== 0) failed = '';   // and tries a failed start again
     picture = null; pictureKey = '';
-    guard.share = 0; guard.main = 0; guard.over = 0; guard.under = 0; guard.mainOver = 0; guard.n = 0; lastPaintAt = 0;
+    guard.share = 0; guard.main = 0; guard.over = 0; guard.under = 0; guard.mainOver = 0; guard.n = 0; guard.gap = 0; lastPaintAt = 0;
     if (mode === 'none') release();
     notify();
   }
@@ -131,7 +131,7 @@
   function rungs() { return phone() ? RUNGS_PHONE : RUNGS_DESK; }
   function startRung() { return powerLevel() === 'save' && !phone() ? 1 : 0; }
   let rungI = 0;
-  const guard = { share: 0, main: 0, over: 0, under: 0, mainOver: 0, n: 0 };
+  const guard = { share: 0, main: 0, over: 0, under: 0, mainOver: 0, n: 0, gap: 0 };
   function readPower() {
     const lv = powerLevel();
     if (lv !== lastPower) {
@@ -145,26 +145,33 @@
     let shed = 0; try { shed = shedFn ? (shedFn() | 0) : 0; } catch (e) { shed = 0; }
     if (shed >= 1 && !busy && cur.mode !== 'none') stepBack('load');
   }
-  // The model's share of a core: its own time per mask over the time between two masks.
+  // THE MODEL KEEPS UP: its time per mask over the time it is given (the rung's frames between two masks). The time
+  // between two answered masks would hide a slowing model (the next ask waits for the last answer, so the gap grows
+  // with it and the share stays flat).
   function noteSeg(ms, gapMs) {
-    if (!(gapMs > 0)) return;
-    const s = Math.min(4, ms / gapMs);
+    const per = guard.gap > 0 ? guard.gap : gapMs;
+    if (!(per > 0)) return;
+    const s = Math.min(4, ms / (per * rungs()[rungI]));
     guard.share = guard.n ? guard.share * 0.8 + s * 0.2 : s;
     guard.n++;
     const hi = phone() ? SHARE_HI_PHONE : SHARE_HI;
     if (guard.share > hi) { guard.over++; guard.under = 0; } else if (guard.share < SHARE_LO) { guard.under++; guard.over = 0; } else { guard.over = 0; guard.under = 0; }
-    if (guard.over >= HOLD_N) {
-      guard.over = 0;
-      if (rungI < rungs().length - 1) rungI++;
-      else stepBack('load');
-    } else if (guard.under >= EASE_N && rungI > startRung()) { guard.under = 0; rungI--; }
+    if (guard.over >= HOLD_N) { guard.over = 0; stepDown(); }
+    else if (guard.under >= EASE_N && rungI > startRung()) { guard.under = 0; rungI--; guard.share = 0; guard.n = 0; }
+  }
+  // One step down the ladder: a mask every more frames (less model work, and fewer frame copies on the main thread);
+  // past the last rung the effect goes off.
+  function stepDown() {
+    if (rungI < rungs().length - 1) { rungI++; guard.share = 0; guard.n = 0; guard.main = 0; guard.mainOver = 0; }
+    else stepBack('load');
   }
   // The composite's share of the main thread: its cost over the time between two paints.
   function notePaint(ms, gapMs) {
     if (!(gapMs > 0)) return;
+    guard.gap = guard.gap ? guard.gap * 0.9 + gapMs * 0.1 : gapMs;
     const s = Math.min(4, ms / gapMs);
     guard.main = guard.main ? guard.main * 0.9 + s * 0.1 : s;
-    if (guard.main > MAIN_HI) { if (++guard.mainOver >= HOLD_N) { guard.mainOver = 0; stepBack('load'); } } else guard.mainOver = 0;
+    if (guard.main > (phone() ? MAIN_HI_PHONE : MAIN_HI)) { if (++guard.mainOver >= HOLD_N) { guard.mainOver = 0; stepDown(); } } else guard.mainOver = 0;
   }
 
   // ---- the native blur ----------------------------------------------------------------
@@ -373,6 +380,17 @@
   // g: { ox, oy, dw, dh, w, h, privacyFrac, blurDraw }: the camera frame lands at ox/oy/dw/dh on a
   // w x h canvas (the pipe's crop or Stage frame); privacyFrac > 0 blurs the whole composite by
   // the pipe's privacy blur (as a fraction of the canvas width, blurDraw's unit).
+  // The background blur is painted at a quarter of the size and stretched back: the same sigma on the picture, a
+  // sixteenth of the filter's work (the blur removes the detail the small copy loses).
+  let bgC = null, bgX = null;
+  function bgBlur(out, src, g, frac, bd) {
+    const q = 4, sw = Math.max(8, Math.round(g.w / q)), sh = Math.max(8, Math.round(g.h / q));
+    if (!bgC) { bgC = root.document.createElement('canvas'); bgX = bgC.getContext('2d'); }
+    if (bgC.width !== sw || bgC.height !== sh) { bgC.width = sw; bgC.height = sh; }
+    bd(bgX, src, g.ox / q, g.oy / q, g.dw / q, g.dh / q, frac);
+    out.imageSmoothingEnabled = true;
+    out.drawImage(bgC, 0, 0, g.w, g.h);
+  }
   function paint(ctx, src, g) {
     if (!wants()) return false;
     const t0 = root.performance.now();
@@ -393,7 +411,7 @@
     if (!hasMask || (choice().mode === 'image' && !pic)) {
       // No mask yet (the model is still loading): the whole frame wears the background blur,
       // so the room never shows clear while the effect starts.
-      bd(out, src, g.ox, g.oy, g.dw, g.dh, bgFrac);
+      bgBlur(out, src, g, bgFrac, bd);
     } else {
       if (!personC) { personC = root.document.createElement('canvas'); personX = personC.getContext('2d'); }
       if (personC.width !== w || personC.height !== h) { personC.width = w; personC.height = h; }
@@ -401,12 +419,10 @@
       personX.drawImage(src, g.ox, g.oy, g.dw, g.dh);
       personX.globalCompositeOperation = 'destination-in';
       personX.imageSmoothingEnabled = true;
-      if (ctxFilterOK) personX.filter = 'blur(' + Math.max(1, Math.round(Math.max(w, h) / 320)) + 'px)';
-      personX.drawImage(maskC, g.ox, g.oy, g.dw, g.dh);
-      if (ctxFilterOK) personX.filter = 'none';
+      personX.drawImage(maskC, g.ox, g.oy, g.dw, g.dh);   // the small soft mask, stretched: its edge stays soft
       personX.globalCompositeOperation = 'source-over';
       if (pic) { out.fillStyle = '#000'; out.fillRect(0, 0, w, h); coverDraw(out, pic, w, h); }
-      else bd(out, src, g.ox, g.oy, g.dw, g.dh, bgFrac);
+      else bgBlur(out, src, g, bgFrac, bd);
       out.drawImage(personC, 0, 0);
     }
     if (priv) bd(ctx, compC, 0, 0, w, h, g.privacyFrac);
@@ -476,6 +492,12 @@
         box.appendChild(up);
         row('pick', t('bgUpload', 'Upload a picture…'), false, () => up.click());
       }
+    }
+    if (phone()) {
+      // A phone's pop-up sits above the dock on a short screen: None and Blur share one line.
+      const line = root.document.createElement('div'); line.className = 'bgline';
+      for (const b of Array.from(box.querySelectorAll('button[data-bg]'))) line.appendChild(b);
+      box.appendChild(line);
     }
     const st = status();
     const words = st.state === 'unsupported' ? t('bgUnavailable', 'Background effects are not available on this device.')
