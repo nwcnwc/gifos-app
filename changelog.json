@@ -2,6 +2,19 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.29",
+      "date": "2026-11-25",
+      "headline": "Apps open straight into their room, with sound",
+      "critical": false,
+      "features": [
+        "Opening an app link now goes straight into the app with a small audio bar: who is here, mute, leave, and a Full meeting button for cameras and the Stage.",
+        "Meetings and broadcasts each have their own lighter page, so they load less."
+      ],
+      "fixes": [
+        "Every old meeting and broadcast link still opens the same room."
+      ]
+    },
+    {
       "version": "0.9.28.28",
       "date": "2026-11-25",
       "headline": "Everyone in a meeting now runs the same GifOS",
