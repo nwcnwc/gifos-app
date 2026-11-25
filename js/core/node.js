@@ -533,6 +533,30 @@ function createMeeting(opts) {
   for (const k of ['digest', 'encrypt', 'decrypt', 'sign', 'verify', 'importKey', 'exportKey', 'generateKey', 'deriveKey', 'deriveBits', 'wrapKey', 'unwrapKey']) {
     csub[k] = (...a) => new R.Promise((res, rej) => subtle[k](...a).then((v) => res(own(v)), rej));
   }
+  // AES-GCM RUNS IN THIS TURN. Node's subtle does each call on the thread pool and settles it in a later turn of the event
+  // loop, so one sealed frame costs one whole turn. The core seals and opens a pair's frames one after another (an ordered
+  // chain), so a participant sent one frame per turn: with several media participants in one process on a small box a turn
+  // is 200 ms, the chain fell 10-30 s behind what the meeting produced, and offers, answers and seat frames arrived that
+  // late (a row-mate lost its seat, a head never shipped its row's mix). The same cipher, made here in the call, settles
+  // in the microtask a browser's does.
+  const gcm = (dec) => (alg, key, data) => new R.Promise((res, rej) => {
+    let c = null, body = null;
+    try {
+      if (!alg || alg.name !== 'AES-GCM' || (alg.tagLength != null && alg.tagLength !== 128)) throw 0;
+      const ko = nodeCrypto.KeyObject.from(key), u8 = (v) => (ArrayBuffer.isView(v) ? Buffer.from(v.buffer, v.byteOffset, v.byteLength) : Buffer.from(v));
+      body = u8(data);
+      if (dec && body.length < 16) throw 0;
+      c = (dec ? nodeCrypto.createDecipheriv : nodeCrypto.createCipheriv)('aes-' + ko.symmetricKeySize * 8 + '-gcm', ko, u8(alg.iv));
+      if (alg.additionalData) c.setAAD(u8(alg.additionalData));
+    } catch (e) { subtle[dec ? 'decrypt' : 'encrypt'](alg, key, data).then((v) => res(own(v)), rej); return; }   // anything else: the port's own subtle
+    try {
+      let out;
+      if (dec) { c.setAuthTag(body.subarray(body.length - 16)); out = Buffer.concat([c.update(body.subarray(0, body.length - 16)), c.final()]); }
+      else out = Buffer.concat([c.update(body), c.final(), c.getAuthTag()]);
+      res(new R.Uint8Array(out).buffer);
+    } catch (e) { const err = new Error('The operation failed for an operation-specific reason'); err.name = 'OperationError'; rej(err); }
+  });
+  csub.encrypt = gcm(false); csub.decrypt = gcm(true);
   g.crypto = { subtle: csub, getRandomValues: (a) => nodeCrypto.webcrypto.getRandomValues(a), randomUUID: () => nodeCrypto.randomUUID() };
   const te = new TextEncoder();
   g.TextEncoder = class TextEncoder { get encoding() { return 'utf-8'; } encode(s) { return new R.Uint8Array(te.encode(s)); } };
