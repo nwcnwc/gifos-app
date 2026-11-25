@@ -2,6 +2,21 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.25",
+      "date": "2026-11-24",
+      "headline": "Use your plan on more devices; restore it if you lose them",
+      "critical": false,
+      "features": [
+        "Use your plan on another device: scan a code on gifos.app/subscription.",
+        "Lost your device? Restore your plan by signing in with PayPal.",
+        "gifos.app/subscription now manages everything about your plan, with full receipts."
+      ],
+      "fixes": [
+        "Plan checks refuse a class of weak keys that no real device makes.",
+        "The share-screen sheet now says the truth: your camera stays on and everyone sees your screen on the Stage."
+      ]
+    },
+    {
       "version": "0.9.28.24",
       "date": "2026-11-24",
       "headline": "Choose what the floating window shows; embed a live broadcast",
