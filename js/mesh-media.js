@@ -381,6 +381,11 @@
   function createPacker(opts) {
     opts = opts || {};
     const shape = opts.shape || 'grid';
+    // A local Stadium view (opts.view) is painted for this screen only and
+    // never encoded. It may take a column count from the layout (setCols)
+    // and its canvas is exactly the grid, with no row-step padding.
+    const viewOn = opts.view === true;
+    let viewCols = 0;
     // SECONDARY-TILE defaults: right for the stadium's tapestry of onlookers,
     // wrong for a feed the room is looking AT. The Stage strip passes its own
     // (run.html, "THE STAGE IS NOT A SECONDARY TILE"); everything else inherits.
@@ -753,11 +758,18 @@
         W = alignW(G * dl.c); cell = W / G; H = Math.max(1, Math.round(R * cell)); // the dense cell is fractional already; the width a multiple of 16 (alignW)
       } else {
         const g = packGrid(T, shape); G = g.cols; R = g.rows;
+        // The local view follows the layout's columns while the seat repaints
+        // cell by cell (25 faces and under). Past that, and for every encoded
+        // stadium, the packed shape stands.
+        if (viewOn && shape === 'stad' && T <= 25 && viewCols >= 1 && viewCols <= T) {
+          G = viewCols; R = Math.ceil(T / viewCols);
+        }
         cell = cellSize(shape, cellPref, maxW, G);
         // Stad squares use the fixed footprint width. Other shapes use the maxW cap.
-        // The stad canvas then rounds UP to a 4-row step. The dark rows under the
+        // An encoded stad canvas rounds UP to a row step. The dark rows under the
         // real grid are not faces; faceSrcRect sizes a face from the block width.
-        const rowsDrawn = shape === 'stad' ? stadRows(R, now) : R;
+        // A local view is exactly the grid: padding would letterbox the tile.
+        const rowsDrawn = (shape === 'stad' && !viewOn) ? stadRows(R, now) : R;
         W = alignW(G * cell); cell = W / G; H = Math.max(1, Math.round(rowsDrawn * cell)); // a multiple of 16 wide (alignW): a whole cell at the 112 default, fractional otherwise
       }
       denseNow = dense; cellNow = cell;
@@ -876,6 +888,15 @@
       // re-derives the canvas from cellPref each frame, so this is enough; a
       // no-op guard keeps a per-sweep call from touching anything.
       setCell(px) { const v = Math.max(6, px | 0); if (v && v !== cellPref) { cellPref = v; lastSig = ''; } },
+      // Layout columns for a local Stadium view. Ignored on an encoded pack,
+      // and ignored past 25 faces (paint keeps stadiumGrid there).
+      setCols(c) {
+        if (!viewOn) return;
+        const n = Math.round(Number(c));
+        if (!isFinite(n) || n === viewCols) return;
+        viewCols = n;
+        lastSig = '';
+      },
       // Same doctrine as setCell, for the other number the power tier moves:
       // the paint RATE. captureStream's rate is fixed at start() and is a
       // CEILING, not a promise — a canvas that paints slower simply emits

@@ -2527,7 +2527,12 @@
             hide.push(sid);
           }
         } catch (e) {}
-        if (!sdView) sdView = MM.createPacker({ shape: 'stad', fps: VIEW_FPS }).start();   // a local paint, never encoded: draw at display rate so the view adds little delay
+        if (!sdView) {
+          sdView = MM.createPacker({ shape: 'stad', fps: VIEW_FPS, view: true }).start();   // a local paint, never encoded: draw at display rate so the view adds little delay
+          let layCols = 0;
+          try { const MV = (typeof GifOS !== 'undefined' && GifOS.meetViews) || null; if (MV && typeof MV.lastStadCols === 'function') layCols = MV.lastStadCols() | 0; } catch (e) {}
+          if (layCols > 0 && sdView.setCols) sdView.setCols(layCols);
+        }
         // The shipped pack names every cell or none. This drawing still has
         // the local list, nulls included, and does not write it back.
         let viewMeta = meta;
