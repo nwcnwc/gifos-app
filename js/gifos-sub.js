@@ -108,7 +108,10 @@
   // have); the display prices below are made from it, so a price changes here and nowhere else (and at PayPal, by
   // making a plan of the same price). window: listed in the Subscribe window (Settings); /subscription lists every row.
   // meetings: how many meetings at once (display; the preset's `meetings` line item decides).
-  function tier(id, name, cents, window, grants) {
+  // Every paid plan (and so every pass preset made from one) carries clearStageInAdminRoom (Nathan 2026-11-25: "build
+  // and turn on now"): a hosted room its holder HOSTS may let viewers tap its Stage clear without a room password.
+  function tier(id, name, cents, window, plain) {
+    const grants = Object.freeze(Object.assign({}, plain, { clearStageInAdminRoom: true }));
     const periods = Object.keys(cents);
     const r = { id, name, cents: Object.freeze(Object.assign({}, cents)), periods: Object.freeze(periods), window, meetings: grants.meetings,
       price: cents.monthly ? usd(cents.monthly) : cents.monthly12 ? usd(cents.monthly12) : null,
@@ -151,7 +154,7 @@
     return big(h.roomLimit) >= big(a.roomLimit) && h.turnVideoLinks >= a.turnVideoLinks && (h.meetings || 1) >= (a.meetings || 1)
       && (h.admitAtFullDoor || !a.admitAtFullDoor) && (h.captureOpenRoom || !a.captureOpenRoom) && (h.storage || !a.storage)
       && (h.clearWithoutPassword === true || a.clearWithoutPassword !== true)
-      && (h.clearWithoutPassword === true || h.clearStageWithoutPassword === true || a.clearStageWithoutPassword !== true);
+      && (h.clearWithoutPassword === true || h.clearStageInAdminRoom === true || a.clearStageInAdminRoom !== true);
   }
   // UPGRADES (Nathan 2026-11-22). upgradeOk({tier, period}, {tier, period}): the move is an upgrade: the new plan gives
   // at least everything the old one gives, it is not the same plan and period, and an annual plan (yearly, or
@@ -203,8 +206,11 @@
   //   clearWithoutPassword  in the holder's hosted room with NO room password, each viewer may tap to unblur (their
   //                    own choice; video stays blurred until then). Optional, false when absent, written only when
   //                    true. No plan or pass preset grants it (Nathan 2026-11-24): staff mint it by hand.
-  //   clearStageWithoutPassword  the same, for the STAGE only: rows, the stadium and everyone off the Stage stay
-  //                    blurred. The weaker, safer sibling (meant for paid plans first); a set with both reads as the full one.
+  //   clearStageInAdminRoom  the STAGE only, and only in a hosted (admin) room its holder HOSTS: with no room password,
+  //                    each viewer may tap the Stage clear (rows, the stadium and everyone off the Stage stay blurred).
+  //                    Every paid plan and pass carries it (Nathan 2026-11-25). It enters the room's ACL only when the
+  //                    room's host shows it (ACL_SCOPE 'host'): a guest's right never clears someone else's Stage.
+  //                    Read under its first name clearStageWithoutPassword too (LEGACY_WORDS: issued credentials).
   // Every word but the optional ones must be present: `meetings` missing reads as 1, `agentHost` missing as 0, `overflow`
   // missing as 'ask' (Nathan 2026-11-22). ISSUED CREDENTIALS NEVER BREAK (Nathan: "we cannot break people's credentials"): the flag every right
   // signed before 0.9.28.x carries, `oneMeeting`, is read forever as what it meant: true = meetings 1, false = no limit
@@ -219,17 +225,19 @@
   const ROOM_LIMIT_MAX = 25;   // a signed room line is 1..25 people, or null: no line (Nathan 2026-11-20)
   const MEETINGS_MAX = 1000000;   // a signed meeting count is 1..1,000,000
   const AGENT_HOST_MAX = 1000;
-  const GRANT_WORDS = Object.freeze(['roomLimit', 'admitAtFullDoor', 'captureOpenRoom', 'turnVideoLinks', 'storage', 'meetings', 'agentHost', 'overflow', 'clearWithoutPassword', 'clearStageWithoutPassword']);
-  const OPTIONAL_WORDS = Object.freeze({ meetings: 1, agentHost: 0, overflow: 'ask', clearWithoutPassword: false, clearStageWithoutPassword: false });
+  const GRANT_WORDS = Object.freeze(['roomLimit', 'admitAtFullDoor', 'captureOpenRoom', 'turnVideoLinks', 'storage', 'meetings', 'agentHost', 'overflow', 'clearWithoutPassword', 'clearStageInAdminRoom']);
+  const OPTIONAL_WORDS = Object.freeze({ meetings: 1, agentHost: 0, overflow: 'ask', clearWithoutPassword: false, clearStageInAdminRoom: false });
   const OVERFLOWS = Object.freeze(['ask', 'keep']);   // word -> what it reads as when the set does not name it
-  const LEGACY_WORDS = Object.freeze(['oneMeeting']);   // read forever (issued credentials), never written
+  // read forever (issued credentials), never written: oneMeeting (-> meetings), clearStageWithoutPassword (the Stage item's
+  // first name, minted only by hand in tests: read as clearStageInAdminRoom)
+  const LEGACY_WORDS = Object.freeze(['oneMeeting', 'clearStageWithoutPassword']);
   const DEFAULTS = g(FREE_LIMIT, false, false, 0, false, 1, 0);
   // effective(grants) -> the defaults raised by a signed right's line items (null roomLimit: no line).
   function effective(x) {
     if (!x) return DEFAULTS;
     return { roomLimit: x.roomLimit === null ? null : Math.max(x.roomLimit, DEFAULTS.roomLimit), admitAtFullDoor: !!x.admitAtFullDoor, captureOpenRoom: !!x.captureOpenRoom,
       turnVideoLinks: Math.max(x.turnVideoLinks | 0, DEFAULTS.turnVideoLinks), storage: !!x.storage, meetings: Math.max(x.meetings | 0, DEFAULTS.meetings),
-      agentHost: Math.max(x.agentHost | 0, 0), overflow: x.overflow === 'keep' ? 'keep' : 'ask', clearWithoutPassword: x.clearWithoutPassword === true, clearStageWithoutPassword: x.clearStageWithoutPassword === true };
+      agentHost: Math.max(x.agentHost | 0, 0), overflow: x.overflow === 'keep' ? 'keep' : 'ask', clearWithoutPassword: x.clearWithoutPassword === true, clearStageInAdminRoom: x.clearStageInAdminRoom === true || x.clearStageWithoutPassword === true };
   }
   const meetingsOk = (v) => intS(v) && v >= 1 && v <= MEETINGS_MAX;
   // grantsOk(x) -> a clean copy in today's words (meetings always written, the legacy oneMeeting turned into it;
@@ -249,12 +257,12 @@
     if (!(intS(agentHost) && agentHost >= 0 && agentHost <= AGENT_HOST_MAX)) return null;
     const overflow = 'overflow' in x ? x.overflow : OPTIONAL_WORDS.overflow;
     if (OVERFLOWS.indexOf(overflow) < 0) return null;
-    for (const k of ['clearWithoutPassword', 'clearStageWithoutPassword']) if (k in x && typeof x[k] !== 'boolean') return null;
+    for (const k of ['clearWithoutPassword', 'clearStageInAdminRoom', 'clearStageWithoutPassword']) if (k in x && typeof x[k] !== 'boolean') return null;
     const out = { roomLimit: x.roomLimit, admitAtFullDoor: x.admitAtFullDoor, captureOpenRoom: x.captureOpenRoom, turnVideoLinks: x.turnVideoLinks, storage: x.storage, meetings };
     if (agentHost) out.agentHost = agentHost;   // written only when granted
     if (overflow === 'keep') out.overflow = overflow;   // written only when not the default
     if (x.clearWithoutPassword === true) out.clearWithoutPassword = true;   // written only when granted
-    if (x.clearStageWithoutPassword === true) out.clearStageWithoutPassword = true;
+    if (x.clearStageInAdminRoom === true || x.clearStageWithoutPassword === true) out.clearStageInAdminRoom = true;
     return out;
   }
   // parseGrantList("roomLimit=12,captureOpenRoom,turnVideoLinks=6") -> { grants } | { error }: the text form of a hand-picked
@@ -308,7 +316,7 @@
   function grantsRights(signed, label, until, key) {
     const x = effective(signed);
     return { signed: !!signed, key: signed && key || null, tier: label || null, subscribed: x.admitAtFullDoor, adminRooms: true, openRooms: true, roomLimit: x.roomLimit, turnAudio: true, turnVideo: x.turnVideoLinks > 0,
-      storage: null, bypassLimit: x.admitAtFullDoor, until, vouches: x.turnVideoLinks, capture: x.captureOpenRoom, meetings: x.meetings, agentHost: x.agentHost || 0, overflow: x.overflow === 'keep' ? 'keep' : 'ask', clearNoPw: x.clearWithoutPassword === true, clearStageNoPw: x.clearStageWithoutPassword === true, grants: signed || null };
+      storage: null, bypassLimit: x.admitAtFullDoor, until, vouches: x.turnVideoLinks, capture: x.captureOpenRoom, meetings: x.meetings, agentHost: x.agentHost || 0, overflow: x.overflow === 'keep' ? 'keep' : 'ask', clearNoPw: x.clearWithoutPassword === true, clearStage: x.clearStageInAdminRoom === true, grants: signed || null };
   }
   // What everyone has with no signed right: the defaults, in the rights shape.
   const FREE = Object.freeze(grantsRights(null, null, 0));
@@ -565,13 +573,6 @@
     if (!tier || typeof tier !== 'object' || !Number.isFinite(tier.exp) || !(nowS < tier.exp)) return false;
     const x = grantsOk(tier.grants);
     return !!x && x.clearWithoutPassword === true;
-  }
-  // clearStageNoPwRight(tier, nowS): the same chain for the Stage-only item (true also when the full item is there:
-  // the full one covers the Stage).
-  function clearStageNoPwRight(tier, nowS) {
-    if (!tier || typeof tier !== 'object' || !Number.isFinite(tier.exp) || !(nowS < tier.exp)) return false;
-    const x = grantsOk(tier.grants);
-    return !!x && (x.clearStageWithoutPassword === true || x.clearWithoutPassword === true);
   }
   // ---- passes ----------------------------------------------------------------
   // A PASS is a receipt the payment service signs once: {v, kind, payeeId,
@@ -845,11 +846,11 @@
     if (overflow === 'keep') grants.overflow = overflow;
     const clearNoPw = held.some((r) => r.clearNoPw === true);
     if (clearNoPw) grants.clearWithoutPassword = true;
-    const clearStageNoPw = held.some((r) => r.clearStageNoPw === true);
-    if (clearStageNoPw) grants.clearStageWithoutPassword = true;
+    const clearStage = held.some((r) => r.clearStage === true);
+    if (clearStage) grants.clearStageInAdminRoom = true;
     const until = Math.min.apply(null, held.map((r) => (r.until == null ? Infinity : r.until)));
     return Object.assign({}, top, { signed: true, roomLimit, subscribed: any('subscribed'), bypassLimit: grants.admitAtFullDoor, turnVideo: vouches > 0, vouches, capture: grants.captureOpenRoom,
-      meetings, agentHost, overflow, clearNoPw, clearStageNoPw, grants, storage: top.storage || (held.find((r) => r.storage) || {}).storage || null, until: top.until, unionUntil: until,
+      meetings, agentHost, overflow, clearNoPw, clearStage, grants, storage: top.storage || (held.find((r) => r.storage) || {}).storage || null, until: top.until, unionUntil: until,
       sources: held.map((r) => ({ tier: r.tier, pass: !!r.pass, key: r.key, until: r.until })) });
   }
 
@@ -861,7 +862,7 @@
     const x = r && r.signed ? r : FREE;
     return { signed: !!x.signed, label: x.tier || null, roomLimit: x.roomLimit, admitAtFullDoor: !!x.bypassLimit, captureOpenRoom: !!x.capture,
       turnVideoLinks: x.vouches | 0, storage: !!(x.grants && x.grants.storage), meetings: x.meetings || 1, agentHost: x.agentHost | 0, overflow: x.overflow === 'keep' ? 'keep' : 'ask',
-      clearWithoutPassword: x.clearNoPw === true, clearStageWithoutPassword: x.clearStageNoPw === true,
+      clearWithoutPassword: x.clearNoPw === true, clearStageInAdminRoom: x.clearStage === true,
       until: x.signed ? endJson(x.until) : null,
       sources: (x.sources || (x.signed ? [{ tier: x.tier, pass: !!x.pass, until: x.until }] : [])).map((s) => ({ label: s.tier || null, pass: !!s.pass, until: endJson(s.until) })) };
   }
@@ -1079,25 +1080,35 @@
   // A room's ACL is the OR of the ROOM-scoped line items of every meeting right verified in it: the largest roomLimit
   // (null, no limit, beats any number), and any room-scoped flag. Holder-scoped items (capture, admitAtFullDoor, the
   // meeting count...) are rights of their holder and never enter the room's ACL. Compact, so it rides relay attachments:
-  // {l: roomLimit (null = no limit), f: bit set over ACL_FLAGS, s: when the room got its current limit (ms)}. No ACL at all
-  // is the DEFAULTS. Only the relay decides by it; anyone in the room may READ it (the License view: aclView).
-  // THE SCOPE OF EACH LINE ITEM: 'room' = once anyone in the room shows it, the room has it; 'holder' = only its holder.
+  // {l: roomLimit (null = no limit), f: bit set over ACL_FLAGS, s: when the room got its current limit (ms), c: the
+  // credential id (credId) of the HOST right that first put a host-scoped flag in (so Report can name it, and GifOS
+  // revoke it)}. No ACL at all is the DEFAULTS. Only the relay decides by it; anyone in the room may READ it (the
+  // License view: aclView; the receiver-side Stage blur: aclHas).
+  // THE SCOPE OF EACH LINE ITEM: 'room' = once anyone in the room shows it, the room has it; 'host' = the room has it
+  // once the room's HOST shows it (the same presentation proves this room's host key; Nathan 2026-11-25: "it only
+  // applies to rooms that the license owner hosts, otherwise an admin who is expecting their stage to be blurry may
+  // suddenly have their stage cleared"); 'holder' = only its holder, never the room.
   const ACL_SCOPE = Object.freeze({ roomLimit: 'room', admitAtFullDoor: 'holder', captureOpenRoom: 'holder', storage: 'holder', clearWithoutPassword: 'holder',
-    clearStageWithoutPassword: 'holder', turnVideoLinks: 'holder', meetings: 'holder', agentHost: 'holder', overflow: 'holder' });
-  // The room-scoped flags, in bit order (none today; a new one is appended, never reordered).
-  const ACL_FLAGS = Object.freeze(Object.keys(ACL_SCOPE).filter((k) => ACL_SCOPE[k] === 'room' && k !== 'roomLimit'));
+    clearStageInAdminRoom: 'host', turnVideoLinks: 'holder', meetings: 'holder', agentHost: 'holder', overflow: 'holder' });
+  // The room's flags (room- and host-scoped), in bit order (a new one is appended, never reordered).
+  const ACL_FLAGS = Object.freeze(Object.keys(ACL_SCOPE).filter((k) => ACL_SCOPE[k] !== 'holder' && k !== 'roomLimit'));
   const aclSame = (a, n) => !!a && n.l === a.l && n.f === (a.f | 0);
-  // aclAdd(acl, grants) -> the ACL with a right's room-scoped line items ORed in (the same object when nothing is new).
-  // at: now (ms), kept as the ACL's `s` when its limit changes.
-  function aclAdd(acl, grants, at) {
+  const credOk = (c) => !!c && typeof c === 'object' && typeof c.subId === 'string' && c.subId.length > 0;
+  // aclAdd(acl, grants, at, by) -> the ACL with a right's line items for the room ORed in (the same object when nothing
+  // is new). at: now (ms), kept as the ACL's `s` when its limit changes. by: {host: true} only when the presenter
+  // proved THIS room's host key with it (else host-scoped items add nothing), cred: the right's credId.
+  function aclAdd(acl, grants, at, by) {
     const x = grantsOk(grants);
     if (!x) return acl || null;
+    const host = !!by && by.host === true;
     const a = acl || { l: DEFAULTS.roomLimit, f: 0 };
     let f = a.f | 0;
-    ACL_FLAGS.forEach((k, i) => { if (x[k] === true) f |= (1 << i); });
+    ACL_FLAGS.forEach((k, i) => { if (x[k] === true && (ACL_SCOPE[k] === 'room' || host)) f |= (1 << i); });
     const n = { l: a.l === null || x.roomLimit === null ? null : Math.max(a.l | 0, x.roomLimit, DEFAULTS.roomLimit), f };
     if (aclSame(acl, n)) return acl;
     n.s = acl && n.l === acl.l && acl.s ? acl.s : (+at || 0);
+    if (acl && credOk(acl.c)) n.c = acl.c;
+    else if (f !== (a.f | 0) && host && credOk(by.cred)) n.c = by.cred.pid ? { subId: by.cred.subId, pid: by.cred.pid } : { subId: by.cred.subId };
     return n;
   }
   // aclJoin(a, b) -> the union of two ACLs (a itself when b adds nothing; null when both are none).
@@ -1107,22 +1118,33 @@
     const n = { l: a.l === null || b.l === null ? null : Math.max(a.l | 0, b.l | 0), f: (a.f | 0) | (b.f | 0) };
     if (aclSame(a, n)) return a;
     n.s = n.l === a.l ? a.s || 0 : b.s || 0;   // since: from the side that holds the limit now
+    const c = credOk(a.c) ? a.c : credOk(b.c) ? b.c : null;
+    if (c) n.c = c;
     return n;
+  }
+  // aclFromSay(m) -> the ACL a page heard from the relay ({t:'acl'} or joined.acl: l 0 = no limit, f, s, c), or null.
+  function aclFromSay(m) {
+    if (!m || !Number.isInteger(m.l) || m.l < 0) return null;
+    const acl = { l: m.l === 0 ? null : m.l, f: Number.isInteger(m.f) && m.f > 0 ? m.f : 0 };
+    if (Number.isInteger(m.s) && m.s > 0) acl.s = m.s;
+    if (credOk(m.c) && (SUB_ID_RE.test(m.c.subId) || /^K-[0-9a-f]{24}$/.test(m.c.subId))) acl.c = typeof m.c.pid === 'string' && PASS_ID_RE.test(m.c.pid) ? { subId: m.c.subId, pid: m.c.pid } : { subId: m.c.subId };
+    return acl;
   }
   // aclLimit(acl) -> the room's people limit from its ACL: a number, or null (no limit). No ACL: the DEFAULTS' limit.
   const aclLimit = (acl) => (acl ? (acl.l === null ? null : Math.max(acl.l | 0, DEFAULTS.roomLimit)) : DEFAULTS.roomLimit);
   // aclView(acl) -> what the License view shows: the permissions the room holds, never a plan, a name or a ticket:
   // {limit (null = no people limit), none (no permission shown yet: the default rule applies), since (ms, or null)}.
-  const aclView = (acl) => ({ limit: aclLimit(acl), none: !acl || (acl.l !== null && (acl.l | 0) <= DEFAULTS.roomLimit && !(acl.f | 0)), since: acl && acl.s ? acl.s : null });
+  // clearStage: the room's host showed clearStageInAdminRoom (viewers may tap the Stage clear with no room password).
+  const aclView = (acl) => ({ limit: aclLimit(acl), none: !acl || (acl.l !== null && (acl.l | 0) <= DEFAULTS.roomLimit && !(acl.f | 0)), since: acl && acl.s ? acl.s : null, clearStage: aclHas(acl, 'clearStageInAdminRoom') });
   // aclHas(acl, item) -> whether the room holds a room-scoped flag (a holder-scoped word is never the room's).
   const aclHas = (acl, item) => !!acl && ACL_FLAGS.indexOf(item) >= 0 && ((acl.f | 0) & (1 << ACL_FLAGS.indexOf(item))) !== 0;
 
   GifOS.sub = {
-    ACL_FLAGS, ACL_SCOPE, aclAdd, aclJoin, aclLimit, aclHas, aclView,
+    ACL_FLAGS, ACL_SCOPE, aclAdd, aclJoin, aclLimit, aclHas, aclView, aclFromSay,
     TIERS, TIER_IDS, PERIODS, NEGOTIATED, ADDONS, usd, covers, upgradeOk, upgradeCharge, APP_TIERS, tiersSoldIn, tiersListed, FREE, TEXT, PEOPLE_LIMIT, LICENSE_KIND, SELLER, KEY_RE, edKeyOk, edKeyWeak, edSigWeak, edVerify, SUB_ID_RE, ASK_WINDOW_S,
     FREE_PLAN, FREE_LIMIT, PLANS, PLAN_IDS, isPlan, isPaid,
     checkLicense, verifyLicense, rightsOf, storageAfterLapse, proofMessage, verifyProof, askMessage, askFresh,
-    admission, roomContext, doorContext, roomTierOf, clearNoPwRight, clearStageNoPwRight, credId, doorVerdict, doorProofOk,
+    admission, roomContext, doorContext, roomTierOf, clearNoPwRight, credId, doorVerdict, doorProofOk,
     TICKET_KIND, TICKET_S, RENEW_EVERY_S, meetingTag, checkTicket, verifyTicket, ticketRights,
     PASS_KIND, passSeconds, PASS_PLAN, PASS_PRICE, PASS_VALUE, ORDER_ID_RE, PASS_ID_RE, passMessage, checkPass, passLive, passEnd, verifyPass,
     passStart, passRights, meetingRight, heldRights, rank, rightsJson,

@@ -828,6 +828,7 @@
   "meet.licNone": "Noch keine Berechtigungen: bis zu {n} Personen",
   "meet.licNoLimit": "Keine Personengrenze",
   "meet.licUpTo": "Bis zu {n} Personen",
+  "meet.licClearStage": "Klares Bühnenvideo (gehostete Meetings)",
   "meet.licSince": "seit {time}",
   "meet.licOpen": "Keine Personengrenze: offene Meetings haben keine",
   "meet.licAsOf": "Stand: {when}",

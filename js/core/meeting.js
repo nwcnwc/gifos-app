@@ -3397,8 +3397,9 @@
     //   forall   someone's "Blur for all" on this person
     //   noadmin  an admin room with no admin here
     //   ready    a plain room where not everyone is ready (camera on, No blur): the viewer counts too
-    //   tap        a hosted room with no password whose host's signed plan lets viewers tap to unblur: not tapped yet
-    //   stageonly  the same, but the plan's item covers the Stage only, and this picture is not a Stage view
+    //   tap        a hosted room with no password whose clear right lets viewers tap to unblur: not tapped yet
+    //   stageonly  the same, but the right covers the Stage only (clearStageInAdminRoom in the room's ACL), and this
+    //              picture is not a Stage view
     //   repick     my own No blur was picked before this room's clear right came on: pick it again to be clear
     // where: 'stage' when the picture is a Stage view (a Stage face box), else a grid, row or stadium picture.
     function blurHold(id, where) {
@@ -3444,7 +3445,8 @@
     // clearTap: THIS viewer chose to unblur in a no-password room with a clear right (memory only: a reload, another
     // room, or the right going away or changing ends it). clearSince: when the current mode began; myNoBlurAt: when I
     // last picked No blur myself in the meeting. corePayKeyP: the pay key a core-only host reads (roomTierVia).
-    let clearForTest = false, clearTap = false, clearMode = '', clearSince = 0, myNoBlurAt = 0, corePayKeyP = null; // clearForTest: a test stands in for a consented password room
+    // roomAcl: the room's ACL as the relay last said it (joined.acl, {t:'acl'}; GifOS.sub.aclFromSay), or null.
+    let clearForTest = false, clearTap = false, clearMode = '', clearSince = 0, myNoBlurAt = 0, corePayKeyP = null, roomAcl = null; // clearForTest: a test stands in for a consented password room
     // asIfCamOn: the level a camera-off seat's PLACEHOLDER (initial or picture)
     // takes. It stands in for the face, so it is as soft as the face would be
     // with the camera on: soft in a soft room, clear in a clear one. The same
@@ -3484,8 +3486,9 @@
       // reachable by unvetted strangers triggers minor-protection law in many
       // countries. The password gate is the legal boundary, with ONE signed
       // exception (Nathan 2026-11-24): a hosted room whose host's pay-signed
-      // plan carries clearWithoutPassword (or clearStageWithoutPassword, the
-      // Stage only). Even then nothing is clear by default: each viewer taps
+      // plan carries clearWithoutPassword, or (Nathan 2026-11-25) whose ACL
+      // holds clearStageInAdminRoom, the Stage only, put there by the room's
+      // own host (every paid plan and pass carries it). Even then nothing is clear by default: each viewer taps
       // to unblur (tapUnblur, behind the age-gate hook), the host is
       // accountable through the credential id (Report), and a sender's own
       // No blur counts only when picked after the right came on.)
@@ -12366,8 +12369,11 @@
     yield 1438;
     function onRelayFrame(m) {
       // THE LICENSE: the relay's reading of this room's permissions (joined.acl, and the answer to a License ask).
+      // It is also the one source of this room's Stage clear right (clearNoPwMode): the relay's word, never a peer's.
       if ((m.t === 'acl' && Number.isInteger(m.l) && !m.error) || (m.t === 'joined' && m.acl && Number.isInteger(m.acl.l))) {
+        roomAcl = GifOS.sub.aclFromSay(m.t === 'joined' ? m.acl : m);
         try { if (GifOS.licenseView && GifOS.licenseView.heard) GifOS.licenseView.heard(m.t === 'joined' ? m.acl : m); } catch (e) {}
+        clearNoPwTick();
       }
       if (m.t === 'joined') relayTv = m.tv === 1;   // this relay vouches for TURN links (see relayTv)
       if (m.t === 'joined' && !av) capServerKey = m.cap && m.cap.ck ? m.cap.ck : null;   // the server's word on the capture at this join
@@ -21582,6 +21588,7 @@
         vMuted: f.stream && f.stream.getVideoTracks()[0] ? f.stream.getVideoTracks()[0].muted : null,
         vState: f.stream && f.stream.getVideoTracks()[0] ? f.stream.getVideoTracks()[0].readyState : null,
       })),
+      clearStateForTest: () => clearNoPwState(),   // CLEARSTAGE rooms: the core's clear mode and this viewer's tap
       stageForTest: (on) => { if (!!on === !!myStatus.stg) return stageIds().includes(myId); if (on && (!canStage(myId) || stageIds().length >= SCALE.C)) return false; setStage(!!on); return true; },
       // The exact call the strip compositor makes when it packs a seat's cell.
       // Asserted directly because the alternative — reading pixels out of a
@@ -22780,16 +22787,17 @@
     }
     // CLEAR VIDEO WITHOUT A PASSWORD (Nathan 2026-11-24). clearNoPwMode(): 'all' when this hosted room has no password,
     // its host is here, and the host's VERIFIED plan (subsRoomTier: pay-signed ticket for this meeting, proven in the
-    // host's signed orders, current) carries clearWithoutPassword; 'stage' when it carries only clearStageWithoutPassword
-    // (the full item wins); '' otherwise (an open or captured room, a password room, no host, no plan, a plan being
-    // checked, forged, run out or revoked: the payment service stops renewing it). The receiver decides with it.
+    // host's signed orders, current) carries clearWithoutPassword; 'stage' (Nathan 2026-11-25) when the room's ACL, as the
+    // relay says it, holds clearStageInAdminRoom: the relay ORs it in only from a right the room's HOST showed with this
+    // room's host proof (GifOS.sub.ACL_SCOPE 'host'), and it lasts as long as the room; '' otherwise (an open or captured
+    // room, a password room, no such right). The receiver decides with it, never the sender.
     function clearNoPwMode() {
-      if (roomPw || !av || !adminPresent()) return '';
-      let t = null; try { t = subsRoomTier(); } catch (e) { t = null; }
-      const n = Date.now() / 1000;
-      if (GifOS.sub.clearNoPwRight(t, n)) return 'all';
-      if (GifOS.sub.clearStageNoPwRight(t, n)) return 'stage';
-      return '';
+      if (roomPw || !av) return '';
+      if (adminPresent()) {
+        let t = null; try { t = subsRoomTier(); } catch (e) { t = null; }
+        if (GifOS.sub.clearNoPwRight(t, Date.now() / 1000)) return 'all';
+      }
+      return GifOS.sub.aclHas(roomAcl, 'clearStageInAdminRoom') ? 'stage' : '';
     }
     function clearNoPwTick() {
       try { if (av) subsRoomTier(); } catch (e) {}
@@ -22825,13 +22833,16 @@
     }
     function clearNoPwState() { return { mode: clearNoPwMode(), tapped: clearTap }; }
     function blurAgain() { if (!clearTap) return; clearTap = false; reactRoomState(); }
-    // TELL GIFOS ABOUT THIS HOST: the room's verified credential id and nothing else (no room name, link, meeting tag,
-    // key, signature or content; no uploads ever). GifOS can then review that plan's clear-video right.
+    // TELL GIFOS ABOUT THIS HOST: the credential id that put the clear right in this room and nothing else (no room
+    // name, link, meeting tag, key, signature or content; no uploads ever): the host's verified plan for 'all', the
+    // room ACL's c (the host right the relay took the Stage item from) for 'stage'. GifOS can then revoke it.
     // -> 'sent' | 'failed' | 'none' (no clear right here).
     async function reportClearHost() {
-      if (!clearNoPwMode() || !subsTier || !subsTier.cred || !subsTier.cred.subId) return 'none';
-      const cred = { subId: subsTier.cred.subId };
-      if (subsTier.cred.pid) cred.pid = subsTier.cred.pid;
+      const mode = clearNoPwMode();
+      const c = mode === 'all' ? subsTier && subsTier.cred : mode === 'stage' ? roomAcl && roomAcl.c : null;
+      if (!c || !c.subId) return 'none';
+      const cred = { subId: c.subId };
+      if (c.pid) cred.pid = c.pid;
       const base = String(window.GIFOS_PAY_URL || 'https://pay.gifos.app').replace(/\/$/, '');
       try {
         const r = await fetch(base + '/gifos/report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ v: 1, cred }), referrerPolicy: 'no-referrer', credentials: 'omit' });
