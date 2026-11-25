@@ -4,7 +4,7 @@
  * The broadcast viewer as a video player in someone else's page. The meeting is the same signed core and browser
  * media plane as the meeting page; this file is the only view: a player, not the meeting's screen.
  *
- * HOW A SECOND PAGE HOSTS THE CORE (the contract this file keeps):
+ * HOW A SECOND PAGE HOSTS THE CORE: the shared view library keeps the contract (js/core/view/kit.js, GifOS.viewKit.host):
  *   - every name the core and the media plane ask of the view exists. The ones a player has no use for are the
  *     linker's counted stand-ins (GifOS.core.standIn, as the Node host's headless view), and the view's VARIABLES the
  *     media plane reads (its elements) are real: the stage feed this page shows, detached stand-ins for controls a
@@ -17,42 +17,15 @@
 (function (root) {
   'use strict';
   var GifOS = root.GifOS = root.GifOS || {};
-  var P = GifOS.coreParts || {};
-  if (!P.core || !GifOS.core) return;
-  var RECORDS = { makeTile: ['tile', 'video', 'label', 'avatar', 'chips', 'cap', 'modbar', 'voteBtn'] };
+  var K = GifOS.viewKit;
+  if (!K || !GifOS.core || !(GifOS.coreParts || {}).core) return;
 
   function part(L) {
-    var C = L.core, M = L.media;
-    var needs = {};
-    [P.core, P.media].forEach(function (p) { if (p && p.needs && p.needs.view) Object.assign(needs, p.needs.view); });
-    var counts = new Map();
-    var names = GifOS.core.standIn('view', needs, counts, true);
     var $ = function (id) { return document.getElementById(id); };
-    var own = {};
-    function fn(name, f) { own[name] = f; }
-    function vr(name, v) { Object.defineProperty(names, name, { value: v, writable: true, enumerable: true, configurable: true }); }
-
-    // ---- the elements the media plane reads ----------------------------------------------------------------
+    // the elements the media plane reads: the stage feed this page shows; the rest are the kit's detached stand-ins
     var stagefeedEl = $('stagefeed');
-    vr('stagefeedEl', stagefeedEl);
-    vr('stadiumEl', document.createElement('div'));          // the audience mosaic: a player does not show it
-    var cv = function () { return document.createElement('canvas'); };
-    var ca = cv(), cb = cv();
-    vr('blurA', ca); vr('blurActx', ca.getContext('2d'));
-    vr('blurB', cb); vr('blurBctx', cb.getContext('2d'));
-    ['timingRow', 'ccDockBtn', 'chatPanel', 'recBtn', 'micBtn', 'unmuteBtn', 'camBtn', 'handBtn', 'keysModal'].forEach(function (n) {
-      if (Object.prototype.hasOwnProperty.call(needs, n) && !needs[n]) vr(n, document.createElement(n === 'chatPanel' || n === 'keysModal' || n === 'timingRow' ? 'div' : 'button'));
-    });
-    vr('paintFaders', function () {});
-    Object.keys(needs).forEach(function (n) {   // any other element a later core asks for: a detached stand-in, never a throw at load
-      if (!needs[n] && !Object.prototype.hasOwnProperty.call(own, n)) {
-        var d = Object.getOwnPropertyDescriptor(names, n);
-        if (d && d.get) { try { d.get(); } catch (e) { vr(n, document.createElement('div')); } }
-      }
-    });
-    Object.keys(RECORDS).forEach(function (n) {
-      fn(n, function () { var r = {}; RECORDS[n].forEach(function (k) { r[k] = GifOS.core.placeholder('view.' + n + '().' + k); }); return r; });
-    });
+    var H = K.host(L, { elements: { stagefeedEl: stagefeedEl } });
+    var C = H.C, M = H.M, names = H.names, fn = H.fn;
 
     // ---- the player ------------------------------------------------------------------------------------------
     // The gear menu is presentation only. It never changes what the core decides (who is hosted, the password, the sound gate).
@@ -106,17 +79,8 @@
     var tried = false;
 
     function stageVideo() { return stagefeedEl.querySelector('.rowtile video'); }
-    function stageLevel() {   // the strictest blur the room's rule gives anyone on the stage
-      var lv = 0;
-      try { C.stageIds().forEach(function (id) { lv = Math.max(lv, C.blurLevelFor(id) || 0); }); } catch (e) { lv = 2; }
-      return lv;
-    }
-    function watchCount() {
-      var up = new Set();
-      try { C.stageIds().forEach(function (id) { up.add(id); }); } catch (e) {}
-      try { C.adminsNow().forEach(function (id) { up.add(id); }); } catch (e) {}
-      return Math.max(0, C.roomHeadCount() - up.size);
-    }
+    function stageLevel() { return K.stageLevel(C); }
+    function watchCount() { return K.watchCount(C); }
     function hear(on) {
       C.serviceHeard = !!on;
       try { M.applyBuses(); } catch (e) {}
@@ -287,44 +251,14 @@
       if (document.body.classList.contains('emb-has-share')) return $('emb-share-video');
       return stageVideo();
     }
-    function pipOn() {
-      try { if (document.pictureInPictureEnabled) return 'std'; } catch (e) {}
-      var v = visibleVideo();
-      try { if (v && typeof v.webkitSupportsPresentationMode === 'function' && v.webkitSupportsPresentationMode('picture-in-picture')) return 'wk'; } catch (e) {}
-      return '';
-    }
+    function pipOn() { return K.pip.kind(visibleVideo()); }
     function paintPip() {
       var row = $('emb-m-pip');
       if (!row) return;
       row.hidden = !(controls.has('pip') && pipOn());
     }
-    function togglePip() {
-      var v = visibleVideo();
-      if (!v) return;
-      try {
-        if (document.pictureInPictureEnabled) {
-          if (document.pictureInPictureElement) { var ex = document.exitPictureInPicture(); if (ex && ex.catch) ex.catch(function () {}); }
-          else if (typeof v.requestPictureInPicture === 'function') { var pr = v.requestPictureInPicture(); if (pr && pr.catch) pr.catch(function () {}); }
-          return;
-        }
-        if (typeof v.webkitSupportsPresentationMode === 'function' && v.webkitSupportsPresentationMode('picture-in-picture') && typeof v.webkitSetPresentationMode === 'function') {
-          v.webkitSetPresentationMode(v.webkitPresentationMode === 'picture-in-picture' ? 'inline' : 'picture-in-picture');
-        }
-      } catch (e) {}
-    }
-    function toggleFull() {   // the same three paths the old bar button used
-      try {
-        if (GifOS.fullscreen && GifOS.fullscreen.supported()) { GifOS.fullscreen.toggle(document.documentElement); return; }
-        var d = document, de = d.documentElement;
-        if (de.requestFullscreen || de.webkitRequestFullscreen) {
-          if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d);
-          else (de.requestFullscreen || de.webkitRequestFullscreen).call(de);
-          return;
-        }
-        var v = visibleVideo();   // iPhone: only a video element goes full screen
-        if (v && v.webkitEnterFullscreen) v.webkitEnterFullscreen();
-      } catch (e) {}
-    }
+    function togglePip() { K.pip.toggle(visibleVideo()); }
+    function toggleFull() { K.fullscreen.toggle(visibleVideo); }
     function paintFull() {
       var b = $('emb-m-fullscreen');
       if (!b) return;
@@ -332,15 +266,7 @@
       try { on = !!(document.fullscreenElement || document.webkitFullscreenElement); } catch (e) {}
       b.setAttribute('aria-pressed', on ? 'true' : 'false');
     }
-    function capWho(byId, label) {
-      if (label) return String(label);
-      try {
-        if (byId && byId === C.myId && typeof C.myName === 'function') return String(C.myName() || '');
-        var p = C.peers && typeof C.peers.get === 'function' ? C.peers.get(byId) : null;
-        if (p && p.name) return String(p.name);
-      } catch (e) {}
-      return '';
-    }
+    function capWho(byId, label) { return K.nameOf(C, byId, label); }
     function paintCapBar() {
       var bar = $('emb-cap');
       if (!bar) return;
@@ -439,12 +365,9 @@
     });
     fn('hideJoinPwModal', function () { $('emb-card').hidden = true; paint(); });
     fn('replaceAddress', function () {});     // an embed keeps its address (a framed /cast is refused)
-    ['paintLiveBadge', 'paintRoomTrust', 'paintControls', 'paintStagePlate', 'paintStatusLine', 'paintBroadcastRole', 'capPaint', 'applyAdminUi', 'layout'].forEach(function (n) {
-      if (Object.prototype.hasOwnProperty.call(needs, n)) fn(n, paint);
-    });
-    Object.keys(own).forEach(function (n) { Object.defineProperty(names, n, { value: own[n], writable: true, enumerable: true, configurable: true }); });
+    H.paintsAll(['paintLiveBadge', 'paintRoomTrust', 'paintControls', 'paintStagePlate', 'paintStatusLine', 'paintBroadcastRole', 'capPaint', 'applyAdminUi', 'layout'], paint);
+    H.finish();
 
-    names.standInsForTest = function () { return Array.from(counts); };
     // The player paints once the linker's run returns, even when the meeting's start stops early (an embed that names
     // no hosted broadcast joins nothing, and says why).
     queueMicrotask(function () { try { paint(); } catch (e) {} });
@@ -542,19 +465,5 @@
     }
   }
 
-  // THE STEPS. The first step only publishes the player's names (nothing of the core has run yet: its variables are
-  // not set). The player wires its input after the core's whole top level (a step past every part's last), when the
-  // entry is parsed and the join is under way.
-  var AFTER_ALL = 1e9;
-  var api = {
-    name: 'view', stamp: P.core.stamp, needs: {}, count: 0, exports: {},
-    run: function* (L) {
-      var made = part(L);
-      Object.defineProperties(L.view, Object.getOwnPropertyDescriptors(made.names));
-      yield AFTER_ALL;
-      made.setup();
-      return L.END;
-    },
-  };
-  (GifOS.coreParts = GifOS.coreParts || {}).view = api;
+  K.part(part);   // names at the first step; setup after the core's whole top level
 })(typeof window !== 'undefined' ? window : globalThis);
