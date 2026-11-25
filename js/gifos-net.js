@@ -51,7 +51,9 @@
   // pair: STUN only. A TURN server is added to ONE pair's settings, and only at
   // the end whose own network is blocked (run.html turnPcConfig), with a
   // credential the TURN service gives only for two seated vouches of that pair.
-  // The relay carries signaling, never content; free TURN carries no video.
+  // The relay carries signaling, never content. TURN is only the fallback for a
+  // firewalled pair and passes end-to-end encrypted media it cannot read; free
+  // TURN carries no video.
   const ICE_SERVERS = [
     { urls: 'stun:stun.cloudflare.com:3478' },
     { urls: 'stun:stun.l.google.com:19302' },

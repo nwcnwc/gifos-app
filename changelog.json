@@ -735,7 +735,7 @@
         "Opening GifOS after an update now takes you to the new version at once, instead of the version you last used.",
         "Safari: joining the same meeting again from the same tab no longer stops with \"This page did not finish loading\".",
         "Meetings: the connection steps no longer say \"your network blocks direct calls\" when it is the other person's network that does.",
-        "GifOS Meet for iPhone can now use the relay servers when a network blocks direct calls."
+        "GifOS Meet for iPhone now gets through firewalls that block direct calls, using the fallback relay; calls stay end-to-end encrypted."
       ]
     },
     {
@@ -744,7 +744,7 @@
       "headline": "Offices behind strict firewalls join one meeting, and healing is faster",
       "critical": false,
       "features": [
-        "Meetings: two offices or companies behind strict firewalls can now join the same meeting. A relay server links their rooms, and everyone sees, hears and counts everyone in the other rooms.",
+        "Meetings: two offices or companies behind strict firewalls can now join the same meeting. A fallback relay links their rooms, passing only end-to-end encrypted media, and everyone sees, hears and counts everyone in the other rooms.",
         "Meetings: if one end of a link between two offices drops out, a spare link takes over, so the far office keeps its sound.",
         "Meetings: Follow the speaker now also follows people talking in other rows, zooming the Stadium to their tile.",
         "Meetings: admin rooms can take a monthly or yearly plan through PayPal. A plan pays for video over the relay between offices, and several subscribers' shares add up for the whole meeting.",

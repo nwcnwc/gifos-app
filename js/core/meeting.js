@@ -7543,7 +7543,7 @@
     // renegotiation then read as a lost pair: a slow answer turned the tile to "no route", the reach line to "cannot
     // reach room" and asked a friend to relay a pair that was up. With max-bundle every m-line rides the one transport
     // from the start, so the pc's states stay true through a renegotiation. Every engine GifOS runs on supports it.
-    // TURN.18 THE WEB PATH'S CLOCK (turnPath().at): when a TURN client's connection began trying its relay servers. A server named
+    // TURN.18 THE WEB PATH'S CLOCK (turnPath().at): when a TURN client's connection (a firewalled end) began trying its TURN servers. A server named
     // by its host name is tried only once the browser has looked the name up, and a slow resolver that answers (4 s) used to
     // eat the whole TURN_WEB_WAIT counted from the start of gathering: the link took the web path with no TURN try. So the
     // clock starts at the browser's first word on a server (a candidate error or a relay candidate: the names are looked up);
