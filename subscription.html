@@ -105,8 +105,9 @@
       </label>
     </div>
     <div id="pm-move" hidden>
-      <h3 data-t="subscription.pmMove">Use on another device</h3>
-      <button type="button" class="go" id="pm-move-go" data-t="subscription.pmMoveGo">Use on another device</button>
+      <h3 data-t="subscription.pmMove">Add this plan to another device</h3>
+      <p class="quiet" id="pm-move-help" data-t="subscription.pmMoveHelp">Your plan works on all your devices, in one meeting at a time.</p>
+      <button type="button" class="go" id="pm-move-go" data-t="subscription.pmMoveGo">Add this plan to another device</button>
       <div id="pm-move-live" hidden>
         <div id="pm-qr"></div>
         <p id="pm-link"></p>
@@ -121,6 +122,7 @@
       </div>
     </div>
     <div id="pm-recv" hidden>
+      <h3 data-t="subscription.pmRecvTitle">Add a plan from your other device</h3>
       <p data-t="subscription.pmRecvLead">Type this code on the device that has your plan</p>
       <p id="pm-recv-code"></p>
       <p id="pm-recv-status" role="status"></p>
@@ -135,12 +137,19 @@
     <div id="pm-restore-block">
       <label class="quiet" for="pm-restore-sub" data-t="subscription.pmRestoreSub">Not found? Add the subscription ID from your PayPal email (starts with I-), optional</label>
       <input id="pm-restore-sub" maxlength="44" autocomplete="off" spellcheck="false" placeholder="I-…" style="display:block;margin:4px 0 8px;min-height:44px;font:inherit;padding:0 10px;border-radius:10px;border:1px solid #333;background:#0c0e12;color:#fff;max-width:20rem;width:100%">
-      <button type="button" id="pm-restore" data-t="subscription.pmRestore">Restore with PayPal</button>
+      <button type="button" id="pm-restore" data-t="subscription.pmRestore">Restore with PayPal (lost device)</button>
+      <div id="pm-restore-confirm" hidden>
+        <p id="pm-restore-warn" role="alert" data-t="subscription.pmRestoreWarn">This signs out every other device that has your plan. To keep them, add this device from one of them instead.</p>
+        <div class="row">
+          <button type="button" class="go" id="pm-restore-continue" data-t="subscription.pmRestoreContinue">Continue</button>
+          <button type="button" id="pm-restore-cancel" data-t="subscription.pmRestoreCancel">Cancel</button>
+        </div>
+      </div>
       <div id="pm-restore-ask" hidden>
         <p id="pm-restore-q"></p>
-        <p id="pm-restore-lib" hidden data-t="subscription.pmLibWarn">Your library opens only on a device that still has your old plan file or that you move the plan from.</p>
+        <p id="pm-restore-lib" hidden data-t="subscription.pmLibWarn">Your library opens only on a device that still has your old plan file or that you add the plan from.</p>
         <div id="pm-restore-acts" class="row">
-          <button type="button" class="go" id="pm-restore-yes" hidden data-t="subscription.pmRestoreYes">Move it here</button>
+          <button type="button" class="go" id="pm-restore-yes" hidden data-t="subscription.pmRestoreYes">Use it on this device</button>
         </div>
       </div>
     </div>
@@ -159,20 +168,20 @@
     <div id="pm-signout-wrap" hidden>
       <button type="button" id="pm-signout" data-t="subscription.pmSignout">Sign out other devices</button>
       <div id="pm-signout-ask" hidden>
-        <p data-t="subscription.pmSignoutAsk">Sign out every other device? This device keeps the plan. The others stop until you move it again or restore it.</p>
+        <p data-t="subscription.pmSignoutAsk">Sign out every other device? This device keeps the plan. The others stop until you add the plan to them again or restore it.</p>
         <button type="button" id="pm-signout-yes" data-t="subscription.pmSignoutYes">Sign out</button>
       </div>
     </div>
   </section>
   <ul id="plans" class="plans"></ul>
   <section class="note" id="upgrade-note">
-    <h2 data-t="subscription.upgradeTitle">Moving to a bigger plan</h2>
+    <h2 data-t="subscription.upgradeTitle">Changing to a bigger plan</h2>
     <p data-t="subscription.upgradeNow">A bigger plan replaces yours. Its first charge is smaller: we take off a credit for the unused time of your current plan. Every charge after that is the full price.</p>
     <p data-t="subscription.upgradeCancel">We cancel the plan it replaces as soon as the new one starts, so you are never billed twice.</p>
-    <p data-t="subscription.upgradeRule">A yearly plan can move only to a bigger yearly plan. A monthly plan can move to a bigger monthly or yearly plan.</p>
+    <p data-t="subscription.upgradeRule">A yearly plan can change only to a bigger yearly plan. A monthly plan can change to a bigger monthly or yearly plan.</p>
     <p data-t="subscription.upgradeStack">Plans add up: a pass or an add-on you hold counts on top of your plan, so their meetings at once add together.</p>
     <p data-t="subscription.upgradePass">A four-hour pass is never cancelled: it keeps running beside any plan.</p>
-    <p data-t="subscription.fileNote">Your plan lives in this browser. Keep a copy: download your subscription file here, or choose Use on another device on gifos.app/subscription.</p>
+    <p data-t="subscription.fileNote">Your plan lives in this browser. Keep a copy: download your subscription file here, or choose Add this plan to another device on gifos.app/subscription.</p>
   </section>
   <p class="quiet" id="legal"></p>
 </div>

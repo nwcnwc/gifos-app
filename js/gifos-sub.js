@@ -879,7 +879,7 @@
       'index.html': '<!doctype html><meta charset="utf-8"><title>GifOS subscription</title>' +
         '<body style="font:15px/1.5 system-ui;padding:1.2rem"><h2>GifOS subscription</h2><p>' + (t ? t.name + '.' : '') + (w ? ' Four-hour passes: ' + w.passes.length + '.' : '') + '</p>' +
         '<p>Keep this file in the Providers folder on your Home Screen, or open it in a meeting\u2019s Settings on another browser. ' +
-        'A subscription works in as many meetings at once as its plan says (one, unless it says more): joining one more moves it from the oldest.</p><p>Anyone with this file can use your subscription and passes. Keep it private.</p>',
+        'A subscription works in as many meetings at once as its plan says (one, unless it says more): joining one more takes the place of the oldest.</p><p>Anyone with this file can use your subscription and passes. Keep it private.</p>',
     };
     if (ok) files['subscription.json'] = JSON.stringify(ok);
     if (w) files['passes.json'] = JSON.stringify(w);

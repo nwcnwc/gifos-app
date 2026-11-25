@@ -460,7 +460,19 @@
       var subIn = $('pm-restore-sub');
       var subId = subIn ? String(subIn.value || '').trim() : '';
       if (subId && !/^I-[A-Za-z0-9]{4,40}$/.test(subId)) { say(t('pmRestoreSubBad')); return; }
-      P.restoreStartUrl(subId || null).then(function (u) { location.assign(u); }, function (e) { say(String((e && e.message) || e) || t('pmFailed')); });
+      // Restoring signs out every other device: ask first. Nothing is sent to PayPal until Continue.
+      show('pm-restore-confirm', true);
+      var go = $('pm-restore-continue');
+      if (go && go.focus) go.focus();
+    });
+    on('pm-restore-cancel', function () { show('pm-restore-confirm', false); });
+    on('pm-restore-continue', function () {
+      var P2 = PM();
+      if (!P2) return;
+      var subIn2 = $('pm-restore-sub');
+      var subId2 = subIn2 ? String(subIn2.value || '').trim() : '';
+      show('pm-restore-confirm', false);
+      P2.restoreStartUrl(subId2 || null).then(function (u) { location.assign(u); }, function (e) { say(String((e && e.message) || e) || t('pmFailed')); });
     });
     on('pm-cancel', function () {
       if (!MS().cancel) return;

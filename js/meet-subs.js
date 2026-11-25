@@ -1050,8 +1050,8 @@
   const PLAN_NAME = { room20: 'planNameRoom20', unlimited: 'planNameUnlimited', streamer: 'planNameStreamer', free: 'planNameFree',
     family: 'planNameFamily', smallBusiness: 'planNameSmallBusiness', business: 'planNameBusiness', largeBusiness: 'planNameLargeBusiness', enterprise: 'planNameEnterprise' };
   // How many meetings at once the subscription powers, in Settings (n from the license's line items).
-  const meetingsWords = (n) => (n > 1 ? fill(tx('subMeetingsN', 'Your subscription works in up to {n} meetings at once. Joining one more, here or in another browser, moves it from the oldest. To use it on another device, choose Use on another device on gifos.app/subscription.'), { n })
-    : tx('subMeetings1', 'Your subscription works in one meeting at a time. Joining a meeting, here or in another browser, moves it there. To use it on another device, choose Use on another device on gifos.app/subscription.'));
+  const meetingsWords = (n) => (n > 1 ? fill(tx('subMeetingsN', 'Your plan works on all your devices, in up to {n} meetings at once. Joining one more takes the place of the oldest. To add it to another device, choose Add this plan to another device on gifos.app/subscription.'), { n })
+    : tx('subMeetings1', 'Your plan works on all your devices, in one meeting at a time. Joining a meeting on any of them uses it there. To add it to another device, choose Add this plan to another device on gifos.app/subscription.'));
   const planName = (tier, t) => (PLAN_NAME[tier] ? tx(PLAN_NAME[tier], t.name) : t.name);
   const planShort = (tier) => { const x = PLAN_SHORT[tier]; return x ? tx(x[0], x[1]) : tx('planNone', 'No plan'); };
   const clockOf = (s) => { try { return new Date(s * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } };
@@ -1160,8 +1160,8 @@
   const dateOf = (s) => { try { return new Date(s * 1000).toLocaleDateString(); } catch (e) { return ''; } };
   // The subscription page draws the move code. A meeting must not: the code would be on a shared screen.
   function planPageLinks(row) {
-    row.appendChild(el('a', { class: BTN, style: BTN_STYLE + ';display:inline-block;text-decoration:none', id: 'sub-move-link', href: '/subscription#move', target: '_blank', rel: 'noopener' }, tx('subMoveLink', 'Use on another device')));
-    row.appendChild(el('a', { class: BTN, style: BTN_STYLE + ';display:inline-block;text-decoration:none', id: 'sub-restore-link', href: '/subscription#restore', target: '_blank', rel: 'noopener' }, tx('subRestoreLink', 'Restore with PayPal')));
+    row.appendChild(el('a', { class: BTN, style: BTN_STYLE + ';display:inline-block;text-decoration:none', id: 'sub-move-link', href: '/subscription#move', target: '_blank', rel: 'noopener' }, tx('subMoveLink', 'Add this plan to another device')));
+    row.appendChild(el('a', { class: BTN, style: BTN_STYLE + ';display:inline-block;text-decoration:none', id: 'sub-restore-link', href: '/subscription#restore', target: '_blank', rel: 'noopener' }, tx('subRestoreLink', 'Restore with PayPal (lost device)')));
   }
   async function paintSettings(credNow) {
     const body = document.querySelector('#sub-modal .dlg-body');
@@ -1560,10 +1560,10 @@
       const free = SUB.FREE_LIMIT;
       if (opts.entries.length === 1 && opts.places <= 1) {
         const e = opts.entries[0];
-        line('sub-move-title', fill(e.people === 1 ? tx('subMoveOne1', 'Your plan is powering \u201c{name}\u201d (1 person). Move it here?') : e.people ? tx('subMoveOne', 'Your plan is powering \u201c{name}\u201d ({n} people). Move it here?') : tx('subMoveOneNoCount', 'Your plan is powering \u201c{name}\u201d. Move it here?'), { name: nameOf(e), n: e.people }), true);
+        line('sub-move-title', fill(e.people === 1 ? tx('subMoveOne1', 'Your plan is powering \u201c{name}\u201d (1 person). Use it in this meeting?') : e.people ? tx('subMoveOne', 'Your plan is powering \u201c{name}\u201d ({n} people). Use it in this meeting?') : tx('subMoveOneNoCount', 'Your plan is powering \u201c{name}\u201d. Use it in this meeting?'), { name: nameOf(e), n: e.people }), true);
         line('sub-move-note', fill(tx('subMoveNote', 'That meeting will then let in only {free} new people and lose firewall video.'), { free }));
         line('sub-move-teach', tx('subMoveTeach', 'Your plan powers one meeting at a time.'));
-        btn('sub-move-go', tx('subMoveGo', 'Move it here'), { right: e.right, meeting: e.meeting });
+        btn('sub-move-go', tx('subMoveGo', 'Use it in this meeting'), { right: e.right, meeting: e.meeting });
         btn('sub-move-keep', tx('subMoveKeep', 'Keep it there'), { keep: true });
       } else {
         line('sub-move-title', tx('subMoveMany', 'Every meeting your plans cover is in use. Take one for this meeting?'), true);
@@ -1589,7 +1589,7 @@
       if (document.getElementById('sub-away')) return true;
       const box = el('div', { id: 'sub-away', role: 'status', 'aria-live': 'polite', style: CARD_STYLE });
       box.appendChild(el('span', { id: 'sub-away-msg', style: 'flex:1 1 12rem' }, tx('subAway', 'Your plan is in use in another meeting.')));
-      const here = el('button', { type: 'button', id: 'sub-away-here', class: BTN, style: BTN_STYLE }, tx('subAwayHere', 'Move it here'));
+      const here = el('button', { type: 'button', id: 'sub-away-here', class: BTN, style: BTN_STYLE }, tx('subAwayHere', 'Use it in this meeting'));
       here.onclick = () => { box.remove(); takePlanHere(); };
       box.appendChild(here);
       box.appendChild(el('a', { id: 'sub-away-manage', href: '/subscription', target: '_blank', rel: 'noopener' }, tx('subAwayManage', 'Manage')));
@@ -1618,11 +1618,11 @@
       if (c || typeof document === 'undefined' || !document.getElementById) return;
       const live = document.getElementById('sub-host-up');
       if (!live || document.getElementById('sub-host-elsewhere')) return;
-      const line = el('p', { id: 'sub-host-elsewhere', style: 'flex:1 1 100%;margin:.2rem 0 0' }, fill(tx('subHostElsewhere', 'This browser has no plan, so this meeting runs on Free (up to {n} people). Bought a plan on another phone or computer? Move it here.'), { n: SUB.FREE_LIMIT }));
+      const line = el('p', { id: 'sub-host-elsewhere', style: 'flex:1 1 100%;margin:.2rem 0 0' }, fill(tx('subHostElsewhere', 'This browser has no plan, so this meeting runs on Free (up to {n} people). Bought a plan on another phone or computer? Add it to this device.'), { n: SUB.FREE_LIMIT }));
       line.appendChild(document.createTextNode(' '));
-      line.appendChild(el('a', { href: '/subscription#get', id: 'sub-host-elsewhere-link', target: '_blank', rel: 'noopener' }, tx('subHostMoveGo', 'Move it here with a code')));
+      line.appendChild(el('a', { href: '/subscription#get', id: 'sub-host-elsewhere-link', target: '_blank', rel: 'noopener' }, tx('subHostMoveGo', 'Add a plan from your other device')));
       line.appendChild(document.createTextNode(' · '));
-      line.appendChild(el('a', { href: '/subscription#restore', id: 'sub-host-restore-link', target: '_blank', rel: 'noopener' }, tx('subHostRestoreGo', 'Restore with PayPal')));
+      line.appendChild(el('a', { href: '/subscription#restore', id: 'sub-host-restore-link', target: '_blank', rel: 'noopener' }, tx('subHostRestoreGo', 'Restore with PayPal (lost device)')));
       live.appendChild(line);
     }).catch(() => {});
     return bar;
