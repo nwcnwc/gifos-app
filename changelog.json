@@ -2,6 +2,19 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.27",
+      "date": "2026-11-25",
+      "headline": "Meeting size is now kept by the meeting service, from the permissions shown in the room",
+      "critical": false,
+      "features": [
+        "Hosted meetings: anyone in the room can open More \u2192 License to see the permissions the meeting holds, such as \"Up to 20 people\" or \"No people limit\".",
+        "A permission someone brings stays with the meeting for as long as it runs, even after they leave."
+      ],
+      "fixes": [
+        "A full hosted meeting now says so at once, with the number of people it holds, and lets you in by itself when a place opens."
+      ]
+    },
+    {
       "version": "0.9.28.26",
       "date": "2026-11-25",
       "headline": "Embedded broadcasts show LIVE at once; the Stage is blurred the same everywhere",
