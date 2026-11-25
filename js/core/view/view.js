@@ -11180,7 +11180,7 @@
               : data === 'connect'
                 ? (0, /*()*/__C.uiText)('stealConnect', '🥷 Yours now — the room as it stood when you joined, in your Stolen Apps.')
                 : (0, /*()*/__C.uiText)('stealAll', '🥷 Yours now — saved to your desktop’s Stolen Apps, data and all.'));
-            setTimeout(() => { b.textContent = label; b.disabled = false; }, 4000);
+            setTimeout(() => { b.textContent = label; b.disabled = false; }, GifOS.timings.APP_STEAL_DONE_MS);
           })
           .catch((e) => { fold(); (0, /*()*/__C.setStatus)((0, /*()*/__C.uiText)('stealFail', 'Could not steal: {err}').split('{err}').join(e && e.message || e)); });
       };

@@ -304,14 +304,40 @@
         a.click();
       }).catch(function (e) { C.setStatus(T('barSaveFail', 'Could not save: {err}').split('{err}').join(e && e.message || e)); });
     };
+    // Steal is two wants (the game and its scoreboard, or the game alone): the first press asks which, on the button
+    // itself; the confirmation stays where the finger is.
     $('appsteal').onclick = function () {
       if (!(C.appClientCtl && C.appClientCtl.stealToDesktop)) return;
       var b = $('appsteal');
-      b.disabled = true;
-      C.appClientCtl.stealToDesktop({ data: 'current' }).then(function () {
-        b.textContent = T('stealDone', '🥷 Stolen ✓');
-        C.setStatus(T('stealAll', '🥷 Yours now — saved to your desktop’s Stolen Apps, data and all.'));
-      }).catch(function (e) { b.disabled = false; C.setStatus(T('stealFail', 'Could not steal: {err}').split('{err}').join(e && e.message || e)); });
+      if (b.dataset.armed) return;
+      b.dataset.armed = '1';
+      var label = b.textContent, picks = [];
+      var fold = function () { delete b.dataset.armed; picks.forEach(function (x) { x.remove(); }); b.style.display = ''; };
+      var go = function (data, btn) {
+        picks.forEach(function (x) { x.disabled = true; });
+        btn.textContent = T('stealBusy', 'Stealing…');
+        C.appClientCtl.stealToDesktop({ data: data }).then(function () {
+          fold();
+          b.textContent = T('stealDone', '🥷 Stolen ✓'); b.disabled = true;
+          C.setStatus(data === 'none' ? T('stealNone', '🥷 Yours now — a clean copy in your desktop’s Stolen Apps, none of the room’s data.')
+            : data === 'connect' ? T('stealConnect', '🥷 Yours now — the room as it stood when you joined, in your Stolen Apps.')
+              : T('stealAll', '🥷 Yours now — saved to your desktop’s Stolen Apps, data and all.'));
+          setTimeout(function () { b.textContent = label; b.disabled = false; }, GifOS.timings.APP_STEAL_DONE_MS);
+        }).catch(function (e) { fold(); C.setStatus(T('stealFail', 'Could not steal: {err}').split('{err}').join(e && e.message || e)); });
+      };
+      var mk = function (txt, title, data) {
+        var x = document.createElement('button');
+        x.textContent = txt; x.title = title; x.className = b.className; x.dataset.steal = data; x.style.fontSize = '16px';
+        x.onclick = function () { go(data, x); };
+        b.parentNode.insertBefore(x, b.nextSibling);
+        picks.push(x);
+        return x;
+      };
+      b.style.display = 'none';
+      // each lands at b.nextSibling: reads left to right as + data · as I joined · app only
+      mk(T('stealApp', 'app only'), T('stealAppTip', 'A clean copy — the app alone, none of the room’s data'), 'none');
+      mk(T('stealJoined', 'as I joined'), T('stealJoinedTip', 'The app and the room as it stood when you came in'), 'connect');
+      mk(T('stealData', '+ data'), T('stealDataTip', 'The app and everything in it right now'), 'current');
     };
     function openAppHelp() {
       var Hl = GifOS.help;
@@ -504,7 +530,8 @@
     // It shows while this page is in a meeting: an app-first meeting always, an app room once its call is on or Talk is.
     function inMeeting() {
       if (C.ROOM.solo) return false;
-      if (C.ROOM.kind === 'app') return body.classList.contains('call-on') || body.classList.contains('audio-on');
+      // an app room's call is the host's Talk switch: with Talk off every mic is quiet and the control folds away
+      if (C.ROOM.kind === 'app') return body.classList.contains('audio-on');
       return true;
     }
     function paintBar() {
