@@ -52,6 +52,34 @@
   button:focus-visible, a:focus-visible { outline: 2px solid var(--c-white); outline-offset: 2px; }
   section.note { margin-top: var(--s-4); }
   section.note h2 { margin-bottom: var(--s-2); }
+  .pm { display: grid; gap: var(--s-3); margin: var(--s-3) 0 var(--s-4); }
+  .pm h2 { margin: 0; }
+  .pm h3 { font-size: var(--fs-body); font-weight: 600; margin: 0 0 var(--s-2); }
+  .pm .row { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; }
+  .pm p { margin: 0; }
+  .pm ul { margin: 0; padding-left: 1.1rem; }
+  .pm input[type="text"], .pm input[type="number"], #pm-code {
+    font: inherit; color: var(--c-white); background: var(--c-night); border: 1px solid var(--c-chip);
+    border-radius: var(--r-sm); min-height: 44px; padding: 0 12px; width: 100%; max-width: 16rem;
+  }
+  #pm-file-use { font: inherit; min-height: 44px; max-width: 100%; color: var(--c-label); }
+  #pm-recv-code { font-size: 2rem; font-weight: 700; letter-spacing: .25em; margin: var(--s-2) 0; }
+  #pm-link { word-break: break-all; }
+  #pm-qr { background: var(--c-white); border-radius: var(--r-sm); padding: var(--s-2); max-width: 280px; }
+  #pm-qr svg { display: block; width: 100%; height: auto; }
+  /* The receipt slip, same rows as receipt.html. Scoped so .pm .row (the button row) stays as it is. */
+  #pm-receipt { margin-top: var(--s-3); }
+  #pm-receipt .slip { background: var(--c-night); border-radius: var(--r-md); padding: 12px var(--s-3); }
+  #pm-receipt .slip .row { display: flex; justify-content: space-between; gap: var(--s-3); padding: 6px 0; border-bottom: 1px solid #1c1f26; align-items: flex-start; }
+  #pm-receipt .slip .row:last-child { border-bottom: 0; }
+  #pm-receipt .slip .row span { color: var(--c-gray); }
+  #pm-receipt .slip .row b { text-align: right; word-break: break-all; font-weight: 600; }
+  #pm-receipt .note { color: var(--c-gray); font-size: var(--fs-label); margin-top: var(--s-2); }
+  #pm-receipt a.tx-link { color: #9db4ff; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+  @media (max-width: 360px) {
+    .wrap { padding-left: 12px; padding-right: 12px; }
+    .pm button, .pm a.btn, #pm-code, #pm-file-use { max-width: 100%; }
+  }
 </style>
 </head>
 <body>
@@ -61,17 +89,100 @@
     <a href="/meet" data-t="subscription.back">GifOS Meet</a>
   </div>
   <p class="quiet" data-t="subscription.intro">Every plan works on gifos.app/meet. Public open-floor meetings are always free.</p>
+  <p class="quiet" id="no-account" data-t="subscription.noAccount">No account needed. Your plan lives on your devices, and if you ever lose them, restore it with the PayPal account you paid with.</p>
   <p id="held" class="notice" role="status" aria-live="polite"></p>
   <p id="say" class="notice" role="status" aria-live="polite" hidden></p>
+  <section class="pm" id="get">
+    <h2 data-t="subscription.pmTitle">Your plan</h2>
+    <div id="pm-meetings" hidden>
+      <h3 data-t="subscription.pmMeetings">Meetings holding this plan</h3>
+      <ul id="pm-meetings-list"></ul>
+      <p data-t="subscription.pmMoveHow">Start or join the meeting on this device; you will be asked which meeting gives up its place.</p>
+    </div>
+    <div class="row" id="pm-files">
+      <button type="button" id="pm-file-get" hidden data-t="subscription.pmFileGet">Download subscription file</button>
+      <label class="row"><span data-t="subscription.pmFileUse">Use a subscription file</span>
+        <input id="pm-file-use" type="file" accept="image/gif,.gif">
+      </label>
+    </div>
+    <div id="pm-move" hidden>
+      <h3 data-t="subscription.pmMove">Add this plan to another device</h3>
+      <p class="quiet" id="pm-move-help" data-t="subscription.pmMoveHelp">Your plan works on all your devices, in one meeting at a time.</p>
+      <button type="button" class="go" id="pm-move-go" data-t="subscription.pmMoveGo">Add this plan to another device</button>
+      <div id="pm-move-live" hidden>
+        <div id="pm-qr"></div>
+        <p id="pm-link"></p>
+        <div class="row">
+          <button type="button" id="pm-copy" data-t="subscription.pmCopy">Copy</button>
+        </div>
+        <label class="row"><span data-t="subscription.pmCodeLabel">Code from the other device</span>
+          <input id="pm-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6">
+        </label>
+        <button type="button" id="pm-code-go" data-t="subscription.pmCodeGo">Continue</button>
+        <p id="pm-move-status" role="status"></p>
+      </div>
+    </div>
+    <div id="pm-recv" hidden>
+      <h3 data-t="subscription.pmRecvTitle">Add a plan from your other device</h3>
+      <p data-t="subscription.pmRecvLead">Type this code on the device that has your plan</p>
+      <p id="pm-recv-code"></p>
+      <p id="pm-recv-status" role="status"></p>
+    </div>
+    <div id="pm-replace" hidden>
+      <p id="pm-replace-q" data-t="subscription.pmReplace">Replace the plan on this device?</p>
+      <div class="row">
+        <button type="button" class="go" id="pm-replace-yes" data-t="subscription.pmReplaceYes">Replace</button>
+        <button type="button" id="pm-replace-no" data-t="subscription.pmReplaceNo">Keep the plan on this device</button>
+      </div>
+    </div>
+    <div id="pm-restore-block">
+      <label class="quiet" for="pm-restore-sub" data-t="subscription.pmRestoreSub">Not found? Add the subscription ID from your PayPal email (starts with I-), optional</label>
+      <input id="pm-restore-sub" maxlength="44" autocomplete="off" spellcheck="false" placeholder="I-…" style="display:block;margin:4px 0 8px;min-height:44px;font:inherit;padding:0 10px;border-radius:10px;border:1px solid #333;background:#0c0e12;color:#fff;max-width:20rem;width:100%">
+      <button type="button" id="pm-restore" data-t="subscription.pmRestore">Restore with PayPal (lost device)</button>
+      <div id="pm-restore-confirm" hidden>
+        <p id="pm-restore-warn" role="alert" data-t="subscription.pmRestoreWarn">This signs out every other device that has your plan. To keep them, add this device from one of them instead.</p>
+        <div class="row">
+          <button type="button" class="go" id="pm-restore-continue" data-t="subscription.pmRestoreContinue">Continue</button>
+          <button type="button" id="pm-restore-cancel" data-t="subscription.pmRestoreCancel">Cancel</button>
+        </div>
+      </div>
+      <div id="pm-restore-ask" hidden>
+        <p id="pm-restore-q"></p>
+        <p id="pm-restore-lib" hidden data-t="subscription.pmLibWarn">Your library opens only on a device that still has your old plan file or that you add the plan from.</p>
+        <div id="pm-restore-acts" class="row">
+          <button type="button" class="go" id="pm-restore-yes" hidden data-t="subscription.pmRestoreYes">Use it on this device</button>
+        </div>
+      </div>
+    </div>
+    <div class="row" id="pm-pay" hidden>
+      <button type="button" id="pm-cancel" data-t="subscription.pmCancel">Cancel subscription</button>
+      <a class="btn" id="pm-manage" href="https://www.paypal.com/myaccount/autopay/" target="_blank" rel="noopener" data-t="subscription.pmManage">Manage at PayPal</a>
+    </div>
+    <div id="pm-receipts">
+      <h3 data-t="subscription.pmReceipts">Receipts and purchases</h3>
+      <div class="row">
+        <a class="btn" id="pm-purchases" href="/" data-t="subscription.pmPurchases">Purchases on your Home Screen</a>
+        <a class="btn" id="pm-activity" href="https://www.paypal.com/myaccount/activities" target="_blank" rel="noopener" data-t="subscription.pmActivity">PayPal activity</a>
+      </div>
+      <div id="pm-receipt" hidden></div>
+    </div>
+    <div id="pm-signout-wrap" hidden>
+      <button type="button" id="pm-signout" data-t="subscription.pmSignout">Sign out other devices</button>
+      <div id="pm-signout-ask" hidden>
+        <p data-t="subscription.pmSignoutAsk">Sign out every other device? This device keeps the plan. The others stop until you add the plan to them again or restore it.</p>
+        <button type="button" id="pm-signout-yes" data-t="subscription.pmSignoutYes">Sign out</button>
+      </div>
+    </div>
+  </section>
   <ul id="plans" class="plans"></ul>
   <section class="note" id="upgrade-note">
-    <h2 data-t="subscription.upgradeTitle">Moving to a bigger plan</h2>
+    <h2 data-t="subscription.upgradeTitle">Changing to a bigger plan</h2>
     <p data-t="subscription.upgradeNow">A bigger plan replaces yours. Its first charge is smaller: we take off a credit for the unused time of your current plan. Every charge after that is the full price.</p>
     <p data-t="subscription.upgradeCancel">We cancel the plan it replaces as soon as the new one starts, so you are never billed twice.</p>
-    <p data-t="subscription.upgradeRule">A yearly plan can move only to a bigger yearly plan. A monthly plan can move to a bigger monthly or yearly plan.</p>
+    <p data-t="subscription.upgradeRule">A yearly plan can change only to a bigger yearly plan. A monthly plan can change to a bigger monthly or yearly plan.</p>
     <p data-t="subscription.upgradeStack">Plans add up: a pass or an add-on you hold counts on top of your plan, so their meetings at once add together.</p>
     <p data-t="subscription.upgradePass">A four-hour pass is never cancelled: it keeps running beside any plan.</p>
-    <p data-t="subscription.fileNote">Your plan lives in this browser. Keep a copy: download your subscription file from Settings in a meeting.</p>
+    <p data-t="subscription.fileNote">Your plan lives in this browser. Keep a copy: download your subscription file here, or choose Add this plan to another device on gifos.app/subscription.</p>
   </section>
   <p class="quiet" id="legal"></p>
 </div>
@@ -83,6 +194,9 @@
 <script src="js/gifos-store.js"></script>
 <script src="js/gifos-sub.js"></script>
 <script src="js/meet-subs.js"></script>
+<script src="js/vendor/qrcode.js"></script>
+<script src="js/gifos-planmove.js"></script>
+<script src="js/receipt-plan.js"></script>
 <script src="js/subscription.js"></script>
 </body>
 </html>

@@ -2776,7 +2776,10 @@
     /* width:auto, not the base 100%: 100% plus the 16px margin ran the card
        off the right edge and cut its corners square. */
     #lobby .lobby-card { width: auto; max-width: none; margin: 16px 16px 16px 0; border-radius: 20px; padding: 28px 32px; overflow: auto; }
+    #lobby .lob-plans { position: sticky; bottom: 0; z-index: 2; display: block; background: var(--c-white); padding-top: 8px; }
   }
+  #lob-plans { display: inline-flex; align-items: center; min-height: 44px; font-weight: 650; }
+  #lobby.form-open #lob-plans { display: none; }
   /* A 320px or 360px phone cannot hold 56px circles plus a 64px hang-up.
      The row was nowrap, so Hang up drew past the right edge (x=374).
      44px is the floor for a thumb. The glyphs are the same icons, smaller. */

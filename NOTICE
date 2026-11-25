@@ -5,3 +5,5 @@ All rights reserved.
 
 Each application GIF under apps/ remains under the license recorded for that application.
 Trademarks: "GifOS" and the GifOS logo are trademarks of the copyright holder.
+
+js/vendor/qrcode.js is qrcode-generator 2.0.4 by Kazuhiko Arase, MIT license, vendored verbatim below its header. The word "QR Code" is a registered trademark of DENSO WAVE INCORPORATED.

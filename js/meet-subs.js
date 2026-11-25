@@ -168,6 +168,102 @@
   // Best-effort: a page with no Home Screen store just skips it.
   const SUB_RECEIPT_KEY = 'gifos-sub-receipt';   // { fileId, mark } of this browser's subscription receipt
   const PAY_PENDING = 'gifos_pay_pending';       // gifos-pay-broker.js PENDING_KEY: the desktop's placement queue
+  const PURCHASE_KEY = 'gifos-sub-purchase';     // { sub, pass }: facts the payment answer actually returned
+  function readPurchase() {
+    const b = readJson(PURCHASE_KEY);
+    return b && typeof b === 'object' && !Array.isArray(b) ? b : {};
+  }
+  // Fixed key order, so a later keepReceipt sees the same mark for the same facts.
+  function cleanPurchase(p) {
+    if (!p || typeof p !== 'object' || Array.isArray(p)) return null;
+    const o = {};
+    if (Number.isFinite(p.boughtAt)) o.boughtAt = Math.round(Number(p.boughtAt));
+    if (typeof p.price === 'string' && p.price) o.price = p.price;
+    if (typeof p.currency === 'string' && p.currency) o.currency = p.currency;
+    if (typeof p.rail === 'string' && p.rail) o.rail = p.rail;
+    if (typeof p.period === 'string' && p.period) o.period = p.period;
+    if (typeof p.orderId === 'string' && p.orderId) o.orderId = p.orderId;
+    if (typeof p.captureId === 'string' && p.captureId) o.captureId = p.captureId;
+    return Object.keys(o).length ? o : null;
+  }
+  function savePurchase(bag) {
+    const out = {};
+    const sub = cleanPurchase(bag && bag.sub);
+    const pass = cleanPurchase(bag && bag.pass);
+    if (sub) out.sub = sub;
+    if (pass) out.pass = pass;
+    writeJson(PURCHASE_KEY, Object.keys(out).length ? out : null);
+  }
+  function mergePurchase(which, patch) {
+    const bag = readPurchase();
+    const next = cleanPurchase(Object.assign({}, cleanPurchase(bag[which]) || {}, patch || {}));
+    if (!next) return;
+    bag[which] = next;
+    savePurchase(bag);
+  }
+  function purchaseFlat(keepSub) {
+    const bag = readPurchase();
+    return cleanPurchase(keepSub ? bag.sub : bag.pass);
+  }
+  function centsPrice(cents) {
+    if (!Number.isInteger(cents) || cents < 0) return '';
+    return Math.floor(cents / 100) + '.' + String(cents % 100).padStart(2, '0');
+  }
+  // The signed issue time, and only for a purchase this browser already recorded.
+  function adoptIssued(licenseJson) {
+    if (!cleanPurchase(readPurchase().sub) || typeof licenseJson !== 'string') return;
+    let lic = null;
+    try { lic = JSON.parse(licenseJson); } catch (e) { return; }
+    if (!lic || !Number.isInteger(lic.issued)) return;
+    mergePurchase('sub', { boughtAt: lic.issued * 1000 });
+  }
+  function noteWebSub(j, period) {
+    const patch = { rail: 'paypal' };
+    if (typeof period === 'string' && period) patch.period = period;
+    const full = j && j.upgrade && j.upgrade.full;
+    if (Number.isInteger(full)) {
+      const price = centsPrice(full);
+      if (price) { patch.price = price; patch.currency = 'USD'; }
+    }
+    mergePurchase('sub', patch);
+  }
+  function noteStoreSub(r) {
+    const rail = RAIL();
+    const which = rail && typeof rail.store === 'function' ? rail.store() : '';
+    const patch = { boughtAt: Date.now() };
+    if (r && typeof r.period === 'string' && r.period) patch.period = r.period;
+    if (which === 'play' || which === 'appstore') patch.rail = which;
+    if (r && typeof r.orderId === 'string' && r.orderId) patch.orderId = r.orderId;
+    if (r && typeof r.captureId === 'string' && r.captureId) patch.captureId = r.captureId;
+    if (r && typeof r.price === 'string' && r.price) {
+      patch.price = r.price;
+      if (typeof r.currency === 'string' && r.currency) patch.currency = r.currency;
+    }
+    mergePurchase('sub', patch);
+  }
+  function notePassPurchase(o) {
+    if (!o || typeof o !== 'object') return;
+    const patch = {};
+    const sec = Number.isInteger(o.paid) ? o.paid : (Number.isInteger(o.start) ? o.start : null);
+    if (sec != null) patch.boughtAt = sec * 1000;
+    if (o.via === 'paypal-order') patch.rail = 'paypal';
+    else if (o.via === 'play' || o.via === 'appstore') patch.rail = o.via;
+    if (typeof o.order === 'string' && o.order && o.via !== 'mint') patch.orderId = o.order;
+    if (typeof o.captureId === 'string' && o.captureId) patch.captureId = o.captureId;
+    mergePurchase('pass', patch);
+  }
+  function licMark(st, c) {
+    let exp = '';
+    if (c && st && typeof st.licenseJson === 'string' && st.subId === c.subId) {
+      try {
+        const lic = JSON.parse(st.licenseJson);
+        if (lic && Number.isInteger(lic.exp)) exp = String(lic.exp);
+      } catch (e) {}
+    }
+    const paid = st && Number.isInteger(st.paidThrough) ? String(st.paidThrough) : '';
+    const until = st && Number.isInteger(st.until) ? String(st.until) : '';
+    return exp + ':' + paid + ':' + until;
+  }
   function subReceiptFiles(c, w, st) {
     const name = tx('subReceiptName', 'Receipt — GifOS Meet subscription');
     const files = {
@@ -179,6 +275,15 @@
     if (c) files['subscription.json'] = JSON.stringify(c);
     if (w) files['passes.json'] = JSON.stringify(w);
     if (c && st && st.licenseJson && st.sig && st.subId === c.subId) files['license.json'] = JSON.stringify({ licenseJson: st.licenseJson, sig: st.sig });
+    const bought = purchaseFlat(!!c);
+    if (bought) files['purchase.json'] = JSON.stringify(bought);
+    if (st && (Number.isInteger(st.until) || Number.isInteger(st.paidThrough))) {
+      const state = {};
+      if (Number.isInteger(st.until)) state.until = st.until;
+      if (Number.isInteger(st.paidThrough)) state.paidThrough = st.paidThrough;
+      if (typeof st.status === 'string' && st.status) state.status = st.status;
+      files['state.json'] = JSON.stringify(state);
+    }
     return files;
   }
   let receiptBusy = null;
@@ -197,7 +302,9 @@
       const keepSub = !!c && (live || held.sub === c.subId);
       const passN = w ? w.passes.length : 0;
       if (!keepSub && !passN) return;   // nothing bought yet: no receipt
-      const mark = [keepSub ? c.subId : '', live ? c.tier : '', passN].join('|');
+      const bought = purchaseFlat(keepSub);
+      // The key is in the mark (review H5): after a re-key the receipt must carry the new seed, never the dead one.
+      const mark = [keepSub ? c.subId : '', keepSub ? c.buyerKey || '' : '', live ? c.tier : '', passN, licMark(st, keepSub ? c : null), bought ? JSON.stringify(bought) : ''].join('|');
       if (held.mark === mark && held.fileId) return;
       const fileId = typeof held.fileId === 'string' && held.fileId ? held.fileId : store.uid('file');
       const bytes = await gif.encode(subReceiptFiles(keepSub ? c : null, w, st), { accent: [120, 200, 255] });
@@ -212,19 +319,42 @@
   }
   // Use a file brought from another browser. Its key must be the key the
   // subscription was made for (checked by the payment service on every ask).
+  // Install a credential (and an optional pass wallet) already checked by credentialOk / walletOk.
+  // useFile and a plan moved from another device share this path.
+  async function installCreds(c, w) {
+    if (w) {
+      const ww = SUB.walletOk(w);
+      if (ww) { mergeWallet(ww); passChanged(); }
+    }
+    if (!c) {
+      if (w) return readState();
+      throw new Error('That file is not a GifOS subscription.');
+    }
+    const ok = SUB.credentialOk(c);
+    if (!ok) throw new Error('That file is not a GifOS subscription.');
+    writeJson(CRED_KEY, ok);
+    keyMemo = { seed: null, p: null };
+    libKeyMemo = { seed: null, p: null };
+    writeState({ subId: ok.subId, tier: ok.tier, status: null });
+    const st = await refresh();
+    rejoin(true);
+    return st;
+  }
   async function useFile(bytes) {
     const arc = await GifOS.gif.decode(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes));
     const c = arc && SUB.credentialFromFiles(arc.files);
     const w = arc && SUB.walletFromFiles(arc.files);
-    if (w) { mergeWallet(w); passChanged(); }
-    if (!c && w) return readState();
-    if (!c) throw new Error('That file is not a GifOS subscription.');
-    writeJson(CRED_KEY, c);
-    keyMemo = { seed: null, p: null };
-    writeState({ subId: c.subId, tier: c.tier, status: null });
-    const st = await refresh();
-    rejoin(true);
-    return st;
+    return installCreds(c, w);
+  }
+  // The JSON sealed into a move package: the credential, with libSeed so My library survives the move, and the pass wallet.
+  async function movePackage() {
+    const c = await credential();
+    if (!c) throw new Error('No subscription on this browser.');
+    const cred = Object.assign({}, c, { libSeed: c.libSeed || c.seed });
+    const w = await wallet();
+    const pkg = { v: 1, credential: cred };
+    if (w) pkg.wallet = w;
+    return pkg;
   }
 
   // ---- the payment service's key and the license ------------------------------
@@ -267,9 +397,10 @@
   // and nothing else can. It never leaves this browser.
   let libKeyMemo = { seed: null, p: null };
   function libraryKey(c) {
-    if (libKeyMemo.seed !== c.seed) {
-      libKeyMemo = { seed: c.seed, p: (async () => {
-        const ikm = await crypto.subtle.importKey('raw', fromB64(c.seed), 'HKDF', false, ['deriveKey']);
+    const seed = c.libSeed || c.seed;
+    if (libKeyMemo.seed !== seed) {
+      libKeyMemo = { seed, p: (async () => {
+        const ikm = await crypto.subtle.importKey('raw', fromB64(seed), 'HKDF', false, ['deriveKey']);
         return crypto.subtle.deriveKey({ name: 'HKDF', hash: 'SHA-256', salt: new TextEncoder().encode('gifos-library'), info: new TextEncoder().encode('gifos-library-v1\x00' + c.subId) }, ikm, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
       })() };
     }
@@ -314,7 +445,7 @@
       delete next.licenseJson; delete next.sig;
     }
     writeState(next);
-    if (next.licenseJson) keepReceipt();
+    if (next.licenseJson) { adoptIssued(next.licenseJson); keepReceipt(); }
     return next;
   }
   // keepFresh() -> once this browser's license is fresh (fetched when missing or near its end). One check at a time: the
@@ -352,6 +483,7 @@
     writeJson(STORE_PENDING, null);
     keyMemo = { seed: null, p: null };
     writeState({ subId: r.subId, tier: r.tier, status: null });
+    noteStoreSub(r);
     const st = await refresh();
     rejoin(true);
     return st;
@@ -378,6 +510,7 @@
       const list = cur.passes.filter((p) => { const x = passOf(p); return x && x.order !== o.order; }).concat([{ passJson: j.passJson, sig: j.sig }]);
       const next = Object.assign({}, cur, { passes: list }); delete next.pending;
       writeJson(WALLET_KEY, next);
+      notePassPurchase(o);
       keepReceipt();
       passWatch().catch(() => {});
       if (meet) passJoin(meet.room, true, true);
@@ -445,6 +578,7 @@
     writeJson(CRED_KEY, { v: 1, kind: SUB.CRED_KIND, subId: j.id, tier, period, seed: b64(seed), buyerKey });
     keyMemo = { seed: null, p: null };
     writeState({ subId: j.id, tier, status: 'APPROVAL_PENDING' });
+    noteWebSub(j, period);
     if (popup) popup.location.href = j.approveUrl; else root.open(j.approveUrl, '_blank');
     say(SUB.TEXT.pending);
     const until = Date.now() + POLL_FOR_MS;
@@ -554,6 +688,7 @@
     const list = cur.passes.filter((p) => { const x = passOf(p); return x && x.order !== o.order; }).concat([{ passJson: j.passJson, sig: j.sig }]);
     const next = Object.assign({}, cur, { passes: list }); delete next.pending;
     writeJson(WALLET_KEY, next);
+    notePassPurchase(o);
     keepReceipt();
     passWatch().catch(() => {});
     if (meet) passJoin(meet.room, true, true);   // a new pass (or one stacked on the window): the meeting this page is in takes it now
@@ -622,6 +757,17 @@
     if (keys.length > MEM_MAX) keys.sort((a, b) => (mem[a].at || 0) - (mem[b].at || 0)).slice(0, keys.length - MEM_MAX).forEach((k) => { delete mem[k]; });
     writeJson(MEM_KEY, mem);
   }
+  // Meetings this plan is powering. The service returns tags; names come from this browser's memory.
+  // A tag this browser has never seen has no name: the page says only that this browser has not been in it.
+  async function heldMeetings() {
+    const j = await post('/gifos/sub/held', await signed('held'));
+    const mem = readJson(MEM_KEY) || {};
+    const meetings = (Array.isArray(j.meetings) ? j.meetings : []).map((m) => {
+      const k = mem[m.meeting] || {};
+      return { meeting: m.meeting, gen: m.gen, at: m.at, name: k.name || null };
+    });
+    return { meetings, keep: j.keep };
+  }
   // moveOptions(subFull, passFull) -> {places, keptPlaces, entries:[{right, meeting, name, people, at}]}: what the
   // question lists. Only rights whose signed overflow is 'ask' are listed; a right that keeps (an organization's plan)
   // never gives up another meeting, so its places only count in keptPlaces (the note "all N … are in use").
@@ -650,6 +796,7 @@
     stopTimer();
     meet.ticket = null; meet.moved = why;
     try { if (hooks.onLost) hooks.onLost(why); } catch (e) {}
+    if (why === 'moved') showAway();
   }
   async function renewNow() {
     const m = meet;
@@ -707,11 +854,11 @@
         const opts = moveOptions(j, pmeet && pmeet.room === room ? pmeet.full : null);
         // OVERFLOW 'keep' (an organization's plan): nothing to ask and nothing moves; this meeting runs on the free
         // defaults, with a plain note. The payment service refuses to drop another meeting for such a right anyway.
-        if (!opts.entries.length) { m.moved = 'kept'; if (root.document && root.document.body) showOverflowNote(opts.keptPlaces); return null; }
+        if (!opts.entries.length) { m.moved = 'kept'; if (root.document && root.document.body) { showOverflowNote(opts.keptPlaces); } return null; }
         if (choose) {
           const pick = await choose(opts).catch(() => null);
           if (meet !== m) return null;
-          if (!pick || pick.keep) { m.moved = 'kept'; return null; }   // this meeting runs on the free defaults
+          if (!pick || pick.keep) { m.moved = 'kept'; showAway(); return null; }   // this meeting runs on the free defaults
           if (pick.right === 'pass') { m.moved = 'full'; passJoin(room, true, true, pick.meeting); return null; }
           drop = pick.meeting;
         }
@@ -903,8 +1050,8 @@
   const PLAN_NAME = { room20: 'planNameRoom20', unlimited: 'planNameUnlimited', streamer: 'planNameStreamer', free: 'planNameFree',
     family: 'planNameFamily', smallBusiness: 'planNameSmallBusiness', business: 'planNameBusiness', largeBusiness: 'planNameLargeBusiness', enterprise: 'planNameEnterprise' };
   // How many meetings at once the subscription powers, in Settings (n from the license's line items).
-  const meetingsWords = (n) => (n > 1 ? fill(tx('subMeetingsN', 'Your subscription works in up to {n} meetings at once. Joining one more, here or in another browser with your subscription file, moves it from the oldest.'), { n })
-    : tx('subMeetings1', 'Your subscription works in one meeting at a time. Joining a meeting, here or in another browser with your subscription file, moves it there.'));
+  const meetingsWords = (n) => (n > 1 ? fill(tx('subMeetingsN', 'Your plan works on all your devices, in up to {n} meetings at once. Joining one more takes the place of the oldest. To add it to another device, choose Add this plan to another device on gifos.app/subscription.'), { n })
+    : tx('subMeetings1', 'Your plan works on all your devices, in one meeting at a time. Joining a meeting on any of them uses it there. To add it to another device, choose Add this plan to another device on gifos.app/subscription.'));
   const planName = (tier, t) => (PLAN_NAME[tier] ? tx(PLAN_NAME[tier], t.name) : t.name);
   const planShort = (tier) => { const x = PLAN_SHORT[tier]; return x ? tx(x[0], x[1]) : tx('planNone', 'No plan'); };
   const clockOf = (s) => { try { return new Date(s * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } };
@@ -922,7 +1069,7 @@
     let sub = null;
     if (lic) {
       const status = st.status === 'CANCELLED' ? 'cancelled' : st.paidThrough && st.paidThrough < n ? 'grace' : 'active';
-      sub = { tier: lic.tier, grants: lic.grants || null, period: cred && cred.period === 'yearly' ? 'yearly' : 'monthly', status, until: st.until || lic.exp, renews: status === 'active' ? st.paidThrough || null : null };
+      sub = { subId: lic.subId, tier: lic.tier, grants: lic.grants || null, period: cred && cred.period === 'yearly' ? 'yearly' : 'monthly', status, until: st.until || lic.exp, renews: status === 'active' ? st.paidThrough || null : null };
     }
     const mine = (await passes().catch(() => [])).filter((x) => x.o.end > n);
     const held = mine.map((x) => ({ id: x.o.id, start: x.o.start, end: x.o.end, live: SUB.passLive(x.o, n), never: !Number.isFinite(x.o.end), plan: x.o.plan, capture: x.o.grants.captureOpenRoom, grants: x.o.grants }));
@@ -1011,6 +1158,11 @@
     return p;
   }
   const dateOf = (s) => { try { return new Date(s * 1000).toLocaleDateString(); } catch (e) { return ''; } };
+  // The subscription page draws the move code. A meeting must not: the code would be on a shared screen.
+  function planPageLinks(row) {
+    row.appendChild(el('a', { class: BTN, style: BTN_STYLE + ';display:inline-block;text-decoration:none', id: 'sub-move-link', href: '/subscription#move', target: '_blank', rel: 'noopener' }, tx('subMoveLink', 'Add this plan to another device')));
+    row.appendChild(el('a', { class: BTN, style: BTN_STYLE + ';display:inline-block;text-decoration:none', id: 'sub-restore-link', href: '/subscription#restore', target: '_blank', rel: 'noopener' }, tx('subRestoreLink', 'Restore with PayPal (lost device)')));
+  }
   async function paintSettings(credNow) {
     const body = document.querySelector('#sub-modal .dlg-body');
     if (!body) return;
@@ -1185,6 +1337,7 @@
         };
         row.appendChild(u);
       }
+      planPageLinks(row);
       row.appendChild(msg);
       return;
     }
@@ -1208,6 +1361,7 @@
     const lab = el('label', { class: 'set-help', style: 'display:block;margin-top:.4rem' }, tx('subFileUse', 'Use a subscription file from another browser: '));
     lab.appendChild(pick);
     row.appendChild(lab);
+    planPageLinks(row);
     row.appendChild(msg);
   }
   function closeSubscribe() {
@@ -1406,10 +1560,10 @@
       const free = SUB.FREE_LIMIT;
       if (opts.entries.length === 1 && opts.places <= 1) {
         const e = opts.entries[0];
-        line('sub-move-title', fill(e.people === 1 ? tx('subMoveOne1', 'Your plan is powering \u201c{name}\u201d (1 person). Move it here?') : e.people ? tx('subMoveOne', 'Your plan is powering \u201c{name}\u201d ({n} people). Move it here?') : tx('subMoveOneNoCount', 'Your plan is powering \u201c{name}\u201d. Move it here?'), { name: nameOf(e), n: e.people }), true);
+        line('sub-move-title', fill(e.people === 1 ? tx('subMoveOne1', 'Your plan is powering \u201c{name}\u201d (1 person). Use it in this meeting?') : e.people ? tx('subMoveOne', 'Your plan is powering \u201c{name}\u201d ({n} people). Use it in this meeting?') : tx('subMoveOneNoCount', 'Your plan is powering \u201c{name}\u201d. Use it in this meeting?'), { name: nameOf(e), n: e.people }), true);
         line('sub-move-note', fill(tx('subMoveNote', 'That meeting will then let in only {free} new people and lose firewall video.'), { free }));
         line('sub-move-teach', tx('subMoveTeach', 'Your plan powers one meeting at a time.'));
-        btn('sub-move-go', tx('subMoveGo', 'Move it here'), { right: e.right, meeting: e.meeting });
+        btn('sub-move-go', tx('subMoveGo', 'Use it in this meeting'), { right: e.right, meeting: e.meeting });
         btn('sub-move-keep', tx('subMoveKeep', 'Keep it there'), { keep: true });
       } else {
         line('sub-move-title', tx('subMoveMany', 'Every meeting your plans cover is in use. Take one for this meeting?'), true);
@@ -1427,6 +1581,53 @@
     });
   }
 
+  // This page's plan is powering a different meeting (moved, or kept elsewhere by the person's choice). Dismissable.
+  // Not for 'inactive': a lapsed plan is in no meeting, and the Settings line says so.
+  function showAway() {
+    try {
+      if (typeof document === 'undefined' || !document.body || !document.getElementById || !document.createElement) return false;
+      if (document.getElementById('sub-away')) return true;
+      const box = el('div', { id: 'sub-away', role: 'status', 'aria-live': 'polite', style: CARD_STYLE });
+      box.appendChild(el('span', { id: 'sub-away-msg', style: 'flex:1 1 12rem' }, tx('subAway', 'Your plan is in use in another meeting.')));
+      const here = el('button', { type: 'button', id: 'sub-away-here', class: BTN, style: BTN_STYLE }, tx('subAwayHere', 'Use it in this meeting'));
+      here.onclick = () => { box.remove(); takePlanHere(); };
+      box.appendChild(here);
+      box.appendChild(el('a', { id: 'sub-away-manage', href: '/subscription', target: '_blank', rel: 'noopener' }, tx('subAwayManage', 'Manage')));
+      const x = el('button', { type: 'button', id: 'sub-away-x', class: BTN, style: BTN_STYLE, 'aria-label': tx('subUpClose', 'Close') }, '\u00d7');
+      x.onclick = () => { box.remove(); };
+      box.appendChild(x);
+      document.body.appendChild(box);
+      return true;
+    } catch (e) { return false; }
+  }
+  // Join this meeting again. The first ask still sends ifFree, so the service lists the meetings instead of
+  // dropping the oldest itself, and the person picks which meeting gives up its place. The join that takes the
+  // place is the second one, and that one omits ifFree.
+  function takePlanHere() {
+    if (!meet || !meet.room) return;
+    const room = meet.room;
+    const keep = hooks;
+    stopTimer();
+    meet = null;
+    joinMeeting(room, keep);
+  }
+  // (a) The host's browser holds NO plan: say only what this browser knows (Nathan 2026-11-24: never "your plan is on
+  // another device"; the page cannot know that), and offer the two ways a plan bought elsewhere gets here.
+  function hostElsewhere(bar) {
+    credential().then((c) => {
+      if (c || typeof document === 'undefined' || !document.getElementById) return;
+      const live = document.getElementById('sub-host-up');
+      if (!live || document.getElementById('sub-host-elsewhere')) return;
+      const line = el('p', { id: 'sub-host-elsewhere', style: 'flex:1 1 100%;margin:.2rem 0 0' }, fill(tx('subHostElsewhere', 'This browser has no plan, so this meeting runs on Free (up to {n} people). Bought a plan on another phone or computer? Add it to this device.'), { n: SUB.FREE_LIMIT }));
+      line.appendChild(document.createTextNode(' '));
+      line.appendChild(el('a', { href: '/subscription#get', id: 'sub-host-elsewhere-link', target: '_blank', rel: 'noopener' }, tx('subHostMoveGo', 'Add a plan from your other device')));
+      line.appendChild(document.createTextNode(' · '));
+      line.appendChild(el('a', { href: '/subscription#restore', id: 'sub-host-restore-link', target: '_blank', rel: 'noopener' }, tx('subHostRestoreGo', 'Restore with PayPal (lost device)')));
+      live.appendChild(line);
+    }).catch(() => {});
+    return bar;
+  }
+
   // The host of a room with a people line, when its doors turned people away:
   // how many, and the plan whose rights carry no line, in one tap.
   // n: how many people could not get in (1 when not counted).
@@ -1441,6 +1642,7 @@
       bar.hidden = false;
       const msg = document.getElementById('sub-host-up-msg'), go = document.getElementById('sub-host-up-go');
       if (msg && !(go && go.disabled)) msg.textContent = words();   // a purchase under way keeps its own words
+      hostElsewhere(bar);
       return true;
     }
     bar = el('div', { id: 'sub-host-up', role: 'status', 'aria-live': 'polite', style: CARD_STYLE });
@@ -1461,6 +1663,7 @@
     x.onclick = () => { bar.remove(); };
     bar.appendChild(x);
     document.body.appendChild(bar);
+    hostElsewhere(bar);
     return true;
   }
 
@@ -1468,6 +1671,15 @@
   function boot() {
     if (booted) return;
     booted = true;
+    // The lobby's link to /subscription (every plan, and moving or restoring yours): drawn here, not in run.html, so
+    // the thin page stays thin. Meet and Broadcast share the lobby.
+    try {
+      const card = document.querySelector('#lobby .lobby-card');
+      if (card && !document.getElementById('lob-plans')) {
+        const a = el('a', { id: 'lob-plans', class: 'lob-plans', href: '/subscription', target: '_blank', rel: 'noopener', 'data-t': 'lobPlans' }, tx('lobPlans', 'Plans and your subscription'));
+        card.appendChild(a);
+      }
+    } catch (e) {}
     wireSubModal();
     keepFresh().catch(() => {});
     resumePending().catch(() => {});
@@ -1489,7 +1701,7 @@
     askMove, moveOptions, showOverflowNote,
     rights, planRights, refresh, keepFresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, subSelection, applySubSelection, paintNow, paintSettings, openSettings, openSubscribe, mayCreateAdminRoom, showFull, hideFull, fullWaiting, fullOffers, hostOffer, doorRight, showHostPrompt,
     roomOrder, roomTier, proveAtDoor, checkShown, newNonce,
-    appNow, joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureCurrent, captureOrder, captureKeys, fileBytes, downloadFile, useFile, librarySigner, restoreInApp,
+    appNow, joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureCurrent, captureOrder, captureKeys, fileBytes, downloadFile, useFile, installCreds, movePackage, heldMeetings, credential, librarySigner, restoreInApp,
     keepReceipt, subReceiptFiles,
     passMeeting: () => (pmeet ? { grants: pmeet.grants || null, room: pmeet.room, gen: pmeet.gen, exp: pmeet.exp, until: pmeet.until, moved: pmeet.moved, held: !!pmeet.ticket } : null),
     currentPassTicket,

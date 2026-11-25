@@ -856,7 +856,13 @@
     if (typeof c.seed !== 'string' || !SEED_RE.test(c.seed)) return null;
     let raw; try { raw = b64ToBytes(c.seed); } catch (e) { return null; }
     if (raw.length !== 32) return null;
-    return { v: 1, kind: CRED_KIND, subId: c.subId, tier: c.tier, period: c.period === 'yearly' || c.period === 'monthly12' ? c.period : 'monthly', seed: c.seed, buyerKey: typeof c.buyerKey === 'string' && KEY_RE.test(c.buyerKey) ? c.buyerKey : undefined };
+    const out = { v: 1, kind: CRED_KIND, subId: c.subId, tier: c.tier, period: c.period === 'yearly' || c.period === 'monthly12' ? c.period : 'monthly', seed: c.seed, buyerKey: typeof c.buyerKey === 'string' && KEY_RE.test(c.buyerKey) ? c.buyerKey : undefined };
+    // libSeed is the library key's seed. A move keeps it; a PayPal restore sets it to the new seed.
+    // Unknown fields are otherwise dropped, so this one has to be copied or the library key dies on the way.
+    if (typeof c.libSeed === 'string' && SEED_RE.test(c.libSeed)) {
+      try { if (b64ToBytes(c.libSeed).length === 32) out.libSeed = c.libSeed; } catch (e) {}
+    }
+    return out;
   }
   // The four-hour passes live in the same file, beside any subscription
   // (passes.json): the seed of the key they are bound to and the signed
@@ -888,7 +894,7 @@
       'index.html': '<!doctype html><meta charset="utf-8"><title>GifOS subscription</title>' +
         '<body style="font:15px/1.5 system-ui;padding:1.2rem"><h2>GifOS subscription</h2><p>' + (t ? t.name + '.' : '') + (w ? ' Four-hour passes: ' + w.passes.length + '.' : '') + '</p>' +
         '<p>Keep this file in the Providers folder on your Home Screen, or open it in a meeting\u2019s Settings on another browser. ' +
-        'A subscription works in as many meetings at once as its plan says (one, unless it says more): joining one more moves it from the oldest.</p><p>Anyone with this file can use your subscription and passes. Keep it private.</p>',
+        'A subscription works in as many meetings at once as its plan says (one, unless it says more): joining one more takes the place of the oldest.</p><p>Anyone with this file can use your subscription and passes. Keep it private.</p>',
     };
     if (ok) files['subscription.json'] = JSON.stringify(ok);
     if (w) files['passes.json'] = JSON.stringify(w);

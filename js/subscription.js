@@ -16,6 +16,20 @@
   var $ = function (id) { return document.getElementById(id); };
   var t = function (k, p) { return i18n ? i18n.t('subscription.' + k, p) : k; };
   var busy = false;
+  // #move= and #restore= carry a secret. Drop the fragment before any await so it leaves the address bar.
+  var arrival = { move: '', restore: '', scroll: '' };
+  try {
+    var hashNow = String(location.hash || '');
+    var hashMove = /^#move=(.+)$/.exec(hashNow);
+    var hashRestore = /^#restore=(.+)$/.exec(hashNow);
+    if (hashMove || hashRestore) {
+      try { history.replaceState(null, '', location.pathname + location.search); } catch (e1) {}
+      if (hashMove) arrival.move = safeDecode(hashMove[1]);
+      if (hashRestore) arrival.restore = safeDecode(hashRestore[1]);
+    } else if (hashNow === '#move' || hashNow === '#restore' || hashNow === '#get') arrival.scroll = hashNow.slice(1);
+  } catch (e2) {}
+  function safeDecode(s) { try { return decodeURIComponent(s); } catch (e) { return s; } }
+  function PM() { return GifOS.planMove || null; }
 
   function el(tag, cls, text) {
     var n = document.createElement(tag);
@@ -143,6 +157,338 @@
         li.appendChild(acts);
         list.appendChild(li);
       });
+      return Promise.resolve(paintYour(c)).then(function () { try { paintReceipt(); } catch (e) {} });
+    });
+  }
+  // The same slip as a receipt GIF (js/receipt-plan.js), from the files this
+  // browser already holds. Nothing here calls the payment service.
+  function lsJson(k) {
+    try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; }
+  }
+  function receiptFiles() {
+    var files = {};
+    var c = lsJson('gifos-sub-cred');
+    var w = lsJson('gifos-pass-wallet');
+    var st = lsJson('gifos-sub-state') || {};
+    var bag = lsJson('gifos-sub-purchase');
+    if (c && typeof c === 'object') files['subscription.json'] = JSON.stringify(c);
+    if (w && typeof w === 'object') files['passes.json'] = JSON.stringify(w);
+    if (c && st && st.licenseJson && st.sig && st.subId === c.subId) files['license.json'] = JSON.stringify({ licenseJson: st.licenseJson, sig: st.sig });
+    if (st && (Number.isInteger(st.until) || Number.isInteger(st.paidThrough))) {
+      var state = {};
+      if (Number.isInteger(st.until)) state.until = st.until;
+      if (Number.isInteger(st.paidThrough)) state.paidThrough = st.paidThrough;
+      if (typeof st.status === 'string' && st.status) state.status = st.status;
+      files['state.json'] = JSON.stringify(state);
+    }
+    var flat = bag && typeof bag === 'object' ? (c ? bag.sub : bag.pass) : null;
+    if (flat && typeof flat === 'object') files['purchase.json'] = JSON.stringify(flat);
+    return files;
+  }
+  function paintReceipt() {
+    var host = $('pm-receipt');
+    if (!host) return;
+    host.textContent = '';
+    host.hidden = true;
+    var plan = GifOS.receiptPlan;
+    if (!plan || typeof plan.rows !== 'function' || typeof plan.mount !== 'function') return;
+    var files = null;
+    try { files = receiptFiles(); } catch (e) { return; }
+    var list = [];
+    try { list = plan.rows(files) || []; } catch (e2) { return; }
+    if (!list.length) return;
+    host.hidden = false;
+    host.appendChild(el('h3', null, t('pmReceipt')));
+    try { plan.mount(host, list, { files: files }); } catch (e3) { host.textContent = ''; host.hidden = true; return; }
+    try { if (typeof plan.foot === 'function') plan.foot(host); } catch (e4) {}
+  }
+
+  function show(id, on) { var n = $(id); if (n) n.hidden = !on; }
+  function planLabel(tier) { return tier && SUB.TIERS[tier] ? t(tier + '.name') : (tier || ''); }
+  function paintMeetings(h) {
+    var ul = $('pm-meetings-list');
+    if (!ul) return;
+    ul.textContent = '';
+    var list = (h && h.meetings) || [];
+    if (!list.length) { ul.appendChild(el('li', null, t('pmMeetingsNone'))); return; }
+    list.forEach(function (m) { ul.appendChild(el('li', null, m.name || t('pmElsewhere'))); });
+  }
+  function paintYour(c) {
+    var held = !!(c && c.sub);
+    var paypal = held && /^I-/.test(String(c.sub.subId || '')) && c.sub.status !== 'cancelled';
+    show('pm-meetings', held);
+    show('pm-file-get', held);
+    show('pm-move', held && !arrival.move);
+    show('pm-pay', paypal);
+    show('pm-signout-wrap', held);
+    if (!held || !MS().heldMeetings) { paintMeetings(null); return; }
+    return MS().heldMeetings().then(paintMeetings, function () { paintMeetings(null); });
+  }
+  function setMove(msg) { var n = $('pm-move-status'); if (n) n.textContent = msg || ''; }
+  function hideQr() { var q = $('pm-qr'); if (q) { q.hidden = true; q.textContent = ''; } }
+  function drawQr(text) {
+    var box = $('pm-qr');
+    if (!box) return;
+    box.hidden = false;
+    try {
+      if (typeof qrcode !== 'function') return;
+      var q = qrcode(0, 'M');
+      q.addData(text);
+      q.make();
+      box.innerHTML = q.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+    } catch (e) {}
+  }
+  var send = null;
+  function endSend(msg) {
+    if (send) {
+      if (send.timer) clearTimeout(send.timer);
+      var box = send.box;
+      send.dead = true;
+      send = null;
+      var P = PM();
+      if (box && P) P.closeBox(box).catch(function () {});
+    }
+    hideQr();
+    var live = $('pm-move-live');
+    if (live) live.hidden = true;
+    if (msg) setMove(msg);
+  }
+  function beginSend() {
+    var P = PM();
+    if (!P || !crypto || !crypto.getRandomValues) return;
+    if (send) endSend('');
+    var chan = crypto.getRandomValues(new Uint8Array(16));
+    var K = crypto.getRandomValues(new Uint8Array(32));
+    return P.boxId(chan).then(function (box) {
+      var origin = '';
+      try { origin = location.origin; } catch (e) {}
+      var url = P.link(origin, chan, K);
+      var live = $('pm-move-live');
+      if (live) live.hidden = false;
+      var link = $('pm-link');
+      if (link) link.textContent = url;
+      drawQr(url);
+      send = { chan: chan, K: K, box: box, expect: null, pub: null, typed: '', dead: false, tried: false, timer: null };
+      send.timer = setTimeout(function () { endSend(t('pmExpired')); }, P.LIFE_MS);
+      return P.openBox(box);
+    }).then(function (r) {
+      if (!send) return;
+      if (!r || !r.ok) { endSend(t('pmFailed')); return; }
+      setMove(t('pmWaiting'));
+      var s = send;
+      return P.getUntil(s.box, 'hello', Date.now() + P.LIFE_MS, function () { return send === s && !s.dead; }).then(function (ct) {
+        return P.openHello(s.K, s.chan, s.box, ct).then(function (pub) {
+          return P.codeOf(s.K, s.chan, pub).then(function (code) { return { pub: pub, code: code }; });
+        });
+      }).then(function (got) {
+        if (send !== s) return;
+        s.expect = got.code;
+        s.pub = got.pub;
+        if (s.typed) submitCode(s.typed);
+      }, function () { if (send === s) endSend(t('pmExpired')); });
+    }, function () { endSend(t('pmFailed')); });
+  }
+  function submitCode(raw) {
+    var digits = String(raw || '').replace(/\D/g, '').slice(0, 6);
+    var input = $('pm-code');
+    if (input && input.value !== digits) input.value = digits;
+    if (!send || digits.length < 6) return;
+    if (!send.expect) { send.typed = digits; setMove(t('pmWaiting')); return; }
+    if (send.tried) return;
+    send.tried = true;
+    if (digits !== send.expect) { endSend(t('pmCodeBad')); return; }
+    var s = send;
+    var P = PM();
+    setMove(t('pmWorking'));
+    MS().movePackage().then(function (pkg) { return P.sealPkg(s.K, s.chan, s.box, s.pub, pkg); }).then(function (ct) {
+      return P.put('pkg', s.box, ct);
+    }).then(function (r) {
+      if (!r || !r.ok) throw new Error((r && r.body && r.body.error) || t('pmFailed'));
+      if (s.timer) clearTimeout(s.timer);
+      if (send === s) send = null;
+      hideQr();
+      setMove(t('pmSent'));
+    }, function (e) { if (send === s) endSend(t('pmFailed')); say(String((e && e.message) || e)); });
+  }
+  function copyLink() {
+    var text = ($('pm-link') && $('pm-link').textContent) || '';
+    var done = function () { setMove(t('pmCopied')); };
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, done); return; }
+    } catch (e) {}
+    done();
+  }
+  function putHello(P, box, ct) {
+    var until = Date.now() + P.LIFE_MS;
+    function once() {
+      return P.put('hello', box, ct).then(function (r) {
+        if (r && r.ok) return;
+        // Another device answered this code first: never show or use a code for it (the holder would see a mismatch anyway).
+        if (r && (r.status === 409 || r.status === 410)) { var big = $('pm-recv-code'); if (big) big.textContent = ''; throw new Error(t('pmUsed')); }
+        if (Date.now() >= until) throw new Error(t('pmExpired'));
+        return new Promise(function (res) { setTimeout(res, GifOS.timings.MOVE_HELLO_RETRY_MS); }).then(once);
+      });
+    }
+    return once();
+  }
+  function liveId() {
+    if (!MS().credentialsNow) return Promise.resolve(null);
+    return MS().credentialsNow().then(function (c) { return c && c.sub && c.sub.subId ? c.sub.subId : null; }, function () { return null; });
+  }
+  function askReplace() {
+    return new Promise(function (resolve) {
+      var box = $('pm-replace');
+      if (!box) return resolve(true);
+      box.hidden = false;
+      var yes = $('pm-replace-yes'), no = $('pm-replace-no');
+      var done = function (v) { box.hidden = true; resolve(v); };
+      if (yes) yes.onclick = function () { done(true); };
+      if (no) no.onclick = function () { done(false); };
+    });
+  }
+  function maybeInstall(pkg) {
+    var cred = pkg && pkg.credential;
+    if (!cred) return Promise.reject(new Error(t('pmFailed')));
+    return liveId().then(function (id) {
+      if (id && cred.subId && id !== cred.subId) return askReplace();
+      return true;
+    }).then(function (go) {
+      if (!go) return false;
+      return MS().installCreds(cred, pkg.wallet || null).then(function () { return true; });
+    });
+  }
+  function beginReceive(token) {
+    var P = PM();
+    if (!P) return;
+    var parsed = P.parseMove(token);
+    var recv = $('pm-recv');
+    if (recv) recv.hidden = false;
+    var status = function (msg) { var n = $('pm-recv-status'); if (n) n.textContent = msg || ''; };
+    if (!parsed) { status(t('pmFailed')); return; }
+    status(t('pmWaiting'));
+    return P.boxId(parsed.chan).then(function (box) {
+      return P.ecdh().then(function (eB) {
+        return P.codeOf(parsed.K, parsed.chan, eB.pub).then(function (code) {
+          // The code shows only once this device holds the box's hello: a used or expired link never shows one.
+          return P.sealHello(parsed.K, parsed.chan, box, eB.pub).then(function (ct) { return putHello(P, box, ct); }).then(function () {
+            var big = $('pm-recv-code');
+            if (big) big.textContent = code;
+            return P.getUntil(box, 'pkg', Date.now() + P.LIFE_MS);
+          }).then(function (ct) { return P.openPkg(parsed.K, parsed.chan, box, eB.privateKey, ct); }).then(maybeInstall);
+        });
+      });
+    }).then(function (installed) { if (installed) status(t('pmRecvDone')); }, function (e) {
+      var big = $('pm-recv-code'); if (big) big.textContent = '';
+      status(e && e.used ? t('pmUsed') : e && (e.expired || e.gone) ? t('pmExpired') : (String((e && e.message) || e) || t('pmFailed')));
+    });
+  }
+  function showRestore(grant) {
+    var P = PM();
+    if (!P) return;
+    var g;
+    try { g = P.decodeGrant(grant); } catch (e) { say(t('pmFailed')); return; }
+    var ask = $('pm-restore-ask');
+    if (ask) ask.hidden = false;
+    var subs = g.subs || [];
+    var q = $('pm-restore-q');
+    if (q) q.textContent = t('pmRestoreQ', { plan: subs.map(function (s) { return planLabel(s.tier); }).filter(Boolean).join(', ') });
+    var storage = subs.some(function (s) { var row = SUB.TIERS[s.tier]; return !!(row && row.storage); });
+    var lib = $('pm-restore-lib');
+    if (lib) { lib.hidden = !storage; if (storage) lib.textContent = t('pmLibWarn'); }
+    var acts = $('pm-restore-acts');
+    var yes = $('pm-restore-yes');
+    if (yes && yes.parentNode) yes.parentNode.removeChild(yes);
+    if (acts) acts.textContent = '';
+    subs.forEach(function (s, i) {
+      var b = (i === 0 && yes) ? yes : el('button', 'go', t('pmRestoreYes'));
+      b.type = 'button';
+      b.id = i === 0 ? 'pm-restore-yes' : ('pm-restore-yes-' + i);
+      b.hidden = false;
+      b.textContent = t('pmRestoreYes');
+      b.onclick = function () { doClaim(grant, s); };
+      if (acts) acts.appendChild(b);
+    });
+    if (!subs.length && yes) yes.hidden = true;
+    var block = $('pm-restore');
+    if (block && block.scrollIntoView) block.scrollIntoView();
+  }
+  function doClaim(grant, sub) {
+    var P = PM();
+    if (!P || !sub || !sub.id || busy) return;
+    busy = true;
+    say(t('pmWorking'));
+    P.claim(grant, sub.id).then(function (cred) { return MS().installCreds(cred); }).then(function () {
+      say(t('pmRecvDone'));
+      return paint();
+    }, function (e) { say(String((e && e.message) || e)); }).then(function () { busy = false; });
+  }
+  function scrollToId(id) { var n = $(id); if (n && n.scrollIntoView) n.scrollIntoView(); }
+  function arrive() {
+    if (arrival.scroll === 'move') scrollToId('pm-move');
+    else if (arrival.scroll === 'restore') scrollToId('pm-restore');
+    else if (arrival.scroll === 'get') scrollToId('get');
+    if (arrival.restore) showRestore(arrival.restore);
+    if (arrival.move) return beginReceive(arrival.move);
+  }
+  var wired = false;
+  function on(id, fn) { var n = $(id); if (n) n.addEventListener('click', fn); }
+  function wire() {
+    if (wired) return;
+    wired = true;
+    on('pm-file-get', function () {
+      if (!MS().downloadFile) return;
+      MS().downloadFile().then(function () { say(t('pmSaved')); }, function (e) { say(String((e && e.message) || e)); });
+    });
+    var pick = $('pm-file-use');
+    if (pick) pick.addEventListener('change', function () {
+      var f = pick.files && pick.files[0];
+      if (!f || !MS().useFile) return;
+      say(t('pmWorking'));
+      f.arrayBuffer().then(function (b) { return MS().useFile(new Uint8Array(b)); }).then(function () {
+        say(t('pmRecvDone'));
+        return paint();
+      }, function (e) { say(String((e && e.message) || e)); });
+    });
+    on('pm-move-go', function () { var p = beginSend(); if (p && p.catch) p.catch(function (e) { endSend(t('pmFailed')); say(String((e && e.message) || e)); }); });
+    on('pm-copy', copyLink);
+    on('pm-code-go', function () { submitCode(($('pm-code') && $('pm-code').value) || ''); });
+    var code = $('pm-code');
+    if (code) code.addEventListener('input', function () { submitCode(code.value); });
+    on('pm-restore', function () {
+      var P = PM();
+      if (!P) return;
+      var subIn = $('pm-restore-sub');
+      var subId = subIn ? String(subIn.value || '').trim() : '';
+      if (subId && !/^I-[A-Za-z0-9]{4,40}$/.test(subId)) { say(t('pmRestoreSubBad')); return; }
+      // Restoring signs out every other device: ask first. Nothing is sent to PayPal until Continue.
+      show('pm-restore-confirm', true);
+      var go = $('pm-restore-continue');
+      if (go && go.focus) go.focus();
+    });
+    on('pm-restore-cancel', function () { show('pm-restore-confirm', false); });
+    on('pm-restore-continue', function () {
+      var P2 = PM();
+      if (!P2) return;
+      var subIn2 = $('pm-restore-sub');
+      var subId2 = subIn2 ? String(subIn2.value || '').trim() : '';
+      show('pm-restore-confirm', false);
+      P2.restoreStartUrl(subId2 || null).then(function (u) { location.assign(u); }, function (e) { say(String((e && e.message) || e) || t('pmFailed')); });
+    });
+    on('pm-cancel', function () {
+      if (!MS().cancel) return;
+      say(t('pmWorking'));
+      MS().cancel().then(function () { say(t('pmCancelled')); return paint(); }, function (e) { say(String((e && e.message) || e)); });
+    });
+    on('pm-signout', function () { show('pm-signout-ask', true); });
+    on('pm-signout-yes', function () {
+      var P = PM();
+      show('pm-signout-ask', false);
+      if (!P || !MS().credential || !MS().installCreds) return;
+      say(t('pmWorking'));
+      MS().credential().then(function (c) { return P.rekey(c); }).then(function (cred) { return MS().installCreds(cred); }).then(function () {
+        say(t('pmSignedOut'));
+        return paint();
+      }, function (e) { say(String((e && e.message) || e)); });
     });
   }
 
@@ -161,11 +507,12 @@
     document.title = t('titleTab');
     document.querySelectorAll('[data-t]').forEach(function (n) { n.textContent = i18n.t(n.getAttribute('data-t')); });
     legal();
-    paint().catch(function (e) { say(String((e && e.message) || e)); });
+    wire();
+    paint().then(function () { return arrive(); }).catch(function (e) { say(String((e && e.message) || e)); });
   }
   function boot() {
     if (!i18n || !SUB || !MS()) return;
-    i18n.load('subscription').then(start, start);
+    i18n.load(['subscription', 'charge']).then(start, start);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();

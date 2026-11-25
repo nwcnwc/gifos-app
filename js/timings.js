@@ -133,6 +133,8 @@
     MOS_QUALIFY: 8,   // count
     MOS_RESTART_HOLD: 2500,   // ms
     MOS_SETTLE: 5000,   // ms
+    MOVE_HELLO_RETRY_MS: 400,   // ms
+    MOVE_PAGE_LIFE_MS: 120000,   // ms
     MUTE_TAIL_MS: 1000,   // ms
     NEW_PEER_BEAT_GAP_MS: 2000,   // ms
     NEW_PEER_BEAT_MS: 400,   // ms
