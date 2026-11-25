@@ -7,7 +7,9 @@
  * machinery, as werift is its transport: plain Web Audio semantics, mono, one render quantum every 20 ms.
  *
  * THE SUBSET. AudioContext({ sampleRate }) with currentTime, sampleRate, state, resume/suspend/close, destination,
- * createGain, createAnalyser (getByteTimeDomainData, getFloatTimeDomainData), createScriptProcessor (onaudioprocess),
+ * createGain, createDynamicsCompressor (mono peak limiter: threshold, knee, ratio, attack, release and reduction;
+ *   a per-sample envelope, the ratio curve above the threshold, then a hard ceiling under full scale),
+ * createAnalyser (getByteTimeDomainData, getFloatTimeDomainData), createScriptProcessor (onaudioprocess),
  * createMediaStreamSource (a remote werift track: its Opus decoded; a track this port made: its samples),
  * createMediaStreamDestination (.stream: a werift MediaStream whose track carries the mix as Opus RTP), createBuffer,
  * createBufferSource (start/stop/onended, linear resampling) and decodeAudioData (PCM WAV, 16-bit or float).
@@ -78,6 +80,50 @@
     class GainNode extends AudioNode {
       constructor(ctx) { super(ctx); this.gain = new AudioParam(1); }
       _render(q, n) { const x = this._mix(q, n), g = +this.gain.value; if (g !== 1) for (let k = 0; k < n; k++) x[k] *= g; return x; }
+    }
+    // Peak limiter (DynamicsCompressorNode), mono, one quantum at a time like GainNode. The fold
+    // (mesh-media createAudioFold) sets threshold, knee, ratio, attack and release; each render reads .value
+    // (automation is inert, as on every AudioParam here). A per-sample envelope follows the level: attack while
+    // it rises, release while it falls. At and below the threshold the gain is 1; above it the overshoot in dB
+    // is divided by the ratio. A knee wider than 0 is a straight line from unity up to that curve. reduction is
+    // the curve's gain reduction in dB (0, or negative). The last step is a hard ceiling at the int16 full scale
+    // (32767/32768), so a sample never leaves this node at magnitude 1 or more.
+    function compCoef(sec, sr) { const s = +sec; return s > 0 && isFinite(s) ? Math.exp(-1 / (sr * s)) : 0; }
+    function compGain(level, threshDb, kneeDb, ratio) {
+      if (!(level > 0)) return 1;
+      const db = 20 * Math.log10(level), half = kneeDb > 0 ? kneeDb / 2 : 0;
+      let out = db;
+      if (!(kneeDb > 0) || db >= threshDb + half) { if (db > threshDb) out = threshDb + (db - threshDb) / ratio; }
+      else if (db > threshDb - half) {
+        const x0 = threshDb - half, y1 = threshDb + half / ratio, t = (db - x0) / kneeDb;
+        out = x0 + t * (y1 - x0);
+      }
+      const g = Math.pow(10, (out - db) / 20);
+      return g > 0 && g <= 1 ? g : (g > 1 ? 1 : 0);
+    }
+    class DynamicsCompressorNode extends AudioNode {
+      constructor(ctx) {
+        super(ctx);
+        this.threshold = new AudioParam(-24); this.knee = new AudioParam(30); this.ratio = new AudioParam(12);
+        this.attack = new AudioParam(0.003); this.release = new AudioParam(0.25);
+        this.reduction = 0; this._env = 0;
+      }
+      _render(q, n) {
+        const x = this._mix(q, n), sr = this.context.sampleRate, CEIL = 32767 / 32768;
+        const thresh = +this.threshold.value, knee = Math.max(0, +this.knee.value), ratio = Math.max(1, +this.ratio.value);
+        const cA = compCoef(this.attack.value, sr), cR = compCoef(this.release.value, sr);
+        let env = this._env, red = 0;
+        for (let k = 0; k < n; k++) {
+          const a = Math.abs(x[k]), c = a > env ? cA : cR;
+          env = c * env + (1 - c) * a;
+          const g = compGain(env, thresh, knee, ratio);
+          let y = x[k] * g;
+          if (y > CEIL) y = CEIL; else if (y < -CEIL) y = -CEIL;
+          x[k] = y; red = g < 1 ? 20 * Math.log10(Math.max(g, 1e-8)) : 0;
+        }
+        this._env = env; this.reduction = red;
+        return x;
+      }
     }
     class AnalyserNode extends AudioNode {
       constructor(ctx) { super(ctx); this._sink = true; this.fftSize = 2048; this._hist = new Float32Array(2048); this.smoothingTimeConstant = 0.8; this.minDecibels = -100; this.maxDecibels = -30; }
@@ -240,6 +286,7 @@
         this._state('closed'); AudioContext._live.delete(this); return Promise.resolve();
       }
       createGain() { return new GainNode(this); }
+      createDynamicsCompressor() { return new DynamicsCompressorNode(this); }
       createAnalyser() { return new AnalyserNode(this); }
       createScriptProcessor(size) { return new ScriptProcessorNode(this, size); }
       createMediaStreamSource(stream) { return new MediaStreamAudioSourceNode(this, { mediaStream: stream }); }
@@ -279,7 +326,7 @@
     // what is alive (for a host's leak check): open contexts, and across them the sinks pulled, sources reading, voices encoding;
     // decoders: remote tracks being decoded (one per track, however many sources read it)
     const stats = () => { let sinks = 0, sources = 0, codecs = 0; for (const c of AudioContext._live) { sinks += c._sinks.size; sources += c._srcs.size; codecs += c._codecs.size; } return { contexts: AudioContext._live.size, sinks, sources, codecs, decoders }; };
-    return { AudioContext, webkitAudioContext: AudioContext, AudioBuffer, AudioNode, GainNode, AnalyserNode, decodeWav, stats, made: (t) => made.has(t) };
+    return { AudioContext, webkitAudioContext: AudioContext, AudioBuffer, AudioNode, GainNode, DynamicsCompressorNode, AnalyserNode, decodeWav, stats, made: (t) => made.has(t) };
   }
 
   const api = { port, RTP_RATE };
