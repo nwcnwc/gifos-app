@@ -558,8 +558,7 @@
   //     seated room that reaches no older room at door 0) | 'repipe' (SUB.3: a seat of either side of a lost pipe, door 0 too);
   //     tdoors(q) → Promise<{ v: the relay's signed door list (q: device tags it also says live or gone), p: { device tag → peer id } of its listed heads }> (or the
   //     list alone); probeDoor(r, pids) → true | false | 'pending': door r tried by dialling those of its heads (the
-  //     ordinary dial and its verdict; my seat never leaves its own door to look); sub() → my door's subroom; meetingFull() → my meeting is at
-  //     its plan's limit (a NEW pipe is then refused: room limits apply at entry only)
+  //     ordinary dial and its verdict; my seat never leaves its own door to look); sub() → my door's subroom
   //   standbySeat() → { pid, dev } | null: the seat of my subroom that ends a pipe's warm standby on my side (another
   //     capable row head, the fewest pipes and standbys first; with one row head the next seat of its row); null: I am
   //     my subroom's only seat, so I keep that end myself
@@ -652,17 +651,6 @@
     // e: the subroom my end sits in (base 36), so the far end vouches its pipe end toward the right side: pipe l<r> joins r and
     // the subroom it hangs from, and either side may have opened it (SUB.3: a re-pipe asked for a subroom cut off from mine)
     function sendAsk(L) { if (L.direct) return; L.sentAt = io.now(); tvSend(L.far, { k: 'tv', q: 'a', l: L.l, d: io.dev(), b: io.blocked() ? 1 : 0, e: mySubFor(L).toString(36) }); }
-    // Is pipe l<r> already part of my meeting? Then a handshake for it re-links a subroom the meeting holds (a re-pipe,
-    // a standby taking over): no new entry. Judged only from what my own meeting holds, never from the asker's word: a
-    // room-wide fact of pipe l<r> heard within its life, a pipe of mine by that name, or subroom r's people still in my
-    // meeting's count (io.knownSub, from the mesh's fold).
-    function knownPipe(l) {
-      const r = pipeNo(l);
-      if (io.knownSub && io.knownSub(r)) return true;
-      for (const L of links.values()) if (pipeNo(L.l) === r && L.state !== 'closed') return true;
-      for (const f of io.facts() || []) if (f && !f.gone && f.l === l) return true;
-      return false;
-    }
     // My vouch names the subroom my relay socket sits in: a pipe I opened for a NEW subroom waits until my door is that
     // subroom; a re-pipe I opened (my own subroom's, or one cut off from mine) and a standby I opened name my door as it is.
     const mySubFor = (L) => (L.opener ? (L.own != null ? L.own : Number(L.l.slice(1))) : (io.sub ? io.sub() : 0));
@@ -848,12 +836,10 @@
           const s = io.seat();
           if (!s || !s.greeter) return;                       // only a seated greeter can be vouched for: say nothing
           if (s.view.indexOf(from) >= 0 && io.reach(from) === 'direct') return;   // reached already: no link
-          // A new pipe is a new entry: refused while my meeting is at its plan's limit (room limits apply at entry
-          // only; a pipe re-linking a subroom my meeting already holds is never refused for it: knownPipe).
           if (f.l[0] === 's') {   // a standby: only a seat its own live end named takes it
             if (!sbExpect.has(f.l)) return;
             L = newLink(from, f.l, false); L.heardAt = io.now(); L.liveEnd = sbExpect.get(f.l);
-          } else if (io.meetingFull && io.meetingFull() && !knownPipe(f.l)) { log('turn-link refused ' + short(from) + ' ' + f.l + ': the meeting is full'); tvSend(from, { k: 'tv', q: 'x', l: f.l, b: 1 }); return; }
+          }
           if (!L) { L = newLink(from, f.l, false); L.heardAt = io.now(); }
         }
         if (L.l !== f.l) return;

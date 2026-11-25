@@ -982,6 +982,19 @@
     const at = Date.now();
     return { on: true, at, ticket, proof: await signText(SUB.proofMessage(SUB.roomContext(room), 'at:' + at)) };
   }
+  // THE ROOM ACL: this browser's own meeting right for the meeting, as the
+  // meeting service reads it ({ticketJson, sig}), or null. The service keeps
+  // only the permissions it carries. The better of the subscription's meeting
+  // ticket and a live four-hour pass's, by the same rank the room order uses.
+  async function meetingRight(room) {
+    const ticket = await currentTicket(room);
+    const lp = ticket && meet ? await livePass().catch(() => null) : null;
+    if (!(ticket && meet && beatsPass(meet.grants, lp && lp.o))) {
+      const pt = await currentPassTicket(room);
+      if (pt) return pt;
+    }
+    return ticket || null;
+  }
   // The room's plan from the order the room carries: {tier, exp} or null.
   async function roomTier(order, room) {
     try { return await SUB.roomTierOf(order, room, verifyPay, verifyKey, nowS()); } catch (e) { return null; }
@@ -1431,68 +1444,34 @@
     try { const r = await rights(); return !!(r && (r.bypassLimit === true || r.admitAtFullDoor === true)); } catch (e) { return false; }
   }
 
-  // Shown instead of the meeting when the room is full for this person: what
-  // happened, in one line with the room's real size, and the way in now.
-  // o: {limit, free, onRight} (a bare boolean is the old free flag). limit: the
-  // room's line (the door's own count); onRight(): called once when this
-  // browser holds a right the door lets in, from whichever path brought it (the
-  // pass here, the Subscription dialog, a file opened, a store restore), so the
-  // page knocks again by itself.
-  // WHILE IT WAITS the page knocks again by itself, politely (run.html subsReknock), and the offer stays up the whole
-  // time: the products on sale (the pass, the plans), with their names and prices, never a single right. fullWaiting()
-  // keeps the wait line true: first "we keep knocking", and after a while still outside the reminder that the pass (or,
-  // where no pass is sold, a subscription) gets the person in now.
+  // Shown instead of the meeting when the relay says it is full: one line, the number the relay sent, and the
+  // wait. o: {limit, onRight}. limit is that number; onRight() runs once when this browser holds a right the door
+  // lets in, from whichever path brought it, so the page knocks again by itself. The words name the number only.
+  // WHILE IT WAITS the page knocks again by itself (subsReknock). fullWaiting() keeps that same wait line.
   let fullWatch = null;
   function fullWords(o) {
-    const n = Number.isInteger(o.limit) && o.limit > 0 ? o.limit : o.free ? SUB.FREE_LIMIT : null;
-    return n ? fill(tx('subFullTitleN', 'This meeting is full ({n} people on its host\'s plan).'), { n }) : tx('subFullTitle', 'This meeting is full.');
+    const n = o && Number.isInteger(o.limit) && o.limit > 0 ? o.limit : null;
+    return n ? fill(tx('subFullTitleN', 'This meeting is full ({n} people).'), { n }) : tx('subFullTitle', 'This meeting is full.');
   }
   function showFull(o) {
     if (typeof document === 'undefined') return false;
-    o = o && typeof o === 'object' ? o : { free: !!o };
+    o = o && typeof o === 'object' ? o : {};
     const m = document.getElementById('left-modal');
     if (!m) return false;
     const t = document.getElementById('left-title');
     const n = document.getElementById('left-note');
     if (t) t.textContent = fullWords(o);
-    if (n) n.textContent = tx('subFullNote', 'A pass or any subscription walks you right in.');
+    if (n) n.textContent = tx('subFullNote', 'You get in when a place opens.');
     const box = m.querySelector('.name-box') || m;
     let card = document.getElementById('sub-full');
     if (card) card.remove();
     card = el('div', { id: 'sub-full', class: 'sub-full' });
     const say = el('p', { id: 'sub-full-say', class: 'sub-full-say', role: 'status', 'aria-live': 'polite' });
     const sayIt = (x) => { say.textContent = x || ''; };
-    const inApp = !!RAIL();
-    const off = fullOffers();
     const done = () => { if (fullWatch) { clearInterval(fullWatch.t); const f = fullWatch.onRight; fullWatch = null; sayIt(tx('subFullJoining', 'You are in. Joining the meeting\u2026')); try { if (f) f(); } catch (e) {} } };
     const check = () => { const w = fullWatch; if (w && !w.busy) { w.busy = true; doorRight().then((ok) => { w.busy = false; if (ok && fullWatch === w) done(); }); } };
-    if (off.pass) {
-      const label = fill(tx('subFullPass', 'Get in now: {price} for {hours} hours'), { price: off.pass.price, hours: off.pass.hours || 4 });
-      const b = el('button', { type: 'button', id: 'sub-full-pass', class: 'sub-full-pass' }, label);
-      b.onclick = async () => {
-        b.disabled = true; sayIt(inApp ? '' : tx('passOpening', 'Opening PayPal\u2026'));
-        try {
-          const r = await buyPass(sayIt);
-          if (r && r.passJson) check(); else { b.disabled = false; if (!inApp) sayIt(tx('passNotConfirmed', 'PayPal did not confirm the payment.')); }
-        } catch (e) { b.disabled = false; sayIt(String(e.message || e)); }
-      };
-      card.appendChild(b);
-    }
-    if (off.sub) {
-      const s = el('button', { type: 'button', id: 'sub-full-sub', class: 'sub-full-sub' }, fill(tx('subFullSub', 'or subscribe from {price}/month and never wait at a door'), { price: off.sub.price }));
-      s.onclick = () => { openSubscribe(); };
-      card.appendChild(s);
-    }
     card.appendChild(say);
     card.appendChild(el('p', { id: 'sub-full-wait', class: 'sub-full-wait', role: 'status', 'aria-live': 'polite' }, tx('subFullWait', 'We keep knocking for you. You get in by yourself as soon as a place opens.')));
-    if (off.pass || off.sub) card.appendChild(legalLine('sub-full-legal', inApp));
-    if (inApp && off.pass) {   // in the app the price shown is the store's own (as in Settings)
-      RAIL().prices().then((pr) => {
-        const k = SUB.storeSku(RAIL().store(), { what: 'pass' }); const p = k && pr && pr[k.basePlan ? k.product + ':' + k.basePlan : k.product];
-        const b = document.getElementById('sub-full-pass');
-        if (p && b) b.textContent = fill(tx('subFullPass', 'Get in now: {price} for {hours} hours'), { price: p, hours: off.pass.hours || 4 });
-      }).catch(() => {});
-    }
     // Above the Rejoin / Close row: the page may have wrapped those buttons, so insert before the box's own child that holds Rejoin.
     let ref = box.querySelector('#left-rejoin');
     while (ref && ref.parentNode !== box) ref = ref.parentNode;
@@ -1501,22 +1480,17 @@
     m.style.display = 'flex';
     if (fullWatch) clearInterval(fullWatch.t);
     fullWatch = typeof o.onRight === 'function' ? { onRight: o.onRight, busy: false, t: setInterval(check, POLL_MS) } : null;
-    if (fullWatch) check();   // a right already held (bought a moment ago, or a pass still waiting to start)
+    if (fullWatch) check();   // a right already held knocks again without a tap
     return true;
   }
-  // The wait line of the full screen, kept true by the page as its knocks are refused again. o: {still}: still outside
-  // after a while: the reminder names the product that gets the person in now (the pass on sale with its price as the
-  // button shows it; no pass sold: a subscription). No offer on sale here: the plain wait line stays.
+  // The wait line of the full screen. The page calls this as its knocks are refused again; the line stays the wait.
   function fullWaiting(o) {
     if (typeof document === 'undefined') return false;
+    void o;
     const w = document.getElementById('sub-full-wait');
     if (!w) return false;
-    const off = fullOffers();
-    const still = !!(o && o.still) && !!(off.pass || off.sub);
-    w.textContent = !still ? tx('subFullWait', 'We keep knocking for you. You get in by yourself as soon as a place opens.')
-      : off.pass ? fill(tx('subFullStillPass', 'Still full, and we keep knocking. The {hours}-hour pass gets you in right now.'), { hours: off.pass.hours || 4 })
-        : tx('subFullStillSub', 'Still full, and we keep knocking. A subscription gets you in right now.');
-    w.className = 'sub-full-wait' + (still ? ' sub-full-still' : '');
+    w.textContent = tx('subFullWait', 'We keep knocking for you. You get in by yourself as soon as a place opens.');
+    w.className = 'sub-full-wait';
     return true;
   }
   // The full screen goes (the page knocks again): the offer and its watch with it.
@@ -1628,37 +1602,22 @@
     return bar;
   }
 
-  // The host of a room with a people line, when its doors turned people away:
-  // how many, and the plan whose rights carry no line, in one tap.
+  // The host, when people were turned away: how many. The number only; the room's permissions are the License.
   // n: how many people could not get in (1 when not counted).
   function showHostPrompt(n) {
     if (typeof document === 'undefined' || !document.body) return false;
     n = Number.isInteger(n) && n > 0 ? n : 1;
-    const up = hostOffer();
-    const words = () => (n === 1 ? tx('subHostTurned1', '1 person couldn\'t get in.') : fill(tx('subHostTurnedN', '{n} people couldn\'t get in.'), { n }))
-      + (up ? ' ' + fill(tx('subHostUpNote', '{plan} ({price}) removes the limit.'), { plan: planShort(up.tier), price: up.price }) : '');
+    const words = () => (n === 1 ? tx('subHostTurned1', '1 person couldn\'t get in.') : fill(tx('subHostTurnedN', '{n} people couldn\'t get in.'), { n }));
     let bar = document.getElementById('sub-host-up');
     if (bar) {
       bar.hidden = false;
-      const msg = document.getElementById('sub-host-up-msg'), go = document.getElementById('sub-host-up-go');
-      if (msg && !(go && go.disabled)) msg.textContent = words();   // a purchase under way keeps its own words
+      const msg = document.getElementById('sub-host-up-msg');
+      if (msg) msg.textContent = words();
       hostElsewhere(bar);
       return true;
     }
     bar = el('div', { id: 'sub-host-up', role: 'status', 'aria-live': 'polite', style: CARD_STYLE });
-    const msg = el('span', { id: 'sub-host-up-msg', style: 'flex:1 1 12rem' }, words());
-    bar.appendChild(msg);
-    if (up) {
-      const go = el('button', { type: 'button', id: 'sub-host-up-go', class: BTN, style: BTN_STYLE }, fill(tx('subHostUpGo', 'Get {plan}'), { plan: planShort(up.tier) }));
-      go.onclick = async () => {
-        go.disabled = true;
-        try {
-          const r = await subscribe(up.tier, 'monthly', (t) => { msg.textContent = t; });
-          if (r && r.licenseJson) bar.remove(); else { if (!RAIL()) msg.textContent = r && r.status === 'APPROVAL_PENDING' ? SUB.TEXT.pending : 'PayPal did not confirm the subscription.'; go.disabled = false; }
-        } catch (e) { msg.textContent = String(e.message || e); go.disabled = false; }
-      };
-      bar.appendChild(go);
-    }
+    bar.appendChild(el('span', { id: 'sub-host-up-msg', style: 'flex:1 1 12rem' }, words()));
     const x = el('button', { type: 'button', id: 'sub-host-up-x', class: BTN, style: BTN_STYLE, 'aria-label': tx('subUpClose', 'Close') }, '\u00d7');
     x.onclick = () => { bar.remove(); };
     bar.appendChild(x);
@@ -1700,7 +1659,7 @@
   GifOS.meetSubs = {
     askMove, moveOptions, showOverflowNote,
     rights, planRights, refresh, keepFresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, subSelection, applySubSelection, paintNow, paintSettings, openSettings, openSubscribe, mayCreateAdminRoom, showFull, hideFull, fullWaiting, fullOffers, hostOffer, doorRight, showHostPrompt,
-    roomOrder, roomTier, proveAtDoor, checkShown, newNonce,
+    roomOrder, roomTier, meetingRight, proveAtDoor, checkShown, newNonce,
     appNow, joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureCurrent, captureOrder, captureKeys, fileBytes, downloadFile, useFile, installCreds, movePackage, heldMeetings, credential, librarySigner, restoreInApp,
     keepReceipt, subReceiptFiles,
     passMeeting: () => (pmeet ? { grants: pmeet.grants || null, room: pmeet.room, gen: pmeet.gen, exp: pmeet.exp, until: pmeet.until, moved: pmeet.moved, held: !!pmeet.ticket } : null),

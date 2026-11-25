@@ -44,7 +44,6 @@
   "js/mesh/id.js",
   "js/mesh/ijoin.js",
   "js/mesh/burst.js",
-  "js/mesh/wall.js",
   "js/mesh/headword.js",
   "js/mesh/instant.js",
   "js/mesh/island.js",

@@ -492,17 +492,13 @@
     onSitXfer(m) {
       const id = this.id, TICK = this.TICK;
       // V4: my assigner hands me my row's outstanding vouch ledger
-      if (this.l52Firm()) this.trace('L52-LEDGER', id, this.hasCoord ? this.coord : null, 'from=%d to=%d placer=%d had=%d ck=%lld', m.from, m.id, this.placer, this.rowLedger ? 1 : 0, m.ck);
-      const firm = this.l52Firm();
-      if (m.from < 0 || m.from === id || m.id !== id || (m.from !== this.placer && !(firm && this.l52Head(m.from))) || this.rowLedger) return;   // L52.9 e: or the head seat whose word gave my cell
+      if (m.from < 0 || m.from === id || m.id !== id || m.from !== this.placer || this.rowLedger) return;
       if (this.hasCoord && this.coord.pc === 0 && this.coord.i === 0 && ckey(this.coord) === m.ck) {
-        const inRow = (k, v) => { const c = unck(k); return cellOk(k) && c.pc === 0 && v >= 0 && (c.r === this.coord.r || (c.i === 0 && c.r === (((this.coord.r + 1) % C) & 0xff)) || (firm && c.r > this.coord.r)); };
-        for (const kv of m.nbrs) if (inRow(kv.k, kv.v) && !this.occ.has(kv.k) && (!this.sitting.has(kv.k) || (firm && this.sitting.get(kv.k).assigner !== id && this.sitting.get(kv.k).joiner !== kv.v))) {   // L52.9 e: the ledger is the cell's word: it stands over a promise another seat's placement listed for it (a proposal that has moved since)
+        const inRow = (k, v) => { const c = unck(k); return cellOk(k) && c.pc === 0 && v >= 0 && (c.r === this.coord.r || (c.i === 0 && c.r === (((this.coord.r + 1) % C) & 0xff))); };
+        for (const kv of m.nbrs) if (inRow(kv.k, kv.v) && !this.occ.has(kv.k) && !this.sitting.has(kv.k)) {
           const s = state.newStruct('SoftSit'); s.joiner = kv.v; s.assigner = id; s.at = TICK; this.sitting.set(kv.k, s); }
         for (const e of m.row) if (inRow(e.k, e.v) && !this.occ.has(e.k)) { this.setOcc(e.k, e.v); this.noteS1(e.k); }
-        if (firm) for (const kv of m.nbrs) if (inRow(kv.k, kv.v) && kv.k !== ckey(this.coord)) { const a = this.l31Acc.get(kv.k); if (a === undefined || a.left || a.q === kv.v || !a.commit) this.l31Acc.set(kv.k, { q: kv.v, at: TICK | 0, by: id, commit: true, left: false }); }   // L52.9 e: the cells given on my giver's word are mine to answer for now
         this.rowLedger = true;
-        this.l52Sweep(ckey(this.coord));   // L52.9 e (wall.js): my row's word is mine from this ledger
       }
     },
 
@@ -521,7 +517,7 @@
       const sit = this.sitting.get(m.ck);
       if (sit !== undefined && sit.joiner === m.id) {
         if (m.tag === 1) this.confirmSeated(m.ck, m.id);   // the lost CLAIM, replayed first-hand
-        else { sit.at = this.TICK; sit.pingAt = -1; if (sit.pl.t === 'PLACE' && !this.l52Open(m.ck)) this.emit(m.id, msg.clone(sit.pl)); }   // alive and still seeking: restart the clock, and re-send the PLACE
+        else { sit.at = this.TICK; sit.pingAt = -1; if (sit.pl.t === 'PLACE') this.emit(m.id, msg.clone(sit.pl)); }   // alive and still seeking: restart the clock, and re-send the PLACE
       }
     },
 
