@@ -324,7 +324,61 @@
       if (!bodyEl.innerHTML) bodyEl.textContent = md;
       $('apphelp-modal').style.display = 'flex';
     }
-    $('apphelp').onclick = openAppHelp;
+    $('apphelp').onclick = function () { if (!(C.model.apps.soloCtl() || C.appHostCtl || C.appClientCtl) && !C.ROOM.solo) $('help-modal').style.display = 'flex'; else openAppHelp(); };
+    $('help-close').onclick = function () { $('help-modal').style.display = 'none'; };
+    // The room's own explainer (the meeting page's applyRoomHelp, app room): this page's room is an app room or an
+    // app-first meeting, voice only, and its view has no chat.
+    fn('applyRoomHelp', function () {
+      var h3 = document.querySelector('#help-modal h3'), hs = document.querySelector('#help-modal .help-scroll');
+      if (C.ROOM.kind === 'app') {
+        h3.textContent = T('appHelpTitle', 'How this app room works');
+        hs.innerHTML = '<p class="help-lead">This room exists around a <b>shared app</b>: everyone here sees and uses the <b>same live app together</b> — moves, edits and state flow between every phone directly.</p>'
+          + '<h4>The app is the show</h4><ul class="help-list">'
+          + '<li>The app fills the screen. One person <b>hosts</b> it (their device runs its engine); everyone else interacts live.</li>'
+          + '<li>If the host drops off, what happens is the room’s choice at creation: an <b>owned</b> app pauses until its owner returns; a <b>resilient</b> one lets a friend still here take over hosting.</li></ul>'
+          + '<h4>No camera</h4><ul class="help-list">'
+          + '<li>This room has <b>no camera and no video</b>. Nothing here is blurred, because there is no picture to blur.</li>'
+          + '<li><b>Talk</b>, when the host turns it on, is voice only.</li></ul>'
+          + '<h4>Invites</h4><ul class="help-list"><li><b>Invite</b> copies the one link that brings a friend straight in. The link is the whole key — share it deliberately.</li></ul>'
+          + '<p>Underneath it is the same thing as a GifOS Meeting: everything goes straight between the people here, no accounts, no limit on how many.</p>';
+      } else {
+        h3.textContent = T('helpTitle', 'How this meeting works');
+        hs.innerHTML = '<p class="help-lead">This is a <b>voice</b> view of the meeting, beside the app you are running. <b>Full meeting</b> opens the same meeting with video, the Stage and chat.</p>';
+      }
+    });
+    // ---- THE EMPTY APP ROOM (#appwait), as on the meeting page: a guest opening an app invite gets the app from
+    // whoever in the room holds it. Seated with no app: a spinner, then which piece is missing (the invite is dormant,
+    // or its host is away). Never for a founder, never over a live call.
+    var appWaitEl = null, appWaitSince = 0;
+    function appWaitTick() {
+      var kill = function () { appWaitSince = 0; if (appWaitEl) { appWaitEl.remove(); appWaitEl = null; } };
+      if (!C.ROOM.appPinned || C.ROOM.solo || !C.model.room.sessId()) return kill();
+      if (body.classList.contains('has-app') || C.appKey || me().app || body.classList.contains('call-on')) return kill();
+      var now = Date.now();
+      if (!appWaitSince) { appWaitSince = now; return; }
+      if (now - appWaitSince < GifOS.timings.APP_WAIT_SHOW_MS) return;
+      if (!appWaitEl) {
+        appWaitEl = document.createElement('div');
+        appWaitEl.id = 'appwait';
+        appWaitEl.innerHTML = '<div class="jv-box"><div class="jv-spin"></div><h3 id="aw-t">Looking for the app…</h3><p id="aw-p">You’re in the room. The app comes over from whoever is sharing it.</p></div>';
+        body.appendChild(appWaitEl);
+      }
+      if (now - appWaitSince < GifOS.timings.APP_WAIT_SAY_MS) return;
+      var spin = appWaitEl.querySelector('.jv-spin'); if (spin) spin.remove();
+      var others = 0;
+      C.model.roster.statusOf().forEach(function (st, pid) { if (String(pid) !== String(C.model.me.myId())) others++; });
+      if (appWaitEl.dataset.said === String(others)) return;
+      appWaitEl.dataset.said = String(others);
+      if (others > 0) {
+        appWaitEl.querySelector('#aw-t').textContent = 'The app’s host isn’t here';
+        appWaitEl.querySelector('#aw-p').textContent = (others === 1 ? 'One other person is' : others + ' other people are')
+          + ' waiting here too, but the friend who hosts the app isn’t right now. The app appears the moment they open it again — this link stays good.';
+      } else {
+        appWaitEl.querySelector('#aw-t').textContent = 'This invite isn’t live right now';
+        appWaitEl.querySelector('#aw-p').innerHTML = 'An app invite works while the friend who shared it has the app open — the app comes from their device, not from a server. Nobody is in the room, so the link has gone quiet. Ask them to open the app and share it again: the same link comes back to life.'
+          + '<a class="aw-home" href="/" target="_blank" rel="noopener">Meanwhile, get GifOS — and apps of your own</a>';
+      }
+    }
     $('apphelp-close').onclick = function () { $('apphelp-modal').style.display = 'none'; };
     (function wireAppFull() {
       var fb = $('appfull'), FS = GifOS.fullscreen;
@@ -386,7 +440,7 @@
     });
     function showInvite() {
       var link = names.inviteLinkForModal();
-      $('ainv-link').value = link;
+      $('share-url').value = link;
       $('ainv').style.display = link ? 'flex' : 'none';
     }
     fn('showInviteModal', showInvite);
@@ -433,7 +487,7 @@
       };
     });
     $('ainv-copy').onclick = function () {
-      var v = $('ainv-link').value;
+      var v = $('share-url').value;
       try { navigator.clipboard.writeText(v).then(function () { $('ainv-copy').textContent = T('invCopied', 'Copied'); }, function () {}); } catch (e) {}
     };
     $('ainv-done').onclick = function () { $('ainv').style.display = 'none'; };
@@ -465,6 +519,8 @@
       setup: function () {
         paintBar(); paintWho();
         try { names.paintControls(); } catch (e) {}
+        try { names.applyRoomHelp(); } catch (e) {}
+        setInterval(appWaitTick, GifOS.timings.APP_ROOM_BEAT_MS);   // the app room's beat
         root.__gifosAudioView = { people: people, fullHref: fullHref, standIns: names.standInsForTest };
       },
     };

@@ -661,6 +661,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
 <script src="js/mesh-pipe.js" defer></script>
 <script src="js/relay-config.js" defer></script>
 <script src="js/runtime.js" defer></script>
+<script src="js/meet-host.js" defer></script>
 <script src="js/gifos-perms.js" defer></script>
     <script src="js/core/meeting.js" defer></script>
     <script src="js/core/media/plane-browser.js" defer></script>
@@ -735,9 +736,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <div class="name-box">
       <h3 data-t="invTitleApp">Share this app</h3>
       <p data-t="invApp">Send this link. They join you live inside this app.</p>
-      <input id="ainv-link" type="text" readonly aria-label="Link">
+      <input id="share-url" type="text" readonly aria-label="Link">
       <button id="ainv-copy" type="button" data-t="invCopy">Copy</button>
       <button id="ainv-done" type="button" data-t="invClose">Close</button>
+    </div>
+  </div>
+  <div class="name-modal" role="dialog" aria-modal="true" id="help-modal" style="display:none">
+    <div class="name-box help-box" style="max-width:600px;text-align:left">
+      <h3 style="text-align:center">How this app room works</h3>
+      <div class="help-scroll"></div>
+      <div style="display:flex;justify-content:center;margin-top:1rem"><button id="help-close" data-t="helpGot" type="button">Got it</button></div>
     </div>
   </div>
   <div class="name-modal" role="dialog" aria-modal="true" id="apphelp-modal" style="display:none">

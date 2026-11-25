@@ -5175,14 +5175,14 @@
         || document.body.classList.contains('call-on')) return kill();
       const now = Date.now();
       if (!appWaitSince) { appWaitSince = now; return; }
-      if (now - appWaitSince < 2000) return; // instant mounts never see it
+      if (now - appWaitSince < GifOS.timings.APP_WAIT_SHOW_MS) return; // instant mounts never see it
       if (!appWaitEl) {
         appWaitEl = document.createElement('div');
         appWaitEl.id = 'appwait';
         appWaitEl.innerHTML = '<div class="jv-box"><div class="jv-spin"></div><h3 id="aw-t">Looking for the app…</h3><p id="aw-p">You’re in the room. The app comes over from whoever is sharing it.</p></div>';
         document.body.appendChild(appWaitEl);
       }
-      if (now - appWaitSince < 12000) return;
+      if (now - appWaitSince < GifOS.timings.APP_WAIT_SAY_MS) return;
       // Long enough: the ad rides the first status beats, and 12s is past
       // every join+gossip horizon. Nothing is coming — say which piece is
       // missing. (No spinner from here on: nothing is spinning.)
