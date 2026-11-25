@@ -427,7 +427,8 @@
       else if (busy) state = 'busy';
       else if (nativeCovers()) state = 'native';
       else if (eng && eng.ready && hasMask) state = 'on';
-      else state = 'loading';
+      else if (eng) state = 'loading';
+      else state = 'ready';   // chosen; starts with the camera
     }
     return { mode: c.mode, img: c.img, state: state, why: failed || busy || unsupported(), phone: phone(), rung: rungs()[rungI],
       share: Math.round(guard.share * 1000) / 1000, main: Math.round(guard.main * 1000) / 1000, delegate: eng ? eng.delegate : '',
