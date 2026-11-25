@@ -1046,9 +1046,9 @@
   }
   // aclLimit(acl) -> the room's people limit from its ACL: a number, or null (no limit). No ACL: the DEFAULTS' limit.
   const aclLimit = (acl) => (acl ? (acl.l === null ? null : Math.max(acl.l | 0, DEFAULTS.roomLimit)) : DEFAULTS.roomLimit);
-  // aclView(acl) -> what the License view shows: {limit (null = no limit), free (the defaults: no right shown), since (ms,
-  // or null)}. Permissions only: never who showed them, never a ticket.
-  const aclView = (acl) => ({ limit: aclLimit(acl), free: !acl || (acl.l !== null && (acl.l | 0) <= DEFAULTS.roomLimit && !(acl.f | 0)), since: acl && acl.s ? acl.s : null });
+  // aclView(acl) -> what the License view shows: the permissions the room holds, never a plan, a name or a ticket:
+  // {limit (null = no people limit), none (no permission shown yet: the default rule applies), since (ms, or null)}.
+  const aclView = (acl) => ({ limit: aclLimit(acl), none: !acl || (acl.l !== null && (acl.l | 0) <= DEFAULTS.roomLimit && !(acl.f | 0)), since: acl && acl.s ? acl.s : null });
   // aclHas(acl, item) -> whether the room holds a room-scoped flag (a holder-scoped word is never the room's).
   const aclHas = (acl, item) => !!acl && ACL_FLAGS.indexOf(item) >= 0 && ((acl.f | 0) & (1 << ACL_FLAGS.indexOf(item))) !== 0;
 
