@@ -1,6 +1,6 @@
 {
  "v": 1,
- "build": "0.9.28.24",
+ "build": "0.9.28.25",
  "signer": "gifos.app",
  "files": {
   "js/app-owner.js": "7c709e7f9e553d5c4c38ef8925dc7841fe2b68a2f95ebce0846593f91eb54535",
@@ -18,7 +18,7 @@
   "js/gifos-net.js": "f2adba9ee58d9d1d9b47877b8dc5e82b48b55d6822cdb17c47203f4303d6d632",
   "js/gifos-sign.js": "eb81ca9dcaf099ebf5c65a10ca6d52b2761cbd9d3be16ee5a1a7952b9ab68eda",
   "js/gifos-store.js": "e0bf3114e392287e44efe67248c1c43731912a3244bf8234cf558cd18f5eec34",
-  "js/gifos-sub.js": "14a250e1c68e79b2b978448aa58ec053cf4b38cb52d69b99359816b6bb884f25",
+  "js/gifos-sub.js": "86b75e68e6b6f5ee0cd0246d9a84effdda00179b353f385a27f32e293e7a857d",
   "js/meet-agenda.js": "86786a980563d8e5d8f0c861d59bd7787f8457992aff57e938db9585a424588c",
   "js/meet-agent.js": "cdc5bab1448b3730fc5d8342617b97c608c00128c7c051e6a2a8ab2358ef754f",
   "js/meet-captrust.js": "aeb7b4797ee4eac6ac5c9cd54d38bb7c79d8034eab948ce6ef226562d67eb0e3",
@@ -37,7 +37,7 @@
   "js/meet-viewmode.js": "851eae95762e026973bb707bcfe97f8aacbb5f76d0dc460dc8970ba4d52543e8",
   "js/meet-zones.js": "677a6a0afaaab4fe110c141ce773d2fc0e554d9ecdf897c1cc9bf88d5ef0e2eb",
   "js/mesh-identity.js": "e7c41650476bf262b0ba41d9970072b77eb748c16d1d9267c73fb4af8e5e1a79",
-  "js/mesh-wire.js": "af53d32f919d6eac9ff497d1d6fb51b214e7825af9f828e9a64ecd87114a4e7c",
+  "js/mesh-wire.js": "41409e3526574c20b0cde9884bddd392c6201fe26438a77f4cc919f0f32944ca",
   "js/mesh/books.js": "092db7b0f42029f95830cfc42f5f3180466832730e7a3510364785d3b97b8c6e",
   "js/mesh/burst.js": "70e72093587a0f383f199c799cd55eb952ecf3d18d88b401500db52a10dcec25",
   "js/mesh/c7proof.js": "defc7b5cc309af34d6b04a052704cdf9cf5080f1a99d68ffdd7318a6cd1591ac",
@@ -100,7 +100,7 @@
   "js/mesh/witness.js": "57fbb5be7700b06efab185322f1be7875ef8b64fcd9c8edb65b34410010135c6",
   "js/relay-config.js": "75ab84cf3e3b9c1f13a1c534a14a771a4477a4a2a9772dc79e35e9b9111d66e8",
   "js/runtime.js": "16953388689e6b3af5fa5bd2a38303547334d28f869c2de32a0272f49859a41b",
-  "js/timings.js": "3d4801193f30605ff94b997628b0617a1888d2d52308d3970fe79b72439f105e"
+  "js/timings.js": "93085ea6294879e886c6b8d38f5b8436b632c4ea522a42b00e024f8936f47d7b"
  },
- "sig": "TcsWw7UvybqoWab2oIg4YvV8QNz65rfz07tDJUwpp8a9UaTVNERSI9v+Y+OqeWDRneCw19dIz8lbqqOU9ZdfBg=="
+ "sig": "MKdzXhW9CVeNpCdotAXuhzmzr/dkcZnJRIz6O5oHuTbJhiSxEoyAbZfLgiYbGFuVvwPbYEwZ7QEL9gmtuyPrAg=="
 }
