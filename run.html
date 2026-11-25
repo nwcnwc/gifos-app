@@ -26,12 +26,13 @@
      lobby) on meet.html, a broadcast (bc) on cast.html, with the same address after the page name. Snapshots and links
      keep naming run.html, so every link and every release ever cut opens the right page.
      On gifos.app the site root has no meeting page of its own (/meet is the link router): the channel loader below
-     moves a room into the live release first, whose run.html forwards it. -->
+     moves a room into the live release first, whose run.html forwards it. The GifOS Meet apps (window.GifosNative, set
+     before any page script) serve their bundled files under their own names, so there the page file is named. -->
 <script id="gifos-forward">(function(){try{
   if(location.protocol==='about:')return;
   var h=location.hash||'',q=new URLSearchParams(h.replace(/^#/,''));
   if(q.get('id')||q.get('j')||(q.get('s')&&q.get('k'))||q.get('app'))return;
-  var page=q.has('bc')?'cast':'meet',path=location.pathname,ours=/(^|\.)gifos\.app$/.test(location.hostname);
+  var page=q.has('bc')?'cast':'meet',path=location.pathname,app=!!window.GifosNative,ours=!app&&/(^|\.)gifos\.app$/.test(location.hostname);
   if(ours&&path.indexOf('/versions/')===-1){
     var edge=null,ask=null,cur=null;try{edge=localStorage.getItem('gifos_channel');ask=sessionStorage.getItem('gifos_ask_edge');cur=localStorage.getItem('gifos_current');}catch(e){}
     if((edge==='edge'||ask)&&/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(cur)))location.replace('/versions/'+cur+'/'+page+location.search+h);
