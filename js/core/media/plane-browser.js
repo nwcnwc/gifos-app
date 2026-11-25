@@ -489,6 +489,7 @@
       // Stop the pipe's PRIVATE clone only — never the shared camera track.
       if (blurPipe.cloned && blurPipe.srcTrack) { try { blurPipe.srcTrack.stop(); } catch (e) {} }
       try { blurPipe.track.stop(); } catch (e) {}
+      if (!blurPipe.screen && GifOS.meetBgfx) GifOS.meetBgfx.release();   // the background model hands the processor back
       blurPipe.dead = true; // its paint loop and callbacks end with it (a pipe checks its own flag, never which slot is current)
       blurPipe = null;
     }
@@ -622,7 +623,13 @@
         if (wkAlign) { w = Math.max(16, Math.round(w / 16) * 16); h = Math.max(2, Math.round(h / 2) * 2); }
         if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
         let drew = false;
-        try {
+        // A BACKGROUND EFFECT (js/meet-bgfx.js) paints the camera frame over the chosen
+        // background, and the privacy blur then covers the whole composite exactly as it
+        // covers a plain frame (the same sigma on the shipped picture's long side).
+        if (!pipe.screen && GifOS.meetBgfx) {
+          try { drew = GifOS.meetBgfx.paint(ctx, src, { ox: ox, oy: oy, dw: dw, dh: dh, w: w, h: h, privacyFrac: pipe.level > 0 ? pipe.frac * Math.max(w, h) / Math.max(1, w) : 0, blurDraw: blurDraw }); } catch (e) { drew = false; }
+        }
+        if (!drew) try {
           // The fraction is of the SHIPPED picture's long side: a crop or a
           // stage frame draws the camera wider than the canvas (dw).
           if (pipe.level > 0) blurDraw(ctx, src, ox, oy, dw, dh, pipe.frac * Math.max(w, h) / Math.max(1, dw));
@@ -936,8 +943,18 @@
       }
       const cam = __C.localStream.getVideoTracks()[0];
       stopAvatarPipe();
+      // A background effect (js/meet-bgfx.js) rides the same canvas; the camera's own
+      // background blur, where the platform has one, needs no canvas.
+      const BG = GifOS.meetBgfx;
+      if (BG && !sentVideoTrack.bgfx) {
+        sentVideoTrack.bgfx = true;
+        BG.configure({ power: () => __C.powNow });
+        BG.onChange(() => { try { refreshOutbound(); } catch (e) {} });
+      }
+      if (BG) BG.nativeSync(cam);
+      const fx = !!(BG && BG.wants());
       // A sender crop (0.9.23b) rides the same canvas: everyone gets the square I chose.
-      if ((c.blur > 0 || !!senderCrop() || !!stageFrame()) && !__C.myStatus.camOff) return startBlurPipe(c.blur) || cam;
+      if ((c.blur > 0 || !!senderCrop() || !!stageFrame() || fx) && !__C.myStatus.camOff) return startBlurPipe(c.blur) || cam;
       stopBlurPipe();
       return cam;
     }
@@ -10554,6 +10571,14 @@
       const wish = (0, /*()*/__C.blurLevel)(__C.myStatus.blur);
       for (const b of el.querySelectorAll('button[data-cam-blur]')) b.setAttribute('aria-checked', String(+b.dataset.camBlur === wish));
       fillCamDevices();
+      if (GifOS.meetBgfx) {
+        if (!sentVideoTrack.bgfx) {   // a pick before the first send still rebuilds the pipe
+          sentVideoTrack.bgfx = true;
+          GifOS.meetBgfx.configure({ power: () => __C.powNow });
+          GifOS.meetBgfx.onChange(() => { try { refreshOutbound(); } catch (e) {} });
+        }
+        GifOS.meetBgfx.fillPicker(el, (k, en) => (0, /*()*/__C.uiText)(k, en));
+      }
       // The cameras are named only once one was allowed: read the list again,
       // and show the rows if it changed while the pop-up is open.
       const camKey = camInputs.map((m) => m.id).join();

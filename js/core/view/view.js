@@ -6109,6 +6109,9 @@
     function stopLobbyPreview() {
       lobbyCamGen++;
       const vid = document.getElementById('lob-preview-vid');
+      // The preview may show the background effect's composite: stop it and the camera under it.
+      if (vid && vid.__bgfx) { try { vid.__bgfx.stop(); } catch (e) {} vid.__bgfx = null; }
+      if (vid && vid.__raw) { try { vid.__raw.getTracks().forEach((t) => t.stop()); } catch (e) {} vid.__raw = null; }
       if (!vid || !vid.srcObject) return;
       try { vid.srcObject.getTracks().forEach((t) => t.stop()); } catch (e) {}
       vid.srcObject = null;
@@ -6169,7 +6172,10 @@
           try { stream.getTracks().forEach((t) => t.stop()); } catch (e) {}
           return;
         }
-        vid.srcObject = stream;
+        // The chosen background (js/meet-bgfx.js) shows here as the room will see it.
+        const fx = GifOS.meetBgfx ? GifOS.meetBgfx.preview(stream.getVideoTracks()[0]) : null;
+        if (fx) { vid.__bgfx = fx; vid.__raw = stream; vid.srcObject = new MediaStream([fx.track]); }
+        else vid.srcObject = stream;
         __C.model.me.joinAv().cam = true;
         paintLobbyAv();
       }).catch(() => { if (gen === lobbyCamGen) { __C.model.me.joinAv().cam = false; paintLobbyAv(); } });
