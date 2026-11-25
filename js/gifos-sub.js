@@ -331,7 +331,7 @@
     if (!o || typeof o !== 'object') return null;
     if (o.v !== 1 || o.kind !== LICENSE_KIND || o.payeeId !== SELLER) return null;
     if (!grantsOk(o.grants)) return null;
-    if (typeof o.buyerKey !== 'string' || !KEY_RE.test(o.buyerKey)) return null;
+    if (!edKeyOk(o.buyerKey)) return null;
     if (!idFits(o.subId)) return null;
     if (!intS(o.issued) || !intS(o.exp) || o.exp <= o.issued) return null;
     if (!(nowS < o.exp)) return null;
@@ -347,6 +347,48 @@
   };
   const utf8 = (s) => new TextEncoder().encode(String(s));
 
+  // ---- weak Ed25519 keys and signatures ---------------------------------------
+  // A small-order public key (or a signature whose R is one, the all-zero signature included) lets a signature be
+  // forged on engines that skip the check: an all-zero signature by the all-zero key verified on some Workers isolates
+  // (2026-11-24). No honest key or signature is one, so every Ed25519 check here and in the Workers and the relay
+  // refuses them before asking the engine. The list is libsodium's: the eight small-order points and their
+  // non-canonical spellings, compared with the sign bit masked.
+  const SMALL_ORDER = ['00'.repeat(32), '01' + '00'.repeat(31),
+    '26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05',
+    'c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a',
+    'ec' + 'ff'.repeat(30) + '7f', 'ed' + 'ff'.repeat(30) + '7f', 'ee' + 'ff'.repeat(30) + '7f']
+    .map((h) => Uint8Array.from(h.match(/../g), (x) => parseInt(x, 16)));
+  // edKeyWeak(bytes) -> true for anything that is not a usable 32-byte public key.
+  function edKeyWeak(b) {
+    if (!b || b.length !== 32) return true;
+    return SMALL_ORDER.some((e) => { for (let i = 0; i < 31; i++) if (b[i] !== e[i]) return false; return (b[31] & 0x7f) === e[31]; });
+  }
+  // edSigWeak(bytes) -> true for anything that is not a usable 64-byte signature.
+  function edSigWeak(s) {
+    if (!s || s.length !== 64) return true;
+    let any = 0; for (let i = 0; i < 64; i++) any |= s[i];
+    return any === 0 || edKeyWeak(s.subarray ? s.subarray(0, 32) : Array.prototype.slice.call(s, 0, 32));
+  }
+  // edKeyOk(base64) -> the key if it is a canonical base64 32-byte key that is not weak, else null.
+  function edKeyOk(v) {
+    if (typeof v !== 'string' || !KEY_RE.test(v)) return null;
+    let b; try { b = b64ToBytes(v); } catch (e) { return null; }
+    if (b.length !== 32 || edKeyWeak(b)) return null;
+    let bin = ''; for (const x of b) bin += String.fromCharCode(x);
+    return (typeof btoa === 'function' ? btoa(bin) : Buffer.from(b).toString('base64')) === v ? v : null;
+  }
+  // edVerify(subtle, key, sig, msg) -> bool, never throws. key: base64 or 32 bytes; sig: base64 or 64 bytes; msg: text
+  // or bytes. The one Ed25519 check the Workers and the relay use for a key they did not make.
+  async function edVerify(subtle, key, sig, msg) {
+    try {
+      const k = typeof key === 'string' ? b64ToBytes(key) : key;
+      const g = typeof sig === 'string' ? b64ToBytes(sig) : sig;
+      if (edKeyWeak(k) || edSigWeak(g)) return false;
+      const pub = await subtle.importKey('raw', k, { name: 'Ed25519' }, false, ['verify']);
+      return !!(await subtle.verify('Ed25519', pub, g, typeof msg === 'string' ? utf8(msg) : msg));
+    } catch (e) { return false; }
+  }
+
   // verifyLicense({licenseJson, sig}, verify, nowS) -> the parsed license or
   // null. verify(sigBytes, msgBytes) -> bool checks the payment service's
   // signature with its published key (the caller holds the key).
@@ -354,7 +396,7 @@
     if (!lic || typeof lic.licenseJson !== 'string' || typeof lic.sig !== 'string') return null;
     if (lic.licenseJson.length > 2048) return null;
     let sigBytes; try { sigBytes = b64ToBytes(lic.sig); } catch (e) { return null; }
-    if (sigBytes.length !== 64) return null;
+    if (edSigWeak(sigBytes)) return null;
     let ok = false;
     try { ok = !!(await verify(sigBytes, utf8(lic.licenseJson))); } catch (e) { ok = false; }
     if (!ok) return null;
@@ -397,10 +439,10 @@
   // verifyProof(license, context, nonce, proofSig, verifyKey) -> bool.
   // verifyKey(pubB64, sigBytes, msgBytes) -> bool.
   async function verifyProof(lic, context, nonce, proofSig, verifyKey) {
-    if (!lic || typeof lic.buyerKey !== 'string' || !KEY_RE.test(lic.buyerKey)) return false;
+    if (!lic || !edKeyOk(lic.buyerKey)) return false;
     if (typeof nonce !== 'string' || !NONCE_RE.test(nonce)) return false;
     let sig; try { sig = b64ToBytes(proofSig); } catch (e) { return false; }
-    if (sig.length !== 64) return false;
+    if (edSigWeak(sig)) return false;
     try { return !!(await verifyKey(lic.buyerKey, sig, utf8(proofMessage(context, nonce)))); } catch (e) { return false; }
   }
 
@@ -464,7 +506,7 @@
     if (!o || typeof o !== 'object') return null;
     if (o.v !== 1 || o.kind !== TICKET_KIND || o.payeeId !== SELLER) return null;
     if (!grantsOk(o.grants)) return null;
-    if (typeof o.buyerKey !== 'string' || !KEY_RE.test(o.buyerKey)) return null;
+    if (!edKeyOk(o.buyerKey)) return null;
     if (!idFits(o.subId)) return null;
     if (typeof o.meeting !== 'string' || !MEETING_RE.test(o.meeting)) return null;
     if (meeting != null && o.meeting !== meeting) return null;
@@ -477,7 +519,7 @@
   async function verifyTicket(t, verify, nowS, meeting) {
     if (!t || typeof t.ticketJson !== 'string' || typeof t.sig !== 'string' || t.ticketJson.length > 2048) return null;
     let sigBytes; try { sigBytes = b64ToBytes(t.sig); } catch (e) { return null; }
-    if (sigBytes.length !== 64) return null;
+    if (edSigWeak(sigBytes)) return null;
     let ok = false;
     try { ok = !!(await verify(sigBytes, utf8(t.ticketJson))); } catch (e) { ok = false; }
     if (!ok) return null;
@@ -607,7 +649,7 @@
     if (!o || typeof o !== 'object') return null;
     if (o.v !== 1 || o.kind !== PASS_KIND || o.payeeId !== SELLER || PASS_VIAS.indexOf(o.via) < 0) return null;
     if (typeof o.order !== 'string' || !ORDER_ID_RE.test(o.order) || o.id !== 'P4-' + o.order || !PASS_ID_RE.test(o.id)) return null;
-    if (typeof o.buyerKey !== 'string' || !KEY_RE.test(o.buyerKey)) return null;
+    if (!edKeyOk(o.buyerKey)) return null;
     if (!intS(o.paid) || !intS(o.start) || o.start < o.paid) return null;
     const grants = grantsOk(o.grants);
     if (!grants) return null;
@@ -624,7 +666,7 @@
   async function verifyPass(p, verify, nowS) {
     if (!p || typeof p.passJson !== 'string' || typeof p.sig !== 'string' || p.passJson.length > 1024) return null;
     let sigBytes; try { sigBytes = b64ToBytes(p.sig); } catch (e) { return null; }
-    if (sigBytes.length !== 64) return null;
+    if (edSigWeak(sigBytes)) return null;
     let ok = false;
     try { ok = !!(await verify(sigBytes, utf8(passMessage(p.passJson)))); } catch (e) { ok = false; }
     if (!ok) return null;
@@ -693,7 +735,7 @@
     const grants = grantsOk(o.grants);
     if (!grants) return null;
     if (o.pid !== undefined && (typeof o.pid !== 'string' || !PASS_ID_RE.test(o.pid))) return null;
-    if (typeof o.buyerKey !== 'string' || !KEY_RE.test(o.buyerKey)) return null;
+    if (!edKeyOk(o.buyerKey)) return null;
     if (typeof o.subId !== 'string' || !PASS_REC_RE.test(o.subId)) return null;
     if (typeof o.meeting !== 'string' || !MEETING_RE.test(o.meeting)) return null;
     if (meeting != null && o.meeting !== meeting) return null;
@@ -706,7 +748,7 @@
   async function verifyPassTicket(t, verify, nowS, meeting) {
     if (!t || typeof t.ticketJson !== 'string' || typeof t.sig !== 'string' || t.ticketJson.length > 2048) return null;
     let sigBytes; try { sigBytes = b64ToBytes(t.sig); } catch (e) { return null; }
-    if (sigBytes.length !== 64) return null;
+    if (edSigWeak(sigBytes)) return null;
     let ok = false;
     try { ok = !!(await verify(sigBytes, utf8(passTicketMessage(t.ticketJson)))); } catch (e) { ok = false; }
     if (!ok) return null;
@@ -856,7 +898,7 @@
     if (typeof c.seed !== 'string' || !SEED_RE.test(c.seed)) return null;
     let raw; try { raw = b64ToBytes(c.seed); } catch (e) { return null; }
     if (raw.length !== 32) return null;
-    const out = { v: 1, kind: CRED_KIND, subId: c.subId, tier: c.tier, period: c.period === 'yearly' || c.period === 'monthly12' ? c.period : 'monthly', seed: c.seed, buyerKey: typeof c.buyerKey === 'string' && KEY_RE.test(c.buyerKey) ? c.buyerKey : undefined };
+    const out = { v: 1, kind: CRED_KIND, subId: c.subId, tier: c.tier, period: c.period === 'yearly' || c.period === 'monthly12' ? c.period : 'monthly', seed: c.seed, buyerKey: edKeyOk(c.buyerKey) || undefined };
     // libSeed is the library key's seed. A move keeps it; a PayPal restore sets it to the new seed.
     // Unknown fields are otherwise dropped, so this one has to be copied or the library key dies on the way.
     if (typeof c.libSeed === 'string' && SEED_RE.test(c.libSeed)) {
@@ -876,7 +918,7 @@
     const passes = (Array.isArray(w.passes) ? w.passes : []).filter((p) => p && typeof p.passJson === 'string' && typeof p.sig === 'string' && p.passJson.length <= 1024 && p.sig.length <= 100).slice(-64)
       .map((p) => ({ passJson: p.passJson, sig: p.sig }));
     const pending = typeof w.pending === 'string' && ORDER_ID_RE.test(w.pending) ? w.pending : undefined;
-    return { v: 1, kind: WALLET_KIND, seed: w.seed, buyerKey: typeof w.buyerKey === 'string' && KEY_RE.test(w.buyerKey) ? w.buyerKey : undefined, passes, pending };
+    return { v: 1, kind: WALLET_KIND, seed: w.seed, buyerKey: edKeyOk(w.buyerKey) || undefined, passes, pending };
   }
   // credentialFiles(c, wallet): either may be missing, not both.
   function credentialFiles(c, wallet) {
@@ -1028,7 +1070,7 @@
   }
 
   GifOS.sub = {
-    TIERS, TIER_IDS, PERIODS, NEGOTIATED, ADDONS, usd, covers, upgradeOk, upgradeCharge, APP_TIERS, tiersSoldIn, tiersListed, FREE, TEXT, PEOPLE_LIMIT, LICENSE_KIND, SELLER, KEY_RE, SUB_ID_RE, ASK_WINDOW_S,
+    TIERS, TIER_IDS, PERIODS, NEGOTIATED, ADDONS, usd, covers, upgradeOk, upgradeCharge, APP_TIERS, tiersSoldIn, tiersListed, FREE, TEXT, PEOPLE_LIMIT, LICENSE_KIND, SELLER, KEY_RE, edKeyOk, edKeyWeak, edSigWeak, edVerify, SUB_ID_RE, ASK_WINDOW_S,
     FREE_PLAN, FREE_LIMIT, PLANS, PLAN_IDS, isPlan, isPaid,
     checkLicense, verifyLicense, rightsOf, storageAfterLapse, proofMessage, verifyProof, askMessage, askFresh,
     admission, roomContext, doorContext, roomTierOf, clearNoPwRight, clearStageNoPwRight, credId, doorVerdict, doorProofOk,
