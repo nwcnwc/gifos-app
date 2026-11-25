@@ -12380,6 +12380,7 @@
       if (m.t === 'joined') relayTv = m.tv === 1;   // this relay vouches for TURN links (see relayTv)
       if (m.t === 'joined' && !av) capServerKey = m.cap && m.cap.ck ? m.cap.ck : null;   // the server's word on the capture at this join
       if (m.t === 'joined' && m.cap && !av) capTake(m.cap, true);   // a captured open room: the captor's ticket, checked here
+      if (m.t === 'turned') { if (amAdmin) { try { GifOS.meetSubs.hostTurned(m.w); } catch (e) {} } return; }   // THE ROOM ACL: the relay turned someone away at this hosted room's line and told the host (the count only)
       if (m.t === 'cap') { onCapFrame(m); return; }
       if (m.t === 'tvouch' && /^c/.test(String(m.l || ''))) { try { carryHostVouch(m); } catch (e) {} return; }   // a carry link's vouch (docs/turn-carry.md)
       if (m.t === 'tvouch') { try { if (turnLinks) turnLinks.onVouch(m); } catch (e) {} return; }
