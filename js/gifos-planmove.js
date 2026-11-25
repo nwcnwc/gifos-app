@@ -150,6 +150,7 @@
     while (Date.now() < untilMs && (!alive || alive())) {
       var r = await post('/gifos/move/get', { box: box, slot: slot });
       if (r.body && r.body.ct) return r.body.ct;
+      if (r.status === 410) { var used = new Error('used'); used.used = true; throw used; }
       if (r.status === 404) { var gone = new Error('gone'); gone.gone = true; throw gone; }
       if (!r.ok && !(r.body && r.body.wait)) {
         var err = new Error((r.body && r.body.error) || ('move ' + r.status));

@@ -324,7 +324,7 @@
       return P.put('hello', box, ct).then(function (r) {
         if (r && r.ok) return;
         // Another device answered this code first: never show or use a code for it (the holder would see a mismatch anyway).
-        if (r && r.status === 409) { var big = $('pm-recv-code'); if (big) big.textContent = ''; throw new Error(t('pmUsed')); }
+        if (r && (r.status === 409 || r.status === 410)) { var big = $('pm-recv-code'); if (big) big.textContent = ''; throw new Error(t('pmUsed')); }
         if (Date.now() >= until) throw new Error(t('pmExpired'));
         return new Promise(function (res) { setTimeout(res, GifOS.timings.MOVE_HELLO_RETRY_MS); }).then(once);
       });
@@ -365,17 +365,22 @@
     if (recv) recv.hidden = false;
     var status = function (msg) { var n = $('pm-recv-status'); if (n) n.textContent = msg || ''; };
     if (!parsed) { status(t('pmFailed')); return; }
+    status(t('pmWaiting'));
     return P.boxId(parsed.chan).then(function (box) {
       return P.ecdh().then(function (eB) {
         return P.codeOf(parsed.K, parsed.chan, eB.pub).then(function (code) {
-          var big = $('pm-recv-code');
-          if (big) big.textContent = code;
+          // The code shows only once this device holds the box's hello: a used or expired link never shows one.
           return P.sealHello(parsed.K, parsed.chan, box, eB.pub).then(function (ct) { return putHello(P, box, ct); }).then(function () {
+            var big = $('pm-recv-code');
+            if (big) big.textContent = code;
             return P.getUntil(box, 'pkg', Date.now() + P.LIFE_MS);
           }).then(function (ct) { return P.openPkg(parsed.K, parsed.chan, box, eB.privateKey, ct); }).then(maybeInstall);
         });
       });
-    }).then(function (installed) { if (installed) status(t('pmRecvDone')); }, function (e) { status(String((e && e.message) || e) || t('pmFailed')); });
+    }).then(function (installed) { if (installed) status(t('pmRecvDone')); }, function (e) {
+      var big = $('pm-recv-code'); if (big) big.textContent = '';
+      status(e && e.used ? t('pmUsed') : e && (e.expired || e.gone) ? t('pmExpired') : (String((e && e.message) || e) || t('pmFailed')));
+    });
   }
   function showRestore(grant) {
     var P = PM();
