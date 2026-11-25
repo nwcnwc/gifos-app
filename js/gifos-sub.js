@@ -1006,7 +1006,48 @@
     return (h.slice(0, 8) + '-' + h.slice(8, 12) + '-4' + h.slice(13, 16) + '-8' + h.slice(17, 20) + '-' + h.slice(20, 32)).toLowerCase();
   }
 
+  // ---- THE ROOM ACL (the relay's, docs/relay-lockdown.md "Meeting size: who decides") -----------------------------
+  // Nathan 2026-11-24: "the relay should store per room the very simple ACL ... as people with creds join they enrich
+  // the meeting with better acl. doesnt matter if they leave, that acl can last as long as the room lasts" and "The relay
+  // keeps the list of all permissions granted, NOT the ephemeral plans. THE PERMISSIONS. ORish."
+  // A room's ACL is the OR (union) of the signed line items of every meeting right verified in it: the largest
+  // roomLimit (null, no line, beats any number), every flag any right grants, the largest counts. Compact, so it rides
+  // every occupant's relay attachment: {l: roomLimit (null = no line), f: bit set over ACL_FLAGS, v: turnVideoLinks,
+  // m: meetings, h: agentHost}. No ACL at all is the DEFAULTS. Pages decide nothing about size: only the relay reads it.
+  const ACL_FLAGS = Object.freeze(['admitAtFullDoor', 'captureOpenRoom', 'storage', 'clearWithoutPassword', 'clearStageWithoutPassword']);
+  // THE SCOPE OF EACH LINE ITEM. 'room': a right of the room itself once anyone shows it (today only roomLimit, the people
+  // line). 'holder': a right of the person holding it, never of the room (admitAtFullDoor lets its holder past a full
+  // door, captureOpenRoom lets its holder take an open room...): the ACL lists it, and nothing may read it as the room's.
+  // A word with no scope here is not a room right (aclRoomHas refuses it).
+  const ACL_SCOPE = Object.freeze({ roomLimit: 'room', admitAtFullDoor: 'holder', captureOpenRoom: 'holder', storage: 'holder', clearWithoutPassword: 'holder',
+    clearStageWithoutPassword: 'holder', turnVideoLinks: 'holder', meetings: 'holder', agentHost: 'holder', overflow: 'holder' });
+  // aclAdd(acl, grants) -> the ACL with a right's line items ORed in (the same object when nothing new was granted).
+  function aclAdd(acl, grants) {
+    const x = grantsOk(grants);
+    if (!x) return acl || null;
+    const a = acl || { l: DEFAULTS.roomLimit, f: 0, v: 0, m: 1, h: 0 };
+    let f = a.f | 0;
+    ACL_FLAGS.forEach((k, i) => { if (x[k] === true) f |= (1 << i); });
+    const n = { l: a.l === null || x.roomLimit === null ? null : Math.max(a.l | 0, x.roomLimit, DEFAULTS.roomLimit), f,
+      v: Math.max(a.v | 0, x.turnVideoLinks | 0), m: Math.max(a.m | 0, x.meetings | 0, 1), h: Math.max(a.h | 0, x.agentHost | 0) };
+    return acl && n.l === acl.l && n.f === acl.f && n.v === acl.v && n.m === acl.m && n.h === acl.h ? acl : n;
+  }
+  // aclJoin(a, b) -> the union of two ACLs (a itself when b adds nothing; null when both are none).
+  function aclJoin(a, b) {
+    if (!b) return a || null;
+    if (!a) return b;
+    const n = { l: a.l === null || b.l === null ? null : Math.max(a.l | 0, b.l | 0), f: (a.f | 0) | (b.f | 0), v: Math.max(a.v | 0, b.v | 0), m: Math.max(a.m | 0, b.m | 0), h: Math.max(a.h | 0, b.h | 0) };
+    return n.l === a.l && n.f === a.f && n.v === a.v && n.m === a.m && n.h === a.h ? a : n;
+  }
+  // aclLimit(acl) -> the room's people line from its ACL: a number, or null (no line). No ACL: the DEFAULTS' line.
+  const aclLimit = (acl) => (acl ? (acl.l === null ? null : Math.max(acl.l | 0, DEFAULTS.roomLimit)) : DEFAULTS.roomLimit);
+  // aclHas(acl, item) -> whether some right shown in the room granted a flag line item (a list, never a room right).
+  const aclHas = (acl, item) => !!acl && ACL_FLAGS.indexOf(item) >= 0 && ((acl.f | 0) & (1 << ACL_FLAGS.indexOf(item))) !== 0;
+  // aclRoomHas(acl, item) -> the room holds a flag as ITS right: only a 'room'-scoped word can be (none of the flags today).
+  const aclRoomHas = (acl, item) => ACL_SCOPE[item] === 'room' && aclHas(acl, item);
+
   GifOS.sub = {
+    ACL_FLAGS, ACL_SCOPE, aclAdd, aclJoin, aclLimit, aclHas, aclRoomHas,
     TIERS, TIER_IDS, PERIODS, NEGOTIATED, ADDONS, usd, covers, upgradeOk, upgradeCharge, APP_TIERS, tiersSoldIn, tiersListed, FREE, TEXT, PEOPLE_LIMIT, LICENSE_KIND, SELLER, KEY_RE, SUB_ID_RE, ASK_WINDOW_S,
     FREE_PLAN, FREE_LIMIT, PLANS, PLAN_IDS, isPlan, isPaid,
     checkLicense, verifyLicense, rightsOf, storageAfterLapse, proofMessage, verifyProof, askMessage, askFresh,
