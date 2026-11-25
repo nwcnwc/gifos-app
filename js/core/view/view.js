@@ -1162,6 +1162,15 @@
       const reasons = ids.map((pid) => (pid === __C.model.me.myId() ? (0, /*()*/__C.tileBlurWhy)('me', __C.model.me.myStatus(), 'stage') : (0, /*()*/__C.tileBlurWhy)(pid, __C.model.roster.statusOf().get(pid), 'stage')));
       const why = reasons.length && reasons.every((r) => r && r === reasons[0]) ? reasons[0] : '';
       for (const el of document.querySelectorAll('#stagefeed > .rowtile')) paintBlurWhy({ tile: el }, why);
+      // The strip's own blur: the core's one Stage decision (blurLevelFor 'stage'), the same the embed applies.
+      try {
+        const lv = (0, /*()*/__C.blurLevelFor)('stage') | 0;
+        for (const sv of stagefeedEl.querySelectorAll('.rowtile video')) {
+          if (sv.classList.contains('stageface')) continue;
+          const had = sv.classList.contains('blur2') ? 2 : sv.classList.contains('blur1') ? 1 : 0;
+          if (had !== lv) (0, /*()*/__C.fsBlurClass)(sv, lv);
+        }
+      } catch (e) {}
       // A stager's own Stage view (ensureStageView: one picture per person) says that person's reason.
       const views = (typeof applyComfy !== 'undefined' && applyComfy.views) || null;
       if (views) for (const [pid, el] of views) { paintBlurWhy({ tile: el }, pid === __C.model.me.myId() ? (0, /*()*/__C.tileBlurWhy)('me', __C.model.me.myStatus(), 'stage') : (0, /*()*/__C.tileBlurWhy)(pid, __C.model.roster.statusOf().get(pid), 'stage')); if (typeof ensureStageView.paintBlur === 'function') ensureStageView.paintBlur(el, pid); }
@@ -4944,6 +4953,7 @@
     const STAGE_HEAR_MS = GifOS.timings.STAGE_HEAR_MS;
     let platePaintT = 0;
     function paintStagePlate() {
+      try { paintStageBlurWhy(); } catch (e) {}   // a strip just bound wears its blur at once (STAGEBLUR)
       const el = document.getElementById('bc-stage');
       const line = document.getElementById('bc-stage-line');
       if (!el || !line) return;
