@@ -155,7 +155,7 @@
       paintBar();
     });
     fn('paintAppWho', function (t) { $('appwho').textContent = t; });
-    fn('paintAppRoomBody', function () { body.classList.add('app-room'); paintBar(); });
+    fn('paintAppRoomBody', function () { body.classList.add('app-room'); paintBar(); paintHelpTip(); });
     fn('paintCallOn', function () { body.classList.add('call-on'); paintBar(); });
     fn('paintCallBanner', function (live) {
       var b = $('callbanner');
@@ -213,7 +213,7 @@
       paintInviteSlot();
       if (C.ROOM.appPinned) { $('appstop').style.display = 'none'; $('apphide').style.display = 'none'; }
       if (C.ROOM.kind === 'app') $('appsave').style.display = '';
-      refreshStealBtn(); refreshAudioBtn(); paintBar();
+      refreshStealBtn(); refreshAudioBtn(); paintBar(); paintHelpTip();
     });
     fn('clearAppView', function (why) {
       try { C.appEv('clear', { why: why || 'unstated' }); } catch (e) {}
@@ -225,7 +225,7 @@
       body.classList.remove('has-app');
       var ap = $('appperms'); if (ap) ap.style.display = 'none';
       C.appMode = null; C.appKey = null;
-      paintBar();
+      paintBar(); paintHelpTip();
     });
     fn('updateAppButtons', function () {
       var st = me(), isMine = !!(st.app && C.appKey === st.app.s);
@@ -328,7 +328,15 @@
     $('help-close').onclick = function () { $('help-modal').style.display = 'none'; };
     // The room's own explainer (the meeting page's applyRoomHelp, app room): this page's room is an app room or an
     // app-first meeting, voice only, and its view has no chat.
+    // Help's line says what this page is: an app room keeps its room story after the app is up; a solo app is the app.
+    function paintHelpTip() {
+      var el = $('apphelp'); if (!el) return;
+      var appRoom = (C.ROOM.kind === 'app' && !C.ROOM.solo) || body.classList.contains('app-room');
+      el.title = appRoom ? T('appHelpTitle', 'How this app room works') : hasApp() ? T('appHelpTip', 'How this app works') : T('helpTitle', 'How this meeting works');
+    }
+    fn('paintHelpTip', paintHelpTip);
     fn('applyRoomHelp', function () {
+      paintHelpTip();
       var h3 = document.querySelector('#help-modal h3'), hs = document.querySelector('#help-modal .help-scroll');
       if (C.ROOM.kind === 'app') {
         h3.textContent = T('appHelpTitle', 'How this app room works');
@@ -486,11 +494,11 @@
         go(owned, fresh);
       };
     });
-    $('ainv-copy').onclick = function () {
+    $('inv-copy').onclick = function () {
       var v = $('share-url').value;
-      try { navigator.clipboard.writeText(v).then(function () { $('ainv-copy').textContent = T('invCopied', 'Copied'); }, function () {}); } catch (e) {}
+      try { navigator.clipboard.writeText(v).then(function () { $('inv-copy').textContent = T('invCopied', 'Copied'); }, function () {}); } catch (e) {}
     };
-    $('ainv-done').onclick = function () { $('inv-modal').style.display = 'none'; };
+    $('inv-done').onclick = function () { $('inv-modal').style.display = 'none'; };
 
     // ---- the audio bar ------------------------------------------------------------------------------------------------
     // It shows while this page is in a meeting: an app-first meeting always, an app room once its call is on or Talk is.
