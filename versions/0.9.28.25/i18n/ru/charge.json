@@ -73,6 +73,8 @@
   "charge.receiptView.method.usdc": "USDC в сети Base",
   "charge.receiptView.method.play": "Google Play",
   "charge.receiptView.method.appstore": "App Store",
+  "charge.receiptView.method.mpp": "Карта через ИИ-агента (Stripe Link)",
+  "charge.receiptView.method.fednow": "Банковский перевод (FedNow)",
   "charge.receiptView.heldAsk": "В какой встрече он сейчас?",
   "charge.receiptView.heldNone": "Этот тариф сейчас ни в одной встрече",
   "charge.receiptView.heldOther": "встреча на другом устройстве",

@@ -73,6 +73,8 @@
   "charge.receiptView.method.usdc": "USDC en Base",
   "charge.receiptView.method.play": "Google Play",
   "charge.receiptView.method.appstore": "App Store",
+  "charge.receiptView.method.mpp": "Tarjeta, a través de un agente de IA (Stripe Link)",
+  "charge.receiptView.method.fednow": "Transferencia bancaria (FedNow)",
   "charge.receiptView.heldAsk": "¿En qué reunión está?",
   "charge.receiptView.heldNone": "Este plan no está en una reunión ahora",
   "charge.receiptView.heldOther": "una reunión en otro dispositivo",

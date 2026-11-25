@@ -73,6 +73,8 @@
   "charge.receiptView.method.usdc": "Base 上的 USDC",
   "charge.receiptView.method.play": "Google Play",
   "charge.receiptView.method.appstore": "App Store",
+  "charge.receiptView.method.mpp": "通过 AI 代理刷卡（Stripe Link）",
+  "charge.receiptView.method.fednow": "银行转账（FedNow）",
   "charge.receiptView.heldAsk": "它在哪场会议里？",
   "charge.receiptView.heldNone": "此方案当前不在任何会议中",
   "charge.receiptView.heldOther": "另一台设备上的会议",
