@@ -11,8 +11,9 @@
  * agent's voice track, botVoiceTrack, made by meet-agent through the port's AudioContext; else a microphone track
  * the host gave me), and my camera when the host gave me one and no blur applies. Received tracks reach the core
  * through the pc's ontrack as on a page (claims, meters through the port's AudioContext, the agent's audio.in).
- * WHAT IT CANNOT MAKE YET: a picture of its own face from anything but a camera track the host gave (avatar, blur,
- * screen, rebroadcast). Those sources report no-track. A stager's own stage feed ships voice only.
+ * MY FACE: the camera track the host gave, or with the camera off (or blurred) my avatar, painted on the video port
+ * as the browser paints it. WHAT IT CANNOT MAKE YET: a blurred camera (the avatar stands in), a screen or a rebroadcast;
+ * those report no-track.
  * Duty slots (sdm / sub / sgs) are read off the jobs this plane actually holds. This plane folds a mix row's audio on
  * the port's AudioContext and ships that fold with a claimed picture when the row has one. A row whose picture is
  * {pack} ships when packFor has a live track (room, pipe, prod, l14), and the fold rides with it. With no pack track
@@ -47,13 +48,68 @@
       const ls = C.localStream;
       return (ls && ls.getAudioTracks()[0]) || null;
     }
-    // MY MAIN PICTURE, as the core chose it (mainVideoChoice). Only a camera track the host gave me, unblurred, can be
-    // sent as is; any made picture (avatar, blur, screen, rebroadcast) needs an encoder this plane does not have yet.
+    // MY MAIN PICTURE, as the core chose it (mainVideoChoice). A camera track the host gave me, unblurred, is sent as is.
+    // Camera off ('avatar') sends my avatar, as the browser plane does (avatarOutboundTrack): without it a camera-less
+    // seat (every agent by default) has no face in its own row's pack and no picture on its main links. A camera under
+    // a blur sends the avatar too (this plane has no blur pipe, and the raw camera never leaves). Screen and rebroadcast
+    // need a source this plane does not have yet.
     function sentVideoTrack() {
       const c = C.mainVideoChoice();
+      if (c.src === 'avatar' || (c.src === 'own-cam' && c.blur > 0 && !c.rowShare)) return avatarTrack(c.src === 'avatar' ? c.blur : 1);
+      stopAvatar();
       if (c.src !== 'own-cam' || c.blur > 0 || c.rowShare) return null;
       const ls = C.localStream, t = ls && ls.getVideoTracks()[0];
       return live(t) ? t : null;
+    }
+    // MY AVATAR: one VP8 surface of the host's video port painted with my initial (the browser's paintAvatarCanvas:
+    // a dark card, the letter in the middle). The track
+    // stays while the avatar is the picture, so a rename or a blur change repaints it and never renegotiates. A still
+    // frame goes out every STILL_MAX_MS, the still-picture floor the receivers' L29.5 video reading allows for.
+    const AVATAR_W = 640, AVATAR_H = 360;   // the browser plane's avatar canvas
+    let avatarPipe = null, avatarFailed = false;   // an encoder that would not start is not retried on every pass
+    function paintAvatar(ap) {
+      const s = ap.surf, W = AVATAR_W, H = AVATAR_H;
+      try {
+        s.resize(W, H);
+        s.fill('#14141f', 0, 0, W, H);
+        // The browser's letter colour; under a blur, a colour halfway to the card (this surface has no blur filter,
+        // and a blurred letter is a soft blob of about that tone).
+        const size = Math.round(H * 0.47), scale = Math.max(1, Math.round(size / 7));
+        s.glyph(ap.mark, Math.round((W - 5 * scale) / 2), Math.round((H - 7 * scale) / 2), size, ap.blur > 0 ? '#272739' : '#3a3a55');
+        s.present();
+      } catch (e) {}
+    }
+    function avatarTrack(blur) {
+      if (!videoPort || typeof videoPort.surface !== 'function' || avatarFailed) return null;
+      if (C.leaving) { stopAvatar(); return null; }   // nothing leaves a seat that is leaving or outside the door
+      let name = '';
+      try { name = typeof C.myName === 'function' ? C.myName() : ''; } catch (e) { name = ''; }
+      const mark = typeof C.nameInitial === 'function' ? C.nameInitial(name) : String(name || '?').slice(0, 1).toUpperCase();
+      const lvl = blur | 0;
+      if (avatarPipe && !live(avatarPipe.track)) stopAvatar();
+      if (!avatarPipe) {
+        let surf = null, track = null;
+        try { surf = videoPort.surface({ fps: 1 }); track = surf.track(); } catch (e) { avatarFailed = true; try { if (surf) surf.close(); } catch (e2) {} return null; }
+        avatarPipe = { surf, track, mark: null, blur: -1, t: 0 };
+        const ap = avatarPipe;
+        Promise.resolve(surf.ready).then(() => { if (avatarPipe === ap) paintAvatar(ap); }, () => { avatarFailed = true; if (avatarPipe === ap) { stopAvatar(); try { refreshOutbound(); } catch (e) {} } });
+        // A seat that left frees the encoder thread (a worker keeps the host alive); a rejoin makes a new one.
+        ap.t = setInterval(() => { if (avatarPipe !== ap) return; if (C.leaving) stopAvatar(); else paintAvatar(ap); }, GifOS.timings.STILL_MAX_MS);
+        if (ap.t && typeof ap.t.unref === 'function') ap.t.unref();   // a still picture never keeps the host alive
+      }
+      // The main senders open only beside a local stream (reconcileMain), which a seat with no camera and no microphone
+      // does not hold: give the avatar one to ride, as agentVoice does for the voice. The avatar never joins it, so
+      // the camera tests (mainVideoChoice) still read camera off.
+      if (!C.localStream) C.localStream = new MediaStream();
+      if (avatarPipe.mark !== mark || avatarPipe.blur !== lvl) { avatarPipe.mark = mark; avatarPipe.blur = lvl; paintAvatar(avatarPipe); }
+      return avatarPipe.track;
+    }
+    function stopAvatar() {
+      const ap = avatarPipe;
+      if (!ap) return;
+      avatarPipe = null;
+      try { clearInterval(ap.t); } catch (e) {}
+      try { ap.surf.close(); } catch (e) {}
     }
     function stageVideoTrack() {
       const c = C.stageVideoChoice();
@@ -202,8 +258,8 @@
     function producerKey(key, fromPid) { void key; void fromPid; }
     // One MediaStream for this seat's own stage feed. Tracks are replaced on it; a new object would change every container.
     let ownStageSt = null;
-    // The browser's self picture. Node has no picture encoder, so this is the same voice stream the own-stage
-    // entries ship. carryIn marks its id (emit false) so a later claim of that id is not a second entry.
+    // The browser's self picture: the same stream the own-stage entries ship (my voice and my picture, the camera or
+    // the avatar). carryIn marks its id (emit false) so a later claim of that id is not a second entry.
     function mySelfStream() { return ownStageStream(); }
     function ownStageStream() {
       const want = [mainAudioTrack(), sentVideoTrack()].filter(live);
@@ -530,9 +586,10 @@
     function faceTrack(pid) {
       if (!pid) return null;
       if (pid === C.myId) {
+        // My own cell shows what I send (the browser's meTile): the camera, or the avatar with it off or blurred.
         if (typeof C.iAmWaiting === 'function' && C.iAmWaiting()) return null;
-        const ls = C.localStream;
-        const t = ls && typeof ls.getVideoTracks === 'function' ? ls.getVideoTracks()[0] : null;
+        let t = null;
+        try { t = sentVideoTrack(); } catch (e) { t = null; }
         return live(t) ? t : null;
       }
       if (typeof C.peerWaits === 'function' && C.peerWaits(pid)) return null;

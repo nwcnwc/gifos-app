@@ -705,7 +705,7 @@
       let track = null, cap = null, closed = false;
       let forceKey = true, lastKeyReq = 0, pts = 0, seq = randU32() & 0xffff, pictureId = randU32() & 0x7fff;
       let clock0 = null, lastRtp = 0, haveRtp = false, frameId = 0;
-      let busy = false, pending = null, up = false;
+      let busy = false, pending = null, up = false, lastPresent = 0;
       const keys = [], costs = [], captures = new Map();
       function pushCap(arr, v) { arr.push(v); if (arr.length > 200) arr.splice(0, arr.length - 200); }
       let worker = null, readyResolve, readyReject;
@@ -814,15 +814,16 @@
         let tx = Math.round(x + pad);
         for (let i = 0; i < nm.length; i++) { drawGlyph(nm[i], tx, ty, scale, '#eef'); tx += 6 * scale; }
       }
-      function glyph(ch, x, y, size) {
+      function glyph(ch, x, y, size, color) {
         if (!buf) return;
+        const col = color || '#eef';   // the packer's marks are light; a seat's avatar letter names its own colour
         // A hand or a reaction is a mark, not a typed glyph: one filled square of the requested size.
         const s = Math.max(2, size | 0);
-        if (ch === '✋' || /[^\u0000-\u007f]/.test(String(ch))) { fill('#eef', x, y, s, s); return; }
+        if (ch === '✋' || /[^\u0000-\u007f]/.test(String(ch))) { fill(col, x, y, s, s); return; }
         const scale = Math.max(1, Math.round(s / 7));
         const str = shownText(ch);
         let tx = Math.round(x);
-        for (let i = 0; i < str.length; i++) { drawGlyph(str[i], tx, Math.round(y), scale, '#eef'); tx += 6 * scale; }
+        for (let i = 0; i < str.length; i++) { drawGlyph(str[i], tx, Math.round(y), scale, col); tx += 6 * scale; }
       }
       function stroke(color, lw, x, y, w, h) {
         const t = Math.max(1, Math.round(lw));
@@ -837,6 +838,12 @@
         if (now - lastKeyReq < PLI_GAP_MS) return;
         lastKeyReq = now;
         forceKey = true;
+        // A KEY REQUEST IS ANSWERED AT ONCE. A packer whose sources did not move presents only every STILL_MAX_MS, and an
+        // avatar presents once per STILL_MAX_MS, so a new receiver's picture-loss request would wait up to that long for
+        // the next present (and once more at each hop down a pack chain). The buffer still holds the last painted frame:
+        // present it again now, as the key. For a surface that presents at its own pace that is one extra frame per
+        // request, and requests are already held to one per PLI_GAP_MS. Nothing is painted before the first present.
+        if (up && buf && !busy && !pending && lastPresent) present();
       }
 
       function pump() {
@@ -853,6 +860,7 @@
         if (key) { forceKey = false; lastKeyReq = Date.now(); }
         const id = ++frameId;
         const capture = Date.now();
+        lastPresent = capture;
         captures.set(id, capture);
         if (captures.size > 32) captures.delete(captures.keys().next().value);
         const job = { type: 'frame', id: id, w: W, h: H, fps: fps, pts: pts++, key: key, data: copy };
