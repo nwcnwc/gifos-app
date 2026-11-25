@@ -119,7 +119,7 @@ function shelve(cache, u) {
 // App GIFs are not — /apps/index.json, the covers and an 8 MB app are content
 // that must never be dragged into a precache on someone's phone.
 var CORE = [
-  '/', '/index.html', '/boot.html', '/run.html', '/sign.html', '/about.html', '/welcome.html', '/store.html', '/library.html', '/embed.html', '/css/meet-embed.css', '/js/core/view/embed.js',
+  '/', '/index.html', '/boot.html', '/run.html', '/sign.html', '/about.html', '/welcome.html', '/store.html', '/library.html', '/embed.html', '/css/meet-embed.css', '/js/core/view/kit.js', '/js/core/view/embed.js',
   '/css/desktop.css', '/css/meet.css', '/css/meet-polish.css',
   '/js/gifos-gif.js', '/js/gifos-help.js', '/js/gifos-charge.js', '/js/gifos-sign.js', '/js/gifos-ed.js', '/js/gifos-lock.js', '/js/gifos-zip.js', '/js/gifos-icons.js',
   '/js/gifos-themes.js', '/js/gifos-avatar.js', '/js/gifos-store.js', '/js/gifos-install.js', '/js/gifos-fullscreen.js', '/js/irl-apps.js', '/js/sample-apps.js', '/js/store.js', '/js/gifos-cash.js',
