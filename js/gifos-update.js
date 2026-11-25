@@ -191,7 +191,13 @@
   function updateUrl(loc, latest) {
     const m = loc.pathname.match(/^\/versions\/[^/]+(\/.*)?$/);
     if (!m) return null;
-    return '/versions/' + latest + (m[1] || '/') + (loc.search || '') + (loc.hash || '');
+    // A snapshot is addressed as run.html (every release ships it; a release from 0.9.28 on forwards a room to its own
+    // meeting or broadcast page), never as meet.html / cast.html, which older releases do not have. The broadcast page
+    // keeps its skin in the hash (bc).
+    let rest = m[1] || '/', hash = loc.hash || '';
+    const sp = /^\/(meet|cast)(\.html)?$/.exec(rest);
+    if (sp) { rest = '/run.html'; if (sp[1] === 'cast' && !/[#&]bc(=|&|$)/.test(hash)) hash = hash ? hash + '&bc=1' : '#bc=1'; }
+    return '/versions/' + latest + rest + (loc.search || '') + hash;
   }
 
   // Move THIS page onto `latest` (same path and hash). Used by watch() when the

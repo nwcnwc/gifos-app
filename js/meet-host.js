@@ -3,7 +3,7 @@
  *
  * A store app cannot hold a meeting: its frame has no WebRTC, no network and
  * no workers. The host page (this origin) already knows how. Each session is
- * one ordinary run.html document in a same-origin iframe. The host page's
+ * one ordinary meeting page (meet.html) document in a same-origin iframe. The host page's
  * frame-src is about: only, so the session is srcdoc, not a navigation, and
  * the app sandbox is unchanged. The document stamps window.__gifosMb.
  *
@@ -26,7 +26,7 @@
   var sessionDoc = null;
   function sessionHtml() {
     if (sessionDoc) return sessionDoc;
-    sessionDoc = fetch('run.html', { cache: 'no-store' }).then(function (r) {
+    sessionDoc = fetch('meet.html', { cache: 'no-store' }).then(function (r) {
       if (!r.ok) throw new Error('Could not load the meeting page.');
       return r.text();
     }).then(function (html) {

@@ -1,0 +1,459 @@
+/*
+ * GifOS Core: part "view" for run.html, the app runtime. Copyright (c) 2026 Crowd Concepts, Inc. All rights reserved.
+ *
+ * run.html runs apps: an app on its own (#id=), an app room (#s=..&k=.., #j=..) and an app-first meeting (#app=..&v=..).
+ * Its meeting view is audio only: who is here, your mic, Leave, and "Full meeting" (the same meeting on meet.html, with
+ * video, the Stage and everything else). No tiles, no Stage, no broadcast. The meeting itself is the same signed core and
+ * browser media plane as the meeting page, hosted through the shared view kit (js/core/view/kit.js):
+ *   - a person is heard through a real element: makeTile hands the core a hidden tile with a real <video>, and the media
+ *     plane plays its sound through that video's companion <audio> (busVolume), exactly as on the meeting page;
+ *   - the mic button is a real element the media plane wires itself (micBtn: micTap), so mute is the plane's own;
+ *   - Leave is the core's leaveMeeting; who is here and who is muted are the core's roster and status, read for drawing;
+ *   - the app pane is the app runtime's (GifOS.runtime on #appmount) with its bar: name, Invite, Save, Help, Steal,
+ *     abilities, Talk, Stop/Hide/Lead and full screen.
+ * Every other name the core and the plane ask of the view is the kit's counted stand-in. Nothing here decides a rule:
+ * who may run an app, who hosts, Talk on or off, the password and who is muted are the core's answers.
+ */
+(function (root) {
+  'use strict';
+  var GifOS = root.GifOS = root.GifOS || {};
+  var K = GifOS.viewKit;
+  if (!K || !GifOS.core || !(GifOS.coreParts || {}).core) return;
+
+  function part(L) {
+    var $ = function (id) { return document.getElementById(id); };
+    var micBtn = $('mic'), statusEl = $('status'), appMountEl = $('appmount'), ears = $('ears');
+    var H = K.host(L, { elements: { micBtn: micBtn } });
+    var C = H.C, M = H.M, fn = H.fn;
+    var body = document.body;
+    var T = function (k, d) { try { return C.uiText(k, d); } catch (e) { return d; } };
+    var me = function () { try { return C.model.me.myStatus() || {}; } catch (e) { return {}; } };
+    var hasApp = function () { return body.classList.contains('has-app'); };
+
+    // ---- the page this meeting opens in full (same snapshot, same hash, no app) -------------------------------------
+    function fullHref() {
+      var p = new URLSearchParams(location.hash.replace(/^#/, ''));
+      ['app', 'id', 'go'].forEach(function (k) { p.delete(k); });
+      // the page beside this one: the document base (a snapshot pins it), not the address, which the meeting may move
+      var base = new URL('.', document.baseURI);
+      var ours = /(^|\.)gifos\.app$/.test(location.hostname) && base.pathname.indexOf('/versions/') !== -1;
+      var page = p.has('bc') ? 'cast' : 'meet';
+      return base.pathname + page + (ours ? '' : '.html') + location.search + '#' + p.toString();
+    }
+
+    // ---- people ---------------------------------------------------------------------------------------------------
+    // A person's tile is real and hidden: its <video> carries their sound (the plane's companion <audio>).
+    fn('makeTile', function (id, name, isMe, headless) {
+      var tile = document.createElement('div');
+      tile.className = 'ear' + (isMe ? ' me' : '');
+      tile.hidden = true;
+      tile.dataset.peer = id;
+      var video = document.createElement('video');
+      video.autoplay = true; video.playsInline = true; video.muted = true;
+      var mk = function (cls) { var d = document.createElement('div'); d.className = cls; tile.appendChild(d); return d; };
+      tile.appendChild(video);
+      var label = document.createElement('span'); label.className = 'name'; label.textContent = name || '';
+      tile.appendChild(label);
+      var rec = { tile: tile, video: video, label: label, avatar: mk('avatar'), chips: mk('chips'), cap: mk('cap'), modbar: mk('modbar'), voteBtn: document.createElement('button') };
+      if (!headless) ears.appendChild(tile);
+      paintWho();
+      return rec;
+    });
+    fn('paintTileOnGrid', function (t) { if (t && !t.isConnected) ears.appendChild(t); });
+
+    function people() {
+      var out = [], seen = new Set();
+      var st = me();
+      try { out.push({ id: C.myId, name: C.myName() || T('whoYou', 'You'), me: true, muted: !!st.muted }); seen.add(C.myId); } catch (e) {}
+      var ids = [];
+      try { ids = Array.from(C.rosterIds || []); } catch (e) {}
+      try { C.peers.forEach(function (p, id) { ids.push(id); }); } catch (e) {}
+      ids.forEach(function (id) {
+        if (!id || seen.has(id)) return;
+        seen.add(id);
+        var p = null, s = null, nm = '';
+        try { p = C.peers.get(id); s = C.statusOf.get(id); nm = (p && p.name) || (C.rosterNames && C.rosterNames[id]) || ''; } catch (e) {}
+        out.push({ id: id, name: nm || '…', me: false, muted: !!(s && (s.muted || s.mic === false)) });
+      });
+      return out;
+    }
+    var whoSig = '';
+    function paintWho() {
+      var list = people();
+      var sig = list.map(function (x) { return x.id + ':' + x.name + ':' + (x.muted ? 1 : 0); }).join('|');
+      if (sig === whoSig) return;
+      whoSig = sig;
+      var ul = $('awho'), n = $('awho-n');
+      ul.textContent = '';
+      list.forEach(function (x) {
+        var li = document.createElement('li');
+        li.dataset.peer = x.id;
+        li.className = (x.me ? 'me ' : '') + (x.muted ? 'muted' : 'live');
+        li.textContent = x.name + (x.me ? ' ' + T('whoYou', '(you)') : '');
+        li.title = x.muted ? T('muted', 'Muted') : T('micOn', 'Mic on');
+        ul.appendChild(li);
+      });
+      var word = list.length + ' ' + (list.length === 1 ? T('person', 'person') : T('people', 'people')).toLowerCase();
+      if (n.textContent !== word) n.textContent = word;
+    }
+    // every repaint the core asks of a people list or a control is this view's one people repaint
+    H.paintsAll(['paintRoster', 'paintPeopleIfOpen', 'showWhoIfOpen', 'paintRaisedHands', 'paintAwayMark', 'paintTileChrome', 'renderHandq'], function () { paintWho(); });
+
+    // the mic: the plane wires micBtn's tap (micTap); the view paints what the core says
+    fn('paintControls', function () {
+      var muted = !!me().muted, locked = false;
+      try { locked = !!C.amGloballyMuted(); } catch (e) {}
+      micBtn.classList.toggle('off', muted);
+      micBtn.classList.toggle('locked', locked);
+      micBtn.setAttribute('aria-pressed', muted ? 'false' : 'true');
+      var w = locked ? T('micHeld', 'Muted') : muted ? T('unmute', 'Unmute') : T('mute', 'Mute');
+      micBtn.setAttribute('aria-label', w);
+      micBtn.title = muted ? 'You are muted — tap to speak' : 'Your mic is on — tap to mute';
+      $('mic-word').textContent = w;
+      paintWho();
+    });
+
+    // ---- the status line --------------------------------------------------------------------------------------------
+    fn('paintStatusLine', function (s) {
+      if (!s) return;
+      if (statusEl.dataset.state !== s.state) statusEl.dataset.state = s.state || '';
+      statusEl.dataset.kind = s.kind || '';
+      var t = ((s.count || '') + ' ' + (s.rest || '')).replace(/^\s*·\s*/, '').replace(/\s+/g, ' ').trim();
+      if (statusEl.textContent !== t) statusEl.textContent = t;
+      statusEl.title = s.title || t;
+      statusEl.classList.toggle('alert', !!s.alert);
+      paintWho();
+    });
+    fn('paintStatusNotice', function (m, state, alert) {
+      statusEl.textContent = String(m || ''); statusEl.title = String(m || '');
+      statusEl.dataset.state = state || '';
+      statusEl.classList.toggle('alert', !!alert);
+    });
+    fn('paintStatusAlert', function (on) { statusEl.classList.toggle('alert', !!on); });
+    fn('paintTabTitle', function (t) { document.title = t; });
+    fn('replaceAddress', function (url) { try { history.replaceState(null, '', url); } catch (e) {} });
+
+    // ---- leaving, refusals: what a person here reads -------------------------------------------------------------
+    fn('showLeftDialog', function () { $('left-modal').style.display = 'flex'; });
+    function notice(title, text, full) {
+      $('anote-title').textContent = title; $('anote-text').textContent = text;
+      $('anote-full').hidden = !full; $('anote').style.display = 'flex';
+    }
+    // a locked room, a closed door, a refusal: the full meeting page carries the password prompt and the door's words
+    fn('showPwModal', function (locked) {
+      if (locked) notice(T('pwTitleLocked', 'This room is locked'), T('audioPwFull', 'Enter its password on the full meeting page.'), true);
+    });
+    fn('showClosedDialog', function () { notice(T('closedTitle', 'This meeting has ended'), '', false); });
+    fn('showLoadRefusal', function (msg) { notice(T('stLoadIncompleteTitle', 'This page did not finish loading'), String(msg || ''), false); });
+
+    // ---- the app runtime ------------------------------------------------------------------------------------------
+    fn('appRuntimeBoot', function (fileId, withStatus, launch) { return GifOS.runtime.boot(appMountEl, fileId, withStatus ? statusEl : null, launch); });
+    fn('appRuntimeClient', function (params) { return GifOS.runtime.bootClientBus(appMountEl, params, null, {}); });
+    fn('paintSoloApp', function (on) {
+      if (on) body.classList.add('solo-app');
+      else { body.classList.remove('solo-app'); document.documentElement.classList.remove('solo-app'); }
+      paintBar();
+    });
+    fn('paintAppWho', function (t) { $('appwho').textContent = t; });
+    fn('paintAppRoomBody', function () { body.classList.add('app-room'); paintBar(); });
+    fn('paintCallOn', function () { body.classList.add('call-on'); paintBar(); });
+    fn('paintCallBanner', function (live) {
+      var b = $('callbanner');
+      if (live > 0) { $('callbanner-txt').textContent = live + (live === 1 ? ' person is' : ' people are') + ' on the call in this room'; b.hidden = false; }
+      else b.hidden = true;
+    });
+    $('callbanner-join').onclick = function () {
+      C.act.surface({ callOn: true }); body.classList.add('call-on');
+      $('callbanner').hidden = true;
+      M.lateMedia('mic');
+    };
+    fn('showAppMissing', function (title, text) {
+      var el = $('appmissing');
+      el.querySelector('h1').textContent = title;
+      el.querySelector('p').textContent = text;
+      el.querySelector('a').textContent = T('appMissingHome', 'Go to Home Screen');
+      el.hidden = false;
+      body.classList.add('app-missing');
+      document.title = title + ' — GifOS';
+    });
+    fn('hideAppMissing', function () { $('appmissing').hidden = true; body.classList.remove('app-missing'); });
+    fn('setAppFavicon', setAppFavicon);
+    function setAppFavicon(href, type) {
+      if (!body.classList.contains('solo-app')) return;
+      try {
+        var link = document.createElement('link');
+        link.rel = 'icon'; link.type = type || 'image/svg+xml';
+        link.href = href || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%A6%3C/text%3E%3C/svg%3E";
+        document.querySelectorAll('link[rel~="icon"]').forEach(function (el) { el.remove(); });
+        document.head.appendChild(link);
+      } catch (e) {}
+    }
+    var appGifUrl = null;
+    function setAppGif(bytes, name) {
+      if (!bytes || !bytes.length) return;
+      var img = $('appgif'), stripped = false;
+      try { if (GifOS.gif && GifOS.gif.stripForDisplay) { bytes = GifOS.gif.stripForDisplay(bytes); stripped = true; } } catch (e) {}
+      if (appGifUrl) { try { URL.revokeObjectURL(appGifUrl); } catch (e) {} }
+      appGifUrl = URL.createObjectURL(new Blob([bytes], { type: 'image/gif' }));
+      img.src = appGifUrl; img.alt = name || 'App'; img.title = name || 'App';
+      if (stripped) setAppFavicon(appGifUrl, 'image/gif');
+      img.style.display = 'block';
+    }
+    fn('setAppGif', setAppGif);
+    fn('paintAppGifFromLane', function () {
+      if (!appGifUrl && C.appClientCtl && C.appClientCtl.gifBytes) {
+        try { var b = C.appClientCtl.gifBytes(); if (b) setAppGif(b, $('appname').textContent); } catch (e) {}
+      }
+    });
+    fn('showAppPane', function (name, who) {
+      C.act.surface({ appPaneOn: true }); C.act.surface({ appPaneName: name || 'App' });
+      body.classList.add('has-app');
+      $('appname').textContent = name || 'App';
+      $('appwho').textContent = who || '';
+      paintInviteSlot();
+      if (C.ROOM.appPinned) { $('appstop').style.display = 'none'; $('apphide').style.display = 'none'; }
+      if (C.ROOM.kind === 'app') $('appsave').style.display = '';
+      refreshStealBtn(); refreshAudioBtn(); paintBar();
+    });
+    fn('clearAppView', function (why) {
+      try { C.appEv('clear', { why: why || 'unstated' }); } catch (e) {}
+      if (C.appClientStop) { try { C.appClientStop(); } catch (e) {} C.appClientStop = null; }
+      C.appClientCtl = null; C.appHostCtl = null; try { delete root.__appClientCtl; } catch (e) {}
+      refreshStealBtn();
+      appMountEl.innerHTML = '';
+      C.act.surface({ appPaneOn: false });
+      body.classList.remove('has-app');
+      var ap = $('appperms'); if (ap) ap.style.display = 'none';
+      C.appMode = null; C.appKey = null;
+      paintBar();
+    });
+    fn('updateAppButtons', function () {
+      var st = me(), isMine = !!(st.app && C.appKey === st.app.s);
+      var hideB = $('apphide'), stopB = $('appstop'), leadB = $('applead');
+      hideB.style.display = (C.appKey && C.appMode !== 'watch' && !isMine) ? '' : 'none';
+      var admin = false; try { admin = !!C.hasAdminRoom(); } catch (e) {}
+      stopB.style.display = (isMine || !admin || C.amAdmin) ? '' : 'none';
+      stopB.textContent = isMine ? T('stopApp', 'Stop app') : T('stopAppAll', 'Stop for everyone');
+      if (C.ROOM.appPinned) { stopB.style.display = 'none'; hideB.style.display = 'none'; }
+      leadB.style.display = (isMine && C.appLeadable) ? '' : 'none';
+      leadB.textContent = C.appLeadOn ? T('barLeading', '👑 Leading') : T('barCommunal', 'Communal');
+    });
+    $('appstop').onclick = function () {
+      var st = me();
+      if (st.app && C.appKey === st.app.s) { C.stopApp(); return; }
+      var want = C.findSharedApp();
+      if (!want) return;
+      if (C.hasAdminRoom() && !C.amAdmin) { C.setStatus(T('stOnlyThisRoomSAdmins2', '🛡 Only this room’s hosts can stop the shared app.')); return; }
+      C.stopRoomApp(want);
+    };
+    $('apphide').onclick = function () {
+      var st = me();
+      if (!C.appKey || (st.app && C.appKey === st.app.s)) return;
+      C.appHiddenSid = C.appKey;
+      C.reconcileApp();
+    };
+    $('applead').onclick = function () {
+      if (!(me().app && C.appLeadSet)) return;
+      C.appLeadOn = !C.appLeadOn;
+      C.appLeadSet(C.appLeadOn);
+    };
+    // TALK: the app host's switch on its app ad (the core's), read by everyone here
+    function roomAudioOn() {
+      if (!body.classList.contains('app-room')) return false;
+      if (C.appMode === 'host') return !!(me().app && me().app.audio);
+      var w = C.findSharedApp();
+      return !!(w && w.audio);
+    }
+    fn('roomAudioOn', roomAudioOn);
+    function refreshAudioBtn() {
+      var b = $('appaudio');
+      var show = C.ROOM.kind === 'app' && !C.ROOM.solo && body.classList.contains('app-room') && C.appMode === 'host' && !!me().app;
+      b.style.display = show ? '' : 'none';
+      var on = roomAudioOn();
+      b.textContent = on ? T('barTalkOn', 'Talk: on') : T('barTalkOff', 'Talk: off');
+      b.classList.toggle('on', on);
+    }
+    fn('refreshAudioBtn', refreshAudioBtn);
+    fn('applyRoomAudio', function () {
+      var on = roomAudioOn(), was = body.classList.contains('audio-on');
+      body.classList.toggle('audio-on', on);
+      if (!on && C.model.me.localStream()) {
+        var tr = C.model.me.localStream().getAudioTracks()[0];
+        if (tr && tr.enabled) { tr.enabled = false; me().muted = true; names.paintControls(); C.broadcastStatus(); }
+      }
+      if (was !== on) { refreshAudioBtn(); if (!on) C.setStatus(T('barTalkHostOff', 'The app host turned Talk off.')); }
+      paintBar();
+    });
+    $('appaudio').onclick = function () {
+      if (C.appMode !== 'host' || !me().app) return;
+      me().app.audio = !me().app.audio;
+      C.broadcastStatus();
+      names.applyRoomAudio(); refreshAudioBtn();
+    };
+    function refreshStealBtn() { $('appsteal').style.display = (C.ROOM.kind === 'app' && C.appMode === 'client') ? '' : 'none'; }
+    var savedUrl = '';
+    $('appsave').onclick = function () {
+      if (C.model.apps.soloCtl() && C.ROOM.solo) C.model.apps.soloCtl().save();
+      else if (C.appHostCtl) C.appHostCtl.save();
+      else if (C.appClientCtl && C.appClientCtl.snapshot) C.appClientCtl.snapshot().then(function (bytes) {
+        // one snapshot link at a time: the previous one is let go when the next is made
+        if (savedUrl) { try { URL.revokeObjectURL(savedUrl); } catch (e) {} }
+        var a = document.createElement('a');
+        a.href = savedUrl = URL.createObjectURL(new Blob([bytes], { type: 'image/gif' }));
+        a.download = ($('appname').textContent || 'app') + '-snapshot.gif';
+        a.click();
+      }).catch(function (e) { C.setStatus(T('barSaveFail', 'Could not save: {err}').split('{err}').join(e && e.message || e)); });
+    };
+    $('appsteal').onclick = function () {
+      if (!(C.appClientCtl && C.appClientCtl.stealToDesktop)) return;
+      var b = $('appsteal');
+      b.disabled = true;
+      C.appClientCtl.stealToDesktop({ data: 'current' }).then(function () {
+        b.textContent = T('stealDone', '🥷 Stolen ✓');
+        C.setStatus(T('stealAll', '🥷 Yours now — saved to your desktop’s Stolen Apps, data and all.'));
+      }).catch(function (e) { b.disabled = false; C.setStatus(T('stealFail', 'Could not steal: {err}').split('{err}').join(e && e.message || e)); });
+    };
+    function openAppHelp() {
+      var Hl = GifOS.help;
+      var name = ($('appname').textContent || '').trim();
+      var md = (Hl && Hl.withOsFooter) ? Hl.withOsFooter(C.currentAppHelpMd(), C.currentAppCredits(), { from: 'app Help window', name: name }) : (C.currentAppHelpMd() || '');
+      var parsed = (Hl && Hl.parse) ? Hl.parse(md) : { title: '', html: '' };
+      $('apphelp-title').textContent = parsed.title || name || 'Help';
+      var bodyEl = $('apphelp-body');
+      bodyEl.innerHTML = parsed.html || ((Hl && Hl.render) ? Hl.render(md) : '');
+      if (!bodyEl.innerHTML) bodyEl.textContent = md;
+      $('apphelp-modal').style.display = 'flex';
+    }
+    $('apphelp').onclick = openAppHelp;
+    $('apphelp-close').onclick = function () { $('apphelp-modal').style.display = 'none'; };
+    (function wireAppFull() {
+      var fb = $('appfull'), FS = GifOS.fullscreen;
+      if (FS && FS.supported()) { FS.attach(fb, document.documentElement, { fill: 'app-full', fillIf: hasApp, words: true, enterLabel: T('fullScreen', 'Full screen'), exitLabel: T('leaveFullScreen', 'Leave full screen') }); return; }
+      fb.style.display = 'none';
+    })();
+    if (GifOS.perms) GifOS.perms.attach($('appperms'), { onLeave: function () { C.stopApp(); }, skipCaps: function () { return C.appMode === 'client' ? ['stage'] : []; } });
+    // An app may ask to put you on the Stage; this page has none, so it asks nothing and the core keeps you off it.
+    fn('appStageAsk', function () {});
+    fn('appStageAskClose', function () {});
+    fn('foldBarForApp', function () {});
+    fn('appCopyPaint', function () {
+      var el = $('appcopy'), cp = C.model.apps.appCopy();
+      cp.paintedAt = Date.now();
+      var done = appMountEl.querySelector('iframe') || C.appMode !== 'client';
+      var big = null;
+      // the core's defrag sweeps a stream that stopped; the largest one still coming is the one shown
+      if (!done) cp.streams.forEach(function (s) { if (!big || s.n > big.n) big = s; });
+      if (done || !big) { if (el) el.remove(); if (done) { cp.streams.clear(); cp.fid = null; } cp.shown = 0; return; }
+      var box = el || (function () { var d = document.createElement('div'); d.id = 'appcopy'; appMountEl.appendChild(d); return d; })();
+      var pct = Math.max(1, Math.min(99, Math.round((big.got / big.n) * 100)));
+      box.textContent = big.got >= big.n ? 'Opening ' + ($('appname').textContent || 'the app') + '…' : 'Copying ' + ($('appname').textContent || 'the app') + ' — ' + pct + '%';
+    });
+    var scriptOnce = {};
+    fn('loadScriptOnce', function (src) {
+      if (!scriptOnce[src]) scriptOnce[src] = new Promise(function (res, rej) { var el = document.createElement('script'); el.src = src; el.onload = function () { res(); }; el.onerror = function () { delete scriptOnce[src]; rej(new Error('load ' + src)); }; document.head.appendChild(el); });
+      return scriptOnce[src];
+    });
+    var aop = null;   // the app-owner module, loaded once, from this page's js/ folder
+    fn('sgaAppOwner', function () {
+      if (GifOS.appOwner) return Promise.resolve(GifOS.appOwner);
+      if (!aop) aop = names.loadScriptOnce('js/app-owner.js').then(function () { if (GifOS.appOwner) return GifOS.appOwner; throw new Error('app-owner.js empty'); }, function (e) { aop = null; throw e; });
+      return aop;
+    });
+    fn('newCanvas', function () { return document.createElement('canvas'); });
+    fn('chatPanelOpen', function () { return false; });
+
+    // ---- Invite: the room's link ------------------------------------------------------------------------------------
+    var shareLink = '';
+    fn('paintShareUrl', function (link) { shareLink = String(link || ''); });
+    fn('inviteLinkForModal', function () {
+      if (C.ROOM.kind !== 'app' && !body.classList.contains('app-room')) { try { var v = C.viewerShareUrl(); if (v) return v; } catch (e) {} }
+      return shareLink;
+    });
+    function showInvite() {
+      var link = names.inviteLinkForModal();
+      $('ainv-link').value = link;
+      $('ainv').style.display = link ? 'flex' : 'none';
+    }
+    fn('showInviteModal', showInvite);
+    fn('showShareLink', function () { if (C.ROOM.kind === 'app') showInvite(); });
+    function paintInviteSlot() {
+      var btn = $('appinvite'), show = false;
+      if (C.ROOM.solo) show = C.model.chat.soloShare() === true;
+      else if (C.ROOM.kind === 'app' && C.ROOM.founder) show = true;
+      else if (!body.classList.contains('app-room')) show = true;
+      btn.style.display = show ? '' : 'none';
+    }
+    fn('paintInviteSlot', paintInviteSlot);
+    $('appinvite').onclick = function () {
+      if (C.ROOM.solo) {
+        var P = root.GifOSPreflight;
+        if (P && typeof P.requireMeeting === 'function') P.requireMeeting(C.inviteFromSolo); else C.inviteFromSolo();
+        return;
+      }
+      showInvite();
+    };
+    // "Share <app> live" (Invite from a solo app): who may host it while I am away and, for an app that already has a
+    // link, keep that link or start a fresh one. The choice goes to the core's go(owned, fresh).
+    fn('openShareLiveModal', function (nm, saved, go) {
+      var esc = K.esc;
+      var bg = document.createElement('div'); bg.className = 'name-modal'; bg.id = 'sharelive';
+      bg.innerHTML = '<div class="name-box" style="max-width:440px;text-align:left"><h3>Share ' + esc(nm) + ' live</h3>' +
+        '<p>Friends join you with one link. If you drop off (close the tab, lose battery)…</p>' +
+        '<label class="perm-row"><input type="radio" name="rmcls" value="owned"' + (!saved || saved.owned ? ' checked' : '') + '><span><b>Only I can host it</b> — the app pauses for everyone until I return. Safest for private data.</span></label>' +
+        '<label class="perm-row"><input type="radio" name="rmcls" value="heal"' + (saved && !saved.owned ? ' checked' : '') + '><span><b>Let a friend keep it going</b> — someone still connected takes over hosting. Best for casual shared apps and games.</span></label>' +
+        (saved
+          ? '<p style="margin-top:.9rem"><b>This app already has a link</b> — friends you invited before may still hold it.</p>' +
+            '<label class="perm-row"><input type="radio" name="rmlink" value="same" checked><span><b>Keep the same link</b> — everyone you already invited can come right back.</span></label>' +
+            '<label class="perm-row"><input type="radio" name="rmlink" value="fresh"><span><b>Start a fresh link</b> — the old link goes dead for good. For when it reached someone it shouldn’t have.</span></label>'
+          : '') +
+        '<div style="display:flex;gap:.6rem;justify-content:flex-end;margin-top:1rem"><button id="inv-cancel" type="button">Cancel</button><button id="inv-go" type="button">Create link</button></div></div>';
+      bg.style.display = 'flex';
+      body.appendChild(bg);
+      bg.querySelector('#inv-cancel').onclick = function () { bg.remove(); };
+      bg.querySelector('#inv-go').onclick = function () {
+        var owned = bg.querySelector('input[name="rmcls"]:checked').value === 'owned';
+        var fresh = !!(saved && bg.querySelector('input[name="rmlink"][value="fresh"]').checked);
+        bg.remove();
+        go(owned, fresh);
+      };
+    });
+    $('ainv-copy').onclick = function () {
+      var v = $('ainv-link').value;
+      try { navigator.clipboard.writeText(v).then(function () { $('ainv-copy').textContent = T('invCopied', 'Copied'); }, function () {}); } catch (e) {}
+    };
+    $('ainv-done').onclick = function () { $('ainv').style.display = 'none'; };
+
+    // ---- the audio bar ------------------------------------------------------------------------------------------------
+    // It shows while this page is in a meeting: an app-first meeting always, an app room once its call is on or Talk is.
+    function inMeeting() {
+      if (C.ROOM.solo) return false;
+      if (C.ROOM.kind === 'app') return body.classList.contains('call-on') || body.classList.contains('audio-on');
+      return true;
+    }
+    function paintBar() {
+      var on = inMeeting();
+      $('abar').hidden = !on;
+      $('afull').hidden = C.ROOM.kind === 'app';
+      body.classList.toggle('abar-on', on);
+    }
+    $('afull').onclick = function (e) { e.preventDefault(); location.href = fullHref(); };
+    $('anote-full').onclick = function (e) { e.preventDefault(); location.href = fullHref(); };
+    $('anote-close').onclick = function () { $('anote').style.display = 'none'; };
+    $('awho-btn').onclick = function () { var w = $('awho'); w.hidden = !w.hidden; $('awho-btn').setAttribute('aria-expanded', w.hidden ? 'false' : 'true'); };
+    $('leavebtn').onclick = function () { C.leaveMeeting(); };
+    $('left-rejoin').onclick = function () { location.reload(); };
+    $('left-close').onclick = function () { location.href = C.homeHref(); };
+
+    var names = H.finish();
+    return {
+      names: names,
+      setup: function () {
+        paintBar(); paintWho();
+        try { names.paintControls(); } catch (e) {}
+        root.__gifosAudioView = { people: people, fullHref: fullHref, standIns: names.standInsForTest };
+      },
+    };
+  }
+
+  K.part(part);
+})(typeof window !== 'undefined' ? window : globalThis);

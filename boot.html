@@ -97,6 +97,10 @@ window.GIFOS_VERSION = 'edge';
       // location.search. Carrying the hash instead would fix nothing until
       // the NEXT release, for links sent today.
       here = pathname + search + hash;
+      // THE SURFACE PAGES (meet.html, cast.html, 0.9.28) are addressed as run.html too: every snapshot ships
+      // run.html, and a new one forwards a room to its surface page itself. A cast page keeps its skin (bc).
+      var sp = /\/(meet|cast)\.html$/.exec(pathname);
+      if (sp) here = pathname.slice(0, sp.index) + '/run.html' + search + (sp[1] === 'cast' && !/[#&]bc(=|&|$)/.test(hash) ? (hash ? hash + '&bc=1' : '#bc=1') : hash);
     }
     function to(v) { return { redirect: '/versions/' + v + here }; }
     // MEETINGS RUN THE LIVE RELEASE. Releases are not compatible with each
@@ -104,7 +108,7 @@ window.GIFOS_VERSION = 'edge';
     // with anything but a solo app (#id=) — skips the pin for THIS page and
     // follows the release pointer like an unpinned visitor. gifos_pin is KEPT:
     // the Home Screen and solo apps stay on the pinned build.
-    var room = !!pm || (/\/run\.html$/.test(pathname) && !/[#&]id=/.test(hash));
+    var room = !!pm || (/\/(run|meet|cast)\.html$/.test(pathname) && !/[#&]id=/.test(hash));
     if (room) pin = null;
     if (pin && pin !== window.GIFOS_VERSION) return to(pin);  // pinned to a DIFFERENT snapshot
     if (pin) return stay;                                     // already running what we're pinned to
