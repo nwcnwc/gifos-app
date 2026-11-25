@@ -2,6 +2,21 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.26",
+      "date": "2026-11-25",
+      "headline": "Embedded broadcasts show LIVE at once; the Stage is blurred the same everywhere",
+      "critical": false,
+      "features": [
+        "Settings \u2192 Floating window shows is a clearer list with bigger Move up / Move down buttons, now in every language.",
+        "Plans and help now say it plainly: video gets through company and school firewalls, still end-to-end encrypted."
+      ],
+      "fixes": [
+        "gifos.app/welcome and other embeds opened after the host arrived now show LIVE in seconds instead of \"not hosted\" for up to two minutes.",
+        "The Stage picture of a camera-off person is blurred the same on /meet, /cast and embeds, following the room's blur rules.",
+        "After a short network drop on a firewalled network, the relay link comes back in seconds instead of leaving you alone for half a minute or more."
+      ]
+    },
+    {
       "version": "0.9.28.25",
       "date": "2026-11-24",
       "headline": "Use your plan on more devices; restore it if you lose them",
