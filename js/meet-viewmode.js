@@ -51,6 +51,25 @@
     try { store.setItem(FOLLOW_KEY, on ? '1' : '0'); } catch (e) {}
     return !!on;
   }
+  // What the floating window shows (Settings > Floating window shows): the person's order of app share, screen share
+  // and Stage faces, each on or off; follow the speaker is always last and not in the list. Saved on this device.
+  const PIP_KEY = 'meet.pip.v1.order', PIP_KINDS = ['app', 'screen', 'stage'];
+  function pipNormalize(list) {
+    const out = [], seen = {};
+    if (Array.isArray(list)) for (const x of list) if (x && PIP_KINDS.indexOf(x.k) >= 0 && !seen[x.k]) { seen[x.k] = 1; out.push({ k: x.k, on: x.on !== false }); }
+    for (const k of PIP_KINDS) if (!seen[k]) out.push({ k: k, on: true });
+    return out;
+  }
+  function loadPip(store) {
+    let raw = null;
+    try { raw = store && typeof store.getItem === 'function' ? JSON.parse(store.getItem(PIP_KEY) || 'null') : null; } catch (e) { raw = null; }
+    return pipNormalize(raw);
+  }
+  function savePip(store, list) {
+    const out = pipNormalize(list);
+    try { if (store && typeof store.setItem === 'function') store.setItem(PIP_KEY, JSON.stringify(out)); } catch (e) {}
+    return out;
+  }
   // The tile layout each view asks for: Scroll scrolls, the rest fit.
   function gallery(m) { return normalize(m) === 'scroll' ? 'scroll' : 'fit'; }
   // Only the Drag view lets the tiles move.
@@ -163,6 +182,7 @@
     normalize: normalize, load: load, save: save, loadFollow: loadFollow, saveFollow: saveFollow,
     gallery: gallery, floats: floats, next: next, stripSide: stripSide,
     followState: followState, followStep: followStep, timingsOf: timingsOf,
+    PIP_KEY: PIP_KEY, loadPip: loadPip, savePip: savePip,
   };
   GifOS.meetViewMode = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

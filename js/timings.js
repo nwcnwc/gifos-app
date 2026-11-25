@@ -145,10 +145,12 @@
     PAYPAL_POLL_MS: 2000,   // ms
     PEER_SILENT_MS: 30000,   // ms
     PIN_HOLD_MS: 2000,   // ms
+    PIP_APP_FPS: 4,   // count
     PIP_AUTO_FALLBACK_MS: 2000,   // ms
     PIP_CARD_FPS: 2,   // count
     PIP_CARD_READY_MS: 1500,   // ms
     PIP_LENS_FPS: 15,   // count
+    PIP_REPICK_MS: 1000,   // ms
     PIP_RETURN_WAIT_MS: 432,   // ms
     POOL_CLAIM_MS: 9000,   // ms
     POOL_SETTLE_MS: 300,   // ms

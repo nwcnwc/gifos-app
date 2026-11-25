@@ -1237,40 +1237,6 @@
     // exempt from Chrome's intensive timer throttling, so the float also
     // keeps our status heartbeat inside the 15s freshness window (see G1).
     const pipReady = (v) => !!(v && v.srcObject && v.videoWidth > 0);
-    function pipSource() {
-      // The stage is the room's chosen broadcast — float it when live (the
-      // composited strip beyond S1, individual stager feeds inside S1).
-      // A no-password room with a clear right: the float paints raw frames (no CSS blur there), so nothing this viewer
-      // sees blurred is floated: the Stage only once tapped, rows and the stadium only once tapped in a full-right room,
-      // a face only when its own level is clear.
-      const cnp = (0, /*()*/__C.clearNoPwState)();
-      const cnpStageVeil = !!cnp.mode && !cnp.tapped, cnpRowsVeil = !!cnp.mode && !(cnp.mode === 'all' && cnp.tapped);
-      if (!cnpStageVeil) for (const v of stagefeedEl.querySelectorAll('.rowtile video')) if (pipReady(v) && !v.classList.contains('stageface')) return v;
-      let first = null;
-      for (const [pid, p] of __C.model.roster.peers()) {
-        // A camera-off seat (a bot included) still decodes black frames — skip
-        // by status. A relayed or sponsor-forwarded tile is that picture with
-        // the direct pair down, so p.connected is not required once video is ready.
-        // A screen sharer is the best float target, not a skipped one.
-        if ((0, /*()*/__C.seatDark)(__C.model.roster.statusOf().get(pid)) || !pipReady(p.video)) continue;
-        // Moderation reaches the float: the PiP window paints the RAW frames
-        // (no CSS there), so a peer an admin turned off, or one a moderator
-        // blurred, is never floated — the receiver-side rule holds in every
-        // sink, not only the grid tile.
-        if ((0, /*()*/__C.forcedCamOff)(pid) || (0, /*()*/__C.modBlurOn)(pid) || (typeof __C.shareBlocked === 'function' && (0, /*()*/__C.shareBlocked)(pid))) continue;
-        if (cnp.mode && (0, /*()*/__C.blurLevelFor)(pid) > 0) continue;
-        if (__C.model.roster.speakingOf().get(pid)) return p.video; // the talker beats first-connected
-        first = first || p.video;
-      }
-      if (first) return first;
-      const sd = stadiumEl.querySelector('[data-row="sd"] video');
-      if (pipReady(sd) && !cnpRowsVeil) return sd;
-      // Alone in the room (or nobody else's video is up yet): float my OWN
-      // preview — it shows the camera is still live and the room still open
-      // while I'm in another app. Only when the camera is actually ON: the
-      // join-quiet default (camOff) would float a black box.
-      return (__C.model.me.meTile() && !(0, /*()*/__C.seatDark)(__C.model.me.myStatus()) && pipReady(__C.model.me.meTile().video)) ? __C.model.me.meTile().video : null;
-    }
     // pipManual: the float was asked for with the Float button while the tab
     // was in view. Only then may it stay up while the meeting is on screen.
     let pipManual = false;
@@ -1395,7 +1361,7 @@
     async function enterPip(manual, byBrowser) {
       if (byBrowser) pipByBrowser = Date.now();
       if (manual || byBrowser) (0, /*()*/__C.clearPipAuto)();
-      pipNote('enter', { manual: !!manual, browser: !!byBrowser, src: (() => { try { const v = pipSource(); return v ? (v === (__C.model.me.meTile() && __C.model.me.meTile().video) ? 'me' : 'peer') : null; } catch (e) { return '?'; } })() });
+      pipNote('enter', { manual: !!manual, browser: !!byBrowser, src: (() => { try { const R = pipPick(); return R ? (R.key === 'me' ? 'me' : 'peer') : null; } catch (e) { return '?'; } })(), kind: (() => { try { const R = pipPick(); return R ? R.t.kind : null; } catch (e) { return '?'; } })() });
       // A tile floated from that page only paints "Playing in
       // picture-in-picture" into the browser's float, and leaves the tile
       // black when you come back.
@@ -1407,7 +1373,7 @@
         Promise.resolve(opened).then(() => {}, () => {});
         return;
       }
-      const v = pipFloatEl(pipSource());   // a source this viewer sees blurred floats blurred (the lens)
+      const v = pipFloatEl(pipPick());   // a source this viewer sees blurred floats blurred (the lens)
       if (v && document.pictureInPictureElement === v) return;
       if (!v) {
         // No live picture (every camera off): the document window where the
@@ -1455,7 +1421,7 @@
       if (__C.docPip || docPipReq || pipFloating()) return;
       const away = document.hidden || (!!pipAwayAt && !document.hasFocus());
       if (!away) return;
-      const v = pipFloatEl(pipSource());
+      const v = pipFloatEl(pipPick());
       if (!v || document.pictureInPictureElement === v) return;
       const epoch = pipEpoch;
       if (v.id === 'piplens' && v.readyState < 1 && !(await (0, /*()*/__C.pipCardReady)(pipFloatEl.lens))) { pipNote('lens-unready'); return; }
@@ -1485,16 +1451,17 @@
     // a float is asked for again while one is up.
     function docPipAim() {
       if (!__C.docPip) return;
-      const v = pipSource();
-      // The float plays what the tile shows: a source this viewer sees blurred plays the lens's blurred stream (pipFloatEl).
-      let f = null; try { f = v ? pipFloatEl(v) : null; } catch (e) { f = null; }
+      const R = pipPick();
+      // The float plays the lens: every target is drawn there at the blur this viewer gives it, so a new target swaps
+      // what the lens draws and the window itself stays (pipFloatEl).
+      let f = null; try { f = R ? pipFloatEl(R) : null; } catch (e) { f = null; }
       const src = f ? f.srcObject : null;
       if (__C.docPip.video.srcObject !== src) {
         __C.docPip.video.srcObject = src;
         if (src) { const pr = __C.docPip.video.play(); if (pr && pr.catch) pr.catch(() => {}); }
-        if (f && f.id === 'piplens') { try { pipFloatEl(v); } catch (e) {} }   // the lens paints on now that a float shows it
+        if (f && f.id === 'piplens') { try { pipFloatEl(R); } catch (e) {} }   // the lens paints on now that a float shows it
       }
-      __C.docPip.name.textContent = v ? (0, /*()*/__C.docPipName)(v) : (0, /*()*/__C.uiText)('nothingToFloatShort', 'Nobody on screen yet');
+      __C.docPip.name.textContent = R ? R.label : (0, /*()*/__C.uiText)('nothingToFloatShort', 'Nobody on screen yet');
       __C.docPip.root.classList.toggle('empty', !src);
       docPipPaint();
     }
@@ -1663,7 +1630,7 @@
     let pipAimed = null;
     function pipReaim() {
       backGuardSync();
-      const v = pipSource();
+      const R = pipPick();
       // A picture this viewer sees blurred never floats raw: not through the browser's own float controls
       // (disablePictureInPicture), and a raw float already up whose level rose (the password went, a moderator blurred
       // it, a clear tap ended) is closed.
@@ -1677,7 +1644,7 @@
       // No picture and no document float: keep the meeting card ready (one
       // frame on change, no clock) so the next ask can open it at once.
       let aim = null;
-      try { aim = pipFloatEl(v); } catch (e) { aim = null; }   // a blurred source aims the lens (iOS floats the aimed one by itself)
+      try { aim = pipFloatEl(R); } catch (e) { aim = null; }   // every target aims the lens (iOS floats the aimed one by itself)
       try {
         if (aim) pipCardDrop();
         else if (__C.model.me.meTile() && !docPipOk() && pipCardEnsure()) { (0, /*()*/__C.pipCardPaint)(false); aim = __C.pipCard.video; }
@@ -1708,7 +1675,7 @@
       pipNote(document.hidden ? 'hidden' : 'visible');
       awayFull(document.hidden);
       if (document.hidden) {
-        pipHintArmed = __C.model.consts.IS_MOBILE() && !pipHintDone && !pipFloating() && pipBtnShown() && !!(pipSource() || (__C.pipCard && pipCardOk()));
+        pipHintArmed = __C.model.consts.IS_MOBILE() && !pipHintDone && !pipFloating() && pipBtnShown() && !!(pipPick() || (__C.pipCard && pipCardOk()));
         enterPip();
       } else {
         pipReturn('visible');
@@ -11946,6 +11913,7 @@
       stadiumVideoLive: (row) => { const el = stadiumEl.querySelector('[data-row="' + row + '"] video'); return !!(el && el.srcObject && el.videoWidth > 0); },
       // PiP forensics: what the overlay would float right now, and whether one is up.
       pip: () => ({
+        target: (() => { try { const R = pipPick(); return R ? { kind: R.t.kind, pid: R.t.pid || null, key: R.key, label: R.label } : null; } catch (e) { return { err: String(e).slice(0, 80) }; } })(),
         aimed: (() => { const v = pipSource(); if (!v) return null; const t = v.closest('[data-peer]'); if (t) return 'peer:' + t.dataset.peer; const r = v.closest('.rowtile'); return r ? 'row:' + r.dataset.row : 'other'; })(),
         active: pipFloating(),
         byBrowser: pipByBrowser,
@@ -12227,32 +12195,63 @@
       } catch (e) {}
       return 2;
     }
-    // pipFloatEl(v): the element a float shows for the source v. A source this viewer sees clear floats itself. A
-    // blurred one floats the LENS: a canvas that redraws the source through blurDraw at the tile's own strength
-    // (--blur-view-min/max), captured into a hidden <video>; the document float plays the lens's stream. One lens, every
-    // float. A lens already floating as the element keeps following the source (at level 0 too: a float cannot swap
-    // its element). It paints at PIP_LENS_FPS only while the tab is hidden or the lens floats, from the track itself
-    // where the browser can read one (MediaStreamTrackProcessor: a hidden page may pause the tile), else from the
-    // tile; in view it keeps one fresh frame per re-aim so a tap can float it at once. null: nothing to float.
-    function pipFloatEl(v) {
+    // The blur level the float gives a target: a picture at the level this viewer gives it where it shows it
+    // (pipBlurLevel); a screen at its sharer's Stage level (mine none); the shared app, a name card and a face cut
+    // from my Stadium picture none (the Stadium shows unblurred; a veiled one is never picked).
+    function pipLevel(R) {
+      if (!R || R.app || R.card || R.cell) return 0;
+      if (R.track && !R.v) {
+        const t = R.t || {};
+        if (t.mine) return 0;
+        let b = (0, /*()*/__C.blurLevelFor)(t.pid, false, false, 'stage') | 0; if ((0, /*()*/__C.modBlurOn)(t.pid)) b = Math.max(1, b);
+        return b;
+      }
+      return pipBlurLevel(R.v);
+    }
+    // pipFloatEl(R): the element a float shows for the target R (pipPick) - the LENS: a canvas that redraws the target
+    // through blurDraw at the tile's own strength (--blur-view-min/max), captured into a hidden <video>; the document
+    // float plays the lens's stream. One lens, every float, every target: a new target changes what the lens draws,
+    // never which element floats, so the floating window stays up through a swap. It paints at PIP_LENS_FPS only while
+    // the tab is hidden or the lens floats, from the track itself where the browser can read one
+    // (MediaStreamTrackProcessor: a hidden page may pause the tile), else from the element; in view it keeps one fresh
+    // frame per re-aim so a tap can float it at once. A browser with no canvas capture floats a clear picture itself.
+    // null: nothing to float.
+    function pipFloatEl(R) {
       const L = pipFloatEl.lens;
       const elUp = () => { const X = pipFloatEl.lens; return !!X && (document.pictureInPictureElement === X.video || X.video.webkitPresentationMode === 'picture-in-picture'); };
-      const lv = pipBlurLevel(v);
-      if (!v) {
+      if (!R) {
         if (!elUp()) return null;
         // Nothing may float now (the seat went dark, was turned off...): the floating lens goes black, never a stale source.
-        L.src = null; pipLensPump(L, false);
+        L.R = null; L.src = null; pipLensPump(L, false);
         try { L.ctx.fillStyle = '#000'; L.ctx.fillRect(0, 0, L.canvas.width, L.canvas.height); if (typeof L.track.requestFrame === 'function') L.track.requestFrame(); } catch (e) {}
         return L.video;
       }
-      if (!(lv > 0) && !elUp()) { if (L && !(__C.docPip && __C.docPip.video.srcObject === L.stream)) pipLensDrop(); return v; }
+      const lv = pipLevel(R);
       const M = pipFloatEl.lens || pipLensMake();
-      if (!M) return lv > 0 ? null : v;
-      if (M.src !== v) { M.src = v; pipLensPump(M, false); }
+      if (!M) return lv > 0 || !R.v || R.cell ? null : R.v;
+      if (!M.R || M.R.key !== R.key || M.R.v !== R.v || M.R.track !== R.track) {
+        M.src = R.v || (R.track ? pipLensAux(M, R.track) : null);
+        pipLensPump(M, false);
+      }
+      M.R = R;
       M.level = lv;
       if (document.hidden || elUp() || (__C.docPip && __C.docPip.video.srcObject === M.stream)) pipLensRun(M, true);
       pipLensPaint(M);
       return M.video;
+      // A picture with no element of its own (a screen track) plays in the lens's own hidden <video>, so a browser
+      // that cannot read the track still has frames to draw.
+      function pipLensAux(M2, track) {
+        if (!M2.aux) {
+          const v = document.createElement('video');
+          v.muted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('aria-hidden', 'true');
+          v.style.cssText = 'position:fixed;right:0;bottom:0;width:2px;height:2px;opacity:0;pointer-events:none;z-index:-1';
+          document.body.appendChild(v);
+          M2.aux = v;
+        }
+        const cur = M2.aux.srcObject && M2.aux.srcObject.getVideoTracks()[0];
+        if (cur !== track) { M2.aux.srcObject = new MediaStream([track]); const pr = M2.aux.play(); if (pr && pr.catch) pr.catch(() => {}); }
+        return M2.aux;
+      }
       function pipLensMake() {
         try {
           if (typeof HTMLCanvasElement.prototype.captureStream !== 'function') return null;
@@ -12271,7 +12270,7 @@
           video.addEventListener('webkitpresentationmodechanged', up);
           document.body.appendChild(video);
           const pr = video.play(); if (pr && pr.catch) pr.catch(() => {});
-          return (pipFloatEl.lens = { canvas, ctx, stream, track, video, src: null, level: 2, stop: null, rd: null, clone: null, frame: null });
+          return (pipFloatEl.lens = { canvas, ctx, stream, track, video, R: null, src: null, aux: null, level: 2, stop: null, rd: null, clone: null, frame: null, appAt: 0, cardSig: '' });
         } catch (e) { return null; }
       }
       function pipLensPump(M2, on) {
@@ -12279,7 +12278,7 @@
         if (M2.clone) { try { M2.clone.stop(); } catch (e) {} M2.clone = null; }
         if (M2.frame) { try { M2.frame.close(); } catch (e) {} M2.frame = null; }
         if (!on || typeof window.MediaStreamTrackProcessor !== 'function') return;
-        let tr = null; try { tr = M2.src && M2.src.srcObject && M2.src.srcObject.getVideoTracks()[0]; } catch (e) { tr = null; }
+        let tr = null; try { tr = (M2.R && M2.R.track) || (M2.src && M2.src.srcObject && M2.src.srcObject.getVideoTracks()[0]); } catch (e) { tr = null; }
         M2.srcTrack = tr;
         if (!tr || tr.readyState !== 'live') return;
         let rd = null;
@@ -12307,10 +12306,15 @@
             const grace = 2 * (GifOS.timings.PIP_AUTO_FALLBACK_MS + GifOS.timings.PIP_CARD_READY_MS);
             const want = elUp() || (__C.docPip && __C.docPip.video.srcObject === M2.stream) || (document.hidden && Date.now() - M2.hidAt < grace);
             if (!want) { pipLensRun(M2, false); return; }
-            if (!M2.src) return;
-            M2.level = pipBlurLevel(M2.src);   // a level that rises while floating blurs on the next frame, not the next re-aim
-            let cur = null; try { cur = M2.src && M2.src.srcObject && M2.src.srcObject.getVideoTracks()[0]; } catch (e) { cur = null; }
-            if (!M2.rd || cur !== M2.srcTrack) pipLensPump(M2, true);   // a tile that changed its track is read anew
+            // a floating window asks again what it should show (a share, the Stage), not only on the heartbeat's re-aim
+            const nowT = Date.now();
+            if (nowT - (M2.pickAt || 0) >= GifOS.timings.PIP_REPICK_MS) { M2.pickAt = nowT; try { if (__C.docPip) docPipAim(); else if (elUp()) pipFloatEl(pipPick()); } catch (e) {} }
+            if (!M2.R) return;
+            M2.level = pipLevel(M2.R);   // a level that rises while floating blurs on the next frame, not the next re-aim
+            if (M2.src) {
+              let cur = null; try { cur = M2.R.track || (M2.src.srcObject && M2.src.srcObject.getVideoTracks()[0]); } catch (e) { cur = null; }
+              if (!M2.rd || cur !== M2.srcTrack) pipLensPump(M2, true);   // a tile that changed its track is read anew
+            }
             try { pipLensPaint(M2); } catch (e) {}
           };
           const ms = Math.round(1000 / GifOS.timings.PIP_LENS_FPS);
@@ -12321,13 +12325,28 @@
         } else if (!on && M2.stop) { const s = M2.stop; M2.stop = null; s(); pipLensPump(M2, false); }
       }
       function pipLensPaint(M2) {
+        const R = M2.R;
+        if (!R) return;
+        if (R.card) return pipLensCard(M2, R.card, null);
+        if (R.app) return pipLensApp(M2, R);
         const f = M2.frame, src = f || M2.src;
-        if (!src || !M2.src) return;
+        if (!src) return;
         const sw = f ? f.displayWidth : src.videoWidth, sh = f ? f.displayHeight : src.videoHeight;
         if (!(sw > 0 && sh > 0)) return;
-        const k = Math.min(1, 480 / Math.max(sw, sh));   // a float is small: 480 px on the long side is plenty
-        const w = Math.max(2, Math.round(sw * k)), h = Math.max(2, Math.round(sh * k));
+        // A far talker: their face, cut from my Stadium picture where the composite placed it.
+        let cut = null;
+        if (R.cell) {
+          try {
+            const m = comfyStadMeta(), j = m.ids ? m.ids.indexOf(R.cell) : -1, MM = GifOS.meshMedia;
+            if (j >= 0 && m.n > 0 && m.cols > 0 && MM && MM.faceSrcRect) cut = MM.faceSrcRect(j, m.n, m.cols, sw, sh);
+          } catch (e) { cut = null; }
+        }
+        const cw = cut ? cut.sw : sw, ch = cut ? cut.sh : sh;
+        if (!(cw > 0 && ch > 0)) return;
+        const k = Math.min(1, 480 / Math.max(cw, ch));   // a float is small: 480 px on the long side is plenty
+        const w = Math.max(2, Math.round(cw * k)), h = Math.max(2, Math.round(ch * k));
         if (M2.canvas.width !== w || M2.canvas.height !== h) { M2.canvas.width = w; M2.canvas.height = h; }
+        if (cut) { M2.ctx.drawImage(src, cut.sx, cut.sy, cut.sw, cut.sh, 0, 0, w, h); M2.cardSig = ''; pipLensFrame(M2); return; }
         // The tile's own numbers: its CSS blur reads --blur-view-min/max on the root (the Max is the sender's Max in a
         // room with a clear right), so the float blurs exactly as hard as the tile it comes from.
         const rs = document.documentElement.style, T = GifOS.timings;
@@ -12338,20 +12357,160 @@
           const dw = w * 1.15, dh = h * 1.15;
           (0, /*()*/__M.blurDraw)(M2.ctx, src, (w - dw) / 2, (h - dh) / 2, dw, dh, frac * Math.max(w, h) / dw);
         } else M2.ctx.drawImage(src, 0, 0, w, h);
-        if (typeof M2.track.requestFrame === 'function') { try { M2.track.requestFrame(); } catch (e) {} }
+        M2.cardSig = '';
+        pipLensFrame(M2);
       }
-      function pipLensDrop() {
-        if (elUp()) return;
-        pipFloatEl.lens = null;
-        pipLensRun(L, false); pipLensPump(L, false);
-        try { L.track.stop(); } catch (e) {}
-        try { L.video.srcObject = null; L.video.remove(); } catch (e) {}
+      function pipLensFrame(M2) { if (typeof M2.track.requestFrame === 'function') { try { M2.track.requestFrame(); } catch (e) {} } }
+      // A seat with no picture (camera off) floats its name card: the letter its tile shows, and the name. Redrawn on
+      // a change, and once a second so a float that opens later still gets a frame.
+      function pipLensCard(M2, name, sub) {
+        const sig = name + '|' + (sub || '') + '|' + Math.floor(Date.now() / 1000);
+        if (M2.cardSig === sig) return;
+        M2.cardSig = sig;
+        const w = 480, h = 270, x = M2.ctx;
+        if (M2.canvas.width !== w || M2.canvas.height !== h) { M2.canvas.width = w; M2.canvas.height = h; }
+        x.filter = 'none';
+        x.fillStyle = '#14141f'; x.fillRect(0, 0, w, h);
+        x.textAlign = 'center'; x.textBaseline = 'middle';
+        x.fillStyle = '#3a3a55'; x.font = '800 120px system-ui, sans-serif';
+        x.fillText((0, /*()*/__C.nameInitial)(name) || '?', w / 2, h / 2 - 18);
+        x.fillStyle = '#e8e8f0'; x.font = '600 26px system-ui, sans-serif';
+        x.fillText(String(name || '').slice(0, 28), w / 2, h - 46);
+        if (sub) { x.fillStyle = '#9a9ab0'; x.font = '500 18px system-ui, sans-serif'; x.fillText(String(sub).slice(0, 36), w / 2, h - 18); }
+        pipLensFrame(M2);
+      }
+      // The shared app is no video: its frame is asked for one picture of the app's own drawing at PIP_APP_FPS
+      // (runtime 'pipframe'), drawn here whole; an app that draws no canvas floats its name card.
+      function pipLensApp(M2, R) {
+        const now = Date.now(), every = Math.round(1000 / GifOS.timings.PIP_APP_FPS);
+        if (now - M2.appAt >= every) { M2.appAt = now; pipAppAsk(); }
+        const b = pipAppBmp.bmp;
+        const stale = every * 8;   // eight asks unanswered: the app has stopped drawing
+        if (!b || now - pipAppBmp.at > stale) return pipLensCard(M2, R.label, (0, /*()*/__C.uiText)('pipApp', 'App share'));
+        if (M2.appDrawn === b) return;
+        M2.appDrawn = b;
+        const w = Math.max(2, b.width), h = Math.max(2, b.height);
+        if (M2.canvas.width !== w || M2.canvas.height !== h) { M2.canvas.width = w; M2.canvas.height = h; }
+        M2.ctx.filter = 'none';
+        try { M2.ctx.drawImage(b, 0, 0, w, h); } catch (e) { return; }
+        M2.cardSig = '';
+        pipLensFrame(M2);
       }
     }
+    // Settings > Floating window shows: the person's list for pipTarget, saved on this device. Each item has a
+    // checkbox and Up/Down; Follow the speaker is the fixed last line.
+    function paintPipOrder() {
+      const ol = document.getElementById('piporder');
+      if (!ol) return;
+      const words = { app: (0, /*()*/__C.uiText)('pipApp', 'App share'), screen: (0, /*()*/__C.uiText)('pipScreen', 'Screen share'), stage: (0, /*()*/__C.uiText)('pipStage', 'Stage faces') };
+      const up = (0, /*()*/__C.uiText)('pipUp', 'Move up'), down = (0, /*()*/__C.uiText)('pipDown', 'Move down');
+      const list = GifOS.meetViewMode.loadPip(localStorage);
+      ol.textContent = '';
+      list.forEach((it, i) => {
+        const li = document.createElement('li'); li.dataset.k = it.k;
+        const lab = document.createElement('label');
+        const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = it.on; cb.dataset.pipOn = it.k;
+        lab.appendChild(cb); lab.appendChild(document.createTextNode(' ' + words[it.k]));
+        li.appendChild(lab);
+        for (const [dir, word, glyph] of [[-1, up, '\u2191'], [1, down, '\u2193']]) {
+          const b = document.createElement('button'); b.type = 'button'; b.className = 'seg'; b.textContent = glyph;
+          b.title = word; b.setAttribute('aria-label', word + ': ' + words[it.k]); b.dataset.pipMove = it.k + ':' + dir;
+          b.disabled = (dir < 0 && i === 0) || (dir > 0 && i === list.length - 1);
+          li.appendChild(b);
+        }
+        ol.appendChild(li);
+      });
+      const last = document.createElement('li');
+      const lab = document.createElement('label');
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = true; cb.disabled = true;
+      lab.appendChild(cb); lab.appendChild(document.createTextNode(' ' + (0, /*()*/__C.uiText)('pipSpeaker', 'Follow the speaker')));
+      last.appendChild(lab);
+      ol.appendChild(last);
+    }
+    (() => {
+      const after = document.getElementById('set-stage-video');
+      if (!after || document.getElementById('set-pip')) return;
+      const row = document.createElement('div'); row.className = 'set-sec set-row'; row.id = 'set-pip';
+      const h = document.createElement('b'); h.textContent = (0, /*()*/__C.uiText)('setPip', 'Floating window shows');
+      const ctl = document.createElement('div'); ctl.className = 'set-ctl';
+      const ol = document.createElement('ol'); ol.id = 'piporder'; ol.className = 'piporder';
+      const help = document.createElement('p'); help.className = 'set-help';
+      help.textContent = (0, /*()*/__C.uiText)('setPipHelp', 'When you leave the meeting\u2019s tab, the floating window shows the first of these that is live. Follow the speaker is always last.');
+      ctl.appendChild(ol); ctl.appendChild(help); row.appendChild(h); row.appendChild(ctl);
+      after.insertAdjacentElement('afterend', row);
+      ol.addEventListener('change', (e) => {
+        const k = e.target && e.target.dataset && e.target.dataset.pipOn;
+        if (!k) return;
+        GifOS.meetViewMode.savePip(localStorage, GifOS.meetViewMode.loadPip(localStorage).map((x) => x.k === k ? { k, on: !!e.target.checked } : x));
+        paintPipOrder(); pipReaim();
+      });
+      ol.addEventListener('click', (e) => {
+        const b = e.target && e.target.closest && e.target.closest('[data-pip-move]');
+        if (!b) return;
+        const [k, d] = b.dataset.pipMove.split(':');
+        const list = GifOS.meetViewMode.loadPip(localStorage), i = list.findIndex((x) => x.k === k), j = i + (+d);
+        if (i < 0 || j < 0 || j >= list.length) return;
+        const t = list[i]; list[i] = list[j]; list[j] = t;
+        GifOS.meetViewMode.savePip(localStorage, list);
+        paintPipOrder(); pipReaim();
+        const again = ol.querySelector('[data-pip-move="' + k + ':' + d + '"]');
+        if (again && !again.disabled) again.focus();
+      });
+      paintPipOrder();
+    })();
+    // The shared app's latest picture (an ImageBitmap from its own frame, runtime 'pipframe'). Only the mounted app's
+    // frame is believed, and only a bitmap: a frame cannot hand the float anything else.
+    const pipAppBmp = { bmp: null, at: 0 };
+    function pipAppAsk() {
+      const f = document.querySelector('#appmount iframe');
+      if (f && f.contentWindow) { try { f.contentWindow.postMessage({ ns: 'gifos', type: 'pipframe' }, '*'); } catch (e) {} }
+    }
+    window.addEventListener('message', (e) => {
+      const d = e.data;
+      if (!d || d.ns !== 'gifos' || d.type !== 'pipframe') return;
+      const f = document.querySelector('#appmount iframe');
+      if (!f || e.source !== f.contentWindow) return;
+      const old = pipAppBmp.bmp;
+      if (d.bmp && typeof d.bmp.close === 'function' && d.bmp.width > 0 && d.bmp.height > 0) { pipAppBmp.bmp = d.bmp; pipAppBmp.at = Date.now(); }
+      else if (d.none) { pipAppBmp.bmp = null; pipAppBmp.at = 0; }
+      if (old && old !== pipAppBmp.bmp) { try { old.close(); } catch (e2) {} }
+    });
   
+    // THE FLOATING WINDOW'S TARGET (PIPPICK, 2026-11-24): the core picks it from the person's list (pipTarget: app
+    // share, screen share, Stage faces in their order, then follow the speaker); this makes the pick drawable for the
+    // lens. R = { t, key, v, track, cell, card, app, label }: v a <video> to draw, track a picture with no element of
+    // its own (a screen), cell a far talker's face cut from my Stadium picture, card a name to draw for a seat with no
+    // picture, app the shared app's own drawing. Moderation and the clear-without-password veils are the core's.
+    function pipPick() {
+      const sd = stadiumEl.querySelector('[data-row="sd"] video');
+      let t = null;
+      try { t = (0, /*()*/__C.pipTarget)({ stadium: pipReady(sd) }); } catch (e) { t = null; }
+      if (!t) return null;
+      const nm = (pid) => String((0, /*()*/__C.displayName)(pid) || '');
+      if (t.kind === 'app') return { t, key: 'app', app: true, label: t.name || (0, /*()*/__C.uiText)('pipApp', 'App share') };
+      if (t.kind === 'screen') return { t, key: 'scr:' + t.pid + ':' + t.track.id, track: t.track, label: t.name };
+      if (t.kind === 'stage') {
+        for (const v of stagefeedEl.querySelectorAll('.rowtile video')) if (pipReady(v) && !v.classList.contains('stageface')) return { t, key: 'stage', v, label: (0, /*()*/__C.uiText)('pipStage', 'Stage') };
+        const id = t.ids[0], p = __C.model.roster.peers().get(id);
+        if (p && pipReady(p.video) && !(0, /*()*/__C.seatDark)(__C.model.roster.statusOf().get(id))) return { t, key: 'peer:' + id, v: p.video, label: nm(id) };
+        return { t, key: 'card:' + id, card: nm(id), label: nm(id) };
+      }
+      if (t.kind === 'speaker') {
+        if (t.far) return pipReady(sd) ? { t, key: 'cell:' + t.pid, v: sd, cell: t.pid, label: nm(t.pid) } : { t, key: 'card:' + t.pid, card: nm(t.pid), label: nm(t.pid) };
+        const p = __C.model.roster.peers().get(t.pid);
+        if (!t.dark && p && pipReady(p.video)) return { t, key: 'peer:' + t.pid, v: p.video, label: nm(t.pid) };
+        return { t, key: 'card:' + t.pid, card: nm(t.pid), label: nm(t.pid) };
+      }
+      if (t.kind === 'stadium') return pipReady(sd) ? { t, key: 'stadium', v: sd, label: (0, /*()*/__C.uiText)('setStadium', 'The stadium') } : null;
+      const mt = __C.model.me.meTile();
+      if (t.kind === 'me' && mt && pipReady(mt.video)) return { t, key: 'me', v: mt.video, label: (0, /*()*/__C.uiText)('you', 'You') };
+      return null;
+    }
+    // The picture element of the target, where it has one (the parking of hidden mates and the test hooks read it).
+    function pipSource() { const R = pipPick(); return R ? (R.v || null) : null; }
     return __L.END;
   }
-  var api = { name: "view", run: part, count: 722, exports: {"appCopyPaint":1,"appRuntimeBoot":1,"appRuntimeClient":1,"appStageAsk":1,"appStageAskClose":1,"applyAdminUi":1,"applyChrome":1,"applyHeaderChoice":1,"applyRoomAudio":1,"applyRoomHelp":1,"applyViewerCrops":1,"armMeetDialogs":1,"atPwPrompt":1,"audioDump":1,"awayFull":1,"blurA":0,"blurActx":0,"blurB":0,"blurBctx":0,"blurNote":1,"bootMeetSession":1,"bridgeAgentToPage":1,"camBtn":0,"capCardRefresh":1,"capLangAsk":1,"capPaint":1,"capSourceOpen":1,"carryEarAc":1,"carryIo":1,"ccDockBtn":0,"chatPanel":0,"chatPanelOpen":1,"chatTrace":1,"clearAdminClose":1,"clearAppView":1,"closeFsView":1,"closeMoreForWait":1,"closeTileWin":1,"comfyStadMeta":1,"comfyStadRoster":1,"countClosedChat":1,"ctAgendaOpen":1,"ctAppInfo":1,"ctInit":1,"ctPaintAgendaBtn":1,"ctPaintBar":1,"ctPresent":1,"dbgMeterShow":1,"dropStaleShareWin":1,"emitLiveTranscript":1,"enterPip":1,"explainHeldVideo":1,"foldBarForApp":1,"frozenTileSkip":1,"fsFitPaint":1,"fsRefresh":1,"fsRefreshIfOpen":1,"handBtn":0,"hideAppMissing":1,"hideCaptions":1,"hideDialogs":1,"hideJoinPwModal":1,"hideResharePrompt":1,"inviteLinkForModal":1,"islandNoteTick":1,"keysModal":0,"layout":1,"lgLeave":1,"loadScriptOnce":1,"lobbyPwOpenRoom":1,"makeTile":1,"massBannerTick":1,"micBtn":0,"newCanvas":1,"openBlurWhy":1,"openFsView":1,"openShareLiveModal":1,"openStageAdjust":1,"openTileWin":1,"paintAirKind":1,"paintAloneCard":1,"paintAppGifFromLane":1,"paintAppRoomBody":1,"paintAppWho":1,"paintAssistant":1,"paintAudienceReacts":1,"paintAvatarCanvas":1,"paintAvatarImg":1,"paintAwayMark":1,"paintBcQuiet":1,"paintBlurWhy":1,"paintBotEyes":1,"paintBotView":1,"paintBroadcastChrome":1,"paintBroadcastIdent":1,"paintBroadcastJoinNote":1,"paintBroadcastRole":1,"paintBroadcastSeats":1,"paintCallBanner":1,"paintCallOn":1,"paintCallState":1,"paintCcLocal":1,"paintCcState":1,"paintCcView":1,"paintChatBadge":1,"paintChatBtn":1,"paintChatCount":1,"paintChatGate":1,"paintChatNew":1,"paintChipBottom":1,"paintControls":1,"paintFaders":0,"paintFit":1,"paintHand":1,"paintHelpTip":1,"paintInviteSlot":1,"paintJoinVeil":1,"paintLiveBadge":1,"paintMyAvatarPreview":1,"paintOnAirBadge":1,"paintOnAirSide":1,"paintPeopleIfOpen":1,"paintProgressSteps":1,"paintQaBand":1,"paintRaisedHands":1,"paintRb":1,"paintRbNow":1,"paintRoomTitle":1,"paintRoomTrust":1,"paintRoster":1,"paintShare":1,"paintShareUrl":1,"paintSoloApp":1,"paintSpkBtn":1,"paintStadiumTile":1,"paintStage":1,"paintStageBlurWhy":1,"paintStageMod":1,"paintStagePlate":1,"paintStageStrip":1,"paintStageVoteTargets":1,"paintStatusAlert":1,"paintStatusLine":1,"paintStatusNotice":1,"paintStatusSheet":1,"paintStatusWhy":1,"paintStreamLink":1,"paintTabTitle":1,"paintTileChrome":1,"paintTileOnGrid":1,"paintTranscriptControls":1,"paintTxMark":1,"paintVq":1,"paintWaitDoor":1,"paintWaitingSelf":1,"paintWspChip":1,"paintWspStatus":1,"pauseNote":1,"phoneLayout":1,"pipCardModel":1,"pipNote":1,"pipReaim":1,"pipReturn":1,"pipSource":1,"placeClearLine":1,"placeDeskName":1,"placeDockForWidth":1,"placeDockPopover":1,"placeFit":1,"placeHandq":1,"placeQaBand":1,"rbCanvas":1,"reassertVisLift":1,"recBtn":0,"refreshAudioBtn":1,"refreshAvatarSurfaces":1,"releaseHeld":1,"renderChat":1,"renderFiles":1,"renderHandq":1,"renderLobbyList":1,"renderQa":1,"renderTranscript":1,"replaceAddress":1,"roomAudioOn":1,"setAppFavicon":1,"setAppGif":1,"setBotView":1,"setTileLetter":1,"sgaAppOwner":1,"showAppMissing":1,"showAppPane":1,"showAppearCard":1,"showAvatarTrack":1,"showBlurNoteUnlessDialog":1,"showCamBack":1,"showCaption":1,"showClosedDialog":1,"showFlipButton":1,"showForkPick":1,"showHeldScreen":1,"showInviteModal":1,"showLeftDialog":1,"showLoadRefusal":1,"showLobby":1,"showPwModal":1,"showRecOptions":1,"showRecReplay":1,"showRelayBusy":1,"showResharePrompt":1,"showServiceEnded":1,"showShareLink":1,"showWhoIfOpen":1,"stadiumEl":0,"stageFeedShows":1,"stagefeedEl":0,"stopLobbyPreview":1,"syncModalFocus":1,"takeFaceReact":1,"tickAdminClose":1,"tileNote":1,"timingRow":0,"topNameModal":1,"turnPaint":1,"twButton":1,"unmuteBtn":0,"updateAppButtons":1,"updateBlurAllBtn":1,"updateCamAllBtn":1,"updateMuteAllBtn":1,"updateReload":1,"updateShareAllBtn":1,"viewTestHooks":1,"waitPaint":1,"wakeMeet":1,"wireFsResize":1,"wireMediaSession":1}, needs: {"core":{"vqManual":0,"serviceHeard":0,"stageIds":0,"adminsNow":0,"bcHostStored":0,"roomHeadCount":1,"leftDialogUp":1,"bcWatchingViewer":1,"barKind":1,"bcMayPublishAv":1,"idleDock":1,"barPlan":1,"uiText":1,"dockLabelSet":1,"hasAdminRoom":0,"uiLang":1,"ROOM":0,"paintBroadcastAir":1,"bcRole":1,"paintOnAir":1,"applyAvatarFile":1,"refreshAllTiles":1,"broadcastStatus":1,"pushLeaf":1,"bcPreInRoom":1,"becomeAssistant":1,"holdDoor":0,"amAdmin":0,"statusWords":0,"sayState":0,"liveInCall":1,"blurWhyWords":1,"tileBlurWhy":1,"frozeThisBeat":1,"reactRoomState":1,"seatDark":0,"forcedCamOff":0,"modBlurOn":0,"shareBlocked":0,"docPip":0,"myName":0,"displayName":1,"pipCard":0,"pipCardPaint":1,"pipCardRun":1,"pipCardReady":1,"clearPipAuto":1,"pipFallback":1,"setStatus":0,"pipAutoT":0,"inMeetingNow":1,"backWatch":0,"backGuardDrop":1,"sendVisPark":1,"botViewOn":0,"botParks":1,"dcSend":0,"autoFsOff":0,"setAutoFsOff":1,"admGraceT":0,"admTickT":0,"admDeadline":0,"closeRoomNoHost":1,"updateLeaving":0,"bcOnAir":1,"updateRoomKey":0,"blurLevel":0,"progressStart":1,"progressTick":1,"progressWords":1,"homeHref":1,"fsInline":0,"fsSel":0,"fsAutoPid":0,"fsZoomBox":0,"fsZoomIds":0,"fsFarTalkers":1,"fsFarCells":1,"fsCropBox":1,"viewNote":1,"fsFeedLive":1,"blurLevelFor":1,"sharingScreen":0,"nameInitial":1,"fsPickAuto":1,"fsBlurClass":1,"fsAutoKey":0,"fsFollow":0,"fsFollowChanged":1,"fsOpen":0,"fsTick":0,"fsFollowT":0,"stageModList":1,"wireModbar":1,"paintModbarButtons":1,"modOf":1,"localBlurPower":1,"setMod":1,"blurOffer":1,"hostWords":1,"focusId":0,"iAmWaiting":1,"shadeKey":1,"stageFeedVideo":1,"contentHas":1,"ctNote":1,"VMODE":0,"viewWord":1,"setView":1,"syncFocus":1,"CT":0,"appKey":0,"ctAgHidden":1,"ctText":1,"ctAspect":1,"turnHeld":1,"shareFirewallWords":1,"ctLabel":1,"ctSelect":1,"ctAgendaShortTime":1,"ctAgendaOver":1,"ctCanEditAgenda":1,"ctBring":1,"ctAgendaTickArm":1,"ctSpeakerPick":1,"ctAgCtx":1,"ctPaintAgendaClock":1,"ctAgendaPublish":1,"ctAgendaHide":1,"ctRefresh":1,"ctAgendaWhoText":1,"ctFocusSources":1,"applyViewerCrop":1,"viewerCropOf":1,"saveVcrops":1,"twIdOf":1,"twPeer":1,"twCaptionsButton":1,"updateTile":1,"stadFaceIdAt":1,"ensureAc":1,"carryOutAc":0,"newMeetAudioContext":1,"pwBlocked":0,"rosterRows":1,"updateStatus":1,"paintRosterSoon":1,"mayHost":1,"waitingSince":1,"setWaitingRoom":1,"waitingRows":1,"hostRename":1,"hostSpot":1,"bcEndedInRoom":1,"stageClaimOf":0,"ctTurnPaint":1,"capOn":0,"subsOn":0,"subsMeetId":0,"capTry":1,"adminFace":0,"relayBusyAt":0,"camPeer":0,"mediaOk":0,"meshCoord":0,"meshSeat":0,"peerAway":0,"clog":0,"dropPeer":1,"clearRosterTiles":1,"startMesh":1,"islandApart":1,"esc":0,"bcActButtons":1,"learnFoldedNames":1,"applyBcAct":1,"storePw":1,"pwHeldOnTyping":1,"grantHoldUntil":0,"rekeyRoom":1,"pwProof":0,"pwChainFailed":1,"purgeAllFiles":1,"pwSetRoom":1,"deriveAdminKey":1,"adoptAdmKey":1,"admStoreKey":0,"mirrorRoomState":1,"whoRows":1,"whoFaceState":1,"whoObserve":1,"whoRefresh":0,"whoAddrLines":1,"pwBan":1,"whoFileText":1,"isCastEntry":1,"loadList":1,"lobRow":1,"stashJoinAv":1,"mintHostKey":1,"shortCode":0,"slugRoom":1,"lobbyPwHandOver":1,"setPersonalBlur":1,"parseMeetInput":1,"toggleBookmark":1,"saveList":1,"aloneCardShut":0,"inviteFromSolo":1,"appClientCtl":0,"callOn":0,"DEBUG_ON":0,"unread":0,"reactAlert":0,"messageMentionsMe":1,"mentionToken":1,"linksAllowed":1,"viewerMayReact":1,"withMentions":1,"avatarChip":1,"reactorNames":1,"reactOpen":0,"lineOpen":0,"paintLog":1,"prayOn":0,"modStarOn":1,"lateJoinerSeesHistory":0,"slowModeOn":0,"chatLinksOn":0,"logNearBottom":1,"toggleLine":1,"takeReact":1,"sendAll":1,"applyOwnDelete":1,"admSigned":1,"applyCdel":1,"takeTomb":1,"uid":0,"mayPinFiles":1,"chatOpen":0,"recSrcDirty":0,"roomPastSection":0,"knownTotal":1,"stageViewNow":0,"stageGrantLive":0,"enforceBroadcastSeat":1,"canStage":0,"stageNeed":0,"vupDismissedSig":0,"setStage":1,"mayShareScreen":0,"rbFmt":1,"rbToggle":1,"rbStop":1,"rbNoun":0,"rbTitle":1,"findSharedApp":1,"canIRunApp":0,"shareSheetFocusId":1,"appHiddenSid":0,"reconcileApp":1,"dlogOut":0,"dlogStoreGet":1,"dlogRecStart":1,"sendAvatarTo":1,"setVq":1,"trDirty":0,"trBlocks":1,"trLang":1,"trNote":1,"capName":1,"capPick":1,"capRows":1,"capNowNote":1,"capPublish":1,"ccLangLabel":0,"capLangName":1,"capLangMine":1,"capLangTag":1,"trLangOf":0,"ccLocalBlocked":1,"ccMB":0,"lsSet":0,"lsGet":0,"capSend":1,"txMarkWhy":1,"trMode":1,"setCapSend":1,"setTrMode":1,"leaveSeededService":1,"bcSeeding":0,"releaseLeaveAsk":1,"applyPageHeader":1,"reactRateOk":1,"faceDrawnHere":1,"sendFaceFrame":1,"sendAudienceReact":1,"focusOf":1,"amGloballyMuted":1,"micLockWords":1,"leaveMeeting":1,"updateMediaSession":1,"heldNoteSeen":1,"markHeldNote":1,"blurHold":1,"modalFocusables":1,"modalDismissBtn":1,"viewerShareUrl":1,"bcStartAt":1,"bcWhenWords":1,"armCopiedLabel":1,"linkRowHtml":1,"createAdminRoom":1,"holdLeaveAsk":1,"shortcutTyping":1,"stopApp":1,"appMode":0,"appPaneOn":0,"appPaneName":0,"appHostCtl":0,"currentAppHelpMd":1,"currentAppCredits":1,"appEv":0,"appClientStop":0,"appLeadable":0,"appLeadOn":0,"stopRoomApp":1,"appLeadSet":0,"appStageConsent":0,"appStageApply":1,"appStagePlan":1,"importGif":1,"runApp":1,"installRunApp":1,"runLinkTarget":1,"fetchGifFromUrl":1,"runChoices":1,"aiNotesSetting":1,"botViewWant":0,"agentStart":1,"backToNormalView":1,"agentChat":1,"botHidden":1,"hideBotsOn":0,"hideBotsT":0,"turnNote":1,"dbgMeterPanel":0,"occPid":0,"newNeg":0,"roomDig":1,"digestMode":0,"roomConsentIds":0,"freshSt":0,"armAppRoomTick":0,"appRoomOn":0,"shareOnlyStage":1,"meOnStage":1,"personOnStage":1,"screenSharers":0,"trWrites":1,"participantCount":1,"timing":0,"whisperReady":0,"roomKey":0,"model":0,"act":0,"tapUnblur":1,"clearNoPwState":1,"blurAgain":1,"reportClearHost":1,"docPipName":1},"media":{"resumeReload":1,"micTap":1,"stashRecoverMedia":1,"sdView":0,"mosIn":0,"STAGE_FACE_SETTLE_MS":0,"stopScreenShare":1,"stageFrameVal":0,"setStageFrame":1,"normStageFrame":1,"spkDeviceId":0,"AVATAR_W":0,"AVATAR_H":0,"avatarSharp":0,"blurSenderFrac":1,"blurDraw":1,"startLocalView":1,"refreshOutbound":1,"reviveCamera":1,"tileHolds":1,"applyBuses":1,"blurSized":1,"openCamChooser":1,"camChooserOpen":1,"dismissCamChooser":1,"lateMedia":1,"releaseAudio":1,"compOf":0,"trackAspect":1,"wkHolds":1,"wkBindVideo":1,"displayCount":1,"qaStageSt":0,"placeStageMarks":1,"canScreenShare":0,"shareRecoverMode":0,"startScreenShare":1,"rbStart":1,"recoverShareTimer":0,"applyCcAll":1,"mix":0,"rememberMix":1,"toggleSing":1,"paintTiming":1,"applyGrid":1,"speechRunning":1,"stopSpeech":1,"syncSpeech":1,"ccEngine":1,"phoneCaptions":1,"whisperAllowed":0,"wspPaintSafe":1,"WSP_WEAK":0,"CC_WHISPER_ANYWAY_KEY":0,"CC_ENGINE_KEY":0,"wspResume":1,"whisperInstalling":0,"wspInst":0,"WHISPER_APP_ID":0,"installWhisper":1,"armWhisperRescan":1,"whisperSupported":1,"CC_TRANSLATE_KEY":0,"whisperChosen":0,"wspState":1,"wspWorking":0,"capsRunningNow":1,"wspStateText":1,"wspStSig":0,"wspRetry":1,"wspChipGone":1,"wspChip":0,"WSP_CHIP_MS":0,"wspTickAt":0,"WSP_TICK_MS":0,"wspCaps":0,"wspQ":0,"wspStarved":0,"WSP_STARVE_MS":0,"WSP_STARVE_WIN":0,"WSP_STARVE_N":0,"wspToBrowser":1,"CC_WORDS_KEY":0,"trEnSync":1,"wspSync":1,"speechGaveUp":0,"stopWhisper":1,"wspRelease":1,"wspChipRoom":0,"WHISPER_SEED_KEY":0,"whisperSeedBlocked":1,"browserCaptionsMissing":1,"transcriptFile":1,"recDownload":1,"recFileName":1,"recRelease":1,"recStarting":0,"canScreenRecord":0,"recSources":1,"recDefaultQuality":1,"recLibraryOption":1,"openModal":1,"startRec":1,"refreshTrBtn":1,"callStateBox":0,"schedReconcile":1,"canRaiseHand":1,"speakerChoices":1,"openKeys":1,"camFacing":0,"camDeviceId":0,"regrabCamera":1,"camPickThen":0,"camChooserAnchor":0,"closeCamChooser":1,"pickCamera":1,"micChooserOpen":1,"closeMicChooser":1,"blockedAudio":0,"downFolds":0,"mosStandby":0,"acClockInfo":1,"audioKickArmed":0,"wkEar":0,"stageEar":0,"sdViewSt":0,"prodPack":0,"avHold":0,"stripPack":0,"sentVideoTrack":1,"degOf":0,"STAGE_FACE_PX":0,"roomPack":0,"packLoop":0,"mosJobs":0,"mosAnn":0,"mosFb":0,"dbgRowFaces":0,"blurPipe":0,"ctScreenTrack":1,"soundHeld":1,"hearState":1}}, stamp: "d49d42da" };
+  var api = { name: "view", run: part, count: 729, exports: {"appCopyPaint":1,"appRuntimeBoot":1,"appRuntimeClient":1,"appStageAsk":1,"appStageAskClose":1,"applyAdminUi":1,"applyChrome":1,"applyHeaderChoice":1,"applyRoomAudio":1,"applyRoomHelp":1,"applyViewerCrops":1,"armMeetDialogs":1,"atPwPrompt":1,"audioDump":1,"awayFull":1,"blurA":0,"blurActx":0,"blurB":0,"blurBctx":0,"blurNote":1,"bootMeetSession":1,"bridgeAgentToPage":1,"camBtn":0,"capCardRefresh":1,"capLangAsk":1,"capPaint":1,"capSourceOpen":1,"carryEarAc":1,"carryIo":1,"ccDockBtn":0,"chatPanel":0,"chatPanelOpen":1,"chatTrace":1,"clearAdminClose":1,"clearAppView":1,"closeFsView":1,"closeMoreForWait":1,"closeTileWin":1,"comfyStadMeta":1,"comfyStadRoster":1,"countClosedChat":1,"ctAgendaOpen":1,"ctAppInfo":1,"ctInit":1,"ctPaintAgendaBtn":1,"ctPaintBar":1,"ctPresent":1,"dbgMeterShow":1,"dropStaleShareWin":1,"emitLiveTranscript":1,"enterPip":1,"explainHeldVideo":1,"foldBarForApp":1,"frozenTileSkip":1,"fsFitPaint":1,"fsRefresh":1,"fsRefreshIfOpen":1,"handBtn":0,"hideAppMissing":1,"hideCaptions":1,"hideDialogs":1,"hideJoinPwModal":1,"hideResharePrompt":1,"inviteLinkForModal":1,"islandNoteTick":1,"keysModal":0,"layout":1,"lgLeave":1,"loadScriptOnce":1,"lobbyPwOpenRoom":1,"makeTile":1,"massBannerTick":1,"micBtn":0,"newCanvas":1,"openBlurWhy":1,"openFsView":1,"openShareLiveModal":1,"openStageAdjust":1,"openTileWin":1,"paintAirKind":1,"paintAloneCard":1,"paintAppGifFromLane":1,"paintAppRoomBody":1,"paintAppWho":1,"paintAssistant":1,"paintAudienceReacts":1,"paintAvatarCanvas":1,"paintAvatarImg":1,"paintAwayMark":1,"paintBcQuiet":1,"paintBlurWhy":1,"paintBotEyes":1,"paintBotView":1,"paintBroadcastChrome":1,"paintBroadcastIdent":1,"paintBroadcastJoinNote":1,"paintBroadcastRole":1,"paintBroadcastSeats":1,"paintCallBanner":1,"paintCallOn":1,"paintCallState":1,"paintCcLocal":1,"paintCcState":1,"paintCcView":1,"paintChatBadge":1,"paintChatBtn":1,"paintChatCount":1,"paintChatGate":1,"paintChatNew":1,"paintChipBottom":1,"paintControls":1,"paintFaders":0,"paintFit":1,"paintHand":1,"paintHelpTip":1,"paintInviteSlot":1,"paintJoinVeil":1,"paintLiveBadge":1,"paintMyAvatarPreview":1,"paintOnAirBadge":1,"paintOnAirSide":1,"paintPeopleIfOpen":1,"paintProgressSteps":1,"paintQaBand":1,"paintRaisedHands":1,"paintRb":1,"paintRbNow":1,"paintRoomTitle":1,"paintRoomTrust":1,"paintRoster":1,"paintShare":1,"paintShareUrl":1,"paintSoloApp":1,"paintSpkBtn":1,"paintStadiumTile":1,"paintStage":1,"paintStageBlurWhy":1,"paintStageMod":1,"paintStagePlate":1,"paintStageStrip":1,"paintStageVoteTargets":1,"paintStatusAlert":1,"paintStatusLine":1,"paintStatusNotice":1,"paintStatusSheet":1,"paintStatusWhy":1,"paintStreamLink":1,"paintTabTitle":1,"paintTileChrome":1,"paintTileOnGrid":1,"paintTranscriptControls":1,"paintTxMark":1,"paintVq":1,"paintWaitDoor":1,"paintWaitingSelf":1,"paintWspChip":1,"paintWspStatus":1,"pauseNote":1,"phoneLayout":1,"pipCardModel":1,"pipNote":1,"pipReaim":1,"pipReturn":1,"pipSource":1,"placeClearLine":1,"placeDeskName":1,"placeDockForWidth":1,"placeDockPopover":1,"placeFit":1,"placeHandq":1,"placeQaBand":1,"rbCanvas":1,"reassertVisLift":1,"recBtn":0,"refreshAudioBtn":1,"refreshAvatarSurfaces":1,"releaseHeld":1,"renderChat":1,"renderFiles":1,"renderHandq":1,"renderLobbyList":1,"renderQa":1,"renderTranscript":1,"replaceAddress":1,"roomAudioOn":1,"setAppFavicon":1,"setAppGif":1,"setBotView":1,"setTileLetter":1,"sgaAppOwner":1,"showAppMissing":1,"showAppPane":1,"showAppearCard":1,"showAvatarTrack":1,"showBlurNoteUnlessDialog":1,"showCamBack":1,"showCaption":1,"showClosedDialog":1,"showFlipButton":1,"showForkPick":1,"showHeldScreen":1,"showInviteModal":1,"showLeftDialog":1,"showLoadRefusal":1,"showLobby":1,"showPwModal":1,"showRecOptions":1,"showRecReplay":1,"showRelayBusy":1,"showResharePrompt":1,"showServiceEnded":1,"showShareLink":1,"showWhoIfOpen":1,"stadiumEl":0,"stageFeedShows":1,"stagefeedEl":0,"stopLobbyPreview":1,"syncModalFocus":1,"takeFaceReact":1,"tickAdminClose":1,"tileNote":1,"timingRow":0,"topNameModal":1,"turnPaint":1,"twButton":1,"unmuteBtn":0,"updateAppButtons":1,"updateBlurAllBtn":1,"updateCamAllBtn":1,"updateMuteAllBtn":1,"updateReload":1,"updateShareAllBtn":1,"viewTestHooks":1,"waitPaint":1,"wakeMeet":1,"wireFsResize":1,"wireMediaSession":1}, needs: {"core":{"pipTarget":1,"vqManual":0,"serviceHeard":0,"stageIds":0,"adminsNow":0,"bcHostStored":0,"roomHeadCount":1,"leftDialogUp":1,"bcWatchingViewer":1,"barKind":1,"bcMayPublishAv":1,"idleDock":1,"barPlan":1,"uiText":1,"dockLabelSet":1,"hasAdminRoom":0,"uiLang":1,"ROOM":0,"paintBroadcastAir":1,"bcRole":1,"paintOnAir":1,"applyAvatarFile":1,"refreshAllTiles":1,"broadcastStatus":1,"pushLeaf":1,"bcPreInRoom":1,"becomeAssistant":1,"holdDoor":0,"amAdmin":0,"statusWords":0,"sayState":0,"liveInCall":1,"blurWhyWords":1,"tileBlurWhy":1,"frozeThisBeat":1,"reactRoomState":1,"seatDark":0,"forcedCamOff":0,"modBlurOn":0,"shareBlocked":0,"docPip":0,"myName":0,"displayName":1,"pipCard":0,"pipCardPaint":1,"pipCardRun":1,"pipCardReady":1,"clearPipAuto":1,"pipFallback":1,"setStatus":0,"pipAutoT":0,"inMeetingNow":1,"backWatch":0,"backGuardDrop":1,"sendVisPark":1,"botViewOn":0,"botParks":1,"dcSend":0,"autoFsOff":0,"setAutoFsOff":1,"admGraceT":0,"admTickT":0,"admDeadline":0,"closeRoomNoHost":1,"updateLeaving":0,"bcOnAir":1,"updateRoomKey":0,"blurLevel":0,"progressStart":1,"progressTick":1,"progressWords":1,"homeHref":1,"fsInline":0,"fsSel":0,"fsAutoPid":0,"fsZoomBox":0,"fsZoomIds":0,"fsFarTalkers":1,"fsFarCells":1,"fsCropBox":1,"viewNote":1,"fsFeedLive":1,"blurLevelFor":1,"sharingScreen":0,"nameInitial":1,"fsPickAuto":1,"fsBlurClass":1,"fsAutoKey":0,"fsFollow":0,"fsFollowChanged":1,"fsOpen":0,"fsTick":0,"fsFollowT":0,"stageModList":1,"wireModbar":1,"paintModbarButtons":1,"modOf":1,"localBlurPower":1,"setMod":1,"blurOffer":1,"hostWords":1,"focusId":0,"iAmWaiting":1,"shadeKey":1,"stageFeedVideo":1,"contentHas":1,"ctNote":1,"VMODE":0,"viewWord":1,"setView":1,"syncFocus":1,"CT":0,"appKey":0,"ctAgHidden":1,"ctText":1,"ctAspect":1,"turnHeld":1,"shareFirewallWords":1,"ctLabel":1,"ctSelect":1,"ctAgendaShortTime":1,"ctAgendaOver":1,"ctCanEditAgenda":1,"ctBring":1,"ctAgendaTickArm":1,"ctSpeakerPick":1,"ctAgCtx":1,"ctPaintAgendaClock":1,"ctAgendaPublish":1,"ctAgendaHide":1,"ctRefresh":1,"ctAgendaWhoText":1,"ctFocusSources":1,"applyViewerCrop":1,"viewerCropOf":1,"saveVcrops":1,"twIdOf":1,"twPeer":1,"twCaptionsButton":1,"updateTile":1,"stadFaceIdAt":1,"ensureAc":1,"carryOutAc":0,"newMeetAudioContext":1,"pwBlocked":0,"rosterRows":1,"updateStatus":1,"paintRosterSoon":1,"mayHost":1,"waitingSince":1,"setWaitingRoom":1,"waitingRows":1,"hostRename":1,"hostSpot":1,"bcEndedInRoom":1,"stageClaimOf":0,"ctTurnPaint":1,"capOn":0,"subsOn":0,"subsMeetId":0,"capTry":1,"adminFace":0,"relayBusyAt":0,"camPeer":0,"mediaOk":0,"meshCoord":0,"meshSeat":0,"peerAway":0,"clog":0,"dropPeer":1,"clearRosterTiles":1,"startMesh":1,"islandApart":1,"esc":0,"bcActButtons":1,"learnFoldedNames":1,"applyBcAct":1,"storePw":1,"pwHeldOnTyping":1,"grantHoldUntil":0,"rekeyRoom":1,"pwProof":0,"pwChainFailed":1,"purgeAllFiles":1,"pwSetRoom":1,"deriveAdminKey":1,"adoptAdmKey":1,"admStoreKey":0,"mirrorRoomState":1,"whoRows":1,"whoFaceState":1,"whoObserve":1,"whoRefresh":0,"whoAddrLines":1,"pwBan":1,"whoFileText":1,"isCastEntry":1,"loadList":1,"lobRow":1,"stashJoinAv":1,"mintHostKey":1,"shortCode":0,"slugRoom":1,"lobbyPwHandOver":1,"setPersonalBlur":1,"parseMeetInput":1,"toggleBookmark":1,"saveList":1,"aloneCardShut":0,"inviteFromSolo":1,"appClientCtl":0,"callOn":0,"DEBUG_ON":0,"unread":0,"reactAlert":0,"messageMentionsMe":1,"mentionToken":1,"linksAllowed":1,"viewerMayReact":1,"withMentions":1,"avatarChip":1,"reactorNames":1,"reactOpen":0,"lineOpen":0,"paintLog":1,"prayOn":0,"modStarOn":1,"lateJoinerSeesHistory":0,"slowModeOn":0,"chatLinksOn":0,"logNearBottom":1,"toggleLine":1,"takeReact":1,"sendAll":1,"applyOwnDelete":1,"admSigned":1,"applyCdel":1,"takeTomb":1,"uid":0,"mayPinFiles":1,"chatOpen":0,"recSrcDirty":0,"roomPastSection":0,"knownTotal":1,"stageViewNow":0,"stageGrantLive":0,"enforceBroadcastSeat":1,"canStage":0,"stageNeed":0,"vupDismissedSig":0,"setStage":1,"mayShareScreen":0,"rbFmt":1,"rbToggle":1,"rbStop":1,"rbNoun":0,"rbTitle":1,"findSharedApp":1,"canIRunApp":0,"shareSheetFocusId":1,"appHiddenSid":0,"reconcileApp":1,"dlogOut":0,"dlogStoreGet":1,"dlogRecStart":1,"sendAvatarTo":1,"setVq":1,"trDirty":0,"trBlocks":1,"trLang":1,"trNote":1,"capName":1,"capPick":1,"capRows":1,"capNowNote":1,"capPublish":1,"ccLangLabel":0,"capLangName":1,"capLangMine":1,"capLangTag":1,"trLangOf":0,"ccLocalBlocked":1,"ccMB":0,"lsSet":0,"lsGet":0,"capSend":1,"txMarkWhy":1,"trMode":1,"setCapSend":1,"setTrMode":1,"leaveSeededService":1,"bcSeeding":0,"releaseLeaveAsk":1,"applyPageHeader":1,"reactRateOk":1,"faceDrawnHere":1,"sendFaceFrame":1,"sendAudienceReact":1,"focusOf":1,"amGloballyMuted":1,"micLockWords":1,"leaveMeeting":1,"updateMediaSession":1,"heldNoteSeen":1,"markHeldNote":1,"blurHold":1,"modalFocusables":1,"modalDismissBtn":1,"viewerShareUrl":1,"bcStartAt":1,"bcWhenWords":1,"armCopiedLabel":1,"linkRowHtml":1,"createAdminRoom":1,"holdLeaveAsk":1,"shortcutTyping":1,"stopApp":1,"appMode":0,"appPaneOn":0,"appPaneName":0,"appHostCtl":0,"currentAppHelpMd":1,"currentAppCredits":1,"appEv":0,"appClientStop":0,"appLeadable":0,"appLeadOn":0,"stopRoomApp":1,"appLeadSet":0,"appStageConsent":0,"appStageApply":1,"appStagePlan":1,"importGif":1,"runApp":1,"installRunApp":1,"runLinkTarget":1,"fetchGifFromUrl":1,"runChoices":1,"aiNotesSetting":1,"botViewWant":0,"agentStart":1,"backToNormalView":1,"agentChat":1,"botHidden":1,"hideBotsOn":0,"hideBotsT":0,"turnNote":1,"dbgMeterPanel":0,"occPid":0,"newNeg":0,"roomDig":1,"digestMode":0,"roomConsentIds":0,"freshSt":0,"armAppRoomTick":0,"appRoomOn":0,"shareOnlyStage":1,"meOnStage":1,"personOnStage":1,"screenSharers":0,"trWrites":1,"participantCount":1,"timing":0,"whisperReady":0,"roomKey":0,"model":0,"act":0,"tapUnblur":1,"clearNoPwState":1,"blurAgain":1,"reportClearHost":1},"media":{"resumeReload":1,"micTap":1,"stashRecoverMedia":1,"sdView":0,"mosIn":0,"STAGE_FACE_SETTLE_MS":0,"stopScreenShare":1,"stageFrameVal":0,"setStageFrame":1,"normStageFrame":1,"spkDeviceId":0,"AVATAR_W":0,"AVATAR_H":0,"avatarSharp":0,"blurSenderFrac":1,"blurDraw":1,"startLocalView":1,"refreshOutbound":1,"reviveCamera":1,"tileHolds":1,"applyBuses":1,"blurSized":1,"openCamChooser":1,"camChooserOpen":1,"dismissCamChooser":1,"lateMedia":1,"releaseAudio":1,"compOf":0,"trackAspect":1,"wkHolds":1,"wkBindVideo":1,"displayCount":1,"qaStageSt":0,"placeStageMarks":1,"canScreenShare":0,"shareRecoverMode":0,"startScreenShare":1,"rbStart":1,"recoverShareTimer":0,"applyCcAll":1,"mix":0,"rememberMix":1,"toggleSing":1,"paintTiming":1,"applyGrid":1,"speechRunning":1,"stopSpeech":1,"syncSpeech":1,"ccEngine":1,"phoneCaptions":1,"whisperAllowed":0,"wspPaintSafe":1,"WSP_WEAK":0,"CC_WHISPER_ANYWAY_KEY":0,"CC_ENGINE_KEY":0,"wspResume":1,"whisperInstalling":0,"wspInst":0,"WHISPER_APP_ID":0,"installWhisper":1,"armWhisperRescan":1,"whisperSupported":1,"CC_TRANSLATE_KEY":0,"whisperChosen":0,"wspState":1,"wspWorking":0,"capsRunningNow":1,"wspStateText":1,"wspStSig":0,"wspRetry":1,"wspChipGone":1,"wspChip":0,"WSP_CHIP_MS":0,"wspTickAt":0,"WSP_TICK_MS":0,"wspCaps":0,"wspQ":0,"wspStarved":0,"WSP_STARVE_MS":0,"WSP_STARVE_WIN":0,"WSP_STARVE_N":0,"wspToBrowser":1,"CC_WORDS_KEY":0,"trEnSync":1,"wspSync":1,"speechGaveUp":0,"stopWhisper":1,"wspRelease":1,"wspChipRoom":0,"WHISPER_SEED_KEY":0,"whisperSeedBlocked":1,"browserCaptionsMissing":1,"transcriptFile":1,"recDownload":1,"recFileName":1,"recRelease":1,"recStarting":0,"canScreenRecord":0,"recSources":1,"recDefaultQuality":1,"recLibraryOption":1,"openModal":1,"startRec":1,"refreshTrBtn":1,"callStateBox":0,"schedReconcile":1,"canRaiseHand":1,"speakerChoices":1,"openKeys":1,"camFacing":0,"camDeviceId":0,"regrabCamera":1,"camPickThen":0,"camChooserAnchor":0,"closeCamChooser":1,"pickCamera":1,"micChooserOpen":1,"closeMicChooser":1,"blockedAudio":0,"downFolds":0,"mosStandby":0,"acClockInfo":1,"audioKickArmed":0,"wkEar":0,"stageEar":0,"sdViewSt":0,"prodPack":0,"avHold":0,"stripPack":0,"sentVideoTrack":1,"degOf":0,"STAGE_FACE_PX":0,"roomPack":0,"packLoop":0,"mosJobs":0,"mosAnn":0,"mosFb":0,"dbgRowFaces":0,"blurPipe":0,"ctScreenTrack":1,"soundHeld":1,"hearState":1}}, stamp: "d49d42da" };
   (GifOS.coreParts = GifOS.coreParts || {})["view"] = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
