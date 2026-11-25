@@ -821,19 +821,42 @@
   // clearWithoutPassword / clearStageWithoutPassword (and a subscription that does not) rides instead.
   const clearRank = (g) => { const x = g && SUB.grantsOk(g); return !x ? 0 : x.clearWithoutPassword ? 2 : x.clearStageWithoutPassword ? 1 : 0; };
   const beatsPass = (grants, pass) => !!grants && !!pass && clearRank(grants) >= clearRank(pass.grants) && (clearRank(grants) > clearRank(pass.grants) || SUB.rank(SUB.ticketRights({ grants, exp: 1 })) >= SUB.rank(SUB.passRights(Object.assign({}, pass, { end: 1 }))));   // line items against line items (equal: the subscription's ticket rides)
-  async function roomOrder(room) {
+  // The best right this browser holds for THIS meeting and the key that signs for it: {ticket, pass} or null.
+  // Everything this page shows for the meeting (the room's order, a member's vouch) is built from this one choice.
+  async function roomRight(room) {
     const ticket = await currentTicket(room);
     const lp = ticket && meet ? await livePass().catch(() => null) : null;
     if (!(ticket && meet && beatsPass(meet.grants, lp && lp.o))) {
       const pt = await currentPassTicket(room);
-      if (pt) {
-        const at = Date.now();
-        return { on: true, at, ticket: pt, proof: await passSign(SUB.proofMessage(SUB.roomContext(room), 'at:' + at)) };
-      }
+      if (pt) return { ticket: pt, pass: true };
     }
-    if (!ticket) return null;
+    return ticket ? { ticket, pass: false } : null;
+  }
+  async function roomOrder(room) {
+    const r = await roomRight(room);
+    if (!r) return null;
     const at = Date.now();
-    return { on: true, at, ticket, proof: await signText(SUB.proofMessage(SUB.roomContext(room), 'at:' + at)) };
+    const msg = SUB.proofMessage(SUB.roomContext(room), 'at:' + at);
+    return { on: true, at, ticket: r.ticket, proof: await (r.pass ? passSign(msg) : signText(msg)) };
+  }
+  // A MEMBER'S VOUCH (`tsub`): the same right, said to the whole room by whoever holds it, bound to the room, to the
+  // seat saying it (pid) and to the moment (gifos-sub vouchTierOf checks all three). on false withdraws it, and is
+  // signed with the right the LAST vouch used: by then this browser may hold nothing here to sign with, and asking for
+  // the ticket again would only move a pass into a meeting it has left. With nothing left to sign, there is no
+  // statement and the room lets the old one lapse.
+  let vouchLast = null;   // {room, ticket, pass}: the ticket and key choice the last vouch of mine went out with
+  async function vouchOrder(room, pid, on) {
+    const r = on === false ? (vouchLast && vouchLast.room === room ? vouchLast : null) : await roomRight(room);
+    if (!r) return null;
+    if (on !== false) vouchLast = { room, ticket: r.ticket, pass: r.pass };
+    const at = Date.now();
+    const msg = SUB.proofMessage(SUB.roomContext(room), (on === false ? 'tsub-off:' : 'tsub:') + String(pid) + ':at:' + at);
+    return { on: on !== false, at, ticket: r.ticket, proof: await (r.pass ? passSign(msg) : signText(msg)) };
+  }
+  // One member's vouch as this page reads it: {off, at} | {tier, grants, exp, pass, at} | null. from is the seat the
+  // mesh authenticated the statement's gossip as.
+  async function vouchTier(order, room, from) {
+    try { return await SUB.vouchTierOf(order, room, from, verifyPay, verifyKey, nowS()); } catch (e) { return null; }
   }
   // The room's plan from the order the room carries: {tier, exp} or null.
   async function roomTier(order, room) {
@@ -1488,7 +1511,7 @@
   GifOS.meetSubs = {
     askMove, moveOptions, showOverflowNote,
     rights, planRights, refresh, keepFresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, subSelection, applySubSelection, paintNow, paintSettings, openSettings, openSubscribe, mayCreateAdminRoom, showFull, hideFull, fullWaiting, fullOffers, hostOffer, doorRight, showHostPrompt,
-    roomOrder, roomTier, proveAtDoor, checkShown, newNonce,
+    roomOrder, roomTier, vouchOrder, vouchTier, proveAtDoor, checkShown, newNonce,
     appNow, joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureCurrent, captureOrder, captureKeys, fileBytes, downloadFile, useFile, librarySigner, restoreInApp,
     keepReceipt, subReceiptFiles,
     passMeeting: () => (pmeet ? { grants: pmeet.grants || null, room: pmeet.room, gen: pmeet.gen, exp: pmeet.exp, until: pmeet.until, moved: pmeet.moved, held: !!pmeet.ticket } : null),

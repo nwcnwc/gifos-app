@@ -506,6 +506,24 @@
     const cred = credId(t);
     return t.pass ? { tier: t.tier, grants: t.grants, exp: t.exp, pass: true, cred } : { tier: t.tier, grants: t.grants, exp: t.exp, cred };
   }
+  // A MEMBER'S VOUCH (the room-wide `tsub` statement): what one person in this meeting says they hold here. Unlike the
+  // room's order, which the host alone signs, anyone may say this, so the statement is bound to three things at once:
+  // THIS meeting (the ticket names its tag), the SEAT saying it (`from`, the author the mesh authenticated the gossip
+  // as) and the MOMENT it was signed (`at`). A copy of someone else's statement is therefore worth nothing: not in
+  // another meeting, not under another seat, and not again after a fresher one (receivers keep the newest `at` per
+  // author). order = {on, at, ticket, proof}.
+  // -> {off:true, at} for a vouch withdrawn, {tier, grants, exp, pass, at} for one held, or null.
+  // There is NO freshness window here: a receiver times a statement by when it ARRIVED, never by what it claims.
+  async function vouchTierOf(order, room, from, verifyPay, verifyKey, nowS) {
+    if (!order || typeof order !== 'object' || !Number.isInteger(order.at)) return null;
+    if (typeof from !== 'string' || !from || from.length > 64) return null;
+    const t = await meetingRight(order.ticket, verifyPay, nowS, await meetingTag(room));
+    if (!t) return null;
+    const nonce = (order.on === false ? 'tsub-off:' : 'tsub:') + from + ':at:' + order.at;
+    if (!(await verifyProof(t, roomContext(room), nonce, order.proof, verifyKey))) return null;
+    if (order.on === false) return { off: true, at: order.at };
+    return { tier: t.tier, grants: t.grants, exp: t.exp, pass: !!t.pass, at: order.at };
+  }
   // credId(meeting right) -> the id GifOS revokes it by, and nothing more: the subscription id (or a pass key's K-
   // record), and for a pass ticket the pass id (the revoked-pass list's word). Never the meeting, a key or a signature.
   function credId(t) {
@@ -1010,7 +1028,7 @@
     TIERS, TIER_IDS, PERIODS, NEGOTIATED, ADDONS, usd, covers, upgradeOk, upgradeCharge, APP_TIERS, tiersSoldIn, tiersListed, FREE, TEXT, PEOPLE_LIMIT, LICENSE_KIND, SELLER, KEY_RE, SUB_ID_RE, ASK_WINDOW_S,
     FREE_PLAN, FREE_LIMIT, PLANS, PLAN_IDS, isPlan, isPaid,
     checkLicense, verifyLicense, rightsOf, storageAfterLapse, proofMessage, verifyProof, askMessage, askFresh,
-    admission, roomContext, doorContext, roomTierOf, clearNoPwRight, clearStageNoPwRight, credId, doorVerdict, doorProofOk,
+    admission, roomContext, doorContext, roomTierOf, vouchTierOf, clearNoPwRight, clearStageNoPwRight, credId, doorVerdict, doorProofOk,
     TICKET_KIND, TICKET_S, RENEW_EVERY_S, meetingTag, checkTicket, verifyTicket, ticketRights,
     PASS_KIND, passSeconds, PASS_PLAN, PASS_PRICE, PASS_VALUE, ORDER_ID_RE, PASS_ID_RE, passMessage, checkPass, passLive, passEnd, verifyPass,
     passStart, passRights, meetingRight, heldRights, rank, rightsJson,
