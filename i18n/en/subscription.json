@@ -151,5 +151,9 @@
   "subscription.receipt.period.monthly12": "12 monthly payments",
   "subscription.receipt.leftDays": "{d} days {h} hours",
   "subscription.receipt.leftHours": "{h} hours {m} minutes",
-  "subscription.receipt.leftMinutes": "{m} minutes"
+  "subscription.receipt.leftMinutes": "{m} minutes",
+  "subscription.pendingNote": "Checkout not finished: nothing was charged.",
+  "subscription.pendingLost": "This checkout replaced the plan this browser had. To use that plan here again: open your subscription file, copy the plan from another device that has it, or use Restore with PayPal.",
+  "subscription.pendingContinue": "Continue checkout",
+  "subscription.pendingDismiss": "Dismiss"
 }

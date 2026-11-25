@@ -151,5 +151,9 @@
   "subscription.receipt.period.monthly12": "12 ежемесячных платежей",
   "subscription.receipt.leftDays": "{d} дн. {h} ч",
   "subscription.receipt.leftHours": "{h} ч {m} мин",
-  "subscription.receipt.leftMinutes": "{m} мин"
+  "subscription.receipt.leftMinutes": "{m} мин",
+  "subscription.pendingNote": "Оформление не завершено: ничего не списано.",
+  "subscription.pendingLost": "Это оформление заменило план, который был в этом браузере. Чтобы снова пользоваться им здесь: откройте файл подписки, скопируйте план с другого устройства, где он есть, или используйте восстановление через PayPal.",
+  "subscription.pendingContinue": "Продолжить оформление",
+  "subscription.pendingDismiss": "Закрыть"
 }

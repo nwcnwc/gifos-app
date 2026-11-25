@@ -151,5 +151,9 @@
   "subscription.receipt.period.monthly12": "12 pagos mensuales",
   "subscription.receipt.leftDays": "{d} días {h} horas",
   "subscription.receipt.leftHours": "{h} horas {m} minutos",
-  "subscription.receipt.leftMinutes": "{m} minutos"
+  "subscription.receipt.leftMinutes": "{m} minutos",
+  "subscription.pendingNote": "Compra sin terminar: no se cobró nada.",
+  "subscription.pendingLost": "Esta compra reemplazó el plan que tenía este navegador. Para volver a usarlo aquí: abre tu archivo de suscripción, copia el plan desde otro dispositivo que lo tenga o usa Restaurar con PayPal.",
+  "subscription.pendingContinue": "Continuar la compra",
+  "subscription.pendingDismiss": "Descartar"
 }
