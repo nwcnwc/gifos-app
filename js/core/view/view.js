@@ -12322,21 +12322,19 @@
         const li = document.createElement('li'); li.dataset.k = it.k;
         const lab = document.createElement('label');
         const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = it.on; cb.dataset.pipOn = it.k;
-        lab.appendChild(cb); lab.appendChild(document.createTextNode(' ' + words[it.k]));
+        const nm = document.createElement('span'); nm.textContent = words[it.k];
+        lab.appendChild(cb); lab.appendChild(nm);
         li.appendChild(lab);
         for (const [dir, word, glyph] of [[-1, up, '\u2191'], [1, down, '\u2193']]) {
-          const b = document.createElement('button'); b.type = 'button'; b.className = 'seg'; b.textContent = glyph;
+          const b = document.createElement('button'); b.type = 'button'; b.className = 'seg pip-mv'; b.textContent = glyph;
           b.title = word; b.setAttribute('aria-label', word + ': ' + words[it.k]); b.dataset.pipMove = it.k + ':' + dir;
           b.disabled = (dir < 0 && i === 0) || (dir > 0 && i === list.length - 1);
           li.appendChild(b);
         }
         ol.appendChild(li);
       });
-      const last = document.createElement('li');
-      const lab = document.createElement('label');
-      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = true; cb.disabled = true;
-      lab.appendChild(cb); lab.appendChild(document.createTextNode(' ' + (0, /*()*/__C.uiText)('pipSpeaker', 'Follow the speaker')));
-      last.appendChild(lab);
+      const last = document.createElement('li'); last.className = 'pip-last';
+      last.textContent = (0, /*()*/__C.uiText)('pipSpeaker', 'Then: follow the speaker (always)');
       ol.appendChild(last);
     }
     (() => {
