@@ -433,7 +433,7 @@
 
     // ---- Invite: the room's link ------------------------------------------------------------------------------------
     var shareLink = '';
-    fn('paintShareUrl', function (link) { shareLink = String(link || ''); });
+    fn('paintShareUrl', function (link) { shareLink = String(link || ''); $('share-url').value = shareLink; });
     fn('inviteLinkForModal', function () {
       if (C.ROOM.kind !== 'app' && !body.classList.contains('app-room')) { try { var v = C.viewerShareUrl(); if (v) return v; } catch (e) {} }
       return shareLink;
