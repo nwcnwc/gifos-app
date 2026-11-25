@@ -96,6 +96,8 @@
  "meet.setCcWhisperHelp": "支持任何语言，自动识别。有标点的完整句子，能认出你自己的名字和词汇，还能把一切翻译成英文。一句话在说完几秒后出现；在手机上更慢且更耗电。你的声音留在本机；只有写下的文字可能发送到会议。",
  "meet.setCcEnglish": "全部翻译成英文",
  "meet.setCcEnglishHelp": "本机上的 Whisper 会翻译你听到的每个声音。你的字幕和记录只显示英文：别人用英文发送的内容，以及本机自己的翻译。你发送到会议的内容仍是你自己的语言。",
+ "meet.setCcEars": "用 Whisper 检查其他人的字幕",
+ "meet.setCcEarsHelp": "默认关闭，勾选后才开启。使用浏览器字幕时，本机上的 Whisper 会不时听几秒其他人的声音，检查他们的字幕是否正确，不对时提醒你。需要已安装 Whisper，会占用一些处理器。",
  "meet.setCcEnglishNo": "此浏览器不支持 Whisper",
  "meet.setCcWords": "需要识别的名字和词汇：Siobhan、Kubernetes、GifOS……",
  "meet.setMix": "混音",
