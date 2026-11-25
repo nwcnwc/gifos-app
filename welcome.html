@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!-- FRAME GUARD. GitHub Pages sends no X-Frame-Options and a <meta> cannot
+     carry frame-ancestors, so this is the only thing that keeps a third-party
+     page from framing GifOS at opacity 0 and steering a click onto Allow,
+     Install or Approve. Same-origin framing (booted images, app mounts) is
+     allowed; anything else sees a link to open the page itself. Parser-
+     blocking and ES5 on purpose: it runs before any chrome paints.
+     Guarded by test/unit/frame-guard.js. -->
+<script id="gifos-frame-guard">(function(){try{if(window.top===window.self)return;var ok=false;try{ok=window.top.location.origin===window.location.origin}catch(e){}if(ok)return;var h=document.documentElement;h.style.visibility='hidden';function show(){var b=document.body;if(!b)return;while(b.firstChild)b.removeChild(b.firstChild);var p=document.createElement('p');p.style.cssText='font:16px system-ui,sans-serif;padding:24px;color:#eee;background:#111;margin:0';p.appendChild(document.createTextNode('GifOS does not run inside another site\'s page. '));var a=document.createElement('a');a.href=location.href;a.target='_blank';a.rel='noopener';a.textContent='Open it in its own tab';a.style.color='#9db4ff';p.appendChild(a);b.appendChild(p);h.style.visibility='';}if(document.body)show();else document.addEventListener('DOMContentLoaded',show);}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0a0a0f">
+<!-- Theming gate: hide chrome behind the theme-color backdrop until the theme
+     cascade (js/gifos-themes.js) applies real vars, so the fallback purple never
+     paints first. Reveals the instant --accent is set; a failsafe timeout
+     guarantees we never stay hidden if a theme file 404s or hangs. -->
+<style id="theme-gate">html.gifos-booting body{visibility:hidden}html.gifos-booting{background:var(--bg,#0a0a0f)}</style>
+<script>(function(){var h=document.documentElement;h.className+=(h.className?' ':'')+'gifos-booting';var shown=0;
+function show(){if(shown)return;shown=1;h.classList.remove('gifos-booting');
+try{var bg=h.style.getPropertyValue('--bg');var m=document.querySelector('meta[name=theme-color]');if(bg&&m)m.setAttribute('content',bg.trim());}catch(e){}}
+function chk(){if(shown)return;if(h.style.getPropertyValue('--accent'))show();else requestAnimationFrame(chk);}
+requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="GifOS">
+<script src="js/sw-register.js" defer></script>
+<script src="js/build.js" defer></script>
+<script src="js/build-badge.js" defer></script>
+<title>Welcome to GifOS: a live meeting you can watch right here</title>
+<meta name="description" content="Watch the GifOS welcome meeting live, join it, or put a live GifOS broadcast on your own website with one line of code.">
+<link rel="canonical" href="https://gifos.app/welcome">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="GifOS">
+<meta property="og:title" content="Welcome to GifOS">
+<meta property="og:description" content="Watch the GifOS welcome meeting live, or put a live GifOS broadcast on your own site.">
+<meta property="og:url" content="https://gifos.app/welcome">
+<meta property="og:image" content="https://gifos.app/og.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%91%8B%3C/text%3E%3C/svg%3E">
+
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font: 17px/1.6 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+         background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); }
+  .wrap { max-width: 680px; margin: 0 auto; padding: 2rem 1.2rem 4rem; }
+  h1 { font-size: 2rem; margin: 1rem 0 .4rem; }
+  h1 .brand, .topbar .brand { font-weight: 800; background: linear-gradient(135deg, var(--accent, #7b5cff), var(--accent2, #ff5caa));
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  h2 { font-size: 1.25rem; margin: 2rem 0 .5rem; color: var(--text, #cfcfe8); }
+  p, li { color: var(--muted, #a9a9c5); }
+  b { color: var(--text, #e0e0f0); }
+  a { color: var(--accent, #7b5cff); }
+  .cta { display: inline-block; margin: 1.2rem 0; padding: .8rem 1.6rem; border-radius: .7rem;
+         background: var(--accent, #7b5cff); color: var(--onaccent, #fff); text-decoration: none; font-weight: 700; }
+  ul { padding-left: 1.2rem; }
+  li { margin-bottom: .45rem; }
+  .topbar { display: flex; align-items: center; gap: .5rem; padding: .8rem 1.2rem;
+            border-bottom: 1px solid var(--border, #2a2a3f); background: var(--surface, #14141f); }
+  .topbar a { text-decoration: none; font-size: 1.05rem; }
+  .foot { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border, #2a2a3f); font-size: .85rem; color: var(--muted, #667); }
+</style>
+<style>
+  .wrap { max-width: 760px; }
+  .player { margin: 1rem 0 .4rem; border-radius: .7rem; overflow: hidden; background: #000; }
+  .lede { font-size: 1.05rem; }
+  .cta2 { display: inline-block; margin: .4rem 0 0; padding: .7rem 1.3rem; border-radius: .7rem; border: 1px solid var(--accent, #7b5cff);
+          color: var(--text, #e0e0f0); text-decoration: none; font-weight: 700; }
+  .code { position: relative; margin: .5rem 0 1rem; }
+  .code pre { margin: 0; padding: .8rem 1rem; padding-right: 5.5rem; border-radius: .6rem; background: var(--surface, #14141f);
+              border: 1px solid var(--border, #2a2a3f); color: var(--text, #e0e0f0); font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+              white-space: pre-wrap; word-break: break-all; }
+  .copy { position: absolute; top: .45rem; right: .45rem; padding: .35rem .8rem; border-radius: .45rem; border: 0; cursor: pointer;
+          background: var(--accent, #7b5cff); color: var(--onaccent, #fff); font: 600 13px system-ui, sans-serif; }
+  .lbl { font-weight: 700; color: var(--text, #e0e0f0); margin-top: 1rem; }
+  .plats { display: flex; flex-wrap: wrap; gap: .4rem; margin: .6rem 0 .8rem; }
+  .plats button { padding: .4rem .8rem; border-radius: 1rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #14141f);
+                  color: var(--text, #e0e0f0); cursor: pointer; font: 14px system-ui, sans-serif; }
+  .plats button[aria-pressed="true"] { border-color: var(--accent, #7b5cff); background: var(--accent, #7b5cff); color: var(--onaccent, #fff); }
+  .how { padding: .8rem 1rem; border-radius: .6rem; border: 1px solid var(--border, #2a2a3f); }
+  .how h3 { font-size: 1.05rem; margin: 0 0 .4rem; color: var(--text, #e0e0f0); }
+  .how ol { padding-left: 1.3rem; margin: 0 0 .4rem; }
+  .how .note { font-size: .9rem; }
+  .how .src { font-size: .8rem; }
+  code { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text, #e0e0f0); }
+</style>
+<script src="js/gifos-themes.js"></script>
+</head>
+<body>
+  <div class="topbar"><a href="/"><span class="brand">GifOS</span></a></div>
+  <div class="wrap">
+    <h1>Welcome to <span class="brand">GifOS</span></h1>
+    <p class="lede">GifOS is a free web computer where every app is a GIF, with meetings and broadcasts that run between the people in them, not on our servers. Below is the welcome meeting, live, playing on this page the way it can play on yours.</p>
+    <div class="player" id="player"><script src="/embed.js" data-room="welcome" data-title="GifOS welcome meeting"></script></div>
+    <a class="cta" href="/meet/welcome">Join the welcome meeting &rarr;</a>
+
+    <h2>Put a live GifOS broadcast on your own site</h2>
+    <p>Paste one line where the player should go. Put your room's name in place of <code>ROOM</code>. For a private meeting, add its verifier (the last part of its link, gifos.app/cast/ROOM/VERIFIER) as <code>data-verifier</code>, or <code>&amp;v=VERIFIER</code> in the iframe. The player plays while a host is in charge of the room and shows a short card the rest of the time. Viewers never turn on a camera or microphone.</p>
+    <p class="lbl">The script tag (works on most sites)</p>
+    <div class="code"><pre id="snip-script">&lt;script src="https://gifos.app/embed.js" data-room="ROOM"&gt;&lt;/script&gt;</pre><button class="copy" type="button" data-copy="snip-script">Copy</button></div>
+    <p class="lbl">The plain iframe (for sites that remove scripts)</p>
+    <div class="code"><pre id="snip-iframe">&lt;iframe src="https://gifos.app/embed#room=ROOM" style="width:100%;aspect-ratio:16/9;border:0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen title="GifOS Broadcast"&gt;&lt;/iframe&gt;</pre><button class="copy" type="button" data-copy="snip-iframe">Copy</button></div>
+
+    <h2>Choose the controls</h2>
+    <p>The player starts as the picture, the live badge, unmute and a settings gear. You choose what else a viewer may do. When you set nothing, the gear offers <code>volume,fullscreen</code>.</p>
+    <p><code>volume</code> — a volume slider.</p>
+    <p><code>captions</code> — captions on or off. The row appears once a line has arrived. Captions stay off until the viewer turns them on.</p>
+    <p><code>tabs</code> — the share tabs, when the room shares something besides the Stage.</p>
+    <p><code>inset</code> — show, hide or move the Stage picture while a share fills the player.</p>
+    <p><code>fullscreen</code> — full screen.</p>
+    <p><code>pip</code> — picture in picture, when the browser supports it.</p>
+    <p><code>watch</code> — Watch on GifOS, in a new tab.</p>
+    <p><code>all</code> turns every control on. <code>none</code> leaves the gear off.</p>
+    <p>On the script tag, add <code>data-controls="tabs,inset,captions,fullscreen,watch"</code>. On the iframe, add it to the hash: <code>#room=ROOM&amp;controls=tabs,inset</code>.</p>
+    <p>The password prompt and the not-hosted notice always show.</p>
+
+    <h2>Where to paste it</h2>
+    <p>Pick your site builder for the short steps.</p>
+    <div class="plats" id="plats" role="group" aria-label="Site builder"></div>
+    <div class="how" id="how" aria-live="polite"></div>
+
+    <div class="foot">
+      <p style="margin-bottom:.7rem">Found a bug or have a feature request?
+      <a id="issue-link" href="https://github.com/nwcnwc/gifos-app/issues/new">Open an issue on GitHub</a> —
+      describe what happened (or what you'd like), include the digit subdomain and steps to
+      reproduce if it's a bug, and we'll take a look. No account with us needed, just a
+      free GitHub login. The link pre-fills the form with this page, build and browser.</p>
+      <p id="gifos-contact" style="margin:.7rem 0">Contact: <a href="mailto:support@gifos.app">support@gifos.app</a></p>
+      GifOS — apps are GIFs, data is GIFs, everything is just files. ·
+      <a href="/">gifos.app</a> · <a href="/store">app store</a> ·
+      <a href="/terms">terms</a> · <a href="/privacy">privacy</a> ·
+      <!-- RELATIVE, unlike its neighbours: inside a frozen /versions/<v>/ build
+           this must reach THAT build's own support matrix, which describes the
+           code actually running. Every other link here is deliberately root-
+           absolute (they are the live site, not this snapshot). -->
+      <a href="browser-support">which browsers work</a> · <a href="/llms.txt">llms.txt</a> ·
+      <a href="https://github.com/nwcnwc/gifos-app">source</a> ·
+      <a href="https://github.com/nwcnwc/gifos-app/issues">issues</a></div>
+  </div>
+<script>
+  // Platform steps, from each platform's own help pages (sources listed with each; checked on the date shown).
+  var PLATFORMS = [{"id": "html","name": "Plain HTML","form": "script","steps": ["Open your page's HTML.","Paste the script tag (or the iframe) where the player should go.","Save and upload the page."],"note": "Either form works. The player keeps a 16:9 shape at the width it is given.","sources": ["https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe"]},{"id": "wordpress","name": "WordPress","form": "script","steps": ["In the editor, click + and search for Custom HTML (or type /html).","Add the Custom HTML block and paste the code.","Click Update (or Publish)."],"note": "Self-hosted: only Administrators and Editors may save scripts or iframes; other roles get them removed. WordPress.com: scripts and iframes need a paid plan with plugins (hosting features) turned on.","sources": ["https://wordpress.org/documentation/article/custom-html/","https://wordpress.org/documentation/article/roles-and-capabilities/","https://wordpress.com/support/wordpress-editor/blocks/custom-html-block/"]},{"id": "shopify","name": "Shopify","form": "iframe","steps": ["Open the page or blog post in your admin.","Click Show HTML in the text editor.","Paste the iframe, then click Save."],"note": "Shopify's editor tidies pasted HTML; the plain iframe is the safest form there. A theme section that takes custom Liquid can hold either form.","sources": ["https://help.shopify.com/en/manual/shopify-admin/productivity-tools/rich-text-editor","https://help.shopify.com/en/manual/online-store/themes/customizing-themes/theme-editor/customizing-sections","https://help.shopify.com/en/manual/online-store/themes/theme-structure/sections-and-blocks"]},{"id": "wix","name": "Wix","form": "iframe","steps": ["Click Add Elements, then Embed Code (Embed & Social in Wix Studio).","Choose Embed HTML, click Enter Code and paste the iframe.","Click Apply, size the box, then publish."],"note": "Wix puts your code inside its own sandboxed frame, so the full screen button may not work there.","sources": ["https://support.wix.com/en/article/wix-editor-embedding-a-site-or-a-widget","https://support.wix.com/en/article/studio-editor-adding-an-html-iframe-element"]},{"id": "squarespace","name": "Squarespace","form": "script","steps": ["Edit the page and click Add block (+).","Choose Code, then the pencil icon.","Paste the code with Mode set to HTML, then save."],"note": "Scripts and iframes in a Code block need the Core, Plus or Advanced plan.","sources": ["https://support.squarespace.com/hc/en-us/articles/206543167-Add-custom-code-to-a-page-with-code-blocks"]},{"id": "webflow","name": "Webflow","form": "script","steps": ["Open the Add panel and drag in a Code Embed.","Paste the code.","Click Save and close, then publish."],"note": "Code Embed needs a paid Site plan or a Core, Growth, Agency or Freelancer Workspace.","sources": ["https://help.webflow.com/hc/en-us/articles/33961332238611-Custom-code-embed"]},{"id": "ghost","name": "Ghost","form": "script","steps": ["On a new line, click + (or type /).","Add an HTML card.","Paste the code, then update the post."],"note": "","sources": ["https://ghost.org/help/cards/"]},{"id": "google-sites","name": "Google Sites","form": "iframe","steps": ["Click Insert, then Embed.","Choose Embed code and paste the iframe.","Click Insert, then Publish."],"note": "Google Sites shows embedded code inside its own frame; the full screen button may not work there.","sources": ["https://support.google.com/sites/answer/90569?hl=en"]},{"id": "blogger","name": "Blogger","form": "script","steps": ["Edit the post or page.","Switch to HTML view (top left).","Paste the code, then Update."],"note": "","sources": ["https://support.google.com/blogger/answer/6286127?hl=en","https://support.google.com/blogger/answer/176245?hl=en"]},{"id": "carrd","name": "Carrd","form": "script","steps": ["Click Add Element, then Embed.","Set Type to Code and paste the code.","Publish the site."],"note": "Embeds need Carrd Pro Standard or higher.","sources": ["https://carrd.com/docs/building/embedding-custom-code","https://carrd.com/docs/building/embedding-iframes"]},{"id": "framer","name": "Framer","form": "iframe","steps": ["Open Insert and search for Embed.","Drag the Embed onto the canvas.","Paste the address https://gifos.app/embed#room=ROOM as its URL (or the script tag in its HTML box)."],"note": "","sources": ["https://www.framer.com/help/articles/how-to-add-an-iframe-or-embed-script/"]},{"id": "weebly","name": "Weebly / Square Online","form": "iframe","steps": ["In Square Online, choose Website, then Edit site.","Click + Add, Section, then Embed code.","Paste the iframe, then Publish."],"note": "Square describes this for its Plus and Premium plans. In classic Weebly: drag in Embed Code, choose Edit Custom HTML, paste, publish.","sources": ["https://squareup.com/help/us/en/article/6899-add-external-content-and-widgets-with-embedded-code-in-square-online-store","https://squareup.com/help/gb/en/article/7341-create-widgets-embed-code-and-add-external-content"]},{"id": "notion","name": "Notion","form": "iframe","steps": ["On a new line, click + and choose Embed.","Paste the address https://gifos.app/embed#room=ROOM (an address, not the iframe tag).","Press Embed link."],"note": "Notion takes an address, not code. Its help does not promise every address embeds: if the box stays empty, link to the meeting instead.","sources": ["https://www.notion.com/help/embed-and-connect-other-apps"]}];
+  (function () {
+    function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+    var box = document.getElementById('plats'), how = document.getElementById('how');
+    function show(id) {
+      var p = PLATFORMS.filter(function (x) { return x.id === id; })[0]; if (!p) return;
+      Array.prototype.forEach.call(box.children, function (b) { b.setAttribute('aria-pressed', b.dataset.id === id ? 'true' : 'false'); });
+      how.innerHTML = '<h3>' + esc(p.name) + '</h3><ol>' + p.steps.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ol>'
+        + '<p class="note">Use <b>' + (p.form === 'iframe' ? 'the plain iframe' : 'the script tag') + '</b>.' + (p.note ? ' ' + esc(p.note) : '') + '</p>'
+        + '<p class="src">Source: ' + p.sources.map(function (u) { return '<a href="' + esc(u) + '" rel="noopener" target="_blank">' + esc(u.replace(/^https?:\/\//, '').split('/')[0]) + '</a>'; }).join(', ') + '</p>';
+    }
+    PLATFORMS.forEach(function (p) {
+      var b = document.createElement('button'); b.type = 'button'; b.dataset.id = p.id; b.textContent = p.name; b.setAttribute('aria-pressed', 'false');
+      b.onclick = function () { show(p.id); }; box.appendChild(b);
+    });
+    if (PLATFORMS.length) show(PLATFORMS[0].id);
+    Array.prototype.forEach.call(document.querySelectorAll('.copy'), function (b) {
+      b.onclick = function () {
+        var t = document.getElementById(b.dataset.copy).textContent;
+        var done = function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1600); };
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, function () {});
+        else { var r = document.createRange(); r.selectNodeContents(document.getElementById(b.dataset.copy)); var s = getSelection(); s.removeAllRanges(); s.addRange(r); try { document.execCommand('copy'); done(); } catch (e) {} }
+      };
+    });
+  })();
+</script>
+<script src="js/gifos-help.js"></script>
+<script>
+  // Pre-fill the new-issue form with where it was clicked from (this page),
+  // the build and the browser — the context a report never remembers to carry.
+  (function () {
+    var a = document.getElementById('issue-link');
+    if (a && window.GifOS && GifOS.help && GifOS.help.issueUrl) a.href = GifOS.help.issueUrl({ from: 'Welcome page' });
+  })();
+</script>
+<!-- FOR AI AGENTS. Off-screen, not display:none — most agent fetchers read
+     the raw HTML without running scripts (so the JS-painted build badge is
+     invisible to them), and readability-style extractors DROP display:none
+     but keep the screen-reader clip. Static, identical on every page;
+     test/unit/agent-links.js holds the copies to one text. -->
+<nav id="agent-links" aria-label="Links for AI agents" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap">
+  <p>For AI agents and assistants: <a href="https://gifos.app/llms.txt">llms.txt</a> is the complete spec for building a GifOS app as a real .gif file (packing recipe, manifest, the window.gifos API).
+  Also: <a href="https://gifos.app/about">what GifOS is</a> ·
+  <a href="https://gifos.app/store">the App Store</a> (machine-readable catalog: <a href="https://gifos.app/apps/index.json">/apps/index.json</a>; one listing: /apps/&lt;slug&gt;/app.json) ·
+  open any store app in one tap: https://gifos.app/?run=&lt;slug&gt; — or your own hosted GIF: https://gifos.app/?run=&lt;gif-url&gt; ·
+  <a href="https://gifos.app/browser-support.json">browser support</a> ·
+  <a href="https://gifos.app/sitemap.xml">sitemap</a> ·
+  <a href="https://github.com/nwcnwc/gifos-app">source on GitHub</a> ·
+  <a href="https://github.com/nwcnwc/gifos-app/issues/new">report a problem</a>. Contact: support@gifos.app.</p>
+</nav>
+<!-- A newer GifOS release: the same header bar and Update as every page
+     (js/gifos-update.js). A page served from the site root names the release
+     that was live when it loaded; a later one is news. -->
+<script src="js/gifos-update.js"></script>
+<script>if (window.GifOS && GifOS.update) GifOS.update.watch({ root: true });</script>
+</body>
+</html>

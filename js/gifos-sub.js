@@ -754,6 +754,21 @@
     const t = await meetingRight(tk, verify, nowS, meeting);
     return t && t.grants && t.grants.captureOpenRoom && !rightRevoked(t, revoked) ? t : null;
   }
+  // captureTicket(tk, room) -> the captor's meeting right for this room now, checked against the payment service's key
+  // (/gifos-pay.key, fetched once), or null. For a page with no meet-subs (gifos.app/embed): it only reads a captured room.
+  let payKeyP = null;
+  async function captureTicket(tk, room) {
+    try {
+      if (!payKeyP) payKeyP = fetch('/gifos-pay.key').then(async (r) => {
+        if (!r.ok) throw new Error('no /gifos-pay.key');
+        const raw = Uint8Array.from(atob((await r.text()).trim()), (ch) => ch.charCodeAt(0));
+        if (raw.length !== 32) throw new Error('bad /gifos-pay.key');
+        return raw;
+      }).catch((e) => { payKeyP = null; throw e; });
+      const key = await payKeyP;
+      return await captureRight(tk, (sig, msg) => GifOS.ed.verify(key, sig, msg), Math.floor(Date.now() / 1000), await meetingTag(room));
+    } catch (e) { return null; }
+  }
   // rank(r) -> a number that orders one right against another: the larger room first, then the larger vouch count, then
   // capture, then more meetings at once (room 0..1e6, vouches 0..1000, meetings 0..1e6 all fit in 2^53). A right no
   // valid signature backs (r.signed false: the defaults, a forged or run-out right) is 0. Never reads the label.
@@ -1014,7 +1029,7 @@
     TICKET_KIND, TICKET_S, RENEW_EVERY_S, meetingTag, checkTicket, verifyTicket, ticketRights,
     PASS_KIND, passSeconds, PASS_PLAN, PASS_PRICE, PASS_VALUE, ORDER_ID_RE, PASS_ID_RE, passMessage, checkPass, passLive, passEnd, verifyPass,
     passStart, passRights, meetingRight, heldRights, rank, rightsJson,
-    ROOM_LIMIT_MAX, MEETINGS_MAX, AGENT_HOST_MAX, OVERFLOWS, GRANT_WORDS, OPTIONAL_WORDS, LEGACY_WORDS, DEFAULTS, effective, grantsOk, parseGrantList, grantsRights, ownTicketGrants, fullFreeWords, PASS_PRESETS, presetPass, revokedSet, rightRevoked, captureRight,
+    ROOM_LIMIT_MAX, MEETINGS_MAX, AGENT_HOST_MAX, OVERFLOWS, GRANT_WORDS, OPTIONAL_WORDS, LEGACY_WORDS, DEFAULTS, effective, grantsOk, parseGrantList, grantsRights, ownTicketGrants, fullFreeWords, PASS_PRESETS, presetPass, revokedSet, rightRevoked, captureRight, captureTicket,
     PASS_TICKET_KIND, PASS_REC_RE, passRecId, passTicketMessage, passChain, checkPassTicket, verifyPassTicket, isPassTicket,
     WALLET_KIND, walletOk,
     CRED_KIND, credentialOk, credentialFiles, credentialFromFiles, walletFromFiles,

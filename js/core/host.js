@@ -23,6 +23,11 @@
   'use strict';
   const GifOS = root.GifOS = root.GifOS || {};
   const END = Object.freeze({ end: true });
+  // THE ENGINE, a platform fact the core and the media plane read (platform.json WEBKIT_ENGINE). run.html sets it in a
+  // head script and the Node host hands false; any other page (embed.html) gets it here, from the same test.
+  if (typeof root.WEBKIT_ENGINE === 'undefined') {
+    root.WEBKIT_ENGINE = (() => { try { const nav = root.navigator; if (!nav) return false; const ua = nav.userAgent || ''; if ((nav.vendor || '').indexOf('Apple') === 0) return true; return /AppleWebKit/.test(ua) && !/Chrome|Chromium|CriOS|Edg\/|FxiOS|Android/.test(ua); } catch (e) { return false; } })();
+  }
 
   // ---- placeholders ----------------------------------------------------------------------------------------
   // A value that accepts every use. It is truthy (an object cannot be otherwise): code that branches on a

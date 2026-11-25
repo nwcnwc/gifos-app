@@ -75,6 +75,7 @@
     DOOR_REDIAL_CAP: 40000,   // ms
     DOOR_SHUT_MS: 30000,   // ms
     DRAIN_MS: 2000,   // ms
+    EMBED_HOSTED_MS: 1000,   // ms
     FACE_REACT_MS: 3000,   // ms
     FAREWELL_DRAIN_MS: 1500,   // ms
     FHOP_RELAY_ASK_MS: 6500,   // ms (FHOP_RELAY_ASK)
