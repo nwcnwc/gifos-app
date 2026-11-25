@@ -441,7 +441,7 @@
     function showInvite() {
       var link = names.inviteLinkForModal();
       $('share-url').value = link;
-      $('ainv').style.display = link ? 'flex' : 'none';
+      $('inv-modal').style.display = link ? 'flex' : 'none';
     }
     fn('showInviteModal', showInvite);
     fn('showShareLink', function () { if (C.ROOM.kind === 'app') showInvite(); });
@@ -490,7 +490,7 @@
       var v = $('share-url').value;
       try { navigator.clipboard.writeText(v).then(function () { $('ainv-copy').textContent = T('invCopied', 'Copied'); }, function () {}); } catch (e) {}
     };
-    $('ainv-done').onclick = function () { $('ainv').style.display = 'none'; };
+    $('ainv-done').onclick = function () { $('inv-modal').style.display = 'none'; };
 
     // ---- the audio bar ------------------------------------------------------------------------------------------------
     // It shows while this page is in a meeting: an app-first meeting always, an app room once its call is on or Talk is.
