@@ -1624,6 +1624,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     </div>
   </div>
 
+<!--@shared:vm-db-->
   <script>
     // Bind to the right computer BEFORE the store loads: apps opened from a
     // booted computer image (boot.html) carry their namespace in the URL so
@@ -1634,6 +1635,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (db && /^gifos_vm_[\w-]+$/.test(db)) window.GIFOS_DB_NAME = db;
     })();
   </script>
+<!--@/shared:vm-db-->
   <script src="js/gifos-ed.js" defer></script>
   <script src="js/gifos-sign.js" defer></script>
   <script src="js/gifos-base-net.js" defer></script>
