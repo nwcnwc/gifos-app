@@ -275,6 +275,13 @@
   let sharedBg = null; // one shared hidden-tab beat per page, minted on first use
   const bgClock = () => (sharedBg = sharedBg || createBgClock());
 
+  // THE TALKING FRAME IS READ WHEN THE FACE IS PAINTED. A face's burned label used to be set at its packer's sweep (the
+  // 2 s room beat), so a frame showed the verdict of one instant per beat and held it: a talker was framed only when a
+  // beat happened to land on a loud syllable (live 0.9.28.28: the Stadium rarely framed anyone, a quiet voice never).
+  // The page names one source of the talking verdict (setTalkSource: pid -> bool); every packer reads it for every leaf
+  // face it draws, on every paint, so the burned frame follows the same verdict as the Row ring.
+  let talkSrc = null;
+  function setTalkSource(fn) { talkSrc = typeof fn === 'function' ? fn : null; }
   function createPacker(opts) {
     opts = opts || {};
     const shape = opts.shape || 'grid';
@@ -633,6 +640,11 @@
         if (canvas.width !== 2) { canvas.width = 2; canvas.height = 2; } heldRows = 0; pendingRows = 0; pendingSince = 0; last = now; return; // long-empty packer — don't paint a grid of nothing
       }
       lastNonEmpty = now;
+      if (talkSrc) for (const t of tiles.values()) {
+        if (t.pid == null || !t.lbl) continue;
+        let on = false; try { on = !!talkSrc(t.pid); } catch (e) {}
+        if (!!t.lbl.talking !== on) t.lbl = Object.assign({}, t.lbl, { talking: on });
+      }
       // Nothing moved and nothing was relabelled ⇒ the frame would be byte-identical.
       const order = [...tiles.values()].sort((a, b) => (a.ord < b.ord ? -1 : a.ord > b.ord ? 1 : 0));
       const dense = DENSE && T > STAD_CAP;
@@ -768,7 +780,8 @@
         let hid = null;
         if (ids && meta && Array.isArray(meta.hide) && meta.hide.length) { const h = new Set(meta.hide.map(String)); for (let j = 0; j < n; j++) if (ids[j] != null && h.has(String(ids[j]))) (hid || (hid = new Set())).add(j); }
         tiles.set(id, { ord, el, stream, streamId: sid, n, cols, lbl: (meta && meta.lbl) || null, fit: (meta && meta.fit) || null,
-          dark: !!(meta && meta.dark), blur: Math.max(0, Math.min(2, (meta && meta.blur) | 0)), ids, hid });
+          dark: !!(meta && meta.dark), blur: Math.max(0, Math.min(2, (meta && meta.blur) | 0)), ids, hid,
+          pid: (n === 1 && meta && (meta.talkPid != null || meta.pid != null)) ? String(meta.talkPid != null ? meta.talkPid : meta.pid) : null });   // a leaf's person: its talking frame is read at paint (setTalkSource); talkPid names it without naming the cell (ids)
         if (!(n === 1 && cols === 1)) arriveArm(el);
       },
       // Update just the overlay (name/hand/talking) without touching the source
@@ -1188,5 +1201,5 @@
     return pl;
   }
 
-  GifOS.meshMedia = { workerClock, createBgClock, coverBox, fitBox, createAudioFold, packGrid, stadiumGrid, stadiumTiny, cellSize, faceSrcRect, cellCrop, createPacker, retireAudioTracks, foldOfTrack, createFoldPlayer };
+  GifOS.meshMedia = { workerClock, createBgClock, coverBox, fitBox, createAudioFold, packGrid, stadiumGrid, stadiumTiny, cellSize, faceSrcRect, cellCrop, createPacker, setTalkSource, retireAudioTracks, foldOfTrack, createFoldPlayer };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -4714,6 +4714,11 @@
     // reads the Stage feed's audio ('stg:<id>', stageVoice); everyone else's reads the Row link (meters). One verdict per
     // person, and every surface reads it: the Row tile ring, speakingOf (the Stage strip frame, the packer overlay), Follow.
     const meters = new Map(), // id -> { an, src, data }: the Row link's audio
+      // A VOICE IS TALKING UNTIL IT HAS BEEN QUIET FOR SPEAK_HOLD_MS. One meter read is 6 ms of sound, and speech has a
+      // gap between every syllable, so a read-by-read verdict was off about half the time while a person talked: the
+      // Row ring flickered, and any surface that sampled it (the Stadium's burned frame) caught a gap as often as a word.
+      // id -> when the voice was last heard loud.
+      voiceHeardAt = new Map(),
       stageViewEls = new Map(), // pid -> that person's own Stage picture, registered by the view (ensureStageView)
       stageVoice = (() => {
         const all = new Map(); // pid -> { an, src, data, tid }: the Stage feed's audio, for a Stage seat holder
@@ -4756,6 +4761,7 @@
       }
       stageVoice.drop(id);
       meters.delete(id);
+      voiceHeardAt.delete(id);
       speakingOf.delete(id);
     }
     // The identity BURNED onto a person's face in every composite (approach A):
@@ -4868,12 +4874,16 @@
       try { (0, /*()*/__M.ccMixSync)(); } catch (e) {}
     }
     let meterHiddenTick = 0, meterQuietTick = 0, meterAnyLive = false, meterTalkSig = '';
-    setInterval(() => {
+    // The beat rides a worker clock: a hidden tab's page timers run once a second, and after five minutes once a
+    // minute, while a row head's packer keeps burning this verdict into the faces its row ships.
+    GifOS.meshMedia.workerClock(180, () => {
       // Hidden tab: sample at 900ms, not 180ms — the only hidden consumer is
       // the PiP re-aim (worker heartbeat, 4s), and five WebAudio reads/sec
       // per participant is real power on a pocketed phone.
       // While a floating window shows the meeting it follows the speaker, so it reads every beat it gets.
-      if (GifOS.host.hidden() && ++meterHiddenTick % 5 && !floatUp()) return;
+      // A page that PACKS faces (a row head, Section 1's room pack, the Stage strip) burns this verdict into a picture
+      // other people watch, so it reads at the full beat while hidden too.
+      if (GifOS.host.hidden() && ++meterHiddenTick % 5 && !floatUp() && !(__M.prodPack || __M.roomPack || __M.stripPack || (__M.l14Packs && __M.l14Packs.size))) return;
       // ALL-MUTED ROOM: 720ms, not 180ms (2026-07-30 power work). The read is
       // already skipped per-muted-participant below, but the WAKEUP was not —
       // and a room where nobody has unmuted (the default: join-quiet) spun
@@ -4918,6 +4928,14 @@
         for (let i = 0; i < m.data.length; i++) { const d = m.data[i] - 128; dev += d * d; }
         return Math.sqrt(dev / m.data.length) > 5;
       };
+      // The verdict every surface shows: heard loud now, or within SPEAK_HOLD_MS (a muted voice is off at once).
+      const heldOn = (id, loud, st) => {
+        if (st === false) { voiceHeardAt.delete(id); return false; }
+        const now = Date.now();
+        if (loud) { voiceHeardAt.set(id, now); return true; }
+        return now - (voiceHeardAt.get(id) || 0) < GifOS.timings.SPEAK_HOLD_MS;
+      };
+      const liveMic = (id) => { const st = (id === 'me' ? myStatus : statusOf.get(id)) || {}; return !(st.muted || (modOf(id).mute && modOf(id).mute.on)); };
       for (const [id, m] of meters) {
         const t = id === 'me' ? meTile : peers.get(id);
         if (!t) { releaseMeter(id); continue; }
@@ -4929,12 +4947,13 @@
           if (speakingOf.get(id)) { t.tile.classList.remove('speaking'); speakingOf.set(id, false); }
           continue;
         }
-        const speaking = voiceOn(id, holdsStage(id) ? (stageVoice.meter(id) || m) : m);
+        const loud = voiceOn(id, holdsStage(id) ? (stageVoice.meter(id) || m) : m);
+        const speaking = heldOn(id, loud, liveMic(id));
         t.tile.classList.toggle('speaking', speaking);
         if (id === 'me' ? !!(myStatus.stg || myStatus.sso) : holdsStage(id)) frameStage(id === 'me' ? myId : id, speaking);
-        if (id === 'me' && speaking) { lastActive = Date.now(); if (lastActive - myVoiceAt > 1500) myVoiceFrom = lastActive; myVoiceAt = lastActive; myVoiceSinceFinal = true; } // talking IS activity — a speaker's phone is never "parked"
+        if (id === 'me' && loud) { lastActive = Date.now(); if (lastActive - myVoiceAt > 1500) myVoiceFrom = lastActive; myVoiceAt = lastActive; myVoiceSinceFinal = true; } // talking IS activity — a speaker's phone is never "parked"
         speakingOf.set(id, speaking); // fed to the packer overlay (green talking frame on composite faces)
-        if (id === 'me' && speaking) rowMixTalkAt = Date.now();
+        if (id === 'me' && loud) rowMixTalkAt = Date.now();
       }
       // A Stage seat holder I hold no Row link for has no tile, but the Stage strip still frames them: the verdict comes
       // from their feed alone. A meter whose person no longer holds a Stage seat goes, and with it a tile-less verdict.
@@ -4943,14 +4962,14 @@
         const id = k.slice(4);
         if (meters.has(id) || !holdsStage(id)) continue;
         const m = stageVoice.meter(id);
-        const on = !!m && voiceOn(id, m);
+        const on = !!m && heldOn(id, voiceOn(id, m), liveMic(id));
         if (m) speakingOf.set(id, on); else speakingOf.delete(id);
         frameStage(id, on);
       }
       if (stageVoice.all.size) for (const id of Array.from(stageVoice.all.keys())) {
         if (holdsStage(id)) continue;
         stageVoice.drop(id);
-        if (!meters.has(id)) speakingOf.delete(id);
+        if (!meters.has(id)) { speakingOf.delete(id); voiceHeardAt.delete(id); }
       }
       // L6.2: my own voice verdict into the fold's talk set, which every page reads for cross-row Follow. A pause shorter
       // than FOLLOW_GAP_MS is the same turn; the seat keeps the start, the hold and the expiry. Sent on a change only.
@@ -4961,7 +4980,7 @@
       let talkSig = '';
       for (const [id, on] of speakingOf) if (on && id !== 'me') talkSig += id + ',';
       if (talkSig !== meterTalkSig) { meterTalkSig = talkSig; if (GifOS.host.hidden() && floatUp()) { try { (0, /*()*/__V.pipReaim)(); } catch (e) {} } }
-    }, 180);
+    });
     yield 690;
     // Parked-phone idleness state lives HERE (above keepAwake's first call)
     // — the deciders and the poke() reactivator are with the power level.

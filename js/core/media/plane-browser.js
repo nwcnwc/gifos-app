@@ -5880,6 +5880,9 @@
       (0, /*()*/__V.paintStadiumTile)(null); paintStageStrip(null);
     }
     function reconcileMosaic() {
+      // Every face a packer burns reads its talking frame from the one verdict (speakingOf), live at paint (mesh-media
+      // setTalkSource): never a copy taken at this 2 s sweep.
+      if (MM.setTalkSource) MM.setTalkSource((pid) => { try { return !!__C.speakingOf.get(pid === __C.myId ? 'me' : pid); } catch (e) { return false; } });
       const s = (0, /*()*/__C.meshSeat)(), c = (0, /*()*/__C.meshCoord)();
       headShipTo = c && c.i !== 0 ? rowHeadPid(c) : null;
       // Container-registry hygiene: a job key's forever-container survives
@@ -6693,7 +6696,7 @@
           if (sc && sc.el) {
             const dark = ((0, /*()*/__C.forcedCamOff)(sid) || (typeof __C.shareBlocked === 'function' && (0, /*()*/__C.shareBlocked)(sid))) ? 1 : 0;
             const blur = (!dark && sid !== __C.myId && (0, /*()*/__C.modBlurOn)(sid)) ? Math.max(1, (0, /*()*/__C.blurLevelFor)(sid)) : 0;
-            stripPack.setTile(sid, j, sc.el, sc.stream, { n: 1, cols: 1, lbl: (0, /*()*/__C.labelFor)(sid), fit: (0, /*()*/__C.fitFor)(sid), dark, blur });
+            stripPack.setTile(sid, j, sc.el, sc.stream, { n: 1, cols: 1, lbl: (0, /*()*/__C.labelFor)(sid), fit: (0, /*()*/__C.fitFor)(sid), dark, blur, talkPid: sid });
             stgKeep.add(sid);
           }
         });
