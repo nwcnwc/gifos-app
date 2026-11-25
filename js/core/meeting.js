@@ -8040,7 +8040,7 @@
           // forwarded mix; a mic with no cap, the encoder's own target read while not stepped down), and my data bits.
           const lastV = turnSent.get(pid), tNow = Date.now(), lowNow = turnLinks.voiceCap(pid) > 0;
           const rrs = new Map(), aPk = new Map(); let lossKind = null, anyFresh = false, limited = false, vFrames = 0, vBytes = 0, dBytes = 0, vFresh = 0, vClean = false, vRrSeen = false, voiceN = 0, voiceFull = 0;
-          const midSender = new Map(); try { for (const tr of p.pc.getTransceivers()) if (tr.mid != null && tr.sender) midSender.set(String(tr.mid), tr.sender); } catch (e) {}
+          const midSender = new Map(); try { for (const tr of p.pc.getTransceivers()) if (tr.mid != null && tr.sender && tr.direction !== 'stopped' && tr.currentDirection !== 'stopped') midSender.set(String(tr.mid), tr.sender); } catch (e) {}   // a stopped sender (a stage forward unshipped: stopAuxTx) stays in the pc until it next negotiates, with NO encodings and its last packet count frozen in the stats: it is no voice
           st.forEach((x) => {
             if (x.type === 'remote-inbound-rtp' && typeof x.roundTripTimeMeasurements === 'number') {
               rrs.set(x.id, x.roundTripTimeMeasurements);
@@ -8056,7 +8056,7 @@
               if (was !== undefined && (+x.packetsSent || 0) > was) {
                 const sd = x.mid != null ? midSender.get(String(x.mid)) : null;
                 if (sd && !lowNow) sd.__tbFull = +x.targetBitrate || sd.__tbFull;
-                const set = sd ? ('__voiceFull' in sd ? sd.__voiceFull : (sd.getParameters().encodings || [{}])[0].maxBitrate) : null;
+                const set = sd ? ('__voiceFull' in sd ? sd.__voiceFull : ((sd.getParameters().encodings || [])[0] || {}).maxBitrate) : null;   // a sender not (or no longer) negotiated has no encodings: no set rate
                 voiceN++; voiceFull += +set || (sd && sd.__tbFull) || +x.targetBitrate || 0;
               }
             }
