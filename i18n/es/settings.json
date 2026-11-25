@@ -199,6 +199,7 @@
   "settings.pin.endedTitle": "De vuelta en la última versión",
   "settings.pin.endedExpired": "El cambio de este equipo a <b>{what}</b> ha terminado, así que vuelve a usar la última versión. Tus archivos, apps y ajustes no se han tocado. Quienes prueban GifOS pueden volver a cambiar en <b>Ajustes → Sistema → Actualizaciones → Avanzado / pruebas</b>.",
   "settings.pin.endedReset": "Este equipo estaba configurado en <b>{what}</b>. Eso ahora es solo para quienes prueban GifOS, así que vuelve a usar la última versión. Tus archivos, apps y ajustes no se han tocado. Quienes prueban GifOS pueden volver a cambiar en <b>Ajustes → Sistema → Actualizaciones → Avanzado / pruebas</b>.",
+  "settings.pin.endedFloor": "Esta versión ya no puede unirse a reuniones; estás en la última. (Se quitó <b>{what}</b>.)",
   "settings.updates.couldntCheck": "No se pudo comprobar cuál es la última versión.",
   "settings.updates.checking": "Buscando la última versión en gifos.app…",
   "settings.updates.latestFollows": "v{version} · este equipo la sigue",

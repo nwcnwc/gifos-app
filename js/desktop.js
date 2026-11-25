@@ -3005,7 +3005,15 @@
     emergencyFloor = live.emergency || null;
     edgeBuild = Number(info.edgeBuild) || BUILD;   // latest edge build number, live
     releaseBuilds = (info.builds && typeof info.builds === 'object') ? info.builds : {};
-    availableVersions = Array.isArray(info.versions) && info.versions.length ? info.versions : [VERSION];
+    // The pin list is the served set: meet floor .. latest (U.pinnable), never the whole archive.
+    const pinList = U && U.pinnable ? U.pinnable(info) : (Array.isArray(info.versions) ? info.versions : []);
+    availableVersions = pinList.length ? pinList : [VERSION];
+    // A pin that fell under the floor can no longer join meetings: unpin it and say so once.
+    const pin = pinnedVersion();
+    if (pin && U && U.pinBelowFloor && U.pinBelowFloor(pin, info)) {
+      try { localStorage.removeItem('gifos_pin'); localStorage.removeItem('gifos_pin_until'); localStorage.setItem('gifos_reseed', '1'); localStorage.setItem('gifos_pin_ended', 'floor:' + pin); } catch (e) {}
+      notePinEnded().catch(() => {});
+    }
     // Release notes are best-effort: the Version panel still works without them.
     if (got.changelog) changelog = got.changelog;
     paintPinHead();
@@ -4231,11 +4239,11 @@
   async function notePinEnded() {
     let v = '';
     try { v = localStorage.getItem('gifos_pin_ended') || ''; localStorage.removeItem('gifos_pin_ended'); } catch (e) {}
-    const m = /^(expired|reset):(.+)$/.exec(v);
+    const m = /^(expired|reset|floor):(.+)$/.exec(v);
     if (!m) return;
     if (GifOS.i18n) await GifOS.i18n.load('settings').catch(() => null);
     const what = m[2] === EDGE ? ST('settings.pin.whatEdge') : ST('settings.pin.whatVer', { version: m[2] });
-    showModal(ST('settings.pin.endedTitle'), STh(m[1] === 'expired' ? 'settings.pin.endedExpired' : 'settings.pin.endedReset', { what }));
+    showModal(ST('settings.pin.endedTitle'), STh(m[1] === 'expired' ? 'settings.pin.endedExpired' : m[1] === 'floor' ? 'settings.pin.endedFloor' : 'settings.pin.endedReset', { what }));
   }
 
   // ?edge (query or hash) never switches anyone — the loader stores nothing for

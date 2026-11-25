@@ -96,6 +96,8 @@
   "meet.setCcWhisperHelp": "Jede Sprache, von selbst erkannt. Echte Sätze mit Satzzeichen. Ihre Namen und Wörter. Kann alles ins Englische übersetzen. Ein Satz erscheint ein paar Sekunden später. Auf dem Telefon langsamer und mit Akku. Ihre Stimme bleibt auf diesem Gerät; nur die geschriebenen Wörter können an das Meeting gehen.",
   "meet.setCcEnglish": "Alles ins Englische übersetzen",
   "meet.setCcEnglishHelp": "Whisper auf diesem Gerät übersetzt jede Stimme, die Sie hören. Ihre Untertitel und Ihr Transkript zeigen nur Englisch: Zeilen, die andere auf Englisch senden, und die eigenen Übersetzungen dieses Geräts. Was Sie an das Meeting senden, bleibt in Ihrer eigenen Sprache.",
+  "meet.setCcEars": "Untertitel anderer mit Whisper prüfen",
+  "meet.setCcEarsHelp": "Aus, bis du es ankreuzt. Während du Browser-Untertitel nutzt, hört Whisper auf diesem Gerät ab und zu ein paar Sekunden der Stimmen anderer an, um zu prüfen, ob ihre Untertitel stimmen, und warnt dich, wenn nicht. Dafür muss Whisper installiert sein; es braucht etwas Rechenleistung.",
   "meet.setCcEnglishNo": "Whisper wird von diesem Browser nicht unterstützt",
   "meet.setCcWords": "Namen und Wörter: Siobhan, Kubernetes, GifOS…",
   "meet.setMix": "Klang",

@@ -96,6 +96,8 @@
   "meet.setCcWhisperHelp": "Cualquier idioma, lo detecta solo. Frases de verdad, con puntuación. Tus nombres y palabras. Puede traducir todo al inglés. Una frase aparece unos segundos después. En el teléfono va más lento y gasta batería. Tu voz se queda en este dispositivo; solo las palabras escritas pueden ir a la reunión.",
   "meet.setCcEnglish": "Traducir todo al inglés",
   "meet.setCcEnglishHelp": "Whisper en este dispositivo traduce cada voz que oyes. Tus subtítulos y tu transcripción muestran solo inglés: las líneas que otros envían en inglés y las traducciones de este dispositivo. Lo que envías a la reunión sigue en tu propio idioma.",
+  "meet.setCcEars": "Comprobar los subtítulos de otras personas con Whisper",
+  "meet.setCcEarsHelp": "Desactivado salvo que lo marques. Mientras usas los subtítulos del navegador, Whisper en este dispositivo escucha de vez en cuando unos segundos de las voces de otras personas para ver si sus subtítulos son correctos, y te avisa cuando no lo son. Necesita Whisper instalado y usa parte de tu procesador.",
   "meet.setCcEnglishNo": "Whisper no es compatible con este navegador",
   "meet.setCcWords": "Nombres y palabras: Siobhan, Kubernetes, GifOS…",
   "meet.setMix": "Mezcla",

@@ -54,7 +54,7 @@ printf '/* TIP build */\nwindow.GIFOS_BUILD = "tip-%s";\nwindow.GIFOS_TIP = {bra
 DIST="$DIST" BRANCH="$BRANCH" SHA="$SHA" VER="$VER" node -e '
 const fs=require("fs"),f=process.env.DIST+"/version.json",j=JSON.parse(fs.readFileSync(f));
 if(process.env.VER) j.current=process.env.VER.split(".").slice(0,3).join(".");
-delete j.emergency; j.edgeBuild=0;
+j.edgeBuild=0;
 j.tip={branch:process.env.BRANCH,sha:process.env.SHA,deployedAt:new Date().toISOString()};
 fs.writeFileSync(f,JSON.stringify(j,null,2)+"\n");'
 # The root channel loader sends *.gifos.app visitors to /versions/<current>/.

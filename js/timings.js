@@ -235,6 +235,7 @@
     SNAP_MIN_MS: 3000,   // ms
     SNAP_MS: 1200,   // ms
     SOLO_LOOKUP_SLOW_MS: 10000,   // ms
+    SPEAK_HOLD_MS: 500,   // ms
     STABLE_MS: 5000,   // ms
     STAGE_FACE_SETTLE_MS: 2500,   // ms
     STAGE_FEED_LOST_MS: 2500,   // ms

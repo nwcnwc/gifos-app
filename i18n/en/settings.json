@@ -199,6 +199,7 @@
   "settings.pin.endedTitle": "Back on the latest release",
   "settings.pin.endedExpired": "This computer’s switch to <b>{what}</b> has ended, so it runs the latest release again. Your files, apps and settings are untouched. Testers can switch again in <b>Settings → System → Updates → Advanced / testing</b>.",
   "settings.pin.endedReset": "This computer was set to <b>{what}</b>. That is now only for people testing GifOS, so it runs the latest release again. Your files, apps and settings are untouched. Testers can switch again in <b>Settings → System → Updates → Advanced / testing</b>.",
+  "settings.pin.endedFloor": "This version can no longer join meetings; you're on the latest. (<b>{what}</b> was unpinned.)",
   "settings.updates.couldntCheck": "Couldn’t check which release is latest.",
   "settings.updates.checking": "Checking gifos.app for the latest…",
   "settings.updates.latestFollows": "v{version} · this computer follows it",

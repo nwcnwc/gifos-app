@@ -602,6 +602,8 @@
     video.style.opacity = '';
   }
 
+  // Columns the last apply() gave the one Stadium tile (0 when there is none).
+  let stadColsChosen = 0;
   // One canvas over the stadium video. It redraws the cells this browser
   // keeps and leaves a stage camera's cell out. The source <video> stays
   // playing underneath: hiding it can stop the decoder. Nothing is sent.
@@ -624,6 +626,14 @@
     const s = MM.faceSrcRect(0, n, cols, sw, sh);
     return !!(s && s.sw > 0 && Math.abs(s.sw - s.sh) <= 0.08 * s.sw);
   }
+  // The cut canvas uses the layout's columns while it still repaints cell by
+  // cell. Past 25 kept faces it keeps the packed stadium shape.
+  function stadKeepGrid(n, layCols) {
+    const MM = GifOS.meshMedia;
+    if (n <= 25 && layCols >= 1 && layCols <= n) return { cols: layCols | 0, rows: Math.ceil(n / layCols) };
+    if (!MM || typeof MM.packGrid !== 'function') return null;
+    return MM.packGrid(n, 'stad');
+  }
   function drawStadClose(c) {
     const video = c.video;
     const sw = (video && video.videoWidth) || 0;
@@ -631,7 +641,8 @@
     if (!c.ctx || !stadCellsSquare(c.n, c.cols, sw, sh)) return false;
     const MM = GifOS.meshMedia;
     const keep = c.keep;
-    const g = MM.packGrid(keep.length, 'stad');
+    const g = stadKeepGrid(keep.length, c.layCols);
+    if (!g) return false;
     const cell = Math.max(1, Math.round(sw / c.cols));
     const W = cell * g.cols, H = cell * g.rows;
     if (c.canvas.width !== W) c.canvas.width = W;
@@ -686,6 +697,7 @@
     }
     stadClose.n = n;
     stadClose.cols = cols;
+    stadClose.layCols = spec.layCols | 0;
     stadClose.keep = keep;
     drawStadClose(stadClose);
   }
@@ -695,7 +707,6 @@
   // opts: { ids: the pack's cell list, cols: its columns }.
   function stadFaceAt(el, cx, cy, opts) {
     opts = opts || {};
-    const MM = GifOS.meshMedia;
     const video = el && el.querySelector && el.querySelector('video');
     if (!video || !el.getBoundingClientRect) return null;
     const r = el.getBoundingClientRect();
@@ -708,8 +719,9 @@
     if (!(x >= 0 && y >= 0 && x < fw && y < fh)) return null;
     let cell = -1;
     if (sc) {
-      if (!MM || typeof MM.packGrid !== 'function') return null;
-      const g = MM.packGrid(sc.keep.length, 'stad'), c = fw / g.cols;
+      const g = stadKeepGrid(sc.keep.length, sc.layCols);
+      if (!g) return null;
+      const c = fw / g.cols;
       const i = Math.floor(y / c) * g.cols + Math.floor(x / c);
       cell = i >= 0 && i < sc.keep.length ? sc.keep[i] : -1;
     } else {
@@ -947,6 +959,7 @@
       if (lb) lb.textContent = 'Stadium \u00b7 ' + allFaces.length;
       tiles.push({ id: 'stad:whole', tier: 'stad', el: stadEl, shade: 'stad' });
     } else {
+      stadColsChosen = 0;
       stopStadClose();
       const old = feed.querySelector('#stadwhole');
       if (old) old.remove();
@@ -1133,8 +1146,14 @@
       if (stream) playStream(cv, stream);
       showWhole(cv);
       const skips = Array.isArray(opts.skipCells) ? opts.skipCells : [];
+      let layCols = 0;
+      for (let si = 0; si < lay.rects.length; si++) {
+        const sr = lay.rects[si];
+        if (sr && (sr.id === 'stad:whole' || sr.tier === 'stad') && sr.cols > 0) { layCols = sr.cols | 0; break; }
+      }
+      stadColsChosen = layCols;
       if (skips.length && (opts.cellN | 0) > 0 && (opts.cols | 0) > 0) {
-        armStadClose(stadEl, cv, { n: opts.cellN | 0, cols: opts.cols | 0, skips: skips });
+        armStadClose(stadEl, cv, { n: opts.cellN | 0, cols: opts.cols | 0, skips: skips, layCols: layCols });
       } else stopStadClose();
       if (stream) frameVid = cv;
     }
@@ -1173,6 +1192,7 @@
       // The content region (a shared screen or app; later the content tabs):
       // its box this pass, or null. The page marks body.has-content from it.
       content: lay.share || null,
+      stadCols: stadColsChosen,
     };
   }
 
@@ -1544,6 +1564,7 @@
     paintAvatar: paintAvatar,
     wholeCell: wholeCell,
     apply: apply,
+    lastStadCols: function () { return stadColsChosen; },
     stadFrameSize: stadFrameSize,
     installBar: installBar,
     dockRest: dockRest,
