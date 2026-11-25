@@ -23,7 +23,7 @@
  * PHONES: Blur only, at a lower mask rate. THE LOAD GUARD steps the mask rate down when
  * the model takes too much of a core, and turns the effect off (the camera goes out as
  * it would with None) when even the slowest rate or the composite itself costs too
- * much, or the power level is low. A device that cannot run the model at all (no
+ * much, the power level is low, or the meeting's own load guard has started shedding. A device that cannot run the model at all (no
  * WebAssembly SIMD, no workers, very little memory: older iPhones) offers None only.
  *
  * Remembered per device (localStorage). An uploaded picture is kept on this device only.
@@ -125,7 +125,7 @@
 
   // ---- the load guard ---------------------------------------------------------------
   let busy = '';            // '' | 'load' | 'power': stepped back to no effect until the next pick or more power
-  let powerFn = null;
+  let powerFn = null, shedFn = null;
   let lastPower = 'full';
   function powerLevel() { try { const p = powerFn ? powerFn() : null; return (p && p.level) || 'full'; } catch (e) { return 'full'; } }
   function rungs() { return phone() ? RUNGS_PHONE : RUNGS_DESK; }
@@ -140,6 +140,10 @@
       lastPower = lv;
     }
     if (lv === 'low' && !busy && cur.mode !== 'none') stepBack('power');
+    // The meeting's own load guard (L29): a device that has started shedding its forwards gives up the effect first,
+    // until the person picks again.
+    let shed = 0; try { shed = shedFn ? (shedFn() | 0) : 0; } catch (e) { shed = 0; }
+    if (shed >= 1 && !busy && cur.mode !== 'none') stepBack('load');
   }
   // The model's share of a core: its own time per mask over the time between two masks.
   function noteSeg(ms, gapMs) {
@@ -532,6 +536,7 @@
 
   function configure(o) {
     if (o && typeof o.power === 'function') powerFn = o.power;
+    if (o && typeof o.shed === 'function') shedFn = o.shed;
     if (o && o.camera) nativeTrack = o.camera;
   }
 
