@@ -1016,7 +1016,8 @@
   // A room's ACL is the OR of the ROOM-scoped line items of every meeting right verified in it: the largest roomLimit
   // (null, no limit, beats any number), and any room-scoped flag. Holder-scoped items (capture, admitAtFullDoor, the
   // meeting count...) are rights of their holder and never enter the room's ACL. Compact, so it rides relay attachments:
-  // {l: roomLimit (null = no limit), f: bit set over ACL_FLAGS}. No ACL at all is the DEFAULTS. Only the relay reads it.
+  // {l: roomLimit (null = no limit), f: bit set over ACL_FLAGS, s: when the room got its current limit (ms)}. No ACL at all
+  // is the DEFAULTS. Only the relay decides by it; anyone in the room may READ it (the License view: aclView).
   // THE SCOPE OF EACH LINE ITEM: 'room' = once anyone in the room shows it, the room has it; 'holder' = only its holder.
   const ACL_SCOPE = Object.freeze({ roomLimit: 'room', admitAtFullDoor: 'holder', captureOpenRoom: 'holder', storage: 'holder', clearWithoutPassword: 'holder',
     clearStageWithoutPassword: 'holder', turnVideoLinks: 'holder', meetings: 'holder', agentHost: 'holder', overflow: 'holder' });
@@ -1024,29 +1025,37 @@
   const ACL_FLAGS = Object.freeze(Object.keys(ACL_SCOPE).filter((k) => ACL_SCOPE[k] === 'room' && k !== 'roomLimit'));
   const aclSame = (a, n) => !!a && n.l === a.l && n.f === (a.f | 0);
   // aclAdd(acl, grants) -> the ACL with a right's room-scoped line items ORed in (the same object when nothing is new).
-  function aclAdd(acl, grants) {
+  // at: now (ms), kept as the ACL's `s` when its limit changes.
+  function aclAdd(acl, grants, at) {
     const x = grantsOk(grants);
     if (!x) return acl || null;
     const a = acl || { l: DEFAULTS.roomLimit, f: 0 };
     let f = a.f | 0;
     ACL_FLAGS.forEach((k, i) => { if (x[k] === true) f |= (1 << i); });
     const n = { l: a.l === null || x.roomLimit === null ? null : Math.max(a.l | 0, x.roomLimit, DEFAULTS.roomLimit), f };
-    return aclSame(acl, n) ? acl : n;
+    if (aclSame(acl, n)) return acl;
+    n.s = acl && n.l === acl.l && acl.s ? acl.s : (+at || 0);
+    return n;
   }
   // aclJoin(a, b) -> the union of two ACLs (a itself when b adds nothing; null when both are none).
   function aclJoin(a, b) {
     if (!b) return a || null;
     if (!a) return b;
     const n = { l: a.l === null || b.l === null ? null : Math.max(a.l | 0, b.l | 0), f: (a.f | 0) | (b.f | 0) };
-    return aclSame(a, n) ? a : n;
+    if (aclSame(a, n)) return a;
+    n.s = n.l === a.l ? a.s || 0 : b.s || 0;   // since: from the side that holds the limit now
+    return n;
   }
   // aclLimit(acl) -> the room's people limit from its ACL: a number, or null (no limit). No ACL: the DEFAULTS' limit.
   const aclLimit = (acl) => (acl ? (acl.l === null ? null : Math.max(acl.l | 0, DEFAULTS.roomLimit)) : DEFAULTS.roomLimit);
+  // aclView(acl) -> what the License view shows: the permissions the room holds, never a plan, a name or a ticket:
+  // {limit (null = no people limit), none (no permission shown yet: the default rule applies), since (ms, or null)}.
+  const aclView = (acl) => ({ limit: aclLimit(acl), none: !acl || (acl.l !== null && (acl.l | 0) <= DEFAULTS.roomLimit && !(acl.f | 0)), since: acl && acl.s ? acl.s : null });
   // aclHas(acl, item) -> whether the room holds a room-scoped flag (a holder-scoped word is never the room's).
   const aclHas = (acl, item) => !!acl && ACL_FLAGS.indexOf(item) >= 0 && ((acl.f | 0) & (1 << ACL_FLAGS.indexOf(item))) !== 0;
 
   GifOS.sub = {
-    ACL_FLAGS, ACL_SCOPE, aclAdd, aclJoin, aclLimit, aclHas,
+    ACL_FLAGS, ACL_SCOPE, aclAdd, aclJoin, aclLimit, aclHas, aclView,
     TIERS, TIER_IDS, PERIODS, NEGOTIATED, ADDONS, usd, covers, upgradeOk, upgradeCharge, APP_TIERS, tiersSoldIn, tiersListed, FREE, TEXT, PEOPLE_LIMIT, LICENSE_KIND, SELLER, KEY_RE, SUB_ID_RE, ASK_WINDOW_S,
     FREE_PLAN, FREE_LIMIT, PLANS, PLAN_IDS, isPlan, isPaid,
     checkLicense, verifyLicense, rightsOf, storageAfterLapse, proofMessage, verifyProof, askMessage, askFresh,
