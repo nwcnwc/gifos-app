@@ -11200,7 +11200,7 @@
     // regular admin, with every admin control, signing with the capture key. What belongs to a room with a
     // verifier alone (the admin password and its sign-in, the password-change boot, the door limit and plan,
     // the admin-absence close) reads `av` itself.
-    let capKey = null, capExp = 0, capTk = null, capSaidKey = null, capBusy = false;
+    let capKey = null, capExp = 0, capTk = null, capSaidKey = null, capBusy = false, capWSig = '';   // capWSig: the last captor table read for its ticket (takeMod)
     // What the meeting server last said about the capture: the captor key, null (no capture), or undefined (it has not said).
     // While this page's server socket is up, a ticket read from the room table is taken only for the key the server names:
     // the table carries the ticket to pages with no server socket (and the proof after a server wake), never a capture the
@@ -11542,7 +11542,22 @@
       }
     }
     function takeMod(from, msg) {
-      if (!hasAdminRoom()) { if (msg.mod) modOpenIn(msg.mod); return; }
+      if (!hasAdminRoom()) {
+        if (msg.mod) modOpenIn(msg.mod);
+        // A captured open room this page has not learned yet: the captor's signed table carries the ticket ('capt'). The
+        // server's word at join may lack it (its copy of the ticket lives in memory and is gone after the room's object
+        // slept), so without this a page that arrived after the capture waited for the captor's next renewal (minutes) to
+        // see any admin. The ticket proves itself (capTake checks the pay key, this meeting and the plan, and takes only
+        // the key the server names); the table's signature is then checked under that key on the next beat, as always.
+        const w = msg.modw;
+        if (!av && w && typeof w.sp === 'string' && typeof w.sig === 'string' && w.sig !== capWSig) {
+          capWSig = w.sig;
+          let o = null; try { o = JSON.parse(w.sp); } catch (e) { o = null; }
+          const c = o && o.act === 'mod' && o.mod && o.mod['*'] && o.mod['*'].capt;
+          if (c && c.tk && (!capTk || c.tk.sig !== capTk.sig)) capTake({ tk: c.tk }, false);
+        }
+        return;
+      }
       if (!msg.modw) return;
       if (DEBUG_ON && window.__modDelayUntil && Date.now() < window.__modDelayUntil) return;   // DEBUG=on only: this page hears the admin's orders late (a test)
       const key = String(msg.modw.pub) + '|' + String(msg.modw.sig) + '|' + String(msg.modw.sp);
