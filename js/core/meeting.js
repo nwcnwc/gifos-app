@@ -22629,7 +22629,7 @@
       return {
         me: Object.assign({}, mine, { hand: !!myStatus.hand, camera: !myStatus.camOff, muted: !!myStatus.muted }),
         room: { id: room ? String(room) : '', kind: hasAdminRoom() ? 'admin' : 'open', locked: !!roomPw, aiNotes: aiNotesSetting() },
-        joined: !!mediaJoined && !left, progress: last ? { step: last.x, of: last.y, text: last.text } : null, password: (0, /*()*/__V.atPwPrompt)(),
+        joined: !!mediaJoined && !left, progress: last ? { step: last.x, of: last.y, text: last.text } : null, password: !!pwBlocked || !!(0, /*()*/__V.atPwPrompt)(),   // the door asks for a password: the core's own state (a host with no screen has no prompt)
         people: people, stage: { ids: stageIds(), mode: hasAdminRoom() ? 'host' : 'open' }, agenda: agenda, app: app, video: agentVideoList(),
         host: { muted: typeof amGloballyMuted === 'function' && amGloballyMuted(), camOff: !!forcedCamOff('me'), removed: !!bannedOut },
         left: left, botView: !!botViewOn, forced: AGENT_FORCED,
