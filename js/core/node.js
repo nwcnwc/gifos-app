@@ -469,6 +469,18 @@ function createMeeting(opts) {
           pcs.add(this); this._gifosStreams = new Map(); this._gifosOnTrack = null;
         }
         close() { pcs.delete(this); return super.close(); }
+        // ADDTRACK TAKES ONLY A TRANSCEIVER THAT NEVER SENT (W3C addTrack; JSEP 5.2.2): one whose negotiated direction was
+        // ever sendrecv or sendonly is not reused, with or without a track. werift counts a transceiver as used only when
+        // it sent WITH a track, so addTrack took a negotiated trackless one (a job's slot, a pipe reservation) for the main
+        // voice. The voice then left under that slot's stream name, and the far page filed it there and never played it
+        // as the person (rooms/core-pack: no page heard the Node row head). The host marks every transceiver that has
+        // negotiated a send direction, after each description and before each addTrack, as a browser does.
+        _gifosSent() {
+          try { for (const t of this.getTransceivers()) { const d = t.currentDirection; if (d === 'sendrecv' || d === 'sendonly') t.usedForSender = true; } } catch (e) {}
+        }
+        addTrack(...a) { this._gifosSent(); return super.addTrack(...a); }
+        setLocalDescription(...a) { const r = super.setLocalDescription(...a); return Promise.resolve(r).then((v) => { this._gifosSent(); return v; }); }
+        setRemoteDescription(...a) { const r = super.setRemoteDescription(...a); return Promise.resolve(r).then((v) => { this._gifosSent(); return v; }); }
         get ontrack() { return ONTRACK && ONTRACK.get ? ONTRACK.get.call(this) : super.ontrack; }   // the port calls the handler through this getter: it must get the wrapped one
         set ontrack(fn) {
           if (!ONTRACK || !ONTRACK.set) { super.ontrack = fn; return; }
