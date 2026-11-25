@@ -204,9 +204,6 @@
     FARV_CAP: 256,   // C++: mesh_farview.inc:FARV_CAP
     get L48_E2MAX() { return byC([4,6,8,10]); },   // C++: mesh_e2fold.inc:L48_E2MAX  (2*C)
     L48_BEAT: 20,   // C++: mesh_e2fold.inc:L48_BEAT  (8+EARLY_HOLD)
-    L52_WAIT: 4,   // C++: mesh_wall.inc:L52_WAIT  (LAW_L52_WAIT)
-    L52_TAG: 52,   // C++: mesh_wall.inc:L52_TAG
-    L52_NONE: 1073741824,   // C++: mesh_wall.inc:L52_NONE  (1<<30)
     L12_WAVE: 1800,   // C++: mesh_seat.inc:L12_WAVE
     L12_QUIET: 7000,   // C++: mesh_seat.inc:L12_QUIET
     L12_HOLD: 1200,   // C++: mesh_seat.inc:L12_HOLD

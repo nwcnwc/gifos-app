@@ -117,7 +117,7 @@
     // code, and only an explicit s.kick() (the app changed something: new
     // password, deliberate re-join) re-arms. CROWD codes (full / rate-limited /
     // no host yet) keep retrying on a longer leash.
-    const FATAL_CLOSES = [1008, 4000, 4001, 4003, 4007, 4008, 4009, 4010, 4011, 4012, 4013, 4014]; // 4013: no key proof; 4014: a frame outside the relay's message types — update GifOS
+    const FATAL_CLOSES = [1008, 4000, 4001, 4003, 4007, 4008, 4009, 4010, 4011, 4012, 4013, 4014, 4020]; // 4013: no key proof; 4014: a frame outside the relay's message types — update GifOS; 4020: the meeting is full (the relay's own answer rode the socket first): this attempt is over, and the page knocks again on its own when a right arrives or the person taps it — a fast retry loop against a full meeting is billed wakes and changes nothing
     const SLOW_CLOSES = [1011, 1013, 4015]; // 4015: the relay's spend breaker is tripped; it lets joins in again on its own
     // Join-ticket codes (relay lockdown): 4016 the token failed (expired, other
     // room or device), and 4010 whose reason names the join token (this relay
@@ -968,6 +968,7 @@
     tvouch: { to: { str: 16, re: RELAY_DEV_RE }, l: { str: 3, re: /^[lsc][0-9]{1,2}$/ } },   // a seated greeter asks the relay to vouch for one TURN link (gifos shared/turn-ticket.js)
     capture: { tk: { obj: RELAY_TICKET }, w: { obj: RELAY_ORDER } },   // an open room taken by a $5/$10 subscriber: the meeting ticket and an order signed by its key
     capren: { tk: { obj: RELAY_TICKET } },                             // the captor's renewed ticket
+    acl: { tk: { obj: RELAY_TICKET } },                                // THE ROOM ACL: a meeting right for this meeting, shown so the relay adds its room-scoped permissions (docs/relay-lockdown.md "Meeting size: who decides")
     tdoors: { q: { list: 16, item: { str: 16, re: RELAY_DEV_RE }, opt: 1 } },   // the meeting's live subroom doors, signed by the relay for the TURN service; q: devices its signed answer says live or gone (a SUB.3 re-pipe ask)
   };
   function sealedOk(m) {

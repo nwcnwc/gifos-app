@@ -52,9 +52,6 @@
  *   fabricPipePeers      A1     the far ends of my joining connections that are up (o.sub.pipeEnds(), read once a tick)
  *   fabricSubDoor        A1     my own knock found my door empty: o.sub.doorEmpty() (the page asks for a fresh grant for my door)
  *   fabricSubRepipe      A1     my room lost its joining connection: o.sub.repipe() (the page asks once for a new one)
- *   fabricWall           A1     L52: o.wall.line(), the room's people line as this page reads it (0 none, below 0 not known yet)
- *   fabricPass           A1     L52.4: o.wall.pass(seat), that seeker showed a ticket of its own
- *   fabricWalled         A1     L52.5: o.wall.walled(seat, full), I refused that seeker at the wall
  *   fabricSubGo          A1     SUB.10: o.sub.go(), the door my pipe end says my subroom walks to (-1 none)
  *   fabricSubWalk        A1     SUB.10: o.sub.walk(n, p), may my seat walk now (a path end stays until it is alone)
  *   fabricTurnOn         A1     TURN.5.3: o.sub.on(), this meeting has a TURN service
@@ -552,11 +549,6 @@
     // may my seat walk now (n: the seats my room fold counts, p: the door it says)
     const fabricSubGo = (id) => { if (id !== me || !subF || !subF.go) return -1; const g = subF.go(); return Number.isInteger(g) && g >= 0 ? g : -1; };
     const fabricSubWalk = (id, n, p) => !!(id === me && subF && subF.walk && subF.walk(n, p));
-    // L52 (C++: mesh_wall_fab.inc:fabricWall / fabricPass / fabricWalled): the room's people line, a seeker's ticket, and my refusal, from the page.
-    const wallF = o.wall || null;
-    const fabricWall = (id) => { if (id !== me || !wallF || !wallF.line) return 0; const n = wallF.line(); return Number.isInteger(n) ? n : 0; };
-    const fabricPass = (id, nc) => !!(id === me && wallF && wallF.pass && wallF.pass(nc));
-    const fabricWalled = (id, nc, full) => { if (id === me && wallF && wallF.walled) wallF.walled(nc, !!full); };
     // TURN.5.3 (C++: mesh_turn.inc:fabricTurnOn / fabricCutProbe): the meeting has TURN; does x answer at the door, and is there a
     // path to it (direct, or over a friend of mine: TURN.3)? The page's dial takes one verdict (FHOP_RELAY_ASK): cutArm starts it
     // for a Section-1 seat as the root's report grows late, so the verdict is in when the law reads it (the sim's probe is an oracle).
@@ -593,7 +585,7 @@
       fabricAdmitLog: noop, fabricDupMint: noop, fabricNoteBackoff: noop, fabricNoteReseat: noop, fabricNoteRollback: noop,
       fabricNoteSwap: noop, fabricVerdict: deaths.verdict, l18UxDeliv: noop, descEnd: noop, descNote: noop, g4Joined: noop,   // g4Joined: the sim's L40 contest lever only (X1 55c97d1)
       fabricFreeCells, fabricLieFor: () => null, fabricUnreachable, fhopActive: () => !!fh, fhopFriendFor,
-      fabricDoorNet, fabricDoorVerdict, fabricDoorBlk, fabricDoorDue, fabricSubAsk, fabricSubProbe, fabricPipePeers, fabricSubDoor, fabricSubRepipe, fabricSubGo, fabricSubWalk, fabricTurnOn, fabricCutProbe, fabricWall, fabricPass, fabricWalled,
+      fabricDoorNet, fabricDoorVerdict, fabricDoorBlk, fabricDoorDue, fabricSubAsk, fabricSubProbe, fabricPipePeers, fabricSubDoor, fabricSubRepipe, fabricSubGo, fabricSubWalk, fabricTurnOn, fabricCutProbe,
       fabricMyTier: () => ((measure.tier ? measure.tier() : E.TIER_DESKTOP) | 0),
       fabricMyNat: () => ((measure.nat ? measure.nat() : E.NAT_OPEN) | 0),
       fabricLeft: () => leaveNow(false), fabricReloadBye: () => leaveNow(true),

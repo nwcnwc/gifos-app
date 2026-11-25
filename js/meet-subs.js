@@ -835,6 +835,19 @@
     const at = Date.now();
     return { on: true, at, ticket, proof: await signText(SUB.proofMessage(SUB.roomContext(room), 'at:' + at)) };
   }
+  // THE ROOM ACL: this browser's own meeting right for the meeting, as the
+  // meeting service reads it ({ticketJson, sig}), or null. The service keeps
+  // only the permissions it carries. The better of the subscription's meeting
+  // ticket and a live four-hour pass's, by the same rank the room order uses.
+  async function meetingRight(room) {
+    const ticket = await currentTicket(room);
+    const lp = ticket && meet ? await livePass().catch(() => null) : null;
+    if (!(ticket && meet && beatsPass(meet.grants, lp && lp.o))) {
+      const pt = await currentPassTicket(room);
+      if (pt) return pt;
+    }
+    return ticket || null;
+  }
   // The room's plan from the order the room carries: {tier, exp} or null.
   async function roomTier(order, room) {
     try { return await SUB.roomTierOf(order, room, verifyPay, verifyKey, nowS()); } catch (e) { return null; }
@@ -1488,7 +1501,7 @@
   GifOS.meetSubs = {
     askMove, moveOptions, showOverflowNote,
     rights, planRights, refresh, keepFresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, subSelection, applySubSelection, paintNow, paintSettings, openSettings, openSubscribe, mayCreateAdminRoom, showFull, hideFull, fullWaiting, fullOffers, hostOffer, doorRight, showHostPrompt,
-    roomOrder, roomTier, proveAtDoor, checkShown, newNonce,
+    roomOrder, roomTier, meetingRight, proveAtDoor, checkShown, newNonce,
     appNow, joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureCurrent, captureOrder, captureKeys, fileBytes, downloadFile, useFile, librarySigner, restoreInApp,
     keepReceipt, subReceiptFiles,
     passMeeting: () => (pmeet ? { grants: pmeet.grants || null, room: pmeet.room, gen: pmeet.gen, exp: pmeet.exp, until: pmeet.until, moved: pmeet.moved, held: !!pmeet.ticket } : null),
