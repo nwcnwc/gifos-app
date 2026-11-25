@@ -1,0 +1,116 @@
+/* embed.html (gifos.app/embed): the broadcast viewer as a player in another site's page.
+   The page is only this player: the stage picture, the overlay, the password card. */
+html, body { margin: 0; height: 100%; background: #111; overflow: hidden; }
+#stagefeed { position: fixed; inset: 0; background: #111; display: flex; align-items: center; justify-content: center; }
+#stagefeed .rowtile { width: 100%; height: 100%; position: relative; overflow: hidden; }
+#stagefeed video { width: 100%; height: 100%; object-fit: contain; display: block; }
+body.emb-unhosted #stagefeed { visibility: hidden; }   /* not hosted right now: no picture */
+/* The room's blur rule, drawn on the stage picture (the same strengths as the meeting's tiles: --bw from the
+   media plane's size observer, the fractions from the global timings on the root). */
+#stagefeed video.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .009))) saturate(.9); transform: scale(1.07); }
+#stagefeed video.blur2 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-max, .0225))) saturate(.75); transform: scale(1.15); }
+[hidden] { display: none !important; }
+#embedui { position: fixed; inset: 0; z-index: 9000; pointer-events: none; color: #fff;
+  font: 500 14px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+#embedui > * { pointer-events: auto; }
+#embedui .emb-top { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 10px; padding: 12px 14px 28px;
+  background: linear-gradient(rgba(0,0,0,.6), transparent); pointer-events: none; }
+#embedui .emb-live { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 4px; background: #667;
+  font-weight: 700; font-size: 12px; letter-spacing: .04em; flex: none; }
+#embedui .emb-live i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; display: inline-block; }
+#embedui .emb-live[data-state="watching"], #embedui .emb-live[data-state="live"] { background: rgba(214,40,48,.92); }
+#embedui .emb-live[data-state="pre"] { background: #5c3d8a; }
+#embedui .emb-live[data-state="reconnecting"] { background: #b0742a; }
+#embedui .emb-count { opacity: .9; flex: none; }
+#embedui .emb-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; min-width: 0; }
+#embedui .emb-play { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column;
+  align-items: center; gap: 8px; border: 0; background: none; color: #fff; cursor: pointer; font: inherit; }
+#embedui .emb-play svg { width: 84px; height: 84px; padding: 18px 14px 18px 22px; box-sizing: border-box; border-radius: 50%;
+  background: rgba(214,40,48,.92); fill: #fff; box-shadow: 0 4px 24px rgba(0,0,0,.5); }
+#embedui .emb-play span { background: rgba(0,0,0,.6); padding: 3px 10px; border-radius: 12px; }
+#embedui .emb-msg { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; max-width: 80%; text-align: center;
+  background: rgba(0,0,0,.6); padding: 10px 16px; border-radius: 8px; font-size: 15px; }
+#embedui .emb-bar { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 8px; padding: 26px 10px 10px;
+  background: linear-gradient(transparent, rgba(0,0,0,.6)); }
+#embedui .emb-fill { flex: 1; }
+#embedui .emb-btn { border: 0; border-radius: 6px; background: rgba(255,255,255,.16); color: #fff; font: inherit; padding: 6px 10px;
+  cursor: pointer; text-decoration: none; white-space: nowrap; }
+#embedui .emb-btn:hover, #embedui .emb-btn:focus-visible { background: rgba(255,255,255,.28); }
+#embedui .emb-gear { min-width: 34px; padding: 6px 8px; }
+#embedui .emb-gear svg { width: 18px; height: 18px; fill: currentColor; display: block; }
+#embedui .emb-gear[aria-expanded="true"] { background: rgba(255,255,255,.28); }
+/* The gear menu sits above the bar and scrolls inside itself, including on a 390x220 player. */
+#embedui .emb-menu { position: absolute; right: 8px; bottom: 48px; width: min(260px, calc(100% - 16px)); max-height: calc(100% - 128px);
+  overflow: auto; box-sizing: border-box; padding: 4px; border-radius: 8px; background: rgba(10,10,15,.92);
+  box-shadow: 0 4px 24px rgba(0,0,0,.5); }
+#embedui .emb-mrow { display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box; margin: 0; border: 0;
+  border-radius: 6px; background: transparent; color: #fff; font: inherit; text-align: left; text-decoration: none; padding: 6px 10px; cursor: pointer; }
+#embedui .emb-mrow:hover, #embedui .emb-mrow:focus-visible { background: rgba(255,255,255,.16); }
+#embedui .emb-menu button.emb-mrow:disabled { opacity: .5; cursor: default; }
+#embedui .emb-menu button.emb-mrow:disabled:hover { background: transparent; }
+#embedui .emb-mstate { margin-left: auto; opacity: .9; }
+#embedui .emb-mrow input[type="range"] { flex: 1; min-width: 0; width: 100%; margin: 0; }
+#emb-m-watch { display: contents; }
+#embedui .emb-cap { position: absolute; left: 10px; right: 12px; bottom: 48px; margin: 0; max-height: 4.6em; overflow: auto; pointer-events: none;
+  box-sizing: border-box; padding: 8px 12px; border-radius: 8px; background: rgba(10,10,15,.92); color: #fff;
+  font: 600 14px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+body.emb-has-share #embedui .emb-cap { right: calc(20px + clamp(96px, 30vmin, 260px)); }
+body.emb-has-share.emb-stage-folded #embedui .emb-cap { right: 12px; }
+
+/* The password card: typed here, inside the gifos.app frame, so the page around it never sees it. */
+.emb-card { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2147483647; width: min(320px, 86vw);
+  box-sizing: border-box; padding: 16px; border-radius: 8px; background: rgba(10,10,15,.92); color: #eceef8;
+  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; box-shadow: 0 4px 24px rgba(0,0,0,.5); }
+.emb-card h3 { margin: 0 0 6px; font-size: 17px; }
+.emb-card p { margin: 0 0 10px; }
+.emb-card input { width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 6px; border: 1px solid #2a2a3f; background: #14141f; color: #eceef8; font: inherit; }
+.emb-card-row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+.emb-card button { border: 0; border-radius: 6px; padding: 7px 14px; font: inherit; cursor: pointer; background: rgba(255,255,255,.16); color: #fff; }
+.emb-card button[type="submit"] { background: rgba(214,40,48,.92); }
+@media (max-width: 420px) {
+  #embedui .emb-top { padding: 8px 10px 22px; gap: 8px; }
+  #embedui .emb-play svg { width: 64px; height: 64px; padding: 14px 10px 14px 17px; }
+  #embedui .emb-bar { padding: 22px 6px 6px; gap: 6px; }
+  #embedui .emb-btn { padding: 5px 8px; font-size: 13px; }
+}
+
+/* SHARES: tabs, the selected share fills the player, and the Stage floats in one squarish inset. No share: the Stage fills. */
+.emb-share { display: none; position: fixed; inset: 0; background: #111; z-index: 1; }
+body.emb-has-share .emb-share { display: block; }
+.emb-share video { width: 100%; height: 100%; object-fit: contain; display: block; }
+.emb-share-box { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 24px 60px;
+  color: #eceef8; font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; text-align: center; box-sizing: border-box; overflow: auto; }
+.emb-share-box h4 { margin: 0 0 8px; font-size: 17px; }
+.emb-share-box ol { margin: 0; padding-left: 1.4em; text-align: left; max-width: 520px; }
+.emb-share-box li { margin: 4px 0; }
+.emb-share-box li span { opacity: .65; font-size: 13px; }
+.emb-inset-min { display: none; }
+#stagefeed .rlabel { display: none; }
+body.emb-has-share #stagefeed { inset: auto; width: clamp(96px, 30vmin, 260px); aspect-ratio: 1 / 1; z-index: 2; border-radius: 8px; overflow: hidden;
+  box-shadow: 0 4px 22px rgba(0,0,0,.55); cursor: grab; touch-action: none; transition: left .25s, top .25s; }
+body.emb-has-share.emb-dragging #stagefeed { transition: none; cursor: grabbing; }
+body.emb-inset-lock.emb-has-share #stagefeed { cursor: default; touch-action: auto; }
+body.emb-has-share[data-inset="br"] #stagefeed { right: 12px; bottom: 56px; }
+body.emb-has-share[data-inset="bl"] #stagefeed { left: 12px; bottom: 56px; }
+body.emb-has-share[data-inset="tr"] #stagefeed { right: 12px; top: 88px; }
+body.emb-has-share[data-inset="tl"] #stagefeed { left: 12px; top: 88px; }
+body.emb-has-share .emb-inset-min { display: block; position: absolute; top: 6px; left: 6px; z-index: 3; min-width: 28px; height: 28px; border: 0; border-radius: 14px;
+  background: rgba(0,0,0,.6); color: #fff; font: 600 14px/1 system-ui, sans-serif; cursor: pointer; padding: 0 8px; }
+body.emb-has-share.emb-stage-folded #stagefeed { width: auto; height: auto; aspect-ratio: auto; background: transparent; box-shadow: none; overflow: visible; }
+body.emb-has-share.emb-stage-folded #stagefeed .rowtile { display: none; }
+body.emb-has-share.emb-stage-folded .emb-inset-min { position: static; height: 32px; padding: 0 14px; background: rgba(214,40,48,.92); }
+.emb-tabbar { position: fixed; top: 44px; left: 0; right: 0; z-index: 9001; display: flex; justify-content: center; padding: 0 10px; pointer-events: none; }
+.emb-tabs { display: flex; gap: 4px; padding: 3px; border-radius: 8px; background: rgba(0,0,0,.55); pointer-events: auto; max-width: 100%; overflow-x: auto; }
+.emb-tab { border: 0; border-radius: 6px; padding: 5px 12px; background: transparent; color: #dfe2f2; cursor: pointer; white-space: nowrap;
+  font: 500 13px/1.2 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.emb-tab[aria-selected="true"] { background: rgba(255,255,255,.22); color: #fff; }
+.emb-tabmenu { display: none; pointer-events: auto; max-width: 70vw; padding: 5px 8px; border-radius: 6px; border: 0; background: rgba(0,0,0,.65); color: #fff;
+  font: 500 13px system-ui, sans-serif; }
+@media (max-width: 480px) {
+  .emb-tabs { display: none; }
+  .emb-tabmenu { display: block; }
+  .emb-tabbar { top: 38px; justify-content: flex-end; }
+  body.emb-has-share #stagefeed { width: clamp(84px, 32vmin, 160px); }
+  body.emb-has-share[data-inset="tr"] #stagefeed, body.emb-has-share[data-inset="tl"] #stagefeed { top: 76px; }
+  body.emb-has-share[data-inset="br"] #stagefeed, body.emb-has-share[data-inset="bl"] #stagefeed { bottom: 50px; }
+}

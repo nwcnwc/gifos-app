@@ -1,0 +1,21 @@
+{
+  "boot.title.booting": "GifOS — Image wird gestartet…",
+  "boot.title.named": "{name} — gestartetes Image",
+  "boot.image.defaultName": "Computer-Image",
+  "boot.banner.msg": "Gestartetes Image: {name} — dieser Computer läuft in einem eigenen Bereich; Ihr echter Home-Bildschirm bleibt unberührt.",
+  "boot.reboot.label": "Neu starten",
+  "boot.reboot.hint": "Änderungen an diesem gestarteten Computer verwerfen und ihn aus den Image-Daten neu aufbauen",
+  "boot.reboot.confirm": "Neu starten? Änderungen in diesem gestarteten Computer werden verworfen und er wird aus dem Image neu aufgebaut.",
+  "boot.update.msg": "Eine neue Version von GifOS ist verfügbar.",
+  "boot.update.more": "Neuigkeiten",
+  "boot.update.action": "Jetzt aktualisieren",
+  "boot.update.dismiss": "Schließen",
+  "boot.arrange.msg": "Symbole anordnen",
+  "boot.arrange.hint": "— ziehen Sie sie, wohin Sie möchten",
+  "boot.arrange.done": "Fertig",
+  "boot.failed.name": "Start fehlgeschlagen",
+  "boot.failed.noId": "Keine Image-ID in der Adresse.",
+  "boot.failed.notFound": "Image auf dem Home-Bildschirm des Hosts nicht gefunden (wurde es gelöscht?).",
+  "boot.failed.notImage": "Kein GifOS-Desktop-Image.",
+  "boot.failed.error": "Start fehlgeschlagen: {message}"
+}
