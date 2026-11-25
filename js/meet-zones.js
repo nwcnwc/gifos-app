@@ -778,6 +778,26 @@
   // agenda by its list, opts.content.needH / needW) and the people get the
   // rest, never less than the face floor. One rule for every screen size.
   function faceFloor(box) { return Math.round(Math.max(FIT_ROW_MIN.phone, Math.min(box.w, box.h) * FACE_FLOOR_FRAC)); }
+  // Beside a share one Stadium composite takes the free room left under the
+  // row tiles of the people band (it stayed a thumbnail over an empty block).
+  // Same packing rule as with no share: a person inside the composite never
+  // passes a row tile (capBox); and the share stays the biggest tile.
+  function growStad(rects, pb, stadCount, shareRect, gap) {
+    const st = rects.filter(function (r) { return r.tier === 'stad'; });
+    const rows = rects.filter(function (r) { return r.tier === 'row'; });
+    if (st.length !== 1 || !rows.length) return;
+    const t = st[0];
+    let rowSide = 0;
+    for (let i = 0; i < rows.length; i++) rowSide = Math.max(rowSide, Math.min(rows[i].w, rows[i].h));
+    let side = Math.min(pb.w, pb.y + pb.h - t.y);
+    if (shareRect) side = Math.min(side, Math.sqrt(shareRect.w * shareRect.h) * 0.95);
+    if (!(side > t.w + 1)) return;
+    const c = capBox(side, side, faceCount(stadCount, rows.length), rowSide);
+    side = Math.floor(Math.max(t.w, Math.min(c.w, c.h)));
+    if (!(side > t.w)) return;
+    t.x += (t.w - side) / 2; t.w = side; t.h = side;
+  }
+
   function layoutFitShare(opts, box, gap, phone, row, stad, shareItem, onStage) {
     const c = opts.content || {};
     const nPeople = onStage.length + row.length + stad.length;
@@ -837,6 +857,7 @@
       }
     }
     const p = people(row, stad, pb, phone, 'fit', gap, true, opts.stadCount);
+    growStad(p.rects, pb, opts.stadCount, sr[0], gap);
     if (wide) pinEnd(p.rects, pb);
     const rects = sr.concat(p.rects);
     let stageBox = null;
