@@ -162,32 +162,13 @@
   }
   // The same slip as a receipt GIF (js/receipt-plan.js), from the files this
   // browser already holds. Nothing here calls the payment service.
-  function lsJson(k) {
-    try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; }
-  }
-  function receiptFiles() {
-    var files = {};
-    // Only a bought plan has a receipt (a license was issued for it): a checkout started and never paid has none.
-    var c = MS().paidCredential ? MS().paidCredential() : null;
-    var w = lsJson('gifos-pass-wallet');
-    var st = lsJson('gifos-sub-state') || {};
-    var bag = lsJson('gifos-sub-purchase');
-    if (c && typeof c === 'object') files['subscription.json'] = JSON.stringify(c);
-    if (w && typeof w === 'object') files['passes.json'] = JSON.stringify(w);
-    if (c && st && st.licenseJson && st.sig && st.subId === c.subId) files['license.json'] = JSON.stringify({ licenseJson: st.licenseJson, sig: st.sig });
-    if (st && (Number.isInteger(st.until) || Number.isInteger(st.paidThrough))) {
-      var state = {};
-      if (Number.isInteger(st.until)) state.until = st.until;
-      if (Number.isInteger(st.paidThrough)) state.paidThrough = st.paidThrough;
-      if (typeof st.status === 'string' && st.status) state.status = st.status;
-      files['state.json'] = JSON.stringify(state);
-    }
-    var flat = bag && typeof bag === 'object' ? (c ? bag.sub : bag.pass) : null;
-    if (flat && typeof flat === 'object') files['purchase.json'] = JSON.stringify(flat);
-    return files;
+  // Every receipt this browser holds (meetSubs.receiptSets): one per plan that was paid for, newest first, with the
+  // passes; a checkout started and never paid has none.
+  function receiptSets() {
+    try { return (MS().receiptSets && MS().receiptSets()) || []; } catch (e) { return []; }
   }
   // A checkout started here and never paid: a plain note, never a receipt. When it had replaced a bought plan in this
-  // browser (pages before 0.9.28.30 saved the checkout over it) and that plan is not back, say how to get it back.
+  // browser (earlier pages saved the checkout over it) and that plan is not back, say how to get it back.
   function paintPending(host, c) {
     var p = MS().pendingCheckout ? MS().pendingCheckout() : null;
     if (!p) return false;
@@ -229,14 +210,19 @@
     try { if (paintPending(host, c)) host.hidden = false; } catch (e0) {}
     var plan = GifOS.receiptPlan;
     if (!plan || typeof plan.rows !== 'function' || typeof plan.mount !== 'function') return;
-    var files = null;
-    try { files = receiptFiles(); } catch (e) { return; }
-    var list = [];
-    try { list = plan.rows(files) || []; } catch (e2) { return; }
-    if (!list.length) return;
+    var shown = 0;
+    receiptSets().forEach(function (set) {
+      var list = [];
+      try { list = plan.rows(set.files) || []; } catch (e2) { return; }
+      if (!list.length) return;
+      if (!shown) host.appendChild(el('h3', null, t('pmReceipt')));
+      try { plan.mount(host, list, { files: set.files }); } catch (e3) { return; }
+      // One slip per plan: the first keeps the slip's id, the later ones are numbered.
+      try { var last = host.lastChild; if (shown && last && last.id === 'pm-slip') last.id = 'pm-slip-' + shown; } catch (e5) {}
+      shown++;
+    });
+    if (!shown) return;
     host.hidden = false;
-    host.appendChild(el('h3', null, t('pmReceipt')));
-    try { plan.mount(host, list, { files: files }); } catch (e3) { host.textContent = ''; host.hidden = true; return; }
     try { if (typeof plan.foot === 'function') plan.foot(host); } catch (e4) {}
   }
 
