@@ -3456,6 +3456,19 @@
     // with the camera on: soft in a soft room, clear in a clear one. The same
     // call paints the self tile and every remote tile, so you see what others see.
     function blurLevelFor(id, asIfCamOn, cameraOnly, where) {
+      // STAGEBLUR: id 'stage' is the Stage's composite strip, ONE decision every surface (/meet, /cast, the embed) applies.
+      // The strip is a received picture of every stager (a camera-off seat's avatar rides it as video), so it wears the
+      // strictest level the room's rule gives anyone else on the Stage (the call the Stage views and face boxes make), at
+      // least Min under a moderator's block. My own track already carries my blur. Nobody else known on it: blurred.
+      if (id === 'stage') {
+        let lv = 0;
+        try {
+          const ids = stageIds().filter((x) => x !== myId);
+          if (!ids.length) return stageIds().length ? 0 : 2;
+          for (const x of ids) { let b = blurLevelFor(x, false, false, 'stage') | 0; if (modBlurOn(x)) b = Math.max(1, b); lv = Math.max(lv, b); }
+        } catch (e) { return 2; }
+        return lv;
+      }
       const isMe = id === 'me';
       let st = (isMe ? myStatus : statusOf.get(id)) || {};
       if (asIfCamOn && st.camOff) st = Object.assign({}, st, { camOff: false });

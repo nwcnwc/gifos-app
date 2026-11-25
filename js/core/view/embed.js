@@ -106,11 +106,7 @@
     var tried = false;
 
     function stageVideo() { return stagefeedEl.querySelector('.rowtile video'); }
-    function stageLevel() {   // the strictest blur the room's rule gives anyone on the stage
-      var lv = 0;
-      try { C.stageIds().forEach(function (id) { lv = Math.max(lv, C.blurLevelFor(id) || 0); }); } catch (e) { lv = 2; }
-      return lv;
-    }
+    function stageLevel() { try { return C.blurLevelFor('stage'); } catch (e) { return 2; } }   // the core's one Stage blur decision, the same /meet and /cast apply
     function watchCount() {
       var up = new Set();
       try { C.stageIds().forEach(function (id) { up.add(id); }); } catch (e) {}
