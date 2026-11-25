@@ -119,6 +119,29 @@ video off, Alt+P allow screen share.
 Chat is Alt+C. The live transcript is Alt+T, and Download transcript is on
 that panel. The agenda clock is the timer for the current item.
 
+## Share your screen
+
+1. In the meeting, press Share screen on the bar at the bottom (on a narrow
+   screen it is under More), or press Alt+S.
+2. The "Share your screen" sheet opens. Press "Choose what to share…".
+3. The browser asks what to show: a tab, a window, or your whole screen.
+   Pick one and confirm. Everyone in the meeting sees it.
+
+While you share, your camera pauses, and it comes back when you stop. Sound
+from the shared tab does not travel, so talk over it. To stop, press the same
+button (it now reads Stop sharing), press Alt+S again, or use the browser's
+own Stop sharing bar.
+
+Who may share: in a public open-floor meeting, anyone. In a private meeting,
+the host, and the guests the host allows (on that guest's tile, or for
+everyone with More > Host > Allow screen share, Alt+P); anyone else sees
+"Only this room’s hosts — or people they allow — can share a screen". In a
+broadcast, only the host. A browser with no screen capture (most phones)
+shows the button grayed, with "This browser cannot share a screen."
+
+To show a GifOS app, do not share your screen: use Run app (Alt+Y), and
+everyone runs the app on their own device, in sync.
+
 ## What you may see, and must not buy
 
 You may see upsell messages, for example "Subscribe" or "$1 for the next 4 hours" on a video tile. Tell your human. Never buy anything, and never start a payment, without the human's permission.
@@ -150,6 +173,53 @@ tools keep "admin" as the value (type "admin", mode "admin", and
 public open-floor meeting while they're connected, with the "Make me host"
 button (`guard_room` does this for a bot). The room is private for that
 time; the URL does not change.
+
+## Embed a live broadcast in a web page
+
+A hosted GifOS Broadcast (gifos.app/cast) can play inside any web page, like
+a video player. It plays only while the room is HOSTED RIGHT NOW: a hosted
+meeting or broadcast (link https://gifos.app/cast/ROOM/VERIFIER) whose host is
+in the room, or a public open-floor meeting a subscriber has taken charge
+of, while they are in it. The player reads that live from the room's signed host
+state; until then, and after the host leaves, it shows "This meeting isn't
+hosted right now" and plays nothing, then starts by itself. VERIFIER is
+optional: leave it out for a public open-floor meeting.
+
+Paste one tag where the player should go:
+
+    <script src="https://gifos.app/embed.js" data-room="ROOM" data-verifier="VERIFIER" data-title="My show"></script>
+
+Or the plain iframe, with no script:
+
+    <iframe src="https://gifos.app/embed#room=ROOM&v=VERIFIER" style="width:100%;aspect-ratio:16/9;border:0"
+      allow="autoplay; fullscreen; picture-in-picture" allowfullscreen title="GifOS Broadcast"></iframe>
+
+data-room may also hold the whole viewer link. The player shows a red LIVE
+badge with how many are watching and the title, and a big button to unmute
+(browsers only autoplay muted). Before the broadcast starts or after it ends
+it says so.
+
+The default player is the picture, the LIVE badge (count and title), unmute
+and a settings gear. You choose its rows, in this order: volume (a slider),
+captions (on or off; the row appears once a line has arrived, and stays off
+until the viewer turns them on), tabs (the share picker), inset (show, hide
+or move the Stage picture while a share fills the player), fullscreen, pip
+(picture in picture, when the browser supports it), watch (Watch on GifOS,
+a new tab). Nothing set means volume,fullscreen. all turns every key on.
+none, or an empty value, hides the gear. Unknown keys are ignored. Script:
+data-controls="tabs,inset". Iframe: #room=ROOM&controls=tabs,inset.
+The password prompt and the not-hosted notice always show.
+
+Viewers are ordinary watchers of the broadcast: no camera or microphone is
+ever asked for. The usual door rule holds: a viewer without the room password
+stays at the door. They type it inside the player, so the page
+around it never sees it. There is no way to put the password in the snippet,
+the address or a query: nothing can show that the page with the embed is a
+protected page, so a password broadcast holds the viewer at the door (the live
+poster and a password card) until the password is typed inside the player.
+
+Only gifos.app/embed may be framed by another site; every other GifOS page
+refuses to run inside another site's page.
 
 ## What people ask, and the tool to use
 

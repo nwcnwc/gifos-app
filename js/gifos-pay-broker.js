@@ -306,10 +306,16 @@
   }
   // A ledger line per PAYMENT: a transaction already on the ledger (another
   // tab recorded it, a resume ran twice) is not written again.
-  function recordOnce(scope, entry) {
+  // The receipt's own proof facts ride along (the chain, who was paid, the
+  // PayPal order), so purchases() can link each transaction to where anyone
+  // can check it. Lines written before 2026-11-24 lack them.
+  const PROOF_FIELDS = ['network', 'payee', 'orderId', 'feeCollected', 'legs'];
+  function recordOnce(scope, entry, receipt) {
     const p = purse();
     if (entry.tx && p.history(scope).some((e) => e && e.tx === entry.tx && e.rail === entry.rail)) return false;
-    p.record(scope, entry);
+    const line = Object.assign({}, entry);
+    for (const k of PROOF_FIELDS) if (receipt && receipt[k] != null && line[k] == null) line[k] = receipt[k];
+    p.record(scope, line);
     return true;
   }
 
@@ -683,7 +689,7 @@
     const r = paid.receipt, p = purse();
     const tx = r.tx || r.orderId || null, at = r.at || Date.now();
     const scope = entScope(r.payeeId, rec.appId);
-    if (recordOnce(scope, { amount: String(rec.amount), rail: 'paypal', sku: rec.sku || null, reason: rec.reason, payeeId: r.payeeId, tx, at }) && rec.sku) {
+    if (recordOnce(scope, { amount: String(rec.amount), rail: 'paypal', sku: rec.sku || null, reason: rec.reason, payeeId: r.payeeId, tx, at }, r) && rec.sku) {
       p.grant(scope, rec.sku, { tx, amount: String(rec.amount), rail: 'paypal', at, payeeId: r.payeeId });
     }
     try { await mintReceiptFile(paid, { sku: rec.sku }, { payingTo: rec.payingTo }, rec.appName); } catch (e) { try { console.warn('receipt file not minted:', e); } catch (e2) {} }
@@ -1014,7 +1020,7 @@
     const r = paid.receipt, p = purse();
     const tx = r.tx || null, at = r.at || Date.now();
     const scope = entScope(r.payeeId, rec.appId);
-    if (!recordOnce(scope, { amount: String(rec.amount), rail: 'mpp', sku: rec.sku || null, reason: rec.reason, payeeId: r.payeeId, tx, at })) return;
+    if (!recordOnce(scope, { amount: String(rec.amount), rail: 'mpp', sku: rec.sku || null, reason: rec.reason, payeeId: r.payeeId, tx, at }, r)) return;
     if (rec.sku) p.grant(scope, rec.sku, { tx, amount: String(rec.amount), rail: 'mpp', at, payeeId: r.payeeId });
     try { await mintReceiptFile(paid, { sku: rec.sku }, { payingTo: rec.payingTo }, rec.appName); } catch (e) { try { console.warn('receipt file not minted:', e); } catch (e2) {} }
   }
@@ -1185,7 +1191,7 @@
     // (An agent payment another tab already wrote down is not written twice.)
     if (paid.recorded) return out;
     if (request.sku && txSpentOn(out.tx, scope, request.sku)) throw new Error('that payment already bought something else on this computer — one payment, one purchase');
-    if (!recordOnce(scope, { amount: String(choice.amount), rail: choice.rail, sku: request.sku || null, reason: request.reason, payeeId: receipt.payeeId, tx: out.tx, at: out.at })) return out;
+    if (!recordOnce(scope, { amount: String(choice.amount), rail: choice.rail, sku: request.sku || null, reason: request.reason, payeeId: receipt.payeeId, tx: out.tx, at: out.at }, receipt)) return out;
     if (request.sku) p.grant(scope, request.sku, { tx: out.tx, amount: out.amount, rail: out.rail, at: out.at, payeeId: receipt.payeeId });
     // The receipt becomes a FILE (docs/payments.md "The receipt is a file"):
     // proof you can hold, back up, and carry to a new computer. Best-effort
@@ -1206,7 +1212,7 @@
     if (!manifest || !manifest.capabilities || !manifest.capabilities.pay) {
       throw new Error('This app did not declare the "pay" capability.');
     }
-    if (typeof sku !== 'string' || !sku.trim()) throw new Error(what + '() needs a sku');
+    if (what !== 'purchases' && (typeof sku !== 'string' || !sku.trim())) throw new Error(what + '() needs a sku');
     const verdict = await verdictFor(manifest, appBytes);
     const elig = GifOS.charge.eligibility(verdict, manifest);
     if (!elig.allowed) throw new Error(elig.reason);
@@ -1269,6 +1275,12 @@
       if (txSpentOn(receipt.tx, entScope(receipt.payeeId, receipt.appId), receipt.sku)) throw new Error('that payment already bought something else on this computer — one payment, one purchase');
       purse().grant(entScope(receipt.payeeId, receipt.appId), receipt.sku, { tx: receipt.tx, amount: receipt.amount, rail: receipt.rail, at: receipt.at, payeeId: receipt.payeeId });
     }
+    // A receipt brought to this computer is a payment this computer now
+    // knows of, tip or purchase: it joins the ledger purchases() reads (once
+    // per transaction; on the computer that paid it is already there).
+    if (receipt.appId && usableAppId(receipt.appId) && receipt.tx && /^[0-9]+$/.test(String(receipt.amount || ''))) {
+      recordOnce(entScope(receipt.payeeId, receipt.appId), { amount: String(receipt.amount), rail: receipt.rail || null, sku: receipt.sku || null, reason: null, payeeId: receipt.payeeId, tx: receipt.tx, at: Number.isFinite(receipt.at) ? receipt.at : null }, receipt);
+    }
     return receipt;
   }
 
@@ -1282,6 +1294,55 @@
     if (!who) return null;
     const ent = purse().entitlement(entScope(who, manifest.appId), sku);
     return entitledTo(ent, who) && ent.tx ? String(ent.tx) : null;
+  }
+
+  // gifos.purchases(): THIS app's payments on this computer, read-only, from
+  // the OS's own records (the ledger line every charge writes, tip or sku,
+  // and the purchases restored from receipt files). Gated exactly like
+  // entitled(): the running bytes must verify for the identity that was
+  // paid, and only that identity's lines under this appId are read — never
+  // another app's, never another signer's. No server call.
+  //   -> [{ at, amount, currency, rail, sku, txs: [{ rail, id, role, verifyUrl }] }]
+  // at is null for a record that never kept its date (old purchases).
+  const PAYPAL_ACTIVITY = 'https://www.paypal.com/myaccount/activities';
+  function purchaseOf(e) {
+    const rail = typeof e.rail === 'string' && e.rail ? e.rail : null;
+    const amount = /^[0-9]+$/.test(String(e.amount == null ? '' : e.amount)) ? String(e.amount) : null;
+    let fee = null; try { fee = treasuryAddress(); } catch (x) {}
+    const parts = GifOS.charge.receiptLegs({ rail, tx: e.tx, amount, payee: e.payee, network: e.network, legs: e.legs, orderId: e.orderId, feeCollected: e.feeCollected }, fee);
+    // A line written before the chain was recorded is read on the chain this
+    // computer pays on (the only one it has used for real money).
+    let net = parts.network;
+    if (!net && parts.kind === 'chain') { try { net = GifOS.baseNet.active().caip; } catch (x) {} }
+    const url = (tx) => parts.kind === 'chain' ? ((GifOS.baseNet && GifOS.baseNet.txUrl) ? GifOS.baseNet.txUrl(net, tx) : null)
+      : parts.kind === 'paypal' ? PAYPAL_ACTIVITY : null;
+    return {
+      at: Number.isFinite(e.at) ? e.at : null,
+      amount,
+      currency: rail === 'x402' || rail === 'transfer' ? 'USDC' : 'USD',
+      rail,
+      sku: typeof e.sku === 'string' && e.sku ? e.sku : null,
+      txs: parts.legs.map((l) => ({ rail, id: String(l.tx), role: l.role, verifyUrl: url(l.tx) })),
+    };
+  }
+  async function purchases(manifest, appBytes) {
+    const who = await paidIdentityFor(manifest, appBytes, null, 'purchases');
+    if (!who || !usableAppId(manifest.appId)) return [];
+    const scope = entScope(who, manifest.appId), p = purse();
+    const out = [], seen = new Set();
+    for (const e of p.history(scope)) {
+      if (!e || (e.payeeId != null && e.payeeId !== who)) continue;
+      if (e.tx) seen.add(e.rail + '|' + e.tx);
+      out.push(purchaseOf(e));
+    }
+    // A purchase restored or granted before its ledger line existed.
+    for (const sku of p.entitlements(scope)) {
+      const ent = p.entitlement(scope, sku);
+      if (!entitledTo(ent, who) || (ent.tx && seen.has(ent.rail + '|' + ent.tx))) continue;
+      out.push(purchaseOf(Object.assign({}, ent, { sku })));
+    }
+    // Oldest first; undated records lead.
+    return out.sort((a, b) => (a.at == null ? -1 : a.at) - (b.at == null ? -1 : b.at));
   }
 
   // Purchases recorded before 2026-09-29 sit under a bare appId
@@ -1322,7 +1383,7 @@
   }
 
   GifOS.payBroker = {
-    charge, entitled, license, ingestReceiptFiles, resumeAgentOffers, resumePaypalOrders, showSheet,
+    charge, entitled, license, purchases, ingestReceiptFiles, resumeAgentOffers, resumePaypalOrders, showSheet,
     PENDING_KEY,
     // The Settings surface reads and writes through these — the panel owns no
     // storage of its own.

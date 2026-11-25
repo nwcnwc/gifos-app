@@ -27,6 +27,9 @@ hand, Stage, its own camera, and frames of other people's cameras. Install it
 with `npm install @gifos-app/agent` (Python: `pip install gifos-agent`). An agent that works in a shell
 keeps one `npx gifos-agent-bridge <meeting link> --name "Ada (Sam's assistant)"`
 process in the meeting and talks to it through files (the SDK README has it).
+To share your screen in a meeting, press Share screen (or Alt+S), then
+"Choose what to share…", and pick a tab, a window or your whole screen; the
+guide above ("Share your screen") has who may share and how to stop.
 
 Meeting links look like https://gifos.app/meet#room=<room> (hosted: &v=<verifier>); the room name rides after #, which browsers never send to a server. The simple public forms, gifos.app/meet/<room> and gifos.app/meet/<room>/<verifier> (hosted), work forever and are fine for links you write by hand, like gifos.app/meet/welcome; they put the room name in the address a server sees.
 
@@ -40,6 +43,53 @@ signature and return shape below is taken from the running runtime
 (js/runtime.js in the public repo), not paraphrased.
 
 Two build paths, in order of preference:
+
+## Embed a live broadcast in a web page
+
+A hosted GifOS Broadcast (gifos.app/cast) can play inside any web page, like
+a video player. It plays only while the room is HOSTED RIGHT NOW: a hosted
+meeting or broadcast (link https://gifos.app/cast/ROOM/VERIFIER) whose host is
+in the room, or a public open-floor meeting a subscriber has taken charge
+of, while they are in it. The player reads that live from the room's signed host
+state; until then, and after the host leaves, it shows "This meeting isn't
+hosted right now" and plays nothing, then starts by itself. VERIFIER is
+optional: leave it out for a public open-floor meeting.
+
+Paste one tag where the player should go:
+
+    <script src="https://gifos.app/embed.js" data-room="ROOM" data-verifier="VERIFIER" data-title="My show"></script>
+
+Or the plain iframe, with no script:
+
+    <iframe src="https://gifos.app/embed#room=ROOM&v=VERIFIER" style="width:100%;aspect-ratio:16/9;border:0"
+      allow="autoplay; fullscreen; picture-in-picture" allowfullscreen title="GifOS Broadcast"></iframe>
+
+data-room may also hold the whole viewer link. The player shows a red LIVE
+badge with how many are watching and the title, and a big button to unmute
+(browsers only autoplay muted). Before the broadcast starts or after it ends
+it says so.
+
+The default player is the picture, the LIVE badge (count and title), unmute
+and a settings gear. You choose its rows, in this order: volume (a slider),
+captions (on or off; the row appears once a line has arrived, and stays off
+until the viewer turns them on), tabs (the share picker), inset (show, hide
+or move the Stage picture while a share fills the player), fullscreen, pip
+(picture in picture, when the browser supports it), watch (Watch on GifOS,
+a new tab). Nothing set means volume,fullscreen. all turns every key on.
+none, or an empty value, hides the gear. Unknown keys are ignored. Script:
+data-controls="tabs,inset". Iframe: #room=ROOM&controls=tabs,inset.
+The password prompt and the not-hosted notice always show.
+
+Viewers are ordinary watchers of the broadcast: no camera or microphone is
+ever asked for. The usual door rule holds: a viewer without the room password
+stays at the door. They type it inside the player, so the page
+around it never sees it. There is no way to put the password in the snippet,
+the address or a query: nothing can show that the page with the embed is a
+protected page, so a password broadcast holds the viewer at the door (the live
+poster and a password card) until the password is typed inside the player.
+
+Only gifos.app/embed may be framed by another site; every other GifOS page
+refuses to run inside another site's page.
 
 ## Path A (best): build the .gif yourself with your code tool
 
@@ -449,7 +499,7 @@ AI — gifos.ai  [capabilities.ai — declare the ROLES you use as an array]
    (video shapes are provider-specific — no settled standard; poll/render
     whatever comes back.)
 
-PAYMENTS — gifos.charge / entitled / license  [capabilities.pay]
+PAYMENTS — gifos.charge / entitled / license / purchases  [capabilities.pay]
    The app asks; GifOS shows ITS OWN payment sheet (verified author,
    amount, reason — the app cannot draw or see it); the person picks a
    method and approves; the money goes straight to the app's AUTHOR. The
@@ -483,6 +533,19 @@ PAYMENTS — gifos.charge / entitled / license  [capabilities.pay]
    await gifos.license(sku)  -> the purchase's transaction id, or null.
        Stable per purchase and the same wherever the receipt is restored —
        anchor saves / accounts / room identity to it.
+   await gifos.purchases()   -> THIS app's own payments on this computer,
+       oldest first, read from the OS's records (no server call): every
+       charge (tips with no sku too) and purchases restored from receipt
+       files. Never another app's or another signer's. Each entry:
+       { at, amount, currency, rail, sku, txs: [{ rail, id, role, verifyUrl }] }
+         at        ms since 1970, or null for an old record with no date
+         amount    base units string ($1 = "1000000"); currency "USD"
+                   (paypal, fednow, mpp) or "USDC" (x402, transfer)
+         sku       the sku bought, or null for a tip
+         txs       one per transaction (a USDC payment is two legs:
+                   role "creator" and "fee"); verifyUrl is where anyone
+                   can check it (basescan for USDC, PayPal's activity page
+                   for PayPal), or null.
    NEVER store "bought" in gifos.db: app state travels inside the shared
    GIF, and a purchase must not travel with it. Ask entitled() instead.
    Purchases become receipt FILES in a Purchases folder; opening one on

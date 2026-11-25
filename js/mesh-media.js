@@ -540,6 +540,23 @@
       ctx.imageSmoothingEnabled = true;
       ctx.drawImage(blurCv, 0, 0, q, q, dx, dy, dw, dh);
     }
+    // A FACE WITH NO PICTURE SHOWS ITS INITIAL. The row tile shows the
+    // person's letter whenever there is no picture to show; a packed cell must
+    // too, or a camera-off person whose video holds no frame (a frameless
+    // avatar track, a phone's overlay-only tile, no letter slot left) goes up
+    // the tree as a black square with only a name. The letter is the one the
+    // tile shows (nameInitial of the burned name); the colours match the sent avatar card.
+    function faceCard(dx, dy, cell, lbl) {
+      ctx.fillStyle = '#14141f'; ctx.fillRect(dx, dy, cell, cell);
+      const ini = lbl && !lbl.dot && lbl.name ? Array.from(String(lbl.name))[0] : '';   // the tile's rule (nameInitial): the name's first character, upper case
+      if (ini) {
+        ctx.fillStyle = '#3a3a55'; ctx.font = '800 ' + Math.round(cell * 0.47) + 'px system-ui, sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(ini.toUpperCase(), dx + cell / 2, dy + cell / 2);
+        ctx.textAlign = 'start';
+      }
+      drawOverlay(dx, dy, cell, lbl);
+    }
     function drawLeaf(t, el, sw, sh, dx, dy, cell) {
       if (t.fit === 'contain') {
         // A SHARED SCREEN, LETTERBOXED (see fitBox): whole surface, no
@@ -676,8 +693,8 @@
       if (dense) {
         for (let i = 0; i < geo.length; i++) {
           const g = geo[i], t = g.t, p = dl.at[i];
-          if (!g.sw || !g.sh) continue; // source not ready — leave dark, next paint fills
           const dx = p.x * cell, dy = p.y * cell;
+          if (!g.sw || !g.sh) { if (t.n === 1 && t.cols === 1) faceCard(dx, dy, cell, t.lbl); continue; } // no frame: a leaf shows its initial, a block stays dark until its frame
           try {
             if (t.n === 1 && t.cols === 1) drawLeaf(t, t.el, g.sw, g.sh, dx, dy, cell);
             else if (g.src) ctx.drawImage(t.el, g.src.sx, g.src.sy, g.src.sw, g.src.sh, dx, dy, cell, cell); // one face of a split block
@@ -698,17 +715,13 @@
           // VIDEO OFF BY AN ADMIN. The cell keeps its place, because a receiver
           // cuts faces out by position, and it keeps the name. No pixel of the
           // source is drawn, whatever the source still sends.
-          if (t.dark && t.n === 1) {
-            ctx.fillStyle = '#07090c'; ctx.fillRect(dx, dy, cell, cell);
-            drawOverlay(dx, dy, cell, t.lbl);
-            continue;
-          }
+          if (t.dark && t.n === 1) { faceCard(dx, dy, cell, t.lbl); continue; }
           // NO FRAME YET (a copy swapping in, a carrier's first key, a throttled
           // tab): the cell keeps its place AND its name, like an admin's dark
           // cell. The name is the stager's own (lbl from labelFor(sid)), not the
           // picture's, so it never waits for pixels. Next paint fills the face.
           if (!sw || !sh) {
-            if (t.n === 1) { ctx.fillStyle = '#07090c'; ctx.fillRect(dx, dy, cell, cell); drawOverlay(dx, dy, cell, t.lbl); }
+            if (t.n === 1) faceCard(dx, dy, cell, t.lbl);
             continue;
           }
           try {
