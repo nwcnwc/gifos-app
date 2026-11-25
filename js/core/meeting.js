@@ -4803,7 +4803,7 @@
         const src = ac.createMediaStreamSource(new MediaStream([track]));
         const an = ac.createAnalyser(); an.fftSize = 256;
         src.connect(an);
-        meters.set(id, { an, src, data: new Uint8Array(an.fftSize) });
+        meters.set(id, { an, src, data: new Uint8Array(an.fftSize), track });
       } catch (e) {}
       // A Whisper capture taps this meter's source node; the old node was
       // just disconnected, so the capture went deaf. Re-cut it on the new one.
@@ -6929,6 +6929,10 @@
         updateTile(p.id); return;
       }
       const own = (p.incoming || []).find((s) => s.id === p.ownSid);
+      // THE METER FOLLOWS THE VOICE. A stream can be claimed before its audio track arrives (a picture first: a seat
+      // whose camera or avatar m-line negotiated before its voice), and meterFor finds nothing to tap then. The voice's
+      // own ontrack lands here with the same stream: tap it now, or the speaking dot never lights for that person.
+      const metered = (st) => { const at = st.getAudioTracks()[0], m = meters.get(p.id); return !at || !!(m && m.track === at); };
       if (own && p.stream !== own) {
         p.stream = own;
         if (!p.relayed) { (0, /*()*/__M.playTileVideo)(p.video, own); meterFor(p.id, own); }
@@ -6938,6 +6942,7 @@
         // stays paused at readyState 0 and videoWidth never leaves 0.
         (0, /*()*/__M.playTileVideo)(p.video, own);
       }
+      if (own && p.stream === own && !p.relayed && !metered(own)) meterFor(p.id, own);
       updateTile(p.id);
     }
     // The RTCPeerConnection is REBUILDABLE: if a pc lands in 'closed' (some
