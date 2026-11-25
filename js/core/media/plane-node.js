@@ -182,12 +182,21 @@
       const pc = peer && peer.pc;
       if (!pc || typeof pc.getTransceivers !== 'function') return false;
       let rx = null;
-      for (const tx of pc.getTransceivers()) if (tx && tx.receiver && tx.receiver.track === tr) { rx = tx.receiver; break; }
+      const txs = pc.getTransceivers();
+      for (let i = 0; i < txs.length; i++) {
+        const rcv = txs[i] && txs[i].receiver;
+        if (!rcv) continue;
+        const rt = rcv.track;
+        // Same SSRC is the same picture when the claim stream's track object is not the transceiver's.
+        if (rt === tr || (tr.ssrc != null && rt && rt.ssrc === tr.ssrc)) { rx = rcv; break; }
+      }
       if (!rx || typeof rx.pliNegotiation !== 'function' || typeof rx.sendRtcpPLI !== 'function') return false;
+      const ssrc = tr.ssrc != null ? tr.ssrc : (rx.track && rx.track.ssrc != null ? rx.track.ssrc : (typeof rx.fallbackSsrc === 'number' ? rx.fallbackSsrc : null));
+      if (ssrc == null) return false;
       let neg = null;
-      try { neg = rx.pliNegotiation(tr.ssrc); } catch (e) { return false; }
+      try { neg = rx.pliNegotiation(ssrc); } catch (e) { return false; }
       if (!neg || !neg.allowed) return false;
-      try { const pr = rx.sendRtcpPLI(tr.ssrc); if (pr && typeof pr.catch === 'function') pr.catch(() => {}); } catch (e) { return false; }
+      try { const pr = rx.sendRtcpPLI(ssrc); if (pr && typeof pr.catch === 'function') pr.catch(() => {}); } catch (e) { return false; }
       return true;
     }
     function producerKey(key, fromPid) { void key; void fromPid; }

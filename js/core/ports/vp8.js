@@ -375,15 +375,33 @@
   const watchedPc = new WeakSet();
   const pcs = new Set();
 
+  // A PLI or FIR names this sender's own SSRC and stops there. werift does not walk it to the
+  // track's source. An encoder track answers from pliOf (one key per VP8_PLI_GAP_MS). A forwarded
+  // track has no encoder here: ask the upstream receiver, so the request reaches the encoder.
+  // Read the track at the event. replaceTrack swaps it after this sender was hooked, and a
+  // forwarded track is not in pliOf at hook time, which used to skip the subscribe entirely.
   function hookSender(sender) {
-    if (!sender || hookedSenders.has(sender) || !sender.track) return;
-    const fn = pliOf.get(sender.track);
-    if (!fn || !sender.onPictureLossIndication || typeof sender.onPictureLossIndication.subscribe !== 'function') return;
+    if (!sender || hookedSenders.has(sender)) return;
+    const loss = sender.onPictureLossIndication;
+    const fir = sender.onKeyFrameRequest;
+    const canLoss = loss && typeof loss.subscribe === 'function';
+    const canFir = fir && typeof fir.subscribe === 'function';
+    if (!canLoss && !canFir) return;
     hookedSenders.add(sender);
-    sender.onPictureLossIndication.subscribe(function () {
-      const f = pliOf.get(sender.track);
-      if (f) f();
-    });
+    let at = 0;
+    const onNeed = function () {
+      const now = Date.now();
+      // One RTCP PLI fires both events in the same turn. One relay is enough.
+      if (now === at) return;
+      at = now;
+      const tr = sender.track;
+      if (!tr || tr.kind === 'audio') return;
+      const f = pliOf.get(tr);
+      if (typeof f === 'function') { f(); return; }
+      askKey(tr);
+    };
+    if (canLoss) loss.subscribe(onNeed);
+    if (canFir) fir.subscribe(onNeed);
   }
   function scanPc(pc) {
     if (!pc) return;
@@ -425,20 +443,38 @@
         return p;
       };
     }
+    // Aux ships open a transceiver, not addTrack. Hook that sender now: the next
+    // setRemoteDescription may be the answer, after the first PLI has already passed.
+    const origTx = PC.prototype.addTransceiver;
+    if (typeof origTx === 'function') {
+      PC.prototype.addTransceiver = function () {
+        const tx = origTx.apply(this, arguments);
+        try { scanPc(this); if (tx && tx.sender) hookSender(tx.sender); } catch (e) {}
+        return tx;
+      };
+    }
   }
 
   function receiverFor(track) {
+    if (!track) return null;
     const hit = rxOf.get(track);
-    if (hit) return hit;
+    if (hit && hit.track === track) return hit;
+    let bySsrc = null;
     for (const pc of pcs) {
       try {
         const txs = pc.getTransceivers ? pc.getTransceivers() : [];
         for (let i = 0; i < txs.length; i++) {
           const rx = txs[i] && txs[i].receiver;
-          if (rx && rx.track === track) { rxOf.set(track, rx); return rx; }
+          if (!rx) continue;
+          const rt = rx.track;
+          if (rt === track) { rxOf.set(track, rx); return rx; }
+          // The claim stream can hold a different object than the transceiver track
+          // for the same SSRC. The PLI still has to leave on that receiver.
+          if (bySsrc == null && track.ssrc != null && rt && rt.ssrc === track.ssrc) bySsrc = rx;
         }
       } catch (e) {}
     }
+    if (bySsrc) { rxOf.set(track, bySsrc); return bySsrc; }
     return null;
   }
   function askKey(track) {
@@ -447,7 +483,9 @@
     if (typeof local === 'function') { local(); return; }
     const rx = receiverFor(track);
     if (!rx || typeof rx.sendRtcpPLI !== 'function') return;
-    const ssrc = track && track.ssrc;
+    let ssrc = track && track.ssrc;
+    if (ssrc == null && rx.track && rx.track.ssrc != null) ssrc = rx.track.ssrc;
+    if (ssrc == null && typeof rx.fallbackSsrc === 'number') ssrc = rx.fallbackSsrc;
     if (ssrc == null) return;
     try {
       const neg = typeof rx.pliNegotiation === 'function' ? rx.pliNegotiation(ssrc) : null;
@@ -456,6 +494,16 @@
       if (p && typeof p.catch === 'function') p.catch(function () {});
     } catch (e) {}
   }
+  // VP8 frame tag: 3 bytes, then 7 more for a key, then the first partition.
+  // A shorter buffer is a truncated frame. Feeding it wedges libvpx until the decoder is freed.
+  function vp8Complete(parts, isKey) {
+    const head = parts && parts[0];
+    if (!head || head.length < 3) return false;
+    const part0 = ((head[0] & 0xe0) >> 5) | (head[1] << 3) | (head[2] << 11);
+    let got = 0;
+    for (let i = 0; i < parts.length; i++) got += parts[i].length;
+    return got >= 3 + (isKey ? 7 : 0) + part0;
+  }
 
   function port(opts) {
     opts = opts || {};
@@ -463,6 +511,13 @@
     // is not limited: the new dimensions are undecodable until a keyframe, so the next presented frame is one.
     const PLI_GAP_MS = opts.timings && +opts.timings.VP8_PLI_GAP_MS;
     if (!(PLI_GAP_MS > 0)) throw new Error('vp8 port: opts.timings.VP8_PLI_GAP_MS is required');
+    // One ask per PLI gap per tap. A decode error used to ask on every failed frame.
+    function askSlot(slot, track) {
+      const now = Date.now();
+      if (slot && slot.askedAt && now - slot.askedAt < PLI_GAP_MS) return;
+      if (slot) slot.askedAt = now;
+      askKey(track || (slot && slot.track));
+    }
     const libavPath = opts.libav;
     if (typeof libavPath !== 'string' || !libavPath) throw new Error('vp8 port: opts.libav (the path of the VP8 wasm build) is required');
     const portW = opts.werift;
@@ -501,29 +556,54 @@
           readers: 0, latest: null, needKey: true, parts: [], key: false, dead: false,
           dec: null, unsub: null, chain: Promise.resolve(), track: track,
           seen: 0, assembled: 0, decoded: 0, dropped: 0, err: '',
+          started: false, pic: null,
         };
         decoders.set(track, slot);
-        askKey(track);
+        // Ask again while non-keys are dropped, no faster than the encoder's own gap.
+        // The first ask often lands before the remote SSRC is learned, and a tap
+        // opened mid-GOP then dropped every later delta without asking a second time.
+        function askSoon() { askSlot(slot, track); }
+        askSoon();
         const onPkt = function (rtp) {
           if (slot.dead || !rtp || !rtp.payload) return;
           slot.seen++;
           let parsed = null;
           try { parsed = parseVp8(rtp.payload, Vp8); } catch (e) { slot.err = String((e && e.message) || e).slice(0, 180); parsed = null; }
           if (!parsed) { if (!slot.err) slot.err = 'unparsed'; return; }
-          if (parsed.start) { slot.parts = [Uint8Array.from(parsed.payload)]; slot.key = parsed.key; }
-          else slot.parts.push(Uint8Array.from(parsed.payload));
+          if (parsed.start) {
+            slot.parts = [Uint8Array.from(parsed.payload)];
+            slot.key = parsed.key;
+            slot.pic = parsed.pictureId;
+            slot.started = true;
+          } else {
+            // A continuation with no start, or of another picture, is not a frame.
+            if (!slot.started) return;
+            if (slot.pic != null && parsed.pictureId != null && parsed.pictureId !== slot.pic) {
+              slot.started = false;
+              slot.parts = [];
+              return;
+            }
+            slot.parts.push(Uint8Array.from(parsed.payload));
+          }
           if (!(rtp.header && rtp.header.marker)) return;
           const parts = slot.parts; slot.parts = [];
           const isKey = slot.key;
+          const started = slot.started;
+          slot.started = false;
           slot.assembled++;
-          if (slot.needKey && !isKey) { slot.dropped++; return; }
+          if (!started || (slot.needKey && !isKey) || !vp8Complete(parts, isKey)) {
+            slot.needKey = true;
+            slot.dropped++;
+            askSoon();
+            return;
+          }
           let n = 0;
           for (let i = 0; i < parts.length; i++) n += parts[i].length;
           const bytes = new Uint8Array(n);
           let at = 0;
           for (let i = 0; i < parts.length; i++) { bytes.set(parts[i], at); at += parts[i].length; }
           const ts = rtp.header ? rtp.header.timestamp : 0;
-          slot.chain = slot.chain.then(function () { return decodeFrame(slot, bytes, ts, isKey); }).catch(function () { slot.needKey = true; askKey(track); });
+          slot.chain = slot.chain.then(function () { return decodeFrame(slot, bytes, ts, isKey); }).catch(function () { slot.needKey = true; askSlot(slot, track); });
         };
         if (track.onReceiveRtp && typeof track.onReceiveRtp.subscribe === 'function') {
           const sub = track.onReceiveRtp.subscribe(onPkt);
@@ -563,7 +643,11 @@
         }
         const frames = await av.ff_decode_multi(slot.dec.c, slot.dec.pkt, slot.dec.frame, [{ data: bytes }], { copyoutFrame: 'video_packed' });
         if (slot.dead) return;
-        if (!frames || !frames.length) { if (isKey) slot.needKey = false; return; }
+        if (!frames || !frames.length) {
+          // An empty key did not start a GOP. Keep waiting and ask again.
+          if (isKey) { slot.needKey = true; askSlot(slot, slot.track); }
+          return;
+        }
         const last = frames[frames.length - 1];
         slot.latest = packedFrom(last, ts);
         slot.decoded++;
@@ -574,7 +658,11 @@
       }).catch(function (e) {
         slot.needKey = true;
         slot.err = String((e && e.message) || e).slice(0, 180);
-        askKey(slot.track || null);
+        // A truncated frame leaves libvpx unable to take the next key. Drop this decoder.
+        const dec = slot.dec;
+        slot.dec = null;
+        if (dec) decChain = decChain.then(function () { return dec.libav.ff_free_decoder(dec.c, dec.pkt, dec.frame); }).catch(function () {});
+        askSlot(slot, slot.track);
       });
     }
 
