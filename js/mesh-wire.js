@@ -839,9 +839,9 @@
         if (m.t === 'nosock' && penv) { try { penv.relayFrame(m); } catch (e) {} }   // L33.11: the seat hears the bounce as BUSY{nosock}
         if (m.t === 'error' && /password/i.test(m.error || '')) fireLocked(true); // relay courtesy gate
         // THE ROOM ACL (docs/relay-lockdown.md "Meeting size: who decides"): the relay refused this upgrade because the
-        // meeting is full, and names its limit and whether the words are the free ones. It closes 4020 straight after
-        // (final for this attempt, gifos-net.js), so the page shows the answer and knocks again when a right arrives.
-        if (m.t === 'error' && Number.isInteger(m.full) && opts.onFull) { try { opts.onFull({ full: m.full, free: !!m.free }); } catch (e) {} }
+        // meeting is full, and names its limit. It closes 4020 straight after (final for this attempt, gifos-net.js),
+        // so the page shows the answer and knocks again when a right arrives.
+        if (m.t === 'error' && Number.isInteger(m.full) && opts.onFull) { try { opts.onFull({ full: m.full }); } catch (e) {} }
         if (opts.onRelayMsg) opts.onRelayMsg(m);
       };
     }
@@ -1479,6 +1479,10 @@
       // the four above are: an unnamed way to reach the relay is how the last
       // one crept in.
       PRESENT_MY_MEETING_RIGHT(tk) { if (tk && tk.ticketJson && tk.sig) sendRaw({ t: 'acl', tk: { ticketJson: String(tk.ticketJson), sig: String(tk.sig) } }); },
+      // (7) READ THE ROOM LICENSE — anyone in a hosted room can read the permissions the room holds (the License
+      // item). One ask, answered to this socket alone ({t:'acl', l, s}); nothing is pushed and nothing is timed.
+      // A seat with no relay socket does not call this: it shows the last value it already saw.
+      READ_THE_ROOM_LICENSE() { sendRaw({ t: 'aclq' }); },
       RELAY_FIRST_CONTACT_SIGNALING(obj) { sendRaw(obj); },
       relaySend(obj) { sendRaw(obj); },   // legacy alias — callers should move to the named form
       // A write that skips the law's outbound gate: what a modified page

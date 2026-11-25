@@ -1091,7 +1091,7 @@
     // moment it lands and refused: nothing opens a device after Leave.
     const capTracks = new Set();
     let capClosed = false;
-    let subsRefused = null;   // {limit, free, at, n, t, tick} while this page stands at a full door (subsFull): n its refused knocks so far, t the timer of its next knock (or of the knock under way), tick the mesh tick in ms; read by updateStatus, so declared up here
+    let subsRefused = null;   // {limit, at, n, t, tick} while this page stands at a full door (subsFull): n its refused knocks so far, t the timer of its next knock (or of the knock under way), tick the mesh tick in ms; read by updateStatus, so declared up here
     let subsRightTk = null;   // {ticketJson, sig}: this browser's own meeting right for this meeting, as the meeting service reads it (subsRightRefresh); read by the joining connection's own parameters, so declared up here
     let subsRightSaid = '';   // the right last shown to the service, so a renewal is shown once
     const subsRightParam = () => (av && subsRightTk ? '&tk=' + encodeURIComponent(JSON.stringify(subsRightTk)) : '');   // hosted meetings only: an open meeting never has a people limit
@@ -5372,7 +5372,7 @@
       try { subsSeatedCheck(); } catch (e) {}   // a knock at a full door landed: the full screen goes before the line is painted
       if (subsRefused) {
         // Turned away at a full door: not in the meeting, and never "Just you" (the full screen says why and the way in).
-        restText = uiText('subFullTitle', 'This meeting is full.');
+        restText = subsRefused.limit ? uiText('subFullTitleN', 'This meeting is full ({n} people).').replace('{n}', String(subsRefused.limit)) : uiText('subFullTitle', 'This meeting is full.');
       } else if (refused) {
         restText = relayNo ? relayNo.words : uiText('stThePeopleInThisRoom', '\u26d4 The people in this room voted not to let this device in.');
       } else if ((0, /*()*/__V.atPwPrompt)()) {
@@ -5434,7 +5434,7 @@
       if ((0, /*()*/__V.phoneLayout)() && !BROADCAST && !reachLine) {
         const head = roomLabel ? roomLabel + ' · ' : '';
         phoneDetail = head + (shown <= 1 ? countText : shown + plus + ' ' + uiText('inMeeting', 'in this meeting')) + restText;
-        const oneWord = subsRefused ? uiText('subFullTitle', 'This meeting is full.') : leftUp ? uiText('leftTitle', 'You left') : atDoor ? uiText('backIn', 'Getting you back in') : uiText('justYou', 'Just you');   // never "Just you" on a page that is not in the meeting
+        const oneWord = subsRefused ? (subsRefused.limit ? uiText('subFullTitleN', 'This meeting is full ({n} people).').replace('{n}', String(subsRefused.limit)) : uiText('subFullTitle', 'This meeting is full.')) : leftUp ? uiText('leftTitle', 'You left') : atDoor ? uiText('backIn', 'Getting you back in') : uiText('justYou', 'Just you');   // never "Just you" on a page that is not in the meeting
         countText = head + (shown <= 1 ? oneWord : shown + plus + ' ' + uiText('inMeeting', 'in this meeting'));
         restText = '';
       }
@@ -12320,6 +12320,10 @@
     var relayBusyAt = 0;
     yield 1440;
     function onRelayFrame(m) {
+      // THE LICENSE: the relay's reading of this room's permissions (joined.acl, and the answer to a License ask).
+      if ((m.t === 'acl' && Number.isInteger(m.l) && !m.error) || (m.t === 'joined' && m.acl && Number.isInteger(m.acl.l))) {
+        try { if (GifOS.licenseView && GifOS.licenseView.heard) GifOS.licenseView.heard(m.t === 'joined' ? m.acl : m); } catch (e) {}
+      }
       if (m.t === 'joined') relayTv = m.tv === 1;   // this relay vouches for TURN links (see relayTv)
       if (m.t === 'joined' && !av) capServerKey = m.cap && m.cap.ck ? m.cap.ck : null;   // the server's word on the capture at this join
       if (m.t === 'joined' && m.cap && !av) capTake(m.cap, true);   // a captured open room: the captor's ticket, checked here
@@ -18953,10 +18957,9 @@
         try { if (meshNode && meshNode.PRESENT_MY_MEETING_RIGHT) meshNode.PRESENT_MY_MEETING_RIGHT(subsRightTk); } catch (e) {}
       }, () => {});
     }
-    // The meeting is full: the service's own answer, from the joining
-    // connection it refused ({full: the limit, free: its words are the free
-    // ones}). The screen below is the only thing this page does with it.
-    function subsFullSaid(o) { subsFull({ limit: o && Number.isInteger(o.full) ? o.full : null, free: !!(o && o.free) }); }
+    // The meeting is full: the service's own answer, from the joining connection it refused ({full: the limit}).
+    // The screen below is the only thing this page does with it. The words come from that number.
+    function subsFullSaid(o) { subsFull({ limit: o && Number.isInteger(o.full) ? o.full : null }); }
     // TURNED AWAY AT A FULL DOOR: this page stands aside without leaving the
     // meeting for good. The knock stops (the mesh node goes, no reconnect), the
     // camera and microphone close and no device is asked for or complained
@@ -18977,10 +18980,10 @@
       subsTurnedAway = true;
       const limit = m && Number.isInteger(m.limit) && m.limit > 0 && m.limit <= 1e6 ? m.limit : null;
       const first = !subsRefused;
-      if (first) subsRefused = { limit, free: !!(m && m.free), at: Date.now(), n: 0, t: 0, tick: meshNode ? meshNode.tickMs() : 0 };
+      if (first) subsRefused = { limit, at: Date.now(), n: 0, t: 0, tick: meshNode ? meshNode.tickMs() : 0 };
       if (DEBUG_ON) { try { clog('subs turned away at a full door limit=' + limit + (first ? '' : ' again, knock ' + subsRefused.n)); } catch (e) {} }
       subsStandAside();
-      if (first) { leftScreenUp = leftScreenFull = true; GifOS.meetSubs.showFull({ limit, free: subsRefused.free, onRight: subsKnockAgain }); }   // the full screen is the "left" screen, marked full
+      if (first) { leftScreenUp = leftScreenFull = true; GifOS.meetSubs.showFull({ limit, onRight: subsKnockAgain }); }   // the full screen is the "left" screen, marked full
       subsReknockArm();
       try { updateStatus(); } catch (e) {}
     }

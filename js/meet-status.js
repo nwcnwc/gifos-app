@@ -35,7 +35,7 @@
     waitingHost:    { tone: 'place', key: 'waitingForTheHost', en: 'Waiting for the host' },
     alone:          { tone: 'place', key: 'justYou', en: 'Just you' },
     passwordDoor:   { tone: 'place', key: 'pwHintLocked', en: 'Enter the room password to join the meeting.' },
-    roomFull:       { tone: 'stop', key: 'sttRoomFull', en: 'This meeting is full. Any GifOS subscription lets you join.' },
+    roomFull:       { tone: 'stop', key: 'sttRoomFull', en: 'This meeting is full.' },
     roomEnded:      { tone: 'place', key: 'sttRoomEnded', en: 'The meeting has ended.' },
 
     // ---- your picture and sound ------------------------------------------
