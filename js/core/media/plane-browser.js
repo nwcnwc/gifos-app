@@ -2670,6 +2670,13 @@
         if (!stageEar.sids.has(k2) || swapped) {
           if (swapped) { stageEar.fold.remove(k2); stageEar.sids.delete(k2); if (stageEar.watch) stageEar.watch.delete(k2); }
           stageEar.fold.add(k2, st2, 1); stageEar.sids.set(k2, st2.id); stageEar.bound.set(k2, st2); if (typeof armStageEar === 'function') armStageEar(k2);
+        } else if (typeof stageEar.fold.has === 'function' && typeof stageEar.fold.follow === 'function') {
+          // Same container object, NEW audio track: the stager's sound left the feed and came back (a stage feed whose
+          // sound stopped and started on a new m-line). The old receiver track has ended and the new one sits in the
+          // same stream, so neither check above sees it. Follow the container's live track; a key the fold let go
+          // (no live track at that moment) is added again every sweep until a live track is there to bind.
+          if (stageEar.fold.has(k2)) { if (stageEar.fold.follow(k2, st2) && typeof armStageEar === 'function') armStageEar(k2); }
+          if (!stageEar.fold.has(k2)) { stageEar.fold.add(k2, st2, 1); if (stageEar.fold.has(k2) && typeof armStageEar === 'function') armStageEar(k2); }
         }
         const gm = (0, /*()*/__C.modOf)(k2.slice(4).split('^')[0]).mute;
         if (stageEar.fold.setGain) stageEar.fold.setGain(k2, (gm && gm.on) ? 0 : 1); // a cached older fold lacks it: held at 1, as before

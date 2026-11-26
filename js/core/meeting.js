@@ -13943,8 +13943,13 @@
               return pq.query({ name: 'microphone' }).then((s) => !!s && s.state === 'granted', () => false);
             } catch (e) { return Promise.resolve(false); }
           };
+          // NOT ON A PHONE. A phone's browser runs a page that holds a microphone, even a switched-off one, on the
+          // CALL audio path: after any interruption (a phone call, another app's sound) the meeting comes back on the
+          // in-call volume, and the volume buttons stop moving the media volume the person was listening at. The
+          // silent mic is there for desktop picture-in-picture; a quiet join on a phone opens nothing, and the
+          // person's own Mic tap is what opens it.
           const gum = bothOff
-            ? ((md && md.getUserMedia)
+            ? ((md && md.getUserMedia && !IS_MOBILE)
               ? micAllowed().then((ok) => ok ? (0, /*()*/__M.gumWithMicFallback)(md, { audio: true }).then((r) => { quietHold = !!r.stream; return r.stream || null; }, () => null) : null)
               : Promise.resolve(null))
             : (md && md.getUserMedia)
@@ -16769,8 +16774,11 @@
       // in place (regrabCamera; every hop, now) changes the tracks while the
       // id stands still. Comparing sig alone got BOTH cases wrong.
       const want = shipTracks(stream);
-      const sameSet = !!(cur && cur.srcTracks && cur.srcTracks.length === want.length
-        && want.every((t) => cur.srcTracks.indexOf(t) >= 0));
+      // A parked audio slot (below) is not part of what the job ships.
+      if (cur && cur.parkedA && cur.senders.indexOf(cur.parkedA) < 0) cur.parkedA = null;
+      const shipping = cur && cur.srcTracks ? cur.srcTracks.filter((t, i) => !(cur.parkedA && cur.senders[i] === cur.parkedA)) : null;
+      const sameSet = !!(shipping && shipping.length === want.length
+        && want.every((t) => shipping.indexOf(t) >= 0));
       // THE CARRY GUARANTEE AFTER 'w' (the second half of the FAILOVER-WAKE
       // campaign). A DEMANDED-HOT job whose entire source is MUTED past the
       // grace is a zombie: its upstream is parked/dark, it ships nothing,
@@ -16852,13 +16860,25 @@
           return jk;
         }
         const ops = [];
-        const haveIdx = (kind) => { const out = []; for (let i = 0; i < cur.srcTracks.length; i++) if (cur.srcTracks[i].kind === kind) out.push(i); return out; };
+        const haveIdx = (kind) => { const out = []; for (let i = 0; i < cur.srcTracks.length; i++) if (cur.srcTracks[i].kind === kind && !(cur.parkedA && cur.senders[i] === cur.parkedA)) out.push(i); return out; };
         for (const kind of ['audio', 'video']) {
           const wantK = want.filter((t) => t.kind === kind);
           let have = haveIdx(kind);
           // shrink: the source lost a track of this kind — ONE m-line stops,
           // the container (and the receiver's claim on it) lives on.
-          while (have.length > wantK.length) { (0, /*()*/__M.detachTrack)(cur, jk, p, have[have.length - 1]); ops.push('del:' + kind); have = haveIdx(kind); }
+          // A STAGE feed's sound PARKS instead: the sender keeps its m-line and sends nothing (replaceTrack(null)), and
+          // the next sound rides the same sender. A rebroadcast moving to its next file, or a stager whose sound
+          // stops and starts, then changes no m-line: no renegotiation, no gap while it settles, and every
+          // receiver keeps the same track (it mutes and unmutes) instead of an ended one and a new one.
+          while (have.length > wantK.length) {
+            const i = have[have.length - 1];
+            if (kind === 'audio' && isStageJob(key) && !cur.parkedA) {
+              cur.parkedA = cur.senders[i]; cur.trackList[i] = null;
+              try { const pr = cur.senders[i].replaceTrack(null); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {}   // a plain stop: the pipe's pause logic reads the slot's kind, which is gone
+              ops.push('swap:park');
+            } else { (0, /*()*/__M.detachTrack)(cur, jk, p, i); ops.push('del:' + kind); }
+            have = haveIdx(kind);
+          }
           // swap: a paired slot's source track moved. (Aux feeds carry at most
           // one track per kind, so the pairing below is exact in practice and
           // merely defensive beyond.)
@@ -16874,7 +16894,11 @@
           // INSIDE the same container (addAux guarantees the receiver an
           // ontrack, and that ontrack carries the SAME stream it already
           // claimed).
-          for (let k = have.length; k < wantK.length; k++) { if ((0, /*()*/__M.attachTrack)(cur, jk, p, wantK[k])) ops.push('add:' + kind); }
+          for (let k = have.length; k < wantK.length; k++) {
+            const pi = kind === 'audio' && cur.parkedA ? cur.senders.indexOf(cur.parkedA) : -1;
+            if (pi >= 0) { cur.parkedA = null; (0, /*()*/__M.swapTrack)(cur, jk, p, pi, wantK[k]); ops.push('swap:unpark'); continue; }
+            if ((0, /*()*/__M.attachTrack)(cur, jk, p, wantK[k])) ops.push('add:' + kind);
+          }
         }
         try {
           const cam = localStream && localStream.getVideoTracks()[0];
