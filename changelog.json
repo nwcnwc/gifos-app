@@ -2,6 +2,16 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.38",
+      "date": "2026-11-26",
+      "headline": "Plans and subscriptions move into the shared meeting core",
+      "critical": false,
+      "features": [],
+      "fixes": [
+        "The plans and subscription cards in the meeting and on the Subscription page now come from the same shared code the meeting runs on. They look and work the same."
+      ]
+    },
+    {
       "version": "0.9.28.37",
       "date": "2026-11-26",
       "headline": "One kind of link for every room, and downloads with or without your data",
