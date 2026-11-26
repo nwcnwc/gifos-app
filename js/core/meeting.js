@@ -13974,13 +13974,11 @@
               return pq.query({ name: 'microphone' }).then((s) => !!s && s.state === 'granted', () => false);
             } catch (e) { return Promise.resolve(false); }
           };
-          // NOT ON A PHONE. A phone's browser runs a page that holds a microphone, even a switched-off one, on the
-          // CALL audio path: after any interruption (a phone call, another app's sound) the meeting comes back on the
-          // in-call volume, and the volume buttons stop moving the media volume the person was listening at. The
-          // silent mic is there for desktop picture-in-picture; a quiet join on a phone opens nothing, and the
-          // person's own Mic tap is what opens it.
+          // A phone holds this silent mic too, for now: dropping it there (so an interruption cannot leave the meeting on
+          // the in-call volume) made the first unmute on a phone slower than holding it; that change waits until the
+          // first Mic tap is as fast as a held mic.
           const gum = bothOff
-            ? ((md && md.getUserMedia && !IS_MOBILE)
+            ? ((md && md.getUserMedia)
               ? micAllowed().then((ok) => ok ? (0, /*()*/__M.gumWithMicFallback)(md, { audio: true }).then((r) => { quietHold = !!r.stream; return r.stream || null; }, () => null) : null)
               : Promise.resolve(null))
             : (md && md.getUserMedia)

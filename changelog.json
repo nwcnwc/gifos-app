@@ -14,7 +14,6 @@
       ],
       "fixes": [
         "Broadcast sound keeps playing when a rebroadcast moves to its next file.",
-        "Phones no longer open a silent microphone when you join, so the volume stays on media.",
         "A broadcast with the host's camera off shows its clip, not the camera-off card.",
         "Joining from a network that blocks direct connections no longer gets stuck at the door after reloads.",
         "No more giant blurred picture behind the tiles; an embed still connecting says so instead of \"not hosted\".",
