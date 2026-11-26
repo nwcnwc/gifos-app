@@ -5558,7 +5558,8 @@
         stagers.forEach((sid, j) => {
           const sc = srcFor(sid, 'stg:' + sid);
           // Camera off (the core's card rule: no picture, not sharing): the cell stays, empty; each viewer draws the card.
-          const card = sid === __C.myId ? (0, /*()*/__C.mainVideoChoice)().src === 'card' : (!!(0, /*()*/__C.rowFaceDark)(__C.statusOf.get(sid)) && !(0, /*()*/__C.sharingScreen)(sid));
+          let card = false;
+          try { card = sid === __C.myId ? (0, /*()*/__C.mainVideoChoice)().src === 'card' : (!!(0, /*()*/__C.rowFaceDark)(__C.statusOf.get(sid)) && !(0, /*()*/__C.sharingScreen)(sid)); } catch (e) { card = false; }
           if ((sc && sc.el) || card) {
             const dark = ((0, /*()*/__C.forcedCamOff)(sid) || (typeof __C.shareBlocked === 'function' && (0, /*()*/__C.shareBlocked)(sid))) ? 1 : 0;
             const blur = (!dark && sid !== __C.myId && (0, /*()*/__C.modBlurOn)(sid)) ? Math.max(1, (0, /*()*/__C.blurLevelFor)(sid)) : 0;
