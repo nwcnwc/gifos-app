@@ -159,8 +159,7 @@ take the matching `type` value. There are only these two:
 
 - "Open" (short: Open, or Public): `create_meeting` with
   type "open", a public majority-rules meeting. Anyone with the link joins.
-  Everyone inside can set the password, and anyone with a $5+ plan can take
-  over as host while they're connected.
+  Everyone inside can set the password.
 - "Host" ("Host a private meeting" on the Invite sheet; a private, hosted
   meeting; short: Private): `create_meeting` with type "admin". It has a
   host: the server makes and keeps the host password, and the host can lock
@@ -173,18 +172,17 @@ The person who runs a private meeting is its host, and the screens call the
 role host everywhere: the Host button and the host password. The
 tools keep "admin" as the value (type "admin", mode "admin", and
 `admin_password`, the older name of `host_password`), and take "host" for
-"admin" where they read free text. Someone on a $5+ plan, or with a staff pass, can take over as host of a
-public majority-rules meeting while they're connected, with the "Make me host"
-button (`guard_room` does this for a bot). The room is private for that
-time; the URL does not change.
+"admin" where they read free text. No plan includes taking over a public majority-rules meeting as host; only
+GifOS's own welcome bots do that, on a GifOS staff pass (`guard_room`). For a
+room one person controls, start a private meeting.
 
 ## Embed a live broadcast in a web page
 
 A hosted GifOS Broadcast (gifos.app/cast) can play inside any web page, like
 a video player. It plays only while the room is HOSTED RIGHT NOW: a hosted
 meeting or broadcast (link https://gifos.app/cast#room=ROOM&v=VERIFIER (or the pretty /cast/ROOM/VERIFIER)) whose host is
-in the room, or a public majority-rules meeting a subscriber has taken charge
-of, while they are in it. The player reads that live from the room's signed host
+in the room, or a public majority-rules meeting a GifOS staff bot holds (as
+our bot holds /welcome), while it is in it. The player reads that live from the room's signed host
 state; until then, and after the host leaves, it shows "This meeting isn't
 hosted right now" and plays nothing, then starts by itself. VERIFIER is
 optional: leave it out for a public majority-rules meeting.

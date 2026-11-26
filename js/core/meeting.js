@@ -11536,7 +11536,7 @@
       capBusy = true;
       try {
         const o = await GifOS.meetSubs.captureOrder(subsMeetId(), myId);
-        if (!o) { setStatus(uiText('capNeedPlan', 'Taking charge of a public majority-rules meeting takes the $5 plan')); return; }
+        if (!o) { setStatus(uiText('capNeedPlan', 'You can\'t take charge of this meeting')); return; }
         pwLog('capture-sent');
         relaySendObj({ t: 'capture', tk: o.tk, w: o.w });
       } finally { capBusy = false; (0, /*()*/__V.capPaint)(); }   // the server's answer (onCapFrame) says the rest

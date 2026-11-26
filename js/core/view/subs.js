@@ -83,7 +83,7 @@
     const p = (id, text) => { const e = el('p', { class: 'set-help', id }, text); box.appendChild(e); return e; };
     for (const x of (c.passes || [])) {
       if (x.live) continue;
-      const e = x.never ? fill(tx('heldPassNever', 'Pass: {plan}, no end{capture}.'), { plan: planShort(x.plan), capture: x.capture ? tx('heldPassCaptures', ', takes charge of public majority-rules meetings') : '' })
+      const e = x.never ? fill(tx('heldPassNever', 'Pass: {plan}, no end.'), { plan: planShort(x.plan) })
         : fill(tx('heldPassNext', 'Four-hour pass: Unlimited from {start} to {until}.'), { start: clockOf(x.start), until: clockOf(x.end) });
       const q = p('', e); q.className = 'set-help held-pass'; q.dataset.pass = x.id;
     }
