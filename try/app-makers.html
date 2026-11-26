@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!-- FRAME GUARD: refuse to run inside another site's page (see about.html). -->
+<script id="gifos-frame-guard">(function(){try{if(window.top===window.self)return;var ok=false;try{ok=window.top.location.origin===window.location.origin}catch(e){}if(ok)return;var h=document.documentElement;h.style.visibility='hidden';function show(){var b=document.body;if(!b)return;while(b.firstChild)b.removeChild(b.firstChild);var p=document.createElement('p');p.style.cssText='font:16px system-ui,sans-serif;padding:24px;color:#eee;background:#111;margin:0';p.appendChild(document.createTextNode('GifOS does not run inside another site\'s page. '));var a=document.createElement('a');a.href=location.href;a.target='_blank';a.rel='noopener';a.textContent='Open it in its own tab';a.style.color='#9db4ff';p.appendChild(a);b.appendChild(p);h.style.visibility='';}if(document.body)show();else document.addEventListener('DOMContentLoaded',show);}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Draft landing page: kept out of search until a winner is picked. -->
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#fafaff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a0a0f" media="(prefers-color-scheme: dark)">
+<title>Ship your app as a GIF. Keep 97%. | GifOS</title>
+<meta name="description" content="Publish a web app as one signed GIF, run it in meetings, and sell it with in-app payments in USDC on Base. Paid directly; GifOS keeps 3%.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="GifOS">
+<meta property="og:title" content="Ship your app as a GIF. Keep 97%. | GifOS">
+<meta property="og:description" content="Publish a web app as one signed GIF, run it in meetings, and sell it with in-app payments in USDC on Base. Paid directly; GifOS keeps 3%.">
+<meta property="og:url" content="https://gifos.app/try/app-makers">
+<meta property="og:image" content="https://gifos.app/meet-og.png">
+<link rel="icon" href="/favicon.ico">
+<link rel="stylesheet" href="/try/try.css">
+</head>
+<body>
+  <header class="topbar"><a href="/"><span class="brand">GifOS</span></a><a class="plans" href="/subscription">Plans</a></header>
+  <main class="wrap">
+    <section class="hero">
+      <p class="eyebrow">For app makers and indie developers</p>
+      <!-- A/B: the headline and the promise are the two lines a variant swaps. -->
+      <h1 data-ab="headline">Ship your app as a GIF. Get paid in USDC. Keep 97%.</h1>
+      <p class="promise" data-ab="promise">Publish your web app as one signed GIF that runs on GifOS and inside GifOS meetings. Sell it with in-app payments in USDC on Base: you are paid directly to your own address, and GifOS keeps 3%.</p>
+      <a class="cta" href="/try/go/app-makers">Start building</a>
+      <p class="reassure">Free to build and publish. 3% only when you sell. No accounts, ever.</p>
+      <p><a class="cta-alt" href="/llms.txt">The full spec (llms.txt)</a> · <a class="cta-alt" href="/sign">Sign your app</a> · <a class="cta-alt" href="/store">Browse the App Store</a></p>
+    </section>
+
+    <h2>Why it works for you</h2>
+    <ul class="benefits">
+      <li><b>One file is the app</b><span>The GIF carries the whole app. It runs sandboxed with no server to run, and it is multiplayer by default, so a meeting can use it together.</span></li>
+      <li><b>Paid direct, 97/3</b><span>Each sale is two USDC transfers on Base: 97% to the address in your signed manifest, 3% to GifOS. GifOS never holds your money, and you are the seller of record.</span></li>
+      <li><b>Reach people where they meet</b><span>Run app puts your GIF in front of a whole meeting at once. Ask for a place in the App Store; any signed app can take payments, listed or not.</span></li>
+    </ul>
+
+    <h2>How it works</h2>
+    <ol class="steps">
+      <li><b>Build it</b>, or have your AI build it from <code>gifos.app/llms.txt</code>: the packing recipe, the manifest and the <code>window.gifos</code> API.</li>
+      <li><b>Price it</b> in the manifest, add your Base payout address under <code>"pay"</code>, and charge with <code>gifos.charge</code>. Buyers approve each charge on their own device.</li>
+      <li><b>Sign it</b> at gifos.app/sign and share the GIF anywhere, or ask for a place in the App Store.</li>
+    </ol>
+
+    <aside class="plans-box"><b>Publishing is free; GifOS keeps 3% of each sale.</b> In-app payments are real money: buyers pay in USDC on the Base network from their own wallet. Purchases become receipt files on the buyer's device, with no accounts anywhere. <a href="/subscription">See every plan</a>.</aside>
+
+    <div class="again"><a class="cta" href="/try/go/app-makers">Start building</a></div>
+    <footer class="foot">
+      <a href="/">GifOS</a> · <a href="/meet">Meet</a> · <a href="/subscription">Plans</a> ·
+      <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="mailto:support@gifos.app">support@gifos.app</a>
+    </footer>
+  </main>
+</body>
+</html>

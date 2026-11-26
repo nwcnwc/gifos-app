@@ -1,0 +1,74 @@
+/* Landing pages (gifos.app/try/…): one shared sheet, no fonts or scripts to fetch.
+   Light and dark follow the device; the palette matches the rest of the site. */
+:root {
+  --bg: #0a0a0f; --surface: #14141f; --card: #181826; --border: #2a2a3f;
+  --text: #ececf8; --muted: #a9a9c5; --accent: #7b5cff; --accent2: #ff5caa;
+  --onaccent: #fff; --ok: #3ccf91;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #fafaff; --surface: #ffffff; --card: #ffffff; --border: #e2e2f0;
+    --text: #15151f; --muted: #55557a; --accent: #5b3ce6; --accent2: #d6337f;
+    --ok: #13875a;
+    color-scheme: light;
+  }
+}
+* { box-sizing: border-box; margin: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body { font: 17px/1.6 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+       background: var(--bg); color: var(--text); }
+a { color: var(--accent); }
+.brand { font-weight: 800; background: linear-gradient(135deg, var(--accent), var(--accent2));
+         -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+          padding: .75rem 16px; border-bottom: 1px solid var(--border); background: var(--surface); }
+.topbar a { text-decoration: none; font-size: 1.05rem; }
+.topbar .plans { font-size: .95rem; color: var(--muted); }
+.wrap { max-width: 760px; margin: 0 auto; padding: 0 16px; }
+
+.hero { padding: 2.2rem 0 1.6rem; }
+.eyebrow { font-size: .8rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent2); }
+h1 { font-size: clamp(1.9rem, 7vw, 2.9rem); line-height: 1.12; margin: .5rem 0 .8rem; letter-spacing: -.01em; }
+.promise { font-size: 1.15rem; color: var(--muted); max-width: 38em; }
+.cta { display: block; text-align: center; margin: 1.5rem 0 .6rem; padding: 1rem 1.4rem; border-radius: .8rem;
+       background: linear-gradient(135deg, var(--accent), var(--accent2)); color: var(--onaccent);
+       text-decoration: none; font-weight: 800; font-size: 1.15rem; box-shadow: 0 6px 24px rgba(123, 92, 255, .28); }
+.cta:hover, .cta:focus-visible { filter: brightness(1.08); }
+.cta:focus-visible { outline: 3px solid var(--accent2); outline-offset: 3px; }
+.cta-alt { display: inline-block; margin: .2rem 0; font-weight: 600; }
+.reassure { font-size: .9rem; color: var(--muted); margin-top: .5rem; }
+@media (min-width: 640px) { .cta { display: inline-block; min-width: 18rem; } }
+
+h2 { font-size: 1.35rem; margin: 2.2rem 0 .9rem; }
+.benefits { display: grid; gap: .8rem; grid-template-columns: 1fr; padding: 0; list-style: none; }
+@media (min-width: 720px) { .benefits { grid-template-columns: repeat(3, 1fr); } }
+.benefits li { background: var(--card); border: 1px solid var(--border); border-radius: .9rem; padding: 1rem 1.1rem; }
+.benefits b { display: block; font-size: 1.05rem; margin-bottom: .25rem; }
+.benefits span { color: var(--muted); font-size: .97rem; }
+
+.steps { counter-reset: s; list-style: none; padding: 0; }
+.steps li { counter-increment: s; position: relative; padding: 0 0 .9rem 2.6rem; color: var(--muted); }
+.steps li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 1.8rem; height: 1.8rem;
+                    border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: .95rem;
+                    background: var(--card); border: 1px solid var(--border); color: var(--text); }
+.steps b { color: var(--text); }
+
+pre { background: var(--card); border: 1px solid var(--border); border-radius: .6rem; padding: .8rem;
+      overflow-x: auto; font: .85rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre; }
+.steps pre { margin: .5rem 0; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .9em; }
+
+.plans-box { margin: 2.2rem 0 0; padding: 1.1rem; border-radius: .9rem; border: 1px dashed var(--border); color: var(--muted); }
+.plans-box b { color: var(--text); }
+.again { text-align: center; padding: 1.4rem 0 .4rem; }
+.foot { margin: 2.5rem 0 0; padding: 1rem 0 2.5rem; border-top: 1px solid var(--border); font-size: .85rem; color: var(--muted); }
+.foot a { color: var(--muted); }
+
+/* The index for choosing between pages. */
+.cards { list-style: none; padding: 0; display: grid; gap: .8rem; }
+.cards li { background: var(--card); border: 1px solid var(--border); border-radius: .9rem; padding: 1rem 1.1rem; }
+.cards a.t { font-weight: 800; font-size: 1.1rem; text-decoration: none; }
+.cards .who { font-size: .8rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent2); }
+.cards p { color: var(--muted); font-size: .95rem; margin-top: .25rem; }
+.cards .meta { font-size: .82rem; }
