@@ -1243,7 +1243,7 @@ body.names-off #stagefeed .stgnames { display: none; }
                   border-radius: 6px; background: rgba(10,10,15,.82); color: #fff; opacity: 1; font: inherit; font-size: .75rem; font-weight: 500;
                   text-decoration: underline; text-underline-offset: 2px; cursor: pointer; pointer-events: auto; }
   :is(.tile, .ct-pane, .stadwhole) .tpause:not(.tpause-busy) > :is(.tpause-sub, .tpause-pass):disabled { opacity: .6; cursor: default; }
-  .tile > .tpause:not(.tpause-busy) { bottom: 3rem; inset: 0 0 3rem 0; padding: calc(max(8px, 5%) + 2.5rem + 6px) 8px 4px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+  .tile > .tpause:not(.tpause-busy) { top: 0; right: 0; bottom: 3rem; left: 0; inset: 0 0 3rem 0; padding: calc(max(8px, 5%) + 2.5rem + 6px) 8px 4px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
   /* On a phone the line is one caption above Live, not a clip on the face.
      A long line starts at the top and the rest scrolls inside the caption.
      No band for the bar: it rests on the safe area over the Record row, and
