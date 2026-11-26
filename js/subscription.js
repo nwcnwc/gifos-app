@@ -632,7 +632,7 @@
       return true;
     }).then(function (go) {
       if (!go) return false;
-      return MS().installCreds(cred, pkg.wallet || null, 'move').then(function () { return true; });
+      return MS().installCreds(cred, pkg.wallet || null, 'move', Array.isArray(pkg.wallets) ? pkg.wallets : null).then(function () { return true; });
     });
   }
   function beginReceive(token) {
