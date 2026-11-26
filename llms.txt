@@ -69,16 +69,28 @@ badge with how many are watching and the title, and a big button to unmute
 (browsers only autoplay muted). Before the broadcast starts or after it ends
 it says so.
 
-The default player is the picture, the LIVE badge (count and title), unmute
-and a settings gear. You choose its rows, in this order: volume (a slider),
-captions (on or off; the row appears once a line has arrived, and stays off
-until the viewer turns them on), tabs (the share picker), inset (show, hide
-or move the Stage picture while a share fills the player), fullscreen, pip
-(picture in picture, when the browser supports it), watch (Watch on GifOS,
-a new tab). Nothing set means volume,fullscreen. all turns every key on.
-none, or an empty value, hides the gear. Unknown keys are ignored. Script:
-data-controls="tabs,inset". Iframe: #room=ROOM&controls=tabs,inset.
-The password prompt and the not-hosted notice always show.
+The default player is the picture, the LIVE badge (count and title), unmute,
+and at the bottom right buttons for chat, reactions, info, float and full
+screen beside a settings gear. The bar fades after a few seconds with no
+pointer, tap or key, and comes back on any of them. The info button shows
+the full title and a line about GifOS. You choose the other controls:
+volume (a slider in the gear), mute (a switch in the gear), captions (a
+switch in the gear; it appears once a line has arrived, and stays off until
+the viewer turns it on), audioonly (a switch in the gear: the viewer's
+screen stops drawing the pictures, the sound goes on), tabs (the share
+picker), inset (show, hide or move the Stage picture while a share fills
+the player), fullscreen (the full screen button), pip (the float button,
+picture in picture, when the browser supports it), chat (the chat button,
+while the host leaves chat on; a viewer gives a name the first time they
+post), reactions (the reactions button, while the host lets guests react),
+watch (Watch on GifOS, a new tab). Nothing set means
+volume,audioonly,fullscreen,pip,chat,reactions. all turns every key on.
+none, or an empty value, leaves only the info button. Unknown keys are
+ignored. Script: data-controls="tabs,inset". Iframe:
+#room=ROOM&controls=tabs,inset. The password prompt, the not-hosted notice
+and the info button always show. Keep allow="autoplay; fullscreen;
+picture-in-picture" and allowfullscreen on an iframe you write yourself, or
+the full screen and float buttons do not show.
 
 Viewers are ordinary watchers of the broadcast: no camera or microphone is
 ever asked for. The usual door rule holds: a viewer without the room password

@@ -159,7 +159,7 @@
  "meet.admChatFiles": "Файлы в чате",
  "meet.admChatPw": "Пароль",
  "meet.admChatGfile": "Гости могут отправлять файлы",
- "meet.admChatGfileSub": "Выкл., даже если у комнаты есть пароль.",
+ "meet.admChatGfileSub": "Нужен пароль комнаты. Выключено, пока вы не включите.",
  "meet.admChatGreact": "Гости могут ставить реакции",
  "meet.admChatGreactSub": "Эмодзи-реакции на сообщения в чате.",
  "meet.admChatQa": "Кнопка вопросов",

@@ -159,7 +159,7 @@
   "meet.admChatFiles": "Archivos en el chat",
   "meet.admChatPw": "Contraseña",
   "meet.admChatGfile": "Los invitados pueden enviar archivos",
-  "meet.admChatGfileSub": "Apagado aunque la sala tenga contraseña.",
+  "meet.admChatGfileSub": "Necesita contraseña de sala. Apagado hasta que lo actives.",
   "meet.admChatGreact": "Los invitados pueden reaccionar",
   "meet.admChatGreactSub": "Reacciones con emoji en las líneas del chat.",
   "meet.admChatQa": "Botón de preguntas",

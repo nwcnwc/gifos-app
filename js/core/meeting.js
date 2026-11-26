@@ -14553,7 +14553,7 @@
     function fileFromAllowed(byId) {
       if (!hasAdminRoom() || !roomPw) return false;
       if (isChatAdmin(byId)) return true;
-      return modStarOn('gfile', true);
+      return modStarOn('gfile', false);
     }
     function mayPinFiles() { return fileFromAllowed(myId); }
     function viewerMayReact() {

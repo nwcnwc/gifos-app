@@ -128,17 +128,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <div class="code"><pre id="snip-iframe">&lt;iframe src="https://gifos.app/embed#room=ROOM" style="width:100%;aspect-ratio:16/9;border:0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen title="GifOS Broadcast"&gt;&lt;/iframe&gt;</pre><button class="copy" type="button" data-copy="snip-iframe">Copy</button></div>
 
     <h2>Choose the controls</h2>
-    <p>The player starts as the picture, the live badge, unmute and a settings gear. You choose what else a viewer may do. When you set nothing, the gear offers <code>volume,fullscreen</code>.</p>
-    <p><code>volume</code> — a volume slider.</p>
-    <p><code>captions</code> — captions on or off. The row appears once a line has arrived. Captions stay off until the viewer turns them on.</p>
+    <p>The player starts as the picture, the live badge, unmute, and at the bottom right the buttons for chat, reactions, info, float and full screen beside a settings gear. The bar fades after a few seconds and comes back on any pointer, tap or key. When you set nothing, the player offers <code>volume,audioonly,fullscreen,pip,chat,reactions</code>.</p>
+    <p><code>volume</code> — a volume slider in the gear.</p>
+    <p><code>mute</code> — a mute switch in the gear.</p>
+    <p><code>captions</code> — a captions switch in the gear. It appears once a line has arrived. Captions stay off until the viewer turns them on.</p>
+    <p><code>audioonly</code> — an audio-only switch in the gear: the viewer's screen stops drawing the pictures and the sound goes on.</p>
     <p><code>tabs</code> — the share tabs, when the room shares something besides the Stage.</p>
     <p><code>inset</code> — show, hide or move the Stage picture while a share fills the player.</p>
-    <p><code>fullscreen</code> — full screen.</p>
-    <p><code>pip</code> — picture in picture, when the browser supports it.</p>
+    <p><code>fullscreen</code> — the full screen button.</p>
+    <p><code>pip</code> — the float button (picture in picture), when the browser supports it.</p>
+    <p><code>chat</code> — the chat button, while the host leaves chat on. A viewer gives a name the first time they post.</p>
+    <p><code>reactions</code> — the reactions button, while the host lets guests react.</p>
     <p><code>watch</code> — Watch on GifOS, in a new tab.</p>
-    <p><code>all</code> turns every control on. <code>none</code> leaves the gear off.</p>
-    <p>On the script tag, add <code>data-controls="tabs,inset,captions,fullscreen,watch"</code>. On the iframe, add it to the hash: <code>#room=ROOM&amp;controls=tabs,inset</code>.</p>
-    <p>The password prompt and the not-hosted notice always show.</p>
+    <p><code>all</code> turns every control on. <code>none</code> leaves only the info button.</p>
+    <p>On the script tag, add <code>data-controls="tabs,inset,captions,fullscreen,watch"</code>. On the iframe, add it to the hash: <code>#room=ROOM&amp;controls=tabs,inset</code>. An iframe you write yourself keeps <code>allow="autoplay; fullscreen; picture-in-picture"</code> and <code>allowfullscreen</code>, or the full screen and float buttons do not show.</p>
+    <p>The password prompt, the not-hosted notice and the info button (the full title and a line about GifOS) always show.</p>
 
     <h2>Where to paste it</h2>
     <p>Pick your site builder for the short steps.</p>

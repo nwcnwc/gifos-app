@@ -159,7 +159,7 @@
  "meet.admChatFiles": "聊天文件",
  "meet.admChatPw": "密码",
  "meet.admChatGfile": "来宾可以发送文件",
- "meet.admChatGfileSub": "即使房间设有密码，关闭后也不允许。",
+ "meet.admChatGfileSub": "需要房间密码。默认关闭，由你开启。",
  "meet.admChatGreact": "来宾可以回应",
  "meet.admChatGreactSub": "对聊天消息添加表情回应。",
  "meet.admChatQa": "提问按钮",
