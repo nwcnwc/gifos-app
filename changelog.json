@@ -14,7 +14,8 @@
         "The viewer buttons read Unblur and Blur. Report moved to the info panel in embeds and to the More menu in meetings.",
         "Embedded players ask you to tap to unmute first, then offer a blue Tap to unblur.",
         "Embedded player controls now fade in full screen after a few idle seconds.",
-        "Watching an embedded player or listening with your microphone off no longer wakes the microphone in Chrome."
+        "Watching an embedded player or listening with your microphone off no longer wakes the microphone in Chrome.",
+        "Auto screenshots in the transcript start off on broadcasts and embedded players; meetings keep them on. Your own choice is remembered."
       ]
     },
     {
