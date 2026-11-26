@@ -684,8 +684,12 @@
     // A pasted link or the session's own join moves LINK (and only LINK); every address and link this page writes is
     // built from it by GifOS.link.hash. `params` holds the address's OTHER keys (relay, at, mb, bot, app, id, ...).
     const LINKS = GifOS.link,
-      LINK = LINKS.read(location.protocol === 'about:' ? '' : location.pathname, '', location.hash),
       params = new URLSearchParams(location.hash.slice(1)),
+      LINK = (() => {
+        const r = LINKS.read(location.protocol === 'about:' ? '' : location.pathname, '', location.hash);
+        ['room', 'v', 'code', 'cast'].forEach((k) => params.delete(k));   // LINK holds them; params never answers for them
+        return r;
+      })(),
       EMBED = (() => {
         let on = false;
         try { on = /^\/(versions\/\d+(\.\d+){2,3}\/)?embed(\.html)?$/.test(location.pathname); } catch (e) { on = false; }

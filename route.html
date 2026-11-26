@@ -105,6 +105,13 @@
   // A ROOM LINK, as the run.html fragment it opens: the ONE link module (js/core/link.js), the same
   // reader every page's channel loader uses. The path forms (/meet/R[/V], /cast/R[/V], /join/C, /join/R/V/C) and the
   // fragment forms (/meet#room=R[&v=V], /cast#…, /join#…) open the same rooms.
+  // The module did not load (a dropped request): load this page once more rather than send a room link home.
+  if (!window.GifOSLink && /^\/(meet|cast|join)\/./i.test(location.pathname)) {
+    var again = false;
+    try { again = !sessionStorage.getItem('gifos_route_again'); if (again) sessionStorage.setItem('gifos_route_again', '1'); } catch (e) {}
+    if (again) { location.reload(); return; }
+  }
+  try { sessionStorage.removeItem('gifos_route_again'); } catch (e) {}
   var rh = window.GifOSLink ? window.GifOSLink.route(location.pathname, location.search, location.hash) : null;
   if (rh) { go('/run.html#' + rh, true); return; }
   if (rh === '') { go('/'); return; } // a broken room link opens nothing

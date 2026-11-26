@@ -195,8 +195,12 @@ function linkOf(site) {
 }
 function pageUrl(link, site) {
   const u = new URL(link);
-  const hash = linkOf(site || siteDir(require('path').join(HERE, '..', '..'))).route(u.pathname, u.search, u.hash);
-  if (hash === null) return u.href;
+  const L = linkOf(site || siteDir(require('path').join(HERE, '..', '..')));
+  const hash = L.route(u.pathname, u.search, u.hash);
+  if (hash === null) {
+    if (L.read(u.pathname, '', u.hash).bad) throw new Error('GifOS core: that link names no room (js/core/link.js): ' + link);
+    return u.href;
+  }
   if (hash === '') throw new Error('GifOS core: not a whole meeting link (an owned app link needs its secret): ' + link);
   return u.origin + '/run.html#' + hash;
 }

@@ -42,14 +42,17 @@
     if (m) {
       out.room = m[2] || ''; out.v = (m[3] || '').toLowerCase(); out.code = m[4] || '';
       if (out.route === 'join' && out.room && !out.v) { out.code = out.room; out.room = ''; }
+      if (out.code && !CODE.test(out.code)) out.bad = true;
     }
     var fromPath = !!(m && m[2]);
-    var hs = split(hash), parts = hs.concat(m ? split(search) : []);
+    var hs = split(hash), parts = hs.concat(m ? split(search) : []), seen = {};
     for (var i = 0; i < parts.length; i++) {
       var p = parts[i], k = keyOf(p);
       if (!p || OLD[k]) continue;
       if (!GRAMMAR[k] || i >= hs.length) { out.rest.push(p); continue; }
       var val = valOf(p);
+      if (seen[k]) out.bad = true;   // a key named twice is no link: readers must never disagree on which one counts
+      seen[k] = 1;
       if (k === 'cast') { if (val === '1') out.cast = true; continue; }
       if (fromPath) continue;   // the path names the room; a fragment cannot rename it
       if (k === 'room') { out.room = val; out.bad = out.bad || !ROOM.test(val); }
@@ -59,6 +62,9 @@
     if (out.route === 'cast' || /\/cast(\.html)?$/i.test(pathname)) out.cast = true;
     if (out.v && !out.room) out.bad = true;
     if (out.route === 'join' && (out.room || out.v) && !(out.room && out.v && out.code)) out.bad = true;
+    // An app room's code: alone (anyone may own the room) or with the room AND its verifier (owned); never on a
+    // /meet or /cast address, which name meetings.
+    if (out.code && ((out.room && !out.v) || out.route === 'meet' || out.route === 'cast')) out.bad = true;
     if (out.bad) { out.room = ''; out.v = ''; out.code = ''; }
     return out;
   }
@@ -98,6 +104,8 @@
     s = String(s || '').trim();
     if (!s) return null;
     var r = null;
+    // a link pasted without its scheme (gifos.app/meet/team/<verifier>)
+    if (/^[a-z0-9-]+(\.[a-z0-9-]+)+(:\d+)?\//i.test(s)) s = 'https://' + s;
     if (/[:\/#?]/.test(s)) {
       var u = null;
       try { u = base ? new URL(s, base) : new URL(s); } catch (e) { u = null; }
