@@ -993,6 +993,7 @@
     // the start of what the bot said, a newcomer heard none of it, and the
     // bot's tile never lit.
     var botVoiceTrack = null; // var: refreshOutbound is hoisted and may run before this line
+    var lastMainA = null; // the voice the folds were last asked to read (refreshOutbound); var for the same reason
     var carryVoiceTrack = null; // var, as above: my mic and the voice of the page I carry, mixed (docs/turn-carry.md)
     function mainAudioTrack() {
       if (botVoiceTrack && botVoiceTrack.readyState === 'live') return botVoiceTrack;
@@ -1016,6 +1017,12 @@
         blurViewFrac.strong = strong;
         try { document.documentElement.style.setProperty('--blur-view-max', String(strong ? BLUR_MAX_FRAC : BLUR_VIEW_MAX_FRAC)); } catch (e) {}
       }
+      // A NEW VOICE IS FOLDED NOW. My voice reaches a row's product and the mixes through the folds, which read it
+      // (selfFoldStream) only on a sweep. When the voice the main senders carry changes (a mic opened at the first
+      // Mic tap, a re-grabbed mic, a carried page joining my voice), the folds re-read it at once instead of at the
+      // next periodic sweep: a first unmute is then heard as soon as the mic opens.
+      const mainA = mainAudioTrack();
+      if (mainA !== lastMainA) { lastMainA = mainA; schedReconcile(); }
       if (typeof __C.outgoingHeld !== 'undefined' && __C.outgoingHeld) return;
       const plan = (0, /*()*/__C.outboundPlan)();
       if (plan.hold) return;
