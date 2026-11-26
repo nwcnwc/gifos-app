@@ -811,6 +811,8 @@
   "meet.viewFit": "Fit",
   "meet.viewDrag": "Drag",
   "meet.viewFocus": "Focus",
+  "meet.viewStage": "Stage",
+  "meet.svFaces": "Faces",
   "meet.viewFollow": "Follow the speaker",
   "meet.viewPresent": "Present",
   "meet.recToLib": "Save to my GifOS library",
