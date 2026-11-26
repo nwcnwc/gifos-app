@@ -834,7 +834,8 @@
     // into the pack's sound at once and its picture joins when the track arrives (syncTiles), so a row's voice never
     // waits for a picture. A throw is false.
     function faceLive(pid) {
-      try { return !!(faceTrack(pid) || audioStream(pid)); } catch (e) { return false; }
+      // A card (camera off) is a face with no picture: its cell stays, as on a page.
+      try { return !!(faceTrack(pid) || audioStream(pid) || (typeof C.cardFor === 'function' && C.cardFor(pid))); } catch (e) { return false; }
     }
     function blockPicture(mosKey) {
       try { return !!blockTrack(mosKey); } catch (e) { return false; }
