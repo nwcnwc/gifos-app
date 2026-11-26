@@ -276,7 +276,7 @@
     grid-auto-columns: 180px; grid-template-rows: 1fr; height: 132px; padding: 8px;
     overflow-x: auto; overflow-y: hidden; }
   body.has-app:not(.comfy) #stadium, body.has-app:not(.comfy) #stagefeed { display: none; }
-  /* BROADCAST (the Broadcast app, cast=1 on an admin room): the Stage is the
+  /* BROADCAST (the Broadcast app: the broadcast page on an admin room): the Stage is the
      show and chat is the back-channel — the row grid and the stadium strip
      never render. Roles are body classes, not a Meet share grant
      (e2e-broadcast-roles.js). A viewer watches and chats. A stage guest

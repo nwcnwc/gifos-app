@@ -21,15 +21,15 @@
 <meta name="referrer" content="same-origin">
 <!--@/shared:frame-guard-->
 <!--@shared:link-->
-<!-- THE ROOM LINK: the one reader and writer of room=, v=, code=, cast= (js/core/link.js). Parser-
+<!-- THE ROOM LINK: the one reader and writer of room=, v=, code= (js/core/link.js). Parser-
      blocking and ES5: the channel loader and the entry chrome below read the address with it before anything else. -->
 <script src="js/core/link.js"></script>
 <!--@/shared:link-->
 <!-- THE APP RUNTIME. This page runs apps: an app on its own (#id=), an app room (a link with a code)
      and an app-first meeting (#app=.. with its room), whose meeting view is audio only (js/core/view/audio.js). Every
      other room address is a meeting and opens on the meeting page of THIS build, before anything loads: a room or a
-     bare address (the lobby) on meet.html, a broadcast (cast) on cast.html, with the same address after the page name. Snapshots and links
-     keep naming run.html, so every link and every release ever cut opens the right page.
+     bare address (the lobby) on meet.html, with the same address after the page name. A broadcast is never addressed
+     here: its page is the broadcast page (/cast, cast.html), and a link names no view.
      On gifos.app the pages are their clean addresses (/meet, /versions/<v>/meet: the host serves meet.html there), and
      the meeting page's own channel loader moves the visitor into the live release. Elsewhere, and inside the GifOS Meet
      apps (window.GifosNative, set before any page script, serving their bundled files under their own names), the page
@@ -39,7 +39,7 @@
   var h=location.hash||'',q=new URLSearchParams(h.replace(/^#/,''));
   var L=window.GifOSLink?window.GifOSLink.read(location.pathname,'',h):null;
   if(q.get('id')||(L&&L.code)||q.get('app'))return;
-  var page=L&&L.cast?'cast':'meet',path=location.pathname,app=!!window.GifosNative,ours=!app&&/(^|\.)gifos\.app$/.test(location.hostname);
+  var page='meet',path=location.pathname,app=!!window.GifosNative,ours=!app&&/(^|\.)gifos\.app$/.test(location.hostname);
   // the gifos.app root on the default channel: the loader below moves the visitor into the live release in one step
   if(ours&&path.indexOf('/versions/')===-1){var edge=null,ask=null;try{edge=localStorage.getItem('gifos_channel');ask=sessionStorage.getItem('gifos_ask_edge');}catch(e){}if(edge!=='edge'&&!ask)return;}
   window.__gifosForward=true;
@@ -440,7 +440,9 @@
     var pm = window.GifOSLink ? window.GifOSLink.route(pathname, search, hash) : null;
     var here;
     if (pm) {
-      here = '/run.html#' + pm;
+      // the page is the view: a /meet link the meeting page, a /cast link the broadcast page, a /join link run.html
+      var pk = window.GifOSLink.read(pathname, search, hash).route;
+      here = (pk === 'cast' ? '/cast' : pk === 'meet' ? '/meet' : '/run.html') + '#' + pm;
     } else {
       // Carry the page + invite hash across (snapshots ship run.html too —
       // flag day above) AND THE QUERY. The query used to be dropped here,
@@ -454,10 +456,9 @@
       // location.search. Carrying the hash instead would fix nothing until
       // the NEXT release, for links sent today.
       here = pathname + search + hash;
-      // THE SURFACE PAGES (meet.html, cast.html, 0.9.28; the host serves them at /meet and /cast) are addressed as run.html too: every snapshot ships
-      // run.html, and a new one forwards a room to its surface page itself. A cast page keeps its skin (bc).
-      var sp = /\/(meet|cast)(\.html)?$/.exec(pathname);
-      if (sp) here = pathname.slice(0, sp.index) + '/run.html' + search + (sp[1] === 'cast' && window.GifOSLink ? window.GifOSLink.withCast(hash) : hash);
+      // THE SURFACE PAGES (meet.html, cast.html; the host serves them at /meet and /cast, and /versions/<v>/meet|cast) keep
+      // their own name: the page is the view (a room link never falls back below LINK_SINCE, and every release from 0.9.28
+      // ships both). Nothing is written into the fragment to say which.
     }
     function to(v) { return { redirect: '/versions/' + v + here }; }
     // MEETINGS RUN THE LIVE RELEASE. Releases are not compatible with each

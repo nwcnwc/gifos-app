@@ -87,7 +87,7 @@
     "cast": {
       "label": "Broadcast",
       "plain": "One person on stage, everyone else watching.",
-      "where": "run.html wearing its broadcast skin — /cast#room=<room>, or run.html#room=<room>&cast=1",
+      "where": "the broadcast page — /cast#room=<room>, /cast/<room>/<verifier>, or cast.html#room=<room>",
       "gatedBy": "es6-baseline",
       "sameAs": "meet",
       "requires": [

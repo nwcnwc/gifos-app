@@ -186,7 +186,8 @@ function hostModule(site, rel) {
 }
 
 // A meeting link (any form: /meet#room=R[&v=V], /meet/R[/V], /cast…, /join…, run.html#room=…) -> the meeting page's
-// address, as the site's router opens it. The ONE link module (js/core/link.js) reads it: the site's own
+// address, as the site's router opens it: the PAGE is the view (a /cast link or cast.html -> cast.html, a /join link
+// -> run.html, anything else -> meet.html), and the fragment names only the room. The ONE link module (js/core/link.js) reads it: the site's own
 // copy (a core file, signed with the rest), run in this realm. pageUrl(link, site): site defaults to this tree.
 const linkMods = new Map();
 function linkOf(site) {
@@ -202,7 +203,8 @@ function pageUrl(link, site) {
     return u.href;
   }
   if (hash === '') throw new Error('GifOS core: not a whole meeting link (an owned app link needs its secret): ' + link);
-  return u.origin + '/run.html#' + hash;
+  const r = L.read(u.pathname, u.search, u.hash);
+  return u.origin + (r.route === 'cast' ? '/cast.html' : r.route === 'join' ? '/run.html' : '/meet.html') + '#' + hash;
 }
 
 // ---- storage -------------------------------------------------------------------------------------------------
@@ -539,6 +541,9 @@ function createMeeting(opts) {
   }
   // GifOS.runtime (see HOST SHIMS)
   if (!GifOS.runtime) GifOS.runtime = { SYSTEM_HEADER: {} };
+  // The view this host stands in for: the page in its address is the view (a broadcast page -> 'cast'), told to the
+  // core through its interface as the broadcast page's own surface does (js/core/view/cast.js), never by the address.
+  if (!GifOS.viewSurface && linkOf(site).read(location.pathname, '', location.hash).cast) GifOS.viewSurface = { name: 'cast', page: 'cast.html' };
   // GifOS.host: the host's facts the meeting asks about. A host with no screen is never a hidden tab (the core's
   // background-tab paths are for a browser that hides the page).
   if (!GifOS.host) GifOS.host = {

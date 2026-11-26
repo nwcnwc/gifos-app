@@ -102,9 +102,11 @@
     go('/store' + (s[1] ? '#app=' + encodeURIComponent(s[1].toLowerCase()) + q : (q ? '#' + q.slice(1) : '')));
     return;
   }
-  // A ROOM LINK, as the run.html fragment it opens: the ONE link module (js/core/link.js), the same
+  // A ROOM LINK, as the page and fragment it opens: the ONE link module (js/core/link.js), the same
   // reader every page's channel loader uses. The path forms (/meet/R[/V], /cast/R[/V], /join/C, /join/R/V/C) and the
-  // fragment forms (/meet#room=R[&v=V], /cast#…, /join#…) open the same rooms.
+  // fragment forms (/meet#room=R[&v=V], /cast#…, /join#…) open the same rooms. The PAGE is the view: a /cast link
+  // opens the broadcast page (/cast, cast.html), a /meet link the meeting page (/meet), a /join link the app runtime
+  // (run.html). Nothing is added to the fragment to say which.
   // The module did not load (a dropped request): load this page once more rather than send a room link home.
   if (!window.GifOSLink && /^\/(meet|cast|join)\/./i.test(location.pathname)) {
     var again = false;
@@ -113,7 +115,8 @@
   }
   try { sessionStorage.removeItem('gifos_route_again'); } catch (e) {}
   var rh = window.GifOSLink ? window.GifOSLink.route(location.pathname, location.search, location.hash) : null;
-  if (rh) { go('/run.html#' + rh, true); return; }
+  var rk = rh ? window.GifOSLink.read(location.pathname, location.search, location.hash).route : '';
+  if (rh) { go((rk === 'cast' ? '/cast' : rk === 'meet' ? '/meet' : '/run.html') + '#' + rh, true); return; }
   if (rh === '') { go('/'); return; } // a broken room link opens nothing
   // Bare /meet, no room = START A FRESH MEETING, identical to double-clicking
   // the Meeting app on the Home Screen (which loads run.html with no room and
@@ -122,10 +125,9 @@
     go('/run.html', true);
     return;
   }
-  // Bare /cast, no room = the Broadcast app's lobby (run.html's broadcast
-  // skin — see the BROADCAST block in run.html).
+  // Bare /cast/, no room = the Broadcast app's lobby: the broadcast page itself (/cast, cast.html).
   if (/^\/cast\/?$/i.test(location.pathname)) {
-    go('/run.html' + (window.GifOSLink ? window.GifOSLink.withCast('') : ''), true);
+    go('/cast', true);
     return;
   }
   go('/');

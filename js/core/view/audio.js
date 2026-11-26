@@ -37,7 +37,7 @@
       // the page beside this one: the document base (a snapshot pins it), not the address, which the meeting may move
       var base = new URL('.', document.baseURI);
       var ours = /(^|\.)gifos\.app$/.test(location.hostname) && base.pathname.indexOf('/versions/') !== -1;
-      var page = GifOS.link.read('', '', location.hash).cast ? 'cast' : 'meet';
+      var page = 'meet';   // an app-first meeting's full view is the meeting page (a link names no view)
       return base.pathname + page + (ours ? '' : '.html') + location.search + '#' + p.toString();
     }
 

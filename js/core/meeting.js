@@ -702,7 +702,7 @@
         Array.from(params.keys()).forEach((k) => params.delete(k));
         // A bad link names no room (link.js): the embed joins nothing. A good one is a broadcast viewer of that room.
         const okEntry = !!LINK.room && !LINK.code;
-        if (okEntry) LINK.cast = true; else { LINK.room = ''; LINK.v = ''; LINK.code = ''; }
+        if (!okEntry) { LINK.room = ''; LINK.v = ''; LINK.code = ''; }
         LINK.rest = [];
         // What the embed's own view reads back (embed.html's player): the title, and why nothing joins (name).
         const why = okEntry ? '' : 'name';
@@ -748,15 +748,17 @@
       return { kind: 'meet', solo: false, appPinned: false, mediaPinned: true, fileId: null, join: null };
     })();
     // ---- BROADCAST (the Broadcast app — a SKIN of this page) ----------------
-    // cast=1 on an ADMIN room (room+v): one host live on the Stage, unlimited
-    // viewers who bring no media of their own. The flag rides the HASH so it
-    // survives the version-channel redirect and travels inside the share link
-    // (/cast/<room>/<V> pretty form). It is a skin, not a security boundary:
-    // a client that strips it lands in the plain meeting UI of the SAME room,
-    // and every rule that matters — signed authority, admin-only stage entry,
-    // receiver-side moderation — is the admin room's, enforced as ever.
-    // BC_INTENT alone (bare meet.html#cast=1, or /cast) opens the broadcast-flavored lobby.
-    const BC_INTENT = !!LINK.cast;
+    // The broadcast PAGE (cast.html, /cast) on an ADMIN room (room+v): one host
+    // live on the Stage, unlimited viewers who bring no media of their own. The
+    // page is the view: the broadcast page's surface tells the core so through
+    // its interface (GifOS.viewSurface, js/core/view/cast.js), and an embed is a
+    // broadcast viewer; no key in the address says it (js/core/link.js). It is a
+    // skin, not a security boundary: the same room opened on the meeting page is
+    // the plain meeting UI of the SAME room, and every rule that matters —
+    // signed authority, admin-only stage entry, receiver-side moderation — is
+    // the admin room's, enforced as ever.
+    // BC_INTENT alone (the broadcast page with no room) opens the broadcast-flavored lobby.
+    const BC_INTENT = !!(EMBED && !EMBED.bad) || !!(GifOS.viewSurface && GifOS.viewSurface.name === 'cast');
     // ---- LINK-BORNE LAUNCH ARGUMENTS: #id=<file>&go.<key>=<value> -----------
     // "Open Anyroad" is a link anyone can already send. This is how a link says
     // WHERE to open it — go.at=36.06,-112.14&go.fly=1 — without becoming a
@@ -13577,7 +13579,7 @@
       const atBit = BROADCAST && /^\d+$/.test(params.get('at') || '') ? params.get('at') : '';
       const pretty = /(^|\.)gifos\.app$/.test(location.hostname) && !custom;
       // One grammar (link.js): the address bar, the shared link and the page's own fragment name the room the same way.
-      const roomHashOf = (withRelay) => LINKS.hash({ room, v: av, cast: BROADCAST, rest: { at: atBit, relay: withRelay ? relay : '' } });
+      const roomHashOf = (withRelay) => LINKS.hash({ room, v: av, rest: { at: atBit, relay: withRelay ? relay : '' } });
       // The link we hand out keeps the room in the FRAGMENT, which a browser
       // never sends: /meet#room=<room>[&v=<V>], so no server and no log ever
       // reads which meeting this is (route.html opens it). A broadcast's form is
@@ -21064,7 +21066,7 @@
     function viewerShareUrl() {
       let raw = shareLink || '';
       const named = (typeof room === 'string' && room) ? room : LINK.room;
-      if (!raw && named) raw = location.origin + location.pathname + '#' + LINKS.hash({ room: named, v: LINK.v, cast: BROADCAST });
+      if (!raw && named) raw = location.origin + LINKS.pageFor(location.pathname, BROADCAST ? 'cast' : 'meet') + '#' + LINKS.hash({ room: named, v: LINK.v });
       if (!raw) return '';
       const dropKeys = ['pw', 'password', 'guest', 'vpw', 'guestpw', 'pass'];
       const drop = (sp) => { dropKeys.forEach((k) => sp.delete(k)); };

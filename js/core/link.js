@@ -10,12 +10,16 @@
  *                   without it the room is open. Name + verifier is the room's identity.
  *   code=<code>     an app room's join secret, [a-z0-9]{1,64}: with room+v the owned app room, alone the app room
  *                   anyone may own. A link without code is a meeting.
- *   cast=1          the Broadcast skin (a skin, never a security boundary). A /cast address implies it.
+ *
+ * A link names only WHAT (room, v, code); the PAGE names HOW. /cast and cast.html are the broadcast view, /meet and
+ * meet.html the meeting, run.html the app-first view. No key in the address says "broadcast": the read's `cast` is
+ * only the page in the address (a /cast path, or cast.html), and the broadcast page's own view tells the core so
+ * through its interface (GifOS.viewSurface), never by writing into the address.
  *
  * The path forms are first-class input and keep their meaning forever: /meet/<room>[/<verifier>],
  * /cast/<room>[/<verifier>], /join/<code>, /join/<room>/<verifier>/<code> (first segment the room, second the
  * verifier). Any other key in the fragment (relay, at, title, agent, ...) rides along unchanged. The old page-entry
- * keys av, bc, s, j and k mean nothing and are dropped; a lone v= (no room=) names no room.
+ * keys av, bc, s, j, k and cast mean nothing and are dropped; a lone v= (no room=) names no room.
  *
  * ES5 on purpose: the channel loaders run it before the preflight has said this browser can hold a meeting.
  */
@@ -23,8 +27,8 @@
   'use strict';
   var ROOM = /^[a-z0-9-]{1,64}$/i, VER = /^[a-f0-9]{16,64}$/i, CODE = /^[a-z0-9]{1,64}$/i;
   var PATH = /^\/(meet|cast|join)(?:\/([a-z0-9-]{1,64})(?:\/([a-f0-9]{16,64})(?:\/([a-z0-9]{1,64}))?)?)?\/?$/i;
-  var GRAMMAR = { room: 1, v: 1, code: 1, cast: 1 };
-  var OLD = { av: 1, bc: 1, s: 1, j: 1, k: 1 };
+  var GRAMMAR = { room: 1, v: 1, code: 1 };
+  var OLD = { av: 1, bc: 1, s: 1, j: 1, k: 1, cast: 1 };
 
   function split(s) { s = String(s || '').replace(/^[#?]/, ''); return s ? s.split('&') : []; }
   function keyOf(p) { return p.split('=')[0]; }
@@ -32,6 +36,7 @@
 
   // read(pathname, search, hash) -> { route, room, v, code, cast, bad, rest }
   //   route: 'meet' | 'cast' | 'join' for a /meet, /cast, /join address (path or fragment form), else ''.
+  //   cast:  the address is the broadcast page (a /cast route, or cast.html): the page, never a key.
   //   bad:   the address names a room badly (a malformed name, verifier or code, or a verifier with no room).
   //   rest:  every other key=value of the fragment, as written (plus the query on a /meet|/cast|/join address,
   //          which the router folds into the fragment).
@@ -53,7 +58,6 @@
       var val = valOf(p);
       if (seen[k]) out.bad = true;   // a key named twice is no link: readers must never disagree on which one counts
       seen[k] = 1;
-      if (k === 'cast') { if (val === '1') out.cast = true; continue; }
       if (fromPath) continue;   // the path names the room; a fragment cannot rename it
       if (k === 'room') { out.room = val; out.bad = out.bad || !ROOM.test(val); }
       else if (k === 'v') { out.v = val.toLowerCase(); out.bad = out.bad || !VER.test(val); }
@@ -69,14 +73,13 @@
     return out;
   }
 
-  // The fragment (no '#') for these fields: room, v, code, cast, then `rest` (an array of key=value, or an object).
+  // The fragment (no '#') for these fields: room, v, code, then `rest` (an array of key=value, or an object).
   function hash(f) {
     f = f || {};
     var out = [];
     if (f.room) out.push('room=' + f.room);
     if (f.v) out.push('v=' + String(f.v).toLowerCase());
     if (f.code) out.push('code=' + f.code);
-    if (f.cast) out.push('cast=1');
     var rest = f.rest || [];
     if (Object.prototype.toString.call(rest) !== '[object Array]') {
       var arr = [];
@@ -126,12 +129,15 @@
     return r;
   }
 
-  // A fragment with the Broadcast skin on (cast=1 added when missing; everything else kept as written), with its '#'.
-  function withCast(h) {
-    var parts = split(h);
-    for (var i = 0; i < parts.length; i++) if (parts[i] === 'cast=1') return '#' + parts.join('&');
-    parts.push('cast=1');
-    return '#' + parts.join('&');
+  // The page for a fields' view under the same folder as `path`: 'cast' -> cast(.html), 'meet' -> meet(.html), else
+  // run.html. `path` is a page address (/versions/<v>/meet.html, /meet, /run.html, ...); the .html suffix is kept as
+  // the address had it (run.html and a bare folder name the file).
+  function pageFor(path, view) {
+    path = String(path || '/');
+    var m = /^(.*\/)(?:(meet|cast|run)(\.html)?)?$/.exec(path);
+    var dir = m ? m[1] : path.replace(/[^\/]*$/, ''), dot = m && m[2] ? (m[2] === 'run' ? '.html' : (m[3] || '')) : '.html';
+    if (view === 'cast' || view === 'meet') return dir + view + dot;
+    return dir + 'run.html';
   }
 
   // One key of `rest` (its decoded value), or ''.
@@ -144,7 +150,7 @@
   // The room key the device's stores use: "<room>" or "<room>.<verifier>".
   function roomKey(f) { return f && f.room ? f.room + (f.v ? '.' + String(f.v).toLowerCase() : '') : ''; }
 
-  var api = { read: read, hash: hash, route: route, withCast: withCast, parseInput: parseInput, extra: extra, roomKey: roomKey, ROOM: ROOM, VER: VER, CODE: CODE };
+  var api = { read: read, hash: hash, route: route, pageFor: pageFor, parseInput: parseInput, extra: extra, roomKey: roomKey, ROOM: ROOM, VER: VER, CODE: CODE };
   // A CommonJS host (the Node core host's own realm) takes the exports and nothing else; a page or a participant's
   // context gets GifOS.link (and GifOSLink for the channel loaders, which run before anything else defines GifOS).
   if (typeof module === 'object' && module && module.exports) { module.exports = api; return; }

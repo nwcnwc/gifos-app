@@ -76,7 +76,9 @@
     var pm = window.GifOSLink ? window.GifOSLink.route(pathname, search, hash) : null;
     var here;
     if (pm) {
-      here = '/run.html#' + pm;
+      // the page is the view: a /meet link the meeting page, a /cast link the broadcast page, a /join link run.html
+      var pk = window.GifOSLink.read(pathname, search, hash).route;
+      here = (pk === 'cast' ? '/cast' : pk === 'meet' ? '/meet' : '/run.html') + '#' + pm;
     } else {
       // Carry the page + invite hash across (snapshots ship run.html too —
       // flag day above) AND THE QUERY. The query used to be dropped here,
@@ -90,10 +92,9 @@
       // location.search. Carrying the hash instead would fix nothing until
       // the NEXT release, for links sent today.
       here = pathname + search + hash;
-      // THE SURFACE PAGES (meet.html, cast.html, 0.9.28; the host serves them at /meet and /cast) are addressed as run.html too: every snapshot ships
-      // run.html, and a new one forwards a room to its surface page itself. A cast page keeps its skin (bc).
-      var sp = /\/(meet|cast)(\.html)?$/.exec(pathname);
-      if (sp) here = pathname.slice(0, sp.index) + '/run.html' + search + (sp[1] === 'cast' && window.GifOSLink ? window.GifOSLink.withCast(hash) : hash);
+      // THE SURFACE PAGES (meet.html, cast.html; the host serves them at /meet and /cast, and /versions/<v>/meet|cast) keep
+      // their own name: the page is the view (a room link never falls back below LINK_SINCE, and every release from 0.9.28
+      // ships both). Nothing is written into the fragment to say which.
     }
     function to(v) { return { redirect: '/versions/' + v + here }; }
     // MEETINGS RUN THE LIVE RELEASE. Releases are not compatible with each

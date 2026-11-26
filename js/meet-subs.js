@@ -27,7 +27,7 @@
  *   - WHICH APP (Nathan 2026-11-13): the Meet app offers Room 20, Unlimited,
  *     the four-hour pass and tips. The $10 Streamer plan and its library
  *     (My library, files.gifos.app) are offered and managed only in the
- *     Broadcast app: the same page opened at /cast (cast=1 in the link). Meet
+ *     Broadcast app: the broadcast page (/cast, cast.html). Meet
  *     honors a Streamer subscription with everything Unlimited gives, but
  *     never sells it and never shows its files (appNow, SUB.tiersSoldIn).
  *
@@ -52,13 +52,13 @@
   const REFRESH_BEFORE_S = TM.REFRESH_BEFORE_S;      // fetch a fresh license this long before it runs out
 
   // The address the page was opened with. Once the meeting page joins it
-  // rewrites its own address to the room's plain link, so a word in the link
-  // (cast) is read from both.
+  // rewrites its own address to the room's plain link, so the page in the
+  // address (/cast, cast.html) is read from both.
   const opened = (() => { try { return { path: String(root.location.pathname || ''), hash: String(root.location.hash || ''), search: String(root.location.search || '') }; } catch (e) { return null; } })();
   // In the GifOS Meet apps everything is paid for through the store's own
   // purchase sheet (gifos-store-rail.js): the one rail there. RAIL() is null
   // in a browser.
-  // The Broadcast app is this page opened with cast=1 or at /cast (js/core/link.js);
+  // The Broadcast app is the broadcast page, /cast or cast.html (js/core/link.js);
   // everything else is the Meet app. Read from the address the page was
   // opened with as well as the current one.
   const castIn = (path, hash) => { try { return !!(root.GifOSLink && root.GifOSLink.read(path, '', hash).cast); } catch (e) { return false; } };

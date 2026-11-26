@@ -6438,7 +6438,7 @@
           if (__C.model.consts.BC_INTENT() && !atSecs) { try { sessionStorage.setItem('gifos_bc_golive_' + chosen + '.' + V, 'b' + (0, /*()*/__C.blurLevel)(picked)); } catch (e) {} }
           if (atSecs) { try { localStorage.setItem('gifos_bcat_' + chosen + '.' + V, atSecs); } catch (e) {} }
           const bc = __C.model.consts.BC_INTENT();
-          enterMeeting('#' + GifOS.link.hash({ room: chosen, v: V, cast: bc, rest: { at: bc ? atSecs : '' } }));
+          enterMeeting('#' + GifOS.link.hash({ room: chosen, v: V, rest: { at: bc ? atSecs : '' } }));
         } catch (e) { err.textContent = 'Could not create the room. Try again.'; go.disabled = false; go.textContent = go.dataset.label || 'Start'; }
       };
       document.getElementById('lob-join-btn').onclick = () => {
@@ -6465,7 +6465,9 @@
         const p = (0, /*()*/__C.parseMeetInput)(document.getElementById('lob-join-in').value);
         if (!p) { err.textContent = (0, /*()*/__C.uiText)('badLink', 'Couldn’t read that — paste a meeting link or its id.'); return; }
         (0, /*()*/__C.lobbyPwHandOver)('join', p.room, p.av || '', document.getElementById('lob-join-pass'));
-        enterMeeting('#' + GifOS.link.hash({ room: p.room, v: p.av, cast: p.bc, rest: { relay: p.relay } }));
+        // A broadcast link (its page is /cast or cast.html) opens on the broadcast page; anything else on this one.
+        const h = '#' + GifOS.link.hash({ room: p.room, v: p.av, rest: { relay: p.relay } });
+        enterMeeting(p.bc && !__C.model.consts.BC_INTENT() ? GifOS.link.pageFor(__C.model.consts.MEET_PATH(), 'cast') + h : h);
       };
       document.getElementById('lob-go').onclick = () => {
         if (__C.model.consts.BC_INTENT()) { doHost(); return; }
@@ -6507,9 +6509,9 @@
     }
     function showLobby() {
       document.title = (__C.model.consts.BC_INTENT() ? 'Broadcast' : 'Meeting') + ' — GifOS';
-      // The Broadcast app opens THIS page with cast=1 and no room: same lobby,
-      // reworded. Creating one mints the same admin room with cast=1 riding the
-      // link. A blank room password leaves the link open. Schedule is later.
+      // The Broadcast app opens the broadcast page with no room: same lobby,
+      // reworded. Creating one mints the same admin room on the broadcast page,
+      // whose address is the link. A blank room password leaves the link open. Schedule is later.
       // The host password is minted and kept on this device; More shows it.
       if (__C.model.consts.BC_INTENT()) {
         document.querySelector('#lobby h1').textContent = (0, /*()*/__C.uiText)('bcTitle', 'Broadcast');
