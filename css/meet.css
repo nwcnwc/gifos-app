@@ -3852,3 +3852,5 @@ body.broadcast.sv-live #stagefeed .rowtile > video { object-fit: contain !import
 body.broadcast.sv-avail:not(.bc-quiet) #tophead > #fitbtn { display: inline-flex !important; }
 body.broadcast.sv-live #feed > :not(#stagefeed):not(#bc-cap):not(#bc-ident):not(#bc-stage) { visibility: hidden !important; pointer-events: none !important; }
 body.broadcast.sv-live #airbar { visibility: hidden; }
+/* An app in a meeting is one of the Stage's tabs: the view button stays, so the Stage view can be picked and left with an app up. */
+body.comfy.sv-avail.has-app:not(.app-full):not(.solo-app):not(.app-room) #tophead > .fitbtn { display: inline-flex; }
