@@ -159,7 +159,7 @@
     ['captureOpenRoom', 'on', 'capture', BOTH], ['admitAtFullDoor', 'on', 'fullDoor', BOTH],
     ['meetings', 'one', 'one', BOTH], ['meetings', 'many', 'many', BOTH],
     ['agentHost', 'some', 'bot', BOTH],
-    ['clearWithoutPassword', 'on', 'clear', BOTH], ['clearStageWithoutPassword', 'on', 'clearStage', BOTH],
+    ['clearWithoutPassword', 'on', 'clear', BOTH], ['clearStageInAdminRoom', 'on', 'clearStage', BOTH],
     ['storage', 'on', 'library', ['broadcast'], '/library'],
   ].map(([word, is, label, apps, href]) => Object.freeze(Object.assign({ word, is, label, apps: Object.freeze(apps.slice()) }, href ? { href } : {}))));
   const LABEL_IS = { none: (v) => v === null, n: (v) => Number.isInteger(v), one: (v) => v === 1, many: (v) => Number.isInteger(v) && v > 1, zero: (v) => v === 0, some: (v) => Number.isInteger(v) && v > 0, on: (v) => v === true };
