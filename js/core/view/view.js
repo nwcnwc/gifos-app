@@ -3203,7 +3203,9 @@
         const skipCells = [];
         const restIx = [];
         const heldIx = [];
-        for (let fi = 0; fi < faces.length; fi++) (faces[fi].held ? heldIx : restIx).push(fi);
+        // A picture that names its cells holds exactly those people: a face with no cell in it (a watcher with no
+        // camera, a seat another picture carries) is not drawn by this box, and a count match never puts it there.
+        for (let fi = 0; fi < faces.length; fi++) { if (faces[fi].held) heldIx.push(fi); else if (!cellOf || cellOf[fi] >= 0) restIx.push(fi); }
         const nPic = meta.n | 0;
         let pictureCells = 0;
         let cut = false;
@@ -3263,7 +3265,9 @@
           for (const [pid, p] of __C.model.roster.peers()) if (p && (p.held || (p.tile && !p.headless && p.tile.style.display !== 'none'))) onScr[pid] = true;
           for (const id of stagersFace) onScr[id] = true;
           if (Array.isArray(meta.ids)) far = meta.ids.filter((id) => id && !onScr[id]);
-          if (!far.length) {   // unnamed cells, or a far room whose pipe carries no picture (its paused note, TURN.11)
+          // The head count stands in only for a picture that names no cells, or no picture (its paused note): a picture
+          // that names its cells is exactly those people, so a count gap (a tile-less watcher) never opens a box over it.
+          if (!far.length && !(Array.isArray(meta.ids) && nPic > 0)) {   // unnamed cells, or a far room whose pipe carries no picture (its paused note, TURN.11)
             let mc = null, fs = 0;
             try { const mn = __C.model.net.meshNode(); mc = mn && typeof mn.meetingCount === 'function' ? mn.meetingCount() : null; fs = Object.keys(onScr).length; } catch (e) { mc = null; }
             if (mc != null && mc > fs) far = new Array(Math.max(1, Math.min(mc - fs, nPic || mc - fs))).fill('');
