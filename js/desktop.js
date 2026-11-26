@@ -4755,6 +4755,39 @@
       dt('desktop.retired.body', { gone, here: escapeHtml(here) }));
   }
 
+  // #folder=<folder>[&select=<fileId>] — open the Home Screen on a folder, with one file in it selected (the
+  // /subscription Receipts table opens a purchase's receipt this way: #folder=purchases&select=<receipt fileId>).
+  // <folder> is a folder's item id, or a system folder's short name (purchases -> sys_purchases). The file wins: it
+  // is shown wherever it sits now (a receipt moved out of Purchases is still found). Neither there: say so, once.
+  // In the HASH like #place= (the channel loader carries the hash across a version redirect, never the query).
+  async function handleFolderParam() {
+    let folder = '', select = '';
+    try {
+      const h = new URLSearchParams(location.hash.slice(1));
+      folder = h.get('folder') || ''; select = h.get('select') || '';
+      if (!folder && !select) return;
+      h.delete('folder'); h.delete('select');
+      const rest = h.toString();
+      history.replaceState(null, '', location.pathname + location.search + (rest ? '#' + rest : ''));
+    } catch (e) { return; }
+    await drainPendingReceipts();   // a receipt minted a moment ago is placed first
+    const it = select ? items.find((i) => i.fileId === select && i.kind !== 'folder') : null;
+    const f = folder ? items.find((i) => i.kind === 'folder' && (i.id === folder || i.id === 'sys_' + folder)) : null;
+    if (!it && !f) {
+      showModal(dt('desktop.folderLink.noneTitle'), select ? dt('desktop.folderLink.noFileBody') : dt('desktop.folderLink.noneBody'));
+      return;
+    }
+    await navTo(it ? (it.parent || null) : f.id);
+    if (!it) return;
+    selectedId = it.id;
+    await render();
+    const node = surface.querySelector('.icon[data-id="' + (window.CSS && CSS.escape ? CSS.escape(it.id) : it.id) + '"]');
+    if (node) { node.classList.add('selected'); try { node.scrollIntoView({ block: 'center', inline: 'nearest' }); } catch (e) {} }
+  }
+
+  // The same link followed in a tab that already shows the Home Screen.
+  window.addEventListener('hashchange', () => { if (/[#&](folder|select)=/.test(location.hash)) handleFolderParam(); });
+
   // #place=<fileId> — finish an App Store install. store.js downloaded and
   // verified the GIF and wrote the FILE; the icon's cell is not its business,
   // because saveItem is the only thing that decides where an arrival lands. So
@@ -5146,7 +5179,7 @@
   // ---------- boot ----------
   requestPersistence();
   paintPinHead();
-  desktopWords.then(() => load()).then(seedIfEmpty).then(reseedDefaultsIfNeeded).then(ensureSystemItems).then(drainPendingReceipts).then(destackForThisScreen).then(render).then(() => { scheduleStoreDefaults(); }).then(noteRetiredBuild).then(notePinEnded).then(handleRunParam).then(handlePlaceParam).then(handleEdgeLink).then(() => checkForUpdate()).then(reclaimOrphanAssets).then(backfillOrnaments);
+  desktopWords.then(() => load()).then(seedIfEmpty).then(reseedDefaultsIfNeeded).then(ensureSystemItems).then(drainPendingReceipts).then(destackForThisScreen).then(render).then(() => { scheduleStoreDefaults(); }).then(noteRetiredBuild).then(notePinEnded).then(handleRunParam).then(handlePlaceParam).then(handleFolderParam).then(handleEdgeLink).then(() => checkForUpdate()).then(reclaimOrphanAssets).then(backfillOrnaments);
 
   GifOS.desktop = { render, load, backfillOrnaments, get stats() { return renderStats; },
     // The lazy seed, awaitable: the promise the boot armed (resolves once it has run), and what it decided.
