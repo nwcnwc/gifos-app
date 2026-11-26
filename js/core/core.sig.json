@@ -9,7 +9,7 @@
   "js/core/host.js": "42a724efff207e3d92c1c39462e580903f8e4623e834dd811503867c94f645c2",
   "js/core/media/nones.json": "6f24281dd59225d202d17741288623f731f2c37b669f4c49596dd7596a696708",
   "js/core/media/plane-node.js": "93427ba53b35b68628a32b20d4c021cd819074186b844d6436471408c485c852",
-  "js/core/meeting.js": "9186650df317012a6299a32bd59601bf48098da5d7334777189063fb17ffac9c",
+  "js/core/meeting.js": "2d0d6790862e812cc84eabf4f988eea9c0457fa282c22b8a1f49f53070fb4ff5",
   "js/core/node.js": "0303e856dd48f3c4bbdc2f1f98d56cb09e540b951a35e8058b7189cef8242856",
   "js/core/platform.json": "ff63aab6f5c875f1206fbcfa080d47e7e2af32b636700eb2fe9deb154287a20d",
   "js/core/ports/vp8.js": "ff660d71ff3918c9bdcca65d13188d66ee07237b1032f3c7c36832289874c39f",
@@ -65,7 +65,7 @@
   "js/mesh/id.js": "020c6c28372190741217542e027e445411364b943b89b392996a3d714a2bbaca",
   "js/mesh/ijoin.js": "0381a1ba6f0988bf11107ffc5116513da0b6d651711daad46836681840a36b7f",
   "js/mesh/instant.js": "03bf6b8831f13e96f6f82af8e4a99afc37755f09e3f4872b436c5433089dc023",
-  "js/mesh/island.js": "003f11c3bb67b898a91a0f248e0bb00d4024877491b46af2695544b330fa1254",
+  "js/mesh/island.js": "e17f5bdd5ab8f30be13285ef202246b1c8fdd1dd4c50c1f0aca8dcef06c888f7",
   "js/mesh/laws.js": "aabc690a839ded7cd02172eb74af8f53e49f984dc8ff18b92900e703bc672085",
   "js/mesh/lguard-seat.js": "4c5a129cdd8dea5015a2994a93c5f555541607e5927633ec19b87b06b1c48033",
   "js/mesh/linkset.js": "bbcc0e540bdf3346ae7755c4377054ffb6ef7b03447fa280bf3da538240e64ec",
@@ -86,7 +86,7 @@
   "js/mesh/ring.js": "c5456760ee7273c69bfbca5dcbc982db440ce89f804f8e15432de93d0e95efb1",
   "js/mesh/rng.js": "a7c307feb370037de824a58f6d928b2d76b73f2e075f7b456114148a0eb07a6b",
   "js/mesh/roles.js": "f234945693dad5763a5b49cf1306a473cf9842ef382218416c117c30f9993c0b",
-  "js/mesh/roomterm.js": "0a88a998c3ce87f2cc796bd3cc7088c7a721795f4ee152d67a249d6a992a5233",
+  "js/mesh/roomterm.js": "bab4c7d15230b08b4c01a4af021292cddd68439eedf016349597be03dddcd742",
   "js/mesh/route.js": "5a19ca72c4b6f82f573972d2981a5d0f4e151900ce1378041b086a1d6ce34d21",
   "js/mesh/seat-fields.js": "b36d22b29659483c948a7ccad88e9bfc538823c52c045a534735507f0920fbb2",
   "js/mesh/seat-rest.js": "f11450f85ede94d1734f8ca4d42deb58deed0ab6a95f0a75f1fb7913f0ca9b2e",
@@ -104,5 +104,5 @@
   "js/runtime.js": "16953388689e6b3af5fa5bd2a38303547334d28f869c2de32a0272f49859a41b",
   "js/timings.js": "cede9c58c26291b262b6a4c716c1e62389a0417cfbf8e9df7ad20a6739edcdfb"
  },
- "sig": "ekX//pwB67yj3v0Qhr/yXCQLjc9vR6B6ht0pfmrLmTVrqa6zCzrvV0LFw8W3p0vnsjFocID9BuE0rkA6Vyb8Cg=="
+ "sig": "oJRX7aq4Yo5TIfx0PJasKNrLMqZvodFJjNA1PgMmFVi6aHiJM64m6WQUI1yK1kTq4vexUEz4xprMzE26FKIxAw=="
 }
