@@ -170,6 +170,13 @@
     background: rgba(24, 24, 28, .94); color: var(--c-white); font: 600 .9rem/1.35 system-ui, sans-serif; text-align: center; pointer-events: none; }
   #massbanner { position: fixed; top: 56px; left: 50%; transform: translateX(-50%); z-index: 9000; max-width: 92vw; padding: 8px 14px; border-radius: 8px;
     background: rgba(24, 24, 28, .94); color: var(--c-white); font: 600 .9rem/1.35 system-ui, sans-serif; text-align: center; pointer-events: none; }
+  /* The Stage's names, drawn by this viewer over its own Stage picture (viewKit.stageNames): sharp over a blurred
+   picture, never in the pixels sent. A viewer's Show names off hides them; a calm watching surface fades them. */
+  #stagefeed .stgnames { position: absolute; inset: 0; pointer-events: none; z-index: 2; overflow: hidden; }
+  #stagefeed .stgname { position: absolute; box-sizing: border-box; padding: .2em .5em; background: rgba(10,10,15,.62); color: #eef;
+  font-weight: 600; font-family: system-ui, sans-serif; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: opacity .4s ease; }
+  #stagefeed .stgname[hidden] { display: none; }
+body.names-off #stagefeed .stgnames { display: none; }
   .rowtile .rlabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 2px 6px;
     font-size: .65rem; color: #e0e0f0; background: rgba(10,10,15,.7);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -179,6 +186,8 @@
   /* The band is always dark, so its words are always light: a light theme's
      --text read near-black on it. The stage's label is read across a room. */
   #stagefeed .rowtile .rlabel { font-size: .8rem; padding: 3px 8px; }
+  /* The stagers' names say who is on the Stage: the plain "On stage" line gives way to them (a share keeps its line). */
+  #stagefeed .rowtile:has(> .stgnames > .stgname:not([hidden])) > .rlabel:not(.sharelabel) { display: none; }
   /* On stage: the tile floats first and wears the accent — the whole room's
      eye line. The four-bus mix panel is a personal knob rack (receiver-side
      volume only — as ungovernable as any volume knob); the section and
@@ -1196,17 +1205,17 @@
   /* A tile whose video a free TURN link holds back (run.html turnPaint): the
      sentence and Subscribe, quiet over the dark tile. Chrome on the content:
      no panel, no border, no accent colour; the name pill keeps its corner. */
-  :is(.tile, .ct-pane) .tpause { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  :is(.tile, .ct-pane, .stadwhole) .tpause { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
                   gap: 12px; padding: 16px 16px 44px; text-align: center; pointer-events: none; z-index: 3;
                   font-size: .875rem; line-height: 1.35; color: var(--c-white); }
-  :is(.tile, .ct-pane) .tpause > span { max-width: 22rem; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
-  :is(.tile, .ct-pane) .tpause .tpause-sub { pointer-events: auto; min-height: 36px; padding: 6px 16px; border: 0; border-radius: var(--r-pill);
+  :is(.tile, .ct-pane, .stadwhole) .tpause > span { max-width: 22rem; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+  :is(.tile, .ct-pane, .stadwhole) .tpause .tpause-sub { pointer-events: auto; min-height: 36px; padding: 6px 16px; border: 0; border-radius: var(--r-pill);
                   background: rgba(255,255,255,.16); color: var(--c-white); font: inherit; font-weight: 500; cursor: pointer; }
-  :is(.tile, .ct-pane) .tpause .tpause-sub:disabled { opacity: .6; cursor: default; }
+  :is(.tile, .ct-pane, .stadwhole) .tpause .tpause-sub:disabled { opacity: .6; cursor: default; }
   /* The second choice under Subscribe: the four-hour pass, a quiet line of text, no fill. */
-  :is(.tile, .ct-pane) .tpause .tpause-pass { pointer-events: auto; min-height: 32px; padding: 4px 8px; border: 0; background: none;
+  :is(.tile, .ct-pane, .stadwhole) .tpause .tpause-pass { pointer-events: auto; min-height: 32px; padding: 4px 8px; border: 0; background: none;
                   color: var(--c-white); opacity: .8; font: inherit; cursor: pointer; }
-  :is(.tile, .ct-pane) .tpause .tpause-pass:disabled { opacity: .5; cursor: default; }
+  :is(.tile, .ct-pane, .stadwhole) .tpause .tpause-pass:disabled { opacity: .5; cursor: default; }
   /* What is in effect (a pass's time left, or the plan), quiet beside the status line; a tap opens Settings. */
   #sub-now { display: inline; border: 0; background: none; padding: 0 0 0 8px; color: var(--c-gray); font: inherit; font-size: .8125rem; cursor: pointer; white-space: nowrap; }
   #sub-now[hidden] { display: none; }
@@ -2071,8 +2080,12 @@
      leaves with that tuck as well. */
   .topchip, #gifos-build-float { transition: opacity var(--t-fast) ease; }
   body.head-calm .topchip { opacity: 0; pointer-events: none; transition: opacity var(--t-slow) ease; }
-  body.head-calm #gifos-build-float { opacity: 0 !important; transition: opacity var(--t-slow) ease; }
-  body.chrome-away #gifos-build-float { opacity: 0 !important; transition: opacity var(--t-fast) ease; }
+  /* The version label always stays (it is in every screenshot a person sends us). */
+  /* Calm on a watching surface (viewKit.calm: a /cast viewer, the Stage view, full screen): every control and label
+     leaves the picture (the top line and buttons, Blur, the Prerecorded pill, the Stage names); only the version
+     label stays. Any pointer, touch or key brings them back. */
+  body.view-calm #tophead > :not(#gifos-build-float), body.view-calm #bc-pre, body.view-calm #clearnopw-bar,
+  body.view-calm #stagefeed .stgname, body.view-calm .tile > :is(.name, .chips, .blurwhy:not([data-why="tap"])) { opacity: 0 !important; pointer-events: none !important; transition: opacity var(--t-slow) ease; }
   @media (prefers-reduced-motion: reduce) { .bar, body.dock-calm .bar, body.dock-calm .fitbtn,
     .tile > .blurbox, .tile .modbar, .topchip, #gifos-build-float { transition: none !important; } }
   .bar #cam, .bar #mic, .bar #reactbtn, .bar #sharebtn, .bar #chatbtn, .bar #ccdock, .bar #bartoggle {

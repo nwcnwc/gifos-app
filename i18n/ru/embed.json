@@ -48,7 +48,6 @@
   "embed.pwAria": "Пароль комнаты",
   "embed.pwPh": "Пароль",
   "embed.react": "Реакция",
-  "embed.roomLine": "Комната: {room}",
   "embed.send": "Отправить",
   "embed.settings": "Настройки",
   "embed.sharedNow": "Сейчас показывают",
@@ -64,6 +63,6 @@
   "embed.unmute": "Включить звук",
   "embed.volume": "Громкость",
   "embed.watch": "Смотреть",
-  "embed.watchOn": "Смотреть на GifOS",
+  "embed.viewOn": "Смотреть на gifos.app",
   "embed.watching": "{n, plural, one {# зритель} few {# зрителя} many {# зрителей} other {# зрителя}}"
 }

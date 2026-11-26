@@ -3206,7 +3206,9 @@
         const skipCells = [];
         const restIx = [];
         const heldIx = [];
-        for (let fi = 0; fi < faces.length; fi++) (faces[fi].held ? heldIx : restIx).push(fi);
+        // A picture that names its cells holds exactly those people: a face with no cell in it (a watcher with no
+        // camera, a seat another picture carries) is not drawn by this box, and a count match never puts it there.
+        for (let fi = 0; fi < faces.length; fi++) { if (faces[fi].held) heldIx.push(fi); else if (!cellOf || cellOf[fi] >= 0) restIx.push(fi); }
         const nPic = meta.n | 0;
         let pictureCells = 0;
         let cut = false;
@@ -3266,7 +3268,9 @@
           for (const [pid, p] of __C.model.roster.peers()) if (p && (p.held || (p.tile && !p.headless && p.tile.style.display !== 'none'))) onScr[pid] = true;
           for (const id of stagersFace) onScr[id] = true;
           if (Array.isArray(meta.ids)) far = meta.ids.filter((id) => id && !onScr[id]);
-          if (!far.length) {   // unnamed cells, or a far room whose pipe carries no picture (its paused note, TURN.11)
+          // The head count stands in only for a picture that names no cells, or no picture (its paused note): a picture
+          // that names its cells is exactly those people, so a count gap (a tile-less watcher) never opens a box over it.
+          if (!far.length && !(Array.isArray(meta.ids) && nPic > 0)) {   // unnamed cells, or a far room whose pipe carries no picture (its paused note, TURN.11)
             let mc = null, fs = 0;
             try { const mn = __C.model.net.meshNode(); mc = mn && typeof mn.meetingCount === 'function' ? mn.meetingCount() : null; fs = Object.keys(onScr).length; } catch (e) { mc = null; }
             if (mc != null && mc > fs) far = new Array(Math.max(1, Math.min(mc - fs, nPic || mc - fs))).fill('');
@@ -5359,6 +5363,7 @@
     let platePaintT = 0;
     function paintStagePlate() {
       try { paintStageBlurWhy(); } catch (e) {}   // a strip just bound wears its blur at once (STAGEBLUR)
+      try { GifOS.viewKit.stageNames(__C, __M); } catch (e) {}   // the stagers' names over the Stage picture
       const el = document.getElementById('bc-stage');
       const line = document.getElementById('bc-stage-line');
       if (!el || !line) return;
@@ -10167,7 +10172,21 @@
       const wake = () => {
         lastInput = Date.now();
         document.body.classList.remove('dock-calm');
+        try { GifOS.viewKit.calm(false); } catch (e) {}
       };
+      // A WATCHING SURFACE (a /cast viewer, the Stage view, full screen) goes calm with the dock (a phone: with the
+      // chrome tuck): every control and label leaves the picture, the version label stays (viewKit.calm). An unmute
+      // prompt holds it; the tap-to-unblur note is never faded.
+      function watchCalm(calm) {
+        const b = document.body.classList;
+        if (!calm && !b.contains('chrome-away')) return false;
+        const castView = !!(GifOS.viewSurface && GifOS.viewSurface.name === 'cast') || b.contains('broadcast');
+        const watching = (castView && !b.contains('bc-host')) || b.contains('view-stage') || !!document.fullscreenElement;
+        if (!watching) return false;
+        const um = document.getElementById('unmute');
+        if (um && um.getClientRects().length && getComputedStyle(um).display !== 'none' && getComputedStyle(um).visibility !== 'hidden') return false;
+        return true;
+      }
       for (const ev of ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart', 'focusin']) {
         window.addEventListener(ev, wake, { capture: true, passive: true });
       }
@@ -10198,6 +10217,7 @@
         let calm = false;
         try { calm = Date.now() - lastInput >= __C.model.door.dockCalmMs() && !busy(); } catch (e) {}
         if (calm !== document.body.classList.contains('dock-calm')) document.body.classList.toggle('dock-calm', calm);
+        try { GifOS.viewKit.calm(watchCalm(calm)); } catch (e) {}
         // The header only goes while it is the plain count line.
         let head = calm;
         if (head) {

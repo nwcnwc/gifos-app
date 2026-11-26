@@ -48,7 +48,6 @@
   "embed.pwAria": "房间密码",
   "embed.pwPh": "密码",
   "embed.react": "互动",
-  "embed.roomLine": "房间：{room}",
   "embed.send": "发送",
   "embed.settings": "设置",
   "embed.sharedNow": "正在共享",
@@ -64,6 +63,6 @@
   "embed.unmute": "开启声音",
   "embed.volume": "音量",
   "embed.watch": "观看",
-  "embed.watchOn": "在 GifOS 上观看",
+  "embed.viewOn": "在 gifos.app 上观看",
   "embed.watching": "{n} 人在看"
 }

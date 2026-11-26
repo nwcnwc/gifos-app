@@ -48,7 +48,7 @@
     // sound gate, what the room sends this seat). Keys come from the hash the embedder wrote. The core rebuilds its
     // params from its own whitelist and drops this one.
     var CONTROL_KEYS = ['volume', 'mute', 'captions', 'audioonly', 'tabs', 'inset', 'fullscreen', 'pip', 'chat', 'reactions', 'names', 'watch'];
-    var CONTROL_DEFAULT = ['volume', 'audioonly', 'fullscreen', 'pip', 'chat', 'reactions', 'names'];
+    var CONTROL_DEFAULT = ['volume', 'audioonly', 'fullscreen', 'pip', 'chat', 'reactions', 'names', 'watch'];
     function controlsFromHash(hash) {
       var set = new Set();
       var has = false, raw = '';
@@ -77,9 +77,10 @@
     var ccOn = lsGet('gifos.embed.cc') === '1', ccAvail = false, ccText = '', ccUntil = 0, ccTimer = 0;
     // Audio only: this viewer's screen stops drawing the pictures (CSS hides the video elements). It is never a
     // subscription change: the seat keeps receiving and forwarding video for the room exactly as before.
-    // Show names: the name bars the player draws on the Stage picture; on by default, this viewer's choice, kept in this browser.
+    // Show names: the names this player draws over the Stage picture (viewKit.stageNames); on by default, this viewer's
+    // choice, kept in this browser. Nothing sent changes: the Stage picture never carries the names.
     var showNames = !(controls.has('names') && lsGet('gifos.embed.names') === '0');
-    GifOS.hideNames = !showNames;
+    document.body.classList.toggle('names-off', !showNames);
     var audioOnly = controls.has('audioonly') && lsGet('gifos.embed.audioonly') === '1';
     document.body.classList.toggle('emb-inset-lock', !controls.has('inset'));
     // The entry the core parsed (its EMBED whitelist): read when first asked, after the core's first steps ran.
@@ -109,9 +110,6 @@
       var t = title || room || tr('defaultTitle', 'GifOS Broadcast');
       $('emb-title').textContent = t;
       $('emb-info-title').textContent = t;
-      var rm = $('emb-info-room');
-      rm.hidden = !(title && room && why === 'ok');
-      if (!rm.hidden) rm.textContent = tr('roomLine', 'Room: {room}', { room: room });
     }
     var quiet = { text: '' };
     var tried = false;
@@ -223,6 +221,7 @@
       paintInsetRow();
       syncRows();
       aimFloat();
+      try { K.stageNames(C, M); } catch (e) {}
       calmSoon();
     }
 
@@ -798,6 +797,7 @@
     function setCalm(on) {
       calm = !!on;
       document.body.classList.toggle('emb-calm', calm);
+      K.calm(calm);   // the watching surfaces' one idle fade: the top line and the Stage names go with the bar
     }
     function calmSoon() {
       if (!mayCalm()) { if (calm) setCalm(false); clearTimeout(calmT); calmT = 0; return; }
@@ -847,7 +847,7 @@
       row('emb-m-audioonly', 'audioOnly', 'Audio only');
       row('emb-m-inset', 'stagePic', 'Stage picture');
       row('emb-m-names', 'showNames', 'Show names');
-      set('emb-watch', 'watchOn', 'Watch on GifOS');
+      set('emb-watch', 'viewOn', 'View on gifos.app');
       set('emb-audionote-txt', 'audioOnly', 'Audio only');
       set('emb-card-title', 'cardTitle', 'Watch clearly');
       set('emb-pw', 'pwPh', 'Password', 'placeholder'); set('emb-pw', 'pwAria', 'Room password', 'aria-label');
@@ -892,6 +892,31 @@
     // Input: unmute, mute, the password, the bar and its panels. Runs after the core's top level.
     function setup() {
     $('emb-play').onclick = function () { if (hostedNow()) hear(true); };
+    // UPDATE: a player never stays on an old release (an old page is refused by the room's relay and would sit on
+    // CONNECTING). A framed page has no update bar, so the player reads version.json itself, now, then every
+    // UPDATE_CHECK_MS and when it is shown again; a newer release reloads this frame onto it, the room link kept.
+    (function watchRelease() {
+      var m = /^\/versions\/(\d+(?:\.\d+){2,3})\//.exec(location.pathname);
+      if (!m) return;   // the edge build follows its own deploys
+      var mine = m[1], moving = false;
+      var newer = function (a, b) {
+        var x = String(a).split('.').map(Number), y = String(b).split('.').map(Number);
+        for (var i = 0; i < Math.max(x.length, y.length); i++) { var d = (x[i] || 0) - (y[i] || 0); if (d) return d > 0; }
+        return false;
+      };
+      var tick = function () {
+        if (moving || document.hidden) return;
+        fetch('/version.json', { cache: 'no-cache', credentials: 'omit' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (v) {
+          var latest = v && typeof v.latest === 'string' && /^\d+(\.\d+){2,3}$/.test(v.latest) ? v.latest : '';
+          if (!latest || !newer(latest, mine) || moving) return;
+          moving = true;
+          location.replace('/versions/' + latest + '/embed' + location.hash);
+        }).catch(function () {});
+      };
+      setTimeout(tick, GifOS.timings.EMBED_HOSTED_MS);
+      setInterval(tick, GifOS.timings.UPDATE_CHECK_MS);
+      document.addEventListener('visibilitychange', tick);
+    })();
     $('emb-unblur').onclick = function () { try { C.tapUnblur(); } catch (e) {} paint(); };
     setInterval(function () { try { paint(); } catch (e) {} }, GifOS.timings.EMBED_HOSTED_MS);   // re-read the live host state
     $('emb-mute').onclick = function () { if (hostedNow() || M.serviceHeard) hear(!M.serviceHeard); };
@@ -899,7 +924,7 @@
     $('emb-tabmenu').onchange = function () { pick(this.value); };
     $('emb-inset-min').onclick = function (e) { e.stopPropagation(); toggleInset(); };
     $('emb-m-inset').onclick = function () { toggleInset(); };
-    $('emb-m-names').onclick = function () { showNames = !showNames; GifOS.hideNames = !showNames; lsSet('gifos.embed.names', showNames ? '1' : '0'); syncRows(); };
+    $('emb-m-names').onclick = function () { showNames = !showNames; document.body.classList.toggle('names-off', !showNames); lsSet('gifos.embed.names', showNames ? '1' : '0'); syncRows(); };
     (function drag() {   // pointer drag of the inset; on release it snaps to the nearest corner
       var sf = stagefeedEl, start = null;
       sf.addEventListener('pointerdown', function (e) {

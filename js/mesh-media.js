@@ -554,7 +554,7 @@
         const lw = Math.max(2, cell * 0.035);
         surf.stroke('#37d67a', lw, dx + lw / 2, dy + lw / 2, cell - lw, cell - lw);
       }
-      if (lbl.name && !GifOS.hideNames) {
+      if (lbl.name) {
         const nc = nameCell > 0 && nameCell < cell ? nameCell : cell;
         surf.label(String(lbl.name), dx, dy + cell - nc, nc, nc);
       }
