@@ -310,7 +310,7 @@
     }
     function floatEl() { try { return document.pictureInPictureElement || null; } catch (e) { return null; } }
     function wkFloating(v) { return !!(v && v.webkitPresentationMode === 'picture-in-picture'); }
-    function floating() { return !!floatEl() || wkFloating(visibleVideo()) || (lens && wkFloating(lens.video)); }
+    function floating() { return !!floatEl() || wkFloating(visibleVideo()) || !!(lens && wkFloating(lens.video)); }
     function floatSupported() { return !!K.pip.kind(visibleVideo() || document.createElement('video')) && !!(window.HTMLCanvasElement && HTMLCanvasElement.prototype.captureStream); }
     var lens = null;
     function lensMake() {
@@ -582,7 +582,11 @@
       if (near || chatSeen === lines.length) log.scrollTop = log.scrollHeight;
     }
     fn('renderChat', function () { renderChatPanel(); });
-    function myNameSet() { try { return !!String((GifOS.store.identity() || {}).name || '').trim(); } catch (e) { return false; } }
+    // A viewer arrives with a quiet guest name (the core's, "Guest 1234"). The first line they post asks once for the name
+    // the room sees, the guest name filled in; after that (this browser) it posts straight away.
+    var NAMED_KEY = 'gifos.embed.named';
+    function myNameSet() { return lsGet(NAMED_KEY) === '1'; }
+    function myName() { try { return String((GifOS.store.identity() || {}).name || '').trim(); } catch (e) { return ''; } }
     var chatNote = '';
     function sayChatNote(t) {
       chatNote = t || '';
@@ -608,13 +612,14 @@
       var c = $('emb-name-card');
       c.hidden = !on;
       $('emb-chat-form').hidden = !!on;
-      if (on) { var ni = $('emb-name-in'); ni.value = ''; try { ni.focus(); } catch (e) {} }
+      if (on) { var ni = $('emb-name-in'); ni.value = myName(); try { ni.focus(); ni.select(); } catch (e) {} }
       else { try { $('emb-chat-in').focus(); } catch (e) {} }
     }
     function saveName() {
       var n = $('emb-name-in').value.replace(/\s+/g, ' ').trim().slice(0, 40);
       if (!n) return;
       try { GifOS.store.setName(n); } catch (e) {}
+      lsSet(NAMED_KEY, '1');
       try { C.broadcastStatus(); } catch (e) {}   // the room learns the name with this seat's next status
       showNameCard(false);
       sendChat();
@@ -708,7 +713,7 @@
       if (controls.has('watch') && why === 'ok') on = true;
       var gear = $('emb-gear'); if (gear) { gear.hidden = !on; if (!on && panel === 'menu') setPanel(null); }
     }
-    syncRows();
+    // (No paint at this first step: the core's own names are not set yet. The first paint runs once the linker's run returns.)
 
     // ---- CALM: the bar fades after CHROME_IDLE_MS (the meeting's own chrome clock) with no pointer, touch or key, and
     // comes back on any of them. Never while a panel or the password card is open, the password button shows, the
@@ -738,6 +743,7 @@
 
     // ---- words in the markup: set once the catalog is in (English is already there) ---------------------------------
     function applyWords() {
+      try { document.documentElement.lang = I18 ? I18.ui() : 'en'; } catch (e) {}
       var set = function (id, key, en, attr) {
         var el = $(id); if (!el) return;
         var w = tr(key, en);

@@ -3,10 +3,10 @@
 /* Panels (the gear menu, the info panel, the password card) follow the viewer's light or dark scheme. The bar and
    the badges sit on the picture and stay light-on-dark in both. */
 :root { --emb-panel-bg: rgba(10,10,15,.92); --emb-panel-fg: #fff; --emb-panel-dim: rgba(255,255,255,.72); --emb-panel-hover: rgba(255,255,255,.16);
-  --emb-panel-line: rgba(255,255,255,.14); --emb-field-bg: #14141f; --emb-field-line: #2a2a3f; --emb-link: #9db4ff; --emb-on: rgba(214,40,48,.92); }
+  --emb-panel-line: rgba(255,255,255,.14); --emb-field-bg: #14141f; --emb-field-line: #2a2a3f; --emb-link: #9db4ff; --emb-on: rgba(214,40,48,.92); --emb-panel-solid: #15151d; }
 @media (prefers-color-scheme: light) {
   :root { --emb-panel-bg: rgba(250,250,252,.97); --emb-panel-fg: #15151c; --emb-panel-dim: rgba(21,21,28,.68); --emb-panel-hover: rgba(0,0,0,.07);
-    --emb-panel-line: rgba(0,0,0,.12); --emb-field-bg: #fff; --emb-field-line: #c9cad6; --emb-link: #2343c4; --emb-on: #c8232b; }
+    --emb-panel-line: rgba(0,0,0,.12); --emb-field-bg: #fff; --emb-field-line: #c9cad6; --emb-link: #2343c4; --emb-on: #c8232b; --emb-panel-solid: #fafafc; }
 }
 html, body { margin: 0; height: 100%; background: #111; overflow: hidden; }
 #stagefeed { position: fixed; inset: 0; background: #111; display: flex; align-items: center; justify-content: center; }
@@ -74,7 +74,7 @@ body.emb-audioonly #stagefeed video, body.emb-audioonly #emb-share-video { displ
 /* The info panel: the full title and a line about GifOS. Close stays in its header, never below a scroll. */
 #embedui .emb-info { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; width: min(380px, calc(100% - 24px));
   max-height: calc(100% - 24px); box-sizing: border-box; display: flex; flex-direction: column; border-radius: 8px; overflow: hidden;
-  background: var(--emb-panel-bg); color: var(--emb-panel-fg); box-shadow: 0 4px 24px rgba(0,0,0,.5); }
+  background: var(--emb-panel-solid); color: var(--emb-panel-fg); box-shadow: 0 4px 24px rgba(0,0,0,.5); }
 #embedui .emb-info-head { flex: none; display: flex; align-items: center; gap: 10px; padding: 10px 10px 8px 16px; border-bottom: 1px solid var(--emb-panel-line); }
 #embedui .emb-info-head h2 { margin: 0; flex: 1; min-width: 0; font-size: 13px; font-weight: 600; letter-spacing: .02em; color: var(--emb-panel-dim); }
 #embedui .emb-info-close { flex: none; border: 1px solid var(--emb-panel-line); border-radius: 6px; padding: 5px 12px; background: transparent; color: var(--emb-panel-fg);
@@ -160,7 +160,7 @@ body.emb-has-share.emb-stage-folded .emb-inset-min { position: static; height: 3
 #embedui .emb-dot { position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border-radius: 50%; background: #ff4b55; border: 1px solid rgba(0,0,0,.5); }
 #embedui .emb-chat { position: absolute; right: 8px; bottom: 48px; z-index: 2; width: min(340px, calc(100% - 16px)); height: min(380px, calc(100% - 104px)); min-height: 150px;
   box-sizing: border-box; display: flex; flex-direction: column; border-radius: 8px; overflow: hidden;
-  background: var(--emb-panel-bg); color: var(--emb-panel-fg); box-shadow: 0 4px 24px rgba(0,0,0,.5); }
+  background: var(--emb-panel-solid); color: var(--emb-panel-fg); box-shadow: 0 4px 24px rgba(0,0,0,.5); }
 #embedui .emb-chat-log { flex: 1; min-height: 0; overflow: auto; margin: 0; padding: 8px 12px; list-style: none; font-size: 14px; line-height: 1.4; }
 #embedui .emb-chat-log li { margin: 0 0 6px; overflow-wrap: anywhere; }
 #embedui .emb-chat-log li b { font-weight: 700; }
