@@ -73,7 +73,8 @@
     fpTol: 7,         // cell fingerprint tolerance (levels) for "unchanged"
     needStable: 1,    // unchanged ticks needed before a passing cell is shown
     maxStrikes: 6,
-    block: 256,       // incremental analysis: changed cells are analysed in aligned blocks of this edge (32 << (levels-1))
+    block: 64,        // incremental analysis: changed cells are analysed in aligned blocks of this edge
+    grow: 2,          // ... grown by this many blocks on every side (the alphabet and neighbour tests look that far at body-text size)
     fullFrac: 0.6     // ... unless the blocks to analyse cover this share of the frame: then the whole frame at once
   };
   const R = { PASS: 0, BLANK: 1, BUSY: 2, FAINT: 3, THICK: 4, RULES: 5, NOBAND: 6, BANDH: 7, SEG: 8, DENS: 9, SPECK: 10, SMALL: 11, FEWSEG: 12, TONE: 13, FILL: 14, TWIN: 15, MONO: 16 };
@@ -369,16 +370,16 @@
     for (let c = 0; c < A.cols * A.rows; c++) if (A.clear[c] && (!which || which[c])) renderCell(A, rgba, w, h, c, out, w, (c % A.cols) * A.T, ((c / A.cols) | 0) * A.T);
   }
 
-  // The regions to analyse: aligned blocks holding a candidate cell, grown by one block (the alphabet and neighbour
-  // tests look that far), joined into rectangles. Alignment to `block` keeps every pyramid level's windows where a
-  // whole-frame analysis puts them. Past fullFrac of the frame: the whole frame once.
+  // The regions to analyse: aligned blocks holding a candidate cell, grown by `grow` blocks (the alphabet and neighbour
+  // tests look that far), joined into rectangles. A region is analysed as a picture of its own: every test runs on its
+  // real pixels, and a region's edge only takes context away (stricter, never looser). Past fullFrac: the whole frame.
   function regionsOf(cand, cols, rows, w, h, P) {
     const B = P.block, k = B / (P.T >> 1), bc = Math.ceil(w / B), brn = Math.ceil(h / B), mark = new Uint8Array(bc * brn);
     for (let c = 0; c < cols * rows; c++) if (cand[c]) mark[(((c / cols) | 0) / k | 0) * bc + ((c % cols) / k | 0)] = 1;
     const grow = new Uint8Array(bc * brn);
     for (let y = 0; y < brn; y++) for (let x = 0; x < bc; x++) {
       if (!mark[y * bc + x]) continue;
-      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const xx = x + dx, yy = y + dy; if (xx >= 0 && yy >= 0 && xx < bc && yy < brn) grow[yy * bc + xx] = 1; }
+      for (let dy = -P.grow; dy <= P.grow; dy++) for (let dx = -P.grow; dx <= P.grow; dx++) { const xx = x + dx, yy = y + dy; if (xx >= 0 && yy >= 0 && xx < bc && yy < brn) grow[yy * bc + xx] = 1; }
     }
     const seen = new Uint8Array(bc * brn), out = []; let area = 0;
     for (let i = 0; i < bc * brn; i++) {
@@ -554,7 +555,7 @@
           }
           eng.shownN += m.newly.length - m.hidden.length;
           if (m.newly.length || m.hidden.length) eng.ver++;
-          const ms = m.ms + grabMs; eng.lastMs = ms;
+          const ms = m.ms + grabMs; eng.lastMs = ms; eng.lastWork = m.ms;
           if (m.analysed) {
             eng.analysed++;
             eng.cost = eng.cost ? eng.cost * 0.5 + ms * 0.5 : ms;
@@ -571,7 +572,7 @@
         });
       };
       eng.stop = function () { dropState(eng.id); eng.gen++; eng.gaveUp = true; };
-      eng.state = function () { return { w: eng.w, h: eng.h, step: eng.step, size: SIZES[eng.step], gaveUp: eng.gaveUp, ticks: eng.ticks, analysed: eng.analysed, shown: eng.shownN, cost: Math.round(eng.cost), lastMs: Math.round(eng.lastMs), worker: !!worker }; };
+      eng.state = function () { return { w: eng.w, h: eng.h, step: eng.step, size: SIZES[eng.step], gaveUp: eng.gaveUp, ticks: eng.ticks, analysed: eng.analysed, shown: eng.shownN, cost: Math.round(eng.cost), lastMs: Math.round(eng.lastMs), work: Math.round(eng.lastWork || 0), worker: !!worker }; };
       return eng;
     }
 
