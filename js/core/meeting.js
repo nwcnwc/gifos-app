@@ -151,6 +151,7 @@
       "clearRosterTiles": { get: function () { return clearRosterTiles; }, enumerable: true, configurable: true },
       "clog": { get: function () { return clog; }, enumerable: true, configurable: true },
       "closeRoomNoHost": { get: function () { return closeRoomNoHost; }, enumerable: true, configurable: true },
+      "compFps": { get: function () { return compFps; }, enumerable: true, configurable: true },
       "contentHas": { get: function () { return contentHas; }, enumerable: true, configurable: true },
       "createAdminRoom": { get: function () { return createAdminRoom; }, enumerable: true, configurable: true },
       "ctAgCtx": { get: function () { return ctAgCtx; }, enumerable: true, configurable: true },
@@ -177,12 +178,12 @@
       "currentAppHelpMd": { get: function () { return currentAppHelpMd; }, enumerable: true, configurable: true },
       "dbgMeterPanel": { get: function () { return dbgMeterPanel; }, set: function (v) { dbgMeterPanel = v; }, enumerable: true, configurable: true },
       "dcSend": { get: function () { return dcSend; }, enumerable: true, configurable: true },
-      "deepInView": { get: function () { return deepInView; }, enumerable: true, configurable: true },
       "demand": { get: function () { return demand; }, enumerable: true, configurable: true },
       "deriveAdminKey": { get: function () { return deriveAdminKey; }, enumerable: true, configurable: true },
       "digLists": { get: function () { return digLists; }, enumerable: true, configurable: true },
       "digStageEntry": { get: function () { return digStageEntry; }, enumerable: true, configurable: true },
       "digestMode": { get: function () { return digestMode; }, enumerable: true, configurable: true },
+      "displayCount": { get: function () { return displayCount; }, enumerable: true, configurable: true },
       "displayName": { get: function () { return displayName; }, enumerable: true, configurable: true },
       "dlogOut": { get: function () { return dlogOut; }, enumerable: true, configurable: true },
       "dlogRecStart": { get: function () { return dlogRecStart; }, enumerable: true, configurable: true },
@@ -192,6 +193,7 @@
       "dropMosIn": { get: function () { return dropMosIn; }, enumerable: true, configurable: true },
       "dropPeer": { get: function () { return dropPeer; }, enumerable: true, configurable: true },
       "dropStandby": { get: function () { return dropStandby; }, enumerable: true, configurable: true },
+      "dutyJob": { get: function () { return dutyJob; }, enumerable: true, configurable: true },
       "embedHosted": { get: function () { return embedHosted; }, enumerable: true, configurable: true },
       "enforceBroadcastSeat": { get: function () { return enforceBroadcastSeat; }, enumerable: true, configurable: true },
       "ensureAc": { get: function () { return ensureAc; }, enumerable: true, configurable: true },
@@ -382,6 +384,7 @@
       "reactRoomState": { get: function () { return reactRoomState; }, enumerable: true, configurable: true },
       "reactorNames": { get: function () { return reactorNames; }, enumerable: true, configurable: true },
       "reapJobs": { get: function () { return reapJobs; }, enumerable: true, configurable: true },
+      "recDefaultQuality": { get: function () { return recDefaultQuality; }, enumerable: true, configurable: true },
       "recRoomWord": { get: function () { return recRoomWord; }, enumerable: true, configurable: true },
       "recSrcDirty": { get: function () { return recSrcDirty; }, set: function (v) { recSrcDirty = v; }, enumerable: true, configurable: true },
       "recStructSig": { get: function () { return recStructSig; }, set: function (v) { recStructSig = v; }, enumerable: true, configurable: true },
@@ -549,7 +552,8 @@
       "whoRefresh": { get: function () { return whoRefresh; }, set: function (v) { whoRefresh = v; }, enumerable: true, configurable: true },
       "whoRows": { get: function () { return whoRows; }, enumerable: true, configurable: true },
       "wireModbar": { get: function () { return wireModbar; }, enumerable: true, configurable: true },
-      "withMentions": { get: function () { return withMentions; }, enumerable: true, configurable: true }
+      "withMentions": { get: function () { return withMentions; }, enumerable: true, configurable: true },
+      "wspSource": { get: function () { return wspSource; }, enumerable: true, configurable: true }
     });
     yield 0;
     // The view reads the core only through model.<topic>.<question>() and acts only through act.<intent>() (thin page G3;
@@ -788,7 +792,7 @@
     function roomHeadCount() {
       if (headCountOverride > 0) return headCountOverride;
       try {
-        const n = peopleShown();
+        const n = displayCount();
         if (n > 0) return n;
       } catch (e) {}
       return 1;
@@ -5144,7 +5148,34 @@
       } catch (e) {}
       return false;
     }
-    yield 782;
+    // THE COUNT PEOPLE READ (a label, never a gate), one law for every host (G4: moved from the browser plane). The
+    // faces with a frame on this screen (shownPeerCount, facesOnScreen) are host facts the media plane reports; a host
+    // with no screen has none, so its count is the room's own.
+    function displayCount() {
+      const d = roomDig();
+      const shown = typeof __M.shownPeerCount === 'function' ? (0, /*()*/__M.shownPeerCount)() : 0;
+      // A partial fold is not the room size, but the number may never fall
+      // below what this page knows first-hand (its own occ and statuses, and
+      // the faces on its grid): a dead deep seat held the root fold partial
+      // for ~150 s and every page read 1 + its tiles (9 of 26). The header
+      // still shows the count with a "+" while the fold is partial.
+      if (d && d.part) return Math.max(1, participantCount(), (roomPastSection() || d.n >= SCALE.C * SCALE.C || deepInView()) ? d.n : 0, 1 + shown); // a partial fold's n is what was heard (G9: missing inputs only under-count), so where the fold is the room it is a floor too
+      // THE FOLD IS THE ROOM WHEREVER MY FIRST-HAND VIEW CANNOT COVER IT: past
+      // C² (as before), at exactly C² (a room of C² can still hold a deep seat:
+      // twentysix ep 3, 25 present with one deep, showed 24 on Section-1 pages
+      // and 2 on the deep one), and whenever I am deep or my occ names a deep
+      // cell. A single-section room below C² reads first-hand exactly as
+      // before, so a leave drops its count at once. A broadcast is the
+      // exception: a viewer's beat stays on its links, so first-hand drops
+      // a seated viewer after the join grace while a whole fold already
+      // has the room. A partial fold is still not that number.
+      const pc = participantCount();
+      const broadcastWhole = BROADCAST === true && d && !d.part; // viewer's presence rides the fold (Q79), not the link count
+      const n = (d && (roomPastSection() || d.n >= SCALE.C * SCALE.C || deepInView() || broadcastWhole)) ? Math.max(pc, d.n) : pc;
+      return Math.max(n, 1 + shown);
+    }
+    yield 781;
+    function headerCount() { const h = (meshNode && meshNode.byesHeld) ? meshNode.byesHeld() : 0; return Math.max(displayCount() - h, typeof __M.facesOnScreen === 'function' ? (0, /*()*/__M.facesOnScreen)() : 1); } // ...less the goodbyes held, never fewer than the faces on screen
     // THE POWER LEVEL (js/meet-power.js): full, save or low, from the battery, a losing
     // charger, being a phone, and a parked phone. Every dial it turns (the camera rung and
     // fps cap, the composites, the Stage strip) is read from GifOS.meetPower.dials(level).
@@ -5157,7 +5188,21 @@
     let powNow = { level: 'full', why: 'unknown' }, powDials = MP.dials('full');
     yield 802;
     let lastQ = null;
-    yield 808;
+    yield 807; // last ask, plus a rejection backoff
+    // COMPOSITES FOLLOW THE TIER TOO (2026-07-31 power work). Every packer took
+    // the flat SCALE.COMP_FPS (8) — no call site has ever passed `fps` — so a
+    // phone that has cut its OWN camera to the bottom of the ladder still
+    // painted, encoded and shipped the room's mosaic at the full rate. A head
+    // runs two of these (prodPack + sdPack) on top of its camera. Composites are
+    // secondary tiles by the same argument that took COMP_FPS from 12 to 8, and
+    // a device deep enough in the tier to be at 144p has already decided that
+    // frames are what it is spending. Every stage wins: fewer paints, fewer
+    // encodes, fewer packets, fewer radio wakeups.
+    function compFps() {
+      const base = (net.SCALE && net.SCALE.COMP_FPS) || 8;
+      if (meshNode && meshNode.raw && meshNode.raw.lgLvl >= 2) return 1;   // L29.1: nothing is encoding these
+      return Math.max(powDials.compFpsMin, Math.round(base * powDials.compFps));
+    }
     // ---- THE STAGE IS NOT A SECONDARY TILE (2026-08-04) ----------------------
     // The Stage is the ONE feed the whole stadium is looking AT, and both of the
     // constants that sized it were inherited from machinery built for the things
@@ -5339,7 +5384,7 @@
         seen++;
       }
       const linked = participantCount();
-      const n = Math.max(linked, seen, peopleShown());
+      const n = Math.max(linked, seen, displayCount());
       let heldN = 0;
       try { for (const p of peers.values()) if (p && isHeld(p.id)) heldN++; } catch (e) {}
       // THE LABEL MUST NAME WHAT WE ACTUALLY SEND (2026-07-29, Nathan: "it says
@@ -5428,7 +5473,7 @@
       // shown is the room you can see: the count, or the faces on the wall (qa-meet-desktop).
       // You left on purpose: the number is the room without you, frozen at
       // the click, not the tiles this page still has up behind the dialog.
-      const shown = (leftUp && leftBehind > 0) ? leftBehind : headerShown();
+      const shown = (leftUp && leftBehind > 0) ? leftBehind : headerCount();
       // SUB.11.1: a tile with no status heard first-hand shows the one the fold tells: repaint it when that changes.
       try {
         const fs = new Map();
@@ -5561,7 +5606,7 @@
         const seat = meshSeat(), door = !!(seat && (seat.state === 1 || seat.state === 2));
         const r = typeof reachInfo === 'function' ? reachInfo() : null;
         const blocked = !!(r && r.state && r.state !== 'partial');
-        (0, /*()*/__V.paintBcQuiet)(bcQuietLine(headerShown(), blocked, door));
+        (0, /*()*/__V.paintBcQuiet)(bcQuietLine(headerCount(), blocked, door));
       } catch (e) {}
       try { updateStatus(); } catch (e) {}
     }, 5000);
@@ -10269,7 +10314,7 @@
       // no link to read a state from yet (the ask is out, or the old pipe's loss is not judged): the relayed link is being asked for
       if (!turn && ((turnLinks && relayTv && turnLinks.making()) || wayBack())) turn = 'ask';
       const st = s ? s.state : 0, coord = !!(s && s.hasCoord);
-      const n = headerShown();
+      const n = headerCount();
       // the count before the link: taken while the link is asked for, or while the relay step waits (a link can come up between two beats)
       if (turn && turn !== 'up' && !progNAtRelay) progNAtRelay = Math.max(1, n);
       // the browser saying the network is gone (an offline event, or the page's own dark beat) outranks a socket
@@ -11410,7 +11455,7 @@
           if (Date.now() < until) setTimeout(tick, 500);
           return;
         }
-        (0, /*()*/__M.startRec)({ scope: 'program', quality: (0, /*()*/__M.recDefaultQuality)(IS_MOBILE), matchMix: false, keep: true }).then((err) => {
+        (0, /*()*/__M.startRec)({ scope: 'program', quality: recDefaultQuality(IS_MOBILE), matchMix: false, keep: true }).then((err) => {
           bcKeepLog.push({ t: Date.now(), err: err || '' });
           if (typeof err === 'string' && err && Date.now() < until) setTimeout(tick, 1000);
         }, () => {});
@@ -12802,7 +12847,7 @@
       if (typeof clog === 'function') clog('lg-level ' + lgLvlShown + '>' + lvl);
       lgLvlShown = lvl;
       if (lvl >= 1) { for (const jk of lgWoken) setJobActive(jk, false); lgWoken.clear(); }
-      const fps = (0, /*()*/__M.compFps)();
+      const fps = compFps();
       for (const pk of [__M.prodPack, __M.roomPack, ...__M.l14Packs.values()]) { try { if (pk) pk.setFps(fps); } catch (e) {} }
       try { (0, /*()*/__M.adapt)(); } catch (e) {}
     }
@@ -17028,7 +17073,7 @@
       // The x1 -> x2 -> sdrow and sdxc -> sdx^x backup chains are born parked
       // the same way (chainBornParked below).
       if (chainBornParked(key, upKey)) { setJobActive(jk, false); renegotiate(p); }
-      if (__M.stubDuties.on && (0, /*()*/__M.dutyJob)(jk)) (0, /*()*/__M.dutyMuteTick)();   // DEBUG lever: a duty job born while my duties are stubbed carries nothing
+      if (__M.stubDuties.on && dutyJob(jk)) (0, /*()*/__M.dutyMuteTick)();   // DEBUG lever: a duty job born while my duties are stubbed carries nothing
       (0, /*()*/__M.kickJob)(to);
       return jk;
     }
@@ -17073,6 +17118,8 @@
       const up = mosIn.get(job.upKey);
       if (up) demand(up.via, uk, up.streamId, want);
     }
+    yield 2049;
+    function dutyJob(jk) { const k = String(jk).slice(0, String(jk).indexOf('>')); return k === 'sdm' || k === 'sub' || k === 'sgs'; }
     yield 2053;
     // A seat that leased its own cell has lost every channel and is on its way out of that cell: it carries no media, in or
     // onward, until a channel proves back (the sim's mCarry). What it was shipping goes back on when the lease ends.
@@ -20287,6 +20334,8 @@
     const lsSet = (k, v) => { try { if (v) localStorage.setItem(k, v); else localStorage.removeItem(k); } catch (e) {} };
     yield 2570;
     const whisperReady = () => !!(window.GifOS && GifOS.providers && GifOS.providers.assigned('stt'));
+    yield 2582;
+    function wspSource(id) { const m = meters.get(id); return (m && m.src) ? m.src : null; }
     yield 2609;
     // WHO THIS PAGE WRITES DOWN (keep / share). Its own voice while "Send my
     // captions" is on. With Whisper: every unmuted voice it hears first-hand
@@ -20387,6 +20436,14 @@
       capPublish();
       (0, /*()*/__V.paintTranscriptControls)();
     }
+    yield 2715;
+    // Every source I can record, grouped by BUS. Direct peers + me are live
+    // tiles; folds (compOf) are already consent-baked composites of many people.
+    // A long recording must not live in one array until Stop. The picker
+    // streams to a file the person chose; OPFS is the same idea when the
+    // picker is missing or the click has already been spent. The chunk list
+    // is only the last resort.
+    function recDefaultQuality(isMobile) { return isMobile ? 'low' : 'std'; }
     yield 2772;
     (0, /*()*/__V.paintCallState)();
     yield 2783;
@@ -21380,7 +21437,7 @@
       try { updateLeaving = false; sessionStorage.removeItem(UPDATE_RESUME_KEY); } catch (e) {} // a real leave: the next join starts at Max blur
       try { stageLeaving = true; sessionStorage.removeItem(STAGE_RELOAD_KEY); } catch (e) {} // and off the stage
       if (!bcSeeding && bcSeedOnLeave()) return endServiceKeepSeat();
-      leftBehind = Math.max(0, headerShown() - 1);
+      leftBehind = Math.max(0, headerCount() - 1);
       try { if (window.GifOS && GifOS.meetSubs) GifOS.meetSubs.leaveMeeting(); } catch (e) {}   // this meeting stops renewing its subscription ticket
       const flushing = stopLocalCapture();
       sendMeshLeave();
@@ -22951,7 +23008,7 @@
               const s = meshSeat();
               return yes({
                 supported: !!(M && typeof M.useFile === 'function'),
-                seated: !!(s && s.state === 3), participants: peopleShown(), me: myId,
+                seated: !!(s && s.state === 3), participants: displayCount(), me: myId,
                 admin_room: hasAdminRoom(), host: !!amAdmin,
                 // a captured room's password is its captor's alone (the password button is disabled for everyone else)
                 capture: { on: capIsOn, mine: capIsOn && !(hasAdminRoom() && !amAdmin), can_take: canTake() },
@@ -23529,7 +23586,7 @@
         const vt = localStream && localStream.getVideoTracks()[0];
         return { ok: true, ended: !vt || vt.readyState === 'ended', n: stopped.length };
       },
-      participants: __M.headerCount, // the header counts every face on the grid, including a bot the ladder has not seated
+      participants: headerCount, // the header counts every face on the grid, including a bot the ladder has not seated
       markJoinedForTest: (id) => {
         const pid = String(id || 'peer').slice(0, 80);
         if (pid && !rosterIds.includes(pid)) rosterIds.push(pid);
@@ -23561,7 +23618,7 @@
         }
         try { (0, /*()*/__V.layout)(); } catch (e) {}
         try { updateStatus(); } catch (e) {}
-        return { n: headerShown(), peers: peers.size };
+        return { n: headerCount(), peers: peers.size };
       },
       // What this page can hear and send: each peer's companion audio (the
       // element that actually plays their voice) and my own mic. Read-only.
@@ -24041,12 +24098,12 @@
       countPeekForTest: (vp) => { const now = Date.now(); const d = roomDig(); const p = peers.get(vp), st = statusOf.get(vp), s = meshSeat();
         let occHas = 0; if (s) for (const v of s.occ.values()) if (v === vp) occHas++;
         let tab = null, forg = null, lt = null; try { const s = meshNode && meshNode.raw; if (s && s.s1tab) { tab = []; for (const [k, d] of s.s1tab) tab.push([String(k), String(d.by), d.at, Math.round(s.LT() - d.rx), d.n, d.leased || 0, String(s.occGet(k))]); } if (s && s.digForgot) forg = [...s.digForgot].map(([k, v]) => [String(k), String(v[0]), v[1]]); lt = s.LT(); } catch (e) { tab = String(e); }
-        return { tab, forg, lt, vp: String(vp), disp: peopleShown(), pc: participantCount(), leaf: leafCount(), lp: livePeerCount(), kt: knownTotal(), dn: d ? d.n : null, part: d ? !!d.part : null, shown: typeof __M.shownPeerCount === 'function' ? (0, /*()*/__M.shownPeerCount)() : null, faces: typeof __M.facesOnScreen === 'function' ? (0, /*()*/__M.facesOnScreen)() : null, byes: (meshNode && meshNode.byesHeld) ? meshNode.byesHeld() : 0, past: roomPastSection(), deep: deepInView(),
+        return { tab, forg, lt, vp: String(vp), disp: displayCount(), pc: participantCount(), leaf: leafCount(), lp: livePeerCount(), kt: knownTotal(), dn: d ? d.n : null, part: d ? !!d.part : null, shown: typeof __M.shownPeerCount === 'function' ? (0, /*()*/__M.shownPeerCount)() : null, faces: typeof __M.facesOnScreen === 'function' ? (0, /*()*/__M.facesOnScreen)() : null, byes: (meshNode && meshNode.byesHeld) ? meshNode.byesHeld() : 0, past: roomPastSection(), deep: deepInView(),
           v: { roster: rosterIds.includes(vp), peer: p ? { conn: !!p.connected, heard: Math.round((now - Math.max(p.lastHeard || 0, p.meshRxAt || 0)) / 1000) } : null, st: st ? Math.round((now - stSeen(st)) / 1000) : null, occ: occHas, first: occFirstSeen.has(vp) ? Math.round((now - occFirstSeen.get(vp)) / 1000) : null, gone: meshGone.has(vp) ? Math.round((now - meshGone.get(vp)) / 1000) : null } }; },
       memSamples: () => (window.__memSamples ? window.__memSamples.slice() : []),
       meshTraceDump: () => { const G = window.__meshTraceRing; return G ? G.ring.map((e) => e[1]) : []; },
       // SUB.11 (test read): the People panel's rows, the header count beside them, the connector's list and the fold's far names
-      peopleDump: () => { const r = rosterRows(); return { header: headerShown(), n: r.length + (r.more || 0), more: r.more || 0, rows: r.map((x) => ({ id: x.id, name: x.name, far: !!x.far, fold: !!x.fold, me: !!x.me, muted: !!x.muted, camOff: !!x.camOff, hand: !!x.hand })), room: roomPeople(), far: farPeople() }; },
+      peopleDump: () => { const r = rosterRows(); return { header: headerCount(), n: r.length + (r.more || 0), more: r.more || 0, rows: r.map((x) => ({ id: x.id, name: x.name, far: !!x.far, fold: !!x.fold, me: !!x.me, muted: !!x.muted, camOff: !!x.camOff, hand: !!x.hand })), room: roomPeople(), far: farPeople() }; },
       meshForensics: (since) => {
         const G = window.__meshTraceRing || { ring: [], seq: 0 }; const s = meshSeat(); if (!s) return null;
         const six = (x) => (x == null ? null : String(x).slice(0, 6));
@@ -24144,7 +24201,7 @@
           // The ROOM as this page counts it, the number its status line shows.
           // Past one section that is the fold's n (G2: a label, never a gate);
           // localCount is the section-local working count decisions read.
-          participants: peopleShown(), localCount: participantCount(), inMeeting: rosterIds.length + 1,
+          participants: displayCount(), localCount: participantCount(), inMeeting: rosterIds.length + 1,
           rows: (() => { if (!c) return []; const g = []; for (let r = 0; r < SCALE.C; r++) { const row = []; for (let i = 0; i < SCALE.C; i++) { const pid = meshOccAt({ pc: c.pc, r, i }); row.push(pid ? String(pid).slice(0, 8) : null); } g.push(row); } return g; })(), // real C×C section grid
           // rowsFh: the same grid FILTERED to first-hand-live seats (the seat's
           // own `live` map, direct-contact evidence only, 60-tick freshness —
@@ -24487,7 +24544,7 @@
       scribeWhyForTest: () => Array.from(peers.keys()).map((pid) => {
         const st = statusOf.get(pid) || {}; const p = peers.get(pid);
         return { id: String(pid).slice(0, 6), muted: !!st.muted, modMute: !!(modOf(pid).mute && modOf(pid).mute.on), covered: capCovered(pid), langOk: earLangOk(pid),
-          cap: st.cap || 0, lang: st.lang || '', dl: st.dl || '', trs: st.trs || 0, ccst: st.ccst || null, connected: !!(p && p.connected), source: !!(p && (0, /*()*/__M.wspSource)(pid)) };
+          cap: st.cap || 0, lang: st.lang || '', dl: st.dl || '', trs: st.trs || 0, ccst: st.ccst || null, connected: !!(p && p.connected), source: !!(p && wspSource(pid)) };
       }),
       takeTrForTest: (m) => takeTr(m),
       markBotForTest: (on) => {
@@ -24912,24 +24969,6 @@
     // The test hooks that read the page's elements: the page adds them to the same hook object.
     (0, /*()*/__V.viewTestHooks)(window.__gifosVideo);
     yield 3207;
-    // THE ROOM'S OWN COUNT, without the faces a screen puts up: the fold's n wherever my first-hand view cannot cover
-    // the room (past one section, a deep seat, a whole broadcast fold, a partial fold heard further), else the people I
-    // know first-hand (participantCount). The media plane's displayCount is this, raised to the faces on its grid; a host
-    // with no screen has no faces, so its count is this one.
-    function roomCount() {
-      const d = roomDig(), pc = participantCount();
-      if (d && d.part) return Math.max(1, pc, (roomPastSection() || d.n >= SCALE.C * SCALE.C || deepInView()) ? d.n : 0);
-      const broadcastWhole = BROADCAST === true && d && !d.part;
-      return (d && (roomPastSection() || d.n >= SCALE.C * SCALE.C || deepInView() || broadcastWhole)) ? Math.max(pc, d.n) : pc;
-    }
-    // The count people read (a label, never a gate): the media plane's, from the faces it shows; else the room's own.
-    function peopleShown() { return typeof __M.displayCount === 'function' ? (0, /*()*/__M.displayCount)() : roomCount(); }
-    // ...and the header's: less the goodbyes held, never fewer than the faces on screen (the plane's headerCount).
-    function headerShown() {
-      if (typeof __M.headerCount === 'function') return (0, /*()*/__M.headerCount)();
-      const h = (meshNode && meshNode.byesHeld) ? meshNode.byesHeld() : 0;
-      return Math.max(1, roomCount() - h);
-    }
     // THE DOOR'S PASSWORD, typed by the person at the door (the meeting's password card, or embed.html's): adopt it
     // and knock again. The relay only ever sees the PROOF of this password, never the text, and the key I read the
     // room with now contains it (§8): a wrong password doesn't just bounce at the courtesy gate, it can't decrypt,
@@ -25032,7 +25071,7 @@
         return r.ok ? 'sent' : 'failed';
       } catch (e) { return 'failed'; }
     }
-    yield 3233;
+    yield 3230;
     // The document floating window this page opened is up (it plays the lens, so it follows the speaker live).
     function floatUp() { return !!docPip; }
     // FOLLOW THE SPEAKER, one rule for every surface that follows a voice (the corner inset, the floating window):
@@ -25215,7 +25254,7 @@
     }
     return __L.END;
   }
-  var api = { name: "core", run: part, count: 1839, exports: {"AI_SPARK_SVG":0,"BC_INTENT":0,"BC_SEAT":0,"BROADCAST":0,"CC_LANG_KEY":0,"CC_ON_PHONE":0,"CT":0,"DEBUG_ON":0,"EMBED":0,"IS_ANDROID":0,"IS_MOBILE":0,"LADDER":0,"LATE_ASK_MS":0,"MP":0,"MPipe":0,"RECOVER_MEDIA_KEY":0,"ROOM":0,"SCALE":0,"STAGE_FPS":0,"STAGE_MAXW":0,"STG_BEAT_MS":0,"STG_BEAT_SEEN":0,"STG_BEAT_STALE_MS":0,"STG_ROOT2":0,"TIMING_KEY":0,"VMODE":0,"WK_H264_BLIND":0,"ac":0,"act":0,"addAux":0,"addTranscriptLine":1,"admDeadline":0,"admGraceT":0,"admSigned":1,"admStoreKey":0,"admTickT":0,"adminsNow":0,"adoptAdmKey":1,"agentChat":1,"aiNotesSetting":1,"aloneCardShut":0,"amAdmin":0,"amGloballyMuted":1,"appClientCtl":0,"appClientStop":0,"appEv":0,"appHiddenSid":0,"appHostCtl":0,"appKey":0,"appLeadOn":0,"appLeadSet":0,"appLeadable":0,"appMode":0,"appStageApply":1,"appStageConsent":0,"appStagePlan":1,"applyAvatarFile":1,"applyBcAct":1,"applyCdel":1,"applyOwnDelete":1,"applyPageHeader":1,"applyViewerCrop":1,"armAppRoomTick":0,"armCopiedLabel":1,"autoFsOff":0,"auxDrop":1,"auxSenders":0,"avatarChip":1,"backGuardDrop":1,"backToNormalView":1,"backWatch":0,"bannedOut":0,"barKind":1,"barPlan":1,"battNow":0,"bcActButtons":1,"bcEndedInRoom":1,"bcHostStored":0,"bcKeepUserStop":0,"bcLastService":0,"bcMayPublishAv":1,"bcOnAir":1,"bcPreInRoom":1,"bcRole":1,"bcSeeding":0,"bcStartAt":1,"bcWatchingViewer":1,"bcWhenWords":1,"becomeAssistant":1,"blurAgain":1,"blurHold":1,"blurLevel":0,"blurLevelFor":1,"blurOffer":1,"blurWhyWords":1,"bootGumPending":0,"botHidden":1,"botParks":1,"botViewOn":0,"broadcastStatus":1,"camOnWords":1,"camPeer":0,"canIRunApp":0,"canStage":0,"capClone":1,"capClosed":0,"capCovered":1,"capEarsOnly":1,"capLangMine":1,"capLangName":1,"capLangTag":1,"capName":1,"capNowNote":1,"capOn":0,"capPick":1,"capPublish":1,"capRows":1,"capSend":1,"capSpotQueue":1,"capTraceGate":1,"capTrust":0,"capTry":1,"carryG":0,"carryHosts":0,"carryIn":1,"carryOutAc":0,"ccDevNotice":1,"ccLang":0,"ccLangLabel":0,"ccLocalBlocked":1,"ccLocalQ":0,"ccMB":0,"ccShow":0,"chatLinksOn":0,"chatOpen":0,"claimMos":1,"clearNoPwMode":1,"clearNoPwState":1,"clearPipAuto":1,"clearRosterTiles":1,"clog":0,"closeRoomNoHost":1,"contentHas":1,"createAdminRoom":1,"ctAgCtx":1,"ctAgHidden":1,"ctAgendaHide":1,"ctAgendaOver":1,"ctAgendaPublish":1,"ctAgendaShortTime":1,"ctAgendaTickArm":1,"ctAgendaWhoText":1,"ctAspect":1,"ctBring":1,"ctCanEditAgenda":1,"ctFocusSources":1,"ctLabel":1,"ctNote":1,"ctPaintAgendaClock":1,"ctRefresh":1,"ctSelect":1,"ctSpeakerPick":1,"ctText":1,"ctTurnPaint":1,"currentAppCredits":1,"currentAppHelpMd":1,"dbgMeterPanel":0,"dcSend":0,"deepInView":1,"demand":1,"deriveAdminKey":1,"digLists":0,"digStageEntry":0,"digestMode":0,"displayName":1,"dlogOut":0,"dlogRecStart":1,"dlogStoreGet":1,"docPip":0,"dockLabelSet":1,"dropMosIn":1,"dropPeer":1,"dropStandby":1,"embedHosted":0,"enforceBroadcastSeat":1,"ensureAc":1,"esc":0,"faceDrawnHere":1,"fetchGifFromUrl":1,"findSharedApp":1,"fitFor":0,"focusId":0,"focusOf":1,"foldName":1,"forcedCamOff":0,"freshSt":0,"frozeThisBeat":1,"fsAutoKey":0,"fsAutoPid":0,"fsBlurClass":1,"fsCropBox":1,"fsFarCells":1,"fsFarTalkers":1,"fsFeedLive":1,"fsFollow":0,"fsFollowChanged":1,"fsFollowT":0,"fsInline":0,"fsPickAuto":1,"fsSel":0,"fsTick":0,"fsZoomBox":0,"fsZoomIds":0,"hasAdminRoom":0,"hasPendingTx":0,"heldNoteSeen":1,"hideBotsT":0,"holdDoor":0,"holdLeaveAsk":1,"homeHref":1,"hostRename":1,"hostSpot":1,"hostWords":1,"iActAsHead":1,"iAmWaiting":1,"idleDock":1,"idleNow":0,"importGif":1,"inMeetingNow":1,"inboundPlan":1,"installRunApp":1,"inviteFromSolo":1,"isCastEntry":1,"isHeld":1,"isRedun":0,"isStageJob":0,"islandApart":1,"joinWithPw":1,"kfNeed":1,"knownTotal":1,"labelFor":0,"lastActive":0,"lastQ":0,"lateAsk":0,"lateGen":0,"lateJoinerSeesHistory":0,"lateTimer":0,"lateWant":0,"lateWon":0,"learnFoldedNames":1,"leaveMeeting":1,"leaveSeededService":1,"leaving":0,"leftDialogUp":1,"lineOpen":0,"linkRowHtml":1,"linksAllowed":1,"liveInCall":1,"loadList":1,"lobRow":1,"lobbyPwHandOver":1,"localBlurPower":1,"localStream":0,"logNearBottom":1,"lowSenders":0,"lsGet":0,"lsSet":0,"mainVideoChoice":1,"markHeldNote":1,"mayHost":1,"mayPinFiles":1,"mayShareScreen":0,"meOnStage":1,"meTile":0,"mediaJoined":0,"mediaOk":0,"mentionToken":1,"meshCoord":0,"meshNode":0,"meshSeat":0,"messageMentionsMe":1,"meterFor":1,"meters":0,"micGrabbing":0,"micLockWords":1,"micMode":0,"micPeer":0,"micPickPrev":0,"micUnmuteAfter":0,"micWant":0,"mintHostKey":1,"mirrorRoomState":1,"mixIn":1,"modBlurOn":0,"modOf":1,"modStarOn":1,"modTable":0,"modalDismissBtn":1,"modalFocusables":1,"model":0,"mosAnn":0,"mosBeyondAt":0,"mosIn":0,"mosJobs":0,"mosStandby":0,"myId":0,"myIdentity":0,"myName":0,"myStatus":0,"myVoiceAt":0,"myVoiceFrom":0,"myVoiceSinceFinal":0,"nameInitial":1,"net":0,"newMeetAudioContext":1,"newNeg":0,"occPid":0,"onStageNow":1,"outboundPlan":1,"outgoingHeld":0,"owedStream":1,"packIn":1,"paintBroadcastAir":1,"paintLog":1,"paintModbarButtons":1,"paintOnAir":1,"paintRosterSoon":1,"parseMeetInput":1,"participantCount":1,"peerAway":0,"peerWaits":1,"peers":0,"personOnStage":1,"pipAutoT":0,"pipCard":0,"pipCardPaint":1,"pipCardReady":1,"pipCardRun":1,"pipFallback":1,"pipTarget":1,"pipeEnabled":0,"pipePeers":1,"pipeStg":0,"pipeVideo":0,"planMeasured":1,"powDials":0,"powNow":0,"prayOn":0,"preferHwVideo":1,"progressStart":1,"progressTick":1,"progressWords":1,"purgeAllFiles":1,"pushLeaf":1,"pwBan":1,"pwBlocked":0,"pwSetRoom":1,"rbCap":0,"rbDrop":1,"rbFmt":1,"rbLength":1,"rbNoun":0,"rbNow":0,"rbStop":1,"rbTitle":1,"rbToggle":1,"rbTracks":1,"reactAlert":0,"reactOpen":0,"reactRateOk":1,"reactRoomState":1,"reactorNames":1,"reapJobs":1,"recRoomWord":1,"recSrcDirty":0,"recStructSig":0,"reconcileApp":1,"reconcileMain":1,"refreshAllTiles":1,"relayBusyAt":0,"relayVia":0,"releaseLeaveAsk":1,"renegotiate":1,"reportClearHost":1,"room":0,"roomBeyondRow":1,"roomConsentIds":0,"roomDig":1,"roomHeadCount":1,"roomKey":0,"roomPastSection":0,"roomSingOn":0,"rosterIds":0,"rosterNames":0,"rosterRows":1,"rosterTiles":0,"rowActing":1,"rowFaceDark":0,"rowHeadPid":1,"rowMates":0,"rowMixTalkAt":0,"runApp":1,"runChoices":1,"runLinkTarget":1,"rung":0,"saveList":1,"saveVcrops":1,"sayState":0,"screenCeilingKbps":1,"screenSharers":0,"screenSteppedUp":0,"screenStream":0,"seatDark":0,"seatSelfLeased":0,"sendAll":1,"sendAudienceReact":1,"sendAvatarTo":1,"sendFaceFrame":1,"sendVisPark":1,"serviceHeard":0,"setAutoFsOff":1,"setCapSend":1,"setJobActive":1,"setMod":1,"setPersonalBlur":1,"setStage":1,"setStatus":0,"setTrMode":1,"setView":1,"setVq":1,"setWaitingRoom":1,"shadeKey":1,"shareBlocked":0,"shareFirewallWords":1,"shareOnlyStage":1,"shareSheetFocusId":1,"sharingScreen":0,"shipJob":1,"shortCode":0,"shortcutTyping":1,"singOf":0,"slowModeOn":0,"slugRoom":1,"speakingOf":0,"stHold":0,"stadFaceIdAt":1,"stageCeilingKbps":1,"stageCell":1,"stageClaimOf":0,"stageFeedAt":0,"stageFeedVideo":1,"stageFps":1,"stageGrantLive":0,"stageHeldAt":0,"stageIds":0,"stageModList":1,"stageNeed":0,"stageSeats":0,"stageSenders":0,"stageVideoChoice":1,"startMesh":1,"stashJoinAv":1,"statusOf":0,"statusWords":0,"stgBeatCost":0,"stgBeats":0,"stgDirectSet":1,"stgEnded":1,"stgFedBy":1,"stgHop":0,"stgPath":0,"stgStale":1,"stopApp":1,"stopAuxTx":1,"stopRoomApp":1,"subWant":0,"subsMeetId":0,"subsOn":0,"swapPicHoldAt":0,"swapPicLast":0,"swapPicRing":0,"syncFocus":1,"takeReact":1,"takeTomb":1,"tapUnblur":1,"tileBlurWhy":1,"timing":0,"toggleBookmark":1,"toggleLine":1,"trBlocks":1,"trDrops":0,"trEchoHeld":1,"trEnOn":0,"trEnOnlyEnglish":1,"trForget":1,"trKeeps":1,"trLang":1,"trLangKnown":1,"trLangOf":0,"trMode":1,"trNote":1,"trWrites":1,"turnFacts":0,"turnHeld":1,"turnLinks":0,"turnNote":1,"twCaptionsButton":1,"twIdOf":1,"twPeer":1,"txMarkWhy":1,"uiLang":1,"uiText":1,"uid":0,"unread":0,"unshipJob":1,"updateLeaving":0,"updateMediaSession":1,"updateRoomKey":0,"updateStatus":1,"updateTile":1,"viewNote":1,"viewWord":1,"viewerCropOf":1,"viewerMayReact":1,"viewerShareUrl":1,"visParkSent":0,"vpId":0,"vqManual":0,"vqRung":0,"vupDismissedSig":0,"waitingRows":1,"waitingSince":1,"whisperReady":0,"whoAddrLines":1,"whoFaceState":1,"whoFileText":1,"whoObserve":1,"whoRefresh":0,"whoRows":1,"wireModbar":1,"withMentions":1}, needs: {"media":{"adapt":1,"displayCount":1,"stopScreenShare":1,"refreshOutbound":1,"ccMix":0,"ccMixSync":1,"stgLost":1,"mosFb":0,"resumeReload":1,"recRec":0,"applyCcAll":1,"sdView":0,"blurSized":1,"syncAvatarFeed":1,"wspRebind":1,"stagedSelfWas":0,"refreshTrBtn":1,"headerCount":1,"applyBuses":1,"tileHolds":1,"releaseAudio":1,"playTileVideo":1,"mainAudioTrack":1,"sentVideoTrack":1,"schedReconcile":1,"retireMixTracks":1,"peerAudioTracks":1,"gridApplied":0,"dropEndedRemoteTracks":1,"headLinkUp":1,"recNoteStruct":1,"WEBKIT_TILE":0,"mediaElCensus":1,"shipContainers":0,"prodPack":0,"roomPack":0,"stripPack":0,"l14Packs":0,"quietAtDoor":1,"recStarting":0,"recDraw":0,"recScopeSources":1,"startRec":1,"recDefaultQuality":1,"headSendsStale":1,"compFps":1,"wkQuietBind":1,"reconcileMosaic":1,"onMeetDeviceChange":1,"gumWithMicFallback":1,"camVideoConstraints":1,"applyRecoverMedia":1,"noteAudioDevices":1,"syncSpeech":1,"keepMeetingAudio":1,"maybeShowFlip":1,"attachLocalTracks":1,"gumRefused":1,"clockSample":1,"schedClaim":1,"stgBeatIn":1,"holdMainVideo":1,"kickMainVideo":1,"kickMainAudio":1,"wkRemoteTrack":1,"endSongOnStepDown":1,"reactSing":1,"armAudioKeepAlive":1,"ccDefGroup":0,"paintTiming":1,"ccEngine":1,"phoneCaptions":1,"WSP_WEAK":0,"wspPaused":0,"wspCaps":0,"whisperSupported":1,"installWhisper":1,"wspSync":1,"speechRunning":1,"stopSpeech":1,"ccMixStop":1,"startWhisper":1,"wspStop":1,"speech":0,"speechProved":0,"stopWhisper":1,"whisperRescan":0,"camIdleT":0,"wakeLock":0,"stopBlurPipe":1,"withScrPipe":1,"mixAc":0,"keepAwake":1,"warnRecorderNewApp":1,"botVoiceTrack":0,"wspResume":1,"kickStageMic":1,"closeCamChooser":1,"blurViewFrac":1,"blurDraw":1,"carryVoiceTrack":0,"dbgMeterSources":1,"pipeJobs":0,"pipeDeny":0,"wkFwdNeeded":1,"wkFwdCopies":0,"packLoop":0,"downStreams":0,"clk":0,"mix":0,"toggleSing":1,"gdOverride":0,"applyGrid":1,"startScreenShare":1,"qaStageSt":0,"stageEar":0,"stageEarLiveTrack":1,"stageEarRawPeak":1,"stageEarFoldPeak":1,"shownPeerCount":1,"facesOnScreen":1,"compOf":0,"blurPipe":0,"heardStage":1,"camTrackForTest":1,"earState":1,"stageAudible":1,"tuneCfg":1,"poke":1,"wsp":0,"wspQ":0,"wspModel":1,"wspEnqueue":1,"wspSource":1,"recMode":0,"recMatchMix":0,"recQuality":0,"recSources":1,"camChooserOpen":1,"trackQ":0,"avatarPipe":0,"ctScreenTrack":1,"stubDuties":1,"soundHeld":1,"stageFeedShows":1,"paintStageStrip":1,"rowEdge":1,"kfEv":0,"keyUp":1,"producerKey":1,"MOS_GRACE":0,"orphaned":1,"detachTrack":1,"swapTrack":1,"attachTrack":1,"noteReship":1,"kickJob":1,"attachFailed":1,"containerFor":1,"dutyJob":1,"dutyMuteTick":1,"jobPinned":0,"parkSender":1,"jobVideoAt":0,"unbindClaim":1,"stgFoNote":1,"rowMixHold":1,"bindClaim":1,"repaintRedun":1,"swapPicNote":1,"STG_ZERO_MS":0,"rowMixHeadArrives":1,"picRead":1,"STG_PIC_LIVE_MS":0,"MOS_SETTLE":0,"adoptClaim":1,"stgCarry":1,"mosHeld":0,"x2Target":1,"mySelfStream":0,"mixReady":1,"packFor":1,"hopMs":1,"blockOf":1,"slotDark":1,"carriedHot":1,"partStream":1,"rowMixOpen":1,"rowMixViaPeek":1,"overlayTiny":1,"faceLive":1,"blockLive":1,"blockPicture":1,"dropContainer":1,"CC_EARS_KEY":0},"view":{"paintVq":1,"paintAirKind":1,"placeDockForWidth":1,"paintOnAirBadge":1,"paintOnAirSide":1,"paintBroadcastRole":1,"paintBroadcastChrome":1,"paintStatusNotice":1,"paintLiveBadge":1,"paintStatusSheet":1,"applyChrome":1,"showAppearCard":1,"paintAssistant":1,"paintControls":1,"setBotView":1,"paintRoomTrust":1,"showHeldScreen":1,"waitPaint":1,"closeMoreForWait":1,"paintWaitDoor":1,"pipReaim":1,"pipCardModel":1,"pipNote":1,"pipSource":1,"awayFull":1,"enterPip":1,"pipReturn":1,"paintChatGate":1,"paintStage":1,"layout":1,"updateMuteAllBtn":1,"updateBlurAllBtn":1,"updateCamAllBtn":1,"updateShareAllBtn":1,"paintStageMod":1,"paintStageBlurWhy":1,"explainHeldVideo":1,"paintShare":1,"fsRefreshIfOpen":1,"tickAdminClose":1,"updateReload":1,"clearAdminClose":1,"showClosedDialog":1,"fsFitPaint":1,"fsRefresh":1,"paintRaisedHands":1,"phoneLayout":1,"setTileLetter":1,"paintAwayMark":1,"paintTileChrome":1,"paintBlurWhy":1,"paintAvatarImg":1,"paintBroadcastIdent":1,"paintFit":1,"closeFsView":1,"openFsView":1,"ctInit":1,"ctAppInfo":1,"ctPaintAgendaBtn":1,"ctPaintBar":1,"ctPresent":1,"ctAgendaOpen":1,"wakeMeet":1,"comfyStadMeta":1,"comfyStadRoster":1,"twButton":1,"closeTileWin":1,"capSourceOpen":1,"openTileWin":1,"applyViewerCrops":1,"openStageAdjust":1,"placeFit":1,"paintStatusAlert":1,"paintPeopleIfOpen":1,"atPwPrompt":1,"paintStatusLine":1,"paintBcQuiet":1,"paintChipBottom":1,"paintInviteSlot":1,"paintAloneCard":1,"paintRoster":1,"releaseHeld":1,"paintWaitingSelf":1,"refreshAvatarSurfaces":1,"turnPaint":1,"pauseNote":1,"wireFsResize":1,"paintTileOnGrid":1,"makeTile":1,"reassertVisLift":1,"renderHandq":1,"paintProgressSteps":1,"paintJoinVeil":1,"lobbyPwOpenRoom":1,"renderFiles":1,"showPwModal":1,"paintBroadcastJoinNote":1,"capPaint":1,"showLoadRefusal":1,"lgLeave":1,"showForkPick":1,"showRelayBusy":1,"applyAdminUi":1,"paintStatusWhy":1,"frozenTileSkip":1,"massBannerTick":1,"islandNoteTick":1,"paintStageVoteTargets":1,"paintBroadcastSeats":1,"showWhoIfOpen":1,"placeHandq":1,"applyRoomHelp":1,"paintStagePlate":1,"replaceAddress":1,"paintShareUrl":1,"paintStreamLink":1,"showShareLink":1,"renderLobbyList":1,"placeDeskName":1,"placeClearLine":1,"paintRoomTitle":1,"tileNote":1,"paintSoloApp":1,"setAppFavicon":1,"showAppMissing":1,"hideAppMissing":1,"paintTabTitle":1,"showAppPane":1,"setAppGif":1,"appRuntimeBoot":1,"paintAppRoomBody":1,"refreshAudioBtn":1,"paintHelpTip":1,"openShareLiveModal":1,"showInviteModal":1,"applyHeaderChoice":1,"appCopyPaint":1,"paintAppGifFromLane":1,"applyRoomAudio":1,"paintCallOn":1,"paintCallBanner":1,"bootMeetSession":1,"showLobby":1,"chatTrace":1,"paintChatBadge":1,"renderTranscript":1,"renderChat":1,"countClosedChat":1,"paintChatCount":1,"takeFaceReact":1,"showCaption":1,"paintTxMark":1,"hideJoinPwModal":1,"paintChatNew":1,"paintQaBand":1,"renderQa":1,"placeQaBand":1,"sgaAppOwner":1,"paintHand":1,"rbCanvas":1,"paintRb":1,"showRecReplay":1,"paintRbNow":1,"paintMyAvatarPreview":1,"capLangAsk":1,"emitLiveTranscript":1,"paintCcLocal":1,"paintTranscriptControls":1,"paintCallState":1,"paintAudienceReacts":1,"armMeetDialogs":1,"wireMediaSession":1,"blurNote":1,"openBlurWhy":1,"showBlurNoteUnlessDialog":1,"inviteLinkForModal":1,"hideDialogs":1,"stopLobbyPreview":1,"showLeftDialog":1,"foldBarForApp":1,"clearAppView":1,"appRuntimeClient":1,"updateAppButtons":1,"paintAppWho":1,"appStageAskClose":1,"appStageAsk":1,"loadScriptOnce":1,"paintBotEyes":1,"newCanvas":1,"paintBotView":1,"bridgeAgentToPage":1,"carryIo":1,"carryEarAc":1,"dbgMeterShow":1,"audioDump":1,"viewTestHooks":1}}, stamp: "d49d42da" };
+  var api = { name: "core", run: part, count: 1842, exports: {"AI_SPARK_SVG":0,"BC_INTENT":0,"BC_SEAT":0,"BROADCAST":0,"CC_LANG_KEY":0,"CC_ON_PHONE":0,"CT":0,"DEBUG_ON":0,"EMBED":0,"IS_ANDROID":0,"IS_MOBILE":0,"LADDER":0,"LATE_ASK_MS":0,"MP":0,"MPipe":0,"RECOVER_MEDIA_KEY":0,"ROOM":0,"SCALE":0,"STAGE_FPS":0,"STAGE_MAXW":0,"STG_BEAT_MS":0,"STG_BEAT_SEEN":0,"STG_BEAT_STALE_MS":0,"STG_ROOT2":0,"TIMING_KEY":0,"VMODE":0,"WK_H264_BLIND":0,"ac":0,"act":0,"addAux":0,"addTranscriptLine":1,"admDeadline":0,"admGraceT":0,"admSigned":1,"admStoreKey":0,"admTickT":0,"adminsNow":0,"adoptAdmKey":1,"agentChat":1,"aiNotesSetting":1,"aloneCardShut":0,"amAdmin":0,"amGloballyMuted":1,"appClientCtl":0,"appClientStop":0,"appEv":0,"appHiddenSid":0,"appHostCtl":0,"appKey":0,"appLeadOn":0,"appLeadSet":0,"appLeadable":0,"appMode":0,"appStageApply":1,"appStageConsent":0,"appStagePlan":1,"applyAvatarFile":1,"applyBcAct":1,"applyCdel":1,"applyOwnDelete":1,"applyPageHeader":1,"applyViewerCrop":1,"armAppRoomTick":0,"armCopiedLabel":1,"autoFsOff":0,"auxDrop":1,"auxSenders":0,"avatarChip":1,"backGuardDrop":1,"backToNormalView":1,"backWatch":0,"bannedOut":0,"barKind":1,"barPlan":1,"battNow":0,"bcActButtons":1,"bcEndedInRoom":1,"bcHostStored":0,"bcKeepUserStop":0,"bcLastService":0,"bcMayPublishAv":1,"bcOnAir":1,"bcPreInRoom":1,"bcRole":1,"bcSeeding":0,"bcStartAt":1,"bcWatchingViewer":1,"bcWhenWords":1,"becomeAssistant":1,"blurAgain":1,"blurHold":1,"blurLevel":0,"blurLevelFor":1,"blurOffer":1,"blurWhyWords":1,"bootGumPending":0,"botHidden":1,"botParks":1,"botViewOn":0,"broadcastStatus":1,"camOnWords":1,"camPeer":0,"canIRunApp":0,"canStage":0,"capClone":1,"capClosed":0,"capCovered":1,"capEarsOnly":1,"capLangMine":1,"capLangName":1,"capLangTag":1,"capName":1,"capNowNote":1,"capOn":0,"capPick":1,"capPublish":1,"capRows":1,"capSend":1,"capSpotQueue":1,"capTraceGate":1,"capTrust":0,"capTry":1,"carryG":0,"carryHosts":0,"carryIn":1,"carryOutAc":0,"ccDevNotice":1,"ccLang":0,"ccLangLabel":0,"ccLocalBlocked":1,"ccLocalQ":0,"ccMB":0,"ccShow":0,"chatLinksOn":0,"chatOpen":0,"claimMos":1,"clearNoPwMode":1,"clearNoPwState":1,"clearPipAuto":1,"clearRosterTiles":1,"clog":0,"closeRoomNoHost":1,"compFps":1,"contentHas":1,"createAdminRoom":1,"ctAgCtx":1,"ctAgHidden":1,"ctAgendaHide":1,"ctAgendaOver":1,"ctAgendaPublish":1,"ctAgendaShortTime":1,"ctAgendaTickArm":1,"ctAgendaWhoText":1,"ctAspect":1,"ctBring":1,"ctCanEditAgenda":1,"ctFocusSources":1,"ctLabel":1,"ctNote":1,"ctPaintAgendaClock":1,"ctRefresh":1,"ctSelect":1,"ctSpeakerPick":1,"ctText":1,"ctTurnPaint":1,"currentAppCredits":1,"currentAppHelpMd":1,"dbgMeterPanel":0,"dcSend":0,"demand":1,"deriveAdminKey":1,"digLists":0,"digStageEntry":0,"digestMode":0,"displayCount":1,"displayName":1,"dlogOut":0,"dlogRecStart":1,"dlogStoreGet":1,"docPip":0,"dockLabelSet":1,"dropMosIn":1,"dropPeer":1,"dropStandby":1,"dutyJob":1,"embedHosted":0,"enforceBroadcastSeat":1,"ensureAc":1,"esc":0,"faceDrawnHere":1,"fetchGifFromUrl":1,"findSharedApp":1,"fitFor":0,"focusId":0,"focusOf":1,"foldName":1,"forcedCamOff":0,"freshSt":0,"frozeThisBeat":1,"fsAutoKey":0,"fsAutoPid":0,"fsBlurClass":1,"fsCropBox":1,"fsFarCells":1,"fsFarTalkers":1,"fsFeedLive":1,"fsFollow":0,"fsFollowChanged":1,"fsFollowT":0,"fsInline":0,"fsPickAuto":1,"fsSel":0,"fsTick":0,"fsZoomBox":0,"fsZoomIds":0,"hasAdminRoom":0,"hasPendingTx":0,"heldNoteSeen":1,"hideBotsT":0,"holdDoor":0,"holdLeaveAsk":1,"homeHref":1,"hostRename":1,"hostSpot":1,"hostWords":1,"iActAsHead":1,"iAmWaiting":1,"idleDock":1,"idleNow":0,"importGif":1,"inMeetingNow":1,"inboundPlan":1,"installRunApp":1,"inviteFromSolo":1,"isCastEntry":1,"isHeld":1,"isRedun":0,"isStageJob":0,"islandApart":1,"joinWithPw":1,"kfNeed":1,"knownTotal":1,"labelFor":0,"lastActive":0,"lastQ":0,"lateAsk":0,"lateGen":0,"lateJoinerSeesHistory":0,"lateTimer":0,"lateWant":0,"lateWon":0,"learnFoldedNames":1,"leaveMeeting":1,"leaveSeededService":1,"leaving":0,"leftDialogUp":1,"lineOpen":0,"linkRowHtml":1,"linksAllowed":1,"liveInCall":1,"loadList":1,"lobRow":1,"lobbyPwHandOver":1,"localBlurPower":1,"localStream":0,"logNearBottom":1,"lowSenders":0,"lsGet":0,"lsSet":0,"mainVideoChoice":1,"markHeldNote":1,"mayHost":1,"mayPinFiles":1,"mayShareScreen":0,"meOnStage":1,"meTile":0,"mediaJoined":0,"mediaOk":0,"mentionToken":1,"meshCoord":0,"meshNode":0,"meshSeat":0,"messageMentionsMe":1,"meterFor":1,"meters":0,"micGrabbing":0,"micLockWords":1,"micMode":0,"micPeer":0,"micPickPrev":0,"micUnmuteAfter":0,"micWant":0,"mintHostKey":1,"mirrorRoomState":1,"mixIn":1,"modBlurOn":0,"modOf":1,"modStarOn":1,"modTable":0,"modalDismissBtn":1,"modalFocusables":1,"model":0,"mosAnn":0,"mosBeyondAt":0,"mosIn":0,"mosJobs":0,"mosStandby":0,"myId":0,"myIdentity":0,"myName":0,"myStatus":0,"myVoiceAt":0,"myVoiceFrom":0,"myVoiceSinceFinal":0,"nameInitial":1,"net":0,"newMeetAudioContext":1,"newNeg":0,"occPid":0,"onStageNow":1,"outboundPlan":1,"outgoingHeld":0,"owedStream":1,"packIn":1,"paintBroadcastAir":1,"paintLog":1,"paintModbarButtons":1,"paintOnAir":1,"paintRosterSoon":1,"parseMeetInput":1,"participantCount":1,"peerAway":0,"peerWaits":1,"peers":0,"personOnStage":1,"pipAutoT":0,"pipCard":0,"pipCardPaint":1,"pipCardReady":1,"pipCardRun":1,"pipFallback":1,"pipTarget":1,"pipeEnabled":0,"pipePeers":1,"pipeStg":0,"pipeVideo":0,"planMeasured":1,"powDials":0,"powNow":0,"prayOn":0,"preferHwVideo":1,"progressStart":1,"progressTick":1,"progressWords":1,"purgeAllFiles":1,"pushLeaf":1,"pwBan":1,"pwBlocked":0,"pwSetRoom":1,"rbCap":0,"rbDrop":1,"rbFmt":1,"rbLength":1,"rbNoun":0,"rbNow":0,"rbStop":1,"rbTitle":1,"rbToggle":1,"rbTracks":1,"reactAlert":0,"reactOpen":0,"reactRateOk":1,"reactRoomState":1,"reactorNames":1,"reapJobs":1,"recDefaultQuality":1,"recRoomWord":1,"recSrcDirty":0,"recStructSig":0,"reconcileApp":1,"reconcileMain":1,"refreshAllTiles":1,"relayBusyAt":0,"relayVia":0,"releaseLeaveAsk":1,"renegotiate":1,"reportClearHost":1,"room":0,"roomBeyondRow":1,"roomConsentIds":0,"roomDig":1,"roomHeadCount":1,"roomKey":0,"roomPastSection":0,"roomSingOn":0,"rosterIds":0,"rosterNames":0,"rosterRows":1,"rosterTiles":0,"rowActing":1,"rowFaceDark":0,"rowHeadPid":1,"rowMates":0,"rowMixTalkAt":0,"runApp":1,"runChoices":1,"runLinkTarget":1,"rung":0,"saveList":1,"saveVcrops":1,"sayState":0,"screenCeilingKbps":1,"screenSharers":0,"screenSteppedUp":0,"screenStream":0,"seatDark":0,"seatSelfLeased":0,"sendAll":1,"sendAudienceReact":1,"sendAvatarTo":1,"sendFaceFrame":1,"sendVisPark":1,"serviceHeard":0,"setAutoFsOff":1,"setCapSend":1,"setJobActive":1,"setMod":1,"setPersonalBlur":1,"setStage":1,"setStatus":0,"setTrMode":1,"setView":1,"setVq":1,"setWaitingRoom":1,"shadeKey":1,"shareBlocked":0,"shareFirewallWords":1,"shareOnlyStage":1,"shareSheetFocusId":1,"sharingScreen":0,"shipJob":1,"shortCode":0,"shortcutTyping":1,"singOf":0,"slowModeOn":0,"slugRoom":1,"speakingOf":0,"stHold":0,"stadFaceIdAt":1,"stageCeilingKbps":1,"stageCell":1,"stageClaimOf":0,"stageFeedAt":0,"stageFeedVideo":1,"stageFps":1,"stageGrantLive":0,"stageHeldAt":0,"stageIds":0,"stageModList":1,"stageNeed":0,"stageSeats":0,"stageSenders":0,"stageVideoChoice":1,"startMesh":1,"stashJoinAv":1,"statusOf":0,"statusWords":0,"stgBeatCost":0,"stgBeats":0,"stgDirectSet":1,"stgEnded":1,"stgFedBy":1,"stgHop":0,"stgPath":0,"stgStale":1,"stopApp":1,"stopAuxTx":1,"stopRoomApp":1,"subWant":0,"subsMeetId":0,"subsOn":0,"swapPicHoldAt":0,"swapPicLast":0,"swapPicRing":0,"syncFocus":1,"takeReact":1,"takeTomb":1,"tapUnblur":1,"tileBlurWhy":1,"timing":0,"toggleBookmark":1,"toggleLine":1,"trBlocks":1,"trDrops":0,"trEchoHeld":1,"trEnOn":0,"trEnOnlyEnglish":1,"trForget":1,"trKeeps":1,"trLang":1,"trLangKnown":1,"trLangOf":0,"trMode":1,"trNote":1,"trWrites":1,"turnFacts":0,"turnHeld":1,"turnLinks":0,"turnNote":1,"twCaptionsButton":1,"twIdOf":1,"twPeer":1,"txMarkWhy":1,"uiLang":1,"uiText":1,"uid":0,"unread":0,"unshipJob":1,"updateLeaving":0,"updateMediaSession":1,"updateRoomKey":0,"updateStatus":1,"updateTile":1,"viewNote":1,"viewWord":1,"viewerCropOf":1,"viewerMayReact":1,"viewerShareUrl":1,"visParkSent":0,"vpId":0,"vqManual":0,"vqRung":0,"vupDismissedSig":0,"waitingRows":1,"waitingSince":1,"whisperReady":0,"whoAddrLines":1,"whoFaceState":1,"whoFileText":1,"whoObserve":1,"whoRefresh":0,"whoRows":1,"wireModbar":1,"withMentions":1,"wspSource":1}, needs: {"media":{"adapt":1,"stopScreenShare":1,"refreshOutbound":1,"ccMix":0,"ccMixSync":1,"stgLost":1,"mosFb":0,"resumeReload":1,"recRec":0,"applyCcAll":1,"sdView":0,"blurSized":1,"syncAvatarFeed":1,"wspRebind":1,"stagedSelfWas":0,"refreshTrBtn":1,"applyBuses":1,"tileHolds":1,"releaseAudio":1,"playTileVideo":1,"mainAudioTrack":1,"sentVideoTrack":1,"schedReconcile":1,"retireMixTracks":1,"peerAudioTracks":1,"gridApplied":0,"dropEndedRemoteTracks":1,"headLinkUp":1,"recNoteStruct":1,"WEBKIT_TILE":0,"mediaElCensus":1,"shipContainers":0,"prodPack":0,"roomPack":0,"stripPack":0,"l14Packs":0,"quietAtDoor":1,"recStarting":0,"recDraw":0,"recScopeSources":1,"startRec":1,"headSendsStale":1,"wkQuietBind":1,"reconcileMosaic":1,"onMeetDeviceChange":1,"gumWithMicFallback":1,"camVideoConstraints":1,"applyRecoverMedia":1,"noteAudioDevices":1,"syncSpeech":1,"keepMeetingAudio":1,"maybeShowFlip":1,"attachLocalTracks":1,"gumRefused":1,"clockSample":1,"schedClaim":1,"stgBeatIn":1,"holdMainVideo":1,"kickMainVideo":1,"kickMainAudio":1,"wkRemoteTrack":1,"endSongOnStepDown":1,"reactSing":1,"armAudioKeepAlive":1,"ccDefGroup":0,"paintTiming":1,"ccEngine":1,"phoneCaptions":1,"WSP_WEAK":0,"wspPaused":0,"wspCaps":0,"whisperSupported":1,"installWhisper":1,"wspSync":1,"speechRunning":1,"stopSpeech":1,"ccMixStop":1,"startWhisper":1,"wspStop":1,"speech":0,"speechProved":0,"stopWhisper":1,"whisperRescan":0,"camIdleT":0,"wakeLock":0,"stopBlurPipe":1,"withScrPipe":1,"mixAc":0,"keepAwake":1,"warnRecorderNewApp":1,"botVoiceTrack":0,"wspResume":1,"kickStageMic":1,"closeCamChooser":1,"blurViewFrac":1,"blurDraw":1,"carryVoiceTrack":0,"dbgMeterSources":1,"pipeJobs":0,"pipeDeny":0,"wkFwdNeeded":1,"wkFwdCopies":0,"packLoop":0,"downStreams":0,"clk":0,"mix":0,"toggleSing":1,"gdOverride":0,"applyGrid":1,"startScreenShare":1,"qaStageSt":0,"stageEar":0,"stageEarLiveTrack":1,"stageEarRawPeak":1,"stageEarFoldPeak":1,"shownPeerCount":1,"facesOnScreen":1,"compOf":0,"blurPipe":0,"heardStage":1,"camTrackForTest":1,"earState":1,"stageAudible":1,"tuneCfg":1,"poke":1,"wsp":0,"wspQ":0,"wspModel":1,"wspEnqueue":1,"recMode":0,"recMatchMix":0,"recQuality":0,"recSources":1,"camChooserOpen":1,"trackQ":0,"avatarPipe":0,"ctScreenTrack":1,"stubDuties":1,"soundHeld":1,"stageFeedShows":1,"paintStageStrip":1,"rowEdge":1,"kfEv":0,"keyUp":1,"producerKey":1,"MOS_GRACE":0,"orphaned":1,"detachTrack":1,"swapTrack":1,"attachTrack":1,"noteReship":1,"kickJob":1,"attachFailed":1,"containerFor":1,"dutyMuteTick":1,"jobPinned":0,"parkSender":1,"jobVideoAt":0,"unbindClaim":1,"stgFoNote":1,"rowMixHold":1,"bindClaim":1,"repaintRedun":1,"swapPicNote":1,"STG_ZERO_MS":0,"rowMixHeadArrives":1,"picRead":1,"STG_PIC_LIVE_MS":0,"MOS_SETTLE":0,"adoptClaim":1,"stgCarry":1,"mosHeld":0,"x2Target":1,"mySelfStream":0,"mixReady":1,"packFor":1,"hopMs":1,"blockOf":1,"slotDark":1,"carriedHot":1,"partStream":1,"rowMixOpen":1,"rowMixViaPeek":1,"overlayTiny":1,"faceLive":1,"blockLive":1,"blockPicture":1,"dropContainer":1,"CC_EARS_KEY":0},"view":{"paintVq":1,"paintAirKind":1,"placeDockForWidth":1,"paintOnAirBadge":1,"paintOnAirSide":1,"paintBroadcastRole":1,"paintBroadcastChrome":1,"paintStatusNotice":1,"paintLiveBadge":1,"paintStatusSheet":1,"applyChrome":1,"showAppearCard":1,"paintAssistant":1,"paintControls":1,"setBotView":1,"paintRoomTrust":1,"showHeldScreen":1,"waitPaint":1,"closeMoreForWait":1,"paintWaitDoor":1,"pipReaim":1,"pipCardModel":1,"pipNote":1,"pipSource":1,"awayFull":1,"enterPip":1,"pipReturn":1,"paintChatGate":1,"paintStage":1,"layout":1,"updateMuteAllBtn":1,"updateBlurAllBtn":1,"updateCamAllBtn":1,"updateShareAllBtn":1,"paintStageMod":1,"paintStageBlurWhy":1,"explainHeldVideo":1,"paintShare":1,"fsRefreshIfOpen":1,"tickAdminClose":1,"updateReload":1,"clearAdminClose":1,"showClosedDialog":1,"fsFitPaint":1,"fsRefresh":1,"paintRaisedHands":1,"phoneLayout":1,"setTileLetter":1,"paintAwayMark":1,"paintTileChrome":1,"paintBlurWhy":1,"paintAvatarImg":1,"paintBroadcastIdent":1,"paintFit":1,"closeFsView":1,"openFsView":1,"ctInit":1,"ctAppInfo":1,"ctPaintAgendaBtn":1,"ctPaintBar":1,"ctPresent":1,"ctAgendaOpen":1,"wakeMeet":1,"comfyStadMeta":1,"comfyStadRoster":1,"twButton":1,"closeTileWin":1,"capSourceOpen":1,"openTileWin":1,"applyViewerCrops":1,"openStageAdjust":1,"placeFit":1,"paintStatusAlert":1,"paintPeopleIfOpen":1,"atPwPrompt":1,"paintStatusLine":1,"paintBcQuiet":1,"paintChipBottom":1,"paintInviteSlot":1,"paintAloneCard":1,"paintRoster":1,"releaseHeld":1,"paintWaitingSelf":1,"refreshAvatarSurfaces":1,"turnPaint":1,"pauseNote":1,"wireFsResize":1,"paintTileOnGrid":1,"makeTile":1,"reassertVisLift":1,"renderHandq":1,"paintProgressSteps":1,"paintJoinVeil":1,"lobbyPwOpenRoom":1,"renderFiles":1,"showPwModal":1,"paintBroadcastJoinNote":1,"capPaint":1,"showLoadRefusal":1,"lgLeave":1,"showForkPick":1,"showRelayBusy":1,"applyAdminUi":1,"paintStatusWhy":1,"frozenTileSkip":1,"massBannerTick":1,"islandNoteTick":1,"paintStageVoteTargets":1,"paintBroadcastSeats":1,"showWhoIfOpen":1,"placeHandq":1,"applyRoomHelp":1,"paintStagePlate":1,"replaceAddress":1,"paintShareUrl":1,"paintStreamLink":1,"showShareLink":1,"renderLobbyList":1,"placeDeskName":1,"placeClearLine":1,"paintRoomTitle":1,"tileNote":1,"paintSoloApp":1,"setAppFavicon":1,"showAppMissing":1,"hideAppMissing":1,"paintTabTitle":1,"showAppPane":1,"setAppGif":1,"appRuntimeBoot":1,"paintAppRoomBody":1,"refreshAudioBtn":1,"paintHelpTip":1,"openShareLiveModal":1,"showInviteModal":1,"applyHeaderChoice":1,"appCopyPaint":1,"paintAppGifFromLane":1,"applyRoomAudio":1,"paintCallOn":1,"paintCallBanner":1,"bootMeetSession":1,"showLobby":1,"chatTrace":1,"paintChatBadge":1,"renderTranscript":1,"renderChat":1,"countClosedChat":1,"paintChatCount":1,"takeFaceReact":1,"showCaption":1,"paintTxMark":1,"hideJoinPwModal":1,"paintChatNew":1,"paintQaBand":1,"renderQa":1,"placeQaBand":1,"sgaAppOwner":1,"paintHand":1,"rbCanvas":1,"paintRb":1,"showRecReplay":1,"paintRbNow":1,"paintMyAvatarPreview":1,"capLangAsk":1,"emitLiveTranscript":1,"paintCcLocal":1,"paintTranscriptControls":1,"paintCallState":1,"paintAudienceReacts":1,"armMeetDialogs":1,"wireMediaSession":1,"blurNote":1,"openBlurWhy":1,"showBlurNoteUnlessDialog":1,"inviteLinkForModal":1,"hideDialogs":1,"stopLobbyPreview":1,"showLeftDialog":1,"foldBarForApp":1,"clearAppView":1,"appRuntimeClient":1,"updateAppButtons":1,"paintAppWho":1,"appStageAskClose":1,"appStageAsk":1,"loadScriptOnce":1,"paintBotEyes":1,"newCanvas":1,"paintBotView":1,"bridgeAgentToPage":1,"carryIo":1,"carryEarAc":1,"dbgMeterShow":1,"audioDump":1,"viewTestHooks":1}}, stamp: "d49d42da" };
   (GifOS.coreParts = GifOS.coreParts || {})["core"] = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
