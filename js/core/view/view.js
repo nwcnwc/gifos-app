@@ -3061,6 +3061,30 @@
             pictureCells = nPic;
           }
         }
+        // FAR PEOPLE (the far room of a joining connection, SUB.4, TURN.11) are in no roster of mine: only the Stadium
+        // picture carries them. When that picture is on (not quiet) and holds people who are not on my screen, it is the
+        // stadium box, whole. Before (0.9.28.30, hotel): it had no box, so its source strip drew itself unplaced at full
+        // width over the Stage and the row, a giant blurred letter behind the tiles. The people it holds: the cells it
+        // names that are not on screen; a picture that names none counts them (the meeting's count past my faces on screen).
+        if (!shownFaces.length && !heldIx.length && meta.srcEl && meta.srcEl.style.display !== 'none' && (nPic > 0 || meta.srcEl.querySelector(':scope > .tpause'))) {
+          let far = [];
+          const onScr = {};
+          if (__C.model.me.myId()) onScr[__C.model.me.myId()] = true;
+          for (const [pid, p] of __C.model.roster.peers()) if (p && (p.held || (p.tile && !p.headless && p.tile.style.display !== 'none'))) onScr[pid] = true;
+          for (const id of stagersFace) onScr[id] = true;
+          if (Array.isArray(meta.ids)) far = meta.ids.filter((id) => id && !onScr[id]);
+          if (!far.length) {   // unnamed cells, or a far room whose pipe carries no picture (its paused note, TURN.11)
+            let mc = null, fs = 0;
+            try { const mn = __C.model.net.meshNode(); mc = mn && typeof mn.meetingCount === 'function' ? mn.meetingCount() : null; fs = Object.keys(onScr).length; } catch (e) { mc = null; }
+            if (mc != null && mc > fs) far = new Array(Math.max(1, Math.min(mc - fs, nPic || mc - fs))).fill('');
+          }
+          for (const id of far) {
+            let name = '…';
+            try { if (id) name = (0, /*()*/__C.displayName)(id) || name; } catch (e) {}
+            shownFaces.push({ id: id, name: name, initials: '', off: false, avatar: '', shade: (0, /*()*/__C.shadeKey)(id || 'stad'), held: false });
+          }
+          if (far.length && nPic > 0) pictureCells = nPic;
+        }
         const cols = (skipCells.length && (meta.cols | 0) > 0) ? (meta.cols | 0) : cellOf ? (meta.cols || 0) : (meta.n === roster.length) ? (meta.cols || 0) : 0;
         if (meta.video && !meta.video._comfyRz) {
           meta.video._comfyRz = true;
@@ -3131,7 +3155,9 @@
         }
         // Park the source while the feed shows the stadium, and while the
         // only people past the row are on stage (the strip must not pop back).
-        if (meta.srcEl) meta.srcEl.classList.toggle('stad-src', shownFaces.length > 0 || heldIx.length > 0);
+        // The source strip never shows itself here: the stadium box (#stadwhole) is the only place its picture goes,
+        // so with no box (everyone it holds is on screen) it takes no place at all.
+        if (meta.srcEl) meta.srcEl.classList.add('stad-src');
         try { applyViewerCrops(); } catch (e) {}
       } finally { comfyBusy = false; }
     }
@@ -5069,7 +5095,9 @@
       // SUB.4 + TURN.11 for every seat: the Stadium that shows a far room over a pipe with no video says so, with the same
       // note and Subscribe as a tile (Nathan 11-14: the note goes on the strip, not only on the pipe holders' tiles)
       const sd = document.querySelector('#stadium [data-row="sd"]');
-      if (sd) { let far = 0; try { far = __C.model.net.meshNode() && typeof __C.model.net.meshNode().meetingFar === 'function' ? __C.model.net.meshNode().meetingFar() : 0; } catch (e) {} pauseNote(sd, !!__C.model.room.turnLinks() && GifOS.meetTurn.stripPaused(facts, far)); }
+      if (sd) { let far = 0; try { far = __C.model.net.meshNode() && typeof __C.model.net.meshNode().meetingFar === 'function' ? __C.model.net.meshNode().meetingFar() : 0; } catch (e) {} const sp = !!__C.model.room.turnLinks() && GifOS.meetTurn.stripPaused(facts, far); pauseNote(sd, sp);
+        // the gallery shows the Stadium through its box (#stadwhole), never the parked strip: the note goes there too
+        const whole = document.getElementById('stadwhole'); if (whole) pauseNote(whole, sp); }
       try { (0, /*()*/__C.ctTurnPaint)(facts); } catch (e) {}
     }
     yield 1066;

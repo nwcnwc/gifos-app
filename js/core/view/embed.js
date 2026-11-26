@@ -103,13 +103,17 @@
       paintShares();
       var v = stageVideo();
       var picture = hosted && !!(v && v.srcObject);
+      // Still at the door (no seat yet): the host's signed state has not been heard, which says nothing about the room.
+      // A viewer on a TURN-only network waits here longest (hotel Wi-Fi, 0.9.28.30 field): "not hosted" was a false claim then.
+      var seated = true;
+      try { var ms = C.meshSeat(); seated = !!(ms && ms.hasCoord); } catch (e) {}
       if (v) { try { C.fsBlurClass(v, stageLevel()); } catch (e) {} }
       var pre = false;
       try { pre = picture && !!C.bcPreInRoom(); } catch (e) {}
       var st = why !== 'ok' ? 'off' : pre ? 'pre' : (picture && !quiet.text) ? 'watching' : 'off';
       var live = $('emb-live');
       if (live.dataset.state !== st) live.dataset.state = st;
-      var word = { watching: 'LIVE', pre: 'PRERECORDED' }[st] || 'OFFLINE';
+      var word = { watching: 'LIVE', pre: 'PRERECORDED' }[st] || (why === 'ok' && !hosted && !seated ? 'CONNECTING' : 'OFFLINE');
       if ($('emb-live-txt').textContent !== word) $('emb-live-txt').textContent = word;
       var cw = st === 'off' ? '' : watchCount() + ' watching';
       if ($('emb-count').textContent !== cw) $('emb-count').textContent = cw;
@@ -119,6 +123,7 @@
       if ($('emb-mute').textContent !== mw) { $('emb-mute').textContent = mw; $('emb-mute').setAttribute('aria-pressed', heard ? 'false' : 'true'); }
       var card = $('emb-card');
       var mt = why !== 'ok' ? 'This embed does not name a GifOS broadcast.'
+        : (!hosted && !seated) ? 'Connecting to the meeting… The live view starts as soon as this page is in.'
         : !hosted ? 'This meeting isn’t hosted right now. The live view starts when a host takes charge.'
         : quiet.text ? quiet.text
         : (!picture && C.pwBlocked) ? 'This broadcast has a room password.'
