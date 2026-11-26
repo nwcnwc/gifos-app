@@ -618,7 +618,8 @@
       for (const [id, t] of tiles) {
         const el = t.el;
         // videos report currentTime; canvases cannot, so force a redraw
-        if (el && typeof el.currentTime === 'number') s += id + ':' + el.currentTime.toFixed(3) + ';';
+        if (t.card) s += id + ':card;';   // a card has no source to advance
+        else if (el && typeof el.currentTime === 'number') s += id + ':' + el.currentTime.toFixed(3) + ';';
         else return null;
         s += t.n + 'x' + t.cols + (t.hid && t.hid.size ? '-' + [...t.hid].join('.') : '') + ';';
         if (t.dark) s += 'D|';
@@ -636,16 +637,13 @@
       const q = Math.max(3, Math.round(cell / (level >= 2 ? 40 : 16)));
       surf.pixelate(sourceOf(el), b.sx, b.sy, b.sw, b.sh, q, dx, dy, dw, dh);
     }
-    // A FACE WITH NO PICTURE SHOWS ITS INITIAL. The row tile shows the
-    // person's letter whenever there is no picture to show; a packed cell must
-    // too, or a camera-off person whose video holds no frame (a frameless
-    // avatar track, a phone's overlay-only tile, no letter slot left) goes up
-    // the tree as a black square with only a name. The letter is the one the
-    // tile shows (nameInitial of the burned name); the colours match the sent avatar card.
+    // A FACE WITH NO PICTURE IS A PLAIN CARD. The cell keeps its place (and
+    // its id, so every receiver knows whose it is) and its marks, but no
+    // letter and no avatar are painted: a picture can be blurred downstream,
+    // and an initial must never be. Each receiver draws the person's initial
+    // or avatar over the cell itself (a camera-off seat sends no video).
     function faceCard(dx, dy, cell, lbl) {
       surf.fill('#14141f', dx, dy, cell, cell);
-      const ini = lbl && !lbl.dot && lbl.name ? Array.from(String(lbl.name))[0] : '';   // the tile's rule (nameInitial): the name's first character, upper case
-      if (ini) surf.letter(ini.toUpperCase(), dx, dy, cell, '#3a3a55');
       drawOverlay(dx, dy, cell, lbl);
     }
     function drawLeaf(t, el, sw, sh, dx, dy, cell) {
@@ -806,7 +804,7 @@
         for (let i = 0; i < geo.length; i++) {
           const g = geo[i], t = g.t, p = dl.at[i];
           const dx = p.x * cell, dy = p.y * cell;
-          if (!g.sw || !g.sh) { if (t.n === 1 && t.cols === 1) faceCard(dx, dy, cell, t.lbl); continue; } // no frame: a leaf shows its initial, a block stays dark until its frame
+          if (!g.sw || !g.sh || (t.card && t.n === 1)) { if (t.n === 1 && t.cols === 1) faceCard(dx, dy, cell, t.lbl); continue; } // no frame: a leaf shows its initial, a block stays dark until its frame
           try {
             if (t.n === 1 && t.cols === 1) drawLeaf(t, t.el, g.sw, g.sh, dx, dy, cell);
             else if (g.src) surf.blit(sourceOf(t.el), g.src.sx, g.src.sy, g.src.sw, g.src.sh, dx, dy, cell, cell); // one face of a split block
@@ -828,7 +826,7 @@
           // VIDEO OFF BY AN ADMIN. The cell keeps its place, because a receiver
           // cuts faces out by position, and it keeps the name. No pixel of the
           // source is drawn, whatever the source still sends.
-          if (t.dark && t.n === 1) { faceCard(dx, dy, cell, t.lbl); continue; }
+          if ((t.dark || t.card) && t.n === 1) { faceCard(dx, dy, cell, t.lbl); continue; }
           // NO FRAME YET (a copy swapping in, a carrier's first key, a throttled
           // tab): the cell keeps its place AND its name, like an admin's dark
           // cell. The name is the stager's own (lbl from labelFor(sid)), not the
@@ -881,7 +879,7 @@
         let hid = null;
         if (ids && meta && Array.isArray(meta.hide) && meta.hide.length) { const h = new Set(meta.hide.map(String)); for (let j = 0; j < n; j++) if (ids[j] != null && h.has(String(ids[j]))) (hid || (hid = new Set())).add(j); }
         tiles.set(id, { ord, el, stream, streamId: sid, n, cols, lbl: (meta && meta.lbl) || null, fit: (meta && meta.fit) || null,
-          dark: !!(meta && meta.dark), blur: Math.max(0, Math.min(2, (meta && meta.blur) | 0)), ids, hid,
+          dark: !!(meta && meta.dark), card: !!(meta && meta.card), blur: Math.max(0, Math.min(2, (meta && meta.blur) | 0)), ids, hid,
           pid: (n === 1 && meta && (meta.talkPid != null || meta.pid != null)) ? String(meta.talkPid != null ? meta.talkPid : meta.pid) : null });   // a leaf's person: its talking frame is read at paint (setTalkSource); talkPid names it without naming the cell (ids)
         if (!(n === 1 && cols === 1)) arriveArm(el);
       },

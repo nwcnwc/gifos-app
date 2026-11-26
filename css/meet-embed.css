@@ -220,3 +220,12 @@ body.emb-calm { cursor: none; }
 #clearnopw-report .dlg-actions button:disabled { opacity: .55; cursor: default; }
 #clearnopw-report .clearnopw-cats { color: var(--emb-panel-fg); }
 #clearnopw-report input[type="radio"] { accent-color: var(--emb-on); }
+/* A camera-off person's card over their cell of a received picture (viewKit.cellCards): drawn by this viewer, the
+   initial always sharp; an avatar picture is softened like a face by the blur classes on the <img> only. */
+.cellcards { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
+.cellcard { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; overflow: hidden;
+  background: #14141f; color: #d7d9ea; font-weight: 800; line-height: 1; font-family: system-ui, sans-serif; }
+.cellcard > img { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cellcard.has-img > span { display: none; }
+.cellcard > img.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .009))) saturate(.9); transform: scale(1.07); }
+.cellcard > img.blur2 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-max, .0225))) saturate(.75); transform: scale(1.15); }

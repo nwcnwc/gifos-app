@@ -45,7 +45,6 @@
       "attachTrack": { get: function () { return attachTrack; }, enumerable: true, configurable: true },
       "audioKickArmed": { get: function () { return audioKickArmed; }, set: function (v) { audioKickArmed = v; }, enumerable: true, configurable: true },
       "avHold": { get: function () { return avHold; }, set: function (v) { avHold = v; }, enumerable: true, configurable: true },
-      "avatarPipe": { get: function () { return avatarPipe; }, set: function (v) { avatarPipe = v; }, enumerable: true, configurable: true },
       "avatarSharp": { get: function () { return avatarSharp; }, set: function (v) { avatarSharp = v; }, enumerable: true, configurable: true },
       "bindClaim": { get: function () { return bindClaim; }, enumerable: true, configurable: true },
       "blockLive": { get: function () { return blockLive; }, enumerable: true, configurable: true },
@@ -774,39 +773,12 @@
       paint();
       return pipe.track;
     }
-    // CAMERA-OFF AVATAR. The letter is a frame of the video track, not a
-    // layer on top of the tile. Blur for all and a blur on one person already
-    // add .blur1 / .blur2 to the <video>; once the avatar is that video, those
-    // rules cover it. My own outbound bakes the same radii the camera pipe
-    // uses (11 / 26), because the me tile shows the pixels that leave and a
-    // receiver who strips the CSS class must still see a blur.
+    // CAMERA OFF SENDS NO VIDEO. A seat whose camera is off is a card: every viewer draws it itself, the person's
+    // avatar still (sent once on the data channel at the sender's blur, painted under the room's blur) or the initial,
+    // crisp. AVATAR_W/H and avatarSharp size the local letter canvas a QA peer and the picture-in-picture card still use.
     const AVATAR_W = 640, AVATAR_H = 360;
     let avatarPipe = null, avatarSharp = null;
     yield 754;
-    function stopAvatarPipe() {
-      if (!avatarPipe) return;
-      try { avatarPipe.track.stop(); } catch (e) {}
-      avatarPipe = null;
-    }
-    function avatarOutboundTrack(name, level) {
-      const lvl = level | 0;
-      const key = (0, /*()*/__C.nameInitial)(name) + '|' + lvl;
-      if (avatarPipe && avatarPipe.key === key && avatarPipe.track && avatarPipe.track.readyState === 'live') {
-        if (avatarPipe.track.requestFrame) { try { avatarPipe.track.requestFrame(); } catch (e) {} }
-        return avatarPipe.track;
-      }
-      stopAvatarPipe();
-      const canvas = document.createElement('canvas');
-      // A browser that cannot stream a canvas sends no picture with the
-      // camera off. It still joins and watches (view-only is supported).
-      if (typeof canvas.captureStream !== 'function') return null;
-      (0, /*()*/__V.paintAvatarCanvas)(canvas, name, lvl);
-      const stream = canvas.captureStream(0);
-      const track = stream.getVideoTracks()[0];
-      avatarPipe = { key, canvas, stream, track, level: lvl };
-      if (track && track.requestFrame) { try { track.requestFrame(); } catch (e) {} }
-      return track;
-    }
     // A LOCAL PICTURE MUST START. These tracks are canvas streams made on this
     // page (my sent picture, the letter cards). WebKit now and then leaves a
     // muted <video> on a canvas stream at readyState 0 for good, whether it was
@@ -826,71 +798,10 @@
       }, 700 * (n + 1));
     }
     yield 758;
-    function remoteWireTrack(t) {
-      const real = t && t.stream;
-      const tr = real && real.getVideoTracks && real.getVideoTracks()[0];
-      if (!tr || tr.readyState !== 'live' || !tr.enabled || tr.muted) return null;
-      return tr;
-    }
-    // One canvas stream per letter, shared by every dark seat with that
-    // letter, and never more than AV_PIPE_CAP live at once. The canvas only
-    // depends on the letter, so sharing loses nothing, and a big room does
-    // not hold one canvas stream per dark seat. Past the cap a seat shows
-    // its letter overlay instead, under the same blur.
-    const AV_PIPE_CAP = 6;
-    const avPipes = new Map(); // letter -> { key, canvas, stream, track, refs }
-    function acquireAvPipe(key, name) {
-      let p = avPipes.get(key);
-      if (p && p.track && p.track.readyState === 'live') { p.refs++; return p; }
-      if (p) avPipes.delete(key);
-      if (avPipes.size >= AV_PIPE_CAP) return null;
-      const canvas = document.createElement('canvas');
-      if (typeof canvas.captureStream !== 'function') return null; // the letter overlay stands in
-      (0, /*()*/__V.paintAvatarCanvas)(canvas, name, 0);
-      const stream = canvas.captureStream(0);
-      const track = stream.getVideoTracks()[0];
-      if (!track) return null;
-      p = { key, canvas, stream, track, refs: 1 };
-      avPipes.set(key, p);
-      return p;
-    }
-    function releaseAvPipe(p) {
-      if (!p) return;
-      p.refs--;
-      if (p.refs > 0) return;
-      avPipes.delete(p.key);
-      try { p.track.stop(); } catch (e) {}
-    }
-    function clearPeerAvatar(t) {
-      if (!t) return;
-      if (t._avPipe) { releaseAvPipe(t._avPipe); t._avPipe = null; }
-      t._avatarRiding = false;
-      if (t.avatar && t.avatar.classList) t.avatar.classList.remove('rides-off');
-    }
-    function mountPeerAvatar(t, name) {
-      const key = (0, /*()*/__C.nameInitial)(name);
-      if (t._avPipe && (t._avPipe.key !== key || !t._avPipe.track || t._avPipe.track.readyState !== 'live')) {
-        releaseAvPipe(t._avPipe); t._avPipe = null;
-      }
-      // A phone shows the letter overlay itself: a short tile keeps a whole
-      // initial clear of the name and chips (a phone QA rule).
-      if (!t._avPipe && !(0, /*()*/__V.phoneLayout)()) t._avPipe = acquireAvPipe(key, name);
-      if (!t._avPipe) {
-        // No slot: the letter overlay stands in for the ridden video.
-        t._avatarRiding = false;
-        if (t.video.srcObject) t.video.srcObject = null;
-        if (t.avatar && t.avatar.classList) t.avatar.classList.add('rides-off');
-        return;
-      }
-      if (t.avatar && t.avatar.classList) t.avatar.classList.remove('rides-off');
-      t._avatarRiding = true;
-      (0, /*()*/__V.showAvatarTrack)(t.video, t._avPipe.stream, t._avPipe.track);
-    }
-    // A dark seat's picture is the avatar track. My outbound bakes blur. A
-    // remote seat shows the track they sent when it is a live picture, and
-    // otherwise paints the avatar locally so the receiver blur class has
-    // pixels to cover. An admin video-off or a blocked share does not show
-    // the wire picture; the avatar still rides the video, under the blur.
+    // A dark seat's tile shows no video: its card (the .avatar layer: the avatar still under the receiver's blur, or
+    // the initial, never blurred) is the picture, on my own tile too. A seat with a picture plays its own stream: the
+    // direct one, or the one a friend carries while the direct pair is down (relayVia); the dead direct stream must
+    // never replace a carried picture. Held (not verified, or ejected) shows no stream at all (who-attest).
     function syncAvatarFeed(id, t, isMe, st, gCam) {
       if (!t || !t.video) return;
       const blockedShare = !isMe && typeof __C.shareBlocked === 'function' && !!(0, /*()*/__C.shareBlocked)(id);
@@ -899,37 +810,15 @@
       if (isMe) {
         let vt = null;
         try { vt = sentVideoTrack(); } catch (e) {}
-        if (dark && !vt) vt = avatarOutboundTrack((0, /*()*/__C.myName)(), (0, /*()*/__C.blurLevelFor)('me') | 0);
-        if (vt) (0, /*()*/__V.showAvatarTrack)(t.video, () => (vt === (avatarPipe && avatarPipe.track) ? avatarPipe.stream : new MediaStream([vt])), vt);
-        // My own tile on a phone shows the letter overlay too; the baked track still goes out.
-        if (t.avatar && t.avatar.classList) t.avatar.classList.toggle('rides-off', !!(dark && (0, /*()*/__V.phoneLayout)()));
+        if (vt && !dark) (0, /*()*/__V.showAvatarTrack)(t.video, () => new MediaStream([vt]), vt);
+        else if (t.video.srcObject) t.video.srcObject = null;
         return;
       }
-      // Held (not verified, or ejected): no stream on the tile at all, not even
-      // the local letter canvas; the letter overlay stands in (who-attest).
-      if (typeof __C.mediaOk === 'function' && (0, /*()*/__C.mediaOk)(id) === false) {
-        clearPeerAvatar(t);
-        if (t.video.srcObject) t.video.srcObject = null;
-        if (dark && t.avatar && t.avatar.classList) t.avatar.classList.add('rides-off');
-        return;
-      }
-      // The person's own stream: the direct one, or the one a friend carries
-      // while the direct pair is down (relayVia). The dead direct stream must
-      // never replace a carried picture.
+      const unverified = typeof __C.mediaOk === 'function' && (0, /*()*/__C.mediaOk)(id) === false;
+      if (dark || unverified) { if (t.video.srcObject) t.video.srcObject = null; return; }
       const own = (t.relayed && (__C.relayVia.get(id) || {}).stream) || t.stream;
-      if (!dark) {
-        clearPeerAvatar(t);
-        const tr = own && own.getVideoTracks && own.getVideoTracks()[0];
-        if (tr && !tileHolds(t.video, own)) playTileVideo(t.video, own);
-        return;
-      }
-      const wire = (!gCam && !blockedShare && !held) ? remoteWireTrack({ stream: own }) : null;   // a held link carries no picture
-      if (wire) {
-        clearPeerAvatar(t);
-        (0, /*()*/__V.showAvatarTrack)(t.video, own, wire);
-        return;
-      }
-      mountPeerAvatar(t, (0, /*()*/__C.displayName)(id));
+      const tr = own && own.getVideoTracks && own.getVideoTracks()[0];
+      if (tr && !tileHolds(t.video, own)) playTileVideo(t.video, own);
     }
     // The video track to actually SEND: the strongest blur that applies to me
     // — my own setting, a group-blur targeted at me, or the room's guest blur
@@ -981,7 +870,6 @@
       if (c.src === 'none') { try { stopBlurPipe(); } catch (e) {} return null; }
       if (c.src === 'rebroadcast') {
         const rbv = __C.rbNow.v;
-        stopAvatarPipe();
         if (c.blur > 0) return startBlurPipe(c.blur, rbv);
         stopBlurPipe();
         return rbv;
@@ -989,17 +877,12 @@
       if (!c.rowShare) withScrPipe(stopBlurPipe);
       if (c.src === 'own-screen') {
         const scr = __C.screenStream.getVideoTracks()[0];
-        stopAvatarPipe();
         if (c.blur > 0) return startBlurPipe(c.blur, scr);
         stopBlurPipe();
         return scr;
       }
-      if (c.src === 'avatar') {
-        stopBlurPipe();
-        return avatarOutboundTrack((0, /*()*/__C.myName)(), c.blur | 0);
-      }
+      if (c.src === 'card') { stopBlurPipe(); return null; }   // camera off: no picture leaves
       const cam = __C.localStream.getVideoTracks()[0];
-      stopAvatarPipe();
       // A background effect (js/meet-bgfx.js) rides the same canvas; the camera's own
       // background blur, where the platform has one, needs no canvas.
       const BG = GifOS.meetBgfx;
@@ -1088,6 +971,8 @@
       if (typeof __C.outgoingHeld !== 'undefined' && __C.outgoingHeld) return;
       const plan = (0, /*()*/__C.outboundPlan)();
       if (plan.hold) return;
+      // My avatar still follows my blur (sendAvatarTo sends again only when the picture or the level changed).
+      if (typeof __C.sendAvatarTo === 'function') { try { for (const p of __C.peers.values()) (0, /*()*/__C.sendAvatarTo)(p); } catch (e) {} }
       // Viewers do not ride the row. Stepping off the stage in Meet restores
       // the main senders; in a broadcast that restore would publish a person
       // the host just demoted. Park and leave.
@@ -5397,7 +5282,7 @@
           if (ref.face != null) {
             const sc = srcFor(ref.face);
             if (!sc || !sc.el) { pk.delTile(t.id); continue; }
-            pk.setTile(t.id, t.ord, sc.el, t.mute ? null : sc.stream, { n: t.n, cols: t.cols, ids: t.ids, lbl: t.lbl, fit: t.fit, pid: t.pid });
+            pk.setTile(t.id, t.ord, sc.el, t.mute ? null : sc.stream, { n: t.n, cols: t.cols, ids: t.ids, lbl: t.lbl, fit: t.fit, pid: t.pid, card: !!t.card });
           } else if (ref.in) {
             const ent = __C.mosIn.get(ref.in);
             if (!ent || !ent.el) { pk.delTile(t.id); continue; }
@@ -5674,14 +5559,15 @@
         // blocked sharer the same way. My own cell already carries my blur.
         stagers.forEach((sid, j) => {
           const sc = srcFor(sid, 'stg:' + sid);
-          if (sc && sc.el) {
+          const card = typeof __C.cardFor === 'function' && !!(0, /*()*/__C.cardFor)(sid);   // camera off: the cell stays, empty; each viewer draws the card
+          if ((sc && sc.el) || card) {
             const dark = ((0, /*()*/__C.forcedCamOff)(sid) || (typeof __C.shareBlocked === 'function' && (0, /*()*/__C.shareBlocked)(sid))) ? 1 : 0;
             const blur = (!dark && sid !== __C.myId && (0, /*()*/__C.modBlurOn)(sid)) ? Math.max(1, (0, /*()*/__C.blurLevelFor)(sid)) : 0;
             // The Stage strip carries no names: every viewer draws them over its own Stage picture (viewKit.stageNames),
             // sharp over a blurred picture, hidden by a viewer's Show names off, faded on a calm screen. The talking frame,
             // a raised hand and a reaction stay in the picture.
             const lb = (0, /*()*/__C.labelFor)(sid);
-            stripPack.setTile(sid, j, sc.el, sc.stream, { n: 1, cols: 1, lbl: lb ? Object.assign({}, lb, { name: '' }) : lb, fit: (0, /*()*/__C.fitFor)(sid), dark, blur, talkPid: sid });
+            stripPack.setTile(sid, j, sc && sc.el ? sc.el : null, sc ? sc.stream : null, { n: 1, cols: 1, lbl: lb ? Object.assign({}, lb, { name: '' }) : lb, fit: (0, /*()*/__C.fitFor)(sid), dark, blur, card, talkPid: sid, pid: sid });
             stgKeep.add(sid);
           }
         });
@@ -6472,8 +6358,8 @@
       return false;
     }
     // voice: the stream whose sound this element's companion plays. A peer's
-    // tile with the camera off shows a locally painted avatar (mountPeerAvatar),
-    // which has no audio, so the caller hands the peer's own stream.
+    // tile with the camera off shows no video (its card is drawn over it),
+    // so the caller hands the peer's own stream.
     function busVolume(el, vol, voice) {
       const src = voice || (el._pic && el.srcObject === el._pic && el._wrapOf) || el.srcObject; // a WebKit tile plays a picture-only stream; its voice is the wrapped one
       if (typeof WEBKIT_ENGINE !== 'undefined' && WEBKIT_ENGINE && typeof wkEarSet === 'function' && wkEarSet(el, src, vol)) {
@@ -9827,7 +9713,7 @@
     }
     return __L.END;
   }
-  var api = { name: "media", run: part, count: 686, exports: {"AVATAR_H":0,"AVATAR_W":0,"CC_EARS_KEY":0,"CC_ENGINE_KEY":0,"CC_TRANSLATE_KEY":0,"CC_WHISPER_ANYWAY_KEY":0,"CC_WORDS_KEY":0,"MOS_GRACE":0,"MOS_SETTLE":0,"STAGE_FACE_PX":0,"STAGE_FACE_SETTLE_MS":0,"STG_PIC_LIVE_MS":0,"STG_ZERO_MS":0,"WEBKIT_TILE":0,"WHISPER_APP_ID":0,"WHISPER_SEED_KEY":0,"WSP_CHIP_MS":0,"WSP_STARVE_MS":0,"WSP_STARVE_N":0,"WSP_STARVE_WIN":0,"WSP_TICK_MS":0,"WSP_WEAK":0,"acClockInfo":1,"adapt":1,"adoptClaim":1,"applyBuses":1,"applyCcAll":1,"applyGrid":1,"applyRecoverMedia":1,"armAudioKeepAlive":1,"armWhisperRescan":1,"attachFailed":1,"attachLocalTracks":1,"attachTrack":1,"audioKickArmed":0,"avHold":0,"avatarPipe":0,"avatarSharp":0,"bindClaim":1,"blockLive":1,"blockOf":1,"blockPicture":1,"blockedAudio":0,"blurDraw":1,"blurPipe":0,"blurSenderFrac":1,"blurSized":1,"blurViewFrac":1,"botVoiceTrack":0,"browserCaptionsMissing":1,"callStateBox":0,"camChooserAnchor":0,"camChooserOpen":1,"camDeviceId":0,"camFacing":0,"camIdleT":0,"camPickThen":0,"camTrackForTest":1,"camVideoConstraints":1,"canRaiseHand":1,"canScreenRecord":0,"canScreenShare":0,"capsRunningNow":1,"carriedHot":1,"carryEarAc":1,"carryVoiceTrack":0,"ccDefGroup":0,"ccEngine":1,"ccMix":0,"ccMixStop":1,"ccMixSync":1,"clk":0,"clockSample":1,"closeCamChooser":1,"closeMicChooser":1,"compOf":0,"containerFor":1,"ctScreenTrack":1,"dbgMeterSources":1,"dbgRowFaces":0,"degOf":0,"detachTrack":1,"dismissCamChooser":1,"downFolds":0,"downStreams":0,"dropContainer":1,"dropEndedRemoteTracks":1,"dutyMuteTick":1,"earState":1,"endSongOnStepDown":1,"faceLive":1,"facesOnScreen":1,"gdOverride":0,"gridApplied":0,"gumRefused":1,"gumWithMicFallback":1,"headLinkUp":1,"headSendsStale":1,"hearState":1,"heardStage":1,"holdMainVideo":1,"hopMs":1,"installWhisper":1,"jobPinned":0,"jobVideoAt":0,"keepAwake":1,"keepMeetingAudio":1,"keyUp":1,"kfEv":0,"kickJob":1,"kickMainAudio":1,"kickMainVideo":1,"kickStageMic":1,"l14Packs":0,"lateMedia":1,"mainAudioTrack":1,"maybeShowFlip":1,"mediaElCensus":1,"micChooserOpen":1,"micHold":1,"micTap":1,"mix":0,"mixAc":0,"mixReady":1,"mosFb":0,"mosHeld":0,"mySelfStream":0,"normStageFrame":1,"noteAudioDevices":1,"noteReship":1,"onMeetDeviceChange":1,"openCamChooser":1,"openKeys":1,"openModal":1,"orphaned":1,"overlayTiny":1,"packFor":1,"packLoop":0,"paintStageStrip":1,"paintTiming":1,"parkSender":1,"partStream":1,"peerAudioTracks":1,"phoneCaptions":1,"picRead":1,"pickCamera":1,"pipeDeny":0,"pipeJobs":0,"playTileVideo":1,"poke":1,"prodPack":0,"producerKey":1,"qaStageSt":0,"quietAtDoor":1,"rbStart":1,"reactSing":1,"recDownload":1,"recDraw":0,"recFileName":1,"recLibraryOption":1,"recMatchMix":0,"recMode":0,"recNoteStruct":1,"recQuality":0,"recRec":0,"recRelease":1,"recScopeSources":1,"recSources":1,"recStarting":0,"reconcileMosaic":1,"recoverShareTimer":0,"refreshOutbound":1,"refreshTrBtn":1,"regrabCamera":1,"releaseAudio":1,"rememberMix":1,"repaintRedun":1,"resumeReload":1,"retireMixTracks":1,"reviveCamera":1,"roomPack":0,"rowEdge":1,"rowMixHeadArrives":1,"rowMixHold":1,"rowMixOpen":1,"rowMixViaPeek":1,"schedClaim":1,"schedReconcile":1,"sdView":0,"sdViewSt":0,"sentVideoTrack":1,"serviceHeard":0,"setServiceHeard":1,"setStageFrame":1,"shareRecoverMode":0,"shipContainers":0,"shownPeerCount":1,"slotDark":1,"soundHeld":1,"speakerChoices":1,"speech":0,"speechGaveUp":0,"speechProved":0,"speechRunning":1,"stageAudible":1,"stageEar":0,"stageEarFoldPeak":1,"stageEarLiveTrack":1,"stageEarRawPeak":1,"stageFeedShows":1,"stageFrameVal":0,"stageViewNow":0,"stagedSelfWas":0,"startLocalView":1,"startRec":1,"startScreenShare":1,"startWhisper":1,"stashRecoverMedia":1,"stgBeatIn":1,"stgCarry":1,"stgFoNote":1,"stgLost":1,"stopBlurPipe":1,"stopScreenShare":1,"stopSpeech":1,"stopWhisper":1,"stripPack":0,"stubDuties":1,"swapPicNote":1,"swapTrack":1,"syncAvatarFeed":1,"syncSpeech":1,"tileHolds":1,"toggleSing":1,"trEnSync":1,"trackAspect":1,"trackQ":0,"transcriptFile":1,"tuneCfg":1,"unbindClaim":1,"wakeLock":0,"warnRecorderNewApp":1,"whisperAllowed":0,"whisperChosen":0,"whisperInstalling":0,"whisperRescan":0,"whisperSeedBlocked":1,"whisperSupported":1,"withScrPipe":1,"wkBindVideo":1,"wkEar":0,"wkFwdCopies":0,"wkFwdNeeded":1,"wkHolds":1,"wkQuietBind":1,"wkRemoteTrack":1,"wsp":0,"wspCaps":0,"wspChip":0,"wspChipGone":1,"wspChipRoom":0,"wspEnqueue":1,"wspInst":0,"wspModel":1,"wspPaintSafe":1,"wspPaused":0,"wspQ":0,"wspRebind":1,"wspRelease":1,"wspResume":1,"wspRetry":1,"wspStSig":0,"wspStarved":0,"wspState":1,"wspStateText":1,"wspStop":1,"wspSync":1,"wspTickAt":0,"wspToBrowser":1,"wspWorking":0,"x2Target":1}, needs: {"core":{"leaving":0,"localStream":0,"capClone":1,"WK_H264_BLIND":0,"nameInitial":1,"shareBlocked":0,"turnLinks":0,"turnFacts":0,"myId":0,"rowFaceDark":0,"myName":0,"blurLevelFor":1,"mediaOk":0,"relayVia":0,"displayName":1,"myStatus":0,"stageIds":0,"statusOf":0,"screenStream":0,"sharingScreen":0,"BROADCAST":0,"bcMayPublishAv":1,"rbNow":0,"mayShareScreen":0,"outgoingHeld":0,"bcRole":1,"peers":0,"meTile":0,"camPeer":0,"clog":0,"micPeer":0,"renegotiate":1,"rosterIds":0,"knownTotal":1,"rosterTiles":0,"updateTile":1,"updateStatus":1,"meshSeat":0,"meshNode":0,"roomPastSection":0,"SCALE":0,"powNow":0,"IS_MOBILE":0,"powDials":0,"setStatus":0,"uiText":1,"stHold":0,"seatDark":0,"forcedCamOff":0,"vqRung":0,"rung":0,"LADDER":0,"stageCeilingKbps":1,"screenCeilingKbps":1,"stageSenders":0,"auxSenders":0,"lowSenders":0,"net":0,"meterFor":1,"sayState":0,"IS_ANDROID":0,"botParks":1,"visParkSent":0,"dcSend":0,"hasPendingTx":0,"ensureAc":1,"ac":0,"newMeetAudioContext":1,"occPid":0,"pipePeers":1,"preferHwVideo":1,"modOf":1,"stageSeats":0,"digLists":0,"stageHeldAt":0,"stageFeedAt":0,"addAux":0,"isStageJob":0,"auxDrop":1,"stopAuxTx":1,"DEBUG_ON":0,"modBlurOn":0,"meshCoord":0,"speakingOf":0,"rowMixTalkAt":0,"subWant":0,"myIdentity":0,"labelFor":0,"iAmWaiting":1,"peerWaits":1,"fitFor":0,"pipeVideo":0,"pipeStg":0,"STAGE_FPS":0,"stageCell":1,"STAGE_MAXW":0,"stageFps":1,"freshSt":0,"pwBlocked":0,"bannedOut":0,"mediaJoined":0,"RECOVER_MEDIA_KEY":0,"updateRoomKey":0,"bcHostStored":0,"paintOnAir":1,"broadcastStatus":1,"updateMediaSession":1,"screenSteppedUp":0,"setStage":1,"refreshAllTiles":1,"rbCap":0,"rbLength":1,"rbTracks":1,"rbDrop":1,"bcSeeding":0,"releaseLeaveAsk":1,"rbStop":1,"rbNoun":0,"rowMates":0,"isHeld":1,"botHidden":1,"TIMING_KEY":0,"digStageEntry":0,"rosterNames":0,"foldName":1,"canStage":0,"lsGet":0,"CC_ON_PHONE":0,"meters":0,"myVoiceAt":0,"lsSet":0,"ccLocalQ":0,"CC_LANG_KEY":0,"trEnOn":0,"capSend":1,"trLangOf":0,"addTranscriptLine":1,"capEarsOnly":1,"capTrust":0,"trLang":1,"trKeeps":1,"trEnOnlyEnglish":1,"capSpotQueue":1,"capPublish":1,"trForget":1,"ccLang":0,"trDrops":0,"capTraceGate":1,"myVoiceFrom":0,"trLangKnown":1,"myVoiceSinceFinal":0,"ccDevNotice":1,"trEchoHeld":1,"ccShow":0,"trBlocks":1,"trNote":1,"modTable":0,"setMod":1,"AI_SPARK_SVG":0,"chatOpen":0,"room":0,"recRoomWord":1,"bcLastService":0,"BC_INTENT":0,"recSrcDirty":0,"recStructSig":0,"bcKeepUserStop":0,"amGloballyMuted":1,"micLockWords":1,"capClosed":0,"bcWatchingViewer":1,"enforceBroadcastSeat":1,"lateAsk":0,"lateWant":0,"bootGumPending":0,"reactRoomState":1,"camOnWords":1,"statusWords":0,"lateGen":0,"lateWon":0,"lateTimer":0,"LATE_ASK_MS":0,"blurLevel":0,"setPersonalBlur":1,"carryHosts":0,"carryG":0,"meOnStage":1,"shareOnlyStage":1,"personOnStage":1,"seatSelfLeased":0,"mainVideoChoice":1,"outboundPlan":1,"stageFeedVideo":1,"stageVideoChoice":1,"isRedun":0,"onStageNow":1,"screenSharers":0,"roomSingOn":0,"singOf":0,"capCovered":1,"trWrites":1,"idleNow":0,"lastActive":0,"lastQ":0,"MP":0,"battNow":0,"micGrabbing":0,"micWant":0,"micMode":0,"micUnmuteAfter":0,"micPickPrev":0,"pipeEnabled":0,"MPipe":0,"stgBeats":0,"swapPicLast":0,"swapPicHoldAt":0,"swapPicRing":0,"STG_BEAT_STALE_MS":0,"STG_BEAT_SEEN":0,"stgBeatCost":0,"STG_BEAT_MS":0,"timing":0,"whisperReady":0,"planMeasured":1,"reconcileMain":1,"inboundPlan":1,"owedStream":1,"BC_SEAT":0,"EMBED":0,"embedHosted":0,"clearNoPwMode":1,"mosIn":0,"mosJobs":0,"mosStandby":0,"demand":1,"unshipJob":1,"kfNeed":1,"setJobActive":1,"mosAnn":0,"stgEnded":1,"STG_ROOT2":0,"rowActing":1,"rowHeadPid":1,"claimMos":1,"stgFedBy":1,"stgPath":0,"vpId":0,"stgStale":1,"mosBeyondAt":0,"dropMosIn":1,"dropStandby":1,"roomBeyondRow":1,"iActAsHead":1,"carryIn":1,"shipJob":1,"packIn":1,"mixIn":1,"stgHop":0,"stgDirectSet":1,"reapJobs":1,"avWhy":1,"avEvent":1,"dutyJob":1,"displayCount":1,"compFps":1,"wspSource":1,"recDefaultQuality":1},"view":{"blurA":0,"blurActx":0,"blurB":0,"blurBctx":0,"paintAvatarCanvas":1,"phoneLayout":1,"showAvatarTrack":1,"stagefeedEl":0,"stadiumEl":0,"showFlipButton":1,"showCamBack":1,"paintSpkBtn":1,"paintStadiumTile":1,"paintControls":1,"showResharePrompt":1,"hideResharePrompt":1,"paintShare":1,"dropStaleShareWin":1,"paintRb":1,"rbCanvas":1,"paintRbNow":1,"paintFaders":0,"timingRow":0,"paintWspChip":1,"paintCcState":1,"paintTxMark":1,"capCardRefresh":1,"paintWspStatus":1,"paintCcView":1,"showCaption":1,"ccDockBtn":0,"hideCaptions":1,"renderTranscript":1,"renderChat":1,"chatPanel":0,"paintChatBtn":1,"paintRoomTrust":1,"showServiceEnded":1,"showRecReplay":1,"recBtn":0,"showRecOptions":1,"roomAudioOn":1,"micBtn":0,"placeDockPopover":1,"unmuteBtn":0,"camBtn":0,"topNameModal":1,"handBtn":0,"chatPanelOpen":1,"keysModal":0,"syncModalFocus":1,"paintStagePlate":1,"layout":1}}, stamp: "d49d42da" };
+  var api = { name: "media", run: part, count: 677, exports: {"AVATAR_H":0,"AVATAR_W":0,"CC_EARS_KEY":0,"CC_ENGINE_KEY":0,"CC_TRANSLATE_KEY":0,"CC_WHISPER_ANYWAY_KEY":0,"CC_WORDS_KEY":0,"MOS_GRACE":0,"MOS_SETTLE":0,"STAGE_FACE_PX":0,"STAGE_FACE_SETTLE_MS":0,"STG_PIC_LIVE_MS":0,"STG_ZERO_MS":0,"WEBKIT_TILE":0,"WHISPER_APP_ID":0,"WHISPER_SEED_KEY":0,"WSP_CHIP_MS":0,"WSP_STARVE_MS":0,"WSP_STARVE_N":0,"WSP_STARVE_WIN":0,"WSP_TICK_MS":0,"WSP_WEAK":0,"acClockInfo":1,"adapt":1,"adoptClaim":1,"applyBuses":1,"applyCcAll":1,"applyGrid":1,"applyRecoverMedia":1,"armAudioKeepAlive":1,"armWhisperRescan":1,"attachFailed":1,"attachLocalTracks":1,"attachTrack":1,"audioKickArmed":0,"avHold":0,"avatarSharp":0,"bindClaim":1,"blockLive":1,"blockOf":1,"blockPicture":1,"blockedAudio":0,"blurDraw":1,"blurPipe":0,"blurSenderFrac":1,"blurSized":1,"blurViewFrac":1,"botVoiceTrack":0,"browserCaptionsMissing":1,"callStateBox":0,"camChooserAnchor":0,"camChooserOpen":1,"camDeviceId":0,"camFacing":0,"camIdleT":0,"camPickThen":0,"camTrackForTest":1,"camVideoConstraints":1,"canRaiseHand":1,"canScreenRecord":0,"canScreenShare":0,"capsRunningNow":1,"carriedHot":1,"carryEarAc":1,"carryVoiceTrack":0,"ccDefGroup":0,"ccEngine":1,"ccMix":0,"ccMixStop":1,"ccMixSync":1,"clk":0,"clockSample":1,"closeCamChooser":1,"closeMicChooser":1,"compOf":0,"containerFor":1,"ctScreenTrack":1,"dbgMeterSources":1,"dbgRowFaces":0,"degOf":0,"detachTrack":1,"dismissCamChooser":1,"downFolds":0,"downStreams":0,"dropContainer":1,"dropEndedRemoteTracks":1,"dutyMuteTick":1,"earState":1,"endSongOnStepDown":1,"faceLive":1,"facesOnScreen":1,"gdOverride":0,"gridApplied":0,"gumRefused":1,"gumWithMicFallback":1,"headLinkUp":1,"headSendsStale":1,"hearState":1,"heardStage":1,"holdMainVideo":1,"hopMs":1,"installWhisper":1,"jobPinned":0,"jobVideoAt":0,"keepAwake":1,"keepMeetingAudio":1,"keyUp":1,"kfEv":0,"kickJob":1,"kickMainAudio":1,"kickMainVideo":1,"kickStageMic":1,"l14Packs":0,"lateMedia":1,"mainAudioTrack":1,"maybeShowFlip":1,"mediaElCensus":1,"micChooserOpen":1,"micHold":1,"micTap":1,"mix":0,"mixAc":0,"mixReady":1,"mosFb":0,"mosHeld":0,"mySelfStream":0,"normStageFrame":1,"noteAudioDevices":1,"noteReship":1,"onMeetDeviceChange":1,"openCamChooser":1,"openKeys":1,"openModal":1,"orphaned":1,"overlayTiny":1,"packFor":1,"packLoop":0,"paintStageStrip":1,"paintTiming":1,"parkSender":1,"partStream":1,"peerAudioTracks":1,"phoneCaptions":1,"picRead":1,"pickCamera":1,"pipeDeny":0,"pipeJobs":0,"playTileVideo":1,"poke":1,"prodPack":0,"producerKey":1,"qaStageSt":0,"quietAtDoor":1,"rbStart":1,"reactSing":1,"recDownload":1,"recDraw":0,"recFileName":1,"recLibraryOption":1,"recMatchMix":0,"recMode":0,"recNoteStruct":1,"recQuality":0,"recRec":0,"recRelease":1,"recScopeSources":1,"recSources":1,"recStarting":0,"reconcileMosaic":1,"recoverShareTimer":0,"refreshOutbound":1,"refreshTrBtn":1,"regrabCamera":1,"releaseAudio":1,"rememberMix":1,"repaintRedun":1,"resumeReload":1,"retireMixTracks":1,"reviveCamera":1,"roomPack":0,"rowEdge":1,"rowMixHeadArrives":1,"rowMixHold":1,"rowMixOpen":1,"rowMixViaPeek":1,"schedClaim":1,"schedReconcile":1,"sdView":0,"sdViewSt":0,"sentVideoTrack":1,"serviceHeard":0,"setServiceHeard":1,"setStageFrame":1,"shareRecoverMode":0,"shipContainers":0,"shownPeerCount":1,"slotDark":1,"soundHeld":1,"speakerChoices":1,"speech":0,"speechGaveUp":0,"speechProved":0,"speechRunning":1,"stageAudible":1,"stageEar":0,"stageEarFoldPeak":1,"stageEarLiveTrack":1,"stageEarRawPeak":1,"stageFeedShows":1,"stageFrameVal":0,"stageViewNow":0,"stagedSelfWas":0,"startLocalView":1,"startRec":1,"startScreenShare":1,"startWhisper":1,"stashRecoverMedia":1,"stgBeatIn":1,"stgCarry":1,"stgFoNote":1,"stgLost":1,"stopBlurPipe":1,"stopScreenShare":1,"stopSpeech":1,"stopWhisper":1,"stripPack":0,"stubDuties":1,"swapPicNote":1,"swapTrack":1,"syncAvatarFeed":1,"syncSpeech":1,"tileHolds":1,"toggleSing":1,"trEnSync":1,"trackAspect":1,"trackQ":0,"transcriptFile":1,"tuneCfg":1,"unbindClaim":1,"wakeLock":0,"warnRecorderNewApp":1,"whisperAllowed":0,"whisperChosen":0,"whisperInstalling":0,"whisperRescan":0,"whisperSeedBlocked":1,"whisperSupported":1,"withScrPipe":1,"wkBindVideo":1,"wkEar":0,"wkFwdCopies":0,"wkFwdNeeded":1,"wkHolds":1,"wkQuietBind":1,"wkRemoteTrack":1,"wsp":0,"wspCaps":0,"wspChip":0,"wspChipGone":1,"wspChipRoom":0,"wspEnqueue":1,"wspInst":0,"wspModel":1,"wspPaintSafe":1,"wspPaused":0,"wspQ":0,"wspRebind":1,"wspRelease":1,"wspResume":1,"wspRetry":1,"wspStSig":0,"wspStarved":0,"wspState":1,"wspStateText":1,"wspStop":1,"wspSync":1,"wspTickAt":0,"wspToBrowser":1,"wspWorking":0,"x2Target":1}, needs: {"core":{"leaving":0,"localStream":0,"capClone":1,"WK_H264_BLIND":0,"shareBlocked":0,"turnLinks":0,"turnFacts":0,"myId":0,"rowFaceDark":0,"myName":0,"blurLevelFor":1,"mediaOk":0,"relayVia":0,"displayName":1,"myStatus":0,"stageIds":0,"statusOf":0,"screenStream":0,"sharingScreen":0,"BROADCAST":0,"bcMayPublishAv":1,"rbNow":0,"mayShareScreen":0,"outgoingHeld":0,"bcRole":1,"peers":0,"meTile":0,"camPeer":0,"clog":0,"micPeer":0,"renegotiate":1,"rosterIds":0,"knownTotal":1,"rosterTiles":0,"updateTile":1,"updateStatus":1,"meshSeat":0,"meshNode":0,"roomPastSection":0,"SCALE":0,"powNow":0,"IS_MOBILE":0,"powDials":0,"setStatus":0,"uiText":1,"stHold":0,"seatDark":0,"forcedCamOff":0,"vqRung":0,"rung":0,"LADDER":0,"stageCeilingKbps":1,"screenCeilingKbps":1,"stageSenders":0,"auxSenders":0,"lowSenders":0,"net":0,"meterFor":1,"sayState":0,"IS_ANDROID":0,"botParks":1,"visParkSent":0,"dcSend":0,"hasPendingTx":0,"ensureAc":1,"ac":0,"newMeetAudioContext":1,"occPid":0,"pipePeers":1,"preferHwVideo":1,"modOf":1,"stageSeats":0,"digLists":0,"stageHeldAt":0,"stageFeedAt":0,"addAux":0,"isStageJob":0,"auxDrop":1,"stopAuxTx":1,"DEBUG_ON":0,"modBlurOn":0,"meshCoord":0,"speakingOf":0,"rowMixTalkAt":0,"subWant":0,"myIdentity":0,"labelFor":0,"iAmWaiting":1,"peerWaits":1,"fitFor":0,"pipeVideo":0,"pipeStg":0,"STAGE_FPS":0,"stageCell":1,"STAGE_MAXW":0,"stageFps":1,"freshSt":0,"pwBlocked":0,"bannedOut":0,"mediaJoined":0,"RECOVER_MEDIA_KEY":0,"updateRoomKey":0,"bcHostStored":0,"paintOnAir":1,"broadcastStatus":1,"updateMediaSession":1,"screenSteppedUp":0,"setStage":1,"refreshAllTiles":1,"rbCap":0,"rbLength":1,"rbTracks":1,"rbDrop":1,"bcSeeding":0,"releaseLeaveAsk":1,"rbStop":1,"rbNoun":0,"rowMates":0,"isHeld":1,"botHidden":1,"TIMING_KEY":0,"digStageEntry":0,"rosterNames":0,"foldName":1,"canStage":0,"lsGet":0,"CC_ON_PHONE":0,"meters":0,"myVoiceAt":0,"lsSet":0,"ccLocalQ":0,"CC_LANG_KEY":0,"trEnOn":0,"capSend":1,"trLangOf":0,"addTranscriptLine":1,"capEarsOnly":1,"capTrust":0,"trLang":1,"trKeeps":1,"trEnOnlyEnglish":1,"capSpotQueue":1,"capPublish":1,"trForget":1,"ccLang":0,"trDrops":0,"capTraceGate":1,"myVoiceFrom":0,"trLangKnown":1,"myVoiceSinceFinal":0,"ccDevNotice":1,"trEchoHeld":1,"ccShow":0,"trBlocks":1,"trNote":1,"modTable":0,"setMod":1,"AI_SPARK_SVG":0,"chatOpen":0,"room":0,"recRoomWord":1,"bcLastService":0,"BC_INTENT":0,"recSrcDirty":0,"recStructSig":0,"bcKeepUserStop":0,"amGloballyMuted":1,"micLockWords":1,"capClosed":0,"bcWatchingViewer":1,"enforceBroadcastSeat":1,"lateAsk":0,"lateWant":0,"bootGumPending":0,"reactRoomState":1,"camOnWords":1,"statusWords":0,"lateGen":0,"lateWon":0,"lateTimer":0,"LATE_ASK_MS":0,"blurLevel":0,"setPersonalBlur":1,"carryHosts":0,"carryG":0,"meOnStage":1,"shareOnlyStage":1,"personOnStage":1,"seatSelfLeased":0,"mainVideoChoice":1,"outboundPlan":1,"stageFeedVideo":1,"stageVideoChoice":1,"isRedun":0,"onStageNow":1,"screenSharers":0,"roomSingOn":0,"singOf":0,"capCovered":1,"trWrites":1,"idleNow":0,"lastActive":0,"lastQ":0,"MP":0,"battNow":0,"micGrabbing":0,"micWant":0,"micMode":0,"micUnmuteAfter":0,"micPickPrev":0,"pipeEnabled":0,"MPipe":0,"stgBeats":0,"swapPicLast":0,"swapPicHoldAt":0,"swapPicRing":0,"STG_BEAT_STALE_MS":0,"STG_BEAT_SEEN":0,"stgBeatCost":0,"STG_BEAT_MS":0,"timing":0,"whisperReady":0,"planMeasured":1,"reconcileMain":1,"inboundPlan":1,"owedStream":1,"BC_SEAT":0,"EMBED":0,"embedHosted":0,"clearNoPwMode":1,"mosIn":0,"mosJobs":0,"mosStandby":0,"demand":1,"unshipJob":1,"kfNeed":1,"setJobActive":1,"mosAnn":0,"stgEnded":1,"STG_ROOT2":0,"rowActing":1,"rowHeadPid":1,"claimMos":1,"stgFedBy":1,"stgPath":0,"vpId":0,"stgStale":1,"mosBeyondAt":0,"dropMosIn":1,"dropStandby":1,"roomBeyondRow":1,"iActAsHead":1,"carryIn":1,"shipJob":1,"packIn":1,"mixIn":1,"stgHop":0,"stgDirectSet":1,"reapJobs":1,"avWhy":1,"avEvent":1,"dutyJob":1,"displayCount":1,"compFps":1,"wspSource":1,"recDefaultQuality":1,"sendAvatarTo":1,"cardFor":0},"view":{"blurA":0,"blurActx":0,"blurB":0,"blurBctx":0,"showAvatarTrack":1,"stagefeedEl":0,"stadiumEl":0,"showFlipButton":1,"showCamBack":1,"paintSpkBtn":1,"paintStadiumTile":1,"paintControls":1,"showResharePrompt":1,"hideResharePrompt":1,"paintShare":1,"dropStaleShareWin":1,"paintRb":1,"rbCanvas":1,"paintRbNow":1,"paintFaders":0,"timingRow":0,"paintWspChip":1,"paintCcState":1,"paintTxMark":1,"capCardRefresh":1,"paintWspStatus":1,"paintCcView":1,"showCaption":1,"ccDockBtn":0,"hideCaptions":1,"renderTranscript":1,"renderChat":1,"chatPanel":0,"paintChatBtn":1,"paintRoomTrust":1,"showServiceEnded":1,"showRecReplay":1,"recBtn":0,"showRecOptions":1,"roomAudioOn":1,"micBtn":0,"placeDockPopover":1,"unmuteBtn":0,"camBtn":0,"topNameModal":1,"handBtn":0,"chatPanelOpen":1,"keysModal":0,"syncModalFocus":1,"paintStagePlate":1,"layout":1}}, stamp: "d49d42da" };
   (GifOS.coreParts = GifOS.coreParts || {})["media"] = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
