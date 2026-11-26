@@ -481,6 +481,10 @@ body.names-off #stagefeed .stgnames { display: none; }
      strip-cell face is positioned by left/top, and a scale would move it. */
   .stagefacebox video.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .009))) saturate(.9); }
   .stagefacebox video.blur2 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-max, .0225))) saturate(.75); }
+  /* A share's own surface, the content pane, wears the same viewer blur (a sender that ships clear pixels where the room
+     blurs them stays blurred there too). */
+  .ct-pane video.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .009))) saturate(.9); }
+  .ct-pane video.blur2 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-max, .0225))) saturate(.75); }
   #muteall.on { border-color: #ff5c5c; color: #ff9c9c; background: #2a1010; }
   #blurall.on { border-color: #ffb86c; color: var(--c-yellow); background: #2a1f10; }
   #camall.on { border-color: #ff5c5c; color: #ff9c9c; background: #2a1010; }

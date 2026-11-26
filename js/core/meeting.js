@@ -3755,7 +3755,9 @@
       return !!(t && t.readyState === 'live' && !t.muted);
     }
     yield 495;
-    function fsBlurClass(v, bl) { v.classList.remove('blur1', 'blur2'); if (bl) { v.classList.add('blur' + bl); try { (0, /*()*/__M.blurSized)(v); } catch (e) {} } }
+    // A blurred picture is at full strength from its first frame (its --bw now, not one resize later), and never floats
+    // through the browser's own float (that paints raw frames).
+    function fsBlurClass(v, bl) { v.classList.remove('blur1', 'blur2'); if (bl) { v.classList.add('blur' + bl); try { const bw = Math.round(Math.max(v.offsetWidth || 0, v.offsetHeight || 0)); if (bw > 0) v.style.setProperty('--bw', bw + 'px'); } catch (e) {} try { (0, /*()*/__M.blurSized)(v); } catch (e) {} } try { v.disablePictureInPicture = !!bl; } catch (e) {} }
     yield 511;
 
     // ---- tiles ---------------------------------------------------------------
@@ -4354,6 +4356,7 @@
         // own (the area is drawn over the big view when one is picked).
         const e = { key: it.key, label: ctLabel(it), kind: it.kind };
         if (it.kind === 'screen') {
+          e.sid = it.sid; e.mine = !!it.mine;   // whose screen: the view blurs a picture of someone else's share by the room's rule
           const src = (0, /*()*/__M.ctScreenTrack)(it.sid);
           let c = CT.fsStreams.get(it.key);
           if (src && (!c || c.track !== src.track)) { c = { track: src.track, stream: new MediaStream([src.track]) }; CT.fsStreams.set(it.key, c); }

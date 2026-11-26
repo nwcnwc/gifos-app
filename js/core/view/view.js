@@ -2135,7 +2135,8 @@
       // in Focus the big view can be a content item as well as a person.
       try {
         const VMc = window.GifOS && GifOS.meetViewMode && GifOS.meetViewMode.content;
-        if (VMc && !__C.model.room.BROADCAST()) for (const it of VMc.items()) if (it.stream || it.v) out.push({ key: it.key, label: it.label || '', v: it.v || null, stream: it.stream || null, fit: 'contain', content: true });
+        // A screen there is someone's share: it wears that share's blur, as the content pane does (ctPaintScreen).
+        if (VMc && !__C.model.room.BROADCAST()) for (const it of VMc.items()) if (it.stream || it.v) out.push({ key: it.key, label: it.label || '', v: it.v || null, stream: it.stream || null, fit: 'contain', content: true, bl: it.sid && !it.mine ? Math.max((0, /*()*/__C.blurLevelFor)(it.sid, false, false, 'stage') | 0, (0, /*()*/__C.modBlurOn)(it.sid) ? 1 : 0) : 0 });
       } catch (e) {}
       let stageFit = null;
       for (const v of stagefeedEl.querySelectorAll('.rowtile video')) {
@@ -2145,7 +2146,7 @@
         // unmuted feed counts, and the view's own big video plays it.
         if (!pipReady(v) && !(0, /*()*/__C.fsFeedLive)(v)) continue;
         if (!stageFit) stageFit = (__C.model.room.BROADCAST() || (0, /*()*/__C.screenSharers)().length || (0, /*()*/__C.stageIds)().length !== 1) ? 'contain' : 'cover';
-        out.push({ key: 'stage:' + ((v.closest('.rowtile') || {}).dataset || {}).row, label: 'On stage', v, fit: stageFit });
+        out.push({ key: 'stage:' + ((v.closest('.rowtile') || {}).dataset || {}).row, label: 'On stage', v, fit: stageFit, bl: (0, /*()*/__C.blurLevelFor)('stage') | 0 });   // the strip's one Stage decision (STAGEBLUR)
       }
       if (__C.model.room.BROADCAST()) return out;
       // Focus has every tile, camera on or off (Nathan 2026-11-18): a camera-off person is a card with their Settings
@@ -3640,6 +3641,9 @@
         if (tr) { const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); }
         (0, /*()*/__C.ctNote)('screen-src', { sid: String(it.sid).slice(0, 8), from: src ? src.from : 'none' });
       }
+      // RECEIVER-SIDE BLUR ON THE CONTENT PANE: the share wears the room's blur for its sharer here as on a tile, so a
+      // sender that ships clear pixels where the room blurs them stays blurred. Mine is my own capture.
+      if (v) { const bl = it.mine ? 0 : Math.max((0, /*()*/__C.blurLevelFor)(it.sid, false, false, 'stage') | 0, (0, /*()*/__C.modBlurOn)(it.sid) ? 1 : 0); const had = v.classList.contains('blur2') ? 2 : v.classList.contains('blur1') ? 1 : 0; if (had !== bl) (0, /*()*/__C.fsBlurClass)(v, bl); }
       p.dataset.src = src ? src.from : 'none';
       try { const held = !it.mine && (0, /*()*/__C.turnHeld)(it.sid); pauseNote(p, held, held ? (0, /*()*/__C.shareFirewallWords)(it.name) : ''); } catch (e) {}
       const cap = p.querySelector('.ct-cap');
