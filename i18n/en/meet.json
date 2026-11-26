@@ -102,6 +102,8 @@
   "meet.setTrShotsHelp": "When a shared screen changes and holds still, like a new slide, your transcript keeps one screenshot of it at that moment, and the download includes them. Taken on this device from what you see: nothing is sent, and a screen you see blurred is never taken.",
   "meet.trShotOf": "📷 {name}'s screen, {time}",
   "meet.trShotMine": "📷 Your screen, {time}",
+  "meet.trShotWho": "{name}'s screen",
+  "meet.trShotWhoMine": "Your screen",
   "meet.stTrShotsOn": "Your transcript keeps a screenshot of each new screen that is shared.",
   "meet.stTrShotsOff": "No screenshots of shared screens are taken.",
   "meet.setCcEnglishNo": "Whisper not supported on this browser",

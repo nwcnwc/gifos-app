@@ -11,7 +11,7 @@
  * viewer sees blurred is never taken, a transcript turned off takes nothing and forgets every picture, and a host's
  * "AI notes: Off" order takes nothing. This file only watches pictures it is handed and keeps them.
  *
- *   detector(opts)        the change finder, pure (node tests drive it with arrays): feed(luma, now) -> null | { at }
+ *   detector(opts)        the change finder, pure (node tests drive it with arrays): feed(luma, now) -> null | { at } (at: when the screen last moved)
  *   attach(src)           start watching: src.on() may we take pictures now, src.keep() is the transcript kept,
  *                         src.shares() [{ sid, name, mine, track }], src.changed() a picture came or went (repaint)
  *   list()                the pictures kept, oldest first: { id, sid, name, mine, at, w, h, url, blob }
@@ -45,12 +45,12 @@
     return {
       opts: o,
       // luma: an array of W*H values 0..255; now: ms. Returns { at } when a picture should be taken now (at: when the
-      // change began), else null. why: the last decision, for the trace.
+      // screen last moved: a new slide's arrival, a scroll's stop), else null. why: the last decision, for the trace.
       feed: function (luma, now) {
         var r = this;
         if (!prev || prev.length !== luma.length) { prev = luma; still = 0; since = now; r.why = 'first'; return null; }
         var dPrev = frac(luma, prev, o.pix); prev = luma; r.dPrev = dPrev;
-        if (dPrev > o.still) { if (still > 0 || since === null) since = now; still = 0; r.why = 'moving'; return null; }
+        if (dPrev > o.still) { since = now; still = 0; r.why = 'moving'; return null; }   // the picture is timed at the last move: the screen it shows began then
         still++;
         if (still < o.settle) { r.why = 'settling'; return null; }
         var dShot = 1;
@@ -216,11 +216,11 @@
   function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   // ---- the download: one .zip, built here in the browser (no network) --------------------------------------------
   //   transcript.txt   the plain lines, each picture as a marker in line: [10:42 Screenshot: Ana's screen -> shots/0003-ana-1042.jpg]
-  //   transcript.md    Markdown: ![Ana's screen, 10:42](shots/0003-ana-1042.jpg), for editors and AIs
+  //   transcript.md    Markdown: ![Ana's screen 10:42](shots/0003-ana-1042.jpg), for editors and AIs
   //   transcript.html  one self-contained page with every picture inside it (opens anywhere with a double-click)
   //   shots/           the pictures, named by order + whose screen + time
-  // lines: [{ at, text }] (the text lines exactly as the plain transcript file writes them); label(shot) -> the words
-  // for a picture ("Ana's screen, 10:42"); title: the page's heading.
+  // lines: [{ at, text }] (the text lines exactly as the plain transcript file writes them); label(shot) -> whose screen
+  // ("Ana's screen"; the time is added here); title: the page's heading.
   var CRC = null;
   function crc32(b) {
     if (!CRC) { CRC = new Uint32Array(256); for (var n = 0; n < 256; n++) { var c = n; for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; CRC[n] = c >>> 0; } }
@@ -277,8 +277,8 @@
         if (x.shot) {
           var w = label(x.shot), t = new Date(x.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
           txt.push('[' + t + ' Screenshot: ' + w + ' \u2192 ' + x.file + ']');
-          md.push('![' + w.replace(/[\[\]]/g, '') + '](' + x.file + ')', '');
-          html.push('<figure><img src="data:image/jpeg;base64,' + b64(x.data) + '" width="' + x.shot.w + '" height="' + x.shot.h + '" alt="' + esc(w) + '"><figcaption>' + esc(w) + '</figcaption></figure>');
+          md.push('![' + w.replace(/[\[\]]/g, '') + ' ' + t + '](' + x.file + ')', '');
+          html.push('<figure><img src="data:image/jpeg;base64,' + b64(x.data) + '" width="' + x.shot.w + '" height="' + x.shot.h + '" alt="' + esc(w + ', ' + t) + '"><figcaption>' + esc(w + ', ' + t) + '</figcaption></figure>');
         } else {
           txt.push(x.text);
           md.push(x.text.replace(/^(\[[^\]]*\])/, '$1 '), '');
