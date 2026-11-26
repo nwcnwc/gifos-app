@@ -8397,6 +8397,7 @@
     yield 1086;
     function restoreDoorTile(p) {
       if (!p || !doorOffGrid.has(p.id)) return;
+      if (meshGone.has(p.id) && typeof meshGoneSilent === 'object' && meshGoneSilent && meshGoneSilent.has(p.id)) return;   // a view verdict ('replaced', 'pipe-moved') lifts only on the seat's own word (notTomb)
       doorOffGrid.delete(p.id);
       if (p.headless || !p.tile || p.tile.parentNode) return;
       if (typeof dropRosterTile === 'function') dropRosterTile(p.id, 'own-tile');   // one tile per member: their own replaces the held one
@@ -9500,9 +9501,17 @@
         if (msg.ip && sigProven) ipsOf[from] = String(msg.ip).slice(0, 64);
         // A status gives its sender's own tag (votes, the fold and a ban key on it), never a tag somebody ELSE already holds: one device, one seat.
         if (typeof msg.dv === 'string' && msg.dv) {
+          // GHOSTSEAT: the live holder wins. A departed id holds no tag (a late copy of its last status must not keep one), and
+          // the same device back under a new id (a restart) replaces EVERY old id of it at once, each one that has said nothing
+          // since the new one was first heard; a proven frame only (devReplace).
           const dv = msg.dv.slice(0, 16); let taken = dv === myDevHash;
-          if (!taken) for (const k in devOf) if (k !== from && devOf[k] === dv) { taken = true; break; }
-          if (!taken) devOf[from] = dv;
+          if (!devFirstAt.has(from)) { devFirstAt.set(from, Date.now()); if (devFirstAt.size > 512) devFirstAt.delete(devFirstAt.keys().next().value); }
+          if (!taken) for (const k of Object.keys(devOf)) {
+            if (k === from || devOf[k] !== dv) continue;
+            if (meshGone.has(k)) { delete devOf[k]; continue; }
+            if (!(sigProven && devReplace(k, from, dv))) taken = true;
+          }
+          if (!taken && !meshGone.has(from)) devOf[from] = dv;
         }
         whoHeard(from, msg, sigProven);
         const sp = peers.get(from);
@@ -10016,7 +10025,27 @@
     // ('left', 'bye'), a silence reap, a ban, a forger. The page never
     // re-dials them, however long the mesh keeps greeting the id (a door list
     // can name a leaver for a while). Kept past the tombstone's 60 s.
-    const saidGone = new Set();
+    // ONE DEVICE, ONE FACE (GHOSTSEAT, bot resilience): a device that comes back under a new id (a crash and restart, a
+    // bot's process restarting, a Leave and straight back) replaces its old seat on this screen at once; Away and
+    // Reconnecting are only for a seat that may really come back. The old id goes when it has said nothing since the new
+    // id was first heard here. The tag is the sender's word, so this is a VIEW verdict only (no pc closed, no word to the
+    // seat, which judges the old cell by its own laws), and it lifts like a silence verdict: only on the old id's own word
+    // or the mesh hearing it first-hand. A forger naming a live device's tag costs that device one flicker: its next status
+    // lifts the verdict and takes its tag back, and from then the forger's tag is refused (the old id was heard).
+    // (One statement with saidGone: the part's step layout.)
+    // devFirstAt: when this page first heard each id's tag (its own map: the Who log is capped and filled later).
+    const saidGone = new Set(), devReplaced = new Map(), devFirstAt = new Map(), devReplace = (old, nw, dv) => {   // devReplaced: old pid -> { by: new pid, dv }
+      const st = statusOf.get(old), p = peers.get(old), now = Date.now();
+      const oldLast = Math.max(stSeen(st), p ? peerHeardAt(p) : 0), newFirst = devFirstAt.get(nw) || now;
+      // both sessions speak (two tabs, or a forger beside a live device): nobody is replaced. Quiet for a whole beat at least,
+      // so a live device between two beats is never taken for the old session of a newcomer naming its tag.
+      if (oldLast >= newFirst || now - oldLast <= SCALE.HB) return false;
+      confirmGone(old, 'replaced');
+      if (!meshGone.has(old)) return false;
+      delete devOf[old];
+      devReplaced.set(old, { by: nw, dv }); if (devReplaced.size > 256) devReplaced.delete(devReplaced.keys().next().value);
+      return true;
+    };
     // Display guard for the d5 verdict: while the member's own presence is fresh, the page does not show them as gone
     // (the seat's own occ verdict is untouched). One predicate for the occ-diff and the drained-deaths paths.
     // FRESH IS THE MEMBER'S OWN WORD inside the count's window (PEER_SILENT_MS, the same clock that marks a tile
@@ -10046,9 +10075,9 @@
       if (!pid || pid === myId || meshGone.has(pid)) return;
       whoGone(pid); // the Who log keeps them, with what is about to be forgotten
       meshGone.set(pid, Date.now());
-      if (why !== 'd5' && typeof saidGone === 'object' && saidGone && typeof saidGone.add === 'function') { saidGone.add(pid); if (saidGone.size > 512) saidGone.delete(saidGone.values().next().value); } // memberDial never re-dials these (typeof: as meshGoneSilent above)
+      if (why !== 'd5' && why !== 'replaced' && why !== 'pipe-moved' && typeof saidGone === 'object' && saidGone && typeof saidGone.add === 'function') { saidGone.add(pid); if (saidGone.size > 512) saidGone.delete(saidGone.values().next().value); } // memberDial never re-dials these (typeof: as meshGoneSilent above)
       { const s = meshSeat(); meshGoneTick.set(pid, s && typeof s.TICK === 'number' ? s.TICK : -1); }
-      if (typeof meshGoneSilent === 'object' && meshGoneSilent) { if (why === 'vouch-reap') meshGoneSilent.add(pid); else meshGoneSilent.delete(pid); meshGoneNamedAt.delete(pid); } // typeof: as dropStatus below
+      if (typeof meshGoneSilent === 'object' && meshGoneSilent) { if (why === 'vouch-reap' || why === 'replaced' || why === 'pipe-moved') meshGoneSilent.add(pid); else meshGoneSilent.delete(pid); meshGoneNamedAt.delete(pid); } // typeof: as dropStatus below
       occVanish.delete(pid);
       if (typeof dropStatus === 'function') dropStatus(pid); else statusOf.delete(pid); forgetConns(pid); delete rosterNames[pid]; delete ipsOf[pid]; delete devOf[pid];
       pidFirstSeen.delete(pid); meshRxByPid.delete(pid); tlFiredPid.delete(pid); speakingOf.delete(pid);
@@ -10073,7 +10102,7 @@
       if (typeof dropRosterTile === 'function') dropRosterTile(pid, why); // and a held tile with it (typeof: lifted confirmGone)
       recSrcDirty = true;
       // A change in my view closes no real pc: the pc laws close an open one with a goodbye once the seat stops naming it.
-      { const q = peers.get(pid); if (q && why === 'd5' && q.dc && q.dc.readyState === 'open') { doorOffGrid.add(pid); if (q.tile) q.tile.remove(); (0, /*()*/__V.layout)(); reactRoomState(); } else if (q) dropPeer(pid); }   // tile + meters + consent react inside
+      { const q = peers.get(pid); if (q && (why === 'd5' || why === 'replaced' || why === 'pipe-moved') && q.dc && q.dc.readyState === 'open') { doorOffGrid.add(pid); if (q.tile) q.tile.remove(); (0, /*()*/__V.layout)(); reactRoomState(); } else if (q) dropPeer(pid); }   // tile + meters + consent react inside
       if (!peers.has(pid)) reactRoomState();          // far peer: count/consent still re-derive
       (0, /*()*/__V.renderHandq)();                                  // a dead hand leaves the queue with them
       updateStatus();
@@ -10134,7 +10163,9 @@
       if ((typeof isEjected === 'function' && isEjected(pid) === true)) return false; // ejected: gone for good, whatever it says
       const g = meshGone.get(pid); if (g === undefined) return true;
       const st = statusOf.get(pid); const p = peers.get(pid);
-      if ((st && (st.rx || 0) > g + TOMB_GRACE) || (p && p.connected) || meshHeardSince(pid)) { meshGone.delete(pid); meshGoneTick.delete(pid); if (p) restoreDoorTile(p); if (typeof meshGoneSilent === 'object' && meshGoneSilent) { meshGoneSilent.delete(pid); meshGoneNamedAt.delete(pid); } return true; }
+      const rp = typeof devReplaced === 'object' && devReplaced ? devReplaced.get(pid) : undefined;   // replaced by its own device's new id (devReplace)
+      const viewFold = !!rp || (typeof pipeFarSeen === 'object' && !!pipeFarSeen && pipeFarSeen.has(pid));   // a view fold: a pc that still reads connected is no word
+      if ((st && (st.rx || 0) > g + TOMB_GRACE) || (p && p.connected && !viewFold) || meshHeardSince(pid)) { meshGone.delete(pid); meshGoneTick.delete(pid); if (p) restoreDoorTile(p); if (rp) { devReplaced.delete(pid); if (devOf[rp.by] === rp.dv) delete devOf[rp.by]; if (!Object.keys(devOf).some((k) => devOf[k] === rp.dv)) devOf[pid] = rp.dv; } if (typeof meshGoneSilent === 'object' && meshGoneSilent) { meshGoneSilent.delete(pid); meshGoneNamedAt.delete(pid); } return true; }
       return false;
     };
     // Departure tombstones expire once every occ echo of the freed seat has
@@ -10442,6 +10473,7 @@
       if (s.hasCoord && s.state === 3) { try { (0, /*()*/__V.lobbyPwOpenRoom)(); } catch (e) {} }   // a lobby room password for this open floor, once
       if (s.hasCoord && s.state === 3 && !pwBlocked && !bannedOut && !iAmWaiting()) mediaJoined = true;
       departSweep(s); // D2/D5 event intake FIRST — a freed seat leaves the view this tick
+      try { pipeFarSweep(); } catch (e) {}   // a far seat my pipe has moved off leaves the view this tick too (GHOSTSEAT)
       const ids = new Set();
       // An occ id is a PARTICIPANT only with a liveness signal: a fresh status
       // (15s — the one rule everywhere) or a live connection. A DEPARTED seat
@@ -18686,7 +18718,23 @@
       for (const e of turnLinks.pipeEnds()) { if (!e || !e.up || e.standby || e.peer === myId || out.indexOf(e.peer) >= 0) continue; const q = peers.get(e.peer); if (q && q.connected) out.push(e.peer); }
       return out.sort();
     }
-    const isPipePeer = (pid) => !!pid && pipePeers().indexOf(pid) >= 0;
+    // GHOSTSEAT, THE FAR SIDE: a seat of the other room is on my screen only while it is my pipe's end (only an end's own beat
+    // crosses, SUB.9.3); the rest of that room is its fold. Once the pipe sits on another far seat, no word of the old end can
+    // reach me, so its held status waited out a beat that could not come (26-29 s: a bot that restarted beside its new self).
+    // So a seat that was my pipe's end, holds no cell of my room, and is no end now while another end is up leaves my view
+    // ('pipe-moved', view only like 'replaced'); its own word lifts it, as when it is my end again. No end up at all (the far
+    // room cut off): it stays, Reconnecting, as before. (One statement with isPipePeer: the part's step layout.)
+    const isPipePeer = (pid) => !!pid && pipePeers().indexOf(pid) >= 0, pipeFarSeen = new Set(), pipeFarSweep = () => {
+      const ends = pipePeers();
+      for (const e of ends) { pipeFarSeen.add(e); if (pipeFarSeen.size > 64) pipeFarSeen.delete(pipeFarSeen.values().next().value); }
+      if (!ends.length) return;
+      for (const pid of Array.from(pipeFarSeen)) {
+        if (ends.indexOf(pid) >= 0 || meshGone.has(pid)) continue;
+        if (meshNames(pid)) { pipeFarSeen.delete(pid); continue; }   // a seat of my own room now (the rooms met): the seat's laws own it
+        if (statusOf.has(pid) || peers.has(pid) || rosterIds.includes(pid)) confirmGone(pid, 'pipe-moved');
+        else pipeFarSeen.delete(pid);
+      }
+    };
     // TURN.11-13: the pipe carries video only while vouched (and not paused for a busy server). Unvouched: no picture is
     // composited for it at all, only its sound.
     const pipeVideo = (pid) => !!(turnLinks && turnLinks.video(pid) && !turnVideoBlocked({ id: pid }));
