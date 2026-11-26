@@ -64,5 +64,12 @@
   "embed.volume": "Volume",
   "embed.watch": "Watch",
   "embed.viewOn": "View on gifos.app",
-  "embed.watching": "{n} watching"
+  "embed.watching": "{n} watching",
+  "embed.transcript": "Transcript",
+  "embed.trEmpty": "Lines appear here as people speak.",
+  "embed.trShots": "Auto screenshots",
+  "embed.trShotsTip": "When a shared screen changes and holds still, like a new slide, the transcript keeps one screenshot of it. Taken on this device from what you see: nothing is sent, and a screen you see blurred is never taken.",
+  "embed.trDownload": "Download",
+  "embed.trShotOf": "{name}'s screen, {time}",
+  "embed.trShotWho": "{name}'s screen"
 }

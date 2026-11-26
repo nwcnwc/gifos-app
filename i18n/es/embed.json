@@ -64,5 +64,12 @@
   "embed.volume": "Volumen",
   "embed.watch": "Ver",
   "embed.viewOn": "Ver en gifos.app",
-  "embed.watching": "{n} viendo"
+  "embed.watching": "{n} viendo",
+  "embed.transcript": "Transcripción",
+  "embed.trEmpty": "Las líneas aparecen aquí a medida que la gente habla.",
+  "embed.trShots": "Capturas automáticas",
+  "embed.trShotsTip": "Cuando una pantalla compartida cambia y se queda quieta, como una diapositiva nueva, la transcripción guarda una captura. Se toma en este dispositivo a partir de lo que ves: no se envía nada y nunca se toma una pantalla que ves borrosa.",
+  "embed.trDownload": "Descargar",
+  "embed.trShotOf": "Pantalla de {name}, {time}",
+  "embed.trShotWho": "Pantalla de {name}"
 }

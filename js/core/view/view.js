@@ -9060,24 +9060,8 @@
     yield 2750;
     const ccDockBtn = document.getElementById('ccdock');
     yield 2763;
-    document.getElementById('trdl').onclick = async () => {
-      const f = (0, /*()*/__M.transcriptFile)();
-      let blob = f.blob, name = f.name;
-      // With screen pictures, the download is a .zip: transcript.txt (pictures as markers), transcript.md, a self-contained
-      // transcript.html and shots/ (js/core/view/shareshots.js exportZip). Without any, the plain file as before.
-      let SS = null;
-      try { SS = GifOS.shareShots; } catch (e) {}
-      if (SS && SS.list().length) {
-        const mine = (0, /*()*/__C.trLang)();
-        const lines = (0, /*()*/__C.trBlocks)().map((l) => ({ at: l.at, text: '[' + new Date(l.at).toLocaleTimeString() + '] ' + l.by + (l.lang && l.lang !== mine ? ' (' + l.lang + ')' : '') + ': ' + (0, /*()*/__C.trNote)(l) + l.text }));
-        try { blob = await SS.exportZip(lines, name.replace(/\.txt$/, '').replace(/_/g, ' '), shotWho); name = name.replace(/\.txt$/, '.zip'); } catch (e) {}
-      }
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = name;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-    };
+    // The same download the embed's Transcript panel runs (js/core/view/kit.js trDownload).
+    document.getElementById('trdl').onclick = () => GifOS.viewKit.trDownload(__C, (0, /*()*/__M.transcriptFile)(), shotWho);
     yield 2768;
     const recBtn = document.getElementById('recbtn');
     yield 2782;

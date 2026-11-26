@@ -385,7 +385,28 @@
     if (b.classList.contains('view-calm') !== !!on) b.classList.toggle('view-calm', !!on);
   }
 
+  // ---- TRANSCRIPT DOWNLOAD: the meeting's Download button and the embed's are this one path (Nathan 2026-11-26) ----
+  // The plain .txt as the media plane writes it; with this device's screenshots (js/core/view/shareshots.js) it is the
+  // .zip instead: transcript.txt (pictures as markers), transcript.md, a self-contained transcript.html and shots/.
+  // f is the media plane's transcriptFile() result; who(shot) names a screenshot's screen. Resolves when the file was handed to the browser.
+  function trDownload(C, f, who) {
+    var blob = f.blob, name = f.name, SS = null, zipped = Promise.resolve();
+    try { SS = GifOS.shareShots; } catch (e) {}
+    if (SS && SS.list().length) {
+      var mine = C.trLang();
+      var lines = C.trBlocks().map(function (l) { return { at: l.at, text: '[' + new Date(l.at).toLocaleTimeString() + '] ' + l.by + (l.lang && l.lang !== mine ? ' (' + l.lang + ')' : '') + ': ' + C.trNote(l) + l.text }; });
+      zipped = SS.exportZip(lines, name.replace(/\.txt$/, '').replace(/_/g, ' '), who).then(function (z) { blob = z; name = name.replace(/\.txt$/, '.zip'); }, function () {});
+    }
+    return zipped.then(function () {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+    });
+  }
+
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 
-  GifOS.viewKit = { version: 1, RECORDS: RECORDS, host: host, part: part, stageLevel: stageLevel, watchCount: watchCount, nameOf: nameOf, present: present, pip: pip, fullscreen: fullscreen, armAppGif: armAppGif, clearButtons: clearButtons, clearReport: clearReport, clearReportButton: clearReportButton, stageNames: stageNames, calm: calm, esc: esc };
+  GifOS.viewKit = { version: 1, RECORDS: RECORDS, host: host, part: part, stageLevel: stageLevel, watchCount: watchCount, nameOf: nameOf, present: present, pip: pip, fullscreen: fullscreen, armAppGif: armAppGif, clearButtons: clearButtons, clearReport: clearReport, clearReportButton: clearReportButton, stageNames: stageNames, calm: calm, trDownload: trDownload, esc: esc };
 })(typeof window !== 'undefined' ? window : globalThis);

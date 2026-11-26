@@ -223,3 +223,14 @@ body.emb-calm { cursor: none; }
 #clearnopw-report .dlg-actions button:disabled { opacity: .55; cursor: default; }
 #clearnopw-report .clearnopw-cats { color: var(--emb-panel-fg); }
 #clearnopw-report input[type="radio"] { accent-color: var(--emb-on); }
+
+/* TRANSCRIPT: the room's caption lines (this page writes none down itself), Download, and the Auto screenshots box (off until ticked). */
+#embedui .emb-tr-log li b { margin-right: .35em; }
+#embedui .emb-tr-log li small { color: var(--emb-panel-dim); }
+#embedui .emb-tr-log li.emb-tr-shot { display: block; }
+#embedui .emb-tr-log li.emb-tr-shot b { display: block; font-weight: 600; font-size: 12px; color: var(--emb-panel-dim); margin: 0 0 3px; }
+#embedui .emb-tr-log li.emb-tr-shot img { display: block; max-width: 100%; height: auto; border-radius: 6px; border: 1px solid var(--emb-panel-line); cursor: zoom-in; }
+#embedui .emb-tr-foot { justify-content: space-between; }
+#embedui .emb-tr-foot button[type="button"] { background: var(--emb-on); color: #fff; }
+#embedui .emb-tr-shots { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--emb-panel-fg); cursor: pointer; }
+#embedui .emb-tr-shots input { margin: 0; }
