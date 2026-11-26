@@ -21,6 +21,10 @@
  * verifier). Any other key in the fragment (relay, at, title, agent, ...) rides along unchanged. The old page-entry
  * keys av, bc, s, j, k and cast mean nothing and are dropped; a lone v= (no room=) names no room.
  *
+ * THE HOME SCREEN'S KEYS (index.html, the same module): place=<fileId> (finish an App Store install; from=, db= ride
+ * along), folder=<folder> (a folder's item id, or a system folder's short name: purchases), select=<fileId> (one file
+ * selected, shown wherever it sits now). Read with home(), written with homeHash(); nothing else reads or writes them.
+ *
  * ES5 on purpose: the channel loaders run it before the preflight has said this browser can hold a meeting.
  */
 (function (root) {
@@ -140,6 +144,35 @@
     return dir + 'run.html';
   }
 
+  // THE HOME SCREEN'S ADDRESS: home(hash) -> { place, folder, select, rest } (rest: every other key=value as written,
+  // from= and db= included); homeHash({ place, folder, select, rest }) -> the fragment (no '#'). A value is a file id or a
+  // folder id ([A-Za-z0-9_.:-]{1,128}); anything else is no value.
+  var HOME = { place: 1, folder: 1, select: 1 }, HOMEVAL = /^[A-Za-z0-9_.:-]{1,128}$/;
+  function home(h) {
+    var parts = split(h), out = { place: '', folder: '', select: '', rest: [] };
+    for (var i = 0; i < parts.length; i++) {
+      var p = parts[i], k = keyOf(p);
+      if (!p) continue;
+      if (!HOME[k]) { out.rest.push(p); continue; }
+      var val = valOf(p);
+      if (HOMEVAL.test(val) && !out[k]) out[k] = val;
+    }
+    return out;
+  }
+  function homeHash(f) {
+    f = f || {};
+    var out = [];
+    for (var k in HOME) if (f[k] && HOMEVAL.test(String(f[k]))) out.push(k + '=' + encodeURIComponent(String(f[k])));
+    var rest = f.rest || [];
+    if (Object.prototype.toString.call(rest) !== '[object Array]') {
+      var arr = [];
+      for (var r in rest) if (Object.prototype.hasOwnProperty.call(rest, r) && rest[r] !== undefined && rest[r] !== null && rest[r] !== '') arr.push(r + '=' + encodeURIComponent(String(rest[r])));
+      rest = arr;
+    }
+    for (var j = 0; j < rest.length; j++) if (rest[j] && !HOME[keyOf(rest[j])] && !GRAMMAR[keyOf(rest[j])] && !OLD[keyOf(rest[j])]) out.push(rest[j]);
+    return out.join('&');
+  }
+
   // One key of `rest` (its decoded value), or ''.
   function extra(fields, key) {
     var rest = (fields && fields.rest) || [];
@@ -150,7 +183,7 @@
   // The room key the device's stores use: "<room>" or "<room>.<verifier>".
   function roomKey(f) { return f && f.room ? f.room + (f.v ? '.' + String(f.v).toLowerCase() : '') : ''; }
 
-  var api = { read: read, hash: hash, route: route, pageFor: pageFor, parseInput: parseInput, extra: extra, roomKey: roomKey, ROOM: ROOM, VER: VER, CODE: CODE };
+  var api = { read: read, hash: hash, route: route, pageFor: pageFor, home: home, homeHash: homeHash, parseInput: parseInput, extra: extra, roomKey: roomKey, ROOM: ROOM, VER: VER, CODE: CODE };
   // A CommonJS host (the Node core host's own realm) takes the exports and nothing else; a page or a participant's
   // context gets GifOS.link (and GifOSLink for the channel loaders, which run before anything else defines GifOS).
   if (typeof module === 'object' && module && module.exports) { module.exports = api; return; }

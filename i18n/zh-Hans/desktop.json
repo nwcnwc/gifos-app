@@ -196,5 +196,8 @@
  "desktop.arrange.title": "正在整理图标",
  "desktop.arrange.hint": "— 可将它们拖到任意位置",
  "desktop.arrange.done": "完成",
- "desktop.badge.receiptTip": "收据：打开可查看购买及其签名凭证。"
+ "desktop.badge.receiptTip": "收据：打开可查看购买及其签名凭证。",
+ "desktop.folderLink.noneTitle": "不在此主屏幕上",
+ "desktop.folderLink.noneBody": "该文件夹不在此主屏幕上。在此浏览器中购买后，这里会出现“购买”文件夹。",
+ "desktop.folderLink.noFileBody": "该收据不在此主屏幕上。它可能已被删除，或者购买是在另一个浏览器中进行的。"
 }

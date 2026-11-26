@@ -1075,7 +1075,7 @@
       // Relative, so a frozen build's store finishes on that same build's
       // desktop; in the hash, so the channel loader can't drop it. The build's
       // directory itself, never index.html: the host 308s that to the directory.
-      location.href = BASE + '#place=' + encodeURIComponent(fileId) + ns('&db=') + '&from=store';
+      location.href = BASE + '#' + GifOS.link.homeHash({ place: fileId, rest: { db: store.dbName === 'gifos' ? '' : store.dbName, from: 'store' } });
     } catch (e) { return fail(saveFailure(e, bytes ? bytes.length : 0)); }
   }
 

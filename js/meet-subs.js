@@ -25,11 +25,12 @@
  *     without one they are told plainly and not let in. Rooms on the $5 and
  *     $10 plans have no limit, and open rooms never have one.
  *   - WHICH APP (Nathan 2026-11-13): the Meet app offers Room 20, Unlimited,
- *     the four-hour pass and tips. The $10 Streamer plan and its library
- *     (My library, files.gifos.app) are offered and managed only in the
- *     Broadcast app: the broadcast page (/cast, cast.html). Meet
- *     honors a Streamer subscription with everything Unlimited gives, but
- *     never sells it and never shows its files (appNow, SUB.tiersSoldIn).
+ *     the four-hour pass and tips. The $10 Streamer plan is sold in the
+ *     Broadcast app (the broadcast page, /cast or cast.html) and on
+ *     the plans page /subscription (2026-11-25); its library (My library,
+ *     files.gifos.app) is managed in the Broadcast app. Meet honors a
+ *     Streamer subscription with everything Unlimited gives, but never
+ *     sells it and never shows its files (appNow, SUB.tiersSoldIn).
  *
  * The subscription is a FILE: a GifOS GIF that provides the meeting
  * subscription (keep it in the Providers folder, or open it here in another
@@ -149,7 +150,9 @@
       const entry = { seed: key.seed, at };
       if (key.buyerKey) entry.buyerKey = key.buyerKey;
       if (key.libSeed) entry.libSeed = key.libSeed;
+      if (typeof key.via === 'string' && key.via) entry.via = key.via;   // how this key came here: restore, move, file, rekey
       r.keys.push(entry);
+      delete r.refused;   // a new key here: the service's "another key" answer was about the old one
     }
     if (everPaid(r)) { r.paid = true; if (r.state === 'pending') r.state = 'held'; }
     l.subs[subId] = r;
@@ -421,6 +424,86 @@
     }
     return out;
   }
+  // ---- THE PURCHASES LIST (/subscription's Receipts table) ----------------------------------------------------------
+  // Every purchase this browser knows, as plain facts for a table: one row per ledger record (a plan, a checkout), one
+  // per four-hour pass. No key, no seed, nothing secret; only what this browser holds (never a claim about another
+  // device beyond the service's own answer for this browser's key). Names and words are the view's.
+  const PURCHASE_HIDDEN_KEY = 'gifos-purchases-hidden';   // { <pass id>: at }: passes hidden from the table (records carry their own flag)
+  async function purchases() {
+    ingestLegacy();
+    const l = readLedger(), n = nowS(), act = activeRec(l);
+    const rmap = readJson(RECEIPTS_KEY) || {};
+    const recs = Object.keys(l.subs).map((id) => l.subs[id]).filter((r) => r && typeof r.subId === 'string');
+    const rows = recs.map((r) => {
+      const keys = Array.isArray(r.keys) ? r.keys.filter((k) => k && typeof k.seed === 'string') : [];
+      const k = recKey(r) || keys[keys.length - 1] || {};
+      const lic = liveLicense(r, n);
+      const any = lic || licOf(r.licenseJson) || licOf(r.lastLicenseJson);
+      const buy = cleanPurchase(r.buy) || {};
+      // Replaced by: a later record bought as an upgrade of this one that was paid for.
+      const by = recs.filter((x) => x.replaces === r.subId && everPaid(x)).sort((a, b) => (a.at || 0) - (b.at || 0))[0] || null;
+      return {
+        kind: 'plan', id: r.subId, tier: typeof r.tier === 'string' ? r.tier : null, period: r.period || null, at: r.at || null,
+        pending: r.state === 'pending', paid: everPaid(r), status: r.status || null,
+        until: Number.isInteger(r.until) ? r.until : null, paidThrough: Number.isInteger(r.paidThrough) ? r.paidThrough : null,
+        live: !!lic, exp: any && Number.isInteger(any.exp) ? any.exp : null, issued: any && Number.isInteger(any.issued) ? any.issued : null,
+        inUse: !!act && act.subId === r.subId,
+        hidden: !!r.hidden, refused: Number.isFinite(r.refused) ? r.refused : null,
+        via: typeof k.via === 'string' ? k.via : null, viaAt: Number.isFinite(k.at) ? k.at : null, keys: keys.length,
+        replaces: typeof r.replaces === 'string' ? r.replaces : null, replacedBy: by ? { id: by.subId, tier: typeof by.tier === 'string' ? by.tier : null } : null,
+        continuedAs: typeof r.continuedAs === 'string' ? r.continuedAs : null,
+        bought: buy.boughtAt || null, price: buy.price || null, currency: buy.currency || null, rail: buy.rail || (/^I-/.test(r.subId) ? 'paypal' : null),
+        orderId: buy.orderId || null, captureId: buy.captureId || null,
+        receipt: rmap[r.subId] && typeof rmap[r.subId].fileId === 'string' ? rmap[r.subId].fileId : null,
+      };
+    });
+    // Passes: this browser's wallet, and the wallets it replaced (kept as history).
+    const hid = readJson(PURCHASE_HIDDEN_KEY) || {};
+    const bag = readPurchase();
+    const facts = bag.passes && typeof bag.passes === 'object' && !Array.isArray(bag.passes) ? bag.passes : {};
+    const wallets = [SUB.walletOk(readJson(WALLET_KEY))].concat((readJson(WALLET_HISTORY_KEY) || []).map((w) => SUB.walletOk(w))).filter(Boolean);
+    const seen = new Set();
+    for (const w of wallets) {
+      for (const p of w.passes) {
+        const o = SUB.checkPass(passOf(p));
+        if (!o || seen.has(o.id)) continue;
+        seen.add(o.id);
+        const f = cleanPurchase(facts[o.id]) || {};
+        rows.push({
+          kind: 'pass', id: o.id, tier: null, plan: typeof o.plan === 'string' ? o.plan : null, at: (f.boughtAt || o.paid * 1000), paid: true,
+          start: o.start, end: Number.isFinite(o.end) ? o.end : null, live: SUB.passLive(o, n), hidden: !!hid[o.id],
+          bought: f.boughtAt || o.paid * 1000, price: f.price || null, currency: f.currency || null, rail: f.rail || (o.via === 'paypal-order' ? 'paypal' : o.via),
+          orderId: o.via === 'mint' ? null : (f.orderId || o.order), captureId: f.captureId || null,
+          receipt: rmap[''] && typeof rmap[''].fileId === 'string' ? rmap[''].fileId : null,
+        });
+      }
+    }
+    return rows.sort((a, b) => (b.at || 0) - (a.at || 0));
+  }
+  // Hide or show one row. Nothing is deleted: a record gets its `hidden` flag, a pass an entry in the hidden list. Hiding a
+  // checkout not finished first asks once more (one paid meanwhile becomes the plan and stays shown).
+  async function hidePurchase(id, on) {
+    on = on !== false;
+    const r = readLedger().subs[id];
+    if (r) {
+      if (on && r.state === 'pending') { try { const st = await checkPending(id); if (st && st.licenseJson) return false; } catch (e) {} }
+      putRec(id, { hidden: on ? true : undefined });
+      return true;
+    }
+    const hid = readJson(PURCHASE_HIDDEN_KEY) || {};
+    if (on) hid[id] = Date.now(); else delete hid[id];
+    writeJson(PURCHASE_HIDDEN_KEY, Object.keys(hid).length ? hid : null);
+    return true;
+  }
+  // Continue one checkout not finished (the row's own button): as continueCheckout, for that record.
+  async function continuePurchase(id, say) {
+    const r = readLedger().subs[id];
+    if (!r || r.state !== 'pending') return readState();
+    let st = null; try { st = await checkPending(id); } catch (e) {}
+    if (st && st.licenseJson) return st;
+    putRec(id, { hidden: true });
+    return subscribe(r.tier, r.period, say, { from: id });
+  }
   let receiptBusy = null;
   function keepReceipt() {
     if (receiptBusy) return receiptBusy.then(keepReceipt);
@@ -455,7 +538,7 @@
   // subscription was made for (checked by the payment service on every ask).
   // Install a credential (and an optional pass wallet) already checked by credentialOk / walletOk.
   // useFile and a plan moved from another device share this path.
-  async function installCreds(c, w) {
+  async function installCreds(c, w, via) {
     if (w) {
       const ww = SUB.walletOk(w);
       if (ww) { mergeWallet(ww); passChanged(); }
@@ -469,7 +552,7 @@
     // Its own record (a new key of the same plan, from a restore or a re-key, joins that record and supersedes the
     // older keys); brought here on purpose, so it is the latest one held. No other record changes.
     ingestLegacy();
-    putRec(ok.subId, { tier: ok.tier, period: ok.period, state: 'held', at: Date.now() }, { seed: ok.seed, buyerKey: ok.buyerKey, libSeed: ok.libSeed });
+    putRec(ok.subId, { tier: ok.tier, period: ok.period, state: 'held', at: Date.now() }, { seed: ok.seed, buyerKey: ok.buyerKey, libSeed: ok.libSeed, via: typeof via === 'string' ? via : 'file' });
     let st = null;
     try { st = await refresh(ok.subId); } catch (e) { st = stateOf(readLedger().subs[ok.subId]); }
     rejoin(true);
@@ -479,7 +562,7 @@
     const arc = await GifOS.gif.decode(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes));
     const c = arc && SUB.credentialFromFiles(arc.files);
     const w = arc && SUB.walletFromFiles(arc.files);
-    return installCreds(c, w);
+    return installCreds(c, w, 'file');
   }
   // The JSON sealed into a move package: the credential, with libSeed so My library survives the move, and the pass wallet.
   async function movePackage() {
@@ -556,7 +639,7 @@
   async function post(path, body) {
     const r = await fetch(payBase() + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     let j = null; try { j = await r.json(); } catch (e) {}
-    if (!r.ok && !(j && (j.moved || j.ended))) throw new Error((j && j.error) || ('The payment service answered ' + r.status + '.'));
+    if (!r.ok && !(j && (j.moved || j.ended))) { const e = new Error((j && j.error) || ('The payment service answered ' + r.status + '.')); e.status = r.status; throw e; }
     return j || {};
   }
   async function subIdNow() { const c = await credential(); return c ? c.subId : readState().subId; }
@@ -587,8 +670,15 @@
     const c = r ? recCred(r) : null;
     if (!c) return null;
     const ask = await signedBy(c, 'license');
-    const j = await post('/gifos/sub/license', ask);
-    const next = { status: j.status, tier: j.tier || r.tier, until: j.until || null, paidThrough: j.paidThrough || null, checkedAt: Date.now() };
+    let j;
+    try { j = await post('/gifos/sub/license', ask); }
+    catch (e) {
+      // The service holds this plan under another key now (restored, or stopped on other devices, from elsewhere): a
+      // fact about this record's key, shown in its row. Nothing else changes; a new key here clears it.
+      if (e && e.status === 403 && /another key/.test(String(e.message || ''))) putRec(id, { refused: Date.now() });
+      throw e;
+    }
+    const next = { status: j.status, tier: j.tier || r.tier, until: j.until || null, paidThrough: j.paidThrough || null, checkedAt: Date.now(), refused: undefined };
     let lic = null;
     if (j.active && j.licenseJson && j.sig) {
       lic = await SUB.verifyLicense({ licenseJson: j.licenseJson, sig: j.sig }, verifyPay, nowS()).catch(() => null);
@@ -788,9 +878,10 @@
     let st = null; try { st = await checkPending(r.subId); } catch (e) {}
     if (st && st.licenseJson) return st;
     putRec(r.subId, { hidden: true });
-    return subscribe(r.tier, r.period, say);
+    return subscribe(r.tier, r.period, say, { from: r.subId });
   }
-  async function subscribe(tier, period, say) {
+  // opts.from: the unfinished checkout this one continues (its row then says it was started again, and names this one).
+  async function subscribe(tier, period, say, opts) {
     if (RAIL()) return subscribeInApp(tier, period, say || (() => {}));
     const upgrade = await upgradeAsk(tier, period);   // signed by the plan in use (it stays in use until the new one is paid)
     const seed = new Uint8Array(32); crypto.getRandomValues(seed);
@@ -803,7 +894,8 @@
     const buy = { rail: 'paypal', period };
     const full = j && j.upgrade && j.upgrade.full;
     if (Number.isInteger(full) && centsPrice(full)) { buy.price = centsPrice(full); buy.currency = 'USD'; }
-    putRec(j.id, { tier, period, state: 'pending', status: 'APPROVAL_PENDING', at: Date.now(), buy }, { seed: b64(seed), buyerKey });
+    putRec(j.id, Object.assign({ tier, period, state: 'pending', status: 'APPROVAL_PENDING', at: Date.now(), buy }, upgrade ? { replaces: upgrade.subId } : {}), { seed: b64(seed), buyerKey, via: 'checkout' });
+    if (opts && typeof opts.from === 'string' && opts.from !== j.id && readLedger().subs[opts.from]) putRec(opts.from, { continuedAs: j.id });
     if (popup) popup.location.href = j.approveUrl; else root.open(j.approveUrl, '_blank');
     if (say) say(SUB.TEXT.pending);
     const until = Date.now() + POLL_FOR_MS;
@@ -1440,7 +1532,7 @@
       const elsewhere = SUB.tiersSoldIn(app).indexOf(lic.tier) < 0;
       const viaStore = /^[GA]-/.test(String(lic.subId || ''));
       if (elsewhere) {
-        row.appendChild(el('p', { class: 'set-help', id: 'sub-plan-elsewhere' }, tx('subFromBroadcast', '{plan}, from the Broadcast app. In meetings it gives everything Unlimited gives.').replace('{plan}', planShort(lic.tier))));
+        row.appendChild(el('p', { class: 'set-help', id: 'sub-plan-elsewhere' }, tx('subFromBroadcast', '{plan}. In meetings it gives everything Unlimited gives; its library is in the Broadcast app.').replace('{plan}', planShort(lic.tier))));
         row.appendChild(el('p', { class: 'set-help', id: 'sub-meetings' }, meetingsWords(SUB.rightsOf(lic, nowS()).meetings)));
         if (!inApp) row.appendChild(el('a', { class: BTN, style: BTN_STYLE + ';display:inline-block;text-decoration:none', id: 'sub-manage-broadcast', href: '/cast', target: '_blank', rel: 'noopener' }, tx('subManageBroadcast', 'Manage it in the Broadcast app')));
       } else {
@@ -1867,20 +1959,47 @@
     return true;
   }
 
+  // The lobby's link to /subscription (every plan, and moving or restoring yours): one inline sentence at the end of
+  // the lobby's intro line ("... in one tap. See GifOS plans."), never a block of its own (a sticky one sat over the
+  // Recent & saved list, 0.9.28.32). Drawn here, not in the page, so the thin page stays thin. Meet's intro is
+  // #lob-welcome; the Broadcast lobby hides it and rewords #lob-quiet. Translation and the Broadcast rewording rewrite
+  // those lines' text, so the sentence is put back whenever it is dropped.
+  function lobbyPlansLink() {
+    const card = document.querySelector('#lobby .lobby-card');
+    if (!card) return;
+    const welcome = document.getElementById('lob-welcome'), quiet = document.getElementById('lob-quiet');
+    const target = () => (welcome && welcome.style.display !== 'none' ? welcome : quiet);
+    const make = () => {
+      const span = el('span', { id: 'lob-plans-line', class: 'lob-plans-line' });
+      const line = tx('lobPlansLine', 'See {plans}.');
+      const at = line.indexOf('{plans}');
+      span.appendChild(document.createTextNode(' ' + (at >= 0 ? line.slice(0, at) : line + ' ')));
+      span.appendChild(el('a', { id: 'lob-plans', class: 'lob-plans', href: '/subscription', target: '_blank', rel: 'noopener' }, tx('lobPlans', 'GifOS plans')));
+      if (at >= 0) span.appendChild(document.createTextNode(line.slice(at + '{plans}'.length)));
+      return span;
+    };
+    const place = () => {
+      const p = target();
+      if (!p) return;
+      const cur = document.getElementById('lob-plans-line');
+      if (cur && cur.parentNode === p && p.lastChild === cur) return;
+      if (cur) cur.remove();
+      p.appendChild(make());
+    };
+    place();
+    if (typeof MutationObserver === 'function') {
+      const mo = new MutationObserver(place);
+      [welcome, quiet].filter(Boolean).forEach((n) => mo.observe(n, { childList: true, attributes: true, attributeFilter: ['style', 'hidden'] }));
+    }
+  }
+
   let booted = false;
   function boot() {
     if (booted) return;
     booted = true;
-    // The lobby's link to /subscription (every plan, and moving or restoring yours): drawn here, not in run.html, so
-    // the thin page stays thin. Meet and Broadcast share the lobby.
+    // The lobby's link to /subscription (lobbyPlansLink): not on a page with no lobby (NOPAGE).
     if (!NOPAGE) {
-      try {
-        const card = document.querySelector('#lobby .lobby-card');
-        if (card && !document.getElementById('lob-plans')) {
-          const a = el('a', { id: 'lob-plans', class: 'lob-plans', href: '/subscription', target: '_blank', rel: 'noopener', 'data-t': 'lobPlans' }, tx('lobPlans', 'Plans and your subscription'));
-          card.appendChild(a);
-        }
-      } catch (e) {}
+      try { lobbyPlansLink(); } catch (e) {}
       wireSubModal();
     }
     keepFresh().catch(() => {});
@@ -1909,7 +2028,7 @@
     roomOrder, roomTier, meetingRight, proveAtDoor, checkShown, newNonce,
     appNow, joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureCurrent, captureOrder, captureKeys, fileBytes, downloadFile, useFile, installCreds, movePackage, heldMeetings, credential, librarySigner, restoreInApp,
     keepReceipt, subReceiptFiles,
-    pendingCheckout, checkPending, dismissPending, continueCheckout, receiptSets,
+    pendingCheckout, checkPending, dismissPending, continueCheckout, receiptSets, purchases, hidePurchase, continuePurchase,
     passMeeting: () => (pmeet ? { grants: pmeet.grants || null, room: pmeet.room, gen: pmeet.gen, exp: pmeet.exp, until: pmeet.until, moved: pmeet.moved, held: !!pmeet.ticket } : null),
     currentPassTicket,
     meeting: () => (meet ? { room: meet.room, gen: meet.gen, exp: meet.exp, moved: meet.moved, held: !!meet.ticket, tier: meet.tier, grants: meet.grants || null, paid: !!(meet.ticket && meet.grants && meet.grants.admitAtFullDoor) } : null),

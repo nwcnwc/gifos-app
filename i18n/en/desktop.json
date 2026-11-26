@@ -196,5 +196,8 @@
  "desktop.arrange.title": "Arranging icons",
  "desktop.arrange.hint": "— drag them anywhere",
  "desktop.arrange.done": "Done",
- "desktop.badge.receiptTip": "Receipt: open it to see the purchase and its signed proof."
+ "desktop.badge.receiptTip": "Receipt: open it to see the purchase and its signed proof.",
+ "desktop.folderLink.noneTitle": "Not on this Home Screen",
+ "desktop.folderLink.noneBody": "That folder isn’t on this Home Screen. A Purchases folder appears here once something is bought in this browser.",
+ "desktop.folderLink.noFileBody": "That receipt isn’t on this Home Screen. It may have been deleted, or the purchase was made in another browser."
 }

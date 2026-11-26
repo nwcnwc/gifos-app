@@ -196,5 +196,8 @@
  "desktop.arrange.title": "Organizando iconos",
  "desktop.arrange.hint": "— arrástralos donde quieras",
  "desktop.arrange.done": "Hecho",
- "desktop.badge.receiptTip": "Recibo: ábrelo para ver la compra y su prueba firmada."
+ "desktop.badge.receiptTip": "Recibo: ábrelo para ver la compra y su prueba firmada.",
+ "desktop.folderLink.noneTitle": "No está en esta pantalla de inicio",
+ "desktop.folderLink.noneBody": "Esa carpeta no está en esta pantalla de inicio. Aquí aparece una carpeta Compras cuando se compra algo en este navegador.",
+ "desktop.folderLink.noFileBody": "Ese recibo no está en esta pantalla de inicio. Puede que se haya borrado o que la compra se hiciera en otro navegador."
 }

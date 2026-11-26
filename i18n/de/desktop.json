@@ -196,5 +196,8 @@
  "desktop.arrange.title": "Symbole werden angeordnet",
  "desktop.arrange.hint": "— ziehen Sie sie beliebig",
  "desktop.arrange.done": "Fertig",
- "desktop.badge.receiptTip": "Beleg: öffnen, um den Kauf und seinen signierten Nachweis zu sehen."
+ "desktop.badge.receiptTip": "Beleg: öffnen, um den Kauf und seinen signierten Nachweis zu sehen.",
+ "desktop.folderLink.noneTitle": "Nicht auf diesem Startbildschirm",
+ "desktop.folderLink.noneBody": "Dieser Ordner ist nicht auf diesem Startbildschirm. Ein Ordner „Käufe“ erscheint hier, sobald in diesem Browser etwas gekauft wird.",
+ "desktop.folderLink.noFileBody": "Dieser Beleg ist nicht auf diesem Startbildschirm. Er wurde vielleicht gelöscht, oder der Kauf wurde in einem anderen Browser getätigt."
 }
