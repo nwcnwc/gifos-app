@@ -1614,10 +1614,18 @@
       btn.style.display = '';
       btn.onclick = () => { if (pipFloating()) exitPip(); else enterPip(true); };
       // The top bar's Float is the same button's twin: it clicks this one, so there is one path
-      const top = document.getElementById('appfloat');
-      if (top) {
-        top.style.display = '';
+      // (built here, not in the page: the pages stay thin; same words and glyph as the More menu's)
+      const full = document.getElementById('appfull');
+      if (full && full.parentNode) {
+        const top = document.createElement('button');
+        top.type = 'button'; top.id = 'appfloat'; top.setAttribute('aria-pressed', 'false');
+        top.title = btn.title; top.setAttribute('aria-label', btn.getAttribute('aria-label'));
+        const ic = btn.querySelector('svg').cloneNode(true);
+        ic.setAttribute('width', '16'); ic.setAttribute('height', '16'); ic.setAttribute('aria-hidden', 'true'); ic.style.cssText = 'flex:none;margin-right:5px';
+        const word = document.createElement('span'); word.setAttribute('data-t', 'float'); word.textContent = (0, /*()*/__C.uiText)('float', 'Float');
+        top.append(ic, word);
         top.onclick = () => { btn.click(); };
+        full.parentNode.insertBefore(top, full);
       }
     })();
     yield 342;
