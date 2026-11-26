@@ -2,6 +2,19 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.40",
+      "date": "2026-11-26",
+      "headline": "A room password clears the room, and players say Connecting until they know",
+      "critical": false,
+      "features": [],
+      "fixes": [
+        "Open rooms: once a password is set, shared screens and No blur cameras are clear for everyone right away; one person with the camera off no longer keeps everyone blurred. Blur for all still works.",
+        "Taking charge of a majority-rules meeting is no longer part of any plan.",
+        "A hosted broadcast keeps its host and its clear picture when the connection to GifOS restarts.",
+        "Embedded players and broadcast viewers say Connecting, Reconnecting or Couldn't connect instead of Not live or Off air while they are still finding out."
+      ]
+    },
+    {
       "version": "0.9.28.39",
       "date": "2026-11-26",
       "headline": "Clearer Blur and Unblur buttons, and a careful Report sheet",
