@@ -973,7 +973,9 @@
       else if (host && picture && linkDown) { state = 'reconnecting'; label = 'RECONNECTING'; aria = 'Reconnecting'; }
       else if (host && picture) { state = 'live'; label = 'LIVE'; aria = 'You are live'; }
       else if (host) { state = 'off'; label = 'OFF AIR'; aria = 'You are off air'; }
-      else if (joining || alone || document.body.classList.contains('bc-quiet')) { state = 'off'; label = 'OFF AIR'; aria = 'The broadcast is off air'; }
+      else if (document.body.classList.contains('bc-reconn')) { state = 'reconnecting'; label = 'RECONNECTING'; aria = 'Reconnecting'; }
+      else if (joining) { state = 'reconnecting'; label = 'CONNECTING'; aria = 'Connecting'; }   // still on the way in: nothing is known about the broadcast yet
+      else if (alone || document.body.classList.contains('bc-quiet')) { state = 'off'; label = 'OFF AIR'; aria = 'The broadcast is off air'; }
       else if (linkDown || kind === 'door') { state = 'reconnecting'; label = 'RECONNECTING'; aria = 'Reconnecting'; }
       else { state = 'watching'; label = 'WATCHING'; aria = 'You are watching'; }
       b.dataset.state = state;
@@ -1935,7 +1937,8 @@
     yield 429;
     const fmtLeft = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
     function clearAdminClose() {
-      const el = document.getElementById('admcount');   // the core stopped its clocks (adminCloseOff) if (el) el.style.display = 'none';
+      // the core stopped its clocks (adminCloseOff): a host is back or none is owed, so the count goes
+      const el = document.getElementById('admcount'); if (el) el.style.display = 'none';
     }
     function tickAdminClose() {
       const el = document.getElementById('admcount'); if (!el) return;
@@ -5025,6 +5028,7 @@
       const on = !!bq.text;
       if (quiet.hidden === on) quiet.hidden = !on;
       document.body.classList.toggle('bc-quiet', on);
+      document.body.classList.toggle('bc-reconn', on && !!bq.reconnecting);
       const qt = document.getElementById('bc-ended-txt');
       if (qt && on && qt.textContent !== bq.text) qt.textContent = bq.text;
       try { paintBcCalendar(on && bq.viewer && !!bq.sched && bq.sched.phase === 'future'); } catch (e) {}
