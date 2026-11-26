@@ -9,7 +9,8 @@
       "features": [
         "Every room link reads the same way: the link says which room, the page says how you see it (meeting, broadcast or app).",
         "Download an app with its saved data or without it; the app picture in the top bar now saves as a working app.",
-        "Apps you download from your Home Screen carry the guide for changing them (llms.txt)."
+        "Apps you download from your Home Screen carry the guide for changing them (llms.txt).",
+        "Screen shares are captured as screenshots in the transcript at the moment they change, and the transcript download includes them."
       ],
       "fixes": []
     },
