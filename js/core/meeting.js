@@ -8388,6 +8388,7 @@
     yield 1086;
     function restoreDoorTile(p) {
       if (!p || !doorOffGrid.has(p.id)) return;
+      if (meshGone.has(p.id) && typeof meshGoneSilent === 'object' && meshGoneSilent && meshGoneSilent.has(p.id)) return;   // a view verdict ('replaced', 'pipe-moved') lifts only on the seat's own word (notTomb)
       doorOffGrid.delete(p.id);
       if (p.headless || !p.tile || p.tile.parentNode) return;
       if (typeof dropRosterTile === 'function') dropRosterTile(p.id, 'own-tile');   // one tile per member: their own replaces the held one
@@ -9495,6 +9496,7 @@
           // the same device back under a new id (a restart) replaces EVERY old id of it at once, each one that has said nothing
           // since the new one was first heard; a proven frame only (devReplace).
           const dv = msg.dv.slice(0, 16); let taken = dv === myDevHash;
+          if (!devFirstAt.has(from)) { devFirstAt.set(from, Date.now()); if (devFirstAt.size > 512) devFirstAt.delete(devFirstAt.keys().next().value); }
           if (!taken) for (const k of Object.keys(devOf)) {
             if (k === from || devOf[k] !== dv) continue;
             if (meshGone.has(k)) { delete devOf[k]; continue; }
@@ -10022,10 +10024,13 @@
     // or the mesh hearing it first-hand. A forger naming a live device's tag costs that device one flicker: its next status
     // lifts the verdict and takes its tag back, and from then the forger's tag is refused (the old id was heard).
     // (One statement with saidGone: the part's step layout.)
-    const saidGone = new Set(), devReplaced = new Map(), devReplace = (old, nw, dv) => {   // devReplaced: old pid -> { by: new pid, dv }
-      const st = statusOf.get(old), p = peers.get(old), w = whoLog.get(nw);
-      const oldLast = Math.max(stSeen(st), p ? peerHeardAt(p) : 0), newFirst = (w && w.first) || Date.now();
-      if (oldLast >= newFirst) return false;   // both sessions speak: two tabs or a forger; nobody is replaced
+    // devFirstAt: when this page first heard each id's tag (its own map: the Who log is capped and filled later).
+    const saidGone = new Set(), devReplaced = new Map(), devFirstAt = new Map(), devReplace = (old, nw, dv) => {   // devReplaced: old pid -> { by: new pid, dv }
+      const st = statusOf.get(old), p = peers.get(old), now = Date.now();
+      const oldLast = Math.max(stSeen(st), p ? peerHeardAt(p) : 0), newFirst = devFirstAt.get(nw) || now;
+      // both sessions speak (two tabs, or a forger beside a live device): nobody is replaced. Quiet for a whole beat at least,
+      // so a live device between two beats is never taken for the old session of a newcomer naming its tag.
+      if (oldLast >= newFirst || now - oldLast <= SCALE.HB) return false;
       confirmGone(old, 'replaced');
       if (!meshGone.has(old)) return false;
       delete devOf[old];
@@ -10149,8 +10154,9 @@
       if ((typeof isEjected === 'function' && isEjected(pid) === true)) return false; // ejected: gone for good, whatever it says
       const g = meshGone.get(pid); if (g === undefined) return true;
       const st = statusOf.get(pid); const p = peers.get(pid);
-      const rp = typeof devReplaced === 'object' && devReplaced ? devReplaced.get(pid) : undefined;   // replaced by its own device's new id: a pc that still reads connected is no word (devReplace)
-      if ((st && (st.rx || 0) > g + TOMB_GRACE) || (p && p.connected && !rp) || meshHeardSince(pid)) { meshGone.delete(pid); meshGoneTick.delete(pid); if (p) restoreDoorTile(p); if (rp) { devReplaced.delete(pid); if (devOf[rp.by] === rp.dv) delete devOf[rp.by]; devOf[pid] = rp.dv; } if (typeof meshGoneSilent === 'object' && meshGoneSilent) { meshGoneSilent.delete(pid); meshGoneNamedAt.delete(pid); } return true; }
+      const rp = typeof devReplaced === 'object' && devReplaced ? devReplaced.get(pid) : undefined;   // replaced by its own device's new id (devReplace)
+      const viewFold = !!rp || (typeof pipeFarSeen === 'object' && !!pipeFarSeen && pipeFarSeen.has(pid));   // a view fold: a pc that still reads connected is no word
+      if ((st && (st.rx || 0) > g + TOMB_GRACE) || (p && p.connected && !viewFold) || meshHeardSince(pid)) { meshGone.delete(pid); meshGoneTick.delete(pid); if (p) restoreDoorTile(p); if (rp) { devReplaced.delete(pid); if (devOf[rp.by] === rp.dv) delete devOf[rp.by]; if (!Object.keys(devOf).some((k) => devOf[k] === rp.dv)) devOf[pid] = rp.dv; } if (typeof meshGoneSilent === 'object' && meshGoneSilent) { meshGoneSilent.delete(pid); meshGoneNamedAt.delete(pid); } return true; }
       return false;
     };
     // Departure tombstones expire once every occ echo of the freed seat has
