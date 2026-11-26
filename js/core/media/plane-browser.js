@@ -296,7 +296,7 @@
     // so a small group still opens at the fader the person last set.
     // An embed opens muted: browsers only autoplay muted, and the page around it decides nothing for the viewer.
     let serviceHeard = !__C.EMBED;
-    yield 601;
+    yield 600;
     // A screen's picture: my own capture, else the sharer's stage feed, else
     // the stage strip (a seat that does not hold the feed paints the strip).
     function ctScreenTrack(sid) {
@@ -320,7 +320,7 @@
       if (t && t.readyState !== 'ended') return { track: t, from: 'strip' };
       return null;
     }
-    yield 705;
+    yield 704;
     // Where a carried voice is HEARD (docs/turn-carry.md). Every other voice plays through an element; a carried voice is
     // decoded in the page, so it plays from an AudioContext. The meeting context plays to no device where the browser allows
     // that, so there the voice gets a context of its own that plays to the speaker (and follows the speaker pick:
@@ -340,7 +340,7 @@
       }
       return carryOutAc;
     }
-    yield 715;
+    yield 714;
 
 
     // ---- sender-side blur: broadcast blurred pixels, not just CSS ------------
@@ -361,7 +361,7 @@
     // main-thread timers to ≥1s (which froze the blurred broadcast and
     // recordings), but a Web Worker's metronome keeps ticking.
     let wakeLock = null;
-    yield 717;
+    yield 716;
     async function keepAwake() {
       if (__C.idleNow) return; // a parked phone's screen is allowed to rest
       // Leave and the hostless close set leaving; stopLocalCapture released
@@ -461,7 +461,7 @@
         return x.getImageData(2, 2, 1, 1).data[0] > 8; // white bled outward → filter applies
       } catch (e) { return false; }
     })();
-    yield 740;
+    yield 739;
     // frac: the blur's Gaussian sigma as a fraction of the drawn width dw, so
     // the look is the same at every picture size and on every engine (Nathan,
     // 2026-11-15: blur depends on picture size). blurSenderFrac and
@@ -782,7 +782,7 @@
     // receiver who strips the CSS class must still see a blur.
     const AVATAR_W = 640, AVATAR_H = 360;
     let avatarPipe = null, avatarSharp = null;
-    yield 755;
+    yield 754;
     function stopAvatarPipe() {
       if (!avatarPipe) return;
       try { avatarPipe.track.stop(); } catch (e) {}
@@ -825,7 +825,7 @@
         if (n < 3) startLocalView(video, track, n + 1);
       }, 700 * (n + 1));
     }
-    yield 759;
+    yield 758;
     function remoteWireTrack(t) {
       const real = t && t.stream;
       const tr = real && real.getVideoTracks && real.getVideoTracks()[0];
@@ -940,7 +940,7 @@
     const SENDER_CROP_KEY = 'meet.crop.v1.self';
     let senderCropVal = null;
     try { const c = JSON.parse(localStorage.getItem(SENDER_CROP_KEY) || 'null'); if (c && typeof c === 'object') senderCropVal = c; } catch (e) {}
-    yield 773;
+    yield 772;
     function senderCrop() {
       const MZ = typeof GifOS !== 'undefined' && GifOS.meetZones;
       if (!senderCropVal || !MZ || MZ.isDefault(senderCropVal)) return null;
@@ -1068,7 +1068,7 @@
       if (typeof carryVoiceTrack !== 'undefined' && carryVoiceTrack && carryVoiceTrack.readyState === 'live') return carryVoiceTrack;
       return (__C.localStream && __C.localStream.getAudioTracks()[0]) || null;
     }
-    yield 791;
+    yield 790;
     // THE DUTY SENDERS, READ FOR THE PLAN'S REPORT: the track my job for that duty slot ('sdm' | 'sub' | 'sgs') to that peer
     // carries now, or null (no job, a parked job, a sender with no live track). Read only: the jobs stay reconcileMosaic's.
     function dutyTrack(pid, slot) {
@@ -1159,7 +1159,7 @@
     // step-up/step-down click for immediacy. Idempotent: it only acts when the
     // staged bit actually flips.
     let stagedSelfWas = false;
-    yield 801;
+    yield 800;
     function shownPeerCount() {
       // A tile is not a person until a frame arrives. The birth stamp on
       // lastHeard does not count. A heard peer who goes quiet keeps the
@@ -1177,7 +1177,7 @@
       if (typeof __C.rosterTiles === 'object' && __C.rosterTiles) for (const t of __C.rosterTiles.values()) if (t && t.parentNode) n++; // a held "Reconnecting…" face was heard before the hold
       return n;
     }
-    yield 806;
+    yield 805;
     // Faces the page itself has put on screen (me, plus each real peer tile).
     // A cloned tile is not a person and is not in this set. The header uses
     // this so the count matches the room you can see; it never gates quality.
@@ -1207,9 +1207,9 @@
       if (typeof __C.rosterTiles === 'object' && __C.rosterTiles) for (const [pid, t] of __C.rosterTiles) take(pid, t); // a held "Reconnecting…" face is on screen
       return n;
     }
-    yield 811; // { charging, level } from the Battery API, or null where there is none
+    yield 810; // { charging, level } from the Battery API, or null where there is none
     const drainState = { losing: false, last: null, falls: 0, trip: null };
-    yield 813;
+    yield 812;
     function powerUpdate() {
       const was = __C.powNow.level;
       __C.powNow = __C.MP.level({ mobile: __C.IS_MOBILE, battery: __C.battNow, losing: drainState.losing, parked: __C.idleNow });
@@ -1534,7 +1534,7 @@
       __C.lastQ = q;
       return q;
     }
-    yield 829; // the rung adapt() last applied — harness verification surface
+    yield 828; // the rung adapt() last applied — harness verification surface
     // The degradationPreference adapt() last applied per sender. Read back from
     // getParameters is not dependable (a browser may simply not echo it), and a
     // value that always looks unset would re-write every sender every sweep —
@@ -1549,14 +1549,14 @@
       return true;
     }
     const trackQ = { t: null, k: '', failK: '', failedAt: 0, noFps: '' };
-    yield 848;
+    yield 847;
     // A broadcast viewer with nothing on air: the
     // Stage says whether it has not started, when it starts (with a
     // countdown), or that it has ended. "Ended" is the host's one gossiped
     // flag, the schedule, or this tab having seen company and now alone.
     // The stage feed shows a picture (a row tile on #stagefeed).
     function stageFeedShows() { return !!document.querySelector('#stagefeed .rowtile'); }
-    yield 1310;   // read at load: the boot rewrites the hash later
+    yield 1309;   // read at load: the boot rewrites the hash later
     // MEM SAMPLES (DEBUG only): every 30 s one small record of what this page holds, so a long room shows what only grows.
     // JS heap (performance.memory where it exists), mesh/pc maps, pipe-worker queues, media element tracks, pcs by state.
     // It never calls into a live RTCPeerConnection (no getSenders/getReceivers) and never wraps Worker: suspected in a 40-page room whose renderers crashed (rtp_sender CHECK).
