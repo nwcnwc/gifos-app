@@ -540,6 +540,22 @@
     });
   }
 
+  // A clean copy: the same GIF with any baked-in .state/ and .lock/ left out,
+  // so it opens FRESH. THE one strip: the Download / Save "without my data"
+  // choices and the meeting "app only" copy all go through it. `files` may be
+  // passed when the caller already decoded the GIF. Nothing to strip = the
+  // original bytes, untouched.
+  async function stripState(bytes, files) {
+    if (!files) { const a = await decode(bytes); files = a && a.files; }
+    if (!files) return bytes;
+    const clean = {}; let had = false;
+    for (const p in files) {
+      if (p.startsWith('.state/') || p.startsWith('.lock/')) had = true;
+      else clean[p] = files[p];
+    }
+    return had ? repack(bytes, clean) : bytes;
+  }
+
   // ---- embed: hide an app inside ANY existing GIF ---------------------------
   // The Easter-egg maker: take a GIF from your life or the wild and splice a
   // GifOS filesystem into it, just before the trailer. Its animation plays
@@ -1156,7 +1172,7 @@
   }
 
   GifOS.gif = {
-    encode, decode, repack, embed, looksLikeGifosGif, readManifest, readManifestFrom, readFilesFrom, systemPage,
+    encode, decode, repack, stripState, embed, looksLikeGifosGif, readManifest, readManifestFrom, readFilesFrom, systemPage,
     b64encode, b64decode, textToBytes, bytesToText,
     findAppExtSpan, appExtBlock, stripForDisplay,
     setRemixDoc, addRemixDoc, REMIX_DOC, inflateMaxBytes, inflate,

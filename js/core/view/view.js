@@ -11346,6 +11346,7 @@
       // stripForDisplay — sanctioned for exactly this) so the app-bar icon
       // blobs the animation, not a 20 MB archive the decoder must step over.
       let stripped = false;
+      const full = bytes;
       try { if (GifOS.gif && GifOS.gif.stripForDisplay) { bytes = GifOS.gif.stripForDisplay(bytes); stripped = true; } } catch (e) {}
       if (appGifUrl) { try { URL.revokeObjectURL(appGifUrl); } catch (e) {} }
       appGifUrl = URL.createObjectURL(new Blob([bytes], { type: 'image/gif' }));
@@ -11354,6 +11355,7 @@
       // together above. Only ever the STRIPPED bytes.
       if (stripped) setAppFavicon(appGifUrl, 'image/gif');
       img.style.display = 'block';
+      if (GifOS.viewKit && GifOS.viewKit.armAppGif) GifOS.viewKit.armAppGif(img, full, () => { const b = document.getElementById('appsave'); if (b && b.style.display !== 'none') b.click(); });
     }
     function showAppPane(name, who) {
       __C.act.surface({ appPaneOn: true }); __C.act.surface({ appPaneName: name || 'App' });
@@ -11536,7 +11538,13 @@
       }).catch((e) => (0, /*()*/__C.setStatus)((0, /*()*/__C.uiText)('barSaveFail', 'Could not save: {err}').split('{err}').join(e && e.message || e)));
       if (__C.model.apps.soloCtl() && __C.ROOM.solo) __C.model.apps.soloCtl().save();
       else if (__C.appHostCtl) __C.appHostCtl.save();
-      else if (__C.appClientCtl && __C.appClientCtl.snapshot) dl(__C.appClientCtl.snapshot());
+      else if (__C.appClientCtl && __C.appClientCtl.snapshot) {
+        // the room's shared data, or a clean copy: the same two-choice sheet as every download
+        let st = null; try { st = __C.appClientCtl.mirrorState && __C.appClientCtl.mirrorState(); } catch (e) {}
+        const has = !!(st && st.collections && Object.keys(st.collections).length);
+        (has && GifOS.lock && GifOS.lock.showSheet ? GifOS.lock.showSheet('exportData', document.getElementById('appname').textContent || 'App') : Promise.resolve('ok'))
+          .then((act) => { if (act !== 'cancel') dl(__C.appClientCtl.snapshot(act === 'alt' ? { clean: true } : undefined)); });
+      }
     };
     // Steal is TWO different wants — take the game AND the scoreboard, or
     // take just the game — so the first press asks which, right where the
@@ -11585,9 +11593,9 @@
       b.style.display = 'none';
       // Insertion order: reversed, since each lands at b.nextSibling —
       // reads left-to-right as: + data · as I joined · app only.
-      const d3 = mk((0, /*()*/__C.uiText)('stealApp', 'app only'), (0, /*()*/__C.uiText)('stealAppTip', 'A clean copy — the app alone, none of the room’s data'), 'none');
+      const d3 = mk((0, /*()*/__C.uiText)('stealApp', 'without data'), (0, /*()*/__C.uiText)('stealAppTip', 'A clean copy — the app alone, none of the room’s data'), 'none');
       const d2 = mk((0, /*()*/__C.uiText)('stealJoined', 'as I joined'), (0, /*()*/__C.uiText)('stealJoinedTip', 'The app and the room as it stood when you came in'), 'connect');
-      const d1 = mk((0, /*()*/__C.uiText)('stealData', '+ data'), (0, /*()*/__C.uiText)('stealDataTip', 'The app and everything in it right now'), 'current');
+      const d1 = mk((0, /*()*/__C.uiText)('stealData', 'with data'), (0, /*()*/__C.uiText)('stealDataTip', 'The app and everything in it right now'), 'current');
     };
     yield 3116;
     function clearAppView(why) {

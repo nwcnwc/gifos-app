@@ -247,7 +247,36 @@
     if (!on) { var m = document.getElementById('clearnopw-report'); if (m) m.remove(); }
   }
 
+  // The app bar's GIF shows the animation only (the packed app is stripped off it so it paints light), so a
+  // browser "Save image as" on it would save a file that does not run. This arms the <img>: the first pointer
+  // hover, press, touch or right-click builds a clean WORKING copy (the app, no saved data, gif.stripState) from
+  // the full bytes and points the <img> at it, so the browser's own save gets a real app GIF with no data.
+  // Built lazily and once per set of bytes: starting the app never pays for it. A tap on the GIF asks the same
+  // two-choice question as Save (onTap). `full` is null to disarm.
+  function armAppGif(img, full, onTap) {
+    if (!img) return;
+    img.__agFull = full || null; img.__agClean = null;
+    if (img.__agUrl) { try { URL.revokeObjectURL(img.__agUrl); } catch (e) {} img.__agUrl = null; }
+    if (!img.__agArmed) {
+      img.__agArmed = true;
+      var ensure = function () {
+        var f = img.__agFull;
+        if (!f || img.__agClean || !GifOS.gif || !GifOS.gif.stripState) return;
+        var mine = img.__agClean = GifOS.gif.stripState(f).then(function (b) {
+          if (img.__agFull !== f) return;
+          var url = URL.createObjectURL(new Blob([b], { type: 'image/gif' }));
+          if (img.__agUrl) { try { URL.revokeObjectURL(img.__agUrl); } catch (e) {} }
+          img.__agUrl = url; img.src = url;
+        }).catch(function () { if (img.__agClean === mine) img.__agClean = null; });
+      };
+      ['pointerenter', 'pointerdown', 'touchstart', 'contextmenu'].forEach(function (ev) { img.addEventListener(ev, ensure, { passive: true, capture: true }); });
+      img.addEventListener('click', function () { if (img.__agTap) img.__agTap(); });
+    }
+    img.__agTap = onTap || null;
+    if (onTap) img.style.cursor = 'pointer';
+  }
+
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 
-  GifOS.viewKit = { version: 1, RECORDS: RECORDS, host: host, part: part, stageLevel: stageLevel, watchCount: watchCount, nameOf: nameOf, present: present, pip: pip, fullscreen: fullscreen, clearButtons: clearButtons, clearReport: clearReport, esc: esc };
+  GifOS.viewKit = { version: 1, RECORDS: RECORDS, host: host, part: part, stageLevel: stageLevel, watchCount: watchCount, nameOf: nameOf, present: present, pip: pip, fullscreen: fullscreen, armAppGif: armAppGif, clearButtons: clearButtons, clearReport: clearReport, esc: esc };
 })(typeof window !== 'undefined' ? window : globalThis);
