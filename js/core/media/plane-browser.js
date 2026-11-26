@@ -7593,7 +7593,7 @@
     function earTick() {
       if (ccEngine() === 'local') return;
       if (ccMix.dest) { ccMixSync(); if (!ccMix.ins.size) syncSpeech(); return; }
-      if ((0, /*()*/__C.trWrites)() && !(ccEngine() === 'whisper' && (0, /*()*/__C.whisperReady)()) && !(speech && speech.input) && ccTrackInput() && ccMixVoices().size) syncSpeech();
+      if ((0, /*()*/__C.trWrites)() && !(ccEngine() === 'whisper' && (0, /*()*/__C.whisperReady)()) && !(speech && speech.input) && ccEarMayRun() && ccMixVoices().size) syncSpeech();
     }
     setInterval(() => { trEnSync(); if (wspCaps.size || __C.trEnOn || (0, /*()*/__C.capEarsOnly)() || ((0, /*()*/__C.trWrites)() && ((ccEngine() === 'whisper' && (0, /*()*/__C.whisperReady)()) || ccEngine() === 'local'))) wspSync(); earTick(); (0, /*()*/__C.trForget)(); (0, /*()*/__V.paintTxMark)(); if (__C.capTrust) { __C.capTrust.tick(); (0, /*()*/__V.capCardRefresh)(); } }, 2000);
     // ONE TAP TO INSTALL. The provider is a signed 13 MB GIF on this very site:
@@ -7763,6 +7763,16 @@
       return '';
     }
     function ccTrackInput() { return !!ccTrackBrand(); }
+    // THE ROOM EAR RUNS ONLY WHERE A MICROPHONE IS ALREADY OPEN. The browser's speech engine is a microphone use: the
+    // browser runs each session under this site's microphone permission and lights the system's microphone indicator
+    // for it, even a session handed a track. So it runs only on a page that holds a microphone of its own (live, and not
+    // a phone's let-go stand-in). A listener (an embed, a broadcast viewer, a guest who never opened the mic) starts
+    // none: it shows the lines the room sends.
+    function ccEarMayRun() {
+      if (!ccTrackInput()) return false;
+      const t = __C.localStream && __C.localStream.getAudioTracks()[0];
+      return !!(t && t.readyState === 'live' && !isQuietMic(t));
+    }
     // The sample rate the engine must be handed, 0 = the meeting context's own.
     function ccTrackRate() { return ccTrackBrand() === 'Microsoft Edge' ? CC_EDGE_TRACK_RATE : 0; }
     // mine / wrote: my own voice in the mix (ms) and the letters the engine wrote, since the last check (ccMixHears)
@@ -8149,7 +8159,7 @@
       // empty mix is a speech session open over silence.
       // My own voice too: wherever the engine takes a track, it hears the
       // call's echo-cancelled mic, never the raw default device.
-      if ((hearRoom || mine) && ccTrackInput() && ccMixVoices().size) {
+      if ((hearRoom || mine) && ccEarMayRun() && ccMixVoices().size) {
         if (speechRunning() && !speech.input) stopSpeech(); // a raw-microphone engine hands over to the room ear
         const input = ccMixStart();
         if (input) {
