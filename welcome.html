@@ -103,7 +103,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 
     <h2 id="gifos-tv">GifOS TV: a live broadcast from a Raspberry Pi</h2>
     <p class="lede">A second player, and a bigger test of the same one line of code. GifOS TV is a live broadcast that never stops: a hundred public-domain films, about seven hours of them, back to back and around again, sent from a Raspberry Pi at home.</p>
-    <div class="player" id="tvplayer"><script src="/embed.js" data-room="gifos-tv" data-verifier="cc51c5e4f4418c66aa52a486" data-title="GifOS TV" data-controls="volume,fullscreen,watch"></script></div>
+    <div class="player" id="tvplayer"><script src="/embed.js" data-room="gifos-tv" data-verifier="cc51c5e4f4418c66aa52a486" data-title="GifOS TV"></script></div>
     <p class="note">The picture starts blurred: GifOS blurs video for viewers unless the room has a password. This broadcast's host has a plan with Clear Stage, so tap the picture to see the Stage clearly.</p>
     <h3 class="lbl">How we did it</h3>
     <ol class="tvhow">
@@ -117,7 +117,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <li><b>Always on.</b> The script runs as a service that restarts on failure. A watchdog restarts it if it stops reporting, and it rejoins on its own when GifOS ships a new release.</li>
       <li><b>On this page.</b> The player above is this snippet:</li>
     </ol>
-    <div class="code"><pre id="snip-tv">&lt;script src="https://gifos.app/embed.js" data-room="gifos-tv" data-verifier="cc51c5e4f4418c66aa52a486" data-title="GifOS TV" data-controls="volume,fullscreen,watch"&gt;&lt;/script&gt;</pre><button class="copy" type="button" data-copy="snip-tv">Copy</button></div>
+    <div class="code"><pre id="snip-tv">&lt;script src="https://gifos.app/embed.js" data-room="gifos-tv" data-verifier="cc51c5e4f4418c66aa52a486" data-title="GifOS TV"&gt;&lt;/script&gt;</pre><button class="copy" type="button" data-copy="snip-tv">Copy</button></div>
     <details class="tvcredits" id="tvcredits"><summary>All the films in GifOS TV, with credits</summary><p>Loading the list&hellip;</p></details>
 
     <h2>Put a live GifOS broadcast on your own site</h2>
@@ -128,7 +128,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <div class="code"><pre id="snip-iframe">&lt;iframe src="https://gifos.app/embed#room=ROOM" style="width:100%;aspect-ratio:16/9;border:0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen title="GifOS Broadcast"&gt;&lt;/iframe&gt;</pre><button class="copy" type="button" data-copy="snip-iframe">Copy</button></div>
 
     <h2>Choose the controls</h2>
-    <p>The player starts as the picture, the live badge, unmute, and at the bottom right the buttons for chat, reactions, info, float and full screen beside a settings gear. The bar fades after a few seconds and comes back on any pointer, tap or key. When you set nothing, the player offers <code>volume,audioonly,fullscreen,pip,chat,reactions</code>.</p>
+    <p>The player starts as the picture, the live badge, unmute, and at the bottom right the buttons for chat, reactions, info, float and full screen beside a settings gear. The bar fades after a few seconds and comes back on any pointer, tap or key. When you set nothing, the player offers <code>volume,audioonly,fullscreen,pip,chat,reactions,names</code>. All the keys are <code>volume</code>, <code>mute</code>, <code>captions</code>, <code>audioonly</code>, <code>tabs</code>, <code>inset</code>, <code>fullscreen</code>, <code>pip</code> (the float button), <code>chat</code>, <code>reactions</code>, <code>names</code> and <code>watch</code>; the info button always shows.</p>
     <p><code>volume</code> — a volume slider in the gear.</p>
     <p><code>mute</code> — a mute switch in the gear.</p>
     <p><code>captions</code> — a captions switch in the gear. It appears once a line has arrived. Captions stay off until the viewer turns them on.</p>
@@ -139,6 +139,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <p><code>pip</code> — the float button (picture in picture), when the browser supports it.</p>
     <p><code>chat</code> — the chat button, while the host leaves chat on. A viewer gives a name the first time they post.</p>
     <p><code>reactions</code> — the reactions button, while the host lets guests react.</p>
+    <p><code>names</code> — a Show names switch in the gear, on at first: the viewer can hide the name bars drawn on the Stage picture. It is kept in that viewer's browser.</p>
     <p><code>watch</code> — Watch on GifOS, in a new tab.</p>
     <p><code>all</code> turns every control on. <code>none</code> leaves only the info button.</p>
     <p>On the script tag, add <code>data-controls="tabs,inset,captions,fullscreen,watch"</code>. On the iframe, add it to the hash: <code>#room=ROOM&amp;controls=tabs,inset</code>. An iframe you write yourself keeps <code>allow="autoplay; fullscreen; picture-in-picture"</code> and <code>allowfullscreen</code>, or the full screen and float buttons do not show.</p>

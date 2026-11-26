@@ -12,6 +12,8 @@ html, body { margin: 0; height: 100%; background: #111; overflow: hidden; }
 #stagefeed { position: fixed; inset: 0; background: #111; display: flex; align-items: center; justify-content: center; }
 #stagefeed .rowtile { width: 100%; height: 100%; position: relative; overflow: hidden; }
 #stagefeed video { width: 100%; height: 100%; object-fit: contain; display: block; }
+/* The picture stops above the control bar (its height, one or two rows) so the Stage name drawn in it is never covered. */
+body:not(.emb-has-share) #stagefeed { bottom: var(--emb-bar-h, 0px); }
 body.emb-unhosted #stagefeed { visibility: hidden; }   /* not hosted right now: no picture */
 /* The room's blur rule, drawn on the stage picture (the same strengths as the meeting's tiles: --bw from the
    media plane's size observer, the fractions from the global timings on the root). */
@@ -35,10 +37,12 @@ body.emb-unhosted #stagefeed { visibility: hidden; }   /* not hosted right now: 
   align-items: center; gap: 8px; border: 0; background: none; color: #fff; cursor: pointer; font: inherit; }
 #embedui .emb-play svg { width: 84px; height: 84px; padding: 18px 14px 18px 22px; box-sizing: border-box; border-radius: 50%;
   background: rgba(214,40,48,.92); fill: #fff; box-shadow: 0 4px 24px rgba(0,0,0,.5); }
+/* the second prompt: not the unmute red; the site's blue under white (contrast 5.6:1). Never shown with the unmute prompt. */
+#embedui .emb-unblur svg { background: #0066d6; padding: 18px; }
 #embedui .emb-play span { background: rgba(0,0,0,.6); padding: 3px 10px; border-radius: 12px; }
 #embedui .emb-msg { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; max-width: 80%; text-align: center;
   background: rgba(0,0,0,.6); padding: 10px 16px; border-radius: 8px; font-size: 15px; }
-#embedui .emb-bar { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 8px; padding: 26px 10px 10px;
+#embedui .emb-bar { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 26px 10px 10px;
   background: linear-gradient(transparent, rgba(0,0,0,.6)); }
 #embedui .emb-fill { flex: 1; }
 #embedui .emb-btn { border: 0; border-radius: 6px; background: rgba(255,255,255,.16); color: #fff; font: inherit; padding: 6px 10px;
@@ -108,6 +112,7 @@ body.emb-has-share.emb-stage-folded #embedui .emb-cap { right: 12px; }
 @media (max-width: 420px) {
   #embedui .emb-top { padding: 8px 10px 22px; gap: 8px; }
   #embedui .emb-play svg { width: 64px; height: 64px; padding: 14px 10px 14px 17px; }
+  #embedui .emb-unblur svg { padding: 14px; }
   #embedui .emb-bar { padding: 22px 6px 6px; gap: 6px; }
   #embedui .emb-btn { padding: 5px 8px; font-size: 13px; }
   #embedui .emb-ico { min-width: 30px; padding: 5px 6px; }
@@ -187,3 +192,21 @@ body.emb-has-share.emb-stage-folded .emb-inset-min { position: static; height: 3
 body.emb-calm #embedui .emb-bar { opacity: 0; pointer-events: none; }
 body.emb-calm #embedui .emb-bar * { pointer-events: none; }
 body.emb-calm { cursor: none; }
+
+/* Report: in the info panel, and the confirm sheet over the player. */
+#embedui .emb-info-body .emb-rep { display: block; margin-top: 10px; border: 1px solid var(--emb-panel-line); background: transparent; color: var(--emb-panel-fg); }
+#clearnopw-report { position: fixed; inset: 0; z-index: 9100; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.6);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+#clearnopw-report .name-box { display: flex; flex-direction: column; max-height: calc(100% - 24px); background: var(--emb-panel-solid); color: var(--emb-panel-fg);
+  border-radius: 8px; box-shadow: 0 4px 24px rgba(0,0,0,.5); width: min(380px, calc(100% - 24px)); box-sizing: border-box; }
+#clearnopw-report .dlg-head { flex: none; padding: 12px 16px 8px; border-bottom: 1px solid var(--emb-panel-line); }
+#clearnopw-report h3 { margin: 0; font-size: 16px; }
+#clearnopw-report .dlg-body { overflow: auto; padding: 12px 16px; }
+#clearnopw-report .dlg-body p { margin: 0 0 10px; }
+#clearnopw-report .dlg-body a { color: var(--emb-link); font-weight: 600; display: block; margin-bottom: 10px; }
+#clearnopw-report .dlg-actions { flex: none; display: flex; gap: 8px; justify-content: flex-end; padding: 10px 16px 12px; border-top: 1px solid var(--emb-panel-line); }
+#clearnopw-report .dlg-actions button { border: 1px solid var(--emb-panel-line); border-radius: 6px; padding: 7px 14px; font: inherit; cursor: pointer; background: transparent; color: var(--emb-panel-fg); }
+#clearnopw-report .dlg-actions button:first-child:not(:disabled) { background: var(--emb-on); border-color: transparent; color: #fff; }
+#clearnopw-report .dlg-actions button:disabled { opacity: .55; cursor: default; }
+#clearnopw-report .clearnopw-cats { color: var(--emb-panel-fg); }
+#clearnopw-report input[type="radio"] { accent-color: var(--emb-on); }

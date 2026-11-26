@@ -47,8 +47,8 @@
     // The controls are presentation only. They never change what the core decides (who is hosted, the password, the
     // sound gate, what the room sends this seat). Keys come from the hash the embedder wrote. The core rebuilds its
     // params from its own whitelist and drops this one.
-    var CONTROL_KEYS = ['volume', 'mute', 'captions', 'audioonly', 'tabs', 'inset', 'fullscreen', 'pip', 'chat', 'reactions', 'watch'];
-    var CONTROL_DEFAULT = ['volume', 'audioonly', 'fullscreen', 'pip', 'chat', 'reactions'];
+    var CONTROL_KEYS = ['volume', 'mute', 'captions', 'audioonly', 'tabs', 'inset', 'fullscreen', 'pip', 'chat', 'reactions', 'names', 'watch'];
+    var CONTROL_DEFAULT = ['volume', 'audioonly', 'fullscreen', 'pip', 'chat', 'reactions', 'names'];
     function controlsFromHash(hash) {
       var set = new Set();
       var has = false, raw = '';
@@ -77,6 +77,9 @@
     var ccOn = lsGet('gifos.embed.cc') === '1', ccAvail = false, ccText = '', ccUntil = 0, ccTimer = 0;
     // Audio only: this viewer's screen stops drawing the pictures (CSS hides the video elements). It is never a
     // subscription change: the seat keeps receiving and forwarding video for the room exactly as before.
+    // Show names: the name bars the player draws on the Stage picture; on by default, this viewer's choice, kept in this browser.
+    var showNames = !(controls.has('names') && lsGet('gifos.embed.names') === '0');
+    GifOS.hideNames = !showNames;
     var audioOnly = controls.has('audioonly') && lsGet('gifos.embed.audioonly') === '1';
     document.body.classList.toggle('emb-inset-lock', !controls.has('inset'));
     // The entry the core parsed (its EMBED whitelist): read when first asked, after the core's first steps ran.
@@ -158,6 +161,11 @@
       if ($('emb-count').textContent !== cw) $('emb-count').textContent = cw;
       var heard = !!M.serviceHeard;
       $('emb-play').hidden = heard || st === 'off';
+      // Second prompt, after the unmute one (never both): sound is on, the Stage is blurred and this viewer may unblur it
+      // (offer is false while a host's blur order wins).
+      var cst = { mode: '', tapped: false, offer: false };
+      try { cst = C.clearNoPwState() || cst; } catch (e) {}
+      $('emb-unblur').hidden = !(heard && st !== 'off' && !!cst.mode && !cst.tapped && cst.offer !== false);
       var mw = heard ? tr('mute', 'Mute') : tr('unmute', 'Unmute');
       if ($('emb-mute').textContent !== mw) { $('emb-mute').textContent = mw; $('emb-mute').setAttribute('aria-pressed', heard ? 'false' : 'true'); }
       var card = $('emb-card');
@@ -171,7 +179,9 @@
       if (msg.textContent !== mt) msg.textContent = mt;
       msg.hidden = !mt || !card.hidden;
       $('emb-lock').hidden = !(C.pwBlocked && card.hidden);
-      K.clearButtons(C, document.querySelector('.emb-bar'), 'emb-btn', document.querySelector('.emb-bar .emb-fill'));   // a hosted room with a clear right: the viewer's own tap, as on /meet; text buttons beside Unmute, before the icons and the gear
+      K.clearButtons(C, document.querySelector('.emb-bar'), 'emb-btn', document.querySelector('.emb-bar .emb-fill'));
+      K.clearReportButton(C, document.querySelector('#emb-info-panel .emb-info-body'), 'clear-rep', 'emb-btn emb-rep');   // Report lives in the info panel, never on the control row
+      measureBar();   // a hosted room with a clear right: the viewer's own tap, as on /meet; text buttons beside Unmute, before the icons and the gear
       document.body.classList.toggle('emb-audioonly', audioOnly);
       $('emb-audionote').hidden = !(audioOnly && hosted && why === 'ok');
       paintInsetRow();
@@ -707,6 +717,7 @@
     function syncRows() {
       var vol = $('emb-m-volume'); if (vol) vol.hidden = !controls.has('volume');
       var ins = $('emb-m-inset'); if (ins) ins.hidden = !controls.has('inset');
+      var nm = $('emb-m-names'); if (nm) { nm.hidden = !controls.has('names'); setToggle(nm, showNames); }
       paintMuteRow();
       paintCcRow();
       paintAudioRow();
@@ -721,6 +732,17 @@
       var gear = $('emb-gear'); if (gear) { gear.hidden = !on; if (!on && panel === 'menu') setPanel(null); }
     }
     // (No paint at this first step: the core's own names are not set yet. The first paint runs once the linker's run returns.)
+
+    // The bar can wrap to two rows on a narrow player; the picture (its burned-in name too) stops above it, never under it.
+    var barH = -1;
+    function measureBar() {
+      var bar = document.querySelector('#embedui .emb-bar'); if (!bar) return;
+      var cs = getComputedStyle(bar), h = Math.max(0, Math.round(bar.offsetHeight - (parseFloat(cs.paddingTop) || 0)));
+      if (h === barH) return;
+      barH = h; document.documentElement.style.setProperty('--emb-bar-h', h + 'px');
+    }
+    try { if (root.ResizeObserver) new root.ResizeObserver(measureBar).observe(document.querySelector('#embedui .emb-bar')); } catch (e) {}
+    root.addEventListener('resize', measureBar);
 
     // ---- CALM: the bar fades after CHROME_IDLE_MS (the meeting's own chrome clock) with no pointer, touch or key, and
     // comes back on any of them. Never while a panel or the password card is open, the password button shows, the
@@ -759,6 +781,8 @@
       var row = function (id, key, en) { var el = $(id); var s = el && el.querySelector('span'); if (s) s.textContent = tr(key, en); };
       set('emb-play', 'unmute', 'Unmute', 'aria-label');
       var ps = $('emb-play').querySelector('span'); if (ps) ps.textContent = tr('tapUnmute', 'Tap to unmute');
+      set('emb-unblur', 'unblur', 'Unblur', 'aria-label');
+      var us = $('emb-unblur').querySelector('span'); if (us) us.textContent = tr('tapUnblur', 'Tap to unblur');
       set('emb-lock', 'enterPw', 'Enter password');
       ['emb-gear', 'emb-menu'].forEach(function (id) { set(id, 'settings', 'Settings', 'aria-label'); });
       set('emb-info', 'info', 'About this broadcast', 'aria-label'); set('emb-info', 'info', 'About this broadcast', 'title');
@@ -781,6 +805,7 @@
       row('emb-m-captions', 'captions', 'Captions');
       row('emb-m-audioonly', 'audioOnly', 'Audio only');
       row('emb-m-inset', 'stagePic', 'Stage picture');
+      row('emb-m-names', 'showNames', 'Show names');
       set('emb-watch', 'watchOn', 'Watch on GifOS');
       set('emb-audionote-txt', 'audioOnly', 'Audio only');
       set('emb-card-title', 'cardTitle', 'Watch clearly');
@@ -826,12 +851,14 @@
     // Input: unmute, mute, the password, the bar and its panels. Runs after the core's top level.
     function setup() {
     $('emb-play').onclick = function () { if (hostedNow()) hear(true); };
+    $('emb-unblur').onclick = function () { try { C.tapUnblur(); } catch (e) {} paint(); };
     setInterval(function () { try { paint(); } catch (e) {} }, GifOS.timings.EMBED_HOSTED_MS);   // re-read the live host state
     $('emb-mute').onclick = function () { if (hostedNow() || M.serviceHeard) hear(!M.serviceHeard); };
     $('emb-lock').onclick = function () { names.showPwModal(true); };
     $('emb-tabmenu').onchange = function () { pick(this.value); };
     $('emb-inset-min').onclick = function (e) { e.stopPropagation(); toggleInset(); };
     $('emb-m-inset').onclick = function () { toggleInset(); };
+    $('emb-m-names').onclick = function () { showNames = !showNames; GifOS.hideNames = !showNames; lsSet('gifos.embed.names', showNames ? '1' : '0'); syncRows(); };
     (function drag() {   // pointer drag of the inset; on release it snaps to the nearest corner
       var sf = stagefeedEl, start = null;
       sf.addEventListener('pointerdown', function (e) {
