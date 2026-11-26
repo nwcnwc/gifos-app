@@ -837,6 +837,9 @@
       if (!rec || !rec.on) return;
       const key = roomKey();
       if (!key || hostBotAsked === key) return;
+      // Only once the host holds a seat through the relay: a bot woken earlier reached the relay first and founded the
+      // room on the open key, and the host's lock then sent it back to the door (pw-boot), so it never heard the order.
+      if (!relayUp() || !meshCoord()) return;
       hostBotAsked = key;
       if (hostRecOrder()) return;
       const tok = uid('hr');
