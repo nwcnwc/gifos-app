@@ -225,8 +225,9 @@
     m.style.display = '';
     return m;
   }
-  // clearButtons(C, bar, cls): keep the three buttons in `bar` in step with the core's answer (call on every repaint).
-  function clearButtons(C, bar, cls) {
+  // clearButtons(C, bar, cls, before): keep the three buttons in `bar` in step with the core's answer (call on every repaint);
+  // made in front of `before` when given (the embed keeps its text buttons left of its icon row), else at the end.
+  function clearButtons(C, bar, cls, before) {
     if (!bar) return;
     var st = { mode: '', tapped: false };
     try { st = C.clearNoPwState() || st; } catch (e) {}
@@ -236,7 +237,7 @@
       if (!b) {
         b = document.createElement('button'); b.type = 'button'; b.id = id; if (cls) b.className = cls; b.hidden = true;
         b.onclick = id === 'clear-tap' ? function () { try { C.tapUnblur(); } catch (e) {} } : id === 'clear-reblur' ? function () { try { C.blurAgain(); } catch (e) {} } : function () { clearReport(C); };
-        bar.appendChild(b);
+        if (before && before.parentNode === bar) bar.insertBefore(b, before); else bar.appendChild(b);
       }
       els[id] = b;
     });

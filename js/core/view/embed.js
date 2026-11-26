@@ -172,7 +172,7 @@
       if (msg.textContent !== mt) msg.textContent = mt;
       msg.hidden = !mt || !card.hidden;
       $('emb-lock').hidden = !(C.pwBlocked && card.hidden);
-      K.clearButtons(C, document.querySelector('.emb-bar'), 'emb-btn');   // a hosted room with a clear right: the viewer's own tap, as on /meet
+      K.clearButtons(C, document.querySelector('.emb-bar'), 'emb-btn', document.querySelector('.emb-bar .emb-fill'));   // a hosted room with a clear right: the viewer's own tap, as on /meet; text buttons beside Unmute, before the icons and the gear
       document.body.classList.toggle('emb-audioonly', audioOnly);
       $('emb-audionote').hidden = !(audioOnly && hosted && why === 'ok');
       paintInsetRow();
