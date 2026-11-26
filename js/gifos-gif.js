@@ -266,7 +266,7 @@
   //
   // Three rules keep it from doing harm:
   //  1. PACKING, NOT SAVING. encode() and embed() add it — those MAKE an app
-  //     GIF. Bare repack() never does: it swaps the data block of a GIF that
+  //     GIF. Bare repack() never does (addRemixDoc() below is the explicit, unsigned-only download path): it swaps the data block of a GIF that
   //     already exists (a state save, a credits seal, a passkey wrap), and a
   //     file appearing there would change the signed files digest and turn a
   //     legitimately signed app TAMPERED (gifos-sign.js "canonical content
@@ -344,6 +344,20 @@
       out[REMIX_DOC] = doc;
       return out;
     });
+  }
+
+  // addRemixDoc: the DOWNLOAD half of rule 1. A GIF GifOS hands out must carry
+  // the guide even if it was packed before the guide existed (a stolen or old
+  // app). Returns the bytes untouched when the guide is already inside, when
+  // it is not an app, or when the GIF is SIGNED — a signed GIF is never altered
+  // in place (a file appearing would turn it TAMPERED); store apps get their
+  // guide from the signing run instead. An author's own llms.txt wins.
+  function addRemixDoc(bytes) {
+    return decode(bytes).then((archive) => {
+      if (!archive || !archive.files || archive.files[REMIX_DOC] || !hasEntry(archive.files)) return bytes;
+      if (findAppExtSpan(bytes, 'GIFOSSIG', 'GOS')) return bytes;
+      return withRemixDoc(archive.files).then((f) => (f === archive.files ? bytes : repack(bytes, f)));
+    }).catch(() => bytes);
   }
 
   // ---- the archive: two formats, one framing -------------------------------
@@ -1145,7 +1159,7 @@
     encode, decode, repack, embed, looksLikeGifosGif, readManifest, readManifestFrom, readFilesFrom, systemPage,
     b64encode, b64decode, textToBytes, bytesToText,
     findAppExtSpan, appExtBlock, stripForDisplay,
-    setRemixDoc, REMIX_DOC, inflateMaxBytes, inflate,
+    setRemixDoc, addRemixDoc, REMIX_DOC, inflateMaxBytes, inflate,
     setArchiveVersion, isArchiveV2,
     MARKER: GIFOS_MARKER,
   };
