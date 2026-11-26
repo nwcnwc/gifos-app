@@ -25143,15 +25143,20 @@
     // name, link, meeting tag, key, signature or content; no uploads ever): the host's verified plan for 'all', the
     // room ACL's c (the host right the relay took the Stage item from) for 'stage'. GifOS can then revoke it.
     // -> 'sent' | 'failed' | 'none' (no clear right here).
-    async function reportClearHost() {
+    async function reportClearHost(cat, ref) {
       const mode = clearNoPwMode();
       const c = mode === 'all' ? subsTier && subsTier.cred : mode === 'stage' ? (hostStageAcl() || {}).c : null;
       if (!c || !c.subId) return 'none';
       const cred = { subId: c.subId };
       if (c.pid) cred.pid = c.pid;
       const base = String(window.GIFOS_PAY_URL || 'https://pay.gifos.app').replace(/\/$/, '');
+      // cat: 'illegal' | 'offensive' | 'other' (the sheet's choice); ref: the page this came from (the embedding site for an
+      // embed), no query or hash. Both optional; the server adds the reporter's IP for abuse review (privacy policy).
+      const body = { v: 1, cred };
+      if (cat === 'illegal' || cat === 'offensive' || cat === 'other') body.cat = cat;
+      if (typeof ref === 'string' && /^https?:\/\/[^\s#?]{1,290}$/.test(ref)) body.ref = ref;
       try {
-        const r = await fetch(base + '/gifos/report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ v: 1, cred }), referrerPolicy: 'no-referrer', credentials: 'omit' });
+        const r = await fetch(base + '/gifos/report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), referrerPolicy: 'no-referrer', credentials: 'omit' });
         return r.ok ? 'sent' : 'failed';
       } catch (e) { return 'failed'; }
     }

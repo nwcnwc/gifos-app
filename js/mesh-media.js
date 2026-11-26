@@ -553,7 +553,7 @@
         const lw = Math.max(2, cell * 0.035);
         surf.stroke('#37d67a', lw, dx + lw / 2, dy + lw / 2, cell - lw, cell - lw);
       }
-      if (lbl.name) surf.label(String(lbl.name), dx, dy, cell, cell);
+      if (lbl.name && !GifOS.hideNames) surf.label(String(lbl.name), dx, dy, cell, cell);
       if (lbl.hand) {
         const r = Math.max(6, cell * 0.12);
         surf.glyph('✋', dx + cell - r * 1.6, dy + r * 0.3, r * 1.4 | 0);
