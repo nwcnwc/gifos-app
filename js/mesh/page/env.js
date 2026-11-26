@@ -665,7 +665,9 @@
       const dn = topo.down(c); if (dn.pc > c.pc && held(dn)) fwd++;
       const own = measure.lgCamOn && !measure.lgCamOn() ? 0 : rx, park = s.bkId >= 0 ? 1 + rx : 0, woke = measure.lgWoke ? measure.lgWoke() : 0;
       // L29.0: a Section-1 head's duty (sim mesh_lguard.inc lgDuties): each row-mate taken in L29_PARK, the row block and the
-      // row view L29_HOT each (high), one mix per child branch of its row L29_HOT (low); only where there is a room to serve.
+      // room pack L29_HOT each (high); the room pack is encoded once for every child branch, so no low share. Only where there
+      // is a room to serve. L29.0.1: a class budget holds the heaviest such cell whole (LG_CELL_MAX), so only a measured
+      // shortfall (lgHealth) makes a healthy device shed.
       let hd = 0, hlow = 0;
       if (c.pc === 0 && c.i === 0) {
         let mates = 0, kids = 0, heads = 0;
