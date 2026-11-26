@@ -10,7 +10,7 @@
 
 GifOS Meet is free browser video meetings at https://meet.gifos.app (the same
 as https://gifos.app/meet). There are two kinds of meeting, named on the
-lobby's tabs "Open" (a public majority-rules meeting, also called an open meeting: anyone with the link joins; everyone inside can set the password, and anyone with a $5+ plan can take over as host while they're connected) and
+lobby's tabs "Open" (a public majority-rules meeting, also called an open meeting: anyone with the link joins; everyone inside can set the password) and
 "Host" ("Host a private meeting" on the Invite sheet; a private, hosted meeting: the host has a host
 password and can lock the room and remove people). To host or run meetings
 with a bot (welcome bot, scheduled meetings, public majority-rules meetings,
@@ -49,8 +49,8 @@ Two build paths, in order of preference:
 A hosted GifOS Broadcast (gifos.app/cast) can play inside any web page, like
 a video player. It plays only while the room is HOSTED RIGHT NOW: a hosted
 meeting or broadcast (link https://gifos.app/cast#room=ROOM&v=VERIFIER (or the pretty /cast/ROOM/VERIFIER)) whose host is
-in the room, or a public majority-rules meeting a subscriber has taken charge
-of, while they are in it. The player reads that live from the room's signed host
+in the room, or a public majority-rules meeting a GifOS staff bot holds (as
+our bot holds /welcome), while it is in it. The player reads that live from the room's signed host
 state; until then, and after the host leaves, it shows "This meeting isn't
 hosted right now" and plays nothing, then starts by itself. VERIFIER is
 optional: leave it out for a public majority-rules meeting.

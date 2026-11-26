@@ -24,7 +24,8 @@
  * without one, everyone has the DEFAULTS (free is no plan at all), read where it is sold. Passes have a window that may never
  * end; what is sold or minted (PASS_PRESETS):
  * the $1 four-hour pass (the Unlimited plan's meeting rights for four hours,
- * without capturing an open room) and the staff pass (no end, captures).
+ * without capturing an open room) and the staff pass (no end; the only
+ * credential that captures an open room, minted for our own bots).
  * Free: open rooms without limit, voice (never video) across networks that
  * block direct connections, and admin rooms of up to 5 people (Nathan,
  * 2026-11-11). The free plan has a license too, signed without PayPal and
@@ -122,11 +123,13 @@
   // The meeting-count plans: Unlimited's meeting rights ("unlimited hosting") in N meetings at once. Vouches stay
   // Unlimited's 6: the vouch is per meeting, so N meetings already vouch N times over. overflow: Family business asks
   // (personal and family scale); the organization plans keep (nobody pulls the plan from a colleague's meeting).
-  const many = (n, overflow) => g(null, true, true, 6, false, n, 0, overflow);
+  // No plan takes charge of an open room (captureOpenRoom false everywhere; Nathan 2026-11-26: "not in any user plans
+  // yet"): only the staff preset, minted for our own welcome bots, carries it.
+  const many = (n, overflow) => g(null, true, false, 6, false, n, 0, overflow);
   const TIERS = {
     room20: tier('room20', 'Private meetings, up to 20 people', { monthly: 200, yearly: 2000 }, true, g(PEOPLE_LIMIT, true, false, 3, false, 1)),
-    unlimited: tier('unlimited', 'Private meetings, unlimited people', { monthly: 500, yearly: 5000 }, true, g(null, true, true, 6, false, 1)),
-    streamer: tier('streamer', 'Streamer: unlimited private meetings and storage', { monthly: 1000, yearly: 10000 }, true, g(null, true, true, 20, true, 1)),
+    unlimited: tier('unlimited', 'Private meetings, unlimited people', { monthly: 500, yearly: 5000 }, true, g(null, true, false, 6, false, 1)),
+    streamer: tier('streamer', 'Streamer: unlimited private meetings and storage', { monthly: 1000, yearly: 10000 }, true, g(null, true, false, 20, true, 1)),
     family: tier('family', 'Family business: up to 5 meetings at once', { monthly: 1990, yearly: 19900 }, true, many(5)),
     smallBusiness: tier('smallBusiness', 'Small business: up to 10 meetings at once', { monthly: 3490, yearly: 34900 }, false, many(10, 'keep')),
     business: tier('business', 'Business: up to 100 meetings at once', { yearly: 299900 }, false, many(100, 'keep')),
@@ -156,7 +159,7 @@
   const GRANT_LABELS = Object.freeze([
     ['roomLimit', 'none', 'peopleAny', BOTH], ['roomLimit', 'n', 'peopleUpTo', BOTH],
     ['turnVideoLinks', 'some', 'video', BOTH], ['turnVideoLinks', 'zero', 'voice', BOTH],
-    ['captureOpenRoom', 'on', 'capture', BOTH], ['admitAtFullDoor', 'on', 'fullDoor', BOTH],
+    ['admitAtFullDoor', 'on', 'fullDoor', BOTH],   // captureOpenRoom has no row: staff only, never offered (2026-11-26)
     ['meetings', 'one', 'one', BOTH], ['meetings', 'many', 'many', BOTH],
     ['agentHost', 'some', 'bot', BOTH],
     ['clearWithoutPassword', 'on', 'clear', BOTH], ['clearStageInAdminRoom', 'on', 'clearStage', BOTH],
@@ -645,11 +648,12 @@
   // of the timings table), or null: it never ends. sold: offered to buyers.
   const PASS_PRESETS = Object.freeze({
     // $1, one PayPal order (or a store purchase): Unlimited's meeting rights for four hours, one meeting at a time (meetings 1),
-    // past any full door, but never capturing an open room (that stays with the $5 and $10 subscriptions).
-    pass4h: Object.freeze({ plan: 'unlimited', grants: Object.freeze(Object.assign({}, TIERS.unlimited.grants, { captureOpenRoom: false })), seconds: passSeconds, price: '$1', value: '1.00', sold: true }),
+    // past any full door, never capturing an open room (no plan or pass sold does).
+    pass4h: Object.freeze({ plan: 'unlimited', grants: TIERS.unlimited.grants, seconds: passSeconds, price: '$1', value: '1.00', sold: true }),
     // Ours, minted with the pay key for our own bots, never sold: Unlimited, captures an open room, never ends; one
     // meeting at a time (several sessions of one pass in the SAME meeting all renew: sibling bots may share one pass).
-    staff: Object.freeze({ plan: 'unlimited', grants: TIERS.unlimited.grants, seconds: () => null, sold: false }),
+    // The ONLY preset that captures an open room (our welcome bots keep /welcome).
+    staff: Object.freeze({ plan: 'unlimited', grants: Object.freeze(Object.assign({}, TIERS.unlimited.grants, { captureOpenRoom: true })), seconds: () => null, sold: false }),
   });
   // presetPass(name, start) -> {plan, grants, end} for a new pass of that preset.
   function presetPass(name, start) {

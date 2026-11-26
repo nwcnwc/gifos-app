@@ -1516,7 +1516,7 @@
     const passEnd = chain ? chain.until : 0;
     const best = chain ? SUB.heldRights([base, SUB.passRights(Object.assign({}, chain.live, { end: Number.isFinite(passEnd) ? passEnd : null }))]) : base;
     // grants: the line items in effect now (the union held), what a page decides on; tier stays the name to show.
-    const now = best.pass ? { tier: best.tier, why: 'pass', until: passEnd, grants: best.grants, passGrants: chain.live.grants } : base.signed ? { tier: base.tier, why: 'sub', until: base.until, grants: base.grants } : { tier: null, why: 'none', grants: null };
+    const now = best.pass ? { tier: best.tier, why: 'pass', until: passEnd, grants: best.grants, passGrants: chain.live.grants, passLen: Number.isFinite(chain.live.end) ? chain.live.end - chain.live.start : null } : base.signed ? { tier: base.tier, why: 'sub', until: base.until, grants: base.grants } : { tier: null, why: 'none', grants: null };
     const then = best.pass && base.signed ? base.tier : null;
     // Passes under a kept key (not the wallet in use): still held, listed, chosen again when they give more.
     const inUse = SUB.walletOk(readJson(WALLET_KEY));
