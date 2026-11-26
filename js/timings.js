@@ -244,6 +244,7 @@
     SPK_IDLE_MS: 8000,   // ms
     SPK_MAX_MS: 25000,   // ms
     SPK_MIN_MS: 250,   // ms
+    SPK_SYNC_MS: 1000,   // ms
     SPK_TICK_MS: 50,   // ms
     STABLE_MS: 5000,   // ms
     STAGE_FACE_SETTLE_MS: 2500,   // ms

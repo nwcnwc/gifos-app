@@ -345,7 +345,8 @@
         ch.onmessage = function (e) { var d = e && e.data; if (d && d.t === 'ack' && d.id === id) finish('running'); };
         try { ch.postMessage({ t: 'wake', id: id, appId: rec.appId, info: info }); } catch (e) {}
       }
-      setTimeout(function () { if (!done) finish(hbOpen(rec, id, info) ? 'opened' : 'blocked'); }, ch ? HB_ACK_MS : 0);
+      var noAnswer = function () { if (!done) finish(hbOpen(rec, id, info) ? 'opened' : 'blocked'); };
+      if (ch) setTimeout(noAnswer, HB_ACK_MS); else noAnswer();
     });
   }
   // App side (the runtime that mounts the app): the wake this tab was opened for, read once.
@@ -464,7 +465,7 @@
     var syncAt = 0;
     function tick() {
       var now = Date.now();
-      if (now - syncAt > 1000) { syncAt = now; sync(); }
+      if (now - syncAt > TM.SPK_SYNC_MS) { syncAt = now; sync(); }
       live.forEach(function (s) {
         s.an.getFloatTimeDomainData(s.buf);
         var sum = 0; for (var i = 0; i < s.buf.length; i++) sum += s.buf[i] * s.buf[i];
