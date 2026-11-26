@@ -677,6 +677,7 @@
           else if (ev.type === 'participants') list = meetSubs.pe;
           else if (ev.type === 'chat') list = meetSubs.ch;
           else if (ev.type === 'xfer') list = meetSubs.xf;
+          else if (ev.type === 'hostWake') list = meetSubs.hw;
           for (var mi = 0; mi < list.length; mi++) { try { list[mi](ev); } catch (err) {} }
         }
         // Provider service plumbing (docs/providers.md): when this app is
@@ -715,7 +716,7 @@
         }
       });
       var provHandlers = null;
-      var meetSubs = { tr: [], pe: [], ch: [], xf: [] };
+      var meetSubs = { tr: [], pe: [], ch: [], xf: [], hw: [] };
       var roomCbs = [], roomLast = null;
       // Android Chrome only lets the container's Back trap "stick" once the page
       // has real user activation, and the user touches the APP, not the frame
@@ -1235,7 +1236,17 @@
           onTranscriptLine: function(cb){ if (typeof cb === 'function') meetSubs.tr.push(cb); },
           onParticipants: function(cb){ if (typeof cb === 'function') meetSubs.pe.push(cb); },
           onChat: function(cb){ if (typeof cb === 'function') meetSubs.ch.push(cb); },
-          onXfer: function(cb){ if (typeof cb === 'function') meetSubs.xf.push(cb); }
+          onXfer: function(cb){ if (typeof cb === 'function') meetSubs.xf.push(cb); },
+          // THE HOST'S BOT. hostBot({ on, name }) asks this device to wake this app whenever it
+          // hosts a meeting (the OS asks the person first); hostBot() reads it back. onHostWake(cb)
+          // receives each wake: { link, password, tok, host, room } of the meeting being hosted.
+          hostBot: function(opts){ return rpc(opts ? { type:'meet', op:'hostBot', on: !!opts.on, name: opts.name == null ? '' : String(opts.name) } : { type:'meet', op:'hostBot' }); },
+          onHostWake: function(cb){ if (typeof cb === 'function') { meetSubs.hw.push(cb); rpc({ type:'meet', op:'hostWakeReady' }).catch(function(){}); } },
+          // A recording bot seat: the host's signed order, per-speaker clips, and the share pictures it kept.
+          hostOrder: function(id){ return rpc({ type:'meet', op:'hostOrder', meetingId: id }); },
+          speakers: function(id, on){ return rpc({ type:'meet', op:'speakers', meetingId: id, on: !!on }); },
+          speakerClips: function(id){ return rpc({ type:'meet', op:'speakerClips', meetingId: id }); },
+          shots: function(id){ return rpc({ type:'meet', op:'shots', meetingId: id }); }
         }
       };
     })();`;
@@ -2540,6 +2551,7 @@
       fd.append('file', blob, 'clip.' + ((d.mime || 'audio/webm').split('/')[1] || 'webm').split(';')[0]);
       fd.append('model', c.model || 'whisper-1');
       if (d.language) fd.append('language', d.language);
+      if (d.prompt) fd.append('prompt', String(d.prompt).slice(0, 400));
       return root.fetch(url, { method: 'POST', headers: auth, body: fd })
         .then((r) => r.ok ? r.json() : asError(r)).then((j) => ({ text: j.text || '', raw: j }));
     }
@@ -2975,7 +2987,7 @@
   function providerReq(role, op, d) {
     if (op === 'chat') return { op, role, messages: d.messages || [{ role: 'user', content: String(d.prompt || '') }], temperature: d.temperature, maxTokens: d.maxTokens };
     if (op === 'tts') return { op, role, text: String(d.text || ''), voice: d.voice, format: d.format, speed: d.speed, pitch: d.pitch };
-    if (op === 'stt') return { op, role, bytes: d.bytes || d.audio || null, mime: d.mime, language: d.language };
+    if (op === 'stt') return { op, role, bytes: d.bytes || d.audio || null, mime: d.mime, language: d.language, prompt: d.prompt ? String(d.prompt).slice(0, 400) : undefined };   // prompt: names and words to spell right (Whisper's initial prompt)
     if (op === 'image') return { op, role, prompt: String(d.prompt || ''), size: d.size };
     return { op, role, prompt: d.prompt, image: d.image, size: d.size, seconds: d.seconds };
   }
@@ -3550,6 +3562,58 @@
         bg.addEventListener('click', function (e) { if (e.target === bg) done(false); });
       } catch (e) { resolve(false); }
     });
+  }
+  // THE HOST'S BOT (GifOS.hostBot in meet-host.js). Turning it on asks the person: from then on,
+  // every meeting this device hosts opens this app and lets it join as a bot that records.
+  function confirmHostBot(manifest, name) {
+    return new Promise(function (resolve) {
+      try {
+        const doc = root.document; if (!doc || !doc.body) return resolve(false);
+        const old = doc.getElementById('gifos-hostbot-modal'); if (old) old.remove();
+        const appRaw = (manifest && (manifest.shortName || manifest.name || manifest.appId)) || T('runtime.thisApp');
+        const bg = doc.createElement('div'); bg.id = 'gifos-hostbot-modal'; bg.className = 'perm-modal';
+        bg.setAttribute('style', 'position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:1.2rem;');
+        const box = doc.createElement('div'); box.className = 'perm-box';
+        box.setAttribute('style', 'background:#14141f;color:#e8e8f4;border:1px solid #2a2a3f;border-radius:.8rem;max-width:25rem;width:100%;padding:1.2rem;font:15px/1.55 system-ui,-apple-system,sans-serif;');
+        box.innerHTML = '<h3 style="margin:0 0 .5rem;font-size:1.1rem">' + escHtml(T('runtime.hostbot.title', { app: appRaw })) + '</h3>' +
+          '<p style="color:#b6b6cf;font-size:.9rem;margin:0 0 .6rem">' + escHtml(T('runtime.hostbot.body', { app: appRaw, name: name || appRaw })) + '</p>' +
+          '<p style="color:#b6b6cf;font-size:.9rem;margin:0 0 .9rem">' + escHtml(T('runtime.hostbot.consent')) + '</p>' +
+          '<div style="display:flex;gap:.6rem;justify-content:flex-end"><button id="gifos-hostbot-no" style="padding:.5rem 1.1rem;border-radius:.5rem;border:1px solid #2a2a3f;background:transparent;color:#b6b6cf;cursor:pointer;font:inherit">' + escHtml(T('runtime.hostbot.no')) + '</button>' +
+          '<button id="gifos-hostbot-yes" style="padding:.5rem 1.3rem;border-radius:.5rem;border:none;background:#7b5cff;color:#fff;cursor:pointer;font:inherit">' + escHtml(T('runtime.hostbot.yes')) + '</button></div>';
+        bg.appendChild(box); doc.body.appendChild(bg);
+        const done = function (yes) { bg.remove(); resolve(yes); };
+        box.querySelector('#gifos-hostbot-yes').onclick = function () { done(true); };
+        box.querySelector('#gifos-hostbot-no').onclick = function () { done(false); };
+        bg.addEventListener('click', function (e) { if (e.target === bg) done(false); });
+      } catch (e) { resolve(false); }
+    });
+  }
+  function hostBotOp(manifest, d) {
+    const HB = root.GifOS && root.GifOS.hostBot;
+    if (!HB) return Promise.reject(new Error('Meetings are not available on this page.'));
+    const appId = String((manifest && manifest.appId) || '');
+    const cur = HB.get();
+    const mine = cur && cur.appId === appId ? cur : null;
+    const view = (r) => ({ on: !!(r && r.on), name: (r && r.name) || '' });
+    if (d.on === undefined) return Promise.resolve(view(mine));
+    if (!d.on) return Promise.resolve(view(mine ? HB.set(Object.assign({}, mine, { on: false })) : null));
+    const name = String(d.name || '').slice(0, 40);
+    const save = () => view(HB.set({ appId: appId, name: name, hash: String(root.location.hash || ''), on: true }));
+    // Already allowed for this app: a new name or a moved tab needs no second question.
+    if (mine && mine.on) return Promise.resolve(save());
+    return confirmHostBot(manifest, name).then((yes) => (yes ? save() : view(mine)));
+  }
+  // The app is listening for wakes: hand it the one this tab was opened for, then any a Meet page sends.
+  function hostWakeArm(manifest, iframe) {
+    const HB = root.GifOS && root.GifOS.hostBot;
+    if (!HB || !iframe || iframe._hbArmed) return;
+    iframe._hbArmed = true;
+    const appId = String((manifest && manifest.appId) || '');
+    const send = (info) => { try { iframe.contentWindow.postMessage({ ns: 'gifos', type: 'meet-event', event: Object.assign({}, info, { type: 'hostWake' }) }, '*'); } catch (e) {} };
+    let note = null;
+    try { note = HB.takeNote(new URLSearchParams(String(root.location.hash || '').replace(/^#/, '')).get('hb')); } catch (e) { note = null; }
+    if (note) send(note);
+    HB.listen(appId, send);
   }
   // The picture sheet: same consent as a rename. The preview is a real <img>
   // of the data URL, so a GIF keeps animating while the person decides.
@@ -4402,6 +4466,12 @@
             else if (op === 'watch') done(host.watch(d.meetingId, !!d.on));
             else if (op === 'meetingState') done(host.meetingState(d.meetingId));
             else if (op === 'snapshot') done(host.snapshot(d.meetingId));
+            else if (op === 'hostOrder') done(host.hostOrder(d.meetingId));
+            else if (op === 'speakers') done(host.speakers(d.meetingId, !!d.on));
+            else if (op === 'speakerClips') done(host.speakerClips(d.meetingId));
+            else if (op === 'shots') done(host.shots(d.meetingId));
+            else if (op === 'hostBot') done(hostBotOp(manifest, d));
+            else if (op === 'hostWakeReady') { hostWakeArm(manifest, iframe); reply({ ok: true, result: true }); }
             else reply({ ok: false, error: 'Unknown meet op.' });
           }
         }

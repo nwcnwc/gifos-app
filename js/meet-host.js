@@ -280,6 +280,10 @@
     watch: function (id, on) { return setWatch(id, !!on); },
     meetingState: function (id) { return call(id, 'meetingState', {}); },
     snapshot: function (id) { return call(id, 'snapshot', {}); },
+    hostOrder: function (id) { return call(id, 'hostOrder', {}); },
+    speakers: function (id, on) { return call(id, 'speakers', { on: !!on }); },
+    speakerClips: function (id) { return call(id, 'speakerClips', {}); },
+    shots: function (id) { return call(id, 'shots', {}); },
     suppressBotLine: suppressBotLine,
     dropWhisperNoise: dropWhisperNoise,
     onApp: function (win) { appWin = win || null; },
@@ -291,6 +295,210 @@
       }));
     }
   };
+
+  // THE HOST'S BOT (the OS layer between the Meet page and a bot app; neither imports the other).
+  // An app with the Meet ability may ask, once, to be woken whenever this device hosts a meeting
+  // (gifos.meet.hostBot({ on: true, name })). The record lives on this device only. When the Meet
+  // page starts hosting it calls summon(): a tab of that app already open answers on a
+  // BroadcastChannel; otherwise the OS opens the app in a new tab and hands the wake over through
+  // a one-time local note (read once, then deleted). Nothing here touches the network.
+  var TM = (root.GifOS && root.GifOS.timings) || {};   // js/timings.js (HOSTBOT_*, SPK_*), loaded before this file
+  var HB_KEY = 'gifos_host_bot', HB_NOTE = 'gifos_hb_', HB_CH = 'gifos-hostbot', HB_NOTE_MS = TM.HOSTBOT_NOTE_MS, HB_ACK_MS = TM.HOSTBOT_ACK_MS;
+  function hbGet() {
+    try {
+      var r = JSON.parse(root.localStorage.getItem(HB_KEY) || 'null');
+      return (r && typeof r === 'object' && r.appId && typeof r.hash === 'string') ? r : null;
+    } catch (e) { return null; }
+  }
+  function hbSet(rec) {
+    if (!rec || !rec.appId) return null;
+    var hash = String(rec.hash || '').replace(/(^|&)hb=[^&]*/g, '').replace(/^#?&?/, '#');
+    var out = { appId: String(rec.appId), name: String(rec.name || '').slice(0, 40), hash: hash, on: !!rec.on, at: Date.now() };
+    try { root.localStorage.setItem(HB_KEY, JSON.stringify(out)); } catch (e) {}
+    return out;
+  }
+  function hbId() { return 'hb' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+  function hbChannel() { try { return typeof root.BroadcastChannel === 'function' ? new root.BroadcastChannel(HB_CH) : null; } catch (e) { return null; } }
+  function hbOpen(rec, id, info) {
+    try { root.localStorage.setItem(HB_NOTE + id, JSON.stringify({ at: Date.now(), info: info })); } catch (e) {}
+    var w = null;
+    try { w = root.open('run.html' + rec.hash + (rec.hash.length > 1 ? '&' : '') + 'hb=' + id, '_blank'); } catch (e) { w = null; }
+    if (!w) { try { root.localStorage.removeItem(HB_NOTE + id); } catch (e) {} }
+    return !!w;
+  }
+  // Meet page side. info: { link, password, tok, host, room }. -> { how: 'none' | 'running' | 'opened' | 'blocked', open() }
+  function hbSummon(info) {
+    var rec = hbGet();
+    if (!rec || !rec.on) return Promise.resolve({ how: 'none' });
+    var id = hbId();
+    var ch = hbChannel();
+    return new Promise(function (resolve) {
+      var done = false;
+      var finish = function (how) {
+        if (done) return; done = true;
+        try { if (ch) ch.close(); } catch (e) {}
+        var out = { how: how, name: rec.name, appId: rec.appId };
+        if (how === 'blocked') out.open = function () { return hbOpen(rec, hbId(), info); };
+        resolve(out);
+      };
+      if (ch) {
+        ch.onmessage = function (e) { var d = e && e.data; if (d && d.t === 'ack' && d.id === id) finish('running'); };
+        try { ch.postMessage({ t: 'wake', id: id, appId: rec.appId, info: info }); } catch (e) {}
+      }
+      setTimeout(function () { if (!done) finish(hbOpen(rec, id, info) ? 'opened' : 'blocked'); }, ch ? HB_ACK_MS : 0);
+    });
+  }
+  // App side (the runtime that mounts the app): the wake this tab was opened for, read once.
+  function hbTakeNote(id) {
+    if (!id) return null;
+    var k = HB_NOTE + id, raw = null;
+    try { raw = root.localStorage.getItem(k); root.localStorage.removeItem(k); } catch (e) { raw = null; }
+    // Old notes another tab never collected are cleared as they are found.
+    try {
+      for (var i = root.localStorage.length - 1; i >= 0; i--) {
+        var key = root.localStorage.key(i);
+        if (!key || key.indexOf(HB_NOTE) !== 0) continue;
+        var o = null; try { o = JSON.parse(root.localStorage.getItem(key)); } catch (e) { o = null; }
+        if (!o || !(Date.now() - (+o.at || 0) < HB_NOTE_MS)) root.localStorage.removeItem(key);
+      }
+    } catch (e) {}
+    try { var n = JSON.parse(raw || 'null'); return (n && Date.now() - (+n.at || 0) < HB_NOTE_MS) ? n.info : null; } catch (e) { return null; }
+  }
+  // A running tab of the registered app answers wakes for it. -> stop()
+  function hbListen(appId, deliver) {
+    var ch = hbChannel();
+    if (!ch) return function () {};
+    ch.onmessage = function (e) {
+      var d = e && e.data;
+      if (!d || d.t !== 'wake' || d.appId !== appId) return;
+      var rec = hbGet();
+      if (!rec || !rec.on || rec.appId !== appId) return;
+      try { ch.postMessage({ t: 'ack', id: d.id }); } catch (err) {}
+      deliver(d.info || {});
+    };
+    return function () { try { ch.close(); } catch (e) {} };
+  }
+
+  // SPEAKER CLIPS (a bot seat that records for a transcript). One recorder per person, cut at the
+  // pauses: a clip runs from the end of that person's last utterance to the end of this one, so a
+  // first syllable is never lost, and a quiet stretch is thrown away. Pure state machine first (node
+  // tests drive it), then the browser part that feeds it levels and owns the MediaRecorders.
+  var SEG = { th: 0.012, hangMs: TM.SPK_HANG_MS, maxMs: TM.SPK_MAX_MS, idleMs: TM.SPK_IDLE_MS, minMs: TM.SPK_MIN_MS };
+  function segmenter(opts) {
+    var o = {}; var k; for (k in SEG) o[k] = SEG[k]; if (opts) for (k in opts) o[k] = opts[k];
+    var clipAt = null, speaking = false, speechAt = 0, lastVoice = 0, voiced = 0, prevAt = 0;
+    return {
+      opts: o,
+      start: function (now) { clipAt = now; speaking = false; voiced = 0; prevAt = now; },
+      // level: RMS 0..1. -> null, or { cut: 'keep', at, end } (a clip with speech ends now) or { cut: 'drop' } (silence, start over)
+      feed: function (level, now) {
+        if (clipAt === null) this.start(now);
+        var dt = Math.max(0, now - prevAt); prevAt = now;
+        if (level > o.th) { if (!speaking) { speaking = true; speechAt = now; } lastVoice = now; voiced += dt; }
+        if (speaking && (now - lastVoice > o.hangMs || now - speechAt >= o.maxMs)) {
+          var r = voiced >= o.minMs ? { cut: 'keep', at: speechAt, end: lastVoice, clipAt: clipAt } : { cut: 'drop' };
+          this.start(now);
+          return r;
+        }
+        if (!speaking && now - clipAt > o.idleMs) { this.start(now); return { cut: 'drop' }; }
+        return null;
+      }
+    };
+  }
+  // sources() -> [{ id, name, lang, stream }]. Clips stay in this page's memory until take() hands them over.
+  function speakerRec(sources, opts) {
+    opts = opts || {};
+    var Ctx = root.AudioContext || root.webkitAudioContext;
+    if (!Ctx || typeof root.MediaRecorder !== 'function') throw new Error('This browser cannot record speakers.');
+    var ac = new Ctx(), live = new Map(), clips = [], timer = null, on = true, tickMs = opts.tickMs || TM.SPK_TICK_MS;
+    var mime = (root.MediaRecorder.isTypeSupported && root.MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) ? 'audio/webm;codecs=opus' : '';
+    function newRec(s) {
+      var parts = [];
+      var r = new root.MediaRecorder(new MediaStream(s.track ? [s.track] : s.stream.getAudioTracks()), mime ? { mimeType: mime, audioBitsPerSecond: 32000 } : undefined);
+      r.ondataavailable = function (e) { if (e.data && e.data.size) parts.push(e.data); };
+      r.start();
+      return { r: r, parts: parts };
+    }
+    function cut(s, keep, meta) {
+      var old = s.rec;
+      s.rec = on ? newRec(s) : null;
+      if (!old) return;
+      old.r.onstop = function () {
+        if (!keep) { old.parts.length = 0; return; }
+        var blob = new Blob(old.parts, { type: old.r.mimeType || mime || 'audio/webm' });
+        old.parts.length = 0;
+        clips.push({ id: s.id, name: s.name, lang: s.lang, at: meta.at, end: meta.end, clipAt: meta.clipAt, mime: blob.type, blob: blob });
+      };
+      try { old.r.stop(); } catch (e) {}
+    }
+    function sync() {
+      var seen = new Set();
+      var list = [];
+      try { list = sources() || []; } catch (e) { list = []; }
+      list.forEach(function (src) {
+        if (!src || !src.id || !src.stream) return;
+        var tr = src.stream.getAudioTracks && src.stream.getAudioTracks().filter(function (t) { return t.readyState === 'live'; })[0];
+        if (!tr) return;
+        seen.add(src.id);
+        var s = live.get(src.id);
+        if (s && s.track !== tr) { stopOne(s, true); s = null; }
+        if (s) { s.name = src.name || s.name; s.lang = src.lang || s.lang; return; }
+        var an = ac.createAnalyser(); an.fftSize = 1024;
+        var node = ac.createMediaStreamSource(new MediaStream([tr]));
+        node.connect(an);
+        s = { id: src.id, name: src.name || '', lang: src.lang || '', stream: src.stream, track: tr, an: an, node: node, buf: new Float32Array(an.fftSize), seg: segmenter(opts.seg) };
+        s.rec = newRec(s);
+        s.seg.start(Date.now());
+        live.set(src.id, s);
+      });
+      live.forEach(function (s, id) { if (!seen.has(id)) stopOne(s, true); });
+    }
+    function stopOne(s, keepSpeech) {
+      live.delete(s.id);
+      try { s.node.disconnect(); } catch (e) {}
+      // Whatever was being said when the person left (or recording stopped) is kept.
+      var r = s.seg.feed(0, Date.now() + s.seg.opts.hangMs + 1);
+      var keep = keepSpeech && r && r.cut === 'keep';
+      var was = on; on = false; cut(s, keep, r || {}); on = was;
+    }
+    var syncAt = 0;
+    function tick() {
+      var now = Date.now();
+      if (now - syncAt > 1000) { syncAt = now; sync(); }
+      live.forEach(function (s) {
+        s.an.getFloatTimeDomainData(s.buf);
+        var sum = 0; for (var i = 0; i < s.buf.length; i++) sum += s.buf[i] * s.buf[i];
+        var r = s.seg.feed(Math.sqrt(sum / s.buf.length), now);
+        if (r) cut(s, r.cut === 'keep', r);
+      });
+    }
+    try { if (ac.state === 'suspended') ac.resume(); } catch (e) {}
+    sync();
+    timer = setInterval(tick, tickMs);
+    return {
+      // -> [{ id, name, lang, at, end, mime, bytes }]; handed over, then gone from this page
+      take: function () {
+        var out = clips.splice(0, clips.length);
+        return Promise.all(out.map(function (c) {
+          return c.blob.arrayBuffer().then(function (b) { var x = { id: c.id, name: c.name, lang: c.lang, at: c.at, end: c.end, clipAt: c.clipAt, mime: c.mime, bytes: b }; c.blob = null; return x; });
+        }));
+      },
+      held: function () { return clips.length; },
+      speakers: function () { return Array.from(live.values()).map(function (s) { return { id: s.id, name: s.name, lang: s.lang }; }); },
+      stop: function () {
+        if (!on) return Promise.resolve();
+        clearInterval(timer); timer = null;
+        Array.from(live.values()).forEach(function (s) { stopOne(s, true); });
+        on = false;
+        // MediaRecorder hands its last data on a later task.
+        return new Promise(function (r) { setTimeout(r, TM.SPK_DRAIN_MS); }).then(function () { try { ac.close(); } catch (e) {} });
+      },
+      // Throw every clip away (the host's order was withdrawn or discarded).
+      drop: function () { clips.length = 0; }
+    };
+  }
+  root.GifOS.hostBot = { get: hbGet, set: hbSet, summon: hbSummon, takeNote: hbTakeNote, listen: hbListen };
+  root.GifOS.speakerRec = { segmenter: segmenter, start: speakerRec };
 
   // Child side. The parent installs nothing here; run.html calls install()
   // only when the hash says this document is a session.

@@ -112,6 +112,8 @@
     HOLDOVER_MS: 60000,   // ms
     HOLD_MAX_MS: 5000,   // ms
     HOLD_SECONDS: 60,   // s
+    HOSTBOT_ACK_MS: 700,   // ms
+    HOSTBOT_NOTE_MS: 120000,   // ms
     HOST_KNOCK_REFRESH_MS: 150000,   // ms
     HOT_VOID_MS: 12000,   // ms
     ICE_BATCH_MS: 50,   // ms
@@ -237,6 +239,12 @@
     SNAP_MS: 1200,   // ms
     SOLO_LOOKUP_SLOW_MS: 10000,   // ms
     SPEAK_HOLD_MS: 500,   // ms
+    SPK_DRAIN_MS: 400,   // ms
+    SPK_HANG_MS: 900,   // ms
+    SPK_IDLE_MS: 8000,   // ms
+    SPK_MAX_MS: 25000,   // ms
+    SPK_MIN_MS: 250,   // ms
+    SPK_TICK_MS: 50,   // ms
     STABLE_MS: 5000,   // ms
     STAGE_FACE_SETTLE_MS: 2500,   // ms
     STAGE_FEED_LOST_MS: 2500,   // ms
