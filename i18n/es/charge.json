@@ -89,7 +89,7 @@
   "charge.receiptView.grantMany": "hasta {n} reuniones a la vez",
   "charge.receiptView.grantVideo": "vídeo que atraviesa los cortafuegos, siempre cifrado de extremo a extremo",
   "charge.receiptView.grantVoice": "voz que atraviesa los cortafuegos, siempre cifrada de extremo a extremo",
-  "charge.receiptView.grantCapture": "tomar el control de reuniones públicas abiertas",
+  "charge.receiptView.grantCapture": "tomar el control de reuniones por mayoría",
   "charge.receiptView.grantStorage": "una biblioteca para grabaciones y transcripciones",
   "charge.receiptView.pass4h": "Pase de cuatro horas",
   "charge.receiptView.pass": "Pase",

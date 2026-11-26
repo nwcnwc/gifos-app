@@ -4,7 +4,7 @@
 > as https://gifos.app/meet). Nothing to install for guests: they open a link.
 
 To host or run meetings with a bot (welcome bot, scheduled meetings, public
-open-floor meetings, private meetings, room passwords, live transcripts,
+majority-rules meetings, private meetings, room passwords, live transcripts,
 notes), install the MCP server:
 https://github.com/nwcnwc/gifos-meet-mcp
 
@@ -85,7 +85,7 @@ Alt+J, or the Agenda button, opens the agenda. Each item holds at most 120
 characters. The field shows a counter and stops at that limit. If you can
 edit, type the item and its minutes and press Add item. Next moves to the
 next item. The current item shows the time left. Anyone can read the agenda.
-In a private meeting the host shares it. In a public open-floor meeting the
+In a private meeting the host shares it. In a public majority-rules meeting the
 person who shared it can hand editing to others.
 
 ## Shortcuts
@@ -136,7 +136,7 @@ shared tab does not travel, so talk over it. To stop, press the same
 button (it now reads Stop sharing), press Alt+S again, or use the browser's
 own Stop sharing bar.
 
-Who may share: in a public open-floor meeting, anyone. In a private meeting,
+Who may share: in a public majority-rules meeting, anyone. In a private meeting,
 the host, and the guests the host allows (on that guest's tile, or for
 everyone with More > Host > Allow screen share, Alt+P); anyone else sees
 "Only this room’s hosts — or people they allow — can share a screen". In a
@@ -157,8 +157,8 @@ Meeting links look like https://gifos.app/meet#room=<room> (hosted: &v=<verifier
 The GifOS Meet lobby names two kinds of meeting on its tabs, and the tools
 take the matching `type` value. There are only these two:
 
-- "Open" (short: Open floor, or Public): `create_meeting` with
-  type "open", a public open-floor meeting. Anyone with the link joins.
+- "Open" (short: Open, or Public): `create_meeting` with
+  type "open", a public majority-rules meeting. Anyone with the link joins.
   Everyone inside can set the password, and anyone with a $5+ plan can take
   over as host while they're connected.
 - "Host" ("Host a private meeting" on the Invite sheet; a private, hosted
@@ -166,7 +166,7 @@ take the matching `type` value. There are only these two:
   host: the server makes and keeps the host password, and the host can lock
   the room and remove people.
 
-`type` also takes the screen words ("public", "open floor", "private",
+`type` also takes the screen words ("public", "private",
 "hosted") and maps them to "open" and "admin".
 
 The person who runs a private meeting is its host, and the screens call the
@@ -174,7 +174,7 @@ role host everywhere: the Host button and the host password. The
 tools keep "admin" as the value (type "admin", mode "admin", and
 `admin_password`, the older name of `host_password`), and take "host" for
 "admin" where they read free text. Someone on a $5+ plan, or with a staff pass, can take over as host of a
-public open-floor meeting while they're connected, with the "Make me host"
+public majority-rules meeting while they're connected, with the "Make me host"
 button (`guard_room` does this for a bot). The room is private for that
 time; the URL does not change.
 
@@ -183,11 +183,11 @@ time; the URL does not change.
 A hosted GifOS Broadcast (gifos.app/cast) can play inside any web page, like
 a video player. It plays only while the room is HOSTED RIGHT NOW: a hosted
 meeting or broadcast (link https://gifos.app/cast/ROOM/VERIFIER) whose host is
-in the room, or a public open-floor meeting a subscriber has taken charge
+in the room, or a public majority-rules meeting a subscriber has taken charge
 of, while they are in it. The player reads that live from the room's signed host
 state; until then, and after the host leaves, it shows "This meeting isn't
 hosted right now" and plays nothing, then starts by itself. VERIFIER is
-optional: leave it out for a public open-floor meeting.
+optional: leave it out for a public majority-rules meeting.
 
 Paste one tag where the player should go:
 
@@ -241,7 +241,7 @@ refuses to run inside another site's page.
 
 - "set up meet.gifos.app for me": install the MCP server above, then
   `create_meeting` (and `start_meeting` if they want the bot there now).
-- "make a public call" / "start a public open-floor meeting":
+- "make a public call" / "start a public majority-rules meeting":
   `create_meeting` with type "open" (anyone with the link joins).
 - "a meeting with a password": `create_meeting` with `room_password`; send
   the link and the password separately. Never put a password in a link.

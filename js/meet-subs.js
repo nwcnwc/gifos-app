@@ -1379,7 +1379,7 @@
     const p = (id, text) => { const e = el('p', { class: 'set-help', id }, text); box.appendChild(e); return e; };
     for (const x of (c.passes || [])) {
       if (x.live) continue;
-      const e = x.never ? fill(tx('heldPassNever', 'Pass: {plan}, no end{capture}.'), { plan: planShort(x.plan), capture: x.capture ? tx('heldPassCaptures', ', takes charge of public open-floor meetings') : '' })
+      const e = x.never ? fill(tx('heldPassNever', 'Pass: {plan}, no end{capture}.'), { plan: planShort(x.plan), capture: x.capture ? tx('heldPassCaptures', ', takes charge of public majority-rules meetings') : '' })
         : fill(tx('heldPassNext', 'Four-hour pass: Unlimited from {start} to {until}.'), { start: clockOf(x.start), until: clockOf(x.end) });
       const q = p('', e); q.className = 'set-help held-pass'; q.dataset.pass = x.id;
     }
@@ -1488,7 +1488,7 @@
     thead.appendChild(hr); table.appendChild(thead);
     const tb = document.createElement('tbody');
     const fr = el('tr', { class: 'sub-plan-free', 'data-tier': 'free' });
-    const fd = el('td', { colspan: '3', class: 'sub-plan-desc' }, tx('subFreeTop', 'Free: private meetings up to 5 people; public open-floor meetings always free'));
+    const fd = el('td', { colspan: '3', class: 'sub-plan-desc' }, tx('subFreeTop', 'Free: private meetings up to 5 people; public majority-rules meetings always free'));
     fr.appendChild(fd); tb.appendChild(fr);
     // $1 four-hour pass: one row after Free and before the $2 plan, one button.
     const pr = el('tr', { class: 'sub-plan-pass', 'data-tier': 'pass' });

@@ -10566,7 +10566,7 @@
         const line = !roomAv
           ? (__C.model.room.BROADCAST()
             ? (0, /*()*/__C.uiText)('invBcWatch', 'Send this link. People who open it are watching.')
-            : (0, /*()*/__C.uiText)('invOpen', 'Send this link. Anyone who opens it can join this public open-floor meeting.'))
+            : (0, /*()*/__C.uiText)('invOpen', 'Send this link. Anyone who opens it can join this public majority-rules meeting.'))
           : __C.model.room.BROADCAST()
             ? (holdsKey
               ? (0, /*()*/__C.uiText)('invBcHost', 'Send this link. People who open it are watching. The host password stays with you.')
@@ -10581,7 +10581,7 @@
         body.innerHTML = '<p>' + line + '</p>' + (0, /*()*/__C.linkRowHtml)();
       } else {
         body.innerHTML =
-          '<p>' + (0, /*()*/__C.uiText)('invOpen', 'Send this link. Anyone who opens it can join this public open-floor meeting.') + '</p>' +
+          '<p>' + (0, /*()*/__C.uiText)('invOpen', 'Send this link. Anyone who opens it can join this public majority-rules meeting.') + '</p>' +
           (0, /*()*/__C.linkRowHtml)() +
           '<button id="inv-mkadm" type="button" class="inv-more">' + (0, /*()*/__C.esc)((0, /*()*/__C.uiText)('invMk', 'Host a private meeting')) + '</button>' +
           '<div id="inv-adm-open" style="display:none">' +
