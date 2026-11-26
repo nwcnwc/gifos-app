@@ -494,7 +494,7 @@
     // A ROOM LINK NEVER FALLS BACK INTO A BUILD THAT READS IT ANOTHER WAY. Releases before LINK_SINCE read #v= as
     // the room, so #room=R&v=V there would open a room named after the verifier. With no answer from version.json a
     // room link stays on this build (the first-visit path) rather than the remembered release when that is older.
-    var LINK_SINCE = [0, 9, 28, 33];   // the first release with the one link grammar (js/core/link.js); set at its cut
+    var LINK_SINCE = [0, 9, 28, 34];   // the first release with the one link grammar (js/core/link.js); set at its cut
     var named = !!pm || (room && !!window.GifOSLink && (function (r) { return !!(r.room || r.code); })(window.GifOSLink.read(pathname, '', hash)));
     if (named && cur) {
       var cv = String(cur).split('.').map(Number), older = false;
