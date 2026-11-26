@@ -2221,8 +2221,15 @@
     }
     // Bind a stream to a muted <video>: the plain stream on Chromium and
     // Firefox, its picture on WebKit (tileHolds() answers "is it bound").
+    // A WEBKIT PLAYER STARTS ONLY IN AN ELEMENT THAT HAS BEEN LAID OUT. On WebKit a <video> that is made, attached
+    // and bound in one task never starts (readyState 0, videoWidth 0, whether or not frames are flowing, while the
+    // track itself carries frames); with one layout read between the attach and the bind it starts every time, and
+    // a bind before the attach starts only now and then. The Stage strip is made and bound in one call, so the
+    // Stage of an embedded player stayed black on WebKit on most joins. So an attached element is laid out once
+    // before its first picture is bound. Chromium and Firefox start either way and never come here.
     function wkBindVideo(video, stream) {
       if (!WEBKIT_ENGINE || !stream) { video.srcObject = stream; return; }
+      if (!video._wkLaid && video.isConnected) { video._wkLaid = true; void video.clientWidth; }
       const pic = wkPicOf(stream);
       video._wrapOf = stream; video._pic = pic;
       if (video.srcObject !== pic) video.srcObject = pic;
@@ -3047,8 +3054,8 @@
       const v = document.createElement('video');
       v.muted = true; v.autoplay = true; v.setAttribute('playsinline', ''); v.setAttribute('muted', '');
       v.style.cssText = 'position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1';
+      document.body.appendChild(v);   // attached before the bind: a WebKit player starts only in a laid-out element (wkBindVideo)
       if (typeof wkBindVideo === 'function') wkBindVideo(v, stream); else v.srcObject = stream;
-      document.body.appendChild(v);
       const pr = v.play(); if (pr && pr.catch) pr.catch(() => {});
       v._mosFlowAt = 0; v._mosRestarts = 0;
       return v;
