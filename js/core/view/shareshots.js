@@ -161,7 +161,8 @@
     if (!src || busy) return;
     if (!src.keep()) { forget(true); return; }
     if (!src.on()) { if (watch.size) { forget(false); note('off', {}); } return; }
-    if (typeof document !== 'undefined' && document.hidden) return;   // a hidden tab samples nothing
+    // A hidden tab samples nothing, unless this seat is a bot recording for a transcript (src.always): its tab is in the background by design.
+    if (typeof document !== 'undefined' && document.hidden && !(src.always && src.always())) return;
     var list = [];
     try { list = src.shares() || []; } catch (e) { list = []; }
     var seen = {};
