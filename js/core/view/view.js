@@ -1193,7 +1193,7 @@
     }
     // The Stage's composite is one picture of every stager: it carries the note when every
     // face on it would be clear and the room holds them all for one reason
-    // (no password, no admin here, not everyone ready, Blur guests). Two
+    // (no password, no admin here, Blur guests). Two
     // reasons, or one clear face, and the faces' own tiles say it instead.
     function paintStageBlurWhy() {
       const ids = (0, /*()*/__C.stageIds)();
@@ -10604,7 +10604,7 @@
     // The blur rule itself (blurHold) is unchanged. One show per room in this
     // tab: a reload of the same meeting does not open it again. The lobby
     // preview carries its own line, so the dialog waits until the meeting.
-    const BLUR_WHY_ASK = { nopw: 1, guests: 1, forall: 1, noadmin: 1, ready: 1 };
+    const BLUR_WHY_ASK = { nopw: 1, guests: 1, forall: 1, noadmin: 1 };
     yield 2936;
     function canSetRoomPw() {
       const pwb = document.getElementById('pwbtn');
@@ -10622,7 +10622,6 @@
           : (0, /*()*/__C.uiText)('blurWhyDoAskAdmin', 'Ask the meeting host to set the room password, which will require everyone to re-enter the meeting with that password.'))
         : why === 'guests' ? (0, /*()*/__C.uiText)('blurWhyDoGuests', 'Ask the meeting host to lift it.')
         : why === 'forall' ? (0, /*()*/__C.uiText)('blurWhyDoForAll', 'Ask the person who blurred you to lift it.')
-        : why === 'ready' ? (0, /*()*/__C.uiText)('blurWhyDoReady', 'Everyone here needs their camera on with No blur.')
         : (0, /*()*/__C.uiText)('blurWhyDoNoAdmin', 'It clears when a host joins.');
       document.getElementById('blurwhy-text').textContent = (0, /*()*/__C.blurWhyWords)(why, 'says');
       document.getElementById('blurwhy-do').textContent = todo;
