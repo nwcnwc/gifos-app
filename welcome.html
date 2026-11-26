@@ -83,6 +83,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .how .note { font-size: .9rem; }
   .how .src { font-size: .8rem; }
   code { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text, #e0e0f0); }
+  .note { font-size: .9rem; }
+  .tvhow { padding-left: 1.3rem; }
+  .tvcredits { margin: .6rem 0 1.4rem; }
+  .tvcredits summary { cursor: pointer; color: var(--text, #e0e0f0); font-weight: 700; }
+  .tvcredits ol { padding-left: 1.6rem; font-size: .9rem; }
+  .tvcredits li { margin-bottom: .3rem; }
+  .tvcredits .cat { font-size: .8rem; color: var(--muted, #a9a9c5); }
 </style>
 <script src="js/gifos-themes.js"></script>
 </head>
@@ -93,6 +100,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <p class="lede">GifOS is a free web computer where every app is a GIF, with meetings and broadcasts that run between the people in them, not on our servers. Below is the welcome meeting, live, playing on this page the way it can play on yours.</p>
     <div class="player" id="player"><script src="/embed.js" data-room="welcome" data-title="GifOS welcome meeting"></script></div>
     <a class="cta" href="/meet/welcome">Join the welcome meeting &rarr;</a>
+
+    <h2 id="gifos-tv">GifOS TV: a live broadcast from a Raspberry Pi</h2>
+    <p class="lede">A second player, and a bigger test of the same one line of code. GifOS TV is a live broadcast that never stops: a hundred public-domain films, about seven hours of them, back to back and around again, sent from a Raspberry Pi at home.</p>
+    <div class="player" id="tvplayer"><script src="/embed.js" data-room="gifos-tv" data-verifier="cc51c5e4f4418c66aa52a486" data-title="GifOS TV" data-controls="volume,fullscreen,watch"></script></div>
+    <p class="note">The picture is blurred for now: GifOS blurs video for viewers unless the room has a password. Clear Stage, rolling out soon, lets a viewer tap to see a public Stage clearly.</p>
+    <h3 class="lbl">How we did it</h3>
+    <ol class="tvhow">
+      <li><b>A small computer at home.</b> A Raspberry Pi 4 (4 cores, 4 GB of memory) that also runs other home jobs. GifOS TV uses about a quarter of its processor and about a gigabyte of its memory.</li>
+      <li><b>An ordinary GifOS seat.</b> The Pi opens gifos.app in a headless Chromium browser, driven by a short Node.js script. It is a normal meeting seat with no camera and no microphone, named GifOS TV. Nothing about it is special to the servers: a bot follows the same rules as a person.</li>
+      <li><b>A hosted broadcast.</b> The seat is the host of a private broadcast room called <code>gifos-tv</code>. It signs in with the room's host password, and it carries a GifOS pass with no people limit, so the room takes as many viewers as come.</li>
+      <li><b>The films.</b> A hundred short films from <a href="https://commons.wikimedia.org" rel="noopener" target="_blank">Wikimedia Commons</a> and the <a href="https://archive.org" rel="noopener" target="_blank">Internet Archive</a>: cartoons, early animation, newsreels, music films, space and nature. We kept a film only when its own file page lists it as public domain or CC0, and only when it has sound all the way through (no long silences that would sound like a broken player). The <a href="/tv/clips.json">full list with sources and credits</a> is below.</li>
+      <li><b>Prepared once, elsewhere.</b> Another computer converted every film to one light format (640&times;360 pictures, VP8 video and Opus sound in WebM), evened out the loudness, and joined the films back to back into reels of about forty minutes. The Pi only keeps the reels, in a folder with a size cap, so it never fills its card.</li>
+      <li><b>GifOS's own Rebroadcast button.</b> Every broadcast host has it: More, Rebroadcast, Choose a video. The script presses it with the next reel, and when a reel ends it starts the next one, forever. Viewers see the Prerecorded badge.</li>
+      <li><b>Peer to peer.</b> GifOS meetings run between the people in them, not on our servers. Viewers pass the Stage along to one another, so a Pi on a home connection does not send a copy to everyone watching.</li>
+      <li><b>Always on.</b> The script runs as a service that restarts on failure. A watchdog restarts it if it stops reporting, and it rejoins on its own when GifOS ships a new release.</li>
+      <li><b>On this page.</b> The player above is this snippet:</li>
+    </ol>
+    <div class="code"><pre id="snip-tv">&lt;script src="https://gifos.app/embed.js" data-room="gifos-tv" data-verifier="cc51c5e4f4418c66aa52a486" data-title="GifOS TV" data-controls="volume,fullscreen,watch"&gt;&lt;/script&gt;</pre><button class="copy" type="button" data-copy="snip-tv">Copy</button></div>
+    <details class="tvcredits" id="tvcredits"><summary>All the films in GifOS TV, with credits</summary><p>Loading the list&hellip;</p></details>
 
     <h2>Put a live GifOS broadcast on your own site</h2>
     <p>Paste one line where the player should go. Put your room's name in place of <code>ROOM</code>. For a private meeting, add its verifier (the last part of its link, gifos.app/cast/ROOM/VERIFIER) as <code>data-verifier</code>, or <code>&amp;v=VERIFIER</code> in the iframe. The player plays while a host is in charge of the room and shows a short card the rest of the time. Viewers never turn on a camera or microphone.</p>
@@ -163,6 +189,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         else { var r = document.createRange(); r.selectNodeContents(document.getElementById(b.dataset.copy)); var s = getSelection(); s.removeAllRanges(); s.addRange(r); try { document.execCommand('copy'); done(); } catch (e) {} }
       };
     });
+  })();
+</script>
+<script>
+  // GifOS TV credits, from the playlist's own manifest (/tv/clips.json).
+  (function () {
+    var box = document.getElementById('tvcredits'); if (!box) return;
+    function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+    function len(s) { s = Math.round(s || 0); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+    var done = false;
+    function load() {
+      if (done) return; done = true;
+      fetch('/tv/clips.json').then(function (r) { return r.json(); }).then(function (m) {
+        var h = '<p>' + esc(m.clips.length) + ' films, ' + esc(Math.round(m.totalSeconds / 360) / 10) + ' hours in all, in the order they play. Each one is public domain or CC0 on its source page.</p><ol>';
+        m.clips.forEach(function (c) {
+          h += '<li><a href="' + esc(c.page) + '" rel="noopener" target="_blank">' + esc(c.title) + '</a> <span class="cat">(' + esc(c.category) + ', ' + len(c.seconds) + ')</span><br>' + esc(c.credit) + ' &middot; ' + esc(c.licence) + '</li>';
+        });
+        box.innerHTML = '<summary>All the films in GifOS TV, with credits</summary>' + h + '</ol>';
+        box.open = true;
+      }).catch(function () { done = false; });
+    }
+    box.addEventListener('toggle', function () { if (box.open) load(); });
   })();
 </script>
 <script src="js/gifos-help.js"></script>
