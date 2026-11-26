@@ -105,6 +105,7 @@
       o.style.cssText = 'position:fixed;left:-9999px;top:0;width:2px;height:2px;opacity:0;pointer-events:none';
       document.body.appendChild(o);
       w.own = o;
+      note('own', {});
     }
     if (!w.own.srcObject || w.own.srcObject.getVideoTracks()[0] !== w.track) {
       try { w.own.srcObject = new MediaStream([w.track]); var p = w.own.play(); if (p && p.catch) p.catch(function () {}); } catch (e) {}
@@ -312,7 +313,7 @@
   GifOS.shareShots = {
     detector: detector, attach: attach, list: list, open: open, exportZip: exportZip, exportFiles: exportFiles, zipStore: zipStore,
     trace: function () { return trace.slice(); }, tick: tick,
-    cost: function () { return { n: cost.n, avgMs: cost.n ? +(cost.ms / cost.n).toFixed(2) : 0, maxMs: +cost.max.toFixed(2) }; }, W: W, H: H, TICK_MS: TICK_MS,
+    cost: function () { var own = 0; watch.forEach(function (w) { if (w.own) own++; }); return { n: cost.n, totalMs: +cost.ms.toFixed(1), avgMs: cost.n ? +(cost.ms / cost.n).toFixed(2) : 0, maxMs: +cost.max.toFixed(2), own: own }; }, W: W, H: H, TICK_MS: TICK_MS,
     label: function (id, words) { var s = byId(id); if (s) s.label = words; }
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = GifOS.shareShots;
