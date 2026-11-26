@@ -32,14 +32,15 @@
  * or a clock costs a block, not a frame. When a device is over budget the filter first ticks slower, then analyses a
  * smaller picture; it falls back to the full blur only when neither is enough (Nathan 2026-11-26).
  */
-'use strict';
 (function (root, factory) {
+  'use strict';
   var TC = factory();
   if (typeof module === 'object' && module.exports) { module.exports = TC; return; }
   root.GifOSTextClear = TC;
   if (typeof root.document === 'undefined' && typeof root.importScripts === 'function') TC.serveWorker(root);
   else if (root.document) TC.installRuntime(root, factory);
 })(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
   // ======================================= THE JUDGEMENT (pure) =======================================
   // Every threshold as measured on a set of text, picture, video and adversarial frames; change them only with a new
   // measurement on such a set.
