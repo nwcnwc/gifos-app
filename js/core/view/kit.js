@@ -402,7 +402,7 @@
       a.href = URL.createObjectURL(blob);
       a.download = name;
       a.click();
-      setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, GifOS.timings.TRANSCRIPT_DL_REVOKE_MS);
     });
   }
 
