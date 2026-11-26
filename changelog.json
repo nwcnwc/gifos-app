@@ -22,6 +22,16 @@
       ]
     },
     {
+      "version": "0.9.28.35",
+      "date": "2026-11-26",
+      "headline": "Meeting bots start again",
+      "critical": false,
+      "features": [],
+      "fixes": [
+        "A meeting bot whose page carries no plan library starts again; without the library the Stage simply stays blurred."
+      ]
+    },
+    {
       "version": "0.9.28.34",
       "date": "2026-11-26",
       "headline": "Clear Stage from the host, in hosted and open-floor meetings",
