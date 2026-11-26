@@ -2135,7 +2135,7 @@
       try {
         const VMc = window.GifOS && GifOS.meetViewMode && GifOS.meetViewMode.content;
         // A screen there is someone's share: it wears that share's blur, as the content pane does (ctPaintScreen).
-        if (VMc && !__C.model.room.BROADCAST()) for (const it of VMc.items()) if (it.stream || it.v) out.push({ key: it.key, label: it.label || '', v: it.v || null, stream: it.stream || null, fit: 'contain', content: true, bl: it.sid && !it.mine ? Math.max((0, /*()*/__C.blurLevelFor)(it.sid, false, false, 'stage') | 0, (0, /*()*/__C.modBlurOn)(it.sid) ? 1 : 0) : 0 });
+        if (VMc && !__C.model.room.BROADCAST()) for (const it of VMc.items()) if (it.stream || it.v) out.push({ key: it.key, label: it.label || '', v: it.v || null, stream: it.stream || null, fit: 'contain', content: true, bl: it.sid && !it.mine ? Math.max((0, /*()*/__C.blurLevelFor)(it.sid, false, false, 'stage') | 0, (0, /*()*/__C.modBlurOn)(it.sid) ? 1 : 0) : 0, share: it.sid && !it.mine ? it.sid : null });
       } catch (e) {}
       let stageFit = null;
       for (const v of stagefeedEl.querySelectorAll('.rowtile video')) {
@@ -2169,7 +2169,7 @@
         const blocked = (0, /*()*/__C.forcedCamOff)(pid) || (typeof __C.shareBlocked === 'function' && (0, /*()*/__C.shareBlocked)(pid));
         const dark = !pipReady(p.video) || (0, /*()*/__C.seatDark)(__C.model.roster.statusOf().get(pid)) || blocked;
         if (dark) out.push({ key: 'peer:' + pid, label: label, v: null, dark: true, pic: picOf(pid, p), pbl: (0, /*()*/__C.blurLevelFor)(pid, true) });
-        else out.push({ key: 'peer:' + pid, label: label, v: p.video, bl: (0, /*()*/__C.blurLevelFor)(pid), fit: (0, /*()*/__C.sharingScreen)(pid) ? 'contain' : 'cover' });
+        else out.push({ key: 'peer:' + pid, label: label, v: p.video, bl: (0, /*()*/__C.blurLevelFor)(pid), share: (0, /*()*/__C.sharingScreen)(pid) && !(0, /*()*/__C.shareOnlyStage)(pid) ? pid : null, fit: (0, /*()*/__C.sharingScreen)(pid) ? 'contain' : 'cover' });
       }
       const sd = stadiumEl.querySelector('[data-row="sd"] video');
       if (pipReady(sd)) out.push({ key: 'sd', label: (0, /*()*/__C.uiText)('setStadium', 'The stadium'), v: sd, fit: 'contain' });
@@ -2259,7 +2259,7 @@
             const pr = fsmain.play(); if (pr && pr.catch) pr.catch(() => {});
           }
           fsmain.classList.remove('dark');
-          (0, /*()*/__C.fsBlurClass)(fsmain, main.bl);
+          (0, /*()*/__C.fsBlurClass)(fsmain, main.bl, main.share);
           showName(false);
         }
         fsmain.dataset.key = main.key;
@@ -2328,7 +2328,7 @@
           th = document.createElement('div'); th.className = 'fsthumb'; th.dataset.key = s.key;
           tv = document.createElement('video'); tv.autoplay = true; tv.muted = true; tv.setAttribute('playsinline', ''); tv.setAttribute('muted', '');
           tv.srcObject = s.stream; if (s.stream) { const pr = tv.play(); if (pr && pr.catch) pr.catch(() => {}); }
-          (0, /*()*/__C.fsBlurClass)(tv, s.dark ? 0 : s.bl);
+          (0, /*()*/__C.fsBlurClass)(tv, s.dark ? 0 : s.bl, s.share);
           const lb = document.createElement('span'); lb.className = 'fslbl'; lb.textContent = s.label;
           th.appendChild(tv); th.appendChild(lb);
           paintThumbCard(th);
@@ -2341,7 +2341,7 @@
             tv.srcObject = s.stream;
             if (s.stream) { const pr = tv.play(); if (pr && pr.catch) pr.catch(() => {}); }
           }
-          if (tv) (0, /*()*/__C.fsBlurClass)(tv, s.dark ? 0 : s.bl);
+          if (tv) (0, /*()*/__C.fsBlurClass)(tv, s.dark ? 0 : s.bl, s.share);
           const lb = th.querySelector('.fslbl');
           if (lb && lb.textContent !== s.label) lb.textContent = s.label;
           paintThumbCard(th);
@@ -2935,6 +2935,10 @@
         } catch (e) { bl = 2; }
         vid.classList.toggle('blur1', bl === 1);
         vid.classList.toggle('blur2', bl >= 2);
+        // A stager's share shown here keeps its text clear under that blur (fsBlurClass's rule), unless a host blurs them.
+        let tc = false;
+        try { tc = !!(bl && id !== __C.model.me.myId() && (0, /*()*/__C.sharingScreen)(id) && !(0, /*()*/__C.modBlurOn)(id) && !(0, /*()*/__C.forcedCamOff)(id) && !(typeof __C.shareBlocked === 'function' && (0, /*()*/__C.shareBlocked)(id))); } catch (e) { tc = false; }
+        try { if (GifOS.textClear) GifOS.textClear.view(vid, tc); } catch (e) {}
       }
       ensureStageView.paintBlur = paintStageViewBlur;   // paintStageBlurWhy repaints the views' blur too
       if (!applyComfy.views) applyComfy.views = new Map();
@@ -3642,7 +3646,7 @@
       }
       // RECEIVER-SIDE BLUR ON THE CONTENT PANE: the share wears the room's blur for its sharer here as on a tile, so a
       // sender that ships clear pixels where the room blurs them stays blurred. Mine is my own capture.
-      if (v) { const bl = it.mine ? 0 : Math.max((0, /*()*/__C.blurLevelFor)(it.sid, false, false, 'stage') | 0, (0, /*()*/__C.modBlurOn)(it.sid) ? 1 : 0); const had = v.classList.contains('blur2') ? 2 : v.classList.contains('blur1') ? 1 : 0; if (had !== bl) (0, /*()*/__C.fsBlurClass)(v, bl); }
+      if (v) { const bl = it.mine ? 0 : Math.max((0, /*()*/__C.blurLevelFor)(it.sid, false, false, 'stage') | 0, (0, /*()*/__C.modBlurOn)(it.sid) ? 1 : 0); const had = v.classList.contains('blur2') ? 2 : v.classList.contains('blur1') ? 1 : 0; if (had !== bl || !!v.__tcOv !== !!(bl && !(0, /*()*/__C.modBlurOn)(it.sid))) (0, /*()*/__C.fsBlurClass)(v, bl, it.sid); }
       p.dataset.src = src ? src.from : 'none';
       try { const held = !it.mine && (0, /*()*/__C.turnHeld)(it.sid); pauseNote(p, held, held ? (0, /*()*/__C.shareFirewallWords)(it.name) : ''); } catch (e) {}
       const cap = p.querySelector('.ct-cap');
