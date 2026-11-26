@@ -4171,7 +4171,7 @@
     // readyState >= 2 and a live track, or this person is not ready and the
     // whole pack falls back to the strip. No partial mix.
     function stageFeedVideo(id) {
-      if (cardFor(id)) return { track: null, aspect: 1, card: true };   // camera off: the Stage view draws the card
+      if (cardFor(id)) return null;   // camera off: no picture (never a last frame); the Stage shows the strip, where each viewer draws the card
       let v = null, st = null;
       if (id === myId) {
         v = meTile && meTile.video;
