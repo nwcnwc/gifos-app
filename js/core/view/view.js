@@ -7072,7 +7072,7 @@
         : (0, /*()*/__C.uiText)('admChatFilesOff', 'Only once the room has a password.');
       document.getElementById('adm-chat-pw').disabled = !__C.amAdmin;
       const gf = document.getElementById('adm-chat-gfile');
-      if (gf) { gf.checked = (0, /*()*/__C.modStarOn)('gfile', true); gf.disabled = !__C.model.door.roomPw(); }
+      if (gf) { gf.checked = (0, /*()*/__C.modStarOn)('gfile', false); gf.disabled = !__C.model.door.roomPw(); }
       const gr = document.getElementById('adm-chat-greact');
       if (gr) gr.checked = __C.model.chat.mayReact();
       const qa = document.getElementById('adm-chat-qa');

@@ -18,7 +18,8 @@
  * until they type the room password inside the player (your page never sees
  * it). There is no way to put the password in this snippet, the address or a
  * query: a page with an embed cannot be shown to be protected.
- * data-controls picks the gear menu (volume, captions, tabs, inset, fullscreen, pip, watch; default is volume,fullscreen).
+ * data-controls picks the player's controls (volume, mute, captions, audioonly, tabs, inset, fullscreen, pip, chat,
+ * reactions, watch; default volume,audioonly,fullscreen,pip,chat,reactions). The info button always shows.
  */
 (function () {
   var s = document.currentScript;

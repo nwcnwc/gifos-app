@@ -159,7 +159,7 @@
   "meet.admChatFiles": "Dateien im Chat",
   "meet.admChatPw": "Passwort",
   "meet.admChatGfile": "Gäste dürfen Dateien senden",
-  "meet.admChatGfileSub": "Aus, auch wenn der Raum ein Passwort hat.",
+  "meet.admChatGfileSub": "Braucht ein Raumpasswort. Aus, bis du es einschaltest.",
   "meet.admChatGreact": "Gäste dürfen reagieren",
   "meet.admChatGreactSub": "Emoji-Reaktionen auf Chat-Zeilen.",
   "meet.admChatQa": "Fragen-Taste",

@@ -159,7 +159,7 @@
   "meet.admChatFiles": "Files in chat",
   "meet.admChatPw": "Password",
   "meet.admChatGfile": "Guests can send files",
-  "meet.admChatGfileSub": "Off even when the room has a password.",
+  "meet.admChatGfileSub": "Needs a room password. Off until you turn it on.",
   "meet.admChatGreact": "Guests can react",
   "meet.admChatGreactSub": "Emoji reactions on chat lines.",
   "meet.admChatQa": "Questions button",
