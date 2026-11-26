@@ -269,11 +269,6 @@
       var cur = items.filter(function (it) { return it.key === sel; })[0] || null;
       paintPane(cur);
     }
-    function modBlur(sid) { try { return !!C.modBlurOn(sid); } catch (e) { return true; } }
-    function shareLevel(sid) {   // the viewer's blur for a share: the core's Stage rule for its sharer (shareShotsSource reads the same)
-      if (!sid) return 2;
-      try { return Math.max(C.blurLevelFor(sid, false, false, 'stage') | 0, modBlur(sid) ? 1 : 0); } catch (e) { return 2; }
-    }
     function pick(key) { try { C.ctSelect(key, 'embed'); } catch (e) {} shareSig = ''; paint(); }
     function paintPane(it) {
       var vid = $('emb-share-video'), box = $('emb-share-box');
@@ -284,12 +279,6 @@
         var have = vid.srcObject && vid.srcObject.getVideoTracks()[0];
         if (track && have !== track) { vid.srcObject = new MediaStream([track]); try { var pr = vid.play(); if (pr && pr.catch) pr.catch(function () {}); } catch (e) {} }
         vid.hidden = !track; box.hidden = !!track;
-        // The share wears this viewer's blur for its sharer, as on /meet (ctPaintScreen): a sender that ships clear pixels
-        // where the room blurs them stays blurred here, its text clear (js/core/media/textclear.js).
-        var lv = shareLevel(it.sid), had = vid.classList.contains('blur2') ? 2 : vid.classList.contains('blur1') ? 1 : 0;
-        if (had !== lv || !!vid.__tcOv !== !!(lv && !modBlur(it.sid))) { try { C.fsBlurClass(vid, lv, it.sid); } catch (e) {} }
-        vid.disablePictureInPicture = lv > 0;   // the browser's own float paints raw frames: a blurred share floats only through the lens
-        vid.dataset.sid = it.sid || '';
         if (!track) box.textContent = tr('pictureOnWay', '{label}: the picture is on its way.', { label: shareLabel(it) });
         return;
       }
@@ -368,7 +357,7 @@
     // While anything floats, the float follows the level: a raw float whose picture turns blurred moves to the lens.
     function levelOf(v) {
       if (!v) return 2;
-      if (v === $('emb-share-video')) return shareLevel(v.dataset.sid);   // a share wears its sharer's blur (paintPane)
+      if (v === $('emb-share-video')) return 0;   // a share is drawn here as it arrives (no blur class on it)
       return stageLevel();
     }
     function floatEl() { try { return document.pictureInPictureElement || null; } catch (e) { return null; } }

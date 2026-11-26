@@ -278,9 +278,6 @@
     SUBS_POLL_MS: 3000,   // ms
     SUBS_RETRY_MS: 20000,   // ms
     SUCC_CONTRADICTION_MS: 180000,   // ms
-    TEXTCLEAR_KEEPALIVE_MS: 1000,   // ms
-    TEXTCLEAR_MAX_TICK_MS: 2000,   // ms
-    TEXTCLEAR_TICK_MS: 500,   // ms
     TICKET_S: 300,   // s
     TICK_CATCHUP: 4,   // count
     TICK_FREEZE_MS: 10000,   // ms

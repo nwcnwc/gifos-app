@@ -3755,20 +3755,7 @@
       return !!(t && t.readyState === 'live' && !t.muted);
     }
     yield 495;
-    // share: the sharer's id when the picture is a screen share. TEXT STAYS CLEAR (Nathan 2026-11-26): a blurred share keeps
-    // its text readable through the viewer's own filter (js/core/media/textclear.js, an overlay of cells it checked over the
-    // blurred picture), unless a host or moderator blurs the sharer: that order keeps the full blur.
-    function fsBlurClass(v, bl, share) {
-      v.classList.remove('blur1', 'blur2');
-      if (bl) {
-        v.classList.add('blur' + bl);
-        // the blur's size is known now, not one resize later (the first painted frame is already at full strength)
-        try { const bw = Math.round(Math.max(v.offsetWidth || 0, v.offsetHeight || 0)); if (bw > 0) v.style.setProperty('--bw', bw + 'px'); } catch (e) {}
-        try { (0, /*()*/__M.blurSized)(v); } catch (e) {}
-      }
-      try { v.disablePictureInPicture = !!bl; } catch (e) {}   // the browser's own float paints raw frames: a blurred picture never floats that way
-      try { if (GifOS.textClear) GifOS.textClear.view(v, !!(bl && share && !modBlurOn(share))); } catch (e) {}
-    }
+    function fsBlurClass(v, bl) { v.classList.remove('blur1', 'blur2'); if (bl) { v.classList.add('blur' + bl); try { (0, /*()*/__M.blurSized)(v); } catch (e) {} } }
     yield 511;
 
     // ---- tiles ---------------------------------------------------------------
@@ -4127,8 +4114,6 @@
       // remote tiles only. A camera-off avatar is those pixels: baked for me,
       // and this same class for everyone else.
       if (bl && !isMe) t.video.classList.add('blur' + bl);
-      // A share this tile shows blurred keeps its text clear (fsBlurClass's rule; the tile's --bw comes from makeTile).
-      try { if (GifOS.textClear) GifOS.textClear.view(t.video, !!(bl && !isMe && !dark && st.scr && !shareOnlyStage(id) && !modBlurOn(id))); } catch (e) {}   // a dark tile shows nothing, text included
       (0, /*()*/__M.syncAvatarFeed)(id, t, isMe, st, gCam);
       // The letter overlay shows on every screen and is softened by the same
       // rule as a camera (qa-meet-desktop); under it the video carries the
@@ -4369,7 +4354,6 @@
         // own (the area is drawn over the big view when one is picked).
         const e = { key: it.key, label: ctLabel(it), kind: it.kind };
         if (it.kind === 'screen') {
-          e.sid = it.sid; e.mine = !!it.mine;   // whose screen: the view blurs a picture of someone else's share by the room's rule
           const src = (0, /*()*/__M.ctScreenTrack)(it.sid);
           let c = CT.fsStreams.get(it.key);
           if (src && (!c || c.track !== src.track)) { c = { track: src.track, stream: new MediaStream([src.track]) }; CT.fsStreams.set(it.key, c); }
@@ -7212,8 +7196,7 @@
       if (rbv && rbv.readyState === 'live') return { src: 'rebroadcast', blur: blurLevelFor('me'), rowShare: false };
       const rowShare = shareOnlyStage('me');
       const scr = screenStream && screenStream.getVideoTracks()[0];
-      // text: under share-blur the share's text stays clear (js/core/media/textclear.js), unless a host's order blurs me.
-      if (!rowShare && scr && scr.readyState === 'live' && mayShareScreen('me')) return { src: 'own-screen', blur: blurLevelFor('me'), text: !modBlurOn('me'), rowShare: false };
+      if (!rowShare && scr && scr.readyState === 'live' && mayShareScreen('me')) return { src: 'own-screen', blur: blurLevelFor('me'), rowShare: false };
       const cam = localStream && localStream.getVideoTracks()[0];
       const camOn = !!(cam && cam.readyState === 'live' && cam.enabled && !myStatus.camOff);
       return { src: camOn ? 'own-cam' : 'avatar', blur: blurLevelFor('me', false, rowShare), rowShare: rowShare };
@@ -7227,7 +7210,7 @@
       if (BC_SEAT && !bcMayPublishAv()) return { src: 'none', blur: 0 };
       const scr = screenStream && screenStream.getVideoTracks()[0];
       if (!scr || scr.readyState !== 'live' || !mayShareScreen('me')) return { src: 'none', blur: 0 };
-      return { src: 'own-screen', blur: blurLevelFor('me'), text: !modBlurOn('me') };
+      return { src: 'own-screen', blur: blurLevelFor('me') };
     }
     // DEBUG: each plan that differs from the last goes into the trace once ('plan' line, peers by their first 6 characters),
     // and the last plan and the plane's last report stay readable (mediaPlanForTest).

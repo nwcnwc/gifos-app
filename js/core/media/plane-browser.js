@@ -545,7 +545,6 @@
       try { blurPipe.src.remove(); } catch (e) {}
       // Stop the pipe's PRIVATE clone only — never the shared camera track.
       if (blurPipe.cloned && blurPipe.srcTrack) { try { blurPipe.srcTrack.stop(); } catch (e) {} }
-      if (blurPipe.tc) { try { blurPipe.tc.stop(); } catch (e) {} }
       try { blurPipe.track.stop(); } catch (e) {}
       if (!blurPipe.screen && GifOS.meetBgfx) GifOS.meetBgfx.release();   // the background model hands the processor back
       blurPipe.dead = true; // its paint loop and callbacks end with it (a pipe checks its own flag, never which slot is current)
@@ -569,14 +568,10 @@
     }
     // source: a screen share's track. A share is blurred by the same rule as a
     // camera (blurLevelFor), through this same pipe; it takes no sender crop.
-    // text: TEXT STAYS CLEAR (Nathan 2026-11-26), a share's blur that keeps plain text readable: the shipped canvas is the
-    // blurred frame plus an overlay of cells the filter checked and re-inked itself (js/core/media/textclear.js, its
-    // sender()), never the raw frame. A share under any blur (text or full) ships about 2 frames a second.
-    function startBlurPipe(level, source, text) {
+    function startBlurPipe(level, source) {
       const cam = source || (__C.localStream && __C.localStream.getVideoTracks()[0]);
       if (!cam) return null;
-      const tcOn = !!(source && text && GifOS.textClear);
-      if (blurPipeCanReuse(blurPipe, cam.id) && !!blurPipe.text === tcOn) {
+      if (blurPipeCanReuse(blurPipe, cam.id)) {
         const tune = blurPipeTune(level);
         blurPipe.level = tune.level;
         blurPipe.frac = tune.frac;
@@ -605,12 +600,7 @@
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       const tune = blurPipeTune(level);
-      const pipe = { level: tune.level, frac: tune.frac, capW: tune.capW, camId: cam.id, screen: !!source, text: tcOn, src, srcTrack, cloned, canvas, ctx, track: null, unsub: null, rvfc: 0, painted: 0 };
-      if (tcOn) {
-        pipe.tc = GifOS.textClear.sender({ src: src, canvas: canvas, ctx: ctx, capLong: GifOS.textClear.SIZES[0], blurCap: () => pipe.capW, track: () => pipe.track,
-          align: typeof __C.WK_H264_BLIND !== 'undefined' && !!__C.WK_H264_BLIND,
-          blur: (x, s, w, h) => blurDraw(x, s, 0, 0, w, h, pipe.frac) });
-      }
+      const pipe = { level: tune.level, frac: tune.frac, capW: tune.capW, camId: cam.id, screen: !!source, src, srcTrack, cloned, canvas, ctx, track: null, unsub: null, rvfc: 0, painted: 0 };
       // ADAPTIVE FRAME-DROP: paint is driven by BOTH the metronome and rVFC,
       // and on a software-rendered / overloaded device one filtered drawImage
       // can cost 100ms+. Without a governor the paint tasks queue FASTER than
@@ -641,14 +631,8 @@
         // than 15fps, never slower than 8 (a visibly stuttery self-view is its
         // own bug), and the cost-based governor below still rules on a weak
         // device.
-        if (pipe.tc) {   // text stays clear: the filter's own tick paints (and ships) the frame
-          let drew = false; try { drew = pipe.tc.tick(); } catch (e) { drew = false; }
-          if (drew) { pipe.painted = (pipe.painted || 0) + 1; pipe.failed = 0; pipe.lastPaintAt = Date.now(); }
-          return;
-        }
         const rf = (__C.lastQ && __C.lastQ.fps) || 15;
-        // A blurred share ships at the text filter's tick (about 2 a second), whatever blur it wears (Nathan 2026-11-26).
-        const budget = pipe.screen ? GifOS.timings.TEXTCLEAR_TICK_MS : Math.max(66, 1000 / Math.min(15, Math.max(8, rf)));
+        const budget = Math.max(66, 1000 / Math.min(15, Math.max(8, rf)));
         if (!blurPaintDue(gov, now, budget)) return; // drop the frame
         // The frame ships at the CAMERA'S OWN shape — no crop, no transpose
         // (the 2026-08-01 canvas center-crop was reverted: stacked on the
@@ -729,13 +713,8 @@
       const keepPlaying = () => { if (!pipe.dead && src.paused && src.srcObject) src.play().catch(() => {}); };
       src.addEventListener('pause', keepPlaying);
       src.play().catch(() => {});
-      let stream = canvas.captureStream(pipe.tc ? 0 : 15);
+      const stream = canvas.captureStream(15);
       pipe.track = stream.getVideoTracks()[0];
-      // The text filter ships exactly the frames it paints (requestFrame); a browser without it gets the tick's rate.
-      if (pipe.tc && !(pipe.track && typeof pipe.track.requestFrame === 'function')) {
-        try { pipe.track.stop(); } catch (e) {}
-        stream = canvas.captureStream(1000 / GifOS.timings.TEXTCLEAR_TICK_MS); pipe.track = stream.getVideoTracks()[0];
-      }
       blurPipe = pipe;
       if (src.requestVideoFrameCallback) pipe.rvfc = src.requestVideoFrameCallback(onFrame);
       // DON'T PAY FOR THE SECOND DRIVER WHILE THE FIRST ONE WORKS (2026-07-31).
@@ -1011,7 +990,7 @@
       if (c.src === 'own-screen') {
         const scr = __C.screenStream.getVideoTracks()[0];
         stopAvatarPipe();
-        if (c.blur > 0) return startBlurPipe(c.blur, scr, c.text);
+        if (c.blur > 0) return startBlurPipe(c.blur, scr);
         stopBlurPipe();
         return scr;
       }
@@ -1044,7 +1023,7 @@
       if (c.src === 'main') return sentVideoTrack();
       if (c.src === 'none') return null;
       const scr = __C.screenStream.getVideoTracks()[0];
-      if (c.blur > 0) return withScrPipe(() => startBlurPipe(c.blur, scr, c.text)); // null if the pipe cannot run: never the raw screen
+      if (c.blur > 0) return withScrPipe(() => startBlurPipe(c.blur, scr)); // null if the pipe cannot run: never the raw screen
       withScrPipe(stopBlurPipe);
       return scr;
     }

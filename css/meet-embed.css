@@ -123,10 +123,6 @@ body.emb-has-share.emb-stage-folded #embedui .emb-cap { right: 12px; }
 .emb-share { display: none; position: fixed; inset: 0; background: #111; z-index: 1; }
 body.emb-has-share .emb-share { display: block; }
 .emb-share video { width: 100%; height: 100%; object-fit: contain; display: block; }
-/* The share wears this viewer's blur for its sharer (embed.js paintPane); a blurred share keeps its text clear through the
-   overlay canvas.tc-ov laid over it (js/core/media/textclear.js). */
-#emb-share-video.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .009))) saturate(.9); }
-#emb-share-video.blur2 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-max, .0225))) saturate(.75); }
 .emb-share-box { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 24px 60px;
   color: #eceef8; font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; text-align: center; box-sizing: border-box; overflow: auto; }
 .emb-share-box h4 { margin: 0 0 8px; font-size: 17px; }
