@@ -831,6 +831,7 @@
   "meet.licNone": "No permissions yet: up to {n} people",
   "meet.licNoLimit": "No people limit",
   "meet.licUpTo": "Up to {n} people",
+  "meet.licClearStage": "Clear Stage video (hosted meetings)",
   "meet.licSince": "since {time}",
   "meet.licOpen": "No people limit: open meetings have none",
   "meet.licAsOf": "as of {when}",

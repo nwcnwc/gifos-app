@@ -830,6 +830,7 @@
   "meet.licNone": "Aún no hay permisos: hasta {n} personas",
   "meet.licNoLimit": "Sin límite de personas",
   "meet.licUpTo": "Hasta {n} personas",
+  "meet.licClearStage": "Video del escenario sin desenfoque (reuniones con anfitrión)",
   "meet.licSince": "desde {time}",
   "meet.licOpen": "Sin límite de personas: las reuniones abiertas no tienen",
   "meet.licAsOf": "a partir de {when}",

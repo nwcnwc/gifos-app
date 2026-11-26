@@ -127,6 +127,7 @@
       if (msg.textContent !== mt) msg.textContent = mt;
       msg.hidden = !mt || !card.hidden;
       $('emb-lock').hidden = !(C.pwBlocked && card.hidden);
+      K.clearButtons(C, document.querySelector('.emb-bar'), 'emb-btn');   // a hosted room with a clear right: the viewer's own tap, as on /meet
       paintInsetRow();
       syncRows();
     }

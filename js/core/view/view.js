@@ -9970,30 +9970,8 @@
         const rb = bar.querySelector('#clearnopw-reblur'), rp = bar.querySelector('#clearnopw-rep');
         rb.textContent = T('clearBlurAgain', 'Blur again'); rb.style.display = st.tapped ? '' : 'none';
         rp.textContent = T('clearReport', 'Report');
-        function openClearReport() {
-          let m = document.getElementById('clearnopw-report');
-          if (m) { m.style.display = ''; return; }
-          m = document.createElement('div');
-          m.id = 'clearnopw-report'; m.className = 'name-modal'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true');
-          const box = document.createElement('div'); box.className = 'name-box';
-          const p1 = document.createElement('p');
-          p1.textContent = T('clearRepPolice', 'If you see illegal activity, report it to your local police or authorities (US: NCMEC CyberTipline, report.cybertip.org). Please don\'t send us copies.');
-          const a = document.createElement('a'); a.href = 'https://report.cybertip.org'; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = 'report.cybertip.org';
-          const p2 = document.createElement('p'); p2.id = 'clearnopw-rep-note';
-          p2.textContent = T('clearRepTell', 'Tell GifOS about this host: this sends only the host\'s plan id, never the room, its link or any picture, so we can review the plan\'s clear-video right.');
-          const acts = document.createElement('div'); acts.className = 'blurwhy-acts';
-          const tell = document.createElement('button'); tell.type = 'button'; tell.id = 'clearnopw-tell'; tell.textContent = T('clearRepTellBtn', 'Tell GifOS about this host');
-          const close = document.createElement('button'); close.type = 'button'; close.id = 'clearnopw-close'; close.textContent = T('close', 'Close');
-          tell.onclick = async () => {
-            tell.disabled = true;
-            const r = await (0, /*()*/__C.reportClearHost)();
-            p2.textContent = r === 'sent' ? T('clearRepSent', 'Sent. Thank you.') : T('clearRepFailed', 'Could not send. Please try again later.');
-            tell.disabled = r === 'sent';
-          };
-          close.onclick = () => { m.style.display = 'none'; };
-          acts.append(tell, close); box.append(p1, a, p2, acts); m.appendChild(box); document.body.appendChild(m);
-          m.style.display = '';
-        }
+        // the Report dialog is the shared view kit's (the embed draws the same one)
+        function openClearReport() { GifOS.viewKit.clearReport(__C, () => (0, /*()*/__C.reportClearHost)()); }
       }
     }
     function paintAvState() {
@@ -10679,12 +10657,7 @@
       // permissions. The relay is the source (joined.acl and the answer to {t:'aclq'}). A seat at the door asks when
       // this opens; a deep seat shows the last value it saw, with how old that value is. No push, no timer.
       GifOS.licenseView = (function () {
-        function licenseAcl(a) {
-          if (!a || !Number.isInteger(a.l)) return null;
-          const acl = { l: a.l === 0 ? null : a.l, f: 0 };
-          if (Number.isInteger(a.s) && a.s > 0) acl.s = a.s;
-          return acl;
-        }
+        function licenseAcl(a) { return GifOS.sub && GifOS.sub.aclFromSay ? GifOS.sub.aclFromSay(a) : null; }
         function licenseWords(view, o) {
           o = o || {};
           const t = o.t || function (k, en) { return en; };
@@ -10694,6 +10667,7 @@
           if (!view || view.none) lines.push(fill(t('licNone', 'No permissions yet: up to {n} people'), { n: view && view.limit != null ? view.limit : 5 }));
           else if (view.limit == null) lines.push(t('licNoLimit', 'No people limit'));
           else lines.push(fill(t('licUpTo', 'Up to {n} people'), { n: view.limit }));
+          if (view && view.clearStage) lines.push(t('licClearStage', 'Clear Stage video (hosted meetings)'));
           if (view && view.since) lines.push(fill(t('licSince', 'since {time}'), { time: typeof o.time === 'function' ? o.time(view.since) : String(view.since) }));
           return lines;
         }
@@ -10737,7 +10711,7 @@
         }
         function heard(a) {
           if (!a || !Number.isInteger(a.l)) return;
-          last = { l: a.l, s: Number.isInteger(a.s) && a.s > 0 ? a.s : null, at: Date.now() };
+          last = { l: a.l, s: Number.isInteger(a.s) && a.s > 0 ? a.s : null, f: Number.isInteger(a.f) ? a.f : 0, at: Date.now() };
           const m = document.getElementById('lic-modal');
           if (m && m.style.display === 'flex') paint(true);
         }

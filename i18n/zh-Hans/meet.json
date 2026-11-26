@@ -830,6 +830,7 @@
  "meet.licNone": "还没有权限：最多 {n} 人",
  "meet.licNoLimit": "没有人数限制",
  "meet.licUpTo": "最多 {n} 人",
+ "meet.licClearStage": "舞台视频可清晰显示（主持的会议）",
  "meet.licSince": "自 {time}",
  "meet.licOpen": "没有人数限制：开放会议没有",
  "meet.licAsOf": "截至 {when}",

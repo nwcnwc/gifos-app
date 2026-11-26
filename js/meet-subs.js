@@ -1198,8 +1198,8 @@
   // A live four-hour pass rides instead of a ticket whose plan is below it
   // (none, free, $2): the best right held is the one the room reads.
   // A clear-video item rides with the credential that carries it: the room reads ONE ticket, so a pass that carries
-  // clearWithoutPassword / clearStageWithoutPassword (and a subscription that does not) rides instead.
-  const clearRank = (g) => { const x = g && SUB.grantsOk(g); return !x ? 0 : x.clearWithoutPassword ? 2 : x.clearStageWithoutPassword ? 1 : 0; };
+  // clearWithoutPassword / clearStageInAdminRoom (and a subscription that does not) rides instead.
+  const clearRank = (g) => { const x = g && SUB.grantsOk(g); return !x ? 0 : x.clearWithoutPassword ? 2 : x.clearStageInAdminRoom ? 1 : 0; };
   const beatsPass = (grants, pass) => !!grants && !!pass && clearRank(grants) >= clearRank(pass.grants) && (clearRank(grants) > clearRank(pass.grants) || SUB.rank(SUB.ticketRights({ grants, exp: 1 })) >= SUB.rank(SUB.passRights(Object.assign({}, pass, { end: 1 }))));   // line items against line items (equal: the subscription's ticket rides)
   async function roomOrder(room) {
     const ticket = await currentTicket(room);
