@@ -131,7 +131,7 @@
       iframe.style.cssText = 'position:fixed;left:' + x + 'px;bottom:0;width:2px;height:2px;border:0;opacity:0.02;pointer-events:none;z-index:1';
       var sess = {
         id: id, iframe: iframe, control: !!opts.control, bot: opts.bot !== false,
-        ready: false, joined: false, wait: new Map(), link: '', room: ''
+        ready: false, joined: false, wait: new Map(), link: '', room: '', rejoining: false, held: [], sticky: {}
       };
       sessions.set(id, sess);
       sess.timer = setTimeout(function () {
@@ -141,13 +141,28 @@
         if (!iframe.contentWindow || e.source !== iframe.contentWindow) return;
         var d = e.data;
         if (!d || d.ns !== NS) return;
+        var joinMsg = {
+          ns: NS, op: 'join', id: id,
+          room: opts.room || '', link: opts.link || '', password: opts.password || '',
+          name: opts.name || '', bot: sess.bot, control: sess.control, guest: !!opts.guest
+        };
         if (d.op === 'ready' && !sess.ready) {
           sess.ready = true;
-          iframe.contentWindow.postMessage({
-            ns: NS, op: 'join', id: id,
-            room: opts.room || '', link: opts.link || '', password: opts.password || '',
-            name: opts.name || '', bot: sess.bot, control: sess.control, guest: !!opts.guest
-          }, '*');
+          iframe.contentWindow.postMessage(joinMsg, '*');
+          return;
+        }
+        // The session's page loaded again by itself (a password change sends a seat back to the door with a
+        // reload; an update reloads too). It came back empty, so it joins the same meeting again, and the calls
+        // made meanwhile wait for it: the bot stays one seat in one meeting instead of a dead frame.
+        if (d.op === 'ready' && sess.joined) {
+          sess.rejoining = true;
+          iframe.contentWindow.postMessage(joinMsg, '*');
+          return;
+        }
+        if (d.op === 'joined' && sess.rejoining) {
+          sess.rejoining = false;
+          if (d.link) sess.link = d.link;
+          rejoined(sess);
           return;
         }
         if (d.op === 'joined' && !sess.joined) {
@@ -187,21 +202,36 @@
     });
   }
 
+  // Switches a session page holds for the app (on or off), set again after the page joins again.
+  var STICKY = { transcribe: 1, speakers: 1, raiseHand: 1, setMic: 1, setCamera: 1, watch: 1 };
+  function post(sess, msg) {
+    try { sess.iframe.contentWindow.postMessage(msg, '*'); return null; } catch (e) { return e; }
+  }
+  // After a session page joined again: its switches first, then every call it never answered and every call held meanwhile.
+  function rejoined(sess) {
+    Object.keys(sess.sticky).forEach(function (op) {
+      post(sess, Object.assign({ ns: NS, op: op, ref: 's' + Math.random().toString(36).slice(2), id: sess.id }, sess.sticky[op]));
+    });
+    sess.wait.forEach(function (w) { if (w.msg) post(sess, w.msg); });
+    var held = sess.held; sess.held = [];
+    held.forEach(function (msg) { post(sess, msg); });
+  }
   function call(id, op, extra) {
     var sess = sessions.get(id);
     if (!sess || !sess.iframe || !sess.iframe.contentWindow) return Promise.reject(new Error('No such meeting.'));
     var ref = 'c' + Math.random().toString(36).slice(2);
+    var msg = Object.assign({ ns: NS, op: op, ref: ref, id: id }, extra || {});
+    if (STICKY[op]) sess.sticky[op] = extra || {};
     return new Promise(function (resolve, reject) {
       var t = setTimeout(function () { sess.wait.delete(ref); reject(new Error('Meeting call timed out.')); }, 30000);
       sess.wait.set(ref, {
+        msg: msg,
         resolve: function (r) { clearTimeout(t); resolve(r); },
         reject: function (e) { clearTimeout(t); reject(e); }
       });
-      try {
-        sess.iframe.contentWindow.postMessage(Object.assign({ ns: NS, op: op, ref: ref, id: id }, extra || {}), '*');
-      } catch (e) {
-        clearTimeout(t); sess.wait.delete(ref); reject(e);
-      }
+      if (sess.rejoining) { sess.held.push(msg); return; }
+      var err = post(sess, msg);
+      if (err) { clearTimeout(t); sess.wait.delete(ref); reject(err); }
     });
   }
 
