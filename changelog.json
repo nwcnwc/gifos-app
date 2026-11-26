@@ -12,7 +12,9 @@
         "Apps you download from your Home Screen carry the guide for changing them (llms.txt).",
         "Screen shares are captured as screenshots in the transcript at the moment they change, and the transcript download includes them."
       ],
-      "fixes": []
+      "fixes": [
+        "In WebKit test browsers, the Stage picture of an embedded player now starts on every join (it could stay black while sound played). Not yet measured on real Safari."
+      ]
     },
     {
       "version": "0.9.28.36",
