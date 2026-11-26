@@ -2,6 +2,20 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.32",
+      "date": "2026-11-25",
+      "headline": "Plans you can read, and purchases that are never overwritten",
+      "critical": false,
+      "features": [
+        "/subscription is shorter and clearer: your plan first, then the plans, then closed sections for moving, restoring and receipts.",
+        "Plain words: copy my plan to another device, get my plan from another device, use host password."
+      ],
+      "fixes": [
+        "A PayPal checkout you don't finish no longer replaces your plan or shows a receipt; every plan and receipt you bought is kept.",
+        "Restore with PayPal names each plan when your PayPal account holds several."
+      ]
+    },
+    {
       "version": "0.9.28.31",
       "date": "2026-11-25",
       "headline": "A bigger Stadium, and Full meeting goes straight in",
