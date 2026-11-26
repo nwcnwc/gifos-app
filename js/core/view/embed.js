@@ -856,6 +856,31 @@
     // Input: unmute, mute, the password, the bar and its panels. Runs after the core's top level.
     function setup() {
     $('emb-play').onclick = function () { if (hostedNow()) hear(true); };
+    // UPDATE: a player never stays on an old release (an old page is refused by the room's relay and would sit on
+    // CONNECTING). A framed page has no update bar, so the player reads version.json itself, now, then every
+    // UPDATE_CHECK_MS and when it is shown again; a newer release reloads this frame onto it, the room link kept.
+    (function watchRelease() {
+      var m = /^\/versions\/(\d+(?:\.\d+){2,3})\//.exec(location.pathname);
+      if (!m) return;   // the edge build follows its own deploys
+      var mine = m[1], moving = false;
+      var newer = function (a, b) {
+        var x = String(a).split('.').map(Number), y = String(b).split('.').map(Number);
+        for (var i = 0; i < Math.max(x.length, y.length); i++) { var d = (x[i] || 0) - (y[i] || 0); if (d) return d > 0; }
+        return false;
+      };
+      var tick = function () {
+        if (moving || document.hidden) return;
+        fetch('/version.json', { cache: 'no-cache', credentials: 'omit' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (v) {
+          var latest = v && typeof v.latest === 'string' && /^\d+(\.\d+){2,3}$/.test(v.latest) ? v.latest : '';
+          if (!latest || !newer(latest, mine) || moving) return;
+          moving = true;
+          location.replace('/versions/' + latest + '/embed' + location.hash);
+        }).catch(function () {});
+      };
+      setTimeout(tick, GifOS.timings.EMBED_HOSTED_MS);
+      setInterval(tick, GifOS.timings.UPDATE_CHECK_MS);
+      document.addEventListener('visibilitychange', tick);
+    })();
     $('emb-unblur').onclick = function () { try { C.tapUnblur(); } catch (e) {} paint(); };
     setInterval(function () { try { paint(); } catch (e) {} }, GifOS.timings.EMBED_HOSTED_MS);   // re-read the live host state
     $('emb-mute').onclick = function () { if (hostedNow() || M.serviceHeard) hear(!M.serviceHeard); };
