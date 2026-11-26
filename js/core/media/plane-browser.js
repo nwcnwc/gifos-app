@@ -6898,7 +6898,7 @@
       }
       reactSing();
     }
-    yield 2598;
+    yield 2606;
     // ---- WHISPER CAPTIONS: the OS's speech-to-text provider, fed my own mic ----
     // (2026-10-02, the first customer meeting.) The browser engine listens in
     // ONE fixed language and cannot detect it, writes two-word fragments,
@@ -6913,7 +6913,7 @@
     // clip is in the provider at a time; a backlog past three drops the
     // oldest and says so.
     const CC_ENGINE_KEY = 'gifos_cc_engine', CC_TRANSLATE_KEY = 'gifos_cc_translate', CC_WORDS_KEY = 'gifos_cc_words', CC_EARS_KEY = 'gifos_cc_ears';
-    yield 2601;
+    yield 2609;
     // WHO MAY RUN WHISPER. Whisper runs on the processor that also encodes the
     // call and answers its heartbeats. On a phone, or a computer with few cores
     // or little memory, it starves the meeting and drains the battery, so such
@@ -6932,7 +6932,7 @@
     const whisperAllowed = () => !WSP_WEAK || (0, /*()*/__C.lsGet)(CC_WHISPER_ANYWAY_KEY) === '1';
     function ccEngine() { return (phoneCaptions() ? 'browser' : (__C.CC_ON_PHONE ? 'local' : ((0, /*()*/__C.lsGet)(CC_ENGINE_KEY) === 'whisper' && whisperAllowed() ? 'whisper' : 'browser'))); }
     const WHISPER_APP_ID = 'offline-stt-whisper';
-    yield 2608;
+    yield 2616;
     // Can this browser run Whisper at all: allowed on this device, and an
     // audio graph to cut the voices from.
     function whisperSupported() { return whisperAllowed() && !!(window.AudioContext || window.webkitAudioContext); }
@@ -7511,7 +7511,7 @@
         (0, /*()*/__C.setStatus)('Whisper captions failed: ' + msg.slice(0, 160), 10000);
       }).then(() => { if (!done) release(); });
     }
-    yield 2650;
+    yield 2658;
     // Translating everything to English, the page hears EVERY voice through
     // its own Whisper: my own (even with Send off, for my own captions),
     // every first-hand voice whether captioned or not, and the Stadium mix
@@ -7654,7 +7654,7 @@
     function phoneCaptions() {
       try { const N = window.GifosNative; return !!(N && N.info && N.info().captions === 'device'); } catch (e) { return false; }
     }
-    yield 2665;
+    yield 2673;
     function whisperSeedBlocked() {
       // A phone or a weak computer, a data-saver flag, or a cellular link does not fetch the 13 MB app on its own.
       if (__C.IS_MOBILE || WSP_WEAK) return true;
@@ -7695,7 +7695,7 @@
     }
     const wspWorking = (k) => k === 'ready' || k === 'downloading';
     let wspStSig = '';
-    yield 2674;
+    yield 2682;
     // The page boots in steps, and the captions engines it reads are declared
     // further down: until they exist the status waits for the next tick.
     function wspPaintSafe() {
@@ -7720,7 +7720,7 @@
       try { if (sessionStorage.getItem('gifos_wsp_chip_gone') === wspChipRoom()) wspChip.gone = true; } catch (e) {}
       return wspChip.gone;
     }
-    yield 2681;
+    yield 2689;
     // THE MEETING COMES FIRST. A 250 ms tick that lands more than a second late
     // means the page missed its heartbeats and media work; on a phone the
     // provider runs on this very thread. Two such stalls within 30 s while
@@ -7728,7 +7728,7 @@
     // tick keeps the chip in step with the engine.
     const WSP_TICK_MS = GifOS.timings.WSP_TICK_MS, WSP_STARVE_MS = GifOS.timings.WSP_STARVE_MS, WSP_STARVE_N = GifOS.timings.WSP_STARVE_N, WSP_STARVE_WIN = GifOS.timings.WSP_STARVE_WIN;
     let wspTickAt = 0, wspStarved = [];
-    yield 2695;
+    yield 2703;
     // ---- THE ROOM EAR: one browser engine hears every voice ------------------
     // A browser runs ONE speech session at a time (a second start aborts the
     // first), so CC cannot open an engine per voice. Where start() takes a
@@ -8166,7 +8166,7 @@
       if (!mine && speechRunning()) stopSpeech();
       (0, /*()*/__C.capPublish)();
     }
-    yield 2730;
+    yield 2738;
     function paintCcButtons() { (0, /*()*/__V.paintCcView)(); }
     document.getElementById('ccbtn').onclick = () => {
       __C.ccShow = !__C.ccShow;
@@ -8186,7 +8186,7 @@
       const last = lines.length ? lines[lines.length - 1] : null;
       if (last) (0, /*()*/__V.showCaption)(last.byId, (0, /*()*/__C.trNote)(last) + last.text);
     };
-    yield 2733;
+    yield 2741;
     if (__V.ccDockBtn) __V.ccDockBtn.onclick = () => document.getElementById('ccbtn').click();
     // CAPTIONS FOR EVERYONE. Each person had to find CC alone, and one never
     // did. An admin's room-wide 'cc' order (pseudo-target '*', the same signed
@@ -8268,7 +8268,7 @@
       const lines = blocks.map((l) => '[' + new Date(l.at).toLocaleTimeString() + '] ' + l.by + (l.lang && l.lang !== mine ? ' (' + l.lang + ')' : '') + ': ' + (0, /*()*/__C.trNote)(l) + l.text);
       return { blob: new Blob([lines.join('\n') + '\n'], { type: 'text/plain' }), name: meetDownloadName('Transcript', __C.room, blocks.length ? blocks[0].at : 0, 'txt'), lines: lines.length };
     }
-    yield 2746;
+    yield 2754;
 
     // ---- recording: this meeting, composited ON YOUR DEVICE ---------------------
     // A popup asks WHAT to capture (scope) and at what QUALITY. Tiles are drawn
@@ -8286,7 +8286,7 @@
     let recMode = null, recRestart = null, recMatchMix = true, recQuality = 'std', recType = 'video/webm'; // recType = the container MediaRecorder writes; recMode = scope; recRestart = opts after a stop
     let recToLib = false;   // this recording goes to My library (Streamer) when it stops
     let recStarting = false, recReloadAfterStop = false, recIndWatch = null;
-    yield 2751;
+    yield 2759;
     const REC_QUALITY = { low: { w: 1280, h: 720, v: 1000000 }, std: { w: 1920, h: 1080, v: 3000000 }, high: { w: 1920, h: 1080, v: 6000000 } };
     // Every source I can record, grouped by BUS. Direct peers + me are live
     // tiles; folds (compOf) are already consent-baked composites of many people.
@@ -8423,7 +8423,7 @@
         if (typeof saved.drop === 'function') { try { Promise.resolve(saved.drop()).catch(() => {}); } catch (e) {} }
       }, 60000);
     }
-    yield 2766;
+    yield 2774;
     // ---- My library (Streamer): the finished recording is uploaded, with the
     // transcript beside it. If the library refuses it (full, plan ended) or
     // the upload cannot be kept to finish later, the file is saved on this
@@ -9021,7 +9021,7 @@
     }
     let recFloor = null;   // the silent source under the record mix (startRec)
     function recStopFloor() { const f = recFloor; recFloor = null; if (f) { try { f.stop(); } catch (e) {} try { f.disconnect(); } catch (e) {} } }
-    yield 2796;
+    yield 2804;
     function warnRecorderNewApp() {
       if (!(recRec && recRec.state !== 'inactive')) return;
       if (recMode === 'app' || !canScreenRecord()) return;
@@ -9057,7 +9057,7 @@
       (0, /*()*/__V.showRecOptions)();
     };
     let callStateBox = '';
-    yield 2859; // knock-first: the boot's own getUserMedia while it is in flight — THE one ask; lateMedia must join it, never race it
+    yield 2867; // knock-first: the boot's own getUserMedia while it is in flight — THE one ask; lateMedia must join it, never race it
     // NO CAMERA IS NOT NO MICROPHONE. A combined camera+mic ask rejects as a
     // whole when the camera is missing, disabled by policy or held by another
     // app (NotFoundError / NotReadableError / OverconstrainedError), and the
@@ -9389,7 +9389,7 @@
       try { const sb = document.getElementById('spkbtn'); if (sb) sb.setAttribute('aria-expanded', 'false'); } catch (e) {}
       if (refocus && from) { try { from.focus(); } catch (e) {} }
     }
-    yield 2874;
+    yield 2882;
     { const sb = document.getElementById('spkbtn'); if (sb) sb.onclick = () => { if (micChooserOpen()) closeMicChooser(true); else openSpkChooser(); }; }
     function openSpkChooser() {
       const el = document.getElementById('micchooser'), sb = document.getElementById('spkbtn');
@@ -9761,7 +9761,7 @@
       if (b.getAttribute('aria-disabled') === 'true') return false;
       return b.classList.contains('inmore') || getComputedStyle(b).display !== 'none';
     }
-    yield 2905;
+    yield 2913;
     function openKeys() {
       const rows = [];
       // A grayed slot is shown but not usable, so its key is not listed.
@@ -9789,7 +9789,7 @@
       __V.keysModal.style.display = 'flex';
       queueMicrotask(__V.syncModalFocus);
     }
-    yield 3237;
+    yield 3245;
     function dbgMeterSources() {
       const out = [];
       const nm = (id) => (id ? (__C.rosterNames[id] || String(id).slice(0, 8)) : null);

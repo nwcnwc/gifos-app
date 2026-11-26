@@ -124,10 +124,12 @@
  },
  "pages": {
   "meet.html": [
+   "js/core/view/shareshots.js",
    "js/core/view/view.js",
    "js/core/view/meet.js"
   ],
   "cast.html": [
+   "js/core/view/shareshots.js",
    "js/core/view/view.js",
    "js/core/view/cast.js"
   ],

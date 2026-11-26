@@ -1284,6 +1284,11 @@
   #ccbtn.on, #ccdock.on { background: var(--c-blue); color: var(--c-white); border-color: transparent; }
   .trline { font-size: .82rem; padding: .15rem 0; overflow-wrap: anywhere; }
   .trline b { color: #7b9cff; margin-right: .35rem; }
+  .trshot img { display: block; max-width: 100%; height: auto; margin: .25rem 0 .35rem; border: 1px solid var(--border, #2a2a3f); border-radius: .35rem; cursor: zoom-in; }
+  .shareshot-view { position: fixed; inset: 0; z-index: 9000; background: rgba(0,0,0,.88); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .5rem; padding: 1rem; cursor: zoom-out; }
+  .shareshot-view img { max-width: 100%; max-height: calc(100% - 2.5rem); object-fit: contain; border-radius: .3rem; }
+  .shareshot-cap { color: #e0e0f0; font-size: .9rem; }
+  .trshots-row { display: inline-flex; align-items: center; gap: .3rem; margin-left: auto; font-size: .78rem; color: var(--text, #e0e0f0); cursor: pointer; }
   #trwrap { flex: 1; display: none; flex-direction: column; min-height: 0; }
   #trwrap.show { display: flex; }
   #trlog { flex: 1; overflow-y: auto; padding: .6rem; }

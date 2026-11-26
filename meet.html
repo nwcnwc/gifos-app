@@ -683,6 +683,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <script src="js/core/meeting.js" defer></script>
     <script src="js/core/media/plane-browser.js" defer></script>
     <script src="js/core/view/kit.js" defer></script>
+    <script src="js/core/view/shareshots.js" defer></script>
     <script src="js/core/view/view.js" defer></script>
     <script src="js/core/host.js" defer></script>
 <!-- the lobby's scripts end here -->
@@ -1318,7 +1319,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <button data-t="chatnew" type="button" id="chatnew" hidden>New messages</button>
     <div id="trwrap">
       <div id="trlog" data-agent="transcript-log" role="region" data-al="transcript" aria-label="Transcript"><small data-t="trEmptyStatic" style="color:#667">This meeting is written down. Lines appear here under each name. Anyone here can read or download them.</small></div>
-      <div id="trfoot"><button id="trdl" type="button" data-t="trDownload">Download transcript</button></div>
+      <div id="trfoot"><button id="trdl" type="button" data-t="trDownload">Download transcript</button><label id="trshots-row" class="trshots-row" title="When a shared screen changes and holds still, like a new slide, the transcript keeps one screenshot of it. Taken on this device from what you see: nothing is sent, and a screen you see blurred is never taken."><input type="checkbox" id="trshots" checked><span data-t="setTrShots">Auto screenshots</span></label></div>
     </div>
     <div id="cfiles" hidden><h4 data-t="filesPinnedToThis">Files pinned to this meeting</h4><div id="cfilelist"></div></div>
     <div data-al="emojirowAria" id="emojirow" hidden role="group" aria-label="Emoji">

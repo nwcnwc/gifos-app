@@ -231,6 +231,9 @@
     SGA_PEND_TTL: 30000,   // ms
     SGA_WANT_TTL: 30000,   // ms
     SGA_WIDEN_AFTER: 3,   // count
+    SHARESHOT_CAP_WINDOW_MS: 60000,   // ms
+    SHARESHOT_GAP_MS: 3000,   // ms
+    SHARESHOT_TICK_MS: 1000,   // ms
     SIGN_KEY_MS: 2200,   // ms
     SIG_RETRY_CURE_MS: 8500,   // ms (SIG_RETRY_CURE)
     SNAP_MIN_MS: 3000,   // ms
