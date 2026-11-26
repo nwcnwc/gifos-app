@@ -2,6 +2,17 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.43",
+      "date": "2026-11-26",
+      "headline": "Text in a shared screen stays readable",
+      "features": [
+        "In a meeting without a password, words on a shared screen (a Bible page, a document) show clear while photos and video in the share stay blurred."
+      ],
+      "fixes": [
+        "Words that stay blurred show as a plain grey patch, never as empty page."
+      ]
+    },
+    {
       "version": "0.9.28.42",
       "date": "2026-11-26",
       "headline": "A camera that is off sends no video, and names show crisp",
