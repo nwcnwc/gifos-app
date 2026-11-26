@@ -23021,7 +23021,7 @@
             case 'host.state': return yes({ bot_is_host: !!amAdmin, host_room: !!av });
             case 'host.signin': {
               if (amAdmin) return yes({ bot_is_host: true, note: 'Already signed in as host.' });
-              if (!av) return no('No one has taken over as host in this public open-floor meeting, so there is nothing to sign in to.');
+              if (!av) return no('No one has taken over as host in this majority-rules meeting (open meeting), so there is nothing to sign in to.');
               const pw = String(a.password || '').trim();
               if (!pw) return no('That host password did not sign the bot in.');
               sayState('adminChecking');
