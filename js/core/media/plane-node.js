@@ -127,16 +127,12 @@
       for (const sd of job.senders || []) { const t = sd && sd.track; if (t && t.readyState !== 'ended') return t; }
       return null;
     }
-    function dutyJob(jk) {
-      const k = String(jk).slice(0, String(jk).indexOf('>'));
-      return k === 'sdm' || k === 'sub' || k === 'sgs';
-    }
     // DEBUG LEVER (owed-duty evidence): while on, every duty job is parked and its wakes are refused. A stage copy is
     // not a duty, so a stubbed seat still forwards the stage feed.
     function dutyMuteTick() {
       if (!stubDuties.on || !C.mosJobs) return;
       stubDuties.parked = stubDuties.parked || [];
-      for (const [jk, job] of C.mosJobs) if (job.active && dutyJob(jk)) {
+      for (const [jk, job] of C.mosJobs) if (job.active && C.dutyJob(jk)) {
         if (stubDuties.parked.indexOf(jk) < 0) stubDuties.parked.push(jk);
         C.setJobActive(jk, false);
       }
@@ -152,7 +148,7 @@
     function dutyTick() {
       dutyMuteTick();
       let sig = '';
-      if (C.mosJobs) for (const [jk, job] of C.mosJobs) if (dutyJob(jk)) sig += jk + (dutyTrack(job.to, job.key) ? '+' : '-') + ',';
+      if (C.mosJobs) for (const [jk, job] of C.mosJobs) if (C.dutyJob(jk)) sig += jk + (dutyTrack(job.to, job.key) ? '+' : '-') + ',';
       if (sig !== dutyTick.sig) { dutyTick.sig = sig; refreshOutbound(); }
     }
     // THE PLANE'S SIDE OF THE MEDIA PLAN: the core's one reconcile (reconcileMain, as the browser plane), on werift senders.
@@ -407,7 +403,7 @@
     function jobPinned(jk) {
       let held = 0;
       try { held = (typeof window !== 'undefined' && window.__parkedJobs && window.__parkedJobs.get(jk)) || 0; } catch (e) { held = 0; }
-      return !!(C.DEBUG_ON && (held > Date.now() || (stubDuties.on && dutyJob(jk))));
+      return !!(C.DEBUG_ON && (held > Date.now() || (stubDuties.on && C.dutyJob(jk))));
     }
     function swapTrack(job, jk, p, idx, track) {
       void jk; void p;
@@ -896,7 +892,7 @@
         const tiny = GifOS.meshMedia && GifOS.meshMedia.stadiumTiny;
         if (typeof tiny !== 'function') return false;
         const past = typeof C.roomPastSection === 'function' && C.roomPastSection();
-        const n = past ? (typeof M.displayCount === 'function' ? M.displayCount() : 0) : (typeof C.knownTotal === 'function' ? C.knownTotal() : 0);
+        const n = past ? (typeof C.displayCount === 'function' ? C.displayCount() : 0) : (typeof C.knownTotal === 'function' ? C.knownTotal() : 0);
         return !!tiny(n);
       } catch (e) { return false; }
     }
@@ -1384,7 +1380,6 @@
     def('containerFor', containerFor);
     def('jobPinned', jobPinned);
     def('swapTrack', swapTrack);
-    def('dutyJob', dutyJob);
     def('dutyMuteTick', dutyMuteTick);
     def('schedClaim', schedClaim);
     def('schedReconcile', schedReconcile);
@@ -1417,7 +1412,7 @@
     // The host's setInterval returns a number, so unref runs only when the timer object itself is what came back.
     const sweepT = setInterval(() => { try { M.schedReconcile(); } catch (e) {} }, GifOS.meshLaws.FHOP_SWEEP * GifOS.timings.tickMs);
     if (sweepT && typeof sweepT.unref === 'function') sweepT.unref();
-    return { folds: foldParts, video: videoPort, names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties', 'bindClaim', 'unbindClaim', 'adoptClaim', 'picRead', 'rowEdge', 'keyUp', 'producerKey', 'kfEv', 'attachTrack', 'detachTrack', 'parkSender', 'kickJob', 'noteReship', 'dropContainer', 'orphaned', 'attachFailed', 'containerFor', 'jobPinned', 'swapTrack', 'dutyJob', 'dutyMuteTick', 'schedClaim', 'schedReconcile', 'stgLost', 'mySelfStream', 'jobVideoAt', 'stgCarry', 'repaintRedun', 'swapPicNote', 'stgFoNote', 'rowMixHold', 'rowMixHeadArrives', 'x2Target', 'partStream', 'slotDark', 'carriedHot', 'hopMs', 'packFor', 'blockOf', 'faceLive', 'blockPicture', 'blockLive', 'overlayTiny', 'rowMixOpen', 'mixReady', 'rowMixViaPeek', 'mosHeld', 'downStreams'] };
+    return { folds: foldParts, video: videoPort, names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties', 'bindClaim', 'unbindClaim', 'adoptClaim', 'picRead', 'rowEdge', 'keyUp', 'producerKey', 'kfEv', 'attachTrack', 'detachTrack', 'parkSender', 'kickJob', 'noteReship', 'dropContainer', 'orphaned', 'attachFailed', 'containerFor', 'jobPinned', 'swapTrack', 'dutyMuteTick', 'schedClaim', 'schedReconcile', 'stgLost', 'mySelfStream', 'jobVideoAt', 'stgCarry', 'repaintRedun', 'swapPicNote', 'stgFoNote', 'rowMixHold', 'rowMixHeadArrives', 'x2Target', 'partStream', 'slotDark', 'carriedHot', 'hopMs', 'packFor', 'blockOf', 'faceLive', 'blockPicture', 'blockLive', 'overlayTiny', 'rowMixOpen', 'mixReady', 'rowMixViaPeek', 'mosHeld', 'downStreams'] };
   }
 
   GifOS.planeNode = { install };

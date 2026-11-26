@@ -117,8 +117,7 @@
     function stageLevel() { return K.stageLevel(C); }
     function watchCount() { return K.watchCount(C); }
     function hear(on) {
-      C.serviceHeard = !!on;
-      try { M.applyBuses(); } catch (e) {}
+      M.setServiceHeard(!!on);   // the plane holds the person's stage sound and mixes by it
       paint();
     }
     // HOSTED RIGHT NOW: the core's live answer from the room's signed host state (an admin room's host, or an open
@@ -132,7 +131,7 @@
       if (hosted !== wasHosted) {
         wasHosted = hosted;
         document.body.classList.toggle('emb-unhosted', !hosted);
-        if (!hosted && C.serviceHeard) { C.serviceHeard = false; try { M.applyBuses(); } catch (e) {} }
+        if (!hosted && M.serviceHeard) M.setServiceHeard(false);
         else { try { M.applyBuses(); } catch (e) {} }
       }
       paintShares();
@@ -157,7 +156,7 @@
       if ($('emb-live-txt').textContent !== word) $('emb-live-txt').textContent = word;
       var cw = st === 'off' ? '' : tr('watching', '{n} watching', { n: watchCount() });
       if ($('emb-count').textContent !== cw) $('emb-count').textContent = cw;
-      var heard = !!C.serviceHeard;
+      var heard = !!M.serviceHeard;
       $('emb-play').hidden = heard || st === 'off';
       var mw = heard ? tr('mute', 'Mute') : tr('unmute', 'Unmute');
       if ($('emb-mute').textContent !== mw) { $('emb-mute').textContent = mw; $('emb-mute').setAttribute('aria-pressed', heard ? 'false' : 'true'); }
@@ -528,7 +527,7 @@
       var b = $('emb-m-mute');
       if (!b) return;
       b.hidden = !(controls.has('mute') && why === 'ok');
-      var heard = !!C.serviceHeard;
+      var heard = !!M.serviceHeard;
       b.disabled = !heard && !hostedNow();
       setToggle(b, !heard);
     }
@@ -828,7 +827,7 @@
     function setup() {
     $('emb-play').onclick = function () { if (hostedNow()) hear(true); };
     setInterval(function () { try { paint(); } catch (e) {} }, GifOS.timings.EMBED_HOSTED_MS);   // re-read the live host state
-    $('emb-mute').onclick = function () { if (hostedNow() || C.serviceHeard) hear(!C.serviceHeard); };
+    $('emb-mute').onclick = function () { if (hostedNow() || M.serviceHeard) hear(!M.serviceHeard); };
     $('emb-lock').onclick = function () { names.showPwModal(true); };
     $('emb-tabmenu').onchange = function () { pick(this.value); };
     $('emb-inset-min').onclick = function (e) { e.stopPropagation(); toggleInset(); };
@@ -882,7 +881,7 @@
       if (saved != null) applyVol(saved, false);
       slider.oninput = function () { applyVol(this.value, true); };
     }
-    $('emb-m-mute').onclick = function () { if (hostedNow() || C.serviceHeard) hear(!C.serviceHeard); };
+    $('emb-m-mute').onclick = function () { if (hostedNow() || M.serviceHeard) hear(!M.serviceHeard); };
     $('emb-m-captions').onclick = function () {
       if (!controls.has('captions')) return;
       ccOn = !ccOn;
