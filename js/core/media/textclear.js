@@ -78,6 +78,8 @@
     smallGap: 3,      //   as sent; no two such pictures within this many cells of each other (no mosaic of small pieces)
     smallRing: 0.75,  //   'ringed': this share of the cells around it are shown (a cut letter at a line's end still fills in)
     sharpMin: 48,     // a text cell (not a blank page cell) holds a step of at least this between neighbouring pixels
+    sliverMax: 0.12,  // CUT LETTERS: a cell beside a shown text cell whose only ink is a sliver (at most this share of it) touching
+    sliverEdge: 6,    //   that shared side (within this many px) is the rest of a letter: shown, on that cell's flat background
     block: 64,        // incremental analysis: changed cells are analysed in aligned blocks of this edge
     grow: 2,          // ... grown by this many blocks on every side (the alphabet and neighbour tests look that far at body-text size)
     fullFrac: 0.6     // ... unless the blocks to analyse cover this share of the frame: then the whole frame at once
@@ -450,6 +452,25 @@
           if (st.small[k]) return false; if (st.shown[k]) on++; } }
       return all > 0 && on >= P.smallRing * all;
     }
+    // A letter cut by a cell edge: its other part sits in the next cell as a sliver of ink against the shared side. Left
+    // blurred, half a letter reads as another letter (a blurred half-'Г' reads 'С'); shown, the word is whole.
+    function slivers(rgba, newly) {
+      const tl = P.tauLo, E = P.sliverEdge;
+      for (let c = 0; c < n; c++) {
+        if (st.shown[c] || !st.judged[c] || st.stable[c] < P.needStable) continue;
+        const cx = c % cols, cy = (c / cols) | 0;
+        for (const dx of [-1, 1]) {
+          const x = cx + dx; if (x < 0 || x >= cols) continue; const k = cy * cols + x; if (!st.shown[k] || st.small[k]) continue;
+          const bg = st.bg.subarray(k * 3, k * 3 + 3), x0 = cx * C, y0 = cy * C, x1 = Math.min(w, x0 + C), y1 = Math.min(h, y0 + C);
+          const edge = dx > 0 ? x1 - 1 : x0; let ink = 0, far = 0, all = 0;
+          for (let y = y0; y < y1; y++) for (let xx = x0; xx < x1; xx++) { all++; const q = (y * w + xx) * 4;
+            let d = rgba[q] - bg[0]; if (d < 0) d = -d; let e = rgba[q + 1] - bg[1]; if (e < 0) e = -e; if (e > d) d = e; e = rgba[q + 2] - bg[2]; if (e < 0) e = -e; if (e > d) d = e;
+            if (d > tl) { ink++; if ((dx > 0 ? edge - xx : xx - edge) >= E) far++; } }
+          if (ink === 0 || far > 0 || ink > P.sliverMax * all) continue;
+          st.shown[c] = 1; st.bg.set(bg, c * 3); st.fpSnap.set(fp.subarray(c * 16, c * 16 + 16), c * 16); newly.push(c); break;
+        }
+      }
+    }
     function smallPictures(newly, hidden) {
       // a small picture whose ring is no longer shown text goes back to blur (it may now be part of something bigger)
       for (const list of comps((c) => st.small[c] && st.shown[c])) if (!ringed(list)) for (const c of list) { st.shown[c] = 0; st.small[c] = 0; hidden.push(c); }
@@ -497,6 +518,7 @@
         }
       }
       smallPictures(newly, hidden);
+      slivers(rgba, newly);
       if (newly.length) {
         patches = new Uint8Array(newly.length * C * C * 4);
         newly.forEach((c, i) => st.paint(rgba, c, patches.subarray(i * C * C * 4, (i + 1) * C * C * 4)));
