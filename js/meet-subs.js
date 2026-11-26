@@ -895,7 +895,7 @@
     let home = null;
     for (const k of keptWallets()) if (await mine(k)) { home = k; break; }
     if (!home && await mine(owner)) home = owner;
-    if (home || !cur) { if (home) keepWallet(Object.assign({}, home, { passes: [entry] }), 'bought'); else writeJson(WALLET_KEY, Object.assign({}, owner, { passes: [entry] })); return; }
+    if (home || !cur) { if (home) keepWallet(Object.assign({}, home, { passes: joinPasses(home.passes, [entry]) }), 'bought'); else writeJson(WALLET_KEY, Object.assign({}, owner, { passes: joinPasses(owner && owner.passes, [entry]) })); return; }
     writeJson(WALLET_KEY, Object.assign({}, cur, { passes: joinPasses(cur.passes, [entry]) }));   // no wallet of its key here: never dropped
   }
   const pubMemo = new Map();
@@ -1044,7 +1044,10 @@
     let j;
     try { j = await post('/gifos/pass/create', { buyerKey: k.pub }); }
     catch (e) { try { popup && popup.close(); } catch (x) {} throw e; }
-    writeJson(WALLET_KEY, Object.assign({}, (await wallet()) || w, { pending: j.id }));
+    // The order is bound to w's key: w is the wallet in use while it is paid for (one that took its place meanwhile is kept).
+    const now = SUB.walletOk(readJson(WALLET_KEY));
+    if (now && now.seed !== w.seed) keepWallet(now, 'not in use');
+    writeJson(WALLET_KEY, Object.assign({}, now && now.seed === w.seed ? now : w, { pending: j.id }));
     if (popup) popup.location.href = j.approveUrl; else root.open(j.approveUrl, '_blank');
     say(tx('passPending', 'Finish paying in the PayPal window. This updates as soon as PayPal confirms.'));
     const until = Date.now() + POLL_FOR_MS;
