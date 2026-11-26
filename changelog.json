@@ -2,6 +2,26 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.34",
+      "date": "2026-11-26",
+      "headline": "A Stage view, a fuller embed player, and one page for every GifOS plan",
+      "critical": false,
+      "features": [
+        "Stage view: while something is on the Stage, pick Stage to fill the screen with it, full screen in the same tap.",
+        "Float button in the meeting's top bar, beside Help and Full screen.",
+        "Embed player: full screen, float, info, chat and reactions buttons; an Audio only switch; the bar fades when idle.",
+        "/subscription is now GifOS plans: every plan, Streamer included, with what each plan gives in each app.",
+        "Receipts is a table of every purchase on this device with its status; Hide never deletes anything.",
+        "Open meetings are now called majority-rules meetings."
+      ],
+      "fixes": [
+        "A bot that restarts no longer leaves a second, Away copy of itself on screen.",
+        "On Android, a muted microphone is let go after 15 seconds, so the volume buttons and calls behave normally again.",
+        "The People list names everyone in the room, not only your own row.",
+        "Guests may send files only after the host turns it on."
+      ]
+    },
+    {
       "version": "0.9.28.33",
       "date": "2026-11-26",
       "headline": "Backgrounds for your camera, a clear Stage in hosted meetings, and GifOS TV",
