@@ -92,7 +92,11 @@
     var common = perApp[0].extra.filter(function (x) { return perApp.every(function (pa) { return pa.extra.some(function (y) { return labelKey(y) === labelKey(x); }); }); });
     var isCommon = {}; common.forEach(function (x) { isCommon[labelKey(x)] = 1; });
     var only = perApp.map(function (pa) { return { app: pa.app, extra: pa.extra.filter(function (x) { return !isCommon[labelKey(x)]; }) }; }).filter(function (o) { return o.extra.length; });
-    var changed = common.length > 0 && !only.length && common.every(function (x) { return perApp[0].haveWord[x.word]; });
+    // "except" only when the plan drops a line the plan below has; a changed number is still "plus".
+    var changed = r.kind !== 'addon' && SUB.GRANT_APPS.some(function (app) {
+      var now = {}; SUB.grantLabels(r.grants, app.id).forEach(function (x) { now[labelKey(x)] = 1; });
+      return SUB.grantLabels(parent.grants, app.id).some(function (x) { return !now[labelKey(x)] && !SUB.grantLabels(r.grants, app.id).some(function (y) { return y.word === x.word; }); });
+    });
     return { parent: parent, common: common, only: only, changed: changed };
   }
   var bigN = function (n) { try { return n.toLocaleString((document.documentElement && document.documentElement.lang) || 'en'); } catch (e) { return String(n); } };
@@ -225,7 +229,7 @@
         var cum = r.id === 'free' || !r.grants ? null : cumBlock(r);
         if (!cum || r.kind === 'addon') what.appendChild(el('p', 'quiet', t(r.id + '.desc')));
         if (r.id === 'free') what.appendChild(el('p', 'quiet', t('free.desc2')));
-        if (cum) what.appendChild(cum);
+        if (cum && r.kind !== 'addon') what.appendChild(cum);
         // The price: one line per period (a card stacks them; a row keeps them on one line).
         var price = el('p', 'price');
         if (r.row && r.row.periods && r.kind === 'paypal') {
