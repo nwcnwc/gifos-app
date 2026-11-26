@@ -77,6 +77,7 @@
     smallArea: 4,     //   cells on a side (64 px) and this many cells in all, ringed on every side by shown text or page, is shown
     smallGap: 3,      //   as sent; no two such pictures within this many cells of each other (no mosaic of small pieces)
     smallRing: 0.75,  //   'ringed': this share of the cells around it are shown (a cut letter at a line's end still fills in)
+    sharpMin: 48,     // a text cell (not a blank page cell) holds a step of at least this between neighbouring pixels
     block: 64,        // incremental analysis: changed cells are analysed in aligned blocks of this edge
     grow: 2,          // ... grown by this many blocks on every side (the alphabet and neighbour tests look that far at body-text size)
     fullFrac: 0.6     // ... unless the blocks to analyse cover this share of the frame: then the whole frame at once
@@ -348,10 +349,26 @@
   // A REGION THAT PASSED AS TEXT IS SHOWN AS SENT (Nathan 2026-11-26): its original pixels, anti-aliasing and colour
   // included, so text reads exactly as it was shared. Safety lies in the judgement (only cells that passed every text
   // test on these very pixels, held still, and drop at their first change), not in repainting.
-  function copyCell(rgba, w, h, c, cols, C, out) {
+  // THE PAGE UNDER THE TEXT IS FLAT (Nathan 2026-11-26): inside a text region every pixel within tauLo of the region's
+  // background colour is drawn as that colour; ink and its anti-alias ramp stay exactly as sent. Real text looks the
+  // same; a faint picture, tint or tone laid behind the letters is not shown. bg: [r, g, b] or null (a small picture,
+  // shown as sent).
+  function copyCell(rgba, w, h, c, cols, C, out, bg, tl) {
     const x0 = (c % cols) * C, y0 = ((c / cols) | 0) * C, x1 = Math.min(w, x0 + C), y1 = Math.min(h, y0 + C);
-    for (let y = y0; y < y1; y++) out.set(rgba.subarray((y * w + x0) * 4, (y * w + x1) * 4), (y - y0) * C * 4);
-    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) out[((y - y0) * C + x - x0) * 4 + 3] = 255;
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+      const q = (y * w + x) * 4, p = ((y - y0) * C + x - x0) * 4;
+      let r = rgba[q], g = rgba[q + 1], b = rgba[q + 2];
+      if (bg) { let d = r - bg[0]; if (d < 0) d = -d; let e = g - bg[1]; if (e < 0) e = -e; if (e > d) d = e; e = b - bg[2]; if (e < 0) e = -e; if (e > d) d = e; if (d <= tl) { r = bg[0]; g = bg[1]; b = bg[2]; } }
+      out[p] = r; out[p + 1] = g; out[p + 2] = b; out[p + 3] = 255;
+    }
+  }
+  // A text cell must hold a SHARP edge somewhere (the largest step between neighbouring pixels): a letter another filter
+  // already blurred (a sender's) is a soft blob that can read as a different letter beside crisp ones, so it stays blurred.
+  function sharpest(rgba, w, h, c, cols, C) {
+    const x0 = (c % cols) * C, y0 = ((c / cols) | 0) * C, x1 = Math.min(w, x0 + C), y1 = Math.min(h, y0 + C); let m = 0, lo = 255, hi = 0;
+    for (let y = y0; y < y1; y++) { let q = (y * w + x0) * 4, prev = -1;
+      for (let x = x0; x < x1; x++, q += 4) { const Y = (rgba[q] * 77 + rgba[q + 1] * 150 + rgba[q + 2] * 29) >> 8; if (Y < lo) lo = Y; if (Y > hi) hi = Y; if (prev >= 0) { const d = Y > prev ? Y - prev : prev - Y; if (d > m) m = d; } prev = Y; if (y + 1 < y1) { const q2 = q + w * 4, Y2 = (rgba[q2] * 77 + rgba[q2 + 1] * 150 + rgba[q2 + 2] * 29) >> 8; const d2 = Y2 > Y ? Y2 - Y : Y - Y2; if (d2 > m) m = d2; } } }
+    return { step: m, range: hi - lo };
   }
   function renderCell(A, rgba, w, h, c, out, ow, ox, oy) {
     const { cols, T } = A, x0 = (c % cols) * T, y0 = ((c / cols) | 0) * T, x1 = Math.min(w, x0 + T), y1 = Math.min(h, y0 + T);
@@ -401,7 +418,7 @@
   function createState(w, h, opts) {
     const P = Object.assign({}, DEFAULTS, opts || {}), C = P.T >> 1, cols = Math.ceil(w / C), rows = Math.ceil(h / C), n = cols * rows;
     const st = { w, h, cols, rows, cell: C, P, shown: new Uint8Array(n), fpPrev: new Uint8Array(n * 16), fpSnap: new Uint8Array(n * 16),
-      stable: new Uint16Array(n), strikes: new Uint8Array(n), judged: new Uint8Array(n), small: new Uint8Array(n), ticks: 0, analysedPx: 0 };
+      stable: new Uint16Array(n), strikes: new Uint8Array(n), judged: new Uint8Array(n), small: new Uint8Array(n), bg: new Uint8Array(n * 3), ticks: 0, analysedPx: 0 };
     const fp = new Uint8Array(n * 16);
     function fingerprints(rgba) {
       const q4 = C / 4;
@@ -447,6 +464,7 @@
         for (const c of list) { st.shown[c] = 1; st.small[c] = 1; st.fpSnap.set(fp.subarray(c * 16, c * 16 + 16), c * 16); newly.push(c); }
       }
     }
+    st.paint = (rgba, c, out) => copyCell(rgba, w, h, c, cols, C, out, st.small[c] ? null : st.bg.subarray(c * 3, c * 3 + 3), P.tauLo);
     function differs(a, b, c) { for (let i = c * 16; i < c * 16 + 16; i++) if (Math.abs(a[i] - b[i]) > P.fpTol) return true; return false; }
     st.tick = function (rgba) {
       fingerprints(rgba);
@@ -468,14 +486,20 @@
           for (let cy = 0; cy < A.rows; cy++) for (let cx = 0; cx < A.cols; cx++) {
             const c = (cy + oy) * cols + cx + ox; if (!cand[c] || done[c]) continue;
             done[c] = 1; st.judged[c] = 1;   // a cell judged blurred is not analysed again until it changes
-            if (A.clear[cy * A.cols + cx]) { st.shown[c] = 1; st.fpSnap.set(fp.subarray(c * 16, c * 16 + 16), c * 16); newly.push(c); }
+            const a = cy * A.cols + cx;
+            let soft = false;
+            if (A.clear[a] && A.kind[a] === 1) { const sh = sharpest(rgba, w, h, c, cols, C); soft = sh.range > P.tauLo && sh.step < P.sharpMin * Math.min(1, sh.range / 128); }   // content, but no edge as sharp as its own contrast allows
+            if (A.clear[a] && !soft) {
+              st.shown[c] = 1; st.fpSnap.set(fp.subarray(c * 16, c * 16 + 16), c * 16); newly.push(c);
+              st.bg[c * 3] = A.par[a * 8]; st.bg[c * 3 + 1] = A.par[a * 8 + 1]; st.bg[c * 3 + 2] = A.par[a * 8 + 2];
+            }
           }
         }
       }
       smallPictures(newly, hidden);
       if (newly.length) {
         patches = new Uint8Array(newly.length * C * C * 4);
-        newly.forEach((c, i) => copyCell(rgba, w, h, c, cols, C, patches.subarray(i * C * C * 4, (i + 1) * C * C * 4)));
+        newly.forEach((c, i) => st.paint(rgba, c, patches.subarray(i * C * C * 4, (i + 1) * C * C * 4)));
       }
       st.fpPrev.set(fp); st.ticks++; st.analysedPx += px;
       return { analysed: dirty, regions, px, newly: Int32Array.from(newly), patches: patches || new Uint8Array(0), hidden: Int32Array.from(hidden) };
