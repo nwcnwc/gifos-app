@@ -2,6 +2,21 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.39",
+      "date": "2026-11-26",
+      "headline": "Clearer Blur and Unblur buttons, and a careful Report sheet",
+      "critical": false,
+      "features": [
+        "Embedded players have a Show names switch in the gear menu.",
+        "Report now opens a short sheet: say what you are reporting (illegal, offensive or other) and see what is shared before you send."
+      ],
+      "fixes": [
+        "The viewer buttons read Unblur and Blur. Report moved to the info panel in embeds and to the More menu in meetings.",
+        "Embedded players ask you to tap to unmute first, then offer a blue Tap to unblur.",
+        "Embedded player controls now fade in full screen after a few idle seconds."
+      ]
+    },
+    {
       "version": "0.9.28.38",
       "date": "2026-11-26",
       "headline": "Plans and subscriptions move into the shared meeting core",
