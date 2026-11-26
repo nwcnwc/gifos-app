@@ -693,24 +693,21 @@ body.names-off #stagefeed .stgnames { display: none; }
                 padding: .15rem .55rem; border-radius: .4rem; font-size: .75rem; z-index: 2; }
   .tile .note { color: var(--muted, #8888aa); font-size: .8rem; padding: 1rem; text-align: center; }
   .tile.me { border-color: #5ca0ff; }
-  /* The avatar rides the video track. A camera-off seat paints the letter
-     into that <video> (see paintAvatarCanvas), so the blur classes below
-     cover it the same way they cover a camera. This element only holds the
-     initial for the painter; it is never the picture. */
+  /* A camera-off seat is a card: this layer, drawn by each viewer. It holds
+     the initial (never blurred) and, when the person has one, their avatar
+     still (blurred by the classes below, like a face). */
   .tile .avatar { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; display: none; align-items: center; justify-content: center;
                   font-size: 3rem; font-weight: 800; color: var(--c-white); background: transparent; }
-  /* A camera-off seat paints its letter into the <video> (paintAvatarCanvas /
-     syncAvatarFeed), so the blur classes on that video cover it like a camera.
-     A picture avatar is an <img> of the original bytes, never drawn onto a
-     canvas, so it still overlays the (hidden) video. */
   .tile.cam-off .avatar.has-img { display: flex; color: var(--c-white); }
   /* The letter stays in the text (tests read it). The picture covers it. A GIF
      is an <img> of the original bytes — never drawn onto a canvas. */
   .tile .avatar.has-img { font-size: 0; color: transparent; }
   .tile .avatar .avatar-img { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-  /* A camera-off placeholder is as soft as the face it stands in for. */
-  .tile .avatar.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .009))) saturate(.9); transform: scale(1.07); }
-  .tile .avatar.blur2 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-max, .0225))) saturate(.75); transform: scale(1.15); }
+  /* A camera-off picture (an avatar may be a photo) is as soft as the face it stands in for. The initial is drawn by
+     every viewer and is never blurred: the filter sits on the picture only. */
+  .tile .avatar.blur1 .avatar-img { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .009))) saturate(.9); transform: scale(1.07); }
+  .tile .avatar.blur2 .avatar-img { filter: blur(calc(var(--bw, 320px) * var(--blur-view-max, .0225))) saturate(.75); transform: scale(1.15); }
+  .tile .avatar.has-img { overflow: hidden; }
   .cmsg img.avchip, .trline img.avchip, .brow img.avchip { width: 1.25rem; height: 1.25rem; object-fit: cover;
     border-radius: .25rem; vertical-align: middle; margin-right: .35rem; }
   #bc-ident { display: none; }
@@ -728,8 +725,7 @@ body.names-off #stagefeed .stgnames { display: none; }
   body.broadcast:has(#bc-ident.on) #stagefeed .rowtile { background: var(--c-black); }
   .tile.cam-off > video { visibility: hidden; }
   .tile.cam-off:has(> .avatar.has-img) > video { visibility: hidden; }
-  /* A dark seat past the shared-canvas cap (mountPeerAvatar) shows its letter
-     overlay, blurred the way the video it stands in for would be. */
+  /* A camera-off seat sends no video: its card (the avatar picture or the initial) is the picture. */
   .tile.cam-off .avatar { display: flex; }
   .tile .chips { position: absolute; top: 6px; left: 6px; right: 6px; display: flex; flex-direction: row;
                  flex-wrap: nowrap; gap: 3px; align-items: center; z-index: 3; pointer-events: none; overflow: hidden; }
@@ -3904,3 +3900,12 @@ body.broadcast.sv-live #feed > :not(#stagefeed):not(#bc-cap):not(#bc-ident):not(
 body.broadcast.sv-live #airbar { visibility: hidden; }
 /* An app in a meeting is one of the Stage's tabs: the view button stays, so the Stage view can be picked and left with an app up. */
 body.comfy.sv-avail.has-app:not(.app-full):not(.solo-app):not(.app-room) #tophead > .fitbtn { display: inline-flex; }
+/* A camera-off person's card over their cell of a received picture (viewKit.cellCards): drawn by this viewer, the
+   initial always sharp; an avatar picture is softened like a face by the blur classes on the <img> only. */
+.cellcards { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
+.cellcard { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; overflow: hidden;
+  background: #14141f; color: #d7d9ea; font-weight: 800; line-height: 1; font-family: system-ui, sans-serif; }
+.cellcard > img { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cellcard.has-img > span { display: none; }
+.cellcard > img.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .009))) saturate(.9); transform: scale(1.07); }
+.cellcard > img.blur2 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-max, .0225))) saturate(.75); transform: scale(1.15); }

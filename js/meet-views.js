@@ -735,6 +735,37 @@
     return id ? String(id) : null;
   }
 
+  // The camera-off people in the Stadium picture: each viewer draws their card over their cell (viewKit.cellCards),
+  // with the same geometry as stadFaceAt (the cut canvas's kept cells, else the whole frame's cells).
+  function stadCards(el, opts) {
+    const K = GifOS.viewKit, C = GifOS.core && GifOS.core.meeting && GifOS.core.meeting.core;
+    if (!K || typeof K.cellCards !== 'function' || !C || !el) return;
+    const out = [];
+    try {
+      const video = el.querySelector('video');
+      const ids = Array.isArray(opts.ids) ? opts.ids : null;
+      const W = el.clientWidth, H = el.clientHeight;
+      const sc = stadClose && stadClose.el === el && stadClose.canvas && stadClose.canvas.isConnected && stadClose.keep ? stadClose : null;
+      const fw = sc ? sc.canvas.width : ((video && video.videoWidth) || 0), fh = sc ? sc.canvas.height : ((video && video.videoHeight) || 0);
+      if (ids && W > 0 && H > 0 && fw > 2 && fh > 2) {
+        const k = Math.min(W / fw, H / fh), ox = (W - fw * k) / 2, oy = (H - fh * k) / 2;
+        const g = sc ? stadKeepGrid(sc.keep.length, sc.layCols) : null;
+        const cols = sc ? (g ? g.cols : 0) : (opts.cols | 0);
+        const list = sc ? sc.keep : ids.map(function (x, j) { return j; });
+        if (cols > 0) {
+          const c = fw / cols;
+          for (let i = 0; i < list.length; i++) {
+            const pid = ids[list[i]];
+            const x = (i % cols) * c, y = Math.floor(i / cols) * c;
+            if (!pid || y + c > fh + 0.5) continue;
+            out.push({ pid: String(pid), x: ox + x * k, y: oy + y * k, w: c * k, h: c * k });
+          }
+        }
+      }
+    } catch (e) {}
+    try { K.cellCards(C, el, out, 'stadium'); } catch (e) {}
+  }
+
   // One resize listener, on the stadium <video>. Debounced, so a burst
   // of resizes is one relayout.
   let rzVid = null, rzCb = null, rzTimer = 0;
@@ -1155,6 +1186,7 @@
       if (skips.length && (opts.cellN | 0) > 0 && (opts.cols | 0) > 0) {
         armStadClose(stadEl, cv, { n: opts.cellN | 0, cols: opts.cols | 0, skips: skips, layCols: layCols });
       } else stopStadClose();
+      stadCards(stadEl, { ids: opts.ids, cols: opts.cols | 0 });
       if (stream) frameVid = cv;
     }
     watchFrame(frameVid, typeof opts.onSettle === 'function' ? opts.onSettle : null);

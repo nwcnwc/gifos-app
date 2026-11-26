@@ -15,6 +15,7 @@
  *   acts                    pip, fullscreen: the browser's own controls over a video element (fullscreen.enterStage /
  *                           leaveStage: the Stage view's full screen on every surface).
  *   stageNames, calm        the Stage's names over the picture, and the watching surfaces' one idle fade.
+ *   cellCards               a camera-off person's card (avatar or initial) over their cell of a received picture.
  *   clear                   the viewer's own unblur (clearButtons) and Report (clearReport, from the info panel / More menu) in a hosted room with no
  *                           password whose clear right the core reads (clearNoPwState); every surface draws the same.
  *
@@ -354,10 +355,13 @@
     var vw = v ? v.videoWidth : 0, vh = v ? v.videoHeight : 0, W = el.clientWidth, H = el.clientHeight;
     var want = (vw > 0 && vh > 0 && W > 0 && H > 0) ? ids : [];
     while (box.children.length > want.length) box.removeChild(box.lastChild);
-    if (!want.length) return;
+    if (!want.length) { cellCards(C, el, [], 'stage'); return; }
     // the picture inside its box (object-fit: contain, centred)
     var k = Math.min(W / vw, H / vh), pw = vw * k, ph = vh * k, ox = (W - pw) / 2, oy = (H - ph) / 2;
     var n = want.length, cw = pw / n;
+    var cards = [];
+    for (var ci = 0; ci < n; ci++) cards.push({ pid: want[ci], x: ox + ci * cw, y: oy, w: cw, h: ph });
+    cellCards(C, el, cards, 'stage');
     // one stager: a caption sized from the picture's long side; several: a bar across each cell's foot
     var lw = n === 1 ? Math.min(pw, Math.max(pw, ph) * 0.25) : cw;
     var fs = Math.max(11, Math.round(lw * 0.11));
@@ -375,6 +379,62 @@
     }
   }
 
+  // ---- cards: a camera-off person's cell in a received picture, drawn by this viewer ----
+  // A seat with its camera off sends no video, and a packer paints its cell plain (no letter, no avatar): a picture can
+  // be blurred downstream and an initial must never be. Each viewer draws the card over the cell itself: the person's
+  // avatar still (as it arrived, at the sender's blur) under this viewer's blur for that person, or the initial, crisp.
+  // cells: [{ pid, x, y, w, h }] in host pixels. where: 'stage' for the Stage picture (its own blur rule).
+  function cellCards(C, host, cells, where) {
+    if (!host || !host.ownerDocument) return;
+    var doc = host.ownerDocument;
+    var box = host.querySelector(':scope > .cellcards');
+    var want = [];
+    for (var i = 0; i < (cells || []).length; i++) {
+      var c = cells[i]; if (!c || !c.pid || !(c.w > 2) || !(c.h > 2)) continue;
+      var card = false; try { card = typeof C.cardFor === 'function' && !!C.cardFor(c.pid); } catch (e) { card = false; }
+      if (card) want.push(c);
+    }
+    if (!want.length) { if (box) box.remove(); return; }
+    if (!box) {
+      box = doc.createElement('div'); box.className = 'cellcards'; box.setAttribute('aria-hidden', 'true');
+      var nm = host.querySelector(':scope > .stgnames, :scope > .name');
+      if (nm) host.insertBefore(box, nm); else host.appendChild(box);
+    }
+    while (box.children.length > want.length) box.removeChild(box.lastChild);
+    var me = ''; try { me = String(C.myId || ''); } catch (e) {}
+    for (var j = 0; j < want.length; j++) {
+      var w = want[j], el = box.children[j];
+      if (!el) { el = doc.createElement('div'); el.className = 'cellcard'; el.appendChild(doc.createElement('span')); box.appendChild(el); }
+      var isMe = me && String(w.pid) === me;
+      var url = '', hash = '';
+      try {
+        if (isMe) { var a = GifOS.store && GifOS.store.identity().avatar; if (a) { url = a.url || ''; hash = a.hash || ''; } }
+        else { var q = C.model.roster.peers().get(w.pid); if (q && q.avatarUrl) { url = q.avatarUrl; hash = q.avatarHash || ''; } }
+      } catch (e) {}
+      var name = nameOf(C, w.pid); try { if (!name && C.displayName) name = String(C.displayName(w.pid) || ''); } catch (e) {}
+      var ini = ''; try { ini = C.nameInitial ? String(C.nameInitial(name)) : String(name || '').slice(0, 1).toUpperCase(); } catch (e) {}
+      var lvl = 0;
+      try { lvl = isMe ? (C.blurLevelFor('me') | 0) : (where === 'stage' ? (C.blurLevelFor(w.pid, false, false, 'stage') | 0) : (C.blurLevelFor(w.pid, true) | 0)); } catch (e) { lvl = 2; }
+      el.dataset.pid = String(w.pid);
+      el.style.left = Math.round(w.x) + 'px'; el.style.top = Math.round(w.y) + 'px';
+      // A packed Stadium cell carries its name in its foot band (burned by the packer, over the plain fill): the card
+      // leaves that band showing. The Stage's names are drawn above the card by this viewer.
+      var ch = where === 'stage' ? w.h : w.h * 0.8;
+      el.style.width = Math.round(w.w) + 'px'; el.style.height = Math.round(ch) + 'px';
+      el.style.setProperty('--bw', Math.round(Math.max(w.w, w.h)) + 'px');
+      var sp = el.firstChild;
+      if (sp.textContent !== ini) sp.textContent = ini;
+      sp.style.fontSize = Math.max(10, Math.round(Math.min(w.w, ch) * 0.45)) + 'px';
+      var img = el.querySelector('img');
+      if (url) {
+        if (!img) { img = doc.createElement('img'); img.alt = ''; el.appendChild(img); }
+        if (img.getAttribute('data-hash') !== hash) { img.src = url; img.setAttribute('data-hash', hash); }
+        img.className = isMe ? '' : (lvl >= 2 ? 'blur2' : lvl === 1 ? 'blur1' : '');
+      } else if (img) img.remove();
+      el.classList.toggle('has-img', !!url);
+    }
+  }
+
   // ---- calm: the one idle rule of the watching surfaces ----
   // After the surface's idle clock (no pointer, touch or key), a watching surface (the embed, a /cast viewer, the
   // Stage view, full screen) takes every control and label off the picture: the bar, the top buttons, Blur, the
@@ -385,7 +445,28 @@
     if (b.classList.contains('view-calm') !== !!on) b.classList.toggle('view-calm', !!on);
   }
 
+  // ---- TRANSCRIPT DOWNLOAD: the meeting's Download button and the embed's are this one path (Nathan 2026-11-26) ----
+  // The plain .txt as the media plane writes it; with this device's screenshots (js/core/view/shareshots.js) it is the
+  // .zip instead: transcript.txt (pictures as markers), transcript.md, a self-contained transcript.html and shots/.
+  // f is the media plane's transcriptFile() result; who(shot) names a screenshot's screen. Resolves when the file was handed to the browser.
+  function trDownload(C, f, who) {
+    var blob = f.blob, name = f.name, SS = null, zipped = Promise.resolve();
+    try { SS = GifOS.shareShots; } catch (e) {}
+    if (SS && SS.list().length) {
+      var mine = C.trLang();
+      var lines = C.trBlocks().map(function (l) { return { at: l.at, text: '[' + new Date(l.at).toLocaleTimeString() + '] ' + l.by + (l.lang && l.lang !== mine ? ' (' + l.lang + ')' : '') + ': ' + C.trNote(l) + l.text }; });
+      zipped = SS.exportZip(lines, name.replace(/\.txt$/, '').replace(/_/g, ' '), who).then(function (z) { blob = z; name = name.replace(/\.txt$/, '.zip'); }, function () {});
+    }
+    return zipped.then(function () {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, GifOS.timings.TRANSCRIPT_DL_REVOKE_MS);
+    });
+  }
+
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 
-  GifOS.viewKit = { version: 1, RECORDS: RECORDS, host: host, part: part, stageLevel: stageLevel, watchCount: watchCount, nameOf: nameOf, present: present, pip: pip, fullscreen: fullscreen, armAppGif: armAppGif, clearButtons: clearButtons, clearReport: clearReport, clearReportButton: clearReportButton, stageNames: stageNames, calm: calm, esc: esc };
+  GifOS.viewKit = { version: 1, RECORDS: RECORDS, host: host, part: part, stageLevel: stageLevel, watchCount: watchCount, nameOf: nameOf, present: present, pip: pip, fullscreen: fullscreen, armAppGif: armAppGif, clearButtons: clearButtons, clearReport: clearReport, clearReportButton: clearReportButton, stageNames: stageNames, cellCards: cellCards, calm: calm, trDownload: trDownload, esc: esc };
 })(typeof window !== 'undefined' ? window : globalThis);

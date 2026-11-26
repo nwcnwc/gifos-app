@@ -184,6 +184,49 @@
     if (parts.length > 64) return [];
     return parts.map((piece, i) => ({ k: 'av', h: h, mime: mime, i: i, n: parts.length, b: piece }));
   }
+  // THE PICTURE A CAMERA-OFF SEAT SENDS. A camera that is off sends no video: the avatar goes once, as a small
+  // still JPEG over the data channel, and at the sender's own blur (never clearer than the blur the sender is under,
+  // as a camera is blurred before it leaves). frac is the blur radius as a share of the long side (0 = sharp).
+  // An animated GIF sends its first frame. Each receiver still applies the room's blur when it paints the picture.
+  const WIRE_EDGE = 256, WIRE_Q = 0.82;
+  const wireMemo = new Map();   // hash|frac -> Promise<{ bytes, mime, hash } | null>
+  function wireStill(rec, frac) {
+    if (!rec || !rec.b64 || !rec.hash) return Promise.resolve(null);
+    const f = Math.max(0, Math.min(0.2, +frac || 0));
+    const key = rec.hash + '|' + f.toFixed(4);
+    if (wireMemo.has(key)) return wireMemo.get(key);
+    const job = (async () => {
+      if (typeof document === 'undefined' || typeof createImageBitmap !== 'function') return null;
+      const src = await createImageBitmap(new Blob([fromB64(rec.b64)], { type: rec.mime || 'image/png' }));
+      const k = Math.min(1, WIRE_EDGE / Math.max(src.width, src.height));
+      const w = Math.max(1, Math.round(src.width * k)), h = Math.max(1, Math.round(src.height * k));
+      const out = document.createElement('canvas'); out.width = w; out.height = h;
+      const g = out.getContext('2d');
+      g.fillStyle = '#14141f'; g.fillRect(0, 0, w, h);
+      if (f > 0) {
+        // Down and up again (works on every engine), then a filter blur where the engine has one: a radius of
+        // f x the long side, as the camera's sender blur.
+        const r = Math.max(1, f * Math.max(w, h));
+        const sw = Math.max(2, Math.round(w / r)), sh = Math.max(2, Math.round(h / r));
+        const sm = document.createElement('canvas'); sm.width = sw; sm.height = sh;
+        const sg = sm.getContext('2d'); sg.imageSmoothingEnabled = true; sg.imageSmoothingQuality = 'high';
+        sg.drawImage(src, 0, 0, sw, sh);
+        g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+        if ('filter' in g) g.filter = 'blur(' + Math.round(r / 2) + 'px)';
+        g.drawImage(sm, 0, 0, w, h);
+        if ('filter' in g) g.filter = 'none';
+      } else g.drawImage(src, 0, 0, w, h);
+      try { src.close(); } catch (e) {}
+      const blob = await new Promise((res) => out.toBlob(res, 'image/jpeg', WIRE_Q));
+      if (!blob) return null;
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      if (bytes.length > MAX_STILL) return null;
+      return { bytes: bytes, mime: 'image/jpeg', hash: await hashBytes(bytes) };
+    })().catch(() => null);
+    wireMemo.set(key, job);
+    if (wireMemo.size > 8) wireMemo.delete(wireMemo.keys().next().value);
+    return job;
+  }
   function join(msgs) {
     const sorted = msgs.slice().sort((a, b) => a.i - b.i);
     return fromB64(sorted.map((m) => m.b).join(''));
@@ -226,7 +269,7 @@
 
   GifOS.avatar = {
     sniff: sniff, gifSize: gifSize, judge: judge, prepareBytes: prepareBytes, prepareFile: prepareFile,
-    prepareDataUrl: prepareDataUrl, chunks: chunks, join: join, hashBytes: hashBytes, toB64: toB64, fromB64: fromB64,
+    prepareDataUrl: prepareDataUrl, chunks: chunks, wireStill: wireStill, join: join, hashBytes: hashBytes, toB64: toB64, fromB64: fromB64,
     shrinkStill: shrinkStill, makeInbox: makeInbox, chunkDelay: chunkDelay,
     MAX_INPUT: MAX_INPUT, MAX_GIF: MAX_GIF, MAX_EDGE: MAX_EDGE, MAX_STILL: MAX_STILL,
   };

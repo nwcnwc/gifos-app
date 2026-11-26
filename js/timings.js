@@ -285,6 +285,7 @@
     TICK_CATCHUP: 4,   // count
     TICK_FREEZE_MS: 10000,   // ms
     TOMB_GRACE: 1500,   // ms
+    TRANSCRIPT_DL_REVOKE_MS: 5000,   // ms
     TREE_MEM_MS: 120000,   // ms
     TUNNEL_KEY_ASK_MS: 250,   // ms
     TUNNEL_MINT_LOOK_MS: 20,   // ms
