@@ -1280,6 +1280,8 @@
     function pipNote(k, x) {
       const e = Object.assign({ t: Date.now(), k, vis: document.visibilityState, f: document.hasFocus(), up: !!(__C.docPip || document.pictureInPictureElement) }, x || {});
       pipTrace.push(e); if (pipTrace.length > 200) pipTrace.shift();
+      const tb = document.getElementById('appfloat');   // the top bar's Float reads pressed while a float is up
+      if (tb) tb.setAttribute('aria-pressed', e.up ? 'true' : 'false');
     }
     const pageFull = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
     // A phone browser floats a full-screen page as it is when you switch
@@ -1616,8 +1618,6 @@
       if (top) {
         top.style.display = '';
         top.onclick = () => { btn.click(); };
-        const paint = () => { top.setAttribute('aria-pressed', pipFloating() ? 'true' : 'false'); };
-        setInterval(paint, 700);
       }
     })();
     yield 342;
