@@ -1686,6 +1686,10 @@
       },
       web(pid) { const L = links.get(pid); return !!L && L.web; },   // TURN.18: this link runs over the web path
       webMine(pid) { const L = links.get(pid); return !!L && L.web && !!L.webMine; },   // ...because MY end found no relay path (the reason a seat shows is its own network's only then)
+      // whose network keeps video to pid off a direct path, as far as this page KNOWS: 'mine' (my own probe read my network
+      // blocked), 'far' (pid's end of my link said its network is blocked), '' (not known: a hotel Wi-Fi whose probe reads open
+      // but drops every peer packet says neither). A paused note never names a network it does not know.
+      netWhy(pid) { if (io.blocked()) return 'mine'; const L = links.get(pid); return L && L.farBlocked ? 'far' : ''; },
       factStaleMs: FACT_STALE_MS,
       holds(pid) { const L = links.get(pid); return !!L && L.state !== 'closed'; },
       isLink(pid) { const L = links.get(pid); return !!L && (L.state === 'up' || L.state === 'dial'); },

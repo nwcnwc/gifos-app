@@ -5457,7 +5457,10 @@
           const t = document.createElement('span'); t.textContent = (0, /*()*/__C.uiText)('turnBusy', 'Video is paused: the connection is busy. It comes back by itself.'); bel.appendChild(t);
           p.tile.appendChild(bel);
         } else if (!busy && bel) bel.remove();
-        pauseNote(p.tile, show);
+        // the note says WHY video is held, naming only a network the page knows (meet-turn netWhy) and the person by name
+        let say;
+        if (show) { const nm = ((__C.model.roster.peers().get(pid) || {}).name || __C.model.roster.rosterNames()[pid] || '').trim(); const tl = __C.model.room.turnLinks(); const why = tl && tl.netWhy ? tl.netWhy(pid) : ''; say = (0, /*()*/__C.statusWords)(why === 'mine' ? 'videoPausedRelayMine' : why === 'far' && nm ? 'videoPausedRelayFar' : 'videoPausedRelay', { name: nm }); }
+        pauseNote(p.tile, show, say);
         if ((p.tile.dataset.tpHeld === '1') !== show) { p.tile.dataset.tpHeld = show ? '1' : ''; try { (0, /*()*/__C.updateTile)(pid); } catch (e) {} }   // the face card follows the hold (syncAvatarFeed)
       }
       // SUB.4 + TURN.11 for every seat: the Stadium that shows a far room over a pipe with no video says so, with the same
@@ -5476,8 +5479,8 @@
       let el = host.querySelector(':scope > .tpause:not(.tpause-busy)');
       if (show && el && say && el.dataset.say !== say) { el.remove(); el = null; }   // a new sharer name: the note is built again with its words
       if (show && !el) {
-        // VIDEO IS PAUSED: the named state's sentence (meet-status videoPausedRelay) over the dark tile, and one
-        // tap to subscribe ($2 monthly, PayPal). A subscription's vouch turns this link's video on where it is:
+        // VIDEO IS PAUSED: the named state's sentence (meet-status videoPausedRelay*: why, outside GifOS's control) over the
+        // dark tile, and one small link to subscribe ($2 monthly, PayPal). A subscription's vouch turns this link's video on where it is:
         // the next paint finds the link carrying video and takes the note away.
         el = document.createElement('div'); el.className = 'tpause'; el.setAttribute('role', 'note');
         const t = document.createElement('span'); t.className = 'tpause-say';
@@ -5487,7 +5490,7 @@
         // Subscribe is offered on every paused tile.
         if (window.GifOS && GifOS.meetSubs && GifOS.sub) {
           const b = document.createElement('button'); b.type = 'button'; b.className = 'tpause-sub';
-          b.textContent = (0, /*()*/__C.uiText)('turnSubscribe', 'Subscribe');
+          b.textContent = (0, /*()*/__C.uiText)('turnSubscribeLink', 'Subscribe');
           b.addEventListener('click', async (e) => {
             e.stopPropagation(); b.disabled = true;
             try {
@@ -5498,7 +5501,7 @@
           el.appendChild(b);
           // or the four-hour pass: $1 once through PayPal, Unlimited for the next 4 hours (never a subscription)
           const b4 = document.createElement('button'); b4.type = 'button'; b4.className = 'tpause-pass';
-          b4.textContent = (0, /*()*/__C.uiText)('turnPass4h', 'or $1 for the next 4 hours');
+          b4.textContent = (0, /*()*/__C.uiText)('turnPass4hLink', 'or $1 for 4 hours');
           b4.addEventListener('click', async (e) => {
             e.stopPropagation(); b4.disabled = true; b.disabled = true;
             try {

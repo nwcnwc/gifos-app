@@ -49,7 +49,11 @@
     mutedByHost:    { tone: 'stop', key: 'sttMutedByHost', en: 'You were muted for everyone[ by {by}]. Someone else has to lift it.' },
     micWaitRoom:    { tone: 'stop', key: 'waitMic', en: 'You are in the waiting room. Your mic opens when the host lets you in.' },
     videoOffByHost: { tone: 'stop', key: 'stAnAdminTurnedYourVideo2', en: 'A host turned your video off for the room. Only a host can turn it back on.' },
-    videoPausedRelay: { tone: 'stop', key: 'sttVideoPausedRelay', en: 'Video is paused on this connection. Sound still works. A subscriber in the meeting can turn video on.' },
+    // Video held on a free relayed link (TURN.11). The sentence says WHY, as something outside GifOS's control, and names only
+    // the network the page knows: its own (its probe read blocked), the far person's (their end said so), or neither.
+    videoPausedRelay: { tone: 'stop', key: 'sttVideoPausedNet', en: 'A firewall or hotel/office Wi-Fi[ between you and {name}] blocks direct video, outside GifOS’s control. Sound still works. Video gets through once someone here subscribes.' },
+    videoPausedRelayMine: { tone: 'stop', key: 'sttVideoPausedMine', en: 'Your network (a firewall or hotel/office Wi-Fi) blocks direct video[ with {name}], outside GifOS’s control. Sound still works. Video gets through once someone here subscribes.' },
+    videoPausedRelayFar: { tone: 'stop', key: 'sttVideoPausedFar', en: '{name}’s network (a firewall or hotel/office Wi-Fi) blocks direct video, outside GifOS’s control. Sound still works. Video gets through once someone here subscribes.' },
     soundHeld:      { tone: 'stop', key: 'sttSoundHeld', en: 'This device is holding back the meeting’s sound. Tap anywhere on the page to hear it.' },
     soundBack:      { tone: 'note', key: 'stSoundIsBack', en: 'Sound is back.' },
 

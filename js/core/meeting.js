@@ -10316,6 +10316,8 @@
     // progressBegin(): the way in is a wait from the page's first paint (the status line calls this before its first words)
     function progressBegin() { if (!progRun && !progEndedJoin && room && typeof meshSeat === 'function') { progressStart(updateResume ? 'update' : 'join'); progressTick(); } }
     function progressBeat(seated, now) {
+      // the relay said no for good (relaySaidNo): no wait is on, so no flow runs and no step is shown (the line says the refusal)
+      if (typeof relaySaidNo === 'function' && relaySaidNo()) { if (progRun) { progRun = null; progMend = false; if (typeof clog === 'function') clog('progress dropped: the relay said no for good'); } try { (0, /*()*/__V.paintProgressSteps)(null); } catch (e) {} return null; }
       if (!progRun && !progEndedJoin) progressStart(updateResume ? 'update' : 'join');
       else if (!progRun && progEndedJoin) {
         const linkDown = !!(statusLinkDownAt && now - statusLinkDownAt >= GifOS.timings.STATUS_RECONNECT_QUIET_MS);
@@ -10346,6 +10348,11 @@
       const plain = (m) => String(m).replace(/^(?:[\u2600-\u27BF]|[\uD83C-\uD83E][\uDC00-\uDFFF])\uFE0F?\s*/, '');
       if (code === 4010 || code === 4013 || code === 4014) return { code, words: plain(uiText('stThisMeetingNeedsTheCurrent', '\u26d4 This meeting needs the current GifOS. Reload the page to update.')) };   // 4010: the version floor, or no key proof; 4013: a failed key proof; 4014: a frame outside the relay's types
       if (code === 4011) return { code, words: plain(uiText('stThisRoomAlreadyHasYou', '\u26d4 This room already has you connected from another device. Close it there, or reload here.')) };
+      // 4000 'replaced' (WELCOMESTUCK, 0.9.28.39 live): the relay keeps one socket per device in a room, and the same meeting opened
+      // again on this device (another tab or window) took this tab's. The code is final (gifos-net FATAL_CLOSES), so the socket never
+      // comes back on its own: "Step 1 of 7: Reconnecting to GifOS" sat on the line for good while the tab plainly sat in the
+      // meeting. Say what happened and what to do, short enough for the header line; never a reconnect that is not happening.
+      if (code === 4000) return { code, words: plain(uiText('stOpenInAnotherTab', 'Open in another tab. Reload here to use this one.')) };
       return null;
     }
     function relaySaidNo() { return relayRefusalOf(meshNode && meshNode.relayRejected ? meshNode.relayRejected() : 0); }
@@ -19556,6 +19563,13 @@
         snapshot: () => {
           const d = window.__gifosVideo && window.__gifosVideo.debugDump ? window.__gifosVideo.debugDump() : null;
           if (d && typeof capSnap === 'function') { try { d.caps = capSnap(); } catch (e) {} }
+          // WELCOMESTUCK: the header's wait and what it reads (the relay socket, its last close codes), and each relayed link's
+          // video facts (vouched, pool, refusals) with the subscribers whose vouch counts, so a field log answers "why does the
+          // header say Reconnecting" and "why is this video paused" without a repro (bounded: a few links, a few subscribers)
+          if (d) { try { const w = progressWords(); const tl = turnLinks ? turnLinks.dump().links : [];
+            d.net = { relay: relayUp(), dp: directPath, closes: (meshNode && meshNode.stats ? meshNode.stats().closes : []).slice(-5), wait: w ? { flow: w.flow, step: w.step, x: w.x, y: w.y } : null,
+              links: tl.slice(0, 8).map((L) => ({ far: String(L.far).slice(0, 8), state: L.state, client: L.client, farBlocked: L.farBlocked, video: L.video, vouched: L.vouched, pool: L.pool, direct: L.direct, sb: L.sb, cred: L.credRefusal || null, paid: L.paidRefusal || null })),
+              subs: Array.from(turnSubs, ([k, v]) => ({ pid: String(k).slice(0, 8), tier: v.tier, links: v.links, pass: !!v.pass, agoS: Math.round((Date.now() - (v.at || 0)) / 1000) })).slice(0, 8) }; } catch (e) { d.net = { err: String(e).slice(0, 80) }; } }
           return d;
         },
       });
