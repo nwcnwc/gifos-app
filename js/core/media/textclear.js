@@ -76,6 +76,7 @@
     smallSide: 2,     // SMALL PICTURES (Nathan 2026-11-26: too small to tell what it is): a still non-text patch at most this many
     smallArea: 4,     //   cells on a side (64 px) and this many cells in all, ringed on every side by shown text or page, is shown
     smallGap: 3,      //   as sent; no two such pictures within this many cells of each other (no mosaic of small pieces)
+    smallRing: 0.75,  //   'ringed': this share of the cells around it are shown (a cut letter at a line's end still fills in)
     block: 64,        // incremental analysis: changed cells are analysed in aligned blocks of this edge
     grow: 2,          // ... grown by this many blocks on every side (the alphabet and neighbour tests look that far at body-text size)
     fullFrac: 0.6     // ... unless the blocks to analyse cover this share of the frame: then the whole frame at once
@@ -424,12 +425,13 @@
       }
       return out;
     }
-    // every cell around a component (inside the frame) is shown text or page, never another small picture
+    // the cells around a component (inside the frame) are mostly (smallRing) shown text or page, none a small picture
     function ringed(list) {
-      const inC = new Set(list);
+      const inC = new Set(list), seen = new Set(); let on = 0, all = 0;
       for (const c of list) { const cx = c % cols, cy = (c / cols) | 0;
-        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const x = cx + dx, y = cy + dy; if (x < 0 || y < 0 || x >= cols || y >= rows) continue; const k = y * cols + x; if (!inC.has(k) && (!st.shown[k] || st.small[k])) return false; } }
-      return true;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const x = cx + dx, y = cy + dy; if (x < 0 || y < 0 || x >= cols || y >= rows) continue; const k = y * cols + x; if (inC.has(k) || seen.has(k)) continue; seen.add(k); all++;
+          if (st.small[k]) return false; if (st.shown[k]) on++; } }
+      return all > 0 && on >= P.smallRing * all;
     }
     function smallPictures(newly, hidden) {
       // a small picture whose ring is no longer shown text goes back to blur (it may now be part of something bigger)
