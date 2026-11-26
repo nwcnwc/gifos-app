@@ -3528,8 +3528,9 @@
       const clear = !hold && (!hasAdminRoom() || consents(st));
       if (clear || (isMe && clearForTest)) return 0;
       // A no-password room with a clear right: the sender may be sending clear pixels on purpose, so a viewer who has
-      // not tapped (or a picture the right does not cover) blurs it at Max whatever the sender claims.
-      if (!isMe && (hold === 'tap' || hold === 'stageonly')) return 2;
+      // not tapped (or a picture the right does not cover, or a face a host order holds) blurs it at Max whatever the
+      // sender claims: a host's blur order never shows less than an untapped face would.
+      if (!isMe && (hold === 'tap' || hold === 'stageonly' || (!roomPw && (hold === 'guests' || hold === 'forall')))) return 2;
       // Someone who says No blur where the room keeps video blurred may be
       // sending clear pixels, so this screen blurs them at Max, never Min.
       // My own picture keeps my pick: my page blurs what it sends.
