@@ -2935,7 +2935,7 @@
         vid.classList.toggle('blur2', bl >= 2);
         // A stager's share shown here keeps its text clear under that blur (fsBlurClass's rule), unless a host blurs them.
         let tc = false;
-        try { tc = !!(bl && id !== __C.model.me.myId() && (0, /*()*/__C.sharingScreen)(id) && !(0, /*()*/__C.modBlurOn)(id)); } catch (e) { tc = false; }
+        try { tc = !!(bl && id !== __C.model.me.myId() && (0, /*()*/__C.sharingScreen)(id) && !(0, /*()*/__C.modBlurOn)(id) && !(0, /*()*/__C.forcedCamOff)(id) && !(typeof __C.shareBlocked === 'function' && (0, /*()*/__C.shareBlocked)(id))); } catch (e) { tc = false; }
         try { if (GifOS.textClear) GifOS.textClear.view(vid, tc); } catch (e) {}
       }
       ensureStageView.paintBlur = paintStageViewBlur;   // paintStageBlurWhy repaints the views' blur too

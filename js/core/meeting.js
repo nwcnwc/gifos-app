@@ -3765,7 +3765,13 @@
     // blurred picture), unless a host or moderator blurs the sharer: that order keeps the full blur.
     function fsBlurClass(v, bl, share) {
       v.classList.remove('blur1', 'blur2');
-      if (bl) { v.classList.add('blur' + bl); try { (0, /*()*/__M.blurSized)(v); } catch (e) {} }
+      if (bl) {
+        v.classList.add('blur' + bl);
+        // the blur's size is known now, not one resize later (the first painted frame is already at full strength)
+        try { const bw = Math.round(Math.max(v.offsetWidth || 0, v.offsetHeight || 0)); if (bw > 0) v.style.setProperty('--bw', bw + 'px'); } catch (e) {}
+        try { (0, /*()*/__M.blurSized)(v); } catch (e) {}
+      }
+      try { v.disablePictureInPicture = !!bl; } catch (e) {}   // the browser's own float paints raw frames: a blurred picture never floats that way
       try { if (GifOS.textClear) GifOS.textClear.view(v, !!(bl && share && !modBlurOn(share))); } catch (e) {}
     }
     yield 512;
@@ -4127,7 +4133,7 @@
       // and this same class for everyone else.
       if (bl && !isMe) t.video.classList.add('blur' + bl);
       // A share this tile shows blurred keeps its text clear (fsBlurClass's rule; the tile's --bw comes from makeTile).
-      try { if (GifOS.textClear) GifOS.textClear.view(t.video, !!(bl && !isMe && st.scr && !shareOnlyStage(id) && !modBlurOn(id))); } catch (e) {}
+      try { if (GifOS.textClear) GifOS.textClear.view(t.video, !!(bl && !isMe && !dark && st.scr && !shareOnlyStage(id) && !modBlurOn(id))); } catch (e) {}   // a dark tile shows nothing, text included
       (0, /*()*/__M.syncAvatarFeed)(id, t, isMe, st, gCam);
       // The letter overlay shows on every screen and is softened by the same
       // rule as a camera (qa-meet-desktop); under it the video carries the

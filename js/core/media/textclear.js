@@ -340,29 +340,25 @@
 
   // Paint one clear cell of an analysis: its flat background plus its one ink colour, the ink's shape from the frame.
   // Writes into out (RGBA) at (ox, oy) with row stride ow pixels; pixels past the frame stay transparent.
+  // INK IS BINARY. A pixel is ink (full ink colour) when the analysed level holds core ink there, a one-pixel edge (half
+  // ink) when it is faint and touches core ink, else background: no grey ramp, so no tone rides inside a stroke. A cell
+  // that passed at a coarser level is drawn from THAT level's own pixels (each one a 2^l square), never from finer pixels
+  // the tests did not see.
   function renderCell(A, rgba, w, h, c, out, ow, ox, oy) {
     const { P, cols, T, kind, level, par, lv } = A, tl = P.tauLo;
     const cx = c % cols, cy = (c / cols) | 0;
-    const o = c * 8, br = par[o], bg = par[o + 1], bb = par[o + 2], ir = par[o + 3], ig = par[o + 4], ib = par[o + 5], aHi = Math.max(tl + 8, par[o + 6]);
-    const x0 = cx * T, y0 = cy * T, x1 = Math.min(w, x0 + T), y1 = Math.min(h, y0 + T), l = level[c], blank = kind[c] === 2;
-    const L = l > 0 ? lv[l] : null;
+    const o = c * 8, br = par[o], bg = par[o + 1], bb = par[o + 2], ir = par[o + 3], ig = par[o + 4], ib = par[o + 5], core = Math.max(tl + 8, par[o + 6]);
+    const x0 = cx * T, y0 = cy * T, x1 = Math.min(w, x0 + T), y1 = Math.min(h, y0 + T), l = Math.max(0, level[c]), blank = kind[c] === 2;
+    const D = l > 0 ? lv[l].data : rgba, LW = l > 0 ? lv[l].w : w, LH = l > 0 ? lv[l].h : h;
+    const dist = (px, py) => { if (px < 0 || py < 0 || px >= LW || py >= LH) return 0; const k = (py * LW + px) * 4; let d = Math.abs(D[k] - br), e = Math.abs(D[k + 1] - bg); if (e > d) d = e; e = Math.abs(D[k + 2] - bb); return e > d ? e : d; };
     for (let y = y0; y < y1; y++) {
-      let q = (y * w + x0) * 4, p = ((oy + y - y0) * ow + ox) * 4;
-      for (let x = x0; x < x1; x++, q += 4, p += 4) {
+      let p = ((oy + y - y0) * ow + ox) * 4;
+      for (let x = x0; x < x1; x++, p += 4) {
         let a = 0;
         if (!blank) {
-          let d = Math.abs(rgba[q] - br), e = Math.abs(rgba[q + 1] - bg); if (e > d) d = e; e = Math.abs(rgba[q + 2] - bb); if (e > d) d = e;
-          if (d > tl) {
-            a = (d - tl) / (aHi - tl); if (a > 1) a = 1;
-            if (L) { // coarse-level pass: ink may only appear where the coarse level saw ink (3x3 neighbourhood)
-              const px = x >> l, py = y >> l; let on = false;
-              for (let dy = -1; dy <= 1 && !on; dy++) for (let dx = -1; dx <= 1; dx++) {
-                const xx = px + dx, yy = py + dy; if (xx < 0 || yy < 0 || xx >= L.w || yy >= L.h) continue; const k = (yy * L.w + xx) * 4;
-                if (Math.abs(L.data[k] - br) > tl || Math.abs(L.data[k + 1] - bg) > tl || Math.abs(L.data[k + 2] - bb) > tl) { on = true; break; }
-              }
-              if (!on) a = 0;
-            }
-          }
+          const px = x >> l, py = y >> l, d = dist(px, py);
+          if (d > core) a = 1;
+          else if (d > tl && (dist(px - 1, py) > core || dist(px + 1, py) > core || dist(px, py - 1) > core || dist(px, py + 1) > core)) a = 0.5;
         }
         out[p] = br + (ir - br) * a; out[p + 1] = bg + (ig - bg) * a; out[p + 2] = bb + (ib - bb) * a; out[p + 3] = 255;
       }
@@ -531,6 +527,8 @@
       };
       eng.run = function (src, sw, sh, capLong) {
         const t = now();
+        // an analysis that never answers (a Worker that hangs) frees the stream and forgets what it showed
+        if (eng.busy && t - eng.busyAt > 4 * MAX_TICK_MS) { eng.busy = false; eng.reset(); }
         if (!eng.due(t) || !(sw > 0 && sh > 0)) return null;
         const sz = eng.sizeFor(sw, sh, capLong);
         if (sz.w !== eng.w || sz.h !== eng.h) {
@@ -540,11 +538,11 @@
         let img = null;
         try { eng.grabx.drawImage(src, 0, 0, eng.w, eng.h); img = eng.grabx.getImageData(0, 0, eng.w, eng.h); } catch (e) { img = null; }
         if (!img) { eng.next = t + TICK_MS; return null; }
-        eng.busy = true; eng.ticks++;
+        eng.busy = true; eng.busyAt = t; eng.ticks++;
         const gen = eng.gen, buf = img.data.buffer, grabMs = now() - t;
         return post(eng, { op: 'tick', id: eng.id, seq: eng.ticks, w: eng.w, h: eng.h, buf: buf, opts: eng.opts }, buf).then((m) => {
           eng.busy = false;
-          if (!m) { eng.next = now() + TICK_MS; return false; }
+          if (!m) { eng.reset(); eng.next = now() + TICK_MS; return true; }   // the analysis failed: what it showed goes too
           if (gen !== eng.gen || m.w !== eng.w || m.h !== eng.h) return false;   // the picture changed size meanwhile
           const C = m.cell, cols = m.cols;
           for (let i = 0; i < m.hidden.length; i++) { const c = m.hidden[i]; eng.ovx.clearRect((c % cols) * C, ((c / cols) | 0) * C, C, C); }
@@ -619,7 +617,7 @@
     // ---- THE VIEWER: an overlay canvas over a share <video> that wears a blur class. Every surface that shows the same
     // track shares one engine (one analysis per track), sized for the largest of them on screen.
     const views = new Set();          // video elements with an overlay
-    const byTrack = new Map();        // track id -> engine
+    const byTrack = new Map();        // track -> engine
     let loopT = null;
     function overlayOf(v) {
       let cv = v.__tcOv;
@@ -650,7 +648,8 @@
     function paintView(v, eng) {
       const cv = overlayOf(v);
       const bw = v.offsetWidth, bh = v.offsetHeight, vw = v.videoWidth, vh = v.videoHeight;
-      if (!(bw > 0 && bh > 0 && vw > 0 && vh > 0) || !eng || eng.gaveUp || !eng.w || v.hidden) { if (cv.style.display !== 'none') cv.style.display = 'none'; return; }
+      let vis = 'visible'; try { vis = W.getComputedStyle(v).visibility; } catch (e) {}
+      if (!(bw > 0 && bh > 0 && vw > 0 && vh > 0) || !eng || eng.gaveUp || !eng.w || v.hidden || vis !== 'visible') { if (cv.style.display !== 'none') cv.style.display = 'none'; cv.__tcSig = ''; return; }
       let left = v.offsetLeft, top = v.offsetTop;
       if (v.offsetParent !== cv.offsetParent && cv.offsetParent) {   // not the same box to measure from: use the screen
         const a = v.getBoundingClientRect(), b = cv.offsetParent.getBoundingClientRect(), sc = a.width / Math.max(1, bw);
@@ -677,7 +676,7 @@
         if (!v.isConnected) { view(v, false); continue; }
         const t = trackOf(v);
         if (!t) { if (v.__tcOv) v.__tcOv.style.display = 'none'; continue; }
-        let g = groups.get(t.id); if (!g) { g = []; groups.set(t.id, g); } g.push(v);
+        let g = groups.get(t); if (!g) { g = []; groups.set(t, g); } g.push(v);   // one engine per track object (ids come from the sender)
       }
       for (const id of Array.from(byTrack.keys())) if (!groups.has(id)) { byTrack.get(id).stop(); byTrack.delete(id); }
       if (!W.document.hidden) {
@@ -690,7 +689,10 @@
             if (!src && v.readyState >= 2 && v.videoWidth > 0) src = v;
           }
           if (src && cap > 0) {
-            const p = eng.run(src, src.videoWidth, src.videoHeight, Math.ceil(cap / 160) * 160);   // in steps: a small layout change keeps the analysis
+            // The picture is analysed at the size it arrives (the budget ladder may shrink it), not at the size it is drawn:
+            // text too small on a small surface still reads once the person makes it big, and what is drawn is only ever
+            // the overlay's own cells, scaled. A surface that small (a thumbnail) needs no more than SIZES[2].
+            const p = eng.run(src, src.videoWidth, src.videoHeight, cap < 480 ? SIZES[2] : 0);
             if (p) p.then(() => { for (const v of els) { try { paintView(v, eng); } catch (e) {} } });
           }
           for (const v of els) { try { paintView(v, eng); } catch (e) {} }
@@ -698,7 +700,7 @@
       }
       if (views.size) loopT = W.setTimeout(loop, TICK_MS / 2);
     }
-    function engineOf(v) { const t = v && trackOf(v); return (t && byTrack.get(t.id)) || null; }
+    function engineOf(v) { const t = v && trackOf(v); return (t && byTrack.get(t)) || null; }
     function stateOf(v) { const eng = engineOf(v); return eng ? eng.state() : null; }
 
     GifOS.textClear = { view: view, sender: sender, engine: engine, stateOf: stateOf, SIZES: SIZES,
