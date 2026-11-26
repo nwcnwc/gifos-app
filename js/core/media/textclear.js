@@ -21,7 +21,13 @@
  *                               GifOS.textClear.sender(opts)      the sender pipe's painter (plane-browser startBlurPipe)
  *                               GifOS.textClear.engine()          one analysis stream (a Worker when the page can start one)
  *
- * COST. A frame that did not change costs its cell fingerprints (about 1.5 ms at 1080p). A cell is analysed once it has
+ * A LETTER IS SHOWN WHOLE, AS THE LIVE PICTURE HAS IT, OR NOT AT ALL (2026-11-26: after an English page the Russian one
+ * read "Nога" for "Бога"; a group reading scripture must never see a wrong letter). Two laws in createState:
+ *   SHOWN IS LIVE   a shown cell is compared with the pixels it was vetted on, pixel by pixel, on every tick; the first
+ *                   pixel off drops it to blur (the coarse fingerprint only says when a cell holds still);
+ *   WHOLE LETTERS   a letter lying across the edge of what is shown is left out of the overlay whole, with its word-part.
+ *
+ * COST. A frame that did not change costs its cell fingerprints and the compare of its shown cells (about 8 ms at 1080p). A cell is analysed once it has
  * held still for a tick, and only the 256 px blocks around changed cells are analysed again (incremental), so a cursor
  * or a clock costs a block, not a frame. When a device is over budget the filter first ticks slower, then analyses a
  * smaller picture; it falls back to the full blur only when neither is enough (Nathan 2026-11-26).
@@ -80,6 +86,10 @@
     sharpMin: 48,     // a text cell (not a blank page cell) holds a step of at least this between neighbouring pixels
     sliverMax: 0.12,  // CUT LETTERS: a cell beside a shown text cell whose only ink is a sliver (at most this share of it) touching
     sliverEdge: 6,    //   that shared side (within this many px) is the rest of a letter: shown, on that cell's flat background
+    snapTol: 40,      // SHOWN IS LIVE: a shown cell is compared, pixel by pixel, with the picture it was vetted on; one pixel further off than
+                      //   this (any channel) drops it. Text ink is at least minInk from its page, so no letter can change below this
+    joinK: 0.3,       // WHOLE LETTERS: ink within this share of a letter's height beside it is the same word-part (a cut letter blurs with it)
+    joinMax: 64,      //   letters at most in one cut word-part
     block: 64,        // incremental analysis: changed cells are analysed in aligned blocks of this edge
     grow: 2,          // ... grown by this many blocks on every side (the alphabet and neighbour tests look that far at body-text size)
     fullFrac: 0.6     // ... unless the blocks to analyse cover this share of the frame: then the whole frame at once
@@ -355,10 +365,13 @@
   // background colour is drawn as that colour; ink and its anti-alias ramp stay exactly as sent. Real text looks the
   // same; a faint picture, tint or tone laid behind the letters is not shown. bg: [r, g, b] or null (a small picture,
   // shown as sent).
-  function copyCell(rgba, w, h, c, cols, C, out, bg, tl) {
+  // A LETTER IS SHOWN WHOLE OR NOT AT ALL: knock (one byte per frame pixel, or null) marks the pixels of letters cut by
+  // the edge of what is shown; they stay transparent, so the blur underneath shows there.
+  function copyCell(rgba, w, h, c, cols, C, out, bg, tl, knock) {
     const x0 = (c % cols) * C, y0 = ((c / cols) | 0) * C, x1 = Math.min(w, x0 + C), y1 = Math.min(h, y0 + C);
     for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
       const q = (y * w + x) * 4, p = ((y - y0) * C + x - x0) * 4;
+      if (knock && knock[y * w + x]) { out[p] = out[p + 1] = out[p + 2] = out[p + 3] = 0; continue; }
       let r = rgba[q], g = rgba[q + 1], b = rgba[q + 2];
       if (bg) { let d = r - bg[0]; if (d < 0) d = -d; let e = g - bg[1]; if (e < 0) e = -e; if (e > d) d = e; e = b - bg[2]; if (e < 0) e = -e; if (e > d) d = e; if (d <= tl) { r = bg[0]; g = bg[1]; b = bg[2]; } }
       out[p] = r; out[p + 1] = g; out[p + 2] = b; out[p + 3] = 255;
@@ -420,7 +433,124 @@
   function createState(w, h, opts) {
     const P = Object.assign({}, DEFAULTS, opts || {}), C = P.T >> 1, cols = Math.ceil(w / C), rows = Math.ceil(h / C), n = cols * rows;
     const st = { w, h, cols, rows, cell: C, P, shown: new Uint8Array(n), fpPrev: new Uint8Array(n * 16), fpSnap: new Uint8Array(n * 16),
-      stable: new Uint16Array(n), strikes: new Uint8Array(n), judged: new Uint8Array(n), small: new Uint8Array(n), bg: new Uint8Array(n * 3), ticks: 0, analysedPx: 0 };
+      stable: new Uint16Array(n), strikes: new Uint8Array(n), judged: new Uint8Array(n), small: new Uint8Array(n), bg: new Uint8Array(n * 3), ticks: 0, analysedPx: 0,
+      snap: new Uint8Array(n * C * C * 4), knock: new Uint8Array(w * h), cut: new Int32Array(n) };
+    const snap32 = new Uint32Array(st.snap.buffer), CC = C * C, kSet = [], seen = new Uint8Array(w * h), seenSet = [];
+    // SHOWN IS LIVE. A shown cell holds the very pixels it was vetted on (its snapshot). It stays shown only while the
+    // live picture still equals that snapshot pixel by pixel (within snapTol, the noise of a video codec): a coarse
+    // fingerprint cannot tell 'N' from 'Б' at the same place, and a stale cell beside fresh ones reads as another word.
+    function keep(rgba, c) {
+      const x0 = (c % cols) * C, y0 = ((c / cols) | 0) * C, x1 = Math.min(w, x0 + C), y1 = Math.min(h, y0 + C), s = st.snap;
+      for (let y = y0; y < y1; y++) s.set(rgba.subarray((y * w + x0) * 4, (y * w + x1) * 4), (c * CC + (y - y0) * C) * 4);
+    }
+    function stale(u32, c) {   // u32: the live picture, one word per pixel
+      const x0 = (c % cols) * C, y0 = ((c / cols) | 0) * C, cw = Math.min(w, x0 + C) - x0, y1 = Math.min(h, y0 + C), tol = P.snapTol;
+      for (let y = y0; y < y1; y++) {
+        let i = y * w + x0, j = c * CC + (y - y0) * C;
+        for (const e = i + cw; i < e; i++, j++) {
+          const a = u32[i], b = snap32[j]; if (a === b) continue;
+          let d = (a & 255) - (b & 255); if (d > tol || d < -tol) return true;
+          d = ((a >>> 8) & 255) - ((b >>> 8) & 255); if (d > tol || d < -tol) return true;
+          d = ((a >>> 16) & 255) - ((b >>> 16) & 255); if (d > tol || d < -tol) return true;
+        }
+      }
+      return false;
+    }
+    // WHOLE LETTERS. Where a shown text cell meets a cell that is not shown, a letter may lie across the edge: half of it
+    // shown, half blurred, and half an 'о' reads 'с'. Every such letter is found on the live picture (ink in the shown
+    // cell touching ink across the edge), together with the ink beside it in its word-part (closer than joinK of its
+    // height: the rest of a 'ы', an accent, a dot), and is left out of the overlay whole. Rules (long thin straight runs)
+    // are not letters. A shown cell is read from its snapshot (what is painted), a cell that is not shown from the live
+    // picture. Every tick looks along the edges of what is shown (cheap); the letters are worked out again only when
+    // the shown cells or the ink across an edge changed. Returns the shown cells whose cut changed.
+    let cutSig = 0;
+    function wholeLetters(rgba, shownChanged) {
+      const tl = P.tauLo, K = st.knock, RL = P.ruleLen, RW = P.ruleW, S = st.snap, B = st.bg;
+      const textCell = (c) => st.shown[c] === 1;   // (a small picture too: a letter in it that is cut at the edge goes whole)
+      // is pixel (x, y) off the page colour of cell k
+      const ink = (x, y, k) => {
+        const c = ((y / C) | 0) * cols + ((x / C) | 0), b = k * 3; let D = rgba, q = (y * w + x) * 4;
+        if (st.shown[c]) { D = S; q = (c * CC + (y % C) * C + (x % C)) * 4; }
+        let d = D[q] - B[b]; if (d < 0) d = -d; let e = D[q + 1] - B[b + 1]; if (e < 0) e = -e; if (e > d) d = e; e = D[q + 2] - B[b + 2]; if (e < 0) e = -e; if (e > d) d = e; return d > tl; };
+      // the edges: ink of a shown text cell touching ink (against that cell's page) in a cell that is not shown
+      const seeds = []; let sig = 0;
+      for (let c = 0; c < n; c++) {
+        if (!textCell(c)) continue;
+        const cx = c % cols, cy = (c / cols) | 0, x0 = cx * C, y0 = cy * C, x1 = Math.min(w, x0 + C) - 1, y1 = Math.min(h, y0 + C) - 1;
+        for (let side = 0; side < 4; side++) {
+          const nx = cx + (side === 0 ? -1 : side === 1 ? 1 : 0), ny = cy + (side === 2 ? -1 : side === 3 ? 1 : 0);
+          if (nx < 0 || ny < 0 || nx >= cols || ny >= rows || st.shown[ny * cols + nx]) continue;
+          const len = side < 2 ? y1 - y0 + 1 : x1 - x0 + 1;
+          for (let t = 0; t < len; t++) {
+            const x = side === 0 ? x0 : side === 1 ? x1 : x0 + t, y = side === 2 ? y0 : side === 3 ? y1 : y0 + t;
+            if (!ink(x, y, c)) continue;
+            for (let d = -1; d <= 1; d++) {
+              const xx = side === 0 ? x - 1 : side === 1 ? x + 1 : x + d, yy = side === 2 ? y - 1 : side === 3 ? y + 1 : y + d;
+              if (xx < 0 || yy < 0 || xx >= w || yy >= h || ((yy / C) | 0) * cols + ((xx / C) | 0) !== ny * cols + nx) continue;
+              if (ink(xx, yy, c)) { seeds.push(y * w + x); sig = (Math.imul(sig, 31) + y * w + x + 1) | 0; break; }
+            }
+          }
+        }
+      }
+      if (!shownChanged && sig === cutSig) return [];
+      cutSig = sig;
+      const cut = new Int32Array(n);
+      for (let i = 0; i < kSet.length; i++) K[kSet[i]] = 0; kSet.length = 0;
+      const rule = (x, y, k) => {
+        let a = x, b = x; while (a > 0 && x - a < RL && ink(a - 1, y, k)) a--; while (b < w - 1 && b - x < RL && ink(b + 1, y, k)) b++;
+        if (b - a + 1 >= RL) { let u = y, v = y; while (u > 0 && y - u <= RW && ink(x, u - 1, k)) u--; while (v < h - 1 && v - y <= RW && ink(x, v + 1, k)) v++; if (v - u + 1 <= RW) return true; }
+        a = y; b = y; while (a > 0 && y - a < RL && ink(x, a - 1, k)) a--; while (b < h - 1 && b - y < RL && ink(x, b + 1, k)) b++;
+        if (b - a + 1 >= RL) { let u = x, v = x; while (u > 0 && x - u <= RW && ink(u - 1, y, k)) u--; while (v < w - 1 && v - x <= RW && ink(v + 1, y, k)) v++; if (v - u + 1 <= RW) return true; }
+        return false;
+      };
+      // seen: 0 not looked at, 1 taken into a piece, 2 not letter ink
+      const letterInk = (x, y) => { const j = y * w + x; if (seen[j] === 2) return false; const c = ((y / C) | 0) * cols + ((x / C) | 0); if (textCell(c) && ink(x, y, c) && !rule(x, y, c)) return true; seen[j] = 2; seenSet.push(j); return false; };
+      // one connected piece of letter ink (inside shown text cells) from (sx, sy): its box, or null when already taken
+      const piece = (sx, sy) => {
+        if (seen[sy * w + sx] || !letterInk(sx, sy)) return null;
+        const b = { x0: sx, y0: sy, x1: sx, y1: sy, px: [] }, stack = [sy * w + sx]; seen[sy * w + sx] = 1; seenSet.push(sy * w + sx);
+        while (stack.length && b.px.length < 20000) {
+          const i = stack.pop(), x = i % w, y = (i / w) | 0; b.px.push(i);
+          if (x < b.x0) b.x0 = x; if (x > b.x1) b.x1 = x; if (y < b.y0) b.y0 = y; if (y > b.y1) b.y1 = y;
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue; const j = yy * w + xx; if (seen[j]) continue; if (letterInk(xx, yy)) { seen[j] = 1; seenSet.push(j); stack.push(j); } }
+        }
+        return b;
+      };
+      const unsee = (b) => { for (let i = 0; i < b.px.length; i++) seen[b.px[i]] = 0; };   // (still on seenSet: cleared at the end either way)
+      const boxes = [];
+      const take = (b) => boxes.push(b);
+      // a cut letter and its word-part
+      const group = (first) => {
+        const queue = [first]; let nTaken = 0;
+        while (queue.length) {
+          const A = queue.pop(); take(A); if (++nTaken > P.joinMax) continue;
+          const hA = A.y1 - A.y0 + 1, wA = A.x1 - A.x0 + 1, gx = Math.max(2, Math.round(P.joinK * hA)), gy = Math.max(3, Math.round(P.joinK * hA), Math.min(12, 2 * Math.max(hA, wA)));
+          for (let y = Math.max(0, A.y0 - gy); y <= Math.min(h - 1, A.y1 + gy); y++) for (let x = Math.max(0, A.x0 - gx); x <= Math.min(w - 1, A.x1 + gx); x++) {
+            if (seen[y * w + x]) continue; const B = piece(x, y); if (!B) continue;
+            const hB = B.y1 - B.y0 + 1, rows = Math.min(A.y1, B.y1) - Math.max(A.y0, B.y0) + 1, colsO = Math.min(A.x1, B.x1) - Math.max(A.x0, B.x0) + 1;
+            if (rows > 0) queue.push(B);                                            // beside it on the line: the word-part goes on
+            else if (colsO > 0 && (hB <= 0.6 * hA || hA <= 0.6 * hB)) { if (hB > hA) queue.push(B); else take(B); }   // an accent or a dot and its letter
+            else unsee(B);
+          }
+        }
+      };
+      for (let i = 0; i < seeds.length; i++) { const b = piece(seeds[i] % w, (seeds[i] / w) | 0); if (b) group(b); }
+      // the cut letters' boxes (one pixel of margin for their soft edge); ink of another letter inside a box goes with it
+      for (let pass = 0, from = 0; pass < 3 && from < boxes.length; pass++) {
+        const to = boxes.length;
+        for (let i = from; i < to; i++) { const b = boxes[i];
+          for (let y = Math.max(0, b.y0 - 1); y <= Math.min(h - 1, b.y1 + 1); y++) for (let x = Math.max(0, b.x0 - 1); x <= Math.min(w - 1, b.x1 + 1); x++) { if (seen[y * w + x]) continue; const o = piece(x, y); if (o) take(o); } }
+        from = to;
+      }
+      for (let i = 0; i < boxes.length; i++) { const b = boxes[i];
+        for (let y = Math.max(0, b.y0 - 1); y <= Math.min(h - 1, b.y1 + 1); y++) for (let x = Math.max(0, b.x0 - 1); x <= Math.min(w - 1, b.x1 + 1); x++) {
+          const j = y * w + x, c = ((y / C) | 0) * cols + ((x / C) | 0); if (K[j] || !textCell(c)) continue;
+          K[j] = 1; kSet.push(j); cut[c] = (cut[c] + Math.imul(j + 1, 0x9E3779B1)) | 0; } }
+      for (let i = 0; i < seenSet.length; i++) seen[seenSet[i]] = 0; seenSet.length = 0;
+      const changed = [];
+      for (let c = 0; c < n; c++) { if (cut[c] !== st.cut[c] && st.shown[c]) changed.push(c); st.cut[c] = st.shown[c] ? cut[c] : 0; }
+      return changed;
+    }
     const fp = new Uint8Array(n * 16);
     function fingerprints(rgba) {
       const q4 = C / 4;
@@ -482,18 +612,31 @@
         let near = false;
         for (let y = Math.max(0, y0 - P.smallGap); y <= Math.min(rows - 1, y1 + P.smallGap) && !near; y++) for (let x = Math.max(0, x0 - P.smallGap); x <= Math.min(cols - 1, x1 + P.smallGap); x++) if (st.small[y * cols + x]) { near = true; break; }
         if (near) continue;
-        for (const c of list) { st.shown[c] = 1; st.small[c] = 1; st.fpSnap.set(fp.subarray(c * 16, c * 16 + 16), c * 16); newly.push(c); }
+        // (its page colour is the shown text's around it: the whole-letter rule reads a small picture's ink against it)
+        let page = -1; for (const c of list) { const cx = c % cols, cy = (c / cols) | 0; for (let dy = -1; dy <= 1 && page < 0; dy++) for (let dx = -1; dx <= 1; dx++) { const x = cx + dx, y = cy + dy; if (x < 0 || y < 0 || x >= cols || y >= rows) continue; const k = y * cols + x; if (st.shown[k] && !st.small[k]) { page = k; break; } } if (page >= 0) break; }
+        if (page < 0) continue;
+        for (const c of list) { st.shown[c] = 1; st.small[c] = 1; st.bg.set(st.bg.subarray(page * 3, page * 3 + 3), c * 3); st.fpSnap.set(fp.subarray(c * 16, c * 16 + 16), c * 16); newly.push(c); }
       }
     }
-    st.paint = (rgba, c, out) => copyCell(rgba, w, h, c, cols, C, out, st.small[c] ? null : st.bg.subarray(c * 3, c * 3 + 3), P.tauLo);
+    // a shown cell is painted from its snapshot (the vetted pixels), less the letters cut at the edge of what is shown
+    const cellBuf = new Uint8Array(CC * 4), cellKnock = new Uint8Array(CC);
+    st.paint = (rgba, c, out) => {
+      const x0 = (c % cols) * C, y0 = ((c / cols) | 0) * C, cw = Math.min(w, x0 + C) - x0, ch = Math.min(h, y0 + C) - y0; let any = false;
+      if (st.cut[c]) { cellKnock.fill(0); for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) if (st.knock[(y0 + y) * w + x0 + x]) { cellKnock[y * C + x] = 1; any = true; } }
+      copyCell(st.snap.subarray(c * CC * 4, (c + 1) * CC * 4), C, ch, 0, 1, C, out, st.small[c] ? null : st.bg.subarray(c * 3, c * 3 + 3), P.tauLo, any ? cellKnock : null);
+      if (cw < C) for (let y = 0; y < ch; y++) out.fill(0, (y * C + cw) * 4, (y + 1) * C * 4);
+    };
     function differs(a, b, c) { for (let i = c * 16; i < c * 16 + 16; i++) if (Math.abs(a[i] - b[i]) > P.fpTol) return true; return false; }
     st.tick = function (rgba) {
       fingerprints(rgba);
+      if (rgba.byteOffset & 3) rgba = new Uint8Array(rgba);   // (a copy aligned to 4 bytes; a page's or a Worker's frame is aligned already)
+      const u32 = new Uint32Array(rgba.buffer, rgba.byteOffset, w * h);
       let dirty = false; const cand = new Uint8Array(n), hidden = [];
       for (let c = 0; c < n; c++) {
         const moved = st.ticks === 0 || differs(fp, st.fpPrev, c);
         if (moved) { st.stable[c] = 0; st.judged[c] = 0; } else if (st.stable[c] < 65535) st.stable[c]++;
-        if (st.shown[c] && differs(fp, st.fpSnap, c)) { st.shown[c] = 0; st.small[c] = 0; hidden.push(c); if (st.strikes[c] < P.maxStrikes) st.strikes[c]++; }
+        if (st.shown[c] && (differs(fp, st.fpSnap, c) || stale(u32, c))) { st.shown[c] = 0; st.small[c] = 0; hidden.push(c); if (st.strikes[c] < P.maxStrikes) st.strikes[c]++;
+          if (!moved) { st.stable[c] = 0; st.judged[c] = 0; } }   // a change the fingerprint did not see: the cell holds still again, then is judged again
         if (!st.shown[c] && !st.judged[c] && st.stable[c] >= P.needStable + st.strikes[c]) { cand[c] = 1; dirty = true; }
       }
       const newly = [];
@@ -519,12 +662,16 @@
       }
       smallPictures(newly, hidden);
       slivers(rgba, newly);
+      const fresh = newly.length, isNew = new Uint8Array(n);
+      for (let i = 0; i < fresh; i++) { keep(rgba, newly[i]); isNew[newly[i]] = 1; }
+      for (const c of wholeLetters(rgba, fresh > 0 || hidden.length > 0)) if (!isNew[c]) newly.push(c);   // shown before, its cut letters changed: painted again
       if (newly.length) {
         patches = new Uint8Array(newly.length * C * C * 4);
         newly.forEach((c, i) => st.paint(rgba, c, patches.subarray(i * C * C * 4, (i + 1) * C * C * 4)));
       }
       st.fpPrev.set(fp); st.ticks++; st.analysedPx += px;
-      return { analysed: dirty, regions, px, newly: Int32Array.from(newly), patches: patches || new Uint8Array(0), hidden: Int32Array.from(hidden) };
+      // newly: every cell to paint (its patch, transparent where a letter is cut); the first `fresh` of them were not shown before
+      return { analysed: dirty, regions, px, fresh, newly: Int32Array.from(newly), patches: patches || new Uint8Array(0), hidden: Int32Array.from(hidden) };
     };
     return st;
   }
@@ -541,7 +688,7 @@
       let st = states.get(m.id);
       if (!st || st.w !== m.w || st.h !== m.h) { st = createState(m.w, m.h, m.opts); states.set(m.id, st); }
       const t0 = now(); const r = st.tick(new Uint8Array(m.buf)); const ms = now() - t0;
-      G.postMessage({ op: 'res', id: m.id, seq: m.seq, w: m.w, h: m.h, cell: st.cell, cols: st.cols, analysed: r.analysed, regions: r.regions, px: r.px, ms: ms,
+      G.postMessage({ op: 'res', id: m.id, seq: m.seq, w: m.w, h: m.h, cell: st.cell, cols: st.cols, analysed: r.analysed, regions: r.regions, px: r.px, ms: ms, fresh: r.fresh,
         newly: r.newly, patches: r.patches, hidden: r.hidden, buf: m.buf }, [m.buf, r.newly.buffer, r.patches.buffer, r.hidden.buffer]);
     };
   }
@@ -576,7 +723,7 @@
         let st = inline.get(eng.id);
         if (!st || st.w !== msg.w || st.h !== msg.h) { st = TCm.createState(msg.w, msg.h, msg.opts); inline.set(eng.id, st); }
         const t0 = now(); const r = st.tick(new Uint8Array(buf));
-        resolve({ id: eng.id, w: msg.w, h: msg.h, cell: st.cell, cols: st.cols, analysed: r.analysed, regions: r.regions, px: r.px, ms: now() - t0, newly: r.newly, patches: r.patches, hidden: r.hidden });
+        resolve({ id: eng.id, w: msg.w, h: msg.h, cell: st.cell, cols: st.cols, analysed: r.analysed, regions: r.regions, px: r.px, ms: now() - t0, fresh: r.fresh, newly: r.newly, patches: r.patches, hidden: r.hidden });
       });
     }
     function dropState(id) { inline.delete(id); if (worker) { try { worker.postMessage({ op: 'drop', id: id }); } catch (e) {} } }
@@ -626,7 +773,7 @@
             const id = new ImageData(new Uint8ClampedArray(P.buffer, P.byteOffset + i * C * C * 4, C * C * 4), C, C);
             eng.ovx.putImageData(id, (c % cols) * C, ((c / cols) | 0) * C);
           }
-          eng.shownN += m.newly.length - m.hidden.length;
+          eng.shownN += m.fresh - m.hidden.length;
           if (m.newly.length || m.hidden.length) eng.ver++;
           const ms = m.ms + grabMs; eng.lastMs = ms; eng.lastWork = m.ms;
           if (m.analysed) {
