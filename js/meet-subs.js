@@ -25,11 +25,12 @@
  *     without one they are told plainly and not let in. Rooms on the $5 and
  *     $10 plans have no limit, and open rooms never have one.
  *   - WHICH APP (Nathan 2026-11-13): the Meet app offers Room 20, Unlimited,
- *     the four-hour pass and tips. The $10 Streamer plan and its library
- *     (My library, files.gifos.app) are offered and managed only in the
- *     Broadcast app: the same page opened at /cast (#bc in the link). Meet
- *     honors a Streamer subscription with everything Unlimited gives, but
- *     never sells it and never shows its files (appNow, SUB.tiersSoldIn).
+ *     the four-hour pass and tips. The $10 Streamer plan is sold in the
+ *     Broadcast app (the same page opened at /cast, #bc in the link) and on
+ *     the plans page /subscription (2026-11-25); its library (My library,
+ *     files.gifos.app) is managed in the Broadcast app. Meet honors a
+ *     Streamer subscription with everything Unlimited gives, but never
+ *     sells it and never shows its files (appNow, SUB.tiersSoldIn).
  *
  * The subscription is a FILE: a GifOS GIF that provides the meeting
  * subscription (keep it in the Providers folder, or open it here in another
@@ -1440,7 +1441,7 @@
       const elsewhere = SUB.tiersSoldIn(app).indexOf(lic.tier) < 0;
       const viaStore = /^[GA]-/.test(String(lic.subId || ''));
       if (elsewhere) {
-        row.appendChild(el('p', { class: 'set-help', id: 'sub-plan-elsewhere' }, tx('subFromBroadcast', '{plan}, from the Broadcast app. In meetings it gives everything Unlimited gives.').replace('{plan}', planShort(lic.tier))));
+        row.appendChild(el('p', { class: 'set-help', id: 'sub-plan-elsewhere' }, tx('subFromBroadcast', '{plan}. In meetings it gives everything Unlimited gives; its library is in the Broadcast app.').replace('{plan}', planShort(lic.tier))));
         row.appendChild(el('p', { class: 'set-help', id: 'sub-meetings' }, meetingsWords(SUB.rightsOf(lic, nowS()).meetings)));
         if (!inApp) row.appendChild(el('a', { class: BTN, style: BTN_STYLE + ';display:inline-block;text-decoration:none', id: 'sub-manage-broadcast', href: '/cast', target: '_blank', rel: 'noopener' }, tx('subManageBroadcast', 'Manage it in the Broadcast app')));
       } else {
@@ -1867,20 +1868,47 @@
     return true;
   }
 
+  // The lobby's link to /subscription (every plan, and moving or restoring yours): one inline sentence at the end of
+  // the lobby's intro line ("... in one tap. See GifOS plans."), never a block of its own (a sticky one sat over the
+  // Recent & saved list, 0.9.28.32). Drawn here, not in the page, so the thin page stays thin. Meet's intro is
+  // #lob-welcome; the Broadcast lobby hides it and rewords #lob-quiet. Translation and the Broadcast rewording rewrite
+  // those lines' text, so the sentence is put back whenever it is dropped.
+  function lobbyPlansLink() {
+    const card = document.querySelector('#lobby .lobby-card');
+    if (!card) return;
+    const welcome = document.getElementById('lob-welcome'), quiet = document.getElementById('lob-quiet');
+    const target = () => (welcome && welcome.style.display !== 'none' ? welcome : quiet);
+    const make = () => {
+      const span = el('span', { id: 'lob-plans-line', class: 'lob-plans-line' });
+      const line = tx('lobPlansLine', 'See {plans}.');
+      const at = line.indexOf('{plans}');
+      span.appendChild(document.createTextNode(' ' + (at >= 0 ? line.slice(0, at) : line + ' ')));
+      span.appendChild(el('a', { id: 'lob-plans', class: 'lob-plans', href: '/subscription', target: '_blank', rel: 'noopener' }, tx('lobPlans', 'GifOS plans')));
+      if (at >= 0) span.appendChild(document.createTextNode(line.slice(at + '{plans}'.length)));
+      return span;
+    };
+    const place = () => {
+      const p = target();
+      if (!p) return;
+      const cur = document.getElementById('lob-plans-line');
+      if (cur && cur.parentNode === p && p.lastChild === cur) return;
+      if (cur) cur.remove();
+      p.appendChild(make());
+    };
+    place();
+    if (typeof MutationObserver === 'function') {
+      const mo = new MutationObserver(place);
+      [welcome, quiet].filter(Boolean).forEach((n) => mo.observe(n, { childList: true, attributes: true, attributeFilter: ['style', 'hidden'] }));
+    }
+  }
+
   let booted = false;
   function boot() {
     if (booted) return;
     booted = true;
-    // The lobby's link to /subscription (every plan, and moving or restoring yours): drawn here, not in run.html, so
-    // the thin page stays thin. Meet and Broadcast share the lobby.
+    // The lobby's link to /subscription: drawn here, not in run.html, so the thin page stays thin. No page (Node core): no lobby.
     if (!NOPAGE) {
-      try {
-        const card = document.querySelector('#lobby .lobby-card');
-        if (card && !document.getElementById('lob-plans')) {
-          const a = el('a', { id: 'lob-plans', class: 'lob-plans', href: '/subscription', target: '_blank', rel: 'noopener', 'data-t': 'lobPlans' }, tx('lobPlans', 'Plans and your subscription'));
-          card.appendChild(a);
-        }
-      } catch (e) {}
+      try { lobbyPlansLink(); } catch (e) {}
       wireSubModal();
     }
     keepFresh().catch(() => {});

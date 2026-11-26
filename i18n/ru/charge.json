@@ -51,7 +51,7 @@
   "charge.receiptView.licenseOk": "Лицензия тарифа в этом файле подписана gifos.app.",
   "charge.receiptView.subNote": "GifOS Meet и страница тарифов находят эту подписку здесь, в «Покупках». Любой, у кого есть этот файл, может пользоваться вашей подпиской и пропусками: храните его в тайне.",
   "charge.receiptView.openMeet": "Открыть GifOS Meet",
-  "charge.receiptView.openPlans": "Тарифы и ваша подписка",
+  "charge.receiptView.openPlans": "Тарифы GifOS",
   "charge.receiptView.legCreator": "Автору ({amount})",
   "charge.receiptView.legFee": "Комиссия GifOS ({amount})",
   "charge.receiptView.legTx": "Транзакция {k}",

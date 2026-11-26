@@ -428,7 +428,7 @@
     const links = el(doc, 'p', 'note');
     const a1 = el(doc, 'a', '', say('charge.receiptView.openMeet', 'Open GifOS Meet'));
     a1.href = '/meet';
-    const a2 = el(doc, 'a', '', say('charge.receiptView.openPlans', 'Plans and your subscription'));
+    const a2 = el(doc, 'a', '', say('charge.receiptView.openPlans', 'GifOS plans'));
     a2.href = '/subscription';
     links.appendChild(a1);
     links.appendChild(doc.createTextNode(' · '));
