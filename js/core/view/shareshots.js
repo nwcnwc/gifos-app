@@ -18,7 +18,8 @@
  *   exportZip(lines, title, label)  Promise<Blob>: the download, a .zip of transcript.txt/.md/.html and shots/
  *   open(id)              show one picture full size over the page (a tap closes it)
  *
- * The cost on a phone: one 64x36 sample of each share per SHARESHOT_TICK_MS (a second), nothing while the tab is hidden, and a
+ * The cost on a phone: one 64x36 sample of each share per SHARESHOT_TICK_MS (a second; every 2nd or 4th second once the screen
+ * has held still a while), nothing while the tab is hidden, and a
  * full-size picture (at most MAX_W wide, JPEG) only when a change has settled.
  */
 (function (root) {
@@ -65,7 +66,9 @@
         r.why = 'shot';
         return { at: since === null ? now : since };
       },
-      reset: function () { prev = null; still = 0; since = null; shots = []; times = []; }
+      reset: function () { prev = null; still = 0; since = null; shots = []; times = []; },
+      // a new sampling baseline (the share's picture now comes by another path); the screenshots already taken still count
+      rebase: function () { prev = null; still = 0; since = null; }
     };
   }
 
@@ -76,22 +79,15 @@
   var MAX_W = mobile ? 1280 : 1600;   // the kept picture's width at most
   var MAX_SHOTS = mobile ? 80 : 200;  // pictures kept in one meeting at most (memory); later changes are not taken
   var QUALITY = 0.82;
+  var QUIET_HALF = 5, QUIET_SLOW = 15;   // samples in a row that found the screen unchanged since its screenshot
   var src = null, timer = 0, busy = false, seq = 0;
+  var cost = { n: 0, ms: 0, max: 0 };   // main-thread time of the samples (what a phone pays), for the trace and tests
   var watch = new Map();   // sid -> { det, track, el, own }
   var shots = [];
   var trace = [];
   function note(k, x) {
     var e = { t: Date.now(), k: k }; if (x) for (var n in x) e[n] = x[n];
     trace.push(e); if (trace.length > 300) trace.shift();
-  }
-  var small = null, smallCtx = null, mid = null, midCtx = null;
-  function canvases() {
-    if (small) return;
-    small = document.createElement('canvas'); small.width = W; small.height = H;
-    smallCtx = small.getContext('2d', { willReadFrequently: true });
-    mid = document.createElement('canvas'); mid.width = W * 4; mid.height = H * 4;
-    midCtx = mid.getContext('2d');
-    try { midCtx.imageSmoothingQuality = 'high'; smallCtx.imageSmoothingQuality = 'high'; } catch (e) {}
   }
   // The element that shows this track on the page, else one of our own (kept off screen, muted).
   function elementFor(w) {
@@ -115,13 +111,23 @@
     }
     return w.own.videoWidth > 0 && w.own.readyState >= 2 ? w.own : null;
   }
+  // One draw of the video into a 128x72 canvas kept in memory (willReadFrequently: a software canvas, so the read
+  // needs no copy back from the graphics card), then a 2x2 average to 64x36 luma here: thin text lines still count.
+  var mid = null, midCtx = null;
   function lumaOf(v) {
-    canvases();
-    midCtx.drawImage(v, 0, 0, mid.width, mid.height);
-    smallCtx.drawImage(mid, 0, 0, W, H);
-    var d = smallCtx.getImageData(0, 0, W, H).data;
+    if (!mid) {
+      mid = document.createElement('canvas'); mid.width = W * 2; mid.height = H * 2;
+      midCtx = mid.getContext('2d', { willReadFrequently: true });
+      try { midCtx.imageSmoothingQuality = 'high'; } catch (e) {}
+    }
+    midCtx.drawImage(v, 0, 0, W * 2, H * 2);
+    var d = midCtx.getImageData(0, 0, W * 2, H * 2).data, row = W * 2 * 4;
     var out = new Uint8Array(W * H);
-    for (var i = 0, j = 0; j < out.length; i += 4, j++) out[j] = (d[i] * 77 + d[i + 1] * 150 + d[i + 2] * 29) >> 8;
+    for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) {
+      var a = (y * 2) * row + x * 2 * 4, sum = 0;
+      for (var k = 0; k < 4; k++) { var q = a + (k & 1) * 4 + (k >> 1) * row; sum += d[q] * 77 + d[q + 1] * 150 + d[q + 2] * 29; }
+      out[y * W + x] = sum >> 10;
+    }
     return out;
   }
   function take(v, w, sh, at) {
@@ -166,12 +172,18 @@
       seen[sh.sid] = 1;
       var w = watch.get(sh.sid);
       if (!w) { w = { det: detector(), track: sh.track, own: null }; watch.set(sh.sid, w); note('watch', { sid: String(sh.sid).slice(0, 8) }); }
-      if (w.track !== sh.track) { w.track = sh.track; w.det.reset(); }
+      if (w.track !== sh.track) { w.track = sh.track; w.det.rebase(); note('track', { sid: String(sh.sid).slice(0, 8) }); }   // the same share by another path: keep its screenshots, sample afresh
+      // A screen that has held still for a while is sampled less often (every 2nd, then every 4th second): most of a talk
+      // is one slide on screen, and the first sample that sees it move goes back to every second.
+      w.n = (w.n || 0) + 1;
+      if (w.quiet >= QUIET_SLOW ? w.n % 4 : w.quiet >= QUIET_HALF ? w.n % 2 : 0) continue;
       var v = elementFor(w);
       if (!v) { note('nopic', { sid: String(sh.sid).slice(0, 8) }); continue; }
-      var luma;
+      var luma, c0 = performance.now();
       try { luma = lumaOf(v); } catch (e) { note('err', { sid: String(sh.sid).slice(0, 8), e: String(e && e.message || e).slice(0, 80) }); continue; }
       var hit = w.det.feed(luma, now);
+      w.quiet = w.det.why === 'same' ? (w.quiet || 0) + 1 : 0;
+      var dc = performance.now() - c0; cost.n++; cost.ms += dc; if (dc > cost.max) cost.max = dc;
       note('tick', { sid: String(sh.sid).slice(0, 8), why: w.det.why, d: w.det.dPrev != null ? +w.det.dPrev.toFixed(4) : null, s: w.det.dShot != null ? +w.det.dShot.toFixed(4) : null });
       if (hit) {
         if (shots.length >= MAX_SHOTS) { note('full', { sid: String(sh.sid).slice(0, 8) }); continue; }
@@ -299,7 +311,8 @@
   }
   GifOS.shareShots = {
     detector: detector, attach: attach, list: list, open: open, exportZip: exportZip, exportFiles: exportFiles, zipStore: zipStore,
-    trace: function () { return trace.slice(); }, tick: tick, W: W, H: H, TICK_MS: TICK_MS,
+    trace: function () { return trace.slice(); }, tick: tick,
+    cost: function () { return { n: cost.n, avgMs: cost.n ? +(cost.ms / cost.n).toFixed(2) : 0, maxMs: +cost.max.toFixed(2) }; }, W: W, H: H, TICK_MS: TICK_MS,
     label: function (id, words) { var s = byId(id); if (s) s.label = words; }
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = GifOS.shareShots;
