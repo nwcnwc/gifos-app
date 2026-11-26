@@ -853,7 +853,7 @@
       setTile(id, ord, el, stream, meta) {
         const sid = stream ? stream.id : null;
         const prev = tiles.get(id);
-        if (!el) { if (fold && prev) fold.remove('t' + id); tiles.delete(id); return; }
+        if (!el && !(meta && meta.card)) { if (fold && prev) fold.remove('t' + id); tiles.delete(id); return; }   // a card keeps its cell with no source
         if (fold) {
           if (prev && prev.streamId !== sid) fold.remove('t' + id);
           // A matching stream id can still be unfolded: the first add records
