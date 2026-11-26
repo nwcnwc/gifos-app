@@ -3748,7 +3748,7 @@ body.broadcast #tophead { top: calc(var(--banner-h, 0px) + var(--inset-top, 0px)
 #tophead > #appbar { container-type: normal; flex: 0 0 auto; width: auto !important; max-width: 100%; margin-left: auto !important; box-sizing: border-box;
   padding: 0 !important; gap: 6px; flex-wrap: wrap; background: transparent !important; border: 0 !important; }
 #tophead > #appbar::before { display: none !important; }
-#tophead > #appbar #appinvite, #tophead > #appbar #apphelp, #tophead > #appbar #appfull { min-height: 40px; }
+#tophead > #appbar #appinvite, #tophead > #appbar #apphelp, #tophead > #appbar #appfull, #tophead > #appbar #appfloat { min-height: 40px; }
 /* The view button and the bar's buttons fade with the controls; the bar keeps its size, so the faces never move on a wake. */
 body.dock-idle #tophead > #fitbtn { opacity: 0; pointer-events: none; transition: opacity var(--t-slow) ease; }
 

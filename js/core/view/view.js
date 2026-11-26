@@ -1280,6 +1280,8 @@
     function pipNote(k, x) {
       const e = Object.assign({ t: Date.now(), k, vis: document.visibilityState, f: document.hasFocus(), up: !!(__C.docPip || document.pictureInPictureElement) }, x || {});
       pipTrace.push(e); if (pipTrace.length > 200) pipTrace.shift();
+      const tb = document.getElementById('appfloat');   // the top bar's Float reads pressed while a float is up
+      if (tb) tb.setAttribute('aria-pressed', e.up ? 'true' : 'false');
     }
     const pageFull = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
     // A phone browser floats a full-screen page as it is when you switch
@@ -1611,6 +1613,20 @@
       if (!capable) return;
       btn.style.display = '';
       btn.onclick = () => { if (pipFloating()) exitPip(); else enterPip(true); };
+      // The top bar's Float is the same button's twin: it clicks this one, so there is one path
+      // (built here, not in the page: the pages stay thin; same words and glyph as the More menu's)
+      const full = document.getElementById('appfull');
+      if (full && full.parentNode) {
+        const top = document.createElement('button');
+        top.type = 'button'; top.id = 'appfloat'; top.setAttribute('aria-pressed', 'false');
+        top.title = btn.title; top.setAttribute('aria-label', btn.getAttribute('aria-label'));
+        const ic = btn.querySelector('svg').cloneNode(true);
+        ic.setAttribute('width', '16'); ic.setAttribute('height', '16'); ic.setAttribute('aria-hidden', 'true'); ic.style.cssText = 'flex:none;margin-right:5px';
+        const word = document.createElement('span'); word.setAttribute('data-t', 'float'); word.textContent = (0, /*()*/__C.uiText)('float', 'Float');
+        top.append(ic, word);
+        top.onclick = () => { btn.click(); };
+        full.parentNode.insertBefore(top, full);
+      }
     })();
     yield 342;
     function backGuardSync() {
@@ -1709,12 +1725,12 @@
       awayFull(false);
       if (pipManual) return;
       const t = e.target;
-      if (t && t.closest && t.closest('#pipbtn, [data-pip]')) return;
+      if (t && t.closest && t.closest('#pipbtn, #appfloat, [data-pip]')) return;
       if (document.pictureInPictureElement
         || Array.from(document.querySelectorAll('video')).some((v) => v.webkitPresentationMode === 'picture-in-picture')) exitPip();
     }, true);
     yield 360;
-    const AUTO_FS_SKIP = '#appfull, #pipbtn, [data-pip], #cam, #mic, [id^="campick"], #sharebtn, a[href], input, textarea, select, [contenteditable="true"]';
+    const AUTO_FS_SKIP = '#appfull, #appfloat, #pipbtn, [data-pip], #cam, #mic, [id^="campick"], #sharebtn, a[href], input, textarea, select, [contenteditable="true"]';
     // Never under a float: the float means the person is on the way out, and
     // full screen would hide the system bars they leave by.
     function autoFsWanted() {
@@ -4514,7 +4530,7 @@
         e.stopPropagation();
         if (!menu.hidden) { closeMenu(); return; }
         menu.textContent = '';
-        for (const id of ['appinvite', 'apphelp', 'appfull']) {
+        for (const id of ['appinvite', 'apphelp', 'appfloat', 'appfull']) {
           const src = document.getElementById(id);
           if (!src || src.style.display === 'none' || src.hidden) continue;
           const b = document.createElement('button');
@@ -11257,7 +11273,7 @@
       const menu = document.createElement('div');
       menu.id = 'appmenu'; menu.setAttribute('role', 'menu'); menu.hidden = true;
       abar.appendChild(more); abar.appendChild(menu);
-      const keep = (el) => el.classList.contains('brand') || ['appgif', 'appname', 'appinvite', 'apphelp', 'appfull'].includes(el.id);
+      const keep = (el) => el.classList.contains('brand') || ['appgif', 'appname', 'appinvite', 'apphelp', 'appfloat', 'appfull'].includes(el.id);
       const placeMenu = () => {
         const r = more.getBoundingClientRect();
         menu.style.top = Math.round(r.bottom + 6) + 'px';

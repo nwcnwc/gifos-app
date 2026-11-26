@@ -125,11 +125,11 @@ body:not(.has-app):not(.solo-app):not(.app-room) #appmount { display: none; }
 body:not(.has-app):not(.solo-app):not(.app-room) #appbar { justify-content: flex-end; background: transparent; border-bottom-color: transparent; }
 /* An unseen strut: the bar is as tall as a solo app's, so the buttons sit on the same pixels. */
 body:not(.has-app):not(.solo-app):not(.app-room) #appbar::before { content: '\200b'; display: inline-flex; padding: .2rem 0; border: 1px solid transparent; font-size: 16px; }
-#appbar #apphelp, #appbar #appfull, #appbar #appinvite { background: var(--surface, #14141f); color: var(--text, #e0e0f0); }
+#appbar #apphelp, #appbar #appfull, #appbar #appinvite, #appbar #appfloat { background: var(--surface, #14141f); color: var(--text, #e0e0f0); }
 /* Invite has no size of its own. It uses the app bar's shared padding and
    the 16px type the other actions use. A meeting with no app sizes Help,
    Invite and Full screen together further down. */
-body:not(.has-app):not(.solo-app):not(.app-room) #appbar > :not(#apphelp):not(#appfull):not(#appinvite) { display: none !important; }
+body:not(.has-app):not(.solo-app):not(.app-room) #appbar > :not(#apphelp):not(#appfull):not(#appinvite):not(#appfloat) { display: none !important; }
 body:not(.has-app):not(.solo-app):not(.app-room) #appbar > * { pointer-events: auto; }
 #appbar[data-hide="auto"] { transition: opacity var(--t-fast) ease; }
 body:not(.has-app):is(.dock-calm, .chrome-away) #appbar[data-hide="auto"] { opacity: 0; pointer-events: none; transition: opacity var(--t-slow) ease; }
@@ -626,7 +626,8 @@ body.comfy .tile > .chips { right: 76px !important; }
    An app keeps the bar it already has. */
 body:not(.has-app):not(.solo-app):not(.app-room) #appbar #apphelp,
 body:not(.has-app):not(.solo-app):not(.app-room) #appbar #appinvite,
-body:not(.has-app):not(.solo-app):not(.app-room) #appbar #appfull {
+body:not(.has-app):not(.solo-app):not(.app-room) #appbar #appfull,
+body:not(.has-app):not(.solo-app):not(.app-room) #appbar #appfloat {
   box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;
   flex: 1 1 0; width: auto; min-width: 0; max-width: none; margin: 0; gap: 0;
   height: 44px; min-height: 0; padding: 2px 6px;
@@ -650,7 +651,8 @@ html.ui-large body:not(.has-app):not(.solo-app):not(.app-room) #appbar #appinvit
   body:not(.has-app):not(.solo-app):not(.app-room) #appbar::before { display: none; }
   body:not(.has-app):not(.solo-app):not(.app-room) #appbar #apphelp,
   body:not(.has-app):not(.solo-app):not(.app-room) #appbar #appinvite,
-  body:not(.has-app):not(.solo-app):not(.app-room) #appbar #appfull {
+  body:not(.has-app):not(.solo-app):not(.app-room) #appbar #appfull,
+  body:not(.has-app):not(.solo-app):not(.app-room) #appbar #appfloat {
     height: 40px; padding: 4px 8px; font-size: 16px; white-space: nowrap;
   }
 }
