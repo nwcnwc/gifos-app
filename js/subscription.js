@@ -67,69 +67,66 @@
     return r.row.periods.map(function (per) { return periodPrice(r.row, per); }).join(' · ');
   }
 
-  // What a plan gives, per app: one line per app, from its line items (GifOS.sub.grantLabels). Apps that get the same
-  // labels share a line ("Meet and Broadcast: ..."); an app that gets everything an earlier line gives and more says
-  // "Everything in Meet" and adds the rest.
-  function appGroups(grants) {
-    var key = function (x) { return x.label + ':' + x.n; };
-    var groups = [];
-    SUB.GRANT_APPS.forEach(function (app) {
-      var labels = SUB.grantLabels(grants, app.id);
-      if (!labels.length) return;
-      var k = labels.map(key).join('|');
-      var same = groups.filter(function (g) { return g.key === k; })[0];
-      if (same) { same.apps.push(app); return; }
-      var g = { apps: [app], labels: labels, key: k, base: null, extra: labels };
-      for (var i = 0; i < groups.length; i++) {
-        var have = {};
-        labels.forEach(function (x) { have[key(x)] = 1; });
-        if (groups[i].labels.every(function (x) { return have[key(x)]; })) {
-          var had = {};
-          groups[i].labels.forEach(function (x) { had[key(x)] = 1; });
-          g.base = groups[i];
-          g.extra = labels.filter(function (x) { return !had[key(x)]; });
-          break;
+  // A card BUILDS on the plan below it: "Everything in <plan>, plus:" and only the lines that are new (Nathan 2026-11-26).
+  // The plan below is the last single-meeting row (Free included) whose line items this one covers (SUB.covers); the new
+  // lines are the labels (SUB.grantLabels, the one table) this plan has and that plan does not, per app. A line every app
+  // gets is one plain line; a line only some apps get keeps its app name. Prices and grants change in the catalog and
+  // the cards follow.
+  var labelKey = function (x) { return x.label + ':' + x.n; };
+  function parentOf(r) {
+    var best = null;
+    rows().forEach(function (c) {
+      if (c.id === r.id || (c.kind !== 'free' && c.kind !== 'paypal') || ((c.grants.meetings || 1) > 1)) return;
+      if (SUB.covers(r.grants, c.grants)) best = c;
+    });
+    return best;
+  }
+  function cumulative(r) {
+    var parent = r.kind === 'addon' ? { id: r.id, grants: {} } : parentOf(r);
+    if (!parent) return null;
+    var perApp = SUB.GRANT_APPS.map(function (app) {
+      var had = {}, haveWord = {};
+      SUB.grantLabels(parent.grants, app.id).forEach(function (x) { had[labelKey(x)] = 1; haveWord[x.word] = 1; });
+      return { app: app, extra: SUB.grantLabels(r.grants, app.id).filter(function (x) { return !had[labelKey(x)]; }), haveWord: haveWord };
+    });
+    var common = perApp[0].extra.filter(function (x) { return perApp.every(function (pa) { return pa.extra.some(function (y) { return labelKey(y) === labelKey(x); }); }); });
+    var isCommon = {}; common.forEach(function (x) { isCommon[labelKey(x)] = 1; });
+    var only = perApp.map(function (pa) { return { app: pa.app, extra: pa.extra.filter(function (x) { return !isCommon[labelKey(x)]; }) }; }).filter(function (o) { return o.extra.length; });
+    var changed = common.length > 0 && !only.length && common.every(function (x) { return perApp[0].haveWord[x.word]; });
+    return { parent: parent, common: common, only: only, changed: changed };
+  }
+  var bigN = function (n) { try { return n.toLocaleString((document.documentElement && document.documentElement.lang) || 'en'); } catch (e) { return String(n); } };
+  function cumBlock(r) {
+    var c = cumulative(r);
+    if (!c) return null;
+    var wrap = el('div', 'cum');
+    var plan = t(c.parent.id + '.name');
+    var head;
+    if (r.kind === 'pass') head = t('cum.pass', { plan: plan });
+    else if (c.common.length === 1 && !c.only.length && c.common[0].label === 'many') head = t('cum.meetings', { plan: plan, n: bigN(c.common[0].n) });
+    else if (!c.common.length && !c.only.length) head = t('cum.same', { plan: plan });
+    else head = t(c.changed ? 'cum.except' : 'cum.plus', { plan: plan });
+    if (r.kind !== 'addon') wrap.appendChild(el('p', 'cumhead', head));
+    var lines = r.kind === 'pass' || (c.common.length === 1 && !c.only.length && c.common[0].label === 'many') ? [] : c.common.map(function (x) { return { x: x }; });
+    c.only.forEach(function (o) { o.extra.forEach(function (x) { lines.push({ x: x, app: o.app }); }); });
+    if (lines.length) {
+      var ul = el('ul', 'apps');
+      lines.forEach(function (ln) {
+        var li = el('li');
+        if (ln.app) {
+          li.dataset.apps = ln.app.id;
+          var head2 = el('strong', 'app');
+          var an = el('a', null, t('app.' + ln.app.id)); an.href = ln.app.href;
+          head2.appendChild(an); head2.appendChild(document.createTextNode(': '));
+          li.appendChild(head2);
         }
-      }
-      groups.push(g);
-    });
-    return groups;
-  }
-  // A list in the page's language ("Meet and Broadcast"), as parts: {element: i} for the i-th name, {literal: text}.
-  function listParts(n) {
-    var marks = [];
-    for (var i = 0; i < n; i++) marks.push('\u0001' + i + '\u0002');
-    var text;
-    try { text = new Intl.ListFormat((document.documentElement && document.documentElement.lang) || 'en', { style: 'long', type: 'conjunction' }).format(marks); } catch (e) { text = marks.join(', '); }
-    return text.split(/(\u0001\d+\u0002)/).filter(Boolean).map(function (p) { var m = /^\u0001(\d+)\u0002$/.exec(p); return m ? { element: +m[1] } : { literal: p }; });
-  }
-  var listOf = function (names) { return listParts(names.length).map(function (p) { return p.literal != null ? p.literal : names[p.element]; }).join(''); };
-  function appsBlock(grants) {
-    var groups = appGroups(grants);
-    if (!groups.length) return null;
-    var ul = el('ul', 'apps');
-    groups.forEach(function (g) {
-      var li = el('li');
-      li.dataset.apps = g.apps.map(function (a) { return a.id; }).join(' ');
-      var head = el('strong', 'app');
-      listParts(g.apps.length).forEach(function (p) {
-        if (p.literal != null) { head.appendChild(document.createTextNode(p.literal)); return; }
-        var app = g.apps[p.element];
-        var an = el('a', null, t('app.' + app.id)); an.href = app.href;
-        head.appendChild(an);
+        var text = t('grant.' + ln.x.label, { n: ln.x.n });
+        if (ln.x.href) { var a2 = el('a', null, text); a2.href = ln.x.href; li.appendChild(a2); } else li.appendChild(el('span', null, text));
+        ul.appendChild(li);
       });
-      head.appendChild(document.createTextNode(': '));
-      li.appendChild(head);
-      var bits = [];
-      if (g.base) bits.push({ text: t('sameAs', { app: listOf(g.base.apps.map(function (a) { return t('app.' + a.id); })) }) });
-      g.extra.forEach(function (x) { bits.push({ text: t('grant.' + x.label, { n: x.n }), href: x.href }); });
-      bits.forEach(function (b, i) {
-        if (i) li.appendChild(el('span', 'sep', ' · '));
-        if (b.href) { var a = el('a', null, b.text); a.href = b.href; li.appendChild(a); } else li.appendChild(el('span', null, b.text));
-      });
-      ul.appendChild(li);
-    });
-    return ul;
+      wrap.appendChild(ul);
+    }
+    return wrap;
   }
 
   function buyButton(label, onclick, go) {
@@ -224,11 +221,11 @@
         if (isHeld) h.appendChild(el('span', 'badge', r.id === passRow && r.id === 'pass' ? t('onNow') : t('current')));
         if (r.kind === 'addon' && r.row.soon) h.appendChild(el('span', 'badge soon', t('soon')));
         what.appendChild(h);
-        what.appendChild(el('p', 'quiet', t(r.id + '.desc')));
+        // Free keeps its two approved paragraphs; a plan card builds on the one below it (cumBlock); the rest keep their tagline.
+        var cum = r.id === 'free' || !r.grants ? null : cumBlock(r);
+        if (!cum || r.kind === 'addon') what.appendChild(el('p', 'quiet', t(r.id + '.desc')));
         if (r.id === 'free') what.appendChild(el('p', 'quiet', t('free.desc2')));
-        // Free keeps its two approved paragraphs only; every other card is one tagline plus the per-app list.
-        var apps = r.id === 'free' ? null : appsBlock(r.grants);
-        if (apps) what.appendChild(apps);
+        if (cum) what.appendChild(cum);
         // The price: one line per period (a card stacks them; a row keeps them on one line).
         var price = el('p', 'price');
         if (r.row && r.row.periods && r.kind === 'paypal') {

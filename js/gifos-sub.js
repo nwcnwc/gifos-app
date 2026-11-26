@@ -171,7 +171,7 @@
   function grantLabels(grants, app) {
     if (!grants || typeof grants !== 'object') return [];
     return GRANT_LABELS.filter((r) => r.apps.indexOf(app) >= 0 && Object.prototype.hasOwnProperty.call(grants, r.word) && LABEL_IS[r.is](grants[r.word]))
-      .map((r) => Object.assign({ label: r.label, n: grants[r.word] }, r.href ? { href: r.href } : {}));
+      .map((r) => Object.assign({ word: r.word, label: r.label, n: grants[r.word] }, r.href ? { href: r.href } : {}));
   }
   const tiersListed = (app) => tiersSoldIn(app).filter((t) => TIERS[t].window);
   // covers(h, a): line items h give at least everything line items a give (no people line beats any line).
