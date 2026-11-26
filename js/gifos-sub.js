@@ -136,12 +136,37 @@
   // ADD-ONS stack with any plan (their line items add). soon: shown, not sold yet. The hosted bot: one hosted bot
   // session (agentHost 1; the 0.9.29 hosted bot work).
   const ADDONS = Object.freeze({ hostedBot: Object.freeze({ id: 'hostedBot', name: 'Hosted bot', cents: Object.freeze({ monthly: 300 }), price: usd(300), soon: true, grants: Object.freeze({ agentHost: 1 }) }) });
-  // Which app sells which plan (Nathan 2026-11-13): Meet sells every plan but Streamer; the Broadcast app (the /cast
-  // skin of the meeting page) sells every plan, Streamer and its storage included. Every plan is HONORED everywhere:
-  // this is only what each app offers. tiersListed: the part of it the Subscribe window lists (the rest is on
-  // /subscription).
-  const APP_TIERS = Object.freeze({ meet: Object.freeze(TIER_IDS.filter((t) => !TIERS[t].storage)), broadcast: Object.freeze(TIER_IDS.slice()) });
-  const tiersSoldIn = (app) => APP_TIERS[app === 'broadcast' ? 'broadcast' : 'meet'];
+  // Which surface sells which plan (Nathan 2026-11-13, 2026-11-25): Meet sells every plan but Streamer (Meet has no
+  // My library to manage its storage in); the Broadcast app (the /cast skin of the meeting page) and the general plans
+  // page (/subscription, the same PayPal web rail) sell every plan, Streamer and its storage included. The native
+  // store apps have no Streamer product (gifos-store-skus.js). Every plan is HONORED everywhere: this is only what
+  // each surface offers. An unknown surface reads as Meet. tiersListed: the part the Subscribe window lists.
+  const APP_TIERS = Object.freeze({ meet: Object.freeze(TIER_IDS.filter((t) => !TIERS[t].storage)), broadcast: Object.freeze(TIER_IDS.slice()), subscription: Object.freeze(TIER_IDS.slice()) });
+  const tiersSoldIn = (app) => APP_TIERS[Object.prototype.hasOwnProperty.call(APP_TIERS, app) ? app : 'meet'];
+  // WHAT A LINE ITEM GIVES IN EACH APP (Nathan 2026-11-25): /subscription shows, per app, the permissions a plan's
+  // signed line items grant. ONE table: each row is a line item word, which values it labels (is), the apps it applies
+  // to, and its label (i18n subscription.grant.<label>; {n} is the value). is: 'none' (null), 'n' (a whole number),
+  // 'one' (1), 'many' (> 1), 'zero' (0), 'some' (> 0), 'on' (true). A word with no row (overflow) shows nothing. Names
+  // never decide: the rows read the line items only. A new app = a GRANT_APPS entry and its id on the rows that apply.
+  const GRANT_APPS = Object.freeze([Object.freeze({ id: 'meet', href: '/meet' }), Object.freeze({ id: 'broadcast', href: '/cast' })]);
+  const BOTH = ['meet', 'broadcast'];
+  const GRANT_LABELS = Object.freeze([
+    ['roomLimit', 'none', 'peopleAny', BOTH], ['roomLimit', 'n', 'peopleUpTo', BOTH],
+    ['turnVideoLinks', 'some', 'video', BOTH], ['turnVideoLinks', 'zero', 'voice', BOTH],
+    ['captureOpenRoom', 'on', 'capture', BOTH], ['admitAtFullDoor', 'on', 'fullDoor', BOTH],
+    ['meetings', 'one', 'one', BOTH], ['meetings', 'many', 'many', BOTH],
+    ['agentHost', 'some', 'bot', BOTH],
+    ['clearWithoutPassword', 'on', 'clear', BOTH], ['clearStageWithoutPassword', 'on', 'clearStage', BOTH],
+    ['storage', 'on', 'library', ['broadcast'], '/library'],
+  ].map(([word, is, label, apps, href]) => Object.freeze(Object.assign({ word, is, label, apps: Object.freeze(apps.slice()) }, href ? { href } : {}))));
+  const LABEL_IS = { none: (v) => v === null, n: (v) => Number.isInteger(v), one: (v) => v === 1, many: (v) => Number.isInteger(v) && v > 1, zero: (v) => v === 0, some: (v) => Number.isInteger(v) && v > 0, on: (v) => v === true };
+  // grantLabels(grants, app) -> [{label, n, href?}]: the rows that label this set's words in that app, in table order.
+  // Only the words the set names are labelled (an add-on names one word; the Free card passes DEFAULTS).
+  function grantLabels(grants, app) {
+    if (!grants || typeof grants !== 'object') return [];
+    return GRANT_LABELS.filter((r) => r.apps.indexOf(app) >= 0 && Object.prototype.hasOwnProperty.call(grants, r.word) && LABEL_IS[r.is](grants[r.word]))
+      .map((r) => Object.assign({ label: r.label, n: grants[r.word] }, r.href ? { href: r.href } : {}));
+  }
   const tiersListed = (app) => tiersSoldIn(app).filter((t) => TIERS[t].window);
   // covers(h, a): line items h give at least everything line items a give (no people line beats any line).
   const big = (v) => (v === null ? Infinity : v);
@@ -1119,7 +1144,7 @@
 
   GifOS.sub = {
     ACL_FLAGS, ACL_SCOPE, aclAdd, aclJoin, aclLimit, aclHas, aclView,
-    TIERS, TIER_IDS, PERIODS, NEGOTIATED, ADDONS, usd, covers, upgradeOk, upgradeCharge, APP_TIERS, tiersSoldIn, tiersListed, FREE, TEXT, PEOPLE_LIMIT, LICENSE_KIND, SELLER, KEY_RE, edKeyOk, edKeyWeak, edSigWeak, edVerify, SUB_ID_RE, ASK_WINDOW_S,
+    TIERS, TIER_IDS, PERIODS, NEGOTIATED, ADDONS, usd, covers, upgradeOk, upgradeCharge, APP_TIERS, tiersSoldIn, tiersListed, GRANT_APPS, GRANT_LABELS, grantLabels, FREE, TEXT, PEOPLE_LIMIT, LICENSE_KIND, SELLER, KEY_RE, edKeyOk, edKeyWeak, edSigWeak, edVerify, SUB_ID_RE, ASK_WINDOW_S,
     FREE_PLAN, FREE_LIMIT, PLANS, PLAN_IDS, isPlan, isPaid,
     checkLicense, verifyLicense, rightsOf, storageAfterLapse, proofMessage, verifyProof, askMessage, askFresh,
     admission, roomContext, doorContext, roomTierOf, clearNoPwRight, clearStageNoPwRight, credId, doorVerdict, doorProofOk,
