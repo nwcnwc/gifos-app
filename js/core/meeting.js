@@ -3428,9 +3428,14 @@
     //   repick     my own No blur was picked before this room's clear right came on: pick it again to be clear
     // where: 'stage' when the picture is a Stage view (a Stage face box), else a grid, row or stadium picture.
     function blurHold(id, where) {
+      const m = modOf(id).blur;
+      const order = (m && m.on) ? ((hasAdminRoom() && modTable['*'] && modTable['*'].blur === m) ? 'guests' : 'forall') : '';
       if (!roomPw) {
         const mode = clearNoPwMode();
         if (!mode) return 'nopw';
+        // HOST ORDERS BEAT THE CLEAR RIGHT (Nathan 2026-11-25): under "Blur guests" or a "Blur for all" the face stays
+        // blurred for the host's reason, and no tap is offered that could not clear it.
+        if (order) return order;
         if (id === 'me') {
           if (mode === 'stage' && !meOnStage()) return 'stageonly';
           if (!(myNoBlurAt > clearSince)) return 'repick';   // a share or rebroadcast too: only a No blur picked after the right came on
@@ -3440,8 +3445,7 @@
           if (!(clearTap && clearMode === mode)) return 'tap';   // a tap counts only for the mode it was given in (never carried into a wider one)
         }
       }
-      const m = modOf(id).blur;
-      if (m && m.on) return (hasAdminRoom() && modTable['*'] && modTable['*'].blur === m) ? 'guests' : 'forall';
+      if (order) return order;
       if (hasAdminRoom()) return adminPresent() ? '' : 'noadmin';
       return allConsent() ? '' : 'ready';
     }
@@ -24981,7 +24985,13 @@
       return true;
     }
     // offer: a tap could clear something now (the room's other rules, like an admin room with no admin here, do not hold it)
-    function clearNoPwState() { const mode = clearNoPwMode(); return { mode, tapped: !!mode && clearTap && clearMode === mode, offer: !!mode && (!hasAdminRoom() || adminPresent()) }; }
+    // and no host order holds every face the tap would reach (the Stage under 'stage': host orders beat the clear right)
+    function clearNoPwState() {
+      const mode = clearNoPwMode();
+      let offer = !!mode && (!hasAdminRoom() || adminPresent());
+      if (offer && mode === 'stage') { const ids = stageIds().filter((x) => x !== myId); if (ids.length && ids.every((x) => { const b = modOf(x).blur; return !!(b && b.on); })) offer = false; }
+      return { mode, tapped: !!mode && clearTap && clearMode === mode, offer };
+    }
     function blurAgain() { if (!clearTap) return; clearTap = false; reactRoomState(); }
     // TELL GIFOS ABOUT THIS HOST: the credential id that put the clear right in this room and nothing else (no room
     // name, link, meeting tag, key, signature or content; no uploads ever): the host's verified plan for 'all', the
