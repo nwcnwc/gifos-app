@@ -12,7 +12,8 @@
  *   viewKit.part(stamp, make)  the surface's view part: make(L) -> { names, setup }; names publish at the first step,
  *                           setup() wires input after the core's whole top level.
  *   readings                stageLevel, watchCount, nameOf, present: what the core already decided, read for drawing.
- *   acts                    pip, fullscreen: the browser's own controls over a video element.
+ *   acts                    pip, fullscreen: the browser's own controls over a video element (fullscreen.enterStage /
+ *                           leaveStage: the Stage view's full screen on every surface).
  *
  * Nothing here decides a rule of the meeting: who is on the Stage, what it carries, who is hosted, the password and the
  * sound gate are the core's answers.
@@ -155,6 +156,40 @@
       } catch (e) {}
     },
     on: function () { try { return !!(document.fullscreenElement || document.webkitFullscreenElement); } catch (e) { return false; } },
+    // The Stage view's full screen (every surface's one rule). The page takes the screen where the browser allows it:
+    // the Stage view is the page's own layout, so its tabs, the captions, the version label and the floating bar stay
+    // with it. A browser that lets only a video go full screen (iPhone) gets the one video the view shows, and only
+    // while this viewer sees that picture clear: the browser's own player draws a video without the page's blur, so a
+    // blurred picture stays in the page's full-height layout. Nothing else changes: the orientation is never locked.
+    // Returns 'page', 'video', 'already' (the page held the screen before) or '' (the page's own full-height layout).
+    enterStage: function (video, clear) {
+      try {
+        var d = document, de = d.documentElement;
+        if (d.fullscreenElement || d.webkitFullscreenElement) return 'already';
+        if (GifOS.fullscreen && GifOS.fullscreen.supported()) { GifOS.fullscreen.enter(de); return 'page'; }
+        if ((d.fullscreenEnabled && de.requestFullscreen) || (d.webkitFullscreenEnabled && de.webkitRequestFullscreen)) {
+          var p = de.requestFullscreen ? de.requestFullscreen() : de.webkitRequestFullscreen();
+          if (p && p.catch) p.catch(function () {});
+          return 'page';
+        }
+        var v = typeof video === 'function' ? video() : video;
+        if (v && clear && typeof v.webkitEnterFullscreen === 'function' && v.readyState >= 1) { v.webkitEnterFullscreen(); return 'video'; }
+      } catch (e) {}
+      return '';
+    },
+    // Leave the full screen the Stage view took (the page's, or the video's own player).
+    leaveStage: function (video) {
+      try {
+        var d = document;
+        if (d.fullscreenElement || d.webkitFullscreenElement) {
+          var p = d.exitFullscreen ? d.exitFullscreen() : (d.webkitExitFullscreen ? d.webkitExitFullscreen() : null);
+          if (p && p.catch) p.catch(function () {});
+          return;
+        }
+        var v = typeof video === 'function' ? video() : video;
+        if (v && v.webkitDisplayingFullscreen && typeof v.webkitExitFullscreen === 'function') v.webkitExitFullscreen();
+      } catch (e) {}
+    },
   };
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }

@@ -3832,3 +3832,23 @@ body.bot-view { overflow: auto; background: var(--bg); }
   body.cnp-veil-stage #stagefeed > .rowtile video,
   body.cnp-veil-rows .rowtile:not(#stagefeed > .rowtile) video,
   body.cnp-veil-rows #stadium video { filter: blur(calc(var(--bw, 100vmin) * var(--blur-max, .045))) saturate(.75); }
+
+/* ---- The Stage view (Nathan 2026-11-25) ----
+   Only what is on the Stage fills the screen, at its own aspect (letterbox, never crop or stretch), in the device's
+   own orientation. The gallery's other pictures wait hidden under it; the top bar, the captions and the floating bar
+   stay over it and reserve nothing. Several things on the Stage: a tab strip under the top bar. */
+.vp-mode[hidden] { display: none; }
+body.sv-live.comfy #feed { background: var(--c-black); overflow: hidden; }
+body.sv-live.comfy #feed > :not(.sv-on), body.sv-live.comfy #stagefeed > :not(.sv-on) { visibility: hidden !important; pointer-events: none !important; }
+body.sv-live.comfy .sv-on { border-radius: 0 !important; background: var(--c-black); }
+body.sv-live .sv-on > video, body.sv-live .ct-pane > video { object-fit: contain !important; background: var(--c-black); }
+body.sv-live .ctarea.ct-fixed { z-index: 5; border-radius: 0; }
+body.sv-live .ctarea .ct-pane { border-radius: 0; }
+body.sv-live.has-app:not(.ct-app-off):not(.app-full) #apppane { z-index: 6; }
+/* A broadcast's Stage is its one picture: the whole of it, letterboxed, on black. */
+body.broadcast.sv-live #stagefeed, body.broadcast.sv-live #stagefeed .rowtile { background: var(--c-black); }
+body.broadcast.sv-live #stagefeed .rowtile > video { object-fit: contain !important; }
+/* A broadcast offers the view button for Fit and Stage while its Stage is live. */
+body.broadcast.sv-avail:not(.bc-quiet) #tophead > #fitbtn { display: inline-flex !important; }
+body.broadcast.sv-live #feed > :not(#stagefeed):not(#bc-cap):not(#bc-ident):not(#bc-stage) { visibility: hidden !important; pointer-events: none !important; }
+body.broadcast.sv-live #airbar { visibility: hidden; }
