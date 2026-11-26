@@ -95,7 +95,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <a class="cta" href="/meet/welcome">Join the welcome meeting &rarr;</a>
 
     <h2>Put a live GifOS broadcast on your own site</h2>
-    <p>Paste one line where the player should go. Put your room's name in place of <code>ROOM</code>. For a private meeting, add its verifier (the last part of its link, gifos.app/cast/ROOM/VERIFIER) as <code>data-verifier</code>, or <code>&amp;v=VERIFIER</code> in the iframe. The player plays while a host is in charge of the room and shows a short card the rest of the time. Viewers never turn on a camera or microphone.</p>
+    <p>Paste one line where the player should go. Put your room's name in place of <code>ROOM</code>. For a private meeting, add its verifier (the v= in its link, gifos.app/cast#room=ROOM&v=VERIFIER) as <code>data-verifier</code>, or <code>&amp;v=VERIFIER</code> in the iframe. The player plays while a host is in charge of the room and shows a short card the rest of the time. Viewers never turn on a camera or microphone.</p>
     <p class="lbl">The script tag (works on most sites)</p>
     <div class="code"><pre id="snip-script">&lt;script src="https://gifos.app/embed.js" data-room="ROOM"&gt;&lt;/script&gt;</pre><button class="copy" type="button" data-copy="snip-script">Copy</button></div>
     <p class="lbl">The plain iframe (for sites that remove scripts)</p>
