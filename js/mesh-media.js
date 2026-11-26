@@ -542,7 +542,8 @@
     // tree inside the one blended stream — no extra bandwidth, no receiver-side
     // identity (approach A). lbl = { name, hand, talking, react } | null;
     // react: a reaction emoji, shown top-left while it lasts.
-    function drawOverlay(dx, dy, cell, lbl) {
+    // nameCell (optional, smaller than cell): the name bar is drawn for a cell of that size at the cell's bottom left.
+    function drawOverlay(dx, dy, cell, lbl, nameCell) {
       if (!lbl) return;
       // TAPESTRY mode (stadium past the overlay threshold): only the NAME goes,
       // too small to read. Talking, a raised hand and a reaction stay as plain
@@ -553,7 +554,10 @@
         const lw = Math.max(2, cell * 0.035);
         surf.stroke('#37d67a', lw, dx + lw / 2, dy + lw / 2, cell - lw, cell - lw);
       }
-      if (lbl.name && !GifOS.hideNames) surf.label(String(lbl.name), dx, dy, cell, cell);
+      if (lbl.name && !GifOS.hideNames) {
+        const nc = nameCell > 0 && nameCell < cell ? nameCell : cell;
+        surf.label(String(lbl.name), dx, dy + cell - nc, nc, nc);
+      }
       if (lbl.hand) {
         const r = Math.max(6, cell * 0.12);
         surf.glyph('✋', dx + cell - r * 1.6, dy + r * 0.3, r * 1.4 | 0);
@@ -754,7 +758,9 @@
         surf.resize(W, H);
         try { surf.blit(sourceOf(soloEl), 0, 0, nsw, nsh, 0, 0, W, H); } catch (e) {}
         const c = Math.min(W, H);
-        drawOverlay(0, H - c, c, solo.lbl);
+        // The lone stager's name is a caption sized from the picture's long side (the side a viewer fits to the screen),
+        // not a headline across the whole frame height: the floating control bar overlays the bottom of the picture.
+        drawOverlay(0, H - c, c, solo.lbl, Math.round(Math.max(W, H) * 0.25));
         last = now; cost = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - now; costAvg = packAvg(costAvg, cost, costN++); drawn++; surf.present();
         return;
       }
