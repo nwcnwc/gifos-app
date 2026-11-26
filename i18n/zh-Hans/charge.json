@@ -51,7 +51,7 @@
   "charge.receiptView.licenseOk": "此文件中的套餐许可由 gifos.app 签名。",
   "charge.receiptView.subNote": "GifOS Meet 和套餐页面会在“购买”中找到此订阅。任何拿到此文件的人都能使用你的订阅和通行证：请妥善保管。",
   "charge.receiptView.openMeet": "打开 GifOS Meet",
-  "charge.receiptView.openPlans": "套餐和你的订阅",
+  "charge.receiptView.openPlans": "GifOS 方案",
   "charge.receiptView.legCreator": "创作者（{amount}）",
   "charge.receiptView.legFee": "GifOS 手续费（{amount}）",
   "charge.receiptView.legTx": "交易 {k}",

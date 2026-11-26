@@ -51,7 +51,7 @@
   "charge.receiptView.licenseOk": "Die Lizenz des Tarifs in dieser Datei ist von gifos.app signiert.",
   "charge.receiptView.subNote": "GifOS Meet und die Tarifseite finden dieses Abo hier in „Käufe“. Wer diese Datei hat, kann dein Abo und deine Pässe nutzen: halte sie privat.",
   "charge.receiptView.openMeet": "GifOS Meet öffnen",
-  "charge.receiptView.openPlans": "Tarife und dein Abo",
+  "charge.receiptView.openPlans": "GifOS Tarife",
   "charge.receiptView.legCreator": "Urheber ({amount})",
   "charge.receiptView.legFee": "GifOS-Gebühr ({amount})",
   "charge.receiptView.legTx": "Transaktion {k}",

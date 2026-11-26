@@ -13,8 +13,8 @@
 <meta name="theme-color" content="#000000">
 <meta name="color-scheme" content="dark light">
 <script src="js/sw-register.js" defer></script>
-<title>GifOS Meet plans</title>
-<meta name="description" content="GifOS Meet plans: bigger meetings, and video that gets through corporate and school firewalls, still end-to-end encrypted. No account needed.">
+<title>GifOS plans</title>
+<meta name="description" content="GifOS plans for Meet and Broadcast: bigger meetings, video that gets through corporate and school firewalls, still end-to-end encrypted, and My library for your recordings. No accounts, ever.">
 <link rel="canonical" href="https://gifos.app/subscription">
 <link rel="icon" href="icon.svg">
 <style>
@@ -97,6 +97,10 @@
   ul.plans.one .price .sep { display: none; }
   .plan .what { display: flex; flex-direction: column; gap: var(--s-1); }
   .plan .what .quiet { order: 3; }
+  /* What a plan gives, one line per GifOS app (subscription.js appsBlock). */
+  .plan .what ul.apps { order: 4; list-style: none; display: grid; gap: var(--s-1); font-size: var(--fs-label); color: var(--label); margin-top: var(--s-1); }
+  .plan .what ul.apps .app a { color: var(--text); font-weight: 600; text-decoration: none; }
+  .plan .what ul.apps .sep { color: var(--muted); }
   .plan .acts { display: flex; flex-direction: column; gap: var(--s-2); margin-top: auto; }
   .plan .acts button, .plan .acts a.btn { width: 100%; }
   .plan .acts .quiet { padding: var(--s-1) 0; }
@@ -173,10 +177,10 @@
 <body>
 <div class="wrap">
   <header class="top">
-    <h1 data-t="subscription.title">GifOS Meet plans</h1>
+    <h1 data-t="subscription.title">GifOS plans</h1>
     <a href="/meet" data-t="subscription.back">GifOS Meet</a>
   </header>
-  <p class="lead" id="lead" data-t="subscription.lead">Bigger meetings, and video that gets through corporate and school firewalls, still end-to-end encrypted. No account needed.</p>
+  <p class="lead" id="lead" data-t="subscription.lead">Plans for GifOS Meet and Broadcast: bigger meetings, video that gets through corporate and school firewalls, still end-to-end encrypted, and My library for your recordings. No accounts, ever.</p>
   <p id="say" class="notice" role="status" aria-live="polite" hidden></p>
 
   <!-- Arrived by a "Copy my plan" link from the other device: this task comes first. -->
@@ -309,15 +313,18 @@
     <details id="upgrade-note">
       <summary data-t="subscription.secHow">How plans work</summary>
       <div class="body">
-        <p data-t="subscription.intro">Every plan works on gifos.app/meet. Public open-floor meetings are always free.</p>
-        <p id="no-account" data-t="subscription.noAccount">No account needed. Your plan lives on your devices, and if you ever lose them, restore it with the PayPal account you paid with.</p>
+        <p data-t="subscription.howPlans">A plan is a set of permissions that works in GifOS apps, today Meet and Broadcast. Each card shows what it gives in each app.</p>
+        <p data-t="subscription.howRenew">The four-hour pass is paid once and simply ends. Every other plan renews monthly or yearly through PayPal until you cancel it.</p>
+        <p data-t="subscription.intro">Public open-floor meetings are always free.</p>
         <p data-t="subscription.pmMoveHelp">Your plan works on all your devices, in one meeting at a time.</p>
         <p data-t="subscription.pmMoveHow">Start or join the meeting on this device; you will be asked which meeting gives up its place.</p>
         <p data-t="subscription.howSizes">Anyone in a meeting who holds a plan sizes the whole meeting: the best plan present wins, for as long as its holder is there.</p>
-        <p data-t="subscription.howFirewall">Free gets voice and chat through corporate and school firewalls; paid plans get video through too. Everything stays end-to-end encrypted.</p>
+        <p data-t="subscription.howFirewall">Free gets voice and chat through corporate and school firewalls; paid plans get video through too, still end-to-end encrypted.</p>
         <p data-t="subscription.upgradeStack">Plans add up: a pass or an add-on you hold counts on top of your plan, so their meetings at once add together.</p>
         <p data-t="subscription.upgradePass">A four-hour pass is never cancelled: it keeps running beside any plan.</p>
+        <p id="no-account" data-t="subscription.noAccount">No accounts, ever. Your plan lives on your devices, and if you ever lose them, restore it with the PayPal account you paid with.</p>
         <p data-t="subscription.fileNote">Your plan lives in this browser. Keep a copy: download your subscription file here, or choose Copy my plan to another device on gifos.app/subscription.</p>
+        <p data-t="subscription.howReceipts">Every payment has a receipt: they are listed under Receipts on this page, and each one is also a receipt GIF in the Purchases folder on your Home Screen.</p>
       </div>
     </details>
   </div>

@@ -1,8 +1,12 @@
 /*
- * subscription.js — the /subscription page: every GifOS Meet plan, the one this browser holds, and the way up.
+ * subscription.js — the /subscription page (GifOS plans): every plan, what it gives in each GifOS app, the one this
+ * browser holds, and the way up.
  *
  * Names, prices, periods and what each plan grants come from the one catalog (js/gifos-sub.js TIERS, PASS_PRESETS,
- * FREE_PLAN, NEGOTIATED); the words around them from i18n/<locale>/subscription.json. What this browser holds is read
+ * FREE_PLAN, NEGOTIATED); what each plan gives in each app from its line items through the one label table
+ * (GifOS.sub.GRANT_APPS, GRANT_LABELS, grantLabels); the words around them from i18n/<locale>/subscription.json.
+ * This page sells what SUB.tiersSoldIn('subscription') names: every plan, Streamer too (the same PayPal web rail as
+ * the Broadcast app). What this browser holds is read
  * exactly as the meeting's Settings reads it (GifOS.meetSubs.credentialsNow: the subscription file's license and
  * passes). Buying goes through the same path as Settings (GifOS.meetSubs.subscribe / buyPass): a bigger plan bought
  * here is an upgrade (GifOS.sub.upgradeOk) whose first charge carries the pay Worker's prorated credit.
@@ -41,13 +45,13 @@
   var clock = function (sec) { try { return i18n.fmt.time(new Date(sec * 1000), { hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } };
   var day = function (sec) { try { return i18n.fmt.date(new Date(sec * 1000)); } catch (e) { return ''; } };
 
-  // The order of the rows: smallest to largest, then the add-ons. Each row: its id, the catalog row it reads, and how
-  // it is bought.
+  // The order of the rows: smallest to largest, then the add-ons. Each row: its id, the catalog row it reads, how it is
+  // bought, and the line items it grants (Free: the defaults everyone has).
   function rows() {
-    var out = [{ id: 'free', row: SUB.FREE_PLAN, kind: 'free' }, { id: 'pass', row: SUB.PASS_PRESETS.pass4h, kind: 'pass' }];
-    SUB.TIER_IDS.forEach(function (id) { out.push({ id: id, row: SUB.TIERS[id], kind: SUB.tiersSoldIn('meet').indexOf(id) >= 0 ? 'paypal' : 'broadcast' }); });
+    var out = [{ id: 'free', row: SUB.FREE_PLAN, kind: 'free', grants: SUB.DEFAULTS }, { id: 'pass', row: SUB.PASS_PRESETS.pass4h, kind: 'pass', grants: SUB.PASS_PRESETS.pass4h.grants }];
+    SUB.tiersSoldIn('subscription').forEach(function (id) { out.push({ id: id, row: SUB.TIERS[id], kind: 'paypal', grants: SUB.TIERS[id].grants }); });
     out.push({ id: 'negotiated', row: SUB.NEGOTIATED, kind: 'contact' });
-    Object.keys(SUB.ADDONS).forEach(function (id) { out.push({ id: id, row: SUB.ADDONS[id], kind: 'addon' }); });
+    Object.keys(SUB.ADDONS).forEach(function (id) { out.push({ id: id, row: SUB.ADDONS[id], kind: 'addon', grants: SUB.ADDONS[id].grants }); });
     return out;
   }
   var grantsOf = function (id) { return SUB.TIERS[id] ? SUB.TIERS[id].grants : null; };
@@ -61,6 +65,71 @@
     if (r.kind === 'contact') return t('priceNegotiated');
     if (r.kind === 'addon') return t('perMonth', { price: r.row.price });
     return r.row.periods.map(function (per) { return periodPrice(r.row, per); }).join(' · ');
+  }
+
+  // What a plan gives, per app: one line per app, from its line items (GifOS.sub.grantLabels). Apps that get the same
+  // labels share a line ("Meet and Broadcast: ..."); an app that gets everything an earlier line gives and more says
+  // "Everything in Meet" and adds the rest.
+  function appGroups(grants) {
+    var key = function (x) { return x.label + ':' + x.n; };
+    var groups = [];
+    SUB.GRANT_APPS.forEach(function (app) {
+      var labels = SUB.grantLabels(grants, app.id);
+      if (!labels.length) return;
+      var k = labels.map(key).join('|');
+      var same = groups.filter(function (g) { return g.key === k; })[0];
+      if (same) { same.apps.push(app); return; }
+      var g = { apps: [app], labels: labels, key: k, base: null, extra: labels };
+      for (var i = 0; i < groups.length; i++) {
+        var have = {};
+        labels.forEach(function (x) { have[key(x)] = 1; });
+        if (groups[i].labels.every(function (x) { return have[key(x)]; })) {
+          var had = {};
+          groups[i].labels.forEach(function (x) { had[key(x)] = 1; });
+          g.base = groups[i];
+          g.extra = labels.filter(function (x) { return !had[key(x)]; });
+          break;
+        }
+      }
+      groups.push(g);
+    });
+    return groups;
+  }
+  // A list in the page's language ("Meet and Broadcast"), as parts: {element: i} for the i-th name, {literal: text}.
+  function listParts(n) {
+    var marks = [];
+    for (var i = 0; i < n; i++) marks.push('\u0001' + i + '\u0002');
+    var text;
+    try { text = new Intl.ListFormat((document.documentElement && document.documentElement.lang) || 'en', { style: 'long', type: 'conjunction' }).format(marks); } catch (e) { text = marks.join(', '); }
+    return text.split(/(\u0001\d+\u0002)/).filter(Boolean).map(function (p) { var m = /^\u0001(\d+)\u0002$/.exec(p); return m ? { element: +m[1] } : { literal: p }; });
+  }
+  var listOf = function (names) { return listParts(names.length).map(function (p) { return p.literal != null ? p.literal : names[p.element]; }).join(''); };
+  function appsBlock(grants) {
+    var groups = appGroups(grants);
+    if (!groups.length) return null;
+    var ul = el('ul', 'apps');
+    groups.forEach(function (g) {
+      var li = el('li');
+      li.dataset.apps = g.apps.map(function (a) { return a.id; }).join(' ');
+      var head = el('strong', 'app');
+      listParts(g.apps.length).forEach(function (p) {
+        if (p.literal != null) { head.appendChild(document.createTextNode(p.literal)); return; }
+        var app = g.apps[p.element];
+        var an = el('a', null, t('app.' + app.id)); an.href = app.href;
+        head.appendChild(an);
+      });
+      head.appendChild(document.createTextNode(': '));
+      li.appendChild(head);
+      var bits = [];
+      if (g.base) bits.push({ text: t('sameAs', { app: listOf(g.base.apps.map(function (a) { return t('app.' + a.id); })) }) });
+      g.extra.forEach(function (x) { bits.push({ text: t('grant.' + x.label, { n: x.n }), href: x.href }); });
+      bits.forEach(function (b, i) {
+        if (i) li.appendChild(el('span', 'sep', ' · '));
+        if (b.href) { var a = el('a', null, b.text); a.href = b.href; li.appendChild(a); } else li.appendChild(el('span', null, b.text));
+      });
+      ul.appendChild(li);
+    });
+    return ul;
   }
 
   function buyButton(label, onclick, go) {
@@ -121,7 +190,7 @@
       var ypName = $('yp-name');
       if (ypName) { ypName.textContent = names.map(function (id) { return t(id + '.name'); }).join(' + '); ypName.hidden = !anyHeld; }
       var ypWhat = $('yp-what');
-      if (ypWhat) { ypWhat.textContent = anyHeld ? t(names[0] + '.desc') : ''; ypWhat.hidden = !anyHeld; }
+      if (ypWhat) { ypWhat.textContent = anyHeld ? t(names[0] + '.desc') + (names[0] === 'free' ? ' ' + t('free.desc2') : '') : ''; ypWhat.hidden = !anyHeld; }
       show('yp-kicker', anyHeld);
       show('held-get-line', !anyHeld);
       var nowS = Math.floor(Date.now() / 1000);
@@ -153,9 +222,12 @@
         if (r.kind === 'addon' && r.row.soon) h.appendChild(el('span', 'badge soon', t('soon')));
         what.appendChild(h);
         what.appendChild(el('p', 'quiet', t(r.id + '.desc')));
+        if (r.id === 'free') what.appendChild(el('p', 'quiet', t('free.desc2')));
+        var apps = appsBlock(r.grants);
+        if (apps) what.appendChild(apps);
         // The price: one line per period (a card stacks them; a row keeps them on one line).
         var price = el('p', 'price');
-        if (r.row && r.row.periods && (r.kind === 'paypal' || r.kind === 'broadcast')) {
+        if (r.row && r.row.periods && r.kind === 'paypal') {
           r.row.periods.forEach(function (per, i) {
             if (i) price.appendChild(el('span', 'sep', ' · '));
             price.appendChild(el('span', 'per', periodPrice(r.row, per)));
@@ -185,9 +257,6 @@
           acts.appendChild(buyButton(t('buyPass', { price: r.row.price }), function () {
             return MS().buyPass(say).then(function (x) { return x && x.passJson ? t('passThanks') : t('notConfirmed'); });
           }));
-        } else if (r.kind === 'broadcast' && !isHeld) {
-          var a = el('a', 'btn', t('broadcast')); a.href = '/cast'; a.target = '_blank'; a.rel = 'noopener';
-          acts.appendChild(a);
         } else if (r.kind === 'contact') {
           var m = el('a', 'btn', t('contact'));
           m.href = 'mailto:' + SUB.NEGOTIATED.contact + '?subject=' + encodeURIComponent('GifOS ' + t(r.id + '.name'));
