@@ -9,7 +9,6 @@
   const { Seat } = req('./seat.js', 'meshSeat');
   const C_ = req('./consts.js', 'meshConsts');
   const topo = req('./topo.js', 'meshTopo');
-  const msg = req('./msg.js', 'meshMsg');
   const K = C_.consts, E = C_.enums;
   const { ckey, ownedLinks } = topo;
   const LS_NONE = E.LS_NONE;
@@ -101,24 +100,10 @@
     l8512Note() {
       if (!this.w.lv.ISLAND_MODE || this.state !== 1 || this.islandAskAt >= 0 || !this.lastGreeters.length || this.greetersAt < 0 || !this.f.fabricDoors()) return;
       let dv = false; for (const g of this.lastGreeters) if (g >= 0 && g !== this.id && this.f.fabricDoorVerdict(this.id, g)) { dv = true; break; }
-      if (!dv) return;
-      if (!this.l854All(this.lastGreeters)) {   // L8.54.13: a verdict on one listed greeter: the rest are asked now, and my asks of this entry are the round
-        if (!this.f.fabricTurnOn()) return;
-        let n = 0; for (const g of this.lastGreeters) { if (g < 0 || g === this.id) continue; this.islandAsked.add(g); if (this.entAsk.has(g) || n >= 32) continue; this.entNote(g); this.l16Ask.push(g); const w = msg.newMsg('WHOHOME'); w.from = this.id; w.ttl = K.WHOHOME_HOPS; this.emit(g, w); n++; }
-        this.entIsl = true; this.islandAskAt = this.TICK | 0; this.trace('L8.54.13-ASK', this.id, null, 'listed=%zu new=%d', this.lastGreeters.length, n); return; }
+      if (!dv || !this.l854All(this.lastGreeters)) return;
       let a0 = this.TICK; for (const g of this.lastGreeters) { if (g < 0 || g === this.id) continue; const it = this.entAsk.get(g); if (it !== undefined) { this.islandAsked.add(g); if (it < a0) a0 = it; } }
       this.islandAskAt = a0; this.trace('L8.54.12-VERDICT', this.id, null, 'listed=%zu since=%d', this.lastGreeters.length, a0);
     },
-    // L8.54.13 my answered dial's verdict is silence, proven. A listed greeter of any network holds it (l8513): every
-    // listed greeter not asked yet is asked now (l8512Note; a later round asks in one wave, islandAsk), so each pair's own
-    // dial says its word. Every listed greeter holds it or reads "cannot meet" (l8513All): the round is over with no
-    // silence wait and no second round (islandTick); the confirm knock stands. Only in a meeting with TURN: there the
-    // founding that follows is SUB.2's ask and a pipe into the room; without it it is a room apart, and silence's wait
-    // is the room's one chance to list a friend or dial me from its side (docs/healing-laws.md)
-    // C++: mesh_roomterm.inc:Seat::l8513
-    l8513() { if (!this.w.lv.ISLAND_MODE || !this.f.fabricTurnOn()) return false; for (const g of this.lastGreeters) if (g >= 0 && g !== this.id && this.f.fabricDoorVerdict(this.id, g)) return true; return false; },
-    // C++: mesh_roomterm.inc:Seat::l8513All
-    l8513All() { if (!this.w.lv.ISLAND_MODE || !this.f.fabricTurnOn() || this.entAsk.size === 0) return false; let first = -1; for (const t of this.entAsk.values()) if (first < 0 || t < first) first = t; if (this.TICK - first < K.FHOP_RELAY_ASK) return false;   /* JOIN.2's probe of the meeting's other doors (free) has its turn first: the founding that follows may pay */ let n = 0; for (const g of this.lastGreeters) { if (g < 0 || g === this.id) continue; if (this.f.fabricDoorNet(this.id, g) !== 0 && !this.f.fabricDoorVerdict(this.id, g)) return false; n++; } return n > 0; },
     // C++: mesh_roomterm.inc:Seat::l8511Note
     l8511Note() { if (this.kdAt !== -1 || !this.w.lv.ISLAND_MODE || !(this.state === 0 || this.state === 1) || this.nat === E.NAT_BLOCKED) return; for (const g of this.lastGreeters) if (g >= 0 && g !== this.id && this.f.fabricDoorDue(this.id, g)) { this.kdAt = this.TICK; return; } },
     // C++: mesh_roomterm.inc:Seat::l8511Tick

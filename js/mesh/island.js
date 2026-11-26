@@ -36,7 +36,7 @@
         for (const g of list) { if (g < 0 || g === this.id) continue; this.l16List.push(g); if (this.l16List.length >= 32) break; }
         this.l16Next = 0; this.l16Busy.length = 0; this.l16Last = -1; this.l16Hedged = false;
         const f = lv.L16FAN < 0 ? K.L16_FAN : lv.L16FAN;
-        this.l16Wave(this.evilDoor || f === 0 || this.l8471() || this.l8475() || this.l8513() ? this.l16List.length : f); return;   // L8.54.13: a verdict stands on a listed greeter: everyone at once
+        this.l16Wave(this.evilDoor || f === 0 || this.l8471() || this.l8475() ? this.l16List.length : f); return;
       }
       let n = 0;
       for (const g of list) { if (g < 0 || g === this.id) continue; const w = newMsg('WHOHOME'); w.from = this.id; w.ttl = 60; this.emit(g, w); if (++n >= 32) break; }
@@ -47,7 +47,7 @@
     // C++: mesh_island.inc:Seat::islandTick
     islandTick() {
       if (!this.entryTerm() || !(this.state === 0 || this.state === 1) || this.islandAskAt < 0 || this.lastReach >= this.islandAskAt) return false;
-      const o54 = this.l854All(this.lastGreeters); const dv54 = !o54 && this.l8513All(); const iw = o54 || dv54 ? 0 : this.islandWait();   // L8.47.1, L8.54.1, L8.54.13: my own dials' verdicts are the round's silence, proven: no wait and no second round; the confirm knock stands
+      const o54 = this.l854All(this.lastGreeters); const iw = o54 ? 0 : this.islandWait();   // L8.47.1, L8.54.1
       if (this.ehAt >= 0 && this.TICK - this.ehAt < K.ISLAND_WAIT) {   // L8.47.2: it said it has no room yet: I wait for it, and ask it again once per dial verdict while it says so
         if (this.TICK - this.ehAskAt >= K.ISLAND_WAIT_BLOCKED) { this.ehAskAt = this.TICK | 0; for (const g of this.ehFrom) { const w = newMsg('WHOHOME'); w.from = this.id; w.ttl = K.WHOHOME_HOPS; this.emit(g, w); } }
         return false; }
@@ -56,7 +56,7 @@
       if (this.f.fabricDoors() && this.islandAskAt >= 0 && (this.l16Next < this.l16List.length || this.TICK - this.l16FreshAt < iw)) return false;
       if (this.l16Saw) { this.l16Saw = false; this.l16Backoff('silent'); return true; }   // a BUSY is evidence for its own round (C++: islandTick)
       if (this.l8471() && !this.islandLast && !o54) this.trace('L8.47.1-ONE', this.id, null, 'asked=%zu since=%d wait=%d', this.islandAsked.size, this.islandAskAt, iw);
-      if (!this.l8471() && !this.l8475() && !dv54 && this.islandAskN + 1 < K.ISLAND_ASKS) {   // L8.1.1: a silent round is the door's list of one moment, not the room: knock again (bounded) before founding
+      if (!this.l8471() && !this.l8475() && this.islandAskN + 1 < K.ISLAND_ASKS) {   // L8.1.1: a silent round is the door's list of one moment, not the room: knock again (bounded) before founding
         this.islandAskN++; this.trace('ISLAND-REASK', this.id, null, 'round=%d asked=%zu since=%d', this.islandAskN, this.lastGreeters.length, this.islandAskAt);
         // JOIN.1 (Nathan 2026-11-18, the join hang): after the FIRST silent round, also ask for the room's subrooms now, in
         // parallel with the next round, instead of only when about to found (islandFound, ~2 rounds later). A joiner whose
