@@ -88,6 +88,7 @@
     sliverEdge: 6,    //   that shared side (within this many px) is the rest of a letter: shown, on that cell's flat background
     snapTol: 40,      // SHOWN IS LIVE: a shown cell is compared, pixel by pixel, with the picture it was vetted on; one pixel further off than
                       //   this (any channel) drops it. Text ink is at least minInk from its page, so no letter can change below this
+    markShade: 64,    // HIDDEN TEXT IS MARKED: ink on the page that is not shown is covered by a soft patch this far off the page colour
     joinK: 0.3,       // WHOLE LETTERS: ink within this share of a letter's height beside it is the same word-part (a cut letter blurs with it)
     joinMax: 64,      //   letters at most in one cut word-part
     block: 64,        // incremental analysis: changed cells are analysed in aligned blocks of this edge
@@ -367,11 +368,13 @@
   // shown as sent).
   // A LETTER IS SHOWN WHOLE OR NOT AT ALL: knock (one byte per frame pixel, or null) marks the pixels of letters cut by
   // the edge of what is shown; they stay transparent, so the blur underneath shows there.
-  function copyCell(rgba, w, h, c, cols, C, out, bg, tl, knock) {
+  // Those pixels are drawn in the mark colour mk (a plain soft-grey patch where the word is), so a reader sees that text
+  // is there: the privacy blur underneath is so strong that a blurred word would look like empty page.
+  function copyCell(rgba, w, h, c, cols, C, out, bg, tl, knock, mk) {
     const x0 = (c % cols) * C, y0 = ((c / cols) | 0) * C, x1 = Math.min(w, x0 + C), y1 = Math.min(h, y0 + C);
     for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
       const q = (y * w + x) * 4, p = ((y - y0) * C + x - x0) * 4;
-      if (knock && knock[y * w + x]) { out[p] = out[p + 1] = out[p + 2] = out[p + 3] = 0; continue; }
+      if (knock && knock[y * w + x]) { out[p] = mk[0]; out[p + 1] = mk[1]; out[p + 2] = mk[2]; out[p + 3] = 255; continue; }
       let r = rgba[q], g = rgba[q + 1], b = rgba[q + 2];
       if (bg) { let d = r - bg[0]; if (d < 0) d = -d; let e = g - bg[1]; if (e < 0) e = -e; if (e > d) d = e; e = b - bg[2]; if (e < 0) e = -e; if (e > d) d = e; if (d <= tl) { r = bg[0]; g = bg[1]; b = bg[2]; } }
       out[p] = r; out[p + 1] = g; out[p + 2] = b; out[p + 3] = 255;
@@ -434,7 +437,8 @@
     const P = Object.assign({}, DEFAULTS, opts || {}), C = P.T >> 1, cols = Math.ceil(w / C), rows = Math.ceil(h / C), n = cols * rows;
     const st = { w, h, cols, rows, cell: C, P, shown: new Uint8Array(n), fpPrev: new Uint8Array(n * 16), fpSnap: new Uint8Array(n * 16),
       stable: new Uint16Array(n), strikes: new Uint8Array(n), judged: new Uint8Array(n), small: new Uint8Array(n), bg: new Uint8Array(n * 3), ticks: 0, analysedPx: 0,
-      snap: new Uint8Array(n * C * C * 4), knock: new Uint8Array(w * h), cut: new Int32Array(n) };
+      snap: new Uint8Array(n * C * C * 4), knock: new Uint8Array(w * h), cut: new Int32Array(n),
+      mk: new Uint8Array(n), mkBox: new Uint8Array(n * 4), mkDark: new Uint8Array(n) };   // mk: 0 not looked at, 1 page without ink, 2 marked, 3 not page
     const snap32 = new Uint32Array(st.snap.buffer), CC = C * C, kSet = [], seen = new Uint8Array(w * h), seenSet = [];
     // SHOWN IS LIVE. A shown cell holds the very pixels it was vetted on (its snapshot). It stays shown only while the
     // live picture still equals that snapshot pixel by pixel (within snapTol, the noise of a video codec): a coarse
@@ -518,10 +522,11 @@
       };
       const unsee = (b) => { for (let i = 0; i < b.px.length; i++) seen[b.px[i]] = 0; };   // (still on seenSet: cleared at the end either way)
       const boxes = [];
-      const take = (b) => boxes.push(b);
       // a cut letter and its word-part
       const group = (first) => {
-        const queue = [first]; let nTaken = 0;
+        const queue = [first], U = { x0: first.x0, y0: first.y0, x1: first.x1, y1: first.y1, px: [] }; let nTaken = 0;
+        const take = (b) => { if (b.x0 < U.x0) U.x0 = b.x0; if (b.y0 < U.y0) U.y0 = b.y0; if (b.x1 > U.x1) U.x1 = b.x1; if (b.y1 > U.y1) U.y1 = b.y1; };   // one box for the whole word-part (no letter shapes or widths in the mark)
+        boxes.push(U);
         while (queue.length) {
           const A = queue.pop(); take(A); if (++nTaken > P.joinMax) continue;
           const hA = A.y1 - A.y0 + 1, wA = A.x1 - A.x0 + 1, gx = Math.max(2, Math.round(P.joinK * hA)), gy = Math.max(3, Math.round(P.joinK * hA), Math.min(12, 2 * Math.max(hA, wA)));
@@ -539,7 +544,7 @@
       for (let pass = 0, from = 0; pass < 3 && from < boxes.length; pass++) {
         const to = boxes.length;
         for (let i = from; i < to; i++) { const b = boxes[i];
-          for (let y = Math.max(0, b.y0 - 1); y <= Math.min(h - 1, b.y1 + 1); y++) for (let x = Math.max(0, b.x0 - 1); x <= Math.min(w - 1, b.x1 + 1); x++) { if (seen[y * w + x]) continue; const o = piece(x, y); if (o) take(o); } }
+          for (let y = Math.max(0, b.y0 - 1); y <= Math.min(h - 1, b.y1 + 1); y++) for (let x = Math.max(0, b.x0 - 1); x <= Math.min(w - 1, b.x1 + 1); x++) { if (seen[y * w + x]) continue; const o = piece(x, y); if (o) boxes.push(o); } }
         from = to;
       }
       for (let i = 0; i < boxes.length; i++) { const b = boxes[i];
@@ -618,12 +623,54 @@
         for (const c of list) { st.shown[c] = 1; st.small[c] = 1; st.bg.set(st.bg.subarray(page * 3, page * 3 + 3), c * 3); st.fpSnap.set(fp.subarray(c * 16, c * 16 + 16), c * 16); newly.push(c); }
       }
     }
+    // HIDDEN TEXT IS MARKED (Nathan 2026-11-26: silently missing words are as bad as wrong letters). A cell that was judged
+    // and is not shown, lies on the page (most of it is the page colour of the shown cells it is reached from) and holds
+    // ink, gets a plain patch over its ink's box in the mark colour: a soft grey smudge where the words are. The patch
+    // says only "ink here" (one box and one of two shades per cell); pictures (cells that are not mostly page) get none,
+    // their blur is plain to see. Found once per cell, when it has been judged; forgotten when the cell moves or is shown.
+    function markOne(rgba, c, page) {
+      const x0 = (c % cols) * C, y0 = ((c / cols) | 0) * C, x1 = Math.min(w, x0 + C), y1 = Math.min(h, y0 + C), tl = P.tauLo, B = st.bg, b = page * 3;
+      let nPage = 0, nOff = 0, nInk = 0, a0 = C, b0 = C, a1 = -1, b1 = -1, lum = 0;
+      for (let y = y0; y < y1; y++) { let q = (y * w + x0) * 4; for (let x = x0; x < x1; x++, q += 4) {
+        let d = rgba[q] - B[b]; if (d < 0) d = -d; let e = rgba[q + 1] - B[b + 1]; if (e < 0) e = -e; if (e > d) d = e; e = rgba[q + 2] - B[b + 2]; if (e < 0) e = -e; if (e > d) d = e;
+        if (d <= tl) { nPage++; continue; } nOff++; if (d < P.minInk) continue;   // (only ink as strong as text is marked: a faint picture behind the page draws no box)
+        nInk++; lum += rgba[q] * 77 + rgba[q + 1] * 150 + rgba[q + 2] * 29;
+        const u = x - x0, v = y - y0; if (u < a0) a0 = u; if (u > a1) a1 = u; if (v < b0) b0 = v; if (v > b1) b1 = v; } }
+      if (c !== page) B.set(B.subarray(b, b + 3), c * 3);   // the page colour it was read against
+      if (nPage < 0.5 * (nPage + nOff)) return (st.mk[c] = 3);
+      if (!nInk) return (st.mk[c] = 1);
+      st.mkBox[c * 4] = a0; st.mkBox[c * 4 + 1] = b0; st.mkBox[c * 4 + 2] = a1; st.mkBox[c * 4 + 3] = b1;
+      st.mkDark[c] = lum / nInk < B[b] * 77 + B[b + 1] * 150 + B[b + 2] * 29 ? 1 : 0;
+      return (st.mk[c] = 2);
+    }
+    function marks(rgba, out) {
+      for (let again = true; again;) { again = false;
+        for (let c = 0; c < n; c++) {
+          if (st.shown[c] || !st.judged[c] || st.mk[c]) continue;
+          const cx = c % cols, cy = (c / cols) | 0; let page = -1;
+          for (let dy = -1; dy <= 1 && page < 0; dy++) for (let dx = -1; dx <= 1; dx++) { const x = cx + dx, y = cy + dy; if (x < 0 || y < 0 || x >= cols || y >= rows || (!dx && !dy)) continue; const k = y * cols + x;
+            if (st.shown[k] ? !st.small[k] : (st.mk[k] === 1 || st.mk[k] === 2)) { page = k; break; } }
+          if (page < 0) continue;
+          again = true; if (markOne(rgba, c, page) === 2) out.push(c);
+        } }
+    }
+    const shade = (c, dark, out) => { for (let k = 0; k < 3; k++) { const v = st.bg[c * 3 + k] + (dark ? -P.markShade : P.markShade); out[k] = v < 0 ? 0 : v > 255 ? 255 : v; } return out; };
+    const mkCol = new Uint8Array(3);
+    function paintMark(c, out) {
+      out.fill(0); shade(c, st.mkDark[c], mkCol);
+      const a0 = Math.max(0, st.mkBox[c * 4] - 2), b0 = Math.max(0, st.mkBox[c * 4 + 1] - 2), a1 = Math.min(C - 1, st.mkBox[c * 4 + 2] + 2), b1 = Math.min(C - 1, st.mkBox[c * 4 + 3] + 2);
+      for (let y = b0; y <= b1; y++) for (let x = a0; x <= a1; x++) { const p = (y * C + x) * 4, edge = x < st.mkBox[c * 4] || x > st.mkBox[c * 4 + 2] || y < st.mkBox[c * 4 + 1] || y > st.mkBox[c * 4 + 3];
+        out[p] = mkCol[0]; out[p + 1] = mkCol[1]; out[p + 2] = mkCol[2]; out[p + 3] = edge ? 128 : 255; }   // (a softer rim around the ink's box; the ink itself is always covered)
+    }
     // a shown cell is painted from its snapshot (the vetted pixels), less the letters cut at the edge of what is shown
     const cellBuf = new Uint8Array(CC * 4), cellKnock = new Uint8Array(CC);
     st.paint = (rgba, c, out) => {
+      if (!st.shown[c]) { if (st.mk[c] === 2) paintMark(c, out); else out.fill(0); return; }
       const x0 = (c % cols) * C, y0 = ((c / cols) | 0) * C, cw = Math.min(w, x0 + C) - x0, ch = Math.min(h, y0 + C) - y0; let any = false;
-      if (st.cut[c]) { cellKnock.fill(0); for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) if (st.knock[(y0 + y) * w + x0 + x]) { cellKnock[y * C + x] = 1; any = true; } }
-      copyCell(st.snap.subarray(c * CC * 4, (c + 1) * CC * 4), C, ch, 0, 1, C, out, st.small[c] ? null : st.bg.subarray(c * 3, c * 3 + 3), P.tauLo, any ? cellKnock : null);
+      if (st.cut[c]) { let lum = 0, k = 0; const S = st.snap, o = c * CC * 4; cellKnock.fill(0);
+        for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) if (st.knock[(y0 + y) * w + x0 + x]) { cellKnock[y * C + x] = 1; any = true; const p = o + (y * C + x) * 4; let d = 0; for (let j = 0; j < 3; j++) d = Math.max(d, Math.abs(S[p + j] - st.bg[c * 3 + j])); if (d > P.tauLo) { lum += S[p] * 77 + S[p + 1] * 150 + S[p + 2] * 29; k++; } }
+        shade(c, !k || lum / k < st.bg[c * 3] * 77 + st.bg[c * 3 + 1] * 150 + st.bg[c * 3 + 2] * 29, mkCol); }
+      copyCell(st.snap.subarray(c * CC * 4, (c + 1) * CC * 4), C, ch, 0, 1, C, out, st.small[c] ? null : st.bg.subarray(c * 3, c * 3 + 3), P.tauLo, any ? cellKnock : null, mkCol);
       if (cw < C) for (let y = 0; y < ch; y++) out.fill(0, (y * C + cw) * 4, (y + 1) * C * 4);
     };
     function differs(a, b, c) { for (let i = c * 16; i < c * 16 + 16; i++) if (Math.abs(a[i] - b[i]) > P.fpTol) return true; return false; }
@@ -631,10 +678,10 @@
       fingerprints(rgba);
       if (rgba.byteOffset & 3) rgba = new Uint8Array(rgba);   // (a copy aligned to 4 bytes; a page's or a Worker's frame is aligned already)
       const u32 = new Uint32Array(rgba.buffer, rgba.byteOffset, w * h);
-      let dirty = false; const cand = new Uint8Array(n), hidden = [];
+      let dirty = false; const cand = new Uint8Array(n), hidden = [], unmark = [];
       for (let c = 0; c < n; c++) {
         const moved = st.ticks === 0 || differs(fp, st.fpPrev, c);
-        if (moved) { st.stable[c] = 0; st.judged[c] = 0; } else if (st.stable[c] < 65535) st.stable[c]++;
+        if (moved) { st.stable[c] = 0; st.judged[c] = 0; if (st.mk[c]) { if (st.mk[c] === 2 && !st.shown[c]) unmark.push(c); st.mk[c] = 0; } } else if (st.stable[c] < 65535) st.stable[c]++;
         if (st.shown[c] && (differs(fp, st.fpSnap, c) || stale(u32, c))) { st.shown[c] = 0; st.small[c] = 0; hidden.push(c); if (st.strikes[c] < P.maxStrikes) st.strikes[c]++;
           if (!moved) { st.stable[c] = 0; st.judged[c] = 0; } }   // a change the fingerprint did not see: the cell holds still again, then is judged again
         if (!st.shown[c] && !st.judged[c] && st.stable[c] >= P.needStable + st.strikes[c]) { cand[c] = 1; dirty = true; }
@@ -663,15 +710,18 @@
       smallPictures(newly, hidden);
       slivers(rgba, newly);
       const fresh = newly.length, isNew = new Uint8Array(n);
-      for (let i = 0; i < fresh; i++) { keep(rgba, newly[i]); isNew[newly[i]] = 1; }
+      for (let i = 0; i < fresh; i++) { keep(rgba, newly[i]); isNew[newly[i]] = 1; st.mk[newly[i]] = 0; }
       for (const c of wholeLetters(rgba, fresh > 0 || hidden.length > 0)) if (!isNew[c]) newly.push(c);   // shown before, its cut letters changed: painted again
+      marks(rgba, newly);   // (cells that are not shown: their patch is the mark)
       if (newly.length) {
         patches = new Uint8Array(newly.length * C * C * 4);
         newly.forEach((c, i) => st.paint(rgba, c, patches.subarray(i * C * C * 4, (i + 1) * C * C * 4)));
       }
       st.fpPrev.set(fp); st.ticks++; st.analysedPx += px;
-      // newly: every cell to paint (its patch, transparent where a letter is cut); the first `fresh` of them were not shown before
-      return { analysed: dirty, regions, px, fresh, newly: Int32Array.from(newly), patches: patches || new Uint8Array(0), hidden: Int32Array.from(hidden) };
+      // newly: every cell to paint (a shown cell's patch, or a mark); the first `fresh` of them were not shown before.
+      // hidden: every cell to clear; the first `lost` of them were shown.
+      const lost = hidden.length; for (const c of unmark) hidden.push(c);
+      return { analysed: dirty, regions, px, fresh, lost, newly: Int32Array.from(newly), patches: patches || new Uint8Array(0), hidden: Int32Array.from(hidden) };
     };
     return st;
   }
@@ -688,7 +738,7 @@
       let st = states.get(m.id);
       if (!st || st.w !== m.w || st.h !== m.h) { st = createState(m.w, m.h, m.opts); states.set(m.id, st); }
       const t0 = now(); const r = st.tick(new Uint8Array(m.buf)); const ms = now() - t0;
-      G.postMessage({ op: 'res', id: m.id, seq: m.seq, w: m.w, h: m.h, cell: st.cell, cols: st.cols, analysed: r.analysed, regions: r.regions, px: r.px, ms: ms, fresh: r.fresh,
+      G.postMessage({ op: 'res', id: m.id, seq: m.seq, w: m.w, h: m.h, cell: st.cell, cols: st.cols, analysed: r.analysed, regions: r.regions, px: r.px, ms: ms, fresh: r.fresh, lost: r.lost,
         newly: r.newly, patches: r.patches, hidden: r.hidden, buf: m.buf }, [m.buf, r.newly.buffer, r.patches.buffer, r.hidden.buffer]);
     };
   }
@@ -723,7 +773,7 @@
         let st = inline.get(eng.id);
         if (!st || st.w !== msg.w || st.h !== msg.h) { st = TCm.createState(msg.w, msg.h, msg.opts); inline.set(eng.id, st); }
         const t0 = now(); const r = st.tick(new Uint8Array(buf));
-        resolve({ id: eng.id, w: msg.w, h: msg.h, cell: st.cell, cols: st.cols, analysed: r.analysed, regions: r.regions, px: r.px, ms: now() - t0, fresh: r.fresh, newly: r.newly, patches: r.patches, hidden: r.hidden });
+        resolve({ id: eng.id, w: msg.w, h: msg.h, cell: st.cell, cols: st.cols, analysed: r.analysed, regions: r.regions, px: r.px, ms: now() - t0, fresh: r.fresh, lost: r.lost, newly: r.newly, patches: r.patches, hidden: r.hidden });
       });
     }
     function dropState(id) { inline.delete(id); if (worker) { try { worker.postMessage({ op: 'drop', id: id }); } catch (e) {} } }
@@ -773,7 +823,7 @@
             const id = new ImageData(new Uint8ClampedArray(P.buffer, P.byteOffset + i * C * C * 4, C * C * 4), C, C);
             eng.ovx.putImageData(id, (c % cols) * C, ((c / cols) | 0) * C);
           }
-          eng.shownN += m.fresh - m.hidden.length;
+          eng.shownN += m.fresh - m.lost;
           if (m.newly.length || m.hidden.length) eng.ver++;
           const ms = m.ms + grabMs; eng.lastMs = ms; eng.lastWork = m.ms;
           if (m.analysed) {
