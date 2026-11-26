@@ -2258,6 +2258,8 @@
         }
       } catch (e) { /* fall back to the raw stored bytes */ }
     }
+    // Every GIF GifOS hands out carries the modding guide (llms.txt): add it to an app packed before it existed. Signed GIFs stay byte-identical.
+    if (file.isApp && gif.addRemixDoc && !locked) bytes = await gif.addRemixDoc(bytes);
     return { bytes, file };
   }
   function triggerDownload(bytes, name, mime) {
