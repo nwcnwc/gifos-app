@@ -491,8 +491,8 @@
         const M = GifOS.meetSubs;
         if (!M || typeof M.useFile !== 'function') return fail('This page takes no credentials file (it has no subscription code).');
         let bytes; try { bytes = Uint8Array.from(root.atob(String((a && a.gif_b64) || '')), (c) => c.charCodeAt(0)); } catch (e) { return fail('That is not a file in base64.'); }
-        try { await M.useFile(bytes); } catch (e) { return fail(String((e && e.message) || e)); }
-        return ok({ rights: typeof GifOS.rights === 'function' ? await GifOS.rights() : null });
+        let st; try { st = await M.useFile(bytes); } catch (e) { return fail(String((e && e.message) || e)); }
+        return ok({ took: st && st.took ? st.took : null, rights: typeof GifOS.rights === 'function' ? await GifOS.rights() : null });
       },
       lines: (a) => {
         // Lines so far (the transcript and chat this page holds), for an agent that joins late or polls.

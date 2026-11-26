@@ -281,7 +281,10 @@
     const c = await credential();
     const w = await wallet();
     if (!c && !w) throw new Error('No subscription on this browser.');
-    return GifOS.gif.encode(SUB.credentialFiles(c, w), { accent: [120, 200, 255] });
+    const files = SUB.credentialFiles(c, w);
+    const kept = w ? keptWallets().filter((k) => k.seed !== w.seed && k.passes.length) : [];
+    if (kept.length) files['passes-kept.json'] = JSON.stringify(kept);   // every key's passes travel with the file
+    return GifOS.gif.encode(files, { accent: [120, 200, 255] });
   }
   async function downloadFile() {
     const bytes = await fileBytes();
@@ -455,13 +458,23 @@
   // subscription was made for (checked by the payment service on every ask).
   // Install a credential (and an optional pass wallet) already checked by credentialOk / walletOk.
   // useFile and a plan moved from another device share this path.
-  async function installCreds(c, w) {
-    if (w) {
-      const ww = SUB.walletOk(w);
-      if (ww) { mergeWallet(ww); passChanged(); }
+  // Returns the plan's state with took: {plan (its id, or null), passes (mergeWallet's answer, or null)}; it is logged.
+  async function installCreds(c, w, more) {
+    const took = { plan: null, passes: null };
+    const told = (st) => { try { console.info('[meet-subs] credentials taken: ' + JSON.stringify(took)); } catch (e) {} return Object.assign({}, st || {}, { took }); };
+    const ws = [w].concat(Array.isArray(more) ? more.slice(0, 16) : []).map((x) => (x ? SUB.walletOk(x) : null)).filter(Boolean);
+    if (w && !ws.length && !c) throw new Error('That file’s passes could not be read.');
+    for (const ww of ws) {
+      const got = await mergeWallet(ww), t = took.passes;
+      took.passes = t ? { passes: t.passes + got.passes, dropped: t.dropped + got.dropped, added: t.added + got.added, inUse: t.inUse || got.inUse, pass: got.pass } : got;
+    }
+    if (ws.length) {
+      passChanged();
+      // Brought on purpose (a person's act, like a purchase): a new pass now in use takes this meeting.
+      if (took.passes && took.passes.inUse && took.passes.added && meet) passJoin(meet.room, true, true);
     }
     if (!c) {
-      if (w) return readState();
+      if (ws.length) return told(readState());
       throw new Error('That file is not a GifOS subscription.');
     }
     const ok = SUB.credentialOk(c);
@@ -473,13 +486,16 @@
     let st = null;
     try { st = await refresh(ok.subId); } catch (e) { st = stateOf(readLedger().subs[ok.subId]); }
     rejoin(true);
-    return st;
+    took.plan = ok.subId;
+    return told(st);
   }
+  // The file also carries the kept wallets (passes-kept.json, read by this page only; older pages skip it).
   async function useFile(bytes) {
     const arc = await GifOS.gif.decode(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes));
     const c = arc && SUB.credentialFromFiles(arc.files);
     const w = arc && SUB.walletFromFiles(arc.files);
-    return installCreds(c, w);
+    const more = arc && (c || w) ? fileJson(arc.files, 'passes-kept.json') : null;
+    return installCreds(c, w, Array.isArray(more) ? more : null);
   }
   // The JSON sealed into a move package: the credential, with libSeed so My library survives the move, and the pass wallet.
   async function movePackage() {
@@ -489,6 +505,8 @@
     const w = await wallet();
     const pkg = { v: 1, credential: cred };
     if (w) pkg.wallet = w;
+    const kept = w ? keptWallets().filter((k) => k.seed !== w.seed && k.passes.length) : [];
+    if (kept.length) pkg.wallets = kept;   // the kept keys' passes move too
     return pkg;
   }
 
@@ -674,10 +692,7 @@
   }
   function keepPass(j, o) {
     return (async () => {
-      const cur = (await wallet()) || (await ensureWallet());
-      const list = cur.passes.filter((p) => { const x = passOf(p); return !x || x.order !== o.order; }).concat([{ passJson: j.passJson, sig: j.sig }]);
-      const next = Object.assign({}, cur, { passes: list }); delete next.pending;
-      writeJson(WALLET_KEY, next);
+      await storePass(j, o, (await wallet()) || (await ensureWallet()));
       notePassPurchase(o);
       keepReceipt();
       passWatch().catch(() => {});
@@ -849,20 +864,112 @@
     return nw;
   }
   const passOf = (p) => { try { return JSON.parse(p.passJson); } catch (e) { return null; } };
-  // A file brought from another browser: with the same key its passes join
-  // these; with another key it replaces a wallet holding no pass still to use.
-  function mergeWallet(w) {
+  // EVERY PASS KEY IS KEPT. A wallet holds every pass bought or brought here, under every key: a file with another
+  // key never replaces the wallet in use and is never turned away. Its wallet joins the kept ones (WALLET_HISTORY_KEY:
+  // only ever added to), and the wallet IN USE (WALLET_KEY) is chosen from all of them: the one holding the best live
+  // pass (it gives at least everything the other gives, else the newer one), else the one in use while it still has a
+  // pass to come, else one with a pass to come, else the file just brought.
+  const joinPasses = (a, b) => { const seen = new Set(); return (a || []).concat(b || []).filter((p) => p && !seen.has(p.passJson) && seen.add(p.passJson)); };
+  function keptRaw() { const old = readJson(WALLET_HISTORY_KEY); return Array.isArray(old) ? old.filter((x) => x && typeof x === 'object') : []; }
+  const keptWallets = () => keptRaw().map((x) => SUB.walletOk(x)).filter(Boolean);
+  // Keep a wallet beside the one in use: a new key is added, a key already kept gains the passes it lacks.
+  function keepWallet(w, why) {
+    if (!w) return;
+    const list = keptRaw();
+    const had = list.find((x) => x.seed === w.seed);
+    if (had) { had.passes = joinPasses(Array.isArray(had.passes) ? had.passes : [], w.passes); delete had.pending; }
+    else { const k = Object.assign({}, w, { replacedAt: Date.now(), why: why || 'kept' }); delete k.pending; list.push(k); }   // a checkout belongs to the wallet in use only
+    writeJson(WALLET_HISTORY_KEY, list);
+  }
+  // A pass the payment service signed goes into the wallet of ITS key (in use or kept), never into another key's.
+  // owner: the wallet whose key asked for it (it may have left use meanwhile, in this tab or another).
+  async function storePass(j, o, owner) {
+    const entry = { passJson: j.passJson, sig: j.sig };
+    const mine = async (w) => !!w && (await seedPub(w.seed).catch(() => null)) === o.buyerKey;
+    const cur = SUB.walletOk(readJson(WALLET_KEY));   // read now: it may have changed while the order was asked for
+    if (cur && await mine(cur)) {
+      const next = Object.assign({}, cur, { passes: cur.passes.filter((p) => { const x = passOf(p); return !x || x.order !== o.order; }).concat([entry]) }); delete next.pending;
+      writeJson(WALLET_KEY, next);
+      return;
+    }
+    let home = null;
+    for (const k of keptWallets()) if (await mine(k)) { home = k; break; }
+    if (!home && await mine(owner)) home = owner;
+    if (home || !cur) { if (home) keepWallet(Object.assign({}, home, { passes: joinPasses(home.passes, [entry]) }), 'bought'); else writeJson(WALLET_KEY, Object.assign({}, owner, { passes: joinPasses(owner && owner.passes, [entry]) })); return; }
+    writeJson(WALLET_KEY, Object.assign({}, cur, { passes: joinPasses(cur.passes, [entry]) }));   // no wallet of its key here: never dropped
+  }
+  const pubMemo = new Map();
+  const seedPub = (seed) => { if (!pubMemo.has(seed)) pubMemo.set(seed, GifOS.ed.keysFromSeed(fromB64(seed)).then((k) => b64(k.pubRaw))); return pubMemo.get(seed); };
+  const passCheck = new Map();   // sig|passJson -> the verified pass (only a signature that checked out is remembered)
+  // The well-signed passes of one wallet's own key.
+  async function walletPasses(w) {
+    const pub = await seedPub(w.seed).catch(() => null);
+    const out = [];
+    for (const p of w.passes) {
+      const id = p.sig + '|' + p.passJson;
+      if (!passCheck.has(id)) { const o = await SUB.verifyPass(p, verifyPay).catch(() => null); if (o) passCheck.set(id, o); }
+      const o = passCheck.get(id);
+      if (o && o.buyerKey === pub) out.push(o);
+    }
+    return out;
+  }
+  // The best-plan rule for passes: b beats a when b gives at least everything a gives and not the other way round;
+  // when neither (or both), the newer one (paid later).
+  function passBetter(b, a) {
+    if (!a) return true;
+    const bCov = SUB.covers(b.grants, a.grants), aCov = SUB.covers(a.grants, b.grants);
+    if (bCov !== aCov) return bCov;
+    return (b.paid || 0) > (a.paid || 0);
+  }
+  const bestOf = (list) => list.reduce((a, b) => (passBetter(b, a) ? b : a), null);
+  // Choose the wallet in use from every wallet held (prefer: the seed of a file just brought). Moves nothing out:
+  // the wallet leaving use is kept. Returns {w, o}: the wallet in use and its best live pass (or null).
+  async function chooseWallet(prefer, tries) {
     const cur = SUB.walletOk(readJson(WALLET_KEY));
+    const kept = keptWallets().filter((k) => !cur || k.seed !== cur.seed);
     const n = nowS();
-    // Still to use = readable under today's rules (checkPass: it carries line items) and not run out. A pass signed
-    // before line items can never be used again, so it never keeps a new file out.
-    if (cur && cur.seed !== w.seed && cur.passes.some((p) => { const o = SUB.checkPass(passOf(p)); return o && o.end > n; })) return false;
-    // A wallet with another key that replaces this one (none of its passes still to use) is kept as history.
-    if (cur && cur.seed !== w.seed) { const old = readJson(WALLET_HISTORY_KEY); const list = Array.isArray(old) ? old : []; if (!list.some((x) => x && x.seed === cur.seed)) { list.push(Object.assign({}, cur, { replacedAt: Date.now() })); writeJson(WALLET_HISTORY_KEY, list); } }
-    const seen = new Set();
-    const passes = (cur && cur.seed === w.seed ? cur.passes : []).concat(w.passes).filter((p) => !seen.has(p.passJson) && seen.add(p.passJson));
-    writeJson(WALLET_KEY, Object.assign({}, w, { passes, pending: (cur && cur.seed === w.seed && cur.pending) || w.pending }));
-    return true;
+    if (!kept.length) return { w: cur, o: cur ? bestOf((await walletPasses(cur)).filter((o) => SUB.passLive(o, n))) : null };
+    const all = (cur ? [cur] : []).concat(kept).sort((a, b) => (a.seed < b.seed ? -1 : a.seed > b.seed ? 1 : 0));   // a fixed order: the pick never cycles
+    const facts = [];
+    for (const w of all) { const ps = await walletPasses(w); facts.push({ w, o: bestOf(ps.filter((o) => SUB.passLive(o, n))), ahead: ps.some((o) => o.end > n) }); }
+    let pick = null;
+    for (const f of facts) if (f.o && (!pick || passBetter(f.o, pick.o))) pick = f;
+    const bySeed = (s) => facts.find((f) => f.w.seed === s) || null;
+    if (!pick) {
+      const c = cur && bySeed(cur.seed), p = prefer && bySeed(prefer);
+      pick = (c && c.ahead && c) || (p && p.ahead && p) || facts.find((f) => f.ahead) || p || c || facts[0];
+    }
+    // A pass checkout under way belongs to the key it was started with: that wallet stays in use until it ends.
+    if (cur && cur.pending && pick.w.seed !== cur.seed) pick = bySeed(cur.seed);
+    if (!cur || pick.w.seed !== cur.seed) {
+      // Read again after the signature checks: a purchase, a checkout or another tab may have written since.
+      const again = SUB.walletOk(readJson(WALLET_KEY));
+      if (JSON.stringify(again) !== JSON.stringify(cur)) return (tries || 0) < 3 ? chooseWallet(prefer, (tries || 0) + 1) : { w: again, o: null };
+      if (cur) keepWallet(cur, 'not in use');
+      const next = SUB.walletOk(pick.w); delete next.pending;
+      writeJson(WALLET_KEY, next);
+      try { console.info('[meet-subs] pass wallet in use: ' + String(pick.w.buyerKey || '').slice(0, 8) + (pick.o ? ' (' + pick.o.id + ')' : '')); } catch (e) {}
+    }
+    return { w: pick.w, o: pick.o };
+  }
+  // A file brought from another browser: with the same key its passes join these; with another key its wallet is kept
+  // beside this one, and the wallet in use is chosen again. Returns what it took: {passes, added, inUse, pass}.
+  async function mergeWallet(w0) {
+    // Only passes signed by the payment service for this file's own key are taken (junk never fills storage or
+    // pushes real passes out); a checkout under way is never taken from a file.
+    try { await payKey(); } catch (e) { throw new Error('The passes in that file cannot be checked right now (no connection to GifOS). Nothing was changed; try again.'); }
+    await walletPasses(w0);   // checks every signature once (passCheck)
+    const pub = await seedPub(w0.seed).catch(() => null);
+    const w = Object.assign({}, w0, { passes: w0.passes.filter((p) => { const o = passCheck.get(p.sig + '|' + p.passJson); return !!o && o.buyerKey === pub; }) });
+    delete w.pending;
+    const cur = SUB.walletOk(readJson(WALLET_KEY));
+    const known = new Set([].concat(cur ? cur.passes : [], ...keptWallets().map((k) => k.passes)).map((p) => p.passJson));
+    const added = w.passes.filter((p) => !known.has(p.passJson)).length;
+    if (!cur || cur.seed === w.seed) {
+      writeJson(WALLET_KEY, Object.assign({}, w, { passes: joinPasses(cur && cur.seed === w.seed ? cur.passes : [], w.passes), pending: (cur && cur.seed === w.seed && cur.pending) || undefined }));
+    } else if (w.passes.length) keepWallet(w, 'brought');   // a key with no good pass adds nothing to keep
+    const got = await chooseWallet(cur && cur.seed !== w.seed ? w.seed : null);
+    return { passes: w.passes.length, dropped: w0.passes.length - w.passes.length, added, inUse: !!got.w && got.w.seed === w.seed, pass: got.o ? got.o.id : null };
   }
   // Every well-signed pass of this browser's key, by start: [{o, raw}].
   async function passes() {
@@ -877,9 +984,10 @@
     return out.sort((a, b) => a.o.start - b.o.start);
   }
   async function livePass() {
+    if (keptRaw().length) await chooseWallet().catch(() => null);   // a kept key's pass may have begun, or the one in use ended
     const n = nowS();
     const live = (await passes()).filter((x) => SUB.passLive(x.o, n));
-    return live.length ? live[live.length - 1] : null;
+    return live.reduce((a, b) => (!a || passBetter(b.o, a.o) ? b : a), null);   // the best-plan rule, as the wallet in use is chosen
   }
   async function passSign(text) {
     const k = await walletKey(await wallet());
@@ -898,7 +1006,9 @@
       // A pass that started here (a file opened, a window begun) joins this
       // meeting; one that moved to another meeting is never taken back by a
       // watch (only a join the person makes takes it: a page start or a purchase).
-      if (lp && meet && !(pmeet && pmeet.room === meet.room && (pmeet.ticket || pmeet.pending || pmeet.moved === 'moved'))) passJoin(meet.room, true, !(meet && meet.ticket));
+      // A ticket held under another key (the wallet in use changed) is no ticket of this pass: join again.
+      const otherKey = !!(lp && pmeet && pmeet.key && pmeet.key !== lp.o.buyerKey && pmeet.moved !== 'moved');
+      if (lp && meet && (otherKey || !(pmeet && pmeet.room === meet.room && (pmeet.ticket || pmeet.pending || pmeet.moved === 'moved')))) passJoin(meet.room, true, !(meet && meet.ticket));
       passChanged();
     }
   }
@@ -917,10 +1027,7 @@
     if (!r.ok || !j || !j.passJson) return { refused: true, status: r.status, error: j && j.error };
     const o = await SUB.verifyPass({ passJson: j.passJson, sig: j.sig }, verifyPay).catch(() => null);
     if (!o || o.buyerKey !== k.pub) return { refused: true };
-    const cur = (await wallet()) || w;
-    const list = cur.passes.filter((p) => { const x = passOf(p); return !x || x.order !== o.order; }).concat([{ passJson: j.passJson, sig: j.sig }]);
-    const next = Object.assign({}, cur, { passes: list }); delete next.pending;
-    writeJson(WALLET_KEY, next);
+    await storePass(j, o, w);
     notePassPurchase(o);
     keepReceipt();
     passWatch().catch(() => {});
@@ -937,7 +1044,10 @@
     let j;
     try { j = await post('/gifos/pass/create', { buyerKey: k.pub }); }
     catch (e) { try { popup && popup.close(); } catch (x) {} throw e; }
-    writeJson(WALLET_KEY, Object.assign({}, (await wallet()) || w, { pending: j.id }));
+    // The order is bound to w's key: w is the wallet in use while it is paid for (one that took its place meanwhile is kept).
+    const now = SUB.walletOk(readJson(WALLET_KEY));
+    if (now && now.seed !== w.seed) keepWallet(now, 'not in use');
+    writeJson(WALLET_KEY, Object.assign({}, now && now.seed === w.seed ? now : w, { pending: j.id }));
     if (popup) popup.location.href = j.approveUrl; else root.open(j.approveUrl, '_blank');
     say(tx('passPending', 'Finish paying in the PayPal window. This updates as soon as PayPal confirms.'));
     const until = Date.now() + POLL_FOR_MS;
@@ -1173,6 +1283,7 @@
     m.joining = (async () => {
       if (!(await livePass())) return null;
       const w = await wallet();
+      m.key = (await walletKey(w)).pub;
       m.tag = await SUB.meetingTag(room);
       const ifFree = !evict && !!(await credential());
       const j = await post('/gifos/pass/join', await passSigned('pass-join:' + m.tag, Object.assign({ meeting: m.tag, passes: w.passes, ifFree }, drop ? { drop } : {})));
@@ -1329,7 +1440,14 @@
     // grants: the line items in effect now (the union held), what a page decides on; tier stays the name to show.
     const now = best.pass ? { tier: best.tier, why: 'pass', until: passEnd, grants: best.grants, passGrants: chain.live.grants } : base.signed ? { tier: base.tier, why: 'sub', until: base.until, grants: base.grants } : { tier: null, why: 'none', grants: null };
     const then = best.pass && base.signed ? base.tier : null;
-    return { sub, free: !lic, passes: held, now, then };   // free: no plan, the defaults
+    // Passes under a kept key (not the wallet in use): still held, listed, chosen again when they give more.
+    const inUse = SUB.walletOk(readJson(WALLET_KEY));
+    const kept = [];
+    for (const w of keptWallets()) {
+      if (inUse && w.seed === inUse.seed) continue;
+      for (const o of await walletPasses(w).catch(() => [])) if (o.end > n) kept.push({ id: o.id, start: o.start, end: o.end, never: !Number.isFinite(o.end), plan: o.plan, grants: o.grants, kept: true });
+    }
+    return { sub, free: !lic, passes: held, kept, now, then };   // free: no plan, the defaults
   }
   // One line for the meeting's status: what is in effect, quietly.
   function nowLine(c) {
@@ -1382,6 +1500,10 @@
       const e = x.never ? fill(tx('heldPassNever', 'Pass: {plan}, no end{capture}.'), { plan: planShort(x.plan), capture: x.capture ? tx('heldPassCaptures', ', takes charge of public open-floor meetings') : '' })
         : fill(tx('heldPassNext', 'Four-hour pass: Unlimited from {start} to {until}.'), { start: clockOf(x.start), until: clockOf(x.end) });
       const q = p('', e); q.className = 'set-help held-pass'; q.dataset.pass = x.id;
+    }
+    for (const x of (c.kept || [])) {
+      const q = p('', fill(tx('heldPassKept', 'Kept pass: {plan}{until}, not in use (the pass in use gives at least as much).'), { plan: planShort(x.plan), until: x.never ? '' : ' ' + fill(tx('heldPassUntil', 'until {until}'), { until: clockOf(x.end) }) }));
+      q.className = 'set-help held-pass kept-pass'; q.dataset.pass = x.id;
     }
     if (c.passes && c.passes.length && pmeet && pmeet.moved === 'moved') p('held-pass-moved', tx('passMoved', 'Your four-hour pass is in use in another meeting now: it works in one meeting at a time.'));
   }
@@ -1578,7 +1700,7 @@
             const r = await N.request('file.pick', { mime: 'image/gif' });
             if (!r || r.ok === false || r.state !== 'picked') return;
             const st2 = await useFile(fromB64(r.b64));
-            say(st2 && st2.licenseJson ? tx('credsLoadedSub', 'Your credentials are loaded. A subscription works in as many meetings at once as its plan says.') : tx('credsLoaded', 'Your credentials are loaded.'));
+            say((st2 && st2.licenseJson ? tx('credsLoadedSub', 'Your credentials are loaded. A subscription works in as many meetings at once as its plan says.') : tx('credsLoaded', 'Your credentials are loaded.')) + tookPassWords(st2));
             paintSettings();
           } catch (e) { say(/not a GifOS/.test(String(e && e.message)) ? tx('credsNot', 'That file does not hold GifOS Meet credentials.') : String(e.message || e)); }
         };
@@ -1601,7 +1723,7 @@
       say('Reading the file…');
       try {
         const r = await useFile(new Uint8Array(await f.arrayBuffer()));
-        say(r && r.licenseJson ? 'This browser now uses your subscription. It works in as many meetings at once as its plan says.' : 'The file was read, but the subscription is not active.');
+        say((r && r.licenseJson ? 'This browser now uses your subscription. It works in as many meetings at once as its plan says.' : r && r.took && !r.took.plan ? 'The file was read.' : 'The file was read, but the subscription is not active.') + tookPassWords(r));
         paintSettings();
       } catch (e) { say(String(e.message || e)); }
     };
@@ -1610,6 +1732,13 @@
     row.appendChild(lab);
     planPageLinks(row);
     row.appendChild(msg);
+  }
+  // What a credentials file did with its passes, in a sentence (empty when it held none).
+  function tookPassWords(r) {
+    const t = r && r.took && r.took.passes;
+    if (!t || !t.passes) return '';
+    if (!t.added) return ' ' + tx('credsPassesHad', 'Its passes were already here.');
+    return ' ' + (t.inUse ? tx('credsPassesInUse', 'Its passes are added, and its pass is in use now.') : tx('credsPassesKept', 'Its passes are added and kept: the pass in use gives at least as much.'));
   }
   function closeSubscribe() {
     const m = document.getElementById('sub-modal');

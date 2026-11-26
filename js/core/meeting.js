@@ -22996,7 +22996,7 @@
               let bytes;
               try { bytes = Uint8Array.from(atob(String(a.gif_b64 || '')), (c) => c.charCodeAt(0)); } catch (e) { return no('That is not a file in base64.'); }
               const st = await M.useFile(bytes);
-              return yes({ loaded: true, status: st && st.status ? st.status : null });
+              return yes({ loaded: true, status: st && st.status ? st.status : null, took: st && st.took ? st.took : null });
             }
             case 'guard.capture': {
               if (!canTake()) return no('The page does not offer "Make me host" now (the room is held, or the subscription has no ticket for this meeting yet).');
