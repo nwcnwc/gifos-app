@@ -76,7 +76,7 @@
     // ---- the room's keys -------------------------------------------------
     adminChecking:  { tone: 'note', key: 'admCheckingStatus', en: 'Checking the password… (takes a few seconds)' },
     adminWrong:     { tone: 'stop', key: 'admWrongStatus', en: 'Wrong host password.' },
-    adminSignedIn:  { tone: 'note', key: 'admSignedIn', en: 'You are signed in as host.' },
+    adminSignedIn:  { tone: 'note', key: 'admSignedIn', en: 'You have host controls.' },
     passwordChanged: { tone: 'stop', key: 'pwChangedStatus', en: 'The host changed the room password. Enter the new password to rejoin.' },
     passwordTrying: { tone: 'note', key: 'pwTrying', en: 'Trying the password…' },
   };

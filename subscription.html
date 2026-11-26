@@ -11,123 +11,151 @@
 <script id="gifos-frame-guard">(function(){try{if(window.top===window.self)return;var ok=false;try{ok=window.top.location.origin===window.location.origin}catch(e){}if(ok)return;var h=document.documentElement;h.style.visibility='hidden';function show(){var b=document.body;if(!b)return;while(b.firstChild)b.removeChild(b.firstChild);var p=document.createElement('p');p.style.cssText='font:16px system-ui,sans-serif;padding:24px;color:#eee;background:#111;margin:0';p.appendChild(document.createTextNode('GifOS does not run inside another site\'s page. '));var a=document.createElement('a');a.href=location.href;a.target='_blank';a.rel='noopener';a.textContent='Open it in its own tab';a.style.color='#9db4ff';p.appendChild(a);b.appendChild(p);h.style.visibility='';}if(document.body)show();else document.addEventListener('DOMContentLoaded',show);}catch(e){}})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#000000">
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="dark light">
 <script src="js/sw-register.js" defer></script>
-<title>Plans — GifOS</title>
-<meta name="description" content="Every GifOS Meet plan: Free, the four-hour pass, Room 20, Unlimited, Streamer, the plans for many meetings at once and the add-ons, with the one this browser holds and the way up.">
+<title>GifOS Meet plans</title>
+<meta name="description" content="GifOS Meet plans: bigger meetings, and video that gets through corporate and school firewalls, still end-to-end encrypted. No account needed.">
 <link rel="canonical" href="https://gifos.app/subscription">
 <link rel="icon" href="icon.svg">
 <style>
-  /* The meeting's tokens (css/meet.css): black surface, night sheets, one accent (red). */
+  /* The meeting's tokens (css/meet.css): black surface, night cards, one accent (red). A light computer gets the
+     meeting's paper and ink. */
   :root {
-    --c-white: #fff; --c-black: #000; --c-gray: #8d93a0; --c-label: #dfe0e4; --c-red: #b61622; --c-night: #0c0e12; --c-chip: #222325;
-    --r-sm: 10px; --r-md: 12px; --r-pill: 999px;
-    --s-1: 4px; --s-2: 8px; --s-3: 16px; --s-4: 24px;
-    --fs-title: 17px; --fs-body: 14px; --fs-label: 13px;
+    --c-white: #fff; --c-black: #000; --c-gray: #8d93a0; --c-red: #b61622; --c-night: #0c0e12;
+    --bg: #000; --card: #0c0e12; --chip: #222325; --line: #1c1f26; --text: #fff; --label: #dfe0e4; --muted: #8d93a0;
+    --ring: #fff; --link: #9db4ff; --on-red: #fff; --badge-bg: #fff; --badge-fg: #000;
+    --r-sm: 10px; --r-md: 12px; --r-lg: 16px; --r-pill: 999px;
+    --s-1: 4px; --s-2: 8px; --s-3: 16px; --s-4: 24px; --s-5: 32px;
+    --fs-hero: 24px; --fs-title: 17px; --fs-body: 14px; --fs-label: 13px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg: #f4f7fb; --card: #fff; --chip: #e8ecf1; --line: #e8ecf1; --text: #1d1d1f; --label: #3a3a3f; --muted: #5d6270;
+            --ring: #1d1d1f; --link: #0064c8; --badge-bg: #1d1d1f; --badge-fg: #fff; }
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html { background: var(--c-black); }
-  body { font: var(--fs-body)/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--c-black); color: var(--c-white); min-height: 100vh; }
-  .wrap { max-width: 760px; margin: 0 auto; padding: var(--s-4) var(--s-3) 64px; }
-  .top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); margin-bottom: var(--s-3); }
-  h1 { font-size: var(--fs-title); font-weight: 600; }
-  h2 { font-size: var(--fs-body); font-weight: 600; }
-  a { color: var(--c-label); font-size: var(--fs-label); }
-  .quiet { color: var(--c-gray); font-size: var(--fs-label); }
+  html { background: var(--bg); }
+  body { font: var(--fs-body)/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: var(--s-4) var(--s-3) 64px; }
   [hidden] { display: none !important; }
+  a { color: var(--link); }
+  .quiet { color: var(--muted); font-size: var(--fs-label); }
   p + p { margin-top: var(--s-2); }
-  .notice { padding: 12px var(--s-3); border-radius: var(--r-md); background: var(--c-night); margin-bottom: var(--s-3); }
+
+  /* Head: what the page is, in one line. */
+  .top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); }
+  h1 { font-size: var(--fs-hero); font-weight: 700; line-height: 1.2; }
+  .top a { font-size: var(--fs-label); color: var(--label); white-space: nowrap; }
+  .lead { color: var(--label); margin: var(--s-1) 0 var(--s-3); max-width: 62rem; }
+
+  .notice { padding: 12px var(--s-3); border-radius: var(--r-md); background: var(--card); margin-bottom: var(--s-3); }
   .notice::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--c-red); margin-right: var(--s-2); vertical-align: middle; }
-  ul.plans { list-style: none; display: grid; gap: var(--s-2); margin: var(--s-3) 0 var(--s-4); }
-  .plan { background: var(--c-night); border-radius: var(--r-md); padding: 12px var(--s-3); border: 2px solid transparent; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-2) var(--s-3); }
-  .plan.held { border-color: var(--c-white); }
-  .plan .what { flex: 1 1 16rem; min-width: 0; }
-  .plan .price { color: var(--c-label); font-size: var(--fs-label); margin-top: 2px; }
-  .plan .acts { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; }
-  .badge.soon { background: var(--c-chip); color: var(--c-label); }
-  .badge { display: inline-block; font-size: var(--fs-label); font-weight: 600; padding: 2px 10px; border-radius: var(--r-pill); background: var(--c-white); color: var(--c-black); margin-left: var(--s-2); vertical-align: middle; }
-  button, a.btn { font: inherit; font-size: var(--fs-label); font-weight: 600; color: var(--c-white); background: var(--c-chip); border: 0; border-radius: var(--r-sm); padding: var(--s-2) 12px; min-height: 44px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
-  button.go { background: var(--c-red); }
+
+  button, a.btn { font: inherit; font-size: var(--fs-label); font-weight: 600; color: var(--text); background: var(--chip); border: 0; border-radius: var(--r-sm);
+    padding: var(--s-2) 12px; min-height: 44px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; text-align: center; }
+  button.go { background: var(--c-red); color: var(--on-red); }
   button:disabled { opacity: .5; cursor: default; }
-  button:focus-visible, a:focus-visible { outline: 2px solid var(--c-white); outline-offset: 2px; }
-  section.note { margin-top: var(--s-4); }
-  section.note h2 { margin-bottom: var(--s-2); }
-  .pm { display: grid; gap: var(--s-3); margin: var(--s-3) 0 var(--s-4); }
-  .pm h2 { margin: 0; }
-  .pm h3 { font-size: var(--fs-body); font-weight: 600; margin: 0 0 var(--s-2); }
-  .pm .row { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; }
-  .pm p { margin: 0; }
-  .pm ul { margin: 0; padding-left: 1.1rem; }
-  .pm input[type="text"], .pm input[type="number"], #pm-code {
-    font: inherit; color: var(--c-white); background: var(--c-night); border: 1px solid var(--c-chip);
-    border-radius: var(--r-sm); min-height: 44px; padding: 0 12px; width: 100%; max-width: 16rem;
-  }
-  #pm-file-use { font: inherit; min-height: 44px; max-width: 100%; color: var(--c-label); }
-  #pm-recv-code { font-size: 2rem; font-weight: 700; letter-spacing: .25em; margin: var(--s-2) 0; }
-  #pm-link { word-break: break-all; }
-  #pm-qr { background: var(--c-white); border-radius: var(--r-sm); padding: var(--s-2); max-width: 280px; }
+  button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  .row { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; }
+  input[type="text"], #pm-restore-sub { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--chip); border-radius: var(--r-sm);
+    min-height: 44px; padding: 0 12px; width: 100%; max-width: 20rem; }
+  #pm-file-use { font: inherit; min-height: 44px; max-width: 100%; color: var(--label); }
+
+  /* Your plan: one card. With no plan it is one quiet line above the plans. */
+  .yours { background: var(--card); border: 2px solid var(--ring); border-radius: var(--r-lg); padding: var(--s-3) 20px; margin-bottom: var(--s-4); display: grid; gap: var(--s-2); }
+  .yours .kicker { font-size: var(--fs-label); color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .yours h2 { font-size: 20px; font-weight: 700; line-height: 1.25; }
+  .yours #held { font-weight: 600; color: var(--label); }
+  .yours #pm-meetings { font-size: var(--fs-label); color: var(--muted); }
+  .yours #pm-meetings h3 { display: inline; font: inherit; }
+  .yours #pm-meetings h3::after { content: ': '; }
+  .yours #pm-meetings ul { display: inline; list-style: none; color: var(--label); }
+  .yours #pm-meetings li { display: inline; }
+  .yours #pm-meetings li + li::before { content: ', '; }
+  .yours .acts { margin-top: var(--s-1); }
+  /* Nothing held: one quiet line, so the plans start right under the title. */
+  .yours.none { border: 0; background: none; padding: 0; margin-bottom: var(--s-3); display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-3); align-items: baseline; }
+  .yours.none #held { font-weight: 400; color: var(--label); }
+  .yours.none #held-get-line { font-size: var(--fs-label); }
+  #pm-move-live { display: grid; gap: var(--s-2); margin-top: var(--s-2); }
+  #pm-qr { background: #fff; border-radius: var(--r-sm); padding: var(--s-2); max-width: 240px; }
   #pm-qr svg { display: block; width: 100%; height: auto; }
-  /* The receipt slip, same rows as receipt.html. Scoped so .pm .row (the button row) stays as it is. */
-  #pm-receipt { margin-top: var(--s-3); }
-  #pm-receipt .slip { background: var(--c-night); border-radius: var(--r-md); padding: 12px var(--s-3); }
-  #pm-receipt .slip .row { display: flex; justify-content: space-between; gap: var(--s-3); padding: 6px 0; border-bottom: 1px solid #1c1f26; align-items: flex-start; }
+  #pm-link { word-break: break-all; font-size: var(--fs-label); color: var(--muted); }
+  .task { background: var(--card); border-radius: var(--r-lg); padding: var(--s-3) 20px; margin-bottom: var(--s-4); display: grid; gap: var(--s-2); }
+  .task h2 { font-size: var(--fs-title); }
+  #pm-recv-code { font-size: 2rem; font-weight: 700; letter-spacing: .25em; }
+
+  /* The plans: personal plans as cards side by side, the many-meetings plans and add-ons as rows. */
+  #plans h2.group { font-size: var(--fs-title); font-weight: 600; margin: var(--s-4) 0 var(--s-2); }
+  ul.plans { list-style: none; display: grid; gap: 12px; }
+  ul.plans.one { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+  .plan { background: var(--card); border-radius: var(--r-md); padding: var(--s-3); border: 2px solid transparent; display: flex; flex-direction: column; gap: var(--s-2); min-width: 0; }
+  .plan.held { border-color: var(--ring); }
+  .plan h2 { font-size: var(--fs-title); font-weight: 700; line-height: 1.3; }
+  .plan .price { font-weight: 700; font-size: 15px; color: var(--text); }
+  ul.plans.one .price .per { display: block; }
+  ul.plans.one .price .per + .per { font-weight: 400; font-size: var(--fs-label); color: var(--label); }
+  ul.plans.one .price .sep { display: none; }
+  .plan .what { display: flex; flex-direction: column; gap: var(--s-1); }
+  .plan .what .quiet { order: 3; }
+  .plan .acts { display: flex; flex-direction: column; gap: var(--s-2); margin-top: auto; }
+  .plan .acts button, .plan .acts a.btn { width: 100%; }
+  .plan .acts .quiet { padding: var(--s-1) 0; }
+  ul.plans.many .plan, ul.plans.addon .plan { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-2) var(--s-3); }
+  ul.plans.many .plan .what, ul.plans.addon .plan .what { flex: 1 1 18rem; }
+  ul.plans.many .plan .acts, ul.plans.addon .plan .acts { flex-direction: row; flex-wrap: wrap; margin-top: 0; }
+  ul.plans.many .plan .acts button, ul.plans.many .plan .acts a.btn { width: auto; }
+  .badge { display: inline-block; font-size: 12px; font-weight: 600; padding: 1px 9px; border-radius: var(--r-pill); background: var(--badge-bg); color: var(--badge-fg); margin-left: var(--s-2); vertical-align: middle; }
+  .badge.soon { background: var(--chip); color: var(--label); }
+
+  /* Everything else: short labelled sections, closed until opened. */
+  .more { margin-top: var(--s-5); display: grid; gap: var(--s-2); }
+  details { background: var(--card); border-radius: var(--r-md); }
+  summary { list-style: none; cursor: pointer; min-height: 48px; padding: 12px var(--s-3); font-weight: 600; display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: ''; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); margin-top: -4px; flex: none; transition: transform .2s; }
+  details[open] > summary::after { transform: rotate(-135deg); margin-top: 4px; }
+  .body { padding: 0 var(--s-3) var(--s-3); display: grid; gap: 12px; }
+  .body h3 { font-size: var(--fs-body); font-weight: 600; }
+  .body p { margin: 0; }
+  #pm-restore-confirm, #pm-restore-ask, #pm-signout-ask { display: grid; gap: var(--s-2); }
+  #pm-restore-warn { font-weight: 600; }
+
+  /* The receipt slip, same rows as receipt.html. */
+  #pm-receipt .slip { background: var(--bg); border-radius: var(--r-md); padding: 12px var(--s-3); margin-top: var(--s-2); }
+  #pm-receipt .slip .row { display: flex; justify-content: space-between; gap: var(--s-3); padding: 6px 0; border-bottom: 1px solid var(--line); align-items: flex-start; flex-wrap: nowrap; }
   #pm-receipt .slip .row:last-child { border-bottom: 0; }
-  #pm-receipt .slip .row span { color: var(--c-gray); }
+  #pm-receipt .slip .row span { color: var(--muted); }
   #pm-receipt .slip .row b { text-align: right; word-break: break-all; font-weight: 600; }
-  #pm-receipt .note { color: var(--c-gray); font-size: var(--fs-label); margin-top: var(--s-2); }
-  #pm-receipt a.tx-link { color: #9db4ff; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
-  @media (max-width: 360px) {
-    .wrap { padding-left: 12px; padding-right: 12px; }
-    .pm button, .pm a.btn, #pm-code, #pm-file-use { max-width: 100%; }
+  #pm-receipt .note { color: var(--muted); font-size: var(--fs-label); margin-top: var(--s-2); }
+  #pm-receipt a.tx-link { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+  #legal { margin-top: var(--s-4); }
+
+  @media (max-width: 600px) {
+    .wrap { padding-top: var(--s-3); }
+    h1 { font-size: 21px; }
+    .lead { margin-bottom: var(--s-3); }
+    .yours .acts > * { flex: 1 1 100%; }
+    ul.plans.many .plan .acts, ul.plans.addon .plan .acts { width: 100%; }
+    ul.plans.many .plan .acts button, ul.plans.many .plan .acts a.btn { flex: 1 1 100%; }
   }
+  @media (max-width: 360px) { .wrap { padding-left: 12px; padding-right: 12px; } }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="top">
-    <h1 data-t="subscription.title">Plans</h1>
+  <header class="top">
+    <h1 data-t="subscription.title">GifOS Meet plans</h1>
     <a href="/meet" data-t="subscription.back">GifOS Meet</a>
-  </div>
-  <p class="quiet" data-t="subscription.intro">Every plan works on gifos.app/meet. Public open-floor meetings are always free.</p>
-  <p class="quiet" id="no-account" data-t="subscription.noAccount">No account needed. Your plan lives on your devices, and if you ever lose them, restore it with the PayPal account you paid with.</p>
-  <p id="held" class="notice" role="status" aria-live="polite"></p>
+  </header>
+  <p class="lead" id="lead" data-t="subscription.lead">Bigger meetings, and video that gets through corporate and school firewalls, still end-to-end encrypted. No account needed.</p>
   <p id="say" class="notice" role="status" aria-live="polite" hidden></p>
-  <section class="pm" id="get">
-    <h2 data-t="subscription.pmTitle">Your plan</h2>
-    <div id="pm-meetings" hidden>
-      <h3 data-t="subscription.pmMeetings">Meetings holding this plan</h3>
-      <ul id="pm-meetings-list"></ul>
-      <p data-t="subscription.pmMoveHow">Start or join the meeting on this device; you will be asked which meeting gives up its place.</p>
-    </div>
-    <div class="row" id="pm-files">
-      <button type="button" id="pm-file-get" hidden data-t="subscription.pmFileGet">Download subscription file</button>
-      <label class="row"><span data-t="subscription.pmFileUse">Use a subscription file</span>
-        <input id="pm-file-use" type="file" accept="image/gif,.gif">
-      </label>
-    </div>
-    <div id="pm-move" hidden>
-      <h3 data-t="subscription.pmMove">Add this plan to another device</h3>
-      <p class="quiet" id="pm-move-help" data-t="subscription.pmMoveHelp">Your plan works on all your devices, in one meeting at a time.</p>
-      <button type="button" class="go" id="pm-move-go" data-t="subscription.pmMoveGo">Add this plan to another device</button>
-      <div id="pm-move-live" hidden>
-        <div id="pm-qr"></div>
-        <p id="pm-link"></p>
-        <div class="row">
-          <button type="button" id="pm-copy" data-t="subscription.pmCopy">Copy</button>
-        </div>
-        <label class="row"><span data-t="subscription.pmCodeLabel">Code from the other device</span>
-          <input id="pm-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6">
-        </label>
-        <button type="button" id="pm-code-go" data-t="subscription.pmCodeGo">Continue</button>
-        <p id="pm-move-status" role="status"></p>
-      </div>
-    </div>
-    <div id="pm-recv" hidden>
-      <h3 data-t="subscription.pmRecvTitle">Add a plan from your other device</h3>
-      <p data-t="subscription.pmRecvLead">Type this code on the device that has your plan</p>
-      <p id="pm-recv-code"></p>
-      <p id="pm-recv-status" role="status"></p>
-    </div>
+
+  <!-- Arrived by a "Copy my plan" link from the other device: this task comes first. -->
+  <section id="pm-recv" class="task" hidden>
+    <h2 data-t="subscription.pmRecvTitle">Get my plan from another device</h2>
+    <p data-t="subscription.pmRecvLead">Type this code on the device that has your plan</p>
+    <p id="pm-recv-code"></p>
+    <p id="pm-recv-status" role="status"></p>
     <div id="pm-replace" hidden>
       <p id="pm-replace-q" data-t="subscription.pmReplace">Replace the plan on this device?</p>
       <div class="row">
@@ -135,55 +163,129 @@
         <button type="button" id="pm-replace-no" data-t="subscription.pmReplaceNo">Keep the plan on this device</button>
       </div>
     </div>
-    <div id="pm-restore-block">
-      <label class="quiet" for="pm-restore-sub" data-t="subscription.pmRestoreSub">Not found? Add the subscription ID from your PayPal email (starts with I-), optional</label>
-      <input id="pm-restore-sub" maxlength="44" autocomplete="off" spellcheck="false" placeholder="I-…" style="display:block;margin:4px 0 8px;min-height:44px;font:inherit;padding:0 10px;border-radius:10px;border:1px solid #333;background:#0c0e12;color:#fff;max-width:20rem;width:100%">
-      <button type="button" id="pm-restore" data-t="subscription.pmRestore">Restore with PayPal (lost device)</button>
-      <div id="pm-restore-confirm" hidden>
-        <p id="pm-restore-warn" role="alert" data-t="subscription.pmRestoreWarn">This signs out every other device that has your plan. To keep them, add this device from one of them instead.</p>
+  </section>
+
+  <!-- Your plan: the card when this browser holds a plan or pass; one line ("you have Free") when it holds none. -->
+  <section id="yours" class="yours none" aria-labelledby="yp-name">
+    <!-- Room for a short note about this browser's plan (e.g. a checkout that was not finished). -->
+    <div id="yp-note" hidden></div>
+    <p class="kicker" id="yp-kicker" data-t="subscription.pmTitle" hidden>Your plan</p>
+    <h2 id="yp-name" hidden></h2>
+    <p id="yp-what" class="quiet" hidden></p>
+    <p id="held" role="status" aria-live="polite"></p>
+    <div id="pm-meetings" hidden>
+      <h3 data-t="subscription.pmMeetings">Meetings holding this plan</h3>
+      <ul id="pm-meetings-list"></ul>
+    </div>
+    <div id="pm-move" hidden>
+      <div class="row acts">
+        <button type="button" class="go" id="pm-move-go" data-t="subscription.pmMoveGo">Copy my plan to another device</button>
+        <button type="button" id="pm-file-get" hidden data-t="subscription.pmFileGet">Download subscription file</button>
+        <button type="button" id="yp-change" hidden data-t="subscription.secCancel">Cancel or change</button>
+      </div>
+      <p class="quiet" id="pm-move-help" data-t="subscription.pmMoveHelp">Your plan works on all your devices, in one meeting at a time.</p>
+      <div id="pm-move-live" hidden>
+        <div id="pm-qr"></div>
+        <p id="pm-link"></p>
         <div class="row">
-          <button type="button" class="go" id="pm-restore-continue" data-t="subscription.pmRestoreContinue">Continue</button>
-          <button type="button" id="pm-restore-cancel" data-t="subscription.pmRestoreCancel">Cancel</button>
+          <button type="button" id="pm-copy" data-t="subscription.pmCopy">Copy</button>
+        </div>
+        <label class="row" for="pm-code"><span data-t="subscription.pmCodeLabel">Code from the other device</span></label>
+        <div class="row">
+          <input id="pm-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6">
+          <button type="button" id="pm-code-go" data-t="subscription.pmCodeGo">Continue</button>
+        </div>
+        <p id="pm-move-status" role="status"></p>
+      </div>
+    </div>
+    <p id="held-get-line" class="quiet"><a href="#get" id="held-get" data-t="subscription.heldGet">Have a plan on another device? Get it here</a></p>
+  </section>
+
+  <div id="plans"></div>
+
+  <div class="more">
+    <details id="get">
+      <summary data-t="subscription.pmRecvTitle">Get my plan from another device</summary>
+      <div class="body">
+        <p data-t="subscription.getHow">On the device that has your plan, open gifos.app/subscription and choose Copy my plan to another device. Scan its code with this device, or open its link here.</p>
+        <div class="row" id="pm-files">
+          <label class="row"><span data-t="subscription.pmFileUse">Use a subscription file</span>
+            <input id="pm-file-use" type="file" accept="image/gif,.gif">
+          </label>
         </div>
       </div>
-      <div id="pm-restore-ask" hidden>
-        <p id="pm-restore-q"></p>
-        <p id="pm-restore-lib" hidden data-t="subscription.pmLibWarn">Your library opens only on a device that still has your old plan file or that you add the plan from.</p>
-        <div id="pm-restore-acts" class="row">
-          <button type="button" class="go" id="pm-restore-yes" hidden data-t="subscription.pmRestoreYes">Use it on this device</button>
+    </details>
+
+    <details id="sec-restore">
+      <summary data-t="subscription.pmRestore">Restore with PayPal (lost device)</summary>
+      <div class="body" id="pm-restore-block">
+        <p data-t="subscription.restoreLead">Lost the device that had your plan? Get it back with the PayPal account you paid with.</p>
+        <label class="quiet" for="pm-restore-sub" data-t="subscription.pmRestoreSub">Not found? Add the subscription ID from your PayPal email (starts with I-), optional</label>
+        <input id="pm-restore-sub" maxlength="44" autocomplete="off" spellcheck="false" placeholder="I-…">
+        <div class="row"><button type="button" id="pm-restore" data-t="subscription.pmRestoreGo">Restore with PayPal</button></div>
+        <div id="pm-restore-confirm" hidden>
+          <p id="pm-restore-warn" role="alert" data-t="subscription.pmRestoreWarn">Your plan will stop working on your other devices. To keep it working there, copy your plan from one of them to this device instead (QR code or link).</p>
+          <div class="row">
+            <button type="button" class="go" id="pm-restore-continue" data-t="subscription.pmRestoreContinue">Restore here</button>
+            <button type="button" id="pm-restore-cancel" data-t="subscription.pmRestoreCancel">Cancel</button>
+          </div>
+        </div>
+        <div id="pm-restore-ask" hidden>
+          <p id="pm-restore-q"></p>
+          <p id="pm-restore-lib" hidden data-t="subscription.pmLibWarn">Your library opens only on a device that still has your old plan file or that you copy the plan from.</p>
+          <div id="pm-restore-acts" class="row">
+            <button type="button" class="go" id="pm-restore-yes" hidden data-t="subscription.pmRestoreYes">Use it on this device</button>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="row" id="pm-pay" hidden>
-      <button type="button" id="pm-cancel" data-t="subscription.pmCancel">Cancel subscription</button>
-      <a class="btn" id="pm-manage" href="https://www.paypal.com/myaccount/autopay/" target="_blank" rel="noopener" data-t="subscription.pmManage">Manage at PayPal</a>
-    </div>
-    <div id="pm-receipts">
-      <h3 data-t="subscription.pmReceipts">Receipts and purchases</h3>
-      <div class="row">
-        <a class="btn" id="pm-purchases" href="/" data-t="subscription.pmPurchases">Purchases on your Home Screen</a>
-        <a class="btn" id="pm-activity" href="https://www.paypal.com/myaccount/activities" target="_blank" rel="noopener" data-t="subscription.pmActivity">PayPal activity</a>
+    </details>
+
+    <details id="sec-receipts">
+      <summary data-t="subscription.secReceipts">Receipts</summary>
+      <div class="body" id="pm-receipts">
+        <div class="row">
+          <a class="btn" id="pm-purchases" href="/" data-t="subscription.pmPurchases">Purchases on your Home Screen</a>
+          <a class="btn" id="pm-activity" href="https://www.paypal.com/myaccount/activities" target="_blank" rel="noopener" data-t="subscription.pmActivity">PayPal activity</a>
+        </div>
+        <div id="pm-receipt" hidden></div>
       </div>
-      <div id="pm-receipt" hidden></div>
-    </div>
-    <div id="pm-signout-wrap" hidden>
-      <button type="button" id="pm-signout" data-t="subscription.pmSignout">Sign out other devices</button>
-      <div id="pm-signout-ask" hidden>
-        <p data-t="subscription.pmSignoutAsk">Sign out every other device? This device keeps the plan. The others stop until you add the plan to them again or restore it.</p>
-        <button type="button" id="pm-signout-yes" data-t="subscription.pmSignoutYes">Sign out</button>
+    </details>
+
+    <details id="sec-cancel" hidden>
+      <summary data-t="subscription.secCancel">Cancel or change</summary>
+      <div class="body">
+        <div class="row" id="pm-pay" hidden>
+          <button type="button" id="pm-cancel" data-t="subscription.pmCancel">Cancel subscription</button>
+          <a class="btn" id="pm-manage" href="https://www.paypal.com/myaccount/autopay/" target="_blank" rel="noopener" data-t="subscription.pmManage">Manage at PayPal</a>
+        </div>
+        <p data-t="subscription.upgradeNow">A bigger plan replaces yours. Its first charge is smaller: we take off a credit for the unused time of your current plan. Every charge after that is the full price.</p>
+        <p data-t="subscription.upgradeCancel">We cancel the plan it replaces as soon as the new one starts, so you are never billed twice.</p>
+        <p data-t="subscription.upgradeRule">A yearly plan can change only to a bigger yearly plan. A monthly plan can change to a bigger monthly or yearly plan.</p>
+        <div id="pm-signout-wrap" hidden>
+          <button type="button" id="pm-signout" data-t="subscription.pmSignout">Stop my plan on other devices</button>
+          <div id="pm-signout-ask" hidden>
+            <p data-t="subscription.pmSignoutAsk">Stop your plan on every other device? This device keeps the plan. The others stop working until you copy the plan to them again or restore it.</p>
+            <div class="row"><button type="button" class="go" id="pm-signout-yes" data-t="subscription.pmSignoutYes">Stop on other devices</button></div>
+          </div>
+        </div>
       </div>
-    </div>
-  </section>
-  <ul id="plans" class="plans"></ul>
-  <section class="note" id="upgrade-note">
-    <h2 data-t="subscription.upgradeTitle">Changing to a bigger plan</h2>
-    <p data-t="subscription.upgradeNow">A bigger plan replaces yours. Its first charge is smaller: we take off a credit for the unused time of your current plan. Every charge after that is the full price.</p>
-    <p data-t="subscription.upgradeCancel">We cancel the plan it replaces as soon as the new one starts, so you are never billed twice.</p>
-    <p data-t="subscription.upgradeRule">A yearly plan can change only to a bigger yearly plan. A monthly plan can change to a bigger monthly or yearly plan.</p>
-    <p data-t="subscription.upgradeStack">Plans add up: a pass or an add-on you hold counts on top of your plan, so their meetings at once add together.</p>
-    <p data-t="subscription.upgradePass">A four-hour pass is never cancelled: it keeps running beside any plan.</p>
-    <p data-t="subscription.fileNote">Your plan lives in this browser. Keep a copy: download your subscription file here, or choose Add this plan to another device on gifos.app/subscription.</p>
-  </section>
+    </details>
+
+    <details id="upgrade-note">
+      <summary data-t="subscription.secHow">How plans work</summary>
+      <div class="body">
+        <p data-t="subscription.intro">Every plan works on gifos.app/meet. Public open-floor meetings are always free.</p>
+        <p id="no-account" data-t="subscription.noAccount">No account needed. Your plan lives on your devices, and if you ever lose them, restore it with the PayPal account you paid with.</p>
+        <p data-t="subscription.pmMoveHelp">Your plan works on all your devices, in one meeting at a time.</p>
+        <p data-t="subscription.pmMoveHow">Start or join the meeting on this device; you will be asked which meeting gives up its place.</p>
+        <p data-t="subscription.howSizes">Anyone in a meeting who holds a plan sizes the whole meeting: the best plan present wins, for as long as its holder is there.</p>
+        <p data-t="subscription.howFirewall">Free gets voice and chat through corporate and school firewalls; paid plans get video through too. Everything stays end-to-end encrypted.</p>
+        <p data-t="subscription.upgradeStack">Plans add up: a pass or an add-on you hold counts on top of your plan, so their meetings at once add together.</p>
+        <p data-t="subscription.upgradePass">A four-hour pass is never cancelled: it keeps running beside any plan.</p>
+        <p data-t="subscription.fileNote">Your plan lives in this browser. Keep a copy: download your subscription file here, or choose Copy my plan to another device on gifos.app/subscription.</p>
+      </div>
+    </details>
+  </div>
   <p class="quiet" id="legal"></p>
 </div>
 <script src="js/timings.js"></script>
