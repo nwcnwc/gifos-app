@@ -12,6 +12,7 @@
       ],
       "fixes": [
         "The viewer buttons read Unblur and Blur. Report moved to the info panel in embeds and to the More menu in meetings.",
+        "Blur now sits on the Stage picture it clears instead of over the top bar, a single speaker's name on the Stage is smaller, and the Hand button matches the other icons.",
         "Embedded players ask you to tap to unmute first, then offer a blue Tap to unblur.",
         "Embedded player controls now fade in full screen after a few idle seconds.",
         "Watching an embedded player or listening with your microphone off no longer wakes the microphone in Chrome.",
