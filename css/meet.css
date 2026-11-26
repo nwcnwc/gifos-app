@@ -172,7 +172,7 @@
     background: rgba(24, 24, 28, .94); color: var(--c-white); font: 600 .9rem/1.35 system-ui, sans-serif; text-align: center; pointer-events: none; }
   /* The Stage's names, drawn by this viewer over its own Stage picture (viewKit.stageNames): sharp over a blurred
    picture, never in the pixels sent. A viewer's Show names off hides them; a calm watching surface fades them. */
-  #stagefeed .stgnames { position: absolute; inset: 0; pointer-events: none; z-index: 2; overflow: hidden; }
+  #stagefeed .stgnames { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; pointer-events: none; z-index: 2; overflow: hidden; }
   #stagefeed .stgname { position: absolute; box-sizing: border-box; padding: .2em .5em; background: rgba(10,10,15,.62); color: #eef;
   font-weight: 600; font-family: system-ui, sans-serif; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: opacity .4s ease; }
   #stagefeed .stgname[hidden] { display: none; }
