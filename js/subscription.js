@@ -264,7 +264,7 @@
     if (r.status === 'CANCELLED') return until && until > nowS && r.live ? { text: t('txCancelledEnds', { date: day(until) }), cls: 'on' } : { text: t('txCancelled'), cls: 'off' };
     if (r.status === 'SUSPENDED') return { text: t('txSuspended'), cls: 'off' };
     if (r.live) {
-      var renews = r.status === 'ACTIVE' && r.paidThrough && r.paidThrough > nowS ? r.paidThrough : null;
+      var renews = (r.status === 'ACTIVE' || r.status === 'APPROVED') && r.paidThrough && r.paidThrough > nowS ? r.paidThrough : null;
       return { text: renews ? t('txRenews', { date: day(renews) }) : t('txActiveUntil', { date: day(until) }), cls: 'on' };
     }
     // Ended: the date it ended, when this browser knows one in the past (a lapsed license's end is not that date).

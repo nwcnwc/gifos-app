@@ -439,14 +439,14 @@
       // Replaced by: a later record bought as an upgrade of this one that was paid for.
       const by = recs.filter((x) => x.replaces === r.subId && everPaid(x)).sort((a, b) => (a.at || 0) - (b.at || 0))[0] || null;
       return {
-        kind: 'plan', id: r.subId, tier: r.tier || null, period: r.period || null, at: r.at || null,
+        kind: 'plan', id: r.subId, tier: typeof r.tier === 'string' ? r.tier : null, period: r.period || null, at: r.at || null,
         pending: r.state === 'pending', paid: everPaid(r), status: r.status || null,
         until: Number.isInteger(r.until) ? r.until : null, paidThrough: Number.isInteger(r.paidThrough) ? r.paidThrough : null,
         live: !!lic, exp: any && Number.isInteger(any.exp) ? any.exp : null, issued: any && Number.isInteger(any.issued) ? any.issued : null,
         inUse: !!act && act.subId === r.subId,
         hidden: !!r.hidden, refused: Number.isFinite(r.refused) ? r.refused : null,
         via: typeof k.via === 'string' ? k.via : null, viaAt: Number.isFinite(k.at) ? k.at : null, keys: keys.length,
-        replaces: typeof r.replaces === 'string' ? r.replaces : null, replacedBy: by ? { id: by.subId, tier: by.tier || null } : null,
+        replaces: typeof r.replaces === 'string' ? r.replaces : null, replacedBy: by ? { id: by.subId, tier: typeof by.tier === 'string' ? by.tier : null } : null,
         continuedAs: typeof r.continuedAs === 'string' ? r.continuedAs : null,
         bought: buy.boughtAt || null, price: buy.price || null, currency: buy.currency || null, rail: buy.rail || (/^I-/.test(r.subId) ? 'paypal' : null),
         orderId: buy.orderId || null, captureId: buy.captureId || null,
