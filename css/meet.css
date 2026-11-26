@@ -485,6 +485,9 @@ body.names-off #stagefeed .stgnames { display: none; }
      blurs them stays blurred there too). */
   .ct-pane video.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .009))) saturate(.9); }
   .ct-pane video.blur2 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-max, .0225))) saturate(.75); }
+  /* TEXT STAYS CLEAR (js/core/media/textclear.js): a blurred share keeps its blur but not the scale, so the overlay of
+     checked text regions (canvas.tc-ov, the next sibling) lies exactly on the picture. */
+  .tile video.tcx, #stagefeed > .rowtile > video.tcx, #fsmain.tcx, .fsthumb video.tcx { transform: none; }
   #muteall.on { border-color: #ff5c5c; color: #ff9c9c; background: #2a1010; }
   #blurall.on { border-color: #ffb86c; color: var(--c-yellow); background: #2a1f10; }
   #camall.on { border-color: #ff5c5c; color: #ff9c9c; background: #2a1010; }
