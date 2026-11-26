@@ -342,7 +342,7 @@
     full: 'This meeting is full for people without a subscription. Any GifOS subscription lets you join.',
     fullFree: 'This room is full on the free plan',
     fullFreeNote: 'Any GifOS subscription lets you join.',
-    needForAdmin: 'Private meetings come with a GifOS subscription. Public open-floor meetings stay free.',
+    needForAdmin: 'Private meetings come with a GifOS subscription. Public majority-rules meetings stay free.',
     waiting: 'Checking whether this meeting has room for you…',
     lapsed: 'Your subscription has ended. Renew it in Settings to keep your private meetings.',
     pending: 'Finish signing up in the PayPal window. This updates as soon as PayPal confirms.',

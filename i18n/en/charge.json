@@ -89,7 +89,7 @@
   "charge.receiptView.grantMany": "up to {n} meetings at once",
   "charge.receiptView.grantVideo": "video that gets through firewalls, still end-to-end encrypted",
   "charge.receiptView.grantVoice": "voice that gets through firewalls, still end-to-end encrypted",
-  "charge.receiptView.grantCapture": "taking charge of public open-floor meetings",
+  "charge.receiptView.grantCapture": "taking charge of majority-rules meetings",
   "charge.receiptView.grantStorage": "a library for recordings and transcripts",
   "charge.receiptView.pass4h": "Four-hour pass",
   "charge.receiptView.pass": "Pass",

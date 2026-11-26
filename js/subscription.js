@@ -223,7 +223,8 @@
         what.appendChild(h);
         what.appendChild(el('p', 'quiet', t(r.id + '.desc')));
         if (r.id === 'free') what.appendChild(el('p', 'quiet', t('free.desc2')));
-        var apps = appsBlock(r.grants);
+        // Free keeps its two approved paragraphs only; every other card is one tagline plus the per-app list.
+        var apps = r.id === 'free' ? null : appsBlock(r.grants);
         if (apps) what.appendChild(apps);
         // The price: one line per period (a card stacks them; a row keeps them on one line).
         var price = el('p', 'price');

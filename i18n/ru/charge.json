@@ -89,7 +89,7 @@
   "charge.receiptView.grantMany": "до {n} встреч одновременно",
   "charge.receiptView.grantVideo": "видео, которое проходит через брандмауэры, со сквозным шифрованием",
   "charge.receiptView.grantVoice": "голос, который проходит через брандмауэры, со сквозным шифрованием",
-  "charge.receiptView.grantCapture": "управление публичными открытыми встречами",
+  "charge.receiptView.grantCapture": "управление встречами по большинству голосов",
   "charge.receiptView.grantStorage": "библиотека для записей и расшифровок",
   "charge.receiptView.pass4h": "Четырёхчасовой пропуск",
   "charge.receiptView.pass": "Пропуск",

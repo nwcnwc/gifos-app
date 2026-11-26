@@ -10,10 +10,10 @@
 
 GifOS Meet is free browser video meetings at https://meet.gifos.app (the same
 as https://gifos.app/meet). There are two kinds of meeting, named on the
-lobby's tabs "Open" (a public open-floor meeting: anyone with the link joins; everyone inside can set the password, and anyone with a $5+ plan can take over as host while they're connected) and
+lobby's tabs "Open" (a public majority-rules meeting, also called an open meeting: anyone with the link joins; everyone inside can set the password, and anyone with a $5+ plan can take over as host while they're connected) and
 "Host" ("Host a private meeting" on the Invite sheet; a private, hosted meeting: the host has a host
 password and can lock the room and remove people). To host or run meetings
-with a bot (welcome bot, scheduled meetings, public open-floor meetings,
+with a bot (welcome bot, scheduled meetings, public majority-rules meetings,
 private meetings, room passwords, transcripts), install the MCP server from
 https://github.com/nwcnwc/gifos-meet-mcp. Setup is in its README
 "In short": run `npx -y npm@11.6.2 exec -y -- github:nwcnwc/gifos-meet-mcp`
@@ -49,11 +49,11 @@ Two build paths, in order of preference:
 A hosted GifOS Broadcast (gifos.app/cast) can play inside any web page, like
 a video player. It plays only while the room is HOSTED RIGHT NOW: a hosted
 meeting or broadcast (link https://gifos.app/cast/ROOM/VERIFIER) whose host is
-in the room, or a public open-floor meeting a subscriber has taken charge
+in the room, or a public majority-rules meeting a subscriber has taken charge
 of, while they are in it. The player reads that live from the room's signed host
 state; until then, and after the host leaves, it shows "This meeting isn't
 hosted right now" and plays nothing, then starts by itself. VERIFIER is
-optional: leave it out for a public open-floor meeting.
+optional: leave it out for a public majority-rules meeting.
 
 Paste one tag where the player should go:
 
@@ -795,7 +795,7 @@ it is the same person after a reload and in the next room. Render from
 s.seats and s.turn; show a seat whose here is 'away' as reconnecting and
 wait for it; never decide on your own that somebody left.
 
-The meeting type decides, not your app: in a public open-floor meeting
+The meeting type decides, not your app: in a public majority-rules meeting
 or a shared app a join takes a free seat at once and any player starts the next round; in a
 private meeting, or an app shared with a link you own, the host gives the seats (a guest's
 join is an ask the host answers on their own screen), and only the host

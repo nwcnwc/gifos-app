@@ -11486,7 +11486,7 @@
         net.meetPwProof(room, av, '').then((pr) => { pwProof = pr; if (meshNode && meshNode.setKey) meshNode.setKey(roomE2E); }).catch(() => {});
         try { purgeAllFiles(false); (0, /*()*/__V.renderFiles)(); reactRoomState(); } catch (e) {}
       }
-      setStatus(uiText('capOpen', 'This is a public open-floor meeting again'));
+      setStatus(uiText('capOpen', 'This is a public majority-rules meeting again'));
       (0, /*()*/__V.capPaint)();
     }
     function capCheck() {
@@ -11512,7 +11512,7 @@
       capBusy = true;
       try {
         const o = await GifOS.meetSubs.captureOrder(subsMeetId());
-        if (!o) { setStatus(uiText('capNeedPlan', 'Taking charge of a public open-floor meeting takes the $5 plan')); return; }
+        if (!o) { setStatus(uiText('capNeedPlan', 'Taking charge of a public majority-rules meeting takes the $5 plan')); return; }
         pwLog('capture-sent');
         relaySendObj({ t: 'capture', tk: o.tk, w: o.w });
       } finally { capBusy = false; (0, /*()*/__V.capPaint)(); }   // the server's answer (onCapFrame) says the rest
@@ -13746,7 +13746,7 @@
     function lobBadge(e) {
       const k = lobKind(e);
       if (k === 'open' && CAST_SURFACE) return '';
-      const word = k === 'host' ? uiText('lobBadgeHost', 'Private · Host') : k === 'private' ? uiText('lobBadgePrivate', 'Private') : uiText('lobBadgeOpen', 'Open floor');
+      const word = k === 'host' ? uiText('lobBadgeHost', 'Private · Host') : k === 'private' ? uiText('lobBadgePrivate', 'Private') : uiText('lobBadgeOpen', 'Open');
       return '<span class="li-badge li-kind-' + k + '">' + esc(word) + '</span>';
     }
     function lobRow(e, marked) {
