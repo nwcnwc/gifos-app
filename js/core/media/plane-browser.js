@@ -9059,12 +9059,6 @@
     // camera granted AFTER the knock — the knock never waits on the prompt).
     function attachLocalTracks() {
       if (!__C.localStream || (__C.BC_SEAT && !(0, /*()*/__C.bcMayPublishAv)())) return;
-      // A phone that holds a camera but no microphone (a camera-on, mic-off join) sends the silent stand-in in the
-      // microphone's place: the audio sender is there from the start, and an unmute only puts the opened mic on it.
-      if (micLetsGo() && !__C.localStream.getAudioTracks()[0] && !(__C.myStatus && __C.myStatus.bot)) {
-        const q = quietMicTrack();
-        if (q) { q.enabled = false; __C.localStream.addTrack(q); (0, /*()*/__C.meterFor)('me', __C.localStream); }
-      }
       for (const [pid, p] of __C.peers) {
         if (!p.pc || !(0, /*()*/__C.camPeer)(pid) || p.headless) continue;   // camPeer: row-mates and vouched pipe peers; never a standby's pc
         let added = false;
@@ -9170,9 +9164,7 @@
       // camera off (A CAMERA THAT IS OFF IS NOT OPEN). Since a quiet join opens
       // nothing, this tap is how most people's mic opens.
       const micAsk = pick ? { deviceId: { exact: pick } } : true;
-      // A phone's Camera tap asks for the camera alone: a microphone taken with it would be held switched off, which
-      // puts the phone on the call audio path (attachLocalTracks gives the stream the silent stand-in instead).
-      const ask = (appRoom || kind === 'mic') ? { audio: micAsk } : (haveMic || micLetsGo()) ? { video: camVideoConstraints() } : { video: camVideoConstraints(), audio: true };
+      const ask = (appRoom || kind === 'mic') ? { audio: micAsk } : haveMic ? { video: camVideoConstraints() } : { video: camVideoConstraints(), audio: true };
       const gen = ++__C.lateGen, won0 = __C.lateWon;
       __C.lateTimer = setTimeout(() => {
         if (gen !== __C.lateGen || !__C.lateAsk) return;
@@ -9251,6 +9243,7 @@
           else __C.myStatus.muted = micTr ? !micTr.enabled : true;
           __C.myStatus.camOff = !want.has('cam') || !gotCam || !!lateRefusal('cam');
           attachLocalTracks();
+          micLetGo();   // a phone's Camera tap took the microphone with the camera, switched off: let it go at once
           (0, /*()*/__V.paintControls)();
           refreshOutbound();
           (0, /*()*/__C.broadcastStatus)();

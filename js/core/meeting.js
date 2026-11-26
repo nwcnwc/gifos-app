@@ -13955,21 +13955,10 @@
           // in-call volume, and the volume buttons stop moving the media volume the person was listening at. The
           // silent mic is there for desktop picture-in-picture; a quiet join on a phone opens nothing, and the
           // person's own Mic tap is what opens it.
-          // A phone that joins with its camera on and its mic off asks for the camera alone, for the same reason: the
-          // stream then carries a silent stand-in in the microphone's place (attachLocalTracks), and the Mic tap opens
-          // the microphone. A camera that cannot open leaves that stand-in alone, as the mic-only fallback would.
-          const bootAir = typeof updateAir === 'function' ? updateAir() : null;
-          const camOnlyBoot = IS_MOBILE && IS_ANDROID && bootWantsCamera() && !wantMic && !(bootAir && bootAir.mic);
           const gum = bothOff
             ? ((md && md.getUserMedia && !IS_MOBILE)
               ? micAllowed().then((ok) => ok ? (0, /*()*/__M.gumWithMicFallback)(md, { audio: true }).then((r) => { quietHold = !!r.stream; return r.stream || null; }, () => null) : null)
               : Promise.resolve(null))
-            : (md && md.getUserMedia && camOnlyBoot)
-            ? md.getUserMedia({ video: (0, /*()*/__M.camVideoConstraints)() }).then((s) => s, (e) => {
-              if ((0, /*()*/__M.gumRefused)(e)) throw e;
-              try { window.__gumBootNoCam = (e && e.name) || String(e); } catch (x) {}
-              return new MediaStream();
-            })
             : (md && md.getUserMedia)
             ? (0, /*()*/__M.gumWithMicFallback)(md, bootWantsCamera() ? { video: (0, /*()*/__M.camVideoConstraints)(), audio: true } : { audio: true }).then((r) => {
               if (r.camErr) { try { window.__gumBootNoCam = r.camErr.name || String(r.camErr); } catch (e) {} } // harness breadcrumb: mic-only boot, and why
@@ -14060,6 +14049,9 @@
             // Any pc born between the knock and the grant was built recvonly —
             // give it the tracks now, same rules as a mid-call grant.
             (0, /*()*/__M.attachLocalTracks)();
+            // A camera-on, mic-off join on an Android phone takes the microphone with the camera (every sender is made
+            // with it, as on any device) and lets it go at once: the phone leaves the call audio path a moment later.
+            if (typeof __M.micHold === 'function') (0, /*()*/__M.micHold)(false);
             (0, /*()*/__M.refreshOutbound)();
             broadcastStatus();
             (0, /*()*/__M.noteAudioDevices)();
@@ -19545,7 +19537,7 @@
       ring.push(Object.assign({ t: Date.now() }, e));
       if (ring.length > 2000) ring.splice(0, ring.length - 2000);
     }
-    function avWhy(why) { const ring = window.__avTrace; if (ring) ring.why = String(why || ''); }
+    function avWhy(why) { const ring = window.__avTrace; if (ring && why) ring.why = ring.why ? ring.why + ', ' + String(why) : String(why); }   // causes named before one sweep read together
     function avEvent(e, o) { const ring = window.__avTrace; if (ring) avPush(ring, Object.assign({ e: e, why: ring.why || 'state' }, o || {})); }
     function avSweep() {
       const ring = window.__avTrace;
