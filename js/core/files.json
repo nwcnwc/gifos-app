@@ -99,6 +99,7 @@
  "media": [
   "js/mesh-media.js",
   "js/mesh-pipe.js",
+  "js/meet-bgfx.js",
   "js/core/media/plane-browser.js"
  ],
  "view": [
