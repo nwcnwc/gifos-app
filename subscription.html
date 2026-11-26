@@ -120,6 +120,35 @@
   #pm-restore-confirm, #pm-restore-ask, #pm-signout-ask { display: grid; gap: var(--s-2); }
   #pm-restore-warn { font-weight: 600; }
 
+  /* The purchases table (Receipts): a table on a wide screen, one card per purchase on a phone. */
+  table.tx { width: 100%; border-collapse: collapse; font-size: var(--fs-label); }
+  table.tx th { text-align: left; font-weight: 600; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  table.tx td { padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--label); }
+  table.tx td.d { white-space: nowrap; }
+  table.tx td.w { color: var(--text); font-weight: 600; }
+  table.tx td.i code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; margin-right: 6px; }
+  table.tx button.tx-copy { min-height: 28px; padding: 2px 8px; font-size: 12px; }
+  table.tx .st { font-weight: 600; color: var(--text); }
+  table.tx .st.pending::before, table.tx .st.on::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: #2fa84f; vertical-align: middle; }
+  table.tx .st.pending::before { background: #e0a100; }
+  table.tx .st.off { color: var(--muted); }
+  table.tx .why { margin-top: 4px; color: var(--muted); max-width: 26rem; }
+  table.tx td.x .row { justify-content: flex-end; flex-wrap: nowrap; }
+  table.tx td.x a.btn, table.tx td.x button { min-height: 36px; white-space: nowrap; }
+  table.tx tr.hid td { opacity: .6; }
+  #pm-tx .note { margin-bottom: var(--s-2); }
+  @media (max-width: 720px) {
+    table.tx thead { display: none; }
+    table.tx, table.tx tbody, table.tx tr, table.tx td { display: block; width: 100%; }
+    table.tx tr { background: var(--bg); border-radius: var(--r-md); padding: 10px 12px; margin-bottom: var(--s-2); }
+    table.tx td { border: 0; padding: 3px 0; display: flex; gap: var(--s-2); }
+    table.tx td::before { content: attr(data-label); flex: 0 0 6.5rem; color: var(--muted); font-weight: 400; }
+    table.tx td.s { flex-wrap: wrap; }
+    table.tx td.s .why { flex-basis: 100%; padding-left: calc(6.5rem + var(--s-2)); }
+    table.tx td.x::before { content: none; }
+    table.tx td.x .row { justify-content: flex-start; flex-wrap: wrap; padding-top: 6px; }
+    table.tx td.i { align-items: center; }
+  }
   /* The receipt slip, same rows as receipt.html. */
   #pm-receipt .slip { background: var(--bg); border-radius: var(--r-md); padding: 12px var(--s-3); margin-top: var(--s-2); }
   #pm-receipt .slip .row { display: flex; justify-content: space-between; gap: var(--s-3); padding: 6px 0; border-bottom: 1px solid var(--line); align-items: flex-start; flex-wrap: nowrap; }
@@ -243,10 +272,16 @@
     <details id="sec-receipts">
       <summary data-t="subscription.secReceipts">Receipts</summary>
       <div class="body" id="pm-receipts">
+        <p class="quiet" data-t="subscription.txLead">Every purchase this browser knows, newest first.</p>
+        <div id="pm-tx"></div>
         <div class="row">
-          <a class="btn" id="pm-purchases" href="/" data-t="subscription.pmPurchases">Purchases on your Home Screen</a>
+          <button type="button" id="pm-tx-hidden" hidden></button>
+        </div>
+        <div class="row">
+          <a class="btn" id="pm-purchases" href="/#folder=purchases" target="_blank" rel="noopener" hidden data-t="subscription.pmPurchases">Open the Purchases folder</a>
           <a class="btn" id="pm-activity" href="https://www.paypal.com/myaccount/activities" target="_blank" rel="noopener" data-t="subscription.pmActivity">PayPal activity</a>
         </div>
+        <p class="quiet" id="pm-purchases-none" hidden data-t="subscription.pmPurchasesNone">No Purchases folder on this Home Screen yet. It appears once something is bought in this browser.</p>
         <div id="pm-receipt" hidden></div>
       </div>
     </details>

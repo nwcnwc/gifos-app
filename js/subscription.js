@@ -206,47 +206,191 @@
   function receiptSets() {
     try { return (MS().receiptSets && MS().receiptSets()) || []; } catch (e) { return []; }
   }
-  // A checkout started here and never paid: a plain note, never a receipt. When it had replaced a bought plan in this
-  // browser (earlier pages saved the checkout over it) and that plan is not back, say how to get it back.
-  function paintPending(host, c) {
-    var p = MS().pendingCheckout ? MS().pendingCheckout() : null;
-    if (!p) return false;
-    var box = el('div', 'pm-pending');
-    box.id = 'pm-pending';
-    box.appendChild(el('p', null, t('pendingNote')));
-    if (p.lost && !(c && c.sub)) box.appendChild(el('p', 'note', t('pendingLost')));
-    var row = el('div', 'row');
-    var go = el('button', 'go', t('pendingContinue'));
-    go.type = 'button';
-    go.id = 'pm-pending-continue';
-    go.addEventListener('click', function () {
-      if (busy) return;
-      busy = true;
-      say(t('opening'));
-      MS().continueCheckout(say).then(function (r) {
-        return r && r.licenseJson ? t('thanks') : r && r.status === 'APPROVAL_PENDING' ? SUB.TEXT.pending : t('notConfirmed');
-      }).then(say, function (e) { say(String((e && e.message) || e)); }).then(function () { busy = false; return paint(); });
+  // ---- THE PURCHASES TABLE (Receipts) ----------------------------------------------------------------------------
+  // One row per purchase this browser knows (meetSubs.purchases: the append-only ledger and the pass wallets), newest
+  // first: when, what, how much, the PayPal id, its status in plain words, and its receipt in the Purchases folder.
+  // Only what this browser holds. Hide sets a flag on the record (nothing is ever deleted); Show hidden brings it back.
+  var showHidden = false;
+  var shortId = function (id) { id = String(id || ''); return id.length > 14 ? id.slice(0, 8) + '…' + id.slice(-4) : id; };
+  var when = function (ms) { try { return i18n.fmt.date(new Date(ms), { dateStyle: 'medium' }) + ' ' + i18n.fmt.time(new Date(ms), { hour: 'numeric', minute: '2-digit' }); } catch (e) { return new Date(ms).toISOString().slice(0, 16).replace('T', ' '); } };
+  var dayMs = function (ms) { return day(Math.floor(ms / 1000)); };
+  // The Home Screen link to a folder (and a file in it): desktop.js handleFolderParam.
+  var folderLink = function (fileId) { return '/#folder=purchases' + (fileId ? '&select=' + encodeURIComponent(fileId) : ''); };
+  // What this browser's Home Screen holds: the Purchases folder (or receipts queued for it), and which receipt files.
+  function homeScreen() {
+    var st = GifOS.store;
+    var queued = []; try { queued = JSON.parse(localStorage.getItem('gifos_pay_pending') || '[]') || []; } catch (e) {}
+    if (!st || !st.allItems) return Promise.resolve({ folder: queued.length > 0, files: {} });
+    return Promise.resolve(st.allItems()).then(function (items) {
+      var files = {};
+      (items || []).forEach(function (it) { if (it && it.fileId && it.kind !== 'folder') files[it.fileId] = true; });
+      queued.forEach(function (id) { files[id] = true; });
+      return { folder: (items || []).some(function (it) { return it && it.id === 'sys_purchases'; }) || queued.length > 0, files: files };
+    }, function () { return { folder: queued.length > 0, files: {} }; });
+  }
+  function whatOf(r) {
+    if (r.kind === 'pass') return t('pass.name');
+    var name = r.tier && SUB.TIERS[r.tier] ? t(r.tier + '.name') : (r.tier || '?');
+    return name + ' · ' + (r.period === 'yearly' ? t('txYearly') : r.period === 'monthly12' ? t('receipt.period.monthly12') : t('txMonthly'));
+  }
+  function amountOf(r) {
+    if (r.price) return '$' + r.price + ' ' + (r.currency || 'USD');
+    // No charge recorded here (a web plan): the catalog price for its period, said as the list price.
+    var row = r.kind === 'pass' ? SUB.PASS_PRESETS.pass4h : (r.tier && SUB.TIERS[r.tier]) || null;
+    if (!row) return '';
+    var p = r.kind === 'pass' ? row.price : r.period === 'yearly' ? row.priceYear : row.price;
+    return p ? t('txListPrice', { price: p }) : '';
+  }
+  // -> { text, why, cls } for one row.
+  function statusOf(r, byId) {
+    var nowS = Date.now() / 1000;
+    if (r.kind === 'pass') {
+      if (r.start > nowS + 60) return { text: t('txPassLater', { when: clock(r.start) + ', ' + day(r.start) }), cls: 'on' };
+      if (r.live) return { text: r.end ? t('txPassOn', { until: clock(r.end) + ', ' + day(r.end) }) : t('heldPassNever'), cls: 'on' };
+      return { text: t('txPassEnded', { date: r.end ? day(r.end) : '' }), cls: 'off' };
+    }
+    if (r.pending) {
+      var started = r.at ? dayMs(r.at) : '';
+      if (r.continuedAs) return { text: t('txContinued'), why: t('txContinuedWhy', { date: started }), cls: 'off' };
+      if (r.status === 'EXPIRED' || r.status === 'CANCELLED') return { text: t('txNotFinished'), why: t('txPendingWhy', { date: started }), cls: 'off' };
+      return { text: t('txPending'), why: t('txPendingWhy', { date: started }), cls: 'pending' };
+    }
+    if (r.refused) return { text: t('txMoved'), why: t('txMovedWhy'), cls: 'off' };
+    if (r.replacedBy) {
+      var nb = r.replacedBy.tier && SUB.TIERS[r.replacedBy.tier] ? t(r.replacedBy.tier + '.name') : r.replacedBy.id;
+      return { text: t('txReplaced', { plan: nb }), cls: 'off' };
+    }
+    var until = r.until || r.exp;
+    if (r.status === 'CANCELLED') return until && until > nowS && r.live ? { text: t('txCancelledEnds', { date: day(until) }), cls: 'on' } : { text: t('txCancelled'), cls: 'off' };
+    if (r.status === 'SUSPENDED') return { text: t('txSuspended'), cls: 'off' };
+    if (r.live) {
+      var renews = r.status === 'ACTIVE' && r.paidThrough && r.paidThrough > nowS ? r.paidThrough : null;
+      return { text: renews ? t('txRenews', { date: day(renews) }) : t('txActiveUntil', { date: day(until) }), cls: 'on' };
+    }
+    // Ended: the date it ended, when this browser knows one in the past (a lapsed license's end is not that date).
+    var ended = [r.until, r.paidThrough, r.exp].filter(function (x) { return x && x <= nowS; }).sort(function (a, b) { return b - a; })[0];
+    if (r.paid) return { text: ended ? t('txExpiredOn', { date: day(ended) }) : t('txExpired'), cls: 'off' };
+    return { text: t('txUnconfirmed'), cls: 'off' };
+  }
+  // How the plan's key came to this browser (the latest one), said under its status.
+  function originOf(r) {
+    if (!r.via || !r.viaAt || r.keys < 1) return '';
+    var d = dayMs(r.viaAt);
+    return r.via === 'restore' ? t('txRestored', { date: d }) : r.via === 'move' ? t('txCopiedHere', { date: d })
+      : r.via === 'rekey' ? t('txRekeyed', { date: d }) : r.via === 'file' ? t('txFromFile', { date: d }) : '';
+  }
+  function copyBtn(text) {
+    var b = el('button', 'tx-copy', t('pmCopy'));
+    b.type = 'button';
+    b.setAttribute('aria-label', t('pmCopy') + ' ' + text);
+    b.addEventListener('click', function () {
+      var done = function () { say(t('txCopiedId') + ': ' + text); };
+      try { navigator.clipboard.writeText(text).then(done, function () {}); } catch (e) {}
     });
-    var no = el('button', null, t('pendingDismiss'));
-    no.type = 'button';
-    no.id = 'pm-pending-dismiss';
-    no.addEventListener('click', function () {
-      if (busy) return;
-      busy = true;
-      MS().dismissPending().then(function (r) { say(r && r.licenseJson ? t('thanks') : ''); }, function () {}).then(function () { busy = false; return paint(); });
+    return b;
+  }
+  function cell(tr, label, cls) { var td = el('td', cls || null); td.setAttribute('data-label', label); tr.appendChild(td); return td; }
+  function paintPurchases() {
+    var host = $('pm-tx');
+    if (!host || !MS().purchases) return Promise.resolve();
+    return Promise.all([MS().purchases().catch(function () { return []; }), homeScreen()]).then(function (got) {
+      var rows = got[0] || [], home = got[1];
+      host.textContent = '';
+      // The Purchases button: opens the folder, or says there is none on this Home Screen.
+      var pb = $('pm-purchases');
+      if (pb) {
+        pb.href = folderLink('');
+        pb.hidden = !home.folder;
+        show('pm-purchases-none', !home.folder);
+      }
+      var hiddenN = rows.filter(function (r) { return r.hidden; }).length;
+      var list = rows.filter(function (r) { return showHidden || !r.hidden; });
+      var lost = MS().pendingCheckout ? MS().pendingCheckout() : null;
+      if (lost && lost.lost && !rows.some(function (r) { return r.live; })) host.appendChild(el('p', 'note', t('pendingLost')));
+      if (!rows.length) {
+        var none = el('div', 'tx-none');
+        none.id = 'pm-tx-none';
+        none.appendChild(el('p', null, t('txNone')));
+        var help = el('p', 'quiet');
+        var a1 = el('a', null, t('pmRecvTitle')); a1.href = '#get';
+        a1.addEventListener('click', function (e) { e.preventDefault(); openSection('get'); });
+        var a2 = el('a', null, t('pmRestoreGo')); a2.href = '#restore';
+        a2.addEventListener('click', function (e) { e.preventDefault(); openSection('sec-restore'); });
+        help.appendChild(document.createTextNode(t('txNoneHelp') + ' '));
+        help.appendChild(a1); help.appendChild(document.createTextNode(' · ')); help.appendChild(a2);
+        none.appendChild(help);
+        host.appendChild(none);
+      } else {
+        var table = el('table', 'tx');
+        table.id = 'pm-tx-table';
+        var head = el('tr');
+        ['txDate', 'txWhat', 'txAmount', 'txId', 'txStatus', ''].forEach(function (k) { head.appendChild(el('th', null, k ? t(k) : '')); });
+        var thead = el('thead'); thead.appendChild(head); table.appendChild(thead);
+        var tb = el('tbody');
+        var byId = {}; rows.forEach(function (r) { byId[r.id] = r; });
+        list.forEach(function (r) {
+          var tr = el('tr', r.hidden ? 'hid' : null);
+          tr.dataset.id = r.id;
+          var st = statusOf(r, byId);
+          tr.dataset.status = st.cls;
+          cell(tr, t('txDate'), 'd').textContent = r.at ? when(r.at) : '';
+          cell(tr, t('txWhat'), 'w').textContent = whatOf(r);
+          cell(tr, t('txAmount'), 'a').textContent = amountOf(r);
+          var idc = cell(tr, r.rail === 'play' ? t('receipt.method.play') : r.rail === 'appstore' ? t('receipt.method.appstore') : t('txId'), 'i');
+          var pid = r.kind === 'pass' ? r.orderId : r.id;
+          if (pid) {
+            var code = el('code', null, shortId(pid)); code.title = pid;
+            idc.appendChild(code); idc.appendChild(copyBtn(pid));
+          }
+          var sc = cell(tr, t('txStatus'), 's');
+          var stl = el('span', 'st ' + st.cls, st.text);
+          sc.appendChild(stl);
+          if (r.inUse && r.live && rows.filter(function (x) { return x.live && x.kind === 'plan'; }).length > 1) sc.appendChild(el('span', 'badge', t('current')));
+          if (st.why) sc.appendChild(el('p', 'why', st.why));
+          var o = originOf(r); if (o) sc.appendChild(el('p', 'why', o));
+          var ac = cell(tr, '', 'x');
+          var acts = el('div', 'row');
+          if (r.receipt && home.files[r.receipt]) {
+            var ra = el('a', 'btn', t('txReceipt'));
+            ra.href = folderLink(r.receipt); ra.target = '_blank'; ra.rel = 'noopener';
+            acts.appendChild(ra);
+          }
+          if (st.cls === 'pending' && !r.hidden) {
+            var go = el('button', 'go', t('pendingContinue')); go.type = 'button';
+            go.addEventListener('click', function () {
+              if (busy) return; busy = true; say(t('opening'));
+              MS().continuePurchase(r.id, say).then(function (x) {
+                return x && x.licenseJson ? t('thanks') : x && x.status === 'APPROVAL_PENDING' ? SUB.TEXT.pending : t('notConfirmed');
+              }).then(say, function (e) { say(String((e && e.message) || e)); }).then(function () { busy = false; return paint(); });
+            });
+            acts.appendChild(go);
+          }
+          var hb = el('button', 'tx-hide', r.hidden ? t('txUnhide') : t('txHide')); hb.type = 'button';
+          hb.addEventListener('click', function () {
+            if (busy) return; busy = true;
+            MS().hidePurchase(r.id, !r.hidden).then(function (ok) { if (ok === false) say(t('thanks')); }, function () {}).then(function () { busy = false; return paint(); });
+          });
+          acts.appendChild(hb);
+          ac.appendChild(acts);
+          tb.appendChild(tr);
+        });
+        table.appendChild(tb);
+        if (list.length) host.appendChild(table);
+        else host.appendChild(el('p', 'quiet', t('txAllHidden')));
+      }
+      var tg = $('pm-tx-hidden');
+      if (tg) {
+        tg.hidden = !hiddenN;
+        tg.textContent = showHidden ? t('txHideHidden') : t('txShowHidden', { n: hiddenN });
+      }
     });
-    row.appendChild(go);
-    row.appendChild(no);
-    box.appendChild(row);
-    host.appendChild(box);
-    return true;
   }
   function paintReceipt(c) {
     var host = $('pm-receipt');
     if (!host) return;
     host.textContent = '';
     host.hidden = true;
-    try { if (paintPending(host, c)) host.hidden = false; } catch (e0) {}
+    try { paintPurchases(); } catch (e0) {}
     var plan = GifOS.receiptPlan;
     if (!plan || typeof plan.rows !== 'function' || typeof plan.mount !== 'function') return;
     var shown = 0;
@@ -254,7 +398,7 @@
       var list = [];
       try { list = plan.rows(set.files) || []; } catch (e2) { return; }
       if (!list.length) return;
-      if (!shown) host.appendChild(el('h3', null, t('pmReceipt')));
+      if (!shown) host.appendChild(el('h3', null, t('txDetails')));
       try { plan.mount(host, list, { files: set.files }); } catch (e3) { return; }
       // One slip per plan: the first keeps the slip's id, the later ones are numbered.
       try { var last = host.lastChild; if (shown && last && last.id === 'pm-slip') last.id = 'pm-slip-' + shown; } catch (e5) {}
@@ -418,7 +562,7 @@
       return true;
     }).then(function (go) {
       if (!go) return false;
-      return MS().installCreds(cred, pkg.wallet || null).then(function () { return true; });
+      return MS().installCreds(cred, pkg.wallet || null, 'move').then(function () { return true; });
     });
   }
   function beginReceive(token) {
@@ -488,7 +632,7 @@
     if (!P || !sub || !sub.id || busy) return;
     busy = true;
     say(t('pmWorking'));
-    P.claim(grant, sub.id).then(function (cred) { return MS().installCreds(cred); }).then(function () {
+    P.claim(grant, sub.id).then(function (cred) { return MS().installCreds(cred, null, 'restore'); }).then(function () {
       say(t('pmRecvDone'));
       return paint();
     }, function (e) { say(String((e && e.message) || e)); }).then(function () { busy = false; });
@@ -508,6 +652,7 @@
   function wire() {
     if (wired) return;
     wired = true;
+    on('pm-tx-hidden', function () { showHidden = !showHidden; return paintPurchases(); });
     on('pm-file-get', function () {
       if (!MS().downloadFile) return;
       MS().downloadFile().then(function () { say(t('pmSaved')); }, function (e) { say(String((e && e.message) || e)); });
@@ -560,7 +705,7 @@
       show('pm-signout-ask', false);
       if (!P || !MS().credential || !MS().installCreds) return;
       say(t('pmWorking'));
-      MS().credential().then(function (c) { return P.rekey(c); }).then(function (cred) { return MS().installCreds(cred); }).then(function () {
+      MS().credential().then(function (c) { return P.rekey(c); }).then(function (cred) { return MS().installCreds(cred, null, 'rekey'); }).then(function () {
         say(t('pmSignedOut'));
         return paint();
       }, function (e) { say(String((e && e.message) || e)); });
