@@ -1,6 +1,7 @@
 {
  "note": "Which of the site's script files make up the GifOS core (in the order a host loads them), and which the browser media port. Everything else the meeting page loads is the view's. The files stay where the site serves them. \"apps\": the app runtime a host with no screen loads after the core, to take part in apps through their data (no app frame). \"nodeMedia\": the Node media port a host with no browser runs when it has a codec: \"host\" in the host's own realm (ports/webaudio.js, the AudioContext over Opus), \"plane\" in the participant's (media/plane-node.js), \"video\" the picture port beside it (ports/vp8.js: the packer's surface over I420 and the VP8 codec). \"viewLib\": the shared view library a surface page loads before its own view part (js/core/view/kit.js: the view contract with the core, readings of its answers, the browser's own video controls). \"pages\": each surface page and its own view files, after the core, the media plane and \"viewLib\": meet.html and cast.html (the meeting's view part and the page's surface), run.html (the app runtime's audio-only view, with the \"apps\" runtime), embed.html (the broadcast player).",
  "core": [
+  "js/core/link.js",
   "js/gifos-store.js",
   "js/timings.js",
   "js/gifos-net.js",

@@ -63,12 +63,13 @@
       ready = true;
       var params = C.model.room.params();   // the core's room model (0.9.28 thin page: params is no longer a bare core export)
       why = params.get('embed') || 'name';
-      room = params.get('v') || params.get('room') || '';
-      av = params.get('av') || '';
+      var link = C.model.room.LINK();   // the room this embed names (js/core/link.js)
+      room = link.room || '';
+      av = link.v || '';
       $('emb-title').textContent = params.get('title') || room || 'GifOS Broadcast';
       if (why === 'ok') {
         var w = $('emb-watch');
-        w.href = location.origin + '/cast#room=' + encodeURIComponent(room) + (av ? '&v=' + av : '');
+        w.href = location.origin + '/cast#' + GifOS.link.hash({ room: room, v: av });
         var showWatch = controls.has('watch');
         w.hidden = !showWatch;
         var wr = $('emb-m-watch'); if (wr) wr.hidden = !showWatch;

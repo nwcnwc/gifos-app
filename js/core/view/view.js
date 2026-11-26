@@ -514,14 +514,12 @@
       // preview paints before the mesh joins, so the paperclip is hidden here
       // too; paintChatGate repeats it once the call is up.
       // A private meeting is known by its verifier, not by the hash: on
-      // gifos.app joinRoom moves the address to /meet#room=<room>&v=<verifier>
-      // (no av=), and applyAdminUi runs this paint, so an av=-only test took the
-      // Chat options out of an open Host popup a moment after it opened.
+      // gifos.app joinRoom moves the address to /meet#room=<room>&v=<verifier>,
+      // and applyAdminUi runs this paint; the link module reads every form.
       // hasAdminRoom also counts an open-floor meeting someone took charge of.
       // Before the admin state exists (the desk preview), touching it throws
       // and the address decides.
-      let hasHost = /(?:^|[#&?])av=/.test(location.hash) || /^\/(?:meet|cast)\/[^/]+\/[a-f0-9]{16,64}\/?$/i.test(location.pathname)
-        || (/^\/(?:meet|cast)\/?$/i.test(location.pathname) && /(?:^#|&)v=[a-f0-9]{16,64}(?:&|$)/i.test(location.hash));
+      let hasHost = !!GifOS.link.read(location.pathname, '', location.hash).v;
       try { if ((0, /*()*/__C.hasAdminRoom)()) hasHost = true; } catch (e) {}
       if (!hasHost) {
         const pinEarly = document.getElementById('cattach');
@@ -6274,7 +6272,7 @@
         const raw = named ? (named.value || '') : '';
         if (/[A-Za-z0-9]/.test(raw)) { const chosen = (0, /*()*/__C.slugRoom)(raw, ''); if (chosen) code = chosen; }
         (0, /*()*/__C.lobbyPwHandOver)('open', code, '', document.getElementById('lob-open-pass'));
-        enterMeeting('#v=' + code);
+        enterMeeting('#' + GifOS.link.hash({ room: code }));
       };
       document.getElementById('lob-open-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') doOpen(); });
       const openName = document.getElementById('lob-open-name');
@@ -6439,7 +6437,8 @@
           // lands off air, with the start time riding the link.
           if (__C.model.consts.BC_INTENT() && !atSecs) { try { sessionStorage.setItem('gifos_bc_golive_' + chosen + '.' + V, 'b' + (0, /*()*/__C.blurLevel)(picked)); } catch (e) {} }
           if (atSecs) { try { localStorage.setItem('gifos_bcat_' + chosen + '.' + V, atSecs); } catch (e) {} }
-          enterMeeting('#v=' + chosen + '&av=' + V + (__C.model.consts.BC_INTENT() ? '&bc=1' + (atSecs ? '&at=' + atSecs : '') : ''));
+          const bc = __C.model.consts.BC_INTENT();
+          enterMeeting('#' + GifOS.link.hash({ room: chosen, v: V, cast: bc, rest: { at: bc ? atSecs : '' } }));
         } catch (e) { err.textContent = 'Could not create the room. Try again.'; go.disabled = false; go.textContent = go.dataset.label || 'Start'; }
       };
       document.getElementById('lob-join-btn').onclick = () => {
@@ -6466,7 +6465,7 @@
         const p = (0, /*()*/__C.parseMeetInput)(document.getElementById('lob-join-in').value);
         if (!p) { err.textContent = (0, /*()*/__C.uiText)('badLink', 'Couldn’t read that — paste a meeting link or its id.'); return; }
         (0, /*()*/__C.lobbyPwHandOver)('join', p.room, p.av || '', document.getElementById('lob-join-pass'));
-        enterMeeting('#v=' + p.room + (p.av ? '&av=' + p.av : '') + (p.bc ? '&bc=1' : '') + (p.relay ? '&relay=' + encodeURIComponent(p.relay) : ''));
+        enterMeeting('#' + GifOS.link.hash({ room: p.room, v: p.av, cast: p.bc, rest: { relay: p.relay } }));
       };
       document.getElementById('lob-go').onclick = () => {
         if (__C.model.consts.BC_INTENT()) { doHost(); return; }
@@ -6508,8 +6507,8 @@
     }
     function showLobby() {
       document.title = (__C.model.consts.BC_INTENT() ? 'Broadcast' : 'Meeting') + ' — GifOS';
-      // The Broadcast app opens THIS page with #bc=1 and no room: same lobby,
-      // reworded. Creating one mints the same admin room with &bc=1 riding the
+      // The Broadcast app opens THIS page with cast=1 and no room: same lobby,
+      // reworded. Creating one mints the same admin room with cast=1 riding the
       // link. A blank room password leaves the link open. Schedule is later.
       // The host password is minted and kept on this device; More shows it.
       if (__C.model.consts.BC_INTENT()) {
@@ -10697,9 +10696,7 @@
         }
         function hosted() {
           try {
-            return /(?:^|[#&?])av=/.test(location.hash)
-              || /^\/(?:meet|cast)\/[^/]+\/[a-f0-9]{16,64}\/?$/i.test(location.pathname)
-              || (/^\/(?:meet|cast)\/?$/i.test(location.pathname) && /(?:^#|&)v=[a-f0-9]{16,64}(?:&|$)/i.test(location.hash));
+            return !!GifOS.link.read(location.pathname, '', location.hash).v;
           } catch (e) { return false; }
         }
         let last = null;
@@ -10792,7 +10789,7 @@
       const stamp = (ms) => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
       const esc = (s) => String(s).replace(/([\\;,])/g, '\\$1').replace(/\n/g, '\\n');
       const noun = 'broadcast';
-      const name = String(__C.model.room.params().get('v') || '').trim();
+      const name = String(__C.model.room.LINK().room || '').trim();
       const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//GifOS//Broadcast//EN', 'BEGIN:VEVENT',
         'UID:' + at + '-' + name.replace(/[^a-z0-9]/gi, '') + '@gifos.app', 'DTSTAMP:' + stamp(Date.now()),
         'DTSTART:' + stamp(at), 'DTEND:' + stamp(at + 90 * 60000),

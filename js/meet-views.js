@@ -23,7 +23,7 @@
   const BLOCK = ['broadcast', 'app-room', 'solo-app'];
 
   function comfyAllowed(body) {
-    // A normal #v= room never gets body.meet-session (only an mb=1 frame
+    // A normal #room= room never gets body.meet-session (only an mb=1 frame
     // does). The page decides "a room is open" before it calls this.
     if (!body || !body.classList) return false;
     for (let i = 0; i < BLOCK.length; i++) if (body.classList.contains(BLOCK[i])) return false;

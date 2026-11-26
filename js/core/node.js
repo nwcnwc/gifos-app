@@ -185,42 +185,17 @@ function hostModule(site, rel) {
   return mod.exports;
 }
 
-// A ROOM LINK, as the run.html hash it opens: null when the address names no
-// room, '' when it names one badly. Every link GifOS hands out keeps the room
-// in the FRAGMENT, which a browser never sends, so no server and no log ever
-// reads it: /meet#room=R[&v=V], /cast#room=R[&v=V] (the Broadcast skin),
-// /join#code=C (an app session) and /join#room=R&v=V&code=C (an owned app).
-// The path forms shared before (/meet/R[/V], /cast/R[/V], /join/C,
-// /join/R/V/C) open the same rooms forever. Everything else in the fragment
-// or the query rides along. Room case is kept: the room id is the capability
-// the key derives from. The same rule as route.html's roomHash (the site's
-// router), which a page guard holds equal to this one.
-function roomHash(pathname, search, hash) {
-  var m = /^\/(meet|cast|join)(?:\/([a-z0-9-]{1,64})(?:\/([a-f0-9]{16,64})(?:\/([a-z0-9]{1,64}))?)?)?\/?$/i.exec(pathname || '');
-  if (!m) return null;
-  var kind = m[1].toLowerCase(), room = m[2] || '', ver = m[3] || '', code = m[4] || '', rest = [], bad = false;
-  if (kind === 'join' && room && !ver) { code = room; room = ''; }
-  var h = String(hash || '').replace(/^#/, ''), q = String(search || '').replace(/^\?/, '');
-  var hs = h ? h.split('&') : [], parts = hs.concat(q ? q.split('&') : []);
-  for (var i = 0; i < parts.length; i++) {
-    var p = parts[i], k = p.split('=')[0], val = p.slice(k.length + 1);
-    if (!p) continue;
-    if (m[2] || i >= hs.length || (k !== 'room' && k !== 'v' && k !== 'code')) { rest.push(p); continue; }
-    if (k === 'room') { room = val; bad = bad || !/^[a-z0-9-]{1,64}$/i.test(val); }
-    else if (k === 'v') { ver = val; bad = bad || !/^[a-f0-9]{16,64}$/i.test(val); }
-    else { code = val; bad = bad || !/^[a-z0-9]{1,64}$/i.test(val); }
-  }
-  var tail = rest.length ? '&' + rest.join('&') : '';
-  ver = ver.toLowerCase();
-  if (bad) return '';
-  if (kind !== 'join') return room ? 'v=' + room + (ver ? '&av=' + ver : '') + (kind === 'cast' ? '&bc=1' : '') + tail : (ver ? '' : null);
-  if (room && ver && code) return 's=' + room + '.' + ver + '&k=' + code + tail;
-  if (code && !room && !ver) return 'j=' + code + tail;
-  return room || ver ? '' : null;
+// A meeting link (any form: /meet#room=R[&v=V], /meet/R[/V], /cast…, /join…, run.html#room=…) -> the meeting page's
+// address, as the site's router opens it. The ONE link module (js/core/link.js) reads it: the site's own
+// copy (a core file, signed with the rest), run in this realm. pageUrl(link, site): site defaults to this tree.
+const linkMods = new Map();
+function linkOf(site) {
+  if (!linkMods.has(site.id)) linkMods.set(site.id, hostModule(site, 'js/core/link.js'));
+  return linkMods.get(site.id);
 }
-function pageUrl(link) {
+function pageUrl(link, site) {
   const u = new URL(link);
-  const hash = roomHash(u.pathname, u.search, u.hash);
+  const hash = linkOf(site || siteDir(require('path').join(HERE, '..', '..'))).route(u.pathname, u.search, u.hash);
   if (hash === null) return u.href;
   if (hash === '') throw new Error('GifOS core: not a whole meeting link (an owned app link needs its secret): ' + link);
   return u.origin + '/run.html#' + hash;
@@ -394,7 +369,7 @@ function createMeeting(opts) {
     });
   }
 
-  const location = makeLocation(pageUrl(opts.url), {
+  const location = makeLocation(pageUrl(opts.url, site), {
     use: (what) => count('page:' + what),
     change: (oldHash, newHash) => { if (oldHash !== newHash) setT(() => g.dispatchEvent(new Event('hashchange'))); },
   });

@@ -393,26 +393,26 @@
   // sid + lsec that becomeHost returns as shareUrl. run.html never puts that
   // string in the address bar or the invite sheet. The link people share is
   // minted in inviteFromSolo and printed by bootAppRoom from <fileId>::room:
-  //   owned room     /join#room=<short>&v=<av>&code=<k>   (#s=<short>.<av>&k=<k>)
-  //   resilient room /join#code=<k>                       (#j=<k>)
+  //   owned room     /join#room=<short>&v=<av>&code=<k>
+  //   resilient room /join#code=<k>
   // That k is a room code. It is not this lsec. runApp calls
   // becomeHost({lifetime:'forever', resilient:true, noRelay:true}), so the
   // lane sid is 'j' + lsec even inside an owned room.
   // Shapes THIS function still emits, from those session arguments:
-  //   resilient session — /join#code=<lsec>            (#j=<lsec>)
+  //   resilient session — /join#code=<lsec>
   //   dotted sid        — /join#room=<room>&v=<verifier>&code=<lsec>
-  //                       (#s=<room>.<verifier>&k=<lsec>)
   // A dotted sid holds no secret (the verifier is a public hash of a host
   // secret, a different key than lsec, and never in any link).
   // gifos.app links keep the session in the fragment (never sent to a server)
-  // and route through route.html; run.html's hash form everywhere else (local
-  // dev, custom relays). page 'meet' or legacy 'video' formats /meet#room=<sid> here; run.html builds the real meeting link itself.
+  // and route through route.html; run.html with the same fragment everywhere
+  // else (local dev, custom relays). page 'meet' or legacy 'video' formats /meet#room=<sid> here; run.html builds the real meeting link itself.
   function buildJoinUrl(page, sid, lsec, relay) {
     const meet = page === 'video' || page === 'meet'; // 'video' kept as a legacy alias
     const onProd = /(^|\.)gifos\.app$/.test(location.hostname) && relay === root.GIFOS_RELAY;
+    const L = GifOS.link;   // the one link grammar (js/core/link.js)
     if (meet) {
-      return onProd ? location.origin + '/meet#room=' + sid
-        : location.origin + '/run.html#v=' + sid + '&relay=' + encodeURIComponent(relay);
+      return onProd ? location.origin + '/meet#' + L.hash({ room: sid })
+        : location.origin + '/run.html#' + L.hash({ room: sid, rest: { relay } });
     }
     // lastIndexOf so this can never diverge from the relay's split (which also
     // takes the verifier after the LAST dot), even if a room ever held a dot.
@@ -424,12 +424,9 @@
     // (Links minted as meet.html#… before the 2026-08-04 rename are DEAD —
     // the shim was deleted on the 2026-08-05 no-shims flag day.)
     const dot = String(sid || '').lastIndexOf('.');
-    if (dot > 0) {
-      if (onProd) return location.origin + '/join#room=' + sid.slice(0, dot) + '&v=' + sid.slice(dot + 1) + '&code=' + lsec;
-      return location.origin + '/run.html#s=' + sid + '&k=' + lsec + '&relay=' + encodeURIComponent(relay);
-    }
-    if (onProd) return location.origin + '/join#code=' + lsec;
-    return location.origin + '/run.html#j=' + lsec + '&relay=' + encodeURIComponent(relay);
+    const app = dot > 0 ? { room: sid.slice(0, dot), v: sid.slice(dot + 1), code: lsec } : { code: lsec };
+    if (onProd) return location.origin + '/join#' + L.hash(app);
+    return location.origin + '/run.html#' + L.hash({ room: app.room, v: app.v, code: app.code, rest: { relay } });
   }
   GifOS.links = { shortCode, buildJoinUrl };
 
@@ -1311,7 +1308,7 @@
    *      fragment, and is why the same apps' other hash code was fine.
    *   2. IT HANDS THE APP THE OS'S URL. document.baseURI is readable from
    *      inside the sandbox, and in an app room run.html's hash carries the
-   *      room's link secret (#j=<code>, or #s=<room>.<verifier>&k=<lsec>).
+   *      room's link secret (#code=<code>, or #room=<room>&v=<verifier>&code=<lsec>).
    *      An app has no business reading the key to the room it is running in.
    *
    * about:srcdoc is what the frame's own URL already is, so fragment links
@@ -4805,7 +4802,7 @@
         // other target is a real navigation, and a reload would race it and
         // re-boot the OLD url — which opens this system app again, forever.
         // That was the Broadcast reload loop on gifos.app (2026-10-08): the
-        // host serves run.html as /run, so 'run.html#bc=1' from /run#id=… is a
+        // host serves run.html as /run, so 'cast.html' from /run#id=… is a
         // DIFFERENT path, yet the old check reloaded on any '#'.
         let hop = false;
         try {

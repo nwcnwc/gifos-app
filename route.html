@@ -35,6 +35,8 @@
 <meta name="twitter:title" content="Join on GifOS">
 <meta name="twitter:description" content="Tap the link and you're in. One link · no account · no installs.">
 <meta name="twitter:image" content="https://gifos.app/og-join.png">
+<!-- Rooted: this page answers /meet/<room>/<verifier> and every other room path, never from a snapshot. -->
+<script src="/js/core/link.js"></script>
 <script>
 /*
  * route.html is the pretty-link router. Cloudflare Pages serves it with a 200
@@ -44,40 +46,6 @@
  * Anything unrecognized just goes home.
  */
 (function () {
-  // A ROOM LINK, as the run.html hash it opens: null when the address names no
-  // room, '' when it names one badly. Every link GifOS hands out keeps the room
-  // in the FRAGMENT, which a browser never sends, so no server and no log ever
-  // reads it: /meet#room=R[&v=V], /cast#room=R[&v=V] (the Broadcast skin),
-  // /join#code=C (an app session) and /join#room=R&v=V&code=C (an owned app).
-  // The path forms shared before (/meet/R[/V], /cast/R[/V], /join/C,
-  // /join/R/V/C) open the same rooms forever. Everything else in the fragment
-  // or the query rides along. Room case is kept: the room id is the capability
-  // the key derives from. The same function sits in route.html and in every
-  // page's channel loader, byte for byte.
-  function roomHash(pathname, search, hash) {
-    var m = /^\/(meet|cast|join)(?:\/([a-z0-9-]{1,64})(?:\/([a-f0-9]{16,64})(?:\/([a-z0-9]{1,64}))?)?)?\/?$/i.exec(pathname || '');
-    if (!m) return null;
-    var kind = m[1].toLowerCase(), room = m[2] || '', ver = m[3] || '', code = m[4] || '', rest = [], bad = false;
-    if (kind === 'join' && room && !ver) { code = room; room = ''; }
-    var h = String(hash || '').replace(/^#/, ''), q = String(search || '').replace(/^\?/, '');
-    var hs = h ? h.split('&') : [], parts = hs.concat(q ? q.split('&') : []);
-    for (var i = 0; i < parts.length; i++) {
-      var p = parts[i], k = p.split('=')[0], val = p.slice(k.length + 1);
-      if (!p) continue;
-      if (m[2] || i >= hs.length || (k !== 'room' && k !== 'v' && k !== 'code')) { rest.push(p); continue; }
-      if (k === 'room') { room = val; bad = bad || !/^[a-z0-9-]{1,64}$/i.test(val); }
-      else if (k === 'v') { ver = val; bad = bad || !/^[a-f0-9]{16,64}$/i.test(val); }
-      else { code = val; bad = bad || !/^[a-z0-9]{1,64}$/i.test(val); }
-    }
-    var tail = rest.length ? '&' + rest.join('&') : '';
-    ver = ver.toLowerCase();
-    if (bad) return '';
-    if (kind !== 'join') return room ? 'v=' + room + (ver ? '&av=' + ver : '') + (kind === 'cast' ? '&bc=1' : '') + tail : (ver ? '' : null);
-    if (room && ver && code) return 's=' + room + '.' + ver + '&k=' + code + tail;
-    if (code && !room && !ver) return 'j=' + code + tail;
-    return room || ver ? '' : null;
-  }
-
   // EVERY ROUTE BELOW REFRESHES THE RELEASE POINTER FIRST. The channel loader
   // a route lands on redirects a default-channel visitor on gifos_current, the
   // last-known release, without re-reading version.json. A device that only
@@ -134,9 +102,10 @@
     go('/store' + (s[1] ? '#app=' + encodeURIComponent(s[1].toLowerCase()) + q : (q ? '#' + q.slice(1) : '')));
     return;
   }
-  // A ROOM LINK, as the run.html hash it opens. roomHash() is copied byte for
-  // byte into every page's channel loader (pinTarget) so the two never differ.
-  var rh = roomHash(location.pathname, location.search, location.hash);
+  // A ROOM LINK, as the run.html fragment it opens: the ONE link module (js/core/link.js), the same
+  // reader every page's channel loader uses. The path forms (/meet/R[/V], /cast/R[/V], /join/C, /join/R/V/C) and the
+  // fragment forms (/meet#room=R[&v=V], /cast#…, /join#…) open the same rooms.
+  var rh = window.GifOSLink ? window.GifOSLink.route(location.pathname, location.search, location.hash) : null;
   if (rh) { go('/run.html#' + rh, true); return; }
   if (rh === '') { go('/'); return; } // a broken room link opens nothing
   // Bare /meet, no room = START A FRESH MEETING, identical to double-clicking
@@ -149,7 +118,7 @@
   // Bare /cast, no room = the Broadcast app's lobby (run.html's broadcast
   // skin — see the BROADCAST block in run.html).
   if (/^\/cast\/?$/i.test(location.pathname)) {
-    go('/run.html#bc=1', true);
+    go('/run.html' + (window.GifOSLink ? window.GifOSLink.withCast('') : ''), true);
     return;
   }
   go('/');
