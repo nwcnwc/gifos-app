@@ -2,6 +2,19 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.34",
+      "date": "2026-11-26",
+      "headline": "Clear Stage from the host, in hosted and open-floor meetings",
+      "critical": false,
+      "features": [
+        "Clear Stage now comes from the meeting's host: in a hosted meeting, and in an open-floor meeting held by a plan that captured it. Viewers tap to see the Stage clearly; host blur orders still win.",
+        "A host rebroadcasting with the camera off can pick No blur on the rebroadcast bar."
+      ],
+      "fixes": [
+        "Adding another plan or pass file keeps every pass you already have and uses the best one; nothing is turned away without saying why."
+      ]
+    },
+    {
       "version": "0.9.28.33",
       "date": "2026-11-26",
       "headline": "Backgrounds for your camera, a clear Stage in hosted meetings, and GifOS TV",
