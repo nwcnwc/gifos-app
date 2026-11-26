@@ -1200,7 +1200,7 @@
             var roomArg = room == null ? '' : String(room);
             if (!link && roomArg && /[:\/#]/.test(roomArg)) { link = roomArg; roomArg = ''; }
             return rpc({ type:'meet', op:'join', room: roomArg, link: link, password: password,
-              name: name == null ? '' : String(name), bot: opts.bot !== false, control: !!opts.control });
+              name: name == null ? '' : String(name), bot: opts.bot !== false, control: !!opts.control, guest: !!opts.guest });
           },
           leave: function(id){ return rpc({ type:'meet', op:'leave', meetingId: id }); },
           startRecording: function(id){ return rpc({ type:'meet', op:'startRecording', meetingId: id }); },
@@ -4447,7 +4447,7 @@
             reply({ ok: false, error: capDisabled(manifest, 'remote') ? CAP_OFF_MSG('remote') : 'This app did not declare the Remote ability.' });
           } else {
             const done = (p) => Promise.resolve(p).then((result) => reply({ ok: true, result })).catch((err) => reply({ ok: false, error: String(err && err.message || err) }));
-            if (op === 'join') done(host.join({ room: d.room, link: d.link, password: d.password, name: d.name, bot: d.bot !== false, control: !!d.control && !remoteNo }));
+            if (op === 'join') done(host.join({ room: d.room, link: d.link, password: d.password, name: d.name, bot: d.bot !== false, control: !!d.control && !remoteNo, guest: !!d.guest }));
             else if (op === 'leave') done(host.leave(d.meetingId));
             else if (op === 'startRecording') done(host.startRecording(d.meetingId));
             else if (op === 'stopRecording') done(host.stopRecording(d.meetingId));

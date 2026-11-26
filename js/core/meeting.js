@@ -11804,6 +11804,10 @@
     function deviceId() {
       let d = null; try { d = localStorage.getItem('gifos_vdev'); } catch (e) {}
       if (!d) { d = uid('d').slice(0, 16); try { localStorage.setItem('gifos_vdev', d); } catch (e) {} }
+      // A bot seat this browser runs (a session frame) is its own participant, not this device's person: one tag per
+      // bot name, so it neither replaces the person's seat nor is replaced by it, and a restart of that bot still
+      // replaces its own old seat.
+      if (params.get('mb') === '1' && params.get('bot') === '1') d += '|bot|' + String(window.__gifosMeetName || '');
       return d;
     }
     const roomKey = () => room + (av ? '.' + av : ''); // storage + session identity
@@ -11871,7 +11875,7 @@
       return Promise.race([read, new Promise((res) => setTimeout(() => res(false), 1500))]).catch(() => false);
     }
     function loadAdm() {
-      try { admKey = EMBED ? null : localStorage.getItem(admStoreKey()); } catch (e) { admKey = null; }   // an embed never signs in as host, even on the host's own computer
+      try { admKey = (EMBED || window.__gifosNoHost) ? null : localStorage.getItem(admStoreKey()); } catch (e) { admKey = null; }   // a bot seat joined as a guest never signs in as host, even on the host's own computer   // an embed never signs in as host, even on the host's own computer
     }
     yield 1416;
 
@@ -22515,6 +22519,7 @@
             becomeAssistant(true);
           }
           if (msg && msg.name) window.__gifosMeetName = String(msg.name).slice(0, 40);
+          if (msg && msg.guest) window.__gifosNoHost = true;   // the host's own bot: a guest seat, no host powers
           capClosed = false;   // a new meeting may open devices again
           return new Promise((resolve, reject) => {
             preflighted(() => {
@@ -24309,6 +24314,7 @@
         try { renderFromOcc(); } catch (e) {}
         return { ok: true, key, pid: String(pid).slice(0, 12) };
       },
+      hostOrderForTest: () => ({ order: hostRecOrder(), star: Object.keys(modTable['*'] || {}), hrec: (modTable['*'] || {}).hrec || null, adminRoom: hasAdminRoom(), amAdmin: !!amAdmin, admins: (admins || []).length, room: roomKey() }),
       debugDump: () => {
         const s = meshSeat(), c = meshCoord(), now = Date.now();
         const coordOfPeer = new Map(); if (s) for (const [k, v] of s.occ) coordOfPeer.set(v, k);

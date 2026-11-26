@@ -146,7 +146,7 @@
           iframe.contentWindow.postMessage({
             ns: NS, op: 'join', id: id,
             room: opts.room || '', link: opts.link || '', password: opts.password || '',
-            name: opts.name || '', bot: sess.bot, control: sess.control
+            name: opts.name || '', bot: sess.bot, control: sess.control, guest: !!opts.guest
           }, '*');
           return;
         }
