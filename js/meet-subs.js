@@ -462,11 +462,11 @@
   async function installCreds(c, w, more) {
     const took = { plan: null, passes: null };
     const told = (st) => { try { console.info('[meet-subs] credentials taken: ' + JSON.stringify(took)); } catch (e) {} return Object.assign({}, st || {}, { took }); };
-    const ws = [w].concat(Array.isArray(more) ? more : []).map((x) => (x ? SUB.walletOk(x) : null)).filter(Boolean);
+    const ws = [w].concat(Array.isArray(more) ? more.slice(0, 16) : []).map((x) => (x ? SUB.walletOk(x) : null)).filter(Boolean);
     if (w && !ws.length && !c) throw new Error('That file’s passes could not be read.');
     for (const ww of ws) {
       const got = await mergeWallet(ww), t = took.passes;
-      took.passes = t ? { passes: t.passes + got.passes, added: t.added + got.added, inUse: t.inUse || got.inUse, pass: got.pass } : got;
+      took.passes = t ? { passes: t.passes + got.passes, dropped: t.dropped + got.dropped, added: t.added + got.added, inUse: t.inUse || got.inUse, pass: got.pass } : got;
     }
     if (ws.length) {
       passChanged();
@@ -692,10 +692,7 @@
   }
   function keepPass(j, o) {
     return (async () => {
-      const cur = (await wallet()) || (await ensureWallet());
-      const list = cur.passes.filter((p) => { const x = passOf(p); return !x || x.order !== o.order; }).concat([{ passJson: j.passJson, sig: j.sig }]);
-      const next = Object.assign({}, cur, { passes: list }); delete next.pending;
-      writeJson(WALLET_KEY, next);
+      await storePass(j, o, (await wallet()) || (await ensureWallet()));
       notePassPurchase(o);
       keepReceipt();
       passWatch().catch(() => {});
@@ -880,9 +877,26 @@
     if (!w) return;
     const list = keptRaw();
     const had = list.find((x) => x.seed === w.seed);
-    if (had) had.passes = joinPasses(Array.isArray(had.passes) ? had.passes : [], w.passes);
-    else list.push(Object.assign({}, w, { replacedAt: Date.now(), why: why || 'kept' }));
+    if (had) { had.passes = joinPasses(Array.isArray(had.passes) ? had.passes : [], w.passes); delete had.pending; }
+    else { const k = Object.assign({}, w, { replacedAt: Date.now(), why: why || 'kept' }); delete k.pending; list.push(k); }   // a checkout belongs to the wallet in use only
     writeJson(WALLET_HISTORY_KEY, list);
+  }
+  // A pass the payment service signed goes into the wallet of ITS key (in use or kept), never into another key's.
+  // owner: the wallet whose key asked for it (it may have left use meanwhile, in this tab or another).
+  async function storePass(j, o, owner) {
+    const entry = { passJson: j.passJson, sig: j.sig };
+    const mine = async (w) => !!w && (await seedPub(w.seed).catch(() => null)) === o.buyerKey;
+    const cur = SUB.walletOk(readJson(WALLET_KEY));   // read now: it may have changed while the order was asked for
+    if (cur && await mine(cur)) {
+      const next = Object.assign({}, cur, { passes: cur.passes.filter((p) => { const x = passOf(p); return !x || x.order !== o.order; }).concat([entry]) }); delete next.pending;
+      writeJson(WALLET_KEY, next);
+      return;
+    }
+    let home = null;
+    for (const k of keptWallets()) if (await mine(k)) { home = k; break; }
+    if (!home && await mine(owner)) home = owner;
+    if (home || !cur) { if (home) keepWallet(Object.assign({}, home, { passes: [entry] }), 'bought'); else writeJson(WALLET_KEY, Object.assign({}, owner, { passes: [entry] })); return; }
+    writeJson(WALLET_KEY, Object.assign({}, cur, { passes: joinPasses(cur.passes, [entry]) }));   // no wallet of its key here: never dropped
   }
   const pubMemo = new Map();
   const seedPub = (seed) => { if (!pubMemo.has(seed)) pubMemo.set(seed, GifOS.ed.keysFromSeed(fromB64(seed)).then((k) => b64(k.pubRaw))); return pubMemo.get(seed); };
@@ -910,12 +924,12 @@
   const bestOf = (list) => list.reduce((a, b) => (passBetter(b, a) ? b : a), null);
   // Choose the wallet in use from every wallet held (prefer: the seed of a file just brought). Moves nothing out:
   // the wallet leaving use is kept. Returns {w, o}: the wallet in use and its best live pass (or null).
-  async function chooseWallet(prefer) {
+  async function chooseWallet(prefer, tries) {
     const cur = SUB.walletOk(readJson(WALLET_KEY));
     const kept = keptWallets().filter((k) => !cur || k.seed !== cur.seed);
     const n = nowS();
     if (!kept.length) return { w: cur, o: cur ? bestOf((await walletPasses(cur)).filter((o) => SUB.passLive(o, n))) : null };
-    const all = (cur ? [cur] : []).concat(kept);
+    const all = (cur ? [cur] : []).concat(kept).sort((a, b) => (a.seed < b.seed ? -1 : a.seed > b.seed ? 1 : 0));   // a fixed order: the pick never cycles
     const facts = [];
     for (const w of all) { const ps = await walletPasses(w); facts.push({ w, o: bestOf(ps.filter((o) => SUB.passLive(o, n))), ahead: ps.some((o) => o.end > n) }); }
     let pick = null;
@@ -928,24 +942,34 @@
     // A pass checkout under way belongs to the key it was started with: that wallet stays in use until it ends.
     if (cur && cur.pending && pick.w.seed !== cur.seed) pick = bySeed(cur.seed);
     if (!cur || pick.w.seed !== cur.seed) {
+      // Read again after the signature checks: a purchase, a checkout or another tab may have written since.
+      const again = SUB.walletOk(readJson(WALLET_KEY));
+      if (JSON.stringify(again) !== JSON.stringify(cur)) return (tries || 0) < 3 ? chooseWallet(prefer, (tries || 0) + 1) : { w: again, o: null };
       if (cur) keepWallet(cur, 'not in use');
-      const raw = keptRaw().find((x) => x.seed === pick.w.seed) || {};
-      writeJson(WALLET_KEY, SUB.walletOk(Object.assign({}, raw, pick.w)));
+      const next = SUB.walletOk(pick.w); delete next.pending;
+      writeJson(WALLET_KEY, next);
       try { console.info('[meet-subs] pass wallet in use: ' + String(pick.w.buyerKey || '').slice(0, 8) + (pick.o ? ' (' + pick.o.id + ')' : '')); } catch (e) {}
     }
     return { w: pick.w, o: pick.o };
   }
   // A file brought from another browser: with the same key its passes join these; with another key its wallet is kept
   // beside this one, and the wallet in use is chosen again. Returns what it took: {passes, added, inUse, pass}.
-  async function mergeWallet(w) {
+  async function mergeWallet(w0) {
+    // Only passes signed by the payment service for this file's own key are taken (junk never fills storage or
+    // pushes real passes out); a checkout under way is never taken from a file.
+    try { await payKey(); } catch (e) { throw new Error('The passes in that file cannot be checked right now (no connection to GifOS). Nothing was changed; try again.'); }
+    await walletPasses(w0);   // checks every signature once (passCheck)
+    const pub = await seedPub(w0.seed).catch(() => null);
+    const w = Object.assign({}, w0, { passes: w0.passes.filter((p) => { const o = passCheck.get(p.sig + '|' + p.passJson); return !!o && o.buyerKey === pub; }) });
+    delete w.pending;
     const cur = SUB.walletOk(readJson(WALLET_KEY));
     const known = new Set([].concat(cur ? cur.passes : [], ...keptWallets().map((k) => k.passes)).map((p) => p.passJson));
     const added = w.passes.filter((p) => !known.has(p.passJson)).length;
     if (!cur || cur.seed === w.seed) {
-      writeJson(WALLET_KEY, Object.assign({}, w, { passes: joinPasses(cur && cur.seed === w.seed ? cur.passes : [], w.passes), pending: (cur && cur.seed === w.seed && cur.pending) || w.pending }));
-    } else keepWallet(w, 'brought');
+      writeJson(WALLET_KEY, Object.assign({}, w, { passes: joinPasses(cur && cur.seed === w.seed ? cur.passes : [], w.passes), pending: (cur && cur.seed === w.seed && cur.pending) || undefined }));
+    } else if (w.passes.length) keepWallet(w, 'brought');   // a key with no good pass adds nothing to keep
     const got = await chooseWallet(cur && cur.seed !== w.seed ? w.seed : null);
-    return { passes: w.passes.length, added, inUse: !!got.w && got.w.seed === w.seed, pass: got.o ? got.o.id : null };
+    return { passes: w.passes.length, dropped: w0.passes.length - w.passes.length, added, inUse: !!got.w && got.w.seed === w.seed, pass: got.o ? got.o.id : null };
   }
   // Every well-signed pass of this browser's key, by start: [{o, raw}].
   async function passes() {
@@ -1003,10 +1027,7 @@
     if (!r.ok || !j || !j.passJson) return { refused: true, status: r.status, error: j && j.error };
     const o = await SUB.verifyPass({ passJson: j.passJson, sig: j.sig }, verifyPay).catch(() => null);
     if (!o || o.buyerKey !== k.pub) return { refused: true };
-    const cur = (await wallet()) || w;
-    const list = cur.passes.filter((p) => { const x = passOf(p); return !x || x.order !== o.order; }).concat([{ passJson: j.passJson, sig: j.sig }]);
-    const next = Object.assign({}, cur, { passes: list }); delete next.pending;
-    writeJson(WALLET_KEY, next);
+    await storePass(j, o, w);
     notePassPurchase(o);
     keepReceipt();
     passWatch().catch(() => {});
