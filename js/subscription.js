@@ -121,7 +121,7 @@
       var ypName = $('yp-name');
       if (ypName) { ypName.textContent = names.map(function (id) { return t(id + '.name'); }).join(' + '); ypName.hidden = !anyHeld; }
       var ypWhat = $('yp-what');
-      if (ypWhat) { ypWhat.textContent = anyHeld ? t(names[0] + '.desc') : ''; ypWhat.hidden = !anyHeld; }
+      if (ypWhat) { ypWhat.textContent = anyHeld ? t(names[0] + '.desc') + (names[0] === 'free' ? ' ' + t('free.desc2') : '') : ''; ypWhat.hidden = !anyHeld; }
       show('yp-kicker', anyHeld);
       show('held-get-line', !anyHeld);
       var nowS = Math.floor(Date.now() / 1000);
@@ -153,6 +153,7 @@
         if (r.kind === 'addon' && r.row.soon) h.appendChild(el('span', 'badge soon', t('soon')));
         what.appendChild(h);
         what.appendChild(el('p', 'quiet', t(r.id + '.desc')));
+        if (r.id === 'free') what.appendChild(el('p', 'quiet', t('free.desc2')));
         // The price: one line per period (a card stacks them; a row keeps them on one line).
         var price = el('p', 'price');
         if (r.row && r.row.periods && (r.kind === 'paypal' || r.kind === 'broadcast')) {
