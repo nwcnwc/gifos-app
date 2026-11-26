@@ -1611,6 +1611,14 @@
       if (!capable) return;
       btn.style.display = '';
       btn.onclick = () => { if (pipFloating()) exitPip(); else enterPip(true); };
+      // The top bar's Float is the same button's twin: it clicks this one, so there is one path
+      const top = document.getElementById('appfloat');
+      if (top) {
+        top.style.display = '';
+        top.onclick = () => { btn.click(); };
+        const paint = () => { top.setAttribute('aria-pressed', pipFloating() ? 'true' : 'false'); };
+        setInterval(paint, 700);
+      }
     })();
     yield 342;
     function backGuardSync() {
@@ -1709,12 +1717,12 @@
       awayFull(false);
       if (pipManual) return;
       const t = e.target;
-      if (t && t.closest && t.closest('#pipbtn, [data-pip]')) return;
+      if (t && t.closest && t.closest('#pipbtn, #appfloat, [data-pip]')) return;
       if (document.pictureInPictureElement
         || Array.from(document.querySelectorAll('video')).some((v) => v.webkitPresentationMode === 'picture-in-picture')) exitPip();
     }, true);
     yield 360;
-    const AUTO_FS_SKIP = '#appfull, #pipbtn, [data-pip], #cam, #mic, [id^="campick"], #sharebtn, a[href], input, textarea, select, [contenteditable="true"]';
+    const AUTO_FS_SKIP = '#appfull, #appfloat, #pipbtn, [data-pip], #cam, #mic, [id^="campick"], #sharebtn, a[href], input, textarea, select, [contenteditable="true"]';
     // Never under a float: the float means the person is on the way out, and
     // full screen would hide the system bars they leave by.
     function autoFsWanted() {
@@ -4488,7 +4496,7 @@
         e.stopPropagation();
         if (!menu.hidden) { closeMenu(); return; }
         menu.textContent = '';
-        for (const id of ['appinvite', 'apphelp', 'appfull']) {
+        for (const id of ['appinvite', 'apphelp', 'appfloat', 'appfull']) {
           const src = document.getElementById(id);
           if (!src || src.style.display === 'none' || src.hidden) continue;
           const b = document.createElement('button');
@@ -11249,7 +11257,7 @@
       const menu = document.createElement('div');
       menu.id = 'appmenu'; menu.setAttribute('role', 'menu'); menu.hidden = true;
       abar.appendChild(more); abar.appendChild(menu);
-      const keep = (el) => el.classList.contains('brand') || ['appgif', 'appname', 'appinvite', 'apphelp', 'appfull'].includes(el.id);
+      const keep = (el) => el.classList.contains('brand') || ['appgif', 'appname', 'appinvite', 'apphelp', 'appfloat', 'appfull'].includes(el.id);
       const placeMenu = () => {
         const r = more.getBoundingClientRect();
         menu.style.top = Math.round(r.bottom + 6) + 'px';
