@@ -325,7 +325,18 @@
     return !metas || metas.some((m) => m && m.isDefault === true);
   }
   function markSetUp() { try { localStorage.setItem(nsKey(SEEDED_KEY), '1'); } catch (e) {} }
-  async function seedIfEmpty() {
+  // ONE TAB SEEDS AT A TIME. Two Home tabs booting together on a new computer
+  // both read an empty database and both set it up: every default folder and
+  // app twice. Two tabs booting together after a deploy both ran the reseed
+  // on their own boot-time snapshot. The setup and the reseed run under one
+  // lock per database, and each re-reads the rows under it, so the second tab
+  // sees what the first one wrote. Without Web Locks it runs as before.
+  const underSeedLock = (fn) => (navigator.locks && navigator.locks.request)
+    ? navigator.locks.request('gifos-seed:' + (store.dbName || 'gifos'), fn) : fn();
+  function seedIfEmpty() {
+    return underSeedLock(async () => { await load(); await seedIfEmptyLocked(); });
+  }
+  async function seedIfEmptyLocked() {
     if (await desktopWasSetUp()) { markSetUp(); return; }
     const seed = await GifOS.samples.build();
     // Layout: Welcome top-left; Meeting (the killer app) alone in the
@@ -360,6 +371,88 @@
       await load();
     }
     markSetUp();
+  }
+
+  // ---- exact seeded duplicates: merged into one ---------------------------------
+  // A seeded default is ONE app per (appId, container). Two ways made a second:
+  //  • an older build ran on this desktop after a newer one renamed a default
+  //    (0.9.27.4 folded the Single Phone 'imposter-1p' twins into 'imposter'):
+  //    the old build missed its '-1p' ids and seeded them again, and the next
+  //    new boot turned those into a second 'imposter' beside the first;
+  //  • two tabs set up a new computer at once (now under underSeedLock).
+  // Run on every reseed. Only files the seed itself stamped (isDefault) are
+  // merged, and only within one container: stolen, renamed, imported or
+  // user-built copies are never touched, and a copy the user moved elsewhere is
+  // theirs. The copy holding saved data is kept; when two hold data, both stay.
+  async function appHoldsData(fileId) {
+    let st;
+    try { st = await store.getState(fileId); } catch (e) { return true; } // unreadable: never delete on doubt
+    if (st && st.collections) {
+      for (const c in st.collections) { const rows = st.collections[c] && st.collections[c].items; if (rows && Object.keys(rows).length) return true; }
+    } else if (st && Object.keys(st).length) return true;
+    if (store.assetBytes) { try { if (await store.assetBytes(fileId)) return true; } catch (e) { return true; } }
+    return false;
+  }
+  async function mergeSeededDuplicates(seedNames) {
+    const cellOrder = (p, q) => ((p.y || 0) - (q.y || 0)) || ((p.x || 0) - (q.x || 0));
+    const drop = async (it) => {
+      // A file shared by another icon stays; only this icon goes.
+      if (it.fileId && items.some((o) => o !== it && o.fileId === it.fileId)) await store.deleteItem(it.id);
+      else await purgeItem(it);
+      items.splice(items.indexOf(it), 1);
+    };
+    let merged = 0;
+    // 1. Seed FOLDERS doubled in one container (the two-tab setup): the stray's
+    //    contents move into the kept copy, then the empty stray goes. Only a
+    //    stray holding nothing but seeded apps and seed folders is merged.
+    const files0 = await store.allFileMeta();
+    const meta0 = {}; for (const f of files0) meta0[f.id] = f;
+    const seededOnly = (folder) => items.every((c) => c.parent !== folder.id
+      || (c.kind === 'folder' ? (seedNames.has(c.name) && seededOnly(c)) : !!(meta0[c.fileId] && meta0[c.fileId].isDefault === true)));
+    for (let round = 0; round < 6; round++) {
+      const groups = new Map();
+      for (const it of items) {
+        if (it.kind !== 'folder' || /^sys_/.test(it.id) || !seedNames.has(it.name)) continue;
+        const k = it.name + '|' + (it.parent || '');
+        if (!groups.has(k)) groups.set(k, []);
+        groups.get(k).push(it);
+      }
+      let moved = false;
+      for (const g of groups.values()) {
+        if (g.length < 2) continue;
+        const kids = (f) => items.filter((c) => c.parent === f.id).length;
+        g.sort((p, q) => (kids(q) - kids(p)) || cellOrder(p, q));
+        const keep = g[0];
+        for (const stray of g.slice(1)) {
+          if (!seededOnly(stray)) continue;
+          for (const c of items.filter((x) => x.parent === stray.id)) await saveItem(c, { into: keep.id });
+          await drop(stray);
+          merged++; moved = true;
+        }
+      }
+      if (!moved) break;   // a merge can double a SUBfolder in the kept copy: go round again
+    }
+    // 2. Seeded APPS doubled in one container.
+    const files = await store.allFileMeta();  // fresh: the retired twins just changed their appId
+    const meta = {}; for (const f of files) meta[f.id] = f;
+    const apps = new Map();
+    for (const it of items) {
+      const f = it.kind === 'file' && it.fileId ? meta[it.fileId] : null;
+      if (!f || !f.isApp || !f.appId || f.isDefault !== true) continue;
+      const k = f.appId + '|' + (it.parent || '');
+      if (!apps.has(k)) apps.set(k, []);
+      apps.get(k).push(it);
+    }
+    for (const g of apps.values()) {
+      if (g.length < 2) continue;
+      g.sort(cellOrder);
+      const held = [];
+      for (const it of g) if (await appHoldsData(it.fileId)) held.push(it);
+      const keep = held.length ? held : [g[0]];
+      for (const it of g) if (keep.indexOf(it) < 0) { await drop(it); merged++; }
+    }
+    if (merged) console.info('[gifos] merged ' + merged + ' duplicate default icon(s)');
+    return merged;
   }
 
   // ---- rebuild the built-in default apps from THIS build's code ----------------
@@ -445,6 +538,7 @@
         purged++;
       }
     }
+    purged += await mergeSeededDuplicates(seedNames);
 
     // Add defaults that are present in this build but missing from the desktop.
     // Find the EXISTING copy of a default folder by name AND PARENT. The old
@@ -670,7 +764,8 @@
     return n;
   }
 
-  async function reseedDefaultsIfNeeded() {
+  function reseedDefaultsIfNeeded() { return underSeedLock(reseedDefaultsLocked); }
+  async function reseedDefaultsLocked() {
     const stamp = (root.GIFOS_VERSION || 'edge') + ':' + (Number(root.GIFOS_BUILD) || 0);
     let flagged = false, stored = null;
     try {
@@ -681,6 +776,7 @@
     } catch (e) {}
     if (!flagged && !(stored && stored !== stamp)) return;
     try {
+      await load(); // another tab may have reseeded while this one waited for the lock
       const seed = await GifOS.samples.build({ retired: true });
       const { updated, added, purged } = await rebuildDefaultApps(seed);
       const moved = await placeBroadcastBelowMeeting();
