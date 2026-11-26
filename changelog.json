@@ -13,7 +13,8 @@
         "A hosted broadcast keeps its host and its clear picture when the connection to GifOS restarts.",
         "Embedded players and broadcast viewers say Connecting, Reconnecting or Couldn't connect instead of Not live or Off air while they are still finding out.",
         "The embedded player's info panel links to the room on gifos.app, Show names works on the Stage, and idle players fade every control except the version.",
-        "Embedded players move themselves onto a new GifOS release, and a stray extra tile no longer shows beside the Stadium box."
+        "Embedded players move themselves onto a new GifOS release, and a stray extra tile no longer shows beside the Stadium box.",
+        "A meeting tab that was replaced by the same seat in another tab says so instead of showing Reconnecting forever, and a paused video says why."
       ]
     },
     {
