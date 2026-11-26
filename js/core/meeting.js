@@ -11368,14 +11368,14 @@
     let capAcl = null, capProveSig = '';
     const capOn = () => !av && !!capKey && Date.now() < capExp;
     function capAclHear(c) {
-      capAcl = c && c.ck ? { ck: c.ck, acl: c.f ? GifOS.sub.aclFromSay({ l: 0, f: c.f, c: c.c }) : null } : null;
+      capAcl = c && c.ck ? { ck: c.ck, acl: c.f && GifOS.sub ? GifOS.sub.aclFromSay({ l: 0, f: c.f, c: c.c }) : null } : null;
       try { clearNoPwTick(); } catch (e) {}
     }
     // The captor's page proves the captor key on its own server socket when its right carries a Stage item the server has
     // not said (a sibling session of the same pass, or a socket back after a reload): a fresh capture order, once per ticket.
     async function capProve() {
       if (EMBED || av || !amAdmin || !capOn() || capBusy) return;
-      if (GifOS.sub.aclHas(capAcl && capAcl.ck === capKey ? capAcl.acl : null, 'clearStageInAdminRoom')) return;
+      if (!GifOS.sub || GifOS.sub.aclHas(capAcl && capAcl.ck === capKey ? capAcl.acl : null, 'clearStageInAdminRoom')) return;
       let o = null; try { o = await GifOS.meetSubs.captureOrder(subsMeetId(), myId); } catch (e) { o = null; }
       if (!o || !o.tk || o.tk.sig === capProveSig || !amAdmin || !capOn()) return;
       const t = await GifOS.meetSubs.captureTicket(o.tk, subsMeetId());
@@ -12544,7 +12544,7 @@
       // THE LICENSE: the relay's reading of this room's permissions (joined.acl, and the answer to a License ask).
       // It is also the one source of this room's Stage clear right (clearNoPwMode): the relay's word, never a peer's.
       if ((m.t === 'acl' && Number.isInteger(m.l) && !m.error) || (m.t === 'joined' && m.acl && Number.isInteger(m.acl.l))) {
-        roomAcl = GifOS.sub.aclFromSay(m.t === 'joined' ? m.acl : m);
+        roomAcl = GifOS.sub ? GifOS.sub.aclFromSay(m.t === 'joined' ? m.acl : m) : null;
         try { if (GifOS.licenseView && GifOS.licenseView.heard) GifOS.licenseView.heard(m.t === 'joined' ? m.acl : m); } catch (e) {}
         clearNoPwTick();
       }
@@ -25097,13 +25097,14 @@
     // No link dependence: whichever host grant the relay said and that holds the item (a hosted room's ACL push, or the
     // capture's flags for the key that holds the capture now); a flagless one never hides the other.
     function hostStageAcl() {
+      if (!GifOS.sub) return null;   // a page without the subscription library (Meeting Bot's run page) reads no host right: blurred
       const cap = capOn() && capAcl && capAcl.ck === capKey ? capAcl.acl : null;
       if (GifOS.sub.aclHas(roomAcl, 'clearStageInAdminRoom')) return roomAcl;
       if (GifOS.sub.aclHas(cap, 'clearStageInAdminRoom')) return cap;
       return null;
     }
     function clearNoPwMode() {
-      if (roomPw) return '';
+      if (roomPw || !GifOS.sub) return '';
       if (av && adminPresent()) {
         let t = null; try { t = subsRoomTier(); } catch (e) { t = null; }
         if (GifOS.sub.clearNoPwRight(t, Date.now() / 1000)) return 'all';
