@@ -1,6 +1,6 @@
 {
  "v": 1,
- "build": "0.9.28.31",
+ "build": "0.9.28.32",
  "signer": "gifos.app",
  "files": {
   "js/app-owner.js": "7c709e7f9e553d5c4c38ef8925dc7841fe2b68a2f95ebce0846593f91eb54535",
@@ -32,14 +32,14 @@
   "js/meet-pack.js": "f4342e4b596a07d2f3f36667824a084fb5891520d597246345df63dc9752699e",
   "js/meet-power.js": "f23923b8751fc84762516e07ac345ad88d88fe1c05f69b1408c5c4a6d3d4be29",
   "js/meet-progress.js": "3ac51127c13ae5e4511f5cb74d789fbf04e549a0aacaec7cf44a8e0aa6724a44",
-  "js/meet-status.js": "b823b0334870b263963b740126e65b0e27f30dc3136ac297231c6fbe62ad26fe",
+  "js/meet-status.js": "2e65db0f54d4b5f676e4f6aac1bb6cd04cbfa47159b9d378935e3ddddd8bdf95",
   "js/meet-tunnel.js": "66ca64d8cf59514df9ea63f4f94c6ead429d484855b8ab0ca3cb385f13a502f4",
   "js/meet-turn.js": "6166c632eba823446bcac4e7b0c00db684b0d305d0b2aa83605b096585d9e36c",
   "js/meet-viewmode.js": "851eae95762e026973bb707bcfe97f8aacbb5f76d0dc460dc8970ba4d52543e8",
   "js/meet-zones.js": "bf46645cf871192b1edd7c4c8fb6403fa37ee9b1f710b11c0922878d07780246",
   "js/mesh-identity.js": "e7c41650476bf262b0ba41d9970072b77eb748c16d1d9267c73fb4af8e5e1a79",
   "js/mesh-media.js": "88dd5cf07dd5422a577f0579f379a371686051450e5d72c2a92eff1d314a4e74",
-  "js/mesh-wire.js": "f0c5b32200bba5ce428ef130cbd9109b67ae9a33cdc82ce3a28ebf98be0d50b6",
+  "js/mesh-wire.js": "c5c8980d615cce7c6b46d66cff5e54060b2290e3181a773515909405568d6ffa",
   "js/mesh/books.js": "092db7b0f42029f95830cfc42f5f3180466832730e7a3510364785d3b97b8c6e",
   "js/mesh/burst.js": "70e72093587a0f383f199c799cd55eb952ecf3d18d88b401500db52a10dcec25",
   "js/mesh/c7proof.js": "defc7b5cc309af34d6b04a052704cdf9cf5080f1a99d68ffdd7318a6cd1591ac",
@@ -103,5 +103,5 @@
   "js/runtime.js": "16953388689e6b3af5fa5bd2a38303547334d28f869c2de32a0272f49859a41b",
   "js/timings.js": "cede9c58c26291b262b6a4c716c1e62389a0417cfbf8e9df7ad20a6739edcdfb"
  },
- "sig": "hfLz1+z1rz8vTpPDwTHWjr5ctQ9U5iiqvkt0+EXheZUFi02zZH19M6k4yuAx+HKk92cjozB8VgQWppP/a3QUDA=="
+ "sig": "ZWXPSB9c4TMIcRgEl4ZVhpJLOwYdoruSu0uUgWi60gQpUT/o+8PWyqIyoa3vuCtVOFipJ4kMcixJqv0m5pW7Bw=="
 }
