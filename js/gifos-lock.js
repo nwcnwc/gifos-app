@@ -347,6 +347,15 @@
       alt: 'Download without my data',
     },
   };
+  // The plain data choice (no lock involved): an app with saved data, or a
+  // folder holding some. Words come from i18n/<locale>/common.json.
+  const tx = (k, fb, p) => { try { const g = root.GifOS && root.GifOS.i18n; if (g) { const v = g.t(k, p); if (v && v !== k) return v; } } catch (e) {} return fb.replace(/\{(\w+)\}/g, (m, n) => (p && p[n] != null ? p[n] : m)); };
+  COPY.exportData = {
+    title: (n) => tx('common.dl.title', 'Download {name}', { name: n }),
+    lead: (n) => tx('common.dl.lead', '<b>{name}</b> has saved data. Download it with your saved data, or as a clean copy that starts fresh. The animation is included either way.', { name: n }),
+    ok: () => tx('common.dl.withData', 'Download with my data'),
+    alt: () => tx('common.dl.withoutData', 'Download without my data'),
+  };
   const CSS = '' +
     '.lock-modal{position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:1rem}' +
     '.lock-box{background:var(--surface,#14141f);border:1px solid var(--border,#2a2a3f);border-radius:.8rem;padding:1.4rem 1.5rem;max-width:420px;width:100%;color:var(--text,#e0e0f0);font:15px system-ui,sans-serif}' +
@@ -371,14 +380,15 @@
       kind,
       title: typeof c.title === 'function' ? c.title(name) : c.title,
       lead: c.lead(esc(name)),
-      ok: c.ok,
-      alt: c.alt || null,
+      ok: typeof c.ok === 'function' ? c.ok() : c.ok,
+      alt: (typeof c.alt === 'function' ? c.alt() : c.alt) || null,
     };
   }
-  function showSheet(kind, appName) {
+  async function showSheet(kind, appName) {
     const doc = root.document;
-    if (!doc) return Promise.resolve('cancel');
+    if (!doc) return 'cancel';
     injectCss();
+    if (kind === 'exportData') { try { const g = root.GifOS && root.GifOS.i18n; if (g && g.load) await g.load('common'); } catch (e) {} }
     const s = sheet(kind, appName);
     return new Promise((resolve) => {
       const bg = doc.createElement('div');
@@ -390,7 +400,7 @@
         '<div class="lock-btns">' +
         '<button class="ok" data-lock-act="ok">' + esc(s.ok) + '</button>' +
         altBtn +
-        '<button class="ghost" data-lock-act="cancel">Cancel</button>' +
+        '<button class="ghost" data-lock-act="cancel">' + esc(tx('common.dl.cancel', 'Cancel')) + '</button>' +
         '</div></div>';
       const done = (act) => { try { bg.remove(); } catch (e) {} resolve(act); };
       bg.addEventListener('click', (e) => {

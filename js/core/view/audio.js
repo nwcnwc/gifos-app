@@ -200,13 +200,14 @@
     var appGifUrl = null;
     function setAppGif(bytes, name) {
       if (!bytes || !bytes.length) return;
-      var img = $('appgif'), stripped = false;
+      var img = $('appgif'), stripped = false, full = bytes;
       try { if (GifOS.gif && GifOS.gif.stripForDisplay) { bytes = GifOS.gif.stripForDisplay(bytes); stripped = true; } } catch (e) {}
       if (appGifUrl) { try { URL.revokeObjectURL(appGifUrl); } catch (e) {} }
       appGifUrl = URL.createObjectURL(new Blob([bytes], { type: 'image/gif' }));
       img.src = appGifUrl; img.alt = name || 'App'; img.title = name || 'App';
       if (stripped) setAppFavicon(appGifUrl, 'image/gif');
       img.style.display = 'block';
+      if (GifOS.viewKit && GifOS.viewKit.armAppGif) GifOS.viewKit.armAppGif(img, full, function () { var b = $('appsave'); if (b && b.style.display !== 'none') b.click(); });
     }
     fn('setAppGif', setAppGif);
     fn('paintAppGifFromLane', function () {
@@ -301,10 +302,21 @@
     };
     function refreshStealBtn() { $('appsteal').style.display = (C.ROOM.kind === 'app' && C.appMode === 'client') ? '' : 'none'; }
     var savedUrl = '';
+    // Save with the room's shared data, or a clean copy: the same two-choice sheet as every download. Nothing
+    // shared yet = nothing to choose.
+    function askDataChoice() {
+      var st = null; try { st = C.appClientCtl.mirrorState && C.appClientCtl.mirrorState(); } catch (e) {}
+      var has = !!(st && st.collections && Object.keys(st.collections).length);
+      return (has && GifOS.lock && GifOS.lock.showSheet) ? GifOS.lock.showSheet('exportData', $('appname').textContent || 'App') : Promise.resolve('ok');
+    }
     $('appsave').onclick = function () {
       if (C.model.apps.soloCtl() && C.ROOM.solo) C.model.apps.soloCtl().save();
       else if (C.appHostCtl) C.appHostCtl.save();
-      else if (C.appClientCtl && C.appClientCtl.snapshot) C.appClientCtl.snapshot().then(function (bytes) {
+      else if (C.appClientCtl && C.appClientCtl.snapshot) askDataChoice().then(function (act) {
+        if (act === 'cancel') return null;
+        return C.appClientCtl.snapshot(act === 'alt' ? { clean: true } : undefined);
+      }).then(function (bytes) {
+        if (!bytes) return;
         // one snapshot link at a time: the previous one is let go when the next is made
         if (savedUrl) { try { URL.revokeObjectURL(savedUrl); } catch (e) {} }
         var a = document.createElement('a');
@@ -344,9 +356,9 @@
       };
       b.style.display = 'none';
       // each lands at b.nextSibling: reads left to right as + data · as I joined · app only
-      mk(T('stealApp', 'app only'), T('stealAppTip', 'A clean copy — the app alone, none of the room’s data'), 'none');
+      mk(T('stealApp', 'without data'), T('stealAppTip', 'A clean copy — the app alone, none of the room’s data'), 'none');
       mk(T('stealJoined', 'as I joined'), T('stealJoinedTip', 'The app and the room as it stood when you came in'), 'connect');
-      mk(T('stealData', '+ data'), T('stealDataTip', 'The app and everything in it right now'), 'current');
+      mk(T('stealData', 'with data'), T('stealDataTip', 'The app and everything in it right now'), 'current');
     };
     function openAppHelp() {
       var Hl = GifOS.help;

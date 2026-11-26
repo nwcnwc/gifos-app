@@ -10,5 +10,10 @@
   "common.ago.now": "ahora mismo",
   "common.ago.m": "hace {n} min",
   "common.ago.h": "hace {n} h",
-  "common.ago.d": "hace {n} d"
+  "common.ago.d": "hace {n} d",
+  "common.dl.title": "Descargar {name}",
+  "common.dl.lead": "<b>{name}</b> tiene datos guardados. Descárgalo con tus datos guardados o como una copia limpia que empieza de cero. La animación se incluye en ambos casos.",
+  "common.dl.withData": "Descargar con mis datos",
+  "common.dl.withoutData": "Descargar sin mis datos",
+  "common.dl.cancel": "Cancelar"
 }

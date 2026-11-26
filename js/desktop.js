@@ -2137,6 +2137,11 @@
     let bytes = file.bytes instanceof Uint8Array ? file.bytes : new Uint8Array(file.bytes);
     const locked = !!(opts && opts.locked);
     const key = opts && opts.key;
+    // A clean copy ("without my data"): the app as it came, no saved state.
+    if (opts && opts.clean) {
+      if (file.isApp && gif.stripState) { try { bytes = await gif.stripState(bytes); } catch (e) { /* keep raw bytes */ } }
+      return { bytes, file };
+    }
     // A locked app's private data stays sealed unless this call presented a
     // passkey (opts.key). Folding live state without that would leak.
     if (locked && !key) return { bytes, file };
@@ -2175,7 +2180,14 @@
   // with every child inside it (apps carrying their live state), recursively.
   async function downloadItem(it) {
     if (it.kind === 'folder') {
-      const bytes = await packFolderBundle(it);
+      // Ask once when anything inside carries saved data; the answer covers every child.
+      let clean = false;
+      if (await folderHasData(it)) {
+        const act = await GifOS.lock.showSheet('exportData', (it.name || 'Folder').replace(/\.gif$/i, ''));
+        if (act === 'cancel') return;
+        clean = act === 'alt';
+      }
+      const bytes = await packFolderBundle(it, clean);
       if (bytes) triggerDownload(bytes, (it.name || 'Folder') + '.gif', 'image/gif');
       return;
     }
@@ -2198,32 +2210,43 @@
       try {
         const ex = await exportBytes(it.fileId, { locked: true });
         if (!ex) return;
-        const archive = await gif.decode(ex.bytes);
-        if (archive && archive.files && gif.repack) {
-          const out = {};
-          for (const p in archive.files) {
-            if (p.startsWith('.state/') || p.startsWith('.lock/')) continue;
-            out[p] = archive.files[p];
-          }
-          const stripped = await gif.repack(ex.bytes, out);
-          triggerDownload(stripped, it.name || ex.file.name || 'download', ex.file.mime);
-        } else {
-          triggerDownload(ex.bytes, it.name || ex.file.name || 'download', ex.file.mime);
-        }
+        triggerDownload(await gif.stripState(ex.bytes), it.name || ex.file.name || 'download', ex.file.mime);
       } catch (e) {
         showModal(dt('desktop.download.failed'), escapeHtml(e && e.message || String(e)));
       }
       return;
     }
-    const ex = await exportBytes(it.fileId);
+    // A plain app with saved data: with my data (today's export) or a clean copy.
+    let clean = false;
+    if (await fileHasData(it.fileId)) {
+      const act = await GifOS.lock.showSheet('exportData', (it.name || 'App').replace(/\.gif$/i, ''));
+      if (act === 'cancel') return;
+      clean = act === 'alt';
+    }
+    const ex = await exportBytes(it.fileId, clean ? { clean: true } : undefined);
     if (ex) triggerDownload(ex.bytes, it.name || ex.file.name || 'download', ex.file.mime);
+  }
+  // Does this app hold saved data worth choosing about? (Nothing to choose = no sheet.)
+  async function fileHasData(fileId) {
+    try {
+      const file = await store.getFile(fileId);
+      if (!file || !file.isApp) return false;
+      const st = await store.getState(fileId);
+      return !!(st && st.collections && Object.keys(st.collections).length);
+    } catch (e) { return false; }
+  }
+  async function folderHasData(folderIt) {
+    for (const kid of items.filter((i) => i.parent === folderIt.id)) {
+      if (kid.kind === 'folder' ? await folderHasData(kid) : (kid.fileId && !kid.passkey && await fileHasData(kid.fileId))) return true;
+    }
+    return false;
   }
 
   // ---------- folder bundles (folders ARE GIFs) ----------
   // Pack: folder's own GIF artwork + folder.json (layout + per-child metadata)
   // + files/<n> (each child's shareable bytes; nested folders recurse into
   // bundles of their own). One GIF = the whole folder, hand it to anyone.
-  async function packFolderBundle(folderIt) {
+  async function packFolderBundle(folderIt, clean) {
     const payload = { 'manifest.json': JSON.stringify({ gifos: '1.0', type: 'folder', name: folderIt.name }) };
     const list = [];
     let n = 0;
@@ -2231,10 +2254,10 @@
       const path = 'files/' + (n++);
       const base = { name: kid.name, x: kid.x, y: kid.y, iconSize: kid.iconSize || 64, file: path };
       if (kid.kind === 'folder') {
-        payload[path] = await packFolderBundle(kid);
+        payload[path] = await packFolderBundle(kid, clean);
         list.push(Object.assign(base, { kind: 'folder' }));
       } else {
-        const ex = await exportBytes(kid.fileId, kid.passkey ? { locked: true } : undefined);
+        const ex = await exportBytes(kid.fileId, kid.passkey ? { locked: true } : clean ? { clean: true } : undefined);
         if (!ex) { n--; continue; }
         payload[path] = ex.bytes;
         list.push(Object.assign(base, {

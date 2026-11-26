@@ -1616,19 +1616,28 @@
     setTimeout(() => { try { a.remove(); } catch (e) {} URL.revokeObjectURL(url); }, 30000);
     return Promise.resolve({ state: 'downloaded', name: nm });
   }
-  function downloadSnapshot(originalBytes, files, manifest, db) {
-    return Promise.resolve(db.getFullState())
-      .then((state) => packSnapshot(originalBytes, files, manifest, state))
-      .then((bytes) => downloadBytes(bytes, (manifest.appId || 'app') + '-snapshot.gif'));
+  // Save / Download: an app holding saved data asks once, "with my data" (the
+  // snapshot) or "without" (a clean copy via the one strip, gif.stripState).
+  // No saved data = nothing to choose, so no sheet. A passkey-unlocked app
+  // keeps today's behaviour (its own lock sheet owns that choice on the
+  // Home Screen).
+  function downloadSnapshot(originalBytes, files, manifest, db, fileId) {
+    const nm = (manifest.appId || 'app');
+    return Promise.resolve(db.getFullState()).then((state) => {
+      const locked = !!(fileId && GifOS.lock && GifOS.lock.session && GifOS.lock.session.get(fileId));
+      const has = !!(state && state.collections && Object.keys(state.collections).length);
+      const ask = (!locked && has && GifOS.lock && GifOS.lock.showSheet)
+        ? GifOS.lock.showSheet('exportData', manifest.name || nm) : Promise.resolve('ok');
+      return ask.then((act) => {
+        if (act === 'cancel') return 'cancelled';
+        if (act === 'alt') return stripState(originalBytes, files).then((bytes) => downloadBytes(bytes, nm + '.gif'));
+        return packSnapshot(originalBytes, files, manifest, state).then((bytes) => downloadBytes(bytes, nm + '-snapshot.gif'));
+      });
+    });
   }
   // Strip any baked-in .state/ so a copy opens FRESH (app only, no data).
   function stripState(originalBytes, files) {
-    const clean = {}; let hadState = false;
-    for (const p in files) {
-      if (p.startsWith('.state/') || p.startsWith('.lock/')) hadState = true;
-      else clean[p] = files[p];
-    }
-    return (hadState && gif.repack) ? gif.repack(originalBytes, clean) : Promise.resolve(originalBytes);
+    return gif.repack ? gif.stripState(originalBytes, files) : Promise.resolve(originalBytes);
   }
   // Unified "steal". The app bytes were already transported/read ONCE (they live
   // in `originalBytes`); every variant here is a LOCAL repack — never a re-fetch.
@@ -4220,7 +4229,7 @@
       // after their click. Where the API is absent the gate is open.
       else if (d.type === 'save') {
         if (!gestured()) reply({ ok: false, error: 'Saving needs a tap or click first.' });
-        else downloadSnapshot(originalBytes, files, manifest, db).then((name) => reply({ ok: true, result: name })).catch((err) => reply({ ok: false, error: String(err.message || err) }));
+        else downloadSnapshot(originalBytes, files, manifest, db, mountFileId).then((name) => reply({ ok: true, result: name })).catch((err) => reply({ ok: false, error: String(err.message || err) }));
       }
       // gifos.file.save and the app's a[download] links: same sticky-gesture
       // gate as 'save'; saveFileOut picks the platform's way.
@@ -5233,7 +5242,7 @@
         announceConn({ mode: 'local' });
         setStatus(T('runtime.status.running'));
         return {
-          save: () => downloadSnapshot(appBytes, files, manifest, db),
+          save: () => downloadSnapshot(appBytes, files, manifest, db, fileId),
           steal: (opts) => stealApp(appBytes, files, manifest, db, stealCtx, opts),
           becomeHost, sessionInfo, endSession,
           // OS Help: markdown from help.md (or manifest.help) inside the GIF.
@@ -5554,8 +5563,8 @@
         // rooms) or anyone saves a copy. setFrozen(true) makes shared-
         // collection writes refuse honestly while the owner is away (an
         // optimistic apply the room can never adopt is a lie, not a write).
-        snapshot: () => (appBytes && filesRef && manifestRef)
-          ? packSnapshot(appBytes, filesRef, manifestRef, mirror)
+        snapshot: (opts) => (appBytes && filesRef && manifestRef)
+          ? (opts && opts.clean ? stripState(appBytes, filesRef) : packSnapshot(appBytes, filesRef, manifestRef, mirror))
           : Promise.reject(new Error('app not loaded yet')),
         // Steal from a client mount, filed into this desktop's Stolen Apps —
         // same folder, same ritual. opts.data chooses WHICH copy — the same

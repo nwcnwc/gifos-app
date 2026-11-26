@@ -10,5 +10,10 @@
   "common.ago.now": "gerade eben",
   "common.ago.m": "vor {n} Min.",
   "common.ago.h": "vor {n} Std.",
-  "common.ago.d": "vor {n} T."
+  "common.ago.d": "vor {n} T.",
+  "common.dl.title": "{name} herunterladen",
+  "common.dl.lead": "<b>{name}</b> hat gespeicherte Daten. Lade es mit deinen gespeicherten Daten herunter oder als saubere Kopie, die neu beginnt. Die Animation ist in beiden Fällen dabei.",
+  "common.dl.withData": "Mit meinen Daten herunterladen",
+  "common.dl.withoutData": "Ohne meine Daten herunterladen",
+  "common.dl.cancel": "Abbrechen"
 }
