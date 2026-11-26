@@ -505,7 +505,7 @@
         }
         const faces = [
           ['stagebtn', '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="7" r="2.4"/><path d="M8.2 13.2c.5-1.5 1.9-2.4 3.8-2.4s3.3.9 3.8 2.4"/><path d="M4 17.5h16"/></svg><span class="docklab dockword"></span>', 'Step on the stage', 'Stage'],
-          ['hand', '<span class="dockface" aria-hidden="true">\u270B</span><span class="docklab dockword"></span>', 'Raise hand', 'Hand'],
+          ['hand', '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 12.5V6a1.5 1.5 0 0 1 3 0v5"/><path d="M11 11V4.5a1.5 1.5 0 0 1 3 0V11"/><path d="M14 11V6a1.5 1.5 0 0 1 3 0v6"/><path d="M17 9.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7h-.8a6 6 0 0 1-4.6-2.2l-3.2-3.9a1.5 1.5 0 0 1 2.3-1.9L8 14.5"/></svg><span class="docklab dockword"></span>', 'Raise hand', 'Hand'],
         ];
         faces.forEach(([id, face, aria, word]) => {
           const el = byId(id);
@@ -10446,15 +10446,58 @@
         try { GifOS.viewKit.clearReportButton(__C, moreRow('room'), 'reportbtn', '', (cat, ref) => (0, /*()*/__C.reportClearHost)(cat, ref)); } catch (e) {}
         if (!st.mode) { if (bar) bar.remove(); return; }
         const T = (k, en) => (0, /*()*/__C.uiText)(k, en);
+        // Blur sits inside the picture it clears (the Stage, else the largest face tile), at its top right and below the
+        // top bar's measured bottom (--headh), so it never lands on a top-bar control.
+        const host = clearBlurHost();
+        if (!host) { if (bar) bar.remove(); return; }
         if (!bar) {
           bar = document.createElement('div');
           bar.id = 'clearnopw-bar';
           bar.innerHTML = '<button type="button" id="clearnopw-reblur"></button>';
-          document.body.appendChild(bar);
-          bar.querySelector('#clearnopw-reblur').onclick = () => (0, /*()*/__C.blurAgain)();
+          bar.querySelector('#clearnopw-reblur').onclick = (e) => { e.stopPropagation(); (0, /*()*/__C.blurAgain)(); };
+        }
+        if (bar.parentNode !== host) host.appendChild(bar);
+        if (!paintClearNoPw.onResize) {
+          paintClearNoPw.onResize = () => {
+            const b = document.getElementById('clearnopw-bar'), h = b && clearBlurHost();
+            if (!h) return;
+            if (b.parentNode !== h) h.appendChild(b);
+            placeClearBlur(b, h);
+          };
+          window.addEventListener('resize', paintClearNoPw.onResize);
         }
         const rb = bar.querySelector('#clearnopw-reblur');
-        rb.textContent = T('clearBlurAgain', 'Blur'); rb.style.display = st.tapped ? '' : 'none';
+        const w = T('clearBlurAgain', 'Blur');
+        if (rb.textContent !== w) rb.textContent = w;
+        rb.style.display = st.tapped ? '' : 'none';
+        placeClearBlur(bar, host);
+      }
+      // The picture a viewer's Blur belongs to: the biggest Stage picture on top at its own centre (a Stage picture can be
+      // laid out under another view), else the biggest face tile on the grid.
+      function clearBlurHost() {
+        const area = (el) => { if (!el.getClientRects().length) return 0; const r = el.getBoundingClientRect(); return r.width > 40 && r.height > 40 ? r.width * r.height : 0; };
+        // On top: some point of it is hit (a dialog or a note can cover its middle for a moment).
+        const onTop = (el) => {
+          const r = el.getBoundingClientRect();
+          for (const [fx, fy] of [[0.5, 0.5], [0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]]) {
+            const at = document.elementFromPoint(r.left + r.width * fx, r.top + r.height * fy);
+            if (at && el.contains(at)) return true;
+          }
+          return false;
+        };
+        const pick = (sel, top) => {
+          let best = null, most = 0;
+          for (const el of document.querySelectorAll(sel)) { const a = area(el); if (a > most && (!top || onTop(el))) { best = el; most = a; } }
+          return best;
+        };
+        const STAGE = '#stagefeed > .rowtile, [data-stageview], #grid > .tile.onstage';
+        return pick(STAGE, true) || pick('#grid > .tile', true) || pick('[data-stageview], #grid > .tile.onstage', false) || pick(STAGE, false) || pick('#grid > .tile', false);
+      }
+      function placeClearBlur(bar, host) {
+        const top = host.getBoundingClientRect().top;
+        const headh = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--headh')) || 0;
+        const v = Math.max(8, Math.ceil(headh - top) + 8) + 'px';
+        if (bar.style.top !== v) bar.style.top = v;
       }
     }
     function paintAvState() {
