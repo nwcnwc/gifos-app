@@ -3066,7 +3066,7 @@
         // stadium box, whole. Before (0.9.28.30, hotel): it had no box, so its source strip drew itself unplaced at full
         // width over the Stage and the row, a giant blurred letter behind the tiles. The people it holds: the cells it
         // names that are not on screen; a picture that names none counts them (the meeting's count past my faces on screen).
-        if (!shownFaces.length && !heldIx.length && meta.srcEl && meta.srcEl.style.display !== 'none' && nPic > 0) {
+        if (!shownFaces.length && !heldIx.length && meta.srcEl && meta.srcEl.style.display !== 'none' && (nPic > 0 || meta.srcEl.querySelector(':scope > .tpause'))) {
           let far = [];
           if (Array.isArray(meta.ids)) {
             const onScr = {};
@@ -3074,17 +3074,18 @@
             for (const [pid, p] of __C.model.roster.peers()) if (p && (p.held || (p.tile && !p.headless && p.tile.style.display !== 'none'))) onScr[pid] = true;
             for (const id of stagersFace) onScr[id] = true;
             far = meta.ids.filter((id) => id && !onScr[id]);
-          } else {
+          }
+          if (!far.length) {   // unnamed cells, or a far room whose pipe carries no picture (its paused note, TURN.11)
             let mc = null, fs = 0;
             try { const mn = __C.model.net.meshNode(); mc = mn && typeof mn.meetingCount === 'function' ? mn.meetingCount() : null; fs = (0, /*()*/__M.facesOnScreen)(); } catch (e) { mc = null; }
-            if (mc != null && mc > fs) far = new Array(Math.min(mc - fs, nPic)).fill('');
+            if (mc != null && mc > fs) far = new Array(Math.max(1, Math.min(mc - fs, nPic || mc - fs))).fill('');
           }
           for (const id of far) {
             let name = '…';
             try { if (id) name = (0, /*()*/__C.displayName)(id) || name; } catch (e) {}
             shownFaces.push({ id: id, name: name, initials: '', off: false, avatar: '', shade: (0, /*()*/__C.shadeKey)(id || 'stad'), held: false });
           }
-          if (far.length) pictureCells = nPic;
+          if (far.length && nPic > 0) pictureCells = nPic;
         }
         const cols = (skipCells.length && (meta.cols | 0) > 0) ? (meta.cols | 0) : cellOf ? (meta.cols || 0) : (meta.n === roster.length) ? (meta.cols || 0) : 0;
         if (meta.video && !meta.video._comfyRz) {
@@ -5091,7 +5092,9 @@
       // SUB.4 + TURN.11 for every seat: the Stadium that shows a far room over a pipe with no video says so, with the same
       // note and Subscribe as a tile (Nathan 11-14: the note goes on the strip, not only on the pipe holders' tiles)
       const sd = document.querySelector('#stadium [data-row="sd"]');
-      if (sd) { let far = 0; try { far = __C.model.net.meshNode() && typeof __C.model.net.meshNode().meetingFar === 'function' ? __C.model.net.meshNode().meetingFar() : 0; } catch (e) {} pauseNote(sd, !!__C.model.room.turnLinks() && GifOS.meetTurn.stripPaused(facts, far)); }
+      if (sd) { let far = 0; try { far = __C.model.net.meshNode() && typeof __C.model.net.meshNode().meetingFar === 'function' ? __C.model.net.meshNode().meetingFar() : 0; } catch (e) {} const sp = !!__C.model.room.turnLinks() && GifOS.meetTurn.stripPaused(facts, far); pauseNote(sd, sp);
+        // the gallery shows the Stadium through its box (#stadwhole), never the parked strip: the note goes there too
+        const whole = document.getElementById('stadwhole'); if (whole) pauseNote(whole, sp); }
       try { (0, /*()*/__C.ctTurnPaint)(facts); } catch (e) {}
     }
     yield 1066;
