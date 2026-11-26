@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!-- FRAME GUARD: refuse to run inside another site's page (see about.html). -->
+<script id="gifos-frame-guard">(function(){try{if(window.top===window.self)return;var ok=false;try{ok=window.top.location.origin===window.location.origin}catch(e){}if(ok)return;var h=document.documentElement;h.style.visibility='hidden';function show(){var b=document.body;if(!b)return;while(b.firstChild)b.removeChild(b.firstChild);var p=document.createElement('p');p.style.cssText='font:16px system-ui,sans-serif;padding:24px;color:#eee;background:#111;margin:0';p.appendChild(document.createTextNode('GifOS does not run inside another site\'s page. '));var a=document.createElement('a');a.href=location.href;a.target='_blank';a.rel='noopener';a.textContent='Open it in its own tab';a.style.color='#9db4ff';p.appendChild(a);b.appendChild(p);h.style.visibility='';}if(document.body)show();else document.addEventListener('DOMContentLoaded',show);}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Draft landing page: kept out of search until a winner is picked. -->
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#fafaff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a0a0f" media="(prefers-color-scheme: dark)">
+<title>Send your AI agent to the meeting | GifOS Meet</title>
+<meta name="description" content="GifOS Meet lets an AI agent join a video meeting like a person, with a bot badge. MCP server and agent SDK for Node and Python.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="GifOS">
+<meta property="og:title" content="Send your AI agent to the meeting | GifOS Meet">
+<meta property="og:description" content="GifOS Meet lets an AI agent join a video meeting like a person, with a bot badge. MCP server and agent SDK for Node and Python.">
+<meta property="og:url" content="https://gifos.app/try/agents">
+<meta property="og:image" content="https://gifos.app/meet-og.png">
+<link rel="icon" href="/favicon.ico">
+<link rel="stylesheet" href="/try/try.css">
+</head>
+<body>
+  <header class="topbar"><a href="/"><span class="brand">GifOS</span></a><a class="plans" href="/subscription">Plans</a></header>
+  <main class="wrap">
+    <section class="hero">
+      <p class="eyebrow">For AI agent builders</p>
+      <!-- A/B: the headline and the promise are the two lines a variant swaps. -->
+      <h1 data-ab="headline">Send your AI agent to the meeting.</h1>
+      <p class="promise" data-ab="promise">In GifOS Meet an AI agent joins like a person: it hears what is said, reads the chat and the live transcript, and answers in chat or out loud. A bot badge on its tile tells everyone what it is.</p>
+      <a class="cta" href="/try/go/agents">Start a meeting for your agent</a>
+      <p class="reassure">Free meetings. No accounts, ever. No API key to get from us.</p>
+      <p><a class="cta-alt" href="/meet/llms.txt">Agent guide</a> · <a class="cta-alt" href="https://github.com/nwcnwc/gifos-meet-mcp">MCP server on GitHub</a> · <a class="cta-alt" href="https://github.com/nwcnwc/gifos-agent">Agent SDK on GitHub</a></p>
+    </section>
+
+    <h2>Why it works for you</h2>
+    <ul class="benefits">
+      <li><b>Takes part, not just listens</b><span>Reads chat and the transcript, speaks with a generated voice, raises its hand, steps onto the Stage, and can show its own camera.</span></li>
+      <li><b>Honest by design</b><span>It wears a bot badge, its name says whose agent it is ("Ada (Sam's assistant)"), it joins muted with the camera off, and it never buys anything.</span></li>
+      <li><b>Three ways in</b><span>An MCP server for your MCP client, an agent SDK (<code>npm install @gifos-app/agent</code> or <code>pip install gifos-agent</code>), or any browser agent with <code>?bot=1</code> on the link.</span></li>
+    </ul>
+
+    <h2>How it works</h2>
+    <ol class="steps">
+      <li><b>Start a meeting</b> at gifos.app/meet and copy its link.</li>
+      <li><b>Hand your agent the link.</b> A shell agent can keep one process in the meeting and talk to it through files:<pre>npx gifos-agent-bridge &lt;link&gt; \
+  --name "Ada (Sam's assistant)" --dir ./meeting</pre></li>
+      <li><b>Talk to it.</b> Everything said and typed lands in <code>events.jsonl</code>; it answers by appending to <code>commands.jsonl</code> (chat, say, hand, stage, look, leave).</li>
+    </ol>
+
+    <aside class="plans-box"><b>Majority-rules meetings (open meetings) are always free, at any size.</b> Hosted meetings are free for up to 5 people; Room 20 ($2 a month) hosts up to 20; Unlimited ($5 a month) hosts any number. Paid plans also get video through corporate and school firewalls. Your agent never needs a plan of its own to join. <a href="/subscription">See every plan</a>.</aside>
+
+    <div class="again"><a class="cta" href="/try/go/agents">Start a meeting for your agent</a></div>
+    <footer class="foot">
+      <a href="/">GifOS</a> · <a href="/meet">Meet</a> · <a href="/subscription">Plans</a> ·
+      <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="mailto:support@gifos.app">support@gifos.app</a>
+    </footer>
+  </main>
+</body>
+</html>

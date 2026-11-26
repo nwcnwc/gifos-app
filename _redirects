@@ -7,3 +7,18 @@
 /join /route 200
 # Bare /store is the store page itself (never rewrite it: the host 308s /store.html there): route.html hands /store/<slug> to /store#app=<slug>.
 /store/* /route 200
+# LANDING CTAS BEGIN
+# Landing pages (/try/<page>): each big button goes through /try/go/<page>, so the
+# site's per-address request counts show taps per page, with no cookies or scripts.
+# A second wording of a page gets its own /try/<page>-b and /try/go/<page>-b.
+/try/go/agents /meet 302
+/try/go/broadcast /cast 302
+/try/go/church /meet 302
+/try/go/firewalls /meet 302
+/try/go/private /meet 302
+/try/go/community /meet 302
+/try/go/classroom /meet 302
+/try/go/family /meet 302
+/try/go/game-night /meet 302
+/try/go/app-makers /make-apps 302
+# LANDING CTAS END
