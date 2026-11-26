@@ -682,8 +682,11 @@
       for (let c = 0; c < n; c++) {
         const moved = st.ticks === 0 || differs(fp, st.fpPrev, c);
         if (moved) { st.stable[c] = 0; st.judged[c] = 0; if (st.mk[c]) { if (st.mk[c] === 2 && !st.shown[c]) unmark.push(c); st.mk[c] = 0; } } else if (st.stable[c] < 65535) st.stable[c]++;
-        if (st.shown[c] && (differs(fp, st.fpSnap, c) || stale(u32, c))) { st.shown[c] = 0; st.small[c] = 0; hidden.push(c); if (st.strikes[c] < P.maxStrikes) st.strikes[c]++;
-          if (!moved) { st.stable[c] = 0; st.judged[c] = 0; } }   // a change the fingerprint did not see: the cell holds still again, then is judged again
+        if (st.shown[c] && (differs(fp, st.fpSnap, c) || stale(u32, c))) { st.shown[c] = 0; st.small[c] = 0; hidden.push(c);
+          // A change the fingerprint did not see (a letter-sized edit, or a video codec sharpening a still picture): the
+          // cell did not move, so it earns no strike and no wait; it is judged again on this very frame and shown from
+          // it if it passes. What is shown was still vetted on the pixels that are painted.
+          if (moved) { if (st.strikes[c] < P.maxStrikes) st.strikes[c]++; } else { st.judged[c] = 0; cand[c] = 1; dirty = true; } }
         if (!st.shown[c] && !st.judged[c] && st.stable[c] >= P.needStable + st.strikes[c]) { cand[c] = 1; dirty = true; }
       }
       const newly = [];
