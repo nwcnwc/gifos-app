@@ -7883,6 +7883,31 @@
       const pb = document.getElementById('rb-pause');
       const w = (r.vid.paused && !r.starting) ? 'Resume' : 'Pause';
       if (pb && pb.textContent !== w) pb.textContent = w;
+      // THE REBROADCASTER'S OWN NO BLUR PICK. In a room with no password whose clear right lets viewers tap to unblur, a
+      // rebroadcast leaves clear only after its host picks No blur once the right is on (blurHold 'repick'), the same
+      // explicit pick the camera chooser makes. A host rebroadcasting with the camera off has no chooser to reach, so the
+      // pick sits here, beside Pause and Stop: shown only while such a right is on, offered again when the right moves.
+      const bar = document.getElementById('rb-now');
+      let bb = document.getElementById('rb-blur');
+      let hold = '', mode = '';
+      try { mode = (0, /*()*/__C.clearNoPwState)().mode; hold = mode ? (0, /*()*/__C.blurHold)('me', 'stage') : ''; } catch (e) { mode = ''; }
+      if (!mode || !bar) { if (bb) bb.remove(); return; }
+      if (!bb) {
+        bb = document.createElement('button');
+        bb.type = 'button';
+        bb.id = 'rb-blur';
+        bar.insertBefore(bb, pb);
+        bb.onclick = () => {
+          const clear = bb.getAttribute('aria-pressed') === 'true';
+          try { (0, /*()*/__C.setPersonalBlur)(clear ? 2 : 0, true); } catch (e) {}
+          paintRbNow();
+        };
+      }
+      const clear = hold !== 'repick';
+      const bw = clear ? 'Blur' : 'No blur';
+      if (bb.textContent !== bw) bb.textContent = bw;
+      bb.setAttribute('aria-pressed', String(clear));
+      bb.title = clear ? 'Viewers may tap to unblur this video. Blur it for everyone.' : 'Let viewers tap to unblur this video.';
     }
     function paintRb() {
       document.body.classList.toggle('rb-on', !!__C.model.room.rbNow());

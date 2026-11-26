@@ -20644,7 +20644,7 @@
       const hold = blurHold('me');
       const why = noBlurWhy();
       if (asked && (0, /*()*/__V.openBlurWhy)(hold)) { if (why) setStatus(why); return; }
-      if (myStatus.camOff && hold !== 'nopw' && hold !== 'guests' && hold !== 'forall') {
+      if (myStatus.camOff && !(rbNow && rbNow.v) && hold !== 'nopw' && hold !== 'guests' && hold !== 'forall') {   // a rebroadcast is the picture: no camera step
         setStatus(uiText('stNoBlurPickedTurnYour', 'No blur picked — turn your camera on to be ready for clear video.'));
       } else if (why) {
         // The dialog already says this and stays until they dismiss it.
