@@ -41,6 +41,9 @@
   const GifOS = (root.GifOS = root.GifOS || {});
   const TM = GifOS.timings || require('./timings.js');   // every wait and timeout: js/timings.js, loaded before this file (required where there is no page)
   const SUB = GifOS.sub;
+  // A host with no page (the core in Node: js/core/node.js sets GifOS.host.page false before this file runs) has the
+  // subscription, its tickets and captures, and none of the cards, dialogs or Settings group: every page part stays off.
+  const NOPAGE = !!(GifOS.host && GifOS.host.page === false);
   const STATE_KEY = 'gifos-sub-state';     // the last license and what PayPal said
   const CRED_KEY = 'gifos-sub-cred';       // this browser's copy of the subscription file's contents
   const WALLET_KEY = 'gifos-pass-wallet';  // this browser's four-hour passes and their key (passes.json in the subscription file)
@@ -64,7 +67,7 @@
   // opened with as well as the current one.
   const BC_RE = /(?:^|[#&?])bc(?:=[^&]*)?(?:&|$)/;
   function appNow() {
-    try { if (root.document && root.document.body && root.document.body.classList.contains('broadcast')) return 'broadcast'; } catch (e) {}
+    try { if (!NOPAGE && root.document && root.document.body && root.document.body.classList.contains('broadcast')) return 'broadcast'; } catch (e) {}
     try {
       const cur = root.location;
       if (BC_RE.test(String(cur.hash || '') + '&' + String(cur.search || ''))) return 'broadcast';
@@ -1071,7 +1074,7 @@
       // ASK BEFORE MOVING (Nathan 2026-11-22): while a place is free it is simply taken; when every place of every
       // right is full, the person chooses which meeting gives up its place, or keeps this one on the free defaults.
       // A page with no screen (and no chooser) is never asked: its newest meeting wins, as before.
-      const choose = hooks.choose || (root.document && root.document.body ? askMove : null);
+      const choose = hooks.choose || (!NOPAGE && root.document && root.document.body ? askMove : null);
       const lp = await livePass().catch(() => null);
       let j = await post('/gifos/sub/join', await signed('join:' + m.tag, { meeting: m.tag, ifFree: !!lp || !!choose }, m.subId));
       if (meet !== m) return null;
@@ -1084,7 +1087,7 @@
         const opts = moveOptions(j, pmeet && pmeet.room === room ? pmeet.full : null);
         // OVERFLOW 'keep' (an organization's plan): nothing to ask and nothing moves; this meeting runs on the free
         // defaults, with a plain note. The payment service refuses to drop another meeting for such a right anyway.
-        if (!opts.entries.length) { m.moved = 'kept'; if (root.document && root.document.body) { showOverflowNote(opts.keptPlaces); } return null; }
+        if (!opts.entries.length) { m.moved = 'kept'; if (!NOPAGE && root.document && root.document.body) { showOverflowNote(opts.keptPlaces); } return null; }
         if (choose) {
           const pick = await choose(opts).catch(() => null);
           if (meet !== m) return null;
@@ -1335,7 +1338,7 @@
     return '';
   }
   async function paintNow() {
-    if (typeof document === 'undefined') return;
+    if (NOPAGE || typeof document === 'undefined') return;
     const status = document.getElementById('status');
     if (!status) return;
     const c = await credentialsNow();
@@ -1684,7 +1687,7 @@
     return n ? fill(tx('subFullTitleN', 'This meeting is full ({n} people).'), { n }) : tx('subFullTitle', 'This meeting is full.');
   }
   function showFull(o) {
-    if (typeof document === 'undefined') return false;
+    if (NOPAGE || typeof document === 'undefined') return false;
     o = o && typeof o === 'object' ? o : {};
     const m = document.getElementById('left-modal');
     if (!m) return false;
@@ -1715,7 +1718,7 @@
   }
   // The wait line of the full screen. The page calls this as its knocks are refused again; the line stays the wait.
   function fullWaiting(o) {
-    if (typeof document === 'undefined') return false;
+    if (NOPAGE || typeof document === 'undefined') return false;
     void o;
     const w = document.getElementById('sub-full-wait');
     if (!w) return false;
@@ -1726,7 +1729,7 @@
   // The full screen goes (the page knocks again): the offer and its watch with it.
   function hideFull() {
     if (fullWatch) { clearInterval(fullWatch.t); fullWatch = null; }
-    if (typeof document === 'undefined') return;
+    if (NOPAGE || typeof document === 'undefined') return;
     const card = document.getElementById('sub-full'); if (card) card.remove();
     const m = document.getElementById('left-modal');
     if (m && m.dataset.full) { delete m.dataset.full; m.style.display = 'none'; }
@@ -1737,7 +1740,7 @@
 
   // An organization's plan (overflow 'keep') with every meeting in use: say so plainly; nothing is asked or moved.
   function showOverflowNote(n) {
-    if (typeof document === 'undefined' || !document.body) return false;
+    if (NOPAGE || typeof document === 'undefined' || !document.body) return false;
     const old = document.getElementById('sub-overflow'); if (old) old.remove();
     const box = el('div', { id: 'sub-overflow', role: 'status', 'aria-live': 'polite', style: CARD_STYLE });
     box.appendChild(el('span', { id: 'sub-overflow-msg', style: 'flex:1 1 12rem' }, n > 0 ? fill(tx('subOverflowKeep', 'All {n} of your organization\u2019s meetings are in use; this one runs on the free limits.'), { n }) : tx('subOverflowKeep0', 'Every meeting your organization\u2019s plan covers is in use; this one runs on the free limits.')));
@@ -1754,7 +1757,7 @@
   // from, or keep this one free. Both offer more meetings at once. -> {right, meeting} | {keep: true}.
   function askMove(opts) {
     return new Promise((resolve) => {
-      if (typeof document === 'undefined' || !document.body || !opts || !opts.entries || !opts.entries.length) return resolve(null);
+      if (NOPAGE || typeof document === 'undefined' || !document.body || !opts || !opts.entries || !opts.entries.length) return resolve(null);
       const old = document.getElementById('sub-move'); if (old) old.remove();
       const box = el('div', { id: 'sub-move', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'sub-move-title', style: CARD_STYLE });
       const done = (v) => { box.remove(); resolve(v); };
@@ -1789,7 +1792,7 @@
   // Not for 'inactive': a lapsed plan is in no meeting, and the Settings line says so.
   function showAway() {
     try {
-      if (typeof document === 'undefined' || !document.body || !document.getElementById || !document.createElement) return false;
+      if (NOPAGE || typeof document === 'undefined' || !document.body || !document.getElementById || !document.createElement) return false;
       if (document.getElementById('sub-away')) return true;
       const box = el('div', { id: 'sub-away', role: 'status', 'aria-live': 'polite', style: CARD_STYLE });
       box.appendChild(el('span', { id: 'sub-away-msg', style: 'flex:1 1 12rem' }, tx('subAway', 'Your plan is in use in another meeting.')));
@@ -1819,7 +1822,7 @@
   // another device"; the page cannot know that), and offer the two ways a plan bought elsewhere gets here.
   function hostElsewhere(bar) {
     credential().then((c) => {
-      if (c || typeof document === 'undefined' || !document.getElementById) return;
+      if (c || NOPAGE || typeof document === 'undefined' || !document.getElementById) return;
       const live = document.getElementById('sub-host-up');
       if (!live || document.getElementById('sub-host-elsewhere')) return;
       const line = el('p', { id: 'sub-host-elsewhere', style: 'flex:1 1 100%;margin:.2rem 0 0' }, fill(tx('subHostElsewhere', 'This browser has no plan, so this meeting runs on Free (up to {n} people). Bought a plan on another phone or computer? Add it to this device.'), { n: SUB.FREE_LIMIT }));
@@ -1843,7 +1846,7 @@
   // The host, when people were turned away: how many. The number only; the room's permissions are the License.
   // n: how many people could not get in (1 when not counted).
   function showHostPrompt(n) {
-    if (typeof document === 'undefined' || !document.body) return false;
+    if (NOPAGE || typeof document === 'undefined' || !document.body) return false;
     n = Number.isInteger(n) && n > 0 ? n : 1;
     const words = () => (n === 1 ? tx('subHostTurned1', '1 person couldn\'t get in.') : fill(tx('subHostTurnedN', '{n} people couldn\'t get in.'), { n }));
     let bar = document.getElementById('sub-host-up');
@@ -1870,14 +1873,16 @@
     booted = true;
     // The lobby's link to /subscription (every plan, and moving or restoring yours): drawn here, not in run.html, so
     // the thin page stays thin. Meet and Broadcast share the lobby.
-    try {
-      const card = document.querySelector('#lobby .lobby-card');
-      if (card && !document.getElementById('lob-plans')) {
-        const a = el('a', { id: 'lob-plans', class: 'lob-plans', href: '/subscription', target: '_blank', rel: 'noopener', 'data-t': 'lobPlans' }, tx('lobPlans', 'Plans and your subscription'));
-        card.appendChild(a);
-      }
-    } catch (e) {}
-    wireSubModal();
+    if (!NOPAGE) {
+      try {
+        const card = document.querySelector('#lobby .lobby-card');
+        if (card && !document.getElementById('lob-plans')) {
+          const a = el('a', { id: 'lob-plans', class: 'lob-plans', href: '/subscription', target: '_blank', rel: 'noopener', 'data-t': 'lobPlans' }, tx('lobPlans', 'Plans and your subscription'));
+          card.appendChild(a);
+        }
+      } catch (e) {}
+      wireSubModal();
+    }
     keepFresh().catch(() => {});
     resumePending().catch(() => {});
     if (RAIL()) {
@@ -1890,7 +1895,9 @@
   }
   // Before anything reads the credential: what pages from before the ledger stored becomes records (never lost).
   try { ingestLegacy(); } catch (e) {}
-  if (typeof document !== 'undefined') {
+  // A host with no page runs the same renewals and pass watch at once (no lobby, no dialogs).
+  if (NOPAGE) boot();
+  else if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
   }
 
