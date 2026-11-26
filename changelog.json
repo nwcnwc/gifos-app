@@ -11,7 +11,9 @@
         "Open rooms: once a password is set, shared screens and No blur cameras are clear for everyone right away; one person with the camera off no longer keeps everyone blurred. Blur for all still works.",
         "Taking charge of a majority-rules meeting is no longer part of any plan.",
         "A hosted broadcast keeps its host and its clear picture when the connection to GifOS restarts.",
-        "Embedded players and broadcast viewers say Connecting, Reconnecting or Couldn't connect instead of Not live or Off air while they are still finding out."
+        "Embedded players and broadcast viewers say Connecting, Reconnecting or Couldn't connect instead of Not live or Off air while they are still finding out.",
+        "The embedded player's info panel links to the room on gifos.app, Show names works on the Stage, and idle players fade every control except the version.",
+        "Embedded players move themselves onto a new GifOS release, and a stray extra tile no longer shows beside the Stadium box."
       ]
     },
     {
