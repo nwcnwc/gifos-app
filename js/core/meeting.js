@@ -846,7 +846,7 @@
     let hostBotAsked = '';
     function hostBotTick() {
       if (EMBED || BROADCAST || params.get('mb') === '1' || !amAdmin || !hasAdminRoom() || !inMeetingNow()) return;
-      const HB = GifOS.hostBot;
+      const HB = window.GifOS && GifOS.hostBot;   // a page without the OS host-bot layer (meet-host.js) wakes nobody
       const rec = HB && HB.get();
       if (!rec || !rec.on) return;
       const key = roomKey();
@@ -22571,6 +22571,7 @@
             spkDone = r;
             return r.stop().then(() => ({ on: false, held: r.held() }));
           }
+          if (!(window.GifOS && GifOS.speakerRec)) return { on: false, error: 'This page cannot record speakers.' };   // fail closed without meet-host.js
           window.__gifosRecBot = true;
           if (!spkRec) {
             spkRec = GifOS.speakerRec.start(() => {
