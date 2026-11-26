@@ -1269,11 +1269,12 @@
     return via === 'sub' ? currentTicket(room) : via === 'pass' ? currentPassTicket(room) : null;
   }
   // {tk, w}: the ticket and an order signed by the ticket's key, for the meeting server.
-  async function captureOrder(room) {
+  // peer: this page's relay peer id, signed in so the server binds the proof to the socket that sends it (Clear Stage).
+  async function captureOrder(room, peer) {
     const via = captureVia(room);
     if (!via) return null;
     const tk = await captureCurrent(room); if (!tk) return null;
-    const k = via === 'pass' ? await walletKey(await wallet()) : await myKey(), sp = JSON.stringify({ act: 'capture', ts: Date.now(), room });
+    const k = via === 'pass' ? await walletKey(await wallet()) : await myKey(), sp = JSON.stringify(Object.assign({ act: 'capture', ts: Date.now(), room }, peer ? { peer: String(peer) } : {}));
     return { tk, w: { sp, sig: b64(await GifOS.ed.sign(k.priv, new TextEncoder().encode(sp))), pub: k.pub } };
   }
   // The keys that sign as the captor: the pass key when ck (the room's captor
