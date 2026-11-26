@@ -1,7 +1,7 @@
 /*
  * GifOS Core: part "view" for run.html, the app runtime. Copyright (c) 2026 Crowd Concepts, Inc. All rights reserved.
  *
- * run.html runs apps: an app on its own (#id=), an app room (#s=..&k=.., #j=..) and an app-first meeting (#app=..&v=..).
+ * run.html runs apps: an app on its own (#id=), an app room (a link with a code) and an app-first meeting (#app=.. and its room).
  * Its meeting view is audio only: who is here, your mic, Leave, and "Full meeting" (the same meeting on meet.html, with
  * video, the Stage and everything else). No tiles, no Stage, no broadcast. The meeting itself is the same signed core and
  * browser media plane as the meeting page, hosted through the shared view kit (js/core/view/kit.js):
@@ -34,19 +34,13 @@
     function fullHref() {
       var p = new URLSearchParams(location.hash.replace(/^#/, ''));
       ['app', 'id', 'go'].forEach(function (k) { p.delete(k); });
-      // gifos.app's address bar holds the SHARE form (#room=R[&v=V]): the meeting page reads that as a lobby (one Join tap).
-      // This person is already a member, so it is handed the joined form (#v=R[&av=V]) that goes straight in.
-      if (p.has('room')) {
-        var ver = p.get('v');
-        p.set('v', p.get('room')); p.delete('room'); p.delete('av');
-        if (ver) p.set('av', ver);
-      }
+      // One link grammar (js/core/link.js): the address already names the room the way the meeting page joins it.
       // the name and picture were already chosen here: the meeting page does not ask again (same tab, same session)
       try { if (GifOS.store.identity().name) { sessionStorage.setItem('gifos_appear_ok', '1'); sessionStorage.setItem('gifos_appeared', '1'); } } catch (e) {}
       // the page beside this one: the document base (a snapshot pins it), not the address, which the meeting may move
       var base = new URL('.', document.baseURI);
       var ours = /(^|\.)gifos\.app$/.test(location.hostname) && base.pathname.indexOf('/versions/') !== -1;
-      var page = p.has('bc') ? 'cast' : 'meet';
+      var page = 'meet';   // an app-first meeting's full view is the meeting page (a link names no view)
       return base.pathname + page + (ours ? '' : '.html') + location.search + '#' + p.toString();
     }
 

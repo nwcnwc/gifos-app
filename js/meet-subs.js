@@ -26,7 +26,7 @@
  *     $10 plans have no limit, and open rooms never have one.
  *   - WHICH APP (Nathan 2026-11-13): the Meet app offers Room 20, Unlimited,
  *     the four-hour pass and tips. The $10 Streamer plan is sold in the
- *     Broadcast app (the same page opened at /cast, #bc in the link) and on
+ *     Broadcast app (the broadcast page, /cast or cast.html) and on
  *     the plans page /subscription (2026-11-25); its library (My library,
  *     files.gifos.app) is managed in the Broadcast app. Meet honors a
  *     Streamer subscription with everything Unlimited gives, but never
@@ -57,22 +57,22 @@
   const REFRESH_BEFORE_S = TM.REFRESH_BEFORE_S;      // fetch a fresh license this long before it runs out
 
   // The address the page was opened with. Once the meeting page joins it
-  // rewrites its own address to the room's plain link, so a word in the link
-  // (#bc) is read from both.
-  const opened = (() => { try { return { hash: String(root.location.hash || ''), search: String(root.location.search || '') }; } catch (e) { return null; } })();
+  // rewrites its own address to the room's plain link, so the page in the
+  // address (/cast, cast.html) is read from both.
+  const opened = (() => { try { return { path: String(root.location.pathname || ''), hash: String(root.location.hash || ''), search: String(root.location.search || '') }; } catch (e) { return null; } })();
   // In the GifOS Meet apps everything is paid for through the store's own
   // purchase sheet (gifos-store-rail.js): the one rail there. RAIL() is null
   // in a browser.
-  // The Broadcast app is this page opened with #bc (route.html /cast);
+  // The Broadcast app is the broadcast page, /cast or cast.html (js/core/link.js);
   // everything else is the Meet app. Read from the address the page was
   // opened with as well as the current one.
-  const BC_RE = /(?:^|[#&?])bc(?:=[^&]*)?(?:&|$)/;
+  const castIn = (path, hash) => { try { return !!(root.GifOSLink && root.GifOSLink.read(path, '', hash).cast); } catch (e) { return false; } };
   function appNow() {
     try { if (!NOPAGE && root.document && root.document.body && root.document.body.classList.contains('broadcast')) return 'broadcast'; } catch (e) {}
     try {
       const cur = root.location;
-      if (BC_RE.test(String(cur.hash || '') + '&' + String(cur.search || ''))) return 'broadcast';
-      if (opened && BC_RE.test(opened.hash + '&' + opened.search)) return 'broadcast';
+      if (castIn(String(cur.pathname || ''), String(cur.hash || ''))) return 'broadcast';
+      if (opened && castIn(opened.path, opened.hash)) return 'broadcast';
     } catch (e) {}
     return 'meet';
   }
@@ -2127,7 +2127,7 @@
   function boot() {
     if (booted) return;
     booted = true;
-    // The lobby's link to /subscription: drawn here, not in run.html, so the thin page stays thin. No page (Node core): no lobby.
+    // The lobby's link to /subscription (lobbyPlansLink): drawn here, not in run.html, so the thin page stays thin. No page (Node core, NOPAGE): no lobby.
     if (!NOPAGE) {
       try { lobbyPlansLink(); } catch (e) {}
       wireSubModal();

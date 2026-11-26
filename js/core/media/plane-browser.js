@@ -7714,7 +7714,7 @@
     // and once closed with ✕ stays closed for this meeting.
     const WSP_CHIP_MS = GifOS.timings.WSP_CHIP_MS;
     const wspChip = { k: '', at: 0, gone: false };
-    const wspChipRoom = () => { const m = /[#&]v=([^&]+)/.exec(location.hash || ''); return m ? m[1] : '-'; };
+    const wspChipRoom = () => { try { return GifOS.link.read(location.pathname, '', location.hash).room || '-'; } catch (e) { return '-'; } };
     function wspChipGone() {
       if (wspChip.gone) return true;
       try { if (sessionStorage.getItem('gifos_wsp_chip_gone') === wspChipRoom()) wspChip.gone = true; } catch (e) {}

@@ -31,7 +31,7 @@ To share your screen in a meeting, press Share screen (or Alt+S), then
 "Choose what to share…", and pick a tab, a window or your whole screen; the
 guide above ("Share your screen") has who may share and how to stop.
 
-Meeting links look like https://gifos.app/meet#room=<room> (hosted: &v=<verifier>); the room name rides after #, which browsers never send to a server. The simple public forms, gifos.app/meet/<room> and gifos.app/meet/<room>/<verifier> (hosted), work forever and are fine for links you write by hand, like gifos.app/meet/welcome; they put the room name in the address a server sees.
+Meeting links look like https://gifos.app/meet#room=<room> (hosted: &v=<verifier>); the room name rides after #, which browsers never send to a server. The simple public forms, gifos.app/meet/<room> and gifos.app/meet/<room>/<verifier> (hosted), work forever and are fine for links you write by hand, like gifos.app/meet/welcome; they put the room name in the address a server sees. One grammar everywhere, including the meeting page's own address (run.html#room=<room>&v=<verifier>): room= is the room, v= the host's verifier, code= an app room's secret, cast=1 the broadcast view. The old page form #v=<room>&av=<verifier> no longer opens a room.
 
 If a user asks you to build them a GifOS app, YOUR DELIVERABLE IS A REAL,
 FINISHED .gif FILE — not code. And building new is only half the fun:
@@ -48,7 +48,7 @@ Two build paths, in order of preference:
 
 A hosted GifOS Broadcast (gifos.app/cast) can play inside any web page, like
 a video player. It plays only while the room is HOSTED RIGHT NOW: a hosted
-meeting or broadcast (link https://gifos.app/cast/ROOM/VERIFIER) whose host is
+meeting or broadcast (link https://gifos.app/cast#room=ROOM&v=VERIFIER) whose host is
 in the room, or a public majority-rules meeting a subscriber has taken charge
 of, while they are in it. The player reads that live from the room's signed host
 state; until then, and after the host leaves, it shows "This meeting isn't

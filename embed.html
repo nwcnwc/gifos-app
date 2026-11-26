@@ -6,6 +6,7 @@
      (/embed, /versions/<x.y.z>/embed; Cloudflare serves embed.html there). Anywhere else
      the guard refuses like every other page. Guarded by gifos page-guards frame-guard. -->
 <script id="gifos-frame-guard">(function(){try{var E=/^\/(versions\/\d+(\.\d+){2,3}\/)?embed(\.html)?$/.test(location.pathname);window.__gifosEmbed=E;if(E)return;if(window.top===window.self)return;var ok=false;try{ok=window.top.location.origin===window.location.origin;if(!ok&&window.location.origin==='null')ok=window.top.location.origin===window.parent.location.origin;}catch(e){}if(ok)return;var h=document.documentElement;h.style.visibility='hidden';function show(){var b=document.body;if(!b)return;while(b.firstChild)b.removeChild(b.firstChild);var p=document.createElement('p');p.style.cssText='font:16px system-ui,sans-serif;padding:24px;color:#eee;background:#111;margin:0';p.appendChild(document.createTextNode('GifOS does not run inside another site\'s page. '));var a=document.createElement('a');a.href=location.href;a.target='_blank';a.rel='noopener';a.textContent='Open it in its own tab';a.style.color='#9db4ff';p.appendChild(a);b.appendChild(p);h.style.visibility='';}if(document.body)show();else document.addEventListener('DOMContentLoaded',show);}catch(e){}})();</script>
+<script src="js/core/link.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>GifOS Broadcast</title>

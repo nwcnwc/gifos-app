@@ -20,6 +20,11 @@
 <meta http-equiv="Content-Security-Policy" content="frame-src about:">
 <meta name="referrer" content="same-origin">
 <!--@/shared:frame-guard-->
+<!--@shared:link-->
+<!-- THE ROOM LINK: the one reader and writer of room=, v=, code= (js/core/link.js). Parser-
+     blocking and ES5: the channel loader and the entry chrome below read the address with it before anything else. -->
+<script src="js/core/link.js"></script>
+<!--@/shared:link-->
 <meta name="robots" content="noindex">
 <!-- AI assistants: the visible "For AI assistants" link points at the guide.
      Nothing for an agent is clipped or hidden. -->
@@ -379,7 +384,7 @@
     if (pathname.indexOf('/versions/') !== -1) return null;   // immutable build — never redirect
     var q; try { q = new URLSearchParams(search); } catch (e) { q = null; }
     // Flags may arrive IN THE HASH: the 404 pretty-URL router folds the query
-    // into the hash it builds (/meet/<room>?edge -> /run.html#v=<room>&edge),
+    // into the hash it builds (/meet/<room>?edge -> /run.html#room=<room>&edge),
     // so a channel flag must be honored from either place.
     function has(k) { return !!(q && q.has(k)) || new RegExp('[#&]' + k + '(&|=|$)').test(hash); }
     // A LINK NEVER ATTACHES ANYONE. Everybody runs the latest release; the edge
@@ -420,10 +425,13 @@
     // per-version filename table is exactly the compat rot we refuse to
     // carry). Old meet.html#... links are dead the same way.
 
-    var pm = roomHash(pathname, search, hash);
+    // The room address -> the meeting page's fragment: the ONE link module (js/core/link.js, loaded just above).
+    var pm = window.GifOSLink ? window.GifOSLink.route(pathname, search, hash) : null;
     var here;
     if (pm) {
-      here = '/run.html#' + pm;
+      // the page is the view: a /meet link the meeting page, a /cast link the broadcast page, a /join link run.html
+      var pk = window.GifOSLink.read(pathname, search, hash).route;
+      here = (pk === 'cast' ? '/cast' : pk === 'meet' ? '/meet' : '/run.html') + '#' + pm;
     } else {
       // Carry the page + invite hash across (snapshots ship run.html too —
       // flag day above) AND THE QUERY. The query used to be dropped here,
@@ -437,10 +445,9 @@
       // location.search. Carrying the hash instead would fix nothing until
       // the NEXT release, for links sent today.
       here = pathname + search + hash;
-      // THE SURFACE PAGES (meet.html, cast.html, 0.9.28; the host serves them at /meet and /cast) are addressed as run.html too: every snapshot ships
-      // run.html, and a new one forwards a room to its surface page itself. A cast page keeps its skin (bc).
-      var sp = /\/(meet|cast)(\.html)?$/.exec(pathname);
-      if (sp) here = pathname.slice(0, sp.index) + '/run.html' + search + (sp[1] === 'cast' && !/[#&]bc(=|&|$)/.test(hash) ? (hash ? hash + '&bc=1' : '#bc=1') : hash);
+      // THE SURFACE PAGES (meet.html, cast.html; the host serves them at /meet and /cast, and /versions/<v>/meet|cast) keep
+      // their own name: the page is the view (a room link never falls back below LINK_SINCE, and every release from 0.9.28
+      // ships both). Nothing is written into the fragment to say which.
     }
     function to(v) { return { redirect: '/versions/' + v + here }; }
     // MEETINGS RUN THE LIVE RELEASE. Releases are not compatible with each
@@ -474,40 +481,17 @@
     try { once = sessionStorage.getItem('gifos_ask_edge'); if (once) sessionStorage.removeItem('gifos_ask_edge'); } catch (e) {}
     if (once) return stay;
     // `clear`: ?stable/?unpin/?latest just cleared a pin (the page still asks for the live release).
-    return { redirect: cur ? to(cur).redirect : null, ask: here, clear: cleared || undefined };
-  }
-  // A ROOM LINK, as the run.html hash it opens: null when the address names no
-  // room, '' when it names one badly. Every link GifOS hands out keeps the room
-  // in the FRAGMENT, which a browser never sends, so no server and no log ever
-  // reads it: /meet#room=R[&v=V], /cast#room=R[&v=V] (the Broadcast skin),
-  // /join#code=C (an app session) and /join#room=R&v=V&code=C (an owned app).
-  // The path forms shared before (/meet/R[/V], /cast/R[/V], /join/C,
-  // /join/R/V/C) open the same rooms forever. Everything else in the fragment
-  // or the query rides along. Room case is kept: the room id is the capability
-  // the key derives from. The same function sits in route.html and in every
-  // page's channel loader, byte for byte.
-  function roomHash(pathname, search, hash) {
-    var m = /^\/(meet|cast|join)(?:\/([a-z0-9-]{1,64})(?:\/([a-f0-9]{16,64})(?:\/([a-z0-9]{1,64}))?)?)?\/?$/i.exec(pathname || '');
-    if (!m) return null;
-    var kind = m[1].toLowerCase(), room = m[2] || '', ver = m[3] || '', code = m[4] || '', rest = [], bad = false;
-    if (kind === 'join' && room && !ver) { code = room; room = ''; }
-    var h = String(hash || '').replace(/^#/, ''), q = String(search || '').replace(/^\?/, '');
-    var hs = h ? h.split('&') : [], parts = hs.concat(q ? q.split('&') : []);
-    for (var i = 0; i < parts.length; i++) {
-      var p = parts[i], k = p.split('=')[0], val = p.slice(k.length + 1);
-      if (!p) continue;
-      if (m[2] || i >= hs.length || (k !== 'room' && k !== 'v' && k !== 'code')) { rest.push(p); continue; }
-      if (k === 'room') { room = val; bad = bad || !/^[a-z0-9-]{1,64}$/i.test(val); }
-      else if (k === 'v') { ver = val; bad = bad || !/^[a-f0-9]{16,64}$/i.test(val); }
-      else { code = val; bad = bad || !/^[a-z0-9]{1,64}$/i.test(val); }
+    // A ROOM LINK NEVER FALLS BACK INTO A BUILD THAT READS IT ANOTHER WAY. Releases before LINK_SINCE read #v= as
+    // the room, so #room=R&v=V there would open a room named after the verifier. With no answer from version.json a
+    // room link stays on this build (the first-visit path) rather than the remembered release when that is older.
+    var LINK_SINCE = [0, 9, 28, 34];   // the first release with the one link grammar (js/core/link.js); set at its cut
+    var named = !!pm || (room && !!window.GifOSLink && (function (r) { return !!(r.room || r.code); })(window.GifOSLink.read(pathname, '', hash)));
+    if (named && cur) {
+      var cv = String(cur).split('.').map(Number), older = false;
+      for (var vi = 0; vi < 4; vi++) { var a = cv[vi] || 0, b = LINK_SINCE[vi]; if (a !== b) { older = a < b; break; } }
+      if (older) cur = null;
     }
-    var tail = rest.length ? '&' + rest.join('&') : '';
-    ver = ver.toLowerCase();
-    if (bad) return '';
-    if (kind !== 'join') return room ? 'v=' + room + (ver ? '&av=' + ver : '') + (kind === 'cast' ? '&bc=1' : '') + tail : (ver ? '' : null);
-    if (room && ver && code) return 's=' + room + '.' + ver + '&k=' + code + tail;
-    if (code && !room && !ver) return 'j=' + code + tail;
-    return room || ver ? '' : null;
+    return { redirect: cur ? to(cur).redirect : null, ask: here, clear: cleared || undefined };
   }
   window.gifosPinTarget = pinTarget;
   // GENERATED from gifos timings.json by scripts/gen-timings.mjs (the line below): do not edit by hand.
@@ -556,9 +540,6 @@
   var decision = pinTarget(location.pathname, location.search, location.hash);
   if (decision && decision.ask) askLive(decision);
   else if (decision && decision.redirect) location.replace(decision.redirect);
-  // The meeting page and the broadcast page ARE /meet and /cast (0.9.28). A page that stays here (not gifos.app, or the
-  // edge build) reads a link's #room=R&v=V as the meeting's own #v=R&av=V before anything else reads the address.
-  else { try { var lp = roomHash(location.pathname, location.search, location.hash); if (lp && /^\/(meet|cast)$/.test(location.pathname)) history.replaceState(history.state, '', location.pathname + '#' + lp); } catch (e) {} }
   // A meeting's address keeps the room in its fragment (/meet#room=…). Following
   // or typing another room's link there changes only the fragment, which loads
   // nothing, so the meeting would sit on under an address naming another room:
@@ -621,7 +602,7 @@
   // is #id=, which is the solo case and the one that flashes.
   // Read the HASH only: the channel loader carries pathname + hash and DROPS the
   // query, so #id= is the only form that survives a version redirect.
-  var p=new URLSearchParams((location.hash||'').replace(/^#/,''));
+  var p=new URLSearchParams((location.hash||'').replace(/^#/,'')),L=window.GifOSLink?window.GifOSLink.read(location.pathname,'',location.hash):null;
   if(p.get('id'))document.documentElement.classList.add('solo-app');
   // THE LOBBY ENTRY, decided by the same rule as the boot dispatch far below
   // (no session frame, no app, no room): the page will show the lobby and
@@ -632,7 +613,7 @@
   // The lobby's own sheet goes up now instead, empty, in the lobby's colour,
   // over the room (it already sits above every piece of it), and showLobby()
   // fills it. Nothing else changes: .show restyles the same element.
-  else if(window.__gifosMb!=='1'&&p.get('mb')!=='1'&&!(p.get('s')&&p.get('k'))&&!p.get('j')&&!p.get('v')&&!p.get('app'))document.documentElement.classList.add('lobby-entry');
+  else if(window.__gifosMb!=='1'&&p.get('mb')!=='1'&&!(L&&(L.room||L.code))&&!p.get('app'))document.documentElement.classList.add('lobby-entry');
 }catch(e){}})();</script>
 <style id="lobby-entry">html.lobby-entry #lobby:not(.show){display:block}html.lobby-entry #lobby:not(.show)>*{visibility:hidden}</style>
 <!--@shared:booting-->

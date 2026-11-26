@@ -615,7 +615,7 @@
     return root.crypto.subtle.importKey('raw', d, 'AES-GCM', false, ['encrypt', 'decrypt']);
   }
   // App session (join): everything derives from the LINK SECRET lsec — the
-  // #j=<code> of a self-healing link, or the &k=<code> of an owned link. The
+  // code=<code> of an app room's link (self-healing alone, owned with its room and verifier). The
   // session id of an OWNED link is "<room>.<verifier>" (the relay's host gate
   // reads the verifier off it) and carries no secret, so it is NOT derived
   // here — only the token and key are.

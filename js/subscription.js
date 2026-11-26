@@ -285,7 +285,7 @@
   var when = function (ms) { try { return i18n.fmt.date(new Date(ms), { dateStyle: 'medium' }) + ' ' + i18n.fmt.time(new Date(ms), { hour: 'numeric', minute: '2-digit' }); } catch (e) { return new Date(ms).toISOString().slice(0, 16).replace('T', ' '); } };
   var dayMs = function (ms) { return day(Math.floor(ms / 1000)); };
   // The Home Screen link to a folder (and a file in it): desktop.js handleFolderParam.
-  var folderLink = function (fileId) { return '/#folder=purchases' + (fileId ? '&select=' + encodeURIComponent(fileId) : ''); };
+  var folderLink = function (fileId) { return '/#' + GifOS.link.homeHash({ folder: 'purchases', select: fileId || '' }); };
   // What this browser's Home Screen holds: the Purchases folder (or receipts queued for it), and which receipt files.
   function homeScreen() {
     var st = GifOS.store;

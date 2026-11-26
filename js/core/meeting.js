@@ -563,7 +563,7 @@
       votes: Object.freeze(watched('votes', { mode: () => voteMode, tallies: () => stageVoteTallies(), mine: () => myStageVotes, upSig: () => myUpVoteSig })),
       rec: Object.freeze(watched('rec', { someone: () => someoneRecording(), title: () => recNoticeTitle() })),
       me: Object.freeze(watched('me', { myId: () => myId, myStatus: () => myStatus, myIdentitySeed: () => myIdentitySeed, myIdentity: () => myIdentity, myDevHash: () => myDevHash, meTile: () => meTile, localStream: () => localStream, joinAv: () => joinAv, av: () => av, leaving: () => leaving, mediaAskPending: () => mediaAskPending, visParkSent: () => visParkSent, screenSteppedUp: () => screenSteppedUp })),
-      room: Object.freeze(watched('room', { room: () => room, params: () => params, rejoinHref: () => rejoinHref, roomJoinedAt: () => roomJoinedAt, roomE2E: () => roomE2E, prevRoomE2E: () => prevRoomE2E, sessId: () => sessId, BROADCAST: () => BROADCAST, bcLastService: () => bcLastService, rbNow: () => rbNow, bannedOut: () => bannedOut, files: () => files, turnLinks: () => turnLinks, turnFacts: () => turnFacts })),
+      room: Object.freeze(watched('room', { room: () => room, params: () => params, LINK: () => LINK, rejoinHref: () => rejoinHref, roomJoinedAt: () => roomJoinedAt, roomE2E: () => roomE2E, prevRoomE2E: () => prevRoomE2E, sessId: () => sessId, BROADCAST: () => BROADCAST, bcLastService: () => bcLastService, rbNow: () => rbNow, bannedOut: () => bannedOut, files: () => files, turnLinks: () => turnLinks, turnFacts: () => turnFacts })),
       roster: Object.freeze(watched('roster', { peers: () => peers, statusOf: () => statusOf, rosterNames: () => rosterNames, rosterTiles: () => rosterTiles, rosterIds: () => rosterIds, speakingOf: () => speakingOf, stageViewEls: () => stageViewEls, devOf: () => devOf, hbLastAt: () => hbLastAt, hbLastMono: () => hbLastMono, frozeGap: () => frozeGap, tileWin: () => tileWin, vcrops: () => vcrops, reactStats: () => reactStats, faceReactRx: () => faceReactRx, faceReacts: () => faceReacts, audienceReactCounts: () => audienceReactCounts })),
       door: Object.freeze(watched('door', { waitQueue: () => waitQueue, meetWait: () => meetWait, waitDeclined: () => waitDeclined, modTable: () => modTable, admins: () => admins, admKey: () => admKey, roomPw: () => roomPw, pwProvisional: () => pwProvisional, pwEpoch: () => pwEpoch, statusHoldUntil: () => statusHoldUntil, dockCalmMs: () => dockCalmMs })),
       apps: Object.freeze(watched('apps', { appCopy: () => appCopy, soloCtl: () => soloCtl, agentCore: () => agentCore, viewStore: () => viewStore })),
@@ -681,7 +681,17 @@
     // the viewer types it inside the frame (no way to know the embedding page is protected).
     // Every other key it put there is dropped here, so the page can only ever
     // be a viewer of that broadcast.
-    const params = new URLSearchParams(location.hash.slice(1)),
+    // THE ROOM LINK (js/core/link.js): room=, v=, code=, cast= are read there and nowhere else. LINK is
+    // what this page's address names: { room, v (the host's verifier, lower case), code (an app room), cast, rest }.
+    // A pasted link or the session's own join moves LINK (and only LINK); every address and link this page writes is
+    // built from it by GifOS.link.hash. `params` holds the address's OTHER keys (relay, at, mb, bot, app, id, ...).
+    const LINKS = GifOS.link,
+      params = new URLSearchParams(location.hash.slice(1)),
+      LINK = (() => {
+        const r = LINKS.read(location.protocol === 'about:' ? '' : location.pathname, '', location.hash);
+        ['room', 'v', 'code', 'cast'].forEach((k) => params.delete(k));   // LINK holds them; params never answers for them
+        return r;
+      })(),
       EMBED = (() => {
         let on = false;
         try { on = /^\/(versions\/\d+(\.\d+){2,3}\/)?embed(\.html)?$/.test(location.pathname); } catch (e) { on = false; }
@@ -690,18 +700,18 @@
         // 2026-11-24): an admin room whose host is present, or an open room a subscriber or staff pass has captured,
         // with the captor present. That is decided live from the room's signed host state (embedHosted), never from
         // this address: the verifier only says which admin room is meant.
-        const room = String(params.get('room') || ''), ver = String(params.get('v') || ''), title = String(params.get('title') || '');
+        const title = String(params.get('title') || '');
         Array.from(params.keys()).forEach((k) => params.delete(k));
-        const okRoom = /^[a-z0-9-]{1,64}$/i.test(room), okVer = /^[a-f0-9]{16,64}$/i.test(ver);
-        const okEntry = okRoom && (!ver || okVer);
-        if (okEntry) { params.set('v', room); params.set('bc', '1'); if (ver) params.set('av', ver.toLowerCase()); }
+        // A bad link names no room (link.js): the embed joins nothing. A good one is a broadcast viewer of that room.
+        const okEntry = !!LINK.room && !LINK.code;
+        if (!okEntry) { LINK.room = ''; LINK.v = ''; LINK.code = ''; }
+        LINK.rest = [];
         // What the embed's own view reads back (embed.html's player): the title, and why nothing joins (name).
         const why = okEntry ? '' : 'name';
         params.set('embed', why || 'ok');
-        if (okRoom) params.set('room', room);
         const t = title.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 80);
         if (t) params.set('title', t);
-        return { bad: why, title: title.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 80), room: okRoom ? room : '', av: okVer ? ver.toLowerCase() : '' };
+        return { bad: why, title: t, room: LINK.room, av: LINK.v };
       })();
     // A session document is srcdoc (the host page's frame-src is about: only).
     // The hash cannot carry mb=1, so the host stamps the flag before boot.
@@ -724,32 +734,33 @@
     // ---- ONE RUNTIME: the entry mints the room's TRAITS (docs/one-runtime.md).
     // The link is the promise — which component is pinned is decided HERE, at
     // entry, and is immutable for the page's life:
-    //   #v=<room>[&av=]        → meeting entry: media plane PINNED, app slot free
-    //   #id=<fileId>           → an app from MY desktop, SOLO: no room, no relay,
-    //                            no mesh — Invite mints the room later
-    //   #s=<short.ver>&k=<c>   → owned app room: app PINNED (no succession)
-    //   #j=<code>              → anyone-owns app room: app PINNED (succession)
+    //   #room=<room>[&v=]          → meeting entry: media plane PINNED, app slot free
+    //   #id=<fileId>               → an app from MY desktop, SOLO: no room, no relay,
+    //                                no mesh — Invite mints the room later
+    //   #room=<r>&v=<ver>&code=<c> → owned app room: app PINNED (no succession)
+    //   #code=<c>                  → anyone-owns app room: app PINNED (succession)
     const ROOM = (() => {
-      const id = params.get('id'), j = params.get('j'), s = params.get('s'), k = params.get('k');
+      const id = params.get('id');
       if (id) return { kind: 'app', solo: true, appPinned: true, mediaPinned: false, fileId: id, join: null };
-      if (s && k) {
-        const dot = s.lastIndexOf('.');
+      if (LINK.code && LINK.room) {
         return { kind: 'app', solo: false, appPinned: true, mediaPinned: false, fileId: null,
-          join: { short: s.slice(0, dot), av: s.slice(dot + 1).toLowerCase(), k: k, owned: true } };
+          join: { short: LINK.room, av: LINK.v, k: LINK.code, owned: true } };
       }
-      if (j) return { kind: 'app', solo: false, appPinned: true, mediaPinned: false, fileId: null, join: { short: null, av: null, k: j, owned: false } };
+      if (LINK.code) return { kind: 'app', solo: false, appPinned: true, mediaPinned: false, fileId: null, join: { short: null, av: null, k: LINK.code, owned: false } };
       return { kind: 'meet', solo: false, appPinned: false, mediaPinned: true, fileId: null, join: null };
     })();
     // ---- BROADCAST (the Broadcast app — a SKIN of this page) ----------------
-    // #bc=1 on an ADMIN room (v+av): one host live on the Stage, unlimited
-    // viewers who bring no media of their own. The flag rides the HASH so it
-    // survives the version-channel redirect and travels inside the share link
-    // (/cast/<room>/<V> pretty form). It is a skin, not a security boundary:
-    // a client that strips it lands in the plain meeting UI of the SAME room,
-    // and every rule that matters — signed authority, admin-only stage entry,
-    // receiver-side moderation — is the admin room's, enforced as ever.
-    // BC_INTENT alone (bare meet.html#bc=1) opens the broadcast-flavored lobby.
-    const BC_INTENT = params.has('bc');
+    // The broadcast PAGE (cast.html, /cast) on an ADMIN room (room+v): one host
+    // live on the Stage, unlimited viewers who bring no media of their own. The
+    // page is the view: the broadcast page's surface tells the core so through
+    // its interface (GifOS.viewSurface, js/core/view/cast.js), and an embed is a
+    // broadcast viewer; no key in the address says it (js/core/link.js). It is a
+    // skin, not a security boundary: the same room opened on the meeting page is
+    // the plain meeting UI of the SAME room, and every rule that matters —
+    // signed authority, admin-only stage entry, receiver-side moderation — is
+    // the admin room's, enforced as ever.
+    // BC_INTENT alone (the broadcast page with no room) opens the broadcast-flavored lobby.
+    const BC_INTENT = !!(EMBED && !EMBED.bad) || !!(GifOS.viewSurface && GifOS.viewSurface.name === 'cast');
     // ---- LINK-BORNE LAUNCH ARGUMENTS: #id=<file>&go.<key>=<value> -----------
     // "Open Anyroad" is a link anyone can already send. This is how a link says
     // WHERE to open it — go.at=36.06,-112.14&go.fly=1 — without becoming a
@@ -764,7 +775,7 @@
       params.forEach((v, k) => { if (k.length > 3 && k.slice(0, 3) === 'go.') { out[k.slice(3)] = v; n++; } });
       return n ? out : null;
     })();
-    const BROADCAST = BC_INTENT && !!params.get('v') && /^[a-f0-9]{16,64}$/.test((params.get('av') || '').toLowerCase()),
+    const BROADCAST = BC_INTENT && !!LINK.room && !!LINK.v,
       BC_SEAT = BROADCAST || !!EMBED;   // this seat only publishes what bcRole allows: a broadcast's, and an embed's in any room (BROADCAST stays a room fact)
     // The lobby is renamed when you arrive wanting a broadcast. The room used
     // to keep saying "meeting" on the chat, the leave dialog, and Help, and
@@ -850,7 +861,7 @@
     function barKind() {
       if (barKindAtLoad) return barKindAtLoad;
       let host = false;
-      try { host = !!localStorage.getItem('gifos_vadm_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase()); } catch (e) { host = false; }
+      try { host = !!localStorage.getItem('gifos_vadm_' + LINK.room + '.' + LINK.v); } catch (e) { host = false; }
       barKindAtLoad = BROADCAST ? (host ? 'bc-host' : 'bc-viewer') : 'meeting';
       return barKindAtLoad;
     }
@@ -920,7 +931,7 @@
     // camera ask entirely (below) while the host boots like a meeting.
     const bcHostStored = () => {
       if (EMBED) return false; // an embed always watches, even on the host's own computer
-      try { return !!localStorage.getItem('gifos_vadm_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase()); }
+      try { return !!localStorage.getItem('gifos_vadm_' + LINK.room + '.' + LINK.v); }
       catch (e) { return false; }
     };
     // The host's own values also ride its status gossip (the existing
@@ -933,7 +944,7 @@
     // status), set by the host in More. A church shares Sunday's link
     // midweek: an early viewer reads when it starts and a countdown, and
     // someone who opens it hours later reads that it ended.
-    const BC_AT_KEY = 'gifos_bcat_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase();
+    const BC_AT_KEY = 'gifos_bcat_' + LINK.room + '.' + LINK.v;
     if (BROADCAST && !params.get('at') && bcHostStored()) {
       try { const s0 = localStorage.getItem(BC_AT_KEY); if (s0) params.set('at', s0); } catch (e) {}
     }
@@ -1277,7 +1288,7 @@
     // one-tap re-ask (stashRecoverMedia); mic and camera ride no other reload.
     const UPDATE_RESUME_KEY = 'gifos_update_resume';
     const UPDATE_RESUME_TTL = GifOS.timings.UPDATE_RESUME_TTL;
-    const updateRoomKey = () => (params.get('v') || '') + '.' + String(params.get('av') || '').toLowerCase();
+    const updateRoomKey = () => LINK.room + '.' + LINK.v;
     const updateResume = (() => {
       let raw = null;
       try { raw = sessionStorage.getItem(UPDATE_RESUME_KEY); sessionStorage.removeItem(UPDATE_RESUME_KEY); } catch (e) { return null; }
@@ -1285,7 +1296,7 @@
       let o = null;
       try { o = JSON.parse(raw); } catch (e) { return null; }
       if (!o || o.v !== 1 || typeof o.at !== 'number' || Date.now() - o.at > UPDATE_RESUME_TTL) return null;
-      if (!params.get('v') || o.room !== updateRoomKey()) return null;
+      if (!LINK.room || o.room !== updateRoomKey()) return null;
       return o;
     })();
     // EVERYONE JOINS MAX-BLURRED, EVERY MEETING (docs/meeting.md, Blur). The
@@ -1304,7 +1315,7 @@
     const joinAvChoice = (() => {
       let raw = null;
       try { raw = sessionStorage.getItem('gifos_join_av'); sessionStorage.removeItem('gifos_join_av'); } catch (e) { return null; }
-      if (!raw || !params.get('v')) return null;
+      if (!raw || !LINK.room) return null;
       let o = null;
       try { o = JSON.parse(raw); } catch (e) { return null; }
       if (!o || o.v !== 1 || typeof o.at !== 'number' || Date.now() - o.at > 60000) return null;
@@ -5300,7 +5311,7 @@
     function bcQuietLine(shown, reachBlocked, atDoor) {
       const host0 = typeof bcHostStored === 'function' && bcHostStored();
       const viewer = !!(BROADCAST && !host0);
-      const seenKey = 'gifos_bc_seen_' + String(params.get('v') || '') + '.' + String(params.get('av') || '').toLowerCase();
+      const seenKey = 'gifos_bc_seen_' + LINK.room + '.' + LINK.v;
       if (viewer && shown > 1) { try { sessionStorage.setItem(seenKey, '1'); } catch (e) {} }
       // On air means a picture on the Stage: a stager's camera, screen or a
       // rebroadcast. A host waiting off air is not on air.
@@ -5519,7 +5530,7 @@
       const detail = statusText;
       // A phone chip names the room and the count (qa-meet-mobile); the whole
       // sentence is the status sheet a tap opens, and the title.
-      const roomLabel = String((params.get('v') || '')).replace(/\s+/g, ' ').trim();
+      const roomLabel = LINK.room.replace(/\s+/g, ' ').trim();
       let phoneDetail = detail;
       if ((0, /*()*/__V.phoneLayout)() && !BROADCAST && !reachLine) {
         const head = roomLabel ? roomLabel + ' · ' : '';
@@ -10654,7 +10665,7 @@
     }
 
     // ┌─────────────────────────────────────────────────────────────────────┐
-    // │ DEBUG-TREE — gated by DEBUG=on in the URL (e.g. #v=room&DEBUG=on), so  │
+    // │ DEBUG-TREE — gated by DEBUG=on in the URL (e.g. #room=r&DEBUG=on), so  │
     // │ production clients ship the code INERT: they never reply to probes,   │
     // │ never accept a forceSeat. The meeting CLI adds the param itself.      │
     // │ grep "DEBUG-TREE" to find every piece (this helper, the onGossip       │
@@ -13613,12 +13624,12 @@
     function joinRoom() {
       roomJoinedAt = Date.now();
       (0, /*()*/__V.paintStagePlate)();
-      room = params.get('v') || shortCode();
+      room = LINK.room || shortCode();
       // A meeting has no separate join token — the link IS the capability, so the
       // room id is the whole identity. There is no &k= at all.
       // The admin verifier is PART OF THE ROOM'S IDENTITY: with it this is an
       // admin-managed room, without it an anarchic one — two different rooms.
-      av = (/^[a-f0-9]{16,64}$/.exec((params.get('av') || '').toLowerCase()) || [null])[0];
+      av = LINK.v || null;
       if (!av) { holdDoor = false; waitAdmitted.clear(); waitDeclined.clear(); waitQueue.clear(); }   // an open room has no waiting room: drop a resumed hold
       loadAdm(); // this device's stored admin key for this exact room, if any
       // Adopt the stored key as a SIGNING key (§9): verifies K against the
@@ -13662,16 +13673,16 @@
       try { (0, /*()*/__V.lobbyPwOpenRoom)(); } catch (e) {}
       const relay = relayUrl();
       const custom = relay && relay !== window.GIFOS_RELAY;
-      const avPart = (av ? '&av=' + av : '') + (BROADCAST ? '&bc=1' : '');
       const atBit = BROADCAST && /^\d+$/.test(params.get('at') || '') ? params.get('at') : '';
-      const avPartAt = avPart + (atBit ? '&at=' + atBit : '');
       const pretty = /(^|\.)gifos\.app$/.test(location.hostname) && !custom;
+      // One grammar (link.js): the address bar, the shared link and the page's own fragment name the room the same way.
+      const roomHashOf = (withRelay) => LINKS.hash({ room, v: av, rest: { at: atBit, relay: withRelay ? relay : '' } });
       // The link we hand out keeps the room in the FRAGMENT, which a browser
       // never sends: /meet#room=<room>[&v=<V>], so no server and no log ever
       // reads which meeting this is (route.html opens it). A broadcast's form is
       // /cast#room=…: the path carries the skin, so the shared link opens as a
       // broadcast for every viewer.
-      const prettyPath = (BROADCAST ? '/cast' : '/meet') + '#room=' + room + (av ? '&v=' + av : '') + (atBit ? '&at=' + atBit : '');
+      const prettyPath = (BROADCAST ? '/cast' : '/meet') + '#' + LINKS.hash({ room, v: av, rest: { at: atBit } });
       const prettyQs = '';
       // A RELEASE/pinned computer runs from /versions/<x.y.z>/, but prettyPath is
       // rooted at the domain. Rewriting the address bar to it MOVED THE DOCUMENT
@@ -13681,7 +13692,7 @@
       // guest staring at an app header over blank space while the host was fine,
       // and it could never reproduce locally because local dev never rewrites.
       // So: only the ROOT (edge) build moves its address bar. A snapshot keeps
-      // its own meet.html#v=… — its base stays put — while still HANDING OUT the
+      // its own meet.html#room=… — its base stays put — while still HANDING OUT the
       // pretty link below, which is what a fresh visitor should follow.
       // Keep the address bar as the SAME link we hand out. On prod that's the
       // /meet#room=<room>[&v=<verifier>] form — a reload of it routes back
@@ -13702,16 +13713,16 @@
       // itself (js/build-badge.js), where that fact belongs.
       // An embed keeps its own address: /cast/.. framed is refused, so a reload must land on /embed again.
       const canonical = EMBED ? location.pathname + location.search + location.hash : pretty ? prettyPath + prettyQs
-        : MEET_PATH + '#v=' + room + avPartAt + (custom ? '&relay=' + encodeURIComponent(relay) : '');
+        : MEET_PATH + '#' + roomHashOf(custom);
       // A srcdoc session cannot always retarget its address. The mesh does
       // not depend on that; a thrown replaceState must not skip the knock.
       rejoinHref = canonical;
       try { if (location.pathname + location.search + location.hash !== canonical) (0, /*()*/__V.replaceAddress)(canonical); } catch (e) {}
       shareLink = pretty ? pageOrigin() + prettyPath + prettyQs
-        : pageOrigin() + MEET_PATH + '#v=' + room + avPartAt + (relay ? '&relay=' + encodeURIComponent(relay) : '');
+        : pageOrigin() + MEET_PATH + '#' + roomHashOf(!!relay);
       (0, /*()*/__V.paintShareUrl)(shareLink);
       try { (0, /*()*/__V.paintStreamLink)(); } catch (e) {}
-      if (!params.get('v')) (0, /*()*/__V.showShareLink)(); // fresh room → surface the link
+      if (!LINK.room) (0, /*()*/__V.showShareLink)(); // fresh room → surface the link
       else recordMeetingInvite(room, shareLink); // joined someone's link → log it in the desktop's Invites
       recordMeetHistory(room, shareLink, av); // lobby's "Recent" — every room, created OR joined, in ITS OWN surface's list
       // Derive the relay-facing identity + the room key from the room code
@@ -13749,7 +13760,7 @@
     // ---- the front-door lobby --------------------------------------------------
     // A COLD open (the desktop icon → bare meet.html, no room and no app hand-off
     // in the URL) is a person who hasn't said what they came to do — so ask,
-    // and start NO camera until they pick. Any link (#v=) or an app's Meeting
+    // and start NO camera until they pick. Any link (#room=) or an app's Meeting
     // toggle (#app=) already states the intent and skips straight in.
     // "Recent & saved" is PER SURFACE. Meeting and Broadcast are one page wearing
     // two skins, and they shared one pair of storage keys — so broadcasts you had
@@ -13758,18 +13769,17 @@
     // separate namespaces now: Meeting shows meetings, Broadcast shows broadcasts.
     // Which surface THIS page is: a room is what its link says (BROADCAST); a
     // lobby is what you came in wanting (BC_INTENT).
-    const CAST_SURFACE = params.get('v') ? BROADCAST : BC_INTENT;
+    const CAST_SURFACE = LINK.room ? BROADCAST : BC_INTENT;
     const SURFACE_NAME = CAST_SURFACE ? 'Broadcast' : 'Meeting';
     const MEET_HIST = CAST_SURFACE ? 'gifos_cast_history' : 'gifos_meet_history';
     const MEET_MARKS = CAST_SURFACE ? 'gifos_cast_bookmarks' : 'gifos_meet_bookmarks';
     function loadList(key) { try { const a = JSON.parse(localStorage.getItem(key) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
     function saveList(key, a) { try { localStorage.setItem(key, JSON.stringify(a)); } catch (e) {} }
     // An entry's home is read from the LINK, not from which list it happens to be
-    // sitting in — both forms a broadcast link can take (the pretty /cast/ path,
-    // the hash's bc flag) say so plainly.
+    // sitting in — every form a broadcast link can take (a /cast address, the
+    // fragment's cast flag) says so plainly (link.js).
     function isCastEntry(e) {
-      const u = (e && e.url) || '';
-      return /\/cast(?:\/|#)/i.test(u) || /[#&]bc=/.test(u);
+      try { const u = new URL(String((e && e.url) || ''), 'https://gifos.app'); return LINKS.read(u.pathname, '', u.hash).cast; } catch (err) { return false; }
     }
     // Everything written before the split went into the meeting keys, so sort the
     // two lists on every boot: broadcasts out of Meeting, meetings out of
@@ -13850,38 +13860,11 @@
     // Turn a pasted invite (full URL, /meet path, or a bare id / id.verifier) into
     // {room, av, relay}. Accepts what a human would actually paste.
     function parseMeetInput(s) {
-      s = (s || '').trim();
-      if (!s) return null;
-      let room = '', av = '', relay = '', bc = false;
-      if (/[:/#?]/.test(s)) {
-        // about:srcdoc reports origin "null". An absolute link must still parse;
-        // passing that string as the base makes the URL constructor throw.
-        let u = null;
-        try {
-          const base = location.origin && location.origin !== 'null' ? location.origin : undefined;
-          u = base ? new URL(s, base) : new URL(s);
-        } catch (e) { u = null; }
-        if (u) {
-          const pm = u.pathname.match(/\/(?:meet|join|cast)\/([a-z0-9-]{1,64})(?:\/([a-f0-9]{16,64}))?/i);
-          if (pm) { room = pm[1]; av = (pm[2] || '').toLowerCase(); bc = /^\/cast\//i.test(u.pathname); }
-          const hp = new URLSearchParams((u.hash || '').replace(/^#/, ''));
-          // The link form (/meet#room=R&v=V) names the verifier v; the page's
-          // own hash (run.html#v=R&av=V) names the room v. Read each by its form.
-          if (hp.get('room')) { room = hp.get('room'); av = (hp.get('v') || '').toLowerCase(); bc = bc || /^\/cast\/?$/i.test(u.pathname); }
-          else {
-            if (hp.get('v')) room = hp.get('v');
-            if (hp.get('av')) av = (hp.get('av') || '').toLowerCase();
-          }
-          if (hp.get('relay')) relay = hp.get('relay');
-          if (hp.get('bc')) bc = true;
-        }
-      }
-      if (!room) {
-        const m = s.match(/^([a-z0-9-]{1,64})(?:[\/.]([a-f0-9]{16,64}))?$/i);
-        if (m) { room = m[1]; av = (m[2] || '').toLowerCase(); }
-      }
-      if (!room || !/^[a-z0-9-]{1,64}$/i.test(room)) return null;
-      if (av && !/^[a-f0-9]{16,64}$/.test(av)) av = '';
+      // Any link form, or a bare "room" / "room/verifier" (link.js parseInput). about:srcdoc reports origin "null":
+      // an absolute link must still parse, so no base is passed then.
+      const base = location.origin && location.origin !== 'null' ? location.origin : undefined;
+      const r = LINKS.parseInput(s, base);
+      if (!r) return null;
       // Any room name joins, short words too ("test", "team"): the room is the
       // name in the link, gifos.app/meet#room=<name>, and the lobby says "type a room name".
       // NEVER normalise the room id. It is the whole capability: the relay
@@ -13891,7 +13874,7 @@
       // different rooms depending on whether you opened the link or pasted it —
       // /meet/BibleReading and biblereading are different meetings, and the two
       // people never saw each other. Only `av` is case-folded: it is a hex digest.
-      return { room, av, relay, bc: bc && !!av }; // bc is a skin on an admin room
+      return { room: r.room, av: r.v, relay: LINKS.extra(r, 'relay'), bc: r.cast && !!r.v }; // cast is a skin on an admin room
     }
     // THE LOBBY SHOWS THE JOIN (0.9.25). The lobby used to open the camera on
     // load and show it clear behind the menu, which read as "you will join on
@@ -13931,7 +13914,7 @@
       // roomStateReady. The appearance card resolves before the knock,
       // unless this session already confirmed the name.
       roomStateSettled = false;
-      roomStateReady = hydrateRoomState(params.get('v'), params.get('av')).then((v) => {
+      roomStateReady = hydrateRoomState(LINK.room, LINK.v).then((v) => {
         roomStateSettled = true;
         return v;
       }, () => { roomStateSettled = true; return false; });
@@ -14287,8 +14270,9 @@
         const relay = relayUrl();
         const custom = relay && relay !== window.GIFOS_RELAY;
         const pretty = /(^|\.)gifos\.app$/.test(location.hostname) && !custom;
-        const prettyPath = j.owned ? '/join#room=' + j.short + '&v=' + j.av + '&code=' + j.k : '/join#code=' + j.k; // fragment: never sent to a server
-        const hashForm = MEET_PATH + (j.owned ? '#s=' + j.short + '.' + j.av + '&k=' + j.k : '#j=' + j.k);
+        const appLink = j.owned ? { room: j.short, v: j.av, code: j.k } : { code: j.k };
+        const prettyPath = '/join#' + LINKS.hash(appLink); // fragment: never sent to a server
+        const hashForm = MEET_PATH + '#' + LINKS.hash(appLink);
         shareLink = location.origin + (pretty ? prettyPath : hashForm + (custom ? '&relay=' + encodeURIComponent(relay) : ''));
         (0, /*()*/__V.paintShareUrl)(shareLink);
         const canonical = pretty ? prettyPath : hashForm + (custom ? '&relay=' + encodeURIComponent(relay) : '');
@@ -14498,7 +14482,7 @@
     else if (ROOM.solo) bootSoloApp();
     else if (ROOM.kind === 'app') preflighted(bootAppRoom);
     else if (EMBED && EMBED.bad) { /* an embed that names no hosted broadcast joins nothing; its view says why */ }
-    else if (!params.get('v') && !params.get('app')) (0, /*()*/__V.showLobby)();
+    else if (!LINK.room && !params.get('app')) (0, /*()*/__V.showLobby)();
     else preflighted(bootIntoRoom);
 
     // ---- chat + pinned files: pure P2P over DataChannels ----------------------
@@ -14573,8 +14557,8 @@
       try {
         const u = new URL(String(link || ''), location.origin);
         if (u.origin !== location.origin) return false;
-        if (/[#&]v=[A-Za-z0-9-]+/.test(u.hash || '')) return true;
-        return /\/meet\/[A-Za-z0-9-]+\/[a-f0-9]+/.test(u.pathname);
+        const r = LINKS.read(u.pathname, '', u.hash);   // a hosted room's link, any form
+        return !!(r.room && r.v);
       } catch (e) { return false; }
     }
     function fileFromAllowed(byId) {
@@ -19479,7 +19463,7 @@
     // the tap happened, not Min blur: that boot still comes on at Max.
     function goLiveStoredLevel(peek) {
       try {
-        const k = 'gifos_bc_golive_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase();
+        const k = 'gifos_bc_golive_' + LINK.room + '.' + LINK.v;
         const v = sessionStorage.getItem(k);
         if (!peek) sessionStorage.removeItem(k);
         if (v === 'b0' || v === 'b1' || v === 'b2') return +v.slice(1);
@@ -21091,7 +21075,7 @@
       GifOS.meetSubs.joinMeeting(subsMeetId(), {
         // The room's name as this person sees it and how many are in it: kept in this browser's memory of the meetings its
         // plan powers, so a later "move your plan here?" can name this one (the payment service never learns names).
-        name: () => String(params.get('v') || '').replace(/\s+/g, ' ').trim() || null,
+        name: () => LINK.room.replace(/\s+/g, ' ').trim() || null,
         people: () => { try { return participantCount() || null; } catch (e) { return null; } },
         onTicket: () => { if (amAdmin && !!av) subsPublishRoomPlan(); subsRightRefresh(); turnSubAt = 0; capMineCheck().catch(() => false).then(() => capTicketPublish(true)); try { (0, /*()*/__V.capPaint)(); } catch (e) {} },   // a captor re-presents each renewed ticket   // a fresh ticket is a fresh TURN vouch: say it at the next step
         onPass: () => { if (amAdmin && !!av) subsPublishRoomPlan(); subsRightRefresh(); turnSubAt = 0; capMineCheck().catch(() => false).then(() => capTicketPublish(true)); try { (0, /*()*/__V.capPaint)(); } catch (e) {} },   // a pass bought, started, renewed or ended: the room's plan, the TURN vouch and a pass captor's ticket now
@@ -21243,10 +21227,10 @@
       const custom = relay && relay !== window.GIFOS_RELAY;
       const pretty = /(^|\.)gifos\.app$/.test(location.hostname) && !custom;
       const newLink = pretty
-        ? location.origin + '/meet#room=' + chosen + '&v=' + V
-        : location.origin + MEET_PATH + '#v=' + chosen + '&av=' + V + (relay ? '&relay=' + encodeURIComponent(relay) : '');
+        ? location.origin + '/meet#' + LINKS.hash({ room: chosen, v: V })
+        : location.origin + MEET_PATH + '#' + LINKS.hash({ room: chosen, v: V, rest: { relay } });
       if (postToChat && peers.size > 0) await postMoveNotice(newLink);
-      location.replace(MEET_PATH + '#v=' + chosen + '&av=' + V);
+      location.replace(MEET_PATH + '#' + LINKS.hash({ room: chosen, v: V }));
       location.reload(); // load the new admin room fresh — I arrive as its admin
     }
 
@@ -21255,11 +21239,8 @@
     // that sheet. Otherwise the link is copied. Same path as the phone Invite.
     function viewerShareUrl() {
       let raw = shareLink || '';
-      const named = (typeof room === 'string' && room) ? room : (params.get('v') || '');
-      if (!raw && named) {
-        const avBit = (params.get('av') || '').toLowerCase();
-        raw = location.origin + location.pathname + '#v=' + encodeURIComponent(named) + (avBit ? '&av=' + avBit : '') + (BROADCAST ? '&bc=1' : '');
-      }
+      const named = (typeof room === 'string' && room) ? room : LINK.room;
+      if (!raw && named) raw = location.origin + LINKS.pageFor(location.pathname, BROADCAST ? 'cast' : 'meet') + '#' + LINKS.hash({ room: named, v: LINK.v });
       if (!raw) return '';
       const dropKeys = ['pw', 'password', 'guest', 'vpw', 'guestpw', 'pass'];
       const drop = (sp) => { dropKeys.forEach((k) => sp.delete(k)); };
@@ -21279,14 +21260,14 @@
         const at = BROADCAST ? String(params.get('at') || '') : '';
         const h = new URLSearchParams(u.hash.replace(/^#/, ''));
         const put = (sp, k, val) => { if (val) sp.set(k, val); else sp.delete(k); };
-        if (h.has('v')) { put(h, 'at', at); u.hash = h.toString(); }
+        if (LINKS.read('', '', u.hash).room) { put(h, 'at', at); u.hash = h.toString(); }
         else { put(u.searchParams, 'at', at); }
         raw = u.toString();
       } catch (e) {}
       const secrets = [];
       try {
         if (typeof roomPw === 'string' && roomPw) secrets.push(roomPw);
-        const stored = localStorage.getItem('gifos_vpw_' + (params.get('v') || '') + '.' + ((params.get('av') || '').toLowerCase()));
+        const stored = localStorage.getItem('gifos_vpw_' + LINK.room + '.' + LINK.v);
         if (stored) secrets.push(stored);
       } catch (e) {}
       secrets.forEach((s) => {
@@ -22479,8 +22460,7 @@
               if (rel) params.set('relay', rel);   // this page only: a link's relay is never saved for later pages
             } catch (e) {}
           }
-          params.set('v', parsed.room);
-          if (parsed.av) params.set('av', parsed.av); else params.delete('av');
+          LINK.room = parsed.room; LINK.v = parsed.av || ''; LINK.code = '';
           params.set('mb', '1');
           // bot=1 is the one switch: a session that asks for it, or a tab already in
           // assistant mode, keeps it; nothing here drops it.

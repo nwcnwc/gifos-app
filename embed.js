@@ -3,9 +3,10 @@
  *
  *   <script src="https://gifos.app/embed.js" data-room="ROOM" data-verifier="VERIFIER" data-title="My show"></script>
  *
- * Your hosted broadcast's viewer link is https://gifos.app/cast/ROOM/VERIFIER:
- * data-room is ROOM and data-verifier is VERIFIER (or put the whole link in
- * data-room); data-verifier is optional (a public majority-rules meeting has none). The
+ * Your hosted broadcast's viewer link is https://gifos.app/cast#room=ROOM&v=VERIFIER
+ * (or the older https://gifos.app/cast/ROOM/VERIFIER): data-room is ROOM and
+ * data-verifier is VERIFIER (or put the whole link in data-room); data-verifier
+ * is optional (a public majority-rules meeting has none). The
  * player plays only while the room is hosted right now (its host, or the
  * subscriber who took charge of an open room, is in it); until then it shows
  * a card and plays nothing, and starts by itself. The script puts a 16:9 player
@@ -26,8 +27,9 @@
   if (!s || !s.parentNode) return;
   var raw = String(s.getAttribute('data-room') || '').trim();
   var ver = String(s.getAttribute('data-verifier') || '').trim();
-  // A whole viewer link in data-room: /cast/ROOM/VERIFIER.
-  var link = raw.match(/\/cast\/([a-z0-9-]{1,64})(?:\/([a-f0-9]{16,64}))?\/?(?:[?#].*)?$/i);
+  // A whole viewer link in data-room: /cast#room=ROOM&v=VERIFIER, or /cast/ROOM/VERIFIER.
+  var link = raw.match(/\/cast\/([a-z0-9-]{1,64})(?:\/([a-f0-9]{16,64}))?\/?(?:[?#].*)?$/i)
+    || raw.match(/\/cast\/?#(?:.*&)?room=([a-z0-9-]{1,64})(?:&(?:.*&)?v=([a-f0-9]{16,64}))?(?:&.*)?$/i);
   if (link) { raw = link[1]; ver = ver || link[2] || ''; }
   var m = /^[a-z0-9-]{1,64}$/i.test(raw) ? [raw, raw, ver] : null;
   var origin = 'https://gifos.app';
@@ -38,7 +40,7 @@
   if (!('aspectRatio' in box.style)) { box.style.height = '0'; box.style.paddingTop = '56.25%'; }
   if (!m) {
     box.style.cssText += ';color:#eee;font:14px system-ui,sans-serif;display:flex;align-items:center;justify-content:center';
-    box.textContent = 'GifOS embed: data-room should name your broadcast (the ROOM in gifos.app/cast/ROOM/VERIFIER).';
+    box.textContent = 'GifOS embed: data-room should name your broadcast (the ROOM in gifos.app/cast#room=ROOM&v=VERIFIER).';
     s.parentNode.insertBefore(box, s.nextSibling);
     return;
   }

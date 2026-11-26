@@ -4859,11 +4859,10 @@
   async function handleFolderParam() {
     let folder = '', select = '';
     try {
-      const h = new URLSearchParams(location.hash.slice(1));
-      folder = h.get('folder') || ''; select = h.get('select') || '';
+      const h = GifOS.link.home(location.hash);   // the one link module (js/core/link.js)
+      folder = h.folder; select = h.select;
       if (!folder && !select) return;
-      h.delete('folder'); h.delete('select');
-      const rest = h.toString();
+      const rest = GifOS.link.homeHash({ place: h.place, rest: h.rest });
       history.replaceState(null, '', location.pathname + location.search + (rest ? '#' + rest : ''));
     } catch (e) { return; }
     await drainPendingReceipts();   // a receipt minted a moment ago is placed first
@@ -4882,7 +4881,7 @@
   }
 
   // The same link followed in a tab that already shows the Home Screen.
-  window.addEventListener('hashchange', () => { if (/[#&](folder|select)=/.test(location.hash)) handleFolderParam(); });
+  window.addEventListener('hashchange', () => { const h = GifOS.link.home(location.hash); if (h.folder || h.select) handleFolderParam(); });
 
   // #place=<fileId> — finish an App Store install. store.js downloaded and
   // verified the GIF and wrote the FILE; the icon's cell is not its business,
@@ -4896,8 +4895,8 @@
   async function handlePlaceParam() {
     let fileId = '', from = '';
     try {
-      const q = new URLSearchParams(location.hash.slice(1));
-      fileId = q.get('place') || ''; from = q.get('from') || '';
+      const q = GifOS.link.home(location.hash);   // the one link module (js/core/link.js)
+      fileId = q.place; from = GifOS.link.extra(q, 'from');
     } catch (e) {}
     if (!fileId) return;
     // Strip it first: a refresh must never re-place the icon.

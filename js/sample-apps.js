@@ -7550,7 +7550,7 @@ The Store itself does not keep a shopping cart in this icon.
                'index.html': themeHtml(MEET_FALLBACK_HTML, 'full') }),
     }, {
       // Meeting's sibling: the same trusted page wearing the broadcast skin
-      // (run.html#bc=1) — one host on the Stage, unlimited viewers, chat.
+      // (the broadcast page, cast.html) — one host on the Stage, unlimited viewers, chat.
       name: 'Broadcast.gif', appId: 'broadcast', accent: [255, 92, 120],
       files: withHelp('broadcast', { 'manifest.json': manifest('broadcast', 'Broadcast', [255, 92, 120], { system: 'broadcast' }),
                'index.html': themeHtml(BROADCAST_FALLBACK_HTML, 'full') }),

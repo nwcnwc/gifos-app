@@ -1132,7 +1132,7 @@
   // The store is the ROOT page at its clean path, for every build (store.js
   // speaks for the build that owns the Home Screen); a relative 'store.html'
   // opened a release build's frozen store, after the host's 308.
-  const SYSTEM_PAGES = { meet: 'meet.html', video: 'meet.html', broadcast: 'cast.html#bc=1', store: '/store' };
+  const SYSTEM_PAGES = { meet: 'meet.html', video: 'meet.html', broadcast: 'cast.html', store: '/store' };
   function systemPage(system, dbName) {
     if (typeof system !== 'string' || !Object.prototype.hasOwnProperty.call(SYSTEM_PAGES, system)) return null;
     // The store installs INTO a computer, so it has to land on the one this
