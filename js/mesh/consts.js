@@ -140,7 +140,7 @@
     L4_ENTRY_N: 2,   // C++: mesh.cpp:L4_ENTRY_N  (LAW_L4_ENTRY_N)
     L4_ENTRY_T: 16,   // C++: mesh.cpp:L4_ENTRY_T  (LAW_L4_ENTRY_T)
     L29_BUD_D: 60,   // C++: mesh.cpp:L29_BUD_D  (LAW_L29_BUD_D)
-    L29_BUD_M: 40,   // C++: mesh.cpp:L29_BUD_M  (LAW_L29_BUD_M)
+    L29_BUD_M: 49,   // C++: mesh.cpp:L29_BUD_M  (LAW_L29_BUD_M)
     L29_HOT: 2,   // C++: mesh.cpp:L29_HOT  (LAW_L29_HOT)
     L29_PARK: 1,   // C++: mesh.cpp:L29_PARK  (LAW_L29_PARK)
     L29_SHED: 90,   // C++: mesh.cpp:L29_SHED  (LAW_L29_SHED)
@@ -299,6 +299,7 @@
     RELAY_DOOR_X: 4,   // C++: mesh_net.inc:RELAY_DOOR_X
     MEDIA_SETUP_T: 2,   // C++: mesh_media.inc:MEDIA_SETUP_T
     MEDIA_WAKE_T: 1,   // C++: mesh_media.inc:MEDIA_WAKE_T
+    get LG_CELL_MAX() { return byC([15,24,33,42]); },   // C++: mesh_lguard.inc:LG_CELL_MAX  (2*(C-1)*LAW_L29_HOT + 2*(2*(C-1)+1) + (C-1)*LAW_L29_PARK + 2*LAW_L29_HOT)
     FH_DISC: 14,   // C++: mesh_fhop.inc:FH_DISC
     FH_UNLINK: 30,   // C++: mesh_fhop.inc:FH_UNLINK
     FH_RENEG: 2,   // C++: mesh_fhop.inc:FH_RENEG
