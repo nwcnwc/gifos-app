@@ -4685,7 +4685,7 @@
       "appId": "meeting-bot",
       "name": "Meeting Bot",
       "shortName": "Meet Bot",
-      "version": "0.9.25.2",
+      "version": "0.9.28.1",
       "tagline": "A meeting bot you drive from another device.",
       "author": {
         "name": "GifOS",
@@ -4710,15 +4710,15 @@
         255
       ],
       "cover": "/apps/meeting-bot/cover.jpg",
-      "bytes": 48717,
+      "bytes": 92826,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-11-21"
+        "ts": "2026-11-26"
       },
-      "sha256": "74f57700b33d79755a01d3ddbbf793d9656f24e9b570d0f0c71c843e7eef7fac"
+      "sha256": "d7abccffbf5f5eef93fc9ea6d816357488d63999d4bd352455a93f138d69ccf6"
     },
     {
       "slug": "memory",
