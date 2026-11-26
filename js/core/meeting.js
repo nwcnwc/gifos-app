@@ -24995,9 +24995,13 @@
     // host"; the host is whoever holds the room's admin key): 'stage' only from the relay's word that the HOST granted it:
     // a hosted room's ACL (taken from a host-proven socket) or a captured room's capture flags (taken from the captor's
     // own right on a socket that proved the captor key, for the capture held now). Never from the link or a peer.
+    // No link dependence: whichever host grant the relay said and that holds the item (a hosted room's ACL push, or the
+    // capture's flags for the key that holds the capture now); a flagless one never hides the other.
     function hostStageAcl() {
-      if (av) return roomAcl;   // a hosted room: its ACL (the relay sends an ACL nowhere else)
-      return capOn() && capAcl && capAcl.ck === capKey ? capAcl.acl : null;
+      const cap = capOn() && capAcl && capAcl.ck === capKey ? capAcl.acl : null;
+      if (GifOS.sub.aclHas(roomAcl, 'clearStageInAdminRoom')) return roomAcl;
+      if (GifOS.sub.aclHas(cap, 'clearStageInAdminRoom')) return cap;
+      return null;
     }
     function clearNoPwMode() {
       if (roomPw) return '';
