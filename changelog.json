@@ -2,6 +2,18 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.41",
+      "date": "2026-11-26",
+      "headline": "Shared screens stay blurred everywhere they show, and plan cards build on each other",
+      "critical": true,
+      "features": [
+        "Plan cards on the subscription page list only what each plan adds to the one below it, and say how many firewalled networks each plan connects video across."
+      ],
+      "fixes": [
+        "A shared screen that should be blurred is now blurred in the content pane, full screen, the Stage strip and embedded players too, even when the sender's browser was changed to send it clear."
+      ]
+    },
+    {
       "version": "0.9.28.40",
       "date": "2026-11-26",
       "headline": "A room password clears the room, and players say Connecting until they know",
