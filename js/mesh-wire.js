@@ -786,7 +786,10 @@
         onClose: (code) => { relayCloses.push({ code, at: Date.now() }); if (relayCloses.length > RELAY_CLOSES_KEPT) relayCloses.shift(); },
         onConnectFail: () => { if (!stopped && opts.onRelayFail) { try { opts.onRelayFail(); } catch (e) {} } },   // a connect that never opened (the page may leave a dead relay)
         onDuty: () => !stopped,
-        prepare: prepareTicket,
+        // opts.prepareUrl() (optional): the page brings what its URL presents up to date BEFORE every connect (a host's
+        // fresh host proof: the relay takes one only inside its replay window, and a relay restart can come hours after
+        // the last connect). A failure never holds the socket.
+        prepare: () => (opts.prepareUrl ? Promise.resolve().then(opts.prepareUrl).catch(() => {}) : Promise.resolve()).then(prepareTicket),
         onTokenRefused: (code, why) => { if (ticket) ticket.drop(why); },   // why: a raised room names the bits it wants
         onBusy: () => { if (opts.onBusy) { try { opts.onBusy(); } catch (e) {} } },
       });
