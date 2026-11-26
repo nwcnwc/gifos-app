@@ -1,0 +1,5 @@
+{
+  "title": "Übertragung",
+  "why": "Diese App ist fest in GifOS eingebaut. Gewöhnliche Apps dürfen nicht auf Ihre Kamera oder\nIhr Mikrofon zugreifen; deshalb öffnet dieses Symbol die integrierte Übertragungsseite, statt hier zu laufen.",
+  "open": "Öffnen Sie dieses GIF auf Ihrem Startbildschirm unter <code>gifos.app</code>, um live zu gehen."
+}
