@@ -226,14 +226,13 @@
     });
     fn('clearAppView', function (why) {
       try { C.appEv('clear', { why: why || 'unstated' }); } catch (e) {}
-      if (C.appClientStop) { try { C.appClientStop(); } catch (e) {} C.appClientStop = null; }
-      C.appClientCtl = null; C.appHostCtl = null; try { delete root.__appClientCtl; } catch (e) {}
+      C.act.appUnmounted();   // the core stops the mount and drops its handles, mode and key (same intent as view.js)
+      try { delete root.__appClientCtl; } catch (e) {}
       refreshStealBtn();
       appMountEl.innerHTML = '';
       C.act.surface({ appPaneOn: false });
       body.classList.remove('has-app');
       var ap = $('appperms'); if (ap) ap.style.display = 'none';
-      C.appMode = null; C.appKey = null;
       paintBar(); paintHelpTip();
     });
     fn('updateAppButtons', function () {
@@ -256,15 +255,10 @@
       C.stopRoomApp(want);
     };
     $('apphide').onclick = function () {
-      var st = me();
-      if (!C.appKey || (st.app && C.appKey === st.app.s)) return;
-      C.appHiddenSid = C.appKey;
-      C.reconcileApp();
+      C.act.appHide();
     };
     $('applead').onclick = function () {
-      if (!(me().app && C.appLeadSet)) return;
-      C.appLeadOn = !C.appLeadOn;
-      C.appLeadSet(C.appLeadOn);
+      C.act.appLead();
     };
     // TALK: the app host's switch on its app ad (the core's), read by everyone here
     function roomAudioOn() {
