@@ -3953,7 +3953,12 @@
         if (f) { if (f.meta && f.meta.ao) return null; st = f.stream; }
         else if (s1) { const p = __C.peers.get(id); st = p && p.video ? p.video.srcObject : null; }
       }
-      const vt = st && typeof st.getVideoTracks === 'function' ? st.getVideoTracks()[0] : null;
+      // Only a real stream holds a face. A host with no screen (embed.html,
+      // the Node host) hands the core counted placeholders for a tile's
+      // elements (host.js placeholder), and one answers every question: a
+      // duck-typed read took its srcObject for a stream and painted the
+      // placeholder as a track (new MediaStream threw in paintStageFaces).
+      const vt = st instanceof MediaStream ? st.getVideoTracks()[0] : null;
       return vt && vt.readyState !== 'ended' ? vt : null;
     }
     // The faces to put on screenSid's shared screen: [{ id, vt, crop, cell, bl }].
