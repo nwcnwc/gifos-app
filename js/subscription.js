@@ -98,20 +98,51 @@
       // What the held plans give (the four-hour pass is never replaced, so not here).
       // What is held, as signed line items (the subscription's license, the live pass): what "included" reads.
       var heldGrants = [c.sub && c.sub.grants, pass && pass.passGrants].filter(Boolean);
+      // The "Your plan" card: the plan's name, what it gives, and when it renews or ends. With nothing held it is one
+      // line (you have Free) and the plans follow at once.
       var held = $('held');
       held.textContent = '';
-      if (subTier) held.appendChild(document.createTextNode(t(c.sub.status === 'cancelled' ? 'heldSubEnds' : 'heldSub', { plan: t(subTier + '.name'), until: day(c.sub.until) })));
-      else if (!passRow) held.appendChild(document.createTextNode(t('heldNone')));
-      if (passRow) {
-        held.appendChild(document.createTextNode((subTier ? ' ' : '') + (passRow === 'pass'
-          ? (isFinite(pass.until) ? t('heldPass', { until: clock(pass.until) }) : t('heldPassNever'))
-          : t('heldSub', { plan: t(passRow + '.name'), until: isFinite(pass.until) ? day(pass.until) : '' }))));
+      var parts = [];
+      if (subTier) {
+        parts.push(c.sub.status === 'cancelled' ? t('ypEnds', { until: day(c.sub.until) })
+          : c.sub.renews ? t('ypRenews', { until: day(c.sub.renews) }) : t('ypUntil', { until: day(c.sub.until) }));
       }
+      if (passRow) {
+        parts.push(passRow === 'pass'
+          ? (isFinite(pass.until) ? t('heldPass', { until: clock(pass.until) }) : t('heldPassNever'))
+          : (isFinite(pass.until) ? t('ypUntil', { until: day(pass.until) }) : t('heldPassNever')));
+      }
+      if (!parts.length) parts.push(t('heldNone'));
+      held.textContent = parts.join(' ');
+      var anyHeld = !!(subTier || passRow);
+      var names = [subTier, passRow !== subTier ? passRow : null].filter(Boolean);
+      var yours = $('yours');
+      if (yours) yours.className = 'yours' + (anyHeld ? '' : ' none');
+      var ypName = $('yp-name');
+      if (ypName) { ypName.textContent = names.map(function (id) { return t(id + '.name'); }).join(' + '); ypName.hidden = !anyHeld; }
+      var ypWhat = $('yp-what');
+      if (ypWhat) { ypWhat.textContent = anyHeld ? t(names[0] + '.desc') : ''; ypWhat.hidden = !anyHeld; }
+      show('yp-kicker', anyHeld);
+      show('held-get-line', !anyHeld);
       var nowS = Math.floor(Date.now() / 1000);
 
-      var list = $('plans');
-      list.textContent = '';
+      // Three groups, by line items: plans for one meeting at a time (cards), plans for many meetings at once, add-ons.
+      var host = $('plans');
+      host.textContent = '';
+      var lists = {};
+      ['one', 'many', 'addon'].forEach(function (g) {
+        if (g !== 'one') { var gh = el('h2', 'group', t(g === 'many' ? 'groupMany' : 'groupAddons')); host.appendChild(gh); }
+        lists[g] = el('ul', 'plans ' + g);
+        host.appendChild(lists[g]);
+      });
+      var groupOf = function (r) {
+        if (r.kind === 'addon') return 'addon';
+        if (r.kind === 'contact') return 'many';
+        var g = grantsOf(r.id);
+        return g && (g.meetings || 1) > 1 ? 'many' : 'one';
+      };
       rows().forEach(function (r) {
+        var list = lists[groupOf(r)];
         var isHeld = r.id === subTier || r.id === passRow || (r.id === 'free' && !subTier && !passRow);
         var li = el('li', 'plan' + (isHeld ? ' held' : '') + (r.kind === 'addon' ? ' addon' : ''));
         li.dataset.plan = r.id;
@@ -122,7 +153,15 @@
         if (r.kind === 'addon' && r.row.soon) h.appendChild(el('span', 'badge soon', t('soon')));
         what.appendChild(h);
         what.appendChild(el('p', 'quiet', t(r.id + '.desc')));
-        what.appendChild(el('p', 'price', priceLine(r)));
+        // The price: one line per period (a card stacks them; a row keeps them on one line).
+        var price = el('p', 'price');
+        if (r.row && r.row.periods && (r.kind === 'paypal' || r.kind === 'broadcast')) {
+          r.row.periods.forEach(function (per, i) {
+            if (i) price.appendChild(el('span', 'sep', ' · '));
+            price.appendChild(el('span', 'per', periodPrice(r.row, per)));
+          });
+        } else price.textContent = priceLine(r);
+        what.appendChild(price);
         li.appendChild(what);
         var acts = el('div', 'acts');
         var included = SUB.TIERS[r.id] && heldGrants.some(function (hg) { return SUB.covers(hg, grantsOf(r.id)); });
@@ -157,49 +196,72 @@
         li.appendChild(acts);
         list.appendChild(li);
       });
-      return Promise.resolve(paintYour(c)).then(function () { try { paintReceipt(); } catch (e) {} });
+      return Promise.resolve(paintYour(c)).then(function () { try { paintReceipt(c); } catch (e) {} });
     });
   }
   // The same slip as a receipt GIF (js/receipt-plan.js), from the files this
   // browser already holds. Nothing here calls the payment service.
-  function lsJson(k) {
-    try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; }
+  // Every receipt this browser holds (meetSubs.receiptSets): one per plan that was paid for, newest first, with the
+  // passes; a checkout started and never paid has none.
+  function receiptSets() {
+    try { return (MS().receiptSets && MS().receiptSets()) || []; } catch (e) { return []; }
   }
-  function receiptFiles() {
-    var files = {};
-    var c = lsJson('gifos-sub-cred');
-    var w = lsJson('gifos-pass-wallet');
-    var st = lsJson('gifos-sub-state') || {};
-    var bag = lsJson('gifos-sub-purchase');
-    if (c && typeof c === 'object') files['subscription.json'] = JSON.stringify(c);
-    if (w && typeof w === 'object') files['passes.json'] = JSON.stringify(w);
-    if (c && st && st.licenseJson && st.sig && st.subId === c.subId) files['license.json'] = JSON.stringify({ licenseJson: st.licenseJson, sig: st.sig });
-    if (st && (Number.isInteger(st.until) || Number.isInteger(st.paidThrough))) {
-      var state = {};
-      if (Number.isInteger(st.until)) state.until = st.until;
-      if (Number.isInteger(st.paidThrough)) state.paidThrough = st.paidThrough;
-      if (typeof st.status === 'string' && st.status) state.status = st.status;
-      files['state.json'] = JSON.stringify(state);
-    }
-    var flat = bag && typeof bag === 'object' ? (c ? bag.sub : bag.pass) : null;
-    if (flat && typeof flat === 'object') files['purchase.json'] = JSON.stringify(flat);
-    return files;
+  // A checkout started here and never paid: a plain note, never a receipt. When it had replaced a bought plan in this
+  // browser (earlier pages saved the checkout over it) and that plan is not back, say how to get it back.
+  function paintPending(host, c) {
+    var p = MS().pendingCheckout ? MS().pendingCheckout() : null;
+    if (!p) return false;
+    var box = el('div', 'pm-pending');
+    box.id = 'pm-pending';
+    box.appendChild(el('p', null, t('pendingNote')));
+    if (p.lost && !(c && c.sub)) box.appendChild(el('p', 'note', t('pendingLost')));
+    var row = el('div', 'row');
+    var go = el('button', 'go', t('pendingContinue'));
+    go.type = 'button';
+    go.id = 'pm-pending-continue';
+    go.addEventListener('click', function () {
+      if (busy) return;
+      busy = true;
+      say(t('opening'));
+      MS().continueCheckout(say).then(function (r) {
+        return r && r.licenseJson ? t('thanks') : r && r.status === 'APPROVAL_PENDING' ? SUB.TEXT.pending : t('notConfirmed');
+      }).then(say, function (e) { say(String((e && e.message) || e)); }).then(function () { busy = false; return paint(); });
+    });
+    var no = el('button', null, t('pendingDismiss'));
+    no.type = 'button';
+    no.id = 'pm-pending-dismiss';
+    no.addEventListener('click', function () {
+      if (busy) return;
+      busy = true;
+      MS().dismissPending().then(function (r) { say(r && r.licenseJson ? t('thanks') : ''); }, function () {}).then(function () { busy = false; return paint(); });
+    });
+    row.appendChild(go);
+    row.appendChild(no);
+    box.appendChild(row);
+    host.appendChild(box);
+    return true;
   }
-  function paintReceipt() {
+  function paintReceipt(c) {
     var host = $('pm-receipt');
     if (!host) return;
     host.textContent = '';
     host.hidden = true;
+    try { if (paintPending(host, c)) host.hidden = false; } catch (e0) {}
     var plan = GifOS.receiptPlan;
     if (!plan || typeof plan.rows !== 'function' || typeof plan.mount !== 'function') return;
-    var files = null;
-    try { files = receiptFiles(); } catch (e) { return; }
-    var list = [];
-    try { list = plan.rows(files) || []; } catch (e2) { return; }
-    if (!list.length) return;
+    var shown = 0;
+    receiptSets().forEach(function (set) {
+      var list = [];
+      try { list = plan.rows(set.files) || []; } catch (e2) { return; }
+      if (!list.length) return;
+      if (!shown) host.appendChild(el('h3', null, t('pmReceipt')));
+      try { plan.mount(host, list, { files: set.files }); } catch (e3) { return; }
+      // One slip per plan: the first keeps the slip's id, the later ones are numbered.
+      try { var last = host.lastChild; if (shown && last && last.id === 'pm-slip') last.id = 'pm-slip-' + shown; } catch (e5) {}
+      shown++;
+    });
+    if (!shown) return;
     host.hidden = false;
-    host.appendChild(el('h3', null, t('pmReceipt')));
-    try { plan.mount(host, list, { files: files }); } catch (e3) { host.textContent = ''; host.hidden = true; return; }
     try { if (typeof plan.foot === 'function') plan.foot(host); } catch (e4) {}
   }
 
@@ -221,6 +283,8 @@
     show('pm-move', held && !arrival.move);
     show('pm-pay', paypal);
     show('pm-signout-wrap', held);
+    show('sec-cancel', held);
+    show('yp-change', held);
     if (!held || !MS().heldMeetings) { paintMeetings(null); return; }
     return MS().heldMeetings().then(paintMeetings, function () { paintMeetings(null); });
   }
@@ -390,8 +454,15 @@
     var ask = $('pm-restore-ask');
     if (ask) ask.hidden = false;
     var subs = g.subs || [];
+    // One PayPal account can hold several plans, even two of the same plan: each button names its own plan, and two
+    // that read the same also name their PayPal subscription id (what PayPal itself shows), so no two buttons read alike.
+    var names = subs.map(function (s) { return planLabel(s.tier); });
+    var labels = subs.map(function (s, i) {
+      var same = names.filter(function (n) { return n === names[i]; }).length > 1;
+      return same && s.id ? t('pmRestorePlanId', { plan: names[i], id: s.id }) : names[i];
+    });
     var q = $('pm-restore-q');
-    if (q) q.textContent = t('pmRestoreQ', { plan: subs.map(function (s) { return planLabel(s.tier); }).filter(Boolean).join(', ') });
+    if (q) q.textContent = subs.length > 1 ? t('pmRestoreQMany', { n: subs.length }) : t('pmRestoreQ', { plan: labels.filter(Boolean).join(', ') });
     var storage = subs.some(function (s) { var row = SUB.TIERS[s.tier]; return !!(row && row.storage); });
     var lib = $('pm-restore-lib');
     if (lib) { lib.hidden = !storage; if (storage) lib.textContent = t('pmLibWarn'); }
@@ -404,13 +475,13 @@
       b.type = 'button';
       b.id = i === 0 ? 'pm-restore-yes' : ('pm-restore-yes-' + i);
       b.hidden = false;
-      b.textContent = t('pmRestoreYes');
+      b.textContent = subs.length > 1 ? t('pmRestoreUse', { plan: labels[i] }) : t('pmRestoreYes');
+      b.dataset.sub = s.id || '';
       b.onclick = function () { doClaim(grant, s); };
       if (acts) acts.appendChild(b);
     });
     if (!subs.length && yes) yes.hidden = true;
-    var block = $('pm-restore');
-    if (block && block.scrollIntoView) block.scrollIntoView();
+    openSection('sec-restore');
   }
   function doClaim(grant, sub) {
     var P = PM();
@@ -423,10 +494,12 @@
     }, function (e) { say(String((e && e.message) || e)); }).then(function () { busy = false; });
   }
   function scrollToId(id) { var n = $(id); if (n && n.scrollIntoView) n.scrollIntoView(); }
+  // A closed section opens before it is shown.
+  function openSection(id) { var n = $(id); if (!n) return; n.open = true; if (n.scrollIntoView) n.scrollIntoView(); }
   function arrive() {
     if (arrival.scroll === 'move') scrollToId('pm-move');
-    else if (arrival.scroll === 'restore') scrollToId('pm-restore');
-    else if (arrival.scroll === 'get') scrollToId('get');
+    else if (arrival.scroll === 'restore') openSection('sec-restore');
+    else if (arrival.scroll === 'get') openSection('get');
     if (arrival.restore) showRestore(arrival.restore);
     if (arrival.move) return beginReceive(arrival.move);
   }
@@ -449,6 +522,8 @@
         return paint();
       }, function (e) { say(String((e && e.message) || e)); });
     });
+    on('held-get', function (e) { if (e && e.preventDefault) e.preventDefault(); openSection('get'); });
+    on('yp-change', function () { openSection('sec-cancel'); });
     on('pm-move-go', function () { var p = beginSend(); if (p && p.catch) p.catch(function (e) { endSend(t('pmFailed')); say(String((e && e.message) || e)); }); });
     on('pm-copy', copyLink);
     on('pm-code-go', function () { submitCode(($('pm-code') && $('pm-code').value) || ''); });
@@ -460,7 +535,7 @@
       var subIn = $('pm-restore-sub');
       var subId = subIn ? String(subIn.value || '').trim() : '';
       if (subId && !/^I-[A-Za-z0-9]{4,40}$/.test(subId)) { say(t('pmRestoreSubBad')); return; }
-      // Restoring signs out every other device: ask first. Nothing is sent to PayPal until Continue.
+      // Restoring stops the plan on every other device: ask first. Nothing is sent to PayPal until Continue.
       show('pm-restore-confirm', true);
       var go = $('pm-restore-continue');
       if (go && go.focus) go.focus();

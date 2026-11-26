@@ -170,7 +170,7 @@ take the matching `type` value. There are only these two:
 "hosted") and maps them to "open" and "admin".
 
 The person who runs a private meeting is its host, and the screens call the
-role host everywhere: the Host button, Host sign-in, the host password. The
+role host everywhere: the Host button and the host password. The
 tools keep "admin" as the value (type "admin", mode "admin", and
 `admin_password`, the older name of `host_password`), and take "host" for
 "admin" where they read free text. Someone on a $5+ plan, or with a staff pass, can take over as host of a

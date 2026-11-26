@@ -2,6 +2,58 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.33",
+      "date": "2026-11-26",
+      "headline": "Backgrounds for your camera, a clear Stage in hosted meetings, and GifOS TV",
+      "critical": false,
+      "features": [
+        "Camera backgrounds: blur, built-in pictures or your own picture, from the Camera pop-up. Phones get None and Blur.",
+        "Hosted meetings: every paid plan and pass lets viewers tap to unblur the Stage in rooms the plan's owner hosts. Host blur orders still win.",
+        "The welcome page has a second live player: GifOS TV, public-domain films broadcast from a Raspberry Pi, with the full film list and credits.",
+        "Bots without a browser can hold a room: capture, password, Blur guests, Stage and host sign-in."
+      ],
+      "fixes": [
+        "Broadcast sound keeps playing when a rebroadcast moves to its next file.",
+        "Phones no longer open a silent microphone when you join, so the volume stays on media.",
+        "A broadcast with the host's camera off shows its clip, not the camera-off card.",
+        "Joining from a network that blocks direct connections no longer gets stuck at the door after reloads, and gets in faster.",
+        "No more giant blurred picture behind the tiles; an embed still connecting says so instead of \"not hosted\".",
+        "A stopped Stage voice forward no longer throws errors on every link check."
+      ]
+    },
+    {
+      "version": "0.9.28.32",
+      "date": "2026-11-25",
+      "headline": "Plans you can read, and purchases that are never overwritten",
+      "critical": false,
+      "features": [
+        "/subscription is shorter and clearer: your plan first, then the plans, then closed sections for moving, restoring and receipts.",
+        "Plain words: copy my plan to another device, get my plan from another device, use host password."
+      ],
+      "fixes": [
+        "A PayPal checkout you don't finish no longer replaces your plan or shows a receipt; every plan and receipt you bought is kept.",
+        "Restore with PayPal names each plan when your PayPal account holds several."
+      ]
+    },
+    {
+      "version": "0.9.28.31",
+      "date": "2026-11-25",
+      "headline": "A bigger Stadium, and Full meeting goes straight in",
+      "critical": false,
+      "features": [
+        "The Stadium now shows its faces as big as the space allows, up to the size of a row tile, centred in its area, beside a shared screen too.",
+        "Whisper checks other people's captions only when you tick it in Settings > Captions.",
+        "The Settings version list shows only versions that can still join meetings."
+      ],
+      "fixes": [
+        "Full meeting from an app's audio view lands in the meeting, not its lobby, and does not show the camera preview again.",
+        "The audio view's version label no longer covers its buttons.",
+        "The Stadium's talking frame follows who is talking right now.",
+        "License in the More menu has its own icon.",
+        "The Camera app finds your camera again (it said there was no camera since 0.9.28.29)."
+      ]
+    },
+    {
       "version": "0.9.28.30",
       "date": "2026-11-25",
       "headline": "Bots can see and be seen without a browser",

@@ -13,6 +13,8 @@
  *                           setup() wires input after the core's whole top level.
  *   readings                stageLevel, watchCount, nameOf, present: what the core already decided, read for drawing.
  *   acts                    pip, fullscreen: the browser's own controls over a video element.
+ *   clear                   the viewer's own unblur (clearButtons) and Report (clearReport) in a hosted room with no
+ *                           password whose clear right the core reads (clearNoPwState); every surface draws the same.
  *
  * Nothing here decides a rule of the meeting: who is on the Stage, what it carries, who is hosted, the password and the
  * sound gate are the core's answers.
@@ -157,7 +159,60 @@
     on: function () { try { return !!(document.fullscreenElement || document.webkitFullscreenElement); } catch (e) { return false; } },
   };
 
+  // ---- CLEAR WITHOUT A PASSWORD: the viewer's own choice (Nathan 2026-11-24/25) ----
+  // The core decides everything (clearNoPwState: mode '' | 'stage' | 'all', tapped; the blur levels follow it). This only
+  // draws the viewer's buttons: "Tap to unblur" until this viewer taps (for this room, this session), then "Blur again";
+  // and Report, which points to the police / NCMEC and never takes content ("Tell GifOS" sends only the credential id).
+  function say(C, k, en) { try { return C.uiText(k, en); } catch (e) { return en; } }
+  function clearReport(C, send) {   // send: the core's reportClearHost (default C.reportClearHost)
+    var m = document.getElementById('clearnopw-report');
+    if (m) { m.style.display = ''; return m; }
+    m = document.createElement('div');
+    m.id = 'clearnopw-report'; m.className = 'name-modal'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true');
+    var box = document.createElement('div'); box.className = 'name-box';
+    var p1 = document.createElement('p');
+    p1.textContent = say(C, 'clearRepPolice', 'If you see illegal activity, report it to your local police or authorities (US: NCMEC CyberTipline, report.cybertip.org). Please don\'t send us copies.');
+    var a = document.createElement('a'); a.href = 'https://report.cybertip.org'; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = 'report.cybertip.org';
+    var p2 = document.createElement('p'); p2.id = 'clearnopw-rep-note';
+    p2.textContent = say(C, 'clearRepTell', 'Tell GifOS about this host: this sends only the host\'s plan id, never the room, its link or any picture, so we can review the plan\'s clear-video right.');
+    var acts = document.createElement('div'); acts.className = 'blurwhy-acts';
+    var tell = document.createElement('button'); tell.type = 'button'; tell.id = 'clearnopw-tell'; tell.textContent = say(C, 'clearRepTellBtn', 'Tell GifOS about this host');
+    var close = document.createElement('button'); close.type = 'button'; close.id = 'clearnopw-close'; close.textContent = say(C, 'close', 'Close');
+    tell.onclick = function () {
+      tell.disabled = true;
+      Promise.resolve().then(function () { return send ? send() : C.reportClearHost(); }).catch(function () { return 'failed'; }).then(function (r) {
+        p2.textContent = r === 'sent' ? say(C, 'clearRepSent', 'Sent. Thank you.') : say(C, 'clearRepFailed', 'Could not send. Please try again later.');
+        tell.disabled = r === 'sent';
+      });
+    };
+    close.onclick = function () { m.style.display = 'none'; };
+    acts.append(tell, close); box.append(p1, a, p2, acts); m.appendChild(box); document.body.appendChild(m);
+    m.style.display = '';
+    return m;
+  }
+  // clearButtons(C, bar, cls): keep the three buttons in `bar` in step with the core's answer (call on every repaint).
+  function clearButtons(C, bar, cls) {
+    if (!bar) return;
+    var st = { mode: '', tapped: false };
+    try { st = C.clearNoPwState() || st; } catch (e) {}
+    var ids = ['clear-tap', 'clear-reblur', 'clear-rep'], els = {};
+    ids.forEach(function (id) {
+      var b = document.getElementById(id);
+      if (!b) {
+        b = document.createElement('button'); b.type = 'button'; b.id = id; if (cls) b.className = cls; b.hidden = true;
+        b.onclick = id === 'clear-tap' ? function () { try { C.tapUnblur(); } catch (e) {} } : id === 'clear-reblur' ? function () { try { C.blurAgain(); } catch (e) {} } : function () { clearReport(C); };
+        bar.appendChild(b);
+      }
+      els[id] = b;
+    });
+    var on = !!st.mode;
+    var words = { 'clear-tap': say(C, 'blurWhyTap', 'Blurred: tap to unblur'), 'clear-reblur': say(C, 'clearBlurAgain', 'Blur again'), 'clear-rep': say(C, 'clearReport', 'Report') };
+    var show = { 'clear-tap': on && !st.tapped && st.offer !== false, 'clear-reblur': on && !!st.tapped, 'clear-rep': on };
+    ids.forEach(function (id) { var b = els[id]; if (b.textContent !== words[id]) b.textContent = words[id]; if (b.hidden !== !show[id]) b.hidden = !show[id]; });
+    if (!on) { var m = document.getElementById('clearnopw-report'); if (m) m.remove(); }
+  }
+
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 
-  GifOS.viewKit = { version: 1, RECORDS: RECORDS, host: host, part: part, stageLevel: stageLevel, watchCount: watchCount, nameOf: nameOf, present: present, pip: pip, fullscreen: fullscreen, esc: esc };
+  GifOS.viewKit = { version: 1, RECORDS: RECORDS, host: host, part: part, stageLevel: stageLevel, watchCount: watchCount, nameOf: nameOf, present: present, pip: pip, fullscreen: fullscreen, clearButtons: clearButtons, clearReport: clearReport, esc: esc };
 })(typeof window !== 'undefined' ? window : globalThis);

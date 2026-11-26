@@ -4,6 +4,8 @@ body.app-run { margin: 0; height: 100vh; height: 100dvh; display: flex; flex-dir
 body.app-run #apppane { flex: 1; min-height: 0; }
 body.app-run #abar { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px)); background: var(--surface, #1c1c2b); border-top: 1px solid var(--border, #2a2a3f); }
 body.app-run #abar[hidden] { display: none; }
+/* the version label: bottom-left, just above the bar (--abar-h is the bar's height, 0 with no bar); never on the app's top bar */
+html body.app-run #gifos-build-float { top: auto !important; right: auto !important; left: calc(.4rem + env(safe-area-inset-left, 0px)) !important; bottom: calc(var(--abar-h, 0px) + .3rem) !important; }
 body.app-run #abar .status { flex: 1 1 160px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .85; font-size: 14px; }
 body.app-run #abar button, body.app-run #abar a { min-height: 44px; padding: 8px 16px; border-radius: 22px; border: 1px solid var(--border, #2a2a3f); background: transparent; color: inherit; font: inherit; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; cursor: pointer; }
 body.app-run #abar #mic { background: var(--c-white, #fff); color: var(--c-ink, #111); }

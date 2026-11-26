@@ -7,3 +7,5 @@ Each application GIF under apps/ remains under the license recorded for that app
 Trademarks: "GifOS" and the GifOS logo are trademarks of the copyright holder.
 
 js/vendor/qrcode.js is qrcode-generator 2.0.4 by Kazuhiko Arase, MIT license, vendored verbatim below its header. The word "QR Code" is a registered trademark of DENSO WAVE INCORPORATED.
+
+js/bgfx/vision_bundle.js and js/bgfx/vision_wasm_internal.js are MediaPipe Tasks Vision 1.2.3 (@mediapipe/tasks-vision) by Google LLC, Apache License 2.0, copied verbatim; its WebAssembly runtime (vision_wasm_internal.wasm) and the MediaPipe selfie segmenter model (selfie_segmenter.tflite, Apache License 2.0) are served unchanged from models.gifos.app, pinned by SHA-256 in js/bgfx/models.json. They power the meeting camera's background effects, on the device.

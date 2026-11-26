@@ -378,9 +378,21 @@
     return api;
   }
 
+  // THE TALKING FRAME IS READ WHEN THE FACE IS PAINTED. A face's burned label used to be set at its packer's sweep (the
+  // 2 s room beat), so a frame showed the verdict of one instant per beat and held it: a talker was framed only when a
+  // beat happened to land on a loud syllable (live 0.9.28.28: the Stadium rarely framed anyone, a quiet voice never).
+  // The page names one source of the talking verdict (setTalkSource: pid -> bool); every packer reads it for every leaf
+  // face it draws, on every paint, so the burned frame follows the same verdict as the Row ring.
+  let talkSrc = null;
+  function setTalkSource(fn) { talkSrc = typeof fn === 'function' ? fn : null; }
   function createPacker(opts) {
     opts = opts || {};
     const shape = opts.shape || 'grid';
+    // A local Stadium view (opts.view) is painted for this screen only and
+    // never encoded. It may take a column count from the layout (setCols)
+    // and its canvas is exactly the grid, with no row-step padding.
+    const viewOn = opts.view === true;
+    let viewCols = 0;
     // SECONDARY-TILE defaults: right for the stadium's tapestry of onlookers,
     // wrong for a feed the room is looking AT. The Stage strip passes its own
     // (run.html, "THE STAGE IS NOT A SECONDARY TILE"); everything else inherits.
@@ -711,6 +723,11 @@
         if (surf.size().w !== 2) surf.resize(2, 2); heldRows = 0; pendingRows = 0; pendingSince = 0; last = now; return; // long-empty packer — don't paint a grid of nothing
       }
       lastNonEmpty = now;
+      if (talkSrc) for (const t of tiles.values()) {
+        if (t.pid == null || !t.lbl) continue;
+        let on = false; try { on = !!talkSrc(t.pid); } catch (e) {}
+        if (!!t.lbl.talking !== on) t.lbl = Object.assign({}, t.lbl, { talking: on });
+      }
       // Nothing moved and nothing was relabelled ⇒ the frame would be byte-identical.
       const order = [...tiles.values()].sort((a, b) => (a.ord < b.ord ? -1 : a.ord > b.ord ? 1 : 0));
       const dense = DENSE && T > STAD_CAP;
@@ -753,11 +770,22 @@
         W = alignW(G * dl.c); cell = W / G; H = Math.max(1, Math.round(R * cell)); // the dense cell is fractional already; the width a multiple of 16 (alignW)
       } else {
         const g = packGrid(T, shape); G = g.cols; R = g.rows;
+        // The local view follows the layout's columns while the seat repaints
+        // cell by cell (25 faces and under). Past that, and for every encoded
+        // stadium, the packed shape stands.
+        if (viewOn && shape === 'stad' && T <= 25 && viewCols >= 1 && viewCols <= T) {
+          G = viewCols; R = Math.ceil(T / viewCols);
+        }
         cell = cellSize(shape, cellPref, maxW, G);
+        // A local view of 25 faces or under keeps the full cell whatever the
+        // columns: a one-line layout must not shrink each face to fit the
+        // encoded footprint (it is never encoded).
+        if (viewOn && shape === 'stad' && T <= 25) cell = cellPref;
         // Stad squares use the fixed footprint width. Other shapes use the maxW cap.
-        // The stad canvas then rounds UP to a 4-row step. The dark rows under the
+        // An encoded stad canvas rounds UP to a row step. The dark rows under the
         // real grid are not faces; faceSrcRect sizes a face from the block width.
-        const rowsDrawn = shape === 'stad' ? stadRows(R, now) : R;
+        // A local view is exactly the grid: padding would letterbox the tile.
+        const rowsDrawn = (shape === 'stad' && !viewOn) ? stadRows(R, now) : R;
         W = alignW(G * cell); cell = W / G; H = Math.max(1, Math.round(rowsDrawn * cell)); // a multiple of 16 wide (alignW): a whole cell at the 112 default, fractional otherwise
       }
       denseNow = dense; cellNow = cell;
@@ -847,7 +875,8 @@
         let hid = null;
         if (ids && meta && Array.isArray(meta.hide) && meta.hide.length) { const h = new Set(meta.hide.map(String)); for (let j = 0; j < n; j++) if (ids[j] != null && h.has(String(ids[j]))) (hid || (hid = new Set())).add(j); }
         tiles.set(id, { ord, el, stream, streamId: sid, n, cols, lbl: (meta && meta.lbl) || null, fit: (meta && meta.fit) || null,
-          dark: !!(meta && meta.dark), blur: Math.max(0, Math.min(2, (meta && meta.blur) | 0)), ids, hid });
+          dark: !!(meta && meta.dark), blur: Math.max(0, Math.min(2, (meta && meta.blur) | 0)), ids, hid,
+          pid: (n === 1 && meta && (meta.talkPid != null || meta.pid != null)) ? String(meta.talkPid != null ? meta.talkPid : meta.pid) : null });   // a leaf's person: its talking frame is read at paint (setTalkSource); talkPid names it without naming the cell (ids)
         if (!(n === 1 && cols === 1)) arriveArm(el);
       },
       // Update just the overlay (name/hand/talking) without touching the source
@@ -876,6 +905,15 @@
       // re-derives the canvas from cellPref each frame, so this is enough; a
       // no-op guard keeps a per-sweep call from touching anything.
       setCell(px) { const v = Math.max(6, px | 0); if (v && v !== cellPref) { cellPref = v; lastSig = ''; } },
+      // Layout columns for a local Stadium view. Ignored on an encoded pack,
+      // and ignored past 25 faces (paint keeps stadiumGrid there).
+      setCols(c) {
+        if (!viewOn) return;
+        const n = Math.round(Number(c));
+        if (!isFinite(n) || n === viewCols) return;
+        viewCols = n;
+        lastSig = '';
+      },
       // Same doctrine as setCell, for the other number the power tier moves:
       // the paint RATE. captureStream's rate is fixed at start() and is a
       // CEILING, not a promise — a canvas that paints slower simply emits
@@ -1261,5 +1299,5 @@
     return pl;
   }
 
-  GifOS.meshMedia = { workerClock, createBgClock, coverBox, fitBox, createAudioFold, packGrid, stadiumGrid, stadiumTiny, cellSize, faceSrcRect, cellCrop, createPacker, retireAudioTracks, foldOfTrack, createFoldPlayer };
+  GifOS.meshMedia = { workerClock, createBgClock, coverBox, fitBox, createAudioFold, packGrid, stadiumGrid, stadiumTiny, cellSize, faceSrcRect, cellCrop, createPacker, setTalkSource, retireAudioTracks, foldOfTrack, createFoldPlayer };
 })(typeof window !== 'undefined' ? window : globalThis);

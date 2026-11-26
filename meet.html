@@ -674,6 +674,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
 <script src="js/meet-viewmode.js" defer></script>
 <script src="js/meet-power.js" defer></script>
 <script src="js/mesh-pipe.js" defer></script>
+<script src="js/meet-bgfx.js" defer></script>
 <script src="js/relay-config.js" defer></script>
 <script src="js/runtime.js" defer></script>
 <script src="js/meet-host.js" defer></script>
@@ -1208,6 +1209,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           <label class="rec-opt" id="cctranslate-row"><input type="checkbox" id="cctranslate"><span><b data-t="setCcEnglish">Translate everything to English</b><small data-t="setCcEnglishHelp">Whisper on this device translates every voice you hear. Your captions and your transcript show only English: lines others send in English, and this device's own translations. What you send to the meeting stays in your own language.</small></span></label>
           <p class="set-help" id="cctranslate-no" style="display:none;margin:.1rem 0 0 1.6rem" data-t="setCcEnglishNo">Whisper not supported on this browser</p>
           <p class="set-help" id="cctranslate-need" style="display:none;margin:.1rem 0 0 1.6rem" data-t="setCcEnglishNeed">Needs Whisper installed: nothing is translated until it is.</p>
+          <label class="rec-opt" id="ccears-row"><input type="checkbox" id="ccears"><span><b data-t="setCcEars">Check other people's captions with Whisper</b><small data-t="setCcEarsHelp">Off unless you tick it. While you use Browser captions, Whisper on this device listens to a few seconds of other people's voices now and then to see whether their captions are right, and warns you when they are not. It needs Whisper installed and uses some of your processor.</small></span></label>
           </div>
         </div>
         <p class="set-help set-row set-wide" id="ccall-row" style="display:none"><button data-t="setCcAllOff" id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span data-t="ccallNote" id="ccall-note">Hosts only — every screen shows captions. Anyone can tap Captions to hide them.</span></p>
@@ -1409,15 +1411,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <p id="adm-hint"></p>
       <div id="adm-setup">
         <input id="adm-pass" type="password" maxlength="64" data-ph="admPassPh" placeholder="Host password" autocomplete="new-password">
-        <button id="adm-enable" data-t="admEnable">Sign in as host</button>
+        <button id="adm-enable" data-t="admEnable">Use host password</button>
       </div>
       <div id="adm-panel" style="display:none;text-align:left">
-        <!-- A private meeting's host only: the host password this device kept when it created the meeting or signed in. -->
+        <!-- A private meeting's host only: the host password this device kept. -->
         <section id="adm-hpw" aria-labelledby="adm-hpw-h" hidden>
           <h4 id="adm-hpw-h" data-t="admHpwH">Host password</h4>
           <button type="button" id="adm-hpw-show" data-t="admHpwShow" aria-expanded="false" aria-controls="adm-hpw-box">Show host password</button>
           <div id="adm-hpw-box" hidden style="display:flex;gap:.5rem;align-items:center;margin:.45rem 0"><input id="adm-hpw-val" type="text" readonly autocomplete="off" spellcheck="false" data-al="admHpwH" aria-label="Host password" style="flex:1;min-width:0;font-family:monospace"><button type="button" id="adm-hpw-copy" data-t="admHpwCopy">Copy</button></div>
-          <p id="adm-hpw-none" hidden data-t="admHpwNone" style="margin:.45rem 0">This device did not keep the host password. A device keeps it only when it created this meeting, or signed in as host, after this update.</p>
+          <p id="adm-hpw-none" hidden data-t="admHpwNone" style="margin:.45rem 0">This device did not keep the host password. A device keeps it only when it created this meeting, or used the host password here, after this update.</p>
           <small id="adm-hpw-note" data-t="admHpwNote" style="display:block;margin-top:.4rem;opacity:.85">You can only change this by creating a new private meeting.</small>
         </section>
         <section id="adm-chat" aria-labelledby="adm-chat-h">

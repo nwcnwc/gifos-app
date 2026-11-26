@@ -1446,8 +1446,10 @@
     function subIdle(now, out, retryAt) { sub.st = 'idle'; sub.token = null; sub.retryAt = retryAt || 0; sub.out = out; sub.gen++; }
     function subDoors(withToken) {
       const g = ++sub.gen, ng = netGen; sub.st = 'doors'; sub.out = busyOut;
-      // a re-pipe ask with the list in hand has the relay say which ends on record still hold a socket (SUB.3: a pipe with a dead end is cut)
-      const q = withToken && sub.asker === 'repipe' ? (sub.ends || []).slice(0, 16) : null;
+      // an ask with the list in hand has the relay say which ends on record still hold a socket (SUB.3: a pipe with a dead end is
+      // cut, and it is no load on the far end the service picks: a joiner too, or a page back from a reload finds every head
+      // "full" of its own dead pipes and is refused no-far for good)
+      const q = withToken ? (sub.ends || []).slice(0, 16) : null;
       Promise.resolve(io.tdoors ? io.tdoors(q) : null).then((x) => {
         if (g !== sub.gen) return;
         const d = x && typeof x === 'object' ? x.v : x;

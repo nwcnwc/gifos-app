@@ -199,6 +199,7 @@
   "settings.pin.endedTitle": "Wieder auf der neuesten Version",
   "settings.pin.endedExpired": "Der Wechsel dieses Computers zu <b>{what}</b> ist beendet, er läuft also wieder mit der neuesten Version. Ihre Dateien, Apps und Einstellungen sind unverändert. Tester können unter <b>Einstellungen → System → Updates → Erweitert / Testen</b> erneut wechseln.",
   "settings.pin.endedReset": "Dieser Computer war auf <b>{what}</b> eingestellt. Das ist inzwischen nur noch für Leute gedacht, die GifOS testen, daher läuft er wieder mit der neuesten Version. Ihre Dateien, Apps und Einstellungen sind unverändert. Tester können unter <b>Einstellungen → System → Updates → Erweitert / Testen</b> erneut wechseln.",
+  "settings.pin.endedFloor": "Diese Version kann keinen Meetings mehr beitreten; du nutzt jetzt die neueste. (<b>{what}</b> wurde gelöst.)",
   "settings.updates.couldntCheck": "Die neueste Version konnte nicht ermittelt werden.",
   "settings.updates.checking": "gifos.app wird auf die neueste Version geprüft …",
   "settings.updates.latestFollows": "v{version} · dieser Computer folgt ihr",

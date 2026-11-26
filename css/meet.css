@@ -2190,6 +2190,7 @@
     width: max-content; max-width: calc(100vw - 16px); padding: 8px; background: var(--c-white); border-radius: var(--r-lg);
     box-shadow: 0 10px 28px rgba(0,0,0,.28); }
   #camchooser[hidden] { display: none !important; }
+  #camchooser { max-height: calc(100vh - 16px); overflow-y: auto; }   /* the Background rows can make it taller than a short window */
   #micchooser { position: fixed; z-index: 45; left: 0; top: 0; display: flex; flex-direction: column; gap: 6px;
     width: max-content; max-width: calc(100vw - 16px); padding: 8px; background: var(--c-white); border-radius: var(--r-lg);
     box-shadow: 0 10px 28px rgba(0,0,0,.28); }
@@ -2211,6 +2212,16 @@
   #camdevs { display: flex; flex-direction: column; gap: 6px; }
   #camdevs[hidden] { display: none !important; }
   #camdevs button { max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* The Background group (js/meet-bgfx.js): rows like the camera list, a small picture beside each picture choice. */
+  #cambg { display: flex; flex-direction: column; gap: 6px; }
+  #cambg[hidden] { display: none !important; }
+  #cambg .devhead { font: 700 13px/1.2 system-ui, sans-serif; color: var(--c-ink); padding: 4px 2px 0; }
+  #camchooser #cambg button { background: var(--c-white); color: var(--c-ink); border: 1px solid var(--c-gray); display: flex; align-items: center; gap: 8px; max-width: calc(100vw - 32px); }
+  #camchooser #cambg button[aria-checked="true"] { background: var(--c-ink); color: var(--c-white); border-color: var(--c-ink); }
+  #cambg .bgline { display: flex; gap: 6px; }
+  #camchooser #cambg .bgline button { flex: 1 1 0; min-width: 0; }
+  #cambg .bgthumb { width: 48px; height: 27px; border-radius: 4px; flex: none; }
+  #cambg .bgnote { font: 400 13px/1.3 system-ui, sans-serif; color: var(--c-ink); max-width: 240px; padding: 0 2px; }
   /* Device rows (camera, microphone, speaker) are not the blur greens: a pick
      of a device is not a blur level. Unselected: dark text on white with a thin
      gray line; selected: white on near-black with a check (16.8:1 both ways). The

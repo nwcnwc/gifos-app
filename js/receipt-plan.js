@@ -345,7 +345,7 @@
       out.push({ id: 'held', label: tr('charge.receiptView.meeting', 'Meeting'), value: tr('charge.receiptView.heldAsk', 'Which meeting is it in?'), action: 'ask' });
     }
     if (c && typeof c.subId === 'string' && c.subId) {
-      out.push({ id: 'move', label: tr('charge.receiptView.meeting', 'Meeting'), value: tr('charge.receiptView.move', 'Add this plan to another device'), href: '/subscription#move' });
+      out.push({ id: 'move', label: tr('charge.receiptView.meeting', 'Meeting'), value: tr('charge.receiptView.move', 'Copy my plan to another device'), href: '/subscription#move' });
       out.push({ id: 'moveHow', place: 'note', label: '', value: tr('charge.receiptView.moveHow', 'To use it in a meeting on this device, start or join that meeting.') });
     }
     sellerRows(tr, out);

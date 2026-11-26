@@ -6,14 +6,12 @@
  *   Stage:   people pack by count (1 true aspect, 2 squares, 3 hero+2
  *            squares, 4 a 2x2, 5 hero+2x2). A screen or an app is separate.
  *   Row:     squares, the largest centered square of whatever arrives.
- *   Stadium: one composite. With no Stage, Fit gives it a share of the
- *            screen that follows stadCount: about half when the stadium and
- *            the row hold the same number, more as the stadium grows, and
- *            never past about two thirds. A missing count is treated as
- *            equal to the row. An implied person inside the composite stays
- *            near a row tile, in Fit and in Scroll. Scroll is a full-width
- *            square until that cap, then a smaller centered square. Beside
- *            a Stage the stadium stays the small square.
+ *   Stadium: one composite. The layout gives it an area (Fit's share of
+ *            the screen, Scroll's square, the free room beside a share).
+ *            stadFit then picks the grid whose cells are as large as
+ *            possible without passing a row tile or that area, and centres
+ *            the tile in the area. A missing count is treated as equal to
+ *            the row. Beside a Stage the area stays the smaller region.
  * Fit puts everyone on one screen. Scroll keeps faces big and lets the
  * people area scroll.
  */
@@ -144,18 +142,23 @@
 
   // A people column beside a share is centered, which left a strip past the
   // last face. Shift each row so it ends on the box edge. The share already
-  // meets the other edge, so the tiles together reach both sides.
+  // meets the other edge, so the tiles together reach both sides. The
+  // stadium area stays put: the tile is centred in that area afterwards.
   function pinEnd(rects, box) {
     const rows = rowsOf(rects);
     const edge = box.x + box.w;
     for (let k = 0; k < rows.length; k++) {
       let right = -Infinity;
+      const items = [];
       for (let j = 0; j < rows[k].items.length; j++) {
         const r = rows[k].items[j];
+        if (r.tier === 'stad') continue;
+        items.push(r);
         right = Math.max(right, r.x + r.w);
       }
+      if (!items.length) continue;
       const shift = edge - right;
-      if (shift > 0.5) for (let j = 0; j < rows[k].items.length; j++) rows[k].items[j].x += shift;
+      if (shift > 0.5) for (let j = 0; j < items.length; j++) items[j].x += shift;
     }
   }
 
@@ -199,6 +202,81 @@
     const cols = Math.max(1, Math.ceil(Math.sqrt(Math.max(1, n))));
     const rows = Math.max(1, Math.ceil(Math.max(1, n) / cols));
     return { cols: cols, rows: rows };
+  }
+
+  // The packed stadium's column count (js/mesh-media.js stadiumGrid), copied
+  // here so this file stays free of that module. Used only past 25 faces;
+  // at 25 and under the fit chooses columns itself.
+  const STAD_PACK_COLS = 5, STAD_PACK_CAP = 100;
+  function stadPackCols(n) {
+    if (n <= 25) return Math.max(1, Math.ceil(Math.sqrt(Math.max(1, n))));
+    if (n <= STAD_PACK_CAP) return STAD_PACK_COLS;
+    const capRows = Math.ceil(STAD_PACK_CAP / STAD_PACK_COLS);
+    return Math.max(STAD_PACK_COLS, Math.round(Math.sqrt(n * STAD_PACK_COLS / capRows)));
+  }
+
+  // Largest square cell that fits area for n faces, then the tile centred
+  // in the area. cell never passes rowSide when a row tile exists (rowSide
+  // 0: no cap). At 25 faces and under every column count is tried; past 25
+  // the packed shape is kept and only the cell scales. Ties within half a
+  // pixel: fewer empty cells, then the grid closer to square.
+  function stadFit(area, n, rowSide) {
+    const box = area || { x: 0, y: 0, w: 0, h: 0 };
+    const N = Math.max(0, n | 0);
+    const aw = box.w > 0 ? box.w : 0;
+    const ah = box.h > 0 ? box.h : 0;
+    const ax = box.x || 0, ay = box.y || 0;
+    if (!(N >= 1) || !(aw > 0) || !(ah > 0)) return { x: ax, y: ay, w: 0, h: 0, cols: 1, rows: 1, cell: 0 };
+    const cap = rowSide > 0 ? rowSide : Infinity;
+    const list = [];
+    if (N > 25) list.push(stadPackCols(N));
+    else for (let c = 1; c <= N; c++) list.push(c);
+    const cands = [];
+    for (let i = 0; i < list.length; i++) {
+      const cols = list[i];
+      const rows = Math.ceil(N / cols);
+      let cell = Math.min(aw / cols, ah / rows);
+      if (!(cell > 0)) continue;
+      if (cell > cap) cell = cap;
+      cands.push({ cols: cols, rows: rows, cell: cell, empty: cols * rows - N, square: Math.abs(cols / rows - 1) });
+    }
+    let maxCell = 0;
+    for (let i = 0; i < cands.length; i++) if (cands[i].cell > maxCell) maxCell = cands[i].cell;
+    let best = null;
+    for (let i = 0; i < cands.length; i++) {
+      const c = cands[i];
+      if (c.cell < maxCell - 0.5) continue;
+      if (!best || c.empty < best.empty || (c.empty === best.empty && (c.square < best.square - 1e-12 || (Math.abs(c.square - best.square) <= 1e-12 && c.cols < best.cols)))) best = c;
+    }
+    if (!best) return { x: ax, y: ay, w: 0, h: 0, cols: 1, rows: 1, cell: 0 };
+    const tw = best.cols * best.cell, th = best.rows * best.cell;
+    return { x: ax + (aw - tw) / 2, y: ay + (ah - th) / 2, w: tw, h: th, cols: best.cols, rows: best.rows, cell: best.cell };
+  }
+
+  // One composite: the rect the layout drew is the area. Replace it with
+  // the centred tile and remember the area it was fitted in.
+  function fitStadTile(res, opts) {
+    if (!res || !res.rects) return res;
+    const sts = [];
+    for (let i = 0; i < res.rects.length; i++) if (res.rects[i].tier === 'stad') sts.push(res.rects[i]);
+    if (sts.length !== 1) return res;
+    const st = sts[0];
+    let rowSide = 0, rows = 0;
+    for (let i = 0; i < res.rects.length; i++) {
+      const r = res.rects[i];
+      if (r.tier !== 'row') continue;
+      rows++;
+      const face = Math.min(r.w, r.h);
+      if (face > rowSide) rowSide = face;
+    }
+    const area = { x: st.x, y: st.y, w: st.w, h: st.h };
+    const nFaces = faceCount(opts && opts.stadCount, rows);
+    const fit = stadFit(area, nFaces, rows ? rowSide : 0);
+    st.x = fit.x; st.y = fit.y; st.w = fit.w; st.h = fit.h;
+    st.cols = fit.cols; st.rows = fit.rows; st.cell = fit.cell; st.n = nFaces;
+    st.area = area;
+    if (fit.cell > 0) res.stadSide = fit.cell;
+    return res;
   }
 
   // Estimated cell if the one video were a grid. The video is not cut.
@@ -628,16 +706,19 @@
   function layout(opts) {
     opts = opts || {};
     const gallery = opts.gallery === 'scroll' ? 'scroll' : 'fit';
-    if (opts.float !== true || gallery === 'scroll') return layoutBase(opts);
-    const split = classifyStage(opts.stage, opts.share);
-    const res = split.share ? layoutFloatShare(opts, split.share, split.people) : layoutBase(opts);
-    const shareId = split.share ? split.share.id : null;
-    for (let i = 0; i < res.rects.length; i++) {
-      const r = res.rects[i];
-      r.float = r.id === shareId ? undefined : 'p:' + r.id;
-      if (r.float === undefined) delete r.float;
+    let res;
+    if (opts.float !== true || gallery === 'scroll') res = layoutBase(opts);
+    else {
+      const split = classifyStage(opts.stage, opts.share);
+      res = split.share ? layoutFloatShare(opts, split.share, split.people) : layoutBase(opts);
+      const shareId = split.share ? split.share.id : null;
+      for (let i = 0; i < res.rects.length; i++) {
+        const r = res.rects[i];
+        r.float = r.id === shareId ? undefined : 'p:' + r.id;
+        if (r.float === undefined) delete r.float;
+      }
     }
-    return res;
+    return fitStadTile(res, opts);
   }
 
   function layoutFloatShare(opts, shareItem, onStage) {
@@ -778,6 +859,41 @@
   // agenda by its list, opts.content.needH / needW) and the people get the
   // rest, never less than the face floor. One rule for every screen size.
   function faceFloor(box) { return Math.round(Math.max(FIT_ROW_MIN.phone, Math.min(box.w, box.h) * FACE_FLOOR_FRAC)); }
+  // Beside a share, one Stadium composite's area is the free room under the
+  // row tiles: the people column's full width, down to the band bottom.
+  // The share stays the biggest tile, so that area stays within 0.9 of the
+  // share. The tile is fitted later, in one pass, by stadFit.
+  function growStad(rects, pb, shareRect) {
+    const st = [];
+    let rows = 0;
+    for (let i = 0; i < rects.length; i++) {
+      if (rects[i].tier === 'stad') st.push(rects[i]);
+      else if (rects[i].tier === 'row') rows++;
+    }
+    if (st.length !== 1) return;
+    const t = st[0];
+    const top = rows ? t.y : pb.y;
+    const freeH = pb.y + pb.h - top;
+    if (!(freeH > 1) || !(pb.w > 1)) return;
+    let aw = pb.w, ah = freeH;
+    if (shareRect && shareRect.w > 0 && shareRect.h > 0) {
+      const limit = 0.9 * shareRect.w * shareRect.h;
+      if (aw * ah > limit) {
+        const hFit = limit / aw;
+        if (hFit > 1) ah = hFit;
+        else {
+          const s = Math.sqrt(limit / (aw * freeH));
+          aw = aw * s;
+          ah = freeH * s;
+        }
+      }
+    }
+    t.x = pb.x + (pb.w - aw) / 2;
+    t.y = top + (freeH - ah) / 2;
+    t.w = aw;
+    t.h = ah;
+  }
+
   function layoutFitShare(opts, box, gap, phone, row, stad, shareItem, onStage) {
     const c = opts.content || {};
     const nPeople = onStage.length + row.length + stad.length;
@@ -837,6 +953,7 @@
       }
     }
     const p = people(row, stad, pb, phone, 'fit', gap, true, opts.stadCount);
+    growStad(p.rects, pb, sr[0]);
     if (wide) pinEnd(p.rects, pb);
     const rects = sr.concat(p.rects);
     let stageBox = null;
@@ -882,5 +999,5 @@
 
   function isDefault(crop) { return !crop || (!(crop.s > 0 && crop.s < 0.999) && Math.abs((crop.x != null ? crop.x : 0.5) - 0.5) < 1e-3 && Math.abs((crop.y != null ? crop.y : 0.5) - 0.5) < 1e-3); }
 
-  return { GAP: GAP, STAD_RATIO: STAD_RATIO, layout: layout, people: people, stageRects: stageRects, stagePack: stagePack, fitSide: fitSide, cropBox: cropBox, normCrop: normCrop, cropRect: cropRect, isDefault: isDefault };
+  return { GAP: GAP, STAD_RATIO: STAD_RATIO, layout: layout, people: people, stageRects: stageRects, stagePack: stagePack, fitSide: fitSide, stadFit: stadFit, cropBox: cropBox, normCrop: normCrop, cropRect: cropRect, isDefault: isDefault };
 });

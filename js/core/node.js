@@ -63,7 +63,8 @@
  *                   there is no Worker, a plain interval with the same { via, stop() } handle. A host with a media
  *                   plane loads js/mesh-media.js in the participant (createAudioFold, retireAudioTracks) and not
  *                   the browser plane. Worker is absent here, so that library's clock takes the same interval.
- *   GifOS.host      the host's facts (run.html sets them from its document): never a hidden tab, framed by no page,
+ *   GifOS.host      the host's facts (run.html sets them from its document), set before any script runs: no page
+ *                   (page: false, so a library with page parts leaves them off), never a hidden tab, framed by no page,
  *                   always able to hold a meeting, no page scripts to reload (this host loads files.json itself), and no
  *                   screen (a viewport of 0 x 0: nothing is in view).
  *   GifOS.runtime   the app runtime (js/runtime.js) is a page library. At start the core reads its page-header table
@@ -530,6 +531,18 @@ function createMeeting(opts) {
   // the core has already run. The browser plane is not loaded.
   const run = files.core.concat(files.apps || []);
   if (media) { const fold = foldLib(files); if (fold) run.push(fold); run.push(nm.plane); }
+  // GifOS.host: the host's facts the meeting asks about, there before the scripts run (a library that has page parts,
+  // such as js/meet-subs.js, reads page: false at load and leaves them off). A host with no screen is never a hidden
+  // tab (the core's background-tab paths are for a browser that hides the page).
+  g.GifOS = { host: {
+    page: false,
+    hidden: () => false,
+    parentOrigin: () => '',
+    whenSupported: (f) => f(),
+    scriptOrder: () => [],
+    loadScript: () => Promise.resolve(false),
+    viewport: () => ({ w: 0, h: 0 }),
+  } };
   for (const rel of run) {
     current = { src: new URL(rel, location.href).href };
     try { script(site, rel).runInContext(context); } finally { current = null; }
@@ -544,16 +557,6 @@ function createMeeting(opts) {
   // The view this host stands in for: the page in its address is the view (a broadcast page -> 'cast'), told to the
   // core through its interface as the broadcast page's own surface does (js/core/view/cast.js), never by the address.
   if (!GifOS.viewSurface && linkOf(site).read(location.pathname, '', location.hash).cast) GifOS.viewSurface = { name: 'cast', page: 'cast.html' };
-  // GifOS.host: the host's facts the meeting asks about. A host with no screen is never a hidden tab (the core's
-  // background-tab paths are for a browser that hides the page).
-  if (!GifOS.host) GifOS.host = {
-    hidden: () => false,
-    parentOrigin: () => '',
-    whenSupported: (f) => f(),
-    scriptOrder: () => [],
-    loadScript: () => Promise.resolve(false),
-    viewport: () => ({ w: 0, h: 0 }),
-  };
   // THE HEADLESS VIEW: a view part of this host's own, in place of the page's. Every name the core asks of the view
   // is the linker's counted stand-in (a function does nothing and returns undefined), except the view functions
   // whose result the core takes apart, which return a record of counted placeholders (VIEW_RECORDS).
