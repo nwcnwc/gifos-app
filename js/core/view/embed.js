@@ -745,13 +745,18 @@
     root.addEventListener('resize', measureBar);
 
     // ---- CALM: the bar fades after CHROME_IDLE_MS (the meeting's own chrome clock) with no pointer, touch or key, and
-    // comes back on any of them. Never while a panel or the password card is open, the password button shows, the
-    // pointer rests on the bar, or the focus is in it. The unmute prompt is not in the bar: it never fades.
-    var calmT = 0, overBar = false, calm = false;
+    // comes back on any of them. Never while a panel or the password card is open,
+    // the password button shows, or a key-driven focus is in it. The unmute and unblur prompts are not in the bar: they never fade.
+    var calmT = 0, calm = false;
     function mayCalm() {
-      if (panel || !$('emb-card').hidden || !$('emb-lock').hidden || overBar) return false;
+      // A pointer that merely rests on the bar does not hold it up (every move wakes it): after a click on the full-screen button the pointer rests there.
+      if (panel || !$('emb-card').hidden || !$('emb-lock').hidden) return false;
       var ae = document.activeElement, bar = document.querySelector('#embedui .emb-bar');
-      if (ae && bar && bar.contains(ae) && ae !== document.body) return false;
+      // Only a KEY-driven focus holds the bar up. A button the viewer clicked or tapped (full screen, info, mute) keeps focus
+      // without being used from the keyboard; counting that held the bar up for good after a tap (worst in full screen, where
+      // the full-screen button is the last thing touched).
+      var kb = false; try { kb = !!(ae && ae.matches && ae.matches(':focus-visible')); } catch (e) { kb = true; }
+      if (ae && bar && bar.contains(ae) && ae !== document.body && kb) return false;
       return true;
     }
     function setCalm(on) {
@@ -959,10 +964,10 @@
       document.addEventListener(ev, wake, { capture: true, passive: true });
     });
     var bar = document.querySelector('#embedui .emb-bar');
-    bar.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse') { overBar = true; wake(); } });
-    bar.addEventListener('pointerleave', function () { overBar = false; wake(); });
-    document.addEventListener('fullscreenchange', paintFull);
-    document.addEventListener('webkitfullscreenchange', paintFull);
+    // Entering or leaving full screen re-lays the page out and the page's idle clock starts again here, so the same fade runs in full screen as out of it.
+    function fsChanged() { paintFull(); wake(); }
+    document.addEventListener('fullscreenchange', fsChanged);
+    document.addEventListener('webkitfullscreenchange', fsChanged);
     document.addEventListener('enterpictureinpicture', paintFloat, true);
     document.addEventListener('leavepictureinpicture', paintFloat, true);
     // The words: the system's i18n library and this page's catalog, loaded after the core started (English first).
