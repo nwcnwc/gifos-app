@@ -2,6 +2,18 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.37",
+      "date": "2026-11-26",
+      "headline": "One kind of link for every room, and downloads with or without your data",
+      "critical": false,
+      "features": [
+        "Every room link reads the same way: the link says which room, the page says how you see it (meeting, broadcast or app).",
+        "Download an app with its saved data or without it; the app picture in the top bar now saves as a working app.",
+        "Apps you download from your Home Screen carry the guide for changing them (llms.txt)."
+      ],
+      "fixes": []
+    },
+    {
       "version": "0.9.28.36",
       "date": "2026-11-26",
       "headline": "A Stage view, a fuller embed player, and one page for every GifOS plan",
