@@ -3958,7 +3958,7 @@
       // elements (host.js placeholder), and one answers every question: a
       // duck-typed read took its srcObject for a stream and painted the
       // placeholder as a track (new MediaStream threw in paintStageFaces).
-      const vt = st instanceof MediaStream ? st.getVideoTracks()[0] : null;
+      const vt = (typeof MediaStream === 'function' && st instanceof MediaStream) ? st.getVideoTracks()[0] : null;
       return vt && vt.readyState !== 'ended' ? vt : null;
     }
     // The faces to put on screenSid's shared screen: [{ id, vt, crop, cell, bl }].
