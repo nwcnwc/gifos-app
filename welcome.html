@@ -128,7 +128,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <div class="code"><pre id="snip-iframe">&lt;iframe src="https://gifos.app/embed#room=ROOM" style="width:100%;aspect-ratio:16/9;border:0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen title="GifOS Broadcast"&gt;&lt;/iframe&gt;</pre><button class="copy" type="button" data-copy="snip-iframe">Copy</button></div>
 
     <h2>Choose the controls</h2>
-    <p>The player starts as the picture, the live badge, unmute, and at the bottom right the buttons for chat, reactions, info, float and full screen beside a settings gear. The bar fades after a few seconds and comes back on any pointer, tap or key. When you set nothing, the player offers <code>volume,audioonly,fullscreen,pip,chat,reactions,names</code>. All the keys are <code>volume</code>, <code>mute</code>, <code>captions</code>, <code>audioonly</code>, <code>tabs</code>, <code>inset</code>, <code>fullscreen</code>, <code>pip</code> (the float button), <code>chat</code>, <code>reactions</code>, <code>names</code> and <code>watch</code>; the info button always shows.</p>
+    <p>The player starts as the picture, the live badge, unmute, and at the bottom right the buttons for chat, reactions, info, float and full screen beside a settings gear. The bar fades after a few seconds and comes back on any pointer, tap or key. When you set nothing, the player offers <code>volume,audioonly,fullscreen,pip,chat,reactions,names,watch</code>. All the keys are <code>volume</code>, <code>mute</code>, <code>captions</code>, <code>audioonly</code>, <code>tabs</code>, <code>inset</code>, <code>fullscreen</code>, <code>pip</code> (the float button), <code>chat</code>, <code>reactions</code>, <code>names</code> and <code>watch</code>; the info button always shows.</p>
     <p><code>volume</code> — a volume slider in the gear.</p>
     <p><code>mute</code> — a mute switch in the gear.</p>
     <p><code>captions</code> — a captions switch in the gear. It appears once a line has arrived. Captions stay off until the viewer turns them on.</p>
@@ -140,7 +140,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <p><code>chat</code> — the chat button, while the host leaves chat on. A viewer gives a name the first time they post.</p>
     <p><code>reactions</code> — the reactions button, while the host lets guests react.</p>
     <p><code>names</code> — a Show names switch in the gear, on at first: the viewer can hide the name bars drawn on the Stage picture. It is kept in that viewer's browser.</p>
-    <p><code>watch</code> — Watch on GifOS, in a new tab.</p>
+    <p><code>watch</code> — a "View on gifos.app" link in the info panel, opening the room on GifOS in a new tab.</p>
     <p><code>all</code> turns every control on. <code>none</code> leaves only the info button.</p>
     <p>On the script tag, add <code>data-controls="tabs,inset,captions,fullscreen,watch"</code>. On the iframe, add it to the hash: <code>#room=ROOM&amp;controls=tabs,inset</code>. An iframe you write yourself keeps <code>allow="autoplay; fullscreen; picture-in-picture"</code> and <code>allowfullscreen</code>, or the full screen and float buttons do not show.</p>
     <p>The password prompt, the not-hosted notice and the info button (the full title and a line about GifOS) always show.</p>

@@ -45,7 +45,6 @@
   "embed.pwAria": "Contraseña de la sala",
   "embed.pwPh": "Contraseña",
   "embed.react": "Reaccionar",
-  "embed.roomLine": "Sala: {room}",
   "embed.send": "Enviar",
   "embed.settings": "Ajustes",
   "embed.sharedNow": "Compartido ahora",
@@ -61,6 +60,6 @@
   "embed.unmute": "Activar sonido",
   "embed.volume": "Volumen",
   "embed.watch": "Ver",
-  "embed.watchOn": "Ver en GifOS",
+  "embed.viewOn": "Ver en gifos.app",
   "embed.watching": "{n} viendo"
 }

@@ -48,7 +48,7 @@
     // sound gate, what the room sends this seat). Keys come from the hash the embedder wrote. The core rebuilds its
     // params from its own whitelist and drops this one.
     var CONTROL_KEYS = ['volume', 'mute', 'captions', 'audioonly', 'tabs', 'inset', 'fullscreen', 'pip', 'chat', 'reactions', 'names', 'watch'];
-    var CONTROL_DEFAULT = ['volume', 'audioonly', 'fullscreen', 'pip', 'chat', 'reactions', 'names'];
+    var CONTROL_DEFAULT = ['volume', 'audioonly', 'fullscreen', 'pip', 'chat', 'reactions', 'names', 'watch'];
     function controlsFromHash(hash) {
       var set = new Set();
       var has = false, raw = '';
@@ -109,9 +109,6 @@
       var t = title || room || tr('defaultTitle', 'GifOS Broadcast');
       $('emb-title').textContent = t;
       $('emb-info-title').textContent = t;
-      var rm = $('emb-info-room');
-      rm.hidden = !(title && room && why === 'ok');
-      if (!rm.hidden) rm.textContent = tr('roomLine', 'Room: {room}', { room: room });
     }
     var quiet = { text: '' };
     var tried = false;
@@ -811,7 +808,7 @@
       row('emb-m-audioonly', 'audioOnly', 'Audio only');
       row('emb-m-inset', 'stagePic', 'Stage picture');
       row('emb-m-names', 'showNames', 'Show names');
-      set('emb-watch', 'watchOn', 'Watch on GifOS');
+      set('emb-watch', 'viewOn', 'View on gifos.app');
       set('emb-audionote-txt', 'audioOnly', 'Audio only');
       set('emb-card-title', 'cardTitle', 'Watch clearly');
       set('emb-pw', 'pwPh', 'Password', 'placeholder'); set('emb-pw', 'pwAria', 'Room password', 'aria-label');

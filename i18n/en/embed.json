@@ -45,7 +45,6 @@
   "embed.pwAria": "Room password",
   "embed.pwPh": "Password",
   "embed.react": "React",
-  "embed.roomLine": "Room: {room}",
   "embed.send": "Send",
   "embed.settings": "Settings",
   "embed.sharedNow": "Shared now",
@@ -61,6 +60,6 @@
   "embed.unmute": "Unmute",
   "embed.volume": "Volume",
   "embed.watch": "Watch",
-  "embed.watchOn": "Watch on GifOS",
+  "embed.viewOn": "View on gifos.app",
   "embed.watching": "{n} watching"
 }
