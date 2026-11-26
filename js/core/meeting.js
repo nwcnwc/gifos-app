@@ -11333,7 +11333,7 @@
     async function capProve() {
       if (EMBED || av || !amAdmin || !capOn() || capBusy) return;
       if (GifOS.sub.aclHas(capAcl && capAcl.ck === capKey ? capAcl.acl : null, 'clearStageInAdminRoom')) return;
-      let o = null; try { o = await GifOS.meetSubs.captureOrder(subsMeetId()); } catch (e) { o = null; }
+      let o = null; try { o = await GifOS.meetSubs.captureOrder(subsMeetId(), myId); } catch (e) { o = null; }
       if (!o || !o.tk || o.tk.sig === capProveSig || !amAdmin || !capOn()) return;
       const t = await GifOS.meetSubs.captureTicket(o.tk, subsMeetId());
       if (!t || t.buyerKey !== capKey || !t.grants || t.grants.clearStageInAdminRoom !== true) return;
@@ -11542,7 +11542,7 @@
       if (capBusy || av || capOn() || EMBED) return;
       capBusy = true;
       try {
-        const o = await GifOS.meetSubs.captureOrder(subsMeetId());
+        const o = await GifOS.meetSubs.captureOrder(subsMeetId(), myId);
         if (!o) { setStatus(uiText('capNeedPlan', 'Taking charge of a public open-floor meeting takes the $5 plan')); return; }
         pwLog('capture-sent');
         relaySendObj({ t: 'capture', tk: o.tk, w: o.w });
@@ -24996,7 +24996,7 @@
     // a hosted room's ACL (taken from a host-proven socket) or a captured room's capture flags (taken from the captor's
     // own right on a socket that proved the captor key, for the capture held now). Never from the link or a peer.
     function hostStageAcl() {
-      if (roomAcl) return roomAcl;   // a hosted room: the relay sends an ACL nowhere else
+      if (av) return roomAcl;   // a hosted room: its ACL (the relay sends an ACL nowhere else)
       return capOn() && capAcl && capAcl.ck === capKey ? capAcl.acl : null;
     }
     function clearNoPwMode() {
