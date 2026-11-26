@@ -8489,7 +8489,8 @@
       return '<div class="trline trshot"><b>' + (0, /*()*/__C.esc)(w) + '</b><img data-shot="' + (0, /*()*/__C.esc)(s.id) + '" src="' + (0, /*()*/__C.esc)(s.url) + '" width="' + s.w + '" height="' + s.h + '" alt="' + (0, /*()*/__C.esc)(w) + '" loading="lazy"></div>';
     }
     function shotsInline(lines) {
-      const shots = window.GifOS && GifOS.shareShots ? GifOS.shareShots.list() : [];
+      let shots = [];
+      try { shots = GifOS.shareShots.list(); } catch (e) {}   // a surface without the library: lines only
       if (!shots.length) return lines;
       return lines.concat(shots.map((s) => ({ at: s.at, shot: s }))).sort((a, b) => a.at - b.at);
     }
@@ -8853,7 +8854,7 @@
     yield 2703;
     function paintTranscriptControls() {
       const send = document.getElementById('ccsend'); if (send) send.checked = (0, /*()*/__C.capSend)();
-      const shots = document.getElementById('trshots'); if (shots) { shots.checked = shotsOn(); shots.disabled = !(0, /*()*/__C.trKeeps)(); }
+      const shots = document.getElementById('trshots'); if (shots) { try { shots.checked = shotsOn(); shots.disabled = !(0, /*()*/__C.trKeeps)(); } catch (e) {} }
       const mode = (0, /*()*/__C.trMode)();
       for (const r of document.querySelectorAll('input[name="trmode"]')) r.checked = (r.value || '') === (mode || 'off') || (r.value === 'off' && !mode);
       const can = document.getElementById('ccsend-can');
@@ -8876,7 +8877,7 @@
         (0, /*()*/__C.setStatus)(shots.checked ? (0, /*()*/__C.uiText)('stTrShotsOn', 'Your transcript keeps a screenshot of each new screen that is shared.') : (0, /*()*/__C.uiText)('stTrShotsOff', 'No screenshots of shared screens are taken.'), 6000);
       };
       paintTranscriptControls();
-      if (window.GifOS && GifOS.shareShots) GifOS.shareShots.attach(shareShotsSource());
+      try { GifOS.shareShots.attach(shareShotsSource()); } catch (e) {}   // a surface without the library takes none
     }
     yield 2739;
     // CC only shows or hides captions on this screen. The More button and the
@@ -8908,7 +8909,8 @@
       let blob = f.blob, name = f.name;
       // With screen pictures, the download is a .zip: transcript.txt (pictures as markers), transcript.md, a self-contained
       // transcript.html and shots/ (js/core/view/shareshots.js exportZip). Without any, the plain file as before.
-      const SS = window.GifOS && GifOS.shareShots;
+      let SS = null;
+      try { SS = GifOS.shareShots; } catch (e) {}
       if (SS && SS.list().length) {
         const mine = (0, /*()*/__C.trLang)();
         const lines = (0, /*()*/__C.trBlocks)().map((l) => ({ at: l.at, text: '[' + new Date(l.at).toLocaleTimeString() + '] ' + l.by + (l.lang && l.lang !== mine ? ' (' + l.lang + ')' : '') + ': ' + (0, /*()*/__C.trNote)(l) + l.text }));
