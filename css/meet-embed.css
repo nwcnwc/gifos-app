@@ -68,6 +68,7 @@ body.emb-unhosted #stagefeed { visibility: hidden; }   /* not hosted right now: 
 /* Audio only: this viewer's own screen stops drawing the pictures. Nothing changes in what the room sends or what this
    seat receives and forwards. */
 body.emb-audioonly #stagefeed video, body.emb-audioonly #emb-share-video { display: none; }
+body.emb-audioonly.emb-has-share #stagefeed { visibility: hidden; }   /* no empty inset frame while a share fills the player */
 #embedui .emb-audionote { position: absolute; top: 46px; left: 14px; margin: 0; display: flex; align-items: center; gap: 6px; padding: 4px 10px;
   border-radius: 12px; background: rgba(0,0,0,.6); font-size: 13px; pointer-events: none; }
 #embedui .emb-audionote svg { width: 16px; height: 16px; fill: currentColor; flex: none; }
