@@ -64,5 +64,12 @@
   "embed.volume": "音量",
   "embed.watch": "观看",
   "embed.viewOn": "在 gifos.app 上观看",
-  "embed.watching": "{n} 人在看"
+  "embed.watching": "{n} 人在看",
+  "embed.transcript": "文字记录",
+  "embed.trEmpty": "人们发言时，文字会出现在这里。",
+  "embed.trShots": "自动截图",
+  "embed.trShotsTip": "当共享的屏幕发生变化并停住时（例如换了一张幻灯片），文字记录会保存一张截图。截图在此设备上根据你所看到的画面生成:不会发送任何内容，你看到的模糊屏幕也绝不会被截取。",
+  "embed.trDownload": "下载",
+  "embed.trShotOf": "{name}的屏幕，{time}",
+  "embed.trShotWho": "{name}的屏幕"
 }

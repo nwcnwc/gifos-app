@@ -70,7 +70,7 @@ badge with how many are watching and the title, and a big button to unmute
 it says so.
 
 The default player is the picture, the LIVE badge (count and title), unmute,
-and at the bottom right buttons for chat, reactions, info, float and full
+and at the bottom right buttons for chat, transcript, reactions, info, float and full
 screen beside a settings gear. The bar fades after a few seconds with no
 pointer, tap or key, and comes back on any of them. The info button shows
 the full title and a line about GifOS. You choose the other controls:
@@ -82,9 +82,10 @@ picker), inset (show, hide or move the Stage picture while a share fills
 the player), fullscreen (the full screen button), pip (the float button,
 picture in picture, when the browser supports it), chat (the chat button,
 while the host leaves chat on; a viewer gives a name the first time they
-post), reactions (the reactions button, while the host lets guests react),
+post), transcript (the transcript button: the room's caption lines, a Download,
+and an Auto screenshots box that starts off), reactions (the reactions button, while the host lets guests react),
 watch (Watch on GifOS, a new tab). Nothing set means
-volume,audioonly,fullscreen,pip,chat,reactions. all turns every key on.
+volume,audioonly,fullscreen,pip,chat,transcript,reactions. all turns every key on.
 none, or an empty value, leaves only the info button. Unknown keys are
 ignored. Script: data-controls="tabs,inset". Iframe:
 #room=ROOM&controls=tabs,inset. The password prompt, the not-hosted notice

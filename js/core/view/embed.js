@@ -47,8 +47,8 @@
     // The controls are presentation only. They never change what the core decides (who is hosted, the password, the
     // sound gate, what the room sends this seat). Keys come from the hash the embedder wrote. The core rebuilds its
     // params from its own whitelist and drops this one.
-    var CONTROL_KEYS = ['volume', 'mute', 'captions', 'audioonly', 'tabs', 'inset', 'fullscreen', 'pip', 'chat', 'reactions', 'names', 'watch'];
-    var CONTROL_DEFAULT = ['volume', 'audioonly', 'fullscreen', 'pip', 'chat', 'reactions', 'names', 'watch'];
+    var CONTROL_KEYS = ['volume', 'mute', 'captions', 'audioonly', 'tabs', 'inset', 'fullscreen', 'pip', 'chat', 'transcript', 'reactions', 'names', 'watch'];
+    var CONTROL_DEFAULT = ['volume', 'audioonly', 'fullscreen', 'pip', 'chat', 'transcript', 'reactions', 'names', 'watch'];
     function controlsFromHash(hash) {
       var set = new Set();
       var has = false, raw = '';
@@ -693,6 +693,94 @@
       b.setAttribute('aria-expanded', panel === 'chat' ? 'true' : 'false');
     }
 
+    // ---- TRANSCRIPT: the lines the room's speakers caption for themselves, read here. This page runs no speech engine
+    // (EMBEDMIC): the core keeps the caption lines it is sent, like chat (trBlocks), and this panel draws them, with the same
+    // Download the meeting has (viewKit.trDownload: the plain .txt, or the .zip when screenshots exist). Auto screenshots: this
+    // device's own pictures of the screens it is shown (shareshots.js, the meeting's rules); UNTICKED until the person ticks
+    // it (a page left open for hours must not fill the browser's memory unseen), remembered in this browser.
+    var TR_SHOTS_KEY = 'gifos.embed.trshots';
+    function trKept() { try { return !!C.trKeeps(); } catch (e) { return false; } }
+    function trShows() { return controls.has('transcript') && why === 'ok' && hostedNow() && trKept(); }
+    function shotsOn() { return lsGet(TR_SHOTS_KEY) === 'on'; }   // default off
+    function shotWho(s) { return tr('trShotWho', '{name}\'s screen', { name: s.name || '?' }); }   // this page shows other people's screens only
+    function shotWords(s) {
+      var time = ''; try { time = C.model.chat.when(s.at); } catch (e) { time = new Date(s.at).toLocaleTimeString(); }
+      return tr('trShotOf', '{name}\'s screen, {time}', { name: s.name || '?', time: time });
+    }
+    var shotsArmed = false;
+    function armShots() {   // the library's sampler starts only once the box has been ticked (nothing runs for a page that never asks)
+      if (shotsArmed || !shotsOn() || !GifOS.shareShots) return;
+      shotsArmed = true;
+      try {
+        GifOS.shareShots.attach({
+          keep: function () { return trKept(); },
+          on: function () { return trKept() && shotsOn() && hostedNow(); },
+          shares: function () {
+            var out = [];
+            (C.screenSharers() || []).forEach(function (sid) {
+              if ((C.blurLevelFor(sid, false, false, 'stage') | 0) > 0 || C.modBlurOn(sid)) return;   // a share seen blurred is never taken
+              var src = M.ctScreenTrack(sid);
+              if (!src || !src.track || src.from === 'strip') return;
+              out.push({ sid: sid, mine: false, name: C.displayName(sid), track: src.track });
+            });
+            return out;
+          },
+          changed: function () { renderTrPanel(); },
+          always: function () { return false; }
+        });
+      } catch (e) { shotsArmed = false; }
+    }
+    var trSig = '';
+    function trItems() {
+      var lines = [], shots = [];
+      try { lines = C.trBlocks(); } catch (e) {}
+      try { shots = GifOS.shareShots ? GifOS.shareShots.list() : []; } catch (e) {}
+      if (!shots.length) return lines;
+      return lines.concat(shots.map(function (s) { return { at: s.at, shot: s }; })).sort(function (a, b) { return a.at - b.at; });
+    }
+    function renderTrPanel() {
+      if (panel !== 'tr') return;
+      var items = trItems(), mine = '';
+      try { mine = C.trLang(); } catch (e) {}
+      var last = items[items.length - 1];
+      var sig = items.length + ':' + (last ? (last.shot ? last.shot.id : last.end + ':' + last.text.length) : '') + ':' + lsGet(TR_SHOTS_KEY);
+      if (sig === trSig) return;
+      trSig = sig;
+      var log = $('emb-tr-log');
+      var near = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
+      log.textContent = '';
+      if (!items.length) {
+        var e0 = document.createElement('li'); e0.className = 'emb-chat-empty'; e0.textContent = tr('trEmpty', 'Lines appear here as people speak.'); log.appendChild(e0);
+      }
+      items.slice(-300).forEach(function (l) {
+        var li = document.createElement('li');
+        if (l.shot) {
+          var w = shotWords(l.shot);
+          try { GifOS.shareShots.label(l.shot.id, w); } catch (e) {}
+          li.className = 'emb-tr-shot';
+          var cap = document.createElement('b'); cap.textContent = w;
+          var img = document.createElement('img'); img.setAttribute('data-shot', l.shot.id); img.src = l.shot.url; img.width = l.shot.w; img.height = l.shot.h; img.alt = w; img.loading = 'lazy';
+          li.appendChild(cap); li.appendChild(img);
+        } else {
+          var who = document.createElement('b'); who.textContent = String(l.by || tr('someone', 'Someone')).slice(0, 40);
+          var tx = document.createElement('span'); tx.textContent = String(C.trNote(l) + l.text).slice(0, 4000);
+          li.appendChild(who); li.appendChild(tx);
+          if (l.lang && l.lang !== mine) { var lg = document.createElement('small'); lg.textContent = ' (' + l.lang + ')'; li.appendChild(lg); }
+        }
+        log.appendChild(li);
+      });
+      if (near || !log.scrollTop) log.scrollTop = log.scrollHeight;
+    }
+    fn('renderTranscript', function () { renderTrPanel(); });
+    function paintTrBtn() {
+      var b = $('emb-tr');
+      var on = trShows();
+      b.hidden = !on;
+      if (!on && panel === 'tr') setPanel(null);
+      b.setAttribute('aria-expanded', panel === 'tr' ? 'true' : 'false');
+      var box = $('emb-tr-shots'); if (box && box.checked !== shotsOn()) box.checked = shotsOn();
+    }
+
     // ---- REACTIONS: the meeting's audience reactions, sent the same way. Shown while the host lets guests react.
     function reactShows() { var ok = false; try { ok = !!C.viewerMayReact(); } catch (e) { ok = false; } return controls.has('reactions') && why === 'ok' && hostedNow() && ok; }
     var reactSig = '';
@@ -727,7 +815,7 @@
 
     // ---- the panels: the gear menu, the info panel, chat and the reaction tray. One is open at a time. Each closes on
     // Esc, on a tap outside it, or on its own button, and gives the focus back to that button.
-    var PANELS = { menu: ['emb-menu', 'emb-gear'], info: ['emb-info-panel', 'emb-info'], chat: ['emb-chat-panel', 'emb-chat'], react: ['emb-react-tray', 'emb-react'] };
+    var PANELS = { menu: ['emb-menu', 'emb-gear'], info: ['emb-info-panel', 'emb-info'], chat: ['emb-chat-panel', 'emb-chat'], tr: ['emb-tr-panel', 'emb-tr'], react: ['emb-react-tray', 'emb-react'] };
     var panel = null;
     function setPanel(name, focusBack) {
       if (name && !PANELS[name]) name = null;
@@ -742,6 +830,7 @@
       if (name === 'menu') { var items = menuItems(); if (items[0]) { try { items[0].focus(); } catch (e) {} } }
       if (name === 'info') { try { $('emb-info-close').focus(); } catch (e) {} }
       if (name === 'chat') { chatSig = ''; renderChatPanel(); showNameCard(false); sayChatNote(''); }
+      if (name === 'tr') { trSig = ''; renderTrPanel(); try { $('emb-tr-close').focus(); } catch (e) {} }
       if (name === 'react') { var f = $('emb-react-tray').querySelector('button'); if (f) { try { f.focus(); } catch (e) {} } }
       if (!name && was && focusBack) { var b = $(PANELS[was][1]); if (b && !b.hidden) { try { b.focus(); } catch (e) {} } }
       wake();
@@ -768,6 +857,7 @@
       paintFloat();
       paintFull();
       paintChatBtn();
+      paintTrBtn();
       paintReactBtn();
       // The gear shows only when its menu has a row to show (captions not yet arrived is no row).
       var on = false, menu = $('emb-menu');
@@ -848,6 +938,13 @@
       set('emb-name-in', 'namePh', 'Name', 'placeholder');
       set('emb-name-go', 'nameGo', 'Post');
       set('emb-name-x', 'notNow', 'Not now');
+      set('emb-tr', 'transcript', 'Transcript', 'aria-label'); set('emb-tr', 'transcript', 'Transcript', 'title');
+      set('emb-tr-h', 'transcript', 'Transcript');
+      set('emb-tr-close', 'close', 'Close');
+      set('emb-tr-dl', 'trDownload', 'Download');
+      set('emb-tr-shots-txt', 'trShots', 'Auto screenshots');
+      set('emb-tr-shots-row', 'trShotsTip', 'When a shared screen changes and holds still, like a new slide, the transcript keeps one screenshot of it. Taken on this device from what you see: nothing is sent, and a screen you see blurred is never taken.', 'title');
+      trSig = ''; renderTrPanel();
       set('emb-react', 'react', 'React', 'aria-label'); set('emb-react', 'react', 'React', 'title');
       set('emb-react-tray', 'react', 'React', 'aria-label');
       var vl = $('emb-m-volume'); if (vl) { vl.querySelector('span').textContent = tr('volume', 'Volume'); vl.querySelector('input').setAttribute('aria-label', tr('volume', 'Volume')); }
@@ -1002,6 +1099,12 @@
     $('emb-chat-form').onsubmit = function (e) { e.preventDefault(); sendChat(); };
     $('emb-name-card').onsubmit = function (e) { e.preventDefault(); saveName(); };
     $('emb-name-x').onclick = function () { showNameCard(false); };
+    $('emb-tr').onclick = function () { setPanel(panel === 'tr' ? null : 'tr'); };
+    $('emb-tr-close').onclick = function () { setPanel(null, true); };
+    $('emb-tr-dl').onclick = function () { try { K.trDownload(C, M.transcriptFile(), shotWho); } catch (e) {} };
+    $('emb-tr-shots').checked = shotsOn();
+    $('emb-tr-shots').onchange = function () { lsSet(TR_SHOTS_KEY, this.checked ? 'on' : 'off'); armShots(); trSig = ''; renderTrPanel(); };
+    armShots();
     $('emb-react').onclick = function () { setPanel(panel === 'react' ? null : 'react'); };
     document.addEventListener('pointerdown', function (e) {
       if (!panel) return;

@@ -140,6 +140,7 @@
    "js/core/view/audio.js"
   ],
   "embed.html": [
+   "js/core/view/shareshots.js",
    "js/core/view/embed.js"
   ]
  }

@@ -64,5 +64,12 @@
   "embed.volume": "Lautstärke",
   "embed.watch": "Ansehen",
   "embed.viewOn": "Auf gifos.app ansehen",
-  "embed.watching": "{n} schauen zu"
+  "embed.watching": "{n} schauen zu",
+  "embed.transcript": "Protokoll",
+  "embed.trEmpty": "Die Zeilen erscheinen hier, sobald jemand spricht.",
+  "embed.trShots": "Automatische Screenshots",
+  "embed.trShotsTip": "Wenn sich ein geteilter Bildschirm ändert und stehen bleibt, etwa eine neue Folie, behält das Protokoll einen Screenshot davon. Er entsteht auf diesem Gerät aus dem, was Sie sehen: nichts wird gesendet, und ein Bildschirm, den Sie unscharf sehen, wird nie aufgenommen.",
+  "embed.trDownload": "Herunterladen",
+  "embed.trShotOf": "Bildschirm von {name}, {time}",
+  "embed.trShotWho": "Bildschirm von {name}"
 }
