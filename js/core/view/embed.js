@@ -127,6 +127,32 @@
     // room's captor, present). Not hosted: the card, no picture, no sound (the media plane gates the sound on the same
     // check); hosted again: the picture comes back by itself, muted until a tap.
     function hostedNow() { try { return why === 'ok' && !!C.embedHosted(); } catch (e) { return false; } }
+    // WHAT THE PLAYER MAY SAY. "Not live" and "isn't hosted" are the room's answer, said only once this page KNOWS it:
+    // it is in (seated, and no relayed link still being made), and the host's signed state has had its beat to arrive, or
+    // the host WAS here and left. Until then it says Connecting. A page that cannot reach GifOS or the room at all (offline,
+    // the relay socket never up, the way in stuck) says it could not connect and keeps trying: that is not a claim about the room.
+    //   'connecting' | 'offline' (this device's network is gone) | 'noconn' (cannot reach GifOS or the room) | 'room' (the room's answer)
+    var T0 = Date.now(), relayDownAt = 0, settledAt = 0, hostedEver = false, hostedAt = 0;
+    function verdict(hosted, seated) {
+      if (why !== 'ok') return 'room';
+      var now = Date.now(), es = { settled: false, relay: true, everUp: true, offline: false };
+      try { es = C.embedState(); } catch (e) { es.settled = seated; }
+      if (hosted) { hostedEver = true; if (!hostedAt) hostedAt = now; } else hostedAt = 0;
+      if (es.relay) relayDownAt = 0; else if (!relayDownAt) relayDownAt = now;
+      if (es.settled && !settledAt) settledAt = now;
+      var T = GifOS.timings;
+      if (es.offline) return 'offline';
+      if (!es.relay && now - relayDownAt >= T.EMBED_UNREACHED_MS) return 'noconn';
+      if (!es.relay) return 'connecting';
+      if (hosted) {   // the host is here: the picture is on its way (a password, or the host's own quiet line, speak for themselves)
+        // a password, or the broadcast's own schedule line, speaks for itself; "has not started" is not said while the host's picture is still on its way
+        if (C.pwBlocked || (quiet.text && quiet.sched && (quiet.sched.phase === 'future' || quiet.sched.phase === 'soon'))) return 'room';
+        return now - hostedAt >= T.EMBED_MEDIA_WAIT_MS ? 'room' : 'connecting';
+      }
+      if (hostedEver) return 'room';   // we were connected and the host left
+      if (es.settled) return now - settledAt >= T.EMBED_SYNC_MS ? 'room' : 'connecting';
+      return now - T0 >= T.EMBED_STUCK_MS ? 'noconn' : 'connecting';
+    }
     var wasHosted = null;
     function paint() {
       entry();
@@ -144,6 +170,8 @@
       // A viewer on a TURN-only network waits here longest (hotel Wi-Fi, 0.9.28.30 field): "not hosted" was a false claim then.
       var seated = true;
       try { var ms = C.meshSeat(); seated = !!(ms && ms.hasCoord); } catch (e) {}
+      var know = verdict(hosted, seated);
+      if (picture) know = 'room';   // a picture is playing: nothing to wait on
       var lv = stageLevel();
       if (v) {
         try { C.fsBlurClass(v, lv); } catch (e) {}
@@ -151,11 +179,17 @@
       }
       var pre = false;
       try { pre = picture && !!C.bcPreInRoom(); } catch (e) {}
-      var st = why !== 'ok' ? 'off' : pre ? 'pre' : (picture && !quiet.text) ? 'watching' : 'off';
+      // The core's off-air line can trail the picture by a beat (the host's stage seat is signed a little after its first frame):
+      // a picture that is playing outranks the plain "has not started" line, a schedule line (starts at / about to start) stands.
+      var qtext = quiet.text;
+      if (picture && !(quiet.sched && (quiet.sched.phase === 'future' || quiet.sched.phase === 'soon'))) qtext = '';
+      var st = why !== 'ok' ? 'off' : pre ? 'pre' : (picture && !qtext) ? 'watching' : 'off';
       var live = $('emb-live');
       if (live.dataset.state !== st) live.dataset.state = st;
       var word = st === 'watching' ? tr('live', 'LIVE') : st === 'pre' ? tr('pre', 'PRERECORDED')
-        : (why === 'ok' && !hosted && !seated) ? tr('connecting', 'CONNECTING') : tr('offline', 'OFFLINE');
+        : why !== 'ok' ? tr('offline', 'OFFLINE')
+        : know === 'connecting' ? tr('connecting', 'CONNECTING')
+        : (know === 'noconn' || know === 'offline') ? tr('noConn', 'NO CONNECTION') : tr('offline', 'OFFLINE');
       if ($('emb-live-txt').textContent !== word) $('emb-live-txt').textContent = word;
       var cw = st === 'off' ? '' : tr('watching', '{n} watching', { n: watchCount() });
       if ($('emb-count').textContent !== cw) $('emb-count').textContent = cw;
@@ -170,9 +204,11 @@
       if ($('emb-mute').textContent !== mw) { $('emb-mute').textContent = mw; $('emb-mute').setAttribute('aria-pressed', heard ? 'false' : 'true'); }
       var card = $('emb-card');
       var mt = why !== 'ok' ? tr('msgName', 'This embed does not name a GifOS broadcast.')
-        : (!hosted && !seated) ? tr('msgConnecting', 'Connecting to the meeting… The live view starts as soon as this page is in.')
+        : know === 'connecting' ? tr('msgConnecting', 'Connecting to the meeting… The live view starts as soon as this page is in.')
+        : know === 'offline' ? tr('msgOffline', 'You appear to be offline. Trying again…')
+        : know === 'noconn' ? tr('msgNoConn', 'Couldn’t connect to the broadcast. Trying again…')
         : !hosted ? tr('msgUnhosted', 'This meeting isn’t hosted right now. The live view starts when a host takes charge.')
-        : quiet.text ? quiet.text
+        : qtext ? qtext
         : (!picture && C.pwBlocked) ? tr('msgPw', 'This broadcast has a room password.')
         : !picture ? tr('msgNotLive', 'Not live right now.') : '';
       var msg = $('emb-msg');

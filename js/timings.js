@@ -35,6 +35,8 @@
     AUDIO_QUANTUM_MS: 20,   // ms
     AWAKE_MS: 3000,   // ms
     BANNER_HOLD: 5000,   // ms
+    BC_QUIET_GRACE_MS: 4000,   // ms
+    BC_RECONNECT_MS: 60000,   // ms
     BG_BEAT_MS: 50,   // ms
     BLUR_MAX_FRAC: 0.045,   // ratio
     BLUR_MIN_FRAC: 0.018,   // ratio
@@ -79,6 +81,10 @@
     DOOR_SHUT_MS: 30000,   // ms
     DRAIN_MS: 2000,   // ms
     EMBED_HOSTED_MS: 1000,   // ms
+    EMBED_MEDIA_WAIT_MS: 20000,   // ms
+    EMBED_STUCK_MS: 90000,   // ms
+    EMBED_SYNC_MS: 4000,   // ms
+    EMBED_UNREACHED_MS: 30000,   // ms
     FACE_REACT_MS: 3000,   // ms
     FAREWELL_DRAIN_MS: 1500,   // ms
     FHOP_RELAY_ASK_MS: 6500,   // ms (FHOP_RELAY_ASK)
