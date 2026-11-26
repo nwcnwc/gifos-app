@@ -5677,7 +5677,11 @@
           if (sc && sc.el) {
             const dark = ((0, /*()*/__C.forcedCamOff)(sid) || (typeof __C.shareBlocked === 'function' && (0, /*()*/__C.shareBlocked)(sid))) ? 1 : 0;
             const blur = (!dark && sid !== __C.myId && (0, /*()*/__C.modBlurOn)(sid)) ? Math.max(1, (0, /*()*/__C.blurLevelFor)(sid)) : 0;
-            stripPack.setTile(sid, j, sc.el, sc.stream, { n: 1, cols: 1, lbl: (0, /*()*/__C.labelFor)(sid), fit: (0, /*()*/__C.fitFor)(sid), dark, blur, talkPid: sid });
+            // The Stage strip carries no names: every viewer draws them over its own Stage picture (viewKit.stageNames),
+            // sharp over a blurred picture, hidden by a viewer's Show names off, faded on a calm screen. The talking frame,
+            // a raised hand and a reaction stay in the picture.
+            const lb = (0, /*()*/__C.labelFor)(sid);
+            stripPack.setTile(sid, j, sc.el, sc.stream, { n: 1, cols: 1, lbl: lb ? Object.assign({}, lb, { name: '' }) : lb, fit: (0, /*()*/__C.fitFor)(sid), dark, blur, talkPid: sid });
             stgKeep.add(sid);
           }
         });

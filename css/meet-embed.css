@@ -131,6 +131,16 @@ body.emb-has-share .emb-share { display: block; }
 .emb-share-box li span { opacity: .65; font-size: 13px; }
 .emb-inset-min { display: none; }
 #stagefeed .rlabel { display: none; }
+/* The Stage's names, drawn by this viewer over its own Stage picture (viewKit.stageNames): sharp over a blurred
+   picture, never in the pixels sent. A viewer's Show names off hides them; a calm watching surface fades them. */
+#stagefeed .stgnames { position: absolute; inset: 0; pointer-events: none; z-index: 2; overflow: hidden; }
+#stagefeed .stgname { position: absolute; box-sizing: border-box; padding: .2em .5em; background: rgba(10,10,15,.62); color: #eef;
+  font-weight: 600; font-family: system-ui, sans-serif; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: opacity .4s ease; }
+#stagefeed .stgname[hidden] { display: none; }
+body.names-off #stagefeed .stgnames { display: none; }
+/* Calm (viewKit.calm): the top line and the Stage names fade with the bar. The unmute and unblur prompts stay. */
+#embedui .emb-top { transition: opacity .4s ease; }
+body.view-calm #embedui .emb-top, body.view-calm #stagefeed .stgname { opacity: 0; }
 body.emb-has-share #stagefeed { inset: auto; width: clamp(96px, 30vmin, 260px); aspect-ratio: 1 / 1; z-index: 2; border-radius: 8px; overflow: hidden;
   box-shadow: 0 4px 22px rgba(0,0,0,.55); cursor: grab; touch-action: none; transition: left .25s, top .25s; }
 body.emb-has-share.emb-dragging #stagefeed { transition: none; cursor: grabbing; }

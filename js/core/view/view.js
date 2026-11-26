@@ -5359,6 +5359,7 @@
     let platePaintT = 0;
     function paintStagePlate() {
       try { paintStageBlurWhy(); } catch (e) {}   // a strip just bound wears its blur at once (STAGEBLUR)
+      try { GifOS.viewKit.stageNames(__C, __M); } catch (e) {}   // the stagers' names over the Stage picture
       const el = document.getElementById('bc-stage');
       const line = document.getElementById('bc-stage-line');
       if (!el || !line) return;
@@ -10167,7 +10168,21 @@
       const wake = () => {
         lastInput = Date.now();
         document.body.classList.remove('dock-calm');
+        try { GifOS.viewKit.calm(false); } catch (e) {}
       };
+      // A WATCHING SURFACE (a /cast viewer, the Stage view, full screen) goes calm with the dock (a phone: with the
+      // chrome tuck): every control and label leaves the picture, the version label stays (viewKit.calm). An unmute
+      // prompt holds it; the tap-to-unblur note is never faded.
+      function watchCalm(calm) {
+        const b = document.body.classList;
+        if (!calm && !b.contains('chrome-away')) return false;
+        const castView = !!(GifOS.viewSurface && GifOS.viewSurface.name === 'cast') || b.contains('broadcast');
+        const watching = (castView && !b.contains('bc-host')) || b.contains('view-stage') || !!document.fullscreenElement;
+        if (!watching) return false;
+        const um = document.getElementById('unmute');
+        if (um && um.getClientRects().length && getComputedStyle(um).display !== 'none' && getComputedStyle(um).visibility !== 'hidden') return false;
+        return true;
+      }
       for (const ev of ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart', 'focusin']) {
         window.addEventListener(ev, wake, { capture: true, passive: true });
       }
@@ -10198,6 +10213,7 @@
         let calm = false;
         try { calm = Date.now() - lastInput >= __C.model.door.dockCalmMs() && !busy(); } catch (e) {}
         if (calm !== document.body.classList.contains('dock-calm')) document.body.classList.toggle('dock-calm', calm);
+        try { GifOS.viewKit.calm(watchCalm(calm)); } catch (e) {}
         // The header only goes while it is the plain count line.
         let head = calm;
         if (head) {

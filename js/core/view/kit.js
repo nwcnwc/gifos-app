@@ -14,6 +14,7 @@
  *   readings                stageLevel, watchCount, nameOf, present: what the core already decided, read for drawing.
  *   acts                    pip, fullscreen: the browser's own controls over a video element (fullscreen.enterStage /
  *                           leaveStage: the Stage view's full screen on every surface).
+ *   stageNames, calm        the Stage's names over the picture, and the watching surfaces' one idle fade.
  *   clear                   the viewer's own unblur (clearButtons) and Report (clearReport, from the info panel / More menu) in a hosted room with no
  *                           password whose clear right the core reads (clearNoPwState); every surface draws the same.
  *
@@ -328,7 +329,63 @@
     if (onTap) img.style.cursor = 'pointer';
   }
 
+  // ---- the Stage's names: every viewer draws them over its own Stage picture ----
+  // The Stage strip carries faces only (no names baked into the pixels), so a name stays sharp over a blurred
+  // picture, a viewer can hide the names (body.names-off) and a calm surface fades them (body.view-calm), all on
+  // this screen alone. The strip packs the stagers left to right in Stage order in equal cells; one stager fills
+  // the frame. A shared screen on the Stage carries its own label (the strip's .rlabel), so no names go on it.
+  function stageNames(C, M) {
+    var el = document.querySelector('#stagefeed [data-row="sgs"]');
+    if (!el) return;
+    var v = el.querySelector('video');
+    var box = el.querySelector(':scope > .stgnames');
+    if (!box) {
+      box = document.createElement('div'); box.className = 'stgnames'; box.setAttribute('aria-hidden', 'true');
+      el.appendChild(box);
+      var again = function () { try { stageNames(C, M); } catch (e) {} };
+      if (v) { v.addEventListener('resize', again); v.addEventListener('loadedmetadata', again); }
+      if (root.ResizeObserver) new root.ResizeObserver(function () { requestAnimationFrame(again); }).observe(el);
+    }
+    var view = M ? M.stageViewNow : null, ids = [];
+    try {
+      if (view === 'self') ids = [C.myId];
+      else if (view !== 'screen') ids = C.stageIds().slice();
+    } catch (e) { ids = []; }
+    var vw = v ? v.videoWidth : 0, vh = v ? v.videoHeight : 0, W = el.clientWidth, H = el.clientHeight;
+    var want = (vw > 0 && vh > 0 && W > 0 && H > 0) ? ids : [];
+    while (box.children.length > want.length) box.removeChild(box.lastChild);
+    if (!want.length) return;
+    // the picture inside its box (object-fit: contain, centred)
+    var k = Math.min(W / vw, H / vh), pw = vw * k, ph = vh * k, ox = (W - pw) / 2, oy = (H - ph) / 2;
+    var n = want.length, cw = pw / n;
+    // one stager: a caption sized from the picture's long side; several: a bar across each cell's foot
+    var lw = n === 1 ? Math.min(pw, Math.max(pw, ph) * 0.25) : cw;
+    var fs = Math.max(11, Math.round(lw * 0.11));
+    for (var i = 0; i < n; i++) {
+      var t = box.children[i];
+      if (!t) { t = document.createElement('span'); t.className = 'stgname'; box.appendChild(t); }
+      var nm = nameOf(C, want[i]);
+      try { if (!nm && C.displayName) nm = String(C.displayName(want[i]) || ''); } catch (e) {}
+      if (t.textContent !== nm) t.textContent = nm;
+      t.hidden = !nm;
+      t.style.left = Math.round(ox + i * cw) + 'px';
+      t.style.bottom = Math.round(H - (oy + ph)) + 'px';
+      t.style.width = Math.round(lw) + 'px';
+      t.style.fontSize = fs + 'px';
+    }
+  }
+
+  // ---- calm: the one idle rule of the watching surfaces ----
+  // After the surface's idle clock (no pointer, touch or key), a watching surface (the embed, a /cast viewer, the
+  // Stage view, full screen) takes every control and label off the picture: the bar, the top buttons, Blur, the
+  // Prerecorded pill and the Stage names. Only the version label stays. Each surface decides when it is calm (its
+  // panels, menus and prompts hold it up); this is the one switch they all throw.
+  function calm(on) {
+    var b = document.body; if (!b) return;
+    if (b.classList.contains('view-calm') !== !!on) b.classList.toggle('view-calm', !!on);
+  }
+
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 
-  GifOS.viewKit = { version: 1, RECORDS: RECORDS, host: host, part: part, stageLevel: stageLevel, watchCount: watchCount, nameOf: nameOf, present: present, pip: pip, fullscreen: fullscreen, armAppGif: armAppGif, clearButtons: clearButtons, clearReport: clearReport, clearReportButton: clearReportButton, esc: esc };
+  GifOS.viewKit = { version: 1, RECORDS: RECORDS, host: host, part: part, stageLevel: stageLevel, watchCount: watchCount, nameOf: nameOf, present: present, pip: pip, fullscreen: fullscreen, armAppGif: armAppGif, clearButtons: clearButtons, clearReport: clearReport, clearReportButton: clearReportButton, stageNames: stageNames, calm: calm, esc: esc };
 })(typeof window !== 'undefined' ? window : globalThis);

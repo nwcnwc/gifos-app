@@ -77,9 +77,10 @@
     var ccOn = lsGet('gifos.embed.cc') === '1', ccAvail = false, ccText = '', ccUntil = 0, ccTimer = 0;
     // Audio only: this viewer's screen stops drawing the pictures (CSS hides the video elements). It is never a
     // subscription change: the seat keeps receiving and forwarding video for the room exactly as before.
-    // Show names: the name bars the player draws on the Stage picture; on by default, this viewer's choice, kept in this browser.
+    // Show names: the names this player draws over the Stage picture (viewKit.stageNames); on by default, this viewer's
+    // choice, kept in this browser. Nothing sent changes: the Stage picture never carries the names.
     var showNames = !(controls.has('names') && lsGet('gifos.embed.names') === '0');
-    GifOS.hideNames = !showNames;
+    document.body.classList.toggle('names-off', !showNames);
     var audioOnly = controls.has('audioonly') && lsGet('gifos.embed.audioonly') === '1';
     document.body.classList.toggle('emb-inset-lock', !controls.has('inset'));
     // The entry the core parsed (its EMBED whitelist): read when first asked, after the core's first steps ran.
@@ -184,6 +185,7 @@
       paintInsetRow();
       syncRows();
       aimFloat();
+      try { K.stageNames(C, M); } catch (e) {}
       calmSoon();
     }
 
@@ -759,6 +761,7 @@
     function setCalm(on) {
       calm = !!on;
       document.body.classList.toggle('emb-calm', calm);
+      K.calm(calm);   // the watching surfaces' one idle fade: the top line and the Stage names go with the bar
     }
     function calmSoon() {
       if (!mayCalm()) { if (calm) setCalm(false); clearTimeout(calmT); calmT = 0; return; }
@@ -860,7 +863,7 @@
     $('emb-tabmenu').onchange = function () { pick(this.value); };
     $('emb-inset-min').onclick = function (e) { e.stopPropagation(); toggleInset(); };
     $('emb-m-inset').onclick = function () { toggleInset(); };
-    $('emb-m-names').onclick = function () { showNames = !showNames; GifOS.hideNames = !showNames; lsSet('gifos.embed.names', showNames ? '1' : '0'); syncRows(); };
+    $('emb-m-names').onclick = function () { showNames = !showNames; document.body.classList.toggle('names-off', !showNames); lsSet('gifos.embed.names', showNames ? '1' : '0'); syncRows(); };
     (function drag() {   // pointer drag of the inset; on release it snaps to the nearest corner
       var sf = stagefeedEl, start = null;
       sf.addEventListener('pointerdown', function (e) {
