@@ -8561,7 +8561,7 @@
       if (__C.meTile && __C.meTile.video) g.row.push({ key: 'me', video: __C.meTile.video, label: (0, /*()*/__C.myName)() + ' (you)', bus: 'row', blur: 0, stream: __C.localStream, me: true, camOff: (0, /*()*/__C.seatDark)(__C.myStatus) });
       for (const [pid, p] of __C.peers) {
         const st = __C.statusOf.get(pid) || {};
-        const src = { key: pid, video: p.video, label: p.name || '…', blur: (0, /*()*/__C.blurLevelFor)(pid), stream: p.video.srcObject,
+        const src = { key: pid, video: p.video, label: p.name || '…', blur: (0, /*()*/__C.blurLevelFor)(pid), stream: p.stream || p.video.srcObject,
           mute: !!((0, /*()*/__C.modOf)(pid).mute && (0, /*()*/__C.modOf)(pid).mute.on), camOff: (0, /*()*/__C.seatDark)(st) || (typeof __C.shareBlocked === 'function' && !!(0, /*()*/__C.shareBlocked)(pid)) };
         if (stg.has(pid)) {
           const f = __C.mosIn.get('stg:' + pid);

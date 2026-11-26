@@ -3051,7 +3051,7 @@
           for (let i = 0; i < packIds.length; i++) {
             const src = (0, /*()*/__C.stageFeedVideo)(packIds[i]);
             if (!src) { packOn = false; packSources = []; break; }
-            packSources.push({ id: packIds[i], track: src.track, aspect: src.aspect });
+            packSources.push({ id: packIds[i], track: src.track, aspect: src.aspect, card: !!src.card });
           }
         }
         if (sgsV && !sgsV._packMeta) {
@@ -3092,6 +3092,7 @@
             if (__C.focusId && src.id === __C.focusId) continue;
             keepViews.add(src.id);
             const el = ensureStageView(feed, src.id, src.track);
+            try { GifOS.viewKit.cellCards(__C, el, src.card ? [{ pid: src.id, x: 0, y: 0, w: el.clientWidth || 100, h: el.clientHeight || 100 }] : [], 'stage'); } catch (e) {}
             views.push({ id: 'stg:' + src.id, el: el, tier: 'row', stage: true, kind: 'person', aspect: src.aspect, shade: (0, /*()*/__C.shadeKey)(src.id), pz: 'stage:' + src.id });
           }
           for (let i = 0; i < views.length; i++) tiles.push(views[i]);

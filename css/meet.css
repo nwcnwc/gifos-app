@@ -3902,3 +3902,4 @@ body.comfy.sv-avail.has-app:not(.app-full):not(.solo-app):not(.app-room) #tophea
 .cellcard.has-img > span { display: none; }
 .cellcard > img.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .009))) saturate(.9); transform: scale(1.07); }
 .cellcard > img.blur2 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-max, .0225))) saturate(.75); transform: scale(1.15); }
+.tile[data-stageview] > .cellcards > .cellcard { top: 0; left: 0; width: 100% !important; height: 100% !important; }
