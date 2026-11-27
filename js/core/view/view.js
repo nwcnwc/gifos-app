@@ -8611,7 +8611,7 @@
     // song. While someone else leads, the pill just glows — one leader keeps
     // the timing anchor unambiguous.
     const timingRow = document.getElementById('timingrow');
-    yield 2575;
+    yield 2535;
     timingRow.addEventListener('click', (e) => {
       const t = e.target && e.target.dataset ? e.target.dataset.timing : null;
       if (t === 'song') { (0, /*()*/__M.toggleSing)(); (0, /*()*/__M.paintTiming)(); return; }
@@ -10557,7 +10557,6 @@
       __M.camDeviceId = '';
       (0, /*()*/__M.regrabCamera)('flip');
     };
-    yield 2949;
     function wireMediaSession() {
       const ms = navigator.mediaSession; if (!ms || !ms.setActionHandler) return;
       const wire = (action, fn) => { try { ms.setActionHandler(action, fn); } catch (e) { /* action unsupported here */ } };
@@ -11521,7 +11520,7 @@
     // its own tab — including when you JOIN a meeting where someone shares an app.
     // Closing a REQUIRED-setup gate here stops the shared app rather than the tab.
     if (window.GifOS && GifOS.perms) GifOS.perms.attach(document.getElementById('appperms'), { onLeave: function () { (0, /*()*/__C.stopApp)(); }, skipCaps: function () { return __C.appMode === 'client' ? ['stage'] : []; } });
-    yield 3129;
+    yield 3123;
     // Also driven by the app-room beat below, so a copy that STOPS (the holder
     // left mid-transfer) stops claiming to be in progress.
     function appCopyPaint() {
@@ -11564,6 +11563,7 @@
         ? 'Unpacking it on this device.'
         : 'About ' + mb.toFixed(1) + ' MB crossing from someone already in the room — it comes over once, then it is yours.';
     }
+    yield 3130;
 
     // ---- THE TAB'S ICON ------------------------------------------------
     // This page is the MEETING page wearing the runner's hat, so its <head>
@@ -12106,7 +12106,6 @@
     yield 3242;
     // The agent contract over the page's postMessage (a host page or extension talks to it); a host with no page has none.
     function bridgeAgentToPage(core) { GifOS.meetAgent.postMessageBridge(core, window); }
-    yield 3244;
     function setBotView(on) {
       on = !!on;
       if (__C.act.botView(on) !== true) return;   // the core decides (lobby: kept for the boot; unchanged: nothing to paint)

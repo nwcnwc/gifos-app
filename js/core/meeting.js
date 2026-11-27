@@ -16843,6 +16843,7 @@
     yield 2035;
     // END-STAGE-PIPE-DENY
     const pipeEnabled = () => !!(MPipe && MPipe.supported()) && (() => { try { return localStorage.getItem('gifos_pipe') !== 'off'; } catch (e) { return true; } })();
+    yield 2037;
     // KEYFRAME NEED, RELAYED TO THE PRODUCER (mx-kf). A deep consumer's PLI
     // only reaches the nearest hop's template mint — it can never reach the
     // content's origin, and transformer.generateKeyFrame does not exist on
@@ -17593,6 +17594,7 @@
       return sv.some((s) => pv.indexOf(s) >= 0) ? null : sb;
     }
     function stgRootKey(key) { return typeof key === 'string' && key.indexOf('stg:') === 0 && key.slice(-STG_ROOT2.length) === STG_ROOT2; }
+    yield 2231;
     // END-STG-SECOND-ROOT
     function stgFedBy(job, ent) {
       const trs = ent.stream ? ent.stream.getTracks() : [];
@@ -17618,6 +17620,7 @@
     yield 2249;
     // The beat's own cost, read by the room tests (DEBUG): frames in and out, and the time spent on them.
     const stgBeatCost = DEBUG_ON ? { in: 0, out: 0, ms: 0 } : null;
+    yield 2251;
     // A stager that never beat (an older page) is judged as before.
     function stgStale(rk) { const e = stgBeats.get(rk); return !!e && Date.now() - e.at > STG_BEAT_STALE_MS; }
     // A STAGE THAT ENDED ENDS ON EVERY ROAD. The beat is the stager's own word that its feed is there, so once it has
@@ -17649,7 +17652,7 @@
       const base = rk.split('^')[0];
       return base === 'stg:' + myId ? !stageIds().includes(myId) : (stgStale(base) || stgOffStage(base));
     }
-    yield 2254;
+    yield 2256;
     function prefCand(rk, cand) {
       const c = meshCoord(); if (!c) return null;
       // IDENTITY, NOT JUST KEY (2026-08-01). These two used to match on the
@@ -19851,7 +19854,7 @@
       const e = digStageEntry(id); return !!(e && (e.f & 1)); // a stager beyond my section: its folded flag (G9)
     };
     const roomSingOn = () => stageIds().some(singOf);
-    yield 2535;
+    yield 2536;
     (0, /*()*/__M.paintTiming)();
 
     // ---- live transcript: one line kind, one merge rule (2026-11-06) ----------
@@ -20110,7 +20113,6 @@
       if (at > 0) m.at = at;
       return same[0];
     }
-    yield 2576;
     function takeTr(m, backfill) { // backfill: a 'hi' replay — see takeChat
       if (!m || !m.id || trs.has(m.id) || ((m.at || 0) > 0 && (m.at || 0) <= (trs.floorAt || 0))) { if (clog && m && m.w === myId) clog('tr own drop', trs.has(m.id) ? 'held' : 'floor', m.at, trs.floorAt || 0); if (m && m.id) if (typeof capTrace === 'function') capTrace(m, trs.has(m.id) ? 'held' : 'floor'); return false; }
       const w = String(m.w || m.byId);
@@ -20786,7 +20788,7 @@
     // goes on with it when it lands (a room order still holds it off).
     let lateWant = null;
     let bootGumPending = null;
-    yield 2947;
+    yield 2951;
 
     // ---- stay in the meeting when the tab is hidden ---------------------------
     // Registering as a CALL with the OS (Media Session) is the other half of
@@ -20805,7 +20807,6 @@
       try { ms.playbackState = 'playing'; } catch (e) {}
     }
     (0, /*()*/__V.wireMediaSession)();
-    yield 2953;
     // Why a No blur pick is not clear video yet, or '' when nothing holds it
     // back. The camera-on line repeats it: turning the camera on is when the
     // person looks for clear video, and a bare "Camera on." hid the reason.
@@ -21740,7 +21741,7 @@
       if (Date.now() - appCopy.paintedAt < 150) return; // ~62 parts in 7s; don't thrash layout
       (0, /*()*/__V.appCopyPaint)();
     }
-
+    yield 3124;
     let appHiddenSid = null; // personal opt-out: this sid stays off MY stage only
     let appLeadSet = null, appLeadOn = false, appLeadable = false; // sharer's led-records switch
     myStatus.app = null;     // { s, k, relay, name, ts, byName } while THIS phone shares
@@ -23399,7 +23400,7 @@
       setInterval(() => { try { myRoomPart.tick(); } catch (e) {} }, GifOS.timings.MYROOM_TICK_MS);
       return myRoomPart;
     }
-    yield 3243;
+    yield 3249;
     // BACK TO NORMAL VIEW: one tap, no reload, no reseat. The seat, its links, keys, sound and history stay; the
     // camera stays off and the mic muted (on only when the person turns them on); every link is asked for video
     // again with a fresh key frame, and the tiles are drawn from the roster as it is now. A reload stays normal.
@@ -23418,7 +23419,7 @@
       try { refreshAllTiles(); updateTile('me'); broadcastStatus(); (0, /*()*/__V.paintControls)(); reactRoomState(); (0, /*()*/__V.layout)(); (0, /*()*/__M.applyBuses)(); } catch (e) {}
       return true;
     }
-    yield 3245;
+    yield 3244;
     if (AGENT_FORCED) agentStart();   // the API is there from the first moment; it says joined when the seat is
     if (botViewWant && room) (0, /*()*/__V.setBotView)(true);
 

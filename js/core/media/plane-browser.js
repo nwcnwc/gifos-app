@@ -3142,14 +3142,15 @@
       if (until && Date.now() >= until) { pipeDeny.delete(jk); pipeDenyUntil.delete(jk); return false; }
       return true;
     }
-    yield 2038;
+    yield 2036;
     if (__C.MPipe) __C.MPipe.on('codec-mismatch', (m) => {
       const jk = m.pipeId;
       const pj0 = pipeJobs.get(jk), job0 = __C.mosJobs.get(jk);
       // my one encode is VP8: a link that agreed on VP8 as well sends it on this sender (encCodec); only one that cannot keeps its own encoder
       if (pj0 && pj0.enc && !pj0.mis && job0) { pj0.mis = 1; let ok = false; for (let i = 0; i < job0.senders.length; i++) if (job0.trackList[i] === pj0.carrier.track) ok = encCodec(job0.senders[i]); if (ok) return; }
       if (pipeJobs.has(jk)) { if (__C.clog) (0, /*()*/__C.clog)('pipe-mismatch', jk, 'content=' + m.mime, 'link=' + m.tmplMime); pipeDenyStamp(jk); pipeDeny.add(jk); (0, /*()*/__C.unshipJob)(jk, true); } // next sweep re-ships transcoded
-    }); // mx-kf sets this for the duration of kfNeed(key)
+    });
+    yield 2039; // mx-kf sets this for the duration of kfNeed(key)
     const jiggleState = new WeakMap(); // sender -> { base, busy }
     function noteJiggleBase(sd, base) {
       const st = jiggleState.get(sd);
@@ -4874,7 +4875,7 @@
     const STG_ZERO_MS = GifOS.timings.STG_ZERO_MS;  // stage audio gets no grace: a stage copy with zero bytes this long after its claim, or after its wake, is dead
     const HOT_VOID_MS = GifOS.timings.HOT_VOID_MS; // hot-and-VOID: a hot primary with ZERO bytes this long is a husk, not a slow pipe (frza5)
     const mosFb = new Map();
-    yield 2231;
+    yield 2230;
     // A SECOND-ROOT COPY A RECEIVER PLAYS KEEPS ITS SOURCE. My parked standby is re-picked as paths come and go, and a
     // failover makes it my primary. Re-pointing a played copy at whatever I hold parked next changed its root under the
     // same stream id: the receiver kept playing what it took for the root it had chosen and heard a parked chain that
@@ -4891,6 +4892,7 @@
       (0, /*()*/__C.unshipJob)(jk, true); shipContainers.delete(jk); // the next copy gets a fresh id, never the one the receiver played
       return false;
     }
+    yield 2232;
     // A copy flows only while its sender holds the feed (mesh_media.inc: the feed is a search
     // from a live source). Every copy I relay from this claim stops while the claim is dark or
     // gone, and starts again the moment it flows. Without this, Section 1's rook flood keeps a
@@ -4987,7 +4989,7 @@
     function stgBeatFlood(key, b, from, sig, pub) {
       for (const [pid, p] of __C.peers) if (pid !== from && p.dc && p.dc.readyState === 'open') { (0, /*()*/__C.dcSend)(p, { k: 'mx-beat', key, b, sig, pub }); if (__C.stgBeatCost) __C.stgBeatCost.out++; }
     }
-    yield 2253;
+    yield 2250;
     function stgBeatIn(p, m) {
       const t0 = __C.stgBeatCost ? performance.now() : 0;
       if (__C.stgBeatCost) __C.stgBeatCost.in++;
@@ -4999,7 +5001,7 @@
         .catch(() => {});
       if (__C.stgBeatCost) __C.stgBeatCost.ms += performance.now() - t0;
     }
-    yield 2264;
+    yield 2254;
     // On the worker clock: a stale beat stops relayed media and delists the stager, so a hidden stager's throttled page timer must not reach it.
     GifOS.meshMedia.workerClock(__C.STG_BEAT_MS, () => {
       try {
