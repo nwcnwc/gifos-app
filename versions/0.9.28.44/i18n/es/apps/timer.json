@@ -1,0 +1,16 @@
+{
+  "title": "Temporizador y cronómetro",
+  "tab.stopwatch": "Cronómetro",
+  "tab.timer": "Temporizador",
+  "preset.1m": "+1 min",
+  "preset.5m": "+5 min",
+  "preset.10m": "+10 min",
+  "preset.10s": "+10 s",
+  "lap": "Vuelta",
+  "lap.n": "Vuelta {n}",
+  "lap.now": "Vuelta {n}  {time}",
+  "reset": "Reiniciar",
+  "start": "Iniciar",
+  "stop": "Detener",
+  "pause": "Pausa"
+}
