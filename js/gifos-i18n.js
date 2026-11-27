@@ -461,8 +461,12 @@
     var id = l + '/' + surface;
     if (fetched[id]) return fetched[id];
     var url = catBase + l + '/' + surface + '.json';
+    // A snapshot that left the site (below the meet floor) can still be open in a tab: its catalogs then come
+    // from the site root (the live release), never as raw keys (SNAPGAPS).
+    var rootUrl = /\/versions\/[^/]+\/i18n\/$/.test(catBase) ? catBase.replace(/\/versions\/[^/]+\/i18n\/$/, '/i18n/') + l + '/' + surface + '.json' : '';
+    var get = function (u) { return root.fetch(u).then(function (r) { if (!r.ok) throw new Error(String(r.status)); return r.json(); }); };
     var p = (typeof root.fetch === 'function')
-      ? root.fetch(url).then(function (r) { return r.ok ? r.json() : {}; }).catch(function () { return {}; })
+      ? get(url).catch(function () { return rootUrl ? get(rootUrl) : {}; }).catch(function () { return {}; })
       : Promise.resolve({});
     fetched[id] = p.then(function (obj) {
       if (!obj || typeof obj !== 'object') return;
