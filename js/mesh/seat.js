@@ -843,7 +843,7 @@
       let d = 0; { const ps = new Set(); for (let q = 0; q < this.l13DownAt.length; q++) if (this.TICK - this.l13DownAt[q] <= K.LEASE_T) ps.add(q < this.l13DownPeer.length ? this.l13DownPeer[q] : -1 - q); d = ps.size; }
       let sil = 0;
       if (this.hasCoord && this.state === 3) {
-        for (const c of ownedLinks(this.coord)) { const k = ckey(c); const x = this.occGet(k); if (x < 0 || x === this.id) continue; const lv = this.live.get(k); const pb = this.pongBy.get(k); if (lv !== undefined && this.TICK - lv >= 60 && lv >= this.seatedAt + 128 && this.beatBy.get(k) === x) sil++; else if (pb !== undefined && pb[0] === x && this.TICK - pb[1] >= 60 && pb[1] >= this.seatedAt + 128) sil++; }   // only someone I am due to hear from (their regular beat, or their answers to mine): a neighbour that only greeted me and then stays quiet has not left
+        for (const c of ownedLinks(this.coord)) { const k = ckey(c); const x = this.occGet(k); if (x < 0 || x === this.id) continue; const lv = this.live.get(k); const pb = this.pongBy.get(k); const quiet = (t) => this.TICK - t >= 60 && t >= this.seatedAt + 128; if ((lv !== undefined && this.beatBy.get(k) === x && quiet(lv)) || (pb !== undefined && pb[0] === x && quiet(pb[1]))) sil++; }   // only someone I am due to hear from (their regular beat, or their answers to mine): a neighbour that only greeted me and then stays quiet has not left
       }
       let dk = 0;
       if (this.hasCoord && this.state === 3 && this.coord.pc === 0 && this.TICK - this.seatedAt >= 60) {
