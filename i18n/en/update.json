@@ -26,5 +26,12 @@
   "update.app.versionPath": "GifOS ▾ → Settings → System → Updates",
   "update.app.available": "<b>Update available for {name}.</b>",
   "update.app.link": "Update — keeps your data",
-  "update.app.dismiss": "Dismiss"
+  "update.app.dismiss": "Dismiss",
+  "update.old.title": "Update GifOS to join",
+  "update.old.body": "This invite runs on a newer GifOS than this page. Update GifOS opens it again on the newest.",
+  "update.old.pinnedBody": "This invite runs on a newer GifOS. This computer is set to GifOS v{version} in Settings. Update GifOS sets it back to the newest and opens the invite again.",
+  "update.old.action": "Update GifOS",
+  "update.old.appBody": "This invite runs on a newer GifOS than the GifOS Meet app on this phone. Update the app, then open the invite again.",
+  "update.old.appStoreBody": "This invite runs on a newer GifOS than the GifOS Meet app on this phone. Update it from the App Store, then open the invite again.",
+  "update.old.appAction": "Update GifOS Meet"
 }

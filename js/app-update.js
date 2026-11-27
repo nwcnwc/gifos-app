@@ -145,6 +145,17 @@
       a.style.cssText = 'color:#a9c7ff;font-weight:600;text-decoration:underline';
     });
     el.querySelector('.close').onclick = () => { el.remove(); };
+    // The app needs a newer GifOS that a release already has: one tap does it (GifOS.update.now lifts a Settings pin
+    // and opens this page on the live release), so nobody is sent hunting through Settings (2026-11-27).
+    const U = GifOS.update;
+    if (d.kind === 'gifos' && d.rel && U && typeof U.now === 'function') {
+      const b = document.createElement('button');
+      b.className = 'upd-gifos'; b.type = 'button';
+      b.textContent = tr('update.old.action', 'Update GifOS');
+      b.style.cssText = 'flex:none;min-height:44px;padding:0 1rem;border:0;border-radius:22px;background:#7b5cff;color:#fff;font:inherit;font-weight:700;cursor:pointer';
+      b.onclick = () => { b.disabled = true; U.now(); };
+      el.insertBefore(b, el.querySelector('.close'));
+    }
     return el;
   }
 

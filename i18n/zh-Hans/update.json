@@ -26,5 +26,12 @@
   "update.app.versionPath": "GifOS ▾ → 设置 → 系统 → 更新",
   "update.app.available": "<b>{name} 有可用更新。</b>",
   "update.app.link": "更新 — 保留你的数据",
-  "update.app.dismiss": "关闭"
+  "update.app.dismiss": "关闭",
+  "update.old.title": "更新 GifOS 后加入",
+  "update.old.body": "此邀请使用的 GifOS 比此页面更新。“更新 GifOS”会用最新版本重新打开它。",
+  "update.old.pinnedBody": "此邀请使用更新的 GifOS。此电脑在设置中固定为 GifOS v{version}。“更新 GifOS”会改回最新版本并重新打开邀请。",
+  "update.old.action": "更新 GifOS",
+  "update.old.appBody": "此邀请使用的 GifOS 比这部手机上的 GifOS Meet 应用更新。请更新应用，然后重新打开邀请。",
+  "update.old.appStoreBody": "此邀请使用的 GifOS 比这部手机上的 GifOS Meet 应用更新。请在 App Store 中更新它，然后重新打开邀请。",
+  "update.old.appAction": "更新 GifOS Meet"
 }

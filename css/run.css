@@ -18,3 +18,5 @@ body.app-run #awho li.muted::after { content: ' · muted'; opacity: .6; }
 body.app-run #callbanner:not([hidden]) { display: flex; gap: 12px; align-items: center; justify-content: center; padding: 8px; }
 body.app-run #anote-full, body.app-run #ainv-link { display: block; margin: 12px 0; }
 body.app-run #ainv-link { width: 100%; box-sizing: border-box; }
+/* The folded one-row bar (js/core/view/audio.js wireAppMore): every word on the row at one size, every target 44px. */
+body.app-run #appbar[data-fold="1"] > button { font-size: 16px; }
