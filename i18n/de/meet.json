@@ -706,7 +706,7 @@
   "meet.stScreenSharingWasTurnedOff": "🛡 Das Teilen des Bildschirms wurde ausgeschaltet, bevor es begann.",
   "meet.stThatVideoCanTBe": "Dieses Video kann hier nicht abgespielt werden. Wählen Sie eine andere Datei.",
   "meet.stSoundIsBack": "🔊 Der Ton ist wieder da.",
-  "meet.sttSoundHeld": "🔇 Dieses Gerät hält den Ton des Meetings zurück. Tippe irgendwo auf die Seite, um ihn zu hören.",
+  "meet.sttSoundHeld": "🔇 Tippe irgendwo, um das Meeting zu hören. Dieses Gerät hält den Ton zurück.",
   "meet.stTheSongEnded": "🎵 Das Lied ist zu Ende.",
   "meet.stOnlyRoomAdminsAndPeople2": "Nur Raum-Hosts – und von ihnen zugelassene Personen – können hier ein Lied leiten.",
   "meet.stWhisperCaptionsNeedTheOffline": "Whisper-Untertitel benötigen die App „Offline-Untertitel“ – öffnen Sie Einstellungen → Untertitel, um sie zu installieren. Bis dahin sind Browser-Untertitel an.",

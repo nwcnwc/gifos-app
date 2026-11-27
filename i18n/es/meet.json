@@ -706,7 +706,7 @@
   "meet.stScreenSharingWasTurnedOff": "🛡 Compartir pantalla se apagó antes de empezar.",
   "meet.stThatVideoCanTBe": "Ese video no se puede reproducir aquí. Elige otro archivo.",
   "meet.stSoundIsBack": "🔊 El sonido volvió.",
-  "meet.sttSoundHeld": "🔇 Este dispositivo está reteniendo el sonido de la reunión. Toca en cualquier parte de la página para oírlo.",
+  "meet.sttSoundHeld": "🔇 Toca en cualquier parte para oír la reunión. Este dispositivo está reteniendo el sonido.",
   "meet.stTheSongEnded": "🎵 La canción terminó.",
   "meet.stOnlyRoomAdminsAndPeople2": "Solo los anfitriones de la sala, o quienes ellos permitan, pueden dirigir una canción aquí.",
   "meet.stWhisperCaptionsNeedTheOffline": "Los subtítulos de Whisper necesitan la app Subtítulos sin conexión: abre Ajustes → Subtítulos para instalarla. Mientras tanto, los subtítulos del navegador están activos.",
