@@ -18,12 +18,14 @@
  *             the card for the room it is in.
  *
  * The frames ({k:'mr', op}) ride the meeting's authenticated data channels, end-to-end encrypted:
- *   holder -> host   {op:'card', c, p, n}  "I hold this card" (c: sp/sig/pub, p: the bound proof, n: my name). Sent
- *                    once per channel to a door that holds me (the waiting room) and to each seat that proved the host
- *                    key; the host's page decides what it means (a ring while it stands by, a renewal while together).
+ *   holder -> host   {op:'card', c, p, n}  "I hold this card" (c: sp/sig/pub, p: the bound proof, n: my name). Shown
+ *                    to a door that holds me (the waiting room) and to each seat that proved the host key, again each tick
+ *                    until that page answers (signed); the proof names this page's call, so the host's page tells a repeat
+ *                    from a new call. It decides what the card means: a ring while it stands by, else 'here'; a
+ *                    renewal while together.
  *   host -> holder   {op:'card', c, s?, from}  a card: with s (a seed) a new card to keep, without one a renewal of a
  *                    card the holder has (same id, later expiry).
- *   host -> holder   {op:'ringing' | 'dec' | 'missed', w}  signed by the host key (admSigned), so no guest can fake
+ *   host -> holder   {op:'ringing' | 'dec' | 'missed' | 'here', w}  signed by the host key (admSigned), so no guest can fake
  *                    the owner's answer. Answer is no frame: the host admits the caller and goes live.
  *   host -> holder   {op:'stop', w}  another of the owner's devices took the call.
  */
@@ -101,9 +103,9 @@
     return o;
   }
   // The holder's proof for one ring: the card key signs who I am (my peer id), the room and the time.
-  async function prove(seed, room, v, myId, now) {
+  async function prove(seed, room, v, myId, now, callId) {
     const k = await net().edKeysFromSeedHex(seed);
-    const sp = JSON.stringify({ act: 'ring', room: roomKey(room, v), from: String(myId), ts: now || Date.now() });
+    const sp = JSON.stringify({ act: 'ring', room: roomKey(room, v), from: String(myId), ts: now || Date.now(), call: String(callId || '') });
     return { sp, sig: await net().edSign(k.priv, sp) };
   }
   async function proofOk(card, p, room, v, from, now) {
@@ -210,11 +212,17 @@
     const hosted = !!(room && v);
     let linkCard = null;        // a card the address carried (to save, or to call with once)
     // holder side
-    const told = new Set();     // channels I have shown my card on (pid)
+    const callId = randHex(8);  // this page's call: a card shown again is the same call, a new load is a new one
+    const told = new Map();     // pid -> when I last showed my card there; 0 once that page answered (signed)
     let call = null;            // { label, state: 'waiting'|'ringing'|'answered'|'declined'|'noanswer', at }
     // owner side
     const rings = new Map();    // pid -> { label, id, at, card }
     const lastIn = new Map();   // pid -> last card frame time (flood bound before crypto)
+    const whys = new Map();     // pid -> what the last card frame from it came to (state(): a test reads why a call did not ring)
+    const why = (pid, w) => { whys.set(pid, w + '@' + host.now()); if (whys.size > 50) whys.delete(whys.keys().next().value); };
+    const seen = new Set();     // calls told 'here' (no ring: I am live), once each
+    const ended = new Map();    // call -> the signed answer it got ('dec', 'missed', or '' once answered), said again if asked
+    const endCall = (r, op) => { if (r && r.ck) { ended.set(r.ck, op); if (ended.size > 200) ended.delete(ended.keys().next().value); } };
     let standby = false, wentLive = false;
 
     const SS = 'gifos_mr_card.' + roomKey(room, v);   // this tab's link card, kept across a reload of the call only
@@ -230,9 +238,13 @@
       return saved || linkCard;
     };
     async function showCard(pid) {
-      const mc = myCard(); if (!mc || told.has(pid)) return;
-      told.add(pid);
-      const p = await prove(mc.seed, room, v, host.myId(), host.now());
+      // Shown again each tick until that page answers: a frame that reached a channel the far end had not yet
+      // authenticated is dropped there, and one lost card must not leave a call unrung.
+      const mc = myCard(), was = told.get(pid);
+      if (!mc || was === 0 || (was && host.now() - was < (T().MYROOM_TICK_MS || 0))) return;
+      told.set(pid, host.now());
+      if (root.__mrLoseCards > 0) { root.__mrLoseCards--; return; }   // test lever (a fault of the network): this card frame is lost on the way
+      const p = await prove(mc.seed, room, v, host.myId(), host.now(), callId);
       host.send(pid, { op: 'card', c: mc.c, p, n: String(host.myName() || '').slice(0, 40) });
       if (!call) { call = { label: mc.name || room, state: 'waiting', at: host.now() }; emit({ type: 'call', call }); }
     }
@@ -265,10 +277,10 @@
       if (!want && standby) { standby = false; emit({ type: 'standby', on: false }); }
       const takenElsewhere = host.hostLive();   // another of my devices answered (it went live): mine stops, no missed call
       for (const [pid, r] of Array.from(rings)) {
-        if (takenElsewhere) { rings.delete(pid); emit({ type: 'stopped', pid, label: r.label }); continue; }
+        if (takenElsewhere) { endCall(r, ''); rings.delete(pid); emit({ type: 'stopped', pid, label: r.label }); continue; }
         const gone = !host.held(pid) && !host.isHere(pid);
         if (gone || now - r.at >= (T().MYROOM_RING_MS || 0)) {
-          rings.delete(pid);
+          endCall(r, 'missed'); rings.delete(pid);
           noteMissed(room, v, r.label, r.at);
           if (!gone) sendSigned(pid, 'missed');
           emit({ type: 'missed', pid, label: r.label, at: r.at });
@@ -279,36 +291,48 @@
 
     async function onCardShown(pid, m) {
       const now = host.now();
-      if (now - (lastIn.get(pid) || 0) < (T().MYROOM_TICK_MS || 0)) return;   // one card frame per peer per tick, before any crypto
+      if (now - (lastIn.get(pid) || 0) < (T().MYROOM_TICK_MS || 0)) return why(pid, 'rate');   // one card frame per peer per tick, before any crypto
       lastIn.set(pid, now);
       const o = await check(m.c, room, v, now);
-      if (!o || revoked().indexOf(o.id) >= 0) return;
-      if (!(await proofOk(o, m.p, room, v, pid, now))) return;
-      const K = hostSecret(room, v); if (!K) return;
+      if (!o) return why(pid, 'card');
+      if (revoked().indexOf(o.id) >= 0) return why(pid, 'revoked');
+      if (!(await proofOk(o, m.p, room, v, pid, now))) return why(pid, 'proof');
+      const K = hostSecret(room, v); if (!K) return why(pid, 'nokey');
+      why(pid, standby ? 'ok' : 'ok-live');
       const label = (await openLabel(K, o.lab)) || String(m.n || '').slice(0, 40) || 'Someone';
+      let ck = ''; try { ck = pid + '|' + String(JSON.parse(m.p.sp).call || ''); } catch (e) { ck = pid + '|'; }
+      if (ended.has(ck)) { const op = ended.get(ck); if (op) sendSigned(pid, op); return; }   // the answer was lost: say it again
+      if (rings.has(pid)) { sendSigned(pid, 'ringing'); return; }
       // Renew while together: a card issued more than a day ago gets a fresh year (same id, same key).
       if (now - (+o.iat || 0) >= (T().MYROOM_RENEW_AFTER_MS || 0)) {
         try { const r = await mint(K, room, v, '', { renew: { id: o.id, cpub: o.cpub, lab: o.lab } }); host.send(pid, { op: 'card', c: r.c, from: String(host.myName() || '') }); noteIssued(room, v, o.id, label, r.exp); emit({ type: 'renewed', pid, label }); } catch (e) {}
       }
-      if (standby && !rings.has(pid) && (host.held(pid) || host.isHere(pid))) {
-        rings.set(pid, { label, id: o.id, at: now });
+      // Standing by, a card from a page that is neither held at my door nor seated yet (its knock is still under way)
+      // is not answered: the holder shows it again next tick, by when the door holds it or the room seats it.
+      if (standby && !host.held(pid) && !host.isHere(pid)) return why(pid, 'early');
+      if (standby && !rings.has(pid)) {
+        rings.set(pid, { label, id: o.id, at: now, ck });
         sendSigned(pid, 'ringing');
         emit({ type: 'ring', pid, label });
-      } else if (!rings.has(pid)) emit({ type: 'arrived', pid, label });
+      } else if (!seen.has(ck)) {   // not standing by: a quiet notice, once a call, and a signed word so the holder stops
+        seen.add(ck);
+        sendSigned(pid, 'here');
+        emit({ type: 'arrived', pid, label });
+      }
     }
     function answer(pid) {
       const r = rings.get(pid); if (!r) return false;
-      rings.delete(pid);
+      endCall(r, ''); rings.delete(pid);
       wentLive = true;
       if (host.held(pid)) host.admit(pid);
       host.mic(true);                          // Answer is the person's tap: the mic opens; the camera stays off
-      for (const other of rings.keys()) { rings.delete(other); sendSigned(other, 'dec'); }
+      for (const [other, ro] of Array.from(rings)) { endCall(ro, 'dec'); rings.delete(other); sendSigned(other, 'dec'); }
       emit({ type: 'answered', pid, label: r.label });
       return true;
     }
     function decline(pid) {
       const r = rings.get(pid); if (!r) return false;
-      rings.delete(pid);
+      endCall(r, 'dec'); rings.delete(pid);
       sendSigned(pid, 'dec');
       emit({ type: 'declined', pid, label: r.label });
       return true;
@@ -348,9 +372,11 @@
           return;
         }
         if (m.op === 'card' && m.c && !m.s && !host.owner() && host.isHost(pid)) { if (await renew(room, v, m.c)) emit({ type: 'renewed-mine' }); return; }
-        if (!host.owner() && call && (m.op === 'ringing' || m.op === 'dec' || m.op === 'missed')) {
+        if (!host.owner() && call && (m.op === 'ringing' || m.op === 'dec' || m.op === 'missed' || m.op === 'here')) {
           const o = await host.verifyAdm(m.w, 'mr' + m.op);
           if (!o || o.to !== String(host.myId())) return;
+          told.set(pid, 0);                       // that page has my card: no more showing it there
+          if (m.op === 'here') { if (call.state === 'waiting' && host.seated()) { call.state = 'answered'; call.answeredAt = host.now(); emit({ type: 'call', call }); } return; }
           call.state = m.op === 'ringing' ? 'ringing' : m.op === 'dec' ? 'declined' : 'noanswer';
           if (m.op === 'ringing') call.ringSeen = true;
           emit({ type: 'call', call });
@@ -375,8 +401,9 @@
     return {
       on: (f) => { listeners.push(f); if (lastOffer) { const o = lastOffer; lastOffer = null; try { f(o); } catch (e) {} } return () => { const i = listeners.indexOf(f); if (i >= 0) listeners.splice(i, 1); }; },
       onMsg, onHeld, tick, answer, decline, give, linkFor, takeLinkCard, save,
+      drop: (pid, w) => why(pid, w),
       people: () => host.people(), gaveTo: (pid) => given.has(pid), hostIds: () => host.hosts(),
-      state: () => ({ room, v, owner: !!host.owner(), mine: isMine(room, v), standby, live: !!(hosted && host.live()), wentLive, call: call ? Object.assign({}, call) : null, rings: Array.from(rings, ([pid, r]) => ({ pid, label: r.label, at: r.at })), holdsCard: !!myCard() }),
+      state: () => ({ room, v, owner: !!host.owner(), mine: isMine(room, v), standby, live: !!(hosted && host.live()), wentLive, whys: Array.from(whys), call: call ? Object.assign({}, call) : null, rings: Array.from(rings, ([pid, r]) => ({ pid, label: r.label, at: r.at })), holdsCard: !!myCard() }),
     };
   }
 

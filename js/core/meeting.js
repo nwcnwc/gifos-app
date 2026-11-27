@@ -15402,7 +15402,7 @@
       } else if (m.k === 'wping') {
         dcSend(p, { k: 'wpong' }); // the wake probe (wakeProbe): the one answer it accepts
       } else if (m.k === 'mr') {
-        if (dc && dc.__authBy === p.id && myRoomPart) myRoomPart.onMsg(p.id, m);   // My Room: cards and rings, over an authenticated channel only
+        if (myRoomPart) { if (dc && dc.__authBy === p.id) myRoomPart.onMsg(p.id, m); else myRoomPart.drop(p.id, 'unauthenticated:' + (dc ? String(dc.__authBy || '') : 'nodc')); }   // My Room: cards and rings, over an authenticated channel only
       } else if (m.k === 'held') {
         onHeldSaid(p, dc);
       } else if (m.k === 'doorwait') {
