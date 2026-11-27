@@ -72,6 +72,7 @@
     const other = (a, b) => (a === me ? b : (b === me ? a : -1));
     // ids reach 2^21: every per-id table is sparse, with only my own slot (pclaws.js indexes them by id)
     const S = { DOORN: [], DOORK: [], DOOR_PEND: [] }; S.DOORN[me] = 0; S.DOORK[me] = 0;
+    const forgiven = new Set();   // knockers an admin admitted (doorForgive): their door's idle closes set no cool-down
     { const pend = { 0: 0, fill() { pend[me] = 0; return pend; }, push() { return me + 1; } }; pend[me] = 0; Object.defineProperty(pend, 'length', { get: () => me + 1 }); S.L23PEND = pend; }
     const TLDEB = new Map();
     const lEnsure = () => { if (!LINKPEERS[me]) LINKPEERS[me] = []; };
@@ -417,7 +418,7 @@
             trace('DOOR-LIMIT', me, null, 'peer=%d why=%s age=%lld idle=%lld', x, why, age, idle);
             L.byeWhy = c0 === 'h' ? 'handed' : 'door';
             closeDoor(L, x);
-            if (c0 !== 'u' && c0 !== 'h') { const k = hash.idPair(me, x); const c = pc.S.L16COOL.get(k) || [0, 0]; c[1]++; c[0] = T() + K.L16_COOL * (1 << Math.min(c[1] - 1, 4)); pc.S.L16COOL.set(k, c); }
+            if (c0 !== 'u' && c0 !== 'h' && !forgiven.has(x)) { const k = hash.idPair(me, x); const c = pc.S.L16COOL.get(k) || [0, 0]; c[1]++; c[0] = T() + K.L16_COOL * (1 << Math.min(c[1] - 1, 4)); pc.S.L16COOL.set(k, c); }
             continue;
           }
         }
@@ -656,7 +657,10 @@
       busyFrom: (x) => refused(x, { busy: 1 }),
       link: (x) => LINKS.get(x) || null, dump: () => [...LINKS].map(([x, L]) => ({ x, state: L.state, view: L.view[mine(x)], outside: L.outside, gone: L.gone, q: L.q.length })),
       dialHeld: (x) => pc.dialHeld(me, x), doorVerdict, laws: pc, BYE,
-      doorForgive: (x) => pc.S.L16COOL.delete(hash.idPair(me, x)),   // the admin's Admit: the waiting room's idle knocks are not this person's fault
+      // The admin's Admit: the waiting room's idle knocks are not this person's fault, and no later idle close of their door
+      // is either (an Admit a second or two before the door's idle limit had its forgive undone by that limit's cool-down,
+      // and every re-knock was refused for 30-60 s: MYROOM2, test/gate2/rooms/repro/admit-late.js ADMIT_RACE=1).
+      doorForgive: (x) => { pc.S.L16COOL.delete(hash.idPair(me, x)); forgiven.delete(x); forgiven.add(x); if (forgiven.size > 64) forgiven.delete(forgiven.values().next().value); },
     };
   }
 

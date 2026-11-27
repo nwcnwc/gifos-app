@@ -378,6 +378,9 @@
     const done = () => { if (fullWatch) { clearInterval(fullWatch.t); const f = fullWatch.onRight; fullWatch = null; sayIt(tx('subFullJoining', 'You are in. Joining the meeting\u2026')); try { if (f) f(); } catch (e) {} } };
     const check = () => { const w = fullWatch; if (w && !w.busy) { w.busy = true; doorRight().then((ok) => { w.busy = false; if (ok && fullWatch === w) done(); }); } };
     card.appendChild(say);
+    // The way in now: Unlimited ($5/month, on /subscription) lifts the line for everyone in the meeting, a four-hour pass too.
+    const up = el('a', { id: 'sub-full-up', class: 'sub-full-up', href: '/subscription', target: '_blank', rel: 'noopener' }, fill(tx('subFullUpgrade', 'Upgrade to Unlimited for {price}/month'), { price: (SUB.TIERS.unlimited && SUB.TIERS.unlimited.price) || '$5' }));
+    const upw = el('p', { class: 'sub-full-upwrap' }); upw.appendChild(up); card.appendChild(upw);
     card.appendChild(el('p', { id: 'sub-full-wait', class: 'sub-full-wait', role: 'status', 'aria-live': 'polite' }, tx('subFullWait', 'We keep knocking for you. You get in by yourself as soon as a place opens.')));
     // Above the Rejoin / Close row: the page may have wrapped those buttons, so insert before the box's own child that holds Rejoin.
     let ref = box.querySelector('#left-rejoin');

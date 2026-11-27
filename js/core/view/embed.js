@@ -151,6 +151,41 @@
       if (es.settled) return now - settledAt >= T.EMBED_SYNC_MS ? 'room' : 'connecting';
       return now - T0 >= T.EMBED_STUCK_MS ? 'noconn' : 'connecting';
     }
+    // ---- the full door: "Viewer limit reached", the Unlimited upsell and the $1 pass -------------------------------
+    // A hosted room without a plan holds five seats. The core knows (leftDialogUp after the relay's 4020), keeps knocking
+    // by itself and lets this seat in when a place opens or a right arrives; this view only says so and offers the way in.
+    var passWin = null, fullOn = false;
+    function unlimitedPrice() { try { return GifOS.sub.TIERS.unlimited.price || '$5'; } catch (e) { return '$5'; } }
+    function paintFullDoor(on) {
+      var box = $('emb-fd'), row = $('emb-m-pass');
+      if (!box) return;
+      if (on !== fullOn) {
+        fullOn = on;
+        if (on) {
+          $('emb-fd-text').textContent = tr('msgFull', 'Viewer limit reached.');
+          $('emb-fd-up').textContent = tr('fullUp', 'Upgrade to Unlimited for {price}/month', { price: unlimitedPrice() });
+          $('emb-fd-pass').textContent = tr('fullPass', '{price} pass: 4 hours of Unlimited', { price: passPrice() });
+          $('emb-fd-wait').textContent = tr('fullWait', 'You get in by yourself as soon as a place opens.');
+          if (row) row.firstChild.textContent = tr('fullPass', '{price} pass: 4 hours of Unlimited', { price: passPrice() });
+        }
+      }
+      box.hidden = !on;
+      if (row) row.hidden = !on;
+    }
+    // The pass offered at a full door is the one sales read (meetSubs.fullOffers: the cheapest pass whose rights admit there), not a preset name.
+    function passPrice() { try { var o = GifOS.meetSubs.fullOffers().pass; return (o && o.price) || '$1'; } catch (e) { return '$1'; } }
+    // The pass is bought in a top-level window of gifos.app (a frame on another site keeps its own partitioned storage, so a pass bought
+    // in a separate tab would not be seen here) and handed back by postMessage: only the pass wallet crosses, only from that window,
+    // only to this frame's own origin.
+    function openPass() {
+      try { passWin = root.open('/subscription#embedpass', 'gifos-embedpass', 'width=480,height=760'); } catch (e) { passWin = null; }
+    }
+    root.addEventListener('message', function (ev) {
+      var d = ev && ev.data;
+      if (!d || d.gifos !== 'embedpass' || ev.origin !== location.origin || !passWin || ev.source !== passWin) return;
+      var MS = GifOS.meetSubs; if (!MS || !MS.installCreds || !d.wallet) return;
+      MS.installCreds(null, d.wallet, 'embed').then(function () { try { MS.boot(); } catch (e) {} paint(); }, function () {});
+    });
     var wasHosted = null;
     function paint() {
       entry();
@@ -169,6 +204,7 @@
       var seated = true;
       try { var ms = C.meshSeat(); seated = !!(ms && ms.hasCoord); } catch (e) {}
       var know = verdict(hosted, seated);
+      var full = false; try { full = !picture && !!C.leftDialogUp(); } catch (e) {}   // turned away at a full door (a hosted room's people line): the core stands aside and knocks again; only that sets the left screen in this player
       if (picture) know = 'room';   // a picture is playing: nothing to wait on
       var lv = stageLevel();
       if (v) {
@@ -186,6 +222,7 @@
       if (live.dataset.state !== st) live.dataset.state = st;
       var word = st === 'watching' ? tr('live', 'LIVE') : st === 'pre' ? tr('pre', 'PRERECORDED')
         : why !== 'ok' ? tr('offline', 'OFFLINE')
+        : full ? tr('pillFull', 'FULL')
         : know === 'connecting' ? tr('connecting', 'CONNECTING')
         : (know === 'noconn' || know === 'offline') ? tr('noConn', 'NO CONNECTION') : tr('offline', 'OFFLINE');
       if ($('emb-live-txt').textContent !== word) $('emb-live-txt').textContent = word;
@@ -202,16 +239,20 @@
       if ($('emb-mute').textContent !== mw) { $('emb-mute').textContent = mw; $('emb-mute').setAttribute('aria-pressed', heard ? 'false' : 'true'); }
       var card = $('emb-card');
       var mt = why !== 'ok' ? tr('msgName', 'This embed does not name a GifOS broadcast.')
+        : full ? ''
         : know === 'connecting' ? tr('msgConnecting', 'Connecting to the meeting… The live view starts as soon as this page is in.')
         : know === 'offline' ? tr('msgOffline', 'You appear to be offline. Trying again…')
         : know === 'noconn' ? tr('msgNoConn', 'Couldn’t connect to the broadcast. Trying again…')
-        : !hosted ? tr('msgUnhosted', 'This meeting isn’t hosted right now. The live view starts when a host takes charge.')
+        // a broadcast that ended while this player watched says so plainly; one that is not on yet (or just ended
+        // before this player came in) says it starts by itself
+        : !hosted ? (hostedEver ? tr('msgEnded', 'This broadcast just ended.') : tr('msgOffAir', 'This broadcast isn’t live right now. It may have just ended. It plays here by itself when it’s back.'))
         : qtext ? qtext
         : (!picture && C.pwBlocked) ? tr('msgPw', 'This broadcast has a room password.')
         : !picture ? tr('msgNotLive', 'Not live right now.') : '';
       var msg = $('emb-msg');
       if (msg.textContent !== mt) msg.textContent = mt;
       msg.hidden = !mt || !card.hidden;
+      paintFullDoor(full && why === 'ok' && card.hidden);
       $('emb-lock').hidden = !(C.pwBlocked && card.hidden);
       K.clearButtons(C, document.querySelector('.emb-bar'), 'emb-btn', document.querySelector('.emb-bar .emb-fill'));
       K.clearReportButton(C, document.querySelector('#emb-info-panel .emb-info-body'), 'clear-rep', 'emb-btn emb-rep');   // Report lives in the info panel, never on the control row
@@ -1028,6 +1069,9 @@
     setInterval(function () { try { paint(); } catch (e) {} }, GifOS.timings.EMBED_HOSTED_MS);   // re-read the live host state
     $('emb-mute').onclick = function () { if (hostedNow() || M.serviceHeard) hear(!M.serviceHeard); };
     $('emb-lock').onclick = function () { names.showPwModal(true); };
+    if ($('emb-fd-pass')) $('emb-fd-pass').onclick = openPass;
+    if ($('emb-m-pass')) $('emb-m-pass').onclick = function () { setPanel(null); openPass(); };
+    try { if (GifOS.meetSubs) GifOS.meetSubs.boot(); } catch (e) {}   // the pass wallet's own watch (a pass held here re-presents the room's plan)
     $('emb-tabmenu').onchange = function () { pick(this.value); };
     $('emb-inset-min').onclick = function (e) { e.stopPropagation(); toggleInset(); };
     $('emb-m-inset').onclick = function () { toggleInset(); };

@@ -613,13 +613,34 @@
     // guarantees no wedge can outlive a second.
     const STILL_MAX_MS = TM.STILL_MAX_MS;
     let lastSig = '', lastRealPaint = 0, still = 0;
+    // HOW FAR A PICTURE HAS MOVED. A playing stream's clock runs on while no new picture arrives, so by the clock a
+    // received block whose sender has gone still (one frame per STILL_MAX_MS: every camera off) moved on every paint,
+    // and the unchanged room was painted, encoded and decoded again at the full rate at every seat below. Where the
+    // element counts the frames it has shown, that count is its progress, but only while the count is seen to move:
+    // not every browser counts, and one that does can stop for an element that is not displayed while its frames
+    // still arrive. A count that has not moved for two STILL_MAX_MS (a still sender moves it once per STILL_MAX_MS)
+    // is not believed, and the clock is the measure again, as it is on a hidden page.
+    const counted = new WeakMap();   // element -> { n: last count, at: when it last moved }
+    function progressOf(el, now) {
+      try {
+        if (typeof el.getVideoPlaybackQuality === 'function' && !(typeof document !== 'undefined' && document.hidden)) {
+          const n = el.getVideoPlaybackQuality().totalVideoFrames;
+          let c = counted.get(el);
+          if (!c) { c = { n: n, at: 0 }; counted.set(el, c); }
+          else if (n !== c.n) { c.n = n; c.at = now; }
+          if (c.at && now - c.at < STILL_MAX_MS + STILL_MAX_MS) return 'f' + n;
+        }
+      } catch (e) {}
+      return el.currentTime.toFixed(3);
+    }
     function frameSig() {
       let s = '';
+      const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
       for (const [id, t] of tiles) {
         const el = t.el;
         // videos report currentTime; canvases cannot, so force a redraw
         if (t.card) s += id + ':card;';   // a card has no source to advance
-        else if (el && typeof el.currentTime === 'number') s += id + ':' + el.currentTime.toFixed(3) + ';';
+        else if (el && typeof el.currentTime === 'number') s += id + ':' + progressOf(el, now) + ';';
         else return null;
         s += t.n + 'x' + t.cols + (t.hid && t.hid.size ? '-' + [...t.hid].join('.') : '') + ';';
         if (t.dark) s += 'D|';

@@ -2,6 +2,44 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.51",
+      "date": "2026-11-27",
+      "headline": "Publish your broadcast to GifOS.tv",
+      "features": [
+        "The host of a hosted broadcast can list it on gifos.tv from the Stream link card: a title, a picture, and it shows as live while you are on air.",
+        "An embedded player now says when a broadcast just ended, or isn't live right now."
+      ],
+      "fixes": [
+        "Faces in the grid and on the Stage are now drawn by one shared piece, so blur and pictures follow the same rules in both places.",
+        "When the host mutes guests, their microphones send nothing at all, and a /cast or embedded viewer receives only the Stage: less data and less battery.",
+        "A room view that has not changed is no longer redrawn and resent, so rooms with cameras off use far less computer power."
+      ]
+    },
+    {
+      "version": "0.9.28.50",
+      "date": "2026-11-27",
+      "headline": "A full meeting tells you why",
+      "features": [
+        "When a hosted meeting is full, the person who can't get in sees why and how to get in: Unlimited, or a $1 pass for 4 hours.",
+        "An embedded player of a full meeting says \"Viewer limit reached\" instead of \"No connection\", and gets in by itself when a place opens or a pass arrives."
+      ],
+      "fixes": []
+    },
+    {
+      "version": "0.9.28.49",
+      "date": "2026-11-26",
+      "headline": "My Room: call your contacts",
+      "features": [
+        "My Room: make your own room, swap cards with someone in a meeting, and they become a contact on both devices.",
+        "Call a contact and their My Room rings with your name; a verified card shows a check mark.",
+        "Private room with…: the same private room for the two of you, every time.",
+        "Invite a contact into the meeting you are in."
+      ],
+      "fixes": [
+        "A host's Admit in the waiting room is no longer refused for a while right after a knock."
+      ]
+    },
+    {
       "version": "0.9.28.48",
       "date": "2026-11-26",
       "headline": "A fuller More sheet on small phones",

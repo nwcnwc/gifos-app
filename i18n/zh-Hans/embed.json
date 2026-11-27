@@ -71,5 +71,12 @@
   "embed.trShotsTip": "当共享的屏幕发生变化并停住时（例如换了一张幻灯片），文字记录会保存一张截图。截图在此设备上根据你所看到的画面生成:不会发送任何内容，你看到的模糊屏幕也绝不会被截取。",
   "embed.trDownload": "下载",
   "embed.trShotOf": "{name}的屏幕，{time}",
-  "embed.trShotWho": "{name}的屏幕"
+  "embed.trShotWho": "{name}的屏幕",
+  "embed.pillFull": "已满",
+  "embed.msgFull": "已达到观众人数上限。",
+  "embed.fullUp": "升级到 Unlimited，每月 {price}",
+  "embed.fullPass": "{price} 通行证：4 小时 Unlimited",
+  "embed.fullWait": "一有空位，您会自动进入。",
+  "embed.msgEnded": "此直播刚刚结束。",
+  "embed.msgOffAir": "此直播当前不在播出，可能刚刚结束。恢复直播后会在这里自动播放。"
 }

@@ -237,5 +237,7 @@
   "subscription.cum.except": "Everything in {plan}, except:",
   "subscription.cum.same": "Everything in {plan}",
   "subscription.cum.meetings": "Everything in {plan}, in up to {n} meetings at once.",
-  "subscription.cum.pass": "Everything in {plan} for 4 hours"
+  "subscription.cum.pass": "Everything in {plan} for 4 hours",
+  "subscription.embedPassLead": "Buy the four-hour pass below. The meeting you came from gets it as soon as it is paid.",
+  "subscription.embedPassSent": "Your pass is on. You can close this window."
 }
