@@ -2290,6 +2290,8 @@ function syncDebug(){
 }
 </script>`;
 
+  // Stopwatch: its html[data-compact] rules follow GifOS's phone compact mode
+  // (smaller words and gaps, every button still a full tap target).
   const TIMER_HTML = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
   *{box-sizing:border-box}
@@ -2314,6 +2316,17 @@ function syncDebug(){
   #laps li.fast{color:#2a9f5a}
   #laps li.slow{color:#ff5c5c}
   #laps li.cur{color:var(--muted,#8888aa)}
+  html[data-compact] body{font-size:max(var(--gifos-text-min,13px),calc(16px*var(--gifos-scale,1)))}
+  html[data-compact] header{padding:8px 12px;font-size:calc(17px*var(--gifos-scale,1))}
+  html[data-compact] .tabs{margin-top:10px}
+  html[data-compact] .tabs button{min-height:var(--gifos-tap,44px);padding:6px 14px}
+  html[data-compact] #t{font-size:calc(clamp(40px,14vw,64px)*var(--gifos-scale,1));margin:14px 0 2px}
+  html[data-compact] .row{gap:8px;margin:6px 0}
+  html[data-compact] button{min-height:var(--gifos-tap,44px);padding:8px 18px;font-size:max(var(--gifos-text-min,13px),calc(16px*var(--gifos-scale,1)))}
+  html[data-compact] .chips button{min-height:var(--gifos-tap,44px);padding:6px 12px;font-size:max(var(--gifos-text-min,13px),calc(14px*var(--gifos-scale,1)))}
+  html[data-compact] #lapnow{font-size:max(var(--gifos-text-min,13px),calc(14px*var(--gifos-scale,1)))}
+  html[data-compact] #laps{margin:4px 0 16px;padding:0 12px}
+  html[data-compact] #laps li{padding:6px 4px;font-size:max(var(--gifos-text-min,13px),calc(15px*var(--gifos-scale,1)))}
 </style>
 <header data-i18n="title">Timer &amp; Stopwatch</header>
 <div class="tabs"><button id="tabS" class="on" data-i18n="tab.stopwatch">Stopwatch</button><button id="tabT" data-i18n="tab.timer">Timer</button></div>

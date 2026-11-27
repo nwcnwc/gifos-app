@@ -496,7 +496,8 @@ PHONE COMPACT MODE — data-compact / --gifos-*  [no capability needed; optional
                                function. The window also gets a
                                'gifos:displaychange' event.
    Shrink words and gaps, never tap targets, and never hide what the
-   person needs. Survey and Take Turns follow it; read their CSS.
+   person needs. Survey, Take Turns, Stopwatch and Whiteboard follow
+   it; read their CSS.
 
 BROKERED CAPTURE  [capabilities.microphone / camera]
    The app never touches the live device: GifOS records behind a visible
