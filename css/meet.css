@@ -722,8 +722,8 @@ body.names-off #stagefeed .stgnames { display: none; }
   .cmsg img.avchip, .trline img.avchip, .brow img.avchip { width: 1.25rem; height: 1.25rem; object-fit: cover;
     border-radius: .25rem; vertical-align: middle; margin-right: .35rem; }
   #bc-ident { display: none; }
-  /* On the stage, under the room bar. No band for the floating bar: it ends by --barclear only when the bar stands over its lower half (placeBarAvoiders). */
-  body.broadcast #bc-ident.on { display: flex; position: absolute; z-index: 6; left: 0; right: 0; top: 0; bottom: var(--barclear, 0px);
+  /* On the stage, under the room bar. The floating bar overlays it. */
+  body.broadcast #bc-ident.on { display: flex; position: absolute; z-index: 6; left: 0; right: 0; top: 0; bottom: 0;
     flex-direction: column; align-items: center; justify-content: center; gap: .6rem; pointer-events: none; padding: 16px; box-sizing: border-box; }
   body.broadcast #bc-ident img, #bc-ident-init { width: 256px; width: min(256px, 70vw, 40vh); height: 256px; height: min(256px, 70vw, 40vh); object-fit: cover; border-radius: 1rem; background: #14141f; }
   body.broadcast #bc-ident:not(.pic) img, body.broadcast #bc-ident.pic #bc-ident-init { display: none; }
@@ -1045,8 +1045,6 @@ body.names-off #stagefeed .stgnames { display: none; }
      is exactly the old behaviour). */
   #chatpanel { position: fixed; right: 0; top: var(--barh, 0px); bottom: 0; width: min(340px, 100vw); z-index: 30;
                background: var(--bg, #101018); border-left: 1px solid var(--border, #2a2a3f); display: none; flex-direction: column;
-               /* No band for the floating bar: the open panel pads by --barclear,
-                  set from the bar's current box (placeBarAvoiders). */
                padding-bottom: 0; }
   #chatpanel.open { display: flex; }
   /* Beside the call, not over it: on a wide window the room bar, header and
@@ -1061,11 +1059,8 @@ body.names-off #stagefeed .stgnames { display: none; }
     body.chatside .fitbtn { right: calc(14px + var(--sidew)); }
     body.chatside .topchip { max-width: calc(100% - 460px); }
     /* The panel runs the full height. The keyboard inset still applies.
-       The composer moves up by --barclear only: that is how far the floating
-       bar reaches into the panel's lower half when it stands there
-       (placeBarAvoiders). Anywhere else the value is 0. A keyboard covers the
-       bar too, so with the keyboard up the composer sits right on the keyboard. */
-    body.chatside #chatpanel { padding-bottom: max(12px, var(--barclear, 0px)); }
+       The floating bar overlays the panel's lower half where it stands; the composer does not move for it. */
+    body.chatside #chatpanel { padding-bottom: 12px; }
     html.kb-up body.chatside #chatpanel { padding-bottom: 12px; }
     body.chatside #chatpanel.open { bottom: var(--kb, 0px); }
     /* The call beside the chat is 460-684px: the room bar's pills move to a
@@ -1260,14 +1255,12 @@ body.names-off #stagefeed .stgnames { display: none; }
   .tile > .tpause:not(.tpause-busy) { top: 0; right: 0; bottom: 3rem; left: 0; inset: 0 0 3rem 0; padding: calc(max(8px, 5%) + 2.5rem + 6px) 8px 4px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
   /* On a phone the line is one caption above Live, not a clip on the face.
      A long line starts at the top and the rest scrolls inside the caption.
-     No band for the bar: it rests on the safe area over the Record row, and
-     rises above the bar's current box only when it would meet it (--barlift,
-     placeBarAvoiders). */
+     The floating bar overlays it; it never moves for the bar. */
   #livecap {
     display: none; position: fixed; z-index: 30;
     left: calc(8px + env(safe-area-inset-left, 0px));
     right: calc(8px + env(safe-area-inset-right, 0px));
-    bottom: calc(var(--inset-bottom, 0px) + var(--stateh, 0px) + 8px + var(--barlift, 0px));
+    bottom: calc(var(--inset-bottom, 0px) + var(--stateh, 0px) + 8px);
     max-height: 4.6em; overflow-y: auto; -webkit-overflow-scrolling: touch;
     box-sizing: border-box; padding: 8px 12px; border-radius: var(--r-md);
     background: rgba(10,10,15,.92); color: var(--c-white);
@@ -1277,7 +1270,7 @@ body.names-off #stagefeed .stgnames { display: none; }
   /* The caption warning and the caption source chooser: one small card above the captions, every button on screen. */
   .capcard {
     position: fixed; z-index: 31; left: 50%; transform: translateX(-50%);
-    bottom: calc(var(--inset-bottom, 0px) + var(--stateh, 0px) + 5.6em + var(--barlift, 0px));
+    bottom: calc(var(--inset-bottom, 0px) + var(--stateh, 0px) + 5.6em);
     width: min(28rem, calc(100vw - 16px)); box-sizing: border-box; padding: 12px 14px; border-radius: var(--r-md);
     background: rgba(10,10,15,.92); color: var(--c-white); font: 1rem/1.35 system-ui, sans-serif;
   }
@@ -1865,15 +1858,13 @@ body.names-off #stagefeed .stgnames { display: none; }
   }
   /* Live and Record sit on the call, so a producer does not open More to see
      them. Captions is in More (Talk). Live is the only red mark until
-     recording starts. No band for the bar: the row rests on the safe area and
-     rises above the bar's current box only when it would meet it (--barlift,
-     placeBarAvoiders). --cs-cap holds the row under the header (Invite, Help,
+     recording starts. The floating bar overlays it. --cs-cap holds the row under the header (Invite, Help,
      Full screen) (paintCallState). */
   #callstate {
     position: fixed; z-index: 31;
     left: calc(8px + env(safe-area-inset-left, 0px));
     right: calc(8px + env(safe-area-inset-right, 0px));
-    bottom: min(calc(8px + var(--inset-bottom, 0px) + var(--barlift, 0px)), var(--cs-cap, 100vh));
+    bottom: min(calc(8px + var(--inset-bottom, 0px)), var(--cs-cap, 100vh));
     display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
     /* The row is full width; sideways its empty part lies over the tiles'
        names. Only its buttons take taps. */
@@ -1961,7 +1952,7 @@ body.names-off #stagefeed .stgnames { display: none; }
     position: fixed; z-index: 31;
     left: calc(8px + env(safe-area-inset-left, 0px));
     right: calc(8px + env(safe-area-inset-right, 0px));
-    bottom: calc(var(--inset-bottom, 0px) + var(--stateh, 0px) + 16px + var(--barlift, 0px));
+    bottom: calc(var(--inset-bottom, 0px) + var(--stateh, 0px) + 16px);
     display: flex; align-items: stretch; gap: 8px;
   }
   #chatnote[hidden] { display: none !important; }
@@ -2351,7 +2342,7 @@ body.names-off #stagefeed .stgnames { display: none; }
     pointer-events: none; opacity: 0; }
   body.broadcast #bc-react .reactburst.show { animation: reactpop 1.6s ease forwards; }
   #bc-reacts { display: none; }
-  body.broadcast #bc-reacts:not([hidden]) { display: flex; position: absolute; left: 0; right: 0; bottom: calc(16px + var(--barlift, 0px)); z-index: 6;
+  body.broadcast #bc-reacts:not([hidden]) { display: flex; position: absolute; left: 0; right: 0; bottom: calc(16px); z-index: 6;
     justify-content: center; align-items: flex-end; gap: 8px; pointer-events: none; }
   body.broadcast #bc-reacts .bcslot { display: flex; flex-direction: column; align-items: center; gap: 6px; }
   body.broadcast #bc-reacts .bcwho { background: rgba(0,0,0,.72); color: var(--c-white); font: 600 14px/1.2 system-ui, sans-serif;
@@ -2613,14 +2604,13 @@ body.names-off #stagefeed .stgnames { display: none; }
      action. Not now stays white so the two choices are not the same button. */
   #waitbtn[aria-pressed="true"] { background: var(--c-blue); color: var(--c-white); }
   /* The waiting room is the host's switch. No band for the bar: it rests on
-     the safe area and rises above the bar's current box only when it would
-     meet it (--barlift, placeBarAvoiders). */
+     the safe area; the floating bar overlays it. */
   #waitlist {
     position: fixed; z-index: 40;
     left: calc(12px + env(safe-area-inset-left, 0px));
     right: calc(12px + env(safe-area-inset-right, 0px));
-    bottom: calc(8px + var(--inset-bottom, 0px) + var(--barlift, 0px));
-    max-height: calc(100vh - 88px - env(safe-area-inset-top, 0px) - var(--inset-bottom, 0px) - var(--barlift, 0px)); max-height: calc(100dvh - 88px - env(safe-area-inset-top, 0px) - var(--inset-bottom, 0px) - var(--barlift, 0px));
+    bottom: calc(8px + var(--inset-bottom, 0px));
+    max-height: calc(100vh - 88px - env(safe-area-inset-top, 0px) - var(--inset-bottom, 0px)); max-height: calc(100dvh - 88px - env(safe-area-inset-top, 0px) - var(--inset-bottom, 0px));
     overflow-y: auto; overscroll-behavior: contain;
     background: var(--c-white); color: var(--c-ink); border-radius: 18px; padding: 12px;
     box-shadow: 0 16px 40px rgba(0,0,0,.32);
@@ -2919,16 +2909,13 @@ body.names-off #stagefeed .stgnames { display: none; }
     pointer-events: auto;
   }
   /* Chat runs the full height on a phone too (z 31, under the bar's 32). No
-     band is kept for the bar. The composer moves up by --barclear only when
-     the bar, with an open reaction tray, stands over the panel's lower half
-     (placeBarAvoiders). The keyboard covers the bar, so with the keyboard up
-     the panel ends at the keyboard and adds nothing for the bar. The live row
+     band is kept for the bar and the composer does not move for it. The live row
      is also z-index 31. The open sheet has to paint over it or Live steals the
      tap on the message field. */
   #chatpanel.open {
     top: 0; z-index: 31; overflow: clip; min-height: 0;
     bottom: var(--kb, 0px);
-    padding-bottom: max(var(--inset-bottom, 0px), var(--barclear, 0px));
+    padding-bottom: var(--inset-bottom, 0px);
   }
   html.kb-up #chatpanel.open { padding-bottom: 0; }
   #chatpanel { padding-bottom: 0; }
@@ -3450,14 +3437,14 @@ body.names-off #stagefeed .stgnames { display: none; }
   body.broadcast #bc-link.on.live input { flex: 1 1 auto; min-width: 0; }
   body.broadcast #bc-link.on.live button { width: auto; padding: 0 16px; }
   #bc-ended[hidden] { display: none !important; }
-  body.broadcast #bc-ended:not([hidden]) { display: flex; flex-direction: column; gap: 16px; position: fixed; z-index: 4; left: 24px; right: 24px; top: calc(var(--banner-h) + 8px + 4.25rem + var(--inset-top, 0px)); bottom: calc(var(--inset-bottom, 0px) + var(--barclear, 0px)); align-items: center; justify-content: center; margin: 0; padding: 0; overflow: hidden; container-type: size; pointer-events: none; text-align: center; }
+  body.broadcast #bc-ended:not([hidden]) { display: flex; flex-direction: column; gap: 16px; position: fixed; z-index: 4; left: 24px; right: 24px; top: calc(var(--banner-h) + 8px + 4.25rem + var(--inset-top, 0px)); bottom: calc(var(--inset-bottom, 0px)); align-items: center; justify-content: center; margin: 0; padding: 0; overflow: hidden; container-type: size; pointer-events: none; text-align: center; }
   #bc-cal[hidden] { display: none !important; }
   #bc-cal { pointer-events: auto; display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 10px 22px; border-radius: var(--r-lg); border: 2px solid var(--c-paper); color: var(--c-paper); text-decoration: none; font: 700 1.05rem/1.1 system-ui, sans-serif; }
   #bc-pre[hidden] { display: none !important; }
   #bc-pre { position: fixed; z-index: 5; margin: 0; left: calc(14px + var(--inset-left, 0px)); top: calc(var(--banner-h, 0px) + 8px + 2.75rem + var(--inset-top, 0px)); display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; box-sizing: border-box; border-radius: var(--r-pill); background: #4b3a8f; color: var(--c-white); font: 700 min(1.05rem, 22px)/1.2 system-ui, sans-serif; letter-spacing: .02em; }
   body:not(.broadcast) #rbbtn, body:not(.bc-host) #rbbtn { display: none; }
   body.rb-on #bc-link { display: none !important; }
-  #rb-now { position: fixed; z-index: 8; left: calc(12px + var(--inset-left, 0px)); right: calc(12px + var(--inset-right, 0px)); bottom: calc(4px + var(--inset-bottom, 0px) + var(--barlift, 0px)); max-width: 520px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; box-sizing: border-box; border-radius: var(--r-lg); background: rgba(12,14,18,.9); color: var(--c-paper); box-shadow: 0 0 0 1.5px #4b3a8f; }
+  #rb-now { position: fixed; z-index: 8; left: calc(12px + var(--inset-left, 0px)); right: calc(12px + var(--inset-right, 0px)); bottom: calc(4px + var(--inset-bottom, 0px)); max-width: 520px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; box-sizing: border-box; border-radius: var(--r-lg); background: rgba(12,14,18,.9); color: var(--c-paper); box-shadow: 0 0 0 1.5px #4b3a8f; }
   #rb-now-txt { flex: 1 1 12rem; min-width: 0; margin: 0; font: 600 min(1rem, 22px)/1.3 system-ui, sans-serif; overflow-wrap: anywhere; }
   #rb-now button { flex: 0 0 auto; min-height: 44px; min-width: 44px; padding: 0 16px; border-radius: var(--r-md); font: inherit; font-weight: 700; cursor: pointer; background: transparent; color: var(--c-paper); border: 1.5px solid var(--c-gray); }
   #rb-now #rb-stop { background: var(--c-red); border-color: transparent; color: var(--c-white); }
@@ -3473,7 +3460,7 @@ body.names-off #stagefeed .stgnames { display: none; }
   #rec-replay-rebroadcast { background: transparent; color: var(--c-paper); border: 1.5px solid var(--c-gray); }
   #rec-replay-rebroadcast[hidden] { display: none; }
   #bc-cap[hidden], body.bc-quiet #bc-cap { display: none !important; }
-  #bc-cap { position: fixed; z-index: 5; pointer-events: none; left: calc(14px + var(--inset-left, 0px)); right: calc(14px + var(--inset-right, 0px)); bottom: calc(4px + var(--inset-bottom, 0px) + clamp(44px, 2.75rem, 56px) + 8px + var(--barlift, 0px)); display: flex; align-items: flex-end; gap: 8px; }
+  #bc-cap { position: fixed; z-index: 5; pointer-events: none; left: calc(14px + var(--inset-left, 0px)); right: calc(14px + var(--inset-right, 0px)); bottom: calc(4px + var(--inset-bottom, 0px) + clamp(44px, 2.75rem, 56px) + 8px); display: flex; align-items: flex-end; gap: 8px; }
   #bc-cap-btn { pointer-events: auto; flex: 0 0 auto; min-width: 44px; min-height: 44px; padding: 0 10px; border: 0; border-radius: var(--r-sm); background: rgba(12,14,18,.82); color: var(--c-paper); font: 800 min(1rem, 20px)/1 system-ui, sans-serif; box-shadow: 0 0 0 1.5px rgba(244,247,251,.55); }
   #bc-cap-btn[aria-pressed="false"] { opacity: .7; text-decoration: line-through; }
   #bc-cap-txt { margin: 0; flex: 1 1 auto; min-width: 0; max-height: 4.2em; overflow: hidden; padding: 6px 10px; border-radius: var(--r-sm); background: rgba(0,0,0,.8); color: var(--c-white); font: 600 clamp(18px, 1.125rem, 28px)/1.35 system-ui, sans-serif; }
@@ -3489,7 +3476,7 @@ body.names-off #stagefeed .stgnames { display: none; }
   body:not(.broadcast):not(.chat-qa-on) #qabtn { display: none !important; }
   body.qa-chat-off #qabtn { display: none !important; }
   html.kb-up #qa { padding-bottom: 0; }
-  #qa { position: fixed; right: var(--inset-right, 0px); top: var(--inset-top, 0px); bottom: var(--kb, 0px); padding-bottom: max(var(--inset-bottom, 0px), var(--barclear, 0px)); box-sizing: border-box; width: min(360px, calc(100vw - var(--inset-left, 0px) - var(--inset-right, 0px))); z-index: 31; display: flex; flex-direction: column; background: var(--bg, #101018); color: var(--text, #e0e0f0); border-left: 1px solid var(--border, #2a2a3f); border-radius: 0 0 0 14px; }
+  #qa { position: fixed; right: var(--inset-right, 0px); top: var(--inset-top, 0px); bottom: var(--kb, 0px); padding-bottom: var(--inset-bottom, 0px); box-sizing: border-box; width: min(360px, calc(100vw - var(--inset-left, 0px) - var(--inset-right, 0px))); z-index: 31; display: flex; flex-direction: column; background: var(--bg, #101018); color: var(--text, #e0e0f0); border-left: 1px solid var(--border, #2a2a3f); border-radius: 0 0 0 14px; }
   #qa[hidden] { display: none; }
   #qa-head { display: flex; align-items: center; flex-wrap: wrap; gap: .2rem .5rem; padding: .45rem .6rem; border-bottom: 1px solid var(--border, #2a2a3f); font-weight: 700; font-size: 1.1rem; }
   #qa-head small { order: 3; flex: 1 0 100%; font-size: .875rem; font-weight: 400; color: var(--muted, #c5c8dc); }
@@ -3512,7 +3499,7 @@ body.names-off #stagefeed .stgnames { display: none; }
   #bc-ended p { margin: 0; max-width: 18rem; color: var(--c-paper); font: 700 clamp(1.15rem, 9cqh, 1.75rem)/1.25 system-ui, sans-serif; letter-spacing: -0.02em; }
   body.broadcast.bc-quiet #fitbtn { display: none; }
   @media (max-height: 500px) {
-    body.broadcast #bc-ended:not([hidden]) { top: calc(var(--banner-h) + 8px + 2.75rem + var(--inset-top, 0px)); bottom: calc(var(--inset-bottom, 0px) + var(--barclear, 0px)); }
+    body.broadcast #bc-ended:not([hidden]) { top: calc(var(--banner-h) + 8px + 2.75rem + var(--inset-top, 0px)); bottom: calc(var(--inset-bottom, 0px)); }
     #bc-ended p { font-size: 1.25rem; }
   }
   body.has-flip .bar #flipcam { display: inline-flex; }
@@ -3629,12 +3616,10 @@ body.names-off #stagefeed .stgnames { display: none; }
   /* Focus: #fsview drawn in the meeting box, below the one top bar, under the
      floating bar (the bar overlays, nothing is reserved). The strip runs down
      the side when the screen is wide and across the bottom when it is tall;
-     either strip pads by --barclear so no thumb sits under the bar where it
-     stands (placeBarAvoiders). Thumbs wear no frame; the one on the big view is outlined. */
+     the bar overlays the strip where it stands. Thumbs wear no frame; the one on the big view is outlined. */
   body.view-focus #fsview { z-index: 5; top: var(--headh, 0px); } /* under the one top bar (R1) */
   body.view-focus #fsclose { display: none; }
-  body.view-focus #fsstrip { top: 0; background: none; gap: 8px; padding: 8px;
-    padding-bottom: max(8px, var(--barclear, 0px)); }
+  body.view-focus #fsstrip { top: 0; background: none; gap: 8px; padding: 8px; }
   body.view-focus .fsthumb { border: 0; border-radius: var(--r-md); background: var(--c-night); }
   body.view-focus .fsthumb.sel { box-shadow: none; outline: 2px solid var(--c-white); outline-offset: -2px; }
   body.view-focus .fsthumb.fsauto { background: var(--c-night); color: var(--c-white); }
@@ -3643,6 +3628,7 @@ body.names-off #stagefeed .stgnames { display: none; }
   @media (orientation: portrait) {
     body.view-focus #fsstrip { top: auto; left: 0; right: 0; bottom: 0; flex-direction: row; overflow-x: auto; overflow-y: hidden; }
     body.view-focus .fsthumb { width: 112px; }
+
   }
   /* Present: one step to the presentation view (content full screen, the
      speaker inset). Shown only while there is content, top centre, the same
@@ -3833,9 +3819,8 @@ body.chatside { --sidew: 0px; padding-right: 0; }
   /* The keyboard takes the bottom: the sheet sits on it and grows to the top bar's edge. */
   html.kb-up body.chatside #chatpanel.open { top: var(--headh, 0px); height: auto; bottom: var(--kb, 0px); }
 }
-/* Its composer stays above the floating bar wherever the bar stands over the panel's lower half (--barclear, as on a wide
-   screen); with the keyboard up the bar is under the keyboard and the composer sits on the keyboard. */
-body.chatside #chatpanel.open { padding-bottom: max(12px, var(--barclear, 0px)); }
+/* The floating bar overlays the panel; the composer does not move for it. */
+body.chatside #chatpanel.open { padding-bottom: 12px; }
 html.kb-up body.chatside #chatpanel.open { padding-bottom: 12px; }
 /* R4: an app picked in Focus draws in the big view, above the focus layer (it sat under it: a black view). */
 body.view-focus.comfy.has-app:not(.app-full):not(.ct-app-off) #apppane { z-index: 7; } /* over the Focus content area (z 6), which is drawn later */
