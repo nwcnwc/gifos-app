@@ -54,7 +54,7 @@
     videoPausedRelay: { tone: 'stop', key: 'sttVideoPausedNet', en: 'A firewall or hotel/office Wi-Fi[ between you and {name}] blocks direct video, outside GifOS’s control. Sound still works. Video gets through once someone here subscribes.' },
     videoPausedRelayMine: { tone: 'stop', key: 'sttVideoPausedMine', en: 'Your network (a firewall or hotel/office Wi-Fi) blocks direct video[ with {name}], outside GifOS’s control. Sound still works. Video gets through once someone here subscribes.' },
     videoPausedRelayFar: { tone: 'stop', key: 'sttVideoPausedFar', en: '{name}’s network (a firewall or hotel/office Wi-Fi) blocks direct video, outside GifOS’s control. Sound still works. Video gets through once someone here subscribes.' },
-    soundHeld:      { tone: 'stop', key: 'sttSoundHeld', en: 'This device is holding back the meeting’s sound. Tap anywhere on the page to hear it.' },
+    soundHeld:      { tone: 'stop', key: 'sttSoundHeld', en: 'Tap anywhere to hear the meeting. This device is holding its sound back.' },
     soundBack:      { tone: 'note', key: 'stSoundIsBack', en: 'Sound is back.' },
 
     // ---- the stage -------------------------------------------------------

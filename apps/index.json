@@ -8494,7 +8494,7 @@
       "appId": "survey",
       "name": "Survey",
       "shortName": "Survey",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "Ask the room, and watch the votes come in.",
       "author": {
         "name": "GifOS",
@@ -8521,15 +8521,15 @@
         214
       ],
       "cover": "/apps/survey/cover.jpg",
-      "bytes": 132511,
+      "bytes": 170237,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-11-20"
+        "ts": "2026-11-27"
       },
-      "sha256": "caff0d06fcf0cf0b42cbfdca0b45895c8cb155ce8145cca099de4d8686301eae"
+      "sha256": "71079354f77eba5dcac7b68e5741215da0ddb620dbcfa8594c46de18417fe7ae"
     },
     {
       "slug": "svg-edit",

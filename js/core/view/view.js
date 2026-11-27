@@ -3394,6 +3394,9 @@
         fitbtn.setAttribute('aria-label', (0, /*()*/__C.uiText)('viewPick', 'View') + ': ' + (0, /*()*/__C.viewWord)(m));
         fitbtn.title = (0, /*()*/__C.uiText)('viewPickTip', 'Change the view (Alt+F)');
       }
+      // More's View row says the view it opens on.
+      const vmb = document.getElementById('viewmorebtn');
+      if (vmb) vmb.textContent = (0, /*()*/__C.uiText)('viewPick', 'View') + ': ' + (0, /*()*/__C.viewWord)(m);
       if (viewpick) {
         const bc = document.body.classList.contains('broadcast');
         // The Stage radio comes after Focus, made here like its siblings (the page's markup stays as it is).
@@ -3435,24 +3438,44 @@
     function openPick() {
       if (!viewpick) return;
       paintFit();
-      // Under the button, its right edge on the button's.
+      // Under the button, its right edge on the button's. Opened from More while the button is not on the screen:
+      // in the middle of the window.
       const r = fitbtn.getBoundingClientRect();
-      viewpick.style.top = Math.round(r.bottom + 8) + 'px';
+      const onScreen = r.width > 0 && r.height > 0 && getComputedStyle(fitbtn).visibility !== 'hidden';
+      viewpick.style.top = Math.round(onScreen ? r.bottom + 8 : window.innerHeight * 0.28) + 'px';
       viewpick.style.right = Math.round(Math.max(8, window.innerWidth - r.right)) + 'px';
       viewpick.hidden = false;
+      delete viewpick.dataset.picked;
+      if (!onScreen) viewpick.style.right = Math.round(Math.max(8, (window.innerWidth - viewpick.offsetWidth) / 2)) + 'px';
+      // Never past the left edge: on a phone the picker is wider than the space left of the button.
+      else if (window.innerWidth - parseFloat(viewpick.style.right) - viewpick.offsetWidth < 8) viewpick.style.right = Math.round(Math.max(8, window.innerWidth - viewpick.offsetWidth - 8)) + 'px';
       fitbtn.setAttribute('aria-expanded', 'true');
       const cur = viewpick.querySelector('.vp-mode[aria-checked="true"]');
       if (cur) try { cur.focus(); } catch (e) {}
     }
-    if (fitbtn) fitbtn.addEventListener('click', (e) => {
-      // Manual only. A crowded Fit grid never changes the view on its own.
-      if (viewpick && viewpick.hidden) openPick(); else closePick(false);
-    });
+    if (fitbtn) {
+      fitbtn.addEventListener('click', (e) => {
+        // Manual only. A crowded Fit grid never changes the view on its own.
+        if (viewpick && viewpick.hidden) openPick(); else closePick(false);
+      });
+      // The same picker from More (View, beside Agenda), for whoever looks for it there; it opens once More has folded.
+      const ag = document.getElementById('agendabtn');
+      if (ag && !document.getElementById('viewmorebtn')) {
+        const vb = document.createElement('button');
+        vb.type = 'button'; vb.id = 'viewmorebtn';
+        vb.setAttribute('aria-haspopup', 'dialog'); vb.setAttribute('aria-controls', 'viewpick');
+        vb.title = (0, /*()*/__C.uiText)('viewPickTip', 'Change the view (Alt+F)');
+        vb.textContent = (0, /*()*/__C.uiText)('viewPick', 'View') + ': ' + (0, /*()*/__C.viewWord)(window.__meetView || 'fit');
+        vb.addEventListener('click', () => { requestAnimationFrame(() => { if (viewpick && viewpick.hidden) openPick(); }); });
+        ag.after(vb);
+      }
+    }
     if (viewpick) {
       viewpick.addEventListener('click', (e) => {
         const b = e.target && e.target.closest && e.target.closest('.vp-mode');
         if (!b) return;
         (0, /*()*/__C.setView)(b.dataset.view, 'pick');
+        viewpick.dataset.picked = '1';
         // The Stage view takes the screen in the same tap (a browser asks for the tap's own gesture).
         if (b.dataset.view === 'stage' && window.__meetView === 'stage') svFullscreen();
         // Focus keeps the picker up so Follow the speaker is one more tap.
@@ -3469,6 +3492,10 @@
         try { n.focus(); } catch (err) {}
       });
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !viewpick.hidden) closePick(false); });
+      // A turned phone closes it (its place was the old button's). Only a turn: a phone's first tap goes full screen,
+      // a resize of its own, and the picker that tap opened must stay.
+      let vpLand = window.innerWidth > window.innerHeight;
+      window.addEventListener('resize', () => { const land = window.innerWidth > window.innerHeight; if (land !== vpLand && !viewpick.hidden) closePick(false); vpLand = land; });
       document.addEventListener('pointerdown', (e) => {
         if (viewpick.hidden) return;
         const t = e.target;
@@ -3587,7 +3614,7 @@
       const t = { id: 'stage:content', el: __C.CT.el, tier: 'row', stage: true, share: true, kind: 'app', fill: true, content: true, pz: 'stage:content' };
       if (scroll) {
         t.stackH = (w, maxH) => {
-          const asp = __C.CT.items.map((it) => (0, /*()*/__C.ctAspect)(it, w) || 16 / 9);
+          const asp = __C.CT.items.map((it) => (0, /*()*/__C.ctAspect)(it, w) || GifOS.meetContent.stackAspect(it, w, window.innerHeight));
           return GifOS.meetContent.stack({ x: 0, y: 0, w: w, h: maxH }, asp, 8).h;
         };
       }
@@ -3595,6 +3622,9 @@
     }
     function contentOpts(phone) {
       const v = window.__meetView || 'fit';
+      // A phone editing the agenda gives it the screen (the faces come back with Done): with the keyboard up, the
+      // faces left the form no room and covered Add item.
+      const it0IsAgenda = () => { try { const sel = __C.CT.items.find((i) => i.key === __C.CT.st.sel); return !!sel && sel.kind === 'agenda'; } catch (e) { return false; } };
       // Drag is the meeting's own layout (the content takes the screen, the
       // people inset); a phone's Fit is the content full with a face strip.
       // R2: an agenda needs only its list (and the tab row); a screen or an
@@ -3606,7 +3636,7 @@
       } catch (e) {}
       // Beside the faces (a wide screen) a list reads well at a column's width; the faces take the rest.
       const needW = needH ? 640 : 0;
-      return { phone: !!phone && v !== 'scroll' && v !== 'drag', hideFaces: !!(__C.CT && __C.CT.facesHidden && phone), needH: needH > 40 ? needH : 0, needW: needW };
+      return { phone: !!phone && v !== 'scroll' && v !== 'drag', hideFaces: !!(__C.CT && (__C.CT.facesHidden || (__C.CT.agEdit && it0IsAgenda())) && phone), needH: needH > 40 ? needH : 0, needW: needW };
     }
 
     // ---- panes ----
@@ -3843,7 +3873,7 @@
       const shown = plan.show.map((k) => __C.CT.items.find((i) => i.key === k)).filter(Boolean);
       const asp = shown.map((it) => (0, /*()*/__C.ctAspect)(it, inner.w));
       let rects;
-      if (plan.stack) rects = MC.stack(inner, asp.map((a) => a || 16 / 9), 8).rects;
+      if (plan.stack) rects = MC.stack(inner, asp.map((a, i) => a || MC.stackAspect(shown[i], inner.w, window.innerHeight)), 8).rects;
       else if (shown.length > 1) rects = MC.grid(inner, asp, 8);
       else rects = [inner];
       // The app's box in screen terms (the pane is fixed).
@@ -4228,7 +4258,9 @@
       }
       const tools = document.createElement('div'); tools.className = 'ag-tools';
       // Open-floor rooms: anyone but its owner may stop it for everyone, as with a shared app (the owner's own Stop is in Edit).
-      if (a.items.length && !__C.CT.agEdit && !isOwner && MA.canStop(__C.CT.ag, __C.model.me.myId(), (0, /*()*/__C.ctAgCtx)(__C.model.me.myId())) && !(0, /*()*/__C.hasAdminRoom)()) tools.appendChild(ctAgBtn('ag-btn ag-stopall', (0, /*()*/__C.ctText)('agStopAll', 'Stop for everyone'), () => { (0, /*()*/__C.ctAgendaPublish)(MA.clear(__C.CT.ag, __C.model.me.myId()), 'stop-all').then((ok) => { if (ok) (0, /*()*/__C.setStatus)((0, /*()*/__C.ctText)('agYouStopped', 'You stopped the agenda for everyone.')); }); }, (0, /*()*/__C.ctText)('agStopAllTip', 'Take the agenda off everyone\u2019s screen. Everyone sees that you did. Anyone can then share a new one.')));
+      // Stop for everyone is a room-wide act, so it sits under the list, away from Hide (this screen only).
+      let stopAll = null;
+      if (a.items.length && !__C.CT.agEdit && !isOwner && MA.canStop(__C.CT.ag, __C.model.me.myId(), (0, /*()*/__C.ctAgCtx)(__C.model.me.myId())) && !(0, /*()*/__C.hasAdminRoom)()) stopAll = ctAgBtn('ag-btn ag-stopall', (0, /*()*/__C.ctText)('agStopAll', 'Stop for everyone'), () => { (0, /*()*/__C.ctAgendaPublish)(MA.clear(__C.CT.ag, __C.model.me.myId()), 'stop-all').then((ok) => { if (ok) (0, /*()*/__C.setStatus)((0, /*()*/__C.ctText)('agYouStopped', 'You stopped the agenda for everyone.')); }); }, (0, /*()*/__C.ctText)('agStopAllTip', 'Take the agenda off everyone\u2019s screen. Everyone sees that you did. Anyone can then share a new one.'));
       if (a.items.length && !__C.CT.agEdit) tools.appendChild(ctAgBtn('ag-btn ag-hide', (0, /*()*/__C.ctText)('agHide', 'Hide agenda'), () => (0, /*()*/__C.ctAgendaHide)(true), (0, /*()*/__C.ctText)('agHideTip', 'Hide the agenda on your screen only. Nothing is deleted, and everyone else still sees it.')));
       if (may && a.items.length && !__C.CT.agEdit) {
         if (a.cur > 0) tools.appendChild(ctAgBtn('ag-btn ag-back', (0, /*()*/__C.ctText)('agBack', 'Back'), () => (0, /*()*/__C.ctAgendaPublish)(MA.prev(__C.CT.ag, __C.model.me.myId()), 'back')));
@@ -4280,6 +4312,7 @@
         list.appendChild(li);
       });
       p.appendChild(list);
+      if (stopAll) p.appendChild(stopAll);
       if (!a.items.length && !__C.CT.agEdit) {
         const e = document.createElement('p'); e.className = 'ag-empty'; e.textContent = (0, /*()*/__C.ctText)('agNoItems', 'No items yet.'); p.appendChild(e);
       }
@@ -9615,6 +9648,8 @@
         if (chooser && !chooser.hidden) return true;
         const micCh = document.getElementById('micchooser');
         if (micCh && !micCh.hidden) return true;
+        const vpk = document.getElementById('viewpick');
+        if (vpk && !vpk.hidden && !vpk.dataset.picked) return true;
         const ae = document.activeElement;
         if (ae && ae !== document.body && ae !== document.documentElement) {
           if (bar.contains(ae)) return true;
@@ -10037,6 +10072,9 @@
         if (micCh && !micCh.hidden) return true;
         const wait = document.getElementById('waitlist');
         if (wait && !wait.hasAttribute('hidden') && wait.getClientRects().length) return true;
+        // The view picker is open: its choices stay until one is picked or it is closed.
+        const vpk = document.getElementById('viewpick');
+        if (vpk && !vpk.hidden && !vpk.dataset.picked) return true;
         // A tile's window is open: its controls are the screen, not chrome.
         if (window.__tileWin && window.__tileWin.isOpen()) return true;
         const modals = document.querySelectorAll('.name-modal');
@@ -10061,6 +10099,8 @@
         chromeTimer = 0;
         if (chromeHeld() || document.body.classList.contains('chrome-away')) return;
         document.body.classList.add('chrome-away');
+        // A view picker left open after its pick goes with the chrome.
+        { const vpk = document.getElementById('viewpick'); if (vpk && !vpk.hidden && vpk.dataset.picked) { vpk.hidden = true; const fb = document.getElementById('fitbtn'); if (fb) fb.setAttribute('aria-expanded', 'false'); } }
         try { paintCallState(); } catch (e) {}
         setBarH();
       }
@@ -10193,6 +10233,8 @@
         // 0.9.23b: a shared screen and a broadcast are calm too.
         for (const c of ['app-room', 'solo-app']) if (b.contains(c)) return true;
         if (!bar.classList.contains('collapsed')) return true; // More is open
+        const vpk = document.getElementById('viewpick');
+        if (vpk && !vpk.hidden && !vpk.dataset.picked) return true; // the view picker is open
         // A clicked button keeps focus, so only keyboard focus holds the dock.
         if (bar.matches(':hover') || bar.querySelector(':focus-visible')) return true;
         // Keyboard focus on a tile or its buttons keeps them (calm hides tile buttons too).
@@ -10210,7 +10252,11 @@
       setInterval(() => {
         let calm = false;
         try { calm = Date.now() - lastInput >= __C.model.door.dockCalmMs() && !busy(); } catch (e) {}
-        if (calm !== document.body.classList.contains('dock-calm')) document.body.classList.toggle('dock-calm', calm);
+        if (calm !== document.body.classList.contains('dock-calm')) {
+          document.body.classList.toggle('dock-calm', calm);
+          const vpk = document.getElementById('viewpick');
+          if (calm && vpk && !vpk.hidden && vpk.dataset.picked) { vpk.hidden = true; const fb = document.getElementById('fitbtn'); if (fb) fb.setAttribute('aria-expanded', 'false'); }
+        }
         try { GifOS.viewKit.calm(watchCalm(calm)); } catch (e) {}
         // The header only goes while it is the plain count line.
         let head = calm;
@@ -11779,8 +11825,18 @@
       more.setAttribute('aria-haspopup', 'menu'); more.setAttribute('aria-expanded', 'false');
       const menu = document.createElement('div');
       menu.id = 'appmenu'; menu.setAttribute('role', 'menu'); menu.hidden = true;
-      abar.appendChild(more); abar.appendChild(menu);
-      const keep = (el) => el.classList.contains('brand') || ['appgif', 'appname', 'appinvite', 'apphelp', 'appfloat', 'appfull'].includes(el.id);
+      // A phone's app covers the meeting's top row, view button and all: the folded bar carries its own view button.
+      const view = document.createElement('button');
+      view.type = 'button'; view.id = 'appview'; view.className = 'appview';
+      view.title = (0, /*()*/__C.uiText)('viewPickTip', 'Change the view (Alt+F)'); view.setAttribute('aria-label', (0, /*()*/__C.uiText)('viewPick', 'View'));
+      view.setAttribute('aria-haspopup', 'dialog'); view.setAttribute('aria-controls', 'viewpick');
+      view.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg>';
+      view.addEventListener('click', (e) => { e.stopPropagation(); const fb = document.getElementById('fitbtn'); if (fb) fb.click(); });
+      abar.appendChild(view); abar.appendChild(more); abar.appendChild(menu);
+      // An app shared in a meeting keeps only its name, Help and Full screen on the row: the meeting has its own
+      // Invite, and Hide, Stop and the rest are one tap away in the menu, each a full-size target.
+      const inMeeting = () => { const b = document.body.classList; return b.contains('has-app') && !b.contains('solo-app') && !b.contains('app-room'); };
+      const keep = (el) => el.classList.contains('brand') || (inMeeting() ? ['appgif', 'appname', 'apphelp', 'appfull'] : ['appgif', 'appname', 'appinvite', 'apphelp', 'appfloat', 'appfull']).includes(el.id);
       const placeMenu = () => {
         const r = more.getBoundingClientRect();
         menu.style.top = Math.round(r.bottom + 6) + 'px';
@@ -11793,10 +11849,14 @@
       };
       function fit() {
         const b = document.body.classList;
-        const fold = (b.contains('solo-app') || b.contains('app-room')) && abar.clientWidth > 0 && abar.clientWidth <= 720;
-        if (fold === (abar.dataset.fold === '1')) return;
-        if (fold) { for (const el of orig) if (!keep(el)) menu.appendChild(el); abar.dataset.fold = '1'; }
-        else { for (const el of orig) abar.insertBefore(el, more); delete abar.dataset.fold; setOpen(false); }
+        // A phone folds a meeting's app bar at every width (on its side too): one row, the view button on it.
+        const fold = abar.clientWidth > 0 && (((b.contains('solo-app') || b.contains('app-room')) && abar.clientWidth <= 720) || (inMeeting() && __C.model.consts.IS_MOBILE()));
+        const how = fold ? (inMeeting() ? 'm' : 's') : '';
+        if (how === (abar.dataset.foldHow || '')) return;
+        for (const el of orig) abar.insertBefore(el, more);
+        delete abar.dataset.fold; delete abar.dataset.foldHow; setOpen(false);
+        if (fold) abar.insertBefore(view, more);
+        if (fold) { for (const el of orig) if (!keep(el)) menu.appendChild(el); abar.dataset.fold = '1'; abar.dataset.foldHow = how; }
       }
       more.addEventListener('click', (e) => { e.stopPropagation(); setOpen(menu.hidden); });
       // A pick runs its own handler first, then the menu closes.

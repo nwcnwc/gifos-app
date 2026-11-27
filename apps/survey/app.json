@@ -4,7 +4,7 @@
   "appId": "survey",
   "name": "Survey",
   "shortName": "Survey",
-  "version": "1.0",
+  "version": "1.1",
   "minBuild": 947,
   "tagline": "Ask the room, and watch the votes come in.",
   "description": "Put up one question or a short survey. Each question is a single choice or any number of choices, and a question can also take a written answer.\n\nEveryone in the meeting sees the counts and the bars as votes arrive. Close the survey when you are finished, or reopen it. Turn on anonymous votes when the results should show counts without names.\n\nNothing to set up and no account to make. The survey stays with the people in the room.",
@@ -40,13 +40,13 @@
   "cover": "/apps/survey/cover.jpg",
   "screenshots": [],
   "gif": "/apps/survey/survey.gif",
-  "bytes": 132511,
+  "bytes": 170237,
   "download": 0,
   "provides": null,
-  "sha256": "caff0d06fcf0cf0b42cbfdca0b45895c8cb155ce8145cca099de4d8686301eae",
+  "sha256": "71079354f77eba5dcac7b68e5741215da0ddb620dbcfa8594c46de18417fe7ae",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-11-20"
+    "ts": "2026-11-27"
   }
 }
