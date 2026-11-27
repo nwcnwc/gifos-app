@@ -9631,7 +9631,11 @@
           const sheet = document.getElementById('barmore');
           bar.classList.remove('more-rows');
           const upright = window.matchMedia && matchMedia('(max-width: 700px) and (orientation: portrait)').matches;
-          if (sheet && upright && sheet.scrollHeight > sheet.clientHeight + 2) bar.classList.add('more-rows');
+          // A short phone (under SHORT_PHONE_H, an iPhone SE's 549px) has no call worth keeping above a 200px sheet: the
+          // sheet takes the whole room above the dock, so its rows (Your video, Settings) are reachable by one short scroll
+          // (css/meet-23b.css shows a fade at the cut edge). Taller phones keep the two-row cap.
+          const shortPhone = innerHeight < GifOS.meetContent.SHORT_PHONE_H;
+          if (sheet && upright && !shortPhone && sheet.scrollHeight > sheet.clientHeight + 2) bar.classList.add('more-rows');
         }
         // The fold is what shows Live again. Measure it after the class
         // changes, not while More still hides the row.
