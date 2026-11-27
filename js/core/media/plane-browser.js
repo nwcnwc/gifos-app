@@ -3451,18 +3451,31 @@
         byRcv.get(rcv).push([jk, pj]);
       }
       const b = ++pipeHoldBeat;
+      // WHAT THE HOLD WAITS FOR (AVSYNC2): the moment this seat itself SHOWS the frame. Its sound leaves here when it is
+      // played, and the browser's lip sync plays it with the picture's render (the picture's jitter buffer and decoder,
+      // made as long as the sound's when the sound is later): so the picture's own receive delay is the hold, and the
+      // copies leave in the sync this seat shows. The sound's buffer alone missed the picture's longer road (its
+      // encoder, pacing and bigger frames): relayed pictures ran 20-70 ms late locally. A picture this seat does not
+      // decode falls back to the sound's buffer.
+      const perFrame = (a, b2, ka, kb) => (b2 && a && b2[kb] > a[kb] ? 1000 * (b2[ka] - a[ka]) / (b2[kb] - a[kb]) : null);
       for (const [rcv, jobs] of byRcv) {
-        rcv.getStats().then((rep) => {
-          let d = null, n = 0;
+        let vr = null; try { vr = jobs[0][1].srcTrack ? __C.MPipe.receiverForTrack(jobs[0][1].srcTrack, pipePcs()) : null; } catch (e) {}
+        Promise.all([rcv.getStats(), vr && typeof vr.getStats === 'function' ? vr.getStats().catch(() => null) : null]).then(([rep, vrep]) => {
+          let d = null, n = 0, v = null;
           rep.forEach((r) => { if (r.type === 'inbound-rtp' && r.kind === 'audio') { d = r.jitterBufferDelay; n = r.jitterBufferEmittedCount || 0; } });
+          if (vrep) vrep.forEach((r) => { if (r.type === 'inbound-rtp' && r.kind === 'video' && r.totalProcessingDelay != null) v = { p: r.totalProcessingDelay, f: r.framesDecoded || 0 }; });
           if (d == null) return;
           const was = pipeHoldPrev.get(rcv);
-          const cur = { d, n, b, ms: was ? was.ms : null, quiet: was ? was.quiet : 0 };
+          const cur = { d, n, v, b, ms: was ? was.ms : null, quiet: was ? was.quiet : 0 };
           pipeHoldPrev.set(rcv, cur);
           let ms = null;
           // a reading spans one beat: an older one averages over a gap and says nothing about now
           if (was && b - was.b <= 2) {
-            if (n > was.n) { cur.quiet = 0; ms = Math.max(0, Math.min(GifOS.timings.PIPE_HOLD_MAX_MS, Math.round(1000 * (d - was.d) / (n - was.n)))); }
+            if (n > was.n) {
+              cur.quiet = 0;
+              const vd = perFrame(was.v, v, 'p', 'f');
+              ms = Math.max(0, Math.min(GifOS.timings.PIPE_HOLD_MAX_MS, Math.round(vd != null ? vd : 1000 * (d - was.d) / (n - was.n))));
+            }
             // the sound gave out nothing for two beats (muted, parked, silent): no sound to wait for
             else if (++cur.quiet >= 2) ms = 0;
           }
