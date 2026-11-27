@@ -265,6 +265,10 @@ body.names-off #stagefeed .stgnames { display: none; }
   /* Settings rows (layout in css/meet-23b.css). */
   .set-sec { display: flex; flex-direction: column; gap: .45rem; }
   .set-help { color: var(--muted, #8888aa); font-size: .76rem; line-height: 1.35; margin: 0; }
+  /* Follows you (kept in My identity, every device) vs This device only: one small tag per setting (docs/identity.md). */
+  .set-scope, small[data-t^=setScope], #set-modal small[data-t^=setScope], #set-modal .rec-opt small[data-t^=setScope], .rec-opt small.set-scope { display: inline-block; vertical-align: middle; margin: 0 0 0 .4rem; padding: 0 .4rem; border-radius: .6rem; font-size: .68rem; font-weight: 500; line-height: 1.45; color: var(--muted, #8888aa); border: 1px solid var(--border, #2a2a3f); white-space: nowrap; }
+  .set-scope[data-scope="you"], small[data-t=setScopeYou], #set-modal small[data-t=setScopeYou], #set-modal .rec-opt small[data-t=setScopeYou] { color: var(--accent, #6c8cff); border-color: currentColor; }
+  .set-scope-note { margin: 0 0 .6rem; }
   .capnote { color: var(--muted, #8888aa); font-size: .8rem; align-self: center; padding: 0 .4rem; }   /* an open room's admin by subscription: one quiet line */
   #timingrow button { border-radius: .45rem; cursor: pointer;
     background: none; border: 1px solid var(--border, #2a2a3f); color: var(--muted, #8a8aa8); }

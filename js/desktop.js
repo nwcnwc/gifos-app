@@ -3262,6 +3262,8 @@
   // Settings words live in i18n/<locale>/settings.json. ST gives text; STh gives
   // escaped HTML that allows only the <b>, <m> (mono) and <bm> tags messages use.
   const ST = (k, p) => (GifOS.i18n ? GifOS.i18n.t(k, p) : k);
+  // Follows you (kept in My identity, the same on every device) or This device only (docs/identity.md).
+  const scopeTag = (you) => ' <small class="set-scope" data-scope="' + (you ? 'you' : 'device') + '">' + escapeHtml(ST(you ? 'settings.scope.you' : 'settings.scope.device')) + '</small>';
   const richHtml = (s) => escapeHtml(s).replace(/&lt;(\/?)b&gt;/g, '<$1b>').replace(/&lt;m&gt;/g, '<span class="mono">')
     .replace(/&lt;\/m&gt;/g, '</span>').replace(/&lt;bm&gt;/g, '<b class="mono">').replace(/&lt;\/bm&gt;/g, '</b>');
   const STh = (k, p) => richHtml(ST(k, p));
@@ -3753,7 +3755,7 @@
     const t = I18N.t;
     return '<p class="add-help">' + escapeHtml(t('settings.lang.intro')) + '</p>' +
       '<div class="set-card set-pad">' +
-        '<label class="set-label" for="set-lang">' + escapeHtml(t('settings.lang.language')) + '</label>' +
+        '<label class="set-label" for="set-lang">' + escapeHtml(t('settings.lang.language')) + scopeTag(true) + '</label>' +
         '<select id="set-lang" aria-label="' + escapeHtml(t('settings.lang.language')) + '"></select>' +
         '<label class="set-label" for="set-region">' + escapeHtml(t('settings.lang.region')) + '</label>' +
         '<select id="set-region" aria-label="' + escapeHtml(t('settings.lang.region')) + '"></select>' +
@@ -3958,9 +3960,9 @@
         '</section>' +
         '<section data-page="you" hidden>' +
           '<p class="add-help">' + escapeHtml(ST('settings.you.intro')) + '</p>' +
-          '<label class="set-label" for="set-name">' + escapeHtml(ST('settings.you.name')) + '</label>' +
+          '<label class="set-label" for="set-name">' + escapeHtml(ST('settings.you.name')) + scopeTag(true) + '</label>' +
           '<input id="set-name" maxlength="40" aria-label="' + escapeHtml(ST('settings.you.name')) + '" placeholder="' + escapeHtml(ST('settings.you.namePh')) + '" value="' + escapeHtml(store.identity().name) + '">' +
-          '<label class="set-label" for="set-avatar-file">' + escapeHtml(ST('settings.you.picture')) + '</label>' +
+          '<label class="set-label" for="set-avatar-file">' + escapeHtml(ST('settings.you.picture')) + scopeTag(true) + '</label>' +
           '<p class="add-help">' + escapeHtml(ST('settings.you.pictureHelp')) + '</p>' +
           '<div class="set-avatar-row">' +
             '<img id="set-avatar-preview" alt="" hidden>' +
@@ -3973,7 +3975,7 @@
         '</section>' +
         '<section data-page="look" hidden>' +
           '<p class="add-help">' + escapeHtml(ST('settings.look.intro')) + '</p>' +
-          '<div class="set-group">' + escapeHtml(ST('settings.look.background')) + '</div>' +
+          '<div class="set-group">' + escapeHtml(ST('settings.look.background')) + scopeTag(false) + '</div>' +
           '<div class="set-card set-pad">' +
             '<label class="set-label" for="set-bg-color">' + escapeHtml(ST('settings.look.color')) + '</label>' +
             '<div class="bg-row">' +
@@ -3982,7 +3984,7 @@
               '<button type="button" id="set-bg-reset" class="ghost" aria-label="' + escapeHtml(ST('settings.look.resetBgAria')) + '">' + escapeHtml(ST('settings.look.reset')) + '</button>' +
             '</div>' +
           '</div>' +
-          '<div class="set-group">' + escapeHtml(ST('settings.look.textSize')) + '</div>' +
+          '<div class="set-group">' + escapeHtml(ST('settings.look.textSize')) + scopeTag(false) + '</div>' +
           '<div class="set-card set-pad">' +
             '<p class="add-help">' + escapeHtml(ST('settings.look.textSizeHelp')) + '</p>' +
             '<div class="ts-row"><button type="button" id="ts-minus" class="ghost" aria-label="' + escapeHtml(ST('settings.look.smaller')) + '">A−</button><span id="ts-val" class="mono" aria-live="polite"></span><button type="button" id="ts-plus" class="ghost" aria-label="' + escapeHtml(ST('settings.look.bigger')) + '">A+</button><button type="button" id="ts-reset" class="ghost" aria-label="' + escapeHtml(ST('settings.look.resetSizeAria')) + '">' + escapeHtml(ST('settings.look.reset')) + '</button></div>' +

@@ -1220,7 +1220,7 @@
   "meet.botNotesAsk": "bot · pide permiso para tomar notas",
   "meet.setGroupBots": "Asistentes de IA",
   "meet.setHideBots": "Ocultar bots",
-  "meet.setHideBotsHelp": "Solo en este dispositivo: se ocultan los mosaicos de los asistentes de IA y se silencian las voces que este dispositivo recibe de ellos por separado. Una voz ya mezclada en el sonido de la multitud se sigue oyendo.",
+  "meet.setHideBotsHelp": "Solo para ti: se ocultan los mosaicos de los asistentes de IA y se silencian las voces que este dispositivo recibe de ellos por separado. Una voz ya mezclada en el sonido de la multitud se sigue oyendo.",
   "meet.admAiNotes": "Notas de IA",
   "meet.admAiNotesSub": "¿Pueden los asistentes de IA tomar notas de esta reunión?",
   "meet.admAiNotesHelp": "Los asistentes honestos lo respetan. Un asistente que toma notas lleva una marca en su mosaico.",
@@ -1314,5 +1314,8 @@
   "meet.tvStopFail": "No se pudo dejar de publicar. Inténtalo de nuevo.",
   "meet.tvStopped": "Ya no está publicado en gifos.tv.",
   "meet.tvListedBtn": "Publicado: dejar de publicar",
-  "meet.tvPublishBtn": "Publicar en GifOS.tv"
+  "meet.tvPublishBtn": "Publicar en GifOS.tv",
+  "meet.setScopeYou": "Te sigue",
+  "meet.setScopeDevice": "Solo este dispositivo",
+  "meet.setScopeNote": "Te sigue: se guarda en Mi identidad, igual en cada dispositivo que la tenga. Solo este dispositivo: se queda en este teléfono u ordenador."
 }

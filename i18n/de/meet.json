@@ -1220,7 +1220,7 @@
   "meet.botNotesAsk": "Bot · fragt, ob er mitschreiben darf",
   "meet.setGroupBots": "KI-Assistenten",
   "meet.setHideBots": "Bots ausblenden",
-  "meet.setHideBotsHelp": "Nur auf diesem Gerät: Kacheln von KI-Assistenten werden ausgeblendet und die Stimmen, die dieses Gerät einzeln von ihnen bekommt, stummgeschaltet. Eine Stimme, die schon in den Ton der Menge gemischt ist, ist weiter zu hören.",
+  "meet.setHideBotsHelp": "Nur für Sie: Kacheln von KI-Assistenten werden ausgeblendet und die Stimmen, die dieses Gerät einzeln von ihnen bekommt, stummgeschaltet. Eine Stimme, die schon in den Ton der Menge gemischt ist, ist weiter zu hören.",
   "meet.admAiNotes": "KI-Notizen",
   "meet.admAiNotesSub": "Dürfen KI-Assistenten in diesem Meeting mitschreiben?",
   "meet.admAiNotesHelp": "Ehrliche Assistenten halten sich daran. Ein Assistent, der mitschreibt, ist auf seiner Kachel markiert.",
@@ -1314,5 +1314,8 @@
   "meet.tvStopFail": "Listung konnte nicht beendet werden. Versuchen Sie es erneut.",
   "meet.tvStopped": "Nicht mehr auf gifos.tv gelistet.",
   "meet.tvListedBtn": "Gelistet: Listung beenden",
-  "meet.tvPublishBtn": "Auf GifOS.tv veröffentlichen"
+  "meet.tvPublishBtn": "Auf GifOS.tv veröffentlichen",
+  "meet.setScopeYou": "Folgt Ihnen",
+  "meet.setScopeDevice": "Nur dieses Gerät",
+  "meet.setScopeNote": "Folgt Ihnen: in Meine Identität gespeichert, gleich auf jedem Gerät, das sie hat. Nur dieses Gerät: bleibt auf diesem Telefon oder Computer."
 }
