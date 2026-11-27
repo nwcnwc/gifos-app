@@ -256,7 +256,7 @@
   const MANILA = [227, 197, 122];
   // …and the Providers rack keeps electric violet: it isn't storage, it's the
   // socket board the OS plugs abilities into (docs/providers.md).
-  const FOLDER_ACCENTS = { 'Stolen Apps': [255, 200, 80], Providers: [123, 92, 255], Purchases: [255, 196, 57] };
+  const FOLDER_ACCENTS = { 'Stolen Apps': [255, 200, 80], Providers: [123, 92, 255], Purchases: [255, 196, 57], Identity: [64, 196, 170] };
   function accentFor(name) {
     return FOLDER_ACCENTS[name] || MANILA;
   }
@@ -732,6 +732,56 @@
   window.addEventListener('storage', (e) => { if (e.key === PAY_PENDING && e.newValue) drainPendingReceipts(); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) drainPendingReceipts(); });
 
+  // ---- Identity: "My identity" is a GIF (js/gifos-identity.js) ----------------
+  // The identity's own code keeps the file current in the store; the Home
+  // Screen is the only placer: an Identity folder beside Purchases, the GIF in
+  // it. Both are put back if they are missing or in the Trash: a person's
+  // private rooms must be hard to lose by accident.
+  const IDENTITY_FOLDER = 'sys_identity', IDENTITY_ITEM = 'sys_identity_me';
+  const isIdentityFile = (f) => !!f && f.kind === 'gif' && f.appId === 'gifos-identity';
+  const isIdentityItem = (it) => !!it && (it.id === IDENTITY_FOLDER || it.id === IDENTITY_ITEM);
+  let placingIdentity = false;
+  async function ensureIdentity() {
+    const ID = GifOS.identity;
+    if (!ID || placingIdentity) return;
+    placingIdentity = true;
+    try {
+      if (!(await ID.sync().catch(() => false))) return;
+      let file = null; try { file = await store.getFile(ID.FILE_ID); } catch (e) {}
+      if (!file) return;
+      let changed = false;
+      let f = items.find((i) => i.id === IDENTITY_FOLDER);
+      if (!f) {
+        // Beside Providers (the next column): the left column is full on a new Home Screen, and under it is off a small one.
+        const near = items.find((i) => i.id === 'sys_providers');
+        const at = near ? { x: near.x + GRID.pitch, y: near.y } : { x: GRID.origin + GRID.pitch, y: GRID.origin };
+        f = { id: IDENTITY_FOLDER, kind: 'folder', name: 'Identity', parent: null, x: at.x, y: at.y, iconSize: 64 };
+        await saveItem(f, { at });
+        await load();
+        f = items.find((i) => i.id === IDENTITY_FOLDER) || f;
+        changed = true;
+      } else if (f.parent === TRASH_ID) {
+        await saveItem(f, { into: null }); await load(); f = items.find((i) => i.id === IDENTITY_FOLDER) || f; changed = true;
+      }
+      if (!f.fileId) {
+        try {
+          const fileId = store.uid('file');
+          const bytes = await makeFolderGif('Identity', FOLDER_ACCENTS.Identity, 'folder');
+          await store.putFile({ id: fileId, name: 'Identity.gif', bytes, kind: 'gif', isApp: false, mime: 'image/gif' });
+          f.fileId = fileId;
+          await saveItem(f);                         // same cell — only the art
+          await load(); changed = true;
+        } catch (e) { /* falls back to the folder glyph */ }
+      }
+      const it = items.find((i) => i.id === IDENTITY_ITEM);
+      if (!it) { await saveItem({ id: IDENTITY_ITEM, kind: 'file', fileId: ID.FILE_ID, name: 'My identity', iconSize: 64 }, { into: IDENTITY_FOLDER }); changed = true; }
+      else if (it.parent === TRASH_ID) { await saveItem(it, { into: IDENTITY_FOLDER }); changed = true; }
+      if (changed) { await load(); render(); }
+    } finally { placingIdentity = false; }
+  }
+  window.addEventListener('storage', (e) => { if (e.key === 'gifos_identity' && e.newValue) ensureIdentity(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) ensureIdentity(); });
+
   // A system folder's art is BAKED into a GIF when the folder is first created,
   // and it is only ever given art `if (!it.fileId)`. That is right for a user's
   // own folders and wrong for ours: when OUR drawing improves, every computer
@@ -1203,6 +1253,7 @@
       // an app GIF must open without an await first, or iOS blocks the tab.
       it._isApp = !!(files[i] && files[i].isApp && files[i].kind === 'gif');
       it._receipt = isReceiptFile(files[i]);
+      it._identity = isIdentityFile(files[i]);
       // A BUILT-IN system app (Meeting, Broadcast, App Store) is a launcher for
       // a first-party page: openItem opens that page itself, so the tab never
       // has to find the GIF in storage first (a first visit on an iPhone hit
@@ -1577,11 +1628,9 @@
       const archive = await gif.decode(bytes);
       const m = archive ? gif.readManifest(archive) : null;
       if (m && m.system) { showModal(dt('desktop.lock.cantTitle'), dt('desktop.lock.builtIn')); return; }
-      const cap = await GifOS.lock.canPasskeyLock();
-      if (!cap.ok && !GifOS.lock._prfOverride) { showModal(dt('desktop.lock.cantTitle'), escapeHtml(cap.reason)); return; }
-      const act = await GifOS.lock.showSheet('lock', name);
-      if (act !== 'ok') return;
-      const created = await GifOS.lock.createLock(name, it.fileId);
+      // Passkey where one gives PRF, else (or by choice) a passphrase.
+      const created = await GifOS.lock.chooseAndCreate(name, it.fileId);
+      if (!created) return;
       await GifOS.lock.wrapAtRest(it.fileId, created.key);
       it.passkey = created.meta;
       await saveItem(it, { keepCell: true });
@@ -1594,9 +1643,10 @@
     if (!GifOS.lock || !it.passkey) return;
     const name = (it.name || 'App').replace(/\.gif$/i, '');
     try {
-      const act = await GifOS.lock.showSheet('remove', name);
+      const act = await GifOS.lock.showSheet('remove', name, GifOS.lock.lockKind(it.passkey));
       if (act !== 'ok') return;
-      const key = await GifOS.lock.assertLock(it.passkey);
+      const key = await GifOS.lock.keyFor(it.passkey, name);
+      if (!key) return;
       await GifOS.lock.unwrapAtRest(it.fileId, key);
       GifOS.lock.session.del(it.fileId);
       delete it.passkey;
@@ -1995,6 +2045,7 @@
     // after any await, which is why double-tap and "Open" did nothing on iPhone.
     // (render() stashed it._isApp so we don't need to read the file first here.)
     if (it._sysPage) { root.open(it._sysPage, '_blank'); return; }
+    if (it._identity && GifOS.identityUI) { GifOS.identityUI.manage(); return; }   // My identity: its own sheet, nothing to run
     if (it._receipt) { root.open('receipt.html#id=' + encodeURIComponent(it.fileId) + nsParam('&db='), '_blank'); return; }
     if (it._isApp) {
       root.open('run.html#id=' + encodeURIComponent(it.fileId) + nsParam('&db='), '_blank');
@@ -2060,6 +2111,15 @@
       const isGif = f.type.includes('gif') || /\.gif$/i.test(f.name);
       const archive = isGif ? await gif.decode(buf) : null;
       const m = archive ? (gif.readManifest(archive) || {}) : {};
+
+      // An identity GIF is opened (its passphrase or passkey) and merged into
+      // this device's identity; the one in the Identity folder is then current.
+      if (archive && m.type === 'identity' && GifOS.identityUI) {
+        try { await GifOS.identityUI.openFile(buf); } catch (err) { showModal('My identity', escapeHtml(err.message || String(err))); }
+        await ensureIdentity();
+        i++;
+        continue;
+      }
 
       // A folder bundle GIF unpacks into a live folder with all its children.
       if (archive && m.type === 'folder' && archive.files['folder.json']) {
@@ -2277,6 +2337,7 @@
   // Downloading a FOLDER packs a self-contained bundle: the folder's own GIF
   // with every child inside it (apps carrying their live state), recursively.
   async function downloadItem(it) {
+    if ((it.id === IDENTITY_ITEM || it._identity) && GifOS.identityUI) { await GifOS.identityUI.save(); return; }   // the sealed file; the first time it asks how it should open
     if (it.kind === 'folder') {
       // Ask once when anything inside carries saved data; the answer covers every child.
       let clean = false;
@@ -2292,11 +2353,12 @@
     const locked = !!(it.passkey && GifOS.lock);
     if (locked) {
       const name = (it.name || 'App').replace(/\.gif$/i, '');
-      const act = await GifOS.lock.showSheet('export', name);
+      const act = await GifOS.lock.showSheet('export', name, GifOS.lock.lockKind(it.passkey));
       if (act === 'cancel') return;
       if (act === 'ok') {
         try {
-          const key = await GifOS.lock.assertLock(it.passkey);
+          const key = await GifOS.lock.keyFor(it.passkey, name);
+          if (!key) return;
           const ex = await exportBytes(it.fileId, { locked: true, key });
           if (ex) triggerDownload(ex.bytes, it.name || ex.file.name || 'download', ex.file.mime);
         } catch (e) {
@@ -2416,6 +2478,7 @@
   }
   async function moveToTrash(it) {
     if (it.id === TRASH_ID) return;
+    if (isIdentityItem(it)) { showModal('My identity stays here', 'Your identity file holds your personal room and your private rooms. It cannot go to the Trash.'); return; }
     await saveItem(it, { into: TRASH_ID });
     await load(); render();
   }
@@ -5299,7 +5362,7 @@
   // ---------- boot ----------
   requestPersistence();
   paintPinHead();
-  desktopWords.then(() => load()).then(seedIfEmpty).then(reseedDefaultsIfNeeded).then(ensureSystemItems).then(drainPendingReceipts).then(destackForThisScreen).then(render).then(() => { scheduleStoreDefaults(); }).then(noteRetiredBuild).then(notePinEnded).then(handleRunParam).then(handlePlaceParam).then(handleFolderParam).then(handleEdgeLink).then(() => checkForUpdate()).then(reclaimOrphanAssets).then(backfillOrnaments);
+  desktopWords.then(() => load()).then(seedIfEmpty).then(reseedDefaultsIfNeeded).then(ensureSystemItems).then(drainPendingReceipts).then(ensureIdentity).then(destackForThisScreen).then(render).then(() => { scheduleStoreDefaults(); }).then(noteRetiredBuild).then(notePinEnded).then(handleRunParam).then(handlePlaceParam).then(handleFolderParam).then(handleEdgeLink).then(() => checkForUpdate()).then(reclaimOrphanAssets).then(backfillOrnaments);
 
   GifOS.desktop = { render, load, backfillOrnaments, get stats() { return renderStats; },
     // The lazy seed, awaitable: the promise the boot armed (resolves once it has run), and what it decided.

@@ -688,7 +688,13 @@
       })(),
       // A My Room card the link carried (js/meet-myroom.js): read once and kept out of params, so no address this page
       // writes, no Invite link and no reload carries it on.
-      MR_LINK_CARD = (() => { const c = params.get('card') || ''; params.delete('card'); return c.length <= 2048 ? c : ''; })(),
+      // My identity's copy word rides beside it (js/gifos-identity.js): read once the same way, and handed to that
+      // file through this tab's session storage.
+      MR_LINK_CARD = (() => {
+        const w = params.get('copy') || ''; params.delete('copy');
+        if (w && w.length <= 32) { try { sessionStorage.setItem('gifos_id_copy', w); } catch (e) {} }
+        const c = params.get('card') || ''; params.delete('card'); return c.length <= 2048 ? c : '';
+      })(),
       EMBED = (() => {
         let on = false;
         try { on = /^\/(versions\/\d+(\.\d+){2,3}\/)?embed(\.html)?$/.test(location.pathname); } catch (e) { on = false; }

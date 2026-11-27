@@ -124,6 +124,10 @@
     HOT_VOID_MS: 12000,   // ms
     ICE_BATCH_MS: 50,   // ms
     ICE_FINISH_MS: 12000,   // ms
+    IDENTITY_CODE_MS: 300000,   // ms
+    IDENTITY_LOOK_MS: 250,   // ms
+    IDENTITY_NUDGE_LATER_MS: 86400000,   // ms
+    IDENTITY_SCAN_MS: 5000,   // ms
     IDLE_MS: 180000,   // ms
     ID_WAIT_MS: 10000,   // ms
     KEY_FLIP_MS: 150,   // ms
