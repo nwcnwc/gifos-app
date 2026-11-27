@@ -1883,7 +1883,7 @@
           // SWITCHING THE WAITING ROOM ON ADMITS EVERYONE WHO IS IN. The hold is for people who come after it: a seat of
           // this moment gets the host's Admit with the order itself, so a guest who reloads later is still a page a host
           // let in (its door, its seat key: docs/meet-security.md §SEAT), never a seat nobody can admit.
-          if (holdDoor) {
+          if (holdDoor && !(DEBUG_ON && window.__holdAdmitNone)) {   /* DEBUG=on only: the switch admits nobody (a test builds the seat the switch missed: seated a moment ago, in no host's view yet) */
             let ids = []; try { const s = meshSeat(); if (s && s.occ) ids = Array.from(s.occ.values()); } catch (e) {}
             for (const v of ids) {
               const id = typeof v === 'string' ? v : ''; if (!id || id === myId || waitDeclined.has(id) || pwShut(id)) continue;
@@ -11315,6 +11315,7 @@
     function seatGive(p, dc) {
       if (!p || !p.id || !dc || p.dc !== dc || dc.readyState !== 'open' || dc.__authBy !== p.id) return false;
       if (!seatCur || !seatIn(p, dc)) return false;
+      if (DEBUG_ON && window.__seatNoGive) return false;   /* DEBUG=on only: this page hands its key to nobody for now (a test builds the seat a waiting room's switch missed) */
       const sk = { k: 'sk', keys: seatOrder().slice(0, 4).map(([, k]) => (k.w ? { h: k.hex, t: k.t, w: k.w } : { h: k.hex, t: k.t })) };
       if (standbyHolds(p, sk) || bridgeHolds(p, sk)) return false;
       if (dc.__skGiven !== seatMark()) { dc.__skGiven = seatMark(); seatStats.given++; dcSend(p, sk); dc.__skProofFor = ''; }   // and my proof follows the key it can now be read with
@@ -11322,7 +11323,15 @@
       return true;
     }
     function seatAskedBy(p, dc) {
-      if (!seatGiveOk(p, dc)) { seatStats.refused++; return; }
+      if (!seatGiveOk(p, dc)) {
+        seatStats.refused++;
+        // A SEAT THE WAITING ROOM MISSED IS SHOWN TO THE HOST. A page that sat down as a host switched the waiting room
+        // on is in no host's view at that moment: it gets no Admit, so nobody hands it the room's key, it mints one of
+        // its own, cannot read the host's table, and its own door holds nobody. The host it asks for the key puts it on
+        // the waiting list, and the host's Admit hands it the room's key like anyone's.
+        try { if (p && p.id && dc && p.dc === dc && dc.__authBy === p.id && seatCur && amAdmin && hasAdminRoom() && meshCoord() && !pwShut(p.id) && meetWait.blocks(p.id) && !(myRoomPart && myRoomPart.quiet(p.id))) meetWait.note(p.id, rosterNames[p.id] || p.name || 'Someone waiting'); } catch (e) {}
+        return;
+      }
       dc.__skGiven = '';
       seatGive(p, dc);
     }
