@@ -229,7 +229,7 @@
     var fs = document.createElement('fieldset'); fs.className = 'clearnopw-cats'; fs.style.cssText = 'border:0;margin:8px 0 0;padding:0';
     var lg = document.createElement('legend'); lg.textContent = say(C, 'clearRepCat', 'What are you reporting?'); lg.style.cssText = 'padding:0;margin:0 0 4px;font-weight:600';
     fs.appendChild(lg);
-    var cats = [['illegal', 'clearRepIllegal', 'Illegal'], ['offensive', 'clearRepOffensive', 'Offensive'], ['other', 'clearRepOther', 'Other']];
+    var cats = [['illegal', 'clearRepIllegal', 'Illegal'], ['sexual', 'clearRepSexual', 'Sexually explicit'], ['offensive', 'clearRepOffensive', 'Offensive'], ['other', 'clearRepOther', 'Other']];
     cats.forEach(function (c, i) {
       var l = document.createElement('label'); l.style.cssText = 'display:flex;align-items:center;gap:8px;min-height:32px;cursor:pointer';
       var r = document.createElement('input'); r.type = 'radio'; r.name = 'clearnopw-cat'; r.value = c[0]; r.checked = i === 0; r.style.cssText = 'width:auto;margin:0';
