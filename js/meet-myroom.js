@@ -554,6 +554,9 @@
         if (ended.has(ck)) { const op = ended.get(ck); if (op) sendSigned(pid, op); return; }
         rings.set(pid, { label: (rec.name || 'Someone') + ' ✓', id: '', at: host.now(), ck, priv: true });
         sendSigned(pid, 'ringing');
+        // The caller proved it is a member: this door proves itself back, so the caller takes the Doorbell handle it
+        // was just handed (a handle is taken only from a page that proved a member key here).
+        myWord(rec).then((mw) => { if (mw) host.send(pid, { op: 'key', w: mw }); }, () => {});
         emit({ type: 'ring', pid, label: (rec.name || 'Someone') + ' ✓', priv: true, room, v });
         return;
       }
