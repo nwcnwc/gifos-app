@@ -1326,6 +1326,9 @@
     }
 
     def('rbStart', rbStart);
+    // NO RECORDER: a broadcast host's page keeps a copy of its service (the core's bcKeepService asks which sources a
+    // recording would hold). This plane records nothing, so no source is ever in scope and no recording starts.
+    def('recScopeSources', () => ({ stage: [], rows: [], room: [] }));
     def('mainAudioTrack', mainAudioTrack);
     def('sentVideoTrack', sentVideoTrack);
     def('stageVideoTrack', stageVideoTrack);
@@ -1399,7 +1402,7 @@
     // The host's setInterval returns a number, so unref runs only when the timer object itself is what came back.
     const sweepT = setInterval(() => { try { M.schedReconcile(); } catch (e) {} }, GifOS.meshLaws.FHOP_SWEEP * GifOS.timings.tickMs);
     if (sweepT && typeof sweepT.unref === 'function') sweepT.unref();
-    return { folds: foldParts, video: videoPort, names: ['rbStart', 'mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties', 'bindClaim', 'unbindClaim', 'adoptClaim', 'picRead', 'rowEdge', 'keyUp', 'producerKey', 'kfEv', 'attachTrack', 'detachTrack', 'parkSender', 'kickJob', 'noteReship', 'dropContainer', 'orphaned', 'attachFailed', 'containerFor', 'jobPinned', 'swapTrack', 'dutyMuteTick', 'schedClaim', 'schedReconcile', 'stgLost', 'mySelfStream', 'jobVideoAt', 'stgCarry', 'repaintRedun', 'swapPicNote', 'stgFoNote', 'rowMixHold', 'rowMixHeadArrives', 'x2Target', 'partStream', 'slotDark', 'carriedHot', 'hopMs', 'packFor', 'blockOf', 'faceLive', 'blockPicture', 'blockLive', 'overlayTiny', 'rowMixOpen', 'mixReady', 'rowMixViaPeek', 'mosHeld', 'downStreams'] };
+    return { folds: foldParts, video: videoPort, names: ['rbStart', 'recScopeSources', 'mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties', 'bindClaim', 'unbindClaim', 'adoptClaim', 'picRead', 'rowEdge', 'keyUp', 'producerKey', 'kfEv', 'attachTrack', 'detachTrack', 'parkSender', 'kickJob', 'noteReship', 'dropContainer', 'orphaned', 'attachFailed', 'containerFor', 'jobPinned', 'swapTrack', 'dutyMuteTick', 'schedClaim', 'schedReconcile', 'stgLost', 'mySelfStream', 'jobVideoAt', 'stgCarry', 'repaintRedun', 'swapPicNote', 'stgFoNote', 'rowMixHold', 'rowMixHeadArrives', 'x2Target', 'partStream', 'slotDark', 'carriedHot', 'hopMs', 'packFor', 'blockOf', 'faceLive', 'blockPicture', 'blockLive', 'overlayTiny', 'rowMixOpen', 'mixReady', 'rowMixViaPeek', 'mosHeld', 'downStreams'] };
   }
 
   GifOS.planeNode = { install };
