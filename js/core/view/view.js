@@ -3299,12 +3299,12 @@
         // a short desktop window under 900px wide is treated like one too.
         const shortLand = vhNow < 500 && vwNow > vhNow && (vwNow < 900 || !document.body.classList.contains('desk-ptr'));
         const phone = vwNow < 600 || shortLand;
-        // A short upright phone (an iPhone SE: 549px of Safari) with an app in front: the app takes the top row's
+        // A short phone (an iPhone SE: 549px of Safari; any phone on its side) with an app in front: the app takes the top row's
         // place too, and the app's own bar carries the view button. A broadcast keeps the row.
         let shortApp = false;
         try {
           const CT = __C.CT, sel = CT && CT.st && !CT.st.all ? CT.items.find((i) => i.key === CT.st.sel) : null;
-          shortApp = phone && !shortLand && vhNow < GifOS.meetContent.SHORT_PHONE_H && vhNow > vwNow && appOn && !!sel && sel.kind === 'app' &&
+          shortApp = phone && vhNow < GifOS.meetContent.SHORT_PHONE_H && appOn && !!sel && sel.kind === 'app' &&
             !CT.present && !(svOn() && svSt().sel === GifOS.meetViewMode.stage.FACES) && !document.body.classList.contains('broadcast');
         } catch (e) {}
         if (document.body.classList.contains('short-app') !== shortApp) document.body.classList.toggle('short-app', shortApp);

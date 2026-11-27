@@ -3976,7 +3976,7 @@ body.sv-live #appbar #appview { display: none !important; }
 /* The meeting's own view button is on screen beside the app: the app bar does not repeat it. */
 body.comfy.sv-avail.has-app:not(.app-full):not(.solo-app):not(.app-room):not(.short-app) #appbar #appview { display: none !important; }
 /* ---- A short phone (2026-11-26) ----
-   An upright phone under 640px tall (an iPhone SE in Safari) with an app in front: the app takes the top row's place
+   A phone under 640px tall (an iPhone SE in Safari, any phone on its side) with an app in front: the app takes the top row's place
    too (the meeting's name and view button), and the app's own one-row bar carries the view button, so the app has
    the screen down to the face strip. */
 body.short-app #tophead { display: none !important; }
