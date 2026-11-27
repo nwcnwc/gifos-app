@@ -1,6 +1,7 @@
 {
  "desktop.sys.camMic": "In GifOS integriert — darf Ihre Kamera und Ihr Mikrofon nutzen. Von Ihnen installierte Apps nicht.",
  "desktop.sys.appstore": "In GifOS integriert — darf neue Apps auf Ihren Home-Bildschirm legen. Von Ihnen installierte Apps nicht.",
+ "desktop.sys.rooms": "In GifOS integriert — verwahrt die Schlüssel Ihrer Räume und Ihre Kontakte, die auf diesem Gerät bleiben. Von Ihnen installierte Apps können sie nicht lesen.",
  "desktop.hint.trashEmpty": "Der Papierkorb ist leer.",
  "desktop.hint.emptyFolder": "Leerer Ordner — legen Sie Dateien hier ab oder verwenden Sie ＋ Hinzufügen.",
  "desktop.hint.emptyHome": "Legen Sie eine Datei hier ab oder verwenden Sie ＋ Hinzufügen. Doppelklicken Sie auf ein App-GIF, um es zu starten.",

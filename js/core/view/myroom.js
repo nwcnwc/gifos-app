@@ -3,7 +3,7 @@
  *
  * Paints what the My Room part (js/meet-myroom.js, GifOS.meetMyRoom.live, built by the core per meeting) says, and turns
  * a person's taps into its intents. It decides no rule: who may ring, what rings and when a ring is missed are the
- * part's. The lobby section (My Room, missed calls, Contacts) reads the device's own lists (GifOS.meetMyRoom).
+ * part's. The lobby shows one link to the Rooms app (rooms.html: My personal room, our private rooms, Contacts).
  *
  *   owner   a ring sheet with a ringtone (Answer: mic on, camera off; Decline), the standby line, missed calls, and
  *           "Give a card" for the people in the meeting
@@ -30,7 +30,6 @@
   // The lobby and the meeting are one page: a new fragment alone loads nothing, so going to a room reloads (as the
   // lobby's own Create does).
   const openRoom = (room, v, replace) => { const u = roomUrl(room, v); if (replace) root.location.replace(u); else root.location.assign(u); root.location.reload(); };
-  const DEL_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M9 3h6l1 2h4v2H4V5h4l1-2zm-3 6h12l-1 12H7L6 9z"/></svg>';
 
   // ---- the ringtone: two tones in the phone cadence, quiet, until stopped -------------------------------------------
   let ringAc = null, ringTimer = 0;
@@ -73,10 +72,10 @@
   // "Private room with <person>" (a tile's menu, People): needs My Room on both sides (the room key is who you are).
   async function privateWith(pid, name) {
     if (!part) return;
-    if (!MR().mine()) { toast('Make My Room in the lobby first: your private rooms are tied to it.'); return; }
+    if (!MR().mine()) { toast('Make your personal room in Rooms first: your private rooms are tied to it.'); return; }
     barShut = false; bar('Opening a private room with ' + (name || 'them') + '…', null, '', true);
     const r = await part.privateWith(pid, name).catch(() => ({ err: 'x' }));
-    if (r && r.err === 'noroom') toast((name || 'They') + ' needs a My Room first (in the lobby).');
+    if (r && r.err === 'noroom') toast((name || 'They') + ' needs a personal room first (in Rooms).');
     else if (r && r.err) toast('Could not open a private room.');
   }
   function stampPrivate() {
@@ -181,7 +180,7 @@
     };
     $('mr-pick-priv').onclick = async () => {
       const list = chosen(); if (!list.length) return;
-      if (!MR().mine()) { toast('Make My Room in the lobby first: your private rooms are tied to it.'); return; }
+      if (!MR().mine()) { toast('Make your personal room in Rooms first: your private rooms are tied to it.'); return; }
       const pubs = list.map((c) => MR().contactPub(c)).filter(Boolean);
       // One person: your pair room with them (made at your card swap), the same room every time. Otherwise a new one.
       let rec = pubs.length === 1 ? MR().pairWith(pubs[0]) : null, fresh = false;
@@ -273,56 +272,17 @@
     const s = doc.createElement('script'); s.src = 'js/vendor/qrcode.js'; s.onload = draw; doc.head.appendChild(s);
   }
 
-  // ---- the lobby: My Room, missed calls, Contacts ------------------------------------------------------------------
+  // ---- the lobby: one small link to the Rooms app (rooms.html), where My personal room, our private rooms and the
+  // hosted rooms are kept (Nathan 11-26: Make my room was oddly placed here). Missed calls show as a count on it.
+  const roomsUrl = () => root.location.pathname.replace(/[^\/]*$/, '') + 'rooms' + (/\.html$/.test(root.location.pathname) ? '.html' : '');
   function paintLobby() {
     const box = $('lob-myroom'); if (!box || !MR()) return;
-    const M = MR(), mine = M.mine(), missed = M.missed(), list = M.contacts();
+    const missed = MR().missed().length;
     let h = '';
     let note = ''; try { note = root.sessionStorage.getItem('gifos_mr_notice') || ''; root.sessionStorage.removeItem('gifos_mr_notice'); } catch (e) {}
     if (note) h += '<div class="mr-missed" id="mr-notice">' + esc(note) + '</div>';
-    if (missed.length) {
-      h += '<div class="mr-missed"><b>Missed calls</b>' + missed.slice(0, 5).map((x) => '<div>' + esc(x.label) + ' · ' + esc(timeOf(x.at)) + '</div>').join('') + '<button type="button" id="mr-missed-x" class="lob-text">Clear</button></div>';
-    }
-    h += '<div class="lob-hist-h">My Room</div>';
-    if (mine) {
-      h += '<div class="mr-mine"><span class="li-name">' + esc(mine.room) + '</span>' +
-        '<button type="button" id="mr-open" class="lob-ghost">Open my room</button>' +
-        '<button type="button" id="mr-make-card" class="lob-ghost">Give a card</button></div>';
-      if (!mobile()) h += '<label class="mr-stay"><input type="checkbox" id="mr-stay"' + (M.stayOn() ? ' checked' : '') + '> Stay in my room on this computer, so calls ring here</label>';
-    } else {
-      const own = M.hosted();
-      h += '<p class="lob-quiet">Your room is your address: people you give a card to can call you there.</p>' +
-        '<div class="mr-mine"><input id="mr-name" maxlength="40" placeholder="Name your room" autocomplete="off"><button type="button" id="mr-create" class="lob-ghost">Make My Room</button></div>';
-      if (own.length) h += '<div class="mr-adopt">Or use one of your hosted rooms: ' + own.slice(0, 6).map((o) => '<button type="button" class="lob-text" data-adopt="' + esc(o.room + '.' + o.v) + '">' + esc(o.room) + '</button>').join(' ') + '</div>';
-    }
-    h += '<div class="lob-hist-h">Contacts</div>';
-    if (!list.length) h += '<p class="lob-quiet">No contacts yet. When someone gives you a card, it is kept here.</p>';
-    for (const c of list) {
-      h += '<div class="lob-item mr-contact" data-room="' + esc(c.room) + '" data-v="' + esc(c.v) + '"><div class="li-main"><span class="li-name">' + esc(c.name) + '</span></div>' +
-        '<button type="button" class="lob-ghost" data-call="1">Call</button>' +
-        '<button type="button" class="row-del" data-forget="1" title="Remove" aria-label="Remove">' + DEL_ICON + '</button></div>';
-    }
+    h += '<a class="lob-text mr-rooms-link" id="mr-rooms" href="' + esc(roomsUrl()) + '">Rooms' + (missed ? ' · ' + missed + ' missed' : '') + '</a>';
     box.innerHTML = h; box.hidden = false;
-    const on = (id, f) => { const el = $(id); if (el) el.onclick = f; };
-    on('mr-missed-x', () => { M.clearMissed(); paintLobby(); });
-    on('mr-open', () => { openRoom(mine.room, mine.v); });
-    on('mr-make-card', () => openMake(false));
-    on('mr-create', async () => {
-      const n = ($('mr-name').value || ($('lob-name-in') || {}).value || '').trim();
-      try { await M.create(n); paintLobby(); } catch (e) { $('mr-name').placeholder = e.message; $('mr-name').value = ''; }
-    });
-    const stay = $('mr-stay'); if (stay) stay.onchange = () => M.setStay(stay.checked);
-    box.querySelectorAll('[data-adopt]').forEach((b) => { b.onclick = () => { const [r, v] = b.getAttribute('data-adopt').split('.'); M.adopt(r, v); paintLobby(); }; });
-    box.querySelectorAll('.mr-contact').forEach((row) => {
-      const r = row.getAttribute('data-room'), v = row.getAttribute('data-v');
-      row.querySelector('[data-call]').onclick = () => {
-        // A call to someone I share a pair room with rings their My Room naming that room; Answer takes both there.
-        const c = M.contactFor(r, v), pr = c && M.pairWith(M.contactPub(c));
-        if (pr) { try { root.localStorage.setItem('gifos_mr_invite.' + M.roomKey(r, v), JSON.stringify({ to: pr.room + '.' + pr.v, go: 1, pv: 1, at: Date.now() })); } catch (e) {} }
-        openRoom(r, v);
-      };
-      row.querySelector('[data-forget]').onclick = () => { M.forget(r, v); paintLobby(); };
-    });
   }
 
   function wire() {

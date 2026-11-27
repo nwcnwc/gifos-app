@@ -1,6 +1,7 @@
 {
  "desktop.sys.camMic": "Built into GifOS — it may use your camera and microphone. Apps you install cannot.",
  "desktop.sys.appstore": "Built into GifOS — it may put new apps on your Home Screen. Apps you install cannot.",
+ "desktop.sys.rooms": "Built into GifOS — it holds your rooms' keys and your contacts, which stay on this device. Apps you install cannot read them.",
  "desktop.hint.trashEmpty": "Trash is empty.",
  "desktop.hint.emptyFolder": "Empty folder — drop files here or use ＋ Add.",
  "desktop.hint.emptyHome": "Drop any file here, or use ＋ Add. Double-click an app GIF to run it.",

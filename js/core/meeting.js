@@ -23014,7 +23014,7 @@
       if (!canIRunApp()) return agentFail('This meeting does not let you run apps.');
       id = String(id || '').trim();
       if (!id) return agentFail('Say which app.');
-      const SYSTEM_APPS = { meet: 1, video: 1, broadcast: 1, appstore: 1 };
+      const SYSTEM_APPS = { meet: 1, video: 1, broadcast: 1, appstore: 1, rooms: 1 };
       let files = [];
       try { files = await GifOS.store.allFileMeta(); } catch (e) {}
       const f = (files || []).find((x) => x.isApp && !SYSTEM_APPS[x.appId] && (x.id === id || x.appId === id));
@@ -23078,7 +23078,7 @@
         const apps = async () => {
           let files = [];
           try { files = (await GifOS.store.allFileMeta()) || []; } catch (e) { files = []; }
-          const system = { meet: 1, video: 1, broadcast: 1, appstore: 1 };
+          const system = { meet: 1, video: 1, broadcast: 1, appstore: 1, rooms: 1 };
           return files.filter((x) => x && x.isApp && !system[x.appId]).map((x) => ({ app_id: x.appId || '', name: String(x.name || x.appId || 'App').replace(/\.gif$/i, ''), file_id: x.id }));
         };
         const agendaNow = () => { const g = CT && CT.ag; return g ? { n: g.items.length, items: g.items.map((it) => ({ title: String(it.t || it.text || ''), minutes: +(it.min || 0) || 0 })), cur: g.cur == null ? null : g.cur } : null; };

@@ -274,6 +274,34 @@
   function contactPub(c) { const t = c && parseToken(c.token); return (t && t.c && t.c.pub) || ''; }
   const membersOf = (rec, mine) => [mine].concat(rec.pubs);
 
+  // ---- taking things off this device (the Rooms app) ---------------------------------------------------------------
+  // A private room is gone from a device when its record and its K are: nothing of mine can verify or listen there again.
+  function dropPrivate(room, v) {
+    const k = roomKey(room, v);
+    writeJson(KEY.priv, privates().filter((x) => roomKey(x.room, x.v) !== k));
+    try { const s = store(); for (const p of ['gifos_vadm_', 'gifos_vpw_', 'gifos_vpwat_', 'gifos_vpwep_']) s.removeItem(p + k); } catch (e) {}
+  }
+  // cut(room, v): remove a contact. Their card goes, every card I gave bound to their key is revoked (it never rings
+  // again), and our private room (the pair room with that key) loses its record and K on this device: it is dead.
+  function cut(room, v) {
+    const c = contactFor(room, v), pub = contactPub(c);
+    if (pub) {
+      for (const x of issued()) if (x.cpub === pub) revoke(x.id);
+      for (const x of privates()) if (x.pubs.length === 1 && x.pubs[0] === pub) dropPrivate(x.room, x.v);
+    }
+    forget(room, v);
+    return !!c;
+  }
+  // dropMine(): delete My personal room from this device. Every card it gave stops working (no device holds its key to
+  // check them), and private rooms whose membership is that key (records with no key of their own, `me`) go with it.
+  function dropMine() {
+    const m = mine(); if (!m) return false;
+    for (const x of issued()) if (roomKey(x.room, x.v) === roomKey(m.room, m.v)) revoke(x.id);
+    for (const x of privates()) if (!x.me) dropPrivate(x.room, x.v);
+    try { const s = store(); s.removeItem(KEY.mine); s.removeItem(KEY.stay); for (const p of ['gifos_vadm_', 'gifos_vpw_', 'gifos_vpwat_', 'gifos_vpwep_']) s.removeItem(p + roomKey(m.room, m.v)); } catch (e) {}
+    return true;
+  }
+
   // ---- one meeting's My Room part ----------------------------------------------------------------------------------
   // host (the core): room(), v(), myId(), myName(), owner() (this page holds the room's host key), send(pid, frame),
   // hosts() (seats that proved the host key, not me), held(pid), admit(pid), hold(on) / holding(), signAdm(act, extra),
@@ -664,6 +692,7 @@
     mine, isMine, create, adopt, hosted, stayOn, setStay,
     contacts, contactFor, keep, forget, rename, issued, revoke, revoked, missed, noteMissed, clearMissed, cardLink, roomKey,
     privName, privates, privFor, pairWith, keepPrivate, mintPrivate, contactPub, issuedTo,
+    cut, dropMine, dropPrivate,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = GifOS.meetMyRoom;
 })(typeof window !== 'undefined' ? window : globalThis);
