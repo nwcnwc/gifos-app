@@ -128,7 +128,7 @@
   "settings.root.groupComputer": "Этот компьютер",
   "settings.system.title": "Система",
   "settings.system.sub": "Хранилище, обновления, подключение для приглашений",
-  "settings.you.intro": "Друзья видят это имя, когда вы играете или работаете вместе. Оно хранится на этом компьютере.",
+  "settings.you.intro": "Друзья видят это имя, когда вы играете или работаете вместе. Оно следует за вами на каждое устройство, где есть ваша личность.",
   "settings.you.name": "Имя",
   "settings.you.namePh": "Ваше имя",
   "settings.you.picture": "Картинка",
@@ -224,5 +224,7 @@
   "settings.updates.offlineBad": "Не удалось связаться с gifos.app, чтобы проверить последний выпуск, — возможно, нет интернета. Снимки ниже по-прежнему работают.",
   "settings.updates.pinNote": "Введите номер более старого выпуска точно, например {example}.",
   "settings.updates.notesNew": "Новое",
-  "settings.updates.notesFixed": "Исправлено"
+  "settings.updates.notesFixed": "Исправлено",
+  "settings.scope.you": "Следует за вами",
+  "settings.scope.device": "Только это устройство"
 }

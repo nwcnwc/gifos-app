@@ -1258,7 +1258,7 @@
   "meet.botNotesAsk": "bot · asks to take notes",
   "meet.setGroupBots": "AI assistants",
   "meet.setHideBots": "Hide bots",
-  "meet.setHideBotsHelp": "On this device only: AI assistants’ tiles are hidden and the voices this device gets from them on their own are muted. A voice already mixed into the crowd sound still plays.",
+  "meet.setHideBotsHelp": "Only for you: AI assistants’ tiles are hidden and the voices this device gets from them on their own are muted. A voice already mixed into the crowd sound still plays.",
   "meet.admAiNotes": "AI notes",
   "meet.admAiNotesSub": "May AI assistants keep notes of this meeting?",
   "meet.admAiNotesHelp": "Honest assistants obey this. An assistant taking notes is marked on its tile.",
@@ -1322,5 +1322,8 @@
   "meet.tvStopFail": "Could not stop listing. Try again.",
   "meet.tvStopped": "No longer listed on gifos.tv.",
   "meet.tvListedBtn": "Listed: stop listing",
-  "meet.tvPublishBtn": "Publish to GifOS.tv"
+  "meet.tvPublishBtn": "Publish to GifOS.tv",
+  "meet.setScopeYou": "Follows you",
+  "meet.setScopeDevice": "This device only",
+  "meet.setScopeNote": "Follows you: kept in My identity, the same on every device that holds it. This device only: stays on this phone or computer."
 }

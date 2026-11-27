@@ -32,9 +32,9 @@
         h += '<p class="lob-quiet">This browser cannot ring while GifOS is closed. On an iPhone, add GifOS to your Home Screen first.</p>';
         box.innerHTML = h; box.hidden = false; continue;
       }
-      h += '<label class="rec-opt"><input type="checkbox" role="switch" data-bell="on"' + (b.on() ? ' checked' : '') + (busy ? ' disabled' : '') + '><span><b>Ring me on this device</b><small>Calls from your contacts ring here even when GifOS is closed. The ring is end-to-end encrypted: nobody between you and the caller can read who is calling.</small></span></label>';
+      h += '<label class="rec-opt"><input type="checkbox" role="switch" data-bell="on"' + (b.on() ? ' checked' : '') + (busy ? ' disabled' : '') + '><span><b>Ring me on this device</b> <small class="set-scope" data-scope="device">This device only</small><small>Calls from your contacts ring here even when GifOS is closed. The ring is end-to-end encrypted: nobody between you and the caller can read who is calling.</small></span></label>';
       if (b.on() && info) {
-        h += '<label class="rec-opt"><input type="checkbox" role="switch" data-bell="pause"' + (info.paused ? ' checked' : '') + '><span><b>Pause rings</b><small>On all your devices. Callers are not told.</small></span></label>';
+        h += '<label class="rec-opt"><input type="checkbox" role="switch" data-bell="pause"' + (info.paused ? ' checked' : '') + '><span><b>Pause rings</b> <small class="set-scope" data-scope="you">Follows you</small><small>On all your devices. Callers are not told.</small></span></label>';
         h += '<div class="bell-devs"><b>Your devices</b>' + info.devices.map((d) => '<div class="lob-item bell-dev" data-dev="' + esc(d.d) + '"><div class="li-main"><span class="li-name">' + esc(d.name) + (d.me ? ' (this device)' : '') + '</span></div><button type="button" class="row-del" data-bell="rm" title="Remove" aria-label="Remove ' + esc(d.name) + '">' + DEL_ICON + '</button></div>').join('') + '</div>';
         h += '<button type="button" class="lob-ghost" data-bell="test">Send a test ring</button>';
       }

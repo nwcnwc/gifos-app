@@ -369,7 +369,25 @@
     }
   }
 
+  // Meet's Settings: rows the meeting paints itself (not in meet.html) get the same tag as the rest: Follows you /
+  // This device only (docs/identity.md, Settings that follow you). The tag is a copy of meet.html's own (already in the
+  // page's language). The Doorbell's row tags each of its settings inside.
+  const RUNTIME_SCOPE = { 'set-pip': 'device', 'sub-body': 'device', 'set-bell': 'mixed' };
+  function scopeRows() {
+    const m = $('set-modal'); if (!m) return;
+    for (const id of Object.keys(RUNTIME_SCOPE)) {
+      const row = $(id); if (!row || row.hasAttribute('data-scope') || !m.contains(row)) continue;
+      const sc = RUNTIME_SCOPE[id]; row.setAttribute('data-scope', sc); if (sc === 'mixed') continue;
+      const tag = m.querySelector('small[data-t="' + (sc === 'you' ? 'setScopeYou' : 'setScopeDevice') + '"]'), b = row.querySelector('b');
+      if (tag && b) b.appendChild(tag.cloneNode(true));
+    }
+  }
+  function watchScopes() {
+    const m = $('set-modal'); if (!m || typeof root.MutationObserver !== 'function') return;
+    scopeRows(); new root.MutationObserver(scopeRows).observe(m, { childList: true, subtree: true });
+  }
+
   GifOS.identityUI = { manage, save, openFile, pickFile, copyOut, getFrom, paint: paintAll };
-  const go = () => { start().catch((e) => { try { console.error('identity: ' + (e && e.stack || e)); } catch (x) {} }); };
+  const go = () => { try { watchScopes(); } catch (e) {} start().catch((e) => { try { console.error('identity: ' + (e && e.stack || e)); } catch (x) {} }); };
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', go); else go();
 })(typeof window !== 'undefined' ? window : globalThis);
