@@ -11959,8 +11959,13 @@
       let stored = '', at = 0;
       try { stored = localStorage.getItem(pwKey()) || ''; at = parseInt(localStorage.getItem(pwAtKey()), 10) || 0; } catch (e) { stored = ''; }
       if (stored && at && Date.now() - at > PW_TTL) { forgetPw('older than ' + Math.round(PW_TTL / 86400000) + ' days'); stored = ''; }
+      // A PRIVATE ROOM (js/meet-myroom.js) is locked by a password derived from its host secret, kept with its record on
+      // every member's device: its content key needs K, not only the link. It is the room's own word, never forgotten.
+      let privPw = '';
+      try { const a = JSON.parse(localStorage.getItem('gifos_private') || '[]'); const r = Array.isArray(a) && a.find((x) => x && x.room === room && String(x.v || '') === String(av || '').toLowerCase()); privPw = (r && typeof r.pw === 'string' && /^[a-f0-9]{32}$/.test(r.pw)) ? r.pw : ''; } catch (e) { privPw = ''; }
+      if (privPw) stored = privPw;
       roomPw = stored;
-      pwFromStore = !!stored; pwProbe = ''; pwHeld = '';
+      pwFromStore = !!stored && !privPw; pwProbe = ''; pwHeld = '';
       if (stored && !at) touchPw(); // age unknown → start the clock now (see PW_TTL)
       try { const st = parseInt(localStorage.getItem(pwEpochKey()), 10); pwEpoch = Math.max(pwEpoch, pwEpInt(st) ? st : 0); myStatus.pwEp = pwEpoch; } catch (e) {} // a poisoned store reads as 0 (pwEpInt)
     }
@@ -23286,7 +23291,7 @@
         isHere: (id) => rosterIds.includes(id),
         seated: () => { const s = meshSeat(); return !!(s && s.hasCoord && s.state === 3); },
         others: () => rosterIds.filter((id) => id !== myId).length,
-        held: (id) => waitQueue.has(id), admit: (id) => meetWait.admit(id), label: (id, name) => { if (waitQueue.has(id)) meetWait.note(id, name); },
+        held: (id) => waitQueue.has(id), waitIds: () => Array.from(waitQueue.keys()), reach: (id) => !!openPeer(id), chan: (id) => { const q = openPeer(id); return q ? q.dc : null; }, admit: (id) => meetWait.admit(id), label: (id, name) => { if (waitQueue.has(id)) meetWait.note(id, name); },
         hold: (on) => meetWait.hold(on), holding: () => !!holdDoor,
         signAdm: (act, extra) => admSigned(act, extra), verifyAdm: (w, act) => admVerify(w, act),
         live: () => !myStatus.muted || !myStatus.camOff,

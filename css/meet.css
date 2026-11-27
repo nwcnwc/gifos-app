@@ -3926,6 +3926,13 @@ body.mr-calling #alonecard, body.mr-on #alonecard { display: none !important; }
 #mr-make-who .mr-who { margin: 0 8px 8px 0; }
 #mr-make-out input { width: 100%; }
 .mr-qr svg { width: min(220px, 60vw); height: auto; background: var(--c-white); }
+/* Private rooms: the person's tile menu, People, and the contact picker (a pressed name is picked). */
+#mr-pick-list .mr-who { margin: 0 8px 8px 0; min-height: 44px; background: var(--c-white); color: var(--c-ink); border: 1.5px solid var(--c-gray); }
+#mr-pick-list .mr-who[aria-pressed="true"] { background: var(--c-blue); color: var(--c-white); border-color: var(--c-blue); }
+#mr-pick-list .mr-who[aria-pressed="true"]::before { content: "✓ "; }
+.mr-who-priv { margin-top: .7rem; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.mr-who-priv .who-h { flex: 1 0 100%; font-weight: 700; font-size: 16px; }
+.mr-who-priv .mr-who { min-height: 44px; }
 #lobby .lob-myroom { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 #lobby .lob-myroom[hidden] { display: none; }
 #lobby .lob-myroom .lob-hist-h { margin-top: 4px; }

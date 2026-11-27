@@ -10,6 +10,8 @@
  *   caller  the bar: "Waiting for Ada", "Ringing Ada", "Ada can't answer right now", and "Give Ada your card" once the
  *           call is answered (asked again in the leave question if not used)
  *   anyone  "Save this card?" when a card is handed over or a card link was opened
+ *   private "Private room with <person>" on each person's tile menu and in People; the ask with Join; "Private room with…"
+ *           (contacts) in the Invite menu
  */
 (function (root) {
   'use strict';
@@ -61,10 +63,50 @@
   }
 
   // ---- one meeting ----------------------------------------------------------------------------------------------------
-  let part = null, ringing = null, offer = null, barShut = false;
+  let part = null, ringing = null, offer = null, barShut = false, pask = null;
+  function openPask() {
+    if (!pask) return;
+    $('mr-pask-title').textContent = (pask.name || 'Someone') + ' asks you to your private room';
+    $('mr-pask-note').textContent = 'Just the two of you, the same room every time. Join swaps cards if you have not yet. Your mic turns on there; your camera stays off.';
+    show($('mr-pask'), true);
+  }
+  // "Private room with <person>" (a tile's menu, People): needs My Room on both sides (the room key is who you are).
+  async function privateWith(pid, name) {
+    if (!part) return;
+    if (!MR().mine()) { toast('Make My Room in the lobby first: your private rooms are tied to it.'); return; }
+    barShut = false; bar('Opening a private room with ' + (name || 'them') + '…', null, '', true);
+    const r = await part.privateWith(pid, name).catch(() => ({ err: 'x' }));
+    if (r && r.err === 'noroom') toast((name || 'They') + ' needs a My Room first (in the lobby).');
+    else if (r && r.err) toast('Could not open a private room.');
+  }
+  function stampPrivate() {
+    if (!part || !MR().mine() || part.isPrivate()) return;
+    const names = {}; for (const p of part.people()) names[p.id] = p.name || 'Guest';
+    doc.querySelectorAll('.tile[data-peer]:not(.me) .modbar').forEach((mb) => {
+      const pid = mb.parentNode.dataset.peer;
+      if (!names[pid] || mb.querySelector('.mr-priv')) return;
+      const b = doc.createElement('button'); b.type = 'button'; b.className = 'mr-priv'; b.dataset.peer = pid;
+      b.textContent = 'Private room'; b.title = 'Private room with ' + names[pid]; b.setAttribute('aria-label', 'Private room with ' + names[pid]);
+      b.addEventListener('click', (e) => { e.stopPropagation(); privateWith(pid, names[pid]); });
+      mb.appendChild(b);
+    });
+  }
+  function stampPeoplePrivate() {
+    const list = $('who-list'); if (!list || !part || !MR().mine() || part.isPrivate() || $('mr-who-priv')) return;
+    const ppl = part.people(); if (!ppl.length) return;
+    const box = doc.createElement('div'); box.id = 'mr-who-priv'; box.className = 'mr-who-priv';
+    const h = doc.createElement('div'); h.className = 'who-h'; h.textContent = 'Private room with…'; box.appendChild(h);
+    for (const p of ppl) {
+      const b = doc.createElement('button'); b.type = 'button'; b.className = 'mr-who'; b.dataset.peer = p.id; b.textContent = p.name || 'Guest';
+      b.onclick = () => { $('who-modal').style.display = 'none'; privateWith(p.id, p.name); };
+      box.appendChild(b);
+    }
+    list.insertBefore(box, list.firstChild);   // first: above the address lists
+  }
   function callWords(c) {
     const n = c.label || 'them';
     if (c.invite && c.state === 'accepted') return n + ' is coming to your meeting.';
+    if (c.invite && /^p-/.test(c.invite) && (c.state === 'waiting' || c.state === 'ringing')) return (c.state === 'ringing' ? 'Ringing ' : 'Calling ') + n + '…';
     if (c.invite && (c.state === 'waiting' || c.state === 'ringing')) return 'Inviting ' + n + ' to ' + c.invite.split('.')[0] + '…';
     if (c.state === 'waiting') return 'Waiting for ' + n + '. ' + n + '’s devices ring when one of them has this room open.';
     if (c.state === 'ringing') return 'Ringing ' + n + '…';
@@ -74,6 +116,7 @@
   }
   function paint() {
     if (!part) return;
+    try { stampPrivate(); } catch (e) {}
     const st = part.state();
     doc.body.classList.toggle('mr-calling', !!(st.call && st.call.state !== 'answered'));   // the "only one here" card stays away while I call
     if (st.owner) {
@@ -81,9 +124,10 @@
         const r = st.rings[0];
         if (!ringing || ringing.pid !== r.pid) {
           ringing = r;
-          const where = r.to ? r.to.split('.')[0] : '';
+          const where = r.to && !r.pair ? (/^p-/.test(r.to) ? 'a private room' : r.to.split('.')[0]) : '';
           $('mr-ring-title').textContent = where ? r.label + ' invites you to ' + where : r.label + ' is calling';
-          $('mr-ring-note').textContent = where ? 'Join takes you to their meeting with your mic on; your camera stays off.' : 'They have a card to your room. Answering turns your mic on; your camera stays off.';
+          $('mr-ring-note').textContent = r.pair ? 'Answer takes you both to your private room. Your mic turns on there; your camera stays off.'
+            : where ? 'Join takes you there with your mic on; your camera stays off.' : 'They have a card to your room. Answering turns your mic on; your camera stays off.';
           $('mr-answer').textContent = where ? 'Join' : 'Answer';
           show($('mr-ring'), true);
           ringStart();
@@ -111,21 +155,53 @@
     } else if (c && !barShut) bar(callWords(c), null, '', c.state === 'declined' || c.state === 'noanswer');
     else bar('');
   }
+  // "Private room with…" (the Invite menu): pick contacts, then either a private room with them (one contact: your pair
+  // room; more: a new private room) or this meeting. Each ring rides one window of its own, one contact after another
+  // (gifos_mr_queue); this meeting stays as it is. A password never travels: the room's own door decides.
+  const QK = 'gifos_mr_queue';
+  function ringNext() {
+    let q = []; try { q = JSON.parse(root.localStorage.getItem(QK) || '[]'); } catch (e) { q = []; }
+    const n = q.shift(); try { root.localStorage.setItem(QK, JSON.stringify(q)); } catch (e) {}
+    if (!n) return false;
+    try { root.localStorage.setItem('gifos_mr_invite.' + MR().roomKey(n.room, n.v), JSON.stringify(Object.assign({}, n.inv, { at: Date.now() }))); } catch (e) {}
+    return n;
+  }
   function openPick() {
     const box = $('mr-pick-list'); box.innerHTML = '';
-    const here = LINKS().read(root.location.pathname, '', root.location.hash);
+    const picked = new Set();
     for (const c of MR().contacts()) {
-      const b = doc.createElement('button'); b.type = 'button'; b.className = 'mr-who'; b.textContent = c.name;
-      b.onclick = () => {
-        // The ring rides a window of its own (the contact's room); this meeting stays as it is. The meeting to come to is
-        // named by the one link grammar's fields; a password never travels: the meeting's own door decides.
-        try { root.localStorage.setItem('gifos_mr_invite.' + MR().roomKey(c.room, c.v), JSON.stringify({ to: here.room + (here.v ? '.' + here.v : ''), at: Date.now() })); } catch (e) {}
-        const w = root.open(roomUrl(c.room, c.v), 'mr-invite-' + c.room, 'popup,width=420,height=640');
-        b.disabled = true; b.textContent = w ? 'Ringing ' + c.name + '…' : 'Allow pop-ups to invite';
-        if (w) setTimeout(() => show($('mr-pick'), false), 3 * T().MYROOM_TICK_MS);   // the ringing window says the rest
-      };
+      const b = doc.createElement('button'); b.type = 'button'; b.className = 'mr-who'; b.textContent = c.name; b.setAttribute('aria-pressed', 'false');
+      b.onclick = () => { const k = MR().roomKey(c.room, c.v); if (picked.has(k)) picked.delete(k); else picked.add(k); b.setAttribute('aria-pressed', picked.has(k) ? 'true' : 'false'); };
       box.appendChild(b);
     }
+    const chosen = () => MR().contacts().filter((c) => picked.has(MR().roomKey(c.room, c.v)));
+    $('mr-pick-here').onclick = () => {
+      const here = LINKS().read(root.location.pathname, '', root.location.hash), list = chosen(); if (!list.length) return;
+      start(list, { to: here.room + (here.v ? '.' + here.v : '') }, null);
+    };
+    $('mr-pick-priv').onclick = async () => {
+      const list = chosen(); if (!list.length) return;
+      if (!MR().mine()) { toast('Make My Room in the lobby first: your private rooms are tied to it.'); return; }
+      const pubs = list.map((c) => MR().contactPub(c)).filter(Boolean);
+      // One person: your pair room with them (made at your card swap), the same room every time. Otherwise a new one.
+      let rec = pubs.length === 1 ? MR().pairWith(pubs[0]) : null, fresh = false;
+      if (!rec) { rec = await MR().mintPrivate(pubs, list.map((c) => c.name).join(', ')); fresh = true; }
+      if (!rec) return;
+      const to = rec.room + '.' + rec.v;
+      start(list, { to, pv: 1, gk: fresh ? 1 : 0 }, rec);
+    };
+    function start(list, inv, rec) {
+      try { root.localStorage.setItem(QK, JSON.stringify(list.map((c) => ({ room: c.room, v: c.v, inv })))); } catch (e) {}
+      const first = ringNext();
+      const w = first && root.open(roomUrl(first.room, first.v), 'mr-invite', 'popup,width=420,height=640');
+      if (!w) { $('mr-pick-note').textContent = 'Allow pop-ups so the ring can open.'; return; }
+      show($('mr-pick'), false);
+      if (rec) {   // a private room: I go there now (its door holds everyone until they prove they are its people)
+        try { root.sessionStorage.setItem('gifos_join_av', JSON.stringify({ v: 1, cam: false, mic: false, at: Date.now() })); root.sessionStorage.setItem('gifos_mr_mic', rec.room + '.' + rec.v); } catch (e) {}
+        openRoom(rec.room, rec.v);
+      }
+    }
+    $('mr-pick-note').textContent = 'Pick people. A private room is just for them; each one’s room rings and Join brings them in.';
     show($('mr-pick'), true);
   }
   async function giveBack(pid, label) { try { await part.give(pid, label); } catch (e) {} bar('Card given. ' + label + ' can call you now.', null, '', true); }
@@ -135,12 +211,21 @@
     else if (ev.type === 'arrived') toast(ev.label + ' is here (they have a card to this room).');
     else if (ev.type === 'renewed-mine') {}   // a renewal is silent
     else if (ev.type === 'go') {   // an invitation accepted: to that meeting, mic on (the person's own tap), camera off
-      try { root.sessionStorage.setItem('gifos_join_av', JSON.stringify({ v: 1, cam: false, mic: true, at: Date.now() })); } catch (e) {}
+      // A private room opens the mic only once everyone there has proved a member key (the part does it).
+      try { root.sessionStorage.setItem('gifos_join_av', JSON.stringify({ v: 1, cam: false, mic: !ev.priv, at: Date.now() })); if (ev.priv) root.sessionStorage.setItem('gifos_mr_mic', ev.room + '.' + ev.v); } catch (e) {}
       ringStop(); openRoom(ev.room, ev.v);
       return;
     }
+    else if (ev.type === 'pask') { pask = ev; openPask(); }
+    else if (ev.type === 'asking') { barShut = false; bar('Asking ' + (ev.name || 'them') + ' to your private room…', null, '', true); show($('mr-pick'), false); return; }
+    else if (ev.type === 'asked-no') { toast('Not now, they said.'); return; }
+    else if (ev.type === 'stranger') {   // someone here cannot prove they are one of this private room's people: I leave
+      try { root.sessionStorage.setItem('gifos_mr_notice', 'You left a private room: someone there was not one of its people (' + String(ev.name || 'unknown') + ').'); } catch (e) {}
+      ringStop(); root.location.replace(LINKS().pageFor(root.location.pathname, 'meet')); root.location.reload();
+      return;
+    }
     else if (ev.type === 'call' && ev.call && ev.call.invite && /accepted|declined|noanswer/.test(ev.call.state) && root.opener) {
-      setTimeout(() => { try { root.close(); } catch (e) {} }, 3 * T().MYROOM_TICK_MS);   // the inviting window was only the ring: it closes
+      setTimeout(() => { const n = ringNext(); if (n) { openRoom(n.room, n.v, true); return; } try { root.close(); } catch (e) {} }, 3 * T().MYROOM_TICK_MS);   // the inviting window was only the ring: the next contact, or it closes
     }
     paint();
   }
@@ -193,6 +278,8 @@
     const box = $('lob-myroom'); if (!box || !MR()) return;
     const M = MR(), mine = M.mine(), missed = M.missed(), list = M.contacts();
     let h = '';
+    let note = ''; try { note = root.sessionStorage.getItem('gifos_mr_notice') || ''; root.sessionStorage.removeItem('gifos_mr_notice'); } catch (e) {}
+    if (note) h += '<div class="mr-missed" id="mr-notice">' + esc(note) + '</div>';
     if (missed.length) {
       h += '<div class="mr-missed"><b>Missed calls</b>' + missed.slice(0, 5).map((x) => '<div>' + esc(x.label) + ' · ' + esc(timeOf(x.at)) + '</div>').join('') + '<button type="button" id="mr-missed-x" class="lob-text">Clear</button></div>';
     }
@@ -228,7 +315,12 @@
     box.querySelectorAll('[data-adopt]').forEach((b) => { b.onclick = () => { const [r, v] = b.getAttribute('data-adopt').split('.'); M.adopt(r, v); paintLobby(); }; });
     box.querySelectorAll('.mr-contact').forEach((row) => {
       const r = row.getAttribute('data-room'), v = row.getAttribute('data-v');
-      row.querySelector('[data-call]').onclick = () => { openRoom(r, v); };
+      row.querySelector('[data-call]').onclick = () => {
+        // A call to someone I share a pair room with rings their My Room naming that room; Answer takes both there.
+        const c = M.contactFor(r, v), pr = c && M.pairWith(M.contactPub(c));
+        if (pr) { try { root.localStorage.setItem('gifos_mr_invite.' + M.roomKey(r, v), JSON.stringify({ to: pr.room + '.' + pr.v, go: 1, pv: 1, at: Date.now() })); } catch (e) {} }
+        openRoom(r, v);
+      };
       row.querySelector('[data-forget]').onclick = () => { M.forget(r, v); paintLobby(); };
     });
   }
@@ -239,7 +331,7 @@
     on('mr-decline', () => { if (ringing && part) part.decline(ringing.pid); ringing = null; ringStop(); show($('mr-ring'), false); paint(); });
     on('mr-offer-no', () => { offer = null; show($('mr-offer'), false); });
     on('mr-offer-yes', () => {
-      if (offer) { const name = $('mr-offer-name').value.trim() || offer.card.room; if (part && !offer.back) part.save(offer.card, name); else MR().keep(Object.assign({}, offer.card, { name })); }
+      if (offer) { const name = $('mr-offer-name').value.trim() || offer.card.room; if (part) part.save(offer.card, name); else MR().keep(Object.assign({}, offer.card, { name })); }
       offer = null; show($('mr-offer'), false); paint();
     });
     on('mr-make-close', () => show($('mr-make'), false));
@@ -254,11 +346,22 @@
     if (inv && root.MutationObserver) new root.MutationObserver(() => {
       const acts = $('inv-actions');
       if (inv.style.display === 'none' || !acts || $('mr-inv-contact') || !MR() || !MR().contacts().length) return;
-      const b = doc.createElement('button'); b.type = 'button'; b.id = 'mr-inv-contact'; b.className = 'appear-secondary'; b.textContent = 'Invite a contact';
+      const b = doc.createElement('button'); b.type = 'button'; b.id = 'mr-inv-contact'; b.className = 'appear-secondary'; b.textContent = 'Private room with…';
       b.onclick = () => { inv.style.display = 'none'; openPick(); };
       acts.insertBefore(b, acts.firstChild);
     }).observe(inv, { attributes: true, attributeFilter: ['style'] });
     on('mr-pick-close', () => show($('mr-pick'), false));
+    on('mr-pask-no', () => { if (pask && part) part.privateNo(pask.pid); pask = null; show($('mr-pask'), false); });
+    on('mr-pask-yes', async () => {
+      const a = pask; pask = null; show($('mr-pask'), false); if (!a || !part) return;
+      // Join is also the swap: a card they handed me with the ask is kept under their name.
+      if (offer && offer.card) { part.save(offer.card, $('mr-offer-name').value.trim() || a.name); offer = null; show($('mr-offer'), false); }
+      bar('Going to your private room with ' + a.name + '…', null, '', false);
+      await part.privateJoin(a.pid, a.name).catch(() => false);
+    });
+    const who = $('who-modal');
+    if (who && root.MutationObserver) new root.MutationObserver(() => { if (who.style.display === 'flex') { try { stampPeoplePrivate(); } catch (e) {} } })
+      .observe(who, { attributes: true, attributeFilter: ['style'], childList: true, subtree: true });
     // The leave question asks for the card back too, while the other side is still here to take it.
     const ask = $('leave-ask');
     if (ask && root.MutationObserver) new root.MutationObserver(() => {
@@ -306,10 +409,20 @@
   </div>
   <div class="name-modal" role="dialog" aria-modal="true" id="mr-pick" aria-labelledby="mr-pick-title" style="display:none">
     <div class="name-box">
-      <h3 id="mr-pick-title">Invite a contact</h3>
-      <p>Their room rings. If they join, they come straight to this meeting; its door rules still apply.</p>
+      <h3 id="mr-pick-title">Private room with…</h3>
+      <p id="mr-pick-note">Pick people. A private room is just for them; each one’s room rings and Join brings them in.</p>
       <div id="mr-pick-list"></div>
       <button id="mr-pick-close" type="button">Close</button>
+      <button id="mr-pick-here" type="button">Into this meeting</button>
+      <button id="mr-pick-priv" type="button">Private room</button>
+    </div>
+  </div>
+  <div class="name-modal" role="alertdialog" aria-modal="true" id="mr-pask" aria-labelledby="mr-pask-title" style="display:none">
+    <div class="name-box">
+      <h3 id="mr-pask-title">Private room</h3>
+      <p id="mr-pask-note"></p>
+      <button id="mr-pask-no" type="button">Not now</button>
+      <button id="mr-pask-yes" type="button">Join</button>
     </div>
   </div>
   <div id="mr-bar" class="mr-bar" role="status" aria-live="polite" hidden><span id="mr-bar-text"></span><button id="mr-bar-act" type="button" hidden></button><button id="mr-bar-x" type="button" class="mr-x" aria-label="Close" hidden>✕</button></div>`;
@@ -345,7 +458,7 @@
   }
   // DEBUG=on only: a test reads the part's state and the bar's words.
   const debugOn = () => { try { const D = GifOS.debugLog; if (D && D.pageWants) return !!D.pageWants().on; } catch (e) {} try { return /(?:^|[#&?])debug=(?:on|1|true)/i.test(root.location.hash + root.location.search) || root.sessionStorage.getItem('gifos_debug') === '1'; } catch (e) { return false; } };
-  try { if (debugOn()) root.__mrState = () => ({ part: part ? part.state() : null, bar: $('mr-bar') && !$('mr-bar').hidden ? $('mr-bar-text').textContent : '', ring: !!ringing, ringTitle: $('mr-ring-title') ? $('mr-ring-title').textContent : '', offer: $('mr-offer') && $('mr-offer').style.display !== 'none' ? $('mr-offer-title').textContent : '', ringTone: !!ringTimer }); } catch (e) {}
+  try { if (debugOn()) root.__mrState = () => ({ part: part ? part.state() : null, bar: $('mr-bar') && !$('mr-bar').hidden ? $('mr-bar-text').textContent : '', ring: !!ringing, ringTitle: $('mr-ring-title') ? $('mr-ring-title').textContent : '', offer: $('mr-offer') && $('mr-offer').style.display !== 'none' ? $('mr-offer-title').textContent : '', ringTone: !!ringTimer, pask: $('mr-pask') && $('mr-pask').style.display !== 'none' ? $('mr-pask-title').textContent : '' }); } catch (e) {}
   const go = () => { try { start(); } catch (e) { root.__mrErr = String(e && e.stack || e); try { console.error('my room view: ' + root.__mrErr); } catch (x) {} } };
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', go); else go();
 })(typeof window !== 'undefined' ? window : globalThis);
