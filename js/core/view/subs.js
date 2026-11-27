@@ -436,7 +436,7 @@
     return new Promise((resolve) => {
       if (NOPAGE || typeof document === 'undefined' || !document.body || !opts || !opts.entries || !opts.entries.length) return resolve(null);
       const old = document.getElementById('sub-move'); if (old) old.remove();
-      const box = el('div', { id: 'sub-move', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'sub-move-title', style: CARD_STYLE });
+      const box = el('div', { id: 'sub-move', class: 'dlg-box', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'sub-move-title', style: CARD_STYLE });
       const done = (v) => { box.remove(); resolve(v); };
       const nameOf = (e) => e.name || tx('subMoveOther', 'another meeting');
       const line = (id, text, strong) => { const p = el('p', { id, style: 'flex:1 1 100%;margin:0' + (strong ? ';font-weight:600' : '') }, text); box.appendChild(p); return p; };

@@ -188,8 +188,8 @@
     if (old) old.remove();
     const bg = doc.createElement('div');
     bg.id = 'gifos-onramp-sheet';
-    bg.setAttribute('style', 'position:fixed;inset:0;z-index:75;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:1.2rem;');
-    const box = doc.createElement('div');
+    bg.className = 'dlg-backdrop'; bg.setAttribute('style', 'position:fixed;inset:0;z-index:75;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:1.2rem;');
+    const box = doc.createElement('div'); box.className = 'dlg-box';
     box.setAttribute('style', 'background:#14141f;color:#e8e8f4;border:1px solid #2a2a3f;border-radius:.8rem;max-width:24rem;width:100%;padding:1.2rem;font:15px/1.55 system-ui,-apple-system,sans-serif;');
     const methods = methodsHere();
     const field = (id, label, extra) => '<label style="display:block;color:#9a9ab5;font-size:.78rem">' + label + '<input id="' + id + '" ' + (extra || '') + ' style="display:block;width:100%;box-sizing:border-box;margin:.2rem 0 .6rem;background:#14141f;border:1px solid #2a2a3f;border-radius:.4rem;color:#e8e8f4;padding:.4rem .5rem;font:inherit"></label>';

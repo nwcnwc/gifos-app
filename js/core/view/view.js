@@ -8742,11 +8742,11 @@
     function capCard(id, v, title, note, rows, ex) {
       let c = document.getElementById(id);
       if (!c) {
-        c = document.createElement('div'); c.id = id; c.className = 'capcard'; c.setAttribute('role', 'dialog');
+        c = document.createElement('div'); c.id = id; c.className = 'capcard dlg-box'; c.setAttribute('role', 'dialog');
         document.body.appendChild(c);
       }
       c.dataset.voice = v;
-      c.innerHTML = '<div class="capcard-t"></div><div class="capcard-body"><div class="capcard-n"></div><div class="capcard-ex"></div><div class="capcard-w"></div><div class="capcard-h"></div></div><div class="capcard-b dlg-actions"></div>';
+      c.innerHTML = '<div class="capcard-t dlg-head"></div><div class="capcard-body dlg-body"><div class="capcard-n"></div><div class="capcard-ex"></div><div class="capcard-w"></div><div class="capcard-h"></div></div><div class="capcard-b dlg-actions"></div>';
       c.querySelector('.capcard-t').textContent = title;
       c.querySelector('.capcard-w').textContent = (0, /*()*/__C.uiText)('capWhich', 'Which is right?');
       c.querySelector('.capcard-n').textContent = note || '';
@@ -8833,9 +8833,9 @@
       if (c && !c.hidden) { if (!s || s.lang !== c.dataset.lang) c.hidden = true; return; }   // asking already, or no longer true
       if (!s) return;
       const heard = (0, /*()*/__C.capLangName)(s.lang), mine = (0, /*()*/__C.capLangName)((0, /*()*/__C.capLangMine)());
-      if (!c) { c = document.createElement('div'); c.id = 'caplang'; c.className = 'capcard'; c.setAttribute('role', 'dialog'); document.body.appendChild(c); }
+      if (!c) { c = document.createElement('div'); c.id = 'caplang'; c.className = 'capcard dlg-box'; c.setAttribute('role', 'dialog'); document.body.appendChild(c); }
       c.dataset.lang = s.lang;
-      c.innerHTML = '<div class="capcard-t"></div><div class="capcard-body"><div class="capcard-h"></div></div><div class="capcard-b dlg-actions"></div>';
+      c.innerHTML = '<div class="capcard-t dlg-head"></div><div class="capcard-body dlg-body"><div class="capcard-h"></div></div><div class="capcard-b dlg-actions"></div>';
       c.querySelector('.capcard-t').textContent = (0, /*()*/__C.uiText)('capLangAsk', 'Others hear you speaking {heard}, but your captions listen for {mine}. Switch your captions to {heard}?').split('{heard}').join(heard).split('{mine}').join(mine);
       c.querySelector('.capcard-h').textContent = (0, /*()*/__C.uiText)('capLangLater', 'You can change this any time: Settings, then Captions language.');
       const b = c.querySelector('.capcard-b');

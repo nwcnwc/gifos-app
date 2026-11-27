@@ -399,8 +399,8 @@
       if (old) { try { if (old.__decline) old.__decline(); } catch (e) {} old.remove(); }
       const bg = doc.createElement('div'); bg.id = 'gifos-pay-sheet';
       bg.__decline = () => resolve({ declined: true });
-      bg.setAttribute('style', 'position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:1.2rem;');
-      const box = doc.createElement('div');
+      bg.className = 'dlg-backdrop'; bg.setAttribute('style', 'position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:1.2rem;');
+      const box = doc.createElement('div'); box.className = 'dlg-box';
       box.setAttribute('style', 'background:#14141f;color:#e8e8f4;border:1px solid #2a2a3f;border-radius:.8rem;max-width:24rem;width:100%;padding:1.2rem;font:15px/1.55 system-ui,-apple-system,sans-serif;');
       const walletReady = !!(GifOS.payWallet && GifOS.payWallet.available());
       // Load the wallet SDK now, so the USDC click can open its popup at once.
@@ -569,8 +569,8 @@
     const doc = root.document;
     const old = doc.getElementById('gifos-pay-busy'); if (old) old.remove();
     const bg = doc.createElement('div'); bg.id = 'gifos-pay-busy';
-    bg.setAttribute('style', 'position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:1.2rem;');
-    const box = doc.createElement('div');
+    bg.className = 'dlg-backdrop'; bg.setAttribute('style', 'position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:1.2rem;');
+    const box = doc.createElement('div'); box.className = 'dlg-box';
     box.setAttribute('style', 'background:#14141f;color:#e8e8f4;border:1px solid #2a2a3f;border-radius:.8rem;max-width:22rem;width:100%;padding:1.1rem;font:15px/1.55 system-ui,-apple-system,sans-serif;');
     box.innerHTML = '<p id="gpb-msg" style="margin:0">' + esc(msg) + '</p>' +
       '<p id="gpb-support" style="color:#9a9ab5;font-size:.78rem;margin:.6rem 0 0">' + supportHtml() + '</p>' +
@@ -867,8 +867,8 @@
     const doc = root.document;
     const old2 = doc.getElementById('gifos-pay-transfer'); if (old2) old2.remove();
     const bg = doc.createElement('div'); bg.id = 'gifos-pay-transfer';
-    bg.setAttribute('style', 'position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:1.2rem;');
-    const box = doc.createElement('div');
+    bg.className = 'dlg-backdrop'; bg.setAttribute('style', 'position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:1.2rem;');
+    const box = doc.createElement('div'); box.className = 'dlg-box';
     box.setAttribute('style', 'background:#14141f;color:#e8e8f4;border:1px solid #2a2a3f;border-radius:.8rem;max-width:24rem;width:100%;padding:1.2rem;font:15px/1.55 system-ui,-apple-system,sans-serif;');
     const exact = fmtUsdcExact(inv.expected);
     box.innerHTML =
@@ -972,8 +972,8 @@
     const doc = root.document;
     const old = doc.getElementById('gifos-pay-agent'); if (old) old.remove();
     const bg = doc.createElement('div'); bg.id = 'gifos-pay-agent';
-    bg.setAttribute('style', 'position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:1.2rem;');
-    const box = doc.createElement('div');
+    bg.className = 'dlg-backdrop'; bg.setAttribute('style', 'position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:1.2rem;');
+    const box = doc.createElement('div'); box.className = 'dlg-box';
     box.setAttribute('style', 'background:#14141f;color:#e8e8f4;border:1px solid #2a2a3f;border-radius:.8rem;max-width:26rem;width:100%;padding:1.2rem;font:15px/1.55 system-ui,-apple-system,sans-serif;');
     box.innerHTML =
       '<h3 style="margin:0 0 .35rem;font-size:1.05rem">Pay with your AI agent</h3>' +

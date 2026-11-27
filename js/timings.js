@@ -76,6 +76,7 @@
     DIAL_ASK_GAP_MS: 3500,   // ms
     DISCONNECTED_DEAD_MS: 90000,   // ms
     DISCONNECTED_DEAD_SMALL_MS: 78000,   // ms
+    DLG_TAP2_MS: 300,   // ms
     DOOR_FIRST_FRAME: 4,   // tick
     DOOR_PING_MS: 4000,   // ms
     DOOR_PONG_WAIT_MS: 5100,   // ms
