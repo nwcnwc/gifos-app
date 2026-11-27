@@ -112,8 +112,12 @@ const QMAX = 40;          // frames of content buffered per pipe; overflow drops
 // browser is decoded, buffered and encoded again). Both are stamped with the time they leave here, so a receiver
 // further on lines them up exactly as they left: the picture early by this seat's sound buffer (1 s and more at the
 // start of a file over a busy link). The page tells each pipe how long its feed's sound waits here (hold, ms); a
-// content frame is written no sooner than that long after it arrived, so picture and sound leave together.
-const due = (p, f) => !p.hold || !f.at || nowMs() - f.at >= p.hold;
+// content frame is written no sooner than that long after it arrived, so picture and sound leave together. The hold in
+// force glides to the page's figure at HOLD_GLIDE of real time (a step would freeze the picture for the whole rise, or
+// flush the backlog in a burst on a fall), and a key that ends a wait for a key is never held (a viewer who lost its
+// picture sees the current one at once; the deltas behind it restore the timing).
+const HOLD_GLIDE = 0.25;
+const due = (p, f) => !p.hold || !f.at || f.fresh || nowMs() - f.at >= p.hold;
 // the frames whose time has come (the backlog a want reports: the page's catch-up mints for these, never for held ones)
 const dueN = (p) => { if (!p.hold) return p.q.length; let n = 0; while (n < p.q.length && due(p, p.q[n])) n++; return n; };
 const qmaxOf = (p) => QMAX + (p.hold ? p.holdRoom || 0 : 0);   // room for the held frames (the page sends it with the hold)
@@ -256,8 +260,14 @@ const CATCH_MIN_MS = 30, CATCH_MAX_MS = 500;
 setInterval(() => {
   const now = nowMs();
   for (const [id, p] of pipes) {
+    if (p.holdT !== undefined && p.hold !== p.holdT) {
+      const step = HOLD_GLIDE * Math.max(0, now - (p.glideAt || now));
+      p.hold = Math.abs(p.holdT - (p.hold || 0)) <= step ? p.holdT : (p.hold || 0) + Math.sign(p.holdT - (p.hold || 0)) * step;
+    }
+    p.glideAt = now;
     if (p.paused || !p.q.length) continue;
     const h = p.q[0];
+    if (p.hold && h.at && !due(p, h)) continue;   // its time has not come: neither a first ask nor a re-ask
     if (p.hold && h.at && !h.asked) { if (!due(p, h)) continue; h.asked = true; want(id, h.type === 'key', dueN(p)); continue; }
     const dueMs = Math.min(CATCH_MAX_MS, Math.max(CATCH_MIN_MS, 2 * (p.tlEw || 0)) * Math.pow(2, p.reAskN || 0));
     if (now - (p.askAt || 0) < dueMs) continue;
@@ -304,12 +314,12 @@ onmessage = (e) => {
     seedKey(m.srcId, m.pipeId);
     askKey(m.srcId, m.pipeId);
   }
-  else if (m.op === 'hold') { const p = pipeFor(m.pipeId); p.hold = Math.max(0, +m.ms || 0); p.holdRoom = Math.max(0, m.room | 0); }
-  else if (m.op === 'carrier') { const p = pipeFor(m.pipeId); try { p.cw = m.writable.getWriter(); } catch (e) { p.cw = null; } if (p.cw && p.q.length) mintIn(p, p.q[0].type === 'key'); }
+  else if (m.op === 'hold') { const p = pipes.get(m.pipeId); if (p) { p.holdT = Math.max(0, +m.ms || 0); p.holdRoom = Math.max(0, m.room | 0, p.q.length); } }
+  else if (m.op === 'carrier') { const p = pipeFor(m.pipeId); try { p.cw = m.writable.getWriter(); } catch (e) { p.cw = null; } if (p.cw && p.q.length && due(p, p.q[0])) mintIn(p, p.q[0].type === 'key'); }
   else if (m.op === 'unroute') { releaseTap(taps, tapTs, skrLast, m.srcId, m.pipeId); pipes.delete(m.pipeId); }
   else if (m.op === 'stats') {
     const out = {};
-    for (const [id, p] of pipes) out[id] = { q: p.q.length, wrote: p.wrote, seen: p.seen || 0, tmpl: p.tmpl || 0, primed: p.primed || 0, dropped: p.dropped, swapErr: p.swapErr, kfAsk: p.kfAsk, kdrop: p.kdrop || 0, nkDrop: p.nkDrop || 0, skr: p.skr || 0, seeded: p.seedN || 0, reWant: p.reWant || 0, paused: !!p.paused, needKey: !!p.needKey, lastWriteAt: p.lastWriteAt, mime: p.mime, tmplMime: p.tmplMime, detached: p.detached || 0, lastBytes: p.lastBytes || 0, inWorker: !!p.cw, mints: p.mints || 0, mintErr: p.mintErr || 0, lat: p.latN ? Math.round(p.latEw) : null, latMax: p.latMax ? Math.round(p.latMax) : null, latN: p.latN || 0, tl: p.tlN ? Math.round(p.tlEw) : null, hold: p.hold || 0 };
+    for (const [id, p] of pipes) out[id] = { q: p.q.length, wrote: p.wrote, seen: p.seen || 0, tmpl: p.tmpl || 0, primed: p.primed || 0, dropped: p.dropped, swapErr: p.swapErr, kfAsk: p.kfAsk, kdrop: p.kdrop || 0, nkDrop: p.nkDrop || 0, skr: p.skr || 0, seeded: p.seedN || 0, reWant: p.reWant || 0, paused: !!p.paused, needKey: !!p.needKey, lastWriteAt: p.lastWriteAt, mime: p.mime, tmplMime: p.tmplMime, detached: p.detached || 0, lastBytes: p.lastBytes || 0, inWorker: !!p.cw, mints: p.mints || 0, mintErr: p.mintErr || 0, lat: p.latN ? Math.round(p.latEw) : null, latMax: p.latMax ? Math.round(p.latMax) : null, latN: p.latN || 0, tl: p.tlN ? Math.round(p.tlEw) : null, hold: Math.round(p.hold || 0), holdT: p.holdT || 0 };
     if (m.wlog) for (const [id, p] of pipes) if (out[id]) out[id].wlog = (p.wlog || []).slice();
     postMessage({ op: 'stats', seq: m.seq, stats: out });
   }
@@ -390,10 +400,12 @@ onrtctransform = (e) => {
               p.nkDrop = (p.nkDrop || 0) + 1;
               if (p.nkDrop === 3 || p.nkDrop % 30 === 0) { seedKey(o.srcId, pid); askKey(o.srcId, pid); }
             }
-            else { if (frame.type === 'key') { p.needKey = false; p.nkDrop = 0; p.seeded = false; }
+            else { const wasNeed = p.needKey; if (frame.type === 'key') { p.needKey = false; p.nkDrop = 0; p.seeded = false; }
               const own = handedOut ? bytes.slice(0) : bytes; handedOut = true;
-              p.q.push({ bytes: own, ts, type: frame.type, at: nowMs() });
+              const fresh = frame.type === 'key' && wasNeed;   // the key a viewer was waiting for: paint it now
+              p.q.push({ bytes: own, ts, type: frame.type, at: nowMs(), fresh });
               if (!due(p, p.q[0])) continue;   // a held head is asked for when its time comes (the catch-up beat)
+              p.q[0].asked = true;
               // DEMAND-MINT: one template per queued frame, typed by the head.
               // q rides along so the page can CATCH UP: at healthy fps the
               // want->postMessage->main-thread->requestFrame round trip lags
