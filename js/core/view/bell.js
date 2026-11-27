@@ -64,7 +64,7 @@
   async function missedFromPushes() {
     const b = B(), M = MR(); if (!b || !M) return;
     const list = await b.takeRings().catch(() => []);
-    for (const x of list.reverse()) M.noteMissed(x.r, x.v, x.label, x.at);
+    for (const x of list.reverse()) { let at = null; try { at = GifOS.link.read('/meet', '', new URL(x.url, root.location.origin).hash); } catch (e) { at = null; } if (at && at.room) M.noteMissed(at.room, at.v, x.label, x.at); }
     if (list.length) { try { root.dispatchEvent(new root.StorageEvent('storage', { key: 'gifos_myroom_missed' })); } catch (e) {} }
   }
 

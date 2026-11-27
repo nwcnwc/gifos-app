@@ -622,7 +622,7 @@ self.addEventListener('fetch', function (e) {
 // ---- THE DOORBELL (js/meet-bell.js; docs: My Room). A ring pushed by bell.gifos.app wakes this worker with the
 // page closed. The push says which handle rang (i), the call (c), the Doorbell's time (ts) and the note (n), sealed by
 // the caller with that handle's ring secret. The page keeps in IndexedDB 'gifos-bell' what this worker needs: the
-// master secret the ring secrets come from, handle id -> {room, verifier, label}, and how long a ring rings. A note
+// master secret the ring secrets come from, handle id -> {url (the room's address), key, label}, and how long a ring rings. A note
 // that opens is shown as "<label> is calling" (or a missed call when it arrives after the ring would have ended); the
 // tap opens the room that handle belongs to. Every push shows a notification (browsers require it), except while a
 // visible GifOS page already has that room open: it rings there.
@@ -646,7 +646,6 @@ async function bellOpen(masterB64u, i, k, note) {
   var pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: u.slice(0, 12), additionalData: te.encode('gifos-bell-note') }, k, u.slice(12));
   return JSON.parse(new TextDecoder().decode(pt));
 }
-function bellUrl(r, v) { return '/meet#room=' + encodeURIComponent(r) + '&v=' + encodeURIComponent(v); }
 function bellTime(at) { try { return new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } }
 async function bellPush(e) {
   var m = null; try { m = e.data ? e.data.json() : null; } catch (err) { m = null; }
@@ -663,12 +662,12 @@ async function bellPush(e) {
   var when = +m.ts || Date.now();
   var missed = Date.now() - when > (st.ringMs || 30000);
   var rings = (await bellGet(db, 'rings')) || [];
-  rings.unshift({ i: m.i, c: m.c, at: when, label: label, r: at.r, v: at.v, done: false });
+  rings.unshift({ i: m.i, c: m.c, at: when, label: label, url: at.url, done: false });
   await bellPut(db, 'rings', rings.slice(0, 50));
-  var url = bellUrl(at.r, at.v);
+  var url = String(at.url || '/meet');
   var wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
   for (var w = 0; w < wins.length; w++) {
-    try { var hq = new URLSearchParams(new URL(wins[w].url).hash.slice(1)); if (wins[w].visibilityState === 'visible' && hq.get('room') === at.r && String(hq.get('v') || '').toLowerCase() === at.v) return; } catch (err) {}
+    try { if (wins[w].visibilityState === 'visible' && new URL(wins[w].url).hash === new URL(url, self.location.origin).hash) return; } catch (err) {}
   }
   return self.registration.showNotification(missed ? 'Missed call from ' + label : label + ' is calling', {
     body: missed ? bellTime(when) : 'Tap to answer in your room.',

@@ -123,7 +123,9 @@
   async function mirror() {
     const m = me(); if (!m) return;
     const map = {};
-    for (const h of handles()) map[h.i] = { r: h.room, v: h.v, k: h.k, label: h.label || '' };
+    // url: the room's address, written by the one link module (the worker opens it and never builds one)
+    const url = (h) => { try { return '/meet#' + GifOS.link.hash({ room: h.room, v: h.v }); } catch (e) { return '/meet'; } };
+    for (const h of handles()) map[h.i] = { url: url(h), k: h.k, label: h.label || '' };
     await idbPut('state', { master: b64u(await master(m)), ringMs: T().MYROOM_RING_MS || 0, map, on: !!m.on });
   }
 
