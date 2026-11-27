@@ -3972,4 +3972,6 @@ body.sv-live:not(.sv-tabs) .ct-pane.ag { padding-top: max(60px, calc(var(--headh
 }
 /* The Stage view keeps the page's own view button on screen, so the app bar does not repeat it. */
 body.sv-live #appbar #appview { display: none !important; }
-.ag-mini { font-size: 19px; color: var(--c-white); }
+.ag-mini { font-size: 1.25rem; color: var(--c-white); }
+/* The meeting's own view button is on screen beside the app: the app bar does not repeat it. */
+body.comfy.sv-avail.has-app:not(.app-full):not(.solo-app):not(.app-room) #appbar #appview { display: none !important; }

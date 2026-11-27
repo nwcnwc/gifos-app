@@ -3445,6 +3445,7 @@
       viewpick.style.top = Math.round(onScreen ? r.bottom + 8 : window.innerHeight * 0.28) + 'px';
       viewpick.style.right = Math.round(Math.max(8, window.innerWidth - r.right)) + 'px';
       viewpick.hidden = false;
+      delete viewpick.dataset.picked;
       if (!onScreen) viewpick.style.right = Math.round(Math.max(8, (window.innerWidth - viewpick.offsetWidth) / 2)) + 'px';
       // Never past the left edge: on a phone the picker is wider than the space left of the button.
       else if (window.innerWidth - parseFloat(viewpick.style.right) - viewpick.offsetWidth < 8) viewpick.style.right = Math.round(Math.max(8, window.innerWidth - viewpick.offsetWidth - 8)) + 'px';
@@ -3474,6 +3475,7 @@
         const b = e.target && e.target.closest && e.target.closest('.vp-mode');
         if (!b) return;
         (0, /*()*/__C.setView)(b.dataset.view, 'pick');
+        viewpick.dataset.picked = '1';
         // The Stage view takes the screen in the same tap (a browser asks for the tap's own gesture).
         if (b.dataset.view === 'stage' && window.__meetView === 'stage') svFullscreen();
         // Focus keeps the picker up so Follow the speaker is one more tap.
@@ -3490,6 +3492,8 @@
         try { n.focus(); } catch (err) {}
       });
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !viewpick.hidden) closePick(false); });
+      // A turned phone or a resized window closes it (its place was the old button's).
+      window.addEventListener('resize', () => { if (!viewpick.hidden) closePick(false); });
       document.addEventListener('pointerdown', (e) => {
         if (viewpick.hidden) return;
         const t = e.target;
@@ -9643,7 +9647,7 @@
         const micCh = document.getElementById('micchooser');
         if (micCh && !micCh.hidden) return true;
         const vpk = document.getElementById('viewpick');
-        if (vpk && !vpk.hidden) return true;
+        if (vpk && !vpk.hidden && !vpk.dataset.picked) return true;
         const ae = document.activeElement;
         if (ae && ae !== document.body && ae !== document.documentElement) {
           if (bar.contains(ae)) return true;
@@ -10068,7 +10072,7 @@
         if (wait && !wait.hasAttribute('hidden') && wait.getClientRects().length) return true;
         // The view picker is open: its choices stay until one is picked or it is closed.
         const vpk = document.getElementById('viewpick');
-        if (vpk && !vpk.hidden) return true;
+        if (vpk && !vpk.hidden && !vpk.dataset.picked) return true;
         // A tile's window is open: its controls are the screen, not chrome.
         if (window.__tileWin && window.__tileWin.isOpen()) return true;
         const modals = document.querySelectorAll('.name-modal');
@@ -10093,6 +10097,8 @@
         chromeTimer = 0;
         if (chromeHeld() || document.body.classList.contains('chrome-away')) return;
         document.body.classList.add('chrome-away');
+        // A view picker left open after its pick goes with the chrome.
+        { const vpk = document.getElementById('viewpick'); if (vpk && !vpk.hidden && vpk.dataset.picked) { vpk.hidden = true; const fb = document.getElementById('fitbtn'); if (fb) fb.setAttribute('aria-expanded', 'false'); } }
         try { paintCallState(); } catch (e) {}
         setBarH();
       }
@@ -10226,7 +10232,7 @@
         for (const c of ['app-room', 'solo-app']) if (b.contains(c)) return true;
         if (!bar.classList.contains('collapsed')) return true; // More is open
         const vpk = document.getElementById('viewpick');
-        if (vpk && !vpk.hidden) return true; // the view picker is open
+        if (vpk && !vpk.hidden && !vpk.dataset.picked) return true; // the view picker is open
         // A clicked button keeps focus, so only keyboard focus holds the dock.
         if (bar.matches(':hover') || bar.querySelector(':focus-visible')) return true;
         // Keyboard focus on a tile or its buttons keeps them (calm hides tile buttons too).
@@ -10244,7 +10250,11 @@
       setInterval(() => {
         let calm = false;
         try { calm = Date.now() - lastInput >= __C.model.door.dockCalmMs() && !busy(); } catch (e) {}
-        if (calm !== document.body.classList.contains('dock-calm')) document.body.classList.toggle('dock-calm', calm);
+        if (calm !== document.body.classList.contains('dock-calm')) {
+          document.body.classList.toggle('dock-calm', calm);
+          const vpk = document.getElementById('viewpick');
+          if (calm && vpk && !vpk.hidden && vpk.dataset.picked) { vpk.hidden = true; const fb = document.getElementById('fitbtn'); if (fb) fb.setAttribute('aria-expanded', 'false'); }
+        }
         try { GifOS.viewKit.calm(watchCalm(calm)); } catch (e) {}
         // The header only goes while it is the plain count line.
         let head = calm;
