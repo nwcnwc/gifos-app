@@ -720,7 +720,7 @@
   "meet.stScreenSharingWasTurnedOff": "🛡 Screen sharing was turned off before it started.",
   "meet.stThatVideoCanTBe": "That video can’t be played here. Pick another file.",
   "meet.stSoundIsBack": "🔊 Sound is back.",
-  "meet.sttSoundHeld": "🔇 This device is holding back the meeting’s sound. Tap anywhere on the page to hear it.",
+  "meet.sttSoundHeld": "🔇 Tap anywhere to hear the meeting. This device is holding its sound back.",
   "meet.stTheSongEnded": "🎵 The song ended.",
   "meet.stOnlyRoomAdminsAndPeople2": "Only room hosts — and people they allow — can lead a song here.",
   "meet.stWhisperCaptionsNeedTheOffline": "Whisper captions need the Offline Captions app — open Settings → Captions to install it. Browser captions are on meanwhile.",

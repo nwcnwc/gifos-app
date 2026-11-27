@@ -706,7 +706,7 @@
  "meet.stScreenSharingWasTurnedOff": "🛡 屏幕共享在开始前已被关闭。",
  "meet.stThatVideoCanTBe": "该视频无法在这里播放。请选择其他文件。",
  "meet.stSoundIsBack": "🔊 声音恢复了。",
- "meet.sttSoundHeld": "🔇 本设备暂停了会议的声音。轻点页面任意位置即可听到。",
+ "meet.sttSoundHeld": "🔇 轻点页面任意位置即可听到会议。本设备暂停了会议的声音。",
  "meet.stTheSongEnded": "🎵 歌曲结束了。",
  "meet.stOnlyRoomAdminsAndPeople2": "只有房间主持人——以及获得他们允许的人——才能在这里领唱。",
  "meet.stWhisperCaptionsNeedTheOffline": "Whisper 字幕需要离线字幕应用——请打开“设置”→“字幕”进行安装。在此期间已开启浏览器字幕。",
