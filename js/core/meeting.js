@@ -1850,7 +1850,7 @@
       id = String(id || '');
       const b = meetWait.blocks(id);
       if (!b || !id || id === myId) return b;
-      if (doorQuiet(id)) return true;   // a private room's unproved knocker: held, on no list, and told nothing (sayHeld)
+      if (myRoomPart && myRoomPart.quiet(id)) return true;   // a private room's unproved knocker: held, on no list, and told nothing (sayHeld)
       const nm = rosterNames[id] || 'Someone waiting';
       if (amAdmin) { meetWait.note(id, nm, 'door'); return true; }
       const now = Date.now(), every = doorToldMs() || 30000, was = heldToldAt.get(id);
@@ -1884,8 +1884,7 @@
       if (f.b === 1) {
         if (!seated) {
           if (!seatAskAt.has(from) || (DEBUG_ON && window.__heldWordDeaf)) return;   // only a door I dialled   /* DEBUG=on only: a page that does not heed the word at its knock (what a changed page does) */
-          doorToldAt = Date.now();
-          if (myRoomPart) myRoomPart.onHeld(from);
+          doorToldAt = Date.now();   // (my card is shown on a channel, when that door's word comes on one: onHeldSaid)
           heldScreen();
         } else if (mine && meshNode && meshNode.sub > 0) {
           pipeHeldSeen = true;
@@ -1963,11 +1962,10 @@
     const doorWaitInfo = () => ({ told: heldToldAt.size, said: Array.from(heldSaidAt.keys()), asks: Array.from(linkAsks.keys()), proved: Array.from(linkProved), toldMe: doorToldAt ? Date.now() - doorToldAt : -1, pipeHeld: !!(turnLinks && turnLinks.heldPipe()), proof: !!seatLinkProof(), named: Array.from(heldNamed.keys()), nameSent: heldNamed.ok, nameErr: heldNamed.err || '' });
     return { sayLetIn, doorWaits, doorSelfHeld, doorNoWay, doorWordIn, heldScreen, linkAskHeld, linkProofIn, linkAskAgain, doorWaitInfo };
     })();
-    const doorQuiet = (id) => { try { return !!(myRoomPart && myRoomPart.quiet(id)); } catch (e) { return false; } };   // a private room's door is silent to a page that has not proved it is the other member (js/meet-myroom.js quiet)
     function sayHeld(id, kind, l) {
-      if (doorQuiet(id)) return;
-      const now = Date.now(), key = l ? id + ' ' + l : id; if (now - (heldSaidAt.get(key) || 0) < 2000) return;
+      if (myRoomPart && myRoomPart.quiet(id)) return;   // a private room's door is silent to a page that has not proved it is the other member
       const q = peers.get(id), open = !!(q && q.dc && q.dc.readyState === 'open' && !l);
+      const now = Date.now(), key = open ? id : id + ' ' + (l || 'l0'); if (now - (heldSaidAt.get(key) || 0) < 2000) return;   // each path at its own pace: a word that went by the relay never keeps the channel's word back
       if (!open && kind) return;   // a plan check's word is said on a channel only
       heldSaidAt.set(key, now); if (heldSaidAt.size > 64) heldSaidAt.delete(heldSaidAt.keys().next().value);
       try { if (open) dcSend(q, { k: kind || 'held' }); else relaySendSealed(id, 'tv', { k: 'tv', q: 'h', l: l || 'l0', b: 1 }); } catch (e) {}
@@ -2033,6 +2031,7 @@
         if (!id || id === myId || waitDeclined.has(id) || waitAdmitted.has(id)) return false;
         const nm = String(name || '').trim().slice(0, 40) || 'Someone waiting';
         if (waitQueue.has(id) && (waitQueue.get(id) === nm || nm === 'Someone waiting')) return true;   // listed already (a name once told is kept): nothing to paint
+        if (src && waitQueue.has(id) && waitQueue.get(id) !== 'Someone waiting') return true;   // a door's own note never replaces a name the list already shows (a card's label says more than a screen name)
         if (!waitQueue.has(id) && waitQueue.size >= 64) waitQueue.delete(waitQueue.keys().next().value);   // the list is bounded: the longest waiting goes first, and is listed again at its next ask
         waitQueue.set(id, nm);
         if (DEBUG_ON) waitSrc[id] = src || 'door';
@@ -3409,7 +3408,7 @@
           // The TARGET cannot lift a restriction the group put on them —
           // every receiver rejects a self-authored "off" independently.
           if (inc.on === false && inc.byId === target) continue;
-          if (!mine[field] || inc.at > mine[field].at) { mine[field] = inc; changed = true; if (field === 'dadm' && inc.on) { try { meshNode.doorForgive(target); } catch (e) {} try { linkAskAgain(target); } catch (e) {} if (heldSaidAt.has(target)) sayLetIn(target);   /* my door told that page to wait: it tells it the wait is over */ } }
+          if (!mine[field] || inc.at > mine[field].at) { mine[field] = inc; changed = true; if (field === 'dadm' && inc.on) { try { meshNode.doorForgive(target); } catch (e) {} try { linkAskAgain(target); } catch (e) {} if (Array.from(heldSaidAt.keys()).some((k) => k === target || k.indexOf(target + ' ') === 0)) sayLetIn(target);   /* my door told that page to wait: it tells it the wait is over */ } }
         }
       }
       if (changed) { try { applyHostOrders(); } catch (e) {} enforceForcedCam(); refreshAllTiles(); (0, /*()*/__M.refreshOutbound)(); (0, /*()*/__V.paintControls)(); reactHandCall(); (0, /*()*/__V.paintChatGate)(); (0, /*()*/__V.paintStage)(); if (typeof __M.applyCcAll === 'function') (0, /*()*/__M.applyCcAll)(); } // re-derive every tile + my broadcast; an admin cam-off stops my camera; a revoked screen share stops too; a fresh grant may be a call-up (don't wait for the beat); a chat/app order repaints its gates
