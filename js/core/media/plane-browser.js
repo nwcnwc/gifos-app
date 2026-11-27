@@ -5496,6 +5496,7 @@
       // exactly like mesh gossip) so every S1 seat holds every stager; each S1
       // seat composites the strip itself and fans it down the SAME tree as 'sd'.
       if (c.pc !== 0 && stripPack) { stripPack.stop(); stripPack = null; } // role-change hygiene: left Section 1
+      const stgKids = (0, /*()*/__C.stgServed)(s); // the rows I back up (E2), the heads whose uplink I took (L14), my door's knockers (L53)
       if (c.pc !== 0) {
         // relay every stage feed I hold (and my own) UP toward Section 1. E2 is the
         // second path; the S1 flood dedups by streamId, so it never double-composites.
@@ -5503,7 +5504,7 @@
         const seatE2 = (0, /*()*/__C.meshSeat)();
         const e2Up = seatE2 ? [seatE2.u2Id, seatE2.u3Id, seatE2.l14Up].filter(Boolean) : []; // L2.3, L2.6: I am my row's E2 source; L14: my branch's uplink
         const e2Fan = (seatE2 && (seatE2.u2Id || (seatE2.l14Up && !iAmHead))) ? T.rowMates(c).map((m) => (0, /*()*/__C.occPid)(m)).filter((t) => t && t !== __C.myId) : []; // L14: a mate holds an uplink only as the first live mate of a headless row
-        const e2Kids = (0, /*()*/__C.stgServed)(seatE2); // the rows I back up (E2), the heads whose uplink I took (L14), my door's knockers (L53)
+        const e2Kids = stgKids;
         // Same owner rule as the S1 flood: a stager already HAS its own face —
         // shipping it back is waste at best, and (before the mosResolve guard)
         // the echo that thrashed the whole lane.
@@ -5586,7 +5587,7 @@
             if (dnSt) { const jk = (0, /*()*/__C.shipJob)(key, dnP, dnSt, stgDownMeta(sd.m, dnSt, sd.st), up); if (jk) wanted.add(jk); }
           }
           // E2: the rows I back up hold a parked copy.
-          for (const t of (0, /*()*/__C.stgServed)((0, /*()*/__C.meshSeat)())) {
+          for (const t of stgKids) {
             const s = pick(t); if (!s) continue;
             const dnSt = stgDownShip(key, s.st, !!(owner && (0, /*()*/__C.sharingScreen)(owner)), stgAudioMemo);
             if (dnSt) { const jk = (0, /*()*/__C.shipJob)(key, t, dnSt, stgDownMeta(s.m, dnSt, s.st), up); if (jk) wanted.add(jk); }
@@ -5650,7 +5651,7 @@
         // the flooded stg feeds, so sideways sgs ships between S1 seats were
         // dead weight (receivers own stripPack and never paint them) — gone.
         const jgs = (0, /*()*/__C.shipJob)('sgs', (0, /*()*/__C.occPid)(T.down(c)), stripPack.stream, { n: stripPack.count(), cols: stripPack.cols(), ids: stripIds }); if (jgs) wanted.add(jgs);
-        for (const t of (0, /*()*/__C.stgServed)((0, /*()*/__C.meshSeat)())) { const j2 = (0, /*()*/__C.shipJob)('sgs', t, stripPack.stream, { n: stripPack.count(), cols: stripPack.cols(), ids: stripIds }); if (j2) wanted.add(j2); } // E2
+        for (const t of stgKids) { const j2 = (0, /*()*/__C.shipJob)('sgs', t, stripPack.stream, { n: stripPack.count(), cols: stripPack.cols(), ids: stripIds }); if (j2) wanted.add(j2); } // E2
         }
       }
       // Every seat: render the received strip and fan it down (heads -> row-mates).
