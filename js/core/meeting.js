@@ -11740,6 +11740,7 @@
     // data mints a new device — bans deter, they don't imprison).
     let av = null; // the room's admin verifier — set at join, immutable
     let admKey = null, amAdmin = false, admins = [], devOf = {}, bannedOut = false, pwReasserted = false;
+    let admAdopting = null;   // the stored host key's check while it runs (joinRoom): the first connection waits for it, so it carries the host's proof
     if (BROADCAST) {
       try { paintOnAir(); } catch (e) {}
       try { (0, /*()*/__V.paintBroadcastJoinNote)(bcRole()); } catch (e) {}
@@ -12099,6 +12100,7 @@
       setTimeout(tick, 0);
     }
     async function adoptAdmKey(K) { // derive + verify K against this room's V
+      if (DEBUG_ON && +window.__admAdoptDelayMs > 0) await new Promise((r) => setTimeout(r, +window.__admAdoptDelayMs));   // DEBUG=on only: a slow device's key check (a test makes the adoption land after the first connect)
       const k = await net.edKeysFromSeedHex(K).catch(() => null);
       if (!k || k.verifier !== av) return false;
       admKey = K; admKeys = k; amAdmin = true;
@@ -12852,7 +12854,9 @@
       // meeting that reaches no seat founds its island under the key every page holds from its link, so the door lists
       // its greeters beside the room's. Without it an island registers under a private key, the door refuses it, nobody
       // learns it exists, and no TURN link can be asked or vouched for (docs/turn-0926.md TURN.1, section 5).
-      Promise.all([debugFail('identity', ensureIdentity()), debugFail('adminkey', adminOpenKeyNow()), sha256hex('gifos-meeting-key|' + room + '|' + (av || ''))]).then(([identity, openKey, urlKeyHex]) => (amAdmin && av   // DOOR.HOST: the first connection already carries the host's proof
+      // DOOR.HOST: a host whose stored key is still being checked is the host for this connection too. Without the wait the
+      // check could land after the socket opened, and the room's host-only rights (Clear Stage) never entered its ACL.
+      Promise.resolve(admAdopting).catch(() => {}).then(() => Promise.all([debugFail('identity', ensureIdentity()), debugFail('adminkey', adminOpenKeyNow()), sha256hex('gifos-meeting-key|' + room + '|' + (av || ''))])).then(([identity, openKey, urlKeyHex]) => (amAdmin && av   // DOOR.HOST: the first connection already carries the host's proof
         ? admSigned('hostknock', { sid: sessId, by: identity.peerId }).then((w) => { if (w) admSigned.hk = { at: Date.now(), by: identity.peerId, q: '&hp=' + encodeURIComponent(JSON.stringify(w)) }; return [identity, openKey, urlKeyHex]; }, () => [identity, openKey, urlKeyHex])
         : [identity, openKey, urlKeyHex])).then(([identity, openKey, urlKeyHex]) => {
       if (bootGen !== meshBootGen) return;   // superseded while the identity was minting
@@ -14323,7 +14327,8 @@
       if (admKey && av) {
         bcAdoptState = 'pending';
         try { (0, /*()*/__V.paintBroadcastRole)(); } catch (e) {}
-        adoptAdmKey(admKey).then((ok) => {
+        admAdopting = adoptAdmKey(admKey).then((ok) => {
+          admAdopting = null;
           bcAdoptState = ok ? 'ok' : 'no';
           if (ok) { (0, /*()*/__V.applyAdminUi)(); broadcastStatus(); }
           else { try { (0, /*()*/__V.paintBroadcastRole)(); enforceBroadcastSeat(); } catch (e) {} }
