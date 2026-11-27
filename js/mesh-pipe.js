@@ -138,7 +138,7 @@ const lastKey = new Map(); // srcId -> { bytes, mime }: the newest keyframe this
 function seedKey(srcId, pipeId) {
   const k = lastKey.get(srcId), p = pipes.get(pipeId);
   if (!k || !p || p.paused || !p.needKey || p.seeded) return false;
-  { const E = encs.get(srcId); if (E && nowMs() - (E.outAt || 0) < 500) return false; }   // my own picture is moving: its fresh key is one encode away, an old one would jump the viewer back
+  { const E = encs.get(srcId); if (E && nowMs() - (E.outAt || 0) < ENC_T.STAT) return false; }   // my own picture is moving: its fresh key is one encode away, an old one would jump the viewer back
   p.seeded = true; p.seedN = (p.seedN || 0) + 1;
   if (!p.mime) p.mime = k.mime;
   p.q.length = 0;
@@ -189,7 +189,7 @@ function want(pipeId, key, q) {
 //   measured encode delays), a steady spacing whatever each frame took, and the page delays the sound of these links
 //   by the same dt ('enc-stat'): picture and sound leave together again.
 const encs = new Map();   // srcId -> { reader, enc, w, h, bps, fps, keyNext, keyAt, t0, win, dt, ... }
-const ENC_KEY_MIN_MS = 1000, ENC_STAT_MS = 500, ENC_WIN_MS = 2000, ENC_DT_STEP_MS = 10;
+let ENC_T = null;   // the page's timings for this (ENC_KEY_MIN_MS, ENC_STAT_MS, ENC_WIN_MS, ENC_DT_STEP_MS): they come with op 'enc'
 function encPipesAwake(srcId) {
   const routed = taps.get(srcId);
   if (routed) for (const pid of routed) { const p = pipes.get(pid); if (p && !p.paused) return true; }
@@ -217,17 +217,17 @@ function encOut(E, chunk) {
 // dt: the 95th percentile of the last ENC_WIN_MS of capture-to-bytes delays, moved only in ENC_DT_STEP_MS steps (a
 // sound delay that wobbles is heard). The pipes of this source hold their frames to it; the page hears it too.
 function encStat(E, now) {
-  while (E.win.length && now - E.win[0][0] > ENC_WIN_MS) E.win.shift();
+  while (E.win.length && now - E.win[0][0] > ENC_T.WIN) E.win.shift();
   if (E.win.length >= 5) {
     const d = E.win.map((x) => x[1]).sort((a, b) => a - b);
     const p95 = d[Math.min(d.length - 1, Math.floor(d.length * 0.95))];
     E.d50 = d[d.length >> 1]; E.d95 = p95;
     const want = Math.ceil(p95 / 5) * 5 + (E.dtAdd || 0);
-    if (E.dt === undefined || want > E.dt || E.dt - want >= ENC_DT_STEP_MS) E.dt = want;
+    if (E.dt === undefined || want > E.dt || E.dt - want >= ENC_T.DT_STEP) E.dt = want;
   }
   const routed = taps.get(E.srcId); let n = 0;
   if (routed && E.dt !== undefined) for (const pid of routed) { const p = pipes.get(pid); if (!p) continue; n++; p.enc = true; p.holdT = E.dt; p.holdRoom = Math.max(p.holdRoom || 0, Math.ceil(E.dt / 1000 * (E.fps || 30) * 2)); }
-  postMessage({ op: 'enc-stat', srcId: E.srcId, dt: E.dt === undefined ? null : E.dt, d50: E.d50 === undefined ? null : Math.round(E.d50), d95: E.d95 === undefined ? null : Math.round(E.d95), fps: Math.round((E.win.length / ENC_WIN_MS) * 10000) / 10, out: E.out || 0, keys: E.keys || 0, skipped: E.skipped || 0, idle: E.idleN || 0, pipes: n, w: E.w || 0, h: E.h || 0, err: E.err || null });
+  postMessage({ op: 'enc-stat', srcId: E.srcId, dt: E.dt === undefined ? null : E.dt, d50: E.d50 === undefined ? null : Math.round(E.d50), d95: E.d95 === undefined ? null : Math.round(E.d95), fps: Math.round((E.win.length / ENC_T.WIN) * 10000) / 10, out: E.out || 0, keys: E.keys || 0, skipped: E.skipped || 0, idle: E.idleN || 0, pipes: n, w: E.w || 0, h: E.h || 0, err: E.err || null });
 }
 async function encRun(E, reader) {
   for (;;) {
@@ -237,7 +237,7 @@ async function encRun(E, reader) {
     const f = r.value, now = nowMs();
     if (E.reader !== reader || E.stopped) { try { f.close(); } catch (err) {} break; }
     try {
-      if (now - (E.statAt || 0) >= ENC_STAT_MS) { E.statAt = now; encStat(E, now); }
+      if (now - (E.statAt || 0) >= ENC_T.STAT) { E.statAt = now; encStat(E, now); }
       if (!encPipesAwake(E.srcId)) { E.idleN = (E.idleN || 0) + 1; E.wasIdle = true; continue; }   // nobody takes it: no encode at all
       if (E.wasIdle) { E.wasIdle = false; E.keyNext = true; }
       const w = f.displayWidth || f.codedWidth, h = f.displayHeight || f.codedHeight;
@@ -245,7 +245,7 @@ async function encRun(E, reader) {
       else if (E.cfgBps !== E.bps || E.cfgFps !== E.fps) { E.cfgBps = E.bps; E.cfgFps = E.fps; try { E.enc.configure({ codec: 'vp8', width: w, height: h, bitrate: E.bps, framerate: E.fps, latencyMode: 'realtime' }); } catch (err) {} }
       if (!E.enc) continue;
       if (E.enc.encodeQueueSize > 1) { E.skipped = (E.skipped || 0) + 1; continue; }   // a busy encoder skips a frame, it never falls behind
-      const key = E.keyNext && now - (E.keyAt || 0) >= ENC_KEY_MIN_MS;
+      const key = E.keyNext && now - (E.keyAt || 0) >= ENC_T.KEY_MIN;
       if (key) { E.keyNext = false; E.keyAt = now; }
       E.t0.set(f.timestamp, now);
       if (E.t0.size > 64) { for (const k of E.t0.keys()) { E.t0.delete(k); if (E.t0.size <= 32) break; } }
@@ -532,6 +532,7 @@ onmessage = (e) => {
   else if (m.op === 'carrier') { const p = pipeFor(m.pipeId); try { p.cw = m.writable.getWriter(); } catch (e) { p.cw = null; } if (p.cw && p.q.length && due(p, p.q[0])) mintIn(p, p.q[0].type === 'key'); }
   else if (m.op === 'enc') {
     // a source's frames (a new track of the same source replaces the old one: the next film, a camera swap)
+    if (m.T) ENC_T = m.T;
     let E = encs.get(m.srcId);
     if (!E) { E = { srcId: m.srcId, enc: null, t0: new Map(), win: [], bps: 1000000, fps: 30 }; encs.set(m.srcId, E); }
     if (m.bps) E.bps = m.bps; if (m.fps) E.fps = m.fps;
@@ -851,7 +852,7 @@ onrtctransform = (e) => {
         return true;
       }
       const proc = new MediaStreamTrackProcessor({ track, maxBufferSize: 2 });
-      ensureWorker().postMessage({ op: 'enc', srcId, readable: proc.readable, bps, fps, dtAdd: o.dtAdd }, [proc.readable]);
+      ensureWorker().postMessage({ op: 'enc', srcId, readable: proc.readable, bps, fps, dtAdd: o.dtAdd, T: { KEY_MIN: TM.ENC_KEY_MIN_MS, STAT: TM.ENC_STAT_MS, WIN: TM.ENC_WIN_MS, DT_STEP: TM.ENC_DT_STEP_MS } }, [proc.readable]);
       encSrcs.set(srcId, { track, bps, fps });
       return true;
     } catch (e) { return false; }

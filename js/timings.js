@@ -87,6 +87,7 @@
     EMBED_STUCK_MS: 90000,   // ms
     EMBED_SYNC_MS: 4000,   // ms
     EMBED_UNREACHED_MS: 30000,   // ms
+    ENC_DT_STEP_MS: 10,   // ms
     ENC_KEY_MIN_MS: 1000,   // ms
     ENC_SOUND_TRIM_MS: 0,   // ms
     ENC_STAT_MS: 500,   // ms

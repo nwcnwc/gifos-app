@@ -3554,7 +3554,7 @@
       }
       if (!any && __C.MPipe.encTrack(ENC_STG)) { __C.MPipe.encStop(ENC_STG); encSoundStop(); encDt = null; }
     }
-    function encSyncSoon() { if (!encSyncT) encSyncT = setTimeout(() => { try { encSync(); } catch (e) {} }, 0); }
+    function encSyncSoon() { if (encSyncT) return; encSyncT = 1; Promise.resolve().then(() => { try { encSync(); } catch (e) {} }); }
     setInterval(() => { try { encSync(); } catch (e) {} }, GifOS.timings.PIPE_HOLD_EVERY_MS);
     if (__C.MPipe && typeof __C.MPipe.encOk === 'function') {
       __C.MPipe.on('enc-stat', (m) => { if (m.srcId !== ENC_STG || m.dt == null) return; encDt = m.dt; encSoundSet(); });
