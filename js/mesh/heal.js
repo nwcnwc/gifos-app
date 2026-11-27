@@ -1195,11 +1195,11 @@
       const tgt = this.state === 1 ? this.gateway : this.lastAsked; if (tgt < 0) return false;
       if (this.state === 2 && this.findAckAt >= 0) return false;
       if (this.state === 1 && (this.lastReach >= this.retryAt || this.oldCell || this.entryTerm())) return false;
-      if (this.l53HedgeFor !== this.retryAt) { this.l53HedgeFor = this.retryAt; this.l53HedgeAt = this.retryAt; this.l53Asked.length = 0; this.l53Asked.push(tgt); }
+      if (this.l53HedgeFor !== this.retryAt) { this.l53HedgeFor = this.retryAt; this.l53HedgeAt = TICK; this.l53Asked.length = 0; this.l53Asked.push(tgt); }   // the stall counts from the tick I saw this round (retryAt may be backdated to hurry a retry)
       if (TICK - this.l53HedgeAt < K.FHOP_DOOR_STALL) return false;
       const asked = (x) => this.l53Asked.includes(x);
       for (const a of this.l53Asked) if (this.f.fabricLinkOpen(id, a)) return false;
-      let x = -1; for (const p of this.f.fabricOpenPeers(id)) if (p !== id && !asked(p) && this.f.fabricLinkCarries(id, p)) { x = p; break; }
+      let x = -1; if (this.state === 2) for (const p of this.f.fabricOpenPeers(id)) if (p !== id && !asked(p) && this.f.fabricLinkCarries(id, p) && this.roster.some((kv) => kv.v === p)) { x = p; break; }   // a FIND: a seat of my HOME's roster I hold an open channel to (it answered). An open channel alone proves no seat
       if (x < 0 && this.greetersAt >= 0 && TICK - this.greetersAt <= K.RELAY_TTL) { const n = this.lastGreeters.length; let at = 0; for (let q = 0; q < n; q++) if (this.lastGreeters[q] === tgt) at = q; for (let q = 1; q <= n && x < 0; q++) { const g = this.lastGreeters[(at + q) % n]; if (g >= 0 && g !== id && !asked(g)) x = g; } }
       if (x < 0) return false;
       this.l53HedgeAt = TICK; this.l53Asked.push(x); this.trace('L53-HEDGE', id, null, 'to=%d beside=%d st=%d', x, tgt, this.state);
