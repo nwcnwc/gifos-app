@@ -87,10 +87,13 @@
     EMBED_STUCK_MS: 90000,   // ms
     EMBED_SYNC_MS: 4000,   // ms
     EMBED_UNREACHED_MS: 30000,   // ms
+    ENC_DT_MAX_MS: 500,   // ms
     ENC_DT_STEP_MS: 10,   // ms
     ENC_KEY_MIN_MS: 1000,   // ms
     ENC_SOUND_TRIM_MS: 0,   // ms
     ENC_STAT_MS: 500,   // ms
+    ENC_SYNC_SOON_MS: 50,   // ms
+    ENC_TH_OLD_MS: 250,   // ms
     ENC_WIN_MS: 2000,   // ms
     FACE_REACT_MS: 3000,   // ms
     FAREWELL_DRAIN_MS: 1500,   // ms
