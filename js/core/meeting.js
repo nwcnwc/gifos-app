@@ -1634,7 +1634,7 @@
     stageOffered = function () {
       try {
         for (const k of mosIn.keys()) if (k.indexOf('stg:') === 0) return true;
-        for (const [ak, ann] of mosAnn) { const key = ak.slice(ak.indexOf('|') + 1); if (key.indexOf('stg:') === 0 && key.split('^')[0] !== 'stg:' + myId && Date.now() - (ann.at || 0) <= 12000) return true; }
+        for (const [ak, ann] of mosAnn) { const key = ak.slice(ak.indexOf('|') + 1); if (key.indexOf('stg:') === 0 && key.split('^')[0] !== 'stg:' + myId) return true; }   // claimMos ages the announces
       } catch (e) {}
       return false;
     },
@@ -1643,7 +1643,7 @@
       const out = [];
       try { for (const [ak, ann] of mosAnn) {
         const i = ak.indexOf('|'), from = ak.slice(0, i), key = ak.slice(i + 1);
-        if (key.indexOf('stg:') !== 0 || Date.now() - (ann.at || 0) > 12000) continue;
+        if (key.indexOf('stg:') !== 0) continue;   // claimMos ages the announces; a door that closed is no door (doorFrom)
         const id = key.slice(4).split('^')[0];
         if (id && id !== myId && out.indexOf(id) < 0 && doorFrom(from)) out.push(id);
       } } catch (e) {}   // read before the plane's tables exist: no door yet
@@ -1730,7 +1730,7 @@
       for (const id of doorStage()) {
         if (out.some((x) => x[0] === id) || meshGone.has(id) || isEjected(id) === true) continue;
         const said = statusOf.get(id);
-        if (said && nowH - stSeen(said) <= 15000 && !said.stg) continue;
+        if (said && stHold(id) && !said.stg) continue;
         out.push([id, Number.MAX_SAFE_INTEGER]);
       }
       const ids = out.sort((a, b) => (a[1] - b[1]) || (a[0] < b[0] ? -1 : 1)).slice(0, SCALE.C).map((x) => x[0]);
