@@ -1271,5 +1271,6 @@
   "meet.subHostMoveGo": "Получить мой тариф с другого устройства",
   "meet.subHostRestoreGo": "Восстановить через PayPal (устройство потеряно)",
   "meet.subMoveLink": "Скопировать мой тариф на другое устройство",
-  "meet.subRestoreLink": "Восстановить через PayPal (устройство потеряно)"
+  "meet.subRestoreLink": "Восстановить через PayPal (устройство потеряно)",
+ "meet.subFullUpgrade": "Перейдите на Unlimited за {price}/мес."
 }

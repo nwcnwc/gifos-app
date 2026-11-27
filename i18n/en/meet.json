@@ -851,6 +851,7 @@
   "meet.licAgoHour": "{n} h ago",
   "meet.licAgoDay": "{n} d ago",
   "meet.subFullNote": "You get in when a place opens.",
+  "meet.subFullUpgrade": "Upgrade to Unlimited for {price}/month",
   "meet.subFullPass": "Get in now: {price} for {hours} hours",
   "meet.subFullSub": "or subscribe from {price}/month and never wait at a door",
   "meet.subFullJoining": "You are in. Joining the meeting…",

@@ -1271,5 +1271,6 @@
   "meet.subHostMoveGo": "从另一台设备获取我的方案",
   "meet.subHostRestoreGo": "通过 PayPal 恢复（设备丢失）",
   "meet.subMoveLink": "将我的方案复制到另一台设备",
-  "meet.subRestoreLink": "通过 PayPal 恢复（设备丢失）"
+  "meet.subRestoreLink": "通过 PayPal 恢复（设备丢失）",
+ "meet.subFullUpgrade": "升级到 Unlimited，每月 {price}"
 }
