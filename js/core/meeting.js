@@ -5539,6 +5539,8 @@
       // phase for a viewer who is in while the Stage has not started playing here); the line also carries the state itself.
       let jsNow = null;
       try { jsNow = joinState(); } catch (e) {}   // not set yet on the first paints of the boot
+      // in: the joining card goes with the same beat as the banner (its own once-a-second beat would trail it)
+      try { if (jsNow && (jsNow.state === 'watching' || jsNow.state === 'in') && joinVeilUp) { joinVeilUp = false; (0, /*()*/__V.paintJoinVeil)(null); } } catch (e) {}
       const prog = !refused && !leftUp && typeof progressWords === 'function' ? progressWords() : null;
       if (prog) {
         countText = '';
@@ -10363,8 +10365,9 @@
     //                 Stage that was playing and is gone for a moment
     //   refused       turned away for good, or left (the line says why)
     // -> { state, viewer, w }: w the words while connecting or reconnecting (progressWords), else null.
-    // progLastJoin: the way in's run after it ended (a viewer waits in its last phase until the Stage plays)
-    let progRun = null, progNAtRelay = 0, progListAt = -1, progEndedJoin = false, progBackSince = 0, progMend = false, progLastJoin = null, joinState = function () {
+    // progLastJoin: the way in's run after it ended (a viewer waits in its last phase until the Stage plays); joinWasIn: this
+    // page has been in (watching, in the meeting, or knowing the broadcast is off) at least once
+    let progRun = null, progNAtRelay = 0, progListAt = -1, progEndedJoin = false, progBackSince = 0, progMend = false, progLastJoin = null, joinWasIn = false, joinState = function () {
       // (declared in this let, not as its own statement: the core counts its statements in the linker's order. Asked before
       // this line has run it throws, and every asker reads "not in yet".)
       let viewer = false;
@@ -10383,24 +10386,27 @@
         }
         if (progRun) {
           if (progRun.flow === 'reconnect') return { state: 'reconnecting', viewer, w: progressWords(progRun) };
-          if (playing) return { state: 'watching', viewer, w: null };
+          if (playing) { joinWasIn = true; return { state: 'watching', viewer, w: null }; }
           return { state: 'connecting', viewer, w: progressWords(progRun) };
         }
         if (!progEndedJoin) return { state: 'connecting', viewer, w: null };   // before the first beat
+        // the way in's last phase: a page whose way in ended but that has not been in yet (a seat that lands alone a beat
+        // before its links, a viewer whose Stage has not started here) is still connecting, never "reconnecting"
+        const stillComing = { state: 'connecting', viewer, w: progLastJoin ? progressWords(progLastJoin, viewer ? 4 : 0) : null };
         const s = meshSeat();
         const seatLost = !(s && s.state === 3 && s.hasCoord) || (typeof wayBack === 'function' && wayBack());
         const linkDown = !!(statusLinkDownAt && Date.now() - statusLinkDownAt >= GifOS.timings.STATUS_RECONNECT_QUIET_MS);
-        if (linkDown || seatLost) return { state: 'reconnecting', viewer, w: null };
-        if (!viewer) return { state: 'in', viewer, w: null };
-        if (playing) return { state: 'watching', viewer, w: null };
+        if (linkDown || seatLost) return joinWasIn ? { state: 'reconnecting', viewer, w: null } : stillComing;
+        if (!viewer) { joinWasIn = true; return { state: 'in', viewer, w: null }; }
+        if (playing) { joinWasIn = true; return { state: 'watching', viewer, w: null }; }
         const bq = bcLastQuiet || {};
-        if (bq.reconnecting) return { state: 'reconnecting', viewer, w: null };
-        if (bq.text || (typeof bcEndedInRoom === 'function' && bcEndedInRoom())) return { state: 'offair', viewer, w: null };
+        if (bq.reconnecting) return joinWasIn ? { state: 'reconnecting', viewer, w: null } : stillComing;
+        if (bq.text || (typeof bcEndedInRoom === 'function' && bcEndedInRoom())) { joinWasIn = true; return { state: 'offair', viewer, w: null }; }
         // a network that blocks this viewer from everyone, after the Stage played here: lost, not "starting"
         const reach = typeof reachInfo === 'function' ? reachInfo() : null;
         if (reach && reach.state && reach.state !== 'partial' && bcWasOnAirAt) return { state: 'reconnecting', viewer, w: null };
         // in, nothing says the broadcast is off, and the Stage is not playing here yet: the way in's last phase
-        return { state: 'connecting', viewer, w: progLastJoin ? progressWords(progLastJoin, 4) : null };
+        return stillComing;
       } catch (e) { return { state: 'connecting', viewer, w: null }; }
     };
     const progTrace = window.__meetProgress = [];
