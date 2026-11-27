@@ -240,7 +240,7 @@
   }
   // My personal room's page listens itself: it takes the line over while it is open.
   function takeOver() { try { if (nav.locks && nav.locks.request) nav.locks.request(LOCK, { steal: true }, () => new Promise(() => {})).catch(() => {}); } catch (e) {} }
-  let role = '';
+  let role = '', lastSaid = '';
   function sync() {
     if (role !== 'host') return;
     settle();
@@ -248,6 +248,8 @@
     const want = !!M && !!GifOS.meetHost && wanted().length > 0;
     if (want && standing) openDoors();
     holdLock(want);
+    const said = JSON.stringify(status());   // the status line follows (a handle that went over, a door that closed)
+    if (said !== lastSaid) { lastSaid = said; try { if (GifOS.bellView) GifOS.bellView.paint(); } catch (e) {} }
   }
   function start() {
     if (framed()) return;
