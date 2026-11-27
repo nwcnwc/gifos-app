@@ -6891,7 +6891,7 @@
       if (pipeFirstDone(dc) || !msg) return;
       if (msg.k === 'mx' && msg.key === 'sdn') dc.__pipeAnn = true;
       else { const f = msg.k === 'mesh' && msg.m ? (msg.m.f || msg.m) : null; if (f && f.t === 'PIPE') dc.__pipeFold = true; else return; }
-      if (pipeFirstDone(dc)) gossipDrain(dc);
+      if (pipeFirstDone(dc)) { gossipDrain(dc); turnSubAt = 0; }   // TVBLANK: the pipe's gossip just opened: restate my vouch now (the far end's video waits on it), not on the 60 s cycle
     }
     function gossipDrain(dc) {
       if (!dc.__gq) return;
@@ -7665,7 +7665,6 @@
     // neither the sweeper nor L22 closes it), NO video on an unvouched link, the room's link facts and subscribers'
     // vouches (room-wide gossip: tlink, tsub), and the paused-video note on the tiles a link holds back.
     let turnLinks = null, turnTimer = null, turnSubAt = 0;
-    const turnSubTold = new Set();   // link far pids my vouch was restated for when their pipe first changed
     let turnSubWantAt = 0;   // my seat asked for the meeting's rooms (opts.sub.ask)
     const turnDoorsWait = [];   // asks waiting for the relay's door list
     // SUB.9.2, the asker: subrooms are separate meshes, so the friend-hop tick asks a carrier only for a peer of my OWN
@@ -7964,7 +7963,7 @@
         webUp: (pid) => { const w = turnWeb.get(pid); return !!w && w.up(); },
         webClose: (pid) => { const w = turnWeb.get(pid); if (w) { turnWeb.delete(pid); try { w.close('link closed'); } catch (e) {} } },
         log: turnNote,
-        changed: (pid) => { const p = peers.get(pid); if (p) turnApplyVideo(p); if (!turnSubTold.has(pid)) { if (turnSubTold.size > 512) turnSubTold.clear(); turnSubTold.add(pid); turnSubAt = 0; } (0, /*()*/__V.turnPaint)(); },   // TVBLANK: a new pipe hears my vouch on the next step, not up to 60 s later
+        changed: (pid) => { const p = peers.get(pid); if (p) turnApplyVideo(p); (0, /*()*/__V.turnPaint)(); },
         // SUB.8: a pipe of mine is its own standby from now on (the pipe moved to a better path): nothing media rides this pc
         // any more, and a standby's channel carries no 'mx-end'. So each end ends, by itself, what the pipe carried: my jobs
         // toward that peer, its announces and what I claimed from it; then it claims again (the same branch comes in through
