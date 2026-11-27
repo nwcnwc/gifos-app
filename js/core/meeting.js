@@ -25384,10 +25384,10 @@
       const cred = { subId: c.subId };
       if (c.pid) cred.pid = c.pid;
       const base = String(window.GIFOS_PAY_URL || 'https://pay.gifos.app').replace(/\/$/, '');
-      // cat: 'illegal' | 'offensive' | 'other' (the sheet's choice); ref: the page this came from (the embedding site for an
+      // cat: 'illegal' | 'sexual' | 'offensive' | 'other' (the sheet's choice); ref: the page this came from (the embedding site for an
       // embed), no query or hash. Both optional; the server adds the reporter's IP for abuse review (privacy policy).
       const body = { v: 1, cred };
-      if (cat === 'illegal' || cat === 'offensive' || cat === 'other') body.cat = cat;
+      if (cat === 'illegal' || cat === 'sexual' || cat === 'offensive' || cat === 'other') body.cat = cat;
       if (typeof ref === 'string' && /^https?:\/\/[^\s#?]{1,290}$/.test(ref)) body.ref = ref;
       try {
         const r = await fetch(base + '/gifos/report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), referrerPolicy: 'no-referrer', credentials: 'omit' });
