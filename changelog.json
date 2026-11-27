@@ -10,8 +10,7 @@
       ],
       "fixes": [
         "The meeting start screen is simpler: it shows a Rooms link and how many calls you missed.",
-        "Lip sync on the Stage: viewers who get the Stage through another person's device no longer see the picture ahead of the sound (GifOS TV and meetings).",
-        "Focus on phones: the strip of faces moves to the other edge when the floating bar wakes, so no black band sits above the bar."
+        "Lip sync on the Stage: viewers who get the Stage through another person's device no longer see the picture ahead of the sound (GifOS TV and meetings)."
       ]
     },
     {
