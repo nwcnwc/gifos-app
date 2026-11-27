@@ -737,11 +737,12 @@
     // A short phone: the insets start as one strip along the edge (smaller faces, STRIP_MIN at least) and the
     // content starts beside them, so nothing of it starts covered; each face still drags anywhere.
     const strip = phone && shareItem.content && people.length > 0 && (wide ? box.h < SHORT_BAND / 1.5 : box.h < SHORT_BAND);
+    // Sideways a face stays at least SIDE_STRIP_MIN tall (a thinner column only crowds the names): one column when it fits.
     if (strip) {
       let len = 0;
       for (let i = 0; i < people.length; i++) len += wide ? 1 : people[i].aspect;
       const fit = Math.floor(((wide ? box.h : box.w) - 2 * m - (people.length - 1) * gap) / Math.max(1, len));
-      side = Math.max(STRIP_MIN, Math.min(side, fit));
+      side = Math.max(wide ? SIDE_STRIP_MIN : STRIP_MIN, Math.min(side, fit));
     }
     // From the bottom-right corner: up the right edge when wide (a full
     // column wraps to the next one leftward), leftward along the bottom when
@@ -880,6 +881,7 @@
   // beside a wide one), each face no smaller than STRIP_MIN. An app in front (opts.content.app) asks the whole
   // band on such a phone (shorter than SHORT_BAND upright, SHORT_BAND / 1.5 sideways): the faces keep the strip.
   const STRIP_MIN = 56;
+  const SIDE_STRIP_MIN = 80;
   const SHORT_BAND = 640;
   function stripSpan(n, len, floor, gap) {
     const side = Math.max(STRIP_MIN, Math.min(floor, Math.floor((len - Math.max(0, n - 1) * gap) / Math.max(1, n))));
@@ -940,7 +942,8 @@
       const perCol = Math.max(1, Math.floor((box.h + gap) / (floor + gap)));
       const cols = Math.ceil(nPeople / perCol);
       let pwMin = Math.max(phone ? 110 : 160, Math.min(Math.round(box.w * 0.6), cols * floor + (cols - 1) * gap));
-      if (short && need + gap + pwMin > box.w) pwMin = Math.min(pwMin, Math.max(STRIP_MIN, stripSpan(nPeople, box.h, floor, gap)));
+      // Sideways only an app folds the faces: a list is short of height, not width, so a thinner face column buys it nothing.
+      if (short && c.app && need + gap + pwMin > box.w) pwMin = Math.min(pwMin, Math.max(STRIP_MIN, stripSpan(nPeople, box.h, floor, gap)));
       const sw0 = Math.max(Math.round(box.w * 0.4), Math.min(need, box.w - pwMin - gap));
       const pw = Math.max(1, box.w - sw0 - gap);
       const sh = opts.floor > box.y + box.h ? opts.floor - box.y : box.h;
