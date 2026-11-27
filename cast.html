@@ -991,7 +991,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <button id="pwbtn" data-t="password" data-ti="pwTip" aria-keyshortcuts="Alt+L" title="Lock this room with a password">Password</button>
         <button data-ti="capbtnTip" data-t="capBtn" id="capbtn" type="button" title="Take charge of this public majority-rules meeting: you set its password and can remove people" style="display:none">Make me host</button>
         <span id="capnote" class="capnote" role="status" style="display:none">Someone has taken charge of this meeting</span>
-        <button data-ti="waitbtnTip" data-t="waitRoom" id="waitbtn" type="button" aria-pressed="false" title="Hold people at the door until you admit them" style="display:none">Waiting room</button>
+        <button data-ti="waitbtnTip" data-t="waitRoom" id="waitbtn" type="button" aria-pressed="false" title="Make people wait until you let them in" style="display:none">Waiting room</button>
         <button data-ti="recbtnTip" id="recbtn" data-t="record" aria-keyshortcuts="Alt+R" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
         <button id="votebtn" data-t="vote" data-ti="voteTip" aria-keyshortcuts="Alt+U" title="Vote someone onto the stage, off the stage, or out of the room — majorities decide">Vote</button>
         <button data-ti="stagebtnTip" id="stagebtn" data-t="stage" aria-keyshortcuts="Alt+G" title="Step onto the stage — the whole room sees and hears the stage first">Stage</button>
@@ -1164,8 +1164,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             <b data-t="setTiming">Timing</b>
             <div class="set-ctl">
             <div id="timingrow">
-          <button data-timing="chat" data-ti="setTalkTip" title="Snappiest replies — your ears align to your own links only; across the room, timing may stagger"><span data-t="setTalk">Conversation</span></button>
-          <button data-timing="unison" data-ti="setUnisonTip" title="Everyone hears everyone at the same synced instant — reactions, responses and spontaneous song land together (the room may wait for its slowest link, capped)"><span data-t="setUnison">Unison</span></button>
+          <button data-timing="chat" data-ti="setTalkTip" title="Snappiest replies — you hear each person as soon as their sound reaches you; across a big room, timing may vary"><span data-t="setTalk">Conversation</span></button>
+          <button data-timing="unison" data-ti="setUnisonTip" title="Everyone hears everyone at the same synced instant — reactions, responses and spontaneous song land together (sound waits for the slowest connection, up to a limit)"><span data-t="setUnison">Unison</span></button>
           <button data-timing="song" data-ti="setSongTip" title="Lead the room in song — steps you onto the stage with a music-grade mic and lines everyone's sound up to you; tap again to end (earbuds recommended for singers)">🎵 <span data-t="rdSong">Song</span></button>
         </div>
             </div>
@@ -1224,7 +1224,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <section class="set-group" id="set-g-bots">
         <h4 data-t="setGroupBots">AI assistants</h4>
         <div class="set-row set-wide">
-          <label class="rec-opt"><input type="checkbox" id="hidebots" role="switch"><span><b data-t="setHideBots">Hide bots</b><small data-t="setHideBotsHelp">On this device only: AI assistants' tiles are hidden and the voices this device gets from them on their own are muted. A voice already mixed into a row's sound still plays.</small></span></label>
+          <label class="rec-opt"><input type="checkbox" id="hidebots" role="switch"><span><b data-t="setHideBots">Hide bots</b><small data-t="setHideBotsHelp">On this device only: AI assistants’ tiles are hidden and the voices this device gets from them on their own are muted. A voice already mixed into the crowd sound still plays.</small></span></label>
         </div>
       </section>
       <section class="set-group" id="set-g-debug">
@@ -1373,7 +1373,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <div class="name-modal" role="dialog" aria-modal="true" id="fork-modal" style="display:none">
     <div class="name-box" style="max-width:26rem;text-align:left">
       <h3 data-t="whichMeeting">Which meeting?</h3>
-      <p data-t="thisLinkReachesMore" style="font-size:.9rem;opacity:.85;margin:.4rem 0 1rem">This link reaches more than one live room. Pick the one you want to join — they are not merged, and you are not placed between both.</p>
+      <p data-t="thisLinkReachesMore" style="font-size:.9rem;opacity:.85;margin:.4rem 0 1rem">This link reaches more than one live meeting. Pick the one you want to join. They stay separate.</p>
       <div id="fork-choices" style="display:flex;flex-direction:column;gap:.55rem"></div>
       <p style="font-size:.78rem;opacity:.55;margin-top:.9rem">We show people on the <b>Stage</b> when we can; if the stage is empty, the <b>Stadium</b> (everyone that room can see).</p>
     </div>
@@ -1453,7 +1453,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <div class="name-modal" role="dialog" aria-modal="true" id="who-modal" style="display:none">
     <div class="name-box" style="max-width:480px;text-align:left">
       <h3 data-t="whoTitle">People</h3>
-      <p class="who-lead" data-t="whoLead">There is no server in the middle storing this meeting. The phones and computers of the people in it are the servers: they connect straight to each other. That is also why everyone here can see everyone's internet address — nobody is anonymous. ✓ marks an address the GifOS relay verified or this device saw directly; anything else is only what that person's device reported. People who left stay on the list. To report illegal activity to law enforcement, download this list and include it.</p>
+      <p class="who-lead" data-t="whoLead">There is no server in the middle storing this meeting. The phones and computers of the people in it are the servers: they connect straight to each other. That is also why everyone here can see everyone's internet address — nobody is anonymous. ✓ marks an address GifOS verified or this device saw directly; anything else is only what that person's device reported. People who left stay on the list. To report illegal activity to law enforcement, download this list and include it.</p>
       <div id="who-list"></div>
       <div style="display:flex;gap:.5rem;justify-content:center;margin-top:.8rem">
         <button id="who-dl" data-t="whoDl">Download this list</button>

@@ -90,8 +90,8 @@
     else if (Number.isInteger(ok.roomLimit)) bits.push(tr('charge.receiptView.grantPeople', 'meetings of up to {n} people', { n: String(ok.roomLimit) }));
     if (ok.meetings === 1) bits.push(tr('charge.receiptView.grantOne', 'one meeting at a time'));
     else if (Number.isInteger(ok.meetings) && ok.meetings > 1) bits.push(tr('charge.receiptView.grantMany', 'up to {n} meetings at once', { n: String(ok.meetings) }));
-    if (Number.isInteger(ok.turnVideoLinks) && ok.turnVideoLinks > 0) bits.push(tr('charge.receiptView.grantVideo', 'video through our relay servers'));
-    else if (ok.turnVideoLinks === 0) bits.push(tr('charge.receiptView.grantVoice', 'voice through our relay servers'));
+    if (Number.isInteger(ok.turnVideoLinks) && ok.turnVideoLinks > 0) bits.push(tr('charge.receiptView.grantVideo', 'video that gets through firewalls, still end-to-end encrypted'));
+    else if (ok.turnVideoLinks === 0) bits.push(tr('charge.receiptView.grantVoice', 'voice that gets through firewalls, still end-to-end encrypted'));
     if (ok.captureOpenRoom === true) bits.push(tr('charge.receiptView.grantCapture', 'taking charge of majority-rules meetings'));
     if (ok.storage === true) bits.push(tr('charge.receiptView.grantStorage', 'a library for recordings and transcripts'));
     return bits.join(', ');

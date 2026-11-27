@@ -381,7 +381,7 @@
     // The way in now: Unlimited ($5/month, on /subscription) lifts the line for everyone in the meeting, a four-hour pass too.
     const up = el('a', { id: 'sub-full-up', class: 'sub-full-up', href: '/subscription', target: '_blank', rel: 'noopener' }, fill(tx('subFullUpgrade', 'Upgrade to Unlimited for {price}/month'), { price: (SUB.TIERS.unlimited && SUB.TIERS.unlimited.price) || '$5' }));
     const upw = el('p', { class: 'sub-full-upwrap' }); upw.appendChild(up); card.appendChild(upw);
-    card.appendChild(el('p', { id: 'sub-full-wait', class: 'sub-full-wait', role: 'status', 'aria-live': 'polite' }, tx('subFullWait', 'We keep knocking for you. You get in by yourself as soon as a place opens.')));
+    card.appendChild(el('p', { id: 'sub-full-wait', class: 'sub-full-wait', role: 'status', 'aria-live': 'polite' }, tx('subFullWait', 'We keep trying for you. You’ll get in automatically as soon as a place opens.')));
     // Above the Rejoin / Close row: the page may have wrapped those buttons, so insert before the box's own child that holds Rejoin.
     let ref = box.querySelector('#left-rejoin');
     while (ref && ref.parentNode !== box) ref = ref.parentNode;
@@ -399,7 +399,7 @@
     void o;
     const w = document.getElementById('sub-full-wait');
     if (!w) return false;
-    w.textContent = tx('subFullWait', 'We keep knocking for you. You get in by yourself as soon as a place opens.');
+    w.textContent = tx('subFullWait', 'We keep trying for you. You’ll get in automatically as soon as a place opens.');
     w.className = 'sub-full-wait';
     return true;
   }
@@ -445,7 +445,7 @@
       if (opts.entries.length === 1 && opts.places <= 1) {
         const e = opts.entries[0];
         line('sub-move-title', fill(e.people === 1 ? tx('subMoveOne1', 'Your plan is powering \u201c{name}\u201d (1 person). Use it in this meeting?') : e.people ? tx('subMoveOne', 'Your plan is powering \u201c{name}\u201d ({n} people). Use it in this meeting?') : tx('subMoveOneNoCount', 'Your plan is powering \u201c{name}\u201d. Use it in this meeting?'), { name: nameOf(e), n: e.people }), true);
-        line('sub-move-note', fill(tx('subMoveNote', 'That meeting will then let in only {free} new people and lose firewall video.'), { free }));
+        line('sub-move-note', fill(tx('subMoveNote', 'That meeting will then let in only {free} new people, and its video will no longer get through firewalls.'), { free }));
         line('sub-move-teach', tx('subMoveTeach', 'Your plan powers one meeting at a time.'));
         btn('sub-move-go', tx('subMoveGo', 'Use it in this meeting'), { right: e.right, meeting: e.meeting });
         btn('sub-move-keep', tx('subMoveKeep', 'Keep it there'), { keep: true });

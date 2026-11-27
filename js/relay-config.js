@@ -37,7 +37,7 @@ window.GIFOS_RELAY_FALLBACK_FAILS = 2;
 // The relay's ADDRESS-ATTESTATION public keys, as
 // { kid: base64 raw Ed25519 public key }, where
 // kid is the first 16 hex chars of SHA-256 over the raw key bytes. A meeting
-// marks a participant's address "verified by the relay" only when it carries
+// marks a participant's address "verified by GifOS" only when it carries
 // a statement signed by one of these keys. Empty: every address shows as
 // reported by the participant's own device, exactly as before. A fork
 // running its own relay lists its own key here. Keys set before this file
