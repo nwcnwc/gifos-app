@@ -76,5 +76,7 @@
   "embed.msgFull": "Zuschauerlimit erreicht.",
   "embed.fullUp": "Auf Unlimited upgraden für {price}/Monat",
   "embed.fullPass": "{price}-Pass: 4 Stunden Unlimited",
-  "embed.fullWait": "Sie kommen von selbst hinein, sobald ein Platz frei wird."
+  "embed.fullWait": "Sie kommen von selbst hinein, sobald ein Platz frei wird.",
+  "embed.msgEnded": "Diese Übertragung ist gerade zu Ende gegangen.",
+  "embed.msgOffAir": "Diese Übertragung ist gerade nicht live. Vielleicht ist sie eben zu Ende gegangen. Sobald sie wieder läuft, startet sie hier von selbst."
 }

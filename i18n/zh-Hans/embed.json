@@ -76,5 +76,7 @@
   "embed.msgFull": "已达到观众人数上限。",
   "embed.fullUp": "升级到 Unlimited，每月 {price}",
   "embed.fullPass": "{price} 通行证：4 小时 Unlimited",
-  "embed.fullWait": "一有空位，您会自动进入。"
+  "embed.fullWait": "一有空位，您会自动进入。",
+  "embed.msgEnded": "此直播刚刚结束。",
+  "embed.msgOffAir": "此直播当前不在播出，可能刚刚结束。恢复直播后会在这里自动播放。"
 }

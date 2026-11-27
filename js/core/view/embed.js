@@ -243,7 +243,9 @@
         : know === 'connecting' ? tr('msgConnecting', 'Connecting to the meeting… The live view starts as soon as this page is in.')
         : know === 'offline' ? tr('msgOffline', 'You appear to be offline. Trying again…')
         : know === 'noconn' ? tr('msgNoConn', 'Couldn’t connect to the broadcast. Trying again…')
-        : !hosted ? tr('msgUnhosted', 'This meeting isn’t hosted right now. The live view starts when a host takes charge.')
+        // a broadcast that ended while this player watched says so plainly; one that is not on yet (or just ended
+        // before this player came in) says it starts by itself
+        : !hosted ? (hostedEver ? tr('msgEnded', 'This broadcast just ended.') : tr('msgOffAir', 'This broadcast isn’t live right now. It may have just ended. It plays here by itself when it’s back.'))
         : qtext ? qtext
         : (!picture && C.pwBlocked) ? tr('msgPw', 'This broadcast has a room password.')
         : !picture ? tr('msgNotLive', 'Not live right now.') : '';
