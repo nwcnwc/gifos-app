@@ -29,8 +29,9 @@
  *
  * COST. A frame that did not change costs its cell fingerprints and the compare of its shown cells (about 8 ms at 1080p). A cell is analysed once it has
  * held still for a tick, and only the 256 px blocks around changed cells are analysed again (incremental), so a cursor
- * or a clock costs a block, not a frame. When a device is over budget the filter first ticks slower, then analyses a
- * smaller picture; it falls back to the full blur only when neither is enough (Nathan 2026-11-26).
+ * or a clock costs a block, not a frame. When a device is over budget the filter first ticks slower and spreads big
+ * analyses out in time, then analyses a smaller picture; it falls back to the full blur only when neither is enough
+ * (Nathan 2026-11-26).
  */
 (function (root, factory) {
   'use strict';
@@ -675,7 +676,10 @@
       if (cw < C) for (let y = 0; y < ch; y++) out.fill(0, (y * C + cw) * 4, (y + 1) * C * 4);
     };
     function differs(a, b, c) { for (let i = c * 16; i < c * 16 + 16; i++) if (Math.abs(a[i] - b[i]) > P.fpTol) return true; return false; }
-    st.tick = function (rgba) {
+    // budgetPx (optional): the most pixels this tick may analyse. When the regions to analyse are larger, the analysis
+    // waits for a later tick (the cells stay candidates): the page runtime spreads big analyses out in time instead
+    // of analysing a smaller picture (Nathan 2026-11-26: lower fps first).
+    st.tick = function (rgba, budgetPx) {
       fingerprints(rgba);
       if (rgba.byteOffset & 3) rgba = new Uint8Array(rgba);   // (a copy aligned to 4 bytes; a page's or a Worker's frame is aligned already)
       const u32 = new Uint32Array(rgba.buffer, rgba.byteOffset, w * h);
@@ -691,10 +695,12 @@
         if (!st.shown[c] && !st.judged[c] && st.stable[c] >= P.needStable + st.strikes[c]) { cand[c] = 1; dirty = true; }
       }
       const newly = [];
-      let patches = null, regions = 0, px = 0;
+      let patches = null, regions = 0, px = 0, aMs = 0, deferred = false;
+      const regs = dirty ? regionsOf(cand, cols, rows, w, h, P) : [];
+      if (dirty && budgetPx >= 0) { let a = 0; for (const r of regs) a += r.w * r.h; if (a > budgetPx) { dirty = false; deferred = true; } }
       if (dirty) { // analyse only where some cell could newly clear; a static, already shown frame costs fingerprints only
-        const done = new Uint8Array(n);
-        for (const r of regionsOf(cand, cols, rows, w, h, P)) {
+        const done = new Uint8Array(n), a0 = clock();
+        for (const r of regs) {
           const whole = r.w === w && r.h === h, src = whole ? rgba : crop(rgba, w, r);
           const A = analyze(src, r.w, r.h, P); regions++; px += r.w * r.h;
           const ox = r.x / C, oy = r.y / C;
@@ -710,6 +716,7 @@
             }
           }
         }
+        aMs = clock() - a0;
       }
       smallPictures(newly, hidden);
       slivers(rgba, newly);
@@ -725,10 +732,11 @@
       // newly: every cell to paint (a shown cell's patch, or a mark); the first `fresh` of them were not shown before.
       // hidden: every cell to clear; the first `lost` of them were shown.
       const lost = hidden.length; for (const c of unmark) hidden.push(c);
-      return { analysed: dirty, regions, px, fresh, lost, newly: Int32Array.from(newly), patches: patches || new Uint8Array(0), hidden: Int32Array.from(hidden) };
+      return { analysed: dirty, deferred, regions, px, aMs, fresh, lost, newly: Int32Array.from(newly), patches: patches || new Uint8Array(0), hidden: Int32Array.from(hidden) };
     };
     return st;
   }
+  function clock() { return typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now(); }
 
   // ======================================= THE WORKER =======================================
   // The analysis runs off the page's thread. One Worker serves every stream on the page; a stream is its id.
@@ -741,8 +749,8 @@
       if (m.op !== 'tick') return;
       let st = states.get(m.id);
       if (!st || st.w !== m.w || st.h !== m.h) { st = createState(m.w, m.h, m.opts); states.set(m.id, st); }
-      const t0 = now(); const r = st.tick(new Uint8Array(m.buf)); const ms = now() - t0;
-      G.postMessage({ op: 'res', id: m.id, seq: m.seq, w: m.w, h: m.h, cell: st.cell, cols: st.cols, analysed: r.analysed, regions: r.regions, px: r.px, ms: ms, fresh: r.fresh, lost: r.lost,
+      const t0 = now(); const r = st.tick(new Uint8Array(m.buf), m.budget); const ms = now() - t0;
+      G.postMessage({ op: 'res', id: m.id, seq: m.seq, w: m.w, h: m.h, cell: st.cell, cols: st.cols, analysed: r.analysed, deferred: r.deferred, regions: r.regions, px: r.px, ms: ms, aMs: r.aMs, fresh: r.fresh, lost: r.lost,
         newly: r.newly, patches: r.patches, hidden: r.hidden, buf: m.buf }, [m.buf, r.newly.buffer, r.patches.buffer, r.hidden.buffer]);
     };
   }
@@ -754,7 +762,8 @@
     const T = GifOS.timings || {};
     // js/timings.js (TEXTCLEAR_*); the numbers and their derivations are in the global timings table.
     const TICK_MS = T.TEXTCLEAR_TICK_MS, MAX_TICK_MS = T.TEXTCLEAR_MAX_TICK_MS, KEEP_MS = T.TEXTCLEAR_KEEPALIVE_MS;
-    const COST_K = 4;   // the tick waits this many times the last analysis: the filter keeps to about a quarter of one core
+    const COST_K = 4;   // work is followed by COST_K times as much rest: the filter keeps to about a fifth of one core
+    const SMALL_FRAC = 1 / 16;   // an analysis of at most this share of the picture (an edited line) never waits for the big-analysis rest
     const SIZES = [1920, 1280, 960, 640];   // the analysed picture's long side, step by step when a device is over budget
     // The Worker runs this module's own factory from a blob (the factory is self-contained), so a release snapshot that
     // bundles every script into one file still starts it.
@@ -776,8 +785,8 @@
         // no Worker: the same code on this thread
         let st = inline.get(eng.id);
         if (!st || st.w !== msg.w || st.h !== msg.h) { st = TCm.createState(msg.w, msg.h, msg.opts); inline.set(eng.id, st); }
-        const t0 = now(); const r = st.tick(new Uint8Array(buf));
-        resolve({ id: eng.id, w: msg.w, h: msg.h, cell: st.cell, cols: st.cols, analysed: r.analysed, regions: r.regions, px: r.px, ms: now() - t0, fresh: r.fresh, lost: r.lost, newly: r.newly, patches: r.patches, hidden: r.hidden });
+        const t0 = now(); const r = st.tick(new Uint8Array(buf), msg.budget);
+        resolve({ id: eng.id, w: msg.w, h: msg.h, cell: st.cell, cols: st.cols, analysed: r.analysed, deferred: r.deferred, regions: r.regions, px: r.px, ms: now() - t0, aMs: r.aMs, fresh: r.fresh, lost: r.lost, newly: r.newly, patches: r.patches, hidden: r.hidden });
       });
     }
     function dropState(id) { inline.delete(id); if (worker) { try { worker.postMessage({ op: 'drop', id: id }); } catch (e) {} } }
@@ -785,7 +794,7 @@
     // ONE ANALYSIS STREAM: its overlay canvas (at the analysed size: the vetted cells, transparent elsewhere), its
     // tick and its budget. run(src, sw, sh, capLong) analyses one frame of src when the tick is due.
     function engine() {
-      const eng = { id: ++engN, w: 0, h: 0, step: 0, gaveUp: false, busy: false, next: 0, cost: 0, overN: 0, ticks: 0, analysed: 0, shownN: 0, lastMs: 0, gen: 0, ver: 0, opts: null };
+      const eng = { id: ++engN, w: 0, h: 0, step: 0, gaveUp: false, busy: false, next: 0, aNext: 0, cost: 0, aCost: 0, tCost: 0, overA: 0, overT: 0, overN: 0, ticks: 0, analysed: 0, deferred: 0, shownN: 0, lastMs: 0, gen: 0, ver: 0, opts: null };
       eng.ov = W.document.createElement('canvas'); eng.ov.width = eng.ov.height = 1;
       eng.ovx = eng.ov.getContext('2d');
       eng.grab = W.document.createElement('canvas');
@@ -807,7 +816,7 @@
         if (!eng.due(t) || !(sw > 0 && sh > 0)) return null;
         const sz = eng.sizeFor(sw, sh, capLong);
         if (sz.w !== eng.w || sz.h !== eng.h) {
-          eng.reset(); eng.w = sz.w; eng.h = sz.h;
+          eng.reset(); eng.w = sz.w; eng.h = sz.h; eng.tCost = 0; eng.overT = 0; eng.overA = 0; eng.aNext = 0;
           eng.ov.width = sz.w; eng.ov.height = sz.h; eng.grab.width = sz.w; eng.grab.height = sz.h;
         }
         let img = null;
@@ -815,7 +824,9 @@
         if (!img) { eng.next = t + TICK_MS; return null; }
         eng.busy = true; eng.busyAt = t; eng.ticks++;
         const gen = eng.gen, buf = img.data.buffer, grabMs = now() - t;
-        return post(eng, { op: 'tick', id: eng.id, seq: eng.ticks, w: eng.w, h: eng.h, buf: buf, opts: eng.opts }, buf).then((m) => {
+        // a big analysis waits for its rest (aNext); a small one (an edited line, a codec-sharpened cell) never does
+        const budget = t >= eng.aNext ? -1 : Math.round(SMALL_FRAC * eng.w * eng.h);
+        return post(eng, { op: 'tick', id: eng.id, seq: eng.ticks, w: eng.w, h: eng.h, buf: buf, opts: eng.opts, budget: budget }, buf).then((m) => {
           eng.busy = false;
           if (!m) { eng.reset(); eng.next = now() + TICK_MS; return true; }   // the analysis failed: what it showed goes too
           if (gen !== eng.gen || m.w !== eng.w || m.h !== eng.h) return false;   // the picture changed size meanwhile
@@ -829,24 +840,38 @@
           }
           eng.shownN += m.fresh - m.lost;
           if (m.newly.length || m.hidden.length) eng.ver++;
-          const ms = m.ms + grabMs; eng.lastMs = ms; eng.lastWork = m.ms;
+          const ms = m.ms + grabMs, aMs = m.analysed ? (m.aMs || 0) : 0, base = ms - aMs, tNow = now(); eng.lastMs = ms; eng.lastWork = m.ms;
+          if (m.deferred) eng.deferred++;
+          // THE BUDGET LADDER (Nathan 2026-11-26: lower fps first, then a smaller picture, the full blur last).
+          // Body text at 640 px is smaller than the text tests' sizes (on a phone it read as grey patches), so a slow device
+          // keeps the picture's size and takes longer to show a new page instead.
+          // Two costs, each followed by COST_K times as much rest (about a fifth of a core each):
+          //  - the tick (grab, fingerprints, the shown-is-live compare): the tick slows down to MAX_TICK_MS;
+          //  - a big analysis (a new page): the next big one waits COST_K x its time, while ticks go on at their own rate
+          //    (a changed cell still drops at once). Text shows later on a slow device, never smaller.
+          // Only when a big analysis takes more than MAX_TICK_MS, or the tick alone is over budget at MAX_TICK_MS, twice
+          // in a row (one slow frame is noise), does the next step analyse a smaller picture; at the smallest, the share
+          // falls back to the full blur (fail closed).
+          eng.tCost = eng.tCost ? eng.tCost * 0.5 + base * 0.5 : base;
+          let over = false;
+          if (base * COST_K > MAX_TICK_MS) { if (++eng.overT >= 2) over = true; } else eng.overT = 0;   // (each tick on its own: a grab hitch after a size change is one tick)
           if (m.analysed) {
             eng.analysed++;
             eng.cost = eng.cost ? eng.cost * 0.5 + ms * 0.5 : ms;
-            // THE BUDGET LADDER (Nathan 2026-11-26): the tick waits COST_K x the analysis (at most a quarter of a core);
-            // past MAX_TICK_MS that is too slow a tick, so the next step analyses a smaller picture; at the smallest,
-            // twice over budget, the share falls back to the full blur (fail closed).
-            if (ms * COST_K > MAX_TICK_MS) {
-              if (eng.step < SIZES.length - 1) { eng.step++; eng.overN = 0; }
-              else if (++eng.overN >= 2) { eng.gaveUp = true; eng.reset(); }
-            } else eng.overN = 0;
+            eng.aNext = Math.max(eng.aNext, tNow + COST_K * aMs);
+            if (m.px >= 0.5 * eng.w * eng.h) { eng.aCost = aMs; if (aMs > MAX_TICK_MS) { if (++eng.overA >= 2) over = true; } else eng.overA = 0; }
           }
-          eng.next = now() + Math.max(TICK_MS, Math.min(MAX_TICK_MS, COST_K * (m.analysed ? ms : 0)));
+          if (over) {
+            if (eng.step < SIZES.length - 1) { eng.step++; eng.overN = 0; }
+            else if (++eng.overN >= 2) { eng.gaveUp = true; eng.reset(); }
+            eng.overA = eng.overT = 0;
+          }
+          eng.next = tNow + Math.max(TICK_MS, Math.min(MAX_TICK_MS, COST_K * base));
           return m.newly.length > 0 || m.hidden.length > 0;
         });
       };
       eng.stop = function () { dropState(eng.id); eng.gen++; eng.gaveUp = true; };
-      eng.state = function () { return { w: eng.w, h: eng.h, step: eng.step, size: SIZES[eng.step], gaveUp: eng.gaveUp, ticks: eng.ticks, analysed: eng.analysed, shown: eng.shownN, cost: Math.round(eng.cost), lastMs: Math.round(eng.lastMs), work: Math.round(eng.lastWork || 0), worker: !!worker }; };
+      eng.state = function () { return { w: eng.w, h: eng.h, step: eng.step, size: SIZES[eng.step], gaveUp: eng.gaveUp, ticks: eng.ticks, analysed: eng.analysed, deferred: eng.deferred, shown: eng.shownN, cost: Math.round(eng.cost), aCost: Math.round(eng.aCost), tCost: Math.round(eng.tCost), aNextIn: Math.max(0, Math.round(eng.aNext - now())), lastMs: Math.round(eng.lastMs), work: Math.round(eng.lastWork || 0), worker: !!worker }; };
       return eng;
     }
 
