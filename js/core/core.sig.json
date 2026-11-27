@@ -1,6 +1,6 @@
 {
  "v": 1,
- "build": "0.9.28.47",
+ "build": "0.9.28.48",
  "signer": "gifos.app",
  "files": {
   "js/app-owner.js": "7c709e7f9e553d5c4c38ef8925dc7841fe2b68a2f95ebce0846593f91eb54535",
@@ -42,7 +42,7 @@
   "js/meet-zones.js": "095e282f3b36e67ddecc018692181871eb29ced1a0bd610de17c961892f24663",
   "js/mesh-identity.js": "e7c41650476bf262b0ba41d9970072b77eb748c16d1d9267c73fb4af8e5e1a79",
   "js/mesh-media.js": "41245d8086c88d9499455c0dfab87b379fe19764186a67401548e8c516c72eb7",
-  "js/mesh-wire.js": "f6c3a8b5d07a9977d7fb56c218851b12cbaee894bc84a5db623e1f945f92a745",
+  "js/mesh-wire.js": "1e8e130107b47e82f9cfe09378b8f5901bb7a44c629f5fc429d19eb9e86b9236",
   "js/mesh/books.js": "092db7b0f42029f95830cfc42f5f3180466832730e7a3510364785d3b97b8c6e",
   "js/mesh/burst.js": "70e72093587a0f383f199c799cd55eb952ecf3d18d88b401500db52a10dcec25",
   "js/mesh/c7proof.js": "defc7b5cc309af34d6b04a052704cdf9cf5080f1a99d68ffdd7318a6cd1591ac",
@@ -106,5 +106,5 @@
   "js/runtime.js": "259679ffa6983bcb148149321ad031faa08633414bb4cbedd9e0a42fa120f4e2",
   "js/timings.js": "06770445eb2619eb5b87ed3d2ac87a92303570b2c2918c5999d733a4181c41ea"
  },
- "sig": "cixSOFonMKpEK9kEq+tTWUhX+AkSwiUSHiM1nSHt+u+3j4mm0STw/6aBm3Jtd87xZSZSBE6v85+QqDQjN2RzBQ=="
+ "sig": "wDc7pNG9wYZfN7wowvDKJroo4KxmmUGtQluUtWKmiiAwLotLGAOHdkaRvlfYXY3+FhDvi9cHtYMZoL/rUpFNAQ=="
 }
