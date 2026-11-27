@@ -46,7 +46,7 @@
     root.location.assign(meetPath() + '#' + L().hash({ room, v }));
   }
   async function copy(text, btn) {
-    try { await root.navigator.clipboard.writeText(text); if (btn) { const t = btn.textContent; btn.textContent = 'Copied'; setTimeout(() => { btn.textContent = t; }, 1500); } }
+    try { await root.navigator.clipboard.writeText(text); if (btn) btn.textContent = 'Copied'; }   // it reads Copied until the list is painted again
     catch (e) { root.prompt('Copy this link', text); }
   }
 
@@ -94,7 +94,7 @@
     // Missed
     if (m.missed.length) {
       h += '<section class="card" id="sec-missed" aria-labelledby="h-missed"><div class="sec-h"><h2 id="h-missed">Missed</h2><button type="button" class="text" id="missed-clear">Clear all</button></div><ul class="rows">';
-      for (const x of m.missed.slice(0, 20)) {
+      for (const x of m.missed.slice().sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 20)) {   // newest first
         const who = m.contacts.find((k) => k.c.name === x.label);
         h += '<li class="row">' + avatar(x.label) + '<div class="main"><b>' + esc(x.label) + '</b><span class="quiet">' + esc(timeOf(x.at)) + '</span></div>' +
           (who ? '<button type="button" data-call="' + esc(who.c.room + '.' + who.c.v) + '">Call</button>' : '') + '</li>';
@@ -190,7 +190,7 @@
     wrap.addEventListener('click', (e) => { if (e.target === wrap) closeSheet(); });
     doc.body.appendChild(wrap); doc.body.classList.add('sheet-on');
     $('sheet-x').onclick = closeSheet;
-    const f = wrap.querySelector('input'); if (f) setTimeout(() => f.focus(), 50);
+    const f = wrap.querySelector('input'); if (f) root.requestAnimationFrame(() => f.focus());
     return wrap;
   }
   function closeSheet() { const s = $('sheet'); if (s) s.remove(); doc.body.classList.remove('sheet-on'); }
