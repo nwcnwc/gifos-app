@@ -23,12 +23,12 @@
 <script src="js/build.js" defer></script>
 <script src="js/build-badge.js" defer></script>
 <title>Welcome to GifOS: join the welcome meeting</title>
-<meta name="description" content="Join the GifOS welcome meeting, a public meeting where our welcome bots, Mia and Leo, answer questions about GifOS. Then put a bot like them on your own site, and see GifOS chapter by chapter.">
+<meta name="description" content="Join the GifOS welcome meeting, a public meeting where AI bots answer questions about GifOS. Then put a bot like that on your own site, and see GifOS chapter by chapter.">
 <link rel="canonical" href="https://gifos.app/welcome">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="GifOS">
 <meta property="og:title" content="Welcome to GifOS: join the welcome meeting">
-<meta property="og:description" content="A public meeting where GifOS's welcome bots, Mia and Leo, answer questions about GifOS. Join it in your browser, no sign-up.">
+<meta property="og:description" content="A public meeting where AI bots answer questions about GifOS. Join it in your browser, no sign-up.">
 <meta property="og:url" content="https://gifos.app/welcome">
 <meta property="og:image" content="https://gifos.app/og.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%91%8B%3C/text%3E%3C/svg%3E">
@@ -169,21 +169,21 @@
     <!-- 1. THE WELCOME MEETING: the call to action is to join it. -->
     <header class="hero" id="welcome-meeting">
       <p class="eyebrow" data-i18n="welcome.hero.eyebrow">Welcome to GifOS</p>
-      <h1 data-i18n="welcome.hero.title">Come ask Mia and Leo anything about GifOS</h1>
-      <p class="lede" data-i18n="welcome.hero.lede">The <b>welcome meeting</b> is a public meeting where GifOS's welcome bots, <b>Mia and Leo</b>, answer general questions about GifOS. Join it and ask yours.</p>
+      <h1 data-i18n="welcome.hero.title">Ask anything about GifOS, live</h1>
+      <p class="lede" data-i18n="welcome.hero.lede">The <b>welcome meeting</b> is a public meeting where AI bots answer general questions about GifOS. Join it and ask yours.</p>
       <a class="cta" href="/meet#room=welcome" data-i18n="welcome.hero.join">Join the welcome meeting &rarr;</a>
       <p class="reassure" data-i18n="welcome.hero.reassure">Free, in your browser, on a computer or a phone. Nothing to install, nothing to sign up for. No accounts, ever.</p>
       <div class="preview">
         <p class="preview-lbl"><span class="dot" aria-hidden="true"></span><span data-i18n="welcome.hero.previewLbl">Live preview of the welcome meeting</span></p>
         <div class="player" id="player"><script src="/embed.js" data-room="welcome" data-title="GifOS welcome meeting"></script></div>
-        <p class="under" data-i18n="welcome.hero.under">The preview is for watching. To ask Mia and Leo a question, <a href="/meet#room=welcome">join the meeting</a>.</p>
+        <p class="under" data-i18n="welcome.hero.under">The preview is for watching. To ask a question, <a href="/meet#room=welcome">join the meeting</a>.</p>
       </div>
     </header>
 
     <!-- 2. YOUR OWN BOT: what exists today, said plainly. -->
     <section id="your-bot">
       <p class="eyebrow" data-i18n="welcome.bot.eyebrow">For your product, business or topic</p>
-      <h2 data-i18n="welcome.bot.title">Put a bot like Mia on your own site</h2>
+      <h2 data-i18n="welcome.bot.title">Put a bot like this on your own site</h2>
       <p data-i18n="welcome.bot.lede">A bot that answers questions about <b>your</b> product, business or topic, live in a public meeting, with that meeting playing on your own website. A bot joins a GifOS meeting the way a person does, with a bot badge on its tile and the same rules as everyone. It needs no key from us.</p>
       <ol class="steps">
         <li><b data-i18n="welcome.bot.s1">Give it a meeting.</b>
@@ -208,7 +208,7 @@ for await (const line of meet.lines({ toMe: true })) {
           <span class="note" data-i18n="welcome.bot.s3t">For a hosted room, add its verifier as <code>data-verifier</code>. The player plays while a host is in charge of the room. Put a join link beside it (gifos.app/meet#room=YOUR-ROOM) so visitors can come in and ask, the way this page does. <a href="#ch-embed">Every embed option</a>.</span></li>
       </ol>
       <ul class="coming">
-        <li><span class="soon" data-i18n="welcome.soon">Coming</span><span data-i18n="welcome.bot.soonKit">The open bot kit: the code Mia and Leo run, ready to copy, with your own model, voice, avatar and prompt.</span></li>
+        <li><span class="soon" data-i18n="welcome.soon">Coming</span><span data-i18n="welcome.bot.soonKit">The open bot kit: the code the welcome bots run, ready to copy, with your own model, voice, avatar and prompt.</span></li>
         <li><span class="soon" data-i18n="welcome.soon">Coming</span><span data-i18n="welcome.bot.soonHosted">Hosted bots: run your bot on our servers for $3 a month.</span></li>
       </ul>
       <ul class="linkrow">
@@ -463,14 +463,14 @@ for await (const line of meet.lines({ toMe: true })) {
     <section class="ch" id="ch-agents">
       <p class="num" data-i18n="welcome.c12.num">Chapter 12</p>
       <h2 data-i18n="welcome.c12.title">AI agents: the SDK and the MCP server</h2>
-      <p class="head" data-i18n="welcome.c12.head">AI agents join a GifOS meeting the same way people do. Mia and Leo, who host the welcome meeting, are two of them.</p>
+      <p class="head" data-i18n="welcome.c12.head">AI agents join a GifOS meeting the same way people do. The bots that host the welcome meeting are two of them.</p>
       <div class="solves"><h3 data-i18n="welcome.solves">What it solves</h3><ul>
         <li data-i18n="welcome.c12.p1">AI assistants can't join a meeting as themselves.</li>
         <li data-i18n="welcome.c12.p2">Bot platforms need back doors and special keys.</li>
         <li data-i18n="welcome.c12.p3">Every meeting product needs its own bot integration.</li></ul></div>
       <p data-i18n="welcome.c12.b1">A bot plays by the same rules as everyone else: it wears a bot badge, it can't skip the line, and it can't see more than a person could. Build one with the agent SDK (<code>npm install @gifos-app/agent</code>), or give an AI assistant the MCP server so it can join a meeting and take part.</p>
       <ul class="try"><li class="lbl" data-i18n="welcome.try">Try it</li>
-        <li><a class="btn main" href="#your-bot" data-i18n="welcome.c12.t1">Build a bot like Mia</a></li>
+        <li><a class="btn main" href="#your-bot" data-i18n="welcome.c12.t1">Build a bot like this</a></li>
         <li><a class="btn" href="/meet/llms.txt" data-i18n="welcome.c12.t2">For AI assistants</a></li>
         <li><a class="btn" href="https://github.com/nwcnwc/gifos-meet-mcp" rel="noopener" data-i18n="welcome.c12.t3">MCP server on GitHub</a></li></ul>
       <ul class="coming">
@@ -488,7 +488,7 @@ for await (const line of meet.lines({ toMe: true })) {
 
     <section class="end" id="ch-try">
       <h2 data-i18n="welcome.end.title">Try it with us</h2>
-      <p data-i18n="welcome.end.lede">Mia and Leo host the welcome meeting. Bring a question, or bring a few people.</p>
+      <p data-i18n="welcome.end.lede">The welcome meeting is always open. Bring a question, or bring a few people.</p>
       <a class="cta" href="/meet#room=welcome" data-i18n="welcome.end.join">Join the welcome meeting &rarr;</a>
       <p class="reassure" data-i18n="welcome.end.or">Or <a href="/meet">start a meeting of your own</a>. It's free, and there's nothing to sign up for.</p>
     </section>
