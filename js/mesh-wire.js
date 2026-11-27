@@ -1486,6 +1486,10 @@
       // item). One ask, answered to this socket alone ({t:'acl', l, s}); nothing is pushed and nothing is timed.
       // A seat with no relay socket does not call this: it shows the last value it already saw.
       READ_THE_ROOM_LICENSE() { sendRaw({ t: 'aclq' }); },
+      // (8) READ THE DOOR'S COUNT — only the host of a room it listed on gifos.tv asks (js/tv-publish.js), once per
+      // keep-alive: the relay answers this socket alone with a coarse count of the room's door that it signed
+      // ({t:'tvcnt', sp, sig}); the page carries it to gifos.tv unread. Nothing is pushed and nothing is timed.
+      READ_THE_DOOR_COUNT() { sendRaw({ t: 'tvcnt' }); },
       RELAY_FIRST_CONTACT_SIGNALING(obj) { sendRaw(obj); },
       relaySend(obj) { sendRaw(obj); },   // legacy alias — callers should move to the named form
       // A write that skips the law's outbound gate: what a modified page

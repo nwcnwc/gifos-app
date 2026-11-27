@@ -986,6 +986,7 @@
     capren: { tk: { obj: RELAY_TICKET } },                             // the captor's renewed ticket
     acl: { tk: { obj: RELAY_TICKET } },                                // THE ROOM ACL: a meeting right for this meeting, shown so the relay adds its room-scoped permissions (docs/relay-lockdown.md "Meeting size: who decides")
     aclq: {},                                                          // THE LICENSE: read the room's permissions (hosted rooms); the relay answers {t:'acl', l, s}
+    tvcnt: {},                                                         // THE DOOR'S COUNT: a listed room's host asks for gifos.tv ranking; the relay answers {t:'tvcnt', sp, sig}
     tdoors: { q: { list: 16, item: { str: 16, re: RELAY_DEV_RE }, opt: 1 } },   // the meeting's live subroom doors, signed by the relay for the TURN service; q: devices its signed answer says live or gone (a SUB.3 re-pipe ask)
   };
   function sealedOk(m) {

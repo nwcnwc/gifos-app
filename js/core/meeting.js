@@ -13193,6 +13193,7 @@
         try { if (GifOS.licenseView && GifOS.licenseView.heard) GifOS.licenseView.heard(m.t === 'joined' ? m.acl : m); } catch (e) {}
         clearNoPwTick();
       }
+      if (m.t === 'tvcnt' && GifOS.tvPublish && GifOS.tvPublish.heardCount) { try { GifOS.tvPublish.heardCount(m); } catch (e) {} }   // THE DOOR'S COUNT: carried to gifos.tv by js/tv-publish.js
       if (m.t === 'joined') relayTv = m.tv === 1;   // this relay vouches for TURN links (see relayTv)
       if (m.t === 'joined' && !av) capServerKey = m.cap && m.cap.ck ? m.cap.ck : null;   // the server's word on the capture at this join
       if (m.t === 'joined' && !av) capAclHear(m.cap);   // the captor's Stage flags, the server's word (none: no capture)

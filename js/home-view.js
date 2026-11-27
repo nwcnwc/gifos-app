@@ -202,6 +202,33 @@
   const tvRow = () =>
     '<button type="button" class="hv-row tv" data-act="tv"><span class="hv-row-ic live">' + svg('tv') + '</span><span class="hv-row-t"><b>GifOS TV</b><span>The GifOS channel</span></span><span class="hv-row-go">' + svg('arrow') + '</span></button>';
 
+  // ---- Live on GifOS.tv ----------------------------------------------------------------------------------------------
+  // GifOS.tvIndex.read(): gifos.tv's ONE index of live listings (the same file its directory browses and searches on
+  // the viewer's device; edge-cached, open to any origin). Read only while a view that shows the strip is up, at most
+  // once per two of the directory's own re-read periods (gifos.tv names it in the answer: config.pollMs; this page keeps
+  // no copy). A failure is quiet and not retried on this page (the strip just shows the GifOS channel).
+  const TV_API = String(root.GIFOS_TV_API || 'https://gifos.tv').replace(/\/+$/, '');
+  let tvLive = [], tvReadAt = 0, tvEvery = 0, tvReading = null, tvFailed = false;
+  GifOS.tvIndex = GifOS.tvIndex || {
+    read() {
+      if (tvReading) return tvReading;
+      tvReading = root.fetch(TV_API + '/api/list', { credentials: 'omit' }).then((r) => r.json()).then((j) => {
+        const ls = Array.isArray(j && j.listings) ? j.listings : [];
+        tvEvery = 2 * (Number(j && j.config && j.config.pollMs) || 0);
+        return ls.map((l) => Object.assign({}, l, { url: TV_API + '/' + l.name + '/' + l.v16 }));
+      }).finally(() => { tvReading = null; });
+      return tvReading;
+    },
+  };
+  function tvRefresh() {
+    if (tvFailed || tvReading || (tvReadAt && Date.now() - tvReadAt < tvEvery)) return;
+    tvReadAt = Date.now();
+    GifOS.tvIndex.read().then((ls) => { tvLive = ls; queuePaint(); }, () => { tvFailed = true; });
+  }
+  const tvKind = (l) => (l.kind === 'pre' ? 'Prerecorded' : l.kind === 'bot' ? 'Bot host' : 'Live');
+  const tvStrip = (n) => (tvLive.length ? '<div class="hv-sec-h hv-tvlive"><h2>Live on GifOS.tv</h2><a class="hv-link" href="' + esc(TV_API) + '/" target="_blank" rel="noopener">All</a></div><div class="hv-rows hv-tvlive">' +
+    tvLive.slice(0, n).map((l, i) => '<button type="button" class="hv-row tv" data-act="tvl:' + i + '"><span class="hv-row-ic live">' + svg('tv') + '</span><span class="hv-row-t"><b>' + esc(l.title) + '</b><span>' + esc(tvKind(l) + (l.n >= 2 ? ' · ' + l.n + '+ watching' : '')) + '</span></span><span class="hv-row-go">' + svg('arrow') + '</span></button>').join('') + '</div>' : '');
+
   // ---- sheets (over the view, under the Desktop's own dialogs) --------------------------------------------------------
   let sheetEl = null;
   function closeSheet() { if (sheetEl) { sheetEl.remove(); sheetEl = null; } }
@@ -280,7 +307,7 @@
           '<div class="hv-strip">' + peopleStrip(d.ppl, 12) + '</div></section>' +
         '<div class="g-two"><section class="g-card"><div class="hv-sec-h"><h2>Recent rooms</h2></div><div class="hv-rows">' +
             (d.rooms.length ? d.rooms.slice(0, 4).map((r, i) => roomRow(r, i, 'room')).join('') : '<p class="hv-quiet">Rooms you join show up here.</p>') + '</div></section>' +
-          '<section class="g-card"><div class="hv-sec-h"><h2>On now</h2></div><div class="hv-rows">' + tvRow() + d.casts.slice(0, 3).map((r, i) => roomRow(r, i, 'cast')).join('') + '</div></section></div>' +
+          '<section class="g-card"><div class="hv-sec-h"><h2>On now</h2></div><div class="hv-rows">' + tvRow() + d.casts.slice(0, 3).map((r, i) => roomRow(r, i, 'cast')).join('') + '</div>' + tvStrip(4) + '</section></div>' +
         '<p class="hv-quiet g-foot">' + esc(HONEST) + '</p></div></div></div>' +
         '<nav class="g-dock" aria-label="Apps"></nav>';
       const dock = el.querySelector('.g-dock');
@@ -314,7 +341,7 @@
       const story = '<div class="hv-strip p-stories">' + peopleStrip(d.ppl, 14) + '</div>';
       const jump = d.rooms.length ? '<div class="hv-sec-h"><h2>Jump back in</h2></div><div class="p-cards">' + d.rooms.slice(0, 8).map((r, i) =>
         '<button type="button" class="p-card" data-act="room:' + i + '" style="--h:' + hue(r.room) + '"><span class="p-card-k">' + esc(roomKind(r)) + '</span><b>' + esc(r.name) + '</b><span class="p-card-s">' + esc(r.saved ? 'Saved' : relTime(r.ts)) + '</span><span class="p-card-go">' + svg('video') + 'Join</span></button>').join('') + '</div>' : '';
-      const live = '<div class="hv-sec-h"><h2>Live</h2></div><button type="button" class="p-live" data-act="tv"><span class="p-live-tag"><span class="hv-dot"></span>GifOS TV</span><b>Watch the GifOS channel</b><span>Tap to tune in</span></button>';
+      const live = '<div class="hv-sec-h"><h2>Live</h2></div><button type="button" class="p-live" data-act="tv"><span class="p-live-tag"><span class="hv-dot"></span>GifOS TV</span><b>Watch the GifOS channel</b><span>Tap to tune in</span></button>' + tvStrip(3);
       const panels = {
         home: missedChip(d.ppl) + story +
           '<section class="p-hero"><h1>' + esc(d.me.name ? 'Hey ' + d.me.name + '.' : 'Hey.') + '<br>Where are we meeting?</h1>' + joinForm('big') + '<p class="hv-quiet">' + esc(JOIN_SHORT) + '</p></section>' +
@@ -323,7 +350,7 @@
           '<div class="hv-row person">' + face(p.name) + '<span class="hv-row-t"><b>' + esc(p.name) + (p.ok ? ' <i class="hv-ok">✓</i>' : '') + '</b><span>' + (p.kind === 'p' ? 'Our private room' : 'Card to their room') + '</span></span><button type="button" class="hv-pill hot" data-act="call:' + i + '">' + svg('phone') + 'Call</button></div>').join('') + '</div>' : '<p class="hv-quiet">' + esc(NO_PEOPLE) + '</p>') +
           '<div class="hv-rows"><button type="button" class="hv-row" data-act="myroom"><span class="hv-row-ic">' + svg('home') + '</span><span class="hv-row-t"><b>' + (d.ppl.mine ? 'My room' : 'Make my room') + '</b><span>' + (d.ppl.mine ? esc(d.ppl.mine.room) : 'Your own address, if you choose to share it') + '</span></span><span class="hv-row-go">' + svg('arrow') + '</span></button>' +
           '<button type="button" class="hv-row" data-act="rooms"><span class="hv-row-ic">' + svg('people') + '</span><span class="hv-row-t"><b>Add someone</b><span>Cards, ringing and missed calls are in Rooms</span></span><span class="hv-row-go">' + svg('arrow') + '</span></button></div>',
-        live: '<h1 class="p-title">Live</h1><button type="button" class="p-live" data-act="tv"><span class="p-live-tag"><span class="hv-dot"></span>GifOS TV</span><b>Watch the GifOS channel</b><span>Tap to tune in</span></button>' +
+        live: '<h1 class="p-title">Live</h1><button type="button" class="p-live" data-act="tv"><span class="p-live-tag"><span class="hv-dot"></span>GifOS TV</span><b>Watch the GifOS channel</b><span>Tap to tune in</span></button>' + tvStrip(12) +
           (d.casts.length ? '<div class="hv-sec-h"><h2>Watched before</h2></div><div class="hv-rows">' + d.casts.map((r, i) => roomRow(r, i, 'cast')).join('') + '</div>' : '') +
           '<div class="hv-rows"><button type="button" class="hv-row" data-act="golive"><span class="hv-row-ic live">' + svg('tv') + '</span><span class="hv-row-t"><b>Go live</b><span>Broadcast to as many viewers as come</span></span><span class="hv-row-go">' + svg('arrow') + '</span></button></div>',
         apps: '<h1 class="p-title">Apps</h1><div class="hv-appgrid p-allapps"></div><div class="hv-sheet-foot"><button type="button" class="hv-pill hot" data-act="store">' + svg('bag') + 'App Store</button><button type="button" class="hv-pill" data-act="add">' + svg('plus') + 'Add</button></div>',
@@ -348,6 +375,7 @@
     const keep = host.querySelector('.hv-join input'), typed = keep && doc.activeElement === keep ? keep.value : null;
     const sc = host.querySelector('.hv-scroll'), top = sc ? sc.scrollTop : 0;
     state.data = data();
+    if (id === 'glass' || id === 'pulse') tvRefresh();
     host.className = 'hv hv-' + id;
     LOOKS[id](host, state.data);
     const meBtn = doc.getElementById('hv-me-btn'); if (meBtn) meBtn.innerHTML = myFace();
@@ -368,6 +396,7 @@
       case 'room': { const r = d.rooms[+arg]; if (r) A.room(r.room, r.v); break; }
       case 'cast': { const r = d.casts[+arg]; if (r) A.watch(r.room, r.v); break; }
       case 'tv': A.watch(TV.room, TV.v); break;
+      case 'tvl': { const l = tvLive[+arg]; if (l) A.watch(l.name, l.v); break; }
       case 'golive': A.goLive(); closeSheet(); break;
       case 'lobby': A.lobby(); closeSheet(); break;
       case 'myroom': A.myRoom(); closeSheet(); break;
