@@ -130,6 +130,30 @@
       if (this.l4Hold) return false;
       if (this.l4MassNow()) return false;
       if (this.TICK - this.lastChurn < this.w.lv.L4_QUIET || this.TICK - this.healAt < this.w.lv.L4_QUIET || this.TICK - this.seatedAt < this.w.lv.L4_QUIET) return false;
+      if (!this.l4Whole(true)) return false;   // a place I promised someone is still open
+      this.l4Know(this.l4Gave);                // what I know as I say ready
+      return true;
+    },
+
+    // C++: mesh_tier.inc:Seat::l4Know
+    // The participants beside my place as I know them: my links, and the row I let people into.
+    l4Know(out) {
+      this.l4Links(out); if (!this.hasCoord) return; const rc = this.rosterCells();
+      for (let j = 0; j < C; j++) { const k = ckey(rc[j]); const x = this.occGet(k); if (x < 0 || x === this.id) continue; let has = false; for (const e of out) if (e.k === k) has = true; if (!has) out.push({ k, v: x }); }
+    },
+
+    // C++: mesh_tier.inc:Seat::l4Whole
+    // A participant swaps places only while what it told its partner is still complete: no place it promised is
+    // still open and, after it said ready, nobody is beside its place that it did not know then. Otherwise the
+    // one taking its place would not know the newcomer, who would be left with no connection to the room.
+    l4Whole(rdy) {
+      for (const e of this.sitting.values()) if (e.assigner === this.id && this.TICK - e.at <= K.SIT_TTL) return false;
+      if (rdy) return true;
+      const now = []; this.l4Know(now);
+      for (const n of now) {
+        const c = unckey(n.k); if (c.pc === this.coord.pc && c.r === this.coord.r) continue;   // a row-mate: my partner sits in this row and knows it first-hand
+        let has = false; for (const e of this.l4Gave) if (e.k === n.k && e.v === n.v) has = true; if (!has) return false;
+      }
       return true;
     },
 
@@ -148,7 +172,8 @@
       if (m.tag >= 5 && m.tag <= 7) {
         if (m.id !== this.l4Partner) return;
         if (m.tag === 5) {
-          if (this.l4ExecAt >= 0 && !this.l4First) { const to = this.l4NewCk; this.l4Exchange(); const r = newMsg('SWAPRDY'); r.id = this.id; r.tag = (this.hasCoord && ckey(this.coord) === to) ? 6 : 7; this.emit(m.id, r); }
+          if (this.l4ExecAt >= 0 && !this.l4First && !this.l4Whole(false)) { this.l4ExecAt = -1; this.f.fabricNoteSwap(this.id, 3); this.trace('SWAP-ABORT', this.id, this.coord, 'partner=%d: an arrival since I said ready: I stay', m.id); const r = newMsg('SWAPRDY'); r.id = this.id; r.tag = 7; this.emit(m.id, r); }   // someone arrived beside me: I stay
+          else if (this.l4ExecAt >= 0 && !this.l4First) { const to = this.l4NewCk; this.l4Exchange(); const r = newMsg('SWAPRDY'); r.id = this.id; r.tag = (this.hasCoord && ckey(this.coord) === to) ? 6 : 7; this.emit(m.id, r); }
           else { const r = newMsg('SWAPRDY'); r.id = this.id; r.tag = 7; this.emit(m.id, r); }
           return;
         }
@@ -244,13 +269,15 @@
         if (this.l4Pinged < 0) { this.l4Pinged = this.TICK; const p = newMsg('SWAPRDY'); p.id = this.id; p.tag = 2; this.emit(this.l4Partner, p); }
         if (this.l4Pinged === this.TICK) for (const e of this.l4Nb) { if (e.v < 0 || e.v === this.id || e.v === this.l4Partner) continue; const ls = this.f.fabricLinkState(this.id, e.v); if (ls === E.LS_CLOSED || ls === E.LS_NONE) { this.f.fabricDial(this.id, e.v); this.trace('SWAP-DIAL', this.id, this.coord, 'peer=%d cell=%s', e.v, coordStr(unckey(e.k))); } }   // L4.3.1: the links of the cell I am to enter are dialled ahead, so they are open when I sit
         if (!this.l4Acked && this.TICK >= this.l4ExecAt - 3) {
-          const ok = this.l4PartnerPing >= 0 && this.lastChurn === this.l4GoChurn && this.TICK - this.healAt >= 2 && !this.moving && !this.l4Hold;
+          const ok = this.l4PartnerPing >= 0 && this.lastChurn === this.l4GoChurn && this.TICK - this.healAt >= 2 && !this.moving && !this.l4Hold && this.l4Whole(false);
           const v = newMsg('SWAPRDY'); v.id = this.id; v.tag = ok ? 3 : 4; this.emit(this.l4Partner, v);
           if (!ok) { this.l4ExecAt = -1; this.f.fabricNoteSwap(this.id, 3); this.trace('SWAP-ABORT', this.id, this.coord, 'partner=%d: I withdrew (heard=%d churned=%d)', this.l4Partner, this.l4PartnerPing >= 0, this.lastChurn !== this.l4GoChurn); return; }
           this.l4Acked = true;
         }
         if (this.TICK >= this.l4ExecAt) {
-          if (this.l4First && this.l4Acked && this.l4PartnerAck >= 0) {
+          if (this.l4First && this.l4Acked && this.l4PartnerAck >= 0 && !this.l4Whole(false)) {   // someone arrived beside me after I agreed: I withdraw instead of stepping out
+            const v = newMsg('SWAPRDY'); v.id = this.id; v.tag = 4; this.emit(this.l4Partner, v); this.l4ExecAt = -1; this.f.fabricNoteSwap(this.id, 3); this.trace('SWAP-ABORT', this.id, this.coord, 'partner=%d: an arrival since I said ready: I withdrew', this.l4Partner);
+          } else if (this.l4First && this.l4Acked && this.l4PartnerAck >= 0) {
             const o = newMsg('SWAPRDY'); o.id = this.id; o.tag = 5; this.emit(this.l4Partner, o); this.trace('SWAP-OUT', this.id, this.coord, 'partner=%d', this.l4Partner);
             this.l4Out = true; this.l4OutAt = this.TICK; this.l4OutExec = this.l4ExecAt; this.l4ExecAt = -1; this.hasCoord = false; this.f.wake(this.id);
           } else if (this.TICK - this.l4ExecAt > (this.l4First ? this.w.lv.L4_LEAD : 2 * this.w.lv.L4_LEAD)) {
