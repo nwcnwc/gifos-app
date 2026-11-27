@@ -11,7 +11,8 @@
       "fixes": [
         "Blur and Unblur buttons show only while the Stage has a picture; a Stage with just initials has nothing to unblur.",
         "Two meeting players on one page, or a player beside your own tab of that meeting, both stay connected.",
-        "The AI agents page names only the packages you can install today."
+        "The AI agents page names only the packages you can install today.",
+        "A phone lets a muted mic go only when the mic permission is kept; a one-time permission keeps the mic held, so no permission sheet appears mid-meeting."
       ]
     },
     {
