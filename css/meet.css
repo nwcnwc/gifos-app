@@ -3696,10 +3696,6 @@ body.names-off #stagefeed .stgnames { display: none; }
   body.ct-present.has-app:not(.ct-app-off):not(.app-full) #apppane { z-index: 34; }
   /* Presentation view: the area holds the whole screen; the meeting's chrome waits under it. */
   body.ct-present .ctarea { border-radius: 0; }
-  .ct-inset { position: fixed; z-index: 35; overflow: hidden; border-radius: var(--r-md); background: var(--c-night); }
-  .ct-inset[hidden] { display: none; }
-  .ct-inset video { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .ct-inset-nm { position: absolute; left: 6px; bottom: 6px; max-width: calc(100% - 12px); padding: 2px 8px; border-radius: var(--r-pill); background: var(--c-scrim); color: var(--c-white); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ct-exit { position: fixed; z-index: 36; top: 12px; right: 12px; width: 44px; height: 44px; border: 0; border-radius: var(--r-pill); background: var(--c-scrim); color: var(--c-white);
     display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
   .ct-exit[hidden] { display: none; }
