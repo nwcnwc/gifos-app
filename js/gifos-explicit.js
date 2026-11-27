@@ -34,8 +34,9 @@
   if (GifOS.explicit) return;
 
   // THE LINE. Measured on a public evaluation set of explicit and hard-benign pictures (swimwear, beach sport,
-  // breastfeeding, babies, medical, art); a change of the line is a new VERSION, so a stored verdict always says which
-  // line it passed.
+  // breastfeeding, babies, medical, art). No line keeps this model's hard-benign refusals low without losing most
+  // explicit pictures, so the line sits where it catches the most; a refused thumbnail only asks for another picture.
+  // A change of the line or the model is a new VERSION, so a stored verdict always says which line it passed.
   const MODEL = 'nsfwjs-mnv2';
   const VERSION = '4.4.0-1';
   const STILL_LINE = 0.5;    // a still picture (a thumbnail) is refused at or above this
@@ -184,7 +185,9 @@
     }));
   }
   // A still picture: one decision. A picture that could not be checked has no verdict, exactly like one that tripped.
-  // Two looks: the whole picture, and its centre square (measured: more explicit pictures caught, no more benign ones).
+  // Two looks: the whole picture, and its centre square. Measured on public pictures: more explicit pictures caught
+  // (82 of 107 against 73 with one look), a few more benign ones refused; for a thumbnail a refusal only means
+  // "choose another picture", so catching more is worth it.
   function checkStill(src, opts) {
     return classify(src, opts).then((a) => classify(src, Object.assign({}, opts, { square: true })).then((b) => {
       const r = b.score > a.score ? b : a;
