@@ -12,7 +12,8 @@
         "Lock an app with a passphrase where this device has no passkey that can encrypt."
       ],
       "fixes": [
-        "A plainer Swap cards dialog."
+        "A plainer Swap cards dialog.",
+        "Removing a contact stays removed when you copy your identity to another device; Our private room finds the contact by their key, never by name."
       ]
     },
     {
