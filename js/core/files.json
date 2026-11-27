@@ -136,6 +136,7 @@
    "js/core/view/view.js",
    "js/gifos-identity-ui.js",
    "js/core/view/myroom.js",
+   "js/ring-standby.js",
    "js/core/view/bell.js",
    "js/core/view/meet.js"
   ],
@@ -145,6 +146,7 @@
    "js/core/view/view.js",
    "js/gifos-identity-ui.js",
    "js/core/view/myroom.js",
+   "js/ring-standby.js",
    "js/core/view/bell.js",
    "js/core/view/cast.js"
   ],
