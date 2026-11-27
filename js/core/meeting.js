@@ -10452,10 +10452,10 @@
       if (o.refusal) return { step: '', title: o.refusal.words, body: '', spin: false };
       let why = w ? w.hint : '';
       if (now - o.busyAt < o.busyShowMs) why = uiText('pgHintBusy', 'GifOS is very busy right now. We keep trying, and you will be in the moment it lets new people in.');
-      else if (o.unreachAt && now - o.unreachAt < 60000 && waited > 8000) why = uiText('pgHintUnreach', 'Your device could not connect to the people at the door. A firewall, VPN or strict network may be blocking calls. We keep trying.');
+      else if (o.unreachAt && now - o.unreachAt < 60000 && waited > 8000) why = uiText('pgHintUnreach', 'Your device could not connect to the people in the meeting. A firewall, VPN or strict network may be blocking calls. We keep trying.');
       else if (waited > 210000) why = uiText('pgHintLong', 'This is taking longer than it should. Check your connection, or reopen the link.');
       else if (!why && waited > 20000 && !o.relayUp) why = uiText('pgHintNoServer', 'Your internet connection may be down. We keep trying.');
-      else if (!why && waited > 20000 && w && w.step === 'knock') why = uiText('pgHintNoAnswer', 'Nobody has answered the door yet. We keep knocking.');
+      else if (!why && waited > 20000 && w && w.step === 'knock') why = uiText('pgHintNoAnswer', 'Nobody in the meeting has answered yet. We keep asking.');
       // the time shown is time waited (on this step), never a countdown to a seat
       if (w) return { step: w.stepOnly + (w.secs ? ' \u00b7 ' + w.secs : ''), title: w.what + '\u2026', body: why, spin: true };
       return { step: Math.max(1, Math.ceil(waited / 1000)) + ' s', title: uiText('pgDoor', 'Finding your meeting') + '\u2026', body: why, spin: true };
@@ -13621,9 +13621,9 @@
       const out = [];
       if (r.forged) out.push('\u26a0 ' + uiText('whoForged', 'FORGED \u2014 their device ') + r.forged);
       const sn = r.seen[r.seen.length - 1];
-      if (r.att) out.push('\u2713 ' + r.att.ip + ' \u2014 ' + uiText('whoVerified', 'verified by the relay'));
+      if (r.att) out.push('\u2713 ' + r.att.ip + ' \u2014 ' + uiText('whoVerified', 'verified by GifOS'));
       if (sn) out.push('\u2713 ' + seenStr(sn) + ' \u2014 ' + uiText('whoSeen', 'seen directly'));
-      if (r.ip && (!r.att || r.att.ip !== r.ip)) out.push(r.ip + ' \u2014 ' + (r.att ? (r.forged ? uiText('whoClaimed', 'claimed by their device, NOT their address') : uiText('whoDiffers', 'reported by their device, differs from what the relay saw (it may have changed networks)')) : uiText('whoReported', 'reported by their device, not verified')));
+      if (r.ip && (!r.att || r.att.ip !== r.ip)) out.push(r.ip + ' \u2014 ' + (r.att ? (r.forged ? uiText('whoClaimed', 'claimed by their device, NOT their address') : uiText('whoDiffers', 'reported by their device, differs from what GifOS saw (it may have changed networks)')) : uiText('whoReported', 'reported by their device, not verified')));
       if (!out.length) out.push(uiText('whoUnknown', 'address unknown'));
       if (r.ejected) out.push(uiText('whoGone', 'ejected') + ' ' + hhmm((ejected.get(r.pid) || {}).at || r.last));
       else if (!r.here) out.push(uiText('whoLeftAt', 'left') + ' ' + hhmm(r.last));
@@ -23607,11 +23607,11 @@
     function carryGuestStart(relayBase, gk, why) {
       if (carryG) return;
       const C = GifOS.meetCarry;
-      if (!C || !C.supported()) { setStatus(uiText('stCarryNoWay', 'This browser has no way to join a call: it has no WebRTC and no WebCodecs audio.'), true); return; }
+      if (!C || !C.supported()) { setStatus(uiText('stCarryNoWay', 'This browser can’t join calls. Open the link in a recent Chrome, Edge, Firefox or Safari.'), true); return; }
       const ticket = net.relayTicket ? net.relayTicket({ relayBase, sid: sessId }) : null;
       const G = carryG = { relayBase, gk, why: why || '', door: null, link: null, voice: null, far: null, tried: new Set(), list: [], askT: null, src: null, srcTrack: null, at: Date.now() };
       // the line names why I am carried: no RTCPeerConnection at all, or one whose connection gathers no candidate (a policy, the network)
-      G.said = /no candidate/.test(G.why) ? uiText('stCarryLookingNoPath', 'Joining through a seat of the meeting (this browser\'s connections find no network path)…') : uiText('stCarryLooking', 'Joining through a seat of the meeting (this browser has no WebRTC)…');
+      G.said = /no candidate/.test(G.why) ? uiText('stCarryLookingNoPath', 'Joining through another person’s device, because your network blocks this browser’s calls…') : uiText('stCarryLooking', 'Joining through another person’s device, because this browser can’t make calls itself…');
       setStatus(G.said, 0, 'note');
       const url = () => (ticket ? ticket.prepare(myDevHash).catch(() => null) : Promise.resolve()).then(() => relayBase + '/s/' + sessId + '?role=mesh&pv=' + encodeURIComponent(GifOS.meshWire.WIRE_VERSION) + '&token=' + encodeURIComponent(sessTok || '')
         + '&peer=' + encodeURIComponent(myId) + '&gk=' + encodeURIComponent(gk) + '&dev=' + encodeURIComponent(myDevHash) + '&pw=' + encodeURIComponent(pwProof)
@@ -23650,7 +23650,7 @@
       }
       G.link.sendText({ k: 'hello', name: myName() });
       G.micSaid = null;   // a new link hears my microphone's state afresh (carryGuestTick)
-      G.said = /no candidate/.test(G.why) ? uiText('stCarryUpNoPath', 'In the meeting through another seat (this browser\'s connections find no network path).') : uiText('stCarryUp', 'In the meeting through another seat (this browser has no WebRTC).');
+      G.said = /no candidate/.test(G.why) ? uiText('stCarryUpNoPath', 'In the meeting through another person’s device, because your network blocks this browser’s calls.') : uiText('stCarryUp', 'In the meeting through another person’s device, because this browser can’t make calls itself.');
       setStatus(G.said, 0, 'note');
     }
     function carryGuestDown(why) {

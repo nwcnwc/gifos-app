@@ -689,7 +689,7 @@
       const whoH = document.querySelector('#who-modal h3');
       if (whoH) whoH.textContent = 'Who is watching';
       const whoP = document.querySelector('#who-modal .name-box p');
-      if (whoP) whoP.textContent = 'There is no server in the middle storing this broadcast. The phones and computers of the people in it are the servers: they connect straight to each other. That is also why everyone here can see everyone\u2019s internet address \u2014 nobody is anonymous. \u2713 marks an address the GifOS relay verified or this device saw directly; anything else is only what that person\u2019s device reported. People who left stay on the list. To report illegal activity to law enforcement, download this list and include it.';
+      if (whoP) whoP.textContent = 'There is no server in the middle storing this broadcast. The phones and computers of the people in it are the servers: they connect straight to each other. That is also why everyone here can see everyone\u2019s internet address \u2014 nobody is anonymous. \u2713 marks an address GifOS verified or this device saw directly; anything else is only what that person\u2019s device reported. People who left stay on the list. To report illegal activity to law enforcement, download this list and include it.';
       const chat = document.getElementById('chatbtn');
       if (chat) chat.title = 'Chat with everyone watching — stays between the people here, not on a server';
       const rec = document.getElementById('recbtn');
@@ -5749,7 +5749,7 @@
     let lgNoteEl = null;
     function lgLeave() {
       if (typeof __C.clog === 'function') (0, /*()*/__C.clog)('lg-leave device-overload');
-      if (!lgNoteEl) { lgNoteEl = document.createElement('div'); lgNoteEl.id = 'massbanner'; lgNoteEl.setAttribute('role', 'status'); lgNoteEl.textContent = (0, /*()*/__C.uiText)('deviceOverload', 'Your device is refusing or unable to carry meeting traffic.'); document.body.appendChild(lgNoteEl); }
+      if (!lgNoteEl) { lgNoteEl = document.createElement('div'); lgNoteEl.id = 'massbanner'; lgNoteEl.setAttribute('role', 'status'); lgNoteEl.textContent = (0, /*()*/__C.uiText)('deviceOverload', 'Your device couldn’t keep up with the meeting, so it is joining again.'); document.body.appendChild(lgNoteEl); }
       try { __C.model.net.meshNode() && __C.model.net.meshNode().leave(false); } catch (e) {}
       setTimeout(() => {
         for (const pid of Array.from(__C.model.roster.peers().keys())) { try { (0, /*()*/__C.dropPeer)(pid); } catch (e) {} } if (typeof __C.clearRosterTiles === 'function') (0, /*()*/__C.clearRosterTiles)();
@@ -5805,7 +5805,7 @@
       const on = (0, /*()*/__C.islandApart)();
       if (on === !!islandNoteEl) return;
       if (typeof __C.clog === 'function') (0, /*()*/__C.clog)('island-note ' + (on ? 'on' : 'off'));
-      if (on) { islandNoteEl = document.createElement('div'); islandNoteEl.id = 'islandnote'; islandNoteEl.setAttribute('role', 'status'); islandNoteEl.textContent = (0, /*()*/__C.uiText)('islandLabel', "You're in a separate part of this meeting: some people can't reach your network yet. It joins up by itself when they can."); document.body.appendChild(islandNoteEl); }
+      if (on) { islandNoteEl = document.createElement('div'); islandNoteEl.id = 'islandnote'; islandNoteEl.setAttribute('role', 'status'); islandNoteEl.textContent = (0, /*()*/__C.uiText)('islandLabel', "Some people in this meeting can’t reach you yet, so you may not see or hear everyone. This fixes itself as soon as they can."); document.body.appendChild(islandNoteEl); }
       else { islandNoteEl.remove(); islandNoteEl = null; }
     }
     yield 1504;
@@ -6125,7 +6125,7 @@
             ? (0, /*()*/__C.uiText)('pwHintChanged', 'The host changed the room password. Enter the new password to rejoin the meeting.')
             : (0, /*()*/__C.uiText)('pwHintLocked', 'Enter the room password to join the meeting.'))
           : !!__C.model.me.av()
-            ? (0, /*()*/__C.uiText)('pwHintAdmin', 'Only the host can set or change it. When it is set or changed, everyone else here goes back to the door and must enter it to rejoin. Leave empty to remove the lock.')
+            ? (0, /*()*/__C.uiText)('pwHintAdmin', 'Only the host can set or change it. When it is set or changed, everyone else here must enter it to rejoin. Leave empty to remove the lock.')
             : (0, /*()*/__C.uiText)('pwHint', 'Anyone in the meeting can set or change it. It reaches everyone here instantly, and new joiners must enter it. Leave empty to remove the lock.'));
       document.getElementById('pw-cur-row').style.display = locked ? 'none' : 'flex';
       document.getElementById('pw-cur').value = __C.model.door.roomPw();
@@ -6464,7 +6464,7 @@
           + '<h4>Watching</h4>'
           + '<ul class="help-list">'
           + '<li>The link is all you need. Your <b>camera and microphone are not used</b> — watching asks no permissions at all.</li>'
-          + '<li>The video stays <b>blurred</b> until the host sets a <b>room password</b>. If you’re asked for one, the host shares it separately — it’s the ticket, and it does not ride the link.</li>'
+          + '<li>The video stays <b>blurred</b> until the host sets a <b>room password</b>. If you’re asked for one, the host shares it separately — it’s your ticket in, and it is never part of the link.</li>'
           + '<li><b>Chat</b> is live to everyone here, is not stored on any server, and is gone when the broadcast ends.</li>'
           + '<li><b>Sound on</b> on the room bar mutes the stage on this device. Everyone else still hears it.</li>'
           + '</ul>'
@@ -6478,7 +6478,7 @@
           + '<ul class="help-list">'
           + '<li>Your <b>host password</b> is yours alone — it IS your control of this broadcast. Do not send it to viewers.</li>'
           + '<li>The <b>Password</b> button sets or changes the <b>room password</b>: without one the broadcast stays blurred; with one, whoever you give it to sees you clear.</li>'
-          + '<li>The hand queue floats to the top — tap a name to call them up on Stage. Revoking their grant pulls them back down.</li>'
+          + '<li>The hand queue floats to the top — tap a name to call them up on Stage. You can send them back down at any time.</li>'
           + '<li>Chat has a <b>Turn chat off</b> switch (your messages still land) and per-message delete. Ban lives on each tile’s controls.</li>'
           + '<li>A broadcast lives while its host is present. <b>End</b> it, and everyone watching sees a five-minute countdown, then the room closes.</li>'
           + '</ul>'
@@ -8398,7 +8398,7 @@
       note.className = running ? 'share-note running' : 'share-note';
       note.innerHTML = running
         ? '<b>🧩 ' + (0, /*()*/__C.esc)(running.name || (0, /*()*/__C.uiText)('anApp', 'An app')) + (0, /*()*/__C.uiText)('shareRunning', ' is already running in this meeting.</b> Everyone here runs it on their own device and stays in sync — you do <b>not</b> need to share your screen to show it.')
-        : (0, /*()*/__C.uiText)('shareAppNote', '<b>🧩 Sharing a GifOS app? Use “Run app” instead.</b> A pinned app runs on everyone’s own device off a small shared data stream — crisp, interactive, readable on a phone. A screen share is a <i>video of your window</i>: one-way, one resolution, and paid for in pixels at every hop.');
+        : (0, /*()*/__C.uiText)('shareAppNote', '<b>🧩 Sharing a GifOS app? Use “Run app” instead.</b> A pinned app runs on everyone’s own device off a small shared data stream — crisp, interactive, readable on a phone. A screen share is a <i>video of your window</i>: one-way, one resolution, and much heavier to send.');
       const go = document.getElementById('share-runapp');
       go.style.display = (runnable && !__C.ROOM.appPinned) ? '' : 'none';
       go.textContent = running ? (0, /*()*/__C.uiText)('showMeApp', 'Show me the app') : (0, /*()*/__C.uiText)('runAppInstead', 'Run app instead');
@@ -11285,7 +11285,7 @@
           const fill = (s, map) => String(s).replace(/\{(\w+)\}/g, function (_, k) { return map[k] == null ? '' : String(map[k]); });
           if (o.open) return [t('licOpen', 'No people limit: open meetings have none')];
           const lines = [];
-          if (!view || view.none) lines.push(fill(t('licNone', 'No permissions yet: up to {n} people'), { n: view && view.limit != null ? view.limit : 5 }));
+          if (!view || view.none) lines.push(fill(t('licNone', 'Standard room: up to {n} people'), { n: view && view.limit != null ? view.limit : 5 }));
           else if (view.limit == null) lines.push(t('licNoLimit', 'No people limit'));
           else lines.push(fill(t('licUpTo', 'Up to {n} people'), { n: view.limit }));
           if (view && view.clearStage) lines.push(t('licClearStage', 'Clear Stage video (hosted meetings)'));
