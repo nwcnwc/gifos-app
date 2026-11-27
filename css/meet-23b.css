@@ -421,6 +421,22 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
      stay on screen and the later groups scroll (more-calm). */
   .bar.more-rows:not(.collapsed) .barmore { max-height: 200px; }
 }
+/* A short upright phone (under 640px tall): a sheet longer than the room above the dock scrolls, and a fade at each cut edge
+   says there is more (the cue shows only while there is more that way). */
+@media (max-width: 700px) and (max-height: 639px) and (orientation: portrait) {
+  .bar:not(.collapsed) .barmore {
+    background:
+      linear-gradient(var(--c-white, #fff) 30%, rgba(255, 255, 255, 0)) 0 0 / 100% 36px no-repeat local,
+      linear-gradient(rgba(255, 255, 255, 0), var(--c-white, #fff) 70%) 0 100% / 100% 36px no-repeat local,
+      radial-gradient(farthest-side at 50% 0, rgba(0, 0, 0, .22), rgba(0, 0, 0, 0)) 0 0 / 100% 12px no-repeat scroll,
+      radial-gradient(farthest-side at 50% 100%, rgba(0, 0, 0, .22), rgba(0, 0, 0, 0)) 0 100% / 100% 12px no-repeat scroll,
+      var(--c-white, #fff);
+  }
+  /* Rows a little lower, so the whole sheet (an SE's 531px) fits the 459px above the dock or scrolls only a little. */
+  .bar:not(.collapsed) #barmore .morerow > button,
+  .bar:not(.collapsed) #barmore .dockmore { min-height: 48px; }
+  .bar:not(.collapsed) .barmore { gap: 4px; padding-top: 10px; padding-bottom: 10px; max-height: calc(100dvh - 88px); }
+}
 /* Sideways on an SE (568x320) the sheet is 50dvh, 160px. Two 64px rows of
    Meeting put People and Chat's second row 2px under its edge, so you had to
    scroll for People (landscape-first). 56px still holds a two-line label
