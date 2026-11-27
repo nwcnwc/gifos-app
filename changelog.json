@@ -10,7 +10,8 @@
       ],
       "fixes": [
         "Phones keep the text of a shared screen readable instead of shrinking it into grey patches.",
-        "The view switch stays reachable on every screen, also while an app runs, and the Agenda fits a phone."
+        "The view switch stays reachable on every screen, also while an app runs, and the Agenda fits a phone.",
+        "With the camera off, your picture on the Stage follows the same blur rules as your camera would, so Unblur clears it when the room allows."
       ]
     },
     {
