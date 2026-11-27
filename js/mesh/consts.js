@@ -316,6 +316,7 @@
     L49_TTL: 2,   // C++: mesh_rowmix.inc:L49_TTL
     L49_PULL: 8,   // C++: mesh_rowmix.inc:L49_PULL
     L49_ELECT: 16,   // C++: mesh_rowmix.inc:L49_ELECT
+    APART_KEEP: 10,   // C++: mesh_apart.inc:APART_KEEP
     RC_W1: 2,   // C++: mesh_realcheck.inc:RC_W1
     RC_W10: 20,   // C++: mesh_realcheck.inc:RC_W10
     RC_HIST: 33,   // C++: mesh_realcheck.inc:RC_HIST
@@ -618,6 +619,12 @@
     E2C_STAGE: -1,   // C++: mesh_e2fold_fab.inc:E2C_STAGE
     E2C_ROW: 0,   // C++: mesh_e2fold_fab.inc:E2C_ROW
     E2C_AT: -1,   // C++: mesh_e2fold_fab.inc:E2C_AT
+    APART_ON: false,   // C++: mesh_apart.inc:APART_ON
+    APART_FROM: 0,   // C++: mesh_apart.inc:APART_FROM
+    APART_MAX: 0,   // C++: mesh_apart.inc:APART_MAX
+    APART_MAX_FROM: -1,   // C++: mesh_apart.inc:APART_MAX_FROM
+    APART_MAX_SEAT: -1,   // C++: mesh_apart.inc:APART_MAX_SEAT
+    APART_MAX_CK: 0,   // C++: mesh_apart.inc:APART_MAX_CK
     C7FORGE_ID: -1,   // C++: mesh_c7proof_fab.inc:C7FORGE_ID
     L18R_REACH: 0,   // C++: mesh_l18.inc:L18R_REACH
     L18R_UNREACH: 0,   // C++: mesh_l18.inc:L18R_UNREACH

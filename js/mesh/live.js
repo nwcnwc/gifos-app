@@ -253,7 +253,7 @@
       if ((sure || dsig) && this.state === 3 && m.dgUp.at >= 0 && m.tag !== 5) this.takeUp(m);
       const ck = ckey(m.coord), prev = this.occGet(ck);
       // an unproven PHONE keeps a pairing alive only while no link has ever proven it
-      if (sure && !l810) { this.setOcc(ck, m.id); this.liveMark(ck); this.noteS1(ck); this.noteLinked(ck, m.id, m.tn); }   // L8.10
+      if (sure && !l810) { this.setOcc(ck, m.id); this.liveMark(ck); this.noteS1(ck); this.noteLinked(ck, m.id, m.tn); if (this.beatBy.size >= 64 && !this.beatBy.has(ck)) eraseFirst(this.beatBy); this.beatBy.set(ck, m.id); }   // L8.10
       else { this.upUsed.set(ck, TICK); if (this.entryOpen(ck, m.id)) { this.liveMark(ck); this.noteS1(ck); } }   // upUsed: an unproven beat for the pairing I hold
       if (sure && !l810) { this.kidful.set(ck, m.kids ? 1 : 0); if (m.child >= 0) this.childOf.set(ck, m.child); else this.childOf.delete(ck); }
       // V7: my down-child head phoned me its ROW LEDGER.
