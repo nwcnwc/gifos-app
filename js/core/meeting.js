@@ -5555,10 +5555,12 @@
         countText = '';
         restText = prog.head + (prog.secs ? ' \u00b7 ' + prog.secs : '') + (prog.hint ? ' ' + prog.hint : '');
       }
-      const bq = prog ? { text: '' } : bcQuietLine(shown, reachLine, atDoor);
-      if (prog) bcLastQuiet = bq;
+      // the off-air overlay waits for the way in to end (a page not in yet knows nothing about the broadcast); on the way
+      // back a viewer who watched reads "Reconnecting to the broadcast…" there, and the line keeps the way back's steps
+      const bq = (prog && prog.flow !== 'reconnect') ? { text: '' } : bcQuietLine(shown, reachLine, atDoor);
+      if (prog && prog.flow !== 'reconnect') bcLastQuiet = bq;
       const bcQuiet = bq.text;
-      if (bcQuiet) restText = bcQuiet + tail;
+      if (bcQuiet && !prog) restText = bcQuiet + tail;
       const statusText = countText + restText;
       const detail = statusText;
       // A phone chip names the room and the count (qa-meet-mobile); the whole
@@ -5618,8 +5620,9 @@
         const r = typeof reachInfo === 'function' ? reachInfo() : null;
         const blocked = !!(r && r.state && r.state !== 'partial');
         // a wait on the way in (or back in) is the line's: the off-air overlay waits for it to end, as updateStatus does
-        const bq = progRun ? { text: '' } : bcQuietLine(headerCount(), blocked, door);
-        if (progRun) bcLastQuiet = bq;
+        const wayIn = !!(progRun && progRun.flow !== 'reconnect');
+        const bq = wayIn ? { text: '' } : bcQuietLine(headerCount(), blocked, door);
+        if (wayIn) bcLastQuiet = bq;
         (0, /*()*/__V.paintBcQuiet)(bq);
       } catch (e) {}
       try { updateStatus(); } catch (e) {}
