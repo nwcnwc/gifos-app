@@ -325,8 +325,13 @@
       }
       if (who.childNodes.length) { const n = doc.createElement('p'); n.textContent = 'Tap a person to swap cards: it makes our private room, which only the two of you can use and which rings either of you.'; who.insertBefore(n, who.firstChild); }
     }
-    show($('mr-make-share').parentNode, !!(inMeeting && part && part.people().length && MR().mine()));
-    $('mr-make-title').textContent = inMeeting && part && part.people().length ? 'Swap cards' : 'Give someone a card';
+    const swapping = !!(inMeeting && part && part.people().length);
+    show($('mr-make-share').parentNode, swapping && !!MR().mine());
+    $('mr-make-title').textContent = swapping ? 'Swap cards' : 'Give someone a card';
+    $('mr-make-note').textContent = swapping ? '' : 'A card lets one person call your personal room. Write who it is for: it is shown when they call.';
+    show($('mr-make-note'), !swapping);
+    $('mr-make-lab').textContent = swapping ? 'Name in your Contacts (if not their name)' : 'Who is it for?';
+    $('mr-make-go').textContent = swapping ? 'Make a card link instead' : 'Make card';
     show($('mr-make'), true);
     $('mr-make-label').focus();
   }
@@ -509,8 +514,8 @@
       <h3 id="mr-make-title">Give someone a card</h3>
       <p id="mr-make-note">A card lets one person call your room. Write who it is for: it is shown when they call.</p>
       <div id="mr-make-who"></div>
-      <label class="mr-stay"><input type="checkbox" id="mr-make-share"> Also share my personal room</label>
-      <label class="lob-pwlab" for="mr-make-label">Who is it for?</label>
+      <label class="mr-share"><input type="checkbox" id="mr-make-share"> Also share my personal room</label>
+      <label class="lob-pwlab" for="mr-make-label" id="mr-make-lab">Who is it for?</label>
       <input id="mr-make-label" maxlength="40" autocomplete="off">
       <div id="mr-make-out" hidden><input id="mr-make-link" readonly aria-label="Card link"><div id="mr-make-qr" class="mr-qr"></div></div>
       <button id="mr-make-close" type="button">Close</button>
@@ -533,7 +538,7 @@
       <p id="mr-swap-note"></p>
       <label class="lob-pwlab" for="mr-swap-name">Name in your Contacts</label>
       <input id="mr-swap-name" maxlength="40" autocomplete="off">
-      <label class="mr-stay"><input type="checkbox" id="mr-swap-share"> Also share my personal room</label>
+      <label class="mr-share"><input type="checkbox" id="mr-swap-share"> Also share my personal room</label>
       <button id="mr-swap-no" type="button">Not now</button>
       <button id="mr-swap-yes" type="button">Save</button>
     </div>

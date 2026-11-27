@@ -4037,3 +4037,6 @@ body.mr-calling #alonecard, body.mr-on #alonecard { display: none !important; }
 #lobby .lob-myroom .lob-text { min-height: 44px; background: none; border: 0; color: var(--c-blue); text-decoration: underline; font-size: 16px; cursor: pointer; }
 /* My Room: a hidden door that listens for rings in one private room (it is a page, never seen) */
 .mr-door { position: fixed; left: -10px; top: -10px; width: 1px; height: 1px; border: 0; opacity: 0; pointer-events: none; }
+/* My Room: "Also share my personal room" in the swap dialogs (a plain checkbox line, not a form field) */
+.mr-share { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 8px 0; font-size: 15px; }
+.mr-share input[type="checkbox"] { width: 20px; height: 20px; min-height: 0; margin: 0; padding: 0; flex: none; }
