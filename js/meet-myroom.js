@@ -106,6 +106,13 @@
   // mint(K, room, v, label, opts) -> { token, id, exp }. opts.renew = an old card's {id, cpub, lab}: same id and key,
   // a later expiry (the holder keeps its seed). The token is what a link and Contacts carry: base64url of
   // [sp, sig, pub, seed]; a renewal's token has no seed.
+  // mintFor(room, v, label, opts): the same, with the host secret this device keeps for that hosted room. The page's cards
+  // screen asks for a card by room; the host secret never leaves this file.
+  async function mintFor(room, v, label, opts) {
+    const K = hostSecret(room, v);
+    if (!K) throw new Error('no host secret for this room on this device');
+    return mint(K, room, v, label, opts);
+  }
   async function mint(K, room, v, label, opts) {
     opts = opts || {};
     const N = net(), now = opts.now || Date.now();
@@ -965,7 +972,7 @@
   }
 
   GifOS.meetMyRoom = {
-    KEY, make, mint, check, parseToken, prove, proofOk, myKey, keyWord, keyWordOk, sealLabel, openLabel, readCard, renew,
+    KEY, make, mint, mintFor, check, parseToken, prove, proofOk, myKey, keyWord, keyWordOk, sealLabel, openLabel, readCard, renew,
     mine, isMine, create, adopt, hosted, stayOn, setStay,
     contacts, contactFor, keep, forget, rename, issued, revoke, revoked, missed, noteMissed, clearMissed, cardLink, roomKey,
     privName, privates, privFor, pairWith, keepPrivate, mintPrivate, contactPub, issuedTo, cutPrivate, cardIn, memberOf, signWord, wordOk,
