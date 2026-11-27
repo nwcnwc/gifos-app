@@ -80,7 +80,7 @@ html body .bar > :is(#mic, #cam).iconbtn:not(.off),
 html body .bar > #cam.iconbtn.cam-max:not(.off),
 html body .bar > #cam.iconbtn.cam-min:not(.off) {
   background: transparent; border-color: transparent; box-shadow: none; color: var(--dock-fg); }
-html body .bar > :is(#mic, #cam).iconbtn.off .slash { stroke: #ff5c5c; }
+html body .bar > :is(#mic, #cam).iconbtn.off .slash:not(.slashedge) { stroke: #ff4a4a; }
 html body .bar > #leavebtn { color: #ff5c5c; }
 html body .bar > #leavebtn .docklab { color: #ff5c5c; }
 @media (hover: hover) and (pointer: fine) {
