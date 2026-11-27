@@ -4094,7 +4094,7 @@ html[data-compact] .ct-pane.ag { padding: 10px 12px; }
 html[data-compact] .ag-head { gap: 4px 8px; }
 html[data-compact] .ag-pos { font-size: var(--ag-compact-sm); }
 html[data-compact] .ag-list { margin-top: 4px; }
-html[data-compact] .ag-item { gap: 6px; font-size: var(--ag-compact-md); }
+html[data-compact] .ag-item { font-size: var(--ag-compact-md); }
 html[data-compact] .ag-item:not([tabindex]):not(:has(> input)) { min-height: 30px; padding-top: 1px; padding-bottom: 1px; }
 html[data-compact] .ag-btn, html[data-compact] .ag-chip { font-size: var(--ag-compact-sm); }
 html[data-compact] .ag-add { margin-top: 8px; }
