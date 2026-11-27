@@ -12089,6 +12089,7 @@
       setTimeout(tick, 0);
     }
     async function adoptAdmKey(K) { // derive + verify K against this room's V
+      if (DEBUG_ON && +window.__admAdoptDelayMs > 0) await new Promise((r) => setTimeout(r, +window.__admAdoptDelayMs));   // DEBUG=on only: a slow device's key check (a test makes the adoption land after the first connect)
       const k = await net.edKeysFromSeedHex(K).catch(() => null);
       if (!k || k.verifier !== av) return false;
       admKey = K; admKeys = k; amAdmin = true;
