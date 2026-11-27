@@ -259,6 +259,10 @@
 
   // The `tv` relay frame (gifos-net.js RELAY_TYPES): one link's handshake between its two ends.
   //   {k:'tv', q:'a', l, d, b}   ask / answer: the pipe's link name, my device tag, my network blocks direct paths (b 1)
+  //   {k:'tv', q:'k', l, n, m}    ahead of an opener's ask, from a page that is in the meeting already: its proof that it
+  //                               holds the room's seat key (a nonce and a keyed hash)
+  //   {k:'tv', q:'h', l, b}       the door's word to a page it holds no channel to. b 1: the waiting room holds you (l: the
+  //                               pipe you asked this seat for, or l0: your knock); b 0: a host let you in
   //   {k:'tv', q:'v', l, e, n, m} my seated vouch for this link (its expiry in base 36, nonce, MAC)
   //   {k:'tv', q:'r', l}          ready: I hold what my end needs (a credential, or none: not a client)
   //   {k:'tv', q:'p', l, b}       paid: my end is on the paid pool (b 1) or back on free (b 0)
@@ -291,6 +295,8 @@
     if (!f || typeof f !== 'object' || Array.isArray(f) || f.k !== 'tv' || typeof f.l !== 'string' || !LINK_RE.test(f.l)) return false;
     for (const k of Object.keys(f)) if (k !== '_' && TV_KEYS.split(',').indexOf(k) < 0) return false;
     if (f.q === 'a') return typeof f.d === 'string' && DEV_RE.test(f.d) && (f.b === 0 || f.b === 1) && (f.e === undefined || (typeof f.e === 'string' && /^[0-9a-z]{1,2}$/.test(f.e)));
+    if (f.q === 'k') return typeof f.n === 'string' && NONCE_RE.test(f.n) && typeof f.m === 'string' && MAC_RE.test(f.m);
+    if (f.q === 'h') return f.b === 0 || f.b === 1;
     if (f.q === 'w') return f.m === undefined || (typeof f.m === 'string' && WEB_HOST_RE.test(f.m));
     if (f.q === 'v') return typeof f.e === 'string' && E36_RE.test(f.e) && typeof f.n === 'string' && NONCE_RE.test(f.n) && typeof f.m === 'string' && MAC_RE.test(f.m);
     if (f.q === 'x') return f.b === undefined || f.b === 1;
@@ -650,7 +656,14 @@
     const fresh = (L) => !!(L.mine && L.peer && usableAt(L.mine.e) && usableAt(L.peerE));
     // e: the subroom my end sits in (base 36), so the far end vouches its pipe end toward the right side: pipe l<r> joins r and
     // the subroom it hangs from, and either side may have opened it (SUB.3: a re-pipe asked for a subroom cut off from mine)
-    function sendAsk(L) { if (L.direct) return; L.sentAt = io.now(); tvSend(L.far, { k: 'tv', q: 'a', l: L.l, d: io.dev(), b: io.blocked() ? 1 : 0, e: mySubFor(L).toString(36) }); }
+    // An opener that is in the meeting already says so ahead of its ask (io.proof: made with the room's seat key, good
+    // for this page alone; a frame of its own: an ask has no room for it in a relay frame's fixed size): a seat whose
+    // door a waiting room holds answers a member's pipe as before.
+    function sendAsk(L) {
+      if (L.direct) return; L.sentAt = io.now();
+      if (L.opener && !L.sb && io.proof) { let pr = null; try { pr = io.proof(); } catch (e) {} if (pr && NONCE_RE.test(String(pr.n)) && MAC_RE.test(String(pr.m))) tvSend(L.far, { k: 'tv', q: 'k', l: L.l, n: pr.n, m: pr.m }); }
+      tvSend(L.far, { k: 'tv', q: 'a', l: L.l, d: io.dev(), b: io.blocked() ? 1 : 0, e: mySubFor(L).toString(36) });
+    }
     // My vouch names the subroom my relay socket sits in: a pipe I opened for a NEW subroom waits until my door is that
     // subroom; a re-pipe I opened (my own subroom's, or one cut off from mine) and a standby I opened name my door as it is.
     const mySubFor = (L) => (L.opener ? (L.own != null ? L.own : Number(L.l.slice(1))) : (io.sub ? io.sub() : 0));
@@ -815,6 +828,8 @@
       if (L) L.heardAt = io.now();
       // SUB.5: the standby's opener knows its far end now; a plain pc of mine reached it off TURN: only a proven direct path
       if (L && L.sb && L.opener && !L.direct && L.farPid && L.l === f.l && f.q !== 'x' && io.directSeen && io.directSeen(L.farPid)) { setDirect(L); L.dSentAt = io.now(); tvSend(L.far, { k: 'tv', q: 'd', l: L.l }); }
+      if (f.q === 'h') return;   // the door's word is the page's to read (heldWord below says what it means for a pipe of mine)
+      if (f.q === 'k') { if (f.l[0] === 'l' && io.proofIn) { try { io.proofIn(from, f); } catch (e) {} } return; }   // a member's proof, ahead of its pipe's ask: the page reads it
       if (f.q === 't') { if (L && L.sb && L.l === f.l) takeover(L, f.b === 1 ? 'healed' : 'the far standby end took over'); return; }
       // the far end names its side's standby seat only while it holds no standby up: the opener opens one toward it
       if (f.q === 'o') {   // SUB.8.1, between the two ends of a pipe
@@ -836,6 +851,10 @@
           const s = io.seat();
           if (!s || !s.greeter) return;                       // only a seated greeter can be vouched for: say nothing
           if (s.view.indexOf(from) >= 0 && io.reach(from) === 'direct') return;   // reached already: no link
+          // ONE DOOR: a pipe is a way into the meeting, so its ask stands where a knock stands. While a waiting room holds
+          // the door, a seat answers the ask of a host, of a page a host admitted, or of a member (its proof); any other
+          // asker is told to wait and gets no link (io.held says the word and puts the page on the hosts' list).
+          if (f.l[0] === 'l' && io.held && io.held(from, f)) return;
           if (f.l[0] === 's') {   // a standby: only a seat its own live end named takes it
             if (!sbExpect.has(f.l)) return;
             L = newLink(from, f.l, false); L.heardAt = io.now(); L.liveEnd = sbExpect.get(f.l);
@@ -1707,7 +1726,7 @@
           if (now - L.downSince > DIAL_BUDGET_MS) { if (L.opener) sub.pipeRetryAt = now + RETRY_MS; close(L, 'lost'); continue; }
         }
         else L.downSince = 0;
-        if ((L.state === 'ask' || (L.state === 'swap' && !L.peer)) && now - L.sentAt > RESEND_MS && (L.opener || L.farDev)) sendAsk(L);
+        if ((L.state === 'ask' || (L.state === 'swap' && !L.peer)) && now - L.sentAt > (L.heldAt ? WAIT_MS : RESEND_MS) && (L.opener || L.farDev)) sendAsk(L);   // an ask a waiting room holds is said again at the door's pace
         // a link that holds no vouch of mine yet (its setup, a takeover) asks again until it does; after that only a
         // credential ask asks (the vouch on demand)
         if (L.farDev && !L.mine && !L.direct && now - L.vAskAt > RESEND_MS) askMine(L);
@@ -1747,6 +1766,34 @@
 
     return {
       step, onFrame, onVouch, onCapacity, onPath, onServer, onLocal,
+      // THE DOOR'S WORD FOR A PIPE I ASKED FOR (tv q 'h'). on: the seat I asked holds my ask in its meeting's waiting room: the
+      // ask stands (said again at the door's pace, never closed as a failed dial while the seat keeps saying so). off: a host
+      // let me in: the pipe is asked for afresh, now. Returns whether the word was about a pipe of mine that is not up.
+      heldWord(from, f) {
+        const now = io.now();
+        if (f.b !== 1) {   // let in: whoever says it (the host, or a seat that told me to wait), every pipe of mine that waits asks afresh
+          let any = false;
+          for (const L of links.values()) {
+            if (!L.opener || L.sb || !L.heldAt || L.state === 'up' || L.state === 'closed') continue;
+            // the room granted for this pipe may have lapsed at the service while the ask stood (a pipe that never came up
+            // is on record for a short while only): the pipe is asked for afresh, now, and the seat answers that ask
+            // (this ask stands meanwhile and is replaced by the fresh one: an answer to it never meets a page with no link)
+            log('turn-link let in ' + short(L.far) + ' ' + L.l + ': asking for the pipe afresh');
+            L.heldAt = 0; L.sentAt = 0; any = true;
+          }
+          if (any) { sub.repipe = true; sub.retryAt = 0; sub.pipeRetryAt = 0; sub.mult = 1; if (sub.st === 'found') subIdle(now, null, 0); }
+          return any;
+        }
+        let L = links.get(from);
+        if (!L) for (const x of links.values()) if (x.opener && !x.farPid && x.l === f.l) { L = x; break; }
+        if (!L || !L.opener || L.sb || L.l !== f.l || L.state === 'up' || L.state === 'closed') return false;
+        L.heardAt = now;
+        if (!L.heldAt) log('turn-link held ' + short(from) + ' ' + L.l + ': the meeting\'s waiting room');
+        L.heldAt = now; L.askAt = now;
+        return true;
+      },
+      // a pipe I opened waits in a meeting's waiting room (the far seat said so within its own resend)
+      heldPipe() { const now = io.now(); for (const L of links.values()) if (L.opener && !L.sb && L.heldAt && L.state !== 'up' && L.state !== 'closed' && now - L.heldAt <= DIAL_BUDGET_MS) return true; return false; },
       // The connection settings of this pair: null for a pair that is no TURN link, or whose end here is no client.
       config(pid) {
         const L = links.get(pid);
