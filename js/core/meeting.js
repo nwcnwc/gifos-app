@@ -10368,7 +10368,8 @@
     //   reconnecting  was in and lost it: the way-back flow, the room link down past the quiet time, the seat lost, or a
     //                 Stage that was playing and is gone for a moment
     //   refused       turned away for good, or left (the line says why)
-    // -> { state, viewer, w }: w the words while connecting or reconnecting (progressWords), else null.
+    // -> { state, viewer, w, why }: w the words while connecting or reconnecting (progressWords), else null; why: which rule
+    //    decided (for traces and tests).
     // progLastJoin: the way in's run after it ended (a viewer waits in its last phase until the Stage plays); joinWasIn: this
     // page has been in (watching, in the meeting, or knowing the broadcast is off) at least once
     let progRun = null, progNAtRelay = 0, progListAt = -1, progEndedJoin = false, progBackSince = 0, progMend = false, progLastJoin = null, joinWasIn = false, joinState = function () {
@@ -10379,7 +10380,7 @@
       try {
         const refused = (typeof leftDialogUp === 'function' && leftDialogUp()) || (typeof relaySaidNo === 'function' && !!relaySaidNo())
           || !!subsRefused || (typeof refusedLine === 'function' && !!refusedLine());
-        if (refused) return { state: 'refused', viewer, w: null };
+        if (refused) return { state: 'refused', viewer, w: null, why: 'refused' };
         // the Stage is playing here: a stage tile on screen and someone on it sending (bcQuietLine's on-air rule)
         let playing = false;
         if (viewer) {
@@ -10389,29 +10390,29 @@
           });
         }
         if (progRun) {
-          if (progRun.flow === 'reconnect') return { state: 'reconnecting', viewer, w: progressWords(progRun) };
-          if (playing) { joinWasIn = true; return { state: 'watching', viewer, w: null }; }
-          return { state: 'connecting', viewer, w: progressWords(progRun) };
+          if (progRun.flow === 'reconnect') return { state: 'reconnecting', viewer, w: progressWords(progRun), why: 'way-back' };
+          if (playing) { joinWasIn = true; return { state: 'watching', viewer, w: null, why: 'stage-by-door' }; }
+          return { state: 'connecting', viewer, w: progressWords(progRun), why: 'way-in' };
         }
-        if (!progEndedJoin) return { state: 'connecting', viewer, w: null };   // before the first beat
+        if (!progEndedJoin) return { state: 'connecting', viewer, w: null, why: 'boot' };   // before the first beat
         // the way in's last phase: a page whose way in ended but that has not been in yet (a seat that lands alone a beat
         // before its links, a viewer whose Stage has not started here) is still connecting, never "reconnecting"
-        const stillComing = { state: 'connecting', viewer, w: progLastJoin ? progressWords(progLastJoin, viewer ? 4 : 0) : null };
+        const stillComing = (why) => ({ state: 'connecting', viewer, w: progLastJoin ? progressWords(progLastJoin, viewer ? 4 : 0) : null, why });
         const s = meshSeat();
         const seatLost = !(s && s.state === 3 && s.hasCoord) || (typeof wayBack === 'function' && wayBack());
         const linkDown = !!(statusLinkDownAt && Date.now() - statusLinkDownAt >= GifOS.timings.STATUS_RECONNECT_QUIET_MS);
-        if (linkDown || seatLost) return joinWasIn ? { state: 'reconnecting', viewer, w: null } : stillComing;
-        if (!viewer) { joinWasIn = true; return { state: 'in', viewer, w: null }; }
-        if (playing) { joinWasIn = true; return { state: 'watching', viewer, w: null }; }
+        if (linkDown || seatLost) return joinWasIn ? { state: 'reconnecting', viewer, w: null, why: linkDown ? 'link-down' : 'seat-lost' } : stillComing(linkDown ? 'link-down-first' : 'seat-first');
+        if (!viewer) { joinWasIn = true; return { state: 'in', viewer, w: null, why: 'seated' }; }
+        if (playing) { joinWasIn = true; return { state: 'watching', viewer, w: null, why: 'stage' }; }
         const bq = bcLastQuiet || {};
-        if (bq.reconnecting) return joinWasIn ? { state: 'reconnecting', viewer, w: null } : stillComing;
-        if (bq.text || (typeof bcEndedInRoom === 'function' && bcEndedInRoom())) { joinWasIn = true; return { state: 'offair', viewer, w: null }; }
+        if (bq.reconnecting) return joinWasIn ? { state: 'reconnecting', viewer, w: null, why: 'stage-gone' } : stillComing('stage-first');
+        if (bq.text || (typeof bcEndedInRoom === 'function' && bcEndedInRoom())) { joinWasIn = true; return { state: 'offair', viewer, w: null, why: 'off-air' }; }
         // a network that blocks this viewer from everyone, after the Stage played here: lost, not "starting"
         const reach = typeof reachInfo === 'function' ? reachInfo() : null;
-        if (reach && reach.state && reach.state !== 'partial' && bcWasOnAirAt) return { state: 'reconnecting', viewer, w: null };
+        if (reach && reach.state && reach.state !== 'partial' && bcWasOnAirAt) return { state: 'reconnecting', viewer, w: null, why: 'reach' };
         // in, nothing says the broadcast is off, and the Stage is not playing here yet: the way in's last phase
-        return stillComing;
-      } catch (e) { return { state: 'connecting', viewer, w: null }; }
+        return stillComing('stage-coming');
+      } catch (e) { return { state: 'connecting', viewer, w: null, why: 'error' }; }
     };
     const progTrace = window.__meetProgress = [];
     function progressFacts() {
