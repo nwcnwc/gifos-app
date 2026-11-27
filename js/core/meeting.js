@@ -10418,7 +10418,10 @@
         if (reach && reach.state && reach.state !== 'partial' && bcWasOnAirAt) return { state: 'reconnecting', viewer, w: null, why: 'reach' };
         // nothing says the broadcast is off, and the Stage is not playing here: a viewer who watched before is getting it back
         // (its way back just ended, the picture is a beat behind); one who never watched waits in the way in's last phase
-        return joinWasIn ? { state: 'reconnecting', viewer, w: null, why: 'stage-back' } : stillComing('stage-coming');
+        // (within the broadcast's reconnect window, BC_RECONNECT_MS, as bcQuietLine; past it the Stage is off air)
+        if (joinWasIn) return bcWasOnAirAt && Date.now() - bcWasOnAirAt < GifOS.timings.BC_RECONNECT_MS
+          ? { state: 'reconnecting', viewer, w: null, why: 'stage-back' } : { state: 'offair', viewer, w: null, why: 'stage-gone-long' };
+        return stillComing('stage-coming');
       } catch (e) { return { state: 'connecting', viewer, w: null, why: 'error' }; }
     };
     const progTrace = window.__meetProgress = [];
