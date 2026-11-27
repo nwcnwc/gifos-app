@@ -258,8 +258,7 @@
   async function makeLink() {
     const m = MR().mine(); if (!m) return;
     const label = $('mr-make-label').value.trim(); if (!label) { $('mr-make-label').focus(); return; }
-    const K = root.localStorage.getItem('gifos_vadm_' + m.room + '.' + m.v);
-    const r = await MR().mint(K, m.room, m.v, label);
+    const r = await MR().mintFor(m.room, m.v, label);   // My Room's logic holds the host secret; the view never reads it
     const link = MR().cardLink(root.location.origin, m.room, m.v, r.token);
     $('mr-make-link').value = link; $('mr-make-out').hidden = false;
     try { const list = MR().issued(); list.unshift({ room: m.room, v: m.v, id: r.id, label, exp: r.exp, at: Date.now() }); root.localStorage.setItem(MR().KEY.issued, JSON.stringify(list.slice(0, 500))); } catch (e) {}

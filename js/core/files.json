@@ -1,5 +1,5 @@
 {
- "note": "Which of the site's script files make up the GifOS core (in the order a host loads them), and which the browser media port. Everything else the meeting page loads is the view's. The files stay where the site serves them. \"apps\": what a host with no screen loads after the core: the app runtime, to take part in apps through their data (no app frame), and the subscription (js/meet-subs.js: the meeting tickets and the capture a seat holds by a subscription or a pass, with none of its cards; a browser page loads it beside its own view, and js/core/view/subs.js, its cards, right after it). \"nodeMedia\": the Node media port a host with no browser runs when it has a codec: \"host\" in the host's own realm (ports/webaudio.js, the AudioContext over Opus), \"plane\" in the participant's (media/plane-node.js), \"video\" the picture port beside it (ports/vp8.js: the packer's surface over I420 and the VP8 codec). \"viewLib\": the shared view library a surface page loads before its own view part (js/core/view/kit.js: the view contract with the core, readings of its answers, the browser's own video controls). \"pages\": each surface page and its own view files, after the core, the media plane and \"viewLib\": meet.html and cast.html (the meeting's view part and the page's surface), run.html (the app runtime's audio-only view, with the \"apps\" runtime), embed.html (the broadcast player).",
+ "note": "Which of the site's script files make up the GifOS core (in the order a host loads them), and which the browser media port. Everything else the meeting page loads is the view's. The files stay where the site serves them. \"apps\": what a host with no screen loads after the core: the app runtime, to take part in apps through their data (no app frame), and the subscription (js/meet-subs.js: the meeting tickets and the capture a seat holds by a subscription or a pass, with none of its cards; a browser page loads it beside its own view, and js/core/view/subs.js, its cards, right after it), and My Room (js/meet-myroom.js: the cards, rings and private rooms, with the host secrets they sign with; the meeting page loads its screens, js/core/view/myroom.js, beside it). \"nodeMedia\": the Node media port a host with no browser runs when it has a codec: \"host\" in the host's own realm (ports/webaudio.js, the AudioContext over Opus), \"plane\" in the participant's (media/plane-node.js), \"video\" the picture port beside it (ports/vp8.js: the packer's surface over I420 and the VP8 codec). \"viewLib\": the shared view library a surface page loads before its own view part (js/core/view/kit.js: the view contract with the core, readings of its answers, the browser's own video controls). \"pages\": each surface page and its own view files, after the core, the media plane and \"viewLib\": meet.html and cast.html (the meeting's view part and the page's surface), run.html (the app runtime's audio-only view, with the \"apps\" runtime), embed.html (the broadcast player).",
  "core": [
   "js/core/link.js",
   "js/gifos-store.js",
@@ -119,7 +119,8 @@
   "js/app-owner.js",
   "js/app-room.js",
   "js/runtime.js",
-  "js/meet-subs.js"
+  "js/meet-subs.js",
+  "js/meet-myroom.js"
  ],
  "nodeMedia": {
   "host": "js/core/ports/webaudio.js",
@@ -131,7 +132,6 @@
    "js/core/view/shareshots.js",
    "js/core/view/subs.js",
    "js/core/view/view.js",
-   "js/meet-myroom.js",
    "js/core/view/myroom.js",
    "js/core/view/meet.js"
   ],
@@ -139,7 +139,6 @@
    "js/core/view/shareshots.js",
    "js/core/view/subs.js",
    "js/core/view/view.js",
-   "js/meet-myroom.js",
    "js/core/view/myroom.js",
    "js/core/view/cast.js"
   ],
