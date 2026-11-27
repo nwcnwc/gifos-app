@@ -394,7 +394,7 @@
     const mark = '\u0001';
     drop.textContent = '';
     const parts = T('sign.drop.loaded', { name: mark }).split(mark);
-    const nameEl = document.createElement('b'); nameEl.textContent = gifName + '.gif';
+    const nameEl = document.createElement('b'); nameEl.textContent = gifName;   // the .gif stays in the download name only
     drop.append(parts[0] || '', nameEl, parts.slice(1).join(mark));
   }
   // Preloaded from the Home Screen: sign.html#id=<fileId>[&db=<namespace>]

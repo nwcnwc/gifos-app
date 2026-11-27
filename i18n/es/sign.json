@@ -2,7 +2,7 @@
   "sign.title": "Firmar un GIF — GifOS",
   "sign.heading": "Firmar un GIF 🛡️",
   "sign.lead": "Demuestra que eres el autor de una app en GIF. Al firmar, estos bytes exactos de la app quedan vinculados a tu <b>dominio</b> o a tu <b>correo</b>, y GifOS muestra <b>“Firmado por ti”</b> a quien la abra. Todo ocurre en tu navegador: sin subir nada y sin cuenta. Los <i>datos</i> guardados de tu app nunca forman parte de la firma, así que sigue siendo válida mientras la gente usa la app.",
-  "sign.drop.prompt": "Suelta aquí tu <b>.gif</b> o haz clic para elegir uno",
+  "sign.drop.prompt": "Suelta aquí tu <b>GIF</b> o haz clic para elegir uno",
   "sign.drop.loaded": "{name} cargado — fírmalo abajo",
   "sign.tab.domain": "Firmar con un dominio",
   "sign.tab.email": "Firmar con correo (PGP)",
