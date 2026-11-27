@@ -5439,16 +5439,16 @@
       // lists them (it lags their first status by a beat or more).
       const others = (0, /*()*/__C.stageIds)().filter((id) => id !== __C.model.me.myId())
         .concat(__C.model.door.admins().filter((id) => id !== __C.model.me.myId() && (0, /*()*/__C.stageClaimOf)(id)));
+      // Not in yet, or lost: the Stage is not known, so it is never "clear" (the one join state, joinState).
+      let js = null;
+      try { js = typeof __C.joinState === 'function' ? (0, /*()*/__C.joinState)() : null; } catch (e) { js = { state: 'connecting', w: null }; }
+      if (js && js.state === 'reconnecting') { line.textContent = 'Reconnecting to the broadcast…'; return; }
       if (others.length) {
         const nm = others.map(nameOf).find((x) => x);
         line.textContent = nm ? 'Connecting to ' + nm + '…' : 'Connecting to the stage…';
         return;
       }
-      // Not in yet, or lost: the Stage is not known, so it is never "clear" (the one join state, joinState).
-      let js = null;
-      try { js = typeof __C.joinState === 'function' ? (0, /*()*/__C.joinState)() : null; } catch (e) { js = { state: 'connecting', w: null }; }
       if (js && js.state === 'connecting') { line.textContent = js.w && js.w.what ? js.w.what + '…' : 'Connecting to the broadcast…'; return; }
-      if (js && js.state === 'reconnecting') { line.textContent = 'Reconnecting to the broadcast…'; return; }
       // Heard means the host is known (a hosted room's first status from
       // them can land before their host proof, when they are not yet on the
       // stage), or in an open room anyone's status. The host knows its stage.

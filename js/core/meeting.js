@@ -885,7 +885,7 @@
       try { onStage = typeof myStatus !== 'undefined' && !!myStatus.stg; } catch (e) { onStage = false; }
       if (role === 'host') (0, /*()*/__V.paintAirKind)(sending ? 'live' : 'off', sending ? 'Broadcast · You are live' : 'Broadcast · You are off air');
       else if (onStage) (0, /*()*/__V.paintAirKind)(sending ? 'live' : 'off', 'Broadcast · You are on stage');
-      else (0, /*()*/__V.paintAirKind)('watch', 'Broadcast · You are watching');
+      else paintOnAir.airSaid = '';   // a viewer's bar follows the one join state: paintOnAir paints it just below
       try { paintOnAir(); } catch (e) {}
       if (typeof updateStatus === 'function') { try { updateStatus(); } catch (e) {} }
     }
@@ -1096,6 +1096,11 @@
         else if (js === 'reconnecting') { kind = 'conn'; words = 'Reconnecting'; }
         else if (js === 'refused') { kind = 'off'; words = 'Not connected'; }
         else { kind = 'off'; words = 'Off air'; }
+        // the room bar under the banner says the same (it said "You are watching" behind the joining card)
+        let stg = false;
+        try { stg = !!myStatus.stg; } catch (e) {}
+        const air = 'Broadcast · ' + (js === 'watching' ? 'You are watching' : js === 'connecting' ? 'Connecting…' : js === 'reconnecting' ? 'Reconnecting…' : js === 'refused' ? 'Not connected' : 'Off air');
+        if (!stg && paintOnAir.airSaid !== air) { paintOnAir.airSaid = air; (0, /*()*/__V.paintAirKind)('watch', air); }
       }
       else if (bcSendingSafe()) { kind = 'live'; words = 'Live'; }
       (0, /*()*/__V.paintOnAirBadge)(kind, words);
