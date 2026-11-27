@@ -1182,29 +1182,27 @@
     // a newcomer feeds nobody, so "fed" always leads back to the Stage. A seat that sat by a move is not a newcomer.
     l53Enter() { if (!this.f.fabricDoors()) return; this.l53New = true; this.l53At = -1; },
     // C++: mesh_heal.inc:Seat::l53AskHedge
-    // L53.1 NO ASK WAITS ON A SEAT THAT MAY BE DEAD. A seeker sends its WHOHOME to one greeter of the door's last list
-    // and its FIND to one seat of the roster its HOME gave it. Both lists name seats that are away or dead as readily
-    // as live ones. While no channel to a seat it asked this round is open, FHOP_DOOR_STALL after the ask (a dial that
-    // is going to open has opened by then, FHOP.8.2) the same ask goes to one more seat, and again every
-    // FHOP_DOOR_STALL: a seat it holds an open channel to first (live by proof: it answered), then the door's greeters
-    // in the list's order from the one asked. The first answer is its entry; a later placement is declined (L31.7), a
-    // later door closed (l16Gateway). A returner's proof rides its one knock (L3.11.5): it is not hedged.
+    // L53.1 NO KNOCK WAITS ON A GREETER THAT MAY BE DEAD. A joiner sends its first ask to one greeter of the door's last
+    // list, and the list names people who are away or gone as readily as people who are there. While no channel to a
+    // greeter it asked this round is open, FHOP_DOOR_STALL after the ask (a dial that is going to open has opened by
+    // then, FHOP.8.2) the same ask goes to one more greeter, in the list's order from the one asked, and again every
+    // FHOP_DOOR_STALL. The first answer is its entry; a later door is closed (l16Gateway). A returner's proof rides its
+    // one knock (L3.11.5): it is not hedged. The ask for a place (FIND) is not hedged: the door's sound already plays
+    // while it waits.
     l53AskHedge() {
       const TICK = this.TICK, id = this.id;
-      if (!this.f.fabricDoors() || (this.state !== 1 && this.state !== 2)) return false;
-      const tgt = this.state === 1 ? this.gateway : this.lastAsked; if (tgt < 0) return false;
-      if (this.state === 2 && this.findAckAt >= 0) return false;
-      if (this.state === 1 && (this.lastReach >= this.retryAt || this.oldCell || this.entryTerm())) return false;
+      if (!this.f.fabricDoors() || this.state !== 1) return false;
+      const tgt = this.gateway; if (tgt < 0) return false;
+      if (this.lastReach >= this.retryAt || this.oldCell || this.entryTerm()) return false;
       if (this.l53HedgeFor !== this.retryAt) { this.l53HedgeFor = this.retryAt; this.l53HedgeAt = TICK; this.l53Asked.length = 0; this.l53Asked.push(tgt); }   // the stall counts from the tick I saw this round (retryAt may be backdated to hurry a retry)
       if (TICK - this.l53HedgeAt < K.FHOP_DOOR_STALL) return false;
       const asked = (x) => this.l53Asked.includes(x);
       for (const a of this.l53Asked) if (this.f.fabricLinkOpen(id, a)) return false;
-      let x = -1; if (this.state === 2) for (const p of this.f.fabricOpenPeers(id)) if (p !== id && !asked(p) && this.f.fabricLinkCarries(id, p)) { x = p; break; }   // a FIND: a seat I hold an open channel to first (no dial). Not the first ask: before its answer a joiner's open channels prove no seat
-      if (x < 0 && this.greetersAt >= 0 && TICK - this.greetersAt <= K.RELAY_TTL) { const n = this.lastGreeters.length; let at = 0; for (let q = 0; q < n; q++) if (this.lastGreeters[q] === tgt) at = q; for (let q = 1; q <= n && x < 0; q++) { const g = this.lastGreeters[(at + q) % n]; if (g >= 0 && g !== id && !asked(g)) x = g; } }
+      let x = -1;   // (never a channel I hold open: before its answer a joiner's open channels prove nobody)
+      if (this.greetersAt >= 0 && TICK - this.greetersAt <= K.RELAY_TTL) { const n = this.lastGreeters.length; let at = 0; for (let q = 0; q < n; q++) if (this.lastGreeters[q] === tgt) at = q; for (let q = 1; q <= n && x < 0; q++) { const g = this.lastGreeters[(at + q) % n]; if (g >= 0 && g !== id && !asked(g)) x = g; } }
       if (x < 0) return false;
       this.l53HedgeAt = TICK; this.l53Asked.push(x); this.trace('L53-HEDGE', id, null, 'to=%d beside=%d st=%d', x, tgt, this.state);
-      if (this.state === 1) { this.entNote(x); this.l16Ask.push(x); const w = newMsg('WHOHOME'); w.from = id; w.ttl = K.WHOHOME_HOPS; this.emit(x, w); return true; }
-      const m = this.findMsg(x, false); this.emit(x, m); return true;
+      this.entNote(x); this.l16Ask.push(x); const w = newMsg('WHOHOME'); w.from = id; w.ttl = K.WHOHOME_HOPS; this.emit(x, w); return true;
     },
     l14Uplink() {
       this.l14PcWatch();
