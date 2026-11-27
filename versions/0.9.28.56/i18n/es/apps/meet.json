@@ -1,0 +1,5 @@
+{
+  "title": "Reunión",
+  "why": "Esta app viene integrada en GifOS. Las apps normales nunca pueden acceder a tu cámara ni a tu\nmicrófono, así que este icono abre la página de reuniones integrada en lugar de ejecutarse aquí.",
+  "open": "Abre este GIF en tu pantalla de inicio en <code>gifos.app</code> para empezar una reunión."
+}

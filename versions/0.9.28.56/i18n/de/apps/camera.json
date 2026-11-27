@@ -1,0 +1,21 @@
+{
+  "empty.title": "Keine Kamera an diesem Computer",
+  "empty.why": "Erlauben Sie die Kamera im Browser und schalten Sie sie dann im Fähigkeiten-Chip dieser App oben im Tab ein.",
+  "stage.tap": "Auslöser antippen",
+  "mm.title": "Meine Medien öffnen",
+  "mm.label": "🖼️ Meine Medien",
+  "shutter.aria": "Kamera öffnen",
+  "roll.title": "Zuletzt",
+  "name.video": "Video · {when}",
+  "name.burst": "Serienbild · {when}",
+  "name.boomerang": "Boomerang · {when}",
+  "name.slowmo": "Zeitlupe · {when}",
+  "name.timelapse": "Zeitraffer · {when}",
+  "name.clip": "Clip · {when}",
+  "name.photo": "Foto · {when}",
+  "name.photoBare": "Foto",
+  "hint.inLibrary": "{name} — in Meinen Medien",
+  "hint.openToPlay": "Öffnen Sie Meine Medien, um diesen Clip abzuspielen.",
+  "hint.saved": "{n, plural, =1 {In Meinen Medien gespeichert} other {# Aufnahmen in Meinen Medien gespeichert}} — tippen Sie unten auf „Meine Medien“, um sie zu sehen",
+  "toast.saved": "In Meinen Medien gespeichert"
+}
