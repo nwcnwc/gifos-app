@@ -1837,7 +1837,7 @@
     // does (`tv` q 'h'): `l` names what is held, the page's knock (l0) or the pipe it asked this seat for.
     const heldSaidAt = new Map(),   // door side: knocker id -> last time told
       heldToldAt = new Map(),       // a guest's door: page id -> when I last told the hosts
-    { sayLetIn, doorWaits, doorSelfHeld, doorNoWay, doorWordIn, heldScreen, linkAskHeld, linkProofIn, linkAskAgain, doorWaitInfo } = (function () {
+    { sayLetIn, doorWaits, doorNamed, doorSelfHeld, doorNoWay, doorWordIn, heldScreen, linkAskHeld, linkProofIn, linkAskAgain, doorWaitInfo } = (function () {
     // ...and so does a host's Admit: the page held with no channel is told at once (its door's silence would say it only
     // after three held rounds). The word opens nothing by itself: every door still asks whether a host admitted the page.
     function sayLetIn(id) { try { if (id && id !== myId) relaySendSealed(id, 'tv', { k: 'tv', q: 'h', l: 'l0', b: 0 }); } catch (e) {} }
@@ -1858,6 +1858,18 @@
       heldToldAt.delete(id); heldToldAt.set(id, { at: now, nm }); if (heldToldAt.size > 64) heldToldAt.delete(heldToldAt.keys().next().value);
       try { sendAll({ k: 'heldask', id, n: String(nm).slice(0, 40) }); } catch (e) {}
       return true;
+    }
+    // A page my door holds says its name (a relay `name` frame: it has no channel to me). The name goes to the waiting
+    // list at once: a name heard by the relay from a page that holds no seat here is forgotten at the next roster
+    // sweep, long before that page's next ask. A host's door writes it on the row; a guest's door tells the hosts again.
+    function doorNamed(id, nm) {
+      id = String(id || ''); nm = String(nm || '').trim().slice(0, 40);
+      if (!id || !nm || id === myId || !meetWait.blocks(id) || (myRoomPart && myRoomPart.quiet(id))) return;
+      if (amAdmin) { meetWait.note(id, nm, 'name'); return; }   // (a name alone lists nobody: note)
+      const was = heldToldAt.get(id);
+      if (!was || was.nm === nm || !meshCoord()) return;
+      heldToldAt.set(id, { at: Date.now(), nm });
+      try { sendAll({ k: 'heldask', id, n: nm }); } catch (e) {}
     }
     // THE DOOR'S WORD OVER THE RELAY (sayHeld / sayLetIn at a door; a pipe's far seat for a pipe I asked for).
     //   held, and I hold no seat: the same as a door's word on a channel (onHeldSaid), from a door I dialled only. My seat
@@ -1960,7 +1972,7 @@
       linkAsks.delete(id);   // its next ask (it says it again at the door's pace, and afresh when it hears the let-in) is answered
     }
     const doorWaitInfo = () => ({ told: heldToldAt.size, said: Array.from(heldSaidAt.keys()), asks: Array.from(linkAsks.keys()), proved: Array.from(linkProved), toldMe: doorToldAt ? Date.now() - doorToldAt : -1, pipeHeld: !!(turnLinks && turnLinks.heldPipe()), proof: !!seatLinkProof(), named: Array.from(heldNamed.keys()), nameSent: heldNamed.ok, nameErr: heldNamed.err || '' });
-    return { sayLetIn, doorWaits, doorSelfHeld, doorNoWay, doorWordIn, heldScreen, linkAskHeld, linkProofIn, linkAskAgain, doorWaitInfo };
+    return { sayLetIn, doorWaits, doorNamed, doorSelfHeld, doorNoWay, doorWordIn, heldScreen, linkAskHeld, linkProofIn, linkAskAgain, doorWaitInfo };
     })();
     function sayHeld(id, kind, l) {
       if (myRoomPart && myRoomPart.quiet(id)) return;   // a private room's door is silent to a page that has not proved it is the other member
@@ -2030,6 +2042,7 @@
         id = String(id || '');
         if (!id || id === myId || waitDeclined.has(id) || waitAdmitted.has(id)) return false;
         const nm = String(name || '').trim().slice(0, 40) || 'Someone waiting';
+        if (src === 'name' && !waitQueue.has(id)) return false;   // a name names a page that waits already; it puts nobody on the list
         if (waitQueue.has(id) && (waitQueue.get(id) === nm || nm === 'Someone waiting')) return true;   // listed already (a name once told is kept): nothing to paint
         if (src && waitQueue.has(id) && waitQueue.get(id) !== 'Someone waiting') return true;   // a door's own note never replaces a name the list already shows (a card's label says more than a screen name)
         if (!waitQueue.has(id) && waitQueue.size >= 64) waitQueue.delete(waitQueue.keys().next().value);   // the list is bounded: the longest waiting goes first, and is listed again at its next ask
@@ -6991,7 +7004,7 @@
         if (f.dc === 1 && meshNode && meshNode.penv && meshNode.penv.doorWordIn) { try { meshNode.penv.doorWordIn(from); } catch (e) {} }
         else if (meshNode && meshNode.penv && meshNode.penv.doorDialIn) { try { meshNode.penv.doorDialIn(from); } catch (e) {} }   // a dial request from a page my seat does not know: the door says who it is (one knock, bounded by the seat)
         const nm = String(f.n || '').slice(0, RELAY_NAME_MAX);
-        if (nm) rosterNames[from] = nm;
+        if (nm) { rosterNames[from] = nm; try { doorNamed(from, nm); } catch (e) {} }
         const p = peers.get(from);
         if (p && nm && p.name !== nm) {
           p.name = nm; if (p.label) p.label.textContent = nm;
