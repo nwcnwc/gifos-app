@@ -11805,7 +11805,14 @@
       more.setAttribute('aria-haspopup', 'menu'); more.setAttribute('aria-expanded', 'false');
       const menu = document.createElement('div');
       menu.id = 'appmenu'; menu.setAttribute('role', 'menu'); menu.hidden = true;
-      abar.appendChild(more); abar.appendChild(menu);
+      // A phone's app covers the meeting's top row, view button and all: the folded bar carries its own view button.
+      const view = document.createElement('button');
+      view.type = 'button'; view.id = 'appview'; view.className = 'appview';
+      view.title = (0, /*()*/__C.uiText)('viewPickTip', 'Change the view (Alt+F)'); view.setAttribute('aria-label', (0, /*()*/__C.uiText)('viewPick', 'View'));
+      view.setAttribute('aria-haspopup', 'dialog'); view.setAttribute('aria-controls', 'viewpick');
+      view.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg>';
+      view.addEventListener('click', (e) => { e.stopPropagation(); const fb = document.getElementById('fitbtn'); if (fb) fb.click(); });
+      abar.appendChild(view); abar.appendChild(more); abar.appendChild(menu);
       // An app shared in a meeting keeps only its name, Help and Full screen on the row: the meeting has its own
       // Invite, and Hide, Stop and the rest are one tap away in the menu, each a full-size target.
       const inMeeting = () => { const b = document.body.classList; return b.contains('has-app') && !b.contains('solo-app') && !b.contains('app-room'); };
@@ -11827,6 +11834,7 @@
         if (how === (abar.dataset.foldHow || '')) return;
         for (const el of orig) abar.insertBefore(el, more);
         delete abar.dataset.fold; delete abar.dataset.foldHow; setOpen(false);
+        if (fold) abar.insertBefore(view, more);
         if (fold) { for (const el of orig) if (!keep(el)) menu.appendChild(el); abar.dataset.fold = '1'; abar.dataset.foldHow = how; }
       }
       more.addEventListener('click', (e) => { e.stopPropagation(); setOpen(menu.hidden); });

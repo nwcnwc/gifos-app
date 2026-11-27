@@ -3952,3 +3952,9 @@ body:is(.dock-calm, .head-calm, .view-calm, .dock-idle, .chrome-away, .sv-live):
 /* The folded app bar in a meeting on a phone: the row's buttons are full-size targets too. */
 #appbar[data-fold="1"] > button { min-height: 44px; min-width: 44px; }
 .viewpick { border: 1px solid var(--c-ink-2); box-shadow: 0 10px 28px rgba(0,0,0,.5); }
+#appbar #appview { display: none; }
+#appbar[data-fold-how="m"] #appview { display: inline-flex; align-items: center; justify-content: center; }
+/* An app in a meeting on a phone shows the view picker over the app. */
+body.has-app .viewpick { z-index: 45; }
+/* An app's bar in a meeting: every button a full 44px target, on a desktop too. */
+body.has-app:not(.solo-app):not(.app-room) #appbar > button, body.has-app:not(.solo-app):not(.app-room) #appbar > label { min-height: 44px; }
