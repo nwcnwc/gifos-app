@@ -123,7 +123,7 @@
  "meet.reshareNote": "你回来时，屏幕共享已停止。",
  "meet.reshareGo": "重新共享",
  "meet.appSheetTitle": "在这场会议中运行应用",
- "meet.appSheetBody": "点一个应用，即可为这里的每个人实时运行，会议的音频和视频照常进行。关闭多人模式的应用仍会在主持人的屏幕上打开，其他人观看。",
+ "meet.appSheetBody": "应用会为这里的每个人实时运行。关闭多人模式的应用仍会在主持人的屏幕上打开，其他人观看。",
  "meet.appSheetOr": "或者运行一个不在这台设备上的 GIF 应用：",
  "meet.appSheetFile": "＋ 选择 GIF 文件…",
  "meet.appSheetLink": "粘贴 GIF 应用链接",

@@ -131,7 +131,7 @@
   "meet.reshareNote": "Your screen share stopped when you came back.",
   "meet.reshareGo": "Share again",
   "meet.appSheetTitle": "Run an app in this meeting",
-  "meet.appSheetBody": "Tap an app to run it live for everyone here, with the meeting's sound and video around it. An app that turns multiplayer off still opens on the host's screen, and everyone else watches.",
+  "meet.appSheetBody": "Apps run live for everyone here. An app that turns multiplayer off still opens on the host's screen, and everyone else watches.",
   "meet.appSheetOr": "Or run a GIF app that isn’t on this device:",
   "meet.appSheetFile": "＋ Choose a GIF file…",
   "meet.appSheetLink": "Paste a GIF app link",

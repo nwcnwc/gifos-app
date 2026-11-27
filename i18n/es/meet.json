@@ -123,7 +123,7 @@
   "meet.reshareNote": "Dejaste de compartir al volver.",
   "meet.reshareGo": "Compartir otra vez",
   "meet.appSheetTitle": "Abrir una app en esta reunión",
-  "meet.appSheetBody": "Toca una app para abrirla en vivo para todos aquí, con el audio y el video de la reunión alrededor. Una app que apaga el modo multijugador se queda en la pantalla de quien la abre. Los demás miran.",
+  "meet.appSheetBody": "Las apps corren en vivo para todos aquí. Una app que apaga el modo multijugador se queda en la pantalla de quien la abre. Los demás miran.",
   "meet.appSheetOr": "O una app GIF que no está en este dispositivo:",
   "meet.appSheetFile": "＋ Elegir un archivo GIF…",
   "meet.appSheetLink": "Pega un enlace de app GIF",
