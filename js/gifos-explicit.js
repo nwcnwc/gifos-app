@@ -18,8 +18,7 @@
  *   GifOS.explicit.classify(src, opts) Promise of a result for one picture: src is a canvas, image, video, ImageBitmap or
  *                                      ImageData. result = { p:{drawing,hentai,neutral,porn,sexy}, score, explicit, ms }
  *                                      opts.square: look at the centre square only
- *   GifOS.explicit.checkStill(src)     Promise of { ok, verdict, score, ms } for one still picture (a thumbnail; two
- *                                      looks, the whole picture and its centre square, the higher score counts): ok
+ *   GifOS.explicit.checkStill(src)     Promise of { ok, verdict, score, ms } for one still picture (a thumbnail): ok
  *                                      false = explicit. verdict = { m, v, ok:1 } is what a page signs into an order
  *                                      when ok; there is no verdict when the picture tripped or could not be checked.
  *   GifOS.explicit.tracker(opts)       the video rule for one tile: feed(result) → { tripped, changed, burst }.
@@ -184,16 +183,14 @@
       return { p, score: s, explicit: s >= VIDEO_LINE, ms: m.ms, backend: e.backend };
     }));
   }
-  // A still picture: one decision. A picture that could not be checked has no verdict, exactly like one that tripped.
-  // Two looks: the whole picture, and its centre square. Measured on public pictures: more explicit pictures caught
-  // (82 of 107 against 73 with one look), a few more benign ones refused; for a thumbnail a refusal only means
-  // "choose another picture", so catching more is worth it.
+  // A still picture: one decision, one look at the whole picture. (A second look at the centre square was measured:
+  // 9 more of 107 explicit pictures caught, but 17 more benign ones refused, the Mona Lisa among them.)
+  // A picture that could not be checked has no verdict, exactly like one that tripped.
   function checkStill(src, opts) {
-    return classify(src, opts).then((a) => classify(src, Object.assign({}, opts, { square: true })).then((b) => {
-      const r = b.score > a.score ? b : a;
+    return classify(src, opts).then((r) => {
       const ok = r.score < STILL_LINE;
-      return { ok, verdict: ok ? { m: MODEL, v: VERSION, ok: 1 } : null, score: r.score, ms: a.ms + b.ms, p: r.p };
-    }));
+      return { ok, verdict: ok ? { m: MODEL, v: VERSION, ok: 1 } : null, score: r.score, ms: r.ms, p: r.p };
+    });
   }
 
   // ---- the video rule ----------------------------------------------------------------
