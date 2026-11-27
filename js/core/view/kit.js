@@ -417,7 +417,7 @@
       var name = nameOf(C, w.pid); try { if (!name && C.displayName) name = String(C.displayName(w.pid) || ''); } catch (e) {}
       var ini = ''; try { ini = C.nameInitial ? String(C.nameInitial(name)) : String(name || '').slice(0, 1).toUpperCase(); } catch (e) {}
       var lvl = 0;
-      try { lvl = isMe ? (C.blurLevelFor('me') | 0) : (where === 'stage' ? (C.blurLevelFor(w.pid, false, false, 'stage') | 0) : (C.blurLevelFor(w.pid, true) | 0)); } catch (e) { lvl = 2; }
+      try { lvl = isMe ? (C.blurLevelFor('me') | 0) : (where === 'stage' ? (C.blurLevelFor(w.pid, true, false, 'stage') | 0) : (C.blurLevelFor(w.pid, true) | 0)); } catch (e) { lvl = 2; }
       el.dataset.pid = String(w.pid);
       el.style.left = Math.round(w.x) + 'px'; el.style.top = Math.round(w.y) + 'px';
       // A packed Stadium cell carries its name in its foot band (burned by the packer, over the plain fill): the card

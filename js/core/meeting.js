@@ -6914,7 +6914,9 @@
       // The picture goes at my own blur (a camera that is off sends no video; the avatar is a still under the same
       // rule as my camera): a new blur level sends it again.
       let lvl = 0;
-      try { lvl = blurLevelFor('me') | 0; } catch (e) { lvl = 2; }
+      // asIfCamOn: a camera-off stager's still is sent at the level the camera WOULD have (clear when the rules say clear
+      // and I picked No blur, else blurred), never clearer than the camera.
+      try { lvl = blurLevelFor('me', true) | 0; } catch (e) { lvl = 2; }
       const key = hash ? hash + '|' + lvl : '';
       const dc = p.dc;
       // Once per open channel. A replaced channel (reconnect) sends again;
