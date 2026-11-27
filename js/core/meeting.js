@@ -21360,7 +21360,6 @@
       const K = await deriveAdminKey(chosen, pass);
       const V = (await net.edKeysFromSeedHex(K)).verifier; // V commits to the PUBLIC key K seeds (§9) — 96-bit, short link, preimage-safe
       try { localStorage.setItem('gifos_vadm_' + chosen + '.' + V, K); } catch (e) {}
-      try { localStorage.setItem('gifos_vhpw_' + chosen + '.' + V, pass); } catch (e) {}   // Show host password (this device only, never mirrored)
       mirrorRoomState({ admin: true }, chosen + '.' + V);
       // Optional GUEST password: pre-seed the room-password store (what the
       // Password button writes) — the §LOCK re-assert locks the new room the

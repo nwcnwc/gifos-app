@@ -15,7 +15,8 @@
  *                      Call (I go to our private room; its door rings their devices), their personal room if they
  *                      shared it, Remove (cutPrivate: its key, my member key, the record, the cards between us and the
  *                      Doorbell handle go). Cards to someone's room without a private room (a card link) are listed too.
- *   Hosted rooms       other rooms whose host key this device holds: Open, Copy link, password on this device or not
+ *   Hosted rooms       other rooms whose host key this device holds: Open, Copy link, room password set or not (the host
+ *                      password is never stored: the note says so)
  *   Ringing            stay in my personal room on this computer, how many private rooms a computer listens in, the
  *                      Doorbell (Ring me on this device, Pause, Your devices, Send a test ring)
  *   Cards I gave       Cancel card; Delete my personal room (typed name)
@@ -156,7 +157,11 @@
 
     // Hosted rooms I hold
     if (m.hosted.length) {
-      h += '<section class="card" id="sec-hosted" aria-labelledby="h-hosted"><h2 id="h-hosted">Hosted rooms on this device</h2><ul class="rows">';
+      h += '<section class="card" id="sec-hosted" aria-labelledby="h-hosted"><h2 id="h-hosted">Hosted rooms on this device</h2>' +
+        // The plaintext host password is never stored: say what makes this device host instead.
+        '<p class="quiet" id="hosted-note">You\'re the host of these rooms. This device holds their host keys, so it doesn\'t need the passwords. ' +
+        'A host password is shown only once, when its room is made, and is never stored, not even here. Nobody can recover it. ' +
+        'To be host on your other devices, copy My identity to them. Give a password only to someone you want as a co-host.</p><ul class="rows">';
       for (const x of m.hosted) {
         const k = pk(x), pw = !!lsGet('gifos_vpw_' + k);
         h += '<li class="row hosted" data-hk="' + esc(k) + '"><div class="main"><b>' + esc(x.room) + '</b><span class="quiet">' + (pw ? 'Password set' : 'No password') + '</span></div>' +

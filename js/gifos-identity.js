@@ -93,6 +93,17 @@
     { cls: 'private', key: 'gifos_private', id: rkOf, ok: (x) => RK.test(rkOf(x)) && Array.isArray(x.pubs), soft: ['last'], cap: 500, when: (x) => Math.max(+x.last || 0, +x.at || 0), born: (x) => +x.at || 0 },
   ];
   const HOSTKEY = /^gifos_vadm_([a-z0-9-]{1,64}\.[a-f0-9]{16,64})$/i;
+  // The plaintext host password is never stored anywhere and never travels: only the host KEY made
+  // from it does. Older pages kept it under gifos_vhpw_<room>.<verifier> for Show host password; every load and every
+  // merge removes any such entry, so none survives on a device or reaches another.
+  const HOSTPW = /^gifos_vhpw_/;
+  function dropHostPw(s) {
+    s = s || store(); if (!s) return 0;
+    const gone = [];
+    try { for (let i = 0; i < s.length; i++) { const k = s.key(i); if (HOSTPW.test(k || '')) gone.push(k); } } catch (e) { return 0; }
+    for (const k of gone) { try { s.removeItem(k); } catch (e) {} }
+    return gone.length;
+  }
   const KEEPS = (rid) => rid.indexOf('revoked/') === 0 || rid.indexOf('purchase/') === 0;   // never removed by a merge
   const classOf = (rid) => { const i = rid.indexOf('/'); return i < 0 ? rid : rid.slice(0, i); };
   const KNOWN = { room: 1, mine: 1, contact: 1, card: 1, revoked: 1, private: 1, device: 1, set: 1 };
@@ -143,6 +154,7 @@
   // put(recs): write the records back where the pages read them. Only what differs is written.
   function put(recs) {
     const s = store(); if (!s) return;
+    dropHostPw(s);
     const set = (k, v) => { if (s.getItem(k) !== v) s.setItem(k, v); };
     const have = new Set();
     for (const rid of Object.keys(recs)) {
@@ -659,6 +671,7 @@
   GifOS.identity = {
     SHADOW, DOC_PATH, CLEAR_PATH, CODE_LEN,
     useStore, collect, put, canon, mergeRecs,
+    dropHostPw,
     FOLLOW: Object.keys(FOLLOW), DEVICE_ONLY: DEVICE_ONLY.slice(), follows: (k) => !!FOLLOW[k],
     exists, worth, begin, scan, doc, take, counts, status,
     slots, addPassphrase, addPasskey, removeSlot,
@@ -666,5 +679,6 @@
     noteSaved, noteLater, nudge,
     newCode, tidyCode, showCode, codeKeys, copier, deviceName, bundle,
   };
+  dropHostPw();   // the one-time cleanup: runs on every page that loads the identity (Home, meet, cast)
   if (typeof module !== 'undefined' && module.exports) module.exports = GifOS.identity;
 })(typeof window !== 'undefined' ? window : globalThis);
