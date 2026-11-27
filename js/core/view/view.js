@@ -3492,8 +3492,10 @@
         try { n.focus(); } catch (err) {}
       });
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !viewpick.hidden) closePick(false); });
-      // A turned phone or a resized window closes it (its place was the old button's).
-      window.addEventListener('resize', () => { if (!viewpick.hidden) closePick(false); });
+      // A turned phone closes it (its place was the old button's). Only a turn: a phone's first tap goes full screen,
+      // a resize of its own, and the picker that tap opened must stay.
+      let vpLand = window.innerWidth > window.innerHeight;
+      window.addEventListener('resize', () => { const land = window.innerWidth > window.innerHeight; if (land !== vpLand && !viewpick.hidden) closePick(false); vpLand = land; });
       document.addEventListener('pointerdown', (e) => {
         if (viewpick.hidden) return;
         const t = e.target;
