@@ -4025,7 +4025,12 @@ body.view-focus .fsthumb.fsauto .fslbl { white-space: normal; line-height: 1.15;
    thumb is ever cut at the edge; the strip scrolls sideways to the rest. */
 @media (orientation: portrait) and (max-width: 700px) {
   body.view-focus .fsthumb { flex: 0 0 auto; width: clamp(100px, calc((100vw - 32px) / 3), 150px); }
-  /* The follow-the-speaker card keeps its two lines of words whole: the glyph steps aside on a strip this low. */
+  /* The strip sits on the bottom edge (the floating bar overlays it, it reserves no band) and shows no scrollbar line. */
+  body.view-focus #fsstrip { padding-bottom: 8px; scrollbar-width: none; }
+  body.view-focus #fsstrip::-webkit-scrollbar { display: none; }
+}
+/* On a short phone the follow-the-speaker card keeps its two lines of words whole: the glyph steps aside. */
+@media (orientation: portrait) and (max-width: 700px) and (max-height: 639px) {
   body.view-focus .fsthumb.fsauto .fsautoglyph { display: none; }
 }
 /* A phone-wide agenda (Scroll stacks it with no tab bar): no lone presentation-view icon under the list; a double tap
