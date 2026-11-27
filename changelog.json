@@ -10,7 +10,8 @@
       ],
       "fixes": [
         "Sound and picture stay in step for people who get the Stage through another person's device: the picture is prepared once, not twice.",
-        "A guest who joins at the very moment the host switches the waiting room on now shows on the waiting list instead of being cut off."
+        "A guest who joins at the very moment the host switches the waiting room on now shows on the waiting list instead of being cut off.",
+        "A host who reloads, or a TV channel that restarts, keeps Clear Stage for its viewers."
       ]
     },
     {
