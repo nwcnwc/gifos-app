@@ -229,7 +229,11 @@
   }
   const issuedTo = (pub) => !!pub && issued().some((x) => x.cpub === pub);   // I gave a card bound to this My Room key
   const revoked = () => { const a = readJson(KEY.revoked, []); return Array.isArray(a) ? a : []; };
-  function revoke(id) { const a = revoked(); if (a.indexOf(id) < 0) a.unshift(id); writeJson(KEY.revoked, a.slice(0, 1000)); writeJson(KEY.issued, issued().filter((x) => x.id !== id)); }
+  function revoke(id) {
+    const x = issued().find((y) => y.id === id);
+    if (x && x.cpub && GifOS.bell) GifOS.bell.cutKey(x.room, x.v, x.cpub).catch(() => {});   // its doorbell handle rings no more
+    const a = revoked(); if (a.indexOf(id) < 0) a.unshift(id); writeJson(KEY.revoked, a.slice(0, 1000)); writeJson(KEY.issued, issued().filter((x) => x.id !== id));
+  }
   function missed() { const a = readJson(KEY.missed, []); return Array.isArray(a) ? a : []; }
   function noteMissed(room, v, label, at) { const a = missed(); a.unshift({ room, v, label: String(label || '').slice(0, 40), at: at || Date.now() }); writeJson(KEY.missed, a.slice(0, 50)); }
   function clearMissed() { writeJson(KEY.missed, []); }
@@ -356,13 +360,22 @@
       showCard(pid).catch(() => {});
     }
     const chanSeen = new Map();   // pid -> the channel the door last said "held" on
+    // THE DOORBELL (js/meet-bell.js): a page that has just proved a key I accept for this room (a private room's member
+    // key, a card's key) is handed a handle to ring my devices through the Doorbell, once per person, key and meeting.
+    const bellGiven = new Set(), cardFrom = new Map(), bellWait = new Map();
+    function bellGive(pid, r, rv, k, label, exp) {
+      const B = GifOS.bell, bk = pid + '|' + roomKey(r, rv) + '|' + k;
+      if (!B || !B.on() || bellGiven.has(bk)) return;
+      bellGiven.add(bk);
+      B.offer(r, rv, k, label, exp).then((f) => { if (f) host.send(pid, f); }, () => bellGiven.delete(bk));
+    }
     function tick() {
       const now = host.now();
       if (idCopy) idCopy.tick();
       if (hosted && !host.owner()) {
         const mc = myCard();
         if (mc) {
-          if (!call) { call = { label: mc.name || room, state: 'waiting', at: now, invite }; emit({ type: 'call', call }); }
+          if (!call) { call = { label: mc.name || room, state: 'waiting', at: now, invite }; emit({ type: 'call', call }); if (GifOS.bell) GifOS.bell.press(room, v, host.myName(), callId).then((r) => emit({ type: 'bell', r }), () => {}); }
           for (const pid of host.hosts()) showCard(pid).catch(() => {});
           // Answer is no frame: the owner let me in and went live (mic or camera on), which every seat already sees.
           if (call.state === 'ringing' && host.seated() && host.hostLive()) { call.state = 'answered'; call.answeredAt = now; emit({ type: 'call', call }); }
@@ -377,7 +390,7 @@
     // this room; a proved knocker is let in (the key word is the Admit); a seat that cannot prove within MYROOM_PROVE_MS is
     // a stranger and this page leaves. The mic opens (the person's own Join/Answer tap) once everyone here has proved.
     const proved = new Map(), askedAt = new Map(), unproved = new Map();
-    let privDoor = false, strangerSaid = false;
+    let privDoor = false, strangerSaid = false, aloneAt = 0, bellPressed = false;
     const MIC_SS = 'gifos_mr_mic';
     function privTick(now) {
       const rec = privFor(room, v); if (!rec) return;
@@ -393,6 +406,9 @@
         const t0 = unproved.get(p.id) || now; unproved.set(p.id, t0);
         if (now - t0 >= (T().MYROOM_PROVE_MS || 0) && !strangerSaid) { strangerSaid = true; emit({ type: 'stranger', pid: p.id, name: p.name }); }
       }
+      // Alone here (a call to our private room): after BELL_ALONE_MS the doorbell rings the other member's devices, once.
+      if (here.length || ids.length) aloneAt = 0; else if (!aloneAt) aloneAt = now;
+      if (aloneAt && !bellPressed && now - aloneAt >= (T().BELL_ALONE_MS || 0) && GifOS.bell) { bellPressed = true; GifOS.bell.press(room, v, host.myName(), callId).then((r) => emit({ type: 'bell', r }), () => {}); }
       let want = ''; try { want = root.sessionStorage.getItem(MIC_SS) || ''; } catch (e) {}
       if (want === roomKey(room, v) && here.length && here.every((p) => proved.has(p.id))) { try { root.sessionStorage.removeItem(MIC_SS); } catch (e) {} host.mic(true); emit({ type: 'private-open' }); }
     }
@@ -402,6 +418,8 @@
       if (!(await keyWordOk(w, room, v, pid, host.now()))) return why(pid, 'priv-word');
       if (rec.pubs.indexOf(w.pub) < 0 && !(k && w.pub === k.pub)) return why(pid, 'priv-stranger');
       if (!proved.has(pid)) { proved.set(pid, w.pub); why(pid, 'priv-ok'); emit({ type: 'proved', pid }); }
+      if (!(k && w.pub === k.pub)) bellGive(pid, room, v, w.pub, rec.name);
+      if (bellWait.has(pid) && GifOS.bell) { const f = bellWait.get(pid); bellWait.delete(pid); GifOS.bell.take(f, room, v).catch(() => {}); }
       if (host.held(pid)) host.admit(pid);
     }
 
@@ -445,6 +463,7 @@
       // holds the card.
       const name = (await openLabel(K, o.lab)) || String(m.n || '').slice(0, 40) || 'Someone';
       const label = name + (o.b ? ' ✓' : ' (card)');
+      bellGive(pid, room, v, o.cpub, name, o.exp);
       let ck = '', to = '', pv = false; try { const ps = JSON.parse(m.p.sp); ck = pid + '|' + String(ps.call || ''); to = TO_RE.test(String(ps.to || '')) ? String(ps.to) : ''; pv = !!(to && ps.pv); } catch (e) { ck = pid + '|'; }
       // A call to our pair room: the ring names the private room I keep with this caller's own My Room key (bound card).
       const tp = /^([a-z0-9-]{1,64})\.([a-f0-9]{16,64})$/i.exec(to), tr = tp && privFor(tp[1], tp[2]);
@@ -524,6 +543,7 @@
       if (k) { const rec = pairWith(bind) || (await mintPrivate([bind], label)); const PK = rec && hostSecret(rec.room, rec.v); if (PK) pair = { pk: PK, pp: [k.pub, bind] }; }
       host.send(pid, Object.assign({ op: 'card', c: r.c, from: String(host.myName() || '').slice(0, 40) }, bind ? { nb: 1 } : { s: t.seed }, pair || {}));
       noteIssued(at.room, at.v, r.id, label, r.exp, bind);
+      bellGive(pid, at.room, at.v, r.cpub, label, r.exp);
       if (!host.owner()) { given.add(pid); emit({ type: 'gave', pid }); }
       return true;
     }
@@ -572,6 +592,15 @@
       if (!hosted || !m || typeof m.op !== 'string') return;
       try {
         if (m.op === 'card' && host.owner() && m.p) return await onCardShown(pid, m);
+        if (m.op === 'bell') {
+          // A handle is taken for this room only from a seat that proved a member key here (a private room) or proved
+          // the host key (my card's room), or for the room of a card this person just handed me.
+          if (!GifOS.bell) return;
+          if ((privFor(room, v) ? proved.has(pid) : host.isHost(pid))) await GifOS.bell.take(m, room, v);
+          else if (privFor(room, v)) bellWait.set(pid, m);   // its key word may still be on the way: taken once it proves
+          else if (cardFrom.has(pid)) { const at = cardFrom.get(pid).split('.'); await GifOS.bell.take(m, at[0], at[1]); }
+          return;
+        }
         if (m.op === 'keyask' && typeof m.r === 'string') {   // someone here is handing me a card: my room's key word, for that room only
           const at = /^([a-z0-9-]{1,64})\.([a-f0-9]{16,64})$/i.exec(m.r); if (!at) return;
           const w = await keyWord(at[1], at[2], host.myId(), host.now()); if (w) host.send(pid, { op: 'key', w });
@@ -615,6 +644,7 @@
           if (!at || isMine(at[1], at[2])) return;
           const tok = b64u(JSON.stringify(m.s ? [m.c.sp, m.c.sig, m.c.pub, m.s] : [m.c.sp, m.c.sig, m.c.pub]));
           const f = await readCard(tok, at[1], at[2]); if (!f) return;
+          cardFrom.set(pid, roomKey(at[1], at[2]));   // its doorbell handle may follow
           if (f.bound && PK_RE.test(String(m.pk || '')) && Array.isArray(m.pp) && m.pp.length === 2) f.pair = { pk: m.pk, pp: m.pp.map(String) };   // our pair room, kept when the card is saved
           emit({ type: 'offer', card: f, from: String(m.from || '').slice(0, 40), back: !(at[1] === room && at[2] === v) });
           return;

@@ -618,3 +618,77 @@ self.addEventListener('fetch', function (e) {
     return degrade(req, url, cache);
   })());
 });
+
+// ---- THE DOORBELL (js/meet-bell.js; docs: My Room). A ring pushed by bell.gifos.app wakes this worker with the
+// page closed. The push says which handle rang (i), the call (c), the Doorbell's time (ts) and the note (n), sealed by
+// the caller with that handle's ring secret. The page keeps in IndexedDB 'gifos-bell' what this worker needs: the
+// master secret the ring secrets come from, handle id -> {url (the room's address), key, label}, and how long a ring rings. A note
+// that opens is shown as "<label> is calling" (or a missed call when it arrives after the ring would have ended); the
+// tap opens the room that handle belongs to. Every push shows a notification (browsers require it), except while a
+// visible GifOS page already has that room open: it rings there.
+function bellDb() {
+  return new Promise(function (resolve, reject) {
+    var q = indexedDB.open('gifos-bell', 1);
+    q.onupgradeneeded = function () { q.result.createObjectStore('kv'); };
+    q.onsuccess = function () { resolve(q.result); };
+    q.onerror = function () { reject(q.error); };
+  });
+}
+function bellGet(db, k) { return new Promise(function (res) { var q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = function () { res(q.result); }; q.onerror = function () { res(undefined); }; }); }
+function bellPut(db, k, v) { return new Promise(function (res) { var t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = function () { res(true); }; t.onerror = function () { res(false); }; }); }
+function bellB64u(t) { var s = String(t).replace(/-/g, '+').replace(/_/g, '/'); s += '='.repeat((4 - (s.length % 4)) % 4); var b = atob(s), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+async function bellOpen(masterB64u, i, k, note) {
+  var te = new TextEncoder();
+  var mk = await crypto.subtle.importKey('raw', bellB64u(masterB64u), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  var s = new Uint8Array(await crypto.subtle.sign('HMAC', mk, te.encode('gifos-bell-handle|' + i + '|' + k)));
+  var k = await crypto.subtle.importKey('raw', s, 'AES-GCM', false, ['decrypt']);
+  var u = bellB64u(note);
+  var pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: u.slice(0, 12), additionalData: te.encode('gifos-bell-note') }, k, u.slice(12));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+function bellTime(at) { try { return new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } }
+async function bellPush(e) {
+  var m = null; try { m = e.data ? e.data.json() : null; } catch (err) { m = null; }
+  if (m && m.t === 'test') return self.registration.showNotification('GifOS doorbell', { body: 'Rings reach this device.', tag: 'gifos-bell-test', icon: '/icon.svg' });
+  var db = await bellDb(), st = (await bellGet(db, 'state')) || {}, at = (st.map || {})[m && m.i] || null;
+  var note = null;
+  if (m && m.t === 'ring' && at && st.master) { try { note = await bellOpen(st.master, m.i, at.k, m.n); } catch (err) { note = null; } }
+  if (!note || note.c !== m.c) {
+    // A push this device cannot open (a handle it does not know): still shown, with no name, and it opens the lobby.
+    return self.registration.showNotification('GifOS doorbell', { body: 'Someone rang your doorbell.', tag: 'gifos-bell-unknown', data: { url: '/meet' }, icon: '/icon.svg' });
+  }
+  // A name is the owner's own label, else the caller's: one short line of plain text either way.
+  var label = String(at.label || note.n || 'Someone').replace(/[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '').slice(0, 40) || 'Someone';
+  var when = +m.ts || Date.now();
+  var missed = Date.now() - when > (st.ringMs || 30000);
+  var rings = (await bellGet(db, 'rings')) || [];
+  rings.unshift({ i: m.i, c: m.c, at: when, label: label, url: at.url, done: false });
+  await bellPut(db, 'rings', rings.slice(0, 50));
+  var url = String(at.url || '/meet');
+  var wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  for (var w = 0; w < wins.length; w++) {
+    try { if (wins[w].visibilityState === 'visible' && new URL(wins[w].url).hash === new URL(url, self.location.origin).hash) return; } catch (err) {}
+  }
+  return self.registration.showNotification(missed ? 'Missed call from ' + label : label + ' is calling', {
+    body: missed ? bellTime(when) : 'Tap to answer in your room.',
+    tag: 'gifos-bell-' + m.c,
+    renotify: true,
+    requireInteraction: !missed,
+    vibrate: missed ? undefined : [400, 200, 400, 200, 400],
+    data: { url: url, c: m.c },
+    icon: '/icon.svg',
+  });
+}
+self.addEventListener('push', function (e) { e.waitUntil(bellPush(e).catch(function () {})); });
+self.addEventListener('notificationclick', function (e) {
+  var d = (e.notification && e.notification.data) || {};
+  e.notification.close();
+  if (!d.url) return;
+  e.waitUntil((async function () {
+    try {
+      var db = await bellDb(), rings = (await bellGet(db, 'rings')) || [];
+      await bellPut(db, 'rings', rings.map(function (x) { return x.c === d.c ? Object.assign({}, x, { done: true }) : x; }));
+    } catch (err) {}
+    return self.clients.openWindow(d.url);
+  })());
+});
