@@ -12,161 +12,501 @@
 <script id="gifos-frame-guard">(function(){try{if(window.top===window.self)return;var ok=false;try{ok=window.top.location.origin===window.location.origin}catch(e){}if(ok)return;var h=document.documentElement;h.style.visibility='hidden';function show(){var b=document.body;if(!b)return;while(b.firstChild)b.removeChild(b.firstChild);var p=document.createElement('p');p.style.cssText='font:16px system-ui,sans-serif;padding:24px;color:#eee;background:#111;margin:0';p.appendChild(document.createTextNode('GifOS does not run inside another site\'s page. '));var a=document.createElement('a');a.href=location.href;a.target='_blank';a.rel='noopener';a.textContent='Open it in its own tab';a.style.color='#9db4ff';p.appendChild(a);b.appendChild(p);h.style.visibility='';}if(document.body)show();else document.addEventListener('DOMContentLoaded',show);}catch(e){}})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="manifest" href="/manifest.webmanifest">
-<meta name="theme-color" content="#0a0a0f">
-<!-- Theming gate: hide chrome behind the theme-color backdrop until the theme
-     cascade (js/gifos-themes.js) applies real vars, so the fallback purple never
-     paints first. Reveals the instant --accent is set; a failsafe timeout
-     guarantees we never stay hidden if a theme file 404s or hangs. -->
-<style id="theme-gate">html.gifos-booting body{visibility:hidden}html.gifos-booting{background:var(--bg,#0a0a0f)}</style>
-<script>(function(){var h=document.documentElement;h.className+=(h.className?' ':'')+'gifos-booting';var shown=0;
-function show(){if(shown)return;shown=1;h.classList.remove('gifos-booting');
-try{var bg=h.style.getPropertyValue('--bg');var m=document.querySelector('meta[name=theme-color]');if(bg&&m)m.setAttribute('content',bg.trim());}catch(e){}}
-function chk(){if(shown)return;if(h.style.getPropertyValue('--accent'))show();else requestAnimationFrame(chk);}
-requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
+<!-- Light and dark follow the device, like the landing pages (/try/): this page is the front door, not the desktop,
+     so it does not load the desktop theme. -->
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#fafaff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a0a0f" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GifOS">
 <script src="js/sw-register.js" defer></script>
 <script src="js/build.js" defer></script>
 <script src="js/build-badge.js" defer></script>
-<title>Welcome to GifOS: a live meeting you can watch right here</title>
-<meta name="description" content="Watch the GifOS welcome meeting live, join it, or put a live GifOS broadcast on your own website with one line of code.">
+<title>Welcome to GifOS: join the welcome meeting</title>
+<meta name="description" content="Join the GifOS welcome meeting, a public meeting where our welcome bots, Mia and Leo, answer questions about GifOS. Then put a bot like them on your own site, and see GifOS chapter by chapter.">
 <link rel="canonical" href="https://gifos.app/welcome">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="GifOS">
-<meta property="og:title" content="Welcome to GifOS">
-<meta property="og:description" content="Watch the GifOS welcome meeting live, or put a live GifOS broadcast on your own site.">
+<meta property="og:title" content="Welcome to GifOS: join the welcome meeting">
+<meta property="og:description" content="A public meeting where GifOS's welcome bots, Mia and Leo, answer questions about GifOS. Join it in your browser, no sign-up.">
 <meta property="og:url" content="https://gifos.app/welcome">
 <meta property="og:image" content="https://gifos.app/og.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%91%8B%3C/text%3E%3C/svg%3E">
-
+<!-- i18n: English only for now. Every string a person reads carries data-i18n="welcome.<key>" so it can move into
+     i18n/<lang>/welcome.json later without hunting; nothing loads a catalog on this page yet. -->
 <style>
+  :root {
+    --bg: #0a0a0f; --surface: #14141f; --card: #181826; --border: #2a2a3f;
+    --text: #ececf8; --muted: #a9a9c5; --accent: #8b6fff; --accent2: #ff5caa;
+    --onaccent: #fff; --soon: #f5b84a; --soonbg: rgba(245, 184, 74, .12);
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #fafaff; --surface: #ffffff; --card: #ffffff; --border: #e2e2f0;
+      --text: #15151f; --muted: #55557a; --accent: #5b3ce6; --accent2: #d6337f;
+      --soon: #8a5a00; --soonbg: rgba(214, 150, 20, .12);
+      color-scheme: light;
+    }
+  }
   * { box-sizing: border-box; margin: 0; }
-  body { font: 17px/1.6 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-         background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); }
-  .wrap { max-width: 680px; margin: 0 auto; padding: 2rem 1.2rem 4rem; }
-  h1 { font-size: 2rem; margin: 1rem 0 .4rem; }
-  h1 .brand, .topbar .brand { font-weight: 800; background: linear-gradient(135deg, var(--accent, #7b5cff), var(--accent2, #ff5caa));
-    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-  h2 { font-size: 1.25rem; margin: 2rem 0 .5rem; color: var(--text, #cfcfe8); }
-  p, li { color: var(--muted, #a9a9c5); }
-  b { color: var(--text, #e0e0f0); }
-  a { color: var(--accent, #7b5cff); }
-  .cta { display: inline-block; margin: 1.2rem 0; padding: .8rem 1.6rem; border-radius: .7rem;
-         background: var(--accent, #7b5cff); color: var(--onaccent, #fff); text-decoration: none; font-weight: 700; }
-  ul { padding-left: 1.2rem; }
-  li { margin-bottom: .45rem; }
-  .topbar { display: flex; align-items: center; gap: .5rem; padding: .8rem 1.2rem;
-            border-bottom: 1px solid var(--border, #2a2a3f); background: var(--surface, #14141f); }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  body { font: 17px/1.6 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  a { color: var(--accent); }
+  .brand { font-weight: 800; background: linear-gradient(135deg, var(--accent), var(--accent2));
+           -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .75rem 16px;
+            border-bottom: 1px solid var(--border); background: var(--surface); }
   .topbar a { text-decoration: none; font-size: 1.05rem; }
-  .foot { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border, #2a2a3f); font-size: .85rem; color: var(--muted, #667); }
-</style>
-<style>
-  .wrap { max-width: 760px; }
-  .player { margin: 1rem 0 .4rem; border-radius: .7rem; overflow: hidden; background: #000; }
-  .lede { font-size: 1.05rem; }
-  .cta2 { display: inline-block; margin: .4rem 0 0; padding: .7rem 1.3rem; border-radius: .7rem; border: 1px solid var(--accent, #7b5cff);
-          color: var(--text, #e0e0f0); text-decoration: none; font-weight: 700; }
-  .code { position: relative; margin: .5rem 0 1rem; }
-  .code pre { margin: 0; padding: .8rem 1rem; padding-right: 5.5rem; border-radius: .6rem; background: var(--surface, #14141f);
-              border: 1px solid var(--border, #2a2a3f); color: var(--text, #e0e0f0); font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
-              white-space: pre-wrap; word-break: break-all; }
+  .topbar .links a { color: var(--muted); font-size: .95rem; margin-left: .9rem; }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 0 16px; }
+  .eyebrow { font-size: .8rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent2); }
+  h1 { font-size: clamp(1.9rem, 7vw, 2.8rem); line-height: 1.12; margin: .5rem 0 .8rem; letter-spacing: -.01em; }
+  h2 { font-size: clamp(1.4rem, 5vw, 1.8rem); line-height: 1.2; margin: 0 0 .6rem; letter-spacing: -.01em; }
+  h3 { font-size: 1.05rem; margin: 1.2rem 0 .4rem; }
+  p, li { color: var(--muted); }
+  b, strong { color: var(--text); }
+  p + p { margin-top: .7rem; }
+  ul, ol { padding-left: 1.3rem; }
+  li { margin-bottom: .35rem; }
+  code { font: .88em ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); }
+  section { padding: 2.4rem 0; border-top: 1px solid var(--border); }
+
+  /* The welcome meeting: the first thing, and the call to action is to JOIN it. */
+  .hero { padding: 2rem 0 2.2rem; }
+  .lede { font-size: 1.15rem; color: var(--muted); max-width: 38em; }
+  .lede b { color: var(--text); }
+  .cta { display: block; text-align: center; margin: 1.4rem 0 .5rem; padding: 1.05rem 1.4rem; border-radius: .85rem;
+         background: linear-gradient(135deg, var(--accent), var(--accent2)); color: var(--onaccent);
+         text-decoration: none; font-weight: 800; font-size: 1.2rem; box-shadow: 0 6px 24px rgba(123, 92, 255, .3); }
+  .cta:hover, .cta:focus-visible { filter: brightness(1.08); }
+  .cta:focus-visible, .btn:focus-visible { outline: 3px solid var(--accent2); outline-offset: 3px; }
+  @media (min-width: 640px) { .cta { display: inline-block; min-width: 20rem; } }
+  .reassure { font-size: .92rem; color: var(--muted); }
+  .preview { margin: 1.6rem 0 .5rem; }
+  .preview-lbl { display: flex; align-items: center; gap: .5rem; font-size: .85rem; font-weight: 700; color: var(--muted); margin-bottom: .45rem; }
+  .preview-lbl .dot { width: .55rem; height: .55rem; border-radius: 50%; background: #ff4d6a; box-shadow: 0 0 0 3px rgba(255, 77, 106, .2); }
+  .player { border-radius: .8rem; overflow: hidden; background: #000; border: 1px solid var(--border); }
+  .under { font-size: .95rem; margin-top: .55rem; }
+  .under a { font-weight: 700; }
+
+  /* Your own bot */
+  .steps { counter-reset: s; list-style: none; padding: 0; margin: 1rem 0 0; }
+  .steps > li { counter-increment: s; position: relative; padding: 0 0 1rem 2.6rem; }
+  .steps > li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 1.8rem; height: 1.8rem; border-radius: 50%;
+                        display: grid; place-items: center; font-weight: 800; font-size: .95rem;
+                        background: linear-gradient(135deg, var(--accent), var(--accent2)); color: var(--onaccent); }
+  .steps > li > b { display: block; font-size: 1.05rem; }
+  .ways { list-style: none; padding: 0; display: grid; gap: .6rem; margin: .6rem 0 0; }
+  .ways li { background: var(--card); border: 1px solid var(--border); border-radius: .8rem; padding: .8rem 1rem; margin: 0; }
+  .ways li b { display: block; }
+  .code { position: relative; margin: .5rem 0 .4rem; }
+  .code pre { margin: 0; padding: .8rem 1rem; padding-right: 4.8rem; border-radius: .6rem; background: var(--card);
+              border: 1px solid var(--border); color: var(--text); font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+              white-space: pre-wrap; overflow-wrap: anywhere; }
   .copy { position: absolute; top: .45rem; right: .45rem; padding: .35rem .8rem; border-radius: .45rem; border: 0; cursor: pointer;
-          background: var(--accent, #7b5cff); color: var(--onaccent, #fff); font: 600 13px system-ui, sans-serif; }
-  .lbl { font-weight: 700; color: var(--text, #e0e0f0); margin-top: 1rem; }
+          background: var(--accent); color: var(--onaccent); font: 600 13px system-ui, sans-serif; }
+  .linkrow { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0 0; padding: 0; list-style: none; }
+  .linkrow li { margin: 0; }
+  .btn { display: inline-block; padding: .5rem .95rem; border-radius: 2rem; border: 1px solid var(--border); background: var(--card);
+         color: var(--text); text-decoration: none; font-weight: 600; font-size: .93rem; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.main { border-color: var(--accent); color: var(--accent); }
+
+  /* Coming: never said as if live */
+  .soon { display: inline-block; font-size: .72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+          color: var(--soon); background: var(--soonbg); border-radius: .35rem; padding: .05rem .4rem; margin-right: .35rem; vertical-align: .1em; }
+  .coming { margin-top: .8rem; font-size: .95rem; }
+  .coming li { list-style: none; margin-left: -1.3rem; }
+
+  /* Chapters */
+  .toc { display: flex; flex-wrap: wrap; gap: .4rem; padding: 0; margin: 1rem 0 0; list-style: none; }
+  .toc li { margin: 0; }
+  .toc a { display: inline-block; padding: .3rem .7rem; border-radius: 1rem; border: 1px solid var(--border); background: var(--card);
+           color: var(--text); text-decoration: none; font-size: .88rem; }
+  .toc a:hover { border-color: var(--accent); }
+  .toc .n { color: var(--muted); margin-right: .25rem; font-variant-numeric: tabular-nums; }
+  .ch { scroll-margin-top: 1rem; }
+  .ch .num { font-size: .8rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--accent2); }
+  .ch .head { font-size: 1.1rem; color: var(--text); margin: .1rem 0 .7rem; }
+  .solves { background: var(--card); border: 1px solid var(--border); border-radius: .8rem; padding: .8rem 1rem .5rem; margin: .9rem 0; }
+  .solves h3 { margin: 0 0 .35rem; font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .solves ul { padding-left: 1.1rem; }
+  .solves li { margin-bottom: .25rem; }
+  .try { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0 0; padding: 0; list-style: none; }
+  .try li { margin: 0; }
+  .try .lbl { align-self: center; font-size: .8rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-right: .1rem; }
+
+  details { margin: .9rem 0 0; border: 1px solid var(--border); border-radius: .8rem; background: var(--card); }
+  details > summary { cursor: pointer; padding: .75rem 1rem; font-weight: 700; color: var(--text); }
+  details > .in { padding: 0 1rem 1rem; }
   .plats { display: flex; flex-wrap: wrap; gap: .4rem; margin: .6rem 0 .8rem; }
-  .plats button { padding: .4rem .8rem; border-radius: 1rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #14141f);
-                  color: var(--text, #e0e0f0); cursor: pointer; font: 14px system-ui, sans-serif; }
-  .plats button[aria-pressed="true"] { border-color: var(--accent, #7b5cff); background: var(--accent, #7b5cff); color: var(--onaccent, #fff); }
-  .how { padding: .8rem 1rem; border-radius: .6rem; border: 1px solid var(--border, #2a2a3f); }
-  .how h3 { font-size: 1.05rem; margin: 0 0 .4rem; color: var(--text, #e0e0f0); }
-  .how ol { padding-left: 1.3rem; margin: 0 0 .4rem; }
-  .how .note { font-size: .9rem; }
-  .how .src { font-size: .8rem; }
-  code { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text, #e0e0f0); }
+  .plats button { padding: .4rem .8rem; border-radius: 1rem; border: 1px solid var(--border); background: var(--surface);
+                  color: var(--text); cursor: pointer; font: 14px system-ui, sans-serif; }
+  .plats button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--onaccent); }
+  .how { padding: .8rem 1rem; border-radius: .6rem; border: 1px solid var(--border); background: var(--surface); }
+  .how h3 { margin: 0 0 .4rem; }
+  .how ol { margin: 0 0 .4rem; }
   .note { font-size: .9rem; }
-  .tvhow { padding-left: 1.3rem; }
-  .tvcredits { margin: .6rem 0 1.4rem; }
-  .tvcredits summary { cursor: pointer; color: var(--text, #e0e0f0); font-weight: 700; }
+  .src { font-size: .8rem; }
+  .keys p { margin-top: .35rem; font-size: .95rem; }
+  .tvhow li { margin-bottom: .55rem; }
   .tvcredits ol { padding-left: 1.6rem; font-size: .9rem; }
   .tvcredits li { margin-bottom: .3rem; }
-  .tvcredits .cat { font-size: .8rem; color: var(--muted, #a9a9c5); }
+  .tvcredits .cat { font-size: .8rem; }
+
+  .end { text-align: center; }
+  .end .reassure { margin-top: .3rem; }
+  .foot { margin-top: 1rem; padding: 1.2rem 0 3rem; border-top: 1px solid var(--border); font-size: .85rem; color: var(--muted); }
+  .foot a { color: var(--muted); }
 </style>
-<script src="js/gifos-themes.js"></script>
 </head>
 <body>
-  <div class="topbar"><a href="/"><span class="brand">GifOS</span></a></div>
+  <div class="topbar"><a href="/"><span class="brand">GifOS</span></a>
+    <span class="links"><a href="#chapters" data-i18n="welcome.nav.tour">Tour</a><a href="/subscription" data-i18n="welcome.nav.plans">Plans</a></span></div>
   <div class="wrap">
-    <h1>Welcome to <span class="brand">GifOS</span></h1>
-    <p class="lede">GifOS is a free web computer where every app is a GIF, with meetings and broadcasts that run between the people in them, not on our servers. Below is the welcome meeting, live, playing on this page the way it can play on yours.</p>
-    <div class="player" id="player"><script src="/embed.js" data-room="welcome" data-title="GifOS welcome meeting"></script></div>
-    <a class="cta" href="/meet/welcome">Join the welcome meeting &rarr;</a>
 
-    <h2 id="gifos-tv">GifOS TV: a live broadcast from a Raspberry Pi</h2>
-    <p class="lede">A second player, and a bigger test of the same one line of code. GifOS TV is a live broadcast that never stops: a hundred public-domain films, about seven hours of them, back to back and around again, sent from a Raspberry Pi at home.</p>
-    <div class="player" id="tvplayer"><script src="/embed.js" data-room="gifos-tv" data-verifier="cc51c5e4f4418c66aa52a486" data-title="GifOS TV"></script></div>
-    <p class="note">The picture starts blurred: GifOS blurs video for viewers unless the room has a password. This broadcast's host has a plan with Clear Stage, so tap the picture to see the Stage clearly.</p>
-    <h3 class="lbl">How we did it</h3>
-    <ol class="tvhow">
-      <li><b>A small computer at home.</b> A Raspberry Pi 4 (4 cores, 4 GB of memory) that also runs other home jobs. GifOS TV uses about a quarter of its processor and about a gigabyte of its memory.</li>
-      <li><b>An ordinary GifOS seat.</b> The Pi opens gifos.app in a headless Chromium browser, driven by a short Node.js script. It is a normal meeting seat with no camera and no microphone, named GifOS TV. Nothing about it is special to the servers: a bot follows the same rules as a person.</li>
-      <li><b>A hosted broadcast.</b> The seat is the host of a private broadcast room called <code>gifos-tv</code>. It signs in with the room's host password, and it carries a GifOS pass with no people limit, so the room takes as many viewers as come.</li>
-      <li><b>The films.</b> A hundred short films from <a href="https://commons.wikimedia.org" rel="noopener" target="_blank">Wikimedia Commons</a> and the <a href="https://archive.org" rel="noopener" target="_blank">Internet Archive</a>: cartoons, early animation, newsreels, music films, space and nature. We kept a film only when its own file page lists it as public domain or CC0, and only when it has sound all the way through (no long silences that would sound like a broken player). The <a href="/tv/clips.json">full list with sources and credits</a> is below.</li>
-      <li><b>Prepared once, elsewhere.</b> Another computer converted every film to one light format (640&times;360 pictures, VP8 video and Opus sound in WebM), evened out the loudness, and joined the films back to back into reels of about forty minutes. The Pi only keeps the reels, in a folder with a size cap, so it never fills its card.</li>
-      <li><b>GifOS's own Rebroadcast button.</b> Every broadcast host has it: More, Rebroadcast, Choose a video. The script presses it with the next reel, and when a reel ends it starts the next one, forever. Viewers see the Prerecorded badge.</li>
-      <li><b>Peer to peer.</b> GifOS meetings run between the people in them, not on our servers. Viewers pass the Stage along to one another, so a Pi on a home connection does not send a copy to everyone watching.</li>
-      <li><b>Always on.</b> The script runs as a service that restarts on failure. A watchdog restarts it if it stops reporting, and it rejoins on its own when GifOS ships a new release.</li>
-      <li><b>On this page.</b> The player above is this snippet:</li>
-    </ol>
-    <div class="code"><pre id="snip-tv">&lt;script src="https://gifos.app/embed.js" data-room="gifos-tv" data-verifier="cc51c5e4f4418c66aa52a486" data-title="GifOS TV"&gt;&lt;/script&gt;</pre><button class="copy" type="button" data-copy="snip-tv">Copy</button></div>
-    <details class="tvcredits" id="tvcredits"><summary>All the films in GifOS TV, with credits</summary><p>Loading the list&hellip;</p></details>
+    <!-- 1. THE WELCOME MEETING: the call to action is to join it. -->
+    <header class="hero" id="welcome-meeting">
+      <p class="eyebrow" data-i18n="welcome.hero.eyebrow">Welcome to GifOS</p>
+      <h1 data-i18n="welcome.hero.title">Come ask Mia and Leo anything about GifOS</h1>
+      <p class="lede" data-i18n="welcome.hero.lede">The <b>welcome meeting</b> is a public meeting where GifOS's welcome bots, <b>Mia and Leo</b>, answer general questions about GifOS. Join it and ask yours.</p>
+      <a class="cta" href="/meet#room=welcome" data-i18n="welcome.hero.join">Join the welcome meeting &rarr;</a>
+      <p class="reassure" data-i18n="welcome.hero.reassure">Free, in your browser, on a computer or a phone. Nothing to install, nothing to sign up for. No accounts, ever.</p>
+      <div class="preview">
+        <p class="preview-lbl"><span class="dot" aria-hidden="true"></span><span data-i18n="welcome.hero.previewLbl">Live preview of the welcome meeting</span></p>
+        <div class="player" id="player"><script src="/embed.js" data-room="welcome" data-title="GifOS welcome meeting"></script></div>
+        <p class="under" data-i18n="welcome.hero.under">The preview is for watching. To ask Mia and Leo a question, <a href="/meet#room=welcome">join the meeting</a>.</p>
+      </div>
+    </header>
 
-    <h2>Put a live GifOS broadcast on your own site</h2>
-    <p>Paste one line where the player should go. Put your room's name in place of <code>ROOM</code>. For a private meeting, add its verifier (the v= in its link, gifos.app/cast#room=ROOM&v=VERIFIER) as <code>data-verifier</code>, or <code>&amp;v=VERIFIER</code> in the iframe. The player plays while a host is in charge of the room and shows a short card the rest of the time. Viewers never turn on a camera or microphone.</p>
-    <p class="lbl">The script tag (works on most sites)</p>
-    <div class="code"><pre id="snip-script">&lt;script src="https://gifos.app/embed.js" data-room="ROOM"&gt;&lt;/script&gt;</pre><button class="copy" type="button" data-copy="snip-script">Copy</button></div>
-    <p class="lbl">The plain iframe (for sites that remove scripts)</p>
-    <div class="code"><pre id="snip-iframe">&lt;iframe src="https://gifos.app/embed#room=ROOM" style="width:100%;aspect-ratio:16/9;border:0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen title="GifOS Broadcast"&gt;&lt;/iframe&gt;</pre><button class="copy" type="button" data-copy="snip-iframe">Copy</button></div>
+    <!-- 2. YOUR OWN BOT: what exists today, said plainly. -->
+    <section id="your-bot">
+      <p class="eyebrow" data-i18n="welcome.bot.eyebrow">For your product, business or topic</p>
+      <h2 data-i18n="welcome.bot.title">Put a bot like Mia on your own site</h2>
+      <p data-i18n="welcome.bot.lede">A bot that answers questions about <b>your</b> product, business or topic, live in a public meeting, with that meeting playing on your own website. A bot joins a GifOS meeting the way a person does, with a bot badge on its tile and the same rules as everyone. It needs no key from us.</p>
+      <ol class="steps">
+        <li><b data-i18n="welcome.bot.s1">Give it a meeting.</b>
+          <span data-i18n="welcome.bot.s1t">Pick a room name at <a href="/meet">gifos.app/meet</a>. A majority-rules meeting (an open meeting) is free at any size, and the room can vote anyone off the Stage, bots too. For a room your bot runs, host the meeting: free for up to 5 people, and a plan with no people limit (Unlimited, $5 a month) takes everyone who comes.</span></li>
+        <li><b data-i18n="welcome.bot.s2">Bring the bot. Three ways, today:</b>
+          <ul class="ways">
+            <li><b data-i18n="welcome.bot.sdk">The agent SDK</b>
+              <span data-i18n="welcome.bot.sdkt"><code>npm install @gifos-app/agent</code> (Node 20+, with Chrome or Edge on the computer). Your code hears every line said or typed and answers in chat, or out loud with a voice. Bring your own model and your own facts:</span>
+              <div class="code"><pre id="snip-sdk">import { join } from '@gifos-app/agent';
 
-    <h2>Choose the controls</h2>
-    <p>The player starts as the picture, the live badge, unmute, and at the bottom right the buttons for chat, transcript, reactions, info, float and full screen beside a settings gear. The bar fades after a few seconds and comes back on any pointer, tap or key. When you set nothing, the player offers <code>volume,audioonly,fullscreen,pip,chat,transcript,reactions,names,watch</code>. All the keys are <code>volume</code>, <code>mute</code>, <code>captions</code>, <code>audioonly</code>, <code>tabs</code>, <code>inset</code>, <code>fullscreen</code>, <code>pip</code> (the float button), <code>chat</code>, <code>transcript</code>, <code>reactions</code>, <code>names</code> and <code>watch</code>; the info button always shows.</p>
-    <p><code>volume</code> — a volume slider in the gear.</p>
-    <p><code>mute</code> — a mute switch in the gear.</p>
-    <p><code>captions</code> — a captions switch in the gear. It appears once a line has arrived. Captions stay off until the viewer turns them on.</p>
-    <p><code>audioonly</code> — an audio-only switch in the gear: the viewer's screen stops drawing the pictures and the sound goes on.</p>
-    <p><code>tabs</code> — the share tabs, when the room shares something besides the Stage.</p>
-    <p><code>inset</code> — show, hide or move the Stage picture while a share fills the player.</p>
-    <p><code>fullscreen</code> — the full screen button.</p>
-    <p><code>pip</code> — the float button (picture in picture), when the browser supports it.</p>
-    <p><code>chat</code> — the chat button, while the host leaves chat on. A viewer gives a name the first time they post.</p>
-    <p><code>transcript</code> — the transcript button: the lines the room's speakers caption, a Download (plain text, or a zip with screenshots), and an Auto screenshots box that starts off.</p>
-    <p><code>reactions</code> — the reactions button, while the host lets guests react.</p>
-    <p><code>names</code> — a Show names switch in the gear, on at first: the viewer can hide the name bars drawn on the Stage picture. It is kept in that viewer's browser.</p>
-    <p><code>watch</code> — a "View on gifos.app" link in the info panel, opening the room on GifOS in a new tab.</p>
-    <p><code>all</code> turns every control on. <code>none</code> leaves only the info button.</p>
-    <p>On the script tag, add <code>data-controls="tabs,inset,captions,fullscreen,watch"</code>. On the iframe, add it to the hash: <code>#room=ROOM&amp;controls=tabs,inset</code>. An iframe you write yourself keeps <code>allow="autoplay; fullscreen; picture-in-picture"</code> and <code>allowfullscreen</code>, or the full screen and float buttons do not show.</p>
-    <p>The password prompt, the not-hosted notice and the info button (the full title and a line about GifOS) always show.</p>
+const meet = await join('https://gifos.app/meet#room=YOUR-ROOM', { name: "Ava (Acme's guide)" });
+for await (const line of meet.lines({ toMe: true })) {
+  await meet.chat(await answer(line.text));   // answer(): your model, your facts
+}</pre><button class="copy" type="button" data-copy="snip-sdk">Copy</button></div></li>
+            <li><b data-i18n="welcome.bot.mcp">The MCP server</b>
+              <span data-i18n="welcome.bot.mcpt">Add <a href="https://github.com/nwcnwc/gifos-meet-mcp" rel="noopener">gifos-meet-mcp</a> to an AI assistant that speaks MCP, and the assistant itself is the bot's brain: "join my meeting and answer questions about our product".</span></li>
+            <li><b data-i18n="welcome.bot.app">The Meeting Bot app</b>
+              <span data-i18n="welcome.bot.appt">No code: <a href="/store#app=meeting-bot">Meeting Bot</a> in the App Store runs a bot seat on a spare computer that you drive from another device. It transcribes and records rather than answering by itself.</span></li>
+          </ul></li>
+        <li><b data-i18n="welcome.bot.s3">Put the meeting on your site. One line:</b>
+          <div class="code"><pre id="snip-bot">&lt;script src="https://gifos.app/embed.js" data-room="YOUR-ROOM"&gt;&lt;/script&gt;</pre><button class="copy" type="button" data-copy="snip-bot">Copy</button></div>
+          <span class="note" data-i18n="welcome.bot.s3t">For a hosted room, add its verifier as <code>data-verifier</code>. The player plays while a host is in charge of the room. Put a join link beside it (gifos.app/meet#room=YOUR-ROOM) so visitors can come in and ask, the way this page does. <a href="#ch-embed">Every embed option</a>.</span></li>
+      </ol>
+      <ul class="coming">
+        <li><span class="soon" data-i18n="welcome.soon">Coming</span><span data-i18n="welcome.bot.soonKit">The open bot kit: the code Mia and Leo run, ready to copy, with your own model, voice, avatar and prompt.</span></li>
+        <li><span class="soon" data-i18n="welcome.soon">Coming</span><span data-i18n="welcome.bot.soonHosted">Hosted bots: run your bot on our servers for $3 a month.</span></li>
+      </ul>
+      <ul class="linkrow">
+        <li><a class="btn main" href="/meet/llms.txt" data-i18n="welcome.bot.lAi">For AI assistants</a></li>
+        <li><a class="btn" href="/try/agents" data-i18n="welcome.bot.lAgent">Send your AI agent to a meeting</a></li>
+        <li><a class="btn" href="https://github.com/nwcnwc/gifos-agent" rel="noopener" data-i18n="welcome.bot.lSdk">Agent SDK on GitHub</a></li>
+        <li><a class="btn" href="/make-apps" data-i18n="welcome.bot.lApps">Make apps for meetings</a></li>
+        <li><a class="btn" href="/llms.txt" data-i18n="welcome.bot.lLlms">llms.txt</a></li>
+      </ul>
+    </section>
 
-    <h2>Where to paste it</h2>
-    <p>Pick your site builder for the short steps.</p>
-    <div class="plats" id="plats" role="group" aria-label="Site builder"></div>
-    <div class="how" id="how" aria-live="polite"></div>
+    <!-- 3. GIFOS, CHAPTER BY CHAPTER (the chapters of the GifOS video). -->
+    <section id="chapters">
+      <p class="eyebrow" data-i18n="welcome.tour.eyebrow">The tour</p>
+      <h2 data-i18n="welcome.tour.title">GifOS, chapter by chapter</h2>
+      <p data-i18n="welcome.tour.lede">GifOS is a free computer that runs in your browser, and every app on it is a GIF. Meetings, broadcasts and apps run between the people using them, not on our servers. Everything below works on gifos.app today, unless it is marked <span class="soon">Coming</span></p>
+      <ul class="toc">
+        <li><a href="#ch-meet"><span class="n">1</span><span data-i18n="welcome.toc.meet">Meet</span></a></li>
+        <li><a href="#ch-hosted"><span class="n">2</span><span data-i18n="welcome.toc.hosted">Hosted meetings</span></a></li>
+        <li><a href="#ch-broadcast"><span class="n">3</span><span data-i18n="welcome.toc.broadcast">Broadcast</span></a></li>
+        <li><a href="#ch-embed"><span class="n">4</span><span data-i18n="welcome.toc.embed">Embed</span></a></li>
+        <li><a href="#gifos-tv"><span class="n">5</span><span data-i18n="welcome.toc.tv">GifOS TV</span></a></li>
+        <li><a href="#ch-p2p"><span class="n">6</span><span data-i18n="welcome.toc.p2p">Peer to peer</span></a></li>
+        <li><a href="#ch-plans"><span class="n">7</span><span data-i18n="welcome.toc.plans">Plans</span></a></li>
+        <li><a href="#ch-os"><span class="n">8</span><span data-i18n="welcome.toc.os">The OS</span></a></li>
+        <li><a href="#ch-steal"><span class="n">9</span><span data-i18n="welcome.toc.steal">Steal this app</span></a></li>
+        <li><a href="#ch-store"><span class="n">10</span><span data-i18n="welcome.toc.store">App Store</span></a></li>
+        <li><a href="#ch-providers"><span class="n">11</span><span data-i18n="welcome.toc.providers">Providers</span></a></li>
+        <li><a href="#ch-agents"><span class="n">12</span><span data-i18n="welcome.toc.agents">AI agents</span></a></li>
+        <li><a href="#ch-identity"><span class="n">13</span><span data-i18n="welcome.toc.identity">Identity folder</span></a></li>
+      </ul>
+    </section>
+
+    <section class="ch" id="ch-meet">
+      <p class="num" data-i18n="welcome.c1.num">Chapter 1</p>
+      <h2 data-i18n="welcome.c1.title">Meet: one link, no sign-up</h2>
+      <p class="head" data-i18n="welcome.c1.head">Type a room name, share the link, and everyone's in, on a computer or a phone, right in the browser.</p>
+      <div class="solves"><h3 data-i18n="welcome.solves">What it solves</h3><ul>
+        <li data-i18n="welcome.c1.p1">A sign-up, a download or a phone app before you can talk.</li>
+        <li data-i18n="welcome.c1.p2">Seat caps of 100 or 300.</li>
+        <li data-i18n="welcome.c1.p3">Big calls where only a few people can ever speak.</li>
+        <li data-i18n="welcome.c1.p4">Losing the call the moment you need your screen back.</li></ul></div>
+      <p data-i18n="welcome.c1.b1">A <b>majority-rules meeting</b> (an open meeting) belongs to nobody: if someone misbehaves, the room votes them off the Stage or out of the meeting. You choose how you appear: max blur, min blur or clear.</p>
+      <p data-i18n="welcome.c1.b2">The meeting grows with the crowd. The first people sit on the Stage; as more arrive they fill rows, and each row talks among itself and hears the Stage. Rows fill a Stadium, from ten people to thousands on the same link. There are live captions, a transcript you can download, and a chat that is gone when everyone leaves. Tap <b>Float</b> and the meeting follows you in a small window.</p>
+      <ul class="try"><li class="lbl" data-i18n="welcome.try">Try it</li>
+        <li><a class="btn main" href="/meet#room=welcome" data-i18n="welcome.c1.t1">Join the welcome meeting</a></li>
+        <li><a class="btn" href="/meet" data-i18n="welcome.c1.t2">Start your own meeting</a></li>
+        <li><a class="btn" href="/try/family" data-i18n="welcome.c1.t3">Call the family</a></li>
+        <li><a class="btn" href="/try/game-night" data-i18n="welcome.c1.t4">Game night</a></li></ul>
+      <ul class="coming">
+        <li><span class="soon" data-i18n="welcome.soon">Coming</span><span data-i18n="welcome.c1.s1">A ten-second Replay: hear your name, tap Replay, and catch the last ten seconds before you answer.</span></li>
+        <li><span class="soon" data-i18n="welcome.soon">Coming</span><span data-i18n="welcome.c1.s2">Android and iPhone apps. Today the link works in Chrome and Safari on the phone.</span></li></ul>
+    </section>
+
+    <section class="ch" id="ch-hosted">
+      <p class="num" data-i18n="welcome.c2.num">Chapter 2</p>
+      <h2 data-i18n="welcome.c2.title">Hosted meetings: a meeting you control</h2>
+      <p class="head" data-i18n="welcome.c2.head">The host holds a host password, and faces stay blurred until the host sets a room password.</p>
+      <div class="solves"><h3 data-i18n="welcome.solves">What it solves</h3><ul>
+        <li data-i18n="welcome.c2.p1">Strangers switching their cameras on in your meeting.</li>
+        <li data-i18n="welcome.c2.p2">Privacy that only holds if every guest's software behaves.</li>
+        <li data-i18n="welcome.c2.p3">Audiences who must show their faces just to watch the speaker.</li></ul></div>
+      <p data-i18n="welcome.c2.b1">The host can mute or blur anyone for everyone, turn chat off, allow screen share, run a waiting room and remove people. The room password is the key to clear video, and the blur is applied by the people watching, not only by the sender, so even a tampered camera feed still shows up blurred.</p>
+      <p data-i18n="welcome.c2.b2">With <b>Clear Stage</b> on a paid plan, the host lets viewers tap to see the Stage clear while the audience stays private. Hosted meetings are free for up to 5 people.</p>
+      <ul class="try"><li class="lbl" data-i18n="welcome.try">Try it</li>
+        <li><a class="btn main" href="/meet" data-i18n="welcome.c2.t1">Host a private meeting</a></li>
+        <li><a class="btn" href="/try/classroom" data-i18n="welcome.c2.t2">A classroom you run</a></li>
+        <li><a class="btn" href="/try/private" data-i18n="welcome.c2.t3">No accounts, ever</a></li></ul>
+    </section>
+
+    <section class="ch" id="ch-broadcast">
+      <p class="num" data-i18n="welcome.c3.num">Chapter 3</p>
+      <h2 data-i18n="welcome.c3.title">Broadcast: go live from a browser tab</h2>
+      <p class="head" data-i18n="welcome.c3.head">Name the broadcast and go live. Speakers, a shared screen or an app go up on the Stage, and everyone else watches.</p>
+      <div class="solves"><h3 data-i18n="welcome.solves">What it solves</h3><ul>
+        <li data-i18n="welcome.c3.p1">Stream keys, encoders and a streaming service before you can go live.</li>
+        <li data-i18n="welcome.c3.p2">An audience that can't talk back: viewers react and chat.</li></ul></div>
+      <ul class="try"><li class="lbl" data-i18n="welcome.try">Try it</li>
+        <li><a class="btn main" href="/cast" data-i18n="welcome.c3.t1">Start a broadcast</a></li>
+        <li><a class="btn" href="/try/broadcast" data-i18n="welcome.c3.t2">Go live from a browser tab</a></li>
+        <li><a class="btn" href="#gifos-tv" data-i18n="welcome.c3.t3">Watch GifOS TV</a></li></ul>
+      <ul class="coming">
+        <li><span class="soon" data-i18n="welcome.soon">Coming</span><span data-i18n="welcome.c3.s1">Broadcasts for game streamers: you play and stream yourself on the Stage while the audience listens and talks in the rows.</span></li></ul>
+    </section>
+
+    <section class="ch" id="ch-embed">
+      <p class="num" data-i18n="welcome.c4.num">Chapter 4</p>
+      <h2 data-i18n="welcome.c4.title">Embed it on any website</h2>
+      <p class="head" data-i18n="welcome.c4.head">One line puts a live GifOS meeting or broadcast on your page. The welcome meeting at the top of this page is one.</p>
+      <div class="solves"><h3 data-i18n="welcome.solves">What it solves</h3><ul>
+        <li data-i18n="welcome.c4.p1">A vendor's player and a contract to put live video on your site.</li>
+        <li data-i18n="welcome.c4.p2">Viewers who leave your site to watch.</li></ul></div>
+      <p data-i18n="welcome.c4.b1">Viewers can unmute, chat, react, go full screen, or float the player while they keep reading. They never turn on a camera or a microphone. Hosted rooms stay blurred in the player too, unless the host allows a clear Stage. The player plays while a host is in charge of the room and shows a short card the rest of the time.</p>
+      <p class="lbl" data-i18n="welcome.c4.l1"><b>The script tag</b> (works on most sites). Put your room's name in place of <code>ROOM</code>:</p>
+      <div class="code"><pre id="snip-script">&lt;script src="https://gifos.app/embed.js" data-room="ROOM"&gt;&lt;/script&gt;</pre><button class="copy" type="button" data-copy="snip-script">Copy</button></div>
+      <p class="lbl" data-i18n="welcome.c4.l2"><b>The plain iframe</b> (for sites that remove scripts):</p>
+      <div class="code"><pre id="snip-iframe">&lt;iframe src="https://gifos.app/embed#room=ROOM" style="width:100%;aspect-ratio:16/9;border:0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen title="GifOS Broadcast"&gt;&lt;/iframe&gt;</pre><button class="copy" type="button" data-copy="snip-iframe">Copy</button></div>
+      <p class="note" data-i18n="welcome.c4.n1">For a hosted meeting, add its verifier (the v= in its link, gifos.app/cast#room=ROOM&amp;v=VERIFIER) as <code>data-verifier</code>, or <code>&amp;v=VERIFIER</code> in the iframe.</p>
+      <details>
+        <summary data-i18n="welcome.c4.ctlSum">Choose the controls</summary>
+        <div class="in keys">
+          <p data-i18n="welcome.c4.ctl0">The player starts as the picture, the live badge, unmute, and at the bottom right the buttons for chat, transcript, reactions, info, float and full screen beside a settings gear. The bar fades after a few seconds and comes back on any pointer, tap or key. When you set nothing, the player offers <code>volume,audioonly,fullscreen,pip,chat,transcript,reactions,names,watch</code>. The info button always shows.</p>
+          <p data-i18n="welcome.c4.k1"><code>volume</code>: a volume slider in the gear.</p>
+          <p data-i18n="welcome.c4.k2"><code>mute</code>: a mute switch in the gear.</p>
+          <p data-i18n="welcome.c4.k3"><code>captions</code>: a captions switch in the gear. It appears once a line has arrived. Captions stay off until the viewer turns them on.</p>
+          <p data-i18n="welcome.c4.k4"><code>audioonly</code>: an audio-only switch in the gear: the viewer's screen stops drawing the pictures and the sound goes on.</p>
+          <p data-i18n="welcome.c4.k5"><code>tabs</code>: the share tabs, when the room shares something besides the Stage.</p>
+          <p data-i18n="welcome.c4.k6"><code>inset</code>: show, hide or move the Stage picture while a share fills the player.</p>
+          <p data-i18n="welcome.c4.k7"><code>fullscreen</code>: the full screen button.</p>
+          <p data-i18n="welcome.c4.k8"><code>pip</code>: the float button (picture in picture), when the browser supports it.</p>
+          <p data-i18n="welcome.c4.k9"><code>chat</code>: the chat button, while the host leaves chat on. A viewer gives a name the first time they post.</p>
+          <p data-i18n="welcome.c4.k10"><code>transcript</code>: the transcript button: the lines the room's speakers caption, a Download (plain text, or a zip with screenshots), and an Auto screenshots box that starts off.</p>
+          <p data-i18n="welcome.c4.k11"><code>reactions</code>: the reactions button, while the host lets guests react.</p>
+          <p data-i18n="welcome.c4.k12"><code>names</code>: a Show names switch in the gear, on at first: the viewer can hide the name bars drawn on the Stage picture. It is kept in that viewer's browser.</p>
+          <p data-i18n="welcome.c4.k13"><code>watch</code>: a "View on gifos.app" link in the info panel, opening the room on GifOS in a new tab.</p>
+          <p data-i18n="welcome.c4.k14"><code>all</code> turns every control on. <code>none</code> leaves only the info button.</p>
+          <p data-i18n="welcome.c4.ctl1">On the script tag, add <code>data-controls="tabs,inset,captions,fullscreen,watch"</code>. On the iframe, add it to the hash: <code>#room=ROOM&amp;controls=tabs,inset</code>. An iframe you write yourself keeps <code>allow="autoplay; fullscreen; picture-in-picture"</code> and <code>allowfullscreen</code>, or the full screen and float buttons do not show. The password prompt, the not-hosted notice and the info button always show.</p>
+        </div>
+      </details>
+      <details>
+        <summary data-i18n="welcome.c4.whereSum">Where to paste it: steps for your site builder</summary>
+        <div class="in">
+          <div class="plats" id="plats" role="group" aria-label="Site builder"></div>
+          <div class="how" id="how" aria-live="polite"></div>
+        </div>
+      </details>
+    </section>
+
+    <section class="ch" id="gifos-tv">
+      <p class="num" data-i18n="welcome.c5.num">Chapter 5</p>
+      <h2 data-i18n="welcome.c5.title">GifOS TV: a channel from a Raspberry Pi</h2>
+      <p class="head" data-i18n="welcome.c5.head">A live broadcast that never stops: a hundred public-domain films, about seven hours of them, back to back, sent from a Raspberry Pi at home. This player is the same one line of code.</p>
+      <div class="solves"><h3 data-i18n="welcome.solves">What it solves</h3><ul>
+        <li data-i18n="welcome.c5.p1">A 24-hour channel needs a studio and servers.</li>
+        <li data-i18n="welcome.c5.p2">There's no way to find live shows worth watching.</li>
+        <li data-i18n="welcome.c5.p3">Hosts have no direct way to be supported.</li></ul></div>
+      <div class="player" id="tvplayer"><script src="/embed.js" data-room="gifos-tv" data-verifier="cc51c5e4f4418c66aa52a486" data-title="GifOS TV"></script></div>
+      <p class="note under" data-i18n="welcome.c5.blur">The picture starts blurred: GifOS blurs video for viewers unless the room has a password. This broadcast's host has a plan with Clear Stage, so tap the picture to see the Stage clearly.</p>
+      <details>
+        <summary data-i18n="welcome.c5.howSum">How we did it</summary>
+        <div class="in">
+          <ol class="tvhow">
+            <li data-i18n="welcome.c5.h1"><b>A small computer at home.</b> A Raspberry Pi 4 (4 cores, 4 GB of memory) that also runs other home jobs. GifOS TV uses about a quarter of its processor and about a gigabyte of its memory.</li>
+            <li data-i18n="welcome.c5.h2"><b>An ordinary GifOS seat.</b> The Pi opens gifos.app in a headless Chromium browser, driven by a short Node.js script. It is a normal meeting seat with no camera and no microphone, named GifOS TV. Nothing about it is special to the servers: a bot follows the same rules as a person.</li>
+            <li data-i18n="welcome.c5.h3"><b>A hosted broadcast.</b> The seat is the host of a private broadcast room called <code>gifos-tv</code>. It signs in with the room's host password, and it carries a GifOS pass with no people limit, so the room takes as many viewers as come.</li>
+            <li data-i18n="welcome.c5.h4"><b>The films.</b> A hundred short films from <a href="https://commons.wikimedia.org" rel="noopener" target="_blank">Wikimedia Commons</a> and the <a href="https://archive.org" rel="noopener" target="_blank">Internet Archive</a>: cartoons, early animation, newsreels, music films, space and nature. We kept a film only when its own file page lists it as public domain or CC0, and only when it has sound all the way through (no long silences that would sound like a broken player). The <a href="/tv/clips.json">full list with sources and credits</a> is below.</li>
+            <li data-i18n="welcome.c5.h5"><b>Prepared once, elsewhere.</b> Another computer converted every film to one light format (640&times;360 pictures, VP8 video and Opus sound in WebM), evened out the loudness, and joined the films back to back into reels of about forty minutes. The Pi only keeps the reels, in a folder with a size cap, so it never fills its card.</li>
+            <li data-i18n="welcome.c5.h6"><b>GifOS's own Rebroadcast button.</b> Every broadcast host has it: More, Rebroadcast, Choose a video. The script presses it with the next reel, and when a reel ends it starts the next one, forever. Viewers see the Prerecorded badge.</li>
+            <li data-i18n="welcome.c5.h7"><b>Peer to peer.</b> GifOS meetings run between the people in them, not on our servers. Viewers pass the Stage along to one another, so a Pi on a home connection does not send a copy to everyone watching.</li>
+            <li data-i18n="welcome.c5.h8"><b>Always on.</b> The script runs as a service that restarts on failure. A watchdog restarts it if it stops reporting, and it rejoins on its own when GifOS ships a new release.</li>
+            <li data-i18n="welcome.c5.h9"><b>On this page.</b> The player above is this snippet:</li>
+          </ol>
+          <div class="code"><pre id="snip-tv">&lt;script src="https://gifos.app/embed.js" data-room="gifos-tv" data-verifier="cc51c5e4f4418c66aa52a486" data-title="GifOS TV"&gt;&lt;/script&gt;</pre><button class="copy" type="button" data-copy="snip-tv">Copy</button></div>
+        </div>
+      </details>
+      <details class="tvcredits" id="tvcredits"><summary data-i18n="welcome.c5.credits">All the films in GifOS TV, with credits</summary><div class="in"><p>Loading the list&hellip;</p></div></details>
+      <ul class="coming">
+        <li><span class="soon" data-i18n="welcome.soon">Coming</span><span data-i18n="welcome.c5.s1">gifos.tv: a hosted room presses one button, List on gifos.tv, and shows up in a public directory while it's live.</span></li>
+        <li><span class="soon" data-i18n="welcome.soon">Coming</span><span data-i18n="welcome.c5.s2">A donate button on a listing, paid straight to the host.</span></li></ul>
+    </section>
+
+    <section class="ch" id="ch-p2p">
+      <p class="num" data-i18n="welcome.c6.num">Chapter 6</p>
+      <h2 data-i18n="welcome.c6.title">Why it costs so little: peer to peer</h2>
+      <p class="head" data-i18n="welcome.c6.head">The people in the meeting carry it. Each browser sends, receives and passes video along for its neighbours; our servers only introduce people.</p>
+      <div class="solves"><h3 data-i18n="welcome.solves">What it solves</h3><ul>
+        <li data-i18n="welcome.c6.p1">Video bills that grow with every viewer.</li>
+        <li data-i18n="welcome.c6.p2">Media servers that can see your content.</li>
+        <li data-i18n="welcome.c6.p3">Free tiers that vanish once the company has to pay for its servers.</li></ul></div>
+      <p data-i18n="welcome.c6.b1">Meetings are end-to-end encrypted. Voice and chat get through corporate and school firewalls on the free plan, still end-to-end encrypted; a paid plan connects video across up to 3, 6 or 20 firewalled networks, still end-to-end encrypted. A bigger meeting doesn't mean a bigger video bill for us, which is why majority-rules meetings are free, forever.</p>
+      <ul class="try"><li class="lbl" data-i18n="welcome.try">Try it</li>
+        <li><a class="btn main" href="/try/firewalls" data-i18n="welcome.c6.t1">Meetings that get through firewalls</a></li>
+        <li><a class="btn" href="/about" data-i18n="welcome.c6.t2">What GifOS is</a></li></ul>
+    </section>
+
+    <section class="ch" id="ch-plans">
+      <p class="num" data-i18n="welcome.c7.num">Chapter 7</p>
+      <h2 data-i18n="welcome.c7.title">Plans: no accounts, ever</h2>
+      <p class="head" data-i18n="welcome.c7.head">Your plan lives on your devices. To use it on another one, copy it over with a QR code.</p>
+      <div class="solves"><h3 data-i18n="welcome.solves">What it solves</h3><ul>
+        <li data-i18n="welcome.c7.p1">Subscriptions tied to an email and a password.</li>
+        <li data-i18n="welcome.c7.p2">Losing your plan when you change phones.</li>
+        <li data-i18n="welcome.c7.p3">Paying per seat for everyone in the meeting.</li></ul></div>
+      <p data-i18n="welcome.c7.b1">Paid plans add bigger hosted meetings, connect video across up to 3, 6 or 20 firewalled networks (still end-to-end encrypted), and add Clear Stage. They start with a one-dollar four-hour pass; hosted meetings of up to 20 people are $2 a month, and with no people limit, $5 a month. The best plan present sizes the whole meeting: if one person has a plan, everyone in that meeting gets the bigger room.</p>
+      <ul class="try"><li class="lbl" data-i18n="welcome.try">Try it</li>
+        <li><a class="btn main" href="/subscription" data-i18n="welcome.c7.t1">See every plan</a></li></ul>
+    </section>
+
+    <section class="ch" id="ch-os">
+      <p class="num" data-i18n="welcome.c8.num">Chapter 8</p>
+      <h2 data-i18n="welcome.c8.title">The OS: every app is a GIF</h2>
+      <p class="head" data-i18n="welcome.c8.head">Under the meetings, GifOS is a whole computer in your browser. Every icon on the Home Screen is a GIF file, and every app is a signed GIF with a tiny filesystem inside it.</p>
+      <div class="solves"><h3 data-i18n="welcome.solves">What it solves</h3><ul>
+        <li data-i18n="welcome.c8.p1">Apps that need installing and updating.</li>
+        <li data-i18n="welcome.c8.p2">Apps that phone home with your data.</li>
+        <li data-i18n="welcome.c8.p3">Software that only runs where the vendor put it.</li></ul></div>
+      <p data-i18n="welcome.c8.b1">Open an app and it runs, sandboxed. By default an app can't reach the network at all; if it needs to, it asks, and you see exactly which sites. Apps run inside meetings too: start a game, and everyone in the meeting plays together.</p>
+      <ul class="try"><li class="lbl" data-i18n="welcome.try">Try it</li>
+        <li><a class="btn main" href="/" data-i18n="welcome.c8.t1">Open the Home Screen</a></li>
+        <li><a class="btn" href="/?run=tic-tac-toe" data-i18n="welcome.c8.t2">Play Tic-Tac-Toe</a></li>
+        <li><a class="btn" href="/?run=whiteboard" data-i18n="welcome.c8.t3">Open a Whiteboard</a></li></ul>
+      <ul class="coming">
+        <li><span class="soon" data-i18n="welcome.soon">Coming</span><span data-i18n="welcome.c8.s1">Widgets, so apps can live right on the Home Screen, starting with a Meet widget.</span></li></ul>
+    </section>
+
+    <section class="ch" id="ch-steal">
+      <p class="num" data-i18n="welcome.c9.num">Chapter 9</p>
+      <h2 data-i18n="welcome.c9.title">Steal this app, and mod it with your AI</h2>
+      <p class="head" data-i18n="welcome.c9.head">The idea GifOS started with. When someone runs an app with you, in a meeting or from a link, you can press <b>Steal</b> and get your own working copy.</p>
+      <div class="solves"><h3 data-i18n="welcome.solves">What it solves</h3><ul>
+        <li data-i18n="welcome.c9.p1">You see an app you like in someone else's meeting, and there's no way to get it.</li>
+        <li data-i18n="welcome.c9.p2">You can use software, but only its maker can change it.</li>
+        <li data-i18n="welcome.c9.p3">Changing an app means a developer setup, an app store and a review.</li></ul></div>
+      <p data-i18n="welcome.c9.b1">You choose what comes with it: the app alone, the app as it was when you joined, or everything in it right now, like a game in progress. Everything means everything the room can see; each person's private app data never leaves their own browser. Your copy lands in your Stolen Apps folder.</p>
+      <p data-i18n="welcome.c9.b2">Then make it yours: download it as one GIF and hand it to your own AI, one that can run code. The <a href="/llms.txt">GifOS guide</a> tells the AI how to unpack the app, change it and pack it back up. Drop the new GIF on your Home Screen and it runs. A mod is a new work, so it is marked Unsigned. To share it back, run it in a meeting, where anyone can steal it from you. Here, that's not rude. It's the whole point.</p>
+      <ul class="try"><li class="lbl" data-i18n="welcome.try">Try it</li>
+        <li><a class="btn main" href="/meet" data-i18n="welcome.c9.t1">Run an app in a meeting</a></li>
+        <li><a class="btn" href="/make-apps" data-i18n="welcome.c9.t2">Make or mod an app</a></li>
+        <li><a class="btn" href="/llms.txt" data-i18n="welcome.c9.t3">The guide for your AI</a></li></ul>
+      <ul class="coming">
+        <li><span class="soon" data-i18n="welcome.soon">Coming</span><span data-i18n="welcome.c9.s1">When you download an app, a choice between your data and a clean copy.</span></li></ul>
+    </section>
+
+    <section class="ch" id="ch-store">
+      <p class="num" data-i18n="welcome.c10.num">Chapter 10</p>
+      <h2 data-i18n="welcome.c10.title">The App Store: authors keep 97%</h2>
+      <p class="head" data-i18n="welcome.c10.head">More than two hundred apps today: games, tools, creative apps and learning apps, many of them great open-source programs ported to GifOS with their authors credited.</p>
+      <div class="solves"><h3 data-i18n="welcome.solves">What it solves</h3><ul>
+        <li data-i18n="welcome.c10.p1">App stores that take 15 to 30 percent.</li>
+        <li data-i18n="welcome.c10.p2">Payouts that come weeks later, through a middleman.</li>
+        <li data-i18n="welcome.c10.p3">Buyers who need a card on file.</li></ul></div>
+      <p data-i18n="welcome.c10.b1">When an app sells, its author is paid directly, in USDC on Base, and GifOS keeps 3%. No account for the buyer, and no waiting for a payout.</p>
+      <ul class="try"><li class="lbl" data-i18n="welcome.try">Try it</li>
+        <li><a class="btn main" href="/store" data-i18n="welcome.c10.t1">Browse the App Store</a></li>
+        <li><a class="btn" href="/try/app-makers" data-i18n="welcome.c10.t2">Ship your app as a GIF</a></li></ul>
+    </section>
+
+    <section class="ch" id="ch-providers">
+      <p class="num" data-i18n="welcome.c11.num">Chapter 11</p>
+      <h2 data-i18n="welcome.c11.title">Providers: on-device AI for every app</h2>
+      <p class="head" data-i18n="welcome.c11.head">Some apps give your computer a new power. Install an offline AI model, like Gemma, Whisper for captions, or a voice, and every app that uses AI answers from your own device.</p>
+      <div class="solves"><h3 data-i18n="welcome.solves">What it solves</h3><ul>
+        <li data-i18n="welcome.c11.p1">AI that sends what you type to a cloud.</li>
+        <li data-i18n="welcome.c11.p2">Every app needing its own API key.</li></ul></div>
+      <p data-i18n="welcome.c11.b1">A Provider can't reach the network at all: GifOS refuses it. So the model can't send what you ask it anywhere.</p>
+      <ul class="try"><li class="lbl" data-i18n="welcome.try">Try it</li>
+        <li><a class="btn main" href="/store#app=offline-llm-gemma" data-i18n="welcome.c11.t1">Offline Gemma</a></li>
+        <li><a class="btn" href="/store#app=offline-stt-whisper" data-i18n="welcome.c11.t2">Offline Whisper</a></li>
+        <li><a class="btn" href="/store#app=offline-tts-kokoro" data-i18n="welcome.c11.t3">An offline voice</a></li></ul>
+    </section>
+
+    <section class="ch" id="ch-agents">
+      <p class="num" data-i18n="welcome.c12.num">Chapter 12</p>
+      <h2 data-i18n="welcome.c12.title">AI agents: the SDK and the MCP server</h2>
+      <p class="head" data-i18n="welcome.c12.head">AI agents join a GifOS meeting the same way people do. Mia and Leo, who host the welcome meeting, are two of them.</p>
+      <div class="solves"><h3 data-i18n="welcome.solves">What it solves</h3><ul>
+        <li data-i18n="welcome.c12.p1">AI assistants can't join a meeting as themselves.</li>
+        <li data-i18n="welcome.c12.p2">Bot platforms need back doors and special keys.</li>
+        <li data-i18n="welcome.c12.p3">Every meeting product needs its own bot integration.</li></ul></div>
+      <p data-i18n="welcome.c12.b1">A bot plays by the same rules as everyone else: it wears a bot badge, it can't skip the line, and it can't see more than a person could. Build one with the agent SDK (<code>npm install @gifos-app/agent</code>), or give an AI assistant the MCP server so it can join a meeting and take part.</p>
+      <ul class="try"><li class="lbl" data-i18n="welcome.try">Try it</li>
+        <li><a class="btn main" href="#your-bot" data-i18n="welcome.c12.t1">Build a bot like Mia</a></li>
+        <li><a class="btn" href="/meet/llms.txt" data-i18n="welcome.c12.t2">For AI assistants</a></li>
+        <li><a class="btn" href="https://github.com/nwcnwc/gifos-meet-mcp" rel="noopener" data-i18n="welcome.c12.t3">MCP server on GitHub</a></li></ul>
+      <ul class="coming">
+        <li><span class="soon" data-i18n="welcome.soon">Coming</span><span data-i18n="welcome.c12.s1">Hosted bots: run your own bot on our servers for $3 a month.</span></li></ul>
+    </section>
+
+    <section class="ch" id="ch-identity">
+      <p class="num" data-i18n="welcome.c13.num">Chapter 13</p>
+      <h2><span class="soon" data-i18n="welcome.soon">Coming</span><span data-i18n="welcome.c13.title">The Identity folder</span></h2>
+      <p class="head" data-i18n="welcome.c13.head">A new kind of GIF, the ID GIF: a single fact about you, like "over eighteen", signed by an authority that checked your ID. When an app asks, you choose which ones to give it, and nothing else.</p>
+      <div class="solves"><h3 data-i18n="welcome.solves">What it solves</h3><ul>
+        <li data-i18n="welcome.c13.p1">Handing your whole ID to every site that wants to know your age.</li>
+        <li data-i18n="welcome.c13.p2">Identity data piling up on other people's servers.</li></ul></div>
+    </section>
+
+    <section class="end" id="ch-try">
+      <h2 data-i18n="welcome.end.title">Try it with us</h2>
+      <p data-i18n="welcome.end.lede">Mia and Leo host the welcome meeting. Bring a question, or bring a few people.</p>
+      <a class="cta" href="/meet#room=welcome" data-i18n="welcome.end.join">Join the welcome meeting &rarr;</a>
+      <p class="reassure" data-i18n="welcome.end.or">Or <a href="/meet">start a meeting of your own</a>. It's free, and there's nothing to sign up for.</p>
+    </section>
 
     <div class="foot">
-      <p style="margin-bottom:.7rem">Found a bug or have a feature request?
-      <a id="issue-link" href="https://github.com/nwcnwc/gifos-app/issues/new">Open an issue on GitHub</a> —
-      describe what happened (or what you'd like), include the digit subdomain and steps to
-      reproduce if it's a bug, and we'll take a look. GifOS has no accounts, ever, just a
-      free GitHub login. The link pre-fills the form with this page, build and browser.</p>
-      <p id="gifos-contact" style="margin:.7rem 0">Contact: <a href="mailto:support@gifos.app">support@gifos.app</a></p>
-      GifOS — apps are GIFs, data is GIFs, everything is just files. ·
-      <a href="/">gifos.app</a> · <a href="/store">app store</a> ·
-      <a href="/terms">terms</a> · <a href="/privacy">privacy</a> ·
+      <p style="margin-bottom:.7rem"><span data-i18n="welcome.foot.bug">Found a bug or have a feature request?</span>
+      <a id="issue-link" href="https://github.com/nwcnwc/gifos-app/issues/new" data-i18n="welcome.foot.issue">Open an issue on GitHub</a>.
+      <span data-i18n="welcome.foot.bug2">Describe what happened (or what you'd like) and the steps to reproduce if it's a bug. The link pre-fills the form with this page, build and browser.</span></p>
+      <p id="gifos-contact" style="margin:.7rem 0"><span data-i18n="welcome.foot.contact">Contact:</span> <a href="mailto:support@gifos.app">support@gifos.app</a></p>
+      <span data-i18n="welcome.foot.tag">GifOS: apps are GIFs, data is GIFs, everything is just files.</span> &middot;
+      <a href="/">gifos.app</a> &middot; <a href="/store">app store</a> &middot;
+      <a href="/terms">terms</a> &middot; <a href="/privacy">privacy</a> &middot;
       <!-- RELATIVE, unlike its neighbours: inside a frozen /versions/<v>/ build
            this must reach THAT build's own support matrix, which describes the
            code actually running. Every other link here is deliberately root-
            absolute (they are the live site, not this snapshot). -->
-      <a href="browser-support">which browsers work</a> · <a href="/llms.txt">llms.txt</a> ·
-      <a href="https://github.com/nwcnwc/gifos-app">source</a> ·
+      <a href="browser-support">which browsers work</a> &middot; <a href="/llms.txt">llms.txt</a> &middot;
+      <a href="https://github.com/nwcnwc/gifos-app">source</a> &middot;
       <a href="https://github.com/nwcnwc/gifos-app/issues">issues</a></div>
   </div>
 <script>
@@ -198,9 +538,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   })();
 </script>
 <script>
-  // GifOS TV credits, from the playlist's own manifest (/tv/clips.json).
+  // GifOS TV credits, from the playlist's own manifest (/tv/clips.json), fetched only when the list is opened.
   (function () {
     var box = document.getElementById('tvcredits'); if (!box) return;
+    var inner = box.querySelector('.in');
     function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
     function len(s) { s = Math.round(s || 0); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
     var done = false;
@@ -211,8 +552,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         m.clips.forEach(function (c) {
           h += '<li><a href="' + esc(c.page) + '" rel="noopener" target="_blank">' + esc(c.title) + '</a> <span class="cat">(' + esc(c.category) + ', ' + len(c.seconds) + ')</span><br>' + esc(c.credit) + ' &middot; ' + esc(c.licence) + '</li>';
         });
-        box.innerHTML = '<summary>All the films in GifOS TV, with credits</summary>' + h + '</ol>';
-        box.open = true;
+        inner.innerHTML = h + '</ol>';
       }).catch(function () { done = false; });
     }
     box.addEventListener('toggle', function () { if (box.open) load(); });
@@ -221,7 +561,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 <script src="js/gifos-help.js"></script>
 <script>
   // Pre-fill the new-issue form with where it was clicked from (this page),
-  // the build and the browser — the context a report never remembers to carry.
+  // the build and the browser: the context a report never remembers to carry.
   (function () {
     var a = document.getElementById('issue-link');
     if (a && window.GifOS && GifOS.help && GifOS.help.issueUrl) a.href = GifOS.help.issueUrl({ from: 'Welcome page' });
