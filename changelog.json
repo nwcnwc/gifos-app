@@ -2,6 +2,20 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.52",
+      "date": "2026-11-27",
+      "headline": "My Room: your private rooms ring, and your identity is a GIF",
+      "features": [
+        "Swapping cards makes a private room only the two of you can use, and it rings either of you. Removing a contact deletes it.",
+        "Ring me on this device: calls from your contacts ring your computer or phone even when GifOS is closed. The ring is end-to-end encrypted.",
+        "My identity: your personal room, private rooms and contacts in one sealed GIF in the Identity folder, to keep as a file or copy to another device.",
+        "Lock an app with a passphrase where this device has no passkey that can encrypt."
+      ],
+      "fixes": [
+        "A plainer Swap cards dialog."
+      ]
+    },
+    {
       "version": "0.9.28.51",
       "date": "2026-11-27",
       "headline": "Publish your broadcast to GifOS.tv",
