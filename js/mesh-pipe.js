@@ -347,7 +347,9 @@ function pushContent(srcId, bytes, type, ts, mime, at) {
       if (p.nkDrop === 3 || p.nkDrop % 30 === 0) { seedKey(srcId, pid); askKey(srcId, pid); }
     }
     else { const wasNeed = p.needKey; if (type === 'key') { p.needKey = false; p.nkDrop = 0; p.seeded = false; }
-      const own = handedOut ? bytes.slice(0) : bytes; handedOut = true;
+      // with siblings every pipe gets its own copy and the original is never handed out: an encode-once pipe may write its
+      // frame at once (a template was waiting), and a written buffer is detached, so it cannot be copied afterwards
+      const own = routed.size > 1 ? bytes.slice(0) : bytes; handedOut = true;
       const fresh = type === 'key' && wasNeed;   // the key a viewer was waiting for: paint it now
       p.q.push({ bytes: own, ts, type: type, at: at || nowMs(), fresh });
       if (!due(p, p.q[0])) continue;   // a held head is asked for when its time comes (the catch-up beat)
