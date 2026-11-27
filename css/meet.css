@@ -3974,4 +3974,33 @@ body.sv-live:not(.sv-tabs) .ct-pane.ag { padding-top: max(60px, calc(var(--headh
 body.sv-live #appbar #appview { display: none !important; }
 .ag-mini { font-size: 1.25rem; color: var(--c-white); }
 /* The meeting's own view button is on screen beside the app: the app bar does not repeat it. */
-body.comfy.sv-avail.has-app:not(.app-full):not(.solo-app):not(.app-room) #appbar #appview { display: none !important; }
+body.comfy.sv-avail.has-app:not(.app-full):not(.solo-app):not(.app-room):not(.short-app) #appbar #appview { display: none !important; }
+/* ---- A short phone (2026-11-26) ----
+   A phone under 640px tall (an iPhone SE in Safari, any phone on its side) with an app in front: the app takes the top row's place
+   too (the meeting's name and view button), and the app's own one-row bar carries the view button, so the app has
+   the screen down to the face strip. */
+body.short-app #tophead { display: none !important; }
+body.short-app.has-app #appbar[data-fold-how="m"] #appview { display: inline-flex !important; align-items: center; justify-content: center; }
+/* A phone on its side: the agenda's clock line sits beside its bar, so the list keeps one more row on screen. */
+@media (max-height: 500px) {
+  .ag-now:not([hidden]) { display: flex; align-items: center; gap: 10px; }
+  .ag-now .ag-bar { flex: 1 1 auto; margin: 0; }
+  .ag-now .ag-left { flex: 0 0 auto; }
+}
+/* A face too small for words (a short phone's strip): the why-blurred note stays off it (the blur shows on the face
+   itself; a tap opens the tile and its words), and the name keeps one line. A "tap to see" note stays. */
+:is(.tile, .rowtile).thin > .blurwhy:not([data-why="tap"]) { display: none; }
+body :is(.tile, .rowtile).thin > .name { white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; max-width: calc(100% - 8px) !important; }
+/* Focus on a short upright phone: the strip sits on the bottom edge like Fit's face strip (the bar wakes over it),
+   so the big view keeps the room; the follow-the-speaker card's words take two lines rather than being cut. */
+@media (orientation: portrait) and (max-height: 639px) {
+  body.view-focus #fsstrip { padding-bottom: 8px; }
+}
+body.view-focus .fsthumb.fsauto .fslbl { white-space: normal; line-height: 1.15; max-width: calc(100% - 12px); }
+/* A phone-wide agenda (Scroll stacks it with no tab bar): no lone presentation-view icon under the list; a double tap
+   still presents it. Its edit rows give the item's title the room (minutes 52px, tighter gaps). */
+@container (max-width: 560px) {
+  .ct-pane.ag > .ct-pview { display: none; }
+  .ag-item:has(> .ag-in-t) { gap: 2px; }
+  .ag-item > .ag-in-min { flex: 0 0 52px; width: 52px; padding: 0 4px; }
+}

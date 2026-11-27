@@ -45,6 +45,11 @@
     // a chip in the lower half.
     const body = doc && doc.body;
     if (body && body.classList && body.classList.contains('away-full')) return 0;
+    // A short phone with an app in front hides the top bar (the app's own bar carries the view button): no band,
+    // only the notch or the update bar (--gtop).
+    if (body && body.classList && body.classList.contains('short-app')) {
+      try { const n = parseFloat(getComputedStyle(doc.documentElement).getPropertyValue('--gtop')); return n > 0 ? Math.round(n) : 0; } catch (e) { return 0; }
+    }
     // The one top bar measures itself (run.html topHead, R1): its bottom edge
     // is the band. The guesses below only serve a page without the bar.
     try {

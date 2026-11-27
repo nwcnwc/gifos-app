@@ -732,8 +732,18 @@
     for (let i = 0; i < (opts.stad || []).length; i++) people.push({ id: opts.stad[i], tier: 'stad', aspect: 16 / 9, fit: 'contain' });
     const wide = box.w >= box.h;
     const short = Math.min(box.w, box.h);
-    const side = Math.max(FLOAT_INSET.min, Math.min(FLOAT_INSET.max, short * FLOAT_INSET.frac));
+    let side = Math.max(FLOAT_INSET.min, Math.min(FLOAT_INSET.max, short * FLOAT_INSET.frac));
     const m = FLOAT_INSET.margin;
+    // A short phone: the insets start as one strip along the edge (smaller faces, STRIP_MIN at least) and the
+    // content starts beside them, so nothing of it starts covered; each face still drags anywhere.
+    const strip = phone && shareItem.content && people.length > 0 && (wide ? box.h < SHORT_BAND / 1.5 : box.h < SHORT_BAND);
+    // Sideways a face stays at least SIDE_STRIP_MIN tall (a thinner column only crowds the names): one column when it fits.
+    if (strip) {
+      let len = 0;
+      for (let i = 0; i < people.length; i++) len += wide ? 1 : people[i].aspect;
+      const fit = Math.floor(((wide ? box.h : box.w) - 2 * m - (people.length - 1) * gap) / Math.max(1, len));
+      side = Math.max(wide ? SIDE_STRIP_MIN : STRIP_MIN, Math.min(side, fit));
+    }
     // From the bottom-right corner: up the right edge when wide (a full
     // column wraps to the next one leftward), leftward along the bottom when
     // tall (a full row wraps upward). Every inset starts on screen.
@@ -746,6 +756,13 @@
       if (!wide && x - w < box.x + m && x !== x0) { y -= lane + gap; x = x0; lane = 0; }
       rects.push({ id: it.id, tier: it.tier, fit: it.fit, x: x - w, y: y - h, w: w, h: h });
       if (wide) { y -= h + gap; lane = Math.max(lane, w); } else { x -= w + gap; lane = Math.max(lane, h); }
+    }
+    if (strip && rects[0]) {
+      let edge = wide ? box.x + box.w : box.y + box.h;
+      for (let i = 1; i < rects.length; i++) edge = Math.min(edge, wide ? rects[i].x : rects[i].y);
+      const cb = wide ? { x: box.x, y: box.y, w: Math.max(1, edge - gap - box.x), h: box.h } : { x: box.x, y: box.y, w: box.w, h: Math.max(1, edge - gap - box.y) };
+      const sr = stageRects([shareItem], cb, gap, false);
+      if (sr[0]) rects[0] = sr[0];
     }
     return laid(rects, box.h, { stage: null, share: rects[0] ? { x: rects[0].x, y: rects[0].y, w: rects[0].w, h: rects[0].h } : null, people: box }, { side: side }, 'fit');
   }
@@ -859,6 +876,19 @@
   // agenda by its list, opts.content.needH / needW) and the people get the
   // rest, never less than the face floor. One rule for every screen size.
   function faceFloor(box) { return Math.round(Math.max(FIT_ROW_MIN.phone, Math.min(box.w, box.h) * FACE_FLOOR_FRAC)); }
+  // A short phone (an iPhone SE: 549px of Safari) has no room for content AND a face floor: when the content
+  // needs more than the floor leaves it, the faces fold into one strip (a row under a tall pane, a column
+  // beside a wide one), each face no smaller than STRIP_MIN. An app in front (opts.content.app) asks the whole
+  // band on such a phone (shorter than SHORT_BAND upright, SHORT_BAND / 1.5 sideways): the faces keep the strip.
+  const STRIP_MIN = 56;
+  const SIDE_STRIP_MIN = 80;
+  const SHORT_BAND = 640;
+  function stripSpan(n, len, floor, gap) {
+    const side = Math.max(STRIP_MIN, Math.min(floor, Math.floor((len - Math.max(0, n - 1) * gap) / Math.max(1, n))));
+    const per = Math.max(1, Math.floor((len + gap) / (side + gap)));
+    const lanes = Math.ceil(n / per);
+    return lanes * side + (lanes - 1) * gap;
+  }
   // Beside a share, one Stadium composite's area is the free room under the
   // row tiles: the people column's full width, down to the band bottom.
   // The share stays the biggest tile, so that area stays within 0.9 of the
@@ -906,11 +936,14 @@
     const asp = shareItem.aspect > 0 ? shareItem.aspect : 0;
     let sb, pb, sr;
     if (wide) {
-      const need = c.needW > 0 ? c.needW : asp ? Math.round(box.h * asp) : Math.round(box.w * 0.72);
+      const short = phone && shareItem.content && box.h < SHORT_BAND / 1.5;
+      const need = c.needW > 0 ? c.needW : short && c.app ? box.w : asp ? Math.round(box.h * asp) : Math.round(box.w * 0.72);
       // Enough columns that every face keeps the floor (capped at 60% of the width).
       const perCol = Math.max(1, Math.floor((box.h + gap) / (floor + gap)));
       const cols = Math.ceil(nPeople / perCol);
-      const pwMin = Math.max(phone ? 110 : 160, Math.min(Math.round(box.w * 0.6), cols * floor + (cols - 1) * gap));
+      let pwMin = Math.max(phone ? 110 : 160, Math.min(Math.round(box.w * 0.6), cols * floor + (cols - 1) * gap));
+      // Sideways only an app folds the faces: a list is short of height, not width, so a thinner face column buys it nothing.
+      if (short && c.app && need + gap + pwMin > box.w) pwMin = Math.min(pwMin, Math.max(STRIP_MIN, stripSpan(nPeople, box.h, floor, gap)));
       const sw0 = Math.max(Math.round(box.w * 0.4), Math.min(need, box.w - pwMin - gap));
       const pw = Math.max(1, box.w - sw0 - gap);
       const sh = opts.floor > box.y + box.h ? opts.floor - box.y : box.h;
@@ -925,12 +958,17 @@
       }
       pb = { x: sb.x + sb.w + gap, y: box.y, w: Math.max(1, box.x + box.w - (sb.x + sb.w + gap)), h: box.h };
     } else {
-      const need = c.needH > 0 ? c.needH : asp ? Math.round(box.w / asp) : Math.round(box.h * 0.72);
+      const short = phone && shareItem.content && box.h < SHORT_BAND;
+      const need = c.needH > 0 ? c.needH : short && c.app ? box.h : asp ? Math.round(box.w / asp) : Math.round(box.h * 0.72);
       // Enough rows that every face keeps the floor (capped at 70% of the height).
       const perRow = Math.max(1, Math.floor((box.w + gap) / (floor + gap)));
       const rows = Math.ceil(nPeople / perRow);
-      const phMin = Math.min(Math.round(box.h * 0.7), rows * floor + (rows - 1) * gap);
-      const sh = Math.max(Math.round(box.h * 0.3), Math.min(need, box.h - phMin - gap));
+      let phMin = Math.min(Math.round(box.h * 0.7), rows * floor + (rows - 1) * gap);
+      const fold = short && need + gap + phMin > box.h;
+      if (fold) phMin = Math.min(phMin, stripSpan(nPeople, box.w, floor, gap));
+      let sh = Math.max(Math.round(box.h * 0.3), Math.min(need, box.h - phMin - gap));
+      // Folded: the strip sits on the bottom edge and the content takes every pixel above it.
+      if (fold && !onStage.length) sh = Math.max(sh, box.h - stripSpan(nPeople, box.w, floor, gap) - gap);
       const ph = Math.max(1, box.h - sh - gap);
       sb = { x: box.x, y: box.y, w: box.w, h: sh };
       pb = { x: box.x, y: box.y + sh + gap, w: box.w, h: Math.max(1, ph) };

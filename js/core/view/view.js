@@ -2697,8 +2697,10 @@
       if (window.ResizeObserver) {
         if (!makeTile.slimObs) {
           makeTile.slimObs = new ResizeObserver((list) => list.forEach((en) => {
-            // A removed tile reports 0x0 once; let it go.
-            if (!en.target.isConnected) { makeTile.slimObs.unobserve(en.target); return; }
+            // A removed tile reports 0x0 once; let it go. A tile that was off the page then (made before it was placed,
+            // or moved between containers) is watched again by the next layout that finds it placed (layout, below):
+            // otherwise it never learns its size classes and keeps a big tile's words on a small face.
+            if (!en.target.isConnected) { makeTile.slimObs.unobserve(en.target); en.target.__szLost = true; return; }
             const w = en.contentRect.width;
             const h = en.contentRect.height;
             if (w > 0) { en.target.classList.toggle('slim', w < 200); en.target.classList.toggle('thin', w < 116); en.target.classList.toggle('short', w < 200 && h > 0 && h < 130); }
@@ -2833,6 +2835,7 @@
     yield 538;
     function layout() {
       __C.model.roster.reactStats().layouts++;
+      if (typeof makeTile === 'function' && makeTile.slimObs) for (const t of document.querySelectorAll('.tile')) if (t.__szLost) { t.__szLost = false; try { makeTile.slimObs.observe(t); } catch (e) {} }
       // One order: the banner's queue (handQueue), so a tile and the banner never disagree.
       const rank = new Map(__C.model.hands.queue().map((e, i) => [e.i === __C.model.me.myId() ? 'me' : e.i, i]));
       const stg = (0, /*()*/__C.stageIds)(); // the Stage floats first, in step-up order
@@ -3296,6 +3299,15 @@
         // a short desktop window under 900px wide is treated like one too.
         const shortLand = vhNow < 500 && vwNow > vhNow && (vwNow < 900 || !document.body.classList.contains('desk-ptr'));
         const phone = vwNow < 600 || shortLand;
+        // A short phone (an iPhone SE: 549px of Safari; any phone on its side) with an app in front: the app takes the top row's
+        // place too, and the app's own bar carries the view button. A broadcast keeps the row.
+        let shortApp = false;
+        try {
+          const CT = __C.CT, sel = CT && CT.st && !CT.st.all ? CT.items.find((i) => i.key === CT.st.sel) : null;
+          shortApp = phone && vhNow < GifOS.meetContent.SHORT_PHONE_H && appOn && !!sel && sel.kind === 'app' &&
+            !CT.present && !(svOn() && svSt().sel === GifOS.meetViewMode.stage.FACES) && !document.body.classList.contains('broadcast');
+        } catch (e) {}
+        if (document.body.classList.contains('short-app') !== shortApp) document.body.classList.toggle('short-app', shortApp);
         let holdMs = 2500;
         try { holdMs = __M.STAGE_FACE_SETTLE_MS; } catch (e) {}
         // The dock and the header float over the tiles. Passing a measured
@@ -3629,14 +3641,17 @@
       // people inset); a phone's Fit is the content full with a face strip.
       // R2: an agenda needs only its list (and the tab row); a screen or an
       // app is sized by its aspect in the zones. The rest goes to the faces.
-      let needH = 0;
+      let needH = 0, app = false;
       try {
         const it = __C.CT && __C.CT.st && !__C.CT.st.all ? __C.CT.items.find((i) => i.key === __C.CT.st.sel) : null;
-        if (it && it.kind === 'agenda') needH = Math.round(1000 / (0, /*()*/__C.ctAspect)(it, 1000)); // the list's own height (ctAspect)
+        // The list's own height (ctAspect) at the width it will have: a phone-wide pane wraps more rows.
+        const pw = phone ? Math.max(1, window.innerWidth) : 1000;
+        if (it && it.kind === 'agenda') needH = Math.round(pw / (0, /*()*/__C.ctAspect)(it, pw));
+        app = !!(it && it.kind === 'app');
       } catch (e) {}
       // Beside the faces (a wide screen) a list reads well at a column's width; the faces take the rest.
       const needW = needH ? 640 : 0;
-      return { phone: !!phone && v !== 'scroll' && v !== 'drag', hideFaces: !!(__C.CT && (__C.CT.facesHidden || (__C.CT.agEdit && it0IsAgenda())) && phone), needH: needH > 40 ? needH : 0, needW: needW };
+      return { phone: !!phone && v !== 'scroll' && v !== 'drag', hideFaces: !!(__C.CT && (__C.CT.facesHidden || (__C.CT.agEdit && it0IsAgenda())) && phone), needH: needH > 40 ? needH : 0, needW: needW, app: app };
     }
 
     // ---- panes ----
