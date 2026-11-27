@@ -1065,7 +1065,7 @@
       try { on0 = sessionStorage.getItem('gifos_bot') === '1'; } catch (e) {}
       if (on0) paintAssistant(true);   // a bot=1 page shows the lobby switch On
     }
-    yield 203;
+    yield 204;
     function waitPaint() {
       const list = document.getElementById('waitlist');
       const btn = document.getElementById('waitbtn');
@@ -1118,7 +1118,7 @@
         if (word) word.textContent = (0, /*()*/__C.uiText)('more', 'More');
       }
     }
-    yield 212;
+    yield 213;
     function showHeldScreen() {
       __C.model.door.meetWait().waiting(true);
       const h = document.querySelector('#waitdoor h1'), p = document.querySelector('#waitdoor p');
@@ -1126,19 +1126,19 @@
       if (p) p.textContent = (0, /*()*/__C.uiText)('youLlJoinWhen', 'You\u2019ll join when the host lets you in. This meeting can\u2019t see or hear you yet.');
       (0, /*()*/__C.sayState)('waitingHost');
     }
-    yield 214;
+    yield 215;
     // The waiting-room door on the page (#waitdoor and body.wait-door) follows meetWait's atWaitDoor.
     function paintWaitDoor(on) {
       const el = document.getElementById('waitdoor');
       if (el) el.hidden = !on;
       document.body.classList.toggle('wait-door', on);
     }
-    yield 294;
+    yield 295;
     // Tell the room when this phone steps away (screen off / another app) —
     // the browser fires visibilitychange before it freezes us, so the last
     // thing we say is an honest "away", and the first thing back is "here".
     let stillTimer = 0;
-    yield 296;
+    yield 297;
     function showStill() {
       const el = document.getElementById('still');
       if (!el) return;
@@ -1308,7 +1308,7 @@
     // Bumped when a float is cancelled. A document window that answers after
     // that is closed instead of left over a tab the person is looking at.
     let pipEpoch = 0;
-    yield 313;
+    yield 314;
     // The float's own trace (a 200-line ring, in the debug record as 'pip'):
     // every leave and return, the browser's action, each ask and its answer,
     // each close and why. Read it from Settings > Debug > Export after a few
@@ -1332,9 +1332,9 @@
       // face is laid out in the float and not in the band it just hid.
       try { layout(); } catch (e) {}
     }
-    yield 318;
+    yield 319;
     let pipCard = null;
-    yield 320;
+    yield 321;
     function pipCardOk() {
       try {
         return !!(document.pictureInPictureEnabled && typeof HTMLVideoElement.prototype.requestPictureInPicture === 'function'
@@ -1409,7 +1409,7 @@
       const pr = video.play(); if (pr && pr.catch) pr.catch(() => {});
       return pipCard;
     }
-    yield 325;
+    yield 326;
     function pipCardRun(on) {
       const c = pipCard; if (!c) return;
       if (on && !c.stop) {
@@ -1689,7 +1689,7 @@
       }
       try { pipRecover(v, refused); } catch (e) {}
     }
-    yield 345;
+    yield 346;
     // The FLOAT button: Chrome's AUTO PiP on tab-leave is chrome-gated (the
     // per-site "Automatic picture-in-picture" permission plus site-engagement
     // heuristics — a first-visit phone often gets nothing), and on Android
@@ -1732,7 +1732,7 @@
     // on the heartbeat; dropped where the room's clocks stop (the meeting is
     // left), so Back then behaves as usual. Chrome spends a Back on leaving full screen first, by itself.
     let backWatch = null;
-    yield 348;
+    yield 349;
     function backGuardSync() {
       let want = false;   // IS_ANDROID is declared further down: a beat before it would throw, and the float's re-aim must not
       try { want = __C.model.consts.IS_ANDROID() && __C.model.consts.IS_MOBILE() && typeof window.CloseWatcher === 'function' && !window.__gifosNativeBoot && (0, /*()*/__C.inMeetingNow)(); } catch (e) {}
@@ -1786,7 +1786,7 @@
       try { if (aim) aim.autoPictureInPicture = true; } catch (e) {}
       pipAimed = aim;
     }
-    yield 355;
+    yield 356;
     // A visible tab never wants a mate's main parked. Re-send the lift to
     // one mate (idempotent on the far side: no park, nothing changes).
     function reassertVisLift(pid) {
@@ -1837,7 +1837,7 @@
       if (document.pictureInPictureElement
         || Array.from(document.querySelectorAll('video')).some((v) => v.webkitPresentationMode === 'picture-in-picture')) exitPip();
     }, true);
-    yield 366;
+    yield 367;
     const AUTO_FS_SKIP = '#appfull, #appfloat, #pipbtn, [data-pip], #cam, #mic, [id^="campick"], #sharebtn, a[href], input, textarea, select, [contenteditable="true"]';
     // Never under a float: the float means the person is on the way out, and
     // full screen would hide the system bars they leave by.
@@ -1933,7 +1933,7 @@
       const v = document.pictureInPictureElement;
       if (v && e.target === v) exitPip();
     }, true);
-    yield 429;
+    yield 430;
     const fmtLeft = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
     function clearAdminClose() {
       const el = document.getElementById('admcount');   // the core stopped its clocks (adminCloseOff)
@@ -1948,7 +1948,7 @@
       el.style.display = '';
       if (left <= 0) (0, /*()*/__C.closeRoomNoHost)();
     }
-    yield 439;
+    yield 440;
     function updateReload(target) {
       target = target || {};
       __C.act.updating();   // a reload for an update: the core keeps this seat's resume note
@@ -1976,11 +1976,11 @@
       if (target.url) { try { history.replaceState(history.state, '', target.url); } catch (e) {} }
       (0, /*()*/__M.resumeReload)();
     }
-    yield 445;
+    yield 446;
     document.querySelectorAll('a.title[href="./"], a.brand[href="./"]').forEach((a) => { a.setAttribute('href', (0, /*()*/__C.homeHref)()); });
     // The "meeting closed" screen (closeRoomNoHost).
     function showClosedDialog() { const cm = document.getElementById('closed-modal'); if (cm) cm.style.display = 'flex'; }
-    yield 449;
+    yield 450;
 
     // ---- FULLSCREEN VIEW with a filmstrip (standard call UX) ------------------
     // One fullscreen surface: the chosen feed big,
@@ -2002,9 +2002,9 @@
     // Cross-row Follow: fsAutoKey is the followed key ('peer:<pid>', or 'sd:<pid>' for a face in my Stadium); fsZoomIds the
     // far talkers the big view zooms to while it shows the Stadium, fsZoomBox their box in Stadium picture pixels.
     let fsAutoKey = null, fsZoomIds = null, fsZoomBox = null;
-    yield 475;
+    yield 476;
     let fsFollow = null, fsFollowT = 0;
-    yield 478;
+    yield 479;
     // What the Focus view shows, for the debug dump and the room tests.
     window.__meetFocusState = () => ({
       view: window.__meetView || 'fit', on: fsview.classList.contains('on'), inline: __C.fsInline,
@@ -2012,7 +2012,7 @@
       strip: fsstrip.dataset.set || '', zoom: fsZoomBox ? (fsZoomIds || []).slice() : [], zbox: fsZoomBox ? fsZoomBox.slice() : null,
       far: (0, /*()*/__C.fsFarTalkers)((0, /*()*/__C.fsFarCells)()),
     });
-    yield 481;
+    yield 482;
     // A FACE IN THE BIG VIEW IS CROPPED A LITTLE, NEVER A LOT (Nathan 2026-11-18). A full crop to fill showed a portrait
     // phone in a landscape pane as the top of a head; a whole fit leaves wide bars when the shapes are close. The big
     // view scales a camera face so that at most FS_CROP_MAX of its picture is cut (on the side that overflows), and the
@@ -2020,7 +2020,7 @@
     // Shared screens, content and the Stadium stay whole. #fsmain's box is the part shown, centred in the pane, and
     // meet.css crops inside it (cover, 50% 40%). Repainted on every refresh, a pane resize and a picture size change.
     const FS_CROP_MAX = 0.25;
-    yield 483;
+    yield 484;
     function fsFitPaint() {
       const box = fsmain._fit === 'cover' ? (0, /*()*/__C.fsCropBox)(fsmain.videoWidth, fsmain.videoHeight, fsview.clientWidth, fsview.clientHeight, FS_CROP_MAX) : null;
       const px = (n) => n.toFixed(1) + 'px';
@@ -2031,7 +2031,7 @@
     }
     fsmain.addEventListener('loadedmetadata', fsFitPaint);
     fsmain.addEventListener('resize', fsFitPaint);
-    yield 487;
+    yield 488;
     if (typeof ResizeObserver === 'function') new ResizeObserver(fsFitPaint).observe(fsview);
     // The big view's zoom onto Stadium cells: a CSS transform on #fsmain, the picture itself unchanged. The box of the
     // cells, padded, fills the view as far as FS_ZOOM_MAX allows, and the picture never slides off its own edge.
@@ -2129,7 +2129,7 @@
       return (fsAutoKey && fsAutoKey.indexOf('peer:') === 0 && src.find((s) => s.key === fsAutoKey))
         || src.find((s) => s.key.indexOf('stage:') === 0) || src[0] || null;
     }
-    yield 492;
+    yield 493;
     function fsSources() {
       const out = [];
       // The content region first (content tabs, js/meet-viewmode.js content):
@@ -2366,7 +2366,7 @@
     function fsRefreshIfOpen() {
       if (fsview.classList.contains('on')) fsRefresh();
     }
-    yield 497;
+    yield 498;
     let fsOwnExit = false; // an exit closeFsView asked for is on its way
     let fsFull = false; // the view was the full-screen element at the last change
     let fsAskAt = 0; // when the view last asked the browser for full screen
@@ -2504,7 +2504,7 @@
       if (fsview.classList.contains('on')) closeFsView();
     });
     document.addEventListener('fullscreenerror', () => { fsStripAsk = false; });
-    yield 513;
+    yield 514;
     // Keep the letter as text. A fake avatar from a unit test has no querySelector;
     // setting textContent there is the whole job. A live tile may already hold an <img>.
     function setTileLetter(avatar, letter) {
@@ -2537,13 +2537,13 @@
       }
       avatar.classList.add('has-img');
     }
-    yield 516;
+    yield 517;
     // A host's per-person controls say "for all" (hostWords, below).
     const MODBAR_HTML = '<button data-mod="mute" aria-label="Mute for all">Mute for all</button><button data-mod="blur" aria-label="Blur for all">Blur for all</button>'
       + '<button class="grantbtn" data-mod="app" title="Let this person run and lead apps in your room" aria-label="Allow apps & stage">Allow apps & stage</button>'
       + '<button class="grantbtn" data-mod="share" title="Let this person share their screen" aria-label="Allow screen share">Allow screen share</button>'
       + '<button class="banbtn" data-adm="ban" title="Ban this person from the room" aria-label="Ban this person">Ban</button>';
-    yield 523;
+    yield 524;
     function paintStageMod() {
       const el = document.getElementById('stagemod');
       if (!el) return;
@@ -2602,7 +2602,7 @@
         (0, /*()*/__C.paintModbarButtons)(card.querySelector('.modbar'), id);
       }
     }
-    yield 525;
+    yield 526;
     function paintRaisedHands() {
       const el = document.getElementById('handraise');
       if (!el) return;
@@ -2659,7 +2659,7 @@
         } catch (e) {}
       }
     }
-    yield 527;
+    yield 528;
     (function () {
       const el = document.getElementById('handraise');
       if (!el) return;
@@ -2764,7 +2764,7 @@
       });
       el.appendChild(b);
     }
-    yield 534;
+    yield 535;
     function paintTileChrome(t, id, isMe, st) {
       if (!t || !t.tile || typeof t.tile.querySelector !== 'function') return;
       if (typeof document === 'undefined' || !document || typeof document.createElement !== 'function') return;
@@ -2834,7 +2834,7 @@
       const tip = words + (on && by ? ' (blurred by ' + by + ')' : '');
       if (box.title !== tip) box.title = tip;
     }
-    yield 539;
+    yield 540;
     function layout() {
       __C.model.roster.reactStats().layouts++;
       if (typeof makeTile === 'function' && makeTile.slimObs) for (const t of document.querySelectorAll('.tile')) if (t.__szLost) { t.__szLost = false; try { makeTile.slimObs.observe(t); } catch (e) {} }
@@ -2926,7 +2926,7 @@
       return { n: n | 0, cols: cols | 0, ids: ids, video: video, srcEl: srcEl, w: w > 2 ? w : 0, h: h > 2 ? h : 0 };
     }
     let comfyBusy = false;
-    yield 544;
+    yield 545;
     function ensureStageView(feed, id, track) {
       // A Stage view wears the receiver's blur for that person on the Stage (blurLevelFor with where 'stage'), as a
       // grid tile does: a sender that sends clear pixels where the room keeps them blurred stays blurred here. My own
@@ -3376,7 +3376,7 @@
         try { applyViewerCrops(); } catch (e) {}
       } finally { comfyBusy = false; }
     }
-    yield 549;
+    yield 550;
     // Outline glyphs, one stroke, currentColor: the same family as the bar's icons.
     const VIEW_ICONS = {
       scroll: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="6" rx="1.5"/><rect x="13" y="3" width="8" height="6" rx="1.5"/><rect x="3" y="11" width="8" height="6" rx="1.5"/><rect x="13" y="11" width="8" height="6" rx="1.5"/><path d="M9 20.5l3 1.5 3-1.5"/></svg>',
@@ -3385,11 +3385,11 @@
       focus: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="14" height="16" rx="2"/><rect x="18.5" y="4" width="3" height="4" rx="1"/><rect x="18.5" y="10" width="3" height="4" rx="1"/><rect x="18.5" y="16" width="3" height="4" rx="1"/></svg>',
       stage: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8"/><path d="M10.2 8.3l4.6 2.2-4.6 2.2z"/></svg>',
     };
-    yield 556; // where Focus goes back to
+    yield 557; // where Focus goes back to
     const fitbtn = document.getElementById('fitbtn');
     const viewpick = document.getElementById('viewpick');
     const vpFollow = document.getElementById('vp-follow');
-    yield 560;
+    yield 561;
     function paintFit() {
       const m = window.__meetView;
       const scroll = m === 'scroll';
@@ -3442,7 +3442,7 @@
         if (wd) wd.textContent = (0, /*()*/__C.uiText)('viewFollow', 'Follow the speaker');
       }
     }
-    yield 568;
+    yield 569;
     function closePick(refocus) {
       if (!viewpick || viewpick.hidden) return;
       viewpick.hidden = true;
@@ -3544,7 +3544,7 @@
     });
     // An app or a broadcast that starts or stops while Focus is chosen.
     try { new MutationObserver(() => { try { (0, /*()*/__C.syncFocus)(); } catch (e) {} }).observe(document.body, { attributes: true, attributeFilter: ['class'] }); } catch (e) {}
-    yield 581;
+    yield 582;
     const CT_ICONS = {
       present: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4.5" width="19" height="13" rx="2"/><rect x="14" y="11" width="5.5" height="4.5" rx="1"/><path d="M8 21h8"/></svg>',
       all: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="8.5" height="6" rx="1.2"/><rect x="13" y="5" width="8.5" height="6" rx="1.2"/><rect x="2.5" y="13" width="8.5" height="6" rx="1.2"/><rect x="13" y="13" width="8.5" height="6" rx="1.2"/></svg>',
@@ -3553,7 +3553,7 @@
       faces: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="14" width="5.5" height="5.5" rx="1.2"/><rect x="9.25" y="14" width="5.5" height="5.5" rx="1.2"/><rect x="16" y="14" width="5.5" height="5.5" rx="1.2"/><path d="M4 10l8-5 8 5"/></svg>',
       exit: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
     };
-    yield 583;
+    yield 584;
     function ctInit() {
       if (__C.CT) return __C.CT;
       const feed = document.getElementById('feed');
@@ -3605,7 +3605,7 @@
       const nm = document.getElementById('appname');
       return { on: true, name: (nm && nm.textContent) || '', by: by, mine: mine };
     }
-    yield 589;
+    yield 590;
     function ctPaintAgendaBtn() {
       const ab = document.getElementById('agendabtn');
       if (!ab) return;
@@ -3613,11 +3613,11 @@
       const word = show ? (0, /*()*/__C.ctText)('agShow', 'Show agenda') : (0, /*()*/__C.ctText)('agendaBtn', 'Agenda');
       if (ab.textContent !== word) ab.textContent = word;
     }
-    yield 596;
+    yield 597;
     function ctFocusOnContent() {
       return !!(__C.CT && window.__meetView === 'focus' && fsview.classList.contains('on') && __C.fsInline && String(fsmain.dataset.key || '').indexOf('content:') === 0);
     }
-    yield 598;
+    yield 599;
     function contentTile(phone) {
       if (!__C.CT || !__C.CT.items.length) { if (__C.CT) { __C.CT.el.hidden = true; document.body.classList.remove('ct-on', 'ct-app-off', 'ct-present'); } return null; }
       __C.CT.phone = !!phone;
@@ -3680,7 +3680,7 @@
       __C.CT.panes.set(it.key, p);
       return p;
     }
-    yield 602;
+    yield 603;
     function ctPaintScreen(p, it) {
       const v = p.querySelector('video');
       const src = (0, /*()*/__M.ctScreenTrack)(it.sid);
@@ -3789,7 +3789,7 @@
       if (tip) b.title = tip; else b.removeAttribute('title');
       if (pressed != null) b.setAttribute('aria-pressed', pressed ? 'true' : 'false');
     }
-    yield 606;
+    yield 607;
 
     // ---- placing the area and its panes (after the layout placed the tile) ----
     function ctPinApp() {
@@ -3945,7 +3945,7 @@
       if (sig !== __C.CT.lastSig) { __C.CT.lastSig = sig; (0, /*()*/__C.ctNote)('place', { view: view, show: plan.show.slice(), tabs: !!plan.tabs, box: [Math.round(box.x), Math.round(box.y), Math.round(box.w), Math.round(box.h)] }); }
       (0, /*()*/__C.ctAgendaTickArm)();
     }
-    yield 609;
+    yield 610;
     // Focus moved on or off a content tab: the area goes back to the gallery,
     // or onto the big view.
     function ctFocusSync() {
@@ -4007,7 +4007,7 @@
       try { layout(); } catch (e) {}
       if (on) { try { __C.CT.exit.focus(); } catch (e) {} }
     }
-    yield 612;
+    yield 613;
     function ctInset(on, selIt) {
       const box = __C.CT && __C.CT.inset;
       if (!box) return;
@@ -4038,7 +4038,7 @@
       box.hidden = false;
       box.dataset.pid = pid;
     }
-    yield 629;
+    yield 630;
     // ---- the Stage view (Nathan 2026-11-25): only the Stage, full screen, portrait or landscape ----
     // Picked next to Scroll, Fit, Drag and Focus while the Stage carries something: the content items (screens, the
     // app, the agenda) and the Stage's own pictures (the people on it, a rebroadcast; a broadcast's whole Stage). One
@@ -4415,7 +4415,7 @@
         agenda: __C.CT.ag ? { v: __C.CT.ag.v, cur: __C.CT.ag.cur, n: __C.CT.ag.items.length, owner: __C.CT.ag.owner, ed: __C.CT.ag.ed.slice(), items: __C.CT.ag.items.map((i) => i.t), clock: (0, /*()*/__C.ctAgendaShortTime)(), canEdit: (0, /*()*/__C.ctCanEditAgenda)() } : (__C.CT.agLocal ? { local: true, canEdit: (0, /*()*/__C.ctCanEditAgenda)() } : null),
       };
     };
-    yield 654;
+    yield 655;
     // ---- 0.9.23b: calm by default, tap a tile for its controls, viewer crop ----
     // Calm: tiles show only the name and the green speaking frame. Any touch,
     // scroll, mouse move or key wakes the info (body.meet-awake) for 3 s.
@@ -4430,13 +4430,13 @@
         document.body.classList.remove('meet-awake');
       }, AWAKE_MS);
     }
-    yield 658;
+    yield 659;
     try { const fe = document.getElementById('feed'); if (fe) fe.addEventListener('scroll', wakeMeet, { passive: true }); } catch (e) {}
-    yield 665;
+    yield 666;
     function applyViewerCrops() {
       document.querySelectorAll('#feed .tile[data-comfy="1"]').forEach((t) => { try { (0, /*()*/__C.applyViewerCrop)(t); } catch (e) {} });
     }
-    yield 669;
+    yield 670;
     function twName(el, id) {
       if (el.id === 'stadwhole' && id) return (0, /*()*/__C.displayName)(id) || id;
       if (el.id === 'bc-ident') { const n = document.getElementById('bc-ident-name'); return (n && n.textContent) || (0, /*()*/__C.uiText)('stageLabel', 'On stage'); }
@@ -4445,7 +4445,7 @@
       const nm = el.querySelector('.name');
       return (nm && nm.textContent) || (id && (0, /*()*/__C.displayName)(id)) || '';
     }
-    yield 672;
+    yield 673;
     function twButton(label, on, fn, extra) {
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'tw-btn' + (on ? ' on' : '') + (extra ? ' ' + extra : '');
@@ -4841,7 +4841,7 @@
       placeTileWin(win, { x: vw / 2, y: vh / 2, w: 0, h: 0 });
       const first = win.querySelector('.tw-close'); if (first) try { first.focus({ preventScroll: true }); } catch (e) {}
     }
-    yield 684;
+    yield 685;
     (function () {
       const feed = document.getElementById('feed');
       if (!feed) return;
@@ -4988,7 +4988,7 @@
       if (window.ResizeObserver) { try { new ResizeObserver(measure).observe(head); } catch (e) {} }
       window.addEventListener('resize', measure);
     })();
-    yield 692;
+    yield 693;
     // The "new version" bar (js/gifos-update.js) floats over the top of the
     // page. While it shows, --updh holds its height, so the header, Fit and
     // the faces move down under it (--gtop in the CSS), and back up once it
@@ -5012,20 +5012,20 @@
       watchBody.observe(document.body, { childList: true });
       sync();
     })();
-    yield 704;
+    yield 705;
     document.addEventListener('pointerdown', () => (0, /*()*/__C.ensureAc)());
-    yield 714;
+    yield 715;
     function tileNote(t, msg) {
       t.video.style.display = 'none';
       let n = t.tile.querySelector('.note');
       if (!n) { n = document.createElement('div'); n.className = 'note'; t.tile.appendChild(n); }
       n.textContent = msg;
     }
-    yield 738;
+    yield 739;
     // Two ping-pong scratch canvases for the iOS fallback's progressive scaling.
     let blurA = document.createElement('canvas'), blurActx = blurA.getContext('2d');
     let blurB = document.createElement('canvas'), blurBctx = blurB.getContext('2d');
-    yield 754;
+    yield 755;
     function paintAvatarCanvas(canvas, name, level) {
       const w = __M.AVATAR_W, h = __M.AVATAR_H, lvl = level | 0;
       if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
@@ -5065,7 +5065,7 @@
         src = dest;
       }
     }
-    yield 756;
+    yield 757;
     // stream may be a function that makes it: called only when the tile needs a new one. Every MediaStream built on a track
     // lives as long as that track (the track keeps each stream that holds it), so a stream made per repaint and thrown away is kept.
     function showAvatarTrack(video, stream, track) {
@@ -5082,7 +5082,7 @@
         requestAnimationFrame(() => { try { if (track.readyState === 'live') track.requestFrame(); } catch (e) {} });
       }
     }
-    yield 842;
+    yield 843;
     function paintBcQuiet(bq) {
       const quiet = document.getElementById('bc-ended');
       if (!quiet) return;
@@ -5097,10 +5097,10 @@
     }
     // The "you left" screen on the page (leaveMeeting).
     function showLeftDialog() { const lm = document.getElementById('left-modal'); if (lm) lm.style.display = 'flex'; }
-    yield 845;
+    yield 846;
     // At the password prompt the prompt is the whole story: a network line under it would send the person looking for the wrong fault.
     function atPwPrompt() { try { const m = document.getElementById('pw-modal'); return !!(__C.pwBlocked && m && m.style.display !== 'none' && m.dataset.mode === 'join'); } catch (e) { return false; } }
-    yield 847;
+    yield 848;
     function paintStatusAlert(on) { statusEl.classList.toggle('alert', on); }
     // SUB.11: the People panel and the status count read one fold, so an open panel follows it too. (A far person's name
     // can arrive after the panel was painted: the row said "Guest" until something else repainted it.)
@@ -5145,7 +5145,7 @@
       const chip = document.querySelector('body.broadcast .topchip');
       if (chip) document.documentElement.style.setProperty('--chip-bottom', Math.ceil(chip.getBoundingClientRect().bottom) + 'px');
     }
-    yield 852;
+    yield 853;
     // A wide window's header line never shows a sentence cut in half (the
     // same rule as the You-left line, 97854e1). The OS buttons take the
     // right of the row (UI-0010), so when the line is longer than the room:
@@ -5195,13 +5195,13 @@
       const hdrMq = window.matchMedia('(max-width: 700px), (max-height: 500px)');
       if (hdrMq.addEventListener) hdrMq.addEventListener('change', () => { try { (0, /*()*/__C.updateStatus)(); } catch (e) {} });
     } catch (e) {}
-    yield 858;
+    yield 859;
     // The lamp itself is painted by paintOnAir (confirmed design, above).
     // An open roster repaints with it.
     function paintOnAirSide() {
       try { if (document.getElementById('roster').classList.contains('open')) paintRoster(); } catch (e) {}
     }
-    yield 873;
+    yield 874;
     function releaseHeld(p) {
       if (!p) return;
       if (p.held) (0, /*()*/__C.paintRosterSoon)();
@@ -5219,9 +5219,9 @@
       if (h) h.textContent = (0, /*()*/__C.uiText)('waitSelf', 'The host will let you in');
       if (p) p.textContent = (0, /*()*/__C.uiText)('waitSelfNote', 'You can see this meeting when someone admits you.');
     }
-    yield 881;
+    yield 882;
     let renameEditId = null;
-    yield 886;
+    yield 887;
     function paintRoster() {
       const el = document.getElementById('roster');
       if (!el) return;
@@ -5408,14 +5408,14 @@
     if (rosterClose) rosterClose.onclick = () => toggleRoster(false);
     const rosterFind = document.getElementById('roster-find');
     if (rosterFind) rosterFind.addEventListener('input', () => paintRoster());
-    yield 1001;
+    yield 1002;
     function refreshAvatarSurfaces() {
       try { paintBroadcastIdent(); } catch (e) {}
       try { if (chatPanelOpen()) renderChat(); } catch (e) {}
       try { if (transcriptShown()) renderTranscript(); } catch (e) {}
       try { if (whoModal && whoModal.style.display === 'flex') showWhoModal(); } catch (e) {}
     }
-    yield 1003;
+    yield 1004;
     const STAGE_HEAR_MS = GifOS.timings.STAGE_HEAR_MS;
     let platePaintT = 0;
     function paintStagePlate() {
@@ -5507,7 +5507,7 @@
       el.classList.toggle('on', !!(url || (name && document.querySelector('#stagefeed .rowtile'))) && !(isMe && typeof bcLinkOnStage === 'function' && bcLinkOnStage()));
       if (typeof paintStagePlate === 'function') paintStagePlate();
     }
-    yield 1081;
+    yield 1082;
     function turnPaint() {
       const facts = __C.model.room.turnLinks() ? Array.from(__C.model.room.turnFacts().values()) : [];
       // every person tile, a pair's or a carried one (a person whose media a friend brings has no pair here)
@@ -5537,7 +5537,7 @@
         const whole = document.getElementById('stadwhole'); if (whole) pauseNote(whole, sp); }
       try { (0, /*()*/__C.ctTurnPaint)(facts); } catch (e) {}
     }
-    yield 1084;
+    yield 1085;
     // THE PAUSED NOTE on a host: a person's tile (pausedBy), or the Stadium strip that stands for a far room whose pipe
     // carries no video (stripPaused): the named state's sentence and one tap to subscribe or buy the pass.
     // say: the sentence, when the host is not a person (a shared screen's pane, S6); else the named state's.
@@ -5584,13 +5584,13 @@
         if (why && /(^|\s)blurwhy(\s|$)/.test(String(why.className || ''))) why.remove();
       } else if (!show && el) el.remove();
     }
-    yield 1103;
+    yield 1104;
     // A tile back on the grid (it is not there now).
     function paintTileOnGrid(tile) { if (!tile.parentNode) grid.appendChild(tile); }
-    yield 1106;
+    yield 1107;
     // A full-screen view that is open follows a new picture's size (rebuildPc).
     function wireFsResize(p) { if (p.video && fsview.classList.contains('on')) p.video.addEventListener('resize', () => fsRefreshIfOpen(), { once: true }); }
-    yield 1234;
+    yield 1235;
     // The joining veil, drawn from the meeting's model: null takes it down; else { w, vw, refusal } (the progress beat,
     // its words, the relay's refusal).
     let joinVeilEl = null;
@@ -5619,7 +5619,7 @@
       if (spin && spin.hidden !== !vw.spin) spin.hidden = !vw.spin;
       veilSay(vw.step, vw.title, vw.body);
     }
-    yield 1237;
+    yield 1238;
     // The step line in the places a wait shows that are not the status line:
     // the password prompt and the waiting room screen.
     function paintProgressSteps(w) {
@@ -5684,9 +5684,9 @@
           + '<a class="aw-home" href="/" target="_blank" rel="noopener">Meanwhile, get GifOS — and apps of your own</a>';
       }
     }, 1000);
-    yield 1303;   // the hold's deadline; 0 = no hold armed
+    yield 1304;   // the hold's deadline; 0 = no hold armed
     const PW_GRANT_HOLD_MS = GifOS.timings.PW_GRANT_HOLD_MS;
-    yield 1384;
+    yield 1385;
     function capPaint() {
       const b = document.getElementById('capbtn'), n = document.getElementById('capnote');
       const show = !__C.model.me.av() && !(0, /*()*/__C.capOn)() && (0, /*()*/__C.subsOn)() && GifOS.meetSubs.canCapture((0, /*()*/__C.subsMeetId)());
@@ -5695,7 +5695,7 @@
       try { applyAdminUi(); } catch (e) {}
     }
     { const b = document.getElementById('capbtn'); if (b) b.onclick = () => (0, /*()*/__C.capTry)(); }
-    yield 1413;
+    yield 1414;
     function applyAdminUi() {
       const hasAdmin = (0, /*()*/__C.hasAdminRoom)();
       document.body.classList.toggle('admroom', hasAdmin);
@@ -5727,14 +5727,14 @@
       (0, /*()*/__M.refreshOutbound)(); // admin presence changes what clears
       if (typeof paintBroadcastChrome === 'function') paintBroadcastChrome();
     }
-    yield 1460;
+    yield 1461;
     function showLoadRefusal(msg) { const d = document.createElement('div'); d.id = 'load-gate-msg'; d.setAttribute('role', 'alert'); d.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:2147483647;padding:14px 16px;background:#b00020;color:#fff;font:16px system-ui,sans-serif;text-align:center'; d.textContent = msg; document.body.appendChild(d); }
-    yield 1464;   // var: the join veil (above) reads it before this line runs
+    yield 1465;   // var: the join veil (above) reads it before this line runs
     function showRelayBusy() {
       (0, /*()*/__C.setStatus)('\u23f3 ' + __C.model.net.net().BUSY_TEXT, GifOS.timings.RELAY_BUSY_SHOW_MS);
       try { const el = document.getElementById('status'); if (el && el.dataset) el.dataset.kind = 'busy'; } catch (e) {}
     }
-    yield 1466;
+    yield 1467;
     // The steady socket kicks itself on visibility/online; only the camera
     // still needs a manual revive when the tab comes back.
     document.addEventListener('visibilitychange', () => { if (!document.hidden) (0, /*()*/__M.reviveCamera)(); });
@@ -5763,7 +5763,7 @@
       if ((0, /*()*/__C.personOnStage)(pid)) return 'staged';
       return '';
     }
-    yield 1485;
+    yield 1486;
     // L29.4: my receivers and my own reading agree: leave with the reason and knock again as a newcomer (sim: lguard rejoin 40).
     let lgNoteEl = null;
     function lgLeave() {
@@ -5817,7 +5817,7 @@
       if (on) { massBannerEl = document.createElement('div'); massBannerEl.id = 'massbanner'; massBannerEl.setAttribute('role', 'status'); massBannerEl.setAttribute('aria-live', 'polite'); massBannerEl.textContent = (0, /*()*/__C.uiText)('massLeaveBanner', 'Many people just left. Reconnecting the meeting, expect a short delay.'); document.body.appendChild(massBannerEl); }
       else { massBannerEl.remove(); massBannerEl = null; }
     }
-    yield 1494;
+    yield 1495;
     let islandNoteEl = null;
     function islandNoteTick() {
       try { svTick(); } catch (e) {}   // the same one-second clock keeps the Stage view's offer current
@@ -5827,12 +5827,12 @@
       if (on) { islandNoteEl = document.createElement('div'); islandNoteEl.id = 'islandnote'; islandNoteEl.setAttribute('role', 'status'); islandNoteEl.textContent = (0, /*()*/__C.uiText)('islandLabel', "You're in a separate part of this meeting: some people can't reach your network yet. It joins up by itself when they can."); document.body.appendChild(islandNoteEl); }
       else { islandNoteEl.remove(); islandNoteEl = null; }
     }
-    yield 1501;
+    yield 1502;
     const handqEl = document.getElementById('handq');
     // The banner repaints ONLY when the derived line actually changed — the
     // 2s beat costs one string compare, never idle DOM churn.
     let handqHtml = '';
-    yield 1507;
+    yield 1508;
     function paintBroadcastSeats() {
       const el = document.getElementById('bc-seats');
       if (!el) return;
@@ -5847,7 +5847,7 @@
       el.classList.add('on');
     }
     function showWhoIfOpen() { if (whoModal && whoModal.style.display === 'flex') showWhoModal(); }
-    yield 1510;
+    yield 1511;
     function renderHandq() {
       (0, /*()*/__C.learnFoldedNames)();
       try { paintRaisedHands(); } catch (e) {}
@@ -5935,7 +5935,7 @@
       document.body.style.setProperty('--hq-room', Math.round(right + handqEl.getBoundingClientRect().width + 10) + 'px');
       try { placeFit(); } catch (e) {}
     }
-    yield 1513;
+    yield 1514;
     if (window.ResizeObserver) {
       // In the next frame, not in the callback: placeHandq resizes the header
       // line, which another observer watches; a resize in the same frame is
@@ -5999,13 +5999,13 @@
       e.stopPropagation();
       (0, /*()*/__C.applyBcAct)(act.dataset.pid, act.dataset.bcAct);
     });
-    yield 1530;
+    yield 1531;
     function showFlipButton() {
       document.body.classList.add('has-flip');
       const b = document.getElementById('flipcam');
       if (b) b.style.display = '';
     }
-    yield 1534;
+    yield 1535;
     // If the tab was backgrounded long enough for the OS to kill the camera,
     // grab it again and swap the fresh tracks into every live link.
     function showCamBack(on) {
@@ -6023,7 +6023,7 @@
         : (0, /*()*/__C.uiText)('camBack', 'Camera stopped — bringing it back');
       if (el.textContent !== word) el.textContent = word;
     }
-    yield 1571;
+    yield 1572;
 
     // Join (or create) the room. The room id lives in the URL from the very
     // first moment — a reload, a bookmark, or a share all land in the SAME
@@ -6060,7 +6060,7 @@
       forkModal.style.display = 'flex';
       (0, /*()*/__C.setStatus)((0, /*()*/__C.uiText)('stThisLinkReachesMoreThan', 'This link reaches more than one room — pick one.'));
     }
-    yield 1575;
+    yield 1576;
 
     // ---- the password-reveal EYE (every password field wears one) ------------
     // Typing a password you cannot see is how typos mint wrong rooms. Tap to
@@ -6112,7 +6112,7 @@
     // ---- room password UI: one modal, two moods -------------------------------
     const pwModal = document.getElementById('pw-modal');
     function hideJoinPwModal() { if (pwModal.dataset.mode === 'join') pwModal.style.display = 'none'; }
-    yield 1584;
+    yield 1585;
     let lobbyPw = (() => {
       let o = null;
       try { o = JSON.parse(sessionStorage.getItem(__C.model.consts.LOB_PW_KEY()) || 'null'); sessionStorage.removeItem(__C.model.consts.LOB_PW_KEY()); } catch (e) { o = null; }
@@ -6183,7 +6183,7 @@
       if (pwModal.dataset.mode === 'join') { location.href = __C.model.consts.MEET_PATH(); return; }
       pwModal.style.display = 'none';
     });
-    yield 1594;
+    yield 1595;
     let pwSaveWaited = false;
     document.getElementById('pw-save').onclick = () => {
       const v = document.getElementById('pw-new').value.trim();
@@ -6332,7 +6332,7 @@
     // network address, so GifOS makes it VISIBLE — nobody here is anonymous,
     // and a downloadable record deters the worst behavior.
     const whoModal = document.getElementById('who-modal');
-    yield 1618;
+    yield 1619;
     function showWhoModal() {
       const opening = whoModal.style.display !== 'flex';
       const list = document.getElementById('who-list');
@@ -6533,9 +6533,9 @@
         hs.innerHTML = richHtml((0, /*()*/__C.uiText)('helpAppBody', hs.innerHTML));
       }
     }
-    yield 1632;
+    yield 1633;
     helpModal.onclick = (e) => { if (e.target === helpModal) helpModal.style.display = 'none'; };
-    yield 1635;
+    yield 1636;
     document.getElementById('who-dl').onclick = async () => {
       try { await (0, /*()*/__C.whoObserve)(); } catch (e) {}
       const stamp = new Date().toISOString();
@@ -6560,7 +6560,7 @@
           : 'The stage is muted on this device. Everyone else still hears it.');
       } catch (e) {}
     };
-    yield 1658;
+    yield 1659;
     function renderLobbyList() {
       // Filtered by surface as well as read from the surface's own key: the list
       // you are looking at can NEVER show the other one's links, whatever ends up
@@ -6573,7 +6573,7 @@
       document.getElementById('lob-list').innerHTML = html;
       document.getElementById('lob-empty').style.display = html ? 'none' : '';
     }
-    yield 1662;
+    yield 1663;
     let lobbyCamGen = 0;
     function stopLobbyPreview() {
       lobbyCamGen++;
@@ -6649,7 +6649,7 @@
         paintLobbyAv();
       }).catch(() => { if (gen === lobbyCamGen) { __C.model.me.joinAv().cam = false; paintLobbyAv(); } });
     }
-    yield 1668;
+    yield 1669;
     function enterMeeting(hashOrUrl) {
       if (document.getElementById('lobby').classList.contains('show')) (0, /*()*/__C.stashJoinAv)();
       stopLobbyPreview();
@@ -6685,7 +6685,7 @@
       bg.querySelector('#nm2cancel').onclick = () => bg.remove();
       input.addEventListener('keydown', (e) => { if (e.key === 'Enter') done(); });
     }
-    yield 1671;
+    yield 1672;
     function wireLobby() {
       const lob = document.getElementById('lobby');
       const toggle = (id) => { const el = document.getElementById(id); el.style.display = el.style.display === 'none' ? '' : 'none'; };
@@ -7085,7 +7085,7 @@
       if (next > 88) name.style.top = next + 'px';
       else name.style.top = '';
     }
-    yield 1677;
+    yield 1678;
 
     // ---- boot ------------------------------------------------------------------
     // Camera trouble must never lock anyone out of the room: no permission →
@@ -7115,7 +7115,7 @@
     // Why the status line is up (data-why: the live badge reads it).
     function paintStatusWhy(why) { statusEl.dataset.why = why; }
     function showShareLink() { share.classList.add('show'); }
-    yield 1687;
+    yield 1688;
     // A solo link names a file in THIS browser's store. Opened anywhere else
     // (another phone, another browser, another host) there is nothing to run,
     // and the solo chrome hides the status line — so say it on a page of its
@@ -7134,9 +7134,9 @@
       document.getElementById('appmissing').hidden = true;
       document.body.classList.remove('app-missing');
     }
-    yield 1694; // only an app room runs it
+    yield 1695; // only an app room runs it
     function paintAppRoomBody() { document.body.classList.add('app-room'); }
-    yield 1698;
+    yield 1699;
     // Solo → shared: mint the room (stable per file — re-inviting reuses the
     // same link), flip the page's traits in place, and host the app on the
     // room's lane. The owned/resilient choice IS the succession class:
@@ -7164,7 +7164,7 @@
         go(owned, fresh);
       };
     }
-    yield 1700;
+    yield 1701;
     // THE HEADER'S INVITE is the same slot in every app. Solo: mint the
     // room, unless this app set capabilities.multiplayer to false: then
     // the button stays hidden and inviteFromSolo refuses. App room: only
@@ -7243,7 +7243,7 @@
       else if (picked === 'larger') { delete bar.dataset.hide; bar.dataset.header = 'larger'; }
       else { delete bar.dataset.hide; delete bar.dataset.header; }
     }
-    yield 1708;
+    yield 1709;
     document.getElementById('appinvite').onclick = () => {
       if (__C.ROOM.solo) {
         // THE deferred preflight gate (see the top of this file): a solo app
@@ -7261,7 +7261,7 @@
       share.classList.add('show');
       showInviteModal();
     };
-    yield 1710;
+    yield 1711;
     function paintAppGifFromLane() {
       if (!appGifUrl && __C.appClientCtl && __C.appClientCtl.gifBytes) {
         try { const b = __C.appClientCtl.gifBytes(); if (b) setAppGif(b, document.getElementById('appname').textContent); } catch (e) {}
@@ -7281,14 +7281,14 @@
       document.getElementById('callbanner').style.display = 'none';
       (0, /*()*/__M.lateMedia)('mic'); // asks for mic+cam permission; joins quiet-camera, live mic
     };
-    yield 1715;
+    yield 1716;
     function bootMeetSession() {
       // A session frame waits for its parent. The lobby would open a camera
       // preview, and a hash with no room would too. Neither may run here.
       document.body.classList.add('meet-session');
       window.__gifosMeetBoot = true;
     }
-    yield 1725; // byId -> receiver clock when their next line is due (slowBlocks)
+    yield 1726; // byId -> receiver clock when their next line is due (slowBlocks)
     // What happened to my lines and to the lines slow mode kept out, in the
     // debug record (Settings → Debug logging): sent, held for slow mode,
     // refused, or dropped on arrival. Ids and authors only, never the text.
@@ -7298,12 +7298,12 @@
       r.push({ t: Date.now(), ev: ev, id: m && m.id ? String(m.id).slice(0, 24) : null, by: m && m.byId ? String(m.byId).slice(0, 12) : null });
       if (r.length > 300) r.splice(0, r.length - 300);
     }
-    yield 1748;
+    yield 1749;
     let lastChatLine = null;
     let mentionAlert = null;
-    yield 1751;
+    yield 1752;
     let pendingReply = null;
-    yield 1762;
+    yield 1763;
     function paintReply() {
       const bar = document.getElementById('chatreply');
       if (!bar) return;
@@ -7313,7 +7313,7 @@
       if (by) by.textContent = pendingReply ? pendingReply.by : '';
       if (txt) txt.textContent = pendingReply ? pendingReply.text : '';
     }
-    yield 1764;
+    yield 1765;
     function paintChatBadge() {
       const b = document.getElementById('chatbadge');
       const note = document.getElementById('chatnote');
@@ -7376,20 +7376,20 @@
       try { paintChatCount(); } catch (e) {}
     }
     const fmtSize = (n) => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : n > 1024 ? (n / 1024 | 0) + ' KB' : n + ' B';
-    yield 1807;
+    yield 1808;
     // A reader who scrolled up stays there. The log used to jump to the bottom
     // on every line. A hidden panel is not rebuilt; opening it paints once.
     function paintChatNew(stick) {
       const b = document.getElementById('chatnew');
       if (b) b.hidden = !!stick;
     }
-    yield 1809;
+    yield 1810;
     function chatPanelOpen() { return !!(chatPanel && chatPanel.classList.contains('open')); }
     function transcriptShown() {
       const w = document.getElementById('trwrap');
       return !!(w && w.classList.contains('show'));
     }
-    yield 1816;
+    yield 1817;
     function paintMentions() {
       const box = document.getElementById('chatmentions');
       const inp = document.getElementById('chat-in');
@@ -7488,7 +7488,7 @@
         if (el && el.scrollIntoView) try { el.scrollIntoView({ block: 'nearest' }); } catch (e) {}
       }
     }
-    yield 1821;
+    yield 1822;
     (function () {
       const q = document.getElementById('chatq');
       const clear = document.getElementById('chatqclear');
@@ -7739,7 +7739,7 @@
         try { inp.setSelectionRange(pos, pos); } catch (err) {}
       });
     })();
-    yield 1850;
+    yield 1851;
     document.getElementById('chatform').addEventListener('submit', (e) => {
       e.preventDefault();
       if (__C.model.chat.off() && !__C.amAdmin) { (0, /*()*/__C.setStatus)((0, /*()*/__C.uiText)('stTheHostHasTurnedChat', 'The host has turned chat off.')); return; }
@@ -7888,7 +7888,7 @@
     }
     document.getElementById('chatbadge').onclick = () => { if (chatBtn) chatBtn.click(); };
     document.getElementById('chatpreview').onclick = () => { if (chatBtn) chatBtn.click(); };
-    yield 1868;
+    yield 1869;
 
     // ---- questions: ask, vote, and the host shows one on the picture --------
     // A hundred people watching can't all raise a hand, and chat buries the
@@ -7897,7 +7897,7 @@
     // viewer's picture with a signed order, so nobody else can.
     const qaPanel = document.getElementById('qa');
     const qaBtn = document.getElementById('qabtn');
-    yield 1875;
+    yield 1876;
     function placeQaBand() {
       const band = document.getElementById('bc-q');
       if (!band || band.hidden) return;
@@ -7952,7 +7952,7 @@
       band.hidden = false;
       placeQaBand();
     }
-    yield 1878;
+    yield 1879;
     if (window.ResizeObserver) {
       try {
         const ro = new ResizeObserver(() => { try { placeQaBand(); } catch (e) {} });
@@ -7976,7 +7976,7 @@
           + '</div>';
       }).join('') : '<p class="qempty">No questions yet. Ask one below, and vote up the ones you want answered.</p>';
     }
-    yield 1881;
+    yield 1882;
     function qaOpen(open) {
       if (!qaPanel) return;
       qaPanel.hidden = !open;
@@ -8022,7 +8022,7 @@
         });
       }
     });
-    yield 1950;
+    yield 1951;
 
     // ========== STADIUM MEDIA (docs/media-plane.md) ============================
     // Bounded-degree media. A seat holds DIRECT links only to seat.linkPeers()
@@ -8033,9 +8033,9 @@
     // tiles those composites produce.
     const stadiumEl = document.getElementById('stadium');
     const stagefeedEl = document.getElementById('stagefeed');
-    yield 2012;
+    yield 2013;
     const multiSection = () => { const s = (0, /*()*/__C.meshSeat)(); if (!s || !s.hasCoord) return false; for (const k of s.occ.keys()) if (!(k.charCodeAt(0) === 48 && k.charCodeAt(1) === 95)) return true; return false; };
-    yield 2241;
+    yield 2242;
     // The stadium tile (one, keyed 'sd') in the stadium strip.
     function paintStadiumTile(stream, quiet) {
       let el = stadiumEl.querySelector('[data-row="sd"]');
@@ -8071,7 +8071,7 @@
       __C.act.recSourcesChanged();
       if (changed) { try { layout(); } catch (e) {} }
     }
-    yield 2337; // sid -> { pk, ver } (one pin per sid and ad key)
+    yield 2338; // sid -> { pk, ver } (one pin per sid and ad key)
     // Anchor the lane's on-demand load to the page's own js/ folder, captured now, while this script is evaluating and the
     // document base is still this page. joinRoom() later rewrites the address to /meet/<room> or /join/… (history.replaceState)
     // and moves the base; a bare 'js/app-owner.js' then resolves to /meet/js/app-owner.js (or /join/js/…) and 404s, the
@@ -8104,7 +8104,7 @@
 
     // ---- hand raise: float to the top in the order hands went up --------------
     const handBtn = document.getElementById('hand');
-    yield 2342;
+    yield 2343;
     try {
       const handMq = window.matchMedia('(max-width: 700px), (max-height: 500px)');
       if (handMq.addEventListener) handMq.addEventListener('change', () => { try { __C.act.placeViewerHand(); } catch (e) {} });
@@ -8142,7 +8142,7 @@
       layout();
       renderHandq();
     };
-    yield 2348;
+    yield 2349;
 
     // ---- the stage: step up / step down (docs/media-plane.md, Channel St) ------
     // Open room: anyone, while seats remain — attributed, like everything.
@@ -8183,7 +8183,7 @@
       try { paintWatchingSeat(); } catch (e) {}
       try { paintBarIdle(); } catch (e) {}
     }
-    yield 2354;
+    yield 2355;
     stageBtn.onclick = () => {
       if ((0, /*()*/__C.bcWatchingViewer)()) return;
       if (__C.model.me.myStatus().stg) {
@@ -8194,9 +8194,9 @@
       if ((0, /*()*/__C.stageIds)().length >= __C.model.consts.SCALE().C) { (0, /*()*/__C.sayState)('stageFull', { n: __C.model.consts.SCALE().C }); return; }
       (0, /*()*/__C.setStage)(true);
     };
-    yield 2356;
+    yield 2357;
     const shareBtn = document.getElementById('sharebtn');
-    yield 2358;
+    yield 2359;
     function paintShare() {
       if (!shareBtn) return;
       const on = !!__C.model.me.myStatus().scr;
@@ -8236,7 +8236,7 @@
       // A broadcast viewer has no share button until an admin allows them.
       document.body.classList.toggle('share-granted', (0, /*()*/__C.mayShareScreen)(__C.model.me.myId()));
     }
-    yield 2372;
+    yield 2373;
     function showResharePrompt() {
       __M.shareRecoverMode = false;
       const back = document.getElementById('reshare-back');
@@ -8247,7 +8247,7 @@
       const back = document.getElementById('reshare-back');
       if (back && back.classList) back.classList.remove('show');
     }
-    yield 2379;
+    yield 2380;
     if (shareBtn) shareBtn.onclick = () => {
       if (__C.model.room.BROADCAST() && (0, /*()*/__C.bcRole)() !== 'host') return;
       if (__C.model.me.myStatus().scr) { (0, /*()*/__M.stopScreenShare)(); return; }
@@ -8289,7 +8289,7 @@
     // re-ships down every relayer (see selfShipMemo). Pause holds the same
     // tracks; the picture just stops changing.
     const rbBtn = document.getElementById('rbbtn');
-    yield 2389;
+    yield 2390;
     // Without a capture: a canvas drawn from the element frame by frame.
     function rbCanvas(r) {
       const vid = r.vid;
@@ -8305,7 +8305,7 @@
       step();
       return cv.captureStream(30).getVideoTracks()[0] || null;
     }
-    yield 2395;
+    yield 2396;
     function paintRbNow() {
       const r = __C.model.room.rbNow();
       const t = document.getElementById('rb-now-txt');
@@ -8431,7 +8431,7 @@
       if (focusEl && focusEl.focus) { try { focusEl.focus(); } catch (e) {} }
     }
     let shareSheetOpener = null;
-    yield 2402;
+    yield 2403;
     function closeShareSheet() {
       const modal = document.getElementById('share-modal');
       if (!modal || modal.style.display === 'none') return;
@@ -8468,7 +8468,7 @@
         closeShareSheet();
       }, true);
     })();
-    yield 2466;
+    yield 2467;
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') (0, /*()*/__C.dlogOut)(); });
     function paintDebugLog() {
       const sw = document.getElementById('dbglog-on'), st = document.getElementById('dbglog-state');
@@ -8556,7 +8556,7 @@
       if (a && a.url) { img.src = a.url; img.hidden = false; }
       else { img.removeAttribute('src'); img.hidden = true; }
     }
-    yield 2476;
+    yield 2477;
     const avatarFile = document.getElementById('set-avatar-file');
     const avatarErr = document.getElementById('set-avatar-err');
     if (avatarFile) avatarFile.addEventListener('change', () => {
@@ -8601,7 +8601,7 @@
       });
     }
     const paintFaders = () => { for (const b of ['stage', 'row', 'stadium']) { const i = document.getElementById('mix-' + b); if (i) i.value = Math.round(__M.mix[b] * 100); } };
-    yield 2505;
+    yield 2506;
 
     // The Timing pills (in the mix panel): Conversation | Unison | 🎵 Song.
     // Song doubles as the way to LEAD one — singing is loved but rare, so it
@@ -8610,7 +8610,7 @@
     // song. While someone else leads, the pill just glows — one leader keeps
     // the timing anchor unambiguous.
     const timingRow = document.getElementById('timingrow');
-    yield 2509;
+    yield 2510;
     timingRow.addEventListener('click', (e) => {
       const t = e.target && e.target.dataset ? e.target.dataset.timing : null;
       if (t === 'song') { (0, /*()*/__M.toggleSing)(); (0, /*()*/__M.paintTiming)(); return; }
@@ -8618,7 +8618,7 @@
       __C.act.chooseTiming(t);
       (0, /*()*/__M.paintTiming)();
     });
-    yield 2550;
+    yield 2551;
     // A line arrives here from the wire ('tr' frame, or a 'hi' replay = backfill)
     // and from this page's own engine (addTranscriptLine). The device that wrote
     // it emits it to the bot; everyone else emits here. A replay is history.
@@ -8629,7 +8629,7 @@
       if (__C.model.me.myStatus().bot && (!line.byId || line.byId === __C.model.me.myId())) return;
       if (typeof window !== 'undefined' && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'transcript', line: { by: line.by, byId: line.byId, text: line.text, at: line.at, w: line.w, src: line.src, lang: line.lang || '' } });
     }
-    yield 2559; // this screen's own choice (qa-meet-mobile)
+    yield 2560; // this screen's own choice (qa-meet-mobile)
     function hideCaptions() {
       const nodes = document.querySelectorAll('.tile .cap.show');
       for (let i = 0; i < nodes.length; i++) nodes[i].classList.remove('show');
@@ -8722,7 +8722,7 @@
         always: () => !!window.__gifosRecBot   // a recording bot seat (its session's speakers op) keeps sampling in a background tab
       };
     }
-    yield 2576;
+    yield 2577;
     // THE WARNING CARD and THE SOURCE CHOOSER: one small card over the call, one tap per source.
     // ex: { theirs, ours, by } from capTrust.evidence(v): shown side by side so the person can judge who is right.
     function capCard(id, v, title, note, rows, ex) {
@@ -8761,7 +8761,7 @@
       if (window.__gifosBarAvoid) window.__gifosBarAvoid();   // made lazily: lift it over the floating bar now
       return c;
     }
-    yield 2582;
+    yield 2583;
     // ONE CARD for a person's captions. The warning (info set: this page just stopped trusting their captions) and the
     // chooser (opened from their tile or the caption bar) are the same card: what was said vs what was heard, what is
     // shown now, and one tap per choice.
@@ -8787,7 +8787,7 @@
       const n = c.querySelector('.capcard-n'), v = c.dataset.voice, now = (0, /*()*/__C.capNowNote)(v);
       if (n && n.textContent !== now) capSourceOpen(v);
     }
-    yield 2589;
+    yield 2590;
     (function wireCcLang() {
       const sel = document.getElementById('cclang'); if (!sel) return;
       let saved = ''; try { saved = localStorage.getItem(__C.model.consts.CC_LANG_KEY()) || ''; } catch (e) {}
@@ -8812,7 +8812,7 @@
       (0, /*()*/__C.setStatus)((0, /*()*/__C.uiText)('stCaptionsNowListenFor', 'Captions now listen for {lang}.').replace('{lang}', (0, /*()*/__C.ccLangLabel)()));
       try { capLangAsk(); } catch (e) {}
     }
-    yield 2595;
+    yield 2596;
     function capLangAsk() {
       if (!__C.model.chat.capLang()) return;
       const s = __C.model.chat.capLang().suggestion();
@@ -8833,7 +8833,7 @@
       if (window.__gifosBarAvoid) window.__gifosBarAvoid();   // above the floating bar, like the captions card
       if (__C.clog) (0, /*()*/__C.clog)('caplang ask', s.lang, s.n, s.need, (0, /*()*/__C.trLangOf)((0, /*()*/__C.capLangMine)()));
     }
-    yield 2609;
+    yield 2610;
     function paintCcLocal() {
       const el = document.getElementById('cclocal-st'); if (!el) return;
       const blocked = (0, /*()*/__C.ccLocalBlocked)();
@@ -8844,7 +8844,7 @@
       else t = (0, /*()*/__C.uiText)('setCcLocalIdle', 'The speech model downloads once from gifos.app the first time your microphone is on, and stays on this phone.');
       if (el.textContent !== t) el.textContent = t;
     }
-    yield 2675;
+    yield 2676;
     function paintPhoneCaptions() {
       const row = document.querySelector('input[name="ccengine"][value="browser"]');
       const lab = row && row.closest('label'); if (!lab) return;
@@ -8924,7 +8924,7 @@
       const need = document.getElementById('cctranslate-need');
       if (need) need.style.display = ok && !(0, /*()*/__C.whisperReady)() ? '' : 'none';
     }
-    yield 2686;
+    yield 2687;
     function paintWspStatus() {
       const chosen = (0, /*()*/__M.whisperChosen)();
       const s = chosen ? (0, /*()*/__M.wspState)() : { k: '' };
@@ -8954,7 +8954,7 @@
         tx.textContent = chosen ? ' · ' + label + (run === 'browser' ? (0, /*()*/__C.uiText)('wspRunBrowserShort', ', browser captions on') : run === 'none' ? (0, /*()*/__C.uiText)('wspRunNoneShort', ', no captions from you') : '') : '';
       }
     }
-    yield 2693;
+    yield 2694;
     function paintWspChip() {
       const chip = document.getElementById('ccwsp-off'); if (!chip) return;
       if (__C.model.consts.CC_ON_PHONE()) { if (chip.style.display !== 'none') chip.style.display = 'none'; return; }
@@ -8970,7 +8970,7 @@
       const want = show ? '' : 'none';
       if (chip.style.display !== want) chip.style.display = want;
     }
-    yield 2696;
+    yield 2697;
     setInterval(() => {
       paintWspChip();
       const now = Date.now();
@@ -9047,7 +9047,7 @@
         else run();
       }, 20000);
     })();
-    yield 2703;
+    yield 2704;
     function paintTxMark() {
       const el = document.getElementById('txmark'); if (!el) return;
       const why = (0, /*()*/__C.txMarkWhy)();
@@ -9060,7 +9060,7 @@
         el.setAttribute('aria-label', words);
       }
     }
-    yield 2706;
+    yield 2707;
     function paintTranscriptControls() {
       const send = document.getElementById('ccsend'); if (send) send.checked = (0, /*()*/__C.capSend)();
       const shots = document.getElementById('trshots'); if (shots) { try { shots.checked = shotsOn(); shots.disabled = !(0, /*()*/__C.trKeeps)(); } catch (e) {} }
@@ -9088,7 +9088,7 @@
       paintTranscriptControls();
       try { GifOS.shareShots.attach(shareShotsSource()); } catch (e) {}   // a surface without the library takes none
     }
-    yield 2743;
+    yield 2744;
     // CC only shows or hides captions on this screen. The More button and the
     // dock button are one switch.
     function paintCcView() {
@@ -9110,14 +9110,14 @@
         for (let i = 0; i < caps.length; i++) caps[i].classList.remove('show');
       }
     }
-    yield 2746;
+    yield 2747;
     const ccDockBtn = document.getElementById('ccdock');
-    yield 2759;
+    yield 2760;
     // The same download the embed's Transcript panel runs (js/core/view/kit.js trDownload).
     document.getElementById('trdl').onclick = () => GifOS.viewKit.trDownload(__C, (0, /*()*/__M.transcriptFile)(), shotWho);
-    yield 2764;
+    yield 2765;
     const recBtn = document.getElementById('recbtn');
-    yield 2778;
+    yield 2779;
     function showRecReplay(saved) {
       const old = document.getElementById('rec-replay');
       if (old) old.remove();
@@ -9238,7 +9238,7 @@
       };
       bg.querySelector('#se-leave').onclick = () => { bg.remove(); (0, /*()*/__M.recRelease)(saved); (0, /*()*/__C.leaveSeededService)(); };
     }
-    yield 2809;
+    yield 2810;
     function showRecOptions() {
       if (__M.recStarting) return;
       if (document.getElementById('rec-options')) return;
@@ -9310,7 +9310,7 @@
         close();
       };
     }
-    yield 2813;
+    yield 2814;
     // A sideways phone puts Live and Record in a column left of the dock
     // and steps the dock right if the column needs the room. Live (a
     // broadcast) makes the column taller than the dock, and a dragged dock
@@ -9402,7 +9402,7 @@
     if (ccWatch) callStateWatch.observe(ccWatch, { attributes: true, attributeFilter: ['class'] });
     const lobWatch = document.getElementById('lobby');
     if (lobWatch) callStateWatch.observe(lobWatch, { attributes: true, attributeFilter: ['class'] });
-    yield 2824;
+    yield 2825;
 
     // ---- popovers that hang off the dock (More, Reactions) ---------------------
     // The dock can be dragged anywhere, so a popover is placed from where the
@@ -10218,7 +10218,7 @@
       // dialog closes) still ends: look once a second, softly.
       setInterval(() => { try { syncChrome(true); } catch (e) {} }, 1000);
     })();
-    yield 2835; // 0.9.23b: calm after 3 s
+    yield 2836; // 0.9.23b: calm after 3 s
     (function () {
       document.body.classList.toggle('desk-ptr', !__C.model.consts.IS_MOBILE());
       (0, /*()*/__C.applyPageHeader)(); // Meet's manifest says auto-hide; an app's manifest can say otherwise
@@ -10291,11 +10291,11 @@
         if (head !== document.body.classList.contains('head-calm')) document.body.classList.toggle('head-calm', head);
       }, 250);
     })();
-    yield 2837;
+    yield 2838;
     const AUDIENCE_REACT_NAME = { '👏': 'claps', '👍': 'yes', '👎': 'no', '😂': 'laughs', '❤️': 'hearts' };
-    yield 2840;
+    yield 2841;
     let audienceReactFade = 0;
-    yield 2842;
+    yield 2843;
     // The burst over a tile (or the service stage). The stylesheet owns the
     // 1.6 s fade, so a second tap starts it again without a timer here.
     function flashReactBurst(parent, label) {
@@ -10318,7 +10318,7 @@
     // at once costs each seat only its own section's reactions. At most 6 in
     // 10 s count from one person, sent or taken.
     const FACE_REACT_MS = GifOS.timings.FACE_REACT_MS;
-    yield 2849;
+    yield 2850;
     function takeFaceReact(emoji, fromId) {
       emoji = String(emoji || '');
       if (__C.model.consts.AUDIENCE_REACTS().indexOf(emoji) < 0) return false;
@@ -10333,12 +10333,12 @@
       if ((0, /*()*/__C.faceDrawnHere)(who) && typeof __M.schedReconcile === 'function') { (0, /*()*/__M.schedReconcile)(); setTimeout(__M.schedReconcile, FACE_REACT_MS + 60); }
       return true;
     }
-    yield 2852;
+    yield 2853;
     function sendFaceReact(emoji) {
       if (__C.model.me.myId() && takeFaceReact(emoji, __C.model.me.myId())) (0, /*()*/__C.sendFaceFrame)(emoji);
       else flashReactBurst(document.querySelector('.tile.me'), emoji);
     }
-    yield 2854;
+    yield 2855;
     function paintAudienceReacts() {
       const host = document.getElementById('bc-reacts');
       if (!host) return;
@@ -10379,7 +10379,7 @@
       clearTimeout(audienceReactFade);
       if (soon < Infinity) audienceReactFade = setTimeout(paintAudienceReacts, Math.max(0, soon - now) + 40);
     }
-    yield 2858;
+    yield 2859;
     (function () {
       const btn = document.getElementById('reactbtn');
       const tray = document.getElementById('reacttray');
@@ -10435,7 +10435,7 @@
         } else sendFaceReact(label);
       });
     })();
-    yield 2862;
+    yield 2863;
     function armMeetDialogs() {
       const modals = document.querySelectorAll('.name-modal');
       for (const el of modals) {
@@ -10476,7 +10476,7 @@
       });
       for (const el of modals) obs.observe(el, { attributes: true, attributeFilter: ['style'] });
     }
-    yield 2864;
+    yield 2865;
 
     function paintControls() {
       // mic — one labeled control. The word is the action. There is no header Unmute pill.
@@ -10614,7 +10614,7 @@
       bar.hidden = !show;
       bar.className = show ? 'on' : '';
     }
-    yield 2887;
+    yield 2888;
     // THE SPEAKER CHOICE in More: only where a page can move the sound
     // (speakerChoices: setSinkId and more than one output). It opens the mic
     // pop-up's own element with the speaker rows alone. Where there is no
@@ -10628,11 +10628,11 @@
       const n = document.getElementById('spknote');
       if (n) n.hidden = !none;
     }
-    yield 2918;
+    yield 2919;
     // ? lists the keys that work for this person right now (a viewer has
     // no mic or camera on the dock, so M and V are left out).
     const keysModal = document.getElementById('keys-modal');
-    yield 2920;
+    yield 2921;
     document.getElementById('keys-close').onclick = () => { keysModal.style.display = 'none'; };
     // One shortcut list: ? and Help's Keys open the same localized sheet
     // (toggleShortcutSheet); this older list stays for a caller that asks.
@@ -10649,7 +10649,7 @@
       __M.camDeviceId = '';
       (0, /*()*/__M.regrabCamera)('flip');
     };
-    yield 2924;
+    yield 2925;
     function wireMediaSession() {
       const ms = navigator.mediaSession; if (!ms || !ms.setActionHandler) return;
       const wire = (action, fn) => { try { ms.setActionHandler(action, fn); } catch (e) { /* action unsupported here */ } };
@@ -10670,7 +10670,7 @@
       wire('enterpictureinpicture', () => { pipNote('ms-action'); awayFull(true); enterPip(false, true); });
       (0, /*()*/__C.updateMediaSession)();
     }
-    yield 2926;
+    yield 2927;
     // The blur slider: pick Max / Min / No blur directly. It records YOUR choice;
     // whether a tile actually goes clear is the room rule's meeting — when your
     // No blur can't show yet, the status line says exactly why.
@@ -10685,7 +10685,7 @@
       el.hidden = !text;
       if (text) blurNoteTimer = setTimeout(() => { el.hidden = true; el.textContent = ''; }, BLUR_NOTE_MS);
     }
-    yield 2931;
+    yield 2932;
     // THE NO BLUR EXPLAINER. A No blur pick that a room rule still keeps blurred
     // opens a dialog the person closes, instead of a note that faded before it
     // was read. It says why (BLUR_WHY's words, the same as the tile note) and
@@ -10695,7 +10695,7 @@
     // tab: a reload of the same meeting does not open it again. The lobby
     // preview carries its own line, so the dialog waits until the meeting.
     const BLUR_WHY_ASK = { nopw: 1, guests: 1, forall: 1, noadmin: 1 };
-    yield 2935;
+    yield 2936;
     function canSetRoomPw() {
       const pwb = document.getElementById('pwbtn');
       return !!pwb && !pwb.disabled;
@@ -10752,7 +10752,7 @@
       const whyDlg = document.getElementById('blurwhy-modal');
       if (!(whyDlg && whyDlg.style.display !== 'none')) blurNote(why);
     }
-    yield 2942;
+    yield 2943;
     // Each choice is an explicit pick. A lobby or Go live opener supplies
     // then(); the dock pick turns the camera on at that level.
     const camChooserEl = document.getElementById('camchooser');
@@ -10791,7 +10791,7 @@
     // non-admin in the room, linked to me or not, and everyone who joins while
     // it stands; turning it off lifts it for all of them at once.
     const blurAllBtn = document.getElementById('blurall');
-    yield 2950;
+    yield 2951;
     function updateBlurAllBtn() {
       blurAllBtn.style.display = __C.amAdmin ? '' : 'none';
       for (const li of document.querySelectorAll('#shortcutsheet .hostkey')) li.hidden = !__C.amAdmin; // the host keys are listed for a host only
@@ -10810,7 +10810,7 @@
     // "Video off" (admin) — the harder hammer: kills every guest's camera
     // room-wide, not just blurs it. The same one room-wide order, modTable['*'].cam.
     const camAllBtn = document.getElementById('camall');
-    yield 2954;
+    yield 2955;
     function updateCamAllBtn() {
       camAllBtn.style.display = __C.amAdmin ? '' : 'none';
       if (!__C.amAdmin) return;
@@ -10829,7 +10829,7 @@
     // receiver drops a muted guest's voice (modOf), and an honest guest's mic
     // locks until an admin lifts it, for one guest from the tile or for all here.
     const muteAllBtn = document.getElementById('muteall');
-    yield 2958;
+    yield 2959;
     function updateMuteAllBtn() {
       muteAllBtn.style.display = __C.amAdmin ? '' : 'none';
       if (!__C.amAdmin) return;
@@ -10849,7 +10849,7 @@
     // it is later, so one guest can be stopped while the room is allowed, or
     // allowed while the room is not.
     const shareAllBtn = document.getElementById('shareall');
-    yield 2962;
+    yield 2963;
     function updateShareAllBtn() {
       if (!shareAllBtn) return;
       shareAllBtn.style.display = __C.amAdmin ? '' : 'none';
@@ -10865,7 +10865,7 @@
       updateShareAllBtn();
       (0, /*()*/__C.setStatus)(on ? 'Guests may share their screen.' : 'Guests can no longer share their screen.');
     };
-    yield 2978; // null | 'up' | 'down' | 'kick'
+    yield 2979; // null | 'up' | 'down' | 'kick'
     function setVoteMode(m) {
       __C.act.setVoteMode(m);
       for (const k of ['up', 'down', 'kick']) document.body.classList.toggle('vm-' + k, __C.model.votes.mode() === k);
@@ -10922,7 +10922,7 @@
         }
       }
     }
-    yield 2982;
+    yield 2983;
     let closeVoteModal = () => { const m = document.getElementById('vote-modal'); if (m) m.style.display = 'none'; };
     document.getElementById('votebtn').onclick = () => {
       const m = document.getElementById('vote-modal');
@@ -10935,7 +10935,7 @@
     for (const el of document.querySelectorAll('#vote-modal .voteopt')) {
       el.onclick = () => { closeVoteModal(); setVoteMode(el.dataset.vm); };
     }
-    yield 2988;
+    yield 2989;
     function topNameModal() {
       let top = null;
       for (const el of document.querySelectorAll('.name-modal')) {
@@ -10944,7 +10944,7 @@
       }
       return top;
     }
-    yield 2990;
+    yield 2991;
     let modalTracked = null, modalOpener = null, modalOutside = null;
     function syncModalFocus() {
       const top = topNameModal();
@@ -11080,7 +11080,7 @@
       if (el.getAttribute('role') !== 'alertdialog') el.setAttribute('role', 'dialog');
       el.setAttribute('aria-modal', 'true');
     }
-    yield 2998;
+    yield 2999;
     // ---- Invite: the one place every meeting link is made ----------------------
     // A meeting's room IS its URL and is host-less, so "sharing" is handing out
     // the link you already hold. The ONE governance choice is open vs a room you
@@ -11092,7 +11092,7 @@
     // button is now sign-in + bans, and shows only inside an admin room.
     const invModal = document.getElementById('inv-modal');
     let closeInvModal = () => { invModal.style.display = 'none'; };
-    yield 3001;
+    yield 3002;
     // A meeting shares the viewer link (password stays off it). An app room
     // shares the room link it already holds.
     function inviteLinkForModal() {
@@ -11103,7 +11103,7 @@
       }
       return (shareUrl && shareUrl.value) || '';
     }
-    yield 3003;
+    yield 3004;
     function showInviteModal() {
       const body = document.getElementById('inv-body');
       const others = Math.max(0, (0, /*()*/__C.displayCount)() - 1);
@@ -11266,7 +11266,7 @@
       }
       closeInvModal = (0, /*()*/__M.openModal)(invModal, () => { invModal.style.display = 'none'; });
     }
-    yield 3013;   // the subscription code is loaded (always on)
+    yield 3014;   // the subscription code is loaded (always on)
     // The Subscription entry in More (Settings and help): opens the Subscription dialog.
     {
       const sb = document.getElementById('subbtn'); if (sb) sb.addEventListener('click', () => { if (window.GifOS && GifOS.meetSubs && GifOS.meetSubs.openSubscribe) GifOS.meetSubs.openSubscribe(); });
@@ -11383,9 +11383,9 @@
         return { hosted: hosted, heard: heard, open: open, words: licenseWords, age: licenseAge, acl: licenseAcl, show: licenseShow };
       })();
     }
-    yield 3031;   // DEBUG=on only: a test reads the re-knock state
+    yield 3032;   // DEBUG=on only: a test reads the re-knock state
     function hideDialogs(ids) { for (const id of ids) { const d = document.getElementById(id); if (d) d.style.display = 'none'; } }
-    yield 3036;
+    yield 3037;
     // A viewer early for a scheduled service gets Add to calendar: a one-event
     // .ics with the viewer link, which a phone opens in its calendar.
     let bcCalUrl = null, bcCalFor = '';
@@ -11449,7 +11449,7 @@
       setTimeout(() => { if (btn.textContent === 'Copied') btn.textContent = 'Copy'; }, 1600);
     };
     document.getElementById('closed-reload').onclick = () => location.reload();
-    yield 3063;
+    yield 3064;
     const leaveBtn = document.getElementById('leavebtn');
     const leaveAsk = document.getElementById('leave-ask');
     // A small group leaves on the red button. leaveMeeting() is already
@@ -11467,7 +11467,7 @@
     if (leaveCancel) leaveCancel.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'none'; try { (0, /*()*/__C.releaseLeaveAsk)(); } catch (e) {} };
     const leaveGo = document.getElementById('leave-go');
     if (leaveGo) leaveGo.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'none'; (0, /*()*/__C.leaveMeeting)(); };
-    yield 3071;
+    yield 3072;
     function shortcutBlocked() {
       for (const el of document.querySelectorAll('.name-modal')) {
         if (!el.isConnected || el.style.display === 'none') continue;
@@ -11549,7 +11549,7 @@
       e.preventDefault();
       btn.click();
     });
-    yield 3083;
+    yield 3084;
     const leftRejoin = document.getElementById('left-rejoin');
     if (leftRejoin) leftRejoin.onclick = () => {
       let to = null;
@@ -11616,7 +11616,7 @@
     // its own tab — including when you JOIN a meeting where someone shares an app.
     // Closing a REQUIRED-setup gate here stops the shared app rather than the tab.
     if (window.GifOS && GifOS.perms) GifOS.perms.attach(document.getElementById('appperms'), { onLeave: function () { (0, /*()*/__C.stopApp)(); }, skipCaps: function () { return __C.appMode === 'client' ? ['stage'] : []; } });
-    yield 3099;
+    yield 3100;
     // Also driven by the app-room beat below, so a copy that STOPS (the holder
     // left mid-transfer) stops claiming to be in progress.
     function appCopyPaint() {
@@ -11659,7 +11659,7 @@
         ? 'Unpacking it on this device.'
         : 'About ' + mb.toFixed(1) + ' MB crossing from someone already in the room — it comes over once, then it is yours.';
     }
-    yield 3106;
+    yield 3107;
 
     // ---- THE TAB'S ICON ------------------------------------------------
     // This page is the MEETING page wearing the runner's hat, so its <head>
@@ -11781,7 +11781,7 @@
     function refreshStealBtn() {
       document.getElementById('appsteal').style.display = (__C.ROOM.kind === 'app' && __C.appMode === 'client') ? '' : 'none';
     }
-    yield 3118;
+    yield 3119;
     function openAppHelp() {
       if (!(__C.model.apps.soloCtl() || __C.appHostCtl || __C.appClientCtl) && !__C.ROOM.solo) { openMeetHelp(); return; }
       const H = window.GifOS && GifOS.help;
@@ -11961,7 +11961,7 @@
       const d2 = mk((0, /*()*/__C.uiText)('stealJoined', 'as I joined'), (0, /*()*/__C.uiText)('stealJoinedTip', 'The app and the room as it stood when you came in'), 'connect');
       const d1 = mk((0, /*()*/__C.uiText)('stealData', 'with data'), (0, /*()*/__C.uiText)('stealDataTip', 'The app and everything in it right now'), 'current');
     };
-    yield 3130;
+    yield 3131;
     function clearAppView(why) {
       (0, /*()*/__C.appEv)('clear', { why: why || 'unstated' });
       __C.act.appUnmounted();   // the core stops the mount and drops its handles, mode and key
@@ -11976,11 +11976,11 @@
       try { window.__meetRelayout(); } catch (e) {}
       const ap = document.getElementById('appperms'); if (ap) ap.style.display = 'none';
     }
-    yield 3139;
+    yield 3140;
     // Converge THIS phone's app view onto whatever the room is sharing. Runs on
     // every status tick and on peer departure, so it self-heals like the mesh.
     function paintAppWho(text) { document.getElementById('appwho').textContent = text; }
-    yield 3150;
+    yield 3151;
     // Keep the app buttons honest about what a tap will do.
     function updateAppButtons(want) {
       const isMine = !!(__C.model.me.myStatus().app && __C.appKey === __C.model.me.myStatus().app.s);
@@ -12040,7 +12040,7 @@
         : (0, /*()*/__C.uiText)('barCommunalStatus', '🧩 Communal control — anyone here can drive the shared app.'));
     };
     document.getElementById('app-cancel').onclick = () => { document.getElementById('app-modal').style.display = 'none'; };
-    yield 3160;
+    yield 3161;
     function appStageAskClose() { const el = document.getElementById('appstage-ask'); if (el) el.remove(); }
     function appStageAsk() {
       if (__C.appStageConsent !== null || document.getElementById('appstage-ask')) return;
@@ -12058,12 +12058,12 @@
       el.append(t, ok, no);
       document.body.appendChild(el);
     }
-    yield 3166;
+    yield 3167;
     window.appStagePlanForTest = __C.appStagePlan;
-    yield 3168;
+    yield 3169;
     // ---- run a GIF app that isn't on this computer (file or link) ----
     function showAddErr(msg) { const el = document.getElementById('app-add-err'); if (!el) return; el.textContent = msg || ''; el.style.display = msg ? '' : 'none'; }
-    yield 3170;
+    yield 3171;
     async function importAndRunGif(bytes, rawName) {
       showAddErr('');
       const r = await (0, /*()*/__C.importGif)(bytes, rawName);
@@ -12071,13 +12071,13 @@
       document.getElementById('app-modal').style.display = 'none';
       (0, /*()*/__C.runApp)(r.fileId, r.name);
     }
-    yield 3174;
+    yield 3175;
     const scriptOnce = {};
     function loadScriptOnce(src) {
       if (!scriptOnce[src]) scriptOnce[src] = new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.onload = () => res(); el.onerror = () => { delete scriptOnce[src]; rej(new Error('load ' + src)); }; document.head.appendChild(el); });
       return scriptOnce[src];
     }
-    yield 3178;
+    yield 3179;
     async function runChoice(c, say) {
       if (c.fileId) { document.getElementById('app-modal').style.display = 'none'; (0, /*()*/__C.runApp)(c.fileId, c.name); return true; }
       say((0, /*()*/__C.uiText)('appInstalling', 'Getting {name}…').split('{name}').join(c.name));
@@ -12087,7 +12087,7 @@
       (0, /*()*/__C.runApp)(r.fileId, r.name);
       return true;
     }
-    yield 3181;
+    yield 3182;
     document.getElementById('app-file').onclick = () => document.getElementById('app-file-input').click();
     document.getElementById('app-file-input').onchange = async (e) => {
       const f = e.target.files && e.target.files[0]; e.target.value = ''; if (!f) return;
@@ -12151,11 +12151,11 @@
       const more = document.createElement('a'); more.className = 'app-empty-link app-empty-store'; more.href = '/store'; more.target = '_blank'; more.rel = 'noopener';
       more.textContent = (0, /*()*/__C.uiText)('appEmptyStore', 'Find more apps in the App Store'); list.appendChild(more);
     }
-    yield 3189;
+    yield 3190;
 
     // The bot's eyes (the agent's watch): the page marks itself watched.
     function paintBotEyes(on) { document.body.classList.toggle('bot-eyes', on); }
-    yield 3198;
+    yield 3199;
     function paintAiNotesAdmin() {
       const sel = document.getElementById('adm-ai-notes');
       if (sel) { sel.value = (0, /*()*/__C.aiNotesSetting)(); sel.disabled = !((0, /*()*/__C.hasAdminRoom)() && __C.amAdmin); }
@@ -12178,7 +12178,7 @@
       }
       box.hidden = !n;
     }
-    yield 3213;
+    yield 3214;
     // A canvas for the agent's picture (the page's; a host with no screen has none).
     function newCanvas() { return document.createElement('canvas'); }
     // The bot's own view (#botview): its state, the transcript and the chat.
@@ -12186,10 +12186,10 @@
       const rows = (m) => Array.from(m.values()).filter((l) => l && !/^gb1 /.test(String(l.text || ''))).sort((x, y) => (x.at || 0) - (y.at || 0)).map((l) => ({ name: l.by || '', text: l.text || '' }));
       GifOS.meetAgent.renderBotView(document.getElementById('botview'), Object.assign({}, st, { transcript: rows(__C.model.chat.trs()), chat: rows(__C.model.chat.lines()) }), __C.uiText);
     }
-    yield 3216;
+    yield 3217;
     // The agent contract over the page's postMessage (a host page or extension talks to it); a host with no page has none.
     function bridgeAgentToPage(core) { GifOS.meetAgent.postMessageBridge(core, window); }
-    yield 3219;
+    yield 3220;
     function setBotView(on) {
       on = !!on;
       if (__C.act.botView(on) !== true) return;   // the core decides (lobby: kept for the boot; unchanged: nothing to paint)
@@ -12206,7 +12206,7 @@
       try { if (pipAimed) { pipAimed.autoPictureInPicture = false; pipAimed = null; } } catch (e) {}
       try { (0, /*()*/__C.sendVisPark)(); } catch (e) {}
     }
-    yield 3221;
+    yield 3222;
     (function wireBotView() {
       const back = document.getElementById('bot-back');
       let hideBotsT = null;   // the Hide bots repaint tick (the view's own clock)
@@ -12255,7 +12255,7 @@
       if (hb) { hb.checked = saved; hb.onchange = () => setHide(hb.checked); }
       if (saved) setHide(true);
     })();
-    yield 3227;
+    yield 3228;
 
     // Test hook: lets the e2e suite observe mesh + quality state.
     // AUDIO-OUT FORENSICS (debugDump audio, read-only): where each voice should leave the page. Every media
@@ -12290,9 +12290,9 @@
         folds, comp, standby: sb,
       };
     }
-    yield 3229; // var: the debug log's ring reader (above) may ask for it before this line runs
+    yield 3230; // var: the debug log's ring reader (above) may ask for it before this line runs
     let dbgMeterPanel = null;
-    yield 3234;   // chat line ids I posted for the page I carry: never sent back to it
+    yield 3235;   // chat line ids I posted for the page I carry: never sent back to it
     function carryIo(far, l, sendTv, askVouch, guest) {
       return { guest, me: __C.model.me.myId(), far, l, dev: () => __C.model.me.myDevHash(), sub: () => (__C.model.net.meshNode() && __C.model.net.meshNode().sub) | 0, sid: () => __C.model.room.sessId(), sendTv, askVouch,
         ask: GifOS.meetTurn.askIce(window.fetch.bind(window)), webScheme: () => 'wss://', log: __C.turnNote,
@@ -12301,7 +12301,7 @@
         sign: (text) => __C.model.net.net().edSign(__C.model.me.myIdentity().priv, text).then((sig) => ({ sig, pub: __C.model.me.myIdentity().pubB64 })),
         verify: (id, pub, sig, text) => GifOS.meshIdentity.peerIdOf(pub).then((got) => (got === id ? __C.model.net.net().edVerify(pub, sig, text) : false)) };
     }
-    yield 3253;
+    yield 3254;
     function dbgMeters() {
       if (!__C.DEBUG_ON || !GifOS.meetMeters) return null;
       if (!__C.dbgMeterKit) {
@@ -12321,7 +12321,7 @@
       }
       return true;
     }
-    yield 3258;
+    yield 3259;
     function viewTestHooks(v) {
       Object.assign(v, {
       stadFaceAtForTest: (x, y) => { const w = document.getElementById('stadwhole'); return w ? (0, /*()*/__C.stadFaceIdAt)(w, x, y) : null; },
@@ -12839,7 +12839,7 @@
       },
       });
     }
-    yield 3274;
+    yield 3275;
     // THE FLOAT WEARS THE TILE'S BLUR (PIPBLUR, 2026-11-24). Every float paints a <video>'s RAW frames: an element float
     // has no CSS, and the document float's <video> is a new element. In an open room every remote picture is blurred
     // here (receiver-side blur), so a sender forced to send clear floated clear. pipBlurLevel is the level this viewer

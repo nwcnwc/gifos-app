@@ -127,6 +127,7 @@
       iframe.setAttribute('data-gifos-meet', id);
       iframe.setAttribute('title', 'Meeting session');
       iframe.setAttribute('allow', 'microphone; camera; autoplay');
+      if (opts.listen) iframe.setAttribute('data-mr-listen', '1');   // a hidden door listening for rings (js/core/view/myroom.js)
       var x = (seq % 8) * 3;
       iframe.style.cssText = 'position:fixed;left:' + x + 'px;bottom:0;width:2px;height:2px;border:0;opacity:0.02;pointer-events:none;z-index:1';
       var sess = {
@@ -144,7 +145,7 @@
         var joinMsg = {
           ns: NS, op: 'join', id: id,
           room: opts.room || '', link: opts.link || '', password: opts.password || '',
-          name: opts.name || '', bot: sess.bot, control: sess.control, guest: !!opts.guest
+          name: opts.name || '', bot: sess.bot, control: sess.control, guest: !!opts.guest, listen: !!opts.listen
         };
         if (d.op === 'ready' && !sess.ready) {
           sess.ready = true;
