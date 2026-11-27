@@ -794,8 +794,12 @@
       // both: a phone hides #statusrest, and a refusal there went unread.
       // The count and the rest are children of #status: writing the span's own
       // text would delete them (and Invite) for good.
-      if (countEl && restEl) { countEl.textContent = ''; countEl.hidden = true; restEl.textContent = m; }
-      else statusEl.textContent = m;
+      // A phone's top row holds two short lines: an alert of several sentences shows its first (the action), and the
+      // title and the status sheet keep the whole line.
+      let shown = m;
+      if (alert && typeof phoneLayout === 'function' && phoneLayout()) { const first = (/^(.*?(?:[.!?](?=\s)|\u3002))\s*\S/.exec(String(m)) || [])[1]; if (first) shown = first; }
+      if (countEl && restEl) { countEl.textContent = ''; countEl.hidden = true; restEl.textContent = shown; }
+      else statusEl.textContent = shown;
       if (statusEl.title !== String(m)) statusEl.title = String(m);
       // Why this line is on screen is state (data-why / data-link / data-back), not words: the live badge reads these, never the sentence.
       if (statusEl.dataset) { statusEl.dataset.why = ''; statusEl.dataset.link = ''; statusEl.dataset.back = ''; statusEl.dataset.state = state; }
@@ -3497,7 +3501,9 @@
         // The Stage view takes the screen in the same tap (a browser asks for the tap's own gesture).
         if (b.dataset.view === 'stage' && window.__meetView === 'stage') svFullscreen();
         // Focus keeps the picker up so Follow the speaker is one more tap.
-        if (b.dataset.view !== 'focus') closePick(true);
+        // A keyboard pick (a click with no pointer: detail 0) gives focus back to the view button; a finger's pick does not,
+        // so no focus ring stays on the button after a tap.
+        if (b.dataset.view !== 'focus') closePick(e.detail === 0);
       });
       viewpick.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') { e.preventDefault(); closePick(true); return; }
@@ -9429,12 +9435,28 @@
       const below = Math.floor((vt + vh - pad) - (a.bottom + gap));
       const side = want <= above ? 'above' : (want <= below ? 'below' : (above >= below ? 'above' : 'below'));
       const room = Math.max(0, side === 'above' ? above : below);
-      const h = Math.min(want, room);
+      let h = Math.min(want, room);
+      // A short upright phone's More sheet that must scroll ends between groups, never through a row of buttons: its
+      // edge falls under the next group's heading, which reads as "more below". Layout offsets, not screen
+      // boxes (the sheet may still be sliding in).
+      let snapped = 0;
+      if (el.id === 'barmore' && want > room && innerHeight < GifOS.meetContent.SHORT_PHONE_H
+        && window.matchMedia && matchMedia('(max-width: 700px) and (orientation: portrait)').matches) {
+        const yIn = (n) => { let y = 0; while (n && n !== el) { y += n.offsetTop; n = n.offsetParent; } return n === el ? y : NaN; };
+        const borders = el.offsetHeight - el.clientHeight;   // a scroller clips at its padding box: no bottom padding at the cut
+        for (const g of el.querySelectorAll('.moregroup')) {
+          const hd = g.querySelector('h4');
+          if (!hd || !g.offsetHeight) continue;
+          const end = yIn(hd) + hd.offsetHeight + 3 + borders;
+          if (end <= h) snapped = end;
+        }
+        if (snapped > h / 2) h = snapped; else snapped = 0;
+      }
       const w = o.width;
       const y = side === 'above' ? a.top - gap - h : a.bottom + gap;
       const x = w >= vw - 2 * pad ? vl + (vw - w) / 2
         : Math.max(vl + pad, Math.min(vl + vw - pad - w, a.left + a.width / 2 - w / 2));
-      s.maxHeight = Math.floor(Math.min(room, isFinite(cap) ? cap : room)) + 'px';
+      s.maxHeight = (snapped ? h : Math.floor(Math.min(room, isFinite(cap) ? cap : room))) + 'px';
       s.left = Math.round(x - o.left) + 'px';
       s.top = Math.round(y - o.top) + 'px';
       el.dataset.side = side;
@@ -12145,8 +12167,25 @@
         finally { go.disabled = false; sel.disabled = false; }
       });
       row.appendChild(sel); row.appendChild(go);
-      list.appendChild(row); list.appendChild(note);
-      noteFor();
+      // The meeting apps (the defaults, first in the choices) are one tap each: a phone never hunts for Survey in a
+      // dropdown that opens on Take Turns. The dropdown keeps every app, these too, for the rest.
+      const nDef = __C.model.consts.RUN_DEFAULTS().length;
+      const quick = document.createElement('div'); quick.className = 'app-quick';
+      const say = (w, bad) => { note.textContent = w; note.classList.toggle('bad', !!bad); };
+      choices.slice(0, nDef).forEach((c) => {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'app-quickbtn'; b.textContent = c.name;
+        b.addEventListener('click', async () => {
+          const all = quick.querySelectorAll('button'); all.forEach((x) => { x.disabled = true; }); go.disabled = true; sel.disabled = true;
+          try { await runChoice(c, say); } finally { all.forEach((x) => { x.disabled = false; }); go.disabled = false; sel.disabled = false; }
+        });
+        quick.appendChild(b);
+      });
+      const allLb = document.createElement('small'); allLb.className = 'app-pick-all';
+      allLb.textContent = (0, /*()*/__C.uiText)('appPickAll', 'Or pick from all your apps:');
+      // A device with no apps beyond the meeting apps has nothing more to pick: the dropdown stays in the page, hidden.
+      if (choices.length <= nDef) { allLb.style.display = 'none'; row.style.display = 'none'; }
+      list.appendChild(quick); list.appendChild(allLb); list.appendChild(row); list.appendChild(note);
+      // The not-on-this-device note speaks of the dropdown's pick, so it waits for one (the quick buttons say "Getting…").
       // More apps: the App Store, in a new tab (the meeting stays open; Run app lists what it adds).
       const more = document.createElement('a'); more.className = 'app-empty-link app-empty-store'; more.href = '/store'; more.target = '_blank'; more.rel = 'noopener';
       more.textContent = (0, /*()*/__C.uiText)('appEmptyStore', 'Find more apps in the App Store'); list.appendChild(more);
