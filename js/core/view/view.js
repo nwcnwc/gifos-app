@@ -10084,7 +10084,8 @@
         // A dialog (an app's abilities card, a sheet) is a press too: its
         // buttons were dead to every tap that came after a quiet spell.
         // The content bar never tucks, so its tabs and tools, its exit and the view menu are presses too.
-        if (t && t.closest && t.closest('.fitbtn, .topchip, #unmute, #showcam, #chatnote, #chatpanel, #chatbadge, #chatpreview, .name-modal, #waitlist, #tilewin, .tile-open, #appbar, .ct-bar, .ct-exit, #viewpick, .ctarea button, ' + CHROME_DIALOGS)) {
+        // So is the My Room bar ("Give my card", "Swap cards"): it never tucks either, and its first tap was eaten.
+        if (t && t.closest && t.closest('.fitbtn, .topchip, #unmute, #showcam, #chatnote, #chatpanel, #chatbadge, #chatpreview, .name-modal, #waitlist, #tilewin, .tile-open, #appbar, .ct-bar, .ct-exit, #viewpick, .ctarea button, #mr-bar, ' + CHROME_DIALOGS)) {
           wakeOnClick = true;
           return;
         }
