@@ -73,7 +73,8 @@
     return { name, pic: id && id.avatar && id.avatar.url ? id.avatar.url : '' };
   }
   const myFace = (cls) => { const m = me(); return m.pic ? '<span class="hv-av pic ' + (cls || '') + '" aria-hidden="true"><img src="' + esc(m.pic) + '" alt=""></span>' : face(m.name || 'Me', cls); };
-  // People, my room and the hosted rooms: the one model the Meeting lobby and the Rooms app read (js/rooms-model.js).
+  // Contacts, my room and the hosted rooms: the one model the Meeting lobby and the Rooms app read (js/rooms-model.js).
+  // The words are the lobby menu's too: Rooms and Contacts ("People" is who is in a meeting).
   function people() {
     const M = MR(), RM = GifOS.roomsModel; if (!M || !RM) return { mine: null, list: [], missed: [], hosted: [] };
     const m = RM.read(), list = RM.people(m);
@@ -215,7 +216,7 @@
   }
   function peopleSheet() {
     const ppl = people();
-    sheet('People', (body) => {
+    sheet('Contacts', (body) => {
       body.innerHTML = (ppl.list.length ? '<div class="hv-rows">' + ppl.list.map((p, i) =>
         '<div class="hv-row person">' + face(p.name) + '<span class="hv-row-t"><b>' + esc(p.name) + (p.ok ? ' <i class="hv-ok" title="Swapped in person">✓</i>' : '') + '</b><span>' + (p.kind === 'p' ? 'Our private room' : 'Card to their room') + (isMissed(ppl, p) ? ' · missed call' : '') + '</span></span>' +
         '<button type="button" class="hv-pill hot" data-act="call:' + i + '">' + svg('phone') + 'Call</button></div>').join('') + '</div>' : '<p class="hv-quiet">' + esc(NO_PEOPLE) + '</p>') +
@@ -257,7 +258,7 @@
           '<button type="button" class="hv-pill" data-act="lobby">' + svg('key') + 'Host a room</button>' +
           '<button type="button" class="hv-pill" data-act="golive">' + svg('tv') + 'Go live</button></div>' +
           '<p class="hv-quiet">' + esc(JOIN_SHORT) + '</p></section></div><div class="g-side">' +
-        '<section class="g-people g-card"><div class="hv-sec-h"><h2>People</h2>' + (d.ppl.list.length ? '<button type="button" class="hv-link" data-act="people">All</button>' : '') + '</div>' +
+        '<section class="g-people g-card"><div class="hv-sec-h"><h2>Contacts</h2>' + (d.ppl.list.length ? '<button type="button" class="hv-link" data-act="people">All</button>' : '') + '</div>' +
           '<div class="hv-strip">' + peopleStrip(d.ppl, 12) + '</div></section>' +
         '<div class="g-two"><section class="g-card"><div class="hv-sec-h"><h2>Recent rooms</h2></div><div class="hv-rows">' +
             (d.rooms.length ? d.rooms.slice(0, 4).map((r, i) => roomRow(r, i, 'room')).join('') : '<p class="hv-quiet">Rooms you join show up here.</p>') + '</div></section>' +
@@ -300,7 +301,7 @@
         home: missedChip(d.ppl) + story +
           '<section class="p-hero"><h1>' + esc(d.me.name ? 'Hey ' + d.me.name + '.' : 'Hey.') + '<br>Where are we meeting?</h1>' + joinForm('big') + '<p class="hv-quiet">' + esc(JOIN_SHORT) + '</p></section>' +
           jump + live + '<div class="hv-sec-h"><h2>Apps</h2><button type="button" class="hv-link" data-act="tab:apps">All</button></div><div class="p-approw"></div><p class="hv-quiet">' + esc(HONEST) + '</p>',
-        people: '<h1 class="p-title">People</h1>' + missedChip(d.ppl) + (d.ppl.list.length ? '<div class="hv-rows">' + d.ppl.list.map((p, i) =>
+        people: '<h1 class="p-title">Contacts</h1>' + missedChip(d.ppl) + (d.ppl.list.length ? '<div class="hv-rows">' + d.ppl.list.map((p, i) =>
           '<div class="hv-row person">' + face(p.name) + '<span class="hv-row-t"><b>' + esc(p.name) + (p.ok ? ' <i class="hv-ok">✓</i>' : '') + '</b><span>' + (p.kind === 'p' ? 'Our private room' : 'Card to their room') + '</span></span><button type="button" class="hv-pill hot" data-act="call:' + i + '">' + svg('phone') + 'Call</button></div>').join('') + '</div>' : '<p class="hv-quiet">' + esc(NO_PEOPLE) + '</p>') +
           '<div class="hv-rows"><button type="button" class="hv-row" data-act="myroom"><span class="hv-row-ic">' + svg('home') + '</span><span class="hv-row-t"><b>' + (d.ppl.mine ? 'My room' : 'Make my room') + '</b><span>' + (d.ppl.mine ? esc(d.ppl.mine.room) : 'Your own address, if you choose to share it') + '</span></span><span class="hv-row-go">' + svg('arrow') + '</span></button>' +
           '<button type="button" class="hv-row" data-act="rooms"><span class="hv-row-ic">' + svg('people') + '</span><span class="hv-row-t"><b>Add someone</b><span>Cards, ringing and missed calls are in Rooms</span></span><span class="hv-row-go">' + svg('arrow') + '</span></button></div>',
@@ -311,7 +312,7 @@
       };
       const tabBtn = (id, ic, name) => '<button type="button" class="p-tab' + (tab === id ? ' on' : '') + '" data-act="tab:' + id + '" aria-current="' + (tab === id ? 'page' : 'false') + '">' + svg(ic) + '<span>' + name + '</span></button>';
       el.innerHTML = '<div class="hv-scroll"><div class="p-col p-' + tab + '">' + (panels[tab] || panels.home) + '</div></div>' +
-        '<nav class="p-tabs" aria-label="Home">' + tabBtn('home', 'home', 'Home') + tabBtn('people', 'people', 'People') +
+        '<nav class="p-tabs" aria-label="Home">' + tabBtn('home', 'home', 'Home') + tabBtn('people', 'people', 'Contacts') +
           '<button type="button" class="p-plus" data-act="start" title="Start or join a meeting" aria-label="Start or join a meeting">' + svg('video') + '</button>' +
           tabBtn('live', 'tv', 'Live') + tabBtn('apps', 'grid', 'Apps') + '</nav>';
       const row = el.querySelector('.p-approw'); if (row) shortApps(8).forEach((it) => row.appendChild(appTile(it)));
