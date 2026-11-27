@@ -17821,9 +17821,11 @@
       }
       // REST (viewRests): nobody here takes this copy. Every announcer is asked to rest, the claim stays (its stream is
       // what my own copies pass on the moment one is wanted), no standby is kept and nothing is judged: no flow is no fault.
-      if (typeof viewRests === 'function' && viewRests(rk)) {
+      // Only a copy I hold rests: with no claim yet the pass below asks one announcer for it, as for any slot (a stream
+      // that was never claimed cannot be handed on when a seat below asks for it), and the next pass rests it.
+      if (pri && typeof viewRests === 'function' && viewRests(rk)) {
         if (std) { dropStandby(rk); std = null; }
-        if (pri) pri.rest = true;
+        pri.rest = true;
         fb.rest = now; fb.wakeAt = 0; fb.dark = false; fb.picDead = false; fb.suspect = false;
         if (pri && !inCand(pri) && pri.deadAt && now - pri.deadAt > __M.MOS_GRACE) { dropMosIn(rk); pri = null; (0, /*()*/__M.repaintRedun)(rk, null); }
         if (!cand.length) { __M.mosFb.delete(rk); return; }
