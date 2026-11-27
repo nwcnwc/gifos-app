@@ -122,6 +122,7 @@
         try { root.localStorage.setItem('gifos_mr_invite.' + MR().roomKey(c.room, c.v), JSON.stringify({ to: here.room + (here.v ? '.' + here.v : ''), at: Date.now() })); } catch (e) {}
         const w = root.open(roomUrl(c.room, c.v), 'mr-invite-' + c.room, 'popup,width=420,height=640');
         b.disabled = true; b.textContent = w ? 'Ringing ' + c.name + '…' : 'Allow pop-ups to invite';
+        if (w) setTimeout(() => show($('mr-pick'), false), 3 * T().MYROOM_TICK_MS);   // the ringing window says the rest
       };
       box.appendChild(b);
     }
