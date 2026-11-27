@@ -484,6 +484,9 @@
       }
       // Proved knockers: a listening page lets in only other listening pages; any other page lets in every member.
       for (const pid of host.waitIds()) if (proved.has(pid) && (!listening() || listeners2.has(pid))) host.admit(pid);
+      // ...and a proved member who sits here already (each of us opened the room at the same moment, and our two rooms
+      // became one without a knock) is one of the room's people all the same: the key word is the Admit.
+      for (const p of host.people()) if (proved.has(p.id) && (!listening() || listeners2.has(p.id))) host.member(p.id);
       // Seated others are asked for a word (never a held knocker: it proves itself first, and a stranger hears nothing).
       for (const p of host.people()) {
         if (proved.has(p.id) && !listeners2.has(p.id)) continue;   // a listening door's id may come back as its owner's own page: asked again

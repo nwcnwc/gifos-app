@@ -1819,6 +1819,20 @@
         [0, 1000, 2500].forEach((ms) => setTimeout(() => { try { const s = meshSeat(); if (s && s.answerDoor) s.answerDoor([id]); } catch (e) {} }, ms));
         return true;
       },
+      // A seat that is here already is one of the room's people by the room's own proof (a private room: its member key,
+      // shown to this page on the pair's channel). The Admit's record without the door's answer: every reader of "who was
+      // let in" (this door, the seat key's hand-over, the other hosts' doors) counts it from now on. Two members who each
+      // opened the room at the same moment never knocked at each other's door, so no Admit named either of them.
+      member(id) {
+        id = String(id || '');
+        if (!id || id === myId || !hasAdminRoom() || !amAdmin || waitAdmitted.has(id)) return false;
+        waitQueue.delete(id); waitDeclined.delete(id); waitAdmitted.add(id);
+        const mine = modTable[id] = modTable[id] || {};
+        mine.dadm = { on: true, by: myName(), byId: myId, at: Date.now() };
+        hostFlood();
+        (0, /*()*/__V.waitPaint)();
+        return true;
+      },
       decline(id) {
         id = String(id || '');
         waitQueue.delete(id);
@@ -6852,7 +6866,10 @@
     // file or clock. Every send to a peer passes here; the moment the standby takes over, its channel is ordinary.
     // The offer-turn handshake (rreq / rgo / rwait) is part of that renegotiation: without it the end that does not make
     // offers could never add the standby's one trackless audio slot (pipeReserve), and the takeover would wait for an offer.
-    const STANDBY_KINDS = new Set(['tv', 'roffer', 'ranswer', 'sig', 'rreq', 'rgo', 'rwait']);
+    // ...and the seat key's own hand-over (sk, skq, skp): a standby's two ends are seats of one meeting, and the status
+    // beat this channel has always carried (sig) is sealed for the people in the meeting. Without the key each end
+    // could not read the other's beat: it showed that person with no name and no mute, camera or hand.
+    const STANDBY_KINDS = new Set(['tv', 'roffer', 'ranswer', 'sig', 'rreq', 'rgo', 'rwait', 'sk', 'skq', 'skp']);
     function standbyHolds(p, msg) {
       try { return !!(p && turnLinks && turnLinks.standby(p.id) && !(msg && STANDBY_KINDS.has(msg.k))); } catch (e) { return false; }
     }
@@ -8841,7 +8858,7 @@
     // makes the offer at some doors and the answer at the others. On an offer the far end's gate reads the word (an
     // unseated dialler is not a stale member); on either, a seated far end starts that door's clock (onRelayPeer).
     const doorWord = () => { const ms = meshSeat(); return ms && ms.hasCoord && ms.state === 3 && ms.seatTick - ms.seatedAt > 40 ? 0 : 1; };
-    const sigMeta = (to) => (!seatTells(to) ? { sid: mySid() } : { name: myName(), ip: myIp, st: (typeof carryStatusOut === 'function' ? carryStatusOut(myStatus) : myStatus), mod: modTable, modw: gossipModW(), conns: myConns(), tc: myTc(), sid: mySid() });   // §SEAT: a page that is no member gets my stream id alone   // st: the status my beat says (carryStatusOut), or an offer undoes it
+    const sigMeta = (to) => (!seatTells(to) ? (seatNames(to) ? { sid: mySid(), name: myName() } : { sid: mySid() }) : { name: myName(), ip: myIp, st: (typeof carryStatusOut === 'function' ? carryStatusOut(myStatus) : myStatus), mod: modTable, modw: gossipModW(), conns: myConns(), tc: myTc(), sid: mySid() });   // §SEAT: a page that is no member gets my stream id alone   // st: the status my beat says (carryStatusOut), or an offer undoes it
     // THE RULES THAT REBUILD BEFORE AN OFFER LANDS, first match wins. After a rebuild none of the later ones can
     // hold: a fresh pc has no death, no remote description, no connection and no media.
     const offerFpOf = (sdp) => { const m = /\r?\na=fingerprint:([^\r\n]+)/.exec(String(sdp && sdp.sdp || sdp || '')); return m ? m[1] : ''; };
@@ -10876,7 +10893,7 @@
     //   - A receiver drops a frame that is not a door kind and opened under the door key: nobody outside can say it.
     //   - A page holds a few seat keys (two rooms that met, two founders): it seals with the oldest and reads all.
     //   - A password change moves these keys with the room key (the derivation holds the room material).
-    { seatDoorKind, seatSeal, seatWait, seatTake, seatAskedBy, seatTaken, seatGive, seatTells, seatStep, seatRekey, seatReset, seatNameFor, seatHas, seatDoorDrop, seatInfo } = (function () {
+    { seatDoorKind, seatSeal, seatWait, seatTake, seatAskedBy, seatTaken, seatGive, seatTells, seatStep, seatRekey, seatReset, seatNameFor, seatNames, seatHas, seatDoorDrop, seatInfo } = (function () {
     const seatKeys = new Map();      // kid -> { hex, t, cur, prev }: cur / prev are the AES keys under the room's current / replaced material
     let seatCur = '';                // the kid I seal with: the oldest key I hold
     let seatDerived = Promise.resolve();   // every key change runs on this chain; a seal or an open waits for it
@@ -11092,11 +11109,17 @@
     }
     // The name beside a bootstrap over the relay: a seated page says its name to a member only (a knocker is told nothing about who is inside).
     const seatTells = (pid) => { const s = meshSeat(); return !(s && s.state === 3 && s.hasCoord) || seatMember(pid); };   // a seated page says who it is to a member only; a page with no seat introduces itself to the door
-    function seatNameFor(pid) { return seatTells(pid) ? net.relayNameFit(myName()) : ''; }
+    // THE FAR END OF A LINK IS TOLD WHO ANSWERS IT. The end of a relayed link that only answers stays outside "link end"
+    // until its connection is up, so its answer to the opener's dial said nothing of who it is; and a warm standby
+    // carries nothing afterwards, so its opener showed a nameless person for good. The answer says my name (my name
+    // alone: what I am doing reaches that page as it reaches every seat of its room) once the link's handshake is done,
+    // to a page the door would let in: with a waiting room on, a host or a page a host admitted.
+    const seatNames = (pid) => { try { return !!(turnLinks && turnLinks.linkEnd(pid)) && !pwShut(pid) && (!seatHoldAt() || admins.includes(pid) || !meetWait.blocks(pid)); } catch (e) { return false; } };
+    function seatNameFor(pid) { return (seatTells(pid) || seatNames(pid)) ? net.relayNameFit(myName()) : ''; }   // the name beside a description sent by the relay (a link's dial is answered there)
     const seatHas = () => !!seatCur;
     function seatDoorDrop(inner) { const kk = String(inner.k).slice(0, 16) + (inner.k === 'sig' && inner.msg ? '.' + String(inner.msg.kind).slice(0, 12) : ''); seatStats.doorDrop[kk] = (seatStats.doorDrop[kk] || 0) + 1; }
     const seatInfo = () => ({ cur: seatCur, kids: seatOrder().map((e) => e[0]), named: seatOrder().filter((e) => e[1].ws).map((e) => e[0]), waitTx: seatWaitTx.length, heldRx: seatHeldRx.length, stats: JSON.parse(JSON.stringify(seatStats)) });   // names only, never a key
-    return { seatDoorKind, seatSeal, seatWait, seatTake, seatAskedBy, seatTaken, seatGive, seatTells, seatStep, seatRekey, seatReset, seatNameFor, seatHas, seatDoorDrop, seatInfo };
+    return { seatDoorKind, seatSeal, seatWait, seatTake, seatAskedBy, seatTaken, seatGive, seatTells, seatStep, seatRekey, seatReset, seatNameFor, seatNames, seatHas, seatDoorDrop, seatInfo };
     })();
     let pwEpoch = 0;          // generation counter, carried inside the signed grant: the room's FLOOR (a pulse may raise it)
     let pwHeldEp = 0;         // the generation of the password this page HOLDS; a grant is a replay only at or below this
@@ -23605,7 +23628,7 @@
         isHere: (id) => rosterIds.includes(id),
         seated: () => { const s = meshSeat(); return !!(s && s.hasCoord && s.state === 3); },
         others: () => rosterIds.filter((id) => id !== myId).length,
-        held: (id) => waitQueue.has(id), waitIds: () => Array.from(waitQueue.keys()), reach: (id) => !!openPeer(id), chan: (id) => { const q = openPeer(id); return q ? q.dc : null; }, admit: (id) => meetWait.admit(id), label: (id, name) => { if (waitQueue.has(id)) meetWait.note(id, name); },
+        held: (id) => waitQueue.has(id), waitIds: () => Array.from(waitQueue.keys()), reach: (id) => !!openPeer(id), chan: (id) => { const q = openPeer(id); return q ? q.dc : null; }, admit: (id) => meetWait.admit(id), member: (id) => meetWait.member(id), label: (id, name) => { if (waitQueue.has(id)) meetWait.note(id, name); },
         hold: (on) => meetWait.hold(on), holding: () => !!holdDoor,
         signAdm: (act, extra) => admSigned(act, extra), verifyAdm: (w, act) => admVerify(w, act),
         live: () => !myStatus.muted || !myStatus.camOff,
