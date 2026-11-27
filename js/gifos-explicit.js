@@ -13,7 +13,8 @@
  *
  *   GifOS.explicit.unsupported()       '' when this device can run the check, else why not ('wasm' | 'worker' | 'canvas')
  *   GifOS.explicit.open(opts)          Promise of the engine (one per page): { classify(src) → Promise<result>, backend }
- *                                      opts.base overrides the model host (a local copy of the files, tools only)
+ *                                      opts.base overrides the model host (a local copy of the files, tools only);
+ *                                      opts.catalog names another catalog beside models.json (tools only)
  *   GifOS.explicit.classify(src, opts) Promise of a result for one picture: src is a canvas, image, video, ImageBitmap or
  *                                      ImageData. result = { p:{drawing,hentai,neutral,porn,sexy}, score, explicit, ms }
  *   GifOS.explicit.checkStill(src)     Promise of { ok, verdict, score, ms } for one still picture (a thumbnail): ok
@@ -60,9 +61,9 @@
 
   // ---- the files: pinned, checked, cached ------------------------------------------
   let cat = null;
-  function catalog() {
+  function catalog(name) {
     if (!cat) {
-      cat = fetch(DIR + 'models.json', { credentials: 'omit' }).then((r) => {
+      cat = fetch(DIR + (name || 'models.json'), { credentials: 'omit' }).then((r) => {
         if (!r.ok) throw new Error('download failed: models.json HTTP ' + r.status);
         return r.json();
       });
@@ -106,17 +107,17 @@
     opts = opts || {};
     const why = unsupported();
     if (why) return Promise.reject(new Error('this device cannot run the picture check (' + why + ')'));
-    engine = Promise.all([catalog(), openCache()]).then(([c, cache]) => {
+    engine = Promise.all([catalog(opts.catalog), openCache()]).then(([c, cache]) => {
       const base = String(opts.base || c.base).replace(/\/+$/, '');
       const names = Object.keys(c.files), files = {};
       // One file at a time: a phone holds one download in flight.
       return names.reduce((p, k) => p.then(() => pinned(Object.assign({ url: base + '/' + c.files[k].key }, c.files[k]), cache).then((b) => { files[k] = b; })), Promise.resolve())
-        .then(() => start(files, c.size || SIZE));
+        .then(() => start(files, c.size || SIZE, c.format || 'layers', c.shards || ['weights']));
     });
     engine.catch(() => { engine = null; });
     return engine;
   }
-  function start(files, size) {
+  function start(files, size, format, shards) {
     return new Promise((resolve, reject) => {
       const w = new Worker(DIR + 'explicit-worker.js');
       const waiting = new Map();
@@ -143,7 +144,7 @@
         });
       }
       const list = Object.keys(files).map((k) => files[k]);
-      w.postMessage({ op: 'load', files, size }, list);
+      w.postMessage({ op: 'load', files, size, format, shards }, list);
     });
   }
 
