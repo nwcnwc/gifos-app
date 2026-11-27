@@ -488,8 +488,10 @@
       const rec = privFor(room, v); if (!rec) return;
       if (!touched && !listening()) { touched = true; touchPrivate(room, v); }   // used now: it stays among the rooms that ring
       if (host.owner() && !privDoor) { privDoor = true; if (!host.holding()) host.hold(true); }
-      // Knocking: I prove my member key first, to every page I reach (a door says nothing until I do).
-      if (!host.seated() && now - wordAt >= (T().MYROOM_TICK_MS || 0)) {
+      // Knocking: I prove my member key first, to every page I reach (a door says nothing until I do). Seated alone in
+      // the room I opened, I still stand at its door for the other member who opened it at the same moment: that page's
+      // seat hears mine only once it knows me (js/core/meeting.js seatOutsider), so I say the word there too.
+      if ((!host.seated() || host.others() === 0) && now - wordAt >= (T().MYROOM_TICK_MS || 0)) {
         wordAt = now;
         const ids = host.reachIds ? host.reachIds() : [];
         if (ids.length) myWord(rec).then((w) => { if (w) for (const pid of ids) host.send(pid, { op: 'key', w }); }, () => {});
@@ -506,6 +508,7 @@
       // ...and a proved member who sits here already (each of us opened the room at the same moment, and our two rooms
       // became one without a knock) is one of the room's people all the same: the key word is the Admit.
       for (const p of host.people()) if (proved.has(p.id) && (!listening() || listeners2.has(p.id))) host.member(p.id);
+      for (const pid of host.reachIds()) if (proved.has(pid) && (!listening() || listeners2.has(pid))) host.member(pid);   // ...or stands seated in a room of one beside mine: our two rooms become one only once each seat counts the other in
       // Seated others are asked for a word (never a held knocker: it proves itself first, and a stranger hears nothing).
       for (const p of host.people()) {
         if (proved.has(p.id) && !listeners2.has(p.id)) continue;   // a listening door's id may come back as its owner's own page: asked again

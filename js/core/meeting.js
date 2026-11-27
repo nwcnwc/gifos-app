@@ -2087,7 +2087,7 @@
         }
         // The door channel closed while they waited: reopen it, then answer on it.
         try { bootDial(id); } catch (e) {}
-        [0, 1000, 2500].forEach((ms) => setTimeout(() => { try { const s = meshSeat(); if (s && s.answerDoor) s.answerDoor([id]); } catch (e) {} }, ms));
+        [0, 1000, 2500].forEach((ms) => setTimeout(() => { try { const s = meshSeat(); if (s && s.answerDoor) s.answerDoor([id]); if (s && s.recheckEntry) s.recheckEntry([id]); } catch (e) {} }, ms));
         return true;
       },
       // A seat that is here already is one of the room's people by the room's own proof (a private room: its member key,
@@ -2101,6 +2101,7 @@
         const mine = modTable[id] = modTable[id] || {};
         mine.dadm = { on: true, by: myName(), byId: myId, at: Date.now() };
         hostFlood();
+        try { const s = meshSeat(); if (s && s.recheckEntry) s.recheckEntry([id]); } catch (e) {}   // its seat's words, kept back while it was not in, are heard now
         (0, /*()*/__V.waitPaint)();
         return true;
       },
@@ -3440,7 +3441,7 @@
           // The TARGET cannot lift a restriction the group put on them —
           // every receiver rejects a self-authored "off" independently.
           if (inc.on === false && inc.byId === target) continue;
-          if (!mine[field] || inc.at > mine[field].at) { mine[field] = inc; changed = true; if (field === 'dadm' && inc.on) { try { meshNode.doorForgive(target); } catch (e) {} try { linkAskAgain(target); } catch (e) {} if (Array.from(heldSaidAt.keys()).some((k) => k === target || k.indexOf(target + ' ') === 0)) sayLetIn(target);   /* my door told that page to wait: it tells it the wait is over */ } }
+          if (!mine[field] || inc.at > mine[field].at) { mine[field] = inc; changed = true; if (field === 'dadm' && inc.on) { try { meshNode.doorForgive(target); } catch (e) {} try { const s5 = meshSeat(); if (s5 && s5.recheckEntry) s5.recheckEntry([target]); } catch (e) {} try { linkAskAgain(target); } catch (e) {} if (Array.from(heldSaidAt.keys()).some((k) => k === target || k.indexOf(target + ' ') === 0)) sayLetIn(target);   /* my door told that page to wait: it tells it the wait is over */ } }
         }
       }
       if (changed) { try { applyHostOrders(); } catch (e) {} enforceForcedCam(); refreshAllTiles(); (0, /*()*/__M.refreshOutbound)(); (0, /*()*/__V.paintControls)(); reactHandCall(); (0, /*()*/__V.paintChatGate)(); (0, /*()*/__V.paintStage)(); if (typeof __M.applyCcAll === 'function') (0, /*()*/__M.applyCcAll)(); } // re-derive every tile + my broadcast; an admin cam-off stops my camera; a revoked screen share stops too; a fresh grant may be a call-up (don't wait for the beat); a chat/app order repaints its gates
@@ -11336,7 +11337,7 @@
     //   - A receiver drops a frame that is not a door kind and opened under the door key: nobody outside can say it.
     //   - A page holds a few seat keys (two rooms that met, two founders): it seals with the oldest and reads all.
     //   - A password change moves these keys with the room key (the derivation holds the room material).
-    { seatDoorKind, seatSeal, seatWait, seatTake, seatAskedBy, seatTaken, seatGive, seatTells, seatStep, seatRekey, seatReset, seatNameFor, seatNames, seatHas, seatDoorDrop, seatInfo, seatLinkProof, seatLinkProofOk } = (function () {
+    { seatDoorKind, seatSeal, seatWait, seatTake, seatAskedBy, seatTaken, seatGive, seatTells, seatStep, seatRekey, seatReset, seatNameFor, seatNames, seatHas, seatDoorDrop, seatInfo, seatLinkProof, seatLinkProofOk, seatOutsider, seatProvedCh } = (function () {
     const seatKeys = new Map();      // kid -> { hex, t, cur, prev }: cur / prev are the AES keys under the room's current / replaced material
     let seatCur = '';                // the kid I seal with: the oldest key I hold
     let seatDerived = Promise.resolve();   // every key change runs on this chain; a seal or an open waits for it
@@ -11386,18 +11387,32 @@
       return !!(p && p.dc && p.dc.__seatProved === true && p.dc.__authBy === pid) || seatAdmitted(pid);
     }
     const seatIn = (p, dc) => !!(p && p.id && !pwShut(p.id) && ((dc && dc.__seatProved === true && dc.__authBy === p.id) || seatAdmitted(p.id)));
+    // WHO IS NOT IN, FOR MY SEAT'S OWN EARS (docs/door-hold-design.md "Backlog 20"; the wire asks: js/mesh-wire.js
+    // outsiderHolds). While a waiting room holds the door and I hold a seat, a page that is no seat in my view, no
+    // link end, no host, has no host's Admit and has not proved the room's seat key on its channel is not in: my seat
+    // hears only its knock. A page with no seat of its own judges nobody (it is the one asking), and with no waiting
+    // room the mesh's seat is the admission, as before.
+    const seatProvedCh = (pid) => { const p = peers.get(pid); return !!(p && p.dc && p.dc.__seatProved === true && p.dc.__authBy === pid); };
+    function seatOutsider(pid) {
+      const s = meshSeat();
+      if (!pid || pid === myId || !(s && s.state === 3 && s.hasCoord) || !seatHoldAt()) return false;
+      if (admins.includes(pid) || !meetWait.blocks(pid) || meshKnows(pid) || seatProvedCh(pid)) return false;
+      if (turnLinks && turnLinks.isLink(pid)) return false;
+      return true;
+    }
+    const seatEntryAgain = (pid) => { try { const s = meshSeat(); if (s && s.recheckEntry) s.recheckEntry([pid]); } catch (e) {} };   // that page is in now (a proof, an Admit): its seat's last words, kept back, are heard
     // The proof: one small frame under my seat key that names me and the far end. Only a holder of the key can make
     // it, and it is good for this pair alone (a copy sent back, or on to someone else, names the wrong ends).
     function seatProof(p, dc) {
       if (!seatCur || !p || !p.id || !dc || p.dc !== dc || dc.readyState !== 'open' || dc.__authBy !== p.id || dc.__skProofFor === seatCur) return;
-      if (pwShut(p.id) || !(meshKnows(p.id) || (turnLinks && turnLinks.isLink(p.id)) || seatAsked(p.id))) return;   // a seat in my view, a link end, or the door I knocked at
+      if (pwShut(p.id) || !(meshKnows(p.id) || (turnLinks && turnLinks.isLink(p.id)) || seatAsked(p.id) || seatHoldAt())) return;   // a seat in my view, a link end, or the door I knocked at; and while a waiting room holds the door, every page I hold a channel to (its seat hears mine only once I am known to be in; the proof is read by a holder of the key alone)
       const f = { k: 'skp', from: myId, to: p.id };
       if (standbyHolds(p, f) || bridgeHolds(p, f)) return;
       dc.__skProofFor = seatCur; dcSend(p, f);
     }
     function seatProved(p, dc, m) {
       if (!p || !p.id || !dc || p.dc !== dc || dc.__authBy !== p.id || !m || m.from !== p.id || m.to !== myId) return;
-      if (dc.__seatProved !== true) { dc.__seatProved = true; seatStats.proved++; }
+      if (dc.__seatProved !== true) { dc.__seatProved = true; seatStats.proved++; seatEntryAgain(p.id); }
       seatGive(p, dc);
     }
     // WHICH KEY THE ROOM SEALS WITH. In a hosted room a host names it: its signed statement of the key's name (`w`)
@@ -11592,7 +11607,7 @@
     }
     function seatDoorDrop(inner) { const kk = String(inner.k).slice(0, 16) + (inner.k === 'sig' && inner.msg ? '.' + String(inner.msg.kind).slice(0, 12) : ''); seatStats.doorDrop[kk] = (seatStats.doorDrop[kk] || 0) + 1; }
     const seatInfo = () => ({ cur: seatCur, kids: seatOrder().map((e) => e[0]), named: seatOrder().filter((e) => e[1].ws).map((e) => e[0]), waitTx: seatWaitTx.length, heldRx: seatHeldRx.length, stats: JSON.parse(JSON.stringify(seatStats)) });   // names only, never a key
-    return { seatDoorKind, seatSeal, seatWait, seatTake, seatAskedBy, seatTaken, seatGive, seatTells, seatStep, seatRekey, seatReset, seatNameFor, seatNames, seatHas, seatDoorDrop, seatInfo, seatLinkProof, seatLinkProofOk };
+    return { seatDoorKind, seatSeal, seatWait, seatTake, seatAskedBy, seatTaken, seatGive, seatTells, seatStep, seatRekey, seatReset, seatNameFor, seatNames, seatHas, seatDoorDrop, seatInfo, seatLinkProof, seatLinkProofOk, seatOutsider, seatProvedCh };
     })();
     let pwEpoch = 0;          // generation counter, carried inside the signed grant: the room's FLOOR (a pulse may raise it)
     let pwHeldEp = 0;         // the generation of the password this page HOLDS; a grant is a replay only at or below this
@@ -13089,7 +13104,8 @@
         netTag: () => netTagNow,
         capable: () => { const hc = navigator.hardwareConcurrency | 0; return !IS_MOBILE && !(hc > 0 && hc <= 2); },   // a relayed pipe may end at my seat when it heads a row (the device class the mesh's tier reads)   // my registration at the door says which network I am on (the tag my beat carries)
         netKind: () => (directPath === 'blocked' ? 2 : directPath === 'strict' ? 1 : directPath === 'ok' ? 0 : -1),   // and what it measured as (the seat's NAT kinds)
-        doorHeld: (id) => { try { if (DEBUG_ON && window.__doorHoldAll) return true;   /* DEBUG=on only: this door answers no knock (a test picks the doors) */ if (doorSelfHeld()) { if (id) { sayHeld(id); doorSpeaksFor(id); } return true; }   /* I wait at the meeting's door myself: nobody comes in through mine */ const b = doorWaits(id); if (b && id) sayHeld(id); return b; } catch (e) { return false; } },   // a withheld knock goes on the hosts' list from any door (doorWaits), and the knocker is told on whatever path reaches it
+        outsider: (id) => seatOutsider(id),   // while a waiting room holds the door, a page that is not in is heard only when it knocks (mesh-wire.js outsiderHolds)
+        doorHeld: (id) => { try { if (DEBUG_ON && window.__doorHoldAll) return true;   /* DEBUG=on only: this door answers no knock (a test picks the doors) */ if (doorSelfHeld()) { if (id) { sayHeld(id); doorSpeaksFor(id); } return true; }   /* I wait at the meeting's door myself: nobody comes in through mine */ if (id && seatProvedCh(id) && !pwShut(id)) return false;   /* a seat of the meeting back at a door (it proved the room's seat key on this channel) is no newcomer */ const b = doorWaits(id); if (b && id) sayHeld(id); return b; } catch (e) { return false; } },   // a withheld knock goes on the hosts' list from any door (doorWaits), and the knocker is told on whatever path reaches it
         onDoor: (kind, frame) => {
           if (kind === 'seated') {
             let waits = false; try { waits = !!(turnLinks && turnLinks.heldPipe()); } catch (e) {}
