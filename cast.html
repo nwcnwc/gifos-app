@@ -1420,13 +1420,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <button id="adm-enable" data-t="admEnable">Use host password</button>
       </div>
       <div id="adm-panel" style="display:none;text-align:left">
-        <!-- A private meeting's host only: the host password this device kept. -->
+        <!-- A private meeting's host only: why no host password is needed here (it is never stored). -->
         <section id="adm-hpw" aria-labelledby="adm-hpw-h" hidden>
           <h4 id="adm-hpw-h" data-t="admHpwH">Host password</h4>
-          <button type="button" id="adm-hpw-show" data-t="admHpwShow" aria-expanded="false" aria-controls="adm-hpw-box">Show host password</button>
-          <div id="adm-hpw-box" hidden style="display:flex;gap:.5rem;align-items:center;margin:.45rem 0"><input id="adm-hpw-val" type="text" readonly autocomplete="off" spellcheck="false" data-al="admHpwH" aria-label="Host password" style="flex:1;min-width:0;font-family:monospace"><button type="button" id="adm-hpw-copy" data-t="admHpwCopy">Copy</button></div>
-          <p id="adm-hpw-none" hidden data-t="admHpwNone" style="margin:.45rem 0">This device did not keep the host password. A device keeps it only when it created this meeting, or used the host password here, after this update.</p>
-          <small id="adm-hpw-note" data-t="admHpwNote" style="display:block;margin-top:.4rem;opacity:.85">You can only change this by creating a new private meeting.</small>
+          <p id="adm-hpw-key" data-t="admHpwKey">You're the host here. This device holds the room's host key, so it doesn't need the password.</p>
+          <p id="adm-hpw-once" data-t="admHpwOnce">The host password was shown only once, when the room was made, and is never stored, not even here. Nobody can recover it.</p>
+          <p id="adm-hpw-other" data-t="admHpwOther">You don't need it: to be host on your other devices, copy My identity to them. Give the password only to someone you want as a co-host.</p>
+          <small id="adm-hpw-note" data-t="admHpwNote" style="display:block;margin-top:.4rem;opacity:.85">To get a new host password, make a new room.</small>
         </section>
         <section id="adm-chat" aria-labelledby="adm-chat-h">
           <h4 id="adm-chat-h" data-t="admChatH">Chat options</h4>
