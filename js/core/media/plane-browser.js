@@ -2686,7 +2686,7 @@
       if (!track || !(0, /*()*/__C.pipeEnabled)()) { packLoopStop(); return null; }
       if (packLoop && packLoop.src === track) {
         if (!packLoop.dead) return packLoop.rx && packLoop.rx.readyState !== 'ended' ? packLoop.rx : null;
-        if (Date.now() - packLoop.at < GifOS.timings.LOOP_RETRY_MS) return null; // a failed loop is retried after a pause; the canvas ships meanwhile
+        if (Date.now() - packLoop.at < 10000) return null; // a failed loop is retried after a pause; the canvas ships meanwhile
       }
       packLoopStop();
       packLoop = loopOpen(track, 900000, (L) => { if (packLoop === L) schedReconcile(); });   // 900k: the composite budget (auxBudget)
@@ -2707,7 +2707,7 @@
     function stageLoopTrack(v) {
       if (!v || !(0, /*()*/__C.pipeEnabled)()) { stageLoopStop(); return null; }
       let L = stageLoop;
-      if (L && L.dead && Date.now() - L.at < GifOS.timings.LOOP_RETRY_MS) return null;   // a failed loop is retried after a pause; the source ships meanwhile
+      if (L && L.dead && Date.now() - L.at < 10000) return null;   // a failed loop is retried after a pause; the source ships meanwhile
       if (!L || L.dead) { stageLoopStop(); L = stageLoop = loopOpen(v, stageLoopBps(), (x) => { if (stageLoop === x) schedReconcile(); }); if (!L) return null; }
       if (L.src !== v) { L.src = v; try { const pr = L.sender.replaceTrack(v); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {} }
       return L.rx && L.rx.readyState !== 'ended' ? L.rx : null;
