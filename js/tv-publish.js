@@ -43,6 +43,24 @@
   if (GifOS.tvPublish) return;
 
   var API = String(root.GIFOS_TV_API || 'https://gifos.tv').replace(/\/+$/, '');
+  // The on-device picture check (js/gifos-explicit.js) sits beside this file; it is loaded only when a host first picks
+  // a thumbnail, so a page that never publishes never loads it.
+  var HERE = (function () { try { var s = root.document.currentScript; if (s && s.src) return s.src.replace(/[^/]*$/, ''); } catch (e) {} return '/js/'; })();
+  var checkLoad = null;
+  function explicitCheck() {
+    if (GifOS.explicit) return Promise.resolve(GifOS.explicit);
+    if (!checkLoad) {
+      checkLoad = new Promise(function (res, rej) {
+        var s = root.document.createElement('script');
+        s.src = HERE + 'gifos-explicit.js';
+        s.onload = function () { if (GifOS.explicit) res(GifOS.explicit); else rej(new Error('no check')); };
+        s.onerror = function () { rej(new Error('no check')); };
+        root.document.head.appendChild(s);
+      });
+      checkLoad.catch(function () { checkLoad = null; });
+    }
+    return checkLoad;
+  }
   var TITLE_MAX = 80, DESC_MAX = 500, THUMB_W = 640, THUMB_H = 360, THUMB_MAX = 240 * 1024;
   var ctx = null, onAirFor = '', keepTimer = 0, keepDue = 0, offNote = null, busy = false, dlg = null, ticket = null;
   var dev = Array.from(root.crypto.getRandomValues(new Uint8Array(6))).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
@@ -244,8 +262,7 @@
       thumbBox.textContent = T('tvChecking', 'Checking the picture on this device…');
       err.textContent = '';
       go.disabled = true;
-      var E = GifOS.explicit;
-      (E ? E.checkStill(c) : Promise.reject(new Error('no check'))).then(function (r) {
+      explicitCheck().then(function (E) { return E.checkStill(c); }).then(function (r) {
         if (mine !== checking) return;
         if (r.ok && r.verdict) { canvas = c; verdict = r.verdict; thumbBox.textContent = ''; thumbBox.appendChild(c); return; }
         thumbBox.textContent = T('tvPicStd', 'The listing will use the standard picture.');
