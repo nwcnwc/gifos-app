@@ -134,6 +134,7 @@
     MASS_MANY: 3,   // count
     MAX_OUT_SEC: 8,   // s
     MESH_BOOT_WATCH_MS: 10000,   // ms
+    MIC_GRANT_AWAY: 600000,   // ms
     MIC_LETGO_GRACE: 15000,   // ms
     MIX_REBUILD_GAP_MS: 10000,   // ms
     MIX_STALL_MS: 4000,   // ms

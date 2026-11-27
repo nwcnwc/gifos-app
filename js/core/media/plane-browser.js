@@ -1847,6 +1847,39 @@
     let quietMic = null;      // the stand-in track, and the graph that keeps it alive
     let micOpening = false;   // an unmute is opening the microphone: the tap already counts as on
     let micLetGoT = 0, micLetGoWatch = false;
+    // A MIC IS LET GO ONLY UNDER A GRANT THAT STAYS. Opening it again on an unmute asks for the microphone, and a one-time grant
+    // ("Allow this time", Chrome) is gone after the site was out of sight for a while: the sheet would then rise in the middle of
+    // a meeting. permissions.query says "granted" for both kinds, so a page cannot read which one it has. What it can know: a
+    // one-time grant does not outlive MIC_GRANT_AWAY (measured: alive after 40 s on the Home screen, gone after 400 s), so a grant
+    // read at page start, after the page had been out of sight longer than that, is a grant that stays. A grant first seen in this
+    // page's own life, or with no such away time on record, is not proven: the switched-off microphone stays held (as on a
+    // desktop) and the phone keeps the call audio path rather than risk the sheet. The proof is kept (localStorage) while the
+    // state reads "granted" and dropped the moment it reads anything else.
+    const GRANT_AWAY_KEY = 'gifos_site_hidden_at', GRANT_SURE_KEY = 'gifos_mic_grant_sure';
+    const lsGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+    const lsSet = (k, v) => { try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} };
+    let micGrantSure = false, micGrantWatch = false;
+    function micGrantInit() {
+      if (micGrantWatch || !micLetsGo()) return;
+      micGrantWatch = true;
+      const away = +lsGet(GRANT_AWAY_KEY) || 0, t0 = Date.now();   // when the last page of this site went out of sight (0: one is in sight, or none on record)
+      const mark = () => lsSet(GRANT_AWAY_KEY, document.hidden ? String(Date.now()) : '0');
+      document.addEventListener('visibilitychange', mark);
+      try { window.addEventListener('pagehide', () => lsSet(GRANT_AWAY_KEY, String(Date.now()))); } catch (e) {}
+      mark();
+      const pm = (typeof navigator !== 'undefined' && navigator.permissions && navigator.permissions.query) ? navigator.permissions : null;
+      if (!pm) return;
+      pm.query({ name: 'microphone' }).then((st) => {
+        const read = (atStart) => {
+          if (st.state !== 'granted') { micGrantSure = false; lsSet(GRANT_SURE_KEY, null); return; }
+          if (!atStart) return;   // a grant that changed in this page's life is not the proven one
+          if (lsGet(GRANT_SURE_KEY) === '1') micGrantSure = true;
+          else if (away && t0 - away > GifOS.timings.MIC_GRANT_AWAY) { micGrantSure = true; lsSet(GRANT_SURE_KEY, '1'); }
+        };
+        read(true);
+        st.onchange = () => read(false);
+      }).catch(() => {});
+    }
     function micLetGoSoon() {
       clearTimeout(micLetGoT); micLetGoT = 0;
       if (!micLetsGo()) return;
@@ -1889,7 +1922,7 @@
     }
     // A phone lets a switched-off microphone go. True when it did.
     function micLetGo() {
-      if (!micLetsGo() || !__C.localStream || __C.micGrabbing || micOpening) return false;
+      if (!micLetsGo() || !micGrantSure || !__C.localStream || __C.micGrabbing || micOpening) return false;   // no grant that stays: the switched-off mic stays held
       const cur = __C.localStream.getAudioTracks()[0];
       if (!cur || cur.enabled || cur._gifosQuiet || cur.readyState !== 'live') return false;
       const q = quietMicTrack();
@@ -1909,6 +1942,7 @@
       setMicOn(t, true);
       return true;
     }
+    micGrantInit();   // at page start: the proof reads the away time before this page changes it
     function setMicMode(mode, force) {
       if (typeof __C.outgoingHeld !== 'undefined' && __C.outgoingHeld) return;
       if (!__C.localStream) return;
