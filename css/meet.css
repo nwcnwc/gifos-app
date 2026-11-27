@@ -3926,3 +3926,10 @@ body.mr-calling #alonecard, body.mr-on #alonecard { display: none !important; }
 #mr-make-who .mr-who { margin: 0 8px 8px 0; }
 #mr-make-out input { width: 100%; }
 .mr-qr svg { width: min(220px, 60vw); height: auto; background: var(--c-white); }
+#lobby .lob-myroom { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+#lobby .lob-myroom[hidden] { display: none; }
+#lobby .lob-myroom .lob-hist-h { margin-top: 4px; }
+#lobby .lob-myroom .lob-quiet { margin: 0; }
+#lobby .lob-myroom input:not([type]) { flex: 1 1 160px; min-height: 44px; box-sizing: border-box; padding: .5rem .6rem; border-radius: .45rem; border: 1.5px solid var(--c-gray); color: var(--c-ink); background: var(--c-white); font-size: 16px; }
+#lobby .lob-myroom .lob-ghost { min-height: 44px; min-width: 44px; padding: 0 12px; background: var(--c-white); color: var(--c-ink); border: 1.5px solid var(--c-gray); border-radius: .45rem; font-weight: 650; font-size: 16px; cursor: pointer; }
+#lobby .lob-myroom .lob-text { min-height: 44px; background: none; border: 0; color: var(--c-blue); text-decoration: underline; font-size: 16px; cursor: pointer; }

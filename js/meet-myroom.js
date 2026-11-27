@@ -204,7 +204,8 @@
 // me), people() ([{id, name}] seated here besides me), now().
   function make(host) {
     const listeners = [];
-    const emit = (ev) => { for (const f of listeners.slice()) { try { f(ev); } catch (e) {} } };
+    let lastOffer = null;   // an offer made before anyone listened (the address's card is read at boot) is handed to the first listener
+    const emit = (ev) => { if (ev.type === 'offer' && !listeners.length) lastOffer = ev; for (const f of listeners.slice()) { try { f(ev); } catch (e) {} } };
     const room = host.room(), v = String(host.v() || '').toLowerCase();
     const hosted = !!(room && v);
     let linkCard = null;        // a card the address carried (to save, or to call with once)
@@ -365,10 +366,10 @@
     function save(f, name) { const c = keep(Object.assign({}, f, { name })); if (linkCard && linkCard.token === f.token) linkCard.name = c.name; if (call) { call.label = c.name; emit({ type: 'call', call }); } return c; }
 
     return {
-      on: (f) => { listeners.push(f); return () => { const i = listeners.indexOf(f); if (i >= 0) listeners.splice(i, 1); }; },
+      on: (f) => { listeners.push(f); if (lastOffer) { const o = lastOffer; lastOffer = null; try { f(o); } catch (e) {} } return () => { const i = listeners.indexOf(f); if (i >= 0) listeners.splice(i, 1); }; },
       onMsg, onHeld, tick, answer, decline, give, linkFor, takeLinkCard, save,
       people: () => host.people(), gaveTo: (pid) => given.has(pid), hostIds: () => host.hosts(),
-      state: () => ({ room, v, owner: !!host.owner(), mine: isMine(room, v), standby, call: call ? Object.assign({}, call) : null, rings: Array.from(rings, ([pid, r]) => ({ pid, label: r.label, at: r.at })), holdsCard: !!myCard() }),
+      state: () => ({ room, v, owner: !!host.owner(), mine: isMine(room, v), standby, live: !!(hosted && host.live()), wentLive, call: call ? Object.assign({}, call) : null, rings: Array.from(rings, ([pid, r]) => ({ pid, label: r.label, at: r.at })), holdsCard: !!myCard() }),
     };
   }
 

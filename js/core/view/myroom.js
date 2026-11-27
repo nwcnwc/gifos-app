@@ -25,6 +25,9 @@
   const timeOf = (at) => { try { return new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } };
   const mobile = () => { try { return !!(GifOS.meetPower && GifOS.meetPower.mobileDevice(root.navigator)); } catch (e) { return false; } };
   const roomUrl = (room, v) => LINKS().pageFor(root.location.pathname, 'meet') + '#' + LINKS().hash({ room, v });
+  // The lobby and the meeting are one page: a new fragment alone loads nothing, so going to a room reloads (as the
+  // lobby's own Create does).
+  const openRoom = (room, v, replace) => { const u = roomUrl(room, v); if (replace) root.location.replace(u); else root.location.assign(u); root.location.reload(); };
   const DEL_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M9 3h6l1 2h4v2H4V5h4l1-2zm-3 6h12l-1 12H7L6 9z"/></svg>';
 
   // ---- the ringtone: two tones in the phone cadence, quiet, until stopped -------------------------------------------
@@ -115,7 +118,7 @@
   }
   // Give a card (owner) — to someone in the meeting, or as a link and QR code.
   function openMake(inMeeting) {
-    $('mr-make-out').hidden = true; $('mr-make-label').value = '';
+    $('mr-make-out').hidden = true; $('mr-make-label').value = ''; $('mr-make-go').textContent = 'Make card';
     const who = $('mr-make-who'); who.innerHTML = '';
     if (inMeeting && part) {
       for (const p of part.people()) {
@@ -176,7 +179,7 @@
     box.innerHTML = h; box.hidden = false;
     const on = (id, f) => { const el = $(id); if (el) el.onclick = f; };
     on('mr-missed-x', () => { M.clearMissed(); paintLobby(); });
-    on('mr-open', () => { root.location.href = roomUrl(mine.room, mine.v); });
+    on('mr-open', () => { openRoom(mine.room, mine.v); });
     on('mr-make-card', () => openMake(false));
     on('mr-create', async () => {
       const n = ($('mr-name').value || ($('lob-name-in') || {}).value || '').trim();
@@ -186,7 +189,7 @@
     box.querySelectorAll('[data-adopt]').forEach((b) => { b.onclick = () => { const [r, v] = b.getAttribute('data-adopt').split('.'); M.adopt(r, v); paintLobby(); }; });
     box.querySelectorAll('.mr-contact').forEach((row) => {
       const r = row.getAttribute('data-room'), v = row.getAttribute('data-v');
-      row.querySelector('[data-call]').onclick = () => { root.location.href = roomUrl(r, v); };
+      row.querySelector('[data-call]').onclick = () => { openRoom(r, v); };
       row.querySelector('[data-forget]').onclick = () => { M.forget(r, v); paintLobby(); };
     });
   }
@@ -201,7 +204,10 @@
       offer = null; show($('mr-offer'), false); paint();
     });
     on('mr-make-close', () => show($('mr-make'), false));
-    on('mr-make-go', () => { makeLink().catch(() => {}); });
+    on('mr-make-go', () => {
+      if (!$('mr-make-out').hidden) { try { root.navigator.clipboard.writeText($('mr-make-link').value); } catch (e) {} $('mr-make-go').textContent = 'Copied'; return; }
+      makeLink().then(() => { $('mr-make-go').textContent = 'Copy link'; }, () => {});
+    });
     on('mr-bar-act', () => { if (barAct) barAct(); });
     on('mr-bar-x', () => { barShut = true; bar(''); });
     // The leave question asks for the card back too, while the other side is still here to take it.
@@ -265,7 +271,7 @@
     const here = LINKS() ? LINKS().read(root.location.pathname, '', root.location.hash) : { room: '' };
     if (!here.room) {
       const M = MR(), mine = M && M.mine();
-      if (mine && M.stayOn() && !mobile()) { root.location.replace(roomUrl(mine.room, mine.v)); return; }   // stay in my room
+      if (mine && M.stayOn() && !mobile()) { openRoom(mine.room, mine.v, true); return; }   // stay in my room
       paintLobby();
       root.addEventListener('storage', (e) => { if (e.key && e.key.indexOf('gifos_') === 0) paintLobby(); });
       return;
@@ -283,5 +289,6 @@
   // DEBUG=on only: a test reads the part's state and the bar's words.
   const debugOn = () => { try { const D = GifOS.debugLog; if (D && D.pageWants) return !!D.pageWants().on; } catch (e) {} try { return /(?:^|[#&?])debug=(?:on|1|true)/i.test(root.location.hash + root.location.search) || root.sessionStorage.getItem('gifos_debug') === '1'; } catch (e) { return false; } };
   try { if (debugOn()) root.__mrState = () => ({ part: part ? part.state() : null, bar: $('mr-bar') && !$('mr-bar').hidden ? $('mr-bar-text').textContent : '', ring: !!ringing, ringTitle: $('mr-ring-title') ? $('mr-ring-title').textContent : '', offer: $('mr-offer') && $('mr-offer').style.display !== 'none' ? $('mr-offer-title').textContent : '', ringTone: !!ringTimer }); } catch (e) {}
-  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', start); else start();
+  const go = () => { try { start(); } catch (e) { root.__mrErr = String(e && e.stack || e); try { console.error('my room view: ' + root.__mrErr); } catch (x) {} } };
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', go); else go();
 })(typeof window !== 'undefined' ? window : globalThis);
