@@ -7492,6 +7492,11 @@
       // A peer reached over a TURN link (a pipe, a warm standby, SUB.4/SUB.7) sits in another subroom: never a row-mate. It holds
       // no cell of my room, which below would read as a joiner not seated yet.
       if (turnHolds(pid)) return false;
+      // MEDIA FOLLOWS MEMBERSHIP AT A HELD DOOR. A peer my seat names at no cell reads below as a joiner on its way to a
+      // seat, and gets my mic and camera early. While a waiting room holds the door that is only true of a page that is
+      // in (a host, a host's Admit, a proved channel: seatOutsider); a page that is not in is nobody's row-mate, whatever
+      // it says or offers on the connection it holds (rooms seat-sealed forge: 2.7 KB of sound reached such a page).
+      if (seatOutsider(pid)) return false;
       const c = meshCoord(), s = meshSeat(); if (!c || !s) return true;
       // ONE ROW, ONE ANSWER: a row-mate is whoever a cell of my row holds, the same reading as rowMates() (which my buses,
       // packs and the row signature that re-runs refreshOutbound use). The view can name a seat that just moved at its old
@@ -11516,12 +11521,11 @@
     function seatAskedBy(p, dc) {
       if (!seatGiveOk(p, dc)) {
         seatStats.refused++;
-        // A SEAT THE WAITING ROOM MISSED IS SHOWN TO THE HOST. A page that sat down as a host switched the waiting room
+        // A SEAT THE WAITING ROOM MISSED IS SHOWN TO THE HOSTS. A page that sat down as a host switched the waiting room
         // on is in no host's view at that moment: it gets no Admit, so nobody hands it the room's key, it mints one of
-        // its own, cannot read the host's table, and its own door holds nobody. The host it asks for the key puts it on
-        // the waiting list, and the host's Admit hands it the room's key like anyone's.
-        // (A page the list already shows keeps its row as it is: a knocker asks for the key too, and its row may carry a card's label.)
-        try { if (p && p.id && dc && p.dc === dc && dc.__authBy === p.id && seatCur && amAdmin && hasAdminRoom() && meshCoord() && !pwShut(p.id) && meetWait.blocks(p.id) && !waitQueue.has(p.id) && !(myRoomPart && myRoomPart.quiet(p.id))) meetWait.note(p.id, rosterNames[p.id] || p.name || 'Someone waiting'); } catch (e) {}
+        // its own, cannot read the hosts' table, and its door holds nobody. Whoever it asks for the key says so to the
+        // hosts (doorWaits: their waiting list), and a host's Admit hands it the room's key like anyone's.
+        try { if (p && p.id && dc && p.dc === dc && dc.__authBy === p.id && seatCur && seatHoldAt() && !pwShut(p.id) && meshCoord()) doorWaits(p.id); } catch (e) {}
         return;
       }
       dc.__skGiven = '';
