@@ -4025,8 +4025,8 @@ body.view-focus .fsthumb.fsauto .fslbl { white-space: normal; line-height: 1.15;
    thumb is ever cut at the edge; the strip scrolls sideways to the rest. */
 @media (orientation: portrait) and (max-width: 700px) {
   body.view-focus .fsthumb { flex: 0 0 auto; width: clamp(100px, calc((100vw - 32px) / 3), 150px); }
-  /* The strip sits on the bottom edge (the floating bar overlays it, it reserves no band) and shows no scrollbar line. */
-  body.view-focus #fsstrip { padding-bottom: 8px; scrollbar-width: none; }
+  /* The strip shows no scrollbar line (it scrolls sideways by touch). */
+  body.view-focus #fsstrip { scrollbar-width: none; }
   body.view-focus #fsstrip::-webkit-scrollbar { display: none; }
 }
 /* On a short phone the follow-the-speaker card keeps its two lines of words whole: the glyph steps aside. */
