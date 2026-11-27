@@ -1009,6 +1009,22 @@
       const show = !!(host && url);
       card.classList.toggle('on', show);
       card.classList.toggle('live', show && onAir);
+      // gifos.tv: the admin of a hosted room may list this broadcast (js/tv-publish.js). Only a room this device listed
+      // ever talks to gifos.tv.
+      if (GifOS.tvPublish) {
+        try {
+          GifOS.tvPublish.paint({
+            show: () => !!(show && __C.amAdmin && (0, /*()*/__C.hasAdminRoom)()),
+            admin: () => !!(__C.amAdmin && (0, /*()*/__C.hasAdminRoom)()),
+            inMeeting: () => !!(0, /*()*/__C.inMeetingNow)(),
+            room: () => String((0, /*()*/__C.roomKey)() || '').split('.')[0],
+            roomKey: () => (0, /*()*/__C.roomKey)(),
+            sign: (act, extra) => (0, /*()*/__C.admSigned)(act, extra).then((w) => { if (!w) throw new Error('no host key'); return w; }),
+            text: (k, en) => (0, /*()*/__C.uiText)(k, en),
+            hasPassword: () => !!(__C.model && __C.model.door && __C.model.door.roomPw()),
+          });
+        } catch (e) {}
+      }
       if (!show) return;
       const input = document.getElementById('bc-link-url');
       if (input && input.value !== url) input.value = url;

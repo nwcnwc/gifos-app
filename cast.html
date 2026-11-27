@@ -1061,6 +1061,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <p data-t="peopleWatchWithThis">People watch with this link.</p>
     <input data-al="bcLinkAria" id="bc-link-url" readonly aria-label="Stream link">
     <button data-t="invCopy" type="button" id="bc-link-copy">Copy</button>
+    <button data-t="tvPublishBtn" type="button" id="bc-tv" hidden>Publish to GifOS.tv</button>
   </div>
   <div id="callbanner"><span id="callbanner-txt"></span><button data-t="callbannerJoin" id="callbanner-join">Join the call</button></div>
   <div id="ccwsp-off" role="status" style="display:none"><button data-ti="ccwspOffTip" id="ccwsp-use" type="button" title="Pick browser captions for this device. Whisper stays installed; Settings → Captions turns it back on."><span data-t="ccwspOff">Whisper isn't running</span> · <b data-t="ccwspUse">Use browser captions</b></button><button data-al="ccwspHide" id="ccwsp-x" type="button" aria-label="Hide">✕</button></div>
@@ -1719,6 +1720,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/core/view/myroom.js" defer></script>
   <script src="js/camera-studio.js" defer></script>
   <script src="js/gifos-ondevice.js" defer></script>
+  <script src="js/tv-publish.js" defer></script>
   <!-- this page's surface (cast.html: js/core/view/cast.js), last: the published copy bundles every script above and keeps
        this one as it is, so the meeting and broadcast pages share one bundle -->
   <script src="js/core/view/cast.js" defer></script>

@@ -71,5 +71,7 @@
   "embed.trShotsTip": "Cuando una pantalla compartida cambia y se queda quieta, como una diapositiva nueva, la transcripción guarda una captura. Se toma en este dispositivo a partir de lo que ves: no se envía nada y nunca se toma una pantalla que ves borrosa.",
   "embed.trDownload": "Descargar",
   "embed.trShotOf": "Pantalla de {name}, {time}",
-  "embed.trShotWho": "Pantalla de {name}"
+  "embed.trShotWho": "Pantalla de {name}",
+  "embed.msgEnded": "Esta transmisión acaba de terminar.",
+  "embed.msgOffAir": "Esta transmisión no está en vivo ahora. Puede que acabe de terminar. Se reproduce aquí sola cuando vuelva."
 }
