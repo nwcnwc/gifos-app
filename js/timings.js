@@ -37,6 +37,8 @@
     BANNER_HOLD: 5000,   // ms
     BC_QUIET_GRACE_MS: 4000,   // ms
     BC_RECONNECT_MS: 60000,   // ms
+    BELL_ALONE_MS: 6000,   // ms
+    BELL_RENEW_BEFORE_MS: 2628000000,   // ms
     BG_BEAT_MS: 50,   // ms
     BLUR_MAX_FRAC: 0.045,   // ratio
     BLUR_MIN_FRAC: 0.018,   // ratio
