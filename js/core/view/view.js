@@ -8324,6 +8324,7 @@
           paintRbNow();
         };
       }
+      if (hold === 'repick' && r.blur === 0) { try { (0, /*()*/__C.setPersonalBlur)(0, true); hold = (0, /*()*/__C.blurHold)('me', 'stage'); } catch (e) {} }   // the app's standing pick for this film
       const clear = hold !== 'repick';
       const bw = clear ? 'Blur' : 'No blur';
       if (bb.textContent !== bw) bb.textContent = bw;

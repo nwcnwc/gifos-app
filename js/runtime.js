@@ -675,6 +675,7 @@
           else if (ev.type === 'chat') list = meetSubs.ch;
           else if (ev.type === 'xfer') list = meetSubs.xf;
           else if (ev.type === 'hostWake') list = meetSubs.hw;
+          else if (ev.type === 'rebroadcast') list = meetSubs.rb;
           for (var mi = 0; mi < list.length; mi++) { try { list[mi](ev); } catch (err) {} }
         }
         // Provider service plumbing (docs/providers.md): when this app is
@@ -713,7 +714,7 @@
         }
       });
       var provHandlers = null;
-      var meetSubs = { tr: [], pe: [], ch: [], xf: [], hw: [] };
+      var meetSubs = { tr: [], pe: [], ch: [], xf: [], hw: [], rb: [] };
       var roomCbs = [], roomLast = null;
       // Android Chrome only lets the container's Back trap "stick" once the page
       // has real user activation, and the user touches the APP, not the frame
@@ -1230,6 +1231,12 @@
           watch: function(id, on){ return rpc({ type:'meet', op:'watch', meetingId: id, on: !!on }); },
           meetingState: function(id){ return rpc({ type:'meet', op:'meetingState', meetingId: id }); },
           snapshot: function(id){ return rpc({ type:'meet', op:'snapshot', meetingId: id }); },
+          // REBROADCAST: the host's Rebroadcast button with a video file the app holds (a File or Blob: it travels by
+          // reference, never copied). Only the host of a broadcast (a /cast link) may; viewers see Prerecorded.
+          // opts: { title, at (start second), blur ('none' | 'min' | 'max': the bar's pick, standing for this film) }. onRebroadcast(cb): { meetingId, state: started|ended|stopped|error, why, title, pos, dur }.
+          rebroadcast: function(id, file, opts){ opts = opts || {}; var b = opts.blur === 'none' ? 0 : opts.blur === 'min' ? 1 : opts.blur === 'max' ? 2 : opts.blur; return rpc({ type:'meet', op:'rebroadcast', meetingId: id, blob: file, title: opts.title == null ? '' : String(opts.title), at: Number(opts.at) || 0, blur: (b === 0 || b === 1 || b === 2) ? b : null }); },
+          stopRebroadcast: function(id){ return rpc({ type:'meet', op:'stopRebroadcast', meetingId: id }); },
+          onRebroadcast: function(cb){ if (typeof cb === 'function') meetSubs.rb.push(cb); },
           onTranscriptLine: function(cb){ if (typeof cb === 'function') meetSubs.tr.push(cb); },
           onParticipants: function(cb){ if (typeof cb === 'function') meetSubs.pe.push(cb); },
           onChat: function(cb){ if (typeof cb === 'function') meetSubs.ch.push(cb); },
@@ -4472,6 +4479,8 @@
             else if (op === 'watch') done(host.watch(d.meetingId, !!d.on));
             else if (op === 'meetingState') done(host.meetingState(d.meetingId));
             else if (op === 'snapshot') done(host.snapshot(d.meetingId));
+            else if (op === 'rebroadcast') done(d.blob instanceof root.Blob ? host.rebroadcast(d.meetingId, d.blob, { title: d.title, at: d.at, blur: d.blur }) : Promise.reject(new Error('unplayable: Pass the video as a file.')));
+            else if (op === 'stopRebroadcast') done(host.stopRebroadcast(d.meetingId));
             else if (op === 'hostOrder') done(host.hostOrder(d.meetingId));
             else if (op === 'speakers') done(host.speakers(d.meetingId, !!d.on));
             else if (op === 'speakerClips') done(host.speakerClips(d.meetingId));
