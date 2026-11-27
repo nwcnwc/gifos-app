@@ -1768,6 +1768,18 @@
         if (hasAdminRoom() && amAdmin) {
           const room = modTable['*'] = modTable['*'] || {};
           room.dhold = { on: holdDoor, by: myName(), byId: myId, at: Date.now() };
+          // SWITCHING THE WAITING ROOM ON ADMITS EVERYONE WHO IS IN. The hold is for people who come after it: a seat of
+          // this moment gets the host's Admit with the order itself, so a guest who reloads later is still a page a host
+          // let in (its door, its seat key: docs/meet-security.md §SEAT), never a seat nobody can admit.
+          if (holdDoor) {
+            let ids = []; try { const s = meshSeat(); if (s && s.occ) ids = Array.from(s.occ.values()); } catch (e) {}
+            for (const v of ids) {
+              const id = typeof v === 'string' ? v : ''; if (!id || id === myId || waitDeclined.has(id) || pwShut(id)) continue;
+              waitAdmitted.add(id);
+              const e = modTable[id] = modTable[id] || {};
+              e.dadm = { on: true, by: myName(), byId: myId, at: Date.now() };
+            }
+          }
           hostFlood();
           const bit = holdDoor ? '1' : '0';
         }
@@ -6614,7 +6626,7 @@
         // pair the answer was about to complete, and a dialler whose offer was over LOST_OFFER_MS old took the offer for
         // lost, re-offered, and the answer landed on a pc that was gone. On a slow device every answer is that late, so
         // the pair restarted on every round and never formed.
-        const nameF = { k: 'name', n: net.relayNameFit(myName()) };
+        const nameF = { k: 'name', n: seatNameFor(to) };
         if (msg.kind === 'offer') relaySendSealed(to, 'name', nameF);
         if (msg.dr === 1) b.boot.dr = 1;   // the sender stands at the door (doorWord): the door's gate reads it on an offer (onSignal), the door's clock on either description (onRelayPeer)
         relaySendSealed(to, 'boot', b.boot);
@@ -6630,7 +6642,7 @@
     // relayName(pid): my name to a socketed member — the dial request ("I am
     // here, dial me": onRelayPeer dials back when it is the initiator and no
     // pair is live), and the name the locked-out line shows them.
-    function relayName(pid) { if (!doorPaceOk(pid)) { if (typeof clog === 'function') clog('relay: name to ' + String(pid).slice(0, 6) + ' held back (door pace)'); return; } return relaySendSealed(pid, 'name', { k: 'name', n: net.relayNameFit(myName()) }); }
+    function relayName(pid) { if (!doorPaceOk(pid)) { if (typeof clog === 'function') clog('relay: name to ' + String(pid).slice(0, 6) + ' held back (door pace)'); return; } return relaySendSealed(pid, 'name', { k: 'name', n: seatNameFor(pid) }); }
     // onRelayPeer(from, ty, f): a relay frame of the law's shape, opened and
     // checked (relayFrameAllowed). Dispatch by its type.
     function onRelayPeer(from, ty, f) {
@@ -6858,8 +6870,9 @@
       const dc = p.dc;
       if (typeof clog === 'function') dcTally(msg); // DEBUG: what the channel bytes are
       const bulk = isGossipFrame(msg);
-      return txm(() => net.seal(roomE2E, msg).then((env) =>
-        net.sendChunked(env, (piece, str) => { txKindAdd(msg, str.length, p); if (bulk && gossipWaits(dc, str, p)) return; try { dc.send(str); } catch (e) {} if (!bulk) pipeFirstSent(dc, msg); })));
+      if (!seatHas() && !seatDoorKind(msg)) { if (!(msg.k === 'sig' && msg.msg && msg.msg.kind === 'status')) seatWait(() => { if (p.dc === dc) dcSend(p, msg); }); return Promise.resolve(); }   // §SEAT: content waits for the seat key (a status beat comes again by itself)
+      return txm(() => seatSeal(msg).then((env) => (env ?
+        net.sendChunked(env, (piece, str) => { txKindAdd(msg, str.length, p); if (bulk && gossipWaits(dc, str, p)) return; try { dc.send(str); } catch (e) {} if (!bulk) pipeFirstSent(dc, msg); }) : undefined)));
     };
     // GOSSIP NEVER STANDS IN FRONT OF SOUND. A pair's channel is one ordered stream: whatever is in its send buffer goes
     // first. A link that newly joins my link set gets my whole recent gossip backlog at once (layer.js replayNew, up to 64
@@ -7038,8 +7051,9 @@
     const dcSendFile = (p, msg) => {
       if (!p || !p.dc || p.dc.readyState !== 'open' || standbyHolds(p, msg)) return Promise.resolve();
       const dc = p.dc;
-      return fileTx(() => net.seal(roomE2E, msg).then((env) =>
-        net.sendChunked(env, (piece, str) => { try { dc.send(str); } catch (e) {} })));
+      if (!seatHas() && !seatDoorKind(msg)) { seatWait(() => { if (p.dc === dc) dcSendFile(p, msg); }); return Promise.resolve(); }   // §SEAT: as dcSend
+      return fileTx(() => seatSeal(msg).then((env) => (env ?
+        net.sendChunked(env, (piece, str) => { try { dc.send(str); } catch (e) {} }) : undefined)));
     };
     // Room-wide fan-out. DataChannel pairs hear it directly (viaDc — free and
     // immediate); the ROOM hears it via MESH GOSSIP (exact-once flood over the
@@ -8802,7 +8816,7 @@
         if (fresh) rebuildPc(p, 'glare-yield', { keepIce: true });
         const pc = p.pc;
         Promise.resolve(fresh ? null : pc.setLocalDescription({ type: 'rollback' }))
-          .then(() => answerOffer(pc, p, m, true, (sdp) => sendSig(from, Object.assign({ kind: 'answer', sdp, ib: 1, dr: doorWord() }, sigMeta()))))
+          .then(() => answerOffer(pc, p, m, true, (sdp) => sendSig(from, Object.assign({ kind: 'answer', sdp, ib: 1, dr: doorWord() }, sigMeta(from)))))
           .catch((e) => {
             if (p.pc !== pc) return; // whoever replaced the pc owns the pair now
             // Rollback failed. Rebuild and dial from this side too. Dialling
@@ -8818,7 +8832,7 @@
     // makes the offer at some doors and the answer at the others. On an offer the far end's gate reads the word (an
     // unseated dialler is not a stale member); on either, a seated far end starts that door's clock (onRelayPeer).
     const doorWord = () => { const ms = meshSeat(); return ms && ms.hasCoord && ms.state === 3 && ms.seatTick - ms.seatedAt > 40 ? 0 : 1; };
-    const sigMeta = () => ({ name: myName(), ip: myIp, st: (typeof carryStatusOut === 'function' ? carryStatusOut(myStatus) : myStatus), mod: modTable, modw: gossipModW(), conns: myConns(), tc: myTc(), sid: mySid() });   // st: the status my beat says (carryStatusOut), or an offer undoes it
+    const sigMeta = (to) => (!seatTells(to) ? { sid: mySid() } : { name: myName(), ip: myIp, st: (typeof carryStatusOut === 'function' ? carryStatusOut(myStatus) : myStatus), mod: modTable, modw: gossipModW(), conns: myConns(), tc: myTc(), sid: mySid() });   // §SEAT: a page that is no member gets my stream id alone   // st: the status my beat says (carryStatusOut), or an offer undoes it
     // THE RULES THAT REBUILD BEFORE AN OFFER LANDS, first match wins. After a rebuild none of the later ones can
     // hold: a fresh pc has no death, no remote description, no connection and no media.
     const offerFpOf = (sdp) => { const m = /\r?\na=fingerprint:([^\r\n]+)/.exec(String(sdp && sdp.sdp || sdp || '')); return m ? m[1] : ''; };
@@ -9029,7 +9043,7 @@
           settled();
           if (p.pc !== pc) return; // rebuilt while minting: this offer belongs to a closed pc
           p.offerSentAt = Date.now(); p.offerSentPc = pc; p.offerSentKey = typeof offerKeyOf === 'function' ? offerKeyOf(pc.localDescription) : '';   // offerAgain sends only this offer again
-          sendSig(peerId, Object.assign({ kind: 'offer', sdp: pc.localDescription, ib: 1, dr: doorWord() }, sigMeta()));
+          sendSig(peerId, Object.assign({ kind: 'offer', sdp: pc.localDescription, ib: 1, dr: doorWord() }, sigMeta(peerId)));
         })
         .catch((e) => { settled(); if (p.pc === pc) noteNegFail('offer', peerId, e); });
     }
@@ -9084,7 +9098,7 @@
       // A description that carries media never rides the relay, and with no friend's channel it has no way at all (sendSig
       // drops it): only a rebuild, media-free, can dial. Sending such a copy again held a door unanswered until a friend came.
       if (!(net.bootOf && net.bootOf(pc.localDescription, 0)) && !(typeof friendDcOpen === 'function' && friendDcOpen(peerId))) return false;
-      sendSig(peerId, Object.assign({ kind: 'offer', sdp: pc.localDescription, ib: 1, dr: doorWord() }, sigMeta()));
+      sendSig(peerId, Object.assign({ kind: 'offer', sdp: pc.localDescription, ib: 1, dr: doorWord() }, sigMeta(peerId)));
       const cands = candsOfDesc(pc.localDescription);
       if (cands.length) { if (iceBatchOk(peerId)) sendSig(peerId, { kind: 'ice', candidates: cands }); else for (const c of cands) sendSig(peerId, { kind: 'ice', candidate: c }); }
       if (typeof clog === 'function') clog('offer-again ' + String(peerId).slice(0, 6) + ' ' + why + ' ' + Math.round((Date.now() - (p.offerSentAt || 0)) / 100) / 10 + 's');
@@ -9391,7 +9405,7 @@
         const offerKey = typeof offerKeyOf === 'function' ? offerKeyOf(msg.sdp) : '', took0 = offerKey && p.neg && p.neg.tookOffer;
         if (p.pc && took0 && took0.pc === p.pc && took0.key === offerKey && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed') {
           if (took0.answer) {
-            sendSig(from, Object.assign({ kind: 'answer', sdp: took0.answer, ib: 1, dr: doorWord() }, sigMeta()));
+            sendSig(from, Object.assign({ kind: 'answer', sdp: took0.answer, ib: 1, dr: doorWord() }, sigMeta(from)));
             const cands = typeof candsOfDesc === 'function' ? candsOfDesc(p.pc.localDescription) : [];
             if (cands.length) sendSig(from, { kind: 'ice', candidates: cands });
           }
@@ -9414,7 +9428,7 @@
         // polite peer (lower id) rolls back its local offer and accepts; the
         // impolite peer ignores the remote offer and keeps its own.
         const accept = () => { const pc = p.pc; const took = offerKey ? { key: offerKey, pc, answer: null } : null; if (took) p.neg.tookOffer = took;
-          return answerOffer(pc, p, msg, true, (sdp) => { if (took) took.answer = sdp; sendSig(from, Object.assign({ kind: 'answer', sdp, ib: 1, dr: doorWord() }, sigMeta()));
+          return answerOffer(pc, p, msg, true, (sdp) => { if (took) took.answer = sdp; sendSig(from, Object.assign({ kind: 'answer', sdp, ib: 1, dr: doorWord() }, sigMeta(from)));
             // DIAL.ICE: a dial of my seat that the far end offered (the lower id asks, the higher offers) has crossed when my
             // answer leaves: the wire counts only a dial of mine, so a pc I merely answer starts no clock
             if (p.pc === pc && meshNode && meshNode.penv && meshNode.penv.crossed) { try { meshNode.penv.crossed(from); } catch (e) {} } })
@@ -10841,7 +10855,240 @@
     // replay: a grant at or below your own epoch is dead on arrival, so
     // nobody can roll a member backwards. The epoch is PERSISTED beside the
     // stored password (loadPw/storePwEpoch), so a reload cannot disarm it.
-    let prevRoomE2E = null;   // exactly ONE previous generation, for stale-neighbour recognition + healing
+    let prevRoomE2E = null,   // exactly ONE previous generation, for stale-neighbour recognition + healing
+    // §SEAT: WHAT PEOPLE SAY AND SHARE IS SEALED UNDER A KEY ONLY SEATED PAGES HOLD (docs/meet-security.md §SEAT).
+    // roomE2E is the DOOR key: the link (and a typed password) derives it, so every page that can knock holds it. It
+    // seals the knock itself: the bootstrap, signalling, the seat's own frames, the door's words. Everything else (chat,
+    // history, transcript, files, reactions, the agenda, app data, names, status, pictures, every flood) is sealed under
+    // the SEAT key: 256 random bits minted in the room, mixed with the room material (net.deriveSeatKey), handed by a
+    // seated page to a page its own seat holds as a member, on that pair's authenticated channel, and nowhere else.
+    //   - seatDoorKind(msg) is the whole list of what the door key may seal. A kind that is not on it is seat-sealed,
+    //     so a new frame kind is sealed from the door until someone lists it.
+    //   - A receiver drops a frame that is not a door kind and opened under the door key: nobody outside can say it.
+    //   - A page holds a few seat keys (two rooms that met, two founders): it seals with the oldest and reads all.
+    //   - A password change moves these keys with the room key (the derivation holds the room material).
+    { seatDoorKind, seatSeal, seatWait, seatTake, seatAskedBy, seatTaken, seatGive, seatTells, seatStep, seatRekey, seatReset, seatNameFor, seatHas, seatDoorDrop, seatInfo } = (function () {
+    const seatKeys = new Map();      // kid -> { hex, t, cur, prev }: cur / prev are the AES keys under the room's current / replaced material
+    let seatCur = '';                // the kid I seal with: the oldest key I hold
+    let seatDerived = Promise.resolve();   // every key change runs on this chain; a seal or an open waits for it
+    const seatHeldRx = [];           // frames sealed under a seat key I do not hold yet (the hand-over is on its way)
+    const seatWaitTx = [];           // what I said before a seat key reached me
+    let seatKeylessSteps = 0, seatMintAt = 0, seatStepN = 0;
+    const SEAT_KEYS_MAX = 8, SEAT_HOLD_MAX = 64, SEAT_HOLD_CT = 65536, SEAT_TX_MAX = 128, SEAT_MINT_STEPS = 8;
+    const SEAT_T_AHEAD = GifOS.timings.MOD_AHEAD_MS;   // how far past my own clock a key's mint time or a host's statement may be dated (the bound a signed order has)
+    const seatStats = { minted: 0, given: 0, taken: 0, proved: 0, asked: 0, refused: 0, unread: 0, held: 0, doorDrop: {}, txHeld: 0, txDropped: 0 };
+    const SEAT_SIG_DOOR = new Set(['offer', 'answer', 'ice', 'dialask']);
+    const SEAT_DOOR_KINDS = new Set(['roffer', 'ranswer', 'rz', 'rreq', 'rgo', 'rwait', 'pcmark', 'pcbye', 'pcfresh', 'bye', 'dcauth', 'held', 'doorwait', 'tv', 'pwreset', 'pwinfo', 'mr', 'sk', 'skq', 'ck', 'ck2', 'wping', 'wpong', 'dcall']);
+    const seatMeshDoor = (m) => { const f = m ? (m.f || m) : null; return !!f && m.t !== 'GSP' && m.t !== 'GSPS' && f.t !== 'GSP' && f.t !== 'GSPS' && !(f.f && (f.f.t === 'GSP' || f.f.t === 'GSPS')); };   // the type the wire itself reads (m.t) decides first: a flood with a field added is still a flood   // a seat's own frame; a flood (GSP) carries what people say
+    function seatDoorKind(msg) {
+      if (!msg || typeof msg.k !== 'string') return false;
+      if (SEAT_DOOR_KINDS.has(msg.k)) return true;
+      if (msg.k === 'sig') return !!msg.msg && SEAT_SIG_DOOR.has(msg.msg.kind);
+      if (msg.k === 'fsig') return !!msg.m && SEAT_SIG_DOOR.has(msg.m.kind);
+      if (msg.k === 'mesh' || msg.k === 'fmesh') return seatMeshDoor(msg.m);
+      return false;
+    }
+    // WHO IS IN. Two ways, and no other:
+    //   PROVED: the far end of this authenticated channel showed it holds a seat key I hold (seatProof: a frame under
+    //     that key naming it and me). Every key I hold is one I may trust (seatTaken), so holding it is the membership;
+    //     what a page's mesh frames claim is not.
+    //   ADMITTED: the first hand-over. My own seat holds that page as a seat of the room (its occupancy), AND, while a
+    //     waiting room holds the door, a host let it in (a host's Admit for it, or it is a host). A page that sat
+    //     before the hold holds the key and proves it. The far end of a TURN link is a seat of the meeting's other
+    //     subroom (who may ask for a link is the link's own matter).
+    // Never a page the room voted out or a host barred.
+    let seatKeyStep = 0;   // the tick my first seat key landed
+    function seatHoldAt() { try { if (!hasAdminRoom()) return 0; const h = (modTable['*'] || {}).dhold; return ((h && h.on) || meetWait.holding()) ? 1 : 0; } catch (e) { return 1; } }
+    function seatAdmitted(pid) {
+      try {
+        const link = !!(turnLinks && turnLinks.isLink(pid));
+        if (!link && !meshKnows(pid)) return false;
+        if (seatHoldAt()) return admins.includes(pid) || !meetWait.blocks(pid);   // a host, or a host's Admit: a seat and a link end alike (a link ask is answered at any door)
+        if (link) return true;
+        // A hosted room whose host table has not reached this page yet: it cannot know whether the door is held, so for
+        // its first ticks with a key it hands it to proved pages only.
+        if (hasAdminRoom() && !amAdmin && !admins.length && seatStepN - seatKeyStep < SEAT_MINT_STEPS) return false;
+        return true;                                                             // no waiting room: the mesh's seat is the admission
+      } catch (e) { return false; }
+    }
+    function seatMember(pid) {
+      if (!pid || pid === myId || pwShut(pid)) return false;
+      const p = peers.get(pid);
+      return !!(p && p.dc && p.dc.__seatProved === true && p.dc.__authBy === pid) || seatAdmitted(pid);
+    }
+    const seatIn = (p, dc) => !!(p && p.id && !pwShut(p.id) && ((dc && dc.__seatProved === true && dc.__authBy === p.id) || seatAdmitted(p.id)));
+    // The proof: one small frame under my seat key that names me and the far end. Only a holder of the key can make
+    // it, and it is good for this pair alone (a copy sent back, or on to someone else, names the wrong ends).
+    function seatProof(p, dc) {
+      if (!seatCur || !p || !p.id || !dc || p.dc !== dc || dc.readyState !== 'open' || dc.__authBy !== p.id || dc.__skProofFor === seatCur) return;
+      if (pwShut(p.id) || !(meshKnows(p.id) || (turnLinks && turnLinks.isLink(p.id)) || seatAsked(p.id))) return;   // a seat in my view, a link end, or the door I knocked at
+      const f = { k: 'skp', from: myId, to: p.id };
+      if (standbyHolds(p, f) || bridgeHolds(p, f)) return;
+      dc.__skProofFor = seatCur; dcSend(p, f);
+    }
+    function seatProved(p, dc, m) {
+      if (!p || !p.id || !dc || p.dc !== dc || dc.__authBy !== p.id || !m || m.from !== p.id || m.to !== myId) return;
+      if (dc.__seatProved !== true) { dc.__seatProved = true; seatStats.proved++; }
+      seatGive(p, dc);
+    }
+    // WHICH KEY THE ROOM SEALS WITH. In a hosted room a host names it: its signed statement of the key's name (`w`)
+    // travels with the key, and a key a host named comes before every key no host named (the newest statement first),
+    // so a page that is not a host cannot move the room onto a key of its own. With no host's word (an open room, a
+    // hosted room before its host signs) the oldest key is the room's.
+    const seatOrder = () => Array.from(seatKeys.entries()).sort((a, b) => (b[1].ws - a[1].ws) || (a[1].t - b[1].t) || (a[0] < b[0] ? -1 : 1));
+    let seatRev = 0, seatSigning = false, seatSignTries = 0;   // seatRev: counts every change to what I hold (a hand-over is owed again after one)
+    const seatMark = () => seatCur + ':' + seatRev;
+    function seatLearn(hex, t, w, ok) {
+      if (!net.seatKeyOk(hex) || !Number.isFinite(t) || t <= 0 || t > Date.now() + SEAT_T_AHEAD) return seatDerived;   // a mint time from the future names no key
+      seatDerived = seatDerived.then(async () => {
+        const kid = await net.seatKid(hex + '|' + Math.floor(t));
+        let ws = 0;
+        if (w) { const o = await admVerify(w, 'seat', Infinity); if (o && o.kid === kid && +o.ts > 0 && +o.ts <= Date.now() + SEAT_T_AHEAD) ws = +o.ts; }   // a host's statement names this very key
+        if (!ws && ok !== true) { seatStats.refused++; return; }   // no host named it and its giver is not one I may take a key from
+        const had = seatKeys.get(kid);
+        if (had) { if (ws > had.ws) { had.ws = ws; had.w = w; seatRev++; seatCur = seatOrder()[0][0]; } return; }
+        const cur = await net.deriveSeatKey(room, av, roomPw, hex);
+        if (!cur) return;
+        seatKeys.set(kid, { hex, t: Math.floor(t), cur, prev: null, w: ws ? w : null, ws });
+        seatRev++;
+        const ord = seatOrder();
+        while (ord.length > SEAT_KEYS_MAX) seatKeys.delete(ord.pop()[0]);   // the last in the order go: never the one the room seals with
+        seatCur = ord[0][0];
+      }).catch(() => {}).then(seatLanded);
+      return seatDerived;
+    }
+    // The room key moved (a password change): every seat key moves with it; one replaced generation still opens.
+    function seatRekey() {
+      seatDerived = seatDerived.then(async () => {
+        for (const k of seatKeys.values()) { const nk = await net.deriveSeatKey(room, av, roomPw, k.hex); if (nk) { k.prev = k.cur; k.cur = nk; } }
+      }).catch(() => {}).then(seatLanded);
+      return seatDerived;
+    }
+    // A fresh entry (the first join, a password typed at the door): this page holds no seat, so it holds no seat key.
+    function seatReset() {
+      seatDerived = seatDerived.then(() => { seatKeys.clear(); seatCur = ''; seatRev++; seatHeldRx.length = 0; seatWaitTx.length = 0; seatKeylessSteps = 0; seatKeyStep = 0; }).catch(() => {});
+    }
+    function seatLanded() {
+      if (seatCur && !seatKeyStep) seatKeyStep = seatStepN || 1;
+      if (seatCur && seatWaitTx.length) { const now = Date.now(); for (const w of seatWaitTx.splice(0)) if (now - w.at <= REKEY_HOLD_MS) { try { w.send(); } catch (e) {} } }
+      if (seatHeldRx.length) { const now = Date.now(); for (const h of seatHeldRx.splice(0)) { if (now - h.at > REKEY_HOLD_MS) continue; if (seatKeys.has(h.env.s)) seatTake(h.p, h.dc, h.env, h.read, false); else seatHeldRx.push(h); } }
+    }
+    // Seal one frame for a channel: the door key for a door kind, else the seat key. null: no seat key yet (the caller holds the frame).
+    function seatSeal(msg) {
+      if (seatDoorKind(msg)) return net.seal(roomE2E, msg);
+      return seatDerived.then(() => { const k = seatKeys.get(seatCur); if (!k) return null; const kid = seatCur; return net.seal(k.cur, msg).then((env) => { if (env) env.s = kid; return env; }); });
+    }
+    // What I say before a seat key reached me waits for it (a seat just back from a reload, for a moment), newest kept.
+    function seatWait(send) {
+      seatStats.txHeld++;
+      seatWaitTx.push({ at: Date.now(), send });
+      while (seatWaitTx.length > SEAT_TX_MAX) { seatWaitTx.shift(); seatStats.txDropped++; }
+    }
+    // A frame under a seat key: open it with that key (its replaced generation too). A key I do not hold: the frame waits
+    // and I ask its sender, who answers only a member.
+    function seatTake(p, dc, env, read, again) {
+      return rxm(() => seatDerived.then(() => {
+        const k = seatKeys.get(env.s);
+        if (!k) {
+          // Held only for a far end that could hand me the key (a seat in my view, a link end, the door I knocked at), on a
+          // channel that proved whose it is, and only a small frame: anything else under a key I do not hold is dropped.
+          const known = !!(p && p.id && dc && dc.__authBy === p.id && !pwShut(p.id) && (meshKnows(p.id) || (turnLinks && turnLinks.isLink(p.id)) || seatAsked(p.id)));
+          if (!known || String(env.ct || '').length > SEAT_HOLD_CT) { seatStats.unread++; return; }
+          seatStats.held++;
+          const now = Date.now();
+          while (seatHeldRx.length && (seatHeldRx.length >= SEAT_HOLD_MAX || now - seatHeldRx[0].at > REKEY_HOLD_MS)) { seatHeldRx.shift(); seatStats.unread++; }
+          seatHeldRx.push({ at: now, p, dc, env, read });
+          if (p && p.id && p.dc === dc) { p.dcRxAt = now; meshRxByPid.set(p.id, now); }   // a frame I cannot read yet is still first-hand proof the pair carries
+          seatAsk(p, dc);
+          return;
+        }
+        return net.open(k.cur, env).then((inner) => inner || (k.prev ? net.open(k.prev, env) : null)).then((inner) => {
+          if (inner && inner.k === 'skp') { seatProved(p, dc, inner); return; }
+          if (inner && inner.k) { read(inner); return; }
+          if (!again && holdForRekey(() => seatTake(p, dc, env, read, true))) return;   // sealed under the room material my re-key is still deriving
+          seatStats.unread++;
+        });
+      }));
+    }
+    function seatAsk(p, dc) {
+      if (!p || !dc || dc.readyState !== 'open' || p.dc !== dc) return;
+      if (p.skqStep === seatStepN) return;   // once a tick per peer
+      p.skqStep = seatStepN;
+      seatStats.asked++;
+      dcSend(p, { k: 'skq' });
+    }
+    // Hand my seat keys to a member on its own authenticated channel, then greet it (status, picture, history): the
+    // greeting is content, so it follows the key and never goes to a page that is not seated.
+    function seatGive(p, dc) {
+      if (!p || !p.id || !dc || p.dc !== dc || dc.readyState !== 'open' || dc.__authBy !== p.id) return false;
+      if (!seatCur || !seatIn(p, dc)) return false;
+      const sk = { k: 'sk', keys: seatOrder().slice(0, 4).map(([, k]) => (k.w ? { h: k.hex, t: k.t, w: k.w } : { h: k.hex, t: k.t })) };
+      if (standbyHolds(p, sk) || bridgeHolds(p, sk)) return false;
+      if (dc.__skGiven !== seatMark()) { dc.__skGiven = seatMark(); seatStats.given++; dcSend(p, sk); dc.__skProofFor = ''; }   // and my proof follows the key it can now be read with
+      seatGreet(p, dc);
+      return true;
+    }
+    function seatAskedBy(p, dc) {
+      if (!seatGiveOk(p, dc)) { seatStats.refused++; return; }
+      dc.__skGiven = '';
+      seatGive(p, dc);
+    }
+    const seatGiveOk = (p, dc) => !!(p && p.id && dc && p.dc === dc && dc.__authBy === p.id && seatCur && seatIn(p, dc));
+    // A KEY IS KEPT ONLY IF IT MAY BE TRUSTED: a host named it (its signature, whoever carried it here), or its giver
+    // is in (proved or admitted), or, where no waiting room holds the door, its giver is a seat in my view, a link end
+    // or the door I knocked at. A page that only knocked at my door, and a page counted as a seat without an Admit
+    // while the door is held, can hand me nothing: so a proof under a key I hold is a proof of membership.
+    function seatTaken(p, dc, m) {
+      if (!p || !p.id || !dc || dc.__authBy !== p.id || !m || !Array.isArray(m.keys) || pwShut(p.id)) return;
+      const ok = seatIn(p, dc) || (!seatHoldAt() && !!(meshKnows(p.id) || (turnLinks && turnLinks.isLink(p.id)) || seatAsked(p.id)));
+      dc.__skTook = (dc.__skTook || 0) + 1; if (dc.__skTook > 16) { seatStats.refused++; return; }   // a channel hands keys a few times, not without end
+      dc.__skProofFor = '';   // what I hold may change: my proof to this page is owed again
+      for (const k of m.keys.slice(0, 4)) if (k && net.seatKeyOk(k.h)) { seatStats.taken++; seatLearn(k.h, +k.t, k.w && typeof k.w === 'object' ? k.w : null, ok); }
+    }
+    // The greeting a channel carries once its far end is a member: my status, picture, the host's table and the history.
+    function seatGreet(p, dc) {
+      if (!p || !dc || dc.__greeted || p.dc !== dc || dc.readyState !== 'open') return;
+      if (!seatCur || !seatIn(p, dc)) return;
+      dc.__greeted = true;
+      try { dcSend(p, { k: 'sig', msg: statusPayload() }); txStats.dcStatus++; } catch (e) {}
+      try { sendAvatarTo(p); } catch (e) {}
+      if (amAdmin) { try { dcSend(p, { k: 'sig', msg: { kind: 'mod', mod: modTable, modw: gossipModW() } }); } catch (e) {} }
+      dcSend(p, historyHi());
+    }
+    // Once a tick: a seated page alone in its room mints the room's seat key; a seated page among others asks them
+    // first and mints only if nobody answered (two keys in one room settle on the older); every member on an
+    // authenticated channel that has not been handed my current key gets it, and its greeting.
+    function seatStep() {
+      const s = meshSeat(), seated = !!(s && s.state === 3 && s.hasCoord);
+      seatStepN++;
+      if (seatHeldRx.length) { const h = seatHeldRx[seatHeldRx.length - 1]; seatAsk(h.p, h.dc); }   // a frame still waits for its key: ask again
+      if (!seated) { seatKeylessSteps = 0; }
+      else if (!seatCur) {
+        let others = false; try { for (const v of s.occ.values()) if (v && v !== myId) { others = true; break; } } catch (e) {}
+        seatKeylessSteps++;
+        if (!others || seatKeylessSteps > SEAT_MINT_STEPS) { if (!seatMintAt) { seatMintAt = Date.now(); seatStats.minted++; seatLearn(net.mintSeatKey(), seatMintAt, null, true).then(() => { seatMintAt = 0; }); } }
+        else for (const p of peers.values()) if (p && p.dc && p.dc.readyState === 'open' && p.dc.__authBy === p.id && seatMember(p.id)) seatAsk(p, p.dc);
+      }
+      if (!seatCur) return;
+      // A host names the room's key once (its signature travels with the key from then on).
+      if (amAdmin && hasAdminRoom() && !seatSigning && seatSignTries < 4) {
+        const top = seatOrder()[0];
+        if (top && !top[1].ws) { seatSigning = true; seatSignTries++; admSigned('seat', { kid: top[0] }).then((w) => (w ? seatLearn(top[1].hex, top[1].t, w, true) : null)).catch(() => {}).then(() => { seatSigning = false; }); }
+      }
+      for (const p of peers.values()) {
+        const dc = p && p.dc; if (!dc || dc.readyState !== 'open' || dc.__authBy !== p.id) continue;
+        if (dc.__skProofFor !== seatCur) seatProof(p, dc);
+        if (dc.__skGiven !== seatMark() || !dc.__greeted) seatGive(p, dc);
+      }
+    }
+    // The name beside a bootstrap over the relay: a seated page says its name to a member only (a knocker is told nothing about who is inside).
+    const seatTells = (pid) => { const s = meshSeat(); return !(s && s.state === 3 && s.hasCoord) || seatMember(pid); };   // a seated page says who it is to a member only; a page with no seat introduces itself to the door
+    function seatNameFor(pid) { return seatTells(pid) ? net.relayNameFit(myName()) : ''; }
+    const seatHas = () => !!seatCur;
+    function seatDoorDrop(inner) { const kk = String(inner.k).slice(0, 16) + (inner.k === 'sig' && inner.msg ? '.' + String(inner.msg.kind).slice(0, 12) : ''); seatStats.doorDrop[kk] = (seatStats.doorDrop[kk] || 0) + 1; }
+    const seatInfo = () => ({ cur: seatCur, kids: seatOrder().map((e) => e[0]), named: seatOrder().filter((e) => e[1].ws).map((e) => e[0]), waitTx: seatWaitTx.length, heldRx: seatHeldRx.length, stats: JSON.parse(JSON.stringify(seatStats)) });   // names only, never a key
+    return { seatDoorKind, seatSeal, seatWait, seatTake, seatAskedBy, seatTaken, seatGive, seatTells, seatStep, seatRekey, seatReset, seatNameFor, seatHas, seatDoorDrop, seatInfo };
+    })();
     let pwEpoch = 0;          // generation counter, carried inside the signed grant: the room's FLOOR (a pulse may raise it)
     let pwHeldEp = 0;         // the generation of the password this page HOLDS; a grant is a replay only at or below this
     let retainedGrant = null; // the admin's pwinfo, verbatim — replayable by any member
@@ -11138,7 +11385,12 @@
     // when no channel exists yet (greeter first-contact).
     const meshSendDC = (to, m) => {
       const p = peers.get(to);
-      if (p && p.dc && p.dc.readyState === 'open') { dcSend(p, { k: 'mesh', m }); return true; }
+      // DEBUG lever (§SEAT tests): a page that opens a door's channel and never asks for a seat, as a changed page could.
+      if (DEBUG_ON && window.__seatNoAsk) { const f0 = m ? (m.f || m) : null; if (f0 && f0.t === 'WHOHOME') return true; }
+      if (p && p.dc && p.dc.readyState === 'open') {
+        dcSend(p, { k: 'mesh', m });
+        return true;
+      }
       // No open DataChannel. Sponsor-forward (§FWD) — through a mutual friend,
       // one mesh hop, or the greeter DOOR. This is what lets a just-seated deep
       // newcomer's HELLO/PHONE/CLAIM/gossip reach its socketless neighbours at
@@ -12047,7 +12299,7 @@
       return net.deriveMeetKey(room, av, roomPw).then((k) => {
         try {
           if (k && roomE2E && k !== roomE2E) { prevRoomE2E = roomE2E; rekeyAt = Date.now(); } // keep ONE generation for stale-neighbour healing (§LOCK)
-          if (k) roomE2E = k;
+          if (k) { roomE2E = k; seatRekey(); }
           // The WIRE seals with its own captured key (greeter registry blobs,
           // sealed relay fallback) — hand it the new one, or a Section-1 greeter
           // keeps registering blobs under the OLD key and every new-password
@@ -12593,7 +12845,7 @@
             return { stage: stg, stadium: [...stad] };
           } catch (e) { return { stage: [], stadium: [] }; }
         },
-        onUpdate: () => { try { renderFromOcc(); } catch (e) { rosterBuild.throws++; rosterBuild.err = String((e && e.message) || e).slice(0, 80); throw e; } saveTreeMem(); try { reportDarkDeaths(); } catch (e) {} try { meshVoteBeat(); } catch (e) {} try { if ((0, /*()*/__M.headSendsStale)()) (0, /*()*/__M.schedReconcile)(); } catch (e) {} },
+        onUpdate: () => { try { seatStep(); } catch (e) {} try { renderFromOcc(); } catch (e) { rosterBuild.throws++; rosterBuild.err = String((e && e.message) || e).slice(0, 80); throw e; } saveTreeMem(); try { reportDarkDeaths(); } catch (e) {} try { meshVoteBeat(); } catch (e) {} try { if ((0, /*()*/__M.headSendsStale)()) (0, /*()*/__M.schedReconcile)(); } catch (e) {} },
         onRelayMsg: onRelayFrame,
         onBusy: relayBusy, // the relay's spend breaker: new joins wait, live meetings go on
         prevTree: readTreeMem(),
@@ -13799,7 +14051,7 @@
         net.meetPwProof(room, av, roomPw),
         sha256hex('gifos-dev|' + room + '|' + (av || '') + '|' + deviceId()),
       ]).then(([d, pr, dh]) => {
-        sessId = d.sid; sessTok = d.tok; roomE2E = d.key; pwProof = pr;
+        sessId = d.sid; sessTok = d.tok; roomE2E = d.key; pwProof = pr; seatReset();
         myDevHash = dh.slice(0, 16);
         startMesh();
       }).catch((err) => { setStatus('Could not join the meeting (' + ((err && err.name) || 'Error') + ').'); try { statusLine.why = 'nojoin'; (0, /*()*/__V.paintStatusWhy)('nojoin'); (0, /*()*/__V.paintLiveBadge)(); } catch (e2) {} });
@@ -14348,7 +14600,7 @@
           net.meetPwProof(room, av, roomPw),
           sha256hex('gifos-dev|' + room + '|' + (av || '') + '|' + deviceId()),
         ]).then(([d, pr, dh]) => {
-          sessId = d.sid; sessTok = d.tok; roomE2E = d.key; pwProof = pr;
+          sessId = d.sid; sessTok = d.tok; roomE2E = d.key; pwProof = pr; seatReset();
           myDevHash = dh.slice(0, 16);
           startMesh();
           updateStatus();
@@ -14906,6 +15158,7 @@
         .then((ok) => {
           if (!ok || p.dc !== dc) return;
           dc.__authBy = p.id;
+          try { seatGive(p, dc); } catch (e) {}   // §SEAT: a member's channel just proved whose it is: the seat key and the greeting go now
           // frames from now on are the peer's own word: re-announce so my
           // HELLO reaches it as a first-hand claim, not a hint (and greet
           // it — see dc.onopen)
@@ -14931,9 +15184,8 @@
         // slots — added to the bootstrapped transport and negotiated here,
         // never over the relay (sendSig: a connected pair negotiates on its
         // own channel).
-        try { dcSend(p, { k: 'sig', msg: statusPayload() }); txStats.dcStatus++; } catch (e) {}
-        try { sendAvatarTo(p); } catch (e) {}
-        if (amAdmin) { try { dcSend(p, { k: 'sig', msg: { kind: 'mod', mod: modTable, modw: gossipModW() } }); } catch (e) {} }
+        // §SEAT: the greeting (status, picture, the host's table, the history) is content: it goes once the far end is a
+        // member and holds the seat key (seatGive), never to a knocker.
         try {
           const media = enableMedia(p);
           // DEBUG lever (forced race, SUB.7 one slot): __pipeSlotLateMs holds a pipe pc's first own-channel negotiation, so the
@@ -14944,7 +15196,6 @@
         } catch (e) {}   // a pipe's (or standby's) sound slot: the first negotiation on this channel
         try { (0, /*()*/__M.headLinkUp)(p.id); } catch (e) {}   // the channel to my row's head is up: my sends to it go now
         try { if (linkTo(p.id)) retireBootPairs(); } catch (e) {} // a seat's own link is open: the door I came in by closes
-        dcSend(p, historyHi());
         // THE MOMENT A CHANNEL EXISTS is the moment the stage pulls can finally
         // travel. Everything below was silently impossible a millisecond ago:
         // sgaFan delivers only to peers whose DC is already OPEN, so a
@@ -14991,10 +15242,13 @@
         let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
         m = meshDefrag(m, 'dc|' + p.id); if (!m) return;
         const read = (inner) => { const dk = rxStats.dcKinds; const kk = String(inner.k).slice(0, 16); dk[kk] = (dk[kk] || 0) + 1; if (pwNoAny()) { pwHeardNow(p.id); pwHeardNow(inner.from); } onDc(p, dc, inner); };
+        // §SEAT: a frame under a seat key is read with that key; a frame under the door key is read only if it is a door kind.
+        if (typeof m.s === 'string') { seatTake(p, dc, m, read, false); return; }
+        const readDoor = (inner) => { if (seatDoorKind(inner)) read(inner); else seatDoorDrop(inner); };
         const take = (held) => rxm(() => net.open(roomE2E, m).then((inner) => {
-          if (inner && inner.k) { read(inner); return; }
+          if (inner && inner.k) { readDoor(inner); return; }
           if (!inner && !held && holdForRekey(take)) return; // sealed under the key my re-key is still deriving (rekeyHeld)
-          return healStaleFrom(p.id, m, dc, p).then((old) => { if (old && old.k) read(old); }); // §LOCK: a previous-key frame is the staleness signal, and a healed member's frame is read — see healStaleFrom
+          return healStaleFrom(p.id, m, dc, p).then((old) => { if (old && old.k) readDoor(old); }); // §LOCK: a previous-key frame is the staleness signal, and a healed member's frame is read — see healStaleFrom
         }));
         take(false);
       };
@@ -15445,6 +15699,10 @@
         dcSend(p, { k: 'wpong' }); // the wake probe (wakeProbe): the one answer it accepts
       } else if (m.k === 'mr') {
         if (myRoomPart) { if (dc && dc.__authBy === p.id) myRoomPart.onMsg(p.id, m); else myRoomPart.drop(p.id, 'unauthenticated:' + (dc ? String(dc.__authBy || '') : 'nodc')); }   // My Room: cards and rings, over an authenticated channel only
+      } else if (m.k === 'skq') {
+        seatAskedBy(p, dc);         // §SEAT: a member asks for the seat key
+      } else if (m.k === 'sk') {
+        seatTaken(p, dc, m);        // §SEAT: a member (or my door) hands me the seat key
       } else if (m.k === 'held') {
         onHeldSaid(p, dc);
       } else if (m.k === 'doorwait') {
@@ -23638,7 +23896,13 @@
       if (f.q !== 'c') return;
       const sendTv = (x) => relaySendSealed(from, 'tv', x);
       const seated = !!(meshNode && meshCoord());
-      if (!seated || carryHosts.size >= C.CARRY_MAX || !C.supported() || !ensureAc()) { sendTv({ k: 'tv', q: 'c', l: f.l, d: myDevHash, b: 1 }); return; }   // busy: ask another seat
+      // A HELD DOOR CARRIES NOBODY (docs/meet-security.md §SEAT). To be carried is to be in the room: its sound, its chat, a
+      // voice in it. So the ask stands at the same door a knock does: a page the waiting room holds (meetWait.blocks: no
+      // host's Admit yet) or the room shut out (pwShut) is carried by no seat. It is told to ask another seat, a host's
+      // door puts it on the waiting list, and it asks again by itself; a host's Admit opens every door to it.
+      const heldOut = pwShut(from) || meetWait.blocks(from);
+      if (heldOut && amAdmin && !pwShut(from)) meetWait.note(from, rosterNames[from] || 'Someone waiting');
+      if (heldOut || !seated || carryHosts.size >= C.CARRY_MAX || !C.supported() || !ensureAc()) { sendTv({ k: 'tv', q: 'c', l: f.l, d: myDevHash, b: 1 }); return; }   // held, or busy: ask another seat
       c = { far: from, name: '', voice: null, mix: null, srcs: new Map() };
       c.link = C.createLink(Object.assign((0, /*()*/__V.carryIo)(from, f.l, sendTv, (dev, l) => relaySendObj({ t: 'tvouch', to: dev, l }), false), {
         onUp: () => carryHostUp(c), onDown: (why) => { if (why === 'closed') carryHostEnd(c); },
@@ -24000,6 +24264,7 @@
       // Every close code the relay socket saw in this node's life, newest
       // last ({code, at}) — a policy cut reads differently from a drop.
       relayCloses: () => { try { return meshNode ? meshNode.stats().closes : []; } catch (e) { return []; } },
+      seatState: () => seatInfo(),   // §SEAT: which seat keys this page holds (names only, never a key)
       rxStats: () => JSON.parse(JSON.stringify(rxStats)), // reception mirror (offers/answers/ice arrived, offers refused)
       relayUp: () => relayUp(), // does my mesh node hold a live relay socket right now?
       // Event-driven departures (D2/D5 → UI): the confirmed-gone tombstones.
