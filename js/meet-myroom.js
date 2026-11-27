@@ -343,6 +343,18 @@
   function contactPub(c) { const t = c && parseToken(c.token); return (t && t.c && t.c.pub) || ''; }
   const membersOf = (rec, mine) => [mine].concat(rec.pubs);
 
+  // ---- taking My personal room off this device (the Rooms app) -----------------------------------------------------
+  // dropMine(): every card it gave stops working (no device holds its key to check them), and private rooms whose
+  // membership is that key (records from before per-room member keys: no `me`) are cut with it. Our private rooms made
+  // at a swap have keys of their own and stay: contacts can still be called.
+  function dropMine() {
+    const m = mine(); if (!m) return false;
+    for (const x of issued()) if (roomKey(x.room, x.v) === roomKey(m.room, m.v)) revoke(x.id);
+    for (const x of privates()) if (!x.me) cutPrivate(x.room, x.v);
+    try { const s = store(); s.removeItem(KEY.mine); s.removeItem(KEY.stay); for (const p of ['gifos_vadm_', 'gifos_vpw_', 'gifos_vpwat_', 'gifos_vpwep_']) s.removeItem(p + roomKey(m.room, m.v)); } catch (e) {}
+    return true;
+  }
+
   // ---- one meeting's My Room part ----------------------------------------------------------------------------------
   // host (the core): room(), v(), myId(), myName(), owner() (this page holds the room's host key), send(pid, frame),
   // hosts() (seats that proved the host key, not me), held(pid), admit(pid), hold(on) / holding(), signAdm(act, extra),
@@ -952,7 +964,7 @@
     mine, isMine, create, adopt, hosted, stayOn, setStay,
     contacts, contactFor, keep, forget, rename, issued, revoke, revoked, missed, noteMissed, clearMissed, cardLink, roomKey,
     privName, privates, privFor, pairWith, keepPrivate, mintPrivate, contactPub, issuedTo, cutPrivate, cardIn, memberOf, signWord, wordOk,
-    listenSet, touchPrivate, LISTEN_MAX, useStore,
+    listenSet, touchPrivate, LISTEN_MAX, useStore, dropMine,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = GifOS.meetMyRoom;
 })(typeof window !== 'undefined' ? window : globalThis);

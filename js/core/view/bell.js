@@ -1,14 +1,14 @@
 /*
  * GifOS Core: the Doorbell's view (meet.html). Copyright (c) 2026 Crowd Concepts, Inc. All rights reserved.
  *
- * Paints what the Doorbell part (js/meet-bell.js, GifOS.bell) says, in two places with one painter: a block under My
- * Room in the lobby, and a "Doorbell" group in Settings.
+ * Paints what the Doorbell part (js/meet-bell.js, GifOS.bell) says, in two places with one painter: a block in the Rooms
+ * app (rooms.html, #rooms-bell, under Ringing), and a "Doorbell" group in the meeting's Settings.
  *   "Ring me on this device"   registers this device (asks for the notification permission: the person's tap)
  *   Pause rings                 the owner's switch at the Doorbell (all devices)
  *   Send a test ring            pushes "Rings reach this device." to this device
  *   Your devices                every device that rings for you, with Remove (the lost-device button)
- * In the lobby it also turns rings this device's service worker showed and nobody answered into missed calls (My
- * Room's own list).
+ * Where no room is open (the meeting lobby, the Rooms app) it also turns rings this device's service worker showed and
+ * nobody answered into missed calls (My Room's own list).
  */
 (function (root) {
   'use strict';
@@ -21,14 +21,13 @@
   const T = () => GifOS.timings || {};
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const DEL_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M9 3h6l1 2h4v2H4V5h4l1-2zm-3 6h12l-1 12H7L6 9z"/></svg>';
-  const boxes = () => [$('lob-bell'), $('set-bell')].filter(Boolean);
+  const boxes = () => [$('rooms-bell'), $('set-bell')].filter(Boolean);
   let info = null, said = '', busy = false;
 
   function paint() {
     const b = B(); if (!b) return;
     for (const box of boxes()) {
       let h = '';
-      if (box.id === 'lob-bell') h += '<div class="lob-hist-h">Doorbell</div>';
       if (!b.pushable()) {
         h += '<p class="lob-quiet">This browser cannot ring while GifOS is closed. On an iPhone, add GifOS to your Home Screen first.</p>';
         box.innerHTML = h; box.hidden = false; continue;
@@ -69,10 +68,6 @@
   }
 
   function build() {
-    if (!$('lob-bell')) {
-      const after = $('lob-myroom') || doc.querySelector('#lobby .lob-sep');
-      if (after) { const d = doc.createElement('div'); d.id = 'lob-bell'; d.className = 'lob-myroom'; d.hidden = true; after.parentNode.insertBefore(d, after.nextSibling); }
-    }
     const debug = $('set-g-debug');
     if (debug && !$('set-g-bell')) {
       const s = doc.createElement('section'); s.className = 'set-group'; s.id = 'set-g-bell';
@@ -82,6 +77,7 @@
   }
   function start() {
     if (!B()) return;
+    GifOS.bellView = { paint, refresh };   // the Rooms app repaints its list and puts #rooms-bell back: it paints again
     build();
     const here = GifOS.link ? GifOS.link.read(root.location.pathname, '', root.location.hash) : { room: '' };
     if (!here.room) missedFromPushes();
