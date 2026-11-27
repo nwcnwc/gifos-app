@@ -8444,7 +8444,7 @@
       "appId": "super-sudoku",
       "name": "Super Sudoku",
       "shortName": "Sudoku",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "A full sudoku. Race a friend on the same puzzle.",
       "author": {
         "name": "TN1ck",
@@ -8479,15 +8479,15 @@
         136
       ],
       "cover": "/apps/super-sudoku/cover.jpg",
-      "bytes": 297849,
+      "bytes": 335554,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-27"
       },
-      "sha256": "76753624e994eca309561e0ede069bbbe07a778ca50de00bd7899a96049ab1e4"
+      "sha256": "2197e39f81fc17a16f5a92c0e285e8ca2654ecea2ff95bda4f6411d5d00a184d"
     },
     {
       "slug": "survey",
