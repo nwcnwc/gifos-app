@@ -1,6 +1,6 @@
 {
  "v": 1,
- "build": "0.9.28.45",
+ "build": "0.9.28.46",
  "signer": "gifos.app",
  "files": {
   "js/app-owner.js": "7c709e7f9e553d5c4c38ef8925dc7841fe2b68a2f95ebce0846593f91eb54535",
@@ -26,7 +26,7 @@
   "js/meet-agent.js": "76da24e3e29f7140a8da87c68668ef23a11594a37a421095170ae7abc00aa3c4",
   "js/meet-captrust.js": "aeb7b4797ee4eac6ac5c9cd54d38bb7c79d8034eab948ce6ef226562d67eb0e3",
   "js/meet-carry.js": "d9a058dc2636bacc03e055ecdbc8a6b323f2bdbc3b189d5f683b691a4c1f7263",
-  "js/meet-content.js": "b8d1b78f79b9c44f55b45137eded1c6ca28cbd492bcaa17080bed9184e23b34e",
+  "js/meet-content.js": "fa2d06738eee60af3d1b0b5753456e360542f46a836d8e0dbc61c4658a727406",
   "js/meet-debuglog.js": "6c67ea9438f45657f0915636922edf6d9bae253af4249819692e51d81526e6bd",
   "js/meet-layout.js": "11cfd77d1da39930715e1ebc150400a547ceb6a34e5102657eb16a4f6cd4335f",
   "js/meet-leave.js": "92f60bb18199ffee5e6d8a1a8fc8783c53fa41732f4a5d3c4c2409843e814d50",
@@ -39,10 +39,10 @@
   "js/meet-tunnel.js": "66ca64d8cf59514df9ea63f4f94c6ead429d484855b8ab0ca3cb385f13a502f4",
   "js/meet-turn.js": "94912aa002faf040139eae3b276548d00937e4d759ed873f64c55ae747a90794",
   "js/meet-viewmode.js": "dd8488050ab7d030279811242a493ec03c858e8167c6f10c4787105eb6a41801",
-  "js/meet-zones.js": "bf46645cf871192b1edd7c4c8fb6403fa37ee9b1f710b11c0922878d07780246",
+  "js/meet-zones.js": "095e282f3b36e67ddecc018692181871eb29ced1a0bd610de17c961892f24663",
   "js/mesh-identity.js": "e7c41650476bf262b0ba41d9970072b77eb748c16d1d9267c73fb4af8e5e1a79",
   "js/mesh-media.js": "41245d8086c88d9499455c0dfab87b379fe19764186a67401548e8c516c72eb7",
-  "js/mesh-wire.js": "c55a15c32c062c61d26711d04185152e74a109ccbe96b0ea1546bff1398c262f",
+  "js/mesh-wire.js": "559868c3007493e5a884b7f4559e498659d988c3eb3aee6a3e9b61fdb2f7643f",
   "js/mesh/books.js": "092db7b0f42029f95830cfc42f5f3180466832730e7a3510364785d3b97b8c6e",
   "js/mesh/burst.js": "70e72093587a0f383f199c799cd55eb952ecf3d18d88b401500db52a10dcec25",
   "js/mesh/c7proof.js": "defc7b5cc309af34d6b04a052704cdf9cf5080f1a99d68ffdd7318a6cd1591ac",
@@ -106,5 +106,5 @@
   "js/runtime.js": "259679ffa6983bcb148149321ad031faa08633414bb4cbedd9e0a42fa120f4e2",
   "js/timings.js": "06770445eb2619eb5b87ed3d2ac87a92303570b2c2918c5999d733a4181c41ea"
  },
- "sig": "kjIrAs9bh7CQaNg/UDiuGBTwXrZM8qm48Mes1DhVuvPId03hqlq2Xun3ljiujKl1Olr/Z7xU2tZX7agfb8IuAg=="
+ "sig": "aCepCgyKKiKNJACLAts0c7Zgs+yQBMhDyu26ue2LUZ3H1luOdv+DR9dwUH0c3J3GvLW6N3QXQTsU2g9BwEI8DQ=="
 }
