@@ -6119,8 +6119,12 @@
     yield 2399;
     // o: { blob (or a promise of one), title, last, saved }. Called inside
     // the tap, so the sound can start without another one.
+    // -> { ok, dur } once the film is on the stage, or { err, text }. The button ignores it; an app's rebroadcast
+    // (a meeting session, js/meet-host.js) reads it. o.at: start there (seconds), to go on after a reload.
     async function rbStart(o) {
-      if (__C.rbNow || !__C.BROADCAST || !(0, /*()*/__C.bcHostStored)()) return;
+      if (!__C.BROADCAST) return { err: 'not-broadcast', text: 'Only a broadcast can rebroadcast.' };
+      if (!(0, /*()*/__C.bcHostStored)()) return { err: 'not-host', text: 'Only the host can rebroadcast.' };
+      if (__C.rbNow) return { err: 'busy', text: 'A rebroadcast is already playing.' };
       if (__C.myStatus.scr) stopScreenShare('a rebroadcast is starting');
       const vid = document.createElement('video');
       vid.playsInline = true; vid.preload = 'auto';
@@ -6139,7 +6143,7 @@
       (0, /*()*/__V.paintRb)();
       try {
         const blob = await o.blob;
-        if (__C.rbNow !== r) return;
+        if (__C.rbNow !== r) return { err: 'stopped', text: 'The rebroadcast was stopped.' };
         r.url = URL.createObjectURL(blob);
         vid.src = r.url;
         await new Promise((ok, no) => {
@@ -6147,14 +6151,15 @@
           vid.addEventListener('error', () => no(new Error('unplayable')), { once: true });
         });
         await (0, /*()*/__C.rbLength)(vid);
+        if (o.at > 0 && isFinite(vid.duration)) { try { vid.currentTime = Math.min(o.at, Math.max(0, vid.duration - 2)); } catch (e) {} }
         await vid.play();
-        if (__C.rbNow !== r) return;
+        if (__C.rbNow !== r) return { err: 'stopped', text: 'The rebroadcast was stopped.' };
         if ((0, /*()*/__C.rbCap)(vid)) (0, /*()*/__C.rbTracks)(r); else r.v = (0, /*()*/__V.rbCanvas)(r);
         if (!r.v) throw new Error('no picture');
       } catch (e) {
         if (__C.rbNow === r) { __C.rbNow = null; (0, /*()*/__C.rbDrop)(r); (0, /*()*/__V.paintRb)(); }
         (0, /*()*/__C.setStatus)((0, /*()*/__C.uiText)('stThatVideoCanTBe', 'That video can’t be played here. Pick another file.'), 8000);
-        return;
+        return { err: 'unplayable', text: 'That video can’t be played here.' };
       }
       // From the ended screen (Q72): lift the hold the Leave left, without
       // the mic or camera, and put the seat back on the stage.
@@ -6163,7 +6168,30 @@
       __C.myStatus.bcend = 0;
       __C.myStatus.rb = Date.now();
       r.starting = false;
-      vid.addEventListener('ended', () => { if (__C.rbNow === r) (0, /*()*/__C.rbStop)('ended'); });
+      // An app's rebroadcast says its blur pick up front (o.blur: 0 No blur, 1 Min, 2 Max), the pick a person makes
+      // on the rebroadcast bar; it stands for this film (the bar's pick is offered again and taken: view paintRbNow).
+      if (o.blur === 0 || o.blur === 1 || o.blur === 2) { r.blur = o.blur; try { (0, /*()*/__C.setPersonalBlur)(o.blur, true); } catch (e) {} }
+      // A FALSE END. A browser may raise 'ended' well before the film's length (seen on Chromium on a Raspberry Pi:
+      // a quarter of 40-minute films, at random places, files intact): the demuxer gave up on one spot. That is not
+      // the end: play on a step past the spot (one step more each time it repeats there). Only a film that cannot get
+      // past it in RB_SKIP_TRIES steps stops (stalled). An unknown length trusts the 'ended'.
+      vid.addEventListener('ended', () => {
+        if (__C.rbNow !== r) return;
+        const d = vid.duration, p = vid.currentTime, T = GifOS.timings;
+        if (!(isFinite(d) && d > 0 && p < d - T.RB_END_SLACK_MS / 1000)) { (0, /*()*/__C.rbStop)('ended'); return; }
+        r.skips = (r.skipAt != null && p < r.skipAt + T.RB_SKIP_MS / 1000 * (r.skips + 1)) ? r.skips + 1 : 1;
+        r.skipAt = p;
+        if (r.skips > T.RB_SKIP_TRIES) { (0, /*()*/__C.rbStop)('stalled'); return; }
+        try { vid.currentTime = Math.min(p + T.RB_SKIP_MS / 1000 * r.skips, d - 1); const pr = vid.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {}
+        // The jump breaks the captured sound on its way out (the senders keep a track whose clock jumped): the stage
+        // feed takes a fresh capture of the same element, and the old tracks stop.
+        if ((0, /*()*/__C.rbCap)(vid)) {
+          const ov = r.v, oa = r.a;
+          (0, /*()*/__C.rbTracks)(r);
+          refreshOutbound();
+          try { if (oa && oa !== r.a) oa.stop(); if (ov && ov !== r.v) ov.stop(); } catch (e) {}
+        }
+      });
       vid.addEventListener('timeupdate', __V.paintRbNow);
       vid.addEventListener('pause', __V.paintRbNow);
       vid.addEventListener('play', __V.paintRbNow);
@@ -6173,6 +6201,8 @@
       (0, /*()*/__C.refreshAllTiles)();
       (0, /*()*/__V.paintRb)();
       (0, /*()*/__C.setStatus)('Rebroadcasting ' + (r.last ? 'the last ' + (0, /*()*/__C.rbNoun)() : r.title) + '. Viewers see Prerecorded.', 6000);
+      if (typeof window.__gifosMeetEmit === 'function') { try { window.__gifosMeetEmit({ type: 'rebroadcast', state: 'started', title: r.title || '', pos: vid.currentTime || 0, dur: vid.duration || 0 }); } catch (e) {} }
+      return { ok: true, dur: vid.duration || 0, pos: vid.currentTime || 0 };
     }
     yield 2412;
 

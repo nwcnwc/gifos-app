@@ -216,6 +216,9 @@
     PW_GRANT_HOLD_MS: 6000,   // ms
     PW_TOUCH_MS: 600000,   // ms
     PW_TTL: 1209600000,   // ms
+    RB_END_SLACK_MS: 3000,   // ms
+    RB_SKIP_MS: 2000,   // ms
+    RB_SKIP_TRIES: 5,   // count
     REACH_PROBE_MS: 2500,   // ms (REACH_PROBE)
     REACT_COALESCE_MS: 250,   // ms
     RECONNECT_CAP_MS: 5000,   // ms

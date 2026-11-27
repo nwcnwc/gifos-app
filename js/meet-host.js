@@ -23,19 +23,31 @@
     try { appWin.postMessage({ ns: 'gifos', type: 'meet-event', event: event }, '*'); } catch (e) {}
   }
 
-  var sessionDoc = null;
-  function sessionHtml() {
-    if (sessionDoc) return sessionDoc;
-    sessionDoc = fetch('meet.html', { cache: 'no-store' }).then(function (r) {
-      if (!r.ok) throw new Error('Could not load the meeting page.');
-      return r.text();
-    }).then(function (html) {
+  // A link names WHAT, the page names HOW (js/core/link.js): a /cast link opens the broadcast page, any other the
+  // meeting page. The session has no address of its own, so the link is stamped in before boot with the session flag.
+  var sessionDocs = {};
+  function sessionPage(link) {
+    var L = root.GifOS && root.GifOS.link;
+    var r = null;
+    try { r = L ? L.parseInput(link, root.location.origin) : null; } catch (e) { r = null; }
+    return { page: r && r.cast && r.v ? 'cast.html' : 'meet.html', stamp: r ? '#' + L.hash({ room: r.room, v: r.v }) : '' };
+  }
+  function sessionHtml(link) {
+    var sp = sessionPage(link);
+    if (!sessionDocs[sp.page]) {
+      sessionDocs[sp.page] = fetch(sp.page, { cache: 'no-store' }).then(function (r) {
+        if (!r.ok) throw new Error('Could not load the meeting page.');
+        return r.text();
+      });
+      sessionDocs[sp.page].catch(function () { delete sessionDocs[sp.page]; });
+    }
+    return sessionDocs[sp.page].then(function (html) {
       var mark = '<head>';
       var at = html.indexOf(mark);
       if (at < 0) throw new Error('Meeting page has no head.');
-      return html.slice(0, at) + '<head><script>window.__gifosMb="1";</script>' + html.slice(at + mark.length);
+      var stamp = 'window.__gifosMb="1";' + (sp.stamp ? 'window.__gifosMbLink=' + JSON.stringify(sp.stamp).replace(/</g, '\\u003c') + ';' : '');
+      return html.slice(0, at) + '<head><script>' + stamp + '</script>' + html.slice(at + mark.length);
     });
-    return sessionDoc;
   }
 
   function drop(id) {
@@ -188,13 +200,15 @@
         if (d.op === 'event') {
           var ev = Object.assign({}, d.event || {});
           ev.meetingId = id;
+          // The app's rebroadcast, as far as this side knows: a page that reloads mid-film tells the app after it rejoins.
+          if (ev.type === 'rebroadcast') sess.rb = ev.state === 'started' ? { title: ev.title || '', pos: +ev.pos || 0, at: Date.now() } : null;
           if (ev.type === 'chat') ev.control = !!(sess.control && remoteOk);
           postApp(ev);
         }
       };
       root.addEventListener('message', sess.onMsg);
       root.document.body.appendChild(iframe);
-      sessionHtml().then(function (html) {
+      sessionHtml(opts.link || opts.room || '').then(function (html) {
         if (!sessions.has(id)) return;
         iframe.srcdoc = html;
       }, function (err) {
@@ -210,6 +224,10 @@
   }
   // After a session page joined again: its switches first, then every call it never answered and every call held meanwhile.
   function rejoined(sess) {
+    if (sess.rb) {
+      var rb = sess.rb; sess.rb = null;
+      postApp({ type: 'rebroadcast', state: 'stopped', why: 'reload', title: rb.title, pos: rb.pos + (Date.now() - rb.at) / 1000, dur: 0, meetingId: sess.id });
+    }
     Object.keys(sess.sticky).forEach(function (op) {
       post(sess, Object.assign({ ns: NS, op: op, ref: 's' + Math.random().toString(36).slice(2), id: sess.id }, sess.sticky[op]));
     });
@@ -312,6 +330,14 @@
     meetingState: function (id) { return call(id, 'meetingState', {}); },
     snapshot: function (id) { return call(id, 'snapshot', {}); },
     hostOrder: function (id) { return call(id, 'hostOrder', {}); },
+    rebroadcast: function (id, blob, o) {
+      if (!(typeof Blob === 'function' && blob instanceof Blob)) return Promise.reject(new Error('unplayable: Pass the video as a file.'));
+      o = o || {};
+      var msg = { blob: blob, title: o.title == null ? '' : String(o.title), at: Number(o.at) || 0 };
+      if (o.blur === 0 || o.blur === 1 || o.blur === 2) msg.blur = o.blur;
+      return call(id, 'rebroadcast', msg);
+    },
+    stopRebroadcast: function (id) { return call(id, 'stopRebroadcast', {}); },
     speakers: function (id, on) { return call(id, 'speakers', { on: !!on }); },
     speakerClips: function (id) { return call(id, 'speakerClips', {}); },
     shots: function (id) { return call(id, 'shots', {}); },
