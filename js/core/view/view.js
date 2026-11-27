@@ -5163,6 +5163,16 @@
       b.remove('tx-tight');
       b.remove('status-small');
       restEl.classList.remove('rest-off');
+      if (full && typeof phoneLayout === 'function' && phoneLayout() && restEl.getClientRects().length) {
+        // A phone's top row holds two lines: a line longer than that shows its first sentence (the action), whole; the
+        // status sheet keeps the full line.
+        const box = restEl.closest('.status') || restEl.parentElement;
+        if (box && box.scrollHeight > box.clientHeight + 1) {
+          const first = (/^(.*?[.!?。])\s/.exec(full) || [])[1];
+          if (first && first.length < full.length) restEl.textContent = first;
+        }
+        return;
+      }
       if (!full || (typeof phoneLayout === 'function' && phoneLayout()) || !restEl.getClientRects().length) return;
       const tiny = statusRestTiny;
       const tryTiny = () => { if (!tiny) return false; restEl.textContent = tiny; if (!over()) return true; restEl.textContent = full; return false; };
