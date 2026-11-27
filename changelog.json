@@ -2,6 +2,23 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.59",
+      "date": "2026-11-27",
+      "headline": "Compact apps on phones, host passwords shown once, a clearer bar",
+      "features": [
+        "Apps in a meeting on a phone switch to a compact look: slightly smaller text, buttons still easy to tap. Larger text settings are honoured.",
+        "Your identity file is now called Me & My Contacts. Opening a saved file first tells you what it would add, and nothing is replaced.",
+        "Report now has a Sexually explicit choice, and the sheet is called Report content.",
+        "Apps can play videos on a broadcast's Stage, the same way the host's Rebroadcast button does."
+      ],
+      "fixes": [
+        "A hosted room's password is shown once when you make the room and is never stored on your device. Save it somewhere safe.",
+        "The floating bar sits over the picture: nothing moves or shrinks to make room for it, and the strip stays at the bottom.",
+        "The red slash over a muted microphone or camera is thicker and easier to see.",
+        "The Home Screen stays at gifos.app/ and open tabs follow each other to the newest release."
+      ]
+    },
+    {
       "version": "0.9.28.58",
       "date": "2026-11-27",
       "headline": "Broadcasts play through strict firewalls",
