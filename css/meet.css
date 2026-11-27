@@ -53,8 +53,8 @@
   .iconbtn .slash { display: none; }
   .iconbtn.off .slash { display: inline; }
   /* The cross-out reads at small sizes and on any background: a thick red stroke over a thin dark edge that also cuts a gap in the glyph. */
-  .iconbtn .slash { stroke-width: 3.6; }
-  .iconbtn .slash.slashedge { stroke: rgba(8,8,14,.85); stroke-width: 6; }
+  .iconbtn .slash { stroke-width: 3.4; }
+  .iconbtn .slash.slashedge { stroke: rgba(8,8,14,.85); stroke-width: 4.8; }
   .iconbtn.locked { opacity: .5; cursor: not-allowed; }
   .iconbtn.locked:hover { border-color: #ff5c5c; }
   /* Size the mic/cam glyphs in em so they FOLLOW the UI text size — the fixed
