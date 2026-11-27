@@ -8,7 +8,9 @@
       "features": [],
       "fixes": [
         "The agenda and Survey are easy to use on every phone, upright or sideways.",
-        "In Focus view on an upright phone, the strip of faces sits on the bottom edge without covering the controls."
+        "In Focus view on an upright phone, the strip of faces sits on the bottom edge without covering the controls.",
+        "An embedded player that shows only the Stage no longer receives or redraws the room view.",
+        "The host's table of who may do what is sent only when it changes, so meetings send less in the background."
       ]
     },
     {
