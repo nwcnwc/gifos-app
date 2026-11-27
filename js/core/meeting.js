@@ -10400,7 +10400,10 @@
         const stillComing = (why) => ({ state: 'connecting', viewer, w: progLastJoin ? progressWords(progLastJoin, viewer ? 4 : 0) : null, why });
         const s = meshSeat();
         const seatLost = !(s && s.state === 3 && s.hasCoord) || (typeof wayBack === 'function' && wayBack());
-        const linkDown = !!(statusLinkDownAt && Date.now() - statusLinkDownAt >= GifOS.timings.STATUS_RECONNECT_QUIET_MS);
+        // the room link is down now and has been past the quiet time (statusLinkDownAt alone can be stale: the line that clears
+        // it does not run while a notice holds the line)
+        const downNow = !(relayUp() || (s && s.state === 3 && s.hasCoord && meshCoord() && meshCoord().pc !== 0));
+        const linkDown = downNow && !!(statusLinkDownAt && Date.now() - statusLinkDownAt >= GifOS.timings.STATUS_RECONNECT_QUIET_MS);
         if (linkDown || seatLost) return joinWasIn ? { state: 'reconnecting', viewer, w: null, why: linkDown ? 'link-down' : 'seat-lost' } : stillComing(linkDown ? 'link-down-first' : 'seat-first');
         if (!viewer) { joinWasIn = true; return { state: 'in', viewer, w: null, why: 'seated' }; }
         if (playing) { joinWasIn = true; return { state: 'watching', viewer, w: null, why: 'stage' }; }
