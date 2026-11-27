@@ -3987,3 +3987,7 @@ body.short-app.has-app #appbar[data-fold-how="m"] #appview { display: inline-fle
   .ag-now .ag-bar { flex: 1 1 auto; margin: 0; }
   .ag-now .ag-left { flex: 0 0 auto; }
 }
+/* A face too small for words (a short phone's strip): the why-blurred note stays off it (the blur shows on the face
+   itself; a tap opens the tile and its words), and the name keeps one line. A "tap to see" note stays. */
+:is(.tile, .rowtile).thin.short > .blurwhy:not([data-why="tap"]) { display: none; }
+:is(.tile, .rowtile).thin > .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(100% - 8px); }
