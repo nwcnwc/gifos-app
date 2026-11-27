@@ -10416,8 +10416,9 @@
         // a network that blocks this viewer from everyone, after the Stage played here: lost, not "starting"
         const reach = typeof reachInfo === 'function' ? reachInfo() : null;
         if (reach && reach.state && reach.state !== 'partial' && bcWasOnAirAt) return { state: 'reconnecting', viewer, w: null, why: 'reach' };
-        // in, nothing says the broadcast is off, and the Stage is not playing here yet: the way in's last phase
-        return stillComing('stage-coming');
+        // nothing says the broadcast is off, and the Stage is not playing here: a viewer who watched before is getting it back
+        // (its way back just ended, the picture is a beat behind); one who never watched waits in the way in's last phase
+        return joinWasIn ? { state: 'reconnecting', viewer, w: null, why: 'stage-back' } : stillComing('stage-coming');
       } catch (e) { return { state: 'connecting', viewer, w: null, why: 'error' }; }
     };
     const progTrace = window.__meetProgress = [];
