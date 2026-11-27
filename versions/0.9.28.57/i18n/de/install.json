@@ -1,0 +1,17 @@
+{
+  "install.error.noApp": "Keine App angegeben.",
+  "install.error.noListing": "Der App Store hat keinen Eintrag für {slug} ({status}).",
+  "install.error.incomplete": "Der Eintrag für {slug} ist unvollständig.",
+  "install.error.needsNewer": "{name} benötigt ein neueres GifOS, als diese Seite verwendet.",
+  "install.error.status": "der Download lieferte {status}",
+  "install.error.mismatch": "Der Download stimmt nicht mit dem Katalog überein. Es wurde nichts installiert.",
+  "install.error.signature": "Diese App ist als von {signer} signiert aufgeführt, aber die Signatur ließ sich nicht überprüfen. Es wurde nichts installiert.",
+  "install.error.notApp": "Diese Datei ist keine GifOS-App.",
+  "install.error.differentApp": "Diese Datei ist eine andere App als im Eintrag. Es wurde nichts installiert.",
+  "install.error.notProvider": "{name} ist keine Provider-App.",
+  "install.error.providerNetwork": "{name} fordert Netzwerkzugriff an, ein Provider muss aber ohne Netzwerk auskommen. Abgelehnt.",
+  "install.signer.author": "ihrem Autor",
+  "install.progress.start": "{name} wird heruntergeladen…",
+  "install.progress.bytes": "{name} wird heruntergeladen… {got} von {total} MB",
+  "install.progress.checking": "{name} wird geprüft…"
+}
