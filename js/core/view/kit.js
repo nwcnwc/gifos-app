@@ -218,7 +218,7 @@
     m.id = 'clearnopw-report'; m.className = 'name-modal'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-labelledby', 'clearnopw-title');
     var box = document.createElement('div'); box.className = 'name-box dlg'; box.style.cssText = 'text-align:left;width:min(92vw,28rem);max-width:min(92vw,28rem)';
     var head = document.createElement('div'); head.className = 'dlg-head';
-    var h = document.createElement('h3'); h.id = 'clearnopw-title'; h.textContent = say(C, 'clearRepTitle', 'Report illegal content'); head.appendChild(h);
+    var h = document.createElement('h3'); h.id = 'clearnopw-title'; h.textContent = say(C, 'clearRepTitle', 'Report content'); head.appendChild(h);
     var body = document.createElement('div'); body.className = 'dlg-body';
     // 1. the message about going to the authorities first; 2. the choice; 3. Report / Cancel (Nathan 2026-11-26)
     var p1 = document.createElement('p');
