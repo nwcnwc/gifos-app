@@ -1,6 +1,6 @@
 {
  "v": 1,
- "build": "0.9.28.50",
+ "build": "0.9.28.51",
  "signer": "gifos.app",
  "files": {
   "js/app-owner.js": "7c709e7f9e553d5c4c38ef8925dc7841fe2b68a2f95ebce0846593f91eb54535",
@@ -10,8 +10,8 @@
   "js/core/link.js": "488c02af144728dfc1389359705cd2b538c8f1ffae701b69dc49cae8ac5c9457",
   "js/core/media/nones.json": "7d2eb896463019791353607f70ee9fd01d0666f2325e4978d5f6c7ebd2da3ae7",
   "js/core/media/plane-node.js": "69c187f9daa29a139c52eac8e4fb309740b74c5abf23d89f29699ed89a58ed64",
-  "js/core/meeting.js": "65479a6d0ca78b56581aa21594c836001c1c3e8459c004c224e77a102c899ded",
-  "js/core/node.js": "b4d6ad069c25daffa0c1464264203c73fabc633e96a27c1b40df7836fb9a02a2",
+  "js/core/meeting.js": "543b5568271410fd013abb688ec6cb4de293f4dd814bddd5b8983059cef52119",
+  "js/core/node.js": "a598ade0c55749ee6d8c60b2c8da6b931af1bef9466281faa995a630fd293af7",
   "js/core/platform.json": "ff63aab6f5c875f1206fbcfa080d47e7e2af32b636700eb2fe9deb154287a20d",
   "js/core/ports/vp8.js": "ff660d71ff3918c9bdcca65d13188d66ee07237b1032f3c7c36832289874c39f",
   "js/core/ports/webaudio.js": "7ca121d8e6bd8be1f33e625601b505b3d78dbe0a02062b080ee459f18a0c8925",
@@ -41,8 +41,8 @@
   "js/meet-viewmode.js": "dd8488050ab7d030279811242a493ec03c858e8167c6f10c4787105eb6a41801",
   "js/meet-zones.js": "095e282f3b36e67ddecc018692181871eb29ced1a0bd610de17c961892f24663",
   "js/mesh-identity.js": "e7c41650476bf262b0ba41d9970072b77eb748c16d1d9267c73fb4af8e5e1a79",
-  "js/mesh-media.js": "41245d8086c88d9499455c0dfab87b379fe19764186a67401548e8c516c72eb7",
-  "js/mesh-wire.js": "dc304946e56e0aea97b4c12ec32c1042fa97ee7d7cf5b5f732ab648ee74d01ee",
+  "js/mesh-media.js": "a0e484a509c41766e84075302179d258d32e41bde0a3656d776de4e302c7e8dc",
+  "js/mesh-wire.js": "2f04ee42cfd3a5ef71221602a924e58bdebac2aed0b343880950e65b17036418",
   "js/mesh/books.js": "092db7b0f42029f95830cfc42f5f3180466832730e7a3510364785d3b97b8c6e",
   "js/mesh/burst.js": "70e72093587a0f383f199c799cd55eb952ecf3d18d88b401500db52a10dcec25",
   "js/mesh/c7proof.js": "defc7b5cc309af34d6b04a052704cdf9cf5080f1a99d68ffdd7318a6cd1591ac",
@@ -106,5 +106,5 @@
   "js/runtime.js": "259679ffa6983bcb148149321ad031faa08633414bb4cbedd9e0a42fa120f4e2",
   "js/timings.js": "67d34c06e0632462b574fedad05ae702df3fdd40632d315f9f308a5d493c56b8"
  },
- "sig": "RU9wSKxOAOJsjPnNVDtKS5jzAucP0m+iqPlE9IEWoKPlQOk3bbGx6Wjij+uxyJIMrZkWBOYtxECVDw8VVYPoCQ=="
+ "sig": "qkZt3zOALv/YWulnAGwvbkhgODxU9kIJZWsPhmapGT5287qvk+F329Tfo0Ymxjx/y0iBaHyw+JAJkVi/puJXBQ=="
 }
