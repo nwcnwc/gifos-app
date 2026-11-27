@@ -11,7 +11,7 @@
  *                           a view function whose result the core takes apart returns a record (makeTile).
  *   viewKit.part(stamp, make)  the surface's view part: make(L) -> { names, setup }; names publish at the first step,
  *                           setup() wires input after the core's whole top level.
- *   readings                stageLevel, watchCount, nameOf, present: what the core already decided, read for drawing.
+ *   readings                watchCount, nameOf, present: what the core already decided, read for drawing.
  *   acts                    pip, fullscreen: the browser's own controls over a video element (fullscreen.enterStage /
  *                           leaveStage: the Stage view's full screen on every surface).
  *   stageNames, calm        the Stage's names over the picture, and the watching surfaces' one idle fade.
@@ -92,9 +92,6 @@
   }
 
   // ---- readings of the core's answers ----
-  function stageLevel(C) {   // the core's one Stage blur decision, the same /meet and /cast apply (STAGEBLUR)
-    try { return C.blurLevelFor('stage'); } catch (e) { return 2; }
-  }
   function watchCount(C) {   // people watching: the room less the stage and the hosts
     var up = new Set();
     try { C.stageIds().forEach(function (id) { up.add(id); }); } catch (e) {}
@@ -358,13 +355,13 @@
     var vw = v ? v.videoWidth : 0, vh = v ? v.videoHeight : 0, W = el.clientWidth, H = el.clientHeight;
     var want = (vw > 0 && vh > 0 && W > 0 && H > 0) ? ids : [];
     while (box.children.length > want.length) box.removeChild(box.lastChild);
-    if (!want.length) { cellCards(C, el, [], 'stage'); return; }
+    if (!want.length) { cellCards(C, M, el, [], 'stage'); return; }
     // the picture inside its box (object-fit: contain, centred)
     var k = Math.min(W / vw, H / vh), pw = vw * k, ph = vh * k, ox = (W - pw) / 2, oy = (H - ph) / 2;
     var n = want.length, cw = pw / n;
     var cards = [];
     for (var ci = 0; ci < n; ci++) cards.push({ pid: want[ci], x: ox + ci * cw, y: oy, w: cw, h: ph });
-    cellCards(C, el, cards, 'stage');
+    cellCards(C, M, el, cards, 'stage');
     // one stager: a caption sized from the picture's long side; several: a bar across each cell's foot
     var lw = n === 1 ? Math.min(pw, Math.max(pw, ph) * 0.25) : cw;
     var fs = Math.max(11, Math.round(lw * 0.11));
@@ -387,7 +384,7 @@
   // be blurred downstream and an initial must never be. Each viewer draws the card over the cell itself: the person's
   // avatar still (as it arrived, at the sender's blur) under this viewer's blur for that person, or the initial, crisp.
   // cells: [{ pid, x, y, w, h }] in host pixels. where: 'stage' for the Stage picture (its own blur rule).
-  function cellCards(C, host, cells, where) {
+  function cellCards(C, M, host, cells, where) {
     if (!host || !host.ownerDocument) return;
     var doc = host.ownerDocument;
     var box = host.querySelector(':scope > .cellcards');
@@ -416,8 +413,6 @@
       } catch (e) {}
       var name = nameOf(C, w.pid); try { if (!name && C.displayName) name = String(C.displayName(w.pid) || ''); } catch (e) {}
       var ini = ''; try { ini = C.nameInitial ? String(C.nameInitial(name)) : String(name || '').slice(0, 1).toUpperCase(); } catch (e) {}
-      var lvl = 0;
-      try { lvl = isMe ? (C.blurLevelFor('me') | 0) : (where === 'stage' ? (C.blurLevelFor(w.pid, true, false, 'stage') | 0) : (C.blurLevelFor(w.pid, true) | 0)); } catch (e) { lvl = 2; }
       el.dataset.pid = String(w.pid);
       el.style.left = Math.round(w.x) + 'px'; el.style.top = Math.round(w.y) + 'px';
       // A packed Stadium cell carries its name in its foot band (burned by the packer, over the plain fill): the card
@@ -432,7 +427,10 @@
       if (url) {
         if (!img) { img = doc.createElement('img'); img.alt = ''; el.appendChild(img); }
         if (img.getAttribute('data-hash') !== hash) { img.src = url; img.setAttribute('data-hash', hash); }
-        img.className = isMe ? '' : (lvl >= 2 ? 'blur2' : lvl === 1 ? 'blur1' : '');
+        // the avatar at this viewer's level for that person, the one face rule's (my own avatar: none); no rule: the
+        // initial alone, never an avatar unblurred
+        var lv = null; try { lv = M.facePaint(img, isMe ? { pic: 'none' } : { id: w.pid, where: where, pic: 'avatar' }, 'pic'); } catch (e) { lv = null; }
+        img.hidden = typeof lv !== 'number';
       } else if (img) img.remove();
       el.classList.toggle('has-img', !!url);
     }
@@ -471,5 +469,5 @@
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 
-  GifOS.viewKit = { version: 1, RECORDS: RECORDS, host: host, part: part, stageLevel: stageLevel, watchCount: watchCount, nameOf: nameOf, present: present, pip: pip, fullscreen: fullscreen, armAppGif: armAppGif, clearButtons: clearButtons, clearReport: clearReport, clearReportButton: clearReportButton, stageNames: stageNames, cellCards: cellCards, calm: calm, trDownload: trDownload, esc: esc };
+  GifOS.viewKit = { version: 1, RECORDS: RECORDS, host: host, part: part, watchCount: watchCount, nameOf: nameOf, present: present, pip: pip, fullscreen: fullscreen, armAppGif: armAppGif, clearButtons: clearButtons, clearReport: clearReport, clearReportButton: clearReportButton, stageNames: stageNames, cellCards: cellCards, calm: calm, trDownload: trDownload, esc: esc };
 })(typeof window !== 'undefined' ? window : globalThis);

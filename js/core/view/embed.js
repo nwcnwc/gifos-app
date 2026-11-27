@@ -115,7 +115,12 @@
     var tried = false;
 
     function stageVideo() { return stagefeedEl.querySelector('.rowtile video'); }
-    function stageLevel() { return K.stageLevel(C); }
+    // ONEFACE S6: every face this player draws takes its level from the one face rule (the media plane's facePaint ->
+    // the core's faceLevel), the same call /meet makes for the same picture: the Stage strip as the Stage, a share as
+    // its sharer's Stage picture. No answer (no media plane): blurred.
+    function facePaint(el, subj, kind) { var lv; try { lv = M.facePaint(el, subj, kind); } catch (e) { lv = null; } return typeof lv === 'number' ? lv : 2; }
+    function shareFace(sid) { return sid ? { id: sid, where: 'stage', pic: 'cam' } : {}; }
+    var shotProbe = document.createElement('i');   // a detached element: the level a share shot would be taken at
     function watchCount() { return K.watchCount(C); }
     function hear(on) {
       M.setServiceHeard(!!on);   // the plane holds the person's stage sound and mixes by it
@@ -170,11 +175,8 @@
       try { var ms = C.meshSeat(); seated = !!(ms && ms.hasCoord); } catch (e) {}
       var know = verdict(hosted, seated);
       if (picture) know = 'room';   // a picture is playing: nothing to wait on
-      var lv = stageLevel();
-      if (v) {
-        try { C.fsBlurClass(v, lv); } catch (e) {}
-        v.disablePictureInPicture = lv > 0;   // the browser's own float paints raw frames: a blurred picture floats only through the lens
-      }
+      // the Stage picture: its class, size and no raw browser float (a blurred picture floats only through the lens)
+      if (v) facePaint(v, { pic: 'strip' });
       var pre = false;
       try { pre = picture && !!C.bcPreInRoom(); } catch (e) {}
       // The core's off-air line can trail the picture by a beat (the host's stage seat is signed a little after its first frame):
@@ -269,11 +271,6 @@
       var cur = items.filter(function (it) { return it.key === sel; })[0] || null;
       paintPane(cur);
     }
-    function modBlur(sid) { try { return !!C.modBlurOn(sid); } catch (e) { return true; } }
-    function shareLevel(sid) {   // the viewer's blur for a share: the core's Stage rule for its sharer (shareShotsSource reads the same)
-      if (!sid) return 2;
-      try { return Math.max(C.blurLevelFor(sid, false, false, 'stage') | 0, modBlur(sid) ? 1 : 0); } catch (e) { return 2; }
-    }
     function pick(key) { try { C.ctSelect(key, 'embed'); } catch (e) {} shareSig = ''; paint(); }
     function paintPane(it) {
       var vid = $('emb-share-video'), box = $('emb-share-box');
@@ -286,8 +283,7 @@
         vid.hidden = !track; box.hidden = !!track;
         // The share wears this viewer's blur for its sharer, as on /meet (ctPaintScreen): a sender that ships clear pixels
         // where the room blurs them stays blurred here.
-        var lv = shareLevel(it.sid), had = vid.classList.contains('blur2') ? 2 : vid.classList.contains('blur1') ? 1 : 0;
-        if (had !== lv || !!vid.__tcOv !== !!(lv && !modBlur(it.sid))) { try { C.fsBlurClass(vid, lv, it.sid); } catch (e) {} }
+        facePaint(vid, shareFace(it.sid));
         vid.dataset.sid = it.sid || '';
         if (!track) box.textContent = tr('pictureOnWay', '{label}: the picture is on its way.', { label: shareLabel(it) });
         return;
@@ -367,8 +363,9 @@
     // While anything floats, the float follows the level: a raw float whose picture turns blurred moves to the lens.
     function levelOf(v) {
       if (!v) return 2;
-      if (v === $('emb-share-video')) return shareLevel(v.dataset.sid);   // a share wears its sharer's blur (paintPane)
-      return stageLevel();
+      var probe = levelOf.el || (levelOf.el = document.createElement('i'));   // a detached element: the float draws on the lens
+      if (v === $('emb-share-video')) return facePaint(probe, shareFace(v.dataset.sid), 'pic');   // a share wears its sharer's blur (paintPane)
+      return facePaint(probe, { pic: 'strip' }, 'pic');
     }
     function floatEl() { try { return document.pictureInPictureElement || null; } catch (e) { return null; } }
     function wkFloating(v) { return !!(v && v.webkitPresentationMode === 'picture-in-picture'); }
@@ -719,7 +716,7 @@
           shares: function () {
             var out = [];
             (C.screenSharers() || []).forEach(function (sid) {
-              if ((C.blurLevelFor(sid, false, false, 'stage') | 0) > 0 || C.modBlurOn(sid)) return;   // a share seen blurred is never taken
+              if (facePaint(shotProbe, shareFace(sid), 'pic') > 0) return;   // a share seen blurred is never taken (the face rule's level)
               var src = M.ctScreenTrack(sid);
               if (!src || !src.track || src.from === 'strip') return;
               out.push({ sid: sid, mine: false, name: C.displayName(sid), track: src.track });
