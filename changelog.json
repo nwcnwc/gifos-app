@@ -6,7 +6,8 @@
       "date": "2026-11-27",
       "headline": "Rooms: your personal room and private rooms in one place",
       "features": [
-        "Rooms, a new app next to Meeting, holds your personal room, your private rooms with each contact, missed calls, the rooms you host on this device and the cards you gave."
+        "Rooms, a new app next to Meeting, holds your personal room, your private rooms with each contact, missed calls, the rooms you host on this device and the cards you gave.",
+        "Settings marked \"Follows you\" (your name, picture, language, captions and Hide bots) travel with My identity to your other devices; settings for this device stay put."
       ],
       "fixes": [
         "The meeting start screen is simpler: it shows a Rooms link and how many calls you missed.",
