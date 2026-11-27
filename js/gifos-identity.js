@@ -19,8 +19,9 @@
  *             The meeting page reads these from the browser's storage at every join (HOMES below says where each
  *             lives), so the browser's storage stays the working copy on a device; the GIF is the sealed copy that
  *             leaves it. scan() notes what changed here; the GIF is rewritten after every change, without asking.
- *   merge     Two copies are merged record by record: the later stamp wins, a removal is a record too (so a contact
- *             removed on one device does not come back from the other), and two devices that both added contacts
+ *   merge     Two copies are merged record by record: the later stamp wins, a removal is a record too (a tombstone: the
+ *             id and when it was removed; it beats any add made before it, so a contact, card or private room removed on
+ *             one device never comes back from the other, and only a new swap, made after, brings it again), and two devices that both added contacts
  *             keep them all. Three kinds never lose: a hosted room's key leaves only with its private room (a cut),
  *             a taken-back card stays taken back, and (later) a purchase is never removed or replaced.
  *   seal      A random master key seals the records inside the GIF (GifOS.seal, the same wrap a passkey-locked app
@@ -81,9 +82,9 @@
   // A list kept under one storage key, one record per element. soft: fields that change with use and are no news (the
   // later one is simply kept at a merge). cap: the list's own bound. order: newest first, as the page keeps it.
   const LISTS = [
-    { cls: 'contact', key: 'gifos_contacts', id: rkOf, ok: (x) => RK.test(rkOf(x)) && !!x.token, soft: ['last'], cap: 500, when: (x) => Math.max(+x.last || 0, +x.at || 0) },
-    { cls: 'card', key: 'gifos_myroom_cards', id: (x) => String((x && x.id) || ''), ok: (x) => /^[a-f0-9]{8,64}$/i.test(String((x && x.id) || '')), soft: [], cap: 500, when: (x) => +x.at || 0 },
-    { cls: 'private', key: 'gifos_private', id: rkOf, ok: (x) => RK.test(rkOf(x)) && Array.isArray(x.pubs), soft: ['last'], cap: 500, when: (x) => Math.max(+x.last || 0, +x.at || 0) },
+    { cls: 'contact', key: 'gifos_contacts', id: rkOf, ok: (x) => RK.test(rkOf(x)) && !!x.token, soft: ['last'], cap: 500, when: (x) => Math.max(+x.last || 0, +x.at || 0), born: (x) => +x.at || 0 },
+    { cls: 'card', key: 'gifos_myroom_cards', id: (x) => String((x && x.id) || ''), ok: (x) => /^[a-f0-9]{8,64}$/i.test(String((x && x.id) || '')), soft: [], cap: 500, when: (x) => +x.at || 0, born: (x) => +x.at || 0 },
+    { cls: 'private', key: 'gifos_private', id: rkOf, ok: (x) => RK.test(rkOf(x)) && Array.isArray(x.pubs), soft: ['last'], cap: 500, when: (x) => Math.max(+x.last || 0, +x.at || 0), born: (x) => +x.at || 0 },
   ];
   const HOSTKEY = /^gifos_vadm_([a-z0-9-]{1,64}\.[a-f0-9]{16,64})$/i;
   const KEEPS = (rid) => rid === 'mine' || rid.indexOf('revoked/') === 0 || rid.indexOf('purchase/') === 0;   // never removed by a merge
@@ -147,6 +148,8 @@
     clockLast = Math.max(Date.now(), top + 1);
     return clockLast;
   }
+  // When this record was made (a contact's, card's or private room's own `at`): 0 when it carries none.
+  const bornOf = (rid, v) => { const L = LISTS.find((x) => x.cls === classOf(rid)); try { return L && L.born && v && typeof v === 'object' ? L.born(v) : 0; } catch (e) { return 0; } };
   const softOf = (rid) => { const L = LISTS.find((x) => x.cls === classOf(rid)); return L ? L.soft : []; };
   function hard(rid, v) {   // the value without the fields that change with use
     const soft = softOf(rid);
@@ -225,7 +228,12 @@
       let pick;
       if (KEEPS(rid) && !!a.d !== !!b.d) pick = a.d ? b : a;                       // never removed: the one that is there
       else if (classOf(rid) === 'room' && !!a.d !== !!b.d) pick = a.d ? b : a;     // a room's key: settled below with its private room
-      else pick = later(b, a) ? b : a;
+      else if (!!a.d !== !!b.d && bornOf(rid, (a.d ? b : a).v)) {
+        // TOMBSTONE: a removal (id + the time it was removed) beats an add made before it, whatever stamp that add has now
+        // (a device that only scanned it late gave it a fresh one). Only an add made after the removal (a new swap) stands.
+        const tomb = a.d ? a : b, live = a.d ? b : a;
+        pick = bornOf(rid, live.v) > tomb.t ? live : tomb;
+      } else pick = later(b, a) ? b : a;
       if (!pick.d && !a.d && !b.d) {   // both there: fields that change with use keep the later of the two
         const soft = softOf(rid);
         if (soft.length && pick.v && typeof pick.v === 'object') {

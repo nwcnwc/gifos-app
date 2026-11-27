@@ -718,11 +718,31 @@
     // key word for it; their Join takes both there.
     const asking = new Map();   // pid -> the private room I asked them to
     const pasks = new Map();    // pid -> an ask to a private room I may Join
+    // findPrivate(pid) -> { rec } (the private room we both hold, proved by its member key), { rec: null } (they hold none of
+    // mine) or null (no answer: an older page, which cannot say).
+    const finds = new Map();   // nonce -> resolve
+    const blind = async (n, r) => (await sha256hex('gifos-pfind|' + n + '|' + r)).slice(0, 24);
+    function oneToOne() { return privates().filter((x) => x.pubs.length === 1 && hostSecret(x.room, x.v)).sort((a, b) => Math.max(+b.last || 0, +b.at || 0) - Math.max(+a.last || 0, +a.at || 0)).slice(0, 100); }
+    async function findPrivate(pid) {
+      const cands = oneToOne(); if (!cands.length) return { rec: null };
+      const n = randHex(8), hs = []; for (const c of cands) hs.push(await blind(n, roomKey(c.room, c.v)));
+      const m = await new Promise((resolve) => {
+        finds.set(n, resolve);
+        host.send(pid, { op: 'pfind', n, h: hs });
+        setTimeout(() => { if (finds.get(n) === resolve) { finds.delete(n); resolve(null); } }, 2 * (T().MYROOM_TICK_MS || 0));
+      });
+      if (!m) return null;
+      const rec = Number.isInteger(m.i) && cands[m.i];
+      if (!rec) return { rec: null };
+      const w = m.w, o = w && w.pub === rec.pubs[0] ? await wordOk(w, roomKey(rec.room, rec.v), pid, host.now()) : null;
+      return o && o.c === n ? { rec } : { rec: null };
+    }
     async function privateWith(pid, name) {
-      // Our private room: found by the person's name among my private rooms, then proved by its member key word (shown to
-      // this one person only). No match: the swap makes it, and both go there once they save.
-      const nm = String(name || '').trim().toLowerCase();
-      const known = nm ? privates().filter((x) => x.pubs.length === 1 && x.me && String(x.name || '').trim().toLowerCase() === nm && hostSecret(x.room, x.v)) : [];
+      // Our private room: found by its member key, never by name. I send a blinded id of each of my one-to-one private rooms;
+      // the person's page answers for the one it holds with a word signed by its member key there, which I check against
+      // that room's member. Two contacts with the same name are two rooms with two keys. No answer = an older page (below).
+      const found = await findPrivate(pid);
+      const known = found && found.rec ? [found.rec] : [];
       if (known.length === 1) {
         const rec = known[0], to = roomKey(rec.room, rec.v), kw = await myWord(rec); if (!kw) return { err: 'nokey' };
         asking.set(pid, to);
@@ -730,7 +750,7 @@
         emit({ type: 'asking', pid, name, to });
         return { to };
       }
-      if (!known.length) { const r = await swap(pid, name, { go: true }); return r && r.err ? { err: 'noroom' } : r; }
+      if (found) { const r = await swap(pid, name, { go: true }); return r && r.err ? { err: 'noroom' } : r; }   // they hold none of mine
       const k = await myKey(); if (!k) return { err: 'nomine' };
       const w = await askKey(pid, roomKey(k.room, k.v));
       if (!w || !(await keyWordOk(w, k.room, k.v, pid, host.now()))) return { err: 'noroom' };
@@ -822,6 +842,14 @@
           return;
         }
         if (m.op === 'sno' && swaps.has(m.sid) && swaps.get(m.sid).pid === pid) { swaps.delete(m.sid); emit({ type: 'asked-no', pid }); return; }
+        if (m.op === 'pfind' && /^[a-f0-9]{16}$/.test(String(m.n || '')) && Array.isArray(m.h) && m.h.length <= 100) {   // a person asks which of their one-to-one rooms I hold
+          const mineP = oneToOne(); let i = -1, hit = null;
+          for (const rec of mineP) { const b = await blind(m.n, roomKey(rec.room, rec.v)); const j = m.h.indexOf(b); if (j >= 0) { i = j; hit = rec; break; } }
+          const mk = hit ? await memberOf(hit) : null;
+          host.send(pid, mk ? { op: 'pfound', n: m.n, i, w: await signWord(mk.seed, roomKey(hit.room, hit.v), host.myId(), host.now(), { c: m.n }) } : { op: 'pfound', n: m.n, i: -1 });
+          return;
+        }
+        if (m.op === 'pfound' && finds.has(m.n)) { const f = finds.get(m.n); finds.delete(m.n); f(m); return; }
         if (m.op === 'pask' && typeof m.to === 'string' && !m.pk && m.w) {   // our private room, asked by its member key word
           const at = /^([a-z0-9-]{1,64})\.([a-f0-9]{16,64})$/i.exec(m.to), rec = at && privFor(at[1], at[2]); if (!rec) return;
           if (rec.pubs.indexOf(m.w.pub) < 0 || !(await wordOk(m.w, m.to, pid, host.now()))) return;
