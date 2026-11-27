@@ -138,6 +138,7 @@ const lastKey = new Map(); // srcId -> { bytes, mime }: the newest keyframe this
 function seedKey(srcId, pipeId) {
   const k = lastKey.get(srcId), p = pipes.get(pipeId);
   if (!k || !p || p.paused || !p.needKey || p.seeded) return false;
+  if (encs.has(srcId)) return false;   // my own picture keeps no old key: a fresh one is one encode away (encKeyNow serves a still source)
   p.seeded = true; p.seedN = (p.seedN || 0) + 1;
   if (!p.mime) p.mime = k.mime;
   p.q.length = 0;
@@ -170,9 +171,281 @@ function mintIn(p, key) {
 }
 function want(pipeId, key, q) {
   const p = pipes.get(pipeId);
+  if (p && p.enc && p.th && p.th.length) { encPair(p, pipeId); return; }   // a template is waiting: it carries this frame
   if (p) { p.askAt = nowMs(); p.askOpen = true; }   // the catch-up times the answer from here
   if (p && p.cw && mintIn(p, key)) return;
   postMessage({ op: 'want', pipeId, key, q });
+}
+// ENCODE ONCE. A picture this seat makes itself (its camera, its screen, a film it plays to the Stage) used to be
+// encoded once PER LINK that carries it: N links, N encoders of the same frames, and a small host fell apart at a
+// handful of viewers. It is now encoded once, here, and every link carries the same bytes over the pipe lane, exactly
+// as a forwarded feed's bytes are carried (pushContent). The page hands this worker the track's frames (op 'enc');
+// each frame is noted at arrival (t0, its capture as this seat knows it) and its bytes enter the queues stamped t0.
+//   No watcher, no work: with no routed pipe awake, frames are dropped unencoded.
+//   One key serves every link: any pipe's ask sets keyNext; the encoder answers at most once per ENC_KEY_MIN_MS.
+//   THE PICTURE LEAVES AT CAPTURE + dt, the sound waits the same dt. A link's own encoder stamped a frame with its
+//   capture time, so a receiver lined it up with the sound whatever the encoder took. A carried frame is stamped when
+//   it leaves, after the encoder's wait and work. So every frame is held to leave at t0 + dt (dt: the slow end of the
+//   measured encode delays), a steady spacing whatever each frame took, and the page delays the sound of these links
+//   by the same dt ('enc-stat'): picture and sound leave together again. (A template's own trip through its tiny
+//   encoder is not added: the template is stamped when it is minted, so the far end already allows for it.)
+const encs = new Map();   // srcId -> { reader, enc, w, h, bps, fps, keyNext, keyAt, t0, win, dt, ... }
+let ENC_T = null;   // the page's timings for this (ENC_KEY_MIN_MS, ENC_STAT_MS, ENC_WIN_MS, ENC_DT_STEP_MS): they come with op 'enc'
+function encPipesAwake(srcId) {
+  const routed = taps.get(srcId);
+  if (routed) for (const pid of routed) { const p = pipes.get(pid); if (p && !p.paused) return true; }
+  return false;
+}
+// A key asked for while the picture stands still (a paused film, a still screen): no next frame will carry it, so the
+// newest frame is encoded again as that key.
+function encKeyNow(E) {
+  const now = nowMs();
+  if (!E.keyNext || !E.last || !E.enc || E.enc.state !== 'configured' || now - (E.inAt || 0) < ENC_T.STAT) return;
+  if (!E.keyForce && now - (E.keyAt || 0) < ENC_T.KEY_MIN) return;
+  if (!encPipesAwake(E.srcId)) return;
+  let vf = null;
+  try {
+    E.lastTs = (E.lastTs || 0) + 1;
+    vf = new VideoFrame(E.last, { timestamp: E.lastTs });
+    E.t0.set(vf.timestamp, now);
+    E.enc.encode(vf, { keyFrame: true });
+    E.keyNext = false; E.keyForce = false; E.keyAt = now;
+  } catch (err) { E.encErr = (E.encErr || 0) + 1; }
+  try { if (vf) vf.close(); } catch (err) {}
+}
+// The one encoder makes the codec the links of this page send by default (H.264 where they prefer it, with its
+// parameter sets in every key, as a link's own encoder sends them; VP8 elsewhere): a seat that forwards the picture
+// then carries the same bytes onward on its own links, as it does with any feed.
+function encCfg(E, w, h) {
+  const c = { codec: E.h264 ? 'avc1.42E01F' : 'vp8', width: w, height: h, bitrate: E.bps, framerate: E.fps, latencyMode: 'realtime' };
+  if (E.h264) c.avc = { format: 'annexb' };
+  return c;
+}
+function encOpen(E, w, h) {
+  try { if (E.enc && E.enc.state !== 'closed') E.enc.close(); } catch (e) {}
+  E.enc = null; E.w = w; E.h = h; E.cfgBps = E.bps; E.cfgFps = E.fps;
+  try {
+    const enc = new VideoEncoder({ output: (chunk) => encOut(E, chunk), error: (err) => {
+      if (E.enc !== enc) return;
+      E.enc = null;
+      if (err && err.name === 'QuotaExceededError') { E.reclaims = (E.reclaims || 0) + 1; return; }   // the browser took an idle encoder back: the next frame opens a new one, with a key
+      E.err = String(err && err.message || err); postMessage({ op: 'enc-dead', srcId: E.srcId, err: E.err });
+    } });
+    enc.configure(encCfg(E, w, h));
+    E.enc = enc; E.keyNext = true; E.opens = (E.opens || 0) + 1;
+  } catch (err) { E.err = String(err && err.message || err); postMessage({ op: 'enc-dead', srcId: E.srcId, err: E.err }); }
+}
+function encOut(E, chunk) {
+  const now = nowMs();
+  const t0 = E.t0.get(chunk.timestamp); E.t0.delete(chunk.timestamp);
+  let bytes;
+  try { bytes = new ArrayBuffer(chunk.byteLength); chunk.copyTo(bytes); } catch (err) { return; }
+  E.out = (E.out || 0) + 1; E.outAt = now;
+  if (t0 !== undefined) E.win.push([now, now - t0]);
+  if (chunk.type === 'key') E.keys = (E.keys || 0) + 1;
+  pushContent(E.srcId, bytes, chunk.type, 0, E.h264 ? 'video/H264' : 'video/VP8', t0 !== undefined ? t0 : now);
+}
+// dt: the 95th percentile of the last ENC_WIN_MS of capture-to-bytes delays, moved only in ENC_DT_STEP_MS steps (a
+// sound delay that wobbles is heard). The pipes of this source hold their frames to it; the page hears it too.
+function encStat(E, now) {
+  while (E.win.length && now - E.win[0][0] > ENC_T.WIN) E.win.shift();
+  if (E.win.length >= 5) {
+    const d = E.win.map((x) => x[1]).sort((a, b) => a - b);
+    const p95 = d[Math.min(d.length - 1, Math.floor(d.length * 0.95))];
+    E.d50 = d[d.length >> 1]; E.d95 = p95;
+    const want = Math.min(ENC_T.DT_MAX, Math.ceil(p95) + (E.dtAdd || 0));
+    // a step either way, or a smaller rise that has held for two beats (a sound delay that wobbles is heard)
+    if (E.dt === undefined || Math.abs(want - E.dt) >= ENC_T.DT_STEP) { E.dt = want; E.upN = 0; }
+    else if (want > E.dt) { if (++E.upN >= 2) { E.dt = want; E.upN = 0; } }
+    else E.upN = 0;
+    // A HOST THAT CANNOT KEEP UP. An encode that takes most of a frame's time is given every second frame (half the
+    // work, a steady picture); it gets them all back once an encode takes a small part of a frame again. And an
+    // encoder whose slow end stays at the most a frame may wait (ENC_DT_MAX_MS) is not doing its job: the links take
+    // their own encoders back, which lower their picture for a busy host (the page hears 'enc-dead').
+    const frameMs = 1000 / (E.fps || 30);
+    if (E.d50 > frameMs * 0.7) E.half = true; else if (E.d50 < frameMs * 0.3) E.half = false;
+    if (p95 >= ENC_T.DT_MAX) { if (++E.slowN >= 3 && !E.slowSaid) { E.slowSaid = true; E.err = 'slow'; postMessage({ op: 'enc-dead', srcId: E.srcId, err: 'slow' }); } } else E.slowN = 0;
+  }
+  const routed = taps.get(E.srcId); let n = 0, latS = 0, latN = 0;
+  if (routed && E.dt !== undefined) for (const pid of routed) { const p = pipes.get(pid); if (!p) continue; n++; p.enc = true; p.holdT = E.dt; p.holdRoom = Math.max(p.holdRoom || 0, Math.ceil(E.dt / 1000 * (E.fps || 30) * 2)); if (!p.paused && p.latN > 8) { latS += p.latEw; latN++; } }
+  // lat: what the links really took from a frame's capture to its leaving (the hold and the template's own trip): told for reading only
+  E.lat = latN ? Math.min(ENC_T.DT_MAX, latS / latN) : undefined;
+  postMessage({ op: 'enc-stat', srcId: E.srcId, dt: E.dt === undefined ? null : E.dt, lat: E.lat === undefined ? null : Math.round(E.lat), d50: E.d50 === undefined ? null : Math.round(E.d50), d95: E.d95 === undefined ? null : Math.round(E.d95), fps: Math.round((E.win.length / ENC_T.WIN) * 10000) / 10, out: E.out || 0, keys: E.keys || 0, skipped: E.skipped || 0, halved: E.halved || 0, idle: E.idleN || 0, pipes: n, w: E.w || 0, h: E.h || 0, err: E.err || null });
+}
+async function encRun(E, reader) {
+  for (;;) {
+    let r;
+    try { r = await reader.read(); } catch (err) { break; }
+    if (r.done) break;
+    const f = r.value, now = nowMs();
+    if (E.reader !== reader || E.stopped) { try { f.close(); } catch (err) {} break; }
+    try {
+      if (now - (E.statAt || 0) >= ENC_T.STAT) { E.statAt = now; encStat(E, now); }
+      E.inAt = now;
+      try { if (E.last) E.last.close(); } catch (err) {} E.last = null;
+      try { E.last = f.clone(); } catch (err) {}   // the newest frame: a key asked for while the picture stands still is made from it (encKeyNow)
+      if (!encPipesAwake(E.srcId)) { E.idleN = (E.idleN || 0) + 1; E.wasIdle = true; continue; }   // nobody takes it: no encode at all
+      if (E.wasIdle) { E.wasIdle = false; E.keyNext = true; }
+      const w = f.displayWidth || f.codedWidth, h = f.displayHeight || f.codedHeight;
+      if (!E.enc || E.w !== w || E.h !== h) encOpen(E, w, h);
+      else if (E.cfgBps !== E.bps || E.cfgFps !== E.fps) { E.cfgBps = E.bps; E.cfgFps = E.fps; try { E.enc.configure(encCfg(E, w, h)); } catch (err) {} }
+      if (!E.enc) continue;
+      if (E.enc.encodeQueueSize > 1) { E.skipped = (E.skipped || 0) + 1; continue; }   // a busy encoder skips a frame, it never falls behind
+      if (E.half && ((E.fn = (E.fn || 0) + 1) & 1) && !E.keyNext) { E.halved = (E.halved || 0) + 1; continue; }   // a host that cannot keep up encodes every second frame (encStat)
+      const key = E.keyNext && (E.keyForce || now - (E.keyAt || 0) >= ENC_T.KEY_MIN);
+      E.t0.set(f.timestamp, now); E.lastTs = f.timestamp;
+      if (E.t0.size > 64) { for (const k of E.t0.keys()) { E.t0.delete(k); if (E.t0.size <= 32) break; } }
+      E.enc.encode(f, { keyFrame: key });
+      if (key) { E.keyNext = false; E.keyForce = false; E.keyAt = now; }
+    } catch (err) { E.encErr = (E.encErr || 0) + 1; }
+    finally { try { f.close(); } catch (err) {} }
+  }
+  try { reader.releaseLock(); } catch (err) {}
+}
+function encStop(srcId) {
+  const E = encs.get(srcId); if (!E) return;
+  E.stopped = true; encs.delete(srcId);
+  try { if (E.reader) E.reader.cancel().catch(() => {}); } catch (e) {}
+  try { if (E.enc && E.enc.state !== 'closed') E.enc.close(); } catch (e) {}
+  try { if (E.last) E.last.close(); } catch (e) {} E.last = null;
+}
+// THE FAN-OUT, ONE PLACE. Every source of content hands its frames to the pipes routed from it through here: a
+// receiver's tap (a forwarded feed) and this seat's own encode-once source (encRun). at is when the frame was
+// captured here, where the source knows it (a hold then counts from the capture); a tap's frame counts from now.
+function pushContent(srcId, bytes, type, ts, mime, at) {
+  const routed = taps.get(srcId);
+  if (!routed || !routed.size) return;
+  // ONE OWNER PER BUFFER (the stg freeze, root-caused 2026-08-10).
+  // The copy above is made ONCE per content frame, and the swap below
+  // hands it straight to the sender's sink — where Chromium DETACHES
+  // it (the header's "COPY EARLY" measurement is about exactly this,
+  // and it applies to the buffer we ASSIGN, not only to the one we
+  // read). Shared across siblings, the first pipe to write a frame
+  // neuters it for every other pipe on the tap: they swap in a
+  // zero-length payload, the packetizer emits nothing, and their
+  // receivers bright-freeze while every counter on the path reads
+  // healthy. Measured on a two-pipe fan: 247 writes -> 42 packets ->
+  // 23 frames decoded on the losing leg, against 225/237/225 on its
+  // sibling, with dropped 0 / swapErr 0 / needKey false on both.
+  //
+  // So a queued frame is never shared. The first pipe to queue it
+  // takes the original; every sibling gets its own slice. A tap with
+  // one pipe (leg 1, always green) therefore copies nothing extra —
+  // and the cost when it does is a memcpy of a few kB against the
+  // transcode this whole lane exists to avoid.
+  let handedOut = false;
+  if (bytes) for (const pid of routed) {
+    const p = pipeFor(pid);
+    if (p.paused) continue; // a parked job's minted frames die at its detached track — queueing is waste and trips the watchdog
+    p.seen = (p.seen || 0) + 1;
+    p.mime = mime;
+    if (p.q.length >= qmaxOf(p)) {
+      // OVERFLOW, key-preserving (frza12): clearing the WHOLE queue
+      // burned any key already queued and forced a full SKR round
+      // trip — at 8fps the refill-clear cycle ran ~1Hz and the room
+      // froze in 16-31s waves. If a key is in the queue, restart from
+      // the LATEST one (reference chains stay whole, no ask needed);
+      // only a keyless queue pays the clear + ask.
+      let ki = -1;
+      for (let qi = p.q.length - 1; qi >= 0; qi--) if (p.q[qi].type === 'key') { ki = qi; break; }
+      if (ki > 0) { p.q.splice(0, ki); p.dropped++; }
+      // The latest key already heads a full queue: nothing is draining, so splice has nothing to drop.
+      // Hold that key alone and wait for a fresh one (deltas after this gap would break its chain).
+      else if (ki === 0) { p.q.length = 1; p.needKey = true; p.nkDrop = 0; p.seeded = false; p.dropped++; askKey(srcId, pid); }
+      else { p.q.length = 0; p.needKey = true; p.dropped++; askKey(srcId, pid); }
+    }
+    if (p.needKey && type !== 'key') {
+      p.dropped++;
+      // THE BLACK HOLE FIX: a pipe routed mid-GOP waits for key content
+      // that may be thousands of frames away — REQUEST it. 3 drops in,
+      // then every 30, until a key arrives (needKey clears). WebRTC
+      // emits NO periodic keyframes at all (measured: 1 key in 20s of
+      // healthy flow, the initial one), so an unanswered ask is a
+      // permanent freeze, not a delay.
+      p.nkDrop = (p.nkDrop || 0) + 1;
+      if (p.nkDrop === 3 || p.nkDrop % 30 === 0) { seedKey(srcId, pid); askKey(srcId, pid); }
+    }
+    else { const wasNeed = p.needKey; if (type === 'key') { p.needKey = false; p.nkDrop = 0; p.seeded = false; }
+      // with siblings every pipe gets its own copy and the original is never handed out: an encode-once pipe may write its
+      // frame at once (a template was waiting), and a written buffer is detached, so it cannot be copied afterwards
+      const own = routed.size > 1 ? bytes.slice(0) : bytes; handedOut = true;
+      const fresh = type === 'key' && wasNeed;   // the key a viewer was waiting for: paint it now
+      p.q.push({ bytes: own, ts, type: type, at: at || nowMs(), fresh });
+      if (!due(p, p.q[0])) continue;   // a held head is asked for when its time comes (the catch-up beat)
+      p.q[0].asked = true;
+      // DEMAND-MINT: one template per queued frame, typed by the head.
+      // q rides along so the page can CATCH UP: at healthy fps the
+      // want->postMessage->main-thread->requestFrame round trip lags
+      // content by a fraction of a frame, the backlog compounds, and
+      // QMAX overflow re-keys the whole downstream every ~15s (frza10
+      // — the steady-state freeze cycle; invisible at crawl fps).
+      want(pid, p.q[0].type === 'key', dueN(p)); }
+  }
+}
+// THE SWAP: the head of the queue leaves on this template (its bytes replace the template's).
+function swapWrite(p, frame, head, writer) {
+  p.q.shift(); p.kfAsk = 0;
+  if (head.type === 'key') p.kdrop = 0; // a key written is the consumer's reference restored; a delta is not
+  // THE DETACHMENT COUNTER — the invariant that closed the stg freeze
+  // (2026-08-10), kept because it is the only place the failure was ever
+  // visible. Writing a frame DETACHES the buffer handed to the sink, so a
+  // buffer with two owners ships an empty payload from the second one:
+  // no drop, no error, no loss, p.wrote still climbing, and the receiver
+  // bright-frozen. Sharing is now prevented at the tap; this counts any
+  // recurrence, and e2e-pipe LEG 1B fails on the first one.
+  if (head.bytes.byteLength === 0) p.detached = (p.detached || 0) + 1;
+  else p.lastBytes = head.bytes.byteLength;
+  // FORWARD LATENCY: content arrival at the tap to its write here (the hop's own delay before the pacer)
+  if (head.at) { const l = nowMs() - head.at; p.latN = (p.latN || 0) + 1; p.latEw = p.latN === 1 ? l : p.latEw * 0.9 + l * 0.1; if (l > (p.latMax || 0)) p.latMax = l; }
+  // WRITE LOG: the last 64 writes' wall time and size, read only by a stats ask with wlog (per-frame hop timing)
+  (p.wlog || (p.wlog = [])).push([Date.now(), head.bytes.byteLength]); if (p.wlog.length > 64) p.wlog.shift();
+  try { frame.data = head.bytes; writer.write(frame).then(() => { p.wrote++; p.lastWriteAt = Date.now(); }, () => { p.swapErr++; }); }
+  catch (err) { p.swapErr++; }
+}
+// AN ENCODE-ONCE PIPE NEVER DROPS A TEMPLATE IT CAN STILL USE. The far end follows the carrier encoder's own chain of
+// frames (each names the one it builds on), so a template thrown away mid-chain leaves every later one hanging until
+// the next key template, and the far end frozen for as long. A forwarding pipe drops the odd template and heals on
+// the next key from upstream; my own picture can do better, because its key is one encode away. So templates wait
+// here, in order (p.th), and each leaves with the next frame of its own kind:
+//   a key template with no key to carry (the far end asked for one, or the carrier's encoder opened a new chain):
+//     the frames waiting are dropped, the one encoder is asked for a key, and the template leaves with that key;
+//   a key to carry and only delta templates waiting: those are dropped (a key template restarts the chain) and a key
+//     template is minted;
+//   more templates than frames (a doubled ask): the spare one carries the next frame, no new one is minted.
+const ENC_TH_MAX = 4;
+// The far end wants a key (or the chain broke): the frames waiting are dropped up to the newest key among them, or all
+// of them, and then the one encoder is asked for a key.
+function encNeedKey(p, pipeId) {
+  let ki = -1;
+  for (let qi = p.q.length - 1; qi >= 0; qi--) if (p.q[qi].type === 'key') { ki = qi; break; }
+  if (ki >= 0) { if (ki > 0) p.q.splice(0, ki); return true; }
+  p.q.length = 0; p.needKey = true; p.nkDrop = 0; p.seeded = false; askKey(p.srcId, pipeId);
+  return false;
+}
+function encBreak(p, pipeId) { const th = p.th || (p.th = []); p.thDrop = (p.thDrop || 0) + th.length; th.length = 0; p.thBreak = true; encNeedKey(p, pipeId); }
+function encPair(p, pipeId) {
+  const th = p.th || (p.th = []);
+  // a template that has waited too long carries a stale time: start over at a key
+  if (th.length && nowMs() - th[0].at > (p.hold || 0) + ENC_T.TH_OLD) encBreak(p, pipeId);
+  while (th.length && p.q.length) {
+    const head = p.q[0], t = th[0];
+    if (!due(p, head)) break;
+    if ((t.f.type === 'key') === (head.type === 'key')) { th.shift(); swapWrite(p, t.f, head, t.w); continue; }
+    if (t.f.type === 'key') { p.thKey = (p.thKey || 0) + 1; if (!encNeedKey(p, pipeId)) break; continue; }
+    th.shift(); p.thDrop = (p.thDrop || 0) + 1;
+  }
+  if (p.q.length && !th.length && due(p, p.q[0])) { p.q[0].asked = true; if (!mintIn(p, p.q[0].type === 'key')) postMessage({ op: 'want', pipeId, key: p.q[0].type === 'key', q: dueN(p) }); p.askAt = nowMs(); p.askOpen = true; }
+}
+function encTemplate(p, pipeId, frame, writer) {
+  const th = p.th || (p.th = []);
+  if (p.paused) { p.thDrop = (p.thDrop || 0) + th.length + 1; th.length = 0; p.thBreak = true; return; }   // a parked link's templates are not kept: it starts over at a key
+  if (frame.type === 'key') { p.thDrop = (p.thDrop || 0) + th.length; th.length = 0; }   // a key template restarts the chain: the ones before it are not needed
+  else if (p.thBreak) { p.thDrop = (p.thDrop || 0) + 1; return; }   // the chain is broken: only a key template restarts it
+  p.thBreak = false;
+  th.push({ f: frame, w: writer, at: nowMs() });
+  if (th.length > ENC_TH_MAX) { encBreak(p, pipeId); return; }   // templates with nothing to carry: start over at a key
+  if (frame.type === 'key' && !(p.q.length && p.q[0].type === 'key')) { p.thKey = (p.thKey || 0) + 1; if (!encNeedKey(p, pipeId)) return; }
+  encPair(p, pipeId);
 }
 function pipeFor(id) {
   let p = pipes.get(id);
@@ -191,6 +464,10 @@ function pipeFor(id) {
 // blur pipe's encoder for 10-20s (the freeze's engine). The kf-need message
 // remains as the fallback when SKR is absent.
 function askKey(srcId, pipeId) {
+  { const E = encs.get(srcId); if (E) {   // my own encode-once source: its encoder makes the key (encRun), no walk to a producer
+    E.keyNext = true; const p0 = pipeId && pipes.get(pipeId);
+    if (p0) { p0.skr = (p0.skr || 0) + 1; if (!p0.wrote && !p0.firstKey) { p0.firstKey = true; E.keyForce = true; } }   // a link that has shown nothing yet does not wait out the key limit
+    encKeyNow(E); return; } }
   // BOTH LEVERS, ALWAYS (frza19). SKR is one RTCP PLI to whatever feeds this
   // hop — which only works when that is a REAL encoder (the producer's
   // camera/canvas): Chromium does not latch a PLI into a demand-minted
@@ -279,11 +556,12 @@ onmessage = (e) => {
   const m = e.data;
   if (m.op === 'route') {
     let s = taps.get(m.srcId); if (!s) { s = new Set(); taps.set(m.srcId, s); } s.add(m.pipeId);
-    const p = pipeFor(m.pipeId); p.srcId = m.srcId; p.seeded = false;
+    const p = pipeFor(m.pipeId); p.srcId = m.srcId; p.seeded = false; if (m.tid) p.tid = m.tid;
+    { const E = encs.get(m.srcId); if (E) { p.enc = true; if (E.dt !== undefined) { p.hold = p.holdT = E.dt; p.holdRoom = Math.ceil(E.dt / 1000 * (E.fps || 30) * 2); } } }   // an encode-once pipe starts at its source's hold, no glide from zero
     seedKey(m.srcId, m.pipeId); // the last key paints the viewer now; the ask below brings a fresh one
     askKey(m.srcId, m.pipeId); // a fresh pipe is mid-GOP by construction — don't wait for the drop streak
   }
-  else if (m.op === 'pause') { const p = pipeFor(m.pipeId); p.paused = true; p.q.length = 0; }
+  else if (m.op === 'pause') { const p = pipeFor(m.pipeId); p.paused = true; p.q.length = 0; if (p.enc) { if (p.th) p.th.length = 0; p.thBreak = true; } }
   else if (m.op === 'unpause') { const p = pipeFor(m.pipeId); p.paused = false; p.needKey = true; p.nkDrop = 0; p.seeded = false; seedKey(p.srcId, m.pipeId); askKey(p.srcId, m.pipeId); }
   else if (m.op === 'keykick') {
     // THE CONSUMER'S PLIs, SEEN FROM THE PAGE (frza18). A consumer that
@@ -316,10 +594,26 @@ onmessage = (e) => {
   }
   else if (m.op === 'hold') { const p = pipes.get(m.pipeId); if (p) { p.holdT = Math.max(0, +m.ms || 0); p.holdRoom = Math.max(0, m.room | 0, p.q.length); } }
   else if (m.op === 'carrier') { const p = pipeFor(m.pipeId); try { p.cw = m.writable.getWriter(); } catch (e) { p.cw = null; } if (p.cw && p.q.length && due(p, p.q[0])) mintIn(p, p.q[0].type === 'key'); }
+  else if (m.op === 'enc') {
+    // a source's frames (a new track of the same source replaces the old one: the next film, a camera swap)
+    if (m.T) ENC_T = m.T;
+    let E = encs.get(m.srcId);
+    if (!E) { E = { srcId: m.srcId, enc: null, t0: new Map(), win: [], bps: 1000000, fps: 30, slowN: 0, upN: 0 }; encs.set(m.srcId, E); }
+    if (m.bps) E.bps = m.bps; if (m.fps) E.fps = m.fps;
+    if (m.codec) { const h = m.codec === 'h264'; if (E.h264 !== h) { E.h264 = h; try { if (E.enc && E.enc.state !== 'closed') E.enc.close(); } catch (err) {} E.enc = null; } }
+    if (m.dtAdd !== undefined) E.dtAdd = +m.dtAdd || 0;   // measurement only: a longer wait than the encoder needs
+    if (m.readable) {
+      try { if (E.reader) E.reader.cancel().catch(() => {}); } catch (err) {}
+      let reader = null; try { reader = m.readable.getReader(); } catch (err) {}
+      E.reader = reader; E.keyNext = true; E.keyAt = 0;   // a new picture (the next film, a camera swap) is keyed at once
+      if (reader) encRun(E, reader);
+    }
+  }
+  else if (m.op === 'enc-stop') encStop(m.srcId);
   else if (m.op === 'unroute') { releaseTap(taps, tapTs, skrLast, m.srcId, m.pipeId); pipes.delete(m.pipeId); }
   else if (m.op === 'stats') {
     const out = {};
-    for (const [id, p] of pipes) out[id] = { q: p.q.length, wrote: p.wrote, seen: p.seen || 0, tmpl: p.tmpl || 0, primed: p.primed || 0, dropped: p.dropped, swapErr: p.swapErr, kfAsk: p.kfAsk, kdrop: p.kdrop || 0, nkDrop: p.nkDrop || 0, skr: p.skr || 0, seeded: p.seedN || 0, reWant: p.reWant || 0, paused: !!p.paused, needKey: !!p.needKey, lastWriteAt: p.lastWriteAt, mime: p.mime, tmplMime: p.tmplMime, detached: p.detached || 0, lastBytes: p.lastBytes || 0, inWorker: !!p.cw, mints: p.mints || 0, mintErr: p.mintErr || 0, lat: p.latN ? Math.round(p.latEw) : null, latMax: p.latMax ? Math.round(p.latMax) : null, latN: p.latN || 0, tl: p.tlN ? Math.round(p.tlEw) : null, hold: Math.round(p.hold || 0), holdT: p.holdT || 0 };
+    for (const [id, p] of pipes) out[id] = { q: p.q.length, wrote: p.wrote, seen: p.seen || 0, tmpl: p.tmpl || 0, primed: p.primed || 0, dropped: p.dropped, swapErr: p.swapErr, kfAsk: p.kfAsk, kdrop: p.kdrop || 0, thDrop: p.thDrop || 0, thKey: p.thKey || 0, th: p.th ? p.th.length : 0, nkDrop: p.nkDrop || 0, skr: p.skr || 0, seeded: p.seedN || 0, reWant: p.reWant || 0, paused: !!p.paused, needKey: !!p.needKey, lastWriteAt: p.lastWriteAt, mime: p.mime, tmplMime: p.tmplMime, detached: p.detached || 0, lastBytes: p.lastBytes || 0, inWorker: !!p.cw, mints: p.mints || 0, mintErr: p.mintErr || 0, lat: p.latN ? Math.round(p.latEw) : null, latMax: p.latMax ? Math.round(p.latMax) : null, latN: p.latN || 0, tl: p.tlN ? Math.round(p.tlEw) : null, hold: Math.round(p.hold || 0), holdT: p.holdT || 0 };
     if (m.wlog) for (const [id, p] of pipes) if (out[id]) out[id].wlog = (p.wlog || []).slice();
     postMessage({ op: 'stats', seq: m.seq, stats: out });
   }
@@ -349,75 +643,11 @@ onrtctransform = (e) => {
         const isKey = frame.type === 'key';
         if (isKey || (routed && routed.size)) { try { bytes = frame.data.slice(0); const md = frame.getMetadata(); ts = md.rtpTimestamp; mime = md.mimeType || null; } catch (err) {} }
         if (isKey && bytes) lastKey.set(o.srcId, { bytes: bytes.slice(0), mime });
-        if (routed && routed.size) {
-          // ONE OWNER PER BUFFER (the stg freeze, root-caused 2026-08-10).
-          // The copy above is made ONCE per content frame, and the swap below
-          // hands it straight to the sender's sink — where Chromium DETACHES
-          // it (the header's "COPY EARLY" measurement is about exactly this,
-          // and it applies to the buffer we ASSIGN, not only to the one we
-          // read). Shared across siblings, the first pipe to write a frame
-          // neuters it for every other pipe on the tap: they swap in a
-          // zero-length payload, the packetizer emits nothing, and their
-          // receivers bright-freeze while every counter on the path reads
-          // healthy. Measured on a two-pipe fan: 247 writes -> 42 packets ->
-          // 23 frames decoded on the losing leg, against 225/237/225 on its
-          // sibling, with dropped 0 / swapErr 0 / needKey false on both.
-          //
-          // So a queued frame is never shared. The first pipe to queue it
-          // takes the original; every sibling gets its own slice. A tap with
-          // one pipe (leg 1, always green) therefore copies nothing extra —
-          // and the cost when it does is a memcpy of a few kB against the
-          // transcode this whole lane exists to avoid.
-          let handedOut = false;
-          if (bytes) for (const pid of routed) {
-            const p = pipeFor(pid);
-            if (p.paused) continue; // a parked job's minted frames die at its detached track — queueing is waste and trips the watchdog
-            p.seen = (p.seen || 0) + 1;
-            p.mime = mime;
-            if (p.q.length >= qmaxOf(p)) {
-              // OVERFLOW, key-preserving (frza12): clearing the WHOLE queue
-              // burned any key already queued and forced a full SKR round
-              // trip — at 8fps the refill-clear cycle ran ~1Hz and the room
-              // froze in 16-31s waves. If a key is in the queue, restart from
-              // the LATEST one (reference chains stay whole, no ask needed);
-              // only a keyless queue pays the clear + ask.
-              let ki = -1;
-              for (let qi = p.q.length - 1; qi >= 0; qi--) if (p.q[qi].type === 'key') { ki = qi; break; }
-              if (ki > 0) { p.q.splice(0, ki); p.dropped++; }
-              // The latest key already heads a full queue: nothing is draining, so splice has nothing to drop.
-              // Hold that key alone and wait for a fresh one (deltas after this gap would break its chain).
-              else if (ki === 0) { p.q.length = 1; p.needKey = true; p.nkDrop = 0; p.seeded = false; p.dropped++; askKey(o.srcId, pid); }
-              else { p.q.length = 0; p.needKey = true; p.dropped++; askKey(o.srcId, pid); }
-            }
-            if (p.needKey && frame.type !== 'key') {
-              p.dropped++;
-              // THE BLACK HOLE FIX: a pipe routed mid-GOP waits for key content
-              // that may be thousands of frames away — REQUEST it. 3 drops in,
-              // then every 30, until a key arrives (needKey clears). WebRTC
-              // emits NO periodic keyframes at all (measured: 1 key in 20s of
-              // healthy flow, the initial one), so an unanswered ask is a
-              // permanent freeze, not a delay.
-              p.nkDrop = (p.nkDrop || 0) + 1;
-              if (p.nkDrop === 3 || p.nkDrop % 30 === 0) { seedKey(o.srcId, pid); askKey(o.srcId, pid); }
-            }
-            else { const wasNeed = p.needKey; if (frame.type === 'key') { p.needKey = false; p.nkDrop = 0; p.seeded = false; }
-              const own = handedOut ? bytes.slice(0) : bytes; handedOut = true;
-              const fresh = frame.type === 'key' && wasNeed;   // the key a viewer was waiting for: paint it now
-              p.q.push({ bytes: own, ts, type: frame.type, at: nowMs(), fresh });
-              if (!due(p, p.q[0])) continue;   // a held head is asked for when its time comes (the catch-up beat)
-              p.q[0].asked = true;
-              // DEMAND-MINT: one template per queued frame, typed by the head.
-              // q rides along so the page can CATCH UP: at healthy fps the
-              // want->postMessage->main-thread->requestFrame round trip lags
-              // content by a fraction of a frame, the backlog compounds, and
-              // QMAX overflow re-keys the whole downstream every ~15s (frza10
-              // — the steady-state freeze cycle; invisible at crawl fps).
-              want(pid, p.q[0].type === 'key', dueN(p)); }
-          }
-        }
+        if (routed && routed.size) pushContent(o.srcId, bytes, frame.type, ts, mime, 0);
         writer.write(frame); // local decode unaffected
       } else if (o.role === 'pipe') {
         const p = pipeFor(o.pipeId);
+        if (p.tid && o.tid && p.tid !== o.tid) continue;   // a late template of the sender this pipe had before: not this pipe's
         p.tmpl = (p.tmpl || 0) + 1;
         // ask-to-template time (the first template after an ask): what the catch-up's due time is made of
         p.reAskN = 0;   // answered: the next loss is caught at the short wait again
@@ -432,6 +662,7 @@ onrtctransform = (e) => {
           if (!p.misreported) { p.misreported = true; postMessage({ op: 'codec-mismatch', pipeId: o.pipeId, mime: p.mime || null, tmplMime: p.tmplMime || null }); }
           continue; // drop templates; page falls back to transcode
         }
+        if (p.enc) { encTemplate(p, o.pipeId, frame, writer); continue; }
         if (!p.q.length) {
           // NO PRIMER, EVER (frza12 closed the loop the primer opened). The
           // original cold-start deadlock ("nothing ever shipped -> consumer
@@ -486,30 +717,14 @@ onrtctransform = (e) => {
           if (p.kdrop === 3 || p.kdrop % 30 === 0) askKey(p.srcId || o.srcId, o.pipeId); // p.srcId: a reroute moved the source, o.srcId is the transform's first
           continue;
         }
-        p.q.shift(); p.kfAsk = 0;
-        if (head.type === 'key') p.kdrop = 0; // a key written is the consumer's reference restored; a delta is not
-        // THE DETACHMENT COUNTER — the invariant that closed the stg freeze
-        // (2026-08-10), kept because it is the only place the failure was ever
-        // visible. Writing a frame DETACHES the buffer handed to the sink, so a
-        // buffer with two owners ships an empty payload from the second one:
-        // no drop, no error, no loss, p.wrote still climbing, and the receiver
-        // bright-frozen. Sharing is now prevented at the tap; this counts any
-        // recurrence, and e2e-pipe LEG 1B fails on the first one.
-        if (head.bytes.byteLength === 0) p.detached = (p.detached || 0) + 1;
-        else p.lastBytes = head.bytes.byteLength;
-        // FORWARD LATENCY: content arrival at the tap to its write here (the hop's own delay before the pacer)
-        if (head.at) { const l = nowMs() - head.at; p.latN = (p.latN || 0) + 1; p.latEw = p.latN === 1 ? l : p.latEw * 0.9 + l * 0.1; if (l > (p.latMax || 0)) p.latMax = l; }
-        // WRITE LOG: the last 64 writes' wall time and size, read only by a stats ask with wlog (per-frame hop timing)
-        (p.wlog || (p.wlog = [])).push([Date.now(), head.bytes.byteLength]); if (p.wlog.length > 64) p.wlog.shift();
-        try { frame.data = head.bytes; writer.write(frame).then(() => { p.wrote++; p.lastWriteAt = Date.now(); }, () => { p.swapErr++; }); }
-        catch (err) { p.swapErr++; }
+        swapWrite(p, frame, head, writer);
       } else writer.write(frame);
     }
   })();
 };
 `;
 
-  let worker = null, statsSeq = 0;
+  let worker = null, statsSeq = 0, tidSeq = 0;
   const statsWaiters = new Map(); // seq -> resolve. A late reply must not satisfy the next caller.
   const carriers = new Map(); // pipeId -> carrier (the demand mint 'want' resolves against)
   const wantN = new Map();    // pipeId -> want messages received (chain forensics)
@@ -554,7 +769,7 @@ onrtctransform = (e) => {
     clearInterval(drainTimer);
     drainTimer = null;
   }
-  const listeners = { 'kf-need': [], 'codec-mismatch': [] };
+  const listeners = { 'kf-need': [], 'codec-mismatch': [], 'enc-stat': [], 'enc-dead': [] };
   function ensureWorker() {
     if (worker) return worker;
     worker = new Worker(URL.createObjectURL(new Blob([WORKER_SRC], { type: 'application/javascript' })));
@@ -654,10 +869,11 @@ onrtctransform = (e) => {
   function pipeSender(sender, srcId, pipeId, carrier) {
     if (!supported() || !sender) return false;
     try {
-      sender.transform = new RTCRtpScriptTransform(ensureWorker(), { role: 'pipe', pipeId, srcId });
+      const tid = ++tidSeq;
+      sender.transform = new RTCRtpScriptTransform(ensureWorker(), { role: 'pipe', pipeId, srcId, tid });
       if (carrier) { carriers.set(pipeId, carrier); if (!carrier.gen) startDrain(); }
       if (carrier && carrier.gen && carrier.writable && !carrier.moved) { carrier.moved = true; ensureWorker().postMessage({ op: 'carrier', pipeId, writable: carrier.writable }, [carrier.writable]); }   // before the route: its first want mints here
-      ensureWorker().postMessage({ op: 'route', srcId, pipeId });
+      ensureWorker().postMessage({ op: 'route', srcId, pipeId, tid });
       return true;
     } catch (e) { return false; }
   }
@@ -686,6 +902,41 @@ onrtctransform = (e) => {
     if (worker) worker.postMessage({ op: 'unroute', srcId, pipeId });
     stopDrain();
   }
+  // ---- encode once (the worker's encRun) ------------------------------------
+  // encSource(srcId, track, {bps, fps}): this seat's own picture, encoded once for every link that carries it. The
+  // links are wired like any pipe: pipeSender(sender, srcId, pipeId, carrier). A new track under the same srcId
+  // replaces the old one without touching the links. Where the browser cannot (no track processor, no encoder, no
+  // worker-minted carrier), this returns false and each link keeps its own encoder.
+  const encOk = () => { try { return supported() && genOk() && typeof MediaStreamTrackProcessor === 'function' && typeof VideoEncoder === 'function' && localStorage.getItem('gifos_pipe_enc') !== 'off'; } catch (e) { return false; } };
+  const encSrcs = new Map(); // srcId -> { track, bps, fps, codec }
+  // Which codecs the one encoder can make here ('h264', 'vp8'): asked once, known a moment after the page loads.
+  const encCan = { h264: false, vp8: false };
+  (function () {
+    try {
+      if (typeof VideoEncoder !== 'function' || !VideoEncoder.isConfigSupported) return;
+      const ask = (name, cfg) => VideoEncoder.isConfigSupported(Object.assign({ width: 640, height: 360, bitrate: 1000000, framerate: 24, latencyMode: 'realtime' }, cfg)).then((r) => { encCan[name] = !!(r && r.supported); }, () => {});
+      ask('h264', { codec: 'avc1.42E01F', avc: { format: 'annexb' } }); ask('vp8', { codec: 'vp8' });
+    } catch (e) {}
+  })();
+  const encMakes = (codec) => !!encCan[codec];
+  function encSource(srcId, track, opts) {
+    if (!encOk() || !track || track.kind !== 'video' || track.readyState === 'ended') return false;
+    const o = opts || {}, cur = encSrcs.get(srcId);
+    const bps = o.bps || (cur && cur.bps) || 0, fps = o.fps || (cur && cur.fps) || 0, codec = o.codec || (cur && cur.codec) || 'vp8';
+    if (!encCan[codec]) return false;
+    try {
+      if (cur && cur.track === track) {
+        if (cur.bps !== bps || cur.fps !== fps || cur.codec !== codec) { cur.bps = bps; cur.fps = fps; cur.codec = codec; ensureWorker().postMessage({ op: 'enc', srcId, bps, fps, codec }); }
+        return true;
+      }
+      const proc = new MediaStreamTrackProcessor({ track, maxBufferSize: 2 });
+      ensureWorker().postMessage({ op: 'enc', srcId, readable: proc.readable, bps, fps, codec, dtAdd: o.dtAdd, T: { KEY_MIN: TM.ENC_KEY_MIN_MS, STAT: TM.ENC_STAT_MS, WIN: TM.ENC_WIN_MS, DT_STEP: TM.ENC_DT_STEP_MS, DT_MAX: TM.ENC_DT_MAX_MS, TH_OLD: TM.ENC_TH_OLD_MS } }, [proc.readable]);
+      encSrcs.set(srcId, { track, bps, fps, codec });
+      return true;
+    } catch (e) { return false; }
+  }
+  function encStop(srcId) { if (!encSrcs.has(srcId)) return; encSrcs.delete(srcId); if (worker) worker.postMessage({ op: 'enc-stop', srcId }); }
+  const encTrack = (srcId) => { const c = encSrcs.get(srcId); return c ? c.track : null; };
   function chain(pipeId) { const cr = carriers.get(pipeId); return { wants: wantN.get(pipeId) || 0, mints: cr ? (cr.mints || 0) : -1 }; }
   function stats(opts) {
     return new Promise((res) => {
@@ -711,5 +962,5 @@ onrtctransform = (e) => {
     return null;
   }
 
-  GifOS.meshPipe = { supported, tapReceiver, pipeSender, pausePipe, holdPipe, keyKick, reroute, unpipe, makeCarrier, receiverForTrack, stats, chain, on, codecMismatch, releaseTap, _debugSizes, _workerSrc };
+  GifOS.meshPipe = { supported, encOk, encMakes, encSource, encStop, encTrack, tapReceiver, pipeSender, pausePipe, holdPipe, keyKick, reroute, unpipe, makeCarrier, receiverForTrack, stats, chain, on, codecMismatch, releaseTap, _debugSizes, _workerSrc };
 })(typeof window !== 'undefined' ? window : globalThis);
