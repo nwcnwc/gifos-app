@@ -17,10 +17,10 @@
    panel or choice that is on. Every other control is the same quiet light-on-dark button. Buttons inside the More
    sheet are not bar children and keep the sheet's own look. */
 .bar { background: var(--dock-bg); }
-.bar > #reactbtn, .bar > #chatbtn, .bar > #ccdock, .bar > #bartoggle, .bar > #sharebtn, .bar > #stagebtn, .bar > #hand, .bar > #bargrip {
+.bar > #reactbtn, .bar > #chatbtn, .bar > #ccdock, .bar > #bartoggle, .bar > #sharebtn, .bar > #stagebtn, .bar > #hand, .bar > #bargrip, .bar > #bargrip2 {
   background: var(--dock-btn); color: var(--dock-fg); }
 @media (hover: hover) {
-  .bar > :is(#reactbtn, #chatbtn, #ccdock, #bartoggle, #sharebtn, #stagebtn, #hand, #bargrip):not(.on):not([aria-expanded="true"]):not(.idle):not([aria-disabled="true"]):hover {
+  .bar > :is(#reactbtn, #chatbtn, #ccdock, #bartoggle, #sharebtn, #stagebtn, #hand, #bargrip, #bargrip2):not(.on):not([aria-expanded="true"]):not(.idle):not([aria-disabled="true"]):hover {
     background: var(--dock-btn-hover); }
 }
 /* A short window draws the hand as a bare icon (no fill): light on the dark bar, the "on" hand in light blue. */
@@ -74,7 +74,7 @@ body.broadcast #votebtn, body.broadcast #appbtn, body.broadcast #waitbtn { displ
    over one short word, no boxes, no fills, no borders. State is drawn on the icon: off is the red slash through the
    white glyph (the word changes too), and Leave is the one red word. Red is the only accent outside the video, a light red that reads on the dark bar. */
 .bar { box-shadow: none; }
-html body .bar > :is(#cam, #mic, #reactbtn, #chatbtn, #ccdock, #sharebtn, #stagebtn, #hand, #bartoggle, #bargrip, #leavebtn),
+html body .bar > :is(#cam, #mic, #reactbtn, #chatbtn, #ccdock, #sharebtn, #stagebtn, #hand, #bartoggle, #bargrip, #bargrip2, #leavebtn),
 html body .bar > :is(#mic, #cam).iconbtn.off,
 html body .bar > :is(#mic, #cam).iconbtn:not(.off),
 html body .bar > #cam.iconbtn.cam-max:not(.off),
