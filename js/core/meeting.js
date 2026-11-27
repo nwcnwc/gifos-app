@@ -10390,7 +10390,10 @@
           });
         }
         if (progRun) {
-          if (progRun.flow === 'reconnect') return { state: 'reconnecting', viewer, w: progressWords(progRun), why: 'way-back' };
+          // a viewer who was seated but never saw the Stage is still on the way in (Nathan 11-27: reconnecting only for a page
+          // that was in and lost it): it keeps the way in's last phase while its seat is made again
+          if (progRun.flow === 'reconnect') return joinWasIn || !viewer ? { state: 'reconnecting', viewer, w: progressWords(progRun), why: 'way-back' }
+            : { state: 'connecting', viewer, w: progLastJoin ? progressWords(progLastJoin, 4) : progressWords(progRun), why: 'way-back-first' };
           if (playing) { joinWasIn = true; return { state: 'watching', viewer, w: null, why: 'stage-by-door' }; }
           return { state: 'connecting', viewer, w: progressWords(progRun), why: 'way-in' };
         }
