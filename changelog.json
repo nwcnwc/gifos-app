@@ -4,8 +4,11 @@
     {
       "version": "0.9.28.51",
       "date": "2026-11-27",
-      "headline": "Faces drawn one way everywhere",
-      "features": [],
+      "headline": "Publish your broadcast to GifOS.tv",
+      "features": [
+        "The host of a hosted broadcast can list it on gifos.tv from the Stream link card: a title, a picture, and it shows as live while you are on air.",
+        "An embedded player now says when a broadcast just ended, or isn't live right now."
+      ],
       "fixes": [
         "Faces in the grid and on the Stage are now drawn by one shared piece, so blur and pictures follow the same rules in both places."
       ]
