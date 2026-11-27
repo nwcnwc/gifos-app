@@ -134,6 +134,7 @@
   ].join('\n');
 
   let items = [];                 // all desktop items (files + folders)
+  const homeHook = {};            // filled in below: what another view of the Home Screen may use (GifOS.desktop.home)
   let currentFolder = null;       // null = root, else folder id
   const blobUrls = new Map();     // fileId -> object URL (for gif thumbnails)
   let selectedId = null;
@@ -1261,6 +1262,14 @@
   // tab's write, a seeded icon) gets one paint after the release; the drop's
   // own render runs after pointerHeld has cleared, so it paints at once.
   let heldRender = null;
+  // What openItem needs to decide in the tap gesture, stashed on the item. One
+  // function, so every view of the Home Screen opens an item the same way.
+  function primeItem(it, file, art) {
+    it._isApp = !!(file && file.isApp && file.kind === 'gif');
+    it._receipt = isReceiptFile(file);
+    it._identity = isIdentityFile(file);
+    it._sysPage = (art && art.isDefault === true && art.system) ? gif.systemPage(art.system, store.dbName) : null;
+  }
   async function render() {
     if (pointerHeld) {
       if (!heldRender) heldRender = new Promise((resolve) => whenPointerFree(() => { heldRender = null; resolve(render()); }));
@@ -1295,14 +1304,11 @@
     const els = visible.map((it, i) => {
       // Stash what openItem needs to decide SYNCHRONOUSLY (in the tap gesture) —
       // an app GIF must open without an await first, or iOS blocks the tab.
-      it._isApp = !!(files[i] && files[i].isApp && files[i].kind === 'gif');
-      it._receipt = isReceiptFile(files[i]);
-      it._identity = isIdentityFile(files[i]);
+      primeItem(it, files[i], arts[i]);
       // A BUILT-IN system app (Meeting, Broadcast, App Store) is a launcher for
       // a first-party page: openItem opens that page itself, so the tab never
       // has to find the GIF in storage first (a first visit on an iPhone hit
       // "This app isn't on this device" on Meeting when that lookup missed).
-      it._sysPage = (arts[i] && arts[i].isDefault === true && arts[i].system) ? gif.systemPage(arts[i].system, store.dbName) : null;
       const key = iconKey(it, files[i], fresh[i], metas[i], !!arts[i]) + (mirrors[i] ? '|mir' : '');
       let entry = iconCache.get(it.id);
       if (!entry || entry.key !== key) {
@@ -1344,6 +1350,7 @@
       artCache: artCache.size, decorated: decor.size };
     // The screen is up. NOW go and learn what the badges should say.
     scheduleDecorate(visible.slice());
+    if (homeHook.onRender) { try { homeHook.onRender(); } catch (e) { /* another view's paint never breaks this one */ } }
   }
 
   // The upper-left cell inside every folder is a HOLE back up to the parent:
@@ -3002,6 +3009,7 @@
     'sep',
     { label: dt('desktop.menu.arrange'), fn: () => setArrangeMode(true) },
     'sep',
+    ...(GifOS.homeView && GifOS.homeView.available() ? [{ label: GifOS.homeView.menuLabel, fn: () => GifOS.homeView.pick() }, 'sep'] : []),
     { label: dt('desktop.menu.backup'), fn: backupDesktop },
     { label: dt('desktop.menu.restore'), fn: () => restoreInput.click() },
     'sep',
@@ -4028,6 +4036,7 @@
         '</section>' +
         '<section data-page="look" hidden>' +
           '<p class="add-help">' + escapeHtml(ST('settings.look.intro')) + '</p>' +
+          (GifOS.homeView && GifOS.homeView.available() ? GifOS.homeView.settingsHtml() : '') +
           '<div class="set-group">' + escapeHtml(ST('settings.look.background')) + scopeTag(false) + '</div>' +
           '<div class="set-card set-pad">' +
             '<label class="set-label" for="set-bg-color">' + escapeHtml(ST('settings.look.color')) + '</label>' +
@@ -4255,6 +4264,7 @@
     box.querySelector('#ts-plus').onclick = () => { setUiScale(getUiScale() + 0.1); paintTs(); };
     box.querySelector('#ts-minus').onclick = () => { setUiScale(getUiScale() - 0.1); paintTs(); };
     box.querySelector('#ts-reset').onclick = () => { setUiScale(1); paintTs(); };
+    if (GifOS.homeView && GifOS.homeView.available()) GifOS.homeView.wireSettings(box);
     box.querySelector('#set-relay-test').onclick = () => {
       const out = box.querySelector('#set-relay-status');
       // index.html does not load relay-config.js, so a blank field still means
@@ -5452,12 +5462,33 @@
     return storeDefaultsP;
   }
 
+  // ---------- other views of the Home Screen ----------
+  // The Home Screen is one set of items; a view is a way to look at it. A view
+  // reads the items and their pictures here and opens them through openItem, so
+  // nothing about what an icon is or does is decided twice.
+  Object.assign(homeHook, {
+    items: () => items.slice(),
+    trashId: TRASH_ID,
+    async picture(it) {
+      const a = await getArtCached(it.fileId);
+      if (a) primeItem(it, { id: it.fileId, name: a.name, kind: a.kind, mime: a.mime, isApp: a.isApp, appId: a.appId }, a);
+      return { img: a && a.art ? thumbImg(it.fileId, a.art, it.name) : null, system: (a && a.isDefault === true && a.system) || null };
+    },
+    open: (it) => openItem(it),
+    settings: () => showSettings(),
+    add: () => showAddDialog(),
+    storeHref,
+    systemPage: (name) => gif.systemPage(name, store.dbName),
+  });
+
   // ---------- boot ----------
   requestPersistence();
   paintPinHead();
   desktopWords.then(() => load()).then(seedIfEmpty).then(reseedDefaultsIfNeeded).then(ensureSystemItems).then(drainPendingReceipts).then(ensureIdentity).then(destackForThisScreen).then(render).then(() => { scheduleStoreDefaults(); }).then(noteRetiredBuild).then(notePinEnded).then(handleRunParam).then(handlePlaceParam).then(handleFolderParam).then(handleEdgeLink).then(() => checkForUpdate()).then(reclaimOrphanAssets).then(backfillOrnaments);
 
   GifOS.desktop = { render, load, backfillOrnaments, get stats() { return renderStats; },
+    // What another view of the Home Screen (js/home-view.js) needs: the same items, pictures and actions, never a copy.
+    home: homeHook,
     // The lazy seed, awaitable: the promise the boot armed (resolves once it has run), and what it decided.
     storeDefaults: () => scheduleStoreDefaults(), get storeDefaultsState() { return storeDefaultsState; } };
 })(typeof window !== 'undefined' ? window : globalThis);

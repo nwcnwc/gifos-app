@@ -271,6 +271,7 @@ window.GIFOS_VERSION = 'edge';
      The include at the end of <body> is the ART pass (icons/eggs/wallpaper). -->
 <script src="js/gifos-themes.js"></script>
 <link rel="stylesheet" href="css/desktop.css">
+<link rel="stylesheet" href="css/home-view.css">
 </head>
 <body>
   <div class="update-bar" id="update-bar" style="display:none">
@@ -285,6 +286,7 @@ window.GIFOS_VERSION = 'edge';
     <span class="spacer"></span>
     <button id="history-btn" title="Invite links you've visited" data-i18n-title="desktop.bar.invitesTip" data-i18n="desktop.bar.invites">Invites</button>
     <button id="add-btn" data-i18n="desktop.bar.add">＋ Add</button>
+    <button class="view-btn" id="view-btn" type="button" style="display:none" title="Home view" aria-label="Home view"></button>
     <button class="fs-btn" id="fs-btn" style="display:none" title="Full screen" aria-label="Full screen" aria-pressed="false"></button>
   </div>
   <!-- Icons are LOCKED by default (see setArrangeMode in desktop.js). This bar
@@ -333,6 +335,7 @@ window.GIFOS_VERSION = 'edge';
   <script src="js/gifos-help.js"></script>
   <script src="js/gifos-charge.js"></script>
   <script src="js/desktop.js"></script>
+  <script src="js/home-view.js"></script>
 <!-- FOR AI AGENTS. Off-screen, not display:none — most agent fetchers read
      the raw HTML without running scripts (so the JS-painted build badge is
      invisible to them), and readability-style extractors DROP display:none
