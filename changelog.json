@@ -10,7 +10,9 @@
         "An embedded player now says when a broadcast just ended, or isn't live right now."
       ],
       "fixes": [
-        "Faces in the grid and on the Stage are now drawn by one shared piece, so blur and pictures follow the same rules in both places."
+        "Faces in the grid and on the Stage are now drawn by one shared piece, so blur and pictures follow the same rules in both places.",
+        "When the host mutes guests, their microphones send nothing at all, and a /cast or embedded viewer receives only the Stage: less data and less battery.",
+        "A room view that has not changed is no longer redrawn and resent, so rooms with cameras off use far less computer power."
       ]
     },
     {
