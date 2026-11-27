@@ -6977,7 +6977,7 @@
       if (pipeFirstDone(dc) || !msg) return;
       if (msg.k === 'mx' && msg.key === 'sdn') dc.__pipeAnn = true;
       else { const f = msg.k === 'mesh' && msg.m ? (msg.m.f || msg.m) : null; if (f && f.t === 'PIPE') dc.__pipeFold = true; else return; }
-      if (pipeFirstDone(dc)) gossipDrain(dc);
+      if (pipeFirstDone(dc)) { gossipDrain(dc); turnSubAt = 0; }   // TVBLANK: the pipe's gossip just opened: restate my vouch now (the far end's video waits on it), not on the 60 s cycle
     }
     function gossipDrain(dc) {
       if (!dc.__gq) return;
@@ -25645,8 +25645,12 @@
       if (!update) return beyondRowHeld;
       const s = meshSeat(), c = meshCoord();
       const beyondRowRaw = (() => {
-        if (!s || !c || BROADCAST) return false;
-        if (pipePeers().length) return true;   // SUB.4: a pipe is one more child: the meeting goes on past my row
+        if (!s || !c) return false;
+        // SUB.4: a pipe is one more child: the meeting goes on past my row. In a broadcast too (TVBLANK, 0.9.28.57 live): a
+        // viewer whose only path is a TURN pipe gets the Stage in the pipe's mix (sound unvouched, picture once vouched) and
+        // the pipe's gossip (the vouch) waits on that mix's announce; with the plane off a pipe carried nothing at all.
+        if (pipePeers().length) return true;
+        if (BROADCAST) return false;
         // SUB.4 at every seat of a joined room, not only at a pipe's end: my room fold counts the people of the other rooms (far,
         // per door), so the meeting goes on past my row although none of it is in my occ. A one-row room's non-end seat read its
         // room as just its row: no Stadium plane, no claim of its head's 'sdm', deaf and blind to the whole far room (pk42 B2).
