@@ -4004,3 +4004,34 @@ body.view-focus .fsthumb.fsauto .fslbl { white-space: normal; line-height: 1.15;
   .ag-item:has(> .ag-in-t) { gap: 2px; }
   .ag-item > .ag-in-min { flex: 0 0 52px; width: 52px; padding: 0 4px; }
 }
+/* My Room (js/core/view/myroom.js): the caller's and the owner's bar, the lobby section, a card's QR code. */
+#mr-bar[hidden] { display: none !important; }
+#mr-bar { position: fixed; z-index: 6; left: 24px; top: calc(var(--inset-top, 0px) + 72px); width: min(340px, calc(100vw - 32px));
+  padding: 16px; border-radius: var(--r-lg); background: var(--c-white); color: var(--c-ink);
+  box-shadow: 0 18px 48px rgba(0,0,0,.45); display: flex; flex-direction: column; gap: 8px; font-size: 1rem; line-height: 1.4; }
+#mr-bar-act { align-self: flex-start; min-height: 44px; padding: 0 16px; border: 0; border-radius: var(--r-md);
+  background: var(--c-blue); color: var(--c-white); font-size: 1rem; font-weight: 600; cursor: pointer; }
+#mr-bar .mr-x { position: absolute; top: 8px; right: 8px; min-width: 44px; min-height: 44px; border: 0; background: none; color: var(--c-ink-2); font-size: 1rem; cursor: pointer; }
+body.mr-calling #alonecard, body.mr-on #alonecard { display: none !important; }
+.lob-myroom .mr-mine { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lob-myroom .mr-mine .li-name { flex: 1 1 auto; font-weight: 600; }
+.lob-myroom .mr-stay { display: flex; gap: 8px; align-items: center; font-size: 14px; margin: 8px 0; }
+.lob-myroom .mr-missed { padding: 8px 12px; border-radius: var(--r-md); background: var(--c-paper); color: var(--c-ink); font-size: 14px; margin-bottom: 8px; }
+.lob-myroom .mr-contact { display: flex; align-items: center; gap: 8px; }
+#mr-make-who .mr-who { margin: 0 8px 8px 0; }
+#mr-make-out input { width: 100%; }
+.mr-qr svg { width: min(220px, 60vw); height: auto; background: var(--c-white); }
+/* Private rooms: the person's tile menu, People, and the contact picker (a pressed name is picked). */
+#mr-pick-list .mr-who { margin: 0 8px 8px 0; min-height: 44px; background: var(--c-white); color: var(--c-ink); border: 1.5px solid var(--c-gray); }
+#mr-pick-list .mr-who[aria-pressed="true"] { background: var(--c-blue); color: var(--c-white); border-color: var(--c-blue); }
+#mr-pick-list .mr-who[aria-pressed="true"]::before { content: "✓ "; }
+.mr-who-priv { margin-top: .7rem; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.mr-who-priv .who-h { flex: 1 0 100%; font-weight: 700; font-size: 16px; }
+.mr-who-priv .mr-who { min-height: 44px; }
+#lobby .lob-myroom { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+#lobby .lob-myroom[hidden] { display: none; }
+#lobby .lob-myroom .lob-hist-h { margin-top: 4px; }
+#lobby .lob-myroom .lob-quiet { margin: 0; }
+#lobby .lob-myroom input:not([type]) { flex: 1 1 160px; min-height: 44px; box-sizing: border-box; padding: .5rem .6rem; border-radius: .45rem; border: 1.5px solid var(--c-gray); color: var(--c-ink); background: var(--c-white); font-size: 16px; }
+#lobby .lob-myroom .lob-ghost { min-height: 44px; min-width: 44px; padding: 0 12px; background: var(--c-white); color: var(--c-ink); border: 1.5px solid var(--c-gray); border-radius: .45rem; font-weight: 650; font-size: 16px; cursor: pointer; }
+#lobby .lob-myroom .lob-text { min-height: 44px; background: none; border: 0; color: var(--c-blue); text-decoration: underline; font-size: 16px; cursor: pointer; }
