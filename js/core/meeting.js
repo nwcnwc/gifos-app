@@ -1631,13 +1631,23 @@
       try { for (const id of stageIds()) { if (id === myId) continue; const e = (0, /*()*/__M.earState)(id); if (e && e.bound && !e.lost && e.trackLive) return true; } } catch (e) {}
       return false;
     },
-    // A seat offers me a stager's sound: an announce in date, or a claim I hold.
+    // A seat offers me a stager's sound: I hold a claim of a listed stager's feed and it has a live audio track. A feed with
+    // no sound in it (no microphone, a silent share) is nothing to wait for.
     stageOffered = function () {
       try {
-        for (const k of mosIn.keys()) if (k.indexOf('stg:') === 0) return true;
-        for (const [ak, ann] of mosAnn) { const key = ak.slice(ak.indexOf('|') + 1); if (key.indexOf('stg:') === 0 && key.split('^')[0] !== 'stg:' + myId) return true; }   // claimMos ages the announces
+        for (const id of stageIds()) {
+          if (id === myId) continue;
+          const e = mosIn.get('stg:' + id), ts = e && e.stream && typeof e.stream.getAudioTracks === 'function' ? e.stream.getAudioTracks() : [];
+          for (let i = 0; i < ts.length; i++) if (ts[i] && ts[i].readyState === 'live') return true;
+        }
       } catch (e) {}
       return false;
+    },
+    // A knocker the page's own gate shuts while a door job to it stands: the job ends now, not after the sweep's grace.
+    doorBarred = function (pid) {
+      const p = peers.get(pid);
+      if (!p || !p.boot || seatLinks(pid)) return false;
+      return p.keyOk !== roomE2E || pwShut(pid) || meetWait.blocks(pid) || mediaOk(pid) === false;
     },
     // The strip a door ships me, while it is the only picture of the Stage I have: no stager's feed reaches me over a link of
     // my cell yet (a door's copy of a feed is audio-only). A seat in Section 1 shows it until its own strip has a picture.
@@ -1660,7 +1670,7 @@
         const i = ak.indexOf('|'), from = ak.slice(0, i), key = ak.slice(i + 1);
         if (key.indexOf('stg:') !== 0) continue;   // claimMos ages the announces; a door that closed is no door (doorFrom)
         const id = key.slice(4).split('^')[0];
-        if (id && id !== myId && out.indexOf(id) < 0 && doorFrom(from)) out.push(id);
+        if (id && id !== myId && out.indexOf(id) < 0 && doorFrom(from) && stgBeats.has('stg:' + id) && !stgStale('stg:' + id)) out.push(id);   // the stager's own signed beat in date: the greeter's word alone lists nobody
       } } catch (e) {}   // read before the plane's tables exist: no door yet
       return out;
     };
@@ -1746,6 +1756,7 @@
         if (out.some((x) => x[0] === id) || meshGone.has(id) || isEjected(id) === true) continue;
         const said = statusOf.get(id);
         if (said && stHold(id) && !said.stg) continue;
+        if (vt) { const dv = devFor(id); if (dv && (vt.down[dv] || 0) >= stageNeed(vt, dv)) continue; }
         out.push([id, Number.MAX_SAFE_INTEGER]);
       }
       const ids = out.sort((a, b) => (a[1] - b[1]) || (a[0] < b[0] ? -1 : 1)).slice(0, SCALE.C).map((x) => x[0]);
@@ -10441,7 +10452,7 @@
         if (seated) progSat = true;
         if (lost) { if (!progBackSince) progBackSince = now; } else progBackSince = 0;
         const dark = !!(netDarkAt && now - netDarkAt >= GifOS.timings.STATUS_RECONNECT_QUIET_MS);
-        if ((linkDown || dark || (lost && now - progBackSince >= GifOS.timings.STATUS_RECONNECT_QUIET_MS)) && !leaving && !(typeof leftDialogUp === 'function' && leftDialogUp())) { progressStart('reconnect'); progMend = mending && !linkDown && !dark; }
+        if ((linkDown || dark || (lost && now - progBackSince >= GifOS.timings.STATUS_RECONNECT_QUIET_MS)) && !leaving && !(typeof leftDialogUp === 'function' && leftDialogUp())) { progressStart(progSat ? 'reconnect' : 'join'); progMend = mending && !linkDown && !dark; }   // a joiner whose door went quiet before its first cell is still joining
       }
       // A flow that began because the joining connection was being made again ends with that: the connection is up (the
       // flow's own end), or nothing is being made any more (the ask was refused or closed: the line says what is true now).
@@ -15034,11 +15045,11 @@
         let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
         m = meshDefrag(m, 'dc|' + p.id); if (!m) return;
         const read = (inner) => { const dk = rxStats.dcKinds; const kk = String(inner.k).slice(0, 16); dk[kk] = (dk[kk] || 0) + 1; if (pwNoAny()) { pwHeardNow(p.id); pwHeardNow(inner.from); } onDc(p, dc, inner); };
-        const take = (held) => rxm(() => net.open(roomE2E, m).then((inner) => {
-          if (inner && inner.k) { p.keyOk = roomE2E; read(inner); return; }   // this channel spoke under the room's key as it stands (doorKids)
+        const take = (held) => { const key0 = roomE2E; return rxm(() => net.open(key0, m).then((inner) => {
+          if (inner && inner.k) { p.keyOk = key0; read(inner); return; }   // this channel spoke under the room's key as it stands (doorKids)
           if (!inner && !held && holdForRekey(take)) return; // sealed under the key my re-key is still deriving (rekeyHeld)
           return healStaleFrom(p.id, m, dc, p).then((old) => { if (old && old.k) read(old); }); // §LOCK: a previous-key frame is the staleness signal, and a healed member's frame is read — see healStaleFrom
-        }));
+        })); };
         take(false);
       };
     }
@@ -17301,7 +17312,7 @@
     function mosResolve(key, meta, from) {
       const c = meshCoord();
       // L53: with no cell I claim what a door ships me, the stagers' feeds and the strip, and nothing else.
-      if (!c) { if (!doorFrom(from)) return null; if (key === 'sgs') return 'sgs'; if (key.indexOf('stg:') !== 0) return null; const b0 = key.split('^')[0]; return b0 === 'stg:' + myId ? null : b0; }
+      if (!c) { if (!doorFrom(from)) return null; if (key === 'sgs') return 'sgs'; if (key.indexOf('stg:') !== 0 || key.indexOf('^') >= 0) return null; return key === 'stg:' + myId ? null : key; }
       // SUB.4: what my pipe peer sends me is a child's product: its side's room pack and the sound of its side ('sdn', its
       // send to one more child of its own), held as a served branch ('subu:<pipe peer>'), and every stager's own feed.
       if (from && isPipePeer(from)) { if (key === 'sdn') return 'subu:' + from; if (key.indexOf('stg:') !== 0) return null; }
@@ -17711,7 +17722,7 @@
         // ...unless the stager announced this copy sb:1 (STG-DIRECT below):
         // then a one-hop relay from a direct receiver wins, and the stager's
         // own copy ranks between one hop and two.
-        if (own && !(own.ann && own.ann.sb === 1)) return own;
+        if (own && !(own.ann && own.ann.sb === 1) && !doorFrom(own.from)) return own;   // L53: not the stager's own door copy (audio-only, gone with the door) once I sit
         // Below Section 1 the preferred path is E1, the tree hop; E2's copy is the second path.
         if (c.pc !== 0) {
           // L2.7: while the seat holds E2 hot, E2's copy is the path. Ranking anything else first swaps
@@ -18395,8 +18406,8 @@
           const dnP = occPid(T.down(c));
           const sd = pick(dnP);
           if (sd) emitDown(key, dnP, slot, hopMeta(sd.h, sd.vp), slot, sd.stream, sd.sb);
-          // plane 5803: down-copy to heirs, l14 served and my door's knockers, not the row fan
-          for (const t of stgServed(s)) {
+          // plane 5803: down-copy to heirs, l14 served and my door's knockers (not of a second-root copy), not the row fan
+          for (const t of (upKey ? s.u2Heirs().concat(s.l14Served()) : stgServed(s))) {
             const picked = pick(t); if (!picked) continue;
             emitDown(key, t, slot, hopMeta(picked.h, picked.vp), slot, picked.stream, picked.sb);
           }
@@ -18789,7 +18800,7 @@
       const ckU = c ? c.pc + '/' + c.r + '.' + c.i : '-';
       for (const [jk, job] of [...mosJobs]) {
         if (wanted.has(jk)) { job.unwantedAt = 0; job.wantCk = ckU; continue; }
-        if (!peers.has(job.to) || stgEnded(job.key)) { unshipJob(jk, true); if (stgEnded(job.key)) (0, /*()*/__M.dropContainer)(jk); continue; } // a copy of an ended stage has no flicker to wait out: the beat already waited
+        if (!peers.has(job.to) || stgEnded(job.key) || doorBarred(job.to)) { unshipJob(jk, true); if (stgEnded(job.key)) (0, /*()*/__M.dropContainer)(jk); continue; } // a copy of an ended stage has no flicker to wait out: the beat already waited
         if (job.wantCk && job.wantCk !== ckU && job.key.indexOf('stg:') !== 0 && job.key !== 'sgs') { unshipJob(jk, true); continue; }
         if (!job.unwantedAt) job.unwantedAt = nowU;
         else if (nowU - job.unwantedAt > __M.MOS_GRACE) unshipJob(jk, true);

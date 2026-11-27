@@ -5057,6 +5057,7 @@
       // L53: with no cell I play what my door ships me, the stagers' sound and the strip, and send nothing.
       const leaf = s && !c ? (0, /*()*/__C.doorLeaf)() : null;
       if (leaf) {
+        if (__C.mosJobs.size || prodPack || roomPack || sdView || downFolds.size || l14Packs.size || stripPack) { stopMosaic(); return; }   // a seat that lost its cell ships nothing: what it sent and packed ends first (its door's announces come again with the next sweep)
         stageViewNow = 'strip';
         paintStageStrip(leaf.strip && leaf.stagers.length ? leaf.strip.stream : null);
         if (leaf.stagers.length) ensureStageEar();
