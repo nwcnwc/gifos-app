@@ -26,5 +26,12 @@
   "update.app.versionPath": "GifOS ▾ → Ajustes → Sistema → Actualizaciones",
   "update.app.available": "<b>Hay una actualización disponible de {name}.</b>",
   "update.app.link": "Actualizar — conserva tus datos",
-  "update.app.dismiss": "Descartar"
+  "update.app.dismiss": "Descartar",
+  "update.old.title": "Actualiza GifOS para unirte",
+  "update.old.body": "Esta invitación funciona con un GifOS más nuevo que esta página. «Actualizar GifOS» la vuelve a abrir con el más reciente.",
+  "update.old.pinnedBody": "Esta invitación funciona con un GifOS más nuevo. Este equipo está fijado en GifOS v{version} en Ajustes. «Actualizar GifOS» lo vuelve a poner en el más reciente y abre la invitación de nuevo.",
+  "update.old.action": "Actualizar GifOS",
+  "update.old.appBody": "Esta invitación funciona con un GifOS más nuevo que la app GifOS Meet de este teléfono. Actualiza la app y vuelve a abrir la invitación.",
+  "update.old.appStoreBody": "Esta invitación funciona con un GifOS más nuevo que la app GifOS Meet de este teléfono. Actualízala desde el App Store y vuelve a abrir la invitación.",
+  "update.old.appAction": "Actualizar GifOS Meet"
 }

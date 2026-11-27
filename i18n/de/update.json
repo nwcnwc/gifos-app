@@ -26,5 +26,12 @@
   "update.app.versionPath": "GifOS ▾ → Einstellungen → System → Updates",
   "update.app.available": "<b>Update für {name} verfügbar.</b>",
   "update.app.link": "Aktualisieren — Ihre Daten bleiben erhalten",
-  "update.app.dismiss": "Schließen"
+  "update.app.dismiss": "Schließen",
+  "update.old.title": "GifOS aktualisieren, um beizutreten",
+  "update.old.body": "Diese Einladung läuft auf einem neueren GifOS als diese Seite. „GifOS aktualisieren“ öffnet sie erneut mit dem neuesten.",
+  "update.old.pinnedBody": "Diese Einladung läuft auf einem neueren GifOS. Dieser Computer ist in den Einstellungen auf GifOS v{version} festgelegt. „GifOS aktualisieren“ stellt ihn auf das neueste zurück und öffnet die Einladung erneut.",
+  "update.old.action": "GifOS aktualisieren",
+  "update.old.appBody": "Diese Einladung läuft auf einem neueren GifOS als die GifOS-Meet-App auf diesem Telefon. Aktualisiere die App und öffne die Einladung dann erneut.",
+  "update.old.appStoreBody": "Diese Einladung läuft auf einem neueren GifOS als die GifOS-Meet-App auf diesem Telefon. Aktualisiere sie im App Store und öffne die Einladung dann erneut.",
+  "update.old.appAction": "GifOS Meet aktualisieren"
 }

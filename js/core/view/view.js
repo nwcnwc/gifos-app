@@ -5613,7 +5613,20 @@
       joinVeilEl.dataset.refused = refusal ? String(refusal.code) : '';
       const spin = joinVeilEl.querySelector('.jv-spin');
       if (spin && spin.hidden !== !vw.spin) spin.hidden = !vw.spin;
-      veilSay(vw.step, vw.title, vw.body);
+      // A page too old for this meeting (2026-11-27): "Reload the page to update" left a computer pinned to an
+      // older release in Settings on that release. The veil says what is true and offers one tap, Update GifOS
+      // (GifOS.update.now: unpin, then this link on the live release; in the GifOS Meet app, the app's store listing).
+      const U = GifOS.update, old = !!(refusal && U && U.refusedTooOld && U.refusedTooOld(refusal));
+      const ow = old ? U.tooOldWords() : null;
+      let go = joinVeilEl.querySelector('#jv-update');
+      if (ow && ow.action && !go) {
+        go = document.createElement('button'); go.type = 'button'; go.className = 'jv-go'; go.id = 'jv-update';
+        go.onclick = () => { go.disabled = true; GifOS.update.now(); };
+        joinVeilEl.querySelector('.jv-box').appendChild(go);
+      }
+      if (go) { const t = ow && ow.action ? ow.action : ''; if (go.textContent !== t) go.textContent = t; go.hidden = !t; }
+      if (ow) veilSay('', ow.title, ow.body);
+      else veilSay(vw.step, vw.title, vw.body);
     }
     yield 1240;
     // The step line in the places a wait shows that are not the status line:

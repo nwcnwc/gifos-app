@@ -455,5 +455,51 @@
     return { stop: () => { clearInterval(t); try { doc.removeEventListener('visibilitychange', onVis); } catch (e) {} }, tick };
   }
 
-  GifOS.update = { cmpVer, liveOf, pinnable, pinBelowFloor, running, criticalSince, notesOf, underFloor, decide, updateUrl, go, check, mount, paint, watch, MINUTE };
+  // UPDATE GIFOS IN ONE TAP (2026-11-27). A page the meeting turned away for its version (the relay's final
+  // 4010/4013/4014: an old release, often one pinned in Settings for testing) cannot get in by waiting, and a plain
+  // reload of a pinned computer opens the same old release again. So the words say what is true and the one button
+  // does the whole job: the pin (or the edge channel) is lifted, because the person asked for the newest, and THIS page
+  // and link open on the live release. With no answer from version.json the page reloads and the channel loader
+  // follows the release pointer. In the GifOS Meet app the build is the app's own (GifosNative): the tap opens the
+  // app's store listing (a link off gifos.app leaves the app for the store), and on iOS the words say where to go.
+  const APP_STORE = { android: 'https://play.google.com/store/apps/details?id=app.gifos.meet' };
+  const shell = () => { try { const N = root.GifosNative; return N ? String(N.platform || 'app') : ''; } catch (e) { return ''; } };
+  function now() {
+    const s = shell();
+    if (s) { if (APP_STORE[s]) root.location.href = APP_STORE[s]; return Promise.resolve(null); }
+    try { ['gifos_pin', 'gifos_pin_until', 'gifos_channel'].forEach((k) => root.localStorage.removeItem(k)); } catch (e) {}
+    return check({ notes: () => false }).catch(() => null).then((got) => {
+      const live = got && liveOf(got.info);
+      if (live) go(live.latest); else root.location.reload();
+      return live ? live.latest : null;
+    });
+  }
+  // The words for that page: { title, body, action } (action '' = no button: the iOS app's own store has no link here).
+  function tooOldWords() {
+    const s = shell();
+    const title = tr('update.old.title', 'Update GifOS to join');
+    if (s) {
+      return {
+        title,
+        body: APP_STORE[s]
+          ? tr('update.old.appBody', 'This invite runs on a newer GifOS than the GifOS Meet app on this phone. Update the app, then open the invite again.')
+          : tr('update.old.appStoreBody', 'This invite runs on a newer GifOS than the GifOS Meet app on this phone. Update it from the App Store, then open the invite again.'),
+        action: APP_STORE[s] ? tr('update.old.appAction', 'Update GifOS Meet') : '',
+      };
+    }
+    let pinned = null;
+    try { pinned = root.localStorage.getItem('gifos_pin'); } catch (e) {}
+    return {
+      title,
+      body: pinned && VER.test(pinned)
+        ? tr('update.old.pinnedBody', 'This invite runs on a newer GifOS. This computer is set to GifOS v{version} in Settings. Update GifOS sets it back to the newest and opens the invite again.', { version: pinned })
+        : tr('update.old.body', 'This invite runs on a newer GifOS than this page. Update GifOS opens it again on the newest.'),
+      action: tr('update.old.action', 'Update GifOS'),
+    };
+  }
+  // The relay's final closes that mean "this page is too old to be let in" (js/core/meeting.js relayRefusalOf).
+  const TOO_OLD = [4010, 4013, 4014];
+  const refusedTooOld = (refusal) => !!(refusal && TOO_OLD.indexOf(Number(refusal.code)) !== -1);
+
+  GifOS.update = { cmpVer, liveOf, pinnable, pinBelowFloor, running, criticalSince, notesOf, underFloor, decide, updateUrl, go, check, mount, paint, watch, now, tooOldWords, refusedTooOld, MINUTE };
 })(typeof window !== 'undefined' ? window : globalThis);

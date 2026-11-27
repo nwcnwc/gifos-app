@@ -393,8 +393,35 @@
     // whoever in the room holds it. Seated with no app: a spinner, then which piece is missing (the invite is dormant,
     // or its host is away). Never for a founder, never over a live call.
     var appWaitEl = null, appWaitSince = 0;
+    // THE MEETING SAID NO FOR GOOD (the core's join veil with a refusal: the relay's final close). This view had no veil,
+    // so a guest whose GifOS was too old for the invite (a release pinned in Settings, an old app build) sat behind the
+    // empty-room card, "This invite isn't live right now", with the host right there (2026-11-27). Now a
+    // too-old page says so and offers one tap, Update GifOS (GifOS.update.now: unpin, then this link on the live
+    // release); any other refusal says the core's own words. A refusal is no wait: the empty-room card stands down.
+    // Only a refusal is drawn here: the joining steps stay on the status line, as before.
+    var refusedEl = null, refused = false;
+    fn('paintJoinVeil', function (m) {
+      var refusal = m && m.refusal;
+      refused = !!refusal;
+      if (!refusal) { if (refusedEl) { refusedEl.remove(); refusedEl = null; } return; }
+      var U = GifOS.update, old = !!(U && U.refusedTooOld && U.refusedTooOld(refusal));
+      var w = old ? U.tooOldWords() : { title: String(refusal.words || ''), body: '', action: '' };
+      if (!refusedEl) {
+        refusedEl = document.createElement('div');
+        refusedEl.id = 'joinveil';
+        refusedEl.innerHTML = '<div class="jv-box" role="alert"><h3 id="jv-t"></h3><p id="jv-p"></p><button type="button" class="jv-go" id="jv-update" hidden></button></div>';
+        body.appendChild(refusedEl);
+        refusedEl.querySelector('#jv-update').onclick = function () { this.disabled = true; GifOS.update.now(); };
+      }
+      refusedEl.dataset.refused = String(refusal.code);
+      var put = function (sel, t) { var el = refusedEl.querySelector(sel); if (el.textContent !== t) el.textContent = t; };
+      put('#jv-t', w.title); put('#jv-p', w.body); put('#jv-update', w.action);
+      refusedEl.querySelector('#jv-update').hidden = !w.action;
+      if (appWaitEl) { appWaitEl.remove(); appWaitEl = null; appWaitSince = 0; }
+    });
     function appWaitTick() {
       var kill = function () { appWaitSince = 0; if (appWaitEl) { appWaitEl.remove(); appWaitEl = null; } };
+      if (refused) return kill();
       if (!C.ROOM.appPinned || C.ROOM.solo || !C.model.room.sessId()) return kill();
       if (body.classList.contains('has-app') || C.appKey || me().app || body.classList.contains('call-on')) return kill();
       var now = Date.now();
@@ -433,11 +460,107 @@
       }
       fb.style.display = 'none';
     })();
+    // ---- ONE LINE OF HEADER ON EVERY WIDTH (2026-11-27) ---------------------------------------------------
+    // This view's app bar had no fold (the meeting page's is view.js wireAppMore), so on a phone it wrapped to three
+    // rows: GifOS, the app, Invite, Save, Help, then full screen, then "on this device" on a line of its own. Where the
+    // whole bar does not fit on one row, it folds: the row keeps the app's picture and name (one line, cut with an
+    // ellipsis), then, as long as the name keeps room to be read, Invite, Full screen, Help and the GifOS link, in that
+    // order; everything else moves into a "⋯" menu: the same buttons with the same handlers, each a 44px target. The
+    // menu's first line is the app's whole name, so a tap on a cut name opens the menu and reads it whole (the
+    // one-line header rule: a cut line is one tap from its full text).
+    (function wireAppMore() {
+      var abar = $('appbar');
+      if (!abar) return;
+      var orig = Array.prototype.slice.call(abar.children);
+      var nameEl = $('appname');
+      var ROW = ['appinvite', 'appfull', 'apphelp', 'brand'];   // the row's order of keeping, after the name
+      var NAME_MIN = 72;                                         // px: below this a name reads as a stub, so a button folds
+      var more = document.createElement('button');
+      more.type = 'button'; more.id = 'appmore'; more.textContent = '⋯';
+      more.title = T('more', 'More'); more.setAttribute('aria-label', more.title);
+      more.setAttribute('aria-haspopup', 'menu'); more.setAttribute('aria-expanded', 'false');
+      var menu = document.createElement('div');
+      menu.id = 'appmenu'; menu.setAttribute('role', 'menu'); menu.hidden = true;
+      var head = document.createElement('div'); head.id = 'appmenu-name';
+      menu.appendChild(head);
+      abar.appendChild(more); abar.appendChild(menu);
+      var shown = function (el) { try { return getComputedStyle(el).display !== 'none'; } catch (e) { return false; } };
+      var rowEl = function (k) { return k === 'brand' ? abar.querySelector('.brand') : $(k); };
+      var placeMenu = function () {
+        var r = more.getBoundingClientRect();
+        menu.style.top = Math.round(r.bottom + 6) + 'px';
+        menu.style.right = Math.max(8, Math.round(root.innerWidth - r.right)) + 'px';
+        menu.style.left = 'auto';
+      };
+      var setOpen = function (on) {
+        if (on) head.textContent = (nameEl.textContent || '').trim();
+        menu.hidden = !on; more.setAttribute('aria-expanded', on ? 'true' : 'false');
+        if (on) placeMenu();
+      };
+      // One row: every shown child centred on the first line (items of different heights share a centre line, not a
+      // top) and nothing past the right edge.
+      var oneRow = function () {
+        var mid = null, ok = true;
+        orig.forEach(function (el) {
+          if (!ok || !shown(el)) return;
+          var c = el.offsetTop + el.offsetHeight / 2;
+          if (mid === null) mid = c; else if (Math.abs(c - mid) > 12) ok = false;
+        });
+        return ok && abar.scrollWidth <= abar.clientWidth + 1;
+      };
+      // A touch phone (the meeting's phone rule: a coarse pointer and no fine one) always folds, so every target on the
+      // row is a full 44px, also on its side where the whole bar would fit.
+      var phone = function () { try { return root.matchMedia('(pointer: coarse)').matches && !root.matchMedia('(any-pointer: fine)').matches; } catch (e) { return false; } };
+      var fitting = false;
+      function fit() {
+        if (fitting || abar.clientWidth === 0) return;
+        fitting = true;
+        try {
+          var open = !menu.hidden;
+          orig.forEach(function (el) { abar.insertBefore(el, more); });
+          delete abar.dataset.fold; more.style.display = 'none';
+          if (!phone() && oneRow()) { setOpen(false); return; }
+          abar.dataset.fold = '1';
+          var keep = ROW.map(rowEl).filter(function (el) { return el && shown(el); });
+          var place = function () {
+            orig.forEach(function (el) {
+              if (el === nameEl || el.id === 'appgif' || keep.indexOf(el) !== -1) abar.insertBefore(el, more);
+              else menu.appendChild(el);
+            });
+          };
+          more.style.display = '';
+          place();
+          while (keep.length && nameEl.clientWidth < NAME_MIN) { keep.pop(); place(); }
+          if (open) placeMenu();
+        } finally { fitting = false; }
+      }
+      var queued = false;
+      var soon = function () { if (queued) return; queued = true; (root.requestAnimationFrame || setTimeout)(function () { queued = false; try { fit(); } catch (e) {} }); };
+      more.addEventListener('click', function (e) { e.stopPropagation(); setOpen(menu.hidden); });
+      // a name cut short by the row reads whole in the menu's first line
+      nameEl.addEventListener('click', function (e) {
+        if (abar.dataset.fold !== '1' || nameEl.scrollWidth <= nameEl.clientWidth) return;
+        e.stopPropagation(); setOpen(menu.hidden);
+      });
+      // a pick runs its own handler first, then the menu closes
+      menu.addEventListener('click', function (e) { if (e.target && e.target.closest && e.target.closest('button, a')) Promise.resolve().then(function () { setOpen(false); }); });
+      document.addEventListener('click', function (e) { if (!menu.hidden && !(e.target && e.target.closest && e.target.closest('#appmenu, #appmore'))) setOpen(false); }, true);
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !menu.hidden) setOpen(false); });
+      root.addEventListener('resize', soon);
+      try { new ResizeObserver(soon).observe(abar); } catch (e) {}
+      // a button shown or hidden (Invite, Save, Steal, Talk...), the body's state, or a new name refits the row
+      try {
+        new MutationObserver(soon).observe(abar, { attributes: true, attributeFilter: ['style', 'hidden'], subtree: true });
+        new MutationObserver(soon).observe(nameEl, { childList: true, characterData: true, subtree: true });
+        new MutationObserver(soon).observe(body, { attributes: true, attributeFilter: ['class'] });
+      } catch (e) {}
+      fn('foldBarForApp', soon);
+      soon();
+    })();
     if (GifOS.perms) GifOS.perms.attach($('appperms'), { onLeave: function () { C.stopApp(); }, skipCaps: function () { return C.appMode === 'client' ? ['stage'] : []; } });
     // An app may ask to put you on the Stage; this page has none, so it asks nothing and the core keeps you off it.
     fn('appStageAsk', function () {});
     fn('appStageAskClose', function () {});
-    fn('foldBarForApp', function () {});
     fn('appCopyPaint', function () {
       var el = $('appcopy'), cp = C.model.apps.appCopy();
       cp.paintedAt = Date.now();

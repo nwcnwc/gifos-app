@@ -390,6 +390,12 @@ body.names-off #stagefeed .stgnames { display: none; }
     color: var(--text, #e0e0f0); background: var(--bg, #0a0a0f); border-color: var(--border, #2a2a3f); }
   #appbar #appmenu #appwho { order: 0; flex: none; white-space: normal; overflow: visible; padding: 0 .3rem; font-size: .85rem;
     color: var(--muted, #8888aa); }
+  /* The app runtime's folded bar (run.html, js/core/view/audio.js wireAppMore): the menu's first line is the app's whole
+     name (a name cut on the row reads whole here), and the GifOS link is a full-size row like the buttons. */
+  #appmenu #appmenu-name { font-weight: 700; font-size: 1rem; padding: .1rem .3rem; white-space: normal; overflow-wrap: anywhere; color: var(--text, #e0e0f0); }
+  #appmenu #appmenu-name:empty { display: none; }
+  #appbar #appmenu > .brand { display: flex; align-items: center; min-height: 44px; padding: 0 .8rem; font-size: 1rem; }
+  #appbar[data-fold="1"] #appname { cursor: pointer; }
   /* A solo app already has #appmore on its own bar. The meeting #topmore would
      sit as a second "…" at the top-left on phones and open an empty/unreadable menu. */
   body.solo-app #tophead > .topmore,
@@ -2725,6 +2731,11 @@ body.names-off #stagefeed .stgnames { display: none; }
   #joinveil h3 { color: var(--c-white); }
   #joinveil p { color: var(--c-paper); }
   #joinveil p:empty { display: none; }
+  /* Update GifOS on a page the meeting turned away as too old (GifOS.update.now): one full-size button. */
+  #joinveil .jv-go { display: block; width: 100%; min-height: 44px; margin-top: .9rem; padding: .55rem 1rem; border: 0; border-radius: 22px;
+    background: var(--accent, #7b5cff); color: #fff; font: inherit; font-weight: 700; font-size: 1rem; cursor: pointer; }
+  #joinveil .jv-go[hidden] { display: none; }
+  #joinveil .jv-go:disabled { opacity: .6; cursor: default; }
   .pg-step, #joinveil p.pg-step { color: var(--c-gray); font-size: 13px; font-weight: 500; margin: 0 0 4px; font-variant-numeric: tabular-nums; }
   .pg-step[hidden] { display: none; }
   #lobby { background: var(--c-line); }
