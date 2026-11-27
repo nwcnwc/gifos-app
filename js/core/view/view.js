@@ -2024,6 +2024,9 @@
         : { left: '', top: '', width: '', height: '', right: '', bottom: '' };
       for (const k in want) if (fsmain.style[k] !== want[k]) fsmain.style[k] = want[k];
       if (box) fsmain.dataset.fit = 'cover'; else delete fsmain.dataset.fit;
+      // The Stadium's names: its picture carries none (no pack burns a name), so this viewer draws each named cell's
+      // name over the big view, through its fit and zoom, crisp over a blurred Stadium (viewKit.cellNamesOver).
+      try { GifOS.viewKit.cellNamesOver(__C, fsview, fsmain, fsmain.dataset.key === 'sd' && !fsmain.classList.contains('dark') ? __M.sdView : null); } catch (e) {}
     }
     fsmain.addEventListener('loadedmetadata', fsFitPaint);
     fsmain.addEventListener('resize', fsFitPaint);
@@ -2052,6 +2055,7 @@
         fsZoomBox = null;
         if (fsmain.classList.contains('fszoom')) { fsmain.classList.remove('fszoom'); fsmain.style.transform = ''; }
         if (was) (0, /*()*/__C.viewNote)('zoom', { ids: [] });
+        try { GifOS.viewKit.cellNamesOver(__C, fsview, fsmain, fsmain.dataset.key === 'sd' && !fsmain.classList.contains('dark') ? __M.sdView : null); } catch (e) {}
         return;
       }
       const kx = vw / cv.width, ky = vh / cv.height;   // canvas px to frame px (equal unless a frame lags a resize)
@@ -2073,6 +2077,7 @@
       const tf = 'translate(' + tx.toFixed(1) + 'px,' + ty.toFixed(1) + 'px) scale(' + z.toFixed(3) + ')';
       if (fsmain.style.transform !== tf) fsmain.style.transform = tf;
       if (fsZoomBox.join(',') !== was) (0, /*()*/__C.viewNote)('zoom', { ids: ids.slice(), box: fsZoomBox.slice(), z: +z.toFixed(2) });
+      try { GifOS.viewKit.cellNamesOver(__C, fsview, fsmain, fsmain.dataset.key === 'sd' && !fsmain.classList.contains('dark') ? __M.sdView : null); } catch (e) {}
     }
     // The grid videos stay attached while #fsview is open; body.fsopen only
     // hides their paint. busVolume, the row head's packer, selfStageStream
@@ -12965,17 +12970,39 @@
         const k = Math.min(1, 480 / Math.max(cw, ch));   // a float is small: 480 px on the long side is plenty
         const w = Math.max(2, Math.round(cw * k)), h = Math.max(2, Math.round(ch * k));
         if (M2.canvas.width !== w || M2.canvas.height !== h) { M2.canvas.width = w; M2.canvas.height = h; }
-        if (cut) { M2.ctx.drawImage(src, cut.sx, cut.sy, cut.sw, cut.sh, 0, 0, w, h); M2.cardSig = ''; pipLensFrame(M2); return; }
+        // No pack burns a name: the float names what it shows itself (viewKit.cellNamesOnCanvas), after the picture, so
+        // the name is never under the picture's blur. A far talker's cut is one named cell; the whole Stadium names
+        // each cell its picture names.
+        const K = window.GifOS && GifOS.viewKit;
         // The tile's own numbers: its CSS blur reads --blur-view-min/max on the root (the Max is the sender's Max in a
         // room with a clear right), so the float blurs exactly as hard as the tile it comes from.
         const rs = document.documentElement.style, T = GifOS.timings;
         const frac = M2.level >= 2 ? (parseFloat(rs.getPropertyValue('--blur-view-max')) || T.BLUR_VIEW_MAX_FRAC)
           : M2.level >= 1 ? (parseFloat(rs.getPropertyValue('--blur-view-min')) || T.BLUR_VIEW_MIN_FRAC) : 0;
-        if (frac > 0) {
-          // Drawn 15% over size, as the tile's CSS scales up its blur, so the blur's soft rim falls outside the float.
-          const dw = w * 1.15, dh = h * 1.15;
-          (0, /*()*/__M.blurDraw)(M2.ctx, src, (w - dw) / 2, (h - dh) / 2, dw, dh, frac * Math.max(w, h) / dw);
-        } else M2.ctx.drawImage(src, 0, 0, w, h);
+        // Drawn 15% over size when blurred, as the tile's CSS scales up its blur, so the blur's soft rim falls outside the float.
+        const dw = frac > 0 ? w * 1.15 : w, dh = frac > 0 ? h * 1.15 : h;
+        if (cut) {
+          // A far talker cut from the Stadium wears that person's level too (the cut used to float clear): the whole
+          // picture is drawn so the cut lands on the float, blurred at the face's own size.
+          const fx = dw / cut.sw, fy = dh / cut.sh, ow = sw * fx, oh = sh * fy, ox = (w - dw) / 2 - cut.sx * fx, oy = (h - dh) / 2 - cut.sy * fy;
+          if (frac > 0) (0, /*()*/__M.blurDraw)(M2.ctx, src, ox, oy, ow, oh, frac * Math.max(w, h) / ow);
+          else M2.ctx.drawImage(src, cut.sx, cut.sy, cut.sw, cut.sh, 0, 0, w, h);
+          try { K.cellNamesOnCanvas(__C, M2.ctx, [{ pid: R.cell, x: 0, y: 0, w: w, h: h }]); } catch (e) {}
+          M2.cardSig = ''; pipLensFrame(M2); return;
+        }
+        if (frac > 0) (0, /*()*/__M.blurDraw)(M2.ctx, src, (w - dw) / 2, (h - dh) / 2, dw, dh, frac * Math.max(w, h) / dw);
+        else M2.ctx.drawImage(src, 0, 0, w, h);
+        try {
+          const sv = __M.sdView, cv = sv && sv.canvas, ids = R.key === 'stadium' && sv && sv.cellIds ? sv.cellIds() : null;
+          if (ids && cv && cv.width > 2 && cv.height > 2) {
+            const G = Math.max(1, sv.cols() | 0), c = cv.width / G, kx = dw / cv.width, ky = dh / cv.height, cells = [];
+            for (let j = 0; j < ids.length; j++) {
+              const x = (j % G) * c, y = Math.floor(j / G) * c;
+              if (ids[j] && y + c <= cv.height + 0.5) cells.push({ pid: String(ids[j]), x: (w - dw) / 2 + x * kx, y: (h - dh) / 2 + y * ky, w: c * kx, h: c * ky });
+            }
+            K.cellNamesOnCanvas(__C, M2.ctx, cells);
+          }
+        } catch (e) {}
         M2.cardSig = '';
         pipLensFrame(M2);
       }

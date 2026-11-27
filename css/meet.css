@@ -2104,7 +2104,7 @@ body.names-off #stagefeed .stgnames { display: none; }
      leaves the picture (the top line and buttons, Blur, the Prerecorded pill, the Stage names); only the version
      label stays. Any pointer, touch or key brings them back. */
   body.view-calm #tophead > :not(#gifos-build-float), body.view-calm #bc-pre, body.view-calm #clearnopw-bar,
-  body.view-calm #stagefeed .stgname, body.view-calm .tile > :is(.name, .chips, .blurwhy:not([data-why="tap"])) { opacity: 0 !important; pointer-events: none !important; transition: opacity var(--t-slow) ease; }
+  body.view-calm #stagefeed .stgname, body.view-calm .cellname, body.view-calm .tile > :is(.name, .chips, .blurwhy:not([data-why="tap"])) { opacity: 0 !important; pointer-events: none !important; transition: opacity var(--t-slow) ease; }
   @media (prefers-reduced-motion: reduce) { .bar, body.dock-calm .bar, body.dock-calm .fitbtn,
     .tile > .blurbox, .tile .modbar, .topchip, #gifos-build-float { transition: none !important; } }
   .bar #cam, .bar #mic, .bar #reactbtn, .bar #sharebtn, .bar #chatbtn, .bar #ccdock, .bar #bartoggle {
@@ -3909,6 +3909,13 @@ body.comfy.sv-avail.has-app:not(.app-full):not(.solo-app):not(.app-room) #tophea
 .cellcard.has-img > span { display: none; }
 .cellcard > img.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .009))) saturate(.9); transform: scale(1.07); }
 .cellcard > img.blur2 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-max, .0225))) saturate(.75); transform: scale(1.15); }
+/* The names of a received picture's cells (the Stadium; viewKit.cellNames): drawn by this viewer at each cell's foot,
+   sharp over a blurred picture, never in the pixels sent. Show names off hides them; a calm surface fades them. */
+.cellnames { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; pointer-events: none; z-index: 2; overflow: hidden; }
+.cellname { position: absolute; box-sizing: border-box; transform: translateY(-100%); padding: .15em .45em; background: rgba(10,10,15,.62);
+  color: #eef; font-weight: 600; font-family: system-ui, sans-serif; line-height: 1.25; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; transition: opacity .4s ease; }
+body.names-off .cellnames { display: none; }
 /* ---- The view button never leaves a meeting (2026-11-26) ----
    People look for the view exactly when the screen has gone quiet: after a pick, in Scroll or the Stage view, or with
    the dock tucked. A quiet meeting (dock-calm, head-calm, view-calm, dock-idle, chrome-away) fades everything else in

@@ -4798,14 +4798,12 @@
       const st = statusOf.get(pid) || foldStatusOf(pid);
       return !!(st && st.camOff && !st.rb && !sharingScreen(pid));
     };
+    // The marks a packer burns onto a face: a raised hand, the talking frame, a reaction. NEVER THE NAME: names are drawn
+    // by every viewer over the cells the pack names (viewKit.cellNames), crisp over a blurred picture.
     const labelFor = (pid) => {
       const isMe = pid === myId;
       const st = (isMe ? myStatus : statusOf.get(pid)) || {};
-      // NO "(you)" here — a burned label rides the composite up to EVERYONE, so
-      // it must be the person's plain name (my self-tile shows "(you)" via its
-      // own DOM label, not the burn-in).
-      const name = displayName(pid);
-      return { name, hand: !!st.hand, talking: !!speakingOf.get(isMe ? 'me' : pid), react: faceReactOf(pid) };
+      return { hand: !!st.hand, talking: !!speakingOf.get(isMe ? 'me' : pid), react: faceReactOf(pid) };
     };
     // THE MEETING'S AUDIO GRAPH PLAYS NOTHING. It meters voices, mixes the
     // recording, folds the stage ear and feeds Whisper; every sound a person

@@ -740,10 +740,11 @@
     return id ? String(id) : null;
   }
 
-  // The camera-off people in the Stadium picture: each viewer draws their card over their cell (viewKit.cellCards),
-  // with the same geometry as stadFaceAt (the cut canvas's kept cells, else the whole frame's cells).
+  // The people in the Stadium picture, drawn by this viewer over their cells: a camera-off person's card
+  // (viewKit.cellCards) and every named cell's name (viewKit.cellNames: no pack burns names into its pixels), with the
+  // same geometry as stadFaceAt (the cut canvas's kept cells, else the whole frame's cells).
   function stadCards(el, opts) {
-    const K = GifOS.viewKit, C = GifOS.core && GifOS.core.meeting && GifOS.core.meeting.core;
+    const K = GifOS.viewKit, Mt = GifOS.core && GifOS.core.meeting, C = Mt && Mt.core, M = Mt && Mt.media;
     if (!K || typeof K.cellCards !== 'function' || !C || !el) return;
     const out = [];
     try {
@@ -768,7 +769,8 @@
         }
       }
     } catch (e) {}
-    try { K.cellCards(C, el, out, 'stadium'); } catch (e) {}
+    try { K.cellCards(C, M, el, out, 'stadium'); } catch (e) {}
+    try { if (typeof K.cellNames === 'function') K.cellNames(C, el, out); } catch (e) {}
   }
 
   // One resize listener, on the stadium <video>. Debounced, so a burst

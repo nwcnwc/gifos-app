@@ -16,6 +16,7 @@
  *                           leaveStage: the Stage view's full screen on every surface).
  *   stageNames, calm        the Stage's names over the picture, and the watching surfaces' one idle fade.
  *   cellCards               a camera-off person's card (avatar or initial) over their cell of a received picture.
+ *   cellNames, cellNamesOnCanvas  the name of each named cell of a received picture (the Stadium), drawn by the viewer.
  *   clear                   the viewer's own unblur (clearButtons) and Report (clearReport, from the info panel / More menu) in a hosted room with no
  *                           password whose clear right the core reads (clearNoPwState); every surface draws the same.
  *
@@ -415,9 +416,9 @@
       var ini = ''; try { ini = C.nameInitial ? String(C.nameInitial(name)) : String(name || '').slice(0, 1).toUpperCase(); } catch (e) {}
       el.dataset.pid = String(w.pid);
       el.style.left = Math.round(w.x) + 'px'; el.style.top = Math.round(w.y) + 'px';
-      // A packed Stadium cell carries its name in its foot band (burned by the packer, over the plain fill): the card
-      // leaves that band showing. The Stage's names are drawn above the card by this viewer.
-      var ch = where === 'stage' ? w.h : w.h * 0.8;
+      // The whole cell: no pack burns a name, so there is no band to leave showing; the names go above the card
+      // (stageNames on the Stage, cellNames on the Stadium).
+      var ch = w.h;
       el.style.width = Math.round(w.w) + 'px'; el.style.height = Math.round(ch) + 'px';
       el.style.setProperty('--bw', Math.round(Math.max(w.w, w.h)) + 'px');
       var sp = el.firstChild;
@@ -433,6 +434,102 @@
         img.hidden = typeof lv !== 'number';
       } else if (img) img.remove();
       el.classList.toggle('has-img', !!url);
+    }
+  }
+
+  // ---- names: the people in a received picture's cells, drawn by this viewer ----
+  // No pack carries a name in its pixels (mesh-media drawOverlay burns marks only): a name burned in blurred with the
+  // face it sat on (an open room blurs the whole Stadium) and a Node seat could only draw it in a block font. The pack
+  // names its cells (their ids ride with the picture), so each viewer draws every named cell's name itself, crisp over
+  // the face, from its own roster, or the fold's name for a person past it. A viewer's Show names off hides them
+  // (body.names-off) and a calm surface fades them (body.view-calm), like tile names. A cell too small to read a name
+  // in shows none, as the packer's tapestry did. cells: [{ pid, x, y, w, h }] in host pixels, the cellCards geometry.
+  var CELL_NAME_MIN_PX = 48;
+  function cellName(C, pid) {
+    var nm = '';
+    try { nm = String((C.displayName ? C.displayName(pid) : nameOf(C, pid)) || ''); } catch (e) { nm = ''; }
+    if (nm && nm !== '\u2026') return nm;
+    try {
+      var mn = C.model && C.model.net && C.model.net.meshNode ? C.model.net.meshNode() : null;
+      var far = mn && typeof mn.meetingPeople === 'function' ? (mn.meetingPeople() || []) : [];
+      for (var i = 0; i < far.length; i++) for (var j = 0; j < ((far[i] && far[i].people) || []).length; j++) {
+        var x = far[i].people[j];
+        if (x && x.id === pid && x.nm) return String(x.nm);
+      }
+    } catch (e) {}
+    return '';
+  }
+  // The font a cell's name is drawn at: the packer's proportion (0.11 of the cell), held to what a tile name reads at.
+  function cellNameFont(w) { return Math.max(10, Math.min(16, Math.round(w * 0.11))); }
+  function cellNames(C, host, cells) {
+    if (!host || !host.ownerDocument) return;
+    var doc = host.ownerDocument;
+    var box = host.querySelector(':scope > .cellnames');
+    var want = [];
+    for (var i = 0; i < (cells || []).length; i++) {
+      var c = cells[i]; if (!c || !c.pid || !(c.w >= CELL_NAME_MIN_PX) || !(c.h > 2)) continue;
+      var nm = cellName(C, c.pid);
+      if (nm) want.push({ c: c, nm: nm });
+    }
+    if (!want.length) { if (box) box.remove(); return; }
+    if (!box) { box = doc.createElement('div'); box.className = 'cellnames'; box.setAttribute('aria-hidden', 'true'); }
+    if (box.parentNode !== host || host.lastElementChild !== box) host.appendChild(box);   // above the picture and its cards
+    while (box.children.length > want.length) box.removeChild(box.lastChild);
+    for (var k = 0; k < want.length; k++) {
+      var w = want[k].c, el = box.children[k];
+      if (!el) { el = doc.createElement('span'); el.className = 'cellname'; box.appendChild(el); }
+      if (el.textContent !== want[k].nm) el.textContent = want[k].nm;
+      el.dataset.pid = String(w.pid);
+      var l = Math.round(w.x) + 'px', t = Math.round(w.y + w.h) + 'px', wd = Math.round(w.w) + 'px', fs = cellNameFont(w.w) + 'px';
+      if (el.style.left !== l) el.style.left = l;
+      if (el.style.top !== t) el.style.top = t;
+      if (el.style.width !== wd) el.style.width = wd;
+      if (el.style.fontSize !== fs) el.style.fontSize = fs;
+    }
+  }
+  // The names over a <video> that plays a pack's own frame (the full screen Stadium): the pack's cells (cellIds, cols,
+  // its canvas size) through the video's contain fit and its transform as drawn (a Follow zoom, a blur class's scale),
+  // into host, which holds the video at the video's own offset. pack null: no names.
+  function cellNamesOver(C, host, video, pack) {
+    var cells = [];
+    try {
+      var cv = pack && pack.canvas, ids = pack && pack.cellIds ? pack.cellIds() : null;
+      var vw = video.videoWidth || (cv ? cv.width : 0), vh = video.videoHeight || (cv ? cv.height : 0);
+      var ew = video.clientWidth, eh = video.clientHeight;
+      if (ids && cv && cv.width > 2 && cv.height > 2 && vw && vh && ew && eh) {
+        var G = Math.max(1, pack.cols() | 0), cell = cv.width / G, kx = vw / cv.width, ky = vh / cv.height;
+        var s0 = Math.min(ew / vw, eh / vh), ox = (ew - vw * s0) / 2, oy = (eh - vh * s0) / 2;   // object-fit: contain
+        var cs = root.getComputedStyle(video), mm = /^matrix\(([^)]*)\)/.exec(cs.transform || ''), m = mm ? mm[1].split(',').map(parseFloat) : null;
+        var og = String(cs.transformOrigin || '0 0').split(' ').map(parseFloat), gx = og[0] || 0, gy = og[1] || 0;
+        var z = m ? m[0] : 1, tx = m ? m[4] + gx - gx * m[0] : 0, ty = m ? m[5] + gy - gy * m[3] : 0;
+        var bx = video.offsetLeft || 0, by = video.offsetTop || 0;
+        for (var j = 0; j < ids.length; j++) {
+          var x = (j % G) * cell, y = Math.floor(j / G) * cell;
+          if (!ids[j] || y + cell > cv.height + 0.5) continue;
+          cells.push({ pid: String(ids[j]), x: bx + tx + (ox + x * kx * s0) * z, y: by + ty + (oy + y * ky * s0) * z, w: cell * kx * s0 * z, h: cell * ky * s0 * z });
+        }
+      }
+      // a zoom eases in: the names follow where it lands
+      if (!video.__cellNamesTe) { video.__cellNamesTe = true; video.addEventListener('transitionend', function () { var a = video.__cellNamesArgs; if (a) cellNamesOver(a[0], a[1], video, a[2]); }); }
+      video.__cellNamesArgs = pack ? [C, host, pack] : null;
+    } catch (e) {}
+    cellNames(C, host, cells);
+  }
+  // The same names on a canvas (the floating window draws its picture on one): a dark band at each cell's foot and the
+  // name, measured and ellipsised to the cell. Drawn after the picture, so the name is never under its blur.
+  function cellNamesOnCanvas(C, ctx, cells) {
+    for (var i = 0; i < (cells || []).length; i++) {
+      var c = cells[i]; if (!c || !c.pid || !(c.w >= CELL_NAME_MIN_PX)) continue;
+      var nm = cellName(C, c.pid); if (!nm) continue;
+      var fs = cellNameFont(c.w), pad = Math.max(3, Math.round(fs * 0.4)), bh = Math.round(fs * 1.25 + pad);
+      ctx.save();
+      ctx.filter = 'none';
+      ctx.fillStyle = 'rgba(10,10,15,0.62)'; ctx.fillRect(c.x, c.y + c.h - bh, c.w, bh);
+      ctx.fillStyle = '#eef'; ctx.font = '600 ' + fs + 'px system-ui, sans-serif'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+      var s = nm, lim = c.w - pad * 2;
+      if (ctx.measureText(s).width > lim) { while (s.length > 1 && ctx.measureText(s + '\u2026').width > lim) s = s.slice(0, -1); s += '\u2026'; }
+      ctx.fillText(s, c.x + pad, c.y + c.h - bh / 2);
+      ctx.restore();
     }
   }
 
@@ -469,5 +566,5 @@
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 
-  GifOS.viewKit = { version: 1, RECORDS: RECORDS, host: host, part: part, watchCount: watchCount, nameOf: nameOf, present: present, pip: pip, fullscreen: fullscreen, armAppGif: armAppGif, clearButtons: clearButtons, clearReport: clearReport, clearReportButton: clearReportButton, stageNames: stageNames, cellCards: cellCards, calm: calm, trDownload: trDownload, esc: esc };
+  GifOS.viewKit = { version: 1, RECORDS: RECORDS, host: host, part: part, watchCount: watchCount, nameOf: nameOf, present: present, pip: pip, fullscreen: fullscreen, armAppGif: armAppGif, clearButtons: clearButtons, clearReport: clearReport, clearReportButton: clearReportButton, stageNames: stageNames, cellCards: cellCards, cellNames: cellNames, cellNamesOver: cellNamesOver, cellNamesOnCanvas: cellNamesOnCanvas, cellName: cellName, calm: calm, trDownload: trDownload, esc: esc };
 })(typeof window !== 'undefined' ? window : globalThis);
