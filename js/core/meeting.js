@@ -7178,13 +7178,17 @@
       const noPicture = plan.capture.video.src === 'none';   // a seat that may not publish owes no picture (a policy, not a fault)
       const card = plan.capture.video.src === 'card';   // camera off: a card, drawn by each viewer, never video
       const staged = personOnStage(myId), voiceStaged = stageIds().includes(myId), leased = seatSelfLeased(), now = Date.now();
+      // A voice I carry for another page rides my main sound: that is their voice, not my mic, and it is never parked by my mute.
+      let hostMuted = false; try { hostMuted = amGloballyMuted() && !(carryHosts && carryHosts.size > 0); } catch (e) { hostMuted = false; }
       for (const p of peers.values()) {
         const viewer = plan.park === 'viewer';
         const cam = !viewer && !noPicture && camPeer(p.id) && !staged, mic = !viewer && micPeer(p.id);
         // 'card': my camera is off, so no picture leaves at all (every viewer draws my avatar or initial itself). The
         // slot stays wanted, so a camera turned back on is a pure track swap, and it is never an owed 'no-track'.
         const camPark = !cam ? null : leased ? 'leased' : (p.mainHoldUntil && p.mainHoldUntil > now) ? 'held' : p.remoteParkMain ? 'hidden' : card ? 'card' : null;
-        const micPark = !mic ? null : voiceStaged ? 'stage' : leased ? 'leased' : null;
+        // 'muted': a host's mute stands on me, so my mic may not sound anywhere in the room: its senders carry nothing at all
+        // (no packets of silence to every row-mate) until the order is lifted; then my own unmute is a pure track swap.
+        const micPark = !mic ? null : voiceStaged ? 'stage' : leased ? 'leased' : hostMuted ? 'muted' : null;
         plan.links.push([String(p.id), { cam: { source: cam ? 'own-cam' : 'none', kind: 'video', park: camPark }, mic: { source: mic ? 'own-mic' : 'none', kind: 'audio', park: micPark } }]);
       }
       plan.links.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
@@ -17266,7 +17270,7 @@
         return iAmHead ? 'sub:' + c.i : 'subraw'; // my own down-child's product (a head is column 0)
       }
       if (key === 'x1') return iAmHead ? null : 'x1';
-      if (key === 'x2' && iAmHead) return meta && meta.row != null && meta.row !== c.r ? 'sdrow:' + meta.row : null; // a head (an heir standing in, or a mate just moved into the head's cell) uses the other rows' products its column still carries, until the direct copy lands
+      if (key === 'x2' && iAmHead) return !BROADCAST && meta && meta.row != null && meta.row !== c.r ? 'sdrow:' + meta.row : null; // a head (an heir standing in, or a mate just moved into the head's cell) uses the other rows' products its column still carries, until the direct copy lands
       // x2 is per-origin-row now (W7): one carrier delivers several rows'
       // products through the same column, so the slots must not collide.
       // MY OWN ROW'S PRODUCT IS NEVER MINE TO CLAIM (2026-07-29, the sibling of
@@ -17281,7 +17285,10 @@
       // watchdog will dutifully failover forever. Same rule as x1/sdm/sdn:
       // never claim what you produced.
       if (key === 'x2') return !iAmHead && meta && meta.row != null && meta.row !== c.r ? 'x2:' + meta.row : null;
-      if (key.indexOf('sdrow') === 0) return iAmHead && meta && meta.row != null && meta.row !== c.r ? 'sdrow:' + meta.row : null;
+      // A BROADCAST SEAT WATCHES THE STAGE ONLY. Its page shows no room view and packs none (dutySlots: no row view, no
+      // product), so another row's product and the room's picture and sound from above would end at this seat, received
+      // and decoded for nobody. It claims neither, and tells the sender so (claimMos).
+      if (key.indexOf('sdrow') === 0) return iAmHead && !BROADCAST && meta && meta.row != null && meta.row !== c.r ? 'sdrow:' + meta.row : null;
       // MIX-MINUS streams (docs/media-plane.md): per-branch, single-producer.
       if (key === 'sdm') return c.i === 0 || (iAmHead && from !== occPid({ pc: c.pc, r: c.r, i: 0 })) ? null : 'sdm'; // my head's finished row view — my Stadium. An heir standing in keeps its head's copy (the feed may come back) and takes no other: a mate's would be its own echo
       // sdx: my column's child-branch ingredient (direct, or the 'sdx^x' copy a
@@ -17290,7 +17297,7 @@
       if (key.indexOf('sdxu:') === 0) return !iAmHead ? key.slice(0, 69) : null; // L14 / SUB.4: my head's send for a branch I serve, one job per branch
       if (key === 'sdx' || key === 'sdx^x') return !iAmHead && meta && meta.col === c.i ? 'sdx' : null;
       if (key === 'sdxc') return !iAmHead && meta && meta.col != null && meta.col !== c.i ? 'sdxc:' + meta.col : null;
-      if (key === 'sdn') return iAmHead ? 'sdn' : null;  // my branch's outside-world ingredient (from above)
+      if (key === 'sdn') return iAmHead && !BROADCAST ? 'sdn' : null;  // my branch's outside-world ingredient (from above)
       // L49: a talker's mic pulled past a row head whose mix does not arrive. Audio only. The head claims rap:<row>; a mate relays ra:<row>.
       if (key === 'ra') {
         if (c.pc !== 0 || !meta || meta.row == null) return null;
@@ -18056,7 +18063,9 @@
       for (const [ak, ann] of mosAnn) {
         const from = ak.slice(0, ak.indexOf('|')), key = ak.slice(ak.indexOf('|') + 1);
         const rk = mosResolve(key, ann, from);
-        if (!rk) continue;
+        // A feed that ends at a broadcast seat unused is asked to rest (the demand law: zero media, the line kept). Only
+        // the copies a head would take and never pass on; a duty slot and a copy this seat relays are never asked to rest.
+        if (!rk) { if (BROADCAST && (key === 'sdn' || key.indexOf('sdrow') === 0) && !isPipePeer(from)) demand(from, key, ann.streamId, false); continue; }
         if (isRedun(rk)) { let a = redun.get(rk); if (!a) { a = []; redun.set(rk, a); } a.push({ from, key, ann }); continue; }
         structuralSeen.add(rk);
         const cur = mosIn.get(rk);
