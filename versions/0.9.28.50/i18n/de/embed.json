@@ -72,7 +72,7 @@
   "embed.trDownload": "Herunterladen",
   "embed.trShotOf": "Bildschirm von {name}, {time}",
   "embed.trShotWho": "Bildschirm von {name}",
-  "embed.full": "VOLL",
+  "embed.pillFull": "VOLL",
   "embed.msgFull": "Zuschauerlimit erreicht.",
   "embed.fullUp": "Auf Unlimited upgraden für {price}/Monat",
   "embed.fullPass": "{price}-Pass: 4 Stunden Unlimited",

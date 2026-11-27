@@ -72,7 +72,7 @@
   "embed.trDownload": "Скачать",
   "embed.trShotOf": "Экран {name}, {time}",
   "embed.trShotWho": "Экран {name}",
-  "embed.full": "ПОЛНО",
+  "embed.pillFull": "ПОЛНО",
   "embed.msgFull": "Достигнут лимит зрителей.",
   "embed.fullUp": "Перейдите на Unlimited за {price}/мес.",
   "embed.fullPass": "Пропуск {price}: 4 часа Unlimited",
