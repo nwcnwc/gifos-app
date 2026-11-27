@@ -89,9 +89,31 @@
     update:    ['save', 'reload', 'net', 'server', 'door', 'password', 'admit', 'knock', 'seat', 'relay', 'web', 'merge', 'people'],
   };
 
+  // WHAT A PERSON SEES (Nathan 11-27: "13 steps is far too many for a viewer"). The steps above stay the page's own record
+  // (the trace, the tests, the tap-to-expand detail); the line, the card and the badges count a few phases that mean
+  // something to someone waiting. Every step belongs to one phase; the phase shown never goes back and ends with the flow.
+  //   way in (join, update)  1 connect: reaching GifOS (and an update's reload)   2 find: finding the meeting, its password,
+  //                          its waiting room, asking to join   3 enter: getting a place (and through a firewall)
+  //                          4 people: connecting to everyone (a broadcast viewer: until the Stage plays)
+  //   way back (reconnect)   1 reaching GifOS   2 getting your place back   3 connecting to everyone again
+  const PHASE_OF = {
+    in:   { save: 1, reload: 1, net: 1, server: 1, door: 2, password: 2, admit: 2, knock: 2, seat: 3, relay: 3, web: 3, merge: 3, people: 4 },
+    back: { server: 1, door: 2, knock: 2, seat: 2, relay: 2, web: 2, merge: 2, people: 3 },
+  };
+  const PHASE = {
+    meet: [{ key: 'pgPhConnect', en: 'Connecting to GifOS' }, { key: 'pgPhFindMeet', en: 'Finding your meeting' },
+      { key: 'pgPhEnter', en: 'Getting you in' }, { key: 'pgPhPeople', en: 'Connecting to everyone' }],
+    cast: [{ key: 'pgPhConnect', en: 'Connecting to GifOS' }, { key: 'pgPhFindCast', en: 'Finding the broadcast' },
+      { key: 'pgPhEnter', en: 'Getting you in' }, { key: 'pgPhStage', en: 'Starting the picture and sound' }],
+    back: [{ key: 'pgPhBackServer', en: 'Reaching GifOS' }, { key: 'pgPhBackPlace', en: 'Getting your place back' },
+      { key: 'pgPhBackPeople', en: 'Connecting to everyone again' }],
+  };
+  const phaseSet = (flow) => (flow === 'reconnect' ? 'back' : 'in');
+
   const TEMPLATE = { key: 'pgStepOf', en: 'Step {x} of {y}: {what}…' };
   const STEP_ONLY = { key: 'pgStepOnly', en: 'Step {x} of {y}' };
   const SECS = { key: 'pgSecs', en: '{s} s' };
+  const TECH = { key: 'pgTech', en: 'Detail: {what} (step {x} of {y})' };
 
   const seated = (f) => f.st === 3 && !!f.coord;
 
@@ -164,8 +186,14 @@
     // the network verdict (net) runs beside the first steps and is never waited on: it counts when it lands
     // a step this flow does not have (a changed password while reconnecting) waits under the flow's own door step
     if (FLOWS[flow].indexOf(cur) < 0) cur = 'door';
-    const end = isSeat && !f.pw && !f.wait && done.indexOf('people') >= 0 && !(f.turn === 'ask' || f.turn === 'dial' || f.turn === 'web')
-      && (!back || !!f.relay) && (!was('relay') || done.indexOf('merge') >= 0);
+    // SEATED MEANS HEARING THE STAGE. Where a seat offers me a stager's sound (f.offered), the wait is over when that sound
+    // plays here (f.fed: a live track of a stager's feed bound at my ear and moving), not when a seat is granted: a cell
+    // among seats that are away is silent. The sound may come before the cell (a door ships it): the wait is over then too.
+    // A room with nobody on stage has no such sound to wait for, and ends as before.
+    const sound = !f.offered || !!f.fed;
+    const end = !f.pw && !f.wait && !(f.turn === 'ask' || f.turn === 'dial' || f.turn === 'web')
+      && (!back || !!f.relay) && (!was('relay') || done.indexOf('merge') >= 0)
+      && ((isSeat && done.indexOf('people') >= 0 && sound) || (!!f.fed && flow !== 'update'));
     return { done: done.filter((id) => FLOWS[flow].indexOf(id) >= 0), cur, text, hint, end };
   }
 
@@ -175,6 +203,8 @@
     const steps = FLOWS[flow];
     const done = new Set(), seen = new Set();
     let cur = steps[0], text = cur, hint = '', since = now || 0, ended = false, shownX = 0, first = true;
+    const phOf = PHASE_OF[phaseSet(flow)] || {};
+    let phX = 0, phSince = now || 0;   // the phase shown: never goes back; since when it is the phase
     const run = {
       flow, y: steps.length, startedAt: now || 0,
       // apply(facts, now) → true when what the line says changed (step, X, or the end)
@@ -188,11 +218,15 @@
         seen.add(cur);
         if (j.end) ended = true;
         shownX = run.x();
+        const ph = ended ? run.phaseY() : Math.max(phX, phOf[cur] || 1);
+        if (ph !== phX) { phX = ph; phSince = t || 0; }
         const was1 = first; first = false;
         return was1 || ended || run.x() !== x0 || cur !== c0 || hint !== h0 || text !== tx0;
       },
       // X is the step you are on: completed + 1, or at the end the steps completed; never below what was shown
       x() { return Math.min(steps.length, Math.max(shownX, done.size + (ended ? 0 : 1))); },
+      // the phase (a person's count): X never goes back, Y is the flow's phase count; the way in counts 4, the way back 3
+      phaseX: () => Math.max(1, phX), phaseY: () => (phaseSet(flow) === 'back' ? 3 : 4), phaseSince: () => phSince,
       cur: () => cur, text: () => text, hint: () => hint, since: () => since,
       done: () => steps.filter((s) => done.has(s)), seen: () => Array.from(seen), ended: () => ended,
     };
@@ -217,14 +251,34 @@
   // stepOnly(run, uiText) → "Step 3 of 10" (the veil and the prompts put the phase under it)
   function stepOnly(run, uiText) { return fill(tr(STEP_ONLY, uiText), { x: run.x(), y: run.y }); }
 
+  // phaseLine(run, now, uiText, kind) → { head, stepOnly, what, secs, hint, tech } the words a person reads: the phase
+  //   ("Step 2 of 4: Finding the broadcast…", seconds on this phase), the step's reason, and the technical step for the
+  //   tap-to-expand detail ("Asking to join · step 6 of 13"). kind: 'cast' (a broadcast viewer) or 'meet'.
+  //   phaseX(run, kind) can run past the flow: a viewer whose way in has ended still waits in phase 4 until the Stage plays.
+  function phaseLine(run, now, uiText, kind, xOver) {
+    const set = phaseSet(run.flow) === 'back' ? PHASE.back : (kind === 'cast' ? PHASE.cast : PHASE.meet);
+    const x = Math.min(set.length, Math.max(1, xOver || run.phaseX()));
+    // an update's own two steps (the old page saves your place, then opens the new version) say what they are
+    const own = run.flow === 'update' && (run.cur() === 'save' || run.cur() === 'reload') ? STEP[run.cur()] : null;
+    const what = tr(own || set[x - 1], uiText);
+    const head = fill(tr(TEMPLATE, uiText), { x, y: set.length, what });
+    const stepOnlyW = fill(tr(STEP_ONLY, uiText), { x, y: set.length });
+    const waited = Math.floor(Math.max(0, (now || 0) - run.phaseSince()) / 1000);
+    const secs = waited >= 3 ? fill(tr(SECS, uiText), { s: waited }) : '';
+    const t = line(run, now, uiText);
+    const st = STEP[run.text()] || STEP[run.cur()] || { key: '', en: run.cur() };
+    const tech = fill(tr(TECH, uiText), { what: tr(st, uiText), x: run.x(), y: run.y });
+    return { head, stepOnly: stepOnlyW, what, secs, hint: t.hint, tech, x, y: set.length };
+  }
+
   // Every catalog key this file can show, with its English (the i18n check reads uiText calls; this lists the rest).
   function keys() {
     const out = {};
-    for (const o of [TEMPLATE, STEP_ONLY, SECS].concat(Object.values(STEP), Object.values(HINT))) out[o.key] = o.en;
+    for (const o of [TEMPLATE, STEP_ONLY, SECS, TECH].concat(Object.values(STEP), Object.values(HINT), PHASE.meet, PHASE.cast, PHASE.back)) out[o.key] = o.en;
     return out;
   }
 
-  const api = { FLOWS, STEP, HINT, TEMPLATE, judge, createRun, line, stepOnly, keys };
+  const api = { FLOWS, STEP, HINT, TEMPLATE, PHASE, PHASE_OF, judge, createRun, line, stepOnly, phaseLine, keys };
   if (typeof module === 'object' && module.exports) module.exports = api;
   const GifOS = root.GifOS = root.GifOS || {};
   GifOS.meetProgress = api;

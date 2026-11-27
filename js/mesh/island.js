@@ -151,6 +151,7 @@
     subGo(r) {
       this.trace('SUB.2-GO', this.id, this.hasCoord ? this.coord : null, 'sr=%d state=%d', r, this.state); this.sr = r;
       if (this.state === 3) { this.emitRelay(this.genKey); return; }
+      this.occ.clear(); this.l13SplitCell.clear(); this.l13Across.clear();   // ...nor a view of them: between my leave and my grant the people I left (still seated at that door) send me their frames and my view names that door's seats again; a room founded on that view held their cells for good and counted them (TURN.5.3.6)
       this.memo.clear();   // L3.14's courtesy is for cells of the door I sat at: a seat that enters another door holds none of its cells for anybody (TURN.5.3)
       for (const x of this.l16Ask) this.f.fabricDoorDrop(this.id, x);
       this.l16Anch = false; this.l16Ho = -1; this.l16Until = 0; this.l16Round = 0; this.l16Ask.length = 0; this.l16Busy.length = 0; this.l16Last = -1; this.l16List.length = 0; this.l16Next = 0; this.l16WaveAt = -1; this.l16FreshAt = -1; this.l16Saw = false;
@@ -687,6 +688,7 @@
       const pool = []; for (const g of this.lastGreeters) if (g >= 0 && g !== this.id && !this.entAsk.has(g) && !this.l16Ask.includes(g)) pool.push(g);
       if (pool.length === 0) return false;
       const g = pool[Math.floor(this.rng() * pool.length)]; this.trace('FHOP.8.3-HEDGE', this.id, null, 'to=%d beside=%d', g, this.l16Ask[0]);
+      this.l53HedgeFor = this.retryAt; this.l53HedgeAt = this.TICK; this.l53Asked = this.l16Ask.slice(); this.l53Asked.push(g);   // L53.1: this is the first of its hedges
       this.entNote(g); this.l16Ask.push(g); const w = newMsg('WHOHOME'); w.from = this.id; w.ttl = K.WHOHOME_HOPS; this.emit(g, w); return true;
     },
 

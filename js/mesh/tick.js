@@ -131,7 +131,7 @@
       }
       if (this.state !== 3 && this.rcPendAt >= 0 && this.oldCell && TICK - this.rcPendAt >= this.rcPendWait) {
         if (this.rcPendWait > K.RC_WAIT && !this.rcRound2) { this.rcPendAt = -1; this.rcRound2 = true; this.rcRound2At = TICK; this.rcPendWait = K.RC_WAIT; this.rcTries = 1; this.trace('RECLAIM-ROUND2', id, null, 'old=%s', coordStr(unck(this.oldCell - 1))); if (!this.resumeAsk()) this.join(); this.f.wake(id); return true; }   // L3.10.6
-        const m = msg.clone(this.rcPend); this.rcPendAt = -1; this.oldCell = 0; this.trace('RECLAIM-TAKE', id, m.coord, 'from=%d', m.owner); this.take(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, [], m.ppL); if (this.pp >= 0 && this.pp !== id) this.placer = this.pp; this.f.wake(id); return true;   // L3.10: my old cell, handed back with its neighbours; no new seat, no requeue
+        const m = msg.clone(this.rcPend); this.rcPendAt = -1; this.oldCell = 0; this.trace('RECLAIM-TAKE', id, m.coord, 'from=%d', m.owner); this.take(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, [], m.ppL); if (this.pp >= 0 && this.pp !== id) this.placer = this.pp; this.l53Enter(); this.f.wake(id); return true;   // L3.10: my old cell, handed back with its neighbours; no new seat, no requeue
       }
       if (this.rcPendAt >= 0 && (!this.oldCell || this.state === 3)) this.rcPendAt = -1; else if (this.state !== 3 && this.rcPendAt >= 0) this.f.wake(id);
       if (this.rcRtAt >= 0) this.l3112Resend();   // L3.11.2
@@ -150,6 +150,7 @@
         if (this.stranded) { if (TICK - this.strandedAt > K.STRAND_TTL) { this.stranded = false; this.lastReach = -1; this.joinStart = -1; this.join(); } wake(); return true; }   // R6
         if (this.l16WaveTick()) { wake(); return true; }   // L16: a silent ask wave: everyone left
         if (this.l16PlainHedge()) { wake(); return true; }   // FHOP.8.3: my one ask went quiet: one more greeter beside it
+        if (this.l53AskHedge()) { wake(); return true; }   // L53.1: my knock went to a greeter whose channel has not opened: the same knock to one more greeter
         if (this.l8511Tick()) { wake(); return true; }   // L8.54.11: the kindless word is due: one knock
         this.subStall();   // JOIN.2 (mesh_roomterm.inc)
         this.l8512Note();   // L8.54.12 (mesh_roomterm.inc): every listed greeter is one my own dial found no path to

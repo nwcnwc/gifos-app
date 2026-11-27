@@ -236,6 +236,8 @@ body.names-off #stagefeed .stgnames { display: none; }
   #onair.off { background: #2a2a3f; color: #e0e0f0; }
   #onair.watch { background: var(--c-line); color: var(--c-ink); }
   #onair.watch .lamp { background: var(--c-blue); }
+  #onair.conn { background: #2a2a3f; color: #e0e0f0; }
+  #onair.conn .lamp { background: #c9a227; }
   #bc-join-note { margin: 0; padding: .55rem .9rem; font-size: .85rem; line-height: 1.4;
     background: var(--surface, #14141f); border-bottom: 1px solid var(--border, #2a2a3f); color: var(--text, #e0e0f0); }
   #bc-join-note[hidden] { display: none !important; }
@@ -1675,6 +1677,7 @@ body.names-off #stagefeed .stgnames { display: none; }
   #livebadge[data-state="off"] { background: var(--c-ink-2); color: var(--c-white); }
   #livebadge[data-state="watching"] { background: #0b6b3a; color: var(--c-white); }
   #livebadge[data-state="reconnecting"] { background: #8a5a00; color: var(--c-white); }
+  #livebadge[data-state="connecting"] { background: #2f3a66; color: var(--c-white); }   /* not in yet: neither on air nor lost */
   #livebadge[data-state="pre"] { background: #4b3a8f; color: var(--c-white); }
   .topchip .title { font-weight: 800; font-size: 1.625rem; letter-spacing: -0.04em; text-decoration: none; cursor: pointer;
     background: linear-gradient(135deg, #0071e3, #5856d6); -webkit-background-clip: text; background-clip: text;
@@ -1888,7 +1891,7 @@ body.names-off #stagefeed .stgnames { display: none; }
     body .bar #cam, body .bar #mic, body .bar #reactbtn, body .bar #bartoggle { width: 46px; min-width: 44px; height: 58px; min-height: 44px; padding: 4px 1px 3px; }
     body .bar .docklab { font-size: 10px; }
     body .bar #cam svg, body .bar #mic svg, body .bar #reactbtn svg, body .bar #bartoggle svg { width: 20px; height: 20px; }
-    body .bar #bargrip { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+    body .bar :is(#bargrip, #bargrip2) { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
     body .bar #leavebtn { width: 48px; min-width: 44px; height: 58px; min-height: 44px; margin-left: 0; padding: 4px 1px 3px; }
     body .bar #leavebtn svg { width: 20px; height: 20px; }
   }
@@ -2042,7 +2045,7 @@ body.names-off #stagefeed .stgnames { display: none; }
     body.broadcast .bar #chatbtn, body.broadcast .bar #ccdock, body.broadcast .bar #sharebtn, body.broadcast .bar #hand, body.broadcast .bar #bartoggle, body.broadcast .bar #leavebtn {
       min-width: 56px; padding: 6px 4px 4px; }
     body.broadcast .bar .docklab { font-size: 12px; }
-    body.broadcast .bar #bargrip { width: 18px; min-width: 18px; }
+    body.broadcast .bar :is(#bargrip, #bargrip2) { width: 18px; min-width: 18px; }
   }
   /* Idle tuck is a transform written by placeDock. No transition: a key nudge
      has to land on the next frame, and a transition would leave the old place. */
@@ -2412,7 +2415,7 @@ body.names-off #stagefeed .stgnames { display: none; }
     .bar > #stagebtn svg { width: 22px; height: 22px; }
     .bar > #hand { height: 56px; min-height: 56px; padding: 0 8px; }
     .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #chatbtn svg, .bar #ccdock svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
-    .bar #bargrip { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+    .bar :is(#bargrip, #bargrip2) { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
     .bar #leavebtn { width: 64px; height: 64px; min-width: 64px; min-height: 64px; }
     .bar:not(.collapsed) .barmore { bottom: 102px; width: calc(100vw - 24px); }
     .bar:not(.collapsed) .barmore .morerow { grid-template-columns: repeat(2, 1fr); }
@@ -2595,11 +2598,11 @@ body.names-off #stagefeed .stgnames { display: none; }
   body.comfy #stadium .rowtile.stad-src {
     position: absolute; left: -12px; top: 0; width: 4px; height: 4px; opacity: 0;
     pointer-events: none; overflow: hidden; }
-  .bar #bargrip {
+  .bar :is(#bargrip, #bargrip2) {
     width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 0; border: 0; border-radius: var(--r-md); background: var(--c-line);
     color: var(--c-ink-2); cursor: grab; touch-action: none; flex: 0 0 auto;
     display: inline-flex; align-items: center; justify-content: center; }
-  .bar #bargrip svg { width: 24px; height: 24px; }
+  .bar :is(#bargrip, #bargrip2) svg { width: 24px; height: 24px; }
   /* Waiting room: a host list over the call. Admit is the only blue
      action. Not now stays white so the two choices are not the same button. */
   #waitbtn[aria-pressed="true"] { background: var(--c-blue); color: var(--c-white); }
@@ -2661,7 +2664,7 @@ body.names-off #stagefeed .stgnames { display: none; }
   }
   .wait-admit { background: var(--c-blue); color: var(--c-white); border: 0; }
   .wait-no { background: var(--c-white); color: var(--c-ink); border: 1.5px solid var(--c-gray); }
-  .bar #bargrip:active { cursor: grabbing; }
+  .bar :is(#bargrip, #bargrip2):active { cursor: grabbing; }
   body.screen-on #feed { padding-bottom: env(safe-area-inset-bottom, 0px); box-sizing: border-box; background: var(--c-night); }
   body.screen-on #grid { flex: 0 0 120px; height: 120px; min-height: 0; display: flex; overflow-x: auto; overflow-y: hidden; }
   body.screen-on #grid .tile { height: 104px; flex: 0 0 auto; width: auto; aspect-ratio: 16 / 9; }
@@ -2848,7 +2851,7 @@ body.names-off #stagefeed .stgnames { display: none; }
       width: 46px; min-width: 44px; height: 58px; min-height: 44px; padding: 4px 1px 3px; }
     .bar .dockword { font-size: 10px; }
     .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg { width: 20px; height: 20px; }
-    .bar #bargrip { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+    .bar :is(#bargrip, #bargrip2) { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
     .bar #leavebtn { width: 48px; min-width: 44px; height: 58px; min-height: 44px; margin-left: 0; padding: 4px 1px 3px; }
     .bar #leavebtn svg { width: 20px; height: 20px; }
   }
@@ -3023,10 +3026,10 @@ body.names-off #stagefeed .stgnames { display: none; }
       padding: 0 4px;
       max-width: calc(100vw - 8px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
     }
-    html body .bar > #bargrip {
+    html body .bar > :is(#bargrip, #bargrip2) {
       width: 44px; min-width: 44px; height: 44px; min-height: 44px;
     }
-    html body .bar > #bargrip svg { width: 18px; height: 18px; }
+    html body .bar > :is(#bargrip, #bargrip2) svg { width: 18px; height: 18px; }
     html body .bar > #cam,
     html body .bar > #mic,
     html body .bar > #reactbtn,
@@ -4093,3 +4096,8 @@ html[data-compact] .ag-add { margin-top: 8px; }
 html[data-compact] .ag-who { margin-top: 8px; }
 html[data-compact] .ag-btn.ag-stopall { margin-top: 8px; }
 html[data-compact] .ag-in-t, html[data-compact] .ag-in-min { font-size: var(--gifos-input-text); }
+/* A 360px phone: with a handle on each edge the dock needs 367px; a 2px gap and 2px padding make it fit
+   in 352px, so React stays on the bar. */
+@media (max-width: 360px) and (min-width: 351px) {
+  html body .bar { gap: 2px; padding: 0 2px; }
+}

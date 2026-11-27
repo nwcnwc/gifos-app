@@ -2,7 +2,7 @@
   "sign.title": "Sign a GIF — GifOS",
   "sign.heading": "Sign a GIF 🛡️",
   "sign.lead": "Prove you made an app GIF. Signing binds these exact app bytes to your <b>domain</b> or <b>email</b>, so GifOS shows <b>“Signed by you”</b> to anyone who opens it. Everything happens in your browser — no upload, no account. Your app's saved <i>data</i> is never part of the signature, so it stays valid as people use the app.",
-  "sign.drop.prompt": "Drop your <b>.gif</b> here, or click to choose one",
+  "sign.drop.prompt": "Drop your <b>GIF</b> here, or click to choose one",
   "sign.drop.loaded": "{name} loaded — sign it below",
   "sign.tab.domain": "Sign with a domain",
   "sign.tab.email": "Sign with email (PGP)",

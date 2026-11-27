@@ -643,6 +643,9 @@
 
     const fns = Object.assign({}, F, {
       fabricDial, fabricHoldDial, fabricDialJoin, fabricDialUplink, fabricUpDecline, fabricKickClose, fabricLinkOpen, fabricOpenPeers, fabricDoorDrop,
+      // L53: the knockers at my door I ship the room's sound to; the greeters whose door I knocked at and still hold open
+      fabricDoorServed: (a) => { const out = []; if (a !== me) return out; for (const [x, L] of LINKS) if (L.outside && pc.l53Serves(me, x)) out.push(x); return out; },
+      fabricDoorGreeters: (a) => { const out = []; if (a !== me) return out; for (const [x, L] of LINKS) if (L.state === LK_OPEN && (L.outside & (1 << mine(x)))) out.push(x); return out; },
       fabricMyDoors: (a) => (a === me ? (S.DOORN[me] || 0) : 0), fabricMyKnocks: (a) => (a === me ? (S.DOORK[me] || 0) : 0),
       fabricL23Busy: (a, x) => (a === me ? F.fabricL23Busy(a, x) : false),
       l22Need: (a, x) => (a === me ? F.l22Need(a, x) : true),
