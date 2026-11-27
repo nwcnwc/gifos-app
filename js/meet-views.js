@@ -1283,13 +1283,16 @@
       const m = metrics(bar, grip);
       return applyPos(ML.defaultBar(m.bar, m.view, phoneNow()), true);
     }
-    grip.addEventListener('pointerdown', function (e) {
+    // The right-hand handle (#bargrip2) drags exactly like the left one.
+    const grips = [grip].concat(opts.grip2 ? [opts.grip2] : []);
+    for (const g of grips) {
+      g.addEventListener('pointerdown', function (e) {
       if (e.button != null && e.button !== 0) return;
-      try { grip.setPointerCapture(e.pointerId); } catch (err) {}
+      try { g.setPointerCapture(e.pointerId); } catch (err) {}
       const r = bar.getBoundingClientRect();
       drag = { id: e.pointerId, x: e.clientX, y: e.clientY, bx: r.left, by: r.top, moved: false };
     });
-    grip.addEventListener('pointermove', function (e) {
+      g.addEventListener('pointermove', function (e) {
       if (!drag || e.pointerId !== drag.id) return;
       const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
       if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
@@ -1308,19 +1311,20 @@
       }
       applyPos({ x: r.left, y: r.top }, true);
     }
-    grip.addEventListener('pointerup', endDrag);
-    grip.addEventListener('pointercancel', endDrag);
-    grip.addEventListener('keydown', function (e) {
+      g.addEventListener('pointerup', endDrag);
+      g.addEventListener('pointercancel', endDrag);
+      g.addEventListener('keydown', function (e) {
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
       e.preventDefault();
       const r = bar.getBoundingClientRect();
       const m = metrics(bar, grip);
       applyPos(ML.nudgeBar({ x: r.left, y: r.top }, e.key, 16, m.bar, m.view), true);
     });
-    grip.addEventListener('dblclick', function (e) {
+      g.addEventListener('dblclick', function (e) {
       e.preventDefault();
       reset();
     });
+    }
     root.addEventListener('resize', function () {
       const saved = ML.loadBar(store, phoneNow());
       if (saved) applyPos(saved, false);
@@ -1619,7 +1623,7 @@
     const bar = document.querySelector('.bar');
     const grip = document.getElementById('bargrip');
     if (bar && grip) {
-      try { installBar({ bar: bar, grip: grip, store: root.localStorage }); } catch (e) {}
+      try { installBar({ bar: bar, grip: grip, grip2: document.getElementById('bargrip2'), store: root.localStorage }); } catch (e) {}
     }
     try { installSelf({ store: root.localStorage }); } catch (e) {}
     try { installFloat({ store: root.localStorage }); } catch (e) {}

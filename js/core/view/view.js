@@ -9648,7 +9648,7 @@
       const dockStateClasses = (id) => (id === 'cam' ? ['cam-max', 'cam-min'] : []);
       const lockDockWidths = () => {
         for (const b of bar.children) {
-          if (!b || !b.style || b.id === 'barmore' || b.id === 'reacttray' || b.id === 'bargrip' || b.id === 'barrec') continue;
+          if (!b || !b.style || b.id === 'barmore' || b.id === 'reacttray' || b.id === 'bargrip' || b.id === 'bargrip2' || b.id === 'barrec') continue;
           b.style.width = ''; b.style.minWidth = '';
           let w = b.offsetWidth || 0;
           for (const cls of dockStateClasses(b.id)) {
@@ -9851,7 +9851,10 @@
       try {
         if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { fitKey = ''; try { placeDock(); } catch (e) {} });
       } catch (e) {}
-      if (grip) {
+      // Both handles (left #bargrip, right #bargrip2) drag the bar exactly alike.
+      let drag = null, lastTap = 0;
+      for (const grip of [document.getElementById('bargrip'), document.getElementById('bargrip2')]) {
+        if (!grip) continue;
         grip.addEventListener('keydown', (e) => {
           const step = e.shiftKey ? 48 : 24;
           if (e.key === 'ArrowLeft') { e.preventDefault(); nudge(-step, 0); }
@@ -9860,7 +9863,6 @@
           else if (e.key === 'ArrowDown') { e.preventDefault(); nudge(0, -step); }
         });
         grip.addEventListener('dblclick', (e) => { e.preventDefault(); resetDock(); });
-        let drag = null, lastTap = 0;
         grip.addEventListener('pointerdown', (e) => {
           if (e.button != null && e.button !== 0) return;
           try { (0, /*()*/__M.dismissCamChooser)(); } catch (err) {}
