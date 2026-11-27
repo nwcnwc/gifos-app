@@ -3475,7 +3475,8 @@
     // Nothing else. No room-wide guest blur, no floors, no pinning.
     // Sharing a screen, or a host's rebroadcast, is that seat's consent (video
     // on, No blur) for it. A meeting bot has no camera and always picks No
-    // blur, so it consents and is never the reason a room stays blurred.
+    // blur, so it consents and is never the reason a room stays blurred. Any PICTURE a bot sends (a camera, a share, a
+    // rebroadcast) consents by exactly the person's rule (BOTUNBLUR: bots are people on stage).
     const consents = (st) => !!st && (!!st.scr || !!st.rb || (blurLevel(st.blur) === 0 && (!st.camOff || !!st.bot)));
     const adminPresent = () => hasAdminRoom() && admins.length > 0;
     // The room-wide READY tally (debugDump().consent, consensus()): who has the camera on at No blur. It is a count
@@ -3600,10 +3601,13 @@
       return e ? uiText(e[part][0], e[part][1]) : '';
     }
     // The note on a tile: only a face that WOULD be clear (its sender picked
-    // No blur with the camera on, or shares) and that the room still blurs.
-    // A bot has no face; a dark tile shows no picture to explain.
+    // No blur with the camera on, or shares or rebroadcasts) and that the room still blurs. A seat with no picture (the
+    // camera off, no share, no rebroadcast: seatDark) has nothing to explain. Bots follow the same rule (BOTUNBLUR
+    // 2026-11-27: an agent's rebroadcast on a Clear Stage offers Tap to unblur like anyone's). The reason is blurHold's,
+    // the one decision blurLevelFor also reads: a reason added there (a content block, say) reaches the level and the
+    // note of every seat, bot or person, together.
     function tileBlurWhy(id, st, where) {
-      if (!st || st.bot || !consents(st)) return '';
+      if (!st || (st.camOff && !st.scr && !st.rb) || !consents(st)) return '';
       return blurHold(id, where);
     }
     // clearTap: THIS viewer chose to unblur in a no-password room with a clear right (memory only: a reload, another
