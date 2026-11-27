@@ -5,7 +5,12 @@
  * gifos.tv is the public directory of live GifOS broadcasts. A hosted room's admin presses "Publish to GifOS.tv" in
  * the Stream link card, fills in a public title, a public description and a thumbnail (an upload, or a still taken
  * from the Stage), and confirms. The page then, with each step shown as it happens:
- *   1. makes the thumbnail: a 640x360 JPEG drawn on a canvas on this device (so nothing but pixels leaves it);
+ *   1. makes the thumbnail: a 640x360 JPEG drawn on a canvas on this device (so nothing but pixels leaves it). The
+ *      picture is checked ON THIS DEVICE for sexually explicit content (GifOS.explicit, js/gifos-explicit.js) as soon as
+ *      it is picked; nothing about it is sent anywhere for the check. A picture that trips the check, or that this
+ *      device could not check, is never uploaded: the host is told why and may pick another, and the listing goes up
+ *      with the standard picture. A passing check is signed into the thumbnail order as its verdict ({m, v, ok:1});
+ *      gifos.tv stores the verdict beside the picture and takes no thumbnail without one;
  *   2. earns a proof-of-work token from gifos.tv (the same person check as joining a room);
  *   3. signs the thumbnail, the listing and the "on air" note with the room's admin key (the key never leaves this
  *      device; gifos.tv checks that the key's hash is the room's verifier, so only the room's admins can list it);
@@ -230,8 +235,27 @@
     var cnt = el('span', { cls: 'cnt', text: '0/' + DESC_MAX });
     desc.oninput = function () { cnt.textContent = desc.value.length + '/' + DESC_MAX; };
     var thumbBox = el('div', { cls: 'thumb', text: T('tvNoPic', 'No picture yet') });
-    var canvas = null;
-    function setCanvas(c) { canvas = c; thumbBox.textContent = ''; thumbBox.appendChild(c); }
+    var canvas = null, verdict = null, checking = 0;
+    // A picked picture is shown only after it passed the check on this device; until then, and when it did not, the
+    // box shows words and the listing would use the standard picture.
+    function setCanvas(c) {
+      var mine = ++checking;
+      canvas = null; verdict = null;
+      thumbBox.textContent = T('tvChecking', 'Checking the picture on this device…');
+      err.textContent = '';
+      go.disabled = true;
+      var E = GifOS.explicit;
+      (E ? E.checkStill(c) : Promise.reject(new Error('no check'))).then(function (r) {
+        if (mine !== checking) return;
+        if (r.ok && r.verdict) { canvas = c; verdict = r.verdict; thumbBox.textContent = ''; thumbBox.appendChild(c); return; }
+        thumbBox.textContent = T('tvPicStd', 'The listing will use the standard picture.');
+        err.textContent = T('tvPicExplicit', 'This picture can’t be the thumbnail: it may show nudity or sexual content. Please choose another picture.');
+      }, function () {
+        if (mine !== checking) return;
+        thumbBox.textContent = T('tvPicStd', 'The listing will use the standard picture.');
+        err.textContent = T('tvPicNoCheck', 'This device could not check the picture, so it can’t be the thumbnail. The listing will use the standard picture.');
+      }).then(function () { if (mine === checking) go.disabled = false; });
+    }
     var file = el('input', { type: 'file', accept: 'image/*', style: 'display:none', id: 'tv-file' });
     file.onchange = function () {
       var f = file.files && file.files[0]; if (!f) return;
@@ -264,7 +288,7 @@
       var t = title.value.trim(), d = desc.value.trim(), a = tip.value.trim();
       if (!t) { err.textContent = T('tvNeedTitle', 'Give it a title.'); return; }
       if (a && !/^0x[0-9a-fA-F]{40}$/.test(a)) { err.textContent = T('tvBadTip', 'A Base address is 0x followed by 40 letters and digits.'); return; }
-      publish(body, foot, { title: t, desc: d, tip: a, pw: pw.checked ? 1 : 0, canvas: canvas });
+      publish(body, foot, { title: t, desc: d, tip: a, pw: pw.checked ? 1 : 0, canvas: canvas, verdict: verdict });
     };
   }
   function stepsUi(body, names) {
@@ -295,14 +319,14 @@
     var names = [T('tvS1', 'Making the thumbnail'), T('tvS2', 'Person check'), T('tvS3', 'Proving it’s your room'), T('tvS4', 'Uploading the thumbnail'), T('tvS5', 'Publishing the listing'), T('tvS6', 'Going on air'), T('tvS7', 'Checking gifos.tv')];
     var ui = stepsUi(body, names), thumb = '', url = '', blob = null, bytes = null, w = null;
     ui.next();
-    (f.canvas ? toJpeg(f.canvas) : Promise.resolve(null)).then(function (b) {
+    (f.canvas && f.verdict ? toJpeg(f.canvas) : Promise.resolve(null)).then(function (b) {
       blob = b;
       ui.next();
       return tokenFor();
     }).then(function (jt) {
       if (!jt && !(ticket && ticket.mode() === 'off')) throw new Error(T('tvPowFail', 'The person check did not finish. Try again.'));
       ui.next();
-      return (blob ? blob.arrayBuffer().then(function (ab) { bytes = ab; return sha256hex(ab); }).then(function (sha) { return ctx.sign('tvthumb', { sha: sha }); }) : Promise.resolve(null));
+      return (blob ? blob.arrayBuffer().then(function (ab) { bytes = ab; return sha256hex(ab); }).then(function (sha) { return ctx.sign('tvthumb', { sha: sha, chk: f.verdict }); }) : Promise.resolve(null));
     }).then(function (tw) {
       w = tw;
       ui.next();
