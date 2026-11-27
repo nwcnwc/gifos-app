@@ -147,7 +147,7 @@
       if (this.hasCoord || m.nc !== this.id || m.owner < 0 || m.owner !== m.from || m.roster.length === 0) return false;
       this.roster = cpKV(m.roster); this.haveRoster = true; this.lastReach = this.TICK; this.seatTries = 0; this.resumeTries = 0;
       if (m.line >= 0) { this.lineAdopt(m.line, m.lineAt, 'door'); if (m.lineF) this.lineFork = true; }   // L31.8: the seat the door seats adopts its room's lineage and founding epoch, as at the other two intakes
-      this.take(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, m.row, m.ppL); if (this.pp >= 0 && this.pp !== this.id) this.placer = this.pp;
+      this.take(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, m.row, m.ppL); if (this.pp >= 0 && this.pp !== this.id) this.placer = this.pp; this.l53Enter();
       this.l31Bridge = m.from; this.l31BridgeCk = ckey(m.coord);
       return true;
     },
@@ -281,7 +281,7 @@
       if (!this.hasCoord || this.state !== 3 || m.nc !== this.id || m.owner < 0 || m.owner !== this.myPlacer || this.TICK - this.seatedAt > K.L31_REC_HOLD || ckey(m.coord) === ckey(this.coord) || m.coord.pc !== 0) return false;
       this.trace('L31-REPLACE', this.id, this.coord, 'to=%s by=%d', coordStr(m.coord), m.owner);
       this.requeue('l31-replace');
-      this.take(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, m.row, m.ppL); if (this.pp >= 0 && this.pp !== this.id) this.placer = this.pp;
+      this.take(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, m.row, m.ppL); if (this.pp >= 0 && this.pp !== this.id) this.placer = this.pp; this.l53Enter();
       this.l31Bridge = -1; this.l31BridgeCk = 0;
       return true;
     },

@@ -55,7 +55,7 @@
     return {
       state: LK_NONE, view: [LK_NONE, LK_NONE], half: 0, stuck: false, leverHalf: false, wasOpen: false, carried: false,
       epoch: 0, openEp: 0, dialAt: -1, halfAt: -1, askAt: -1000000, txAt: [-1, -1], nnAt: [-1, -1], nnAsk: [-1000000, -1000000],
-      arrAt: [-1, -1], q: [], outside: 0, dialBy: -1, dialT: -3, dialHow: 0, callClosed: false, gone: 0,
+      arrAt: [-1, -1], q: [], openAt: -1, outside: 0, dialBy: -1, dialT: -3, dialHow: 0, callClosed: false, gone: 0,
       agreed: [false, false], hold: [[], []], closingAt: [-1, -1], farAsk: [-1000000, -1000000], uplink: false, upVia: -1, dHeard: 0, dPlaced: 0,
       backAt: [-1, -1], dBorn: -1, dProg: -1, dOpenAt: -1, dAsked: false, dHomed: false, dHomedE: false, dGw: false, dIn: false, dSat: false, dHoAt: -1, dWait: -1,
       dOwed: false, dWaitAtFind: -1, dOwedAt: -1,
@@ -594,6 +594,14 @@
       if (L && (L.state === LK_OPEN || L.state === LK_DIALING)) { const o = msg.newMsg('UPOFFER'); o.id = me; o.tag = had ? 1 : 0; o.to = x; o.from = -1; o.lk = -1; P.wireTx(o, me); P.busPush(T() + 1, o); }
       return true;
     }
+    // C++: mesh_link.inc:fabricDoorFeeds   [end: the giver's half. L53: I ship the room's sound to the seat that knocked at my door
+    // from outside, over the door channel, while it stands and the channels I hold are inside my budget (L14.1)]
+    function l53Serves(me, x) {
+      const L = linkFind(me, x); if (!L || L.state !== LK_OPEN || (L.half & (1 << lEnd(me, x)))) return false;
+      if (!(L.outside & (1 << lEnd(x, me)))) return false;
+      const s = seats[me]; if (!s || !s.hasCoord || s.state !== 3) return false;   // a newcomer hands no door's copy on: the page judges that copy by copy (a door's copy is never shipped)
+      return linkHeld(me) - fhCarriers(me) <= pcBudget(me, E.PB_CLASS);
+    }
     // C++: mesh_link.inc:fhCarriers   [fabric: the offer's far page counts the uplinks it serves that friend-hop holds as carriers, L18.8]
     function fhCarriers(x) {
       lEnsure(x); let n = 0;
@@ -779,7 +787,7 @@
       // the pieces the physics and the checks reach
       pcBudget, l14Budget, l16Refuse, l16101Refuse, l16101Full, l23Refused, l23GreetSlot, l23GreetRelease, l23Full, l23Stretch, l1610Full, l1610Held, noteCall, dialHeld, doorEnd, doorHeard, l15Seated, l157Swept, l15Names, l15NamedBy,
       l16Mobile, l16MobBudget, l16Close, l22Release, l23CloseAlone, l23MakeRoom, l23Suspect, l23RealRole, l23Word, l23WordPeek, linkWhy, l22Beside, l18Role, l18Dist, l18NoDial,
-      fabricDoorFrom, linkHeld, l221Sent,
+      fabricDoorFrom, linkHeld, l221Sent, l53Serves,
     };
   }
 

@@ -186,8 +186,14 @@
     // the network verdict (net) runs beside the first steps and is never waited on: it counts when it lands
     // a step this flow does not have (a changed password while reconnecting) waits under the flow's own door step
     if (FLOWS[flow].indexOf(cur) < 0) cur = 'door';
-    const end = isSeat && !f.pw && !f.wait && done.indexOf('people') >= 0 && !(f.turn === 'ask' || f.turn === 'dial' || f.turn === 'web')
-      && (!back || !!f.relay) && (!was('relay') || done.indexOf('merge') >= 0);
+    // SEATED MEANS HEARING THE STAGE. Where a seat offers me a stager's sound (f.offered), the wait is over when that sound
+    // plays here (f.fed: a live track of a stager's feed bound at my ear and moving), not when a seat is granted: a cell
+    // among seats that are away is silent. The sound may come before the cell (a door ships it): the wait is over then too.
+    // A room with nobody on stage has no such sound to wait for, and ends as before.
+    const sound = !f.offered || !!f.fed;
+    const end = !f.pw && !f.wait && !(f.turn === 'ask' || f.turn === 'dial' || f.turn === 'web')
+      && (!back || !!f.relay) && (!was('relay') || done.indexOf('merge') >= 0)
+      && ((isSeat && done.indexOf('people') >= 0 && sound) || (!!f.fed && flow !== 'update'));
     return { done: done.filter((id) => FLOWS[flow].indexOf(id) >= 0), cur, text, hint, end };
   }
 
