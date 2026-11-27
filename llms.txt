@@ -459,6 +459,43 @@ LANGUAGE AND REGION — gifos.locale / gifos.i18n  [no capability needed; option
                                once you have loaded them).
    gifos.i18n.format(msg, params) -> format a message string directly.
 
+PHONE COMPACT MODE — data-compact / --gifos-*  [no capability needed; optional]
+   On a phone-sized touch screen (a phone upright or on its side, in a
+   meeting or on its own) GifOS asks apps for a compact layout: smaller
+   words and tighter spacing, so more fits without scrolling. Desktops,
+   tablets and any screen with a mouse or trackpad never get it, so a
+   desktop zoomed to phone width keeps its size. An app that ignores it
+   is unchanged. Before your code runs, GifOS sets on your <html>:
+     data-compact               present only in compact mode
+     --gifos-scale              text scale: 1, or about 0.875 in compact
+                                mode. A person's larger text setting
+                                (browser font size, iOS Dynamic Type,
+                                GifOS Settings → Text size) is already
+                                in it, so it can be above 1.
+     --gifos-space              spacing scale: 1, or 0.75 in compact mode
+     --gifos-tap                44px: the smallest tap target. Never
+                                shrink a button below it.
+     --gifos-text-min           the readable minimum (13px, more with a
+                                larger text setting). No words below it.
+     --gifos-input-text         16px: text in fields. Smaller field text
+                                makes iOS zoom the page on every tap.
+   CSS, written next to your normal sizes (always give a fallback):
+     html[data-compact] body { font-size:
+       max(var(--gifos-text-min, 13px), calc(17px * var(--gifos-scale, 1))); }
+     html[data-compact] main { padding: calc(16px * var(--gifos-space, 1)); }
+     html[data-compact] button { min-height: var(--gifos-tap, 44px); }
+     html[data-compact] input, html[data-compact] textarea {
+       font-size: var(--gifos-input-text, 16px); }
+   Script (synchronous, like gifos.locale):
+   gifos.display()          -> { compact, scale, space, tap, textMin,
+                               inputText } (tap/textMin/inputText in px)
+   gifos.onDisplayChange(cb) -> cb(display) when it changes (a phone turned,
+                               a text size changed); returns an unsubscribe
+                               function. The window also gets a
+                               'gifos:displaychange' event.
+   Shrink words and gaps, never tap targets, and never hide what the
+   person needs. Survey and Take Turns follow it; read their CSS.
+
 BROKERED CAPTURE  [capabilities.microphone / camera]
    The app never touches the live device: GifOS records behind a visible
    indicator it owns, then hands back finished bytes.

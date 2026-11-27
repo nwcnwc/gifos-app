@@ -4083,3 +4083,21 @@ body.mr-calling #alonecard, body.mr-on #alonecard { display: none !important; }
 /* My Room: "Also share my personal room" in the swap dialogs (a plain checkbox line, not a form field) */
 .mr-share { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 8px 0; font-size: 15px; }
 .mr-share input[type="checkbox"] { width: 20px; height: 20px; min-height: 0; margin: 0; padding: 0; flex: none; }
+/* ---- Compact mode (2026-11-27): an app or the agenda on a phone-sized touch screen ----
+   <html data-compact> and the --gifos-* variables come from js/runtime.js (the same signal every app frame gets).
+   The agenda's words step down by --gifos-scale (a person's larger text setting scales them back up; never under
+   --gifos-text-min) and its spacing tightens, so more of the list fits. Fields keep 16px (a smaller field makes iOS
+   zoom the page) and every control stays a 44px target. A desktop never gets data-compact. */
+html[data-compact] { --ag-compact-sm: max(var(--gifos-text-min), calc(14px * var(--gifos-scale)));
+  --ag-compact-md: max(var(--gifos-text-min), calc(16px * var(--gifos-scale))); }
+html[data-compact] .ct-pane.ag { padding: 10px 12px; }
+html[data-compact] .ag-head { gap: 4px 8px; }
+html[data-compact] .ag-pos { font-size: var(--ag-compact-sm); }
+html[data-compact] .ag-list { margin-top: 4px; }
+html[data-compact] .ag-item { gap: 6px; font-size: var(--ag-compact-md); }
+html[data-compact] .ag-item:not([tabindex]):not(:has(> input)) { min-height: 30px; padding-top: 1px; padding-bottom: 1px; }
+html[data-compact] .ag-btn, html[data-compact] .ag-chip { font-size: var(--ag-compact-sm); }
+html[data-compact] .ag-add { margin-top: 8px; }
+html[data-compact] .ag-who { margin-top: 8px; }
+html[data-compact] .ag-btn.ag-stopall { margin-top: 8px; }
+html[data-compact] .ag-in-t, html[data-compact] .ag-in-min { font-size: var(--gifos-input-text); }

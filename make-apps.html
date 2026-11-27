@@ -126,6 +126,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       the sites they need, and every person sees what an app asks for.</li>
       <li>An app never touches anyone's camera or microphone. The meeting does
       the audio and video; your app is the shared thing in the middle.</li>
+      <li>On a phone, GifOS asks apps for a <b>compact layout</b>: your page's
+      <code>&lt;html&gt;</code> gets <code>data-compact</code> and a few CSS variables
+      (<code>--gifos-scale</code> for words, <code>--gifos-tap</code> for buttons), so
+      more fits on a small screen while text stays readable and buttons stay easy to
+      tap. "Phone compact mode" in <a href="/llms.txt">llms.txt</a> shows how.</li>
       <li>In the GifOS Meet phone apps, an app in a meeting can't take payments:
       there, only GifOS's own plans are sold, through the phone's store.</li>
     </ul>

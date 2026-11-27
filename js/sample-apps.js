@@ -6229,7 +6229,10 @@ i18nStart(async()=>{
   // a meeting's people, or an app room's after Invite. Optional per-turn plan
   // (a reading plan generated from KJV verse counts, or a pasted list) and a
   // gentle timer. In a meeting it asks for now + next on the Stage
-  // (capabilities.stage, docs/app-mesh.md).
+  // (capabilities.stage, docs/app-mesh.md). Its html[data-compact] rules follow
+  // GifOS's phone compact mode: smaller words and tighter spacing so the turn,
+  // Up next and the controls fit; a larger text setting scales the words back
+  // up (--gifos-scale) and every button stays a full tap target.
   const TAKETURNS_HTML = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>
   *{box-sizing:border-box}
@@ -6290,6 +6293,22 @@ i18nStart(async()=>{
   .two{display:grid;grid-template-columns:2fr 1fr;gap:8px}
   #preview{font-size:15px;color:var(--muted,#9a9ab8);white-space:pre-line}
   .alone{font-size:15px;color:var(--muted,#9a9ab8);text-align:center}
+  html[data-compact] body{font-size:max(var(--gifos-text-min,13px),calc(17px*var(--gifos-scale,1)))}
+  html[data-compact] header{padding:8px 12px}
+  html[data-compact] header h1{font-size:calc(18px*var(--gifos-scale,1))}
+  html[data-compact] main{padding:10px 12px 20px;gap:10px}
+  html[data-compact] .wrap{gap:10px}
+  html[data-compact] .now{padding:12px 12px 10px}
+  html[data-compact] #who{font-size:calc(clamp(36px,11vw,64px)*var(--gifos-scale,1))}
+  html[data-compact] #item{font-size:calc(clamp(22px,6.5vw,34px)*var(--gifos-scale,1))}
+  html[data-compact] .upnext{font-size:calc(18px*var(--gifos-scale,1))}
+  html[data-compact] button{min-height:var(--gifos-tap,44px);padding:8px 16px}
+  html[data-compact] button.go{font-size:calc(20px*var(--gifos-scale,1))}
+  html[data-compact] button.sm,html[data-compact] .seg button{min-height:var(--gifos-tap,44px);padding:6px 12px;font-size:max(var(--gifos-text-min,13px),calc(15px*var(--gifos-scale,1)))}
+  html[data-compact] .mv{min-height:var(--gifos-tap,44px);min-width:var(--gifos-tap,44px);padding:0}
+  html[data-compact] section{padding:10px 12px}
+  html[data-compact] ol li{min-height:var(--gifos-tap,44px);padding:2px}
+  html[data-compact] input,html[data-compact] select,html[data-compact] textarea{font-size:var(--gifos-input-text,16px)}
 </style>
 <header><h1 data-i18n="title">Take Turns</h1><span class="chip" id="chip"></span></header>
 <main><div class="wrap">
