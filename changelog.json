@@ -2,6 +2,19 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.45",
+      "date": "2026-11-26",
+      "headline": "Readable shared screens on phones, and an easier Survey",
+      "features": [
+        "Only the person who opens Survey sets it up; everyone else sees that a survey is being set up, then the live survey."
+      ],
+      "fixes": [
+        "Phones keep the text of a shared screen readable instead of shrinking it into grey patches.",
+        "The view switch stays reachable on every screen, also while an app runs, and the Agenda fits a phone.",
+        "With the camera off, your picture on the Stage follows the same blur rules as your camera would, so Unblur clears it when the room allows."
+      ]
+    },
+    {
       "version": "0.9.28.44",
       "date": "2026-11-26",
       "headline": "A new welcome page",
