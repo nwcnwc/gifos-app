@@ -209,14 +209,18 @@
 
   // The aspect an item takes in Scroll's stack when it has none of its own: an app is as tall as most of the window
   // (a 16:9 slot left a phone a 156px survey), at least 320px and no taller than 1.2 widths; anything else 16:9.
+  // A short phone (upright, under SHORT_PHONE_H tall) gives an app the whole window: the page scrolls on to the
+  // faces under it, and the app never sits in a short frame.
+  const SHORT_PHONE_H = 640;
   function stackAspect(it, w, winH) {
     if (!it || it.kind !== 'app') return 16 / 9;
     const ww = Math.max(1, +w || 1);
-    const h = Math.round(Math.min((+winH || 800) * 0.8, Math.max(320, ww * 1.2)));
+    const wh = +winH || 800;
+    const h = ww < 600 && wh < SHORT_PHONE_H && wh > ww ? Math.round(wh) : Math.round(Math.min(wh * 0.8, Math.max(320, ww * 1.2)));
     return Math.max(0.5, ww / h);
   }
 
-  const api = { kindOf, items, state, sync, select, bump, badged, badges, bring, canBring, plan, grid, stack, stackAspect, presentRects, ORDER };
+  const api = { kindOf, items, state, sync, select, bump, badged, badges, bring, canBring, plan, grid, stack, stackAspect, presentRects, ORDER, SHORT_PHONE_H };
   GifOS.meetContent = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

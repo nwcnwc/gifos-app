@@ -3296,6 +3296,15 @@
         // a short desktop window under 900px wide is treated like one too.
         const shortLand = vhNow < 500 && vwNow > vhNow && (vwNow < 900 || !document.body.classList.contains('desk-ptr'));
         const phone = vwNow < 600 || shortLand;
+        // A short upright phone (an iPhone SE: 549px of Safari) with an app in front: the app takes the top row's
+        // place too, and the app's own bar carries the view button. The Stage view and a broadcast keep the row.
+        let shortApp = false;
+        try {
+          const CT = __C.CT, sel = CT && CT.st && !CT.st.all ? CT.items.find((i) => i.key === CT.st.sel) : null;
+          shortApp = phone && !shortLand && vhNow < GifOS.meetContent.SHORT_PHONE_H && vhNow > vwNow && appOn && !!sel && sel.kind === 'app' &&
+            !CT.present && !svOn() && !document.body.classList.contains('broadcast');
+        } catch (e) {}
+        if (document.body.classList.contains('short-app') !== shortApp) document.body.classList.toggle('short-app', shortApp);
         let holdMs = 2500;
         try { holdMs = __M.STAGE_FACE_SETTLE_MS; } catch (e) {}
         // The dock and the header float over the tiles. Passing a measured
@@ -3629,14 +3638,17 @@
       // people inset); a phone's Fit is the content full with a face strip.
       // R2: an agenda needs only its list (and the tab row); a screen or an
       // app is sized by its aspect in the zones. The rest goes to the faces.
-      let needH = 0;
+      let needH = 0, app = false;
       try {
         const it = __C.CT && __C.CT.st && !__C.CT.st.all ? __C.CT.items.find((i) => i.key === __C.CT.st.sel) : null;
-        if (it && it.kind === 'agenda') needH = Math.round(1000 / (0, /*()*/__C.ctAspect)(it, 1000)); // the list's own height (ctAspect)
+        // The list's own height (ctAspect) at the width it will have: a phone-wide pane wraps more rows.
+        const pw = phone ? Math.max(1, window.innerWidth) : 1000;
+        if (it && it.kind === 'agenda') needH = Math.round(pw / (0, /*()*/__C.ctAspect)(it, pw));
+        app = !!(it && it.kind === 'app');
       } catch (e) {}
       // Beside the faces (a wide screen) a list reads well at a column's width; the faces take the rest.
       const needW = needH ? 640 : 0;
-      return { phone: !!phone && v !== 'scroll' && v !== 'drag', hideFaces: !!(__C.CT && (__C.CT.facesHidden || (__C.CT.agEdit && it0IsAgenda())) && phone), needH: needH > 40 ? needH : 0, needW: needW };
+      return { phone: !!phone && v !== 'scroll' && v !== 'drag', hideFaces: !!(__C.CT && (__C.CT.facesHidden || (__C.CT.agEdit && it0IsAgenda())) && phone), needH: needH > 40 ? needH : 0, needW: needW, app: app };
     }
 
     // ---- panes ----
