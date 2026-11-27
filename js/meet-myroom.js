@@ -471,6 +471,17 @@
     let privDoor = false, strangerSaid = false, wordAt = 0, belled = false;
     const MIC_SS = 'gifos_mr_mic';
     const listening = () => !!(host.listen && host.listen());
+    // ANSWERED FROM THE RING NOTIFICATION (sw.js): that tap is the person's Answer. The mic opens once everyone here has
+    // proved (as after a call answered in a page, MIC_SS); the camera stays off; no "how you'll appear" card stands in the
+    // way: the name it would show is the one the knock already carries.
+    if (hosted && privFor(room, v) && !listening() && GifOS.bell && typeof GifOS.bell.takeAnswer === 'function') {
+      GifOS.bell.takeAnswer(room, v).then((yes) => {
+        if (!yes) return;
+        try { root.sessionStorage.setItem(MIC_SS, roomKey(room, v)); root.sessionStorage.setItem('gifos_appear_ok', '1'); root.sessionStorage.setItem('gifos_appeared', '1'); } catch (e) {}
+        try { const card = root.document && root.document.getElementById('appear-modal'); if (card) card.remove(); } catch (e) {}
+        emit({ type: 'answered-ring' });
+      }, () => {});
+    }
     // My member key's word for a private room (this one, or another one named: an ask to it from here).
     async function myWord(rec) {
       const k = await memberOf(rec); if (!k) return null;
