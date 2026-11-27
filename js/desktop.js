@@ -3068,7 +3068,8 @@
     // In view and in use: the update bar asks (the next check); a tab in the background moves now.
     let inUse = false;
     try { inUse = !document.hidden && document.hasFocus(); } catch (e2) {}
-    if (!inUse) followHome(e.newValue);
+    // Newer than this tab's last version.json read: read it fresh, then follow (applyUpdateBar).
+    if (!inUse && !followHome(e.newValue)) checkForUpdate().catch(() => {});
   });
   // tick: the minute check. A tab in view and in use is not moved under the person by it (the bar asks).
   function applyUpdateBar(tick) {
