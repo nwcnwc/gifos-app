@@ -258,12 +258,19 @@ function encStat(E, now) {
     if (E.dt === undefined || Math.abs(want - E.dt) >= ENC_T.DT_STEP) { E.dt = want; E.upN = 0; }
     else if (want > E.dt) { if (++E.upN >= 2) { E.dt = want; E.upN = 0; } }
     else E.upN = 0;
+    // A HOST THAT CANNOT KEEP UP. An encode that takes most of a frame's time is given every second frame (half the
+    // work, a steady picture); it gets them all back once an encode takes a small part of a frame again. And an
+    // encoder whose slow end stays at the most a frame may wait (ENC_DT_MAX_MS) is not doing its job: the links take
+    // their own encoders back, which lower their picture for a busy host (the page hears 'enc-dead').
+    const frameMs = 1000 / (E.fps || 30);
+    if (E.d50 > frameMs * 0.7) E.half = true; else if (E.d50 < frameMs * 0.3) E.half = false;
+    if (p95 >= ENC_T.DT_MAX) { if (++E.slowN >= 3 && !E.slowSaid) { E.slowSaid = true; E.err = 'slow'; postMessage({ op: 'enc-dead', srcId: E.srcId, err: 'slow' }); } } else E.slowN = 0;
   }
   const routed = taps.get(E.srcId); let n = 0, latS = 0, latN = 0;
   if (routed && E.dt !== undefined) for (const pid of routed) { const p = pipes.get(pid); if (!p) continue; n++; p.enc = true; p.holdT = E.dt; p.holdRoom = Math.max(p.holdRoom || 0, Math.ceil(E.dt / 1000 * (E.fps || 30) * 2)); if (!p.paused && p.latN > 8) { latS += p.latEw; latN++; } }
   // lat: what the links really took from a frame's capture to its leaving (the hold and the template's own trip): told for reading only
   E.lat = latN ? Math.min(ENC_T.DT_MAX, latS / latN) : undefined;
-  postMessage({ op: 'enc-stat', srcId: E.srcId, dt: E.dt === undefined ? null : E.dt, lat: E.lat === undefined ? null : Math.round(E.lat), d50: E.d50 === undefined ? null : Math.round(E.d50), d95: E.d95 === undefined ? null : Math.round(E.d95), fps: Math.round((E.win.length / ENC_T.WIN) * 10000) / 10, out: E.out || 0, keys: E.keys || 0, skipped: E.skipped || 0, idle: E.idleN || 0, pipes: n, w: E.w || 0, h: E.h || 0, err: E.err || null });
+  postMessage({ op: 'enc-stat', srcId: E.srcId, dt: E.dt === undefined ? null : E.dt, lat: E.lat === undefined ? null : Math.round(E.lat), d50: E.d50 === undefined ? null : Math.round(E.d50), d95: E.d95 === undefined ? null : Math.round(E.d95), fps: Math.round((E.win.length / ENC_T.WIN) * 10000) / 10, out: E.out || 0, keys: E.keys || 0, skipped: E.skipped || 0, halved: E.halved || 0, idle: E.idleN || 0, pipes: n, w: E.w || 0, h: E.h || 0, err: E.err || null });
 }
 async function encRun(E, reader) {
   for (;;) {
@@ -284,6 +291,7 @@ async function encRun(E, reader) {
       else if (E.cfgBps !== E.bps || E.cfgFps !== E.fps) { E.cfgBps = E.bps; E.cfgFps = E.fps; try { E.enc.configure(encCfg(E, w, h)); } catch (err) {} }
       if (!E.enc) continue;
       if (E.enc.encodeQueueSize > 1) { E.skipped = (E.skipped || 0) + 1; continue; }   // a busy encoder skips a frame, it never falls behind
+      if (E.half && ((E.fn = (E.fn || 0) + 1) & 1) && !E.keyNext) { E.halved = (E.halved || 0) + 1; continue; }   // a host that cannot keep up encodes every second frame (encStat)
       const key = E.keyNext && (E.keyForce || now - (E.keyAt || 0) >= ENC_T.KEY_MIN);
       E.t0.set(f.timestamp, now); E.lastTs = f.timestamp;
       if (E.t0.size > 64) { for (const k of E.t0.keys()) { E.t0.delete(k); if (E.t0.size <= 32) break; } }
@@ -590,7 +598,7 @@ onmessage = (e) => {
     // a source's frames (a new track of the same source replaces the old one: the next film, a camera swap)
     if (m.T) ENC_T = m.T;
     let E = encs.get(m.srcId);
-    if (!E) { E = { srcId: m.srcId, enc: null, t0: new Map(), win: [], bps: 1000000, fps: 30 }; encs.set(m.srcId, E); }
+    if (!E) { E = { srcId: m.srcId, enc: null, t0: new Map(), win: [], bps: 1000000, fps: 30, slowN: 0, upN: 0 }; encs.set(m.srcId, E); }
     if (m.bps) E.bps = m.bps; if (m.fps) E.fps = m.fps;
     if (m.codec) { const h = m.codec === 'h264'; if (E.h264 !== h) { E.h264 = h; try { if (E.enc && E.enc.state !== 'closed') E.enc.close(); } catch (err) {} E.enc = null; } }
     if (m.dtAdd !== undefined) E.dtAdd = +m.dtAdd || 0;   // measurement only: a longer wait than the encoder needs
