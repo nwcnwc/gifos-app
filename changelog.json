@@ -2,6 +2,17 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.54",
+      "date": "2026-11-27",
+      "headline": "Every face follows the blur rules, the Stadium too",
+      "features": [],
+      "fixes": [
+        "Faces in full screen, picture-in-picture, the Stadium and embedded players now follow the same blur rules as the grid; the Stadium is no longer clear where the room's rules blur it.",
+        "Stadium names are drawn by each viewer, so they stay sharp and in place.",
+        "Camera-off cards show in the Stadium again."
+      ]
+    },
+    {
       "version": "0.9.28.53",
       "date": "2026-11-27",
       "headline": "Agenda and Survey fit every phone",
