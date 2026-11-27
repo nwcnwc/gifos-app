@@ -584,6 +584,10 @@
     opts = opts || {};
     injectCss();
     const s = sheet(opts.confirm ? 'passNew' : 'passAsk', appName, 'passphrase', opts.note);
+    // A caller that is not locking an app (an identity file) says its own words: title and ok are text, lead is HTML it made.
+    if (opts.title) s.title = String(opts.title);
+    if (opts.lead) s.lead = String(opts.lead);
+    if (opts.ok) s.ok = String(opts.ok);
     return new Promise((resolve) => {
       const bg = doc.createElement('div');
       bg.className = 'lock-modal';

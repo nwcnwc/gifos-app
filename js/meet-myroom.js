@@ -286,6 +286,10 @@
     const emit = (ev) => { if (ev.type === 'offer' && !listeners.length) lastOffer = ev; for (const f of listeners.slice()) { try { f(ev); } catch (e) {} } };
     const room = host.room(), v = String(host.v() || '').toLowerCase();
     const hosted = !!(room && v);
+    // My identity's device-to-device copy (js/gifos-identity.js) rides this channel: every frame whose op starts with 'id'
+    // is its own. It asks the pages this one can talk to: seats that proved the host key, and a door that holds it.
+    const idSeen = new Set();
+    const idCopy = hosted && GifOS.identity && GifOS.identity.copier ? GifOS.identity.copier({ room: host.room, v: host.v, myId: host.myId, owner: host.owner, now: host.now, send: host.send, peers: () => Array.from(new Set(host.hosts().concat(Array.from(idSeen)))) }) : null;
     let linkCard = null;        // a card the address carried (to save, or to call with once)
     // holder side
     let mk = null; myKey().then((k) => { mk = k; }, () => {});   // My Room's key (a bound card rings with it)
@@ -345,6 +349,7 @@
     // while the call is still open, the card is shown there again, so an answer said on the old channel (ringing,
     // missed, declined) is said again on this one.
     function onHeld(pid) {
+      idSeen.add(pid); if (idCopy) idCopy.onHeld(pid);
       if (host.owner()) return;
       if (told.get(pid) === 0 && call && (call.state === 'waiting' || call.state === 'ringing') && host.chan && host.chan(pid) !== chanSeen.get(pid)) told.delete(pid);
       if (host.chan) chanSeen.set(pid, host.chan(pid));
@@ -353,6 +358,7 @@
     const chanSeen = new Map();   // pid -> the channel the door last said "held" on
     function tick() {
       const now = host.now();
+      if (idCopy) idCopy.tick();
       if (hosted && !host.owner()) {
         const mc = myCard();
         if (mc) {
@@ -562,6 +568,7 @@
     }
 
     async function onMsg(pid, m) {
+      if (idCopy && m && typeof m.op === 'string' && m.op.slice(0, 2) === 'id') return idCopy.onMsg(pid, m);
       if (!hosted || !m || typeof m.op !== 'string') return;
       try {
         if (m.op === 'card' && host.owner() && m.p) return await onCardShown(pid, m);
@@ -654,6 +661,7 @@
       onMsg, onHeld, tick, answer, decline, give, linkFor, takeLinkCard, save, privateWith, privateJoin, privateNo,
       isPrivate: () => !!privFor(room, v), proved: (pid) => proved.has(pid),
       drop: (pid, w) => why(pid, w),
+      identity: idCopy,
       people: () => host.people(), gaveTo: (pid) => given.has(pid), hostIds: () => host.hosts(),
       state: () => ({ room, v, owner: !!host.owner(), mine: isMine(room, v), standby, live: !!(hosted && host.live()), wentLive, whys: Array.from(whys), call: call ? Object.assign({}, call) : null, rings: Array.from(rings, ([pid, r]) => ({ pid, label: r.label, at: r.at, to: r.to || '', pair: !!r.pair })), holdsCard: !!myCard(), priv: !!privFor(room, v), proved: Array.from(proved.keys()), pasks: Array.from(pasks.keys()), asking: Array.from(asking.values()), pendingGo: !!pendingGo }),
     };

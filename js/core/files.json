@@ -128,6 +128,8 @@
    "js/core/view/shareshots.js",
    "js/core/view/subs.js",
    "js/core/view/view.js",
+   "js/gifos-identity.js",
+   "js/gifos-identity-ui.js",
    "js/meet-myroom.js",
    "js/core/view/myroom.js",
    "js/core/view/meet.js"
@@ -136,6 +138,8 @@
    "js/core/view/shareshots.js",
    "js/core/view/subs.js",
    "js/core/view/view.js",
+   "js/gifos-identity.js",
+   "js/gifos-identity-ui.js",
    "js/meet-myroom.js",
    "js/core/view/myroom.js",
    "js/core/view/cast.js"
