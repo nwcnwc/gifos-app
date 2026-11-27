@@ -11796,6 +11796,10 @@
       // bot name, so it neither replaces the person's seat nor is replaced by it, and a restart of that bot still
       // replaces its own old seat.
       if (params.get('mb') === '1' && params.get('bot') === '1') d += '|bot|' + String(window.__gifosMeetName || '');
+      // An embed is a viewer of its own (TWOEMBEDS): one tag per embed page, so two players of one room on a page, or a
+      // player beside this person's own meeting tab, never replace each other at the relay (4000 is final: the one
+      // replaced before it sat stayed at Connecting). Minted once per page load and never stored, like its seat (no seat memory).
+      else if (EMBED) d += '|embed|' + (deviceId.slot || (deviceId.slot = uid('e')));
       return d;
     }
     const roomKey = () => room + (av ? '.' + av : ''); // storage + session identity
@@ -12027,11 +12031,12 @@
     function seatMemKey() { return 'gifos_seat:' + String(room || ''); }
     function seatMemSave() {
       const ck = meshNode && meshNode.myCell ? meshNode.myCell() : -1;
-      if (!myIdentitySeed || ck < 0) return;
+      if (!myIdentitySeed || ck < 0 || EMBED) return;   // an embed keeps no seat memory: two players of one room in a tab share sessionStorage
       try { sessionStorage.setItem(seatMemKey(), JSON.stringify({ seed: myIdentitySeed, ck, at: Date.now() })); } catch (e) {}
     }
     function seatMemErase() { try { sessionStorage.removeItem(seatMemKey()); } catch (e) {} }
     function seatMemRead() {
+      if (EMBED) return null;   // each embed load is a new viewer (TWOEMBEDS)
       try {
         const o = JSON.parse(sessionStorage.getItem(seatMemKey()) || 'null');
         return (o && /^[0-9a-f]{64}$/.test(o.seed || '') && Date.now() - (+o.at || 0) < SEAT_MEM_MS) ? o : null;
