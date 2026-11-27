@@ -6871,7 +6871,11 @@
     // ...and the seat key's own hand-over (sk, skq, skp): a standby's two ends are seats of one meeting, and the status
     // beat this channel has always carried (sig) is sealed for the people in the meeting. Without the key each end
     // could not read the other's beat: it showed that person with no name and no mute, camera or hand.
-    const STANDBY_KINDS = new Set(['tv', 'roffer', 'ranswer', 'sig', 'rreq', 'rgo', 'rwait', 'sk', 'skq', 'skp']);
+    // ...and the channel's own proof of who is at its far end (dcauth). The key's hand-over and the first greeting are
+    // given on a proved channel only, and a link that is a standby from its first moment (its opener knows so before the
+    // channel opens) never sent its proof: the far end then never handed it the key or its first status, and showed that
+    // person with no mute, camera or hand until some later change happened to arrive.
+    const STANDBY_KINDS = new Set(['tv', 'roffer', 'ranswer', 'sig', 'rreq', 'rgo', 'rwait', 'sk', 'skq', 'skp', 'dcauth']);
     function standbyHolds(p, msg) {
       try { return !!(p && turnLinks && turnLinks.standby(p.id) && !(msg && STANDBY_KINDS.has(msg.k))); } catch (e) { return false; }
     }
