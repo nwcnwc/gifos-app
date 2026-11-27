@@ -364,7 +364,7 @@
       }
       if (hosted && host.owner()) ownerTick(now);
       if (hosted) privTick(now);
-      if (pendingGo && now - pendingGo.at >= 3 * (T().MYROOM_TICK_MS || 0)) { const g = pendingGo; pendingGo = null; emit({ type: 'go', room: g.room, v: g.v, label: g.label, priv: false }); }   // no key came: go as a guest (that room's door decides)
+      if (pendingGo && now - pendingGo.at >= (T().MYROOM_GKEY_WAIT_MS || 0)) { const g = pendingGo; pendingGo = null; emit({ type: 'go', room: g.room, v: g.v, label: g.label, priv: false }); }   // no key came: go as a guest (that room's door decides)
     }
 
     // A PRIVATE ROOM: membership is a member's My Room key. Every other seat (held or seated) is asked for a key word for
