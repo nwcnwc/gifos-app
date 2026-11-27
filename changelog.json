@@ -2,6 +2,19 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.44",
+      "date": "2026-11-26",
+      "headline": "A new welcome page",
+      "features": [
+        "The welcome page opens with the welcome meeting, where Mia and Leo answer questions, then shows how to put a bot like them on your own site and walks through GifOS chapter by chapter."
+      ],
+      "fixes": [
+        "Blur and Unblur buttons show only while the Stage has a picture; a Stage with just initials has nothing to unblur.",
+        "Two meeting players on one page, or a player beside your own tab of that meeting, both stay connected.",
+        "The AI agents page names only the packages you can install today."
+      ]
+    },
+    {
       "version": "0.9.28.43",
       "date": "2026-11-26",
       "headline": "Text in a shared screen stays readable",
