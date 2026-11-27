@@ -1,6 +1,7 @@
 {
  "desktop.sys.camMic": "Integrado en GifOS: puede usar tu cámara y tu micrófono. Las apps que instalas no pueden.",
  "desktop.sys.appstore": "Integrado en GifOS: puede añadir apps nuevas a tu pantalla de inicio. Las apps que instalas no pueden.",
+ "desktop.sys.rooms": "Integrado en GifOS: guarda las claves de tus salas y tus contactos, que se quedan en este dispositivo. Las apps que instalas no pueden leerlos.",
  "desktop.hint.trashEmpty": "La papelera está vacía.",
  "desktop.hint.emptyFolder": "Carpeta vacía: suelta archivos aquí o usa ＋ Añadir.",
  "desktop.hint.emptyHome": "Suelta cualquier archivo aquí o usa ＋ Añadir. Haz doble clic en el GIF de una app para ejecutarla.",

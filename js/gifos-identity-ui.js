@@ -132,7 +132,7 @@
     return false;
   }
   async function save() {
-    if (!(await ID().sync())) { await say('My identity', 'There is nothing to save yet. Make My Room in Meet first.'); return false; }
+    if (!(await ID().sync())) { await say('My identity', 'There is nothing to save yet. Make your personal room in Rooms first.'); return false; }
     if (!(await ensureWay())) return false;
     const bytes = await ID().fileBytes();
     download(bytes, ID().FILE_NAME);
@@ -195,7 +195,7 @@
     const st = ID().status();
     if (!st.exists) {
       const act = await sheet('manage', '<h3>My identity</h3><p>Your identity is your personal room, your private rooms and your contacts, kept in one sealed file that only you hold. This device has none yet.</p>' +
-        '<p>Make My Room in Meet to start one, or bring yours from another device.</p>', [['get', 'Get my identity from another device', true], ['file', 'Open an identity file'], ['close', 'Close']]).done;
+        '<p>Make your personal room in Rooms to start one, or bring yours from another device.</p>', [['get', 'Get my identity from another device', true], ['file', 'Open an identity file'], ['close', 'Close']]).done;
       if (act === 'get') getFrom(); else if (act === 'file') pickFile();
       return;
     }
@@ -222,7 +222,7 @@
   // copyOut(): from anywhere, on the device that has the identity. The copy happens in my personal room, so go there.
   function copyOut() {
     const m = ID().counts().mine ? JSON.parse(root.localStorage.getItem('gifos_myroom') || 'null') : null;
-    if (!m) { say('Make My Room first', 'Copying to another device happens in your personal room. Make My Room in Meet, then come back.'); return; }
+    if (!m) { say('Make your personal room first', 'Copying to another device happens in your personal room. Make it in Rooms, then come back.'); return; }
     sset(GIVE, '1');
     const h = here();
     if (onMeet() && h.room === m.room && String(h.v || '').toLowerCase() === m.v) { startGive(); return; }

@@ -12130,7 +12130,7 @@
       // the runtime's SYSTEM_PAGES whitelist, which is a location.replace() —
       // picking Broadcast or App Store from inside a meeting navigated the
       // WHOLE MEETING away. Same set as desktop.js SYSTEM_LAUNCHERS.
-      const SYSTEM_APPS = { meet: 1, video: 1, broadcast: 1, appstore: 1 };
+      const SYSTEM_APPS = { meet: 1, video: 1, broadcast: 1, appstore: 1, rooms: 1 };
       const apps = (files || []).filter((f) => f.isApp && !SYSTEM_APPS[f.appId]);
       // S5: a dropdown of real apps, the defaults first, on every device (a fresh one too); Run installs a missing one, then runs it.
       list.textContent = '';
