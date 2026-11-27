@@ -4,7 +4,7 @@
   "appId": "whiteboard",
   "name": "Whiteboard",
   "shortName": "Whiteboard",
-  "version": "1.0",
+  "version": "1.2",
   "minBuild": 947,
   "tagline": "A shared whiteboard for workshops. Everyone in the meeting draws on it together.",
   "description": "Draw freehand with the pen or the highlighter, put up sticky notes in colours, add shapes, arrows that stay attached to what they point at, and text. Group notes into clusters, put them in frames, and vote with dots. A shared timer keeps the room on track, and ready-made brainstorm and retrospective templates get a session started in one tap.\n\nEveryone in the meeting or the app room sees every change as it happens, and anyone who joins late gets the whole board. Nothing to set up and no account to make.\n\nExport to PowerPoint with one slide per frame, where notes and shapes stay editable, or save a PNG or a PDF. Built on Excalidraw. An unofficial port; bugs go to GifOS, not upstream.",
@@ -44,14 +44,14 @@
   "cover": "/apps/whiteboard/cover.jpg",
   "screenshots": [],
   "gif": "/apps/whiteboard/whiteboard.gif",
-  "bytes": 4662636,
+  "bytes": 4692224,
   "download": 0,
   "provides": null,
-  "sha256": "934681c9b922866e7399cb7f4cac8a718fb7d4ffefd393a2872a8e7eb836d9d0",
+  "sha256": "0bd3d9e1bb885f34aa6e233109fc928d4b419c15f1afe3b0b640a6118f47a468",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-11-13"
+    "ts": "2026-11-27"
   },
   "porter": {
     "name": "GifOS",

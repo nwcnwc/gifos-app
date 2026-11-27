@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<base href="/versions/0.9.28.58/">
+<meta charset="UTF-8">
+<!-- FRAME GUARD. GitHub Pages sends no X-Frame-Options and a <meta> cannot
+     carry frame-ancestors, so this is the only thing that keeps a third-party
+     page from framing GifOS at opacity 0 and steering a click onto Allow,
+     Install or Approve. Same-origin framing (booted images, app mounts) is
+     allowed; anything else sees a link to open the page itself. Parser-
+     blocking and ES5 on purpose: it runs before any chrome paints. -->
+<script id="gifos-frame-guard">(function(){try{if(window.top===window.self)return;var ok=false;try{ok=window.top.location.origin===window.location.origin}catch(e){}if(ok)return;var h=document.documentElement;h.style.visibility='hidden';function show(){var b=document.body;if(!b)return;while(b.firstChild)b.removeChild(b.firstChild);var p=document.createElement('p');p.style.cssText='font:16px system-ui,sans-serif;padding:24px;color:#eee;background:#111;margin:0';p.appendChild(document.createTextNode('GifOS does not run inside another site\'s page. '));var a=document.createElement('a');a.href=location.href;a.target='_blank';a.rel='noopener';a.textContent='Open it in its own tab';a.style.color='#9db4ff';p.appendChild(a);b.appendChild(p);h.style.visibility='';}if(document.body)show();else document.addEventListener('DOMContentLoaded',show);}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark light">
+<script src="js/sw-register.js" defer></script>
+<title>Rooms</title>
+<meta name="description" content="Rooms: your personal room, the private room you share with each contact, missed calls, ringing and the hosted rooms on this device.">
+<link rel="canonical" href="https://gifos.app/rooms">
+<link rel="icon" href="icon.svg">
+<style>
+  /* The meeting's tokens (css/meet.css), as the plans page has them: black surface, night cards, one accent. A light
+     device gets paper and ink. Phone first: one column, 44px targets, sheets keep their buttons in view. */
+  :root {
+    --c-red: #b61622; --bg: #000; --card: #0c0e12; --chip: #222325; --line: #1c1f26; --text: #fff; --label: #dfe0e4;
+    --muted: #8d93a0; --ring: #fff; --link: #9db4ff; --on-red: #fff; --ok: #3ccf7a; --danger: #ff6b6b;
+    --r-sm: 10px; --r-md: 12px; --r-lg: 16px; --s-1: 4px; --s-2: 8px; --s-3: 16px; --s-4: 24px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg: #f4f7fb; --card: #fff; --chip: #e8ecf1; --line: #e8ecf1; --text: #1d1d1f; --label: #3a3a3f; --muted: #5d6270;
+            --ring: #1d1d1f; --link: #0064c8; --ok: #12813f; --danger: #c4212b; }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { background: var(--bg); }
+  body { font: 15px/1.45 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  body.sheet-on { overflow: hidden; }
+  [hidden] { display: none !important; }
+  .wrap { max-width: 640px; margin: 0 auto; padding: var(--s-3) var(--s-3) 64px; }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); margin-bottom: var(--s-3); }
+  h1 { font-size: 24px; font-weight: 700; }
+  .top a { color: var(--label); font-size: 13px; text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; }
+  h2 { font-size: 17px; font-weight: 700; }
+  h3 { font-size: 14px; font-weight: 600; color: var(--label); margin: var(--s-3) 0 var(--s-1); }
+  .quiet { color: var(--muted); font-size: 13px; }
+  .card { background: var(--card); border-radius: var(--r-lg); padding: var(--s-3); margin-bottom: var(--s-3); display: grid; gap: var(--s-2); }
+  .sec-h { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); }
+  .room-line { display: flex; align-items: baseline; gap: var(--s-2); flex-wrap: wrap; }
+  .room-name { font-size: 20px; font-weight: 700; word-break: break-all; }
+  .acts, .stack { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+  .stack { flex-direction: column; margin: var(--s-3) 0; }
+  button { font: inherit; font-size: 14px; font-weight: 600; color: var(--text); background: var(--chip); border: 0; border-radius: var(--r-sm);
+    padding: var(--s-2) 14px; min-height: 44px; cursor: pointer; }
+  button.go { background: var(--c-red); color: var(--on-red); }
+  button.text { background: none; color: var(--link); padding: var(--s-2) 0 var(--s-2) var(--s-2); }
+  button.danger { background: none; color: var(--danger); border: 1px solid var(--line); }
+  footer button.danger { background: var(--danger); color: #fff; border: 0; }
+  button.wide { width: 100%; }
+  button:disabled { opacity: .45; cursor: default; }
+  button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  #sec-settings > button.danger { justify-self: start; margin-top: var(--s-2); }
+  .rows { list-style: none; display: grid; }
+  .row { display: flex; align-items: center; gap: var(--s-2); padding: var(--s-2) 0; border-top: 1px solid var(--line); min-height: 56px; }
+  .row:first-child { border-top: 0; }
+  .row .main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; text-align: left; }
+  .row .main b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+  .row button.as-text { background: none; padding: 0; min-height: 44px; justify-content: center; color: var(--text); }
+  .row button.as-text .quiet { font-weight: 400; }
+  .ok { color: var(--ok); }
+  .av { flex: none; width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;
+    color: #fff; background: hsl(var(--h) 55% 42%); }
+  label { display: block; font-size: 13px; color: var(--label); margin-bottom: var(--s-1); }
+  label.switch { display: flex; align-items: center; gap: var(--s-2); min-height: 44px; font-size: 14px; color: var(--text); cursor: pointer; }
+  label.switch input { width: 20px; height: 20px; flex: none; }
+  input:not([type]), input[type="text"] { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--chip); border-radius: var(--r-sm); min-height: 44px; padding: 0 12px; width: 100%; }
+  #card-link { margin-top: var(--s-2); font-size: 12px; color: var(--muted); }
+  .qr { background: #fff; border-radius: var(--r-sm); padding: var(--s-2); max-width: 240px; margin-top: var(--s-2); }
+  .qr svg { display: block; width: 100%; height: auto; }
+
+  /* The Doorbell's block (js/core/view/bell.js paints it with the meeting's class names). */
+  .bell { display: grid; gap: var(--s-2); }
+  .bell .lob-quiet, .bell .set-help { color: var(--muted); font-size: 13px; }
+  .bell .rec-opt { display: flex; align-items: flex-start; gap: var(--s-2); min-height: 44px; font-size: 14px; color: var(--text); cursor: pointer; margin: 0; }
+  .bell .rec-opt input { width: 20px; height: 20px; flex: none; margin-top: 2px; }
+  .bell .rec-opt span { display: grid; gap: 2px; }
+  .bell .rec-opt small { color: var(--muted); font-size: 13px; }
+  .bell .bell-devs { display: grid; }
+  .bell .bell-devs > b { font-size: 14px; font-weight: 600; color: var(--label); margin-top: var(--s-2); }
+  .bell .lob-item { display: flex; align-items: center; gap: var(--s-2); min-height: 48px; border-top: 1px solid var(--line); }
+  .bell .li-main { flex: 1 1 auto; min-width: 0; }
+  .bell .row-del { background: none; color: var(--danger); padding: var(--s-2); min-width: 44px; }
+  .bell .lob-ghost { justify-self: start; }
+
+  /* Sheets: a sticky header (title + Close) and a sticky footer (the actions); only the middle scrolls. A bottom sheet on
+     a phone, a centred card on a wide screen. */
+  .sheet-back { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: flex-end; justify-content: center; z-index: 10; }
+  .sheet { background: var(--card); color: var(--text); width: 100%; max-width: 520px; max-height: 88vh; max-height: 88dvh; display: flex; flex-direction: column;
+    border-radius: var(--r-lg) var(--r-lg) 0 0; box-shadow: 0 -8px 40px rgba(0,0,0,.4); }
+  .sheet header, .sheet footer { flex: none; display: flex; align-items: center; gap: var(--s-2); padding: var(--s-2) var(--s-3); }
+  .sheet header { justify-content: space-between; border-bottom: 1px solid var(--line); }
+  .sheet footer { justify-content: flex-end; border-top: 1px solid var(--line); padding-bottom: max(var(--s-2), env(safe-area-inset-bottom)); }
+  .sheet-body { overflow: auto; padding: var(--s-3); display: grid; gap: var(--s-2); }
+  .sheet-body p + p { margin-top: var(--s-1); }
+  @media (min-width: 700px) { .sheet-back { align-items: center; } .sheet { border-radius: var(--r-lg); } }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="top"><h1>Rooms</h1><a href="./" id="home-link">Home Screen</a></div>
+  <div id="rooms" aria-live="polite"></div>
+</main>
+<script src="js/timings.js"></script>
+<script src="js/gifos-ed.js"></script>
+<script src="js/gifos-net.js"></script>
+<script src="js/core/link.js"></script>
+<script src="js/meet-power.js"></script>
+<script src="js/meet-myroom.js"></script>
+<script src="js/rooms.js"></script>
+<script src="js/meet-bell.js"></script>
+<script src="js/core/view/bell.js"></script>
+</body>
+</html>

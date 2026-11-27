@@ -2,6 +2,15 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.58",
+      "date": "2026-11-27",
+      "headline": "Broadcasts play through strict firewalls",
+      "features": [],
+      "fixes": [
+        "Watching a broadcast from a network that blocks direct calls now plays the sound at once and the picture as soon as the host's plan covers it (it gets through the firewall, still end-to-end encrypted); before, the Stage stayed black and silent."
+      ]
+    },
+    {
       "version": "0.9.28.57",
       "date": "2026-11-27",
       "headline": "Rooms: your personal room and private rooms in one place",
