@@ -6900,14 +6900,14 @@
     }
     function gossipWaits(dc, str, p) {
       const q = dc.__gq || (dc.__gq = []);
-      const held = !pipeFirstDone(dc) && pipeLink(p);
+      const held = !pipeFirstDone(dc) && pipeLink(p) && !BROADCAST;   // TVBLANK: a broadcast pipe never sends the sdn announce; holding would starve it of all gossip (the vouch too)
       if (!q.length && !held && dc.bufferedAmount <= GOSSIP_BUF_MAX) return false;
       if (q.length >= GOSSIP_Q_MAX) q.shift();
       q.push(str);
       if (!dc.__gqWired) {
         dc.__gqWired = true;
         try { dc.bufferedAmountLowThreshold = GOSSIP_BUF_MAX >> 1; } catch (e) {}
-        dc.addEventListener('bufferedamountlow', () => { if (!pipeFirstDone(dc) && pipeLink(p)) return; gossipDrain(dc); });
+        dc.addEventListener('bufferedamountlow', () => { if (!pipeFirstDone(dc) && pipeLink(p) && !BROADCAST) return; gossipDrain(dc); });
       }
       return true;
     }
@@ -7665,6 +7665,7 @@
     // neither the sweeper nor L22 closes it), NO video on an unvouched link, the room's link facts and subscribers'
     // vouches (room-wide gossip: tlink, tsub), and the paused-video note on the tiles a link holds back.
     let turnLinks = null, turnTimer = null, turnSubAt = 0;
+    const turnSubTold = new Set();   // link far pids my vouch was restated for when their pipe first changed
     let turnSubWantAt = 0;   // my seat asked for the meeting's rooms (opts.sub.ask)
     const turnDoorsWait = [];   // asks waiting for the relay's door list
     // SUB.9.2, the asker: subrooms are separate meshes, so the friend-hop tick asks a carrier only for a peer of my OWN
@@ -7963,7 +7964,7 @@
         webUp: (pid) => { const w = turnWeb.get(pid); return !!w && w.up(); },
         webClose: (pid) => { const w = turnWeb.get(pid); if (w) { turnWeb.delete(pid); try { w.close('link closed'); } catch (e) {} } },
         log: turnNote,
-        changed: (pid) => { const p = peers.get(pid); if (p) turnApplyVideo(p); (0, /*()*/__V.turnPaint)(); },
+        changed: (pid) => { const p = peers.get(pid); if (p) turnApplyVideo(p); if (!turnSubTold.has(pid)) { if (turnSubTold.size > 512) turnSubTold.clear(); turnSubTold.add(pid); turnSubAt = 0; } (0, /*()*/__V.turnPaint)(); },   // TVBLANK: a new pipe hears my vouch on the next step, not up to 60 s later
         // SUB.8: a pipe of mine is its own standby from now on (the pipe moved to a better path): nothing media rides this pc
         // any more, and a standby's channel carries no 'mx-end'. So each end ends, by itself, what the pipe carried: my jobs
         // toward that peer, its announces and what I claimed from it; then it claims again (the same branch comes in through
@@ -18390,7 +18391,7 @@
           };
           // plane 5792: each Section 1 neighbour. a pipe that already carries this feed is left to the plane's pipe mix
           for (const t of s1peers) {
-            if (owner && pipesNow.indexOf(t) >= 0 && (pipeStg.get(owner) === t || mosAnn.has(t + '|' + key) || !pipeVideo(t))) continue;
+            if (owner && pipesNow.indexOf(t) >= 0 && (pipeStg.get(owner) === t || mosAnn.has(t + '|' + key) || (!pipeVideo(t) && !BROADCAST))) continue;   // TVBLANK: a broadcast builds no pipe mix (roomBeyondRow), so the feed itself crosses a free pipe; the TURN guard keeps its video off until vouched
             const picked = pick(t); if (!picked) continue;
             emitFull(key, t, slot, hopMeta(picked.h, picked.vp), slot, picked.stream, picked.sb);
           }
@@ -18413,7 +18414,7 @@
           const pipesNow = pipePeers();
           const skipOwn = (t) => !t || t === myId;
           for (const t of s1peers) {
-            if (pipesNow.indexOf(t) >= 0 && (pipeStg.get(myId) === t || mosAnn.has(t + '|' + ok) || !pipeVideo(t))) continue;
+            if (pipesNow.indexOf(t) >= 0 && (pipeStg.get(myId) === t || mosAnn.has(t + '|' + ok) || (!pipeVideo(t) && !BROADCAST))) continue;   // TVBLANK: see above
             if (skipOwn(t)) continue;
             pushOwn(ok, t, ok, (direct && !direct.has(t)) ? { h: 0, sb: 1 } : hm0, false);
           }
