@@ -2246,6 +2246,8 @@ body.names-off #stagefeed .stgnames { display: none; }
   #app-list .app-quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: .5rem; margin: 0 0 .6rem; }
   #app-list .app-quickbtn { min-height: 48px; margin: 0; padding: .5rem .8rem; border-radius: .6rem; font-weight: 700; font-size: 16px;
     border: 1px solid var(--accent, #7b5cff); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
+  /* The list never scrolls inside the sheet (a link cut in half at its edge): the sheet's body is the one scroller. */
+  #app-modal #app-list { max-height: none !important; overflow: visible !important; }
   #app-list .app-pick-all { display: block; margin: 0 0 .35rem; color: var(--muted, #8888aa); font-size: 15px; }
   #app-make-own { display: inline-flex !important; align-items: center; min-height: 44px; }
   #app-list .app-empty { margin: 8px 0; }
@@ -3598,6 +3600,8 @@ body.names-off #stagefeed .stgnames { display: none; }
     background: none; color: var(--c-gray); font-size: 12px; font-weight: 500; cursor: pointer; }
   .vp-mode .vp-ic svg { width: 24px; height: 24px; display: block; }
   .vp-mode[aria-checked="true"] { color: var(--c-white); }
+  /* Every view is a choice: the ones not picked are light enough to read as buttons, the picked one is white. */
+  .vp-mode:not([aria-checked="true"]) { color: #c9ccd6; }
   .vp-mode[aria-checked="true"]::after { content: ""; position: absolute; left: 50%; bottom: 4px; width: 4px; height: 4px;
     margin-left: -2px; border-radius: var(--r-pill); background: var(--c-blue); }
   @media (hover: hover) and (pointer: fine) { .vp-mode:hover { color: var(--c-white); } }
@@ -4017,10 +4021,12 @@ body :is(.tile, .rowtile).thin > .name { white-space: nowrap !important; overflo
   body.view-focus #fsstrip { padding-bottom: 8px; }
 }
 body.view-focus .fsthumb.fsauto .fslbl { white-space: normal; line-height: 1.15; max-width: calc(100% - 12px); }
-/* An upright phone's Focus strip: thumbs sized so the screen holds whole thumbs and half of the next one, a plain cue
-   that the strip scrolls, never a sliver at the edge. 8px pads and gaps: 3 whole + a half = 3.5 widths. */
+/* An upright phone's Focus strip: thumbs sized so the screen holds exactly three whole thumbs (8px pads and gaps), so no
+   thumb is ever cut at the edge; the strip scrolls sideways to the rest. */
 @media (orientation: portrait) and (max-width: 700px) {
-  body.view-focus .fsthumb { flex: 0 0 auto; width: clamp(100px, calc((100vw - 32px) / 3.5), 150px); }
+  body.view-focus .fsthumb { flex: 0 0 auto; width: clamp(100px, calc((100vw - 32px) / 3), 150px); }
+  /* The follow-the-speaker card keeps its two lines of words whole: the glyph steps aside on a strip this low. */
+  body.view-focus .fsthumb.fsauto .fsautoglyph { display: none; }
 }
 /* A phone-wide agenda (Scroll stacks it with no tab bar): no lone presentation-view icon under the list; a double tap
    still presents it. Its edit rows give the item's title the room (minutes 52px, tighter gaps). */

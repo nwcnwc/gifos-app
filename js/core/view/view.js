@@ -12174,6 +12174,8 @@
       });
       const allLb = document.createElement('small'); allLb.className = 'app-pick-all';
       allLb.textContent = (0, /*()*/__C.uiText)('appPickAll', 'Or pick from all your apps:');
+      // A device with no apps beyond the meeting apps has nothing more to pick: the dropdown stays in the page, hidden.
+      if (choices.length <= nDef) { allLb.hidden = true; row.style.display = 'none'; }
       list.appendChild(quick); list.appendChild(allLb); list.appendChild(row); list.appendChild(note);
       // The not-on-this-device note speaks of the dropdown's pick, so it waits for one (the quick buttons say "Getting…").
       // More apps: the App Store, in a new tab (the meeting stays open; Run app lists what it adds).
