@@ -187,8 +187,8 @@ function want(pipeId, key, q) {
 //   capture time, so a receiver lined it up with the sound whatever the encoder took. A carried frame is stamped when
 //   it leaves, after the encoder's wait and work. So every frame is held to leave at t0 + dt (dt: the slow end of the
 //   measured encode delays), a steady spacing whatever each frame took, and the page delays the sound of these links
-//   by what the links then really took from capture to leaving, dt and the template's own trip ('enc-stat' lat):
-//   picture and sound leave together again.
+//   by the same dt ('enc-stat'): picture and sound leave together again. (A template's own trip through its tiny
+//   encoder is not added: the template is stamped when it is minted, so the far end already allows for it.)
 const encs = new Map();   // srcId -> { reader, enc, w, h, bps, fps, keyNext, keyAt, t0, win, dt, ... }
 let ENC_T = null;   // the page's timings for this (ENC_KEY_MIN_MS, ENC_STAT_MS, ENC_WIN_MS, ENC_DT_STEP_MS): they come with op 'enc'
 function encPipesAwake(srcId) {
@@ -213,6 +213,14 @@ function encKeyNow(E) {
   } catch (err) { E.encErr = (E.encErr || 0) + 1; }
   try { if (vf) vf.close(); } catch (err) {}
 }
+// The one encoder makes the codec the links of this page send by default (H.264 where they prefer it, with its
+// parameter sets in every key, as a link's own encoder sends them; VP8 elsewhere): a seat that forwards the picture
+// then carries the same bytes onward on its own links, as it does with any feed.
+function encCfg(E, w, h) {
+  const c = { codec: E.h264 ? 'avc1.42E01F' : 'vp8', width: w, height: h, bitrate: E.bps, framerate: E.fps, latencyMode: 'realtime' };
+  if (E.h264) c.avc = { format: 'annexb' };
+  return c;
+}
 function encOpen(E, w, h) {
   try { if (E.enc && E.enc.state !== 'closed') E.enc.close(); } catch (e) {}
   E.enc = null; E.w = w; E.h = h; E.cfgBps = E.bps; E.cfgFps = E.fps;
@@ -223,7 +231,7 @@ function encOpen(E, w, h) {
       if (err && err.name === 'QuotaExceededError') { E.reclaims = (E.reclaims || 0) + 1; return; }   // the browser took an idle encoder back: the next frame opens a new one, with a key
       E.err = String(err && err.message || err); postMessage({ op: 'enc-dead', srcId: E.srcId, err: E.err });
     } });
-    enc.configure({ codec: 'vp8', width: w, height: h, bitrate: E.bps, framerate: E.fps, latencyMode: 'realtime' });
+    enc.configure(encCfg(E, w, h));
     E.enc = enc; E.keyNext = true; E.opens = (E.opens || 0) + 1;
   } catch (err) { E.err = String(err && err.message || err); postMessage({ op: 'enc-dead', srcId: E.srcId, err: E.err }); }
 }
@@ -235,7 +243,7 @@ function encOut(E, chunk) {
   E.out = (E.out || 0) + 1; E.outAt = now;
   if (t0 !== undefined) E.win.push([now, now - t0]);
   if (chunk.type === 'key') E.keys = (E.keys || 0) + 1;
-  pushContent(E.srcId, bytes, chunk.type, 0, 'video/VP8', t0 !== undefined ? t0 : now);
+  pushContent(E.srcId, bytes, chunk.type, 0, E.h264 ? 'video/H264' : 'video/VP8', t0 !== undefined ? t0 : now);
 }
 // dt: the 95th percentile of the last ENC_WIN_MS of capture-to-bytes delays, moved only in ENC_DT_STEP_MS steps (a
 // sound delay that wobbles is heard). The pipes of this source hold their frames to it; the page hears it too.
@@ -253,8 +261,7 @@ function encStat(E, now) {
   }
   const routed = taps.get(E.srcId); let n = 0, latS = 0, latN = 0;
   if (routed && E.dt !== undefined) for (const pid of routed) { const p = pipes.get(pid); if (!p) continue; n++; p.enc = true; p.holdT = E.dt; p.holdRoom = Math.max(p.holdRoom || 0, Math.ceil(E.dt / 1000 * (E.fps || 30) * 2)); if (!p.paused && p.latN > 8) { latS += p.latEw; latN++; } }
-  // lat: what the links really took from a frame's capture to its leaving (the hold and the template's own trip), the
-  // figure the sound is delayed by
+  // lat: what the links really took from a frame's capture to its leaving (the hold and the template's own trip): told for reading only
   E.lat = latN ? Math.min(ENC_T.DT_MAX, latS / latN) : undefined;
   postMessage({ op: 'enc-stat', srcId: E.srcId, dt: E.dt === undefined ? null : E.dt, lat: E.lat === undefined ? null : Math.round(E.lat), d50: E.d50 === undefined ? null : Math.round(E.d50), d95: E.d95 === undefined ? null : Math.round(E.d95), fps: Math.round((E.win.length / ENC_T.WIN) * 10000) / 10, out: E.out || 0, keys: E.keys || 0, skipped: E.skipped || 0, idle: E.idleN || 0, pipes: n, w: E.w || 0, h: E.h || 0, err: E.err || null });
 }
@@ -274,7 +281,7 @@ async function encRun(E, reader) {
       if (E.wasIdle) { E.wasIdle = false; E.keyNext = true; }
       const w = f.displayWidth || f.codedWidth, h = f.displayHeight || f.codedHeight;
       if (!E.enc || E.w !== w || E.h !== h) encOpen(E, w, h);
-      else if (E.cfgBps !== E.bps || E.cfgFps !== E.fps) { E.cfgBps = E.bps; E.cfgFps = E.fps; try { E.enc.configure({ codec: 'vp8', width: w, height: h, bitrate: E.bps, framerate: E.fps, latencyMode: 'realtime' }); } catch (err) {} }
+      else if (E.cfgBps !== E.bps || E.cfgFps !== E.fps) { E.cfgBps = E.bps; E.cfgFps = E.fps; try { E.enc.configure(encCfg(E, w, h)); } catch (err) {} }
       if (!E.enc) continue;
       if (E.enc.encodeQueueSize > 1) { E.skipped = (E.skipped || 0) + 1; continue; }   // a busy encoder skips a frame, it never falls behind
       const key = E.keyNext && (E.keyForce || now - (E.keyAt || 0) >= ENC_T.KEY_MIN);
@@ -585,6 +592,7 @@ onmessage = (e) => {
     let E = encs.get(m.srcId);
     if (!E) { E = { srcId: m.srcId, enc: null, t0: new Map(), win: [], bps: 1000000, fps: 30 }; encs.set(m.srcId, E); }
     if (m.bps) E.bps = m.bps; if (m.fps) E.fps = m.fps;
+    if (m.codec) { const h = m.codec === 'h264'; if (E.h264 !== h) { E.h264 = h; try { if (E.enc && E.enc.state !== 'closed') E.enc.close(); } catch (err) {} E.enc = null; } }
     if (m.dtAdd !== undefined) E.dtAdd = +m.dtAdd || 0;   // measurement only: a longer wait than the encoder needs
     if (m.readable) {
       try { if (E.reader) E.reader.cancel().catch(() => {}); } catch (err) {}
@@ -892,19 +900,30 @@ onrtctransform = (e) => {
   // replaces the old one without touching the links. Where the browser cannot (no track processor, no encoder, no
   // worker-minted carrier), this returns false and each link keeps its own encoder.
   const encOk = () => { try { return supported() && genOk() && typeof MediaStreamTrackProcessor === 'function' && typeof VideoEncoder === 'function' && localStorage.getItem('gifos_pipe_enc') !== 'off'; } catch (e) { return false; } };
-  const encSrcs = new Map(); // srcId -> { track, bps, fps }
+  const encSrcs = new Map(); // srcId -> { track, bps, fps, codec }
+  // Which codecs the one encoder can make here ('h264', 'vp8'): asked once, known a moment after the page loads.
+  const encCan = { h264: false, vp8: false };
+  (function () {
+    try {
+      if (typeof VideoEncoder !== 'function' || !VideoEncoder.isConfigSupported) return;
+      const ask = (name, cfg) => VideoEncoder.isConfigSupported(Object.assign({ width: 640, height: 360, bitrate: 1000000, framerate: 24, latencyMode: 'realtime' }, cfg)).then((r) => { encCan[name] = !!(r && r.supported); }, () => {});
+      ask('h264', { codec: 'avc1.42E01F', avc: { format: 'annexb' } }); ask('vp8', { codec: 'vp8' });
+    } catch (e) {}
+  })();
+  const encMakes = (codec) => !!encCan[codec];
   function encSource(srcId, track, opts) {
     if (!encOk() || !track || track.kind !== 'video' || track.readyState === 'ended') return false;
     const o = opts || {}, cur = encSrcs.get(srcId);
-    const bps = o.bps || (cur && cur.bps) || 0, fps = o.fps || (cur && cur.fps) || 0;
+    const bps = o.bps || (cur && cur.bps) || 0, fps = o.fps || (cur && cur.fps) || 0, codec = o.codec || (cur && cur.codec) || 'vp8';
+    if (!encCan[codec]) return false;
     try {
       if (cur && cur.track === track) {
-        if (cur.bps !== bps || cur.fps !== fps) { cur.bps = bps; cur.fps = fps; ensureWorker().postMessage({ op: 'enc', srcId, bps, fps }); }
+        if (cur.bps !== bps || cur.fps !== fps || cur.codec !== codec) { cur.bps = bps; cur.fps = fps; cur.codec = codec; ensureWorker().postMessage({ op: 'enc', srcId, bps, fps, codec }); }
         return true;
       }
       const proc = new MediaStreamTrackProcessor({ track, maxBufferSize: 2 });
-      ensureWorker().postMessage({ op: 'enc', srcId, readable: proc.readable, bps, fps, dtAdd: o.dtAdd, T: { KEY_MIN: TM.ENC_KEY_MIN_MS, STAT: TM.ENC_STAT_MS, WIN: TM.ENC_WIN_MS, DT_STEP: TM.ENC_DT_STEP_MS, DT_MAX: TM.ENC_DT_MAX_MS, TH_OLD: TM.ENC_TH_OLD_MS } }, [proc.readable]);
-      encSrcs.set(srcId, { track, bps, fps });
+      ensureWorker().postMessage({ op: 'enc', srcId, readable: proc.readable, bps, fps, codec, dtAdd: o.dtAdd, T: { KEY_MIN: TM.ENC_KEY_MIN_MS, STAT: TM.ENC_STAT_MS, WIN: TM.ENC_WIN_MS, DT_STEP: TM.ENC_DT_STEP_MS, DT_MAX: TM.ENC_DT_MAX_MS, TH_OLD: TM.ENC_TH_OLD_MS } }, [proc.readable]);
+      encSrcs.set(srcId, { track, bps, fps, codec });
       return true;
     } catch (e) { return false; }
   }
@@ -935,5 +954,5 @@ onrtctransform = (e) => {
     return null;
   }
 
-  GifOS.meshPipe = { supported, encOk, encSource, encStop, encTrack, tapReceiver, pipeSender, pausePipe, holdPipe, keyKick, reroute, unpipe, makeCarrier, receiverForTrack, stats, chain, on, codecMismatch, releaseTap, _debugSizes, _workerSrc };
+  GifOS.meshPipe = { supported, encOk, encMakes, encSource, encStop, encTrack, tapReceiver, pipeSender, pausePipe, holdPipe, keyKick, reroute, unpipe, makeCarrier, receiverForTrack, stats, chain, on, codecMismatch, releaseTap, _debugSizes, _workerSrc };
 })(typeof window !== 'undefined' ? window : globalThis);
