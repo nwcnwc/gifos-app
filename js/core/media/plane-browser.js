@@ -1856,24 +1856,26 @@
     // desktop) and the phone keeps the call audio path rather than risk the sheet. The proof is kept (localStorage) while the
     // state reads "granted" and dropped the moment it reads anything else.
     const GRANT_AWAY_KEY = 'gifos_site_hidden_at', GRANT_SURE_KEY = 'gifos_mic_grant_sure';
-    // localStorage through the core's lsGet / lsSet ('' for none; a falsy value removes the key)
     let micGrantSure = false, micGrantWatch = false;
     function micGrantInit() {
       if (micGrantWatch || !micLetsGo()) return;
       micGrantWatch = true;
-      const away = +(0, /*()*/__C.lsGet)(GRANT_AWAY_KEY) || 0, t0 = Date.now();   // when the last page of this site went out of sight (0: one is in sight, or none on record)
-      const mark = () => (0, /*()*/__C.lsSet)(GRANT_AWAY_KEY, document.hidden ? String(Date.now()) : '0');
+      // its own localStorage pair: this runs at page start, before the core part has declared lsGet / lsSet
+      const micLsGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+      const micLsSet = (k, v) => { try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} };
+      const away = +micLsGet(GRANT_AWAY_KEY) || 0, t0 = Date.now();   // when the last page of this site went out of sight (0: one is in sight, or none on record)
+      const mark = () => micLsSet(GRANT_AWAY_KEY, document.hidden ? String(Date.now()) : '0');
       document.addEventListener('visibilitychange', mark);
-      try { window.addEventListener('pagehide', () => (0, /*()*/__C.lsSet)(GRANT_AWAY_KEY, String(Date.now()))); } catch (e) {}
+      try { window.addEventListener('pagehide', () => micLsSet(GRANT_AWAY_KEY, String(Date.now()))); } catch (e) {}
       mark();
       const pm = (typeof navigator !== 'undefined' && navigator.permissions && navigator.permissions.query) ? navigator.permissions : null;
       if (!pm) return;
       pm.query({ name: 'microphone' }).then((st) => {
         const read = (atStart) => {
-          if (st.state !== 'granted') { micGrantSure = false; (0, /*()*/__C.lsSet)(GRANT_SURE_KEY, null); return; }
+          if (st.state !== 'granted') { micGrantSure = false; micLsSet(GRANT_SURE_KEY, null); return; }
           if (!atStart) return;   // a grant that changed in this page's life is not the proven one
-          if ((0, /*()*/__C.lsGet)(GRANT_SURE_KEY) === '1') micGrantSure = true;
-          else if (away && t0 - away > GifOS.timings.MIC_GRANT_AWAY) { micGrantSure = true; (0, /*()*/__C.lsSet)(GRANT_SURE_KEY, '1'); }
+          if (micLsGet(GRANT_SURE_KEY) === '1') micGrantSure = true;
+          else if (away && t0 - away > GifOS.timings.MIC_GRANT_AWAY) { micGrantSure = true; micLsSet(GRANT_SURE_KEY, '1'); }
         };
         read(true);
         st.onchange = () => read(false);
