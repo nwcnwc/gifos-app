@@ -619,9 +619,11 @@
     // element counts the frames it has shown, that count is its progress, but only while the count is seen to move:
     // not every browser counts, and one that does can stop for an element that is not displayed while its frames
     // still arrive. A count that has not moved for two STILL_MAX_MS (a still sender moves it once per STILL_MAX_MS)
-    // is not believed, and the clock is the measure again, as it is on a hidden page.
+    // is not believed, and the clock is the measure again, as it is on a hidden page. A source that has never shown a
+    // picture (a seat that sends none: a watching seat) has not moved at all.
     const counted = new WeakMap();   // element -> { n: last count, at: when it last moved }
     function progressOf(el, now) {
+      if (el.videoWidth === 0) return 'none';   // no picture has arrived: there is nothing to draw, so nothing moved (its first frame gives it a size)
       try {
         if (typeof el.getVideoPlaybackQuality === 'function' && !(typeof document !== 'undefined' && document.hidden)) {
           const n = el.getVideoPlaybackQuality().totalVideoFrames;
