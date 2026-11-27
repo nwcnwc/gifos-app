@@ -3070,7 +3070,8 @@
     try { inUse = !document.hidden && document.hasFocus(); } catch (e2) {}
     if (!inUse) followHome(e.newValue);
   });
-  function applyUpdateBar() {
+  // tick: the minute check. A tab in view and in use is not moved under the person by it (the bar asks).
+  function applyUpdateBar(tick) {
     const U = GifOS.update;
     if (!U) return;
     let d = U.decide({ version: VERSION, edge: runningEdge(), pinned: pinnedVersion(), latest: latestVersion, changelog, emergency: emergencyFloor });
@@ -3080,7 +3081,9 @@
     if (d && !d.pinned) {
       let home = null;
       try { home = localStorage.getItem(HOME_RELEASE_KEY); } catch (e) {}
-      if (home && VER_RE.test(home) && U.cmpVer(home, d.latest) >= 0 && followHome(d.latest)) return;
+      let inUse = false;
+      try { inUse = !!tick && !document.hidden && document.hasFocus(); } catch (e) {}
+      if (!inUse && home && VER_RE.test(home) && U.cmpVer(home, d.latest) >= 0 && followHome(d.latest)) return;
     }
     if (d && d.emergency) {
       // Once per tab per release: a Home Screen that comes back still behind
@@ -3248,7 +3251,7 @@
     else location.reload();
   }
 
-  async function checkForUpdate(withNotes) {
+  async function checkForUpdate(withNotes, tick) {
     // GifOS.update.check() fetches version.json (revalidated, not re-sent)
     // and persists the live-release pointer (gifos_current) so the root loader
     // can redirect default visitors instantly on the next visit. The release
@@ -3283,13 +3286,13 @@
     // Release notes are best-effort: the Version panel still works without them.
     if (got.changelog) changelog = got.changelog;
     paintPinHead();
-    applyUpdateBar();
+    applyUpdateBar(tick);
     return true;
   }
   // Check again every minute while the Home Screen is in view, and at once
   // when it comes back into view. Reads are cheap: version.json is
   // revalidated by the browser, the notes are read once per release.
-  setInterval(() => { if (!document.hidden) checkForUpdate().catch(() => {}); }, (GifOS.update && GifOS.update.MINUTE) || 60000);
+  setInterval(() => { if (!document.hidden) checkForUpdate(undefined, true).catch(() => {}); }, (GifOS.update && GifOS.update.MINUTE) || 60000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate().catch(() => {}); });
   // Focus too: a window beside another is in view the whole time, so it never fires visibilitychange.
   root.addEventListener('focus', () => { followHome(); });
