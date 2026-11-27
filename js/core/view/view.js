@@ -3491,7 +3491,9 @@
         // The Stage view takes the screen in the same tap (a browser asks for the tap's own gesture).
         if (b.dataset.view === 'stage' && window.__meetView === 'stage') svFullscreen();
         // Focus keeps the picker up so Follow the speaker is one more tap.
-        if (b.dataset.view !== 'focus') closePick(true);
+        // A keyboard pick (a click with no pointer: detail 0) gives focus back to the view button; a finger's pick does not,
+        // so no focus ring stays on the button after a tap.
+        if (b.dataset.view !== 'focus') closePick(e.detail === 0);
       });
       viewpick.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') { e.preventDefault(); closePick(true); return; }

@@ -3989,7 +3989,7 @@ body.has-app:not(.solo-app):not(.app-room) #appbar > button, body.has-app:not(.s
 body.sv-live:not(.sv-tabs) .ct-pane.ag { padding-top: max(60px, calc(var(--headh, 0px) + 8px)); }
 @media (max-height: 500px) { .ag-item:not([tabindex]):not(:has(> input)) { min-height: 30px; padding-top: 1px; padding-bottom: 1px; } }
 /* A phone on its side: Stop for everyone sits closer under the list, so a 4-item agenda keeps it on screen. */
-@media (max-height: 500px) { .ag-btn.ag-stopall { margin-top: 6px; } }
+@media (max-height: 500px) { .ag-btn.ag-stopall { margin-top: 6px; } .ag-now:not([hidden]) { margin: 2px 0 0; } .ag-head { margin-bottom: 0; } }
 /* A phone typing into the agenda: the floating bar steps aside while a field has the keyboard, and the list can
    scroll clear of the bar. */
 @media (max-width: 700px), (max-height: 500px) {
