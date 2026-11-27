@@ -10,8 +10,11 @@
  *   caller  the bar: "Waiting for Ada", "Ringing Ada", "Ada can't answer right now", and "Give Ada your card" once the
  *           call is answered (asked again in the leave question if not used)
  *   anyone  "Save this card?" when a card is handed over or a card link was opened
- *   private "Private room with <person>" on each person's tile menu and in People; the ask with Join; "Private room with…"
- *           (contacts) in the Invite menu
+ *   private "Our private room" on each person's tile menu and in People (a swap first, if we have none); the ask with
+ *           Join; "Call a contact…" in the Invite menu; the swap ("Swap cards": our private room, and optionally my
+ *           personal room)
+ *   listen  a personal room standing by on a computer opens one hidden door per private room (a framed meeting page,
+ *           data-mr-listen): a ring there shows here; Answer takes this page into that private room
  */
 (function (root) {
   'use strict';
@@ -66,36 +69,34 @@
   let part = null, ringing = null, offer = null, barShut = false, pask = null;
   function openPask() {
     if (!pask) return;
-    $('mr-pask-title').textContent = (pask.name || 'Someone') + ' asks you to your private room';
-    $('mr-pask-note').textContent = 'Just the two of you, the same room every time. Join swaps cards if you have not yet. Your mic turns on there; your camera stays off.';
+    $('mr-pask-title').textContent = (pask.name || 'Someone') + ' asks you to our private room';
+    $('mr-pask-note').textContent = 'Just the two of you, the same room every time. Your mic turns on there; your camera stays off.';
     show($('mr-pask'), true);
   }
   // "Private room with <person>" (a tile's menu, People): needs My Room on both sides (the room key is who you are).
   async function privateWith(pid, name) {
     if (!part) return;
-    if (!MR().mine()) { toast('Make My Room in the lobby first: your private rooms are tied to it.'); return; }
-    barShut = false; bar('Opening a private room with ' + (name || 'them') + '…', null, '', true);
+    barShut = false; bar('Opening our private room with ' + (name || 'them') + '…', null, '', true);
     const r = await part.privateWith(pid, name).catch(() => ({ err: 'x' }));
-    if (r && r.err === 'noroom') toast((name || 'They') + ' needs a My Room first (in the lobby).');
-    else if (r && r.err) toast('Could not open a private room.');
+    if (r && r.err) toast('Could not open our private room. ' + (name || 'They') + ' may need the current GifOS.');
   }
   function stampPrivate() {
-    if (!part || !MR().mine() || part.isPrivate()) return;
+    if (!part || part.isPrivate() || part.state().listening) return;
     const names = {}; for (const p of part.people()) names[p.id] = p.name || 'Guest';
     doc.querySelectorAll('.tile[data-peer]:not(.me) .modbar').forEach((mb) => {
       const pid = mb.parentNode.dataset.peer;
       if (!names[pid] || mb.querySelector('.mr-priv')) return;
       const b = doc.createElement('button'); b.type = 'button'; b.className = 'mr-priv'; b.dataset.peer = pid;
-      b.textContent = 'Private room'; b.title = 'Private room with ' + names[pid]; b.setAttribute('aria-label', 'Private room with ' + names[pid]);
+      b.textContent = 'Our private room'; b.title = 'Our private room (' + names[pid] + ')'; b.setAttribute('aria-label', 'Our private room with ' + names[pid]);
       b.addEventListener('click', (e) => { e.stopPropagation(); privateWith(pid, names[pid]); });
       mb.appendChild(b);
     });
   }
   function stampPeoplePrivate() {
-    const list = $('who-list'); if (!list || !part || !MR().mine() || part.isPrivate() || $('mr-who-priv')) return;
+    const list = $('who-list'); if (!list || !part || part.isPrivate() || $('mr-who-priv')) return;
     const ppl = part.people(); if (!ppl.length) return;
     const box = doc.createElement('div'); box.id = 'mr-who-priv'; box.className = 'mr-who-priv';
-    const h = doc.createElement('div'); h.className = 'who-h'; h.textContent = 'Private room with…'; box.appendChild(h);
+    const h = doc.createElement('div'); h.className = 'who-h'; h.textContent = 'Our private room with…'; box.appendChild(h);
     for (const p of ppl) {
       const b = doc.createElement('button'); b.type = 'button'; b.className = 'mr-who'; b.dataset.peer = p.id; b.textContent = p.name || 'Guest';
       b.onclick = () => { $('who-modal').style.display = 'none'; privateWith(p.id, p.name); };
@@ -103,10 +104,62 @@
     }
     list.insertBefore(box, list.firstChild);   // first: above the address lists
   }
+  // ---- listening: one hidden door per private room, while my personal room stands by on a computer ----------------
+  let extRing = null;
+  const doors = new Map();   // room.v -> { el, part }
+  function listenAll(st) {
+    if (!st.standby || !st.mine || mobile()) return;
+    const M = MR();
+    const set = M.listenSet();
+    for (const rec of set) {
+      const k = M.roomKey(rec.room, rec.v);
+      if (doors.has(k)) continue;
+      // A meeting session in a same-origin srcdoc frame (js/meet-host.js: this page allows no other frame), marked as a
+      // listening door; it joins the room quiet, as me.
+      const d = { el: null, part: null, rec, id: '' };
+      doors.set(k, d);
+      if (!GifOS.meetHost) continue;
+      const link = root.location.origin + roomUrl(rec.room, rec.v) + (debugOn() ? '&DEBUG=on' : '');
+      GifOS.meetHost.join({ link, name: (part && part.myName && part.myName()) || '', bot: false, listen: true }).then((r) => { d.id = r.meetingId; }, () => { doors.delete(k); });
+      d.el = doc.querySelector('iframe[data-mr-listen]:not([data-mr-room])');
+      if (d.el) d.el.setAttribute('data-mr-room', k);
+      const look = root.setInterval(() => {
+        if (!doors.has(k)) { root.clearInterval(look); return; }
+        let p = null; try { p = d.el && d.el.contentWindow && d.el.contentWindow.GifOS && d.el.contentWindow.GifOS.meetMyRoom && d.el.contentWindow.GifOS.meetMyRoom.live; } catch (e) { p = null; }
+        if (!p || p === d.part) return;
+        d.part = p;
+        p.on((ev) => onDoorEvent(d, ev));
+      }, T().MYROOM_TICK_MS || 1000);
+    }
+    for (const [k, d] of Array.from(doors)) if (!set.some((x) => M.roomKey(x.room, x.v) === k)) { doors.delete(k); if (d.id && GifOS.meetHost) GifOS.meetHost.leave(d.id).catch(() => {}); else if (d.el) d.el.remove(); }   // a contact removed (or no longer among the most recent): its door closes
+  }
+  function onDoorEvent(d, ev) {
+    if (ev.type === 'ring') { if (!extRing) { extRing = { pid: ev.pid, label: ev.label, door: d }; paint(); } return; }
+    if ((ev.type === 'missed' || ev.type === 'stopped') && extRing && extRing.door === d && extRing.pid === ev.pid) {
+      extRing = null; ringing = null; show($('mr-ring'), false); ringStop();
+      if (ev.type === 'missed') toast('Missed call from ' + ev.label + ', ' + timeOf(ev.at));
+      paint(); return;
+    }
+    if (ev.type === 'go' && ev.priv) { onEvent(ev); return; }   // Answer: this page goes into our private room
+    // A stranger sat down with a listening door (someone holding a full copy of the room, but no member key): the door
+    // leaves and stays closed until this page opens again. It never answered them; it only stops listening there.
+    if (ev.type === 'stranger') { d.shut = true; d.part = null; if (d.id && GifOS.meetHost) GifOS.meetHost.leave(d.id).catch(() => {}); else if (d.el) d.el.remove(); d.id = ''; d.el = null; }
+  }
+  // ---- the swap: "Swap cards" makes our private room; my personal room is shared only if I tick it ------------------
+  let swapOffer = null;
+  function openSwap() {
+    if (!swapOffer) return;
+    const n = swapOffer.name || 'Someone';
+    $('mr-swap-title').textContent = n + ' swapped cards with you';
+    $('mr-swap-note').textContent = 'Our private room: only you and ' + n + ' can use it, and it rings either of you.' + (swapOffer.shares ? ' ' + n + ' also shared their personal room.' : '');
+    $('mr-swap-name').value = n;
+    const sh = $('mr-swap-share'); sh.checked = false; show(sh.parentNode, !!MR().mine());
+    show($('mr-swap'), true);
+  }
   function callWords(c) {
     const n = c.label || 'them';
     if (c.invite && c.state === 'accepted') return n + ' is coming to your meeting.';
-    if (c.invite && /^p-/.test(c.invite) && (c.state === 'waiting' || c.state === 'ringing')) return (c.state === 'ringing' ? 'Ringing ' : 'Calling ') + n + '…';
+    if ((c.priv || (c.invite && /^p-/.test(c.invite))) && (c.state === 'waiting' || c.state === 'ringing')) return (c.state === 'ringing' ? 'Ringing ' : 'Calling ') + n + '…';
     if (c.invite && (c.state === 'waiting' || c.state === 'ringing')) return 'Inviting ' + n + ' to ' + c.invite.split('.')[0] + '…';
     if (c.state === 'waiting') return 'Waiting for ' + n + '. ' + n + '’s devices ring when one of them has this room open.';
     if (c.state === 'ringing') return 'Ringing ' + n + '…';
@@ -119,7 +172,22 @@
     try { stampPrivate(); } catch (e) {}
     const st = part.state();
     doc.body.classList.toggle('mr-calling', !!(st.call && st.call.state !== 'answered'));   // the "only one here" card stays away while I call
-    if (st.owner) {
+    // In our private room both of us hold its key, so "owner" says nothing there: a page that is calling (its part has a
+    // call) paints as the caller.
+    const owner = st.owner && !(st.priv && st.call && st.call.priv);
+    if (owner && extRing) {   // a ring in one of our private rooms, heard by its hidden door
+      if (!ringing || ringing.pid !== extRing.pid || ringing.ext !== extRing) {
+        ringing = { pid: extRing.pid, ext: extRing };
+        $('mr-ring-title').textContent = extRing.label + ' is calling';
+        $('mr-ring-note').textContent = 'From our private room. Answer takes you there. Your mic turns on there; your camera stays off.';
+        $('mr-answer').textContent = 'Answer';
+        show($('mr-ring'), true);
+        ringStart();
+      }
+      return;
+    }
+    if (owner && !st.priv) listenAll(st);
+    if (owner) {
       if (st.rings.length) {
         const r = st.rings[0];
         if (!ringing || ringing.pid !== r.pid) {
@@ -133,8 +201,8 @@
           ringStart();
         }
       } else if (ringing) { ringing = null; show($('mr-ring'), false); ringStop(); }
-      if (st.standby && !barShut) bar(ringBlocked() ? 'Your room is open. Turn on the ringer so calls can ring here.' : 'Your room is open. People with your card ring here.', ringBlocked() ? () => { try { ringCtx().resume(); } catch (e) {} paint(); } : null, 'Turn on the ringer', true);
-      else if (!st.standby && st.mine && part.people().length && !barShut) bar('Your room', () => openMake(true), 'Give a card', true);
+      if (st.standby && !barShut) bar(ringBlocked() ? 'Your personal room is open. Turn on the ringer so calls can ring here.' : 'Your personal room is open. Your contacts ring here.', ringBlocked() ? () => { try { ringCtx().resume(); } catch (e) {} paint(); } : null, 'Turn on the ringer', true);
+      else if (!st.standby && st.mine && part.people().length && !barShut) bar('Your personal room', () => openMake(true), 'Swap cards', true);
       else if (!barShut) bar('');
       return;
     }
@@ -148,7 +216,8 @@
       if (h && h.textContent !== head) h.textContent = head;
       if (p && p.textContent !== body) p.textContent = body;
     }
-    if (c && c.state === 'answered') {
+    if (c && c.state === 'answered' && c.priv) bar('');   // our private room: the swap already gave both cards
+    else if (c && c.state === 'answered') {
       const host = part.hostIds()[0];
       if (MR().mine() && host && !part.gaveTo(host) && !barShut) bar('Give ' + c.label + ' your card, so they can call you back?', () => giveBack(host, c.label), 'Give my card', true);
       else bar('');
@@ -217,6 +286,10 @@
       return;
     }
     else if (ev.type === 'pask') { pask = ev; openPask(); }
+    else if (ev.type === 'swap') { swapOffer = ev; openSwap(); }
+    else if (ev.type === 'swap-done') { toast('Cards swapped with ' + ev.name + '. Our private room is in your Contacts.'); return; }
+    else if (ev.type === 'swap-saved') { toast(ev.name + ' is in your Contacts.'); return; }
+    else if (ev.type === 'swapping') { barShut = false; bar('Swapping cards with ' + (ev.name || 'them') + '…', null, '', true); return; }
     else if (ev.type === 'asking') { barShut = false; bar('Asking ' + (ev.name || 'them') + ' to your private room…', null, '', true); show($('mr-pick'), false); return; }
     else if (ev.type === 'asked-no') { toast('Not now, they said.'); return; }
     else if (ev.type === 'stranger') {   // someone here cannot prove they are one of this private room's people: I leave
@@ -247,11 +320,18 @@
     if (inMeeting && part) {
       for (const p of part.people()) {
         const b = doc.createElement('button'); b.type = 'button'; b.className = 'mr-who'; b.textContent = p.name || 'Guest';
-        b.onclick = async () => { const label = $('mr-make-label').value.trim() || p.name || 'Guest'; b.disabled = true; await part.give(p.id, label).catch(() => false); b.textContent = '✓ ' + label; };
+        b.onclick = async () => { const label = $('mr-make-label').value.trim() || p.name || 'Guest'; b.disabled = true; const sh = $('mr-make-share'); const r = await part.swap(p.id, label, { share: !!(sh && sh.checked && MR().mine()) }).catch(() => ({ err: 'x' })); b.textContent = r && !r.err ? '✓ ' + label : label + ' did not answer'; };
         who.appendChild(b);
       }
-      if (who.childNodes.length) { const n = doc.createElement('p'); n.textContent = 'Tap a person to hand them a card, or make a link.'; who.insertBefore(n, who.firstChild); }
+      if (who.childNodes.length) { const n = doc.createElement('p'); n.textContent = 'Tap a person to swap cards: it makes our private room, which only the two of you can use and which rings either of you.'; who.insertBefore(n, who.firstChild); }
     }
+    const swapping = !!(inMeeting && part && part.people().length);
+    show($('mr-make-share').parentNode, swapping && !!MR().mine());
+    $('mr-make-title').textContent = swapping ? 'Swap cards' : 'Give someone a card';
+    $('mr-make-note').textContent = swapping ? '' : 'A card lets one person call your personal room. Write who it is for: it is shown when they call.';
+    show($('mr-make-note'), !swapping);
+    $('mr-make-lab').textContent = swapping ? 'Name in your Contacts (if not their name)' : 'Who is it for?';
+    $('mr-make-go').textContent = swapping ? 'Make a card link instead' : 'Make card';
     show($('mr-make'), true);
     $('mr-make-label').focus();
   }
@@ -283,21 +363,36 @@
     if (missed.length) {
       h += '<div class="mr-missed"><b>Missed calls</b>' + missed.slice(0, 5).map((x) => '<div>' + esc(x.label) + ' · ' + esc(timeOf(x.at)) + '</div>').join('') + '<button type="button" id="mr-missed-x" class="lob-text">Clear</button></div>';
     }
-    h += '<div class="lob-hist-h">My Room</div>';
+    h += '<div class="lob-hist-h">My personal room</div>';
     if (mine) {
       h += '<div class="mr-mine"><span class="li-name">' + esc(mine.room) + '</span>' +
-        '<button type="button" id="mr-open" class="lob-ghost">Open my room</button>' +
+        '<button type="button" id="mr-open" class="lob-ghost">Open my personal room</button>' +
         '<button type="button" id="mr-make-card" class="lob-ghost">Give a card</button></div>';
-      if (!mobile()) h += '<label class="mr-stay"><input type="checkbox" id="mr-stay"' + (M.stayOn() ? ' checked' : '') + '> Stay in my room on this computer, so calls ring here</label>';
+      if (!mobile()) h += '<label class="mr-stay"><input type="checkbox" id="mr-stay"' + (M.stayOn() ? ' checked' : '') + '> Stay in my personal room on this computer, so calls ring here</label>';
+      // Honest about the step-1 limit: a computer listens in the most recently used private rooms only.
+      const nPriv = M.privates().filter((x) => x.pubs.length === 1).length;
+      if (!mobile() && nPriv > M.LISTEN_MAX) h += '<p class="lob-quiet" id="mr-listen-cap">While your personal room is open, calls ring here from your ' + M.LISTEN_MAX + ' most recently used private rooms. Calls from the other ' + (nPriv - M.LISTEN_MAX) + ' wait until ringing by notification arrives.</p>';
+      else if (!mobile() && nPriv) h += '<p class="lob-quiet" id="mr-listen-cap">While your personal room is open, calls from your private rooms ring here.</p>';
     } else {
       const own = M.hosted();
-      h += '<p class="lob-quiet">Your room is your address: people you give a card to can call you there.</p>' +
-        '<div class="mr-mine"><input id="mr-name" maxlength="40" placeholder="Name your room" autocomplete="off"><button type="button" id="mr-create" class="lob-ghost">Make My Room</button></div>';
+      h += '<p class="lob-quiet">Your personal room is your address, if you choose to share it. Contacts call you in your private rooms with them.</p>' +
+        '<div class="mr-mine"><input id="mr-name" maxlength="40" placeholder="Name your room" autocomplete="off"><button type="button" id="mr-create" class="lob-ghost">Make my personal room</button></div>';
       if (own.length) h += '<div class="mr-adopt">Or use one of your hosted rooms: ' + own.slice(0, 6).map((o) => '<button type="button" class="lob-text" data-adopt="' + esc(o.room + '.' + o.v) + '">' + esc(o.room) + '</button>').join(' ') + '</div>';
     }
     h += '<div class="lob-hist-h">Contacts</div>';
-    if (!list.length) h += '<p class="lob-quiet">No contacts yet. When someone gives you a card, it is kept here.</p>';
+    // A contact is our private room (made at the swap; it rings either of us), plus their personal room if they shared it.
+    const prs = M.privates().filter((x) => x.pubs.length === 1 && x.me);
+    const viaPriv = new Set(prs.map((x) => { const c = M.cardIn(x); return c ? M.roomKey(c.room, c.v) : ''; }).filter(Boolean));
+    if (!list.length && !prs.length) h += '<p class="lob-quiet">No contacts yet. Swap cards with someone in a meeting: it makes your private room with them.</p>';
+    for (const x of prs) {
+      const pc = M.cardIn(x);
+      h += '<div class="lob-item mr-contact mr-ours" data-proom="' + esc(x.room) + '" data-pv="' + esc(x.v) + '"><div class="li-main"><span class="li-name">' + esc(x.name || 'Contact') + '</span><span class="li-sub">Our private room' + (pc ? ' · personal room shared' : '') + '</span></div>' +
+        '<button type="button" class="lob-ghost" data-call="1">Call</button>' +
+        (pc ? '<button type="button" class="lob-text" data-visit="1" data-room="' + esc(pc.room) + '" data-v="' + esc(pc.v) + '">Personal room</button>' : '') +
+        '<button type="button" class="row-del" data-cut="1" title="Remove contact" aria-label="Remove contact">' + DEL_ICON + '</button></div>';
+    }
     for (const c of list) {
+      if (viaPriv.has(M.roomKey(c.room, c.v))) continue;   // shown with our private room
       h += '<div class="lob-item mr-contact" data-room="' + esc(c.room) + '" data-v="' + esc(c.v) + '"><div class="li-main"><span class="li-name">' + esc(c.name) + '</span></div>' +
         '<button type="button" class="lob-ghost" data-call="1">Call</button>' +
         '<button type="button" class="row-del" data-forget="1" title="Remove" aria-label="Remove">' + DEL_ICON + '</button></div>';
@@ -313,7 +408,21 @@
     });
     const stay = $('mr-stay'); if (stay) stay.onchange = () => M.setStay(stay.checked);
     box.querySelectorAll('[data-adopt]').forEach((b) => { b.onclick = () => { const [r, v] = b.getAttribute('data-adopt').split('.'); M.adopt(r, v); paintLobby(); }; });
-    box.querySelectorAll('.mr-contact').forEach((row) => {
+    box.querySelectorAll('.mr-ours').forEach((row) => {
+      const r = row.getAttribute('data-proom'), v = row.getAttribute('data-pv');
+      // A call: I go to our private room; its door rings their listening devices (I prove my member key first).
+      row.querySelector('[data-call]').onclick = () => {
+        try { root.sessionStorage.setItem('gifos_join_av', JSON.stringify({ v: 1, cam: false, mic: false, at: Date.now() })); root.sessionStorage.setItem('gifos_mr_mic', r + '.' + v); } catch (e) {}
+        openRoom(r, v);
+      };
+      const vis = row.querySelector('[data-visit]'); if (vis) vis.onclick = () => openRoom(vis.getAttribute('data-room'), vis.getAttribute('data-v'));
+      row.querySelector('[data-cut]').onclick = () => {
+        const nm = (row.querySelector('.li-name') || {}).textContent || 'this contact';
+        if (root.confirm && !root.confirm('Remove ' + nm + '? Our private room is deleted from this device and stops ringing you.')) return;
+        M.cutPrivate(r, v); paintLobby();
+      };
+    });
+    box.querySelectorAll('.mr-contact:not(.mr-ours)').forEach((row) => {
       const r = row.getAttribute('data-room'), v = row.getAttribute('data-v');
       row.querySelector('[data-call]').onclick = () => {
         // A call to someone I share a pair room with rings their My Room naming that room; Answer takes both there.
@@ -327,8 +436,13 @@
 
   function wire() {
     const on = (id, f) => { const el = $(id); if (el) el.onclick = f; };
-    on('mr-answer', () => { if (ringing && part) part.answer(ringing.pid); ringing = null; ringStop(); show($('mr-ring'), false); paint(); });
-    on('mr-decline', () => { if (ringing && part) part.decline(ringing.pid); ringing = null; ringStop(); show($('mr-ring'), false); paint(); });
+    on('mr-answer', () => { const er = extRing; if (er && er.door.part) { extRing = null; er.door.part.answer(er.pid); } else if (ringing && part) part.answer(ringing.pid); ringing = null; ringStop(); show($('mr-ring'), false); paint(); });
+    on('mr-decline', () => { const er = extRing; if (er && er.door.part) { extRing = null; er.door.part.decline(er.pid); } else if (ringing && part) part.decline(ringing.pid); ringing = null; ringStop(); show($('mr-ring'), false); paint(); });
+    on('mr-swap-no', () => { if (swapOffer && part) part.swapNo(swapOffer.sid); swapOffer = null; show($('mr-swap'), false); });
+    on('mr-swap-yes', async () => {
+      const o = swapOffer; swapOffer = null; show($('mr-swap'), false); if (!o || !part) return;
+      await part.swapSave(o.sid, $('mr-swap-name').value.trim() || o.name, !!($('mr-swap-share').checked && MR().mine())).catch(() => false);
+    });
     on('mr-offer-no', () => { offer = null; show($('mr-offer'), false); });
     on('mr-offer-yes', () => {
       if (offer) { const name = $('mr-offer-name').value.trim() || offer.card.room; if (part) part.save(offer.card, name); else MR().keep(Object.assign({}, offer.card, { name })); }
@@ -346,7 +460,7 @@
     if (inv && root.MutationObserver) new root.MutationObserver(() => {
       const acts = $('inv-actions');
       if (inv.style.display === 'none' || !acts || $('mr-inv-contact') || !MR() || !MR().contacts().length) return;
-      const b = doc.createElement('button'); b.type = 'button'; b.id = 'mr-inv-contact'; b.className = 'appear-secondary'; b.textContent = 'Private room with…';
+      const b = doc.createElement('button'); b.type = 'button'; b.id = 'mr-inv-contact'; b.className = 'appear-secondary'; b.textContent = 'Call a contact…';
       b.onclick = () => { inv.style.display = 'none'; openPick(); };
       acts.insertBefore(b, acts.firstChild);
     }).observe(inv, { attributes: true, attributeFilter: ['style'] });
@@ -400,7 +514,8 @@
       <h3 id="mr-make-title">Give someone a card</h3>
       <p id="mr-make-note">A card lets one person call your room. Write who it is for: it is shown when they call.</p>
       <div id="mr-make-who"></div>
-      <label class="lob-pwlab" for="mr-make-label">Who is it for?</label>
+      <label class="mr-share"><input type="checkbox" id="mr-make-share"> Also share my personal room</label>
+      <label class="lob-pwlab" for="mr-make-label" id="mr-make-lab">Who is it for?</label>
       <input id="mr-make-label" maxlength="40" autocomplete="off">
       <div id="mr-make-out" hidden><input id="mr-make-link" readonly aria-label="Card link"><div id="mr-make-qr" class="mr-qr"></div></div>
       <button id="mr-make-close" type="button">Close</button>
@@ -409,12 +524,23 @@
   </div>
   <div class="name-modal" role="dialog" aria-modal="true" id="mr-pick" aria-labelledby="mr-pick-title" style="display:none">
     <div class="name-box">
-      <h3 id="mr-pick-title">Private room with…</h3>
+      <h3 id="mr-pick-title">Call a contact…</h3>
       <p id="mr-pick-note">Pick people. A private room is just for them; each one’s room rings and Join brings them in.</p>
       <div id="mr-pick-list"></div>
       <button id="mr-pick-close" type="button">Close</button>
       <button id="mr-pick-here" type="button">Into this meeting</button>
       <button id="mr-pick-priv" type="button">Private room</button>
+    </div>
+  </div>
+  <div class="name-modal" role="dialog" aria-modal="true" id="mr-swap" aria-labelledby="mr-swap-title" style="display:none">
+    <div class="name-box">
+      <h3 id="mr-swap-title">Swap cards</h3>
+      <p id="mr-swap-note"></p>
+      <label class="lob-pwlab" for="mr-swap-name">Name in your Contacts</label>
+      <input id="mr-swap-name" maxlength="40" autocomplete="off">
+      <label class="mr-share"><input type="checkbox" id="mr-swap-share"> Also share my personal room</label>
+      <button id="mr-swap-no" type="button">Not now</button>
+      <button id="mr-swap-yes" type="button">Save</button>
     </div>
   </div>
   <div class="name-modal" role="alertdialog" aria-modal="true" id="mr-pask" aria-labelledby="mr-pask-title" style="display:none">
@@ -435,6 +561,7 @@
     if (sep && !$('lob-myroom')) { const d = doc.createElement('div'); d.id = 'lob-myroom'; d.className = 'lob-myroom'; d.hidden = true; sep.parentNode.insertBefore(d, sep); }
   }
   function start() {
+    try { if (root.frameElement && root.frameElement.getAttribute('data-mr-listen') === '1') return; } catch (e) {}   // a hidden door: no view
     build();
     wire();
     // The lobby: a page with no room in its address.
@@ -458,7 +585,7 @@
   }
   // DEBUG=on only: a test reads the part's state and the bar's words.
   const debugOn = () => { try { const D = GifOS.debugLog; if (D && D.pageWants) return !!D.pageWants().on; } catch (e) {} try { return /(?:^|[#&?])debug=(?:on|1|true)/i.test(root.location.hash + root.location.search) || root.sessionStorage.getItem('gifos_debug') === '1'; } catch (e) { return false; } };
-  try { if (debugOn()) root.__mrState = () => ({ part: part ? part.state() : null, bar: $('mr-bar') && !$('mr-bar').hidden ? $('mr-bar-text').textContent : '', ring: !!ringing, ringTitle: $('mr-ring-title') ? $('mr-ring-title').textContent : '', offer: $('mr-offer') && $('mr-offer').style.display !== 'none' ? $('mr-offer-title').textContent : '', ringTone: !!ringTimer, pask: $('mr-pask') && $('mr-pask').style.display !== 'none' ? $('mr-pask-title').textContent : '' }); } catch (e) {}
+  try { if (debugOn()) root.__mrState = () => ({ part: part ? part.state() : null, bar: $('mr-bar') && !$('mr-bar').hidden ? $('mr-bar-text').textContent : '', ring: !!ringing, ringTitle: $('mr-ring-title') ? $('mr-ring-title').textContent : '', offer: $('mr-offer') && $('mr-offer').style.display !== 'none' ? $('mr-offer-title').textContent : '', ringTone: !!ringTimer, pask: $('mr-pask') && $('mr-pask').style.display !== 'none' ? $('mr-pask-title').textContent : '', swap: $('mr-swap') && $('mr-swap').style.display !== 'none' ? $('mr-swap-title').textContent : '', doors: Array.from(doors, ([k, d]) => ({ room: k, part: d.part ? d.part.state() : null })) }); } catch (e) {}
   const go = () => { try { start(); } catch (e) { root.__mrErr = String(e && e.stack || e); try { console.error('my room view: ' + root.__mrErr); } catch (x) {} } };
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', go); else go();
 })(typeof window !== 'undefined' ? window : globalThis);

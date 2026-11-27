@@ -4035,3 +4035,8 @@ body.mr-calling #alonecard, body.mr-on #alonecard { display: none !important; }
 #lobby .lob-myroom input:not([type]) { flex: 1 1 160px; min-height: 44px; box-sizing: border-box; padding: .5rem .6rem; border-radius: .45rem; border: 1.5px solid var(--c-gray); color: var(--c-ink); background: var(--c-white); font-size: 16px; }
 #lobby .lob-myroom .lob-ghost { min-height: 44px; min-width: 44px; padding: 0 12px; background: var(--c-white); color: var(--c-ink); border: 1.5px solid var(--c-gray); border-radius: .45rem; font-weight: 650; font-size: 16px; cursor: pointer; }
 #lobby .lob-myroom .lob-text { min-height: 44px; background: none; border: 0; color: var(--c-blue); text-decoration: underline; font-size: 16px; cursor: pointer; }
+/* My Room: a hidden door that listens for rings in one private room (it is a page, never seen) */
+.mr-door { position: fixed; left: -10px; top: -10px; width: 1px; height: 1px; border: 0; opacity: 0; pointer-events: none; }
+/* My Room: "Also share my personal room" in the swap dialogs (a plain checkbox line, not a form field) */
+.mr-share { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 8px 0; font-size: 15px; }
+.mr-share input[type="checkbox"] { width: 20px; height: 20px; min-height: 0; margin: 0; padding: 0; flex: none; }
