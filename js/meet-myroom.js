@@ -221,9 +221,13 @@
     const myCard = () => {
       if (!hosted) return null;
       if (!linkCard) { try { const tok = root.sessionStorage.getItem(SS); const t = tok && parseToken(tok); if (t && t.seed) linkCard = { token: tok, seed: t.seed, c: t.c, name: (contactFor(room, v) || {}).name || room }; } catch (e) {} }
-      if (linkCard) return linkCard;
-      const c = contactFor(room, v); if (!c) return null;
-      const t = parseToken(c.token); return t && t.seed ? { token: c.token, seed: t.seed, c: t.c, name: c.name } : null;
+      const c = contactFor(room, v);
+      const t = c && parseToken(c.token);
+      const saved = t && t.seed ? { token: c.token, seed: t.seed, c: t.c, name: c.name } : null;
+      // Two cards for one room (the one in Contacts, the one a link brought this visit): the one that runs out later.
+      const expOf = (x) => { try { return +JSON.parse(x.c.sp).exp || 0; } catch (e) { return 0; } };
+      if (saved && linkCard) return expOf(saved) >= expOf(linkCard) ? saved : linkCard;
+      return saved || linkCard;
     };
     async function showCard(pid) {
       const mc = myCard(); if (!mc || told.has(pid)) return;
@@ -363,7 +367,10 @@
       emit({ type: 'offer', card: f, from: '', fromLink: true });
       return f;
     }
-    function save(f, name) { const c = keep(Object.assign({}, f, { name })); if (linkCard && linkCard.token === f.token) linkCard.name = c.name; if (call) { call.label = c.name; emit({ type: 'call', call }); } return c; }
+    function save(f, name) {
+      const c = keep(Object.assign({}, f, { name }));
+      if (linkCard && linkCard.token === f.token) { linkCard = null; try { root.sessionStorage.removeItem(SS); } catch (e) {} }   // kept in Contacts now: one copy
+      if (call) { call.label = c.name; emit({ type: 'call', call }); } return c; }
 
     return {
       on: (f) => { listeners.push(f); if (lastOffer) { const o = lastOffer; lastOffer = null; try { f(o); } catch (e) {} } return () => { const i = listeners.indexOf(f); if (i >= 0) listeners.splice(i, 1); }; },

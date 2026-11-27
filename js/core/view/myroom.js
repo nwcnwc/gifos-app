@@ -90,6 +90,15 @@
       return;
     }
     const c = st.call;
+    // Held at the door (the owner's room stands by): the waiting-room screen names who is being called.
+    const wd = $('waitdoor');
+    if (c && c.state !== 'answered' && wd && !wd.hidden) {
+      const n = c.label || 'them', h = wd.querySelector('h1'), p = wd.querySelector('p');
+      const head = c.state === 'ringing' ? 'Ringing ' + n + '…' : c.state === 'declined' ? n + ' can’t answer right now' : c.state === 'noanswer' ? n + ' didn’t answer' : 'Calling ' + n + '…';
+      const body = c.state === 'ringing' ? 'You’ll join when ' + n + ' answers. ' + n + ' can’t see or hear you yet.' : c.state === 'declined' || c.state === 'noanswer' ? 'You can wait here, or leave and call again later.' : n + '’s room is open. Waiting for it to ring.';
+      if (h && h.textContent !== head) h.textContent = head;
+      if (p && p.textContent !== body) p.textContent = body;
+    }
     if (c && c.state === 'answered') {
       const host = part.hostIds()[0];
       if (MR().mine() && host && !part.gaveTo(host) && !barShut) bar('Give ' + c.label + ' your card, so they can call you back?', () => giveBack(host, c.label), 'Give my card', true);
