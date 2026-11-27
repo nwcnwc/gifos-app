@@ -111,6 +111,9 @@
   "js/gifos-fullscreen.js",
   "js/core/view/kit.js"
  ],
+ "embedLib": [
+  "js/meet-subs.js"
+ ],
  "apps": [
   "js/gifos-gif.js",
   "js/app-owner.js",

@@ -71,5 +71,10 @@
   "embed.trShotsTip": "Wenn sich ein geteilter Bildschirm ändert und stehen bleibt, etwa eine neue Folie, behält das Protokoll einen Screenshot davon. Er entsteht auf diesem Gerät aus dem, was Sie sehen: nichts wird gesendet, und ein Bildschirm, den Sie unscharf sehen, wird nie aufgenommen.",
   "embed.trDownload": "Herunterladen",
   "embed.trShotOf": "Bildschirm von {name}, {time}",
-  "embed.trShotWho": "Bildschirm von {name}"
+  "embed.trShotWho": "Bildschirm von {name}",
+  "embed.full": "VOLL",
+  "embed.msgFull": "Zuschauerlimit erreicht.",
+  "embed.fullUp": "Auf Unlimited upgraden für {price}/Monat",
+  "embed.fullPass": "{price}-Pass: 4 Stunden Unlimited",
+  "embed.fullWait": "Sie kommen von selbst hinein, sobald ein Platz frei wird."
 }

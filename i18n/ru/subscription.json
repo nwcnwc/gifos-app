@@ -237,5 +237,7 @@
   "subscription.cum.except": "Всё из «{plan}», кроме:",
   "subscription.cum.same": "Всё из «{plan}»",
   "subscription.cum.meetings": "Всё из «{plan}», до {n} встреч одновременно.",
-  "subscription.cum.pass": "Всё из «{plan}» на 4 часа"
+  "subscription.cum.pass": "Всё из «{plan}» на 4 часа",
+  "subscription.embedPassLead": "Купите ниже четырёхчасовой пропуск. Встреча, из которой вы пришли, получит его сразу после оплаты.",
+  "subscription.embedPassSent": "Ваш пропуск активен. Это окно можно закрыть."
 }
