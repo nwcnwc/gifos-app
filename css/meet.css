@@ -3909,3 +3909,46 @@ body.comfy.sv-avail.has-app:not(.app-full):not(.solo-app):not(.app-room) #tophea
 .cellcard.has-img > span { display: none; }
 .cellcard > img.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .009))) saturate(.9); transform: scale(1.07); }
 .cellcard > img.blur2 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-max, .0225))) saturate(.75); transform: scale(1.15); }
+/* ---- The view button never leaves a meeting (2026-11-26) ----
+   People look for the view exactly when the screen has gone quiet: after a pick, in Scroll or the Stage view, or with
+   the dock tucked. A quiet meeting (dock-calm, head-calm, view-calm, dock-idle, chrome-away) fades everything else in
+   the top row, but the view button stays where it was, on its own dark pill so it reads over any picture, and one tap
+   opens the picker. A broadcast keeps its own rules. */
+body:is(.dock-calm, .head-calm, .view-calm, .dock-idle, .chrome-away):not(.broadcast) #tophead > #fitbtn {
+  opacity: 1 !important; pointer-events: auto !important; visibility: visible !important; transition: none; }
+body:is(.dock-calm, .head-calm, .view-calm, .dock-idle, .chrome-away, .sv-live):not(.broadcast) #tophead > #fitbtn {
+  background: var(--c-scrim); border-radius: var(--r-pill); }
+/* ---- The agenda on a phone (2026-11-26) ----
+   Fields are 16px (a smaller field makes iOS zoom the page on every tap) and every control is a 44px target.
+   A narrow pane (a phone upright) or a short window (a phone on its side) drops what the tab row and the list
+   already say: the "Agenda" heading (the tab says it) and the current item's big title (the list marks it), so
+   the whole list fits where the faces leave room. Stop for everyone sits under the list, quiet, away from Hide. */
+.ct-pane.ag { container-type: inline-size; }
+.ag-in-t, .ag-in-min { min-height: 44px; font-size: 16px; }
+.ag-mini, .ag-chip { min-width: 44px; min-height: 44px; }
+.ag-btn.ag-stopall { display: block; margin-top: 12px; background: none; border: 1px solid var(--c-ink-2); color: var(--c-gray); }
+@container (max-width: 560px) {
+  .ag-title, .ag-nowt { display: none; }
+  .ag-head { gap: 6px 10px; }
+  .ag-pos { font-size: 14px; color: var(--c-white); }
+  .ag-now { margin: 8px 0 2px; }
+  .ag-bar { margin: 4px 0 4px; }
+  .ag-item { font-size: 16px; }
+  .ag-add .ag-in-t { flex: 1 1 100%; min-width: 0; }
+  .ag-add .ag-in-min { flex: 0 0 88px; width: 88px; }
+  .ag-add .ag-btn { flex: 1 1 auto; }
+  /* An item being edited is one row: its title, its minutes, up, down, remove. The counter shows only at the limit. */
+  .ag-item:has(> .ag-in-t) { flex-wrap: nowrap; gap: 4px; padding: 2px 0; }
+  .ag-item > .ag-in-t { flex: 1 1 0; min-width: 0; }
+  .ag-item > .ag-in-min { flex: 0 0 60px; width: 60px; padding: 0 6px; }
+  .ag-count:not(.at) { display: none; }
+  .ag-item:has(> .ag-in-t)::before { flex-basis: 16px; }
+}
+@media (max-height: 500px) {
+  .ct-pane.ag { padding: 10px 14px; }
+  .ag-title, .ag-nowt { display: none; }
+  .ag-now { margin: 6px 0 2px; }
+}
+/* The folded app bar in a meeting on a phone: the row's buttons are full-size targets too. */
+#appbar[data-fold="1"] > button { min-height: 44px; min-width: 44px; }
+.viewpick { border: 1px solid var(--c-ink-2); box-shadow: 0 10px 28px rgba(0,0,0,.5); }

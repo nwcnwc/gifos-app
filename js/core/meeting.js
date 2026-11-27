@@ -4336,7 +4336,8 @@
       if (it.kind === 'agenda') {
         // As tall as its list, at least a quarter of the width.
         const n = (CT.ag && CT.ag.items.length) || 1;
-        const h = Math.max(220, 150 + n * 44 + (CT.agEdit ? 120 : 0));
+        // A phone-wide pane wraps its buttons under the count line: one more row.
+        const h = Math.max(220, 150 + n * 44 + (CT.agEdit ? 120 : 0) + ((w || 800) < 560 ? 52 : 0));
         return Math.max(0.6, (w || 800) / h);
       }
       return 0; // the app fills what it is given
