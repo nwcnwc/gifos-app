@@ -6900,14 +6900,14 @@
     }
     function gossipWaits(dc, str, p) {
       const q = dc.__gq || (dc.__gq = []);
-      const held = !pipeFirstDone(dc) && pipeLink(p) && !BROADCAST;   // TVBLANK: a broadcast pipe never sends the sdn announce; holding would starve it of all gossip (the vouch too)
+      const held = !pipeFirstDone(dc) && pipeLink(p);
       if (!q.length && !held && dc.bufferedAmount <= GOSSIP_BUF_MAX) return false;
       if (q.length >= GOSSIP_Q_MAX) q.shift();
       q.push(str);
       if (!dc.__gqWired) {
         dc.__gqWired = true;
         try { dc.bufferedAmountLowThreshold = GOSSIP_BUF_MAX >> 1; } catch (e) {}
-        dc.addEventListener('bufferedamountlow', () => { if (!pipeFirstDone(dc) && pipeLink(p) && !BROADCAST) return; gossipDrain(dc); });
+        dc.addEventListener('bufferedamountlow', () => { if (!pipeFirstDone(dc) && pipeLink(p)) return; gossipDrain(dc); });
       }
       return true;
     }
@@ -18391,7 +18391,7 @@
           };
           // plane 5792: each Section 1 neighbour. a pipe that already carries this feed is left to the plane's pipe mix
           for (const t of s1peers) {
-            if (owner && pipesNow.indexOf(t) >= 0 && (pipeStg.get(owner) === t || mosAnn.has(t + '|' + key) || (!pipeVideo(t) && !BROADCAST))) continue;   // TVBLANK: a broadcast builds no pipe mix (roomBeyondRow), so the feed itself crosses a free pipe; the TURN guard keeps its video off until vouched
+            if (owner && pipesNow.indexOf(t) >= 0 && (pipeStg.get(owner) === t || mosAnn.has(t + '|' + key) || !pipeVideo(t))) continue;
             const picked = pick(t); if (!picked) continue;
             emitFull(key, t, slot, hopMeta(picked.h, picked.vp), slot, picked.stream, picked.sb);
           }
@@ -18414,7 +18414,7 @@
           const pipesNow = pipePeers();
           const skipOwn = (t) => !t || t === myId;
           for (const t of s1peers) {
-            if (pipesNow.indexOf(t) >= 0 && (pipeStg.get(myId) === t || mosAnn.has(t + '|' + ok) || (!pipeVideo(t) && !BROADCAST))) continue;   // TVBLANK: see above
+            if (pipesNow.indexOf(t) >= 0 && (pipeStg.get(myId) === t || mosAnn.has(t + '|' + ok) || !pipeVideo(t))) continue;
             if (skipOwn(t)) continue;
             pushOwn(ok, t, ok, (direct && !direct.has(t)) ? { h: 0, sb: 1 } : hm0, false);
           }
@@ -25553,8 +25553,12 @@
       if (!update) return beyondRowHeld;
       const s = meshSeat(), c = meshCoord();
       const beyondRowRaw = (() => {
-        if (!s || !c || BROADCAST) return false;
-        if (pipePeers().length) return true;   // SUB.4: a pipe is one more child: the meeting goes on past my row
+        if (!s || !c) return false;
+        // SUB.4: a pipe is one more child: the meeting goes on past my row. In a broadcast too (TVBLANK, 0.9.28.57 live): a
+        // viewer whose only path is a TURN pipe gets the Stage in the pipe's mix (sound unvouched, picture once vouched) and
+        // the pipe's gossip (the vouch) waits on that mix's announce; with the plane off a pipe carried nothing at all.
+        if (pipePeers().length) return true;
+        if (BROADCAST) return false;
         // SUB.4 at every seat of a joined room, not only at a pipe's end: my room fold counts the people of the other rooms (far,
         // per door), so the meeting goes on past my row although none of it is in my occ. A one-row room's non-end seat read its
         // room as just its row: no Stadium plane, no claim of its head's 'sdm', deaf and blind to the whole far room (pk42 B2).
