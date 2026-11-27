@@ -107,6 +107,16 @@ const tapTs = new Map();  // srcId -> the tap's transformer (the SKR handle)
 const skrLast = new Map();// srcId -> last sendKeyFrameRequest ms (rate limit)
 const pipes = new Map();  // pipeId -> { writer, q, needKey, mime, tmplMime, wrote, dropped, swapErr, kfAsk, lastWriteAt, misreported }
 const QMAX = 40;          // frames of content buffered per pipe; overflow drops to next key (reference chains)
+// THE PICTURE WAITS FOR ITS SOUND. This seat forwards a feed's picture as the bytes it received, at once, but the
+// feed's sound leaves only after this seat's own jitter buffer has played it (a sound track forwarded through a
+// browser is decoded, buffered and encoded again). Both are stamped with the time they leave here, so a receiver
+// further on lines them up exactly as they left: the picture early by this seat's sound buffer (1 s and more at the
+// start of a file over a busy link). The page tells each pipe how long its feed's sound waits here (hold, ms); a
+// content frame is written no sooner than that long after it arrived, so picture and sound leave together.
+const due = (p, f) => !p.hold || !f.at || nowMs() - f.at >= p.hold;
+// the frames whose time has come (the backlog a want reports: the page's catch-up mints for these, never for held ones)
+const dueN = (p) => { if (!p.hold) return p.q.length; let n = 0; while (n < p.q.length && due(p, p.q[n])) n++; return n; };
+const qmaxOf = (p) => QMAX + (p.hold ? p.holdRoom || 0 : 0);   // room for the held frames (the page sends it with the hold)
 // THE LAST KEY IS KEPT. A still picture (a slide, a document)
 // produces no frames once it stops changing, and a WebRTC encoder answers a
 // keyframe request only with its next frame: no frame, no key, ever. So a
@@ -247,10 +257,12 @@ setInterval(() => {
   const now = nowMs();
   for (const [id, p] of pipes) {
     if (p.paused || !p.q.length) continue;
-    const due = Math.min(CATCH_MAX_MS, Math.max(CATCH_MIN_MS, 2 * (p.tlEw || 0)) * Math.pow(2, p.reAskN || 0));
-    if (now - (p.askAt || 0) < due) continue;
+    const h = p.q[0];
+    if (p.hold && h.at && !h.asked) { if (!due(p, h)) continue; h.asked = true; want(id, h.type === 'key', dueN(p)); continue; }
+    const dueMs = Math.min(CATCH_MAX_MS, Math.max(CATCH_MIN_MS, 2 * (p.tlEw || 0)) * Math.pow(2, p.reAskN || 0));
+    if (now - (p.askAt || 0) < dueMs) continue;
     p.reWant = (p.reWant || 0) + 1; p.reAskN = (p.reAskN || 0) + 1;
-    want(id, p.q[0].type === 'key', p.q.length);
+    want(id, p.q[0].type === 'key', dueN(p));
   }
 }, 10);
 onmessage = (e) => {
@@ -292,11 +304,12 @@ onmessage = (e) => {
     seedKey(m.srcId, m.pipeId);
     askKey(m.srcId, m.pipeId);
   }
+  else if (m.op === 'hold') { const p = pipeFor(m.pipeId); p.hold = Math.max(0, +m.ms || 0); p.holdRoom = Math.max(0, m.room | 0); }
   else if (m.op === 'carrier') { const p = pipeFor(m.pipeId); try { p.cw = m.writable.getWriter(); } catch (e) { p.cw = null; } if (p.cw && p.q.length) mintIn(p, p.q[0].type === 'key'); }
   else if (m.op === 'unroute') { releaseTap(taps, tapTs, skrLast, m.srcId, m.pipeId); pipes.delete(m.pipeId); }
   else if (m.op === 'stats') {
     const out = {};
-    for (const [id, p] of pipes) out[id] = { q: p.q.length, wrote: p.wrote, seen: p.seen || 0, tmpl: p.tmpl || 0, primed: p.primed || 0, dropped: p.dropped, swapErr: p.swapErr, kfAsk: p.kfAsk, kdrop: p.kdrop || 0, nkDrop: p.nkDrop || 0, skr: p.skr || 0, seeded: p.seedN || 0, reWant: p.reWant || 0, paused: !!p.paused, needKey: !!p.needKey, lastWriteAt: p.lastWriteAt, mime: p.mime, tmplMime: p.tmplMime, detached: p.detached || 0, lastBytes: p.lastBytes || 0, inWorker: !!p.cw, mints: p.mints || 0, mintErr: p.mintErr || 0, lat: p.latN ? Math.round(p.latEw) : null, latMax: p.latMax ? Math.round(p.latMax) : null, latN: p.latN || 0, tl: p.tlN ? Math.round(p.tlEw) : null };
+    for (const [id, p] of pipes) out[id] = { q: p.q.length, wrote: p.wrote, seen: p.seen || 0, tmpl: p.tmpl || 0, primed: p.primed || 0, dropped: p.dropped, swapErr: p.swapErr, kfAsk: p.kfAsk, kdrop: p.kdrop || 0, nkDrop: p.nkDrop || 0, skr: p.skr || 0, seeded: p.seedN || 0, reWant: p.reWant || 0, paused: !!p.paused, needKey: !!p.needKey, lastWriteAt: p.lastWriteAt, mime: p.mime, tmplMime: p.tmplMime, detached: p.detached || 0, lastBytes: p.lastBytes || 0, inWorker: !!p.cw, mints: p.mints || 0, mintErr: p.mintErr || 0, lat: p.latN ? Math.round(p.latEw) : null, latMax: p.latMax ? Math.round(p.latMax) : null, latN: p.latN || 0, tl: p.tlN ? Math.round(p.tlEw) : null, hold: p.hold || 0 };
     if (m.wlog) for (const [id, p] of pipes) if (out[id]) out[id].wlog = (p.wlog || []).slice();
     postMessage({ op: 'stats', seq: m.seq, stats: out });
   }
@@ -351,7 +364,7 @@ onrtctransform = (e) => {
             if (p.paused) continue; // a parked job's minted frames die at its detached track — queueing is waste and trips the watchdog
             p.seen = (p.seen || 0) + 1;
             p.mime = mime;
-            if (p.q.length >= QMAX) {
+            if (p.q.length >= qmaxOf(p)) {
               // OVERFLOW, key-preserving (frza12): clearing the WHOLE queue
               // burned any key already queued and forced a full SKR round
               // trip — at 8fps the refill-clear cycle ran ~1Hz and the room
@@ -380,13 +393,14 @@ onrtctransform = (e) => {
             else { if (frame.type === 'key') { p.needKey = false; p.nkDrop = 0; p.seeded = false; }
               const own = handedOut ? bytes.slice(0) : bytes; handedOut = true;
               p.q.push({ bytes: own, ts, type: frame.type, at: nowMs() });
+              if (!due(p, p.q[0])) continue;   // a held head is asked for when its time comes (the catch-up beat)
               // DEMAND-MINT: one template per queued frame, typed by the head.
               // q rides along so the page can CATCH UP: at healthy fps the
               // want->postMessage->main-thread->requestFrame round trip lags
               // content by a fraction of a frame, the backlog compounds, and
               // QMAX overflow re-keys the whole downstream every ~15s (frza10
               // — the steady-state freeze cycle; invisible at crawl fps).
-              want(pid, p.q[0].type === 'key', p.q.length); }
+              want(pid, p.q[0].type === 'key', dueN(p)); }
           }
         }
         writer.write(frame); // local decode unaffected
@@ -430,6 +444,7 @@ onrtctransform = (e) => {
           continue;
         }
         const head = p.q[0];
+        if (!due(p, head) && !(head.type !== 'key' && frame.type === 'key')) continue;   // early: the head's time has not come
         if (head.type === 'key' && frame.type !== 'key') {
           // key content, delta template — re-ask for a KEY mint; if this keeps
           // starving something is broken upstream of the mint, tell the page.
@@ -638,6 +653,9 @@ onrtctransform = (e) => {
   // Repoint a live pipe at a new tapped source (container identity: the
   // sender, carrier and downstream m-line never move; only the route does).
   // The caller taps the new receiver first — reroute is just the table flip.
+  // How long this pipe's content waits before it is written (the feed's sound delay on this seat), and how many more
+  // frames its queue may hold meanwhile. 0 lifts the hold.
+  function holdPipe(pipeId, ms, room) { if (worker) worker.postMessage({ op: 'hold', pipeId, ms: Math.max(0, +ms || 0), room: Math.max(0, room | 0) }); }
   function reroute(pipeId, oldSrcId, srcId) { if (worker) worker.postMessage({ op: 'reroute', oldSrcId, srcId, pipeId }); }
   // The page-side half of the keykick (see the worker's 'keykick' comment):
   // ask upstream for key content AND mint a key-typed template to pair with
@@ -681,5 +699,5 @@ onrtctransform = (e) => {
     return null;
   }
 
-  GifOS.meshPipe = { supported, tapReceiver, pipeSender, pausePipe, keyKick, reroute, unpipe, makeCarrier, receiverForTrack, stats, chain, on, codecMismatch, releaseTap, _debugSizes, _workerSrc };
+  GifOS.meshPipe = { supported, tapReceiver, pipeSender, pausePipe, holdPipe, keyKick, reroute, unpipe, makeCarrier, receiverForTrack, stats, chain, on, codecMismatch, releaseTap, _debugSizes, _workerSrc };
 })(typeof window !== 'undefined' ? window : globalThis);

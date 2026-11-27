@@ -183,6 +183,8 @@
     PAYPAL_POLL_MS: 2000,   // ms
     PEER_SILENT_MS: 30000,   // ms
     PIN_HOLD_MS: 2000,   // ms
+    PIPE_HOLD_EVERY_MS: 1000,   // ms
+    PIPE_HOLD_MAX_MS: 4000,   // ms
     PIP_APP_FPS: 4,   // count
     PIP_AUTO_FALLBACK_MS: 2000,   // ms
     PIP_CARD_FPS: 2,   // count
