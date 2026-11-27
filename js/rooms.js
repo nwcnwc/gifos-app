@@ -231,12 +231,13 @@
     all('[data-revoke]', (b) => { MR().revoke(b.getAttribute('data-revoke')); paint(); });
   }
 
-  // ---- sheets: a sticky header (title + Close), a scrolling body, a sticky footer with the actions --------------------
+  // ---- sheets: the shared dialog (js/dialog.js): a header (title + Close) that moves it, a scrolling body, the actions
+  // always on screen ----------------------------------------------------------------------------------------------------
   function sheet(title, body, actions) {
     closeSheet();
-    const wrap = doc.createElement('div'); wrap.className = 'sheet-back'; wrap.id = 'sheet';
-    wrap.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-t"><header><h2 id="sheet-t">' + esc(title) + '</h2><button type="button" class="text" id="sheet-x">Close</button></header>' +
-      '<div class="sheet-body">' + body + '</div>' + (actions ? '<footer>' + actions + '</footer>' : '') + '</div>';
+    const wrap = doc.createElement('div'); wrap.className = 'sheet-back dlg-backdrop'; wrap.id = 'sheet';
+    wrap.innerHTML = '<div class="sheet dlg-box" role="dialog" aria-modal="true" aria-labelledby="sheet-t"><header class="dlg-head"><h2 id="sheet-t">' + esc(title) + '</h2><button type="button" class="text" id="sheet-x">Close</button></header>' +
+      '<div class="sheet-body dlg-body">' + body + '</div>' + (actions ? '<footer class="dlg-actions">' + actions + '</footer>' : '') + '</div>';
     wrap.addEventListener('click', (e) => { if (e.target === wrap) closeSheet(); });
     doc.body.appendChild(wrap); doc.body.classList.add('sheet-on');
     $('sheet-x').onclick = closeSheet;
