@@ -9571,12 +9571,12 @@
         // pass (tiles, outbound, share height, shared app) per window — not one
         // per status frame.
         if (took !== null) scheduleRoomReact();
+      } else if (msg.kind === 'mod') {
+        takeMod(from, msg); // signature-verified in admin rooms (§9)
       } else if (msg.kind === 'modask') {
         // A neighbour saw my beat name a signed table it never verified (modBeatThin): it gets the table, on our channel.
         const q = peers.get(from), now = Date.now();
         if (q && q.dc && q.dc.readyState === 'open' && !(q.modAnsAt && now - q.modAnsAt < SCALE.HB / 2)) { q.modAnsAt = now; dcSend(q, { k: 'sig', msg: { kind: 'mod', mod: modTable, modw: gossipModW() } }); }
-      } else if (msg.kind === 'mod') {
-        takeMod(from, msg); // signature-verified in admin rooms (§9)
       } else if (msg.kind === 'appstop') {
         // Someone stopped the room's app. Open room: anyone may (anarchy,
         // attributed), signed with the stopper's own key: the name and the
