@@ -8155,6 +8155,18 @@
           if (JSON.stringify(turnLinks.videoStep(pid)) + turnLinks.busy(pid) + turnLinks.camRoom(pid) !== before) { try { (0, /*()*/__M.refreshOutbound)(); } catch (e) { try { (0, /*()*/__M.adapt)(); } catch (e2) {} } turnApplyVideo(p); (0, /*()*/__V.turnPaint)(); }   // refreshOutbound: a pipe peer's camera follows the step (camPeer), then adapt
         }, () => {});
       }
+      // TURN.7.2 THE LOOK IN PLACE (js/meet-turn.js): a link whose connection may use a direct pair says, every look, which
+      // candidate it sends from: a relay or not. The link reads its path from that at both ends (never from a setting).
+      if (look) for (const pid of turnLinks.lookPcs()) {
+        const p = peers.get(pid); if (!p || !p.pc || typeof p.pc.getStats !== 'function') continue;
+        p.pc.getStats().then((st) => {
+          let sel = null; const by = new Map(); st.forEach((x) => by.set(x.id, x));
+          st.forEach((x) => { if (x.type === 'transport' && x.selectedCandidatePairId) sel = by.get(x.selectedCandidatePairId); });
+          if (!sel) st.forEach((x) => { if (!sel && x.type === 'candidate-pair' && x.nominated && x.state === 'succeeded' && x.selected !== false) sel = x; });
+          const lc = sel && by.get(sel.localCandidateId);
+          if (turnLinks && lc && lc.candidateType) turnLinks.onLocal(pid, lc.candidateType === 'relay');
+        }, () => {});
+      }
     }
     // TURN.13: every audio sender of a TURN link takes the link's starved voice rate (turnLinks.voiceCap), and its own
     // rate back (the mic's engine default, a forwarded sender's AUX_AUDIO_BPS) when the link has room again.
