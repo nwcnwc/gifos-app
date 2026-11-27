@@ -4087,3 +4087,8 @@ body.mr-calling #alonecard, body.mr-on #alonecard { display: none !important; }
 /* My Room: "Also share my personal room" in the swap dialogs (a plain checkbox line, not a form field) */
 .mr-share { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 8px 0; font-size: 15px; }
 .mr-share input[type="checkbox"] { width: 20px; height: 20px; min-height: 0; margin: 0; padding: 0; flex: none; }
+/* A 360px phone: with a handle on each edge the dock needs 367px; a 2px gap and 2px padding make it fit
+   in 352px, so React stays on the bar. */
+@media (max-width: 360px) and (min-width: 351px) {
+  html body .bar { gap: 2px; padding: 0 2px; }
+}
