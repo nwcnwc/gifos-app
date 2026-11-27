@@ -201,9 +201,17 @@
   // (run.html moves its address bar there even inside a snapshot), or the root
   // — it is null: RELOAD, and the channel loader follows gifos_current, which
   // check() has just written.
-  function updateUrl(loc, latest) {
+  //
+  // base (the document base, optional): a release Home Screen shows the clean
+  // root address while its base stays /versions/<x>/ (index.html's loader).
+  // Its Update goes straight to the Home Screen of the live release, not
+  // through a reload and the loader's version.json ask.
+  function updateUrl(loc, latest, base) {
     const m = loc.pathname.match(/^\/versions\/[^/]+(\/.*)?$/);
-    if (!m) return null;
+    if (!m) {
+      const home = /^\/(index(\.html)?)?$/.test(loc.pathname) && /\/versions\/\d+\.\d+\.\d+(\.\d+)?\//.test(String(base || ''));
+      return home && VER.test(String(latest)) ? '/versions/' + latest + '/' + (loc.search || '') + (loc.hash || '') : null;
+    }
     // The same page on the newer release: the page is the view (meet, cast, run), and the live release is never older
     // than this one, so it has the page too. Nothing is written into the fragment to say which view.
     return '/versions/' + latest + (m[1] || '/') + (loc.search || '') + (loc.hash || '');
@@ -212,7 +220,9 @@
   // Move THIS page onto `latest` (same path and hash). Used by watch() when the
   // page has no reload of its own, and by pages that run their own step first.
   function go(latest) {
-    const url = updateUrl(root.location, latest);
+    let base = '';
+    try { base = (root.document && root.document.baseURI) || ''; } catch (e) {}
+    const url = updateUrl(root.location, latest, base);
     if (url) root.location.replace(url); else root.location.reload();
   }
 
@@ -409,7 +419,7 @@
     const move = (d) => {
       if (moving) return;
       moving = true;
-      const target = { latest: d.latest, url: updateUrl(root.location, d.latest), emergency: !!d.emergency, note: d.note || '' };
+      const target = { latest: d.latest, url: updateUrl(root.location, d.latest, (doc && doc.baseURI) || ''), emergency: !!d.emergency, note: d.note || '' };
       try {
         if (opts.beforeUpdate && opts.beforeUpdate(target) === false) { moving = false; return; }
         if (opts.reload) opts.reload(target); else go(d.latest);

@@ -50,7 +50,10 @@
   // 'edge' (unnumbered). Releases are immutable /versions/<x>/ snapshots with a
   // real number. onSnapshot() ⇒ we booted a snapshot; runningEdge() ⇒ the root.
   const EDGE = 'edge';
-  const onSnapshot = () => location.pathname.indexOf('/versions/') !== -1;
+  // The DOCUMENT BASE, not the address: a release Home Screen shows the clean
+  // gifos.app/ address (index.html's loader), while archive-version.sh pins
+  // its base to /versions/<x>/.
+  const onSnapshot = () => { let b = ''; try { b = document.baseURI || ''; } catch (e) {} return /\/versions\/[^/]+\//.test(b) || location.pathname.indexOf('/versions/') !== -1; };
   const runningEdge = () => VERSION === EDGE || !onSnapshot();
   // WHO RUNS WHAT. Everybody should run the latest release. The edge build and
   // older releases are for people testing GifOS before a release, so they sit
@@ -3032,12 +3035,53 @@
   function updateInPlace() {
     if (updateMoving || !GifOS.update) return;
     updateMoving = true;
+    noteHomeRelease(latestVersion);
     GifOS.update.go(latestVersion);
   }
+  // TABS FOLLOW EACH OTHER. gifos_home_release is the release this computer's
+  // Home Screen has moved to: written by Update in any tab, and by a Home
+  // Screen that boots on the live release. Another tab on an older release
+  // follows it (no second Update): at once while hidden or in the background
+  // (the storage event), and when it comes back into view (followHome() on
+  // the version check). Only the default channel follows; a Settings pin or
+  // the edge build stays put, and so does a booted image.
+  const HOME_RELEASE_KEY = 'gifos_home_release';
+  const follows = () => store.dbName === 'gifos' && onSnapshot() && !attachedTo() && !!GifOS.update && VER_RE.test(String(VERSION));
+  const VER_RE = /^\d+\.\d+\.\d+(\.\d+)?$/;
+  function noteHomeRelease(v) {
+    if (store.dbName !== 'gifos' || attachedTo() || !VER_RE.test(String(v))) return;
+    try { if (localStorage.getItem(HOME_RELEASE_KEY) !== v) localStorage.setItem(HOME_RELEASE_KEY, v); } catch (e) {}
+  }
+  // Move to the release another tab moved to, when it is newer than this one.
+  function followHome(v) {
+    if (!follows()) return false;
+    if (v === undefined) { try { v = localStorage.getItem(HOME_RELEASE_KEY); } catch (e) { v = null; } }
+    if (!VER_RE.test(String(v || '')) || GifOS.update.cmpVer(v, VERSION) <= 0) return false;
+    // Never past what version.json last said is live (a stale or hand-set key)
+    if (versionChecked && GifOS.update.cmpVer(v, latestVersion) > 0) return false;
+    latestVersion = v;
+    updateInPlace();
+    return true;
+  }
+  root.addEventListener('storage', (e) => {
+    if (!e || e.key !== HOME_RELEASE_KEY || !e.newValue) return;
+    // In view and in use: the update bar asks (the next check); a tab in the background moves now.
+    let inUse = false;
+    try { inUse = !document.hidden && document.hasFocus(); } catch (e2) {}
+    if (!inUse) followHome(e.newValue);
+  });
   function applyUpdateBar() {
     const U = GifOS.update;
     if (!U) return;
     let d = U.decide({ version: VERSION, edge: runningEdge(), pinned: pinnedVersion(), latest: latestVersion, changelog, emergency: emergencyFloor });
+    // On the live release: this is where the computer's Home Screen is now.
+    if (!d && versionChecked && follows() && U.cmpVer(VERSION, latestVersion) === 0) noteHomeRelease(VERSION);
+    // Another tab already updated to the live release: follow it, no second Update.
+    if (d && !d.pinned) {
+      let home = null;
+      try { home = localStorage.getItem(HOME_RELEASE_KEY); } catch (e) {}
+      if (home && VER_RE.test(home) && U.cmpVer(home, d.latest) >= 0 && followHome(d.latest)) return;
+    }
     if (d && d.emergency) {
       // Once per tab per release: a Home Screen that comes back still behind
       // shows the bar instead of reloading in a loop.
@@ -3247,6 +3291,8 @@
   // revalidated by the browser, the notes are read once per release.
   setInterval(() => { if (!document.hidden) checkForUpdate().catch(() => {}); }, (GifOS.update && GifOS.update.MINUTE) || 60000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate().catch(() => {}); });
+  // Focus too: a window beside another is in view the whole time, so it never fires visibilitychange.
+  root.addEventListener('focus', () => { followHome(); });
 
   // One-line, non-technical summary of the last paint for Settings → Advanced.
   function perfLine(s) {
