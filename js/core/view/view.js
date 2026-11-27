@@ -2835,7 +2835,7 @@
     yield 538;
     function layout() {
       __C.model.roster.reactStats().layouts++;
-      if (makeTile.slimObs) for (const t of document.querySelectorAll('.tile')) if (t.__szLost) { t.__szLost = false; try { makeTile.slimObs.observe(t); } catch (e) {} }
+      if (typeof makeTile === 'function' && makeTile.slimObs) for (const t of document.querySelectorAll('.tile')) if (t.__szLost) { t.__szLost = false; try { makeTile.slimObs.observe(t); } catch (e) {} }
       // One order: the banner's queue (handQueue), so a tile and the banner never disagree.
       const rank = new Map(__C.model.hands.queue().map((e, i) => [e.i === __C.model.me.myId() ? 'me' : e.i, i]));
       const stg = (0, /*()*/__C.stageIds)(); // the Stage floats first, in step-up order
