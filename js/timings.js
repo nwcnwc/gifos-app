@@ -149,6 +149,11 @@
     MOVE_HELLO_RETRY_MS: 400,   // ms
     MOVE_PAGE_LIFE_MS: 120000,   // ms
     MUTE_TAIL_MS: 1000,   // ms
+    MYROOM_CARD_LIFE_MS: 31536000000,   // ms
+    MYROOM_PROOF_WINDOW_MS: 300000,   // ms
+    MYROOM_RENEW_AFTER_MS: 86400000,   // ms
+    MYROOM_RING_MS: 30000,   // ms
+    MYROOM_TICK_MS: 1000,   // ms
     NEW_PEER_BEAT_GAP_MS: 2000,   // ms
     NEW_PEER_BEAT_MS: 400,   // ms
     NOSOCK_WIN: 40,   // tick
