@@ -1,0 +1,17 @@
+{
+  "title": "Notizen",
+  "search.placeholder": "Suchen…",
+  "add.placeholder": "Notiz schreiben und auf Hinzufügen tippen…",
+  "add": "Hinzufügen",
+  "hint": "Tippen Sie auf eine Notiz, um sie zu öffnen. Mit dem Kästchen haken Sie sie ab. Alles wird in diesem Symbol gespeichert.",
+  "back": "← Liste",
+  "body.placeholder": "Losschreiben…",
+  "nobody": "Wählen Sie eine Notiz oder fügen Sie eine hinzu. Mit „Einladen“ teilen Sie die Liste.",
+  "untitled": "Ohne Titel",
+  "you": "Sie",
+  "check": "Abhaken",
+  "delete": "Löschen",
+  "empty.nomatch": "Keine Notiz passt zu dieser Suche.",
+  "empty.none": "Noch keine Notizen. Ihre Notizen bleiben in diesem GIF-Symbol erhalten.",
+  "saved": "In diesem Symbol gespeichert"
+}

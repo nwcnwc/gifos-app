@@ -886,6 +886,32 @@
     return { defs, art, shadowRx: 42 };
   };
 
+  // Rooms — a glossy door in its frame, ajar on a warm lit room: your room, and
+  // the light under the door breathes (someone may ring). A little key hangs
+  // by the knob: the room's key lives on this device.
+  ART.rooms = (a, f) => {
+    const base = toHex(candy(a));
+    const g1 = grad(), g2 = grad(), sh = grad(), lit = grad();
+    const defs = lg(g1, [[0, '#ffffff'], [0.5, '#f3effc'], [1, '#d8d2ea']])      // frame
+      + bodyGrad(g2, base)                                                       // door
+      + rg(lit, [[0, '#fff6c8'], [0.6, '#ffd27a'], [1, '#f0a640']], 0.3, 0.4)    // the lit room behind
+      + sheenGrad(sh);
+    const glow = 0.5 + 0.5 * SPARK[f];
+    const art =
+      "<path d='" + rr(30, 18, 68, 92, 14) + "' fill='url(#" + g1 + ")'/>"       // frame
+      + "<path d='" + rr(38, 26, 52, 80, 6) + "' fill='url(#" + lit + ")'/>"     // the opening, lit
+      + "<path d='M38 26 L80 32 L80 104 L38 106 Z' fill='url(#" + g2 + ")'/>"   // the door, a little ajar
+      + "<path d='M38 26 L80 32 L80 56 L38 54 Z' fill='url(#" + sh + ")'/>"     // door gloss
+      + "<path d='" + rr(44, 40, 28, 22, 4) + "' fill='#fff' opacity='.18'/>"   // upper panel
+      + "<path d='" + rr(44, 70, 28, 26, 4) + "' fill='#fff' opacity='.14'/>"   // lower panel
+      + "<circle cx='73' cy='69' r='3.6' fill='#fff' opacity='.95'/>"            // knob
+      + "<path d='M84 106 L94 106' stroke='#ffd27a' stroke-width='3' stroke-linecap='round' opacity='" + glow + "' filter='url(#fglow)'/>"
+      + "<g opacity='.95'><circle cx='93' cy='60' r='4' fill='none' stroke='" + INK + "' stroke-width='2'/>"
+      + "<path d='M93 64 L93 74 M93 70 L96 70 M93 73 L95.5 73' stroke='" + INK + "' stroke-width='2' stroke-linecap='round'/></g>"
+      + sparkle(102, 24, 1, f);
+    return { defs, art, shadowRx: 40 };
+  };
+
   // ---- letter fallback: a glossy candy tile with the initial ----------------
   function fallbackArt(letter, a, f) {
     const base = toHex(candy(a));

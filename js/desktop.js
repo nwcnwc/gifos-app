@@ -36,6 +36,7 @@
     video: 'desktop.sys.camMic',
     broadcast: 'desktop.sys.camMic',
     appstore: 'desktop.sys.appstore',
+    rooms: 'desktop.sys.rooms',
   };
 
   let latestVersion = VERSION;      // version.json.latest (may be four-part) — the LIVE release everyone gets; `current` is only the three-part legacy pointer
@@ -348,6 +349,7 @@
     for (const a of seed.loose) {
       if (a.appId === 'appstore') { pendingStoreApp = a; continue; } // placed below Stolen Apps by ensureSystemItems
       if (a.appId === 'meet' || a.appId === 'video' || a.appId === 'broadcast') await putDefaultApp(a, null, { x: rightX, y: rowY(rightRow++) });
+      else if (a.appId === 'rooms') await putDefaultApp(a, null, { x: rightX - GRID.pitch, y: rowY(0) });   // left of Meeting
       else await putDefaultApp(a, null, { x: GRID.origin, y: rowY(leftRow++) });
     }
     const putFolder = async (folder, parent, x, y) => {
@@ -560,6 +562,7 @@
     let rightRow = 0, leftRow = 0;
     const nextRootSpot = (appId) => {
       if (appId === 'meet' || appId === 'video' || appId === 'broadcast') return { x: rightX, y: rowY(rightRow++) };
+      if (appId === 'rooms') return { x: rightX - GRID.pitch, y: rowY(0) };   // placeRoomsLeftOfMeeting settles it beside Meeting
       if (appId === 'appstore') { // default spot: right below the Stolen Apps chest (when it exists yet)
         const chest = items.find((i) => i.id === 'sys_stolen');
         if (chest) return { x: chest.x, y: chest.y + GRID.rowPitch };
@@ -626,6 +629,40 @@
     await saveItem(bc, { at: { x: tx, y: ty } });
     done();
     return movers.length + 1;
+  }
+
+  // One-shot layout migration (2026-11-26, Nathan): Rooms sits DIRECTLY LEFT of Meeting. A desktop that gets Rooms by
+  // a reseed has it wherever a cell was free; it moves into the cell left of Meeting, and whatever stood there takes
+  // Rooms' old cell (a swap: nothing else moves). If either icon left the root, nothing moves; the flag still sets so we
+  // never fight the user. (The Home Screen's layout gets its proper clean-up later.)
+  async function placeRoomsLeftOfMeeting() {
+    const key = 'gifos_mig_rooms_slot' + (store.dbName === 'gifos' ? '' : '::' + store.dbName);
+    try { if (localStorage.getItem(key)) return 0; } catch (e) {}
+    const done = () => { try { localStorage.setItem(key, '1'); } catch (e) {} };
+    const files = await store.allFileMeta();
+    const rootApp = (match) => {
+      for (const it of items) {
+        if (it.kind !== 'file' || it.parent) continue;
+        const fl = files.find((x) => x.id === it.fileId);
+        if (fl && fl.isApp && fl.isDefault && match(fl.appId)) return it;
+      }
+      return null;
+    };
+    const meet = rootApp((id) => id === 'meet' || id === 'video');
+    const rooms = rootApp((id) => id === 'rooms');
+    if (!meet || !rooms) { done(); return 0; }
+    const mc = cellOf(meet.x, meet.y);
+    if (mc.col < 1) { done(); return 0; }   // Meeting in the first column: there is no cell to its left
+    const tx = (meet.x || GRID.origin) - GRID.pitch, ty = meet.y || GRID.origin, tc = cellOf(tx, ty);
+    const rc = cellOf(rooms.x, rooms.y);
+    if (rc.col === tc.col && rc.row === tc.row) { done(); return 0; }
+    const there = items.find((it) => !it.parent && it.id !== rooms.id && cellOf(it.x, it.y).col === tc.col && cellOf(it.x, it.y).row === tc.row);
+    const was = { x: rooms.x, y: rooms.y };
+    rooms.x = tx; rooms.y = ty;
+    if (there) { there.x = was.x; there.y = was.y; await saveItem(there, { keepCell: true }); }
+    await saveItem(rooms, { keepCell: true });
+    done();
+    return there ? 2 : 1;
   }
 
   // One-shot layout migration: Camera slots DIRECTLY BELOW Welcome, scooching
@@ -831,8 +868,9 @@
       const { updated, added, purged } = await rebuildDefaultApps(seed);
       const moved = await placeBroadcastBelowMeeting();
       const cam = await placeCameraBetweenWelcomeAndMyMedia();
+      const rooms = await placeRoomsLeftOfMeeting();
       const redrawn = await refreshSystemFolderArt();
-      if (updated || added || purged || moved || cam || redrawn) await load();
+      if (updated || added || purged || moved || cam || rooms || redrawn) await load();
     } catch (e) { /* never block boot */ }
   }
 
@@ -3224,6 +3262,8 @@
   // Settings words live in i18n/<locale>/settings.json. ST gives text; STh gives
   // escaped HTML that allows only the <b>, <m> (mono) and <bm> tags messages use.
   const ST = (k, p) => (GifOS.i18n ? GifOS.i18n.t(k, p) : k);
+  // Follows you (kept in My identity, the same on every device) or This device only (docs/identity.md).
+  const scopeTag = (you) => ' <small class="set-scope" data-scope="' + (you ? 'you' : 'device') + '">' + escapeHtml(ST(you ? 'settings.scope.you' : 'settings.scope.device')) + '</small>';
   const richHtml = (s) => escapeHtml(s).replace(/&lt;(\/?)b&gt;/g, '<$1b>').replace(/&lt;m&gt;/g, '<span class="mono">')
     .replace(/&lt;\/m&gt;/g, '</span>').replace(/&lt;bm&gt;/g, '<b class="mono">').replace(/&lt;\/bm&gt;/g, '</b>');
   const STh = (k, p) => richHtml(ST(k, p));
@@ -3715,7 +3755,7 @@
     const t = I18N.t;
     return '<p class="add-help">' + escapeHtml(t('settings.lang.intro')) + '</p>' +
       '<div class="set-card set-pad">' +
-        '<label class="set-label" for="set-lang">' + escapeHtml(t('settings.lang.language')) + '</label>' +
+        '<label class="set-label" for="set-lang">' + escapeHtml(t('settings.lang.language')) + scopeTag(true) + '</label>' +
         '<select id="set-lang" aria-label="' + escapeHtml(t('settings.lang.language')) + '"></select>' +
         '<label class="set-label" for="set-region">' + escapeHtml(t('settings.lang.region')) + '</label>' +
         '<select id="set-region" aria-label="' + escapeHtml(t('settings.lang.region')) + '"></select>' +
@@ -3920,9 +3960,9 @@
         '</section>' +
         '<section data-page="you" hidden>' +
           '<p class="add-help">' + escapeHtml(ST('settings.you.intro')) + '</p>' +
-          '<label class="set-label" for="set-name">' + escapeHtml(ST('settings.you.name')) + '</label>' +
+          '<label class="set-label" for="set-name">' + escapeHtml(ST('settings.you.name')) + scopeTag(true) + '</label>' +
           '<input id="set-name" maxlength="40" aria-label="' + escapeHtml(ST('settings.you.name')) + '" placeholder="' + escapeHtml(ST('settings.you.namePh')) + '" value="' + escapeHtml(store.identity().name) + '">' +
-          '<label class="set-label" for="set-avatar-file">' + escapeHtml(ST('settings.you.picture')) + '</label>' +
+          '<label class="set-label" for="set-avatar-file">' + escapeHtml(ST('settings.you.picture')) + scopeTag(true) + '</label>' +
           '<p class="add-help">' + escapeHtml(ST('settings.you.pictureHelp')) + '</p>' +
           '<div class="set-avatar-row">' +
             '<img id="set-avatar-preview" alt="" hidden>' +
@@ -3935,7 +3975,7 @@
         '</section>' +
         '<section data-page="look" hidden>' +
           '<p class="add-help">' + escapeHtml(ST('settings.look.intro')) + '</p>' +
-          '<div class="set-group">' + escapeHtml(ST('settings.look.background')) + '</div>' +
+          '<div class="set-group">' + escapeHtml(ST('settings.look.background')) + scopeTag(false) + '</div>' +
           '<div class="set-card set-pad">' +
             '<label class="set-label" for="set-bg-color">' + escapeHtml(ST('settings.look.color')) + '</label>' +
             '<div class="bg-row">' +
@@ -3944,7 +3984,7 @@
               '<button type="button" id="set-bg-reset" class="ghost" aria-label="' + escapeHtml(ST('settings.look.resetBgAria')) + '">' + escapeHtml(ST('settings.look.reset')) + '</button>' +
             '</div>' +
           '</div>' +
-          '<div class="set-group">' + escapeHtml(ST('settings.look.textSize')) + '</div>' +
+          '<div class="set-group">' + escapeHtml(ST('settings.look.textSize')) + scopeTag(false) + '</div>' +
           '<div class="set-card set-pad">' +
             '<p class="add-help">' + escapeHtml(ST('settings.look.textSizeHelp')) + '</p>' +
             '<div class="ts-row"><button type="button" id="ts-minus" class="ghost" aria-label="' + escapeHtml(ST('settings.look.smaller')) + '">A−</button><span id="ts-val" class="mono" aria-live="polite"></span><button type="button" id="ts-plus" class="ghost" aria-label="' + escapeHtml(ST('settings.look.bigger')) + '">A+</button><button type="button" id="ts-reset" class="ghost" aria-label="' + escapeHtml(ST('settings.look.resetSizeAria')) + '">' + escapeHtml(ST('settings.look.reset')) + '</button></div>' +

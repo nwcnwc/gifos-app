@@ -3335,6 +3335,17 @@ microphone, so this icon opens the built-in meeting page instead of running here
 <script>${I18N_BOOT_C}
 i18nStart(function(){});</script>`;
 
+  // Rooms: your personal room, our private rooms, the hosted rooms on this device. Their keys live in the site's own
+  // storage, which no sandboxed app may read, so this icon opens the built-in Rooms page (rooms.html).
+  const ROOMS_FALLBACK_HTML = `<!doctype html><meta charset="utf-8"><style>
+  body{font:15px system-ui;background:#0a0a0f;color:#e0e0f0;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center}
+  .card{max-width:420px;padding:2rem;border:1px solid #2a2a3f;border-radius:1rem;background:#14141f}
+  h2{color:#3cc8a0;margin-top:0} p{color:#9a9ab5;line-height:1.5} code{color:#3cc8a0}
+</style><div class="card"><h2>Rooms</h2>
+<p>This one is built into GifOS. Your rooms' keys stay on this device, where ordinary apps are never allowed,
+so this icon opens the built-in Rooms page instead of running here.</p>
+<p>Open this GIF on your Home Screen at <code>gifos.app</code> to see your rooms.</p></div>`;
+
   // Same idea for Broadcast: the Meet page wearing its broadcast skin — one
   // host live on the Stage, unlimited viewers, chat as the back-channel.
   const BROADCAST_FALLBACK_HTML = `<!doctype html><meta charset="utf-8"><style>
@@ -7188,6 +7199,20 @@ Allow them when the browser asks. You can mute or stop video from the meeting co
 
 A meeting is live, not a file in this icon. Your Home Screen is unchanged when you leave the call.
 `,
+      rooms: `# Rooms
+
+Tap this icon to open the built-in **Rooms** page: your personal room, the private room you share with each contact, and the hosted rooms on this device.
+
+## What is in it
+
+- **My personal room**: your own room. Open it and it stands by with your mic and camera off, so people with a card from you can ring it. Give a card by link or QR, copy its link, or delete it.
+- **Our private rooms**: one for each person you swapped cards with in a meeting. Only the two of you can use it. **Call** rings their personal room; Answer takes you both there. **Remove** ends it for both of you.
+- **Hosted rooms**: other rooms whose host key this device holds.
+
+## Saved
+
+Your rooms and contacts stay on this device. Nothing is kept on a server.
+`,
       broadcast: `# Broadcast
 
 Tap this icon to open the built-in **Broadcast** page — you on stage, as many viewers as you like, and chat as the back channel.
@@ -7576,6 +7601,11 @@ The Store itself does not keep a shopping cart in this icon.
                data: { media: PRIV, blobs: PRIV } }),
                'index.html': themeHtml(MYMEDIA_HTML, 'vars'),
                'gifenc.js': GIFENC_JS }),
+    }, {
+      // Rooms, left of Meeting (desktop.js places it): My personal room, our private rooms, the hosted rooms I hold.
+      name: 'Rooms.gif', appId: 'rooms', accent: [60, 200, 160],
+      files: withHelp('rooms', { 'manifest.json': manifest('rooms', 'Rooms', [60, 200, 160], { system: 'rooms' }),
+               'index.html': themeHtml(ROOMS_FALLBACK_HTML, 'full') }),
     }, {
       name: 'Meeting.gif', appId: 'meet', accent: [92, 160, 255],
       files: withHelp('meet', { 'manifest.json': manifest('meet', 'Meeting', [92, 160, 255], { system: 'meet', capabilities: { db: true, multiplayer: true, network: [], header: 'auto-hide' } }),

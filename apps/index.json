@@ -9878,7 +9878,7 @@
       "appId": "whiteboard",
       "name": "Whiteboard",
       "shortName": "Whiteboard",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "A shared whiteboard for workshops. Everyone in the meeting draws on it together.",
       "author": {
         "name": "Excalidraw",
@@ -9917,15 +9917,15 @@
         219
       ],
       "cover": "/apps/whiteboard/cover.jpg",
-      "bytes": 4662636,
+      "bytes": 4692094,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-11-13"
+        "ts": "2026-11-27"
       },
-      "sha256": "934681c9b922866e7399cb7f4cac8a718fb7d4ffefd393a2872a8e7eb836d9d0"
+      "sha256": "59b793d3cf6cbb929e93a46cacec6f6936299a16f915aec978e80f6ef4cbc538"
     },
     {
       "slug": "wifi-card",

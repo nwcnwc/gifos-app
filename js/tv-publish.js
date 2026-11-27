@@ -292,7 +292,7 @@
   function publish(body, foot, f) {
     busy = true;
     foot.textContent = '';
-    var names = [T('tvS1', 'Making the thumbnail'), T('tvS2', 'Person check'), T('tvS3', 'Signing with the room key'), T('tvS4', 'Uploading the thumbnail'), T('tvS5', 'Publishing the listing'), T('tvS6', 'Going on air'), T('tvS7', 'Checking gifos.tv')];
+    var names = [T('tvS1', 'Making the thumbnail'), T('tvS2', 'Person check'), T('tvS3', 'Proving it’s your room'), T('tvS4', 'Uploading the thumbnail'), T('tvS5', 'Publishing the listing'), T('tvS6', 'Going on air'), T('tvS7', 'Checking gifos.tv')];
     var ui = stepsUi(body, names), thumb = '', url = '', blob = null, bytes = null, w = null;
     ui.next();
     (f.canvas ? toJpeg(f.canvas) : Promise.resolve(null)).then(function (b) {

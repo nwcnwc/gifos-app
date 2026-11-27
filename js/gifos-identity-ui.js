@@ -132,7 +132,7 @@
     return false;
   }
   async function save() {
-    if (!(await ID().sync())) { await say('My identity', 'There is nothing to save yet. Make My Room in Meet first.'); return false; }
+    if (!(await ID().sync())) { await say('My identity', 'There is nothing to save yet. Make your personal room in Rooms first.'); return false; }
     if (!(await ensureWay())) return false;
     const bytes = await ID().fileBytes();
     download(bytes, ID().FILE_NAME);
@@ -195,7 +195,7 @@
     const st = ID().status();
     if (!st.exists) {
       const act = await sheet('manage', '<h3>My identity</h3><p>Your identity is your personal room, your private rooms and your contacts, kept in one sealed file that only you hold. This device has none yet.</p>' +
-        '<p>Make My Room in Meet to start one, or bring yours from another device.</p>', [['get', 'Get my identity from another device', true], ['file', 'Open an identity file'], ['close', 'Close']]).done;
+        '<p>Make your personal room in Rooms to start one, or bring yours from another device.</p>', [['get', 'Get my identity from another device', true], ['file', 'Open an identity file'], ['close', 'Close']]).done;
       if (act === 'get') getFrom(); else if (act === 'file') pickFile();
       return;
     }
@@ -222,7 +222,7 @@
   // copyOut(): from anywhere, on the device that has the identity. The copy happens in my personal room, so go there.
   function copyOut() {
     const m = ID().counts().mine ? JSON.parse(root.localStorage.getItem('gifos_myroom') || 'null') : null;
-    if (!m) { say('Make My Room first', 'Copying to another device happens in your personal room. Make My Room in Meet, then come back.'); return; }
+    if (!m) { say('Make your personal room first', 'Copying to another device happens in your personal room. Make it in Rooms, then come back.'); return; }
     sset(GIVE, '1');
     const h = here();
     if (onMeet() && h.room === m.room && String(h.v || '').toLowerCase() === m.v) { startGive(); return; }
@@ -369,7 +369,25 @@
     }
   }
 
+  // Meet's Settings: rows the meeting paints itself (not in meet.html) get the same tag as the rest: Follows you /
+  // This device only (docs/identity.md, Settings that follow you). The tag is a copy of meet.html's own (already in the
+  // page's language). The Doorbell's row tags each of its settings inside.
+  const RUNTIME_SCOPE = { 'set-pip': 'device', 'sub-body': 'device', 'set-bell': 'mixed' };
+  function scopeRows() {
+    const m = $('set-modal'); if (!m) return;
+    for (const id of Object.keys(RUNTIME_SCOPE)) {
+      const row = $(id); if (!row || row.hasAttribute('data-scope') || !m.contains(row)) continue;
+      const sc = RUNTIME_SCOPE[id]; row.setAttribute('data-scope', sc); if (sc === 'mixed') continue;
+      const tag = m.querySelector('small[data-t="' + (sc === 'you' ? 'setScopeYou' : 'setScopeDevice') + '"]'), b = row.querySelector('b');
+      if (tag && b) b.appendChild(tag.cloneNode(true));
+    }
+  }
+  function watchScopes() {
+    const m = $('set-modal'); if (!m || typeof root.MutationObserver !== 'function') return;
+    scopeRows(); new root.MutationObserver(scopeRows).observe(m, { childList: true, subtree: true });
+  }
+
   GifOS.identityUI = { manage, save, openFile, pickFile, copyOut, getFrom, paint: paintAll };
-  const go = () => { start().catch((e) => { try { console.error('identity: ' + (e && e.stack || e)); } catch (x) {} }); };
+  const go = () => { try { watchScopes(); } catch (e) {} start().catch((e) => { try { console.error('identity: ' + (e && e.stack || e)); } catch (x) {} }); };
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', go); else go();
 })(typeof window !== 'undefined' ? window : globalThis);

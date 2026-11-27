@@ -170,7 +170,7 @@
           $('emb-fd-text').textContent = tr('msgFull', 'Viewer limit reached.');
           $('emb-fd-up').textContent = tr('fullUp', 'Upgrade to Unlimited for {price}/month', { price: unlimitedPrice() });
           $('emb-fd-pass').textContent = tr('fullPass', '{price} pass: 4 hours of Unlimited', { price: passPrice() });
-          $('emb-fd-wait').textContent = tr('fullWait', 'You get in by yourself as soon as a place opens.');
+          $('emb-fd-wait').textContent = tr('fullWait', 'You’ll get in automatically as soon as a place opens.');
           if (row) row.firstChild.textContent = tr('fullPass', '{price} pass: 4 hours of Unlimited', { price: passPrice() });
         }
       }
@@ -242,7 +242,7 @@
       var card = $('emb-card');
       var mt = why !== 'ok' ? tr('msgName', 'This embed does not name a GifOS broadcast.')
         : full ? ''
-        : know === 'connecting' ? tr('msgConnecting', 'Connecting to the meeting… The live view starts as soon as this page is in.')
+        : know === 'connecting' ? tr('msgConnecting', 'Connecting to the meeting… The video will start in a moment.')
         : know === 'offline' ? tr('msgOffline', 'You appear to be offline. Trying again…')
         : know === 'noconn' ? tr('msgNoConn', 'Couldn’t connect to the broadcast. Trying again…')
         // a broadcast that ended while this player watched says so plainly; one that is not on yet (or just ended
