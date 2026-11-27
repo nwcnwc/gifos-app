@@ -82,6 +82,29 @@
     long:      { key: 'pgHintLong',     en: 'This is taking longer than it should. Check your connection, or reopen the link.' },
   };
 
+  // One plain sentence per step: what the step means. The header line is often cut off, and a tap on it opens the whole line
+  // with this sentence under it (js/core/view/view.js openStatusSheet).
+  const WHY = {
+    net:      { key: 'pgWhyNet',      en: 'GifOS is testing how your network lets calls through, so it can pick the best way to connect you.' },
+    server:   { key: 'pgWhyServer',   en: 'GifOS is reaching its server, which only introduces you to the meeting. Your video and voice do not go through it.' },
+    door:     { key: 'pgWhyDoor',     en: 'GifOS is looking for people already in this meeting, so it knows who to ask to let you in.' },
+    password: { key: 'pgWhyPassword', en: 'This room is locked. Type its password to go on.' },
+    admit:    { key: 'pgWhyAdmit',    en: 'This meeting has a waiting room. You can see it as soon as the host lets you in.' },
+    knock:    { key: 'pgWhyKnock',    en: 'GifOS is asking people in the meeting to let you in. If nobody answers yet, it keeps asking.' },
+    knockBlocked: { key: 'pgWhyKnockBlocked', en: 'Your network blocks direct calls, so GifOS is asking everyone in the meeting at once.' },
+    seat:     { key: 'pgWhySeat',     en: 'Someone let you in. GifOS is finding where you fit among the people in the meeting.' },
+    found:    { key: 'pgWhyFound',    en: 'Nobody else is here yet, so GifOS is starting the meeting for you.' },
+    relay:    { key: 'pgWhyRelay',    en: 'Your network blocks direct calls, so GifOS is finding another way through. It is still end-to-end encrypted.' },
+    web:      { key: 'pgWhyWeb',      en: 'Your network is very strict, so GifOS connects the way a web page does. It is still end-to-end encrypted.' },
+    merge:    { key: 'pgWhyMerge',    en: 'You are in. GifOS is now reaching the other people through that connection.' },
+    people:   { key: 'pgWhyPeople',   en: 'GifOS is opening a direct connection to each person, so you can see and hear them.' },
+    serverBack: { key: 'pgWhyServerBack', en: 'Your connection dropped. You stay in the meeting while GifOS gets it back.' },
+    seatBack: { key: 'pgWhySeatBack', en: 'GifOS is putting you back in your place in the meeting.' },
+    part:     { key: 'pgWhyPart',     en: 'A piece of this page did not load. GifOS is loading it again.' },
+    save:     { key: 'pgWhySave',     en: 'A new version of GifOS is ready. It is saving your place so you come straight back.' },
+    reload:   { key: 'pgWhyReload',   en: 'GifOS is opening the new version. You come back to the same meeting.' },
+  };
+
   const FLOWS = {
     join:      ['net', 'server', 'door', 'password', 'admit', 'knock', 'seat', 'relay', 'web', 'merge', 'people'],
     reconnect: ['server', 'door', 'knock', 'seat', 'relay', 'web', 'people'],
@@ -217,14 +240,17 @@
   // stepOnly(run, uiText) → "Step 3 of 10" (the veil and the prompts put the phase under it)
   function stepOnly(run, uiText) { return fill(tr(STEP_ONLY, uiText), { x: run.x(), y: run.y }); }
 
+  // why(stepId, uiText) → the plain sentence for a step ('' when it has none)
+  function why(id, uiText) { const o = WHY[id] || WHY[String(id).replace(/\d+$/, '')]; return o ? tr(o, uiText) : ''; }
+
   // Every catalog key this file can show, with its English (the i18n check reads uiText calls; this lists the rest).
   function keys() {
     const out = {};
-    for (const o of [TEMPLATE, STEP_ONLY, SECS].concat(Object.values(STEP), Object.values(HINT))) out[o.key] = o.en;
+    for (const o of [TEMPLATE, STEP_ONLY, SECS].concat(Object.values(STEP), Object.values(HINT), Object.values(WHY))) out[o.key] = o.en;
     return out;
   }
 
-  const api = { FLOWS, STEP, HINT, TEMPLATE, judge, createRun, line, stepOnly, keys };
+  const api = { FLOWS, STEP, HINT, WHY, why, TEMPLATE, judge, createRun, line, stepOnly, keys };
   if (typeof module === 'object' && module.exports) module.exports = api;
   const GifOS = root.GifOS = root.GifOS || {};
   GifOS.meetProgress = api;
