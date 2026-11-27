@@ -2,6 +2,17 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.57",
+      "date": "2026-11-27",
+      "headline": "Rooms: your personal room and private rooms in one place",
+      "features": [
+        "Rooms, a new app next to Meeting, holds your personal room, your private rooms with each contact, missed calls, the rooms you host on this device and the cards you gave."
+      ],
+      "fixes": [
+        "The meeting start screen is simpler: it shows a Rooms link and how many calls you missed."
+      ]
+    },
+    {
       "version": "0.9.28.56",
       "date": "2026-11-27",
       "headline": "Plain words while you join",
