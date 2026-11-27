@@ -9,7 +9,8 @@
         "Rooms, a new app next to Meeting, holds your personal room, your private rooms with each contact, missed calls, the rooms you host on this device and the cards you gave."
       ],
       "fixes": [
-        "The meeting start screen is simpler: it shows a Rooms link and how many calls you missed."
+        "The meeting start screen is simpler: it shows a Rooms link and how many calls you missed.",
+        "Lip sync on the Stage: viewers who get the Stage through another person's device no longer see the picture ahead of the sound (GifOS TV and meetings)."
       ]
     },
     {
