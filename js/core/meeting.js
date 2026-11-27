@@ -23524,13 +23524,13 @@
     let carryG = null;
     const carryHosts = new Map();      // carried page's peer id -> { link, voice, name, far, mix }
     const carryOwnLines = new Set();   // chat line ids I posted for the page I carry: never sent back to it
-    function carryIo(far, l, sendTv, askVouch, guest) {
-      return { guest, me: model.me.myId(), far, l, dev: () => model.me.myDevHash(), sub: () => (model.net.meshNode() && model.net.meshNode().sub) | 0, sid: () => model.room.sessId(), sendTv, askVouch,
+    function carryIo(far, l, sendTv, askVouch, guest) {   // the carried link's I/O: the room key seals and opens its frames here, never in the view
+      return { guest, me: myId, far, l, dev: () => myDevHash, sub: () => (meshNode && meshNode.sub) | 0, sid: () => sessId, sendTv, askVouch,
         ask: GifOS.meetTurn.askIce((u, o) => window.fetch(u, o)), webScheme: () => 'wss://', log: turnNote,
-        seal: (obj) => model.net.net().seal(model.room.roomE2E(), obj),
-        open: (env) => model.net.net().open(model.room.roomE2E(), env).then((m) => m || (model.room.prevRoomE2E() ? model.net.net().open(model.room.prevRoomE2E(), env) : null)),
-        sign: (text) => model.net.net().edSign(model.me.myIdentity().priv, text).then((sig) => ({ sig, pub: model.me.myIdentity().pubB64 })),
-        verify: (id, pub, sig, text) => GifOS.meshIdentity.peerIdOf(pub).then((got) => (got === id ? model.net.net().edVerify(pub, sig, text) : false)) };
+        seal: (obj) => net.seal(roomE2E, obj),
+        open: (env) => net.open(roomE2E, env).then((m) => m || (prevRoomE2E ? net.open(prevRoomE2E, env) : null)),
+        sign: (text) => net.edSign(myIdentity.priv, text).then((sig) => ({ sig, pub: myIdentity.pubB64 })),
+        verify: (id, pub, sig, text) => GifOS.meshIdentity.peerIdOf(pub).then((got) => (got === id ? net.edVerify(pub, sig, text) : false)) };
     }
     // NO USABLE PC, ONE PATH: no RTCPeerConnection at all (the boot), or one that gathers no candidate, neither its own nor a
     // relay one (meet-turn webStart: the moment the web path would start, whose in-page pair needs a candidate too). The page
