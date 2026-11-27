@@ -17,7 +17,9 @@
  *                                      opts.catalog names another catalog beside models.json (tools only)
  *   GifOS.explicit.classify(src, opts) Promise of a result for one picture: src is a canvas, image, video, ImageBitmap or
  *                                      ImageData. result = { p:{drawing,hentai,neutral,porn,sexy}, score, explicit, ms }
- *   GifOS.explicit.checkStill(src)     Promise of { ok, verdict, score, ms } for one still picture (a thumbnail): ok
+ *                                      opts.square: look at the centre square only
+ *   GifOS.explicit.checkStill(src)     Promise of { ok, verdict, score, ms } for one still picture (a thumbnail; two
+ *                                      looks, the whole picture and its centre square, the higher score counts): ok
  *                                      false = explicit. verdict = { m, v, ok:1 } is what a page signs into an order
  *                                      when ok; there is no verdict when the picture tripped or could not be checked.
  *   GifOS.explicit.tracker(opts)       the video rule for one tile: feed(result) → { tripped, changed, burst }.
@@ -150,8 +152,9 @@
 
   // A picture, stretched to the model's square input (what the model was trained on), as RGBA bytes.
   let pad = null;
-  function pixels(src, size) {
-    if (src && src.data && src.width === size && src.height === size) return new Uint8ClampedArray(src.data);
+  // square: only the centre square of the picture (a second look at a wide picture, the subject undistorted).
+  function pixels(src, size, square) {
+    if (!square && src && src.data && src.width === size && src.height === size) return new Uint8ClampedArray(src.data);
     if (!pad) {
       pad = typeof root.OffscreenCanvas === 'function' ? new root.OffscreenCanvas(size, size) : Object.assign(root.document.createElement('canvas'), { width: size, height: size });
     }
@@ -166,12 +169,14 @@
     }
     const sw = src.videoWidth || src.naturalWidth || src.width, sh = src.videoHeight || src.naturalHeight || src.height;
     if (!sw || !sh) throw new Error('no picture to check');
-    g.drawImage(src, 0, 0, sw, sh, 0, 0, size, size);
+    const side = Math.min(sw, sh);
+    if (square) g.drawImage(src, (sw - side) / 2, (sh - side) / 2, side, side, 0, 0, size, size);
+    else g.drawImage(src, 0, 0, sw, sh, 0, 0, size, size);
     return g.getImageData(0, 0, size, size).data;
   }
   function score(p) { return (p.hentai || 0) + (p.porn || 0); }
   function classify(src, opts) {
-    return open(opts).then((e) => e.run(pixels(src, e.size)).then((m) => {
+    return open(opts).then((e) => e.run(pixels(src, e.size, !!(opts && opts.square))).then((m) => {
       const p = {};
       CLASSES.forEach((c, i) => { p[c] = m.p[i]; });
       const s = score(p);
@@ -179,11 +184,13 @@
     }));
   }
   // A still picture: one decision. A picture that could not be checked has no verdict, exactly like one that tripped.
+  // Two looks: the whole picture, and its centre square (measured: more explicit pictures caught, no more benign ones).
   function checkStill(src, opts) {
-    return classify(src, opts).then((r) => {
+    return classify(src, opts).then((a) => classify(src, Object.assign({}, opts, { square: true })).then((b) => {
+      const r = b.score > a.score ? b : a;
       const ok = r.score < STILL_LINE;
-      return { ok, verdict: ok ? { m: MODEL, v: VERSION, ok: 1 } : null, score: r.score, ms: r.ms, p: r.p };
-    });
+      return { ok, verdict: ok ? { m: MODEL, v: VERSION, ok: 1 } : null, score: r.score, ms: a.ms + b.ms, p: r.p };
+    }));
   }
 
   // ---- the video rule ----------------------------------------------------------------
