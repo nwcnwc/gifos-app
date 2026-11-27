@@ -3766,9 +3766,12 @@
     function fsBlurClass(v, bl, share) { (0, /*()*/__M.facePaint)(v, { pic: 'given', bl: bl | 0, text: !!(bl && share && !modBlurOn(share)) }); }
     // ONEFACE: the one rule from who and what a face shows to its blur, { bl: 0|1|2, text }. A face asks here through the
     // media plane's facePaint (the one writer of a face's blur), so no surface carries its own copy of the rule.
-    // s = { id, where: 'row' | 'stage', pic: 'cam' | 'avatar' | 'strip' | 'made' | 'given', dark }. No subject, or a throw: Max.
+    // s = { id, where: 'row' | 'stage' | 'lobby', pic: 'cam' | 'face' | 'avatar' | 'strip' | 'made' | 'given', dark }. No subject, or a throw: Max.
     //   row cam: the tile's own rule (blurLevelFor(id)); mine shows my pre-blurred pixels, so no CSS blur on top.
     //   row avatar: the camera rule as if the camera were on; a stager's avatar is Stage picture (the tap reaches it).
+    //   stage cam (a person's Stage view) / face (a co-presenter's box on a shared screen): the Stage rule, at least Min
+    //   under a moderator's blur; a face held dark by a host shows nothing. A Stage view of a share keeps its text clear.
+    //   lobby: my preview at my own pick (what I would send) while my camera would join on.
     //   strip: the Stage strip's one decision (blurLevelFor('stage')). made: pixels this page drew itself.
     //   text: a blurred share keeps its text clear unless a host blurs the sharer or the face is dark (it shows nothing).
     function faceLevel(s) {
@@ -3779,6 +3782,15 @@
         if (s.pic === 'strip') return { bl: blurLevelFor('stage') | 0, text: false };
         const id = s.id, isMe = id === 'me';
         if (s.pic === 'avatar') return { bl: blurLevelFor(id, true, false, !isMe && personOnStage(id) ? 'stage' : undefined) | 0, text: false };
+        // my lobby preview shows what I would send: my own pick, while my camera would join on
+        if (s.where === 'lobby') return { bl: joinAv && joinAv.cam ? blurLevel(myStatus.blur) | 0 : 0, text: false };
+        if (s.where === 'stage' && (s.pic === 'cam' || s.pic === 'face')) {
+          if (isMe || id === myId) return { bl: 0, text: false };
+          if (s.pic === 'face' && (forcedCamOff(id) || (typeof shareBlocked === 'function' && shareBlocked(id)))) return { bl: 0, text: false };
+          let bl = blurLevelFor(id, false, false, 'stage') | 0;
+          if (modBlurOn(id)) bl = Math.max(1, bl);
+          return { bl, text: !!(bl && s.pic === 'cam' && sharingScreen(id) && !modBlurOn(id) && !forcedCamOff(id) && !(typeof shareBlocked === 'function' && shareBlocked(id))) };
+        }
         if (s.where === 'row' && s.pic === 'cam') {
           if (isMe) return { bl: 0, text: false };
           const bl = blurLevelFor(id) | 0, st = statusOf.get(id) || (typeof foldStatusOf === 'function' ? foldStatusOf(id) : null) || {};
