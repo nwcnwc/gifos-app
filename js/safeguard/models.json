@@ -6,6 +6,8 @@
   "modelVersion": "4.4.0",
   "classes": ["drawing", "hentai", "neutral", "porn", "sexy"],
   "size": 224,
+  "format": "layers",
+  "shards": ["weights"],
   "files": {
     "tf": { "name": "tf.min.js", "key": "tfjs-4.22.0/300dfae273d20b4046f46a06d735688f03675a807561e9bcb5f664eb2f3d2831/tf.min.js", "sha256": "300dfae273d20b4046f46a06d735688f03675a807561e9bcb5f664eb2f3d2831", "bytes": 1469843,
       "src": "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js", "license": "Apache-2.0" },
