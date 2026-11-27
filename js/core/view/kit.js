@@ -198,7 +198,8 @@
 
   // ---- CLEAR WITHOUT A PASSWORD: the viewer's own choice (Nathan 2026-11-24/25) ----
   // The core decides everything (clearNoPwState: mode '' | 'stage' | 'all', tapped; the blur levels follow it). This only
-  // draws the viewer's buttons: "Tap to unblur" until this viewer taps (for this room, this session), then "Blur".
+  // draws the viewer's buttons: "Tap to unblur" until this viewer taps (for this room, this session), then "Blur" -- only while
+  // the Stage carries a picture blur applies to (clearNoPwState.pic: a camera, a share, an avatar image; initials alone: none).
   // Report is NOT on the main control row (Nathan 2026-11-26: a crowd would press it): it lives in the embed's info
   // panel and the meeting's More menu (clearReportButton), behind a confirm sheet that points to the police / NCMEC and
   // sends GifOS only the host's credential id. One report per device per room, kept here (local).
@@ -297,7 +298,9 @@
     });
     var on = !!st.mode;
     var words = { 'clear-tap': say(C, 'clearUnblur', 'Unblur'), 'clear-reblur': say(C, 'clearBlurAgain', 'Blur') };
-    var show = { 'clear-tap': on && !st.tapped && st.offer !== false, 'clear-reblur': on && !!st.tapped };
+    // only while a picture is there to (un)blur (st.pic); the viewer's tap stays remembered for the room either way
+    var pic = !!st.pic;
+    var show = { 'clear-tap': on && pic && !st.tapped && st.offer !== false, 'clear-reblur': on && pic && !!st.tapped };
     ids.forEach(function (id) { var b = els[id]; if (b.textContent !== words[id]) b.textContent = words[id]; if (b.hidden !== !show[id]) b.hidden = !show[id]; });
   }
 

@@ -195,9 +195,9 @@
       $('emb-play').hidden = heard || st === 'off';
       // Second prompt, after the unmute one (never both): sound is on, the Stage is blurred and this viewer may unblur it
       // (offer is false while a host's blur order wins).
-      var cst = { mode: '', tapped: false, offer: false };
+      var cst = { mode: '', tapped: false, offer: false, pic: '' };
       try { cst = C.clearNoPwState() || cst; } catch (e) {}
-      $('emb-unblur').hidden = !(heard && st !== 'off' && !!cst.mode && !cst.tapped && cst.offer !== false);
+      $('emb-unblur').hidden = !(heard && st !== 'off' && !!cst.mode && !!cst.pic && !cst.tapped && cst.offer !== false);
       var mw = heard ? tr('mute', 'Mute') : tr('unmute', 'Unmute');
       if ($('emb-mute').textContent !== mw) { $('emb-mute').textContent = mw; $('emb-mute').setAttribute('aria-pressed', heard ? 'false' : 'true'); }
       var card = $('emb-card');
