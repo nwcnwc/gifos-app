@@ -3727,6 +3727,10 @@
     // socket still arms it. amAdmin ⇒ I'm in `admins` ⇒ never counts against me.
     function adminWatch() {
       if (!av || EMBED) { adminCloseOff(); return; }   // the absence close is an admin room's (a captured room ends with its ticket); an embed waits for the host (its card says so)
+      // not in yet (the one join state): the page cannot know whether a host is here, so it neither says "No host present" nor counts
+      let jsA = null;
+      try { jsA = joinState(); } catch (e) {}
+      if (jsA && jsA.state === 'connecting') { adminCloseOff(); return; }
       if (admins.length > 0) { adminCloseOff(); return; }
       // A slow pulse is not a departure. stHold is the seat liveness rule.
       // stHold vouches for the seat, not the role: admSeen is pruned only on
