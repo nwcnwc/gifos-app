@@ -125,7 +125,7 @@
         if (!p || p === d.part) return;
         d.part = p;
         p.on((ev) => onDoor(d, ev));
-      }, T().MYROOM_TICK_MS || 1000);
+      }, T().MYROOM_TICK_MS);
     }
     for (const [k, d] of Array.from(doors)) if (!want.some((w) => M.roomKey(w.rec.room, w.rec.v) === k)) shut(k, d);   // a contact removed, or no longer among the most recent
   }
@@ -186,9 +186,9 @@
     const title = r.test ? 'Test ring' : r.label + ' is calling';
     const text = r.test ? 'This is how a call rings on this device.' : r.door && r.door.mine ? 'At your personal room. Answer takes you there. Your mic turns on there; your camera stays off.' : 'From our private room. Answer takes you there. Your mic turns on there; your camera stays off.';
     sheet(title, text, r.test ? 'OK' : 'Answer');
-    toneOnce(); toneTimer = root.setInterval(toneOnce, 6 * (T().MYROOM_TICK_MS || 1000));   // 2 s on, 4 s off
+    toneOnce(); toneTimer = root.setInterval(toneOnce, 6 * T().MYROOM_TICK_MS);   // 2 s on, 4 s off
     try { if (doc.hidden && root.Notification && root.Notification.permission === 'granted') { note = new root.Notification(title, { body: text, tag: 'gifos-ring' }); note.onclick = () => { try { root.focus(); } catch (e) {} }; } } catch (e) { note = null; }
-    if (r.test) r.timer = root.setTimeout(endRing, T().MYROOM_RING_MS / 6 || 5000);
+    if (r.test) r.timer = root.setTimeout(endRing, T().MYROOM_RING_MS / 6);
   }
   function endRing() {
     if (ringing && ringing.timer) root.clearTimeout(ringing.timer);
@@ -230,7 +230,7 @@
       const ask = lockAsk = new AbortController();
       nav.locks.request(LOCK, { signal: ask.signal }, () => new Promise((free) => { if (lockAsk !== ask) { free(); return; } lockFree = free; standing = true; openDoors(); }))
         .catch(() => {})
-        .then(() => { if (lockAsk !== ask) return; lockAsk = null; lockFree = null; standing = false; closeDoors(); root.setTimeout(sync, T().MYROOM_TICK_MS || 1000); });   // taken over (my personal room's page): wait in line again
+        .then(() => { if (lockAsk !== ask) return; lockAsk = null; lockFree = null; standing = false; closeDoors(); root.setTimeout(sync, T().MYROOM_TICK_MS); });   // taken over (my personal room's page): wait in line again
       return;
     }
     const a = lockAsk; lockAsk = null; standing = false;
@@ -260,9 +260,17 @@
       return;
     }
     role = 'host';
-    root.setInterval(sync, T().MYROOM_RING_MS || 30000);   // a handle that went over, a room used more recently
-    if (!MR() && flag()) { deps().then(sync, () => {}); return; }   // the Home Screen loads My Room's parts only for a device that rings
+    if (!MR() && flag()) { deps().then(() => { follow(); sync(); }, () => {}); return; }   // the Home Screen loads My Room's parts only for a device that rings
+    if (!MR()) {   // turned on in another tab later: this one joins then
+      const late = (e) => { if (e.key === STAY && flag()) { root.removeEventListener('storage', late); deps().then(() => { follow(); sync(); }, () => {}); } };
+      root.addEventListener('storage', late);
+      return;
+    }
+    follow();
     sync();
+  }
+  function follow() {
+    root.setInterval(sync, T().MYROOM_RING_MS);   // a handle that went over, a room used more recently
     root.addEventListener('storage', (e) => { if (!e.key || e.key.indexOf('gifos_') === 0) sync(); });
     root.addEventListener('pagehide', () => holdLock(false));
   }
@@ -274,24 +282,21 @@
     return DEPS.reduce((p, n) => p.then(() => (HAVE[n] && HAVE[n]() ? null : new Promise((ok, no) => {
       if (doc.querySelector('script[src$="/' + n + '.js"]') && !(n in HAVE)) return ok();
       const s = doc.createElement('script'); s.src = base + n + '.js'; s.onload = ok; s.onerror = no; (doc.head || doc.body).appendChild(s);
-    }))), Promise.resolve()).then(() => {
-      root.addEventListener('storage', (e) => { if (!e.key || e.key.indexOf('gifos_') === 0) sync(); });
-      root.addEventListener('pagehide', () => holdLock(false));
-    });
+    }))), Promise.resolve());
   }
   // In my personal room after Answer from a standby tab: the caller knocks again here; its ring is answered at once.
   function answerHint(at) {
     let h = null; try { h = JSON.parse(root.sessionStorage.getItem('gifos_ring_answer') || 'null'); } catch (e) { h = null; }
-    if (!h || h.room !== at.room || String(h.v) !== String(at.v || '') || Date.now() - (+h.at || 0) > (T().MYROOM_RING_MS || 30000)) return;
+    if (!h || h.room !== at.room || String(h.v) !== String(at.v || '') || Date.now() - (+h.at || 0) > T().MYROOM_RING_MS) return;
     const done = () => { try { root.sessionStorage.removeItem('gifos_ring_answer'); } catch (e) {} };
     const t0 = Date.now();
     const look = root.setInterval(() => {
-      if (Date.now() - t0 > (T().MYROOM_RING_MS || 30000)) { root.clearInterval(look); done(); return; }
+      if (Date.now() - t0 > T().MYROOM_RING_MS) { root.clearInterval(look); done(); return; }
       const p = MR() && MR().live; if (!p) return;
       const st = p.state();
       const r = (st.rings || []).find((x) => x.label === h.label);
       if (r && p.answer(r.pid)) { root.clearInterval(look); done(); }
-    }, 250);
+    }, T().MYROOM_TICK_MS / 4);
   }
 
   GifOS.ringHere = { on, mode, status, set, test, settle, takeOver, sync, doorsMax };
