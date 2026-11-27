@@ -912,6 +912,21 @@
     return { defs, art, shadowRx: 40 };
   };
 
+  // Identity — a calm ID card: one person, two quiet lines. No sparkle, no motion (the same in every frame).
+  ART.identity = (a, f) => {
+    const base = toHex(candy(a));
+    const g1 = grad(), g2 = grad(), sh = grad();
+    const defs = bodyGrad(g1, base) + lg(g2, [[0, '#ffffff'], [1, '#e4ecef']]) + sheenGrad(sh);
+    const art =
+      "<path d='" + rr(16, 32, 96, 66, 12) + "' fill='url(#" + g1 + ")'/>"
+      + "<path d='" + rr(22, 44, 84, 48, 8) + "' fill='url(#" + g2 + ")'/>"
+      + "<circle cx='46' cy='62' r='9' fill='" + shade(base, -40) + "'/>"
+      + "<path d='M30 88 a16 13 0 0 1 32 0 z' fill='" + shade(base, -40) + "'/>"
+      + "<path d='M72 58 h24 M72 69 h24 M72 80 h14' stroke='#b9c6cc' stroke-width='4' stroke-linecap='round' fill='none'/>"
+      + "<path d='" + rr(16, 32, 96, 24, 12) + "' fill='url(#" + sh + ")'/>";
+    return { defs, art, shadowRx: 40 };
+  };
+
   // ---- letter fallback: a glossy candy tile with the initial ----------------
   function fallbackArt(letter, a, f) {
     const base = toHex(candy(a));

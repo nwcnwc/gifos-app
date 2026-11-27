@@ -692,6 +692,6 @@ button.row-del { min-width: 48px; min-height: 48px; display: inline-flex; align-
   .pin-head .pin-back-wide { display: none; }
   .pin-head .pin-back-narrow { display: inline; }
 }
-/* Settings: Follows you (kept in My identity, every device) vs This device only (docs/identity.md). */
+/* Settings: Follows you (kept in Me & My Contacts, every device) vs This device only (docs/identity.md). */
 .settings-sheet .set-scope { display: inline-block; vertical-align: middle; margin-left: .4rem; padding: 0 .4rem; border-radius: .6rem; font-size: .66rem; font-weight: 500; line-height: 1.45; letter-spacing: 0; text-transform: none; color: #6a6a72; border: 1px solid #c9c9cf; white-space: nowrap; }
 .settings-sheet .set-scope[data-scope="you"] { color: #2d5bd8; border-color: currentColor; }
