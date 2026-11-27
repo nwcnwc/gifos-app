@@ -260,17 +260,17 @@
       var mine = ++checking;
       canvas = null; verdict = null;
       thumbBox.textContent = T('tvChecking', 'Checking the picture on this device…');
-      err.textContent = '';
+      picErr.textContent = '';
       go.disabled = true;
       explicitCheck().then(function (E) { return E.checkStill(c); }).then(function (r) {
         if (mine !== checking) return;
         if (r.ok && r.verdict) { canvas = c; verdict = r.verdict; thumbBox.textContent = ''; thumbBox.appendChild(c); return; }
         thumbBox.textContent = T('tvPicStd', 'The listing will use the standard picture.');
-        err.textContent = T('tvPicExplicit', 'This picture can’t be the thumbnail: it may show nudity or sexual content. Please choose another picture.');
+        picErr.textContent = T('tvPicExplicit', 'This picture can’t be the thumbnail: it may show nudity or sexual content. Please choose another picture.');
       }, function () {
         if (mine !== checking) return;
         thumbBox.textContent = T('tvPicStd', 'The listing will use the standard picture.');
-        err.textContent = T('tvPicNoCheck', 'This device could not check the picture, so it can’t be the thumbnail. The listing will use the standard picture.');
+        picErr.textContent = T('tvPicNoCheck', 'This device could not check the picture, so it can’t be the thumbnail. The listing will use the standard picture.');
       }).then(function () { if (mine === checking) go.disabled = false; });
     }
     var file = el('input', { type: 'file', accept: 'image/*', style: 'display:none', id: 'tv-file' });
@@ -290,10 +290,13 @@
       try { setCanvas(drawCover(v, v.videoWidth, v.videoHeight)); err.textContent = ''; } catch (e) { err.textContent = T('tvPicFail', 'This browser could not make the picture.'); }
     };
     var err = el('p', { cls: 'err', role: 'alert' });
+    // The picture check's words sit right under the picture, where the host is looking.
+    var picErr = el('p', { cls: 'err', role: 'alert', id: 'tv-pic-err' });
     body.appendChild(el('label', {}, [document.createTextNode(T('tvFTitle', 'Public title')), title]));
     body.appendChild(el('label', {}, [document.createTextNode(T('tvFDesc', 'Public description')), desc, cnt]));
     body.appendChild(el('div', { cls: 'thumbwrap' }, [el('label', { text: T('tvFPic', 'Thumbnail') }), thumbBox]));
     body.appendChild(el('div', { cls: 'row' }, [up, snap, file]));
+    body.appendChild(picErr);
     body.appendChild(el('label', { cls: 'chk' }, [pw, document.createTextNode(T('tvFPw', 'Password needed to watch (shown as a badge; put the password in the description or give it out yourself)'))]));
     body.appendChild(el('label', {}, [document.createTextNode(T('tvFTip', 'Base address for tips (optional, public; not shown yet)')), tip]));
     body.appendChild(el('p', { cls: 'note', text: T('tvFNote', 'Everything here is public. Your room password is never listed: a room with a password still asks for it.') }));
