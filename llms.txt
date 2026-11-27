@@ -467,16 +467,18 @@ PHONE COMPACT MODE — data-compact / --gifos-*  [no capability needed; optional
    desktop zoomed to phone width keeps its size. An app that ignores it
    is unchanged. Before your code runs, GifOS sets on your <html>:
      data-compact               present only in compact mode
-     --gifos-scale              text scale: 1, or about 0.875 in compact
-                                mode. A person's larger text setting
+     --gifos-scale              text scale: 1, or 0.875 in compact mode.
+                                A person's much larger text setting
                                 (browser font size, iOS Dynamic Type,
                                 GifOS Settings → Text size) is already
                                 in it, so it can be above 1.
      --gifos-space              spacing scale: 1, or 0.75 in compact mode
      --gifos-tap                44px: the smallest tap target. Never
                                 shrink a button below it.
-     --gifos-text-min           the readable minimum (13px, more with a
-                                larger text setting). No words below it.
+     --gifos-text-min           the readable minimum: 13px, raised by
+                                any larger text setting. No words below
+                                it: wrap compact sizes in max(...) as
+                                below.
      --gifos-input-text         16px: text in fields. Smaller field text
                                 makes iOS zoom the page on every tap.
    CSS, written next to your normal sizes (always give a fallback):

@@ -478,10 +478,12 @@
   //    trackpad) that is phone-sized (the meeting's phone layout). A desktop
   //    zoomed or narrowed to phone width keeps its full size, so browser zoom
   //    is never undone;
-  //  - text shrinks by DISPLAY_COMPACT_TEXT of what the app would show, but the
+  //  - text shrinks to DISPLAY_COMPACT_TEXT of what the app would show. The
   //    person's own larger text setting (browser default font size, iOS
-  //    Dynamic Type, GifOS Settings → Text size) scales it back up, and
-  //    --gifos-text-min is the floor;
+  //    Dynamic Type, GifOS Settings → Text size) raises the readable floor
+  //    (--gifos-text-min = DISPLAY_TEXT_MIN x their ratio) at once, and once
+  //    it is more than the compact step (ratio x 0.875 > 1) it scales the
+  //    words up too, continuously, so a large setting always reads large;
   //  - tap targets never shrink (--gifos-tap) and form fields keep 16px text
   //    (--gifos-input-text; smaller fields make iOS zoom the page on focus).
   const DISPLAY_COMPACT_TEXT = 0.875;
@@ -514,7 +516,7 @@
     const r2 = (n) => Math.round(n * 1000) / 1000;
     return {
       compact,
-      scale: compact ? r2(DISPLAY_COMPACT_TEXT * user) : 1,
+      scale: compact ? r2(DISPLAY_COMPACT_TEXT * Math.max(1, DISPLAY_COMPACT_TEXT * user)) : 1,
       space: compact ? DISPLAY_COMPACT_SPACE : 1,
       tap: 44,
       textMin: Math.round(DISPLAY_TEXT_MIN * user),
