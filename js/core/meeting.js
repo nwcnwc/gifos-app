@@ -5535,10 +5535,8 @@
       // The way in is a wait from the page's first paint: its flow starts here when no beat has started it yet (the first
       // beat comes a second in, and the line said the network's verdict until then).
       try { if (!refused && !leftUp && typeof progressBegin === 'function') progressBegin(); } catch (e) {}
-      // ONE JOIN STATE: the words are joinState's (a viewer whose Stage already plays is watching, no wait shown; a viewer
-      // who is in but whose Stage has not started playing here waits in the way in's last phase).
-      // (progressWords() is the one join state's words: none for a viewer whose Stage already plays, the way in's last phase
-      // for a viewer who is in while the Stage has not started playing here)
+      // ONE JOIN STATE: progressWords() is joinState's words (none for a viewer whose Stage already plays; the way in's last
+      // phase for a viewer who is in while the Stage has not started playing here); the line also carries the state itself.
       let jsNow = null;
       try { jsNow = joinState(); } catch (e) {}   // not set yet on the first paints of the boot
       const prog = !refused && !leftUp && typeof progressWords === 'function' ? progressWords() : null;
@@ -10349,7 +10347,23 @@
     // state (progressFacts) by the pure judge in js/meet-progress.js; every
     // change goes into window.__meetProgress and (DEBUG) the clog, facts and
     // all, so a test can judge the same facts again and compare.
-    // progLastJoin: the way in's run after it ended (a viewer waits in its last phase until the Stage plays); joinState: below
+    // ---- ONE JOIN STATE (JOINSTATES, Nathan 11-27) ---------------------------------------------------------------------
+    // Live 0.9.28.57 /cast showed four answers at once: the top banner WATCHING (later RECONNECTING), the header pill
+    // Watching, the card "Step 6 of 13: Asking to join…" and the Stage "The stage is clear.", all while the page was still
+    // asking to get in. joinState() is the one answer the banner, the header pill, the status line, the joining card and
+    // the Stage's own line read:
+    //   connecting    not in yet: the way in is running (w: its phase words); or a viewer who is in but whose Stage is not
+    //                 playing here yet while nothing says the broadcast is off (w: the way in's last phase, "Starting the
+    //                 picture and sound"). Never "Watching", never "The stage is clear."
+    //   watching      a viewer whose Stage is playing here (seated means hearing the Stage; a door can carry it a beat before
+    //                 the seat lands, and a person who sees and hears it is watching)
+    //   in            in the meeting: a /meet seat, a broadcast host or a stager (their own lamp says Live / Off air)
+    //   offair        a viewer who is in and knows the broadcast is not on (not started, scheduled, ended)
+    //   reconnecting  was in and lost it: the way-back flow, the room link down past the quiet time, the seat lost, or a
+    //                 Stage that was playing and is gone for a moment
+    //   refused       turned away for good, or left (the line says why)
+    // -> { state, viewer, w }: w the words while connecting or reconnecting (progressWords), else null.
+    // progLastJoin: the way in's run after it ended (a viewer waits in its last phase until the Stage plays)
     let progRun = null, progNAtRelay = 0, progListAt = -1, progEndedJoin = false, progBackSince = 0, progMend = false, progLastJoin = null, joinState = function () {
       // (declared in this let, not as its own statement: the core counts its statements in the linker's order. Asked before
       // this line has run it throws, and every asker reads "not in yet".)
@@ -10476,22 +10490,6 @@
       return w;
     }
     window.__gifosProgressWords = () => progressWords();
-    // ---- ONE JOIN STATE (JOINSTATES, Nathan 11-27) ---------------------------------------------------------------------
-    // Live 0.9.28.57 /cast showed four answers at once: the top banner WATCHING (later RECONNECTING), the header pill
-    // Watching, the card "Step 6 of 13: Asking to join…" and the Stage "The stage is clear.", all while the page was still
-    // asking to get in. joinState() is the one answer the banner, the header pill, the status line, the joining card and
-    // the Stage's own line read:
-    //   connecting    not in yet: the way in is running (w: its phase words); or a viewer who is in but whose Stage is not
-    //                 playing here yet while nothing says the broadcast is off (w: the way in's last phase, "Starting the
-    //                 picture and sound"). Never "Watching", never "The stage is clear."
-    //   watching      a viewer whose Stage is playing here (seated means hearing the Stage; a door can carry it a beat before
-    //                 the seat lands, and a person who sees and hears it is watching)
-    //   in            in the meeting: a /meet seat, a broadcast host or a stager (their own lamp says Live / Off air)
-    //   offair        a viewer who is in and knows the broadcast is not on (not started, scheduled, ended)
-    //   reconnecting  was in and lost it: the way-back flow, the room link down past the quiet time, the seat lost, or a
-    //                 Stage that was playing and is gone for a moment
-    //   refused       turned away for good, or left (the line says why)
-    // -> { state, viewer, w }: w the words while connecting or reconnecting (progressWords), else null.
     // progressBeat(seated, now): which wait is on, judged once a second. The way
     // in once per page; back in after a drop the calm rule lets show (the same
     // quiet time as the reconnecting note).
