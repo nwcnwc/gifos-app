@@ -72,7 +72,7 @@
     FINDLEAF: { by: 'fo', flag: 'fo', only: ['fo', 'foAt', 'hole'] },   // the decider's order (L25.7); ttl, nbrs, tag change down the cascade
     RECLAIM: { by: 'id', flag: 't' },   // L3.10: always claimed: the signature under m.id is the proof of identity (the seat's tok is the sim's stand-in, anyone can compute it)
   };
-  const WIRE_VERSION = '0.9.28.46';   // the ONE page wire version, sent as ?pv= on every relay socket (makeUrl here, the door socket in run.html reads GifOS.meshWire.WIRE_VERSION): the relay's flag-day floor. Moves with each release.
+  const WIRE_VERSION = '0.9.28.47';   // the ONE page wire version, sent as ?pv= on every relay socket (makeUrl here, the door socket in run.html reads GifOS.meshWire.WIRE_VERSION): the relay's flag-day floor. Moves with each release.
   const FILL_WINDOW_MS = TM.FILL_WINDOW_MS;   // mesh-identity.js: a signature's time must lie this close to mine
   const REPLAY_MS = TM.REPLAY_MS;   // the seat's own goodbye window: 60 ticks (recv-seated.js)
   const BY_ID = { by: 'id' };   // a type no seat signs today: a claim on it still has to verify as m.id's whole frame
@@ -1570,7 +1570,7 @@
       // None pre-signed for what I would say now: then it is a plain leave, or a closed tab would hold its cell for a whole lease.
       byeIsHeld(pid) { return byeHeld.has(String(pid)); },
       byesHeld() { return byeHeld.size; },   // pages gone whose cell is held: no face, no head in the count
-      leave(reload) { if (reload && !sendHeldByes()) reload = false; try { if (raw) { if (penv && penv.leave) penv.leave(!!reload); else raw.leave(!!reload); } } catch (e) {} try { if (sock) sendRaw({ t: 'unlist' }); } catch (e) {} node.stop(); },   // goodbye to the peers, then off the greeter list, then the socket closes: no greeter-gone for a page leaving in order
+      leave(reload, final) { if (final) reload = false; else if (reload && !sendHeldByes()) reload = false; try { if (raw) { if (penv && penv.leave) penv.leave(!!reload); else raw.leave(!!reload); } } catch (e) {} try { if (sock) sendRaw({ t: 'unlist' }); } catch (e) {} node.stop(); },   // goodbye to the peers, then off the greeter list, then the socket closes: no greeter-gone for a page leaving in order
       // Transport events from the page's pc/dc callbacks and watchdogs (env.js maps hard/quiet and debounces).
       remeasure() { netWordChanged(); /* L4.1.1: the page env's tick reads the verdict itself (js/mesh/page/env.js tick: nat, cnat, l411Verdict), so a verdict that lands after the join is acted on at the next tick; nothing to do here */ },   // a network verdict that lands after the join (seat.join reads it once)
       doorForgive(pid) { if (penv && penv.doorForgive) penv.doorForgive(String(pid)); },

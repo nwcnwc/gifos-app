@@ -11065,7 +11065,7 @@
       try { sessionStorage.setItem(PW_CHANGED_KEY, JSON.stringify({ room: roomKey(), seed: myIdentitySeed || '', at: Date.now(), ep: pwEpInt(ep) ? ep : undefined, out: pwBootOutList(from) })); } catch (e) {}
       // Left as a reload, not stopped: a stopped node sends no reload mark, so
       // the seat coming back waits out the crash path's reclaim wait (10 s).
-      sendMeshLeave({ type: 'pagehide' });
+      sendMeshLeave({ type: 'pagehide', back: true });
       sayState('passwordChanged');
       location.reload();
     }
@@ -21349,7 +21349,11 @@
       if (leftMesh) return; leftMesh = true; leaving = true;
       if (unloadEvent) {
         try { seatMemSave(); } catch (e) {}
-        try { meshNode && meshNode.leave(true); } catch (e) {}
+        // An embed keeps no seat memory, so a closed or reloaded embed never comes back as this seat: its goodbye is final (the
+        // Leave button's own words), and nobody holds its cell for it. An update reload or a password boot does come back
+        // with this identity: those keep the reload mark.
+        let comesBack = !EMBED || unloadEvent.back === true; try { if (updateLeaving) comesBack = true; } catch (e) {}
+        try { meshNode && meshNode.leave(true, !comesBack); } catch (e) {}
         return;
       }
       if (typeof seatMemErase === 'function') seatMemErase();
