@@ -112,6 +112,8 @@ jobs:
             ./ dist/
           # Pages takes at most 20,000 files: only the meet floor up to latest is served; fails early (raise latestMeetFloor) past the guard.
           node .github/scripts/prune-versions.mjs dist
+          # Every served snapshot and root file whole, nothing half-left, every _redirects rule kept by Pages.
+          node .github/scripts/check-site.mjs dist .
           # Test, proof and design files are never published.
           for d in test qa proof evidence docs design; do
             if [ -e "dist/$d" ]; then echo "::error::$d was staged for the site"; exit 1; fi
@@ -163,6 +165,7 @@ jobs:
           n=$(find dist -type f | wc -l)
           echo "site files = $n"
           if [ "$n" -gt 19000 ]; then echo "::error::site copy has $n files; Pages takes at most 20,000: raise latestMeetFloor (see .github/scripts/prune-versions.mjs)"; exit 1; fi
+          node .github/scripts/check-site.mjs dist .
           W="$RUNNER_TEMP/tools/node_modules/.bin/wrangler"
           "$W" pages deploy dist \
             --project-name gifos \
@@ -306,6 +309,14 @@ jobs:
             echo "::error::the large app file was published with the site ($big)"
             exit 1
           fi
+
+      # Every file the copy holds is served, and every unserved snapshot redirects to the floor (SNAPGAPS).
+      - name: Every served file is live
+        if: ${{ !inputs.models_only }}
+        run: |
+          set -euo pipefail
+          node .github/scripts/live-site-check.mjs dist https://gifos-pq5.pages.dev "${GITHUB_SHA::8}"
+          node .github/scripts/live-site-check.mjs dist https://gifos.app "${GITHUB_SHA::8}"
 
       - name: Deploy the GIF worker
         if: ${{ !inputs.models_only }}

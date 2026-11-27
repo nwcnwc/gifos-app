@@ -265,6 +265,10 @@ body.names-off #stagefeed .stgnames { display: none; }
   /* Settings rows (layout in css/meet-23b.css). */
   .set-sec { display: flex; flex-direction: column; gap: .45rem; }
   .set-help { color: var(--muted, #8888aa); font-size: .76rem; line-height: 1.35; margin: 0; }
+  /* Follows you (kept in My identity, every device) vs This device only: one small tag per setting (docs/identity.md). */
+  .set-scope, small[data-t^=setScope], #set-modal small[data-t^=setScope], #set-modal .rec-opt small[data-t^=setScope], .rec-opt small.set-scope { display: inline-block; vertical-align: middle; margin: 0 0 0 .4rem; padding: 0 .4rem; border-radius: .6rem; font-size: .68rem; font-weight: 500; line-height: 1.45; color: var(--muted, #8888aa); border: 1px solid var(--border, #2a2a3f); white-space: nowrap; }
+  .set-scope[data-scope="you"], small[data-t=setScopeYou], #set-modal small[data-t=setScopeYou], #set-modal .rec-opt small[data-t=setScopeYou] { color: var(--accent, #6c8cff); border-color: currentColor; }
+  .set-scope-note { margin: 0 0 .6rem; }
   .capnote { color: var(--muted, #8888aa); font-size: .8rem; align-self: center; padding: 0 .4rem; }   /* an open room's admin by subscription: one quiet line */
   #timingrow button { border-radius: .45rem; cursor: pointer;
     background: none; border: 1px solid var(--border, #2a2a3f); color: var(--muted, #8a8aa8); }
@@ -477,6 +481,10 @@ body.names-off #stagefeed .stgnames { display: none; }
      sender's own blur, which it barely changes. */
   .tile video.blur1, #stagefeed > .rowtile > video.blur1, #fsmain.blur1, .fsthumb video.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .009))) saturate(.9); transform: scale(1.07); }
   .tile video.blur2, #stagefeed > .rowtile > video.blur2, #fsmain.blur2, .fsthumb video.blur2 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-max, .0225))) saturate(.75); transform: scale(1.15); }
+  /* The Stadium picture: a grid of faces, so the radius is a fraction of one face's side (the box's long side over the
+     columns the page laid out, --stad-cols), the same look as a tile of that size. */
+  #stadium .rowtile > video.blur1, #stadwhole video.blur1 { filter: blur(calc(var(--bw, 100vmin) / var(--stad-cols, 1) * var(--blur-view-min, .009))) saturate(.9); }
+  #stadium .rowtile > video.blur2, #stadwhole video.blur2 { filter: blur(calc(var(--bw, 100vmin) / var(--stad-cols, 1) * var(--blur-view-max, .0225))) saturate(.75); }
   /* The face boxes on a shared screen (STAGE-FACES). No transform here: a
      strip-cell face is positioned by left/top, and a scale would move it. */
   .stagefacebox video.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .009))) saturate(.9); }
@@ -2100,7 +2108,7 @@ body.names-off #stagefeed .stgnames { display: none; }
      leaves the picture (the top line and buttons, Blur, the Prerecorded pill, the Stage names); only the version
      label stays. Any pointer, touch or key brings them back. */
   body.view-calm #tophead > :not(#gifos-build-float), body.view-calm #bc-pre, body.view-calm #clearnopw-bar,
-  body.view-calm #stagefeed .stgname, body.view-calm .tile > :is(.name, .chips, .blurwhy:not([data-why="tap"])) { opacity: 0 !important; pointer-events: none !important; transition: opacity var(--t-slow) ease; }
+  body.view-calm #stagefeed .stgname, body.view-calm .cellname, body.view-calm .tile > :is(.name, .chips, .blurwhy:not([data-why="tap"])) { opacity: 0 !important; pointer-events: none !important; transition: opacity var(--t-slow) ease; }
   @media (prefers-reduced-motion: reduce) { .bar, body.dock-calm .bar, body.dock-calm .fitbtn,
     .tile > .blurbox, .tile .modbar, .topchip, #gifos-build-float { transition: none !important; } }
   .bar #cam, .bar #mic, .bar #reactbtn, .bar #sharebtn, .bar #chatbtn, .bar #ccdock, .bar #bartoggle {
@@ -2242,6 +2250,14 @@ body.names-off #stagefeed .stgnames { display: none; }
   #app-list #app-pick-go { display: inline-block; width: auto; margin: 0; min-height: 44px; padding: .5rem .9rem; text-align: center; }
   #app-list .app-pick-note { display: block; min-height: 1.2em; margin: .35rem 0 .2rem; opacity: .8; }
   #app-list .app-pick-note.bad { color: #e0574a; opacity: 1; }
+  /* The meeting apps, one tap each: full-width rows on a phone, 48px targets. */
+  #app-list .app-quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: .5rem; margin: 0 0 .6rem; }
+  #app-list .app-quickbtn { min-height: 48px; margin: 0; padding: .5rem .8rem; border-radius: .6rem; font-weight: 700; font-size: 16px;
+    border: 1px solid var(--accent, #7b5cff); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
+  /* The list never scrolls inside the sheet (a link cut in half at its edge): the sheet's body is the one scroller. */
+  #app-modal #app-list { max-height: none !important; overflow: visible !important; }
+  #app-list .app-pick-all { display: block; margin: 0 0 .35rem; color: var(--muted, #8888aa); font-size: 15px; }
+  #app-make-own { display: inline-flex !important; align-items: center; min-height: 44px; }
   #app-list .app-empty { margin: 8px 0; }
   #app-list .app-empty-link { display: block; min-height: 44px; line-height: 44px; font-weight: 700; color: inherit; text-decoration: underline; }
   #app-list .app-empty-note { display: block; margin-top: 6px; opacity: .75; }
@@ -3592,6 +3608,8 @@ body.names-off #stagefeed .stgnames { display: none; }
     background: none; color: var(--c-gray); font-size: 12px; font-weight: 500; cursor: pointer; }
   .vp-mode .vp-ic svg { width: 24px; height: 24px; display: block; }
   .vp-mode[aria-checked="true"] { color: var(--c-white); }
+  /* Every view is a choice: the ones not picked are light enough to read as buttons, the picked one is white. */
+  .vp-mode:not([aria-checked="true"]) { color: #c9ccd6; }
   .vp-mode[aria-checked="true"]::after { content: ""; position: absolute; left: 50%; bottom: 4px; width: 4px; height: 4px;
     margin-left: -2px; border-radius: var(--r-pill); background: var(--c-blue); }
   @media (hover: hover) and (pointer: fine) { .vp-mode:hover { color: var(--c-white); } }
@@ -3692,10 +3710,6 @@ body.names-off #stagefeed .stgnames { display: none; }
   body.ct-present.has-app:not(.ct-app-off):not(.app-full) #apppane { z-index: 34; }
   /* Presentation view: the area holds the whole screen; the meeting's chrome waits under it. */
   body.ct-present .ctarea { border-radius: 0; }
-  .ct-inset { position: fixed; z-index: 35; overflow: hidden; border-radius: var(--r-md); background: var(--c-night); }
-  .ct-inset[hidden] { display: none; }
-  .ct-inset video { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .ct-inset-nm { position: absolute; left: 6px; bottom: 6px; max-width: calc(100% - 12px); padding: 2px 8px; border-radius: var(--r-pill); background: var(--c-scrim); color: var(--c-white); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ct-exit { position: fixed; z-index: 36; top: 12px; right: 12px; width: 44px; height: 44px; border: 0; border-radius: var(--r-pill); background: var(--c-scrim); color: var(--c-white);
     display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
   .ct-exit[hidden] { display: none; }
@@ -3754,6 +3768,12 @@ body.names-off #stagefeed .stgnames { display: none; }
   .ag-chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .ag-chip { min-height: 40px; padding: 0 14px; border: 0; border-radius: var(--r-pill); background: var(--c-ink); color: var(--c-gray); font: inherit; font-size: 14px; cursor: pointer; }
   .ag-chip[aria-pressed="true"] { background: var(--c-white); color: var(--c-black); }
+  /* A person not yet chosen is an outlined button with a plus, not grey text (it read as disabled); a chosen one is
+     white with a check. */
+  .ag-chip { border: 1px solid var(--c-gray); color: var(--c-white); background: none; }
+  .ag-chip::before { content: "+\00a0"; font-weight: 700; }
+  .ag-chip[aria-pressed="true"] { border-color: var(--c-white); background: var(--c-white); color: var(--c-black); }
+  .ag-chip[aria-pressed="true"]::before { content: "\2713\00a0"; }
   .ct-pview { position: absolute; z-index: 1; top: 8px; right: 8px; width: 44px; height: 44px; border: 0; border-radius: var(--r-pill); background: var(--c-scrim); color: var(--c-white);
     display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
   .ct-pview[hidden] { display: none; }
@@ -3845,6 +3865,8 @@ body.comfy:not(.broadcast) #airbar { display: none !important; }
     color: var(--c-white); font: 700 1.25rem/1 system-ui, sans-serif; cursor: pointer; }
   #tophead > .fitbtn { padding-left: 10px; padding-right: 10px; }
   #tophead > .fitbtn .vb-word { display: none; }
+  /* The Stage view's top row has only the view button: it says the view's name, as on a desktop. */
+  body.sv-live #tophead > .fitbtn .vb-word { display: inline; }
   #tophead > #gifos-build-float { position: absolute !important; top: 1px !important; left: max(10px, env(safe-area-inset-left, 0px)) !important;
     right: auto !important; flex: none; line-height: 12px !important; font-size: 10px !important; }
 }
@@ -3909,6 +3931,13 @@ body.comfy.sv-avail.has-app:not(.app-full):not(.solo-app):not(.app-room) #tophea
 .cellcard.has-img > span { display: none; }
 .cellcard > img.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .009))) saturate(.9); transform: scale(1.07); }
 .cellcard > img.blur2 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-max, .0225))) saturate(.75); transform: scale(1.15); }
+/* The names of a received picture's cells (the Stadium; viewKit.cellNames): drawn by this viewer at each cell's foot,
+   sharp over a blurred picture, never in the pixels sent. Show names off hides them; a calm surface fades them. */
+.cellnames { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; pointer-events: none; z-index: 2; overflow: hidden; }
+.cellname { position: absolute; box-sizing: border-box; transform: translateY(-100%); padding: .15em .45em; background: rgba(10,10,15,.62);
+  color: #eef; font-weight: 600; font-family: system-ui, sans-serif; line-height: 1.25; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; transition: opacity .4s ease; }
+body.names-off .cellnames { display: none; }
 /* ---- The view button never leaves a meeting (2026-11-26) ----
    People look for the view exactly when the screen has gone quiet: after a pick, in Scroll or the Stage view, or with
    the dock tucked. A quiet meeting (dock-calm, head-calm, view-calm, dock-idle, chrome-away) fades everything else in
@@ -3937,9 +3966,15 @@ body:is(.dock-calm, .head-calm, .view-calm, .dock-idle, .chrome-away, .sv-live):
   .ag-item { font-size: 16px; }
   /* A row a viewer only reads (not a button for them) is a line of text, so four items fit a small phone. */
   .ag-item:not([tabindex]):not(:has(> input)) { min-height: 34px; padding-top: 2px; padding-bottom: 2px; }
-  .ag-add .ag-in-t { flex: 1 1 100%; min-width: 0; }
-  .ag-add .ag-in-min { flex: 0 0 88px; width: 88px; }
-  .ag-add .ag-btn { flex: 1 1 auto; }
+  /* The new item is one row like the items above it: its title, its minutes and Add (the minutes never drop to a
+     row of their own, apart from the title). The limit counter and warning, when shown, take a line under it. */
+  .ag-add .ag-in-t { flex: 1 1 0; min-width: 0; }
+  .ag-add .ag-in-min { flex: 0 0 60px; width: 60px; padding: 0 6px; }
+  .ag-add .ag-btn { flex: 0 0 auto; padding-left: 14px; padding-right: 14px; }
+  .ag-add .ag-count.at, .ag-add .ag-limit:not([hidden]) { order: 9; flex: 1 1 100%; }
+  /* Who else can edit: the words and the people on one line, and each person reads as a button to tap. */
+  .ag-who { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+  .ag-wholb { margin: 0; }
   /* An item being edited is one row: its title, its minutes, up, down, remove. The counter shows only at the limit. */
   .ag-item:has(> .ag-in-t) { flex-wrap: nowrap; gap: 4px; padding: 2px 0; }
   .ag-item > .ag-in-t { flex: 1 1 0; min-width: 0; }
@@ -3963,18 +3998,18 @@ body.has-app .viewpick { z-index: 45; }
 body.has-app:not(.solo-app):not(.app-room) #appbar > button, body.has-app:not(.solo-app):not(.app-room) #appbar > label { min-height: 44px; min-width: 44px; }
 /* The Stage view with the agenda alone on it: the list starts under the top row, so the view button never sits on Hide. */
 body.sv-live:not(.sv-tabs) .ct-pane.ag { padding-top: max(60px, calc(var(--headh, 0px) + 8px)); }
-@media (max-height: 500px) { .ag-item:not([tabindex]):not(:has(> input)) { min-height: 34px; padding-top: 2px; padding-bottom: 2px; } }
+@media (max-height: 500px) { .ag-item:not([tabindex]):not(:has(> input)) { min-height: 30px; padding-top: 1px; padding-bottom: 1px; } }
+/* A phone on its side: Stop for everyone sits closer under the list, so a 4-item agenda keeps it on screen. */
+@media (max-height: 500px) { .ag-btn.ag-stopall { margin-top: 6px; } .ag-now:not([hidden]) { margin: 2px 0 0; } .ag-head { margin-bottom: 0; } }
 /* A phone typing into the agenda: the floating bar steps aside while a field has the keyboard, and the list can
    scroll clear of the bar. */
 @media (max-width: 700px), (max-height: 500px) {
   body:has(.ct-pane.ag :is(input, textarea):focus) .bar { opacity: 0; pointer-events: none; }
   .ct-pane.ag { padding-bottom: 96px; }
 }
-/* The Stage view keeps the page's own view button on screen, so the app bar does not repeat it. */
-body.sv-live #appbar #appview { display: none !important; }
 .ag-mini { font-size: 1.25rem; color: var(--c-white); }
-/* The meeting's own view button is on screen beside the app: the app bar does not repeat it. */
-body.comfy.sv-avail.has-app:not(.app-full):not(.solo-app):not(.app-room):not(.short-app) #appbar #appview { display: none !important; }
+/* A phone's folded app bar keeps its view button in every view (the Stage view too), even when the meeting's own is
+   on screen: every phone finds the view in the same place, the app's bar. */
 /* ---- A short phone (2026-11-26) ----
    A phone under 640px tall (an iPhone SE in Safari, any phone on its side) with an app in front: the app takes the top row's place
    too (the meeting's name and view button), and the app's own one-row bar carries the view button, so the app has
@@ -3997,6 +4032,18 @@ body :is(.tile, .rowtile).thin > .name { white-space: nowrap !important; overflo
   body.view-focus #fsstrip { padding-bottom: 8px; }
 }
 body.view-focus .fsthumb.fsauto .fslbl { white-space: normal; line-height: 1.15; max-width: calc(100% - 12px); }
+/* An upright phone's Focus strip: thumbs sized so the screen holds exactly three whole thumbs (8px pads and gaps), so no
+   thumb is ever cut at the edge; the strip scrolls sideways to the rest. */
+@media (orientation: portrait) and (max-width: 700px) {
+  body.view-focus .fsthumb { flex: 0 0 auto; width: clamp(100px, calc((100vw - 32px) / 3), 150px); }
+  /* The strip shows no scrollbar line (it scrolls sideways by touch). */
+  body.view-focus #fsstrip { scrollbar-width: none; }
+  body.view-focus #fsstrip::-webkit-scrollbar { display: none; }
+}
+/* On a short phone the follow-the-speaker card keeps its two lines of words whole: the glyph steps aside. */
+@media (orientation: portrait) and (max-width: 700px) and (max-height: 639px) {
+  body.view-focus .fsthumb.fsauto .fsautoglyph { display: none; }
+}
 /* A phone-wide agenda (Scroll stacks it with no tab bar): no lone presentation-view icon under the list; a double tap
    still presents it. Its edit rows give the item's title the room (minutes 52px, tighter gaps). */
 @container (max-width: 560px) {
@@ -4035,3 +4082,8 @@ body.mr-calling #alonecard, body.mr-on #alonecard { display: none !important; }
 #lobby .lob-myroom input:not([type]) { flex: 1 1 160px; min-height: 44px; box-sizing: border-box; padding: .5rem .6rem; border-radius: .45rem; border: 1.5px solid var(--c-gray); color: var(--c-ink); background: var(--c-white); font-size: 16px; }
 #lobby .lob-myroom .lob-ghost { min-height: 44px; min-width: 44px; padding: 0 12px; background: var(--c-white); color: var(--c-ink); border: 1.5px solid var(--c-gray); border-radius: .45rem; font-weight: 650; font-size: 16px; cursor: pointer; }
 #lobby .lob-myroom .lob-text { min-height: 44px; background: none; border: 0; color: var(--c-blue); text-decoration: underline; font-size: 16px; cursor: pointer; }
+/* My Room: a hidden door that listens for rings in one private room (it is a page, never seen) */
+.mr-door { position: fixed; left: -10px; top: -10px; width: 1px; height: 1px; border: 0; opacity: 0; pointer-events: none; }
+/* My Room: "Also share my personal room" in the swap dialogs (a plain checkbox line, not a form field) */
+.mr-share { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 8px 0; font-size: 15px; }
+.mr-share input[type="checkbox"] { width: 20px; height: 20px; min-height: 0; margin: 0; padding: 0; flex: none; }

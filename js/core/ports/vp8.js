@@ -2,7 +2,7 @@
  * ports/vp8.js: the picture half of the Node media port. Copyright (c) 2026 Crowd Concepts, Inc. All rights reserved.
  *
  * A host with no canvas still runs the page's packer (mesh-media.js createPacker). The packer speaks only to a surface:
- * resize, fill, stroke, blit, pixelate, label, glyph, letter, present, track. This file is that surface over I420, plus the
+ * resize, fill, stroke, blit, pixelate, glyph, letter, present, track. This file is that surface over I420, plus the
  * one VP8 encoder that turns each presented frame into RTP on a single werift video track. Geometry matches the canvas
  * surface (same rectangles, same order). Pixels are a YUV approximation of the same paints, not a canvas screenshot.
  *
@@ -789,7 +789,6 @@
         const up = scaleCrop(tiny.data, qq, qq, 0, 0, qq, qq, evenW, evenH);
         blitI420(buf.data, W, H, Math.round(dx), Math.round(dy), up.data, evenW, evenH);
       }
-      function textWidth(s, scale) { return s.length * 6 * scale; }
       function drawGlyph(ch, x, y, scale, color) {
         const rows = glyphRows(ch);
         const c = parseColor(color);
@@ -797,22 +796,6 @@
         for (let r = 0; r < 7; r++) for (let col = 0; col < 5; col++) if (rows[r][col] === '1') {
           for (let dy = 0; dy < scale; dy++) for (let dx = 0; dx < scale; dx++) put((x + col * scale + dx) | 0, (y + r * scale + dy) | 0, c);
         }
-      }
-      function label(text, x, y, w, h) {
-        if (!buf) return;
-        const fs = Math.max(8, Math.round(w * 0.11)), pad = Math.round(w * 0.03);
-        const bh = fs + pad * 2;
-        fill('rgba(10,10,15,0.62)', x, y + h - bh, w, bh);
-        const full = shownText(text);
-        const scale = Math.max(1, Math.round(fs / 7));
-        const lim = w - pad * 2;
-        let nm = full;
-        while (nm.length > 1 && textWidth(nm, scale) > lim) nm = nm.slice(0, -1);
-        if (nm !== full) nm = nm.slice(0, -1) + '…';
-        const gh = 7 * scale;
-        const ty = Math.round(y + h - bh + (bh - gh) / 2);
-        let tx = Math.round(x + pad);
-        for (let i = 0; i < nm.length; i++) { drawGlyph(nm[i], tx, ty, scale, '#eef'); tx += 6 * scale; }
       }
       function glyph(ch, x, y, size, color) {
         if (!buf) return;
@@ -961,7 +944,6 @@
         stroke: stroke,
         blit: blit,
         pixelate: pixelate,
-        label: label,
         glyph: glyph,
         letter: letter,
         present: present,

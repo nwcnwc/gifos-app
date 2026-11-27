@@ -131,16 +131,24 @@
    "js/core/view/shareshots.js",
    "js/core/view/subs.js",
    "js/core/view/view.js",
+   "js/gifos-identity.js",
+   "js/gifos-identity-ui.js",
    "js/meet-myroom.js",
    "js/core/view/myroom.js",
+   "js/meet-bell.js",
+   "js/core/view/bell.js",
    "js/core/view/meet.js"
   ],
   "cast.html": [
    "js/core/view/shareshots.js",
    "js/core/view/subs.js",
    "js/core/view/view.js",
+   "js/gifos-identity.js",
+   "js/gifos-identity-ui.js",
    "js/meet-myroom.js",
    "js/core/view/myroom.js",
+   "js/meet-bell.js",
+   "js/core/view/bell.js",
    "js/core/view/cast.js"
   ],
   "run.html": [

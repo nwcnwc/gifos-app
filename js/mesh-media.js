@@ -323,20 +323,6 @@
         ctx.imageSmoothingEnabled = true;
         ctx.drawImage(blurCv, 0, 0, q, q, dx, dy, dw, dh);
       },
-      // The name bar: a dark band and the measured name, shrunk then ellipsised
-      // so it stays inside the cell.
-      label(text, x, y, w, h) {
-        if (!ctx) return;
-        const fs = Math.max(8, Math.round(w * 0.11)), pad = Math.round(w * 0.03);
-        const bh = fs + pad * 2;
-        ctx.fillStyle = 'rgba(10,10,15,0.62)'; ctx.fillRect(x, y + h - bh, w, bh);
-        ctx.fillStyle = '#eef'; ctx.font = '600 ' + fs + 'px system-ui, sans-serif';
-        ctx.textBaseline = 'middle';
-        let nm = String(text); const lim = w - pad * 2;
-        while (nm.length > 1 && ctx.measureText(nm).width > lim) nm = nm.slice(0, -1);
-        if (nm !== String(text)) nm = nm.slice(0, -1) + '…';
-        ctx.fillText(nm, x + pad, y + h - bh / 2);
-      },
       glyph(ch, x, y, size) {
         if (!ctx) return;
         ctx.font = (size | 0) + 'px system-ui'; ctx.textBaseline = 'top';
@@ -537,26 +523,20 @@
       return best;
     }
 
-    // Burn identity onto a leaf face cell: a green TALKING frame, the NAME on a
-    // bottom strip, a HAND glyph top-right. Baked at the leaf so it travels the
-    // tree inside the one blended stream — no extra bandwidth, no receiver-side
-    // identity (approach A). lbl = { name, hand, talking, react } | null;
-    // react: a reaction emoji, shown top-left while it lasts.
-    // nameCell (optional, smaller than cell): the name bar is drawn for a cell of that size at the cell's bottom left.
-    function drawOverlay(dx, dy, cell, lbl, nameCell) {
+    // Burn the MARKS onto a leaf face cell: a green TALKING frame, a HAND glyph top-right, a reaction top-left. Baked at
+    // the leaf so they travel the tree inside the one blended stream. NEVER A NAME: a name in the pixels blurs with the
+    // face (an open room blurs the whole Stadium) and a Node seat could only draw it in a block font. Every viewer draws
+    // the names itself over each named cell (the pack's cell ids; viewKit.cellNames), crisp, under its own Show names
+    // and idle fade. lbl = { hand, talking, react } | null; react: a reaction emoji, shown top-left while it lasts.
+    function drawOverlay(dx, dy, cell, lbl) {
       if (!lbl) return;
-      // TAPESTRY mode (stadium past the overlay threshold): only the NAME goes,
-      // too small to read. Talking, a raised hand and a reaction stay as plain
-      // colour marks that still read when a face is a few pixels, or one
-      // (markOverlay below).
+      // TAPESTRY mode (stadium past the overlay threshold): talking, a raised
+      // hand and a reaction are plain colour marks that still read when a face
+      // is a few pixels, or one (markOverlay below).
       if (lbl.dot) { markOverlay(dx, dy, cell, lbl); return; }
       if (lbl.talking) {
         const lw = Math.max(2, cell * 0.035);
         surf.stroke('#37d67a', lw, dx + lw / 2, dy + lw / 2, cell - lw, cell - lw);
-      }
-      if (lbl.name) {
-        const nc = nameCell > 0 && nameCell < cell ? nameCell : cell;
-        surf.label(String(lbl.name), dx, dy + cell - nc, nc, nc);
       }
       if (lbl.hand) {
         const r = Math.max(6, cell * 0.12);
@@ -613,18 +593,39 @@
     // guarantees no wedge can outlive a second.
     const STILL_MAX_MS = TM.STILL_MAX_MS;
     let lastSig = '', lastRealPaint = 0, still = 0;
+    // HOW FAR A PICTURE HAS MOVED. A playing stream's clock runs on while no new picture arrives, so by the clock a
+    // received block whose sender has gone still (one frame per STILL_MAX_MS: every camera off) moved on every paint,
+    // and the unchanged room was painted, encoded and decoded again at the full rate at every seat below. Where the
+    // element counts the frames it has shown, that count is its progress, but only while the count is seen to move:
+    // not every browser counts, and one that does can stop for an element that is not displayed while its frames
+    // still arrive. A count that has not moved for two STILL_MAX_MS (a still sender moves it once per STILL_MAX_MS)
+    // is not believed, and the clock is the measure again, as it is on a hidden page.
+    const counted = new WeakMap();   // element -> { n: last count, at: when it last moved }
+    function progressOf(el, now) {
+      try {
+        if (typeof el.getVideoPlaybackQuality === 'function' && !(typeof document !== 'undefined' && document.hidden)) {
+          const n = el.getVideoPlaybackQuality().totalVideoFrames;
+          let c = counted.get(el);
+          if (!c) { c = { n: n, at: 0 }; counted.set(el, c); }
+          else if (n !== c.n) { c.n = n; c.at = now; }
+          if (c.at && now - c.at < STILL_MAX_MS + STILL_MAX_MS) return 'f' + n;
+        }
+      } catch (e) {}
+      return el.currentTime.toFixed(3);
+    }
     function frameSig() {
       let s = '';
+      const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
       for (const [id, t] of tiles) {
         const el = t.el;
         // videos report currentTime; canvases cannot, so force a redraw
         if (t.card) s += id + ':card;';   // a card has no source to advance
-        else if (el && typeof el.currentTime === 'number') s += id + ':' + el.currentTime.toFixed(3) + ';';
+        else if (el && typeof el.currentTime === 'number') s += id + ':' + progressOf(el, now) + ';';
         else return null;
         s += t.n + 'x' + t.cols + (t.hid && t.hid.size ? '-' + [...t.hid].join('.') : '') + ';';
         if (t.dark) s += 'D|';
         if (t.blur) s += 'B' + t.blur + '|';
-        if (t.lbl) s += (t.lbl.talking ? 'T' : '') + (t.lbl.hand ? 'H' : '') + (t.lbl.react ? 'R' + t.lbl.react : '') + (t.lbl.name || '') + '|';
+        if (t.lbl) s += (t.lbl.talking ? 'T' : '') + (t.lbl.hand ? 'H' : '') + (t.lbl.react ? 'R' + t.lbl.react : '') + '|';
         if (t.fit) s += t.fit + '|'; // a cover→contain flip changes the frame with the source untouched
       }
       return s;
@@ -665,7 +666,7 @@
         if (t.blur) blurBlit(el, b, dx, dy, cell, t.blur);
         else surf.blit(src, b.sx, b.sy, b.sw, b.sh, dx, dy, cell, cell);
       }
-      drawOverlay(dx, dy, cell, t.lbl);                       // BURN IN name/hand/talking (approach A: baked once at the leaf, rides pixels up the tree)
+      drawOverlay(dx, dy, cell, t.lbl);                       // BURN IN hand/talking/reaction (baked once at the leaf, rides pixels up the tree; names never)
     }
     // the paint clock's callback. A frame is captured only when the paint drew one (surface.present).
     function tick(minMs) { paint(minMs); }
@@ -756,9 +757,7 @@
         surf.resize(W, H);
         try { surf.blit(sourceOf(soloEl), 0, 0, nsw, nsh, 0, 0, W, H); } catch (e) {}
         const c = Math.min(W, H);
-        // The lone stager's name is a caption sized from the picture's long side (the side a viewer fits to the screen),
-        // not a headline across the whole frame height: the floating control bar overlays the bottom of the picture.
-        drawOverlay(0, H - c, c, solo.lbl, Math.round(Math.max(W, H) * 0.25));
+        drawOverlay(0, H - c, c, solo.lbl);
         last = now; cost = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - now; costAvg = packAvg(costAvg, cost, costN++); drawn++; surf.present();
         return;
       }
@@ -824,13 +823,13 @@
           if (t.hid && t.hid.has(j)) continue; // a cell this receiver hides takes no place: the grid stays gapless
           const dx = (f % G) * cell, dy = Math.floor(f / G) * cell; f++;
           // VIDEO OFF BY AN ADMIN. The cell keeps its place, because a receiver
-          // cuts faces out by position, and it keeps the name. No pixel of the
+          // cuts faces out by position and names it by its id. No pixel of the
           // source is drawn, whatever the source still sends.
           if ((t.dark || t.card) && t.n === 1) { faceCard(dx, dy, cell, t.lbl); continue; }
           // NO FRAME YET (a copy swapping in, a carrier's first key, a throttled
-          // tab): the cell keeps its place AND its name, like an admin's dark
-          // cell. The name is the stager's own (lbl from labelFor(sid)), not the
-          // picture's, so it never waits for pixels. Next paint fills the face.
+          // tab): the cell keeps its place and its id, like an admin's dark
+          // cell, so every viewer's name for it never waits for pixels. Next
+          // paint fills the face.
           if (!sw || !sh) {
             if (t.n === 1) faceCard(dx, dy, cell, t.lbl);
             continue;
@@ -883,7 +882,7 @@
           pid: (n === 1 && meta && (meta.talkPid != null || meta.pid != null)) ? String(meta.talkPid != null ? meta.talkPid : meta.pid) : null });   // a leaf's person: its talking frame is read at paint (setTalkSource); talkPid names it without naming the cell (ids)
         if (!(n === 1 && cols === 1)) arriveArm(el);
       },
-      // Update just the overlay (name/hand/talking) without touching the source
+      // Update just the marks (hand/talking/reaction) without touching the source
       // — called every tick from status/audio so the frame tracks speech live.
       label(id, lbl) { const t = tiles.get(id); if (t) t.lbl = lbl; },
       delTile(id) { if (fold) fold.remove('t' + id); tiles.delete(id); },

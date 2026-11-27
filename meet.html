@@ -990,7 +990,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <button id="pwbtn" data-t="password" data-ti="pwTip" aria-keyshortcuts="Alt+L" title="Lock this room with a password">Password</button>
         <button data-ti="capbtnTip" data-t="capBtn" id="capbtn" type="button" title="Take charge of this public majority-rules meeting: you set its password and can remove people" style="display:none">Make me host</button>
         <span id="capnote" class="capnote" role="status" style="display:none">Someone has taken charge of this meeting</span>
-        <button data-ti="waitbtnTip" data-t="waitRoom" id="waitbtn" type="button" aria-pressed="false" title="Hold people at the door until you admit them" style="display:none">Waiting room</button>
+        <button data-ti="waitbtnTip" data-t="waitRoom" id="waitbtn" type="button" aria-pressed="false" title="Make people wait until you let them in" style="display:none">Waiting room</button>
         <button data-ti="recbtnTip" id="recbtn" data-t="record" aria-keyshortcuts="Alt+R" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
         <button id="votebtn" data-t="vote" data-ti="voteTip" aria-keyshortcuts="Alt+U" title="Vote someone onto the stage, off the stage, or out of the room — majorities decide">Vote</button>
         <button data-ti="stagebtnTip" id="stagebtn" data-t="stage" aria-keyshortcuts="Alt+G" title="Step onto the stage — the whole room sees and hears the stage first">Stage</button>
@@ -1060,6 +1060,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <p data-t="peopleWatchWithThis">People watch with this link.</p>
     <input data-al="bcLinkAria" id="bc-link-url" readonly aria-label="Stream link">
     <button data-t="invCopy" type="button" id="bc-link-copy">Copy</button>
+    <button data-t="tvPublishBtn" type="button" id="bc-tv" hidden>Publish to GifOS.tv</button>
   </div>
   <div id="callbanner"><span id="callbanner-txt"></span><button data-t="callbannerJoin" id="callbanner-join">Join the call</button></div>
   <div id="ccwsp-off" role="status" style="display:none"><button data-ti="ccwspOffTip" id="ccwsp-use" type="button" title="Pick browser captions for this device. Whisper stays installed; Settings → Captions turns it back on."><span data-t="ccwspOff">Whisper isn't running</span> · <b data-t="ccwspUse">Use browser captions</b></button><button data-al="ccwspHide" id="ccwsp-x" type="button" aria-label="Hide">✕</button></div>
@@ -1106,16 +1107,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <div class="name-box dlg set-box">
       <div class="dlg-head"><h3 id="set-title" data-t="setTitle">Settings</h3></div>
       <div class="dlg-body">
+      <p class="set-help set-scope-note" id="set-scope-note" data-t="setScopeNote">Follows you: kept in My identity, the same on every device that holds it. This device only: stays on this phone or computer.</p>
       <section class="set-group" id="set-g-you">
         <h4 data-t="setGroupYou">Profile</h4>
-        <div class="set-sec set-row">
-          <b data-t="setName">Your name</b>
+        <div class="set-sec set-row" data-scope="you">
+          <b data-t="setName">Your name <small data-t="setScopeYou">Follows you</small></b>
           <div class="set-ctl">
             <p class="set-help"><span data-t="setNameHelp">What everyone sees on your tile:</span> <b id="set-name-cur">…</b> <button id="set-rename" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem;margin-left:.4rem" data-t="setChange">Change</button></p>
           </div>
         </div>
-        <div class="set-sec set-row">
-          <b data-t="setPicture">Picture</b>
+        <div class="set-sec set-row" data-scope="you">
+          <b data-t="setPicture">Picture <small data-t="setScopeYou">Follows you</small></b>
           <div class="set-ctl">
             <img id="set-avatar-preview" alt="" hidden style="width:72px;height:72px;object-fit:cover;border-radius:.5rem">
             <input id="set-avatar-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp,.gif,.png,.jpg,.jpeg,.webp" aria-label="Picture" data-al="setPicture">
@@ -1127,8 +1129,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       </section>
       <section class="set-group" id="set-g-av">
         <h4 data-t="setGroupAv">Audio and video</h4>
-        <div class="set-sec set-row" id="set-video">
-          <b data-t="setVideo">Video quality</b>
+        <div class="set-sec set-row" data-scope="device" id="set-video">
+          <b data-t="setVideo">Video quality <small data-t="setScopeDevice">This device only</small></b>
           <div class="set-ctl">
             <span class="segwrap" id="vqrow" role="group" aria-label="Video quality" data-al="setVideo">
           <button class="seg" data-vq="" data-t="setAuto">Auto</button>
@@ -1142,28 +1144,28 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             <p class="set-help" data-t="setVideoHelp">What <b>your own camera</b> records and sends. <b>Auto</b> adapts to the room's size and your battery; a fixed choice pins it.</p>
           </div>
         </div>
-        <div class="set-sec set-row" id="set-stage-video">
-          <b data-t="setStageVid">Stage video</b>
+        <div class="set-sec set-row" data-scope="device" id="set-stage-video">
+          <b data-t="setStageVid">Stage video <small data-t="setScopeDevice">This device only</small></b>
           <div class="set-ctl">
             <button type="button" id="adjust-stage" class="seg" data-t="adjustStage" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Adjust stage video</button>
             <p class="set-help" data-t="adjustStageHelp">Preview and frame what your camera would send on the stage. This does not put anyone on the stage.</p>
           </div>
         </div>
         <div id="mixpanel">
-          <div class="set-row">
-            <b data-t="setMix">Sound mix</b>
+          <div class="set-row" data-scope="device">
+            <b data-t="setMix">Sound mix <small data-t="setScopeDevice">This device only</small></b>
             <div class="set-ctl set-mix">
               <label><span data-t="setStage">Stage</span> <input type="range" id="mix-stage" min="0" max="100" value="100"></label>
               <label><span data-t="setRow">My row</span> <input type="range" id="mix-row" min="0" max="100" value="100"></label>
               <label id="mixlab-stadium"><span data-t="setStadium">The stadium</span> <input type="range" id="mix-stadium" min="0" max="100" value="100"></label>
             </div>
           </div>
-          <div class="set-row">
-            <b data-t="setTiming">Timing</b>
+          <div class="set-row" data-scope="device">
+            <b data-t="setTiming">Timing <small data-t="setScopeDevice">This device only</small></b>
             <div class="set-ctl">
             <div id="timingrow">
-          <button data-timing="chat" data-ti="setTalkTip" title="Snappiest replies — your ears align to your own links only; across the room, timing may stagger"><span data-t="setTalk">Conversation</span></button>
-          <button data-timing="unison" data-ti="setUnisonTip" title="Everyone hears everyone at the same synced instant — reactions, responses and spontaneous song land together (the room may wait for its slowest link, capped)"><span data-t="setUnison">Unison</span></button>
+          <button data-timing="chat" data-ti="setTalkTip" title="Snappiest replies — you hear each person as soon as their sound reaches you; across a big room, timing may vary"><span data-t="setTalk">Conversation</span></button>
+          <button data-timing="unison" data-ti="setUnisonTip" title="Everyone hears everyone at the same synced instant — reactions, responses and spontaneous song land together (sound waits for the slowest connection, up to a limit)"><span data-t="setUnison">Unison</span></button>
           <button data-timing="song" data-ti="setSongTip" title="Lead the room in song — steps you onto the stage with a music-grade mic and lines everyone's sound up to you; tap again to end (earbuds recommended for singers)">🎵 <span data-t="rdSong">Song</span></button>
         </div>
             </div>
@@ -1172,34 +1174,34 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       </section>
       <section class="set-group" id="set-captions">
         <h4 data-t="setGroupCc">Captions and transcript</h4>
-        <div class="set-row set-wide">
-          <label class="rec-opt"><input type="checkbox" id="ccsend" checked><span><b data-t="setCcSend">Send my captions</b><small data-t="setCcSendHelp">Your voice is written down while your mic is on and sent to the meeting as captions, so everyone can read you. Your browser's speech service (Google, Apple or Microsoft) hears your voice unless you pick Whisper below, which keeps it on this device. Off: the others' devices may still write you down.</small></span></label>
+        <div class="set-row set-wide" data-scope="you">
+          <label class="rec-opt"><input type="checkbox" id="ccsend" checked><span><b data-t="setCcSend">Send my captions <small data-t="setScopeYou">Follows you</small></b><small data-t="setCcSendHelp">Your voice is written down while your mic is on and sent to the meeting as captions, so everyone can read you. Your browser's speech service (Google, Apple or Microsoft) hears your voice unless you pick Whisper below, which keeps it on this device. Off: the others' devices may still write you down.</small></span></label>
           <p class="set-help" id="ccsend-can" style="display:none;color:#ffd23c" data-t="setCcSendCant">This browser has no speech engine, so it cannot send your captions. A device in the meeting that keeps a transcript writes you down instead.</p>
         </div>
-        <div class="set-row">
-          <b data-t="setTr">Transcript</b>
+        <div class="set-row" data-scope="you">
+          <b data-t="setTr">Transcript <small data-t="setScopeYou">Follows you</small></b>
           <div class="set-ctl" role="radiogroup" aria-label="Transcript" data-al="setTr">
             <label class="rec-opt"><input type="radio" name="trmode" value="off"><span><b data-t="setTrOff">Off</b><small data-t="setTrOffHelp">Captions show on your screen when CC is on, and nothing is kept on this device.</small></span></label>
             <label class="rec-opt"><input type="radio" name="trmode" value="keep"><span><b data-t="setTrKeep">Keep a transcript for me</b><small data-t="setTrKeepHelp">The usual setting. Every line is kept on this device, in the Transcript window, and can be downloaded. This device also writes down the people nobody is captioning, by name when it knows it, or as Stage or Stadium.</small></span></label>
             <label class="rec-opt"><input type="radio" name="trmode" value="share"><span><b data-t="setTrShare">Keep and share with the room</b><small data-t="setTrShareHelp">The same, and the lines this device writes about others go to everyone. Your tile shows a transcript badge.</small></span></label>
           </div>
         </div>
-        <div class="set-row">
-          <b data-t="setCcLang">Captions language</b>
+        <div class="set-row" data-scope="you">
+          <b data-t="setCcLang">Captions language <small data-t="setScopeYou">Follows you</small></b>
           <div class="set-ctl">
             <select id="cclang" style="padding:.35rem .5rem;border-radius:.4rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);max-width:100%"></select>
             <p class="set-help" data-t="setCcHelp">What <b>your own device</b> listens for. The browser engine cannot guess: it uses this device's language unless you pick one here. Whisper finds the language by itself.</p>
           </div>
         </div>
-        <div id="cclocal-row" class="set-row" style="display:none">
-          <b data-t="setCcLocal">Captions on this phone</b>
+        <div id="cclocal-row" class="set-row" data-scope="device" style="display:none">
+          <b data-t="setCcLocal">Captions on this phone <small data-t="setScopeDevice">This device only</small></b>
           <div class="set-ctl">
             <p class="set-help" data-t="setCcLocalHelp">A speech model in your browser writes your captions. Your voice never leaves the phone; only the text goes to the meeting.</p>
             <div id="cclocal-st" class="set-help" role="status"></div>
           </div>
         </div>
-        <div id="ccengine-row" class="set-row">
-          <b data-t="setCcEngine">Captions engine</b>
+        <div id="ccengine-row" class="set-row" data-scope="device">
+          <b data-t="setCcEngine">Captions engine <small data-t="setScopeDevice">This device only</small></b>
           <div class="set-ctl">
           <label class="rec-opt"><input type="radio" name="ccengine" value="browser"><span><b data-t="setCcBrowser">Browser captions</b><small data-t="setCcBrowserHelp">Instant. One fixed language, picked above; two-word lines without punctuation on some devices. Your browser may send your voice to its maker's speech service (Chrome: Google).</small></span></label>
           <label class="rec-opt"><input type="radio" name="ccengine" value="whisper"><span><b data-t="setCcWhisper">Whisper on this device</b><small data-t="setCcWhisperHelp">Any language, found by itself. Real sentences with punctuation. Your own names and words. Can translate everything to English. A sentence appears a few seconds after it is said; on a phone it is slower and uses battery. Your voice stays on this device; only the written words can go to the meeting.</small></span></label>
@@ -1209,30 +1211,30 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             <div id="ccwhisper-state" class="set-help" style="margin-bottom:.4rem"></div>
             <textarea id="ccwords" rows="2" data-ph="setCcWords" placeholder="Names and words to recognise: Siobhan, Kubernetes, GifOS…" style="width:100%;margin-top:.4rem;padding:.4rem .5rem;border-radius:.4rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);font:inherit;font-size:.85rem"></textarea>
           </div>
-          <label class="rec-opt" id="cctranslate-row"><input type="checkbox" id="cctranslate"><span><b data-t="setCcEnglish">Translate everything to English</b><small data-t="setCcEnglishHelp">Whisper on this device translates every voice you hear. Your captions and your transcript show only English: lines others send in English, and this device's own translations. What you send to the meeting stays in your own language.</small></span></label>
+          <label class="rec-opt" id="cctranslate-row"><input type="checkbox" id="cctranslate"><span><b data-t="setCcEnglish">Translate everything to English <small data-t="setScopeYou">Follows you</small></b><small data-t="setCcEnglishHelp">Whisper on this device translates every voice you hear. Your captions and your transcript show only English: lines others send in English, and this device's own translations. What you send to the meeting stays in your own language.</small></span></label>
           <p class="set-help" id="cctranslate-no" style="display:none;margin:.1rem 0 0 1.6rem" data-t="setCcEnglishNo">Whisper not supported on this browser</p>
           <p class="set-help" id="cctranslate-need" style="display:none;margin:.1rem 0 0 1.6rem" data-t="setCcEnglishNeed">Needs Whisper installed: nothing is translated until it is.</p>
-          <label class="rec-opt" id="ccears-row"><input type="checkbox" id="ccears"><span><b data-t="setCcEars">Check other people's captions with Whisper</b><small data-t="setCcEarsHelp">Off unless you tick it. While you use Browser captions, Whisper on this device listens to a few seconds of other people's voices now and then to see whether their captions are right, and warns you when they are not. It needs Whisper installed and uses some of your processor.</small></span></label>
+          <label class="rec-opt" id="ccears-row"><input type="checkbox" id="ccears"><span><b data-t="setCcEars">Check other people's captions with Whisper <small data-t="setScopeDevice">This device only</small></b><small data-t="setCcEarsHelp">Off unless you tick it. While you use Browser captions, Whisper on this device listens to a few seconds of other people's voices now and then to see whether their captions are right, and warns you when they are not. It needs Whisper installed and uses some of your processor.</small></span></label>
           </div>
         </div>
-        <p class="set-help set-row set-wide" id="ccall-row" style="display:none"><button data-t="setCcAllOff" id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span data-t="ccallNote" id="ccall-note">Hosts only — every screen shows captions. Anyone can tap Captions to hide them.</span></p>
+        <p class="set-help set-row set-wide" data-scope="action" id="ccall-row" style="display:none"><button data-t="setCcAllOff" id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span data-t="ccallNote" id="ccall-note">Hosts only — every screen shows captions. Anyone can tap Captions to hide them.</span></p>
       </section>
       <!-- Debug: a log of this page kept on this device only, for finding
            problems. Nothing leaves the device unless the person exports it. -->
       <section class="set-group" id="set-g-bots">
         <h4 data-t="setGroupBots">AI assistants</h4>
-        <div class="set-row set-wide">
-          <label class="rec-opt"><input type="checkbox" id="hidebots" role="switch"><span><b data-t="setHideBots">Hide bots</b><small data-t="setHideBotsHelp">On this device only: AI assistants' tiles are hidden and the voices this device gets from them on their own are muted. A voice already mixed into a row's sound still plays.</small></span></label>
+        <div class="set-row set-wide" data-scope="you">
+          <label class="rec-opt"><input type="checkbox" id="hidebots" role="switch"><span><b data-t="setHideBots">Hide bots <small data-t="setScopeYou">Follows you</small></b><small data-t="setHideBotsHelp">Only for you: AI assistants’ tiles are hidden and the voices this device gets from them on their own are muted. A voice already mixed into the crowd sound still plays.</small></span></label>
         </div>
       </section>
       <section class="set-group" id="set-g-debug">
         <h4 data-t="setGroupDebug">Debug</h4>
-        <div class="set-row set-wide">
-          <label class="rec-opt"><input type="checkbox" id="dbglog-on" role="switch"><span><b data-t="setDbgOn">Debug logging</b><small data-t="setDbgOnHelp">The log stays on this device and may include meeting details, such as names and chat or transcript text.</small></span></label>
+        <div class="set-row set-wide" data-scope="device">
+          <label class="rec-opt"><input type="checkbox" id="dbglog-on" role="switch"><span><b data-t="setDbgOn">Debug logging <small data-t="setScopeDevice">This device only</small></b><small data-t="setDbgOnHelp">The log stays on this device and may include meeting details, such as names and chat or transcript text.</small></span></label>
           <p class="set-help" id="dbglog-state" role="status"></p>
         </div>
-        <div class="set-row" id="dbglog-row">
-          <b data-t="setDbgLog">Debug log</b>
+        <div class="set-row" data-scope="device" id="dbglog-row">
+          <b data-t="setDbgLog">Debug log <small data-t="setScopeDevice">This device only</small></b>
           <div class="set-ctl">
             <p class="set-help" id="dbglog-size">…</p>
             <button type="button" id="dbglog-export" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem" data-t="setDbgExport">Export debug log</button>
@@ -1289,10 +1291,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <div class="name-modal" role="dialog" aria-modal="true" id="app-modal" style="display:none">
     <div class="name-box" style="max-width:420px;text-align:left">
       <h3 data-t="appSheetTitle">Run an app in this meeting</h3>
-      <p data-t="appSheetBody">Pick one of your apps. Most run live for everyone here — same state, same moves — with the meeting's audio, video and recording around it. An app that turns multiplayer off still opens on the host's screen, and everyone else watches.</p>
+      <p data-t="appSheetBody">Apps run live for everyone here. An app that turns multiplayer off still opens on the host's screen, and everyone else watches.</p>
       <div id="app-list" style="max-height:38vh;overflow-y:auto;margin:.4rem 0 .8rem"></div>
       <div id="app-add" style="border-top:1px solid var(--border,#2a2a3f);padding-top:.7rem;margin-bottom:1rem">
-        <p data-t="appSheetOr" style="margin:.1rem 0 .5rem;font-size:16px;color:var(--muted,#8888aa)">Or run a GIF app that isn’t on this computer:</p>
+        <p data-t="appSheetOr" style="margin:.1rem 0 .5rem;font-size:16px;color:var(--muted,#8888aa)">Or run a GIF app that isn’t on this device:</p>
         <button id="app-file" data-t="appSheetFile" style="display:block;width:100%;text-align:left;padding:.5rem .7rem;border-radius:.5rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);cursor:pointer">＋ Choose a GIF file…</button>
         <div style="display:flex;gap:.4rem;margin-top:.5rem">
           <input id="app-url" type="url" data-ph="appSheetLink" placeholder="Paste a GIF app link" style="flex:1;min-width:0;padding:.5rem .6rem;border-radius:.5rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0)">
@@ -1371,7 +1373,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <div class="name-modal" role="dialog" aria-modal="true" id="fork-modal" style="display:none">
     <div class="name-box" style="max-width:26rem;text-align:left">
       <h3 data-t="whichMeeting">Which meeting?</h3>
-      <p data-t="thisLinkReachesMore" style="font-size:.9rem;opacity:.85;margin:.4rem 0 1rem">This link reaches more than one live room. Pick the one you want to join — they are not merged, and you are not placed between both.</p>
+      <p data-t="thisLinkReachesMore" style="font-size:.9rem;opacity:.85;margin:.4rem 0 1rem">This link reaches more than one live meeting. Pick the one you want to join. They stay separate.</p>
       <div id="fork-choices" style="display:flex;flex-direction:column;gap:.55rem"></div>
       <p style="font-size:.78rem;opacity:.55;margin-top:.9rem">We show people on the <b>Stage</b> when we can; if the stage is empty, the <b>Stadium</b> (everyone that room can see).</p>
     </div>
@@ -1451,7 +1453,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <div class="name-modal" role="dialog" aria-modal="true" id="who-modal" style="display:none">
     <div class="name-box" style="max-width:480px;text-align:left">
       <h3 data-t="whoTitle">People</h3>
-      <p class="who-lead" data-t="whoLead">There is no server in the middle storing this meeting. The phones and computers of the people in it are the servers: they connect straight to each other. That is also why everyone here can see everyone's internet address — nobody is anonymous. ✓ marks an address the GifOS relay verified or this device saw directly; anything else is only what that person's device reported. People who left stay on the list. To report illegal activity to law enforcement, download this list and include it.</p>
+      <p class="who-lead" data-t="whoLead">There is no server in the middle storing this meeting. The phones and computers of the people in it are the servers: they connect straight to each other. That is also why everyone here can see everyone's internet address — nobody is anonymous. ✓ marks an address GifOS verified or this device saw directly; anything else is only what that person's device reported. People who left stay on the list. To report illegal activity to law enforcement, download this list and include it.</p>
       <div id="who-list"></div>
       <div style="display:flex;gap:.5rem;justify-content:center;margin-top:.8rem">
         <button id="who-dl" data-t="whoDl">Download this list</button>
@@ -1714,10 +1716,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/meet-content.js" defer></script>
   <script src="js/meet-agenda.js" defer></script>
   <script src="js/meet-agent.js" defer></script>
+  <script src="js/gifos-identity.js" defer></script>
+  <script src="js/gifos-identity-ui.js" defer></script>
   <script src="js/meet-myroom.js" defer></script>
   <script src="js/core/view/myroom.js" defer></script>
+  <script src="js/meet-bell.js" defer></script>
+  <script src="js/core/view/bell.js" defer></script>
   <script src="js/camera-studio.js" defer></script>
   <script src="js/gifos-ondevice.js" defer></script>
+  <script src="js/tv-publish.js" defer></script>
   <!-- this page's surface (cast.html: js/core/view/cast.js), last: the published copy bundles every script above and keeps
        this one as it is, so the meeting and broadcast pages share one bundle -->
   <script src="js/core/view/meet.js" defer></script>

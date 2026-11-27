@@ -49,7 +49,7 @@
  */
 'use strict';
 
-var SHELL_VERSION = 'v32'; // v32: the subscription's cards (js/core/view/subs.js) join the shell beside js/meet-subs.js, which is now logic only. v31: js/core/link.js (the one room-link grammar) joins the shell: every page reads its address with it. v30: the embed player's words (i18n/<locale>/embed.json) join the shell. v29: the meeting and broadcast pages (meet.html, cast.html) and their surfaces join the shell; run.html is the app runtime with its audio view (js/core/view/audio.js, css/run.css). v28: embed.html (gifos.app/embed, the broadcast player page) and its view part, and welcome.html (gifos.app/welcome), join the shell. v27: the subscription page's words join the shell; pages are kept under the clean address the host serves them at (/store, not only /store.html), never with a redirect mark, and an offline .html address is redirected to it; (v26: the meeting page runs from js/core (core, media plane, view, linker; in the page bundle when published); (v25: My library streams sealed recordings through this worker; (v24: My library (the /library page and its client); (v23: js/timings.js joins the shell (the meeting page's waits and timeouts) (v22: css/meet-polish.css joins the shell (v21: css/meet.css joins the shell (the meeting styles moved out of run.html) (v20: js/dialog.js joins the shell (the dialogs' scroll frame, parsed by every page) (v19: 0.9.25 cut (shell now holds every en catalog and the new version.json/changelog) (v18: every surface's en catalog joins the shell, plus meet.json and the built-in apps (v17: gifos-i18n.js and the en catalogs join the shell (v16: 0.9.24 hotfix, gifos-update.js reads a four-part `latest`; v15: gifos-charge.js joins the shell)
+var SHELL_VERSION = 'v33'; // v33: My identity (js/gifos-identity.js, js/gifos-identity-ui.js) joins the shell. v32: the subscription's cards (js/core/view/subs.js) join the shell beside js/meet-subs.js, which is now logic only. v31: js/core/link.js (the one room-link grammar) joins the shell: every page reads its address with it. v30: the embed player's words (i18n/<locale>/embed.json) join the shell. v29: the meeting and broadcast pages (meet.html, cast.html) and their surfaces join the shell; run.html is the app runtime with its audio view (js/core/view/audio.js, css/run.css). v28: embed.html (gifos.app/embed, the broadcast player page) and its view part, and welcome.html (gifos.app/welcome), join the shell. v27: the subscription page's words join the shell; pages are kept under the clean address the host serves them at (/store, not only /store.html), never with a redirect mark, and an offline .html address is redirected to it; (v26: the meeting page runs from js/core (core, media plane, view, linker; in the page bundle when published); (v25: My library streams sealed recordings through this worker; (v24: My library (the /library page and its client); (v23: js/timings.js joins the shell (the meeting page's waits and timeouts) (v22: css/meet-polish.css joins the shell (v21: css/meet.css joins the shell (the meeting styles moved out of run.html) (v20: js/dialog.js joins the shell (the dialogs' scroll frame, parsed by every page) (v19: 0.9.25 cut (shell now holds every en catalog and the new version.json/changelog) (v18: every surface's en catalog joins the shell, plus meet.json and the built-in apps (v17: gifos-i18n.js and the en catalogs join the shell (v16: 0.9.24 hotfix, gifos-update.js reads a four-part `latest`; v15: gifos-charge.js joins the shell)
 var CACHE = 'gifos-shell-' + SHELL_VERSION;
 
 // ONE CACHE KEY PER FILE. pages.yml stamps `?v=<sha>` onto every local css/js
@@ -122,7 +122,7 @@ var CORE = [
   '/', '/index.html', '/boot.html', '/run.html', '/meet.html', '/cast.html', '/sign.html', '/about.html', '/welcome.html', '/store.html', '/library.html', '/embed.html', '/css/meet-embed.css', '/js/core/link.js', '/js/core/view/kit.js', '/js/core/view/embed.js',
   '/css/run.css', '/js/core/view/meet.js', '/js/core/view/cast.js', '/js/core/view/audio.js', '/js/core/view/subs.js',
   '/css/desktop.css', '/css/meet.css', '/css/meet-polish.css',
-  '/js/gifos-gif.js', '/js/gifos-help.js', '/js/gifos-charge.js', '/js/gifos-sign.js', '/js/gifos-ed.js', '/js/gifos-lock.js', '/js/gifos-zip.js', '/js/gifos-icons.js',
+  '/js/gifos-gif.js', '/js/gifos-help.js', '/js/gifos-charge.js', '/js/gifos-sign.js', '/js/gifos-ed.js', '/js/gifos-lock.js', '/js/gifos-identity.js', '/js/gifos-identity-ui.js', '/js/gifos-zip.js', '/js/gifos-icons.js',
   '/js/gifos-themes.js', '/js/gifos-avatar.js', '/js/gifos-store.js', '/js/gifos-install.js', '/js/gifos-fullscreen.js', '/js/irl-apps.js', '/js/sample-apps.js', '/js/store.js', '/js/gifos-cash.js',
   '/js/dialog.js', '/js/desktop.js', '/js/runtime.js', '/js/meet-host.js', '/js/camera-studio.js', '/js/relay-config.js', '/js/sw-register.js', '/js/build.js', '/js/build-badge.js', '/js/gifos-update.js', '/js/timings.js',
   '/js/gifos-i18n.js', '/js/gifos-library.js', '/js/library.js', '/i18n/en/library.json', '/i18n/en/common.json', '/i18n/en/settings.json', '/i18n/en/desktop.json', '/i18n/en/store.json', '/i18n/en/runtime.json',
@@ -616,5 +616,79 @@ self.addEventListener('fetch', function (e) {
     var cached = await fromCache(cache, keyOf(url), await cache.match(keyOf(url)));
     if (cached) return cached;                      // offline / stalled → the newest copy this device ran
     return degrade(req, url, cache);
+  })());
+});
+
+// ---- THE DOORBELL (js/meet-bell.js; docs: My Room). A ring pushed by bell.gifos.app wakes this worker with the
+// page closed. The push says which handle rang (i), the call (c), the Doorbell's time (ts) and the note (n), sealed by
+// the caller with that handle's ring secret. The page keeps in IndexedDB 'gifos-bell' what this worker needs: the
+// master secret the ring secrets come from, handle id -> {url (the room's address), key, label}, and how long a ring rings. A note
+// that opens is shown as "<label> is calling" (or a missed call when it arrives after the ring would have ended); the
+// tap opens the room that handle belongs to. Every push shows a notification (browsers require it), except while a
+// visible GifOS page already has that room open: it rings there.
+function bellDb() {
+  return new Promise(function (resolve, reject) {
+    var q = indexedDB.open('gifos-bell', 1);
+    q.onupgradeneeded = function () { q.result.createObjectStore('kv'); };
+    q.onsuccess = function () { resolve(q.result); };
+    q.onerror = function () { reject(q.error); };
+  });
+}
+function bellGet(db, k) { return new Promise(function (res) { var q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = function () { res(q.result); }; q.onerror = function () { res(undefined); }; }); }
+function bellPut(db, k, v) { return new Promise(function (res) { var t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = function () { res(true); }; t.onerror = function () { res(false); }; }); }
+function bellB64u(t) { var s = String(t).replace(/-/g, '+').replace(/_/g, '/'); s += '='.repeat((4 - (s.length % 4)) % 4); var b = atob(s), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+async function bellOpen(masterB64u, i, k, note) {
+  var te = new TextEncoder();
+  var mk = await crypto.subtle.importKey('raw', bellB64u(masterB64u), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  var s = new Uint8Array(await crypto.subtle.sign('HMAC', mk, te.encode('gifos-bell-handle|' + i + '|' + k)));
+  var k = await crypto.subtle.importKey('raw', s, 'AES-GCM', false, ['decrypt']);
+  var u = bellB64u(note);
+  var pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: u.slice(0, 12), additionalData: te.encode('gifos-bell-note') }, k, u.slice(12));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+function bellTime(at) { try { return new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } }
+async function bellPush(e) {
+  var m = null; try { m = e.data ? e.data.json() : null; } catch (err) { m = null; }
+  if (m && m.t === 'test') return self.registration.showNotification('GifOS doorbell', { body: 'Rings reach this device.', tag: 'gifos-bell-test', icon: '/icon.svg' });
+  var db = await bellDb(), st = (await bellGet(db, 'state')) || {}, at = (st.map || {})[m && m.i] || null;
+  var note = null;
+  if (m && m.t === 'ring' && at && st.master) { try { note = await bellOpen(st.master, m.i, at.k, m.n); } catch (err) { note = null; } }
+  if (!note || note.c !== m.c) {
+    // A push this device cannot open (a handle it does not know): still shown, with no name, and it opens the lobby.
+    return self.registration.showNotification('GifOS doorbell', { body: 'Someone rang your doorbell.', tag: 'gifos-bell-unknown', data: { url: '/meet' }, icon: '/icon.svg' });
+  }
+  // A name is the owner's own label, else the caller's: one short line of plain text either way.
+  var label = String(at.label || note.n || 'Someone').replace(/[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '').slice(0, 40) || 'Someone';
+  var when = +m.ts || Date.now();
+  var missed = Date.now() - when > (st.ringMs || 30000);
+  var rings = (await bellGet(db, 'rings')) || [];
+  rings.unshift({ i: m.i, c: m.c, at: when, label: label, url: at.url, done: false });
+  await bellPut(db, 'rings', rings.slice(0, 50));
+  var url = String(at.url || '/meet');
+  var wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  for (var w = 0; w < wins.length; w++) {
+    try { if (wins[w].visibilityState === 'visible' && new URL(wins[w].url).hash === new URL(url, self.location.origin).hash) return; } catch (err) {}
+  }
+  return self.registration.showNotification(missed ? 'Missed call from ' + label : label + ' is calling', {
+    body: missed ? bellTime(when) : 'Tap to answer in your room.',
+    tag: 'gifos-bell-' + m.c,
+    renotify: true,
+    requireInteraction: !missed,
+    vibrate: missed ? undefined : [400, 200, 400, 200, 400],
+    data: { url: url, c: m.c },
+    icon: '/icon.svg',
+  });
+}
+self.addEventListener('push', function (e) { e.waitUntil(bellPush(e).catch(function () {})); });
+self.addEventListener('notificationclick', function (e) {
+  var d = (e.notification && e.notification.data) || {};
+  e.notification.close();
+  if (!d.url) return;
+  e.waitUntil((async function () {
+    try {
+      var db = await bellDb(), rings = (await bellGet(db, 'rings')) || [];
+      await bellPut(db, 'rings', rings.map(function (x) { return x.c === d.c ? Object.assign({}, x, { done: true }) : x; }));
+    } catch (err) {}
+    return self.clients.openWindow(d.url);
   })());
 });

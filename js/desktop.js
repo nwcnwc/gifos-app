@@ -36,6 +36,7 @@
     video: 'desktop.sys.camMic',
     broadcast: 'desktop.sys.camMic',
     appstore: 'desktop.sys.appstore',
+    rooms: 'desktop.sys.rooms',
   };
 
   let latestVersion = VERSION;      // version.json.latest (may be four-part) — the LIVE release everyone gets; `current` is only the three-part legacy pointer
@@ -256,7 +257,7 @@
   const MANILA = [227, 197, 122];
   // …and the Providers rack keeps electric violet: it isn't storage, it's the
   // socket board the OS plugs abilities into (docs/providers.md).
-  const FOLDER_ACCENTS = { 'Stolen Apps': [255, 200, 80], Providers: [123, 92, 255], Purchases: [255, 196, 57] };
+  const FOLDER_ACCENTS = { 'Stolen Apps': [255, 200, 80], Providers: [123, 92, 255], Purchases: [255, 196, 57], Identity: [64, 196, 170] };
   function accentFor(name) {
     return FOLDER_ACCENTS[name] || MANILA;
   }
@@ -348,6 +349,7 @@
     for (const a of seed.loose) {
       if (a.appId === 'appstore') { pendingStoreApp = a; continue; } // placed below Stolen Apps by ensureSystemItems
       if (a.appId === 'meet' || a.appId === 'video' || a.appId === 'broadcast') await putDefaultApp(a, null, { x: rightX, y: rowY(rightRow++) });
+      else if (a.appId === 'rooms') await putDefaultApp(a, null, { x: rightX - GRID.pitch, y: rowY(0) });   // left of Meeting
       else await putDefaultApp(a, null, { x: GRID.origin, y: rowY(leftRow++) });
     }
     const putFolder = async (folder, parent, x, y) => {
@@ -560,6 +562,7 @@
     let rightRow = 0, leftRow = 0;
     const nextRootSpot = (appId) => {
       if (appId === 'meet' || appId === 'video' || appId === 'broadcast') return { x: rightX, y: rowY(rightRow++) };
+      if (appId === 'rooms') return { x: rightX - GRID.pitch, y: rowY(0) };   // placeRoomsLeftOfMeeting settles it beside Meeting
       if (appId === 'appstore') { // default spot: right below the Stolen Apps chest (when it exists yet)
         const chest = items.find((i) => i.id === 'sys_stolen');
         if (chest) return { x: chest.x, y: chest.y + GRID.rowPitch };
@@ -626,6 +629,40 @@
     await saveItem(bc, { at: { x: tx, y: ty } });
     done();
     return movers.length + 1;
+  }
+
+  // One-shot layout migration (2026-11-26, Nathan): Rooms sits DIRECTLY LEFT of Meeting. A desktop that gets Rooms by
+  // a reseed has it wherever a cell was free; it moves into the cell left of Meeting, and whatever stood there takes
+  // Rooms' old cell (a swap: nothing else moves). If either icon left the root, nothing moves; the flag still sets so we
+  // never fight the user. (The Home Screen's layout gets its proper clean-up later.)
+  async function placeRoomsLeftOfMeeting() {
+    const key = 'gifos_mig_rooms_slot' + (store.dbName === 'gifos' ? '' : '::' + store.dbName);
+    try { if (localStorage.getItem(key)) return 0; } catch (e) {}
+    const done = () => { try { localStorage.setItem(key, '1'); } catch (e) {} };
+    const files = await store.allFileMeta();
+    const rootApp = (match) => {
+      for (const it of items) {
+        if (it.kind !== 'file' || it.parent) continue;
+        const fl = files.find((x) => x.id === it.fileId);
+        if (fl && fl.isApp && fl.isDefault && match(fl.appId)) return it;
+      }
+      return null;
+    };
+    const meet = rootApp((id) => id === 'meet' || id === 'video');
+    const rooms = rootApp((id) => id === 'rooms');
+    if (!meet || !rooms) { done(); return 0; }
+    const mc = cellOf(meet.x, meet.y);
+    if (mc.col < 1) { done(); return 0; }   // Meeting in the first column: there is no cell to its left
+    const tx = (meet.x || GRID.origin) - GRID.pitch, ty = meet.y || GRID.origin, tc = cellOf(tx, ty);
+    const rc = cellOf(rooms.x, rooms.y);
+    if (rc.col === tc.col && rc.row === tc.row) { done(); return 0; }
+    const there = items.find((it) => !it.parent && it.id !== rooms.id && cellOf(it.x, it.y).col === tc.col && cellOf(it.x, it.y).row === tc.row);
+    const was = { x: rooms.x, y: rooms.y };
+    rooms.x = tx; rooms.y = ty;
+    if (there) { there.x = was.x; there.y = was.y; await saveItem(there, { keepCell: true }); }
+    await saveItem(rooms, { keepCell: true });
+    done();
+    return there ? 2 : 1;
   }
 
   // One-shot layout migration: Camera slots DIRECTLY BELOW Welcome, scooching
@@ -732,6 +769,56 @@
   window.addEventListener('storage', (e) => { if (e.key === PAY_PENDING && e.newValue) drainPendingReceipts(); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) drainPendingReceipts(); });
 
+  // ---- Identity: "My identity" is a GIF (js/gifos-identity.js) ----------------
+  // The identity's own code keeps the file current in the store; the Home
+  // Screen is the only placer: an Identity folder beside Purchases, the GIF in
+  // it. Both are put back if they are missing or in the Trash: a person's
+  // private rooms must be hard to lose by accident.
+  const IDENTITY_FOLDER = 'sys_identity', IDENTITY_ITEM = 'sys_identity_me';
+  const isIdentityFile = (f) => !!f && f.kind === 'gif' && f.appId === 'gifos-identity';
+  const isIdentityItem = (it) => !!it && (it.id === IDENTITY_FOLDER || it.id === IDENTITY_ITEM);
+  let placingIdentity = false;
+  async function ensureIdentity() {
+    const ID = GifOS.identity;
+    if (!ID || placingIdentity) return;
+    placingIdentity = true;
+    try {
+      if (!(await ID.sync().catch(() => false))) return;
+      let file = null; try { file = await store.getFile(ID.FILE_ID); } catch (e) {}
+      if (!file) return;
+      let changed = false;
+      let f = items.find((i) => i.id === IDENTITY_FOLDER);
+      if (!f) {
+        // Beside Providers (the next column): the left column is full on a new Home Screen, and under it is off a small one.
+        const near = items.find((i) => i.id === 'sys_providers');
+        const at = near ? { x: near.x + GRID.pitch, y: near.y } : { x: GRID.origin + GRID.pitch, y: GRID.origin };
+        f = { id: IDENTITY_FOLDER, kind: 'folder', name: 'Identity', parent: null, x: at.x, y: at.y, iconSize: 64 };
+        await saveItem(f, { at });
+        await load();
+        f = items.find((i) => i.id === IDENTITY_FOLDER) || f;
+        changed = true;
+      } else if (f.parent === TRASH_ID) {
+        await saveItem(f, { into: null }); await load(); f = items.find((i) => i.id === IDENTITY_FOLDER) || f; changed = true;
+      }
+      if (!f.fileId) {
+        try {
+          const fileId = store.uid('file');
+          const bytes = await makeFolderGif('Identity', FOLDER_ACCENTS.Identity, 'folder');
+          await store.putFile({ id: fileId, name: 'Identity.gif', bytes, kind: 'gif', isApp: false, mime: 'image/gif' });
+          f.fileId = fileId;
+          await saveItem(f);                         // same cell — only the art
+          await load(); changed = true;
+        } catch (e) { /* falls back to the folder glyph */ }
+      }
+      const it = items.find((i) => i.id === IDENTITY_ITEM);
+      if (!it) { await saveItem({ id: IDENTITY_ITEM, kind: 'file', fileId: ID.FILE_ID, name: 'My identity', iconSize: 64 }, { into: IDENTITY_FOLDER }); changed = true; }
+      else if (it.parent === TRASH_ID) { await saveItem(it, { into: IDENTITY_FOLDER }); changed = true; }
+      if (changed) { await load(); render(); }
+    } finally { placingIdentity = false; }
+  }
+  window.addEventListener('storage', (e) => { if (e.key === 'gifos_identity' && e.newValue) ensureIdentity(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) ensureIdentity(); });
+
   // A system folder's art is BAKED into a GIF when the folder is first created,
   // and it is only ever given art `if (!it.fileId)`. That is right for a user's
   // own folders and wrong for ours: when OUR drawing improves, every computer
@@ -781,8 +868,9 @@
       const { updated, added, purged } = await rebuildDefaultApps(seed);
       const moved = await placeBroadcastBelowMeeting();
       const cam = await placeCameraBetweenWelcomeAndMyMedia();
+      const rooms = await placeRoomsLeftOfMeeting();
       const redrawn = await refreshSystemFolderArt();
-      if (updated || added || purged || moved || cam || redrawn) await load();
+      if (updated || added || purged || moved || cam || rooms || redrawn) await load();
     } catch (e) { /* never block boot */ }
   }
 
@@ -1203,6 +1291,7 @@
       // an app GIF must open without an await first, or iOS blocks the tab.
       it._isApp = !!(files[i] && files[i].isApp && files[i].kind === 'gif');
       it._receipt = isReceiptFile(files[i]);
+      it._identity = isIdentityFile(files[i]);
       // A BUILT-IN system app (Meeting, Broadcast, App Store) is a launcher for
       // a first-party page: openItem opens that page itself, so the tab never
       // has to find the GIF in storage first (a first visit on an iPhone hit
@@ -1577,11 +1666,9 @@
       const archive = await gif.decode(bytes);
       const m = archive ? gif.readManifest(archive) : null;
       if (m && m.system) { showModal(dt('desktop.lock.cantTitle'), dt('desktop.lock.builtIn')); return; }
-      const cap = await GifOS.lock.canPasskeyLock();
-      if (!cap.ok && !GifOS.lock._prfOverride) { showModal(dt('desktop.lock.cantTitle'), escapeHtml(cap.reason)); return; }
-      const act = await GifOS.lock.showSheet('lock', name);
-      if (act !== 'ok') return;
-      const created = await GifOS.lock.createLock(name, it.fileId);
+      // Passkey where one gives PRF, else (or by choice) a passphrase.
+      const created = await GifOS.lock.chooseAndCreate(name, it.fileId);
+      if (!created) return;
       await GifOS.lock.wrapAtRest(it.fileId, created.key);
       it.passkey = created.meta;
       await saveItem(it, { keepCell: true });
@@ -1594,9 +1681,10 @@
     if (!GifOS.lock || !it.passkey) return;
     const name = (it.name || 'App').replace(/\.gif$/i, '');
     try {
-      const act = await GifOS.lock.showSheet('remove', name);
+      const act = await GifOS.lock.showSheet('remove', name, GifOS.lock.lockKind(it.passkey));
       if (act !== 'ok') return;
-      const key = await GifOS.lock.assertLock(it.passkey);
+      const key = await GifOS.lock.keyFor(it.passkey, name);
+      if (!key) return;
       await GifOS.lock.unwrapAtRest(it.fileId, key);
       GifOS.lock.session.del(it.fileId);
       delete it.passkey;
@@ -1995,6 +2083,7 @@
     // after any await, which is why double-tap and "Open" did nothing on iPhone.
     // (render() stashed it._isApp so we don't need to read the file first here.)
     if (it._sysPage) { root.open(it._sysPage, '_blank'); return; }
+    if (it._identity && GifOS.identityUI) { GifOS.identityUI.manage(); return; }   // My identity: its own sheet, nothing to run
     if (it._receipt) { root.open('receipt.html#id=' + encodeURIComponent(it.fileId) + nsParam('&db='), '_blank'); return; }
     if (it._isApp) {
       root.open('run.html#id=' + encodeURIComponent(it.fileId) + nsParam('&db='), '_blank');
@@ -2060,6 +2149,15 @@
       const isGif = f.type.includes('gif') || /\.gif$/i.test(f.name);
       const archive = isGif ? await gif.decode(buf) : null;
       const m = archive ? (gif.readManifest(archive) || {}) : {};
+
+      // An identity GIF is opened (its passphrase or passkey) and merged into
+      // this device's identity; the one in the Identity folder is then current.
+      if (archive && m.type === 'identity' && GifOS.identityUI) {
+        try { await GifOS.identityUI.openFile(buf); } catch (err) { showModal('My identity', escapeHtml(err.message || String(err))); }
+        await ensureIdentity();
+        i++;
+        continue;
+      }
 
       // A folder bundle GIF unpacks into a live folder with all its children.
       if (archive && m.type === 'folder' && archive.files['folder.json']) {
@@ -2277,6 +2375,7 @@
   // Downloading a FOLDER packs a self-contained bundle: the folder's own GIF
   // with every child inside it (apps carrying their live state), recursively.
   async function downloadItem(it) {
+    if ((it.id === IDENTITY_ITEM || it._identity) && GifOS.identityUI) { await GifOS.identityUI.save(); return; }   // the sealed file; the first time it asks how it should open
     if (it.kind === 'folder') {
       // Ask once when anything inside carries saved data; the answer covers every child.
       let clean = false;
@@ -2292,11 +2391,12 @@
     const locked = !!(it.passkey && GifOS.lock);
     if (locked) {
       const name = (it.name || 'App').replace(/\.gif$/i, '');
-      const act = await GifOS.lock.showSheet('export', name);
+      const act = await GifOS.lock.showSheet('export', name, GifOS.lock.lockKind(it.passkey));
       if (act === 'cancel') return;
       if (act === 'ok') {
         try {
-          const key = await GifOS.lock.assertLock(it.passkey);
+          const key = await GifOS.lock.keyFor(it.passkey, name);
+          if (!key) return;
           const ex = await exportBytes(it.fileId, { locked: true, key });
           if (ex) triggerDownload(ex.bytes, it.name || ex.file.name || 'download', ex.file.mime);
         } catch (e) {
@@ -2416,6 +2516,7 @@
   }
   async function moveToTrash(it) {
     if (it.id === TRASH_ID) return;
+    if (isIdentityItem(it)) { showModal('My identity stays here', 'Your identity file holds your personal room and your private rooms. It cannot go to the Trash.'); return; }
     await saveItem(it, { into: TRASH_ID });
     await load(); render();
   }
@@ -3161,6 +3262,8 @@
   // Settings words live in i18n/<locale>/settings.json. ST gives text; STh gives
   // escaped HTML that allows only the <b>, <m> (mono) and <bm> tags messages use.
   const ST = (k, p) => (GifOS.i18n ? GifOS.i18n.t(k, p) : k);
+  // Follows you (kept in My identity, the same on every device) or This device only (docs/identity.md).
+  const scopeTag = (you) => ' <small class="set-scope" data-scope="' + (you ? 'you' : 'device') + '">' + escapeHtml(ST(you ? 'settings.scope.you' : 'settings.scope.device')) + '</small>';
   const richHtml = (s) => escapeHtml(s).replace(/&lt;(\/?)b&gt;/g, '<$1b>').replace(/&lt;m&gt;/g, '<span class="mono">')
     .replace(/&lt;\/m&gt;/g, '</span>').replace(/&lt;bm&gt;/g, '<b class="mono">').replace(/&lt;\/bm&gt;/g, '</b>');
   const STh = (k, p) => richHtml(ST(k, p));
@@ -3652,7 +3755,7 @@
     const t = I18N.t;
     return '<p class="add-help">' + escapeHtml(t('settings.lang.intro')) + '</p>' +
       '<div class="set-card set-pad">' +
-        '<label class="set-label" for="set-lang">' + escapeHtml(t('settings.lang.language')) + '</label>' +
+        '<label class="set-label" for="set-lang">' + escapeHtml(t('settings.lang.language')) + scopeTag(true) + '</label>' +
         '<select id="set-lang" aria-label="' + escapeHtml(t('settings.lang.language')) + '"></select>' +
         '<label class="set-label" for="set-region">' + escapeHtml(t('settings.lang.region')) + '</label>' +
         '<select id="set-region" aria-label="' + escapeHtml(t('settings.lang.region')) + '"></select>' +
@@ -3857,9 +3960,9 @@
         '</section>' +
         '<section data-page="you" hidden>' +
           '<p class="add-help">' + escapeHtml(ST('settings.you.intro')) + '</p>' +
-          '<label class="set-label" for="set-name">' + escapeHtml(ST('settings.you.name')) + '</label>' +
+          '<label class="set-label" for="set-name">' + escapeHtml(ST('settings.you.name')) + scopeTag(true) + '</label>' +
           '<input id="set-name" maxlength="40" aria-label="' + escapeHtml(ST('settings.you.name')) + '" placeholder="' + escapeHtml(ST('settings.you.namePh')) + '" value="' + escapeHtml(store.identity().name) + '">' +
-          '<label class="set-label" for="set-avatar-file">' + escapeHtml(ST('settings.you.picture')) + '</label>' +
+          '<label class="set-label" for="set-avatar-file">' + escapeHtml(ST('settings.you.picture')) + scopeTag(true) + '</label>' +
           '<p class="add-help">' + escapeHtml(ST('settings.you.pictureHelp')) + '</p>' +
           '<div class="set-avatar-row">' +
             '<img id="set-avatar-preview" alt="" hidden>' +
@@ -3872,7 +3975,7 @@
         '</section>' +
         '<section data-page="look" hidden>' +
           '<p class="add-help">' + escapeHtml(ST('settings.look.intro')) + '</p>' +
-          '<div class="set-group">' + escapeHtml(ST('settings.look.background')) + '</div>' +
+          '<div class="set-group">' + escapeHtml(ST('settings.look.background')) + scopeTag(false) + '</div>' +
           '<div class="set-card set-pad">' +
             '<label class="set-label" for="set-bg-color">' + escapeHtml(ST('settings.look.color')) + '</label>' +
             '<div class="bg-row">' +
@@ -3881,7 +3984,7 @@
               '<button type="button" id="set-bg-reset" class="ghost" aria-label="' + escapeHtml(ST('settings.look.resetBgAria')) + '">' + escapeHtml(ST('settings.look.reset')) + '</button>' +
             '</div>' +
           '</div>' +
-          '<div class="set-group">' + escapeHtml(ST('settings.look.textSize')) + '</div>' +
+          '<div class="set-group">' + escapeHtml(ST('settings.look.textSize')) + scopeTag(false) + '</div>' +
           '<div class="set-card set-pad">' +
             '<p class="add-help">' + escapeHtml(ST('settings.look.textSizeHelp')) + '</p>' +
             '<div class="ts-row"><button type="button" id="ts-minus" class="ghost" aria-label="' + escapeHtml(ST('settings.look.smaller')) + '">A−</button><span id="ts-val" class="mono" aria-live="polite"></span><button type="button" id="ts-plus" class="ghost" aria-label="' + escapeHtml(ST('settings.look.bigger')) + '">A+</button><button type="button" id="ts-reset" class="ghost" aria-label="' + escapeHtml(ST('settings.look.resetSizeAria')) + '">' + escapeHtml(ST('settings.look.reset')) + '</button></div>' +
@@ -5299,7 +5402,7 @@
   // ---------- boot ----------
   requestPersistence();
   paintPinHead();
-  desktopWords.then(() => load()).then(seedIfEmpty).then(reseedDefaultsIfNeeded).then(ensureSystemItems).then(drainPendingReceipts).then(destackForThisScreen).then(render).then(() => { scheduleStoreDefaults(); }).then(noteRetiredBuild).then(notePinEnded).then(handleRunParam).then(handlePlaceParam).then(handleFolderParam).then(handleEdgeLink).then(() => checkForUpdate()).then(reclaimOrphanAssets).then(backfillOrnaments);
+  desktopWords.then(() => load()).then(seedIfEmpty).then(reseedDefaultsIfNeeded).then(ensureSystemItems).then(drainPendingReceipts).then(ensureIdentity).then(destackForThisScreen).then(render).then(() => { scheduleStoreDefaults(); }).then(noteRetiredBuild).then(notePinEnded).then(handleRunParam).then(handlePlaceParam).then(handleFolderParam).then(handleEdgeLink).then(() => checkForUpdate()).then(reclaimOrphanAssets).then(backfillOrnaments);
 
   GifOS.desktop = { render, load, backfillOrnaments, get stats() { return renderStats; },
     // The lazy seed, awaitable: the promise the boot armed (resolves once it has run), and what it decided.

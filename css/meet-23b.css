@@ -402,10 +402,11 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
   .bar:not(.collapsed) .barmore .seg { min-height: 48px; min-width: 44px; font-size: 13px; }
   /* A wrapped alert grew this line over the top row and covered Open.
      One line. The whole sentence is in the status sheet. */
-  .topchip .status.alert { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-height: 44px; }
-  .topchip .status.alert #statusrest {
-    display: inline-block; max-width: 100%; vertical-align: bottom; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
+  /* Two lines at most, inside the row's 44px: a short alert ("Tap anywhere to hear the meeting.") reads whole instead of
+     ending in "…"; a longer one still stops at two lines. The whole sentence is in the status sheet. */
+  .topchip .status.alert { white-space: normal; overflow: hidden; max-height: 2.4em; line-height: 1.2;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
+  .topchip .status.alert #statusrest { display: inline; white-space: normal; }
 }
 @media (max-width: 700px) and (orientation: portrait) {
   .topchip .status { font-size: clamp(12px, 3.6vw, 17px); }
