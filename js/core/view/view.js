@@ -3855,12 +3855,8 @@
         const st = document.getElementById('fsstrip');
         if (st && st.getClientRects().length && getComputedStyle(st).display !== 'none' && st.children.length) {
           const sr = st.getBoundingClientRect();
-          // the strip stands on the bottom or top edge (wide), the right or left edge (tall); the item takes what is left
-          if (sr.width >= r.width - 1) {
-            if (sr.top > r.top + r.height / 2) box.h = Math.max(1, Math.round(sr.top - r.top));
-            else { box.y = Math.round(sr.bottom); box.h = Math.max(1, Math.round(r.bottom - sr.bottom)); }
-          } else if (sr.left > r.left + r.width / 2) box.w = Math.max(1, Math.round(sr.left - r.left));
-          else { box.x = Math.round(sr.right); box.w = Math.max(1, Math.round(r.right - sr.right)); }
+          if (sr.width >= r.width - 1) box.h = Math.max(1, Math.round(sr.top - r.top));
+          else box.w = Math.max(1, Math.round(sr.left - r.left));
         }
       } else if (!el.classList.contains('comfy-off') && el.style.width) {
         box = { x: parseFloat(el.style.left) || 0, y: parseFloat(el.style.top) || 0, w: parseFloat(el.style.width) || 0, h: parseFloat(el.style.height) || 0 };
@@ -9566,39 +9562,14 @@
         if (!el) continue;
         const r = shown(el);
         let clear = 0;
-        if (r && mode === 'strip') {
-          // The Focus strip's thumbs are controls: none stays under the bar (or a mark lifted over it). Nothing is reserved
-          // for the bar: when it stands over the strip's edge the strip moves to the opposite edge of the view (up on an
-          // upright screen, left on a wide one) and the big view keeps the whole height. Only when the bar reaches both
-          // edges does the strip pad by the bar's reach. A short upright phone keeps its strip on the bottom edge.
-          const fv = document.getElementById('fsview');
-          const fr = fv ? fv.getBoundingClientRect() : null;
-          const obst = (ob ? [ob] : []).concat(risen);
-          const short = window.matchMedia && window.matchMedia('(orientation: portrait) and (max-height: 639px)').matches;
-          if (fr && !short) {
-            const wide = r.width >= fr.width - 1;
-            const w = r.width, h = r.height;
-            const home = wide ? { left: r.left, right: r.right, top: fr.bottom - h, bottom: fr.bottom } : { left: fr.right - w, right: fr.right, top: r.top, bottom: r.bottom };
-            const alt = wide ? { left: r.left, right: r.right, top: fr.top, bottom: fr.top + h } : { left: fr.left, right: fr.left + w, top: r.top, bottom: r.bottom };
-            const hit = (box) => obst.some((o) => meet(o, box));
-            const up = el.classList.contains('flip');
-            const want = hit(home) && !hit(alt);
-            if (want !== up) {
-              el.classList.toggle('flip', want);
-              try { if (__C.CT && __C.CT.focusC) contentPlace(__C.CT.phone); } catch (e) {}
-            }
-            if (wide && hit(home) && hit(alt)) {
-              let top = ob ? ob.top : home.bottom;
-              for (const f of risen) if (f.right > r.left + 4 && f.left < r.right - 4 && f.bottom > top - 12) top = Math.min(top, f.top);
-              clear = Math.max(0, home.bottom - top + 8);
-            }
-          } else if (ob) {
-            const overX = ob.right > r.left + 4 && ob.left < r.right - 4;
-            if (overX && ob.bottom > r.top + 4 && ob.top < r.bottom) {
-              let top = ob.top;
-              for (const f of risen) if (f.right > r.left + 4 && f.left < r.right - 4 && f.bottom > top - 12) top = Math.min(top, f.top);
-              clear = r.bottom - top + 8;
-            }
+        if (r && ob && mode === 'strip') {
+          // The Focus strip's thumbs are controls: every one stays above the
+          // bar, so the strip pads by the bar's whole reach, not half its height.
+          const overX = ob.right > r.left + 4 && ob.left < r.right - 4;
+          if (overX && ob.bottom > r.top + 4 && ob.top < r.bottom) {
+            let top = ob.top;
+            for (const f of risen) if (f.right > r.left + 4 && f.left < r.right - 4 && f.bottom > top - 12) top = Math.min(top, f.top);
+            clear = r.bottom - top + 8;
           }
         } else if (r && ob) {
           const bottom = r.bottom + (mode === 'bottom' ? read(el, '--barclear') : 0);
