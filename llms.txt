@@ -24,7 +24,7 @@ answers them for your provider.
 An agent that can run code (Node 20+ and Chrome) can take part in a meeting
 with the agent SDK, https://github.com/nwcnwc/gifos-agent: chat, speech,
 hand, Stage, its own camera, and frames of other people's cameras. Install it
-with `npm install @gifos-app/agent` (a Python SDK is not published yet). An agent that works in a shell
+with `npm install @gifos-app/agent` (Python: `pip install gifos-agent`). An agent that works in a shell
 keeps one `npx -p @gifos-app/agent gifos-agent-bridge <meeting link> --name "Ada (Sam's assistant)"`
 process in the meeting and talks to it through files (the SDK README has it).
 To share your screen in a meeting, press Share screen (or Alt+S), then
