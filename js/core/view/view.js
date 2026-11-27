@@ -10464,7 +10464,7 @@
         let bar = document.getElementById('clearnopw-bar');
         // Report is in the More menu (beside License), never on this bar: only the viewer's own Blur is here.
         try { GifOS.viewKit.clearReportButton(__C, moreRow('room'), 'reportbtn', '', (cat, ref) => (0, /*()*/__C.reportClearHost)(cat, ref)); } catch (e) {}
-        if (!st.mode) { if (bar) bar.remove(); return; }
+        if (!st.mode || !st.pic) { if (bar) bar.remove(); return; }   // no picture on the Stage to blur: no Blur button
         const T = (k, en) => (0, /*()*/__C.uiText)(k, en);
         // Blur sits inside the picture it clears (the Stage, else the largest face tile), at its top right and below the
         // top bar's measured bottom (--headh), so it never lands on a top-bar control.
@@ -10473,8 +10473,9 @@
         if (!bar) {
           bar = document.createElement('div');
           bar.id = 'clearnopw-bar';
-          bar.innerHTML = '<button type="button" id="clearnopw-reblur"></button>';
+          bar.innerHTML = '<button type="button" id="clearnopw-unblur"></button><button type="button" id="clearnopw-reblur"></button>';
           bar.querySelector('#clearnopw-reblur').onclick = (e) => { e.stopPropagation(); (0, /*()*/__C.blurAgain)(); };
+          bar.querySelector('#clearnopw-unblur').onclick = (e) => { e.stopPropagation(); (0, /*()*/__C.tapUnblur)(); };
         }
         if (bar.parentNode !== host) host.appendChild(bar);
         if (!paintClearNoPw.onResize) {
@@ -10490,6 +10491,10 @@
         const w = T('clearBlurAgain', 'Blur');
         if (rb.textContent !== w) rb.textContent = w;
         rb.style.display = st.tapped ? '' : 'none';
+        // Only avatar pictures on the Stage: no tile note offers the tap (a camera's tile does), so Unblur sits here.
+        const ub = bar.querySelector('#clearnopw-unblur'), uw = T('clearUnblur', 'Unblur');
+        if (ub.textContent !== uw) ub.textContent = uw;
+        ub.style.display = !st.tapped && st.pic === 'avatar' && st.offer !== false ? '' : 'none';
         placeClearBlur(bar, host);
       }
       // The picture a viewer's Blur belongs to: the biggest Stage picture on top at its own centre (a Stage picture can be
@@ -12753,7 +12758,7 @@
       },
       });
     }
-    yield 3267;
+    yield 3268;
     // THE FLOAT WEARS THE TILE'S BLUR (PIPBLUR, 2026-11-24). Every float paints a <video>'s RAW frames: an element float
     // has no CSS, and the document float's <video> is a new element. In an open room every remote picture is blurred
     // here (receiver-side blur), so a sender forced to send clear floated clear. pipBlurLevel is the level this viewer
