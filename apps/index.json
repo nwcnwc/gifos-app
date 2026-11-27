@@ -8494,7 +8494,7 @@
       "appId": "survey",
       "name": "Survey",
       "shortName": "Survey",
-      "version": "1.4",
+      "version": "1.5",
       "tagline": "Ask the room, and watch the votes come in.",
       "author": {
         "name": "GifOS",
@@ -8521,7 +8521,7 @@
         214
       ],
       "cover": "/apps/survey/cover.jpg",
-      "bytes": 172659,
+      "bytes": 172643,
       "download": 0,
       "provides": null,
       "signature": {
@@ -8529,7 +8529,7 @@
         "id": "gifos.app",
         "ts": "2026-11-27"
       },
-      "sha256": "b20f9e9b5b68c8c80032c64dba94c853011fb7b6a87c2e6a49e7f5fbe318fc43"
+      "sha256": "faa0873f7ec02ace366aa49359d8344a23dbff2ad333242d9ac206af261e7ce2"
     },
     {
       "slug": "svg-edit",
@@ -9878,7 +9878,7 @@
       "appId": "whiteboard",
       "name": "Whiteboard",
       "shortName": "Whiteboard",
-      "version": "1.1",
+      "version": "1.2",
       "tagline": "A shared whiteboard for workshops. Everyone in the meeting draws on it together.",
       "author": {
         "name": "Excalidraw",
@@ -9917,7 +9917,7 @@
         219
       ],
       "cover": "/apps/whiteboard/cover.jpg",
-      "bytes": 4692094,
+      "bytes": 4692224,
       "download": 0,
       "provides": null,
       "signature": {
@@ -9925,7 +9925,7 @@
         "id": "gifos.app",
         "ts": "2026-11-27"
       },
-      "sha256": "59b793d3cf6cbb929e93a46cacec6f6936299a16f915aec978e80f6ef4cbc538"
+      "sha256": "0bd3d9e1bb885f34aa6e233109fc928d4b419c15f1afe3b0b640a6118f47a468"
     },
     {
       "slug": "wifi-card",
