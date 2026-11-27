@@ -1570,7 +1570,7 @@
       // None pre-signed for what I would say now: then it is a plain leave, or a closed tab would hold its cell for a whole lease.
       byeIsHeld(pid) { return byeHeld.has(String(pid)); },
       byesHeld() { return byeHeld.size; },   // pages gone whose cell is held: no face, no head in the count
-      leave(reload) { if (reload && !sendHeldByes()) reload = false; try { if (raw) { if (penv && penv.leave) penv.leave(!!reload); else raw.leave(!!reload); } } catch (e) {} try { if (sock) sendRaw({ t: 'unlist' }); } catch (e) {} node.stop(); },   // goodbye to the peers, then off the greeter list, then the socket closes: no greeter-gone for a page leaving in order
+      leave(reload, final) { if (final) reload = false; else if (reload && !sendHeldByes()) reload = false; try { if (raw) { if (penv && penv.leave) penv.leave(!!reload); else raw.leave(!!reload); } } catch (e) {} try { if (sock) sendRaw({ t: 'unlist' }); } catch (e) {} node.stop(); },   // goodbye to the peers, then off the greeter list, then the socket closes: no greeter-gone for a page leaving in order
       // Transport events from the page's pc/dc callbacks and watchdogs (env.js maps hard/quiet and debounces).
       remeasure() { netWordChanged(); /* L4.1.1: the page env's tick reads the verdict itself (js/mesh/page/env.js tick: nat, cnat, l411Verdict), so a verdict that lands after the join is acted on at the next tick; nothing to do here */ },   // a network verdict that lands after the join (seat.join reads it once)
       doorForgive(pid) { if (penv && penv.doorForgive) penv.doorForgive(String(pid)); },
