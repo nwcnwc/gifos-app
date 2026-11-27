@@ -3616,6 +3616,9 @@
     }
     function contentOpts(phone) {
       const v = window.__meetView || 'fit';
+      // A phone editing the agenda gives it the screen (the faces come back with Done): with the keyboard up, the
+      // faces left the form no room and covered Add item.
+      const it0IsAgenda = () => { try { const sel = __C.CT.items.find((i) => i.key === __C.CT.st.sel); return !!sel && sel.kind === 'agenda'; } catch (e) { return false; } };
       // Drag is the meeting's own layout (the content takes the screen, the
       // people inset); a phone's Fit is the content full with a face strip.
       // R2: an agenda needs only its list (and the tab row); a screen or an
@@ -3627,7 +3630,7 @@
       } catch (e) {}
       // Beside the faces (a wide screen) a list reads well at a column's width; the faces take the rest.
       const needW = needH ? 640 : 0;
-      return { phone: !!phone && v !== 'scroll' && v !== 'drag', hideFaces: !!(__C.CT && __C.CT.facesHidden && phone), needH: needH > 40 ? needH : 0, needW: needW };
+      return { phone: !!phone && v !== 'scroll' && v !== 'drag', hideFaces: !!(__C.CT && (__C.CT.facesHidden || (__C.CT.agEdit && it0IsAgenda())) && phone), needH: needH > 40 ? needH : 0, needW: needW };
     }
 
     // ---- panes ----
@@ -11829,7 +11832,8 @@
       };
       function fit() {
         const b = document.body.classList;
-        const fold = (b.contains('solo-app') || b.contains('app-room') || (b.contains('has-app') && __C.model.consts.IS_MOBILE())) && abar.clientWidth > 0 && abar.clientWidth <= 720;
+        // A phone folds a meeting's app bar at every width (on its side too): one row, the view button on it.
+        const fold = abar.clientWidth > 0 && (((b.contains('solo-app') || b.contains('app-room')) && abar.clientWidth <= 720) || (inMeeting() && __C.model.consts.IS_MOBILE()));
         const how = fold ? (inMeeting() ? 'm' : 's') : '';
         if (how === (abar.dataset.foldHow || '')) return;
         for (const el of orig) abar.insertBefore(el, more);
