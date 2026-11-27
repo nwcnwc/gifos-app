@@ -130,7 +130,15 @@
       if (this.l4Hold) return false;
       if (this.l4MassNow()) return false;
       if (this.TICK - this.lastChurn < this.w.lv.L4_QUIET || this.TICK - this.healAt < this.w.lv.L4_QUIET || this.TICK - this.seatedAt < this.w.lv.L4_QUIET) return false;
+      if (!this.l4Clean(true)) return false;   // L4.3.5: I promised someone a place and they have not sat down yet
+      this.l4Prom = false;   // L4.3.5: the list of my neighbours I give with this word is whole from here
       return true;
+    },
+    // C++: mesh_tier.inc:Seat::l4Clean
+    // L4.3.5: nobody I promised a place is still on the way, and I promised none since I said ready.
+    l4Clean(rdy) {
+      for (const e of this.sitting.values()) if (e.assigner === this.id && this.TICK - e.at <= K.SIT_TTL) return false;
+      return rdy || !this.l4Prom;
     },
 
     // C++: mesh_tier.inc:Seat::l4OnQ
@@ -148,7 +156,8 @@
       if (m.tag >= 5 && m.tag <= 7) {
         if (m.id !== this.l4Partner) return;
         if (m.tag === 5) {
-          if (this.l4ExecAt >= 0 && !this.l4First) { const to = this.l4NewCk; this.l4Exchange(); const r = newMsg('SWAPRDY'); r.id = this.id; r.tag = (this.hasCoord && ckey(this.coord) === to) ? 6 : 7; this.emit(m.id, r); }
+          if (this.l4ExecAt >= 0 && !this.l4First && !this.l4Clean(false)) { this.l4ExecAt = -1; this.f.fabricNoteSwap(this.id, 3); this.trace('SWAP-ABORT', this.id, this.coord, 'partner=%d: I promised a cell', m.id); const r = newMsg('SWAPRDY'); r.id = this.id; r.tag = 7; this.emit(m.id, r); }   // L4.3.5: I stay
+          else if (this.l4ExecAt >= 0 && !this.l4First) { const to = this.l4NewCk; this.l4Exchange(); const r = newMsg('SWAPRDY'); r.id = this.id; r.tag = (this.hasCoord && ckey(this.coord) === to) ? 6 : 7; this.emit(m.id, r); }
           else { const r = newMsg('SWAPRDY'); r.id = this.id; r.tag = 7; this.emit(m.id, r); }
           return;
         }
@@ -244,13 +253,14 @@
         if (this.l4Pinged < 0) { this.l4Pinged = this.TICK; const p = newMsg('SWAPRDY'); p.id = this.id; p.tag = 2; this.emit(this.l4Partner, p); }
         if (this.l4Pinged === this.TICK) for (const e of this.l4Nb) { if (e.v < 0 || e.v === this.id || e.v === this.l4Partner) continue; const ls = this.f.fabricLinkState(this.id, e.v); if (ls === E.LS_CLOSED || ls === E.LS_NONE) { this.f.fabricDial(this.id, e.v); this.trace('SWAP-DIAL', this.id, this.coord, 'peer=%d cell=%s', e.v, coordStr(unckey(e.k))); } }   // L4.3.1: the links of the cell I am to enter are dialled ahead, so they are open when I sit
         if (!this.l4Acked && this.TICK >= this.l4ExecAt - 3) {
-          const ok = this.l4PartnerPing >= 0 && this.lastChurn === this.l4GoChurn && this.TICK - this.healAt >= 2 && !this.moving && !this.l4Hold;
+          const ok = this.l4PartnerPing >= 0 && this.lastChurn === this.l4GoChurn && this.TICK - this.healAt >= 2 && !this.moving && !this.l4Hold && this.l4Clean(false);   // (L4.3.5: and no promise since I said ready)
           const v = newMsg('SWAPRDY'); v.id = this.id; v.tag = ok ? 3 : 4; this.emit(this.l4Partner, v);
           if (!ok) { this.l4ExecAt = -1; this.f.fabricNoteSwap(this.id, 3); this.trace('SWAP-ABORT', this.id, this.coord, 'partner=%d: I withdrew (heard=%d churned=%d)', this.l4Partner, this.l4PartnerPing >= 0, this.lastChurn !== this.l4GoChurn); return; }
           this.l4Acked = true;
         }
         if (this.TICK >= this.l4ExecAt) {
-          if (this.l4First && this.l4Acked && this.l4PartnerAck >= 0) {
+          if (this.l4First && this.l4Acked && this.l4PartnerAck >= 0 && !this.l4Clean(false)) { const v = newMsg('SWAPRDY'); v.id = this.id; v.tag = 4; this.emit(this.l4Partner, v); this.l4ExecAt = -1; this.f.fabricNoteSwap(this.id, 3); this.trace('SWAP-ABORT', this.id, this.coord, 'partner=%d: I promised a cell', this.l4Partner); }   // L4.3.5: a promise made after my vote: I withdraw instead of stepping out
+          else if (this.l4First && this.l4Acked && this.l4PartnerAck >= 0) {
             const o = newMsg('SWAPRDY'); o.id = this.id; o.tag = 5; this.emit(this.l4Partner, o); this.trace('SWAP-OUT', this.id, this.coord, 'partner=%d', this.l4Partner);
             this.l4Out = true; this.l4OutAt = this.TICK; this.l4OutExec = this.l4ExecAt; this.l4ExecAt = -1; this.hasCoord = false; this.f.wake(this.id);
           } else if (this.TICK - this.l4ExecAt > (this.l4First ? this.w.lv.L4_LEAD : 2 * this.w.lv.L4_LEAD)) {

@@ -442,7 +442,7 @@
     // C++: mesh.cpp:Seat::clearSoft
     clearSoft(k, why = '?') { void why; if (this.sitting.has(k)) this.sitting.delete(k); },
     // C++: mesh.cpp:Seat::markSitting
-    markSitting(k, joiner) { const s = state.newStruct('SoftSit'); s.joiner = joiner; s.assigner = this.id; s.at = this.TICK; this.sitting.set(k, s); },
+    markSitting(k, joiner) { const s = state.newStruct('SoftSit'); s.joiner = joiner; s.assigner = this.id; s.at = this.TICK; this.sitting.set(k, s); this.l4Prom = true; },   // (L4.3.5: a promise of a place)
     // C++: mesh.cpp:Seat::ppGrant
     ppGrant(k, joiner) {
       const gk = ppKey(k, joiner); const g = this.ppGiven.get(gk); if (g !== undefined && this.TICK - g <= 60) return;
