@@ -489,7 +489,8 @@
   }
   // The names over a <video> that plays a pack's own frame (the full screen Stadium): the pack's cells (cellIds, cols,
   // its canvas size) through the video's contain fit and its transform as drawn (a Follow zoom, a blur class's scale),
-  // into host, which holds the video at the video's own offset. pack null: no names.
+  // into host, which holds the video at the video's own offset; a cell partly off the host names the part on it.
+  // pack null: no names.
   function cellNamesOver(C, host, video, pack) {
     var cells = [];
     try {
@@ -499,14 +500,18 @@
       if (ids && cv && cv.width > 2 && cv.height > 2 && vw && vh && ew && eh) {
         var G = Math.max(1, pack.cols() | 0), cell = cv.width / G, kx = vw / cv.width, ky = vh / cv.height;
         var s0 = Math.min(ew / vw, eh / vh), ox = (ew - vw * s0) / 2, oy = (eh - vh * s0) / 2;   // object-fit: contain
-        var cs = root.getComputedStyle(video), mm = /^matrix\(([^)]*)\)/.exec(cs.transform || ''), m = mm ? mm[1].split(',').map(parseFloat) : null;
+        // A zoom (class fszoom) moves the cells; a blur class's small scale-up only hides the blur's soft rim past the
+        // edge, so the names keep to the laid-out picture there.
+        var cs = root.getComputedStyle(video), mm = video.classList.contains('fszoom') ? /^matrix\(([^)]*)\)/.exec(cs.transform || '') : null, m = mm ? mm[1].split(',').map(parseFloat) : null;
         var og = String(cs.transformOrigin || '0 0').split(' ').map(parseFloat), gx = og[0] || 0, gy = og[1] || 0;
         var z = m ? m[0] : 1, tx = m ? m[4] + gx - gx * m[0] : 0, ty = m ? m[5] + gy - gy * m[3] : 0;
         var bx = video.offsetLeft || 0, by = video.offsetTop || 0;
         for (var j = 0; j < ids.length; j++) {
           var x = (j % G) * cell, y = Math.floor(j / G) * cell;
           if (!ids[j] || y + cell > cv.height + 0.5) continue;
-          cells.push({ pid: String(ids[j]), x: bx + tx + (ox + x * kx * s0) * z, y: by + ty + (oy + y * ky * s0) * z, w: cell * kx * s0 * z, h: cell * ky * s0 * z });
+          var X = bx + tx + (ox + x * kx * s0) * z, Y = by + ty + (oy + y * ky * s0) * z, Wd = cell * kx * s0 * z, Hd = cell * ky * s0 * z;
+          var x0 = Math.max(0, X), x1 = Math.min(host.clientWidth || X + Wd, X + Wd), y1 = Math.min(host.clientHeight || Y + Hd, Y + Hd);
+          if (x1 - x0 > 2 && y1 - Math.max(0, Y) > 2) cells.push({ pid: String(ids[j]), x: x0, y: Y, w: x1 - x0, h: y1 - Y });
         }
       }
       // a zoom eases in: the names follow where it lands
