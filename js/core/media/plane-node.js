@@ -12,7 +12,9 @@
  * the host gave me), and my camera when the host gave me one and no blur applies. Received tracks reach the core
  * through the pc's ontrack as on a page (claims, meters through the port's AudioContext, the agent's audio.in).
  * MY FACE: the camera track the host gave. With the camera off no video leaves (a card: every viewer draws my avatar
- * or initial). WHAT IT CANNOT MAKE YET: a blurred camera, a screen or a rebroadcast; those report no-track.
+ * or initial). A REBROADCAST: the host plays a file into a picture track and a sound track of its own and hands them
+ * over with rbStart, as the browser plane takes them from a playing <video>. WHAT IT CANNOT MAKE YET: a blurred camera
+ * or rebroadcast (no blur pipe: under a blur no picture leaves) and a screen; those report no-track.
  * Duty slots (sdm / sub / sgs) are read off the jobs this plane actually holds. This plane folds a mix row's audio on
  * the port's AudioContext and ships that fold with a claimed picture when the row has one. A row whose picture is
  * {pack} ships when packFor has a live track (room, pipe, prod, l14), and the fold rides with it. With no pack track
@@ -47,12 +49,13 @@
       const ls = C.localStream;
       return (ls && ls.getAudioTracks()[0]) || null;
     }
-    // MY MAIN PICTURE, as the core chose it (mainVideoChoice). A camera track the host gave me, unblurred, is sent as is.
-    // Camera off ('card') sends no video: every viewer draws my avatar or initial. A camera under a blur sends nothing
-    // (this plane has no blur pipe, and the raw camera never leaves). Screen and rebroadcast need a source this plane
-    // does not have yet.
+    // MY MAIN PICTURE, as the core chose it (mainVideoChoice). A camera track the host gave me, unblurred, is sent as is,
+    // and so is a rebroadcast's picture (rbStart). Camera off ('card') sends no video: every viewer draws my avatar or
+    // initial. A camera or rebroadcast under a blur sends nothing (this plane has no blur pipe, and the raw picture never
+    // leaves). A screen needs a source this plane does not have yet.
     function sentVideoTrack() {
       const c = C.mainVideoChoice();
+      if (c.src === 'rebroadcast') { const v = C.rbNow && C.rbNow.v; return c.blur > 0 || !live(v) ? null : v; }
       if (c.src !== 'own-cam' || c.blur > 0 || c.rowShare) return null;
       const ls = C.localStream, t = ls && ls.getVideoTracks()[0];
       return live(t) ? t : null;
@@ -204,7 +207,9 @@
     // the avatar). carryIn marks its id (emit false) so a later claim of that id is not a second entry.
     function mySelfStream() { return ownStageStream(); }
     function ownStageStream() {
-      const want = [mainAudioTrack(), sentVideoTrack()].filter(live);
+      // A rebroadcast's sound comes with its picture; a file with no sound sends none, not my voice (the browser plane's rule).
+      const rb = C.rbNow && C.rbNow.v ? C.rbNow : null;
+      const want = [rb ? rb.a : mainAudioTrack(), sentVideoTrack()].filter(live);
       if (!want.length) return null;
       if (!ownStageSt) ownStageSt = new MediaStream();
       syncTracks(ownStageSt, want);
@@ -1295,6 +1300,35 @@
       claimT = setTimeout(() => { claimT = 0; try { C.claimMos(); } catch (e) {} }, GifOS.timings.TUNNEL_MINT_RETRY_MS);
     }
 
+    // A REBROADCAST FROM THE HOST: o = { v, a, title, position(), duration() }: v and a are tracks the host feeds (a file
+    // played in real time; the same tracks may carry one file after another), position/duration in seconds for the
+    // rebroadcast's own readings. The core's rules as the browser plane's rbStart: only the host of a broadcast; the
+    // seat steps onto the Stage if it is not there; the seat says Prerecorded (myStatus.rb). It ends with the core's
+    // rbStop ('ended' when the host's file ran out), which stops both tracks.
+    function rbStart(o) {
+      if (C.rbNow || !C.BROADCAST || !C.bcHostStored() || !o || !live(o.v)) return false;
+      const num = (f) => { try { const n = +f(); return isFinite(n) ? n : NaN; } catch (e) { return NaN; } };
+      const vid = {
+        get currentTime() { return typeof o.position === 'function' ? num(o.position) || 0 : 0; }, set currentTime(x) { void x; },
+        get duration() { return typeof o.duration === 'function' ? num(o.duration) : NaN; },
+        paused: false, pause() {}, play() { return Promise.resolve(); }, removeAttribute() {}, load() {},
+      };
+      const r = C.rbNow = { vid, title: o.title || '', last: false, saved: null, v: o.v, a: live(o.a) ? o.a : null, actx: null, url: '', starting: false };
+      r.wasEnded = !!(C.bcSeeding && C.myStatus.bcend);
+      if (C.outgoingHeld) C.releaseLeaveAsk();
+      C.myStatus.bcend = 0;
+      C.myStatus.rb = Date.now();
+      if (!C.myStatus.stg) { r.steppedUp = true; C.setStage(true); }
+      refreshOutbound();
+      if (!r.steppedUp) C.broadcastStatus();
+      C.refreshAllTiles();
+      return true;
+    }
+
+    def('rbStart', rbStart);
+    // NO RECORDER: a broadcast host's page keeps a copy of its service (the core's bcKeepService asks which sources a
+    // recording would hold). This plane records nothing, so no source is ever in scope and no recording starts.
+    def('recScopeSources', () => ({ stage: [], rows: [], room: [] }));
     def('mainAudioTrack', mainAudioTrack);
     def('sentVideoTrack', sentVideoTrack);
     def('stageVideoTrack', stageVideoTrack);
@@ -1368,7 +1402,7 @@
     // The host's setInterval returns a number, so unref runs only when the timer object itself is what came back.
     const sweepT = setInterval(() => { try { M.schedReconcile(); } catch (e) {} }, GifOS.meshLaws.FHOP_SWEEP * GifOS.timings.tickMs);
     if (sweepT && typeof sweepT.unref === 'function') sweepT.unref();
-    return { folds: foldParts, video: videoPort, names: ['mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties', 'bindClaim', 'unbindClaim', 'adoptClaim', 'picRead', 'rowEdge', 'keyUp', 'producerKey', 'kfEv', 'attachTrack', 'detachTrack', 'parkSender', 'kickJob', 'noteReship', 'dropContainer', 'orphaned', 'attachFailed', 'containerFor', 'jobPinned', 'swapTrack', 'dutyMuteTick', 'schedClaim', 'schedReconcile', 'stgLost', 'mySelfStream', 'jobVideoAt', 'stgCarry', 'repaintRedun', 'swapPicNote', 'stgFoNote', 'rowMixHold', 'rowMixHeadArrives', 'x2Target', 'partStream', 'slotDark', 'carriedHot', 'hopMs', 'packFor', 'blockOf', 'faceLive', 'blockPicture', 'blockLive', 'overlayTiny', 'rowMixOpen', 'mixReady', 'rowMixViaPeek', 'mosHeld', 'downStreams'] };
+    return { folds: foldParts, video: videoPort, names: ['rbStart', 'recScopeSources', 'mainAudioTrack', 'sentVideoTrack', 'stageVideoTrack', 'refreshOutbound', 'attachLocalTracks', 'dropEndedRemoteTracks', 'peerAudioTracks', 'retireMixTracks', 'adapt', 'tileHolds', 'stubDuties', 'bindClaim', 'unbindClaim', 'adoptClaim', 'picRead', 'rowEdge', 'keyUp', 'producerKey', 'kfEv', 'attachTrack', 'detachTrack', 'parkSender', 'kickJob', 'noteReship', 'dropContainer', 'orphaned', 'attachFailed', 'containerFor', 'jobPinned', 'swapTrack', 'dutyMuteTick', 'schedClaim', 'schedReconcile', 'stgLost', 'mySelfStream', 'jobVideoAt', 'stgCarry', 'repaintRedun', 'swapPicNote', 'stgFoNote', 'rowMixHold', 'rowMixHeadArrives', 'x2Target', 'partStream', 'slotDark', 'carriedHot', 'hopMs', 'packFor', 'blockOf', 'faceLive', 'blockPicture', 'blockLive', 'overlayTiny', 'rowMixOpen', 'mixReady', 'rowMixViaPeek', 'mosHeld', 'downStreams'] };
   }
 
   GifOS.planeNode = { install };
