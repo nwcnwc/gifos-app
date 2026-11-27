@@ -1171,6 +1171,41 @@
       let c = unck(k); for (let g = 0; g < 32 && c.pc !== 0; g++) { if (c.pc === this.coord.pc && c.r === this.coord.r) return true; const o = FREE.ownerCoordOf(c); if (!o) break; c = o; }
       return false;
     },
+    // C++: mesh_heal.inc:Seat::l53Enter
+    // L53 THE DOOR CARRIES THE ROOM'S SOUND TO ITS KNOCKER. A seat that answers a knock is in the meeting by proof, and
+    // the channel between it and the knocker is open. So the door itself carries the sound: a seated seat ships the
+    // Stage (the room mix) to every seat that knocked at it from outside, over the door channel, for as long as that
+    // door stands and its own channels are inside its budget (L14.1). The knocker plays it: while it seeks, through a
+    // withdrawn placement and its take, and seated while the door still stands. No frame asks for the copy and none
+    // ends it: the door's own laws (L15, L16) open and close the channel, as before. A seat hands the room on only when
+    // its own cell feeds it: one that came in by the door is a NEWCOMER (l53New) until a link of its own cell does, and
+    // a newcomer feeds nobody, so "fed" always leads back to the Stage. A seat that sat by a move is not a newcomer.
+    l53Enter() { if (!this.f.fabricDoors()) return; this.l53New = true; this.l53At = -1; },
+    // C++: mesh_heal.inc:Seat::l53AskHedge
+    // L53.1 NO ASK WAITS ON A SEAT THAT MAY BE DEAD. A seeker sends its WHOHOME to one greeter of the door's last list
+    // and its FIND to one seat of the roster its HOME gave it. Both lists name seats that are away or dead as readily
+    // as live ones. While no channel to a seat it asked this round is open, FHOP_DOOR_STALL after the ask (a dial that
+    // is going to open has opened by then, FHOP.8.2) the same ask goes to one more seat, and again every
+    // FHOP_DOOR_STALL: a seat it holds an open channel to first (live by proof: it answered), then the door's greeters
+    // in the list's order from the one asked. The first answer is its entry; a later placement is declined (L31.7), a
+    // later door closed (l16Gateway). A returner's proof rides its one knock (L3.11.5): it is not hedged.
+    l53AskHedge() {
+      const TICK = this.TICK, id = this.id;
+      if (!this.f.fabricDoors() || (this.state !== 1 && this.state !== 2)) return false;
+      const tgt = this.state === 1 ? this.gateway : this.lastAsked; if (tgt < 0) return false;
+      if (this.state === 2 && this.findAckAt >= 0) return false;
+      if (this.state === 1 && (this.lastReach >= this.retryAt || this.oldCell || this.entryTerm())) return false;
+      if (this.l53HedgeFor !== this.retryAt) { this.l53HedgeFor = this.retryAt; this.l53HedgeAt = this.retryAt; this.l53Asked.length = 0; this.l53Asked.push(tgt); }
+      if (TICK - this.l53HedgeAt < K.FHOP_DOOR_STALL) return false;
+      const asked = (x) => this.l53Asked.includes(x);
+      for (const a of this.l53Asked) if (this.f.fabricLinkOpen(id, a)) return false;
+      let x = -1; for (const p of this.f.fabricOpenPeers(id)) if (p !== id && !asked(p) && this.f.fabricLinkCarries(id, p)) { x = p; break; }
+      if (x < 0 && this.greetersAt >= 0 && TICK - this.greetersAt <= K.RELAY_TTL) { const n = this.lastGreeters.length; let at = 0; for (let q = 0; q < n; q++) if (this.lastGreeters[q] === tgt) at = q; for (let q = 1; q <= n && x < 0; q++) { const g = this.lastGreeters[(at + q) % n]; if (g >= 0 && g !== id && !asked(g)) x = g; } }
+      if (x < 0) return false;
+      this.l53HedgeAt = TICK; this.l53Asked.push(x); this.trace('L53-HEDGE', id, null, 'to=%d beside=%d st=%d', x, tgt, this.state);
+      if (this.state === 1) { this.entNote(x); this.l16Ask.push(x); const w = newMsg('WHOHOME'); w.from = id; w.ttl = K.WHOHOME_HOPS; this.emit(x, w); return true; }
+      const m = this.findMsg(x, false); this.emit(x, m); return true;
+    },
     l14Uplink() {
       this.l14PcWatch();
       if (this.l14Up >= 0 && this.l1412Below(this.l14Up)) { this.trace('L14.12', this.id, this.coord, 'was=%d', this.l14Up); const was = this.l14Up; this.l14Up = -1; if (this.f.fabricLinkState(this.id, was) === LS_OPEN) { const u = newMsg('UNNEEDED'); u.id = this.id; u.tag = 5; this.emit(was, u); } }

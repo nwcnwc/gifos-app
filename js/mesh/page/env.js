@@ -615,6 +615,8 @@
     w.f = F;
     // the pc laws' own helpers fabricSend reads (not seat calls): L18's route test and cell
     for (const n of ['l18Route', 'l18Cell']) F[n] = guard(n, (pcw.fns && pcw.fns[n]) || (() => (n === 'l18Route' ? false : null)));
+    // L53: the page's own readings of its doors (the media plane ships a door's knockers the room's sound; not seat calls)
+    for (const n of ['fabricDoorServed', 'fabricDoorGreeters']) F[n] = guard(n, (pcw.fns && pcw.fns[n]) || (() => []));
 
     // ---- the page's face ------------------------------------------------------------------------------------------
     // C++: mesh.cpp:doTick, for one seat: link tick, deliver, tick the seat if woken; then the clock moves on.

@@ -687,6 +687,7 @@
       const pool = []; for (const g of this.lastGreeters) if (g >= 0 && g !== this.id && !this.entAsk.has(g) && !this.l16Ask.includes(g)) pool.push(g);
       if (pool.length === 0) return false;
       const g = pool[Math.floor(this.rng() * pool.length)]; this.trace('FHOP.8.3-HEDGE', this.id, null, 'to=%d beside=%d', g, this.l16Ask[0]);
+      this.l53HedgeFor = this.retryAt; this.l53HedgeAt = this.TICK; this.l53Asked = this.l16Ask.slice(); this.l53Asked.push(g);   // L53.1: this is the first of its hedges
       this.entNote(g); this.l16Ask.push(g); const w = newMsg('WHOHOME'); w.from = this.id; w.ttl = K.WHOHOME_HOPS; this.emit(g, w); return true;
     },
 

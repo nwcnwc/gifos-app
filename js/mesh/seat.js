@@ -734,12 +734,18 @@
     },
     // C++: mesh.cpp:Seat::l163Close
     l163Close(mm) { const lv = this.w.lv; return this.f.fabricDoors() && mm.from === mm.nc && this.hasCoord && this.coord.pc === 0 && this.f.fabricMyKnocks(this.id) >= lv.L16HOLOAD && !(lv.L16MOBKEEP && lv.TIERS_ACTIVE && mm.tier === E.TIER_MOBILE); },
+    // C++: mesh.cpp:Seat::findMsg
+    // my FIND, as askSeat and L53.1's hedge send it
+    findMsg(target, gwc) {
+      const m = newMsg('FIND'); m.nc = this.id; m.gwc = gwc || (this.l16GwClosed && this.f.fabricDoors()); m.ttl = 200; m.spread = (this.noroomSeen >= 1); m.dark = this.darkGreeters(target); this.l381Stamp(m); /* L38.1 */ if (this.d6Mark) m.dk = true;
+      if (roomTerm(this, 1) && this.searchAt >= 0 && this.TICK - this.searchAt >= K.RELAY_TTL) m.late = true;
+      return m;
+    },
     // C++: mesh.cpp:Seat::askSeat
     askSeat(target, gwc = false) {
       if (this.askTick === this.TICK) { if (!this.hasCoord) { this.state = 2; this.retryAt = this.TICK; } this.reAsk = true; this.f.wake(this.id); return; }
       this.askTick = this.TICK; this.state = 2; this.retryAt = this.TICK; this.findAckAt = -1; this.triedSilent.add(target); this.lastAsked = target;
-      const m = newMsg('FIND'); m.nc = this.id; m.gwc = gwc || (this.l16GwClosed && this.f.fabricDoors()); m.ttl = 200; m.spread = (this.noroomSeen >= 1); m.dark = this.darkGreeters(target); this.l381Stamp(m); /* L38.1 */ if (this.d6Mark) m.dk = true;
-      if (roomTerm(this, 1) && this.searchAt >= 0 && this.TICK - this.searchAt >= K.RELAY_TTL) m.late = true;
+      const m = this.findMsg(target, gwc);
       this.emit(target, m); this.f.wake(this.id);
     },
     // C++: mesh.cpp:Seat::l32RosterStale
