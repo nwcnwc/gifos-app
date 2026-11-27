@@ -763,7 +763,8 @@
     // js/timings.js (TEXTCLEAR_*); the numbers and their derivations are in the global timings table.
     const TICK_MS = T.TEXTCLEAR_TICK_MS, MAX_TICK_MS = T.TEXTCLEAR_MAX_TICK_MS, KEEP_MS = T.TEXTCLEAR_KEEPALIVE_MS;
     const COST_K = 4;   // work is followed by COST_K times as much rest: the filter keeps to about a fifth of one core
-    const SMALL_FRAC = 1 / 16;   // an analysis of at most this share of the picture (an edited line) never waits for the big-analysis rest
+    const SMALL_FRAC = 1 / 16;
+    const STEPUP_K = 15, STEPUP_MAX_K = 240;   // a smaller picture is kept at least this many slowest ticks before trying the bigger one again (doubling up to the max)   // an analysis of at most this share of the picture (an edited line) never waits for the big-analysis rest
     const SIZES = [1920, 1280, 960, 640];   // the analysed picture's long side, step by step when a device is over budget
     // The Worker runs this module's own factory from a blob (the factory is self-contained), so a release snapshot that
     // bundles every script into one file still starts it.
@@ -794,7 +795,7 @@
     // ONE ANALYSIS STREAM: its overlay canvas (at the analysed size: the vetted cells, transparent elsewhere), its
     // tick and its budget. run(src, sw, sh, capLong) analyses one frame of src when the tick is due.
     function engine() {
-      const eng = { id: ++engN, w: 0, h: 0, step: 0, gaveUp: false, busy: false, next: 0, aNext: 0, cost: 0, aCost: 0, tCost: 0, overA: 0, overT: 0, overN: 0, ticks: 0, analysed: 0, deferred: 0, shownN: 0, lastMs: 0, gen: 0, ver: 0, opts: null };
+      const eng = { id: ++engN, w: 0, h: 0, step: 0, gaveUp: false, busy: false, next: 0, aNext: 0, cost: 0, aCost: 0, tCost: 0, overA: 0, overT: 0, overN: 0, stepAt: 0, upWait: 0, ticks: 0, analysed: 0, deferred: 0, shownN: 0, lastMs: 0, gen: 0, ver: 0, opts: null };
       eng.ov = W.document.createElement('canvas'); eng.ov.width = eng.ov.height = 1;
       eng.ovx = eng.ov.getContext('2d');
       eng.grab = W.document.createElement('canvas');
@@ -816,7 +817,7 @@
         if (!eng.due(t) || !(sw > 0 && sh > 0)) return null;
         const sz = eng.sizeFor(sw, sh, capLong);
         if (sz.w !== eng.w || sz.h !== eng.h) {
-          eng.reset(); eng.w = sz.w; eng.h = sz.h; eng.tCost = 0; eng.overT = 0; eng.overA = 0; eng.aNext = 0;
+          eng.reset(); eng.w = sz.w; eng.h = sz.h; eng.tCost = 0; eng.aCost = 0; eng.overT = 0; eng.overA = 0; eng.aNext = 0;
           eng.ov.width = sz.w; eng.ov.height = sz.h; eng.grab.width = sz.w; eng.grab.height = sz.h;
         }
         let img = null;
@@ -862,9 +863,15 @@
             if (m.px >= 0.5 * eng.w * eng.h) { eng.aCost = aMs; if (aMs > MAX_TICK_MS) { if (++eng.overA >= 2) over = true; } else eng.overA = 0; }
           }
           if (over) {
-            if (eng.step < SIZES.length - 1) { eng.step++; eng.overN = 0; }
+            if (eng.step < SIZES.length - 1) { eng.step++; eng.overN = 0; eng.stepAt = tNow; eng.upWait = Math.min(STEPUP_MAX_K * MAX_TICK_MS, eng.upWait ? 2 * eng.upWait : STEPUP_K * MAX_TICK_MS); }
             else if (++eng.overN >= 2) { eng.gaveUp = true; eng.reset(); }
             eng.overA = eng.overT = 0;
+          } else if (eng.step > 0 && m.analysed && eng.aCost && m.px >= 0.5 * eng.w * eng.h && tNow - eng.stepAt >= eng.upWait) {
+            // BACK UP: a step down after a passing overload (another app, a GPU restart) is not for the rest of the meeting.
+            // After a while at the smaller picture, when a whole-page analysis and the tick, scaled to the bigger picture,
+            // both fit the budget, the next tick analyses the bigger picture again. A step down soon after waits twice as long.
+            const k = (SIZES[eng.step - 1] / SIZES[eng.step]) * (SIZES[eng.step - 1] / SIZES[eng.step]);
+            if (eng.aCost * k <= MAX_TICK_MS && eng.tCost * k * COST_K <= MAX_TICK_MS) { eng.step--; eng.stepAt = tNow; }
           }
           eng.next = tNow + Math.max(TICK_MS, Math.min(MAX_TICK_MS, COST_K * base));
           return m.newly.length > 0 || m.hidden.length > 0;
