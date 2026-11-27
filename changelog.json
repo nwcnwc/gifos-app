@@ -4,9 +4,11 @@
     {
       "version": "0.9.28.53",
       "date": "2026-11-27",
-      "headline": "Agenda and Survey fit every phone",
+      "headline": "Meetings sealed for the people in them",
+      "critical": true,
       "features": [],
       "fixes": [
+        "What is said and shared in a meeting is now sealed for the people seated in it. Someone who has the link but has not been let in (the waiting room) is sent no chat, history, names or pictures.",
         "The agenda and Survey are easy to use on every phone, upright or sideways.",
         "In Focus view on an upright phone, the strip of faces sits on the bottom edge without covering the controls."
       ]
