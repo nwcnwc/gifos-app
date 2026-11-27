@@ -296,7 +296,7 @@
     for (const k of Object.keys(f)) if (k !== '_' && TV_KEYS.split(',').indexOf(k) < 0) return false;
     if (f.q === 'a') return typeof f.d === 'string' && DEV_RE.test(f.d) && (f.b === 0 || f.b === 1) && (f.e === undefined || (typeof f.e === 'string' && /^[0-9a-z]{1,2}$/.test(f.e)));
     if (f.q === 'k') return typeof f.n === 'string' && NONCE_RE.test(f.n) && typeof f.m === 'string' && MAC_RE.test(f.m);
-    if (f.q === 'h') return f.b === 0 || f.b === 1;
+    if (f.q === 'h') return f.b === 0 || f.b === 1 || (f.b === 2 && typeof f.m === 'string' && /^[A-Za-z0-9_]{1,64}$/.test(f.m) && (f.n === undefined || (typeof f.n === 'string' && f.n.length <= 40)));   // b 2: a page that waits speaks for the page at its own door (m: that page, n: its name)
     if (f.q === 'w') return f.m === undefined || (typeof f.m === 'string' && WEB_HOST_RE.test(f.m));
     if (f.q === 'v') return typeof f.e === 'string' && E36_RE.test(f.e) && typeof f.n === 'string' && NONCE_RE.test(f.n) && typeof f.m === 'string' && MAC_RE.test(f.m);
     if (f.q === 'x') return f.b === undefined || f.b === 1;

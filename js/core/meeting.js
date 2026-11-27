@@ -1837,7 +1837,7 @@
     // does (`tv` q 'h'): `l` names what is held, the page's knock (l0) or the pipe it asked this seat for.
     const heldSaidAt = new Map(),   // door side: knocker id -> last time told
       heldToldAt = new Map(),       // a guest's door: page id -> when I last told the hosts
-    { sayLetIn, doorWaits, doorNamed, doorSelfHeld, doorNoWay, doorWordIn, heldScreen, linkAskHeld, linkProofIn, linkAskAgain, doorWaitInfo } = (function () {
+    { sayLetIn, doorWaits, doorNamed, doorSelfHeld, doorSpeaksFor, doorNoWay, doorWordIn, heldScreen, linkAskHeld, linkProofIn, linkAskAgain, doorWaitInfo } = (function () {
     // ...and so does a host's Admit: the page held with no channel is told at once (its door's silence would say it only
     // after three held rounds). The word opens nothing by itself: every door still asks whether a host admitted the page.
     function sayLetIn(id) { try { if (id && id !== myId) relaySendSealed(id, 'tv', { k: 'tv', q: 'h', l: 'l0', b: 0 }); } catch (e) {} }
@@ -1846,12 +1846,12 @@
     // carried. Each of them asks here. A page the door holds goes on the hosts' waiting list from ANY door: a host's
     // door lists it, a guest's door tells the room once in a while (`heldask`, sealed for the people in the meeting)
     // and the hosts list it. Without that a page whose way in never lands on a host's own door could not be admitted.
-    function doorWaits(id) {
+    function doorWaits(id, said) {
       id = String(id || '');
       const b = meetWait.blocks(id);
       if (!b || !id || id === myId) return b;
       if (myRoomPart && myRoomPart.quiet(id)) return true;   // a private room's unproved knocker: held, on no list, and told nothing (sayHeld)
-      const nm = rosterNames[id] || 'Someone waiting';
+      const nm = String(said || '').trim().slice(0, 40) || rosterNames[id] || 'Someone waiting';   // said: the name another door heard from it (doorWordIn b 2)
       if (amAdmin) { meetWait.note(id, nm, 'door'); return true; }
       const now = Date.now(), every = doorToldMs() || 30000, was = heldToldAt.get(id);
       if ((was && now - was.at < every && was.nm === nm) || !meshCoord()) return true;   // once a window, and again when the page has said its name
@@ -1885,12 +1885,31 @@
     // door as I do), from my pipe's first held word until I hold the hosts' own word of who is admitted (their table
     // reaches me once I am in). Without this a colleague on my network would sit down beside me unseen by any host and
     // be carried into the meeting with me.
+    // ...AND IT SPEAKS FOR ITS DOOR. The page I tell to wait stands at a door no host can see: its own dial may never
+    // have reached a seat of the meeting (its network, like mine, meets none of them). So I say who stands at my door
+    // to the seat that holds my pipe's ask, where my own wait is known (`tv` q 'h', b 2: that page's id and the name it
+    // gave me), once a doorToldMs window and again when its name is known. That seat lists it as its own door would
+    // (doorWaits): a host can admit either of us first.
+    function doorSpeaksFor(id) {
+      id = String(id || ''); if (!id || id === myId || !heldNamed.size) return;
+      const p = peers.get(id); let nm = String(rosterNames[id] || (p && p.name) || '').trim().slice(0, 40);
+      const now = Date.now(), every = doorToldMs() || 30000, was = heldToldAt.get(id);
+      if (was && now - was.at < every && was.nm === nm) return;
+      heldToldAt.delete(id); heldToldAt.set(id, { at: now, nm }); if (heldToldAt.size > 64) heldToldAt.delete(heldToldAt.keys().next().value);
+      const f = { k: 'tv', q: 'h', l: 'l0', b: 2, m: id }; if (nm) { f.n = nm; while (f.n && !net.fitsFixed(f)) f.n = f.n.slice(0, -1); if (!f.n) delete f.n; }
+      for (const seat of Array.from(heldNamed.keys()).slice(0, 4)) { try { relaySendSealed(seat, 'tv', f); } catch (e) {} }
+    }
     let pipeHeldSeen = false;
     function doorSelfHeld() {
       try { if (turnLinks && turnLinks.heldPipe()) return true; } catch (e) {}
       return pipeHeldSeen && hasAdminRoom() && !amAdmin && !(modTable['*'] || {}).dhold;
     }
     function doorWordIn(from, f) {
+      if (f.b === 2) {   // a page whose pipe's ask my door holds says who stands at its own door: listed as my door would list it
+        const id = String(f.m || '');
+        if (linkAsks.has(from) && id && id !== myId && id !== from && !pwShut(id) && meshCoord()) doorWaits(id, typeof f.n === 'string' ? f.n : '');
+        return;
+      }
       const s = meshSeat(), seated = !!(s && s.hasCoord);
       let mine = false; try { mine = !!(turnLinks && turnLinks.heldWord(from, f)); } catch (e) {}
       if (f.b === 1) {
@@ -1972,7 +1991,7 @@
       linkAsks.delete(id);   // its next ask (it says it again at the door's pace, and afresh when it hears the let-in) is answered
     }
     const doorWaitInfo = () => ({ told: heldToldAt.size, said: Array.from(heldSaidAt.keys()), asks: Array.from(linkAsks.keys()), proved: Array.from(linkProved), toldMe: doorToldAt ? Date.now() - doorToldAt : -1, pipeHeld: !!(turnLinks && turnLinks.heldPipe()), proof: !!seatLinkProof(), named: Array.from(heldNamed.keys()), nameSent: heldNamed.ok, nameErr: heldNamed.err || '' });
-    return { sayLetIn, doorWaits, doorNamed, doorSelfHeld, doorNoWay, doorWordIn, heldScreen, linkAskHeld, linkProofIn, linkAskAgain, doorWaitInfo };
+    return { sayLetIn, doorWaits, doorNamed, doorSelfHeld, doorSpeaksFor, doorNoWay, doorWordIn, heldScreen, linkAskHeld, linkProofIn, linkAskAgain, doorWaitInfo };
     })();
     function sayHeld(id, kind, l) {
       if (myRoomPart && myRoomPart.quiet(id)) return;   // a private room's door is silent to a page that has not proved it is the other member
@@ -13070,7 +13089,7 @@
         netTag: () => netTagNow,
         capable: () => { const hc = navigator.hardwareConcurrency | 0; return !IS_MOBILE && !(hc > 0 && hc <= 2); },   // a relayed pipe may end at my seat when it heads a row (the device class the mesh's tier reads)   // my registration at the door says which network I am on (the tag my beat carries)
         netKind: () => (directPath === 'blocked' ? 2 : directPath === 'strict' ? 1 : directPath === 'ok' ? 0 : -1),   // and what it measured as (the seat's NAT kinds)
-        doorHeld: (id) => { try { if (DEBUG_ON && window.__doorHoldAll) return true;   /* DEBUG=on only: this door answers no knock (a test picks the doors) */ if (doorSelfHeld()) { if (id) sayHeld(id); return true; }   /* I wait at the meeting's door myself: nobody comes in through mine */ const b = doorWaits(id); if (b && id) sayHeld(id); return b; } catch (e) { return false; } },   // a withheld knock goes on the hosts' list from any door (doorWaits), and the knocker is told on whatever path reaches it
+        doorHeld: (id) => { try { if (DEBUG_ON && window.__doorHoldAll) return true;   /* DEBUG=on only: this door answers no knock (a test picks the doors) */ if (doorSelfHeld()) { if (id) { sayHeld(id); doorSpeaksFor(id); } return true; }   /* I wait at the meeting's door myself: nobody comes in through mine */ const b = doorWaits(id); if (b && id) sayHeld(id); return b; } catch (e) { return false; } },   // a withheld knock goes on the hosts' list from any door (doorWaits), and the knocker is told on whatever path reaches it
         onDoor: (kind, frame) => {
           if (kind === 'seated') {
             let waits = false; try { waits = !!(turnLinks && turnLinks.heldPipe()); } catch (e) {}
