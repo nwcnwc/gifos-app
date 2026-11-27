@@ -1577,11 +1577,9 @@
       const archive = await gif.decode(bytes);
       const m = archive ? gif.readManifest(archive) : null;
       if (m && m.system) { showModal(dt('desktop.lock.cantTitle'), dt('desktop.lock.builtIn')); return; }
-      const cap = await GifOS.lock.canPasskeyLock();
-      if (!cap.ok && !GifOS.lock._prfOverride) { showModal(dt('desktop.lock.cantTitle'), escapeHtml(cap.reason)); return; }
-      const act = await GifOS.lock.showSheet('lock', name);
-      if (act !== 'ok') return;
-      const created = await GifOS.lock.createLock(name, it.fileId);
+      // Passkey where one gives PRF, else (or by choice) a passphrase.
+      const created = await GifOS.lock.chooseAndCreate(name, it.fileId);
+      if (!created) return;
       await GifOS.lock.wrapAtRest(it.fileId, created.key);
       it.passkey = created.meta;
       await saveItem(it, { keepCell: true });
@@ -1594,9 +1592,10 @@
     if (!GifOS.lock || !it.passkey) return;
     const name = (it.name || 'App').replace(/\.gif$/i, '');
     try {
-      const act = await GifOS.lock.showSheet('remove', name);
+      const act = await GifOS.lock.showSheet('remove', name, GifOS.lock.lockKind(it.passkey));
       if (act !== 'ok') return;
-      const key = await GifOS.lock.assertLock(it.passkey);
+      const key = await GifOS.lock.keyFor(it.passkey, name);
+      if (!key) return;
       await GifOS.lock.unwrapAtRest(it.fileId, key);
       GifOS.lock.session.del(it.fileId);
       delete it.passkey;
@@ -2292,11 +2291,12 @@
     const locked = !!(it.passkey && GifOS.lock);
     if (locked) {
       const name = (it.name || 'App').replace(/\.gif$/i, '');
-      const act = await GifOS.lock.showSheet('export', name);
+      const act = await GifOS.lock.showSheet('export', name, GifOS.lock.lockKind(it.passkey));
       if (act === 'cancel') return;
       if (act === 'ok') {
         try {
-          const key = await GifOS.lock.assertLock(it.passkey);
+          const key = await GifOS.lock.keyFor(it.passkey, name);
+          if (!key) return;
           const ex = await exportBytes(it.fileId, { locked: true, key });
           if (ex) triggerDownload(ex.bytes, it.name || ex.file.name || 'download', ex.file.mime);
         } catch (e) {
