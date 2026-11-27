@@ -4,7 +4,7 @@
   "appId": "meeting-bot",
   "name": "Meeting Bot",
   "shortName": "Meet Bot",
-  "version": "0.9.28.1",
+  "version": "0.9.28.2",
   "minBuild": 2723,
   "tagline": "A meeting bot you drive from another device.",
   "description": "RUN puts the bot in meetings on this computer. CONTROL, on any other device, uses the same name and password to open the secret admin meeting and drive that bot.\n\nThe bot has no camera. Everyone sees a bot badge, and the usual recording and transcribing indicators. Transcripts and recordings stay on the bot's computer. Control downloads them from there, in pieces, over the meeting itself.\n\nOne bot of a given name should run at a time. A weak name and password is refused.",
@@ -44,13 +44,13 @@
   "cover": "/apps/meeting-bot/cover.jpg",
   "screenshots": [],
   "gif": "/apps/meeting-bot/meeting-bot.gif",
-  "bytes": 92826,
+  "bytes": 98376,
   "download": 0,
   "provides": null,
-  "sha256": "d7abccffbf5f5eef93fc9ea6d816357488d63999d4bd352455a93f138d69ccf6",
+  "sha256": "5b026282f903857330566876ba2e6d431f388c40f14f014628b6c7d04e75f870",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-11-26"
+    "ts": "2026-11-27"
   }
 }
