@@ -8156,15 +8156,16 @@
         }, () => {});
       }
       // TURN.7.2 THE LOOK IN PLACE (js/meet-turn.js): a link whose connection may use a direct pair says, every look, which
-      // candidate it sends from: a relay or not. The link reads its path from that at both ends (never from a setting).
+      // pair it sends on: one with a relay at either end, or not. The two ends may send on different pairs (each from its own
+      // address to the other's relay), so the link is direct only when BOTH ends read no relay (never from a setting).
       if (look) for (const pid of turnLinks.lookPcs()) {
         const p = peers.get(pid); if (!p || !p.pc || typeof p.pc.getStats !== 'function') continue;
         p.pc.getStats().then((st) => {
           let sel = null; const by = new Map(); st.forEach((x) => by.set(x.id, x));
           st.forEach((x) => { if (x.type === 'transport' && x.selectedCandidatePairId) sel = by.get(x.selectedCandidatePairId); });
           if (!sel) st.forEach((x) => { if (!sel && x.type === 'candidate-pair' && x.nominated && x.state === 'succeeded' && x.selected !== false) sel = x; });
-          const lc = sel && by.get(sel.localCandidateId);
-          if (turnLinks && lc && lc.candidateType) turnLinks.onLocal(pid, lc.candidateType === 'relay');
+          const lc = sel && by.get(sel.localCandidateId), rc = sel && by.get(sel.remoteCandidateId);
+          if (turnLinks && lc && rc && lc.candidateType && rc.candidateType) turnLinks.onLocal(pid, lc.candidateType === 'relay' || rc.candidateType === 'relay');
         }, () => {});
       }
     }

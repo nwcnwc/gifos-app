@@ -908,8 +908,9 @@
     // pair holds a path, so no other seat is there to find the direct pair. One connection a pair: its dial is a look on
     // its own connection. Both ends let that connection gather direct candidates beside the relayed ones and it is
     // restarted once (a move): the relayed pair carries until the restart has settled, and ICE takes a direct pair when
-    // one works. The verdict is the connection's own: each end reads the candidate IT sends from (the page's watcher,
-    // onLocal) and says so ('n'); with no relay at either end the path is direct from that moment: the credential stops,
+    // one works. The verdict is the connection's own: each end reads the pair IT sends on (the page's watcher, onLocal:
+    // a relay at either end of it, or none) and says so ('n'); the two ends may send on different pairs, so only with no
+    // relay in either end's reading is the path direct, from that moment: the credential stops,
     // video flows, no vouch slot (TURN.7: the TURN path closes, the pipe stays). The same reading takes it back: a relay
     // at either end again and the path is on TURN as before (its credential is asked for again).
     // Not looked at: a link that is not up, one that is direct, one on the web path (that connection ends in this page).
@@ -922,7 +923,10 @@
     }
     function onLocal(pid, relay) {
       const L = links.get(pid); if (!L || !L.look || L.state !== 'up' || L.web) return;
-      relay = !!relay;
+      // relay: the pair my end sends on has a relay at either end. "No relay" counts once two readings in a row say so (a
+      // restart passes through pairs it does not keep); a relay counts at once.
+      L.clearN = relay ? 0 : (L.clearN || 0) + 1;
+      relay = !!relay || L.clearN < 2;
       if (L.mineRelay !== relay) { L.mineRelay = relay; L.nSentAt = io.now(); tvSend(L.far, { k: 'tv', q: 'n', l: L.l, b: relay ? 0 : 1 }); }
       pathRead(L);
     }
@@ -934,14 +938,14 @@
     function sbSays(L) {   // a standby's live end hears where its standby stands (as at 'up')
       if (!L.sb || L.state !== 'up') return;
       if (L.liveEnd && L.liveEnd !== io.me()) tvSend(L.liveEnd, { k: 'tv', q: 'r', l: L.l, b: L.direct ? 1 : 0 });
-      else if (L.liveEnd === io.me()) { const P = livePipe(pipeNo(L.l)); if (P) { P.sbUp = true; P.sbDirect = !!L.direct; } }
+      else if (L.liveEnd === io.me()) { const P = livePipe(pipeNo(L.l)); if (P) { P.sbUp = true; P.sbDirect = !!L.direct; if (!L.direct && P.pr) P.pr.ok.delete(io.me() + '|' + L.far); } }
     }
     function inPlace(L) {
       L.direct = true; L.inPlace = true; L.directAt = io.now(); L.dEcho = true; L.video = true; L.client = false;
       if (L.cred) { try { L.cred.stop(); } catch (e) {} L.cred = null; }
       if (L.paid) { try { L.paid.stop(); } catch (e) {} L.paid = null; } L.paidMe = false; L.paidFar = false; L.paidSaid = false;
       L.vouched = false; L.thr = null; L.busy = false; L.farBusy = false; L.voiceLow = 0; L.mvWant = false;
-      log('turn-direct in place ' + short(L.far) + ' ' + L.l + ' (look #' + L.lookN + ', ' + (io.now() - L.lookAt) + ' ms)');
+      log('turn-direct in place ' + short(L.far) + ' ' + L.l + ' (' + (L.lookN ? 'my look #' + L.lookN : 'the far end\'s look') + ', ' + (io.now() - L.lookAt) + ' ms)');
       sbSays(L); subChanged('a pipe of mine'); io.changed(L.far);
     }
     function backOnTurn(L) {
@@ -949,6 +953,7 @@
       L.client = clientEnd(io.blocked(), L.farBlocked, L.opener);
       if (L.client && !L.cred) { L.tookOver = true; L.cred = credFor(L, 'free'); L.cred.start(); }   // its credential again; the move follows it
       log('turn-direct lost in place ' + short(L.far) + ' ' + L.l + ': the path is on TURN again');
+      if (L.pr) L.pr.ok.delete(io.me() + '|' + L.far);   // the verdict is taken back: the pair is looked at again
       sbSays(L); subChanged('a pipe of mine'); io.changed(L.far);
     }
     // ONE MOVE AT A TIME. A link's pc moves onto new settings (a pool change, a renewed credential) by one ICE restart from
@@ -1199,7 +1204,7 @@
       if (f.q === 's') { sbExpect.set(f.l, from); bindStandby(f.l, from); tvSend(from, { k: 'tv', q: 's', l: f.l, d: io.dev() }); return true; }   // I end this pipe's standby on my side: my device, for the far side
       // the rest come only from a seat of my subroom in its role (else: a frame of a standby link not yet keyed by its peer id)
       const P = livePipe(r);
-      if ((f.q === 'r' || f.q === 'x') && P && P.sbSeat === from) { P.sbUp = f.q === 'r'; P.sbDirect = f.q === 'r' && f.b === 1; if (f.q === 'x') P.sbAt = 0; return true; }
+      if ((f.q === 'r' || f.q === 'x') && P && P.sbSeat === from) { P.sbUp = f.q === 'r'; P.sbDirect = f.q === 'r' && f.b === 1; if (!P.sbDirect && P.pr && P.farSb) P.pr.ok.delete(from + '|' + P.farSb);   /* (a standby off its direct path: that pair's verdict is taken back) */ if (f.q === 'x') P.sbAt = 0; return true; }
       // my standby seat holds the pipe now. Healed (b 1, SUB.8): my pipe on TURN is its standby from now on; else my part ends
       if (f.q === 't' && P && P.sbSeat === from) { if (f.b !== 1) close(P, 'standby-took-over', true); else if (!P.direct) demote(P, from); return true; }
       if (f.q === 't') { const mine = Array.from(links.values()).filter((M) => M.sb && M.l === f.l && M.liveEnd === from); for (const M of mine) takeover(M, f.b === 1 ? 'healed' : 'my live end lost the pipe'); return mine.length > 0; }
