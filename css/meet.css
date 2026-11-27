@@ -3636,7 +3636,10 @@ body.names-off #stagefeed .stgnames { display: none; }
   @media (orientation: portrait) {
     body.view-focus #fsstrip { top: auto; left: 0; right: 0; bottom: 0; flex-direction: row; overflow-x: auto; overflow-y: hidden; }
     body.view-focus .fsthumb { width: 112px; }
+    /* the bar stands over the bottom edge: the strip moves to the top edge (placeBarAvoiders), nothing is reserved */
+    body.view-focus #fsstrip.flip { top: 0; bottom: auto; }
   }
+  @media (orientation: landscape) { body.view-focus #fsstrip.flip { right: auto; left: 0; } }
   /* Present: one step to the presentation view (content full screen, the
      speaker inset). Shown only while there is content, top centre, the same
      quiet pill as the view button. */
