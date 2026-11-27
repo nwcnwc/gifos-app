@@ -3931,8 +3931,9 @@ body:is(.dock-calm, .head-calm, .view-calm, .dock-idle, .chrome-away, .sv-live):
   .ag-title, .ag-nowt { display: none; }
   .ag-head { gap: 6px 10px; }
   .ag-pos { font-size: 14px; color: var(--c-white); }
-  .ag-now { margin: 8px 0 2px; }
-  .ag-bar { margin: 4px 0 4px; }
+  .ag-now:not([hidden]) { display: flex; align-items: center; gap: 10px; margin: 6px 0 2px; }
+  .ag-bar { flex: 1 1 auto; margin: 0; }
+  .ag-left { flex: 0 0 auto; }
   .ag-item { font-size: 16px; }
   /* A row a viewer only reads (not a button for them) is a line of text, so four items fit a small phone. */
   .ag-item:not([tabindex]):not(:has(> input)) { min-height: 34px; padding-top: 2px; padding-bottom: 2px; }
