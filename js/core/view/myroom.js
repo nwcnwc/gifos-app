@@ -64,6 +64,8 @@
   let part = null, ringing = null, offer = null, barShut = false;
   function callWords(c) {
     const n = c.label || 'them';
+    if (c.invite && c.state === 'accepted') return n + ' is coming to your meeting.';
+    if (c.invite && (c.state === 'waiting' || c.state === 'ringing')) return 'Inviting ' + n + ' to ' + c.invite.split('.')[0] + '…';
     if (c.state === 'waiting') return 'Waiting for ' + n + '. ' + n + '’s devices ring when one of them has this room open.';
     if (c.state === 'ringing') return 'Ringing ' + n + '…';
     if (c.state === 'declined') return n + ' can’t answer right now.';
@@ -79,7 +81,10 @@
         const r = st.rings[0];
         if (!ringing || ringing.pid !== r.pid) {
           ringing = r;
-          $('mr-ring-title').textContent = r.label + ' is calling';
+          const where = r.to ? r.to.split('.')[0] : '';
+          $('mr-ring-title').textContent = where ? r.label + ' invites you to ' + where : r.label + ' is calling';
+          $('mr-ring-note').textContent = where ? 'Join takes you to their meeting with your mic on; your camera stays off.' : 'They have a card to your room. Answering turns your mic on; your camera stays off.';
+          $('mr-answer').textContent = where ? 'Join' : 'Answer';
           show($('mr-ring'), true);
           ringStart();
         }
@@ -94,7 +99,7 @@
     const wd = $('waitdoor');
     if (c && c.state !== 'answered' && wd && !wd.hidden) {
       const n = c.label || 'them', h = wd.querySelector('h1'), p = wd.querySelector('h1 + p');
-      const head = c.state === 'ringing' ? 'Ringing ' + n + '…' : c.state === 'declined' ? n + ' can’t answer right now' : c.state === 'noanswer' ? n + ' didn’t answer' : 'Calling ' + n + '…';
+      const head = c.invite && c.state !== 'declined' && c.state !== 'noanswer' ? callWords(c) : c.state === 'ringing' ? 'Ringing ' + n + '…' : c.state === 'declined' ? n + ' can’t answer right now' : c.state === 'noanswer' ? n + ' didn’t answer' : 'Calling ' + n + '…';
       const body = c.state === 'ringing' ? 'You’ll join when ' + n + ' answers. ' + n + ' can’t see or hear you yet.' : c.state === 'declined' || c.state === 'noanswer' ? 'You can wait here, or leave and call again later.' : n + '’s room is open. Waiting for it to ring.';
       if (h && h.textContent !== head) h.textContent = head;
       if (p && p.textContent !== body) p.textContent = body;
@@ -106,12 +111,36 @@
     } else if (c && !barShut) bar(callWords(c), null, '', c.state === 'declined' || c.state === 'noanswer');
     else bar('');
   }
+  function openPick() {
+    const box = $('mr-pick-list'); box.innerHTML = '';
+    const here = LINKS().read(root.location.pathname, '', root.location.hash);
+    for (const c of MR().contacts()) {
+      const b = doc.createElement('button'); b.type = 'button'; b.className = 'mr-who'; b.textContent = c.name;
+      b.onclick = () => {
+        // The ring rides a window of its own (the contact's room); this meeting stays as it is. The meeting to come to is
+        // named by the one link grammar's fields; a password never travels: the meeting's own door decides.
+        try { root.localStorage.setItem('gifos_mr_invite.' + MR().roomKey(c.room, c.v), JSON.stringify({ to: here.room + (here.v ? '.' + here.v : ''), at: Date.now() })); } catch (e) {}
+        const w = root.open(roomUrl(c.room, c.v), 'mr-invite-' + c.room, 'popup,width=420,height=640');
+        b.disabled = true; b.textContent = w ? 'Ringing ' + c.name + '…' : 'Allow pop-ups to invite';
+      };
+      box.appendChild(b);
+    }
+    show($('mr-pick'), true);
+  }
   async function giveBack(pid, label) { try { await part.give(pid, label); } catch (e) {} bar('Card given. ' + label + ' can call you now.', null, '', true); }
   function onEvent(ev) {
     if (ev.type === 'offer') { offer = ev; openOffer(); }
     else if (ev.type === 'missed') toast('Missed call from ' + ev.label + ', ' + timeOf(ev.at));
     else if (ev.type === 'arrived') toast(ev.label + ' is here (they have a card to this room).');
     else if (ev.type === 'renewed-mine') {}   // a renewal is silent
+    else if (ev.type === 'go') {   // an invitation accepted: to that meeting, mic on (the person's own tap), camera off
+      try { root.sessionStorage.setItem('gifos_join_av', JSON.stringify({ v: 1, cam: false, mic: true, at: Date.now() })); } catch (e) {}
+      ringStop(); openRoom(ev.room, ev.v);
+      return;
+    }
+    else if (ev.type === 'call' && ev.call && ev.call.invite && /accepted|declined|noanswer/.test(ev.call.state) && root.opener) {
+      setTimeout(() => { try { root.close(); } catch (e) {} }, 3 * T().MYROOM_TICK_MS);   // the inviting window was only the ring: it closes
+    }
     paint();
   }
   function toast(text) { bar(text, null, '', true); setTimeout(paint, 4 * T().MYROOM_RING_MS / 10); }
@@ -219,6 +248,16 @@
     });
     on('mr-bar-act', () => { if (barAct) barAct(); });
     on('mr-bar-x', () => { barShut = true; bar(''); });
+    // "Invite a contact" in the meeting's Invite menu: ring a contact's room with my card for it, naming this meeting.
+    const inv = $('inv-modal');
+    if (inv && root.MutationObserver) new root.MutationObserver(() => {
+      const acts = $('inv-actions');
+      if (inv.style.display === 'none' || !acts || $('mr-inv-contact') || !MR() || !MR().contacts().length) return;
+      const b = doc.createElement('button'); b.type = 'button'; b.id = 'mr-inv-contact'; b.className = 'appear-secondary'; b.textContent = 'Invite a contact';
+      b.onclick = () => { inv.style.display = 'none'; openPick(); };
+      acts.insertBefore(b, acts.firstChild);
+    }).observe(inv, { attributes: true, attributeFilter: ['style'] });
+    on('mr-pick-close', () => show($('mr-pick'), false));
     // The leave question asks for the card back too, while the other side is still here to take it.
     const ask = $('leave-ask');
     if (ask && root.MutationObserver) new root.MutationObserver(() => {
@@ -262,6 +301,14 @@
       <div id="mr-make-out" hidden><input id="mr-make-link" readonly aria-label="Card link"><div id="mr-make-qr" class="mr-qr"></div></div>
       <button id="mr-make-close" type="button">Close</button>
       <button id="mr-make-go" type="button">Make card</button>
+    </div>
+  </div>
+  <div class="name-modal" role="dialog" aria-modal="true" id="mr-pick" aria-labelledby="mr-pick-title" style="display:none">
+    <div class="name-box">
+      <h3 id="mr-pick-title">Invite a contact</h3>
+      <p>Their room rings. If they join, they come straight to this meeting; its door rules still apply.</p>
+      <div id="mr-pick-list"></div>
+      <button id="mr-pick-close" type="button">Close</button>
     </div>
   </div>
   <div id="mr-bar" class="mr-bar" role="status" aria-live="polite" hidden><span id="mr-bar-text"></span><button id="mr-bar-act" type="button" hidden></button><button id="mr-bar-x" type="button" class="mr-x" aria-label="Close" hidden>✕</button></div>`;

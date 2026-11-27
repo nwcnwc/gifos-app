@@ -23286,7 +23286,7 @@
         isHere: (id) => rosterIds.includes(id),
         seated: () => { const s = meshSeat(); return !!(s && s.hasCoord && s.state === 3); },
         others: () => rosterIds.filter((id) => id !== myId).length,
-        held: (id) => waitQueue.has(id), admit: (id) => meetWait.admit(id),
+        held: (id) => waitQueue.has(id), admit: (id) => meetWait.admit(id), label: (id, name) => { if (waitQueue.has(id)) meetWait.note(id, name); },
         hold: (on) => meetWait.hold(on), holding: () => !!holdDoor,
         signAdm: (act, extra) => admSigned(act, extra), verifyAdm: (w, act) => admVerify(w, act),
         live: () => !myStatus.muted || !myStatus.camOff,
