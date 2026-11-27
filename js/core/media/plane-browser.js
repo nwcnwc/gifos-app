@@ -3364,7 +3364,9 @@
           const wrote = s ? (s.wrote + (s.primed || 0)) : 0;
           if (pj.w0 == null) { pj.w0 = wrote; pj.stale = 0; continue; }
           const advanced = wrote > pj.w0; pj.w0 = wrote;
-          const flowing = pj.srcTrack && pj.srcTrack.readyState === 'live' && pj.srcTrack.muted === false;
+          // my own encode-once picture flows while its encoder gives out frames (a paused film, a still screen: quiet, not broken)
+          const encMoved = pj.enc && encOut > (pj.o0 == null ? encOut : pj.o0); if (pj.enc) pj.o0 = encOut;
+          const flowing = pj.enc ? encMoved : pj.srcTrack && pj.srcTrack.readyState === 'live' && pj.srcTrack.muted === false;
           if (!advanced && flowing) { if (++pj.stale >= 3) { pipeDenyStamp(jk); pipeDeny.add(jk); (0, /*()*/__C.unshipJob)(jk, true); continue; } }
           else pj.stale = 0;
           // THE PLI TUNNEL, PAGE-SIDE (frza18). A consumer that missed a
@@ -3485,7 +3487,7 @@
     //   picture and sound leave together. The other links keep the sound as it is.
     const ENC_STG = 'enc:stg';
     let encSnd = null;   // { src, ctx, delay, out }: my Stage sound, delayed by the encoder's dt
-    let encDt = null, encSyncT = 0;
+    let encDt = null, encSyncT = 0, encOut = 0;   // encOut: frames the one encoder has given out (the dead-pipe watchdog's "flowing")
     const encBps = () => {
       const kb = (0, /*()*/__C.sharingScreen)(__C.myId) ? Math.max((0, /*()*/__C.stageCeilingKbps)(), (0, /*()*/__C.screenCeilingKbps)()) : (0, /*()*/__C.stageCeilingKbps)();
       return Math.round(kb * __C.powDials.stageKbps) * 1000;
@@ -3557,7 +3559,7 @@
     function encSyncSoon() { if (encSyncT) return; encSyncT = 1; Promise.resolve().then(() => { try { encSync(); } catch (e) {} }); }
     setInterval(() => { try { encSync(); } catch (e) {} }, GifOS.timings.PIPE_HOLD_EVERY_MS);
     if (__C.MPipe && typeof __C.MPipe.encOk === 'function') {
-      __C.MPipe.on('enc-stat', (m) => { if (m.srcId !== ENC_STG || m.dt == null) return; encDt = m.dt; encSoundSet(); });
+      __C.MPipe.on('enc-stat', (m) => { if (m.srcId !== ENC_STG) return; encOut = m.out || 0; if (m.dt == null) return; encDt = m.dt; encSoundSet(); });
       // the one encoder failed: every link takes its own encoder again
       __C.MPipe.on('enc-dead', (m) => { if (m.srcId !== ENC_STG) return; for (const [jk, pj] of [...pipeJobs]) if (pj.enc) { pipeDenyStamp(jk); pipeDeny.add(jk); (0, /*()*/__C.unshipJob)(jk, true); } try { __C.MPipe.encStop(ENC_STG); } catch (e) {} });
     }
