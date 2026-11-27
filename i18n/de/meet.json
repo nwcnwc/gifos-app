@@ -1271,5 +1271,6 @@
   "meet.subHostMoveGo": "Meinen Tarif von einem anderen Gerät holen",
   "meet.subHostRestoreGo": "Mit PayPal wiederherstellen (Gerät verloren)",
   "meet.subMoveLink": "Meinen Tarif auf ein anderes Gerät kopieren",
-  "meet.subRestoreLink": "Mit PayPal wiederherstellen (Gerät verloren)"
+  "meet.subRestoreLink": "Mit PayPal wiederherstellen (Gerät verloren)",
+  "meet.subFullUpgrade": "Auf Unlimited upgraden für {price}/Monat"
 }

@@ -1271,5 +1271,6 @@
   "meet.subHostMoveGo": "Obtener mi plan desde otro dispositivo",
   "meet.subHostRestoreGo": "Restaurar con PayPal (dispositivo perdido)",
   "meet.subMoveLink": "Copiar mi plan a otro dispositivo",
-  "meet.subRestoreLink": "Restaurar con PayPal (dispositivo perdido)"
+  "meet.subRestoreLink": "Restaurar con PayPal (dispositivo perdido)",
+  "meet.subFullUpgrade": "Pasa a Unlimited por {price}/mes"
 }

@@ -237,5 +237,7 @@
   "subscription.cum.except": "Todo lo de {plan}, salvo:",
   "subscription.cum.same": "Todo lo de {plan}",
   "subscription.cum.meetings": "Todo lo de {plan}, en hasta {n} reuniones a la vez.",
-  "subscription.cum.pass": "Todo lo de {plan} durante 4 horas"
+  "subscription.cum.pass": "Todo lo de {plan} durante 4 horas",
+  "subscription.embedPassLead": "Compra abajo el pase de cuatro horas. La reunión de la que vienes lo recibe en cuanto se pague.",
+  "subscription.embedPassSent": "Tu pase está activo. Puedes cerrar esta ventana."
 }
