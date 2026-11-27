@@ -527,7 +527,11 @@
       for (const [pid, r] of Array.from(rings)) {
         if (!r.priv) continue;
         if (mine2) { endCall(r, ''); rings.delete(pid); emit({ type: 'stopped', pid, label: r.label }); continue; }
-        const gone = !host.reach(pid) && !host.isHere(pid);   // a caller this silent door never lists is gone when its channel is
+        // A caller is gone when this silent door neither reaches it, lists it nor holds its knock. The door's mesh closes an
+        // idle door to a held knocker (its idle limit, about 8 s) and the caller knocks again through the relay a moment later:
+        // only a caller missing for longer than any seat has to prove itself (MYROOM_PROVE_MS) has hung up.
+        if (host.reach(pid) || host.isHere(pid) || host.held(pid)) r.lost = 0; else if (!r.lost) r.lost = now;
+        const gone = !!r.lost && now - r.lost >= (T().MYROOM_PROVE_MS || 0);
         if (gone || now - r.at >= (T().MYROOM_RING_MS || 0)) {
           endCall(r, 'missed'); rings.delete(pid);
           noteMissed(room, v, r.label, r.at);
