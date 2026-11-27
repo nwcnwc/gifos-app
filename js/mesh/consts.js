@@ -557,6 +557,7 @@
     JM_A: 0,   // C++: mesh.cpp:JM_A
     JM_B: 0,   // C++: mesh.cpp:JM_B
     MEDIA: false,   // C++: mesh_media.inc:MEDIA
+    MFAN_PIN: -1,   // C++: mesh_media.inc:MFAN_PIN
     MDR: 0,   // C++: mesh_media.inc:MDR
     MSEED: -1,   // C++: mesh_media.inc:MSEED
     PCS_TRACK: false,   // C++: mesh_media.inc:PCS_TRACK

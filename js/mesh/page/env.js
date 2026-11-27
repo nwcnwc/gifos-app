@@ -648,13 +648,24 @@
     // L29, the fabric's half (sim mesh_lguard.inc lguardFabTick): the duties my cell owes in load units, the budget my
     // device shows it can carry, the ladder, the inbound watch, and the leave when my receivers and my own reading agree.
     let lgCap = -1, lgReadAt = 0, lgLeft = false; const lgStarved = new Set(), lgMuted = new Set();
+    // L29.6, the fan's reading (sim mesh_lguard.inc lgFanRead): how many direct copies of my Stage feed must go (negative) for
+    // the load at my level to sit under L29_SHED percent of the budget my device shows, else whether one more fits under
+    // L29_RESTORE (1 or 0). A device that keeps the floor (a phone, a battery, a metered link, a page that cannot encode
+    // its Stage once: measure.lgFanFloor) never reads room; a seat that has shed a class earns that back first.
+    let lgUpTop = 0;   // the fan my uplink last showed it could not carry: not tried again until my budget is whole
+    function lgFanRead(s, load, bud, floor) {
+      const K = C_.consts, unit = s.lgLvl > 0 ? K.L29_HOT : K.L29_HOT - K.L29_PARK;
+      if (load * 100 > bud * K.L29_SHED) return -Math.ceil((load * 100 - bud * K.L29_SHED) / (100 * unit));
+      if (floor || s.lgLvl > 0) return 0;
+      return (load + unit) * 100 <= bud * K.L29_RESTORE ? 1 : 0;
+    }
     function lgFabric(s) {
       const K = C_.consts, full = s.tier === C_.enums.TIER_MOBILE ? K.L29_BUD_M : K.L29_BUD_D;
       if (s.lgQuit && !lgLeft) { lgLeft = true; if (measure.lgLeave) measure.lgLeave(); return; }
       if (!s.hasCoord || s.state !== 3) {   // no cell: no duty is owed me and I owe none; my readings end with my seat
         s.l295No = false;
         for (const pid of [...lgMuted]) { const m = msg.newMsg('LGSTARVE'); m.tag = 1; m.id = ID.nid(pid); m.to = me; m.from = -1; m.hold = 0; busAt(w.TICK + 1, m); }
-        lgMuted.clear(); s.lgLadder(); return;
+        lgMuted.clear(); s.stgOn = false; s.lgUp = 0; s.lgFan(); lgUpTop = 0; s.lgLadder(); return;
       }
       const c = s.coord, held = (x) => { const v = s.occGet(topo.ckey(x)); return v >= 0 && v !== s.id; };
       let rx = 0;
@@ -665,7 +676,11 @@
       let fwd = c.pc === 0 || c.i === 0 ? rx : 0;
       if (c.pc !== 0 && c.i === 0) { const o = s.ownerCoord(); if (o && held(o)) fwd++; }
       const dn = topo.down(c); if (dn.pc > c.pc && held(dn)) fwd++;
-      const own = measure.lgCamOn && !measure.lgCamOn() ? 0 : rx, park = s.bkId >= 0 ? 1 + rx : 0, woke = measure.lgWoke ? measure.lgWoke() : 0;
+      let own = measure.lgCamOn && !measure.lgCamOn() ? 0 : rx, park = s.bkId >= 0 ? 1 + rx : 0; const woke = measure.lgWoke ? measure.lgWoke() : 0;
+      // L29.6: on the Stage in Section 1 my own feed is hot to my fan and parked to my other rook peers (sim lgDuties)
+      s.stgOn = c.pc === 0 && !!(measure.lgStage && measure.lgStage());
+      const camOn = own > 0, fan0 = s.stgOn ? s.stgFan : 0;
+      if (s.stgOn && camOn) { const k = Math.min(fan0, own); park += own - k; own = k; }
       // L29.0: a Section-1 head's duty (sim mesh_lguard.inc lgDuties): each row-mate taken in L29_PARK, the row block and the
       // room pack L29_HOT each (high); the room pack is encoded once for every child branch, so no low share. Only where there
       // is a room to serve. L29.0.1: a class budget holds the heaviest such cell whole (LG_CELL_MAX), so only a measured
@@ -676,11 +691,28 @@
         for (let j = 0; j < topo.C; j++) { if (j > 0 && held({ pc: 0, r: c.r, i: j })) mates++; const dk = topo.down({ pc: 0, r: c.r, i: j }); if (dk.pc > 0 && held(dk)) kids++; if (j !== c.r && held({ pc: 0, r: j, i: 0 })) heads++; }
         if (kids > 0 || heads > 0) { hd = mates * K.L29_PARK + 2 * K.L29_HOT; hlow = 0; }   // one room pack encoded once: no mix per child branch
       }
-      const l2 = own * K.L29_HOT + fwd + hd, l1 = l2 + fwd + hlow, l0 = l1 + park * K.L29_PARK + woke * K.L29_HOT;
-      s.lgLd[0] = l0; s.lgLd[1] = l1; s.lgLd[2] = l2; s.lgBud0 = full; s.lgOwn = own * K.L29_HOT;
+      let l2 = own * K.L29_HOT + fwd + hd, l1 = l2 + fwd + hlow, l0 = l1 + park * K.L29_PARK + woke * K.L29_HOT;
+      const at = () => (s.lgLvl === 0 ? l0 : s.lgLvl === 1 ? l1 : l2);
       if (lgCap < 0) lgCap = full;
-      // what the device carried, scaled by how well it kept up; a device keeping up earns its budget back slowly
-      if (w.TICK >= lgReadAt) { lgReadAt = w.TICK + K.L29_STARVE; const h = measure.lgHealth(); lgCap = h < 1 ? Math.min(lgCap, Math.ceil(s.lgLd[s.lgLvl] * h)) : Math.min(full, lgCap + 1); }
+      const rook = s.stgOn ? s.stgRook() : null, keepFloor = !!(measure.lgFanFloor && measure.lgFanFloor());
+      // what the device carried, scaled by how well it kept up; a device keeping up earns its budget back slowly.
+      // L29.6: an uplink that is full (its own estimate on the links that carry my Stage feed, measure.lgUpOver) is a
+      // shortfall too, but only while the fan holds more than its floor: the budget drops just under the load, so the
+      // fan gives one copy back per reading, and the reading can undo nothing but what the fan added.
+      if (w.TICK >= lgReadAt) {
+        lgReadAt = w.TICK + K.L29_STARVE; const h = measure.lgHealth();
+        const upOver = !!rook && fan0 > rook.floor && !!(measure.lgUpOver && measure.lgUpOver());
+        if (upOver) lgUpTop = fan0;
+        lgCap = h < 1 ? Math.min(lgCap, Math.ceil(at() * h)) : upOver ? Math.min(lgCap, Math.floor((at() * 100 - 1) / K.L29_SHED)) : Math.min(full, lgCap + 1);
+        if (lgCap >= full) lgUpTop = 0;
+      }
+      if (s.stgOn) {   // the fan goes first and comes back last, on my own reading, before the ladder reads the load (sim lguardFabTick)
+        let up = lgFanRead(s, at(), lgCap, keepFloor);
+        if (up > 0 && lgUpTop > 0 && s.stgFan + 1 >= lgUpTop) up = 0;
+        s.lgUp = up; s.lgFan();
+        if (s.stgFan !== fan0 && camOn) { const dk = Math.min(s.stgFan, rx) - Math.min(fan0, rx); own += dk; l2 += dk * K.L29_HOT; l1 += dk * K.L29_HOT; l0 += dk * (K.L29_HOT - K.L29_PARK); }
+      } else if (s.stgFan || s.stgFanCalm) { s.lgUp = 0; s.lgFan(); }
+      s.lgLd[0] = l0; s.lgLd[1] = l1; s.lgLd[2] = l2; s.lgBud0 = full; s.lgOwn = own * K.L29_HOT;
       s.lgBud = lgCap;
       s.lgLadder();
       const say = (pid, hold, tag) => { const m = msg.newMsg('LGSTARVE'); if (tag) m.tag = tag; m.id = ID.nid(pid); m.to = me; m.from = -1; m.hold = hold ? 1 : 0; busAt(w.TICK + 1, m); };

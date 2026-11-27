@@ -156,6 +156,36 @@
       if (this.lgLight && !over) { if (bud * 100 >= this.lgBud0 * K.L29_RECOVER) { if (++this.lgRecT >= 2 * K.L29_CALM) { this.lgLight = false; this.lgRecT = 0; this.trace('LG-UNLIGHT', this.id, this.coord, 'budget=%lld', bud); } } else this.lgRecT = 0; }
     },
 
+    // C++: mesh_lguard_seat.inc:Seat::stgRook
+    // L29.6: my rook peers in the fan's order (row and column in turn, lowest cell first). Returns { list, floor } (the C++ fills out[] and floor, returns the count = list.length).
+    stgRook() {
+      let floor = 0; const list = [];
+      if (!this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return { list, floor };
+      const row = [], col = [];
+      for (let j = 0; j < C; j++) {
+        if (j !== this.coord.i) { const x = this.occGet(ckey({ pc: 0, r: this.coord.r, i: j })); if (x >= 0 && x !== this.id) row.push(x); }
+        if (j !== this.coord.r) { const x = this.occGet(ckey({ pc: 0, r: j, i: this.coord.i })); if (x >= 0 && x !== this.id) col.push(x); }
+      }
+      for (let k = 0; k < row.length || k < col.length; k++) { if (k < row.length) list.push(row[k]); if (k < col.length) list.push(col[k]); }
+      floor = (row.length > 0 ? 1 : 0) + (col.length > 0 ? 1 : 0);
+      return { list, floor };
+    },
+
+    // C++: mesh_lguard_seat.inc:Seat::stgDirect
+    stgDirect(t) { const { list } = this.stgRook(); for (let k = 0; k < list.length && k < this.stgFan; k++) if (list[k] === t) return true; return false; },
+
+    // C++: mesh_lguard_seat.inc:Seat::lgFan
+    lgFan() {
+      const r = this.stgOn ? this.stgRook() : { list: [], floor: 0 };
+      const n = r.list.length, fl = r.floor;
+      if (n === 0) { this.stgFan = 0; this.stgFanCalm = 0; return; }
+      let k = this.stgFan; if (k < fl) k = fl; if (k > n) k = n;
+      if (this.lgUp < 0) { k = Math.max(fl, k + this.lgUp); this.stgFanCalm = 0; }
+      else if (this.lgUp > 0 && k < n) { if (++this.stgFanCalm >= K.L29_CALM) { k++; this.stgFanCalm = 0; } }
+      else this.stgFanCalm = 0;
+      if (k !== this.stgFan) { this.trace('STG-FAN', this.id, this.coord, 'fan=%d was=%d of=%d up=%d', k, this.stgFan, n, this.lgUp); this.stgFan = k; }
+    },
+
     // C++: mesh_lguard_seat.inc:Seat::lgTick
     lgTick() {
       if (!this.w.lv.LG_ON || !this.hasCoord || this.state !== 3) return;
