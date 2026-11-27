@@ -3997,3 +3997,10 @@ body :is(.tile, .rowtile).thin > .name { white-space: nowrap !important; overflo
   body.view-focus #fsstrip { padding-bottom: 8px; }
 }
 body.view-focus .fsthumb.fsauto .fslbl { white-space: normal; line-height: 1.15; max-width: calc(100% - 12px); }
+/* A phone-wide agenda (Scroll stacks it with no tab bar): no lone presentation-view icon under the list; a double tap
+   still presents it. Its edit rows give the item's title the room (minutes 52px, tighter gaps). */
+@container (max-width: 560px) {
+  .ct-pane.ag > .ct-pview { display: none; }
+  .ag-item:has(> .ag-in-t) { gap: 2px; }
+  .ag-item > .ag-in-min { flex: 0 0 52px; width: 52px; padding: 0 4px; }
+}
