@@ -3547,7 +3547,7 @@
     function encSoundSet() {
       if (!encSnd || encDt == null) return;
       const want = Math.max(0, Math.min(1, (encDt + GifOS.timings.ENC_SOUND_TRIM_MS) / 1000));   // createDelay(1): the worker caps dt (ENC_DT_MAX_MS) under it
-      try { if (Math.abs(encSnd.delay.delayTime.value - want) > 0.004) encSnd.delay.delayTime.setTargetAtTime(want, encSnd.ctx.currentTime, 0.2); } catch (e) {}
+      try { if (Math.abs(encSnd.delay.delayTime.value - want) > 0.008) encSnd.delay.delayTime.setTargetAtTime(want, encSnd.ctx.currentTime, 0.2); } catch (e) {}
     }
     // The delayed copy of my Stage sound at; null where it cannot be made (the link then keeps the sound as it is).
     function encSoundFor(at) {
@@ -3601,7 +3601,7 @@
     function encSyncSoon() { if (!encSyncT) encSyncT = setTimeout(() => { try { encSync(); } catch (e) {} }, GifOS.timings.ENC_SYNC_SOON_MS); }
     setInterval(() => { try { encSync(); } catch (e) {} }, GifOS.timings.PIPE_HOLD_EVERY_MS);
     if (__C.MPipe && typeof __C.MPipe.encOk === 'function') {
-      __C.MPipe.on('enc-stat', (m) => { if (m.srcId !== ENC_STG) return; encOut = m.out || 0; if (m.dt == null) return; encDt = m.dt; encSoundSet(); });
+      __C.MPipe.on('enc-stat', (m) => { if (m.srcId !== ENC_STG) return; encOut = m.out || 0; const d = m.lat != null ? m.lat : m.dt; if (d == null) return; encDt = d; encSoundSet(); });
       // the one encoder failed: every link takes its own encoder again
       __C.MPipe.on('enc-dead', (m) => { if (m.srcId !== ENC_STG) return; if (__C.clog) (0, /*()*/__C.clog)('enc-dead', String(m.err || '')); for (const [jk, pj] of [...pipeJobs]) if (pj.enc) { pipeDenyStamp(jk); pipeDeny.add(jk); (0, /*()*/__C.unshipJob)(jk, true); } try { __C.MPipe.encStop(ENC_STG); } catch (e) {} encSoundStop(); encDt = null; });
     }

@@ -187,7 +187,8 @@ function want(pipeId, key, q) {
 //   capture time, so a receiver lined it up with the sound whatever the encoder took. A carried frame is stamped when
 //   it leaves, after the encoder's wait and work. So every frame is held to leave at t0 + dt (dt: the slow end of the
 //   measured encode delays), a steady spacing whatever each frame took, and the page delays the sound of these links
-//   by the same dt ('enc-stat'): picture and sound leave together again.
+//   by what the links then really took from capture to leaving, dt and the template's own trip ('enc-stat' lat):
+//   picture and sound leave together again.
 const encs = new Map();   // srcId -> { reader, enc, w, h, bps, fps, keyNext, keyAt, t0, win, dt, ... }
 let ENC_T = null;   // the page's timings for this (ENC_KEY_MIN_MS, ENC_STAT_MS, ENC_WIN_MS, ENC_DT_STEP_MS): they come with op 'enc'
 function encPipesAwake(srcId) {
@@ -250,9 +251,12 @@ function encStat(E, now) {
     else if (want > E.dt) { if (++E.upN >= 2) { E.dt = want; E.upN = 0; } }
     else E.upN = 0;
   }
-  const routed = taps.get(E.srcId); let n = 0;
-  if (routed && E.dt !== undefined) for (const pid of routed) { const p = pipes.get(pid); if (!p) continue; n++; p.enc = true; p.holdT = E.dt; p.holdRoom = Math.max(p.holdRoom || 0, Math.ceil(E.dt / 1000 * (E.fps || 30) * 2)); }
-  postMessage({ op: 'enc-stat', srcId: E.srcId, dt: E.dt === undefined ? null : E.dt, d50: E.d50 === undefined ? null : Math.round(E.d50), d95: E.d95 === undefined ? null : Math.round(E.d95), fps: Math.round((E.win.length / ENC_T.WIN) * 10000) / 10, out: E.out || 0, keys: E.keys || 0, skipped: E.skipped || 0, idle: E.idleN || 0, pipes: n, w: E.w || 0, h: E.h || 0, err: E.err || null });
+  const routed = taps.get(E.srcId); let n = 0, latS = 0, latN = 0;
+  if (routed && E.dt !== undefined) for (const pid of routed) { const p = pipes.get(pid); if (!p) continue; n++; p.enc = true; p.holdT = E.dt; p.holdRoom = Math.max(p.holdRoom || 0, Math.ceil(E.dt / 1000 * (E.fps || 30) * 2)); if (!p.paused && p.latN > 8) { latS += p.latEw; latN++; } }
+  // lat: what the links really took from a frame's capture to its leaving (the hold and the template's own trip), the
+  // figure the sound is delayed by
+  E.lat = latN ? Math.min(ENC_T.DT_MAX, latS / latN) : undefined;
+  postMessage({ op: 'enc-stat', srcId: E.srcId, dt: E.dt === undefined ? null : E.dt, lat: E.lat === undefined ? null : Math.round(E.lat), d50: E.d50 === undefined ? null : Math.round(E.d50), d95: E.d95 === undefined ? null : Math.round(E.d95), fps: Math.round((E.win.length / ENC_T.WIN) * 10000) / 10, out: E.out || 0, keys: E.keys || 0, skipped: E.skipped || 0, idle: E.idleN || 0, pipes: n, w: E.w || 0, h: E.h || 0, err: E.err || null });
 }
 async function encRun(E, reader) {
   for (;;) {
