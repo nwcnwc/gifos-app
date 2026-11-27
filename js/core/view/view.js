@@ -8367,6 +8367,9 @@
         document.body.appendChild(bar);
         bar.querySelector('#rb-pause').onclick = __C.rbToggle;
         bar.querySelector('#rb-stop').onclick = () => (0, /*()*/__C.rbStop)();
+        // The host's rebroadcast controls are a popover of the dock, placed from where the bar is (and again when their
+        // own size changes): the floating bar never sits on Pause, Stop or No blur.
+        if (window.ResizeObserver) new ResizeObserver(() => { try { placeDockPopovers(); } catch (e) {} }).observe(bar);
       }
       paintRbNow();
       try { paintLiveBadge(); } catch (e) {}
@@ -9402,6 +9405,7 @@
       if (key !== __M.callStateBox) {
         __M.callStateBox = key;
         try { layout(); } catch (e) {}
+        try { placeDockPopovers(); } catch (e) {}   // the rebroadcast controls may hang off this row
       }
     }
     document.getElementById('call-rec').onclick = () => { try { recBtn.click(); } catch (e) {} };
@@ -9456,7 +9460,8 @@
         if (snapped > h / 2) h = snapped; else snapped = 0;
       }
       const w = o.width;
-      const y = side === 'above' ? a.top - gap - h : a.bottom + gap;
+      // Kept inside the window up and down too: a dock tucked off the edge never takes its popover off screen.
+      const y = Math.max(vt + pad, Math.min(vt + vh - pad - h, side === 'above' ? a.top - gap - h : a.bottom + gap));
       const x = w >= vw - 2 * pad ? vl + (vw - w) / 2
         : Math.max(vl + pad, Math.min(vl + vw - pad - w, a.left + a.width / 2 - w / 2));
       s.maxHeight = (snapped ? h : Math.floor(Math.min(room, isFinite(cap) ? cap : room))) + 'px';
@@ -9507,6 +9512,10 @@
       }
       const micCh = document.getElementById('micchooser');
       if (micCh && !micCh.hidden) placeDockPopover(micCh, document.getElementById('mic'));
+      // The rebroadcast controls hang off the dock, or off the phone's Live/Record row when that stands higher (it sits
+      // on the dock's edge): neither covers Pause, Stop or No blur.
+      const rb = document.getElementById('rb-now'), cs = document.getElementById('callstate');
+      if (rb) placeDockPopover(rb, cs && cs.getClientRects().length && cs.getBoundingClientRect().top < bar.getBoundingClientRect().top ? cs : bar);
     }
     {
       let popFrame = 0;
