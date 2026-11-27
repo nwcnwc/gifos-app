@@ -25585,22 +25585,19 @@
     function viewTakenChanged(key) { if (!roomViewShown() && roomViewKey(key)) { try { (0, /*()*/__M.schedClaim)(); (0, /*()*/__M.schedReconcile)(); } catch (e) {} } }
     // THE MODERATION TABLE RIDES A BEAT ONLY WHEN IT TELLS SOMEONE SOMETHING. The table and its signed statement are most
     // of a beat (about 2 KB of 2.5), and every seat passed them on with every beat, every few seconds, to its whole
-    // section. They change rarely. So a beat carries them whole on its first three sends, the beat after ANYONE new
-    // appears (a newcomer learns the room's orders from its first neighbours at once), the beats after they change, and
-    // one in every eight beat periods (about 30 s); an admin's own beat always carries them (its signed table is the proof it is here). Every other
+    // section. They change rarely. So a beat carries them whole on its first three sends, the three beats after they
+    // change, and one in every eight beat periods (about 30 s); an admin's own beat always carries them (its signed
+    // table is the proof it is here). A newcomer needs no beat for them: every seat it links to sends it the whole
+    // status, table included, the moment their channel opens. Every other
     // beat names the signed statement by the start of its signature (mh): a receiver that verified that statement
     // credits the admin's presence exactly as before, and one that never saw it asks the sender for the table on their
     // own channel (modask). An open room's orders are signed one by one and merge; they ride the same whole beats.
     function modBeatThin(payload) {
       try {
-        const B = modBeatThin.B || (modBeatThin.B = { key: '', n: 0, at: 0, shown: new Set() });
+        const B = modBeatThin.B || (modBeatThin.B = { key: '', n: 0, at: 0 });
         const w = payload.modw, sig = w && typeof w.sig === 'string' ? w.sig : '', key = sig + '|' + JSON.stringify(payload.mod || null), now = Date.now();
-        let fresh = false;
-        for (const pid of rosterIds) if (!B.shown.has(pid)) { fresh = true; B.shown.add(pid); }
-        for (const pid of peers.keys()) if (!B.shown.has(pid)) { fresh = true; B.shown.add(pid); }
-        if (B.shown.size > 4096) B.shown.clear();
         if (key !== B.key) { B.key = key; B.n = 0; }
-        if (amAdmin || fresh || B.n < 3 || now - B.at >= SCALE.HB * 8) { B.n++; B.at = now; return payload; }   // one whole beat in eight of mine
+        if (amAdmin || B.n < 3 || now - B.at >= SCALE.HB * 8) { B.n++; B.at = now; return payload; }   // one whole beat in eight of mine
         delete payload.mod; delete payload.modw;
         if (sig) payload.mh = sig.slice(0, 24);
       } catch (e) {}
