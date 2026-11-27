@@ -296,7 +296,7 @@
     if (f.q === 'x') return f.b === undefined || f.b === 1;
     if (f.q === 'r' || f.q === 'i' || f.q === 't' || f.q === 'd') return true;
     if (f.q === 's') return (f.d === undefined || (typeof f.d === 'string' && DEV_RE.test(f.d))) && (f.e === undefined || (typeof f.e === 'string' && /^[0-9a-z]{1,2}$/.test(f.e)));
-    if (f.q === 'p' || f.q === 'b') return f.b === 0 || f.b === 1;
+    if (f.q === 'p' || f.q === 'b' || f.q === 'n') return f.b === 0 || f.b === 1;
     if (f.q === 'o') return typeof f.m === 'string' && PROBE_RE.test(f.m) && (f.b === undefined || f.b === 0 || f.b === 1 || f.b === 2);
     if (f.q === 'c') return f.b === undefined || f.b === 1;   // TURN.5.3: a cut probe's question, and its answer (b 1)
     return false;
@@ -618,7 +618,7 @@
         state: 'ask', askAt: io.now(), sentAt: 0, vAskAt: 0, readyMe: false, readyFar: false, dialAt: 0, upAt: -1, downSince: 0,
         cred: null, paid: null, paidMe: false, paidFar: false, paidSaid: false, paidAt: 0, mvWant: false, mvAt: 0, mvN: 0, mvWhy: '', video: false, vouched: false, lostAt: -1, side: [],
         thr: null, busy: false, farBusy: false, capAt: 0, upOkSince: 0, standbyAt: 0, standbyN: 0,
-        web: false, webHost: '', webOpen: false, webSaidAt: 0, sb: l[0] === 's', liveEnd: null, sbUp: false, sbAt: 0, sbSeat: null, farSb: null, direct: false, directAt: 0 };
+        web: false, webHost: '', webOpen: false, webSaidAt: 0, sb: l[0] === 's', liveEnd: null, sbUp: false, sbAt: 0, sbSeat: null, farSb: null, direct: false, directAt: 0, look: false, lookAt: 0, lookN: 0, mineRelay: null, farRelay: null, inPlace: false, nSentAt: 0 };
       const s = io.seat(); if (s) L.side = s.view.filter((x) => x !== far).slice(0, SIDE_MAX);
       links.set(far, L);
       log('turn-link new ' + short(far) + ' ' + l + (opener ? ' opener' : ' target'));
@@ -866,7 +866,8 @@
       // the far end moved its pool: it moves the pc itself (its own restart, or 'i' to the offerer), so no restart here:
       // a second one per move restarted the path again mid-move and the video's estimate with it (vouched one-way, 2026-11-12)
       if (f.q === 'p') { L.paidFar = f.b === 1; io.changed(L.far); return; }
-      if (f.q === 'i') { move(L, 'far'); return; }
+      if (f.q === 'i') { if (f.b === 1 && lookable(L)) { L.look = true; L.lookAt = io.now(); move(L, 'look'); } else move(L, 'far'); return; }   // b 1: TURN.7.2, the far end looks in place
+      if (f.q === 'n') { L.farRelay = f.b !== 1; pathRead(L); return; }   // TURN.7.2: the far end's own half of the selected pair
       if (f.q === 'b') { const was = L.farBusy; L.farBusy = f.b === 1; if (was !== L.farBusy) { log('turn-busy far ' + short(L.far) + ' ' + (L.farBusy ? 'on' : 'off')); io.changed(L.far); } return; }
     }
     // TURN.13: each look at the link pc (every THROTTLE_LOOK_MS while it carries video): the browser's send estimate,
@@ -902,6 +903,59 @@
       if (!L.offSince) { L.offSince = now; return; }
       if (now - L.offSince >= RESEND_MS && now - (L.offFixAt || 0) >= MOVE_MS) { L.offFixAt = now; log('turn-pool off its settings ' + short(L.far) + ' (rides ' + server + '): move again'); move(L, 'off-settings'); }
     }
+    // TURN.7.2 THE LOOK IN PLACE. A pair that holds a path of the link on TURN
+    // is a pair of the SUB.8.1 rounds like any other: a firewall may open later, and with one or two seats a side every
+    // pair holds a path, so no other seat is there to find the direct pair. One connection a pair: its dial is a look on
+    // its own connection. Both ends let that connection gather direct candidates beside the relayed ones and it is
+    // restarted once (a move): the relayed pair carries until the restart has settled, and ICE takes a direct pair when
+    // one works. The verdict is the connection's own: each end reads the pair IT sends on (the page's watcher, onLocal:
+    // a relay at either end of it, or none) and says so ('n'); the two ends may send on different pairs, so only with no
+    // relay in either end's reading is the path direct, from that moment: the credential stops,
+    // video flows, no vouch slot (TURN.7: the TURN path closes, the pipe stays). The same reading takes it back: a relay
+    // at either end again and the path is on TURN as before (its credential is asked for again).
+    // Not looked at: a link that is not up, one that is direct, one on the web path (that connection ends in this page).
+    function lookable(L) { return !!L && L.state === 'up' && !L.direct && !L.web && !L.noPc; }
+    function look(L) {
+      L.look = true; L.lookAt = io.now(); L.lookN++;
+      log('turn-look ' + short(L.far) + ' ' + L.l + ' #' + L.lookN);
+      if (io.settings) io.settings(L.far);
+      tvSend(L.far, { k: 'tv', q: 'i', l: L.l, b: 1 });   // the far end takes the same settings, then the pair's offerer restarts
+    }
+    function onLocal(pid, relay) {
+      const L = links.get(pid); if (!L || !L.look || L.state !== 'up' || L.web) return;
+      // relay: the pair my end sends on has a relay at either end. "No relay" counts once two readings in a row say so (a
+      // restart passes through pairs it does not keep); a relay counts at once.
+      L.clearN = relay ? 0 : (L.clearN || 0) + 1;
+      relay = !!relay || L.clearN < 2;
+      if (L.mineRelay !== relay) { L.mineRelay = relay; L.nSentAt = io.now(); tvSend(L.far, { k: 'tv', q: 'n', l: L.l, b: relay ? 0 : 1 }); }
+      pathRead(L);
+    }
+    function pathRead(L) {
+      if (!L.look || L.state !== 'up') return;
+      if (!L.direct && L.mineRelay === false && L.farRelay === false) inPlace(L);
+      else if (L.direct && L.inPlace && (L.mineRelay === true || L.farRelay === true)) backOnTurn(L);
+    }
+    function sbSays(L) {   // a standby's live end hears where its standby stands (as at 'up')
+      if (!L.sb || L.state !== 'up') return;
+      if (L.liveEnd && L.liveEnd !== io.me()) tvSend(L.liveEnd, { k: 'tv', q: 'r', l: L.l, b: L.direct ? 1 : 0 });
+      else if (L.liveEnd === io.me()) { const P = livePipe(pipeNo(L.l)); if (P) { P.sbUp = true; P.sbDirect = !!L.direct; if (!L.direct && P.pr) P.pr.ok.delete(io.me() + '|' + L.far); } }
+    }
+    function inPlace(L) {
+      L.direct = true; L.inPlace = true; L.directAt = io.now(); L.dEcho = true; L.video = true; L.client = false;
+      if (L.cred) { try { L.cred.stop(); } catch (e) {} L.cred = null; }
+      if (L.paid) { try { L.paid.stop(); } catch (e) {} L.paid = null; } L.paidMe = false; L.paidFar = false; L.paidSaid = false;
+      L.vouched = false; L.thr = null; L.busy = false; L.farBusy = false; L.voiceLow = 0; L.mvWant = false;
+      log('turn-direct in place ' + short(L.far) + ' ' + L.l + ' (' + (L.lookN ? 'my look #' + L.lookN : 'the far end\'s look') + ', ' + (io.now() - L.lookAt) + ' ms)');
+      sbSays(L); subChanged('a pipe of mine'); io.changed(L.far);
+    }
+    function backOnTurn(L) {
+      L.direct = false; L.inPlace = false; L.video = false; L.vouched = false;
+      L.client = clientEnd(io.blocked(), L.farBlocked, L.opener);
+      if (L.client && !L.cred) { L.tookOver = true; L.cred = credFor(L, 'free'); L.cred.start(); }   // its credential again; the move follows it
+      log('turn-direct lost in place ' + short(L.far) + ' ' + L.l + ': the path is on TURN again');
+      if (L.pr) L.pr.ok.delete(io.me() + '|' + L.far);   // the verdict is taken back: the pair is looked at again
+      sbSays(L); subChanged('a pipe of mine'); io.changed(L.far);
+    }
     // ONE MOVE AT A TIME. A link's pc moves onto new settings (a pool change, a renewed credential) by one ICE restart from
     // its offerer; the other end asks for it ('i'). Every cause used to restart at once: with both ends on blocked networks
     // each end is a client with its own credential, so a pool move was two restarts a moment apart, the off-settings check
@@ -919,7 +973,7 @@
     }
     function pump(L) {
       if (!L.mvWant || L.state === 'closed' || L.web) return;
-      if (!(configOf(L).iceServers || []).length) return;   // nothing to move onto: the move waits for the link's credential
+      if (L.client && !(configOf(L).iceServers || []).length) return;   // nothing to move onto: a client end's move waits for the link's credential (an end that is no client holds none: it moves at once)
       const now = io.now(), settled = io.settled ? !!io.settled(L.far) : true;
       if (L.mvAt && now - L.mvAt < MOVE_MS && !(settled && now - L.mvAt >= RESEND_MS)) return;   // the last move is still on its way
       if (!settled) return;   // an offer of this pc (a move, its media lines') is crossing: the move waits for it, never an ICE restart on top
@@ -940,7 +994,7 @@
     function configOf(L) {
       if (L.web) return { web: true };   // TURN.18: the pair's connection ends inside this page; nothing of it leaves the network
       const g = (L.paidMe && L.paid && L.paid.servers()) || (L.cred && L.cred.servers()) || [];
-      return { iceServers: g, iceTransportPolicy: 'relay' };
+      return { iceServers: g, iceTransportPolicy: L.look ? 'all' : 'relay' };   // TURN.7.2: a link that has looked gathers direct candidates beside the relayed ones
     }
     function setThrottle(L, next) {
       const busy = !!(next && next.step < 0);
@@ -1150,7 +1204,7 @@
       if (f.q === 's') { sbExpect.set(f.l, from); bindStandby(f.l, from); tvSend(from, { k: 'tv', q: 's', l: f.l, d: io.dev() }); return true; }   // I end this pipe's standby on my side: my device, for the far side
       // the rest come only from a seat of my subroom in its role (else: a frame of a standby link not yet keyed by its peer id)
       const P = livePipe(r);
-      if ((f.q === 'r' || f.q === 'x') && P && P.sbSeat === from) { P.sbUp = f.q === 'r'; P.sbDirect = f.q === 'r' && f.b === 1; if (f.q === 'x') P.sbAt = 0; return true; }
+      if ((f.q === 'r' || f.q === 'x') && P && P.sbSeat === from) { P.sbUp = f.q === 'r'; P.sbDirect = f.q === 'r' && f.b === 1; if (!P.sbDirect && P.pr && P.farSb) P.pr.ok.delete(from + '|' + P.farSb);   /* (a standby off its direct path: that pair's verdict is taken back) */ if (f.q === 'x') P.sbAt = 0; return true; }
       // my standby seat holds the pipe now. Healed (b 1, SUB.8): my pipe on TURN is its standby from now on; else my part ends
       if (f.q === 't' && P && P.sbSeat === from) { if (f.b !== 1) close(P, 'standby-took-over', true); else if (!P.direct) demote(P, from); return true; }
       if (f.q === 't') { const mine = Array.from(links.values()).filter((M) => M.sb && M.l === f.l && M.liveEnd === from); for (const M of mine) takeover(M, f.b === 1 ? 'healed' : 'my live end lost the pipe'); return mine.length > 0; }
@@ -1179,14 +1233,18 @@
     function s1List() { try { return (io.s1Seats ? io.s1Seats() : []) || []; } catch (e) { return []; } }
     function probeSay(to, sl, y, b) { if (to === io.me()) probeHeard(to, sl, y, b); else tvSend(to, { k: 'tv', q: 'o', l: sl, m: y, b }); }
     function probeAsk(from, sl, y) {
-      if (links.has(y)) { probeSay(from, sl, y, 2); return; }                          // one connection a pair: a path of this link is not tried
+      { const M = links.get(y);                                                        // one connection a pair: a path of this link is looked at in place (TURN.7.2), never dialled
+        if (M && pipeNo(M.l) === pipeNo(sl) && lookable(M) && !probes.has(y)) { probes.set(y, { from, sl, at: io.now(), look: true }); look(M); return; }
+        if (M) { probeSay(from, sl, y, 2); return; } }
       if (io.directSeen && io.directSeen(y)) { probeSay(from, sl, y, 1); return; }     // a plain connection of mine reached it before
       if (probes.has(y)) return;
       probes.set(y, { from, sl, at: io.now() }); if (probes.size > 16) probes.delete(probes.keys().next().value);
       log('turn-probe dial ' + short(y) + ' ' + sl);
       try { if (io.probeDoor) io.probeDoor(pipeNo(sl), [y]); } catch (e) {}
     }
-    function probeStep(now) { for (const [y, p] of Array.from(probes)) { const hit = !!(io.directSeen && io.directSeen(y)); if (hit || now - p.at > ASK_MS) { probes.delete(y); if (!hit && io.probeEnd) { try { io.probeEnd(y); } catch (e) {} } probeSay(p.from, p.sl, y, hit ? 1 : 0); } } }   // a miss ends the probe's connection (SUB.8.1: a probe asks for a direct path only; nothing of it lingers)
+    function probeStep(now) { for (const [y, p] of Array.from(probes)) {
+      if (p.look) { const M = links.get(y), there = !!M && M.state === 'up' && pipeNo(M.l) === pipeNo(p.sl), hit = there && !!M.direct; if (hit || !there || now - p.at > ASK_MS) { probes.delete(y); probeSay(p.from, p.sl, y, hit ? 1 : there ? 0 : 2); } continue; }   // TURN.7.2: the look's verdict (the path gone or moved meanwhile: none)
+      const hit = !!(io.directSeen && io.directSeen(y)); if (hit || now - p.at > ASK_MS) { probes.delete(y); if (!hit && io.probeEnd) { try { io.probeEnd(y); } catch (e) {} } probeSay(p.from, p.sl, y, hit ? 1 : 0); } } }   // a miss ends the probe's connection (SUB.8.1: a probe asks for a direct path only; nothing of it lingers)
     // My standby is to stand elsewhere: its present seat is told, and the warm-up starts again (warmStandby reads sbWant).
     // keepFar: only my side's end moves (the far side's standby seat stays the one it named).
     function restand(L, keepFar) {
@@ -1204,10 +1262,11 @@
       if (walkHeard(from, sl, y, b)) return;   // SUB.10: a dial my walk round asked for
       const L = livePipe(pipeNo(sl)), P = L && L.pr; if (!L || !L.opener || !P || P.q !== from || P.y !== y) return;
       P.q = null;
-      if (b === 2) { P.held.add(from + '|' + y); P.n--; P.nextAt = io.now(); return; }   // a pair that holds a path of this link was no dial: the turn is not spent (the sim's rounds skip such a pair, subHolds)
+      if (b === 2) { P.held.set(from + '|' + y, io.now()); P.n--; P.nextAt = io.now(); return; }   // a pair that holds a path of this link not open to a look (not up yet, direct, the web path) was no dial: the turn is not spent, and the pair is passed over for one TURN_RETRY (skipped while it is so)
       if (b !== 1) { P.fails++; return; }
-      P.ok.add(from + '|' + y); P.fails = 0; P.x = 1;
+      P.ok.add(from + '|' + y); P.fails = 0; P.x = 1; P.n = 0; P.nextAt = io.now();   // a hit is a change (a firewall opened): the pairs left are tried now, a fresh round
       log('turn-probe hit ' + short(from) + ' reaches ' + short(y));
+      if (from === io.me() && y === L.far) return;      // TURN.7.2: my own pipe looked in place: it is direct already
       const disjoint = from !== io.me() && y !== L.far;
       if (L.sbUp && L.sbDirect) return;                 // a direct standby stands already
       if (L.direct && !disjoint) return;                // beside a direct pipe only a pair on other seats is a better standby
@@ -1217,14 +1276,23 @@
       if ((L.direct && L.sbUp && L.sbDirect) || L.go != null) { L.pr = null; return; }   // two direct paths: nothing left to find (SUB.10: nor while the subroom walks)
       const A = s1List(), Z = L.farS1 || []; if (!A.length || !Z.length) return;
       const sees = A.join() + '|' + Z.join();
-      let P = L.pr; if (!P || P.sees !== sees) P = L.pr = { sees, nextAt: now, x: 1, fails: 0, n: 0, seat: P ? P.seat : 0, turn: new Map(), q: null, y: null, sentAt: 0, ok: P ? P.ok : new Set(), held: new Set() };
+      let P = L.pr; if (!P || P.sees !== sees) P = L.pr = { sees, nextAt: now, x: 1, fails: 0, n: 0, seat: P ? P.seat : 0, turn: new Map(), q: null, y: null, sentAt: 0, ok: P ? P.ok : new Set(), held: new Map() };
       if (P.q) { if (now - P.sentAt < ASK_MS + 2 * RESEND_MS) return; P.q = null; P.fails++; }   // no word back: a miss
       if (now < P.nextAt) return;
       let open = 0, pq = null, py = null, ps = -1;
-      for (let k = 0; k < A.length; k++) {
-        const si = (P.seat + k) % A.length, q = A[si], t0 = P.turn.get(q) || 0;
-        for (let j = 0; j < Z.length; j++) { const y = Z[(si + t0 + j) % Z.length], key = q + '|' + y; if ((q === io.me() && y === L.far) || P.ok.has(key) || P.held.has(key)) continue; open++; if (!pq) { pq = q; py = y; ps = si; P.turn.set(q, t0 + j + 1); } }
-      }
+      // TURN.7.2: a pair that holds a path of this link on TURN (my pipe's own, my standby's) is tried in place: a look. In
+      // the first turns after a change (one a seat of the bigger side) the pairs that hold no path go first, so a seat that
+      // reaches the far side is found as fast as ever; where no such pair is left the looks take those turns.
+      const holds = (q, y) => (q === io.me() && y === L.far) || (!!L.sbSeat && q === L.sbSeat && !!L.farSb && y === L.farSb);
+      const pick = (freeOnly, turn) => { let op = 0, xq = null, xy = null, xs = -1;
+        for (let k = 0; k < A.length; k++) {
+          const si = (P.seat + k) % A.length, q = A[si], t0 = turn.get(q) || 0;
+          for (let j = 0; j < Z.length; j++) { const y = Z[(si + t0 + j) % Z.length], key = q + '|' + y; if (P.ok.has(key) || (P.held.has(key) && now - P.held.get(key) < RETRY_MS)) continue; if (holds(q, y) && (freeOnly || (q === io.me() && y === L.far ? !lookable(L) : !(L.sbUp && !L.sbDirect)))) continue; op++; if (!xq) { xq = q; xy = y; xs = si; turn.set(q, t0 + j + 1); } }
+        }
+        return { op, xq, xy, xs }; };
+      { const T = new Map(P.turn), r = pick(false, T); open = r.op; pq = r.xq; py = r.xy; ps = r.xs; let freeFirst = false;
+        if (pq && P.n < Math.max(A.length, Z.length)) { const F = new Map(P.turn), f = pick(true, F); if (f.xq) { P.turn = F; pq = f.xq; py = f.xy; ps = f.xs; freeFirst = true; } }
+        if (!freeFirst) P.turn = T; }
       if (!pq) return;
       if (P.fails >= open) { P.x = Math.min(2 * P.x, K.TURN_RETRY_MAX_X); P.fails = 0; }
       P.q = pq; P.y = py; P.sentAt = now; P.seat = (ps + 1) % A.length; P.n++;
@@ -1659,6 +1727,7 @@
           walkRound(L, now);   // SUB.10 (inert unless my end is the younger door's and both paths are direct)
         }
         if (L.state === 'up' && !L.sb) warmStandby(L, now);   // SUB.8: a direct pipe keeps its standby too (the bridging seat may leave)
+        if (L.look && L.state === 'up' && L.mineRelay !== null && now - L.nSentAt > RETRY_MS) { L.nSentAt = now; tvSend(L.far, { k: 'tv', q: 'n', l: L.l, b: L.mineRelay ? 0 : 1 }); }   // TURN.7.2: my half of the path, said again now and then (a lost word would leave the two ends apart)
         if (L.state === 'up' || L.state === 'dial') io.keep(L.far);
         pump(L);
         if (L.state === 'up') {   // my side grows with the people I reach directly
@@ -1677,7 +1746,7 @@
     }
 
     return {
-      step, onFrame, onVouch, onCapacity, onPath, onServer,
+      step, onFrame, onVouch, onCapacity, onPath, onServer, onLocal,
       // The connection settings of this pair: null for a pair that is no TURN link, or whose end here is no client.
       config(pid) {
         const L = links.get(pid);
@@ -1756,6 +1825,8 @@
       farBusy(pid) { const L = links.get(pid); return !!L && L.video && L.farBusy; },
       // the pcs that run through TURN (the page watches their path, server and capacity)
       turnPcs() { const out = []; for (const L of links.values()) if (L.state === 'up' && !L.direct) out.push(L.far); return out; },
+      // TURN.7.2: the pcs that have looked (the page reads which candidate each sends from: onLocal), on TURN or direct in place
+      lookPcs() { const out = []; for (const L of links.values()) if (L.state === 'up' && L.look && !L.web) out.push(L.far); return out; },
       lookMs: THROTTLE_LOOK_MS,
       video(pid) { const L = links.get(pid); return !!L && L.video; },
       // SUB.4 pipe holders: may a second picture (my camera beside the composite) ride this link? Only on a measured estimate
@@ -1771,7 +1842,7 @@
           mine: !!L.mine, peer: !!L.peer, readyMe: L.readyMe, readyFar: L.readyFar, cred: L.cred ? L.cred.state() : null, credRefusal: L.cred ? L.cred.refusal() : null,
           pool: L.paidMe ? 'paid' : 'free', paid: L.paid ? L.paid.state() : null, paidRefusal: L.paid ? L.paid.refusal() : null, paidFar: L.paidFar,
           vouched: L.vouched, video: L.video, upAt: L.upAt, side: L.side.length, web: L.web, webHost: L.webHost || null, webMoves: L.webMvN || 0,
-          step: L.thr ? L.thr.step : null, cap: L.cap || null, busy: L.busy, farBusy: L.farBusy, standbyN: L.standbyN, lastSwitchMs: L.lastSwitchMs || null, direct: !!L.direct, sb: !!L.sb, sbUp: !!L.sbUp, probes: L.pr ? L.pr.n : 0, probeX: L.pr ? L.pr.x : 0 });
+          step: L.thr ? L.thr.step : null, cap: L.cap || null, busy: L.busy, farBusy: L.farBusy, standbyN: L.standbyN, lastSwitchMs: L.lastSwitchMs || null, direct: !!L.direct, sb: !!L.sb, sbUp: !!L.sbUp, probes: L.pr ? L.pr.n : 0, probeX: L.pr ? L.pr.x : 0, look: !!L.look, looks: L.lookN, inPlace: !!L.inPlace, mineRelay: L.mineRelay, farRelay: L.farRelay });
         const now = io.now();
         return { links: out, sub: { st: sub.st, out: sub.out, list: sub.list.slice(), retryAt: sub.retryAt, found: sub.found, asker: sub.asker || null, repipe: !!sub.repipe, lastWhy: sub.lastWhy || '', mult: sub.mult,
           waitMs: Math.max(0, sub.retryAt - now), pipeWaitMs: Math.max(0, (sub.pipeRetryAt || 0) - now), doorLost: !!(io.doorLost && io.doorLost()), rg: { want: !!rg.want, st: rg.st, net: !!rg.net, out: !!rg.out, waitMs: Math.max(0, (rg.retryAt || 0) - now) } } };
