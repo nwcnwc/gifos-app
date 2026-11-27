@@ -2242,6 +2242,12 @@ body.names-off #stagefeed .stgnames { display: none; }
   #app-list #app-pick-go { display: inline-block; width: auto; margin: 0; min-height: 44px; padding: .5rem .9rem; text-align: center; }
   #app-list .app-pick-note { display: block; min-height: 1.2em; margin: .35rem 0 .2rem; opacity: .8; }
   #app-list .app-pick-note.bad { color: #e0574a; opacity: 1; }
+  /* The meeting apps, one tap each: full-width rows on a phone, 48px targets. */
+  #app-list .app-quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: .5rem; margin: 0 0 .6rem; }
+  #app-list .app-quickbtn { min-height: 48px; margin: 0; padding: .5rem .8rem; border-radius: .6rem; font-weight: 700; font-size: 16px;
+    border: 1px solid var(--accent, #7b5cff); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
+  #app-list .app-pick-all { display: block; margin: 0 0 .35rem; color: var(--muted, #8888aa); font-size: 15px; }
+  #app-make-own { display: inline-flex !important; align-items: center; min-height: 44px; }
   #app-list .app-empty { margin: 8px 0; }
   #app-list .app-empty-link { display: block; min-height: 44px; line-height: 44px; font-weight: 700; color: inherit; text-decoration: underline; }
   #app-list .app-empty-note { display: block; margin-top: 6px; opacity: .75; }
@@ -3754,6 +3760,12 @@ body.names-off #stagefeed .stgnames { display: none; }
   .ag-chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .ag-chip { min-height: 40px; padding: 0 14px; border: 0; border-radius: var(--r-pill); background: var(--c-ink); color: var(--c-gray); font: inherit; font-size: 14px; cursor: pointer; }
   .ag-chip[aria-pressed="true"] { background: var(--c-white); color: var(--c-black); }
+  /* A person not yet chosen is an outlined button with a plus, not grey text (it read as disabled); a chosen one is
+     white with a check. */
+  .ag-chip { border: 1px solid var(--c-gray); color: var(--c-white); background: none; }
+  .ag-chip::before { content: "+\00a0"; font-weight: 700; }
+  .ag-chip[aria-pressed="true"] { border-color: var(--c-white); background: var(--c-white); color: var(--c-black); }
+  .ag-chip[aria-pressed="true"]::before { content: "\2713\00a0"; }
   .ct-pview { position: absolute; z-index: 1; top: 8px; right: 8px; width: 44px; height: 44px; border: 0; border-radius: var(--r-pill); background: var(--c-scrim); color: var(--c-white);
     display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
   .ct-pview[hidden] { display: none; }
@@ -3845,6 +3857,8 @@ body.comfy:not(.broadcast) #airbar { display: none !important; }
     color: var(--c-white); font: 700 1.25rem/1 system-ui, sans-serif; cursor: pointer; }
   #tophead > .fitbtn { padding-left: 10px; padding-right: 10px; }
   #tophead > .fitbtn .vb-word { display: none; }
+  /* The Stage view's top row has only the view button: it says the view's name, as on a desktop. */
+  body.sv-live #tophead > .fitbtn .vb-word { display: inline; }
   #tophead > #gifos-build-float { position: absolute !important; top: 1px !important; left: max(10px, env(safe-area-inset-left, 0px)) !important;
     right: auto !important; flex: none; line-height: 12px !important; font-size: 10px !important; }
 }
@@ -3937,9 +3951,15 @@ body:is(.dock-calm, .head-calm, .view-calm, .dock-idle, .chrome-away, .sv-live):
   .ag-item { font-size: 16px; }
   /* A row a viewer only reads (not a button for them) is a line of text, so four items fit a small phone. */
   .ag-item:not([tabindex]):not(:has(> input)) { min-height: 34px; padding-top: 2px; padding-bottom: 2px; }
-  .ag-add .ag-in-t { flex: 1 1 100%; min-width: 0; }
-  .ag-add .ag-in-min { flex: 0 0 88px; width: 88px; }
-  .ag-add .ag-btn { flex: 1 1 auto; }
+  /* The new item is one row like the items above it: its title, its minutes and Add (the minutes never drop to a
+     row of their own, apart from the title). The limit counter and warning, when shown, take a line under it. */
+  .ag-add .ag-in-t { flex: 1 1 0; min-width: 0; }
+  .ag-add .ag-in-min { flex: 0 0 60px; width: 60px; padding: 0 6px; }
+  .ag-add .ag-btn { flex: 0 0 auto; padding-left: 14px; padding-right: 14px; }
+  .ag-add .ag-count.at, .ag-add .ag-limit:not([hidden]) { order: 9; flex: 1 1 100%; }
+  /* Who else can edit: the words and the people on one line, and each person reads as a button to tap. */
+  .ag-who { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+  .ag-wholb { margin: 0; }
   /* An item being edited is one row: its title, its minutes, up, down, remove. The counter shows only at the limit. */
   .ag-item:has(> .ag-in-t) { flex-wrap: nowrap; gap: 4px; padding: 2px 0; }
   .ag-item > .ag-in-t { flex: 1 1 0; min-width: 0; }
@@ -3970,11 +3990,9 @@ body.sv-live:not(.sv-tabs) .ct-pane.ag { padding-top: max(60px, calc(var(--headh
   body:has(.ct-pane.ag :is(input, textarea):focus) .bar { opacity: 0; pointer-events: none; }
   .ct-pane.ag { padding-bottom: 96px; }
 }
-/* The Stage view keeps the page's own view button on screen, so the app bar does not repeat it. */
-body.sv-live #appbar #appview { display: none !important; }
 .ag-mini { font-size: 1.25rem; color: var(--c-white); }
-/* The meeting's own view button is on screen beside the app: the app bar does not repeat it. */
-body.comfy.sv-avail.has-app:not(.app-full):not(.solo-app):not(.app-room):not(.short-app) #appbar #appview { display: none !important; }
+/* A phone's folded app bar keeps its view button in every view (the Stage view too), even when the meeting's own is
+   on screen: every phone finds the view in the same place, the app's bar. */
 /* ---- A short phone (2026-11-26) ----
    A phone under 640px tall (an iPhone SE in Safari, any phone on its side) with an app in front: the app takes the top row's place
    too (the meeting's name and view button), and the app's own one-row bar carries the view button, so the app has
@@ -3997,6 +4015,11 @@ body :is(.tile, .rowtile).thin > .name { white-space: nowrap !important; overflo
   body.view-focus #fsstrip { padding-bottom: 8px; }
 }
 body.view-focus .fsthumb.fsauto .fslbl { white-space: normal; line-height: 1.15; max-width: calc(100% - 12px); }
+/* An upright phone's Focus strip: thumbs sized so the screen holds whole thumbs and half of the next one, a plain cue
+   that the strip scrolls, never a sliver at the edge. 8px pads and gaps: 3 whole + a half = 3.5 widths. */
+@media (orientation: portrait) and (max-width: 700px) {
+  body.view-focus .fsthumb { flex: 0 0 auto; width: clamp(100px, calc((100vw - 32px) / 3.5), 150px); }
+}
 /* A phone-wide agenda (Scroll stacks it with no tab bar): no lone presentation-view icon under the list; a double tap
    still presents it. Its edit rows give the item's title the room (minutes 52px, tighter gaps). */
 @container (max-width: 560px) {
