@@ -9,7 +9,8 @@
         "Publishing to GifOS.tv checks the thumbnail you pick on your own device before it is listed. No picture is sent anywhere to be checked."
       ],
       "fixes": [
-        "Sound and picture stay in step for people who get the Stage through another person's device: the picture is prepared once, not twice."
+        "Sound and picture stay in step for people who get the Stage through another person's device: the picture is prepared once, not twice.",
+        "A guest who joins at the very moment the host switches the waiting room on now shows on the waiting list instead of being cut off."
       ]
     },
     {
