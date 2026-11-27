@@ -1767,6 +1767,18 @@
         if (hasAdminRoom() && amAdmin) {
           const room = modTable['*'] = modTable['*'] || {};
           room.dhold = { on: holdDoor, by: myName(), byId: myId, at: Date.now() };
+          // SWITCHING THE WAITING ROOM ON ADMITS EVERYONE WHO IS IN. The hold is for people who come after it: a seat of
+          // this moment gets the host's Admit with the order itself, so a guest who reloads later is still a page a host
+          // let in (its door, its seat key: docs/meet-security.md §SEAT), never a seat nobody can admit.
+          if (holdDoor) {
+            let ids = []; try { const s = meshSeat(); if (s && s.occ) ids = Array.from(s.occ.values()); } catch (e) {}
+            for (const v of ids) {
+              const id = typeof v === 'string' ? v : ''; if (!id || id === myId || waitDeclined.has(id) || pwShut(id)) continue;
+              waitAdmitted.add(id);
+              const e = modTable[id] = modTable[id] || {};
+              e.dadm = { on: true, by: myName(), byId: myId, at: Date.now() };
+            }
+          }
           hostFlood();
           const bit = holdDoor ? '1' : '0';
         }
@@ -10833,7 +10845,7 @@
     const seatStats = { minted: 0, given: 0, taken: 0, proved: 0, asked: 0, refused: 0, unread: 0, held: 0, doorDrop: {}, txHeld: 0, txDropped: 0 };
     const SEAT_SIG_DOOR = new Set(['offer', 'answer', 'ice', 'dialask']);
     const SEAT_DOOR_KINDS = new Set(['roffer', 'ranswer', 'rz', 'rreq', 'rgo', 'rwait', 'pcmark', 'pcbye', 'pcfresh', 'bye', 'dcauth', 'held', 'doorwait', 'tv', 'pwreset', 'pwinfo', 'mr', 'sk', 'skq', 'ck', 'ck2', 'wping', 'wpong', 'dcall']);
-    const seatMeshDoor = (m) => { const f = m ? (m.f || m) : null; return !!f && f.t !== 'GSP' && f.t !== 'GSPS' && !(f.f && (f.f.t === 'GSP' || f.f.t === 'GSPS')); };   // a seat's own frame; a flood (GSP) carries what people say
+    const seatMeshDoor = (m) => { const f = m ? (m.f || m) : null; return !!f && m.t !== 'GSP' && m.t !== 'GSPS' && f.t !== 'GSP' && f.t !== 'GSPS' && !(f.f && (f.f.t === 'GSP' || f.f.t === 'GSPS')); };   // the type the wire itself reads (m.t) decides first: a flood with a field added is still a flood   // a seat's own frame; a flood (GSP) carries what people say
     function seatDoorKind(msg) {
       if (!msg || typeof msg.k !== 'string') return false;
       if (SEAT_DOOR_KINDS.has(msg.k)) return true;
@@ -10855,9 +10867,10 @@
     function seatHoldAt() { try { if (!hasAdminRoom()) return 0; const h = (modTable['*'] || {}).dhold; return ((h && h.on) || meetWait.holding()) ? 1 : 0; } catch (e) { return 1; } }
     function seatAdmitted(pid) {
       try {
-        if (turnLinks && turnLinks.isLink(pid)) return true;
-        if (!meshKnows(pid)) return false;
-        if (seatHoldAt()) return admins.includes(pid) || !meetWait.blocks(pid);   // a host, or a host's Admit
+        const link = !!(turnLinks && turnLinks.isLink(pid));
+        if (!link && !meshKnows(pid)) return false;
+        if (seatHoldAt()) return admins.includes(pid) || !meetWait.blocks(pid);   // a host, or a host's Admit: a seat and a link end alike (a link ask is answered at any door)
+        if (link) return true;
         // A hosted room whose host table has not reached this page yet: it cannot know whether the door is held, so for
         // its first ticks with a key it hands it to proved pages only.
         if (hasAdminRoom() && !amAdmin && !admins.length && seatStepN - seatKeyStep < SEAT_MINT_STEPS) return false;
@@ -23844,7 +23857,13 @@
       if (f.q !== 'c') return;
       const sendTv = (x) => relaySendSealed(from, 'tv', x);
       const seated = !!(meshNode && meshCoord());
-      if (!seated || carryHosts.size >= C.CARRY_MAX || !C.supported() || !ensureAc()) { sendTv({ k: 'tv', q: 'c', l: f.l, d: myDevHash, b: 1 }); return; }   // busy: ask another seat
+      // A HELD DOOR CARRIES NOBODY (docs/meet-security.md §SEAT). To be carried is to be in the room: its sound, its chat, a
+      // voice in it. So the ask stands at the same door a knock does: a page the waiting room holds (meetWait.blocks: no
+      // host's Admit yet) or the room shut out (pwShut) is carried by no seat. It is told to ask another seat, a host's
+      // door puts it on the waiting list, and it asks again by itself; a host's Admit opens every door to it.
+      const heldOut = pwShut(from) || meetWait.blocks(from);
+      if (heldOut && amAdmin && !pwShut(from)) meetWait.note(from, rosterNames[from] || 'Someone waiting');
+      if (heldOut || !seated || carryHosts.size >= C.CARRY_MAX || !C.supported() || !ensureAc()) { sendTv({ k: 'tv', q: 'c', l: f.l, d: myDevHash, b: 1 }); return; }   // held, or busy: ask another seat
       c = { far: from, name: '', voice: null, mix: null, srcs: new Map() };
       c.link = C.createLink(Object.assign((0, /*()*/__V.carryIo)(from, f.l, sendTv, (dev, l) => relaySendObj({ t: 'tvouch', to: dev, l }), false), {
         onUp: () => carryHostUp(c), onDown: (why) => { if (why === 'closed') carryHostEnd(c); },
