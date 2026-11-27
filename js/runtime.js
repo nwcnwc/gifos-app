@@ -480,10 +480,10 @@
   //    is never undone;
   //  - text shrinks to DISPLAY_COMPACT_TEXT of what the app would show. The
   //    person's own larger text setting (browser default font size, iOS
-  //    Dynamic Type, GifOS Settings → Text size) raises the readable floor
-  //    (--gifos-text-min = DISPLAY_TEXT_MIN x their ratio) at once, and once
-  //    it is more than the compact step (ratio x 0.875 > 1) it scales the
-  //    words up too, continuously, so a large setting always reads large;
+  //    Dynamic Type, GifOS Settings → Text size) counts once it is larger
+  //    than the compact step (ratio x 0.875 > 1): from there the words and
+  //    the readable floor (--gifos-text-min) both grow with it, continuously,
+  //    so a large setting always reads large;
   //  - tap targets never shrink (--gifos-tap) and form fields keep 16px text
   //    (--gifos-input-text; smaller fields make iOS zoom the page on focus).
   const DISPLAY_COMPACT_TEXT = 0.875;
@@ -512,11 +512,12 @@
   function displaySnap() {
     const touch = mq('(pointer: coarse)') && !mq('(any-pointer: fine)');
     const compact = touch && mq(DISPLAY_PHONE_Q);
-    const user = userTextRatio();
+    // The person's text ratio past the compact step (1 up to about one notch larger).
+    const user = Math.max(1, DISPLAY_COMPACT_TEXT * userTextRatio());
     const r2 = (n) => Math.round(n * 1000) / 1000;
     return {
       compact,
-      scale: compact ? r2(DISPLAY_COMPACT_TEXT * Math.max(1, DISPLAY_COMPACT_TEXT * user)) : 1,
+      scale: compact ? r2(DISPLAY_COMPACT_TEXT * user) : 1,
       space: compact ? DISPLAY_COMPACT_SPACE : 1,
       tap: 44,
       textMin: Math.round(DISPLAY_TEXT_MIN * user),

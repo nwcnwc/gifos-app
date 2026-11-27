@@ -476,7 +476,7 @@ PHONE COMPACT MODE — data-compact / --gifos-*  [no capability needed; optional
      --gifos-tap                44px: the smallest tap target. Never
                                 shrink a button below it.
      --gifos-text-min           the readable minimum: 13px, raised by
-                                any larger text setting. No words below
+                                a much larger text setting. No words below
                                 it: wrap compact sizes in max(...) as
                                 below.
      --gifos-input-text         16px: text in fields. Smaller field text
