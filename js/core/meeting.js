@@ -11565,7 +11565,7 @@
     // rule applies. The hold is armed only by typing at the door.
     let heldGrant = null;     // { p, m, admOk } waiting for the room's generation
     let grantHoldUntil = 0;
-    yield 1308;
+    yield 1307;
     let rekeyAt = 0;          // when the current key took over (heal eligibility: peers from before it)
     // THE RE-KEY WINDOW (§LOCK). A member who adopts a new password derives
     // its key with the slow password stretch: about half a second, seconds on
@@ -12474,7 +12474,6 @@
     function loadAdm() {
       try { admKey = (EMBED || window.__gifosNoHost) ? null : localStorage.getItem(admStoreKey()); } catch (e) { admKey = null; }   // a bot seat joined as a guest never signs in as host, even on the host's own computer   // an embed never signs in as host, even on the host's own computer
     }
-    yield 1418;
 
     // A signed order's `by` is a peer id; a name is looked up here.
     function nameForPeer(pid) { return (peers.get(pid) || {}).name || rosterNames[pid] || ''; }
@@ -12767,7 +12766,7 @@
     // LOAD COMPLETENESS: a page that missed one of its own scripts (a flaky network) must not seat: a seat without every unit throws "is not a function" in the middle of a room.
     // A missing script is loaded again (in page order, with backoff); if it still fails the page refuses to join, says so on screen and in the DEBUG trace.
     const UNITS_BACKOFF = [0, 400, 1200, 2400];
-    yield 1465;
+    yield 1464;
     function unitsGate() {
       const g = window.__gifosLoadGate;
       // A published page opened on the lobby runs its meeting scripts in two parts and the second is still on its
@@ -13175,7 +13174,7 @@
     // so in its own words, held so the ambient line does not eat it between
     // tries; the join veil says it too (relayBusyAt). The core stamps it; the view says it.
     var relayBusyAt = 0, relayBusy = () => { relayBusyAt = Date.now(); (0, /*()*/__V.showRelayBusy)(); };
-    yield 1469;
+    yield 1468;
     function onRelayFrame(m) {
       // THE LICENSE: the relay's reading of this room's permissions (joined.acl, and the answer to a License ask).
       // It is also the one source of this room's Stage clear right (clearNoPwMode): the relay's word, never a peer's.
@@ -14230,8 +14229,7 @@
     // meeting's catalog for it and repaint the fixed words.
     const repaintWords = () => { try { (0, /*()*/__V.applyChrome)(); (0, /*()*/__V.applyRoomHelp)(); } catch (e) {} };
     window.__meetRepaintWords = repaintWords;
-    if (L10N) L10N.onChange(() => { if (L10N.ui() === 'en') repaintWords(); else L10N.load('meet').then(repaintWords); });
-    yield 1635; // tap the backdrop to dismiss
+    if (L10N) L10N.onChange(() => { if (L10N.ui() === 'en') repaintWords(); else L10N.load('meet').then(repaintWords); }); // tap the backdrop to dismiss
     // The download is meant to be handed to the police: every time in UTC,
     // the port wherever one was seen (a provider sharing one address among
     // many customers needs address, port AND time), and the relay's signed
@@ -14523,7 +14521,6 @@
         '<button type="button" class="row-del" data-del="' + esc(e.url) + '" title="Remove" aria-label="Remove">' + DEL_ICON + '</button>' +
       '</div>';
     }
-    yield 1661;
     function toggleBookmark(url) {
       let marks = loadList(MEET_MARKS);
       if (marks.some((m) => m.url === url)) marks = marks.filter((m) => m.url !== url);
@@ -14931,7 +14928,6 @@
     const appRoomStr = (j) => 'app~' + (j.owned ? j.short + '~' + j.av + '~' : '') + j.k;
     let appRoomTicking = false;
     const armAppRoomTick = () => { if (!appRoomTicking) { appRoomTicking = true; setInterval(appRoomTick, 2000); } };
-    yield 1697;
     function bootAppRoom() {
       armAppRoomTick();
       appRoomOn = true; (0, /*()*/__V.paintAppRoomBody)();
@@ -15018,7 +15014,7 @@
         }).catch(() => true).then((ok) => { try { (0, /*()*/__V.paintInviteSlot)(); } catch (e) {} return ok; });
       });
     }
-    yield 1701;
+    yield 1700;
     function inviteFromSolo() {
       if (!ROOM.solo) return; // an app inside a room never mints a room of its own
       // capabilities.multiplayer false: no share from an app the user ran
@@ -15119,7 +15115,6 @@
     };
     applyPageHeader();
     (0, /*()*/__V.paintInviteSlot)();
-    yield 1711;
     // The CALL LAYER in an app room is opt-in, always: the plane being
     // available obligates nobody's camera. A quiet member sees who's live and
     // chooses; their own mic/cam tap opts them in too. Never silent tiles.
@@ -15155,7 +15150,6 @@
     // SOLO is deliberately ungated: a solo app is one tab and no network, and
     // it works fine on a browser that could never meet.
     const preflighted = (f) => GifOS.host.whenSupported(f);
-    yield 1718;
     if (params.get('mb') === '1') (0, /*()*/__V.bootMeetSession)();
     else if (ROOM.solo) bootSoloApp();
     else if (ROOM.kind === 'app') preflighted(bootAppRoom);
@@ -15189,7 +15183,7 @@
     const CHAT_SLOW_MS = GifOS.timings.CHAT_SLOW_MS, CHAT_SLOW_LAG_MS = GifOS.timings.CHAT_SLOW_LAG_MS;
     let chatSlowLast = 0;
     const chatSlowSeen = new Map();
-    yield 1728;
+    yield 1727;
     let chatOptOverride = null; // chatOptForTest
     function modStarOn(field, ifAdminUnset) {
       if (chatOptOverride && Object.prototype.hasOwnProperty.call(chatOptOverride, field))
@@ -15318,7 +15312,6 @@
     // It is not a new message, so the count stays as it was.
     // chatUnseen: a chat line landed. A newer line replaces the reaction alert; it is counted while the panel is shut.
     let reactAlert = null, chatUnseen = (m) => { if (m) reactAlert = null; if (!chatOpen) unread++; };
-    yield 1754;
     // Reactions: one emoji from a short list, per person, per line.
     // A frame counts only from the person it names (like taking back a line).
     const REACTS = ['👍', '❤️', '😂', '🙏', '👏'];
@@ -15391,7 +15384,7 @@
       }
       return o;
     }
-    yield 1765;
+    yield 1764;
     function messageMentionsMe(text) {
       const name = String(myName() || '').trim();
       if (!name) return false;
@@ -16705,7 +16698,6 @@
       if (!log) return true;
       return log.scrollHeight - log.clientHeight - log.scrollTop <= 40;
     }
-    yield 1810;
     function paintLog(log, html) {
       if (!log) return;
       const stick = logNearBottom(log);
@@ -17367,7 +17359,7 @@
       endPcRelayRoles(pid, 'gone');
       if (relayVia.has(pid)) stopRelayFor(pid, true);
     }
-    yield 1955;
+    yield 1954;
     // Do I hold sender m-lines that never made it into a negotiation? (Rolled
     // back in a glare, or added while an offer was in flight.)
     const hasPendingTx = (p) => {
@@ -17406,7 +17398,7 @@
       if (!sv || !beyondRow || typeof sv.l14Served !== 'function') return [];
       return sv.l14Served().filter((h) => h !== ownChild);
     }
-    yield 2015;
+    yield 2014;
     const occPid = (c) => { const s = meshSeat(); return s ? s.occGet(net.topo.ckey(c)) : null; };
     // A hidden, playing <video> for a claimed stream — the drawImage source.
     // STAGE-MOS-EL
@@ -17493,7 +17485,7 @@
       // before any mx-kf walk reaches a producer (mesh-pipe.js header).
       (0, /*()*/__M.producerKey)(key, fromPid);
     }
-    yield 2075;
+    yield 2098;
     // STAGE-ANN-DUE
     // A repeat announce is a refresh. Send on a new container, a new meta,
     // or when the last send is 5s old. Claim age stays 12s.
@@ -17523,7 +17515,7 @@
       }
       return out;
     }
-    yield 2086;
+    yield 2109;
     function shipJob(key, to, stream, meta, upKey) {
       if (!to || !stream) return null;
       const p = peers.get(to);
@@ -17813,13 +17805,13 @@
       const up = mosIn.get(job.upKey);
       if (up) demand(up.via, uk, up.streamId, want);
     }
-    yield 2093;
+    yield 2116;
     function dutyJob(jk) { const k = String(jk).slice(0, String(jk).indexOf('>')); return k === 'sdm' || k === 'sub' || k === 'sgs'; }
-    yield 2097;
+    yield 2120;
     // A seat that leased its own cell has lost every channel and is on its way out of that cell: it carries no media, in or
     // onward, until a channel proves back (the sim's mCarry). What it was shipping goes back on when the lease ends.
     const seatSelfLeased = () => !!(meshNode && meshNode.raw && meshNode.raw.selfLeaseAt >= 0);
-    yield 2102;
+    yield 2125;
     function setJobActive(jk, on) {
       const job = mosJobs.get(jk); if (!job) return;
       if (on && typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
@@ -17844,7 +17836,7 @@
       }
       (0, /*()*/__M.kickJob)(job.to);
     }
-    yield 2105;
+    yield 2128;
     function parkJobVideo(jk) {
       const job = mosJobs.get(jk); if (!job || !job.active || job.vParked) return;
       job.vParked = true;
@@ -17861,7 +17853,7 @@
         (0, /*()*/__M.kickJob)(job.to);
       }
     }
-    yield 2124;
+    yield 2147;
     // END-STAGE-FACES
     function dropMosIn(rk) {
       const c = mosIn.get(rk); if (!c) return;
@@ -17873,7 +17865,7 @@
       mosStandby.delete(rk);
       (0, /*()*/__M.unbindClaim)(rk, c);
     }
-    yield 2160;
+    yield 2183;
     function mosResolve(key, meta, from) {
       const c = meshCoord();
       // L53: with no cell I claim what a door ships me, the stagers' feeds and the strip, and nothing else.
@@ -18045,12 +18037,12 @@
       if (want) (0, /*()*/__M.stgFoNote)(key, 'want', from);
       dcSend(p, want ? (prim ? { k: 'mx-want', key, streamId: sid, pr: 1 } : { k: 'mx-want', key, streamId: sid }) : (vOnly ? { k: 'mx-idle', key, streamId: sid, v: 1 } : rest ? { k: 'mx-idle', key, streamId: sid, r: 1 } : { k: 'mx-idle', key, streamId: sid }));
     }
-    yield 2183;
+    yield 2206;
     // Swap picture forensics (debugDump swapPic, DEBUG only, bounded, no behaviour): on every stage primary/standby decision, the pic state of
     // the stage <video> of each copy (did it draw?), the track states and the byte/frame counters, so a black stager tile after a swap names itself.
     // A swap also records its own follow-ups 1.5 s and 3 s later. Reads only; never touches a stream or the claim.
     const swapPicRing = [], swapPicLast = new Map(), swapPicHoldAt = new Map();
-    yield 2192;
+    yield 2215;
     // ONE-PIPE multi-subscribe for one redundant slot (docs/media-plane.md):
     // one pipe moves bits (the PRIMARY); ONE alternate announcer is kept
     // SELECTED as a parked STANDBY (claimed + negotiated + <video> ready, but
@@ -18139,7 +18131,7 @@
       const best = others.filter(fresh).reduce((b, x) => (!b || deep(x) < deep(b) ? x : b), null);
       return (ownStd && fresh(ownStd) ? ownStd : null) || best || ownStd || others[0];
     }
-    yield 2204; // rk -> { wakeAt, f0, prefSince, lastSwitch, dark, lastBytes, lastAdvanceAt, q, fp, fpDecayAt, flowSince, b0, d0, stdFdec, claimAt } (wake/failback/watchdog state)
+    yield 2227; // rk -> { wakeAt, f0, prefSince, lastSwitch, dark, lastBytes, lastAdvanceAt, q, fp, fpDecayAt, flowSince, b0, d0, stdFdec, claimAt } (wake/failback/watchdog state)
     const mkFb = () => ({ wakeAt: 0, f0: 0, prefSince: 0, lastSwitch: 0, dark: false, lastBytes: -1, lastAdvanceAt: 0, q: 0, fp: 0, fpDecayAt: 0, flowSince: 0, b0: -1, d0: -1, stdFdec: -1, stdB: -1, stdAdvAt: 0, claimAt: 0, hadPref: false, left: null, pvB: -1, pvAt: 0 });
     // The PREFERRED announcer of a redundant slot: the tree-direct path the
     // media plane names as the producer's own leg. Failback aims here; any
@@ -18194,13 +18186,13 @@
       return sv.some((s) => pv.indexOf(s) >= 0) ? null : sb;
     }
     function stgRootKey(key) { return typeof key === 'string' && key.indexOf('stg:') === 0 && key.slice(-STG_ROOT2.length) === STG_ROOT2; }
-    yield 2212;
+    yield 2235;
     // END-STG-SECOND-ROOT
     function stgFedBy(job, ent) {
       const trs = ent.stream ? ent.stream.getTracks() : [];
       return !!job.srcTracks && job.srcTracks.some((t) => trs.indexOf(t) >= 0);
     }
-    yield 2215;
+    yield 2238;
     // THE STAGER'S BEAT. Only a live stager can make a new beat, so it says what no announce can:
     // the source is there. Announces and hop counts cannot: with the stager dead, seats fed by each
     // other swap to longer and longer paths (hop counts only rise), and every copy still looks
@@ -18217,10 +18209,10 @@
     // is dropped before the verify and never passed on. Only a verified beat moves that mark, so a
     // forged value cannot hold the real ones back.
     const stgBeats = new Map(), STG_BEAT_MS = GifOS.timings.STG_BEAT_MS, STG_BEAT_STALE_MS = GifOS.timings.STG_BEAT_STALE_MS, STG_BEAT_SEEN = GifOS.timings.STG_BEAT_SEEN;
-    yield 2230;
+    yield 2253;
     // The beat's own cost, read by the room tests (DEBUG): frames in and out, and the time spent on them.
     const stgBeatCost = DEBUG_ON ? { in: 0, out: 0, ms: 0 } : null;
-    yield 2232;
+    yield 2255;
     // A stager that never beat (an older page) is judged as before.
     function stgStale(rk) { const e = stgBeats.get(rk); return !!e && Date.now() - e.at > STG_BEAT_STALE_MS; }
     // A STAGE THAT ENDED ENDS ON EVERY ROAD. The beat is the stager's own word that its feed is there, so once it has
@@ -18252,7 +18244,7 @@
       const base = rk.split('^')[0];
       return base === 'stg:' + myId ? !stageIds().includes(myId) : (stgStale(base) || stgOffStage(base));
     }
-    yield 2236;
+    yield 2260;
     function prefCand(rk, cand) {
       const c = meshCoord(); if (!c) return null;
       // IDENTITY, NOT JUST KEY (2026-08-01). These two used to match on the
@@ -19382,7 +19374,7 @@
       dropMosIn(rk); dropStandby(rk); __M.mosFb.delete(rk);
       if (had) (0, /*()*/__M.repaintRedun)(rk, null);
     }
-    yield 2257;
+    yield 2280;
     function reapJobs(wanted) {
       const nowU = Date.now();
       const c = meshCoord();
@@ -19395,7 +19387,7 @@
         else if (nowU - job.unwantedAt > __M.MOS_GRACE) unshipJob(jk, true);
       }
     }
-    yield 2272;
+    yield 2295;
 
     // ============ THE STAGE DATA LANE (§11 — docs/media-plane.md, Channel St):
     // "An APP on Stage carries a DATA stream, not A/V." Small app-state frames
@@ -20061,11 +20053,11 @@
       },
     };
     if (window.GifOS) GifOS.meetStageData = stageData;
-    yield 2348;
+    yield 2371;
     function placeViewerHand() {
       try { (0, /*()*/__V.placeDockForWidth)(); } catch (e) {}
     }
-    yield 2352;
+    yield 2375;
     // AUTO-LOWER (docs/meeting.md, the hand queue): the moment MY id enters
     // the Stage set — self step-up or an admin's call-up — my raised hand has
     // been answered, so it lowers ITSELF. STRICTLY SELF-OWNED: only my own
@@ -20109,7 +20101,7 @@
       handCallAt = at;
       setStage(true); // parks MAIN senders, lowers my hand, broadcasts
     }
-    yield 2357;
+    yield 2380;
     // THE CAP IS DECIDED BY ARITHMETIC, NOT BY MY TAP. stageIds() keeps the C
     // earliest claims on every phone, so a step-up that lost a same-moment
     // race (or whose admin grant was withdrawn) is set here yet painted
@@ -20147,7 +20139,7 @@
       reactStageSelf(); // don't wait for the beat: park/restore my MAIN senders now
       if (songEnded) (0, /*()*/__M.reactSing)();
     }
-    yield 2364;
+    yield 2386;
     const screenSharers = () => {
       const out = [];
       for (const id of new Set([myId, ...rosterIds])) {
@@ -20163,15 +20155,14 @@
       if (dg) for (const e of dg.stage) if (e.id && sharingScreen(e.id) && out.indexOf(e.id) < 0 && e.id !== myId && !freshSt(e.id) && notTomb(e.id)) out.push(e.id);
       return out;
     };
-    yield 2368;
+    yield 2391;
     const RECOVER_MEDIA_KEY = 'gifos_recover_media';
-    yield 2370;
     // myStatus.stg is what I last claimed, and it outlives a revoked grant by two beats (reactStageLost).
     // A note needs the stage itself: the room's own list, or the wait for it after a reload (stageResumeUntil).
     function onStageNow() {
       return +myStatus.stg > 0 && (stageResumeUntil > Date.now() || stageIds().includes(myId));
     }
-    yield 2374;
+    yield 2397;
     // Will this boot turn the camera on? Only a tap made moments ago on the
     // way in: the lobby's switch or a broadcast host's Go live tap, read here
     // without taking them. No reload note counts (privacy first: a reload of
@@ -20206,7 +20197,7 @@
       if (typeof bcHostStored !== 'function' || !bcHostStored()) return null;
       return updateResume.air;
     }
-    yield 2390;
+    yield 2413;
     const rbNoun = () => 'broadcast';
     function rbFmt(sec) {
       const t = Math.max(0, Math.floor(sec || 0));
@@ -20244,7 +20235,6 @@
       } catch (e) {}
       r.v = (0, /*()*/__V.rbCanvas)(r);
     }
-    yield 2397;
     function rbDrop(r) {
       try { r.vid.pause(); } catch (e) {}
       try { if (r.v) r.v.stop(); } catch (e) {}
@@ -20253,7 +20243,7 @@
       try { if (r.url) URL.revokeObjectURL(r.url); } catch (e) {}
       try { if (r.actx) r.actx.close(); } catch (e) {}
     }
-    yield 2399;
+    yield 2421;
     function rbStop(why) {
       const r = rbNow;
       if (!r) return;
@@ -20295,9 +20285,9 @@
       else r.vid.pause();
       (0, /*()*/__V.paintRbNow)();
     }
-    yield 2408;
+    yield 2431;
     function shareSheetFocusId(blocked) { return blocked ? 'share-cancel' : 'share-go'; }
-    yield 2455;
+    yield 2478;
     (0, /*()*/__M.armAudioKeepAlive)();
     // END-AUDIO-KEEPALIVE
     // ---- DEBUG LOG (Settings → Debug) ----------------------------------------
@@ -20423,9 +20413,9 @@
     }
     const dlogOut = () => { if (dlogRec && dlogRec.live()) dlogRec.flush(true); };
     window.addEventListener('pagehide', dlogOut);
-    yield 2482;
+    yield 2505;
     (0, /*()*/__V.paintMyAvatarPreview)();
-    yield 2495;
+    yield 2517;
     // Timing is a PERSONAL, receiver-side setting (your ears, your knob — like
     // the faders), three moods:
     //   chat (default) — snappiest replies: the target derives from MY links
@@ -20446,7 +20436,7 @@
       try { localStorage.setItem(TIMING_KEY, t); } catch (e) {}
       (0, /*()*/__M.applyGrid)();
     };
-    yield 2502;
+    yield 2525;
 
     // Sing state is DERIVED, not commanded: the leader carries `sing` in their
     // own gossiped status, and the room is singing iff someone ON STAGE says
@@ -20458,7 +20448,7 @@
       const e = digStageEntry(id); return !!(e && (e.f & 1)); // a stager beyond my section: its folded flag (G9)
     };
     const roomSingOn = () => stageIds().some(singOf);
-    yield 2517;
+    yield 2540;
     (0, /*()*/__M.paintTiming)();
 
     // ---- live transcript: one line kind, one merge rule (2026-11-06) ----------
@@ -20717,7 +20707,6 @@
       if (at > 0) m.at = at;
       return same[0];
     }
-    yield 2558;
     function takeTr(m, backfill) { // backfill: a 'hi' replay — see takeChat
       if (!m || !m.id || trs.has(m.id) || ((m.at || 0) > 0 && (m.at || 0) <= (trs.floorAt || 0))) { if (clog && m && m.w === myId) clog('tr own drop', trs.has(m.id) ? 'held' : 'floor', m.at, trs.floorAt || 0); if (m && m.id) if (typeof capTrace === 'function') capTrace(m, trs.has(m.id) ? 'held' : 'floor'); return false; }
       const w = String(m.w || m.byId);
@@ -20793,7 +20782,7 @@
     }
     let ccShow = false;
     try { ccShow = localStorage.getItem('gifos_cc_view') === '1'; } catch (e) {}
-    yield 2577;
+    yield 2600;
     // Lines the bot played. A caption of that voice is not written down again.
     const botSpokenLines = [];
     function rememberBotSpoken(text) {
@@ -20888,7 +20877,6 @@
       earsFor: (v) => typeof __M.wspCaps !== 'undefined' && __M.wspCaps.has(v),
       onWarn: (v, info) => { try { capWarn(v, info); } catch (e) {} },
     }) : null;
-    yield 2584;
     // EARS ONLY ARE SPOT CHECKS. A page whose own engine is the browser's listens, by default, to one talking voice at a
     // time for CT_SPOT_MS, then rests until CT_SPOT_EVERY_MS has passed: a quarter of one Whisper capture at most. A voice
     // whose own captions lost this page's trust, or that its user put on this device's ears, is heard full time.
@@ -20941,7 +20929,7 @@
       else if (c.lean) more = uiText('capLean', 'You picked this as a starting point. This page keeps checking, and changes if anyone\'s captions get better or worse.');
       return (now + ' ' + more).trim();
     }
-    yield 2591;
+    yield 2614;
     function capWarn(v, info) { (0, /*()*/__V.capSourceOpen)(v, info || { why: '' }); }
     function capPick(v, src) {
       if (!capTrust) return;
@@ -20956,7 +20944,7 @@
     const CC_LANG_KEY = 'gifos_cc_lang';
     const ccLang = () => { let v = ''; try { v = localStorage.getItem(CC_LANG_KEY) || ''; } catch (e) {} return v || navigator.language || 'en-US'; };
     const ccLangLabel = () => { const v = ccLang(); const hit = CC_LANGS.find((x) => x[0] === v); return hit ? hit[1] : v; };
-    yield 2598;
+    yield 2621;
     // THE SPEAKER'S SUGGESTION (docs/caption-trust.md section 7). Other pages' ears vote, on the ear lines they already
     // send about my voice, for the language they hear me in; when enough of them agree on one my captions do not listen
     // for, this page asks me. Only my tap switches; Keep quiets that language for the meeting.
@@ -20988,7 +20976,6 @@
       const hit = CC_LANGS.find(([v]) => v && v !== 'auto' && trLangOf(v) === code);
       return hit ? hit[0] : code;
     }
-    yield 2603;
     // ON-DEVICE CAPTIONS ON AN ANDROID PHONE. The phone writes its captions
     // with a speech model that runs in this browser (GifOS.ondevice, a Web
     // Worker): the voice never leaves the phone. Android only (2026-11-18,
@@ -21101,7 +21088,7 @@
       (0, /*()*/__V.paintTxMark)();
       (0, /*()*/__V.paintCcLocal)();
     }
-    yield 2617;
+    yield 2639;
     // The one name the shared caption code calls for the on-device engine.
     const ccLocalQ = {
       lang: () => ccLocalShort(ccLocalLang()),
@@ -21120,14 +21107,14 @@
       paint: __V.paintCcLocal,
       test: () => ({ state: ccLocal.state, lang: ccLocal.lang, loaded: ccLocal.loaded, total: ccLocal.total, cached: !!ccLocal.cached, why: ccLocalWhy(), blocked: ccLocalBlocked(), model: ccLocal.eng ? ccLocal.eng.model : '', err: ccLocal.err }),
     };
-    yield 2619;
+    yield 2641;
     const lsGet = (k) => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
     const lsSet = (k, v) => { try { if (v) localStorage.setItem(k, v); else localStorage.removeItem(k); } catch (e) {} };
-    yield 2627;
+    yield 2650;
     const whisperReady = () => !!(window.GifOS && GifOS.providers && GifOS.providers.assigned('stt'));
-    yield 2639;
+    yield 2662;
     function wspSource(id) { const m = meters.get(id); return (m && m.src) ? m.src : null; }
-    yield 2666;
+    yield 2689;
     // WHO THIS PAGE WRITES DOWN (keep / share). Its own voice while "Send my
     // captions" is on. With Whisper: every unmuted voice it hears first-hand
     // (a row-mate's direct audio, a stager's feed), covered by that person's
@@ -21147,7 +21134,7 @@
     // the phone advertised nothing and the ear took that as a match).
     function earLangOk(pid) { const st = statusOf.get(pid); const l = st && trLangOf(st.lang || st.dl); return !l || l === trLang(); }
     function trWrites() { return trKeeps(); }
-    yield 2705;
+    yield 2728;
     // ---- WHAT THIS PAGE TELLS THE ROOM ----------------------------------------
     // cap: 1 while this page sends its own captions and its engine is live (a
     // real line has come, or Whisper captures the mic); a keep/share page reads
@@ -21207,7 +21194,6 @@
       if (trRxAt && Date.now() - trRxAt < 20000) return 'receiving';
       return '';
     }
-    yield 2711;
     // The two settings, remembered on this device: Send my captions (default
     // on) and Transcript off | keep | share (default off). A change restarts
     // the engines and tells the room.
@@ -21227,7 +21213,7 @@
       capPublish();
       (0, /*()*/__V.paintTranscriptControls)();
     }
-    yield 2773;
+    yield 2795;
     // Every source I can record, grouped by BUS. Direct peers + me are live
     // tiles; folds (compOf) are already consent-baked composites of many people.
     // A long recording must not live in one array until Stop. The picker
@@ -21235,24 +21221,23 @@
     // picker is missing or the click has already been spent. The chunk list
     // is only the last resort.
     function recDefaultQuality(isMobile) { return isMobile ? 'low' : 'std'; }
-    yield 2830;
+    yield 2853;
     (0, /*()*/__V.paintCallState)();
-    yield 2839;
+    yield 2862;
 
     // A small call is a room, not a product: with 2–4 people on a desktop,
     // nothing open, and no mouse or key for a few seconds, the dock fades and
     // only faces are left (FaceTime and Meet do the same). Any move or key
     // brings it back. The layout does not change, so faces never jump.
     let dockCalmMs = 3000;
-    yield 2841;
 
     // Audience reactions on a service. Each clap is one small frame. The stage
     // adds them up, so a room of claps is one pill, not a pile of emojis.
     const AUDIENCE_REACTS = ['👏', '👍', '👎', '😂', '❤️'];
-    yield 2843;
+    yield 2865;
     const audienceReactCounts = new Map();
     const audienceReactRate = new Map();
-    yield 2846;
+    yield 2868;
     // At most 6 reactions in 10 s count from one person, on a service and in a meeting.
     function reactRateOk(who) {
       const now = Date.now();
@@ -21263,7 +21248,7 @@
       if (audienceReactRate.size > 400) audienceReactRate.clear();
       return true;
     }
-    yield 2849;
+    yield 2872;
     const faceReacts = new Map(); // peer id -> { e, until }
     const faceReactRx = new Map(); // peer id -> reaction frames taken from them (reactRxForTest)
     // Is this person seated in my section?
@@ -21288,7 +21273,6 @@
         return stageIds().includes(pid);
       } catch (e) { return false; }
     }
-    yield 2855;
     // One reaction frame to the room: the mesh flood, plus every open link the
     // roster has not caught up with yet. The id drops the copy a peer gets both ways.
     function sendReactFrame(emoji) {
@@ -21316,7 +21300,7 @@
         for (const p of peers.values()) if (p && p.id && p.dc && p.dc.readyState === 'open' && (staged || inMySection(p.id))) dcSend(p, msg);
       } catch (e) {}
     }
-    yield 2858;
+    yield 2880;
     function takeAudienceReact(emoji, fromId) {
       if (!BROADCAST) return false;
       emoji = String(emoji || '');
@@ -21340,7 +21324,7 @@
       (0, /*()*/__V.paintAudienceReacts)();
       return true;
     }
-    yield 2860;
+    yield 2882;
     // Clap ids already counted. A frame without an id (an older device)
     // still counts.
     const audienceReactSeen = new Set();
@@ -21356,7 +21340,7 @@
       takeAudienceReact(emoji, (typeof myId !== 'undefined' && myId) || 'me');
       sendReactFrame(emoji);
     }
-    yield 2864;
+    yield 2886;
 
     function amGloballyMuted() { const m = modOf('me').mute; return !!(m && m.on); }
     function micLockWords() {
@@ -21367,9 +21351,9 @@
     function focusOf(el) {
       return el.querySelector('input:not([type="hidden"]), select, textarea, button');
     }
-    yield 2868;
+    yield 2890;
     (0, /*()*/__V.armMeetDialogs)();
-    yield 2871;
+    yield 2894;
     if (window.__gifosRoomTrust) {
       window.__gifosRoomTrust.setDevices = (muted, camOff) => {
         myStatus.muted = !!muted;
@@ -21398,7 +21382,7 @@
     // goes on with it when it lands (a room order still holds it off).
     let lateWant = null;
     let bootGumPending = null;
-    yield 2928;
+    yield 2955;
 
     // ---- stay in the meeting when the tab is hidden ---------------------------
     // Registering as a CALL with the OS (Media Session) is the other half of
@@ -21416,9 +21400,7 @@
       try { const r = ms.setCameraActive(!myStatus.camOff); if (r && r.catch) r.catch(() => {}); } catch (e) {}
       try { ms.playbackState = 'playing'; } catch (e) {}
     }
-    yield 2930;
     (0, /*()*/__V.wireMediaSession)();
-    yield 2934;
     // Why a No blur pick is not clear video yet, or '' when nothing holds it
     // back. The camera-on line repeats it: turning the camera on is when the
     // person looks for clear video, and a bare "Camera on." hid the reason.
@@ -21439,7 +21421,6 @@
       const on = statusWords('camOn') || 'Camera on.';
       return why ? on + ' ' + why : on;
     }
-    yield 2937;
     function heldNoteKey() {
       let room = '';
       try { room = (typeof updateRoomKey === 'function') ? updateRoomKey() : ''; } catch (e) {}
@@ -21451,7 +21432,7 @@
     function markHeldNote() {
       try { sessionStorage.setItem(heldNoteKey(), '1'); } catch (e) {}
     }
-    yield 2946;
+    yield 2969;
     function setPersonalBlur(v, asked) {
       if (BC_SEAT && !bcMayPublishAv()) return;
       myStatus.blur = v;
@@ -21479,16 +21460,16 @@
         setStatus(uiText('stBlurOff', 'Blur off.'));
       }
     }
-    yield 2953;
+    yield 2976;
     const modAllOn = (f) => { const m = modTable['*'] && modTable['*'][f]; return !!(m && m.on); };
     function allGuestsBlocked() { return modAllOn('blur'); }
-    yield 2958;
+    yield 2981;
     function allGuestsCamOff() { return modAllOn('cam'); }
-    yield 2962;
+    yield 2985;
     function allGuestsMuted() { return modAllOn('mute'); }
-    yield 2966;
+    yield 2989;
     function guestsMayShare() { const m = modTable['*'] && modTable['*'].share; return !!(m && m.on); }
-    yield 2969;
+    yield 2992;
     // L27 VOTE-OFF ON THE MESH: my vote-offs (device tags) name every peer on that device; the seat signs the
     // statement and it rides PHONE; the seat's fold is the tally, its threshold the need, its verdict the kick.
     const devClaimAt = new Map();   // peer -> when I first saw it hold a device tag
@@ -21584,7 +21565,7 @@
     }
     // ---- vote MODE: pick what you're voting on, then tap the targets ---------
     let voteMode = null;
-    yield 2985;
+    yield 3008;
     function castVote(id) {
       if (!voteMode || hasAdminRoom()) return;
       if (voteMode === 'kick') { toggleVote(id); refreshAllTiles(); return; }
@@ -21621,7 +21602,7 @@
       broadcastStatus();
       refreshAllTiles();
     }
-    yield 2992;
+    yield 3015;
     // One dismiss rule for every .name-modal. Escape and a backdrop tap run
     // the cancel control when one is visible. A locked-room password join
     // hides Close, so it stays until Join. A fork pick has no cancel.
@@ -21642,7 +21623,6 @@
       }
       return null;
     }
-    yield 2994;
     function modalFocusables(el) {
       const out = [];
       for (const n of el.querySelectorAll('button, a[href], input, select, textarea')) {
@@ -21655,10 +21635,10 @@
       }
       return out;
     }
-    yield 3001;
+    yield 3024;
     (0, /*()*/__V.paintControls)();
     try { (0, /*()*/__V.paintBroadcastRole)(); } catch (e) {}
-    yield 3005;
+    yield 3028;
     function armCopiedLabel(btn, later) {
       const copied = uiText('invCopied', 'Copied ✓');
       const copy = uiText('invCopy', 'Copy');
@@ -21670,11 +21650,10 @@
         if (btn.dataset) delete btn.dataset.copied;
       }, 2000);
     }
-    yield 3007;
     function linkRowHtml() {
       return '<div class="inv-link"><textarea id="inv-url" readonly rows="1" spellcheck="false">' + esc((0, /*()*/__V.inviteLinkForModal)()) + '</textarea><div class="inv-btns"><button id="inv-copy" type="button" class="appear-primary">' + esc(uiText('invCopy', 'Copy')) + '</button><button id="inv-share" type="button" class="appear-secondary" style="display:none">' + esc(uiText('invShare', 'Share')) + '</button></div></div>';
     }
-    yield 3009;
+    yield 3031;
 
     // FOLLOW-ME DELIVERY WAIT (Nathan, 11 Oct 2026). The admin's page used to
     // reload into the new room ~600ms after posting the follow-me link
@@ -21778,7 +21757,7 @@
     // the video service's vouches; it decides nothing about who may come in.
     let subsTurnedAway = false, subsTierKey = '', subsTier = null, subsTierExp = 0, subsGrants = null;   // subsTier: the room's verified right (undefined: being checked; null: none), never read by its name; subsGrants: its signed line items (display and the video service's vouches)
     const subsOn = () => !!(window.GifOS && GifOS.meetSubs && GifOS.sub);
-    yield 3019;
+    yield 3041;
     // The meeting a subscription ticket names: the room's relay session (a one-way hash of the room code), the same
     // room the relay's TURN vouches name, so the TURN Worker can check a paid ask's ticket against its vouches.
     const subsMeetId = () => sessId || roomKey();
@@ -21930,7 +21909,7 @@
       try { updateStatus(); } catch (e) {}
     }
     if (DEBUG_ON) window.__subsReknockForTest = () => (subsRefused ? { n: subsRefused.n, armed: !!subsRefused.t, aside: subsTurnedAway, sinceMs: Date.now() - subsRefused.at } : null);
-    yield 3037;
+    yield 3059;
     function subsStandAside() {
       leaving = true;   // the mesh re-arms and reconnects stand down
       try { GifOS.meetSubs.leaveMeeting(); } catch (e) {}
@@ -22012,7 +21991,7 @@
       });
       return raw;
     }
-    yield 3049;
+    yield 3072;
     // D2 "goodbyes are instant" — graceful-close coverage. pagehide fires on
     // every real unload path (close, swipe-away, navigation, reload), so it
     // alone says goodbye. Never beforeunload: it fires BEFORE a navigation is
@@ -22235,7 +22214,7 @@
       try { updateStatus(); } catch (e) {}
       return flushing;
     }
-    yield 3075;
+    yield 3098;
     // Keyboard: Alt+A mic, Alt+V camera, Alt+S share, Alt+C chat, Alt+K captions,
     // Alt+H hand, Alt+F view, Alt+Q leave confirm, and the rest of More
     // (Who, Invite, Run app, Vote, Password, Stage, Record, Settings, Transcript, Help).
@@ -22247,7 +22226,7 @@
       const t = e.target;
       return !!(t && t.closest && t.closest('input, textarea, select, [contenteditable="true"]'));
     }
-    yield 3086;
+    yield 3109;
     // Snapshot and silence every outgoing sender while the confirm is up.
     // Cancel puts back exactly that snapshot. Confirm keeps the hold and
     // leaves through leaveMeeting(). Defined after the buttons so a lifted
@@ -22310,7 +22289,7 @@
       try { broadcastStatus(); } catch (e) {}
       try { (0, /*()*/__M.refreshOutbound)(); } catch (e) {}
     }
-    yield 3100;
+    yield 3123;
     let appMode = null;      // 'host' | 'client' | null
     let appKey = null;       // sid of the app session currently mounted here
 
@@ -22349,8 +22328,7 @@
       if (Date.now() - appCopy.paintedAt < 150) return; // ~62 parts in 7s; don't thrash layout
       (0, /*()*/__V.appCopyPaint)();
     }
-    yield 3105;
-
+    yield 3128;
     let appHiddenSid = null; // personal opt-out: this sid stays off MY stage only
     let appLeadSet = null, appLeadOn = false, appLeadable = false; // sharer's led-records switch
     myStatus.app = null;     // { s, k, relay, name, ts, byName } while THIS phone shares
@@ -22370,7 +22348,7 @@
       return !!(g && g.on);
     }
     const canIRunApp = () => !!myId && appAllowed(myId);
-    yield 3121;
+    yield 3144;
     function currentAppHelpMd() {
       try {
         const ctl = soloCtl || appHostCtl || appClientCtl;
@@ -22390,7 +22368,7 @@
       if (!c) return null;
       return Object.assign({}, c, appInstall || {});
     }
-    yield 3131;
+    yield 3154;
     let appClientStop = null; // live client mount's teardown (unsubscribes its sga lane)
     let appClientCtl = null;  // the client mount's control: snapshot() + setFrozen() (one-runtime freeze/succession)
     let appHostCtl = null;    // the host boot's control: save/steal (one-runtime chrome)
@@ -22404,7 +22382,6 @@
       window.__appRemounts.push(Object.assign({ t: Date.now(), ev, mode: appMode, key: appKey ? String(appKey).slice(0, 8) : null }, x || {}));
       if (window.__appRemounts.length > 60) window.__appRemounts.shift();
     } catch (e) {} };
-    yield 3136;
     // TAKEOVER GUARD: runApp's boot (runtime boot + becomeHost) is async, and
     // until it settles myStatus.app is still null — so an incoming status tick
     // would see the room's CURRENT ad as the winner and reconcileApp would
@@ -22647,7 +22624,7 @@
       if (best) { appOwnerPid = bestPid; appOwnerSeenAt = Date.now(); }
       return best;
     }
-    yield 3145;
+    yield 3167;
     function reconcileApp() {
       sgaPromoteSnaps(); // a snap that raced the successor's ad
       sgaEdgeSync();     // a neighbour I did not have: the frames I may have missed while my edges moved
@@ -22806,7 +22783,7 @@
         }).catch(() => {}).then(() => { succBusy = false; });
       }, 6000); // grace: a blip must not trigger a takeover
     }
-    yield 3161;
+    yield 3184;
     // ---- THE "stage" APP CAPABILITY (docs/app-mesh.md "Apps that order the stage") ----
     // An app that declares capabilities.stage, running in THIS meeting, names
     // up to two people in stage order (first = on now, second = up next). Each
@@ -22862,7 +22839,7 @@
         if (appClientStop) { try { appClientStop(); } catch (e) {} }
         appClientStop = null; appClientCtl = null; appHostCtl = null; appMode = null; appKey = null;
       };
-    yield 3167;
+    yield 3190;
     const appStageOn = () => !!appKey && !!myId && !BROADCAST && !appRoomOn;
     function appStageState() {
       const p = appStageLast;
@@ -22912,7 +22889,6 @@
       }
       return appStageState();
     };
-    yield 3172;
     // gifos.room (js/app-room.js): the people an app's session may seat are this page's own roster, nothing else.
     // Each person is named by the room id their OWN status carries (rk): a person whose status this page does not
     // hold, or whose status names no room id, is nobody the app can seat. The runtime hands this page the room id of
@@ -22937,7 +22913,7 @@
       // the runtime ties an app session's seats to it (js/app-room.js), so another meeting starts with open seats.
       return { on: true, kind: hasAdminRoom() ? 'admin' : 'open', admin: !!amAdmin, me: myId, meeting: (carryBoot && carryBoot.mk) || '', people: people.filter((x) => x.k) };
     };
-    yield 3174;
+    yield 3196;
     // Put a GIF app on this device: { fileId, name } or { error }.
     async function importGif(bytes, rawName) {
       const buf = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
@@ -22955,7 +22931,7 @@
       } catch (e) { return { error: 'Could not save that app on this device.' }; }
       return { fileId, name };
     }
-    yield 3176;
+    yield 3198;
     // S16 (Nathan 2026-11-17): an official run link (https://gifos.app/?run=connect-four, or this site's own /?run= or
     // #run=) names an app, not a GIF file. It is read the way GifOS Home reads it (desktop.js resolveRunTarget): a slug
     // is that app in this site's /apps/, a GitHub page link is its raw file. null: not a run link.
@@ -22977,7 +22953,7 @@
     // Picking one that is not on the device puts it here, then runs it. Take Turns is built from this site's starter
     // code (sample-apps.js, loaded only then). Survey and Whiteboard are App Store GIFs on this site.
     const RUN_DEFAULTS = [{ appId: 'taketurns', name: 'Take Turns', from: 'sample' }, { appId: 'survey', name: 'Survey', from: 'store' }, { appId: 'whiteboard', name: 'Whiteboard', from: 'store' }];
-    yield 3181;
+    yield 3204;
     async function installRunApp(d) {
       if (d.from === 'sample') {
         try { await (0, /*()*/__V.loadScriptOnce)('js/gifos-icons.js'); } catch (e) {}   // its tile art; a plain tile without it
@@ -23009,7 +22985,6 @@
       for (const f of rest) out.push({ name: label(f), fileId: f.id });
       return out;
     }
-    yield 3184;
     // The same ceiling as the desktop's ?run= path (desktop.js RUN_MAX_BYTES):
     // an App GIF can be half a gigabyte and that is a feature, not a limit —
     // but the bytes are read WHILE they stream and refused past the ceiling,
@@ -23048,7 +23023,7 @@
       name = (name || 'app').replace(/[^\w.\-]+/g, '_'); if (!/\.gif$/i.test(name)) name += '.gif';
       return { bytes: buf, name };
     }
-    yield 3191;
+    yield 3214;
     // Second entry point: an app tab's "Meeting" toggle opens meet.html#app=<fileId>.
     // Auto-host that app once we're set up (its state lives in this same browser).
     // canIRunApp() needs myId, which S4 mints ASYNCHRONOUSLY — a fixed 900ms
@@ -23088,7 +23063,6 @@
     function roomControls() {
       return { hand: !!myStatus.hand, mic: !myStatus.muted, camera: !myStatus.camOff, people: roomPeople() };
     }
-    yield 3195;
     // Session frame (#mb=1): the parent meet-host drives this document.
     // Ordinary meetings never take this branch.
     if (params.get('mb') === '1' && window.GifOS && GifOS.meetSession) {
@@ -23541,7 +23515,7 @@
       const v = m && m.on;
       return v === 'off' || v === 'ask' ? v : 'allowed';
     }
-    yield 3204;
+    yield 3226;
     function agentPeople() {
       const out = [];
       const stg = stageIds();
@@ -23751,7 +23725,7 @@
       try { refreshAllTiles(); broadcastStatus(); if (typeof pushLeaf === 'function') pushLeaf(); } catch (e) {}
       return agentOk(out);
     }
-    yield 3220;
+    yield 3243;
     function agentHost() {
       // ---- the agent's room action (gifosAgent 'room' {op, args}): the room features a guard bot uses, on the core ----
       // The same ops and answers as the browser Meeting Bot's own version (gifos-mcp-core src/room.js roomPageOp, which
@@ -23968,7 +23942,6 @@
         roomOps: AGENT_ROOM_OPS, roomOp: agentRoomOp,
       };
     }
-    yield 3222;
     function agentStart() {
       if (EMBED) return; // no agent API in someone else's page
       if (!agentCore && window.GifOS && GifOS.meetAgent && GifOS.timings) {
@@ -24014,26 +23987,7 @@
       setInterval(() => { try { myRoomPart.tick(); } catch (e) {} }, GifOS.timings.MYROOM_TICK_MS);
       return myRoomPart;
     }
-    yield 3225;
-    // BACK TO NORMAL VIEW: one tap, no reload, no reseat. The seat, its links, keys, sound and history stay; the
-    // camera stays off and the mic muted (on only when the person turns them on); every link is asked for video
-    // again with a fresh key frame, and the tiles are drawn from the roster as it is now. A reload stays normal.
-    function backToNormalView() {
-      if (AGENT_FORCED) return false;
-      try { sessionStorage.removeItem('gifos_bot'); } catch (e) {}
-      myStatus.bot = false;
-      delete myStatus.think; delete myStatus.nts;
-      myStatus.camOff = true;
-      if (!__M.botVoiceTrack) myStatus.muted = true;
-      try { (0, /*()*/__V.paintAssistant)(false); } catch (e) {}   // the lobby switch shows Off again
-      (0, /*()*/__V.setBotView)(false);
-      try { setPersonalBlur(2); } catch (e) {}   // a person's camera, when they turn it on, starts at Max blur like any join
-      if (agentCore) agentCore.stop();   // open video.in / video.out ports keep running
-      for (const p of peers.values()) if (p.dc && p.dc.readyState === 'open' && camPeer(p.id)) dcSend(p, { k: 'vkick' });
-      try { refreshAllTiles(); updateTile('me'); broadcastStatus(); (0, /*()*/__V.paintControls)(); reactRoomState(); (0, /*()*/__V.layout)(); (0, /*()*/__M.applyBuses)(); } catch (e) {}
-      return true;
-    }
-    yield 3227;
+    yield 3248;
     if (AGENT_FORCED) agentStart();   // the API is there from the first moment; it says joined when the seat is
     if (botViewWant && room) (0, /*()*/__V.setBotView)(true);
 
@@ -24178,7 +24132,25 @@
       try { (0, /*()*/__V.layout)(); updateStatus(); (0, /*()*/__V.paintRoster)(); } catch (e) {}
       return { ok: true, id: id, held: !!p.held };
     }
-    yield 3233;
+    // BACK TO NORMAL VIEW: one tap, no reload, no reseat. The seat, its links, keys, sound and history stay; the
+    // camera stays off and the mic muted (on only when the person turns them on); every link is asked for video
+    // again with a fresh key frame, and the tiles are drawn from the roster as it is now. A reload stays normal.
+    function backToNormalView() {
+      if (AGENT_FORCED) return false;
+      try { sessionStorage.removeItem('gifos_bot'); } catch (e) {}
+      myStatus.bot = false;
+      delete myStatus.think; delete myStatus.nts;
+      myStatus.camOff = true;
+      if (!__M.botVoiceTrack) myStatus.muted = true;
+      try { (0, /*()*/__V.paintAssistant)(false); } catch (e) {}   // the lobby switch shows Off again
+      (0, /*()*/__V.setBotView)(false);
+      try { setPersonalBlur(2); } catch (e) {}   // a person's camera, when they turn it on, starts at Max blur like any join
+      if (agentCore) agentCore.stop();   // open video.in / video.out ports keep running
+      for (const p of peers.values()) if (p.dc && p.dc.readyState === 'open' && camPeer(p.id)) dcSend(p, { k: 'vkick' });
+      try { refreshAllTiles(); updateTile('me'); broadcastStatus(); (0, /*()*/__V.paintControls)(); reactRoomState(); (0, /*()*/__V.layout)(); (0, /*()*/__M.applyBuses)(); } catch (e) {}
+      return true;
+    }
+    yield 3255;
     // ---- DEBUG AUDIO METERS (js/meet-meters.js; debug mode only) -------------
     // Who this page hears, read where each voice PLAYS: a person's tile
     // (direct), a voice a friend carries (friend), a row tile (rowmix), the
@@ -24189,7 +24161,7 @@
     // ear is metered (what plays, after its gain). The context is the page's
     // own and is never made here: no meter before the page has sound.
     var dbgMeterKit = null;
-    yield 3235;
+    yield 3257;
     const dbgMeterAsked = (() => { try { return /(?:^|[#&?])meters=(?:on|1)/i.test(String(location.hash || '') + String(location.search || '')) || localStorage.getItem('gifos_meters') === 'on'; } catch (e) { return false; } })();
 
     // ---- THE CARRIED SEAT (docs/turn-carry.md, js/meet-carry.js) ---------------------------------------------------
@@ -24197,15 +24169,8 @@
     // is carried (the guest end); carryHosts: the pages I carry (the carrier end, at most meetCarry.CARRY_MAX).
     let carryG = null;
     const carryHosts = new Map();      // carried page's peer id -> { link, voice, name, far, mix }
-    const carryOwnLines = new Set();   // chat line ids I posted for the page I carry: never sent back to it
-    function carryIo(far, l, sendTv, askVouch, guest) {   // the carried link's I/O: the room key seals and opens its frames here, never in the view
-      return { guest, me: myId, far, l, dev: () => myDevHash, sub: () => (meshNode && meshNode.sub) | 0, sid: () => sessId, sendTv, askVouch,
-        ask: GifOS.meetTurn.askIce((u, o) => window.fetch(u, o)), webScheme: () => 'wss://', log: turnNote,
-        seal: (obj) => net.seal(roomE2E, obj),
-        open: (env) => net.open(roomE2E, env).then((m) => m || (prevRoomE2E ? net.open(prevRoomE2E, env) : null)),
-        sign: (text) => net.edSign(myIdentity.priv, text).then((sig) => ({ sig, pub: myIdentity.pubB64 })),
-        verify: (id, pub, sig, text) => GifOS.meshIdentity.peerIdOf(pub).then((got) => (got === id ? net.edVerify(pub, sig, text) : false)) };
-    }
+    const carryOwnLines = new Set();
+    yield 3262;
     // NO USABLE PC, ONE PATH: no RTCPeerConnection at all (the boot), or one that gathers no candidate, neither its own nor a
     // relay one (meet-turn webStart: the moment the web path would start, whose in-page pair needs a candidate too). The page
     // leaves the mesh it began (an island of one at most: nothing can connect to it) and is carried. Never back: a reload is.
@@ -24391,8 +24356,16 @@
       const out = [];
       for (const c of carryHosts.values()) out.push(Object.assign({ far: c.far, name: c.name, mic: c.mic == null ? null : !!c.mic, srcs: c.srcs.size, track: !!__M.carryVoiceTrack }, await one(c.link, c.voice)));
       return { role: out.length ? 'carrier' : 'none', pcGathers, muted: !!myStatus.muted, saysMuted: !!carryStatusOut(myStatus).muted, carried: out, log };
+    }   // chat line ids I posted for the page I carry: never sent back to it
+    function carryIo(far, l, sendTv, askVouch, guest) {   // the carried link's I/O: the room key seals and opens its frames here, never in the view
+      return { guest, me: myId, far, l, dev: () => myDevHash, sub: () => (meshNode && meshNode.sub) | 0, sid: () => sessId, sendTv, askVouch,
+        ask: GifOS.meetTurn.askIce((u, o) => window.fetch(u, o)), webScheme: () => 'wss://', log: turnNote,
+        seal: (obj) => net.seal(roomE2E, obj),
+        open: (env) => net.open(roomE2E, env).then((m) => m || (prevRoomE2E ? net.open(prevRoomE2E, env) : null)),
+        sign: (text) => net.edSign(myIdentity.priv, text).then((sig) => ({ sig, pub: myIdentity.pubB64 })),
+        verify: (id, pub, sig, text) => GifOS.meshIdentity.peerIdOf(pub).then((got) => (got === id ? net.edVerify(pub, sig, text) : false)) };
     }
-    yield 3260;
+    yield 3283;
     if (DEBUG_ON) setTimeout(function dbgMeterBoot() { if (!(0, /*()*/__V.dbgMeters)()) setTimeout(dbgMeterBoot, 2000); }, 1000);
     window.__gifosVideo = {
       carryForTest: () => carryForTest(),
@@ -25884,7 +25857,6 @@
     };
     // The test hooks that read the page's elements: the page adds them to the same hook object.
     (0, /*()*/__V.viewTestHooks)(window.__gifosVideo);
-    yield 3264;
     // THE DOOR'S PASSWORD, typed by the person at the door (the meeting's password card, or embed.html's): adopt it
     // and knock again. The relay only ever sees the PROOF of this password, never the text, and the key I read the
     // room with now contains it (§8): a wrong password doesn't just bounce at the courtesy gate, it can't decrypt,
@@ -26024,7 +25996,7 @@
         return r.ok ? 'sent' : 'failed';
       } catch (e) { return 'failed'; }
     }
-    yield 3290;
+    yield 3313;
     // The document floating window this page opened is up (it plays the lens, so it follows the speaker live).
     function floatUp() { return floatOn; }
     // FOLLOW THE SPEAKER, the rule the floating window follows a voice by:
