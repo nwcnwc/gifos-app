@@ -496,6 +496,9 @@
       }
       // Proved knockers: a listening page lets in only other listening pages; any other page lets in every member.
       for (const pid of host.waitIds()) if (proved.has(pid) && (!listening() || listeners2.has(pid))) host.admit(pid);
+      // ...and a proved member who sits here already (each of us opened the room at the same moment, and our two rooms
+      // became one without a knock) is one of the room's people all the same: the key word is the Admit.
+      for (const p of host.people()) if (proved.has(p.id) && (!listening() || listeners2.has(p.id))) host.member(p.id);
       // Seated others are asked for a word (never a held knocker: it proves itself first, and a stranger hears nothing).
       for (const p of host.people()) {
         if (proved.has(p.id) && !listeners2.has(p.id)) continue;   // a listening door's id may come back as its owner's own page: asked again
@@ -906,7 +909,9 @@
           emit({ type: 'offer', card: f, from: String(m.from || '').slice(0, 40), back: !(at[1] === room && at[2] === v) });
           return;
         }
-        if (m.op === 'card' && m.c && !m.s && !host.owner() && host.isHost(pid)) { if (await renew(room, v, m.c)) emit({ type: 'renewed-mine' }); return; }
+        // A renewal is its own proof: renew() takes only the same card with a later expiry, signed by this room's host key. Who
+        // handed it over does not matter, and the host's presence table may reach a page just let in a moment later.
+        if (m.op === 'card' && m.c && !m.s && !host.owner()) { if (await renew(room, v, m.c)) emit({ type: 'renewed-mine' }); return; }
         if ((!host.owner() || (call && call.priv)) && call && (m.op === 'ringing' || m.op === 'dec' || m.op === 'missed' || m.op === 'here' || m.op === 'acc')) {
           const o = await host.verifyAdm(m.w, 'mr' + m.op);
           if (!o || o.to !== String(host.myId())) return;

@@ -669,6 +669,20 @@
     if (!pw) return aesKey('meet-e2e', base);
     return stretchPw(roomCode, av, pw).then((s) => aesKey('meet-e2e-pw', base + '|' + s));
   }
+  // THE SEAT KEY (docs/meet-security.md §SEAT). The room key above is what a link (and a typed password) derives:
+  // it opens the door. What people say and share in a meeting is sealed under a second key that mixes in the seat
+  // key: 256 random bits minted in the room and handed only to a page the room has seated, over that pair's own
+  // authenticated channel. It is never derived from the link and never sent to a server, so a page that holds the
+  // link but no seat reads door frames and nothing else. The room material stays in the derivation, so a password
+  // change moves this key too. `kid` names a seat key on the wire (a hash prefix: it gives nothing away).
+  const mintSeatKey = () => randHex(32);
+  const seatKeyOk = (hex) => typeof hex === 'string' && /^[0-9a-f]{64}$/.test(hex);
+  function seatKid(hex) { return dsHash('meet-seat-kid', hex).then((h) => h.slice(0, 16)); }
+  function deriveSeatKey(roomCode, av, pw, seatHex) {
+    if (!seatKeyOk(seatHex)) return Promise.resolve(null);
+    const base = roomCode + '|' + (av || '') + cTag();
+    return (pw ? stretchPw(roomCode, av, pw) : Promise.resolve('')).then((s) => aesKey('meet-seat', base + '|' + s + '|' + seatHex));
+  }
   function deriveMeet(roomCode, av, pw) {
     const base = roomCode + '|' + (av || '') + cTag();
     return Promise.all([dsHash('meet-sid', base), dsHash('meet-tok', base), deriveMeetKey(roomCode, av, pw || '')])
@@ -1136,7 +1150,7 @@
     steadySocket, relayTicket, solvePow, proxyFetch, BUSY_TEXT, RECONNECT_CAP_MS, RECONNECT_SLOW_CAP_MS, RECONNECT_HIDDEN_CAP_MS, RECONNECT_JITTER_MIN, RECONNECT_JITTER_MAX,
     FRAG_PART, FRAG_BUDGET, sendChunked, chunk, makeDefrag,
     shortCode, randHex, sha256hex, sha256hexOfBytes, keyId, keyVerifier,
-    deriveMeet, deriveMeetKey, meetPwProof, mintGenesisKey,
+    deriveMeet, deriveMeetKey, meetPwProof, mintGenesisKey, mintSeatKey, seatKeyOk, seatKid, deriveSeatKey,
     edKeysFromSeedHex, edSign, edVerify, edProven,
     seal, open, isSealed, makeChain,
     SCALE, topo,

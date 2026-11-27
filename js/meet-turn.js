@@ -1693,6 +1693,12 @@
       factStaleMs: FACT_STALE_MS,
       holds(pid) { const L = links.get(pid); return !!L && L.state !== 'closed'; },
       isLink(pid) { const L = links.get(pid); return !!L && (L.state === 'up' || L.state === 'dial'); },
+      // The far end of a link of mine, for what a page tells a link end about itself (its name beside a connection's
+      // description, its proof of membership): a link that is up or being dialled, and, at the end that only answers, a
+      // link whose handshake is done (both ends ready: the opener dials on exactly that). The answering end's state stays
+      // 'ask' or 'swap' until its connection is up, so without this its answer to the opener's dial named nobody: the
+      // opener of a warm standby (which carries nothing afterwards) never learned who its far end is.
+      linkEnd(pid) { const L = links.get(pid); return !!L && (L.state === 'up' || L.state === 'dial' || (!L.opener && L.state !== 'closed' && L.readyMe && L.readyFar)); },
       linking() { return (sub.st !== 'idle' && sub.st !== 'found') || Array.from(links.values()).some((L) => L.opener && !L.sb && L.state !== 'up'); },   // a subroom ask or my pipe is on its way
       // THE WAY BACK IS BEING MADE: this page is making, or making again, the connection that joins its room to the rest of the
       // meeting. True while an ask is out (the door list, the Worker's answer, a door being tried), while a pipe this page
