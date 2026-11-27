@@ -6675,7 +6675,10 @@
       const lob = document.getElementById('lobby');
       const toggle = (id) => { const el = document.getElementById(id); el.style.display = el.style.display === 'none' ? '' : 'none'; };
       const selectLob = (which) => {
-        const modes = [['lob-join-btn', 'lob-join'], ['lob-admin-btn', 'lob-admin'], ['lob-open-seg', 'lob-open-panel']];
+        // One menu, two groups: start a meeting (Open, Host, Join: each ends in the one action button), and what is
+        // yours on this device (Rooms, Contacts: lists, painted by js/core/view/myroom.js and js/gifos-identity-ui.js).
+        const modes = [['lob-open-seg', 'lob-open-panel'], ['lob-admin-btn', 'lob-admin'], ['lob-join-btn', 'lob-join'], ['lob-rooms-seg', 'lob-rooms-panel'], ['lob-contacts-seg', 'lob-contacts-panel']];
+        const mine = which === 'lob-rooms-seg' || which === 'lob-contacts-seg';
         for (let i = 0; i < modes.length; i++) {
           const on = modes[i][0] === which;
           const b = document.getElementById(modes[i][0]);
@@ -6685,6 +6688,8 @@
             b.setAttribute('aria-selected', on ? 'true' : 'false');
             if (on) b.setAttribute('aria-describedby', 'lob-seg-note');
             else b.removeAttribute('aria-describedby');
+            // The row scrolls sideways when its words are longer than the screen (other languages, large text): keep the picked tab in view.
+            if (on && b.parentNode && b.parentNode.scrollWidth > b.parentNode.clientWidth) b.parentNode.scrollLeft = Math.max(0, b.offsetLeft - (b.parentNode.clientWidth - b.offsetWidth) / 2);
           }
           if (p) p.style.display = on ? '' : 'none';
         }
@@ -6699,6 +6704,12 @@
           } else if (which === 'lob-open-seg') {
             note.setAttribute('data-t', 'lobStartSub');
             note.textContent = (0, /*()*/__C.uiText)('lobStartSub', 'Majority rules: vote people off the stage or out of the meeting.');
+          } else if (which === 'lob-rooms-seg') {
+            note.setAttribute('data-t', 'lobRoomsSub');
+            note.textContent = (0, /*()*/__C.uiText)('lobRoomsSub', 'Rooms that are yours on this device.');
+          } else if (which === 'lob-contacts-seg') {
+            note.setAttribute('data-t', 'lobContactsSub');
+            note.textContent = (0, /*()*/__C.uiText)('lobContactsSub', 'People you can call. A call rings in your private room with them.');
           }
         }
         const adminErr = document.getElementById('lob-admin-err');
@@ -6706,6 +6717,7 @@
         if (adminErr) adminErr.hidden = which !== 'lob-admin-btn';
         if (joinErr) joinErr.hidden = which !== 'lob-join-btn';
         const goBtn = document.getElementById('lob-go');
+        if (goBtn) goBtn.style.display = mine ? 'none' : '';   // a list has its own buttons
         if (goBtn && !__C.model.consts.BC_INTENT()) {
           if (which === 'lob-join-btn') {
             goBtn.setAttribute('data-t', 'join');
@@ -6741,6 +6753,9 @@
       if (openName) openName.addEventListener('keydown', (e) => { if (e.key === 'Enter') doOpen(); });
       const openSeg = document.getElementById('lob-open-seg');
       if (openSeg) openSeg.onclick = () => { if (!__C.model.consts.BC_INTENT()) selectLob('lob-open-seg'); };
+      for (const id of ['lob-rooms-seg', 'lob-contacts-seg']) { const seg = document.getElementById(id); if (seg) seg.onclick = () => selectLob(id); }
+      // A room row in the Rooms tab opens like a Recent row: through the one way in.
+      { const rp = document.getElementById('lob-rooms-panel'); if (rp) rp.addEventListener('click', (e) => { const item = e.target.closest('[data-url]'); if (item) enterMeeting(item.getAttribute('data-url')); }); }
       const lobCam = document.getElementById('lob-cam');
       if (lobCam) lobCam.onclick = () => {
         if (__C.model.me.joinAv().cam) { setLobbyCam(false); return; }
@@ -6930,7 +6945,7 @@
         const id = sel ? sel.id : '';
         if (id === 'lob-join-btn') doJoin();
         else if (id === 'lob-admin-btn') doHost();
-        else doOpen();
+        else if (id === 'lob-open-seg') doOpen();
       };
       document.getElementById('lob-join-in').addEventListener('keydown', (e) => { if (e.key === 'Enter') doJoin(); });
       document.getElementById('lob-join-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') doJoin(); });
@@ -6980,6 +6995,7 @@
         if (openPanel) openPanel.style.display = 'none';
         const openSegEl = document.getElementById('lob-open-seg');
         if (openSegEl) openSegEl.style.display = 'none';
+        for (const id of ['lob-seg-gap', 'lob-rooms-seg', 'lob-contacts-seg', 'lob-rooms-panel', 'lob-contacts-panel']) { const el = document.getElementById(id); if (el) el.style.display = 'none'; }
         const welcome = document.getElementById('lob-welcome');
         if (welcome) welcome.style.display = 'none';
         const segNote = document.getElementById('lob-seg-note');

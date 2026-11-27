@@ -73,23 +73,11 @@
     return { name, pic: id && id.avatar && id.avatar.url ? id.avatar.url : '' };
   }
   const myFace = (cls) => { const m = me(); return m.pic ? '<span class="hv-av pic ' + (cls || '') + '" aria-hidden="true"><img src="' + esc(m.pic) + '" alt=""></span>' : face(m.name || 'Me', cls); };
+  // People, my room and the hosted rooms: the one model the Meeting lobby and the Rooms app read (js/rooms-model.js).
   function people() {
-    const M = MR(); if (!M) return { mine: null, list: [], missed: [], hosted: [] };
-    const rk = (x) => M.roomKey(x.room, x.v);
-    const privs = M.privates(), mine = M.mine();
-    const ours = privs.filter((x) => x.pubs.length === 1 && x.me);
-    const via = new Set(); ours.forEach((p) => { const c = M.cardIn(p); if (c) via.add(rk(c)); });
-    const list = ours.map((p) => ({ kind: 'p', name: p.name || 'Contact', room: p.room, v: p.v, last: p.last || p.at || 0, ok: true }));
-    M.contacts().filter((c) => !via.has(rk(c))).forEach((c) => list.push({ kind: 'c', name: c.name || 'Contact', room: c.room, v: c.v, last: c.at || 0, ok: !!c.bound }));
-    list.sort((a, b) => b.last - a.last);
-    const missed = M.missed().slice().sort((a, b) => (b.at || 0) - (a.at || 0)).map((x) => {
-      const n = String(x.label || '').replace(/\s*(✓|\(card\))\s*$/, '');
-      const pr = M.privFor(x.room, x.v);
-      const who = list.find((p) => (pr && p.kind === 'p' && rk(p) === rk(pr)) || p.name === n) || null;
-      return { name: n || 'Someone', at: x.at, who };
-    });
-    const taken = new Set(privs.map(rk)); if (mine) taken.add(rk(mine));
-    return { mine, list, missed, hosted: M.hosted().filter((h) => !taken.has(rk(h))), privKeys: new Set(privs.map((p) => p.room)) };
+    const M = MR(), RM = GifOS.roomsModel; if (!M || !RM) return { mine: null, list: [], missed: [], hosted: [] };
+    const m = RM.read(), list = RM.people(m);
+    return { mine: m.mine, list, missed: RM.missed(m, list), hosted: m.hosted, privKeys: new Set(M.privates().map((p) => p.room)) };
   }
   // Rooms and broadcasts this device has been in: the meeting page's own lists (saved ones first).
   function visited(kind, ppl) {
@@ -149,16 +137,9 @@
     myRoom() { const m = people().mine; if (m) A.room(m.room, m.v); else A.rooms(); },
     // Call: the same hand-off the Rooms app makes. A private room is entered with mic and camera off until it is answered.
     call(p) {
-      const M = MR(); if (!M || !p) return;
-      const ss = root.sessionStorage;
-      if (p.kind === 'p') {
-        try { ss.setItem('gifos_join_av', JSON.stringify({ v: 1, cam: false, mic: false, at: Date.now() })); ss.setItem('gifos_mr_mic', p.room + '.' + p.v); } catch (e) {}
-      } else {
-        const c = M.contactFor(p.room, p.v), pr = c && M.pairWith(M.contactPub(c));
-        if (pr) lsSet('gifos_mr_invite.' + M.roomKey(p.room, p.v), JSON.stringify({ to: pr.room + '.' + pr.v, go: 1, pv: 1, at: Date.now() }));
-      }
-      A.room(p.room, p.v);   // the new tab starts with a copy of this tab's hand-off notes
-      try { ss.removeItem('gifos_join_av'); ss.removeItem('gifos_mr_mic'); } catch (e) {}
+      const to = GifOS.roomsModel && GifOS.roomsModel.ring(p); if (!to) return;
+      A.room(to.room, to.v);   // the new tab starts with a copy of this tab's hand-off notes
+      try { root.sessionStorage.removeItem('gifos_join_av'); root.sessionStorage.removeItem('gifos_mr_mic'); } catch (e) {}
     },
     me() { if (GifOS.identityUI) GifOS.identityUI.manage(); },
     settings() { const H = hook(); if (H) H.settings(); },
@@ -399,6 +380,7 @@
     roomsReady = (async () => {
       if (!GifOS.net) await loadScript('js/gifos-net.js');
       if (!GifOS.meetMyRoom) await loadScript('js/meet-myroom.js');
+      if (!GifOS.roomsModel) await loadScript('js/rooms-model.js');
     })();
     return roomsReady;
   }

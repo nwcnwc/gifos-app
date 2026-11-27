@@ -3,7 +3,7 @@
 :root {
   /* Design tokens for the meeting page. Colours, radii and motion come from here; a new literal in the meeting CSS is a review flag. */
   --c-white: #fff; --c-black: #000; --c-ink: #1d1d1f; --c-ink-2: #3a3a3f; --c-gray: #8d93a0; --c-line: #e8ecf1; --c-paper: #f4f7fb;
-  --c-blue: #0064c8; --c-red: #b61622; --c-yellow: #ffd23c; --c-night: #0c0e12; --c-scrim: rgba(12,14,18,.92);
+  --c-blue: #0064c8; --c-teal: #0b7a6b; --c-red: #b61622; --c-yellow: #ffd23c; --c-night: #0c0e12; --c-scrim: rgba(12,14,18,.92);
   --r-sm: 10px; --r-md: 12px; --r-lg: 16px; --r-pill: 999px;
   --t-fast: .2s; --t-slow: .8s;
 }

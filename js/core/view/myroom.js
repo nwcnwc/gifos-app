@@ -3,7 +3,7 @@
  *
  * Paints what the My Room part (js/meet-myroom.js, GifOS.meetMyRoom.live, built by the core per meeting) says, and turns
  * a person's taps into its intents. It decides no rule: who may ring, what rings and when a ring is missed are the
- * part's. The lobby shows one link to the Rooms app (rooms.html: My personal room, our private rooms, missed calls).
+ * part's. In the lobby it paints the Rooms and Contacts tabs; the Rooms app (rooms.html) keeps making, cards and ringing.
  *
  *   owner   a ring sheet with a ringtone (Answer: mic on, camera off; Decline), the standby line, missed calls, and
  *           "Give a card" for the people in the meeting
@@ -351,18 +351,60 @@
     const s = doc.createElement('script'); s.src = 'js/vendor/qrcode.js'; s.onload = draw; doc.head.appendChild(s);
   }
 
-  // ---- the lobby: one small link to the Rooms app (rooms.html, Rooms.gif), where My personal room, our private rooms,
-  // missed calls, the hosted rooms and ringing (stand-by, the Doorbell) are kept (Nathan 11-26). Missed calls show as a
-  // count on the link; a notice from a private room left (a stranger there) still shows here, where that page lands.
+  // ---- the lobby: the Rooms and Contacts tabs of its one menu (Open / Host / Join | Rooms / Contacts, Nathan 11-27).
+  // Both read the one model the Rooms app and the Home views read (js/rooms-model.js). Rooms: my personal room, group
+  // private rooms and the rooms this device hosts. Contacts: people, with Call; a missed call marks its person and counts
+  // on the tab. Making, cards, ringing and removing stay in the Rooms app (rooms.html), one link away. A notice from a
+  // private room left (a stranger there) shows above the menu, where that page lands.
   const roomsUrl = () => root.location.pathname.replace(/[^\/]*$/, '') + 'rooms' + (/\.html$/.test(root.location.pathname) ? '.html' : '');
+  const LOB_MAX = 5;   // rows a tab shows before "All in Rooms"
+  const tx = (k, fb) => { try { const g = GifOS.i18n, v = g && g.t('meet.' + k); if (v && v !== 'meet.' + k) return v; } catch (e) {} return fb; };
+  const initials = (n) => (String(n || '?').replace(/[^\p{L}\p{N}\s]/gu, '').trim().split(/\s+/).map((w) => w[0] || '').join('').slice(0, 2) || '?').toUpperCase();
+  const hue = (n) => { let h = 0; for (const ch of String(n || '')) h = (h * 31 + ch.charCodeAt(0)) % 360; return h; };
+  const lobRow = (av, name, sub, btn) => '<div class="lm-row"><span class="lm-av" aria-hidden="true"' + (av.h == null ? '' : ' style="--h:' + av.h + '"') + '>' + esc(av.t) + '</span>' +
+    '<span class="lm-main"><b class="lm-name">' + name + '</b><span class="lm-sub">' + sub + '</span></span>' + btn + '</div>';
+  let lobPeople = [], modelAsked = false;
   function paintLobby() {
-    const box = $('lob-myroom'); if (!box || !MR()) return;
-    const missed = MR().missed().length;
-    let h = '';
+    const box = $('lob-myroom'), ppl = $('lob-people'), RM = GifOS.roomsModel; if (!box || !ppl || !MR()) return;
+    // The model is the lobby's only: a page that opens straight into a meeting never loads it.
+    if (!RM) { if (!modelAsked) { modelAsked = true; const s = doc.createElement('script'); s.src = 'js/rooms-model.js'; s.onload = paintLobby; doc.head.appendChild(s); } return; }
+    const m = RM.read(), list = RM.people(m), missed = RM.missed(m, list);
+    const url = (x) => esc(roomUrl(x.room, x.v)), all = esc(roomsUrl());
+    const open = (x, id) => '<button type="button" class="lm-go"' + (id ? ' id="' + id + '"' : '') + ' data-url="' + url(x) + '">' + esc(tx('lobOpenGo', 'Open')) + '</button>';
+
     let note = ''; try { note = root.sessionStorage.getItem('gifos_mr_notice') || ''; root.sessionStorage.removeItem('gifos_mr_notice'); } catch (e) {}
-    if (note) h += '<div class="mr-missed" id="mr-notice">' + esc(note) + '</div>';
-    h += '<a class="lob-text mr-rooms-link" id="mr-rooms" href="' + esc(roomsUrl()) + '">Rooms' + (missed ? ' · ' + missed + ' missed' : '') + '</a>';
-    box.innerHTML = h; box.hidden = false;
+    const nb = $('lob-notice'); if (nb && note) { nb.innerHTML = '<div class="mr-missed" id="mr-notice">' + esc(note) + '</div>'; nb.hidden = false; }
+
+    // Rooms
+    let h = m.mine
+      ? lobRow({ t: '⌂' }, esc(tx('lobMyRoom', 'My personal room')), esc(m.mine.room), open(m.mine, 'mr-mine-open'))
+      : lobRow({ t: '⌂' }, esc(tx('lobMyRoom', 'My personal room')), esc(tx('lobMyRoomNone', 'Your own address, if you choose to share it.')), '<a class="lm-go" id="mr-mine-make" href="' + all + '">' + esc(tx('lobMyRoomMake', 'Make it')) + '</a>');
+    const places = m.loose.map((p) => ({ x: p, name: p.name || (p.pubs.length > 1 ? 'Private room, ' + (p.pubs.length + 1) + ' people' : 'Our private room'), sub: p.pubs.length > 1 ? 'Private room, ' + (p.pubs.length + 1) + ' people' : 'Our private room' }))
+      .concat(m.hosted.map((x) => ({ x, name: x.room, sub: tx('lobHostedSub', 'You host this room') })));
+    for (const r of places.slice(0, LOB_MAX)) h += lobRow({ t: initials(r.name), h: hue(r.name) }, esc(r.name), esc(r.sub), open(r.x));
+    h += '<a class="lm-all" id="mr-rooms" href="' + all + '">' + esc(places.length > LOB_MAX ? tx('lobRoomsAllN', 'All {n} rooms, cards and ringing').replace('{n}', places.length + (m.mine ? 1 : 0)) : tx('lobRoomsAll', 'All rooms, cards and ringing')) + '</a>';
+    if (box.getAttribute('data-h') !== h) { box.setAttribute('data-h', h); box.innerHTML = h; }
+
+    // Contacts
+    const rang = new Set(missed.map((x) => x.who).filter(Boolean));
+    lobPeople = list.filter((p) => rang.has(p)).concat(list.filter((p) => !rang.has(p))).slice(0, LOB_MAX);   // who rang comes first
+    const lost = missed.filter((x) => !x.who).length;
+    let c = '';
+    lobPeople.forEach((p, i) => {
+      const mis = missed.find((x) => x.who === p);
+      c += lobRow({ t: initials(p.name), h: hue(p.name) }, esc(p.name) + (p.ok ? ' <i class="lm-ok" title="Swapped in person">✓</i>' : ''),
+        (mis ? '<span class="lm-missed">' + esc(tx('lobMissedAt', 'Missed call')) + ' ' + esc(timeOf(mis.at)) + '</span>' : esc(p.kind === 'p' || p.pair ? tx('lobOurRoom', 'Our private room') : tx('lobCardRoom', 'A card to their room'))),
+        '<button type="button" class="lm-go" data-call="' + i + '">' + esc(mis ? tx('lobCallBack', 'Call back') : tx('lobCall', 'Call')) + '</button>');
+    });
+    if (!list.length) c += '<p class="lob-quiet lm-empty" id="mr-people-empty">' + esc(tx('lobNoPeople', 'No contacts yet. Swap cards with someone in a meeting, and you can call each other from here.')) + '</p>';
+    if (lost) c += '<a class="lm-line" id="mr-missed-more" href="' + all + '">' + esc((lost === 1 ? tx('lobMissedOne', '1 missed call from someone else') : tx('lobMissedMore', '{n} missed calls from other people').replace('{n}', lost))) + '</a>';
+    c += '<a class="lm-all" id="mr-people-all" href="' + all + '">' + esc(list.length > LOB_MAX ? tx('lobPeopleAllN', 'All {n} contacts').replace('{n}', list.length) : tx('lobPeopleAdd', 'Add someone')) + '</a>';
+    if (ppl.getAttribute('data-h') !== c) {
+      ppl.setAttribute('data-h', c); ppl.innerHTML = c;
+      ppl.querySelectorAll('[data-call]').forEach((b) => { b.onclick = () => { const to = RM.ring(lobPeople[+b.getAttribute('data-call')]); if (to) openRoom(to.room, to.v); }; });
+    }
+    const badge = $('lob-contacts-badge');
+    if (badge) { badge.hidden = !missed.length; badge.setAttribute('aria-label', missed.length ? missed.length + ' missed' : ''); }   // a dot on the tab; the calls are listed inside
   }
 
   function wire() {
@@ -487,9 +529,6 @@
     if ($('mr-bar')) return;
     const box = doc.createElement('div'); box.innerHTML = MARKUP;
     while (box.firstChild) doc.body.appendChild(box.firstChild);
-    // the lobby's section sits above Recent
-    const sep = doc.querySelector('#lobby .lob-sep');
-    if (sep && !$('lob-myroom')) { const d = doc.createElement('div'); d.id = 'lob-myroom'; d.className = 'lob-myroom'; d.hidden = true; sep.parentNode.insertBefore(d, sep); }
   }
   function start() {
     try { if (root.frameElement && root.frameElement.getAttribute('data-mr-listen') === '1') return; } catch (e) {}   // a hidden door: no view

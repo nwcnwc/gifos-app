@@ -114,14 +114,45 @@ html body .bar > #leavebtn .docklab { color: #ff5c5c; }
 #lobby .lobby-card h1 { font-size: 1rem; font-weight: 650; margin: 0 0 0.35rem; letter-spacing: 0; }
 #lobby .lob-quiet, #lobby .lob-empty, #lobby .lob-watch-note { font-size: var(--lob-help-size); font-weight: var(--lob-help-weight); color: var(--c-ink-2); }
 #lobby .lob-tabs { border: 1px solid var(--c-line); border-radius: 12px; background: var(--c-white); margin: 0 0 1rem; overflow: hidden; }
-#lobby .lob-segs { display: flex; width: 100%; margin: 0; background: var(--c-paper); border: 0; border-radius: 0; border-bottom: 1px solid var(--c-line); overflow: visible; }
-#lobby .lob-segs .seg { flex: 1 1 0; min-width: 0; min-height: 48px; white-space: normal; text-align: center; line-height: 1.2; padding: 0.7rem 0.4rem; margin: 0; background: transparent; color: var(--c-ink); border: 0; border-radius: 0; box-shadow: none; text-decoration: none; font-size: var(--lob-tab-size); font-weight: var(--lob-tab-weight); }
+/* One row, always: a tab is as wide as its word and they share what is left; longer words (other languages, large text) scroll sideways. */
+#lobby .lob-segs { display: flex; flex-wrap: nowrap; width: 100%; margin: 0; background: var(--c-paper); border: 0; border-radius: 0; border-bottom: 1px solid var(--c-line); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; }
+#lobby .lob-segs::-webkit-scrollbar { display: none; }
+@media (max-width: 430px) { #lobby { --lob-tab-size: 1rem; } }   /* a phone: five words in one row from 360 px up */
+#lobby .lob-segs .seg { position: relative; flex: 1 0 auto; min-width: 44px; min-height: 48px; white-space: nowrap; text-align: center; line-height: 1.2; padding: 0.7rem 0.35rem; margin: 0; background: transparent; color: var(--c-ink); border: 0; border-radius: 0; box-shadow: none; text-decoration: none; font-size: var(--lob-tab-size); font-weight: var(--lob-tab-weight); }
 #lobby .lob-segs .seg span { display: block; font-size: inherit; font-weight: inherit; letter-spacing: 0; text-transform: none; }
 #lobby .lob-segs .seg.sel { background: transparent; color: var(--c-blue); box-shadow: inset 0 -3px 0 var(--c-blue); }
 @media (hover: hover) and (pointer: fine) {
   #lobby .lob-segs .seg:hover { background: transparent; color: var(--c-ink); }
   #lobby .lob-segs .seg.sel:hover { background: transparent; color: var(--c-blue); }
+  #lobby .lob-segs .seg.seg-mine:hover, #lobby .lob-segs .seg.seg-mine.sel:hover { background: color-mix(in srgb, var(--c-teal) 9%, var(--c-paper)); color: var(--c-teal); }
 }
+/* The second group, after a divider: Rooms and Contacts are what is yours, not a way to start. Its own colour says so. */
+#lobby .lob-segs .lob-seg-gap { flex: 0 0 1px; align-self: stretch; margin: 0; background: var(--c-gray); opacity: .55; }
+#lobby .lob-segs .seg.seg-mine { background: color-mix(in srgb, var(--c-teal) 9%, var(--c-paper)); color: var(--c-teal); }
+#lobby .lob-segs .seg.seg-mine.sel { background: color-mix(in srgb, var(--c-teal) 9%, var(--c-paper)); color: var(--c-teal); box-shadow: inset 0 -3px 0 var(--c-teal); }
+/* A dot, not a number: it sits above the word's last letter and never widens the row. Red: a missed call. Teal: a note inside. */
+#lobby .lob-segs .seg .seg-badge { position: absolute; z-index: 1; top: 7px; right: 4px; width: 9px; height: 9px; border-radius: 50%; background: var(--c-red); }
+#lobby .lob-segs .seg .seg-badge[hidden] { display: none; }
+#lobby .lob-segs .seg.has-note::after { content: ''; position: absolute; top: 7px; right: 4px; width: 9px; height: 9px; border-radius: 50%; background: var(--c-teal); }
+/* What the Rooms and Contacts tabs list: one row per room or person, its one action at the end. */
+#lobby .lob-notice { margin: 0 0 0.75rem; text-align: left; }
+#lobby .lob-notice[hidden] { display: none; }
+#lobby .lob-mine { text-align: left; }
+#lobby .lob-mine .lob-myroom { margin-top: 0; gap: 2px; }
+#lobby .lob-mine .lob-identity { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--c-line); gap: 8px; }
+#lobby .lob-mine .lob-identity .lob-quiet { text-align: left; }
+#lobby .lm-row { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 4px 0; }
+#lobby .lm-av { flex: none; width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: hsl(var(--h, 170) 42% 88%); color: var(--c-ink); font-size: 0.875rem; font-weight: 700; }
+#lobby .lm-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+#lobby .lm-name { font-size: 1rem; font-weight: 650; color: var(--c-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#lobby .lm-ok { font-style: normal; color: var(--c-teal); }
+#lobby .lm-sub { font-size: var(--lob-help-size); font-weight: var(--lob-help-weight); color: var(--c-ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#lobby .lm-missed { color: var(--c-red); font-weight: 650; }
+#lobby .lm-go { flex: none; display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 72px; padding: 0 14px; margin: 0; background: var(--c-white); color: var(--c-teal); border: 1.5px solid var(--c-teal); border-radius: var(--r-pill); font-size: 1rem; font-weight: 650; text-decoration: none; white-space: nowrap; cursor: pointer; }
+#lobby .lm-all, #lobby .lm-line { display: flex; align-items: center; justify-content: center; min-height: 44px; margin-top: 6px; color: var(--c-teal); font-size: var(--lob-label-size); font-weight: var(--lob-label-weight); text-decoration: underline; }
+#lobby .lm-all { border-top: 1px solid var(--c-line); }
+#lobby .lm-line { justify-content: flex-start; margin-top: 0; color: var(--c-red); }
+#lobby .lm-empty { margin: 4px 0; text-align: left; }
 #lobby .lob-tabpanel { background: var(--c-white); padding: 0.75rem 0.75rem 0.85rem; }
 #lobby .lob-tabpanel .lob-expand { border: 0; background: transparent; padding: 0; margin: 0; border-radius: 0; box-shadow: none; }
 #lobby .lob-seg-note { margin: 0 0 0.75rem; color: var(--c-ink-2); font-size: var(--lob-help-size); font-weight: var(--lob-help-weight); line-height: 1.35; text-align: left; }
