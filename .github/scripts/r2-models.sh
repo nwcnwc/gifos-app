@@ -3,7 +3,8 @@
 # r2-models.sh: GifOS's own copy of the public model files the site fetches
 # (the Offline Captions / Whisper encoder and decoder, tiny and base, the
 # on-device captions engine and models phones run, js/ondevice/models.json, and
-# the camera background-effects runtime and model, js/bgfx/models.json), on
+# the camera background-effects runtime and model, js/bgfx/models.json, and the
+# on-device explicit-picture check, js/safeguard/models.json), on
 # Cloudflare R2 behind the gifos.app edge cache, so a page that picks Whisper
 # never contacts an outside site. The deploy workflow runs it before the site
 # goes up: --check, --apply, then --verify, and the deploy stops if --verify
@@ -111,6 +112,14 @@ if [ -f "$BGFX_LIST" ]; then
   MODELS="$MODELS
 $(python3 -I -c 'import json,sys; d=json.load(open(sys.argv[1]))
 for f in (d["wasm"], d["model"]): print(f["key"], f["sha256"], f["bytes"], f["src"])' "$BGFX_LIST")"
+fi
+# The on-device explicit-picture check (js/safeguard/models.json): its runtime and model, each downloaded
+# straight from its pinned upstream URL and checked like the rest.
+SAFEGUARD_LIST="$APP/js/safeguard/models.json"
+if [ -f "$SAFEGUARD_LIST" ]; then
+  MODELS="$MODELS
+$(python3 -I -c 'import json,sys; d=json.load(open(sys.argv[1]))
+for f in d["files"].values(): print(f["key"], f["sha256"], f["bytes"], f["src"])' "$SAFEGUARD_LIST")"
 fi
 while read -r key sha _bytes src; do
   case "$key" in */"$sha"/*) ;; *) die "key $key does not hold its sha256" ;; esac
