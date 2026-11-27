@@ -11329,7 +11329,8 @@
         // on is in no host's view at that moment: it gets no Admit, so nobody hands it the room's key, it mints one of
         // its own, cannot read the host's table, and its own door holds nobody. The host it asks for the key puts it on
         // the waiting list, and the host's Admit hands it the room's key like anyone's.
-        try { if (p && p.id && dc && p.dc === dc && dc.__authBy === p.id && seatCur && amAdmin && hasAdminRoom() && meshCoord() && !pwShut(p.id) && meetWait.blocks(p.id) && !(myRoomPart && myRoomPart.quiet(p.id))) meetWait.note(p.id, rosterNames[p.id] || p.name || 'Someone waiting'); } catch (e) {}
+        // (A page the list already shows keeps its row as it is: a knocker asks for the key too, and its row may carry a card's label.)
+        try { if (p && p.id && dc && p.dc === dc && dc.__authBy === p.id && seatCur && amAdmin && hasAdminRoom() && meshCoord() && !pwShut(p.id) && meetWait.blocks(p.id) && !waitQueue.has(p.id) && !(myRoomPart && myRoomPart.quiet(p.id))) meetWait.note(p.id, rosterNames[p.id] || p.name || 'Someone waiting'); } catch (e) {}
         return;
       }
       dc.__skGiven = '';
