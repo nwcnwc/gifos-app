@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<base href="/versions/0.9.28.62/">
+<meta charset="UTF-8">
+<!-- FRAME GUARD: the same parser-blocking guard every GifOS page carries. -->
+<script id="gifos-frame-guard">(function(){try{if(window.top===window.self)return;var ok=false;try{ok=window.top.location.origin===window.location.origin}catch(e){}if(ok)return;var h=document.documentElement;h.style.visibility='hidden';function show(){var b=document.body;if(!b)return;while(b.firstChild)b.removeChild(b.firstChild);var p=document.createElement('p');p.style.cssText='font:16px system-ui,sans-serif;padding:24px;color:#eee;background:#111;margin:0';p.appendChild(document.createTextNode('GifOS does not run inside another site\'s page. '));var a=document.createElement('a');a.href=location.href;a.target='_blank';a.rel='noopener';a.textContent='Open it in its own tab';a.style.color='#9db4ff';p.appendChild(a);b.appendChild(p);h.style.visibility='';}if(document.body)show();else document.addEventListener('DOMContentLoaded',show);}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex">
+<title>Receipt — GifOS</title>
+<link rel="icon" href="icon.svg">
+<script>
+  // THE RECEIPT VIEW (js/receipt-view.js): a receipt GIF from the Home
+  // Screen's Purchases folder opens here, never as an app. Bind to the right
+  // computer BEFORE the store loads, exactly as run.html does for an app.
+  (function () {
+    var db = new URLSearchParams(location.hash.slice(1)).get('db');
+    if (db && /^gifos_vm_[\w-]+$/.test(db)) window.GIFOS_DB_NAME = db;
+  })();
+</script>
+<style>
+  :root { --c-white: #fff; --c-black: #000; --c-gray: #8d93a0; --c-label: #dfe0e4; --c-ok: #7ddb91; --c-bad: #ff8a8a; --c-night: #0c0e12; --r-md: 12px; --s-2: 8px; --s-3: 16px; --s-4: 24px; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--c-black); }
+  body { font: 15px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; color: var(--c-white); min-height: 100vh; }
+  main { max-width: 34rem; margin: 0 auto; padding: var(--s-4) var(--s-3) 64px; }
+  h1 { font-size: 1.15rem; font-weight: 600; margin-bottom: 4px; }
+  .sub { color: var(--c-label); margin-bottom: var(--s-3); }
+  .slip { background: var(--c-night); border-radius: var(--r-md); padding: 12px var(--s-3); }
+  .row { display: flex; justify-content: space-between; gap: var(--s-3); padding: 6px 0; border-bottom: 1px solid #1c1f26; }
+  .row:last-child { border-bottom: 0; }
+  .row span { color: var(--c-gray); }
+  .row b { text-align: right; word-break: break-all; font-weight: 600; }
+  .seal { margin: var(--s-3) 0 0; font-size: 14px; }
+  .seal.ok { color: var(--c-ok); } .seal.bad { color: var(--c-bad); }
+  .note { color: var(--c-gray); font-size: 13px; margin-top: var(--s-2); }
+  a { color: var(--c-label); }
+  a.tx-link { color: #9db4ff; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+</style>
+</head>
+<body>
+<main id="rv" aria-live="polite"><h1 id="rv-title">Receipt</h1><p class="sub" id="rv-sub">Reading the receipt…</p></main>
+<script src="js/timings.js"></script>
+<script src="js/gifos-i18n.js"></script>
+<script src="js/gifos-gif.js"></script>
+<script src="js/gifos-ed.js"></script>
+<script src="js/gifos-sign.js"></script>
+<script src="js/gifos-base-net.js"></script>
+<script src="js/gifos-store.js"></script>
+<script src="js/gifos-purse.js"></script>
+<script src="js/gifos-charge.js"></script>
+<script src="js/gifos-pay-broker.js"></script>
+<script src="js/gifos-sub.js"></script>
+<script src="js/receipt-plan.js"></script>
+<script src="js/receipt-view.js"></script>
+</body>
+</html>
