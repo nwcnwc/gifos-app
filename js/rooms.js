@@ -84,7 +84,9 @@
   // Who a missed call was from, to call back: the private room it rang in, else the person by name.
   function missedWho(m, x) {
     const M = MR(), k = M.roomKey(x.room, x.v), n = bareName(x.label);
-    const o = m.ours.find((y) => M.roomKey(y.p.room, y.p.v) === k) || m.ours.find((y) => y.p.name === n);
+    const pr = M.privFor(x.room, x.v);   // it rang in one of our private rooms (a door or the Doorbell)
+    if (pr) return 'p:' + pk(pr);
+    const o = m.ours.find((y) => y.p.name === n);
     if (o) return 'p:' + pk(o.p);
     const c = m.cards.find((y) => y.c.name === n);
     return c ? 'c:' + pk(c.c) : '';
