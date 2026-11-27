@@ -2,6 +2,15 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.46",
+      "date": "2026-11-26",
+      "headline": "More room for apps on small phones",
+      "features": [],
+      "fixes": [
+        "On a short phone (or a phone on its side) an app or the agenda gets the room it needs, and the faces take what is left."
+      ]
+    },
+    {
       "version": "0.9.28.45",
       "date": "2026-11-26",
       "headline": "Readable shared screens on phones, and an easier Survey",
