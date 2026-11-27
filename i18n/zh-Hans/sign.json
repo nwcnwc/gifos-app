@@ -2,7 +2,7 @@
   "sign.title": "签名 GIF — GifOS",
   "sign.heading": "签名 GIF 🛡️",
   "sign.lead": "证明这个应用 GIF 是你做的。签名会把这些确切的应用字节绑定到你的<b>域名</b>或<b>邮箱</b>，这样任何人打开时，GifOS 都会显示<b>“由你签名”</b>。一切都在你的浏览器中完成——无需上传，无需账号。应用保存的<i>数据</i>不属于签名内容，所以在大家使用应用的过程中签名依然有效。",
-  "sign.drop.prompt": "将你的 <b>.gif</b> 拖到这里，或点击选择文件",
+  "sign.drop.prompt": "将你的 <b>GIF</b> 拖到这里，或点击选择文件",
   "sign.drop.loaded": "{name} 已载入 — 请在下方签名",
   "sign.tab.domain": "用域名签名",
   "sign.tab.email": "用邮箱签名（PGP）",

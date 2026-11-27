@@ -13,6 +13,8 @@
 (function (root) {
   const GifOS = root.GifOS;
   const store = GifOS.store, gif = GifOS.gif;
+  // People never see ".gif": it stays in the stored name (the OS needs it on download) but is hidden in every label.
+  const dispName = (n) => String(n == null ? '' : n).replace(/\.gif$/i, '');
   const surface = document.getElementById('desktop');
   const crumbs = document.getElementById('crumbs');
   // Words on the Home Screen come from the desktop catalog (i18n/<locale>/desktop.json), loaded before the first paint.
@@ -1348,7 +1350,7 @@
   }
   function buildUpHole() {
     const upTo = upTarget();
-    const parentName = upTo ? (items.find((i) => i.id === upTo) || {}).name || '…' : 'Home Screen';
+    const parentName = upTo ? dispName((items.find((i) => i.id === upTo) || {}).name) || '…' : 'Home Screen';
     const el = document.createElement('div');
     el.className = 'icon uphole';
     el.dataset.id = '__up__';
@@ -1496,7 +1498,7 @@
     } else if (it.kind === 'folder') {
       // folders are GIFs too — the icon IS the folder's own animated GIF
       if (art) {
-        thumb.appendChild(thumbImg(it.fileId, art, it.name));
+        thumb.appendChild(thumbImg(it.fileId, art, dispName(it.name)));
         signableFiles.add(it.fileId);
         addSigBadge(thumb, it);
       } else {
@@ -1511,7 +1513,7 @@
         try { receiptThumb(thumb); } catch (e) { thumb.textContent = 'GifOS'; thumb.style.fontSize = '12px'; }
         thumb.title = dt('desktop.badge.receiptTip');
       } else if (file && file.kind === 'gif') {
-        if (art) thumb.appendChild(thumbImg(it.fileId, art, it.name));
+        if (art) thumb.appendChild(thumbImg(it.fileId, art, dispName(it.name)));
         else thumb.textContent = FILE_EMOJI.gif;   // until its ornament is cut
         signableFiles.add(it.fileId); // it's a GIF — signing/verifying applies
         addSigBadge(thumb, it); // shield, once decorate() has learned there is one
@@ -1544,7 +1546,7 @@
           // NAMEPLATE: it used to float over the top border of the animation,
           // on top of the picture; it now goes in the LABEL slot, in place of
           // the filename (see below).
-          plate = buildNameplate(meta, it.name);
+          plate = buildNameplate(meta, dispName(it.name));
         }
         // Provider app outside the Providers folder: big red ✕ over the tile.
         // The GIF is intact and shareable — the ✕ means "inert here": the OS
@@ -1578,7 +1580,7 @@
     const label = document.createElement('div');
     label.className = 'label' + (plate ? ' plated' : '');
     if (plate) label.appendChild(plate);
-    else label.textContent = it.name;
+    else label.textContent = dispName(it.name);
 
     el.appendChild(thumb);
     el.appendChild(label);
@@ -1698,7 +1700,7 @@
   function updateCrumbs() {
     if (!currentFolder) { crumbs.textContent = dt('desktop.crumbs.home'); return; }
     const folder = items.find((i) => i.id === currentFolder);
-    crumbs.innerHTML = '<a id="crumb-root">' + escapeHtml(dt('desktop.crumbs.home')) + '</a> › ' + (folder ? escapeHtml(folder.name) : '…');
+    crumbs.innerHTML = '<a id="crumb-root">' + escapeHtml(dt('desktop.crumbs.home')) + '</a> › ' + (folder ? escapeHtml(dispName(folder.name)) : '…');
     const rootLink = document.getElementById('crumb-root');
     if (rootLink) rootLink.onclick = () => navTo(null);
   }
@@ -1922,10 +1924,10 @@
   function placeName(parentId) {
     if (!parentId) return dt('desktop.place.home');
     const f = items.find((i) => i.id === parentId);
-    return f ? f.name : dt('desktop.place.folder');
+    return f ? dispName(f.name) : dt('desktop.place.folder');
   }
   function offerUndoMove(before, toParent) {
-    showUndoToast(dt('desktop.toast.moved', { name: escapeHtml((items.find((i) => i.id === before.id) || {}).name || ''), place: escapeHtml(placeName(toParent)) }), async () => {
+    showUndoToast(dt('desktop.toast.moved', { name: escapeHtml(dispName((items.find((i) => i.id === before.id) || {}).name)), place: escapeHtml(placeName(toParent)) }), async () => {
       const it = items.find((i) => i.id === before.id);
       if (!it) return;
       // Back to the exact cell it came from — or, if something has taken that
@@ -2112,7 +2114,7 @@
         if (archive && m && m.type === 'desktop' && archive.files['desktop.json']) {
           bail(); // this path is a modal (a fresh gesture), not the reserved tab
           showConfirm(dt('desktop.computer.title'),
-            dt('desktop.computer.body', { name: escapeHtml(it.name) }),
+            dt('desktop.computer.body', { name: escapeHtml(dispName(it.name)) }),
             [
               { label: dt('desktop.computer.boot'), fn: () => root.open('boot.html#id=' + encodeURIComponent(it.fileId) + nsParam('&from='), '_blank') },
               { label: dt('desktop.computer.replace'), danger: true, fn: () => restoreDesktop(archive) },
@@ -2170,7 +2172,7 @@
       if (archive && m.type === 'desktop' && archive.files['desktop.json']) {
         await new Promise((done) => {
           showConfirm(dt('desktop.backupFound.title'),
-            dt('desktop.backupFound.body', { name: escapeHtml(f.name) }),
+            dt('desktop.backupFound.body', { name: escapeHtml(dispName(f.name)) }),
             [
               { label: dt('desktop.backupFound.restore'), danger: true, fn: async () => { await restoreDesktop(archive); done(); } },
               { label: dt('desktop.backupFound.addFile'), fn: async () => { await addFileIcon(f.name, buf, archive, m, baseX + i * 20, baseY + i * 20); done(); } },
@@ -2565,7 +2567,7 @@
     const doomed = [it, ...descendantsOf(it.id)];
     const freed = await freedBytesLine(doomed);
     showConfirm(dt('desktop.trash.deleteTitle'),
-      (doomed.length > 1 ? dt('desktop.trash.deleteBodyMore', { name: escapeHtml(it.name), n: doomed.length - 1 }) : dt('desktop.trash.deleteBody', { name: escapeHtml(it.name) })) + freed,
+      (doomed.length > 1 ? dt('desktop.trash.deleteBodyMore', { name: escapeHtml(dispName(it.name)), n: doomed.length - 1 }) : dt('desktop.trash.deleteBody', { name: escapeHtml(dispName(it.name)) })) + freed,
       [{ label: dt('desktop.trash.deleteForever'), danger: true, fn: async () => {
         for (const d of doomed) await purgeItem(d);
         await load(); render();
@@ -2599,7 +2601,7 @@
     const box = document.createElement('div'); box.className = 'modal';
     box.innerHTML = '<h3>' + escapeHtml(dt('desktop.rename.title')) + '</h3>';
     const input = document.createElement('input');
-    input.type = 'text'; input.className = 'rename-input'; input.value = it.name;
+    input.type = 'text'; input.className = 'rename-input'; input.value = dispName(it.name);   // the .gif is kept internally and re-added on save
     // 16px floor: anything smaller makes iOS Safari zoom the page on focus.
     input.style.cssText = 'width:100%;box-sizing:border-box;font-size:16px;padding:10px 12px;margin:6px 0 2px;';
     box.appendChild(input);
@@ -2609,7 +2611,7 @@
     row.appendChild(okBtn); row.appendChild(cancel);
     box.appendChild(row); bg.appendChild(box);
     const commit = async () => {
-      it.name = input.value.trim() || it.name;
+      { const typed = dispName(input.value.trim()); if (typed) it.name = (/\.gif$/i.test(it.name) ? typed + '.gif' : typed); }
       await saveItem(it);                      // stays put; only its name changed
       // keep a folder GIF's embedded manifest in sync with its display name
       if (it.kind === 'folder' && it.fileId) {
@@ -3409,7 +3411,7 @@
         list.filter((p) => p.roles.indexOf(t.key) >= 0).forEach((p) => {
           for (const o of sel.options) if (o.value === p.fileId) return; // saved option already there
           const o = document.createElement('option');
-          o.value = p.fileId; o.textContent = ST('settings.ai.appOnDevice', { name: p.name });
+          o.value = p.fileId; o.textContent = ST('settings.ai.appOnDevice', { name: dispName(p.name) });
           sel.appendChild(o);
         });
       });
@@ -4941,7 +4943,7 @@
     // an unhandled rejection while the desktop sits there looking idle.
     let archive, m, isApp, fileId;
     try {
-      busy.say(dt('desktop.run.unpacking', { name: escapeHtml(r.name) }), null);
+      busy.say(dt('desktop.run.unpacking', { name: escapeHtml(dispName(r.name)) }), null);
       archive = await gif.decode(r.bytes).catch(() => null);
       m = archive ? (gif.readManifest(archive) || {}) : {};
       isApp = !!(archive && (m.appId || m.entry));
@@ -4963,7 +4965,7 @@
       return;
     }
     render();
-    showModal(dt('desktop.run.addedTitle'), dt('desktop.run.addedBody', { name: escapeHtml(r.name) }));
+    showModal(dt('desktop.run.addedTitle'), dt('desktop.run.addedBody', { name: escapeHtml(dispName(r.name)) }));
   }
 
   // gifos_gone=<v> — 404.html set it when the release this computer was pinned
