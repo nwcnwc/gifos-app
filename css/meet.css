@@ -3959,7 +3959,7 @@ body:is(.dock-calm, .head-calm, .view-calm, .dock-idle, .chrome-away, .sv-live):
 /* An app in a meeting on a phone shows the view picker over the app. */
 body.has-app .viewpick { z-index: 45; }
 /* An app's bar in a meeting: every button a full 44px target, on a desktop too. */
-body.has-app:not(.solo-app):not(.app-room) #appbar > button, body.has-app:not(.solo-app):not(.app-room) #appbar > label { min-height: 44px; }
+body.has-app:not(.solo-app):not(.app-room) #appbar > button, body.has-app:not(.solo-app):not(.app-room) #appbar > label { min-height: 44px; min-width: 44px; }
 /* The Stage view with the agenda alone on it: the list starts under the top row, so the view button never sits on Hide. */
 body.sv-live:not(.sv-tabs) .ct-pane.ag { padding-top: max(60px, calc(var(--headh, 0px) + 8px)); }
 @media (max-height: 500px) { .ag-item:not([tabindex]):not(:has(> input)) { min-height: 34px; padding-top: 2px; padding-bottom: 2px; } }
