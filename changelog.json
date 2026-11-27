@@ -2,6 +2,25 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.61",
+      "date": "2026-11-27",
+      "headline": "Backstage stays backstage, easier joining from old links",
+      "features": [
+        "The floating bar has a handle on the right as well, so you can grab it from either side.",
+        "A link opened in an old version of GifOS now offers one tap to update and join."
+      ],
+      "fixes": [
+        "Broadcasts: viewers hear only the Stage. A host or guest who steps off the Stage talks backstage; the audience no longer hears them.",
+        "The joining line, the banner and the Stage now agree on where you are (connecting, watching, reconnecting).",
+        "A bot's picture on the Stage offers Tap to unblur, the same as a person's.",
+        "The rebroadcast controls (No blur, Pause, Stop) are no longer covered by the floating bar.",
+        "Names never show a trailing .gif.",
+        "A link through a firewall relay moves to a direct path on its own when one opens up.",
+        "Two offices linked through a relay show each other's names, mute, camera and hand again (since 0.9.28.60 they could stay blank).",
+        "A host's key is handled in the core: the host password is still shown once and never stored."
+      ]
+    },
+    {
       "version": "0.9.28.60",
       "date": "2026-11-27",
       "headline": "Meetings sealed for the people in them",
