@@ -222,7 +222,7 @@
       if (live.dataset.state !== st) live.dataset.state = st;
       var word = st === 'watching' ? tr('live', 'LIVE') : st === 'pre' ? tr('pre', 'PRERECORDED')
         : why !== 'ok' ? tr('offline', 'OFFLINE')
-        : full ? tr('full', 'FULL')
+        : full ? tr('pillFull', 'FULL')
         : know === 'connecting' ? tr('connecting', 'CONNECTING')
         : (know === 'noconn' || know === 'offline') ? tr('noConn', 'NO CONNECTION') : tr('offline', 'OFFLINE');
       if ($('emb-live-txt').textContent !== word) $('emb-live-txt').textContent = word;

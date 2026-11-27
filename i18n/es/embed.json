@@ -72,7 +72,7 @@
   "embed.trDownload": "Descargar",
   "embed.trShotOf": "Pantalla de {name}, {time}",
   "embed.trShotWho": "Pantalla de {name}",
-  "embed.full": "LLENO",
+  "embed.pillFull": "LLENO",
   "embed.msgFull": "Límite de espectadores alcanzado.",
   "embed.fullUp": "Pasa a Unlimited por {price}/mes",
   "embed.fullPass": "Pase de {price}: 4 horas de Unlimited",

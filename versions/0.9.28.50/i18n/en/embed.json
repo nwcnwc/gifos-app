@@ -29,7 +29,7 @@
   "embed.minutes": "{n} min",
   "embed.msgConnecting": "Connecting to the meeting… The live view starts as soon as this page is in.",
   "embed.msgName": "This embed does not name a GifOS broadcast.",
-  "embed.full": "FULL",
+  "embed.pillFull": "FULL",
   "embed.msgFull": "Viewer limit reached.",
   "embed.fullUp": "Upgrade to Unlimited for {price}/month",
   "embed.fullPass": "{price} pass: 4 hours of Unlimited",
