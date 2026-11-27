@@ -42,6 +42,12 @@ body.emb-unhosted #stagefeed { visibility: hidden; }   /* not hosted right now: 
 #embedui .emb-play span { background: rgba(0,0,0,.6); padding: 3px 10px; border-radius: 12px; }
 #embedui .emb-msg { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; max-width: 80%; text-align: center;
   background: rgba(0,0,0,.6); padding: 10px 16px; border-radius: 8px; font-size: 15px; }
+#embedui .emb-fd[hidden] { display: none; }
+#embedui .emb-fd p { margin: 0; }
+#embedui .emb-fd-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 12px; margin-top: 8px !important; font-size: 14px; }
+#embedui .emb-fd-acts a { color: #9db4ff; }
+#embedui .emb-fd-acts button { font: inherit; font-size: 13px; color: #fff; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.35); border-radius: 6px; padding: 3px 9px; cursor: pointer; }
+#embedui .emb-fd-wait { margin-top: 6px !important; font-size: 12px; opacity: .75; }
 #embedui .emb-bar { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 26px 10px 10px;
   background: linear-gradient(transparent, rgba(0,0,0,.6)); }
 #embedui .emb-fill { flex: 1; }
@@ -243,3 +249,10 @@ body.emb-calm { cursor: none; }
 #embedui .emb-tr-foot button[type="button"] { background: var(--emb-on); color: #fff; }
 #embedui .emb-tr-shots { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--emb-panel-fg); cursor: pointer; }
 #embedui .emb-tr-shots input { margin: 0; }
+/* The full-door card in a small player (a 320x180 embed): tighter, no wait line, never taller than the picture. */
+@media (max-height: 280px), (max-width: 420px) {
+  #embedui .emb-fd { max-width: 94%; padding: 5px 8px; font-size: 12px; }
+  #embedui .emb-fd-acts { margin-top: 4px !important; gap: 4px 8px; font-size: 12px; }
+  #embedui .emb-fd-acts button { font-size: 11px; padding: 2px 6px; }
+  #embedui .emb-fd-wait { display: none; }
+}

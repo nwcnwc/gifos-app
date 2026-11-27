@@ -799,11 +799,38 @@
     p.appendChild(document.createTextNode('. ' + t('charges')));
   }
 
+  // OPENED BY AN EMBED (#embedpass): the player is a frame on another site, where this browser may keep the frame's storage
+  // apart from gifos.app's own. This window is gifos.app itself, so the four-hour pass is bought here as always; once a
+  // live pass is held it goes back to the frame that opened this window (its origin only) and the window closes.
+  function embedPassBack() {
+    var op = null; try { op = window.opener; } catch (e) {}
+    if (!op || String(location.hash) !== '#embedpass') return;
+    say(t('embedPassLead'));
+    var sent = false;
+    var scrolled = false;
+    var tick = function () {
+      if (sent) return;
+      if (!scrolled) { var li = document.querySelector('li.plan[data-plan="pass"]'); if (li) { scrolled = true; try { li.scrollIntoView({ block: 'center' }); } catch (e) {} } }
+      MS().livePass().then(function (lp) {
+        if (!lp || sent) return;
+        return MS().wallet().then(function (w) {
+          if (!w || sent) return;
+          sent = true;
+          try { op.postMessage({ gifos: 'embedpass', wallet: w }, location.origin); } catch (e) {}
+          say(t('embedPassSent'));
+          setTimeout(function () { try { window.close(); } catch (e) {} }, GifOS.timings.SUBS_POLL_MS);   // long enough to read the line
+        });
+      }).catch(function () {});
+    };
+    setInterval(tick, GifOS.timings.SUBS_POLL_MS); tick();
+  }
+
   function start() {
     document.title = t('titleTab');
     document.querySelectorAll('[data-t]').forEach(function (n) { n.textContent = i18n.t(n.getAttribute('data-t')); });
     legal();
     wire();
+    embedPassBack();
     paint().then(function () { return arrive(); }).catch(function (e) { say(String((e && e.message) || e)); });
   }
   function boot() {

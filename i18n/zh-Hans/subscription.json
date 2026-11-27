@@ -237,5 +237,7 @@
   "subscription.cum.except": "包含「{plan}」的全部内容，但：",
   "subscription.cum.same": "包含「{plan}」的全部内容",
   "subscription.cum.meetings": "包含「{plan}」的全部内容，最多同时 {n} 场会议。",
-  "subscription.cum.pass": "包含「{plan}」的全部内容，为期 4 小时"
+  "subscription.cum.pass": "包含「{plan}」的全部内容，为期 4 小时",
+  "subscription.embedPassLead": "请在下方购买四小时通行证。付款后，您来自的会议会立即获得它。",
+  "subscription.embedPassSent": "您的通行证已生效。可以关闭此窗口。"
 }

@@ -71,5 +71,10 @@
   "embed.trShotsTip": "Cuando una pantalla compartida cambia y se queda quieta, como una diapositiva nueva, la transcripción guarda una captura. Se toma en este dispositivo a partir de lo que ves: no se envía nada y nunca se toma una pantalla que ves borrosa.",
   "embed.trDownload": "Descargar",
   "embed.trShotOf": "Pantalla de {name}, {time}",
-  "embed.trShotWho": "Pantalla de {name}"
+  "embed.trShotWho": "Pantalla de {name}",
+  "embed.full": "LLENO",
+  "embed.msgFull": "Límite de espectadores alcanzado.",
+  "embed.fullUp": "Pasa a Unlimited por {price}/mes",
+  "embed.fullPass": "Pase de {price}: 4 horas de Unlimited",
+  "embed.fullWait": "Entras solo en cuanto quede un sitio libre."
 }
