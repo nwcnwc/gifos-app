@@ -141,7 +141,9 @@
       paint(); return;
     }
     if (ev.type === 'go' && ev.priv) { onEvent(ev); return; }   // Answer: this page goes into our private room
-    // (a stranger seated in a listening door's room: that door's own part leaves nothing open; it only listens)
+    // A stranger sat down with a listening door (someone holding a full copy of the room, but no member key): the door
+    // leaves and stays closed until this page opens again. It never answered them; it only stops listening there.
+    if (ev.type === 'stranger') { d.shut = true; d.part = null; if (d.id && GifOS.meetHost) GifOS.meetHost.leave(d.id).catch(() => {}); else if (d.el) d.el.remove(); d.id = ''; d.el = null; }
   }
   // ---- the swap: "Swap cards" makes our private room; my personal room is shared only if I tick it ------------------
   let swapOffer = null;

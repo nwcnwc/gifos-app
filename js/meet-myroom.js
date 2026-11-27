@@ -323,6 +323,7 @@
   // room cards between us are dropped too (theirs to me, and mine to them revoked). Other private rooms are untouched.
   function cutPrivate(room, v) {
     const rec = privFor(room, v); if (!rec) return false;
+    if (GifOS.bell && typeof GifOS.bell.cut === 'function') { try { GifOS.bell.cut(room, v); } catch (e) {} }   // DOORBELL: its handle for this room is cut too (before the key goes)
     try { store().removeItem('gifos_vadm_' + roomKey(room, v)); } catch (e) {}
     writeJson(KEY.priv, privates().filter((x) => roomKey(x.room, x.v) !== roomKey(room, v)));
     if (rec.mepub) writeJson(KEY.contacts, contacts().filter((c) => { const t = parseToken(c.token); try { return !(t && JSON.parse(t.c.sp).cpub === rec.mepub); } catch (e) { return true; } }));
@@ -436,12 +437,13 @@
     // this room; a proved knocker is let in (the key word is the Admit); a seat that cannot prove within MYROOM_PROVE_MS is
     // a stranger and this page leaves. The mic opens (the person's own Join/Answer tap) once everyone here has proved.
     const proved = new Map(), askedAt = new Map(), unproved = new Map(), listeners2 = new Set();
-    let privDoor = false, strangerSaid = false, wordAt = 0;
+    let privDoor = false, strangerSaid = false, wordAt = 0, belled = false;
     const MIC_SS = 'gifos_mr_mic';
     const listening = () => !!(host.listen && host.listen());
+    // My member key's word for a private room (this one, or another one named: an ask to it from here).
     async function myWord(rec) {
       const k = await memberOf(rec); if (!k) return null;
-      return signWord(k.seed, roomKey(room, v), host.myId(), host.now(), listening() ? { l: 1 } : {});
+      return signWord(k.seed, roomKey(rec.room, rec.v), host.myId(), host.now(), listening() ? { l: 1 } : { c: callId });   // c: this page's call (a new load is a new call)
     }
     let touched = false;
     function privTick(now) {
@@ -456,14 +458,16 @@
       }
       // A caller (not a listening page): the call is waiting until a member who is not just listening sits with me.
       if (!listening()) {
-        if (!call && !host.seated()) { call = { label: rec.name || 'them', state: 'waiting', at: now, priv: true }; emit({ type: 'call', call }); }
+        if (!call) { call = { label: rec.name || 'them', state: 'waiting', at: now, priv: true }; emit({ type: 'call', call }); }   // also when I found the room empty and sit alone
+        // DOORBELL: no listening door rang (no signed 'ringing' yet): the Doorbell rings their devices instead, once a call.
+        if (!belled && call.state === 'waiting' && GifOS.bell && typeof GifOS.bell.press === 'function' && now - call.at >= (T().BELL_ALONE_MS || 0)) { belled = true; try { GifOS.bell.press(room, v, rec.name || '', callId); } catch (e) {} }
         if (call && call.priv && call.state !== 'answered' && host.seated() && host.people().some((p) => proved.has(p.id) && !listeners2.has(p.id))) { call.state = 'answered'; call.answeredAt = now; emit({ type: 'call', call }); }
       }
       // Proved knockers: a listening page lets in only other listening pages; any other page lets in every member.
       for (const pid of host.waitIds()) if (proved.has(pid) && (!listening() || listeners2.has(pid))) host.admit(pid);
       // Seated others are asked for a word (never a held knocker: it proves itself first, and a stranger hears nothing).
       for (const p of host.people()) {
-        if (proved.has(p.id)) continue;
+        if (proved.has(p.id) && !listeners2.has(p.id)) continue;   // a listening door's id may come back as its owner's own page: asked again
         if (host.reach(p.id) && now - (askedAt.get(p.id) || 0) >= (T().MYROOM_TICK_MS || 0)) { askedAt.set(p.id, now); host.send(p.id, { op: 'keyask', r: roomKey(room, v) }); }
       }
       const here = host.people();
@@ -482,7 +486,7 @@
       for (const [pid, r] of Array.from(rings)) {
         if (!r.priv) continue;
         if (mine2) { endCall(r, ''); rings.delete(pid); emit({ type: 'stopped', pid, label: r.label }); continue; }
-        const gone = !host.held(pid) && !host.isHere(pid);
+        const gone = !host.reach(pid) && !host.isHere(pid);   // a caller this silent door never lists is gone when its channel is
         if (gone || now - r.at >= (T().MYROOM_RING_MS || 0)) {
           endCall(r, 'missed'); rings.delete(pid);
           noteMissed(room, v, r.label, r.at);
@@ -497,11 +501,11 @@
       if (!o) return why(pid, 'priv-word');
       const me = await memberOf(rec);
       if (rec.pubs.indexOf(w.pub) < 0 && !(me && w.pub === me.pub)) return why(pid, 'priv-stranger');
-      if (o.l) listeners2.add(pid);
+      if (o.l) listeners2.add(pid); else listeners2.delete(pid);
       if (!proved.has(pid)) { proved.set(pid, w.pub); why(pid, 'priv-ok'); emit({ type: 'proved', pid }); }
       // A listening page rings on a member calling (not my own key, not another listening page): Answer takes me in.
       if (listening() && !o.l && !(me && w.pub === me.pub) && !rings.has(pid)) {
-        const ck = pid + '|priv';
+        const ck = pid + '|priv|' + String(o.c || '');
         if (ended.has(ck)) { const op = ended.get(ck); if (op) sendSigned(pid, op); return; }
         rings.set(pid, { label: (rec.name || 'Someone') + ' ✓', id: '', at: host.now(), ck, priv: true });
         sendSigned(pid, 'ringing');
@@ -835,6 +839,7 @@
           // 'here' (the owner is live and saw my card) comes once, often while I am still held: kept, and the call reads
         // answered as soon as I am seated (tick), not only if I already was.
         if (m.op === 'here') { call.here = true; if (call.state === 'waiting' && host.seated()) { call.state = 'answered'; call.answeredAt = host.now(); emit({ type: 'call', call }); } return; }
+          if (call.state === 'answered') return;   // a word still on its way from before the answer changes nothing
           call.state = m.op === 'ringing' ? 'ringing' : m.op === 'dec' ? 'declined' : m.op === 'acc' ? 'accepted' : 'noanswer';
           if (m.op === 'ringing') call.ringSeen = true;
           emit({ type: 'call', call });
