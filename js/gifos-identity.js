@@ -16,13 +16,19 @@
  *               revoked/<id>        a card taken back
  *               private/<room>.<v>  a private room (members, my member key, its password)
  *               device/<id>         a device that holds this identity (a name, for the list a person sees)
+ *               set/<key>           a setting that is about ME, not about this device (FOLLOW below): my name, my
+ *                                   picture, my language, my captions. It follows me to every device that holds the
+ *                                   identity. A setting about THIS device (text size, volumes, which camera, "Ring me
+ *                                   on this device", "Stay in my personal room on this computer") is never a record.
  *             The meeting page reads these from the browser's storage at every join (HOMES below says where each
  *             lives), so the browser's storage stays the working copy on a device; the GIF is the sealed copy that
  *             leaves it. scan() notes what changed here; the GIF is rewritten after every change, without asking.
  *   merge     Two copies are merged record by record: the later stamp wins, a removal is a record too (a tombstone: the
  *             id and when it was removed; it beats any add made before it, so a contact, card or private room removed on
  *             one device never comes back from the other, and only a new swap, made after, brings it again), and two devices that both added contacts
- *             keep them all. Three kinds never lose: a hosted room's key leaves only with its private room (a cut),
+ *             keep them all. A deleted personal room is a tombstone too (it names the room; its key leaves with it; only a
+ *             personal room made after the delete stands). Three kinds never lose: a hosted room's key leaves only with its
+ *             private room or its personal room (a cut),
  *             a taken-back card stays taken back, and (later) a purchase is never removed or replaced.
  *   seal      A random master key seals the records inside the GIF (GifOS.seal, the same wrap a passkey-locked app
  *             uses, at .lock/v1). The master key itself is kept in "ways to open": each is the master key sealed by a
@@ -87,9 +93,34 @@
     { cls: 'private', key: 'gifos_private', id: rkOf, ok: (x) => RK.test(rkOf(x)) && Array.isArray(x.pubs), soft: ['last'], cap: 500, when: (x) => Math.max(+x.last || 0, +x.at || 0), born: (x) => +x.at || 0 },
   ];
   const HOSTKEY = /^gifos_vadm_([a-z0-9-]{1,64}\.[a-f0-9]{16,64})$/i;
-  const KEEPS = (rid) => rid === 'mine' || rid.indexOf('revoked/') === 0 || rid.indexOf('purchase/') === 0;   // never removed by a merge
+  const KEEPS = (rid) => rid.indexOf('revoked/') === 0 || rid.indexOf('purchase/') === 0;   // never removed by a merge
   const classOf = (rid) => { const i = rid.indexOf('/'); return i < 0 ? rid : rid.slice(0, i); };
-  const KNOWN = { room: 1, mine: 1, contact: 1, card: 1, revoked: 1, private: 1, device: 1 };
+  const KNOWN = { room: 1, mine: 1, contact: 1, card: 1, revoked: 1, private: 1, device: 1, set: 1 };
+
+  // ---- settings that follow me (docs/identity.md, Settings that follow you) -----------------------------------------
+  // ONE CONCEPT: a setting about me travels in my identity; a setting about this device stays on it. Each record is the
+  // setting's raw stored text; null when I put it back to its default here (that travels too: it is a value, not a
+  // tombstone, and the list is fixed and short). Newest stamp wins per setting. A value already on a device before the
+  // identity knew settings gets stamp 1 (any real change beats it). Every value from another device is checked before
+  // it is written: an identity file is outside input. Keys not listed here are this device's (DEVICE_ONLY names the
+  // ones Settings shows, so its screens can say so).
+  const AV_MIMES = ['image/gif', 'image/png', 'image/jpeg', 'image/webp'];
+  const okAvatar = (t) => { try { const o = JSON.parse(t); return !!o && AV_MIMES.indexOf(o.mime) >= 0 && typeof o.b64 === 'string' && o.b64.length <= 349528 && /^[0-9a-f]{64}$/.test(o.hash || ''); } catch (e) { return false; } };
+  const FOLLOW = {
+    gifos_name: (t) => t.length > 0 && t.length <= 40,                       // my name on my tile
+    gifos_avatar: okAvatar,                                                  // my picture (gifos-store.js's own bounds)
+    gifos_locale: (t) => t.length <= 200 && /^[\x20-\x7e]*$/.test(t),        // the language I read, my clock style
+    gifos_cc_lang: (t) => /^(auto|[a-z]{2,3}([-_][a-z0-9]{2,8})*)$/i.test(t), // the language I speak (my captions)
+    gifos_cc_translate: (t) => t === '0' || t === '1',                       // translate captions for me
+    gifos_cc_view: (t) => t === '0' || t === '1',                            // I read captions
+    gifos_cc_send: (t) => t === '' || t === 'off',                           // send my captions (a privacy choice)
+    gifos_tr_mode: (t) => t === 'keep' || t === 'share' || t === 'off',      // my transcript choice
+    gifos_hide_bots: (t) => t === '0' || t === '1',                          // I hide assistants' tiles
+  };
+  const DEVICE_ONLY = ['gifos_ui_scale', 'gifos_meet_bar', 'gifos_bar_pos_v1', 'gifos_self_view_v1', 'gifos_mix', 'gifos_vq', 'gifos_myroom_stay', 'gifos_bell',
+    'gifos_bell_handles', 'gifos_cc_engine', 'gifos_cc_words', 'gifos_cc_ears', 'gifos_cc_whisper_model', 'gifos_cc_stt_url', 'gifos_pin', 'gifos_channel'];
+  const setKey = (rid) => (rid.indexOf('set/') === 0 ? rid.slice(4) : '');
+  const okSetting = (k, v) => !!FOLLOW[k] && (v === null || (typeof v === 'string' && FOLLOW[k](v)));
 
   // collect() -> { rid: value } read from the storage as it is now.
   function collect() {
@@ -106,6 +137,7 @@
     }
     const rv = readJson('gifos_myroom_revoked', []);
     if (Array.isArray(rv)) for (const id of rv) if (typeof id === 'string' && /^[a-f0-9]{8,64}$/i.test(id)) out['revoked/' + id] = 1;
+    for (const k of Object.keys(FOLLOW)) { let t = null; try { t = s.getItem(k); } catch (e) {} if (t != null && FOLLOW[k](t)) out['set/' + k] = t; }
     return out;
   }
   // put(recs): write the records back where the pages read them. Only what differs is written.
@@ -121,6 +153,7 @@
     for (let i = 0; i < s.length; i++) { const k = s.key(i); if (HOSTKEY.test(k || '') && !have.has(k.toLowerCase()) && recs['room/' + k.slice(11).toLowerCase()] && recs['room/' + k.slice(11).toLowerCase()].d) gone.push(k); }
     for (const k of gone) s.removeItem(k);
     if (recs.mine && !recs.mine.d) set('gifos_myroom', JSON.stringify(recs.mine.v));
+    else if (recs.mine && recs.mine.d) { const m = readJson('gifos_myroom', null); if (m && (!recs.mine.rk || rkOf(m).toLowerCase() === recs.mine.rk)) { s.removeItem('gifos_myroom'); s.removeItem('gifos_myroom_stay'); } }
     for (const L of LISTS) {
       const list = Object.keys(recs).filter((rid) => classOf(rid) === L.cls && !recs[rid].d).map((rid) => recs[rid].v);
       list.sort((a, b) => L.when(b) - L.when(a));
@@ -134,6 +167,14 @@
     const rv = Object.keys(recs).filter((rid) => classOf(rid) === 'revoked' && !recs[rid].d).map((rid) => rid.slice(8));
     const wasRv = readJson('gifos_myroom_revoked', null);
     if (rv.length || wasRv != null) { const a = Array.isArray(wasRv) ? wasRv.filter((x) => rv.indexOf(x) >= 0) : []; for (const id of rv) if (a.indexOf(id) < 0) a.push(id); if (canon(a) !== canon(wasRv)) set('gifos_myroom_revoked', JSON.stringify(a.slice(0, 1000))); }
+    // Settings: write the winner, remove a default; then tell this tab's own listeners (other tabs hear the storage event).
+    const told = [];
+    for (const rid of Object.keys(recs)) {
+      const k = setKey(rid), r = recs[rid]; if (!k || r.d || !okSetting(k, r.v)) continue;
+      const was = s.getItem(k);
+      if (r.v === null) { if (was != null) { s.removeItem(k); told.push(k); } } else if (was !== r.v) { s.setItem(k, r.v); told.push(k); }
+    }
+    for (const k of told) { try { if (typeof root.StorageEvent === 'function' && root.dispatchEvent) root.dispatchEvent(new root.StorageEvent('storage', { key: k })); } catch (e) {} }
   }
 
   // ---- this device's notes (the shadow) ------------------------------------------------------------------------------
@@ -149,7 +190,7 @@
     return clockLast;
   }
   // When this record was made (a contact's, card's or private room's own `at`): 0 when it carries none.
-  const bornOf = (rid, v) => { const L = LISTS.find((x) => x.cls === classOf(rid)); try { return L && L.born && v && typeof v === 'object' ? L.born(v) : 0; } catch (e) { return 0; } };
+  const bornOf = (rid, v) => { if (rid === 'mine') return (v && +v.at) || 0; const L = LISTS.find((x) => x.cls === classOf(rid)); try { return L && L.born && v && typeof v === 'object' ? L.born(v) : 0; } catch (e) { return 0; } };
   const softOf = (rid) => { const L = LISTS.find((x) => x.cls === classOf(rid)); return L ? L.soft : []; };
   function hard(rid, v) {   // the value without the fields that change with use
     const soft = softOf(rid);
@@ -167,13 +208,13 @@
 
   // exists(): this device holds an identity. worth(): there is something on this device an identity would hold.
   const exists = () => !!shadow();
-  function worth() { const c = collect(); return Object.keys(c).length > 0; }
+  function worth() { const c = collect(); return Object.keys(c).some((rid) => classOf(rid) !== 'set'); }   // settings alone make no identity
   // begin(): make this device's identity (a fresh id and master key). Nothing is asked: the seal's ways to open are
   // added when the person first keeps a file (addPassphrase / addPasskey).
   function begin() {
     let sh = shadow(); if (sh) return sh;
     const dev = hex(rand(8)), now = Date.now();
-    sh = { v: 1, id: hex(rand(16)), born: now, dev, mk: b64(rand(32)), st: {}, slots: [], keep: {} };
+    sh = { v: 1, id: hex(rand(16)), born: now, dev, mk: b64(rand(32)), st: {}, slots: [], keep: {} };   // sets: 1 is written by the first scan
     sh.keep['device/' + dev] = { t: now, w: dev, v: { name: deviceName(), at: now } };
     writeShadow(sh);
     scan();
@@ -183,14 +224,24 @@
   function scan() {
     const sh = shadow(); if (!sh) return false;
     const cur = collect(); let changed = false;
+    // The first scan that knows settings finds values made before it: stamp 1, so a real change anywhere beats them.
+    const first = sh.sets !== 1; if (first) { sh.sets = 1; changed = true; }
+    // The personal room: its removal (Delete my personal room) is a tombstone that names the room, so its key goes with it.
+    if (cur.mine) { const rk = rkOf(cur.mine).toLowerCase(); if (sh.mineRk !== rk) { sh.mineRk = rk; changed = true; } }
     for (const rid of Object.keys(cur)) {
       const m = mark(canon(hard(rid, cur[rid]))), st = sh.st[rid];
-      if (!st || st[3] || st[2] !== m) { sh.st[rid] = [tickOf(sh), sh.dev, m]; changed = true; }
+      if (!st || st[3] || st[2] !== m) { sh.st[rid] = [first && setKey(rid) && !st ? 1 : tickOf(sh), sh.dev, m]; changed = true; }
     }
     for (const rid of Object.keys(sh.st)) {
       if (rid in cur || sh.st[rid][3]) continue;
+      if (setKey(rid)) {   // a setting put back to its default here: the default is the value (null), not a removal
+        const m = mark('null'); if (sh.st[rid][2] !== m) { sh.st[rid] = [tickOf(sh), sh.dev, m]; changed = true; }
+        continue;
+      }
       if (KEEPS(rid)) { delete sh.st[rid]; changed = true; continue; }   // a kind that is never removed: simply not on this device now
-      sh.st[rid] = [tickOf(sh), sh.dev, '', 1]; changed = true;
+      // st[4]: the deleted personal room's name (on `mine`), or 'cut' on the key that went with it.
+      const extra = rid === 'mine' ? sh.mineRk : (!cur.mine && sh.mineRk && rid === 'room/' + sh.mineRk ? 'cut' : '');
+      sh.st[rid] = extra ? [tickOf(sh), sh.dev, '', 1, extra] : [tickOf(sh), sh.dev, '', 1]; changed = true;
     }
     if (changed) writeShadow(sh);
     return changed;
@@ -202,8 +253,9 @@
     const out = {};
     for (const rid of Object.keys(sh.st)) {
       const st = sh.st[rid];
-      if (st[3]) out[rid] = { t: st[0], w: st[1], d: 1 };
+      if (st[3]) out[rid] = st[4] === 'cut' ? { t: st[0], w: st[1], d: 1, cut: 1 } : st[4] ? { t: st[0], w: st[1], d: 1, rk: st[4] } : { t: st[0], w: st[1], d: 1 };
       else if (rid in cur) out[rid] = { t: st[0], w: st[1], v: cur[rid] };
+      else if (setKey(rid)) out[rid] = { t: st[0], w: st[1], v: null };
     }
     for (const rid of Object.keys(sh.keep || {})) out[rid] = sh.keep[rid];
     return out;
@@ -222,8 +274,9 @@
     const out = {}, news = [];
     const rids = new Set(Object.keys(mine).concat(Object.keys(theirs)));
     for (const rid of rids) {
-      const a = mine[rid], b = okRec(theirs[rid]) ? theirs[rid] : null;
-      if (!b) { out[rid] = a; continue; }
+      let b = okRec(theirs[rid]) ? theirs[rid] : null; const a = mine[rid];
+      if (b && setKey(rid) && FOLLOW[setKey(rid)] && (b.d || !okSetting(setKey(rid), b.v))) b = null;   // a bad value from outside is not taken
+      if (!b) { if (a) out[rid] = a; continue; }   // a bad record of theirs, none of mine: nothing
       if (!a) { out[rid] = b; news.push(rid); continue; }
       let pick;
       if (KEEPS(rid) && !!a.d !== !!b.d) pick = a.d ? b : a;                       // never removed: the one that is there
@@ -249,7 +302,9 @@
     for (const rid of Object.keys(out)) {
       if (classOf(rid) !== 'room') continue;
       const a = mine[rid], b = okRec(theirs[rid]) ? theirs[rid] : null, pr = out['private/' + rid.slice(5)];
-      const cut = !!(pr && pr.d);
+      const pm = out.mine;   // a deleted personal room takes its own key along
+      const rk = rid.slice(5), mineHere = !!(pm && !pm.d && pm.v && rkOf(pm.v).toLowerCase() === rk);
+      const cut = !!(pr && pr.d) || !!(pm && pm.d && pm.rk === rk) || (!mineHere && [a, b].some((x) => x && x.d && x.cut === 1));
       const gone = [a, b].filter((x) => x && x.d).sort((x, y) => (later(x, y) ? -1 : 1))[0];
       const there = [a, b].filter((x) => x && !x.d).sort((x, y) => (later(x, y) ? -1 : 1))[0];
       const want = cut && gone ? gone : (there || out[rid]);
@@ -273,15 +328,18 @@
       sh.slots = mergeSlots(sh.slots, theirs.slots.filter(okSlot));
     }
     const known = {}; sh.keep = {};
-    for (const rid of Object.keys(m.recs)) { if (KNOWN[classOf(rid)] && classOf(rid) !== 'device') known[rid] = m.recs[rid]; else sh.keep[rid] = m.recs[rid]; }
+    // A setting this version does not know (a newer page's) is carried untouched, never applied.
+    for (const rid of Object.keys(m.recs)) { if (KNOWN[classOf(rid)] && classOf(rid) !== 'device' && (classOf(rid) !== 'set' || FOLLOW[setKey(rid)])) known[rid] = m.recs[rid]; else sh.keep[rid] = m.recs[rid]; }
     put(known);
     // The notes take the merged stamps: what is in the storage now is exactly what the merge said.
     const now = collect(); sh.st = {};
     for (const rid of Object.keys(known)) {
       const r = known[rid];
-      if (r.d) sh.st[rid] = [r.t, r.w, '', 1];
+      if (r.d) sh.st[rid] = r.cut === 1 ? [r.t, r.w, '', 1, 'cut'] : r.rk ? [r.t, r.w, '', 1, String(r.rk)] : [r.t, r.w, '', 1];
       else if (rid in now) sh.st[rid] = [r.t, r.w, mark(canon(hard(rid, now[rid])))];
+      else if (setKey(rid) && r.v === null) sh.st[rid] = [r.t, r.w, mark('null')];
     }
+    sh.sets = 1;
     writeShadow(sh);
     return { news: m.news, counts: counts() };
   }
@@ -601,6 +659,7 @@
   GifOS.identity = {
     SHADOW, DOC_PATH, CLEAR_PATH, CODE_LEN,
     useStore, collect, put, canon, mergeRecs,
+    FOLLOW: Object.keys(FOLLOW), DEVICE_ONLY: DEVICE_ONLY.slice(), follows: (k) => !!FOLLOW[k],
     exists, worth, begin, scan, doc, take, counts, status,
     slots, addPassphrase, addPasskey, removeSlot,
     pack, look, open, sync, fileBytes, FILE_ID, FILE_NAME, MANIFEST,

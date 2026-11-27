@@ -128,7 +128,7 @@
   "settings.root.groupComputer": "此电脑",
   "settings.system.title": "系统",
   "settings.system.sub": "存储、更新、邀请连接",
-  "settings.you.intro": "一起玩或协作时，朋友会看到这个名字。它只保存在此电脑上。",
+  "settings.you.intro": "一起玩或协作时，朋友会看到这个名字。它会跟随你到每台持有你身份的设备上。",
   "settings.you.name": "名字",
   "settings.you.namePh": "你的名字",
   "settings.you.picture": "图片",
@@ -224,5 +224,7 @@
   "settings.updates.offlineBad": "无法连接 gifos.app 检查最新版本 — 你可能已离线。下方的快照仍然可用。",
   "settings.updates.pinNote": "请准确输入旧版本号，例如 {example}。",
   "settings.updates.notesNew": "新增",
-  "settings.updates.notesFixed": "已修复"
+  "settings.updates.notesFixed": "已修复",
+  "settings.scope.you": "跟随你",
+  "settings.scope.device": "仅此设备"
 }

@@ -368,7 +368,7 @@
       h += '<div class="mr-mine"><span class="li-name">' + esc(mine.room) + '</span>' +
         '<button type="button" id="mr-open" class="lob-ghost">Open my personal room</button>' +
         '<button type="button" id="mr-make-card" class="lob-ghost">Give a card</button></div>';
-      if (!mobile()) h += '<label class="mr-stay"><input type="checkbox" id="mr-stay"' + (M.stayOn() ? ' checked' : '') + '> Stay in my personal room on this computer, so calls ring here</label>';
+      if (!mobile()) h += '<label class="mr-stay"><input type="checkbox" id="mr-stay"' + (M.stayOn() ? ' checked' : '') + '> Stay in my personal room on this computer, so calls ring here <small class="set-scope" data-scope="device">This device only</small></label>';
       // Honest about the step-1 limit: a computer listens in the most recently used private rooms only.
       const nPriv = M.privates().filter((x) => x.pubs.length === 1).length;
       if (!mobile() && nPriv > M.LISTEN_MAX) h += '<p class="lob-quiet" id="mr-listen-cap">While your personal room is open, calls ring here from your ' + M.LISTEN_MAX + ' most recently used private rooms. Calls from the other ' + (nPriv - M.LISTEN_MAX) + ' wait until ringing by notification arrives.</p>';

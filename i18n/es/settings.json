@@ -128,7 +128,7 @@
   "settings.root.groupComputer": "Este equipo",
   "settings.system.title": "Sistema",
   "settings.system.sub": "Almacenamiento, actualizaciones, conexión de invitaciones",
-  "settings.you.intro": "Tus amigos ven este nombre cuando jugáis o trabajáis juntos. Se queda en este equipo.",
+  "settings.you.intro": "Tus amigos ven este nombre cuando jugáis o trabajáis juntos. Te sigue a cada dispositivo que tenga tu identidad.",
   "settings.you.name": "Nombre",
   "settings.you.namePh": "Tu nombre",
   "settings.you.picture": "Imagen",
@@ -224,5 +224,7 @@
   "settings.updates.offlineBad": "No se pudo conectar con gifos.app para comprobar la última versión; puede que no tengas conexión. Las instantáneas de abajo siguen funcionando.",
   "settings.updates.pinNote": "Escribe exactamente el número de una versión anterior, como {example}.",
   "settings.updates.notesNew": "Novedades",
-  "settings.updates.notesFixed": "Corregido"
+  "settings.updates.notesFixed": "Corregido",
+  "settings.scope.you": "Te sigue",
+  "settings.scope.device": "Solo este dispositivo"
 }

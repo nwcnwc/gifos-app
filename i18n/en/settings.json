@@ -128,7 +128,7 @@
   "settings.root.groupComputer": "This computer",
   "settings.system.title": "System",
   "settings.system.sub": "Storage, updates, invite connection",
-  "settings.you.intro": "Friends see this name when you play or work together. It stays on this computer.",
+  "settings.you.intro": "Friends see this name when you play or work together. It follows you to every device that holds your identity.",
   "settings.you.name": "Name",
   "settings.you.namePh": "Your name",
   "settings.you.picture": "Picture",
@@ -224,5 +224,7 @@
   "settings.updates.offlineBad": "Couldn’t reach gifos.app to check the latest release — you may be offline. The snapshots below still work.",
   "settings.updates.pinNote": "Type an older release number exactly, like {example}.",
   "settings.updates.notesNew": "New",
-  "settings.updates.notesFixed": "Fixed"
+  "settings.updates.notesFixed": "Fixed",
+  "settings.scope.you": "Follows you",
+  "settings.scope.device": "This device only"
 }

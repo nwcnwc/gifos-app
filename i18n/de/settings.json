@@ -128,7 +128,7 @@
   "settings.root.groupComputer": "Dieser Computer",
   "settings.system.title": "System",
   "settings.system.sub": "Speicher, Updates, Einladungsverbindung",
-  "settings.you.intro": "Freunde sehen diesen Namen, wenn Sie zusammen spielen oder arbeiten. Er bleibt auf diesem Computer.",
+  "settings.you.intro": "Freunde sehen diesen Namen, wenn Sie zusammen spielen oder arbeiten. Er folgt Ihnen auf jedes Gerät, das Ihre Identität hat.",
   "settings.you.name": "Name",
   "settings.you.namePh": "Ihr Name",
   "settings.you.picture": "Bild",
@@ -224,5 +224,7 @@
   "settings.updates.offlineBad": "gifos.app war für die Prüfung der neuesten Version nicht erreichbar — vielleicht sind Sie offline. Die Snapshots unten funktionieren weiterhin.",
   "settings.updates.pinNote": "Geben Sie eine ältere Versionsnummer genau ein, etwa {example}.",
   "settings.updates.notesNew": "Neu",
-  "settings.updates.notesFixed": "Behoben"
+  "settings.updates.notesFixed": "Behoben",
+  "settings.scope.you": "Folgt Ihnen",
+  "settings.scope.device": "Nur dieses Gerät"
 }
