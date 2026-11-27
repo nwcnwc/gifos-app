@@ -172,7 +172,8 @@
       box.hidden = !on;
       if (row) row.hidden = !on;
     }
-    function passPrice() { try { return GifOS.sub.PASS_PRESETS.pass4h.price || '$1'; } catch (e) { return '$1'; } }
+    // The pass offered at a full door is the one sales read (meetSubs.fullOffers: the cheapest pass whose rights admit there), not a preset name.
+    function passPrice() { try { var o = GifOS.meetSubs.fullOffers().pass; return (o && o.price) || '$1'; } catch (e) { return '$1'; } }
     // The pass is bought in a top-level window of gifos.app (a frame on another site keeps its own partitioned storage, so a pass bought
     // in a separate tab would not be seen here) and handed back by postMessage: only the pass wallet crosses, only from that window,
     // only to this frame's own origin.
