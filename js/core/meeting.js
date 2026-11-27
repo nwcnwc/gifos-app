@@ -7168,7 +7168,8 @@
     //   links           [[peerId, { cam, mic }]] sorted by peer id, one per peer I hold a link record for. A slot is
     //                   { source, kind, park }: source 'own-cam' / 'own-mic' when the link carries my picture / voice at
     //                   all (its m-line is wanted), else 'none'; park is null, or why its sender holds no track for now
-    //                   while the m-line stays negotiated: 'leased' (a self-leased seat carries nothing), 'stage' (my voice
+    //                   while the m-line stays negotiated: 'leased' (a self-leased seat carries nothing), 'audience' (a
+    //                   broadcast viewer gets no off-Stage voice), 'stage' (my voice
     //                   rides the Stage feed), 'held' (a re-seat the far side asked for), 'hidden' (the far side cannot see
     //                   the feed now).
     //   duties          [[peerId, { sdm, sub, sgs }]] sorted by peer id, one per peer my CELL owes at least one duty
@@ -7199,7 +7200,9 @@
         const camPark = !cam ? null : leased ? 'leased' : (p.mainHoldUntil && p.mainHoldUntil > now) ? 'held' : p.remoteParkMain ? 'hidden' : card ? 'card' : null;
         // 'muted': a host's mute stands on me, so my mic may not sound anywhere in the room: its senders carry nothing at all
         // (no packets of silence to every row-mate) until the order is lifted; then my own unmute is a pure track swap.
-        const micPark = !mic ? null : voiceStaged ? 'stage' : leased ? 'leased' : hostMuted ? 'muted' : null;
+        // 'audience': in a broadcast my voice off the Stage reaches only those who may take the Stage (hosts and the guests
+        // they let up); a viewer row-mate gets nothing: a broadcast's audience hears the Stage and nothing else.
+        const micPark = !mic ? null : voiceStaged ? 'stage' : (BROADCAST && !canStage(p.id)) ? 'audience' : leased ? 'leased' : hostMuted ? 'muted' : null;
         plan.links.push([String(p.id), { cam: { source: cam ? 'own-cam' : 'none', kind: 'video', park: camPark }, mic: { source: mic ? 'own-mic' : 'none', kind: 'audio', park: micPark } }]);
       }
       plan.links.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));

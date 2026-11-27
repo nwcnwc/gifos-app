@@ -6591,7 +6591,9 @@
       return base;
     }
     function applyBuses() {
-      const sealed = (0, /*()*/__C.iAmWaiting)() || !!__C.EMBED; // a person in the waiting room hears no one; an embed hears only the Stage
+      // A person in the waiting room hears no one; an embed and a broadcast's viewer hear only the Stage (a host or a guest
+      // off the Stage talks backstage, never to the audience).
+      const sealed = (0, /*()*/__C.iAmWaiting)() || !!__C.EMBED || (__C.BC_SEAT && (0, /*()*/__C.bcRole)() === 'viewer');
       const stg = new Set((0, /*()*/__C.stageIds)());
       const mates = new Set((0, /*()*/__C.rowMates)());
       let hasStadium = false;
