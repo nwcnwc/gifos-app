@@ -467,6 +467,102 @@
     });
   }
   try { if (GifOS.i18n) GifOS.i18n.onChange(publishLocale); } catch (e) {}
+
+  // COMPACT MODE: an app on a phone-sized touch screen gets a smaller base text
+  // and tighter spacing, so more of it fits without scrolling. One signal for
+  // the whole system, the same in the meeting page (the agenda follows it) and
+  // in every app frame: <html data-compact> plus CSS variables, and
+  // gifos.display() / gifos.onDisplayChange() for scripts. Apps that ignore it
+  // are unchanged. Rules:
+  //  - a phone only: a touch-only screen (coarse pointer, no mouse or
+  //    trackpad) that is phone-sized (the meeting's phone layout). A desktop
+  //    zoomed or narrowed to phone width keeps its full size, so browser zoom
+  //    is never undone;
+  //  - text shrinks to DISPLAY_COMPACT_TEXT of what the app would show. The
+  //    person's own larger text setting (browser default font size, iOS
+  //    Dynamic Type, GifOS Settings → Text size) counts once it is larger
+  //    than the compact step (ratio x 0.875 > 1): from there the words and
+  //    the readable floor (--gifos-text-min) both grow with it, continuously,
+  //    so a large setting always reads large;
+  //  - tap targets never shrink (--gifos-tap) and form fields keep 16px text
+  //    (--gifos-input-text; smaller fields make iOS zoom the page on focus).
+  const DISPLAY_COMPACT_TEXT = 0.875;
+  const DISPLAY_COMPACT_SPACE = 0.75;
+  const DISPLAY_TEXT_MIN = 13;
+  const DISPLAY_PHONE_Q = '(max-width: 700px), (max-height: 500px)';
+  const mq = (q) => { try { return !!(root.matchMedia && root.matchMedia(q).matches); } catch (e) { return false; } };
+  // The person's preferred text size against the browser default: >= 1.
+  function userTextRatio() {
+    const doc = root.document;
+    if (!doc || !doc.documentElement || !root.getComputedStyle) return 1;
+    try {
+      const d = doc.createElement('span');
+      d.style.cssText = 'position:absolute;visibility:hidden;font-size:medium';
+      doc.documentElement.appendChild(d);
+      const medium = parseFloat(root.getComputedStyle(d).fontSize) || 16;
+      d.style.font = '-apple-system-body';
+      const apple = d.style.font ? (parseFloat(root.getComputedStyle(d).fontSize) || 17) : 17;
+      d.remove();
+      // GifOS's own Settings → Text size counts when it is larger.
+      let ui = 1;
+      try { ui = parseFloat(root.localStorage.getItem('gifos_ui_scale')) || 1; } catch (e) {}
+      return Math.min(3, Math.max(1, medium / 16, apple / 17, ui));
+    } catch (e) { return 1; }
+  }
+  function displaySnap() {
+    const touch = mq('(pointer: coarse)') && !mq('(any-pointer: fine)');
+    const compact = touch && mq(DISPLAY_PHONE_Q);
+    // The person's text ratio past the compact step (1 up to about one notch larger).
+    const user = Math.max(1, DISPLAY_COMPACT_TEXT * userTextRatio());
+    const r2 = (n) => Math.round(n * 1000) / 1000;
+    return {
+      compact,
+      scale: compact ? r2(DISPLAY_COMPACT_TEXT * user) : 1,
+      space: compact ? DISPLAY_COMPACT_SPACE : 1,
+      tap: 44,
+      textMin: Math.round(DISPLAY_TEXT_MIN * user),
+      inputText: 16,
+    };
+  }
+  // Writes the signal onto a document's <html>. Plain ES5: its source is also
+  // baked into every app frame's shim.
+  function applyDisplay(el, s) {
+    if (!el || !el.style || !s) return;
+    if (s.compact) el.setAttribute('data-compact', ''); else el.removeAttribute('data-compact');
+    el.style.setProperty('--gifos-scale', String(s.scale));
+    el.style.setProperty('--gifos-space', String(s.space));
+    el.style.setProperty('--gifos-tap', s.tap + 'px');
+    el.style.setProperty('--gifos-text-min', s.textMin + 'px');
+    el.style.setProperty('--gifos-input-text', s.inputText + 'px');
+  }
+  let displayLast = null;
+  function publishDisplay() {
+    const s = displaySnap();
+    const key = JSON.stringify(s);
+    if (key === displayLast) return;
+    displayLast = key;
+    try { if (root.document) applyDisplay(root.document.documentElement, s); } catch (e) {}
+    identFrames.forEach((ifr) => {
+      try {
+        const w = ifr && ifr.contentWindow;
+        if (w) w.postMessage({ ns: 'gifos', type: 'display', display: s }, '*');
+      } catch (e) {}
+    });
+    try { root.dispatchEvent(new CustomEvent('gifos:displaychange', { detail: s })); } catch (e) {}
+  }
+  try {
+    if (root.matchMedia && root.document) {
+      ['(pointer: coarse)', '(any-pointer: fine)', '(max-width: 700px)', '(max-height: 500px)'].forEach((q) => {
+        const m = root.matchMedia(q);
+        if (m.addEventListener) m.addEventListener('change', publishDisplay); else if (m.addListener) m.addListener(publishDisplay);
+      });
+      root.addEventListener('storage', (e) => { if (e && e.key === 'gifos_ui_scale') publishDisplay(); });
+      // A text-size change in the phone's settings lands while the tab is away.
+      root.document.addEventListener('visibilitychange', () => { if (!root.document.hidden) publishDisplay(); });
+      publishDisplay();
+    }
+  } catch (e) {}
+  GifOS.display = { snap: displaySnap, apply: applyDisplay, refresh: publishDisplay };
   // An app's words (gifos.i18n.load): its own i18n/<locale>.json files when
   // the GIF carries them; for a built-in app (manifest "i18n": "gifos") the
   // site's i18n/<locale>/apps/<appId>.json. -> { order, catalogs }.
@@ -500,6 +596,9 @@
     return `(function(){
       var GEN = ${Number(gen) || 1}, NONCE = ${JSON.stringify(String(nonce || ''))};
       var LOCALE0 = ${JSON.stringify(localeSnap()).replace(/</g, '\\u003c')}, I18N_CORE = (${i18nCoreSrc()});
+      // Compact mode (see COMPACT MODE in the runtime): on <html> before any app code runs.
+      var DISPLAY = ${JSON.stringify(displaySnap())}, applyDisplay = ${String(applyDisplay)}, dispCbs = [];
+      try { applyDisplay(document.documentElement, DISPLAY); } catch(e){}
       // Neuter WebRTC: CSP's 'webrtc' directive is not universally supported,
       // so hard-remove the constructors before app code runs. connect-src 'none'
       // already blocks fetch/XHR/WebSocket/EventSource/beacons; this closes the
@@ -643,6 +742,13 @@
           for (var ii = 0; ii < cbs.length; ii++) { try { cbs[ii](d.identity); } catch (err) {} }
         }
         if(d.type==='locale' && d.locale){ setLocale(d.locale); }
+        if(d.type==='display' && d.display){
+          DISPLAY = d.display;
+          try { applyDisplay(document.documentElement, DISPLAY); } catch(err){}
+          var ds = JSON.parse(JSON.stringify(DISPLAY));
+          for (var di = 0; di < dispCbs.length; di++) { try { dispCbs[di](ds); } catch (err) {} }
+          try { window.dispatchEvent(new CustomEvent('gifos:displaychange', { detail: ds })); } catch (err) {}
+        }
         if(d.type==='room' && d.state){ roomLast = d.state; for (var ri = 0; ri < roomCbs.length; ri++) { try { roomCbs[ri](JSON.parse(JSON.stringify(d.state))); } catch (err) {} } }
         if(d.type==='db-change'){
           if(d.collection==='*'){ Object.keys(subs).forEach(refresh); }
@@ -1004,6 +1110,17 @@
         },
         // The person's language and region: { tag, language, region, ui,
         // hourCycle, timeZone, ... } (BCP 47 tag; pass it to Intl). Sync.
+        // Compact mode on a phone: { compact, scale, space, tap, textMin,
+        // inputText }. Sync; the same values are on <html> (data-compact,
+        // --gifos-scale, --gifos-space, --gifos-tap, --gifos-text-min,
+        // --gifos-input-text).
+        display: function(){ return JSON.parse(JSON.stringify(DISPLAY)); },
+        // cb(display) when it changes (a phone turned, text size changed).
+        onDisplayChange: function(cb){
+          if (typeof cb !== 'function') return function(){};
+          dispCbs.push(cb);
+          return function(){ var i = dispCbs.indexOf(cb); if (i >= 0) dispCbs.splice(i, 1); };
+        },
         locale: function(){ return JSON.parse(JSON.stringify(loc)); },
         // cb(locale) after the person changes it; returns an unsubscribe.
         onLocaleChange: function(cb){
