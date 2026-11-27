@@ -894,7 +894,9 @@
           emit({ type: 'offer', card: f, from: String(m.from || '').slice(0, 40), back: !(at[1] === room && at[2] === v) });
           return;
         }
-        if (m.op === 'card' && m.c && !m.s && !host.owner() && host.isHost(pid)) { if (await renew(room, v, m.c)) emit({ type: 'renewed-mine' }); return; }
+        // A renewal is its own proof: renew() takes only the same card with a later expiry, signed by this room's host key. Who
+        // handed it over does not matter, and the host's presence table may reach a page just let in a moment later.
+        if (m.op === 'card' && m.c && !m.s && !host.owner()) { if (await renew(room, v, m.c)) emit({ type: 'renewed-mine' }); return; }
         if ((!host.owner() || (call && call.priv)) && call && (m.op === 'ringing' || m.op === 'dec' || m.op === 'missed' || m.op === 'here' || m.op === 'acc')) {
           const o = await host.verifyAdm(m.w, 'mr' + m.op);
           if (!o || o.to !== String(host.myId())) return;
