@@ -1275,10 +1275,19 @@
       if (P.q) { if (now - P.sentAt < ASK_MS + 2 * RESEND_MS) return; P.q = null; P.fails++; }   // no word back: a miss
       if (now < P.nextAt) return;
       let open = 0, pq = null, py = null, ps = -1;
-      for (let k = 0; k < A.length; k++) {
-        const si = (P.seat + k) % A.length, q = A[si], t0 = P.turn.get(q) || 0;
-        for (let j = 0; j < Z.length; j++) { const y = Z[(si + t0 + j) % Z.length], key = q + '|' + y; if ((q === io.me() && y === L.far && !lookable(L)) || P.ok.has(key) || (P.held.has(key) && now - P.held.get(key) < RETRY_MS)) continue; open++; if (!pq) { pq = q; py = y; ps = si; P.turn.set(q, t0 + j + 1); } }
-      }
+      // TURN.7.2: a pair that holds a path of this link on TURN (my pipe's own, my standby's) is tried in place: a look. In
+      // the first turns after a change (one a seat of the bigger side) the pairs that hold no path go first, so a seat that
+      // reaches the far side is found as fast as ever; where no such pair is left the looks take those turns.
+      const holds = (q, y) => (q === io.me() && y === L.far) || (!!L.sbSeat && q === L.sbSeat && !!L.farSb && y === L.farSb);
+      const pick = (freeOnly, turn) => { let op = 0, xq = null, xy = null, xs = -1;
+        for (let k = 0; k < A.length; k++) {
+          const si = (P.seat + k) % A.length, q = A[si], t0 = turn.get(q) || 0;
+          for (let j = 0; j < Z.length; j++) { const y = Z[(si + t0 + j) % Z.length], key = q + '|' + y; if (P.ok.has(key) || (P.held.has(key) && now - P.held.get(key) < RETRY_MS)) continue; if (holds(q, y) && (freeOnly || (q === io.me() && y === L.far ? !lookable(L) : !(L.sbUp && !L.sbDirect)))) continue; op++; if (!xq) { xq = q; xy = y; xs = si; turn.set(q, t0 + j + 1); } }
+        }
+        return { op, xq, xy, xs }; };
+      { const T = new Map(P.turn), r = pick(false, T); open = r.op; pq = r.xq; py = r.xy; ps = r.xs; let freeFirst = false;
+        if (pq && P.n < Math.max(A.length, Z.length)) { const F = new Map(P.turn), f = pick(true, F); if (f.xq) { P.turn = F; pq = f.xq; py = f.xy; ps = f.xs; freeFirst = true; } }
+        if (!freeFirst) P.turn = T; }
       if (!pq) return;
       if (P.fails >= open) { P.x = Math.min(2 * P.x, K.TURN_RETRY_MAX_X); P.fails = 0; }
       P.q = pq; P.y = py; P.sentAt = now; P.seat = (ps + 1) % A.length; P.n++;
