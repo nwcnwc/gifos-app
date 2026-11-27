@@ -1,5 +1,5 @@
 /*
- * gifos-identity.js — "My identity": one sealed GIF in the Identity folder that holds who you are on GifOS.
+ * gifos-identity.js — "Me & My Contacts" (was "My identity"): one sealed GIF in the Identity folder that holds who you are on GifOS.
  * Copyright (c) 2026 Crowd Concepts, Inc. All rights reserved.
  *
  * ONE CONCEPT: your identity is a file. It holds your personal room's key, the keys of our private rooms, your
@@ -343,6 +343,20 @@
     writeShadow(sh);
     return { news: m.news, counts: counts() };
   }
+  // peek(theirs) -> what taking this copy would ADD here, nothing changed: { mine (1 if a personal room), privates, contacts, cards }.
+  function peek(theirs) {
+    if (!theirs || theirs.kind !== 'gifos-identity' || theirs.v !== 1 || !theirs.recs || typeof theirs.recs !== 'object') throw fail('That is not a GifOS identity.', 'not-identity');
+    let m;
+    if (!shadow()) { const recs = {}; for (const rid of Object.keys(theirs.recs)) if (okRec(theirs.recs[rid])) recs[rid] = theirs.recs[rid]; m = { recs, news: Object.keys(recs) }; }
+    else { scan(); m = mergeRecs(records(shadow(), collect()), theirs.recs); }
+    const a = { mine: 0, privates: 0, contacts: 0, cards: 0 };
+    for (const rid of m.news) {
+      const r = m.recs[rid]; if (!r || r.d) continue;
+      const c = classOf(rid);
+      if (c === 'mine') a.mine = 1; else if (c === 'private') a.privates++; else if (c === 'contact') a.contacts++; else if (c === 'card') a.cards++;
+    }
+    return a;
+  }
   function counts() {
     const c = collect(); const n = (cls) => Object.keys(c).filter((rid) => classOf(rid) === cls).length;
     const sh = shadow();
@@ -380,7 +394,7 @@
   // seal here -> err.code 'no-prf' (the page then offers a passphrase).
   async function addPasskey() {
     const sh = shadow() || begin();
-    const made = await seal().passkey.create('My identity', 'identity-' + sh.id.slice(0, 8));
+    const made = await seal().passkey.create('Me & My Contacts', 'identity-' + sh.id.slice(0, 8));
     return addSlot('passkey', { key: made.key }, made.meta);
   }
   function removeSlot(id) { const sh = shadow(); if (!sh) return false; const s = sh.slots.find((x) => x.id === id && !x.gone); if (!s) return false; s.gone = 1; s.at = Date.now(); delete s.wrap; writeShadow(sh); return true; }
@@ -397,7 +411,10 @@
     const files = {};
     for (const p of Object.keys(arc.files)) if (p.indexOf('.lock/') !== 0 && p.indexOf('.state/') !== 0) files[p] = arc.files[p];
     files[CLEAR_PATH] = enc(JSON.stringify(clearPart(shadow())));
-    const clear = await g.repack(base, files);
+    // An older file wore the generated, moving icon: it gets the calm still one the first time it is written again.
+    let old = false; try { const m = JSON.parse(typeof files['manifest.json'] === 'string' ? files['manifest.json'] : dec(files['manifest.json'])); old = !m || m.icon !== ICON_V; } catch (e) { old = true; }
+    if (old) files['manifest.json'] = JSON.stringify(MANIFEST);
+    const clear = old ? await g.encode(files, { accent: ACCENT, preview: await iconPreview() }) : await g.repack(base, files);
     const extra = {}; extra[DOC_PATH] = enc(JSON.stringify(d));
     return seal().sealGif(clear, { key: await mkKey(sh.mk) }, extra);
   }
@@ -442,8 +459,38 @@
   // ---- the GIF in the Identity folder ----------------------------------------------------------------------------
   // The file sits in the device's GIF store under one fixed id; the Home Screen places it in the Identity folder
   // (desktop.js ensureIdentity). Every page that changes the identity rewrites it: sync().
-  const FILE_ID = 'identity_me', FILE_NAME = 'My identity.gif', ACCENT = [64, 196, 170];
-  const MANIFEST = { gifos: '1.0', type: 'identity', appId: 'gifos-identity', name: 'My identity', accent: ACCENT };
+  const FILE_ID = 'identity_me', FILE_NAME = 'Me & My Contacts.gif', ACCENT = [64, 196, 170];
+  const ICON_V = 2;   // 2 = the calm, still ID-card icon (1 = the generated moving one)
+  const MANIFEST = { gifos: '1.0', type: 'identity', appId: 'gifos-identity', name: 'Me & My Contacts', accent: ACCENT, icon: ICON_V };
+  // The icon is made the way the other system icons are (GifOS.icons, the Home Screen art), then held to its first frame:
+  // no motion at all, so prefers-reduced-motion needs nothing. A page without the art (Meet) draws the same card by hand.
+  function handStill() {
+    const W = 32, H = 32, a = ACCENT, pal = new Array(128 * 3).fill(0);
+    const set = (i, c) => { pal[i * 3] = c[0]; pal[i * 3 + 1] = c[1]; pal[i * 3 + 2] = c[2]; };
+    set(1, a); set(2, [244, 247, 250]); set(3, [a[0] - 30, a[1] - 30, a[2] - 30]); set(4, [190, 205, 214]);
+    const idx = new Uint8Array(W * H), put = (x, y, v) => { if (x >= 0 && x < W && y >= 0 && y < H) idx[y * W + x] = v; };
+    for (let y = 6; y < 26; y++) for (let x = 3; x < 29; x++) {
+      const cx = x < 5 ? 5 - x : x > 26 ? x - 26 : 0, cy = y < 8 ? 8 - y : y > 23 ? y - 23 : 0;
+      if (cx + cy > 3) continue;                                                  // rounded corners
+      put(x, y, (y < 8 || y > 23 || x < 5 || x > 26) ? 1 : 2);
+    }
+    for (let y = 8; y < 24; y++) for (let x = 5; x < 27; x++) {
+      const dx = x - 11, dy = y - 14;
+      if (dx * dx + dy * dy <= 10) put(x, y, 3);                                  // head
+      else if (y >= 18 && ((x - 11) * (x - 11)) / 30 + ((y - 23) * (y - 23)) / 22 <= 1) put(x, y, 3);   // shoulders
+    }
+    for (let x = 17; x < 25; x++) { put(x, 11, 4); put(x, 15, 4); put(x, 19, 4); }
+    return { width: W, height: H, palette: pal, numColors: 128, minCodeSize: 7, frames: [idx], delayCs: 0, transparentIndex: 0 };
+  }
+  let iconMade = null;
+  async function iconPreview() {
+    if (iconMade) return iconMade;
+    try {
+      const I = GifOS.icons;
+      if (I && I.renderApp) { const p = await I.renderApp('identity', ACCENT); if (p && p.frames && p.frames.length) return (iconMade = Object.assign({}, p, { frames: [p.frames[0]], delayCs: 0 })); }
+    } catch (e) {}
+    return handStill();
+  }
   const packedMark = (sh) => mark(canon([sh.id, sh.st, sh.slots, sh.keep]));
   let syncing = null;
   // sync() -> true when this device holds an identity (made now if there is something to hold). The GIF in the store
@@ -458,7 +505,7 @@
       const sh = shadow(), pm = packedMark(sh);
       if (file && file.bytes && sh.packed === pm) return true;
       let base = file && file.bytes ? (file.bytes instanceof Uint8Array ? file.bytes : new Uint8Array(file.bytes)) : null;
-      if (!base) base = await g.encode({ 'manifest.json': JSON.stringify(MANIFEST) }, { accent: ACCENT, seed: 7 });
+      if (!base) base = await g.encode({ 'manifest.json': JSON.stringify(MANIFEST) }, { accent: ACCENT, preview: await iconPreview() });
       const bytes = await pack(base);
       await st.putFile({ id: FILE_ID, name: FILE_NAME, bytes, kind: 'gif', isApp: false, appId: MANIFEST.appId, accent: ACCENT, mime: 'image/gif' });
       const now = shadow(); now.packed = packedMark(now); writeShadow(now);
@@ -660,7 +707,7 @@
     SHADOW, DOC_PATH, CLEAR_PATH, CODE_LEN,
     useStore, collect, put, canon, mergeRecs,
     FOLLOW: Object.keys(FOLLOW), DEVICE_ONLY: DEVICE_ONLY.slice(), follows: (k) => !!FOLLOW[k],
-    exists, worth, begin, scan, doc, take, counts, status,
+    exists, worth, begin, scan, doc, take, peek, counts, status,
     slots, addPassphrase, addPasskey, removeSlot,
     pack, look, open, sync, fileBytes, FILE_ID, FILE_NAME, MANIFEST,
     noteSaved, noteLater, nudge,

@@ -769,7 +769,7 @@
   window.addEventListener('storage', (e) => { if (e.key === PAY_PENDING && e.newValue) drainPendingReceipts(); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) drainPendingReceipts(); });
 
-  // ---- Identity: "My identity" is a GIF (js/gifos-identity.js) ----------------
+  // ---- Identity: "Me & My Contacts" (was "My identity") is a GIF (js/gifos-identity.js) ----------------
   // The identity's own code keeps the file current in the store; the Home
   // Screen is the only placer: an Identity folder beside Purchases, the GIF in
   // it. Both are put back if they are missing or in the Trash: a person's
@@ -811,8 +811,9 @@
         } catch (e) { /* falls back to the folder glyph */ }
       }
       const it = items.find((i) => i.id === IDENTITY_ITEM);
-      if (!it) { await saveItem({ id: IDENTITY_ITEM, kind: 'file', fileId: ID.FILE_ID, name: 'My identity', iconSize: 64 }, { into: IDENTITY_FOLDER }); changed = true; }
-      else if (it.parent === TRASH_ID) { await saveItem(it, { into: IDENTITY_FOLDER }); changed = true; }
+      if (!it) { await saveItem({ id: IDENTITY_ITEM, kind: 'file', fileId: ID.FILE_ID, name: 'Me & My Contacts', iconSize: 64 }, { into: IDENTITY_FOLDER }); changed = true; }
+      else if (it.name !== 'Me & My Contacts') { it.name = 'Me & My Contacts'; await saveItem(it); changed = true; }   // the file was called "My identity" before
+      if (it && it.parent === TRASH_ID) { await saveItem(it, { into: IDENTITY_FOLDER }); changed = true; }
       if (changed) { await load(); render(); }
     } finally { placingIdentity = false; }
   }
@@ -2153,7 +2154,7 @@
       // An identity GIF is opened (its passphrase or passkey) and merged into
       // this device's identity; the one in the Identity folder is then current.
       if (archive && m.type === 'identity' && GifOS.identityUI) {
-        try { await GifOS.identityUI.openFile(buf); } catch (err) { showModal('My identity', escapeHtml(err.message || String(err))); }
+        try { await GifOS.identityUI.openFile(buf); } catch (err) { showModal('Me & My Contacts', escapeHtml(err.message || String(err))); }
         await ensureIdentity();
         i++;
         continue;
@@ -2516,7 +2517,7 @@
   }
   async function moveToTrash(it) {
     if (it.id === TRASH_ID) return;
-    if (isIdentityItem(it)) { showModal('My identity stays here', 'Your identity file holds your personal room and your private rooms. It cannot go to the Trash.'); return; }
+    if (isIdentityItem(it)) { { const g = GifOS.i18n; const tt = (k, fb) => { try { const v = g && g.t('identity.' + k); if (v && v !== 'identity.' + k) return v; } catch (e) {} return fb; }; (g && g.load ? Promise.resolve(g.load('identity')).catch(() => {}) : Promise.resolve()).then(() => showModal(tt('trashTitle', 'Me & My Contacts stays here'), tt('trashBody', 'This file holds your personal room, your private rooms and your contacts. It cannot go to the Trash.'))); }; return; }
     await saveItem(it, { into: TRASH_ID });
     await load(); render();
   }
@@ -3262,7 +3263,7 @@
   // Settings words live in i18n/<locale>/settings.json. ST gives text; STh gives
   // escaped HTML that allows only the <b>, <m> (mono) and <bm> tags messages use.
   const ST = (k, p) => (GifOS.i18n ? GifOS.i18n.t(k, p) : k);
-  // Follows you (kept in My identity, the same on every device) or This device only (docs/identity.md).
+  // Follows you (kept in Me & My Contacts, the same on every device) or This device only (docs/identity.md).
   const scopeTag = (you) => ' <small class="set-scope" data-scope="' + (you ? 'you' : 'device') + '">' + escapeHtml(ST(you ? 'settings.scope.you' : 'settings.scope.device')) + '</small>';
   const richHtml = (s) => escapeHtml(s).replace(/&lt;(\/?)b&gt;/g, '<$1b>').replace(/&lt;m&gt;/g, '<span class="mono">')
     .replace(/&lt;\/m&gt;/g, '</span>').replace(/&lt;bm&gt;/g, '<b class="mono">').replace(/&lt;\/bm&gt;/g, '</b>');

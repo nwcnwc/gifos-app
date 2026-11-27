@@ -1,5 +1,5 @@
 /*
- * gifos-identity-ui.js — what a person sees of "My identity" (js/gifos-identity.js), on the Home Screen and in Meet.
+ * gifos-identity-ui.js — what a person sees of "Me & My Contacts" (was "My identity") (js/gifos-identity.js), on the Home Screen and in Meet.
  * Copyright (c) 2026 Crowd Concepts, Inc. All rights reserved.
  *
  * It paints and asks; every rule (what an identity holds, how copies merge, what opens a file, when a code is good) is
@@ -26,6 +26,9 @@
   const $ = (id) => doc.getElementById(id);
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
+  // Words I changed or added come from i18n/<locale>/identity.json (the English here is the fallback if it did not load).
+  const tx = (k, fb, p) => { try { const g = root.GifOS && root.GifOS.i18n; if (g) { const v = g.t('identity.' + k, p); if (v && v !== 'identity.' + k) return v; } } catch (e) {} return fb.replace(/\{(\w+)\}/g, (m, n) => (p && p[n] != null ? p[n] : m)); };
+  const loadWords = () => { try { const g = root.GifOS && root.GifOS.i18n; return g && g.load ? Promise.resolve(g.load('identity')).catch(() => {}) : Promise.resolve(); } catch (e) { return Promise.resolve(); } };
   const onMeet = () => /\/(meet|cast)(\.html)?$/.test(root.location.pathname);
   const here = () => { try { return GifOS.link ? GifOS.link.read(root.location.pathname, '', root.location.hash) : { room: '' }; } catch (e) { return { room: '' }; } };
   const sget = (k) => { try { return root.sessionStorage.getItem(k) || ''; } catch (e) { return ''; } };
@@ -50,6 +53,7 @@
     '.idn .idn-code{font:700 1.5rem ui-monospace,monospace;letter-spacing:.14em;text-align:center;margin:.2rem 0 .8rem;user-select:all}' +
     '.idn .idn-qr{background:#fff;border-radius:.5rem;padding:.4rem;width:190px;max-width:60%;margin:0 auto .8rem}' +
     '.idn .idn-qr svg{display:block;width:100%;height:auto}' +
+    '.idn .idn-btnnote{color:var(--muted,#b0b0c8);font-size:.8rem;line-height:1.4;margin:-.2rem .2rem .3rem}' +
     '.idn .idn-state{font-size:.9rem;color:var(--text,#e0e0f0);margin-bottom:.8rem}' +
     '.idn .idn-err{color:#ff8a8a;font-size:.88rem;margin:0 0 .8rem}' +
     '.idn-note{margin:.6rem 0;padding:.7rem .8rem;border:1px solid var(--accent,#7b5cff);border-radius:.6rem;font-size:.88rem;line-height:1.45}' +
@@ -64,7 +68,7 @@
     const old = doc.querySelector('.lock-modal.idn[data-idn="' + name + '"]'); if (old) old.remove();
     const bg = doc.createElement('div'); bg.className = 'lock-modal idn'; bg.setAttribute('data-idn', name);
     bg.innerHTML = '<div class="lock-box" role="dialog" aria-modal="true">' + html + '<div class="lock-btns">' +
-      buttons.map((b) => '<button type="button" data-act="' + esc(b[0]) + '"' + (b[2] ? ' class="ok"' : '') + '>' + esc(b[1]) + '</button>').join('') + '</div></div>';
+      buttons.map((b) => '<button type="button" data-act="' + esc(b[0]) + '"' + (b[2] ? ' class="ok"' : '') + '>' + esc(b[1]) + '</button>' + (b[3] ? '<div class="idn-btnnote">' + esc(b[3]) + '</div>' : '')).join('') + '</div></div>';
     let res; const done = new Promise((r) => { res = r; });
     const close = (act) => { try { bg.remove(); } catch (e) {} res(act || 'close'); };
     bg.addEventListener('click', (e) => {
@@ -77,6 +81,15 @@
   const say = (title, text) => sheet('say', '<h3>' + esc(title) + '</h3><p>' + esc(text) + '</p>', [['close', 'OK', true]]).done;
 
   // ---- words -------------------------------------------------------------------------------------------------------
+  // What a file would add, in words: "your personal room, 3 contacts, 1 private room" (bold for the sheet).
+  function addWords(a) {
+    const out = [];
+    if (a.mine) out.push(esc(tx('mine', 'your personal room')));
+    if (a.privates) out.push(esc(tx('rooms', plural(a.privates, 'private room', 'private rooms'), { n: a.privates })));
+    if (a.contacts) out.push(esc(tx('contacts', plural(a.contacts, 'contact', 'contacts'), { n: a.contacts })));
+    if (a.cards) out.push(esc(tx('cards', plural(a.cards, 'card you gave', 'cards you gave'), { n: a.cards })));
+    return out.join(', ');
+  }
   function holds(c) {
     const a = [];
     if (c.mine) a.push('your personal room <b>' + esc(c.mine) + '</b>');
@@ -87,9 +100,9 @@
   }
   const dayOf = (at) => { try { return new Date(at).toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' }); } catch (e) { return ''; } };
   function noteWords(n, st) {
-    const more = st.devices.length > 1 ? ' It is also on ' + plural(st.devices.length - 1, 'other device', 'other devices') + ' of yours.' : '';
-    if (n.kind === 'more') return 'You have ' + plural(n.privates, 'private room', 'private rooms') + ' that the identity file you saved on ' + dayOf(n.since) + ' does not hold. Save it again, so a lost or cleared browser cannot lose them.' + more;
-    return 'Your private rooms live only in this browser. Save your identity file: if this browser\'s data is cleared or the device is lost, the file is the only way back to them.' + more;
+    const more = st.devices.length > 1 ? ' ' + tx('noteDevices', 'It is also on ' + plural(st.devices.length - 1, 'other device', 'other devices') + ' of yours.', { n: st.devices.length - 1 }) : '';
+    if (n.kind === 'more') return tx('noteMore', 'You have {rooms} that the file you saved on {day} does not hold. Save it again, so a lost or cleared browser cannot lose them.', { rooms: tx('rooms', plural(n.privates, 'private room', 'private rooms'), { n: n.privates }), day: dayOf(n.since) }) + more;
+    return tx('noteFirst', 'Your private rooms live only in this browser. Save your Me & My Contacts file: if this browser\'s data is cleared or the device is lost, the file is the only way back to them.') + more;
   }
 
   // ---- save: download the sealed GIF -------------------------------------------------------------------------------
@@ -102,8 +115,8 @@
   // A new passphrase for the file. true when one was set.
   async function setPassphrase() {
     const min = GifOS.seal.PASS_MIN || 8;
-    const p = await GifOS.seal.askPassphrase('My identity', { confirm: true, title: 'A passphrase for your identity file', ok: 'Set this passphrase',
-      lead: 'Your identity file will open with this passphrase, on any device. Use at least ' + min + ' characters. Nobody can reset it or look it up: no copy of it exists anywhere. Anyone who has both the file and the passphrase is you on GifOS.' });
+    const p = await GifOS.seal.askPassphrase('Me & My Contacts', { confirm: true, title: 'A passphrase for this file', ok: 'Set this passphrase',
+      lead: 'This file will open with this passphrase, on any device. Use at least ' + min + ' characters. Nobody can reset it or look it up: no copy of it exists anywhere. Anyone who has both the file and the passphrase is you on GifOS.' });
     if (!p) return false;
     await ID().addPassphrase(p);
     await ID().sync();
@@ -123,7 +136,7 @@
   async function ensureWay() {
     if (ID().slots().length) return true;
     const pk = await passkeyHere();
-    const s = sheet('way', '<h3>How should your identity file open?</h3><p>The file is sealed. Choose what opens it on another device, or on this one after its data was cleared.</p>' +
+    const s = sheet('way', '<h3>How should this file open?</h3><p>The file is sealed. Choose what opens it on another device, or on this one after its data was cleared.</p>' +
       '<p><b>A passphrase</b> works on every device.' + (pk ? ' <b>A passkey</b> opens it wherever your passkeys go (your phone\'s or browser\'s password manager).' : '') + ' You can have both.</p>',
       [['pass', 'Set a passphrase', true]].concat(pk ? [['key', 'Use a passkey']] : []).concat([['cancel', 'Cancel']]));
     const act = await s.done;
@@ -132,7 +145,7 @@
     return false;
   }
   async function save() {
-    if (!(await ID().sync())) { await say('My identity', 'There is nothing to save yet. Make your personal room in Rooms first.'); return false; }
+    if (!(await ID().sync())) { await say('Me & My Contacts', 'There is nothing to save yet. Make your personal room in Rooms first.'); return false; }
     if (!(await ensureWay())) return false;
     const bytes = await ID().fileBytes();
     download(bytes, ID().FILE_NAME);
@@ -146,21 +159,22 @@
   // openFile(bytes) -> true when the file was merged into this device. Not an identity GIF -> null (the caller treats it
   // as any other GIF).
   async function openFile(bytes) {
+    await loadWords();
     const u = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
     const seen = await ID().look(u); if (!seen) return null;
     let copy = null;
     if (ID().exists()) { try { copy = await ID().open(u); } catch (e) { copy = null; } }   // a file this identity wrote: nothing to ask
     if (!copy) {
       const ways = seen.slots.filter((s) => !s.gone);
-      if (!ways.length) { await say('This file cannot be opened here', 'It was saved without a passphrase or passkey, so only the device that wrote it can read it. On that device, save your identity file again and choose how it opens.'); return false; }
+      if (!ways.length) { await say('This file cannot be opened here', 'It was saved without a passphrase or passkey, so only the device that wrote it can read it. On that device, save this file again and choose how it opens.'); return false; }
       const hasPass = ways.some((s) => s.kind === 'passphrase'), hasKey = ways.some((s) => s.kind === 'passkey');
       let how = hasPass ? 'pass' : 'key';
       if (hasPass && hasKey) {
-        how = await sheet('how', '<h3>Open your identity file</h3><p>This file opens with its passphrase or with your passkey.</p>', [['pass', 'Use the passphrase', true], ['key', 'Use my passkey'], ['cancel', 'Cancel']]).done;
+        how = await sheet('how', '<h3>Open this file</h3><p>This file opens with its passphrase or with your passkey.</p>', [['pass', 'Use the passphrase', true], ['key', 'Use my passkey'], ['cancel', 'Cancel']]).done;
         if (how !== 'pass' && how !== 'key') return false;
       }
       if (how === 'pass') {
-        const got = await GifOS.seal.askPassphrase('My identity', { title: 'Open your identity file', ok: 'Open', lead: 'Enter the passphrase you chose when you saved this file.', verify: async (p) => { copy = await ID().open(u, { passphrase: p }); return true; } });
+        const got = await GifOS.seal.askPassphrase('Me & My Contacts', { title: 'Open this file', ok: 'Open', lead: 'Enter the passphrase you chose when you saved this file.', verify: async (p) => { copy = await ID().open(u, { passphrase: p }); return true; } });
         if (!got || !copy) return false;
       } else {
         try { copy = await ID().open(u, { passkey: true }); }
@@ -168,13 +182,20 @@
       }
     }
     const had = ID().exists() ? ID().counts() : null;
+    // Say what the file would add, and ask, before anything is merged.
+    const add = ID().peek(copy), list = addWords(add);
+    const go = await sheet('confirm', '<h3>' + esc(had ? tx('mergeTitle', 'Merge in this file?') : tx('restoreTitle', 'Restore from this file?')) + '</h3>' +
+      '<p>' + (list ? tx('adds', 'This file would add: {list}.', { list: '\u0001' }).split('\u0001').map(esc).join('<b>' + list + '</b>') : esc(tx('nothing', 'Nothing in this file is new to this device.'))) + '</p>' +
+      '<p>' + esc(had ? tx('mergeLead', 'Nothing here is replaced or deleted.') : tx('restoreLead', 'Your personal room and your private rooms will open from here as they did before.')) + '</p>',
+      [['yes', had ? tx('doMerge', 'Merge it in') : tx('doRestore', 'Restore'), true], ['no', tx('cancel', 'Cancel')]]).done;
+    if (go !== 'yes') return false;
     const r = ID().take(copy);
     ID().noteSaved(Object.keys(copy.recs).filter((rid) => rid.indexOf('private/') === 0 && !copy.recs[rid].d).length);   // the person holds this file: it is their kept copy
     await ID().sync();
     try { if (root.navigator.storage && root.navigator.storage.persist) root.navigator.storage.persist().catch(() => {}); } catch (e) {}
     paintAll();
     const c = r.counts;
-    await sheet('opened', '<h3>' + (had ? 'Your identity file was merged' : 'Your identity is on this device') + '</h3><p>It holds ' + holds(c) + '.</p>' +
+    await sheet('opened', '<h3>' + (had ? 'The file was merged in' : 'Me & My Contacts is on this device') + '</h3><p>It holds ' + holds(c) + '.</p>' +
       (had ? '<p>Nothing on this device was lost: what the file had and what this device had are both here now.</p>' : '<p>Your personal room and your private rooms open from here as they did before.</p>'), [['close', 'Done', true]]).done;
     return true;
   }
@@ -184,18 +205,20 @@
     inp.onchange = async () => {
       const f = inp.files && inp.files[0]; inp.remove(); if (!f) return;
       const r = await openFile(new Uint8Array(await f.arrayBuffer())).catch((e) => { say('Could not open the file', (e && e.message) || 'The file is damaged.'); return false; });
-      if (r === null) say('Not an identity file', 'That GIF is not a GifOS identity file.');
+      if (r === null) say('Not a Me & My Contacts file', 'That GIF is not a Me & My Contacts file.');
     };
     doc.body.appendChild(inp); inp.click();
   }
 
   // ---- the My identity sheet ---------------------------------------------------------------------------------------
   async function manage() {
+    await loadWords();
     await ID().sync().catch(() => false);
     const st = ID().status();
     if (!st.exists) {
-      const act = await sheet('manage', '<h3>My identity</h3><p>Your identity is your personal room, your private rooms and your contacts, kept in one sealed file that only you hold. This device has none yet.</p>' +
-        '<p>Make your personal room in Rooms to start one, or bring yours from another device.</p>', [['get', 'Get my identity from another device', true], ['file', 'Open an identity file'], ['close', 'Close']]).done;
+      const act = await sheet('manage', '<h3>Me & My Contacts</h3><p>' + esc(tx('noneIntro', 'Me & My Contacts is one sealed file that is you on GifOS: your rooms, contacts, keys and settings. This device doesn\'t have one yet.')) + '</p>' +
+        '<p>' + esc(tx('noneLead', 'Make your personal room in Rooms to start one, or bring yours from another device or a saved file.')) + '</p>',
+        [['get', tx('copyFrom', 'Copy from another device'), true], ['file', tx('restoreBtn', 'Restore from a saved file')], ['close', 'Close']]).done;
       if (act === 'get') getFrom(); else if (act === 'file') pickFile();
       return;
     }
@@ -204,13 +227,13 @@
     const ways = !st.slots.length ? 'not chosen yet (asked when you first save the file)' : [hasPass ? 'a passphrase' : '', keys ? plural(keys, 'passkey', 'passkeys') : ''].filter(Boolean).join(' and ');
     const devs = st.devices.map((d) => esc(d.name || 'A device') + (d.here ? ' (this one)' : '')).join(', ');
     const n = st.nudge;
-    const html = '<h3>My identity</h3>' +
-      '<p>One sealed file that is you on GifOS. No server has a copy. Keep the file and you can always come back; copy it and you are on another device.</p>' +
+    const html = '<h3>Me & My Contacts</h3>' +
+      '<p>' + esc(tx('intro', 'Me & My Contacts: one sealed file that is you on GifOS: your rooms, contacts, keys and settings. No server has a copy. Keep the file and you can always come back; copy it and you\'re on another device.')) + '</p>' +
       (n ? '<div class="idn-note">' + esc(noteWords(n, st)) + '</div>' : '') +
       '<ul class="idn-list"><li>Holds: ' + holds(st.counts) + '</li><li>On: ' + devs + '</li><li>The file opens with: ' + esc(ways) + '</li>' +
       '<li>File last saved: ' + (st.saved ? esc(dayOf(st.saved.at)) : '<b>never</b>') + '</li></ul>';
-    const act = await sheet('manage', html, [['save', 'Save my identity file', true], ['copy', 'Copy my identity to another device'], ['pass', hasPass ? 'Change the passphrase' : 'Set a passphrase']]
-      .concat(pk ? [['key', 'Add a passkey']] : []).concat([['file', 'Open an identity file'], ['close', 'Close']])).done;
+    const act = await sheet('manage', html, [['save', tx('save', 'Save this file'), true], ['copy', tx('copyOut', 'Copy to another device')], ['pass', hasPass ? 'Change the passphrase' : 'Set a passphrase']]
+      .concat(pk ? [['key', 'Add a passkey']] : []).concat([['file', tx('mergeBtn', 'Merge in a saved file…'), false, tx('mergeNote', "Adds anything from that file that this device doesn't have yet. Nothing here is replaced or deleted.")], ['close', 'Close']])).done;
     if (act === 'save') await save();
     else if (act === 'copy') copyOut();
     else if (act === 'pass') { if (await setPassphrase()) manage(); }
@@ -228,10 +251,12 @@
     if (onMeet() && h.room === m.room && String(h.v || '').toLowerCase() === m.v) { startGive(); return; }
     root.location.assign(meetUrl(m.room, m.v)); if (onMeet()) root.location.reload();
   }
-  function getFrom() {
-    sheet('get', '<h3>Get my identity from another device</h3>' +
-      '<p><b>With the other device beside you:</b> on it, open My identity and choose <i>Copy my identity to another device</i>. Scan the QR it shows with this device\'s camera. No camera? Use <i>Copy room link</i> there, open that link on this device, and type the code.</p>' +
-      '<p><b>With your saved file:</b> open it here.</p>', [['file', 'Open an identity file', true], ['close', 'Close']]).done.then((act) => { if (act === 'file') pickFile(); });
+  async function getFrom() {
+    await loadWords();
+    const how = tx('getHow', 'With the other device beside you: on it, open Me & My Contacts and choose {copy}. Scan the QR it shows with this device\'s camera. No camera? Use Copy room link there, open that link on this device, and type the code.', { copy: tx('copyOut', 'Copy to another device') });
+    sheet('get', '<h3>' + esc(tx('getTitle', 'Copy from another device')) + '</h3>' +
+      '<p>' + how + '</p>' +
+      '<p>' + tx('getFile', 'With your saved file: restore it here.') + '</p>', [['file', tx('restoreBtn', 'Restore from a saved file'), true], ['close', 'Close']]).done.then((act) => { if (act === 'file') pickFile(); });
   }
   function qrInto(box, text) {
     const draw = () => { try { const q = root.qrcode(0, 'M'); q.addData(text); q.make(); box.innerHTML = q.createSvgTag({ cellSize: 4, margin: 2, scalable: true }); } catch (e) { box.textContent = ''; } };
@@ -259,7 +284,7 @@
     const h = here();
     const linkCode = absUrl(meetUrl(h.room, h.v, { copy: code })), linkAsk = absUrl(meetUrl(h.room, h.v, { copy: 'ask' }));
     const mins = Math.round((T().IDENTITY_CODE_MS || 0) / 1000 / 60);
-    giveSheet = sheet('give', '<h3>Copy my identity to another device</h3>' +
+    giveSheet = sheet('give', '<h3>' + esc(tx('copyOut', 'Copy to another device')) + '</h3>' +
       '<p>Scan this with the other device\'s camera. Both devices end up with everything, and nothing leaves them: the copy goes straight from this page to that one, encrypted.</p>' +
       '<div class="idn-qr" id="idn-qr"></div>' +
       '<p>No camera? Open your room on the other device (<i>Copy room link</i>), then type this code there:</p>' +
@@ -274,9 +299,9 @@
   async function startGet(word) {
     const p = part || await waitPart(20000); if (!p) return;
     if (ID().tidyCode(word).length === ID().CODE_LEN) return askWith(word);
-    getSheet = sheet('getcode', '<h3>Get my identity from my other device</h3><p>Type the code your other device shows under <i>Copy my identity to another device</i>.</p>' +
+    getSheet = sheet('getcode', '<h3>' + esc(tx('copyFrom', 'Copy from another device')) + '</h3><p>Type the code your other device shows under <i>' + esc(tx('copyOut', 'Copy to another device')) + '</i>.</p>' +
       '<input type="text" id="idn-code-in" maxlength="20" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX">' +
-      '<div class="idn-err" id="idn-get-err" hidden></div>', [['go', 'Get my identity', true], ['cancel', 'Cancel']]);
+      '<div class="idn-err" id="idn-get-err" hidden></div>', [['go', tx('copyFrom', 'Copy from another device'), true], ['cancel', 'Cancel']]);
     const go = getSheet.q('[data-act="go"]'); go.setAttribute('data-stay', '1');
     const s = getSheet;
     s.done.then((act) => { if (act === 'cancel') sset(COPY, ''); });
@@ -286,7 +311,7 @@
     try { s.q('#idn-code-in').focus(); } catch (e) {}
   }
   async function askWith(code) {
-    getSheet = sheet('getting', '<h3>Getting my identity</h3><div class="idn-state" id="idn-get-state">Looking for your other device in this room…</div>', [['cancel', 'Cancel']]);
+    getSheet = sheet('getting', '<h3>Copying from your other device</h3><div class="idn-state" id="idn-get-state">Looking for your other device in this room…</div>', [['cancel', 'Cancel']]);
     getSheet.done.then((act) => { if (act === 'cancel') { sset(COPY, ''); if (part) part.stop(); } });
     try { await part.ask(code); } catch (e) { getSheet.close(); say('Check the code', (e && e.message) || 'That code is not right.'); }
   }
@@ -294,18 +319,18 @@
     if (ev.type === 'give') {
       const el = giveSheet && giveSheet.q('#idn-give-state');
       if (ev.state === 'copying' && el) el.textContent = 'Copying to ' + (ev.name || 'your other device') + '…';
-      if (ev.state === 'done') { sset(GIVE, ''); if (giveSheet) giveSheet.close(); paintAll(); ID().sync().catch(() => {}); sheet('gave', '<h3>Done</h3><p>' + esc(ev.name || 'Your other device') + ' now has your identity' + (ev.news ? ', and what it had is here too' : '') + '. It holds ' + holds(ev.counts) + '.</p>', [['close', 'Done', true]]); }
+      if (ev.state === 'done') { sset(GIVE, ''); if (giveSheet) giveSheet.close(); paintAll(); ID().sync().catch(() => {}); sheet('gave', '<h3>Done</h3><p>' + esc(ev.name || 'Your other device') + ' now has your Me & My Contacts file' + (ev.news ? ', and what it had is here too' : '') + '. It holds ' + holds(ev.counts) + '.</p>', [['close', 'Done', true]]); }
       if (ev.state === 'expired' || ev.state === 'spent') { sset(GIVE, ''); if (giveSheet) giveSheet.close(); say(ev.state === 'spent' ? 'That code was stopped' : 'The code ran out', ev.state === 'spent' ? 'Too many wrong tries. Nothing was copied. Start again for a new code.' : 'Nothing was copied. Start again for a new code.'); }
     }
     if (ev.type === 'get') {
       const el = getSheet && getSheet.q('#idn-get-state');
       if (ev.state === 'copying' && el) el.textContent = 'Found it. Copying…';
       if (ev.state === 'no') { sset(COPY, 'ask'); if (getSheet) getSheet.close(); sheet('getno', '<h3>That code did not work</h3><p>Check the code on your other device and type it again. A code works once and for a few minutes.</p>', [['again', 'Type the code again', true], ['close', 'Close']]).done.then((a) => { if (a === 'again') startGet('ask'); else sset(COPY, ''); }); }
-      if (ev.state === 'expired') { sset(COPY, ''); if (getSheet) getSheet.close(); say('Could not find your other device', 'Open your personal room on the device that has your identity, choose Copy my identity to another device there, and try again.'); }
+      if (ev.state === 'expired') { sset(COPY, ''); if (getSheet) getSheet.close(); say('Could not find your other device', 'Open your personal room on the device that has your file, choose Copy to another device there, and try again.'); }
       if (ev.state === 'done') {
         sset(COPY, '');
         if (getSheet) getSheet.close();
-        ID().sync().catch(() => {}).then(() => sheet('got', '<h3>Your identity is on this device</h3><p>It holds ' + holds(ev.counts) + '. This page now opens your room again, as yours.</p>', [['close', 'Open my room', true]]).done).then(() => { root.location.reload(); });
+        ID().sync().catch(() => {}).then(() => sheet('got', '<h3>Me & My Contacts is on this device</h3><p>It holds ' + holds(ev.counts) + '. This page now opens your room again, as yours.</p>', [['close', 'Open my room', true]]).done).then(() => { root.location.reload(); });
       }
     }
   }
@@ -318,13 +343,13 @@
     if (!box) { box = doc.createElement('div'); box.id = 'lob-identity'; box.className = 'lob-myroom lob-identity'; myroom.parentNode.insertBefore(box, myroom.nextSibling); }
     css();
     const st = ID().status();
-    let h = '<div class="lob-hist-h">My identity</div>';
+    let h = '<div class="lob-hist-h">Me & My Contacts</div>';
     if (st.exists) {
-      if (st.nudge) h += '<div class="idn-note" id="idn-nudge">' + esc(noteWords(st.nudge, st)) + '<div class="idn-row"><button type="button" id="idn-nudge-save" class="lob-ghost">Save my identity file</button><button type="button" id="idn-nudge-later" class="lob-ghost">Later</button></div></div>';
+      if (st.nudge) h += '<div class="idn-note" id="idn-nudge">' + esc(noteWords(st.nudge, st)) + '<div class="idn-row"><button type="button" id="idn-nudge-save" class="lob-ghost">' + esc(tx('save', 'Save this file')) + '</button><button type="button" id="idn-nudge-later" class="lob-ghost">Later</button></div></div>';
       h += '<div class="mr-mine"><span class="li-name lob-quiet">' + (st.devices.length > 1 ? 'On ' + st.devices.length + ' devices. ' : '') + (st.saved ? 'File saved ' + esc(dayOf(st.saved.at)) + '.' : 'File not saved yet.') + '</span>' +
-        '<button type="button" id="idn-open" class="lob-ghost">My identity</button><button type="button" id="idn-copy" class="lob-ghost">Copy to another device</button></div>';
+        '<button type="button" id="idn-open" class="lob-ghost">Me & My Contacts</button><button type="button" id="idn-copy" class="lob-ghost">' + esc(tx('copyOut', 'Copy to another device')) + '</button></div>';
     } else {
-      h += '<div class="mr-mine"><span class="li-name lob-quiet">Already have a room on another device?</span><button type="button" id="idn-get" class="lob-ghost">Get my identity from another device</button></div>';
+      h += '<div class="mr-mine"><span class="li-name lob-quiet">Already have a room on another device?</span><button type="button" id="idn-get" class="lob-ghost">' + esc(tx('copyFrom', 'Copy from another device')) + '</button></div>';
     }
     if (box.getAttribute('data-h') === h) return;
     box.setAttribute('data-h', h); box.innerHTML = h;
@@ -339,7 +364,7 @@
     if (!n) { if (el) el.remove(); return; }
     css();
     if (!el) { el = doc.createElement('div'); el.id = 'idn-home-note'; el.className = 'idn-note idn-home-note'; doc.body.appendChild(el); }
-    el.innerHTML = esc(noteWords(n, st)) + '<div class="idn-row"><button type="button" class="ok" id="idn-home-save">Save my identity file</button><button type="button" id="idn-home-later">Later</button></div>';
+    el.innerHTML = esc(noteWords(n, st)) + '<div class="idn-row"><button type="button" class="ok" id="idn-home-save">' + esc(tx('save', 'Save this file')) + '</button><button type="button" id="idn-home-later">Later</button></div>';
     $('idn-home-save').onclick = save;
     $('idn-home-later').onclick = () => { ID().noteLater(); paintHome(); };
   }
@@ -351,6 +376,7 @@
     if (!ID()) return;
     // An embedded meeting (a room on someone's page) is not a place for a person's identity.
     try { if (root.top !== root) return; } catch (e) { return; }
+    await loadWords();
     await ID().sync().catch(() => false);
     paintAll();
     root.addEventListener('storage', (e) => { if (e.key && e.key.indexOf('gifos_') === 0) syncSoon(); });
