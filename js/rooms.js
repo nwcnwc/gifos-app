@@ -65,7 +65,9 @@
     const hosted = M.hosted().filter((h) => !taken.has(M.roomKey(h.room, h.v)));
     return { mine, contacts, loose, hosted, missed: M.missed(), issued: M.issued().filter((x) => mine && M.roomKey(x.room, x.v) === M.roomKey(mine.room, mine.v)) };
   }
-  const initials = (n) => (String(n || '?').trim().split(/\s+/).map((w) => w[0]).join('').slice(0, 2) || '?').toUpperCase();
+  const initials = (n) => (String(n || '?').replace(/[^\p{L}\p{N}\s]/gu, '').trim().split(/\s+/).map((w) => w[0] || '').join('').slice(0, 2) || '?').toUpperCase();
+  // A ring's label carries the caller-ID mark ("Bob ✓", "Bob (card)"); the person is the name before it.
+  const bareName = (label) => String(label || '').replace(/\s*(✓|\(card\))\s*$/, '');
   const hue = (n) => { let h = 0; for (const ch of String(n || '')) h = (h * 31 + ch.charCodeAt(0)) % 360; return h; };
   const avatar = (n) => '<span class="av" aria-hidden="true" style="--h:' + hue(n) + '">' + esc(initials(n)) + '</span>';
 
@@ -95,7 +97,7 @@
     if (m.missed.length) {
       h += '<section class="card" id="sec-missed" aria-labelledby="h-missed"><div class="sec-h"><h2 id="h-missed">Missed</h2><button type="button" class="text" id="missed-clear">Clear all</button></div><ul class="rows">';
       for (const x of m.missed.slice().sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 20)) {   // newest first
-        const who = m.contacts.find((k) => k.c.name === x.label);
+        const who = m.contacts.find((k) => k.c.name === bareName(x.label));
         h += '<li class="row">' + avatar(x.label) + '<div class="main"><b>' + esc(x.label) + '</b><span class="quiet">' + esc(timeOf(x.at)) + '</span></div>' +
           (who ? '<button type="button" data-call="' + esc(who.c.room + '.' + who.c.v) + '">Call</button>' : '') + '</li>';
       }
