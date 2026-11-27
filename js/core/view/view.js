@@ -3608,7 +3608,7 @@
       const t = { id: 'stage:content', el: __C.CT.el, tier: 'row', stage: true, share: true, kind: 'app', fill: true, content: true, pz: 'stage:content' };
       if (scroll) {
         t.stackH = (w, maxH) => {
-          const asp = __C.CT.items.map((it) => (0, /*()*/__C.ctAspect)(it, w) || 16 / 9);
+          const asp = __C.CT.items.map((it) => (0, /*()*/__C.ctAspect)(it, w) || GifOS.meetContent.stackAspect(it, w, window.innerHeight));
           return GifOS.meetContent.stack({ x: 0, y: 0, w: w, h: maxH }, asp, 8).h;
         };
       }
@@ -3867,7 +3867,7 @@
       const shown = plan.show.map((k) => __C.CT.items.find((i) => i.key === k)).filter(Boolean);
       const asp = shown.map((it) => (0, /*()*/__C.ctAspect)(it, inner.w));
       let rects;
-      if (plan.stack) rects = MC.stack(inner, asp.map((a) => a || 16 / 9), 8).rects;
+      if (plan.stack) rects = MC.stack(inner, asp.map((a, i) => a || MC.stackAspect(shown[i], inner.w, window.innerHeight)), 8).rects;
       else if (shown.length > 1) rects = MC.grid(inner, asp, 8);
       else rects = [inner];
       // The app's box in screen terms (the pane is fixed).

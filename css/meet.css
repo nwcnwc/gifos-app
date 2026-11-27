@@ -3964,3 +3964,12 @@ body.has-app:not(.solo-app):not(.app-room) #appbar > button, body.has-app:not(.s
 /* The Stage view with the agenda alone on it: the list starts under the top row, so the view button never sits on Hide. */
 body.sv-live:not(.sv-tabs) .ct-pane.ag { padding-top: max(60px, calc(var(--headh, 0px) + 8px)); }
 @media (max-height: 500px) { .ag-item:not([tabindex]):not(:has(> input)) { min-height: 34px; padding-top: 2px; padding-bottom: 2px; } }
+/* A phone typing into the agenda: the floating bar steps aside while a field has the keyboard, and the list can
+   scroll clear of the bar. */
+@media (max-width: 700px), (max-height: 500px) {
+  body:has(.ct-pane.ag :is(input, textarea):focus) .bar { opacity: 0; pointer-events: none; }
+  .ct-pane.ag { padding-bottom: 96px; }
+}
+/* The Stage view keeps the page's own view button on screen, so the app bar does not repeat it. */
+body.sv-live #appbar #appview { display: none !important; }
+.ag-mini { font-size: 19px; color: var(--c-white); }
