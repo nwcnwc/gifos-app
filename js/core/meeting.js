@@ -10388,6 +10388,7 @@
             const st = id === myId ? myStatus : statusOf.get(id);
             return stagePersonLive(id) || !!(st && (st.scr || st.rb));
           });
+          if (playing) bcWasOnAirAt = Date.now();   // the viewer's memory of the Stage on air (bcQuietLine's), also while a wait is on
         }
         if (progRun) {
           // a viewer who was seated but never saw the Stage is still on the way in (Nathan 11-27: reconnecting only for a page
