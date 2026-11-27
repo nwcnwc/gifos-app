@@ -477,6 +477,10 @@ body.names-off #stagefeed .stgnames { display: none; }
      sender's own blur, which it barely changes. */
   .tile video.blur1, #stagefeed > .rowtile > video.blur1, #fsmain.blur1, .fsthumb video.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .009))) saturate(.9); transform: scale(1.07); }
   .tile video.blur2, #stagefeed > .rowtile > video.blur2, #fsmain.blur2, .fsthumb video.blur2 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-max, .0225))) saturate(.75); transform: scale(1.15); }
+  /* The Stadium picture: a grid of faces, so the radius is a fraction of one face's side (the box's long side over the
+     columns the page laid out, --stad-cols), the same look as a tile of that size. */
+  #stadium .rowtile > video.blur1, #stadwhole video.blur1 { filter: blur(calc(var(--bw, 100vmin) / var(--stad-cols, 1) * var(--blur-view-min, .009))) saturate(.9); }
+  #stadium .rowtile > video.blur2, #stadwhole video.blur2 { filter: blur(calc(var(--bw, 100vmin) / var(--stad-cols, 1) * var(--blur-view-max, .0225))) saturate(.75); }
   /* The face boxes on a shared screen (STAGE-FACES). No transform here: a
      strip-cell face is positioned by left/top, and a scale would move it. */
   .stagefacebox video.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .009))) saturate(.9); }
