@@ -1306,7 +1306,11 @@
     // seat steps onto the Stage if it is not there; the seat says Prerecorded (myStatus.rb). It ends with the core's
     // rbStop ('ended' when the host's file ran out), which stops both tracks.
     function rbStart(o) {
-      if (C.rbNow || !C.BROADCAST || !C.bcHostStored() || !o || !live(o.v)) return false;
+      // Same answers as the browser plane's rbStart (an app's gifos.meet.rebroadcast reads r.ok / r.err).
+      if (!C.BROADCAST) return { err: 'not-broadcast', text: 'Only a broadcast can rebroadcast.' };
+      if (!C.bcHostStored()) return { err: 'not-host', text: 'Only the host can rebroadcast.' };
+      if (C.rbNow) return { err: 'busy', text: 'A rebroadcast is already playing.' };
+      if (!o || !live(o.v)) return { err: 'unplayable', text: 'That video could not be rebroadcast.' };
       const num = (f) => { try { const n = +f(); return isFinite(n) ? n : NaN; } catch (e) { return NaN; } };
       const vid = {
         get currentTime() { return typeof o.position === 'function' ? num(o.position) || 0 : 0; }, set currentTime(x) { void x; },
@@ -1322,7 +1326,7 @@
       refreshOutbound();
       if (!r.steppedUp) C.broadcastStatus();
       C.refreshAllTiles();
-      return true;
+      return { ok: true, dur: vid.duration || 0, pos: vid.currentTime || 0 };
     }
 
     def('rbStart', rbStart);
