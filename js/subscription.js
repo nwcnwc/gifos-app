@@ -818,11 +818,11 @@
           sent = true;
           try { op.postMessage({ gifos: 'embedpass', wallet: w }, location.origin); } catch (e) {}
           say(t('embedPassSent'));
-          setTimeout(function () { try { window.close(); } catch (e) {} }, 1500);
+          setTimeout(function () { try { window.close(); } catch (e) {} }, GifOS.timings.SUBS_POLL_MS);   // long enough to read the line
         });
       }).catch(function () {});
     };
-    setInterval(tick, 1500); tick();
+    setInterval(tick, GifOS.timings.SUBS_POLL_MS); tick();
   }
 
   function start() {
