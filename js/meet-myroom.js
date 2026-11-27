@@ -201,7 +201,7 @@
   // hosts() (seats that proved the host key, not me), held(pid), admit(pid), hold(on) / holding(), signAdm(act, extra),
   // verifyAdm(w, act), live() (my mic or camera is on), hostLive() (another seat that proved the host key has its mic or
 // camera on), isHost(pid), isHere(pid) (seated in this room), seated(), mic(on), others() (people seated here besides
-// me), now().
+// me), people() ([{id, name}] seated here besides me), now().
   function make(host) {
     const listeners = [];
     const emit = (ev) => { for (const f of listeners.slice()) { try { f(ev); } catch (e) {} } };
@@ -216,8 +216,10 @@
     const lastIn = new Map();   // pid -> last card frame time (flood bound before crypto)
     let standby = false, wentLive = false;
 
+    const SS = 'gifos_mr_card.' + roomKey(room, v);   // this tab's link card, kept across a reload of the call only
     const myCard = () => {
       if (!hosted) return null;
+      if (!linkCard) { try { const tok = root.sessionStorage.getItem(SS); const t = tok && parseToken(tok); if (t && t.seed) linkCard = { token: tok, seed: t.seed, c: t.c, name: (contactFor(room, v) || {}).name || room }; } catch (e) {} }
       if (linkCard) return linkCard;
       const c = contactFor(room, v); if (!c) return null;
       const t = parseToken(c.token); return t && t.seed ? { token: c.token, seed: t.seed, c: t.c, name: c.name } : null;
@@ -306,15 +308,19 @@
       emit({ type: 'declined', pid, label: r.label });
       return true;
     }
-    // Hand a card to a person in this room (a new card: the frame carries its seed over the end-to-end channel).
+    // Hand a person in this meeting a card (a new card: the frame carries its seed over the end-to-end channel). The
+    // card is for this room when I host it, else for My Room: the card back a caller gives the person they called.
     async function give(pid, label) {
-      const K = hostSecret(room, v); if (!K || !host.owner()) return false;
-      const r = await mint(K, room, v, label);
+      const at = host.owner() ? { room, v } : mine(); if (!at) return false;
+      const K = hostSecret(at.room, at.v); if (!K) return false;
+      const r = await mint(K, at.room, at.v, label);
       const t = parseToken(r.token);
       host.send(pid, { op: 'card', c: r.c, s: t.seed, from: String(host.myName() || '').slice(0, 40) });
-      noteIssued(room, v, r.id, label, r.exp);
+      noteIssued(at.room, at.v, r.id, label, r.exp);
+      if (!host.owner()) { given.add(pid); emit({ type: 'gave', pid }); }
       return true;
     }
+    const given = new Set();   // people I gave my card back to in this meeting
     // A card link for this room (the lobby's "Make a card", and the card-back offer when the other side has gone).
     async function linkFor(label, origin) {
       const K = hostSecret(room, v); if (!K) return '';
@@ -326,14 +332,17 @@
       if (!hosted || !m || typeof m.op !== 'string') return;
       try {
         if (m.op === 'card' && host.owner() && m.p) return await onCardShown(pid, m);
-        if (m.op === 'card' && !host.owner() && m.c && host.isHost(pid)) {
-          if (m.s) {   // a new card for me
-            const tok = b64u(JSON.stringify([m.c.sp, m.c.sig, m.c.pub, m.s]));
-            const f = await readCard(tok, room, v); if (!f) return;
-            emit({ type: 'offer', card: f, from: String(m.from || '').slice(0, 40) });
-          } else if (await renew(room, v, m.c)) emit({ type: 'renewed-mine' });
+        if (m.op === 'card' && m.c && m.s && typeof m.s === 'string') {
+          // A new card for me, for the room its signed statement names (this room's host hands out this room's cards; a
+          // caller hands back a card to its own room). It checks itself; the person decides whether to keep it.
+          let at = null; try { at = /^([a-z0-9-]{1,64})\.([a-f0-9]{16,64})$/i.exec(JSON.parse(m.c.sp).room); } catch (e) { at = null; }
+          if (!at || isMine(at[1], at[2])) return;
+          const tok = b64u(JSON.stringify([m.c.sp, m.c.sig, m.c.pub, m.s]));
+          const f = await readCard(tok, at[1], at[2]); if (!f) return;
+          emit({ type: 'offer', card: f, from: String(m.from || '').slice(0, 40), back: !(at[1] === room && at[2] === v) });
           return;
         }
+        if (m.op === 'card' && m.c && !m.s && !host.owner() && host.isHost(pid)) { if (await renew(room, v, m.c)) emit({ type: 'renewed-mine' }); return; }
         if (!host.owner() && call && (m.op === 'ringing' || m.op === 'dec' || m.op === 'missed')) {
           const o = await host.verifyAdm(m.w, 'mr' + m.op);
           if (!o || o.to !== String(host.myId())) return;
@@ -349,6 +358,7 @@
       const f = await readCard(token, room, v); if (!f) return null;
       const t = parseToken(token);
       linkCard = { token, seed: t.seed, c: t.c, name: (contactFor(room, v) || {}).name || room };
+      try { root.sessionStorage.setItem(SS, token); } catch (e) {}
       emit({ type: 'offer', card: f, from: '', fromLink: true });
       return f;
     }
@@ -357,6 +367,7 @@
     return {
       on: (f) => { listeners.push(f); return () => { const i = listeners.indexOf(f); if (i >= 0) listeners.splice(i, 1); }; },
       onMsg, onHeld, tick, answer, decline, give, linkFor, takeLinkCard, save,
+      people: () => host.people(), gaveTo: (pid) => given.has(pid), hostIds: () => host.hosts(),
       state: () => ({ room, v, owner: !!host.owner(), mine: isMine(room, v), standby, call: call ? Object.assign({}, call) : null, rings: Array.from(rings, ([pid, r]) => ({ pid, label: r.label, at: r.at })), holdsCard: !!myCard() }),
     };
   }

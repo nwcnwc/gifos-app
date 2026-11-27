@@ -1,0 +1,287 @@
+/*
+ * GifOS Core: My Room's view (meet.html). Copyright (c) 2026 Crowd Concepts, Inc. All rights reserved.
+ *
+ * Paints what the My Room part (js/meet-myroom.js, GifOS.meetMyRoom.live, built by the core per meeting) says, and turns
+ * a person's taps into its intents. It decides no rule: who may ring, what rings and when a ring is missed are the
+ * part's. The lobby section (My Room, missed calls, Contacts) reads the device's own lists (GifOS.meetMyRoom).
+ *
+ *   owner   a ring sheet with a ringtone (Answer: mic on, camera off; Decline), the standby line, missed calls, and
+ *           "Give a card" for the people in the meeting
+ *   caller  the bar: "Waiting for Ada", "Ringing Ada", "Ada can't answer right now", and "Give Ada your card" once the
+ *           call is answered (asked again in the leave question if not used)
+ *   anyone  "Save this card?" when a card is handed over or a card link was opened
+ */
+(function (root) {
+  'use strict';
+  const GifOS = root.GifOS = root.GifOS || {};
+  const doc = root.document;
+  if (!doc) return;
+  const $ = (id) => doc.getElementById(id);
+  const MR = () => GifOS.meetMyRoom;
+  const T = () => GifOS.timings || {};
+  const LINKS = () => GifOS.link;
+  const show = (el, on) => { if (el) el.style.display = on ? '' : 'none'; };
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const timeOf = (at) => { try { return new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } };
+  const mobile = () => { try { return !!(GifOS.meetPower && GifOS.meetPower.mobileDevice(root.navigator)); } catch (e) { return false; } };
+  const roomUrl = (room, v) => LINKS().pageFor(root.location.pathname, 'meet') + '#' + LINKS().hash({ room, v });
+  const DEL_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M9 3h6l1 2h4v2H4V5h4l1-2zm-3 6h12l-1 12H7L6 9z"/></svg>';
+
+  // ---- the ringtone: two tones in the phone cadence, quiet, until stopped -------------------------------------------
+  let ringAc = null, ringTimer = 0;
+  function ringCtx() {
+    if (!ringAc) { try { const AC = root.AudioContext || root.webkitAudioContext; ringAc = AC ? new AC() : null; } catch (e) { ringAc = null; } }
+    return ringAc;
+  }
+  function ringOnce() {
+    const ac = ringCtx(); if (!ac) return;
+    try {
+      const g = ac.createGain(); g.gain.value = 0; g.connect(ac.destination);
+      const t0 = ac.currentTime;
+      g.gain.setValueAtTime(0.12, t0); g.gain.setValueAtTime(0.12, t0 + 1.9); g.gain.linearRampToValueAtTime(0, t0 + 2);
+      for (const f of [440, 480]) { const o = ac.createOscillator(); o.frequency.value = f; o.connect(g); o.start(t0); o.stop(t0 + 2); }
+    } catch (e) {}
+  }
+  function ringStart() { if (ringTimer) return; ringOnce(); ringTimer = root.setInterval(ringOnce, 3 * T().MYROOM_TICK_MS * 2); }   // 2 s on, 4 s off
+  function ringStop() { if (ringTimer) { root.clearInterval(ringTimer); ringTimer = 0; } }
+  const ringBlocked = () => { const ac = ringCtx(); return !!ac && ac.state === 'suspended'; };
+
+  // ---- the caller's bar and the owner's standby line share one bar -------------------------------------------------
+  let barAct = null;
+  function bar(text, act, actText, closable) {
+    const el = $('mr-bar'); if (!el) return;
+    if (!text) { el.hidden = true; barAct = null; doc.body.classList.remove('mr-on'); return; }
+    $('mr-bar-text').textContent = text;
+    const b = $('mr-bar-act'); barAct = act || null; b.hidden = !act; if (act) b.textContent = actText;
+    $('mr-bar-x').hidden = !closable;
+    el.hidden = false; doc.body.classList.add('mr-on');
+  }
+
+  // ---- one meeting ----------------------------------------------------------------------------------------------------
+  let part = null, ringing = null, offer = null, barShut = false;
+  function callWords(c) {
+    const n = c.label || 'them';
+    if (c.state === 'waiting') return 'Waiting for ' + n + '. ' + n + '’s devices ring when one of them has this room open.';
+    if (c.state === 'ringing') return 'Ringing ' + n + '…';
+    if (c.state === 'declined') return n + ' can’t answer right now.';
+    if (c.state === 'noanswer') return n + ' didn’t answer. You can keep waiting here.';
+    return '';
+  }
+  function paint() {
+    if (!part) return;
+    const st = part.state();
+    doc.body.classList.toggle('mr-calling', !!(st.call && st.call.state !== 'answered'));   // the "only one here" card stays away while I call
+    if (st.owner) {
+      if (st.rings.length) {
+        const r = st.rings[0];
+        if (!ringing || ringing.pid !== r.pid) {
+          ringing = r;
+          $('mr-ring-title').textContent = r.label + ' is calling';
+          show($('mr-ring'), true);
+          ringStart();
+        }
+      } else if (ringing) { ringing = null; show($('mr-ring'), false); ringStop(); }
+      if (st.standby && !barShut) bar(ringBlocked() ? 'Your room is open. Turn on the ringer so calls can ring here.' : 'Your room is open. People with your card ring here.', ringBlocked() ? () => { try { ringCtx().resume(); } catch (e) {} paint(); } : null, 'Turn on the ringer', true);
+      else if (!st.standby && st.mine && part.people().length && !barShut) bar('Your room', () => openMake(true), 'Give a card', true);
+      else if (!barShut) bar('');
+      return;
+    }
+    const c = st.call;
+    if (c && c.state === 'answered') {
+      const host = part.hostIds()[0];
+      if (MR().mine() && host && !part.gaveTo(host) && !barShut) bar('Give ' + c.label + ' your card, so they can call you back?', () => giveBack(host, c.label), 'Give my card', true);
+      else bar('');
+    } else if (c && !barShut) bar(callWords(c), null, '', c.state === 'declined' || c.state === 'noanswer');
+    else bar('');
+  }
+  async function giveBack(pid, label) { try { await part.give(pid, label); } catch (e) {} bar('Card given. ' + label + ' can call you now.', null, '', true); }
+  function onEvent(ev) {
+    if (ev.type === 'offer') { offer = ev; openOffer(); }
+    else if (ev.type === 'missed') toast('Missed call from ' + ev.label + ', ' + timeOf(ev.at));
+    else if (ev.type === 'arrived') toast(ev.label + ' is here (they have a card to this room).');
+    else if (ev.type === 'renewed-mine') {}   // a renewal is silent
+    paint();
+  }
+  function toast(text) { bar(text, null, '', true); setTimeout(paint, 4 * T().MYROOM_RING_MS / 10); }
+  function openOffer() {
+    if (!offer) return;
+    const f = offer.card;
+    const known = MR().contactFor(f.room, f.v);
+    $('mr-offer-title').textContent = offer.fromLink ? 'Save this card?' : (offer.from || 'Someone') + ' gave you a card';
+    $('mr-offer-note').textContent = offer.back ? 'It calls ' + (offer.from || 'them') + '’s room. Keep it in your Contacts to call them.' : 'With it you can call this room from your Contacts.';
+    $('mr-offer-name').value = (known && known.name) || offer.from || f.room;
+    if (known && known.id === f.id) { offer = null; return; }
+    show($('mr-offer'), true);
+  }
+  // Give a card (owner) — to someone in the meeting, or as a link and QR code.
+  function openMake(inMeeting) {
+    $('mr-make-out').hidden = true; $('mr-make-label').value = '';
+    const who = $('mr-make-who'); who.innerHTML = '';
+    if (inMeeting && part) {
+      for (const p of part.people()) {
+        const b = doc.createElement('button'); b.type = 'button'; b.className = 'mr-who'; b.textContent = p.name || 'Guest';
+        b.onclick = async () => { const label = $('mr-make-label').value.trim() || p.name || 'Guest'; b.disabled = true; await part.give(p.id, label).catch(() => false); b.textContent = '✓ ' + label; };
+        who.appendChild(b);
+      }
+      if (who.childNodes.length) { const n = doc.createElement('p'); n.textContent = 'Tap a person to hand them a card, or make a link.'; who.insertBefore(n, who.firstChild); }
+    }
+    show($('mr-make'), true);
+    $('mr-make-label').focus();
+  }
+  async function makeLink() {
+    const m = MR().mine(); if (!m) return;
+    const label = $('mr-make-label').value.trim(); if (!label) { $('mr-make-label').focus(); return; }
+    const K = root.localStorage.getItem('gifos_vadm_' + m.room + '.' + m.v);
+    const r = await MR().mint(K, m.room, m.v, label);
+    const link = MR().cardLink(root.location.origin, m.room, m.v, r.token);
+    $('mr-make-link').value = link; $('mr-make-out').hidden = false;
+    try { const list = MR().issued(); list.unshift({ room: m.room, v: m.v, id: r.id, label, exp: r.exp, at: Date.now() }); root.localStorage.setItem(MR().KEY.issued, JSON.stringify(list.slice(0, 500))); } catch (e) {}
+    drawQr(link);
+    try { if (root.navigator.share && mobile()) await root.navigator.share({ title: 'A card to my room', url: link }); else await root.navigator.clipboard.writeText(link); } catch (e) {}
+  }
+  function drawQr(text) {
+    const box = $('mr-make-qr');
+    const draw = () => { try { const q = root.qrcode(0, 'L'); q.addData(text); q.make(); box.innerHTML = q.createSvgTag({ cellSize: 3, margin: 2, scalable: true }); } catch (e) { box.textContent = ''; } };
+    if (typeof root.qrcode === 'function') return draw();
+    const s = doc.createElement('script'); s.src = 'js/vendor/qrcode.js'; s.onload = draw; doc.head.appendChild(s);
+  }
+
+  // ---- the lobby: My Room, missed calls, Contacts ------------------------------------------------------------------
+  function paintLobby() {
+    const box = $('lob-myroom'); if (!box || !MR()) return;
+    const M = MR(), mine = M.mine(), missed = M.missed(), list = M.contacts();
+    let h = '';
+    if (missed.length) {
+      h += '<div class="mr-missed"><b>Missed calls</b>' + missed.slice(0, 5).map((x) => '<div>' + esc(x.label) + ' · ' + esc(timeOf(x.at)) + '</div>').join('') + '<button type="button" id="mr-missed-x" class="lob-text">Clear</button></div>';
+    }
+    h += '<div class="lob-hist-h">My Room</div>';
+    if (mine) {
+      h += '<div class="mr-mine"><span class="li-name">' + esc(mine.room) + '</span>' +
+        '<button type="button" id="mr-open" class="lob-ghost">Open my room</button>' +
+        '<button type="button" id="mr-make-card" class="lob-ghost">Give a card</button></div>';
+      if (!mobile()) h += '<label class="mr-stay"><input type="checkbox" id="mr-stay"' + (M.stayOn() ? ' checked' : '') + '> Stay in my room on this computer, so calls ring here</label>';
+    } else {
+      const own = M.hosted();
+      h += '<p class="lob-quiet">Your room is your address: people you give a card to can call you there.</p>' +
+        '<div class="mr-mine"><input id="mr-name" maxlength="40" placeholder="Name your room" autocomplete="off"><button type="button" id="mr-create" class="lob-ghost">Make My Room</button></div>';
+      if (own.length) h += '<div class="mr-adopt">Or use one of your hosted rooms: ' + own.slice(0, 6).map((o) => '<button type="button" class="lob-text" data-adopt="' + esc(o.room + '.' + o.v) + '">' + esc(o.room) + '</button>').join(' ') + '</div>';
+    }
+    h += '<div class="lob-hist-h">Contacts</div>';
+    if (!list.length) h += '<p class="lob-quiet">No contacts yet. When someone gives you a card, it is kept here.</p>';
+    for (const c of list) {
+      h += '<div class="lob-item mr-contact" data-room="' + esc(c.room) + '" data-v="' + esc(c.v) + '"><div class="li-main"><span class="li-name">' + esc(c.name) + '</span></div>' +
+        '<button type="button" class="lob-ghost" data-call="1">Call</button>' +
+        '<button type="button" class="row-del" data-forget="1" title="Remove" aria-label="Remove">' + DEL_ICON + '</button></div>';
+    }
+    box.innerHTML = h; box.hidden = false;
+    const on = (id, f) => { const el = $(id); if (el) el.onclick = f; };
+    on('mr-missed-x', () => { M.clearMissed(); paintLobby(); });
+    on('mr-open', () => { root.location.href = roomUrl(mine.room, mine.v); });
+    on('mr-make-card', () => openMake(false));
+    on('mr-create', async () => {
+      const n = ($('mr-name').value || ($('lob-name-in') || {}).value || '').trim();
+      try { await M.create(n); paintLobby(); } catch (e) { $('mr-name').placeholder = e.message; $('mr-name').value = ''; }
+    });
+    const stay = $('mr-stay'); if (stay) stay.onchange = () => M.setStay(stay.checked);
+    box.querySelectorAll('[data-adopt]').forEach((b) => { b.onclick = () => { const [r, v] = b.getAttribute('data-adopt').split('.'); M.adopt(r, v); paintLobby(); }; });
+    box.querySelectorAll('.mr-contact').forEach((row) => {
+      const r = row.getAttribute('data-room'), v = row.getAttribute('data-v');
+      row.querySelector('[data-call]').onclick = () => { root.location.href = roomUrl(r, v); };
+      row.querySelector('[data-forget]').onclick = () => { M.forget(r, v); paintLobby(); };
+    });
+  }
+
+  function wire() {
+    const on = (id, f) => { const el = $(id); if (el) el.onclick = f; };
+    on('mr-answer', () => { if (ringing && part) part.answer(ringing.pid); ringing = null; ringStop(); show($('mr-ring'), false); paint(); });
+    on('mr-decline', () => { if (ringing && part) part.decline(ringing.pid); ringing = null; ringStop(); show($('mr-ring'), false); paint(); });
+    on('mr-offer-no', () => { offer = null; show($('mr-offer'), false); });
+    on('mr-offer-yes', () => {
+      if (offer) { const name = $('mr-offer-name').value.trim() || offer.card.room; if (part && !offer.back) part.save(offer.card, name); else MR().keep(Object.assign({}, offer.card, { name })); }
+      offer = null; show($('mr-offer'), false); paint();
+    });
+    on('mr-make-close', () => show($('mr-make'), false));
+    on('mr-make-go', () => { makeLink().catch(() => {}); });
+    on('mr-bar-act', () => { if (barAct) barAct(); });
+    on('mr-bar-x', () => { barShut = true; bar(''); });
+    // The leave question asks for the card back too, while the other side is still here to take it.
+    const ask = $('leave-ask');
+    if (ask && root.MutationObserver) new root.MutationObserver(() => {
+      if (ask.style.display === 'none' || !part) return;
+      const st = part.state(), host = part.hostIds()[0], note = $('leave-ask-note');
+      if (!note || !st.call || st.call.state !== 'answered' || !MR().mine() || !host || part.gaveTo(host)) return;
+      note.hidden = false; note.innerHTML = '';
+      const b = doc.createElement('button'); b.type = 'button'; b.className = 'lob-text'; b.textContent = 'Give ' + st.call.label + ' your card first';
+      b.onclick = async () => { await giveBack(host, st.call.label); note.textContent = 'Card given.'; };
+      note.appendChild(b);
+    }).observe(ask, { attributes: true, attributeFilter: ['style'] });
+  }
+
+  // The dialogs and the bar are this part's own: made once, at start (js/dialog.js shapes them as they arrive).
+  const MARKUP = `
+  <div class="name-modal" role="alertdialog" aria-modal="true" id="mr-ring" aria-labelledby="mr-ring-title" style="display:none">
+    <div class="name-box">
+      <h3 id="mr-ring-title">Someone is calling</h3>
+      <p id="mr-ring-note">They have a card to your room. Answering turns your mic on; your camera stays off.</p>
+      <button id="mr-decline" type="button">Decline</button>
+      <button id="mr-answer" type="button">Answer</button>
+    </div>
+  </div>
+  <div class="name-modal" role="dialog" aria-modal="true" id="mr-offer" aria-labelledby="mr-offer-title" style="display:none">
+    <div class="name-box">
+      <h3 id="mr-offer-title">Save this card?</h3>
+      <p id="mr-offer-note">With it you can call this room from your Contacts.</p>
+      <label class="lob-pwlab" for="mr-offer-name">Name in your Contacts</label>
+      <input id="mr-offer-name" maxlength="40" autocomplete="off">
+      <button id="mr-offer-no" type="button">Not now</button>
+      <button id="mr-offer-yes" type="button">Save</button>
+    </div>
+  </div>
+  <div class="name-modal" role="dialog" aria-modal="true" id="mr-make" aria-labelledby="mr-make-title" style="display:none">
+    <div class="name-box">
+      <h3 id="mr-make-title">Give someone a card</h3>
+      <p id="mr-make-note">A card lets one person call your room. Write who it is for: it is shown when they call.</p>
+      <div id="mr-make-who"></div>
+      <label class="lob-pwlab" for="mr-make-label">Who is it for?</label>
+      <input id="mr-make-label" maxlength="40" autocomplete="off">
+      <div id="mr-make-out" hidden><input id="mr-make-link" readonly aria-label="Card link"><div id="mr-make-qr" class="mr-qr"></div></div>
+      <button id="mr-make-close" type="button">Close</button>
+      <button id="mr-make-go" type="button">Make card</button>
+    </div>
+  </div>
+  <div id="mr-bar" class="mr-bar" role="status" aria-live="polite" hidden><span id="mr-bar-text"></span><button id="mr-bar-act" type="button" hidden></button><button id="mr-bar-x" type="button" class="mr-x" aria-label="Close" hidden>✕</button></div>`;
+  function build() {
+    if ($('mr-bar')) return;
+    const box = doc.createElement('div'); box.innerHTML = MARKUP;
+    while (box.firstChild) doc.body.appendChild(box.firstChild);
+    // the lobby's section sits above Recent
+    const sep = doc.querySelector('#lobby .lob-sep');
+    if (sep && !$('lob-myroom')) { const d = doc.createElement('div'); d.id = 'lob-myroom'; d.className = 'lob-myroom'; d.hidden = true; sep.parentNode.insertBefore(d, sep); }
+  }
+  function start() {
+    build();
+    wire();
+    // The lobby: a page with no room in its address.
+    const here = LINKS() ? LINKS().read(root.location.pathname, '', root.location.hash) : { room: '' };
+    if (!here.room) {
+      const M = MR(), mine = M && M.mine();
+      if (mine && M.stayOn() && !mobile()) { root.location.replace(roomUrl(mine.room, mine.v)); return; }   // stay in my room
+      paintLobby();
+      root.addEventListener('storage', (e) => { if (e.key && e.key.indexOf('gifos_') === 0) paintLobby(); });
+      return;
+    }
+    // A meeting: wait for the core's part, then paint from it.
+    const look = root.setInterval(() => {
+      const p = MR() && MR().live;
+      if (!p) return;
+      root.clearInterval(look);
+      part = p; part.on(onEvent);
+      root.setInterval(paint, T().MYROOM_TICK_MS);
+      paint();
+    }, T().MYROOM_TICK_MS || 1000);
+  }
+  // DEBUG=on only: a test reads the part's state and the bar's words.
+  const debugOn = () => { try { const D = GifOS.debugLog; if (D && D.pageWants) return !!D.pageWants().on; } catch (e) {} try { return /(?:^|[#&?])debug=(?:on|1|true)/i.test(root.location.hash + root.location.search) || root.sessionStorage.getItem('gifos_debug') === '1'; } catch (e) { return false; } };
+  try { if (debugOn()) root.__mrState = () => ({ part: part ? part.state() : null, bar: $('mr-bar') && !$('mr-bar').hidden ? $('mr-bar-text').textContent : '', ring: !!ringing, ringTitle: $('mr-ring-title') ? $('mr-ring-title').textContent : '', offer: $('mr-offer') && $('mr-offer').style.display !== 'none' ? $('mr-offer-title').textContent : '', ringTone: !!ringTimer }); } catch (e) {}
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', start); else start();
+})(typeof window !== 'undefined' ? window : globalThis);
