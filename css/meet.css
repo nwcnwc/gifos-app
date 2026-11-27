@@ -3989,5 +3989,11 @@ body.short-app.has-app #appbar[data-fold-how="m"] #appview { display: inline-fle
 }
 /* A face too small for words (a short phone's strip): the why-blurred note stays off it (the blur shows on the face
    itself; a tap opens the tile and its words), and the name keeps one line. A "tap to see" note stays. */
-:is(.tile, .rowtile).thin.short > .blurwhy:not([data-why="tap"]) { display: none; }
-:is(.tile, .rowtile).thin > .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(100% - 8px); }
+:is(.tile, .rowtile).thin > .blurwhy:not([data-why="tap"]) { display: none; }
+body :is(.tile, .rowtile).thin > .name { white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; max-width: calc(100% - 8px) !important; }
+/* Focus on a short upright phone: the strip sits on the bottom edge like Fit's face strip (the bar wakes over it),
+   so the big view keeps the room; the follow-the-speaker card's words take two lines rather than being cut. */
+@media (orientation: portrait) and (max-height: 639px) {
+  body.view-focus #fsstrip { padding-bottom: 8px; }
+}
+body.view-focus .fsthumb.fsauto .fslbl { white-space: normal; line-height: 1.15; max-width: calc(100% - 12px); }

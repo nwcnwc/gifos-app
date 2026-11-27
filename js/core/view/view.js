@@ -2697,8 +2697,10 @@
       if (window.ResizeObserver) {
         if (!makeTile.slimObs) {
           makeTile.slimObs = new ResizeObserver((list) => list.forEach((en) => {
-            // A removed tile reports 0x0 once; let it go.
-            if (!en.target.isConnected) { makeTile.slimObs.unobserve(en.target); return; }
+            // A removed tile reports 0x0 once; let it go. A tile that was off the page then (made before it was placed,
+            // or moved between containers) is watched again by the next layout that finds it placed (layout, below):
+            // otherwise it never learns its size classes and keeps a big tile's words on a small face.
+            if (!en.target.isConnected) { makeTile.slimObs.unobserve(en.target); en.target.__szLost = true; return; }
             const w = en.contentRect.width;
             const h = en.contentRect.height;
             if (w > 0) { en.target.classList.toggle('slim', w < 200); en.target.classList.toggle('thin', w < 116); en.target.classList.toggle('short', w < 200 && h > 0 && h < 130); }
@@ -2833,6 +2835,7 @@
     yield 538;
     function layout() {
       __C.model.roster.reactStats().layouts++;
+      if (makeTile.slimObs) for (const t of document.querySelectorAll('.tile')) if (t.__szLost) { t.__szLost = false; try { makeTile.slimObs.observe(t); } catch (e) {} }
       // One order: the banner's queue (handQueue), so a tile and the banner never disagree.
       const rank = new Map(__C.model.hands.queue().map((e, i) => [e.i === __C.model.me.myId() ? 'me' : e.i, i]));
       const stg = (0, /*()*/__C.stageIds)(); // the Stage floats first, in step-up order
@@ -3297,12 +3300,12 @@
         const shortLand = vhNow < 500 && vwNow > vhNow && (vwNow < 900 || !document.body.classList.contains('desk-ptr'));
         const phone = vwNow < 600 || shortLand;
         // A short upright phone (an iPhone SE: 549px of Safari) with an app in front: the app takes the top row's
-        // place too, and the app's own bar carries the view button. The Stage view and a broadcast keep the row.
+        // place too, and the app's own bar carries the view button. A broadcast keeps the row.
         let shortApp = false;
         try {
           const CT = __C.CT, sel = CT && CT.st && !CT.st.all ? CT.items.find((i) => i.key === CT.st.sel) : null;
           shortApp = phone && !shortLand && vhNow < GifOS.meetContent.SHORT_PHONE_H && vhNow > vwNow && appOn && !!sel && sel.kind === 'app' &&
-            !CT.present && !svOn() && !document.body.classList.contains('broadcast');
+            !CT.present && !(svOn() && svSt().sel === GifOS.meetViewMode.stage.FACES) && !document.body.classList.contains('broadcast');
         } catch (e) {}
         if (document.body.classList.contains('short-app') !== shortApp) document.body.classList.toggle('short-app', shortApp);
         let holdMs = 2500;
