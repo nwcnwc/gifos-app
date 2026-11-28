@@ -229,7 +229,7 @@
     var fs = document.createElement('fieldset'); fs.className = 'clearnopw-cats'; fs.style.cssText = 'border:0;margin:8px 0 0;padding:0';
     var lg = document.createElement('legend'); lg.textContent = say(C, 'clearRepCat', 'What are you reporting?'); lg.style.cssText = 'padding:0;margin:0 0 4px;font-weight:600';
     fs.appendChild(lg);
-    var cats = [['illegal', 'clearRepIllegal', 'Illegal'], ['sexual', 'clearRepSexual', 'Sexually explicit'], ['offensive', 'clearRepOffensive', 'Offensive'], ['other', 'clearRepOther', 'Other']];
+    var cats = [['illegal', 'clearRepIllegal', 'Illegal'], ['sexual', 'clearRepSexual', 'Sexually explicit'], ['offensive', 'clearRepOffensive', 'Offensive'], ['copyright', 'clearRepCopyright', 'Copyright or trademark'], ['other', 'clearRepOther', 'Other']];
     cats.forEach(function (c, i) {
       var l = document.createElement('label'); l.style.cssText = 'display:flex;align-items:center;gap:8px;min-height:32px;cursor:pointer';
       var r = document.createElement('input'); r.type = 'radio'; r.name = 'clearnopw-cat'; r.value = c[0]; r.checked = i === 0; r.style.cssText = 'width:auto;margin:0';
@@ -237,17 +237,49 @@
     });
     var p3 = document.createElement('p'); p3.id = 'clearnopw-share'; p3.style.marginTop = '10px';
     p3.textContent = say(C, 'clearRepShare', 'Sending a report shares your IP address and this page\'s address with GifOS, along with the room\'s license, so we can review it.');
-    body.append(p1, a, p2, fs, p3);
+    // COPYRIGHT (2026-11-27): choosing it asks for the elements of a copyright notice (the work, where it appears, contact email,
+    // the good-faith and accuracy statements, a typed signature); the page's own address is prefilled. Sent as `notice`.
+    var cp = document.createElement('div'); cp.id = 'clearnopw-cp'; cp.hidden = true; cp.style.cssText = 'margin-top:8px';
+    var cpi = document.createElement('p'); cpi.textContent = say(C, 'clearRepCpIntro', 'To send a copyright notice, fill in everything below. GifOS may pass it to the person it is about.'); cp.appendChild(cpi);
+    function field(id, key, dflt, area, val) {
+      var l = document.createElement('label'); l.style.cssText = 'display:block;margin-top:6px'; l.appendChild(document.createTextNode(say(C, key, dflt)));
+      var i = document.createElement(area ? 'textarea' : 'input'); i.id = id; i.style.cssText = 'display:block;width:100%;box-sizing:border-box;margin-top:2px';
+      if (area) i.rows = 2; else i.type = id === 'clearnopw-cp-email' ? 'email' : 'text';
+      i.maxLength = area ? 1000 : id === 'clearnopw-cp-email' ? 254 : id === 'clearnopw-cp-where' ? 500 : 120;
+      if (val) i.value = val;
+      l.appendChild(i); cp.appendChild(l); return i;
+    }
+    var cpWork = field('clearnopw-cp-work', 'clearRepCpWork', 'The work you own (what was copied)', true);
+    var here = ''; try { here = (location.origin + location.pathname + location.search + location.hash).slice(0, 500); } catch (e) {}
+    var cpWhere = field('clearnopw-cp-where', 'clearRepCpWhere', 'Where it appears (link)', false, here);
+    var cpEmail = field('clearnopw-cp-email', 'clearRepCpEmail', 'Your email address', false);
+    function tick(id, key, dflt) {
+      var l = document.createElement('label'); l.style.cssText = 'display:flex;align-items:flex-start;gap:8px;margin-top:6px;cursor:pointer';
+      var c = document.createElement('input'); c.type = 'checkbox'; c.id = id; c.style.cssText = 'width:auto;margin:3px 0 0';
+      l.append(c, document.createTextNode(say(C, key, dflt))); cp.appendChild(l); return c;
+    }
+    var cpGood = tick('clearnopw-cp-good', 'clearRepCpGood', 'I have a good-faith belief that this use is not authorized by the copyright owner, its agent, or the law.');
+    var cpTrue = tick('clearnopw-cp-true', 'clearRepCpTrue', 'The information in this notice is accurate, and under penalty of perjury I am the owner or authorized to act for the owner.');
+    var cpName = field('clearnopw-cp-name', 'clearRepCpName', 'Your full name, typed as your signature', false);
+    var cpNeed = document.createElement('p'); cpNeed.id = 'clearnopw-cp-need'; cpNeed.hidden = true; cpNeed.setAttribute('role', 'alert');
+    cpNeed.textContent = say(C, 'clearRepCpNeed', 'Please fill in every field and tick both boxes.'); cp.appendChild(cpNeed);
+    function showCp() { var pk = m.querySelector('input[name="clearnopw-cat"]:checked'); cp.hidden = !(pk && pk.value === 'copyright'); cpNeed.hidden = true; }
+    fs.addEventListener('change', showCp);
+    body.append(p1, a, p2, fs, cp, p3);
     var acts = document.createElement('div'); acts.className = 'dlg-actions';
     var tell = document.createElement('button'); tell.type = 'button'; tell.id = 'clearnopw-tell'; tell.textContent = say(C, 'clearReport', 'Report');
     var close = document.createElement('button'); close.type = 'button'; close.id = 'clearnopw-close'; close.textContent = say(C, 'clearRepCancel', 'Cancel');
     if (reportedHere()) { p2.textContent = say(C, 'clearRepSent', 'Sent. Thank you.'); tell.disabled = true; fs.hidden = true; p3.hidden = true; }
     tell.onclick = function () {
       if (reportedHere()) return;
+      var pick = m.querySelector('input[name="clearnopw-cat"]:checked'), cat = pick ? pick.value : 'illegal', ref = pageRef(), notice;
+      if (cat === 'copyright') {
+        notice = { work: cpWork.value.trim(), where: cpWhere.value.trim(), email: cpEmail.value.trim(), name: cpName.value.trim(), good: cpGood.checked, accurate: cpTrue.checked };
+        if (!notice.work || !notice.where || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(notice.email) || !notice.name || !notice.good || !notice.accurate) { cpNeed.hidden = false; return; }
+      }
       tell.disabled = true;
-      var pick = m.querySelector('input[name="clearnopw-cat"]:checked'), cat = pick ? pick.value : 'illegal', ref = pageRef();
-      Promise.resolve().then(function () { return send ? send(cat, ref) : C.reportClearHost(cat, ref); }).catch(function () { return 'failed'; }).then(function (r) {
-        if (r === 'sent') markReported();
+      Promise.resolve().then(function () { return send ? send(cat, ref, notice) : C.reportClearHost(cat, ref, notice); }).catch(function () { return 'failed'; }).then(function (r) {
+        if (r === 'sent' && cat !== 'copyright') markReported();   // a copyright notice is deliberate: it never locks the sheet
         p2.textContent = r === 'sent' ? say(C, 'clearRepSent', 'Sent. Thank you.') : say(C, 'clearRepFailed', 'Could not send. Please try again later.');
         tell.disabled = r === 'sent';
         if (r === 'sent') close.textContent = say(C, 'close', 'Close');

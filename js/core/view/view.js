@@ -10465,7 +10465,7 @@
         document.body.classList.toggle('cnp-veil-rows', !!st.mode && !(st.mode === 'all' && st.tapped));
         let bar = document.getElementById('clearnopw-bar');
         // Report is in the More menu (beside License), never on this bar: only the viewer's own Blur is here.
-        try { GifOS.viewKit.clearReportButton(__C, moreRow('room'), 'reportbtn', '', (cat, ref) => (0, /*()*/__C.reportClearHost)(cat, ref)); } catch (e) {}
+        try { GifOS.viewKit.clearReportButton(__C, moreRow('room'), 'reportbtn', '', (cat, ref, notice) => (0, /*()*/__C.reportClearHost)(cat, ref, notice)); } catch (e) {}
         if (!st.mode || !st.pic) { if (bar) bar.remove(); return; }   // no picture on the Stage to blur: no Blur button
         const T = (k, en) => (0, /*()*/__C.uiText)(k, en);
         // Blur sits inside the picture it clears (the Stage, else the largest face tile), at its top right and below the
