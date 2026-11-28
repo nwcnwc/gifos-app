@@ -1614,7 +1614,7 @@
     // is the only answer: refreshAllTiles opens the memo and closes it in a
     // finally, and outside a pass every call derives afresh as before.
     let passMemo = null;
-    const reactStats = { passes: 0, scheduled: 0, tiles: 0, layouts: 0, chipWrites: 0 }; // repaint counters (reactStatsForTest)
+    const reactStats = { passes: 0, scheduled: 0, tiles: 0, layouts: 0, chipWrites: 0, lastCons: null }; // repaint counters (reactStatsForTest)
     const REACT_COALESCE_MS = GifOS.timings.REACT_COALESCE_MS; // gossip repaints coalesce into one pass per window (scheduleRoomReact)
     let reactPending = false;
     const memoPass = (k, f) => { if (!passMemo) return f(); if (!(k in passMemo)) passMemo[k] = f(); return passMemo[k]; };
@@ -2474,6 +2474,8 @@
       try { avSweep(); } catch (e) {}   // the debug export's line for a change of my own mic, camera or share
       if (!GifOS.meshConsts) return;   // a published lobby whose meeting scripts are still arriving: nobody to tell yet
       if (pulseHalt && !answer) return; // the halt models a throttled clock; an answer to a newcomer is driven by its frame, not the clock
+      // A chosen background effect keeps the person clear (only the room behind changes): it rides the status as consent.
+      { let bgOn = 0; try { bgOn = (GifOS.meetBgfx && GifOS.meetBgfx.wants()) ? 1 : 0; } catch (e) {} if (bgOn) myStatus.bg = 1; else delete myStatus.bg; }
       myStatus.at = Date.now(); // timestamped: out-of-order gossip can't roll me back
       if (BROADCAST && typeof bcHostStored === 'function' && bcHostStored()) {
         const at0 = Number(params.get('at')) || 0;
@@ -3630,10 +3632,8 @@
     // BOTH the pixels a sender broadcasts and the CSS every receiver applies —
     // so a given tile looks the same on every phone, always.
     //
-    //   consent(tile)  = No blur, AND (camera on OR a screen is being shared).
-    //                    A deck with the camera off is the normal share
-    //                    (sentVideoTrack). That seat still consents, or the
-    //                    plain room drops to max blur for the whole presentation.
+    //   consent(tile)  = camera ON, AND the foreground is clear by the person's own choice: No blur, or a
+    //                    background effect. Camera off never consents; a share alone is not consent.
     //                    pushLeaf feeds this same predicate to setRefuses.
     //   clear(tile)    = room password is set
     //                    AND no moderator block on the tile
@@ -3645,15 +3645,14 @@
     // where that promise is enforced).
     //
     // Nothing else. No room-wide guest blur, no floors, no pinning.
-    // Sharing a screen, or a host's rebroadcast, is that seat's consent (video
-    // on, No blur) for it. A meeting bot has no camera and always picks No
-    // blur, so it consents and is never the reason a room stays blurred. Any PICTURE a bot sends (a camera, a share, a
-    // rebroadcast) consents by exactly the person's rule (BOTUNBLUR: bots are people on stage).
-    const consents = (st) => !!st && (!!st.scr || !!st.rb || (blurLevel(st.blur) === 0 && (!st.camOff || !!st.bot)));
+    // A share's own TILE is clear when the room is (blurLevelFor), but the sharer's seat consents only by its camera,
+    // like every seat. Bots follow the same rule (camera off = no consent).
+    // CONSENT (Nathan 2026-11-27): the camera is ON and the person's own choice leaves the FOREGROUND clear: No blur, or a
+    // background effect (st.bg: the person is always clear, only the room behind is replaced or blurred). A camera that is
+    // off never consents (bots too: same rule). A share or a rebroadcast alone is not consent: the sharer consents like everyone.
+    const consents = (st) => !!st && !st.camOff && (blurLevel(st.blur) === 0 || !!st.bg);
     const adminPresent = () => hasAdminRoom() && admins.length > 0;
-    // The room-wide READY tally (debugDump().consent, consensus()): who has the camera on at No blur. It is a count
-    // only; since 2026-11-26 it holds no picture back (an open room's password clears the room, see blurHold).
-    // It was once the rule, so it is tallied over shared
+    // Clear video is a ROOM-WIDE unanimity, so it MUST be tallied over shared
     // state (rosterIds = occ ∪ fresh status gossip), NOT over `peers` — my
     // bounded link set (row-mates, tree edges, E2, S1 columns). Two seats hold
     // DIFFERENT `peers` maps, so tallying `peers` split-brains the room: one
@@ -3726,6 +3725,7 @@
     //   guests   the admin's "Blur guests" order covers this guest
     //   forall   someone's "Blur for all" on this person
     //   noadmin  an admin room with no admin here
+    //   ready    a plain room where not everyone is ready (camera on, No blur): the viewer counts too
     //   tap        a hosted room with no password whose clear right lets viewers tap to unblur: not tapped yet
     //   stageonly  the same, but the right covers the Stage only (clearStageInAdminRoom in the room's ACL), and this
     //              picture is not a Stage view
@@ -3754,11 +3754,7 @@
       }
       if (order) return order;
       if (hasAdminRoom()) return adminPresent() ? '' : 'noadmin';
-      // AN OPEN ROOM'S PASSWORD CLEARS IT (Nathan, 2026-11-26): once the room has a password and nobody has blurred
-      // anyone, it holds nobody back. Each face is still as clear as its sender chose (blurLevelFor reads consents per
-      // tile), so a camera at Max stays blurred and a share is clear; a seat that never turns its camera on (a viewer,
-      // a bot, a phone in a pocket, a late joiner) holds back nobody else.
-      return '';
+      return allConsent() ? '' : 'ready';
     }
     // One table: [key, English] for the tile note and for the message the
     // sender reads after picking No blur. uiText translates both.
@@ -3767,6 +3763,7 @@
       guests: { tile: ['blurWhyGuests', 'Blurred: a host blurs guests'], says: ['blurSaysGuests', 'You chose clear video, but the host has blurred every guest, so you stay blurred until they lift it.'] },
       forall: { tile: ['blurWhyForAll', 'Blurred for all'], says: ['blurSaysForAll', 'You chose clear video, but someone here blurred you for all, so you stay blurred until that is lifted.'] },
       noadmin: { tile: ['blurWhyNoAdmin', 'Blurred: no host here'], says: ['blurSaysNoAdmin', 'You chose clear video, but this room stays blurred until a host is here.'] },
+      ready: { tile: ['blurWhyReady', 'Blurred: not everyone is ready'], says: ['blurSaysReady', 'You chose clear video. Faces clear once everyone here has their camera on with No blur or a background effect.'] },
       tap: { tile: ['blurWhyTap', 'Blurred: tap to unblur'], says: ['blurSaysTap', 'You chose clear video. This room has no password: each viewer here chooses whether to unblur you.'] },
       stageonly: { tile: ['blurWhyStageOnly', 'Blurred: only the Stage can be unblurred'], says: ['blurSaysStageOnly', 'You chose clear video. This room has no password: viewers may unblur only the Stage, so you stay blurred off it.'] },
       repick: { tile: ['blurWhyRepick', 'Blurred: pick No blur again'], says: ['blurSaysRepick', 'Viewers here may now choose to unblur you. Pick No blur again if you want that.'] },
@@ -3839,7 +3836,7 @@
       if (cameraOnly && st.scr) st = Object.assign({}, st, { scr: 0 });
       // A screen share or a rebroadcast is that seat's video with its own blur
       // at None (it is consent). Every other rule below still applies to it,
-      // exactly as to a camera: no password, no host in a hosted room, a
+      // exactly as to a camera: no password, a room short of unanimity, a
       // moderator's blur all keep it blurred.
       if (st.scr || st.rb) st = Object.assign({}, st, { camOff: false, blur: 0 });
       // (This rule applies UNCHANGED in broadcast rooms — Nathan's call,
@@ -3859,8 +3856,8 @@
       // to unblur (tapUnblur, behind the age-gate hook), the host is
       // accountable through the credential id (Report), and a sender's own
       // No blur counts only when picked after the right came on.)
-      // The room's part is blurHold (password, moderator block, admin here);
-      // past it each tile is as clear as its own sender chose (consents).
+      // The room's part is blurHold (password, moderator block, admin here,
+      // everyone ready); an admin room clears per tile, so its own consent too.
       const hold = blurHold(id, where);
       // A trip is Max blur for everyone it reaches, my own outgoing picture included (it leaves fully blurred: no cut).
       if (hold === 'unsafe') return 2;
@@ -3884,6 +3881,15 @@
       refreshAllTiles();
       (0, /*()*/__M.refreshOutbound)();
       (0, /*()*/__V.paintControls)();
+      if (!hasAdminRoom()) { // consent unanimity is the PLAIN-room path only — an admin room clears per-tile, admin present
+        const c = allConsent();
+        if (c !== reactStats.lastCons) {
+          if (reactStats.lastCons !== null && participantCount() > 1 && roomPw) {
+            setStatus(c ? 'Everyone is ready — this room is clear video now.' : 'Back to blurred — clear video needs everyone here ready (camera on, No blur).');
+          }
+          reactStats.lastCons = c;
+        }
+      }
       try { (0, /*()*/__V.explainHeldVideo)(); } catch (e) {}
     }
     // GOSSIP REPAINTS ARE COALESCED. A status frame from every section-mate
@@ -5767,6 +5773,13 @@
       if (n > 1 && !bcWatcher) {
         if (!roomPw) extra = bcLive ? ' · blurred until you set a room password' : ' · ' + uiText('unlockClear', 'faces stay blurred until a password');
         else if (hasAdminRoom() && admins.length === 0) extra = ' · ' + uiText('stNoHostBlurred', 'no host here — everyone stays blurred');
+        else if (!adminPresent() && !allConsent()) {
+          // Past one section the ready count is the fold's: everyone minus the
+          // refusals it carries (a label — the RULE is allConsent).
+          const dg = roomPastSection() ? roomDig() : null;
+          extra = dg ? ' · clear video when everyone is ready (' + Math.max(0, dg.n - dg.refuse) + '/' + dg.n + ')'
+            : ' · clear video when everyone is ready (' + consentCount() + '/' + n + ')';
+        }
       }
       // A REMEMBERED LOCK MUST BE VISIBLE (§LOCK, 2026-08-06). The host side of
       // the stale-password trap is silent by construction: her page works, her
@@ -21685,6 +21698,7 @@
           ? (amAdmin ? uiText('blurPwYou', 'Set one with the Password button.') : uiText('blurPwAdmin', 'Only this room’s host (or whoever took charge of it) can set one.'))
           : uiText('blurPwAnyone', 'Anyone here can set one with the Password button.'));
       }
+      if (why === 'ready') words += ' (' + consentCount() + '/' + participantCount() + ')';
       return words;
     }
     function camOnWords() {
