@@ -1,0 +1,13 @@
+{
+  "title": "Calendar",
+  "today": "Today",
+  "prev": "Previous month",
+  "next": "Next month",
+  "newEvent": "New event",
+  "time": "Time",
+  "add": "Add",
+  "remove": "Remove",
+  "allDay": "All day",
+  "nothing": "Nothing planned",
+  "private": "Your calendar is kept on this device. Nothing is sent anywhere."
+}
