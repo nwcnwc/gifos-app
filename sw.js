@@ -647,8 +647,8 @@ async function bellOpen(masterB64u, i, k, note) {
   return JSON.parse(new TextDecoder().decode(pt));
 }
 function bellTime(at) { try { return new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } }
-// ONE NOTIFICATION PER CALLER, UPDATED IN PLACE (tag gifos-call-<handle>): the ring, then (unanswered) the same notification
-// turns into the missed call, and that person's next call replaces it. Chrome on Android judges every notification it shows:
+// ONE NOTIFICATION PER CALLER, UPDATED IN PLACE (tag gifos-call-<handle>): the ring; unanswered, the same notification is
+// the record of the call (a tap calls back) and turns into "Missed call" at the next ring; that person's next call replaces it. Chrome on Android judges every notification it shows:
 // an on-device model reads the title, the body and the button texts and swaps one it finds spammy for "Possible spam", and a
 // site that shows many notifications nobody opens loses its permission. Measured on a phone: call words on buttons
 // ("Answer", "Pick up", "Join") and phrases like "X is calling" or "Incoming call" trip it for common contact names
@@ -683,25 +683,31 @@ async function bellPush(e) {
   rings.unshift({ i: m.i, c: m.c, at: when, label: label, url: at.url, done: false });
   await bellPut(db, 'rings', rings.slice(0, 50));
   var url = String(at.url || '/meet'), r = String(at.r || '');
-  if (Date.now() - when > ringMs) return bellMissed(label, when, url, m.i, r, m.c);   // it came after the ring would have ended (Doze)
+  if (Date.now() - when > ringMs) { await bellStale(ringMs); return bellMissed(label, when, url, m.i, r, m.c); }   // it came after the ring would have ended (Doze)
   var wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
   for (var w = 0; w < wins.length; w++) {
     try { if (wins[w].visibilityState === 'visible' && new URL(wins[w].url).hash === new URL(url, self.location.origin).hash) return; } catch (err) {}
   }
   var tag = bellTag(m.i);
-  await self.registration.showNotification(label, {
+  await bellStale(ringMs);
+  // The push event ends with the ring on screen. (Held open until the ring ends, a ring the person swiped away left the
+  // event with nothing on screen, and Chrome then shows its own "updated in the background" notice.) An unanswered ring
+  // stays as the record of the call (the name, the time); a tap on it later calls back.
+  return self.registration.showNotification(label, {
     body: bellTime(when) + ' \u00b7 ' + BELL_TXT.ring,
     tag: tag, renotify: true, requireInteraction: true, timestamp: when,
     vibrate: [800, 400, 800, 400, 800, 400, 800],
-    data: { kind: 'ring', url: url, r: r, c: m.c, i: m.i, label: label, at: when },
+    data: { kind: 'ring', url: url, r: r, c: m.c, i: m.i, label: label, at: when, ms: ringMs },
     icon: BELL_ICON, badge: BELL_BADGE,
   });
-  // The ring lasts as long as the caller's page rings; then, untouched, it becomes the missed call (in place, silent).
-  await new Promise(function (res) { setTimeout(res, Math.max(0, when + ringMs - Date.now())); });
-  var open = await self.registration.getNotifications({ tag: tag });
+}
+// Rings still on screen whose time has passed (nobody answered, nobody swiped) become missed calls, in place and silent,
+// whenever this worker next runs for a ring.
+async function bellStale(ringMs) {
+  var open = []; try { open = await self.registration.getNotifications(); } catch (err) { open = []; }
   for (var n = 0; n < open.length; n++) {
     var d = open[n].data || {};
-    if (d.kind === 'ring' && d.c === m.c) return bellMissed(label, when, url, m.i, r, m.c);
+    if (d.kind === 'ring' && Date.now() - (+d.at || 0) > ringMs) await bellMissed(d.label || open[n].title, d.at, d.url, d.i, d.r, d.c);
   }
 }
 self.addEventListener('push', function (e) { e.waitUntil(bellPush(e).catch(function () {})); });
@@ -735,7 +741,7 @@ self.addEventListener('notificationclick', function (e) {
   if (!d.url) return;
   e.waitUntil((async function () {
     if (d.kind === 'ring') {
-      await bellMark(d.c, 'answered');   // a tap on the ring is its Answer
+      await bellMark(d.c, Date.now() - (+d.at || 0) > (+d.ms || 0) ? 'called back' : 'answered');   // a tap on the ring is its Answer (later: a call back)
       return bellGo(d.url, d.r, d.c);
     }
     if (d.kind === 'missed') {
