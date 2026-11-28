@@ -375,16 +375,13 @@
     X2_KEEP_MS: 15000,   // ms
     X402_RESUME_MS: 6000,   // ms
     X402_RESUME_TRIES: 3,   // count
-    XV_AGG_LINE: 0.35,   // ratio
-    XV_AGG_MEAN: 0.35,   // ratio
-    XV_AGG_N: 2,   // count
     XV_BURST_FRAME_MS: 100,   // ms
     XV_BURST_MS: 1000,   // ms
     XV_BURST_N: 4,   // count
     XV_BURST_N_PHONE: 2,   // count
     XV_CHANGE_MIN_MS: 1500,   // ms
-    XV_CLEAN_MAX: 6,   // count
-    XV_CLEAN_MIN: 2,   // count
+    XV_CLEAN_MAX: 4,   // count
+    XV_CLEAN_MIN: 1,   // count
     XV_DEEP_GAP_MS: 4000,   // ms
     XV_DEEP_MAX_MS: 1500,   // ms
     XV_DUTY_DESK_PCT: 20,   // pct
@@ -398,6 +395,7 @@
     XV_HOLD_CURVE: 1,   // ratio
     XV_HOLD_MAX_MS: 12000,   // ms
     XV_HOLD_MIN_MS: 1500,   // ms
+    XV_HOT_MS: 4000,   // ms
     XV_PEND_MAX_MS: 3000,   // ms
     XV_RETRY_MS: 30000,   // ms
     XV_SENSE_DIFF: 10,   // count
