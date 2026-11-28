@@ -99,7 +99,7 @@ const MEDIA_ACTS = new Set([
   'repaintRedun', 'resumeReload', 'retireMixTracks', 'rowEdge', 'schedClaim', 'schedReconcile', 'startScreenShare',
   'startWhisper', 'stgBeatIn', 'stgCarry', 'stgFoNote', 'stopBlurPipe', 'stopScreenShare', 'stopSpeech',
   'stopWhisper', 'swapPicNote', 'syncAvatarFeed', 'syncSpeech', 'toggleSing', 'unbindClaim', 'warnRecorderNewApp',
-  'withScrPipe', 'wkQuietBind', 'wspEnqueue', 'wspRebind', 'wspResume', 'wspStop', 'wspSync',
+  'withScrPipe', 'wkQuietBind', 'wspEnqueue', 'wspRebind', 'wspResume', 'wspStop', 'wspSync', 'xvSync',
 ]);
 // MEDIA-ACTS:END
 
