@@ -38,6 +38,7 @@
  *   GifOS.explicit.video.watch(opts)   the blocker's loop: samples the pictures opts.sources() names, keeps one
  *                                      tracker per picture, and calls opts.onChange(id, tripped) on each trip and lift
  *   GifOS.explicit.video.RULE          the video rule's version
+ *   GifOS.explicit.video.fuseScore(T,m,f,shift,e)  the keep/lift score of a held picture (FASTTRIP8; see watch)
  */
 (function (root) {
   'use strict';
@@ -482,6 +483,14 @@
   // of one processor at the duty limit (lower on phones, to keep them cool): a slow device looks less often, never
   // stops looking. A desktop that can run the larger model looks with it too, on its own slower clock; its hits feed
   // the same tracker. Nothing leaves the page: no frame, no score, no trip.
+  // The keep/lift score of a held picture: m = first-model score, f = confirming-model score, shift = the scene's offset (<= 0),
+  // e = the optional third model's score (null = off; XV_FUSE_FREEPIK_D is 0 until a fit over enough benign frames exists).
+  function fuseScore(T, m, f, shift, e) {
+    const p = Math.min(0.999, Math.max(0.001, m));
+    let s = T.XV_FUSE_A * Math.log(p / (1 - p)) + T.XV_FUSE_B * Math.log10(f + T.XV_FUSE_F_EPS) + T.XV_FUSE_C + shift;
+    if (e != null && T.XV_FUSE_FREEPIK_D) s += T.XV_FUSE_FREEPIK_D * Math.log10(e + T.XV_FUSE_F_EPS);
+    return s;
+  }
   function watch(opts) {
     const T = Object.assign({}, (root.GifOS && root.GifOS.timings) || {}, opts.timings || {});
     const mobile = opts.mobile != null ? !!opts.mobile : mobileUa();
@@ -502,7 +511,7 @@
     // 'checking' for pend alone | 'unsafe').
     const rec = (id) => {
       let r = recs.get(id);
-      if (!r) recs.set(id, (r = { t: tracker(), td: tracker(), tripped: false, sus: false, hotUntil: 0, confirm: false, benignUntil: 0, benignHi: 0, lifts: [], looksHi: [], lastLook: 0, strong: false, peak: 0, need: 1, holdUntil: 0, pend: false, pendAt: 0, kind: '', susClean: 0, changed: false, chgAt: 0, nextChg: 0, warm: false, prev: null, at: 0, n: 0, hits: 0, s: null, fresh: true }));
+      if (!r) recs.set(id, (r = { t: tracker(), td: tracker(), tripped: false, sus: false, hotUntil: 0, confirm: false, shift: 0, shiftUntil: 0, shiftRef: 0, S: null, m0: 0, e: null, eAt: 0, confirmAt: 0, lifts: [], looksHi: [], lastLook: 0, strong: false, peak: 0, need: 1, holdUntil: 0, pend: false, pendAt: 0, kind: '', susClean: 0, changed: false, chgAt: 0, nextChg: 0, warm: false, prev: null, at: 0, n: 0, hits: 0, s: null, fresh: true }));
       return r;
     };
     const ready = (el) => !!el && ((el.videoWidth > 0 && el.readyState >= 2) || (!('videoWidth' in el) && el.width > 0));
@@ -568,15 +577,20 @@
       log('xv reflag ' + String(id).slice(0, 8) + ' ' + why + ' strong hold');
     }
     function setSus(id, r, v0) {
+      r.m0 = v0;
       noteLook(id, r, v0);
       if (!r.strong && !r.sus && !r.tripped && recent(r.lifts, T.XV_REFLAG_LIFT_MS) >= T.XV_REFLAG_LIFTS) arm(id, r, 'lifts');
-      // A weak look inside the band the confirming model just called benign (until the score jumps, the picture changes, or
-      // XV_BENIGN_MS passes) does not trip again: an ordinary face that hovers over the line gets one brief blur.
-      if (!r.sus && !r.tripped && v0 < T.XV_STRONG && r.benignUntil > now() && v0 <= r.benignHi) return;
+      // THE SCENE'S OFFSET (see confirmJob): repeated clean confirms on one scene moved its offset toward clear, which also lifts the
+      // quick-trip line for that scene. A clearly higher score (XV_BENIGN_MARGIN over the one last called clean) resets it at once.
+      if (r.shift < 0 && now() > r.shiftUntil) r.shift = 0;
+      if (!r.sus && !r.tripped && v0 < T.XV_STRONG && r.shift < 0) {
+        if (v0 >= r.shiftRef + T.XV_BENIGN_MARGIN) r.shift = 0;
+        else if (v0 < (eng && eng.suspectLine != null ? eng.suspectLine : 0.25) - r.shift * T.XV_FUSE_LINE_GAIN) return;
+      }
       if (r.sus || r.tripped) { r.susClean = 0; if (r.sus && v0 > r.peak) { r.peak = v0; const h = holdFor(v0); r.holdUntil = Math.max(r.holdUntil, now() + h.hold); r.need = Math.max(r.need, h.clean); } return; }
       const h = r.strong ? reHold() : holdFor(v0);
       r.peak = r.strong ? Math.max(v0, T.XV_STRONG) : v0; r.need = h.clean; r.holdUntil = now() + h.hold;
-      r.sus = true; r.susClean = 0; r.pend = false; r.confirm = v0 < T.XV_STRONG && !!eng.confirm;
+      r.sus = true; r.susClean = 0; r.pend = false; r.confirm = v0 < T.XV_STRONG && !!eng.confirm; r.S = r.confirm ? T.XV_FUSE_S0 : null;
       log('xv suspect ' + String(id).slice(0, 8) + ' v0=' + Math.round(v0 * 1e4) / 1e4 + ' hold=' + Math.round(h.hold) + 'ms clean=' + h.clean);
       emit(id, r, 'suspect');
     }
@@ -586,13 +600,15 @@
       const o = (lane === 'deep' ? r.td : r.t).feed(res.hit ? 1 : 0);
       if (res.hit || o.changed) log('xv ' + lane + ' ' + String(id).slice(0, 8) + ' ' + (res.hit ? 'hit' : 'clean') + ' s=' + JSON.stringify(res.s) + ' ' + res.ms + 'ms');
       r.tripped = r.t.state().tripped || r.td.state().tripped;
+      if (lane === 'deep') { r.e = res.s[0]; r.eAt = now(); }
       if (lane !== 'deep' && eng) {
+        r.m0 = res.s[0];
         const sl = eng.suspectLine == null ? 1 : eng.suspectLine;
         r.warm = res.s.length > 1 || res.s[0] >= (eng.warmLine == null ? 0.05 : eng.warmLine);
         if (res.s[0] >= sl) r.hotUntil = now() + T.XV_HOT_MS;
         if (r.sus) {
           if (res.s[0] >= sl) setSus(id, r, res.s[0]); else r.susClean++;
-          if (r.tripped || (r.susClean >= r.need && now() >= r.holdUntil)) { r.sus = false; r.strong = false; }
+          if (r.tripped || (r.S == null && r.susClean >= r.need && now() >= r.holdUntil)) { r.sus = false; r.strong = false; r.S = null; }   // a picture the confirming model weighs in on is kept or lifted by its score S alone
         } else if (!r.tripped && res.s[0] >= sl) setSus(id, r, res.s[0]);   // the chain's trip lifted on a picture still suspect: stay blurred, no blink
         r.pend = false;
       }
@@ -631,7 +647,7 @@
             r.changed = true; kick = true;
           }
           const l = luma(el);
-          if (l && r.prev && t >= r.nextChg && lumaDiff(l, r.prev) >= T.XV_SENSE_DIFF) { r.changed = true; r.benignUntil = 0; kick = true; }
+          if (l && r.prev && t >= r.nextChg && lumaDiff(l, r.prev) >= T.XV_SENSE_DIFF) { r.changed = true; r.shift = 0; kick = true; }
           if (l) r.prev = l;
           if (r.pend && eng && t - Math.max(r.pendAt, engAt) >= T.XV_PEND_MAX_MS) { r.pend = false; emit(src.id, r, 'late'); }   // the cap counts from when the check could first look
         }
@@ -667,15 +683,24 @@
       const res = await eng.confirm(el);
       if (stopped) return;
       r.at = now();
-      log('xv confirm ' + String(src.id).slice(0, 8) + ' v=' + Math.round(res.v * 1e4) / 1e4 + (res.hit ? ' explicit' : ' clean') + ' ' + res.ms + 'ms');
-      if (!r.sus || r.tripped) return;
-      if (res.hit) { const h = holdFor(T.XV_STRONG); r.peak = Math.max(r.peak, T.XV_STRONG); r.holdUntil = Math.max(r.holdUntil, now() + h.hold); r.need = Math.max(r.need, h.clean); return; }
-      // A clean confirm ALWAYS lifts, armed or not. The clean confirm also raises this picture's bar just above its confirmed-clean score (benignHi) until XV_BENIGN_MS passes, the picture changes or the score jumps past it: steady benign pictures stop churning, a higher score trips at once.
-      r.lifts.push(now());
-      // One continuous mapping, certainty c (0 at the confirming model's line, 1 at XV_CONFIRM_SURE, log scale) -> the raise
-      // lerp(XV_BENIGN_MARGIN_MIN, XV_BENIGN_MARGIN, c) and its life lerp(XV_BENIGN_MIN_MS, XV_BENIGN_MS, c).
+      if (!r.sus || r.tripped) { log('xv confirm ' + String(src.id).slice(0, 8) + ' v=' + Math.round(res.v * 1e4) / 1e4 + ' ignored'); return; }
+      // THE KEEP/LIFT SCORE (Nathan 2026-11-28): s = A*logit(m) + B*log10(f+eps) + C + the scene's offset (+ the optional third model), smoothed
+      // S = LAMBDA*S + (1-LAMBDA)*s over this picture's confirming looks. The blur stays while S >= 0 and lifts when S < 0. A very low f pulls s
+      // down: clean means clear, no special case. The confirming model's own hit/clean flag is not read: its score is.
+      const s = fuseScore(T, r.m0, res.v, r.shift, T.XV_FUSE_FREEPIK_D && r.e != null && now() - r.eAt < T.XV_HOLD_MAX_MS ? r.e : null);
+      r.S = T.XV_FUSE_LAMBDA * (r.S == null ? T.XV_FUSE_S0 : r.S) + (1 - T.XV_FUSE_LAMBDA) * s;
+      log('xv confirm ' + String(src.id).slice(0, 8) + ' f=' + Math.round(res.v * 1e4) / 1e4 + ' m=' + Math.round(r.m0 * 1e3) / 1e3 + ' s=' + Math.round(s * 100) / 100 + ' S=' + Math.round(r.S * 100) / 100 + ' ' + res.ms + 'ms');
       const ln = res.line > 0 ? res.line : 0.05, c = Math.min(1, Math.max(0, Math.log(ln / Math.max(1e-9, res.v)) / Math.log(ln / T.XV_CONFIRM_SURE)));
-      r.sus = false; r.benignHi = r.peak + T.XV_BENIGN_MARGIN_MIN + (T.XV_BENIGN_MARGIN - T.XV_BENIGN_MARGIN_MIN) * c; r.benignUntil = now() + T.XV_BENIGN_MIN_MS + (T.XV_BENIGN_MS - T.XV_BENIGN_MIN_MS) * c;
+      if (c > 0) {   // the confirming model calls it clean (under its own line)
+        // PER-SCENE SHIFT: a clean confirm (f under the confirming model's line) moves this scene's offset toward clear by XV_FUSE_STEP scaled by the confirm's certainty c (0 at the
+        // confirming model's line, 1 at XV_CONFIRM_SURE, log scale); the quick-trip line for the scene rises with it, and it lasts lerp(XV_BENIGN_MIN_MS, XV_BENIGN_MS, c).
+        r.shiftRef = r.shift < 0 ? Math.max(r.shiftRef, r.m0) : r.m0;
+        r.shift = Math.max(-T.XV_FUSE_SHIFT_MAX, r.shift - T.XV_FUSE_STEP * c);
+        r.shiftUntil = now() + T.XV_BENIGN_MIN_MS + (T.XV_BENIGN_MS - T.XV_BENIGN_MIN_MS) * c;
+      }
+      if (r.S >= 0) { r.confirm = true; r.confirmAt = now() + Math.max(T.XV_GAP_MIN_MS, res.ms / duty); return; }   // keep: ask again, within the duty share
+      r.lifts.push(now());
+      r.sus = false; r.strong = false; r.S = null;
       emit(src.id, r, 'benign');
     }
     // The next picture to look at, in this order: (0) a new picture held back for its first look; (1) a HOT picture (a suspect
@@ -694,7 +719,7 @@
         if (!ready(el)) continue;
         const r = rec(src.id);
         if (lane === 'deep') { const k = r.deepAt || 0; if (k < bk) { bk = k; best = { src, el, r, job: 'frame' }; } continue; }
-        if (r.confirm && r.sus && !r.tripped) { if (!(cb < bc || (cb === bc && r.at < bk))) continue; bc = cb; bk = r.at; best = { src, el, r, job: 'confirm' }; continue; }
+        if (r.confirm && r.sus && !r.tripped) { if (now() < r.confirmAt) continue; if (!(cb < bc || (cb === bc && r.at < bk))) continue; bc = cb; bk = r.at; best = { src, el, r, job: 'confirm' }; continue; }
         const hot = r.sus || r.tripped || r.hotUntil > t;
         if (r.warm && !r.sus && t < fullReadyAt) continue;
         let cls = 3, k = r.at, job = 'frame';
@@ -903,7 +928,7 @@
 
   GifOS.explicit = { guard, MODEL, VERSION, STILL_LINE, VIDEO_LINE, unsupported, catalog, open, classify, checkStill, tracker, blockOn, _score: score,
     video: {
-      RULE, catalog: videoCatalog, open: videoOpen, deep: videoDeep, watch, mobile: mobileUa,
+      RULE, fuseScore, catalog: videoCatalog, open: videoOpen, deep: videoDeep, watch, mobile: mobileUa,
       // Download progress of what the first check needs: { pct (0-100, or null until the catalog is known), ready }.
       progress: () => ({ pct: meter.ready ? 100 : meter.total ? Math.min(99, Math.floor((100 * meter.done) / meter.total)) : null, ready: meter.ready }),
       onProgress: (f) => { meter.fns.add(f); return () => meter.fns.delete(f); },

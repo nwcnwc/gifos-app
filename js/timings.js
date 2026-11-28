@@ -382,9 +382,8 @@
     X402_RESUME_MS: 6000,   // ms
     X402_RESUME_TRIES: 3,   // count
     XV_BENIGN_MARGIN: 0.1,   // ratio
-    XV_BENIGN_MARGIN_MIN: 0.02,   // ratio
-    XV_BENIGN_MIN_MS: 12000,   // ms
-    XV_BENIGN_MS: 60000,   // ms
+    XV_BENIGN_MIN_MS: 180000,   // ms
+    XV_BENIGN_MS: 900000,   // ms
     XV_BURST_FRAME_MS: 100,   // ms
     XV_BURST_MS: 1000,   // ms
     XV_BURST_N: 4,   // count
@@ -400,6 +399,16 @@
     XV_FIRST_DUTY_DESK_PCT: 15,   // pct
     XV_FIRST_DUTY_PHONE_PCT: 8,   // pct
     XV_FIRST_GAP_MIN_MS: 500,   // ms
+    XV_FUSE_A: 1.045,   // ratio
+    XV_FUSE_B: 0.348,   // ratio
+    XV_FUSE_C: 1.239,   // ratio
+    XV_FUSE_FREEPIK_D: 0,   // ratio
+    XV_FUSE_F_EPS: 0.00001,   // ratio
+    XV_FUSE_LAMBDA: 0.9,   // ratio
+    XV_FUSE_LINE_GAIN: 0.35,   // ratio
+    XV_FUSE_S0: 0.25,   // ratio
+    XV_FUSE_SHIFT_MAX: 1,   // ratio
+    XV_FUSE_STEP: 0.2,   // ratio
     XV_GAP_MAX_MS: 8000,   // ms
     XV_GAP_MAX_PHONE_MS: 20000,   // ms
     XV_GAP_MIN_MS: 1000,   // ms
