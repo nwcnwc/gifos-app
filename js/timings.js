@@ -35,8 +35,6 @@
     AUDIO_QUANTUM_MS: 20,   // ms
     AWAKE_MS: 3000,   // ms
     BANNER_HOLD: 5000,   // ms
-    BAR_RESTORE_LATE_MS: 1200,   // ms
-    BAR_RESTORE_RECHECK_MS: 400,   // ms
     BC_QUIET_GRACE_MS: 4000,   // ms
     BC_RECONNECT_MS: 60000,   // ms
     BELL_ALONE_MS: 6000,   // ms
@@ -201,8 +199,6 @@
     PAYPAL_KEEP_MS: 21600000,   // ms
     PAYPAL_POLL_MS: 2000,   // ms
     PEER_SILENT_MS: 30000,   // ms
-    PINCH_DOUBLE_TAP_MS: 300,   // ms
-    PINCH_QUIET_MS: 300,   // ms
     PIN_HOLD_MS: 2000,   // ms
     PIPE_HOLD_EVERY_MS: 1000,   // ms
     PIPE_HOLD_MAX_MS: 4000,   // ms
@@ -375,14 +371,6 @@
     X2_KEEP_MS: 15000,   // ms
     X402_RESUME_MS: 6000,   // ms
     X402_RESUME_TRIES: 3,   // count
-    XV_BURST_MS: 1000,   // ms
-    XV_DEEP_GAP_MS: 4000,   // ms
-    XV_DEEP_MAX_MS: 1500,   // ms
-    XV_DUTY_DESK_PCT: 20,   // pct
-    XV_DUTY_PHONE_PCT: 10,   // pct
-    XV_GAP_MAX_MS: 8000,   // ms
-    XV_GAP_MIN_MS: 1000,   // ms
-    XV_RETRY_MS: 30000,   // ms
     holdMs: 2500,   // ms
     tickMs: 500,   // ms
   });
