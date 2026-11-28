@@ -1481,7 +1481,9 @@
       // sized by the defaults. It is named and listed here for the same reason
       // the four above are: an unnamed way to reach the relay is how the last
       // one crept in.
-      PRESENT_MY_MEETING_RIGHT(tk) { if (tk && tk.ticketJson && tk.sig) sendRaw({ t: 'acl', tk: { ticketJson: String(tk.ticketJson), sig: String(tk.sig) } }); },
+      // hp (HOSTLATE): a host who signed in after this socket opened proves the host key with it (the connect's hostknock
+      // order), so the right's host-scoped items count (Clear Stage) without a reconnect.
+      PRESENT_MY_MEETING_RIGHT(tk, hp) { if (tk && tk.ticketJson && tk.sig) sendRaw(Object.assign({ t: 'acl', tk: { ticketJson: String(tk.ticketJson), sig: String(tk.sig) } }, hp && hp.sp && hp.sig && hp.pub ? { hp: { sp: String(hp.sp), sig: String(hp.sig), pub: String(hp.pub) } } : {})); },
       // (7) READ THE ROOM LICENSE — anyone in a hosted room can read the permissions the room holds (the License
       // item). One ask, answered to this socket alone ({t:'acl', l, s}); nothing is pushed and nothing is timed.
       // A seat with no relay socket does not call this: it shows the last value it already saw.
