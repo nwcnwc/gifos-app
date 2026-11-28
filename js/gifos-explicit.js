@@ -458,7 +458,7 @@
     // 'checking' for pend alone | 'unsafe').
     const rec = (id) => {
       let r = recs.get(id);
-      if (!r) recs.set(id, (r = { t: tracker(), td: tracker(), tripped: false, sus: false, hotUntil: 0, peak: 0, need: 1, holdUntil: 0, pend: false, pendAt: 0, kind: '', susClean: 0, changed: false, chgAt: 0, nextChg: 0, warm: false, prev: null, at: 0, n: 0, hits: 0, s: null, fresh: true }));
+      if (!r) recs.set(id, (r = { t: tracker(), td: tracker(), tripped: false, sus: false, hotUntil: 0, wb: 0, wAt: 0, locked: false, peak: 0, need: 1, holdUntil: 0, pend: false, pendAt: 0, kind: '', susClean: 0, changed: false, chgAt: 0, nextChg: 0, warm: false, prev: null, at: 0, n: 0, hits: 0, s: null, fresh: true }));
       return r;
     };
     const ready = (el) => !!el && ((el.videoWidth > 0 && el.readyState >= 2) || (!('videoWidth' in el) && el.width > 0));
@@ -506,7 +506,21 @@
       const f = Math.pow(Math.min(1, Math.max(0, (score - line) / Math.max(1e-6, T.XV_STRONG - line))), T.XV_HOLD_CURVE);
       return { hold: T.XV_HOLD_MIN_MS + (T.XV_HOLD_MAX_MS - T.XV_HOLD_MIN_MS) * f, clean: Math.round(T.XV_CLEAN_MIN + (T.XV_CLEAN_MAX - T.XV_CLEAN_MIN) * f) };
     }
+    // THE WEAK-SUSPICION BUDGET. A picture that only ever scores weak (below XV_STRONG) and is never confirmed by the chain
+    // (an ordinary face that hovers over the line) may be held blurred for at most XV_WEAK_BUDGET_MS in a row: a bucket fills
+    // while it is held and drains at the same rate while it is clear; when it is full the weak hold lifts and weak looks cannot
+    // hold it again until it is half empty. A look at XV_STRONG or more, or a chain trip, is never limited.
+    function weakTick(id, r) {
+      const t = now(), dt = r.wAt ? t - r.wAt : 0;
+      r.wAt = t;
+      const weakHeld = r.sus && !r.tripped && r.peak < T.XV_STRONG;
+      r.wb = Math.max(0, Math.min(T.XV_WEAK_BUDGET_MS, r.wb + (weakHeld ? dt : -dt)));
+      if (r.locked && r.wb <= T.XV_WEAK_BUDGET_MS / 2) r.locked = false;
+      if (weakHeld && r.wb >= T.XV_WEAK_BUDGET_MS) { r.locked = true; r.sus = false; log('xv weak-cap ' + String(id).slice(0, 8)); emit(id, r, 'weak-cap'); }
+    }
     function setSus(id, r, v0) {
+      if (r.locked && !r.tripped && v0 < T.XV_STRONG) return;
+      if (v0 >= T.XV_STRONG) r.locked = false;
       if (r.sus || r.tripped) { r.susClean = 0; if (r.sus && v0 > r.peak) { r.peak = v0; const h = holdFor(v0); r.holdUntil = Math.max(r.holdUntil, now() + h.hold); r.need = Math.max(r.need, h.clean); } return; }
       const h = holdFor(v0);
       r.peak = v0; r.need = h.clean; r.holdUntil = now() + h.hold;
@@ -629,6 +643,7 @@
         if (a.length) {
           if (!eng) { eng = await open(); err = ''; }
           if (deep === undefined) { deep = null; openDeep().then((d) => { deep = d; deepWhy = d ? 'on ' + d.ms + 'ms' : 'off'; if (d) log('xv deep on (' + d.id + ', ' + d.ms + ' ms a frame)'); if (d && !stopped) deepTick(); }, () => { deepWhy = 'off'; }); }
+          for (const [wid, wr] of recs) weakTick(wid, wr);
           const p = pick(a, 'chain');
           if (p && p.job === 'burst') await burstJob(p.src, p.el, p.r);
           else if (p) {

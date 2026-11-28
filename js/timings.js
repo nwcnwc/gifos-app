@@ -397,6 +397,7 @@
     XV_SENSE_DIFF: 10,   // count
     XV_SENSE_MS: 250,   // ms
     XV_STRONG: 0.7,   // ratio
+    XV_WEAK_BUDGET_MS: 30000,   // ms
     holdMs: 2500,   // ms
     tickMs: 500,   // ms
   });
