@@ -1388,6 +1388,8 @@
  "meet.setScopeNote": "跟随你：保存在“Me & My Contacts”中，在每台持有它的设备上都一样。仅此设备：只留在这台手机或电脑上。",
  "meet.blurWhyUnsafe": "出于安全已模糊",
  "meet.blurSaysUnsafe": "出于安全已模糊",
+ "meet.blurWhyChecking": "正在切换到清晰视频…",
+ "meet.blurSaysChecking": "正在切换到清晰视频…",
  "meet.admXvH": "视频安全",
  "meet.admXblk": "屏蔽露骨内容",
  "meet.admXblkSub": "GifOS 页面在你的设备上检查视频并隐藏色情露骨的画面。不会向 GifOS 或任何其他人发送任何内容。GifOS 看不到你的会议。",

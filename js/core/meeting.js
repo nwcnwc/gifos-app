@@ -3733,8 +3733,8 @@
     //   unsafe     this page's explicit-content check found the picture sexually explicit (xvHeld): blurred at Max with
     //              no tap, ahead of every other reason, until it lifts by itself after clean frames
     // where: 'stage' when the picture is a Stage view (a Stage face box), else a grid, row or stadium picture.
-    function blurHold(id, where) {
-      if (xvTrip.size && xvHeld(id, where)) return xvSoft.has(id) ? 'checking' : 'unsafe';
+    function blurHold(id, where, noXv) {
+      if (!noXv && xvTrip.size && xvHeld(id, where)) return xvSoft.has(id) ? 'checking' : 'unsafe';
       const m = modOf(id).blur;
       const order = (m && m.on) ? ((hasAdminRoom() && modTable['*'] && modTable['*'].blur === m) ? 'guests' : 'forall') : '';
       if (!roomPw) {
@@ -3771,6 +3771,7 @@
       stageonly: { tile: ['blurWhyStageOnly', 'Blurred: only the Stage can be unblurred'], says: ['blurSaysStageOnly', 'You chose clear video. This room has no password: viewers may unblur only the Stage, so you stay blurred off it.'] },
       repick: { tile: ['blurWhyRepick', 'Blurred: pick No blur again'], says: ['blurSaysRepick', 'Viewers here may now choose to unblur you. Pick No blur again if you want that.'] },
       unsafe: { tile: ['blurWhyUnsafe', 'Blurred for safety'], says: ['blurSaysUnsafe', 'Blurred for safety'] },
+      checking: { tile: ['blurWhyChecking', 'Switching to clear video\u2026'], says: ['blurSaysChecking', 'Switching to clear video\u2026'] },
     };
     function blurWhyWords(reason, part) {
       const e = BLUR_WHY[reason];
@@ -3784,7 +3785,13 @@
     // note of every seat, bot or person, together.
     function tileBlurWhy(id, st, where) {
       if (!st || (st.camOff && !st.scr && !st.rb)) return '';
-      if (xvTrip.size && xvHeld(id, where)) return xvSoft.has(id) ? '' : 'unsafe';   // a trip explains itself (a first look says nothing) whatever the sender picked
+      if (xvTrip.size && xvHeld(id, where)) {
+        // A real trip explains itself whatever the sender picked. A first look still pending (models loading, new picture) is
+        // a calm "Switching to clear video" only on a tile that would go clear; any other hold keeps its own reason.
+        if (!xvSoft.has(id)) return 'unsafe';
+        if (!consents(st)) return '';
+        return blurHold(id, where, true) || 'checking';
+      }
       if (!consents(st)) return '';
       return blurHold(id, where);
     }
