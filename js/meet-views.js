@@ -1236,7 +1236,12 @@
   }
 
   function metrics(bar, grip) {
-    let tab = 0;
+    let tab = 0, tab2 = 0;
+    const g2 = root.document && root.document.getElementById('bargrip2');
+    if (g2 && bar && bar.getBoundingClientRect) {
+      const br2 = bar.getBoundingClientRect(), r2 = g2.getBoundingClientRect();
+      if (r2.width > 0 && br2.width > 0) tab2 = br2.right - r2.left;
+    }
     if (grip && bar && bar.getBoundingClientRect) {
       const br = bar.getBoundingClientRect();
       const gr = grip.getBoundingClientRect();
@@ -1244,7 +1249,7 @@
       if (gr.width > 0 && br.width > 0) tab = gr.right - br.left;
     }
     return {
-      bar: { w: bar.offsetWidth, h: bar.offsetHeight, tab: tab },
+      bar: { w: bar.offsetWidth, h: bar.offsetHeight, tab: tab, tab2: tab2 },
       view: { w: root.innerWidth || 0, h: root.innerHeight || 0 },
     };
   }
@@ -1334,6 +1339,12 @@
       }
     });
     restore();
+    // The right handle may not be laid out yet at install: measure again once the page has settled,
+    // so a spot stashed off the left edge comes back where it was saved.
+    const again = function () { if (!drag) restore(); };
+    root.addEventListener('load', again);
+    root.setTimeout(again, 400);
+    root.setTimeout(again, 1200);
     return { apply: applyPos, restore: restore, reset: reset };
   }
 
