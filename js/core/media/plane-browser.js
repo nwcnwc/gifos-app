@@ -5096,6 +5096,7 @@
     // time on this device: every picture shown clear or nearly clear (a blurred one costs nothing), every tripped one
     // (so it can lift), and my own outgoing picture as it is before any blur (the camera, a share or a rebroadcast).
     let xvWatch = null;
+    const xvEls = new WeakMap(), xvElById = new Map(); let xvElN = 0;
     function xvSources() {
       const out = [];
       const lv = (id) => { try { return (0, /*()*/__C.blurLevelFor)(id) | 0; } catch (e) { return 2; } };
@@ -5114,14 +5115,28 @@
       }
       const sv = __V.stagefeedEl && __V.stagefeedEl.querySelector('[data-row="sgs"] video');
       if (sv && sv.srcObject && (held('stage') || lv('stage') < 2)) out.push({ id: 'stage', el: sv });
-      const sd = __V.stadiumEl && __V.stadiumEl.querySelector('[data-row="sd"] video');
-      if (sd && sd.srcObject && (held('stadium') || lv('stadium') < 2)) out.push({ id: 'stadium', el: sd });
+      // Stadium and row mosaics are exempt: a head seat composes them from per-person pictures it already checked as it
+      // received them, and one square gains no pixels when enlarged. Every other picture on the page that carries a live
+      // stream is found here by the stream itself, not by the surface that shows it (PiP, embeds, copies): one whose stream
+      // is already listed is that picture; any other shown clear is a source of its own (id 'el:N', blurred in place).
+      const seen = new Set();
+      for (const o of out) { try { const st = o.el ? o.el.srcObject : null; const ts = st && st.getVideoTracks ? st.getVideoTracks() : [o.track]; for (const t of ts) if (t) seen.add(t.id); } catch (e) {} }
+      for (const v of document.querySelectorAll('video')) {
+        const st = v.srcObject;
+        if (!st || !st.getVideoTracks || v.closest('[data-row="sd"]')) continue;
+        const tr = st.getVideoTracks()[0];
+        if (!tr || tr.readyState !== 'live' || seen.has(tr.id) || !(v.offsetWidth > 8 && v.offsetHeight > 8)) continue;
+        let id = xvEls.get(v);
+        if (!id) { id = 'el:' + (++xvElN); xvEls.set(v, id); xvElById.set(id, v); }
+        let f = ''; try { f = getComputedStyle(v).filter || ''; } catch (e) {}
+        if (held(id) || f.indexOf('blur') < 0) { out.push({ id, el: v }); seen.add(tr.id); }
+      }
       return out;
     }
     function xvSync(on) {
       const E = window.GifOS && GifOS.explicit;
       if (on && !xvWatch && E && E.video && !E.unsupported()) {
-        xvWatch = E.video.watch({ sources: xvSources, onChange: (id, tripped, why, kind) => (0, /*()*/__C.xvSet)(id, tripped, why, kind), log: (line) => { try { (0, /*()*/__C.clog)(line); } catch (e) {} } });
+        xvWatch = E.video.watch({ sources: xvSources, onChange: (id, tripped, why, kind) => { const xe = xvElById.get(id); if (xe) { try { xe.style.filter = tripped ? 'blur(40px)' : ''; } catch (e) {} } else (0, /*()*/__C.xvSet)(id, tripped, why, kind); }, log: (line) => { try { (0, /*()*/__C.clog)(line); } catch (e) {} } });
       } else if (!on && xvWatch) {
         const w = xvWatch;
         xvWatch = null;

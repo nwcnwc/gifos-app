@@ -581,12 +581,12 @@
         if (i) await sleep(T.XV_BURST_FRAME_MS);
         const x = await eng.first(el);
         sc.push(x.v);
-        if (x.suspect) break;
+        if (x.v >= Math.max(eng.suspectLine == null ? 1 : eng.suspectLine, T.XV_STRONG)) break;
       }
       const sl = eng.suspectLine == null ? 1 : eng.suspectLine;
       const mean = sc.reduce((a, b) => a + b, 0) / (sc.length || 1);
-      const agg = sc.filter((v) => v >= T.XV_AGG_LINE).length >= T.XV_AGG_N || mean >= T.XV_AGG_MEAN;
-      const strong = sc.some((v) => v >= sl);
+      const agg = sc.filter((v) => v >= Math.max(sl, T.XV_AGG_LINE)).length >= T.XV_AGG_N || mean >= T.XV_AGG_MEAN;
+      const strong = sc.some((v) => v >= Math.max(sl, T.XV_STRONG));
       const cost = now() - t0;
       r.nextChg = now() + Math.max(T.XV_CHANGE_MIN_MS, cost / fduty);   // a change burst never goes over the first lane's duty
       r.chgAt = now(); r.at = now();
@@ -624,7 +624,13 @@
           if (p && p.job === 'burst') await burstJob(p.src, p.el, p.r);
           else if (p) {
             p.r.at = now();
-            const res = await eng.frame(p.el, (v) => { if (v >= (eng.suspectLine == null ? 1 : eng.suspectLine)) setSus(p.src.id, p.r, v); });
+            const res = await eng.frame(p.el, (v) => {
+              // A strong first look trips at once; a weak one over the suspect line only asks for a burst, and the burst decides
+              // (two looks agreeing): most weak false blurs on real film are one-look blips.
+              const sl = eng.suspectLine == null ? 1 : eng.suspectLine;
+              if (v >= Math.max(sl, T.XV_STRONG)) setSus(p.src.id, p.r, v);
+              else if (v >= sl && !p.r.sus && !p.r.tripped) p.r.changed = true;
+            });
             if (stopped) return;
             frames++;
             const deeper = res.s.length > 1;

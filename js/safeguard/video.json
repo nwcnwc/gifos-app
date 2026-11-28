@@ -57,42 +57,6 @@
   },
   "chain": [
     {
-      "id": "viddexa-nano",
-      "line": 0.05,
-      "suspect": 0.2,
-      "size": 224,
-      "mean": [
-        0.485,
-        0.456,
-        0.406
-      ],
-      "std": [
-        0.47853944,
-        0.4732864,
-        0.47434163
-      ],
-      "labels": [
-        "safe",
-        "hentai",
-        "porn",
-        "sexy",
-        "drawing"
-      ],
-      "pos": [
-        "hentai",
-        "porn"
-      ],
-      "file": {
-        "name": "viddexa-nsfw-detection-2-nano.onnx",
-        "key": "viddexa-nano-12e5720/5ecb111a98dc5bba9eedb9b00e91abf92d127e509b0285b11882305b5de360c5/model.onnx",
-        "sha256": "5ecb111a98dc5bba9eedb9b00e91abf92d127e509b0285b11882305b5de360c5",
-        "bytes": 16075389,
-        "src": "https://github.com/nwcnwc/gifos-app/releases/download/safeguard-models-1/viddexa-nsfw-detection-2-nano.onnx",
-        "license": "Apache-2.0"
-      },
-      "from": "https://huggingface.co/viddexa/nsfw-detection-2-nano (revision 12e57200346246b37382f746e4d94d10b014f6a1), exported to ONNX (float32)"
-    },
-    {
       "id": "marqo-384",
       "line": 0.85,
       "size": 384,
@@ -121,7 +85,8 @@
         "src": "https://huggingface.co/kasimtmc/nsfw-image-detection-384-onnx/resolve/8a2d1b7d93d38688c6f9a38767c16acd7de4280b/nsfw_vit_tiny_384_int8.onnx",
         "license": "Apache-2.0"
       },
-      "from": "https://huggingface.co/Marqo/nsfw-image-detection-384 (ViT-tiny), int8 ONNX"
+      "from": "https://huggingface.co/Marqo/nsfw-image-detection-384 (ViT-tiny), int8 ONNX",
+      "suspect": 0.35
     },
     {
       "id": "falcon",

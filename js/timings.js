@@ -375,8 +375,8 @@
     X2_KEEP_MS: 15000,   // ms
     X402_RESUME_MS: 6000,   // ms
     X402_RESUME_TRIES: 3,   // count
-    XV_AGG_LINE: 0.2,   // score
-    XV_AGG_MEAN: 0.15,   // score
+    XV_AGG_LINE: 0.35,   // score
+    XV_AGG_MEAN: 0.35,   // score
     XV_AGG_N: 2,   // count
     XV_BURST_FRAME_MS: 100,   // ms
     XV_BURST_N: 4,   // count
@@ -392,6 +392,7 @@
     XV_PEND_MAX_MS: 3000,   // ms
     XV_SENSE_DIFF: 10,   // luma
     XV_SENSE_MS: 250,   // ms
+    XV_STRONG: 0.7,   // ratio
     XV_BURST_MS: 1000,   // ms
     XV_DEEP_GAP_MS: 4000,   // ms
     XV_DEEP_MAX_MS: 1500,   // ms
