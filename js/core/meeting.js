@@ -3782,7 +3782,7 @@
     function tileBlurWhy(id, st, where) {
       if (!st || (st.camOff && !st.scr && !st.rb)) return '';
       if (xvTrip.size && xvHeld(id, where)) return 'unsafe';   // a trip explains itself whatever the sender picked
-      if (!consents(st)) return '';
+      if (!st.scr && !st.rb && !consents(st)) return '';   // a share or rebroadcast TILE is the picture (blurLevelFor reads it as clear-by-choice); the seat's own consent is its camera
       return blurHold(id, where);
     }
     // clearTap: THIS viewer chose to unblur in a no-password room with a clear right (memory only: a reload, another
