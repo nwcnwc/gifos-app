@@ -4036,7 +4036,6 @@
         '</section>' +
         '<section data-page="look" hidden>' +
           '<p class="add-help">' + escapeHtml(ST('settings.look.intro')) + '</p>' +
-          (GifOS.homeView && GifOS.homeView.available() ? GifOS.homeView.settingsHtml(scopeTag) : '') +
           '<div class="set-group">' + escapeHtml(ST('settings.look.background')) + scopeTag(false) + '</div>' +
           '<div class="set-card set-pad">' +
             '<label class="set-label" for="set-bg-color">' + escapeHtml(ST('settings.look.color')) + '</label>' +
@@ -4051,6 +4050,8 @@
             '<p class="add-help">' + escapeHtml(ST('settings.look.textSizeHelp')) + '</p>' +
             '<div class="ts-row"><button type="button" id="ts-minus" class="ghost" aria-label="' + escapeHtml(ST('settings.look.smaller')) + '">A−</button><span id="ts-val" class="mono" aria-live="polite"></span><button type="button" id="ts-plus" class="ghost" aria-label="' + escapeHtml(ST('settings.look.bigger')) + '">A+</button><button type="button" id="ts-reset" class="ghost" aria-label="' + escapeHtml(ST('settings.look.resetSizeAria')) + '">' + escapeHtml(ST('settings.look.reset')) + '</button></div>' +
           '</div>' +
+        // the Home look list comes last: the rows above keep the places they have on a release
+          (GifOS.homeView && GifOS.homeView.available() ? GifOS.homeView.settingsHtml(scopeTag) : '') +
         '</section>' +
         (I18N ? '<section data-page="language" hidden>' + langSectionHtml() + '</section>' : '') +
         '<section data-page="ai" hidden>' + aiSectionHtml() + '</section>' +
