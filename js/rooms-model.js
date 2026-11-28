@@ -12,7 +12,8 @@
  *
  *   read()            { mine, ours:[{p, card}], cards:[{c, pair}], loose, hosted, missed, issued }
  *   people(m, w)      the contacts as one list (w: the caller's word for a contact with no name), most recently used first:
- *                     { kind:'p'|'c', key, name, room, v, last, ok, shared, pair }
+ *                     { kind:'p'|'c', key, name, room, v, last, ok, shared, pair, pending } (pending: an invite I opened,
+ *                     not connected yet: opening their room knocks with it)
  *   missed(m, list)   the missed calls, newest first: { label, name, at, who } (who: the person to call back, or null)
  *   ring(p)           leaves the hand-off notes a call to person p needs (the meeting page reads them) and returns
  *                     { room, v } to open. A private room is entered with mic and camera off until it is answered.
@@ -47,7 +48,7 @@
   function people(m, noName) {
     const M = MR(); if (!M) return [];
     const list = m.ours.map((x) => ({ kind: 'p', key: M.roomKey(x.p.room, x.p.v), name: x.p.name || noName || 'Contact', room: x.p.room, v: x.p.v, last: x.p.last || x.p.at || 0, ok: true, shared: !!x.card, pair: null }));
-    for (const x of m.cards) list.push({ kind: 'c', key: M.roomKey(x.c.room, x.c.v), name: x.c.name || noName || 'Contact', room: x.c.room, v: x.c.v, last: x.c.at || 0, ok: !!x.c.bound, shared: false, pair: x.pair });
+    for (const x of m.cards) list.push({ kind: 'c', key: M.roomKey(x.c.room, x.c.v), name: x.c.name || noName || 'Contact', room: x.c.room, v: x.c.v, last: x.c.at || 0, ok: !!x.c.bound, shared: false, pair: x.pair, pending: !!x.c.inv });
     return list.sort((a, b) => b.last - a.last);
   }
 
