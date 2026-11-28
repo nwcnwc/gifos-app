@@ -30,5 +30,9 @@
   "identity.trashTitle": "Me & My Contacts bleibt hier",
   "identity.trashBody": "Diese Datei enthält deinen persönlichen Raum, deine privaten Räume und deine Kontakte. Sie kann nicht in den Papierkorb.",
   "identity.scopeNote": "Folgt Ihnen: in „Me & My Contacts“ gespeichert, gleich auf jedem Gerät, das sie hat. Nur dieses Gerät: bleibt auf diesem Telefon oder Computer.",
-  "identity.settingsIntro": "Freunde sehen diesen Namen, wenn Sie zusammen spielen oder arbeiten. Er folgt Ihnen auf jedes Gerät, das Ihre Datei „Me & My Contacts“ hat."
+  "identity.settingsIntro": "Freunde sehen diesen Namen, wenn Sie zusammen spielen oder arbeiten. Er folgt Ihnen auf jedes Gerät, das Ihre Datei „Me & My Contacts“ hat.",
+  "identity.appsBtn": "Apps, die Sie kennen",
+  "identity.appsIntro": "Was jede App von Me & My Contacts haben darf. Vergessen Sie eine App, wird sie beim nächsten Mal erneut gefragt.",
+  "identity.appsNone": "Noch hat keine App nach Ihrem Namen, Ihrem Bild oder Ihren Kontakten gefragt.",
+  "identity.appsForget": "{app} vergessen"
 }
