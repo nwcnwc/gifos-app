@@ -1614,7 +1614,7 @@
     // is the only answer: refreshAllTiles opens the memo and closes it in a
     // finally, and outside a pass every call derives afresh as before.
     let passMemo = null;
-    const reactStats = { passes: 0, scheduled: 0, tiles: 0, layouts: 0, chipWrites: 0 }; // repaint counters (reactStatsForTest)
+    const reactStats = { passes: 0, scheduled: 0, tiles: 0, layouts: 0, chipWrites: 0, lastCons: null }; // repaint counters (reactStatsForTest)
     const REACT_COALESCE_MS = GifOS.timings.REACT_COALESCE_MS; // gossip repaints coalesce into one pass per window (scheduleRoomReact)
     let reactPending = false;
     const memoPass = (k, f) => { if (!passMemo) return f(); if (!(k in passMemo)) passMemo[k] = f(); return passMemo[k]; };
@@ -2474,6 +2474,8 @@
       try { avSweep(); } catch (e) {}   // the debug export's line for a change of my own mic, camera or share
       if (!GifOS.meshConsts) return;   // a published lobby whose meeting scripts are still arriving: nobody to tell yet
       if (pulseHalt && !answer) return; // the halt models a throttled clock; an answer to a newcomer is driven by its frame, not the clock
+      // A chosen background effect keeps the person clear (only the room behind changes): it rides the status as consent.
+      { let bgOn = 0; try { bgOn = (GifOS.meetBgfx && GifOS.meetBgfx.wants()) ? 1 : 0; } catch (e) {} if (bgOn) myStatus.bg = 1; else delete myStatus.bg; }
       myStatus.at = Date.now(); // timestamped: out-of-order gossip can't roll me back
       if (BROADCAST && typeof bcHostStored === 'function' && bcHostStored()) {
         const at0 = Number(params.get('at')) || 0;
@@ -3630,10 +3632,8 @@
     // BOTH the pixels a sender broadcasts and the CSS every receiver applies —
     // so a given tile looks the same on every phone, always.
     //
-    //   consent(tile)  = No blur, AND (camera on OR a screen is being shared).
-    //                    A deck with the camera off is the normal share
-    //                    (sentVideoTrack). That seat still consents, or the
-    //                    plain room drops to max blur for the whole presentation.
+    //   consent(tile)  = camera ON, AND the foreground is clear by the person's own choice: No blur, or a
+    //                    background effect. Camera off never consents; a share alone is not consent.
     //                    pushLeaf feeds this same predicate to setRefuses.
     //   clear(tile)    = room password is set
     //                    AND no moderator block on the tile
@@ -3645,15 +3645,14 @@
     // where that promise is enforced).
     //
     // Nothing else. No room-wide guest blur, no floors, no pinning.
-    // Sharing a screen, or a host's rebroadcast, is that seat's consent (video
-    // on, No blur) for it. A meeting bot has no camera and always picks No
-    // blur, so it consents and is never the reason a room stays blurred. Any PICTURE a bot sends (a camera, a share, a
-    // rebroadcast) consents by exactly the person's rule (BOTUNBLUR: bots are people on stage).
-    const consents = (st) => !!st && (!!st.scr || !!st.rb || (blurLevel(st.blur) === 0 && (!st.camOff || !!st.bot)));
+    // A share's own TILE is clear when the room is (blurLevelFor), but the sharer's seat consents only by its camera,
+    // like every seat. Bots follow the same rule (camera off = no consent).
+    // CONSENT (Nathan 2026-11-27): the camera is ON and the person's own choice leaves the FOREGROUND clear: No blur, or a
+    // background effect (st.bg: the person is always clear, only the room behind is replaced or blurred). A camera that is
+    // off never consents (bots too: same rule). A share or a rebroadcast alone is not consent: the sharer consents like everyone.
+    const consents = (st) => !!st && !st.camOff && (blurLevel(st.blur) === 0 || !!st.bg);
     const adminPresent = () => hasAdminRoom() && admins.length > 0;
-    // The room-wide READY tally (debugDump().consent, consensus()): who has the camera on at No blur. It is a count
-    // only; since 2026-11-26 it holds no picture back (an open room's password clears the room, see blurHold).
-    // It was once the rule, so it is tallied over shared
+    // Clear video is a ROOM-WIDE unanimity, so it MUST be tallied over shared
     // state (rosterIds = occ ∪ fresh status gossip), NOT over `peers` — my
     // bounded link set (row-mates, tree edges, E2, S1 columns). Two seats hold
     // DIFFERENT `peers` maps, so tallying `peers` split-brains the room: one
@@ -3726,6 +3725,7 @@
     //   guests   the admin's "Blur guests" order covers this guest
     //   forall   someone's "Blur for all" on this person
     //   noadmin  an admin room with no admin here
+    //   ready    a plain room where not everyone is ready (camera on, No blur): the viewer counts too
     //   tap        a hosted room with no password whose clear right lets viewers tap to unblur: not tapped yet
     //   stageonly  the same, but the right covers the Stage only (clearStageInAdminRoom in the room's ACL), and this
     //              picture is not a Stage view
@@ -3754,11 +3754,7 @@
       }
       if (order) return order;
       if (hasAdminRoom()) return adminPresent() ? '' : 'noadmin';
-      // AN OPEN ROOM'S PASSWORD CLEARS IT (Nathan, 2026-11-26): once the room has a password and nobody has blurred
-      // anyone, it holds nobody back. Each face is still as clear as its sender chose (blurLevelFor reads consents per
-      // tile), so a camera at Max stays blurred and a share is clear; a seat that never turns its camera on (a viewer,
-      // a bot, a phone in a pocket, a late joiner) holds back nobody else.
-      return '';
+      return allConsent() ? '' : 'ready';
     }
     // One table: [key, English] for the tile note and for the message the
     // sender reads after picking No blur. uiText translates both.
@@ -3767,6 +3763,7 @@
       guests: { tile: ['blurWhyGuests', 'Blurred: a host blurs guests'], says: ['blurSaysGuests', 'You chose clear video, but the host has blurred every guest, so you stay blurred until they lift it.'] },
       forall: { tile: ['blurWhyForAll', 'Blurred for all'], says: ['blurSaysForAll', 'You chose clear video, but someone here blurred you for all, so you stay blurred until that is lifted.'] },
       noadmin: { tile: ['blurWhyNoAdmin', 'Blurred: no host here'], says: ['blurSaysNoAdmin', 'You chose clear video, but this room stays blurred until a host is here.'] },
+      ready: { tile: ['blurWhyReady', 'Blurred: not everyone is ready'], says: ['blurSaysReady', 'You chose clear video. Faces clear once everyone here has their camera on with No blur or a background effect.'] },
       tap: { tile: ['blurWhyTap', 'Blurred: tap to unblur'], says: ['blurSaysTap', 'You chose clear video. This room has no password: each viewer here chooses whether to unblur you.'] },
       stageonly: { tile: ['blurWhyStageOnly', 'Blurred: only the Stage can be unblurred'], says: ['blurSaysStageOnly', 'You chose clear video. This room has no password: viewers may unblur only the Stage, so you stay blurred off it.'] },
       repick: { tile: ['blurWhyRepick', 'Blurred: pick No blur again'], says: ['blurSaysRepick', 'Viewers here may now choose to unblur you. Pick No blur again if you want that.'] },
@@ -3785,7 +3782,7 @@
     function tileBlurWhy(id, st, where) {
       if (!st || (st.camOff && !st.scr && !st.rb)) return '';
       if (xvTrip.size && xvHeld(id, where)) return 'unsafe';   // a trip explains itself whatever the sender picked
-      if (!consents(st)) return '';
+      if (!st.scr && !st.rb && !consents(st)) return '';   // a share or rebroadcast TILE is the picture (blurLevelFor reads it as clear-by-choice); the seat's own consent is its camera
       return blurHold(id, where);
     }
     // clearTap: THIS viewer chose to unblur in a no-password room with a clear right (memory only: a reload, another
@@ -3839,7 +3836,7 @@
       if (cameraOnly && st.scr) st = Object.assign({}, st, { scr: 0 });
       // A screen share or a rebroadcast is that seat's video with its own blur
       // at None (it is consent). Every other rule below still applies to it,
-      // exactly as to a camera: no password, no host in a hosted room, a
+      // exactly as to a camera: no password, a room short of unanimity, a
       // moderator's blur all keep it blurred.
       if (st.scr || st.rb) st = Object.assign({}, st, { camOff: false, blur: 0 });
       // (This rule applies UNCHANGED in broadcast rooms — Nathan's call,
@@ -3859,8 +3856,8 @@
       // to unblur (tapUnblur, behind the age-gate hook), the host is
       // accountable through the credential id (Report), and a sender's own
       // No blur counts only when picked after the right came on.)
-      // The room's part is blurHold (password, moderator block, admin here);
-      // past it each tile is as clear as its own sender chose (consents).
+      // The room's part is blurHold (password, moderator block, admin here,
+      // everyone ready); an admin room clears per tile, so its own consent too.
       const hold = blurHold(id, where);
       // A trip is Max blur for everyone it reaches, my own outgoing picture included (it leaves fully blurred: no cut).
       if (hold === 'unsafe') return 2;
@@ -3884,6 +3881,15 @@
       refreshAllTiles();
       (0, /*()*/__M.refreshOutbound)();
       (0, /*()*/__V.paintControls)();
+      if (!hasAdminRoom()) { // consent unanimity is the PLAIN-room path only — an admin room clears per-tile, admin present
+        const c = allConsent();
+        if (c !== reactStats.lastCons) {
+          if (reactStats.lastCons !== null && participantCount() > 1 && roomPw) {
+            setStatus(c ? 'Everyone is ready — this room is clear video now.' : 'Back to blurred — clear video needs everyone here ready (camera on, No blur).');
+          }
+          reactStats.lastCons = c;
+        }
+      }
       try { (0, /*()*/__V.explainHeldVideo)(); } catch (e) {}
     }
     // GOSSIP REPAINTS ARE COALESCED. A status frame from every section-mate
@@ -5767,6 +5773,13 @@
       if (n > 1 && !bcWatcher) {
         if (!roomPw) extra = bcLive ? ' · blurred until you set a room password' : ' · ' + uiText('unlockClear', 'faces stay blurred until a password');
         else if (hasAdminRoom() && admins.length === 0) extra = ' · ' + uiText('stNoHostBlurred', 'no host here — everyone stays blurred');
+        else if (!adminPresent() && !allConsent()) {
+          // Past one section the ready count is the fold's: everyone minus the
+          // refusals it carries (a label — the RULE is allConsent).
+          const dg = roomPastSection() ? roomDig() : null;
+          extra = dg ? ' · clear video when everyone is ready (' + Math.max(0, dg.n - dg.refuse) + '/' + dg.n + ')'
+            : ' · clear video when everyone is ready (' + consentCount() + '/' + n + ')';
+        }
       }
       // A REMEMBERED LOCK MUST BE VISIBLE (§LOCK, 2026-08-06). The host side of
       // the stale-password trap is silent by construction: her page works, her
@@ -8064,7 +8077,37 @@
     let relayTv = false, relayHl = false;   // relayHl: this relay takes a host proof on {t:'acl'} (joined.hl; HOSTLATE)
     const turnFacts = new Map();   // link id → { id, a, b, up, v, s, c, g, va, vb, at }
     const turnSubs = new Map();    // subscriber pid → { tier (display), links (signed turnVideoLinks), exp, ticket, at }
-    const turnLog = [];
+    // THE TURN TRACE IN THE DEBUG EXPORT (HOTELFIX, the 'turn' ring, debug on only): every line the TURN links say (turn-look, turn-direct in
+    // place, turn-direct lost in place, turn-move, sub-walk, turn-link closed with its reason ...), plus what the page adds here: the
+    // selected ICE pair's candidate types on every change (ice-pair: host / srflx / prflx / relay, never an address), ICE and connection
+    // state changes (ice-state / pc-state: 'disconnected' and 'failed' are a lost consent check or path), candidate errors (code only),
+    // relay socket close codes and the door re-entry with its reason (the mesh trace's REQUEUE / SUB.10-WALK ...). One line = {t: ms, s}.
+    // No secret goes in: no address, no credential, no TURN url. (One declaration: the core's statement count and step numbers stay put.)
+    const turnLog = [],
+      turnTrace = (s) => {
+        if (!DEBUG_ON) return;
+        const R = window.__turnTrace || (window.__turnTrace = []);
+        R.push({ t: Date.now(), s: String(s).slice(0, 240) });
+        if (R.length > 3000) R.splice(0, 1000);
+      },
+      TURN_MESH_EV = /^(REQUEUE|SUB\.10-WALK|SUB\.2-GO|TAKE|RELAY-CLOSE|REDIAL-BACKOFF|PC-PAGECLOSE|LINK-DOWN|LINK-UP|L22-CLOSE|PC-DIALFAIL)$/,
+      turnMeshCopy = (line) => {   // the mesh trace lines that explain a link's or the door's life, copied beside the TURN lines
+        try { const m = /"e":"([^"]+)"/.exec(line); if (m && TURN_MESH_EV.test(m[1])) { const d = /"d":"([^"]*)"/.exec(line); turnTrace('mesh ' + m[1] + (d ? ' ' + d[1] : '')); } } catch (e) {}
+      },
+      icePairNote = (p, pc, why) => {
+        if (!DEBUG_ON || !pc || typeof pc.getStats !== 'function') return;
+        pc.getStats().then((st) => {
+          let sel = null; const by = new Map(); st.forEach((x) => by.set(x.id, x));
+          st.forEach((x) => { if (!sel && x.type === 'transport' && x.selectedCandidatePairId) sel = by.get(x.selectedCandidatePairId) || null; });
+          if (!sel) st.forEach((x) => { if (!sel && x.type === 'candidate-pair' && x.nominated && x.state === 'succeeded' && x.selected !== false) sel = x; });
+          const lc = sel && by.get(sel.localCandidateId), rc = sel && by.get(sel.remoteCandidateId);
+          if (!lc || !rc) return;
+          const key = lc.candidateType + '/' + rc.candidateType + '/' + (lc.relayProtocol || lc.protocol || '');
+          if (pc.__pairKey === key) return;
+          const was = pc.__pairKey || 'none'; pc.__pairKey = key;
+          turnTrace('ice-pair ' + String(p.id).slice(0, 8) + ' local=' + lc.candidateType + ' remote=' + rc.candidateType + ' proto=' + (lc.relayProtocol || lc.protocol || '?') + ' was=' + was + ' (' + why + ')');
+        }).catch(() => {});
+      };   // TURNTRACE-END
     const turnHolds = (pid) => !!(turnLinks && turnLinks.holds(pid));
     // SUB.5: peers a plain pc of mine (no TURN link, no relay-only settings) reached 'connected' with: a proven direct path,
     // until my network changes ('online'). It only picks a standby's transport; the standby's own dial is the proof.
@@ -8399,7 +8442,7 @@
       turnWeb.set(pid, end);
     }
     function relaySendSealedOrDc(p, f) { if (p.dc && p.dc.readyState === 'open') { try { dcSend(p, f); return; } catch (e) {} } relaySendSealed(p.id, 'tv', f); }
-    function turnNote(s) { if (typeof clog === 'function') clog(s); turnLog.push(Math.round(performance.now()) + ' ' + s); if (turnLog.length > 300) turnLog.splice(0, 100); }
+    function turnNote(s) { if (typeof clog === 'function') clog(s); turnLog.push(Math.round(performance.now()) + ' ' + s); if (turnLog.length > 300) turnLog.splice(0, 100); turnTrace(s); }
     // A link's fact, from one of its two ends only (the opener speaks for up, video, order; each end for its own side).
     function turnFactIn(from, f) {
       if (!f || typeof f !== 'object' || typeof f.id !== 'string' || f.id.length > 12 || typeof f.a !== 'string' || typeof f.b !== 'string') return;
@@ -8801,11 +8844,13 @@
         (0, /*()*/__V.wireFsResize)(p);
       };
       pc.onicecandidate = (ev) => { if (p.pc !== pc) return; if (ev.candidate && / typ relay/.test(ev.candidate.candidate || '')) { pc.__relayCand = true; if (!pc.__turnSeenAt) pc.__turnSeenAt = Date.now(); } noteIce(p.id, ev.candidate || null); };
+      pc.addEventListener('icecandidateerror', (ev) => { if (DEBUG_ON && p.pc === pc) turnTrace('ice-cand-error ' + String(p.id).slice(0, 8) + ' code=' + (ev && ev.errorCode) + ' ' + String((ev && ev.errorText) || '').replace(/[^ -~]/g, '').slice(0, 60)); });
       pc.addEventListener('icecandidateerror', (ev) => { if (!pc.__turnSeenAt && turnServerWord(pc, ev && ev.url)) pc.__turnSeenAt = Date.now(); });   // the browser looked my TURN servers' names up and tried one: the web path's clock (turnWebClock)
       pc.addEventListener('icegatheringstatechange', () => { if (pc.iceGatheringState === 'gathering' && !pc.__gatherAt) pc.__gatherAt = Date.now(); });   // when this connection began looking for its paths (the web path's clock)
       pc.oniceconnectionstatechange = () => {
         if (p.pc !== pc) return;
         const ice = pc.iceConnectionState;
+        if (DEBUG_ON) { turnTrace('ice-state ' + String(p.id).slice(0, 8) + ' ' + ice + (ice === 'disconnected' || ice === 'failed' ? ' (the path check or consent failed)' : '')); if (ice === 'connected' || ice === 'completed') icePairNote(p, pc, 'ice ' + ice); }
         // The finish window starts once, when ICE leaves 'new', and only while
         // the pair is not already up. A connected pair must not be stamped:
         // a later drop would find the window already expired. Safari can
@@ -8817,6 +8862,7 @@
       pc.onconnectionstatechange = () => {
         if (p.pc !== pc) return; // a replaced transport's tail events — not this pair's truth
         p.connected = pc.connectionState === 'connected';
+        if (DEBUG_ON) { turnTrace('pc-state ' + String(p.id).slice(0, 8) + ' ' + pc.connectionState); if (p.connected) { icePairNote(p, pc, 'connected'); try { const it = pc.sctp && pc.sctp.transport && pc.sctp.transport.iceTransport; if (it && !it.__hfPair) { it.__hfPair = 1; it.addEventListener('selectedcandidatepairchange', () => { if (p.pc === pc) icePairNote(p, pc, 'pair change'); }); } } catch (e) {} } }
         // deadSince: how long this transport has been in a HARD state — the
         // persistence gate for the rebuild-on-offer path (transients recover
         // via ICE restart and must never trigger a teardown)
@@ -10090,7 +10136,7 @@
     const seatAskAt = new Map();
     // a page-side friend-hop line in the seat trace's own form (DEBUG only): the carrier a page asked and why
     function fhTrace(e, d) { if (!DEBUG_ON) return; try { meshTraceSink('{"t":' + Math.floor(Date.now() / 500) + ',"s":-1,"e":"' + e + '","c":null,"d":"' + String(d).replace(/["\\]/g, '') + '"}'); } catch (x) {} }
-    function meshTraceSink(line) { const G = window.__meshTraceRing || (window.__meshTraceRing = { ring: [], seq: 0 }); G.ring.push([++G.seq, line]); if (G.ring.length > 4000) G.ring.splice(0, 1000); }
+    function meshTraceSink(line) { const G = window.__meshTraceRing || (window.__meshTraceRing = { ring: [], seq: 0 }); G.ring.push([++G.seq, line]); turnMeshCopy(line); if (G.ring.length > 4000) G.ring.splice(0, 1000); }
     window.__meshPortPage = { pcbye: (pid, why) => { try { meshNode && meshNode.__pc && meshNode.__pc.bye(pid, why); } catch (e) {} }, dcOpen: (pid) => { const p = peers.get(pid); return !!(p && p.dc && p.dc.readyState === 'open'); } };
     function seatAsked(pid) { const at = seatAskAt.get(pid); return at != null && Date.now() - at < 60000; }
     // A2's offer marks cross on the pair's own dc, whoever sent the SDP (the id-order initiator offers, a polite
@@ -20587,6 +20633,7 @@
           pip: window.__pipTrace || null, view: window.__viewTrace || null, content: window.__contentTrace || null,
           meters: (typeof dbgMeterKit !== 'undefined' && dbgMeterKit) ? dbgMeterKit.ring() : null,
           caps: window.__capTrace || null, chat: window.__chatTrace || null, av: window.__avTrace || null,
+          turn: window.__turnTrace || null,
         }),
         snapshot: () => {
           const d = window.__gifosVideo && window.__gifosVideo.debugDump ? window.__gifosVideo.debugDump() : null;
@@ -21685,6 +21732,7 @@
           ? (amAdmin ? uiText('blurPwYou', 'Set one with the Password button.') : uiText('blurPwAdmin', 'Only this room’s host (or whoever took charge of it) can set one.'))
           : uiText('blurPwAnyone', 'Anyone here can set one with the Password button.'));
       }
+      if (why === 'ready') words += ' (' + consentCount() + '/' + participantCount() + ')';
       return words;
     }
     function camOnWords() {

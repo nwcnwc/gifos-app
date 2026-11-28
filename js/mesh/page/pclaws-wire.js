@@ -302,13 +302,28 @@
       if (k.last >= 0 && T() - k.last > 4 * K.L23_COOL_MAX) k.n = 0; k.n++; k.last = T(); k.until = T() + Math.min(K.L23_COOL0 << Math.min(k.n - 1, 10), K.L23_COOL_MAX);
     }
     const declined = (x) => { const k = DECL.get(x); return !!k && k.n >= 2 && T() < k.until; };
+    // REDIAL BACK-OFF (page-only, no sim twin; the hotel log of 11-27: one far seat's link was rebuilt about every 25 s for 8 minutes).
+    // Every plain seat redial is a round. A round that follows the last one within 2 TURN_RETRY ticks counts against the pair
+    // (a link that opened and was not asked for again for that long starts the count over). The first RB_FREE rounds are free; each
+    // one after waits TURN_RETRY ticks, doubling up to TURN_RETRY_MAX_X times that (TURN.10's wait, the global timings).
+    // Only plain seat redials wait: a frame's dial, a door and a hold dial are never held here.
+    const RB_FREE = 3, RB = new Map();   // x -> {n, until, last}
+    function rbHeld(x) { const r = RB.get(x); return !!r && T() < r.until; }
+    function rbDial(x) {
+      if (RB.size > 64 && !RB.has(x)) RB.clear();
+      let r = RB.get(x); if (!r) { r = { n: 0, until: -1, last: -1 }; RB.set(x, r); }
+      if (r.last >= 0 && T() - Math.max(r.last, r.until) >= 2 * K.TURN_RETRY) r.n = 0;   // quiet for a while (past any wait I set): a fresh start
+      r.last = T(); r.n++;
+      if (r.n > RB_FREE) { const wait = Math.min(K.TURN_RETRY * Math.pow(2, r.n - RB_FREE - 1), K.TURN_RETRY * K.TURN_RETRY_MAX_X); r.until = T() + wait; trace('REDIAL-BACKOFF', me, null, 'peer=%d n=%d wait=%d', x, r.n, wait); }
+    }
     // C++: mesh_link.inc:fabricDial
     function fabricDial(a, x) {
       if (a !== me || x < 0 || x === me) return;
       if (pc.dialHeld(me, x)) return; if (pc.l18NoDial(me, x)) return;
       if (declined(x)) return;   // the sim's l23Refused(x, me), from the callee's last word
+      if (rbHeld(x)) return;
       pc.noteCall(me, x); pc.l23MakeRoom(me, x);
-      const L = linkGet(me, x); if (L.state === LK_NONE || L.state === LK_CLOSED) { startDial(me, x, L); L.dialHow = 1; }
+      const L = linkGet(me, x); if (L.state === LK_NONE || L.state === LK_CLOSED) { rbDial(x); startDial(me, x, L); L.dialHow = 1; }
     }
     // C++: mesh_link.inc:fabricHoldDial
     // L7.16: the holder dials the seeker it holds: an answer door like the PLACE's own (line "L.dialHow = 3" in linkSchedule), under every door

@@ -939,7 +939,7 @@
       if (BG && !sentVideoTrack.bgfx) {
         sentVideoTrack.bgfx = true;
         BG.configure({ power: () => __C.powNow, shed: () => (__C.meshNode && __C.meshNode.raw ? __C.meshNode.raw.lgLvl : 0) });
-        BG.onChange(() => { try { refreshOutbound(); } catch (e) {} });
+        BG.onChange(() => { try { __C.broadcastStatus(); __C.reactRoomState(); refreshOutbound(); } catch (e) {} });
       }
       if (BG) BG.nativeSync(cam);
       const fx = !!(BG && BG.wants());
@@ -9845,7 +9845,7 @@
         if (!sentVideoTrack.bgfx) {   // a pick before the first send still rebuilds the pipe
           sentVideoTrack.bgfx = true;
           GifOS.meetBgfx.configure({ power: () => __C.powNow, shed: () => (__C.meshNode && __C.meshNode.raw ? __C.meshNode.raw.lgLvl : 0) });
-          GifOS.meetBgfx.onChange(() => { try { refreshOutbound(); } catch (e) {} });
+          GifOS.meetBgfx.onChange(() => { try { __C.broadcastStatus(); __C.reactRoomState(); refreshOutbound(); } catch (e) {} });
         }
         GifOS.meetBgfx.fillPicker(el, (k, en) => (0, /*()*/__C.uiText)(k, en));
       }
