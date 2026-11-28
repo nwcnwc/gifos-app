@@ -50,6 +50,14 @@
     BOT_THINK_MS: 60000,   // ms
     BUSY_DELAY_MS: 600,   // ms
     BYE_STRAY_MS: 800,   // ms
+    CAL_DRAFT_MS: 600000,   // ms
+    CAL_LATE_MS: 900000,   // ms
+    CAL_OUT_LIFE_MS: 2592000000,   // ms
+    CAL_REMIND_MS: 15000,   // ms
+    CAL_RETRY_MS: 8000,   // ms
+    CAL_RX_PER_MIN: 30,   // count
+    CAL_RX_WINDOW_MS: 60000,   // ms
+    CAL_SNOOZE_MS: 300000,   // ms
     CARRY_ASK_MS: 4000,   // ms
     CARRY_LOOK_MS: 1000,   // ms
     CATCH_MAX_MS: 500,   // ms

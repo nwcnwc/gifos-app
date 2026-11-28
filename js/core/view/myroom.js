@@ -51,6 +51,13 @@
   }
   function ringStart() { if (ringTimer) return; ringOnce(); ringTimer = root.setInterval(ringOnce, 3 * T().MYROOM_TICK_MS * 2); }   // 2 s on, 4 s off
   function ringStop() { if (ringTimer) { root.clearInterval(ringTimer); ringTimer = 0; } }
+  // A reminder rings the same two tones, three times, and then stops. An incoming call keeps going until it is answered.
+  function ringBrief(n) {
+    let left = n > 0 ? n : 3;
+    const step = () => { ringOnce(); if (--left > 0) root.setTimeout(step, (T().MYROOM_TICK_MS || 0) * 2); };
+    step();
+  }
+  GifOS.myRoomRing = { brief: ringBrief };
   const ringBlocked = () => { const ac = ringCtx(); return !!ac && ac.state === 'suspended'; };
 
   // ---- the caller's bar and the owner's standby line share one bar -------------------------------------------------
@@ -362,7 +369,23 @@
     let note = ''; try { note = root.sessionStorage.getItem('gifos_mr_notice') || ''; root.sessionStorage.removeItem('gifos_mr_notice'); } catch (e) {}
     if (note) h += '<div class="mr-missed" id="mr-notice">' + esc(note) + '</div>';
     h += '<a class="lob-text mr-rooms-link" id="mr-rooms" href="' + esc(roomsUrl()) + '">Rooms' + (missed ? ' · ' + missed + ' missed' : '') + '</a>';
+    if (canSchedule()) h += '<button type="button" class="lob-text" id="mr-sched">' + esc(schedLabel()) + '</button>';
     box.innerHTML = h; box.hidden = false;
+    const sb = $('mr-sched'); if (sb) sb.onclick = () => scheduleHere();
+  }
+  const canSchedule = () => !!(GifOS.calendarBridge && GifOS.calendarBridge.scheduleShown && GifOS.calendarBridge.scheduleShown());
+  function schedLabel() {
+    try { if (GifOS.i18n && GifOS.i18n.has && GifOS.i18n.has('meet.calSchedule')) return GifOS.i18n.t('meet.calSchedule'); } catch (e) {}
+    return 'Schedule';
+  }
+  // The room this page is in, handed to Calendar as a draft, then Calendar opens.
+  function scheduleHere() {
+    const L = LINKS(); const B = GifOS.calendarBridge; if (!L || !B) return;
+    const r = L.read(root.location.pathname, root.location.search, root.location.hash);
+    if (!r || !r.room) return;
+    const link = root.location.origin + '/meet#' + L.hash({ room: r.room, v: r.v || '' });
+    B.setDraft({ title: r.room, link, room: r.room, v: r.v || '', mode: r.v ? 'hosted' : 'open' });
+    B.openCalendar();
   }
 
   function wire() {
@@ -387,10 +410,22 @@
     on('mr-bar-act', () => { if (barAct) barAct(); });
     on('mr-bar-x', () => { barShut = true; bar(''); });
     // "Invite a contact" in the meeting's Invite menu: ring a contact's room with my card for it, naming this meeting.
+    const copy = $('copy');
+    if (copy && canSchedule() && !$('mr-share-sched')) {
+      const s = doc.createElement('button'); s.type = 'button'; s.id = 'mr-share-sched'; s.textContent = schedLabel();
+      s.onclick = () => scheduleHere();
+      copy.parentNode.insertBefore(s, copy.nextSibling);
+    }
     const inv = $('inv-modal');
     if (inv && root.MutationObserver) new root.MutationObserver(() => {
       const acts = $('inv-actions');
-      if (inv.style.display === 'none' || !acts || $('mr-inv-contact') || !MR() || !MR().contacts().length) return;
+      if (inv.style.display === 'none' || !acts) return;
+      if (canSchedule() && !$('mr-inv-sched')) {
+        const s = doc.createElement('button'); s.type = 'button'; s.id = 'mr-inv-sched'; s.className = 'appear-secondary'; s.textContent = schedLabel();
+        s.onclick = () => { inv.style.display = 'none'; scheduleHere(); };
+        acts.insertBefore(s, acts.firstChild);
+      }
+      if ($('mr-inv-contact') || !MR() || !MR().contacts().length) return;
       const b = doc.createElement('button'); b.type = 'button'; b.id = 'mr-inv-contact'; b.className = 'appear-secondary'; b.textContent = 'Call a contact…';
       b.onclick = () => { inv.style.display = 'none'; openPick(); };
       acts.insertBefore(b, acts.firstChild);

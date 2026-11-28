@@ -53,12 +53,16 @@
  * word first ({op:'key', w}) to every page it reaches while it knocks. A page listening for rings (a hidden door the
  * personal room's standby opens per private room, host.listen()) rings on a proved member who is calling, and never lets
  * a caller in: Answer takes the owner into the room. Listening pages sign their words with l:1 and admit each other.
+ *
+ * A CALENDAR NOTE (an invitation, a reply, a cancellation) rides the same private room, and nothing else: {op:'cal',
+ * id, kind, ics} from a seat that has proved a member key, answered {op:'calok', id}. A stranger gets no answer.
  */
 (function (root) {
   'use strict';
   const GifOS = root.GifOS = root.GifOS || {};
   const KEY = { mine: 'gifos_myroom', contacts: 'gifos_contacts', missed: 'gifos_myroom_missed', issued: 'gifos_myroom_cards', revoked: 'gifos_myroom_revoked', stay: 'gifos_myroom_stay', priv: 'gifos_private' };
   const MAX_TOKEN = 2048;
+  const CAL_ICS_MAX = 65536;   // one calendar note, no bigger (a flood bound, before it is kept)
   const LISTEN_MAX = 20;            // a computer standing by listens in this many private rooms (the most recently used); the rest ring once the Doorbell comes           // a card frame or link larger than this is no card (flood bound, before any crypto)
   const ROOM_RE = /^[a-z0-9-]{1,64}$/i, VER_RE = /^[a-f0-9]{16,64}$/, TO_RE = /^[a-z0-9-]{1,64}(\.[a-f0-9]{16,64})?$/i;
   const T = () => GifOS.timings || {};
@@ -806,10 +810,58 @@
       return cardLink(origin, room, v, r.token);
     }
 
-    const rx = {};   // My Room frames received, by op (state(): a test proves a stranger receives none)
+    // A calendar note on this private room. Only a seat that has proved a member key is answered; anyone else is a
+    // dead number (no reply, no event). The same id in this visit is answered again and told to the page once.
+    const calSeen = new Set();
+    const calRate = new Map();   // pid -> times a note was taken, inside the recent window
+    const calWait = new Map();   // id -> { finish, timer } while this page waits for calok
+    const calPeer = (pid) => !!(privFor(room, v) && proved.has(pid) && pid !== host.myId());
+    function onCal(pid, m) {
+      if (!calPeer(pid)) return;
+      const id = String(m.id || '');
+      if (!/^[a-f0-9]{16}$/.test(id)) return;
+      if (m.op === 'calok') {
+        const w = calWait.get(id); if (!w) return;
+        calWait.delete(id); root.clearTimeout(w.timer); w.finish(true);
+        rx.calok = (rx.calok || 0) + 1;
+        return;
+      }
+      if (m.kind !== 'request' && m.kind !== 'reply' && m.kind !== 'cancel') return;
+      if (typeof m.ics !== 'string' || m.ics.length > CAL_ICS_MAX) return;
+      const now = host.now();
+      const win = (T().CAL_RX_WINDOW_MS || 0);
+      let times = (calRate.get(pid) || []).filter((t) => now - t < win);
+      if (times.length >= (T().CAL_RX_PER_MIN || 0)) { calRate.set(pid, times); return; }
+      times.push(now); calRate.set(pid, times);
+      host.send(pid, { op: 'calok', id });
+      rx.cal = (rx.cal || 0) + 1;
+      if (calSeen.has(id)) return;
+      calSeen.add(id);
+      if (calSeen.size > 200) calSeen.delete(calSeen.values().next().value);
+      emit({ type: 'cal', pid, id, kind: m.kind, ics: m.ics, room, v });
+    }
+    // calSend(kind, ics, id?) -> true once a proved member answers calok, false when none is here or the wait ends.
+    function calSend(kind, ics, id) {
+      return new Promise((resolve) => {
+        if (kind !== 'request' && kind !== 'reply' && kind !== 'cancel') { resolve(false); return; }
+        const body = String(ics == null ? '' : ics);
+        if (body.length > CAL_ICS_MAX) { resolve(false); return; }
+        const cid = id && /^[a-f0-9]{16}$/.test(id) ? id : randHex(8);
+        const peers = Array.from(proved.keys()).filter((pid) => calPeer(pid));
+        if (!peers.length) { resolve(false); return; }
+        let done = false;
+        const finish = (ok) => { if (done) return; done = true; calWait.delete(cid); resolve(!!ok); };
+        const timer = root.setTimeout(() => finish(false), (T().MYROOM_TICK_MS || 0) * 8);
+        calWait.set(cid, { finish, timer });
+        for (const pid of peers) host.send(pid, { op: 'cal', id: cid, kind, ics: body });
+      });
+    }
+
+    const rx = {};   // My Room frames received, by op (state(): a stranger's calendar note is not one of them)
     async function onMsg(pid, m) {
       if (idCopy && m && typeof m.op === 'string' && m.op.slice(0, 2) === 'id') return idCopy.onMsg(pid, m);
       if (!hosted || !m || typeof m.op !== 'string') return;
+      if (m.op === 'cal' || m.op === 'calok') { onCal(pid, m); return; }
       rx[m.op] = (rx[m.op] || 0) + 1;
       try {
         if (m.op === 'card' && host.owner() && m.p) return await onCardShown(pid, m);
@@ -960,7 +1012,7 @@
 
     return {
       on: (f) => { listeners.push(f); if (lastOffer) { const o = lastOffer; lastOffer = null; try { f(o); } catch (e) {} } return () => { const i = listeners.indexOf(f); if (i >= 0) listeners.splice(i, 1); }; },
-      onMsg, onHeld, tick, answer, decline, give, linkFor, takeLinkCard, save, privateWith, privateJoin, privateNo, swap, swapSave, swapNo,
+      onMsg, onHeld, tick, answer, decline, give, linkFor, takeLinkCard, save, privateWith, privateJoin, privateNo, swap, swapSave, swapNo, calSend,
       isPrivate: () => !!privFor(room, v), proved: (pid) => proved.has(pid),
       // The door stays silent to this knocker (no "held" word, no waiting-room entry): a private room's unproved knocker.
       quiet: (pid) => !!(hosted && privFor(room, v) && !proved.has(pid)),
