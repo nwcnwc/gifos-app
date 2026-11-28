@@ -646,8 +646,9 @@
       // An invite's opener who sat down here before I came (their page found the room empty and took a seat) is neither held
       // at my door nor told who I am: I tell them, with my room's signed word, so their page shows me the invite.
       if (isMine(room, v) && invitesOpenHere()) {
+        const every = 3 * (T().MYROOM_TICK_MS || 0);   // said again every few ticks until their card arrives
         for (const p of host.people()) {
-          if (!host.reach(p.id) || host.isHost(p.id) || now - (doorSaid.get(p.id) || 0) < 3 * (T().MYROOM_TICK_MS || 0)) continue;
+          if (!host.reach(p.id) || host.isHost(p.id) || now - (doorSaid.get(p.id) || 0) < every) continue;
           doorSaid.set(p.id, now);
           host.signAdm('mrdoor', { to: String(p.id) }).then((w) => { if (w) host.send(p.id, { op: 'door', w }); }, () => {});
         }
