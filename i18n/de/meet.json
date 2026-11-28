@@ -1385,12 +1385,5 @@
   "meet.tvPublishBtn": "Auf GifOS.tv veröffentlichen",
   "meet.setScopeYou": "Folgt Ihnen",
   "meet.setScopeDevice": "Nur dieses Gerät",
-  "meet.setScopeNote": "Folgt Ihnen: in „Me & My Contacts“ gespeichert, gleich auf jedem Gerät, das sie hat. Nur dieses Gerät: bleibt auf diesem Telefon oder Computer.",
-  "meet.blurWhyUnsafe": "Verborgen: evtl. sexuell explizit",
-  "meet.blurSaysUnsafe": "Dein Video ist für alle vollständig unscharf: Es zeigt möglicherweise sexuell explizites Material. GifOS-Seiten prüfen Video auf deinem Gerät und verbergen sexuell explizite Bilder. Nichts wird an GifOS oder sonst jemanden gesendet. Sobald das Bild sauber ist, wird es von selbst wieder klar.",
-  "meet.admXvH": "Videosicherheit",
-  "meet.admXblk": "Explizite Inhalte blockieren",
-  "meet.admXblkSub": "GifOS-Seiten prüfen Video auf deinem Gerät und verbergen sexuell explizite Bilder. Nichts wird an GifOS oder sonst jemanden gesendet. GifOS kann deine Meetings nicht sehen.",
-  "meet.admXblkNoPw": "In einem Raum ohne Passwort immer an.",
-  "meet.admXblkListed": "Immer an, solange dieser Raum auf GifOS.tv gelistet ist."
+  "meet.setScopeNote": "Folgt Ihnen: in „Me & My Contacts“ gespeichert, gleich auf jedem Gerät, das sie hat. Nur dieses Gerät: bleibt auf diesem Telefon oder Computer."
 }
