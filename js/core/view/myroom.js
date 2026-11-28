@@ -5,11 +5,13 @@
  * a person's taps into its intents. It decides no rule: who may ring, what rings and when a ring is missed are the
  * part's. In the lobby it paints the Rooms and Contacts tabs; the Rooms app (rooms.html) keeps making, cards and ringing.
  *
- *   owner   a ring sheet with a ringtone (Answer: mic on, camera off; Decline), the standby line, missed calls, and
- *           "Give a card" for the people in the meeting
+ *   owner   a ring sheet with a ringtone (Answer: mic on, camera off; Decline), the standby line, missed calls,
+ *           "Swap cards" for the people in the meeting, "Invite someone" (a link and QR: they open it and you're
+ *           connected), and "<name> wants to be your contact" (Accept) when someone opens my invite
  *   caller  the bar: "Waiting for Ada", "Ringing Ada", "Ada can't answer right now", and "Give Ada your card" once the
  *           call is answered (asked again in the leave question if not used)
- *   anyone  "Save this card?" when a card is handed over or a card link was opened
+ *   anyone  "Save this card?" when a card is handed over or a card link was opened; an invite link opened says where
+ *           it stands ("Connecting with Ada…", "You'll be connected with Ada the next time they're online")
  *   private "Our private room" on each person's tile menu and in People (a swap first, if we have none); the ask with
  *           Join; "Call a contact…" in the Invite menu; the swap ("Swap cards": our private room, and optionally my
  *           personal room)
@@ -159,6 +161,14 @@
   }
   function callWords(c) {
     const n = c.label || 'them';
+    if (c.inv) {   // I opened an invite: where it stands
+      if (c.state === 'connected') return 'You’re connected with ' + n + '.';
+      if (c.state === 'known') return 'You’re already connected with ' + n + '. Call them from your Contacts.';
+      if (c.state === 'used') return 'This invite was already used. Ask ' + n + ' for a new one.';
+      if (c.state === 'ringing') return 'Waiting for ' + n + ' to accept…';
+      if (c.state === 'declined') return n + ' can’t accept right now. You’ll be connected the next time they’re online.';
+      return (T().BELL_ALONE_MS && Date.now() - (c.at || 0) < T().BELL_ALONE_MS) ? 'Connecting with ' + n + '…' : 'You’ll be connected with ' + n + ' the next time they’re online. You can close this page.';
+    }
     if (c.invite && c.state === 'accepted') return n + ' is coming to your meeting.';
     if ((c.priv || (c.invite && /^p-/.test(c.invite))) && (c.state === 'waiting' || c.state === 'ringing')) return (c.state === 'ringing' ? 'Ringing ' : 'Calling ') + n + '…';
     if (c.invite && (c.state === 'waiting' || c.state === 'ringing')) return 'Inviting ' + n + ' to ' + c.invite.split('.')[0] + '…';
@@ -181,7 +191,7 @@
         ringing = { pid: extRing.pid, ext: extRing };
         $('mr-ring-title').textContent = extRing.label + ' is calling';
         $('mr-ring-note').textContent = 'From our private room. Answer takes you there. Your mic turns on there; your camera stays off.';
-        $('mr-answer').textContent = 'Answer';
+        $('mr-answer').textContent = 'Answer'; $('mr-decline').textContent = 'Decline';
         show($('mr-ring'), true);
         ringStart();
       }
@@ -193,6 +203,14 @@
         const r = st.rings[0];
         if (!ringing || ringing.pid !== r.pid) {
           ringing = r;
+          if (r.ask) {   // someone opened my invite: I accept them once (Accept is the swap)
+            $('mr-ring-title').textContent = askTitle(r);
+            $('mr-ring-note').textContent = askNote(r);
+            $('mr-answer').textContent = 'Accept'; $('mr-decline').textContent = 'Not now';
+            show($('mr-ring'), true); ringStart();
+            return;
+          }
+          $('mr-decline').textContent = 'Decline';
           const where = r.to && !r.pair ? (/^p-/.test(r.to) ? 'a private room' : r.to.split('.')[0]) : '';
           $('mr-ring-title').textContent = where ? r.label + ' invites you to ' + where : r.label + ' is calling';
           $('mr-ring-note').textContent = r.pair ? 'Answer takes you both to your private room. Your mic turns on there; your camera stays off.'
@@ -212,14 +230,19 @@
     const c = st.call;
     // Held at the door (the owner's room stands by): the waiting-room screen names who is being called.
     const wd = $('waitdoor');
-    if (c && c.state !== 'answered' && wd && !wd.hidden) {
+    if (c && c.inv && wd && !wd.hidden) {   // an invite: the waiting screen says where it stands
+      const h = wd.querySelector('h1'), p = wd.querySelector('h1 + p'), head = 'Connecting with ' + (c.label || 'them'), body = callWords(c);
+      if (h && h.textContent !== head) h.textContent = head;
+      if (p && p.textContent !== body) p.textContent = body;
+    } else if (c && c.state !== 'answered' && wd && !wd.hidden) {
       const n = c.label || 'them', h = wd.querySelector('h1'), p = wd.querySelector('h1 + p');
       const head = c.invite && c.state !== 'declined' && c.state !== 'noanswer' ? callWords(c) : c.state === 'ringing' ? 'Ringing ' + n + '…' : c.state === 'declined' ? n + ' can’t answer right now' : c.state === 'noanswer' ? n + ' didn’t answer' : 'Calling ' + n + '…';
       const body = c.state === 'ringing' ? 'You’ll join when ' + n + ' answers. ' + n + ' can’t see or hear you yet.' : c.state === 'declined' || c.state === 'noanswer' ? 'You can wait here, or leave and call again later.' : n + '’s room is open. Waiting for it to ring.';
       if (h && h.textContent !== head) h.textContent = head;
       if (p && p.textContent !== body) p.textContent = body;
     }
-    if (c && c.state === 'answered' && c.priv) bar('');   // our private room: the swap already gave both cards
+    if (c && c.inv) bar(callWords(c), null, '', true);
+    else if (c && c.state === 'answered' && c.priv) bar('');   // our private room: the swap already gave both cards
     else if (c && c.state === 'answered') {
       const host = part.hostIds()[0];
       if (MR().mine() && host && !part.gaveTo(host) && !barShut) bar('Give ' + c.label + ' your card, so they can call you back?', () => giveBack(host, c.label), 'Give my card', true);
@@ -283,15 +306,18 @@
     else if (ev.type === 'arrived') toast(ev.label + ' is here (they have a card to this room).');
     else if (ev.type === 'renewed-mine') {}   // a renewal is silent
     else if (ev.type === 'go') {   // an invitation accepted: to that meeting, mic on (the person's own tap), camera off
-      // A private room opens the mic only once everyone there has proved a member key (the part does it).
-      try { root.sessionStorage.setItem('gifos_join_av', JSON.stringify({ v: 1, cam: false, mic: !ev.priv, at: Date.now() })); if (ev.priv) root.sessionStorage.setItem('gifos_mr_mic', ev.room + '.' + ev.v); } catch (e) {}
+      // A private room opens the mic only once everyone there has proved a member key (the part does it). Arriving by an
+      // invite I opened (quiet), the mic stays off: my tap turns it on.
+      try { root.sessionStorage.setItem('gifos_join_av', JSON.stringify({ v: 1, cam: false, mic: !ev.priv && !ev.quiet, at: Date.now() })); if (ev.priv && !ev.quiet) root.sessionStorage.setItem('gifos_mr_mic', ev.room + '.' + ev.v); } catch (e) {}
       ringStop(); openRoom(ev.room, ev.v);
       return;
     }
     else if (ev.type === 'pask') { pask = ev; openPask(); }
     else if (ev.type === 'swap') { swapOffer = ev; openSwap(); }
-    else if (ev.type === 'swap-done') { toast('Cards swapped with ' + ev.name + '. Our private room is in your Contacts.'); return; }
-    else if (ev.type === 'swap-saved') { toast(ev.name + ' is in your Contacts.'); return; }
+    else if (ev.type === 'swap-done') { toast(ev.invite ? ev.name + ' is in your Contacts. Our private room rings either of you.' : 'Cards swapped with ' + ev.name + '. Our private room is in your Contacts.'); return; }
+    else if (ev.type === 'swap-saved') { toast(ev.invite ? 'You’re connected with ' + ev.name + '. Our private room is in your Contacts.' : ev.name + ' is in your Contacts.'); return; }
+    else if (ev.type === 'invite-known') { barShut = false; bar('You’re already connected with ' + (ev.name || 'them') + '.', () => { const to = { room: ev.room, v: ev.v }; try { root.sessionStorage.setItem('gifos_join_av', JSON.stringify({ v: 1, cam: false, mic: false, at: Date.now() })); root.sessionStorage.setItem('gifos_mr_mic', to.room + '.' + to.v); } catch (e) {} openRoom(to.room, to.v); }, 'Call', true); return; }
+    else if (ev.type === 'inv-again') { toast(againWords(ev)); return; }
     else if (ev.type === 'swapping') { barShut = false; bar('Swapping cards with ' + (ev.name || 'them') + '…', null, '', true); return; }
     else if (ev.type === 'asking') { barShut = false; bar('Asking ' + (ev.name || 'them') + ' to your private room…', null, '', true); show($('mr-pick'), false); return; }
     else if (ev.type === 'asked-no') { toast('Not now, they said.'); return; }
@@ -305,6 +331,10 @@
     }
     paint();
   }
+  // The invite's question and its warnings (the same words in ring-standby.js's sheet).
+  const askTitle = (r) => (r.label || 'Someone') + ' wants to be your contact';
+  const askNote = (r) => (r.for && r.for !== r.label ? 'From your invite for ' + r.for + '. ' : '') + (r.others ? (r.others + 1) + ' people opened this invite: accept only the one you sent it to. ' : '') + 'Accept makes our private room: only the two of you can use it, and it rings either of you.';
+  const againWords = (ev) => 'Someone else (“' + (ev.claimed || 'Someone') + '”) opened your invite' + (ev.label ? ' for ' + ev.label : '') + ' after ' + (ev.name || 'your contact') + ' used it. If ' + (ev.name || 'that') + ' isn’t who you sent it to, remove them in Rooms and send a new invite.';
   function toast(text) { bar(text, null, '', true); setTimeout(paint, 4 * T().MYROOM_RING_MS / 10); }
   function openOffer() {
     if (!offer) return;
@@ -316,7 +346,7 @@
     if (known && known.id === f.id) { offer = null; return; }
     show($('mr-offer'), true);
   }
-  // Give a card (owner) — to someone in the meeting, or as a link and QR code.
+  // Swap cards with someone in the meeting, or Invite someone by a link and QR code (the same swap, once they open it).
   function openMake(inMeeting) {
     $('mr-make-out').hidden = true; $('mr-make-label').value = ''; $('mr-make-go').textContent = 'Make card';
     const who = $('mr-make-who'); who.innerHTML = '';
@@ -330,24 +360,24 @@
     }
     const swapping = !!(inMeeting && part && part.people().length);
     show($('mr-make-share').parentNode, swapping && !!MR().mine());
-    $('mr-make-title').textContent = swapping ? 'Swap cards' : 'Give someone a card';
-    $('mr-make-note').textContent = swapping ? '' : 'A card lets one person call your personal room. Write who it is for: it is shown when they call.';
+    $('mr-make-title').textContent = swapping ? 'Swap cards' : 'Invite someone';
+    $('mr-make-note').textContent = swapping ? '' : 'Send them the link. They open it and you’re connected: our private room, which only the two of you can use and which rings either of you. You accept them once.';
     show($('mr-make-note'), !swapping);
-    $('mr-make-lab').textContent = swapping ? 'Name in your Contacts (if not their name)' : 'Who is it for?';
-    $('mr-make-go').textContent = swapping ? 'Make a card link instead' : 'Make card';
+    $('mr-make-lab').textContent = swapping ? 'Name in your Contacts (if not their name)' : 'Who is it for? (optional, only you see this)';
+    $('mr-make-go').textContent = swapping ? 'Invite by link instead' : 'Make invite link';
     show($('mr-make'), true);
     $('mr-make-label').focus();
   }
+  // An invite link (My Room's logic makes my personal room first if I have none, and holds every key).
   async function makeLink() {
-    const m = MR().mine(); if (!m) return;
-    const label = $('mr-make-label').value.trim(); if (!label) { $('mr-make-label').focus(); return; }
-    const r = await MR().mintFor(m.room, m.v, label);   // My Room's logic holds the host secret; the view never reads it
-    const link = MR().cardLink(root.location.origin, m.room, m.v, r.token);
+    const label = $('mr-make-label').value.trim();
+    const link = await MR().invite(label, (part && part.myName && part.myName()) || myNameNow(), root.location.origin);
+    try { if (GifOS.ringHere) GifOS.ringHere.sync(); } catch (e) {}
     $('mr-make-link').value = link; $('mr-make-out').hidden = false;
-    try { const list = MR().issued(); list.unshift({ room: m.room, v: m.v, id: r.id, label, exp: r.exp, at: Date.now() }); root.localStorage.setItem(MR().KEY.issued, JSON.stringify(list.slice(0, 500))); } catch (e) {}
     drawQr(link);
-    try { if (root.navigator.share && mobile()) await root.navigator.share({ title: 'A card to my room', url: link }); else await root.navigator.clipboard.writeText(link); } catch (e) {}
+    try { if (root.navigator.share && mobile()) await root.navigator.share({ title: 'Join me on GifOS', url: link }); else await root.navigator.clipboard.writeText(link); } catch (e) {}
   }
+  const myNameNow = () => { try { return root.localStorage.getItem('gifos_name') || ''; } catch (e) { return ''; } };
   function drawQr(text) {
     const box = $('mr-make-qr');
     const draw = () => { try { const q = root.qrcode(0, 'L'); q.addData(text); q.make(); box.innerHTML = q.createSvgTag({ cellSize: 3, margin: 2, scalable: true }); } catch (e) { box.textContent = ''; } };
@@ -397,8 +427,8 @@
     lobPeople.forEach((p, i) => {
       const mis = missed.find((x) => x.who === p);
       c += lobRow({ t: initials(p.name), h: hue(p.name) }, esc(p.name) + (p.ok ? ' <i class="lm-ok" title="Swapped in person">✓</i>' : ''),
-        (mis ? '<span class="lm-missed">' + esc(tx('lobMissedAt', 'Missed call')) + ' ' + esc(timeOf(mis.at)) + '</span>' : esc(p.kind === 'p' || p.pair ? tx('lobOurRoom', 'Our private room') : tx('lobCardRoom', 'A card to their room'))),
-        '<button type="button" class="lm-go" data-call="' + i + '">' + esc(mis ? tx('lobCallBack', 'Call back') : tx('lobCall', 'Call')) + '</button>');
+        (mis ? '<span class="lm-missed">' + esc(tx('lobMissedAt', 'Missed call')) + ' ' + esc(timeOf(mis.at)) + '</span>' : esc(p.pending ? tx('lobPending', 'You’ll be connected the next time they’re online') : p.kind === 'p' || p.pair ? tx('lobOurRoom', 'Our private room') : tx('lobCardRoom', 'A card to their room'))),
+        '<button type="button" class="lm-go" data-call="' + i + '">' + esc(mis ? tx('lobCallBack', 'Call back') : p.pending ? tx('lobConnect', 'Connect') : tx('lobCall', 'Call')) + '</button>');
     });
     if (!list.length) c += '<p class="lob-quiet lm-empty" id="mr-people-empty">' + esc(tx('lobNoPeople', 'No contacts yet. Swap cards with someone in a meeting, and you can call each other from here.')) + '</p>';
     if (lost) c += '<a class="lm-line" id="mr-missed-more" href="' + all + '">' + esc((lost === 1 ? tx('lobMissedOne', '1 missed call from someone else') : tx('lobMissedMore', '{n} missed calls from other people').replace('{n}', lost))) + '</a>';

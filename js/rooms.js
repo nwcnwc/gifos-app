@@ -8,8 +8,8 @@
  * Doorbell is js/meet-bell.js (painted by js/core/view/bell.js), and ringing, answering and the private rooms' doors
  * happen in the meeting page.
  *
- *   My personal room   make (or use a hosted room I hold), Open (standby: mic and camera off), Give a card (link + QR),
- *                      Copy link
+ *   My personal room   make (or use a hosted room I hold), Open (standby: mic and camera off), Invite someone (a link
+ *                      + QR: they open it and we are connected, docs/myroom.md "One link"), Copy link
  *   Missed             calls missed while standing by, and rings the Doorbell showed that nobody answered
  *   Our private rooms  a contact IS our private room, made at the card swap (only the two of us, it rings either of us):
  *                      Call (I go to our private room; its door rings their devices), their personal room if they
@@ -20,7 +20,7 @@
  *   Ringing            one setting, Ring me on this device, with this device's real status (js/ring-standby.js picks
  *                      the way: the Doorbell, or standing by while GifOS is open), Test ring, and with the Doorbell
  *                      Pause and Your devices
- *   Cards I gave       Cancel card; Delete my personal room (typed name)
+ *   Invites and cards I gave   Cancel; Delete my personal room (typed name)
  */
 (function (root) {
   'use strict';
@@ -89,9 +89,9 @@
     if (m.mine) {
       const pw = !!lsGet('gifos_vpw_' + pk(m.mine));
       h += '<div class="room-line"><span class="room-name" id="mine-name">' + esc(m.mine.room) + '</span><span class="quiet">' + (pw ? 'Password set' : 'Your address') + '</span></div>' +
-        '<p class="quiet">Open it and it stands by with your mic and camera off. Give a card and that person can ring it.</p>' +
+        '<p class="quiet">Open it and it stands by with your mic and camera off.</p>' +
         '<div class="acts"><button type="button" class="go" id="mine-open">Open</button>' +
-        '<button type="button" id="mine-card">Give a card</button>' +
+        '<button type="button" id="mine-card">Invite someone</button>' +
         '<button type="button" id="mine-copy">Copy link</button></div>';
     } else {
       const own = M.hosted().filter((x) => !M.privFor(x.room, x.v));
@@ -113,9 +113,9 @@
     }
 
     // Our private rooms: the contacts
-    h += '<section class="card" id="sec-people" aria-labelledby="h-people"><div class="sec-h"><h2 id="h-people">Our private rooms</h2><button type="button" class="text" id="people-add">Add someone</button></div>';
+    h += '<section class="card" id="sec-people" aria-labelledby="h-people"><div class="sec-h"><h2 id="h-people">Our private rooms</h2><button type="button" class="text" id="people-add">Invite someone</button></div>';
     if (!m.ours.length && !m.cards.length && !m.loose.length) {
-      h += '<p class="quiet" id="people-empty">No contacts yet. Swap cards with someone in a meeting: it makes your private room with them, which only the two of you can use and which rings either of you.</p>';
+      h += '<p class="quiet" id="people-empty">No contacts yet. Invite someone: they open your link and you’re connected, with a private room that only the two of you can use and that rings either of you.</p>';
     } else {
       h += '<ul class="rows" id="people-list">';
       for (const x of m.ours) {
@@ -124,7 +124,13 @@
           '<button type="button" class="main as-text" data-more="p:' + esc(k) + '"><b>' + esc(n) + ' <span class="ok" title="Swapped in person">✓</span></b><span class="quiet">Our private room' + (x.card ? ' · personal room shared' : '') + '</span></button>' +
           '<button type="button" class="go" data-call="p:' + esc(k) + '">Call</button></li>';
       }
-      for (const x of m.cards) {
+      for (const x of m.cards.filter((y) => y.c.inv)) {   // an invite I opened: connected the next time we are both online
+        const k = pk(x.c);
+        h += '<li class="row person pending" data-k="' + esc(k) + '">' + avatar(x.c.name) +
+          '<div class="main"><b>' + esc(x.c.name) + '</b><span class="quiet">You’ll be connected the next time they’re online</span></div>' +
+          '<button type="button" class="go" data-call="c:' + esc(k) + '">Connect</button></li>';
+      }
+      for (const x of m.cards.filter((y) => !y.c.inv)) {
         const k = pk(x.c);
         h += '<li class="row person card-only" data-k="' + esc(k) + '">' + avatar(x.c.name) +
           '<button type="button" class="main as-text" data-more="c:' + esc(k) + '"><b>' + esc(x.c.name) + (x.c.bound ? ' <span class="ok" title="Swapped in person">✓</span>' : ' <span class="quiet">(card)</span>') + '</b><span class="quiet">' + (x.pair ? 'Our private room' : 'A card to their room') + '</span></button>' +
@@ -161,11 +167,16 @@
 
     // Cards I gave, deleting my personal room
     if (m.mine) {
-      h += '<section class="card" id="sec-settings" aria-labelledby="h-settings"><h2 id="h-settings">Cards I gave</h2>';
-      if (!m.issued.length) h += '<p class="quiet">None yet.</p>';
+      h += '<section class="card" id="sec-settings" aria-labelledby="h-settings"><h2 id="h-settings">Invites and cards I gave</h2>';
+      const gave = m.issued.filter((x) => M.revoked().indexOf(x.id) < 0);
+      if (!gave.length) h += '<p class="quiet">None yet.</p>';
       else {
         h += '<ul class="rows">';
-        for (const x of m.issued) h += '<li class="row"><div class="main"><b>' + esc(x.label || 'Card') + '</b><span class="quiet">' + esc(timeOf(x.at)) + (x.cpub ? ' · swapped in person' : ' · link or QR') + '</span></div><button type="button" data-revoke="' + esc(x.id) + '">Cancel card</button></li>';
+        for (const x of gave) {
+          const what = x.inv ? (x.used ? 'Invite · used by ' + (x.used.name || 'a contact') : 'Invite · not used yet') : x.cpub ? 'Card · swapped' : 'Card · link or QR';
+          h += '<li class="row' + (x.inv ? ' invite' : '') + '"><div class="main"><b>' + esc(x.label || (x.inv ? 'Invite' : 'Card')) + '</b><span class="quiet">' + esc(timeOf(x.at)) + ' · ' + esc(what) + '</span></div>' +
+            (x.inv && x.used ? '' : '<button type="button" data-revoke="' + esc(x.id) + '">Cancel</button>') + '</li>';
+        }
         h += '</ul>';
       }
       h += '<button type="button" class="danger" id="mine-delete">Delete my personal room…</button></section>';
@@ -245,26 +256,24 @@
       own.map((o) => '<li class="row"><div class="main"><b>' + esc(o.room) + '</b></div><button type="button" class="go" data-adopt="' + esc(pk(o)) + '">Use</button></li>').join('') + '</ul>', '');
     doc.querySelectorAll('[data-adopt]').forEach((b) => { b.onclick = () => { const { room, v } = byKey(b.getAttribute('data-adopt')); MR().adopt(room, v); closeSheet(); paint(); }; });
   }
-  // Give a card: a link and a QR that let one person ring my personal room ("Paul (card)" when they call).
+  // Invite someone: one link (and its QR). They open it and we are connected: the first time we are both online I am
+  // asked once ("<name> wants to be your contact": Accept) and we both get our private room (js/meet-myroom.js invite()).
+  // My personal room is made first if I have none: nothing to set up.
   function openCard(label) {
-    sheet('Give a card', '<label for="card-label">Who is it for? (only you see this)</label><input id="card-label" maxlength="40" autocomplete="off" value="' + esc(label) + '">' +
-      '<p class="quiet">Whoever has this card can ring your personal room. Swapping cards in a meeting is better: you get a private room that only the two of you can use, with a ✓.</p>' +
-      '<div id="card-out" hidden><input id="card-link" readonly aria-label="Card link"><div id="card-qr" class="qr"></div></div>',
-      '<button type="button" id="card-share" hidden>Share</button><button type="button" class="go" id="card-go">Make card</button>');
+    sheet('Invite someone', '<p class="quiet">Send them the link. They open it on any device and you’re connected: our private room, which only the two of you can use and which rings either of you. You accept them once. The link works once.</p>' +
+      '<label for="card-label">Who is it for? (optional, only you see this)</label><input id="card-label" maxlength="40" autocomplete="off" value="' + esc(label) + '">' +
+      '<div id="card-out" hidden><input id="card-link" readonly aria-label="Invite link"><div id="card-qr" class="qr"></div></div>',
+      '<button type="button" id="card-share" hidden>Share</button><button type="button" class="go" id="card-go">Make invite link</button>');
     const go = async () => {
       if (!$('card-out').hidden) return copy($('card-link').value, $('card-go'));
-      const m = MR().mine(); if (!m) return;
-      const lab = $('card-label').value.trim(); if (!lab) { $('card-label').focus(); return; }
-      const K = lsGet('gifos_vadm_' + pk(m));
-      const r = await MR().mint(K, m.room, m.v, lab);
-      const link = MR().cardLink(root.location.origin, m.room, m.v, r.token);
-      try { const list = MR().issued(); list.unshift({ room: m.room, v: m.v, id: r.id, label: lab, exp: r.exp, at: Date.now() }); lsSet(MR().KEY.issued, JSON.stringify(list.slice(0, 500))); } catch (e) {}
+      const link = await MR().invite($('card-label').value.trim(), lsGet('gifos_name') || '', root.location.origin);
+      try { if (GifOS.ringHere) GifOS.ringHere.sync(); } catch (e) {}   // a door now stands in my personal room for whoever opens it
       $('card-link').value = link; $('card-out').hidden = false; $('card-go').textContent = 'Copy link';
-      if (root.navigator.share) { const s = $('card-share'); s.hidden = false; s.onclick = () => root.navigator.share({ title: 'A card to my room', url: link }).catch(() => {}); }
+      if (root.navigator.share) { const s = $('card-share'); s.hidden = false; s.onclick = () => root.navigator.share({ title: 'Join me on GifOS', url: link }).catch(() => {}); }
       drawQr(link);
       paint();
     };
-    $('card-go').onclick = () => { go().catch(() => {}); };
+    $('card-go').onclick = () => { go().catch((e) => { const n = doc.createElement('p'); n.className = 'quiet'; n.textContent = String((e && e.message) || e); $('card-out').before(n); }); };
   }
   function drawQr(text) {
     const box = $('card-qr'); if (!box) return;
@@ -272,17 +281,8 @@
     if (typeof root.qrcode === 'function') return draw();
     const s = doc.createElement('script'); s.src = 'js/vendor/qrcode.js'; s.onload = draw; doc.head.appendChild(s);
   }
-  function openAdd() {
-    const m = MR().mine();
-    sheet('Add someone',
-      '<h3>In a meeting together (best)</h3><p class="quiet">In any meeting with them, open their tile’s menu (or People) and choose <b>Our private room</b>: you swap cards and get a private room that only the two of you can use, and that rings either of you.</p>' +
-      (m ? '<button type="button" class="go wide" id="add-meet">Open my personal room</button>' : '') +
-      '<h3>Give a card by link or QR</h3><p class="quiet">They can ring your personal room. It shows as “Name (card)” when they do.</p>' +
-      (m ? '<button type="button" class="wide" id="add-card">Give a card</button>' : '<button type="button" class="wide" id="add-make">Make my personal room first</button>'), '');
-    if ($('add-meet')) $('add-meet').onclick = () => launch(m.room, m.v);
-    if ($('add-card')) $('add-card').onclick = () => openCard('');
-    if ($('add-make')) $('add-make').onclick = openMake;
-  }
+  // "Invite someone" is the way to add a contact; in a meeting together, a tile's "Our private room" does the same swap.
+  function openAdd() { openCard(''); }
   // A contact: our private room.
   function openOurs(k) {
     const { room, v } = byKey(k), M = MR(), p = M.privFor(room, v); if (!p) return;

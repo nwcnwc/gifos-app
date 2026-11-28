@@ -7428,7 +7428,7 @@ Tap this icon to open the built-in **Rooms** page: your personal room, the priva
 
 ## What is in it
 
-- **My personal room**: your own room. Open it and it stands by with your mic and camera off, so people with a card from you can ring it. Give a card by link or QR, copy its link, or delete it.
+- **My personal room**: your own room. Open it and it stands by with your mic and camera off. **Invite someone** makes a link (and QR): they open it and you're connected, with your private room that only the two of you can use. You accept them once; the link works once.
 - **Our private rooms**: one for each person you swapped cards with in a meeting. Only the two of you can use it. **Call** rings their personal room; Answer takes you both there. **Remove** ends it for both of you.
 - **Hosted rooms**: other rooms whose host key this device holds.
 
