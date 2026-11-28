@@ -1343,8 +1343,8 @@
     // so a spot stashed off the left edge comes back where it was saved.
     const again = function () { if (!drag) restore(); };
     root.addEventListener('load', again);
-    root.setTimeout(again, 400);
-    root.setTimeout(again, 1200);
+    root.setTimeout(again, TM.BAR_RESTORE_RECHECK_MS);
+    root.setTimeout(again, TM.BAR_RESTORE_LATE_MS);
     return { apply: applyPos, restore: restore, reset: reset };
   }
 

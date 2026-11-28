@@ -35,6 +35,8 @@
     AUDIO_QUANTUM_MS: 20,   // ms
     AWAKE_MS: 3000,   // ms
     BANNER_HOLD: 5000,   // ms
+    BAR_RESTORE_LATE_MS: 1200,   // ms
+    BAR_RESTORE_RECHECK_MS: 400,   // ms
     BC_QUIET_GRACE_MS: 4000,   // ms
     BC_RECONNECT_MS: 60000,   // ms
     BELL_ALONE_MS: 6000,   // ms
