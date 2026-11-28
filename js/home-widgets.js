@@ -3,8 +3,8 @@
  *
  * ONE CONCEPT: a widget is a small view that an APP offers, declared in the app's own GIF (manifest "widgets"), in
  * the sizes it can draw. A look (js/home-looks/<id>.js) offers SLOTS; a slot only says which sizes fit it, never
- * what it is for. The person puts any fitting widget in any slot, in any order (kept in gifos_home_widgets, a
- * setting that follows them). Each look names the widgets its slots start with, so a look draws complete from the
+ * what it is for. The person puts any fitting widget in any slot, in any order (kept in gifos_home_widgets, on this device).
+ * Each look names the widgets its slots start with, so a look draws complete from the
  * first moment and every part of it can still be swapped, removed or moved.
  *
  * A WIDGET RUNS WHERE ITS APP RUNS. An app from a GIF runs in the sandbox, so its widget is a sandboxed frame built
