@@ -157,7 +157,7 @@
   ],
   "deep": {
     "id": "freepik-eva02",
-    "line": 0.99,
+    "line": 0.98,
     "size": 448,
     "mean": [
       0.48145466,
@@ -176,6 +176,7 @@
       "high"
     ],
     "pos": [
+      "medium",
       "high"
     ],
     "needs": [
