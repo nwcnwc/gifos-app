@@ -35,7 +35,8 @@
   const sset = (k, v) => { try { if (v) root.sessionStorage.setItem(k, v); else root.sessionStorage.removeItem(k); } catch (e) {} };
   const GIVE = 'gifos_id_give', COPY = 'gifos_id_copy';
   const meetUrl = (room, v, rest) => { const L = GifOS.link; const base = L.pageFor ? L.pageFor(root.location.pathname, 'meet') : '/meet'; return base + '#' + L.hash(rest ? { room, v, rest } : { room, v }); };
-  const absUrl = (u) => { try { return new URL(u, root.location.href).href; } catch (e) { return u; } };
+  // A link handed to someone never names a release folder (/versions/<v>/meet -> /meet): it opens the live release.
+  const absUrl = (u) => { try { const x = new URL(u, root.location.href); x.pathname = x.pathname.replace(/^\/versions\/\d+(?:\.\d+){2,3}(?=\/)/, ''); return x.href; } catch (e) { return u; } };
 
   // ---- one sheet -------------------------------------------------------------------------------------------------
   // The card is the shared dialog shape (js/dialog.js): a title, a body that scrolls, the buttons always on screen.
@@ -338,9 +339,7 @@
   // ---- Meet's lobby line, the note, and the Home Screen ------------------------------------------------------------
   function paintLobby() {
     if (!onMeet() || here().room) return;
-    const myroom = $('lob-myroom'); if (!myroom) return;
-    let box = $('lob-identity');
-    if (!box) { box = doc.createElement('div'); box.id = 'lob-identity'; box.className = 'lob-myroom lob-identity'; myroom.parentNode.insertBefore(box, myroom.nextSibling); }
+    const box = $('lob-identity'); if (!box) return;   // the lobby's Contacts tab (meet.html)
     css();
     const st = ID().status();
     let h = '<div class="lob-hist-h">Me & My Contacts</div>';
@@ -351,6 +350,7 @@
     } else {
       h += '<div class="mr-mine"><span class="li-name lob-quiet">Already have a room on another device?</span><button type="button" id="idn-get" class="lob-ghost">' + esc(tx('copyFrom', 'Copy from another device')) + '</button></div>';
     }
+    { const seg = $('lob-contacts-seg'); if (seg) seg.classList.toggle('has-note', !!(st.exists && st.nudge)); }   // a dot on the tab: the note inside is waiting
     if (box.getAttribute('data-h') === h) return;
     box.setAttribute('data-h', h); box.innerHTML = h;
     const on = (id, f) => { const el = $(id); if (el) el.onclick = f; };

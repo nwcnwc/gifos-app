@@ -232,6 +232,7 @@
     const r = privates().find((x) => x.mepub === pub && PK_RE.test(String(x.me || '')));
     return r ? r.me : '';
   }
+  // "Ring me on this device" (js/ring-standby.js), kept under its first name ("stay in my personal room", retired).
   const stayOn = () => readJson(KEY.stay, false) === true;
   const setStay = (on) => writeJson(KEY.stay, !!on);
 
@@ -358,7 +359,7 @@
     const m = mine(); if (!m) return false;
     for (const x of issued()) if (roomKey(x.room, x.v) === roomKey(m.room, m.v)) revoke(x.id);
     for (const x of privates()) if (!x.me) cutPrivate(x.room, x.v);
-    try { const s = store(); s.removeItem(KEY.mine); s.removeItem(KEY.stay); for (const p of ['gifos_vadm_', 'gifos_vpw_', 'gifos_vpwat_', 'gifos_vpwep_']) s.removeItem(p + roomKey(m.room, m.v)); } catch (e) {}
+    try { const s = store(); s.removeItem(KEY.mine); for (const p of ['gifos_vadm_', 'gifos_vpw_', 'gifos_vpwat_', 'gifos_vpwep_']) s.removeItem(p + roomKey(m.room, m.v)); } catch (e) {}
     return true;
   }
 
@@ -474,10 +475,21 @@
     // A PRIVATE ROOM: membership is a member's My Room key. Every other seat (held or seated) is asked for a key word for
     // this room; a proved knocker is let in (the key word is the Admit); a seat that cannot prove within MYROOM_PROVE_MS is
     // a stranger and this page leaves. The mic opens (the person's own Join/Answer tap) once everyone here has proved.
-    const proved = new Map(), askedAt = new Map(), unproved = new Map(), listeners2 = new Set();
+    const proved = new Map(), askedAt = new Map(), unproved = new Map(), listeners2 = new Set(), letIn = new Map(), told2 = new Set();
     let privDoor = false, strangerSaid = false, wordAt = 0, belled = false;
     const MIC_SS = 'gifos_mr_mic';
     const listening = () => !!(host.listen && host.listen());
+    // ANSWERED FROM THE RING NOTIFICATION (sw.js): that tap is the person's Answer. The mic opens once everyone here has
+    // proved (as after a call answered in a page, MIC_SS); the camera stays off; no "how you'll appear" card stands in the
+    // way: the name it would show is the one the knock already carries.
+    if (hosted && privFor(room, v) && !listening() && GifOS.bell && typeof GifOS.bell.takeAnswer === 'function') {
+      GifOS.bell.takeAnswer(room, v).then((yes) => {
+        if (!yes) return;
+        try { root.sessionStorage.setItem(MIC_SS, roomKey(room, v)); root.sessionStorage.setItem('gifos_appear_ok', '1'); root.sessionStorage.setItem('gifos_appeared', '1'); } catch (e) {}
+        try { const card = root.document && root.document.getElementById('appear-modal'); if (card) card.remove(); } catch (e) {}
+        emit({ type: 'answered-ring' });
+      }, () => {});
+    }
     // My member key's word for a private room (this one, or another one named: an ask to it from here).
     async function myWord(rec) {
       const k = await memberOf(rec); if (!k) return null;
@@ -503,6 +515,14 @@
       }
       // Proved knockers: a listening page lets in only other listening pages; any other page lets in every member.
       for (const pid of host.waitIds()) if (proved.has(pid) && (!listening() || listeners2.has(pid))) host.admit(pid);
+      // ...and a proved knocker my door is holding that never made the list: the door heard its knock while it was still
+      // unproved (a private room's door says nothing to a stranger, so it listed nobody) and the proof came a moment later
+      // on the door's channel. Without this it waited until the door's idle limit closed that channel and it knocked again.
+      for (const pid of proved.keys()) {
+        if (!host.seated() || host.isHere(pid) || !host.reach(pid) || (listening() && !listeners2.has(pid))) continue;
+        if (now - (letIn.get(pid) || 0) < (T().MYROOM_PROVE_MS || 0)) continue;
+        letIn.set(pid, now); host.admit(pid);
+      }
       // ...and a proved member who sits here already (each of us opened the room at the same moment, and our two rooms
       // became one without a knock) is one of the room's people all the same: the key word is the Admit.
       for (const p of host.people()) if (proved.has(p.id) && (!listening() || listeners2.has(p.id))) host.member(p.id);
@@ -527,7 +547,11 @@
       for (const [pid, r] of Array.from(rings)) {
         if (!r.priv) continue;
         if (mine2) { endCall(r, ''); rings.delete(pid); emit({ type: 'stopped', pid, label: r.label }); continue; }
-        const gone = !host.reach(pid) && !host.isHere(pid);   // a caller this silent door never lists is gone when its channel is
+        // A caller is gone when this silent door neither reaches it, lists it nor holds its knock. The door's mesh closes an
+        // idle door to a held knocker (its idle limit, about 8 s) and the caller knocks again through the relay a moment later:
+        // only a caller missing for longer than any seat has to prove itself (MYROOM_PROVE_MS) has hung up.
+        if (host.reach(pid) || host.isHere(pid) || host.held(pid)) r.lost = 0; else if (!r.lost) r.lost = now;
+        const gone = !!r.lost && now - r.lost >= (T().MYROOM_PROVE_MS || 0);
         if (gone || now - r.at >= (T().MYROOM_RING_MS || 0)) {
           endCall(r, 'missed'); rings.delete(pid);
           noteMissed(room, v, r.label, r.at);
@@ -553,11 +577,18 @@
         if (ended.has(ck)) { const op = ended.get(ck); if (op) sendSigned(pid, op); return; }
         rings.set(pid, { label: (rec.name || 'Someone') + ' ✓', id: '', at: host.now(), ck, priv: true });
         sendSigned(pid, 'ringing');
+        // The caller proved it is a member: this door proves itself back, so the caller takes the Doorbell handle it
+        // was just handed (a handle is taken only from a page that proved a member key here).
+        myWord(rec).then((mw) => { if (mw) host.send(pid, { op: 'key', w: mw }); }, () => {});
         emit({ type: 'ring', pid, label: (rec.name || 'Someone') + ' ✓', priv: true, room, v });
         return;
       }
       if (rings.has(pid)) { sendSigned(pid, 'ringing'); return; }
-      if (host.held(pid) && (!listening() || o.l)) host.admit(pid);
+      if ((host.held(pid) || (host.seated() && !host.isHere(pid) && host.reach(pid))) && (!listening() || o.l)) {
+        letIn.set(pid, host.now()); host.admit(pid);   // proved: the key word is the Admit
+        // ...and my own word goes back with it, so the one I let in knows me before its seat lands (its mic opens then)
+        if (!told2.has(pid)) { told2.add(pid); myWord(rec).then((w2) => { if (w2) host.send(pid, { op: 'key', w: w2 }); }, () => {}); }
+      }
     }
 
     // THE OWNER.

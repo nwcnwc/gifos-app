@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<base href="/versions/0.9.28.63/">
+<meta charset="UTF-8">
+<!-- FRAME GUARD: the one GifOS page another site may frame is this one, at its exact path
+     (/embed, /versions/<x.y.z>/embed; Cloudflare serves embed.html there). Anywhere else
+     the guard refuses like every other page. Guarded by gifos page-guards frame-guard. -->
+<script id="gifos-frame-guard">(function(){try{var E=/^\/(versions\/\d+(\.\d+){2,3}\/)?embed(\.html)?$/.test(location.pathname);window.__gifosEmbed=E;if(E)return;if(window.top===window.self)return;var ok=false;try{ok=window.top.location.origin===window.location.origin;if(!ok&&window.location.origin==='null')ok=window.top.location.origin===window.parent.location.origin;}catch(e){}if(ok)return;var h=document.documentElement;h.style.visibility='hidden';function show(){var b=document.body;if(!b)return;while(b.firstChild)b.removeChild(b.firstChild);var p=document.createElement('p');p.style.cssText='font:16px system-ui,sans-serif;padding:24px;color:#eee;background:#111;margin:0';p.appendChild(document.createTextNode('GifOS does not run inside another site\'s page. '));var a=document.createElement('a');a.href=location.href;a.target='_blank';a.rel='noopener';a.textContent='Open it in its own tab';a.style.color='#9db4ff';p.appendChild(a);b.appendChild(p);h.style.visibility='';}if(document.body)show();else document.addEventListener('DOMContentLoaded',show);}catch(e){}})();</script>
+<script src="js/core/link.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>GifOS Broadcast</title>
+<link rel="icon" href="/favicon.ico" sizes="16x16">
+<link rel="stylesheet" href="css/meet-embed.css">
+<!-- RELEASE POINTER. A broadcast runs the live release: the root page moves to
+     /versions/<latest>/embed (the same release's embed.html) with its hash. A snapshot
+     stays; a host that is not gifos.app (local, preview) stays on what it serves. -->
+<script>
+(function () {
+  if (location.pathname.indexOf('/versions/') !== -1 || !/(^|\.)gifos\.app$/.test(location.hostname)) return;
+  var done = false;
+  function stay() { done = true; }
+  try {
+    var x = new XMLHttpRequest();
+    x.open('GET', '/version.json?ts=' + Date.now(), true);
+    x.timeout = 3000;
+    x.onload = function () {
+      if (done) return;
+      try {
+        var j = JSON.parse(x.responseText) || {}, v = String(j.latest || '');
+        if (x.status >= 200 && x.status < 300 && /^\d+\.\d+\.\d+(\.\d+)?$/.test(v)) { done = true; location.replace('/versions/' + v + '/embed' + location.hash); return; }
+      } catch (e) {}
+      stay();
+    };
+    x.onerror = x.ontimeout = x.onabort = stay;
+    x.send();
+  } catch (e) { stay(); }
+})();
+</script>
+</head>
+<body>
+<div id="emb-share" class="emb-share" aria-live="polite"><video id="emb-share-video" muted autoplay playsinline hidden></video><div id="emb-share-box" class="emb-share-box" hidden></div></div>
+<div id="stagefeed"><button type="button" class="emb-inset-min" id="emb-inset-min" aria-pressed="false" title="Minimize the Stage">&ndash;</button></div>
+<div id="emb-tabbar" class="emb-tabbar" hidden><div id="emb-tabs" class="emb-tabs" role="tablist" aria-label="Shared now"></div><select id="emb-tabmenu" class="emb-tabmenu" aria-label="Shared now"></select></div>
+<div id="embedui">
+  <div class="emb-top"><span class="emb-live" id="emb-live" data-state="off"><i></i><b id="emb-live-txt">OFFLINE</b></span><span class="emb-count" id="emb-count"></span><span class="emb-title" id="emb-title"></span></div>
+  <button type="button" class="emb-play" id="emb-play" aria-label="Unmute" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg><span>Tap to unmute</span></button>
+  <button type="button" class="emb-play emb-unblur" id="emb-unblur" aria-label="Unblur" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5C7 5 2.7 8.1 1 12.5 2.7 16.9 7 20 12 20s9.3-3.1 11-7.5C21.3 8.1 17 5 12 5zm0 12.5a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg><span>Tap to unblur</span></button>
+  <p class="emb-msg" id="emb-msg" hidden></p>
+  <div class="emb-msg emb-fd" id="emb-fd" role="status" aria-live="polite" hidden><p id="emb-fd-text">Viewer limit reached.</p><p class="emb-fd-acts"><a id="emb-fd-up" href="/subscription" target="_blank" rel="noopener">Upgrade to Unlimited for $5/month</a><button type="button" id="emb-fd-pass">$1 pass: 4 hours of Unlimited</button></p><p class="emb-fd-wait" id="emb-fd-wait">You’ll get in automatically as soon as a place opens.</p></div>
+  <p class="emb-cap" id="emb-cap" hidden></p>
+  <div class="emb-bar"><button type="button" class="emb-btn" id="emb-mute" hidden>Unmute</button><button type="button" class="emb-btn" id="emb-lock" hidden>Enter password</button><span class="emb-fill"></span><button type="button" class="emb-btn emb-ico" id="emb-chat" aria-label="Chat" title="Chat" aria-haspopup="dialog" aria-expanded="false" aria-controls="emb-chat-panel" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12zM7 9h10v2H7zm0-3h10v2H7zm0 6h7v2H7z"/></svg><i class="emb-dot" id="emb-chat-dot" hidden></i></button><button type="button" class="emb-btn emb-ico" id="emb-tr" aria-label="Transcript" title="Transcript" aria-haspopup="dialog" aria-expanded="false" aria-controls="emb-tr-panel" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11zM8 12h8v2H8zm0 4h8v2H8z"/></svg></button><button type="button" class="emb-btn emb-ico" id="emb-react" aria-label="React" title="React" aria-haspopup="true" aria-expanded="false" aria-controls="emb-react-tray" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/></svg></button><button type="button" class="emb-btn emb-ico" id="emb-info" aria-label="About this broadcast" title="About this broadcast" aria-haspopup="dialog" aria-expanded="false" aria-controls="emb-info-panel"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg></button><button type="button" class="emb-btn emb-ico" id="emb-float" aria-label="Float" title="Float" aria-pressed="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M19 11h-8v6h8v-6zm4 8V4.98C23 3.88 22.1 3 21 3H3c-1.1 0-2 .88-2 1.98V19c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2zm-2 .02H3V4.97h18v14.05z"/></svg></button><button type="button" class="emb-btn emb-ico" id="emb-full" aria-label="Full screen" title="Full screen" aria-pressed="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="emb-fs-out" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/><path class="emb-fs-in" d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg></button><button type="button" class="emb-btn emb-ico emb-gear" id="emb-gear" aria-label="Settings" aria-expanded="false" aria-controls="emb-menu" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94L14.4 2.81a.5.5 0 0 0-.48-.41h-3.84a.5.5 0 0 0-.47.41L9.25 5.35c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 0 0-.6.22L2.74 8.87a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.14.23.41.3.64.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg></button></div>
+  <div id="emb-menu" class="emb-menu" role="menu" aria-label="Settings" hidden>
+    <div id="emb-m-volume" class="emb-mrow" hidden><span>Volume</span><input type="range" min="0" max="1" step="0.01" value="1" aria-label="Volume"></div>
+    <button type="button" id="emb-m-pass" class="emb-mrow" role="menuitem" hidden><span>$1 pass: 4 hours of Unlimited</span></button>
+    <button type="button" id="emb-m-mute" class="emb-mrow emb-tog" role="menuitemcheckbox" aria-checked="true" hidden><span>Mute</span><span class="emb-mstate">On</span></button>
+    <button type="button" id="emb-m-captions" class="emb-mrow emb-tog" role="menuitemcheckbox" aria-checked="false" hidden><span>Captions</span><span class="emb-mstate">Off</span></button>
+    <button type="button" id="emb-m-audioonly" class="emb-mrow emb-tog" role="menuitemcheckbox" aria-checked="false" hidden><span>Audio only</span><span class="emb-mstate">Off</span></button>
+    <button type="button" id="emb-m-inset" class="emb-mrow emb-tog" role="menuitemcheckbox" aria-checked="true" hidden><span>Stage picture</span><span class="emb-mstate"></span></button>
+    <button type="button" id="emb-m-names" class="emb-mrow emb-tog" role="menuitemcheckbox" aria-checked="true" hidden><span>Show names</span><span class="emb-mstate">On</span></button>
+  </div>
+  <div id="emb-react-tray" class="emb-react-tray" role="group" aria-label="React" hidden></div>
+  <div id="emb-chat-panel" class="emb-chat" role="dialog" aria-labelledby="emb-chat-h" hidden>
+    <div class="emb-info-head"><h2 id="emb-chat-h">Chat</h2><button type="button" class="emb-info-close" id="emb-chat-close">Close</button></div>
+    <ul class="emb-chat-log" id="emb-chat-log" aria-live="polite"></ul>
+    <p class="emb-chat-note" id="emb-chat-note" role="status" hidden></p>
+    <form class="emb-chat-form" id="emb-chat-form" autocomplete="off"><input id="emb-chat-in" type="text" maxlength="2000" placeholder="Say something" aria-label="Say something"><button type="submit" id="emb-chat-send">Send</button></form>
+    <form class="emb-chat-form emb-name-card" id="emb-name-card" autocomplete="off" hidden><label id="emb-name-lbl" for="emb-name-in">Your name in the chat</label><input id="emb-name-in" type="text" maxlength="40" placeholder="Name"><button type="submit" id="emb-name-go">Post</button><button type="button" id="emb-name-x">Not now</button></form>
+  </div>
+  <div id="emb-tr-panel" class="emb-chat emb-tr" role="dialog" aria-labelledby="emb-tr-h" hidden>
+    <div class="emb-info-head"><h2 id="emb-tr-h">Transcript</h2><button type="button" class="emb-info-close" id="emb-tr-close">Close</button></div>
+    <ul class="emb-chat-log emb-tr-log" id="emb-tr-log" aria-live="polite"></ul>
+    <div class="emb-chat-form emb-tr-foot"><button type="button" id="emb-tr-dl">Download</button><label class="emb-tr-shots" id="emb-tr-shots-row" title="When a shared screen changes and holds still, like a new slide, the transcript keeps one screenshot of it. Taken on this device from what you see: nothing is sent, and a screen you see blurred is never taken."><input type="checkbox" id="emb-tr-shots"><span id="emb-tr-shots-txt">Auto screenshots</span></label></div>
+  </div>
+  <p class="emb-audionote" id="emb-audionote" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg><span id="emb-audionote-txt">Audio only</span></p>
+  <div id="emb-info-panel" class="emb-info dlg-box" role="dialog" aria-modal="true" aria-labelledby="emb-info-h" hidden>
+    <div class="emb-info-head dlg-head"><h2 id="emb-info-h">About this broadcast</h2><button type="button" class="emb-info-close" id="emb-info-close">Close</button></div>
+    <div class="emb-info-body dlg-body">
+      <p class="emb-info-title" id="emb-info-title"></p>
+      <p class="emb-info-room" id="emb-m-watch" hidden><a id="emb-watch" target="_blank" rel="noopener noreferrer">View on gifos.app</a></p>
+      <p class="emb-info-gifos"><span id="emb-info-blurb">GifOS — low-cost, AI-friendly live streaming.</span> <a id="emb-info-link" href="https://gifos.app/" target="_blank" rel="noopener">gifos.app</a></p>
+    </div>
+  </div>
+</div>
+<form id="emb-card" class="emb-card dlg-box" hidden autocomplete="off">
+  <h3 id="emb-card-title">Watch clearly</h3>
+  <p id="emb-card-hint">Enter the password to watch clearly.</p>
+  <input id="emb-pw" type="password" maxlength="64" placeholder="Password" autocomplete="off" aria-label="Room password">
+  <div class="emb-card-row"><button type="submit" id="emb-pw-go">Watch</button><button type="button" id="emb-pw-later">Not now</button></div>
+</form>
+<!-- THE MEDIA PLANE'S OWN ELEMENTS. js/core/media/plane-browser.js still reads these meeting-page ids directly
+     (it wires their buttons at load). A player has none of them: inert, hidden, never focusable. Until the media
+     part reads them through the view (the thin-host to-do), gifos page-guards frame-guard keeps this list whole. -->
+<div id="media-stubs" hidden inert aria-hidden="true"><div id="appfull"></div><div id="appmount"></div><div id="barrec"></div><button id="bartoggle" type="button"></button><div id="camchooser"></div><div id="camdevs"></div><div id="ccall"></div><button id="ccbtn" type="button"></button><div id="ccwhisper-prog"></div><input id="chat-in" type="text"><button id="chatbtn" type="button"></button><input id="chatfind" type="text"><div id="chatlog"></div><div id="keys-list"></div><div id="micchooser"></div><div id="mixlab-stadium"></div><div id="paneltitle"></div><button id="reactbtn" type="button"></button><div id="reacttray"></div><div id="rec-warn"></div><button id="sharebtn" type="button"></button><button id="spkbtn" type="button"></button><button id="trbtn" type="button"></button><button id="trtab" type="button"></button><div id="trwrap"></div></div>
+<!-- THE SAME SIGNED CORE as the meeting page (js/core/files.json "core", then "media"),
+     and this page's own view part (js/core/view/embed.js) in place of the meeting's view. -->
+<script src="js/gifos-store.js" defer></script>
+<script src="js/timings.js" defer></script>
+<!-- The clean resting address (gifos.app/embed): js/gifos-update.js rest(). The player follows releases itself (js/core/view/embed.js). -->
+<script src="js/gifos-update.js" defer></script>
+<script src="js/gifos-net.js" defer></script>
+<script src="js/meet-layout.js" defer></script>
+<script src="js/meet-debuglog.js" defer></script>
+<script src="js/meet-captrust.js" defer></script>
+<script src="js/meet-viewmode.js" defer></script>
+<script src="js/meet-power.js" defer></script>
+<script src="js/relay-config.js" defer></script>
+<script src="js/gifos-ed.js" defer></script>
+<script src="js/gifos-sign.js" defer></script>
+<script src="js/mesh/laws.js" defer></script>
+<script src="js/mesh/consts.js" defer></script>
+<script src="js/mesh/util.js" defer></script>
+<script src="js/mesh/books.js" defer></script>
+<script src="js/mesh/msg.js" defer></script>
+<script src="js/mesh/hash.js" defer></script>
+<script src="js/mesh/topo.js" defer></script>
+<script src="js/mesh/dig.js" defer></script>
+<script src="js/mesh/seat-fields.js" defer></script>
+<script src="js/mesh/fnv.js" defer></script>
+<script src="js/mesh/state.js" defer></script>
+<script src="js/mesh/rng.js" defer></script>
+<script src="js/mesh/fmt.js" defer></script>
+<script src="js/mesh/seat.js" defer></script>
+<script src="js/mesh/e2fold.js" defer></script>
+<script src="js/mesh/digest.js" defer></script>
+<script src="js/mesh/shared.js" defer></script>
+<script src="js/mesh/entry.js" defer></script>
+<script src="js/mesh/farview.js" defer></script>
+<script src="js/mesh/fhop.js" defer></script>
+<script src="js/mesh/turn.js" defer></script>
+<script src="js/mesh/c7proof.js" defer></script>
+<script src="js/mesh/gapa.js" defer></script>
+<script src="js/mesh/gaps.js" defer></script>
+<script src="js/mesh/gaps2.js" defer></script>
+<script src="js/mesh/gaps3.js" defer></script>
+<script src="js/mesh/gaps4.js" defer></script>
+<script src="js/mesh/heal.js" defer></script>
+<script src="js/mesh/hostile-laws.js" defer></script>
+<script src="js/mesh/id.js" defer></script>
+<script src="js/mesh/ijoin.js" defer></script>
+<script src="js/mesh/burst.js" defer></script>
+<script src="js/mesh/headword.js" defer></script>
+<script src="js/mesh/instant.js" defer></script>
+<script src="js/mesh/island.js" defer></script>
+<script src="js/mesh/lguard-seat.js" defer></script>
+<script src="js/mesh/linkset.js" defer></script>
+<script src="js/mesh/roles.js" defer></script>
+<script src="js/mesh/live.js" defer></script>
+<script src="js/mesh/mltail.js" defer></script>
+<script src="js/mesh/pclaws.js" defer></script>
+<script src="js/mesh/rcdead.js" defer></script>
+<script src="js/mesh/rcfollow.js" defer></script>
+<script src="js/mesh/rcleft-l25.js" defer></script>
+<script src="js/mesh/rcleft.js" defer></script>
+<script src="js/mesh/recv-entry.js" defer></script>
+<script src="js/mesh/recv-seated.js" defer></script>
+<script src="js/mesh/recv.js" defer></script>
+<script src="js/mesh/ring.js" defer></script>
+<script src="js/mesh/roomterm.js" defer></script>
+<script src="js/mesh/route.js" defer></script>
+<script src="js/mesh/seat-rest.js" defer></script>
+<script src="js/mesh/small.js" defer></script>
+<script src="js/mesh/tick.js" defer></script>
+<script src="js/mesh/tier.js" defer></script>
+<script src="js/mesh/witness.js" defer></script>
+<script src="js/mesh/page/env.js" defer></script>
+<script src="js/mesh/page/pclaws-wire.js" defer></script>
+<script src="js/mesh/page/layer.js" defer></script>
+<script src="js/mesh-identity.js" defer></script>
+<script src="js/mesh-wire.js" defer></script>
+<script src="js/meet-pack.js" defer></script>
+<script src="js/meet-turn.js" defer></script>
+<script src="js/meet-tunnel.js" defer></script>
+<script src="js/meet-carry.js" defer></script>
+<script src="js/meet-status.js" defer></script>
+<script src="js/meet-progress.js" defer></script>
+<script src="js/gifos-sub.js" defer></script>
+<script src="js/meet-leave.js" defer></script>
+<script src="js/meet-meters.js" defer></script>
+<script src="js/meet-zones.js" defer></script>
+<script src="js/meet-content.js" defer></script>
+<script src="js/meet-agenda.js" defer></script>
+<script src="js/meet-agent.js" defer></script>
+<script src="js/core/host.js" defer></script>
+<script src="js/core/meeting.js" defer></script>
+<script src="js/mesh-media.js" defer></script>
+<script src="js/mesh-pipe.js" defer></script>
+<script src="js/meet-bgfx.js" defer></script>
+<script src="js/core/media/textclear.js" defer></script>
+<script src="js/core/media/plane-browser.js" defer></script>
+<script src="js/gifos-fullscreen.js" defer></script>
+<script src="js/core/view/kit.js" defer></script>
+<script src="js/dialog.js" defer></script>
+<script src="js/meet-subs.js" defer></script>
+<script src="js/core/view/shareshots.js" defer></script>
+<script src="js/core/view/embed.js" defer></script>
+<script>
+// THE HOST'S FACTS the core asks about (GifOS.host; run.html answers the same set).
+window.addEventListener('DOMContentLoaded', function () {
+  if (!window.GifOS || !GifOS.core) return;
+  GifOS.host = {
+    hidden: function () { return document.hidden; },
+    parentOrigin: function () { return ''; },
+    whenSupported: function (f) { f(); },
+    scriptOrder: function () { return Array.prototype.map.call(document.querySelectorAll('script[src]'), function (el) { try { return new URL(el.src, location.href).pathname.replace(/^\//, ''); } catch (e) { return ''; } }); },
+    loadScript: function (src) { return new Promise(function (res) { var el = document.createElement('script'); el.async = false; el.src = src; el.onload = function () { res(true); }; el.onerror = function () { res(false); }; document.head.appendChild(el); }); },
+    viewport: function () { return { w: window.innerWidth, h: window.innerHeight }; }
+  };
+  GifOS.core.startPage();
+});
+</script>
+</body>
+</html>

@@ -253,6 +253,7 @@ mandatory; everything else defaults sensibly.
      "launch": { ... },           // optional link arguments (see "Sharing")
      "handoff": { ... },          // app->app documents (see gifos.handoff)
      "provides": { "ai": [...] }, // Provider apps only (see "Provider apps")
+     "widgets": [ ... ],          // small views for the Home Screen (see "Widgets")
      "assets": [ ... ]            // big hash-pinned downloads (see "Big files")
    }
 
@@ -866,6 +867,107 @@ this device inside the app's GIF".
 Invite links are capabilities: whoever holds one can join AND mirror the
 app's shared state. The host chooses the link lifetime (dies-on-close /
 1h / 24h / forever) and resilience in the OS chrome — not your code.
+
+## Widgets (a small view of your app on the Home Screen)
+
+STATUS: widgets show on the Home Screen's looks, which are a try-out on the
+test build (edge) for now. The manifest field is safe to ship today: a
+build without widgets ignores it.
+
+An app can offer WIDGETS: small live views a person places on their Home
+Screen. A widget lives INSIDE your GIF, like the rest of the app. The Home
+Screen has several looks; each look has places ("slots") that take certain
+sizes. A slot is not for any purpose: the person can put ANY widget that
+fits in ANY slot, and reorder, resize or remove it (Edit widgets).
+
+Declare them in manifest.json:
+
+   "widgets": [
+     { "id": "today",              // a-z 0-9 -, up to 24; unique in the app
+       "name": "Today",            // shown in the widget list, up to 40
+       "entry": "widget.html",     // a file in the GIF (may be shared by
+                                   //   several widgets: read gifos.widget.id)
+       "sizes": ["small", "medium", "wide"],   // the variants you can draw
+       "bare": false }             // true: no card behind it (you draw on
+   ]                               //   the look's own background)
+
+Up to 8 widgets per app. SIZES (list every one you can draw; more sizes =
+more slots you fit):
+   small    one column, short     (up to about 190 px tall)
+   medium   one column            (up to about 330 px)
+   wide     full width, short     (up to about 210 px)
+   large    full width, tall      (up to about 460 px)
+The width is the slot's (about 280 to 700 px): lay out with CSS that flows,
+never fixed pixels. The frame is as tall as your content, inside the range
+for the size, so just let the body take its natural height.
+
+The entry file is a normal HTML file. <script src>, stylesheets and images
+that name other files in the GIF are inlined, as in the app. It runs in the
+same kind of sandbox as the app, with LESS: no network at all (no
+gifos.fetch), no storage of its own, no camera or microphone, no payments,
+no multiplayer. It cannot write anything.
+
+Before your code runs GifOS sets, on <html>:
+   data-size="small|medium|wide|large"
+   data-look="glass|orbit|pulse|..."   the look it is shown in (new looks
+                                       appear over time: never switch on it
+                                       alone)
+   data-flavor="calm|night|bold"       the look's style family. Style your
+                                       VARIANTS on this: calm = light, airy;
+                                       night = dark, glowing; bold = heavy
+                                       type, strong colour.
+   data-dark                           present when the look is dark
+   --w-ink --w-dim --w-accent --w-accent2 --w-line --w-on
+                                       the look's colours as CSS variables.
+                                       Use them (with fallbacks) and the
+                                       widget belongs in every look. Leave
+                                       the page background transparent.
+
+window.gifos inside a widget (all of it):
+   gifos.widget.id / .size / .look / .flavor / .dark / .colors
+   gifos.widget.onChange(cb)   cb(widget) NOW and when size, look, colours
+                               or the locale change. Draw from here.
+   gifos.widget.onMinute(cb)   cb(nowMs) NOW and at the start of every
+                               minute while the Home Screen is seen. This is
+                               the widget's clock: do NOT run setInterval,
+                               requestAnimationFrame loops or CSS animations
+                               that never end. A widget that only draws when
+                               told costs nothing.
+   gifos.widget.open()         opens your app (only on the person's tap or
+                               click: call it from a click handler).
+   gifos.db(c).get(id) / .getAll() / .subscribe(cb)
+                               your app's OWN saved data, read-only, live:
+                               subscribe fires now and whenever the app (in
+                               any tab) changes that collection. put/delete
+                               reject: changes are made in the app.
+   gifos.info()                -> { appId, name, widget }
+   gifos.locale(), gifos.onLocaleChange(cb), gifos.i18n.t / .format / .fmt
+                               as in the app; your catalogs (i18n/<locale>
+                               .json in the GIF) are already loaded, so
+                               gifos.i18n.t works at once.
+
+A complete widget (the whole file):
+
+   <!doctype html><meta charset="utf-8">
+   <style>
+     body{margin:0;padding:2px;font:15px system-ui;color:var(--w-ink,#222);cursor:pointer}
+     b{font-size:2rem;color:var(--w-accent,#5b5bf0)}
+     [data-size="small"] b{font-size:1.3rem}
+     [data-flavor="bold"] b{font-weight:900}
+   </style>
+   <b id="n"></b> <span id="t"></span>
+   <script>
+     gifos.db('items').subscribe(function (all) {
+       document.getElementById('n').textContent = all.length;
+       document.getElementById('t').textContent = 'things to do';
+     });
+     document.body.onclick = function () { gifos.widget.open(); };
+   </script>
+
+Rules of thumb: show ONE thing well; no scrolling inside a widget; the whole
+widget is one tap target that opens the app; test every size you declare in
+a calm, a night and a bold look. A widget of a locked app is not drawn until
+the person opens the app.
 
 ## Provider apps (an app that gives GifOS an ability)
 

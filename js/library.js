@@ -35,18 +35,18 @@
   }
   function dateText(sec) { return i18n.fmt.date(new Date(sec * 1000)); }
 
-  // ---- dialogs: a sticky header with Close, a sticky footer for actions ----
+  // ---- dialogs: the shared dialog (js/dialog.js): a header with Close that moves it, a scrolling body, the actions on screen ----
   function modal(title, body, actions) {
-    var d = el('dialog', 'modal');
-    var head = el('div', 'modal-head');
+    var d = el('dialog', 'modal dlg-box');
+    var head = el('div', 'modal-head dlg-head');
     head.appendChild(el('h2', null, title));
     var close = btn(i18n.t('library.close'), function () { d.close(); }, 'link');
     head.appendChild(close);
     d.appendChild(head);
-    var main = el('div', 'modal-body');
+    var main = el('div', 'modal-body dlg-body');
     main.appendChild(body);
     d.appendChild(main);
-    var foot = el('div', 'modal-foot');
+    var foot = el('div', 'modal-foot dlg-actions');
     (actions || []).forEach(function (a) { foot.appendChild(a); });
     if (!actions || !actions.length) foot.hidden = true;
     d.appendChild(foot);
