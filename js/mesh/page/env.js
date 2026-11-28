@@ -648,15 +648,16 @@
     // L29, the fabric's half (sim mesh_lguard.inc lguardFabTick): the duties my cell owes in load units, the budget my
     // device shows it can carry, the ladder, the inbound watch, and the leave when my receivers and my own reading agree.
     let lgCap = -1, lgReadAt = 0, lgLeft = false; const lgStarved = new Set(), lgMuted = new Set();
-    // L29.6, the fan's reading (sim mesh_lguard.inc lgFanRead): how many direct copies of my Stage feed must go (negative) for
-    // the load at my level to sit under L29_SHED percent of the budget my device shows, else whether one more fits under
-    // L29_RESTORE (1 or 0). A device that keeps the floor (a phone, a battery, a metered link, a page that cannot encode
-    // its Stage once: measure.lgFanFloor) never reads room; a seat that has shed a class earns that back first.
-    let lgUpTop = 0;   // the fan my uplink last showed it could not carry: not tried again until my budget is whole
+    // L29.6, the fan's reading (sim mesh_lguard.inc lgFanRead, stgFanReading): negative, that many direct copies of my
+    // Stage feed must go. A device that keeps the floor gives every copy over it back; else the copies that must go for
+    // the load at my level to sit under L29_SHED percent of the budget my device shows, else whether one more fits
+    // under L29_RESTORE (1 or 0); a seat that has shed a class earns that back first.
+    let lgUpTop = null, lgUpAt = 0;   // lgUpTop { fan, bps }: the fan my uplink last showed it could not carry, and what I sent then
     function lgFanRead(s, load, bud, floor) {
+      if (floor) return -s.stgFan;
       const K = C_.consts, unit = s.lgLvl > 0 ? K.L29_HOT : K.L29_HOT - K.L29_PARK;
       if (load * 100 > bud * K.L29_SHED) return -Math.ceil((load * 100 - bud * K.L29_SHED) / (100 * unit));
-      if (floor || s.lgLvl > 0) return 0;
+      if (s.lgLvl > 0) return 0;
       return (load + unit) * 100 <= bud * K.L29_RESTORE ? 1 : 0;
     }
     function lgFabric(s) {
@@ -665,7 +666,7 @@
       if (!s.hasCoord || s.state !== 3) {   // no cell: no duty is owed me and I owe none; my readings end with my seat
         s.l295No = false;
         for (const pid of [...lgMuted]) { const m = msg.newMsg('LGSTARVE'); m.tag = 1; m.id = ID.nid(pid); m.to = me; m.from = -1; m.hold = 0; busAt(w.TICK + 1, m); }
-        lgMuted.clear(); s.stgOn = false; s.lgUp = 0; s.lgFan(); lgUpTop = 0; s.lgLadder(); return;
+        lgMuted.clear(); s.stgOn = false; s.lgUp = 0; s.lgFan(); lgUpTop = null; s.lgLadder(); return;
       }
       const c = s.coord, held = (x) => { const v = s.occGet(topo.ckey(x)); return v >= 0 && v !== s.id; };
       let rx = 0;
@@ -694,24 +695,26 @@
       let l2 = own * K.L29_HOT + fwd + hd, l1 = l2 + fwd + hlow, l0 = l1 + park * K.L29_PARK + woke * K.L29_HOT;
       const at = () => (s.lgLvl === 0 ? l0 : s.lgLvl === 1 ? l1 : l2);
       if (lgCap < 0) lgCap = full;
-      const rook = s.stgOn ? s.stgRook() : null, keepFloor = !!(measure.lgFanFloor && measure.lgFanFloor());
-      // what the device carried, scaled by how well it kept up; a device keeping up earns its budget back slowly.
-      // L29.6: an uplink that is full (its own estimate on the links that carry my Stage feed, measure.lgUpOver) is a
-      // shortfall too, but only while the fan holds more than its floor: the budget drops just under the load, so the
-      // fan gives one copy back per reading, and the reading can undo nothing but what the fan added.
-      if (w.TICK >= lgReadAt) {
-        lgReadAt = w.TICK + K.L29_STARVE; const h = measure.lgHealth();
-        const upOver = !!rook && fan0 > rook.floor && !!(measure.lgUpOver && measure.lgUpOver());
-        if (upOver) lgUpTop = fan0;
-        lgCap = h < 1 ? Math.min(lgCap, Math.ceil(at() * h)) : upOver ? Math.min(lgCap, Math.floor((at() * 100 - 1) / K.L29_SHED)) : Math.min(full, lgCap + 1);
-        if (lgCap >= full) lgUpTop = 0;
-      }
+      // what the device carried, scaled by how well it kept up; a device keeping up earns its budget back slowly
+      if (w.TICK >= lgReadAt) { lgReadAt = w.TICK + K.L29_STARVE; const h = measure.lgHealth(); lgCap = h < 1 ? Math.min(lgCap, Math.ceil(at() * h)) : Math.min(full, lgCap + 1); }
       if (s.stgOn) {   // the fan goes first and comes back last, on my own reading, before the ladder reads the load (sim lguardFabTick)
-        let up = lgFanRead(s, at(), lgCap, keepFloor);
-        if (up > 0 && lgUpTop > 0 && s.stgFan + 1 >= lgUpTop) up = 0;
+        // The floor: a device that saves power or cannot encode its Stage once (measure.lgFanFloor), and a feed with no
+        // picture (nothing to measure: the links would meet their first video at full fan).
+        const floorNow = !camOn || !!(measure.lgFanFloor && measure.lgFanFloor());
+        let up = lgFanRead(s, at(), lgCap, floorNow);
+        // The uplink (sim: `lguard uplink`, the copies it carries): the links' own estimate, measure.lgUplink. No
+        // reading, or a change still in flight: no growth. Over: one copy goes per reading, and that size is not tried
+        // again until what I send has fallen far enough for one more copy to fit under L29_RESTORE percent of what I
+        // sent when it was full. It never touches the budget: the ladder's classes are not the uplink's to shed here.
+        if (!floorNow) {
+          const U = measure.lgUplink ? measure.lgUplink() : null, fl = s.stgRook().floor;
+          if (!U || !U.known || U.busy) up = Math.min(up, 0);
+          else if (U.over) { if (U.at !== lgUpAt && fan0 > fl) { lgUpAt = U.at; lgUpTop = { fan: fan0, bps: U.bps }; up = Math.min(up, -1); } else up = Math.min(up, 0); }
+          else if (up > 0 && lgUpTop && s.stgFan + 1 >= lgUpTop.fan && (U.bps + U.copy) * 100 > lgUpTop.bps * K.L29_RESTORE) up = 0;
+        }
         s.lgUp = up; s.lgFan();
         if (s.stgFan !== fan0 && camOn) { const dk = Math.min(s.stgFan, rx) - Math.min(fan0, rx); own += dk; l2 += dk * K.L29_HOT; l1 += dk * K.L29_HOT; l0 += dk * (K.L29_HOT - K.L29_PARK); }
-      } else if (s.stgFan || s.stgFanCalm) { s.lgUp = 0; s.lgFan(); }
+      } else { if (s.stgFan || s.stgFanCalm) { s.lgUp = 0; s.lgFan(); } lgUpTop = null; }
       s.lgLd[0] = l0; s.lgLd[1] = l1; s.lgLd[2] = l2; s.lgBud0 = full; s.lgOwn = own * K.L29_HOT;
       s.lgBud = lgCap;
       s.lgLadder();
