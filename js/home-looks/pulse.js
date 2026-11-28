@@ -22,7 +22,7 @@
         home: () => api.slot('top') + api.slot('hero') + api.slot('feed') + '<p class="hv-quiet">' + esc(W.honest) + '</p>',
         people: () => '<h1 class="p-title">' + esc(W.people) + '</h1>' + api.missedChip(d.ppl) + api.peopleRows(d.ppl) +
           '<div class="hv-rows">' + row('myroom', 'home', d.ppl.mine ? W.myRoom : W.makeMyRoom, d.ppl.mine ? d.ppl.mine.room : W.myRoomSub) + row('rooms', 'people', W.addSomeone, W.addSomeoneSub) + '</div>',
-        live: () => '<h1 class="p-title">' + esc(W.live) + '</h1>' + api.liveCard() +
+        live: () => '<h1 class="p-title">' + esc(W.live) + '</h1>' + api.liveCard() + api.tvStrip(12) +
           (d.casts.length ? '<div class="hv-sec-h"><h2>' + esc(W.watchedBefore) + '</h2></div><div class="hv-rows">' + d.casts.map((r, i) => api.roomRow(r, i, 'cast')).join('') + '</div>' : '') +
           '<div class="hv-rows">' + row('golive', 'tv', W.goLive, W.goLiveSub, 'live') + '</div>',
         apps: () => '<h1 class="p-title">' + esc(W.apps) + '</h1><div class="hv-appgrid p-allapps"></div><div class="hv-sheet-foot"><button type="button" class="hv-pill hot" data-act="store">' + svg('bag') + esc(W.appStore) + '</button><button type="button" class="hv-pill" data-act="add">' + svg('plus') + esc(W.add) + '</button></div>',

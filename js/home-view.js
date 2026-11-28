@@ -102,23 +102,12 @@
     return { name, pic: id && id.avatar && id.avatar.url ? id.avatar.url : '' };
   }
   const myFace = (cls) => { const m = me(); return m.pic ? '<span class="hv-av pic ' + (cls || '') + '" aria-hidden="true"><img src="' + esc(m.pic) + '" alt=""></span>' : face(m.name || 'Me', cls); };
+  // Contacts, my room and the hosted rooms: the one model the Meeting lobby and the Rooms app read (js/rooms-model.js).
+  // The words are the lobby menu's too: Rooms and Contacts ("People" is who is in a meeting).
   function people() {
-    const M = MR(); if (!M) return { mine: null, list: [], missed: [], hosted: [] };
-    const rk = (x) => M.roomKey(x.room, x.v);
-    const privs = M.privates(), mine = M.mine();
-    const ours = privs.filter((x) => x.pubs.length === 1 && x.me);
-    const via = new Set(); ours.forEach((p) => { const c = M.cardIn(p); if (c) via.add(rk(c)); });
-    const list = ours.map((p) => ({ kind: 'p', name: p.name || W.contact, room: p.room, v: p.v, last: p.last || p.at || 0, ok: true }));
-    M.contacts().filter((c) => !via.has(rk(c))).forEach((c) => list.push({ kind: 'c', name: c.name || W.contact, room: c.room, v: c.v, last: c.at || 0, ok: !!c.bound }));
-    list.sort((a, b) => b.last - a.last);
-    const missed = M.missed().slice().sort((a, b) => (b.at || 0) - (a.at || 0)).map((x) => {
-      const n = String(x.label || '').replace(/\s*(✓|\(card\))\s*$/, '');
-      const pr = M.privFor(x.room, x.v);
-      const who = list.find((p) => (pr && p.kind === 'p' && rk(p) === rk(pr)) || p.name === n) || null;
-      return { name: n || W.someone, at: x.at, who };
-    });
-    const taken = new Set(privs.map(rk)); if (mine) taken.add(rk(mine));
-    return { mine, list, missed, hosted: M.hosted().filter((h) => !taken.has(rk(h))), privKeys: new Set(privs.map((p) => p.room)) };
+    const M = MR(), RM = GifOS.roomsModel; if (!M || !RM) return { mine: null, list: [], missed: [], hosted: [] };
+    const m = RM.read(), list = RM.people(m, W.contact);
+    return { mine: m.mine, list, missed: RM.missed(m, list, W.someone), hosted: m.hosted, privKeys: new Set(M.privates().map((p) => p.room)) };
   }
   // Rooms and broadcasts this device has been in: the meeting page's own lists (saved ones first).
   function visited(kind, ppl) {
@@ -181,16 +170,9 @@
     myRoom() { const m = people().mine; if (m) A.room(m.room, m.v); else A.rooms(); },
     // Call: the same hand-off the Rooms app makes. A private room is entered with mic and camera off until it is answered.
     call(p) {
-      const M = MR(); if (!M || !p) return;
-      const ss = root.sessionStorage;
-      if (p.kind === 'p') {
-        try { ss.setItem('gifos_join_av', JSON.stringify({ v: 1, cam: false, mic: false, at: Date.now() })); ss.setItem('gifos_mr_mic', p.room + '.' + p.v); } catch (e) {}
-      } else {
-        const c = M.contactFor(p.room, p.v), pr = c && M.pairWith(M.contactPub(c));
-        if (pr) lsSet('gifos_mr_invite.' + M.roomKey(p.room, p.v), JSON.stringify({ to: pr.room + '.' + pr.v, go: 1, pv: 1, at: Date.now() }));
-      }
-      A.room(p.room, p.v);   // the new tab starts with a copy of this tab's hand-off notes
-      try { ss.removeItem('gifos_join_av'); ss.removeItem('gifos_mr_mic'); } catch (e) {}
+      const to = GifOS.roomsModel && GifOS.roomsModel.ring(p); if (!to) return;
+      A.room(to.room, to.v);   // the new tab starts with a copy of this tab's hand-off notes
+      try { root.sessionStorage.removeItem('gifos_join_av'); root.sessionStorage.removeItem('gifos_mr_mic'); } catch (e) {}
     },
     me() { if (GifOS.identityUI) GifOS.identityUI.manage(); },
     settings() { const H = hook(); if (H) H.settings(); },
@@ -231,6 +213,32 @@
       '<span class="hv-row-go">' + svg('arrow') + '</span></button>';
   const tvRow = () =>
     '<button type="button" class="hv-row tv" data-act="tv"><span class="hv-row-ic live">' + svg('tv') + '</span><span class="hv-row-t"><b>GifOS TV</b><span>' + esc(W.tvSub) + '</span></span><span class="hv-row-go">' + svg('arrow') + '</span></button>';
+  // ---- Live on GifOS.tv ----------------------------------------------------------------------------------------------
+  // GifOS.tvIndex.read(): gifos.tv's ONE index of live listings (the same file its directory browses and searches on
+  // the viewer's device; edge-cached, open to any origin). Read only while a look is up, at most once per two of the
+  // directory's own re-read periods (gifos.tv names it in the answer: config.pollMs; this page keeps no copy). A failure
+  // is quiet and not retried on this page (the strip is just not there). Looks show it through api.tvStrip(n).
+  const TV_API = String(root.GIFOS_TV_API || 'https://gifos.tv').replace(/\/+$/, '');
+  let tvLive = [], tvReadAt = 0, tvEvery = 0, tvReading = null, tvFailed = false;
+  GifOS.tvIndex = GifOS.tvIndex || {
+    read() {
+      if (tvReading) return tvReading;
+      tvReading = root.fetch(TV_API + '/api/list', { credentials: 'omit' }).then((r) => r.json()).then((j) => {
+        tvEvery = 2 * (Number(j && j.config && j.config.pollMs) || 0);
+        const ls = Array.isArray(j && j.listings) ? j.listings : [];
+        return ls.map((l) => Object.assign({}, l, { url: TV_API + '/' + l.name + '/' + l.v16 }));
+      }).finally(() => { tvReading = null; });
+      return tvReading;
+    },
+  };
+  function tvRefresh() {
+    if (tvFailed || tvReading || (tvReadAt && Date.now() - tvReadAt < tvEvery)) return;
+    tvReadAt = Date.now();
+    GifOS.tvIndex.read().then((ls) => { tvLive = ls; queuePaint(); }, () => { tvFailed = true; });
+  }
+  const tvKind = (l) => (l.kind === 'pre' ? W.tvKindPre : l.kind === 'bot' ? W.tvKindBot : W.live);
+  const tvStrip = (n) => (tvLive.length ? '<div class="hv-sec-h hv-tvlive"><h2>' + esc(W.tvLive) + '</h2><a class="hv-link" href="' + esc(TV_API) + '/" target="_blank" rel="noopener">' + esc(W.all) + '</a></div><div class="hv-rows hv-tvlive">' +
+    tvLive.slice(0, n).map((l, i) => '<button type="button" class="hv-row tv" data-act="tvl:' + i + '"><span class="hv-row-ic live">' + svg('tv') + '</span><span class="hv-row-t"><b>' + esc(l.title) + '</b><span>' + esc(tvKind(l) + (l.n >= 2 ? ' · ' + T('tvWatching', { n: l.n }) : '')) + '</span></span><span class="hv-row-go">' + svg('arrow') + '</span></button>').join('') + '</div>' : '');
   const liveCard = () => '<button type="button" class="p-live" data-act="tv"><span class="p-live-tag"><span class="hv-dot"></span>GifOS TV</span><b>' + esc(W.tvWatch) + '</b><span>' + esc(W.tvTune) + '</span></button>';
 
   // ---- popups: every one is a card of the shared popup library (js/dialog.js), which keeps Close on screen ---------------
@@ -327,7 +335,7 @@
   const api = {
     esc, svg, T, words: W, state, hello, hue, face, myFace, relTime, plain,
     slot: (name) => '<div class="hv-slot" data-slot="' + esc(name) + '"></div>',
-    joinForm, missedChip, personBubble, addBubble, isMissed, peopleStrip, peopleRows, roomRow, roomKind, tvRow, liveCard, meetRows,
+    joinForm, missedChip, personBubble, addBubble, isMissed, peopleStrip, peopleRows, roomRow, roomKind, tvRow, liveCard, tvStrip, meetRows,
     apps, appTile, allApps, shortApps, width: (el) => el.clientWidth || root.innerWidth,
   };
 
@@ -340,6 +348,7 @@
   function paint() {
     const id = current(), def = looks.get(id);
     if (id === 'classic' || !host || !def) return;
+    tvRefresh();
     const d = state.data = data(), sig = sigOf(id, d), ctx = { data: d };
     if (sig === frameSig && host.firstChild) { if (HW()) HW().refresh(host, def, ctx); return; }
     const keep = host.querySelector('.hv-join input'), typed = keep && doc.activeElement === keep ? keep.value : null;
@@ -368,6 +377,7 @@
       case 'room': { const r = d.rooms[+arg]; if (r) A.room(r.room, r.v); break; }
       case 'cast': { const r = d.casts[+arg]; if (r) A.watch(r.room, r.v); break; }
       case 'tv': A.watch(TV.room, TV.v); break;
+      case 'tvl': { const l = tvLive[+arg]; if (l) A.watch(l.name, l.v); break; }
       case 'golive': A.goLive(); closePopup(); break;
       case 'lobby': A.lobby(); closePopup(); break;
       case 'myroom': A.myRoom(); closePopup(); break;
@@ -396,6 +406,7 @@
     roomsReady = (async () => {
       if (!GifOS.net) await loadScript('js/gifos-net.js');
       if (!GifOS.meetMyRoom) await loadScript('js/meet-myroom.js');
+      if (!GifOS.roomsModel) await loadScript('js/rooms-model.js');
     })();
     return roomsReady;
   }

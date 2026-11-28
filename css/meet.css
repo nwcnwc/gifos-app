@@ -3,7 +3,7 @@
 :root {
   /* Design tokens for the meeting page. Colours, radii and motion come from here; a new literal in the meeting CSS is a review flag. */
   --c-white: #fff; --c-black: #000; --c-ink: #1d1d1f; --c-ink-2: #3a3a3f; --c-gray: #8d93a0; --c-line: #e8ecf1; --c-paper: #f4f7fb;
-  --c-blue: #0064c8; --c-red: #b61622; --c-yellow: #ffd23c; --c-night: #0c0e12; --c-scrim: rgba(12,14,18,.92);
+  --c-blue: #0064c8; --c-teal: #0b7a6b; --c-red: #b61622; --c-yellow: #ffd23c; --c-night: #0c0e12; --c-scrim: rgba(12,14,18,.92);
   --r-sm: 10px; --r-md: 12px; --r-lg: 16px; --r-pill: 999px;
   --t-fast: .2s; --t-slow: .8s;
 }
@@ -1290,16 +1290,14 @@ body.names-off #stagefeed .stgnames { display: none; }
   .capcard-b button { font: inherit; padding: 6px 10px; border-radius: var(--r-pill, 999px); border: 1px solid rgba(255,255,255,.2); background: transparent; color: inherit; }
   .capcard-b button[aria-pressed="true"] { background: rgba(255,255,255,.16); }
   /* The example (what their captions said / what was heard) scrolls; the title and the buttons always stay on screen. */
-  .capcard { display: flex; flex-direction: column; max-height: min(70vh, calc(100vh - 7em)); }
+  .capcard { max-height: min(70vh, calc(100vh - 7em)); }
   .capcard[hidden] { display: none; }
-  .capcard-body { overflow-y: auto; min-height: 0; flex: 0 1 auto; }
   .capcard-ex:empty, .capcard-h:empty { display: none; }
   .capcard-q { margin-top: 8px; padding: 6px 8px; border-radius: var(--r-sm, 6px); background: rgba(255,255,255,.07); }
   .capcard-q b { display: block; font-size: .85em; opacity: .8; font-weight: 600; }
   .capcard-q span { display: block; overflow-wrap: anywhere; }
   .capcard-w { font-weight: 600; margin-top: 10px; }
   .capcard-h { opacity: .7; font-size: .85em; margin-top: 8px; }
-  .capcard-b { flex: none; }
   /* While the card is open it is the captions view: the caption bar under it would show through the buttons on a phone. */
   body:has(.capcard:not([hidden])) #livecap { visibility: hidden; }
   body.chrome-away #livecap { bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }

@@ -7723,7 +7723,6 @@ The Store itself does not keep a shopping cart in this icon.
                'index.html': themeHtml(STORE_FALLBACK_HTML, 'full') }),
     }];
     // Clock and Calendar: system apps whose widgets fill the looks of the Home Screen (js/home-view.js). They ride with
-    // the looks: seeded on the edge build only, until a release makes a look its default.
     // Calendar is assembled from js/calendar (the page inlines the library). A failed read skips Calendar and still seeds the rest.
     var calendarReady = Promise.resolve(null);
     if (root.GIFOS_VERSION === 'edge' && root.GifOS && GifOS.calendarApp && typeof GifOS.calendarApp.files === 'function') {
@@ -7739,7 +7738,10 @@ The Store itself does not keep a shopping cart in this icon.
         };
       }).catch(function () { return null; });
     }
-    if (root.GIFOS_VERSION === 'edge') loose.push({
+    // the looks: seeded on the edge build only, until a release makes a look its default. They go in the Tools folder,
+    // so the Home Screen's own default layout (and everything that counts or places root icons) is exactly a release's.
+    if (root.GIFOS_VERSION === 'edge') groups.find((g) => g.name === 'Tools').apps.push({
+
       name: 'Clock.gif', appId: 'clock', accent: [91, 91, 240],
       files: withHelp('clock', { 'manifest.json': manifest('clock', 'Clock', [91, 91, 240], { capabilities: { multiplayer: false },
                widgets: [{ id: 'now', name: 'Clock', entry: 'widget/index.html', sizes: ['wide', 'medium', 'small'], bare: true }] }),
@@ -7754,13 +7756,15 @@ The Store itself does not keep a shopping cart in this icon.
     // phone (desktop.js uses them to move a saved launcher over). Not part of the catalog.
     const retired = opts && opts.retired ? (GifOS.irl ? GifOS.irl.retired : []) : [];
     return Promise.all([
-      Promise.all(groups.map(encGroup)),
-      Promise.all(loose.filter(want).map(enc)).then(function (encoded) {
+      Promise.all(groups.map(encGroup)).then(function (folders) {
+        // Calendar sits in the Tools folder beside Clock.
         return calendarReady.then(function (cal) {
-          if (!cal || !want(cal)) return encoded;
-          return enc(cal).then(function (e) { encoded.push(e); return encoded; });
+          var tools = folders.find(function (f) { return f.name === 'Tools'; });
+          if (!cal || !tools || !want(cal)) return folders;
+          return enc(cal).then(function (e) { tools.apps.push(e); return folders; });
         });
       }),
+      Promise.all(loose.filter(want).map(enc)),
       Promise.all(retired.map((g) => enc(app(g.name, g.appId, g.accent, g.html, irlExtra(g))).then((e) => Object.assign(e, { oldId: g.oldId })))),
     ]).then((r) => ({ folders: r[0], loose: r[1], retired: r[2] }));
   }

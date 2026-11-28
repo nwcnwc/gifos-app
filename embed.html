@@ -73,16 +73,16 @@
     <div class="emb-chat-form emb-tr-foot"><button type="button" id="emb-tr-dl">Download</button><label class="emb-tr-shots" id="emb-tr-shots-row" title="When a shared screen changes and holds still, like a new slide, the transcript keeps one screenshot of it. Taken on this device from what you see: nothing is sent, and a screen you see blurred is never taken."><input type="checkbox" id="emb-tr-shots"><span id="emb-tr-shots-txt">Auto screenshots</span></label></div>
   </div>
   <p class="emb-audionote" id="emb-audionote" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg><span id="emb-audionote-txt">Audio only</span></p>
-  <div id="emb-info-panel" class="emb-info" role="dialog" aria-modal="true" aria-labelledby="emb-info-h" hidden>
-    <div class="emb-info-head"><h2 id="emb-info-h">About this broadcast</h2><button type="button" class="emb-info-close" id="emb-info-close">Close</button></div>
-    <div class="emb-info-body">
+  <div id="emb-info-panel" class="emb-info dlg-box" role="dialog" aria-modal="true" aria-labelledby="emb-info-h" hidden>
+    <div class="emb-info-head dlg-head"><h2 id="emb-info-h">About this broadcast</h2><button type="button" class="emb-info-close" id="emb-info-close">Close</button></div>
+    <div class="emb-info-body dlg-body">
       <p class="emb-info-title" id="emb-info-title"></p>
       <p class="emb-info-room" id="emb-m-watch" hidden><a id="emb-watch" target="_blank" rel="noopener noreferrer">View on gifos.app</a></p>
       <p class="emb-info-gifos"><span id="emb-info-blurb">GifOS — low-cost, AI-friendly live streaming.</span> <a id="emb-info-link" href="https://gifos.app/" target="_blank" rel="noopener">gifos.app</a></p>
     </div>
   </div>
 </div>
-<form id="emb-card" class="emb-card" hidden autocomplete="off">
+<form id="emb-card" class="emb-card dlg-box" hidden autocomplete="off">
   <h3 id="emb-card-title">Watch clearly</h3>
   <p id="emb-card-hint">Enter the password to watch clearly.</p>
   <input id="emb-pw" type="password" maxlength="64" placeholder="Password" autocomplete="off" aria-label="Room password">
@@ -96,6 +96,9 @@
      and this page's own view part (js/core/view/embed.js) in place of the meeting's view. -->
 <script src="js/gifos-store.js" defer></script>
 <script src="js/timings.js" defer></script>
+<!-- The clean resting address (gifos.app/embed): js/gifos-update.js rest(). The player follows releases itself (js/core/view/embed.js). -->
+<script src="js/gifos-update.js" defer></script>
+<script src="js/gifos-ed.js" defer></script>
 <script src="js/gifos-net.js" defer></script>
 <script src="js/meet-layout.js" defer></script>
 <script src="js/meet-debuglog.js" defer></script>
@@ -103,7 +106,6 @@
 <script src="js/meet-viewmode.js" defer></script>
 <script src="js/meet-power.js" defer></script>
 <script src="js/relay-config.js" defer></script>
-<script src="js/gifos-ed.js" defer></script>
 <script src="js/gifos-sign.js" defer></script>
 <script src="js/mesh/laws.js" defer></script>
 <script src="js/mesh/consts.js" defer></script>
@@ -188,6 +190,7 @@
 <script src="js/core/media/plane-browser.js" defer></script>
 <script src="js/gifos-fullscreen.js" defer></script>
 <script src="js/core/view/kit.js" defer></script>
+<script src="js/dialog.js" defer></script>
 <script src="js/meet-subs.js" defer></script>
 <script src="js/core/view/shareshots.js" defer></script>
 <script src="js/core/view/embed.js" defer></script>

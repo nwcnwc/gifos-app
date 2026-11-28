@@ -1034,6 +1034,11 @@
             sign: (act, extra) => (0, /*()*/__C.admSigned)(act, extra).then((w) => { if (!w) throw new Error('no host key'); return w; }),
             text: (k, en) => (0, /*()*/__C.uiText)(k, en),
             hasPassword: () => !!(__C.model && __C.model.door && __C.model.door.hasRoomPw()),
+            lang: () => (0, /*()*/__C.uiLang)(),
+            // The kind gifos.tv shows, detected here, never asked: a prerecorded video playing (Prerecorded), an agent
+            // host seat (Bot), else Live.
+            kind: () => (__C.model.room.rbNow() && __C.model.room.rbNow().v ? 'pre' : (__C.model.me.myStatus() && __C.model.me.myStatus().bot ? 'bot' : 'live')),
+            askCount: () => { const n = __C.model.net.meshNode(); if (n && typeof n.READ_THE_DOOR_COUNT === 'function') n.READ_THE_DOOR_COUNT(); },
           });
         } catch (e) {}
       }
@@ -6671,7 +6676,10 @@
       const lob = document.getElementById('lobby');
       const toggle = (id) => { const el = document.getElementById(id); el.style.display = el.style.display === 'none' ? '' : 'none'; };
       const selectLob = (which) => {
-        const modes = [['lob-join-btn', 'lob-join'], ['lob-admin-btn', 'lob-admin'], ['lob-open-seg', 'lob-open-panel']];
+        // One menu, two groups: start a meeting (Open, Host, Join: each ends in the one action button), and what is
+        // yours on this device (Rooms, Contacts: lists, painted by js/core/view/myroom.js and js/gifos-identity-ui.js).
+        const modes = [['lob-open-seg', 'lob-open-panel'], ['lob-admin-btn', 'lob-admin'], ['lob-join-btn', 'lob-join'], ['lob-rooms-seg', 'lob-rooms-panel'], ['lob-contacts-seg', 'lob-contacts-panel']];
+        const mine = which === 'lob-rooms-seg' || which === 'lob-contacts-seg';
         for (let i = 0; i < modes.length; i++) {
           const on = modes[i][0] === which;
           const b = document.getElementById(modes[i][0]);
@@ -6681,6 +6689,8 @@
             b.setAttribute('aria-selected', on ? 'true' : 'false');
             if (on) b.setAttribute('aria-describedby', 'lob-seg-note');
             else b.removeAttribute('aria-describedby');
+            // The row scrolls sideways when its words are longer than the screen (other languages, large text): keep the picked tab in view.
+            if (on && b.parentNode && b.parentNode.scrollWidth > b.parentNode.clientWidth) b.parentNode.scrollLeft = Math.max(0, b.offsetLeft - (b.parentNode.clientWidth - b.offsetWidth) / 2);
           }
           if (p) p.style.display = on ? '' : 'none';
         }
@@ -6695,6 +6705,12 @@
           } else if (which === 'lob-open-seg') {
             note.setAttribute('data-t', 'lobStartSub');
             note.textContent = (0, /*()*/__C.uiText)('lobStartSub', 'Majority rules: vote people off the stage or out of the meeting.');
+          } else if (which === 'lob-rooms-seg') {
+            note.setAttribute('data-t', 'lobRoomsSub');
+            note.textContent = (0, /*()*/__C.uiText)('lobRoomsSub', 'Rooms that are yours on this device.');
+          } else if (which === 'lob-contacts-seg') {
+            note.setAttribute('data-t', 'lobContactsSub');
+            note.textContent = (0, /*()*/__C.uiText)('lobContactsSub', 'People you can call. A call rings in your private room with them.');
           }
         }
         const adminErr = document.getElementById('lob-admin-err');
@@ -6702,6 +6718,7 @@
         if (adminErr) adminErr.hidden = which !== 'lob-admin-btn';
         if (joinErr) joinErr.hidden = which !== 'lob-join-btn';
         const goBtn = document.getElementById('lob-go');
+        if (goBtn) goBtn.style.display = mine ? 'none' : '';   // a list has its own buttons
         if (goBtn && !__C.model.consts.BC_INTENT()) {
           if (which === 'lob-join-btn') {
             goBtn.setAttribute('data-t', 'join');
@@ -6737,6 +6754,9 @@
       if (openName) openName.addEventListener('keydown', (e) => { if (e.key === 'Enter') doOpen(); });
       const openSeg = document.getElementById('lob-open-seg');
       if (openSeg) openSeg.onclick = () => { if (!__C.model.consts.BC_INTENT()) selectLob('lob-open-seg'); };
+      for (const id of ['lob-rooms-seg', 'lob-contacts-seg']) { const seg = document.getElementById(id); if (seg) seg.onclick = () => selectLob(id); }
+      // A room row in the Rooms tab opens like a Recent row: through the one way in.
+      { const rp = document.getElementById('lob-rooms-panel'); if (rp) rp.addEventListener('click', (e) => { const item = e.target.closest('[data-url]'); if (item) enterMeeting(item.getAttribute('data-url')); }); }
       const lobCam = document.getElementById('lob-cam');
       if (lobCam) lobCam.onclick = () => {
         if (__C.model.me.joinAv().cam) { setLobbyCam(false); return; }
@@ -6926,7 +6946,7 @@
         const id = sel ? sel.id : '';
         if (id === 'lob-join-btn') doJoin();
         else if (id === 'lob-admin-btn') doHost();
-        else doOpen();
+        else if (id === 'lob-open-seg') doOpen();
       };
       document.getElementById('lob-join-in').addEventListener('keydown', (e) => { if (e.key === 'Enter') doJoin(); });
       document.getElementById('lob-join-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') doJoin(); });
@@ -6976,6 +6996,7 @@
         if (openPanel) openPanel.style.display = 'none';
         const openSegEl = document.getElementById('lob-open-seg');
         if (openSegEl) openSegEl.style.display = 'none';
+        for (const id of ['lob-seg-gap', 'lob-rooms-seg', 'lob-contacts-seg', 'lob-rooms-panel', 'lob-contacts-panel']) { const el = document.getElementById(id); if (el) el.style.display = 'none'; }
         const welcome = document.getElementById('lob-welcome');
         if (welcome) welcome.style.display = 'none';
         const segNote = document.getElementById('lob-seg-note');
@@ -8709,11 +8730,11 @@
     function capCard(id, v, title, note, rows, ex) {
       let c = document.getElementById(id);
       if (!c) {
-        c = document.createElement('div'); c.id = id; c.className = 'capcard'; c.setAttribute('role', 'dialog');
+        c = document.createElement('div'); c.id = id; c.className = 'capcard dlg-box'; c.setAttribute('role', 'dialog');
         document.body.appendChild(c);
       }
       c.dataset.voice = v;
-      c.innerHTML = '<div class="capcard-t"></div><div class="capcard-body"><div class="capcard-n"></div><div class="capcard-ex"></div><div class="capcard-w"></div><div class="capcard-h"></div></div><div class="capcard-b dlg-actions"></div>';
+      c.innerHTML = '<div class="capcard-t dlg-head"></div><div class="capcard-body dlg-body"><div class="capcard-n"></div><div class="capcard-ex"></div><div class="capcard-w"></div><div class="capcard-h"></div></div><div class="capcard-b dlg-actions"></div>';
       c.querySelector('.capcard-t').textContent = title;
       c.querySelector('.capcard-w').textContent = (0, /*()*/__C.uiText)('capWhich', 'Which is right?');
       c.querySelector('.capcard-n').textContent = note || '';
@@ -8799,9 +8820,9 @@
       if (c && !c.hidden) { if (!s || s.lang !== c.dataset.lang) c.hidden = true; return; }   // asking already, or no longer true
       if (!s) return;
       const heard = (0, /*()*/__C.capLangName)(s.lang), mine = (0, /*()*/__C.capLangName)((0, /*()*/__C.capLangMine)());
-      if (!c) { c = document.createElement('div'); c.id = 'caplang'; c.className = 'capcard'; c.setAttribute('role', 'dialog'); document.body.appendChild(c); }
+      if (!c) { c = document.createElement('div'); c.id = 'caplang'; c.className = 'capcard dlg-box'; c.setAttribute('role', 'dialog'); document.body.appendChild(c); }
       c.dataset.lang = s.lang;
-      c.innerHTML = '<div class="capcard-t"></div><div class="capcard-body"><div class="capcard-h"></div></div><div class="capcard-b dlg-actions"></div>';
+      c.innerHTML = '<div class="capcard-t dlg-head"></div><div class="capcard-body dlg-body"><div class="capcard-h"></div></div><div class="capcard-b dlg-actions"></div>';
       c.querySelector('.capcard-t').textContent = (0, /*()*/__C.uiText)('capLangAsk', 'Others hear you speaking {heard}, but your captions listen for {mine}. Switch your captions to {heard}?').split('{heard}').join(heard).split('{mine}').join(mine);
       c.querySelector('.capcard-h').textContent = (0, /*()*/__C.uiText)('capLangLater', 'You can change this any time: Settings, then Captions language.');
       const b = c.querySelector('.capcard-b');
@@ -10060,7 +10081,8 @@
         // A dialog (an app's abilities card, a sheet) is a press too: its
         // buttons were dead to every tap that came after a quiet spell.
         // The content bar never tucks, so its tabs and tools, its exit and the view menu are presses too.
-        if (t && t.closest && t.closest('.fitbtn, .topchip, #unmute, #showcam, #chatnote, #chatpanel, #chatbadge, #chatpreview, .name-modal, #waitlist, #tilewin, .tile-open, #appbar, .ct-bar, .ct-exit, #viewpick, .ctarea button, ' + CHROME_DIALOGS)) {
+        // So is the My Room bar ("Give my card", "Swap cards"): it never tucks either, and its first tap was eaten.
+        if (t && t.closest && t.closest('.fitbtn, .topchip, #unmute, #showcam, #chatnote, #chatpanel, #chatbadge, #chatpreview, .name-modal, #waitlist, #tilewin, .tile-open, #appbar, .ct-bar, .ct-exit, #viewpick, .ctarea button, #mr-bar, ' + CHROME_DIALOGS)) {
           wakeOnClick = true;
           return;
         }
