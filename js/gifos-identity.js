@@ -130,7 +130,7 @@
     gifos_home_view: (t) => /^[a-z][a-z0-9-]{0,23}$/.test(t),                // the look of my Home Screen (js/home-view.js)
     gifos_home_widgets: (t) => { if (t.length > 6000) return false; try { const o = JSON.parse(t); return !!o && o.v === 1 && typeof o.looks === 'object'; } catch (e) { return false; } },   // which widgets I put where (js/home-widgets.js)
   };
-  const DEVICE_ONLY = ['gifos_ui_scale', 'gifos_meet_bar', 'gifos_bar_pos_v1', 'gifos_self_view_v1', 'gifos_mix', 'gifos_vq', 'gifos_myroom_stay', 'gifos_bell',
+  const DEVICE_ONLY = ['gifos_sync_status', 'gifos_ui_scale', 'gifos_meet_bar', 'gifos_bar_pos_v1', 'gifos_self_view_v1', 'gifos_mix', 'gifos_vq', 'gifos_myroom_stay', 'gifos_bell',
     'gifos_bell_handles', 'gifos_cc_engine', 'gifos_cc_words', 'gifos_cc_ears', 'gifos_cc_whisper_model', 'gifos_cc_stt_url', 'gifos_pin', 'gifos_channel'];
   const setKey = (rid) => (rid.indexOf('set/') === 0 ? rid.slice(4) : '');
   const okSetting = (k, v) => !!FOLLOW[k] && (v === null || (typeof v === 'string' && FOLLOW[k](v)));
@@ -282,6 +282,43 @@
 
   // ---- merge ---------------------------------------------------------------------------------------------------------
   const later = (a, b) => (a.t !== b.t ? a.t > b.t : String(a.w) > String(b.w));   // is a later than b
+  // ---- sync across my devices (docs/identity.md "Sync across my devices") ------------------------------------------------
+  // ONE record, 'sync/key': { v: { k (32 random bytes, base64), gen }, t, w } while sync is on, { d: 1, gen, t, w } once it is
+  // turned off. It is merged by generation, never by the clock: a higher generation wins; the same generation, a removal beats
+  // the key (a skewed clock cannot switch it back on; turning it on again is always the next generation); two devices that
+  // switched it on at once keep the lower key. It rides in `keep` (a kind older pages carry untouched).
+  const SYNC_RID = 'sync/key';
+  const okGen = (g) => Number.isInteger(g) && g >= 1 && g <= 1000000;
+  const syncGen = (r) => (r ? (r.d ? (+r.gen || 0) : (r.v && +r.v.gen) || 0) : 0);
+  function okSyncRec(r) { return r.d ? okGen(r.gen) : !!r.v && typeof r.v === 'object' && okGen(r.v.gen) && typeof r.v.k === 'string' && /^[A-Za-z0-9+/]{43}=?$/.test(r.v.k); }
+  function syncPick(a, b) {
+    const ga = syncGen(a), gb = syncGen(b);
+    if (ga !== gb) return ga > gb ? a : b;
+    if (!!a.d !== !!b.d) return a.d ? a : b;
+    if (a.d) return later(b, a) ? b : a;
+    return a.v.k <= b.v.k ? a : b;
+  }
+  // syncState() -> { on, gen, k }: whether this identity keeps its devices converged, and the key that says so.
+  function syncState() {
+    const sh = shadow(), r = sh && sh.keep && sh.keep[SYNC_RID];
+    if (!r || !okRec(r) || !okSyncRec(r)) return { on: false, gen: 0, k: '' };
+    return r.d ? { on: false, gen: r.gen, k: '' } : { on: true, gen: r.v.gen, k: r.v.k };
+  }
+  function syncSet(on) {
+    const sh = shadow() || begin(), cur = syncState();
+    if (!!on === cur.on) return cur;
+    const r = sh.keep[SYNC_RID], gen = syncGen(r);
+    sh.keep[SYNC_RID] = on ? { t: tickOf(sh), w: sh.dev, v: { k: b64(rand(32)), gen: gen + 1 } } : { t: tickOf(sh), w: sh.dev, d: 1, gen };
+    writeShadow(sh);
+    return syncState();
+  }
+  // syncView() -> { dev, recs, devices }: what the sync part digests and sends (the notes are brought up to date first).
+  function syncView() {
+    const sh = shadow(); if (!sh) return null;
+    scan();
+    const cur = shadow(), recs = records(cur);
+    return { dev: cur.dev, id: cur.id, recs, devices: Object.keys(recs).filter((rid) => classOf(rid) === 'device' && !recs[rid].d).map((rid) => rid.slice(7)) };
+  }
   function okRec(r) { return !!r && typeof r === 'object' && typeof r.t === 'number' && isFinite(r.t) && (r.d === 1 || r.v !== undefined); }
   // mergeRecs(mine, theirs) -> { recs, news }: pure. news lists what the merge changed on my side.
   function mergeRecs(mine, theirs) {
@@ -289,9 +326,11 @@
     const rids = new Set(Object.keys(mine).concat(Object.keys(theirs)));
     for (const rid of rids) {
       let b = okRec(theirs[rid]) ? theirs[rid] : null; const a = mine[rid];
+      if (b && classOf(rid) === 'sync' && (rid !== SYNC_RID || !okSyncRec(b))) b = null;   // only the one sync key, only well-formed
       if (b && setKey(rid) && FOLLOW[setKey(rid)] && (b.d || !okSetting(setKey(rid), b.v))) b = null;   // a bad value from outside is not taken
       if (!b) { if (a) out[rid] = a; continue; }   // a bad record of theirs, none of mine: nothing
       if (!a) { out[rid] = b; news.push(rid); continue; }
+      if (classOf(rid) === 'sync') { out[rid] = syncPick(a, b); if (out[rid] !== a && canon(out[rid]) !== canon(a)) news.push(rid); continue; }   // by generation, never by clock
       let pick;
       if (KEEPS(rid) && !!a.d !== !!b.d) pick = a.d ? b : a;                       // never removed: the one that is there
       else if (classOf(rid) === 'room' && !!a.d !== !!b.d) pick = a.d ? b : a;     // a room's key: settled below with its private room
@@ -723,6 +762,7 @@
     dropHostPw,
     FOLLOW: Object.keys(FOLLOW), DEVICE_ONLY: DEVICE_ONLY.slice(), follows: (k) => !!FOLLOW[k],
     exists, worth, begin, scan, doc, take, peek, counts, status,
+    syncState, syncSet, syncView, SYNC_RID,
     slots, addPassphrase, addPasskey, removeSlot,
     pack, look, open, sync, fileBytes, FILE_ID, FILE_NAME, MANIFEST,
     noteSaved, noteLater, nudge,
