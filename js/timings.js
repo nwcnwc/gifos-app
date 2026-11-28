@@ -371,6 +371,8 @@
     X2_KEEP_MS: 15000,   // ms
     X402_RESUME_MS: 6000,   // ms
     X402_RESUME_TRIES: 3,   // count
+    XV_BENIGN_MARGIN: 0.1,   // ratio
+    XV_BENIGN_MS: 60000,   // ms
     XV_BURST_FRAME_MS: 100,   // ms
     XV_BURST_MS: 1000,   // ms
     XV_BURST_N: 4,   // count
@@ -397,7 +399,6 @@
     XV_SENSE_DIFF: 10,   // count
     XV_SENSE_MS: 250,   // ms
     XV_STRONG: 0.7,   // ratio
-    XV_WEAK_BUDGET_MS: 30000,   // ms
     holdMs: 2500,   // ms
     tickMs: 500,   // ms
   });
