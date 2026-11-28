@@ -95,11 +95,11 @@ const MEDIA_ACTS = new Set([
   'dropEndedRemoteTracks', 'dutyMuteTick', 'facePaint', 'headLinkUp', 'holdMainVideo', 'keepAwake',
   'keepMeetingAudio', 'kfEv', 'kickJob', 'kickMainAudio', 'kickMainVideo', 'kickStageMic', 'maybeShowFlip',
   'noteAudioDevices', 'noteReship', 'paintTiming', 'parkSender', 'playTileVideo', 'producerKey', 'quietAtDoor',
-  'reactSing', 'recDraw', 'recNoteStruct', 'reconcileMosaic', 'refreshOutbound', 'refreshTrBtn', 'releaseAudio',
-  'repaintRedun', 'resumeReload', 'retireMixTracks', 'rowEdge', 'schedClaim', 'schedReconcile', 'startScreenShare',
-  'startWhisper', 'stgBeatIn', 'stgCarry', 'stgFoNote', 'stopBlurPipe', 'stopScreenShare', 'stopSpeech',
-  'stopWhisper', 'swapPicNote', 'syncAvatarFeed', 'syncSpeech', 'toggleSing', 'unbindClaim', 'warnRecorderNewApp',
-  'withScrPipe', 'wkQuietBind', 'wspEnqueue', 'wspRebind', 'wspResume', 'wspStop', 'wspSync',
+  'reactSing', 'recNoteStruct', 'reconcileMosaic', 'refreshOutbound', 'refreshTrBtn', 'releaseAudio', 'repaintRedun',
+  'resumeReload', 'retireMixTracks', 'rowEdge', 'schedClaim', 'schedReconcile', 'startScreenShare', 'startWhisper',
+  'stgBeatIn', 'stgCarry', 'stgFoNote', 'stopBlurPipe', 'stopScreenShare', 'stopSpeech', 'stopWhisper', 'swapPicNote',
+  'syncAvatarFeed', 'syncSpeech', 'toggleSing', 'unbindClaim', 'warnRecorderNewApp', 'withScrPipe', 'wkQuietBind',
+  'wspEnqueue', 'wspRebind', 'wspResume', 'wspStop', 'wspSync',
 ]);
 // MEDIA-ACTS:END
 

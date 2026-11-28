@@ -49,7 +49,7 @@
   },
   "prodPack": null,
   "qaStageSt": null,
-  "recDraw": null,
+  "recDirect": false,
   "recMatchMix": false,
   "recMode": null,
   "recQuality": "",
