@@ -4,7 +4,7 @@
 # (the Offline Captions / Whisper encoder and decoder, tiny and base, the
 # on-device captions engine and models phones run, js/ondevice/models.json, and
 # the camera background-effects runtime and model, js/bgfx/models.json, and the
-# on-device explicit-picture check, js/safeguard/models.json), on
+# on-device explicit-picture check, js/safeguard/models.json and video.json), on
 # Cloudflare R2 behind the gifos.app edge cache, so a page that picks Whisper
 # never contacts an outside site. The deploy workflow runs it before the site
 # goes up: --check, --apply, then --verify, and the deploy stops if --verify
@@ -120,6 +120,20 @@ if [ -f "$SAFEGUARD_LIST" ]; then
   MODELS="$MODELS
 $(python3 -I -c 'import json,sys; d=json.load(open(sys.argv[1]))
 for f in d["files"].values(): print(f["key"], f["sha256"], f["bytes"], f["src"])' "$SAFEGUARD_LIST")"
+fi
+# The on-device check for live video (js/safeguard/video.json): its runtimes and models, each downloaded straight
+# from its pinned source and checked like the rest.
+VIDEO_LIST="$APP/js/safeguard/video.json"
+if [ -f "$VIDEO_LIST" ]; then
+  MODELS="$MODELS
+$(python3 -I -c 'import json,sys
+def walk(o):
+    if isinstance(o, dict):
+        if "key" in o and "sha256" in o and "src" in o: print(o["key"], o["sha256"], o["bytes"], o["src"]); return
+        for v in o.values(): walk(v)
+    elif isinstance(o, list):
+        for v in o: walk(v)
+walk(json.load(open(sys.argv[1])))' "$VIDEO_LIST")"
 fi
 while read -r key sha _bytes src; do
   case "$key" in */"$sha"/*) ;; *) die "key $key does not hold its sha256" ;; esac

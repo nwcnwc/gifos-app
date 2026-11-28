@@ -676,6 +676,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
 <script src="js/meet-power.js" defer></script>
 <script src="js/mesh-pipe.js" defer></script>
 <script src="js/meet-bgfx.js" defer></script>
+<script src="js/gifos-explicit.js" defer></script>
 <script src="js/relay-config.js" defer></script>
 <script src="js/runtime.js" defer></script>
 <script src="js/meet-host.js" defer></script>
@@ -1449,6 +1450,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           <label class="admopt"><input type="checkbox" id="adm-chat-chist"><span><span data-t="admChatChist">Late joiners see earlier messages</span><small data-t="admChatChistSub">Off: new arrivals start with an empty chat.</small></span></label>
           <label class="admopt"><input type="checkbox" id="adm-chat-slow"><span><span data-t="admChatSlow">Slow mode</span><small data-t="admChatSlowSub">Guests post at most one line every 10 seconds.</small></span></label>
           <label class="admopt"><input type="checkbox" id="adm-chat-clink"><span><span data-t="admChatClink">Links in chat</span><small data-t="admChatClinkSub">Off: a guest's links stay plain text.</small></span></label>
+        </section>
+        <section id="adm-xv" aria-labelledby="adm-xv-h">
+          <h4 id="adm-xv-h" data-t="admXvH">Video safety</h4>
+          <label class="admopt"><input type="checkbox" id="adm-xblk"><span><span data-t="admXblk">Block explicit content</span><small id="adm-xblk-sub">GifOS pages check video on your device and hide sexually explicit pictures. Nothing is sent to GifOS or anyone else. GifOS cannot see your meetings.</small></span></label>
         </section>
         <section id="adm-ai" aria-labelledby="adm-ai-h">
           <h4 id="adm-ai-h" data-t="admAiNotes">AI notes</h4>
