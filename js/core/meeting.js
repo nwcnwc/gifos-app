@@ -8061,7 +8061,37 @@
     let relayTv = false, relayHl = false;   // relayHl: this relay takes a host proof on {t:'acl'} (joined.hl; HOSTLATE)
     const turnFacts = new Map();   // link id → { id, a, b, up, v, s, c, g, va, vb, at }
     const turnSubs = new Map();    // subscriber pid → { tier (display), links (signed turnVideoLinks), exp, ticket, at }
-    const turnLog = [];
+    // THE TURN TRACE IN THE DEBUG EXPORT (HOTELFIX, the 'turn' ring, debug on only): every line the TURN links say (turn-look, turn-direct in
+    // place, turn-direct lost in place, turn-move, sub-walk, turn-link closed with its reason ...), plus what the page adds here: the
+    // selected ICE pair's candidate types on every change (ice-pair: host / srflx / prflx / relay, never an address), ICE and connection
+    // state changes (ice-state / pc-state: 'disconnected' and 'failed' are a lost consent check or path), candidate errors (code only),
+    // relay socket close codes and the door re-entry with its reason (the mesh trace's REQUEUE / SUB.10-WALK ...). One line = {t: ms, s}.
+    // No secret goes in: no address, no credential, no TURN url. (One declaration: the core's statement count and step numbers stay put.)
+    const turnLog = [],
+      turnTrace = (s) => {
+        if (!DEBUG_ON) return;
+        const R = window.__turnTrace || (window.__turnTrace = []);
+        R.push({ t: Date.now(), s: String(s).slice(0, 240) });
+        if (R.length > 3000) R.splice(0, 1000);
+      },
+      TURN_MESH_EV = /^(REQUEUE|SUB\.10-WALK|SUB\.2-GO|TAKE|RELAY-CLOSE|REDIAL-BACKOFF|PC-PAGECLOSE|LINK-DOWN|LINK-UP|L22-CLOSE|PC-DIALFAIL)$/,
+      turnMeshCopy = (line) => {   // the mesh trace lines that explain a link's or the door's life, copied beside the TURN lines
+        try { const m = /"e":"([^"]+)"/.exec(line); if (m && TURN_MESH_EV.test(m[1])) { const d = /"d":"([^"]*)"/.exec(line); turnTrace('mesh ' + m[1] + (d ? ' ' + d[1] : '')); } } catch (e) {}
+      },
+      icePairNote = (p, pc, why) => {
+        if (!DEBUG_ON || !pc || typeof pc.getStats !== 'function') return;
+        pc.getStats().then((st) => {
+          let sel = null; const by = new Map(); st.forEach((x) => by.set(x.id, x));
+          st.forEach((x) => { if (!sel && x.type === 'transport' && x.selectedCandidatePairId) sel = by.get(x.selectedCandidatePairId) || null; });
+          if (!sel) st.forEach((x) => { if (!sel && x.type === 'candidate-pair' && x.nominated && x.state === 'succeeded' && x.selected !== false) sel = x; });
+          const lc = sel && by.get(sel.localCandidateId), rc = sel && by.get(sel.remoteCandidateId);
+          if (!lc || !rc) return;
+          const key = lc.candidateType + '/' + rc.candidateType + '/' + (lc.relayProtocol || lc.protocol || '');
+          if (pc.__pairKey === key) return;
+          const was = pc.__pairKey || 'none'; pc.__pairKey = key;
+          turnTrace('ice-pair ' + String(p.id).slice(0, 8) + ' local=' + lc.candidateType + ' remote=' + rc.candidateType + ' proto=' + (lc.relayProtocol || lc.protocol || '?') + ' was=' + was + ' (' + why + ')');
+        }).catch(() => {});
+      };   // TURNTRACE-END
     const turnHolds = (pid) => !!(turnLinks && turnLinks.holds(pid));
     // SUB.5: peers a plain pc of mine (no TURN link, no relay-only settings) reached 'connected' with: a proven direct path,
     // until my network changes ('online'). It only picks a standby's transport; the standby's own dial is the proof.
@@ -8396,7 +8426,7 @@
       turnWeb.set(pid, end);
     }
     function relaySendSealedOrDc(p, f) { if (p.dc && p.dc.readyState === 'open') { try { dcSend(p, f); return; } catch (e) {} } relaySendSealed(p.id, 'tv', f); }
-    function turnNote(s) { if (typeof clog === 'function') clog(s); turnLog.push(Math.round(performance.now()) + ' ' + s); if (turnLog.length > 300) turnLog.splice(0, 100); }
+    function turnNote(s) { if (typeof clog === 'function') clog(s); turnLog.push(Math.round(performance.now()) + ' ' + s); if (turnLog.length > 300) turnLog.splice(0, 100); turnTrace(s); }
     // A link's fact, from one of its two ends only (the opener speaks for up, video, order; each end for its own side).
     function turnFactIn(from, f) {
       if (!f || typeof f !== 'object' || typeof f.id !== 'string' || f.id.length > 12 || typeof f.a !== 'string' || typeof f.b !== 'string') return;
@@ -8798,11 +8828,13 @@
         (0, /*()*/__V.wireFsResize)(p);
       };
       pc.onicecandidate = (ev) => { if (p.pc !== pc) return; if (ev.candidate && / typ relay/.test(ev.candidate.candidate || '')) { pc.__relayCand = true; if (!pc.__turnSeenAt) pc.__turnSeenAt = Date.now(); } noteIce(p.id, ev.candidate || null); };
+      pc.addEventListener('icecandidateerror', (ev) => { if (DEBUG_ON && p.pc === pc) turnTrace('ice-cand-error ' + String(p.id).slice(0, 8) + ' code=' + (ev && ev.errorCode) + ' ' + String((ev && ev.errorText) || '').replace(/[^ -~]/g, '').slice(0, 60)); });
       pc.addEventListener('icecandidateerror', (ev) => { if (!pc.__turnSeenAt && turnServerWord(pc, ev && ev.url)) pc.__turnSeenAt = Date.now(); });   // the browser looked my TURN servers' names up and tried one: the web path's clock (turnWebClock)
       pc.addEventListener('icegatheringstatechange', () => { if (pc.iceGatheringState === 'gathering' && !pc.__gatherAt) pc.__gatherAt = Date.now(); });   // when this connection began looking for its paths (the web path's clock)
       pc.oniceconnectionstatechange = () => {
         if (p.pc !== pc) return;
         const ice = pc.iceConnectionState;
+        if (DEBUG_ON) { turnTrace('ice-state ' + String(p.id).slice(0, 8) + ' ' + ice + (ice === 'disconnected' || ice === 'failed' ? ' (the path check or consent failed)' : '')); if (ice === 'connected' || ice === 'completed') icePairNote(p, pc, 'ice ' + ice); }
         // The finish window starts once, when ICE leaves 'new', and only while
         // the pair is not already up. A connected pair must not be stamped:
         // a later drop would find the window already expired. Safari can
@@ -8814,6 +8846,7 @@
       pc.onconnectionstatechange = () => {
         if (p.pc !== pc) return; // a replaced transport's tail events — not this pair's truth
         p.connected = pc.connectionState === 'connected';
+        if (DEBUG_ON) { turnTrace('pc-state ' + String(p.id).slice(0, 8) + ' ' + pc.connectionState); if (p.connected) { icePairNote(p, pc, 'connected'); try { const it = pc.sctp && pc.sctp.transport && pc.sctp.transport.iceTransport; if (it && !it.__hfPair) { it.__hfPair = 1; it.addEventListener('selectedcandidatepairchange', () => { if (p.pc === pc) icePairNote(p, pc, 'pair change'); }); } } catch (e) {} } }
         // deadSince: how long this transport has been in a HARD state — the
         // persistence gate for the rebuild-on-offer path (transients recover
         // via ICE restart and must never trigger a teardown)
@@ -10087,7 +10120,7 @@
     const seatAskAt = new Map();
     // a page-side friend-hop line in the seat trace's own form (DEBUG only): the carrier a page asked and why
     function fhTrace(e, d) { if (!DEBUG_ON) return; try { meshTraceSink('{"t":' + Math.floor(Date.now() / 500) + ',"s":-1,"e":"' + e + '","c":null,"d":"' + String(d).replace(/["\\]/g, '') + '"}'); } catch (x) {} }
-    function meshTraceSink(line) { const G = window.__meshTraceRing || (window.__meshTraceRing = { ring: [], seq: 0 }); G.ring.push([++G.seq, line]); if (G.ring.length > 4000) G.ring.splice(0, 1000); }
+    function meshTraceSink(line) { const G = window.__meshTraceRing || (window.__meshTraceRing = { ring: [], seq: 0 }); G.ring.push([++G.seq, line]); turnMeshCopy(line); if (G.ring.length > 4000) G.ring.splice(0, 1000); }
     window.__meshPortPage = { pcbye: (pid, why) => { try { meshNode && meshNode.__pc && meshNode.__pc.bye(pid, why); } catch (e) {} }, dcOpen: (pid) => { const p = peers.get(pid); return !!(p && p.dc && p.dc.readyState === 'open'); } };
     function seatAsked(pid) { const at = seatAskAt.get(pid); return at != null && Date.now() - at < 60000; }
     // A2's offer marks cross on the pair's own dc, whoever sent the SDP (the id-order initiator offers, a polite
@@ -20583,6 +20616,7 @@
           pip: window.__pipTrace || null, view: window.__viewTrace || null, content: window.__contentTrace || null,
           meters: (typeof dbgMeterKit !== 'undefined' && dbgMeterKit) ? dbgMeterKit.ring() : null,
           caps: window.__capTrace || null, chat: window.__chatTrace || null, av: window.__avTrace || null,
+          turn: window.__turnTrace || null,
         }),
         snapshot: () => {
           const d = window.__gifosVideo && window.__gifosVideo.debugDump ? window.__gifosVideo.debugDump() : null;
