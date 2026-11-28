@@ -175,10 +175,10 @@
       if (!d || !d.body) return resolve();
       const old = d.getElementById('gifos-store-sorry'); if (old) old.remove();
       const wrap = d.createElement('div');
-      wrap.id = 'gifos-store-sorry';
+      wrap.id = 'gifos-store-sorry'; wrap.className = 'dlg-backdrop';
       wrap.setAttribute('role', 'alertdialog'); wrap.setAttribute('aria-modal', 'true'); wrap.setAttribute('aria-labelledby', 'gifos-store-sorry-title');
       wrap.style.cssText = 'position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:1rem';
-      const box = d.createElement('div');
+      const box = d.createElement('div'); box.className = 'dlg-box';
       box.style.cssText = 'background:#1b1b2a;color:#e8e8f4;border-radius:.8rem;padding:1.1rem;max-width:22rem;font:16px/1.4 system-ui';
       const h = d.createElement('h3'); h.id = 'gifos-store-sorry-title'; h.style.cssText = 'margin:0 0 .5rem;font-size:18px';
       h.textContent = word('sorryTitle', TEXT.sorryTitle);

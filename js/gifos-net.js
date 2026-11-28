@@ -992,8 +992,9 @@
     tvouch: { to: { str: 16, re: RELAY_DEV_RE }, l: { str: 3, re: /^[lsc][0-9]{1,2}$/ } },   // a seated greeter asks the relay to vouch for one TURN link (gifos shared/turn-ticket.js)
     capture: { tk: { obj: RELAY_TICKET }, w: { obj: RELAY_ORDER } },   // an open room taken by a $5/$10 subscriber: the meeting ticket and an order signed by its key
     capren: { tk: { obj: RELAY_TICKET } },                             // the captor's renewed ticket
-    acl: { tk: { obj: RELAY_TICKET } },                                // THE ROOM ACL: a meeting right for this meeting, shown so the relay adds its room-scoped permissions (docs/relay-lockdown.md "Meeting size: who decides")
+    acl: { tk: { obj: RELAY_TICKET }, hp: { obj: RELAY_ORDER, opt: 1 } },   // hp: a host who signed in after connecting proves the host key (HOSTLATE; only to a relay whose joined says hl:1)   // THE ROOM ACL: a meeting right for this meeting, shown so the relay adds its room-scoped permissions (docs/relay-lockdown.md "Meeting size: who decides")
     aclq: {},                                                          // THE LICENSE: read the room's permissions (hosted rooms); the relay answers {t:'acl', l, s}
+    tvcnt: {},                                                         // THE DOOR'S COUNT: a listed room's host asks for gifos.tv ranking; the relay answers {t:'tvcnt', sp, sig}
     tdoors: { q: { list: 16, item: { str: 16, re: RELAY_DEV_RE }, opt: 1 } },   // the meeting's live subroom doors, signed by the relay for the TURN service; q: devices its signed answer says live or gone (a SUB.3 re-pipe ask)
   };
   function sealedOk(m) {

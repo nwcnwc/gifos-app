@@ -49,7 +49,7 @@
  */
 'use strict';
 
-var SHELL_VERSION = 'v35'; // v35: the Home views (js/home-view.js, css/home-view.css) join the shell. v34: the My identity words (i18n/<locale>/identity.json) join the shell. v33: My identity (js/gifos-identity.js, js/gifos-identity-ui.js) joins the shell. v32: the subscription's cards (js/core/view/subs.js) join the shell beside js/meet-subs.js, which is now logic only. v31: js/core/link.js (the one room-link grammar) joins the shell: every page reads its address with it. v30: the embed player's words (i18n/<locale>/embed.json) join the shell. v29: the meeting and broadcast pages (meet.html, cast.html) and their surfaces join the shell; run.html is the app runtime with its audio view (js/core/view/audio.js, css/run.css). v28: embed.html (gifos.app/embed, the broadcast player page) and its view part, and welcome.html (gifos.app/welcome), join the shell. v27: the subscription page's words join the shell; pages are kept under the clean address the host serves them at (/store, not only /store.html), never with a redirect mark, and an offline .html address is redirected to it; (v26: the meeting page runs from js/core (core, media plane, view, linker; in the page bundle when published); (v25: My library streams sealed recordings through this worker; (v24: My library (the /library page and its client); (v23: js/timings.js joins the shell (the meeting page's waits and timeouts) (v22: css/meet-polish.css joins the shell (v21: css/meet.css joins the shell (the meeting styles moved out of run.html) (v20: js/dialog.js joins the shell (the dialogs' scroll frame, parsed by every page) (v19: 0.9.25 cut (shell now holds every en catalog and the new version.json/changelog) (v18: every surface's en catalog joins the shell, plus meet.json and the built-in apps (v17: gifos-i18n.js and the en catalogs join the shell (v16: 0.9.24 hotfix, gifos-update.js reads a four-part `latest`; v15: gifos-charge.js joins the shell)
+var SHELL_VERSION = 'v37'; // v37: 0.9.28.63 merge: both v36 changes below. v36: js/ring-standby.js (Ring me on this device, standing by while GifOS is open) joins the shell. v35: the Home views (js/home-view.js, css/home-view.css) join the shell. v34: the My identity words (i18n/<locale>/identity.json) join the shell. v33: My identity (js/gifos-identity.js, js/gifos-identity-ui.js) joins the shell. v32: the subscription's cards (js/core/view/subs.js) join the shell beside js/meet-subs.js, which is now logic only. v31: js/core/link.js (the one room-link grammar) joins the shell: every page reads its address with it. v30: the embed player's words (i18n/<locale>/embed.json) join the shell. v29: the meeting and broadcast pages (meet.html, cast.html) and their surfaces join the shell; run.html is the app runtime with its audio view (js/core/view/audio.js, css/run.css). v28: embed.html (gifos.app/embed, the broadcast player page) and its view part, and welcome.html (gifos.app/welcome), join the shell. v27: the subscription page's words join the shell; pages are kept under the clean address the host serves them at (/store, not only /store.html), never with a redirect mark, and an offline .html address is redirected to it; (v26: the meeting page runs from js/core (core, media plane, view, linker; in the page bundle when published); (v25: My library streams sealed recordings through this worker; (v24: My library (the /library page and its client); (v23: js/timings.js joins the shell (the meeting page's waits and timeouts) (v22: css/meet-polish.css joins the shell (v21: css/meet.css joins the shell (the meeting styles moved out of run.html) (v20: js/dialog.js joins the shell (the dialogs' scroll frame, parsed by every page) (v19: 0.9.25 cut (shell now holds every en catalog and the new version.json/changelog) (v18: every surface's en catalog joins the shell, plus meet.json and the built-in apps (v17: gifos-i18n.js and the en catalogs join the shell (v16: 0.9.24 hotfix, gifos-update.js reads a four-part `latest`; v15: gifos-charge.js joins the shell) v36: the looks registry, widgets, Clock and Calendar words (js/home-widgets.js, js/home-looks/*.js, i18n/en/home.json, apps/clock.json, apps/calendar.json) join the shell. (v36 main) v35: the Home views (js/home-view.js, css/home-view.css) join the shell. v34: the My identity words (i18n/<locale>/identity.json) join the shell. v33: My identity (js/gifos-identity.js, js/gifos-identity-ui.js) joins the shell. v32: the subscription's cards (js/core/view/subs.js) join the shell beside js/meet-subs.js, which is now logic only. v31: js/core/link.js (the one room-link grammar) joins the shell: every page reads its address with it. v30: the embed player's words (i18n/<locale>/embed.json) join the shell. v29: the meeting and broadcast pages (meet.html, cast.html) and their surfaces join the shell; run.html is the app runtime with its audio view (js/core/view/audio.js, css/run.css). v28: embed.html (gifos.app/embed, the broadcast player page) and its view part, and welcome.html (gifos.app/welcome), join the shell. v27: the subscription page's words join the shell; pages are kept under the clean address the host serves them at (/store, not only /store.html), never with a redirect mark, and an offline .html address is redirected to it; (v26: the meeting page runs from js/core (core, media plane, view, linker; in the page bundle when published); (v25: My library streams sealed recordings through this worker; (v24: My library (the /library page and its client); (v23: js/timings.js joins the shell (the meeting page's waits and timeouts) (v22: css/meet-polish.css joins the shell (v21: css/meet.css joins the shell (the meeting styles moved out of run.html) (v20: js/dialog.js joins the shell (the dialogs' scroll frame, parsed by every page) (v19: 0.9.25 cut (shell now holds every en catalog and the new version.json/changelog) (v18: every surface's en catalog joins the shell, plus meet.json and the built-in apps (v17: gifos-i18n.js and the en catalogs join the shell (v16: 0.9.24 hotfix, gifos-update.js reads a four-part `latest`; v15: gifos-charge.js joins the shell)
 var CACHE = 'gifos-shell-' + SHELL_VERSION;
 
 // ONE CACHE KEY PER FILE. pages.yml stamps `?v=<sha>` onto every local css/js
@@ -124,13 +124,13 @@ var CORE = [
   '/css/desktop.css', '/css/home-view.css', '/css/meet.css', '/css/meet-polish.css',
   '/js/gifos-gif.js', '/js/gifos-help.js', '/js/gifos-charge.js', '/js/gifos-sign.js', '/js/gifos-ed.js', '/js/gifos-lock.js', '/js/gifos-identity.js', '/js/gifos-identity-ui.js', '/js/gifos-zip.js', '/js/gifos-icons.js',
   '/js/gifos-themes.js', '/js/gifos-avatar.js', '/js/gifos-store.js', '/js/gifos-install.js', '/js/gifos-fullscreen.js', '/js/irl-apps.js', '/js/sample-apps.js', '/js/store.js', '/js/gifos-cash.js',
-  '/js/dialog.js', '/js/desktop.js', '/js/home-view.js', '/js/runtime.js', '/js/meet-host.js', '/js/camera-studio.js', '/js/relay-config.js', '/js/sw-register.js', '/js/build.js', '/js/build-badge.js', '/js/gifos-update.js', '/js/timings.js',
+  '/js/dialog.js', '/js/desktop.js', '/js/home-widgets.js', '/js/home-view.js', '/js/home-looks/glass.js', '/js/home-looks/orbit.js', '/js/home-looks/pulse.js', '/js/runtime.js', '/js/meet-host.js', '/js/camera-studio.js', '/js/relay-config.js', '/js/sw-register.js', '/js/build.js', '/js/build-badge.js', '/js/gifos-update.js', '/js/timings.js', '/js/ring-standby.js',
   '/js/gifos-i18n.js', '/js/gifos-library.js', '/js/library.js', '/i18n/en/library.json', '/i18n/en/common.json', '/i18n/en/settings.json', '/i18n/en/desktop.json', '/i18n/en/store.json', '/i18n/en/runtime.json',
-  '/i18n/en/boot.json', '/i18n/en/sign.json', '/i18n/en/help.json', '/i18n/en/update.json', '/i18n/en/charge.json', '/i18n/en/identity.json', '/i18n/en/install.json', '/i18n/en/subscription.json',
+  '/i18n/en/boot.json', '/i18n/en/sign.json', '/i18n/en/help.json', '/i18n/en/update.json', '/i18n/en/charge.json', '/i18n/en/identity.json', '/i18n/en/home.json', '/i18n/en/install.json', '/i18n/en/subscription.json',
   '/i18n/en/meet.json', '/i18n/en/embed.json',
-  '/i18n/en/apps/appstore.json', '/i18n/en/apps/askai.json', '/i18n/en/apps/bible.json', '/i18n/en/apps/broadcast.json', '/i18n/en/apps/calc.json', '/i18n/en/apps/camera.json', '/i18n/en/apps/chat.json', '/i18n/en/apps/chess.json', '/i18n/en/apps/connect4.json', '/i18n/en/apps/dial.json', '/i18n/en/apps/fakefacts.json', '/i18n/en/apps/fortune.json', '/i18n/en/apps/guestbook.json', '/i18n/en/apps/imposter.json', '/i18n/en/apps/meet.json', '/i18n/en/apps/minesweeper.json', '/i18n/en/apps/mymedia.json', '/i18n/en/apps/notes.json', '/i18n/en/apps/oneclue.json', '/i18n/en/apps/paint.json', '/i18n/en/apps/reader.json', '/i18n/en/apps/roulette.json', '/i18n/en/apps/samebrain.json', '/i18n/en/apps/speechcoach.json', '/i18n/en/apps/spy.json', '/i18n/en/apps/taketurns.json', '/i18n/en/apps/tictactoe.json', '/i18n/en/apps/tilt.json', '/i18n/en/apps/timer.json', '/i18n/en/apps/welcome.json', '/i18n/en/apps/wolves.json',
+  '/i18n/en/apps/appstore.json', '/i18n/en/apps/clock.json', '/i18n/en/apps/calendar.json', '/i18n/en/apps/askai.json', '/i18n/en/apps/bible.json', '/i18n/en/apps/broadcast.json', '/i18n/en/apps/calc.json', '/i18n/en/apps/camera.json', '/i18n/en/apps/chat.json', '/i18n/en/apps/chess.json', '/i18n/en/apps/connect4.json', '/i18n/en/apps/dial.json', '/i18n/en/apps/fakefacts.json', '/i18n/en/apps/fortune.json', '/i18n/en/apps/guestbook.json', '/i18n/en/apps/imposter.json', '/i18n/en/apps/meet.json', '/i18n/en/apps/minesweeper.json', '/i18n/en/apps/mymedia.json', '/i18n/en/apps/notes.json', '/i18n/en/apps/oneclue.json', '/i18n/en/apps/paint.json', '/i18n/en/apps/reader.json', '/i18n/en/apps/roulette.json', '/i18n/en/apps/samebrain.json', '/i18n/en/apps/speechcoach.json', '/i18n/en/apps/spy.json', '/i18n/en/apps/taketurns.json', '/i18n/en/apps/tictactoe.json', '/i18n/en/apps/tilt.json', '/i18n/en/apps/timer.json', '/i18n/en/apps/welcome.json', '/i18n/en/apps/wolves.json',
   '/themes/theme.js', '/themes/icons.js', '/themes/eggs.js',
-  '/gifos.key', '/version.json', '/changelog.json', '/og.png', '/manifest.webmanifest', '/icon.svg',
+  '/gifos.key', '/version.json', '/changelog.json', '/og.png', '/manifest.webmanifest', '/icon.svg', '/themes/call-icon-192.png', '/themes/call-badge-96.png',
 ];
 
 // A meeting join installs this worker too. These three are the desktop, not
@@ -647,48 +647,108 @@ async function bellOpen(masterB64u, i, k, note) {
   return JSON.parse(new TextDecoder().decode(pt));
 }
 function bellTime(at) { try { return new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } }
+// ONE NOTIFICATION PER CALLER, UPDATED IN PLACE (tag gifos-call-<handle>): the ring; unanswered, the same notification is
+// the record of the call (a tap calls back) and turns into "Missed call" at the next ring; that person's next call replaces it. Chrome on Android judges every notification it shows:
+// an on-device model reads the title, the body and the button texts and swaps one it finds spammy for "Possible spam", and a
+// site that shows many notifications nobody opens loses its permission. Measured on a phone: call words on buttons
+// ("Answer", "Pick up", "Join") and phrases like "X is calling" or "Incoming call" trip it for common contact names
+// ("Dad", "Mom"); the contact's name with its ✓ over the time is clean for all of them, and so is "Missed call: X ✓" with
+// Call back. So the ring is the name and the time, a tap answers it, a swipe turns it down, and a call shows once.
+var BELL_ICON = '/themes/call-icon-192.png', BELL_BADGE = '/themes/call-badge-96.png';
+var BELL_TXT = { ring: 'GifOS call', missed: 'Missed call', back: 'Call back' };
+function bellTag(i) { return 'gifos-call-' + String(i || 'x'); }
+function bellMissed(label, when, url, i, r, c) {
+  return self.registration.showNotification(BELL_TXT.missed + ': ' + label, {
+    body: bellTime(when), tag: bellTag(i), renotify: false, silent: true, icon: BELL_ICON, badge: BELL_BADGE, timestamp: when,
+    actions: [{ action: 'back', title: BELL_TXT.back }],
+    data: { kind: 'missed', url: url, r: r, c: c, i: i },
+  });
+}
 async function bellPush(e) {
   var m = null; try { m = e.data ? e.data.json() : null; } catch (err) { m = null; }
-  if (m && m.t === 'test') return self.registration.showNotification('GifOS doorbell', { body: 'Rings reach this device.', tag: 'gifos-bell-test', icon: '/icon.svg' });
+  if (m && m.t === 'test') return self.registration.showNotification('GifOS doorbell', { body: 'Rings reach this device.', tag: 'gifos-bell-test', icon: BELL_ICON, badge: BELL_BADGE });
   var db = await bellDb(), st = (await bellGet(db, 'state')) || {}, at = (st.map || {})[m && m.i] || null;
   var note = null;
   if (m && m.t === 'ring' && at && st.master) { try { note = await bellOpen(st.master, m.i, at.k, m.n); } catch (err) { note = null; } }
   if (!note || note.c !== m.c) {
     // A push this device cannot open (a handle it does not know): still shown, with no name, and it opens the lobby.
-    return self.registration.showNotification('GifOS doorbell', { body: 'Someone rang your doorbell.', tag: 'gifos-bell-unknown', data: { url: '/meet' }, icon: '/icon.svg' });
+    return self.registration.showNotification('GifOS doorbell', { body: 'Someone rang your doorbell.', tag: 'gifos-bell-unknown', data: { url: '/meet' }, icon: BELL_ICON, badge: BELL_BADGE });
   }
-  // A name is the owner's own label, else the caller's: one short line of plain text either way.
-  var label = String(at.label || note.n || 'Someone').replace(/[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '').slice(0, 40) || 'Someone';
-  var when = +m.ts || Date.now();
-  var missed = Date.now() - when > (st.ringMs || 30000);
+  // A name is the owner's own label, else the caller's: one short line of plain text either way. The ✓: only a contact
+  // who proved a member key of our private room holds a handle, so every ring that opens is from someone I know.
+  var label = String(at.label || note.n || 'Someone').replace(/[\u0000-\u001f\u007f-\u009f‎‏‪-‮⁦-⁩✓✔]/g, '').trim().slice(0, 40) || 'Someone';
+  label += ' ✓';
+  var when = +m.ts || Date.now(), ringMs = st.ringMs || 30000;
   var rings = (await bellGet(db, 'rings')) || [];
   rings.unshift({ i: m.i, c: m.c, at: when, label: label, url: at.url, done: false });
   await bellPut(db, 'rings', rings.slice(0, 50));
-  var url = String(at.url || '/meet');
+  var url = String(at.url || '/meet'), r = String(at.r || '');
+  if (Date.now() - when > ringMs) { await bellStale(ringMs, bellTag(m.i)); return bellMissed(label, when, url, m.i, r, m.c); }   // it came after the ring would have ended (Doze)
   var wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
   for (var w = 0; w < wins.length; w++) {
     try { if (wins[w].visibilityState === 'visible' && new URL(wins[w].url).hash === new URL(url, self.location.origin).hash) return; } catch (err) {}
   }
-  return self.registration.showNotification(missed ? 'Missed call from ' + label : label + ' is calling', {
-    body: missed ? bellTime(when) : 'Tap to answer in your room.',
-    tag: 'gifos-bell-' + m.c,
-    renotify: true,
-    requireInteraction: !missed,
-    vibrate: missed ? undefined : [400, 200, 400, 200, 400],
-    data: { url: url, c: m.c },
-    icon: '/icon.svg',
+  var tag = bellTag(m.i);
+  await bellStale(ringMs, tag);
+  // The push event ends with the ring on screen. (Held open until the ring ends, a ring the person swiped away left the
+  // event with nothing on screen, and Chrome then shows its own "updated in the background" notice.) An unanswered ring
+  // stays as the record of the call (the name, the time); a tap on it later calls back.
+  return self.registration.showNotification(label, {
+    body: bellTime(when) + ' \u00b7 ' + BELL_TXT.ring,
+    tag: tag, renotify: true, requireInteraction: true, timestamp: when,
+    vibrate: [800, 400, 800, 400, 800, 400, 800],
+    data: { kind: 'ring', url: url, r: r, c: m.c, i: m.i, label: label, at: when, ms: ringMs },
+    icon: BELL_ICON, badge: BELL_BADGE,
   });
 }
+// Rings still on screen whose time has passed (nobody answered, nobody swiped) become missed calls, in place and silent,
+// whenever this worker next runs for a ring. Not the one the new ring replaces anyway (skip): Android drops an update that
+// comes right on top of another to the same notification, and that would be the new ring.
+async function bellStale(ringMs, skip) {
+  var open = []; try { open = await self.registration.getNotifications(); } catch (err) { open = []; }
+  for (var n = 0; n < open.length; n++) {
+    var d = open[n].data || {};
+    if (d.kind === 'ring' && open[n].tag !== skip && Date.now() - (+d.at || 0) > ringMs) await bellMissed(d.label || open[n].title, d.at, d.url, d.i, d.r, d.c);
+  }
+}
 self.addEventListener('push', function (e) { e.waitUntil(bellPush(e).catch(function () {})); });
-self.addEventListener('notificationclick', function (e) {
+// Answer (or Call back) goes straight into the private room: a tab already there comes to the front; a GifOS tab that is
+// not in a meeting (Home, Rooms, the lobby) goes there; else a new tab. The note in IndexedDB 'answer' tells that page the
+// tap was its person's Answer (js/meet-bell.js takeAnswer): the mic opens, the camera stays off, no card in the way.
+async function bellGo(url, r, c) {
+  var to = new URL(url, self.location.origin);
+  try { var db = await bellDb(); await bellPut(db, 'answer', { r: r, c: c, at: Date.now() }); } catch (err) {}
+  var wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  var same = function (u) { try { var x = new URL(u); return x.origin === to.origin && x.pathname.replace(/\.html$/, '') === to.pathname && x.hash === to.hash; } catch (err) { return false; } };
+  var inMeeting = function (u) { try { var x = new URL(u); return /^\/(meet|cast|join)(\.html)?\/?$/.test(x.pathname) && /(^#|&)room=/.test(x.hash); } catch (err) { return true; } };
+  for (var a = 0; a < wins.length; a++) if (same(wins[a].url)) { try { return await wins[a].focus(); } catch (err) {} }
+  for (var b = 0; b < wins.length; b++) {
+    if (inMeeting(wins[b].url) || typeof wins[b].navigate !== 'function') continue;
+    try { var f = await wins[b].focus(); var nv = await (f || wins[b]).navigate(to.href); if (nv) return nv; } catch (err) {}
+  }
+  return self.clients.openWindow(to.href);
+}
+async function bellMark(c, how) {
+  try { var db = await bellDb(), rings = (await bellGet(db, 'rings')) || []; await bellPut(db, 'rings', rings.map(function (x) { return x.c === c ? Object.assign({}, x, { done: true, how: how }) : x; })); } catch (err) {}
+}
+// A ring swiped away is a call turned down: no missed call follows it.
+self.addEventListener('notificationclose', function (e) {
   var d = (e.notification && e.notification.data) || {};
+  if (d.kind === 'ring') e.waitUntil(bellMark(d.c, 'declined'));
+});
+self.addEventListener('notificationclick', function (e) {
+  var d = (e.notification && e.notification.data) || {}, act = e.action || '';
   e.notification.close();
   if (!d.url) return;
   e.waitUntil((async function () {
-    try {
-      var db = await bellDb(), rings = (await bellGet(db, 'rings')) || [];
-      await bellPut(db, 'rings', rings.map(function (x) { return x.c === d.c ? Object.assign({}, x, { done: true }) : x; }));
-    } catch (err) {}
+    if (d.kind === 'ring') {
+      await bellMark(d.c, Date.now() - (+d.at || 0) > (+d.ms || 0) ? 'called back' : 'answered');   // a tap on the ring is its Answer (later: a call back)
+      return bellGo(d.url, d.r, d.c);
+    }
+    if (d.kind === 'missed') {
+      if (act === 'back') return bellGo(d.url, d.r, d.c);   // a call back: our private room, mic on as for an Answer
+      return self.clients.openWindow('/rooms');             // the missed call itself: the Rooms page, which lists it
+    }
     return self.clients.openWindow(d.url);
   })());
 });

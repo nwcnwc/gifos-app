@@ -656,7 +656,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
      copy (.github/scripts/bundle/bundle.mjs) loads the scripts above the end mark as one bundle with the page
      and the ones below it as a second bundle, right after the lobby starts. Keep that order here. -->
 <script src="js/sw-register.js" defer></script>
-<script src="js/dialog.js" defer></script>
 <script src="js/build.js" defer></script>
 <script src="js/build-badge.js" defer></script>
 <script src="js/gifos-i18n.js" defer></script>
@@ -665,7 +664,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
 <script src="js/gifos-fullscreen.js" defer></script>
 <script src="js/gifos-store.js" defer></script>
 <script src="js/timings.js" defer></script>
+<script src="js/dialog.js" defer></script>
 <script src="js/gifos-update.js" defer></script>
+<script src="js/gifos-ed.js" defer></script>
 <script src="js/gifos-net.js" defer></script>
 <script src="js/mesh-media.js" defer></script>
 <script src="js/meet-layout.js" defer></script>
@@ -736,11 +737,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <h1 data-t="lobTitle">Meeting</h1>
       <p class="lob-quiet" data-t="lobWelcome" id="lob-welcome">Join a meeting, or start your own in one tap.</p>
       <p class="lob-quiet" data-t="lobJoinOff" id="lob-quiet">You'll join with your camera and microphone off.</p>
+      <div id="lob-notice" class="lob-notice" role="status" hidden></div>
       <div class="lob-tabs">
+      <!-- One menu: start a meeting (Open is the default), then what is yours. -->
       <div class="segwrap lob-segs" role="tablist" aria-label="Meeting choices">
-        <button type="button" id="lob-join-btn" class="seg" role="tab" aria-selected="false"><span data-t="lobJoinBtn">Join</span></button>
-        <button type="button" id="lob-admin-btn" class="seg" role="tab" aria-selected="false"><span data-t="lobAdminBtn">Host</span></button>
         <button type="button" id="lob-open-seg" class="seg sel" role="tab" aria-selected="true" aria-describedby="lob-seg-note"><span data-t="lobStart">Open</span></button>
+        <button type="button" id="lob-admin-btn" class="seg" role="tab" aria-selected="false"><span data-t="lobAdminBtn">Host</span></button>
+        <button type="button" id="lob-join-btn" class="seg" role="tab" aria-selected="false"><span data-t="lobJoinBtn">Join</span></button>
+        <i class="lob-seg-gap" id="lob-seg-gap" aria-hidden="true"></i>
+        <button type="button" id="lob-rooms-seg" class="seg seg-mine" role="tab" aria-selected="false"><span data-t="lobRoomsTab">Rooms</span></button>
+        <button type="button" id="lob-contacts-seg" class="seg seg-mine" role="tab" aria-selected="false"><span data-t="lobContactsTab">Contacts</span><b class="seg-badge" id="lob-contacts-badge" hidden></b></button>
       </div>
       <div class="lob-tabpanel">
       <p class="lob-seg-note" id="lob-seg-note" role="status" aria-live="polite" data-t="lobStartSub">Majority rules: vote people off the stage or out of the meeting.</p>
@@ -782,6 +788,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           </div>
         </div>
       </div>
+      <div id="lob-rooms-panel" class="lob-mine" style="display:none"><div id="lob-myroom" class="lob-myroom"></div></div>
+      <div id="lob-contacts-panel" class="lob-mine" style="display:none"><div id="lob-people" class="lob-myroom"></div><div id="lob-identity" class="lob-myroom lob-identity"></div></div>
       <button id="lob-go" class="lob-primary" type="button" data-t="lobOpenGo">Open</button>
       <div id="lob-admin-err" class="lob-err"></div>
       <div id="lob-join-err" class="lob-err"></div>
@@ -1627,7 +1635,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     })();
   </script>
 <!--@/shared:vm-db-->
-  <script src="js/gifos-ed.js" defer></script>
   <script src="js/gifos-sign.js" defer></script>
   <script src="js/gifos-base-net.js" defer></script>
   <script src="js/gifos-x402.js" defer></script>
@@ -1725,6 +1732,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/meet-myroom.js" defer></script>
   <script src="js/core/view/myroom.js" defer></script>
   <script src="js/meet-bell.js" defer></script>
+  <script src="js/ring-standby.js" defer></script>
   <script src="js/core/view/bell.js" defer></script>
   <script src="js/camera-studio.js" defer></script>
   <script src="js/gifos-ondevice.js" defer></script>

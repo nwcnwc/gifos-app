@@ -8044,7 +8044,7 @@
     const turnWeb = new Map();   // far peer id -> the web path end of that link (js/meet-tunnel.js)
     // The relay says it carries TURN handshakes (`tv` frames, the tvouch verb) on its joined frame. An older relay closes a
     // socket that sends an unlisted type, so without its word this page asks for no link and answers none.
-    let relayTv = false;
+    let relayTv = false, relayHl = false;   // relayHl: this relay takes a host proof on {t:'acl'} (joined.hl; HOSTLATE)
     const turnFacts = new Map();   // link id → { id, a, b, up, v, s, c, g, va, vb, at }
     const turnSubs = new Map();    // subscriber pid → { tier (display), links (signed turnVideoLinks), exp, ticket, at }
     const turnLog = [];
@@ -12334,6 +12334,7 @@
       const k = await net.edKeysFromSeedHex(K).catch(() => null);
       if (!k || k.verifier !== av) return false;
       admKey = K; admKeys = k; amAdmin = true;
+      if (meshNode && relayHl) { subsRightSaid = ''; subsRightRefresh(); }   // HOSTLATE: signed in while my relay socket is open: show my right again, now with my host proof
       setTimeout(() => { subsPublishRoomPlan(); }, 1500);   // the admin's plan rides the room's signed orders; without a paid plan, the free plan's (no-op while subscriptions are off)
       admins = adminsNow(); // canStage reads this view; do not wait for the sweep
       hostFlood();   // signs, then floods the proof: a channel dialled before the signature learns it now
@@ -13429,7 +13430,9 @@
         try { if (GifOS.licenseView && GifOS.licenseView.heard) GifOS.licenseView.heard(m.t === 'joined' ? m.acl : m); } catch (e) {}
         clearNoPwTick();
       }
+      if (m.t === 'tvcnt' && GifOS.tvPublish && GifOS.tvPublish.heardCount) { try { GifOS.tvPublish.heardCount(m); } catch (e) {} }   // THE DOOR'S COUNT: carried to gifos.tv by js/tv-publish.js
       if (m.t === 'joined') relayTv = m.tv === 1;   // this relay vouches for TURN links (see relayTv)
+      if (m.t === 'joined') relayHl = m.hl === 1;   // HOSTLATE: an older relay's frame law closes a socket whose {t:'acl'} carries hp
       if (m.t === 'joined' && !av) capServerKey = m.cap && m.cap.ck ? m.cap.ck : null;   // the server's word on the capture at this join
       if (m.t === 'joined' && !av) capAclHear(m.cap);   // the captor's Stage flags, the server's word (none: no capture)
       if (m.t === 'joined' && !av) capProveSig = '';   // every socket is proved afresh: a relay restart (a deploy) forgot the capture and its Stage flags
@@ -22078,7 +22081,12 @@
         const key = String(tk.sig);
         if (key === subsRightSaid) return;
         subsRightSaid = key;
-        try { if (meshNode && meshNode.PRESENT_MY_MEETING_RIGHT) meshNode.PRESENT_MY_MEETING_RIGHT(subsRightTk); } catch (e) {}
+        const show = (hp) => { try { if (meshNode && meshNode.PRESENT_MY_MEETING_RIGHT) meshNode.PRESENT_MY_MEETING_RIGHT(subsRightTk, hp); } catch (e) {} };
+        // HOSTLATE (Nathan 2026-11-27): the host's right counts its host-scoped items (Clear Stage) only on a socket that
+        // proved the host key. A host who signed in after the socket opened proves it here, with the same hostknock order
+        // a connect carries (?hp=); only to a relay that says it takes one (relayHl).
+        if (amAdmin && av && relayHl && myId) admSigned('hostknock', { sid: sessId }).then((w) => show(w), () => show(null));
+        else show(null);
       }, () => {});
     }
     // The meeting is full: the service's own answer, from the joining connection it refused ({full: the limit}).

@@ -217,6 +217,59 @@
     return '/versions/' + latest + (m[1] || '/') + (loc.search || '') + (loc.hash || '');
   }
 
+  // THE RESTING ADDRESS IS THE CLEAN ONE, ON EVERY PAGE (CLEANURL2, 2026-11-27). A release page loads from
+  // /versions/<v>/<page> (the right build at once), then its address bar moves to gifos.app/<page>, query and hash
+  // kept: /versions/<v>/meet -> /meet, /versions/<v>/run#id=… -> /run#id=…, /versions/<v>/ -> /. A /versions/ address
+  // is the one place the channel loaders never redirect, so a tab the browser reloads (F5, a discarded tab woken)
+  // reopened the build named in it after the computer had moved on. At the clean address a reload runs the page's
+  // loader again: the live release, or the Settings pin (gifos_pin, a setting, never the address). The archive's
+  // <base href="/versions/<v>/"> keeps every relative load on this build whatever the address bar says.
+  //   - Only on gifos.app: elsewhere the root is the build under development.
+  //   - Only a page whose root copy runs a channel loader (window.gifosPinTarget) or moves itself to the live
+  //     release (embed.html, window.__gifosEmbed), or the clean address would reload a different build.
+  //   - Only the folder this document's base names, and only a page at the top of it (not /versions/<v>/go/x/).
+  //   - One-shot flags the loader already applied (?stable/?unpin/?latest, the ?ts cache-bust) are dropped: left in
+  //     the address, a reload would clear a later pin.
+  // A page file loses its .html, as the host serves it (Pages 308s /x.html to /x); index is the folder itself.
+  const ONE_SHOT_Q = /^(ts|stable|unpin|latest)$/, ONE_SHOT_H = /^(stable|unpin|latest)$/;
+  function cleanAddress(pathname, search, hash, base) {
+    const m = /^\/versions\/(\d+\.\d+\.\d+(?:\.\d+)?)\/([^/]*)$/.exec(String(pathname || ''));
+    const b = /\/versions\/(\d+\.\d+\.\d+(?:\.\d+)?)\//.exec(String(base || ''));
+    if (!m || !b || m[1] !== b[1]) return null;
+    const page = m[2].replace(/^index(\.html)?$/, '').replace(/\.html$/, '');
+    if (page && !/^[a-z][a-z0-9-]{0,40}$/i.test(page)) return null;
+    const keep = (s, re, lead) => String(s || '').replace(lead, '').split('&').filter((p) => p && !re.test(p.split('=')[0])).join('&');
+    const q = keep(search, ONE_SHOT_Q, /^\?/), h = keep(hash, ONE_SHOT_H, /^#/);
+    return '/' + page + (q ? '?' + q : '') + (h ? '#' + h : '');
+  }
+  // A path GifOS hands out (an Invite, a card, a ring) never names a release folder: /versions/<v>/meet -> /meet.
+  const cleanPath = (p) => String(p || '').replace(/^\/versions\/\d+\.\d+\.\d+(?:\.\d+)?(?=\/)/, '');
+  // Move this page's address bar to its clean address once the document is parsed and its scripts have run: the
+  // page's own boot reads its /versions/ address first (the meeting's MEET_PATH, the store's frozen check), a later
+  // read of the clean one builds clean links, and it comes before the first tap arms a Back trap (desktop.js,
+  // runtime.js push their trap entry on the first gesture, copying the address of that moment). Returns the address
+  // it moved to, or null.
+  function rest() {
+    const loc = root.location, d = root.document;
+    try {
+      if (!loc || !/(^|\.)gifos\.app$/.test(loc.hostname)) return null;
+      if (typeof root.gifosPinTarget !== 'function' && !root.__gifosEmbed) return null;
+      // A framed page (a booted image, an app mount) is not an address anyone sees; an embed's own page is.
+      if (root.top !== root.self && !root.__gifosEmbed) return null;
+      const clean = cleanAddress(loc.pathname, loc.search, loc.hash, d && d.baseURI);
+      if (!clean) return null;
+      root.history.replaceState(root.history.state, '', clean);
+      return clean;
+    } catch (e) { return null; }
+  }
+  function restWhenLoaded() {
+    const d = root.document;
+    if (!d || typeof root.addEventListener !== 'function') return;
+    const later = () => setTimeout(rest);   // a task after the DOMContentLoaded handlers of the page's own scripts
+    if (d.readyState !== 'loading') later(); else d.addEventListener('DOMContentLoaded', later, { once: true });
+  }
+  restWhenLoaded();
+
   // Move THIS page onto `latest` (same path and hash). Used by watch() when the
   // page has no reload of its own, and by pages that run their own step first.
   function go(latest) {
@@ -393,6 +446,7 @@
   // once the hold is gone; a release under the meet floor moves it anyway.
   // Only the person's own Update tap moves a held page otherwise.
   const MINUTE = 60 * 1000;
+  const HOME_RELEASE_KEY = 'gifos_home_release';
   function watch(opts) {
     opts = opts || {};
     // A framed page is not the top of anything a person is looking at; the
@@ -416,23 +470,45 @@
         latest: live.latest, changelog, emergency: live.emergency, meetFloor: live.meetFloor,
       });
     };
+    // TABS FOLLOW EACH OTHER (CLEANURL2, as the Home Screen does, desktop.js). gifos_home_release names the release
+    // this computer moved to: written by an Update in any tab and by an unpinned page that runs the live release. A
+    // page behind it follows with no second Update: at once while hidden or in the background (the storage event), and
+    // on its next check once it is woken. Never a meeting (a room page, or a meeting joined in this tab), never a page
+    // in view and in use on the minute check (its bar asks), never a pin or the edge build, never a root-only page.
+    const inUse = () => { try { return !doc.hidden && doc.hasFocus(); } catch (e) { return false; } };
+    const inMeeting = () => {
+      if (opts.room) { try { if (opts.room()) return true; } catch (e) { return true; } }
+      try { const m = GifOS.core && GifOS.core.meeting; return !!(m && m.core && typeof m.core.inMeetingNow === 'function' && m.core.inMeetingNow()); } catch (e) { return true; }
+    };
+    const follows = () => { const r = running(); return !opts.root && !r.edge && !r.pinned && !inMeeting(); };
+    const homeRelease = () => { try { const v = root.localStorage.getItem(HOME_RELEASE_KEY); return VER.test(String(v || '')) ? v : null; } catch (e) { return null; } };
+    const noteHome = (v) => { try { if (VER.test(String(v)) && root.localStorage.getItem(HOME_RELEASE_KEY) !== v) root.localStorage.setItem(HOME_RELEASE_KEY, v); } catch (e) {} };
     const move = (d) => {
       if (moving) return;
       moving = true;
+      if (!d.pinned) noteHome(d.latest);
       const target = { latest: d.latest, url: updateUrl(root.location, d.latest, (doc && doc.baseURI) || ''), emergency: !!d.emergency, note: d.note || '' };
       try {
         if (opts.beforeUpdate && opts.beforeUpdate(target) === false) { moving = false; return; }
         if (opts.reload) opts.reload(target); else go(d.latest);
       } catch (e) { moving = false; go(d.latest); }
     };
-    const tick = () => {
+    // minute: the minute check (a page in view and in use is not moved under the person by it). told: another tab
+    // moved this computer (the storage event), so a hidden page checks too.
+    const tick = (minute, told) => {
       if (busy || moving) return Promise.resolve();
-      if (doc && doc.hidden) return Promise.resolve();
+      if (doc && doc.hidden && !told) return Promise.resolve();
       busy = true;
       return check({ notes: (info) => { const d = decideFor(info, null); return !!d && !d.emergency; } }).then((got) => {
         if (!got) return;
         const d = decideFor(got.info, got.changelog);
+        const live = liveOf(got.info), r = running();
+        // On the live release, unpinned: this is where the computer is now.
+        if (!d && live && !opts.root && !r.edge && !r.pinned && cmpVer(r.version, live.latest) === 0) noteHome(live.latest);
         if (!d) { const b = doc.getElementById('update-bar'); if (b) b.style.display = 'none'; return; }
+        // Another tab already moved to the live release: follow it, no second Update.
+        const home = homeRelease();
+        if (!d.pinned && !d.emergency && home && cmpVer(home, d.latest) >= 0 && follows() && !(minute === true && inUse())) { move(d); return; }
         let held = false;
         if (d.emergency && !d.cannotMeet && opts.hold) { try { held = !!opts.hold(); } catch (e) { held = false; } }
         if (held) d.text += ' ' + tr('update.bar.held', 'Your meeting keeps going. Update when it suits you.');
@@ -449,10 +525,13 @@
       }).catch(() => {}).then(() => { busy = false; });
     };
     setTimeout(tick, opts.delay == null ? 1000 : opts.delay);
-    const t = setInterval(tick, opts.every || MINUTE);
+    const t = setInterval(() => tick(true), opts.every || MINUTE);
     const onVis = () => { if (!doc.hidden) tick(); };
     try { doc.addEventListener('visibilitychange', onVis); } catch (e) {}
-    return { stop: () => { clearInterval(t); try { doc.removeEventListener('visibilitychange', onVis); } catch (e) {} }, tick };
+    // In view and in use: the bar asks (the next check); a page in the background moves now.
+    const onStore = (e) => { if (e && e.key === HOME_RELEASE_KEY && e.newValue && !inUse() && follows()) tick(false, true); };
+    try { root.addEventListener('storage', onStore); } catch (e) {}
+    return { stop: () => { clearInterval(t); try { doc.removeEventListener('visibilitychange', onVis); root.removeEventListener('storage', onStore); } catch (e) {} }, tick };
   }
 
   // UPDATE GIFOS IN ONE TAP (2026-11-27). A page the meeting turned away for its version (the relay's final
@@ -501,5 +580,5 @@
   const TOO_OLD = [4010, 4013, 4014];
   const refusedTooOld = (refusal) => !!(refusal && TOO_OLD.indexOf(Number(refusal.code)) !== -1);
 
-  GifOS.update = { cmpVer, liveOf, pinnable, pinBelowFloor, running, criticalSince, notesOf, underFloor, decide, updateUrl, go, check, mount, paint, watch, now, tooOldWords, refusedTooOld, MINUTE };
+  GifOS.update = { cmpVer, liveOf, pinnable, pinBelowFloor, running, criticalSince, notesOf, underFloor, decide, updateUrl, go, check, mount, paint, watch, now, tooOldWords, refusedTooOld, cleanAddress, cleanPath, rest, MINUTE };
 })(typeof window !== 'undefined' ? window : globalThis);
