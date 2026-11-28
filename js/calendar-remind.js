@@ -68,10 +68,11 @@
     const soon = root.Date.now() < a.startMs;
     const line = soon ? 'starts in 5 min' : 'starts now';
     const bg = doc.createElement('div');
-    bg.className = 'modal-bg'; bg.id = 'cal-remind';
+    bg.className = 'modal-bg'; bg.id = 'cal-remind'; bg.style.zIndex = '2147483000';   // above every card of the Home Screen
     const join = a.link ? '<button type="button" data-cal-join>Join</button>' : '';
     bg.innerHTML = '<div class="modal" role="dialog" aria-modal="true"><h3>' + esc(a.title || 'Meeting') + '</h3><p>' + line + '</p><div class="dlg-actions">' + join + '<button type="button" data-cal-snooze>Snooze 5 min</button><button type="button" data-cal-dismiss>Dismiss</button></div></div>';
     doc.body.appendChild(bg);
+    { const m = bg.querySelector('.modal'); if (m) { m.style.maxWidth = 'calc(100vw - 16px)'; m.style.boxSizing = 'border-box'; const a = m.querySelector('.dlg-actions'); if (a) { a.style.display = 'flex'; a.style.flexWrap = 'wrap'; a.style.gap = '8px'; a.style.justifyContent = 'center'; } } }
     sheet = bg;
     const j = bg.querySelector('[data-cal-join]');
     if (j) j.onclick = () => { closeSheet(); go(a.link); };

@@ -803,9 +803,10 @@
   function isRoomLink(url) {
     var u;
     try { u = new URL(url); } catch (e) { return false; }
-    if (u.protocol !== 'https:') return false;
-    if (!propOf(u, 'room')) return false;
     var host = String(u.hostname || '').toLowerCase();
+    // https only, except a copy of the site running on this computer (local use)
+    if (u.protocol !== 'https:' && !(u.protocol === 'http:' && (host === 'localhost' || host === '127.0.0.1'))) return false;
+    if (!propOf(u, 'room')) return false;
     if (host === 'gifos.app' || host.slice(-10) === '.gifos.app') return true;
     return !!(propOf(u, 'v') || propOf(u, 'av'));
   }
@@ -814,7 +815,7 @@
     var fields = [event.url, event.location, event.notes], f;
     for (f = 0; f < fields.length; f++) {
       var text = String(fields[f] || '');
-      var re = /https:\/\/[^\s<>"']+/g, m;
+      var re = /https?:\/\/[^\s<>"']+/g, m;
       while ((m = re.exec(text))) {
         var url = m[0].replace(/[),.;]+$/g, '');
         if (isRoomLink(url)) return url;
