@@ -399,6 +399,7 @@
     XV_HOLD_MIN_MS: 1500,   // ms
     XV_HOT_MS: 4000,   // ms
     XV_PEND_MAX_MS: 3000,   // ms
+    XV_PRELOAD_IDLE_MS: 1500,   // ms
     XV_RETRY_MS: 30000,   // ms
     XV_SENSE_DIFF: 10,   // count
     XV_SENSE_MS: 250,   // ms

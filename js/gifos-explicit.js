@@ -710,7 +710,7 @@
     // PRELOAD: the blocker is on for this room (the page starts a watch only then), so load both models in idle time, before
     // any picture is clear; never blocks the join. The first model comes first, then the confirming one.
     if (opts.preload !== false) {
-      const idle = (f) => (typeof root.requestIdleCallback === 'function' ? root.requestIdleCallback(f, { timeout: 5000 }) : setTimeout(f, 1500));
+      const idle = (f) => (typeof root.requestIdleCallback === 'function' ? root.requestIdleCallback(f, { timeout: 5000 }) : setTimeout(f, T.XV_PRELOAD_IDLE_MS));
       idle(async () => {
         if (stopped) return;
         try {
