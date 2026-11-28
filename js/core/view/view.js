@@ -2536,7 +2536,7 @@
       drop.forEach((n) => n.remove());
       avatar.insertBefore(document.createTextNode(letter), avatar.firstChild);
     }
-    function paintAvatarImg(avatar, url, hash) {
+    function paintAvatarImg(avatar, url, hash, note) {
       if (!avatar || typeof avatar.querySelector !== 'function') return;
       let img = avatar.querySelector('img.avatar-img');
       if (!url) {
@@ -2554,6 +2554,7 @@
         img.src = url;
         img.setAttribute('data-hash', hash || '');
       }
+      if (note) { img.title = note; img.setAttribute('data-blocked', '1'); } else { img.removeAttribute('title'); img.removeAttribute('data-blocked'); }
       avatar.classList.add('has-img');
     }
     yield 520;
@@ -7693,7 +7694,9 @@
         // anyone's unpin (attributed); an admin room takes the owner's or an admin's.
         const unpin = (!(0, /*()*/__C.hasAdminRoom)() || __C.amAdmin || mine) ? '<button class="row-del" data-del="' + (0, /*()*/__C.esc)(f.id) + '" title="Unpin for everyone">' + __C.model.consts.DEL_ICON() + '</button>' : '';
         return '<div class="cfile" data-f="' + (0, /*()*/__C.esc)(f.id) + '"><span class="nm">' + (0, /*()*/__C.esc)(f.name) + '</span><small>' + fmtSize(f.size) + ' · ' + (0, /*()*/__C.esc)(f.by || '?') + '</small>'
-          + (f.bytes ? '<button data-dl="' + (0, /*()*/__C.esc)(f.id) + '">⬇</button>' : '<small>receiving…</small>')
+          + (f.xg === 'blocked' ? '<small class="xg-blurred">' + (0, /*()*/__C.esc)((GifOS.explicit && GifOS.explicit.guard) ? GifOS.explicit.guard.words('blurred') : 'Blurred for safety') + '</small>'
+            : (f.xg === 'wait' || f.xg === 'error') ? '<small>' + (f.xg === 'wait' ? 'checking…' : 'held') + '</small>'
+            : f.bytes ? '<button data-dl="' + (0, /*()*/__C.esc)(f.id) + '">⬇</button>' : '<small>receiving…</small>')
           + unpin + '</div>';
       }).join('');
     }
@@ -7816,8 +7819,14 @@
       for (const file of e.target.files) {
         if (file.size > __C.model.consts.MAX_FILE()) { (0, /*()*/__C.setStatus)(file.name + ' is over the 25 MB pin limit.'); continue; }
         const reader = new FileReader();
-        reader.onload = () => {
+        reader.onload = async () => {
           const f = { id: (0, /*()*/__C.uid)('f'), name: file.name, size: file.size, mime: file.type, by: (0, /*()*/__C.myName)(), byId: __C.model.me.myId(), at: Date.now(), bytes: new Uint8Array(reader.result) };
+          // UPLOADGUARD (sender side): a picture or video goes through the on-device explicit check before it leaves.
+          const G = GifOS.explicit && GifOS.explicit.guard;
+          if (G && G.isMedia(f.mime)) {
+            const v = await G.check(f.bytes, f.mime);
+            if (!v.ok) { (0, /*()*/__C.setStatus)(G.refusal(v, f.mime)); return; }
+          }
           __C.model.room.files().set(f.id, f);
           (0, /*()*/__C.sendAll)({ k: 'fmeta', f: { id: f.id, name: f.name, size: f.size, mime: f.mime, by: f.by, byId: f.byId, at: f.at } });
           renderFiles();

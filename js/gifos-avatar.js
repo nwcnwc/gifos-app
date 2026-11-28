@@ -143,12 +143,21 @@
     const hash = await hashBytes(res.bytes);
     return { ok: true, mime: res.mime, hash: hash, b64: toB64(res.bytes), bytes: res.bytes, w: res.w, h: res.h };
   }
+  // UPLOADGUARD: the picture that would be sent goes through the on-device explicit check first (gifos-explicit.js).
+  // A refusal comes back as { ok:false, error: the plain words, explicit:true }; nothing about it leaves the device.
+  async function guarded(res) {
+    const G = root.GifOS && root.GifOS.explicit && root.GifOS.explicit.guard;
+    if (!res || !res.ok || !G) return res;
+    const v = await G.check(res.bytes, res.mime);
+    if (v.ok) return res;
+    return { ok: false, error: G.refusal(v, res.mime), guard: true, explicit: v.why === 'explicit' };
+  }
   async function finish(bytes, judged) {
     if (judged.mime === 'image/gif') {
       const hash = await hashBytes(bytes);
-      return { ok: true, mime: 'image/gif', hash: hash, b64: toB64(bytes), bytes: bytes, w: judged.w, h: judged.h };
+      return guarded({ ok: true, mime: 'image/gif', hash: hash, b64: toB64(bytes), bytes: bytes, w: judged.w, h: judged.h });
     }
-    return prepareStill(bytes);
+    return guarded(await prepareStill(bytes));
   }
   async function prepareFile(file) {
     if (!file) return { ok: false, error: 'Choose a GIF, PNG, JPG, or WebP.' };

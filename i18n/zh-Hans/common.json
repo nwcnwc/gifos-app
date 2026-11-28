@@ -15,5 +15,9 @@
   "common.dl.lead": "<b>{name}</b> 有已保存的数据。可以连同已保存的数据一起下载，也可以下载一份从头开始的干净副本。两种方式都包含动画。",
   "common.dl.withData": "下载并包含我的数据",
   "common.dl.withoutData": "下载但不含我的数据",
-  "common.dl.cancel": "取消"
+  "common.dl.cancel": "取消",
+  "common.guard.refuse": "此图片不能在这里分享。",
+  "common.guard.refuseVideo": "此视频不能在这里分享。",
+  "common.guard.retry": "暂时无法检查此文件，请稍后再试。",
+  "common.guard.blurred": "出于安全已模糊"
 }

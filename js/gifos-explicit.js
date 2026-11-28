@@ -684,6 +684,114 @@
     };
   }
 
-  GifOS.explicit = { MODEL, VERSION, STILL_LINE, VIDEO_LINE, unsupported, catalog, open, classify, checkStill, tracker, blockOn, _score: score,
+  // ---- UPLOAD GUARD: avatars and chat files (Nathan 11-28) -------------------------------------------------------
+  // Every picture or video a person puts into a room goes through the same on-device check twice: the sender's page
+  // before it leaves (it refuses with plain words), and each receiving page before it shows the file (a hacked sender
+  // is no excuse). A refused file shows blurred, "Blurred for safety", with no way to unblur. A verdict is cached by the
+  // SHA-256 of the bytes, so a picture is judged once per page. Only what would be shown clear is checked: a caller
+  // asks only then. Nothing about a trip is sent anywhere. A device that cannot run the check at all (no WebAssembly or
+  // Worker) lets the sender through and leaves the receivers' checks to decide; a check that fails for any other
+  // reason (model not downloadable, undecodable file) is NOT a pass: the sender is told to try again, the receiver
+  // keeps the file held.
+  const GUARD_FRAMES = 5;       // a video file is sampled at this many even points
+  const GUARD_HITS = 2;         // this many explicit frames refuse it (one frame never acts, as in the live blocker)
+  const verdicts = new Map();   // sha256 hex -> true (clean) | false (explicit)
+  const inflight = new Map();
+  const WORDS = {
+    refuse: ['common.guard.refuse', "This picture can't be shared here."],
+    refuseVideo: ['common.guard.refuseVideo', "This video can't be shared here."],
+    retry: ['common.guard.retry', "This file can't be checked right now. Try again in a moment."],
+    blurred: ['common.guard.blurred', 'Blurred for safety'],
+  };
+  function say(k) {
+    const w = WORDS[k];
+    try { const t = root.GifOS && root.GifOS.i18n && root.GifOS.i18n.t && root.GifOS.i18n.t(w[0]); if (t && t !== w[0]) return t; } catch (e) {}
+    return w[1];
+  }
+  async function sha256hex(bytes) {
+    return hex(await root.crypto.subtle.digest('SHA-256', bytes));
+  }
+  const isVideoMime = (m) => /^video\//i.test(String(m || ''));
+  const isPictureMime = (m) => /^image\//i.test(String(m || ''));
+  function waitFor(el, ev, ms) {
+    return new Promise((res, rej) => {
+      const t = setTimeout(() => { done(); rej(new Error('timeout ' + ev)); }, ms);
+      const ok = () => { done(); res(); };
+      const bad = () => { done(); rej(new Error('media error')); };
+      function done() { clearTimeout(t); el.removeEventListener(ev, ok); el.removeEventListener('error', bad); }
+      el.addEventListener(ev, ok); el.addEventListener('error', bad);
+    });
+  }
+  async function judgePicture(bytes, mime) {
+    const bmp = await root.createImageBitmap(new root.Blob([bytes], { type: mime || 'image/png' }));
+    try { const r = await checkStill(bmp, guard.opts); return { clean: r.ok, ms: r.ms }; }
+    finally { try { bmp.close(); } catch (e) {} }
+  }
+  async function judgeVideo(bytes, mime) {
+    const url = root.URL.createObjectURL(new root.Blob([bytes], { type: mime || 'video/mp4' }));
+    const v = root.document.createElement('video');
+    v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = url;
+    try {
+      await waitFor(v, 'loadeddata', 15000);
+      let d = v.duration;
+      // A recorder's webm has no length in its header (Infinity): seeking far past the end makes the engine find it.
+      if (d === Infinity) { v.currentTime = 1e7; await waitFor(v, 'seeked', 8000).catch(() => {}); d = v.duration; }
+      if (!(d > 0) || !isFinite(d)) throw new Error('no duration');
+      let hits = 0, ms = 0;
+      for (let i = 0; i < GUARD_FRAMES; i++) {
+        v.currentTime = Math.min(d - 0.01, d * (i + 0.5) / GUARD_FRAMES);
+        await waitFor(v, 'seeked', 8000);
+        const r = await classify(v, guard.opts);
+        ms += r.ms || 0;
+        if (r.score >= STILL_LINE && ++hits >= GUARD_HITS) return { clean: false, ms };
+      }
+      return { clean: true, ms };
+    } finally {
+      try { v.removeAttribute('src'); v.load(); } catch (e) {}
+      try { root.URL.revokeObjectURL(url); } catch (e) {}
+    }
+  }
+  // check(bytes, mime) -> { ok, why, hash, cached, ms }. ok false = refused (why 'explicit'); a check that could not
+  // run says why: 'unsupported' (ok true: this device cannot judge; receivers will) or 'error' (ok false, retry).
+  function guardCheck(bytes, mime) {
+    if (!isPictureMime(mime) && !isVideoMime(mime)) return Promise.resolve({ ok: true, why: 'not-media' });
+    if (unsupported()) return Promise.resolve({ ok: true, why: 'unsupported' });
+    const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+    return sha256hex(u8).then((h) => {
+      if (verdicts.has(h)) return { ok: verdicts.get(h), why: verdicts.get(h) ? 'clean' : 'explicit', hash: h, cached: true, ms: 0 };
+      if (inflight.has(h)) return inflight.get(h);
+      const job = (isVideoMime(mime) ? judgeVideo(u8, mime) : judgePicture(u8, mime)).then((r) => {
+        verdicts.set(h, r.clean);
+        if (verdicts.size > 500) verdicts.delete(verdicts.keys().next().value);
+        return { ok: r.clean, why: r.clean ? 'clean' : 'explicit', hash: h, cached: false, ms: r.ms };
+      }, () => ({ ok: false, why: 'error', hash: h, cached: false, ms: 0 })).then((r) => { inflight.delete(h); return r; });
+      inflight.set(h, job);
+      return job;
+    }, () => ({ ok: false, why: 'error' }));
+  }
+  // What a receiver draws in place of a refused picture: the bytes never reach the screen. A 10x10 colour thumbnail of
+  // them, stretched, reads as a blur ("Blurred for safety"); there is no way back to the sharp bytes from the page.
+  async function blurredUrl(bytes, mime) {
+    try {
+      const bmp = await root.createImageBitmap(new root.Blob([bytes], { type: mime || 'image/png' }));
+      const c = root.document.createElement('canvas'); c.width = 8; c.height = 8;
+      c.getContext('2d').drawImage(bmp, 0, 0, 8, 8);
+      try { bmp.close(); } catch (e) {}
+      return c.toDataURL('image/png');
+    } catch (e) { return ''; }
+  }
+  // The sender's words for a refused result, '' when it passed.
+  function refusal(res, mime) {
+    if (!res || res.ok) return '';
+    if (res.why === 'error') return say('retry');
+    return say(isVideoMime(mime) ? 'refuseVideo' : 'refuse');
+  }
+  // PLACEHOLDER HOOK for the upload warning line (wording is Nathan's decision, pending). A page that shows a warning
+  // beside an upload asks this; it is '' until the wording lands. Nothing here ever carries an address or a report.
+  const uploadWarning = () => '';
+  const guard = { opts: undefined /* tools only: { base } for a local model host */, check: guardCheck, refusal, blurredUrl, words: say, uploadWarning, FRAMES: GUARD_FRAMES, HITS: GUARD_HITS,
+    seen: (h) => verdicts.get(h), _verdicts: verdicts, isMedia: (m) => isPictureMime(m) || isVideoMime(m) };
+
+  GifOS.explicit = { guard, MODEL, VERSION, STILL_LINE, VIDEO_LINE, unsupported, catalog, open, classify, checkStill, tracker, blockOn, _score: score,
     video: { RULE, catalog: videoCatalog, open: videoOpen, deep: videoDeep, watch, mobile: mobileUa } };
 })(typeof window !== 'undefined' ? window : globalThis);
