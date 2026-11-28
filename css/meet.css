@@ -4112,4 +4112,4 @@ html[data-compact] .ag-in-t, html[data-compact] .ag-in-min { font-size: var(--gi
   html body .bar { gap: 2px; padding: 0 2px; }
 }
 /* The name card stays on top of the waiting door: a person can say their name while they wait to be let in. */
-#appear-modal.name-modal { z-index: 71; }
+#appear-modal.name-modal { z-index: 72; }
