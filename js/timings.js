@@ -321,7 +321,7 @@
     SYNC_ALONE_MS: 20000,   // ms
     SYNC_BACKOFF_MAX_MS: 900000,   // ms
     SYNC_BACKOFF_MIN_MS: 60000,   // ms
-    SYNC_OPEN_MS: 30000,   // ms
+    SYNC_OPEN_MS: 90000,   // ms
     SYNC_QUIET_MS: 10000,   // ms
     SYNC_TICK_MS: 1000,   // ms
     TEXTCLEAR_KEEPALIVE_MS: 1000,   // ms
