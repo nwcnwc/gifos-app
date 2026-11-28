@@ -21,6 +21,8 @@
  * query: a page with an embed cannot be shown to be protected.
  * data-controls picks the player's controls (volume, mute, captions, audioonly, tabs, inset, fullscreen, pip, chat,
  * transcript, reactions, names, watch; default volume,audioonly,fullscreen,pip,chat,transcript,reactions,names,watch). The info button always shows.
+ * data-debug="1" (off unless you set it) records the player's own debug trace on the viewer's device and adds a "Download debug log"
+ * button to the info panel; nothing is sent anywhere, the viewer presses it.
  */
 (function () {
   var s = document.currentScript;
@@ -49,8 +51,9 @@
   var controlsAttr = s.getAttribute('data-controls');
   var controlsQs = controlsAttr == null ? '' : '&controls=' + String(controlsAttr).toLowerCase().replace(/[^a-z,]/g, '');
   // No verifier is an open-floor room: the player decides live whether it is hosted (one place for that rule).
+  var debugQs = /^(1|on|true)$/i.test(String(s.getAttribute('data-debug') || '')) ? '&debug=1' : '';
   var hash = '#room=' + m[1] + (m[2] ? '&v=' + m[2].toLowerCase() : '')
-    + (title ? '&title=' + encodeURIComponent(title) : '') + controlsQs;
+    + (title ? '&title=' + encodeURIComponent(title) : '') + controlsQs + debugQs;
   var f = document.createElement('iframe');
   f.src = origin + '/embed' + hash;
   f.title = title || 'GifOS Broadcast';
