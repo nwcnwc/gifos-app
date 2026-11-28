@@ -35,8 +35,6 @@
     AUDIO_QUANTUM_MS: 20,   // ms
     AWAKE_MS: 3000,   // ms
     BANNER_HOLD: 5000,   // ms
-    BAR_RESTORE_LATE_MS: 1200,   // ms
-    BAR_RESTORE_RECHECK_MS: 400,   // ms
     BC_QUIET_GRACE_MS: 4000,   // ms
     BC_RECONNECT_MS: 60000,   // ms
     BELL_ALONE_MS: 6000,   // ms
@@ -201,8 +199,6 @@
     PAYPAL_KEEP_MS: 21600000,   // ms
     PAYPAL_POLL_MS: 2000,   // ms
     PEER_SILENT_MS: 30000,   // ms
-    PINCH_DOUBLE_TAP_MS: 300,   // ms
-    PINCH_QUIET_MS: 300,   // ms
     PIN_HOLD_MS: 2000,   // ms
     PIPE_HOLD_EVERY_MS: 1000,   // ms
     PIPE_HOLD_MAX_MS: 4000,   // ms
@@ -375,34 +371,32 @@
     X2_KEEP_MS: 15000,   // ms
     X402_RESUME_MS: 6000,   // ms
     X402_RESUME_TRIES: 3,   // count
-    XV_AGG_LINE: 0.35,   // score
-    XV_AGG_MEAN: 0.35,   // score
-    XV_AGG_N: 2,   // count
     XV_BURST_FRAME_MS: 100,   // ms
+    XV_BURST_MS: 1000,   // ms
     XV_BURST_N: 4,   // count
     XV_BURST_N_PHONE: 2,   // count
     XV_CHANGE_MIN_MS: 1500,   // ms
-    XV_CLEAN_MAX: 6,   // count
-    XV_CLEAN_MIN: 2,   // count
-    XV_FIRST_DUTY_DESK_PCT: 15,   // pct
-    XV_FIRST_DUTY_PHONE_PCT: 8,   // pct
-    XV_FIRST_GAP_MIN_MS: 500,   // ms
-    XV_HOLD_CURVE: 1,   // ratio
-    XV_HOLD_MAX_MS: 12000,   // ms
-    XV_HOLD_MIN_MS: 1500,   // ms
-    XV_PEND_MAX_MS: 3000,   // ms
-    XV_SENSE_DIFF: 10,   // luma
-    XV_SENSE_MS: 250,   // ms
-    XV_STRONG: 0.7,   // ratio
-    XV_BURST_MS: 1000,   // ms
+    XV_CLEAN_MAX: 4,   // count
+    XV_CLEAN_MIN: 1,   // count
     XV_DEEP_GAP_MS: 4000,   // ms
     XV_DEEP_MAX_MS: 1500,   // ms
     XV_DUTY_DESK_PCT: 20,   // pct
     XV_DUTY_PHONE_PCT: 10,   // pct
+    XV_FIRST_DUTY_DESK_PCT: 15,   // pct
+    XV_FIRST_DUTY_PHONE_PCT: 8,   // pct
+    XV_FIRST_GAP_MIN_MS: 500,   // ms
     XV_GAP_MAX_MS: 8000,   // ms
     XV_GAP_MAX_PHONE_MS: 20000,   // ms
     XV_GAP_MIN_MS: 1000,   // ms
+    XV_HOLD_CURVE: 1,   // ratio
+    XV_HOLD_MAX_MS: 12000,   // ms
+    XV_HOLD_MIN_MS: 1500,   // ms
+    XV_HOT_MS: 4000,   // ms
+    XV_PEND_MAX_MS: 3000,   // ms
     XV_RETRY_MS: 30000,   // ms
+    XV_SENSE_DIFF: 10,   // count
+    XV_SENSE_MS: 250,   // ms
+    XV_STRONG: 0.7,   // ratio
     holdMs: 2500,   // ms
     tickMs: 500,   // ms
   });

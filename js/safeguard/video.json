@@ -86,7 +86,7 @@
         "license": "Apache-2.0"
       },
       "from": "https://huggingface.co/Marqo/nsfw-image-detection-384 (ViT-tiny), int8 ONNX",
-      "suspect": 0.35
+      "suspect": 0.25
     },
     {
       "id": "falcon",
