@@ -419,6 +419,23 @@
     // is its own. It asks the pages this one can talk to: seats that proved the host key, and a door that holds it.
     const idSeen = new Set();
     const idCopy = hosted && GifOS.identity && GifOS.identity.copier ? GifOS.identity.copier({ room: host.room, v: host.v, myId: host.myId, owner: host.owner, now: host.now, send: host.send, peers: () => Array.from(new Set(host.hosts().concat(Array.from(idSeen)))) }) : null;
+    // Sync across my devices (js/gifos-identity-sync.js): a hidden data room made from the sync key. Every frame whose op is
+    // 'sy' is its own; a room that is not that one never starts the part and drops them.
+    let syncPart = null;
+    const syncKey = () => { try { const s = GifOS.identity && GifOS.identity.syncState && GifOS.identity.syncState(); return s && s.on ? { k: s.k, gen: s.gen } : null; } catch (e) { return null; } };
+    // The part's file loads only here, in the page of a data room (the meeting page stays thin): beside this file.
+    const syncLoad = () => (GifOS.identitySync ? Promise.resolve() : new Promise((ok, no) => {
+      const me = root.document && root.document.querySelector('script[src*="meet-myroom.js"]'), s = root.document.createElement('script');
+      s.src = (me ? me.src.replace(/meet-myroom\.js.*$/, '') : 'js/') + 'gifos-identity-sync.js'; s.onload = ok; s.onerror = no; (root.document.head || root.document.body).appendChild(s);
+    }));
+    if (hosted && GifOS.identity && GifOS.identity.syncState && syncKey()) {
+      const k0 = syncKey();
+      syncLoad().then(() => GifOS.identitySync.derive(k0.k, k0.gen)).then((d) => {
+        if (d.room !== room || d.v !== v) return;
+        syncPart = GifOS.identitySync.part({ send: host.send, reach: () => (host.reachIds ? host.reachIds() : []), now: host.now, key: syncKey, relay: (on) => { if (host.relayQuiet) host.relayQuiet(!on); }, log: (l) => { try { if (root.console && root.__gifosSyncDebug) root.console.log(l); } catch (e) {} } });
+        GifOS.identitySyncPart = syncPart;
+      }, () => {});
+    }
     let linkCard = null;        // a card the address carried (to save, or to call with once)
     let mineLater = false;      // an invite opened before I gave my name: my personal room is made once I have
     // holder side
@@ -509,6 +526,7 @@
       const now = host.now();
       if (mineLater && host.myName() && !appearOpen()) { mineLater = false; ensureMine(host.myName()).catch(() => null); }
       if (idCopy) idCopy.tick();
+      if (syncPart) syncPart.tick();
       if (hosted && !host.owner()) {
         const mc = myCard();
         if (mc) {
@@ -990,6 +1008,7 @@
     const rx = {};   // My Room frames received, by op (state(): a stranger's calendar note is not one of them)
     async function onMsg(pid, m) {
       if (idCopy && m && typeof m.op === 'string' && m.op.slice(0, 2) === 'id') return idCopy.onMsg(pid, m);
+      if (m && m.op === 'sy') { if (syncPart) syncPart.onMsg(pid, m); return; }
       if (!hosted || !m || typeof m.op !== 'string') return;
       if (m.op === 'cal' || m.op === 'calok') { onCal(pid, m); return; }
       rx[m.op] = (rx[m.op] || 0) + 1;

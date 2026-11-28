@@ -243,6 +243,7 @@
     const ident = GifOS.meshIdentity || null;
     let stopped = false, lockedFired = false, doorFired = false, strandedFired = false, rejFired = false;
     let doorPingAt = 0, doorPongDue = 0;   // door keepers: when I last pinged the relay; since when a ping waits for its pong (0: none)
+    let quietRelay = false;   // a data room's seat that is done with the relay (js/gifos-identity-sync.js): seated, it lets the socket go as a deep seat does
     let sock = null, deepSince = -1, dcWas = false, wasNetDark = false, netDarkAt = 0;   // dcWas: FHOP.8, I stood at the door last tick   // netDarkAt: wall clock of the offline edge (the dark span is an absence — see tick())
     let lastTickAt = 0, workerClock = false;   // wall clock of the last tick run; workerClock: the tick timer is a Worker (the wall-time clock applies: see tick())
     // Wire-level greeter registration health (production only — the sim has no
@@ -986,6 +987,7 @@
     let regLateT = 0;   // one deferred register while the throttle holds: a throttled call is delayed, never lost
     function reregister(why) {
       if (stopped || !seat || !iAmAGreeter()) return;
+      if (quietRelay && raw && raw.hasCoord && raw.state === 3) return;   // a data room's seat that let the relay go does not list itself again
       const now = Date.now();
       if (now - lastRegAt < 8000) {
         if (!regLateT) regLateT = setTimeout(() => { regLateT = 0; reregister(why + '-late'); }, 8000 - (now - lastRegAt));
@@ -1257,7 +1259,7 @@
         } else lastTickAt = 0;
         if (seat.stranded && !strandedFired) { strandedFired = true; if (opts.onStranded) opts.onStranded(); }
         // Socket lifecycle, as the seat's socketed(): a joiner until seated, a greeter while it is one, a seat lost from the mesh that knocks. Anyone else is done with the relay: drop after a grace.
-        const needsRelay = !raw || raw.socketed();
+        const needsRelay = !raw || (raw.socketed() && !(quietRelay && raw.hasCoord && raw.state === 3));
         if (needsRelay) deepSince = -1;
         else if (deepSince < 0) deepSince = env.TICK;
         // FHOP.8: the call to the door is over and I sit deep: off the door list now (the relay also ends a door-call entry on its own clock)
@@ -1447,6 +1449,7 @@
         return n;
       },
       _signGossipForTest(f) { return (identity && ident.signGossip) ? ident.signGossip(identity, f) : Promise.resolve(''); },   // TEST ONLY — my own signature on a frame I hold back
+      setQuiet(on) { quietRelay = !!on; if (!on) deepSince = -1; },   // the page's word: done with the relay (true) / the relay is needed again (false)
       socketed() { return !raw || raw.socketed(); },   // the seat's own word: am I at the door (a joiner, a greeter, a seat that knocked)
       setRefuses(b) { if (layer) layer.setRefuses(b); },
       roomDigest() { return layer ? layer.roomDigest() : null; },

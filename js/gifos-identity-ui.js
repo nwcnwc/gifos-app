@@ -232,15 +232,24 @@
       '<p>' + esc(tx('intro', 'Me & My Contacts: one sealed file that is you on GifOS: your rooms, contacts, keys and settings. No server has a copy. Keep the file and you can always come back; copy it and you\'re on another device.')) + '</p>' +
       (n ? '<div class="idn-note">' + esc(noteWords(n, st)) + '</div>' : '') +
       '<ul class="idn-list"><li>Holds: ' + holds(st.counts) + '</li><li>On: ' + devs + '</li><li>The file opens with: ' + esc(ways) + '</li>' +
-      '<li>File last saved: ' + (st.saved ? esc(dayOf(st.saved.at)) : '<b>never</b>') + '</li></ul>';
+      '<li>File last saved: ' + (st.saved ? esc(dayOf(st.saved.at)) : '<b>never</b>') + '</li>' + syncLine() + '</ul>';
     const act = await sheet('manage', html, [['save', tx('save', 'Save this file'), true], ['copy', tx('copyOut', 'Copy to another device')], ['pass', hasPass ? 'Change the passphrase' : 'Set a passphrase']]
-      .concat(pk ? [['key', 'Add a passkey']] : []).concat([['file', tx('mergeBtn', 'Merge in a saved file…'), false, tx('mergeNote', "Adds anything from that file that this device doesn't have yet. Nothing here is replaced or deleted.")], ['apps', tx('appsBtn', 'Apps that know you')], ['close', 'Close']])).done;
+      .concat(pk ? [['key', 'Add a passkey']] : []).concat(syncOn() === null ? [] : [['sync', syncOn() ? tx('syncStop', 'Stop syncing across my devices') : tx('syncStart', 'Sync across my devices'), false, syncOn() ? tx('syncStopNote', 'Your other devices keep what they have; they just stop hearing from this one.') : tx('syncNote', 'Keeps every device that holds this file up to date, with no server holding anything. Copy the file to your other devices once.')]]).concat([['file', tx('mergeBtn', 'Merge in a saved file…'), false, tx('mergeNote', "Adds anything from that file that this device doesn't have yet. Nothing here is replaced or deleted.")], ['apps', tx('appsBtn', 'Apps that know you')], ['close', 'Close']])).done;
     if (act === 'save') await save();
     else if (act === 'copy') copyOut();
     else if (act === 'pass') { if (await setPassphrase()) manage(); }
     else if (act === 'key') { if (await setPasskey()) manage(); }
     else if (act === 'file') pickFile();
     else if (act === 'apps') appsThatKnowYou();
+    else if (act === 'sync') { ID().syncSet(!syncOn()); try { if (GifOS.identitySync) GifOS.identitySync.wake(true); } catch (e) {} paintAll(); manage(); }
+  }
+  // Sync across my devices (js/gifos-identity-sync.js): the setting lives in the file; the line says where it stands.
+  const syncOn = () => { try { return ID().syncState ? !!ID().syncState().on : null; } catch (e) { return null; } };
+  function syncLine() {
+    if (syncOn() === null) return '';
+    const S = GifOS.identitySync, st = S && S.readStatus ? S.readStatus() : null;
+    const line = syncOn() ? ((st && st.on ? S.words(st) : '') || tx('syncWaiting', 'Waiting for your other devices')) : tx('syncOff', 'Off');
+    return '<li>Sync across my devices: ' + esc(line) + '</li>';
   }
   // Me & My Contacts is a data provider (docs/providers.md "Data providers"): its permission list, here where it lives.
   // An app is on it once you let it see your name or picture, or pick people from your contacts; Forget takes it all back.
