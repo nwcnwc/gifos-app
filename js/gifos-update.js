@@ -294,6 +294,13 @@
       const live = liveOf(info);
       if (!live) return null;
       try { root.localStorage.setItem('gifos_current', live.latest); } catch (e) {}
+      // A release this page is not running: ask the service worker to fetch its meeting files NOW, in the background at low
+      // priority, so the first open after a release is already on the device (sw.js prefetchRelease; MEETSLOW 11-28: that open
+      // downloaded ~2 MB over a hotel link while the person watched a blank tab).
+      try {
+        const sw = root.navigator && root.navigator.serviceWorker, mine = String(root.GIFOS_VERSION || '');
+        if (sw && sw.controller && mine && mine !== 'edge' && mine !== live.latest) sw.controller.postMessage({ type: 'gifos-prefetch-release', version: live.latest });
+      } catch (e) {}
       const want = !(opts && typeof opts.notes === 'function') || opts.notes(info);
       if (!want || notesFor === live.latest) return { info, changelog: notesCache };
       // Release notes are best-effort: the bar still works without them.

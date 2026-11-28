@@ -49,7 +49,7 @@
  */
 'use strict';
 
-var SHELL_VERSION = 'v42'; // v42: js/gifos-identity-sync.js (Sync across my devices). v41: js/thumb-gate.js (the viewer-side thumbnail check). v40: js/gifos-explicit.js (the upload guard) joins the shell. v39: js/calendar/serve.html (the Calendar as the calendar provider). v38: the data providers' permission lists (js/gifos-grants.js) join the shell. v37: 0.9.28.63 merge: both v36 changes below. v36: js/ring-standby.js (Ring me on this device, standing by while GifOS is open) joins the shell. v35: the Home views (js/home-view.js, css/home-view.css) join the shell. v34: the My identity words (i18n/<locale>/identity.json) join the shell. v33: My identity (js/gifos-identity.js, js/gifos-identity-ui.js) joins the shell. v32: the subscription's cards (js/core/view/subs.js) join the shell beside js/meet-subs.js, which is now logic only. v31: js/core/link.js (the one room-link grammar) joins the shell: every page reads its address with it. v30: the embed player's words (i18n/<locale>/embed.json) join the shell. v29: the meeting and broadcast pages (meet.html, cast.html) and their surfaces join the shell; run.html is the app runtime with its audio view (js/core/view/audio.js, css/run.css). v28: embed.html (gifos.app/embed, the broadcast player page) and its view part, and welcome.html (gifos.app/welcome), join the shell. v27: the subscription page's words join the shell; pages are kept under the clean address the host serves them at (/store, not only /store.html), never with a redirect mark, and an offline .html address is redirected to it; (v26: the meeting page runs from js/core (core, media plane, view, linker; in the page bundle when published); (v25: My library streams sealed recordings through this worker; (v24: My library (the /library page and its client); (v23: js/timings.js joins the shell (the meeting page's waits and timeouts) (v22: css/meet-polish.css joins the shell (v21: css/meet.css joins the shell (the meeting styles moved out of run.html) (v20: js/dialog.js joins the shell (the dialogs' scroll frame, parsed by every page) (v19: 0.9.25 cut (shell now holds every en catalog and the new version.json/changelog) (v18: every surface's en catalog joins the shell, plus meet.json and the built-in apps (v17: gifos-i18n.js and the en catalogs join the shell (v16: 0.9.24 hotfix, gifos-update.js reads a four-part `latest`; v15: gifos-charge.js joins the shell) v36: the looks registry, widgets, Clock and Calendar words (js/home-widgets.js, js/home-looks/*.js, i18n/en/home.json, apps/clock.json, apps/calendar.json) join the shell. (v36 main) v35: the Home views (js/home-view.js, css/home-view.css) join the shell. v34: the My identity words (i18n/<locale>/identity.json) join the shell. v33: My identity (js/gifos-identity.js, js/gifos-identity-ui.js) joins the shell. v32: the subscription's cards (js/core/view/subs.js) join the shell beside js/meet-subs.js, which is now logic only. v31: js/core/link.js (the one room-link grammar) joins the shell: every page reads its address with it. v30: the embed player's words (i18n/<locale>/embed.json) join the shell. v29: the meeting and broadcast pages (meet.html, cast.html) and their surfaces join the shell; run.html is the app runtime with its audio view (js/core/view/audio.js, css/run.css). v28: embed.html (gifos.app/embed, the broadcast player page) and its view part, and welcome.html (gifos.app/welcome), join the shell. v27: the subscription page's words join the shell; pages are kept under the clean address the host serves them at (/store, not only /store.html), never with a redirect mark, and an offline .html address is redirected to it; (v26: the meeting page runs from js/core (core, media plane, view, linker; in the page bundle when published); (v25: My library streams sealed recordings through this worker; (v24: My library (the /library page and its client); (v23: js/timings.js joins the shell (the meeting page's waits and timeouts) (v22: css/meet-polish.css joins the shell (v21: css/meet.css joins the shell (the meeting styles moved out of run.html) (v20: js/dialog.js joins the shell (the dialogs' scroll frame, parsed by every page) (v19: 0.9.25 cut (shell now holds every en catalog and the new version.json/changelog) (v18: every surface's en catalog joins the shell, plus meet.json and the built-in apps (v17: gifos-i18n.js and the en catalogs join the shell (v16: 0.9.24 hotfix, gifos-update.js reads a four-part `latest`; v15: gifos-charge.js joins the shell)
+var SHELL_VERSION = 'v43'; // v43: the release prefetch (gifos-prefetch-release). v42: js/gifos-identity-sync.js (Sync across my devices). v41: js/thumb-gate.js (the viewer-side thumbnail check). v40: js/gifos-explicit.js (the upload guard) joins the shell. v39: js/calendar/serve.html (the Calendar as the calendar provider). v38: the data providers' permission lists (js/gifos-grants.js) join the shell. v37: 0.9.28.63 merge: both v36 changes below. v36: js/ring-standby.js (Ring me on this device, standing by while GifOS is open) joins the shell. v35: the Home views (js/home-view.js, css/home-view.css) join the shell. v34: the My identity words (i18n/<locale>/identity.json) join the shell. v33: My identity (js/gifos-identity.js, js/gifos-identity-ui.js) joins the shell. v32: the subscription's cards (js/core/view/subs.js) join the shell beside js/meet-subs.js, which is now logic only. v31: js/core/link.js (the one room-link grammar) joins the shell: every page reads its address with it. v30: the embed player's words (i18n/<locale>/embed.json) join the shell. v29: the meeting and broadcast pages (meet.html, cast.html) and their surfaces join the shell; run.html is the app runtime with its audio view (js/core/view/audio.js, css/run.css). v28: embed.html (gifos.app/embed, the broadcast player page) and its view part, and welcome.html (gifos.app/welcome), join the shell. v27: the subscription page's words join the shell; pages are kept under the clean address the host serves them at (/store, not only /store.html), never with a redirect mark, and an offline .html address is redirected to it; (v26: the meeting page runs from js/core (core, media plane, view, linker; in the page bundle when published); (v25: My library streams sealed recordings through this worker; (v24: My library (the /library page and its client); (v23: js/timings.js joins the shell (the meeting page's waits and timeouts) (v22: css/meet-polish.css joins the shell (v21: css/meet.css joins the shell (the meeting styles moved out of run.html) (v20: js/dialog.js joins the shell (the dialogs' scroll frame, parsed by every page) (v19: 0.9.25 cut (shell now holds every en catalog and the new version.json/changelog) (v18: every surface's en catalog joins the shell, plus meet.json and the built-in apps (v17: gifos-i18n.js and the en catalogs join the shell (v16: 0.9.24 hotfix, gifos-update.js reads a four-part `latest`; v15: gifos-charge.js joins the shell) v36: the looks registry, widgets, Clock and Calendar words (js/home-widgets.js, js/home-looks/*.js, i18n/en/home.json, apps/clock.json, apps/calendar.json) join the shell. (v36 main) v35: the Home views (js/home-view.js, css/home-view.css) join the shell. v34: the My identity words (i18n/<locale>/identity.json) join the shell. v33: My identity (js/gifos-identity.js, js/gifos-identity-ui.js) joins the shell. v32: the subscription's cards (js/core/view/subs.js) join the shell beside js/meet-subs.js, which is now logic only. v31: js/core/link.js (the one room-link grammar) joins the shell: every page reads its address with it. v30: the embed player's words (i18n/<locale>/embed.json) join the shell. v29: the meeting and broadcast pages (meet.html, cast.html) and their surfaces join the shell; run.html is the app runtime with its audio view (js/core/view/audio.js, css/run.css). v28: embed.html (gifos.app/embed, the broadcast player page) and its view part, and welcome.html (gifos.app/welcome), join the shell. v27: the subscription page's words join the shell; pages are kept under the clean address the host serves them at (/store, not only /store.html), never with a redirect mark, and an offline .html address is redirected to it; (v26: the meeting page runs from js/core (core, media plane, view, linker; in the page bundle when published); (v25: My library streams sealed recordings through this worker; (v24: My library (the /library page and its client); (v23: js/timings.js joins the shell (the meeting page's waits and timeouts) (v22: css/meet-polish.css joins the shell (v21: css/meet.css joins the shell (the meeting styles moved out of run.html) (v20: js/dialog.js joins the shell (the dialogs' scroll frame, parsed by every page) (v19: 0.9.25 cut (shell now holds every en catalog and the new version.json/changelog) (v18: every surface's en catalog joins the shell, plus meet.json and the built-in apps (v17: gifos-i18n.js and the en catalogs join the shell (v16: 0.9.24 hotfix, gifos-update.js reads a four-part `latest`; v15: gifos-charge.js joins the shell)
 var CACHE = 'gifos-shell-' + SHELL_VERSION;
 
 // ONE CACHE KEY PER FILE. pages.yml stamps `?v=<sha>` onto every local css/js
@@ -199,6 +199,7 @@ self.addEventListener('install', function (e) {
 self.addEventListener('message', function (e) {
   var data = e.data || {};
   if (data.type === 'gifos-apply-update') { self.skipWaiting(); return; }
+  if (data.type === 'gifos-prefetch-release' && typeof data.version === 'string') { e.waitUntil(prefetchRelease(data.version)); return; }
   if (data.type === 'gifos-refresh-shell') {
     e.waitUntil((async function () {
       var cache = await caches.open(CACHE);
@@ -208,6 +209,53 @@ self.addEventListener('message', function (e) {
     })());
   }
 });
+
+// ---- THE RELEASE PREFETCH (MEETSLOW 11-28). A page that learns the live release is newer than the one it runs
+// (version.json) posts 'gifos-prefetch-release'. The first open of Meeting after a release used to download the new
+// version's whole meeting page (~2 MB gzipped) over a possibly slow link while the person watched a blank tab. This worker
+// fetches those files in the background, ONE at a time at low priority, and only while no page of the person's is loading
+// (it waits for LULL_MS of quiet before each file and stops at once if a page starts loading). Files go in the cache under
+// /versions/<v>/..., where the cache-first rule above serves them. One run per version per worker, shared by every tab and
+// page (the worker owns it); a later message for a version that did not finish just continues, skipping what is cached.
+var lastPageFetch = 0, prefetching = {}, LULL_MS = 1500, PREFETCH_EXTRA = [
+  'js/core/link.js', 'js/core/view/meet.js', 'js/rooms-model.js', 'themes/theme.js', 'js/gifos-themes.js',
+  'i18n/en/help.json', 'i18n/en/update.json', 'i18n/en/runtime.json', 'i18n/en/charge.json', 'i18n/en/install.json', 'i18n/en/identity.json',
+];
+function prefetchRefs(html) {
+  var out = {}, m, re = /(?:src|href)="((?:js|css)\/[^"?#]+)/g;
+  while ((m = re.exec(html))) out[m[1]] = 1;
+  re = /["'`]((?:js|css)\/[\w.\/-]+\.(?:js|css))(?:\?[^"'`]*)?["'`]/g;   // the loader strings that fetch the bundles (meet.bundle.js?h=..)
+  while ((m = re.exec(html))) out[m[1]] = 1;
+  return Object.keys(out);
+}
+function quiet() {
+  return new Promise(function (resolve) {
+    (function tick() {
+      var wait = LULL_MS - (Date.now() - lastPageFetch);
+      if (wait <= 0) resolve(); else setTimeout(tick, Math.min(wait, 1000) + 50);
+    })();
+  });
+}
+async function prefetchRelease(v) {
+  if (!/^\d+\.\d+\.\d+(\.\d+)?$/.test(v) || prefetching[v]) return;
+  prefetching[v] = 1;
+  try {
+    var cache = await caches.open(CACHE), base = '/versions/' + v + '/';
+    var urls = [base + 'meet.html', base + 'run.html'];
+    for (var i = 0; i < urls.length; i++) {
+      var u = urls[i];
+      if (await cache.match(u)) { if (i === 0) urls = urls.concat(prefetchRefs(await (await cache.match(u)).clone().text()).map(function (r) { return base + r; })); continue; }
+      await quiet();
+      var res = await fetch(new Request(u, { priority: 'low' })).catch(function () { return null; });
+      if (!res || !res.ok) { if (i === 0) { delete prefetching[v]; return; } continue; }
+      var clean = new URL(u, self.location.href).pathname;
+      await keep(cache, clean, res.clone());
+      if (/\.html$/.test(clean)) await keep(cache, clean.replace(/\.html$/, ''), res.clone());   // the page is asked for at its clean address (/meet)
+      if (i === 0) urls = urls.concat(prefetchRefs(await res.text()).map(function (r) { return base + r; }), PREFETCH_EXTRA.map(function (r) { return base + r; }));
+    }
+  } catch (err) { delete prefetching[v]; return; }
+  // done: stay marked so tabs asking again do nothing
+}
 
 // Resolve a fetch, but never hang: if the network hasn't answered in `ms`, give
 // up and resolve null (a stalled airplane-mode socket must not block a parser-
@@ -503,6 +551,7 @@ self.addEventListener('fetch', function (e) {
   // servers): never intercept. They behave exactly as before — working online,
   // failing offline with the app's own messaging.
   if (url.origin !== self.location.origin) return;
+  lastPageFetch = Date.now();   // a person's load: the release prefetch yields to it
   // My library: a decrypted stream of a sealed file (see libStream above).
   if (url.pathname === '/library-stream/ping') { e.respondWith(new Response(null, { status: 204, headers: { 'X-Gifos-Library-Stream': '1', 'Cache-Control': 'no-store' } })); return; }
   var lm = LIB_RE.exec(url.pathname);
