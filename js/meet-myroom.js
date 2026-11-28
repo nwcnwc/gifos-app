@@ -473,10 +473,12 @@
       idSeen.add(pid); if (idCopy) idCopy.onHeld(pid);
       if (host.owner()) return;
       if (told.get(pid) === 0 && call && (call.state === 'waiting' || call.state === 'ringing') && host.chan && host.chan(pid) !== chanSeen.get(pid)) told.delete(pid);
+      heldAt.add(pid); if (heldAt.size > 20) heldAt.delete(heldAt.values().next().value);
       if (host.chan) chanSeen.set(pid, host.chan(pid));
       showCard(pid).catch(() => {});
     }
     const chanSeen = new Map();   // pid -> the channel the door last said "held" on
+    const heldAt = new Set();     // doors that said "held" to me: an invite waits for my name, then is shown there
     const newCall = (mc, at) => Object.assign({ label: mc.name || room, state: 'waiting', at, invite }, mc.inv ? { inv: mc.inv, label: mc.from || mc.name || room } : {});
     // A hidden door a standing-by tab keeps open (js/ring-standby.js): nobody is looking at this page.
     const appearOpen = () => { try { return !!(root.document && root.document.getElementById('appear-modal')); } catch (e) { return false; } };
@@ -499,6 +501,7 @@
         if (mc) {
           if (!call) { call = newCall(mc, now); emit({ type: 'call', call }); if (GifOS.bell && !mc.inv) GifOS.bell.press(room, v, host.myName(), callId).then((r) => emit({ type: 'bell', r }), () => {}); }
           for (const pid of host.hosts()) showCard(pid).catch(() => {});
+          if (mc.inv) for (const pid of heldAt) showCard(pid).catch(() => {});   // held while I was still saying my name
           // Answer is no frame: the owner let me in and went live (mic or camera on), which every seat already sees.
           if (call.state === 'ringing' && host.seated() && host.hostLive()) { call.state = 'answered'; call.answeredAt = now; emit({ type: 'call', call }); }
           if (call.state === 'waiting' && call.here && host.seated()) { call.state = 'answered'; call.answeredAt = now; emit({ type: 'call', call }); }   // admitted after the owner's 'here'
@@ -640,6 +643,15 @@
       if (isMine(room, v) && !doorSet) { doorSet = true; if (!host.holding()) host.hold(true); }
       if (want && !standby) { standby = true; emit({ type: 'standby', on: true }); }
       if (!want && standby) { standby = false; emit({ type: 'standby', on: false }); }
+      // An invite's opener who sat down here before I came (their page found the room empty and took a seat) is neither held
+      // at my door nor told who I am: I tell them, with my room's signed word, so their page shows me the invite.
+      if (isMine(room, v) && invitesOpenHere()) {
+        for (const p of host.people()) {
+          if (!host.reach(p.id) || host.isHost(p.id) || now - (doorSaid.get(p.id) || 0) < 3 * (T().MYROOM_TICK_MS || 0)) continue;
+          doorSaid.set(p.id, now);
+          host.signAdm('mrdoor', { to: String(p.id) }).then((w) => { if (w) host.send(p.id, { op: 'door', w }); }, () => {});
+        }
+      }
       const takenElsewhere = host.hostLive();   // another of my devices answered (it went live): mine stops, no missed call
       for (const [pid, r] of Array.from(rings)) {
         if (r.priv) continue;   // a private room's ring is the listening page's (privRingTick)
@@ -653,6 +665,8 @@
         }
       }
     }
+    const doorSaid = new Map();
+    const invitesOpenHere = () => { const now = Date.now(); return issued().some((x) => x.inv && !x.used && +x.exp > now && roomKey(x.room, x.v) === roomKey(room, v)); };
     async function sendSigned(pid, op) { const w = await host.signAdm('mr' + op, { to: String(pid) }); if (w) host.send(pid, { op, w }); }
 
     async function onCardShown(pid, m) {
@@ -946,6 +960,12 @@
           if (m.aw && !host.owner()) { const o = await host.verifyAdm(m.aw, 'mrsask').catch(() => null), mc = myCard(); if (o && o.to === String(host.myId()) && o.sid === m.sid && mc && mc.inv && mc.inv === o.card) auto = mc.inv; }
           pendSw.set(m.sid, { pid, seed, pub: k.pubB64, pa: m.pa, n: String(m.n || '').slice(0, 40), auto });
           host.send(pid, { op: 'sack', sid: m.sid, w: await signWord(seed, 'swap|' + m.sid, host.myId(), host.now()) });
+          return;
+        }
+        if (m.op === 'door' && m.w && !host.owner()) {   // the owner tells me it is here (I sat down before it came): an invite is shown there
+          const mc = myCard(); if (!mc || !mc.inv) return;
+          const o = await host.verifyAdm(m.w, 'mrdoor'); if (!o || o.to !== String(host.myId())) return;
+          heldAt.add(pid); showCard(pid).catch(() => {});
           return;
         }
         if (m.op === 'sack' && swapWaits.has(m.sid)) { const f = swapWaits.get(m.sid); swapWaits.delete(m.sid); f(m.w); return; }
