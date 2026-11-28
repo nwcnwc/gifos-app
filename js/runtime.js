@@ -728,7 +728,21 @@
   }
 
   // ---- app-facing shim injected into the sandboxed iframe -----------------
-  function clientShim(gen, nonce) {
+  function clientShim(gen, nonce, withCalendar) {
+    // Present only for the seeded system Calendar. A store app that copies the manifest gets an empty string here.
+    const calendarApi = withCalendar ? `,
+        calendar: {
+          newRoom: function(opts){ return rpc({ type:'calendar', op:'newRoom', mode: opts && opts.mode }); },
+          contacts: function(){ return rpc({ type:'calendar', op:'contacts' }); },
+          invite: function(cid, ics){ return rpc({ type:'calendar', op:'invite', cid: cid, ics: ics }); },
+          reply: function(cid, ics){ return rpc({ type:'calendar', op:'reply', cid: cid, ics: ics }); },
+          cancel: function(cid, ics){ return rpc({ type:'calendar', op:'cancel', cid: cid, ics: ics }); },
+          onInbox: function(cb){ if (typeof cb === 'function') calInbox.push(cb); return function(){ var i = calInbox.indexOf(cb); if (i >= 0) calInbox.splice(i, 1); }; },
+          ack: function(id){ return rpc({ type:'calendar', op:'ack', id: id }); },
+          setAlarms: function(list){ return rpc({ type:'calendar', op:'setAlarms', list: list }); },
+          join: function(link){ return rpc({ type:'calendar', op:'join', link: link }); },
+          draft: function(){ return rpc({ type:'calendar', op:'draft' }); }
+        }` : '';
     return `(function(){
       var GEN = ${Number(gen) || 1}, NONCE = ${JSON.stringify(String(nonce || ''))};
       var LOCALE0 = ${JSON.stringify(localeSnap()).replace(/</g, '\\u003c')}, I18N_CORE = (${i18nCoreSrc()});
@@ -910,6 +924,9 @@
             }, none);
           })();
         }
+        if(d.type==='calendar-inbox' && d.item){
+          for (var ci = 0; ci < calInbox.length; ci++) { try { calInbox[ci](d.item); } catch (err) {} }
+        }
         if(d.type==='meet-event' && d.event){
           var ev = d.event, list = [];
           if (ev.type === 'transcript') list = meetSubs.tr;
@@ -957,6 +974,7 @@
       });
       var provHandlers = null;
       var meetSubs = { tr: [], pe: [], ch: [], xf: [], hw: [], rb: [] };
+      var calInbox = [];
       var roomCbs = [], roomLast = null;
       // Android Chrome only lets the container's Back trap "stick" once the page
       // has real user activation, and the user touches the APP, not the frame
@@ -1504,7 +1522,7 @@
           speakers: function(id, on){ return rpc({ type:'meet', op:'speakers', meetingId: id, on: !!on }); },
           speakerClips: function(id){ return rpc({ type:'meet', op:'speakerClips', meetingId: id }); },
           shots: function(id){ return rpc({ type:'meet', op:'shots', meetingId: id }); }
-        }
+        }${calendarApi}
       };
     })();`;
   }
@@ -1596,7 +1614,7 @@
   const baseTag = (doc) => { const b = doc.createElement('base'); b.setAttribute('href', 'about:srcdoc'); return b; };
 
   // ---- build a runnable, self-contained HTML doc from the archive ----------
-  function buildAppHtml(files, manifest, gen, nonce) {
+  function buildAppHtml(files, manifest, gen, nonce, withCalendar) {
     const withAgent = hasCap(manifest, 'agent');
     const CSP = appCsp(manifest);
     let html = gif.bytesToText(files['index.html']);
@@ -1620,7 +1638,7 @@
       meta.setAttribute('http-equiv', 'Content-Security-Policy');
       meta.setAttribute('content', CSP);
       const shim = doc.createElement('script');
-      shim.textContent = clientShim(gen, nonce);
+      shim.textContent = clientShim(gen, nonce, !!withCalendar);
       doc.head.insertBefore(shim, doc.head.firstChild);
       doc.head.insertBefore(baseTag(doc), doc.head.firstChild);
       doc.head.insertBefore(meta, doc.head.firstChild);
@@ -1629,7 +1647,7 @@
     }
     // Non-DOM fallback (tooling): best-effort inject into <head> if present.
     const head = '<meta http-equiv="Content-Security-Policy" content="' + CSP + '">' +
-      APP_BASE_TAG + '<script>' + clientShim(gen, nonce) + '</script>';
+      APP_BASE_TAG + '<script>' + clientShim(gen, nonce, !!withCalendar) + '</script>';
     const tail = withAgent ? '<script>' + agentBootstrap() + '</script>' : '';
     const withHead = /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => m + head) : head + html;
     return withHead + tail;
@@ -4421,7 +4439,7 @@
   }
 
   let setupShownAt = 0; // the last time an app raised an apiSetup/aiSetup modal
-  function mountApp(iframe, files, manifest, db, originalBytes, policy, mountFileId, launch) {
+  function mountApp(iframe, files, manifest, db, originalBytes, policy, mountFileId, launch, calendarFile) {
     noteAppKey(manifest, files, originalBytes);   // who is asking, for what the person told this app (gifos.me)
     // The GifOS Meet apps run the in-meeting apps they ship and any app GIF a
     // person brings to the meeting (Load a GIF, Nathan 2026-11-13), but never
@@ -4435,6 +4453,9 @@
     }
     policy = policy || makeNetPolicy(null, manifest); // client-run: session-only
     mountFileId = mountFileId || null; // set for host mounts — lets gifos.assets() serve the icon's asset cache
+    // Calendar's bridge is the seeded system app only. A guest, a provider, and a store copy get none of it.
+    const calendarOn = !!(root.GifOS && root.GifOS.calendarBridge && root.GifOS.calendarBridge.seededCalendar(calendarFile, manifest));
+    let calUnsub = null;
     // The gate: gifos.launch() answers from here, and only once someone has
     // said yes. asked=[] resolves null immediately, so an app that always calls
     // launch() never waits for a sheet that isn't coming.
@@ -4480,6 +4501,8 @@
     const teardown = () => {
       if (torn) return; torn = true; live = 0;
       identFrames.delete(iframe);
+      try { if (calUnsub) calUnsub(); } catch (e) {}
+      try { if (calendarOn && root.GifOS && root.GifOS.calendarBridge) root.GifOS.calendarBridge.setActive(false); } catch (e) {}
       root.removeEventListener('message', handler);
       try { if (root.GifOS && root.GifOS.meetHost) { root.GifOS.meetHost.clearApp(); root.GifOS.meetHost.leaveAll(); } } catch (e) {}
       try { iframe.srcdoc = LEFT_FRAME_HTML; } catch (e) {}
@@ -4488,7 +4511,7 @@
       if (torn) return;
       if (++remounts > 6) { teardown(); return; }
       const g = ++gen;
-      try { iframe.srcdoc = buildAppHtml(files, manifest, g, nonce); } catch (e) { teardown(); return; }
+      try { iframe.srcdoc = buildAppHtml(files, manifest, g, nonce, calendarOn); } catch (e) { teardown(); return; }
       if (retry) setTimeout(() => { if (retry && !torn && gen === g && live !== g) { retry = false; remount(); } }, 5000);
     };
     const handler = (e) => {
@@ -4680,6 +4703,28 @@
       else if (d.type === 'purchases') {
         (GifOS.payBroker ? GifOS.payBroker.purchases(manifest, originalBytes) : Promise.reject(new Error('Payments are not available on this computer.')))
           .then((result) => reply({ ok: true, result })).catch((err) => reply({ ok: false, error: String(err && err.message || err) }));
+      }
+      else if (d.type === 'calendar') {
+        const bridge = root.GifOS && root.GifOS.calendarBridge;
+        // Checked again here: the frame can ask, and only the seeded Calendar is answered.
+        if (!calendarOn || !bridge || !bridge.seededCalendar(calendarFile, manifest)) reply({ ok: false, error: 'Calendar is not available to this app.' });
+        else {
+          const op = String(d.op || '');
+          const done = (p) => Promise.resolve(p).then((result) => reply({ ok: true, result })).catch((err) => reply({ ok: false, error: String(err && err.message || err) }));
+          if (op === 'newRoom') done(bridge.newRoom({ mode: d.mode }));
+          else if (op === 'contacts') done(bridge.contacts());
+          else if (op === 'invite') done(bridge.invite(d.cid, d.ics));
+          else if (op === 'reply') done(bridge.reply(d.cid, d.ics));
+          else if (op === 'cancel') done(bridge.cancel(d.cid, d.ics));
+          else if (op === 'ack') done(bridge.ack(d.id));
+          else if (op === 'setAlarms') done(bridge.setAlarms(d.list));
+          else if (op === 'draft') done(bridge.draft());
+          else if (op === 'join') {
+            if (!gestured()) reply({ ok: false, error: 'Opening a meeting needs a tap or click first.' });
+            else done(bridge.join(d.link));
+          }
+          else reply({ ok: false, error: 'Unknown calendar request.' });
+        }
       }
       else if (d.type === 'meet') {
         const host = root.GifOS && root.GifOS.meetHost;
@@ -4889,7 +4934,15 @@
       sandboxToken(iframe, 'allow-popups');
       sandboxToken(iframe, 'allow-popups-to-escape-sandbox');
     }
-    iframe.srcdoc = buildAppHtml(files, manifest, gen, nonce);
+    if (calendarOn) {
+      try {
+        root.GifOS.calendarBridge.setActive(true);
+        calUnsub = root.GifOS.calendarBridge.onInbox((item) => {
+          const w = iframe && iframe.contentWindow; if (w) w.postMessage({ ns: 'gifos', type: 'calendar-inbox', item }, '*');
+        });
+      } catch (e) {}
+    }
+    iframe.srcdoc = buildAppHtml(files, manifest, gen, nonce, calendarOn);
     return () => root.removeEventListener('message', handler);
   }
 
@@ -5556,7 +5609,7 @@
         // Snapshot the state AT LOAD once, so the corner app-GIF and a
         // "data at connect time" steal share the same (memoized) bytes.
         const stealCtx = { connectState: connectState, cache: { bytes: null } };
-        mountApp(iframe, files, manifest, db, appBytes, netPolicy, fileId, launch);
+        mountApp(iframe, files, manifest, db, appBytes, netPolicy, fileId, launch, rec);
         if (root.__gifosOnApp) root.__gifosOnApp(appBytes, manifest);
         announceConn({ mode: 'local' });
         setStatus(T('runtime.status.running'));
