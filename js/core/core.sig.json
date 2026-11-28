@@ -5,7 +5,7 @@
  "files": {
   "js/app-owner.js": "7c709e7f9e553d5c4c38ef8925dc7841fe2b68a2f95ebce0846593f91eb54535",
   "js/app-room.js": "f11fbdde9f9d15d5c239b1c6af0842837f5af084d28af60b885a16c67259cf23",
-  "js/core/files.json": "09ba2b790c2d8022e24cbfc0dfeacd9ed0733ce10adde51a10233d6098dfa225",
+  "js/core/files.json": "b3f62beabb77a4f3b365c40a1b4ca287b1265589965a05dfb2f0260009a7a1ce",
   "js/core/host.js": "42a724efff207e3d92c1c39462e580903f8e4623e834dd811503867c94f645c2",
   "js/core/link.js": "488c02af144728dfc1389359705cd2b538c8f1ffae701b69dc49cae8ac5c9457",
   "js/core/media/nones.json": "7d2eb896463019791353607f70ee9fd01d0666f2325e4978d5f6c7ebd2da3ae7",
@@ -33,7 +33,7 @@
   "js/meet-layout.js": "11cfd77d1da39930715e1ebc150400a547ceb6a34e5102657eb16a4f6cd4335f",
   "js/meet-leave.js": "92f60bb18199ffee5e6d8a1a8fc8783c53fa41732f4a5d3c4c2409843e814d50",
   "js/meet-meters.js": "de65337255ff5c85bd2fac0186405abfa597c9f93f739f1a44ae6cd6ea0f9939",
-  "js/meet-myroom.js": "e330adf4e0d9f2503c5895a7cc566c3b9797042c88f9c991213d5eccc61a57a0",
+  "js/meet-myroom.js": "15e7248a4502de27d0053ba7d89f9a0e68840749254c59f396d26709d38259f5",
   "js/meet-pack.js": "f4342e4b596a07d2f3f36667824a084fb5891520d597246345df63dc9752699e",
   "js/meet-power.js": "f23923b8751fc84762516e07ac345ad88d88fe1c05f69b1408c5c4a6d3d4be29",
   "js/meet-progress.js": "4544b950a5c9411efd147d71ee73328822274bc702b6d5807b57732a1c310dc7",
@@ -106,8 +106,8 @@
   "js/mesh/util.js": "3568c05855c54738d77b96d2645205105cc2213eb4e7f23e236e6e90a29a5b58",
   "js/mesh/witness.js": "57fbb5be7700b06efab185322f1be7875ef8b64fcd9c8edb65b34410010135c6",
   "js/relay-config.js": "a96dbda776b370254dbeeded999677a4087880e3c23bca918e4366fb4f788799",
-  "js/runtime.js": "71f26d7fcba958f256206761c4491d3bc296f8ce7b9593a0abfc7161d1b57a8b",
-  "js/timings.js": "2cffd4680ef8d8b8f8c199bf030062c4e46535de12175bed61912975d949c476"
+  "js/runtime.js": "5cf1974c9b2a88ce619a73d8839c251c7a438eafe707eb0cec3bfe59a14912d6",
+  "js/timings.js": "af939dd0834d61a8a1876b280dd17a0e2f1ea2f57e08f0affd551c98aaa1f2ee"
  },
- "sig": "PegD9utAQbb64ouIBKV51m5r3K5Hx83HYSQw9ES/c9NYTivHxO/qsTvn/QIZeXP1BQ5lHS6ilOkkctl56wCXCQ=="
+ "sig": "E0f6Hp/6L9F3Mmg9ZkTL4nebweyIfZk7Y+4EmIsY6AuWVh95pV+TcqNBNJ3cj3RAOVOPYmQkzIE6oL5tJmryDQ=="
 }
