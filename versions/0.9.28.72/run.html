@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<base href="/versions/0.9.28.72/">
+<meta charset="UTF-8">
+<!--@shared:frame-guard-->
+<!-- FRAME GUARD. GitHub Pages sends no X-Frame-Options and a <meta> cannot
+     carry frame-ancestors, so this is the only thing that keeps a third-party
+     page from framing GifOS at opacity 0 and steering a click onto Allow,
+     Install or Approve. Same-origin framing (booted images, app mounts) is
+     allowed; anything else sees a link to open the page itself. Parser-
+     blocking and ES5 on purpose: it runs before any chrome paints.
+     Guarded by test/unit/frame-guard.js. -->
+<script id="gifos-frame-guard">(function(){try{if(window.top===window.self)return;var ok=false;try{ok=window.top.location.origin===window.location.origin;if(!ok&&window.location.origin==='null')ok=window.top.location.origin===window.parent.location.origin;}catch(e){}if(ok)return;var h=document.documentElement;h.style.visibility='hidden';function show(){var b=document.body;if(!b)return;while(b.firstChild)b.removeChild(b.firstChild);var p=document.createElement('p');p.style.cssText='font:16px system-ui,sans-serif;padding:24px;color:#eee;background:#111;margin:0';p.appendChild(document.createTextNode('GifOS does not run inside another site\'s page. '));var a=document.createElement('a');a.href=location.href;a.target='_blank';a.rel='noopener';a.textContent='Open it in its own tab';a.style.color='#9db4ff';p.appendChild(a);b.appendChild(p);h.style.visibility='';}if(document.body)show();else document.addEventListener('DOMContentLoaded',show);}catch(e){}})();</script>
+<!-- The ONLY frames this page ever holds are srcdoc app mounts. A sandboxed
+     frame may still navigate ITSELF, and the replacement document would keep
+     the runtime's bridge with none of the app CSP (site/js/runtime.js,
+     clientShim / mountApp): this policy makes every non-about: target a
+     refused navigation, in the browser, before any script runs. Guarded by
+     test/browser/e2e-app-frame-navigate.js. -->
+<meta http-equiv="Content-Security-Policy" content="frame-src about:">
+<meta name="referrer" content="same-origin">
+<!--@/shared:frame-guard-->
+<!--@shared:link-->
+<!-- THE ROOM LINK: the one reader and writer of room=, v=, code= (js/core/link.js). Parser-
+     blocking and ES5: the channel loader and the entry chrome below read the address with it before anything else. -->
+<script src="js/core/link.js"></script>
+<!--@/shared:link-->
+<!-- THE APP RUNTIME. This page runs apps: an app on its own (#id=), an app room (a link with a code)
+     and an app-first meeting (#app=.. with its room), whose meeting view is audio only (js/core/view/audio.js). Every
+     other room address is a meeting and opens on the meeting page of THIS build, before anything loads: a room or a
+     bare address (the lobby) on meet.html, with the same address after the page name. A broadcast is never addressed
+     here: its page is the broadcast page (/cast, cast.html), and a link names no view.
+     On gifos.app the pages are their clean addresses (/meet, /versions/<v>/meet: the host serves meet.html there), and
+     the meeting page's own channel loader moves the visitor into the live release. Elsewhere, and inside the GifOS Meet
+     apps (window.GifosNative, set before any page script, serving their bundled files under their own names), the page
+     file is named. -->
+<script id="gifos-forward">(function(){try{
+  if(location.protocol==='about:')return;
+  var h=location.hash||'',q=new URLSearchParams(h.replace(/^#/,''));
+  var L=window.GifOSLink?window.GifOSLink.read(location.pathname,'',h):null;
+  if(q.get('id')||(L&&L.code)||q.get('app'))return;
+  var page='meet',path=location.pathname,app=!!window.GifosNative,ours=!app&&/(^|\.)gifos\.app$/.test(location.hostname);
+  // the gifos.app root on the default channel: the loader below moves the visitor into the live release in one step
+  if(ours&&path.indexOf('/versions/')===-1){var edge=null,ask=null;try{edge=localStorage.getItem('gifos_channel');ask=sessionStorage.getItem('gifos_ask_edge');}catch(e){}if(edge!=='edge'&&!ask)return;}
+  window.__gifosForward=true;
+  location.replace(path.replace(/[^\/]*$/,'')+page+(ours?'':'.html')+location.search+h);
+}catch(e){}})();</script>
+<meta name="robots" content="noindex">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0a0a0f">
+<style>html{background:var(--bg,#0a0a0f)}</style>
+<!--@shared:preflight-->
+<!-- ════ PREFLIGHT: can this browser actually hold a meeting? ════════════════════
+     A browser that cannot run the meeting used to find that out the slow way:
+     it booted, knocked, never seated, and after four seconds got the joining
+     veil — "Reaching the meeting…" — forever. That is the worst possible
+     answer, because it is a lie of omission: nothing was ever going to reach
+     anything. A phone that cannot come needs to be TOLD, in words, in the
+     first instant.
+
+     So this runs FIRST — before the channel loader, before the theme gate,
+     before one line of app code — and it is written in ES5 on purpose: a
+     browser old enough to fail the check is old enough to choke on an arrow
+     function, and a preflight that dies of a SyntaxError explains nothing.
+
+     THE DECISION IS FEATURE DETECTION, NEVER THE USER-AGENT. UA sniffing is
+     wrong twice over: it blocks new browsers it has never heard of, and it
+     waves through old ones wearing a fashionable string. The UA is read for
+     exactly one purpose — to put a friendly NAME and NUMBER in the copy
+     ("Safari 14 … needs Safari 17") — and never touches the verdict.
+
+     THE REQUIRED SET, derived from the code, not from a wishlist:
+       WebSocket .................. the relay socket (gifos-net.js)
+       crypto.subtle + getRandomValues .. derive-don't-send: PBKDF2/HKDF-shaped
+                                    derivation, AES-GCM sealed frames, SHA-256
+       RTCPeerConnection + createDataChannel .. the mesh links themselves (or, with no
+                                    RTCPeerConnection at all, WebCodecs Opus + AudioWorklet:
+                                    a seat carries the page, docs/turn-carry.md)
+       TextEncoder / TextDecoder .. the byte<->string boundary everywhere
+       Promise / Map / Set ........ the ES6 floor the runtime is written on
+       RegExp \p{..} + Object.fromEntries .. the language the meeting's scripts parse and load with
+                                    (a regex literal the browser cannot parse stops the whole bundle)
+
+     NOT required, deliberately:
+       getUserMedia ............... view-only join is a supported, first-class
+                                    state (the knock never waits on media —
+                                    see e2e-knock-first.js). A browser with no
+                                    camera API still joins and still watches.
+       canvas.captureStream ....... same reason; it is a sending capability.
+       Insecure-origin http:// .... reported as ITS OWN problem (the link needs
+                                    https), never as "your browser is old".
+       WebCrypto Ed25519 .......... NO LONGER GATES. The S4 signing mandate
+                                    (mesh-wire.js, every join, no off switch)
+                                    is absolute, but the ENGINE is not: a
+                                    browser without native Ed25519 (Safari 16
+                                    and older — the old-iPhone case) signs
+                                    with the built-in byte-identical fallback
+                                    (js/gifos-ed.js + pinned vendor), and
+                                    interoperates in the same room. This is
+                                    what moved the whole table from Safari 17
+                                    era down to the syntax floor below.
+
+     Every check here is synchronous, so the verdict lands before anything
+     knocks: a blocked browser opens no socket and never sets `room`, so the
+     joining veil — which early-returns without a room — can never arm behind
+     this screen. (The old ASYNC half, the Ed25519 probe, is gone with the
+     fallback signer; GifOSPreflight.whenSupported stays for the dispatch.)
+
+     A SOLO entry (#id=<fileId>) NEVER SEES THIS SCREEN. A solo app is one tab
+     and no network — it runs fine on a browser that could never meet, and a
+     wall saying "too old for meetings" over a working app is a wrong answer
+     (measured on a real Safari 16, family demo 2026-08-05). The verdict is
+     still computed and RECORDED; the wall moves to the point of actual network
+     need — the Share-live button — via requireMeeting(), and there it is
+     dismissible, because the app around it still works.
+
+     Known gap, named honestly: a visitor on gifos.app whose channel loader
+     redirects to a FROZEN /versions/<x.y.z>/ snapshot cut before this landed
+     runs a build with no preflight. Snapshots are immutable by design; the
+     next release carries it and the gap closes itself.
+-->
+<script>(function(){"use strict";var o={chrome:{label:"Chrome",min:"73"},edge:{label:"Microsoft Edge",min:"79"},firefox:{label:"Firefox",min:"78"},safari:{label:"Safari",min:"12.1"}},p="Safari 12.1, Chrome 73 or Firefox 78 \u2014 and up",f={"webcrypto-subtle":"Everything in a meeting is scrambled on your own device before it leaves, so nobody in the middle can read it \u2014 and this browser is missing tools from the box that does the scrambling.","webrtc-peerconnection":"In a meeting here, sound, pictures and everything else travel straight between people's browsers \u2014 no company server in the middle. This browser is missing part of what makes those direct browser-to-browser connections work.",websocket:"To find the other people in a meeting, browsers introduce themselves through one small doorway connection \u2014 and this browser cannot open that kind of connection."};function l(t,e){try{return typeof t[e]=="function"}catch(r){return!1}}function b(){var t=[],e=window;(!l(e,"Promise")||!l(e,"Map")||!l(e,"Set"))&&t.push("modern JavaScript (Promise/Map/Set)");try{new RegExp("\\p{L}","u")}catch(m){t.push("modern JavaScript (Unicode regular expressions)")}l(Object,"fromEntries")||t.push("modern JavaScript (Object.fromEntries)"),typeof e.WebSocket=="undefined"&&t.push("WebSocket"),(!l(e,"TextEncoder")||!l(e,"TextDecoder"))&&t.push("TextEncoder/TextDecoder");var r=e.crypto;(!r||!l(r,"getRandomValues"))&&t.push("crypto.getRandomValues");var n=r&&r.subtle;if(!n)t.push("WebCrypto (crypto.subtle)");else{for(var i=[],c=0,d=["importKey","exportKey","sign","verify","encrypt","decrypt","digest","deriveBits"];c<d.length;c++)l(n,d[c])||i.push(d[c]);i.length&&t.push("WebCrypto "+i.join("/"))}var u=typeof e.AudioEncoder=="function"&&typeof e.AudioDecoder=="function"&&typeof e.AudioWorkletNode=="function"&&typeof e.Worker=="function";return typeof e.RTCPeerConnection=="undefined"?u||t.push("WebRTC (RTCPeerConnection)"):(!e.RTCPeerConnection.prototype||!l(e.RTCPeerConnection.prototype,"createDataChannel"))&&t.push("WebRTC data channels (createDataChannel)"),t}function A(t){var e=t.join(", ");return e.indexOf("WebCrypto")!==-1?f["webcrypto-subtle"]:e.indexOf("WebRTC")!==-1?f["webrtc-peerconnection"]:e.indexOf("WebSocket")!==-1?f.websocket:""}function O(){try{return window.isSecureContext?!1:!(window.crypto&&window.crypto.subtle)}catch(t){return!1}}function g(){var t="";try{t=navigator.userAgent||""}catch(n){}var e,r=/FBAN|FBAV|FB_IAB|Instagram|Line\/|MicroMessenger|Snapchat|Twitter|TikTok|Pinterest|GSA\//.test(t);return(e=t.match(/Edg(?:iOS|A)?\/(\d+)/))?{key:"edge",label:o.edge.label,ver:e[1],min:o.edge.min,inApp:r}:(e=t.match(/(?:OPR|OPiOS|Opera)\/(\d+)/))?y("Opera",e[1],t,r):(e=t.match(/SamsungBrowser\/(\d+)/))?y("Samsung Internet",e[1],t,r):(e=t.match(/(?:Firefox|FxiOS)\/(\d+)/))?{key:"firefox",label:o.firefox.label,ver:e[1],min:o.firefox.min,inApp:r}:(e=t.match(/CriOS\/(\d+)/))?{key:"chrome",label:o.chrome.label,ver:e[1],min:o.chrome.min,inApp:r}:(e=t.match(/Chrome\/(\d+)/))?{key:"chrome",label:o.chrome.label,ver:e[1],min:o.chrome.min,inApp:r}:/Safari\//.test(t)||/iPhone|iPad|iPod|Macintosh/.test(t)?(e=t.match(/Version\/(\d+)/),{key:"safari",label:o.safari.label,ver:e?e[1]:"",min:o.safari.min,inApp:r}):{key:"",label:"",ver:"",min:"",inApp:r}}function y(t,e,r,n){var i=r.match(/Chrome\/(\d+)/);return{key:"chromium-skin",label:t,ver:e,min:"",chromeVer:i?i[1]:"",inApp:n}}var T='position:fixed;top:0;right:0;bottom:0;left:0;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:1.25rem;background:#0a0a0f;color:#e0e0f0;overflow:auto;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif';function h(t){return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}function w(t,e,r){var n=g(),i,c,d="";if(t==="insecure")i="This link needs to start with https",c="Meetings are scrambled from end to end, and a browser will only do that on a secure address. Open the same link with <b>https://</b> at the front and it will work.";else if(n.inApp)i="Open this in your browser",c="You are looking at this inside another app, and the little browser built into it cannot run meetings. Tap the <b>\u22EF</b> or <b>share</b> button on this page and choose <b>Open in Safari</b> or <b>Open in Chrome</b> \u2014 the meeting will work there.";else{var u=n.label?n.ver?n.label+" "+n.ver:n.label:"This browser",m;n.key==="chromium-skin"?m=n.chromeVer?"Meetings need a version built on Chrome "+o.chrome.min+" or newer, and this one is built on Chrome "+h(n.chromeVer)+".":"Meetings need "+p+".":n.min?m="Meetings need "+n.label+" "+n.min+" or newer.":m="Meetings need "+p+".",i=n.label?"Your "+h(n.label)+" is too old for meetings":"This browser is too old for meetings",c="<b>"+h(u)+"</b> cannot do meetings. "+m+" Updating your phone or computer is usually all it takes, and it costs nothing.",d="On a phone or tablet, meetings work in <b>Safari</b> (Apple) or <b>Chrome</b> (Android). If someone sent you this link, they can still meet without you until you are updated \u2014 nothing is broken on their end."}var S=t==="old"&&e?A(e):"",E=S?'<p id="oldbrowser-why" style="margin:0 0 .9rem;font-size:.9rem;line-height:1.6;color:#9a9ab5">'+S+"</p>":"",P=e&&e.length?'<p id="oldbrowser-gaps" style="margin:1.4rem 0 0;font-size:.72rem;line-height:1.5;color:#6a6a86">For anyone helping you fix this, the missing piece is: <span style="font-family:ui-monospace,Menlo,Consolas,monospace">'+h(e.join(", "))+"</span>.</p>":"",a=document.createElement("div");if(a.id="oldbrowser",a.setAttribute("role","alert"),a.setAttribute("data-gaps",e?e.join(", "):""),a.setAttribute("style",T),a.innerHTML='<div style="max-width:30rem;text-align:left"><div style="font-size:2.4rem;line-height:1;margin-bottom:.9rem">\uD83D\uDE41</div><h1 id="oldbrowser-head" style="font-size:1.35rem;line-height:1.3;margin:0 0 .8rem;font-weight:600;color:#fff">'+i+'</h1><p style="margin:0 0 .9rem;font-size:.98rem;line-height:1.6;color:#c8c8dc">'+c+"</p>"+E+(d?'<p style="margin:0;font-size:.9rem;line-height:1.6;color:#9a9ab5">'+d+"</p>":"")+P+(r?'<button id="oldbrowser-back" style="margin-top:1.4rem;padding:.55rem 1.1rem;font-size:.95rem;border:1px solid #3a3a52;border-radius:.5rem;background:#1a1a26;color:#e0e0f0;cursor:pointer">Keep using the app</button>':"")+"</div>",r){var C=a.querySelector("#oldbrowser-back");C&&(C.onclick=function(){a.parentNode&&a.parentNode.removeChild(a)})}try{document.documentElement.className=String(document.documentElement.className).replace(/\bgifos-booting\b/g,"")}catch(x){}if(!r)try{document.documentElement.style.background="#0a0a0f"}catch(x){}if(document.body?document.body.appendChild(a):document.addEventListener&&document.addEventListener("DOMContentLoaded",function(){document.body.appendChild(a)}),!r)try{document.title&&(document.title="Meetings need a newer browser \u2014 GifOS")}catch(x){}}var s={ok:!0,gaps:[],kind:"",MIN:o,syncGaps:b,ua:g};window.GifOSPreflight=s;var M=/[#&]id=/.test(String(location.hash||""));function v(t,e){s.ok=!1,s.kind=t,s.gaps=e,M||w(t,e)}if(O())v("insecure",["secure context (https)"]);else{var k=b();k.length&&v("old",k)}s.whenSupported=function(t){s.ok&&t()},s.requireMeeting=function(t){s.ok?t():w(s.kind||"old",s.gaps,!0)}})();
+//# sourceMappingURL=js/run.inline-0.js.map
+</script>
+<!--@/shared:preflight-->
+<!--@shared:channel-loader-->
+<!-- CHANNEL LOADER — see index.html. Resolves the release pointer before any app
+     code so a meeting link opens on the right build. Identical across entry pages. -->
+<script>(function(){function m(e,r,o){if(e=e||"/",r=r||"",o=o||"",e.indexOf("/versions/")!==-1)return null;var a;try{a=new URLSearchParams(r)}catch(i){a=null}function s(i){return!!(a&&a.has(i))||new RegExp("[#&]"+i+"(&|=|$)").test(o)}var n=!1;try{(s("stable")||s("unpin")||s("latest"))&&(localStorage.removeItem("gifos_channel"),localStorage.removeItem("gifos_pin"),localStorage.removeItem("gifos_pin_until"),n=!0)}catch(i){}var t=null,l=null,c=null,I=null;try{t=localStorage.getItem("gifos_pin"),l=localStorage.getItem("gifos_channel"),c=localStorage.getItem("gifos_current"),I=localStorage.getItem("gifos_pin_until")}catch(i){}var R=!0;if((t||l==="edge")&&I===null&&R&&/(^|\.)gifos\.app$/.test(location.hostname)){try{localStorage.setItem("gifos_pin_ended","reset:"+(t||"edge")),localStorage.removeItem("gifos_pin"),localStorage.removeItem("gifos_channel"),localStorage.removeItem("gifos_pin_until")}catch(i){}t=null,l=null}var u=n?{clear:!0}:null,g=window.GifOSLink?window.GifOSLink.route(e,r,o):null,d;if(g){var w=window.GifOSLink.read(e,r,o).route;d=(w==="cast"?"/cast":w==="meet"?"/meet":"/run.html")+"#"+g}else d=e+r+o;function h(i){return{redirect:"/versions/"+i+d}}var p=!!g||/\/(run\.html|(meet|cast)(\.html)?)$/.test(e)&&!/[#&]id=/.test(o);if(p&&(t=null),t&&t!==window.GIFOS_VERSION)return h(t);if(t||l==="edge"||!/(^|\.)gifos\.app$/.test(location.hostname))return u;var _=null;try{_=sessionStorage.getItem("gifos_ask_edge"),_&&sessionStorage.removeItem("gifos_ask_edge")}catch(i){}if(_)return u;var L=[0,9,28,37],N=!!g||p&&!!window.GifOSLink&&(function(i){return!!(i.room||i.code)})(window.GifOSLink.read(e,"",o));if(N&&c){for(var $=String(c).split(".").map(Number),y=!1,S=0;S<4;S++){var k=$[S]||0,O=L[S];if(k!==O){y=k<O;break}}y&&(c=null)}return{redirect:c?h(c).redirect:null,ask:d,clear:n||void 0}}window.gifosPinTarget=m;var v={VERSION_ASK_MS:1900,VERSION_FIRST_ASK_MS:3900};function E(e){var r=!1;function o(t){r||(r=!0,location.replace(t))}var a=!1;try{sessionStorage.setItem("gifos_ask_probe","1"),sessionStorage.removeItem("gifos_ask_probe"),a=!0}catch(t){}function s(){if(e.redirect){o(e.redirect);return}if(r||!a){r=!0;return}r=!0;try{sessionStorage.setItem("gifos_ask_edge","1")}catch(t){}location.reload()}if(e.redirect||a)try{window.stop()}catch(t){}try{var n=new XMLHttpRequest;n.open("GET","/version.json?ts="+Date.now(),!0),n.timeout=e.redirect?v.VERSION_ASK_MS:v.VERSION_FIRST_ASK_MS,n.onload=function(){var t="";try{var l=JSON.parse(n.responseText)||{};t=/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(l.latest||""))?l.latest:""}catch(c){}if(!/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(t))){s();return}try{localStorage.setItem("gifos_current",t)}catch(c){}o("/versions/"+t+e.ask)},n.onerror=n.ontimeout=n.onabort=s,n.send()}catch(t){s()}}try{window.__gifosAgentQ=window.__gifosAgentQ===!0||/[?&]agent=1(?:&|$)/.test(location.search)}catch(e){}try{/[?#&](?:bot|agent)=1(?:&|$)/.test(location.search+"&"+location.hash)&&sessionStorage.setItem("gifos_bot","1")}catch(e){}var f=m(location.pathname,location.search,location.hash);f&&f.ask?E(f):f&&f.redirect&&location.replace(f.redirect);try{window.addEventListener("hashchange",function(){/^\/(?:meet|cast|join)\/?$/i.test(location.pathname)&&location.reload()})}catch(e){}try{typeof fetch=="function"&&fetch("/version.json",{cache:"no-cache"}).then(function(e){return e&&e.ok?e.json():null}).then(function(e){var r=e&&(/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(e.latest||""))?e.latest:"");if(!(!r||!/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(r))))try{localStorage.setItem("gifos_current",String(r))}catch(o){}}).catch(function(){})}catch(e){}})();
+//# sourceMappingURL=js/run.inline-1.js.map
+</script>
+<!--@/shared:channel-loader-->
+<!--@shared:theme-gate-->
+<!-- Theming gate: hide chrome behind the theme-color backdrop until the theme
+     cascade (gifos-themes.js) has applied real vars, so the fallback purple
+     (var(--accent,#7b5cff)) never paints first. Reveals the instant --accent is
+     set; a failsafe timeout guarantees we never stay hidden if a theme file
+     404s or hangs. See js/gifos-themes.js. -->
+<style id="theme-gate">html.gifos-booting body{visibility:hidden}html.gifos-booting{background:var(--bg,#0a0a0f)}</style>
+<!--@/shared:theme-gate-->
+<!-- A solo app (#id=) wears no meeting bar from the first paint. -->
+<script>(function(){try{var p=new URLSearchParams((location.hash||'').replace(/^#/,''));if(p.get('id'))document.documentElement.classList.add('solo-app');}catch(e){}})();</script>
+<!--@shared:booting-->
+<script>(function(){var h=document.documentElement;h.className+=(h.className?' ':'')+'gifos-booting';var shown=0;
+function show(){if(shown)return;shown=1;h.classList.remove('gifos-booting');
+try{var bg=h.style.getPropertyValue('--bg');var m=document.querySelector('meta[name=theme-color]');if(bg&&m)m.setAttribute('content',bg.trim());}catch(e){}}
+function chk(){if(shown)return;if(h.style.getPropertyValue('--accent'))show();else requestAnimationFrame(chk);}
+requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
+<!--@/shared:booting-->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="GifOS">
+<!--@shared:load-gate-->
+<script id="gifos-load-gate">(function(){var e=window.__gifosLoadGate={failed:[],threw:[],tries:0,state:"ok",trace:[],src:{}};function u(i){try{var r=new URL(i,location.href);return r.pathname.replace(/^\//,"")}catch(s){return String(i)}}function d(i){try{return new URL(i,location.href).origin===location.origin}catch(r){return!1}}function m(i){return/^(?:versions\/[^\/]+\/)?themes\/[^\/]+\/(?:theme|icons|eggs|wallpaper)\.js$/i.test(i)}e.reload=function(){var i=[0,400,1200,2400],r=e.failed.slice();function s(t){e.trace.push(t);try{console.log("[load-gate] "+t)}catch(o){}}function l(){for(var t=[],o=document.querySelectorAll("script[src]"),n=0;n<o.length;n++)t.push(u(o[n].src));return t}function h(t){return new Promise(function(o){var n=document.createElement("script"),a;try{a=new URL(e.src[t]||t,location.href),a.searchParams.set("lc",String(e.tries)),a=a.href}catch(f){a=t+"?lc="+e.tries}n.async=!1,n.src=a,n.onload=function(){o(!0)},n.onerror=function(){n.remove(),o(!1)},document.head.appendChild(n)})}function p(t,o){return t.reduce(function(n,a){return n.then(function(){return h(a).then(function(f){f||o.push(a)})})},Promise.resolve())}e.state="retry",s("missing "+e.failed.join(",")+(e.threw.length?" threw "+e.threw.join(","):"")+" before start");function g(t){var o=l(),n=Math.min.apply(null,r.map(function(c){return o.indexOf(c)}).filter(function(c){return c>=0})),a=r.concat(e.threw.filter(function(c){return o.indexOf(c)>n&&r.indexOf(c)<0})).sort(function(c,x){return o.indexOf(c)-o.indexOf(x)}),f=[];return e.tries++,p(a,f).then(function(){if(s("try "+e.tries+" reloaded "+a.length+" still-missing "+f.length),r=f.filter(function(c){return e.failed.indexOf(c)>=0||r.indexOf(c)>=0}),!(!f.length||t+1>=i.length))return new Promise(function(c){setTimeout(c,i[t+1])}).then(function(){return g(t+1)})})}return g(0).then(function(){if(!r.length)return e.failed.length=0,e.threw.length=0,e.state="ok",s("recovered"),!0;e.state="refused",e.missing=r,s("refuse "+r.join(","));var t=window.GifOS&&GifOS.i18n,o="This page did not finish loading, so it cannot join safely. Reload the page to try again.";try{t&&t.ui()!=="en"&&t.has("meet.stLoadIncomplete")&&(o=t.t("meet.stLoadIncomplete"))}catch(a){}try{var n=document.createElement("div");n.id="load-gate-msg",n.setAttribute("role","alert"),n.style.cssText="position:fixed;left:0;right:0;top:0;z-index:2147483647;padding:14px 16px;background:#b00020;color:#fff;font:16px system-ui,sans-serif;text-align:center",n.textContent=o,document.body.appendChild(n)}catch(a){}return!1})},window.addEventListener("error",function(i){try{var r=i&&i.target;if(r&&r.tagName==="SCRIPT"&&r.src){if(!d(r.src))return;var s=u(r.src);!m(s)&&e.failed.indexOf(s)<0&&(e.failed.push(s),e.src[s]=r.src)}else if(i&&i.filename&&e.failed.length&&d(i.filename)){var l=u(i.filename);e.threw.indexOf(l)<0&&e.threw.push(l)}}catch(h){}},!0)})();
+//# sourceMappingURL=js/run.inline-2.js.map
+</script>
+<!--@/shared:load-gate-->
+<!-- The first scripts: everything the page reads until the app is on screen. A published copy bundles the scripts
+     above the end mark, then the rest, in page order. -->
+<script>/* gifos bundles: ["js/sw-register.js","js/build.js","js/build-badge.js","js/gifos-i18n.js","js/gifos-gif.js","js/gifos-help.js","js/gifos-fullscreen.js","js/gifos-store.js","js/timings.js","js/dialog.js","js/gifos-update.js","js/gifos-ed.js","js/gifos-net.js","js/mesh-media.js","js/meet-layout.js","js/meet-debuglog.js","js/meet-captrust.js","js/meet-viewmode.js","js/meet-power.js","js/mesh-pipe.js","js/meet-bgfx.js","js/gifos-explicit.js","js/relay-config.js","js/gifos-grants.js","js/runtime.js","js/meet-host.js","js/gifos-perms.js","js/gifos-sub.js","js/core/meeting.js","js/core/media/textclear.js","js/core/media/plane-browser.js","js/core/host.js","js/core/view/kit.js","js/core/view/audio.js","js/meet-myroom.js","js/calendar-bridge.js","js/calendar-remind.js","js/gifos-sign.js","js/gifos-base-net.js","js/gifos-x402.js","js/gifos-charge.js","js/gifos-purse.js","js/gifos-paywallet.js","js/gifos-onramp.js","js/gifos-store-skus.js","js/gifos-store-rail.js","js/gifos-pay-broker.js","js/gifos-assets.js","js/gifos-avatar.js","js/gifos-install.js","js/gifos-lock.js","js/app-update.js","js/mesh/laws.js","js/mesh/consts.js","js/mesh/util.js","js/mesh/books.js","js/mesh/msg.js","js/mesh/hash.js","js/mesh/topo.js","js/mesh/dig.js","js/mesh/seat-fields.js","js/mesh/fnv.js","js/mesh/state.js","js/mesh/rng.js","js/mesh/fmt.js","js/mesh/seat.js","js/mesh/e2fold.js","js/mesh/digest.js","js/mesh/shared.js","js/mesh/entry.js","js/mesh/farview.js","js/mesh/fhop.js","js/mesh/turn.js","js/mesh/c7proof.js","js/mesh/gapa.js","js/mesh/gaps.js","js/mesh/gaps2.js","js/mesh/gaps3.js","js/mesh/gaps4.js","js/mesh/heal.js","js/mesh/hostile-laws.js","js/mesh/id.js","js/mesh/ijoin.js","js/mesh/burst.js","js/mesh/headword.js","js/mesh/instant.js","js/mesh/island.js","js/mesh/lguard-seat.js","js/mesh/linkset.js","js/mesh/roles.js","js/mesh/live.js","js/mesh/mltail.js","js/mesh/pclaws.js","js/mesh/rcdead.js","js/mesh/rcfollow.js","js/mesh/rcleft-l25.js","js/mesh/rcleft.js","js/mesh/recv-entry.js","js/mesh/recv-seated.js","js/mesh/recv.js","js/mesh/ring.js","js/mesh/roomterm.js","js/mesh/route.js","js/mesh/seat-rest.js","js/mesh/small.js","js/mesh/tick.js","js/mesh/tier.js","js/mesh/witness.js","js/mesh/page/env.js","js/mesh/page/pclaws-wire.js","js/mesh/page/layer.js","js/mesh-identity.js","js/mesh-wire.js","js/meet-pack.js","js/meet-turn.js","js/meet-tunnel.js","js/meet-carry.js","js/meet-status.js","js/meet-progress.js","js/meet-subs.js","js/core/view/subs.js","js/gifos-library.js","js/meet-leave.js","js/meet-meters.js","js/meet-zones.js","js/meet-content.js","js/meet-agenda.js","js/meet-agent.js","js/camera-studio.js"] */(function(){try{function w(s){document.write('<scr'+'ipt src="'+s+'" defer></scr'+'ipt>');}var B="js/run.bundle.js?h=3130155501";if(location.hash.length>1){w(B);return;}w("js/run.lobby.js?h=08c5f690ca");var g=self.__gifosLoadGate,done;var p=new Promise(function(r){done=r;});if(g)g.pending=p;document.addEventListener("DOMContentLoaded",function(){var s=document.createElement("script");s.src=B;s.async=false;s.onload=s.onerror=function(){if(g&&g.pending===p)g.pending=null;done();};document.head.appendChild(s);});}catch(e){}})();</script>
+
+
+
+
+
+
+<!--@shared:vm-db-->
+  <script>
+    // Bind to the right computer BEFORE the store loads: apps opened from a
+    // booted computer image (boot.html) carry their namespace in the URL so
+    // their files and saved state resolve inside that image, not the host.
+    // (Migrated from run.html — one-runtime step 6.)
+    (function () {
+      var db = new URLSearchParams(location.hash.slice(1)).get('db');
+      if (db && /^gifos_vm_[\w-]+$/.test(db)) window.GIFOS_DB_NAME = db;
+    })();
+  </script>
+<!--@/shared:vm-db-->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+    
+    
+    
+    
+    
+    
+<!-- the lobby's scripts end here -->
+<!--@shared:text-size-->
+<script>/* Global UI text size (Settings → Text size). Scales the meeting chrome; applied early, live across tabs. */(function(){function ap(){try{var s=parseFloat(localStorage.getItem('gifos_ui_scale'))||1;s=Math.max(0.2,Math.min(3,s));document.documentElement.style.fontSize=(s===1?'':(16*s).toFixed(2)+'px');document.documentElement.classList.toggle('ui-large',s>=1.5);}catch(e){}}ap();try{window.addEventListener('storage',function(e){if(!e||e.key==='gifos_ui_scale')ap();});}catch(e){}})();</script>
+<!--@/shared:text-size-->
+<title>GifOS</title>
+<link rel="icon" href="/favicon.ico" sizes="16x16">
+<link rel="stylesheet" href="css/meet.css">
+<link rel="stylesheet" href="css/run.css">
+<script src="js/gifos-themes.js"></script>
+</head>
+<body class="app-run">
+  <div id="appmissing" hidden role="alert">
+    <h1></h1>
+    <p></p>
+    <a data-t="appMissingHome" id="appmissing-home" href="./">Go to Home Screen</a>
+  </div>
+  <div id="callbanner" hidden><span id="callbanner-txt"></span><button data-t="callbannerJoin" id="callbanner-join" type="button">Join the call</button></div>
+  <div id="apppane">
+    <div id="appbar">
+      <a data-ti="openYourGifosComputerTip" class="brand" href="./" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
+      <img id="appgif" alt="">
+      <span data-t="appname" id="appname">App</span>
+      <span id="appwho"></span>
+      <button id="appinvite" style="display:none" data-t="invite" data-ti="barInviteTip" title="Share this app live — friends join with one link">Invite</button>
+      <button id="appsave" style="display:none" data-t="barSave" data-ti="barSaveTip" title="Save a snapshot GIF — the app with its data, yours to keep">Save</button>
+      <button data-ti="appHelpTip" id="apphelp" data-t="help" title="How this app works">Help</button>
+      <button id="appaudio" style="display:none" data-t="barTalkOff" data-ti="barTalkTip" title="Talk with the people in this app — when on, everyone here gets their own mic control (host only)">Talk: off</button>
+      <button id="appsteal" style="display:none" data-t="barSteal" data-ti="barStealTip" title="Steal a copy of this app — it goes to your desktop's Stolen Apps, data and all">Steal</button>
+      <button data-ti="apppermsTip" class="perms" id="appperms" title="What this app can do — review or turn things off" style="display:none"></button>
+      <button id="applead" style="display:none"></button>
+      <button id="apphide" style="display:none" data-t="barHide" data-ti="barHideTip" title="Hide this app on my screen only — the meeting keeps sharing it">Hide</button>
+      <button id="appstop" style="display:none" data-t="stopApp" data-ti="stopAppTip" title="Stop sharing this app with the meeting">Stop app</button>
+      <button data-ti="fullScreen" data-al="fullScreen" class="fs-btn" id="appfull" style="display:none" title="Full screen" aria-label="Full screen" aria-pressed="false"></button>
+    </div>
+    <div id="appmount"></div>
+  </div>
+  <!-- THE AUDIO VIEW: who is here, your mic, Leave, and the full meeting. Each person is heard through a hidden
+       element in #ears (js/core/view/audio.js). -->
+  <div id="abar" role="toolbar" aria-label="Meeting" hidden>
+    <span class="status" id="status" role="status" aria-live="polite">Joining…</span>
+    <button id="awho-btn" type="button" aria-expanded="false" aria-controls="awho"><span id="awho-n">1 person</span></button>
+    <button id="mic" class="iconbtn off" type="button" aria-label="Unmute" title="You are muted — tap to speak"><span id="mic-word">Unmute</span></button>
+    <a id="afull" href="#" data-t="audioFull" title="The same meeting with video, the Stage and everything else">Full meeting</a>
+    <button id="leavebtn" type="button" data-agent="leave" data-t="leave" aria-label="Leave">Leave</button>
+    <ul id="awho" hidden aria-label="People"></ul>
+    <!-- the media plane's microphone (and speaker) chooser: with two or more microphones a muted tap opens it -->
+    <div id="micchooser" role="menu" hidden></div>
+  </div>
+  <div id="ears" hidden aria-hidden="true"></div>
+  <div class="name-modal" role="dialog" aria-modal="true" id="left-modal" style="display:none">
+    <div class="name-box">
+      <h3 data-t="leftTitle" id="left-title">You left</h3>
+      <p data-t="leftNoteAudio" id="left-note">Your microphone is off.</p>
+      <button data-t="closedReload" id="left-rejoin" type="button">Rejoin</button>
+      <button data-t="setClose" id="left-close" type="button">Close</button>
+    </div>
+  </div>
+  <div class="name-modal" role="dialog" aria-modal="true" id="anote" style="display:none">
+    <div class="name-box">
+      <h3 id="anote-title"></h3>
+      <p id="anote-text"></p>
+      <div class="appear-actions"><a id="anote-full" href="#" data-t="audioFull" hidden>Full meeting</a><button id="anote-close" type="button" data-t="setClose">Close</button></div>
+    </div>
+  </div>
+  <div class="name-modal" role="dialog" aria-modal="true" id="inv-modal" style="display:none">
+    <div class="name-box">
+      <h3 data-t="invTitleApp">Share this app</h3>
+      <p data-t="invApp">Send this link. They join you live inside this app.</p>
+      <input id="share-url" type="text" readonly aria-label="Link">
+      <button id="inv-copy" type="button" data-t="invCopy">Copy</button>
+      <button id="inv-done" type="button" data-t="invClose">Close</button>
+    </div>
+  </div>
+  <div class="name-modal" role="dialog" aria-modal="true" id="help-modal" style="display:none">
+    <div class="name-box help-box" style="max-width:600px;text-align:left">
+      <h3 style="text-align:center">How this app room works</h3>
+      <div class="help-scroll"></div>
+      <div style="display:flex;justify-content:center;margin-top:1rem"><button id="help-close" data-t="helpGot" type="button">Got it</button></div>
+    </div>
+  </div>
+  <div class="name-modal" role="dialog" aria-modal="true" id="apphelp-modal" style="display:none">
+    <div class="name-box help-box" style="max-width:600px;text-align:left">
+      <h3 data-t="help" id="apphelp-title" style="text-align:center">Help</h3>
+      <div class="help-scroll help-md" id="apphelp-body"></div>
+      <div style="display:flex;justify-content:center;margin-top:1rem"><button id="apphelp-close" data-t="helpGot" type="button">Got it</button></div>
+    </div>
+  </div>
+  <!-- THE MEDIA PLANE'S OWN ELEMENTS. js/core/media/plane-browser.js still reads these meeting-page ids directly (it
+       wires their buttons at load). This page has none of them: inert, hidden, never focusable. -->
+  <div id="media-stubs" hidden inert aria-hidden="true"><div id="barrec"></div><button id="bartoggle" type="button"></button><div id="camchooser"></div><div id="camdevs"></div><div id="ccall"></div><button id="ccbtn" type="button"></button><div id="ccwhisper-prog"></div><input id="chat-in" type="text"><button id="chatbtn" type="button"></button><input id="chatfind" type="text"><div id="chatlog"></div><div id="keys-list"></div><div id="mixlab-stadium"></div><div id="paneltitle"></div><button id="reactbtn" type="button"></button><div id="reacttray"></div><div id="rec-warn"></div><button id="sharebtn" type="button"></button><button id="spkbtn" type="button"></button><button id="trbtn" type="button"></button><button id="trtab" type="button"></button><div id="trwrap"></div></div>
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+<!--@shared:starter-->
+  <script>var WEBKIT_ENGINE=(()=>{try{const e=navigator.userAgent||"";return(navigator.vendor||"").indexOf("Apple")===0?!0:/AppleWebKit/.test(e)&&!/Chrome|Chromium|CriOS|Edg\/|FxiOS|Android/.test(e)}catch(e){return!1}})();window.__startMeet=function(){GifOS.host||(GifOS.host={hidden:()=>document.hidden,parentOrigin:()=>{try{if(window.parent&&window.parent!==window&&window.parent.location&&window.parent.location.origin)return window.parent.location.origin}catch(e){}return""},whenSupported:e=>{const r=window.GifOSPreflight;r&&typeof r.whenSupported=="function"?r.whenSupported(e):e()},scriptOrder:()=>Array.from(document.querySelectorAll("script[src]")).map(e=>{try{return new URL(e.src,location.href).pathname.replace(/^\//,"")}catch(r){return""}}),loadScript:e=>new Promise(r=>{const t=document.createElement("script");t.async=!1,t.src=e,t.onload=()=>r(!0),t.onerror=()=>{t.remove(),r(!1)},document.head.appendChild(t)}),viewport:()=>({w:window.innerWidth,h:window.innerHeight})}),GifOS.core.startPage()};
+//# sourceMappingURL=js/run.inline-3.js.map
+</script>
+<script type="module">
+// The deferred libraries have run. Start the meeting. In a translated language
+// the first paint waits for the meeting's catalog (English never waits): the
+// words are in before anything is drawn, so nothing flashes English. A catalog
+// that has not landed after 8 s lets the meeting start in English, and the
+// words are repainted the moment the catalog does arrive.
+// A script of the page's own that failed to load is loaded again before anything starts (__gifosLoadGate.reload):
+// without it the start itself would throw, and no lobby, join gate or message would ever appear.
+const startMeet = () => {
+  const I = window.GifOS && GifOS.i18n;
+  if (I && I.ui() !== 'en') {
+    let started = false;
+    const go = () => { if (started) return; started = true; window.__startMeet(); };
+    const loaded = I.load('meet');
+    loaded.then(go, go);
+    setTimeout(go, 8000);
+    loaded.then(() => { if (window.__meetRepaintWords) window.__meetRepaintWords(); });
+  } else window.__startMeet();
+};
+// A page forwarding to another (run.html with a room for meet.html) never starts here.
+if (typeof window.__startMeet === 'function' && !window.__gifosForward) {
+  const lg = window.__gifosLoadGate;
+  if (lg && lg.failed.length && lg.reload) lg.reload().then((ok) => { if (ok) startMeet(); });
+  else startMeet();
+}
+</script>
+<!--@/shared:starter-->
+<!--@shared:agent-links-->
+<!-- FOR AI AGENTS. Off-screen, not display:none — most agent fetchers read
+     the raw HTML without running scripts (so the JS-painted build badge is
+     invisible to them), and readability-style extractors DROP display:none
+     but keep the screen-reader clip. Static, identical on every page;
+     test/unit/agent-links.js holds the copies to one text. -->
+<nav id="agent-links" aria-label="Links for AI agents" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap">
+  <p>For AI agents and assistants: <a href="https://gifos.app/llms.txt">llms.txt</a> is the complete spec for building a GifOS app as a real .gif file (packing recipe, manifest, the window.gifos API).
+  Also: <a href="https://gifos.app/about">what GifOS is</a> ·
+  <a href="https://gifos.app/store">the App Store</a> (machine-readable catalog: <a href="https://gifos.app/apps/index.json">/apps/index.json</a>; one listing: /apps/&lt;slug&gt;/app.json) ·
+  open any store app in one tap: https://gifos.app/?run=&lt;slug&gt; — or your own hosted GIF: https://gifos.app/?run=&lt;gif-url&gt; ·
+  <a href="https://gifos.app/browser-support.json">browser support</a> ·
+  <a href="https://gifos.app/sitemap.xml">sitemap</a> ·
+  <a href="https://github.com/nwcnwc/gifos-app">source on GitHub</a> ·
+  <a href="https://github.com/nwcnwc/gifos-app/issues/new">report a problem</a>. Contact: support@gifos.app.</p>
+</nav>
+<script>
+  // The agent links are clipped to 1px, so a Tab stop on one shows no
+  // focus. Keep them in the HTML and the landmark list, out of the Tab walk.
+  document.querySelectorAll('#agent-links a').forEach((a) => a.setAttribute('tabindex', '-1'));
+</script>
+<!--@/shared:agent-links-->
+</body>
+</html>
