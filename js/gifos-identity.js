@@ -127,6 +127,8 @@
     gifos_cc_send: (t) => t === '' || t === 'off',                           // send my captions (a privacy choice)
     gifos_tr_mode: (t) => t === 'keep' || t === 'share' || t === 'off',      // my transcript choice
     gifos_hide_bots: (t) => t === '0' || t === '1',                          // I hide assistants' tiles
+    gifos_home_view: (t) => /^[a-z][a-z0-9-]{0,23}$/.test(t),                // the look of my Home Screen (js/home-view.js)
+    gifos_home_widgets: (t) => { if (t.length > 6000) return false; try { const o = JSON.parse(t); return !!o && o.v === 1 && typeof o.looks === 'object'; } catch (e) { return false; } },   // which widgets I put where (js/home-widgets.js)
   };
   const DEVICE_ONLY = ['gifos_ui_scale', 'gifos_meet_bar', 'gifos_bar_pos_v1', 'gifos_self_view_v1', 'gifos_mix', 'gifos_vq', 'gifos_myroom_stay', 'gifos_bell',
     'gifos_bell_handles', 'gifos_cc_engine', 'gifos_cc_words', 'gifos_cc_ears', 'gifos_cc_whisper_model', 'gifos_cc_stt_url', 'gifos_pin', 'gifos_channel'];

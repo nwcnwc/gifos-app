@@ -17,8 +17,9 @@
  *                      Doorbell handle go). Cards to someone's room without a private room (a card link) are listed too.
  *   Hosted rooms       other rooms whose host key this device holds: Open, Copy link, room password set or not (the host
  *                      password is never stored: the note says so)
- *   Ringing            stay in my personal room on this computer, how many private rooms a computer listens in, the
- *                      Doorbell (Ring me on this device, Pause, Your devices, Send a test ring)
+ *   Ringing            one setting, Ring me on this device, with this device's real status (js/ring-standby.js picks
+ *                      the way: the Doorbell, or standing by while GifOS is open), Test ring, and with the Doorbell
+ *                      Pause and Your devices
  *   Cards I gave       Cancel card; Delete my personal room (typed name)
  */
 (function (root) {
@@ -170,16 +171,9 @@
       h += '</ul></section>';
     }
 
-    // Ringing: standing by, how many private rooms a computer listens in, the Doorbell
-    h += '<section class="card" id="sec-ring" aria-labelledby="h-ring"><h2 id="h-ring">Ringing</h2>';
-    if (m.mine && !mobile()) {
-      h += '<label class="switch"><input type="checkbox" id="stay"' + (M.stayOn() ? ' checked' : '') + '><span>Stay in my personal room on this computer, so calls ring here</span></label>';
-      // Honest about the step-1 limit: a computer listens in the most recently used private rooms only.
-      const nPriv = M.privates().filter((x) => x.pubs.length === 1).length;
-      if (nPriv > M.LISTEN_MAX) h += '<p class="quiet" id="mr-listen-cap">While your personal room is open, calls ring here from your ' + M.LISTEN_MAX + ' most recently used private rooms. Calls from the other ' + (nPriv - M.LISTEN_MAX) + ' ring by the Doorbell.</p>';
-      else if (nPriv) h += '<p class="quiet" id="mr-listen-cap">While your personal room is open, calls from your private rooms ring here.</p>';
-    } else if (m.mine) h += '<p class="quiet">A phone rings by the Doorbell (below), not by keeping your personal room open.</p>';
-    h += '<h3>Doorbell</h3><div id="bell-slot"></div></section>';
+    // Ringing: the one setting, "Ring me on this device", and this device's real status (js/core/view/bell.js paints it;
+    // js/ring-standby.js picks the way)
+    h += '<section class="card" id="sec-ring" aria-labelledby="h-ring"><h2 id="h-ring">Ringing</h2><div id="bell-slot"></div></section>';
 
     // Cards I gave, deleting my personal room
     if (m.mine) {
@@ -217,7 +211,6 @@
     on('mine-delete', openDelete);
     on('missed-clear', () => { MR().clearMissed(); paint(); });
     on('people-add', openAdd);
-    const stay = $('stay'); if (stay) stay.onchange = () => MR().setStay(stay.checked);
     const all = (sel, f) => doc.querySelectorAll('#rooms ' + sel).forEach((b) => { b.onclick = (e) => f(b, e); });
     // A person's row: p:<room.v> is our private room, c:<room.v> a card to their room.
     const pick = (w, ours, card) => (w.indexOf('p:') === 0 ? ours(w.slice(2)) : card(w.slice(2)));
@@ -231,12 +224,13 @@
     all('[data-revoke]', (b) => { MR().revoke(b.getAttribute('data-revoke')); paint(); });
   }
 
-  // ---- sheets: a sticky header (title + Close), a scrolling body, a sticky footer with the actions --------------------
+  // ---- sheets: the shared dialog (js/dialog.js): a header (title + Close) that moves it, a scrolling body, the actions
+  // always on screen ----------------------------------------------------------------------------------------------------
   function sheet(title, body, actions) {
     closeSheet();
-    const wrap = doc.createElement('div'); wrap.className = 'sheet-back'; wrap.id = 'sheet';
-    wrap.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-t"><header><h2 id="sheet-t">' + esc(title) + '</h2><button type="button" class="text" id="sheet-x">Close</button></header>' +
-      '<div class="sheet-body">' + body + '</div>' + (actions ? '<footer>' + actions + '</footer>' : '') + '</div>';
+    const wrap = doc.createElement('div'); wrap.className = 'sheet-back dlg-backdrop'; wrap.id = 'sheet';
+    wrap.innerHTML = '<div class="sheet dlg-box" role="dialog" aria-modal="true" aria-labelledby="sheet-t"><header class="dlg-head"><h2 id="sheet-t">' + esc(title) + '</h2><button type="button" class="text" id="sheet-x">Close</button></header>' +
+      '<div class="sheet-body dlg-body">' + body + '</div>' + (actions ? '<footer class="dlg-actions">' + actions + '</footer>' : '') + '</div>';
     wrap.addEventListener('click', (e) => { if (e.target === wrap) closeSheet(); });
     doc.body.appendChild(wrap); doc.body.classList.add('sheet-on');
     $('sheet-x').onclick = closeSheet;

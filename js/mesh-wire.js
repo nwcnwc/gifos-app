@@ -72,7 +72,7 @@
     FINDLEAF: { by: 'fo', flag: 'fo', only: ['fo', 'foAt', 'hole'] },   // the decider's order (L25.7); ttl, nbrs, tag change down the cascade
     RECLAIM: { by: 'id', flag: 't' },   // L3.10: always claimed: the signature under m.id is the proof of identity (the seat's tok is the sim's stand-in, anyone can compute it)
   };
-  const WIRE_VERSION = '0.9.28.62';   // the ONE page wire version, sent as ?pv= on every relay socket (makeUrl here, the door socket in run.html reads GifOS.meshWire.WIRE_VERSION): the relay's flag-day floor. Moves with each release.
+  const WIRE_VERSION = '0.9.28.63';   // the ONE page wire version, sent as ?pv= on every relay socket (makeUrl here, the door socket in run.html reads GifOS.meshWire.WIRE_VERSION): the relay's flag-day floor. Moves with each release.
   const FILL_WINDOW_MS = TM.FILL_WINDOW_MS;   // mesh-identity.js: a signature's time must lie this close to mine
   const REPLAY_MS = TM.REPLAY_MS;   // the seat's own goodbye window: 60 ticks (recv-seated.js)
   const BY_ID = { by: 'id' };   // a type no seat signs today: a claim on it still has to verify as m.id's whole frame
@@ -1481,7 +1481,9 @@
       // sized by the defaults. It is named and listed here for the same reason
       // the four above are: an unnamed way to reach the relay is how the last
       // one crept in.
-      PRESENT_MY_MEETING_RIGHT(tk) { if (tk && tk.ticketJson && tk.sig) sendRaw({ t: 'acl', tk: { ticketJson: String(tk.ticketJson), sig: String(tk.sig) } }); },
+      // hp (HOSTLATE): a host who signed in after this socket opened proves the host key with it (the connect's hostknock
+      // order), so the right's host-scoped items count (Clear Stage) without a reconnect.
+      PRESENT_MY_MEETING_RIGHT(tk, hp) { if (tk && tk.ticketJson && tk.sig) sendRaw(Object.assign({ t: 'acl', tk: { ticketJson: String(tk.ticketJson), sig: String(tk.sig) } }, hp && hp.sp && hp.sig && hp.pub ? { hp: { sp: String(hp.sp), sig: String(hp.sig), pub: String(hp.pub) } } : {})); },
       // (7) READ THE ROOM LICENSE — anyone in a hosted room can read the permissions the room holds (the License
       // item). One ask, answered to this socket alone ({t:'acl', l, s}); nothing is pushed and nothing is timed.
       // A seat with no relay socket does not call this: it shows the last value it already saw.
