@@ -444,6 +444,36 @@
   // asked the first time the app wants them, remembered per app and switched off again in its Abilities sheet), or
   // while it runs inside a meeting, whose room already shows your name and picture to everyone there.
   const ID_SHARE = (manifest) => 'gifos_idshare_' + ((manifest && manifest.appId) || (manifest && manifest.name) || 'app');
+  const hexOf = (buf) => Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('');
+  // WHICH app is asking, in a way the app cannot fake: a manifest's appId is the author's word, so a copy that claims
+  // another app's appId must not inherit what you told that app. A signed app is its verified signer plus its appId
+  // (an update keeps your answer); an unsigned app is its code (any change of code asks again).
+  const appKeys = new WeakMap();   // manifest -> key, once known
+  const appKeyPs = new WeakMap();  // manifest -> Promise<key>
+  function noteAppKey(manifest, files, bytes) {
+    if (!manifest || appKeyPs.has(manifest)) return;
+    const app = String(manifest.appId || manifest.name || 'app');
+    const subtle = root.crypto && root.crypto.subtle;
+    const codeKey = () => {
+      if (!subtle || !files) return Promise.resolve('code:?|' + app);
+      const enc = new TextEncoder(), parts = [];
+      for (const pth of Object.keys(files).sort()) {
+        if (pth.startsWith('.state/') || pth.startsWith('.lock/') || pth.startsWith('.assets/')) continue;
+        const v = files[pth];
+        parts.push(enc.encode(pth + '\u0000'), v instanceof Uint8Array ? v : enc.encode(String(v)), enc.encode('\u0000'));
+      }
+      let n = 0; for (const x of parts) n += x.length;
+      const all = new Uint8Array(n); let o = 0; for (const x of parts) { all.set(x, o); o += x.length; }
+      return subtle.digest('SHA-256', all).then((d) => 'code:' + hexOf(d).slice(0, 32) + '|' + app);
+    };
+    const signedKey = () => (bytes && GifOS.sign && GifOS.sign.verify)
+      ? Promise.resolve(GifOS.sign.verify(bytes)).then((v) => (v && v.status === 'valid' && v.id ? 'signed:' + v.type + ':' + v.id + '|' + app : null), () => null)
+      : Promise.resolve(null);
+    const p = signedKey().then((k) => k || codeKey()).catch(() => 'code:?|' + app)
+      .then((k) => (subtle ? subtle.digest('SHA-256', new TextEncoder().encode(k)).then((d) => hexOf(d).slice(0, 24)) : k))
+      .then((k) => { appKeys.set(manifest, k); return k; });
+    appKeyPs.set(manifest, p);
+  }
   const appIds = new Map();
   function appUserId(manifest) {
     const base = identity().id || '';
@@ -455,7 +485,7 @@
       const p = subtle
         ? subtle.importKey('raw', enc.encode(base), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
           .then((key) => subtle.sign('HMAC', key, enc.encode('gifos-app-user|' + app)))
-          .then((sig) => 'user_' + Array.from(new Uint8Array(sig).slice(0, 12), (b) => b.toString(16).padStart(2, '0')).join(''))
+          .then((sig) => 'user_' + hexOf(new Uint8Array(sig).slice(0, 12)))
         : Promise.reject(new Error('no subtle'));
       // No WebCrypto (never on https): an id that is still this app's alone, never the browser's own.
       appIds.set(k, p.catch(() => { let h = 2166136261; const t = base + '|' + app; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return 'user_' + h.toString(16); }));
@@ -471,12 +501,15 @@
       return { name: (me && me.name) || '' };
     } catch (e) { return null; }
   }
-  const idDecided = (manifest) => { try { const v = root.localStorage.getItem(ID_SHARE(manifest)); return v === '1' || v === '0' ? v : ''; } catch (e) { return ''; } };
+  // The answer is kept per appId with the key of the app that got it: the same appId with another key is asked afresh.
+  const idRec = (manifest) => { try { const o = JSON.parse(root.localStorage.getItem(ID_SHARE(manifest)) || 'null'); return o && typeof o === 'object' ? o : null; } catch (e) { return null; } };
+  const idDecided = (manifest) => { const k = appKeys.get(manifest), r = idRec(manifest); return k && r && r.k === k && (r.v === '1' || r.v === '0') ? r.v : ''; };
   const idShared = (manifest) => !!meetingSelf() || (idDecided(manifest) === '1' && !capDisabled(manifest, 'identity'));
-  function setIdShare(manifest, yes) { try { root.localStorage.setItem(ID_SHARE(manifest), yes ? '1' : '0'); } catch (e) {} }
+  function setIdShare(manifest, yes) { const k = appKeys.get(manifest); if (!k) return; try { root.localStorage.setItem(ID_SHARE(manifest), JSON.stringify({ k, v: yes ? '1' : '0' })); } catch (e) {} }
+  const keyReady = (manifest) => appKeyPs.get(manifest) || Promise.resolve(null);
   function appIdentity(manifest) {
     const idn = identity();
-    return appUserId(manifest).then((id) => {
+    return keyReady(manifest).then(() => appUserId(manifest)).then((id) => {
       const room = meetingSelf();
       if (room) return { id, name: room.name || idn.name || '', avatar: idn.avatar };
       if (idShared(manifest)) return { id, name: idn.name || '', avatar: idn.avatar };
@@ -486,7 +519,10 @@
   // gifos.me: the first ask outside a meeting shows the sheet; later asks take the remembered answer.
   const idAsks = new Map();
   function askedIdentity(manifest) {
-    if (meetingSelf() || idDecided(manifest) || !identity().name) return appIdentity(manifest);   // no name yet: nothing to share, nothing to ask
+    return keyReady(manifest).then(() => askedIdentityNow(manifest));
+  }
+  function askedIdentityNow(manifest) {
+    if (meetingSelf() || idDecided(manifest) || !identity().name || !appKeys.get(manifest)) return appIdentity(manifest);   // no name yet: nothing to share, nothing to ask
     const key = ID_SHARE(manifest);
     if (!idAsks.has(key)) idAsks.set(key, confirmShareIdentity(manifest).then((yes) => { setIdShare(manifest, yes); idAsks.delete(key); publishIdentity(); }));
     return idAsks.get(key).then(() => appIdentity(manifest));
@@ -4345,6 +4381,7 @@
 
   let setupShownAt = 0; // the last time an app raised an apiSetup/aiSetup modal
   function mountApp(iframe, files, manifest, db, originalBytes, policy, mountFileId, launch) {
+    noteAppKey(manifest, files, originalBytes);   // who is asking, for what the person told this app (gifos.me)
     // The GifOS Meet apps run the in-meeting apps they ship and any app GIF a
     // person brings to the meeting (Load a GIF, Nathan 2026-11-13), but never
     // a GifOS system app: the Home Screen's launchers (App Store, Meeting,

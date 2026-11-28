@@ -183,7 +183,7 @@
         if (k === 'api') return apiNames(manifest).length;
         if (k === 'pool') return poolHosts(manifest).length;
         // Not a declaration: shown once the person let this app see their name (runtime.js gifos.me), to take it back.
-        if (k === 'identity') { try { return ls().getItem('gifos_idshare_' + ((manifest && manifest.appId) || (manifest && manifest.name) || 'app')) === '1'; } catch (e) { return false; } }
+        if (k === 'identity') { try { var r = JSON.parse(ls().getItem('gifos_idshare_' + ((manifest && manifest.appId) || (manifest && manifest.name) || 'app')) || 'null'); return !!(r && r.v === '1'); } catch (e) { return false; } }
         if (k === 'assets') {
           return optionalPins(manifest).length || !!(manifest && manifest.capabilities && manifest.capabilities.assets);
         }
