@@ -130,7 +130,9 @@
     if (opts.bind) { cpub = opts.bind; b = 1; }
     else if (!cpub) { seed = randHex(32); cpub = (await N.edKeysFromSeedHex(seed)).pubB64; }
     const exp = now + (T().MYROOM_CARD_LIFE_MS || 0);
-    const sp = JSON.stringify(Object.assign({ act: 'card', room: roomKey(room, v), id, cpub, iat: now, exp, lab }, b ? { b: 1 } : {}));
+    // inv: an invite (js/rooms.js "Invite someone"): opening it connects us (the swap, once the owner accepts); n: the
+    // giver's own name, shown to the person who opens it.
+    const sp = JSON.stringify(Object.assign({ act: 'card', room: roomKey(room, v), id, cpub, iat: now, exp, lab }, b ? { b: 1 } : {}, opts.inv ? { inv: 1, n: String(opts.n || '').slice(0, 40) } : {}));
     const sig = await N.edSign(hk.priv, sp);
     const token = b64u(JSON.stringify(seed ? [sp, sig, hk.pubB64, seed] : [sp, sig, hk.pubB64]));
     return { token, id, exp, iat: now, cpub, lab, b, c: { sp, sig, pub: hk.pubB64 } };
@@ -258,6 +260,7 @@
     const list = contacts().filter((c) => roomKey(c.room, c.v) !== k);
     const was = contacts().find((c) => roomKey(c.room, c.v) === k) || {};
     const c = { room: f.room, v: String(f.v).toLowerCase(), token: f.token, id: f.id, exp: f.exp, bound: !!f.bound, name: String(f.name || was.name || f.room).slice(0, 40), at: was.at || Date.now(), last: f.last || was.last || 0 };
+    if (f.inv && PK_RE.test(String(f.ak || ''))) Object.assign(c, { inv: 1, ak: f.ak, from: String(f.from || '').slice(0, 40) });   // an invite I opened: pending until we are connected
     list.unshift(c);
     writeJson(KEY.contacts, list.slice(0, 500));
     return c;
@@ -282,16 +285,17 @@
     if (!t.seed) return null;
     const k = await net().edKeysFromSeedHex(t.seed).catch(() => null);
     if (!k || k.pubB64 !== o.cpub) return null;   // the seed must be this card's own key
-    return { room, v: String(v).toLowerCase(), token, id: o.id, exp: o.exp };
+    return Object.assign({ room, v: String(v).toLowerCase(), token, id: o.id, exp: o.exp }, o.inv ? { inv: 1, from: String(o.n || '').slice(0, 40) } : {});
   }
 
   // ---- the owner's lists: cards issued, cards revoked, missed calls ------------------------------------------------
   function issued() { const a = readJson(KEY.issued, []); return Array.isArray(a) ? a : []; }
-  function noteIssued(room, v, id, label, exp, cpub) {
+  function noteIssued(room, v, id, label, exp, cpub, extra) {
     const list = issued().filter((x) => x.id !== id);
-    list.unshift(Object.assign({ room, v, id, label: String(label || '').slice(0, 40), exp, at: Date.now() }, cpub ? { cpub } : {}));
+    list.unshift(Object.assign({ room, v, id, label: String(label || '').slice(0, 40), exp, at: Date.now() }, cpub ? { cpub } : {}, extra || {}));
     writeJson(KEY.issued, list.slice(0, 500));
   }
+  function updateIssued(id, fields) { writeJson(KEY.issued, issued().map((x) => (x.id === id ? Object.assign({}, x, fields) : x))); }
   const issuedTo = (pub) => !!pub && issued().some((x) => x.cpub === pub);   // I gave a card bound to this My Room key
   const revoked = () => { const a = readJson(KEY.revoked, []); return Array.isArray(a) ? a : []; };
   function revoke(id) {
@@ -308,6 +312,29 @@
     const L = GifOS.link;
     return String(origin || '') + '/meet#' + L.hash({ room, v, rest: { card: token } });
   }
+
+  // ---- the invite: ONE LINK and we are contacts (docs/myroom.md "One link") ----------------------------------------
+  // invite(label, myName, origin) -> the link. It is a card to My Room marked inv (made first if this device has none),
+  // carrying my name. Whoever opens it knocks at My Room with it; the first time we are both online my page asks me
+  // ("<name> wants to be your contact": Accept), and Accept runs the same swap as in a meeting: our private room, a fresh
+  // member key each. Used once: the invite is spent at that swap and anyone who opens it later is told so (and I am told
+  // that someone did). Only the device that made it honours it (its record is here).
+  async function invite(label, myName, origin) {
+    const m = await ensureMine(myName); if (!m) throw new Error('This browser could not keep your room.');
+    const r = await mint(hostSecret(m.room, m.v), m.room, m.v, label, { inv: 1, n: myName });
+    noteIssued(m.room, m.v, r.id, label, r.exp, '', { inv: 1 });
+    return cardLink(origin, m.room, m.v, r.token);
+  }
+  // My personal room, made silently when it is needed (an invite, a swap): no name to pick, no password.
+  async function ensureMine(name) {
+    const m = mine(); if (m) return m;
+    try { return await create(String(name || '').trim() || 'me'); } catch (e) {}
+    try { return await create('me'); } catch (e) { return null; }
+  }
+  // "Ring me on this device" starts on for a device that never chose (it just got its first contact by an invite).
+  function ringDefault() { try { const s = store(); if (s && s.getItem(KEY.stay) == null) setStay(true); } catch (e) {} }
+  // The private room an invite of this id made (on the side that opened it), or null.
+  const viaInvite = (id) => (id ? privates().find((x) => x.via === id) || null : null);
 
   // ---- private rooms ------------------------------------------------------------------------------------------------
   const PK_RE = /^[a-f0-9]{64}$/;
@@ -393,6 +420,7 @@
     const idSeen = new Set();
     const idCopy = hosted && GifOS.identity && GifOS.identity.copier ? GifOS.identity.copier({ room: host.room, v: host.v, myId: host.myId, owner: host.owner, now: host.now, send: host.send, peers: () => Array.from(new Set(host.hosts().concat(Array.from(idSeen)))) }) : null;
     let linkCard = null;        // a card the address carried (to save, or to call with once)
+    let mineLater = false;      // an invite opened before I gave my name: my personal room is made once I have
     // holder side
     let mk = null; myKey().then((k) => { mk = k; }, () => {});   // My Room's key (a bound card rings with it)
     const callId = randHex(8);
@@ -425,7 +453,7 @@
       if (!linkCard) { try { const tok = root.sessionStorage.getItem(SS); const t = tok && parseToken(tok); if (t && t.seed) linkCard = { token: tok, seed: t.seed, c: t.c, name: (contactFor(room, v) || {}).name || room }; } catch (e) {} }
       const c = contactFor(room, v);
       const t = c && parseToken(c.token);
-      let saved = t && t.seed ? { token: c.token, seed: t.seed, c: t.c, name: c.name } : null;
+      let saved = t && t.seed ? Object.assign({ token: c.token, seed: t.seed, c: t.c, name: c.name }, c.inv ? { inv: c.id, ak: c.ak, from: c.from || c.name } : {}) : null;
       if (t && !t.seed) { try { const o = JSON.parse(t.c.sp), sd = o.b ? seedFor(o.cpub, mk) : ''; if (sd) saved = { token: c.token, seed: sd, c: t.c, name: c.name, bound: true }; } catch (e) {} }   // bound to a key of mine: that key rings
       // Two cards for one room (the one in Contacts, the one a link brought this visit): the one that runs out later.
       const expOf = (x) => { try { return +JSON.parse(x.c.sp).exp || 0; } catch (e) { return 0; } };
@@ -437,12 +465,16 @@
       // authenticated is dropped there, and one lost card must not leave a call unrung.
       const mc = myCard(), was = told.get(pid);
       if (!mc || was === 0 || (was && host.now() - was < (T().MYROOM_TICK_MS || 0))) return;
+      if (mc.inv && appearOpen()) return;   // an invite asks with my name: once I have said it ("how you'll appear")
       told.set(pid, host.now());
       if (root.__mrLoseCards > 0) { root.__mrLoseCards--; return; }   // test lever (a fault of the network): this card frame is lost on the way
       let cid = ''; try { cid = JSON.parse(mc.c.sp).id; } catch (e) {}
       const p = await prove(mc.seed, room, v, host.myId(), host.now(), callId, cid, invite, invitePv);
-      host.send(pid, { op: 'card', c: mc.c, p, n: String(host.myName() || '').slice(0, 40) });
-      if (!call) { call = { label: mc.name || room, state: 'waiting', at: host.now(), invite }; emit({ type: 'call', call }); }
+      // An invite: my asker key's word for it (the owner's page accepts one person per invite), and whether a person is
+      // looking at this page (lv) or it is a hidden door knocking for them (then nobody is taken anywhere).
+      const iv = mc.inv && PK_RE.test(String(mc.ak || '')) ? { ak: await signWord(mc.ak, 'inv|' + cid, host.myId(), host.now()), lv: hiddenDoor() ? 0 : 1 } : {};
+      host.send(pid, Object.assign({ op: 'card', c: mc.c, p, n: String(host.myName() || '').slice(0, 40) }, iv));
+      if (!call) { call = newCall(mc, host.now()); emit({ type: 'call', call }); }
     }
 
     // THE HOLDER. A door held me (a waiting room): that door may be the owner standing by. A seat proved the host key:
@@ -454,10 +486,16 @@
       idSeen.add(pid); if (idCopy) idCopy.onHeld(pid);
       if (host.owner()) return;
       if (told.get(pid) === 0 && call && (call.state === 'waiting' || call.state === 'ringing') && host.chan && host.chan(pid) !== chanSeen.get(pid)) told.delete(pid);
+      heldAt.add(pid); if (heldAt.size > 20) heldAt.delete(heldAt.values().next().value);
       if (host.chan) chanSeen.set(pid, host.chan(pid));
       showCard(pid).catch(() => {});
     }
     const chanSeen = new Map();   // pid -> the channel the door last said "held" on
+    const heldAt = new Set();     // doors that said "held" to me: an invite waits for my name, then is shown there
+    const newCall = (mc, at) => Object.assign({ label: mc.name || room, state: 'waiting', at, invite }, mc.inv ? { inv: mc.inv, label: mc.from || mc.name || room } : {});
+    // A hidden door a standing-by tab keeps open (js/ring-standby.js): nobody is looking at this page.
+    const appearOpen = () => { try { return !!(root.document && root.document.getElementById('appear-modal')); } catch (e) { return false; } };
+    const hiddenDoor = () => { try { return !!(root.frameElement && root.frameElement.hasAttribute('data-ring-door')); } catch (e) { return false; } };
     // THE DOORBELL (js/meet-bell.js): a page that has just proved a key I accept for this room (a private room's member
     // key, a card's key) is handed a handle to ring my devices through the Doorbell, once per person, key and meeting.
     const bellGiven = new Set(), cardFrom = new Map(), bellWait = new Map();
@@ -469,12 +507,14 @@
     }
     function tick() {
       const now = host.now();
+      if (mineLater && host.myName() && !appearOpen()) { mineLater = false; ensureMine(host.myName()).catch(() => null); }
       if (idCopy) idCopy.tick();
       if (hosted && !host.owner()) {
         const mc = myCard();
         if (mc) {
-          if (!call) { call = { label: mc.name || room, state: 'waiting', at: now, invite }; emit({ type: 'call', call }); if (GifOS.bell) GifOS.bell.press(room, v, host.myName(), callId).then((r) => emit({ type: 'bell', r }), () => {}); }
+          if (!call) { call = newCall(mc, now); emit({ type: 'call', call }); if (GifOS.bell && !mc.inv) GifOS.bell.press(room, v, host.myName(), callId).then((r) => emit({ type: 'bell', r }), () => {}); }
           for (const pid of host.hosts()) showCard(pid).catch(() => {});
+          if (mc.inv) for (const pid of heldAt) showCard(pid).catch(() => {});   // held while I was still saying my name
           // Answer is no frame: the owner let me in and went live (mic or camera on), which every seat already sees.
           if (call.state === 'ringing' && host.seated() && host.hostLive()) { call.state = 'answered'; call.answeredAt = now; emit({ type: 'call', call }); }
           if (call.state === 'waiting' && call.here && host.seated()) { call.state = 'answered'; call.answeredAt = now; emit({ type: 'call', call }); }   // admitted after the owner's 'here'
@@ -619,6 +659,16 @@
       if (isMine(room, v) && !doorSet) { doorSet = true; if (!host.holding()) host.hold(true); }
       if (want && !standby) { standby = true; emit({ type: 'standby', on: true }); }
       if (!want && standby) { standby = false; emit({ type: 'standby', on: false }); }
+      // An invite's opener who sat down here before I came (their page found the room empty and took a seat) is neither held
+      // at my door nor told who I am: I tell them, with my room's signed word, so their page shows me the invite.
+      if (isMine(room, v) && invitesOpenHere()) {
+        const every = 3 * (T().MYROOM_TICK_MS || 0);   // said again every few ticks until their card arrives
+        for (const p of host.people()) {
+          if (!host.reach(p.id) || host.isHost(p.id) || now - (doorSaid.get(p.id) || 0) < every) continue;
+          doorSaid.set(p.id, now);
+          host.signAdm('mrdoor', { to: String(p.id) }).then((w) => { if (w) host.send(p.id, { op: 'door', w }); }, () => {});
+        }
+      }
       const takenElsewhere = host.hostLive();   // another of my devices answered (it went live): mine stops, no missed call
       for (const [pid, r] of Array.from(rings)) {
         if (r.priv) continue;   // a private room's ring is the listening page's (privRingTick)
@@ -626,12 +676,14 @@
         const gone = !host.held(pid) && !host.isHere(pid);
         if (gone || now - r.at >= (T().MYROOM_RING_MS || 0)) {
           endCall(r, 'missed'); rings.delete(pid);
-          noteMissed(room, v, r.label, r.at);
+          if (!r.ask) noteMissed(room, v, r.label, r.at);   // an invite not accepted asks again next time: no missed call
           if (!gone) sendSigned(pid, 'missed');
-          emit({ type: 'missed', pid, label: r.label, at: r.at });
+          emit({ type: 'missed', pid, label: r.label, at: r.at, ask: !!r.ask });
         }
       }
     }
+    const doorSaid = new Map();
+    const invitesOpenHere = () => { const now = Date.now(); return issued().some((x) => x.inv && !x.used && +x.exp > now && roomKey(x.room, x.v) === roomKey(room, v)); };
     async function sendSigned(pid, op) { const w = await host.signAdm('mr' + op, { to: String(pid) }); if (w) host.send(pid, { op, w }); }
 
     async function onCardShown(pid, m) {
@@ -640,6 +692,7 @@
       lastIn.set(pid, now);
       const o = await check(m.c, room, v, now);
       if (!o) return why(pid, 'card');
+      if (o.inv) return onInvite(pid, m, o, now);
       if (revoked().indexOf(o.id) >= 0) return why(pid, 'revoked');
       if (!(await proofOk(o, m.p, room, v, pid, now))) return why(pid, 'proof');
       const K = hostSecret(room, v); if (!K) return why(pid, 'nokey');
@@ -674,8 +727,49 @@
         if (!host.held(pid)) emit({ type: 'arrived', pid, label });   // held: the waiting room already shows them
       }
     }
+    // AN INVITE shown at my door. The owner is asked once, the first time we are both online ("<name> wants to be your
+    // contact": Accept / Not now): a forwarded or stolen link never becomes a ✓ contact by itself. Accept runs the swap.
+    // Spent at that swap: whoever shows it later is told 'used', and I am told that someone else opened it.
+    const invSwaps = new Set(), againSaid = new Set();
+    async function onInvite(pid, m, o, now) {
+      if (!(await proofOk(o, m.p, room, v, pid, now))) return why(pid, 'proof');
+      const K = hostSecret(room, v); if (!K) return why(pid, 'nokey');
+      const x = issued().find((y) => y.id === o.id && y.inv); if (!x) return why(pid, 'inv-unknown');   // honoured only by the device that made it
+      if (!m.ak || !(await wordOk(m.ak, 'inv|' + o.id, pid, now))) return why(pid, 'inv-word');
+      const ak = m.ak.pub, claimed = String(m.n || '').slice(0, 40) || 'Someone';
+      if (x.used) {
+        sendSigned(pid, 'used');
+        if (x.used.ak !== ak && !againSaid.has(ak)) { againSaid.add(ak); emit({ type: 'inv-again', name: x.used.name || '', claimed, label: x.label || '' }); }
+        return why(pid, 'inv-used');
+      }
+      if (!host.held(pid) && !host.isHere(pid)) return why(pid, 'early');
+      const cl = Array.isArray(x.cl) ? x.cl.slice() : [];
+      if (cl.indexOf(ak) < 0 && cl.length < 8) { cl.push(ak); updateIssued(o.id, { cl }); }   // everyone who opened it (more than one: the owner is told)
+      if (invSwaps.has(o.id)) return why(pid, 'inv-swapping');
+      let ck = pid + '|'; try { ck = pid + '|' + String(JSON.parse(m.p.sp).call || ''); } catch (e) {}
+      if (ended.has(ck)) { const op = ended.get(ck); if (op) sendSigned(pid, op); return; }
+      if (rings.has(pid)) { sendSigned(pid, 'ringing'); return; }
+      const label = (await openLabel(K, o.lab)) || '';
+      rings.set(pid, { label: claimed, ask: true, inv: o.id, ak, live: !!m.lv, for: label, others: Math.max(0, cl.length - 1), id: o.id, at: now, ck });
+      if (host.held(pid)) host.label(pid, claimed + ' (invite)');
+      why(pid, 'inv-ask');
+      sendSigned(pid, 'ringing');
+      emit({ type: 'ring', pid, label: claimed, ask: true, for: label, others: Math.max(0, cl.length - 1) });
+    }
+    async function inviteSwap(pid, r) {
+      invSwaps.add(r.inv);
+      // Accept is my tap: when they are looking at their page we both go to our private room (a call); a hidden door of
+      // theirs is only connected.
+      const res = await swap(pid, r.for || r.label, { inv: r.inv, ak: r.ak, go: r.live }).catch(() => null);
+      if (!res || res.err) { invSwaps.delete(r.inv); emit({ type: 'asked-no', pid }); }
+    }
     function answer(pid) {
       const r = rings.get(pid); if (!r) return false;
+      if (r.ask) {
+        endCall(r, ''); rings.delete(pid);
+        for (const [other, ro] of Array.from(rings)) if (ro.ask && ro.inv === r.inv) { endCall(ro, ''); rings.delete(other); }   // the same invite from another page of theirs: one swap
+        inviteSwap(pid, r); return true;
+      }
       if (r.priv) {   // a ring in our private room (a listening page): I go in; its door lets the caller in by its key word
         endCall(r, ''); rings.delete(pid);
         for (const [other, ro] of Array.from(rings)) { endCall(ro, 'dec'); rings.delete(other); sendSigned(other, 'dec'); }
@@ -719,24 +813,11 @@
       });
     }
     async function give(pid, label) {
-      // Handing a person who is here my card is a swap: our private room, and my personal-room card bound to their key.
-      if (mine() && !(host.owner() && !isMine(room, v) && !privFor(room, v))) { const r = await swap(pid, label, { share: true }); if (r && !r.err) { if (!host.owner()) { given.add(pid); emit({ type: 'gave', pid }); } return true; } }
-      const at = host.owner() && !privFor(room, v) ? { room, v } : mine(); if (!at) return false;   // in a private room, my card is for My Room
-      const K = hostSecret(at.room, at.v); if (!K) return false;
-      // The card swap: a person who has a My Room proves its key here and now, and the card is bound to it (caller ID ✓);
-      // one with no room (no answer within two ticks) gets a bearer card.
-      const w = await askKey(pid, roomKey(at.room, at.v));
-      const bind = w && (await keyWordOk(w, at.room, at.v, pid, host.now())) ? w.pub : '';
-      const r = await mint(K, at.room, at.v, label, bind ? { bind } : {});
-      const t = parseToken(r.token);
-      // A bound card also carries our pair room: the first swap mints its key, every later one reuses it. K goes only
-      // here, over this live channel, to the page that has just proved its My Room key.
-      let pair = null;
-      const k = bind ? await myKey() : null;
-      if (k) { const rec = pairWith(bind) || (await mintPrivate([bind], label)); const PK = rec && hostSecret(rec.room, rec.v); if (PK) pair = { pk: PK, pp: [k.pub, bind] }; }
-      host.send(pid, Object.assign({ op: 'card', c: r.c, from: String(host.myName() || '').slice(0, 40) }, bind ? { nb: 1 } : { s: t.seed }, pair || {}));
-      noteIssued(at.room, at.v, r.id, label, r.exp, bind);
-      bellGive(pid, at.room, at.v, r.cpub, label, r.exp);
+      // ONE PATH: handing a person who is here my card is the swap (our private room, and my personal-room card bound to
+      // their member key), the same swap an invite link ends in. No room on this device: it is made first. They need none.
+      if (!(await ensureMine(host.myName()))) return false;
+      const r = await swap(pid, label, { share: true });
+      if (!r || r.err) return false;
       if (!host.owner()) { given.add(pid); emit({ type: 'gave', pid }); }
       return true;
     }
@@ -747,9 +828,12 @@
     async function swap(pid, label, opts) {
       opts = opts || {};
       const sid = randHex(8), seed = randHex(32), k = await net().edKeysFromSeedHex(seed);
+      // An invite's swap carries my room's signed word for it: the page that opened my invite saves it by itself (opening
+      // the link was its person's yes), and only my room's key can make that word.
+      const aw = opts.inv ? await host.signAdm('mrsask', { to: String(pid), sid, card: String(opts.inv) }) : null;
       const w = await new Promise((resolve) => {
         swapWaits.set(sid, resolve);
-        host.send(pid, { op: 'sask', sid, pa: k.pubB64, n: String(host.myName() || '').slice(0, 40) });
+        host.send(pid, Object.assign({ op: 'sask', sid, pa: k.pubB64, n: String(host.myName() || '').slice(0, 40) }, aw ? { aw } : {}));
         setTimeout(() => { if (swapWaits.get(sid) === resolve) { swapWaits.delete(sid); resolve(null); } }, 2 * (T().MYROOM_TICK_MS || 0));
       });
       if (!w || !(await wordOk(w, 'swap|' + sid, pid, host.now()))) return { err: 'noanswer' };
@@ -759,7 +843,7 @@
       const kw = await signWord(seed, to, host.myId(), host.now());
       let c = null; const m = opts.share ? mine() : null;
       if (m) { const MK = hostSecret(m.room, m.v); if (MK) { const r = await mint(MK, m.room, m.v, label, { bind: w.pub }); noteIssued(m.room, m.v, r.id, label, r.exp, w.pub); c = r.c; } }
-      swaps.set(sid, { pid, label, K, seed, pp, pub: k.pubB64, go: !!opts.go, at });
+      swaps.set(sid, { pid, label, K, seed, pp, pub: k.pubB64, go: !!opts.go, at, inv: opts.inv || '', ak: opts.ak || '' });
       host.send(pid, Object.assign({ op: 'sroom', sid, to, pk: K, pp, w: kw, n: String(host.myName() || '').slice(0, 40) }, c ? { c } : {}, opts.go ? { go: 1 } : {}));
       emit({ type: 'swapping', pid, name: label });
       return { sid, to };
@@ -770,12 +854,19 @@
       pendSw.delete(sid);
       const o = p.offer;
       const rec = await keepPrivate(o.pk, o.pp, p.pub, name, p.seed); if (!rec) return false;
+      if (p.auto) {   // my invite, accepted: the pending card goes (spent), the room remembers which invite made it
+        writeJson(KEY.priv, privates().map((x) => (roomKey(x.room, x.v) === roomKey(rec.room, rec.v) ? Object.assign({}, x, { via: p.auto }) : x)));
+        const c = contactFor(room, v); if (c && c.inv && c.id === p.auto) forget(room, v);
+        linkCard = null; try { root.sessionStorage.removeItem(SS); } catch (e) {}
+        ensureMine(host.myName()).catch(() => null); ringDefault();
+        if (call) { call.state = 'connected'; emit({ type: 'call', call }); }
+      }
       if (o.card) keep(Object.assign({}, o.card, { name }));
       host.send(p.pid, { op: 'sdone', sid });   // first: the giver then keeps my card (below) under the name it gave me
       const m = share ? mine() : null;
       if (m) { const MK = hostSecret(m.room, m.v); if (MK) { const r = await mint(MK, m.room, m.v, name, { bind: p.pa }); noteIssued(m.room, m.v, r.id, name, r.exp, p.pa); host.send(p.pid, { op: 'card', c: r.c, nb: 1, from: String(host.myName() || '').slice(0, 40) }); } }
-      emit({ type: 'swap-saved', name });
-      if (o.go) emit({ type: 'go', room: rec.room, v: rec.v, label: name, priv: true });
+      emit({ type: 'swap-saved', name, invite: !!p.auto });
+      if (o.go) emit(Object.assign({ type: 'go', room: rec.room, v: rec.v, label: name, priv: true }, p.auto ? { quiet: true } : {}));   // by an invite: I arrive muted
       return true;
     }
     function swapNo(sid) { const p = pendSw.get(sid); if (!p) return; pendSw.delete(sid); host.send(p.pid, { op: 'sno', sid }); }
@@ -846,12 +937,8 @@
     }
     function privateNo(pid) { pasks.delete(pid); host.send(pid, { op: 'pno' }); }
 
-    // A card link for this room (the lobby's "Make a card", and the card-back offer when the other side has gone).
-    async function linkFor(label, origin) {
-      const K = hostSecret(room, v); if (!K) return '';
-      const r = await mint(K, room, v, label); noteIssued(room, v, r.id, label, r.exp);
-      return cardLink(origin, room, v, r.token);
-    }
+    // An invite link to My Room (the in-meeting "Invite by link instead"): opening it ends in the same swap.
+    async function linkFor(label, origin) { return invite(label, String(host.myName() || ''), origin); }
 
     // A calendar note on this private room. Only a seat that has proved a member key is answered; anyone else is a
     // dead number (no reply, no event). The same id in this visit is answered again and told to the page once.
@@ -934,8 +1021,16 @@
         if (m.op === 'sask' && typeof m.sid === 'string' && /^[a-f0-9]{16}$/.test(m.sid) && typeof m.pa === 'string' && m.pa.length <= 64) {
           if (pendSw.size >= 8) pendSw.delete(pendSw.keys().next().value);   // a fresh key per ask, kept in memory only until saved
           const seed = randHex(32), k = await net().edKeysFromSeedHex(seed);
-          pendSw.set(m.sid, { pid, seed, pub: k.pubB64, pa: m.pa, n: String(m.n || '').slice(0, 40) });
+          let auto = '';   // the swap my invite asked for, from the page that holds this room's key (the invite's giver)
+          if (m.aw && !host.owner()) { const o = await host.verifyAdm(m.aw, 'mrsask').catch(() => null), mc = myCard(); if (o && o.to === String(host.myId()) && o.sid === m.sid && mc && mc.inv && mc.inv === o.card) auto = mc.inv; }
+          pendSw.set(m.sid, { pid, seed, pub: k.pubB64, pa: m.pa, n: String(m.n || '').slice(0, 40), auto });
           host.send(pid, { op: 'sack', sid: m.sid, w: await signWord(seed, 'swap|' + m.sid, host.myId(), host.now()) });
+          return;
+        }
+        if (m.op === 'door' && m.w && !host.owner()) {   // the owner tells me it is here (I sat down before it came): an invite is shown there
+          const mc = myCard(); if (!mc || !mc.inv) return;
+          const o = await host.verifyAdm(m.w, 'mrdoor'); if (!o || o.to !== String(host.myId())) return;
+          heldAt.add(pid); showCard(pid).catch(() => {});
           return;
         }
         if (m.op === 'sack' && swapWaits.has(m.sid)) { const f = swapWaits.get(m.sid); swapWaits.delete(m.sid); f(m.w); return; }
@@ -947,6 +1042,7 @@
           let card = null;
           if (m.c) { try { const ca = /^([a-z0-9-]{1,64})\.([a-f0-9]{16,64})$/i.exec(JSON.parse(m.c.sp).room); const o = ca && (await check(m.c, ca[1], ca[2])); if (o && o.b && o.cpub === p.pub) card = { room: ca[1], v: ca[2].toLowerCase(), token: b64u(JSON.stringify([m.c.sp, m.c.sig, m.c.pub])), id: o.id, exp: o.exp, bound: true }; } catch (e) { card = null; } }
           p.offer = { pk: m.pk, pp, to: m.to, card, go: !!m.go };
+          if (p.auto) { const mc = myCard(); await swapSave(m.sid, (mc && mc.from) || p.n || 'Contact', false); return; }   // my invite: saved without asking again
           emit({ type: 'swap', pid, sid: m.sid, name: p.n || String(m.n || '').slice(0, 40) || 'Someone', shares: !!card });
           return;
         }
@@ -954,7 +1050,8 @@
           const s2 = swaps.get(m.sid); swaps.delete(m.sid);
           const rec = await keepPrivate(s2.K, s2.pp, s2.pub, s2.label, s2.seed);
           swapNamed.set(pid, s2.label);
-          emit({ type: 'swap-done', pid, name: s2.label });
+          if (s2.inv) { updateIssued(s2.inv, { used: { ak: s2.ak, name: s2.label, at: Date.now() } }); invSwaps.delete(s2.inv); }   // the invite is spent
+          emit({ type: 'swap-done', pid, name: s2.label, invite: !!s2.inv });
           if (rec && s2.go) emit({ type: 'go', room: rec.room, v: rec.v, label: s2.label, priv: true });
           return;
         }
@@ -1014,10 +1111,17 @@
         // A renewal is its own proof: renew() takes only the same card with a later expiry, signed by this room's host key. Who
         // handed it over does not matter, and the host's presence table may reach a page just let in a moment later.
         if (m.op === 'card' && m.c && !m.s && !host.owner()) { if (await renew(room, v, m.c)) emit({ type: 'renewed-mine' }); return; }
-        if ((!host.owner() || (call && call.priv)) && call && (m.op === 'ringing' || m.op === 'dec' || m.op === 'missed' || m.op === 'here' || m.op === 'acc')) {
+        if ((!host.owner() || (call && call.priv)) && call && (m.op === 'ringing' || m.op === 'dec' || m.op === 'missed' || m.op === 'here' || m.op === 'acc' || m.op === 'used')) {
           const o = await host.verifyAdm(m.w, 'mr' + m.op);
           if (!o || o.to !== String(host.myId())) return;
           told.set(pid, 0);                       // that page has my card: no more showing it there
+          if (m.op === 'used') {   // my invite was spent: by me (we are connected) or by someone else (it is no use now)
+            if (!call.inv || call.state === 'connected' || call.state === 'known' || call.state === 'used') return;
+            if (viaInvite(call.inv)) call.state = 'known';
+            else { call.state = 'used'; const c = contactFor(room, v); if (c && c.inv && c.id === call.inv) forget(room, v); linkCard = null; try { root.sessionStorage.removeItem(SS); } catch (e) {} }
+            emit({ type: 'call', call });
+            return;
+          }
           // 'here' (the owner is live and saw my card) comes once, often while I am still held: kept, and the call reads
         // answered as soon as I am seated (tick), not only if I already was.
         if (m.op === 'here') { call.here = true; if (call.state === 'waiting' && host.seated()) { call.state = 'answered'; call.answeredAt = host.now(); emit({ type: 'call', call }); } return; }
@@ -1040,6 +1144,17 @@
     async function takeLinkCard(token) {
       if (!hosted || !token) return null;
       const f = await readCard(token, room, v); if (!f) return null;
+      if (f.inv) {   // an invite: kept as a pending contact (no question: opening it was the yes), with my asker key for it
+        const known = viaInvite(f.id);
+        if (known) { emit({ type: 'invite-known', name: known.name || f.from, room: known.room, v: known.v }); return f; }
+        const was = contactFor(room, v);
+        const ak = was && was.inv && was.id === f.id && PK_RE.test(String(was.ak || '')) ? was.ak : randHex(32);
+        keep(Object.assign({}, f, { ak, name: f.from || room }));
+        ringDefault();
+        mineLater = true;   // my personal room is made silently once I have said my name
+        emit({ type: 'invite', name: f.from || room });
+        return f;
+      }
       const t = parseToken(token);
       linkCard = { token, seed: t.seed, c: t.c, name: (contactFor(room, v) || {}).name || room };
       try { root.sessionStorage.setItem(SS, token); } catch (e) {}
@@ -1062,7 +1177,7 @@
       drop: (pid, w) => why(pid, w),
       identity: idCopy,
       people: () => host.people(), gaveTo: (pid) => given.has(pid), hostIds: () => host.hosts(), myName: () => String(host.myName() || ''),
-      state: () => ({ room, v, owner: !!host.owner(), mine: isMine(room, v), standby, live: !!(hosted && host.live()), wentLive, whys: Array.from(whys), call: call ? Object.assign({}, call) : null, rings: Array.from(rings, ([pid, r]) => ({ pid, label: r.label, at: r.at, to: r.to || '', pair: !!r.pair })), holdsCard: !!myCard(), priv: !!privFor(room, v), proved: Array.from(proved.keys()), pasks: Array.from(pasks.keys()), asking: Array.from(asking.values()), pendingGo: !!pendingGo, listening: listening(), listeners: Array.from(listeners2), rx: Object.assign({}, rx) }),
+      state: () => ({ room, v, owner: !!host.owner(), mine: isMine(room, v), standby, live: !!(hosted && host.live()), wentLive, whys: Array.from(whys), call: call ? Object.assign({}, call) : null, rings: Array.from(rings, ([pid, r]) => ({ pid, label: r.label, at: r.at, to: r.to || '', pair: !!r.pair, ask: !!r.ask, for: r.for || '', others: r.others || 0, live: !!r.live })), holdsCard: !!myCard(), priv: !!privFor(room, v), proved: Array.from(proved.keys()), pasks: Array.from(pasks.keys()), asking: Array.from(asking.values()), pendingGo: !!pendingGo, listening: listening(), listeners: Array.from(listeners2), rx: Object.assign({}, rx) }),
     };
   }
 
@@ -1071,7 +1186,7 @@
     mine, isMine, create, createHosted, adopt, hosted, stayOn, setStay,
     contacts, contactFor, keep, forget, rename, issued, revoke, revoked, missed, noteMissed, clearMissed, cardLink, roomKey,
     privName, privates, privFor, pairWith, keepPrivate, mintPrivate, contactPub, issuedTo, cutPrivate, cardIn, memberOf, signWord, wordOk,
-    listenSet, touchPrivate, LISTEN_MAX, useStore, dropMine,
+    listenSet, touchPrivate, LISTEN_MAX, useStore, dropMine, invite, ensureMine, viaInvite, updateIssued,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = GifOS.meetMyRoom;
 })(typeof window !== 'undefined' ? window : globalThis);

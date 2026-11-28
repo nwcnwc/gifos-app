@@ -1,0 +1,17 @@
+{
+  "title": "Calculator",
+  "tab.graph": "Graph",
+  "tab.list": "List",
+  "add": "+ expression",
+  "view.reset": "Reset view",
+  "row.show": "Show",
+  "row.hide": "Hide",
+  "row.delete": "Delete row",
+  "placeholder": "y = x^2  or  2+2",
+  "slider.min": "Slider minimum",
+  "slider.max": "Slider maximum",
+  "slider.play": "Animate",
+  "err.unexpected": "unexpected \"{what}\"",
+  "err.expected": "expected \"{what}\"",
+  "err.end": "unexpected end"
+}

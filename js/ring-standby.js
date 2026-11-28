@@ -9,6 +9,10 @@
  *          here with Answer and Decline. This covers an iPhone's Safari without a Home Screen install.
  * No tab ever moves into a room by itself: Answer (the person's tap) takes it there. A tab in a meeting never stands by.
  * My personal room's own page takes the doors over while it is open (it listens itself: js/core/view/myroom.js).
+ * INVITES (docs/myroom.md "One link"), whatever the setting says: while an invite I made is open, a door stands in my
+ * personal room, so the person who opens it is asked about here ("Andrew wants to be your contact": Accept); and while
+ * an invite I opened is pending, a door knocks at its giver's personal room, so we are connected the next time we are
+ * both online.
  * The switch is stored as My Room's device-only `stay` flag (its first name, "stay in my personal room", is retired: a
  * device that had it on now simply rings).
  */
@@ -97,13 +101,16 @@
       return B().handles().some((h) => h.r === r && rec.pubs.indexOf(h.k) >= 0 && h.x - Date.now() > soon);
     } catch (e) { return false; }
   }
+  // An invite I made, not used yet and not run out.
+  function invitesOpen(M, m) { try { const now = Date.now(); return !!m && M.issued().some((x) => x.inv && !x.used && +x.exp > now && M.roomKey(x.room, x.v) === M.roomKey(m.room, m.v) && M.revoked().indexOf(x.id) < 0); } catch (e) { return false; } }
   function wanted() {
     const M = MR(); if (!M) return [];
-    const md = mode(); if (md === 'off') return [];
-    let recs = M.listenSet().slice(0, doorsMax());
+    const md = mode();
+    let recs = md === 'off' ? [] : M.listenSet().slice(0, doorsMax());
     if (md === 'push') recs = recs.filter((rec) => !handed(rec));
     const out = recs.map((rec) => ({ rec, mine: false }));
-    const m = M.mine(); if (m && md === 'open') out.push({ rec: m, mine: true });   // card holders ring my personal room
+    const m = M.mine(); if (m && (md === 'open' || invitesOpen(M, m))) out.push({ rec: m, mine: true });   // card holders ring my personal room; whoever opens my invite is asked about
+    for (const c of M.contacts()) if (c.inv && +c.exp > Date.now()) out.push({ rec: { room: c.room, v: c.v }, mine: false, knock: true });   // an invite I opened knocks until we are connected
     return out;
   }
   function openDoors() {
@@ -112,10 +119,10 @@
     for (const w of want) {
       const k = M.roomKey(w.rec.room, w.rec.v);
       if (doors.has(k) || stranger.has(k)) continue;
-      const d = { el: null, part: null, id: '', rec: w.rec, mine: w.mine };
+      const d = { el: null, part: null, id: '', rec: w.rec, mine: w.mine, knock: !!w.knock };
       doors.set(k, d);
       const link = root.location.origin + roomUrl(w.rec.room, w.rec.v) + (debugOn() ? '&DEBUG=on' : '');
-      GifOS.meetHost.join({ link, name: myName(), bot: false, listen: !w.mine }).then((r) => { d.id = r.meetingId; if (!doors.has(k)) GifOS.meetHost.leave(d.id).catch(() => {}); }, () => { if (doors.get(k) === d) doors.delete(k); });
+      GifOS.meetHost.join({ link, name: myName(), bot: false, listen: !w.mine && !w.knock }).then((r) => { d.id = r.meetingId; if (!doors.has(k)) GifOS.meetHost.leave(d.id).catch(() => {}); }, () => { if (doors.get(k) === d) doors.delete(k); });
       const fr = doc.querySelectorAll('iframe[data-gifos-meet]');
       d.el = fr.length ? fr[fr.length - 1] : null;   // join() appends its frame at once
       if (d.el) d.el.setAttribute('data-ring-door', k);
@@ -136,7 +143,12 @@
   }
   function closeDoors() { for (const [k, d] of Array.from(doors)) shut(k, d); }
   function onDoor(d, ev) {
-    if (ev.type === 'ring') { if (!ringing) startRing({ door: d, pid: ev.pid, label: ev.label, to: ev.to }); return; }
+    if (ev.type === 'ring') { if (!ringing) startRing({ door: d, pid: ev.pid, label: ev.label, to: ev.to, ask: !!ev.ask, for: ev.for || '', others: ev.others || 0 }); return; }
+    // Invites: a contact made (no tab moves: the person who opened it was not looking, or I accepted from here), and the
+    // warning that someone else opened an invite already used.
+    if (ev.type === 'swap-done' && ev.invite) { if (ringing && ringing.door === d) endRing(); notice(ev.name + ' is in your contacts', 'Our private room is in Rooms. It rings either of you.'); return; }
+    if (ev.type === 'swap-saved' && ev.invite) { notice('You’re connected with ' + ev.name, 'Our private room is in Rooms. It rings either of you.'); return; }
+    if (ev.type === 'inv-again') { notice('Your invite was opened again', 'Someone else (“' + (ev.claimed || 'Someone') + '”) opened your invite' + (ev.label ? ' for ' + ev.label : '') + ' after ' + (ev.name || 'your contact') + ' used it. If ' + (ev.name || 'that') + ' isn’t who you sent it to, remove them in Rooms and send a new invite.'); return; }
     if ((ev.type === 'missed' || ev.type === 'stopped' || ev.type === 'declined') && ringing && ringing.door === d && ringing.pid === ev.pid) { endRing(); return; }
     if (ev.type === 'go') { go(ev.room, ev.v, !!ev.priv, false); return; }   // Answer in a private room (or an invitation): there
     // A stranger sat down with a door (a full copy of the room, no member key): that door stops listening until the next load.
@@ -172,20 +184,29 @@
     '#ring-sheet .ring-acts{display:flex;gap:12px;justify-content:flex-end}#ring-sheet button{font:inherit;padding:10px 18px;border-radius:999px;border:1px solid rgba(127,127,127,.5);background:transparent;color:inherit;cursor:pointer}' +
     '#ring-sheet button.go{background:#1a7f37;border-color:#1a7f37;color:#fff}' +
     '@media (prefers-color-scheme: dark){#ring-sheet .ring-box{background:var(--surface,#1d1f24);color:var(--text,#eee)}}';
-  function sheet(title, text, yes) {
+  // A word with one OK (no ring, no tone).
+  let later = null;   // a word that came while a ring was up: shown when the ring ends
+  function notice(title, text) {
+    if (ringing) { later = [title, text]; return; }
+    sheet(title, text, 'OK');
+    const no = doc.getElementById('ring-no'); if (no) no.hidden = true;
+    doc.getElementById('ring-yes').onclick = () => { const el = doc.getElementById('ring-sheet'); if (el) el.hidden = true; };
+  }
+  function sheet(title, text, yes, noText) {
     let el = doc.getElementById('ring-sheet');
     if (!doc.getElementById('ring-css')) { const s = doc.createElement('style'); s.id = 'ring-css'; s.textContent = CSS; (doc.head || doc.documentElement).appendChild(s); }
     if (!el) { el = doc.createElement('div'); el.id = 'ring-sheet'; el.className = 'dlg-backdrop'; el.setAttribute('role', 'alertdialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-labelledby', 'ring-t'); doc.body.appendChild(el); }
-    el.innerHTML = '<div class="ring-box dlg-box"><h2 id="ring-t">' + esc(title) + '</h2><p id="ring-n">' + esc(text) + '</p><div class="ring-acts"><button type="button" id="ring-no">Decline</button><button type="button" class="go" id="ring-yes">' + esc(yes) + '</button></div></div>';
+    el.innerHTML = '<div class="ring-box dlg-box"><h2 id="ring-t">' + esc(title) + '</h2><p id="ring-n">' + esc(text) + '</p><div class="ring-acts"><button type="button" id="ring-no">' + esc(noText || 'Decline') + '</button><button type="button" class="go" id="ring-yes">' + esc(yes) + '</button></div></div>';
     el.hidden = false;
     doc.getElementById('ring-no').onclick = decline;
     doc.getElementById('ring-yes').onclick = answer;
   }
   function startRing(r) {
     ringing = r;
-    const title = r.test ? 'Test ring' : r.label + ' is calling';
-    const text = r.test ? 'This is how a call rings on this device.' : r.door && r.door.mine ? 'At your personal room. Answer takes you there. Your mic turns on there; your camera stays off.' : 'From our private room. Answer takes you there. Your mic turns on there; your camera stays off.';
-    sheet(title, text, r.test ? 'OK' : 'Answer');
+    const title = r.test ? 'Test ring' : r.ask ? (r.label || 'Someone') + ' wants to be your contact' : r.label + ' is calling';
+    const text = r.test ? 'This is how a call rings on this device.' : r.ask ? (r.for && r.for !== r.label ? 'From your invite for ' + r.for + '. ' : '') + (r.others ? (r.others + 1) + ' people opened this invite: accept only the one you sent it to. ' : '') + 'Accept makes our private room: only the two of you can use it, and it rings either of you.'
+      : r.door && r.door.mine ? 'At your personal room. Answer takes you there. Your mic turns on there; your camera stays off.' : 'From our private room. Answer takes you there. Your mic turns on there; your camera stays off.';
+    if (r.ask) sheet(title, text, 'Accept', 'Not now'); else sheet(title, text, r.test ? 'OK' : 'Answer');
     toneOnce(); toneTimer = root.setInterval(toneOnce, 6 * T().MYROOM_TICK_MS);   // 2 s on, 4 s off
     try { if (doc.hidden && root.Notification && root.Notification.permission === 'granted') { note = new root.Notification(title, { body: text, tag: 'gifos-ring' }); note.onclick = () => { try { root.focus(); } catch (e) {} }; } } catch (e) { note = null; }
     if (r.test) r.timer = root.setTimeout(endRing, T().MYROOM_RING_MS / 6);
@@ -197,13 +218,14 @@
     try { if (note) note.close(); } catch (e) {}
     note = null;
     const el = doc.getElementById('ring-sheet'); if (el) el.hidden = true;
+    if (later) { const n = later; later = null; notice(n[0], n[1]); }
   }
   function answer() {
     const r = ringing; if (!r) return;
     if (r.test || !r.door || !r.door.part) { endRing(); return; }
     const d = r.door;
     // A private room's door (or an invitation) answers itself and says where to go ('go', above).
-    if (!d.mine || r.to) { d.part.answer(r.pid); return; }
+    if (!d.mine || r.to || r.ask) { if (r.ask) endRing(); d.part.answer(r.pid); return; }   // an invite: Accept runs the swap from that door
     // My personal room's door holds the caller at its own door: this tab goes in, and the room's page answers that
     // caller when the ring reaches it there (the caller knocks again; the hint names whom).
     ssSet('gifos_ring_answer', JSON.stringify({ room: d.rec.room, v: d.rec.v, label: r.label, at: Date.now() }));
@@ -302,7 +324,7 @@
   }
 
   GifOS.ringHere = { on, mode, status, set, test, settle, takeOver, sync, doorsMax };
-  try { if (debugOn()) root.__ringState = () => ({ role, mode: mode(), standing, doors: Array.from(doors, ([k, d]) => ({ room: k, mine: d.mine, part: d.part ? d.part.state() : null })), ringing: ringing ? { label: ringing.label, test: !!ringing.test } : null, sheet: !!(doc.getElementById('ring-sheet') && !doc.getElementById('ring-sheet').hidden) }); } catch (e) {}
+  try { if (debugOn()) root.__ringState = () => ({ role, mode: mode(), standing, doors: Array.from(doors, ([k, d]) => ({ room: k, mine: d.mine, knock: !!d.knock, part: d.part ? d.part.state() : null })), ringing: ringing ? { label: ringing.label, test: !!ringing.test, ask: !!ringing.ask } : null, sheetTitle: (doc.getElementById('ring-t') || {}).textContent || '', sheet: !!(doc.getElementById('ring-sheet') && !doc.getElementById('ring-sheet').hidden) }); } catch (e) {}
   const boot = () => { try { start(); } catch (e) { try { console.error('ring standby: ' + String(e && e.stack || e)); } catch (x) {} } };
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', boot); else boot();
 })(typeof window !== 'undefined' ? window : globalThis);
