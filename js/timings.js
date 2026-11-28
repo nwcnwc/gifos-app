@@ -396,17 +396,11 @@
     XV_CLEAN_MAX: 4,   // count
     XV_CLEAN_MIN: 1,   // count
     XV_CONFIRM_SURE: 0.001,   // ratio
-    XV_DEEP_GAP_MS: 4000,   // ms
-    XV_DEEP_MAX_MS: 1500,   // ms
     XV_DUTY_DESK_PCT: 20,   // pct
     XV_DUTY_PHONE_PCT: 10,   // pct
     XV_FIRST_DUTY_DESK_PCT: 15,   // pct
     XV_FIRST_DUTY_PHONE_PCT: 8,   // pct
     XV_FIRST_GAP_MIN_MS: 500,   // ms
-    XV_FUSE_A: 1.045,   // ratio
-    XV_FUSE_B: 0.348,   // ratio
-    XV_FUSE_C: 1.239,   // ratio
-    XV_FUSE_FREEPIK_D: 0,   // ratio
     XV_FUSE_F_EPS: 0.00001,   // ratio
     XV_FUSE_LAMBDA: 0.9,   // ratio
     XV_FUSE_LINE_GAIN: 0.35,   // ratio
