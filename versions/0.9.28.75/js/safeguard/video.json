@@ -1,0 +1,162 @@
+{
+  "about": "On-device check for live video (the explicit-content blocker): the runtime and the models. Every file is pinned by SHA-256; the page fetches it from the GifOS model host at <base>/<key>, checks every byte and hands the bytes to the check's worker, which makes no request of its own. src names the published file the copy was taken from. chain: every sampled frame goes to the first model; a frame goes on only while each model finds it at or over its line, and counts as explicit only when the last one does (lazy: loaded when a frame first reaches it). deep: a larger model a desktop adds when it can run it (needs), at most one frame every few seconds. Score = the sum of the pos classes of the softmax.",
+  "version": 1,
+  "rule": "xv-2",
+  "base": "https://models.gifos.app",
+  "runtime": {
+    "js": {
+      "name": "ort.wasm.min.js",
+      "key": "onnxruntime-web-1.22.0/65e09376df69107e881b5c34d2d37aed333a366b6d941073ec518168e269b87d/ort.wasm.min.js",
+      "sha256": "65e09376df69107e881b5c34d2d37aed333a366b6d941073ec518168e269b87d",
+      "bytes": 48327,
+      "src": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.wasm.min.js",
+      "license": "MIT"
+    },
+    "wasm": {
+      "name": "ort-wasm-simd-threaded.wasm",
+      "key": "onnxruntime-web-1.22.0/71aef04959c5c1b6de461b6538e2058e306610034a85aad2742d0c7fd4533fe4/ort-wasm-simd-threaded.wasm",
+      "sha256": "71aef04959c5c1b6de461b6538e2058e306610034a85aad2742d0c7fd4533fe4",
+      "bytes": 11210254,
+      "src": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort-wasm-simd-threaded.wasm",
+      "license": "MIT"
+    },
+    "mjs": {
+      "name": "ort-wasm-simd-threaded.mjs",
+      "key": "onnxruntime-web-1.22.0/30dd851d9c00622940500f71ddd2ff8820c5cb65270816080175b958705385a8/ort-wasm-simd-threaded.mjs",
+      "sha256": "30dd851d9c00622940500f71ddd2ff8820c5cb65270816080175b958705385a8",
+      "bytes": 20856,
+      "src": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort-wasm-simd-threaded.mjs",
+      "license": "MIT"
+    }
+  },
+  "gpuRuntime": {
+    "js": {
+      "name": "ort.webgpu.min.js",
+      "key": "onnxruntime-web-1.22.0/4dec2f5e74de2ec0f496d39ef55ec23762e8c6ca58cb958e691c9f2350a7b1c8/ort.webgpu.min.js",
+      "sha256": "4dec2f5e74de2ec0f496d39ef55ec23762e8c6ca58cb958e691c9f2350a7b1c8",
+      "bytes": 357648,
+      "src": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.webgpu.min.js",
+      "license": "MIT"
+    },
+    "wasm": {
+      "name": "ort-wasm-simd-threaded.jsep.wasm",
+      "key": "onnxruntime-web-1.22.0/b45970d0632383a057c27ca5b660b216f8e00c17cf8db9f6207b5e4abc839368/ort-wasm-simd-threaded.jsep.wasm",
+      "sha256": "b45970d0632383a057c27ca5b660b216f8e00c17cf8db9f6207b5e4abc839368",
+      "bytes": 21872216,
+      "src": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort-wasm-simd-threaded.jsep.wasm",
+      "license": "MIT"
+    },
+    "mjs": {
+      "name": "ort-wasm-simd-threaded.jsep.mjs",
+      "key": "onnxruntime-web-1.22.0/1cbcba8f2c769c1eecbab66a1b1e55ef11704515bf4306373e3db3c37cf6dcd8/ort-wasm-simd-threaded.jsep.mjs",
+      "sha256": "1cbcba8f2c769c1eecbab66a1b1e55ef11704515bf4306373e3db3c37cf6dcd8",
+      "bytes": 44677,
+      "src": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort-wasm-simd-threaded.jsep.mjs",
+      "license": "MIT"
+    }
+  },
+  "chain": [
+    {
+      "id": "marqo-384",
+      "line": 0.85,
+      "size": 384,
+      "mean": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "std": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "labels": [
+        "NSFW",
+        "SFW"
+      ],
+      "pos": [
+        "NSFW"
+      ],
+      "file": {
+        "name": "nsfw_vit_tiny_384_int8.onnx",
+        "key": "marqo-384-int8/20cc99a8986320972273253325975203f2a647ca0010a1ac9c869a0dbb9eb77d/model.onnx",
+        "sha256": "20cc99a8986320972273253325975203f2a647ca0010a1ac9c869a0dbb9eb77d",
+        "bytes": 6661897,
+        "src": "https://huggingface.co/kasimtmc/nsfw-image-detection-384-onnx/resolve/8a2d1b7d93d38688c6f9a38767c16acd7de4280b/nsfw_vit_tiny_384_int8.onnx",
+        "license": "Apache-2.0"
+      },
+      "from": "https://huggingface.co/Marqo/nsfw-image-detection-384 (ViT-tiny), int8 ONNX",
+      "suspect": 0.25
+    },
+    {
+      "id": "falcon",
+      "line": 0.05,
+      "size": 224,
+      "mean": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "std": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "lazy": true,
+      "labels": [
+        "normal",
+        "nsfw"
+      ],
+      "pos": [
+        "nsfw"
+      ],
+      "file": {
+        "name": "nsfw_image_detection_quantized.onnx",
+        "key": "falconsai-nsfw-q8/d9afb1e057104e6cc8616d174f0f6a8b8b0389c839eea7d5efa4bdf1a77efd27/model.onnx",
+        "sha256": "d9afb1e057104e6cc8616d174f0f6a8b8b0389c839eea7d5efa4bdf1a77efd27",
+        "bytes": 87333629,
+        "src": "https://huggingface.co/onnx-community/nsfw_image_detection-ONNX/resolve/1ceb3c7fe1e9f3f2507e6df577437f23a9149fd5/onnx/model_quantized.onnx",
+        "license": "Apache-2.0"
+      },
+      "from": "https://huggingface.co/Falconsai/nsfw_image_detection (ViT-base), 8-bit ONNX"
+    }
+  ],
+  "deep": {
+    "id": "freepik-eva02",
+    "line": 0.98,
+    "size": 448,
+    "mean": [
+      0.48145466,
+      0.4578275,
+      0.40821073
+    ],
+    "std": [
+      0.26862954,
+      0.26130258,
+      0.27577711
+    ],
+    "labels": [
+      "neutral",
+      "low",
+      "medium",
+      "high"
+    ],
+    "pos": [
+      "medium",
+      "high"
+    ],
+    "needs": [
+      "webgpu",
+      "shader-f16"
+    ],
+    "file": {
+      "name": "nsfw_image_detector_q4f16.onnx",
+      "key": "freepik-eva02-q4f16/1f5e7b7593976400056d3281763bf85137c26d6b297cc80af69f83ab575e58b5/model.onnx",
+      "sha256": "1f5e7b7593976400056d3281763bf85137c26d6b297cc80af69f83ab575e58b5",
+      "bytes": 51108565,
+      "src": "https://huggingface.co/doppeltilde/nsfw_image_detector-ONNX/resolve/ee48dc9aac238b7496f5e5f41a5a726022e249ed/onnx/model_q4f16.onnx",
+      "license": "MIT"
+    },
+    "from": "https://huggingface.co/Freepik/nsfw_image_detector (EVA02-base, 448 px), ONNX with 4-bit weights"
+  }
+}
