@@ -5121,7 +5121,7 @@
     function xvSync(on) {
       const E = window.GifOS && GifOS.explicit;
       if (on && !xvWatch && E && E.video && !E.unsupported()) {
-        xvWatch = E.video.watch({ sources: xvSources, onChange: (id, tripped) => (0, /*()*/__C.xvSet)(id, tripped), log: (line) => { try { (0, /*()*/__C.clog)(line); } catch (e) {} } });
+        xvWatch = E.video.watch({ sources: xvSources, onChange: (id, tripped, why, kind) => (0, /*()*/__C.xvSet)(id, tripped, why, kind), log: (line) => { try { (0, /*()*/__C.clog)(line); } catch (e) {} } });
       } else if (!on && xvWatch) {
         const w = xvWatch;
         xvWatch = null;

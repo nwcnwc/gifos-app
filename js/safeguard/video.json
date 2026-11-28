@@ -1,7 +1,7 @@
 {
   "about": "On-device check for live video (the explicit-content blocker): the runtime and the models. Every file is pinned by SHA-256; the page fetches it from the GifOS model host at <base>/<key>, checks every byte and hands the bytes to the check's worker, which makes no request of its own. src names the published file the copy was taken from. chain: every sampled frame goes to the first model; a frame goes on only while each model finds it at or over its line, and counts as explicit only when the last one does (lazy: loaded when a frame first reaches it). deep: a larger model a desktop adds when it can run it (needs), at most one frame every few seconds. Score = the sum of the pos classes of the softmax.",
   "version": 1,
-  "rule": "xv-1",
+  "rule": "xv-2",
   "base": "https://models.gifos.app",
   "runtime": {
     "js": {
@@ -59,6 +59,7 @@
     {
       "id": "viddexa-nano",
       "line": 0.05,
+      "suspect": 0.2,
       "size": 224,
       "mean": [
         0.485,

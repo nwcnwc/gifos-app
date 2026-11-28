@@ -242,7 +242,7 @@
   // only goes on while each model in turn finds it over its line, and it counts as explicit only when the last one
   // does. The lines were chosen on the public evaluation set to refuse about 1 in 100 hard-benign pictures
   // (breastfeeding, babies, sport, medicine). A change of a line or a model is a new rule version.
-  const RULE = 'xv-1';
+  const RULE = 'xv-2';
   const mobileUa = () => {
     try {
       const n = root.navigator || {}, ua = String(n.userAgent || '');
@@ -348,7 +348,9 @@
         for (const m of stages) if (!m.lazy) await ready(m);
         return {
           rule: RULE, backend: 'wasm', stages,
-          frame(src) {
+          // onFirst(v0): called the moment the first (fast) model has scored the frame, before the slower ones run, so a
+          // suspect picture can be hidden at once (the asymmetric trip, FASTTRIP). first(src): the first model alone.
+          frame(src, onFirst) {
             const t0 = performance.now();
             return snap(src).then(async (bmp) => {
               const s = [];
@@ -358,12 +360,25 @@
                   const r = await w.run(m.id, vpixels(bmp, m.size));
                   const v = posScore(r.p, m);
                   s.push(Math.round(v * 1e4) / 1e4);
+                  if (s.length === 1 && onFirst) { try { onFirst(v, m); } catch (e) {} }
                   if (v < m.line) return { hit: false, s, ms: Math.round(performance.now() - t0) };
                 }
                 return { hit: true, s, ms: Math.round(performance.now() - t0) };
               } finally { if (bmp !== src && bmp && bmp.close) try { bmp.close(); } catch (e) {} }
             });
           },
+          first(src) {
+            const t0 = performance.now(), m = stages[0];
+            return snap(src).then(async (bmp) => {
+              try {
+                await ready(m);
+                const v = posScore((await w.run(m.id, vpixels(bmp, m.size))).p, m);
+                return { v, suspect: v >= (m.suspect == null ? m.line : m.suspect), warm: v >= m.line, ms: Math.round(performance.now() - t0) };
+              } finally { if (bmp !== src && bmp && bmp.close) try { bmp.close(); } catch (e) {} }
+            });
+          },
+          suspectLine: stages[0].suspect == null ? stages[0].line : stages[0].suspect,
+          warmLine: stages[0].line,
           close() { w.close(); chainP = null; },
         };
       } catch (e) { w.close(); throw e; }
@@ -427,16 +442,25 @@
     const T = Object.assign({}, (root.GifOS && root.GifOS.timings) || {}, opts.timings || {});
     const mobile = opts.mobile != null ? !!opts.mobile : mobileUa();
     const duty = (mobile ? T.XV_DUTY_PHONE_PCT : T.XV_DUTY_DESK_PCT) / 100;
+    const fduty = (mobile ? T.XV_FIRST_DUTY_PHONE_PCT : T.XV_FIRST_DUTY_DESK_PCT) / 100;
     const open = opts.engine ? () => Promise.resolve(opts.engine) : () => videoOpen(opts);
     const openDeep = opts.deep !== undefined ? () => Promise.resolve(opts.deep) : () => videoDeep(opts);
     const log = typeof opts.log === 'function' ? opts.log : () => {};
-    const recs = new Map();   // id -> { t: tracker, tripped, at, burst, n, hits, s }
+    const gate = opts.gate !== false;   // a picture new to this page is held back until its first look passes (FASTTRIP 4)
+    const recs = new Map();   // id -> per-picture record (see rec)
     const hidden = new Map(); // track -> video element of our own (a track with no element on the page)
-    let stopped = false, timer = null, deepTimer = null, eng = null, deep, deepWhy = '', avg = 0, gap = 0, frames = 0, err = '', deepFrames = 0;
+    let stopped = false, timer = null, deepTimer = null, senseTimer = null, eng = null, deep, deepWhy = '', avg = 0, avgF = 0, gap = 0, frames = 0, err = '', deepFrames = 0, fullReadyAt = 0, busy = false, bursts = 0;
     const now = () => Date.now();
-    // One tracker per lane: the larger model looks less often, so its frames are counted among its own (a picture is
-    // tripped while either lane is, and lifts when both have had their run of clean frames).
-    const rec = (id) => { let r = recs.get(id); if (!r) recs.set(id, (r = { t: tracker(), td: tracker(), tripped: false, at: 0, burst: 0, n: 0, hits: 0, s: null })); return r; };
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    // r.tripped: the chain confirmed (two hits of three frames). r.sus: ONE frame passed the first model's suspect line:
+    // hidden at once, lifted after XV_SUSPECT_CLEAN first-model-clean frames unless the chain confirms. r.pend: new to
+    // this page, held back for its first look. A picture is held while any of the three is set; kind says which ('' |
+    // 'checking' for pend alone | 'unsafe').
+    const rec = (id) => {
+      let r = recs.get(id);
+      if (!r) recs.set(id, (r = { t: tracker(), td: tracker(), tripped: false, sus: false, peak: 0, need: 1, holdUntil: 0, pend: false, pendAt: 0, kind: '', susClean: 0, changed: false, chgAt: 0, nextChg: 0, warm: false, prev: null, at: 0, burst: 0, n: 0, hits: 0, s: null, fresh: true }));
+      return r;
+    };
     const ready = (el) => !!el && ((el.videoWidth > 0 && el.readyState >= 2) || (!('videoWidth' in el) && el.width > 0));
     function elOf(src) {
       if (src.el) return src.el;
@@ -458,13 +482,36 @@
       try { a = opts.sources() || []; } catch (e) { a = []; }
       const ids = new Set(a.map((x) => x.id)), tracks = new Set(a.map((x) => x.track).filter(Boolean));
       // A picture that is no longer shown or sent is forgotten: a trip on it ends with it.
-      for (const [id, r] of recs) if (!ids.has(id)) { recs.delete(id); if (r.tripped) edge(id, false, 'gone'); }
+      for (const [id, r] of recs) if (!ids.has(id)) { recs.delete(id); if (r.kind) log('xv lift ' + String(id).slice(0, 8) + ' gone'), tell(id, '', 'gone'); }
       for (const [t, v] of hidden) if (!tracks.has(t)) { try { v.srcObject = null; v.remove(); } catch (e) {} hidden.delete(t); }
       return a;
     }
-    function edge(id, tripped, why) {
-      log('xv ' + (tripped ? 'TRIP ' : 'lift ') + String(id).slice(0, 8) + ' ' + why);
-      try { opts.onChange(id, tripped, why); } catch (e) {}
+    function tell(id, kind, why) {
+      try { opts.onChange(id, !!kind, why, kind); } catch (e) {}
+    }
+    // The one place a picture's held state is decided and reported (each change of kind is one edge).
+    function emit(id, r, why) {
+      const kind = (r.tripped || r.sus) ? 'unsafe' : r.pend ? 'checking' : '';
+      if (kind === r.kind) return;
+      r.kind = kind;
+      log('xv ' + (kind ? 'TRIP ' : 'lift ') + String(id).slice(0, 8) + ' ' + why + (kind === 'checking' ? ' (checking)' : ''));
+      tell(id, kind, why);
+    }
+    // One continuous mapping, suspicion score -> how long a suspect picture is held and how many clean first-model looks
+    // lift it: f = ((score - line) / (1 - line)) ^ XV_HOLD_CURVE, then hold = lerp(XV_HOLD_MIN_MS, XV_HOLD_MAX_MS, f) and
+    // clean = round(lerp(XV_CLEAN_MIN, XV_CLEAN_MAX, f)). A weak suspicion lifts fast; a strong one waits for more.
+    function holdFor(score) {
+      const line = eng && eng.suspectLine != null ? eng.suspectLine : 0.2;
+      const f = Math.pow(Math.min(1, Math.max(0, (score - line) / Math.max(1e-6, 1 - line))), T.XV_HOLD_CURVE);
+      return { hold: T.XV_HOLD_MIN_MS + (T.XV_HOLD_MAX_MS - T.XV_HOLD_MIN_MS) * f, clean: Math.round(T.XV_CLEAN_MIN + (T.XV_CLEAN_MAX - T.XV_CLEAN_MIN) * f) };
+    }
+    function setSus(id, r, v0) {
+      if (r.sus || r.tripped) { r.susClean = 0; if (r.sus && v0 > r.peak) { r.peak = v0; const h = holdFor(v0); r.holdUntil = Math.max(r.holdUntil, now() + h.hold); r.need = Math.max(r.need, h.clean); } return; }
+      const h = holdFor(v0);
+      r.peak = v0; r.need = h.clean; r.holdUntil = now() + h.hold;
+      r.sus = true; r.susClean = 0; r.pend = false; r.burst = now();
+      log('xv suspect ' + String(id).slice(0, 8) + ' v0=' + Math.round(v0 * 1e4) / 1e4 + ' hold=' + Math.round(h.hold) + 'ms clean=' + h.clean);
+      emit(id, r, 'suspect');
     }
     function feed(id, r, res, lane) {
       r.n++; r.s = res.s;
@@ -472,10 +519,83 @@
       const o = (lane === 'deep' ? r.td : r.t).feed(res.hit ? 1 : 0);
       if (lane !== 'deep') r.burst = o.burst ? now() + T.XV_BURST_MS : 0;
       if (res.hit || o.changed) log('xv ' + lane + ' ' + String(id).slice(0, 8) + ' ' + (res.hit ? 'hit' : 'clean') + ' s=' + JSON.stringify(res.s) + ' ' + res.ms + 'ms');
-      const t = r.t.state().tripped || r.td.state().tripped;
-      if (t !== r.tripped) { r.tripped = t; edge(id, t, lane); }
+      r.tripped = r.t.state().tripped || r.td.state().tripped;
+      if (lane !== 'deep' && eng) {
+        const sl = eng.suspectLine == null ? 1 : eng.suspectLine;
+        r.warm = res.s.length > 1 || res.s[0] >= (eng.warmLine == null ? 0.05 : eng.warmLine);
+        if (r.sus) {
+          if (res.s[0] >= sl) setSus(id, r, res.s[0]); else r.susClean++;
+          if (r.tripped || (r.susClean >= r.need && now() >= r.holdUntil)) r.sus = false;
+        }
+        r.pend = false;
+      }
+      emit(id, r, r.tripped ? 'confirm' : 'lift');
     }
-    // The next picture to look at: a burst that is due first, then the one looked at longest ago.
+    // 32x32 luma of the picture, or null: the cheap change sense (a few KB a look, no model).
+    let sg = null;
+    function luma(el) {
+      if (typeof opts.luma === 'function') return opts.luma(el);
+      try {
+        if (!sg) {
+          const c = typeof root.OffscreenCanvas === 'function' ? new root.OffscreenCanvas(32, 32) : Object.assign(root.document.createElement('canvas'), { width: 32, height: 32 });
+          sg = c.getContext('2d', { willReadFrequently: true });
+        }
+        sg.drawImage(el, 0, 0, 32, 32);
+        const d = sg.getImageData(0, 0, 32, 32).data, out = new Uint8Array(1024);
+        for (let i = 0; i < 1024; i++) out[i] = (d[i * 4] * 77 + d[i * 4 + 1] * 150 + d[i * 4 + 2] * 29) >> 8;
+        return out;
+      } catch (e) { return null; }
+    }
+    const lumaDiff = (a, b) => { let t = 0; for (let i = 0; i < a.length; i++) t += Math.abs(a[i] - b[i]); return t / a.length; };
+    // The sense: runs on its own short clock. A picture new to the page, or whose picture changed a lot, asks for a burst
+    // of first-model looks now; a new one is held back (pend) until the burst passes, at most XV_PEND_MAX_MS.
+    function sense() {
+      senseTimer = null;
+      if (stopped) return;
+      let kick = false;
+      try {
+        for (const src of list()) {
+          const el = elOf(src);
+          if (!ready(el)) continue;
+          const r = rec(src.id), t = now();
+          if (r.fresh) {
+            r.fresh = false;
+            if (eng && gate && !r.kind) { r.pend = true; r.pendAt = t; emit(src.id, r, 'new'); }
+            r.changed = true; kick = true;
+          }
+          const l = luma(el);
+          if (l && r.prev && t >= r.nextChg && lumaDiff(l, r.prev) >= T.XV_SENSE_DIFF) { r.changed = true; kick = true; }
+          if (l) r.prev = l;
+          if (r.pend && t - r.pendAt >= T.XV_PEND_MAX_MS) { r.pend = false; emit(src.id, r, 'late'); }
+        }
+      } catch (e) {}
+      if (kick && !busy && eng) { if (timer) clearTimeout(timer); timer = setTimeout(tick, 0); }
+      if (!stopped) senseTimer = setTimeout(sense, T.XV_SENSE_MS * (mobile ? 2 : 1));
+    }
+    // A burst: a few first-model looks a moment apart. Trips (suspect) on one strong hit, or on aggregated weak evidence:
+    // XV_AGG_N looks over XV_AGG_LINE, or a mean at XV_AGG_MEAN.
+    async function burstJob(src, el, r) {
+      const t0 = now(), sc = [];
+      r.changed = false; bursts++;
+      for (let i = 0; i < T.XV_BURST_N && !stopped; i++) {
+        if (i) await sleep(T.XV_BURST_FRAME_MS);
+        const x = await eng.first(el);
+        sc.push(x.v);
+        if (x.suspect) break;
+      }
+      const sl = eng.suspectLine == null ? 1 : eng.suspectLine;
+      const mean = sc.reduce((a, b) => a + b, 0) / (sc.length || 1);
+      const agg = sc.filter((v) => v >= T.XV_AGG_LINE).length >= T.XV_AGG_N || mean >= T.XV_AGG_MEAN;
+      const strong = sc.some((v) => v >= sl);
+      const cost = now() - t0;
+      r.nextChg = now() + Math.max(T.XV_CHANGE_MIN_MS, cost / fduty);   // a change burst never goes over the first lane's duty
+      r.chgAt = now(); r.at = now();
+      log('xv burst ' + String(src.id).slice(0, 8) + ' ' + JSON.stringify(sc.map((v) => Math.round(v * 100) / 100)) + ' ' + cost + 'ms' + (strong ? ' strong' : agg ? ' agg' : ''));
+      if (strong || agg) setSus(src.id, r, Math.max.apply(null, sc));
+      else { r.pend = false; if (sc.some((v) => v >= (eng.warmLine == null ? 0.05 : eng.warmLine))) r.warm = true; emit(src.id, r, 'checked'); }
+    }
+    // The next picture to look at: a suspect first, a burst that is due next, then the one looked at longest ago. A warm
+    // picture (past the first model's line: its looks reach the slow models) waits for the full lane's duty budget.
     function pick(a, lane) {
       const t = now();
       let best = null, bk = Infinity;
@@ -483,39 +603,47 @@
         const el = elOf(src);
         if (!ready(el)) continue;
         const r = rec(src.id);
-        const k = lane === 'deep' ? (r.deepAt || 0) : (r.burst && r.burst <= t ? -1e15 + r.burst : r.at);
-        if (k < bk) { bk = k; best = { src, el, r }; }
+        if (lane === 'chain' && (r.changed || r.pend) && !r.sus && !r.tripped) { if (bk > -3e15) { bk = -3e15; best = { src, el, r, job: 'burst' }; } continue; }
+        if (lane === 'chain' && (r.warm || r.tripped) && !r.sus && !(r.burst && r.burst <= t) && t < fullReadyAt) continue;
+        const k = lane === 'deep' ? (r.deepAt || 0) : (r.sus ? -2e15 + r.at : r.burst && r.burst <= t ? -1e15 + r.burst : r.at);
+        if (k < bk) { bk = k; best = { src, el, r, job: 'frame' }; }
       }
       return best;
     }
     async function tick() {
       timer = null;
-      if (stopped) return;
-      let wait = T.XV_GAP_MIN_MS;
+      if (stopped || busy) return;
+      busy = true;
+      let wait = T.XV_FIRST_GAP_MIN_MS;
       try {
         const a = list();
         if (a.length) {
           if (!eng) { eng = await open(); err = ''; }
           if (deep === undefined) { deep = null; openDeep().then((d) => { deep = d; deepWhy = d ? 'on ' + d.ms + 'ms' : 'off'; if (d) log('xv deep on (' + d.id + ', ' + d.ms + ' ms a frame)'); if (d && !stopped) deepTick(); }, () => { deepWhy = 'off'; }); }
           const p = pick(a, 'chain');
-          if (p) {
+          if (p && p.job === 'burst') await burstJob(p.src, p.el, p.r);
+          else if (p) {
             p.r.at = now();
-            const res = await eng.frame(p.el);
+            const res = await eng.frame(p.el, (v) => { if (v >= (eng.suspectLine == null ? 1 : eng.suspectLine)) setSus(p.src.id, p.r, v); });
             if (stopped) return;
             frames++;
-            avg = avg ? avg * 0.8 + res.ms * 0.2 : res.ms;
+            const deeper = res.s.length > 1;
+            if (deeper) { avg = avg ? avg * 0.8 + res.ms * 0.2 : res.ms; fullReadyAt = now() + Math.min(T.XV_GAP_MAX_MS, Math.max(T.XV_GAP_MIN_MS, res.ms / duty)); }
+            else avgF = avgF ? avgF * 0.8 + res.ms * 0.2 : res.ms;
             feed(p.src.id, p.r, res, 'chain');
-            wait = Math.min(T.XV_GAP_MAX_MS, Math.max(T.XV_GAP_MIN_MS, avg / duty));
-            // A fresh hit: its second look comes soon, whatever the duty limit says (a few frames, then back to it).
-            if (p.r.burst) wait = Math.min(wait, Math.max(T.XV_BURST_MS, res.ms));
           }
+          wait = Math.min(T.XV_GAP_MAX_MS, Math.max(T.XV_FIRST_GAP_MIN_MS, (avgF || 100) / fduty));
+          // A suspect or a held-back picture: look again soon whatever the duty limit says.
+          for (const r of recs.values()) if (r.sus || r.pend || r.changed || (r.burst && r.burst > 0)) { wait = Math.min(wait, T.XV_FIRST_GAP_MIN_MS, T.XV_BURST_MS); break; }
         }
       } catch (e) {
         err = String((e && e.message) || e);
         log('xv error ' + err.slice(0, 160));
         eng = null;
+        for (const [id, r] of recs) if (r.pend) { r.pend = false; emit(id, r, 'error'); }
         wait = T.XV_RETRY_MS;
       }
+      busy = false;
       gap = wait;
       if (!stopped) timer = setTimeout(tick, wait);
     }
@@ -529,18 +657,20 @@
       if (!stopped) deepTimer = setTimeout(deepTick, T.XV_DEEP_GAP_MS);
     }
     // poke(): something changed (a picture started being shown clear): look now rather than at the end of the gap.
-    function poke() { if (stopped || !timer || !(gap > T.XV_GAP_MIN_MS)) return; clearTimeout(timer); timer = setTimeout(tick, T.XV_GAP_MIN_MS); }
-    timer = setTimeout(tick, T.XV_BURST_MS);   // the first look soon after the loop starts
+    function poke() { if (stopped || busy || !timer || !(gap > T.XV_FIRST_GAP_MIN_MS)) return; clearTimeout(timer); timer = setTimeout(tick, 0); }
+    timer = setTimeout(tick, T.XV_FIRST_GAP_MIN_MS);   // the first look soon after the loop starts
+    senseTimer = setTimeout(sense, 0);
     return {
       poke,
-      tripped: (id) => { const r = recs.get(id); return !!(r && r.tripped); },
-      state() { const o = {}; for (const [id, r] of recs) o[id] = { tripped: r.tripped, n: r.n, hits: r.hits, s: r.s, run: r.t.state().run }; return o; },
-      stats() { return { frames, deepFrames, avgMs: Math.round(avg), gapMs: Math.round(gap), duty, mobile, deep: deepWhy || (deep === undefined ? 'not tried' : 'trying'), err, rule: RULE }; },
+      tripped: (id) => { const r = recs.get(id); return !!(r && r.kind); },
+      state() { const o = {}; for (const [id, r] of recs) o[id] = { tripped: r.tripped, sus: r.sus, kind: r.kind, n: r.n, hits: r.hits, s: r.s, run: r.t.state().run }; return o; },
+      stats() { return { frames, bursts, deepFrames, avgMs: Math.round(avg), avgFirstMs: Math.round(avgF), gapMs: Math.round(gap), duty, fduty, mobile, deep: deepWhy || (deep === undefined ? 'not tried' : 'trying'), err, rule: RULE }; },
       stop() {
         stopped = true;
         if (timer) clearTimeout(timer);
         if (deepTimer) clearTimeout(deepTimer);
-        for (const [id, r] of recs) if (r.tripped) edge(id, false, 'stopped');
+        if (senseTimer) clearTimeout(senseTimer);
+        for (const [id, r] of recs) if (r.kind) tell(id, '', 'stopped');
         recs.clear();
         for (const v of hidden.values()) { try { v.srcObject = null; v.remove(); } catch (e) {} }
         hidden.clear();
