@@ -1,0 +1,23 @@
+{
+  "common.size.B": "{n} B",
+  "common.size.KB": "{n} KB",
+  "common.size.MB": "{n} MB",
+  "common.size.GB": "{n} GB",
+  "common.size.TB": "{n} TB",
+  "common.dur.s": "{s} s",
+  "common.dur.m": "{m} Min.",
+  "common.dur.ms": "{m} Min. {s} s",
+  "common.ago.now": "gerade eben",
+  "common.ago.m": "vor {n} Min.",
+  "common.ago.h": "vor {n} Std.",
+  "common.ago.d": "vor {n} T.",
+  "common.dl.title": "{name} herunterladen",
+  "common.dl.lead": "<b>{name}</b> hat gespeicherte Daten. Lade es mit deinen gespeicherten Daten herunter oder als saubere Kopie, die neu beginnt. Die Animation ist in beiden Fällen dabei.",
+  "common.dl.withData": "Mit meinen Daten herunterladen",
+  "common.dl.withoutData": "Ohne meine Daten herunterladen",
+  "common.dl.cancel": "Abbrechen",
+  "common.guard.refuse": "Dieses Bild kann hier nicht geteilt werden.",
+  "common.guard.refuseVideo": "Dieses Video kann hier nicht geteilt werden.",
+  "common.guard.retry": "Diese Datei kann gerade nicht geprüft werden. Versuche es gleich noch einmal.",
+  "common.guard.blurred": "Aus Sicherheitsgründen unscharf"
+}

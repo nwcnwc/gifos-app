@@ -136,7 +136,8 @@
     if (!w) return;
     var body = JSON.stringify({ w: w });
     try {
-      if (beacon && root.navigator.sendBeacon) { root.navigator.sendBeacon(API + '/api/order', new Blob([body], { type: 'text/plain' })); return; }
+      // sendBeacon says false when the browser did not queue it (its size or queue limit): that falls through to the keepalive fetch
+      if (beacon && root.navigator.sendBeacon && root.navigator.sendBeacon(API + '/api/order', new Blob([body], { type: 'text/plain' }))) return;
     } catch (e) {}
     try { root.fetch(API + '/api/order', { method: 'POST', credentials: 'omit', keepalive: true, headers: { 'content-type': 'text/plain' }, body: body }).catch(function () {}); } catch (e) {}
   }
@@ -150,6 +151,7 @@
   function goOnAir() {
     var rk = ctx.roomKey();
     onAirFor = rk;
+    if (!offNote) signOff();   // the off-air note is ready from the first second, not only after the first answer: a tab closed early still sends it
     return askCount().then(function () { return ctx.sign('tvair', { on: 1, k: kindNow() }); }).then(function (w) {
       return postAir(w, true);
     }).then(function (j) {
@@ -183,6 +185,7 @@
   }
   root.addEventListener('pagehide', function () { if (onAirFor) sendOff(true); });
   root.document.addEventListener('visibilitychange', function () { if (!root.document.hidden) tick(); });
+  root.addEventListener('pageshow', function (e) { if (e && e.persisted) tick(); });   // a page the browser kept and brought back: on air again
 
   // ---- the thumbnail ----------------------------------------------------------------
   function drawCover(src, sw, sh) {
@@ -330,13 +333,23 @@
       img.src = u;
     };
     var up = el('button', { type: 'button', text: T('tvUpload', 'Upload a picture'), id: 'tv-up' });
-    up.onclick = function () { file.click(); };
+    up.onclick = function () { snapGen++; file.click(); };
     var snap = el('button', { type: 'button', text: T('tvFromStage', 'Take it from the Stage'), id: 'tv-snap' });
-    snap.onclick = function () {
+    // The thumbnail is what the Stage shows. While the Stage is still blurred (the room's rule, or a clear picture that is
+    // still switching on) the picture would be blurred too: a switching-on Stage is waited for (the wait ends the moment the
+    // Stage clears, or the host picks something else), and a Stage that stays blurred says why, under the picture.
+    var snapGen = 0;
+    function stageNow() { try { return (ctx && ctx.stagePic && ctx.stagePic()) || { blurred: false }; } catch (e) { return { blurred: false }; } }
+    function takeStage(gen) {
+      if (gen !== snapGen || !snap.isConnected) return;
+      var st = stageNow();
+      if (st.blurred && st.soon) { picErr.textContent = T('tvStageSwitching', 'The Stage is switching to clear video. The picture is taken as soon as it is clear.'); root.requestAnimationFrame(function () { takeStage(gen); }); return; }
       var v = stageVideo();
       if (!v) { err.textContent = T('tvNoStage', 'Nothing is showing on the Stage yet.'); return; }
-      try { setCanvas(drawCover(v, v.videoWidth, v.videoHeight)); err.textContent = ''; } catch (e) { err.textContent = T('tvPicFail', 'This browser could not make the picture.'); }
-    };
+      try { setCanvas(drawCover(v, v.videoWidth, v.videoHeight)); err.textContent = ''; } catch (e) { err.textContent = T('tvPicFail', 'This browser could not make the picture.'); return; }
+      if (st.blurred) picErr.textContent = T('tvStageBlurred', 'The Stage is blurred, so this picture is blurred.') + (st.why ? ' ' + st.why : '') + ' ' + T('tvStageBlurredAdvice', 'Take it again when the Stage is clear, or upload a picture.');
+    }
+    snap.onclick = function () { picErr.textContent = ''; takeStage(++snapGen); };
     var err = el('p', { cls: 'err', role: 'alert' });
     // The picture check's words sit right under the picture, where the host is looking.
     var picErr = el('p', { cls: 'err', role: 'alert', id: 'tv-pic-err' });

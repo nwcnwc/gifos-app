@@ -1,0 +1,23 @@
+{
+  "common.size.B": "{n} B",
+  "common.size.KB": "{n} KB",
+  "common.size.MB": "{n} MB",
+  "common.size.GB": "{n} GB",
+  "common.size.TB": "{n} TB",
+  "common.dur.s": "{s}s",
+  "common.dur.m": "{m}m",
+  "common.dur.ms": "{m}m {s}s",
+  "common.ago.now": "just now",
+  "common.ago.m": "{n}m ago",
+  "common.ago.h": "{n}h ago",
+  "common.ago.d": "{n}d ago",
+  "common.dl.title": "Download {name}",
+  "common.dl.lead": "<b>{name}</b> has saved data. Download it with your saved data, or as a clean copy that starts fresh. The animation is included either way.",
+  "common.dl.withData": "Download with my data",
+  "common.dl.withoutData": "Download without my data",
+  "common.dl.cancel": "Cancel",
+  "common.guard.refuse": "This picture can't be shared here.",
+  "common.guard.refuseVideo": "This video can't be shared here.",
+  "common.guard.retry": "This file can't be checked right now. Try again in a moment.",
+  "common.guard.blurred": "Blurred for safety"
+}
