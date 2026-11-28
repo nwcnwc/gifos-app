@@ -569,7 +569,7 @@
           if (r.pend && t - r.pendAt >= T.XV_PEND_MAX_MS) { r.pend = false; emit(src.id, r, 'late'); }
         }
       } catch (e) {}
-      if (kick && !busy && eng) { if (timer) clearTimeout(timer); timer = setTimeout(tick, 0); }
+      if (kick && !busy && eng) { if (timer) clearTimeout(timer); timer = setTimeout(tick); }
       if (!stopped) senseTimer = setTimeout(sense, T.XV_SENSE_MS * (mobile ? 2 : 1));
     }
     // A burst: a few first-model looks a moment apart. Trips (suspect) on one strong hit, or on aggregated weak evidence:
@@ -663,9 +663,9 @@
       if (!stopped) deepTimer = setTimeout(deepTick, T.XV_DEEP_GAP_MS);
     }
     // poke(): something changed (a picture started being shown clear): look now rather than at the end of the gap.
-    function poke() { if (stopped || busy || !timer || !(gap > T.XV_FIRST_GAP_MIN_MS)) return; clearTimeout(timer); timer = setTimeout(tick, 0); }
+    function poke() { if (stopped || busy || !timer || !(gap > T.XV_FIRST_GAP_MIN_MS)) return; clearTimeout(timer); timer = setTimeout(tick); }
     timer = setTimeout(tick, T.XV_FIRST_GAP_MIN_MS);   // the first look soon after the loop starts
-    senseTimer = setTimeout(sense, 0);
+    senseTimer = setTimeout(sense);
     return {
       poke,
       tripped: (id) => { const r = recs.get(id); return !!(r && r.kind); },

@@ -2,6 +2,17 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.70",
+      "date": "2026-11-28",
+      "headline": "Video safety acts faster and blurs less by mistake",
+      "features": [],
+      "fixes": [
+        "A picture that looks unsafe is now blurred in about 3 seconds instead of 6, and far fewer harmless scenes get blurred by mistake.",
+        "Every picture shown on screen is checked, including picture-in-picture and copies.",
+        "Phones check in lighter bursts to save battery."
+      ]
+    },
+    {
       "version": "0.9.28.69",
       "date": "2026-11-27",
       "headline": "Open rooms clear only when everyone consents",
