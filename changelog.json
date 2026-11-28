@@ -2,6 +2,15 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.71",
+      "date": "2026-11-28",
+      "headline": "gifos.tv thumbnails are checked on your device",
+      "features": [],
+      "fixes": [
+        "Pictures on gifos.tv and the Home Live row are checked for safety on your own device before they are drawn; one that looks unsafe shows a placeholder instead."
+      ]
+    },
+    {
       "version": "0.9.28.70",
       "date": "2026-11-28",
       "headline": "Video safety acts faster and blurs less by mistake",
