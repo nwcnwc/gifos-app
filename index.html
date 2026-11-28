@@ -233,36 +233,11 @@ window.GIFOS_VERSION = 'edge';
       x.send();
     } catch (e) { fallback(); }
   }
-  // THE RESTING ADDRESS IS THE CLEAN ONE. A release Home Screen runs from
-  // /versions/<v>/, but the address bar shows gifos.app/ (2026-11-27): a
-  // /versions/<v>/ address is the one place the loader never redirects, so a
-  // tab the browser reloaded (a discarded tab woken, F5) stayed on the old
-  // release after another tab had updated. At the clean address a reload runs
-  // this loader again: the live release, or the Settings pin (gifos_pin, a
-  // setting, never the address). The archive step's <base href> keeps every
-  // relative load on this build whatever the address bar says. One-shot flags
-  // the loader already applied (?stable/?unpin/?latest, the ?ts cache-bust)
-  // are dropped: left in the address, a reload would clear a later pin.
-  // Only on gifos.app: elsewhere the root is the build under development, so a
-  // clean address would reload into a different build.
-  function cleanAddress(pathname, search, hash, version) {
-    if (!/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(version || ''))) return null;
-    var pre = '/versions/' + version + '/';
-    pathname = String(pathname || '');
-    if (pathname.indexOf(pre) !== 0 || !/^(index(\.html)?)?$/.test(pathname.slice(pre.length))) return null;
-    var ONE_SHOT = /^(ts|stable|unpin|latest)$/;
-    var q = String(search || '').replace(/^\?/, '').split('&').filter(function (p) { return p && !ONE_SHOT.test(p.split('=')[0]); }).join('&');
-    var h = String(hash || '').replace(/^#/, '').split('&').filter(function (p) { return p && !/^(stable|unpin|latest)$/.test(p.split('=')[0]); }).join('&');
-    return '/' + (q ? '?' + q : '') + (h ? '#' + h : '');
-  }
-  window.gifosCleanAddress = cleanAddress;
   var decision = pinTarget(location.pathname, location.search, location.hash);
   if (decision && decision.ask) askLive(decision);
   else if (decision && decision.redirect) location.replace(decision.redirect);
-  else if (/(^|\.)gifos\.app$/.test(location.hostname)) {
-    var clean = cleanAddress(location.pathname, location.search, location.hash, window.GIFOS_VERSION);
-    if (clean) { try { history.replaceState(history.state, '', clean); } catch (e) {} }
-  }
+  // A release Home Screen that stays rests at the clean gifos.app/ address: js/gifos-update.js rest(), the one
+  // helper every release page uses (a reload then runs this loader again: the live release or the Settings pin).
 })();
 </script>
 <!-- THEME PASS (see gifos-themes.js TWO-PASS): applies the theme's chrome vars
