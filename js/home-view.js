@@ -11,10 +11,8 @@
  * name, its slots, how it paints and its own CSS; LOOK_IDS below is the one list of them. Adding a look is that file
  * plus its id here (and its path in sw.js, which the shell check asks for).
  *
- * Each person picks their look (the bar's button, the GifOS menu, Settings → Look). The choice is about the person,
- * so it follows them to their other devices with their other settings (gifos_home_view, js/gifos-identity.js FOLLOW).
- *
- * TRY-OUT: looks are offered on the edge build only. A release shows the Desktop and nothing here.
+ * Each person picks their look (the bar's button, the GifOS menu, Settings → Look). Glass is the default until they do;
+ * the classic Desktop is one tap away. The choice is per device (gifos_home_view, DEVICE_ONLY in js/gifos-identity.js).
  */
 (function (root) {
   'use strict';
@@ -23,14 +21,15 @@
   const KEY = 'gifos_home_view';
   const LOOK_IDS = ['glass', 'orbit', 'pulse'];   // THE REGISTRY: one id per look file in js/home-looks/
   const TV = { room: 'gifos-tv', v: 'cc51c5e4f4418c66aa52a486' };   // the GifOS TV channel
-  const available = () => root.GIFOS_VERSION === 'edge';
+  const available = () => true;   // every build offers the looks; Glass is the default
   const lsGet = (k) => { try { return root.localStorage.getItem(k); } catch (e) { return null; } };
   const lsSet = (k, v) => { try { root.localStorage.setItem(k, v); } catch (e) {} };
   const lsJson = (k) => { try { const a = JSON.parse(lsGet(k) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const valid = (id) => id === 'classic' || LOOK_IDS.indexOf(id) >= 0;
-  const chosen = () => { const v = available() ? lsGet(KEY) : null; return valid(v) ? v : null; };
-  const current = () => chosen() || 'classic';
+  const chosen = () => { const v = lsGet(KEY); return valid(v) ? v : null; };   // null until the person picks one
+  const DEFAULT = 'glass';
+  const current = () => chosen() || DEFAULT;
   const hook = () => (GifOS.desktop && GifOS.desktop.home) || null;
   const MR = () => GifOS.meetMyRoom || null;
   const L = () => GifOS.link;
@@ -324,6 +323,7 @@
   }
   function pick() {
     const first = !chosen();
+    lsSet(NUDGE, '1'); { const n = doc.getElementById('hv-nudge'); if (n) n.remove(); doc.body.classList.remove('hv-nudging'); }
     Promise.all([needWords(), needRooms(), HW() ? HW().ready() : null]).then(() => {
       popup(first ? W.pickFirst : W.pickTitle, (body) => {
         const cur = current();
@@ -425,6 +425,7 @@
     btn.classList.toggle('fresh', fresh);
     btn.innerHTML = svg('views') + (fresh ? '<span class="hv-fresh-t">' + esc(W.pickInvite) + '</span>' : '');
     btn.title = W.pickTitle; btn.setAttribute('aria-label', W.pickTitle);
+    nudge();
     let c = doc.getElementById('hv-bar-clock'), f = doc.getElementById('hv-foot-clock');
     if (current() !== 'classic') { if (c) c.remove(); if (f) f.remove(); return; }
     if (!f) { f = doc.createElement('div'); f.id = 'hv-foot-clock'; f.className = 'hv-foot-clock'; doc.body.appendChild(f); }
@@ -432,6 +433,20 @@
     const p = clockParts();
     c.innerHTML = '<span class="hv-bar-day">' + esc(p.day) + ' ' + esc(p.date) + '</span><b>' + esc(p.time) + '</b>'; c.title = p.full || ''; c.setAttribute('aria-label', (p.full || '') + ' ' + p.time);
     f.innerHTML = esc(p.day) + ' ' + esc(p.date) + '<b>' + esc(p.time) + '</b>';
+  }
+  // A one-time, dismissible chip for a person who has not chosen a look: "New Home - Choose your look". Not a popup; it never blocks.
+  const NUDGE = 'gifos_home_nudge';
+  function nudge() {
+    let n = doc.getElementById('hv-nudge');
+    const want = current() !== 'classic' && !chosen() && lsGet(NUDGE) !== '1';
+    doc.body.classList.toggle('hv-nudging', want);
+    if (!want) { if (n) n.remove(); return; }
+    if (n) return;
+    n = doc.createElement('div'); n.id = 'hv-nudge'; n.className = 'hv-nudge'; n.setAttribute('role', 'note');
+    n.innerHTML = '<button type="button" class="hv-nudge-go">' + esc(W.nudge) + '</button><button type="button" class="hv-nudge-x" aria-label="' + esc(W.nudgeClose) + '">' + svg('x') + '</button>';
+    n.querySelector('.hv-nudge-go').onclick = () => { lsSet(NUDGE, '1'); n.remove(); doc.body.classList.remove('hv-nudging'); pick(); };
+    n.querySelector('.hv-nudge-x').onclick = () => { lsSet(NUDGE, '1'); n.remove(); doc.body.classList.remove('hv-nudging'); };
+    doc.body.appendChild(n);
   }
   function apply() {
     const id = current(), on = id !== 'classic';
@@ -459,12 +474,12 @@
       needRooms().then(queuePaint);
     });
   }
-  function set(id) { if (!available() || !valid(id)) return; lsSet(KEY, id); state.tab = 'home'; apply(); }
+  function set(id) { if (!available() || !valid(id)) return; lsSet(KEY, id); lsSet(NUDGE, '1'); state.tab = 'home'; apply(); }
 
-  // Settings → Look: the same choice as the bar's button, as a list. scopeTag is the Desktop's "Follows you" mark.
+  // Settings → Look: the same choice as the bar's button, as a list. scopeTag is the Desktop's scope mark (this device only).
   function settingsHtml(scopeTag) {
     const cur = current();
-    return '<div class="set-group">' + esc(W.setTitle) + (scopeTag ? scopeTag(true) : '') + '</div><div class="set-card set-pad hv-set"><p class="add-help">' + esc(W.setNote) + '</p>' +
+    return '<div class="set-group">' + esc(W.setTitle) + (scopeTag ? scopeTag(false) : '') + '</div><div class="set-card set-pad hv-set"><p class="add-help">' + esc(W.setNote) + '</p>' +
       ['classic'].concat(LOOK_IDS).map((id) => '<label class="hv-set-row"><input type="radio" name="hv-view" value="' + id + '"' + (id === cur ? ' checked' : '') + '><span><b>' + esc(lookName(id)) + '</b> <span class="hv-set-sub">' + esc(id === 'classic' ? W['look.classic.sub'] : lookSub(id)) + '</span></span></label>').join('') +
       '<button type="button" id="hv-set-pick">' + esc(W.setPreview) + '</button></div>';
   }
