@@ -3734,7 +3734,7 @@
     //              no tap, ahead of every other reason, until it lifts by itself after clean frames
     // where: 'stage' when the picture is a Stage view (a Stage face box), else a grid, row or stadium picture.
     function blurHold(id, where) {
-      if (xvTrip.size && xvHeld(id, where)) return 'unsafe';
+      if (xvTrip.size && xvHeld(id, where)) return xvSoft.has(id) ? 'checking' : 'unsafe';
       const m = modOf(id).blur;
       const order = (m && m.on) ? ((hasAdminRoom() && modTable['*'] && modTable['*'].blur === m) ? 'guests' : 'forall') : '';
       if (!roomPw) {
@@ -3767,7 +3767,7 @@
       tap: { tile: ['blurWhyTap', 'Blurred: tap to unblur'], says: ['blurSaysTap', 'You chose clear video. This room has no password: each viewer here chooses whether to unblur you.'] },
       stageonly: { tile: ['blurWhyStageOnly', 'Blurred: only the Stage can be unblurred'], says: ['blurSaysStageOnly', 'You chose clear video. This room has no password: viewers may unblur only the Stage, so you stay blurred off it.'] },
       repick: { tile: ['blurWhyRepick', 'Blurred: pick No blur again'], says: ['blurSaysRepick', 'Viewers here may now choose to unblur you. Pick No blur again if you want that.'] },
-      unsafe: { tile: ['blurWhyUnsafe', 'Hidden: may be sexually explicit'], says: ['blurSaysUnsafe', 'Your video is fully blurred for everyone: it may show sexually explicit material. GifOS pages check video on your device and hide sexually explicit pictures. Nothing is sent to GifOS or anyone else. It clears by itself once the picture is clean.'] },
+      unsafe: { tile: ['blurWhyUnsafe', 'Blurred for safety'], says: ['blurSaysUnsafe', 'Blurred for safety'] },
     };
     function blurWhyWords(reason, part) {
       const e = BLUR_WHY[reason];
@@ -3781,7 +3781,7 @@
     // note of every seat, bot or person, together.
     function tileBlurWhy(id, st, where) {
       if (!st || (st.camOff && !st.scr && !st.rb)) return '';
-      if (xvTrip.size && xvHeld(id, where)) return 'unsafe';   // a trip explains itself whatever the sender picked
+      if (xvTrip.size && xvHeld(id, where)) return xvSoft.has(id) ? '' : 'unsafe';   // a trip explains itself (a first look says nothing) whatever the sender picked
       if (!st.scr && !st.rb && !consents(st)) return '';   // a share or rebroadcast TILE is the picture (blurLevelFor reads it as clear-by-choice); the seat's own consent is its camera
       return blurHold(id, where);
     }
@@ -3789,6 +3789,7 @@
     // room, or the right going away or changing ends it). clearSince: when the current mode began; myNoBlurAt: when I
     // last picked No blur myself in the meeting. corePayKeyP: the pay key a core-only host reads (roomTierVia).
     // roomAcl: the room's ACL as the relay last said it (joined.acl, {t:'acl'}; GifOS.sub.aclFromSay), or null.
+    const xvSoft = new Set();   // trips that are only a new picture's first look (FASTTRIP): blurred, no note ('checking')
     const xvTrip = new Set();   // the explicit-content blocker's trips on this page (xvSet; see THE EXPLICIT-CONTENT BLOCKER)
     let clearForTest = false, clearTap = false, clearMode = '', clearSince = 0, myNoBlurAt = 0, corePayKeyP = null, roomAcl = null; // clearForTest: a test stands in for a consented password room
     // asIfCamOn: the level a camera-off seat's PLACEHOLDER (initial or picture)
@@ -3860,7 +3861,7 @@
       // everyone ready); an admin room clears per tile, so its own consent too.
       const hold = blurHold(id, where);
       // A trip is Max blur for everyone it reaches, my own outgoing picture included (it leaves fully blurred: no cut).
-      if (hold === 'unsafe') return 2;
+      if (hold === 'unsafe' || hold === 'checking') return 2;
       const clear = !hold && consents(st);
       if (clear || (isMe && clearForTest)) return 0;
       // A no-password room with a clear right: the sender may be sending clear pixels on purpose, so a viewer who has
@@ -26389,10 +26390,11 @@
       return E.blockOn({ open: !hasAdminRoom(), password: !!roomPw, listed: false, hostBlock: modStarOn('xblk', true) });
     }
     // The media plane's loop reports each trip and lift here; every surface repaints from the one decision.
-    function xvSet(id, tripped) {
-      const had = xvTrip.has(id);
+    function xvSet(id, tripped, why, kind) {
+      const had = xvTrip.has(id), wasSoft = xvSoft.has(id), soft = !!tripped && kind === 'checking';
       if (tripped) xvTrip.add(id); else xvTrip.delete(id);
-      if (had === !!tripped) return;
+      if (soft) xvSoft.add(id); else xvSoft.delete(id);
+      if (had === !!tripped && wasSoft === soft) return;
       try { clog('xv ' + (tripped ? 'trip ' : 'lift ') + (id === 'me' || id === 'stage' || id === 'stadium' ? id : String(id).slice(0, 6))); } catch (e) {}
       reactRoomState();
       try { (0, /*()*/__V.paintStageBlurWhy)(); } catch (e) {}

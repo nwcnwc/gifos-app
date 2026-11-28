@@ -1574,13 +1574,17 @@ body.names-off #stagefeed .stgnames { display: none; }
   #who-list .who-state { font-size: 1rem; color: var(--c-ink-2); text-align: right; }
   #who-modal #who-dl, #who-modal #who-close {
     background: var(--c-white); color: var(--c-ink); border: 1.5px solid var(--c-gray); min-height: 44px; min-width: 44px; }
-  #adm-chat { margin: 0 0 1rem; padding: .6rem 0 .2rem; border-top: 1px solid var(--border, #2a2a3f); border-bottom: 1px solid var(--border, #2a2a3f); }
-  #adm-chat h4 { margin: 0 0 .35rem; font-size: 16px; font-weight: 700; }
-  #adm-chat .admopt { display: flex; align-items: center; gap: .6rem; min-height: 44px; font-size: 16px; line-height: 1.3; cursor: pointer; }
-  #adm-chat .admopt input[type=checkbox] { width: 22px; height: 22px; min-height: 0; margin: 0; flex: none; }
-  #adm-chat .admopt small { display: block; color: var(--muted, #8888aa); font-size: 14px; }
+  #adm-chat, #adm-xv, #adm-ai { margin: 0 0 1rem; padding: .6rem 0 .2rem; border-top: 1px solid var(--border, #2a2a3f); border-bottom: 1px solid var(--border, #2a2a3f); }
+  #adm-chat h4, #adm-xv h4, #adm-ai h4 { margin: 0 0 .35rem; font-size: 16px; font-weight: 700; }
+  #adm-chat .admopt , #adm-xv .admopt , #adm-ai .admopt { display: flex; align-items: center; gap: .6rem; min-height: 44px; font-size: 16px; line-height: 1.3; cursor: pointer; }
+  #adm-chat .admopt input[type=checkbox] , #adm-xv .admopt input[type=checkbox] , #adm-ai .admopt input[type=checkbox] { width: 22px; height: 22px; min-height: 0; margin: 0; flex: none; }
+  #adm-chat .admopt small , #adm-xv .admopt small , #adm-ai .admopt small { display: block; color: var(--muted, #8888aa); font-size: 14px; }
   #adm-chat #adm-chat-files { cursor: default; }
   #adm-chat #adm-chat-pw { flex: none; margin-left: auto; min-height: 36px; padding: .2rem .7rem; font-size: 14px; }
+  #adm-xv, #adm-ai { text-align: left; border-top: 0; }
+  #adm-xv .admopt > span, #adm-ai .admopt > span { flex: 1; min-width: 0; }
+  #adm-ai select { flex: none; margin-left: auto; min-height: 36px; font-size: 14px; max-width: 45%; }
+  #adm-ai-wait { margin: 0 0 .4rem; }
   /* ---- the front-door lobby (cold open only) ---- */
   #lobby { position: fixed; top: 0; right: 0; bottom: 0; left: 0; inset: 0; z-index: 35; display: none; overflow-y: auto;
            background: var(--bg, #0a0a0f); padding: 2rem 1rem; }
