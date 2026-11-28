@@ -1274,6 +1274,7 @@
     function applyAvatarFile(file) {
       if (!file || !window.GifOS || !GifOS.avatar) return Promise.resolve(null);
       return GifOS.avatar.prepareFile(file).then(async (res) => {
+        if (res && !res.ok && res.guard && res.error) { setStatus(res.error); return null; }   // UPLOADGUARD: the plain refusal
         if (!res || !res.ok) return null;
         let mime = res.mime, b64 = res.b64, hash = res.hash;
         if (!b64 && res.bytes) {
@@ -4527,7 +4528,7 @@
         if (isMe) {
           const mine = (GifOS.store.identity() || {}).avatar;
           (0, /*()*/__V.paintAvatarImg)(t.avatar, mine && mine.url, mine && mine.hash);
-        } else (0, /*()*/__V.paintAvatarImg)(t.avatar, t.avatarUrl || '', t.avatarHash || '');
+        } else (0, /*()*/__V.paintAvatarImg)(t.avatar, t.avatarUrl || '', t.avatarHash || '', t.avatarNote || '');
         if (typeof __V.setTileLetter === 'function') (0, /*()*/__V.setTileLetter)(t.avatar, nameInitial(isMe ? myName() : (hostRename(id) || displayName(id))));
       }
       if (BROADCAST) (0, /*()*/__V.paintBroadcastIdent)();
@@ -7405,12 +7406,24 @@
       }
       if (box.error || !box.done) return;
       const bytes = box.bytes, mime = box.mime, want = box.hash;
-      GifOS.avatar.hashBytes(bytes).then((h) => {
+      GifOS.avatar.hashBytes(bytes).then(async (h) => {
         if (h !== want || !peers.has(p.id)) return;
-        const url = 'data:' + mime + ';base64,' + GifOS.avatar.toB64(bytes);
+        let url = 'data:' + mime + ';base64,' + GifOS.avatar.toB64(bytes);
+        // UPLOADGUARD (receiver side, covers a hacked sender): the picture is checked on this device before any surface
+        // draws it. An explicit one is drawn as a blur of itself with "Blurred for safety", no way to unblur. A check
+        // that errors keeps the picture off (the letter shows) and the verdict is not cached, so the next send retries.
+        const G = GifOS.explicit && GifOS.explicit.guard;
+        let note = '';
+        if (G) {
+          const v = await G.check(bytes, mime);
+          if (!peers.has(p.id) || p.avatarHash === h) return;
+          if (v.why === 'error') return;
+          if (!v.ok) { url = await G.blurredUrl(bytes, mime); note = G.words('blurred'); if (!url) return; }
+        }
         p.avatarUrl = url;
         p.avatarHash = h;
-        (0, /*()*/__V.paintAvatarImg)(p.avatar, url, h);
+        p.avatarNote = note;
+        (0, /*()*/__V.paintAvatarImg)(p.avatar, url, h, note);
         (0, /*()*/__V.refreshAvatarSurfaces)();
       }).catch(() => {});
     }
@@ -7425,7 +7438,8 @@
         if (q && q.avatarUrl) { url = q.avatarUrl; hash = q.avatarHash || ''; }
       }
       if (!url) return '';
-      return '<img class="avchip" alt="" data-hash="' + esc(hash) + '" src="' + url + '">';
+      const q2 = byId === myId ? null : peers.get(byId);
+      return '<img class="avchip" alt="" data-hash="' + esc(hash) + '"' + (q2 && q2.avatarNote ? ' title="' + esc(q2.avatarNote) + '"' : '') + ' src="' + url + '">';
     }
     // File bodies ride their own chain and one chunk at a time. The shared
     // seal chain used to take every chunk in one synchronous loop, before
@@ -16108,6 +16122,17 @@
         if (r === 'part' || r === 'dup') armFileAsk(f);
         if (r !== 'done') return;
         stopFileAsks(f, p && p.id);
+        // UPLOADGUARD (receiver side): a picture or video file is checked on this device before it can be opened.
+        // xg: 'wait' (checking), 'ok', 'blocked' (explicit: never opened, "Blurred for safety"), 'error' (could not be checked: held).
+        const G = GifOS.explicit && GifOS.explicit.guard;
+        if (G && f.byId !== myId && G.isMedia(f.mime)) {
+          f.xg = 'wait';
+          G.check(f.bytes, f.mime).then((v) => {
+            f.xg = v.ok ? 'ok' : (v.why === 'explicit' ? 'blocked' : 'error');
+            if (f.xg === 'blocked' && clog) clog('uploadguard file blocked ' + String(f.id).slice(0, 8));
+            (0, /*()*/__V.renderFiles)();
+          });
+        }
         (0, /*()*/__V.renderFiles)();
         for (const w of (f.wanters || []).splice(0)) sendFileOver(w, f.id);
       } else if (m.k === 'fc-stop') {

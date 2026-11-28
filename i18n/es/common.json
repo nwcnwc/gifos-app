@@ -15,5 +15,9 @@
   "common.dl.lead": "<b>{name}</b> tiene datos guardados. Descárgalo con tus datos guardados o como una copia limpia que empieza de cero. La animación se incluye en ambos casos.",
   "common.dl.withData": "Descargar con mis datos",
   "common.dl.withoutData": "Descargar sin mis datos",
-  "common.dl.cancel": "Cancelar"
+  "common.dl.cancel": "Cancelar",
+  "common.guard.refuse": "Esta imagen no se puede compartir aquí.",
+  "common.guard.refuseVideo": "Este vídeo no se puede compartir aquí.",
+  "common.guard.retry": "Ahora mismo no se puede comprobar este archivo. Inténtalo de nuevo en un momento.",
+  "common.guard.blurred": "Difuminada por seguridad"
 }

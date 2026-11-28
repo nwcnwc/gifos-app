@@ -15,5 +15,9 @@
   "common.dl.lead": "<b>{name}</b> hat gespeicherte Daten. Lade es mit deinen gespeicherten Daten herunter oder als saubere Kopie, die neu beginnt. Die Animation ist in beiden Fällen dabei.",
   "common.dl.withData": "Mit meinen Daten herunterladen",
   "common.dl.withoutData": "Ohne meine Daten herunterladen",
-  "common.dl.cancel": "Abbrechen"
+  "common.dl.cancel": "Abbrechen",
+  "common.guard.refuse": "Dieses Bild kann hier nicht geteilt werden.",
+  "common.guard.refuseVideo": "Dieses Video kann hier nicht geteilt werden.",
+  "common.guard.retry": "Diese Datei kann gerade nicht geprüft werden. Versuche es gleich noch einmal.",
+  "common.guard.blurred": "Aus Sicherheitsgründen unscharf"
 }
