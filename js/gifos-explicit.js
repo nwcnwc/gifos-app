@@ -550,10 +550,9 @@
       const f = Math.pow(Math.min(1, Math.max(0, (score - line) / Math.max(1e-6, T.XV_STRONG - line))), T.XV_HOLD_CURVE);
       return { hold: T.XV_HOLD_MIN_MS + (T.XV_HOLD_MAX_MS - T.XV_HOLD_MIN_MS) * f, clean: Math.round(T.XV_CLEAN_MIN + (T.XV_CLEAN_MAX - T.XV_CLEAN_MIN) * f) };
     }
-    // THE RE-FLAG HOLD (a miss is the worst error): a picture the confirming model keeps calling clean while the first model
-    // keeps flagging it is held as hard as a confirmed one. Armed by XV_REFLAG_LIFTS clean lifts of one picture inside
-    // XV_REFLAG_LIFT_MS, or XV_REFLAG_LOOKS first looks at or over XV_REFLAG_LINE inside XV_REFLAG_LOOK_MS. Armed, the
-    // confirming model's clean cannot lift it and the benign band is off; only clean first looks below the line lift it.
+    // THE RE-FLAG ARMING: a picture the first model keeps flagging after the confirming model called it clean is re-checked sooner
+    // and re-trips at once (the confirming model's clean still lifts it every time). Armed by XV_REFLAG_LIFTS clean lifts of one picture inside
+    // XV_REFLAG_LIFT_MS, or XV_REFLAG_LOOKS first looks at or over XV_REFLAG_LINE inside XV_REFLAG_LOOK_MS. The picture's raised bar (see confirmJob) stays.
     const recent = (a, win) => { const t = now(); while (a.length && t - a[0] > win) a.shift(); return a.length; };
     function noteLook(id, r, v0) {
       if (v0 < T.XV_REFLAG_LINE || now() - r.lastLook < 200) return;   // one look is fed twice (its callback, then feed)
@@ -563,7 +562,7 @@
     const reHold = () => { const h = holdFor(T.XV_STRONG); return { hold: Math.min(h.hold, T.XV_REFLAG_HOLD_MS), clean: h.clean }; };   // the strong clean count, a shorter floor
     function arm(id, r, why) {
       if (r.strong) return;
-      r.strong = true; r.benignUntil = 0; r.confirm = false;
+      r.strong = true;   // the confirming look still runs: its clean lifts (miss-first is not miss-forever)
       const h = reHold();
       if (r.sus) { r.peak = Math.max(r.peak, T.XV_STRONG); r.holdUntil = Math.max(r.holdUntil, now() + h.hold); r.need = Math.max(r.need, h.clean); }
       log('xv reflag ' + String(id).slice(0, 8) + ' ' + why + ' strong hold');
@@ -577,7 +576,7 @@
       if (r.sus || r.tripped) { r.susClean = 0; if (r.sus && v0 > r.peak) { r.peak = v0; const h = holdFor(v0); r.holdUntil = Math.max(r.holdUntil, now() + h.hold); r.need = Math.max(r.need, h.clean); } return; }
       const h = r.strong ? reHold() : holdFor(v0);
       r.peak = r.strong ? Math.max(v0, T.XV_STRONG) : v0; r.need = h.clean; r.holdUntil = now() + h.hold;
-      r.sus = true; r.susClean = 0; r.pend = false; r.confirm = v0 < T.XV_STRONG && !!eng.confirm && !r.strong;
+      r.sus = true; r.susClean = 0; r.pend = false; r.confirm = v0 < T.XV_STRONG && !!eng.confirm;
       log('xv suspect ' + String(id).slice(0, 8) + ' v0=' + Math.round(v0 * 1e4) / 1e4 + ' hold=' + Math.round(h.hold) + 'ms clean=' + h.clean);
       emit(id, r, 'suspect');
     }
@@ -671,7 +670,7 @@
       log('xv confirm ' + String(src.id).slice(0, 8) + ' v=' + Math.round(res.v * 1e4) / 1e4 + (res.hit ? ' explicit' : ' clean') + ' ' + res.ms + 'ms');
       if (!r.sus || r.tripped) return;
       if (res.hit) { const h = holdFor(T.XV_STRONG); r.peak = Math.max(r.peak, T.XV_STRONG); r.holdUntil = Math.max(r.holdUntil, now() + h.hold); r.need = Math.max(r.need, h.clean); return; }
-      if (r.strong) return;   // re-flag hold: the confirming model's clean does not lift it
+      // A clean confirm ALWAYS lifts, armed or not. The clean confirm also raises this picture's bar just above its confirmed-clean score (benignHi) until XV_BENIGN_MS passes, the picture changes or the score jumps past it: steady benign pictures stop churning, a higher score trips at once.
       r.lifts.push(now());
       r.sus = false; r.benignHi = r.peak + T.XV_BENIGN_MARGIN; r.benignUntil = now() + T.XV_BENIGN_MS;
       emit(src.id, r, 'benign');
