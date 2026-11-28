@@ -37,8 +37,8 @@
   "runtime.hostbot.consent": "You're responsible for getting consent to record where the law requires it.",
   "runtime.hostbot.no": "Not now",
   "runtime.hostbot.yes": "Allow",
-  "runtime.name.set": "Your name on this computer would become {name}. Every app and meeting here would see it.",
-  "runtime.name.clear": "It would clear the name you use on this computer. Every app and meeting here would see you as unnamed.",
+  "runtime.name.set": "Your name on this computer would become {name}. Meetings here show it, and so do apps you let see it.",
+  "runtime.name.clear": "It would clear the name you use on this computer. Meetings here, and apps you let see your name, would see you as unnamed.",
   "runtime.name.keep": "Keep my name",
   "runtime.name.use": "Use “{name}”",
   "runtime.name.clearIt": "Clear it",
@@ -124,5 +124,9 @@
   "runtime.room.seat": "Seat",
   "runtime.room.notNow": "Not now",
   "runtime.room.lost": "Your move in {app} was not made: {why}",
-  "runtime.room.ok": "OK"
+  "runtime.room.ok": "OK",
+  "runtime.share.title": "{app} would like your name and picture",
+  "runtime.share.body": "{app} can then show them, for example beside what you write. Other apps don't get this answer. You can change it later in this app's Abilities.",
+  "runtime.share.no": "Not now",
+  "runtime.share.yes": "Share"
 }

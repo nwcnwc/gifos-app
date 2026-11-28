@@ -136,11 +136,11 @@
     });
     return _personP;
   }
-  function roomRoster(me) {
+  function roomRoster(me, manifest) {
     const r = typeof root.__gifosRoom === 'function' ? root.__gifosRoom('roster', { k: me.id }) : null;
     if (r && r.on) return r;
     // Not in a room (an app run on its own): the person alone.
-    return { on: false, kind: 'open', admin: false, me: '', people: [{ k: me.id, pid: '', name: identity().name || '', admin: false, here: 'here', me: true }] };
+    return { on: false, kind: 'open', admin: false, me: '', people: [{ k: me.id, pid: '', name: (manifest && idShared(manifest) ? identity().name : '') || '', admin: false, here: 'here', me: true }] };
   }
   // The words for a refusal, from the engine's reason.
   const roomWhy = (AR, why) => { const key = 'runtime.room.' + why, t = T(key); return t && t !== key ? t : ((AR.WHY && AR.WHY[why]) || why); };
@@ -176,7 +176,7 @@
     const sp = AR.spec(manifest.room);
     let eng = null, frames = new Set(), lastView = '', ros = null, timer = null, sid = null;
     const lastT = new Map();
-    const view = () => { const r = ros || roomRoster(me); return AR.view(sp, eng ? eng.session() : AR.fresh(sp), me.id, r.people, r.kind, !!r.admin && r.kind === 'admin'); };
+    const view = () => { const r = ros || roomRoster(me, manifest); return AR.view(sp, eng ? eng.session() : AR.fresh(sp), me.id, r.people, r.kind, !!r.admin && r.kind === 'admin'); };
     let api = null;
     const push = () => {
       const v = view(); const j = JSON.stringify(v);
@@ -202,7 +202,7 @@
       if (!eng) return;
       // the app was stopped (its frame left the page): this share's session ends here
       if (mounted && ![...frames].some((f) => f.isConnected)) { if (timer) clearInterval(timer); timer = null; roomAskBar(null); return; }
-      ros = roomRoster(me);
+      ros = roomRoster(me, manifest);
       if (eng.tick(ros.people, ros.kind, Date.now(), meetingOf(ros))) save();
       push();
     };
@@ -223,7 +223,7 @@
     return api = {
       owner: true,
       frame(f) { frames.add(f); mounted = true; lastView = ''; ready.then(push); },
-      state() { return ready.then(() => { ros = roomRoster(me); return view(); }); },
+      state() { return ready.then(() => { ros = roomRoster(me, manifest); return view(); }); },
       call(q, rec) {
         return ready.then(() => take(me.id, q, rec)).then((r) => { if (!r.ok) throw new Error(roomWhy(AR, r.why)); return r; });
       },
@@ -236,7 +236,7 @@
           if (!v || !v.ok) return null;
           return sha256hexOfBytes(hexBytes(f.pk)).then((h) => {
             const k = h.slice(0, 16);
-            ros = roomRoster(me);
+            ros = roomRoster(me, manifest);
             // The sender's meeting id is on THIS page's roster, and that meeting id's own status names this key.
             const p = ros.people.find((x) => x.pid && x.pid === b.pid);
             if (!p || p.k !== k) return null;
@@ -288,7 +288,7 @@
 
   // One gifos.room request ({ op, seat, collection, keep, first, who, value }), from an app frame or from a participant
   // with no screen (bootClientBus with no mount): the session's state, or a request the owner answers.
-  function roomRequest(db, d) {
+  function roomRequest(db, d, manifest) {
     const q = { op: String(d.op || 'state') };
     if (d.seat != null) q.seat = String(d.seat);
     if (d.collection != null) q.collection = String(d.collection);
@@ -296,11 +296,13 @@
     if (d.first != null) q.first = String(d.first);
     if (d.who != null) q.who = String(d.who);
     const rec = d.value && typeof d.value === 'object' ? d.value : null;
-    return (db && db.roomP ? db.roomP : Promise.resolve(null)).then((rh) => {
+    // Reading the room names the person to the app when they are alone in it, so it asks first, as gifos.me does.
+    const asked = q.op === 'state' && manifest ? askedIdentity(manifest).catch(() => null) : Promise.resolve(null);
+    return asked.then(() => (db && db.roomP ? db.roomP : Promise.resolve(null))).then((rh) => {
       if (rh) return q.op === 'state' ? rh.state() : rh.call(q, rec);
       if (q.op !== 'state') throw new Error('This app declares no room.');
       // No session declared: the room's people, read-only (gifos.people()).
-      return personKey().then((me) => ({ on: false, people: roomRoster(me).people.map((x) => ({ id: x.k, name: x.name || '', me: !!x.me, host: !!x.admin, here: x.here === 'away' ? 'away' : 'here' })) }));
+      return personKey().then((me) => ({ on: false, people: roomRoster(me, manifest).people.map((x) => ({ id: x.k, name: x.name || '', me: !!x.me, host: !!x.admin, here: x.here === 'away' ? 'away' : 'here' })) }));
     });
   }
   // THE GUEST SIDE: requests go to the owner signed with the person key; the session comes back owner-signed in
@@ -310,7 +312,7 @@
     const key = roomAppKey(manifest);
     let frames = new Set(), lastView = '', seq = 0, stopped = false;
     const waits = new Map(); // q -> { res, rej, q, rec, f, signing, at, t0, held }
-    const view = () => { const r = roomRoster(me); return AR.view(sp, sessionOf() || AR.fresh(sp), me.id, r.people, r.kind, !!r.admin && r.kind === 'admin'); };
+    const view = () => { const r = roomRoster(me, manifest); return AR.view(sp, sessionOf() || AR.fresh(sp), me.id, r.people, r.kind, !!r.admin && r.kind === 'admin'); };
     let api = null;
     const push = () => {
       const v = view(); const j = JSON.stringify(v);
@@ -321,10 +323,10 @@
     // Caught up: the room hears this page, and for a request an earlier copy made, this copy has the owner's session
     // too (the owner writes it as the share starts), so an answer the owner already gave is read, not asked twice.
     // Until then a request waits unsigned.
-    const caughtUp = (w) => { const r = roomRoster(me); return !!(r.on && r.me && (!w.held || sessionOf())); };
+    const caughtUp = (w) => { const r = roomRoster(me, manifest); return !!(r.on && r.me && (!w.held || sessionOf())); };
     const sendOne = (id, w) => {
       if (w.f || w.signing || stopped || !caughtUp(w)) return;
-      const r = roomRoster(me);
+      const r = roomRoster(me, manifest);
       const body = { pid: r.me, t: me.stamp(), q: w.q };
       if (w.rec) body.rec = w.rec;
       w.signing = true;
@@ -434,17 +436,74 @@
   const identity = store.identity;
   const setName = store.setName;
   const identFrames = new Set();
-  function publishIdentity() {
-    let ident;
-    try { ident = identity(); } catch (e) { return; }
-    identFrames.forEach((ifr) => {
-      try {
-        const w = ifr && ifr.contentWindow;
-        if (w) w.postMessage({ ns: 'gifos', type: 'identity', identity: ident }, '*');
-      } catch (e) {}
+  const identManifests = new WeakMap();   // app frame -> its manifest, so each frame hears only its own view of you
+  // ---- who an app sees (gifos.me) ----------------------------------------------------------------------------------
+  // ONE RULE: an app never learns who you are unless you said so. Each app gets its OWN id for you, made from this
+  // browser's id and the app's id (HMAC-SHA-256), so no two apps can tell they run in the same browser, and this
+  // browser's own id never enters any frame. Your name and picture reach an app only when you let it (one sheet,
+  // asked the first time the app wants them, remembered per app and switched off again in its Abilities sheet), or
+  // while it runs inside a meeting, whose room already shows your name and picture to everyone there.
+  const ID_SHARE = (manifest) => 'gifos_idshare_' + ((manifest && manifest.appId) || (manifest && manifest.name) || 'app');
+  const appIds = new Map();
+  function appUserId(manifest) {
+    const base = identity().id || '';
+    const app = String((manifest && manifest.appId) || (manifest && manifest.name) || 'app');
+    const k = base + '|' + app;
+    if (!appIds.has(k)) {
+      const enc = new TextEncoder();
+      const subtle = root.crypto && root.crypto.subtle;
+      const p = subtle
+        ? subtle.importKey('raw', enc.encode(base), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+          .then((key) => subtle.sign('HMAC', key, enc.encode('gifos-app-user|' + app)))
+          .then((sig) => 'user_' + Array.from(new Uint8Array(sig).slice(0, 12), (b) => b.toString(16).padStart(2, '0')).join(''))
+        : Promise.reject(new Error('no subtle'));
+      // No WebCrypto (never on https): an id that is still this app's alone, never the browser's own.
+      appIds.set(k, p.catch(() => { let h = 2166136261; const t = base + '|' + app; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return 'user_' + h.toString(16); }));
+    }
+    return appIds.get(k);
+  }
+  // The meeting this page is in, if any: its room shows your name to everyone in it, so an app running there may know it.
+  function meetingSelf() {
+    try {
+      const r = typeof root.__gifosRoom === 'function' ? root.__gifosRoom('roster', {}) : null;
+      if (!r || !r.on) return null;
+      const me = (r.people || []).find((x) => x && x.me);
+      return { name: (me && me.name) || '' };
+    } catch (e) { return null; }
+  }
+  const idDecided = (manifest) => { try { const v = root.localStorage.getItem(ID_SHARE(manifest)); return v === '1' || v === '0' ? v : ''; } catch (e) { return ''; } };
+  const idShared = (manifest) => !!meetingSelf() || (idDecided(manifest) === '1' && !capDisabled(manifest, 'identity'));
+  function setIdShare(manifest, yes) { try { root.localStorage.setItem(ID_SHARE(manifest), yes ? '1' : '0'); } catch (e) {} }
+  function appIdentity(manifest) {
+    const idn = identity();
+    return appUserId(manifest).then((id) => {
+      const room = meetingSelf();
+      if (room) return { id, name: room.name || idn.name || '', avatar: idn.avatar };
+      if (idShared(manifest)) return { id, name: idn.name || '', avatar: idn.avatar };
+      return { id, name: '', avatar: null };
     });
   }
-  try { if (store.onIdentity) store.onIdentity(publishIdentity); } catch (e) {}
+  // gifos.me: the first ask outside a meeting shows the sheet; later asks take the remembered answer.
+  const idAsks = new Map();
+  function askedIdentity(manifest) {
+    if (meetingSelf() || idDecided(manifest) || !identity().name) return appIdentity(manifest);   // no name yet: nothing to share, nothing to ask
+    const key = ID_SHARE(manifest);
+    if (!idAsks.has(key)) idAsks.set(key, confirmShareIdentity(manifest).then((yes) => { setIdShare(manifest, yes); idAsks.delete(key); publishIdentity(); }));
+    return idAsks.get(key).then(() => appIdentity(manifest));
+  }
+  function publishIdentity(only) {
+    identFrames.forEach((ifr) => {
+      if (only && ifr !== only) return;
+      const m = identManifests.get(ifr);
+      appIdentity(m).then((ident) => {
+        try {
+          const w = ifr && ifr.contentWindow;
+          if (w) w.postMessage({ ns: 'gifos', type: 'identity', identity: ident }, '*');
+        } catch (e) {}
+      }, () => {});
+    });
+  }
+  try { if (store.onIdentity) store.onIdentity(() => publishIdentity()); } catch (e) {}
 
   // The system locale (gifos-i18n.js), handed to every app frame: a snapshot
   // baked into the shim so gifos.locale() answers synchronously at boot, and a
@@ -3627,6 +3686,32 @@
     try { const ua = root.navigator && root.navigator.userActivation; return !ua || !!ua.hasBeenActive; } catch (e) { return true; }
   }
   // The rename sheet: resolves true only when the person chooses the new name.
+  // gifos.me's sheet: may this app have your name and picture? Asked once per app (runtime ID_SHARE); a dismissal is a No.
+  function confirmShareIdentity(manifest) {
+    return new Promise(function (resolve) {
+      try {
+        const doc = root.document; if (!doc || !doc.body) return resolve(false);
+        const old = doc.getElementById('gifos-idshare-modal'); if (old) old.remove();
+        const appRaw = (manifest && (manifest.shortName || manifest.name || manifest.appId)) || T('runtime.thisApp');
+        const idn = identity();
+        const bg = doc.createElement('div'); bg.id = 'gifos-idshare-modal'; bg.className = 'perm-modal';
+        bg.setAttribute('style', 'position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:1.2rem;');
+        const box = doc.createElement('div'); box.className = 'perm-box';
+        box.setAttribute('style', 'background:#14141f;color:#e8e8f4;border:1px solid #2a2a3f;border-radius:.8rem;max-width:23rem;width:100%;padding:1.2rem;font:15px/1.55 system-ui,-apple-system,sans-serif;');
+        const pic = idn.avatar && idn.avatar.url ? '<img alt="" src="' + escHtml(idn.avatar.url) + '" style="width:2.4rem;height:2.4rem;border-radius:50%;object-fit:cover;flex:0 0 auto">' : '';
+        box.innerHTML = '<h3 style="margin:0 0 .5rem;font-size:1.1rem">' + escHtml(T('runtime.share.title', { app: appRaw })) + '</h3>' +
+          '<div style="display:flex;gap:.6rem;align-items:center;margin:0 0 .6rem">' + pic + '<b>' + escHtml(idn.name || '') + '</b></div>' +
+          '<p style="color:#b6b6cf;font-size:.9rem;margin:0 0 .9rem">' + escHtml(T('runtime.share.body', { app: appRaw })) + '</p>' +
+          '<div style="display:flex;gap:.6rem;justify-content:flex-end"><button id="gifos-idshare-no" style="padding:.5rem 1.1rem;border-radius:.5rem;border:1px solid #2a2a3f;background:transparent;color:#b6b6cf;cursor:pointer;font:inherit">' + escHtml(T('runtime.share.no')) + '</button>' +
+          '<button id="gifos-idshare-yes" style="padding:.5rem 1.3rem;border-radius:.5rem;border:none;background:#7b5cff;color:#fff;cursor:pointer;font:inherit">' + escHtml(T('runtime.share.yes')) + '</button></div>';
+        bg.appendChild(box); doc.body.appendChild(bg);
+        const done = function (yes) { bg.remove(); resolve(yes); };
+        box.querySelector('#gifos-idshare-yes').onclick = function () { done(true); };
+        box.querySelector('#gifos-idshare-no').onclick = function () { done(false); };
+        bg.addEventListener('click', function (e) { if (e.target === bg) done(false); });
+      } catch (e) { resolve(false); }
+    });
+  }
   function confirmName(manifest, want) {
     return new Promise(function (resolve) {
       try {
@@ -4340,7 +4425,7 @@
         return;
       }
       if (!iframe.contentWindow || e.source !== iframe.contentWindow) return;
-      if (d.type === 'hello') { if (d.gen === gen) { live = gen; retry = false; identFrames.add(iframe); publishIdentity(); if (db && db.roomP) db.roomP.then((rh) => { if (rh) rh.frame(iframe); }, () => {}); } return; }
+      if (d.type === 'hello') { if (d.gen === gen) { live = gen; retry = false; identFrames.add(iframe); identManifests.set(iframe, manifest); publishIdentity(iframe); if (db && db.roomP) db.roomP.then((rh) => { if (rh) rh.frame(iframe); }, () => {}); } return; }
       if (!live) return;
       // Guard at REPLY time, not just receipt: async ops (db/fetch/…) can
       // resolve after the iframe was torn out of the DOM (app takeover /
@@ -4433,9 +4518,9 @@
       // owner = this app runs on its OWNER's computer (host / local), so it may
       // change visibility (setVisibility). A guest view is not the owner.
       else if (d.type === 'info') reply({ ok: true, result: { appId: manifest.appId, name: manifest.name, version: manifest.version, owner: !!(db && db.owner) } });
-      else if (d.type === 'me') reply({ ok: true, result: identity() });
+      else if (d.type === 'me') askedIdentity(manifest).then((r) => reply({ ok: true, result: r }), (err) => reply({ ok: false, error: String(err && err.message || err) }));
       else if (d.type === 'room') {
-        roomRequest(db, d).then((result) => reply({ ok: true, result }), (err) => reply({ ok: false, error: String(err && err.message || err) }));
+        roomRequest(db, d, manifest).then((result) => reply({ ok: true, result }), (err) => reply({ ok: false, error: String(err && err.message || err) }));
       }
       else if (d.type === 'stage') {
         const verdict = stageGate(manifest, capDisabled(manifest, 'stage'), typeof root.__gifosStage === 'function');
@@ -4456,15 +4541,18 @@
       // so the app learns nothing happened. Setting the name you already
       // have needs no sheet. Rate-limited like the setup panels.
       else if (d.type === 'setName') {
+        // An app that may not see your name must not learn it by guessing: "already that name" answers without a
+        // sheet only for an app that may see it. A Yes is you giving this app your name, so it may see it from then on.
         const want = String(d.name == null ? '' : d.name).trim().slice(0, 40);
         const have = identity().name || '';
-        if (want === have) reply({ ok: true, result: identity() });
+        const answer = () => appIdentity(manifest).then((r) => reply({ ok: true, result: r }), (err) => reply({ ok: false, error: String(err && err.message || err) }));
+        if (want === have && idShared(manifest)) answer();
         else {
           const nowMs = Date.now();
-          if (nowMs - setupShownAt < 5000) reply({ ok: true, result: identity() });
+          if (nowMs - setupShownAt < 5000) answer();
           else {
             setupShownAt = nowMs;
-            confirmName(manifest, want).then((yes) => reply({ ok: true, result: yes ? setName(want) : identity() }));
+            confirmName(manifest, want).then((yes) => { if (yes) { setName(want); setIdShare(manifest, true); } answer(); });
           }
         }
       }
@@ -4472,19 +4560,21 @@
         const url = String(d.url == null ? '' : d.url);
         const cur = identity();
         const have = (cur.avatar && cur.avatar.url) || '';
-        if (url === have) reply({ ok: true, result: cur });
+        const answer = () => appIdentity(manifest).then((r) => reply({ ok: true, result: r }), (err) => reply({ ok: false, error: String(err && err.message || err) }));
+        if (url === have && idShared(manifest)) answer();
         else {
           const nowMs = Date.now();
-          if (nowMs - setupShownAt < 5000) reply({ ok: true, result: identity() });
+          if (nowMs - setupShownAt < 5000) answer();
           else {
             setupShownAt = nowMs;
             confirmAvatar(manifest, url).then((yes) => {
-              if (!yes) { reply({ ok: true, result: identity() }); return; }
-              if (!url) { reply({ ok: true, result: store.setAvatar(null) }); return; }
+              if (!yes) { answer(); return; }
+              setIdShare(manifest, true);
+              if (!url) { store.setAvatar(null); answer(); return; }
               const prep = (root.GifOS && root.GifOS.avatar && root.GifOS.avatar.prepareDataUrl) ? root.GifOS.avatar.prepareDataUrl(url) : Promise.resolve({ ok: false, error: 'Choose a GIF, PNG, JPG, or WebP.' });
               Promise.resolve(prep).then((res) => {
                 if (!res || !res.ok) reply({ ok: false, error: (res && res.error) || 'Choose a GIF, PNG, JPG, or WebP.' });
-                else reply({ ok: true, result: store.setAvatar({ mime: res.mime, hash: res.hash, b64: res.b64 }) });
+                else { store.setAvatar({ mime: res.mime, hash: res.hash, b64: res.b64 }); answer(); }
               }).catch((err) => reply({ ok: false, error: String(err && err.message || err) }));
             });
           }

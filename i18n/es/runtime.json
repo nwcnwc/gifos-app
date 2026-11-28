@@ -32,8 +32,8 @@
   "runtime.busy.dataFailed": "Falló la descarga de los datos de la app — {msg}. La app se abre sin ellos y lo reintentará en el próximo inicio.",
   "runtime.provider.filing": "Guardando {name} en tu carpeta Proveedores…",
   "runtime.name.title": "{app} quiere cambiar tu nombre",
-  "runtime.name.set": "Tu nombre en este equipo pasaría a ser {name}. Todas las apps y reuniones de aquí lo verían.",
-  "runtime.name.clear": "Se borraría el nombre que usas en este equipo. Todas las apps y reuniones de aquí te verían sin nombre.",
+  "runtime.name.set": "Tu nombre en este equipo pasaría a ser {name}. Las reuniones de aquí lo muestran, y también las apps a las que dejes verlo.",
+  "runtime.name.clear": "Se borraría el nombre que usas en este equipo. Las reuniones de aquí, y las apps a las que dejes ver tu nombre, te verían sin nombre.",
   "runtime.name.keep": "Conservar mi nombre",
   "runtime.name.use": "Usar «{name}»",
   "runtime.name.clearIt": "Borrarlo",
@@ -119,5 +119,9 @@
   "runtime.room.seat": "Dar asiento",
   "runtime.room.notNow": "Ahora no",
   "runtime.room.lost": "Tu jugada en {app} no se hizo: {why}",
-  "runtime.room.ok": "Aceptar"
+  "runtime.room.ok": "Aceptar",
+  "runtime.share.title": "{app} quiere tu nombre y tu foto",
+  "runtime.share.body": "{app} podrá mostrarlos, por ejemplo junto a lo que escribas. Las demás apps no reciben esta respuesta. Puedes cambiarla luego en «Abilities» de esta app.",
+  "runtime.share.no": "Ahora no",
+  "runtime.share.yes": "Compartir"
 }
