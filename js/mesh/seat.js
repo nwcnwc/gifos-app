@@ -847,9 +847,10 @@
       this.l13MassTick = this.TICK;
       let n = 0; for (const v of this.byeIds.values()) if (this.TICK - v <= K.LEASE_T) { if (++n >= 2) break; }
       let d = 0; { const ps = new Set(); for (let q = 0; q < this.l13DownAt.length; q++) if (this.TICK - this.l13DownAt[q] <= K.LEASE_T) ps.add(q < this.l13DownPeer.length ? this.l13DownPeer[q] : -1 - q); d = ps.size; }
-      let sil = 0;
+      let sil = 0, silA = 0;
       if (this.hasCoord && this.state === 3) {
-        for (const c of ownedLinks(this.coord)) { const k = ckey(c); const x = this.occGet(k); if (x < 0 || x === this.id) continue; const lv = this.live.get(k); const pb = this.pongBy.get(k); const quiet = (t) => this.TICK - t >= 60 && t >= this.seatedAt + 128; if ((lv !== undefined && this.beatBy.get(k) === x && quiet(lv)) || (pb !== undefined && pb[0] === x && quiet(pb[1]))) sil++; }   // only someone I am due to hear from (their regular beat, or their answers to mine): a neighbour that only greeted me and then stays quiet has not left
+        const fl = this.backAt > 0 ? this.backAt : 0;   // L13.26.2: a gap in my own ticks (a freeze) is not the peers' silence: the stamps count from my return
+        for (const c of ownedLinks(this.coord)) { const k = ckey(c); const x = this.occGet(k); if (x < 0 || x === this.id) continue; const lv = this.live.get(k); const pb = this.pongBy.get(k); const quiet = (t) => this.TICK - Math.max(t, fl) >= 60 && t >= this.seatedAt + 128; if (lv !== undefined && this.beatBy.get(k) === x && quiet(lv)) { sil++; silA++; } else if (pb !== undefined && pb[0] === x && quiet(pb[1])) sil++; }   // only someone I am due to hear from (their regular beat, or their answers to mine): a neighbour that only greeted me and then stays quiet has not left
       }
       let dk = 0;
       if (this.hasCoord && this.state === 3 && this.coord.pc === 0 && this.TICK - this.seatedAt >= 60) {
@@ -861,7 +862,7 @@
           if (this.f.fabricDialFails(this.id, x) >= 1 && this.f.fabricLinkState(this.id, x) !== LS_OPEN) dk++;
         }
       }
-      const v = n >= 2 || d >= 2 || this.noChan.size >= 2 || sil >= 2 || dk >= 2; if (v) this.l13MassLast = this.TICK;
+      const v = n >= 2 || d >= 2 || this.noChan.size >= 2 || (sil >= 2 && silA >= 1) || dk >= 2;   // L13.26.2: an anchor's silence alone is never a mass leave if (v) this.l13MassLast = this.TICK;
       this.l13MassV = v || this.TICK - this.l13MassLast <= 2 * K.LEASE_T; return this.l13MassV;
     },
 
