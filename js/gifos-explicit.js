@@ -458,7 +458,7 @@
     // 'checking' for pend alone | 'unsafe').
     const rec = (id) => {
       let r = recs.get(id);
-      if (!r) recs.set(id, (r = { t: tracker(), td: tracker(), tripped: false, sus: false, peak: 0, need: 1, holdUntil: 0, pend: false, pendAt: 0, kind: '', susClean: 0, changed: false, chgAt: 0, nextChg: 0, warm: false, prev: null, at: 0, burst: 0, n: 0, hits: 0, s: null, fresh: true }));
+      if (!r) recs.set(id, (r = { t: tracker(), td: tracker(), tripped: false, sus: false, hotUntil: 0, peak: 0, need: 1, holdUntil: 0, pend: false, pendAt: 0, kind: '', susClean: 0, changed: false, chgAt: 0, nextChg: 0, warm: false, prev: null, at: 0, n: 0, hits: 0, s: null, fresh: true }));
       return r;
     };
     const ready = (el) => !!el && ((el.videoWidth > 0 && el.readyState >= 2) || (!('videoWidth' in el) && el.width > 0));
@@ -498,18 +498,19 @@
       tell(id, kind, why);
     }
     // One continuous mapping, suspicion score -> how long a suspect picture is held and how many clean first-model looks
-    // lift it: f = ((score - line) / (1 - line)) ^ XV_HOLD_CURVE, then hold = lerp(XV_HOLD_MIN_MS, XV_HOLD_MAX_MS, f) and
-    // clean = round(lerp(XV_CLEAN_MIN, XV_CLEAN_MAX, f)). A weak suspicion lifts fast; a strong one waits for more.
+    // lift it: f = ((score - line) / (XV_STRONG - line)) ^ XV_HOLD_CURVE (1 from XV_STRONG up), then hold =
+    // lerp(XV_HOLD_MIN_MS, XV_HOLD_MAX_MS, f) and clean = round(lerp(XV_CLEAN_MIN, XV_CLEAN_MAX, f)). A weak suspicion
+    // blurs on its first look and lifts at the first clean look; a strong one (XV_STRONG and up) holds longest.
     function holdFor(score) {
       const line = eng && eng.suspectLine != null ? eng.suspectLine : 0.2;
-      const f = Math.pow(Math.min(1, Math.max(0, (score - line) / Math.max(1e-6, 1 - line))), T.XV_HOLD_CURVE);
+      const f = Math.pow(Math.min(1, Math.max(0, (score - line) / Math.max(1e-6, T.XV_STRONG - line))), T.XV_HOLD_CURVE);
       return { hold: T.XV_HOLD_MIN_MS + (T.XV_HOLD_MAX_MS - T.XV_HOLD_MIN_MS) * f, clean: Math.round(T.XV_CLEAN_MIN + (T.XV_CLEAN_MAX - T.XV_CLEAN_MIN) * f) };
     }
     function setSus(id, r, v0) {
       if (r.sus || r.tripped) { r.susClean = 0; if (r.sus && v0 > r.peak) { r.peak = v0; const h = holdFor(v0); r.holdUntil = Math.max(r.holdUntil, now() + h.hold); r.need = Math.max(r.need, h.clean); } return; }
       const h = holdFor(v0);
       r.peak = v0; r.need = h.clean; r.holdUntil = now() + h.hold;
-      r.sus = true; r.susClean = 0; r.pend = false; r.burst = now();
+      r.sus = true; r.susClean = 0; r.pend = false;
       log('xv suspect ' + String(id).slice(0, 8) + ' v0=' + Math.round(v0 * 1e4) / 1e4 + ' hold=' + Math.round(h.hold) + 'ms clean=' + h.clean);
       emit(id, r, 'suspect');
     }
@@ -517,16 +518,16 @@
       r.n++; r.s = res.s;
       if (res.hit) r.hits++;
       const o = (lane === 'deep' ? r.td : r.t).feed(res.hit ? 1 : 0);
-      if (lane !== 'deep') r.burst = o.burst ? now() + T.XV_BURST_MS : 0;
       if (res.hit || o.changed) log('xv ' + lane + ' ' + String(id).slice(0, 8) + ' ' + (res.hit ? 'hit' : 'clean') + ' s=' + JSON.stringify(res.s) + ' ' + res.ms + 'ms');
       r.tripped = r.t.state().tripped || r.td.state().tripped;
       if (lane !== 'deep' && eng) {
         const sl = eng.suspectLine == null ? 1 : eng.suspectLine;
         r.warm = res.s.length > 1 || res.s[0] >= (eng.warmLine == null ? 0.05 : eng.warmLine);
+        if (res.s[0] >= sl) r.hotUntil = now() + T.XV_HOT_MS;
         if (r.sus) {
           if (res.s[0] >= sl) setSus(id, r, res.s[0]); else r.susClean++;
           if (r.tripped || (r.susClean >= r.need && now() >= r.holdUntil)) r.sus = false;
-        }
+        } else if (!r.tripped && res.s[0] >= sl) setSus(id, r, res.s[0]);   // the chain's trip lifted on a picture still suspect: stay blurred, no blink
         r.pend = false;
       }
       emit(id, r, r.tripped ? 'confirm' : 'lift');
@@ -572,8 +573,8 @@
       if (kick && !busy && eng) { if (timer) clearTimeout(timer); timer = setTimeout(tick); }
       if (!stopped) senseTimer = setTimeout(sense, T.XV_SENSE_MS * (mobile ? 2 : 1));
     }
-    // A burst: a few first-model looks a moment apart. Trips (suspect) on one strong hit, or on aggregated weak evidence:
-    // XV_AGG_N looks over XV_AGG_LINE, or a mean at XV_AGG_MEAN.
+    // A burst: a few first-model looks a moment apart. ONE look over the suspect line trips (the hold is scaled to the
+    // score, so a weak blip is a short blur); the burst ends at that look.
     async function burstJob(src, el, r) {
       const t0 = now(), sc = [];
       r.changed = false; bursts++;
@@ -581,32 +582,40 @@
         if (i) await sleep(T.XV_BURST_FRAME_MS);
         const x = await eng.first(el);
         sc.push(x.v);
-        if (x.v >= Math.max(eng.suspectLine == null ? 1 : eng.suspectLine, T.XV_STRONG)) break;
+        if (x.v >= (eng.suspectLine == null ? 1 : eng.suspectLine)) break;
       }
       const sl = eng.suspectLine == null ? 1 : eng.suspectLine;
-      const mean = sc.reduce((a, b) => a + b, 0) / (sc.length || 1);
-      const agg = sc.filter((v) => v >= Math.max(sl, T.XV_AGG_LINE)).length >= T.XV_AGG_N || mean >= T.XV_AGG_MEAN;
-      const strong = sc.some((v) => v >= Math.max(sl, T.XV_STRONG));
+      const sus = sc.some((v) => v >= sl);
       const cost = now() - t0;
       r.nextChg = now() + Math.max(T.XV_CHANGE_MIN_MS, cost / fduty);   // a change burst never goes over the first lane's duty
       r.chgAt = now(); r.at = now();
-      log('xv burst ' + String(src.id).slice(0, 8) + ' ' + JSON.stringify(sc.map((v) => Math.round(v * 100) / 100)) + ' ' + cost + 'ms' + (strong ? ' strong' : agg ? ' agg' : ''));
-      if (strong || agg) setSus(src.id, r, Math.max.apply(null, sc));
+      log('xv burst ' + String(src.id).slice(0, 8) + ' ' + JSON.stringify(sc.map((v) => Math.round(v * 100) / 100)) + ' ' + cost + 'ms' + (sus ? ' suspect' : ''));
+      if (sus) r.hotUntil = now() + T.XV_HOT_MS;
+      if (sus) setSus(src.id, r, Math.max.apply(null, sc));
       else { r.pend = false; if (sc.some((v) => v >= (eng.warmLine == null ? 0.05 : eng.warmLine))) r.warm = true; emit(src.id, r, 'checked'); }
     }
-    // The next picture to look at: a suspect first, a burst that is due next, then the one looked at longest ago. A warm
-    // picture (past the first model's line: its looks reach the slow models) waits for the full lane's duty budget.
+    // The next picture to look at, in this order: (0) a new picture held back for its first look; (1) a HOT picture (a suspect
+    // or tripped one, which needs looks to lift, or one with a look over the suspect line in the last XV_HOT_MS) and any picture
+    // overdue for its regular look, the one looked at longest ago first (so no picture starves another, and a picture that
+    // stays suspect cannot hold every look); (2) a picture that changed (a change burst, which never goes ahead of the above:
+    // scene cuts in film must not spend the looks an explicit picture needs); (3) the one looked at longest ago. A warm picture
+    // (past the first model's line: its looks reach the slow models) waits for the full lane's duty budget.
     function pick(a, lane) {
       const t = now();
-      let best = null, bk = Infinity;
+      let best = null, bk = Infinity, bc = Infinity;
+      const due = Math.min(T.XV_GAP_MAX_MS, Math.max(T.XV_FIRST_GAP_MIN_MS, (avgF || 100) / fduty));
       for (const src of a) {
         const el = elOf(src);
         if (!ready(el)) continue;
         const r = rec(src.id);
-        if (lane === 'chain' && (r.changed || r.pend) && !r.sus && !r.tripped) { if (bk > -3e15) { bk = -3e15; best = { src, el, r, job: 'burst' }; } continue; }
-        if (lane === 'chain' && (r.warm || r.tripped) && !r.sus && !(r.burst && r.burst <= t) && t < fullReadyAt) continue;
-        const k = lane === 'deep' ? (r.deepAt || 0) : (r.sus ? -2e15 + r.at : r.burst && r.burst <= t ? -1e15 + r.burst : r.at);
-        if (k < bk) { bk = k; best = { src, el, r, job: 'frame' }; }
+        if (lane === 'deep') { const k = r.deepAt || 0; if (k < bk) { bk = k; best = { src, el, r, job: 'frame' }; } continue; }
+        const hot = r.sus || r.tripped || r.hotUntil > t;
+        if (r.warm && !r.sus && t < fullReadyAt) continue;
+        let cls = 3, k = r.at, job = 'frame';
+        if (r.pend && !r.sus && !r.tripped) { cls = 0; k = r.pendAt; job = 'burst'; }
+        else if (hot || t - r.at >= due) cls = 1;
+        else if (r.changed) { cls = 2; job = 'burst'; }
+        if (cls < bc || (cls === bc && k < bk)) { bc = cls; bk = k; best = { src, el, r, job }; }
       }
       return best;
     }
@@ -625,11 +634,9 @@
           else if (p) {
             p.r.at = now();
             const res = await eng.frame(p.el, (v) => {
-              // A strong first look trips at once; a weak one over the suspect line only asks for a burst, and the burst decides
-              // (two looks agreeing): most weak false blurs on real film are one-look blips.
+              // One first look over the suspect line trips at once (a miss is far worse than a short false blur).
               const sl = eng.suspectLine == null ? 1 : eng.suspectLine;
-              if (v >= Math.max(sl, T.XV_STRONG)) setSus(p.src.id, p.r, v);
-              else if (v >= sl && !p.r.sus && !p.r.tripped) p.r.changed = true;
+              if (v >= sl) setSus(p.src.id, p.r, v);
             });
             if (stopped) return;
             frames++;
@@ -640,7 +647,7 @@
           }
           wait = Math.min(mobile ? T.XV_GAP_MAX_PHONE_MS : T.XV_GAP_MAX_MS, Math.max(T.XV_FIRST_GAP_MIN_MS, (avgF || 100) / fduty));
           // A suspect or a held-back picture: look again soon whatever the duty limit says.
-          for (const r of recs.values()) if (r.sus || r.pend || r.changed || (r.burst && r.burst > 0)) { wait = Math.min(wait, T.XV_FIRST_GAP_MIN_MS, T.XV_BURST_MS); break; }
+          for (const r of recs.values()) if (r.sus || r.tripped || r.pend || r.changed || r.hotUntil > now()) { wait = Math.min(wait, T.XV_FIRST_GAP_MIN_MS, T.XV_BURST_MS); break; }
         }
       } catch (e) {
         err = String((e && e.message) || e);
