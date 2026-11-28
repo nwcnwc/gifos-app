@@ -3773,8 +3773,17 @@
     };
     function blurWhyWords(reason, part) {
       const e = BLUR_WHY[reason];
-      return e ? uiText(e[part][0], e[part][1]) : '';
+      // "Switching to clear video… 42%": the live share of what the first check still downloads (nothing about safety or models).
+      const pct = reason === 'checking' ? xvPct() : null;
+      return e ? uiText(e[part][0], e[part][1]) + (pct == null ? '' : ' ' + pct + '%') : '';
     }
+    function xvPct() {
+      try {
+        const V = GifOS.explicit && GifOS.explicit.video, p = V && V.progress && V.progress();
+        return p && !p.ready && p.pct != null ? p.pct : null;
+      } catch (e) { return null; }
+    }
+    let xvPctShown = null;
     // The note on a tile: only a face that WOULD be clear (its sender picked
     // No blur with the camera on, or shares or rebroadcasts) and that the room still blurs. A seat with no picture (the
     // camera off, no share, no rebroadcast: seatDark) has nothing to explain. Bots follow the same rule (BOTUNBLUR
@@ -26432,6 +26441,8 @@
       try { (0, /*()*/__V.paintStageBlurWhy)(); } catch (e) {}
     }
     function xvTick() {
+      // A tile waiting on the download repaints its percentage as it moves.
+      if (xvSoft.size) { const p = xvPct(); if (p !== xvPctShown) { xvPctShown = p; try { (0, /*()*/__V.paintStageBlurWhy)(); refreshAllTiles(); } catch (e) {} } }
       const on = !!(xvOn() && inMeetingNow());
       if (typeof __M.xvSync === 'function') (0, /*()*/__M.xvSync)(on);
       if (!on && xvTrip.size) { for (const id of Array.from(xvTrip)) xvSet(id, false); }
