@@ -24739,8 +24739,8 @@
         vMuted: f.stream && f.stream.getVideoTracks()[0] ? f.stream.getVideoTracks()[0].muted : null,
         vState: f.stream && f.stream.getVideoTracks()[0] ? f.stream.getVideoTracks()[0].readyState : null,
       })),
-      clearStateForTest: () => clearNoPwState(),
-      xvForTest: () => ({ on: xvOn(), trip: Array.from(xvTrip), loop: typeof __M.xvState === 'function' ? (0, /*()*/__M.xvState)() : null }),   // the explicit-content blocker: where it is on, its trips, its loop   // CLEARSTAGE rooms: the core's clear mode and this viewer's tap
+      clearStateForTest: () => clearNoPwState(),   // CLEARSTAGE rooms: the core's clear mode and this viewer's tap
+      xvForTest: () => ({ on: xvOn(), trip: Array.from(xvTrip), loop: typeof __M.xvState === 'function' ? (0, /*()*/__M.xvState)() : null }),   // the explicit-content blocker: where it is on, its trips, its loop
       stageForTest: (on) => { if (!!on === !!myStatus.stg) return stageIds().includes(myId); if (on && (!canStage(myId) || stageIds().length >= SCALE.C)) return false; setStage(!!on); return true; },
       // The exact call the strip compositor makes when it packs a seat's cell.
       // Asserted directly because the alternative — reading pixels out of a
