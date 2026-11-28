@@ -4630,9 +4630,9 @@ i18nStart(async()=>{
 }, function(){ voiceLbl(); countWords(); pauseLbl(); if(sayArg) say(sayArg[0],sayArg[1]); if(noteFn) setNote(noteFn); });
 </script>`;
 
-  // ---- Clock and Calendar: two small system apps whose WIDGETS are the point (js/home-widgets.js, llms.txt "Widgets").
-  // Each is an ordinary sandboxed app; its widgets are files in its own GIF, drawn in the sizes and for the look they
-  // are told. Nothing here keeps a timer per second: the widget is told each new minute.
+  // ---- Clock: a small system app whose WIDGET is the point (js/home-widgets.js, llms.txt "Widgets").
+  // An ordinary sandboxed app; its widget is a file in its own GIF, drawn in the sizes and for the look it
+  // is told. Nothing here keeps a timer per second: the widget is told each new minute. Calendar is assembled later from js/calendar.
   const WIDGET_BASE_CSS = `*{box-sizing:border-box}html,body{margin:0}body{font:15px ui-rounded,'SF Pro Rounded',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;color:var(--w-ink,#16182b);cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
 .dim{color:var(--w-dim,#667)}`;
   const CLOCK_PARTS_JS = `
@@ -4699,138 +4699,6 @@ i18nStart(async()=>{
     document.body.title=p.full;
   }
   if(window.gifos&&gifos.widget){ gifos.widget.onMinute(function(t){ now=t; draw(); }); gifos.widget.onChange(draw); document.body.onclick=function(){ gifos.widget.open(); }; } else draw();
-</script>`;
-
-  const CAL_SHARED_JS = `
-  var T=function(k,p){return window.gifos&&gifos.i18n?gifos.i18n.t(k,p):k;};
-  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
-  function tag(){ return (window.gifos&&gifos.locale&&gifos.locale().tag)||undefined; }
-  function fmt(d,o){ try{ return new Intl.DateTimeFormat(tag(),o).format(d); }catch(e){ return ''; } }
-  function pad(n){ return (n<10?'0':'')+n; }
-  function key(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
-  function fromKey(k){ var a=String(k).split('-'); return new Date(+a[0],(+a[1]||1)-1,+a[2]||1); }
-  // The first day of the week, by the person's region (Intl when the browser knows it; Monday otherwise, Sunday in the Americas and a few more).
-  function weekStart(){
-    try{ var L=new Intl.Locale(tag()), w=(L.getWeekInfo?L.getWeekInfo():L.weekInfo); if(w&&w.firstDay) return w.firstDay%7; }catch(e){}
-    var r=(/-([A-Z]{2})\\b/.exec(tag()||'')||[])[1]||''; return /^(US|CA|MX|BR|JP|IL|PH|AU|IN|KR|TW|HK|CO|PE|VE|AR)$/.test(r)?0:1;
-  }
-  function timeText(t){ if(!t) return T('allDay'); var a=t.split(':'), d=new Date(2000,0,1,+a[0],+a[1]); return fmt(d,{hour:'numeric',minute:'2-digit'}); }
-  function byWhen(a,b){ return a.d<b.d?-1:a.d>b.d?1:(a.t||'')<(b.t||'')?-1:(a.t||'')>(b.t||'')?1:0; }
-  // The month as weeks of day cells: {k,n,out,today}
-  function monthCells(y,m,todayKey){
-    var first=new Date(y,m,1), lead=(first.getDay()-weekStart()+7)%7, out=[];
-    for(var i=0;i<42;i++){ var d=new Date(y,m,1-lead+i); if(i>=35&&d.getMonth()!==m&&i%7===0) break; out.push({k:key(d),n:d.getDate(),out:d.getMonth()!==m,today:key(d)===todayKey}); }
-    return out;
-  }
-  function weekdayRow(){ var s=weekStart(), h=''; for(var i=0;i<7;i++){ h+='<i>'+esc(fmt(new Date(2023,0,1+s+i),{weekday:'narrow'}))+'</i>'; } return h; }`;
-  const CALENDAR_HTML = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<style>
-  *{box-sizing:border-box} html,body{height:100%;margin:0}
-  body{background:#0a0a0f;color:#e0e0f0;font:15px system-ui,sans-serif;display:flex;flex-direction:column}
-  header{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#14141f;border-bottom:1px solid #2a2a3f;flex:none}
-  header h1{flex:1;margin:0;font-size:1.05rem;text-transform:capitalize}
-  button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid #2a2a3f;background:#1c1c2b;color:#e0e0f0;padding:7px 11px}
-  button.go{background:#7b5cff;border-color:#7b5cff;color:#fff;font-weight:700}
-  #wrap{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:12px;padding:12px;max-width:880px;width:100%;margin:0 auto}
-  @media (min-width:760px){ #wrap{flex-direction:row;align-items:flex-start} #cal{flex:1.2} #side{flex:1} }
-  #wd,#grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
-  #wd i{font-style:normal;text-align:center;font-size:.72rem;color:#8888aa;padding:2px 0}
-  #grid button{position:relative;aspect-ratio:1;padding:0;border-color:transparent;background:#14141f;font-variant-numeric:tabular-nums;max-height:64px}
-  #grid button.out{opacity:.35} #grid button.today{border-color:#7b5cff;font-weight:800} #grid button.sel{background:#7b5cff;color:#fff}
-  #grid button.has::after{content:'';position:absolute;left:50%;bottom:14%;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:#ff5caa}
-  #side h2{margin:0 0 8px;font-size:1rem}
-  #list{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-direction:column;gap:6px}
-  #list li{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;background:#14141f;border:1px solid #2a2a3f}
-  #list .t{color:#8888aa;font-size:.82rem;min-width:4.2em;font-variant-numeric:tabular-nums} #list .n{flex:1;min-width:0;overflow-wrap:anywhere}
-  #list button{padding:3px 9px;font-size:.8rem} .none{color:#8888aa;font-size:.9rem;margin:0 0 10px}
-  form{display:flex;gap:6px;flex-wrap:wrap}
-  form input{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid #2a2a3f;background:#0a0a0f;color:#e0e0f0;min-width:0}
-  #title{flex:1 1 9rem} #time{flex:0 0 auto;color-scheme:dark}
-  #note{color:#8888aa;font-size:.78rem;margin:10px 0 0}
-</style>
-<header><button id="prev" data-i18n-aria="prev">‹</button><h1 id="mon"></h1><button id="today" data-i18n="today">Today</button><button id="next" data-i18n-aria="next">›</button></header>
-<div id="wrap"><div id="cal"><div id="wd"></div><div id="grid"></div></div>
-<div id="side"><h2 id="day"></h2><ul id="list"></ul>
-<form id="f" autocomplete="off"><input id="title" maxlength="80" data-i18n-ph="newEvent" placeholder="New event"><input id="time" type="time" data-i18n-aria="time"><button class="go" data-i18n="add">Add</button></form>
-<p id="note" data-i18n="private">Your calendar is kept on this device. Nothing is sent anywhere.</p></div></div>
-<script>${CAL_SHARED_JS}
-  var db=window.gifos?gifos.db('events'):null, events=[], view=new Date(), sel=key(new Date());
-  function applyI18n(){
-    [].forEach.call(document.querySelectorAll('[data-i18n]'),function(e){e.textContent=T(e.getAttribute('data-i18n'));});
-    [['ph','placeholder'],['aria','aria-label']].forEach(function(a){ [].forEach.call(document.querySelectorAll('[data-i18n-'+a[0]+']'),function(e){e.setAttribute(a[1],T(e.getAttribute('data-i18n-'+a[0])));}); });
-  }
-  function render(){
-    var y=view.getFullYear(), m=view.getMonth(), tk=key(new Date()), has={};
-    events.forEach(function(e){ has[e.d]=1; });
-    document.getElementById('mon').textContent=fmt(new Date(y,m,1),{month:'long',year:'numeric'});
-    document.getElementById('wd').innerHTML=weekdayRow();
-    document.getElementById('grid').innerHTML=monthCells(y,m,tk).map(function(c){ return '<button data-k="'+c.k+'" class="'+(c.out?'out ':'')+(c.today?'today ':'')+(c.k===sel?'sel ':'')+(has[c.k]?'has':'')+'">'+c.n+'</button>'; }).join('');
-    document.getElementById('day').textContent=fmt(fromKey(sel),{weekday:'long',month:'long',day:'numeric'});
-    var list=events.filter(function(e){ return e.d===sel; }).sort(byWhen);
-    document.getElementById('list').innerHTML=list.length?list.map(function(e){ return '<li><span class="t">'+esc(timeText(e.t))+'</span><span class="n">'+esc(e.title)+'</span><button data-del="'+esc(e.id)+'">'+esc(T('remove'))+'</button></li>'; }).join(''):'';
-    var none=document.getElementById('none'); if(!list.length&&!none){ none=document.createElement('p'); none.id='none'; none.className='none'; document.getElementById('list').before(none); }
-    if(none){ none.textContent=T('nothing'); none.style.display=list.length?'none':''; }
-  }
-  function go(n){ view=new Date(view.getFullYear(),view.getMonth()+n,1); render(); }
-  document.getElementById('prev').onclick=function(){ go(-1); };
-  document.getElementById('next').onclick=function(){ go(1); };
-  document.getElementById('today').onclick=function(){ view=new Date(); sel=key(view); render(); };
-  document.getElementById('grid').onclick=function(e){ var b=e.target.closest&&e.target.closest('button[data-k]'); if(!b) return; sel=b.getAttribute('data-k'); var d=fromKey(sel); if(d.getMonth()!==view.getMonth()) view=new Date(d.getFullYear(),d.getMonth(),1); render(); };
-  document.getElementById('list').onclick=function(e){ var b=e.target.closest&&e.target.closest('button[data-del]'); if(b&&db) db.delete(b.getAttribute('data-del')); };
-  document.getElementById('f').onsubmit=function(e){
-    e.preventDefault(); var ti=document.getElementById('title'), tm=document.getElementById('time'), name=ti.value.replace(/^\\s+|\\s+$/g,''); if(!name||!db) return;
-    db.put({d:sel,t:tm.value||'',title:name}).then(function(){ ti.value=''; tm.value=''; }, function(err){ document.getElementById('note').textContent=String(err&&err.message||err); });
-  };
-  function boot(){ applyI18n(); render(); if(db) db.subscribe(function(all){ events=(all||[]).filter(function(e){ return e&&e.d&&e.title; }); render(); });
-    if(window.gifos&&gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); render(); }); }
-  if(window.gifos&&gifos.i18n&&gifos.i18n.load) gifos.i18n.load().then(boot,boot); else boot();
-</script>`;
-  // Calendar's widgets: one file for both ("today": the date and what comes next; "month": the month at a glance).
-  const CALENDAR_WIDGET_HTML = `<!doctype html><meta charset="utf-8">
-<style>${WIDGET_BASE_CSS}
-  body{padding:2px}
-  .top{display:flex;align-items:center;gap:.7rem}
-  .num{font-size:2.6rem;font-weight:800;letter-spacing:-.04em;line-height:1;color:var(--w-accent,#5b5bf0);font-variant-numeric:tabular-nums}
-  .wd{font-weight:750;font-size:1.02rem;text-transform:capitalize} .mo{font-size:.8rem;text-transform:capitalize}
-  ul{list-style:none;margin:.6rem 0 0;padding:0;display:flex;flex-direction:column;gap:.3rem}
-  li{display:flex;gap:.55rem;align-items:baseline;font-size:.86rem;min-width:0}
-  li .t{flex:none;font-size:.74rem;font-variant-numeric:tabular-nums;color:var(--w-dim,#667)} li .n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
-  li.later .n{font-weight:500}
-  .none{margin:.55rem 0 0;font-size:.82rem}
-  [data-size="wide"] body{display:flex;gap:1.1rem;align-items:center} [data-size="wide"] ul,[data-size="wide"] .none{margin:0;flex:1;min-width:0}
-  [data-flavor="bold"] .num{font-size:3rem;font-weight:900} [data-flavor="bold"] .wd{font-weight:900;text-transform:uppercase;letter-spacing:.03em}
-  h2{margin:0 0 .45rem;font-size:.98rem;text-transform:capitalize;display:flex;justify-content:space-between;align-items:baseline}
-  h2 span{font-size:.74rem;font-weight:500}
-  .g{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;text-align:center}
-  .g i{font-style:normal;font-size:.62rem;color:var(--w-dim,#667);padding-bottom:.15rem}
-  .g b{position:relative;font-weight:500;font-size:.78rem;line-height:1.75rem;height:1.75rem;border-radius:50%;font-variant-numeric:tabular-nums}
-  .g b.out{opacity:.3} .g b.today{background:var(--w-accent,#5b5bf0);color:var(--w-on,#fff);font-weight:800}
-  .g b.has::after{content:'';position:absolute;left:50%;bottom:.12rem;width:.26rem;height:.26rem;margin-left:-.13rem;border-radius:50%;background:var(--w-accent2,#ff7ab8)}
-  [data-size="large"] .g b{line-height:2.1rem;height:2.1rem;font-size:.88rem}
-</style>
-<div id="w"></div>
-<script>${CAL_SHARED_JS}
-  var W=window.gifos&&gifos.widget, events=[], now=Date.now();
-  function upcoming(n){ var tk=key(new Date(now)); return events.filter(function(e){ return e.d>=tk; }).sort(byWhen).slice(0,n); }
-  function rows(list,tk){ return list.map(function(e){ var later=e.d!==tk; return '<li class="'+(later?'later':'')+'"><span class="t">'+esc(later?fmt(fromKey(e.d),{month:'short',day:'numeric'}):timeText(e.t))+'</span><span class="n">'+esc(e.title)+'</span></li>'; }).join(''); }
-  function draw(){
-    var d=new Date(now), tk=key(d), el=document.getElementById('w'), size=W?W.size:'medium';
-    if(W&&W.id==='month'){
-      var has={}; events.forEach(function(e){ has[e.d]=1; });
-      el.innerHTML='<h2>'+esc(fmt(d,{month:'long'}))+'<span class="dim">'+esc(fmt(d,{weekday:'short',day:'numeric'}))+'</span></h2><div class="g">'+weekdayRow()+
-        monthCells(d.getFullYear(),d.getMonth(),tk).map(function(c){ return '<b class="'+(c.out?'out ':'')+(c.today?'today ':'')+(has[c.k]?'has':'')+'">'+c.n+'</b>'; }).join('')+'</div>';
-      return;
-    }
-    var list=upcoming(size==='small'?2:size==='wide'?3:4);
-    el.innerHTML='<div class="top"><span class="num">'+d.getDate()+'</span><span><div class="wd">'+esc(fmt(d,{weekday:'long'}))+'</div><div class="mo dim">'+esc(fmt(d,{month:'long',year:'numeric'}))+'</div></span></div>'+
-      (list.length?'<ul>'+rows(list,tk)+'</ul>':'<p class="none dim">'+esc(T('nothing'))+'</p>');
-    if(size==='wide') el.style.display='contents';
-  }
-  if(W){
-    W.onMinute(function(t){ now=t; draw(); }); W.onChange(draw);
-    gifos.db('events').subscribe(function(all){ events=(all||[]).filter(function(e){ return e&&e.d&&e.title; }); draw(); });
-    document.body.onclick=function(){ W.open(); };
-  } else draw();
 </script>`;
 
   function manifest(appId, name, accent, extra) {
@@ -6964,9 +6832,12 @@ Your own calendar, kept on this device. Nothing is sent anywhere.
 
 ## Use it
 
-- Tap a day, type what is happening, pick a time if it has one, and tap Add.
-- A dot marks a day that has something on it.
-- Remove takes an entry off.
+- Switch Month, Week, Day, or Agenda. Today jumps back to the current day. Swipe, or the arrows, move the period.
+- Tap + or an empty time to add something. Tap an event to see it, change it, or remove it.
+- A repeating event can change just this time, this and the ones after, or the whole series.
+- Add a meeting when you want a room link in the event. Guests come from the people you can invite.
+- Import a calendar file, or export one event or a whole calendar.
+- Hide a calendar, rename it, or give it a colour from Calendars.
 
 ## On the Home Screen
 
@@ -7852,20 +7723,29 @@ The Store itself does not keep a shopping cart in this icon.
                'index.html': themeHtml(STORE_FALLBACK_HTML, 'full') }),
     }];
     // Clock and Calendar: system apps whose widgets fill the looks of the Home Screen (js/home-view.js). They ride with
+    // Calendar is assembled from js/calendar (the page inlines the library). A failed read skips Calendar and still seeds the rest.
+    var calendarReady = Promise.resolve(null);
+    if (root.GIFOS_VERSION === 'edge' && root.GifOS && GifOS.calendarApp && typeof GifOS.calendarApp.files === 'function') {
+      calendarReady = Promise.resolve().then(function () { return GifOS.calendarApp.files(); }).then(function (docs) {
+        if (!docs || !docs['index.html'] || !docs['widget/index.html']) return null;
+        return {
+          name: 'Calendar.gif', appId: 'calendar', accent: [255, 92, 120],
+          files: withHelp('calendar', { 'manifest.json': manifest('calendar', 'Calendar', [255, 92, 120], { capabilities: { db: true, multiplayer: false, calendar: true },
+                   data: { events: PRIV, calendars: PRIV, invites: PRIV, calendar_settings: PRIV },
+                   widgets: [{ id: 'today', name: 'Today', entry: 'widget/index.html', sizes: ['medium', 'small', 'wide'] },
+                             { id: 'month', name: 'Month', entry: 'widget/index.html', sizes: ['medium', 'large'] }] }),
+                   'index.html': themeHtml(docs['index.html'], 'full'), 'widget/index.html': docs['widget/index.html'] }),
+        };
+      }).catch(function () { return null; });
+    }
     // the looks: seeded on the edge build only, until a release makes a look its default. They go in the Tools folder,
     // so the Home Screen's own default layout (and everything that counts or places root icons) is exactly a release's.
     if (root.GIFOS_VERSION === 'edge') groups.find((g) => g.name === 'Tools').apps.push({
+
       name: 'Clock.gif', appId: 'clock', accent: [91, 91, 240],
       files: withHelp('clock', { 'manifest.json': manifest('clock', 'Clock', [91, 91, 240], { capabilities: { multiplayer: false },
                widgets: [{ id: 'now', name: 'Clock', entry: 'widget/index.html', sizes: ['wide', 'medium', 'small'], bare: true }] }),
                'index.html': themeHtml(CLOCK_HTML, 'full'), 'widget/index.html': CLOCK_WIDGET_HTML }),
-    }, {
-      // Local first and private: events live in this app's own data on this device. No account, no server, no third party.
-      name: 'Calendar.gif', appId: 'calendar', accent: [255, 92, 120],
-      files: withHelp('calendar', { 'manifest.json': manifest('calendar', 'Calendar', [255, 92, 120], { capabilities: { db: true, multiplayer: false }, data: { events: PRIV },
-               widgets: [{ id: 'today', name: 'Today', entry: 'widget/index.html', sizes: ['medium', 'small', 'wide'] },
-                         { id: 'month', name: 'Month', entry: 'widget/index.html', sizes: ['medium', 'large'] }] }),
-               'index.html': themeHtml(CALENDAR_HTML, 'full'), 'widget/index.html': CALENDAR_WIDGET_HTML }),
     });
 
     const encGroup = (g) => Promise.all([
@@ -7876,7 +7756,14 @@ The Store itself does not keep a shopping cart in this icon.
     // phone (desktop.js uses them to move a saved launcher over). Not part of the catalog.
     const retired = opts && opts.retired ? (GifOS.irl ? GifOS.irl.retired : []) : [];
     return Promise.all([
-      Promise.all(groups.map(encGroup)),
+      Promise.all(groups.map(encGroup)).then(function (folders) {
+        // Calendar sits in the Tools folder beside Clock.
+        return calendarReady.then(function (cal) {
+          var tools = folders.find(function (f) { return f.name === 'Tools'; });
+          if (!cal || !tools || !want(cal)) return folders;
+          return enc(cal).then(function (e) { tools.apps.push(e); return folders; });
+        });
+      }),
       Promise.all(loose.filter(want).map(enc)),
       Promise.all(retired.map((g) => enc(app(g.name, g.appId, g.accent, g.html, irlExtra(g))).then((e) => Object.assign(e, { oldId: g.oldId })))),
     ]).then((r) => ({ folders: r[0], loose: r[1], retired: r[2] }));

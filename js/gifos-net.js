@@ -683,6 +683,14 @@
     const base = roomCode + '|' + (av || '') + cTag();
     return (pw ? stretchPw(roomCode, av, pw) : Promise.resolve('')).then((s) => aesKey('meet-seat', base + '|' + s + '|' + seatHex));
   }
+  // A member's word in a request it sends where no channel of the room reaches (a relayed pipe's ask): a keyed hash
+  // over the room, the asker's own id and a nonce, under the seat key. Only a holder of the seat key can make it and
+  // it speaks for that one id. 43 characters, as a link's other tokens.
+  function seatLinkMac(seatHex, roomCode, av, pid, nonce) {
+    if (!seatKeyOk(seatHex)) return Promise.resolve('');
+    const msg = roomCode + '|' + (av || '') + cTag() + '|' + String(pid) + '|' + String(nonce);
+    return dsHash('meet-seat-link-i', seatHex + '|' + msg).then((i) => dsHash('meet-seat-link', seatHex + '|' + i)).then((h) => h.slice(0, 43));
+  }
   function deriveMeet(roomCode, av, pw) {
     const base = roomCode + '|' + (av || '') + cTag();
     return Promise.all([dsHash('meet-sid', base), dsHash('meet-tok', base), deriveMeetKey(roomCode, av, pw || '')])
@@ -1151,7 +1159,7 @@
     steadySocket, relayTicket, solvePow, proxyFetch, BUSY_TEXT, RECONNECT_CAP_MS, RECONNECT_SLOW_CAP_MS, RECONNECT_HIDDEN_CAP_MS, RECONNECT_JITTER_MIN, RECONNECT_JITTER_MAX,
     FRAG_PART, FRAG_BUDGET, sendChunked, chunk, makeDefrag,
     shortCode, randHex, sha256hex, sha256hexOfBytes, keyId, keyVerifier,
-    deriveMeet, deriveMeetKey, meetPwProof, mintGenesisKey, mintSeatKey, seatKeyOk, seatKid, deriveSeatKey,
+    deriveMeet, deriveMeetKey, meetPwProof, mintGenesisKey, mintSeatKey, seatKeyOk, seatKid, deriveSeatKey, seatLinkMac,
     edKeysFromSeedHex, edSign, edVerify, edProven,
     seal, open, isSealed, makeChain,
     SCALE, topo,

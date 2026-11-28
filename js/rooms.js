@@ -45,6 +45,13 @@
   // Beside this page, in its own form: /rooms -> /meet, rooms.html -> meet.html (a snapshot's folder stays the same).
   const meetPath = () => { const p = root.location.pathname; return p.replace(/[^\/]*$/, '') + 'meet' + (/\.html$/.test(p) ? '.html' : ''); };
   const shareLink = (room, v) => root.location.origin + '/meet#' + L().hash({ room, v });
+  // Schedule is the edge build's Calendar. A release snapshot does not show it.
+  const canSchedule = () => !!(GifOS.calendarBridge && GifOS.calendarBridge.scheduleShown && GifOS.calendarBridge.scheduleShown());
+  function schedule(room, v, title) {
+    const B = GifOS.calendarBridge; if (!B) return;
+    B.setDraft({ title: title || room, link: shareLink(room, v), room, v, mode: v ? 'hosted' : 'open' });
+    B.openCalendar();
+  }
   // launch(room, v, how): how.priv = a private room (mic stays off until everyone there proved they belong; the meeting
   // page opens it), how.invite = the ring to leave for the meeting page (an old card contact's call naming a pair room).
   function launch(room, v, how) {
@@ -92,7 +99,8 @@
         '<p class="quiet">Open it and it stands by with your mic and camera off.</p>' +
         '<div class="acts"><button type="button" class="go" id="mine-open">Open</button>' +
         '<button type="button" id="mine-card">Invite someone</button>' +
-        '<button type="button" id="mine-copy">Copy link</button></div>';
+        '<button type="button" id="mine-copy">Copy link</button>' +
+        (canSchedule() ? '<button type="button" id="mine-sched">Schedule</button>' : '') + '</div>';
     } else {
       const own = M.hosted().filter((x) => !M.privFor(x.room, x.v));
       h += '<p class="quiet">Your personal room is your address, if you choose to share it. Contacts call you in your private rooms with them.</p>' +
@@ -156,7 +164,9 @@
       for (const x of m.hosted) {
         const k = pk(x), pw = !!lsGet('gifos_vpw_' + k);
         h += '<li class="row hosted" data-hk="' + esc(k) + '"><div class="main"><b>' + esc(x.room) + '</b><span class="quiet">' + (pw ? 'Password set' : 'No password') + '</span></div>' +
-          '<button type="button" data-hcopy="' + esc(k) + '">Copy link</button><button type="button" class="go" data-hopen="' + esc(k) + '">Open</button></li>';
+          '<button type="button" data-hcopy="' + esc(k) + '">Copy link</button>' +
+          (canSchedule() ? '<button type="button" data-hsched="' + esc(k) + '">Schedule</button>' : '') +
+          '<button type="button" class="go" data-hopen="' + esc(k) + '">Open</button></li>';
       }
       h += '</ul></section>';
     }
@@ -200,6 +210,7 @@
     const on = (id, f) => { const el = $(id); if (el) el.onclick = f; };
     on('mine-open', () => launch(m.mine.room, m.mine.v));
     on('mine-copy', (e) => copy(shareLink(m.mine.room, m.mine.v), e.currentTarget));
+    on('mine-sched', () => schedule(m.mine.room, m.mine.v, m.mine.room));
     on('mine-card', () => openCard(''));
     on('mine-make', openMake);
     on('mine-adopt', openAdopt);
@@ -216,6 +227,7 @@
     all('[data-back]', (b) => pick(b.getAttribute('data-back'), callOurs, callCard));
     all('[data-hopen]', (b) => { const { room, v } = byKey(b.getAttribute('data-hopen')); launch(room, v); });
     all('[data-hcopy]', (b) => { const { room, v } = byKey(b.getAttribute('data-hcopy')); copy(shareLink(room, v), b); });
+    all('[data-hsched]', (b) => { const { room, v } = byKey(b.getAttribute('data-hsched')); schedule(room, v, room); });
     all('[data-revoke]', (b) => { MR().revoke(b.getAttribute('data-revoke')); paint(); });
   }
 
@@ -290,9 +302,11 @@
     sheet(n + ' ✓',
       '<p class="quiet">Our private room: only you and ' + esc(n) + ' can use it, and it rings either of you. Call takes you there and rings ' + esc(n) + '’s devices.</p>' +
       '<div class="stack"><button type="button" class="go wide" id="p-call">Call</button>' +
-      (card ? '<button type="button" class="wide" id="p-visit">' + esc(n) + '’s personal room</button>' : '') + '</div>' +
+      (card ? '<button type="button" class="wide" id="p-visit">' + esc(n) + '’s personal room</button>' : '') +
+      (canSchedule() ? '<button type="button" class="wide" id="p-sched">Schedule</button>' : '') + '</div>' +
       '<button type="button" class="danger wide" id="p-remove">Remove ' + esc(n) + '…</button>', '');
     $('p-call').onclick = () => callOurs(k);
+    if ($('p-sched')) $('p-sched').onclick = () => schedule(room, v, n);
     if (card) $('p-visit').onclick = () => launch(card.room, card.v);
     $('p-remove').onclick = () => confirmSheet('Remove ' + n + '?',
       'Our private room is deleted from this device and stops ringing you: its key goes, the Doorbell stops taking ' + esc(n) + '’s rings, and the personal-room cards between you are dropped.',
@@ -313,8 +327,10 @@
   function openGroup(k) {
     const { room, v } = byKey(k), M = MR(), p = M.privFor(room, v); if (!p) return;
     const n = p.name || 'Our private room';
-    sheet(n, '<p class="quiet">Only its people can use it.</p><div class="stack"><button type="button" class="go wide" id="pv-open">Open</button></div><button type="button" class="danger wide" id="pv-remove">Remove this private room…</button>', '');
+    sheet(n, '<p class="quiet">Only its people can use it.</p><div class="stack"><button type="button" class="go wide" id="pv-open">Open</button>' +
+      (canSchedule() ? '<button type="button" class="wide" id="pv-sched">Schedule</button>' : '') + '</div><button type="button" class="danger wide" id="pv-remove">Remove this private room…</button>', '');
     $('pv-open').onclick = () => launch(room, v, { priv: true });
+    if ($('pv-sched')) $('pv-sched').onclick = () => schedule(room, v, n);
     $('pv-remove').onclick = () => confirmSheet('Remove ' + n + '?', 'This device forgets the room and its key: you can never open it again.', () => M.cutPrivate(room, v));
   }
   function openDelete() {

@@ -1,0 +1,17 @@
+{
+  "title": "Taschenrechner",
+  "tab.graph": "Graph",
+  "tab.list": "Liste",
+  "add": "+ Ausdruck",
+  "view.reset": "Ansicht zurücksetzen",
+  "row.show": "Anzeigen",
+  "row.hide": "Ausblenden",
+  "row.delete": "Zeile löschen",
+  "placeholder": "y = x^2  oder  2+2",
+  "slider.min": "Minimum des Reglers",
+  "slider.max": "Maximum des Reglers",
+  "slider.play": "Animieren",
+  "err.unexpected": "unerwartetes „{what}“",
+  "err.expected": "„{what}“ erwartet",
+  "err.end": "unerwartetes Ende"
+}
