@@ -31,14 +31,15 @@
  * their own (js/safeguard/video-worker.js), with the same rules: downloaded once, checked byte for byte, no network
  * from the worker. A frame goes through a chain: a small model looks at every sampled frame; only what it finds
  * suspect goes to the next, and a frame counts as explicit only when every model in the chain says so (this is what
- * keeps babies, breastfeeding and sport clear). A desktop that can run it adds a larger model every few seconds.
+ * keeps babies, breastfeeding and sport clear). The confirming model (Freepik EVA02) is chosen per device at run time:
+ * a desktop whose WebGPU passes a built-in self-test runs its fp32 build on the GPU, everyone else its int8 build on
+ * WebAssembly (see the tier block below).
  *
  *   GifOS.explicit.video.open(opts)    Promise of the chain: { frame(src) → Promise<{ hit, s:[scores], ms }> }
- *   GifOS.explicit.video.deep(opts)    Promise of the larger model on a capable desktop ({ frame(src) }), or null
  *   GifOS.explicit.video.watch(opts)   the blocker's loop: samples the pictures opts.sources() names, keeps one
  *                                      tracker per picture, and calls opts.onChange(id, tripped) on each trip and lift
  *   GifOS.explicit.video.RULE          the video rule's version
- *   GifOS.explicit.video.fuseScore(T,m,f,shift,e)  the keep/lift score of a held picture (FASTTRIP8; see watch)
+ *   GifOS.explicit.video.fuseScore(T,m,f,shift,fuse)  the keep/lift score of a held picture (FASTTRIP8, fitted per tier; see watch)
  */
 (function (root) {
   'use strict';
@@ -267,7 +268,7 @@
   // only goes on while each model in turn finds it over its line, and it counts as explicit only when the last one
   // does. The lines were chosen on the public evaluation set to refuse about 1 in 100 hard-benign pictures
   // (breastfeeding, babies, sport, medicine). A change of a line or a model is a new rule version.
-  const RULE = 'xv-2';
+  const RULE = 'xv-3';
   const mobileUa = () => {
     try {
       const n = root.navigator || {}, ua = String(n.userAgent || '');
@@ -355,6 +356,70 @@
     return out;
   }
 
+  // ---- the confirming model, chosen per device (FREEPIKSWAP, Nathan 11-28) ---------------------------------------
+  // Freepik EVA02 (MIT) confirms what the first model flags. A desktop whose browser has a WebGPU adapter that passes a built-in
+  // self-test runs its fp32 build on the GPU (c.gpu: the GPU runtime in a worker of its own); everyone else (phones, desktops
+  // without a good GPU, a failed self-test) runs the int8 build on WebAssembly, the chain's second stage. fp16, int8 and 4-bit
+  // builds give wrong or all-zero answers on some GPUs, so only an fp32 build that reproduces the reference answers is trusted.
+  // The self-test pictures are made up here from integer arithmetic (the same bytes on every device); c.gpu.selftest holds the
+  // class probabilities a reference machine gets for each. A GPU that fails, or is slower than gpu.maxMs a frame, is
+  // remembered (gpu.rememberMs, a week) so the 340 MB download is not repeated for it. Both limits are in the catalog, so a page without the timings table (gifos.tv's preload) judges the same.
+  const GPU_VERDICT = 'gifos-xv-gpu-v1';
+  function testFrame(size, k) {
+    const out = new Uint8ClampedArray(size * size * 4);
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        let h = (Math.imul(x >> 3, 374761393) + Math.imul(y >> 3, 668265263) + Math.imul(k + 1, 1013904223)) | 0;
+        h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; h >>>= 0;
+        let r = ((h & 255) >> 1) + Math.floor((x * 127) / size), g = (((h >>> 8) & 255) >> 1) + Math.floor((y * 127) / size), b = (((h >>> 16) & 255) >> 1) + Math.floor(((x + y) * 127) / (2 * size));
+        if (k % 3 === 1) { r = (r + 630) >> 2; g = (g + 450) >> 2; b = (b + 360) >> 2; }   // skin tinted
+        const o = (y * size + x) * 4;
+        out[o] = r; out[o + 1] = g; out[o + 2] = b; out[o + 3] = 255;
+      }
+    }
+    return out;
+  }
+  function verdictGet(key, keepMs) {
+    try { const v = JSON.parse(root.localStorage.getItem(GPU_VERDICT) || '{}')[key]; return v && Date.now() - v.at < keepMs ? v : null; } catch (e) { return null; }
+  }
+  function verdictSet(key, why) {
+    try { const o = JSON.parse(root.localStorage.getItem(GPU_VERDICT) || '{}'); o[key] = { at: Date.now(), why }; root.localStorage.setItem(GPU_VERDICT, JSON.stringify(o)); } catch (e) {}
+  }
+  // The GPU tier: { ok:true, m, w, ms } or { ok:false, why }. Throws only when a download fails (the device is not at fault).
+  async function openGpuTier(c, pin, cache, opts) {
+    const g = c.gpu;
+    if (!g || !c.gpuRuntime) return { ok: false, why: 'no gpu model' };
+    if (opts.mobile != null ? opts.mobile : mobileUa()) return { ok: false, why: 'phone' };
+    const gpu = root.navigator && root.navigator.gpu;
+    if (!gpu) return { ok: false, why: 'no webgpu' };
+    let a = null;
+    try { a = await gpu.requestAdapter(); } catch (e) {}
+    if (!a) return { ok: false, why: 'no adapter' };
+    let info = a.info || {};
+    try { if (!a.info && typeof a.requestAdapterInfo === 'function') info = await a.requestAdapterInfo(); } catch (e) {}
+    const key = [info.vendor, info.architecture, info.device, info.description, g.file.sha256.slice(0, 12)].join('|');
+    const known = verdictGet(key, g.rememberMs);
+    if (known) return { ok: false, why: 'remembered: ' + known.why };
+    const w = vworker();
+    const bad = (why) => { verdictSet(key, why); w.close(); return { ok: false, why }; };
+    try {
+      await w.runtime(await fetchRuntime(c.gpuRuntime, pin, cache), 'webgpu');
+      const bytes = await pinned(pin(g.file), cache);
+      try { await w.load(g.id, bytes, g); } catch (e) { return bad('load failed: ' + String((e && e.message) || e).slice(0, 80)); }
+      for (let i = 0; i < g.selftest.length; i++) {
+        const t = g.selftest[i];
+        let r;
+        try { r = await w.run(g.id, testFrame(g.size, t.k)); } catch (e) { return bad('self-test run failed: ' + String((e && e.message) || e).slice(0, 80)); }
+        const d = Math.max.apply(null, t.p.map((x, j) => Math.abs(x - (r.p[j] == null ? 9 : r.p[j]))));
+        if (!(d <= g.tol)) return bad('self-test ' + i + ' off by ' + (Math.round(d * 1e4) / 1e4));
+      }
+      const t = await w.run(g.id, testFrame(g.size, g.selftest[0].k));
+      const max = opts.gpuMaxMs || g.maxMs;   // from the catalog: a page without the timings table (gifos.tv's preload) judges the same
+      if (!(t.ms <= max)) return bad('slow: ' + t.ms + ' ms a frame');
+      return { ok: true, m: g, w, ms: t.ms };
+    } catch (e) { w.close(); throw e; }
+  }
+
   let chainP = null;
   function videoOpen(opts) {
     if (chainP) return chainP;
@@ -374,25 +439,48 @@
         const ready = (m) => m.ready || (m.ready = pinned(pin(m.file), cache).then((b) => w.load(m.id, b, m)).then((t) => { m.ms = t.ms; }, (e) => { m.ready = null; throw e; }));
         for (const m of stages) if (!m.lazy) await ready(m);
         meter.ready = true; meter.done = meter.total; note(0);
+        // THE TIER (decided once per page, on the first need or at the preload): the GPU model when this device passes its self-test,
+        // else the chain's second stage on WebAssembly.
+        let tierP = null;
+        const tier = () => {
+          if (!tierP) {
+            tierP = (async () => {
+              let g = { ok: false, why: '' };
+              try { g = await openGpuTier(c, pin, cache, opts); } catch (e) { g = { ok: false, why: 'gpu model not downloaded: ' + String((e && e.message) || e).slice(0, 80) }; }
+              if (g.ok) return { kind: 'gpu', m: g.m, w: g.w, ms: g.ms, why: '' };
+              await ready(stages[1]);
+              return { kind: 'wasm', m: stages[1], w, ms: stages[1].ms, why: g.why };
+            })();
+            tierP.catch(() => { tierP = null; });
+          }
+          return tierP;
+        };
+        // The confirming look on one still: { v, m } (m: the model's catalog entry, line and fit included).
+        const second = async (bmp) => {
+          const t = await tier();
+          const r = await t.w.run(t.m.id, vpixels(bmp, t.m.size));
+          return { v: posScore(r.p, t.m), m: t.m, tier: t.kind };
+        };
+        const release = (bmp, src) => { if (bmp !== src && bmp && bmp.close) try { bmp.close(); } catch (e) {} };
         return {
           rule: RULE, backend: 'wasm', stages,
-          // onFirst(v0): called the moment the first (fast) model has scored the frame, before the slower ones run, so a
+          // onFirst(v0): called the moment the first (fast) model has scored the frame, before the slower one runs, so a
           // suspect picture can be hidden at once (the asymmetric trip, FASTTRIP). first(src): the first model alone.
           frame(src, onFirst) {
             const t0 = performance.now();
             return snap(src).then(async (bmp) => {
               const s = [];
               try {
-                for (const m of stages) {
-                  await ready(m);
-                  const r = await w.run(m.id, vpixels(bmp, m.size));
-                  const v = posScore(r.p, m);
-                  s.push(Math.round(v * 1e4) / 1e4);
-                  if (s.length === 1 && onFirst) { try { onFirst(v, m); } catch (e) {} }
-                  if (v < m.line) return { hit: false, s, ms: Math.round(performance.now() - t0) };
-                }
-                return { hit: true, s, ms: Math.round(performance.now() - t0) };
-              } finally { if (bmp !== src && bmp && bmp.close) try { bmp.close(); } catch (e) {} }
+                const m0 = stages[0];
+                await ready(m0);
+                const v0 = posScore((await w.run(m0.id, vpixels(bmp, m0.size))).p, m0);
+                s.push(Math.round(v0 * 1e4) / 1e4);
+                if (onFirst) { try { onFirst(v0, m0); } catch (e) {} }
+                if (v0 < m0.line) return { hit: false, s, ms: Math.round(performance.now() - t0) };
+                const r = await second(bmp);
+                s.push(Math.round(r.v * 1e4) / 1e4);
+                return { hit: r.v >= r.m.line, s, ms: Math.round(performance.now() - t0) };
+              } finally { release(bmp, src); }
             });
           },
           first(src) {
@@ -402,77 +490,37 @@
                 await ready(m);
                 const v = posScore((await w.run(m.id, vpixels(bmp, m.size))).p, m);
                 return { v, suspect: v >= (m.suspect == null ? m.line : m.suspect), warm: v >= m.line, ms: Math.round(performance.now() - t0) };
-              } finally { if (bmp !== src && bmp && bmp.close) try { bmp.close(); } catch (e) {} }
+              } finally { release(bmp, src); }
             });
           },
-          // The confirming model alone (the second stage) on one picture: { v, hit, ms }.
+          // The confirming model alone on one picture: { v, line, hit, ms, fuse, tier }. fuse = the tier's keep/lift fit (a, b, c, g).
           confirm(src) {
-            const t0 = performance.now(), m = stages[1];
+            const t0 = performance.now();
             return snap(src).then(async (bmp) => {
               try {
-                await ready(m);
-                const v = posScore((await w.run(m.id, vpixels(bmp, m.size))).p, m);
-                return { v, line: m.confirm == null ? m.line : m.confirm, hit: v >= (m.confirm == null ? m.line : m.confirm), ms: Math.round(performance.now() - t0) };
-              } finally { if (bmp !== src && bmp && bmp.close) try { bmp.close(); } catch (e) {} }
+                const r = await second(bmp), line = r.m.confirm == null ? r.m.line : r.m.confirm;
+                return { v: r.v, line, hit: r.v >= line, ms: Math.round(performance.now() - t0), fuse: r.m.fuse, tier: r.tier };
+              } finally { release(bmp, src); }
             });
           },
-          // PRELOAD (FASTTRIP5): ready every stage now (the confirming model included) so the first confirm costs inference only.
-          // Bytes come from the Cache Storage copy (one download per device). Resolves { ms, err } and never throws.
+          // PRELOAD (FASTTRIP5): ready every model now (the tier decided, its confirming model included) so the first confirm costs
+          // inference only. Bytes come from the Cache Storage copy (one download per device). Resolves { ms, err, tier, why } and never throws.
           preload() {
             const t0 = performance.now();
-            return Promise.all(stages.map((m) => ready(m).then(() => null, (e) => String((e && e.message) || e)))).then((errs) => ({ ms: Math.round(performance.now() - t0), err: errs.filter(Boolean).join('; ') }));
+            return Promise.all(stages.filter((m) => !m.lazy).map((m) => ready(m)).concat([tier()])).then((r) => {
+              const t = r[r.length - 1];
+              return { ms: Math.round(performance.now() - t0), err: '', tier: t.kind, why: t.why, frameMs: t.ms };
+            }, (e) => ({ ms: Math.round(performance.now() - t0), err: String((e && e.message) || e) }));
           },
+          tier: () => tier().then((t) => ({ kind: t.kind, id: t.m.id, ms: t.ms, why: t.why })),
           suspectLine: stages[0].suspect == null ? stages[0].line : stages[0].suspect,
           warmLine: stages[0].line,
-          close() { w.close(); chainP = null; },
+          close() { w.close(); if (tierP) tierP.then((t) => { if (t.kind === 'gpu') t.w.close(); }, () => {}); chainP = null; },
         };
       } catch (e) { w.close(); throw e; }
     })();
     chainP.catch(() => { chainP = null; });
     return chainP;
-  }
-
-  // The larger model, on a desktop that can run it: WebGPU with 16-bit shaders, and a measured frame no slower than
-  // maxMs (one thread of WebAssembly takes about 6 s a frame for it: never fast enough). Anything else: null, and
-  // the chain alone does the work. Tried once per page.
-  let deepP = null;
-  function videoDeep(opts) {
-    if (deepP) return deepP;
-    opts = opts || {};
-    deepP = (async () => {
-      if (opts.mobile != null ? opts.mobile : mobileUa()) return null;
-      const gpu = root.navigator && root.navigator.gpu;
-      if (!gpu || unsupported()) return null;
-      const c = await videoCatalog(opts.catalog);
-      const d = c.deep;
-      if (!d || !c.gpuRuntime) return null;
-      let a = null;
-      try { a = await gpu.requestAdapter(); } catch (e) {}
-      if (!a) return null;
-      if ((d.needs || []).indexOf('shader-f16') >= 0 && !(a.features && a.features.has('shader-f16'))) return null;
-      const cache = await openCache(), pin = pinsFrom(c, opts), w = vworker();
-      try {
-        await w.runtime(await fetchRuntime(c.gpuRuntime, pin, cache), 'webgpu');
-        await w.load(d.id, await pinned(pin(d.file), cache), d);
-        const z = () => new Uint8ClampedArray(d.size * d.size * 4);
-        await w.run(d.id, z());
-        const t = await w.run(d.id, z());
-        const max = opts.deepMaxMs || (root.GifOS.timings || {}).XV_DEEP_MAX_MS;
-        if (!(t.ms <= max)) { w.close(); return null; }
-        return {
-          id: d.id, ms: t.ms,
-          frame(src) {
-            const t0 = performance.now();
-            return snap(src).then((bmp) => w.run(d.id, vpixels(bmp, d.size)).then((r) => {
-              const v = posScore(r.p, d);
-              return { hit: v >= d.line, s: [Math.round(v * 1e4) / 1e4], ms: Math.round(performance.now() - t0) };
-            }).finally(() => { if (bmp !== src && bmp && bmp.close) try { bmp.close(); } catch (e) {} }));
-          },
-          close() { w.close(); },
-        };
-      } catch (e) { w.close(); return null; }
-    })().catch(() => null);
-    return deepP;
   }
 
   // ---- the blocker's loop ---------------------------------------------------------------------------
@@ -481,15 +529,14 @@
   // The page samples ONE frame at a time across all of them, oldest look first, a picture with a fresh hit first (its
   // second look comes within the burst time, so a trip takes seconds). The gap after a frame keeps the check's share
   // of one processor at the duty limit (lower on phones, to keep them cool): a slow device looks less often, never
-  // stops looking. A desktop that can run the larger model looks with it too, on its own slower clock; its hits feed
-  // the same tracker. Nothing leaves the page: no frame, no score, no trip.
+  // stops looking. Nothing leaves the page: no frame, no score, no trip.
   // The keep/lift score of a held picture: m = first-model score, f = confirming-model score, shift = the scene's offset (<= 0),
-  // e = the optional third model's score (null = off; XV_FUSE_FREEPIK_D is 0 until a fit over enough benign frames exists).
-  function fuseScore(T, m, f, shift, e) {
+  // fuse = the confirming tier's fit { a, b, c, g } from video.json: s = a*logit(m) + b*g(f) + c + shift, g = log10(f+eps) ('log')
+  // or logit(f) ('logit'), whichever suits that model's score scale (FREEPIKSWAP: fitted per tier on real confirming scores).
+  function fuseScore(T, m, f, shift, fuse) {
     const p = Math.min(0.999, Math.max(0.001, m));
-    let s = T.XV_FUSE_A * Math.log(p / (1 - p)) + T.XV_FUSE_B * Math.log10(f + T.XV_FUSE_F_EPS) + T.XV_FUSE_C + shift;
-    if (e != null && T.XV_FUSE_FREEPIK_D) s += T.XV_FUSE_FREEPIK_D * Math.log10(e + T.XV_FUSE_F_EPS);
-    return s;
+    const g = fuse.g === 'logit' ? Math.log(Math.min(1 - 1e-4, Math.max(1e-4, f)) / (1 - Math.min(1 - 1e-4, Math.max(1e-4, f)))) : Math.log10(f + T.XV_FUSE_F_EPS);
+    return fuse.a * Math.log(p / (1 - p)) + fuse.b * g + fuse.c + shift;
   }
   function watch(opts) {
     const T = Object.assign({}, (root.GifOS && root.GifOS.timings) || {}, opts.timings || {});
@@ -497,12 +544,11 @@
     const duty = (mobile ? T.XV_DUTY_PHONE_PCT : T.XV_DUTY_DESK_PCT) / 100;
     const fduty = (mobile ? T.XV_FIRST_DUTY_PHONE_PCT : T.XV_FIRST_DUTY_DESK_PCT) / 100;
     const open = opts.engine ? () => Promise.resolve(opts.engine) : () => { urgent = true; return videoOpen(opts); };
-    const openDeep = opts.deep !== undefined ? () => Promise.resolve(opts.deep) : () => videoDeep(opts);
     const log = typeof opts.log === 'function' ? opts.log : () => {};
     const gate = opts.gate !== false;   // a picture new to this page is held back until its first look passes (FASTTRIP 4)
     const recs = new Map();   // id -> per-picture record (see rec)
     const hidden = new Map(); // track -> video element of our own (a track with no element on the page)
-    let engAt = 0, stopped = false, timer = null, deepTimer = null, senseTimer = null, eng = null, deep, deepWhy = '', avg = 0, avgF = 0, gap = 0, frames = 0, err = '', deepFrames = 0, fullReadyAt = 0, busy = false, bursts = 0;
+    let tierNow = '', engAt = 0, stopped = false, timer = null, senseTimer = null, eng = null, avg = 0, avgF = 0, gap = 0, frames = 0, err = '', fullReadyAt = 0, busy = false, bursts = 0;
     const now = () => Date.now();
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     // r.tripped: the chain confirmed (two hits of three frames). r.sus: ONE frame passed the first model's suspect line:
@@ -511,7 +557,7 @@
     // 'checking' for pend alone | 'unsafe').
     const rec = (id) => {
       let r = recs.get(id);
-      if (!r) recs.set(id, (r = { t: tracker(), td: tracker(), tripped: false, sus: false, hotUntil: 0, confirm: false, shift: 0, shiftUntil: 0, shiftRef: 0, S: null, m0: 0, e: null, eAt: 0, confirmAt: 0, lifts: [], looksHi: [], lastLook: 0, strong: false, peak: 0, need: 1, holdUntil: 0, pend: false, pendAt: 0, kind: '', susClean: 0, changed: false, chgAt: 0, nextChg: 0, warm: false, prev: null, at: 0, n: 0, hits: 0, s: null, fresh: true }));
+      if (!r) recs.set(id, (r = { t: tracker(), tripped: false, sus: false, hotUntil: 0, confirm: false, shift: 0, shiftUntil: 0, shiftRef: 0, S: null, m0: 0, confirmAt: 0, lifts: [], looksHi: [], lastLook: 0, strong: false, peak: 0, need: 1, holdUntil: 0, pend: false, pendAt: 0, kind: '', susClean: 0, changed: false, chgAt: 0, nextChg: 0, warm: false, prev: null, at: 0, n: 0, hits: 0, s: null, fresh: true }));
       return r;
     };
     const ready = (el) => !!el && ((el.videoWidth > 0 && el.readyState >= 2) || (!('videoWidth' in el) && el.width > 0));
@@ -597,11 +643,10 @@
     function feed(id, r, res, lane) {
       r.n++; r.s = res.s;
       if (res.hit) r.hits++;
-      const o = (lane === 'deep' ? r.td : r.t).feed(res.hit ? 1 : 0);
+      const o = r.t.feed(res.hit ? 1 : 0);
       if (res.hit || o.changed) log('xv ' + lane + ' ' + String(id).slice(0, 8) + ' ' + (res.hit ? 'hit' : 'clean') + ' s=' + JSON.stringify(res.s) + ' ' + res.ms + 'ms');
-      r.tripped = r.t.state().tripped || r.td.state().tripped;
-      if (lane === 'deep') { r.e = res.s[0]; r.eAt = now(); }
-      if (lane !== 'deep' && eng) {
+      r.tripped = r.t.state().tripped;
+      if (eng) {
         r.m0 = res.s[0];
         const sl = eng.suspectLine == null ? 1 : eng.suspectLine;
         r.warm = res.s.length > 1 || res.s[0] >= (eng.warmLine == null ? 0.05 : eng.warmLine);
@@ -687,7 +732,7 @@
       // THE KEEP/LIFT SCORE (Nathan 2026-11-28): s = A*logit(m) + B*log10(f+eps) + C + the scene's offset (+ the optional third model), smoothed
       // S = LAMBDA*S + (1-LAMBDA)*s over this picture's confirming looks. The blur stays while S >= 0 and lifts when S < 0. A very low f pulls s
       // down: clean means clear, no special case. The confirming model's own hit/clean flag is not read: its score is.
-      const s = fuseScore(T, r.m0, res.v, r.shift, T.XV_FUSE_FREEPIK_D && r.e != null && now() - r.eAt < T.XV_HOLD_MAX_MS ? r.e : null);
+      const s = fuseScore(T, r.m0, res.v, r.shift, res.fuse);
       r.S = T.XV_FUSE_LAMBDA * (r.S == null ? T.XV_FUSE_S0 : r.S) + (1 - T.XV_FUSE_LAMBDA) * s;
       log('xv confirm ' + String(src.id).slice(0, 8) + ' f=' + Math.round(res.v * 1e4) / 1e4 + ' m=' + Math.round(r.m0 * 1e3) / 1e3 + ' s=' + Math.round(s * 100) / 100 + ' S=' + Math.round(r.S * 100) / 100 + ' ' + res.ms + 'ms');
       const ln = res.line > 0 ? res.line : 0.05, c = Math.min(1, Math.max(0, Math.log(ln / Math.max(1e-9, res.v)) / Math.log(ln / T.XV_CONFIRM_SURE)));
@@ -709,7 +754,7 @@
     // stays suspect cannot hold every look); (2) a picture that changed (a change burst, which never goes ahead of the above:
     // scene cuts in film must not spend the looks an explicit picture needs); (3) the one looked at longest ago. A warm picture
     // (past the first model's line: its looks reach the slow models) waits for the full lane's duty budget.
-    function pick(a, lane) {
+    function pick(a) {
       const t = now();
       let best = null, bk = Infinity, bc = Infinity;
       const cb = -1;
@@ -718,7 +763,6 @@
         const el = elOf(src);
         if (!ready(el)) continue;
         const r = rec(src.id);
-        if (lane === 'deep') { const k = r.deepAt || 0; if (k < bk) { bk = k; best = { src, el, r, job: 'frame' }; } continue; }
         if (r.confirm && r.sus && !r.tripped && now() >= r.confirmAt) { if (!(cb < bc || (cb === bc && r.at < bk))) continue; bc = cb; bk = r.at; best = { src, el, r, job: 'confirm' }; continue; }
         const hot = r.sus || r.tripped || r.hotUntil > t;
         if (r.warm && !r.sus && t < fullReadyAt) continue;
@@ -739,8 +783,7 @@
         const a = list();
         if (a.length) {
           if (!eng) { eng = await open(); err = ''; engAt = now(); }
-          if (deep === undefined) { deep = null; openDeep().then((d) => { deep = d; deepWhy = d ? 'on ' + d.ms + 'ms' : 'off'; if (d) log('xv deep on (' + d.id + ', ' + d.ms + ' ms a frame)'); if (d && !stopped) deepTick(); }, () => { deepWhy = 'off'; }); }
-          const p = pick(a, 'chain');
+          const p = pick(a);
           if (p && p.job === 'confirm') await confirmJob(p.src, p.el, p.r);
           else if (p && p.job === 'burst') await burstJob(p.src, p.el, p.r);
           else if (p) {
@@ -772,15 +815,6 @@
       gap = wait;
       if (!stopped) timer = setTimeout(tick, wait);
     }
-    async function deepTick() {
-      deepTimer = null;
-      if (stopped || !deep) return;
-      try {
-        const p = pick(list(), 'deep');
-        if (p) { p.r.deepAt = now(); const res = await deep.frame(p.el); if (stopped) return; deepFrames++; feed(p.src.id, p.r, res, 'deep'); }
-      } catch (e) { log('xv deep error ' + String((e && e.message) || e).slice(0, 160)); }
-      if (!stopped) deepTimer = setTimeout(deepTick, T.XV_DEEP_GAP_MS);
-    }
     // poke(): something changed (a picture started being shown clear): look now rather than at the end of the gap.
     function poke() { if (stopped || busy || !timer || !(gap > T.XV_FIRST_GAP_MIN_MS)) return; clearTimeout(timer); timer = setTimeout(tick); }
     // PRELOAD: the blocker is on for this room (the page starts a watch only then), so load both models in idle time, before
@@ -794,7 +828,8 @@
           const e = await open();
           if (stopped || typeof e.preload !== 'function') return;
           const r = await e.preload();
-          log('xv preload ' + (r.err ? 'error ' + r.err.slice(0, 100) : 'ready') + ' ' + Math.round(performance.now() - t0) + 'ms');
+          if (r.tier) tierNow = r.tier + (r.frameMs ? ' ' + r.frameMs + 'ms' : '') + (r.why ? ' (' + r.why + ')' : '');
+          log('xv preload ' + (r.err ? 'error ' + r.err.slice(0, 100) : 'ready, confirming model on ' + tierNow) + ' ' + Math.round(performance.now() - t0) + 'ms');
         } catch (e) { log('xv preload skipped ' + String((e && e.message) || e).slice(0, 100)); }
       });
     }
@@ -804,11 +839,10 @@
       poke,
       tripped: (id) => { const r = recs.get(id); return !!(r && r.kind); },
       state() { const o = {}; for (const [id, r] of recs) o[id] = { tripped: r.tripped, sus: r.sus, kind: r.kind, n: r.n, hits: r.hits, s: r.s, run: r.t.state().run }; return o; },
-      stats() { return { frames, bursts, deepFrames, avgMs: Math.round(avg), avgFirstMs: Math.round(avgF), gapMs: Math.round(gap), duty, fduty, mobile, deep: deepWhy || (deep === undefined ? 'not tried' : 'trying'), err, rule: RULE }; },
+      stats() { return { frames, bursts, avgMs: Math.round(avg), avgFirstMs: Math.round(avgF), gapMs: Math.round(gap), duty, fduty, mobile, tier: tierNow, err, rule: RULE }; },
       stop() {
         stopped = true;
         if (timer) clearTimeout(timer);
-        if (deepTimer) clearTimeout(deepTimer);
         if (senseTimer) clearTimeout(senseTimer);
         for (const [id, r] of recs) if (r.kind) tell(id, '', 'stopped');
         recs.clear();
@@ -928,7 +962,7 @@
 
   GifOS.explicit = { guard, MODEL, VERSION, STILL_LINE, VIDEO_LINE, unsupported, catalog, open, classify, checkStill, tracker, blockOn, _score: score,
     video: {
-      RULE, fuseScore, catalog: videoCatalog, open: videoOpen, deep: videoDeep, watch, mobile: mobileUa,
+      RULE, fuseScore, testFrame, catalog: videoCatalog, open: videoOpen, watch, mobile: mobileUa,
       // Download progress of what the first check needs: { pct (0-100, or null until the catalog is known), ready }.
       progress: () => ({ pct: meter.ready ? 100 : meter.total ? Math.min(99, Math.floor((100 * meter.done) / meter.total)) : null, ready: meter.ready }),
       onProgress: (f) => { meter.fns.add(f); return () => meter.fns.delete(f); },
