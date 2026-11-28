@@ -2,6 +2,17 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.74",
+      "date": "2026-11-28",
+      "headline": "Your contacts follow you across your devices",
+      "features": [
+        "Me & My Contacts can sync across your own devices: turn on Sync across my devices, copy your GIF to the other device once, and contacts you add or remove show up on both."
+      ],
+      "fixes": [
+        "Video safety blurs fewer clean pictures: a second check that says a picture is clean now lifts the blur at once, and that picture is held to a higher bar for a short while."
+      ]
+    },
+    {
       "version": "0.9.28.73",
       "date": "2026-11-28",
       "headline": "Video safety is ready sooner",
