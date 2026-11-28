@@ -4111,3 +4111,6 @@ html[data-compact] .ag-in-t, html[data-compact] .ag-in-min { font-size: var(--gi
 @media (max-width: 360px) and (min-width: 351px) {
   html body .bar { gap: 2px; padding: 0 2px; }
 }
+
+/* PINCHZOOM: the picture takes the pinch (the page itself never zooms there); one finger still scrolls */
+.tile:not(.me) video, #stagefeed > .rowtile > video, .ct-pane video { touch-action: pan-x pan-y; }

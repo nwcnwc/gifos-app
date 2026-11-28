@@ -1590,7 +1590,141 @@
     return { orient: orient };
   }
 
+  // ---- PINCHZOOM (see the block comment below) ----
+  let D = null;   // the page's hooks: { cropOf(key), setCrop(key, crop|null), applySquare(host), closeWin() }
+    // PINCHZOOM: pinch, two-finger pan and double-tap on any video (a person, the Stage, a screen share) are a shortcut for
+    // the Open window's crop. One crop per tile (vcrops[key] = { x, y, s }), one model (MZ.normCropA), local only:
+    // nothing is sent or asked. A square comfy row tile keeps its absolute-box render (applyViewerCrop); every
+    // other video is drawn with the CSS translate/scale properties (they stack with the blur's own transform).
+    // (functions, not consts: layout can reach pzApply before this step has run)
+    function pzMin() { return 0.2; }   // 5x
+    function pzSel() { return '.tile:not(.me), #stagefeed > .rowtile, .ct-pane'; }
+    function pzHostOf(v) {
+      if (!v || !v.closest || v.closest('#tilewin, #fsview, .fsthumb') || v.id === 'pipcard') return null;
+      const h = v.closest(pzSel());
+      return h && h.querySelector(':scope > video') === v ? h : null;
+    }
+    function pzKey(h) {
+      if (!h || !h.dataset) return '';
+      if (h.dataset.pzkey) return h.dataset.pzkey;
+      if (h.classList.contains('ct-pane')) return 'ct:' + (h.dataset.key || '');
+      if (h.classList.contains('rowtile')) return 'row:' + (h.dataset.row || '');
+      if (h.dataset.stageview) return 'sv:' + h.dataset.stageview;
+      return '';
+    }
+    function pzSquare(h) { return h.dataset.tier === 'row' && Math.abs(h.clientWidth - h.clientHeight) < 2; }   // a square comfy tile (a row tile in the Stage view is not one)
+    // The unzoomed geometry of the video's visible box, in viewport px.
+    function pzGeom(h, v) {
+      const MZ = GifOS.meetZones;
+      const vw = v.videoWidth, vh = v.videoHeight;
+      if (!MZ || !(vw > 0 && vh > 0)) return null;
+      const sc = v.style.scale, tr = v.style.translate;
+      v.style.scale = ''; v.style.translate = '';
+      let r, W, H;
+      if (pzSquare(h)) { r = h.getBoundingClientRect(); W = H = Math.min(r.width, r.height) || r.width; }
+      else { r = v.getBoundingClientRect(); W = v.offsetWidth; H = v.offsetHeight; }
+      v.style.scale = sc; v.style.translate = tr;
+      if (!(W > 0 && H > 0)) return null;
+      let Vw = W, Vh = H;
+      if (!pzSquare(h) && getComputedStyle(v).objectFit !== 'cover') { const k = Math.min(W / vw, H / vh); Vw = vw * k; Vh = vh * k; }
+      const a = Vw / Vh, b = MZ.baseWin(vw, vh, a);
+      return { vw: vw, vh: vh, a: a, bw: b.w, bh: b.h, Vw: Vw, Vh: Vh, cx: r.left + r.width / 2, cy: r.top + r.height / 2, k0: Vw / b.w };
+    }
+    function pzApply(h) {
+      const v = h && h.querySelector(':scope > video'); if (!v || pzSquare(h)) return;
+      const MZ = GifOS.meetZones, key = pzKey(h), c = key && D.cropOf(key);
+      if (!v._pzRz) { v._pzRz = true; const re = () => { try { pzApply(h); } catch (e) {} }; v.addEventListener('resize', re); v.addEventListener('loadedmetadata', re); }
+      if (!MZ || !c || MZ.isDefault(c)) {
+        if (h.dataset.pz) { delete h.dataset.pz; v.style.scale = ''; v.style.translate = ''; h.style.overflow = ''; }
+        return;
+      }
+      const g = pzGeom(h, v); if (!g) return;
+      const n = MZ.normCropA(c, g.vw, g.vh, g.a, pzMin()), z = 1 / n.s;
+      v.style.translate = (-z * (n.x - 0.5) * g.vw * g.k0) + 'px ' + (-z * (n.y - 0.5) * g.vh * g.k0) + 'px';
+      v.style.scale = String(z);
+      h.dataset.pz = '1'; h.style.overflow = 'hidden';
+    }
+    function pzSet(h, c) {
+      const MZ = GifOS.meetZones, key = pzKey(h); if (!key) return;
+      D.setCrop(key, (!c || MZ.isDefault(c)) ? null : { x: c.x, y: c.y, s: c.s });
+      if (pzSquare(h)) D.applySquare(h); else pzApply(h);
+    }
+    // One step of the engine: the picture point that was under p0 stays under p at the new window size.
+    function pzStep(g, c0, p0, p, ratio) {
+      const MZ = GifOS.meetZones;
+      const n0 = MZ.normCropA(c0, g.vw, g.vh, g.a, pzMin());
+      const fx = n0.x + (p0.x - g.cx) * n0.s * g.bw / (g.Vw * g.vw), fy = n0.y + (p0.y - g.cy) * n0.s * g.bh / (g.Vh * g.vh);
+      const s = Math.min(1, Math.max(pzMin(), n0.s * ratio));
+      return MZ.normCropA({ x: fx - (p.x - g.cx) * s * g.bw / (g.Vw * g.vw), y: fy - (p.y - g.cy) * s * g.bh / (g.Vh * g.vh), s: s }, g.vw, g.vh, g.a, pzMin());
+    }
+    function pzNot() { return 'button, a, input, select, textarea, label, .bar, #appbar, .fitbtn, .topchip, .tile-open, #tilewin, #tilewin-veil, #chatpanel, #viewpick, .ct-bar, .ct-exit, #mr-bar'; }
+    function pzHostAt(x, y) {
+      let els = []; try { els = document.elementsFromPoint(x, y); } catch (e) {}
+      // the top thing under the finger must be a picture's own tile (a dialog, the bar or a sheet over it takes the touch)
+      if (!els.length || !els[0].closest || !els[0].closest(pzSel())) return null;
+      for (const el of els) {
+        if (el.closest && el.closest(pzNot())) return null;
+        if (el.tagName === 'VIDEO') { const h = pzHostOf(el); if (h) return h; }
+      }
+      return null;
+    }
+    function pzCropNow(h) { return Object.assign({ x: 0.5, y: 0.5, s: 1 }, D.cropOf(pzKey(h)) || {}); }
+    function pzInstall() {
+      if (root.__pzOn) return; root.__pzOn = true;
+      let g = null, tap = null, quiet = 0;
+      const mid = (t) => ({ x: (t[0].clientX + t[1].clientX) / 2, y: (t[0].clientY + t[1].clientY) / 2 });
+      const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY) || 1;
+      document.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 2) { if (e.touches.length > 2) g = null; return; }
+        const a = e.touches[0], b = e.touches[1];
+        const h = pzHostAt((a.clientX + b.clientX) / 2, (a.clientY + b.clientY) / 2);
+        if (!h || pzHostAt(a.clientX, a.clientY) !== h || pzHostAt(b.clientX, b.clientY) !== h || !pzKey(h)) return;
+        const geo = pzGeom(h, h.querySelector(':scope > video')); if (!geo) return;
+        g = { h: h, geo: geo, c0: pzCropNow(h), p0: mid(e.touches), d0: dist(e.touches) };
+        if (e.cancelable) e.preventDefault();
+      }, { passive: false, capture: true });
+      document.addEventListener('touchmove', (e) => {
+        if (!g || e.touches.length !== 2) return;
+        if (e.cancelable) e.preventDefault();
+        pzSet(g.h, pzStep(g.geo, g.c0, g.p0, mid(e.touches), g.d0 / dist(e.touches)));
+      }, { passive: false, capture: true });
+      document.addEventListener('touchend', (e) => {
+        if (g && e.touches.length < 2) { g = null; quiet = Date.now() + 450; if (e.cancelable) e.preventDefault(); tap = null; return; }
+        // double-tap on a zoomed picture puts it back (a first tap is only a tap)
+        if (e.touches.length || e.changedTouches.length !== 1) { tap = null; return; }
+        const t = e.changedTouches[0], now = Date.now(), h = pzHostAt(t.clientX, t.clientY);
+        if (!h || !pzKey(h)) { tap = null; return; }
+        if (tap && tap.h === h && now - tap.t < 400 && Math.hypot(t.clientX - tap.x, t.clientY - tap.y) < 40) {
+          tap = null;
+          if (GifOS.meetZones.isDefault(D.cropOf(pzKey(h)))) return;
+          quiet = now + 450; if (e.cancelable) e.preventDefault();
+          D.closeWin();
+          pzSet(h, null);
+          return;
+        }
+        tap = { h: h, t: now, x: t.clientX, y: t.clientY };
+      }, { passive: false, capture: true });
+      document.addEventListener('touchcancel', () => { g = null; tap = null; }, { capture: true });
+      // a pinch or a double-tap is never also a tap (no unblur, no open)
+      document.addEventListener('click', (e) => { if (Date.now() < quiet) { e.stopImmediatePropagation(); e.preventDefault(); } }, { capture: true });
+      // desktop: ctrl + wheel (a trackpad pinch) over a picture; the page itself never zooms there
+      document.addEventListener('wheel', (e) => {
+        if (!e.ctrlKey) return;
+        const h = pzHostAt(e.clientX, e.clientY); if (!h || !pzKey(h)) return;
+        const geo = pzGeom(h, h.querySelector(':scope > video')); if (!geo) return;
+        e.preventDefault();
+        const p = { x: e.clientX, y: e.clientY };
+        pzSet(h, pzStep(geo, pzCropNow(h), p, p, Math.exp(e.deltaY * 0.01)));
+      }, { passive: false, capture: true });
+    }
+  const pinch = {
+    install: function (deps) { if (D) return; D = deps; pzInstall(); },
+    apply: pzApply, applyAll: function () { document.querySelectorAll(pzSel()).forEach(function (t) { try { pzApply(t); } catch (e) {} }); },
+    key: pzKey, square: pzSquare, geom: pzGeom, min: pzMin, set: pzSet, step: pzStep,
+  };
+
   const api = {
+    pinch: pinch,
     comfyAllowed: comfyAllowed,
     stadFaceAt: stadFaceAt,
     placeEl: placeEl,

@@ -1017,16 +1017,25 @@
     return { x: side / 2 - c.x * w, y: side / 2 - c.y * h, w: w, h: h };
   }
 
-  // Keep the window inside the frame. Default: the largest centered square.
-  function normCrop(crop, vw, vh) {
+  // The base window (s = 1) of a view whose visible box has aspect a (w/h): the largest a-shaped window in the frame.
+  // A square tile (a = 1) gets the short-side square; a picture shown whole gets the whole frame.
+  function baseWin(vw, vh, a) {
+    const r = vw / vh;
+    return a >= r ? { w: vw, h: vw / a } : { w: vh * a, h: vh };
+  }
+
+  // Keep the window inside the frame. Default: the largest centered window of aspect a (a = 1: the centered square).
+  // One crop model for the Open window's crop and the in-place pinch/pan: crop = { x, y, s }.
+  function normCropA(crop, vw, vh, a, smin) {
     const c = crop || {};
-    const short = Math.min(vw || 1, vh || 1);
-    let s = c.s > 0 ? Math.min(1, Math.max(0.15, c.s)) : 1;
-    const hw = (s * short) / (vw || 1) / 2, hh = (s * short) / (vh || 1) / 2;
+    const b = baseWin(vw || 1, vh || 1, a > 0 ? a : 1);
+    const s = c.s > 0 ? Math.min(1, Math.max(smin || 0.15, c.s)) : 1;
+    const hw = (s * b.w) / (vw || 1) / 2, hh = (s * b.h) / (vh || 1) / 2;
     const x = Math.min(1 - hw, Math.max(hw, c.x != null ? c.x : 0.5));
     const y = Math.min(1 - hh, Math.max(hh, c.y != null ? c.y : 0.5));
     return { x: x, y: y, s: s };
   }
+  function normCrop(crop, vw, vh) { return normCropA(crop, vw, vh, 1); }
 
   // Source-pixel rect of a crop (for the sender's canvas).
   function cropRect(vw, vh, crop) {
@@ -1037,5 +1046,5 @@
 
   function isDefault(crop) { return !crop || (!(crop.s > 0 && crop.s < 0.999) && Math.abs((crop.x != null ? crop.x : 0.5) - 0.5) < 1e-3 && Math.abs((crop.y != null ? crop.y : 0.5) - 0.5) < 1e-3); }
 
-  return { GAP: GAP, STAD_RATIO: STAD_RATIO, layout: layout, people: people, stageRects: stageRects, stagePack: stagePack, fitSide: fitSide, stadFit: stadFit, cropBox: cropBox, normCrop: normCrop, cropRect: cropRect, isDefault: isDefault };
+  return { GAP: GAP, STAD_RATIO: STAD_RATIO, layout: layout, people: people, stageRects: stageRects, stagePack: stagePack, fitSide: fitSide, stadFit: stadFit, cropBox: cropBox, normCrop: normCrop, normCropA: normCropA, baseWin: baseWin, cropRect: cropRect, isDefault: isDefault };
 });

@@ -4411,6 +4411,17 @@
     yield 666;
     function applyViewerCrops() {
       document.querySelectorAll('#feed .tile[data-comfy="1"]').forEach((t) => { try { (0, /*()*/__C.applyViewerCrop)(t); } catch (e) {} });
+      // pinch / two-finger pan / double-tap = the Open window's crop, in place (meet-views pinch; one crop per tile)
+      try {
+        const P = GifOS.meetViews.pinch;
+        P.install({
+          cropOf: (key) => (0, /*()*/__C.viewerCropOf)(key),
+          setCrop: (key, c) => { const vc = __C.model.roster.vcrops(); if (c) vc[key] = c; else delete vc[key]; (0, /*()*/__C.saveVcrops)(); },
+          applySquare: (h) => (0, /*()*/__C.applyViewerCrop)(h),
+          closeWin: () => { if (__C.model.roster.tileWin().el) closeTileWin(); },
+        });
+        P.applyAll();
+      } catch (e) {}
     }
     yield 670;
     function twName(el, id) {
@@ -4478,7 +4489,7 @@
       pad.style.height = Math.round(Math.max(1, h)) + 'px';
     }
     function twCropSection(win, el, isMe) {
-      const MZ = GifOS.meetZones;
+      const MZ = GifOS.meetZones, P = GifOS.meetViews.pinch;
       const tv = el.querySelector(':scope > video');
       let stream = null;
       if (isMe) stream = __C.model.me.localStream() && __C.model.me.localStream().getVideoTracks()[0] ? new MediaStream([__C.model.me.localStream().getVideoTracks()[0]]) : null;
@@ -4495,16 +4506,16 @@
       const zoom = sec.querySelector('input');
       zoom.setAttribute('aria-label', 'Zoom');
       pv.muted = true; pv.srcObject = stream; const pr = pv.play(); if (pr && pr.catch) pr.catch(() => {});
-      let crop = Object.assign({ x: 0.5, y: 0.5, s: 1 }, isMe ? (window.__senderCrop.get() || {}) : ((0, /*()*/__C.viewerCropOf)(el.dataset.pzkey) || {}));
+      let crop = Object.assign({ x: 0.5, y: 0.5, s: 1 }, isMe ? (window.__senderCrop.get() || {}) : ((0, /*()*/__C.viewerCropOf)(P.key(el)) || {}));
       let pushT = 0;
       const push = () => {
         if (isMe) {
           if (pushT) clearTimeout(pushT);
           pushT = setTimeout(() => { pushT = 0; window.__senderCrop.set(crop); }, 120);
         } else {
-          if (MZ.isDefault(crop)) delete __C.model.roster.vcrops()[el.dataset.pzkey]; else __C.model.roster.vcrops()[el.dataset.pzkey] = { x: crop.x, y: crop.y, s: crop.s };
+          if (MZ.isDefault(crop)) delete __C.model.roster.vcrops()[P.key(el)]; else __C.model.roster.vcrops()[P.key(el)] = { x: crop.x, y: crop.y, s: crop.s };
           (0, /*()*/__C.saveVcrops)();
-          (0, /*()*/__C.applyViewerCrop)(el);
+          if (P.square(el)) (0, /*()*/__C.applyViewerCrop)(el); else P.apply(el);
         }
       };
       const paint = () => {
@@ -4512,11 +4523,16 @@
         if (!isMe && tv) { try { const f = getComputedStyle(tv).filter; pv.style.filter = f && f !== 'none' ? f : ''; } catch (e) {} }
         const vw = pv.videoWidth || (tv && tv.videoWidth) || 16, vh = pv.videoHeight || (tv && tv.videoHeight) || 9;
         twSizePad(pad, vw, vh);
-        crop = MZ.normCrop(crop, vw, vh);
+        // The window has the shape of what the tile shows: square on a square tile, the picture's own shape on the Stage
+        // or a screen share (the pinch and this window are one crop).
+        const gg = (!isMe && !P.square(el) && tv) ? P.geom(el, tv) : null;
+        const asp = gg ? gg.a : 1, bw0 = MZ.baseWin(vw, vh, asp);
+        crop = MZ.normCropA(crop, vw, vh, asp, gg ? P.min() : 0.15);
         const pw = pad.clientWidth || 300, ph = pw * vh / vw;
-        const side = crop.s * Math.min(vw, vh) * (pw / vw);
-        win2.style.width = side + 'px'; win2.style.height = side + 'px';
-        win2.style.left = (crop.x * pw - side / 2) + 'px'; win2.style.top = (crop.y * ph - side / 2) + 'px';
+        const sw = crop.s * bw0.w * (pw / vw), sh = crop.s * bw0.h * (pw / vw);
+        win2.style.width = sw + 'px'; win2.style.height = sh + 'px';
+        win2.style.left = (crop.x * pw - sw / 2) + 'px'; win2.style.top = (crop.y * ph - sh / 2) + 'px';
+        zoom.min = gg ? '20' : '30';
         zoom.value = String(Math.round(crop.s * 100));
       };
       pv.addEventListener('loadedmetadata', paint); pv.addEventListener('resize', paint);
@@ -4607,7 +4623,7 @@
         if (t) { const sp = document.createElement('span'); sp.textContent = t; info.appendChild(sp); }
       });
       if ((isMe || isStage) && (0, /*()*/__C.meOnStage)() && !__C.model.me.myStatus().scr) twStageFrameSection(win);
-      else if (!isStage && (el.dataset.tier === 'row' || isMe)) twCropSection(win, el, isMe);
+      else if (isMe || el.dataset.tier === 'row' || (GifOS.meetViews.pinch.key(el) && el.querySelector(':scope > video'))) twCropSection(win, el, isMe);
       if (!isStage && !win.querySelector('.tw-pad')) {
         // No live picture to show (camera off, or a Stadium face): the
         // person's picture or initial stands in.
