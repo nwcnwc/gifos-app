@@ -1145,6 +1145,7 @@
       var row = $('emb-m-debug'), btn = $('emb-debug-dl'), note = $('emb-debug-note');
       if (!row || !btn || !asks) return;
       row.hidden = false;
+      var dbgUrl = '';
       var SECRET = /"([A-Za-z0-9_.-]*(?:pass|pw|secret|cred|token|auth|private|seed|apikey|roomkey|hostkey)[A-Za-z0-9_.-]*)"\s*:\s*"(?:[^"\\]|\\.)*"/gi;
       btn.onclick = function () {
         var D = null, store = null;
@@ -1166,7 +1167,8 @@
             var a = document.createElement('a');
             a.href = URL.createObjectURL(out.blob); a.download = D.fileName(Date.now()).replace(/^gifos-debug/, 'gifos-embed-debug') + (out.gz ? '.gz' : ''); a.style.display = 'none';
             document.body.appendChild(a); a.click();
-            setTimeout(function () { try { URL.revokeObjectURL(a.href); a.remove(); } catch (e) {} }, 60000);
+            try { if (dbgUrl) URL.revokeObjectURL(dbgUrl); } catch (e) {}   // the last file's memory goes at the next press (no timer)
+            dbgUrl = a.href; a.remove();
             note.textContent = ' ' + tr('dbgDone', 'Saved.');
           })
           .catch(function () { note.textContent = ' ' + tr('dbgFail', 'Could not export the debug log.'); })
