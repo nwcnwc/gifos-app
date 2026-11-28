@@ -241,20 +241,35 @@ async function prefetchRelease(v) {
   prefetching[v] = 1;
   try {
     var cache = await caches.open(CACHE), base = '/versions/' + v + '/';
-    var urls = [base + 'meet.html', base + 'run.html'];
-    for (var i = 0; i < urls.length; i++) {
-      var u = urls[i];
-      if (await cache.match(u)) { if (i === 0) urls = urls.concat(prefetchRefs(await (await cache.match(u)).clone().text()).map(function (r) { return base + r; })); continue; }
+    // One file: skip what is held, wait for a lull, fetch at low priority, keep (pages under their clean address too).
+    var one = async function (u) {
+      var hit = await cache.match(u);
+      if (hit) return hit;
       await quiet();
       var res = await fetch(new Request(u, { priority: 'low' })).catch(function () { return null; });
-      if (!res || !res.ok) { if (i === 0) { delete prefetching[v]; return; } continue; }
+      if (!res || !res.ok) return null;
       var clean = new URL(u, self.location.href).pathname;
       await keep(cache, clean, res.clone());
       if (/\.html$/.test(clean)) await keep(cache, clean.replace(/\.html$/, ''), res.clone());   // the page is asked for at its clean address (/meet)
-      if (i === 0) urls = urls.concat(prefetchRefs(await res.text()).map(function (r) { return base + r; }), PREFETCH_EXTRA.map(function (r) { return base + r; }));
+      return res;
+    };
+    var page = await one(base + 'meet.html');
+    if (!page) { delete prefetching[v]; return; }
+    var list = prefetchRefs(await page.clone().text());
+    // The core loader fetches the core's files one by one (js/core/files.json names them): they are most of the first open's round trips.
+    var fj = await one(base + 'js/core/files.json');
+    if (fj) {
+      try {
+        var j = await fj.clone().json();
+        ['core', 'coreExtra', 'media', 'view', 'viewLib'].forEach(function (k) { (j[k] || []).forEach(function (f) { if (typeof f === 'string') list.push(f); }); });
+      } catch (e) {}
     }
-  } catch (err) { delete prefetching[v]; return; }
-  // done: stay marked so tabs asking again do nothing
+    list = list.concat(PREFETCH_EXTRA, ['js/core/core.sig.json']).filter(function (f, k, a) { return a.indexOf(f) === k; });
+    var next = 0, lane = async function () { while (next < list.length) { var f = list[next++]; await one(base + f).catch(function () {}); } };
+    await Promise.all([lane(), lane(), lane()]);   // three at a time: a slow link is round-trip bound, not byte bound
+    await one(base + 'run.html');
+  } catch (err) { delete prefetching[v]; }
+  // finished (or failed and cleared): a tab asking again continues, skipping what is held
 }
 
 // Resolve a fetch, but never hang: if the network hasn't answered in `ms`, give
