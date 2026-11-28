@@ -1,0 +1,1821 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark light">
+<!-- Calendar stays on this device. The library is written in at the marker. -->
+<title>Calendar</title>
+<style>
+  :root{
+    --c-bg:#0a0a0f;--c-card:#14141f;--c-card2:#1c1c2b;--c-line:#2a2a3f;
+    --c-text:#e0e0f0;--c-muted:#8888aa;--c-accent:#7b5cff;--c-accent2:#ff5caa;--c-on:#fff;
+    --c-danger:#e15b6a;--c-ok:#3d9a6a;
+  }
+  html[data-scheme="light"]{
+    --c-bg:#f4f5fb;--c-card:#ffffff;--c-card2:#e8eaf3;--c-line:#d5d8e6;
+    --c-text:#1a1c28;--c-muted:#5c6178;--c-accent:#5a3fd4;--c-accent2:#c4316c;--c-on:#fff;
+    --c-danger:#b4233a;--c-ok:#0d7a45;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;overflow:hidden;max-width:100%}
+  body{background:var(--c-bg);color:var(--c-text);font:15px system-ui,sans-serif;display:flex;flex-direction:column}
+  button,input,select,textarea{font:inherit;color:inherit}
+  button{cursor:pointer}
+  :focus-visible{outline:2px solid #7b5cff;outline-offset:2px}
+  header{display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--c-card);border-bottom:1px solid var(--c-line);flex:none}
+  header h1{flex:1;min-width:0;margin:0;font-size:1.05rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:capitalize}
+  header button,.nav button,.dlg-actions button,.iconbtn{min-height:44px;min-width:44px;border-radius:10px;border:1px solid var(--c-line);background:var(--c-card2);color:var(--c-text);padding:0 12px}
+  button.go{background:#7b5cff;border-color:#7b5cff;color:#fff;font-weight:700}
+  button.danger{color:var(--c-danger)}
+  button.x{min-width:44px;padding:0;font-size:1.3rem;line-height:1}
+  .nav{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 8px;background:var(--c-card);border-bottom:1px solid var(--c-line);flex:none}
+  .seg{display:flex;flex:1 1 100%;min-width:0;max-width:100%;border:1px solid var(--c-line);border-radius:10px;overflow:hidden}
+  @media(min-width:900px){.seg{flex:0 0 auto;margin-left:auto}.seg button{flex:0 0 auto}}
+  .seg button{flex:1 1 auto;min-width:0;border:0;border-radius:0;border-right:1px solid var(--c-line);padding:0 10px;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .seg button:last-child{border-right:0}
+  .seg button[aria-selected="true"]{background:#7b5cff;color:#fff}
+  #view{flex:1;min-height:0;overflow:auto;overflow-x:hidden;padding:8px}
+  #view:has(.week){padding:0;overflow:hidden}
+  .err{color:var(--c-danger);font-size:.85rem;min-height:0;padding:0 10px}
+  .quiet{color:var(--c-muted);font-size:.85rem}
+  #month{display:flex;flex-direction:column;gap:10px;max-width:1100px;margin:0 auto}
+  @media(min-width:760px){#month{flex-direction:row;align-items:flex-start}#month .cal{flex:1.3}#month .side{flex:1;min-width:0}}
+  .wd,.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+  .wd i{font-style:normal;text-align:center;font-size:.72rem;color:var(--c-muted);padding:2px 0}
+  .cell{min-width:0;background:var(--c-card);border-radius:8px;display:flex;flex-direction:column;min-height:44px}
+  .cell .num{flex:none;width:32px;height:32px;min-height:32px;margin:4px auto 0;padding:0;border:0;background:transparent;color:inherit;border-radius:50%;font-variant-numeric:tabular-nums}
+  .cell.out{opacity:.4}
+  .cell.today .num{box-shadow:inset 0 0 0 2px #7b5cff;font-weight:800}
+  .cell.sel .num{background:#7b5cff;color:#fff;font-weight:800}
+  .cell.sel.today .num{box-shadow:none}
+  .dots{display:flex;justify-content:center;gap:2px;min-height:8px;padding-bottom:3px}
+  .dots i{width:6px;height:6px;border-radius:50%;background:var(--c-accent2)}
+  .cell .chips{display:none}
+  @media(min-width:760px){
+    .cell{min-height:78px}
+    .cell .chips{display:flex;flex-direction:column;gap:2px;padding:0 3px 4px}
+    .chip{text-align:left;border:0;background:transparent;color:var(--c-text);font-size:.72rem;padding:1px 2px 1px 6px;border-left:3px solid var(--c-accent2);min-height:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  }
+  .side h2{margin:0 0 8px;font-size:1rem}
+  .list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+  .list li{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:var(--c-card);border:1px solid var(--c-line);min-height:44px}
+  .list button.item{flex:1;min-width:0;text-align:left;background:transparent;border:0;padding:0;display:flex;gap:8px;align-items:baseline}
+  .list .t{color:var(--c-muted);font-size:.82rem;min-width:4.6em;font-variant-numeric:tabular-nums}
+  .list .n{min-width:0;overflow-wrap:anywhere}
+  .week{display:flex;flex-direction:column;height:100%;min-height:0;min-width:0}
+  .week-row{display:flex;min-width:0;flex:none}
+  .week-body{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden}
+  .days-x{overflow-x:auto;overflow-y:hidden;flex:1;min-width:0}
+  .gutter,.hlabs{flex:none;width:48px;background:var(--c-bg)}
+  .days{display:flex}
+  .dh,.ad,.col{flex:0 0 auto}
+  .dh{font-size:.75rem;text-align:center;padding:4px 2px;min-height:44px}
+  .dh b{display:block;font-size:1rem}
+  .dh.today b{background:#7b5cff;color:#fff;border-radius:50%;width:28px;height:28px;line-height:28px;margin:0 auto}
+  .ad{min-height:28px;padding:1px}
+  .ad button{display:block;width:100%;text-align:left;border:0;border-left:3px solid var(--c-accent2);background:var(--c-card);border-radius:4px;font-size:.72rem;padding:2px 4px;min-height:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hours{display:flex;position:relative;min-width:0}
+  .hlabs{position:relative}
+  .hlabs span{position:absolute;right:4px;font-size:.68rem;color:var(--c-muted);transform:translateY(-50%)}
+  .col{position:relative;border-left:1px solid var(--c-line);background-image:repeating-linear-gradient(to bottom,transparent,transparent 47px,var(--c-line) 48px)}
+  .ev{position:absolute;overflow:hidden;border:0;border-left:3px solid var(--c-accent2);background:var(--c-card);border-radius:6px;text-align:left;padding:2px 4px;font-size:.75rem;line-height:1.2;z-index:1}
+  .ev b,.ev .quiet{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .nowline{position:absolute;left:0;right:0;height:2px;background:var(--c-accent2);z-index:2;pointer-events:none}
+  .nowline::before{content:'';position:absolute;left:-4px;top:-3px;width:8px;height:8px;border-radius:50%;background:var(--c-accent2)}
+  .agenda{max-width:720px;margin:0 auto}
+  .agenda h3{position:sticky;top:0;background:var(--c-bg);margin:12px 0 6px;font-size:.95rem}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:40;padding:8px;padding-bottom:calc(8px + env(safe-area-inset-bottom,0px))}
+  .modal{background:var(--c-card);color:var(--c-text);width:min(560px,100%);max-height:92dvh;min-height:0;overflow:hidden;display:flex;flex-direction:column;border-radius:16px 16px 0 0;box-shadow:0 8px 40px rgba(0,0,0,.35)}
+  @media(min-width:700px){.modal-bg{align-items:center;padding:16px}.modal{border-radius:16px;max-height:86dvh}}
+  .dlg-head{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--c-line);flex:none}
+  .dlg-head h2{flex:1;min-width:0;margin:0;font-size:1.05rem}
+  .dlg-body{flex:1 1 auto;min-height:0;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+  .dlg-actions{flex:none;display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;padding:10px 12px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--c-line);background:var(--c-card);position:sticky;bottom:0}
+  .dlg-actions button{flex:1 1 auto}
+  label.f{display:flex;flex-direction:column;gap:4px;font-size:.82rem;color:var(--c-muted)}
+  label.f input,label.f select,label.f textarea,input.txt,select.txt{background:var(--c-bg);border:1px solid var(--c-line);border-radius:8px;padding:8px 10px;min-height:44px;width:100%;min-width:0}
+  textarea{min-height:88px;resize:vertical}
+  .row2{display:flex;flex-wrap:wrap;gap:8px}
+  .row2>*{flex:1 1 9rem;min-width:0}
+  .switch{display:flex;align-items:center;gap:8px;min-height:44px;color:var(--c-text)}
+  .switch input{width:22px;height:22px}
+  .daysel{display:flex;flex-wrap:wrap;gap:4px}
+  .daysel button{min-width:40px;min-height:40px;border-radius:50%;padding:0}
+  .daysel button.on{background:#7b5cff;color:#fff;border-color:#7b5cff}
+  .zone-list{max-height:180px;overflow:auto;border:1px solid var(--c-line);border-radius:8px}
+  .zone-list button{display:block;width:100%;text-align:left;background:transparent;border:0;border-bottom:1px solid var(--c-line);border-radius:0;min-height:44px}
+  .zone-list button.on{background:var(--c-card2)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chips button{border-radius:999px;min-height:36px;padding:0 10px;font-size:.85rem}
+  .swatches{display:flex;flex-wrap:wrap;gap:4px}
+  .swatch{width:44px;height:44px;border-radius:50%;padding:0;border:2px solid transparent;background:transparent}
+  .swatch i{display:block;width:22px;height:22px;border-radius:50%;margin:auto;pointer-events:none}
+  .swatch.on{border-color:var(--c-text)}
+  .calrow{display:flex;align-items:center;gap:8px;min-height:48px;border-bottom:1px solid var(--c-line)}
+  .calrow .nm{flex:1;min-width:0}
+  .calrow .ops{display:flex;flex-wrap:wrap;gap:4px}
+  .calrow .ops button{min-height:36px;padding:0 8px;font-size:.8rem}
+  .dot{width:12px;height:12px;border-radius:50%;flex:none}
+  .banner{position:fixed;left:8px;right:8px;bottom:8px;z-index:50;background:var(--c-card);border:1px solid var(--c-line);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px;box-shadow:0 8px 30px rgba(0,0,0,.3)}
+  .banner .acts{display:flex;flex-wrap:wrap;gap:6px}
+  .banner .acts button{flex:1;min-height:44px}
+  .drop{outline:2px dashed #7b5cff;outline-offset:-6px}
+  a{color:#7b5cff}
+  .note{white-space:pre-wrap;overflow-wrap:anywhere}
+  #bell{position:relative}
+  #bell svg{display:block}
+  #badge{position:absolute;top:2px;right:2px;min-width:1.1em;padding:0 4px;border-radius:999px;background:var(--c-accent2);color:#fff;font-size:.68rem;font-weight:700;line-height:1.3}
+  #badge[hidden]{display:none}
+  html[data-scheme="light"] button.go,html[data-scheme="light"] .seg button[aria-selected="true"],html[data-scheme="light"] .cell.sel .num,html[data-scheme="light"] .daysel button.on,html[data-scheme="light"] .dh.today b{background:#5a3fd4;border-color:#5a3fd4;color:#fff}
+</style>
+<header>
+  <button type="button" id="cals" class="iconbtn" data-i18n-aria="menuAria" aria-label="Calendars">☰</button>
+  <h1 id="title">Calendar</h1>
+  <button type="button" id="bell" hidden data-i18n-aria="inbox" aria-label="Invitations"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 22a2.4 2.4 0 0 0 2.35-2h-4.7A2.4 2.4 0 0 0 12 22zm7-6V11a7 7 0 0 0-5-6.7V3.5a2 2 0 1 0-4 0v.8A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2z"/></svg><span id="badge" hidden>0</span></button>
+  <button type="button" id="add" class="go" data-i18n-aria="addAria" aria-label="New event">+</button>
+</header>
+<div class="nav">
+  <button type="button" id="prev" data-i18n-aria="prev" aria-label="Previous">‹</button>
+  <button type="button" id="today" data-i18n="today">Today</button>
+  <button type="button" id="next" data-i18n-aria="next" aria-label="Next">›</button>
+  <div class="seg" id="views" role="tablist" data-i18n-aria="views" aria-label="View">
+    <button type="button" data-view="month" role="tab">Month</button>
+    <button type="button" data-view="week" role="tab">Week</button>
+    <button type="button" data-view="day" role="tab">Day</button>
+    <button type="button" data-view="agenda" role="tab">Agenda</button>
+  </div>
+</div>
+<p id="err" class="err" role="status"></p>
+<main id="view"></main>
+<div id="sheets"></div>
+<div id="alarm" class="banner" hidden role="alert"></div>
+<input type="file" id="file" accept=".ics,text/calendar" multiple hidden>
+<script>
+/*@ical*/
+(function () {
+  'use strict';
+  var I = (window.GifOS && window.GifOS.ical) || null;
+  var PALETTE = ['#d63d3d','#bc592f','#5c8112','#32854e','#0f856d','#367da1','#6070c3','#9056e1','#c431c4','#e2127a'];
+  var DAY = ['SU','MO','TU','WE','TH','FR','SA'];
+  var HOUR = 48;
+  var mem = {};
+  var state = {
+    events: [], calendars: [], invites: [],
+    settings: { id: 'settings', view: 'month', weekStart: null, reminder: 10, meetMode: 'hosted' },
+    settingsKnown: false, focus: new Date(), view: 'month', span: 60,
+    shown: {}, dismissed: {}, snooze: {}, alarm: null
+  };
+  var seen = {}, started = false, booting = false, sheetN = 0, zonesCache = null, eventPaint = 0;
+
+  function T(k, p) { try { if (window.gifos && gifos.i18n) return gifos.i18n.t(k, p); } catch (e) {} return k; }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function pad(n) { n = String(Math.trunc(Math.abs(n))); return n.length < 2 ? '0' + n : n; }
+  function tag() { try { var l = window.gifos && gifos.locale && gifos.locale(); if (l && l.tag) return l.tag; } catch (e) {} return undefined; }
+  function viewerZone() {
+    try { var l = window.gifos && gifos.locale && gifos.locale(); if (l && l.timeZone) return l.timeZone; } catch (e) {}
+    try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch (e2) { return 'UTC'; }
+  }
+  function hourCycle(o) {
+    o = o || {};
+    try { var l = window.gifos && gifos.locale && gifos.locale(); if (l && l.hourCycle) o.hourCycle = l.hourCycle; } catch (e) {}
+    return o;
+  }
+  function fmt(ms, o) { try { return new Intl.DateTimeFormat(tag(), o).format(new Date(ms)); } catch (e) { return ''; } }
+  function fmtDate(dateStr, o) {
+    var p = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateStr || ''); if (!p) return dateStr || '';
+    var ms = Date.UTC(+p[1], +p[2] - 1, +p[3], 12);
+    try { return new Intl.DateTimeFormat(tag(), Object.assign({ timeZone: 'UTC' }, o || {})).format(new Date(ms)); } catch (e) { return dateStr; }
+  }
+  function dateKey(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function parseDay(s) { var a = String(s || '').split('-'); return new Date(+a[0], (+a[1] || 1) - 1, +a[2] || 1); }
+  function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
+  function addDateStr(s, n) {
+    var p = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); if (!p) return s || '';
+    var dt = new Date(Date.UTC(+p[1], +p[2] - 1, +p[3] + n));
+    return dt.getUTCFullYear() + '-' + pad(dt.getUTCMonth() + 1) + '-' + pad(dt.getUTCDate());
+  }
+  function daysBetween(a, b) {
+    var pa = /^(\d{4})-(\d{2})-(\d{2})/.exec(a || ''), pb = /^(\d{4})-(\d{2})-(\d{2})/.exec(b || '');
+    if (!pa || !pb) return 0;
+    return Math.round((Date.UTC(+pb[1], +pb[2] - 1, +pb[3]) - Date.UTC(+pa[1], +pa[2] - 1, +pa[3])) / 86400000);
+  }
+  function startOfDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+  function weekStartNum() {
+    var w = state.settings.weekStart;
+    if (w === 0 || w === 1 || w === 6) return w;
+    try { var L = new Intl.Locale(tag() || 'en'), info = L.getWeekInfo ? L.getWeekInfo() : L.weekInfo; if (info && info.firstDay) return info.firstDay % 7; } catch (e) {}
+    var r = ((tag() || '').match(/-([A-Z]{2})/) || [])[1] || '';
+    return /^(US|CA|MX|BR|JP|IL|PH|AU|IN|KR|TW|HK|CO|PE|VE|AR)$/.test(r) ? 0 : 1;
+  }
+  function weekStartOf(d) { var s = weekStartNum(); return addDays(startOfDay(d), -((d.getDay() - s + 7) % 7)); }
+  function db(name) {
+    if (window.gifos && gifos.db) return gifos.db(name);
+    mem[name] = mem[name] || [];
+    var subs = [];
+    function emit() { subs.forEach(function (cb) { try { cb(mem[name].slice()); } catch (e) {} }); }
+    return {
+      put: function (item) {
+        mem[name] = mem[name].filter(function (r) { return r.id !== item.id; });
+        mem[name].push(JSON.parse(JSON.stringify(item))); emit(); return Promise.resolve(item);
+      },
+      delete: function (id) { mem[name] = mem[name].filter(function (r) { return r.id !== id; }); emit(); return Promise.resolve(true); },
+      getAll: function () { return Promise.resolve(mem[name].slice()); },
+      subscribe: function (cb) { subs.push(cb); try { cb(mem[name].slice()); } catch (e) {} }
+    };
+  }
+  function say(msg) { var el = document.getElementById('err'); if (el) el.textContent = msg || ''; }
+
+  // Every call out to Meetings, Contacts or reminders goes through here: the page's own provider API
+  // (gifos.contacts, gifos.rooms, gifos.alarms, gifos.open), each present only when its capability is. Missing pieces stay hidden.
+  var bridge = {
+    g: function () { return window.gifos || null; },
+    hasRooms: function () { var g = this.g(); return !!(g && g.rooms && g.rooms.create); },
+    hasPeople: function () { var g = this.g(); return !!(g && g.contacts && g.contacts.pick); },
+    hasInbox: function () { var g = this.g(); return !!(g && g.contacts && g.contacts.onMessage); },
+    hasAlarms: function () { var g = this.g(); return !!(g && g.alarms && g.alarms.set); },
+    hasSend: function () { var g = this.g(); return !!(g && g.contacts && g.contacts.send); },
+    pickContacts: function () {
+      var g = this.g(); if (!g || !g.contacts || !g.contacts.pick) return Promise.resolve(null);
+      return Promise.resolve(g.contacts.pick({ multiple: true })).then(function (list) {
+        return { picked: true, people: (list || []).map(function (p) { return { id: p.id, name: p.name || '', avatar: p.avatar || '' }; }) };
+      });
+    },
+    send: function (id, ics) {
+      var g = this.g(); if (!g || !id || !g.contacts || !g.contacts.send) return Promise.resolve(null);
+      return Promise.resolve(g.contacts.send(id, { kind: 'calendar', ics: ics }));
+    },
+    onInbox: function (cb) {
+      var g = this.g(); if (!g || !g.contacts || !g.contacts.onMessage) return function () {};
+      var off = g.contacts.onMessage(function (m) { var n = normIn(m); if (n && n.ics) cb(n); });
+      return typeof off === 'function' ? off : function () {};
+    },
+    ack: function (id) {
+      var g = this.g(); if (!g || !id) return;
+      try { if (g.contacts && g.contacts.ack) g.contacts.ack(id); } catch (e) {}
+    },
+    createRoom: function (mode) {
+      var g = this.g(); if (!g || !g.rooms || !g.rooms.create) return Promise.resolve(null);
+      return Promise.resolve(g.rooms.create({ mode: mode })).then(function (r) {
+        if (!r) return null;
+        return { room: r.room || '', v: r.v || '', link: r.link || r.url || '', mode: mode === 'open' ? 'open' : 'hosted' };
+      });
+    },
+    setAlarms: function (list) {
+      var g = this.g(); if (!g || !g.alarms || !g.alarms.set) return;
+      try { g.alarms.set(list); } catch (e) {}
+    },
+    open: function (link) {
+      var g = this.g(); if (!g || !link) return;
+      try { if (typeof g.open === 'function') g.open(link); } catch (e) {}
+    },
+    takeDraft: function () {
+      var g = this.g();
+      if (g && g.rooms && g.rooms.draft) return Promise.resolve(g.rooms.draft());
+      return Promise.resolve(null);
+    }
+  };
+  function normIn(m) {
+    if (!m || typeof m !== 'object') return null;
+    var body = m.msg || m.body || {};
+    var ics = m.ics || body.ics || '';
+    var kind = String(m.kind || body.kind || '');
+    if (kind === 'calendar' && ics && I) {
+      try { kind = String((I.readInvite(ics).method || 'REQUEST')).toLowerCase(); } catch (e) { kind = 'request'; }
+    }
+    if (kind !== 'request' && kind !== 'reply' && kind !== 'cancel') { if (!ics) return null; kind = 'request'; }
+    var from = (m.from && typeof m.from === 'object') ? { cid: m.from.cid || m.from.id || '', name: m.from.name || '' } : { cid: m.cid || '', name: m.name || '' };
+    return { id: String(m.id || ''), from: from, kind: kind, ics: String(ics || '') };
+  }
+
+  function scheme() {
+    var bg = '';
+    try { bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim(); } catch (e) {}
+    if (bg) { document.documentElement.style.colorScheme = 'light dark'; return; }
+    var light = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches;
+    document.documentElement.setAttribute('data-scheme', light ? 'light' : 'dark');
+    document.documentElement.style.colorScheme = light ? 'light' : 'dark';
+  }
+  function applyI18n() {
+    document.title = T('title');
+    document.querySelectorAll('[data-i18n]').forEach(function (e) { e.textContent = T(e.getAttribute('data-i18n')); });
+    document.querySelectorAll('[data-i18n-aria]').forEach(function (e) { e.setAttribute('aria-label', T(e.getAttribute('data-i18n-aria'))); });
+    document.querySelectorAll('#views [data-view]').forEach(function (b) {
+      var v = b.getAttribute('data-view');
+      b.textContent = T(v);
+      b.setAttribute('aria-selected', v === state.view ? 'true' : 'false');
+    });
+    var bell = document.getElementById('bell');
+    if (bell) bell.hidden = !bridge.hasInbox();
+  }
+
+  function hiddenCal(id) {
+    for (var i = 0; i < state.calendars.length; i++) if (state.calendars[i] && state.calendars[i].id === id) return !!state.calendars[i].hidden;
+    return false;
+  }
+  function calBy(id) {
+    for (var i = 0; i < state.calendars.length; i++) if (state.calendars[i] && state.calendars[i].id === id) return state.calendars[i];
+    return null;
+  }
+  function defaultCal() {
+    for (var i = 0; i < state.calendars.length; i++) if (state.calendars[i] && !state.calendars[i].hidden && !state.calendars[i].readonly) return state.calendars[i];
+    return state.calendars[0] || { id: 'default', name: T('defaultCalendar'), color: PALETTE[0] };
+  }
+  function colorOf(id) { var c = calBy(id); return (c && c.color) || PALETTE[0]; }
+  function visibleEvents() {
+    return state.events.filter(function (e) {
+      return e && e.uid && e.status !== 'CANCELLED' && !hiddenCal(e.cal);
+    });
+  }
+  function isLegacy(row) {
+    return !!(row && typeof row.d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(row.d) && row.title && !row.uid && row.start == null && !row.allDay);
+  }
+  function rowId(ev) {
+    if (ev.recurrenceId != null && ev.recurrenceId !== '') return ev.uid + '!' + ev.recurrenceId;
+    return ev.uid;
+  }
+  function putEvent(ev) {
+    var rec = JSON.parse(JSON.stringify(ev));
+    rec.id = ev.id || rowId(ev);
+    var i, hit = -1;
+    for (i = 0; i < state.events.length; i++) if (state.events[i] && state.events[i].id === rec.id) hit = i;
+    if (hit >= 0) state.events[hit] = rec; else state.events.push(rec);
+    return db('events').put(rec);
+  }
+  function delEvent(id) {
+    state.events = state.events.filter(function (e) { return !e || e.id !== id; });
+    return db('events').delete(id);
+  }
+  function linkOf(e) {
+    if (!e) return '';
+    try { var l = I.meetingLink(e); if (l) return l; } catch (err) {}
+    return '';
+  }
+  function dayOf(occ) {
+    if (!occ) return '';
+    if (occ.allDay || !(occ.event && occ.event.tzid)) return String(occ.startLocal || '').slice(0, 10);
+    try { return I.utcToZoned(occ.startMs, viewerZone()).slice(0, 10); } catch (e) { return String(occ.startLocal || '').slice(0, 10); }
+  }
+  function daysTouched(occ) {
+    if (!occ) return [];
+    if (occ.allDay) {
+      var out = [], d = String(occ.startLocal || '').slice(0, 10), end = String(occ.endLocal || '').slice(0, 10), g = 0;
+      if (!end || end <= d) end = addDateStr(d, 1);
+      while (d < end && g++ < 60) { out.push(d); d = addDateStr(d, 1); }
+      return out.length ? out : [d];
+    }
+    var a = dayOf(occ);
+    var b = a;
+    try { b = I.utcToZoned(Math.max(occ.startMs, (occ.endMs || occ.startMs) - 1), (occ.event && occ.event.tzid) ? viewerZone() : 'UTC').slice(0, 10); } catch (e) {}
+    if (!(occ.event && occ.event.tzid)) b = String(occ.endLocal || a).slice(0, 10);
+    if (!b || b < a) b = a;
+    var list = [], x = a, n = 0;
+    while (x <= b && n++ < 14) { list.push(x); x = addDateStr(x, 1); }
+    return list;
+  }
+  function occurrences(from, to) {
+    if (!I) return [];
+    try { return I.expandAll(visibleEvents(), from.getTime(), to.getTime(), { max: 2000 }) || []; }
+    catch (e) { return []; }
+  }
+  function timeLabel(occ) {
+    if (!occ || occ.allDay) return T('allDay');
+    var ev = occ.event || {};
+    if (!ev.tzid) {
+      var p = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(occ.startLocal || '');
+      if (!p) return '';
+      var ms = Date.UTC(+p[1], +p[2] - 1, +p[3], +p[4], +p[5]);
+      return fmt(ms, hourCycle({ hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }));
+    }
+    return fmt(occ.startMs, hourCycle({ hour: 'numeric', minute: '2-digit', timeZone: viewerZone() }));
+  }
+  function whenText(occ) {
+    if (!occ) return '';
+    var ev = occ.event || {};
+    if (occ.allDay) {
+      var a = String(occ.startLocal || '').slice(0, 10);
+      var b = addDateStr(String(occ.endLocal || addDateStr(a, 1)).slice(0, 10), -1);
+      var left = fmtDate(a, { weekday: 'short', month: 'short', day: 'numeric' });
+      if (!b || b === a) return left + ' · ' + T('allDay');
+      return left + ' – ' + fmtDate(b, { weekday: 'short', month: 'short', day: 'numeric' });
+    }
+    var zone = ev.tzid ? viewerZone() : 'UTC';
+    var start = ev.tzid ? occ.startMs : wallMs(occ.startLocal);
+    var end = ev.tzid ? occ.endMs : wallMs(occ.endLocal);
+    var o = hourCycle({ weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: zone });
+    var text = fmt(start, o);
+    if (end && end !== start) text += ' – ' + fmt(end, hourCycle({ hour: 'numeric', minute: '2-digit', timeZone: zone }));
+    if (!ev.tzid) return text;
+    if (ev.tzid && ev.tzid !== viewerZone()) {
+      var own = fmt(occ.startMs, hourCycle({ weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: ev.tzid }));
+      text += '\n' + T('alsoZone', { zone: ev.tzid, when: own });
+    }
+    return text;
+  }
+  function wallMs(local) {
+    var p = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(local || '');
+    if (!p) return 0;
+    return Date.UTC(+p[1], +p[2] - 1, +p[3], +p[4], +p[5], 0);
+  }
+  function remText(min) {
+    var map = { 0: 'remAt', 5: 'rem5', 10: 'rem10', 15: 'rem15', 30: 'rem30', 60: 'rem60', 1440: 'remDay' };
+    if (map[min] != null && map.hasOwnProperty(String(min)) || map[min]) return T(map[min]);
+    return T('minutesN', { n: min });
+  }
+  function partText(p) {
+    p = String(p || '').toUpperCase();
+    if (p === 'ACCEPTED') return T('partYes');
+    if (p === 'DECLINED') return T('partNo');
+    if (p === 'TENTATIVE') return T('partMaybe');
+    return T('partNeeds');
+  }
+  function linkify(s) {
+    return esc(s).replace(/https:\/\/[^\s<]+/g, function (url) {
+      var show = url.replace(/[),.;]+$/g, '');
+      return '<a href="' + show + '" target="_blank" rel="noopener">' + show + '</a>' + url.slice(show.length);
+    });
+  }
+  function fileName(s) {
+    var n = String(s || 'calendar').replace(/[\\/:*?"<>|]+/g, '').trim().slice(0, 60);
+    return (n || 'calendar') + '.ics';
+  }
+  function download(name, text) {
+    if (window.gifos && gifos.file && gifos.file.save) return gifos.file.save(fileName(name), 'text/calendar', text);
+    try {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([text], { type: 'text/calendar' }));
+      a.download = fileName(name); a.click();
+      return Promise.resolve({ state: 'downloaded' });
+    } catch (e) { return Promise.reject(e); }
+  }
+  function readFile(file) {
+    if (file && file.text) return file.text();
+    return new Promise(function (res, rej) {
+      var r = new FileReader();
+      r.onload = function () { res(String(r.result || '')); };
+      r.onerror = function () { rej(r.error || new Error('read')); };
+      r.readAsText(file);
+    });
+  }
+
+  function applyChrome() {
+    applyI18n();
+    var h = document.getElementById('title');
+    var d = state.focus;
+    if (state.view === 'month') h.textContent = fmt(d.getTime(), { month: 'long', year: 'numeric' });
+    else if (state.view === 'week') {
+      var a = weekStartOf(d), b = addDays(a, 6);
+      h.textContent = fmt(a.getTime(), { month: 'short', day: 'numeric' }) + ' – ' + fmt(b.getTime(), { month: 'short', day: 'numeric' });
+    } else if (state.view === 'day') h.textContent = fmt(d.getTime(), { weekday: 'long', month: 'long', day: 'numeric' });
+    else h.textContent = T('agenda');
+    badge();
+  }
+  function badge() {
+    var n = state.invites.filter(function (r) { return r && r.state === 'new'; }).length;
+    var b = document.getElementById('badge');
+    if (!b) return;
+    b.hidden = !n;
+    b.textContent = n > 9 ? '9+' : String(n);
+    var bell = document.getElementById('bell');
+    if (bell) bell.setAttribute('aria-label', T('inboxAria') + (n ? ' ' + T('badge', { n: n }) : ''));
+  }
+
+  function render() {
+    if (!I) { document.getElementById('view').textContent = T('missing'); return; }
+    var view = document.getElementById('view');
+    var top = view.scrollTop, left = 0;
+    var sc = document.getElementById('week-scroll'); if (sc) left = sc.scrollLeft;
+    applyChrome();
+    state.shown = {};
+    if (state.view === 'month') renderMonth();
+    else if (state.view === 'week') renderGrid(7);
+    else if (state.view === 'day') renderGrid(1);
+    else renderAgenda();
+    if (state.view !== 'week' && state.view !== 'day') view.scrollTop = top;
+    var sc2 = document.getElementById('week-scroll');
+    if (sc2) {
+      var x = left;
+      if (state.forceScroll) {
+        var idx = 0, days = document.querySelectorAll('#week .dh'), i;
+        var key = dateKey(state.focus);
+        for (i = 0; i < days.length; i++) if (days[i].getAttribute('data-day') === key) idx = i;
+        var col = parseFloat(sc2.style.getPropertyValue('--col')) || 0;
+        var max = sc2.scrollWidth - sc2.clientWidth;
+        if (max > 8) x = Math.max(0, (idx - 1) * col);
+      }
+      document.querySelectorAll('.days-x').forEach(function (n) { n.scrollLeft = x; });
+    }
+    var body = document.querySelector('.week-body');
+    if (body && dateKey(startOfDay(state.focus)) === dateKey(new Date())) {
+      body.scrollTop = Math.max(0, (new Date().getHours() - 1) * HOUR);
+    }
+    state.forceScroll = false;
+  }
+  function remember(occ) { if (occ && occ.key) state.shown[occ.key] = occ; return occ; }
+  function renderMonth() {
+    var d = state.focus, y = d.getFullYear(), m = d.getMonth(), ws = weekStartNum();
+    var first = new Date(y, m, 1), lead = (first.getDay() - ws + 7) % 7;
+    var cells = [], i;
+    for (i = 0; i < 42; i++) {
+      var day = new Date(y, m, 1 - lead + i);
+      if (i >= 35 && day.getMonth() !== m && (i % 7) === 0) break;
+      cells.push(day);
+    }
+    var from = cells[0], to = addDays(cells[cells.length - 1], 1);
+    var occ = occurrences(from, to), by = {};
+    occ.forEach(function (o) {
+      remember(o);
+      daysTouched(o).forEach(function (k) { (by[k] = by[k] || []).push(o); });
+    });
+    var sel = dateKey(state.focus);
+    var today = dateKey(new Date());
+    var wide = document.getElementById('view').clientWidth >= 760;
+    var head = '';
+    for (i = 0; i < 7; i++) head += '<i>' + esc(fmtDate(addDateStr('2023-01-01', (ws + i) % 7), { weekday: 'narrow' })) + '</i>';
+    var grid = cells.map(function (day) {
+      var k = dateKey(day), list = by[k] || [];
+      var dots = '', seen = {}, c = 0;
+      list.forEach(function (o) {
+        var col = colorOf(o.event && o.event.cal);
+        if (seen[col] || c > 3) return; seen[col] = 1; c++;
+        dots += '<i style="background:' + esc(col) + '"></i>';
+      });
+      var chips = '';
+      if (wide) {
+        chips = list.slice(0, 3).map(function (o) {
+          return '<button type="button" class="chip" data-key="' + esc(o.key) + '" style="border-color:' + esc(colorOf(o.event && o.event.cal)) + '">' + esc((o.event && o.event.title) || T('untitled')) + '</button>';
+        }).join('');
+        if (list.length > 3) chips += '<span class="quiet">' + esc(T('moreN', { n: list.length - 3 })) + '</span>';
+      }
+      return '<div class="cell' + (day.getMonth() !== m ? ' out' : '') + (k === today ? ' today' : '') + (k === sel ? ' sel' : '') + '" data-day="' + k + '"><button type="button" class="num" data-day="' + k + '">' + day.getDate() + '</button><div class="dots">' + dots + '</div><div class="chips">' + chips + '</div></div>';
+    }).join('');
+    var side = dayList(sel, by[sel] || []);
+    document.getElementById('view').innerHTML = '<div id="month"><div class="cal"><div class="wd">' + head + '</div><div class="grid">' + grid + '</div></div><div class="side">' + side + '<p class="quiet">' + esc(T('private')) + '</p></div></div>';
+  }
+  function dayList(key, list) {
+    var h = '<h2 id="dayhead">' + esc(fmtDate(key, { weekday: 'long', month: 'long', day: 'numeric' })) + '</h2>';
+    if (!list.length) return h + '<p class="quiet">' + esc(T('nothing')) + '</p>';
+    var shown = list.slice(0, 40);
+    var more = list.length > shown.length ? '<p class="quiet">' + esc(T('moreN', { n: list.length - shown.length })) + '</p>' : '';
+    return h + '<ul class="list" aria-label="' + esc(T('dayList')) + '">' + shown.map(function (o) {
+      return '<li><button type="button" class="item" data-key="' + esc(o.key) + '"><i class="dot" style="background:' + esc(colorOf(o.event && o.event.cal)) + '"></i><span class="t">' + esc(timeLabel(o)) + '</span><span class="n">' + esc((o.event && o.event.title) || T('untitled')) + '</span></button></li>';
+    }).join('') + '</ul>' + more;
+  }
+  function renderGrid(count) {
+    var focus = startOfDay(state.focus);
+    var start = count === 7 ? weekStartOf(focus) : focus;
+    var days = [], i;
+    for (i = 0; i < count; i++) days.push(addDays(start, i));
+    var occ = occurrences(days[0], addDays(days[days.length - 1], 1));
+    var by = {};
+    occ.forEach(function (o) { remember(o); daysTouched(o).forEach(function (k) { (by[k] = by[k] || []).push(o); }); });
+    var viewW = document.getElementById('view').clientWidth || 320;
+    var inner = Math.max(180, viewW - 64);
+    var wide = count === 7 && inner >= 640;
+    var col = (wide || count === 1) ? inner / count : inner / 3;
+    if (!wide && count === 7 && col < 96) col = 96;
+    var today = dateKey(new Date());
+    var heads = '', ads = '', cols = '', labs = '';
+    for (var h = 1; h < 24; h++) labs += '<span style="top:' + (h * HOUR) + 'px">' + h + '</span>';
+    days.forEach(function (day) {
+      var k = dateKey(day);
+      var list = by[k] || [];
+      var all = list.filter(function (o) { return o.allDay || (o.endMs - o.startMs) >= 20 * 3600000; });
+      var timed = list.filter(function (o) { return all.indexOf(o) < 0; });
+      heads += '<div class="dh' + (k === today ? ' today' : '') + '" data-day="' + k + '" style="width:' + col + 'px"><span>' + esc(fmt(day.getTime(), { weekday: 'short' })) + '</span><b>' + day.getDate() + '</b></div>';
+      ads += '<div class="ad" style="width:' + col + 'px">' + all.slice(0, 3).map(function (o) {
+        return '<button type="button" data-key="' + esc(o.key) + '" style="border-color:' + esc(colorOf(o.event && o.event.cal)) + '">' + esc((o.event && o.event.title) || T('untitled')) + '</button>';
+      }).join('') + '</div>';
+      cols += '<div class="col" data-col data-day="' + k + '" style="width:' + col + 'px;height:' + (24 * HOUR) + 'px">' + placeTimed(timed, k) + nowLine(k) + '</div>';
+    });
+    document.getElementById('view').innerHTML = '<div class="week" id="week"><div class="week-row"><div class="gutter"></div><div class="days-x" id="week-scroll" style="--col:' + col + 'px"><div class="days">' + heads + '</div></div></div><div class="week-row"><div class="gutter"></div><div class="days-x"><div class="days">' + ads + '</div></div></div><div class="week-body"><div class="hours"><div class="hlabs" style="height:' + (24 * HOUR) + 'px">' + labs + '</div><div class="days-x"><div class="days">' + cols + '</div></div></div></div></div>';
+    var xs = [].slice.call(document.querySelectorAll('#week .days-x'));
+    var locking = false;
+    xs.forEach(function (n) {
+      n.addEventListener('scroll', function () {
+        if (locking) return;
+        locking = true;
+        xs.forEach(function (o) { if (o !== n) o.scrollLeft = n.scrollLeft; });
+        locking = false;
+      });
+    });
+  }
+  function placeTimed(list, dayKey) {
+    var items = list.map(function (o) {
+      var ev = o.event || {};
+      var localStart = (!ev.tzid) ? String(o.startLocal || '') : '';
+      var localEnd = (!ev.tzid) ? String(o.endLocal || '') : '';
+      var sMin, eMin;
+      if (!ev.tzid) {
+        sMin = minutesOf(localStart); eMin = minutesOf(localEnd);
+        if (localStart.slice(0, 10) < dayKey) sMin = 0;
+        if (localEnd.slice(0, 10) > dayKey) eMin = 24 * 60;
+      } else {
+        var zs = I.utcToZoned(o.startMs, viewerZone()), ze = I.utcToZoned(o.endMs, viewerZone());
+        sMin = zs.slice(0, 10) < dayKey ? 0 : minutesOf(zs);
+        eMin = ze.slice(0, 10) > dayKey ? 24 * 60 : minutesOf(ze);
+      }
+      if (eMin <= sMin) eMin = sMin + 30;
+      return { o: o, start: sMin, end: eMin };
+    }).sort(function (a, b) { return a.start - b.start; });
+    var cluster = [], clusterEnd = -1, placed = [];
+    function flush() {
+      if (!cluster.length) return;
+      var cols = [];
+      cluster.forEach(function (it) {
+        var c = 0; while (cols[c] && cols[c] > it.start) c++;
+        cols[c] = it.end; it.col = c;
+      });
+      var n = Math.max(1, cols.length);
+      cluster.forEach(function (it) { it.cols = n; placed.push(it); });
+      cluster = [];
+    }
+    items.forEach(function (it) {
+      if (cluster.length && it.start >= clusterEnd) flush();
+      cluster.push(it); if (it.end > clusterEnd) clusterEnd = it.end;
+    });
+    flush();
+    return placed.map(function (it) {
+      var top = (it.start / 60) * HOUR;
+      var h = Math.max(18, ((it.end - it.start) / 60) * HOUR - 2);
+      var width = 100 / it.cols;
+      var left = it.col * width;
+      var col = colorOf(it.o.event && it.o.event.cal);
+      return '<button type="button" class="ev" data-key="' + esc(it.o.key) + '" style="top:' + top + 'px;height:' + h + 'px;left:calc(' + left + '% + 1px);width:calc(' + width + '% - 3px);border-color:' + esc(col) + '"><b>' + esc((it.o.event && it.o.event.title) || T('untitled')) + '</b>' + (h > 32 ? '<div class="quiet">' + esc(timeLabel(it.o)) + '</div>' : '') + '</button>';
+    }).join('');
+  }
+  function minutesOf(local) {
+    var p = /T(\d{2}):(\d{2})/.exec(local || '');
+    if (!p) return 0;
+    return (+p[1]) * 60 + (+p[2]);
+  }
+  function nowLine(dayKey) {
+    if (dayKey !== dateKey(new Date())) return '';
+    var n = new Date();
+    var top = (n.getHours() * 60 + n.getMinutes()) / 60 * HOUR;
+    return '<div class="nowline" style="top:' + top + 'px" title="' + esc(T('now')) + '"></div>';
+  }
+  function renderAgenda() {
+    var from = startOfDay(state.focus);
+    var to = addDays(from, state.span || 60);
+    var occ = occurrences(from, to);
+    occ.sort(function (a, b) { return a.startMs - b.startMs; });
+    var html = '<div class="agenda">', last = '', n = 0;
+    occ.forEach(function (o) {
+      remember(o);
+      daysTouched(o).forEach(function (k) {
+        if (k < dateKey(from) || k >= dateKey(to)) return;
+        if (k !== last) {
+          if (last) html += '</ul>';
+          html += '<h3>' + esc(fmtDate(k, { weekday: 'long', month: 'long', day: 'numeric' })) + '</h3><ul class="list">';
+          last = k;
+        }
+        html += '<li><button type="button" class="item" data-key="' + esc(o.key) + '"><i class="dot" style="background:' + esc(colorOf(o.event && o.event.cal)) + '"></i><span class="t">' + esc(timeLabel(o)) + '</span><span class="n">' + esc((o.event && o.event.title) || T('untitled')) + '</span></button></li>';
+        n++;
+      });
+    });
+    if (!n) html += '<p class="quiet">' + esc(T('nothingAhead')) + '</p>';
+    else html += '</ul>';
+    html += '<p><button type="button" id="more" class="go">' + esc(T('more')) + '</button></p><p class="quiet">' + esc(T('private')) + '</p></div>';
+    document.getElementById('view').innerHTML = html;
+    var more = document.getElementById('more');
+    if (more) more.onclick = function () { state.span = (state.span || 60) + 60; render(); };
+  }
+
+  function move(dir) {
+    var d = state.focus;
+    if (state.view === 'month') state.focus = new Date(d.getFullYear(), d.getMonth() + dir, Math.min(d.getDate(), 28));
+    else if (state.view === 'week') state.focus = addDays(d, 7 * dir);
+    else if (state.view === 'agenda') state.focus = addDays(d, 7 * dir);
+    else state.focus = addDays(d, dir);
+    state.forceScroll = state.view === 'week';
+    render();
+  }
+  function goToday() { state.focus = new Date(); state.forceScroll = true; render(); }
+  function setView(v) {
+    state.view = v; state.settings.view = v; state.forceScroll = v === 'week';
+    saveSettings(); render();
+  }
+
+  function openSheet(opts) {
+    var bg = document.createElement('div');
+    bg.className = 'modal-bg';
+    var id = 'sheet-t-' + (++sheetN);
+    var acts = (opts.actions || []).map(function (a, i) {
+      return '<button type="button" class="' + (a.go ? 'go' : a.danger ? 'danger' : '') + '" data-act="' + i + '">' + esc(a.label) + '</button>';
+    }).join('');
+    bg.innerHTML = '<div class="modal" role="dialog" aria-modal="true" aria-labelledby="' + id + '"><div class="dlg-head"><h2 id="' + id + '">' + esc(opts.title) + '</h2><button type="button" class="x" data-x aria-label="' + esc(T('closeAria')) + '">×</button></div><div class="dlg-body">' + opts.body + '</div><div class="dlg-actions">' + acts + '</div></div>';
+    document.getElementById('sheets').appendChild(bg);
+    document.body.classList.add('sheet-on');
+    function close() {
+      if (bg.parentNode) bg.parentNode.removeChild(bg);
+      if (!document.querySelector('#sheets .modal-bg')) document.body.classList.remove('sheet-on');
+    }
+    bg.addEventListener('click', function (e) { if (e.target === bg) close(); });
+    bg.querySelector('[data-x]').onclick = close;
+    [].forEach.call(bg.querySelectorAll('[data-act]'), function (btn) {
+      btn.onclick = function () {
+        var a = opts.actions[+btn.getAttribute('data-act')];
+        if (a && a.fn) a.fn(close, bg); else close();
+      };
+    });
+    if (opts.onBind) opts.onBind(bg, close);
+    var f = bg.querySelector('input,textarea,select,button.go');
+    if (f) { try { f.focus(); } catch (e) {} }
+    return close;
+  }
+
+  function masterOf(occ) {
+    var uid = occ && occ.event && occ.event.uid;
+    var i, fallback = occ && occ.event;
+    for (i = 0; i < state.events.length; i++) {
+      var e = state.events[i];
+      if (e && e.uid === uid && (e.recurrenceId == null || e.recurrenceId === '')) return e;
+    }
+    return fallback;
+  }
+  function recurring(occ) {
+    if (!occ) return false;
+    var e = occ.event || {};
+    return !!(occ.recurring || (e.rrule && e.rrule.freq) || (e.recurrenceId != null && e.recurrenceId !== ''));
+  }
+  function openDetail(occ) {
+    if (!occ || !occ.event) return;
+    var ev = occ.event, cal = calBy(ev.cal) || defaultCal();
+    var ro = !!(cal && cal.readonly);
+    var link = linkOf(ev);
+    var body = '<p><b>' + esc(ev.title || T('untitled')) + '</b></p>';
+    if (ev.status === 'CANCELLED') body += '<p class="quiet">' + esc(T('statusCancelled')) + '</p>';
+    body += '<p>' + esc(whenText(occ)).replace(/\n/g, '<br>') + '</p>';
+    if (ev.location) body += '<p>' + esc(T('location')) + ': ' + esc(ev.location) + '</p>';
+    if (ev.url) body += '<p><a href="' + esc(ev.url) + '" target="_blank" rel="noopener">' + esc(T('openLink')) + '</a></p>';
+    if (ev.notes) body += '<div class="note">' + linkify(ev.notes) + '</div>';
+    body += '<p>' + esc(T('calendar')) + ': <i class="dot" style="background:' + esc(cal.color || PALETTE[0]) + ';display:inline-block;vertical-align:middle"></i> ' + esc(cal.name || '') + '</p>';
+    if (ev.alarms && ev.alarms.length) body += '<p>' + esc(T('reminders')) + ': ' + esc(ev.alarms.map(function (a) { return remText(a.minutes || 0); }).join(', ')) + '</p>';
+    if (ev.attendees && ev.attendees.length) {
+      body += '<p>' + esc(T('who')) + '</p><ul class="list">' + ev.attendees.map(function (a) {
+        return '<li><span class="n">' + esc(a.name || a.email || a.cid || '') + '</span><span class="quiet">' + esc(partText(a.partstat)) + '</span></li>';
+      }).join('') + '</ul>';
+    }
+    var actions = [];
+    if (link) actions.push({ label: T('join'), go: true, fn: function () { bridge.open(link); } });
+    if (!ro) actions.push({ label: T('edit'), fn: function (close) { close(); openEditor(occ); } });
+    actions.push({ label: T('export'), fn: function () { exportEvent(masterOf(occ) || ev); } });
+    if (!ro) actions.push({ label: T('delete'), danger: true, fn: function (close) { close(); askDelete(occ); } });
+    actions.push({ label: T('close'), fn: function (close) { close(); } });
+    openSheet({ title: T('detail'), body: body, actions: actions, onBind: function (root) {
+      root.querySelectorAll('a[href]').forEach(function (a) {
+        a.addEventListener('click', function (e) {
+          var href = a.getAttribute('href') || '';
+          if (linkOf({ url: href, notes: '', location: '' })) { e.preventDefault(); bridge.open(href); }
+        });
+      });
+    } });
+  }
+  function exportEvent(ev) {
+    try {
+      var copy = JSON.parse(JSON.stringify(ev));
+      var link = linkOf(copy);
+      if (link && String(copy.url || '').indexOf(link) < 0) copy.url = link;
+      if (link && String(copy.notes || '').indexOf(link) < 0) copy.notes = (copy.notes ? String(copy.notes).replace(/\s+$/, '') + '\n' : '') + T('joinLine', { link: link });
+      var ics = I.serialize({ events: [copy] });
+      download(copy.title || 'event', ics).catch(function () { say(T('couldNotSave')); });
+    } catch (e) { say(T('couldNotSave')); }
+  }
+  function exportCal(cal) {
+    var evs = state.events.filter(function (e) { return e && e.uid && e.cal === cal.id; });
+    try {
+      var ics = I.serialize({ name: cal.name, events: evs });
+      download(cal.name || 'calendar', ics).catch(function () { say(T('couldNotSave')); });
+    } catch (e) { say(T('couldNotSave')); }
+  }
+
+  function formFromEvent(ev, occ) {
+    var allDay = !!(occ ? occ.allDay : ev && ev.allDay);
+    var start, end, tz = (ev && ev.tzid) || viewerZone();
+    if (occ && occ.allDay) {
+      start = String(occ.startLocal).slice(0, 10);
+      end = addDateStr(String(occ.endLocal || addDateStr(start, 1)).slice(0, 10), -1);
+    } else if (occ) {
+      var local = (ev && ev.tzid) ? I.utcToZoned(occ.startMs, ev.tzid) : String(occ.startLocal || '');
+      var localEnd = (ev && ev.tzid) ? I.utcToZoned(occ.endMs, ev.tzid) : String(occ.endLocal || '');
+      start = local; end = localEnd; tz = (ev && ev.tzid) || '';
+    } else if (ev && ev.allDay) {
+      start = ev.start; end = addDateStr(ev.end, -1);
+    } else if (ev) {
+      start = ev.startLocal || ''; end = ev.endLocal || ''; tz = ev.tzid || '';
+    }
+    var rule = (ev && ev.rrule) || null;
+    var freq = '', base = 'WEEKLY', interval = 1, monthly = 'day', byday = [], endMode = 'never', until = '', count = 10;
+    if (rule && rule.freq) {
+      interval = rule.interval || 1;
+      base = rule.freq;
+      freq = interval !== 1 ? 'CUSTOM' : rule.freq;
+      if (rule.freq === 'MONTHLY' && rule.byday && rule.byday[0] && rule.byday[0].n) monthly = 'weekday';
+      if (rule.freq === 'WEEKLY' && rule.byday) byday = rule.byday.map(function (b) { return b.day; });
+      if (rule.count) endMode = 'count';
+      else if (rule.until) {
+        endMode = 'until';
+        var u = String(rule.until);
+        if (/^\d{8}/.test(u)) until = u.slice(0, 4) + '-' + u.slice(4, 6) + '-' + u.slice(6, 8);
+      }
+      count = rule.count || 10;
+    }
+    return {
+      title: (ev && ev.title) || '', notes: (ev && ev.notes) || '', location: (ev && ev.location) || '', url: (ev && ev.url) || '',
+      allDay: allDay, start: start, end: end, tz: tz, cal: (ev && ev.cal) || defaultCal().id,
+      alarms: (ev && ev.alarms ? ev.alarms.map(function (a) { return a.minutes || 0; }) : (state.settings.reminder >= 0 ? [state.settings.reminder] : [])),
+      attendees: ev && ev.attendees ? JSON.parse(JSON.stringify(ev.attendees)) : [],
+      freq: freq, base: base, interval: interval, monthly: monthly, byday: byday, endMode: endMode, until: until, count: count,
+      meet: !!(ev && linkOf(ev)), meetMode: (ev && ev.meeting && ev.meeting.mode === 'open') ? 'open' : (state.settings.meetMode || 'hosted'),
+      uid: ev && ev.uid, sequence: ev && ev.sequence || 0
+    };
+  }
+  function blankForm(day, hour) {
+    var local = (day || dateKey(state.focus)) + 'T' + pad(hour == null ? defaultHour(day) : hour) + ':00:00';
+    var f = formFromEvent(null, null);
+    f.allDay = false; f.start = local; f.end = addClock(local, 60); f.tz = viewerZone();
+    f.cal = defaultCal().id;
+    f.alarms = state.settings.reminder >= 0 ? [state.settings.reminder] : [];
+    f.meetMode = state.settings.meetMode === 'open' ? 'open' : 'hosted';
+    return f;
+  }
+  function defaultHour(day) {
+    var n = new Date();
+    if ((day || dateKey(state.focus)) === dateKey(n)) return Math.min(22, n.getHours() + (n.getMinutes() ? 1 : 0));
+    return 9;
+  }
+  function addClock(local, mins) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(local || ''); if (!m) return local;
+    var ms = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) + mins * 60000, d = new Date(ms);
+    return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()) + 'T' + pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ':00';
+  }
+  function openEditor(occ, preset) {
+    var ev = occ ? (occ.event || null) : null;
+    var model = preset || (occ ? formFromEvent(ev, occ) : blankForm());
+    if (preset && occ) model = Object.assign(formFromEvent(ev, occ), preset);
+    var body = editorHtml(model);
+    openSheet({
+      title: occ ? T('editEvent') : T('newEvent'),
+      body: body,
+      actions: [
+        { label: T('save'), go: true, fn: function (close, root) { saveEditor(root, occ, close); } },
+        { label: T('cancel'), fn: function (close) { close(); } }
+      ],
+      onBind: function (root) { bindEditor(root, model); }
+    });
+  }
+  function editorHtml(m) {
+    m.byday = m.byday || []; m.alarms = m.alarms || []; m.attendees = m.attendees || [];
+    var startDate = String(m.start || '').slice(0, 10), endDate = String(m.end || m.start || '').slice(0, 10);
+    var startTime = (String(m.start || '').split('T')[1] || '09:00').slice(0, 5);
+    var endTime = (String(m.end || '').split('T')[1] || '10:00').slice(0, 5);
+    var cals = state.calendars.filter(function (c) { return c && (!c.readonly || c.id === m.cal); }).map(function (c) {
+      return '<option value="' + esc(c.id) + '"' + (c.id === m.cal ? ' selected' : '') + '>' + esc(c.name) + '</option>';
+    }).join('');
+    var days = DAY.map(function (d, i) {
+      return '<button type="button" class="dayc' + (m.byday.indexOf(d) >= 0 ? ' on' : '') + '" data-d="' + d + '" aria-pressed="' + (m.byday.indexOf(d) >= 0 ? 'true' : 'false') + '">' + esc(fmtDate(addDateStr('2023-01-01', i), { weekday: 'narrow' })) + '</button>';
+    }).join('');
+    var rems = (m.alarms || []).map(function (min, i) {
+      return '<button type="button" data-rem="' + i + '">' + esc(remText(min)) + ' ×</button>';
+    }).join('');
+    var guests = (m.attendees || []).map(function (a, i) {
+      return '<button type="button" data-guest="' + i + '" aria-label="' + esc(T('removeGuest', { name: a.name || '' })) + '">' + esc(a.name || a.email || '') + ' · ' + esc(partText(a.partstat)) + '</button>';
+    }).join('');
+    var meet = bridge.hasRooms() ? ('<div id="meet-row"><label class="switch"><input type="checkbox" id="meet-on"' + (m.meet ? ' checked' : '') + '> ' + esc(T('meetingAdd')) + '</label><div id="meet-modes"><label class="switch"><input type="radio" name="mm" value="hosted"' + (m.meetMode !== 'open' ? ' checked' : '') + '> <span><b>' + esc(T('meetingHosted')) + '</b><br><span class="quiet">' + esc(T('meetingHostedHelp')) + '</span></span></label><label class="switch"><input type="radio" name="mm" value="open"' + (m.meetMode === 'open' ? ' checked' : '') + '> <span><b>' + esc(T('meetingOpen')) + '</b><br><span class="quiet">' + esc(T('meetingOpenHelp')) + '</span></span></label></div></div>') : '';
+    var people = bridge.hasPeople() ? ('<div><div class="quiet">' + esc(T('guests')) + '</div><div class="chips" id="guest-chips">' + guests + '</div><button type="button" id="add-guest">' + esc(T('addGuests')) + '</button> <button type="button" id="invite-other">' + esc(T('inviteOther')) + '</button><p class="quiet">' + esc(T('inviteOtherHelp')) + '</p></div>') : '';
+    return '<label class="f">' + esc(T('titleField')) + '<input id="f-title" maxlength="200" value="' + esc(m.title) + '" required></label>' +
+      '<label class="switch"><input type="checkbox" id="f-all"' + (m.allDay ? ' checked' : '') + '> ' + esc(T('allDay')) + '</label>' +
+      '<div class="row2"><label class="f">' + esc(T('start')) + '<input id="f-sd" type="date" value="' + esc(startDate) + '"></label><label class="f" id="f-st-lab">' + esc(T('time')) + '<input id="f-st" type="time" value="' + esc(startTime) + '"></label></div>' +
+      '<div class="row2"><label class="f">' + esc(T('end')) + '<input id="f-ed" type="date" value="' + esc(endDate) + '"></label><label class="f" id="f-et-lab">' + esc(T('time')) + '<input id="f-et" type="time" value="' + esc(endTime) + '"></label></div>' +
+      '<div id="zone-box"><label class="f">' + esc(T('timeZone')) + '<input id="zone-q" type="search" placeholder="' + esc(T('zoneSearch')) + '" aria-label="' + esc(T('zoneSearch')) + '"></label><div class="zone-list" id="zone-list" role="listbox"></div></div>' +
+      '<label class="f">' + esc(T('repeat')) + '<select id="f-freq"><option value="">' + esc(T('repeatNone')) + '</option><option value="DAILY">' + esc(T('repeatDaily')) + '</option><option value="WEEKLY">' + esc(T('repeatWeekly')) + '</option><option value="MONTHLY">' + esc(T('repeatMonthly')) + '</option><option value="YEARLY">' + esc(T('repeatYearly')) + '</option><option value="CUSTOM">' + esc(T('repeatCustom')) + '</option></select></label>' +
+      '<div id="rep-extra"><div class="daysel" id="day-chips">' + days + '</div><div id="month-mode"><label class="switch"><input type="radio" name="mmode" value="day"' + (m.monthly !== 'weekday' ? ' checked' : '') + '> ' + esc(T('sameDay')) + '</label><label class="switch"><input type="radio" name="mmode" value="weekday"' + (m.monthly === 'weekday' ? ' checked' : '') + '> ' + esc(T('sameWeekday')) + '</label></div><div class="row2" id="custom-int"><label class="f">' + esc(T('every')) + '<input id="f-int" type="number" min="1" max="99" value="' + esc(m.interval || 1) + '"></label><label class="f">' + esc(T('repeat')) + '<select id="f-base"><option value="DAILY">' + esc(T('unitDay')) + '</option><option value="WEEKLY">' + esc(T('unitWeek')) + '</option><option value="MONTHLY">' + esc(T('unitMonth')) + '</option><option value="YEARLY">' + esc(T('unitYear')) + '</option></select></label></div>' +
+      '<label class="f">' + esc(T('ends')) + '<select id="f-end"><option value="never">' + esc(T('endsNever')) + '</option><option value="until">' + esc(T('endsOn')) + '</option><option value="count">' + esc(T('endsAfter')) + '</option></select></label><div class="row2"><label class="f" id="until-lab">' + esc(T('endsOn')) + '<input id="f-until" type="date" value="' + esc(m.until || '') + '"></label><label class="f" id="count-lab">' + esc(T('times')) + '<input id="f-count" type="number" min="1" max="999" value="' + esc(m.count || 10) + '"></label></div></div>' +
+      '<div><div class="quiet">' + esc(T('reminders')) + '</div><div class="chips" id="rems">' + rems + '</div><div class="row2"><label class="f">' + esc(T('addReminder')) + '<select id="f-rem"><option value="0">' + esc(T('remAt')) + '</option><option value="5">' + esc(T('rem5')) + '</option><option value="10">' + esc(T('rem10')) + '</option><option value="15">' + esc(T('rem15')) + '</option><option value="30">' + esc(T('rem30')) + '</option><option value="60">' + esc(T('rem60')) + '</option><option value="1440">' + esc(T('remDay')) + '</option><option value="custom">' + esc(T('remCustom')) + '</option></select></label><label class="f" id="custom-min">' + esc(T('customMin')) + '<input id="f-min" type="number" min="0" max="43200" value="20"></label><button type="button" id="add-rem">' + esc(T('add')) + '</button></div></div>' +
+      '<label class="f">' + esc(T('location')) + '<input id="f-loc" value="' + esc(m.location) + '"></label>' +
+      '<label class="f">' + esc(T('url')) + '<input id="f-url" type="url" inputmode="url" value="' + esc(m.url) + '"></label>' +
+      '<label class="f">' + esc(T('notes')) + '<textarea id="f-notes">' + esc(m.notes) + '</textarea></label>' +
+      '<label class="f">' + esc(T('calendar')) + '<select id="f-cal">' + cals + '</select></label>' + meet + people;
+  }
+  function bindEditor(root, model) {
+    root._model = model;
+    var freq = root.querySelector('#f-freq'); freq.value = model.freq || '';
+    var base = root.querySelector('#f-base'); if (base) base.value = model.base || 'WEEKLY';
+    var end = root.querySelector('#f-end'); if (end) end.value = model.endMode || 'never';
+    function sync() {
+      var all = root.querySelector('#f-all').checked;
+      root.querySelector('#f-st-lab').hidden = all;
+      root.querySelector('#f-et-lab').hidden = all;
+      root.querySelector('#zone-box').hidden = all;
+      var f = root.querySelector('#f-freq').value;
+      root.querySelector('#day-chips').hidden = f !== 'WEEKLY' && !(f === 'CUSTOM' && root.querySelector('#f-base').value === 'WEEKLY');
+      root.querySelector('#month-mode').hidden = f !== 'MONTHLY' && !(f === 'CUSTOM' && root.querySelector('#f-base').value === 'MONTHLY');
+      root.querySelector('#custom-int').hidden = f !== 'CUSTOM';
+      var em = root.querySelector('#f-end').value;
+      root.querySelector('#until-lab').hidden = em !== 'until';
+      root.querySelector('#count-lab').hidden = em !== 'count';
+      root.querySelector('#rep-extra').hidden = !f;
+      var modes = root.querySelector('#meet-modes');
+      if (modes) modes.hidden = !root.querySelector('#meet-on').checked;
+      root.querySelector('#custom-min').hidden = root.querySelector('#f-rem').value !== 'custom';
+    }
+    root.querySelectorAll('#f-all,#f-freq,#f-base,#f-end,#f-rem,#meet-on').forEach(function (el) { if (el) el.addEventListener('change', sync); });
+    root.querySelectorAll('.dayc').forEach(function (b) {
+      b.onclick = function () {
+        b.classList.toggle('on'); b.setAttribute('aria-pressed', b.classList.contains('on') ? 'true' : 'false');
+      };
+    });
+    paintZones(root, model.tz || '');
+    root.querySelector('#zone-q').addEventListener('input', function () { paintZones(root, root._tz || model.tz || ''); });
+    root.querySelector('#add-rem').onclick = function () {
+      var v = root.querySelector('#f-rem').value;
+      var min = v === 'custom' ? Math.max(0, parseInt(root.querySelector('#f-min').value, 10) || 0) : parseInt(v, 10) || 0;
+      root._alarms = root._alarms || model.alarms.slice();
+      root._alarms.push(min); paintRems(root);
+    };
+    root._alarms = model.alarms.slice();
+    root._guests = JSON.parse(JSON.stringify(model.attendees || []));
+    root._tz = model.tz || '';
+    paintRems(root); paintGuests(root); sync();
+    var ag = root.querySelector('#add-guest');
+    if (ag) ag.onclick = function () { pickGuests(root); };
+    var io = root.querySelector('#invite-other');
+    if (io) io.onclick = function () { inviteFile(root); };
+  }
+  function paintRems(root) {
+    var box = root.querySelector('#rems');
+    box.innerHTML = (root._alarms || []).map(function (min, i) {
+      return '<button type="button" data-rem="' + i + '">' + esc(remText(min)) + ' ×</button>';
+    }).join('');
+    [].forEach.call(box.querySelectorAll('button'), function (b) {
+      b.onclick = function () { root._alarms.splice(+b.getAttribute('data-rem'), 1); paintRems(root); };
+    });
+  }
+  function paintGuests(root) {
+    var box = root.querySelector('#guest-chips'); if (!box) return;
+    box.innerHTML = (root._guests || []).map(function (a, i) {
+      return '<button type="button" data-guest="' + i + '">' + esc(a.name || a.email || a.cid || '') + ' · ' + esc(partText(a.partstat)) + '</button>';
+    }).join('');
+    [].forEach.call(box.querySelectorAll('button'), function (b) {
+      b.onclick = function () { root._guests.splice(+b.getAttribute('data-guest'), 1); paintGuests(root); };
+    });
+  }
+  function paintZones(root, selected) {
+    var q = (root.querySelector('#zone-q').value || '').trim().toLowerCase();
+    var list = root.querySelector('#zone-list');
+    var all = zoneNames();
+    var rows = [{ id: '', label: T('floating') }];
+    if (!q) {
+      if (selected) rows.push({ id: selected, label: selected + ' (' + offsetLabel(selected) + ')' });
+      else rows.push({ id: viewerZone(), label: viewerZone() + ' (' + offsetLabel(viewerZone()) + ')' });
+    } else {
+      all.forEach(function (z) {
+        if (rows.length > 40) return;
+        if (z.toLowerCase().indexOf(q) >= 0) rows.push({ id: z, label: z + ' (' + offsetLabel(z) + ')' });
+      });
+    }
+    var cur = root._tz;
+    if (cur == null) cur = selected || '';
+    list.innerHTML = rows.map(function (r) {
+      return '<button type="button" data-z="' + esc(r.id) + '" class="' + (r.id === cur ? 'on' : '') + '">' + esc(r.label) + '</button>';
+    }).join('');
+    [].forEach.call(list.querySelectorAll('button'), function (b) {
+      b.onclick = function () { root._tz = b.getAttribute('data-z') || ''; paintZones(root, root._tz); };
+    });
+  }
+  function zoneNames() {
+    if (zonesCache) return zonesCache;
+    try { zonesCache = Intl.supportedValuesOf('timeZone').slice(); } catch (e) { zonesCache = []; }
+    var z = viewerZone(); if (zonesCache.indexOf(z) < 0) zonesCache.unshift(z);
+    return zonesCache;
+  }
+  function offsetLabel(tz) {
+    try {
+      var ms = Date.now();
+      var wall = I.utcToZoned(ms, tz);
+      var p = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(wall); if (!p) return '';
+      var asUtc = Date.UTC(+p[1], +p[2] - 1, +p[3], +p[4], +p[5]);
+      var min = Math.round((asUtc - ms) / 60000);
+      var sign = min < 0 ? '−' : '+';
+      var a = Math.abs(min);
+      return 'UTC' + sign + pad(Math.floor(a / 60)) + ':' + pad(a % 60);
+    } catch (e) { return ''; }
+  }
+  function ordinalOf(dateStr) {
+    var d = +String(dateStr).slice(8, 10);
+    var y = +String(dateStr).slice(0, 4), m = +String(dateStr).slice(5, 7);
+    var dim = new Date(y, m, 0).getDate();
+    var n = Math.floor((d - 1) / 7) + 1;
+    if (d + 7 > dim) n = -1;
+    return n;
+  }
+  function readForm(root) {
+    var all = root.querySelector('#f-all').checked;
+    var sd = root.querySelector('#f-sd').value, ed = root.querySelector('#f-ed').value || sd;
+    var st = root.querySelector('#f-st').value || '09:00', et = root.querySelector('#f-et').value || '10:00';
+    var freq = root.querySelector('#f-freq').value;
+    var base = freq === 'CUSTOM' ? root.querySelector('#f-base').value : freq;
+    var interval = freq === 'CUSTOM' ? Math.max(1, parseInt(root.querySelector('#f-int').value, 10) || 1) : 1;
+    var byday = [];
+    [].forEach.call(root.querySelectorAll('.dayc.on'), function (b) { byday.push(b.getAttribute('data-d')); });
+    var monthly = 'day';
+    var mm = root.querySelector('input[name="mmode"]:checked'); if (mm) monthly = mm.value;
+    var endMode = root.querySelector('#f-end').value;
+    var rrule = null;
+    if (base) {
+      rrule = { freq: base, interval: interval, count: 0, until: '', byday: [], bymonthday: [], bymonth: [], bysetpos: [], byyearday: [], byweekno: [], wkst: DAY[weekStartNum()] || 'MO' };
+      var anchor = sd;
+      if (base === 'WEEKLY') {
+        var days = byday.length ? byday : [DAY[parseDay(sd).getDay()]];
+        rrule.byday = days.map(function (d) { return { n: 0, day: d }; });
+      }
+      if (base === 'MONTHLY') {
+        if (monthly === 'weekday') rrule.byday = [{ n: ordinalOf(anchor), day: DAY[parseDay(sd).getDay()] }];
+        else rrule.bymonthday = [+anchor.slice(8, 10)];
+      }
+      if (endMode === 'count') rrule.count = Math.max(1, parseInt(root.querySelector('#f-count').value, 10) || 1);
+      if (endMode === 'until' && root.querySelector('#f-until').value) {
+        var u = root.querySelector('#f-until').value;
+        rrule.until = all ? u.replace(/-/g, '') : u.replace(/-/g, '') + 'T235959Z';
+      }
+    }
+    var meetOn = !!(root.querySelector('#meet-on') && root.querySelector('#meet-on').checked);
+    var modeEl = root.querySelector('input[name="mm"]:checked');
+    var partial = {
+      title: root.querySelector('#f-title').value.replace(/^\s+|\s+$/g, ''),
+      notes: root.querySelector('#f-notes').value,
+      location: root.querySelector('#f-loc').value,
+      url: root.querySelector('#f-url').value.replace(/^\s+|\s+$/g, ''),
+      allDay: all,
+      cal: root.querySelector('#f-cal').value,
+      alarms: (root._alarms || []).map(function (min) { return { minutes: min, action: 'display' }; }),
+      attendees: root._guests || [],
+      rrule: rrule,
+      tzid: all ? '' : (root._tz || ''),
+      meetOn: meetOn,
+      meetMode: modeEl ? modeEl.value : 'hosted'
+    };
+    if (all) { partial.start = sd; partial.end = addDateStr(ed, 1); }
+    else { partial.startLocal = sd + 'T' + st + ':00'; partial.endLocal = ed + 'T' + et + ':00'; partial.tzid = root._tz || ''; }
+    return partial;
+  }
+  function saveEditor(root, occ, close) {
+    var partial = readForm(root);
+    if (!partial.title) { say(T('needTitle')); return; }
+    if (partial.allDay) {
+      if (partial.end <= partial.start) { say(T('endBeforeStart')); return; }
+    } else if (wallMs(partial.endLocal) <= wallMs(partial.startLocal) && partial.endLocal.slice(0, 10) <= partial.startLocal.slice(0, 10) && partial.endLocal <= partial.startLocal) {
+      say(T('endBeforeStart')); return;
+    }
+    say('');
+    var existing = occ && occ.event ? linkOf(occ.event) : '';
+    var roomP = Promise.resolve(null);
+    if (partial.meetOn && !existing && bridge.hasRooms()) roomP = bridge.createRoom(partial.meetMode);
+    roomP.then(function (room) {
+      if (partial.meetOn && !existing && bridge.hasRooms() && (!room || !room.link)) { say(T('noRoom')); return; }
+      var made = buildEvent(partial, occ, room, existing);
+      if (occ && recurring(occ)) { close(); askScope(occ, made, partial); return; }
+      var ev = made;
+      if (occ && occ.event) { ev.uid = occ.event.uid; ev.id = occ.event.recurrenceId ? occ.event.id : occ.event.uid; ev.sequence = (occ.event.sequence || 0) + 1; }
+      else { ev.id = ev.uid; }
+      putEvent(ev).then(function () {
+        if (!occ) sendRequests(ev);
+        pushAlarms(); close(); render();
+      });
+    }).catch(function () { say(T('noRoom')); });
+  }
+  function buildEvent(partial, occ, room, existing) {
+    var notes = partial.notes || '';
+    var url = partial.url || '';
+    if (partial.meetOn && room && room.link) {
+      url = room.link;
+      if (notes.indexOf(room.link) < 0) notes = (notes ? notes.replace(/\s+$/, '') + '\n' : '') + T('joinLine', { link: room.link });
+    } else if (!partial.meetOn && existing) {
+      notes = String(notes).split('\n').filter(function (line) { return line.indexOf(existing) < 0; }).join('\n');
+      if (url === existing) url = '';
+    }
+    var seed = {
+      title: partial.title, notes: notes, location: partial.location, url: url,
+      allDay: partial.allDay, alarms: partial.alarms, attendees: partial.attendees,
+      rrule: partial.rrule, cal: partial.cal, tzid: partial.tzid || ''
+    };
+    if (partial.allDay) { seed.start = partial.start; seed.end = partial.end; }
+    else { seed.startLocal = partial.startLocal; seed.endLocal = partial.endLocal; }
+    if (room && room.room) seed.meeting = { room: room.room, v: room.v || '', mode: room.mode || partial.meetMode };
+    else if (occ && occ.event && occ.event.meeting && partial.meetOn) seed.meeting = occ.event.meeting;
+    var ev = I.makeEvent(seed);
+    if (occ && occ.event && occ.event.uid && !ev.uid) ev.uid = occ.event.uid;
+    return ev;
+  }
+  function askScope(occ, edited, partial) {
+    openSheet({
+      title: T('editEvent'),
+      body: '<p>' + esc(T('scopeEdit')) + '</p>',
+      actions: [
+        { label: T('thisOne'), go: true, fn: function (close) { close(); saveOne(masterOf(occ), occ, edited).then(done); } },
+        { label: T('thisFollowing'), fn: function (close) { close(); saveFollowing(masterOf(occ), occ, edited).then(done); } },
+        { label: T('allEvents'), fn: function (close) { close(); saveAll(masterOf(occ), occ, edited).then(done); } },
+        { label: T('cancel'), fn: function (close) { close(); } }
+      ]
+    });
+    function done() { pushAlarms(); render(); }
+  }
+  function originalMark(master, occ) {
+    if (occ.event && occ.event.recurrenceId != null && occ.event.recurrenceId !== '') {
+      if (master.allDay || typeof occ.event.recurrenceId === 'string') return String(occ.event.recurrenceId).slice(0, 10);
+      try { return I.utcToZoned(occ.event.recurrenceId, master.tzid || '').slice(0, 19); } catch (e) {}
+    }
+    return occ.allDay ? String(occ.startLocal || '').slice(0, 10) : String(occ.startLocal || '').slice(0, 19);
+  }
+  function saveOne(master, occ, edited) {
+    var rid = (occ.event && occ.event.recurrenceId != null && occ.event.recurrenceId !== '') ? occ.event.recurrenceId : (occ.allDay ? String(occ.startLocal).slice(0, 10) : occ.startMs);
+    var old = JSON.parse(JSON.stringify(master));
+    var mark = originalMark(master, occ);
+    old.exdate = (old.exdate || []).slice();
+    if (old.exdate.indexOf(mark) < 0) old.exdate.push(mark);
+    old.id = old.uid;
+    var ov = JSON.parse(JSON.stringify(edited));
+    ov.uid = master.uid; ov.rrule = null; ov.exdate = []; ov.rdate = [];
+    ov.recurrenceId = master.allDay ? String(rid).slice(0, 10) : rid;
+    ov.sequence = (master.sequence || 0) + 1;
+    var made = I.makeEvent(ov);
+    made.uid = master.uid; made.rrule = null; made.recurrenceId = ov.recurrenceId;
+    made.id = master.uid + '!' + made.recurrenceId;
+    return putEvent(old).then(function () { return putEvent(made); });
+  }
+  function saveAll(master, occ, edited) {
+    var next = JSON.parse(JSON.stringify(master));
+    ['title', 'notes', 'location', 'url', 'alarms', 'attendees', 'cal', 'meeting', 'tzid'].forEach(function (k) { if (edited[k] !== undefined) next[k] = edited[k]; });
+    next.rrule = edited.rrule || null;
+    if (master.allDay) {
+      var shift = daysBetween(String(occ.startLocal).slice(0, 10), edited.start);
+      var od = daysBetween(String(occ.startLocal).slice(0, 10), String(occ.endLocal).slice(0, 10));
+      var ed = daysBetween(edited.start, edited.end);
+      next.start = addDateStr(master.start, shift);
+      next.end = addDateStr(next.start, ed || od || 1);
+    } else {
+      next.start = (master.start || 0) + ((edited.start || 0) - (occ.startMs || 0));
+      next.end = (master.end || next.start) + ((edited.end || 0) - (occ.endMs || 0));
+      next.tzid = edited.tzid || '';
+      next.startLocal = ''; next.endLocal = '';
+    }
+    next.uid = master.uid; next.recurrenceId = null; next.exdate = master.exdate || [];
+    next.sequence = (master.sequence || 0) + 1; next.id = master.uid;
+    var made = I.makeEvent(next);
+    made.id = master.uid; made.uid = master.uid; made.exdate = next.exdate; made.rrule = next.rrule; made.recurrenceId = null;
+    return putEvent(made);
+  }
+  function saveFollowing(master, occ, edited) {
+    var anchor = master.allDay ? Date.parse(master.start + 'T00:00:00Z') : master.start;
+    if (occ.startMs <= anchor + 1000) return saveAll(master, occ, edited);
+    var old = JSON.parse(JSON.stringify(master));
+    var rule = JSON.parse(JSON.stringify(master.rrule || { freq: 'DAILY', interval: 1, byday: [] }));
+    if (master.allDay) rule.until = addDateStr(String(occ.startLocal).slice(0, 10), -1).replace(/-/g, '');
+    else rule.until = I.utcToZoned(occ.startMs - 1000, 'UTC').replace(/[-:]/g, '') + 'Z';
+    rule.count = 0;
+    old.rrule = rule; old.id = old.uid;
+    var neu = JSON.parse(JSON.stringify(edited));
+    neu.uid = I.uid(); neu.recurrenceId = null; neu.exdate = []; neu.id = neu.uid; neu.sequence = 0;
+    var made = I.makeEvent(neu); made.id = made.uid;
+    return putEvent(old).then(function () { return putEvent(made); }).then(function () { return shiftOverrides(master.uid, made.uid, occ.startMs); });
+  }
+  function shiftOverrides(oldUid, newUid, fromMs) {
+    var jobs = [];
+    state.events.slice().forEach(function (e) {
+      if (!e || e.uid !== oldUid || e.recurrenceId == null || e.recurrenceId === '') return;
+      var at = typeof e.recurrenceId === 'number' ? e.recurrenceId : Date.parse(String(e.recurrenceId).slice(0, 10) + 'T00:00:00Z');
+      if (isNaN(at) || at < fromMs) return;
+      var copy = JSON.parse(JSON.stringify(e));
+      copy.uid = newUid; copy.id = newUid + '!' + copy.recurrenceId;
+      jobs.push(putEvent(copy).then(function () { return delEvent(e.id); }));
+    });
+    return Promise.all(jobs);
+  }
+  function askDelete(occ) {
+    var master = masterOf(occ);
+    if (!recurring(occ)) {
+      openSheet({
+        title: T('delete'),
+        body: '<p>' + esc(T('deleteAsk')) + '</p>',
+        actions: [
+          { label: T('yesDelete'), danger: true, go: true, fn: function (close) { close(); deleteAll(master).then(function () { pushAlarms(); render(); }); } },
+          { label: T('cancel'), fn: function (close) { close(); } }
+        ]
+      });
+      return;
+    }
+    openSheet({
+      title: T('delete'),
+      body: '<p>' + esc(T('scopeDelete')) + '</p>',
+      actions: [
+        { label: T('thisOne'), danger: true, fn: function (close) { close(); deleteOne(master, occ).then(refresh); } },
+        { label: T('thisFollowing'), danger: true, fn: function (close) { close(); deleteFollowing(master, occ).then(refresh); } },
+        { label: T('allEvents'), danger: true, go: true, fn: function (close) { close(); deleteAll(master).then(refresh); } },
+        { label: T('cancel'), fn: function (close) { close(); } }
+      ]
+    });
+    function refresh() { pushAlarms(); render(); }
+  }
+  function deleteAll(master) {
+    var rows = state.events.filter(function (e) { return e && e.uid === master.uid; });
+    return Promise.all(rows.map(function (e) { return delEvent(e.id); })).then(function () { return cancelGuests(master); });
+  }
+  function deleteOne(master, occ) {
+    var old = JSON.parse(JSON.stringify(master));
+    var mark = originalMark(master, occ);
+    old.exdate = (old.exdate || []).slice();
+    if (old.exdate.indexOf(mark) < 0) old.exdate.push(mark);
+    old.id = old.uid;
+    var extra = [];
+    if (occ.event && occ.event.id && occ.event.id !== master.uid) extra.push(delEvent(occ.event.id));
+    return putEvent(old).then(function () { return Promise.all(extra); });
+  }
+  function deleteFollowing(master, occ) {
+    var anchor = master.allDay ? Date.parse(master.start + 'T00:00:00Z') : master.start;
+    if (occ.startMs <= anchor + 1000) return deleteAll(master);
+    var old = JSON.parse(JSON.stringify(master));
+    var rule = JSON.parse(JSON.stringify(master.rrule || {}));
+    if (master.allDay) rule.until = addDateStr(String(occ.startLocal).slice(0, 10), -1).replace(/-/g, '');
+    else rule.until = I.utcToZoned(occ.startMs - 1000, 'UTC').replace(/[-:]/g, '') + 'Z';
+    rule.count = 0; old.rrule = rule; old.id = old.uid;
+    var jobs = [putEvent(old)];
+    state.events.slice().forEach(function (e) {
+      if (!e || e.uid !== master.uid || e.recurrenceId == null || e.recurrenceId === '') return;
+      var at = typeof e.recurrenceId === 'number' ? e.recurrenceId : Date.parse(String(e.recurrenceId).slice(0, 10) + 'T00:00:00Z');
+      if (at >= occ.startMs) jobs.push(delEvent(e.id));
+    });
+    return Promise.all(jobs);
+  }
+  function cancelGuests(ev) {
+    if (!bridge.hasSend() || !ev || !ev.attendees) return Promise.resolve();
+    var ics = '';
+    try { ics = I.makeRequest(ev, { method: 'CANCEL' }); } catch (e) { return Promise.resolve(); }
+    return Promise.all(ev.attendees.filter(function (a) { return a && a.cid; }).map(function (a) { return bridge.send(a.cid, ics, 'cancel'); }));
+  }
+  function sendRequests(ev) {
+    if (!bridge.hasSend() || !ev.attendees) return;
+    var ics = '';
+    try { ics = I.makeRequest(ev, { method: 'REQUEST' }); } catch (e) { return; }
+    ev.attendees.forEach(function (a) { if (a && a.cid) bridge.send(a.cid, ics, 'invite'); });
+  }
+  function pickGuests(root) {
+    bridge.pickContacts().then(function (res) {
+      if (!res) return;
+      if (res.picked) { addPeople(root, res.people); return; }
+      var boxes = (res.people || []).map(function (p, i) {
+        return '<label class="switch"><input type="checkbox" data-i="' + i + '"> ' + esc(p.name || p.id) + '</label>';
+      }).join('') || '<p class="quiet">' + esc(T('inboxEmpty')) + '</p>';
+      openSheet({
+        title: T('pickGuests'),
+        body: boxes,
+        actions: [
+          { label: T('add'), go: true, fn: function (close, sheet) {
+            var chosen = [];
+            [].forEach.call(sheet.querySelectorAll('input:checked'), function (box) { chosen.push(res.people[+box.getAttribute('data-i')]); });
+            addPeople(root, chosen); close();
+          } },
+          { label: T('cancel'), fn: function (close) { close(); } }
+        ]
+      });
+    }).catch(function () {});
+  }
+  function addPeople(root, people) {
+    root._guests = root._guests || [];
+    (people || []).forEach(function (p) {
+      if (!p || !p.id) return;
+      if (root._guests.some(function (g) { return g.cid === p.id; })) return;
+      root._guests.push({ name: p.name || '', email: '', cid: p.id, partstat: 'NEEDS-ACTION', role: 'REQ-PARTICIPANT', rsvp: true });
+    });
+    paintGuests(root);
+  }
+  function inviteFile(root) {
+    var partial = readForm(root);
+    if (!partial.title) { say(T('needTitle')); return; }
+    var ev = buildEvent(partial, null, null, '');
+    try {
+      var ics = I.makeRequest(ev, { method: 'REQUEST' });
+      download(partial.title || 'invite', ics).catch(function () { say(T('couldNotSave')); });
+    } catch (e) { say(T('couldNotSave')); }
+  }
+
+  function openCalendars() {
+    var rows = state.calendars.map(function (c) {
+      return '<div class="calrow" data-id="' + esc(c.id) + '"><i class="dot" style="background:' + esc(c.color || PALETTE[0]) + '"></i><div class="nm"><b>' + esc(c.name) + '</b>' + (c.readonly ? ' <span class="quiet">' + esc(T('readonly')) + '</span>' : '') + '</div><label class="switch"><input type="checkbox" data-show="' + esc(c.id) + '"' + (c.hidden ? '' : ' checked') + ' aria-label="' + esc(T('showCal', { name: c.name })) + '"></label></div><div class="ops" data-ops="' + esc(c.id) + '"><button type="button" data-rename="' + esc(c.id) + '">' + esc(T('rename')) + '</button><button type="button" data-color="' + esc(c.id) + '">' + esc(T('recolour')) + '</button><button type="button" data-export="' + esc(c.id) + '">' + esc(T('exportCal')) + '</button><button type="button" data-import="' + esc(c.id) + '">' + esc(T('import')) + '</button><button type="button" data-del="' + esc(c.id) + '" class="danger">' + esc(T('delete')) + '</button></div>';
+    }).join('');
+    var body = rows + '<label class="f">' + esc(T('addCalendar')) + '<input id="new-cal" maxlength="80"></label><button type="button" id="add-cal" class="go">' + esc(T('add')) + '</button><hr style="border:0;border-top:1px solid var(--c-line)">' + settingsHtml() + '<p class="quiet">' + esc(T('private')) + '</p><button type="button" id="import-any">' + esc(T('import')) + '</button>';
+    openSheet({
+      title: T('calendars'),
+      body: body,
+      actions: [{ label: T('close'), fn: function (close) { close(); } }],
+      onBind: function (root, close) {
+        [].forEach.call(root.querySelectorAll('[data-show]'), function (box) {
+          box.onchange = function () {
+            var c = calBy(box.getAttribute('data-show')); if (!c) return;
+            c.hidden = !box.checked; db('calendars').put(c).then(function () { render(); });
+          };
+        });
+        [].forEach.call(root.querySelectorAll('[data-rename]'), function (b) {
+          b.onclick = function () { renameCal(b.getAttribute('data-rename'), close); };
+        });
+        [].forEach.call(root.querySelectorAll('[data-color]'), function (b) {
+          b.onclick = function () { recolorCal(b.getAttribute('data-color'), close); };
+        });
+        [].forEach.call(root.querySelectorAll('[data-export]'), function (b) {
+          b.onclick = function () { var c = calBy(b.getAttribute('data-export')); if (c) exportCal(c); };
+        });
+        [].forEach.call(root.querySelectorAll('[data-import]'), function (b) {
+          b.onclick = function () { state.importTarget = b.getAttribute('data-import'); document.getElementById('file').click(); };
+        });
+        [].forEach.call(root.querySelectorAll('[data-del]'), function (b) {
+          b.onclick = function () { askDeleteCal(b.getAttribute('data-del'), close); };
+        });
+        root.querySelector('#add-cal').onclick = function () {
+          var name = root.querySelector('#new-cal').value.replace(/^\s+|\s+$/g, '');
+          if (!name) return;
+          var cal = { id: 'cal-' + Math.random().toString(36).slice(2, 10), name: name, color: PALETTE[state.calendars.length % PALETTE.length], hidden: false };
+          state.calendars.push(cal);
+          db('calendars').put(cal).then(function () { close(); render(); openCalendars(); });
+        };
+        bindSettings(root);
+        root.querySelector('#import-any').onclick = function () { state.importTarget = ''; document.getElementById('file').click(); };
+      }
+    });
+  }
+  function renameCal(id, closeParent) {
+    var c = calBy(id); if (!c || c.readonly) return;
+    openSheet({
+      title: T('rename'),
+      body: '<label class="f">' + esc(T('name')) + '<input id="rn" value="' + esc(c.name) + '" maxlength="80"></label>',
+      actions: [
+        { label: T('save'), go: true, fn: function (close, root) {
+          c.name = root.querySelector('#rn').value.replace(/^\s+|\s+$/g, '') || c.name;
+          db('calendars').put(c).then(function () { close(); closeParent(); render(); openCalendars(); });
+        } },
+        { label: T('cancel'), fn: function (close) { close(); } }
+      ]
+    });
+  }
+  function recolorCal(id, closeParent) {
+    var c = calBy(id); if (!c || c.readonly) return;
+    var sw = PALETTE.map(function (col) {
+      return '<button type="button" class="swatch' + (col === c.color ? ' on' : '') + '" data-c="' + col + '" aria-label="' + esc(T('recolour')) + '"><i style="background:' + col + '"></i></button>';
+    }).join('');
+    openSheet({
+      title: T('colours'),
+      body: '<div class="swatches">' + sw + '</div>',
+      actions: [{ label: T('close'), fn: function (close) { close(); } }],
+      onBind: function (root) {
+        [].forEach.call(root.querySelectorAll('.swatch'), function (b) {
+          b.onclick = function () {
+            c.color = b.getAttribute('data-c');
+            db('calendars').put(c).then(function () { closeParent(); render(); openCalendars(); });
+          };
+        });
+      }
+    });
+  }
+  function askDeleteCal(id, closeParent) {
+    var c = calBy(id); if (!c || c.readonly) return;
+    var others = state.calendars.filter(function (x) { return x.id !== id && !x.readonly; });
+    var opts = others.map(function (x) { return '<option value="' + esc(x.id) + '">' + esc(x.name) + '</option>'; }).join('');
+    openSheet({
+      title: T('delete'),
+      body: '<p>' + esc(T('deleteCalAsk', { name: c.name })) + '</p>' + (opts ? '<label class="f">' + esc(T('moveEvents')) + '<select id="move-to">' + opts + '</select></label>' : ''),
+      actions: [
+        opts ? { label: T('moveEvents'), go: true, fn: function (close, root) {
+          var to = root.querySelector('#move-to').value;
+          var jobs = state.events.filter(function (e) { return e && e.cal === id; }).map(function (e) { e.cal = to; return putEvent(e); });
+          Promise.all(jobs).then(function () { return db('calendars').delete(id); }).then(function () {
+            state.calendars = state.calendars.filter(function (x) { return x.id !== id; });
+            close(); closeParent(); ensureCal().then(function () { render(); openCalendars(); });
+          });
+        } } : null,
+        { label: T('deleteEvents'), danger: true, fn: function (close) {
+          var jobs = state.events.filter(function (e) { return e && e.cal === id; }).map(function (e) { return delEvent(e.id); });
+          Promise.all(jobs).then(function () { return db('calendars').delete(id); }).then(function () {
+            state.calendars = state.calendars.filter(function (x) { return x.id !== id; });
+            close(); closeParent(); ensureCal().then(function () { render(); openCalendars(); });
+          });
+        } },
+        { label: T('cancel'), fn: function (close) { close(); } }
+      ].filter(Boolean)
+    });
+  }
+  function settingsHtml() {
+    var s = state.settings;
+    return '<h3>' + esc(T('settings')) + '</h3><label class="f">' + esc(T('defaultView')) + '<select id="set-view"><option value="month">' + esc(T('month')) + '</option><option value="week">' + esc(T('week')) + '</option><option value="day">' + esc(T('day')) + '</option><option value="agenda">' + esc(T('agenda')) + '</option></select></label>' +
+      '<label class="f">' + esc(T('weekStart')) + '<select id="set-week"><option value="">' + esc(T('weekLocale')) + '</option><option value="0">' + esc(T('weekSun')) + '</option><option value="1">' + esc(T('weekMon')) + '</option><option value="6">' + esc(T('weekSat')) + '</option></select></label>' +
+      '<label class="f">' + esc(T('defaultReminder')) + '<select id="set-rem"><option value="-1">' + esc(T('noReminder')) + '</option><option value="0">' + esc(T('remAt')) + '</option><option value="5">' + esc(T('rem5')) + '</option><option value="10">' + esc(T('rem10')) + '</option><option value="15">' + esc(T('rem15')) + '</option><option value="30">' + esc(T('rem30')) + '</option><option value="60">' + esc(T('rem60')) + '</option><option value="1440">' + esc(T('remDay')) + '</option></select></label>' +
+      '<label class="f">' + esc(T('defaultMeet')) + '<select id="set-meet"><option value="hosted">' + esc(T('meetingHosted')) + '</option><option value="open">' + esc(T('meetingOpen')) + '</option></select></label>';
+  }
+  function bindSettings(root) {
+    var s = state.settings;
+    root.querySelector('#set-view').value = s.view || 'month';
+    root.querySelector('#set-week').value = s.weekStart == null ? '' : String(s.weekStart);
+    root.querySelector('#set-rem').value = String(s.reminder);
+    root.querySelector('#set-meet').value = s.meetMode === 'open' ? 'open' : 'hosted';
+    function save() {
+      state.settings.view = root.querySelector('#set-view').value;
+      var w = root.querySelector('#set-week').value;
+      state.settings.weekStart = w === '' ? null : +w;
+      state.settings.reminder = parseInt(root.querySelector('#set-rem').value, 10);
+      state.settings.meetMode = root.querySelector('#set-meet').value === 'open' ? 'open' : 'hosted';
+      state.view = state.settings.view;
+      saveSettings(); render();
+    }
+    ['#set-view', '#set-week', '#set-rem', '#set-meet'].forEach(function (sel) { root.querySelector(sel).onchange = save; });
+  }
+  function saveSettings() {
+    var row = { id: 'settings', view: state.settings.view, weekStart: state.settings.weekStart, reminder: state.settings.reminder, meetMode: state.settings.meetMode };
+    state.settingsKnown = true;
+    return db('calendar_settings').put(row);
+  }
+
+  function onFiles(fileList) {
+    var files = [].slice.call(fileList || []);
+    if (!files.length) return;
+    Promise.all(files.map(function (f) {
+      return readFile(f).then(function (text) {
+        var parsed = I.parse(text);
+        return { name: f.name, parsed: parsed };
+      }, function () { return { name: f.name, error: true, parsed: { events: [], calendars: [], warnings: [] } }; });
+    })).then(function (packs) { previewImport(packs); }).catch(function () { say(T('importFail')); });
+  }
+  function previewImport(packs) {
+    var body = packs.map(function (p, i) {
+      if (p.error) return '<p>' + esc(p.name) + ': ' + esc(T('importFail')) + '</p>';
+      var n = (p.parsed.events || []).length;
+      var calName = (p.parsed.calendars && p.parsed.calendars[0] && p.parsed.calendars[0].name) || p.name.replace(/\.ics$/i, '');
+      var options = state.calendars.filter(function (c) { return !c.readonly; }).map(function (c) {
+        return '<option value="' + esc(c.id) + '"' + (state.importTarget === c.id ? ' selected' : '') + '>' + esc(c.name) + '</option>';
+      }).join('');
+      options += '<option value="new:' + i + '">' + esc(T('importNew', { name: calName || T('defaultCalendar') })) + '</option>';
+      var warns = (p.parsed.warnings || []).slice(0, 8).map(function (w) { return '<li>' + esc(w) + '</li>'; }).join('');
+      return '<section data-pack="' + i + '"><p><b>' + esc(n ? T('importCount', { n: n, name: calName || p.name }) : T('importEmpty')) + '</b></p><label class="f">' + esc(T('importTarget')) + '<select data-target="' + i + '">' + options + '</select></label>' + (warns ? '<p class="quiet">' + esc(T('importWarn')) + '</p><ul>' + warns + '</ul>' : '') + '</section>';
+    }).join('') + '<p class="quiet">' + esc(T('importDup')) + '</p>';
+    openSheet({
+      title: T('importTitle'),
+      body: body,
+      actions: [
+        { label: T('importGo'), go: true, fn: function (close, root) { runImport(packs, root).then(function () { close(); render(); pushAlarms(); }); } },
+        { label: T('cancel'), fn: function (close) { close(); } }
+      ]
+    });
+  }
+  function runImport(packs, root) {
+    var jobs = [];
+    packs.forEach(function (p, i) {
+      if (p.error || !p.parsed || !p.parsed.events) return;
+      var sel = root.querySelector('[data-target="' + i + '"]');
+      var target = sel ? sel.value : '';
+      var chain = Promise.resolve(target);
+      if (target.indexOf('new:') === 0) {
+        var calName = (p.parsed.calendars && p.parsed.calendars[0] && p.parsed.calendars[0].name) || p.name.replace(/\.ics$/i, '') || T('defaultCalendar');
+        var col = (p.parsed.calendars && p.parsed.calendars[0] && p.parsed.calendars[0].color) || '';
+        if (!/^#[0-9a-fA-F]{6}$/.test(col)) col = PALETTE[state.calendars.length % PALETTE.length];
+        var cal = { id: 'cal-' + Math.random().toString(36).slice(2, 10), name: calName, color: col, hidden: false };
+        state.calendars.push(cal);
+        chain = db('calendars').put(cal).then(function () { return cal.id; });
+      }
+      jobs.push(chain.then(function (calId) {
+        if (!calId || String(calId).indexOf('new:') === 0) calId = defaultCal().id;
+        return Promise.all(p.parsed.events.map(function (ev) {
+          var made = I.makeEvent(ev);
+          made.cal = calId;
+          made.id = rowId(made);
+          return putEvent(made);
+        }));
+      }));
+    });
+    state.importTarget = '';
+    return Promise.all(jobs);
+  }
+
+  function openInbox() {
+    var rows = state.invites.slice().sort(function (a, b) { return (b.at || 0) - (a.at || 0); });
+    var body = rows.length ? rows.map(function (r) {
+      var kind = r.kind === 'reply' ? T('kindReply') : r.kind === 'cancel' ? T('kindCancel') : T('kindRequest');
+      var who = (r.from && r.from.name) || (r.from && r.from.cid) || '';
+      var title = '';
+      try { var inv = I.readInvite(r.ics); title = (inv.event && inv.event.title) || ''; } catch (e) {}
+      var acts = r.state === 'new' && r.kind === 'request'
+        ? '<div class="ops"><button type="button" data-acc="' + esc(r.id) + '" class="go">' + esc(T('accept')) + '</button><button type="button" data-maybe="' + esc(r.id) + '">' + esc(T('maybe')) + '</button><button type="button" data-no="' + esc(r.id) + '">' + esc(T('decline')) + '</button></div>'
+        : '<span class="quiet">' + esc(r.state || '') + '</span>';
+      return '<div class="calrow" style="flex-wrap:wrap"><div class="nm"><b>' + esc(title || kind) + '</b><div class="quiet">' + esc(T('from', { name: who })) + ' · ' + esc(kind) + '</div></div>' + acts + '</div>';
+    }).join('') : '<p class="quiet">' + esc(T('inboxEmpty')) + '</p>';
+    openSheet({
+      title: T('inbox'),
+      body: body,
+      actions: [{ label: T('close'), fn: function (close) { close(); } }],
+      onBind: function (root, close) {
+        function act(id, part) { var row = inviteBy(id); if (row) respondInvite(row, part, close); }
+        [].forEach.call(root.querySelectorAll('[data-acc]'), function (b) { b.onclick = function () { act(b.getAttribute('data-acc'), 'ACCEPTED'); }; });
+        [].forEach.call(root.querySelectorAll('[data-maybe]'), function (b) { b.onclick = function () { act(b.getAttribute('data-maybe'), 'TENTATIVE'); }; });
+        [].forEach.call(root.querySelectorAll('[data-no]'), function (b) { b.onclick = function () { act(b.getAttribute('data-no'), 'DECLINED'); }; });
+      }
+    });
+  }
+  function inviteBy(id) { for (var i = 0; i < state.invites.length; i++) if (state.invites[i] && state.invites[i].id === id) return state.invites[i]; return null; }
+  function respondInvite(row, part, closeInbox) {
+    var parsed = { event: null };
+    try { parsed = I.readInvite(row.ics || ''); } catch (e) {}
+    var ev = parsed.event;
+    function finish(stateName) {
+      row.state = stateName;
+      db('invites').put(row).then(function () { bridge.ack(row.id); badge(); closeInbox(); render(); });
+    }
+    if (part === 'DECLINED' || !ev) {
+      if (ev && row.from && row.from.cid && bridge.hasSend()) {
+        try { bridge.send(row.from.cid, I.makeRequest(ev, { method: 'REPLY', partstat: part, attendee: { name: row.from.name, cid: row.from.cid } }), 'reply'); } catch (e) {}
+      }
+      finish(part === 'DECLINED' ? 'declined' : 'done');
+      return;
+    }
+    var options = state.calendars.filter(function (c) { return !c.readonly; }).map(function (c) {
+      return '<option value="' + esc(c.id) + '">' + esc(c.name) + '</option>';
+    }).join('');
+    openSheet({
+      title: part === 'TENTATIVE' ? T('maybe') : T('accept'),
+      body: '<label class="f">' + esc(T('acceptInto')) + '<select id="into">' + options + '</select></label>',
+      actions: [
+        { label: T('save'), go: true, fn: function (close, root) {
+          var made = I.makeEvent(ev);
+          made.cal = root.querySelector('#into').value || defaultCal().id;
+          made.id = rowId(made);
+          putEvent(made).then(function () {
+            if (row.from && row.from.cid && bridge.hasSend()) {
+              try { bridge.send(row.from.cid, I.makeRequest(made, { method: 'REPLY', partstat: part, attendee: { name: row.from.name, cid: row.from.cid } }), 'reply'); } catch (e) {}
+            }
+            close(); finish(part === 'TENTATIVE' ? 'tentative' : 'accepted'); pushAlarms();
+          });
+        } },
+        { label: T('cancel'), fn: function (close) { close(); } }
+      ]
+    });
+  }
+  function ingest(msg) {
+    if (!msg || !msg.id) return;
+    var existing = inviteBy(msg.id);
+    if (existing) { bridge.ack(msg.id); return; }
+    var row = { id: msg.id, from: msg.from || { cid: '', name: '' }, kind: msg.kind || 'request', ics: msg.ics || '', at: Date.now(), state: 'new' };
+    if (row.kind === 'reply' || row.kind === 'cancel') applyIncoming(row);
+    state.invites.push(row);
+    db('invites').put(row).then(function () { bridge.ack(row.id); badge(); });
+  }
+  function applyIncoming(row) {
+    var parsed = null;
+    try { parsed = I.readInvite(row.ics); } catch (e) { parsed = null; }
+    var ev = parsed && parsed.event; if (!ev || !ev.uid) { row.state = 'done'; return; }
+    if (row.kind === 'cancel') {
+      state.events.forEach(function (e) { if (e && e.uid === ev.uid) { e.status = 'CANCELLED'; putEvent(e); } });
+      row.state = 'done'; return;
+    }
+    var who = row.from || {};
+    state.events.forEach(function (e) {
+      if (!e || e.uid !== ev.uid || !e.attendees) return;
+      e.attendees.forEach(function (a) {
+        if ((who.cid && a.cid === who.cid) || (who.name && a.name === who.name)) {
+          var part = (ev.attendees && ev.attendees[0] && ev.attendees[0].partstat) || 'ACCEPTED';
+          a.partstat = part;
+        }
+      });
+      putEvent(e);
+    });
+    row.state = 'done';
+  }
+
+  function pushAlarms() {
+    clearTimeout(state._alarmT);
+    state._alarmT = setTimeout(pushAlarmsNow, 300);
+  }
+  function pushAlarmsNow() {
+    if (!I || !bridge.hasAlarms()) return;
+    var from = Date.now(), to = from + 14 * 86400000, list = [], i, j;
+    var evs = state.events;
+    for (i = 0; i < evs.length && list.length < 200; i++) {
+      var e = evs[i];
+      if (!e || !e.alarms || !e.alarms.length || hiddenCal(e.cal) || e.status === 'CANCELLED') continue;
+      var times = [];
+      try { times = I.alarmTimes(e, from, to); } catch (err) { times = []; }
+      for (j = 0; j < times.length && list.length < 200; j++) {
+        var a = times[j];
+        var key = (e.uid || '') + ':' + a.atMs;
+        if (state.dismissed[key]) continue;
+        list.push({ atMs: state.snooze[key] || a.atMs, startMs: a.startMs, uid: e.uid, title: e.title || T('untitled'), link: linkOf(e) });
+      }
+    }
+    list.sort(function (a, b) { return a.atMs - b.atMs; });
+    bridge.setAlarms(list.slice(0, 200));
+  }
+  function checkAlarms() {
+    if (!I) return;
+    var now = Date.now(), best = null;
+    state.events.forEach(function (e) {
+      if (!e || !e.alarms || !e.alarms.length || hiddenCal(e.cal)) return;
+      var times = [];
+      try { times = I.alarmTimes(e, now - 10 * 60000, now + 60000); } catch (err) { times = []; }
+      times.forEach(function (a) {
+        var key = (e.uid || '') + ':' + a.atMs;
+        var at = state.snooze[key] || a.atMs;
+        if (state.dismissed[key] || at > now || now - at > 10 * 60000) return;
+        if (!best || at < best.at) best = { at: at, key: key, title: e.title || T('untitled'), link: linkOf(e), startMs: a.startMs, event: e };
+      });
+    });
+    var box = document.getElementById('alarm');
+    if (!best) { box.hidden = true; state.alarm = null; return; }
+    if (state.alarm && state.alarm.key === best.key) return;
+    state.alarm = best;
+    box.hidden = false;
+    var when = fmt(best.startMs, hourCycle({ weekday: 'short', hour: 'numeric', minute: '2-digit' }));
+    box.innerHTML = '<b>' + esc(best.title) + '</b><div class="quiet">' + esc(now >= best.startMs - 60000 ? T('dueNow') : T('dueSoon')) + ' · ' + esc(when) + '</div><div class="acts">' +
+      (best.link ? '<button type="button" class="go" id="al-join">' + esc(T('join')) + '</button>' : '') +
+      '<button type="button" id="al-snooze">' + esc(T('snooze')) + '</button><button type="button" id="al-dismiss">' + esc(T('dismiss')) + '</button></div>';
+    var j = document.getElementById('al-join');
+    if (j) j.onclick = function () { bridge.open(best.link); };
+    document.getElementById('al-snooze').onclick = function () {
+      state.snooze[best.key] = Date.now() + 5 * 60000; state.alarm = null; box.hidden = true; pushAlarms();
+    };
+    document.getElementById('al-dismiss').onclick = function () {
+      state.dismissed[best.key] = 1; state.alarm = null; box.hidden = true; pushAlarms();
+    };
+  }
+
+  function ensureCal() {
+    if (state.calendars.some(function (c) { return c && c.id; })) return Promise.resolve();
+    var cal = { id: 'default', name: T('defaultCalendar'), color: PALETTE[0], hidden: false };
+    state.calendars = [cal];
+    return db('calendars').put(cal);
+  }
+  function ensureSettings() {
+    if (state.settingsKnown) return Promise.resolve();
+    return saveSettings();
+  }
+  function migrate() {
+    var jobs = [], made = [];
+    state.events.slice().forEach(function (row) {
+      if (!isLegacy(row)) return;
+      var allDay = !row.t;
+      var partial = { uid: 'legacy-' + row.id + '@gifos.app', title: row.title, cal: defaultCal().id, allDay: allDay };
+      if (allDay) { partial.start = row.d; partial.end = addDateStr(row.d, 1); }
+      else {
+        var t = String(row.t).length === 5 ? row.t + ':00' : String(row.t);
+        partial.tzid = ''; partial.startLocal = row.d + 'T' + t; partial.endLocal = addClock(partial.startLocal, 60);
+      }
+      var ev = I.makeEvent(partial); ev.id = ev.uid;
+      made.push(ev);
+      jobs.push(putEvent(ev).then(function () { return delEvent(row.id); }));
+    });
+    return Promise.all(jobs);
+  }
+  function takeDraft() {
+    bridge.takeDraft().then(function (d) {
+      if (!d || !d.link) return;
+      var f = blankForm();
+      f.title = d.title || '';
+      f.url = d.link;
+      f.notes = T('joinLine', { link: d.link });
+      f.meet = true;
+      f.meetMode = d.mode === 'open' ? 'open' : 'hosted';
+      f.tz = viewerZone();
+      openEditor(null, f);
+    }).catch(function () {});
+  }
+  function ready() {
+    if (started || booting) return;
+    if (!seen.events || !seen.calendars || !seen.invites || !seen.settings) return;
+    started = true; booting = true;
+    state.view = state.settings.view || 'month';
+    ensureCal().then(ensureSettings).then(migrate).then(function () {
+      booting = false;
+      render(); pushAlarms(); checkAlarms();
+      bridge.onInbox(ingest);
+      takeDraft();
+      setInterval(checkAlarms, 60000);
+      document.addEventListener('visibilitychange', function () { if (!document.hidden) checkAlarms(); });
+    }).catch(function (e) { booting = false; say(String(e && e.message || e)); });
+  }
+
+  function boot() {
+    if (!I) { document.getElementById('view').textContent = T('missing'); return; }
+    scheme();
+    if (window.matchMedia) {
+      try { matchMedia('(prefers-color-scheme: light)').addEventListener('change', scheme); } catch (e) {}
+    }
+    db('events').subscribe(function (rows) {
+      if (!started) { state.events = rows || []; seen.events = true; ready(); return; }
+      if (booting) return;
+      var gen = ++eventPaint;
+      state.events = rows || [];
+      setTimeout(function () {
+        if (gen !== eventPaint) return;
+        render(); pushAlarms();
+      }, 40);
+    });
+    db('calendars').subscribe(function (rows) {
+      if (!started) { state.calendars = rows || []; seen.calendars = true; ready(); return; }
+      if (booting) return;
+      state.calendars = rows || []; render();
+    });
+    db('invites').subscribe(function (rows) {
+      if (!started) { state.invites = rows || []; seen.invites = true; ready(); return; }
+      if (booting) return;
+      state.invites = rows || []; badge();
+    });
+    db('calendar_settings').subscribe(function (rows) {
+      if (started) return;
+      var row = null;
+      (rows || []).forEach(function (r) { if (r && r.id === 'settings') row = r; });
+      if (row) {
+        state.settingsKnown = true;
+        if (row.view) state.settings.view = row.view;
+        if (row.weekStart === 0 || row.weekStart === 1 || row.weekStart === 6) state.settings.weekStart = row.weekStart;
+        if (typeof row.reminder === 'number') state.settings.reminder = row.reminder;
+        if (row.meetMode === 'open' || row.meetMode === 'hosted') state.settings.meetMode = row.meetMode;
+      }
+      seen.settings = true; ready();
+    });
+  }
+
+  document.getElementById('prev').onclick = function () { move(-1); };
+  document.getElementById('next').onclick = function () { move(1); };
+  document.getElementById('today').onclick = goToday;
+  document.getElementById('add').onclick = function () { openEditor(null, blankForm(dateKey(state.focus))); };
+  document.getElementById('cals').onclick = openCalendars;
+  document.getElementById('bell').onclick = openInbox;
+  document.getElementById('views').onclick = function (e) {
+    var b = e.target.closest && e.target.closest('[data-view]'); if (!b) return; setView(b.getAttribute('data-view'));
+  };
+  document.getElementById('view').addEventListener('click', function (e) {
+    var key = e.target.closest && e.target.closest('[data-key]');
+    if (key) { var occ = state.shown[key.getAttribute('data-key')]; if (occ) openDetail(occ); return; }
+    var day = e.target.closest && e.target.closest('[data-day]');
+    if (day && !e.target.closest('[data-col]')) {
+      var k = day.getAttribute('data-day');
+      state.focus = parseDay(k);
+      if (state.view === 'month') render();
+      return;
+    }
+    var col = e.target.closest && e.target.closest('[data-col]');
+    if (col && !e.target.closest('.ev')) {
+      var rect = col.getBoundingClientRect();
+      var hour = Math.max(0, Math.min(23, Math.floor((e.clientY - rect.top) / HOUR)));
+      openEditor(null, blankForm(col.getAttribute('data-day'), hour));
+    }
+  });
+  document.getElementById('file').addEventListener('change', function () {
+    onFiles(document.getElementById('file').files);
+    document.getElementById('file').value = '';
+  });
+  document.addEventListener('dragover', function (e) {
+    if (!e.dataTransfer) return;
+    var types = [].slice.call(e.dataTransfer.types || []);
+    if (types.indexOf('Files') >= 0) { e.preventDefault(); document.body.classList.add('drop'); }
+  });
+  document.addEventListener('dragleave', function () { document.body.classList.remove('drop'); });
+  document.addEventListener('drop', function (e) {
+    document.body.classList.remove('drop');
+    if (!e.dataTransfer || !e.dataTransfer.files || !e.dataTransfer.files.length) return;
+    var ics = [].filter.call(e.dataTransfer.files, function (f) { return /\.ics$/i.test(f.name) || /calendar/i.test(f.type || ''); });
+    if (!ics.length) return;
+    e.preventDefault(); onFiles(ics);
+  });
+  var touch = null;
+  document.getElementById('view').addEventListener('touchstart', function (e) {
+    if (!e.touches || !e.touches[0]) return;
+    touch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }, { passive: true });
+  document.getElementById('view').addEventListener('touchend', function (e) {
+    if (!touch || document.querySelector('#sheets .modal-bg')) { touch = null; return; }
+    var t = e.changedTouches && e.changedTouches[0]; if (!t) return;
+    var dx = t.clientX - touch.x, dy = t.clientY - touch.y; touch = null;
+    if (Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy) * 1.3) return;
+    var sc = document.getElementById('week-scroll');
+    if (sc && e.target && sc.contains(e.target)) {
+      var max = sc.scrollWidth - sc.clientWidth;
+      if (dx < 0 && sc.scrollLeft < max - 8) return;
+      if (dx > 0 && sc.scrollLeft > 8) return;
+    }
+    move(dx < 0 ? 1 : -1);
+  }, { passive: true });
+  document.addEventListener('keydown', function (e) {
+    var typing = e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName);
+    if (e.key === 'Escape' && document.querySelector('#sheets .modal-bg')) {
+      var sheets = document.querySelectorAll('#sheets .modal-bg');
+      var last = sheets[sheets.length - 1]; if (last) last.parentNode.removeChild(last);
+      if (!document.querySelector('#sheets .modal-bg')) document.body.classList.remove('sheet-on');
+      return;
+    }
+    if (typing || document.querySelector('#sheets .modal-bg')) return;
+    if (e.key === 'ArrowLeft') { e.preventDefault(); move(-1); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); move(1); }
+    else if (e.key === 'ArrowUp') { state.focus = addDays(state.focus, -1); render(); }
+    else if (e.key === 'ArrowDown') { state.focus = addDays(state.focus, 1); render(); }
+    else if (e.key === 't' || e.key === 'T') goToday();
+    else if (e.key === 'm' || e.key === 'M') setView('month');
+    else if (e.key === 'w' || e.key === 'W') setView('week');
+    else if (e.key === 'd' || e.key === 'D') setView('day');
+    else if (e.key === 'a' || e.key === 'A') setView('agenda');
+    else if (e.key === 'n' || e.key === 'N') openEditor(null, blankForm(dateKey(state.focus)));
+  });
+
+  if (window.gifos && gifos.i18n && gifos.i18n.load) gifos.i18n.load().then(boot, boot);
+  else boot();
+  if (window.gifos && gifos.onLocaleChange) gifos.onLocaleChange(function () { applyI18n(); render(); });
+})();
+</script>
