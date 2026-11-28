@@ -1,0 +1,17 @@
+{
+  "title": "Notas",
+  "search.placeholder": "Buscar…",
+  "add.placeholder": "Escribe una nota…",
+  "add": "Añadir",
+  "hint": "Toca una nota para abrirla. Marca la casilla para tacharla. Todo se guarda en este icono.",
+  "back": "← Lista",
+  "body.placeholder": "Empieza a escribir…",
+  "nobody": "Elige una nota o añade una. Invitar comparte la lista.",
+  "untitled": "Sin título",
+  "you": "Tú",
+  "check": "Marcar como hecha",
+  "delete": "Eliminar",
+  "empty.nomatch": "Ninguna nota coincide con la búsqueda.",
+  "empty.none": "Aún no hay notas. Tus notas se conservan en este icono GIF.",
+  "saved": "Guardado en este icono"
+}
