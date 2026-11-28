@@ -153,7 +153,7 @@
     if (same) root.location.reload();   // the lobby and the meeting are one page: a new fragment alone loads nothing
   }
 
-  // ---- the ring: a sheet with Answer and Decline, a quiet ringtone, a notification when this tab is hidden -------------
+  // ---- the ring: a sheet (the shared dialog, js/dialog.js) with Answer and Decline, a quiet ringtone, a notification when this tab is hidden -------------
   let ac = null, toneTimer = 0, note = null;
   function toneOnce() {
     try {
@@ -175,8 +175,8 @@
   function sheet(title, text, yes) {
     let el = doc.getElementById('ring-sheet');
     if (!doc.getElementById('ring-css')) { const s = doc.createElement('style'); s.id = 'ring-css'; s.textContent = CSS; (doc.head || doc.documentElement).appendChild(s); }
-    if (!el) { el = doc.createElement('div'); el.id = 'ring-sheet'; el.setAttribute('role', 'alertdialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-labelledby', 'ring-t'); doc.body.appendChild(el); }
-    el.innerHTML = '<div class="ring-box"><h2 id="ring-t">' + esc(title) + '</h2><p id="ring-n">' + esc(text) + '</p><div class="ring-acts"><button type="button" id="ring-no">Decline</button><button type="button" class="go" id="ring-yes">' + esc(yes) + '</button></div></div>';
+    if (!el) { el = doc.createElement('div'); el.id = 'ring-sheet'; el.className = 'dlg-backdrop'; el.setAttribute('role', 'alertdialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-labelledby', 'ring-t'); doc.body.appendChild(el); }
+    el.innerHTML = '<div class="ring-box dlg-box"><h2 id="ring-t">' + esc(title) + '</h2><p id="ring-n">' + esc(text) + '</p><div class="ring-acts"><button type="button" id="ring-no">Decline</button><button type="button" class="go" id="ring-yes">' + esc(yes) + '</button></div></div>';
     el.hidden = false;
     doc.getElementById('ring-no').onclick = decline;
     doc.getElementById('ring-yes').onclick = answer;
