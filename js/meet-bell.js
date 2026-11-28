@@ -125,7 +125,7 @@
     const map = {};
     // url: the room's address, written by the one link module (the worker opens it and never builds one)
     const url = (h) => { try { return '/meet#' + GifOS.link.hash({ room: h.room, v: h.v }); } catch (e) { return '/meet'; } };
-    for (const h of handles()) map[h.i] = { url: url(h), k: h.k, label: h.label || '' };
+    for (const h of handles()) map[h.i] = { url: url(h), r: roomKey(h.room, h.v), k: h.k, label: h.label || '' };
     await idbPut('state', { master: b64u(await master(m)), ringMs: T().MYROOM_RING_MS || 0, map, on: !!m.on });
   }
 
@@ -290,6 +290,18 @@
     return j.ok || 'x';
   }
 
+  // takeAnswer(room, v): true once, when this page opened because its person tapped Answer (or Call back) on this room's
+  // ring notification moments ago. The worker leaves that note in IndexedDB 'answer' (it cannot reach a new tab's
+  // sessionStorage); the tap is the consent to talk, so the page opens the mic as a call from the room's own Answer does.
+  async function takeAnswer(room, v) {
+    const a = await idbGet('answer').catch(() => null);
+    if (!a || !(+a.at > 0)) return false;
+    const k = roomKey(room, String(v || '').toLowerCase());
+    if (!k || a.r !== k) return false;
+    await idbPut('answer', null).catch(() => null);
+    return Math.abs(Date.now() - a.at) <= (T().MYROOM_RING_MS || 0);   // the tap is that recent (a cold start included)
+  }
+
   // ---- rings this device's service worker saw (the lobby turns the unanswered ones into missed calls) ----------------
   async function takeRings() {
     const list = (await idbGet('rings').catch(() => null)) || [];
@@ -298,6 +310,16 @@
     return list.filter((x) => x && !x.done);
   }
 
-  GifOS.bell = { KEY, pushable, on, enable, disable, devices, remove, pause, test, offer, take, press, cut, cutKey, flushCuts, handles, held, heldFor, takeRings, mirror, deviceName, me };
+  // As this page loads: a page opened by Answer moments ago (the note above names its room) skips the "how you'll appear"
+  // card before the meeting can show it. The note itself is taken later, by the room (takeAnswer).
+  try {
+    const L = GifOS.link && root.location ? GifOS.link.read(root.location.pathname, root.location.search, root.location.hash) : null;
+    const here = L && L.room && L.v ? roomKey(L.room, L.v) : '';
+    if (here && root.indexedDB) idbGet('answer').then((a) => {
+      if (a && a.r === here && Math.abs(Date.now() - (+a.at || 0)) <= (T().MYROOM_RING_MS || 0)) { try { root.sessionStorage.setItem('gifos_appear_ok', '1'); root.sessionStorage.setItem('gifos_appeared', '1'); } catch (e) {} }
+    }, () => {});
+  } catch (e) {}
+
+  GifOS.bell = { KEY, pushable, on, enable, disable, devices, remove, pause, test, offer, take, press, cut, cutKey, flushCuts, handles, held, heldFor, takeRings, takeAnswer, mirror, deviceName, me };
   if (typeof module !== 'undefined' && module.exports) module.exports = GifOS.bell;
 })(typeof window !== 'undefined' ? window : globalThis);
