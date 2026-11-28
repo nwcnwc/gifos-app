@@ -5652,7 +5652,7 @@
     }, 10000);
     // the viewer's own memory of the broadcast: when it last saw it on air, since when it has seen it off, and bcQuietLine's
     // latest answer (joinState reads it: off air, scheduled, ended, a Stage gone a moment)
-    let bcWasOnAirAt = 0, bcOffSince = 0, bcLastQuiet = null;
+    let bcWasOnAirAt = 0, bcOffSince = 0, bcLastQuiet = null, bcDoorSeenAt = 0;   // bcDoorSeenAt: when a seat of this room last answered my way in (a greeter)
     function bcQuietLine(shown, reachBlocked, atDoor) {
       const host0 = typeof bcHostStored === 'function' && bcHostStored();
       const viewer = !!(BROADCAST && !host0);
@@ -5687,6 +5687,9 @@
       const T = GifOS.timings;
       if (explicitEnd) out.text = '';
       else if (bcWasOnAirAt && nowQ - bcWasOnAirAt < T.BC_RECONNECT_MS) { out.text = 'Reconnecting to the ' + noun + '…'; out.reconnecting = true; }
+      // never saw the Stage, but a seat of this room answered my way in a moment ago and nothing is scheduled: the host is
+      // coming back (a reload's seat hold), not "not started". That claim needs evidence; a room that answered is the opposite.
+      else if (bcDoorSeenAt && nowQ - bcDoorSeenAt < T.BC_RECONNECT_MS && !(sched && (sched.phase === 'future' || sched.phase === 'soon'))) { out.text = 'Host is reconnecting…'; out.reconnecting = true; }
       else if (ended) out.text = '';
       else if (shown === 1 || viewer) {
         out.text = sched && sched.phase === 'future' ? 'The ' + noun + ' starts ' + sched.words + ' · ' + sched.countdown + '.'
@@ -10817,6 +10820,7 @@
         const me = meshNode && meshNode.nidOf ? meshNode.nidOf(myId) : -1;
         for (const g of r.lastGreeters || []) if (g >= 0 && g !== me) greeters++;
         list = r.greetersAt >= 0 && r.greetersAt >= progListAt;
+        if (greeters > 0) bcDoorSeenAt = Date.now();
       }
       let turn = '';
       let turnWebUp = false;
