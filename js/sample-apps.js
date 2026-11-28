@@ -7893,8 +7893,9 @@ The Store itself does not keep a shopping cart in this icon.
                'index.html': themeHtml(STORE_FALLBACK_HTML, 'full') }),
     }];
     // Clock and Calendar: system apps whose widgets fill the looks of the Home Screen (js/home-view.js). They ride with
-    // the looks: seeded on the edge build only, until a release makes a look its default.
-    if (root.GIFOS_VERSION === 'edge') loose.push({
+    // the looks: seeded on the edge build only, until a release makes a look its default. They go in the Tools folder,
+    // so the Home Screen's own default layout (and everything that counts or places root icons) is exactly a release's.
+    if (root.GIFOS_VERSION === 'edge') groups.find((g) => g.name === 'Tools').apps.push({
       name: 'Clock.gif', appId: 'clock', accent: [91, 91, 240],
       files: withHelp('clock', { 'manifest.json': manifest('clock', 'Clock', [91, 91, 240], { capabilities: { multiplayer: false },
                widgets: [{ id: 'now', name: 'Clock', entry: 'widget/index.html', sizes: ['wide', 'medium', 'small'], bare: true }] }),

@@ -8709,11 +8709,11 @@
     function capCard(id, v, title, note, rows, ex) {
       let c = document.getElementById(id);
       if (!c) {
-        c = document.createElement('div'); c.id = id; c.className = 'capcard'; c.setAttribute('role', 'dialog');
+        c = document.createElement('div'); c.id = id; c.className = 'capcard dlg-box'; c.setAttribute('role', 'dialog');
         document.body.appendChild(c);
       }
       c.dataset.voice = v;
-      c.innerHTML = '<div class="capcard-t"></div><div class="capcard-body"><div class="capcard-n"></div><div class="capcard-ex"></div><div class="capcard-w"></div><div class="capcard-h"></div></div><div class="capcard-b dlg-actions"></div>';
+      c.innerHTML = '<div class="capcard-t dlg-head"></div><div class="capcard-body dlg-body"><div class="capcard-n"></div><div class="capcard-ex"></div><div class="capcard-w"></div><div class="capcard-h"></div></div><div class="capcard-b dlg-actions"></div>';
       c.querySelector('.capcard-t').textContent = title;
       c.querySelector('.capcard-w').textContent = (0, /*()*/__C.uiText)('capWhich', 'Which is right?');
       c.querySelector('.capcard-n').textContent = note || '';
@@ -8799,9 +8799,9 @@
       if (c && !c.hidden) { if (!s || s.lang !== c.dataset.lang) c.hidden = true; return; }   // asking already, or no longer true
       if (!s) return;
       const heard = (0, /*()*/__C.capLangName)(s.lang), mine = (0, /*()*/__C.capLangName)((0, /*()*/__C.capLangMine)());
-      if (!c) { c = document.createElement('div'); c.id = 'caplang'; c.className = 'capcard'; c.setAttribute('role', 'dialog'); document.body.appendChild(c); }
+      if (!c) { c = document.createElement('div'); c.id = 'caplang'; c.className = 'capcard dlg-box'; c.setAttribute('role', 'dialog'); document.body.appendChild(c); }
       c.dataset.lang = s.lang;
-      c.innerHTML = '<div class="capcard-t"></div><div class="capcard-body"><div class="capcard-h"></div></div><div class="capcard-b dlg-actions"></div>';
+      c.innerHTML = '<div class="capcard-t dlg-head"></div><div class="capcard-body dlg-body"><div class="capcard-h"></div></div><div class="capcard-b dlg-actions"></div>';
       c.querySelector('.capcard-t').textContent = (0, /*()*/__C.uiText)('capLangAsk', 'Others hear you speaking {heard}, but your captions listen for {mine}. Switch your captions to {heard}?').split('{heard}').join(heard).split('{mine}').join(mine);
       c.querySelector('.capcard-h').textContent = (0, /*()*/__C.uiText)('capLangLater', 'You can change this any time: Settings, then Captions language.');
       const b = c.querySelector('.capcard-b');
@@ -10060,7 +10060,8 @@
         // A dialog (an app's abilities card, a sheet) is a press too: its
         // buttons were dead to every tap that came after a quiet spell.
         // The content bar never tucks, so its tabs and tools, its exit and the view menu are presses too.
-        if (t && t.closest && t.closest('.fitbtn, .topchip, #unmute, #showcam, #chatnote, #chatpanel, #chatbadge, #chatpreview, .name-modal, #waitlist, #tilewin, .tile-open, #appbar, .ct-bar, .ct-exit, #viewpick, .ctarea button, ' + CHROME_DIALOGS)) {
+        // So is the My Room bar ("Give my card", "Swap cards"): it never tucks either, and its first tap was eaten.
+        if (t && t.closest && t.closest('.fitbtn, .topchip, #unmute, #showcam, #chatnote, #chatpanel, #chatbadge, #chatpreview, .name-modal, #waitlist, #tilewin, .tile-open, #appbar, .ct-bar, .ct-exit, #viewpick, .ctarea button, #mr-bar, ' + CHROME_DIALOGS)) {
           wakeOnClick = true;
           return;
         }

@@ -35,7 +35,8 @@
   const sset = (k, v) => { try { if (v) root.sessionStorage.setItem(k, v); else root.sessionStorage.removeItem(k); } catch (e) {} };
   const GIVE = 'gifos_id_give', COPY = 'gifos_id_copy';
   const meetUrl = (room, v, rest) => { const L = GifOS.link; const base = L.pageFor ? L.pageFor(root.location.pathname, 'meet') : '/meet'; return base + '#' + L.hash(rest ? { room, v, rest } : { room, v }); };
-  const absUrl = (u) => { try { return new URL(u, root.location.href).href; } catch (e) { return u; } };
+  // A link handed to someone never names a release folder (/versions/<v>/meet -> /meet): it opens the live release.
+  const absUrl = (u) => { try { const x = new URL(u, root.location.href); x.pathname = x.pathname.replace(/^\/versions\/\d+(?:\.\d+){2,3}(?=\/)/, ''); return x.href; } catch (e) { return u; } };
 
   // ---- one sheet -------------------------------------------------------------------------------------------------
   // The card is the shared dialog shape (js/dialog.js): a title, a body that scrolls, the buttons always on screen.

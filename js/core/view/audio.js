@@ -135,6 +135,14 @@
     fn('paintStatusAlert', function (on) { statusEl.classList.toggle('alert', !!on); });
     fn('paintTabTitle', function (t) { document.title = t; });
     fn('replaceAddress', function (url) { try { history.replaceState(null, '', url); } catch (e) {} });
+    // an update (the bar's Update, or this tab following another tab to the live release): the same page on the new
+    // release, the seat's resume note kept, as the meeting page does it
+    fn('updateReload', function (target) {
+      target = target || {};
+      try { C.act.updating(target); } catch (e) {}
+      if (target.url) { try { history.replaceState(history.state, '', target.url); } catch (e) {} }
+      M.resumeReload();
+    });
 
     // ---- leaving, refusals: what a person here reads -------------------------------------------------------------
     fn('showLeftDialog', function () { $('left-modal').style.display = 'flex'; });

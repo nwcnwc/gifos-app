@@ -2307,6 +2307,7 @@
     const doc = root.document;
     const withPreview = kind !== 'audio';
     const bg = doc.createElement('div');
+    bg.className = 'dlg-backdrop';
     bg.setAttribute('data-gifos-capture', '1');
     // Audio keeps the page READABLE: a mic capture is often a prompt the user
     // is reading aloud (a recording studio, a karaoke line), and a 62% dim
@@ -2315,11 +2316,13 @@
     // the full dim: the preview is the thing to look at there.
     bg.style.cssText = 'position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,' + (withPreview ? '.62' : '.15') + ');font:15px system-ui;color:#fff;padding:16px;box-sizing:border-box';
     const box = doc.createElement('div');
+    box.className = 'dlg-box';
+    box.setAttribute('data-dlg-kind', 'capture-' + kind);
     box.style.cssText = 'background:#141018;border:1px solid #ff5c5c;border-radius:14px;padding:16px 18px;max-width:' + (withPreview ? '380px' : '320px') + ';width:100%;text-align:center;box-sizing:border-box;box-shadow:0 12px 40px rgba(0,0,0,.5)';
     const noun = kind === 'photo' ? T('runtime.capture.nounPhoto') : kind === 'audio' ? T('runtime.capture.nounAudio') : kind === 'video' ? T('runtime.capture.nounVideo') : kind;
     const dev = kind === 'audio' ? T('runtime.capture.deviceMic') : T('runtime.capture.deviceCamera');
     box.innerHTML =
-      '<div id="gc-grip" style="color:#8a8a9a;font-size:12px;letter-spacing:2px;margin:-6px 0 6px;cursor:grab;user-select:none;touch-action:none">' + capEsc(T('runtime.capture.drag')) + '</div>'
+      '<div id="gc-grip" class="dlg-head" style="color:#8a8a9a;font-size:12px;letter-spacing:2px;margin:-6px 0 6px">' + capEsc(T('runtime.capture.drag')) + '</div>'
       + (withPreview
         ? '<div style="position:relative;margin-bottom:12px">'
           + '<video id="gc-prev" autoplay playsinline muted style="width:100%;max-height:44vh;border-radius:10px;background:#000;display:block"></video>'
@@ -2336,53 +2339,8 @@
       + (opts.onCancel ? '<button id="gc-cancel" style="padding:9px 16px;border:1px solid #3a3a48;border-radius:9px;background:transparent;color:#c8c8dc;font:inherit;cursor:pointer">' + capEsc(T('runtime.capture.cancel')) + '</button>' : '')
       + '</div>';
     bg.appendChild(box); doc.body.appendChild(bg);
-    // The dialog can be MOVED OUT OF THE WAY: it lands over the middle of the
-    // screen, which is often exactly where the text being recorded is. Drag
-    // by the grip or any non-interactive part of the box; pointer events so
-    // one path serves mouse and touch alike. The position is REMEMBERED per
-    // capture kind (a 42-item recording session opens this dialog 42 times —
-    // parking it once has to be enough), clamped on restore so a spot chosen
-    // on a big screen cannot strand it off a small one.
-    (function draggable() {
-      const POS_KEY = 'gifos_capture_pos';
-      const clamp = (x, y) => {
-        // keep a graspable corner on-screen
-        const w = root.innerWidth || 320, h = root.innerHeight || 480;
-        return [Math.max(-w / 2 + 40, Math.min(w / 2 - 40, x)),
-                Math.max(-h / 2 + 40, Math.min(h / 2 - 40, y))];
-      };
-      let dx = 0, dy = 0;
-      try {
-        const saved = JSON.parse(root.localStorage.getItem(POS_KEY) || '{}')[kind];
-        if (saved) { [dx, dy] = clamp(saved[0] || 0, saved[1] || 0); }
-      } catch (e) { /* a bad value just means centred */ }
-      if (dx || dy) box.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
-      let sx = 0, sy = 0, bx = 0, by = 0, dragging = false;
-      const move = (e) => {
-        if (!dragging) return;
-        [dx, dy] = clamp(bx + (e.clientX - sx), by + (e.clientY - sy));
-        box.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
-      };
-      box.addEventListener('pointerdown', (e) => {
-        const t = e.target;
-        if (t && (t.closest && t.closest('button,video,a,input'))) return;
-        dragging = true; sx = e.clientX; sy = e.clientY; bx = dx; by = dy;
-        try { box.setPointerCapture(e.pointerId); } catch (err) {}
-        e.preventDefault();
-      });
-      box.addEventListener('pointermove', move);
-      const end = () => {
-        if (!dragging) return;
-        dragging = false;
-        try {
-          const all = JSON.parse(root.localStorage.getItem(POS_KEY) || '{}') || {};
-          all[kind] = [Math.round(dx), Math.round(dy)];
-          root.localStorage.setItem(POS_KEY, JSON.stringify(all));
-        } catch (e) { /* private mode: it still moves, just forgets */ }
-      };
-      box.addEventListener('pointerup', end);
-      box.addEventListener('pointercancel', end);
-    })();
+    // The dialog moves out of the way (it lands over the middle of the screen, often right on the text being
+    // recorded): js/dialog.js moves it by its "drag to move" head and remembers the spot per capture kind.
     let t0 = Date.now(); const tEl = box.querySelector('#gc-t');
     const iv = kind === 'photo' ? null : setInterval(() => {
       const s = Math.floor((Date.now() - t0) / 1000);

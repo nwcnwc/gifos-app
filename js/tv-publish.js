@@ -181,11 +181,11 @@
   // ---- the dialog --------------------------------------------------------------------
   var CSS = '' +
     '#tv-pub{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);padding:16px;box-sizing:border-box}' +
-    '#tv-pub .tvp{background:var(--c-white,#fff);color:var(--c-ink,#111);border-radius:16px;width:100%;max-width:520px;max-height:100%;display:flex;flex-direction:column;box-shadow:0 16px 40px rgba(0,0,0,.4);overflow:hidden;font-size:.95rem}' +
+    '#tv-pub .tvp{background:var(--c-white,#fff);color:var(--c-ink,#111);border-radius:16px;width:100%;max-width:520px;max-height:100%;box-shadow:0 16px 40px rgba(0,0,0,.4);font-size:.95rem}' +
     '#tv-pub header,#tv-pub footer{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:12px 16px;background:inherit}' +
     '#tv-pub header{border-bottom:1px solid rgba(0,0,0,.08)}#tv-pub footer{border-top:1px solid rgba(0,0,0,.08);justify-content:flex-end;flex-wrap:wrap}' +
     '#tv-pub header h2{margin:0;font-size:1.05rem;flex:1}' +
-    '#tv-pub .body{flex:1 1 auto;overflow:auto;padding:12px 16px;display:flex;flex-direction:column;gap:10px}' +
+    '#tv-pub .body{padding:12px 16px;display:flex;flex-direction:column;gap:10px}' +
     '#tv-pub label{display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:.85rem}' +
     '#tv-pub input[type=text],#tv-pub textarea{font:inherit;font-weight:400;border:1.5px solid var(--c-gray,#bbb);border-radius:10px;padding:8px 10px;color:inherit;background:inherit;box-sizing:border-box;width:100%}' +
     '#tv-pub textarea{min-height:72px;resize:vertical}' +
@@ -218,13 +218,13 @@
     if (!root.document.getElementById('tv-pub-css')) root.document.head.appendChild(el('style', { id: 'tv-pub-css', text: CSS }));
     var l = listed();
     var closeBtn = el('button', { type: 'button', text: T('tvClose', 'Close') });
-    var box = el('div', { cls: 'tvp', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'tv-pub-h' });
-    dlg = el('div', { id: 'tv-pub' }, [box]);
+    var box = el('div', { cls: 'tvp dlg-box', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'tv-pub-h' });
+    dlg = el('div', { id: 'tv-pub', cls: 'dlg-backdrop' }, [box]);
     closeBtn.onclick = function () { if (!busy) close(); };
     dlg.addEventListener('click', function (e) { if (e.target === dlg && !busy) close(); });
-    box.appendChild(el('header', {}, [el('h2', { id: 'tv-pub-h', text: T('tvPublishTitle', 'Publish to GifOS.tv') }), closeBtn]));
-    var body = el('div', { cls: 'body' }); box.appendChild(body);
-    var foot = el('footer'); box.appendChild(foot);
+    box.appendChild(el('header', { cls: 'dlg-head' }, [el('h2', { id: 'tv-pub-h', text: T('tvPublishTitle', 'Publish to GifOS.tv') }), closeBtn]));
+    var body = el('div', { cls: 'body dlg-body' }); box.appendChild(body);
+    var foot = el('footer', { cls: 'dlg-actions' }); box.appendChild(foot);
     root.document.body.appendChild(dlg);
     if (l) return showListed(body, foot, l);
     showForm(body, foot);

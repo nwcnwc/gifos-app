@@ -232,6 +232,7 @@
     const r = privates().find((x) => x.mepub === pub && PK_RE.test(String(x.me || '')));
     return r ? r.me : '';
   }
+  // "Ring me on this device" (js/ring-standby.js), kept under its first name ("stay in my personal room", retired).
   const stayOn = () => readJson(KEY.stay, false) === true;
   const setStay = (on) => writeJson(KEY.stay, !!on);
 
@@ -358,7 +359,7 @@
     const m = mine(); if (!m) return false;
     for (const x of issued()) if (roomKey(x.room, x.v) === roomKey(m.room, m.v)) revoke(x.id);
     for (const x of privates()) if (!x.me) cutPrivate(x.room, x.v);
-    try { const s = store(); s.removeItem(KEY.mine); s.removeItem(KEY.stay); for (const p of ['gifos_vadm_', 'gifos_vpw_', 'gifos_vpwat_', 'gifos_vpwep_']) s.removeItem(p + roomKey(m.room, m.v)); } catch (e) {}
+    try { const s = store(); s.removeItem(KEY.mine); for (const p of ['gifos_vadm_', 'gifos_vpw_', 'gifos_vpwat_', 'gifos_vpwep_']) s.removeItem(p + roomKey(m.room, m.v)); } catch (e) {}
     return true;
   }
 
@@ -527,7 +528,11 @@
       for (const [pid, r] of Array.from(rings)) {
         if (!r.priv) continue;
         if (mine2) { endCall(r, ''); rings.delete(pid); emit({ type: 'stopped', pid, label: r.label }); continue; }
-        const gone = !host.reach(pid) && !host.isHere(pid);   // a caller this silent door never lists is gone when its channel is
+        // A caller is gone when this silent door neither reaches it, lists it nor holds its knock. The door's mesh closes an
+        // idle door to a held knocker (its idle limit, about 8 s) and the caller knocks again through the relay a moment later:
+        // only a caller missing for longer than any seat has to prove itself (MYROOM_PROVE_MS) has hung up.
+        if (host.reach(pid) || host.isHere(pid) || host.held(pid)) r.lost = 0; else if (!r.lost) r.lost = now;
+        const gone = !!r.lost && now - r.lost >= (T().MYROOM_PROVE_MS || 0);
         if (gone || now - r.at >= (T().MYROOM_RING_MS || 0)) {
           endCall(r, 'missed'); rings.delete(pid);
           noteMissed(room, v, r.label, r.at);
@@ -553,6 +558,9 @@
         if (ended.has(ck)) { const op = ended.get(ck); if (op) sendSigned(pid, op); return; }
         rings.set(pid, { label: (rec.name || 'Someone') + ' ✓', id: '', at: host.now(), ck, priv: true });
         sendSigned(pid, 'ringing');
+        // The caller proved it is a member: this door proves itself back, so the caller takes the Doorbell handle it
+        // was just handed (a handle is taken only from a page that proved a member key here).
+        myWord(rec).then((mw) => { if (mw) host.send(pid, { op: 'key', w: mw }); }, () => {});
         emit({ type: 'ring', pid, label: (rec.name || 'Someone') + ' ✓', priv: true, room, v });
         return;
       }
