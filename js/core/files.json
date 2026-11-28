@@ -101,6 +101,7 @@
   "js/mesh-media.js",
   "js/mesh-pipe.js",
   "js/meet-bgfx.js",
+  "js/gifos-explicit.js",
   "js/core/media/textclear.js",
   "js/core/media/plane-browser.js"
  ],
