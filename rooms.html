@@ -295,14 +295,14 @@
   /* Sheets: a sticky header (title + Close) and a sticky footer (the actions); only the middle scrolls. A bottom sheet on
      a phone, a centred card on a wide screen. */
   .sheet-back { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: flex-end; justify-content: center; z-index: 10; }
-  .sheet { background: var(--card); color: var(--text); width: 100%; max-width: 520px; max-height: 88vh; max-height: 88dvh;
+  .sheet-back > .sheet { background: var(--card); color: var(--text); width: 100%; max-width: 520px; max-height: 88vh; max-height: 88dvh;
     border-radius: var(--r-lg) var(--r-lg) 0 0; box-shadow: 0 -8px 40px rgba(0,0,0,.4); }
   .sheet header, .sheet footer { flex: none; display: flex; align-items: center; gap: var(--s-2); padding: var(--s-2) var(--s-3); }
   .sheet header { justify-content: space-between; border-bottom: 1px solid var(--line); }
   .sheet footer { justify-content: flex-end; border-top: 1px solid var(--line); padding-bottom: max(var(--s-2), env(safe-area-inset-bottom)); }
   .sheet-body { padding: var(--s-3); display: grid; gap: var(--s-2); }
   .sheet-body p + p { margin-top: var(--s-1); }
-  @media (min-width: 700px) { .sheet-back { align-items: center; } .sheet { border-radius: var(--r-lg); } }
+  @media (min-width: 700px) { .sheet-back { align-items: center; } .sheet-back > .sheet { border-radius: var(--r-lg); } }
 </style>
 </head>
 <body>

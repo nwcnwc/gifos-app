@@ -202,13 +202,13 @@
   const tvRow = () =>
     '<button type="button" class="hv-row tv" data-act="tv"><span class="hv-row-ic live">' + svg('tv') + '</span><span class="hv-row-t"><b>GifOS TV</b><span>The GifOS channel</span></span><span class="hv-row-go">' + svg('arrow') + '</span></button>';
 
-  // ---- sheets (over the view, under the Desktop's own dialogs) --------------------------------------------------------
+  // ---- sheets (over the view, under the Desktop's own dialogs): the shared dialog (js/dialog.js), moved by its header --
   let sheetEl = null;
   function closeSheet() { if (sheetEl) { sheetEl.remove(); sheetEl = null; } }
   function sheet(title, fill, cls) {
     closeSheet();
-    const bg = doc.createElement('div'); bg.className = 'hv-sheet-bg hv-skin-' + current();
-    bg.innerHTML = '<div class="hv-sheet ' + (cls || '') + '" role="dialog" aria-modal="true" aria-label="' + esc(title) + '"><header><button type="button" class="hv-sheet-back" data-act="sheet-back" hidden aria-label="Back">' + svg('back') + '</button><h2>' + esc(title) + '</h2><button type="button" class="hv-pill" data-act="sheet-close">Close</button></header><div class="hv-sheet-body"></div></div>';
+    const bg = doc.createElement('div'); bg.className = 'hv-sheet-bg dlg-backdrop hv-skin-' + current();
+    bg.innerHTML = '<div class="hv-sheet dlg-box ' + (cls || '') + '" role="dialog" aria-modal="true" aria-label="' + esc(title) + '"><header class="dlg-head"><button type="button" class="hv-sheet-back" data-act="sheet-back" hidden aria-label="Back">' + svg('back') + '</button><h2>' + esc(title) + '</h2><button type="button" class="hv-pill" data-act="sheet-close">Close</button></header><div class="hv-sheet-body dlg-body"></div></div>';
     bg.addEventListener('click', (e) => { if (e.target === bg) closeSheet(); else onClick(e); });
     bg.addEventListener('submit', onSubmit);
     doc.body.appendChild(bg); sheetEl = bg;
