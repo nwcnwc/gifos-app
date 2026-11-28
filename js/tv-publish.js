@@ -343,7 +343,7 @@
     function takeStage(gen) {
       if (gen !== snapGen || !snap.isConnected) return;
       var st = stageNow();
-      if (st.blurred && st.soon) { picErr.textContent = T('tvStageSwitching', 'The Stage is switching to clear video. The picture is taken as soon as it is clear.'); setTimeout(function () { takeStage(gen); }, 300); return; }
+      if (st.blurred && st.soon) { picErr.textContent = T('tvStageSwitching', 'The Stage is switching to clear video. The picture is taken as soon as it is clear.'); root.requestAnimationFrame(function () { takeStage(gen); }); return; }
       var v = stageVideo();
       if (!v) { err.textContent = T('tvNoStage', 'Nothing is showing on the Stage yet.'); return; }
       try { setCanvas(drawCover(v, v.videoWidth, v.videoHeight)); err.textContent = ''; } catch (e) { err.textContent = T('tvPicFail', 'This browser could not make the picture.'); return; }
