@@ -147,5 +147,11 @@
   "runtime.data.pickSearch": "Search",
   "runtime.data.pickShare": "Share",
   "runtime.data.cancel": "Cancel",
-  "runtime.data.sendTo": "To {name}"
+  "runtime.data.sendTo": "To {name}",
+  "runtime.calRemind.soon": "starts in 5 min",
+  "runtime.calRemind.now": "starts now",
+  "runtime.calRemind.join": "Join",
+  "runtime.calRemind.snooze": "Snooze 5 min",
+  "runtime.calRemind.dismiss": "Dismiss",
+  "runtime.calRemind.meeting": "Meeting"
 }

@@ -142,5 +142,11 @@
   "runtime.data.pickSearch": "搜索",
   "runtime.data.pickShare": "分享",
   "runtime.data.cancel": "取消",
-  "runtime.data.sendTo": "发给 {name}"
+  "runtime.data.sendTo": "发给 {name}",
+  "runtime.calRemind.soon": "5 分钟后开始",
+  "runtime.calRemind.now": "现在开始",
+  "runtime.calRemind.join": "加入",
+  "runtime.calRemind.snooze": "稍后 5 分钟再提醒",
+  "runtime.calRemind.dismiss": "关闭",
+  "runtime.calRemind.meeting": "会议"
 }

@@ -142,5 +142,11 @@
   "runtime.data.pickSearch": "Buscar",
   "runtime.data.pickShare": "Compartir",
   "runtime.data.cancel": "Cancelar",
-  "runtime.data.sendTo": "Para {name}"
+  "runtime.data.sendTo": "Para {name}",
+  "runtime.calRemind.soon": "empieza en 5 min",
+  "runtime.calRemind.now": "empieza ahora",
+  "runtime.calRemind.join": "Unirse",
+  "runtime.calRemind.snooze": "Posponer 5 min",
+  "runtime.calRemind.dismiss": "Descartar",
+  "runtime.calRemind.meeting": "Reunión"
 }

@@ -3257,14 +3257,15 @@
   function contactOfHandle(consumer, h) { const r = readHandles()[String(h || '')]; return r && r.c === consumer ? r : null; }
 
   // ---- the system providers' answers (Me & My Contacts) -------------------------------------------------------
-  // contacts: the cards this device holds (gifos_contacts: name + room), offered to the person in the picker; a message
+  // contacts: the people this device holds a private room with (gifos_private, one other member: name + room), offered to the person in the picker; a message
   // to a contact travels in our private room through the page's contacts transport (GifOS.providers.transport(t), set
   // by the page that carries the My Room channel). Nothing here is ever handed to an app as a list.
   let contactsTransport = null;
   function systemContacts() {
     let list = [];
-    try { list = JSON.parse(root.localStorage.getItem('gifos_contacts') || '[]') || []; } catch (e) { list = []; }
-    return (Array.isArray(list) ? list : []).filter((x) => x && x.room && x.v)
+    try { list = JSON.parse(root.localStorage.getItem('gifos_private') || '[]') || []; } catch (e) { list = []; }
+    // a contact is our private room with one person (the one a message can reach): its id is that room's
+    return (Array.isArray(list) ? list : []).filter((x) => x && x.room && x.v && Array.isArray(x.pubs) && x.pubs.length === 1)
       .map((x) => ({ id: String(x.room) + '.' + String(x.v).toLowerCase(), name: String(x.name || x.room).slice(0, 40), last: +x.last || +x.at || 0 }))
       .sort((a, b) => b.last - a.last);
   }

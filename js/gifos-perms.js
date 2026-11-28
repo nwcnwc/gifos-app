@@ -62,6 +62,9 @@
   }
 
   function escapeText(s) { var d = doc.createElement('div'); d.textContent = s; return d.innerHTML; }
+  // Listed in the sheet (to turn off) but never raise it by themselves: contacts and calendar are each asked at the moment of use
+  // (the picker, the ask sheet), and rooms and alarms only ever work for the seeded Calendar. identity: see below.
+  var QUIET_CAPS = ['identity', 'contacts', 'calendar', 'rooms', 'alarms'];
   var CAP_LABELS = { microphone: 'Record short voice clips', camera: 'Take photos and short videos', motion: 'Sense how you tilt your phone', ai: 'Use your AI', api: 'Use your account with', agent: 'Let an AI assistant operate this app', wasm: 'Run a compiled engine on your device', gpu: 'Use your device’s graphics chip (GPU)', pointer: 'Take over the mouse pointer while you play', fullscreen: 'Fill the whole screen, and hold your phone’s picture sideways', links: 'Open a web link in a new tab', pool: 'Pool downloads with the room', pay: 'Ask you to pay for things', assets: 'Download extra files when you pick them', meet: 'Join meetings for you', stage: 'Put people on the meeting stage when it is their turn', remote: 'Take commands from a control meeting', identity: 'See your name and picture', rooms: 'Make meeting rooms and open meetings', alarms: 'Ring reminders on this computer', contacts: 'Ask for people from your contacts', calendar: 'Ask about your calendar' };
   var CAP_DESC = {
     wasm: 'Lets the app run a compiled (WebAssembly) engine — like a chess engine or a codec — in a background worker on your device, so it can do heavy computation fast without freezing. It still cannot reach the internet: the engine runs entirely offline, sealed inside this app.',
@@ -207,7 +210,7 @@
       // (the words are different every time, so consent has to be too).
       if (!hasNet && !caps.length && !asked.length && !hands.length) { chipEl.style.display = 'none'; return; }
       var capSig = 'gifos_capack_' + ((manifest && manifest.appId) || 'app');
-      var sig = caps.filter(function (k) { return k !== 'identity'; }).join(',') + '|' + apiNames(manifest).join(',') + '|' + aiRoles(manifest).join(',') + '|' + poolHosts(manifest).join(',') + '|' + hands.join(',');
+      var sig = caps.filter(function (k) { return QUIET_CAPS.indexOf(k) < 0; }).join(',') + '|' + apiNames(manifest).join(',') + '|' + aiRoles(manifest).join(',') + '|' + poolHosts(manifest).join(',') + '|' + hands.join(',');
       function capAcked() { try { return ls().getItem(capSig) === sig; } catch (e) { return false; } }
       function ackCaps() { try { ls().setItem(capSig, sig); } catch (e) {} }
       function paintChip() {
@@ -466,7 +469,7 @@
         chipEl.onclick = openModal;
         // A link's ask ALWAYS opens the sheet — an acknowledgement stored for
         // this app's abilities says nothing about what today's link wants.
-        if (asked.length || (hasNet && !policy.acknowledged()) || (caps.some(function (k) { return k !== 'identity'; }) && !capAcked())) openModal();   // a name the person already chose to share is no news to re-ask
+        if (asked.length || (hasNet && !policy.acknowledged()) || (caps.some(function (k) { return QUIET_CAPS.indexOf(k) < 0; }) && !capAcked())) openModal();   // a name the person already chose to share is no news to re-ask
       }
 
       // ---- REQUIRED capabilities gate (settings-backed only) ----

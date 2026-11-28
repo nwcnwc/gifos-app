@@ -302,7 +302,7 @@
 
   GifOS.calendarBridge = {
     seededCalendar, scheduleShown, edgeBuild, contacts, newRoom, join, openCalendar,
-    setAlarms, setDraft, draft, setActive, pump, hook,
+    setAlarms, setDraft, draft, setActive, pump, hook, post,
   };
   hook();
   if (root.document) arm();

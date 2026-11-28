@@ -142,5 +142,11 @@
   "runtime.data.pickSearch": "Поиск",
   "runtime.data.pickShare": "Поделиться",
   "runtime.data.cancel": "Отмена",
-  "runtime.data.sendTo": "Кому: {name}"
+  "runtime.data.sendTo": "Кому: {name}",
+  "runtime.calRemind.soon": "начнётся через 5 мин",
+  "runtime.calRemind.now": "начинается сейчас",
+  "runtime.calRemind.join": "Присоединиться",
+  "runtime.calRemind.snooze": "Отложить на 5 мин",
+  "runtime.calRemind.dismiss": "Закрыть",
+  "runtime.calRemind.meeting": "Встреча"
 }

@@ -76,6 +76,9 @@ details.adv.danger-zone[open] summary { color: color-mix(in srgb, #ff5c5c 62%, v
   background: var(--bar); backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border); position: relative; z-index: 5;
 }
+/* A 375px phone (iPhone SE): the five items of the bar plus their gaps were 4px wider than the screen, so the Home Screen
+   scrolled sideways (seen on main too). Tighter gaps below 400px; the spacer already absorbs the rest. */
+@media (max-width: 400px) { .menubar { gap: .5rem; padding: 0 .75rem; } }
 .menubar .brand { font-weight: 800; background: linear-gradient(135deg,var(--accent),var(--accent2));
   -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 .brand-btn { display: flex; align-items: center; gap: .3rem; background: none; border: 0;
