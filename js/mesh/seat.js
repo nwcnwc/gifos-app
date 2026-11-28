@@ -862,7 +862,7 @@
           if (this.f.fabricDialFails(this.id, x) >= 1 && this.f.fabricLinkState(this.id, x) !== LS_OPEN) dk++;
         }
       }
-      const v = n >= 2 || d >= 2 || this.noChan.size >= 2 || (sil >= 2 && silA >= 1) || dk >= 2;   // L13.26.2: an anchor's silence alone is never a mass leave if (v) this.l13MassLast = this.TICK;
+      const v = n >= 2 || d >= 2 || this.noChan.size >= 2 || (sil >= 2 && silA >= 1 /* L13.26.2: an anchor's silence alone is never a mass leave */) || dk >= 2; if (v) this.l13MassLast = this.TICK;
       this.l13MassV = v || this.TICK - this.l13MassLast <= 2 * K.LEASE_T; return this.l13MassV;
     },
 
