@@ -222,10 +222,14 @@ var lastPageFetch = 0, prefetching = {}, LULL_MS = 1500, PREFETCH_EXTRA = [
   'i18n/en/help.json', 'i18n/en/update.json', 'i18n/en/runtime.json', 'i18n/en/charge.json', 'i18n/en/install.json', 'i18n/en/identity.json',
 ];
 function prefetchRefs(html) {
-  var out = {}, m, re = /(?:src|href)="((?:js|css)\/[^"?#]+)/g;
+  var out = {}, m, re;
+  // the loader strings first (the lobby's script and the bundle: the two big files), then the tags
+  re = /["'`]((?:js|css)\/[\w.\/-]+\.(?:js|css))(?:\?[^"'`]*)?["'`]/g;   // meet.lobby.js?h=.., meet.bundle.js?h=..
+  var late = [];
+  while ((m = re.exec(html))) { if (/\.(?:lobby|bundle)\.js$/.test(m[1])) out[m[1]] = 1; else late.push(m[1]); }
+  re = /(?:src|href)="((?:js|css)\/[^"?#]+)/g;
   while ((m = re.exec(html))) out[m[1]] = 1;
-  re = /["'`]((?:js|css)\/[\w.\/-]+\.(?:js|css))(?:\?[^"'`]*)?["'`]/g;   // the loader strings that fetch the bundles (meet.bundle.js?h=..)
-  while ((m = re.exec(html))) out[m[1]] = 1;
+  late.forEach(function (f) { out[f] = 1; });
   return Object.keys(out);
 }
 function quiet() {
