@@ -649,11 +649,13 @@ async function bellOpen(masterB64u, i, k, note) {
 function bellTime(at) { try { return new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } }
 // ONE NOTIFICATION PER CALLER, UPDATED IN PLACE (tag gifos-call-<handle>): the ring, then (unanswered) the same notification
 // turns into the missed call, and that person's next call replaces it. Chrome on Android judges every notification it shows:
-// an on-device model reads the title, the body and the button texts and swaps a "spammy" one for "Possible spam"; a site
-// that shows many notifications nobody opens loses its permission. So a call shows once (no repeated rings), reads like a
-// call from a contact (the name with its ✓, the two call buttons), and never urges ("tap", "now", "!").
+// an on-device model reads the title, the body and the button texts and swaps one it finds spammy for "Possible spam", and a
+// site that shows many notifications nobody opens loses its permission. Measured on a phone: call words on buttons
+// ("Answer", "Pick up", "Join") and phrases like "X is calling" or "Incoming call" trip it for common contact names
+// ("Dad", "Mom"); the contact's name with its ✓ over the time is clean for all of them, and so is "Missed call: X ✓" with
+// Call back. So the ring is the name and the time, a tap answers it, a swipe turns it down, and a call shows once.
 var BELL_ICON = '/icon-192.png', BELL_BADGE = '/badge-96.png';
-var BELL_TXT = { ring: 'Incoming call', answer: 'Answer', decline: 'Decline', missed: 'Missed call', back: 'Call back' };
+var BELL_TXT = { ring: 'GifOS call', missed: 'Missed call', back: 'Call back' };
 function bellTag(i) { return 'gifos-call-' + String(i || 'x'); }
 function bellMissed(label, when, url, i, r, c) {
   return self.registration.showNotification(BELL_TXT.missed + ': ' + label, {
@@ -688,10 +690,9 @@ async function bellPush(e) {
   }
   var tag = bellTag(m.i);
   await self.registration.showNotification(label, {
-    body: BELL_TXT.ring,
+    body: bellTime(when) + ' \u00b7 ' + BELL_TXT.ring,
     tag: tag, renotify: true, requireInteraction: true, timestamp: when,
     vibrate: [800, 400, 800, 400, 800, 400, 800],
-    actions: [{ action: 'answer', title: BELL_TXT.answer }, { action: 'decline', title: BELL_TXT.decline }],
     data: { kind: 'ring', url: url, r: r, c: m.c, i: m.i, label: label, at: when },
     icon: BELL_ICON, badge: BELL_BADGE,
   });
@@ -723,14 +724,18 @@ async function bellGo(url, r, c) {
 async function bellMark(c, how) {
   try { var db = await bellDb(), rings = (await bellGet(db, 'rings')) || []; await bellPut(db, 'rings', rings.map(function (x) { return x.c === c ? Object.assign({}, x, { done: true, how: how }) : x; })); } catch (err) {}
 }
+// A ring swiped away is a call turned down: no missed call follows it.
+self.addEventListener('notificationclose', function (e) {
+  var d = (e.notification && e.notification.data) || {};
+  if (d.kind === 'ring') e.waitUntil(bellMark(d.c, 'declined'));
+});
 self.addEventListener('notificationclick', function (e) {
   var d = (e.notification && e.notification.data) || {}, act = e.action || '';
   e.notification.close();
   if (!d.url) return;
   e.waitUntil((async function () {
     if (d.kind === 'ring') {
-      await bellMark(d.c, act === 'decline' ? 'declined' : 'answered');
-      if (act === 'decline') return;   // the caller rings on until the ring ends; nothing opens here
+      await bellMark(d.c, 'answered');   // a tap on the ring is its Answer
       return bellGo(d.url, d.r, d.c);
     }
     if (d.kind === 'missed') {
