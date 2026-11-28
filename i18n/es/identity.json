@@ -30,5 +30,9 @@
   "identity.trashTitle": "Me & My Contacts se queda aquí",
   "identity.trashBody": "Este archivo guarda tu sala personal, tus salas privadas y tus contactos. No puede ir a la Papelera.",
   "identity.scopeNote": "Te sigue: se guarda en Me & My Contacts, igual en cada dispositivo que lo tenga. Solo este dispositivo: se queda en este teléfono u ordenador.",
-  "identity.settingsIntro": "Tus amigos ven este nombre cuando jugáis o trabajáis juntos. Te sigue a cada dispositivo que tenga tu archivo de Me & My Contacts."
+  "identity.settingsIntro": "Tus amigos ven este nombre cuando jugáis o trabajáis juntos. Te sigue a cada dispositivo que tenga tu archivo de Me & My Contacts.",
+  "identity.appsBtn": "Apps que te conocen",
+  "identity.appsIntro": "Qué puede tener cada app de Me & My Contacts. Si olvidas una app, volverá a preguntar la próxima vez.",
+  "identity.appsNone": "Ninguna app ha pedido tu nombre, tu foto o tus contactos todavía.",
+  "identity.appsForget": "Olvidar {app}"
 }

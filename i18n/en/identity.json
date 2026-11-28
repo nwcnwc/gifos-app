@@ -30,5 +30,9 @@
   "identity.trashTitle": "Me & My Contacts stays here",
   "identity.trashBody": "This file holds your personal room, your private rooms and your contacts. It cannot go to the Trash.",
   "identity.scopeNote": "Follows you: kept in Me & My Contacts, the same on every device that holds it. This device only: stays on this phone or computer.",
-  "identity.settingsIntro": "Friends see this name when you play or work together. It follows you to every device that holds your Me & My Contacts file."
+  "identity.settingsIntro": "Friends see this name when you play or work together. It follows you to every device that holds your Me & My Contacts file.",
+  "identity.appsBtn": "Apps that know you",
+  "identity.appsIntro": "What each app may have from Me & My Contacts. Forget an app and it is asked again next time.",
+  "identity.appsNone": "No app has asked for your name, your picture or your contacts yet.",
+  "identity.appsForget": "Forget {app}"
 }

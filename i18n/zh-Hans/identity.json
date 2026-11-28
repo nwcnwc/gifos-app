@@ -30,5 +30,9 @@
   "identity.trashTitle": "“Me & My Contacts”留在这里",
   "identity.trashBody": "这个文件保存着你的个人房间、私人房间和联系人。它不能放进废纸篓。",
   "identity.scopeNote": "跟随你：保存在“Me & My Contacts”中，在每台持有它的设备上都一样。仅此设备：只留在这台手机或电脑上。",
-  "identity.settingsIntro": "一起玩或协作时，朋友会看到这个名字。它会跟随你到每台持有你“Me & My Contacts”文件的设备上。"
+  "identity.settingsIntro": "一起玩或协作时，朋友会看到这个名字。它会跟随你到每台持有你“Me & My Contacts”文件的设备上。",
+  "identity.appsBtn": "认识您的应用",
+  "identity.appsIntro": "各应用可从 Me & My Contacts 获取的内容。若忘记某应用，下次会再次询问。",
+  "identity.appsNone": "还没有应用请求过您的姓名、头像或通讯录。",
+  "identity.appsForget": "忘记 {app}"
 }

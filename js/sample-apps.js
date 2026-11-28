@@ -7730,11 +7730,12 @@ The Store itself does not keep a shopping cart in this icon.
         if (!docs || !docs['index.html'] || !docs['widget/index.html']) return null;
         return {
           name: 'Calendar.gif', appId: 'calendar', accent: [255, 92, 120],
-          files: withHelp('calendar', { 'manifest.json': manifest('calendar', 'Calendar', [255, 92, 120], { capabilities: { db: true, multiplayer: false, calendar: true },
+          files: withHelp('calendar', { 'manifest.json': manifest('calendar', 'Calendar', [255, 92, 120], { capabilities: { db: true, multiplayer: false, contacts: ['pick', 'send'], rooms: true, alarms: true },
+                   provides: { data: ['calendar'], entry: 'serve/index.html' },
                    data: { events: PRIV, calendars: PRIV, invites: PRIV, calendar_settings: PRIV },
                    widgets: [{ id: 'today', name: 'Today', entry: 'widget/index.html', sizes: ['medium', 'small', 'wide'] },
                              { id: 'month', name: 'Month', entry: 'widget/index.html', sizes: ['medium', 'large'] }] }),
-                   'index.html': themeHtml(docs['index.html'], 'full'), 'widget/index.html': docs['widget/index.html'] }),
+                   'index.html': themeHtml(docs['index.html'], 'full'), 'widget/index.html': docs['widget/index.html'], 'serve/index.html': docs['serve/index.html'] }),
         };
       }).catch(function () { return null; });
     }

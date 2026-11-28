@@ -542,19 +542,36 @@
       return { name: (me && me.name) || '' };
     } catch (e) { return null; }
   }
-  // The answer is kept per appId with the key of the app that got it: the same appId with another key is asked afresh.
-  const idRec = (manifest) => { try { const o = JSON.parse(root.localStorage.getItem(ID_SHARE(manifest)) || 'null'); return o && typeof o === 'object' ? o : null; } catch (e) { return null; } };
-  const idDecided = (manifest) => { const k = appKeys.get(manifest), r = idRec(manifest); return k && r && r.k === k && (r.v === '1' || r.v === '0') ? r.v : ''; };
+  // What you told an app about your name and picture is an entry on Me & My Contacts' permission list
+  // (js/gifos-grants.js, provider 'system:identity', kinds name and avatar), keyed by the app's unfakeable key.
+  const ID_PROVIDER = 'system:identity';
+  const G = () => GifOS.grants || null;
+  const appLabel = (manifest) => String((manifest && (manifest.name || manifest.appId)) || 'App').slice(0, 80);
+  // An answer kept before the list existed (gifos_idshare_<appId> = {k, v}) moves onto the list once, for its own key.
+  function migrateIdShare(manifest, k) {
+    try {
+      const raw = root.localStorage.getItem(ID_SHARE(manifest)); if (!raw) return;
+      const o = JSON.parse(raw);
+      if (o && o.k === k && (o.v === '1' || o.v === '0') && G() && !G().level(ID_PROVIDER, 'name', k)) setIdShare(manifest, o.v === '1');
+      if (o && o.k === k) root.localStorage.removeItem(ID_SHARE(manifest));
+    } catch (e) {}
+  }
+  const idLevel = (manifest, kind) => { const k = appKeys.get(manifest); if (!k || !G()) return ''; migrateIdShare(manifest, k); return G().level(ID_PROVIDER, kind, k); };
+  const idDecided = (manifest) => { const l = idLevel(manifest, 'name'); return l === 'always' ? '1' : l === 'never' ? '0' : ''; };
   const idShared = (manifest) => !!meetingSelf() || (idDecided(manifest) === '1' && !capDisabled(manifest, 'identity'));
-  function setIdShare(manifest, yes) { const k = appKeys.get(manifest); if (!k) return; try { root.localStorage.setItem(ID_SHARE(manifest), JSON.stringify({ k, v: yes ? '1' : '0' })); } catch (e) {} }
+  const avatarShared = (manifest) => !!meetingSelf() || (idLevel(manifest, 'avatar') === 'always' && !capDisabled(manifest, 'identity'));
+  function setIdShare(manifest, yes) {
+    const k = appKeys.get(manifest); if (!k || !G()) return;
+    G().set(ID_PROVIDER, 'name', k, yes ? 'always' : 'never', appLabel(manifest), manifest && manifest.appId);
+    G().set(ID_PROVIDER, 'avatar', k, yes ? 'always' : 'never', appLabel(manifest), manifest && manifest.appId);
+  }
   const keyReady = (manifest) => appKeyPs.get(manifest) || Promise.resolve(null);
   function appIdentity(manifest) {
     const idn = identity();
     return keyReady(manifest).then(() => appUserId(manifest)).then((id) => {
       const room = meetingSelf();
       if (room) return { id, name: room.name || idn.name || '', avatar: idn.avatar };
-      if (idShared(manifest)) return { id, name: idn.name || '', avatar: idn.avatar };
-      return { id, name: '', avatar: null };
+      return { id, name: idShared(manifest) ? idn.name || '' : '', avatar: avatarShared(manifest) ? idn.avatar : null };
     });
   }
   // gifos.me: the first ask outside a meeting shows the sheet; later asks take the remembered answer.
@@ -731,18 +748,12 @@
   function clientShim(gen, nonce, withCalendar) {
     // Present only for the seeded system Calendar. A store app that copies the manifest gets an empty string here.
     const calendarApi = withCalendar ? `,
-        calendar: {
-          newRoom: function(opts){ return rpc({ type:'calendar', op:'newRoom', mode: opts && opts.mode }); },
-          contacts: function(){ return rpc({ type:'calendar', op:'contacts' }); },
-          invite: function(cid, ics){ return rpc({ type:'calendar', op:'invite', cid: cid, ics: ics }); },
-          reply: function(cid, ics){ return rpc({ type:'calendar', op:'reply', cid: cid, ics: ics }); },
-          cancel: function(cid, ics){ return rpc({ type:'calendar', op:'cancel', cid: cid, ics: ics }); },
-          onInbox: function(cb){ if (typeof cb === 'function') calInbox.push(cb); return function(){ var i = calInbox.indexOf(cb); if (i >= 0) calInbox.splice(i, 1); }; },
-          ack: function(id){ return rpc({ type:'calendar', op:'ack', id: id }); },
-          setAlarms: function(list){ return rpc({ type:'calendar', op:'setAlarms', list: list }); },
-          join: function(link){ return rpc({ type:'calendar', op:'join', link: link }); },
-          draft: function(){ return rpc({ type:'calendar', op:'draft' }); }
-        }` : '';
+        rooms: {
+          create: function(opts){ return rpc({ type:'sys', op:'rooms.create', mode: opts && opts.mode }); },
+          draft: function(){ return rpc({ type:'sys', op:'rooms.draft' }); }
+        },
+        alarms: { set: function(list){ return rpc({ type:'sys', op:'alarms.set', list: list }); } },
+        open: function(link){ return rpc({ type:'sys', op:'open', link: link }); }` : '';
     return `(function(){
       var GEN = ${Number(gen) || 1}, NONCE = ${JSON.stringify(String(nonce || ''))};
       var LOCALE0 = ${JSON.stringify(localeSnap()).replace(/</g, '\\u003c')}, I18N_CORE = (${i18nCoreSrc()});
@@ -891,6 +902,7 @@
           var cbs = window.__gifosIdentCbs || [];
           for (var ii = 0; ii < cbs.length; ii++) { try { cbs[ii](d.identity); } catch (err) {} }
         }
+        if(d.type==='contacts-message'){ (window.__gifosInboxCbs || []).slice().forEach(function(f){ try { f(); } catch(err){} }); }
         if(d.type==='locale' && d.locale){ setLocale(d.locale); }
         if(d.type==='display' && d.display){
           DISPLAY = d.display;
@@ -923,9 +935,6 @@
               try { window.parent.postMessage({ ns:'gifos', type:'pipframe', bmp:b }, '*', [b]); } catch(e){ none(); }
             }, none);
           })();
-        }
-        if(d.type==='calendar-inbox' && d.item){
-          for (var ci = 0; ci < calInbox.length; ci++) { try { calInbox[ci](d.item); } catch (err) {} }
         }
         if(d.type==='meet-event' && d.event){
           var ev = d.event, list = [];
@@ -974,7 +983,6 @@
       });
       var provHandlers = null;
       var meetSubs = { tr: [], pe: [], ch: [], xf: [], hw: [], rb: [] };
-      var calInbox = [];
       var roomCbs = [], roomLast = null;
       // Android Chrome only lets the container's Back trap "stick" once the page
       // has real user activation, and the user touches the APP, not the frame
@@ -1414,7 +1422,29 @@
         // ({ bytes, mime } for tts, { text } for chat/stt, …). Calling this in
         // a normal (visible) mount is harmless — requests only ever arrive in
         // a service mount.
+        // Data providers (docs/providers.md): contacts come only through a picker the person drives; every call is
+        // checked against the provider's permission list, and the person is asked when the list has no answer.
+        contacts: {
+          pick: function(o){ return rpc({type:'data',role:'contacts',op:'pick',multiple: !(o && o.multiple === false)}); },
+          send: function(id, msg){ return rpc({type:'data',role:'contacts',op:'send',handle:id,msg:msg}); },
+          onMessage: function(cb){
+            if (typeof cb !== 'function') return function(){};
+            var seen = {};
+            var pull = function(){ rpc({type:'data',role:'contacts',op:'inbox'}).then(function(list){ (list||[]).forEach(function(m){ if (seen[m.id]) return; seen[m.id]=1; try { cb(m); } catch(e){} }); }, function(){}); };
+            (window.__gifosInboxCbs = window.__gifosInboxCbs || []).push(pull);
+            pull();
+            return function(){ var a = window.__gifosInboxCbs, i = a.indexOf(pull); if (i >= 0) a.splice(i, 1); };
+          },
+          ack: function(msgId){ return rpc({type:'data',role:'contacts',op:'ack',msgId:msgId}); }
+        },
+        calendar: {
+          events:   function(r){ r = r || {}; return rpc({type:'data',role:'calendar',op:'events',from:r.from,to:r.to}); },
+          freeBusy: function(r){ r = r || {}; return rpc({type:'data',role:'calendar',op:'freeBusy',from:r.from,to:r.to}); },
+          add:      function(ev){ return rpc({type:'data',role:'calendar',op:'add',event:ev}); }
+        },
         provider: {
+          grants: function(){ return rpc({type:'data',role:'provider',op:'grants'}); },
+          revoke: function(consumer, kind){ return rpc({type:'data',role:'provider',op:'revoke',consumer:consumer,kind:kind}); },
           serve: function(handlers){ provHandlers = handlers || {};
             try { parent.postMessage({ ns:'gifos', type:'provider-ready', roles:Object.keys(provHandlers) }, '*'); } catch(e){} }
         },
@@ -1614,10 +1644,10 @@
   const baseTag = (doc) => { const b = doc.createElement('base'); b.setAttribute('href', 'about:srcdoc'); return b; };
 
   // ---- build a runnable, self-contained HTML doc from the archive ----------
-  function buildAppHtml(files, manifest, gen, nonce, withCalendar) {
+  function buildAppHtml(files, manifest, gen, nonce, entry, withCalendar) {
     const withAgent = hasCap(manifest, 'agent');
     const CSP = appCsp(manifest);
-    let html = gif.bytesToText(files['index.html']);
+    let html = gif.bytesToText(files[entry && files[entry] ? entry : 'index.html']);
     html = html.replace(/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*><\/script>/gi, (m, src) => {
       const key = norm(src); return files[key] ? '<script>' + gif.bytesToText(files[key]) + '</script>' : m;
     });
@@ -2887,6 +2917,7 @@
       if (hasCap(manifest, 'gpu') && !capDisabled(manifest, 'gpu')) { try { iframe.setAttribute('allow', 'webgpu'); } catch (e) {} }
       const pending = new Map();
       let ready = false, idSeq = 0;
+      const ownDb = providesData(manifest).length ? makeLocalDb(fileId, () => {}) : null;
       const fail = (err) => { root.removeEventListener('message', handler); try { iframe.remove(); } catch (e) {} providerServices.delete(fileId); reject(err); };
       const bootTimer = setTimeout(() => { if (!ready) fail(new Error(label + ' did not start serving (no gifos.provider.serve call) — it may not be a working provider.')); }, PROVIDER_BOOT_MS);
       // A provider that changes its document loses its mount (see mountApp
@@ -2928,6 +2959,14 @@
         else if (d.type === 'info') { const w = iframe.contentWindow; if (w) w.postMessage({ ns: 'gifos', type: 'reply', id: d.id, ok: true, result: { appId: manifest.appId, name: manifest.name, version: manifest.version, provider: true } }, '*'); }
         else if (d.type === 'asset') { replyAsset(files, fileId, manifest, d, (p, t) => { const w = iframe.contentWindow; if (w) w.postMessage(Object.assign({ ns: 'gifos', type: 'reply', id: d.id }, p), '*', t || []); }); }
         else if (d.type === 'asset-has') { replyAssetHas(files, fileId, manifest, d, (p) => { const w = iframe.contentWindow; if (w) w.postMessage(Object.assign({ ns: 'gifos', type: 'reply', id: d.id }, p), '*'); }); }
+        // A DATA provider serves its own records, so its service mount reads and writes its OWN app's db (the records it
+        // serves) and nothing else; an AI provider's mount has no db at all (docs/providers.md).
+        else if (d.type === 'db' && ownDb && ['get', 'getAll', 'put', 'delete'].indexOf(d.op) >= 0) {
+          const w = iframe.contentWindow;
+          const back = (p) => { if (w) w.postMessage(Object.assign({ ns: 'gifos', type: 'reply', id: d.id }, p), '*'); };
+          (store.badCollectionName(d.collection) ? Promise.reject(new Error('bad collection name')) : Promise.resolve().then(() => ownDb.op(d.op, d.collection, d.key, d.value)))
+            .then((result) => back({ ok: true, result }), (err) => back({ ok: false, error: String(err && err.message || err) }));
+        }
         else if (d.id) { const w = iframe.contentWindow; if (w) w.postMessage({ ns: 'gifos', type: 'reply', id: d.id, ok: false, error: 'Not available in a provider service mount.' }, '*'); }
       };
       // A provider that nobody has asked anything for a while is unloaded —
@@ -2970,7 +3009,7 @@
       };
       root.addEventListener('message', handler);
       doc.body.appendChild(iframe);
-      iframe.srcdoc = buildAppHtml(files, manifest, 1, nonce);
+      iframe.srcdoc = buildAppHtml(files, manifest, 1, nonce, providerEntry(manifest, files));
     });
     providerServices.set(fileId, p);
     p.catch(() => providerServices.delete(fileId)); // a failed boot may be retried
@@ -2981,7 +3020,10 @@
   // A stop() bumps the provider's epoch; a call that began before it is
   // refused at its next step, even while its model is still downloading.
   const providerEpochs = new Map(); // fileId -> number
-  function providerCall(c, role, req, emit) {
+  // opts.placed: the data broker already established where this provider may serve from (a seeded system provider
+  // lives outside the Providers folder); opts.quiet: no busy pill (a data answer is a moment, not a model warming up).
+  function providerCall(c, role, req, emit, opts) {
+    opts = opts || {};
     const cfgName = c.appName || 'Your provider app';
     const epoch = providerEpochs.get(c.app) || 0;
     const live = (v) => {
@@ -2995,15 +3037,16 @@
       }
       const m = arc.manifest || {};
       const name = m.name || cfgName;
-      if (providesRoles(m).indexOf(role) < 0) {
-        return Promise.reject(new Error(name + ' does not provide the "' + role + '" AI type (its manifest lists: ' + (providesRoles(m).join(', ') || 'none') + ').'));
+      const served = providesRoles(m).concat(providesData(m));
+      if (served.indexOf(role) < 0) {
+        return Promise.reject(new Error(name + ' does not provide "' + role + '" (its manifest lists: ' + (served.join(', ') || 'none') + ').'));
       }
       if (providerNetworky(m)) {
         return Promise.reject(new Error(name + ' declares network access, and a provider must be network-less — every app’s AI requests flow into it. Refused.'));
       }
       return store.allItems().then((its) => {
         const it = (its || []).find((i) => i && i.fileId === c.app);
-        if (!it || it.parent !== 'sys_providers') {
+        if (!opts.placed && (!it || it.parent !== 'sys_providers')) {
           showSystemSetup({ kind: 'provider', name, role, problem: 'outside' });
           return Promise.reject(new Error('PROVIDER_NOT_IN_FOLDER: ' + name + ' only works from inside the Providers folder on your Home Screen. Move its icon back there (it wears a red ✕ anywhere else).'));
         }
@@ -3030,7 +3073,7 @@
         const t0 = Date.now();
         return loadTimings().then((tt) => {
           const rec = tt[c.app] || {};
-          busyStart(name, { cold, expect: cold ? rec.cold : rec.warm });
+          if (!opts.quiet) busyStart(name, { cold, expect: cold ? rec.cold : rec.warm });
           // Required pins only: an optional pin (Whisper base when the call
           // asks for tiny) downloads when the app reads it with gifos.assets(),
           // not here. The progress line goes to the busy pill.
@@ -3040,12 +3083,12 @@
             : Promise.resolve();
           return prep
             .then(live)
-            .then(() => { if (cold) busyNote(T('runtime.busy.starting', { name }), null); return providerService(c.app, arc.files, m); })
+            .then(() => { if (cold && !opts.quiet) busyNote(T('runtime.busy.starting', { name }), null); return providerService(c.app, arc.files, m); })
             .then(live)
-            .then((svc) => svc.call(role, req, (note, frac) => busyNote(note, frac), emit || null))
+            .then((svc) => svc.call(role, req, (note, frac) => { if (!opts.quiet) busyNote(note, frac); }, emit || null))
             .then(
-              (out) => { recordTiming(c.app, cold, Date.now() - t0); busyEnd(); return out; },
-              (err) => { busyEnd(); throw err; });          // a failed run teaches nothing about timing
+              (out) => { recordTiming(c.app, cold, Date.now() - t0); if (!opts.quiet) busyEnd(); return out; },
+              (err) => { if (!opts.quiet) busyEnd(); throw err; });          // a failed run teaches nothing about timing
         });
       });
     });
@@ -3117,10 +3160,390 @@
       }));
     }));
   }
+  // ==== DATA PROVIDERS (docs/providers.md "Data providers") =====================================================
+  // ONE PATH for data about the person, as for AI: an app asks through gifos.*, the OS brokers, a provider answers.
+  // Roles and kinds are js/gifos-grants.js ROLES. Me & My Contacts serves identity and contacts (OS code: it is a sealed
+  // data file with no code of its own); the seeded Calendar serves calendar through the same hidden service mount a
+  // store provider uses; Settings → Providers may assign a store provider instead (it must sit in the Providers folder
+  // and be network-less, as for AI). Every request is checked against the provider's permission list BEFORE the
+  // provider sees it (GifOS.grants.decide), and the answer is cut down to what was granted before the app sees it.
+  const DATA_KEY = 'gifos_data_config';
+  function dataConfig() { try { return JSON.parse(root.localStorage.getItem(DATA_KEY) || '{}') || {}; } catch (e) { return {}; } }
+  function providesData(manifest) {
+    const p = manifest && manifest.provides && manifest.provides.data;
+    const R = (GifOS.grants && GifOS.grants.ROLES) || {};
+    return Array.isArray(p) ? p.filter((r) => typeof r === 'string' && R[r]) : [];
+  }
+  // The service mount's page: provides.entry when the GIF carries it (a small page, so no screens boot to answer a
+  // question), else index.html.
+  function providerEntry(manifest, files) {
+    const e = manifest && manifest.provides && manifest.provides.entry;
+    return typeof e === 'string' && files && files[e] ? e : 'index.html';
+  }
+  // gifos.<role>.<call> -> the kind on the provider's list it needs.
+  const DATA_OPS = { 'contacts.pick': 'pick', 'contacts.send': 'send', 'contacts.inbox': 'send', 'contacts.ack': 'send',
+    'calendar.events': 'events', 'calendar.freeBusy': 'freebusy', 'calendar.add': 'add' };
+  // The app must SAY it wants the ability: capabilities.<role> true (every kind) or a list of kinds. It is shown on its
+  // Abilities sheet and can be switched off there.
+  function dataDeclared(manifest, role, kind) {
+    const c = manifest && manifest.capabilities && manifest.capabilities[role];
+    return c === true || (Array.isArray(c) && c.indexOf(kind) >= 0);
+  }
+  function seededCalendar() {
+    return Promise.all([store.allFileMeta(), store.allItems()]).then(([files, items]) => {
+      const f = (files || []).find((x) => x && x.isDefault === true && x.isApp && x.appId === 'calendar');
+      if (!f) return null;
+      const it = (items || []).find((i) => i && i.fileId === f.id && i.parent !== 'sys_trash');
+      return it ? f : null;
+    }).catch(() => null);
+  }
+  function appDataProvider(fileId, role, key, placed, fallbackName) {
+    return providerArchive(fileId).then((arc) => {
+      if (!arc || !arc.files) return { key, kind: 'app', fileId, name: fallbackName || '', recognised: false, networky: false, missing: true };
+      const m = arc.manifest || {};
+      return store.allItems().then((its) => {
+        const it = (its || []).find((i) => i && i.fileId === fileId);
+        return { key, kind: 'app', fileId, manifest: m, name: String(m.name || fallbackName || 'Provider').replace(/\.gif$/i, ''),
+          recognised: providesData(m).indexOf(role) >= 0 && !!it && it.parent !== 'sys_trash' && (placed || it.parent === 'sys_providers'),
+          networky: providerNetworky(m), placed };
+      });
+    });
+  }
+  // Who answers a role now: the store provider assigned in Settings, else the system provider.
+  function resolveDataProvider(role) {
+    const c = dataConfig()[role];
+    if (c && c.app) return appDataProvider(c.app, role, 'app:' + String(c.appId || '') + '@' + c.app, false, c.appName);
+    if (role === 'identity' || role === 'contacts') return Promise.resolve({ key: 'system:' + role, kind: 'system', name: 'Me & My Contacts', recognised: true, networky: false });
+    if (role === 'calendar') return seededCalendar().then((f) => (f ? appDataProvider(f.id, role, 'system:calendar', true, 'Calendar') : null));
+    return Promise.resolve(null);
+  }
+  // A provider's own key, for the app that IS that provider (gifos.provider.grants in its own window).
+  function ownProviderKey(manifest, fileId) {
+    if (!fileId || !providesData(manifest).length) return Promise.resolve('');
+    return seededCalendar().then((f) => (f && f.id === fileId ? 'system:calendar' : 'app:' + String(manifest.appId || '') + '@' + fileId));
+  }
+
+  // ---- contact handles: a contact as ONE app may name it -----------------------------------------------------
+  // An app never holds a card, a room key or a room link: it holds a handle made for it alone (HMAC of a secret this
+  // device keeps, the app's key, the provider and the contact). Another app's handle for the same person differs, and
+  // only the OS can turn a handle back into a contact.
+  const HANDLES_KEY = 'gifos_contact_handles';
+  const HANDLES_MAX = 2000;
+  function handleSecret() {
+    let s = ''; try { s = root.localStorage.getItem('gifos_handle_secret') || ''; } catch (e) {}
+    if (!/^[0-9a-f]{64}$/.test(s)) {
+      const b = new Uint8Array(32); root.crypto.getRandomValues(b); s = hexOf(b);
+      try { root.localStorage.setItem('gifos_handle_secret', s); } catch (e) {}
+    }
+    return s;
+  }
+  function readHandles() { try { const o = JSON.parse(root.localStorage.getItem(HANDLES_KEY) || '{}'); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } }
+  function contactHandle(consumer, provKey, cid) {
+    const subtle = root.crypto.subtle, enc = new TextEncoder();
+    return subtle.importKey('raw', enc.encode(handleSecret()), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+      .then((k) => subtle.sign('HMAC', k, enc.encode(consumer + '|' + provKey + '|' + cid)))
+      .then((sig) => {
+        const h = 'c_' + hexOf(new Uint8Array(sig).slice(0, 12));
+        const all = readHandles();
+        if (!all[h]) {
+          all[h] = { c: consumer, p: provKey, id: cid, at: Date.now() };
+          const ids = Object.keys(all);
+          if (ids.length > HANDLES_MAX) { ids.sort((a, b) => (all[a].at || 0) - (all[b].at || 0)); for (const x of ids.slice(0, ids.length - HANDLES_MAX)) delete all[x]; }
+          try { root.localStorage.setItem(HANDLES_KEY, JSON.stringify(all)); } catch (e) {}
+        }
+        return h;
+      });
+  }
+  function contactOfHandle(consumer, h) { const r = readHandles()[String(h || '')]; return r && r.c === consumer ? r : null; }
+
+  // ---- the system providers' answers (Me & My Contacts) -------------------------------------------------------
+  // contacts: the people this device holds a private room with (gifos_private, one other member: name + room), offered to the person in the picker; a message
+  // to a contact travels in our private room through the page's contacts transport (GifOS.providers.transport(t), set
+  // by the page that carries the My Room channel). Nothing here is ever handed to an app as a list.
+  let contactsTransport = null;
+  function systemContacts() {
+    let list = [];
+    try { list = JSON.parse(root.localStorage.getItem('gifos_private') || '[]') || []; } catch (e) { list = []; }
+    // a contact is our private room with one person (the one a message can reach): its id is that room's
+    return (Array.isArray(list) ? list : []).filter((x) => x && x.room && x.v && Array.isArray(x.pubs) && x.pubs.length === 1)
+      .map((x) => ({ id: String(x.room) + '.' + String(x.v).toLowerCase(), name: String(x.name || x.room).slice(0, 40), last: +x.last || +x.at || 0 }))
+      .sort((a, b) => b.last - a.last);
+  }
+  function serveData(prov, role, req) {
+    if (prov.kind === 'system' && role === 'contacts') {
+      if (req.op === 'list') return Promise.resolve(systemContacts());
+      if (req.op === 'send') {
+        const tr = contactsTransport;
+        if (!tr || typeof tr.send !== 'function') return Promise.reject(new Error('NOT_AVAILABLE: Messages to contacts are not available on this page.'));
+        return Promise.resolve(tr.send(req.id, { to: req.to, msg: req.msg })).then((r) => ({ state: (r && r.state) || 'sent' }));
+      }
+      return Promise.reject(new Error('Me & My Contacts does not answer "' + req.op + '".'));
+    }
+    if (prov.kind === 'app') return providerCall({ app: prov.fileId, appId: (prov.manifest && prov.manifest.appId) || '', appName: prov.name }, role, req, null, { placed: !!prov.placed, quiet: true });
+    return Promise.reject(new Error('No provider answers "' + role + '".'));
+  }
+
+  // ---- what may cross, cut down to the grant ---------------------------------------------------------------
+  const clampRange = (r) => {
+    const now = Date.now(), DAY = 86400000;
+    let from = +((r && r.from) || now), to = +((r && r.to) || (from + 7 * DAY));
+    if (!isFinite(from)) from = now; if (!isFinite(to) || to <= from) to = from + DAY;
+    if (to - from > 400 * DAY) to = from + 400 * DAY;   // a year and a bit is a question; more is a dump
+    return { from, to };
+  };
+  const str = (v, n) => (v == null ? '' : String(v).slice(0, n));
+  function cleanOccurrence(o) {
+    return { uid: str(o.uid, 200), title: str(o.title, 200), start: o.start, end: o.end, allDay: !!o.allDay,
+      location: str(o.location, 300), notes: str(o.notes, 4000), link: str(o.link, 600), recurring: !!o.recurring };
+  }
+  // Free/busy is computed HERE from the events, so a freebusy grant never carries a title, a place or a note.
+  function freeBusyOf(list) {
+    const ms = (v) => (typeof v === 'number' ? v : Date.parse(v));
+    const spans = (list || []).map((o) => ({ start: ms(o.start), end: ms(o.end), allDay: !!o.allDay })).filter((x) => isFinite(x.start) && isFinite(x.end) && x.end > x.start)
+      .sort((a, b) => a.start - b.start);
+    const out = [];
+    for (const x of spans) { const l = out[out.length - 1]; if (l && x.start <= l.end && l.allDay === x.allDay) l.end = Math.max(l.end, x.end); else out.push({ start: x.start, end: x.end, allDay: x.allDay }); }
+    return out;
+  }
+  function cleanNewEvent(ev) {
+    ev = ev || {};
+    const out = { title: str(ev.title, 200).trim(), allDay: !!ev.allDay, location: str(ev.location, 300), notes: str(ev.notes, 4000), url: str(ev.url, 600) };
+    if (out.allDay) { out.start = str(ev.start, 10); out.end = str(ev.end || ev.start, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(out.start) || !/^\d{4}-\d{2}-\d{2}$/.test(out.end)) return null; }
+    else { out.start = +ev.start; out.end = +(ev.end || (out.start + 3600000)); if (!isFinite(out.start) || !isFinite(out.end) || out.end < out.start) return null; }
+    if (!out.title) return null;
+    return out;
+  }
+
+  // ---- the sheets: the person decides ----------------------------------------------------------------------------
+  function sheetShell(id, titleHtml, bodyHtml, buttons) {
+    const doc = root.document;
+    const old = doc.getElementById(id); if (old) old.remove();
+    const bg = doc.createElement('div'); bg.id = id; bg.className = 'perm-modal modal-bg';
+    bg.setAttribute('style', 'position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:1.2rem;');
+    const box = doc.createElement('div'); box.className = 'perm-box modal';
+    box.setAttribute('style', 'background:#14141f;color:#e8e8f4;border:1px solid #2a2a3f;border-radius:.8rem;max-width:25rem;width:100%;max-height:86vh;display:flex;flex-direction:column;font:15px/1.55 system-ui,-apple-system,sans-serif;');
+    const btn = (b) => '<button data-act="' + b.act + '" style="padding:.5rem 1rem;border-radius:.5rem;cursor:pointer;font:inherit;min-height:44px;' +
+      (b.main ? 'border:none;background:#7b5cff;color:#fff' : 'border:1px solid #2a2a3f;background:transparent;color:#b6b6cf') + '">' + escHtml(b.label) + '</button>';
+    box.innerHTML = '<div class="dlg-head" style="padding:1rem 1.2rem .4rem"><h3 style="margin:0;font-size:1.08rem">' + titleHtml + '</h3></div>' +
+      '<div class="dlg-body" style="padding:0 1.2rem;overflow:auto;flex:1 1 auto">' + bodyHtml + '</div>' +
+      '<div class="dlg-actions" style="display:flex;gap:.5rem;justify-content:flex-end;flex-wrap:wrap;padding:.8rem 1.2rem 1rem;position:sticky;bottom:0">' + buttons.map(btn).join('') + '</div>';
+    bg.appendChild(box); doc.body.appendChild(bg);
+    return { bg, box };
+  }
+  const KIND_WORDS = { name: 'runtime.data.kind.name', avatar: 'runtime.data.kind.avatar', pick: 'runtime.data.kind.pick', send: 'runtime.data.kind.send',
+    freebusy: 'runtime.data.kind.freebusy', events: 'runtime.data.kind.events', add: 'runtime.data.kind.add' };
+  // -> 'always' | 'once' | 'never' | '' (dismissed: a No, kept nowhere)
+  const wordsReady = () => (GifOS.i18n && GifOS.i18n.load ? Promise.resolve(GifOS.i18n.load('runtime')).catch(() => {}) : Promise.resolve());
+  function askDataGrant(manifest, prov, kind, detailHtml) {
+    return wordsReady().then(() => new Promise((resolve) => {
+      try {
+        const app = appLabel(manifest);
+        const { bg, box } = sheetShell('gifos-grant-modal', escHtml(T('runtime.data.askTitle', { app, what: T(KIND_WORDS[kind]) })),
+          '<p style="color:#b6b6cf;font-size:.9rem;margin:.2rem 0 .7rem">' + escHtml(T('runtime.data.askBody', { app, provider: prov.name })) + '</p>' + (detailHtml || ''),
+          [{ act: 'never', label: T('runtime.data.never') }, { act: 'once', label: T('runtime.data.once') }, { act: 'always', label: T('runtime.data.always'), main: true }]);
+        const done = (v) => { bg.remove(); resolve(v); };
+        box.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-act]'); if (b) done(b.getAttribute('data-act')); });
+        bg.addEventListener('click', (e) => { if (e.target === bg) done(''); });
+      } catch (e) { resolve(''); }
+    }));
+  }
+  // The picker: the person chooses who the app may know about. -> [cid] (empty when they cancel)
+  function pickContacts(manifest, prov, list, multiple) {
+    return wordsReady().then(() => new Promise((resolve) => {
+      try {
+        const app = appLabel(manifest);
+        const rows = list.length
+          ? list.map((c, i) => '<label style="display:flex;align-items:center;gap:.7rem;padding:.55rem .2rem;border-top:1px solid #22222f;min-height:44px;cursor:pointer" data-name="' + escHtml(c.name.toLowerCase()) + '">' +
+              '<input type="' + (multiple ? 'checkbox' : 'radio') + '" name="gifos-pick" value="' + i + '" style="width:1.15rem;height:1.15rem;accent-color:#7b5cff">' +
+              '<span>' + escHtml(c.name) + '</span></label>').join('')
+          : '<p style="color:#b6b6cf">' + escHtml(T('runtime.data.pickNone')) + '</p>';
+        const search = list.length > 8 ? '<input type="search" id="gifos-pick-q" placeholder="' + escHtml(T('runtime.data.pickSearch')) + '" style="width:100%;box-sizing:border-box;margin:.2rem 0 .5rem;padding:.5rem .6rem;border-radius:.5rem;border:1px solid #2a2a3f;background:#0e0e18;color:inherit;font:inherit">' : '';
+        const { bg, box } = sheetShell('gifos-pick-modal', escHtml(T('runtime.data.pickTitle', { app })),
+          '<p style="color:#b6b6cf;font-size:.9rem;margin:.2rem 0 .5rem">' + escHtml(T('runtime.data.pickBody', { app, provider: prov.name })) + '</p>' + search + '<div id="gifos-pick-list">' + rows + '</div>',
+          [{ act: 'cancel', label: T('runtime.data.cancel') }].concat(list.length ? [{ act: 'share', label: T('runtime.data.pickShare'), main: true }] : []));
+        const done = (v) => { bg.remove(); resolve(v); };
+        const q = box.querySelector('#gifos-pick-q');
+        if (q) q.addEventListener('input', () => { const t = q.value.trim().toLowerCase(); box.querySelectorAll('#gifos-pick-list label').forEach((l) => { l.style.display = !t || l.getAttribute('data-name').indexOf(t) >= 0 ? '' : 'none'; }); });
+        box.addEventListener('click', (e) => {
+          const b = e.target.closest && e.target.closest('[data-act]'); if (!b) return;
+          if (b.getAttribute('data-act') === 'cancel') { done([]); return; }
+          const picked = Array.from(box.querySelectorAll('input[name="gifos-pick"]:checked')).map((x) => list[+x.value]).filter(Boolean).map((c) => c.id);
+          done(picked);
+        });
+        bg.addEventListener('click', (e) => { if (e.target === bg) done([]); });
+      } catch (e) { resolve([]); }
+    }));
+  }
+  function whenHtml(ev) {
+    let when = '';
+    try {
+      const loc = (GifOS.i18n && GifOS.i18n.locale && GifOS.i18n.locale().tag) || undefined;
+      when = ev.allDay ? ev.start + (ev.end && ev.end !== ev.start ? ' – ' + ev.end : '')
+        : new Intl.DateTimeFormat(loc, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(ev.start));
+    } catch (e) { when = String(ev.start); }
+    return '<div style="border:1px solid #2a2a3f;border-radius:.6rem;padding:.6rem .7rem;margin:.2rem 0 .4rem"><b>' + escHtml(ev.title) + '</b><br><span style="color:#b6b6cf">' + escHtml(when) + (ev.location ? ' · ' + escHtml(ev.location) : '') + '</span></div>';
+  }
+
+  // ---- the broker ------------------------------------------------------------------------------------------------
+  const DATA_WHY = { unknown: 'is not something an app can ask for', undeclared: 'was not declared in this app\'s manifest (capabilities)',
+    off: 'is switched off for this app in its Abilities', 'no-provider': 'has no provider on this computer', 'not-recognised': 'has a provider that is not in the Providers folder or no longer serves it',
+    networky: 'has a provider that declares network access, and a provider must be network-less', denied: 'was not allowed by you', dismissed: 'was not allowed by you' };
+  const dataRefusal = (role, op, why) => new Error('NOT_ALLOWED:' + why + ': ' + role + '.' + op + ' ' + (DATA_WHY[why] || why) + '.');
+  const asking = new Map();   // one sheet at a time per app and kind
+  function brokerData(manifest, d) {
+    const role = String(d.role || ''), op = String(d.op || '');
+    const kind = DATA_OPS[role + '.' + op];
+    const G2 = GifOS.grants;
+    if (!G2 || !kind) return Promise.reject(dataRefusal(role, op, 'unknown'));
+    return keyReady(manifest).then((consumer) => resolveDataProvider(role).then((prov) => {
+      if (!consumer) throw dataRefusal(role, op, 'unknown');
+      const dec = G2.decide({ role, kind, declared: dataDeclared(manifest, role, kind), optedOut: capDisabled(manifest, role),
+        provider: prov ? { recognised: prov.recognised, networky: prov.networky } : null,
+        level: prov ? G2.level(prov.key, kind, consumer) : '', inMeeting: !!meetingSelf() });
+      if (dec.go === 'refuse') throw dataRefusal(role, op, dec.why);
+      // ack/inbox read what was already sent to this app: the decision above is the whole check.
+      if (op === 'inbox') return inboxFor(consumer);
+      if (op === 'ack') return ackInbox(consumer, String(d.msgId || ''));
+      if (kind === 'pick') return pickFlow(manifest, prov, consumer, d);
+      // A handle this app was never given is refused before anyone is asked: there is nothing to ask about.
+      if (op === 'send') { const c = contactOfHandle(consumer, d.handle); if (!c || c.p !== prov.key) throw new Error('That contact is not one this app was given (pick it first).'); }
+      const run = () => runData(manifest, prov, consumer, role, op, d);
+      if (dec.go === 'serve') return run();
+      // Ask: what exactly, then the answer is kept unless it was "just this once".
+      let detail = '';
+      if (op === 'add') { const ev = cleanNewEvent(d.event); if (!ev) throw new Error('An event needs a title and a start.'); detail = whenHtml(ev); }
+      if (op === 'send') { const c = contactOfHandle(consumer, d.handle); detail = c ? '<div style="color:#b6b6cf">' + escHtml(T('runtime.data.sendTo', { name: (systemContacts().find((x) => x.id === c.id) || {}).name || '?' })) + '</div>' : ''; }
+      const akey = consumer + '|' + prov.key + '|' + kind + (op === 'add' || op === 'send' ? '|' + Math.random() : '');
+      if (!asking.has(akey)) asking.set(akey, askDataGrant(manifest, prov, kind, detail).finally(() => asking.delete(akey)));
+      return asking.get(akey).then((ans) => {
+        if (ans === 'always' || ans === 'never') G2.set(prov.key, kind, consumer, ans, appLabel(manifest), manifest && manifest.appId);
+        if (ans === 'always' || ans === 'once') return run();
+        throw dataRefusal(role, op, ans === 'never' ? 'denied' : 'dismissed');
+      });
+    }));
+  }
+  function pickFlow(manifest, prov, consumer, d) {
+    const list = prov.kind === 'system' ? Promise.resolve(systemContacts()) : serveData(prov, 'contacts', { op: 'list' });
+    return list.then((all) => {
+      const clean = (Array.isArray(all) ? all : []).filter((c) => c && c.id != null).slice(0, 2000).map((c) => ({ id: str(c.id, 200), name: str(c.name, 60) || '?', avatar: typeof c.avatar === 'string' && /^data:image\//.test(c.avatar) && c.avatar.length < 400000 ? c.avatar : null }));
+      return pickContacts(manifest, prov, clean, d.multiple !== false).then((ids) => Promise.all(ids.map((cid) => {
+        const c = clean.find((x) => x.id === cid);
+        return contactHandle(consumer, prov.key, cid).then((h) => ({ id: h, name: c.name, avatar: c.avatar }));
+      })));
+    });
+  }
+  function runData(manifest, prov, consumer, role, op, d) {
+    if (role === 'contacts' && op === 'send') {
+      const c = contactOfHandle(consumer, d.handle);
+      if (!c || c.p !== prov.key) return Promise.reject(new Error('That contact is not one this app was given (pick it first).'));
+      let msg = null; try { msg = JSON.parse(JSON.stringify(d.msg)); } catch (e) { msg = null; }
+      if (!msg || typeof msg !== 'object' || JSON.stringify(msg).length > 16384) return Promise.reject(new Error('A message is a small JSON object (16 KB at most).'));
+      return serveData(prov, 'contacts', { op: 'send', id: c.id, to: consumer, msg });
+    }
+    if (role === 'calendar') {
+      if (op === 'add') { const ev = cleanNewEvent(d.event); if (!ev) return Promise.reject(new Error('An event needs a title and a start.')); return serveData(prov, 'calendar', { op: 'add', event: ev }).then((r) => ({ uid: str(r && r.uid, 200) })); }
+      const r = clampRange(d);
+      return serveData(prov, 'calendar', { op: 'events', from: r.from, to: r.to }).then((list) => {
+        const occ = (Array.isArray(list) ? list : []).slice(0, 5000);
+        return op === 'freeBusy' ? freeBusyOf(occ) : occ.map(cleanOccurrence);
+      });
+    }
+    return Promise.reject(dataRefusal(role, op, 'unknown'));
+  }
+
+  // ---- messages to apps from contacts (the inbox) ---------------------------------------------------------------
+  // The page's contacts transport calls GifOS.providers.deliver(fromContactId, { to, msg }) when a message arrives in
+  // our private room: to is the receiving app's key (the same app on the other device has the same key: its signer +
+  // appId, or its code). The app reads it as { id, from: { id: <its handle>, name }, msg } and acknowledges it.
+  const INBOX_KEY = 'gifos_contact_inbox';
+  const readInbox = () => { try { const o = JSON.parse(root.localStorage.getItem(INBOX_KEY) || '{}'); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } };
+  const writeInbox = (o) => { try { root.localStorage.setItem(INBOX_KEY, JSON.stringify(o)); } catch (e) {} };
+  function deliver(fromCid, payload) {
+    const to = payload && typeof payload.to === 'string' ? payload.to : '';
+    if (!/^[0-9a-f]{24}$/.test(to) || !payload.msg || typeof payload.msg !== 'object') return false;
+    let size = 0; try { size = JSON.stringify(payload.msg).length; } catch (e) { return false; }
+    if (size > 16384) return false;
+    const all = readInbox(); const q = (all[to] = Array.isArray(all[to]) ? all[to] : []);
+    const id = 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    q.push({ id, from: String(fromCid), msg: payload.msg, at: Date.now() });
+    while (q.length > 200) q.shift();
+    writeInbox(all);
+    identFrames.forEach((ifr) => {
+      const m = identManifests.get(ifr);
+      if (m && appKeys.get(m) === to) { try { const w = ifr.contentWindow; if (w) w.postMessage({ ns: 'gifos', type: 'contacts-message' }, '*'); } catch (e) {} }
+    });
+    return true;
+  }
+  function inboxFor(consumer) {
+    const q = readInbox()[consumer] || [];
+    const names = new Map(systemContacts().map((c) => [c.id, c.name]));
+    return Promise.all(q.map((m) => contactHandle(consumer, 'system:contacts', m.from).then((h) => ({ id: m.id, from: { id: h, name: names.get(m.from) || '' }, msg: m.msg, at: m.at }))));
+  }
+  function ackInbox(consumer, msgId) {
+    const all = readInbox(); const q = all[consumer] || [];
+    all[consumer] = q.filter((m) => m.id !== msgId); if (!all[consumer].length) delete all[consumer];
+    writeInbox(all); return Promise.resolve(true);
+  }
+
+  // ---- a provider's own list, in its own window -----------------------------------------------------------------
+  function ownGrants(manifest, fileId, d) {
+    return ownProviderKey(manifest, fileId).then((pk) => {
+      if (!pk) throw new Error('Only an app that provides data keeps a list of who may have it.');
+      if (d.op === 'revoke') { GifOS.grants.revoke(pk, String(d.consumer || ''), d.kind ? String(d.kind) : undefined); }
+      return GifOS.grants.entries(pk).map((e) => ({ consumer: e.consumer, name: e.name, kind: e.kind, level: e.level, at: e.at }));
+    });
+  }
+
+  // ---- the OS's own screens (Home, Meet, Settings): same providers, no app to check ------------------------------
+  function osData(role, op, args) {
+    args = args || {};
+    if (role === 'identity') { const idn = identity(); return Promise.resolve({ name: idn.name || '', avatar: idn.avatar || null }); }
+    return resolveDataProvider(role).then((prov) => {
+      if (!prov || !prov.recognised || prov.networky) return null;
+      if (role === 'contacts' && op === 'list') return prov.kind === 'system' ? systemContacts() : serveData(prov, 'contacts', { op: 'list' });
+      if (role === 'calendar' && (op === 'events' || op === 'freeBusy')) {
+        const r = clampRange(args);
+        return serveData(prov, 'calendar', { op: 'events', from: r.from, to: r.to }).then((l) => (op === 'freeBusy' ? freeBusyOf(l) : (l || []).map(cleanOccurrence)));
+      }
+      return null;
+    });
+  }
+  // Settings → Providers: who may answer each data role here (recognised store providers in the Providers folder).
+  function scanDataProviders() {
+    return store.allItems().then((items) => {
+      const out = []; let p = Promise.resolve();
+      for (const it of items || []) {
+        if ((it.parent || null) !== 'sys_providers' || it.kind !== 'file' || !it.fileId) continue;
+        p = p.then(() => providerArchive(it.fileId)).then((arc) => {
+          const m = arc && arc.manifest; if (!m) return;
+          const roles = providesData(m); if (!roles.length || providerNetworky(m)) return;
+          out.push({ fileId: it.fileId, appId: String(m.appId || ''), name: String(m.name || it.name || 'Provider app').replace(/\.gif$/i, ''), roles });
+        }).catch(() => {});
+      }
+      return p.then(() => out);
+    });
+  }
+  function assignDataProvider(role, p) {
+    const cfg = dataConfig();
+    if (!p) delete cfg[role]; else cfg[role] = { app: p.fileId, appId: p.appId || '', appName: p.name || 'Provider app' };
+    try { root.localStorage.setItem(DATA_KEY, JSON.stringify(cfg)); } catch (e) {}
+    return cfg[role] || null;
+  }
   GifOS.providers = {
     scan: scanProviders,
     assign: assignProvider,
     install: installProvider,
+    // data roles (identity, contacts, calendar): the OS's own reads, Settings' assignment, and the inbox transport's door
+    data: osData,
+    dataScan: scanDataProviders,
+    dataAssign: assignDataProvider,
+    dataAssigned: (role) => { const c = dataConfig()[role]; return (c && c.app) ? c : null; },
+    dataResolve: (role) => resolveDataProvider(role).then((p) => (p ? { key: p.key, name: p.name, kind: p.kind, recognised: !!p.recognised, networky: !!p.networky } : null)),
+    deliver,
+    // the page that carries the My Room channel hands in its sender: { send(contactId, { to, msg }) -> { state } }
+    transport: (t) => { contactsTransport = t && typeof t.send === 'function' ? t : null; },
+    // A widget asking for its app (js/home-widgets.js): the same key, list and sheets as the app's own window.
+    ask: (manifest, files, bytes, d) => { noteAppKey(manifest, files, bytes); return brokerData(manifest, d || {}); },
     assigned: (role) => { const c = aiConfig()[role]; return (c && c.app) ? c : null; },
     call: (role, req) => {
       const c = aiConfig()[role];
@@ -4455,7 +4878,6 @@
     mountFileId = mountFileId || null; // set for host mounts — lets gifos.assets() serve the icon's asset cache
     // Calendar's bridge is the seeded system app only. A guest, a provider, and a store copy get none of it.
     const calendarOn = !!(root.GifOS && root.GifOS.calendarBridge && root.GifOS.calendarBridge.seededCalendar(calendarFile, manifest));
-    let calUnsub = null;
     // The gate: gifos.launch() answers from here, and only once someone has
     // said yes. asked=[] resolves null immediately, so an app that always calls
     // launch() never waits for a sheet that isn't coming.
@@ -4501,7 +4923,6 @@
     const teardown = () => {
       if (torn) return; torn = true; live = 0;
       identFrames.delete(iframe);
-      try { if (calUnsub) calUnsub(); } catch (e) {}
       try { if (calendarOn && root.GifOS && root.GifOS.calendarBridge) root.GifOS.calendarBridge.setActive(false); } catch (e) {}
       root.removeEventListener('message', handler);
       try { if (root.GifOS && root.GifOS.meetHost) { root.GifOS.meetHost.clearApp(); root.GifOS.meetHost.leaveAll(); } } catch (e) {}
@@ -4511,7 +4932,7 @@
       if (torn) return;
       if (++remounts > 6) { teardown(); return; }
       const g = ++gen;
-      try { iframe.srcdoc = buildAppHtml(files, manifest, g, nonce, calendarOn); } catch (e) { teardown(); return; }
+      try { iframe.srcdoc = buildAppHtml(files, manifest, g, nonce, undefined, calendarOn); } catch (e) { teardown(); return; }
       if (retry) setTimeout(() => { if (retry && !torn && gen === g && live !== g) { retry = false; remount(); } }, 5000);
     };
     const handler = (e) => {
@@ -4619,6 +5040,12 @@
       // owner = this app runs on its OWNER's computer (host / local), so it may
       // change visibility (setVisibility). A guest view is not the owner.
       else if (d.type === 'info') reply({ ok: true, result: { appId: manifest.appId, name: manifest.name, version: manifest.version, owner: !!(db && db.owner) } });
+      // Data from a provider (docs/providers.md "Data providers"): the broker checks the provider's permission list
+      // before the provider sees anything; an app that IS a provider reads and edits its own list here.
+      else if (d.type === 'data') {
+        (d.role === 'provider' ? ownGrants(manifest, mountFileId, d) : brokerData(manifest, d))
+          .then((result) => reply({ ok: true, result }), (err) => reply({ ok: false, error: String(err && err.message || err) }));
+      }
       else if (d.type === 'me') askedIdentity(manifest).then((r) => reply({ ok: true, result: r }), (err) => reply({ ok: false, error: String(err && err.message || err) }));
       else if (d.type === 'room') {
         roomRequest(db, d, manifest).then((result) => reply({ ok: true, result }), (err) => reply({ ok: false, error: String(err && err.message || err) }));
@@ -4704,27 +5131,21 @@
         (GifOS.payBroker ? GifOS.payBroker.purchases(manifest, originalBytes) : Promise.reject(new Error('Payments are not available on this computer.')))
           .then((result) => reply({ ok: true, result })).catch((err) => reply({ ok: false, error: String(err && err.message || err) }));
       }
-      else if (d.type === 'calendar') {
-        const bridge = root.GifOS && root.GifOS.calendarBridge;
+      else if (d.type === 'sys') {
+        // The seeded Calendar's own asks (rooms, reminders, opening a meeting), by its capabilities rooms and alarms.
         // Checked again here: the frame can ask, and only the seeded Calendar is answered.
-        if (!calendarOn || !bridge || !bridge.seededCalendar(calendarFile, manifest)) reply({ ok: false, error: 'Calendar is not available to this app.' });
-        else {
-          const op = String(d.op || '');
-          const done = (p) => Promise.resolve(p).then((result) => reply({ ok: true, result })).catch((err) => reply({ ok: false, error: String(err && err.message || err) }));
-          if (op === 'newRoom') done(bridge.newRoom({ mode: d.mode }));
-          else if (op === 'contacts') done(bridge.contacts());
-          else if (op === 'invite') done(bridge.invite(d.cid, d.ics));
-          else if (op === 'reply') done(bridge.reply(d.cid, d.ics));
-          else if (op === 'cancel') done(bridge.cancel(d.cid, d.ics));
-          else if (op === 'ack') done(bridge.ack(d.id));
-          else if (op === 'setAlarms') done(bridge.setAlarms(d.list));
-          else if (op === 'draft') done(bridge.draft());
-          else if (op === 'join') {
-            if (!gestured()) reply({ ok: false, error: 'Opening a meeting needs a tap or click first.' });
-            else done(bridge.join(d.link));
-          }
-          else reply({ ok: false, error: 'Unknown calendar request.' });
+        const bridge = root.GifOS && root.GifOS.calendarBridge;
+        const op = String(d.op || '');
+        const done = (p) => Promise.resolve(p).then((result) => reply({ ok: true, result })).catch((err) => reply({ ok: false, error: String(err && err.message || err) }));
+        if (!calendarOn || !bridge || !bridge.seededCalendar(calendarFile, manifest)) reply({ ok: false, error: 'This is not available to this app.' });
+        else if (op === 'rooms.create' && hasCap(manifest, 'rooms') && !capDisabled(manifest, 'rooms')) done(bridge.newRoom({ mode: d.mode }));
+        else if (op === 'rooms.draft' && hasCap(manifest, 'rooms') && !capDisabled(manifest, 'rooms')) done(bridge.draft());
+        else if (op === 'alarms.set' && hasCap(manifest, 'alarms') && !capDisabled(manifest, 'alarms')) done(bridge.setAlarms(d.list));
+        else if (op === 'open' && hasCap(manifest, 'rooms') && !capDisabled(manifest, 'rooms')) {
+          if (!gestured()) reply({ ok: false, error: 'Opening a meeting needs a tap or click first.' });
+          else done(bridge.join(d.link));
         }
+        else reply({ ok: false, error: 'Unknown request.' });
       }
       else if (d.type === 'meet') {
         const host = root.GifOS && root.GifOS.meetHost;
@@ -4934,15 +5355,9 @@
       sandboxToken(iframe, 'allow-popups');
       sandboxToken(iframe, 'allow-popups-to-escape-sandbox');
     }
-    if (calendarOn) {
-      try {
-        root.GifOS.calendarBridge.setActive(true);
-        calUnsub = root.GifOS.calendarBridge.onInbox((item) => {
-          const w = iframe && iframe.contentWindow; if (w) w.postMessage({ ns: 'gifos', type: 'calendar-inbox', item }, '*');
-        });
-      } catch (e) {}
-    }
-    iframe.srcdoc = buildAppHtml(files, manifest, gen, nonce, calendarOn);
+    // While the seeded Calendar is open its page keeps listening doors, so messages from contacts arrive.
+    if (calendarOn) { try { root.GifOS.calendarBridge.setActive(true); } catch (e) {} }
+    iframe.srcdoc = buildAppHtml(files, manifest, gen, nonce, undefined, calendarOn);
     return () => root.removeEventListener('message', handler);
   }
 

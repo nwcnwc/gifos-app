@@ -62,18 +62,21 @@
 
   let sheet = null;
   function closeSheet() { if (sheet && sheet.remove) sheet.remove(); sheet = null; }
-  function draw(a) {
+  // The sheet's words come from the runtime catalog (loaded when the sheet first rings); English until it is in.
+  function tx(k, en) { try { const I = GifOS.i18n; if (I && I.has && I.has('runtime.calRemind.' + k)) return I.t('runtime.calRemind.' + k); } catch (e) {} return en; }
+  function draw(a, again) {
+    try { if (GifOS.i18n && GifOS.i18n.load && !draw.loaded) { draw.loaded = true; GifOS.i18n.load('runtime').then(() => { if (sheet && sheet.__a === a) draw(a, true); }); } } catch (e) {}
     const doc = root.document; if (!doc || !doc.body) return;
     closeSheet();
     const soon = root.Date.now() < a.startMs;
-    const line = soon ? 'starts in 5 min' : 'starts now';
+    const line = soon ? tx('soon', 'starts in 5 min') : tx('now', 'starts now');
     const bg = doc.createElement('div');
     bg.className = 'modal-bg'; bg.id = 'cal-remind'; bg.style.zIndex = '2147483000';   // above every card of the Home Screen
-    const join = a.link ? '<button type="button" data-cal-join>Join</button>' : '';
-    bg.innerHTML = '<div class="modal" role="dialog" aria-modal="true"><h3>' + esc(a.title || 'Meeting') + '</h3><p>' + line + '</p><div class="dlg-actions">' + join + '<button type="button" data-cal-snooze>Snooze 5 min</button><button type="button" data-cal-dismiss>Dismiss</button></div></div>';
+    const join = a.link ? '<button type="button" data-cal-join>' + esc(tx('join', 'Join')) + '</button>' : '';
+    bg.innerHTML = '<div class="modal" role="dialog" aria-modal="true"><h3>' + esc(a.title || tx('meeting', 'Meeting')) + '</h3><p>' + line + '</p><div class="dlg-actions">' + join + '<button type="button" data-cal-snooze>' + esc(tx('snooze', 'Snooze 5 min')) + '</button><button type="button" data-cal-dismiss>' + esc(tx('dismiss', 'Dismiss')) + '</button></div></div>';
     doc.body.appendChild(bg);
     { const m = bg.querySelector('.modal'); if (m) { m.style.maxWidth = 'calc(100vw - 16px)'; m.style.boxSizing = 'border-box'; const a = m.querySelector('.dlg-actions'); if (a) { a.style.display = 'flex'; a.style.flexWrap = 'wrap'; a.style.gap = '8px'; a.style.justifyContent = 'center'; } } }
-    sheet = bg;
+    sheet = bg; bg.__a = a;
     const j = bg.querySelector('[data-cal-join]');
     if (j) j.onclick = () => { closeSheet(); go(a.link); };
     bg.querySelector('[data-cal-snooze]').onclick = () => {
@@ -88,9 +91,9 @@
       write(read().filter((r) => keyOf(r) !== keyOf(a)));
       closeSheet();
     };
-    chime();
+    if (!again) chime();
     try {
-      if (doc.hidden && root.Notification && root.Notification.permission === 'granted') new root.Notification(a.title || 'Meeting', { body: line });
+      if (!again && doc.hidden && root.Notification && root.Notification.permission === 'granted') new root.Notification(a.title || tx('meeting', 'Meeting'), { body: line });
     } catch (e) {}
   }
 
