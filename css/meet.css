@@ -4113,3 +4113,6 @@ html[data-compact] .ag-in-t, html[data-compact] .ag-in-min { font-size: var(--gi
 }
 /* The name card stays on top of the waiting door: a person can say their name while they wait to be let in. */
 #appear-modal.name-modal { z-index: 72; }
+
+/* PINCHZOOM: the picture takes the pinch (the page itself never zooms there); one finger still scrolls */
+.tile:not(.me) video, #stagefeed > .rowtile > video, .ct-pane video { touch-action: pan-x pan-y; }

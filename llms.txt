@@ -256,7 +256,7 @@ mandatory; everything else defaults sensibly.
      "room": { ... },             // a multiplayer session GifOS runs (see "Multiplayer: gifos.room")
      "launch": { ... },           // optional link arguments (see "Sharing")
      "handoff": { ... },          // app->app documents (see gifos.handoff)
-     "provides": { "ai": [...] }, // Provider apps only (see "Provider apps")
+     "provides": { "ai": [...] }, // Provider apps only (see "Provider apps"); data roles: { "data": [...] }
      "widgets": [ ... ],          // small views for the Home Screen (see "Widgets")
      "assets": [ ... ]            // big hash-pinned downloads (see "Big files")
    }
@@ -679,6 +679,33 @@ APP -> APP HANDOFF — gifos.handoff  [manifest "handoff", not "capabilities"]
                     annualSavings, annualSpend, asOf
    Adding a kind is an edit to GifOS itself.
 
+YOUR PERSON'S DATA — contacts and calendar  [capabilities "contacts", "calendar"]
+   Apps never read each other's data. Ask GifOS; it asks the app that keeps
+   the data (a "data provider") and checks that provider's permission list
+   first. The person is asked when the list has no answer for your app.
+   Declare what you use:  "capabilities": { "contacts": ["pick","send"],
+                                            "calendar": ["freebusy","events","add"] }
+   (true = every kind). Every refusal rejects with "NOT_ALLOWED:<why>: ..."
+   (why: undeclared, off, denied, dismissed, no-provider, not-recognised,
+   networky) — handle it calmly: the person said no, or nothing serves it.
+   await gifos.contacts.pick({ multiple })  -> [{ id, name, avatar }]
+        an OS picker the PERSON drives; you get only who they picked, never
+        a list. id is a handle for that contact that only your app can use
+        (another app gets another id; it is not a link or a key). [] = cancel.
+   await gifos.contacts.send(id, msg)        -> { state: 'sent'|'queued' }
+        a small JSON message (16 KB) to a picked contact, delivered to YOUR
+        app on their device, end-to-end encrypted.
+   gifos.contacts.onMessage(cb)              cb({ id, from: { id, name }, msg })
+        for each message to your app (unacknowledged ones replay); returns an
+        unsubscribe. await gifos.contacts.ack(id) when you have handled one.
+   await gifos.calendar.freeBusy({ from, to }) -> [{ start, end, allDay }]  (ms)
+   await gifos.calendar.events({ from, to })   -> [{ uid, title, start, end,
+        allDay, location, notes, link, recurring }]  (ranges up to ~400 days)
+   await gifos.calendar.add({ title, start, end, allDay, location, notes, url })
+        -> { uid }  (all-day: start/end 'YYYY-MM-DD'; else ms). The person
+        sees exactly this event before it is added, unless they said Always.
+   In a widget: gifos.calendar.events / freeBusy (a widget only reads).
+
 PROVIDERS — gifos.provider.serve  [manifest "provides", not "capabilities"]
    See "Provider apps" below.
 
@@ -1023,6 +1050,42 @@ engine. Big weights ride the asset pin tier; the engine itself rides
 inside the GIF. A provider without progress pings for 3 minutes is
 considered wedged and failed; keep ctx.progress/ctx.delta flowing on long
 generations. The doctrine lives with the GifOS source.
+
+### Data providers: be the person's contacts or calendar app
+
+A data provider keeps the person's records and answers other apps through
+GifOS. Roles: "contacts", "calendar" ("identity" is always GifOS's own
+Me & My Contacts). The person picks yours in Settings -> Your data; it
+serves only from the Providers folder, and the same network rule applies
+to the WHOLE GIF (consumers' questions and the person's records meet in
+it): no capabilities.network, no capabilities.api. Sync with the outside
+by import/export (.ics), never from a provider.
+
+   "provides": { "data": ["calendar"], "entry": "serve/index.html" }
+
+"entry" (optional) is a small page the OS mounts hidden to answer; without
+it index.html is mounted. Its gifos.db() is YOUR app's own db (read and
+write), nothing else. Handlers are keyed by role and get { op, ... }:
+
+   gifos.provider.serve({
+     calendar: async (req) => {
+       if (req.op === 'events') return occurrencesIn(req.from, req.to);
+         // [{ uid, title, start, end, allDay, location, notes, link, recurring }]
+         // GifOS computes free/busy from this itself: never filter for it.
+       if (req.op === 'add') return { uid: await save(req.event) };
+     },
+     contacts: async (req) => {
+       if (req.op === 'list') return [{ id, name, avatar }]; // for the OS picker
+                                                            // only; no app sees it
+       if (req.op === 'send') return { state: 'sent' };      // req: { id, to, msg }
+     }
+   });
+
+GifOS checks the request against YOUR permission list before you see it.
+Show the person their list inside your app:
+   await gifos.provider.grants()  -> [{ consumer, name, kind, level, at }]
+   await gifos.provider.revoke(consumer, kind?)   // kind omitted = all
+(level: always | ask | never). Settings -> Your data shows every list too.
 
 ## Their GIF is the app (the preferred move — always offer it)
 

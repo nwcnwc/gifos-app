@@ -18,7 +18,7 @@
   if (GifOS.calendarBridge) return;
   const T = () => GifOS.timings || {};
   const OUT = 'gifos_calendar_out';
-  const IN = 'gifos_calendar_in';
+  const SEEN = 'gifos_calendar_seen';   // ids of messages already handed on, so a retried send is not delivered twice
   const ALARMS = 'gifos_calendar_alarms';
   const DRAFT = 'gifos_calendar_draft';
   const PHONE_DOORS = 5;   // a phone, and only while Calendar is open
@@ -37,7 +37,7 @@
   // The seeded system Calendar, and only that file. A store app that copies the manifest is not it.
   function seededCalendar(file, manifest) {
     const caps = manifest && manifest.capabilities;
-    return !!(file && file.isApp && file.isDefault && file.appId === 'calendar' && caps && caps.calendar === true);
+    return !!(file && file.isApp && file.isDefault && file.appId === 'calendar' && caps && caps.rooms);
   }
   // A release snapshot names itself. The site root is the edge build (the same rule as the build badge).
   function edgeBuild() {
@@ -59,7 +59,6 @@
   }
 
   let active = false;
-  const inboxCbs = [];
   const doors = new Map();   // cid -> { el, part, off, id, busy, lastTry }
 
   function contacts() {
@@ -84,15 +83,11 @@
 
   function loadOut() { return readList(OUT).filter((r) => r && r.id && r.cid); }
   function saveOut(rows) { writeList(OUT, rows.slice(0, BOX_MAX)); }
-  function loadIn() { return readList(IN).filter((r) => r && r.id); }
-  function saveIn(rows) { writeList(IN, rows.slice(-BOX_MAX)); }
 
   function dropGone() {
     const live = new Set(contacts().map((c) => c.cid));
     const out = loadOut().filter((r) => live.has(r.cid));
-    const inn = loadIn().filter((r) => live.has(r.cid));
     if (out.length !== loadOut().length) saveOut(out);
-    if (inn.length !== loadIn().length) saveIn(inn);
     for (const cid of Array.from(doors.keys())) if (!live.has(cid)) closeDoor(cid);
   }
 
@@ -154,16 +149,17 @@
       sendQueued(cid);
     }
   }
+  // A message from a contact's app (kind 'app'): the body is {to, msg}, handed to the contacts inbox (GifOS.providers.deliver).
   function ingest(cid, ev) {
     const id = String(ev.id || '');
-    if (!/^[a-f0-9]{16}$/.test(id)) return;
-    const rows = loadIn();
-    if (rows.some((r) => r.id === id)) return;
-    const rec = recOf(cid);
-    const item = { id, cid, name: rec && rec.name || '', kind: ev.kind, ics: String(ev.ics || ''), at: root.Date.now() };
-    rows.push(item);
-    saveIn(rows);
-    for (const cb of inboxCbs.slice()) { try { cb(item); } catch (e) {} }
+    if (!/^[a-f0-9]{16}$/.test(id) || ev.kind !== 'app') return;
+    const seen = readList(SEEN);
+    if (seen.includes(id)) return;
+    let payload = null;
+    try { payload = JSON.parse(String(ev.ics || '')); } catch (e) { return; }
+    if (!GifOS.providers || typeof GifOS.providers.deliver !== 'function') return;
+    seen.push(id); writeList(SEEN, seen.slice(-BOX_MAX));
+    GifOS.providers.deliver(cid, payload);
   }
   function sendQueued(cid) {
     const d = doors.get(cid);
@@ -185,6 +181,7 @@
 
   let timer = 0;
   function pump() {
+    hook();
     const gone = loadOut().filter(expired);
     if (gone.length) saveOut(loadOut().filter((r) => !expired(r)));
     dropGone();
@@ -294,23 +291,20 @@
     if (active) arm();
     pump();
   }
-  function onInbox(cb) {
-    if (typeof cb !== 'function') return function () {};
-    inboxCbs.push(cb);
-    return function () { const i = inboxCbs.indexOf(cb); if (i >= 0) inboxCbs.splice(i, 1); };
-  }
-  function ack(id) {
-    saveIn(loadIn().filter((r) => r.id !== id));
-    return { ok: true };
+  // The contacts transport (GifOS.providers.transport): a message from an app to a contact rides the My Room
+  // channel as kind 'app', queued and retried like an invitation.
+  let hooked = false;
+  function hook() {
+    if (hooked || !GifOS.providers || typeof GifOS.providers.transport !== 'function') return;
+    hooked = true;
+    GifOS.providers.transport({ send: (cid, payload) => post('app', cid, JSON.stringify(payload)) });
   }
 
   GifOS.calendarBridge = {
     seededCalendar, scheduleShown, edgeBuild, contacts, newRoom, join, openCalendar,
-    invite: (cid, ics) => post('request', cid, ics),
-    reply: (cid, ics) => post('reply', cid, ics),
-    cancel: (cid, ics) => post('cancel', cid, ics),
-    onInbox, ack, setAlarms, setDraft, draft, setActive, pump,
+    setAlarms, setDraft, draft, setActive, pump, hook, post,
   };
+  hook();
   if (root.document) arm();
   if (typeof module !== 'undefined' && module.exports) module.exports = GifOS.calendarBridge;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -1,0 +1,56 @@
+<!doctype html><meta charset="utf-8"><script>
+/*@ical*/
+(function () {
+  // The Calendar as the "calendar" provider: the small page the OS mounts, hidden, to answer other apps (docs: Data
+  // providers). It reads and writes only this app's own events; the OS has already checked the Calendar's permission
+  // list before a question gets here, and it computes free/busy itself from what this page returns.
+  var db = gifos.db('events'), cals = gifos.db('calendars');
+  var L = window.GifOS && window.GifOS.ical;
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function dayKey(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function dayOf(k) { var a = String(k).split('-'); return new Date(+a[0], (+a[1] || 1) - 1, +a[2] || 1); }
+  // A legacy row ({d, t, title}, from before the full Calendar) as an event row.
+  function modern(r) {
+    if (!r || !r.d || r.start != null) return r;
+    var s = dayOf(r.d), all = !r.t;
+    if (!all) { var hm = String(r.t).split(':'); s.setHours(+hm[0] || 0, +hm[1] || 0, 0, 0); }
+    var e = all ? new Date(s.getFullYear(), s.getMonth(), s.getDate() + 1) : new Date(s.getTime() + (+r.dur || 60) * 60000);
+    return { id: r.id, uid: r.uid || r.id, title: r.title || '', location: r.location || '', notes: r.notes || '', url: r.url || '',
+      allDay: all, start: all ? dayKey(s) : s.getTime(), end: all ? dayKey(e) : e.getTime() };
+  }
+  // One stored row as zero or more occurrences inside [from, to). A repeating event needs the iCalendar library
+  // (GifOS.ical, inlined above); the Calendar always carries it.
+  function occurrences(rows, from, to) {
+    rows = rows.map(modern).filter(function (r) { return r && r.start != null && r.status !== 'CANCELLED'; });
+    var made = rows.map(function (r) { return L.makeEvent(r); });
+    return L.expandAll(made, from, to, { max: 5000 }).map(function (o) {
+      var e = o.event || {};
+      return { uid: e.uid || e.id, title: e.title, start: o.startMs, end: o.endMs, allDay: !!o.allDay, location: e.location, notes: e.notes,
+        link: (L.meetingLink && L.meetingLink(e)) || e.url || '', recurring: !!o.recurring };
+    });
+  }
+  function defaultCal() {
+    return cals.getAll().then(function (rows) {
+      var c = (rows || []).filter(function (x) { return x && !x.hidden && !x.readonly; })[0] || (rows || [])[0];
+      return (c && c.id) || 'default';
+    }, function () { return 'default'; });
+  }
+  gifos.provider.serve({
+    calendar: function (req) {
+      if (req.op === 'events') return db.getAll().then(function (rows) { return occurrences(rows || [], +req.from, +req.to); });
+      if (req.op === 'add') {
+        var ev = req.event || {};
+        return defaultCal().then(function (cal) {
+          // the row shape the Calendar keeps: what its editor writes (makeEvent), id = uid
+          var made = L.makeEvent({ title: ev.title, location: ev.location, notes: ev.notes, url: ev.url, cal: cal, allDay: !!ev.allDay,
+            start: ev.allDay ? (typeof ev.start === 'number' ? dayKey(new Date(ev.start)) : ev.start) : +ev.start,
+            end: ev.allDay ? (typeof ev.end === 'number' ? dayKey(new Date(ev.end)) : ev.end) : (+ev.end || +ev.start + 3600000) });
+          made.id = made.uid;
+          return db.put(JSON.parse(JSON.stringify(made))).then(function () { return { uid: made.uid }; });
+        });
+      }
+      throw new Error('The Calendar does not answer "' + req.op + '".');
+    }
+  });
+})();
+</script>

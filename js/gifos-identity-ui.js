@@ -234,12 +234,26 @@
       '<ul class="idn-list"><li>Holds: ' + holds(st.counts) + '</li><li>On: ' + devs + '</li><li>The file opens with: ' + esc(ways) + '</li>' +
       '<li>File last saved: ' + (st.saved ? esc(dayOf(st.saved.at)) : '<b>never</b>') + '</li></ul>';
     const act = await sheet('manage', html, [['save', tx('save', 'Save this file'), true], ['copy', tx('copyOut', 'Copy to another device')], ['pass', hasPass ? 'Change the passphrase' : 'Set a passphrase']]
-      .concat(pk ? [['key', 'Add a passkey']] : []).concat([['file', tx('mergeBtn', 'Merge in a saved file…'), false, tx('mergeNote', "Adds anything from that file that this device doesn't have yet. Nothing here is replaced or deleted.")], ['close', 'Close']])).done;
+      .concat(pk ? [['key', 'Add a passkey']] : []).concat([['file', tx('mergeBtn', 'Merge in a saved file…'), false, tx('mergeNote', "Adds anything from that file that this device doesn't have yet. Nothing here is replaced or deleted.")], ['apps', tx('appsBtn', 'Apps that know you')], ['close', 'Close']])).done;
     if (act === 'save') await save();
     else if (act === 'copy') copyOut();
     else if (act === 'pass') { if (await setPassphrase()) manage(); }
     else if (act === 'key') { if (await setPasskey()) manage(); }
     else if (act === 'file') pickFile();
+    else if (act === 'apps') appsThatKnowYou();
+  }
+  // Me & My Contacts is a data provider (docs/providers.md "Data providers"): its permission list, here where it lives.
+  // An app is on it once you let it see your name or picture, or pick people from your contacts; Forget takes it all back.
+  async function appsThatKnowYou() {
+    const G = GifOS.grants;
+    const mine = G ? G.entries().filter((e) => e.provider === 'system:identity' || e.provider === 'system:contacts') : [];
+    const apps = {}; mine.forEach((e) => { const a = (apps[e.consumer] = apps[e.consumer] || { name: e.name || e.appId || '?', kinds: [] }); a.kinds.push(e.kind + (e.level === 'never' ? ' (no)' : e.level === 'ask' ? ' (ask)' : '')); });
+    const ids = Object.keys(apps);
+    const html = '<h3>' + esc(tx('appsBtn', 'Apps that know you')) + '</h3>' + (ids.length
+      ? '<p>' + esc(tx('appsIntro', 'What each app may have from Me & My Contacts. Forget an app and it is asked again next time.')) + '</p>'
+      : '<p>' + esc(tx('appsNone', 'No app has asked for your name, your picture or your contacts yet.')) + '</p>');
+    const act = await sheet('manage', html, ids.map((c) => ['forget:' + c, tx('appsForget', 'Forget {app}', { app: apps[c].name }), false, apps[c].kinds.join(', ')]).concat([['close', 'Close']])).done;
+    if (act && act.indexOf('forget:') === 0) { const c = act.slice(7); G.revoke('system:identity', c); G.revoke('system:contacts', c); appsThatKnowYou(); }
   }
 
   // ---- device to device ---------------------------------------------------------------------------------------------

@@ -956,7 +956,7 @@
         rx.calok = (rx.calok || 0) + 1;
         return;
       }
-      if (m.kind !== 'request' && m.kind !== 'reply' && m.kind !== 'cancel') return;
+      if (m.kind !== 'request' && m.kind !== 'reply' && m.kind !== 'cancel' && m.kind !== 'app') return;
       if (typeof m.ics !== 'string' || m.ics.length > CAL_ICS_MAX) return;
       const now = host.now();
       const win = (T().CAL_RX_WINDOW_MS || 0);
@@ -973,7 +973,7 @@
     // calSend(kind, ics, id?) -> true once a proved member answers calok, false when none is here or the wait ends.
     function calSend(kind, ics, id) {
       return new Promise((resolve) => {
-        if (kind !== 'request' && kind !== 'reply' && kind !== 'cancel') { resolve(false); return; }
+        if (kind !== 'request' && kind !== 'reply' && kind !== 'cancel' && kind !== 'app') { resolve(false); return; }
         const body = String(ics == null ? '' : ics);
         if (body.length > CAL_ICS_MAX) { resolve(false); return; }
         const cid = id && /^[a-f0-9]{16}$/.test(id) ? id : randHex(8);

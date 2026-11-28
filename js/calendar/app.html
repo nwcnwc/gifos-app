@@ -221,87 +221,60 @@
   }
   function say(msg) { var el = document.getElementById('err'); if (el) el.textContent = msg || ''; }
 
-  // Every call out to Meetings, Contacts or reminders goes through here.
-  // Guests are chosen per event. When a newer page API is present it wins;
-  // otherwise the calendar bridge is used. Missing pieces stay hidden.
+  // Every call out to Meetings, Contacts or reminders goes through here: the page's own provider API
+  // (gifos.contacts, gifos.rooms, gifos.alarms, gifos.open), each present only when its capability is. Missing pieces stay hidden.
   var bridge = {
     g: function () { return window.gifos || null; },
-    hasRooms: function () { var g = this.g(); return !!(g && ((g.rooms && g.rooms.create) || (g.calendar && g.calendar.newRoom))); },
-    hasPeople: function () { var g = this.g(); return !!(g && ((g.contacts && g.contacts.pick) || (g.calendar && g.calendar.contacts))); },
-    hasInbox: function () { var g = this.g(); return !!(g && ((g.contacts && g.contacts.onMessage) || (g.calendar && g.calendar.onInbox))); },
-    hasAlarms: function () { var g = this.g(); return !!(g && ((g.alarms && g.alarms.set) || (g.calendar && g.calendar.setAlarms))); },
-    hasSend: function () { var g = this.g(); return !!(g && ((g.contacts && g.contacts.send) || (g.calendar && (g.calendar.invite || g.calendar.reply)))); },
+    hasRooms: function () { var g = this.g(); return !!(g && g.rooms && g.rooms.create); },
+    hasPeople: function () { var g = this.g(); return !!(g && g.contacts && g.contacts.pick); },
+    hasInbox: function () { var g = this.g(); return !!(g && g.contacts && g.contacts.onMessage); },
+    hasAlarms: function () { var g = this.g(); return !!(g && g.alarms && g.alarms.set); },
+    hasSend: function () { var g = this.g(); return !!(g && g.contacts && g.contacts.send); },
     pickContacts: function () {
-      var g = this.g(); if (!g) return Promise.resolve(null);
-      if (g.contacts && g.contacts.pick) {
-        return Promise.resolve(g.contacts.pick({ multiple: true })).then(function (list) {
-          return { picked: true, people: (list || []).map(function (p) { return { id: p.id, name: p.name || '', avatar: p.avatar || '' }; }) };
-        });
-      }
-      if (g.calendar && g.calendar.contacts) {
-        return Promise.resolve(g.calendar.contacts()).then(function (list) {
-          return { picked: false, people: (list || []).map(function (p) { return { id: p.cid || p.id, name: p.name || '', avatar: p.avatar || '' }; }) };
-        });
-      }
-      return Promise.resolve(null);
+      var g = this.g(); if (!g || !g.contacts || !g.contacts.pick) return Promise.resolve(null);
+      return Promise.resolve(g.contacts.pick({ multiple: true })).then(function (list) {
+        return { picked: true, people: (list || []).map(function (p) { return { id: p.id, name: p.name || '', avatar: p.avatar || '' }; }) };
+      });
     },
-    send: function (id, ics, op) {
-      var g = this.g(); if (!g || !id) return Promise.resolve(null);
-      if (g.contacts && g.contacts.send) return Promise.resolve(g.contacts.send(id, { kind: 'calendar', ics: ics }));
-      if (g.calendar) {
-        if (op === 'reply' && g.calendar.reply) return Promise.resolve(g.calendar.reply(id, ics));
-        if (op === 'cancel' && g.calendar.cancel) return Promise.resolve(g.calendar.cancel(id, ics));
-        if (g.calendar.invite) return Promise.resolve(g.calendar.invite(id, ics));
-      }
-      return Promise.resolve(null);
+    send: function (id, ics) {
+      var g = this.g(); if (!g || !id || !g.contacts || !g.contacts.send) return Promise.resolve(null);
+      return Promise.resolve(g.contacts.send(id, { kind: 'calendar', ics: ics }));
     },
     onInbox: function (cb) {
-      var g = this.g(); if (!g) return function () {};
-      function take(m) { var n = normIn(m); if (n && n.ics) cb(n); }
-      if (g.contacts && g.contacts.onMessage) { var off = g.contacts.onMessage(take); return typeof off === 'function' ? off : function () {}; }
-      if (g.calendar && g.calendar.onInbox) { var off2 = g.calendar.onInbox(take); return typeof off2 === 'function' ? off2 : function () {}; }
-      return function () {};
+      var g = this.g(); if (!g || !g.contacts || !g.contacts.onMessage) return function () {};
+      var off = g.contacts.onMessage(function (m) { var n = normIn(m); if (n && n.ics) cb(n); });
+      return typeof off === 'function' ? off : function () {};
     },
     ack: function (id) {
       var g = this.g(); if (!g || !id) return;
-      try {
-        if (g.contacts && g.contacts.ack) g.contacts.ack(id);
-        else if (g.calendar && g.calendar.ack) g.calendar.ack(id);
-      } catch (e) {}
+      try { if (g.contacts && g.contacts.ack) g.contacts.ack(id); } catch (e) {}
     },
     createRoom: function (mode) {
-      var g = this.g(); if (!g) return Promise.resolve(null);
-      var p = (g.rooms && g.rooms.create) ? g.rooms.create({ mode: mode }) : (g.calendar && g.calendar.newRoom ? g.calendar.newRoom({ mode: mode }) : null);
-      if (!p) return Promise.resolve(null);
-      return Promise.resolve(p).then(function (r) {
+      var g = this.g(); if (!g || !g.rooms || !g.rooms.create) return Promise.resolve(null);
+      return Promise.resolve(g.rooms.create({ mode: mode })).then(function (r) {
         if (!r) return null;
         return { room: r.room || '', v: r.v || '', link: r.link || r.url || '', mode: mode === 'open' ? 'open' : 'hosted' };
       });
     },
     setAlarms: function (list) {
-      var g = this.g(); if (!g) return;
-      try {
-        if (g.alarms && g.alarms.set) g.alarms.set(list);
-        else if (g.calendar && g.calendar.setAlarms) g.calendar.setAlarms(list);
-      } catch (e) {}
+      var g = this.g(); if (!g || !g.alarms || !g.alarms.set) return;
+      try { g.alarms.set(list); } catch (e) {}
     },
     open: function (link) {
       var g = this.g(); if (!g || !link) return;
-      try {
-        if (typeof g.open === 'function') g.open(link);
-        else if (g.calendar && g.calendar.join) g.calendar.join(link);
-      } catch (e) {}
+      try { if (typeof g.open === 'function') g.open(link); } catch (e) {}
     },
     takeDraft: function () {
       var g = this.g();
-      if (g && g.calendar && g.calendar.draft) return Promise.resolve(g.calendar.draft());
+      if (g && g.rooms && g.rooms.draft) return Promise.resolve(g.rooms.draft());
       return Promise.resolve(null);
     }
   };
   function normIn(m) {
     if (!m || typeof m !== 'object') return null;
-    var ics = m.ics || (m.body && m.body.ics) || '';
-    var kind = String(m.kind || '');
+    var body = m.msg || m.body || {};
+    var ics = m.ics || body.ics || '';
+    var kind = String(m.kind || body.kind || '');
     if (kind === 'calendar' && ics && I) {
       try { kind = String((I.readInvite(ics).method || 'REQUEST')).toLowerCase(); } catch (e) { kind = 'request'; }
     }
