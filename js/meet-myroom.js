@@ -467,7 +467,7 @@
     // A PRIVATE ROOM: membership is a member's My Room key. Every other seat (held or seated) is asked for a key word for
     // this room; a proved knocker is let in (the key word is the Admit); a seat that cannot prove within MYROOM_PROVE_MS is
     // a stranger and this page leaves. The mic opens (the person's own Join/Answer tap) once everyone here has proved.
-    const proved = new Map(), askedAt = new Map(), unproved = new Map(), listeners2 = new Set();
+    const proved = new Map(), askedAt = new Map(), unproved = new Map(), listeners2 = new Set(), letIn = new Map();
     let privDoor = false, strangerSaid = false, wordAt = 0, belled = false;
     const MIC_SS = 'gifos_mr_mic';
     const listening = () => !!(host.listen && host.listen());
@@ -507,6 +507,14 @@
       }
       // Proved knockers: a listening page lets in only other listening pages; any other page lets in every member.
       for (const pid of host.waitIds()) if (proved.has(pid) && (!listening() || listeners2.has(pid))) host.admit(pid);
+      // ...and a proved knocker my door is holding that never made the list: the door heard its knock while it was still
+      // unproved (a private room's door says nothing to a stranger, so it listed nobody) and the proof came a moment later
+      // on the door's channel. Without this it waited until the door's idle limit closed that channel and it knocked again.
+      for (const pid of proved.keys()) {
+        if (host.isHere(pid) || !host.reach(pid) || (listening() && !listeners2.has(pid))) continue;
+        if (now - (letIn.get(pid) || 0) < (T().MYROOM_PROVE_MS || 0)) continue;
+        letIn.set(pid, now); host.admit(pid);
+      }
       // ...and a proved member who sits here already (each of us opened the room at the same moment, and our two rooms
       // became one without a knock) is one of the room's people all the same: the key word is the Admit.
       for (const p of host.people()) if (proved.has(p.id) && (!listening() || listeners2.has(p.id))) host.member(p.id);
@@ -565,7 +573,7 @@
         return;
       }
       if (rings.has(pid)) { sendSigned(pid, 'ringing'); return; }
-      if (host.held(pid) && (!listening() || o.l)) host.admit(pid);
+      if ((host.held(pid) || (!host.isHere(pid) && host.reach(pid))) && (!listening() || o.l)) { letIn.set(pid, host.now()); host.admit(pid); }   // proved: the key word is the Admit
     }
 
     // THE OWNER.
