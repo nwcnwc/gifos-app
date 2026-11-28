@@ -32,8 +32,8 @@
   "runtime.busy.dataFailed": "Download der App-Daten fehlgeschlagen — {msg}. Die App öffnet sich ohne sie und versucht es beim nächsten Start erneut.",
   "runtime.provider.filing": "{name} wird in Ihren Ordner Provider abgelegt…",
   "runtime.name.title": "{app} möchte Ihren Namen ändern",
-  "runtime.name.set": "Ihr Name auf diesem Computer würde zu {name}. Alle Apps und Besprechungen hier würden ihn sehen.",
-  "runtime.name.clear": "Der Name, den Sie auf diesem Computer verwenden, würde gelöscht. Alle Apps und Besprechungen hier würden Sie ohne Namen sehen.",
+  "runtime.name.set": "Ihr Name auf diesem Computer würde zu {name}. Besprechungen hier zeigen ihn, ebenso Apps, denen Sie ihn zeigen.",
+  "runtime.name.clear": "Der Name, den Sie auf diesem Computer verwenden, würde gelöscht. Besprechungen hier und Apps, die Ihren Namen sehen dürfen, würden Sie ohne Namen sehen.",
   "runtime.name.keep": "Meinen Namen behalten",
   "runtime.name.use": "„{name}“ verwenden",
   "runtime.name.clearIt": "Löschen",
@@ -119,5 +119,9 @@
   "runtime.room.seat": "Platz geben",
   "runtime.room.notNow": "Jetzt nicht",
   "runtime.room.lost": "Dein Zug in {app} wurde nicht gemacht: {why}",
-  "runtime.room.ok": "OK"
+  "runtime.room.ok": "OK",
+  "runtime.share.title": "{app} möchte Ihren Namen und Ihr Bild",
+  "runtime.share.body": "{app} kann sie dann zeigen, zum Beispiel neben dem, was Sie schreiben. Andere Apps erhalten diese Antwort nicht. Sie können sie später unter „Abilities“ dieser App ändern.",
+  "runtime.share.no": "Jetzt nicht",
+  "runtime.share.yes": "Teilen"
 }

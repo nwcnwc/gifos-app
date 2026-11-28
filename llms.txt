@@ -185,6 +185,10 @@ a .zip for multi-file apps). GifOS packs the GIF there.
    inside the app's icon on the user's Home Screen. Render from
    db.subscribe() and declare collection visibility = multiplayer for free.
 3. Identity: const me = await gifos.me(); -> { id, name } (name may be "").
+   me.id is YOUR app's own id for this person (each app gets a different one).
+   The name comes only once the person lets your app see it (an OS sheet asks
+   on the first call outside a meeting); inside a meeting it is the name the
+   room shows. Always handle name "" (show "You" / "Player").
    Attribute records to me.id/me.name so every player sees who did what.
    GAMES AND ANYTHING WITH SEATS OR TURNS: declare "room" in the manifest and
    use gifos.room (see "Multiplayer"). GifOS decides who plays, who watches,
@@ -406,7 +410,13 @@ WHO/WHAT AM I
    await gifos.info()       -> { appId, name, version, owner }  (owner=true
                                when running on the owner's computer — host
                                or solo; false on a guest)
-   await gifos.me()         -> { id, name }   (per-browser identity)
+   await gifos.me()         -> { id, name, avatar }  id: this app's own id for
+                               the person (stable; another app gets another
+                               id). name/avatar: ""/null until the person lets
+                               this app see them (the first call outside a
+                               meeting shows an OS sheet; the answer is kept
+                               and can be taken back in Abilities). In a
+                               meeting: the name the room shows.
    await gifos.people()     -> [{ id, name, me, host, here }] — the people in
                                this room (a meeting or an app room), read-only,
                                from the room's own roster; just you when alone.
