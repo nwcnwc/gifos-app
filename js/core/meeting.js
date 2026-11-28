@@ -3770,7 +3770,7 @@
       tap: { tile: ['blurWhyTap', 'Blurred: tap to unblur'], says: ['blurSaysTap', 'You chose clear video. This room has no password: each viewer here chooses whether to unblur you.'] },
       stageonly: { tile: ['blurWhyStageOnly', 'Blurred: only the Stage can be unblurred'], says: ['blurSaysStageOnly', 'You chose clear video. This room has no password: viewers may unblur only the Stage, so you stay blurred off it.'] },
       repick: { tile: ['blurWhyRepick', 'Blurred: pick No blur again'], says: ['blurSaysRepick', 'Viewers here may now choose to unblur you. Pick No blur again if you want that.'] },
-      unsafe: { tile: ['blurWhyUnsafe', 'Hidden: may be sexually explicit'], says: ['blurSaysUnsafe', 'Your video is fully blurred for everyone: it may show sexually explicit material. GifOS pages check video on your device and hide sexually explicit pictures. Nothing is sent to GifOS or anyone else. It clears by itself once the picture is clean.'] },
+      unsafe: { tile: ['blurWhyUnsafe', 'Blurred for safety'], says: ['blurSaysUnsafe', 'Blurred for safety'] },
     };
     function blurWhyWords(reason, part) {
       const e = BLUR_WHY[reason];
