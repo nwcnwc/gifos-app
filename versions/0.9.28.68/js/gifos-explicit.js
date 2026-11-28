@@ -1,0 +1,553 @@
+/*
+ * gifos-explicit.js: the ON-DEVICE EXPLICIT-PICTURE CHECK, one module for every page that needs it (the gifos.tv
+ * thumbnail, and the video blocker). Copyright (c) 2026 Crowd Concepts, Inc.
+ *
+ * GifOS pages check pictures on your device and hide sexually explicit ones. Nothing is sent to GifOS or anyone else.
+ * The check is an open image model (NSFWJS MobileNetV2, MIT) running in a Web Worker (js/safeguard/explicit-worker.js)
+ * on TensorFlow.js. The only network use is a one-time GET of the runtime and model from the GifOS model host, each
+ * file pinned by SHA-256 in js/safeguard/models.json. The page downloads each file, checks every byte, keeps the
+ * checked copy in this browser's Cache Storage and hands the bytes to the worker, which makes no request at all.
+ * Nothing loads until a page first asks for a check.
+ *
+ * Only the explicit classes act (porn + hentai, summed). "Sexy" (swimwear, a bare chest) never acts by itself.
+ *
+ *   GifOS.explicit.unsupported()       '' when this device can run the check, else why not ('wasm' | 'worker' | 'canvas')
+ *   GifOS.explicit.open(opts)          Promise of the engine (one per page): { classify(src) → Promise<result>, backend }
+ *                                      opts.base overrides the model host (a local copy of the files, tools only);
+ *                                      opts.catalog names another catalog beside models.json (tools only)
+ *   GifOS.explicit.classify(src, opts) Promise of a result for one picture: src is a canvas, image, video, ImageBitmap or
+ *                                      ImageData. result = { p:{drawing,hentai,neutral,porn,sexy}, score, explicit, ms }
+ *                                      opts.square: look at the centre square only
+ *   GifOS.explicit.checkStill(src)     Promise of { ok, verdict, score, ms } for one still picture (a thumbnail): ok
+ *                                      false = explicit. verdict = { m, v, ok:1 } is what a page signs into an order
+ *                                      when ok; there is no verdict when the picture tripped or could not be checked.
+ *   GifOS.explicit.tracker(opts)       the video rule for one tile: feed(result) → { tripped, changed, burst }.
+ *                                      Trips on k of the last n frames over the line (a single frame never acts);
+ *                                      lifts by itself after `clean` frames in a row under it.
+ *   GifOS.explicit.blockOn(room)       is the video blocker on for this room (the one scope rule, below)
+ *   GifOS.explicit.MODEL, VERSION      the model id and the rule version a verdict names
+ *
+ * LIVE VIDEO (the blocker) uses stronger models on ONNX Runtime Web, pinned in js/safeguard/video.json, in a worker of
+ * their own (js/safeguard/video-worker.js), with the same rules: downloaded once, checked byte for byte, no network
+ * from the worker. A frame goes through a chain: a small model looks at every sampled frame; only what it finds
+ * suspect goes to the next, and a frame counts as explicit only when every model in the chain says so (this is what
+ * keeps babies, breastfeeding and sport clear). A desktop that can run it adds a larger model every few seconds.
+ *
+ *   GifOS.explicit.video.open(opts)    Promise of the chain: { frame(src) → Promise<{ hit, s:[scores], ms }> }
+ *   GifOS.explicit.video.deep(opts)    Promise of the larger model on a capable desktop ({ frame(src) }), or null
+ *   GifOS.explicit.video.watch(opts)   the blocker's loop: samples the pictures opts.sources() names, keeps one
+ *                                      tracker per picture, and calls opts.onChange(id, tripped) on each trip and lift
+ *   GifOS.explicit.video.RULE          the video rule's version
+ */
+(function (root) {
+  'use strict';
+  const GifOS = (root.GifOS = root.GifOS || {});
+  if (GifOS.explicit) return;
+
+  // THE LINE. Measured on a public evaluation set of explicit and hard-benign pictures (swimwear, beach sport,
+  // breastfeeding, babies, medical, art). No line keeps this model's hard-benign refusals low without losing most
+  // explicit pictures, so the line sits where it catches the most; a refused thumbnail only asks for another picture.
+  // A change of the line or the model is a new VERSION, so a stored verdict always says which line it passed.
+  const MODEL = 'nsfwjs-mnv2';
+  const VERSION = '4.4.0-1';
+  const STILL_LINE = 0.5;    // a still picture (a thumbnail) is refused at or above this
+  const VIDEO_LINE = 0.5;    // a video frame counts as a hit at or above this
+  const CLASSES = ['drawing', 'hentai', 'neutral', 'porn', 'sexy'];
+  const SIZE = 224;
+
+  const here = (function () {
+    try {
+      const s = root.document && root.document.currentScript;
+      if (s && s.src) return s.src.replace(/[^/]*$/, '');
+    } catch (e) {}
+    return '/js/';
+  })();
+  const DIR = here + 'safeguard/';
+  const CACHE = 'gifos-explicit-v1';
+
+  function unsupported() {
+    const W = root.WebAssembly;
+    if (!W || typeof W.instantiate !== 'function') return 'wasm';
+    if (typeof root.Worker !== 'function') return 'worker';
+    if (typeof root.OffscreenCanvas !== 'function' && !(root.document && root.document.createElement)) return 'canvas';
+    return '';
+  }
+
+  // ---- the files: pinned, checked, cached ------------------------------------------
+  let cat = null;
+  function catalog(name) {
+    if (!cat) {
+      cat = fetch(DIR + (name || 'models.json'), { credentials: 'omit' }).then((r) => {
+        if (!r.ok) throw new Error('download failed: models.json HTTP ' + r.status);
+        return r.json();
+      });
+      cat.catch(() => { cat = null; });
+    }
+    return cat;
+  }
+  function hex(buf) {
+    const u = new Uint8Array(buf);
+    let out = '';
+    for (let i = 0; i < u.length; i++) out += (u[i] < 16 ? '0' : '') + u[i].toString(16);
+    return out;
+  }
+  function openCache() {
+    try { return (root.caches && root.caches.open) ? root.caches.open(CACHE).catch(() => null) : Promise.resolve(null); } catch (e) { return Promise.resolve(null); }
+  }
+  // One pinned file: the checked copy in Cache Storage when there is one, else a download checked against the pin
+  // before it is kept or used. A body that does not match its pin is refused.
+  function pinned(pin, cache) {
+    const fromCache = cache ? cache.match(pin.url).then((hit) => {
+      if (!hit || hit.headers.get('x-gifos-sha256') !== pin.sha256) return null;
+      return hit.arrayBuffer().then((b) => (b.byteLength === pin.bytes ? b : null));
+    }).catch(() => null) : Promise.resolve(null);
+    return fromCache.then((hit) => {
+      if (hit) return hit;
+      return fetch(pin.url, { credentials: 'omit', mode: 'cors' }).then((r) => {
+        if (!r.ok) throw new Error('download failed: HTTP ' + r.status + ' for ' + pin.name);
+        return r.arrayBuffer();
+      }).then((buf) => root.crypto.subtle.digest('SHA-256', buf).then((d) => {
+        if (hex(d) !== pin.sha256) throw new Error('download failed: ' + pin.name + ' does not match its pin');
+        const keep = cache ? cache.put(pin.url, new Response(buf.slice(0), { headers: { 'content-type': 'application/octet-stream', 'x-gifos-sha256': pin.sha256 } })).catch(() => {}) : null;
+        return Promise.resolve(keep).then(() => buf);
+      }));
+    });
+  }
+
+  // ---- the engine ------------------------------------------------------------------
+  let engine = null;
+  function open(opts) {
+    if (engine) return engine;
+    opts = opts || {};
+    const why = unsupported();
+    if (why) return Promise.reject(new Error('this device cannot run the picture check (' + why + ')'));
+    engine = Promise.all([catalog(opts.catalog), openCache()]).then(([c, cache]) => {
+      const base = String(opts.base || c.base).replace(/\/+$/, '');
+      const names = Object.keys(c.files), files = {};
+      // One file at a time: a phone holds one download in flight.
+      return names.reduce((p, k) => p.then(() => pinned(Object.assign({ url: base + '/' + c.files[k].key }, c.files[k]), cache).then((b) => { files[k] = b; })), Promise.resolve())
+        .then(() => start(files, c.size || SIZE, c.format || 'layers', c.shards || ['weights']));
+    });
+    engine.catch(() => { engine = null; });
+    return engine;
+  }
+  function start(files, size, format, shards) {
+    return new Promise((resolve, reject) => {
+      const w = new Worker(DIR + 'explicit-worker.js');
+      const waiting = new Map();
+      let seq = 0, ready = false;
+      w.onmessage = (ev) => {
+        const m = ev.data || {};
+        if (m.op === 'ready') {
+          ready = true;
+          resolve({ backend: m.backend, size, run: run, close: () => { try { w.terminate(); } catch (e) {} engine = null; } });
+          return;
+        }
+        if (m.op === 'error' && !ready) { try { w.terminate(); } catch (e) {} reject(new Error(m.error)); return; }
+        const cb = waiting.get(m.id);
+        if (!cb) return;
+        waiting.delete(m.id);
+        if (m.op === 'scores') cb.ok(m); else cb.bad(new Error(m.error || 'check failed'));
+      };
+      w.onerror = (e) => { if (!ready) reject(new Error((e && e.message) || 'worker failed')); };
+      function run(rgba) {
+        const id = ++seq;
+        return new Promise((ok, bad) => {
+          waiting.set(id, { ok, bad });
+          w.postMessage({ op: 'run', id, w: size, h: size, buf: rgba.buffer }, [rgba.buffer]);
+        });
+      }
+      const list = Object.keys(files).map((k) => files[k]);
+      w.postMessage({ op: 'load', files, size, format, shards }, list);
+    });
+  }
+
+  // A picture, stretched to the model's square input (what the model was trained on), as RGBA bytes.
+  let pad = null;
+  // square: only the centre square of the picture (a second look at a wide picture, the subject undistorted).
+  function pixels(src, size, square) {
+    if (!square && src && src.data && src.width === size && src.height === size) return new Uint8ClampedArray(src.data);
+    if (!pad) {
+      pad = typeof root.OffscreenCanvas === 'function' ? new root.OffscreenCanvas(size, size) : Object.assign(root.document.createElement('canvas'), { width: size, height: size });
+    }
+    const g = pad.getContext('2d', { willReadFrequently: true });
+    g.imageSmoothingEnabled = true;
+    try { g.imageSmoothingQuality = 'high'; } catch (e) {}
+    g.clearRect(0, 0, size, size);
+    if (src && src.data && src.width && src.height) {
+      const tmp = typeof root.OffscreenCanvas === 'function' ? new root.OffscreenCanvas(src.width, src.height) : Object.assign(root.document.createElement('canvas'), { width: src.width, height: src.height });
+      tmp.getContext('2d').putImageData(src, 0, 0);
+      src = tmp;
+    }
+    const sw = src.videoWidth || src.naturalWidth || src.width, sh = src.videoHeight || src.naturalHeight || src.height;
+    if (!sw || !sh) throw new Error('no picture to check');
+    const side = Math.min(sw, sh);
+    if (square) g.drawImage(src, (sw - side) / 2, (sh - side) / 2, side, side, 0, 0, size, size);
+    else g.drawImage(src, 0, 0, sw, sh, 0, 0, size, size);
+    return g.getImageData(0, 0, size, size).data;
+  }
+  function score(p) { return (p.hentai || 0) + (p.porn || 0); }
+  function classify(src, opts) {
+    return open(opts).then((e) => e.run(pixels(src, e.size, !!(opts && opts.square))).then((m) => {
+      const p = {};
+      CLASSES.forEach((c, i) => { p[c] = m.p[i]; });
+      const s = score(p);
+      return { p, score: s, explicit: s >= VIDEO_LINE, ms: m.ms, backend: e.backend };
+    }));
+  }
+  // A still picture: one decision, one look at the whole picture. (A second look at the centre square was measured:
+  // 9 more of 107 explicit pictures caught, but 17 more benign ones refused, the Mona Lisa among them.)
+  // A picture that could not be checked has no verdict, exactly like one that tripped.
+  function checkStill(src, opts) {
+    return classify(src, opts).then((r) => {
+      const ok = r.score < STILL_LINE;
+      return { ok, verdict: ok ? { m: MODEL, v: VERSION, ok: 1 } : null, score: r.score, ms: r.ms, p: r.p };
+    });
+  }
+
+  // ---- the video rule ----------------------------------------------------------------
+  // k hits in the last n frames trip it; `clean` frames in a row under the line lift it. `burst` says the caller should
+  // look again soon (a first hit starts a short burst of frames, so a trip is decided in seconds, not minutes).
+  function tracker(opts) {
+    opts = opts || {};
+    const k = opts.k || 2, n = opts.n || 3, clean = opts.clean || 5, line = opts.line == null ? VIDEO_LINE : opts.line;
+    let last = [], tripped = false, run = 0;
+    return {
+      feed(r) {
+        const hit = (typeof r === 'number' ? r : r.score) >= line;
+        last.push(hit); if (last.length > n) last.shift();
+        run = hit ? 0 : run + 1;
+        const was = tripped;
+        if (!tripped && last.filter(Boolean).length >= k) tripped = true;
+        else if (tripped && run >= clean) { tripped = false; last = []; }
+        return { tripped, changed: was !== tripped, burst: !tripped && hit };
+      },
+      state() { return { tripped, run, last: last.slice() }; },
+      reset() { last = []; tripped = false; run = 0; },
+    };
+  }
+
+  // ---- where the video blocker is on (docs: Nathan's scope rule) -------------------------------
+  // room = { open, password, listed, hostBlock }. Always on in an open room (password or not), in a hosted room with no
+  // password, and in any room listed on gifos.tv; in a hosted room with a password it follows the host's setting
+  // "Block explicit content", which is on unless the host turned it off (hostBlock === false).
+  function blockOn(room) {
+    room = room || {};
+    if (room.open || room.listed || !room.password) return true;
+    return room.hostBlock !== false;
+  }
+
+  // ---- live video: the blocker's models (docs: safeguard S6) -----------------------------------
+  // A chain of models on ONNX Runtime Web (js/safeguard/video.json): every sampled frame goes to the first; a frame
+  // only goes on while each model in turn finds it over its line, and it counts as explicit only when the last one
+  // does. The lines were chosen on the public evaluation set to refuse about 1 in 100 hard-benign pictures
+  // (breastfeeding, babies, sport, medicine). A change of a line or a model is a new rule version.
+  const RULE = 'xv-1';
+  const mobileUa = () => {
+    try {
+      const n = root.navigator || {}, ua = String(n.userAgent || '');
+      return /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || (/Macintosh/.test(ua) && (n.maxTouchPoints || 0) > 1);
+    } catch (e) { return false; }
+  };
+  let vcat = null;
+  function videoCatalog(name) {
+    if (!vcat) {
+      vcat = fetch(DIR + (name || 'video.json'), { credentials: 'omit' }).then((r) => {
+        if (!r.ok) throw new Error('download failed: video.json HTTP ' + r.status);
+        return r.json();
+      });
+      vcat.catch(() => { vcat = null; });
+    }
+    return vcat;
+  }
+  function pinsFrom(c, opts) {
+    const base = String((opts && opts.base) || c.base).replace(/\/+$/, '');
+    return (f) => Object.assign({ url: base + '/' + f.key }, f);
+  }
+  // One worker: the runtime, then models by id, then frames. Every byte it gets was checked against its pin.
+  function vworker() {
+    const w = new Worker(DIR + 'video-worker.js');
+    const waiting = new Map(), loads = new Map();
+    let seq = 0, rt = null, dead = '';
+    const failAll = (why) => {
+      dead = why;
+      if (rt) { rt.bad(new Error(why)); rt = null; }
+      for (const cb of loads.values()) cb.bad(new Error(why));
+      for (const cb of waiting.values()) cb.bad(new Error(why));
+      loads.clear(); waiting.clear();
+    };
+    w.onmessage = (ev) => {
+      const m = ev.data || {};
+      if (m.op === 'runtime') { if (rt) { const cb = rt; rt = null; m.ok ? cb.ok(m.ep) : cb.bad(new Error(m.error)); } return; }
+      if (m.op === 'model') { const cb = loads.get(m.id); if (cb) { loads.delete(m.id); m.ok ? cb.ok({ ms: m.ms, loadMs: m.loadMs }) : cb.bad(new Error(m.error)); } return; }
+      const cb = waiting.get(m.seq);
+      if (!cb) return;
+      waiting.delete(m.seq);
+      if (m.op === 'scores') cb.ok({ p: m.p, ms: m.ms }); else cb.bad(new Error(m.error || 'check failed'));
+    };
+    w.onerror = (e) => failAll((e && e.message) || 'worker failed');
+    return {
+      runtime(files, ep) {
+        return new Promise((ok, bad) => { rt = { ok, bad }; w.postMessage({ op: 'runtime', files, ep }, [files.js, files.wasm, files.mjs]); });
+      },
+      load(id, bytes, m) {
+        if (dead) return Promise.reject(new Error(dead));
+        return new Promise((ok, bad) => { loads.set(id, { ok, bad }); w.postMessage({ op: 'model', id, bytes, size: m.size, mean: m.mean, std: m.std }, [bytes]); });
+      },
+      run(id, rgba) {
+        if (dead) return Promise.reject(new Error(dead));
+        const s = ++seq;
+        return new Promise((ok, bad) => { waiting.set(s, { ok, bad }); w.postMessage({ op: 'run', seq: s, id, buf: rgba.buffer }, [rgba.buffer]); });
+      },
+      close() { failAll('closed'); try { w.terminate(); } catch (e) {} },
+    };
+  }
+  // A frame, stretched to a model's square input, as RGBA bytes (one canvas per size).
+  const vpads = new Map();
+  function vpixels(src, size) {
+    let g = vpads.get(size);
+    if (!g) {
+      const c = typeof root.OffscreenCanvas === 'function' ? new root.OffscreenCanvas(size, size) : Object.assign(root.document.createElement('canvas'), { width: size, height: size });
+      g = c.getContext('2d', { willReadFrequently: true });
+      g.imageSmoothingEnabled = true;
+      try { g.imageSmoothingQuality = 'high'; } catch (e) {}
+      vpads.set(size, g);
+    }
+    const sw = src.videoWidth || src.naturalWidth || src.width, sh = src.videoHeight || src.naturalHeight || src.height;
+    if (!sw || !sh) throw new Error('no picture to check');
+    g.drawImage(src, 0, 0, sw, sh, 0, 0, size, size);
+    return g.getImageData(0, 0, size, size).data;
+  }
+  // One still of a video, so every model in the chain sees the same frame.
+  function snap(src) {
+    if (typeof root.createImageBitmap === 'function' && src && (src.videoWidth || src.width)) return root.createImageBitmap(src).catch(() => src);
+    return Promise.resolve(src);
+  }
+  const posScore = (p, m) => m.pos.reduce((a, k) => a + (p[m.labels.indexOf(k)] || 0), 0);
+  async function fetchRuntime(rtc, pin, cache) {
+    const out = {};
+    for (const k of ['js', 'wasm', 'mjs']) out[k] = await pinned(pin(rtc[k]), cache);
+    return out;
+  }
+
+  let chainP = null;
+  function videoOpen(opts) {
+    if (chainP) return chainP;
+    opts = opts || {};
+    const why = unsupported();
+    if (why) return Promise.reject(new Error('this device cannot run the video check (' + why + ')'));
+    chainP = (async () => {
+      const [c, cache] = await Promise.all([videoCatalog(opts.catalog), openCache()]);
+      const pin = pinsFrom(c, opts);
+      const w = vworker();
+      try {
+        await w.runtime(await fetchRuntime(c.runtime, pin, cache), 'wasm');
+        const stages = c.chain.map((m) => Object.assign({}, m, { ready: null, ms: 0 }));
+        // A model loads on its first use: the later stages of the chain only when a frame first reaches them.
+        const ready = (m) => m.ready || (m.ready = pinned(pin(m.file), cache).then((b) => w.load(m.id, b, m)).then((t) => { m.ms = t.ms; }, (e) => { m.ready = null; throw e; }));
+        for (const m of stages) if (!m.lazy) await ready(m);
+        return {
+          rule: RULE, backend: 'wasm', stages,
+          frame(src) {
+            const t0 = performance.now();
+            return snap(src).then(async (bmp) => {
+              const s = [];
+              try {
+                for (const m of stages) {
+                  await ready(m);
+                  const r = await w.run(m.id, vpixels(bmp, m.size));
+                  const v = posScore(r.p, m);
+                  s.push(Math.round(v * 1e4) / 1e4);
+                  if (v < m.line) return { hit: false, s, ms: Math.round(performance.now() - t0) };
+                }
+                return { hit: true, s, ms: Math.round(performance.now() - t0) };
+              } finally { if (bmp !== src && bmp && bmp.close) try { bmp.close(); } catch (e) {} }
+            });
+          },
+          close() { w.close(); chainP = null; },
+        };
+      } catch (e) { w.close(); throw e; }
+    })();
+    chainP.catch(() => { chainP = null; });
+    return chainP;
+  }
+
+  // The larger model, on a desktop that can run it: WebGPU with 16-bit shaders, and a measured frame no slower than
+  // maxMs (one thread of WebAssembly takes about 6 s a frame for it: never fast enough). Anything else: null, and
+  // the chain alone does the work. Tried once per page.
+  let deepP = null;
+  function videoDeep(opts) {
+    if (deepP) return deepP;
+    opts = opts || {};
+    deepP = (async () => {
+      if (opts.mobile != null ? opts.mobile : mobileUa()) return null;
+      const gpu = root.navigator && root.navigator.gpu;
+      if (!gpu || unsupported()) return null;
+      const c = await videoCatalog(opts.catalog);
+      const d = c.deep;
+      if (!d || !c.gpuRuntime) return null;
+      let a = null;
+      try { a = await gpu.requestAdapter(); } catch (e) {}
+      if (!a) return null;
+      if ((d.needs || []).indexOf('shader-f16') >= 0 && !(a.features && a.features.has('shader-f16'))) return null;
+      const cache = await openCache(), pin = pinsFrom(c, opts), w = vworker();
+      try {
+        await w.runtime(await fetchRuntime(c.gpuRuntime, pin, cache), 'webgpu');
+        await w.load(d.id, await pinned(pin(d.file), cache), d);
+        const z = () => new Uint8ClampedArray(d.size * d.size * 4);
+        await w.run(d.id, z());
+        const t = await w.run(d.id, z());
+        const max = opts.deepMaxMs || (root.GifOS.timings || {}).XV_DEEP_MAX_MS;
+        if (!(t.ms <= max)) { w.close(); return null; }
+        return {
+          id: d.id, ms: t.ms,
+          frame(src) {
+            const t0 = performance.now();
+            return snap(src).then((bmp) => w.run(d.id, vpixels(bmp, d.size)).then((r) => {
+              const v = posScore(r.p, d);
+              return { hit: v >= d.line, s: [Math.round(v * 1e4) / 1e4], ms: Math.round(performance.now() - t0) };
+            }).finally(() => { if (bmp !== src && bmp && bmp.close) try { bmp.close(); } catch (e) {} }));
+          },
+          close() { w.close(); },
+        };
+      } catch (e) { w.close(); return null; }
+    })().catch(() => null);
+    return deepP;
+  }
+
+  // ---- the blocker's loop ---------------------------------------------------------------------------
+  // opts.sources() → [{ id, el }] or [{ id, track }]: the pictures this page must check now (a picture shown clear or
+  // nearly clear, and every picture that is tripped, so it can lift). opts.onChange(id, tripped) on each edge.
+  // The page samples ONE frame at a time across all of them, oldest look first, a picture with a fresh hit first (its
+  // second look comes within the burst time, so a trip takes seconds). The gap after a frame keeps the check's share
+  // of one processor at the duty limit (lower on phones, to keep them cool): a slow device looks less often, never
+  // stops looking. A desktop that can run the larger model looks with it too, on its own slower clock; its hits feed
+  // the same tracker. Nothing leaves the page: no frame, no score, no trip.
+  function watch(opts) {
+    const T = Object.assign({}, (root.GifOS && root.GifOS.timings) || {}, opts.timings || {});
+    const mobile = opts.mobile != null ? !!opts.mobile : mobileUa();
+    const duty = (mobile ? T.XV_DUTY_PHONE_PCT : T.XV_DUTY_DESK_PCT) / 100;
+    const open = opts.engine ? () => Promise.resolve(opts.engine) : () => videoOpen(opts);
+    const openDeep = opts.deep !== undefined ? () => Promise.resolve(opts.deep) : () => videoDeep(opts);
+    const log = typeof opts.log === 'function' ? opts.log : () => {};
+    const recs = new Map();   // id -> { t: tracker, tripped, at, burst, n, hits, s }
+    const hidden = new Map(); // track -> video element of our own (a track with no element on the page)
+    let stopped = false, timer = null, deepTimer = null, eng = null, deep, deepWhy = '', avg = 0, gap = 0, frames = 0, err = '', deepFrames = 0;
+    const now = () => Date.now();
+    // One tracker per lane: the larger model looks less often, so its frames are counted among its own (a picture is
+    // tripped while either lane is, and lifts when both have had their run of clean frames).
+    const rec = (id) => { let r = recs.get(id); if (!r) recs.set(id, (r = { t: tracker(), td: tracker(), tripped: false, at: 0, burst: 0, n: 0, hits: 0, s: null })); return r; };
+    const ready = (el) => !!el && ((el.videoWidth > 0 && el.readyState >= 2) || (!('videoWidth' in el) && el.width > 0));
+    function elOf(src) {
+      if (src.el) return src.el;
+      if (!src.track || !root.document) return null;
+      let v = hidden.get(src.track);
+      if (!v) {
+        v = root.document.createElement('video');
+        v.muted = true; v.playsInline = true; v.setAttribute('aria-hidden', 'true');
+        v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none';
+        v.srcObject = new root.MediaStream([src.track]);
+        try { (root.document.body || root.document.documentElement).appendChild(v); } catch (e) {}
+        const p = v.play(); if (p && p.catch) p.catch(() => {});
+        hidden.set(src.track, v);
+      }
+      return v;
+    }
+    function list() {
+      let a = [];
+      try { a = opts.sources() || []; } catch (e) { a = []; }
+      const ids = new Set(a.map((x) => x.id)), tracks = new Set(a.map((x) => x.track).filter(Boolean));
+      // A picture that is no longer shown or sent is forgotten: a trip on it ends with it.
+      for (const [id, r] of recs) if (!ids.has(id)) { recs.delete(id); if (r.tripped) edge(id, false, 'gone'); }
+      for (const [t, v] of hidden) if (!tracks.has(t)) { try { v.srcObject = null; v.remove(); } catch (e) {} hidden.delete(t); }
+      return a;
+    }
+    function edge(id, tripped, why) {
+      log('xv ' + (tripped ? 'TRIP ' : 'lift ') + String(id).slice(0, 8) + ' ' + why);
+      try { opts.onChange(id, tripped, why); } catch (e) {}
+    }
+    function feed(id, r, res, lane) {
+      r.n++; r.s = res.s;
+      if (res.hit) r.hits++;
+      const o = (lane === 'deep' ? r.td : r.t).feed(res.hit ? 1 : 0);
+      if (lane !== 'deep') r.burst = o.burst ? now() + T.XV_BURST_MS : 0;
+      if (res.hit || o.changed) log('xv ' + lane + ' ' + String(id).slice(0, 8) + ' ' + (res.hit ? 'hit' : 'clean') + ' s=' + JSON.stringify(res.s) + ' ' + res.ms + 'ms');
+      const t = r.t.state().tripped || r.td.state().tripped;
+      if (t !== r.tripped) { r.tripped = t; edge(id, t, lane); }
+    }
+    // The next picture to look at: a burst that is due first, then the one looked at longest ago.
+    function pick(a, lane) {
+      const t = now();
+      let best = null, bk = Infinity;
+      for (const src of a) {
+        const el = elOf(src);
+        if (!ready(el)) continue;
+        const r = rec(src.id);
+        const k = lane === 'deep' ? (r.deepAt || 0) : (r.burst && r.burst <= t ? -1e15 + r.burst : r.at);
+        if (k < bk) { bk = k; best = { src, el, r }; }
+      }
+      return best;
+    }
+    async function tick() {
+      timer = null;
+      if (stopped) return;
+      let wait = T.XV_GAP_MIN_MS;
+      try {
+        const a = list();
+        if (a.length) {
+          if (!eng) { eng = await open(); err = ''; }
+          if (deep === undefined) { deep = null; openDeep().then((d) => { deep = d; deepWhy = d ? 'on ' + d.ms + 'ms' : 'off'; if (d) log('xv deep on (' + d.id + ', ' + d.ms + ' ms a frame)'); if (d && !stopped) deepTick(); }, () => { deepWhy = 'off'; }); }
+          const p = pick(a, 'chain');
+          if (p) {
+            p.r.at = now();
+            const res = await eng.frame(p.el);
+            if (stopped) return;
+            frames++;
+            avg = avg ? avg * 0.8 + res.ms * 0.2 : res.ms;
+            feed(p.src.id, p.r, res, 'chain');
+            wait = Math.min(T.XV_GAP_MAX_MS, Math.max(T.XV_GAP_MIN_MS, avg / duty));
+            // A fresh hit: its second look comes soon, whatever the duty limit says (a few frames, then back to it).
+            if (p.r.burst) wait = Math.min(wait, Math.max(T.XV_BURST_MS, res.ms));
+          }
+        }
+      } catch (e) {
+        err = String((e && e.message) || e);
+        log('xv error ' + err.slice(0, 160));
+        eng = null;
+        wait = T.XV_RETRY_MS;
+      }
+      gap = wait;
+      if (!stopped) timer = setTimeout(tick, wait);
+    }
+    async function deepTick() {
+      deepTimer = null;
+      if (stopped || !deep) return;
+      try {
+        const p = pick(list(), 'deep');
+        if (p) { p.r.deepAt = now(); const res = await deep.frame(p.el); if (stopped) return; deepFrames++; feed(p.src.id, p.r, res, 'deep'); }
+      } catch (e) { log('xv deep error ' + String((e && e.message) || e).slice(0, 160)); }
+      if (!stopped) deepTimer = setTimeout(deepTick, T.XV_DEEP_GAP_MS);
+    }
+    // poke(): something changed (a picture started being shown clear): look now rather than at the end of the gap.
+    function poke() { if (stopped || !timer || !(gap > T.XV_GAP_MIN_MS)) return; clearTimeout(timer); timer = setTimeout(tick, T.XV_GAP_MIN_MS); }
+    timer = setTimeout(tick, T.XV_BURST_MS);   // the first look soon after the loop starts
+    return {
+      poke,
+      tripped: (id) => { const r = recs.get(id); return !!(r && r.tripped); },
+      state() { const o = {}; for (const [id, r] of recs) o[id] = { tripped: r.tripped, n: r.n, hits: r.hits, s: r.s, run: r.t.state().run }; return o; },
+      stats() { return { frames, deepFrames, avgMs: Math.round(avg), gapMs: Math.round(gap), duty, mobile, deep: deepWhy || (deep === undefined ? 'not tried' : 'trying'), err, rule: RULE }; },
+      stop() {
+        stopped = true;
+        if (timer) clearTimeout(timer);
+        if (deepTimer) clearTimeout(deepTimer);
+        for (const [id, r] of recs) if (r.tripped) edge(id, false, 'stopped');
+        recs.clear();
+        for (const v of hidden.values()) { try { v.srcObject = null; v.remove(); } catch (e) {} }
+        hidden.clear();
+      },
+    };
+  }
+
+  GifOS.explicit = { MODEL, VERSION, STILL_LINE, VIDEO_LINE, unsupported, catalog, open, classify, checkStill, tracker, blockOn, _score: score,
+    video: { RULE, catalog: videoCatalog, open: videoOpen, deep: videoDeep, watch, mobile: mobileUa } };
+})(typeof window !== 'undefined' ? window : globalThis);

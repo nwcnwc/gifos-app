@@ -1,6 +1,6 @@
 {
  "v": 1,
- "build": "0.9.28.67",
+ "build": "0.9.28.68",
  "signer": "gifos.app",
  "files": {
   "js/app-owner.js": "7c709e7f9e553d5c4c38ef8925dc7841fe2b68a2f95ebce0846593f91eb54535",
@@ -10,7 +10,7 @@
   "js/core/link.js": "488c02af144728dfc1389359705cd2b538c8f1ffae701b69dc49cae8ac5c9457",
   "js/core/media/nones.json": "7d2eb896463019791353607f70ee9fd01d0666f2325e4978d5f6c7ebd2da3ae7",
   "js/core/media/plane-node.js": "07b4a478437cfd734fe2817e9ec35dea107bde747623ea9c3069557c6a73c7a0",
-  "js/core/meeting.js": "3984096a66fd7bde795bd0ad3445a6066cdcd751ed4a76c1741ed99aa1c2f59b",
+  "js/core/meeting.js": "fee3f71c19a1238c9c027ddc1613859ced5d814fd007d097e5ca8a17ab8e933a",
   "js/core/node.js": "af4011b07bb93bea8e6e1e4f501fa3772bf7e7dd98e2dfd0fe54347f17c1fc8d",
   "js/core/platform.json": "ff63aab6f5c875f1206fbcfa080d47e7e2af32b636700eb2fe9deb154287a20d",
   "js/core/ports/vp8.js": "22fae340bb175dcb1c35319ab28066644fe59a7867cc2dddeb4a51f9b534d803",
@@ -31,7 +31,7 @@
   "js/meet-carry.js": "d9a058dc2636bacc03e055ecdbc8a6b323f2bdbc3b189d5f683b691a4c1f7263",
   "js/meet-content.js": "fa2d06738eee60af3d1b0b5753456e360542f46a836d8e0dbc61c4658a727406",
   "js/meet-debuglog.js": "6c67ea9438f45657f0915636922edf6d9bae253af4249819692e51d81526e6bd",
-  "js/meet-layout.js": "11cfd77d1da39930715e1ebc150400a547ceb6a34e5102657eb16a4f6cd4335f",
+  "js/meet-layout.js": "3c36e4b59fd7972256dd65a3487a8b6d6fb6c7644d56054138e10b524305f704",
   "js/meet-leave.js": "92f60bb18199ffee5e6d8a1a8fc8783c53fa41732f4a5d3c4c2409843e814d50",
   "js/meet-meters.js": "de65337255ff5c85bd2fac0186405abfa597c9f93f739f1a44ae6cd6ea0f9939",
   "js/meet-myroom.js": "0c67b772bc4f55076d151efb9827a51eab0b1a982e9340ebd3de939c3e6b72a4",
@@ -46,7 +46,7 @@
   "js/meet-zones.js": "71773f5cf0b9f9b2d587f4d01c59d4c611a680dbfb3c717fe6d0c2dfe9301309",
   "js/mesh-identity.js": "e7c41650476bf262b0ba41d9970072b77eb748c16d1d9267c73fb4af8e5e1a79",
   "js/mesh-media.js": "e260c0863adb884f3da1d76426be478d7beb53c5b9015af3262a1669e7c3780c",
-  "js/mesh-wire.js": "79496c5fcde91f8bd91d33a68043a01de0f32b6feddefe6cc1325f43c6d54ed0",
+  "js/mesh-wire.js": "38e7bb103fc1558be3d0856240ad8d5e59dd2a6ffda478f5c6819cb28b858dc1",
   "js/mesh/books.js": "092db7b0f42029f95830cfc42f5f3180466832730e7a3510364785d3b97b8c6e",
   "js/mesh/burst.js": "70e72093587a0f383f199c799cd55eb952ecf3d18d88b401500db52a10dcec25",
   "js/mesh/c7proof.js": "defc7b5cc309af34d6b04a052704cdf9cf5080f1a99d68ffdd7318a6cd1591ac",
@@ -108,7 +108,7 @@
   "js/mesh/witness.js": "57fbb5be7700b06efab185322f1be7875ef8b64fcd9c8edb65b34410010135c6",
   "js/relay-config.js": "a96dbda776b370254dbeeded999677a4087880e3c23bca918e4366fb4f788799",
   "js/runtime.js": "67974cc2dcb41a86c701f94c43fb121b0de90f72017fb5eb805d0fdd43f03b26",
-  "js/timings.js": "6127222af71175bc17f5ea9f43a01cd0143d231a2b23c86a7810af534bbbfbe5"
+  "js/timings.js": "dd650e74b3c12f57a1d06856021fabbfe9dd05c24351d04c3c94c654d16eadf6"
  },
- "sig": "V2hOeHN7QcC7aDlASYBbTg+D4FVfcFFvIugNA9ANlbVdASKqsC4rVs5BnNyJ1QqmWas8V14olGu9cQ3iEQFWCQ=="
+ "sig": "hnxTDy2madCnIIB+9Q3hwtnvU4ZER14M8j/x9Lit38qRLb9QBrzeXPCF8X3w3m/P+BPy1BCqu2+YtxamgXihBw=="
 }
