@@ -1336,5 +1336,12 @@
   "meet.tvPublishBtn": "Publicar en GifOS.tv",
   "meet.setScopeYou": "Te sigue",
   "meet.setScopeDevice": "Solo este dispositivo",
-  "meet.setScopeNote": "Te sigue: se guarda en Me & My Contacts, igual en cada dispositivo que lo tenga. Solo este dispositivo: se queda en este teléfono u ordenador."
+  "meet.setScopeNote": "Te sigue: se guarda en Me & My Contacts, igual en cada dispositivo que lo tenga. Solo este dispositivo: se queda en este teléfono u ordenador.",
+  "meet.blurWhyUnsafe": "Oculto: puede ser explícito",
+  "meet.blurSaysUnsafe": "Tu video está totalmente difuminado para todos: puede mostrar material sexualmente explícito. Las páginas de GifOS revisan el video en tu dispositivo y ocultan las imágenes sexualmente explícitas. No se envía nada a GifOS ni a nadie más. Se aclara solo cuando la imagen está limpia.",
+  "meet.admXvH": "Seguridad del video",
+  "meet.admXblk": "Bloquear contenido explícito",
+  "meet.admXblkSub": "Las páginas de GifOS revisan el video en tu dispositivo y ocultan las imágenes sexualmente explícitas. No se envía nada a GifOS ni a nadie más. GifOS no puede ver tus reuniones.",
+  "meet.admXblkNoPw": "Siempre activado en una sala sin contraseña.",
+  "meet.admXblkListed": "Siempre activado mientras esta sala esté publicada en GifOS.tv."
 }

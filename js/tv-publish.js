@@ -141,6 +141,8 @@
     // Called on every paint: start or stop the on-air cycle for a listed room. Nothing at all for an unlisted one.
     if (!ctx || busy) return;
     var on = hosted() && !!listed() && ctx.inMeeting() && ctx.admin();
+    // A listed room blocks explicit video on every viewer's device, even where its host had turned that off.
+    if (on && typeof ctx.keepBlock === 'function') { try { ctx.keepBlock(); } catch (e) {} }
     if (on && onAirFor !== ctx.roomKey()) goOnAir();
     else if (!on && onAirFor) sendOff(false);
     else if (on && keepDue && Date.now() > keepDue + 5000) keepAlive();   // a timer the browser held back (a background tab)
@@ -417,5 +419,7 @@
     try { tick(); } catch (e) {}
     return card;
   }
-  GifOS.tvPublish = { paint: paint, api: API, _state: function () { return { onAirFor: onAirFor, keepDue: keepDue, listed: ctx ? listed() : null, hasOff: !!offNote }; } };
+  // listedHere(): this device listed the room it is in (the host's page).
+  function listedHere() { return !!(ctx && hosted() && listed()); }
+  GifOS.tvPublish = { paint: paint, api: API, listedHere: listedHere, _state: function () { return { onAirFor: onAirFor, keepDue: keepDue, listed: ctx ? listed() : null, hasOff: !!offNote }; } };
 })(typeof window !== 'undefined' ? window : globalThis);
