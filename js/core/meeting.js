@@ -26002,17 +26002,19 @@
     // name, link, meeting tag, key, signature or content; no uploads ever): the host's verified plan for 'all', the
     // room ACL's c (the host right the relay took the Stage item from) for 'stage'. GifOS can then revoke it.
     // -> 'sent' | 'failed' | 'none' (no clear right here).
-    async function reportClearHost(cat, ref) {
+    async function reportClearHost(cat, ref, notice) {
       const mode = clearNoPwMode();
       const c = mode === 'all' ? subsTier && subsTier.cred : mode === 'stage' ? (hostStageAcl() || {}).c : null;
       if (!c || !c.subId) return 'none';
       const cred = { subId: c.subId };
       if (c.pid) cred.pid = c.pid;
       const base = String(window.GIFOS_PAY_URL || 'https://pay.gifos.app').replace(/\/$/, '');
-      // cat: 'illegal' | 'sexual' | 'offensive' | 'other' (the sheet's choice); ref: the page this came from (the embedding site for an
+      // cat: 'illegal' | 'sexual' | 'offensive' | 'copyright' | 'other' (the sheet's choice); ref: the page this came from (the embedding site for an
       // embed), no query or hash. Both optional; the server adds the reporter's IP for abuse review (privacy policy).
       const body = { v: 1, cred };
-      if (cat === 'illegal' || cat === 'sexual' || cat === 'offensive' || cat === 'other') body.cat = cat;
+      if (cat === 'illegal' || cat === 'sexual' || cat === 'offensive' || cat === 'copyright' || cat === 'other') body.cat = cat;
+      // copyright: the reporter's own typed notice (docs/safeguard.md DMCA); the Worker flags it, stores it and alerts support@gifos.app.
+      if (cat === 'copyright' && notice && typeof notice === 'object') body.notice = { work: String(notice.work || '').slice(0, 1000), where: String(notice.where || '').slice(0, 500), email: String(notice.email || '').slice(0, 254), name: String(notice.name || '').slice(0, 120), good: notice.good === true, accurate: notice.accurate === true };
       if (typeof ref === 'string' && /^https?:\/\/[^\s#?]{1,290}$/.test(ref)) body.ref = ref;
       try {
         const r = await fetch(base + '/gifos/report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), referrerPolicy: 'no-referrer', credentials: 'omit' });
