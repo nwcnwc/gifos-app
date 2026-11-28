@@ -348,6 +348,8 @@
     body.appendChild(el('div', { cls: 'thumbwrap' }, [el('label', { text: T('tvFPic', 'Thumbnail') }), thumbBox]));
     body.appendChild(el('div', { cls: 'row' }, [up, snap, file]));
     body.appendChild(picErr);
+    // The truth about this upload (UPLOADIP): the check blocks explicit pictures, and an illegal one is reported with the uploader's address.
+    body.appendChild(el('p', { cls: 'note', id: 'tv-up-warn', text: T('tvUploadWarn', 'Sexually explicit images are blocked. Illegal images are reported to the authorities, together with the uploader\'s IP address.') }));
     body.appendChild(el('label', { cls: 'chk' }, [pw, document.createTextNode(T('tvFPw', 'Password needed to watch (shown as a badge; put the password in the description or give it out yourself)'))]));
     body.appendChild(el('label', {}, [document.createTextNode(T('tvFTip', 'Base address for tips (optional, public; not shown yet)')), tip]));
     body.appendChild(el('p', { cls: 'note', text: T('tvFNote', 'Everything here is public. Your room password is never listed: a room with a password still asks for it.') }));

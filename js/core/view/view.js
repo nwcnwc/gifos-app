@@ -909,6 +909,7 @@
         '<div class="appear-name" id="appear-name"></div>' +
         '<input id="nm" data-agent="name-input" name="nickname" maxlength="40" autocomplete="nickname" aria-label="Your name">' +
         '<label class="appear-file">' + (0, /*()*/__C.uiText)('changePic', 'Change picture') + '<input id="appear-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp" hidden></label>' +
+        '<p class="appear-warn" id="appear-warn">' + (0, /*()*/__C.uiText)('p2pUploadWarn', 'Sexually explicit and illegal images are blocked. Sharing illegal images is a crime.') + '</p>' +
         '<div class="appear-actions"><button id="nmcancel" type="button" class="appear-secondary">' + (0, /*()*/__C.uiText)('appearClear', 'Clear') + '</button>' +
         '<button id="nmok" data-agent="name-save" type="button" class="appear-primary">' + (0, /*()*/__C.uiText)('appearSave', 'Save') + '</button></div></div>';
       document.body.appendChild(bg);
@@ -7812,6 +7813,7 @@
     })();
     document.getElementById('cattach').onclick = () => {
       if (!(0, /*()*/__C.mayPinFiles)()) { (0, /*()*/__C.setStatus)((0, /*()*/__C.hasAdminRoom)() ? 'Guests cannot send files in this room.' : 'Files are not allowed in this meeting.'); return; }
+      (0, /*()*/__C.setStatus)((0, /*()*/__C.uiText)('p2pUploadWarn', 'Sexually explicit and illegal images are blocked. Sharing illegal images is a crime.'), 9000);   // UPLOADIP: the truth, as the picker opens
       document.getElementById('cfile-in').click();
     };
     document.getElementById('cfile-in').addEventListener('change', (e) => {

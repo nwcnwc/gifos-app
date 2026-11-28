@@ -1495,6 +1495,7 @@ body.names-off #stagefeed .stgnames { display: none; }
   .appear-face { width: 96px; height: 96px; margin: 0 auto 14px; border-radius: 50%; background: #1a1d24; color: var(--c-white);
     display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: 700; overflow: hidden; }
   .appear-face img, .lob-face img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .appear-warn { margin: 0 0 14px; font-size: .8rem; line-height: 1.35; color: var(--muted, #8888aa); }
   .appear-file { display: inline-flex; align-items: center; justify-content: center; margin: 0 0 14px; color: var(--c-blue); font-weight: 700; cursor: pointer; }
   .appear-actions { display: flex; gap: 12px; justify-content: flex-end; }
   .name-box button.appear-primary { background: var(--c-blue); color: var(--c-white); border: 0; min-width: 112px; }
