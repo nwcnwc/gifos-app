@@ -24345,6 +24345,7 @@
         live: () => !myStatus.muted || !myStatus.camOff,
         mic: (on) => agentMic(on),
         listen: () => MR_LISTEN,
+        relayQuiet: (on) => { try { if (meshNode && meshNode.setQuiet) meshNode.setQuiet(!!on); return true; } catch (e) { return false; } },   // the data room's: let the relay socket go while seated (js/gifos-identity-sync.js)
         reachIds: () => Array.from(peers.keys()).filter((id) => id !== myId && !!openPeer(id)),
         people: () => rosterIds.filter((id) => id !== myId).map((id) => ({ id, name: String(rosterNames[id] || (peers.get(id) || {}).name || '') })),
       });
