@@ -113,12 +113,16 @@
     return _roomLibP;
   }
   const hexBytes = (h) => { const a = new Uint8Array(h.length / 2); for (let i = 0; i < a.length; i++) a[i] = parseInt(h.substr(i * 2, 2), 16); return a; };
-  // One key per browser for rooms (like the name, shared by every app on this computer). The room id is the first
-  // 16 hex of SHA-256 of its public key: the same after a reload, in a new tab and in a new room.
-  let _personP = null;
-  function personKey() {
-    if (_personP) return _personP;
-    _personP = appOwnerLib().then((AO) => {
+  // The room id is the first 16 hex of SHA-256 of a person key's public key: the same after a reload, in a new tab and
+  // in a new room. The person key an app's room sees is that app's OWN: made from this browser's room seed and the app, so
+  // two apps never see one key for the same person. `old` is the key one seed made for every app before; a session
+  // saved under it is moved to the app's own key once (the owner's own seat here; a guest's seat by a proof signed
+  // with the old key, makeRoomHost remote 'rekey').
+  const _personP = new Map();
+  function personKey(manifest) {
+    const app = roomAppKey(manifest);
+    if (_personP.has(app)) return _personP.get(app);
+    const p = appOwnerLib().then((AO) => {
       let seed = null;
       try { seed = root.localStorage.getItem('gifos_room_seed'); } catch (e) {}
       if (!seed || !/^[0-9a-f]{64}$/.test(seed)) {
@@ -126,15 +130,22 @@
         seed = Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
         try { root.localStorage.setItem('gifos_room_seed', seed); } catch (e) {}
       }
-      return AO.createSigner(seed).then((signer) => sha256hexOfBytes(hexBytes(signer.pkHex)).then((h) => {
+      const keyOf = (sd) => AO.createSigner(sd).then((signer) => sha256hexOfBytes(hexBytes(signer.pkHex)).then((h) => ({ id: h.slice(0, 16), signer })));
+      return sha256hex('gifos-room-app|' + seed + '|' + app).then((appSeed) => Promise.all([keyOf(appSeed), keyOf(seed)])).then(([mine, old]) => {
         let lastT = 0;
         // t: this browser's own clock, made strictly increasing; the owner keeps the last t per person, so a
         // copied request is never taken twice. It orders ONE sender's requests and dates nothing.
         const stamp = () => { const n = Date.now(); lastT = n > lastT ? n : lastT + 1; return lastT; };
-        return { id: h.slice(0, 16), signer, stamp };
-      }));
+        return { id: mine.id, signer: mine.signer, stamp, old };
+      });
     });
-    return _personP;
+    _personP.set(app, p); p.catch(() => _personP.delete(app));
+    return p;
+  }
+  // A saved session with one person's key replaced by another (keys are 16 hex: they never occur inside other text).
+  function rekeySession(saved, from, to) {
+    if (!saved || !from || !to || from === to) return saved;
+    try { const j = JSON.stringify(saved); return j.indexOf('"' + from + '"') < 0 ? saved : JSON.parse(j.split('"' + from + '"').join('"' + to + '"')); } catch (e) { return saved; }
   }
   function roomRoster(me, manifest) {
     const r = typeof root.__gifosRoom === 'function' ? root.__gifosRoom('roster', { k: me.id }) : null;
@@ -215,7 +226,7 @@
       return w.then(() => { if (r.changed || write) save(); push(); return r; });
     };
     const ready = db.op('get', ROOM_COL, 'session').catch(() => null).then((saved) => {
-      eng = AR.create(sp, saved, { now: Date.now(), resumeMs: GifOS.timings.APP_ROOM_RESUME_MS });
+      eng = AR.create(sp, rekeySession(saved, me.old && me.old.id, me.id), { now: Date.now(), resumeMs: GifOS.timings.APP_ROOM_RESUME_MS });
       tick();
       save(); // every copy has this share's session from its first state on (a held request reads its answer there)
       timer = setInterval(tick, GifOS.timings.APP_ROOM_BEAT_MS);
@@ -243,6 +254,22 @@
             const t = Number(b.t) || 0;
             if (t <= (lastT.get(k) || 0)) return null;
             lastT.set(k, t);
+            // A guest's seat saved under the key one seed made for every app moves to its app's own key, on a proof
+            // signed with that old key naming this new one (so nobody can take a seat by claiming its old key).
+            if (b.q && b.q.op === 'rekey') {
+              const o = b.old;
+              if (!o || !o.p || o.p.kind !== 'rekey' || !o.p.body || o.p.body.k !== k || typeof o.pk !== 'string') return null;
+              return appOwnerLib().then((AO) => AO.makeVerifier(roomSid(sid), o.pk).verify(o)).then((ov) => {
+                if (!ov || !ov.ok) return null;
+                return sha256hexOfBytes(hexBytes(o.pk)).then((oh) => ready.then(() => {
+                  const from = oh.slice(0, 16);
+                  const cur = eng.session(), moved = rekeySession(cur, from, k);
+                  if (moved === cur || from === k) return null;
+                  eng = AR.create(sp, moved, { now: Date.now(), resumeMs: GifOS.timings.APP_ROOM_RESUME_MS });
+                  tick(); save(); push(); return null;
+                }));
+              });
+            }
             return ready.then(() => take(k, b.q || {}, b.rec));
           });
         }).catch(() => {});
@@ -302,7 +329,7 @@
       if (rh) return q.op === 'state' ? rh.state() : rh.call(q, rec);
       if (q.op !== 'state') throw new Error('This app declares no room.');
       // No session declared: the room's people, read-only (gifos.people()).
-      return personKey().then((me) => ({ on: false, people: roomRoster(me, manifest).people.map((x) => ({ id: x.k, name: x.name || '', me: !!x.me, host: !!x.admin, here: x.here === 'away' ? 'away' : 'here' })) }));
+      return personKey(manifest).then((me) => ({ on: false, people: roomRoster(me, manifest).people.map((x) => ({ id: x.k, name: x.name || '', me: !!x.me, host: !!x.admin, here: x.here === 'away' ? 'away' : 'here' })) }));
     });
   }
   // THE GUEST SIDE: requests go to the owner signed with the person key; the session comes back owner-signed in
@@ -337,7 +364,21 @@
         try { send('act', { op: 'room', f }); } catch (e) {}
       }, () => { w.signing = false; });
     };
+    // A seat this person holds under the old shared key (a session saved before keys were per app): ask the owner to
+    // move it to this app's own key, with a proof signed by the old key. Sent again each retry until the seat moved.
+    let rekeyAt = 0, rekeying = false;
+    const rekey = () => {
+      const s = sessionOf(), oldId = me.old && me.old.id;
+      if (!s || !oldId || oldId === me.id || rekeying || stopped || Date.now() - rekeyAt < GifOS.timings.APP_ROOM_RETRY_MS) return;
+      if (JSON.stringify(s).indexOf('"' + oldId + '"') < 0) return;
+      const r = roomRoster(me, manifest); if (!r.on || !r.me) return;
+      rekeying = true; rekeyAt = Date.now();
+      me.old.signer.sign(roomSid(sid), 'rekey', { k: me.id })
+        .then((old) => me.signer.sign(roomSid(sid), 'room', { pid: r.me, t: me.stamp(), q: { op: 'rekey', q: 'rekey' }, old }))
+        .then((f) => { rekeying = false; if (!stopped) { try { send('act', { op: 'room', f }); } catch (e) {} } }, () => { rekeying = false; });
+    };
     const answer = () => {
+      rekey();
       const s = sessionOf(); const res = s && s.res && s.res[me.id];
       for (const [q, w] of waits) {
         if (res && res.q === q) { waits.delete(q); if (res.ok) w.res({ ok: true }); else w.rej(new Error(roomWhy(AR, res.why))); continue; }
@@ -5663,7 +5704,7 @@
         : makeLocalDb(fileId, emit);
       const netPolicy = makeNetPolicy(fileId, manifest);
       // gifos.room: this copy owns the app, so its OS runs the session.
-      if (manifest && manifest.room) db.roomP = Promise.all([roomLib(), personKey()]).then(([AR, me]) => AR.spec(manifest.room) ? makeRoomHost(manifest, db, AR, me) : null).catch(() => null);
+      if (manifest && manifest.room) db.roomP = Promise.all([roomLib(), personKey(manifest)]).then(([AR, me]) => AR.spec(manifest.room) ? makeRoomHost(manifest, db, AR, me) : null).catch(() => null);
 
       // ---- invite-link lifetime & resilience ------------------------------
       // The link is a capability: whoever holds it can join live AND pull a
@@ -6213,14 +6254,14 @@
         // what app it is running, let alone what it is allowed to share.
         if (mountEl && poolHosts(manifestRef).length && !capDisabled(manifestRef, 'pool')) poolAttach({ send: send }, params.self);
         if (mountEl) { iframe = makeIframe(); mountEl.innerHTML = ''; mountEl.appendChild(iframe); }
-        if (manifestRef && manifestRef.room) db.roomP = Promise.all([roomLib(), personKey()]).then(([AR, me]) => {
+        if (manifestRef && manifestRef.room) db.roomP = Promise.all([roomLib(), personKey(manifestRef)]).then(([AR, me]) => {
           if (!AR.spec(manifestRef.room)) return null;
           roomC = makeRoomClient(manifestRef, AR, me, send, sid, () => itemsOf(ROOM_COL).session || null, !mountEl);
           return roomC;
         }).catch(() => null);
         if (mountEl) mountApp(iframe, filesRef, manifestRef, db, appBytes, makeNetPolicy(null, manifestRef));
         // with no app frame, this person is in the app's roster from the mount (an app frame's gifos.people() does it)
-        else personKey().then((me) => roomRoster(me)).catch(() => {});
+        else personKey(manifestRef).then((me) => roomRoster(me, manifestRef)).catch(() => {});
         if (root.__gifosOnApp) root.__gifosOnApp(appBytes, manifestRef);
         notify('*');
       };
