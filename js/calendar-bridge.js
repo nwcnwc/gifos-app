@@ -258,11 +258,8 @@
     for (let i = 0; i < 8; i++) room += alphabet[u[i] % alphabet.length];
     let v = '';
     if (mode === 'hosted') {
-      if (!GifOS.net || !GifOS.net.edKeysFromSeedHex) throw new Error('This page cannot make a room.');
-      const K = randHex(32);
-      v = (await GifOS.net.edKeysFromSeedHex(K)).verifier;
-      const s = store(); if (!s) throw new Error('This browser could not keep the room.');
-      s.setItem('gifos_vadm_' + roomKey(room, v), K);
+      if (!GifOS.meetMyRoom || !GifOS.meetMyRoom.createHosted) throw new Error('This page cannot make a room.');
+      v = (await GifOS.meetMyRoom.createHosted(room)).v;
     }
     const origin = (root.location && root.location.origin) || '';
     const link = origin + '/meet#' + GifOS.link.hash({ room, v: v || undefined });

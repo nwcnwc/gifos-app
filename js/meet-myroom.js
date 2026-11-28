@@ -177,6 +177,15 @@
     writeJson(KEY.mine, { room, v, at: Date.now() });
     return { room, v };
   }
+  // createHosted(room) -> {room, v}: a fresh hosted room for a meeting (a random host secret kept on this device), which
+  // is NOT My Room: nothing here names it as the personal room.
+  async function createHosted(room) {
+    if (!ROOM_RE.test(room || '')) throw new Error('Pick a name with letters or numbers.');
+    const K = randHex(32);
+    const v = (await net().edKeysFromSeedHex(K)).verifier;
+    try { store().setItem('gifos_vadm_' + roomKey(room, v), K); } catch (e) { throw new Error('This browser could not keep the room.'); }
+    return { room, v };
+  }
   // adopt(room, v): one of this device's hosted rooms (it holds the host key) becomes My Room.
   function adopt(room, v) {
     v = String(v || '').toLowerCase();
@@ -1056,7 +1065,7 @@
 
   GifOS.meetMyRoom = {
     KEY, make, mint, mintFor, check, parseToken, prove, proofOk, myKey, keyWord, keyWordOk, sealLabel, openLabel, readCard, renew,
-    mine, isMine, create, adopt, hosted, stayOn, setStay,
+    mine, isMine, create, createHosted, adopt, hosted, stayOn, setStay,
     contacts, contactFor, keep, forget, rename, issued, revoke, revoked, missed, noteMissed, clearMissed, cardLink, roomKey,
     privName, privates, privFor, pairWith, keepPrivate, mintPrivate, contactPub, issuedTo, cutPrivate, cardIn, memberOf, signWord, wordOk,
     listenSet, touchPrivate, LISTEN_MAX, useStore, dropMine,
