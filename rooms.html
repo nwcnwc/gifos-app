@@ -149,7 +149,8 @@
   }
   window.gifosPinTarget = pinTarget;
   // GENERATED from gifos timings.json by scripts/gen-timings.mjs (the line below): do not edit by hand.
-  var LOADER_T = { VERSION_ASK_MS: 1900, VERSION_FIRST_ASK_MS: 3900 };
+  var LOADER_T = { VERSION_ASK_MS: 1900, VERSION_FIRST_ASK_MS: 3900, SHELL_HINT_MS: 4000, SHELL_GONE_MS: 90000, SHELL_POLL_MS: 200 };
+  window.gifosLoaderT = LOADER_T;   // the loading shell (below) reads its waits from the same generated line
   // The release is asked about without blocking: the rest of this page (the
   // edge build) is stopped at once, version.json gets LOADER_T.VERSION_ASK_MS
   // to answer, and the page moves to the live release or, on no answer, to the

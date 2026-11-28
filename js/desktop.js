@@ -2106,7 +2106,7 @@
         '.b{font-weight:700;font-size:28px;letter-spacing:.02em}.s{width:34px;height:34px;border:3px solid #2a2a3a;border-top-color:#7b5cff;border-radius:50%;animation:r 1s linear infinite}' +
         '@keyframes r{to{transform:rotate(360deg)}}#m{opacity:0;transition:opacity .6s;color:#9a9ab0;font-size:14px;text-align:center;padding:0 24px}#m.on{opacity:1}</style>' +
         '<div class="b">GifOS</div><div class="s"></div><div id="m">Still loading. The connection looks slow, but GifOS is on its way.</div>' +
-        '<script>setTimeout(function(){document.getElementById("m").className="on"},4000)<\/script>');
+        '<script>setTimeout(function(){document.getElementById("m").className="on"},' + ((root.GifOS && root.GifOS.timings && root.GifOS.timings.SHELL_HINT_MS) || 0) + ')<\/script>');
       d.close();
       w.location.href = url;
     } catch (e) { try { w.location.href = url; } catch (e2) { root.open(url, '_blank'); } }
