@@ -342,6 +342,23 @@
   const state = { tab: 'home', data: null };
   let host = null, paintQueued = false;
   function data() { const ppl = people(); return { me: me(), ppl, rooms: visited('meet', ppl), casts: visited('cast', ppl) }; }
+  // ORBIT: the stage is the free space between the header (menu bar, and the greeting when it is centred) and the bar
+  // below, measured live, so no icon or label can sit under either.
+  function fit() {
+    if (!host) return;
+    const stage = host.querySelector('.o-stage'), bar = host.querySelector('.o-bar'), top = host.querySelector('.o-top'), mb = doc.querySelector('.menubar');
+    if (!stage || !bar) return;
+    // offset boxes, not bounding rects: the bar slides up when it first shows, and a rect would measure that slide
+    const hr = host.getBoundingClientRect(), gap = 8, centred = !!top && root.innerWidth < 900 && root.innerHeight > 520;   // from 900px the greeting sits at the left, beside the rings
+    const t = Math.max(mb ? mb.getBoundingClientRect().bottom - hr.top : 0, centred ? top.offsetTop + top.offsetHeight : 0) + gap;
+    const b = host.clientHeight - bar.offsetTop + gap;
+    stage.style.setProperty('--of-top', Math.max(0, Math.round(t)) + 'px'); stage.style.setProperty('--of-bot', Math.max(0, Math.round(b)) + 'px');
+  }
+  function watchFit() {
+    if (watchFit.done) return; watchFit.done = true;
+    root.addEventListener('resize', () => { if (current() === 'orbit') fit(); });
+    if (root.ResizeObserver) { const ro = new root.ResizeObserver(() => { if (current() === 'orbit') fit(); }); ro.observe(doc.documentElement); host.querySelectorAll('.o-bar, .o-top').forEach((n) => ro.observe(n)); }
+  }
   function paint() {
     const id = current();
     if (id === 'classic' || !host) return;
@@ -350,6 +367,7 @@
     state.data = data();
     host.className = 'hv hv-' + id;
     LOOKS[id](host, state.data);
+    if (id === 'orbit') { watchFit(); fit(); root.requestAnimationFrame(fit); }   // again after layout, for the bar's real height
     const meBtn = doc.getElementById('hv-me-btn'); if (meBtn) meBtn.innerHTML = myFace();
     const sc2 = host.querySelector('.hv-scroll'); if (sc2) sc2.scrollTop = top;
     if (typed !== null) { const inp = host.querySelector('.hv-join input'); if (inp) { inp.value = typed; inp.focus(); } }
