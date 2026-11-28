@@ -12,7 +12,8 @@
       "fixes": [
         "A computer standing by for a call to your room keeps ringing until you answer or the caller hangs up (it stopped after a few seconds).",
         "The first tap on Give my card or Swap cards on a phone now works.",
-        "Every GifOS page stays at its plain gifos.app address."
+        "Every GifOS page stays at its plain gifos.app address.",
+        "A host who signs in during a meeting gets Clear Stage for the viewers at once, without reconnecting."
       ]
     },
     {
