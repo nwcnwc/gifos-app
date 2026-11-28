@@ -2,6 +2,17 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.69",
+      "date": "2026-11-27",
+      "headline": "Open rooms clear only when everyone consents",
+      "features": [],
+      "fixes": [
+        "In an open room with a password, everyone's video clears only when every seat has its camera on and its own picture clear (No blur or a background effect). A camera that is off never counts as consent.",
+        "Debug logs now carry a connection-path record (TURN, ICE) to help trace flaky links.",
+        "A link that keeps dropping is retried with growing pauses instead of every half minute."
+      ]
+    },
+    {
       "version": "0.9.28.68",
       "date": "2026-11-27",
       "headline": "The floating bar tucks away at either edge",
@@ -244,7 +255,7 @@
       "features": [
         "My Room: make your own room, swap cards with someone in a meeting, and they become a contact on both devices.",
         "Call a contact and their My Room rings with your name; a verified card shows a check mark.",
-        "Private room with…: the same private room for the two of you, every time.",
+        "Private room with\u2026: the same private room for the two of you, every time.",
         "Invite a contact into the meeting you are in."
       ],
       "fixes": [
