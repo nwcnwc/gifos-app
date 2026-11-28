@@ -334,6 +334,7 @@
     TURN_THROTTLE_LOOK_MS: 2000,   // ms
     TURN_THROTTLE_UP_MS: 10000,   // ms
     TURN_WEB_LOOKUP_MS: 5000,   // ms
+    TV_COUNT_WAIT_MS: 2000,   // ms
     UNOWNED_PC_MS: 15000,   // ms
     UPDATE_CHECK_MS: 60000,   // ms
     UPDATE_RESUME_TTL: 120000,   // ms

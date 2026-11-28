@@ -105,8 +105,18 @@
   function kindNow() { try { var k = ctx.kind && ctx.kind(); return k === 'pre' || k === 'bot' ? k : 'live'; } catch (e) { return 'live'; } }
   // The door's count: asked before each on-air note and keep-alive; the newest answer the relay gave rides along
   // (gifos.tv checks its signature and age; a stale or missing one just means no count).
-  function askCount() { try { if (ctx.askCount) ctx.askCount(); } catch (e) {} }
-  function heardCount(m) { if (m && typeof m.sp === 'string' && typeof m.sig === 'string') doorCnt = { sp: m.sp, sig: m.sig }; }
+  // askCount() resolves when the answer comes, or after TV_COUNT_WAIT_MS (timings.json) without one: a relay that does
+  // not answer (no key, an older relay, asked too soon) only delays the note, and the note then goes without a count.
+  var countWaiters = [];
+  function askCount() {
+    try { if (ctx.askCount) ctx.askCount(); else return Promise.resolve(); } catch (e) { return Promise.resolve(); }
+    var wait = Number(GifOS.timings && GifOS.timings.TV_COUNT_WAIT_MS) || 0;
+    return new Promise(function (res) { countWaiters.push(res); setTimeout(res, wait); });
+  }
+  function heardCount(m) {
+    if (m && typeof m.sp === 'string' && typeof m.sig === 'string') doorCnt = { sp: m.sp, sig: m.sig };
+    var w = countWaiters.splice(0); w.forEach(function (f) { f(); });
+  }
   function postAir(w, withToken) {
     return (withToken ? tokenFor() : Promise.resolve('')).then(function (jt) {
       return root.fetch(API + '/api/order', { method: 'POST', credentials: 'omit', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ w: w, jt: jt || undefined, dc: doorCnt || undefined }) });
@@ -140,8 +150,7 @@
   function goOnAir() {
     var rk = ctx.roomKey();
     onAirFor = rk;
-    askCount();
-    return ctx.sign('tvair', { on: 1, k: kindNow() }).then(function (w) {
+    return askCount().then(function () { return ctx.sign('tvair', { on: 1, k: kindNow() }); }).then(function (w) {
       return postAir(w, true);
     }).then(function (j) {
       if (onAirFor !== rk) return j;
@@ -156,8 +165,7 @@
   function keepAlive() {
     keepTimer = 0;
     if (!ctx || !listed() || !ctx.inMeeting() || !ctx.admin()) { if (onAirFor) sendOff(false); return; }
-    askCount();
-    ctx.sign('tvkeep', { k: kindNow() }).then(function (w) { return postAir(w, false); }).then(function (j) {
+    askCount().then(function () { return ctx.sign('tvkeep', { k: kindNow() }); }).then(function (w) { return postAir(w, false); }).then(function (j) {
       if (j.ok) { schedule(j.next); return signOff(); }
       if (j.status === 404) { onAirFor = ''; return goOnAir(); }   // the listing went off air (an off note, or it lapsed): say on air again
       schedule(60000);
