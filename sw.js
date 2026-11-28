@@ -683,13 +683,13 @@ async function bellPush(e) {
   rings.unshift({ i: m.i, c: m.c, at: when, label: label, url: at.url, done: false });
   await bellPut(db, 'rings', rings.slice(0, 50));
   var url = String(at.url || '/meet'), r = String(at.r || '');
-  if (Date.now() - when > ringMs) { await bellStale(ringMs); return bellMissed(label, when, url, m.i, r, m.c); }   // it came after the ring would have ended (Doze)
+  if (Date.now() - when > ringMs) { await bellStale(ringMs, bellTag(m.i)); return bellMissed(label, when, url, m.i, r, m.c); }   // it came after the ring would have ended (Doze)
   var wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
   for (var w = 0; w < wins.length; w++) {
     try { if (wins[w].visibilityState === 'visible' && new URL(wins[w].url).hash === new URL(url, self.location.origin).hash) return; } catch (err) {}
   }
   var tag = bellTag(m.i);
-  await bellStale(ringMs);
+  await bellStale(ringMs, tag);
   // The push event ends with the ring on screen. (Held open until the ring ends, a ring the person swiped away left the
   // event with nothing on screen, and Chrome then shows its own "updated in the background" notice.) An unanswered ring
   // stays as the record of the call (the name, the time); a tap on it later calls back.
@@ -702,12 +702,13 @@ async function bellPush(e) {
   });
 }
 // Rings still on screen whose time has passed (nobody answered, nobody swiped) become missed calls, in place and silent,
-// whenever this worker next runs for a ring.
-async function bellStale(ringMs) {
+// whenever this worker next runs for a ring. Not the one the new ring replaces anyway (skip): Android drops an update that
+// comes right on top of another to the same notification, and that would be the new ring.
+async function bellStale(ringMs, skip) {
   var open = []; try { open = await self.registration.getNotifications(); } catch (err) { open = []; }
   for (var n = 0; n < open.length; n++) {
     var d = open[n].data || {};
-    if (d.kind === 'ring' && Date.now() - (+d.at || 0) > ringMs) await bellMissed(d.label || open[n].title, d.at, d.url, d.i, d.r, d.c);
+    if (d.kind === 'ring' && open[n].tag !== skip && Date.now() - (+d.at || 0) > ringMs) await bellMissed(d.label || open[n].title, d.at, d.url, d.i, d.r, d.c);
   }
 }
 self.addEventListener('push', function (e) { e.waitUntil(bellPush(e).catch(function () {})); });

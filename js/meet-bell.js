@@ -310,6 +310,16 @@
     return list.filter((x) => x && !x.done);
   }
 
+  // As this page loads: a page opened by Answer moments ago (the note above names its room) skips the "how you'll appear"
+  // card before the meeting can show it. The note itself is taken later, by the room (takeAnswer).
+  try {
+    const L = GifOS.link && root.location ? GifOS.link.read(root.location.pathname, root.location.search, root.location.hash) : null;
+    const here = L && L.room && L.v ? roomKey(L.room, L.v) : '';
+    if (here && root.indexedDB) idbGet('answer').then((a) => {
+      if (a && a.r === here && Math.abs(Date.now() - (+a.at || 0)) <= (T().MYROOM_RING_MS || 0)) { try { root.sessionStorage.setItem('gifos_appear_ok', '1'); root.sessionStorage.setItem('gifos_appeared', '1'); } catch (e) {} }
+    }, () => {});
+  } catch (e) {}
+
   GifOS.bell = { KEY, pushable, on, enable, disable, devices, remove, pause, test, offer, take, press, cut, cutKey, flushCuts, handles, held, heldFor, takeRings, takeAnswer, mirror, deviceName, me };
   if (typeof module !== 'undefined' && module.exports) module.exports = GifOS.bell;
 })(typeof window !== 'undefined' ? window : globalThis);
