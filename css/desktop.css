@@ -576,6 +576,12 @@ button.row-del svg { display: block; pointer-events: none; }
   background: #fff; color: #1d1d1f; font: inherit; text-align: left; cursor: pointer;
 }
 .settings-sheet .set-card button.set-row:last-child { border-bottom: none; }
+.settings-sheet .set-card .data-row {
+  display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 8px 14px;
+  border-bottom: 1px solid #e5e5ea; background: #fff; color: #1d1d1f;
+}
+.settings-sheet .set-card .data-row:last-child { border-bottom: none; }
+.settings-sheet .data-row select { flex: 0 0 auto; max-width: 52%; min-height: 44px; }
 .settings-sheet button.set-row.danger,
 .settings-sheet button.set-row.danger b { color: #c41e3a; }
 .settings-sheet .set-row-t { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }

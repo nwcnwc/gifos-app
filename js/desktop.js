@@ -1093,7 +1093,8 @@
               const m = await getAppMeta(fileId, bytes).catch(() => null);
               const facts = { signed: !!sig, sigId: sig ? sig.id : '',
                               shortName: m ? m.shortName : '', version: m ? m.version : '',
-                              provides: m ? m.provides : [], networky: m ? m.networky : false };
+                              // a seeded app that serves a data role is the OS's own provider, recognised where it sits
+                              provides: m ? (f.isDefault === true ? m.provides.filter((r) => r.indexOf('data:') !== 0) : m.provides) : [], networky: m ? m.networky : false };
               await Promise.resolve(store.putArtFacts(fileId, facts, rec.srcLen)).catch(() => {});
               rec.facts = facts; rec.factsFor = rec.srcLen;
               factsInto(d, facts); d.factsDone = true; changed = true;
@@ -1140,7 +1141,9 @@
       // 'meet:<role>', so it follows the same place rule (Providers folder,
       // red ✕ elsewhere) and is never offered as an AI model.
       const prov = (m.provides && Array.isArray(m.provides.ai) ? m.provides.ai.filter(Boolean) : [])
-        .concat(m.provides && Array.isArray(m.provides.meet) ? m.provides.meet.filter((r) => typeof r === 'string' && r).map((r) => 'meet:' + r) : []);
+        .concat(m.provides && Array.isArray(m.provides.meet) ? m.provides.meet.filter((r) => typeof r === 'string' && r).map((r) => 'meet:' + r) : [])
+        // a data role (contacts, calendar) as 'data:<role>': the same place rule, offered in Settings → Your data
+        .concat(m.provides && Array.isArray(m.provides.data) ? m.provides.data.filter((r) => typeof r === 'string' && r).map((r) => 'data:' + r) : []);
       const caps = m.capabilities || {};
       const some = (v) => Array.isArray(v) ? v.length > 0 : !!v;
       return { shortName: (m.shortName || m.name || '').toString().trim(), version: (m.version || '').toString().trim(),
@@ -3422,6 +3425,66 @@
     } catch (e) { /* no providers to offer */ }
     return out;
   }
+  // ---- Your data: who answers each data role, and who may have what (docs/providers.md "Data providers") -------
+  // The lists themselves are js/gifos-grants.js; the broker (runtime.js) reads them before any provider sees a request.
+  // Identity is always Me & My Contacts (it is who you are); contacts and calendar may be a store provider that sits in
+  // the Providers folder and declares no network.
+  const DATA_CFG = 'gifos_data_config';
+  const dataCfgAll = () => { try { return JSON.parse(localStorage.getItem(DATA_CFG) || '{}') || {}; } catch (e) { return {}; } };
+  const DATA_ROLES = [{ key: 'contacts', sys: () => ST('settings.data.sysContacts') }, { key: 'calendar', sys: () => ST('settings.data.sysCalendar') }];
+  const KIND_KEYS = { name: 'kName', avatar: 'kAvatar', pick: 'kPick', send: 'kSend', freebusy: 'kFreebusy', events: 'kEvents', add: 'kAdd' };
+  function providerLabel(pk) {
+    if (pk === 'system:identity' || pk === 'system:contacts') return ST('settings.data.sysContacts');
+    if (pk === 'system:calendar') return ST('settings.data.sysCalendar');
+    const m = /^app:([^@]*)@(.+)$/.exec(pk); const f = m && dataCfgAll();
+    const hit = f && Object.keys(f).map((r) => f[r]).find((c) => c && c.app === m[2]);
+    return (hit && hit.appName) || (m && m[1]) || pk;
+  }
+  async function paintDataSection(box) {
+    const host = box.querySelector('#set-data-box'); if (!host) return;
+    const offers = await scanProviders().catch(() => []);
+    host._offers = offers;
+    const cfg = dataCfgAll();
+    let h = '<p class="add-help">' + escapeHtml(ST('settings.data.intro')) + '</p><div class="set-group">' + escapeHtml(ST('settings.data.who')) + '</div><div class="set-card">';
+    h += '<div class="data-row"><span class="set-row-t"><b>' + escapeHtml(ST('settings.data.rIdentity')) + '</b><span>' + escapeHtml(ST('settings.data.sysContacts')) + '</span></span></div>';
+    for (const r of DATA_ROLES) {
+      const opts = offers.filter((o) => (o.roles || []).indexOf('data:' + r.key) >= 0);
+      const cur = cfg[r.key] && cfg[r.key].app;
+      h += '<label class="data-row"><span class="set-row-t"><b>' + escapeHtml(ST('settings.data.r' + r.key.charAt(0).toUpperCase() + r.key.slice(1))) + '</b></span>' +
+        '<select class="data-src" data-role="' + r.key + '"><option value="">' + escapeHtml(r.sys()) + '</option>' +
+        opts.map((o) => '<option value="' + escapeHtml(o.fileId) + '"' + (o.fileId === cur ? ' selected' : '') + '>' + escapeHtml(o.name) + '</option>').join('') +
+        (cur && !opts.some((o) => o.fileId === cur) ? '<option value="' + escapeHtml(cur) + '" selected>' + escapeHtml((cfg[r.key].appName || '') + ' — ' + ST('settings.data.missing')) + '</option>' : '') + '</select></label>';
+    }
+    h += '</div><div class="set-group">' + escapeHtml(ST('settings.data.lists')) + '</div>';
+    const G = GifOS.grants, all = G ? G.entries() : [];
+    if (!all.length) h += '<p class="add-help" id="set-data-none">' + escapeHtml(ST('settings.data.none')) + '</p>';
+    const byProv = {}; all.forEach((e) => { (byProv[e.provider] = byProv[e.provider] || []).push(e); });
+    for (const pk of Object.keys(byProv)) {
+      h += '<div class="set-group">' + escapeHtml(providerLabel(pk)) + '</div><div class="set-card">';
+      for (const e of byProv[pk]) {
+        const lv = (v) => '<option value="' + v + '"' + (e.level === v ? ' selected' : '') + '>' + escapeHtml(ST('settings.data.l' + v.charAt(0).toUpperCase() + v.slice(1))) + '</option>';
+        h += '<label class="data-row data-grant"><span class="set-row-t"><b>' + escapeHtml(e.name || e.appId || '?') + '</b><span>' + escapeHtml(ST('settings.data.' + (KIND_KEYS[e.kind] || 'kName'))) + '</span></span>' +
+          '<select class="data-lvl" data-p="' + escapeHtml(e.provider) + '" data-k="' + escapeHtml(e.kind) + '" data-c="' + escapeHtml(e.consumer) + '">' + lv('always') + lv('ask') + lv('never') +
+          '<option value="">' + escapeHtml(ST('settings.data.lRemove')) + '</option></select></label>';
+      }
+      h += '</div>';
+    }
+    host.innerHTML = h;
+  }
+  function wireDataSection(box) {
+    const host = box.querySelector('#set-data-box'); if (!host) return;
+    const goBtn = box.querySelector('#set-go-data'); if (goBtn) goBtn.addEventListener('click', () => { paintDataSection(box); });
+    host.addEventListener('change', (ev) => {
+      const t = ev.target;
+      if (t.classList.contains('data-lvl') && GifOS.grants) { GifOS.grants.set(t.getAttribute('data-p'), t.getAttribute('data-k'), t.getAttribute('data-c'), t.value); if (!t.value) paintDataSection(box); return; }
+      if (t.classList.contains('data-src')) {
+        const role = t.getAttribute('data-role'), cfg = dataCfgAll();
+        if (!t.value) delete cfg[role];
+        else { const o = (host._offers || []).find((x) => x.fileId === t.value); if (o) cfg[role] = { app: o.fileId, appId: o.appId || '', appName: o.name || '' }; }
+        try { localStorage.setItem(DATA_CFG, JSON.stringify(cfg)); } catch (e) {}
+      }
+    });
+  }
   function wireAiSection(box) {
     const readRow = (key) => {
       const o = {};
@@ -4013,6 +4076,7 @@
           '<div class="set-group">' + escapeHtml(ST('settings.root.groupApps')) + '</div><div class="set-card">' +
             '<button type="button" class="set-row" id="set-go-ai"><span class="set-row-t"><b>' + escapeHtml(ST('settings.ai.title')) + '</b><span id="set-status-ai">' + escapeHtml(aiStatus) + '</span></span><span class="chev" aria-hidden="true">›</span></button>' +
             '<button type="button" class="set-row" id="set-go-accounts"><span class="set-row-t"><b>' + escapeHtml(ST('settings.accounts.title')) + '</b><span>' + escapeHtml(ST('settings.accounts.sub')) + '</span></span><span class="set-status" id="set-status-api">' + escapeHtml(apiStatus) + '</span><span class="chev" aria-hidden="true">›</span></button>' +
+            '<button type="button" class="set-row" id="set-go-data"><span class="set-row-t"><b>' + escapeHtml(ST('settings.data.title')) + '</b><span>' + escapeHtml(ST('settings.data.sub')) + '</span></span><span class="chev" aria-hidden="true">›</span></button>' +
             '<button type="button" class="set-row" id="set-go-payments"><span class="set-row-t"><b>' + escapeHtml(ST('settings.pay.title')) + '</b><span id="set-status-pay">' + escapeHtml(payStatus) + '</span></span><span class="chev" aria-hidden="true">›</span></button>' +
           '</div>' +
           '<div class="set-group">' + escapeHtml(ST('settings.root.groupComputer')) + '</div><div class="set-card">' +
@@ -4055,6 +4119,7 @@
         (I18N ? '<section data-page="language" hidden>' + langSectionHtml() + '</section>' : '') +
         '<section data-page="ai" hidden>' + aiSectionHtml() + '</section>' +
         '<section data-page="accounts" hidden>' + apiSectionHtml() + '</section>' +
+        '<section data-page="data" hidden><div id="set-data-box"></div></section>' +
         '<section data-page="payments" hidden>' + paySectionHtml() + '</section>' +
         '<section data-page="system" hidden>' +
           '<div class="set-card">' +
@@ -4093,7 +4158,7 @@
       root: ST('settings.title'), you: ST('settings.you.title'), look: ST('settings.look.title'), language: I18N ? I18N.t('settings.lang.title') : '', ai: ST('settings.ai.title'),
       accounts: ST('settings.accounts.title'), payments: ST('settings.pay.title'), system: ST('settings.system.title'),
       storage: ST('settings.storage.title'), updates: ST('settings.updates.title'), connection: ST('settings.conn.title'),
-      erase: ST('settings.erase.title'),
+      erase: ST('settings.erase.title'), data: ST('settings.data.title'),
     };
     let stack = ['root'];
     // One save model on every page. Name, the invite connection, and AI wait
@@ -4168,6 +4233,7 @@
     for (const i of box.querySelectorAll('input[type=password]')) pwEye(i);
     wireAiSection(box);
     wireApiSection(box);
+    wireDataSection(box);
     wirePaySection(box);
     wireLangSection(box);
     const paintAvatar = () => {

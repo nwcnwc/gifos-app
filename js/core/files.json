@@ -118,6 +118,7 @@
   "js/gifos-gif.js",
   "js/app-owner.js",
   "js/app-room.js",
+  "js/gifos-grants.js",
   "js/runtime.js",
   "js/meet-subs.js",
   "js/gifos-identity.js",

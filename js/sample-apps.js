@@ -4786,6 +4786,47 @@ i18nStart(async()=>{
   if(window.gifos&&gifos.i18n&&gifos.i18n.load) gifos.i18n.load().then(boot,boot); else boot();
 </script>`;
   // Calendar's widgets: one file for both ("today": the date and what comes next; "month": the month at a glance).
+  // The Calendar as the "calendar" provider: the small page the OS mounts, hidden, to answer other apps (docs: Data
+  // providers). It reads and writes only this app's own events; the OS has already checked the Calendar's permission
+  // list before a question gets here, and it computes free/busy itself from what this page returns.
+  const CALENDAR_SERVE_HTML = `<!doctype html><meta charset="utf-8"><script>
+  (function(){
+    var db = gifos.db('events');
+    function pad(n){ return (n<10?'0':'')+n; }
+    function dayKey(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+    function dayOf(k){ var a=String(k).split('-'); return new Date(+a[0],(+a[1]||1)-1,+a[2]||1); }
+    // One stored row as zero or more occurrences inside [from, to). A repeating event needs the iCalendar library
+    // (window.GifOSIcal, when the app carries it); without it a row stands for its first date only.
+    function occurrences(rows, from, to){
+      var L = window.GifOSIcal;
+      if (L && L.expandAll) return L.expandAll(rows, from, to, { max: 5000 }).map(function(o){ var e=o.event||{}; return { uid:e.uid||e.id, title:e.title, start:o.startMs, end:o.endMs, allDay:!!o.allDay, location:e.location, notes:e.notes, link:(L.meetingLink&&L.meetingLink(e))||e.url||'', recurring:!!o.recurring }; });
+      var out = [];
+      rows.forEach(function(r){
+        var s, e, all;
+        if (r.d) { all = !r.t; s = dayOf(r.d); if (!all) { var hm=String(r.t).split(':'); s.setHours(+hm[0]||0, +hm[1]||0, 0, 0); } e = all ? new Date(s.getFullYear(), s.getMonth(), s.getDate()+1) : new Date(s.getTime()+((+r.dur>0?+r.dur:60)*60000)); }
+        else if (r.allDay) { all = true; s = dayOf(r.start); e = dayOf(r.end || r.start); if (e <= s) e = new Date(s.getFullYear(), s.getMonth(), s.getDate()+1); }
+        else { all = false; s = new Date(+r.start); e = new Date(+r.end || (+r.start + 3600000)); }
+        if (!isFinite(s) || !isFinite(e) || e.getTime() <= from || s.getTime() >= to) return;
+        out.push({ uid: r.uid || r.id, title: r.title || '', start: s.getTime(), end: e.getTime(), allDay: all, location: r.location || '', notes: r.notes || '', link: r.url || '' });
+      });
+      return out.sort(function(a,b){ return a.start-b.start; });
+    }
+    gifos.provider.serve({
+      calendar: function(req){
+        if (req.op === 'events') return db.getAll().then(function(rows){ return occurrences(rows || [], +req.from, +req.to); });
+        if (req.op === 'add') {
+          var ev = req.event || {}, row;
+          // the row shape the Calendar keeps today: a day, a time (empty for all day), a title
+          if (ev.allDay) row = { d: ev.start, t: '', title: ev.title };
+          else { var d = new Date(+ev.start); row = { d: dayKey(d), t: pad(d.getHours())+':'+pad(d.getMinutes()), title: ev.title, dur: Math.max(1, Math.round((+ev.end - +ev.start)/60000)) || 60 }; }
+          if (ev.location) row.location = ev.location; if (ev.notes) row.notes = ev.notes; if (ev.url) row.url = ev.url;
+          return db.put(row).then(function(r){ return { uid: (r && r.id) || row.id || '' }; });
+        }
+        throw new Error('The Calendar does not answer "' + req.op + '".');
+      }
+    });
+  })();
+<\/script>`;
   const CALENDAR_WIDGET_HTML = `<!doctype html><meta charset="utf-8">
 <style>${WIDGET_BASE_CSS}
   body{padding:2px}
@@ -7861,10 +7902,12 @@ The Store itself does not keep a shopping cart in this icon.
     }, {
       // Local first and private: events live in this app's own data on this device. No account, no server, no third party.
       name: 'Calendar.gif', appId: 'calendar', accent: [255, 92, 120],
+      // It is also the computer's "calendar" provider (serve/index.html): other apps ask the OS, never this app's data.
       files: withHelp('calendar', { 'manifest.json': manifest('calendar', 'Calendar', [255, 92, 120], { capabilities: { db: true, multiplayer: false }, data: { events: PRIV },
+               provides: { data: ['calendar'], entry: 'serve/index.html' },
                widgets: [{ id: 'today', name: 'Today', entry: 'widget/index.html', sizes: ['medium', 'small', 'wide'] },
                          { id: 'month', name: 'Month', entry: 'widget/index.html', sizes: ['medium', 'large'] }] }),
-               'index.html': themeHtml(CALENDAR_HTML, 'full'), 'widget/index.html': CALENDAR_WIDGET_HTML }),
+               'index.html': themeHtml(CALENDAR_HTML, 'full'), 'widget/index.html': CALENDAR_WIDGET_HTML, 'serve/index.html': CALENDAR_SERVE_HTML }),
     });
 
     const encGroup = (g) => Promise.all([

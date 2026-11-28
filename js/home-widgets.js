@@ -157,7 +157,7 @@
         order = loc.catalogs.indexOf('en') === -1 ? loc.catalogs.concat(['en']) : loc.catalogs;
         await Promise.all(order.map((l) => root.fetch(I.catalogUrl(l, 'apps/' + w.appId.replace(/[^a-z0-9_-]/gi, ''))).then((r) => (r.ok ? r.json() : null)).catch(() => null).then((o) => { if (o && typeof o === 'object') catalogs[l] = o; })));
       }
-      return { files, catalogs, order };
+      return { files, catalogs, order, raw: arc.files, bytes: f.bytes, manifest: gif().readManifest(arc) || {} };
     })();
     arcs.set(w.fileId, p); p.catch(() => arcs.delete(w.fileId));
     return p;
@@ -219,6 +219,11 @@
           subscribe: function (cb) { if (typeof cb !== 'function') return; (subs[c] = subs[c] || []).push(cb); rpc({ type: 'db', op: 'getAll', collection: c }).then(function (r) { try { cb(r); } catch (e) {} }, function () {}); },
           put: refuse, delete: refuse, setVisibility: refuse }; },
         info: function () { return Promise.resolve(INIT.info); },
+        // The person's agenda from the calendar provider, through the same broker and permission list as the app itself.
+        calendar: {
+          events: function (r) { r = r || {}; return rpc({ type: 'data', role: 'calendar', op: 'events', from: r.from, to: r.to }); },
+          freeBusy: function (r) { r = r || {}; return rpc({ type: 'data', role: 'calendar', op: 'freeBusy', from: r.from, to: r.to }); }
+        },
         locale: function () { return JSON.parse(JSON.stringify(loc)); },
         onLocaleChange: function (cb) { if (typeof cb === 'function') locCbs.push(cb); return function () { var i = locCbs.indexOf(cb); if (i >= 0) locCbs.splice(i, 1); }; },
         i18n: { load: function () { return Promise.resolve(JSON.parse(JSON.stringify(loc))); }, t: function (k, p) { return tFn(k, p); }, format: function (m, p) { return I18.format(m, p, loc.tag, INIT.order[0] || loc.ui); }, fmt: fmt }
@@ -274,7 +279,23 @@
       if (d.op !== 'get' && d.op !== 'getAll') return reply({ ok: false, error: 'A widget only reads. Open the app to change things.' });
       Promise.resolve(d.op === 'get' ? store().appGet(f.w.fileId, coll, d.key) : store().appGetAll(f.w.fileId, coll)).then((r) => reply({ ok: true, result: r == null ? (d.op === 'get' ? null : []) : r }), () => reply({ ok: false, error: 'Could not read.' }));
     }
+    else if (d.type === 'data') {
+      if (d.role !== 'calendar' || (d.op !== 'events' && d.op !== 'freeBusy')) return reply({ ok: false, error: 'A widget only reads. Open the app to change things.' });
+      if (f.w.system) return reply({ ok: false, error: 'Not available here.' });
+      Promise.all([archive(f.w), ensureRuntime()]).then(([a]) => GifOS.providers.ask(a.manifest, a.raw, a.bytes instanceof Uint8Array ? a.bytes : new Uint8Array(a.bytes), { role: 'calendar', op: d.op, from: d.from, to: d.to }))
+        .then((r) => reply({ ok: true, result: r }), (err) => reply({ ok: false, error: String(err && err.message || err) }));
+    }
   });
+  // A widget is its app: its questions to a data provider carry its app's key and go through the one broker
+  // (runtime.js, loaded here the first time a widget asks). A widget only reads, so it may ask for events and free/busy.
+  let rtP = null;
+  function ensureRuntime() {
+    if (GifOS.providers && GifOS.providers.ask) return Promise.resolve();
+    if (!rtP) rtP = ['js/gifos-grants.js', 'js/runtime.js'].reduce((p, src) => p.then(() => (src.indexOf('grants') >= 0 ? GifOS.grants : GifOS.runtime) ? null : new Promise((res, rej) => {
+      const sc = doc.createElement('script'); sc.src = src; sc.onload = res; sc.onerror = () => rej(new Error('Could not load ' + src)); doc.head.appendChild(sc);
+    })), Promise.resolve()).catch((e) => { rtP = null; throw e; });
+    return rtP;
+  }
   function openItem(w) { const H = K().hook(), it = H && H.items().find((x) => x.id === w.itemId); if (it) H.open(it); return !!it; }
   function openApp(appId) { for (const w of cat.values()) if (w.appId === appId) return openItem(w); return false; }
 
