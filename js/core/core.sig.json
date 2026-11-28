@@ -1,6 +1,6 @@
 {
  "v": 1,
- "build": "0.9.28.71",
+ "build": "0.9.28.72",
  "signer": "gifos.app",
  "files": {
   "js/app-owner.js": "7c709e7f9e553d5c4c38ef8925dc7841fe2b68a2f95ebce0846593f91eb54535",
@@ -46,7 +46,7 @@
   "js/meet-zones.js": "71773f5cf0b9f9b2d587f4d01c59d4c611a680dbfb3c717fe6d0c2dfe9301309",
   "js/mesh-identity.js": "e7c41650476bf262b0ba41d9970072b77eb748c16d1d9267c73fb4af8e5e1a79",
   "js/mesh-media.js": "e260c0863adb884f3da1d76426be478d7beb53c5b9015af3262a1669e7c3780c",
-  "js/mesh-wire.js": "9c985b5e4ab2ec62cafa91083631a8a0062a5e32bf0914b9f9dbb1c56007dd0c",
+  "js/mesh-wire.js": "47992473db7317953745926d979a58fa5b6bf9ac8eb738b5f92f9fa675475559",
   "js/mesh/books.js": "092db7b0f42029f95830cfc42f5f3180466832730e7a3510364785d3b97b8c6e",
   "js/mesh/burst.js": "70e72093587a0f383f199c799cd55eb952ecf3d18d88b401500db52a10dcec25",
   "js/mesh/c7proof.js": "defc7b5cc309af34d6b04a052704cdf9cf5080f1a99d68ffdd7318a6cd1591ac",
@@ -108,7 +108,7 @@
   "js/mesh/witness.js": "57fbb5be7700b06efab185322f1be7875ef8b64fcd9c8edb65b34410010135c6",
   "js/relay-config.js": "a96dbda776b370254dbeeded999677a4087880e3c23bca918e4366fb4f788799",
   "js/runtime.js": "67974cc2dcb41a86c701f94c43fb121b0de90f72017fb5eb805d0fdd43f03b26",
-  "js/timings.js": "75297d6a74bc9e4cbaa5670b600ff03c359f8d909fca2e64875d6c86c37428c6"
+  "js/timings.js": "aadc1d5d53dc52d06f90bf202c536760ef7d7c5f41c35aadd7a8a3eb63cc62a1"
  },
- "sig": "YoW6FmYO/g7YuaPLAJHVwThQFD7m4SGj4Mo1dpsGFI77bn8wiInAKAUFbF1GFYoD5YDzOO5nPBlbVXN5/8nuBQ=="
+ "sig": "uiWMHyBtSXH4Aue8gwWdVUimrnXORUheUaMyIY9YssVNibMsRBEeDy35edmv7zoyQIebkRXJIvCHR9Y9aMKFBw=="
 }
