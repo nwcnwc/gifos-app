@@ -1,0 +1,21 @@
+{
+  "title": "Buscaminas",
+  "new": "Nueva partida",
+  "keep": "Seguir jugando",
+  "loading": "Cargando…",
+  "dens.easy": "Fácil",
+  "dens.medium": "Medio",
+  "dens.hard": "Difícil",
+  "dens.expert": "Experto",
+  "mode.off": "🚩 Modo bandera: desactivado",
+  "mode.on": "🚩 Modo bandera: activado",
+  "status.cleared": "Despejado en {time}. Ganan todos.",
+  "status.boom": "💥 ¡Boom! La carita empieza un tablero nuevo.",
+  "status.flagMode": "Modo bandera activado: toca una casilla para poner o quitar una bandera.",
+  "status.play": "Toca para abrir · mantén pulsado o clic derecho para marcar · toca un número para abrir sus vecinas.",
+  "status.start": "Toca cualquier casilla. El primer toque es seguro. Invita a un amigo para compartir este tablero.",
+  "best.boards": "Tableros: {wins}/{games} despejados.",
+  "best.time": "Mejor tiempo en {level}: {time}.",
+  "ask.dens": "¿Empezar un tablero nuevo de nivel {level}?",
+  "ask.new": "¿Empezar una partida nueva?"
+}
