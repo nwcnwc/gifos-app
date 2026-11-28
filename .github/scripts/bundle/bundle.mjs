@@ -142,10 +142,12 @@ function bundlePage(PAGE, NAME) {
 
   // The page: the first deferred tag becomes the loader, which writes the bundle tags for this visit; the other
   // bundled tags go, and the surface's own tag stays. (Tag text inside the loader is split so nothing that scans the
-  // page for script tags mistakes it for one.)
+  // page for script tags mistakes it for one.) A visit that names a room loads the whole bundle at once: an address
+  // with a hash, or a meeting session (js/meet-host.js: srcdoc, no address, its link stamped as __gifosMbLink before
+  // this runs). Only a bare visit starts on the lobby: a room's meeting boots before a later bundle would arrive.
   const loader = '<script>/* gifos bundles: ' + JSON.stringify(files) + ' */(function(){try{' +
     'function w(s){document.write(\'<scr\'+\'ipt src="\'+s+\'" defer></scr\'+\'ipt>\');}' +
-    'var B=' + JSON.stringify(bundleUrl) + ';if(location.hash.length>1){w(B);return;}w(' + JSON.stringify(lobbyUrl) + ');' +
+    'var B=' + JSON.stringify(bundleUrl) + ';if(location.hash.length>1||typeof self.__gifosMbLink==="string"){w(B);return;}w(' + JSON.stringify(lobbyUrl) + ');' +
     'var g=self.__gifosLoadGate,done;var p=new Promise(function(r){done=r;});if(g)g.pending=p;' +
     'document.addEventListener("DOMContentLoaded",function(){var s=document.createElement("script");s.src=B;s.async=false;' +
     's.onload=s.onerror=function(){if(g&&g.pending===p)g.pending=null;done();};document.head.appendChild(s);});' +
