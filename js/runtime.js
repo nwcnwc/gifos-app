@@ -113,12 +113,16 @@
     return _roomLibP;
   }
   const hexBytes = (h) => { const a = new Uint8Array(h.length / 2); for (let i = 0; i < a.length; i++) a[i] = parseInt(h.substr(i * 2, 2), 16); return a; };
-  // One key per browser for rooms (like the name, shared by every app on this computer). The room id is the first
-  // 16 hex of SHA-256 of its public key: the same after a reload, in a new tab and in a new room.
-  let _personP = null;
-  function personKey() {
-    if (_personP) return _personP;
-    _personP = appOwnerLib().then((AO) => {
+  // The room id is the first 16 hex of SHA-256 of a person key's public key: the same after a reload, in a new tab and
+  // in a new room. The person key an app's room sees is that app's OWN: made from this browser's room seed and the app, so
+  // two apps never see one key for the same person. `old` is the key one seed made for every app before; a session
+  // saved under it is moved to the app's own key once (the owner's own seat here; a guest's seat by a proof signed
+  // with the old key, makeRoomHost remote 'rekey').
+  const _personP = new Map();
+  function personKey(manifest) {
+    const app = roomAppKey(manifest);
+    if (_personP.has(app)) return _personP.get(app);
+    const p = appOwnerLib().then((AO) => {
       let seed = null;
       try { seed = root.localStorage.getItem('gifos_room_seed'); } catch (e) {}
       if (!seed || !/^[0-9a-f]{64}$/.test(seed)) {
@@ -126,21 +130,28 @@
         seed = Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
         try { root.localStorage.setItem('gifos_room_seed', seed); } catch (e) {}
       }
-      return AO.createSigner(seed).then((signer) => sha256hexOfBytes(hexBytes(signer.pkHex)).then((h) => {
+      const keyOf = (sd) => AO.createSigner(sd).then((signer) => sha256hexOfBytes(hexBytes(signer.pkHex)).then((h) => ({ id: h.slice(0, 16), signer })));
+      return sha256hex('gifos-room-app|' + seed + '|' + app).then((appSeed) => Promise.all([keyOf(appSeed), keyOf(seed)])).then(([mine, old]) => {
         let lastT = 0;
         // t: this browser's own clock, made strictly increasing; the owner keeps the last t per person, so a
         // copied request is never taken twice. It orders ONE sender's requests and dates nothing.
         const stamp = () => { const n = Date.now(); lastT = n > lastT ? n : lastT + 1; return lastT; };
-        return { id: h.slice(0, 16), signer, stamp };
-      }));
+        return { id: mine.id, signer: mine.signer, stamp, old };
+      });
     });
-    return _personP;
+    _personP.set(app, p); p.catch(() => _personP.delete(app));
+    return p;
   }
-  function roomRoster(me) {
+  // A saved session with one person's key replaced by another (keys are 16 hex: they never occur inside other text).
+  function rekeySession(saved, from, to) {
+    if (!saved || !from || !to || from === to) return saved;
+    try { const j = JSON.stringify(saved); return j.indexOf('"' + from + '"') < 0 ? saved : JSON.parse(j.split('"' + from + '"').join('"' + to + '"')); } catch (e) { return saved; }
+  }
+  function roomRoster(me, manifest) {
     const r = typeof root.__gifosRoom === 'function' ? root.__gifosRoom('roster', { k: me.id }) : null;
     if (r && r.on) return r;
     // Not in a room (an app run on its own): the person alone.
-    return { on: false, kind: 'open', admin: false, me: '', people: [{ k: me.id, pid: '', name: identity().name || '', admin: false, here: 'here', me: true }] };
+    return { on: false, kind: 'open', admin: false, me: '', people: [{ k: me.id, pid: '', name: (manifest && idShared(manifest) ? identity().name : '') || '', admin: false, here: 'here', me: true }] };
   }
   // The words for a refusal, from the engine's reason.
   const roomWhy = (AR, why) => { const key = 'runtime.room.' + why, t = T(key); return t && t !== key ? t : ((AR.WHY && AR.WHY[why]) || why); };
@@ -176,7 +187,7 @@
     const sp = AR.spec(manifest.room);
     let eng = null, frames = new Set(), lastView = '', ros = null, timer = null, sid = null;
     const lastT = new Map();
-    const view = () => { const r = ros || roomRoster(me); return AR.view(sp, eng ? eng.session() : AR.fresh(sp), me.id, r.people, r.kind, !!r.admin && r.kind === 'admin'); };
+    const view = () => { const r = ros || roomRoster(me, manifest); return AR.view(sp, eng ? eng.session() : AR.fresh(sp), me.id, r.people, r.kind, !!r.admin && r.kind === 'admin'); };
     let api = null;
     const push = () => {
       const v = view(); const j = JSON.stringify(v);
@@ -202,7 +213,7 @@
       if (!eng) return;
       // the app was stopped (its frame left the page): this share's session ends here
       if (mounted && ![...frames].some((f) => f.isConnected)) { if (timer) clearInterval(timer); timer = null; roomAskBar(null); return; }
-      ros = roomRoster(me);
+      ros = roomRoster(me, manifest);
       if (eng.tick(ros.people, ros.kind, Date.now(), meetingOf(ros))) save();
       push();
     };
@@ -215,7 +226,7 @@
       return w.then(() => { if (r.changed || write) save(); push(); return r; });
     };
     const ready = db.op('get', ROOM_COL, 'session').catch(() => null).then((saved) => {
-      eng = AR.create(sp, saved, { now: Date.now(), resumeMs: GifOS.timings.APP_ROOM_RESUME_MS });
+      eng = AR.create(sp, rekeySession(saved, me.old && me.old.id, me.id), { now: Date.now(), resumeMs: GifOS.timings.APP_ROOM_RESUME_MS });
       tick();
       save(); // every copy has this share's session from its first state on (a held request reads its answer there)
       timer = setInterval(tick, GifOS.timings.APP_ROOM_BEAT_MS);
@@ -223,7 +234,7 @@
     return api = {
       owner: true,
       frame(f) { frames.add(f); mounted = true; lastView = ''; ready.then(push); },
-      state() { return ready.then(() => { ros = roomRoster(me); return view(); }); },
+      state() { return ready.then(() => { ros = roomRoster(me, manifest); return view(); }); },
       call(q, rec) {
         return ready.then(() => take(me.id, q, rec)).then((r) => { if (!r.ok) throw new Error(roomWhy(AR, r.why)); return r; });
       },
@@ -236,13 +247,29 @@
           if (!v || !v.ok) return null;
           return sha256hexOfBytes(hexBytes(f.pk)).then((h) => {
             const k = h.slice(0, 16);
-            ros = roomRoster(me);
+            ros = roomRoster(me, manifest);
             // The sender's meeting id is on THIS page's roster, and that meeting id's own status names this key.
             const p = ros.people.find((x) => x.pid && x.pid === b.pid);
             if (!p || p.k !== k) return null;
             const t = Number(b.t) || 0;
             if (t <= (lastT.get(k) || 0)) return null;
             lastT.set(k, t);
+            // A guest's seat saved under the key one seed made for every app moves to its app's own key, on a proof
+            // signed with that old key naming this new one (so nobody can take a seat by claiming its old key).
+            if (b.q && b.q.op === 'rekey') {
+              const o = b.old;
+              if (!o || !o.p || o.p.kind !== 'rekey' || !o.p.body || o.p.body.k !== k || typeof o.pk !== 'string') return null;
+              return appOwnerLib().then((AO) => AO.makeVerifier(roomSid(sid), o.pk).verify(o)).then((ov) => {
+                if (!ov || !ov.ok) return null;
+                return sha256hexOfBytes(hexBytes(o.pk)).then((oh) => ready.then(() => {
+                  const from = oh.slice(0, 16);
+                  const cur = eng.session(), moved = rekeySession(cur, from, k);
+                  if (moved === cur || from === k) return null;
+                  eng = AR.create(sp, moved, { now: Date.now(), resumeMs: GifOS.timings.APP_ROOM_RESUME_MS });
+                  tick(); save(); push(); return null;
+                }));
+              });
+            }
             return ready.then(() => take(k, b.q || {}, b.rec));
           });
         }).catch(() => {});
@@ -288,7 +315,7 @@
 
   // One gifos.room request ({ op, seat, collection, keep, first, who, value }), from an app frame or from a participant
   // with no screen (bootClientBus with no mount): the session's state, or a request the owner answers.
-  function roomRequest(db, d) {
+  function roomRequest(db, d, manifest) {
     const q = { op: String(d.op || 'state') };
     if (d.seat != null) q.seat = String(d.seat);
     if (d.collection != null) q.collection = String(d.collection);
@@ -296,11 +323,13 @@
     if (d.first != null) q.first = String(d.first);
     if (d.who != null) q.who = String(d.who);
     const rec = d.value && typeof d.value === 'object' ? d.value : null;
-    return (db && db.roomP ? db.roomP : Promise.resolve(null)).then((rh) => {
+    // Reading the room names the person to the app when they are alone in it, so it asks first, as gifos.me does.
+    const asked = q.op === 'state' && manifest ? askedIdentity(manifest).catch(() => null) : Promise.resolve(null);
+    return asked.then(() => (db && db.roomP ? db.roomP : Promise.resolve(null))).then((rh) => {
       if (rh) return q.op === 'state' ? rh.state() : rh.call(q, rec);
       if (q.op !== 'state') throw new Error('This app declares no room.');
       // No session declared: the room's people, read-only (gifos.people()).
-      return personKey().then((me) => ({ on: false, people: roomRoster(me).people.map((x) => ({ id: x.k, name: x.name || '', me: !!x.me, host: !!x.admin, here: x.here === 'away' ? 'away' : 'here' })) }));
+      return personKey(manifest).then((me) => ({ on: false, people: roomRoster(me, manifest).people.map((x) => ({ id: x.k, name: x.name || '', me: !!x.me, host: !!x.admin, here: x.here === 'away' ? 'away' : 'here' })) }));
     });
   }
   // THE GUEST SIDE: requests go to the owner signed with the person key; the session comes back owner-signed in
@@ -310,7 +339,7 @@
     const key = roomAppKey(manifest);
     let frames = new Set(), lastView = '', seq = 0, stopped = false;
     const waits = new Map(); // q -> { res, rej, q, rec, f, signing, at, t0, held }
-    const view = () => { const r = roomRoster(me); return AR.view(sp, sessionOf() || AR.fresh(sp), me.id, r.people, r.kind, !!r.admin && r.kind === 'admin'); };
+    const view = () => { const r = roomRoster(me, manifest); return AR.view(sp, sessionOf() || AR.fresh(sp), me.id, r.people, r.kind, !!r.admin && r.kind === 'admin'); };
     let api = null;
     const push = () => {
       const v = view(); const j = JSON.stringify(v);
@@ -321,10 +350,10 @@
     // Caught up: the room hears this page, and for a request an earlier copy made, this copy has the owner's session
     // too (the owner writes it as the share starts), so an answer the owner already gave is read, not asked twice.
     // Until then a request waits unsigned.
-    const caughtUp = (w) => { const r = roomRoster(me); return !!(r.on && r.me && (!w.held || sessionOf())); };
+    const caughtUp = (w) => { const r = roomRoster(me, manifest); return !!(r.on && r.me && (!w.held || sessionOf())); };
     const sendOne = (id, w) => {
       if (w.f || w.signing || stopped || !caughtUp(w)) return;
-      const r = roomRoster(me);
+      const r = roomRoster(me, manifest);
       const body = { pid: r.me, t: me.stamp(), q: w.q };
       if (w.rec) body.rec = w.rec;
       w.signing = true;
@@ -335,7 +364,21 @@
         try { send('act', { op: 'room', f }); } catch (e) {}
       }, () => { w.signing = false; });
     };
+    // A seat this person holds under the old shared key (a session saved before keys were per app): ask the owner to
+    // move it to this app's own key, with a proof signed by the old key. Sent again each retry until the seat moved.
+    let rekeyAt = 0, rekeying = false;
+    const rekey = () => {
+      const s = sessionOf(), oldId = me.old && me.old.id;
+      if (!s || !oldId || oldId === me.id || rekeying || stopped || Date.now() - rekeyAt < GifOS.timings.APP_ROOM_RETRY_MS) return;
+      if (JSON.stringify(s).indexOf('"' + oldId + '"') < 0) return;
+      const r = roomRoster(me, manifest); if (!r.on || !r.me) return;
+      rekeying = true; rekeyAt = Date.now();
+      me.old.signer.sign(roomSid(sid), 'rekey', { k: me.id })
+        .then((old) => me.signer.sign(roomSid(sid), 'room', { pid: r.me, t: me.stamp(), q: { op: 'rekey', q: 'rekey' }, old }))
+        .then((f) => { rekeying = false; if (!stopped) { try { send('act', { op: 'room', f }); } catch (e) {} } }, () => { rekeying = false; });
+    };
     const answer = () => {
+      rekey();
       const s = sessionOf(); const res = s && s.res && s.res[me.id];
       for (const [q, w] of waits) {
         if (res && res.q === q) { waits.delete(q); if (res.ok) w.res({ ok: true }); else w.rej(new Error(roomWhy(AR, res.why))); continue; }
@@ -434,17 +477,110 @@
   const identity = store.identity;
   const setName = store.setName;
   const identFrames = new Set();
-  function publishIdentity() {
-    let ident;
-    try { ident = identity(); } catch (e) { return; }
-    identFrames.forEach((ifr) => {
-      try {
-        const w = ifr && ifr.contentWindow;
-        if (w) w.postMessage({ ns: 'gifos', type: 'identity', identity: ident }, '*');
-      } catch (e) {}
+  const identManifests = new WeakMap();   // app frame -> its manifest, so each frame hears only its own view of you
+  // ---- who an app sees (gifos.me) ----------------------------------------------------------------------------------
+  // ONE RULE: an app never learns who you are unless you said so. Each app gets its OWN id for you, made from this
+  // browser's id and the app's id (HMAC-SHA-256), so no two apps can tell they run in the same browser, and this
+  // browser's own id never enters any frame. Your name and picture reach an app only when you let it (one sheet,
+  // asked the first time the app wants them, remembered per app and switched off again in its Abilities sheet), or
+  // while it runs inside a meeting, whose room already shows your name and picture to everyone there.
+  const ID_SHARE = (manifest) => 'gifos_idshare_' + ((manifest && manifest.appId) || (manifest && manifest.name) || 'app');
+  const hexOf = (buf) => Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('');
+  // WHICH app is asking, in a way the app cannot fake: a manifest's appId is the author's word, so a copy that claims
+  // another app's appId must not inherit what you told that app. A signed app is its verified signer plus its appId
+  // (an update keeps your answer); an unsigned app is its code (any change of code asks again).
+  const appKeys = new WeakMap();   // manifest -> key, once known
+  const appKeyPs = new WeakMap();  // manifest -> Promise<key>
+  function noteAppKey(manifest, files, bytes) {
+    if (!manifest || appKeyPs.has(manifest)) return;
+    const app = String(manifest.appId || manifest.name || 'app');
+    const subtle = root.crypto && root.crypto.subtle;
+    const codeKey = () => {
+      if (!subtle || !files) return Promise.resolve('code:?|' + app);
+      const enc = new TextEncoder(), parts = [];
+      for (const pth of Object.keys(files).sort()) {
+        if (pth.startsWith('.state/') || pth.startsWith('.lock/') || pth.startsWith('.assets/')) continue;
+        const v = files[pth];
+        parts.push(enc.encode(pth + '\u0000'), v instanceof Uint8Array ? v : enc.encode(String(v)), enc.encode('\u0000'));
+      }
+      let n = 0; for (const x of parts) n += x.length;
+      const all = new Uint8Array(n); let o = 0; for (const x of parts) { all.set(x, o); o += x.length; }
+      return subtle.digest('SHA-256', all).then((d) => 'code:' + hexOf(d).slice(0, 32) + '|' + app);
+    };
+    const signedKey = () => (bytes && GifOS.sign && GifOS.sign.verify)
+      ? Promise.resolve(GifOS.sign.verify(bytes)).then((v) => (v && v.status === 'valid' && v.id ? 'signed:' + v.type + ':' + v.id + '|' + app : null), () => null)
+      : Promise.resolve(null);
+    const p = signedKey().then((k) => k || codeKey()).catch(() => 'code:?|' + app)
+      .then((k) => (subtle ? subtle.digest('SHA-256', new TextEncoder().encode(k)).then((d) => hexOf(d).slice(0, 24)) : k))
+      .then((k) => { appKeys.set(manifest, k); return k; });
+    appKeyPs.set(manifest, p);
+  }
+  const appIds = new Map();
+  function appUserId(manifest) {
+    const base = identity().id || '';
+    const app = String((manifest && manifest.appId) || (manifest && manifest.name) || 'app');
+    const k = base + '|' + app;
+    if (!appIds.has(k)) {
+      const enc = new TextEncoder();
+      const subtle = root.crypto && root.crypto.subtle;
+      const p = subtle
+        ? subtle.importKey('raw', enc.encode(base), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+          .then((key) => subtle.sign('HMAC', key, enc.encode('gifos-app-user|' + app)))
+          .then((sig) => 'user_' + hexOf(new Uint8Array(sig).slice(0, 12)))
+        : Promise.reject(new Error('no subtle'));
+      // No WebCrypto (never on https): an id that is still this app's alone, never the browser's own.
+      appIds.set(k, p.catch(() => { let h = 2166136261; const t = base + '|' + app; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return 'user_' + h.toString(16); }));
+    }
+    return appIds.get(k);
+  }
+  // The meeting this page is in, if any: its room shows your name to everyone in it, so an app running there may know it.
+  function meetingSelf() {
+    try {
+      const r = typeof root.__gifosRoom === 'function' ? root.__gifosRoom('roster', {}) : null;
+      if (!r || !r.on) return null;
+      const me = (r.people || []).find((x) => x && x.me);
+      return { name: (me && me.name) || '' };
+    } catch (e) { return null; }
+  }
+  // The answer is kept per appId with the key of the app that got it: the same appId with another key is asked afresh.
+  const idRec = (manifest) => { try { const o = JSON.parse(root.localStorage.getItem(ID_SHARE(manifest)) || 'null'); return o && typeof o === 'object' ? o : null; } catch (e) { return null; } };
+  const idDecided = (manifest) => { const k = appKeys.get(manifest), r = idRec(manifest); return k && r && r.k === k && (r.v === '1' || r.v === '0') ? r.v : ''; };
+  const idShared = (manifest) => !!meetingSelf() || (idDecided(manifest) === '1' && !capDisabled(manifest, 'identity'));
+  function setIdShare(manifest, yes) { const k = appKeys.get(manifest); if (!k) return; try { root.localStorage.setItem(ID_SHARE(manifest), JSON.stringify({ k, v: yes ? '1' : '0' })); } catch (e) {} }
+  const keyReady = (manifest) => appKeyPs.get(manifest) || Promise.resolve(null);
+  function appIdentity(manifest) {
+    const idn = identity();
+    return keyReady(manifest).then(() => appUserId(manifest)).then((id) => {
+      const room = meetingSelf();
+      if (room) return { id, name: room.name || idn.name || '', avatar: idn.avatar };
+      if (idShared(manifest)) return { id, name: idn.name || '', avatar: idn.avatar };
+      return { id, name: '', avatar: null };
     });
   }
-  try { if (store.onIdentity) store.onIdentity(publishIdentity); } catch (e) {}
+  // gifos.me: the first ask outside a meeting shows the sheet; later asks take the remembered answer.
+  const idAsks = new Map();
+  function askedIdentity(manifest) {
+    return keyReady(manifest).then(() => askedIdentityNow(manifest));
+  }
+  function askedIdentityNow(manifest) {
+    if (meetingSelf() || idDecided(manifest) || !identity().name || !appKeys.get(manifest)) return appIdentity(manifest);   // no name yet: nothing to share, nothing to ask
+    const key = ID_SHARE(manifest);
+    if (!idAsks.has(key)) idAsks.set(key, confirmShareIdentity(manifest).then((yes) => { setIdShare(manifest, yes); idAsks.delete(key); publishIdentity(); }));
+    return idAsks.get(key).then(() => appIdentity(manifest));
+  }
+  function publishIdentity(only) {
+    identFrames.forEach((ifr) => {
+      if (only && ifr !== only) return;
+      const m = identManifests.get(ifr);
+      appIdentity(m).then((ident) => {
+        try {
+          const w = ifr && ifr.contentWindow;
+          if (w) w.postMessage({ ns: 'gifos', type: 'identity', identity: ident }, '*');
+        } catch (e) {}
+      }, () => {});
+    });
+  }
+  try { if (store.onIdentity) store.onIdentity(() => publishIdentity()); } catch (e) {}
 
   // The system locale (gifos-i18n.js), handed to every app frame: a snapshot
   // baked into the shim so gifos.locale() answers synchronously at boot, and a
@@ -3627,6 +3763,32 @@
     try { const ua = root.navigator && root.navigator.userActivation; return !ua || !!ua.hasBeenActive; } catch (e) { return true; }
   }
   // The rename sheet: resolves true only when the person chooses the new name.
+  // gifos.me's sheet: may this app have your name and picture? Asked once per app (runtime ID_SHARE); a dismissal is a No.
+  function confirmShareIdentity(manifest) {
+    return new Promise(function (resolve) {
+      try {
+        const doc = root.document; if (!doc || !doc.body) return resolve(false);
+        const old = doc.getElementById('gifos-idshare-modal'); if (old) old.remove();
+        const appRaw = (manifest && (manifest.shortName || manifest.name || manifest.appId)) || T('runtime.thisApp');
+        const idn = identity();
+        const bg = doc.createElement('div'); bg.id = 'gifos-idshare-modal'; bg.className = 'perm-modal';
+        bg.setAttribute('style', 'position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:1.2rem;');
+        const box = doc.createElement('div'); box.className = 'perm-box';
+        box.setAttribute('style', 'background:#14141f;color:#e8e8f4;border:1px solid #2a2a3f;border-radius:.8rem;max-width:23rem;width:100%;padding:1.2rem;font:15px/1.55 system-ui,-apple-system,sans-serif;');
+        const pic = idn.avatar && idn.avatar.url ? '<img alt="" src="' + escHtml(idn.avatar.url) + '" style="width:2.4rem;height:2.4rem;border-radius:50%;object-fit:cover;flex:0 0 auto">' : '';
+        box.innerHTML = '<h3 style="margin:0 0 .5rem;font-size:1.1rem">' + escHtml(T('runtime.share.title', { app: appRaw })) + '</h3>' +
+          '<div style="display:flex;gap:.6rem;align-items:center;margin:0 0 .6rem">' + pic + '<b>' + escHtml(idn.name || '') + '</b></div>' +
+          '<p style="color:#b6b6cf;font-size:.9rem;margin:0 0 .9rem">' + escHtml(T('runtime.share.body', { app: appRaw })) + '</p>' +
+          '<div style="display:flex;gap:.6rem;justify-content:flex-end"><button id="gifos-idshare-no" style="padding:.5rem 1.1rem;border-radius:.5rem;border:1px solid #2a2a3f;background:transparent;color:#b6b6cf;cursor:pointer;font:inherit">' + escHtml(T('runtime.share.no')) + '</button>' +
+          '<button id="gifos-idshare-yes" style="padding:.5rem 1.3rem;border-radius:.5rem;border:none;background:#7b5cff;color:#fff;cursor:pointer;font:inherit">' + escHtml(T('runtime.share.yes')) + '</button></div>';
+        bg.appendChild(box); doc.body.appendChild(bg);
+        const done = function (yes) { bg.remove(); resolve(yes); };
+        box.querySelector('#gifos-idshare-yes').onclick = function () { done(true); };
+        box.querySelector('#gifos-idshare-no').onclick = function () { done(false); };
+        bg.addEventListener('click', function (e) { if (e.target === bg) done(false); });
+      } catch (e) { resolve(false); }
+    });
+  }
   function confirmName(manifest, want) {
     return new Promise(function (resolve) {
       try {
@@ -4260,6 +4422,7 @@
 
   let setupShownAt = 0; // the last time an app raised an apiSetup/aiSetup modal
   function mountApp(iframe, files, manifest, db, originalBytes, policy, mountFileId, launch) {
+    noteAppKey(manifest, files, originalBytes);   // who is asking, for what the person told this app (gifos.me)
     // The GifOS Meet apps run the in-meeting apps they ship and any app GIF a
     // person brings to the meeting (Load a GIF, Nathan 2026-11-13), but never
     // a GifOS system app: the Home Screen's launchers (App Store, Meeting,
@@ -4340,7 +4503,7 @@
         return;
       }
       if (!iframe.contentWindow || e.source !== iframe.contentWindow) return;
-      if (d.type === 'hello') { if (d.gen === gen) { live = gen; retry = false; identFrames.add(iframe); publishIdentity(); if (db && db.roomP) db.roomP.then((rh) => { if (rh) rh.frame(iframe); }, () => {}); } return; }
+      if (d.type === 'hello') { if (d.gen === gen) { live = gen; retry = false; identFrames.add(iframe); identManifests.set(iframe, manifest); publishIdentity(iframe); if (db && db.roomP) db.roomP.then((rh) => { if (rh) rh.frame(iframe); }, () => {}); } return; }
       if (!live) return;
       // Guard at REPLY time, not just receipt: async ops (db/fetch/…) can
       // resolve after the iframe was torn out of the DOM (app takeover /
@@ -4433,9 +4596,9 @@
       // owner = this app runs on its OWNER's computer (host / local), so it may
       // change visibility (setVisibility). A guest view is not the owner.
       else if (d.type === 'info') reply({ ok: true, result: { appId: manifest.appId, name: manifest.name, version: manifest.version, owner: !!(db && db.owner) } });
-      else if (d.type === 'me') reply({ ok: true, result: identity() });
+      else if (d.type === 'me') askedIdentity(manifest).then((r) => reply({ ok: true, result: r }), (err) => reply({ ok: false, error: String(err && err.message || err) }));
       else if (d.type === 'room') {
-        roomRequest(db, d).then((result) => reply({ ok: true, result }), (err) => reply({ ok: false, error: String(err && err.message || err) }));
+        roomRequest(db, d, manifest).then((result) => reply({ ok: true, result }), (err) => reply({ ok: false, error: String(err && err.message || err) }));
       }
       else if (d.type === 'stage') {
         const verdict = stageGate(manifest, capDisabled(manifest, 'stage'), typeof root.__gifosStage === 'function');
@@ -4456,15 +4619,18 @@
       // so the app learns nothing happened. Setting the name you already
       // have needs no sheet. Rate-limited like the setup panels.
       else if (d.type === 'setName') {
+        // An app that may not see your name must not learn it by guessing: "already that name" answers without a
+        // sheet only for an app that may see it. A Yes is you giving this app your name, so it may see it from then on.
         const want = String(d.name == null ? '' : d.name).trim().slice(0, 40);
         const have = identity().name || '';
-        if (want === have) reply({ ok: true, result: identity() });
+        const answer = () => appIdentity(manifest).then((r) => reply({ ok: true, result: r }), (err) => reply({ ok: false, error: String(err && err.message || err) }));
+        if (want === have && idShared(manifest)) answer();
         else {
           const nowMs = Date.now();
-          if (nowMs - setupShownAt < 5000) reply({ ok: true, result: identity() });
+          if (nowMs - setupShownAt < 5000) answer();
           else {
             setupShownAt = nowMs;
-            confirmName(manifest, want).then((yes) => reply({ ok: true, result: yes ? setName(want) : identity() }));
+            confirmName(manifest, want).then((yes) => { if (yes) { setName(want); setIdShare(manifest, true); } answer(); });
           }
         }
       }
@@ -4472,19 +4638,21 @@
         const url = String(d.url == null ? '' : d.url);
         const cur = identity();
         const have = (cur.avatar && cur.avatar.url) || '';
-        if (url === have) reply({ ok: true, result: cur });
+        const answer = () => appIdentity(manifest).then((r) => reply({ ok: true, result: r }), (err) => reply({ ok: false, error: String(err && err.message || err) }));
+        if (url === have && idShared(manifest)) answer();
         else {
           const nowMs = Date.now();
-          if (nowMs - setupShownAt < 5000) reply({ ok: true, result: identity() });
+          if (nowMs - setupShownAt < 5000) answer();
           else {
             setupShownAt = nowMs;
             confirmAvatar(manifest, url).then((yes) => {
-              if (!yes) { reply({ ok: true, result: identity() }); return; }
-              if (!url) { reply({ ok: true, result: store.setAvatar(null) }); return; }
+              if (!yes) { answer(); return; }
+              setIdShare(manifest, true);
+              if (!url) { store.setAvatar(null); answer(); return; }
               const prep = (root.GifOS && root.GifOS.avatar && root.GifOS.avatar.prepareDataUrl) ? root.GifOS.avatar.prepareDataUrl(url) : Promise.resolve({ ok: false, error: 'Choose a GIF, PNG, JPG, or WebP.' });
               Promise.resolve(prep).then((res) => {
                 if (!res || !res.ok) reply({ ok: false, error: (res && res.error) || 'Choose a GIF, PNG, JPG, or WebP.' });
-                else reply({ ok: true, result: store.setAvatar({ mime: res.mime, hash: res.hash, b64: res.b64 }) });
+                else { store.setAvatar({ mime: res.mime, hash: res.hash, b64: res.b64 }); answer(); }
               }).catch((err) => reply({ ok: false, error: String(err && err.message || err) }));
             });
           }
@@ -5059,7 +5227,7 @@
         : makeLocalDb(fileId, emit);
       const netPolicy = makeNetPolicy(fileId, manifest);
       // gifos.room: this copy owns the app, so its OS runs the session.
-      if (manifest && manifest.room) db.roomP = Promise.all([roomLib(), personKey()]).then(([AR, me]) => AR.spec(manifest.room) ? makeRoomHost(manifest, db, AR, me) : null).catch(() => null);
+      if (manifest && manifest.room) db.roomP = Promise.all([roomLib(), personKey(manifest)]).then(([AR, me]) => AR.spec(manifest.room) ? makeRoomHost(manifest, db, AR, me) : null).catch(() => null);
 
       // ---- invite-link lifetime & resilience ------------------------------
       // The link is a capability: whoever holds it can join live AND pull a
@@ -5609,14 +5777,14 @@
         // what app it is running, let alone what it is allowed to share.
         if (mountEl && poolHosts(manifestRef).length && !capDisabled(manifestRef, 'pool')) poolAttach({ send: send }, params.self);
         if (mountEl) { iframe = makeIframe(); mountEl.innerHTML = ''; mountEl.appendChild(iframe); }
-        if (manifestRef && manifestRef.room) db.roomP = Promise.all([roomLib(), personKey()]).then(([AR, me]) => {
+        if (manifestRef && manifestRef.room) db.roomP = Promise.all([roomLib(), personKey(manifestRef)]).then(([AR, me]) => {
           if (!AR.spec(manifestRef.room)) return null;
           roomC = makeRoomClient(manifestRef, AR, me, send, sid, () => itemsOf(ROOM_COL).session || null, !mountEl);
           return roomC;
         }).catch(() => null);
         if (mountEl) mountApp(iframe, filesRef, manifestRef, db, appBytes, makeNetPolicy(null, manifestRef));
         // with no app frame, this person is in the app's roster from the mount (an app frame's gifos.people() does it)
-        else personKey().then((me) => roomRoster(me)).catch(() => {});
+        else personKey(manifestRef).then((me) => roomRoster(me, manifestRef)).catch(() => {});
         if (root.__gifosOnApp) root.__gifosOnApp(appBytes, manifestRef);
         notify('*');
       };

@@ -32,8 +32,8 @@
   "runtime.busy.dataFailed": "应用数据下载失败 — {msg}。应用将在没有这些数据的情况下打开，并在下次启动时重试。",
   "runtime.provider.filing": "正在将 {name} 放入你的“提供方”文件夹…",
   "runtime.name.title": "{app} 想更改你的名字",
-  "runtime.name.set": "你在这台电脑上的名字将变为 {name}。这里的所有应用和会议都会看到它。",
-  "runtime.name.clear": "这将清除你在这台电脑上使用的名字。这里的所有应用和会议都会把你显示为无名。",
+  "runtime.name.set": "你在这台电脑上的名字将变为 {name}。这里的会议会显示它，你允许查看的应用也会显示。",
+  "runtime.name.clear": "将清除你在这台电脑上使用的名字。这里的会议以及你允许查看名字的应用将看到你没有名字。",
   "runtime.name.keep": "保留我的名字",
   "runtime.name.use": "使用“{name}”",
   "runtime.name.clearIt": "清除",
@@ -119,5 +119,9 @@
   "runtime.room.seat": "给座位",
   "runtime.room.notNow": "暂不",
   "runtime.room.lost": "你在{app}中的这一步没有走成：{why}",
-  "runtime.room.ok": "好"
+  "runtime.room.ok": "好",
+  "runtime.share.title": "{app} 想获取你的名字和头像",
+  "runtime.share.body": "{app} 之后可以显示它们，例如在你写的内容旁边。其他应用不会得到这个答复。你以后可以在此应用的“Abilities”中更改。",
+  "runtime.share.no": "暂不",
+  "runtime.share.yes": "分享"
 }

@@ -62,7 +62,7 @@
   }
 
   function escapeText(s) { var d = doc.createElement('div'); d.textContent = s; return d.innerHTML; }
-  var CAP_LABELS = { microphone: 'Record short voice clips', camera: 'Take photos and short videos', motion: 'Sense how you tilt your phone', ai: 'Use your AI', api: 'Use your account with', agent: 'Let an AI assistant operate this app', wasm: 'Run a compiled engine on your device', gpu: 'Use your device’s graphics chip (GPU)', pointer: 'Take over the mouse pointer while you play', fullscreen: 'Fill the whole screen, and hold your phone’s picture sideways', links: 'Open a web link in a new tab', pool: 'Pool downloads with the room', pay: 'Ask you to pay for things', assets: 'Download extra files when you pick them', meet: 'Join meetings for you', stage: 'Put people on the meeting stage when it is their turn', remote: 'Take commands from a control meeting' };
+  var CAP_LABELS = { microphone: 'Record short voice clips', camera: 'Take photos and short videos', motion: 'Sense how you tilt your phone', ai: 'Use your AI', api: 'Use your account with', agent: 'Let an AI assistant operate this app', wasm: 'Run a compiled engine on your device', gpu: 'Use your device’s graphics chip (GPU)', pointer: 'Take over the mouse pointer while you play', fullscreen: 'Fill the whole screen, and hold your phone’s picture sideways', links: 'Open a web link in a new tab', pool: 'Pool downloads with the room', pay: 'Ask you to pay for things', assets: 'Download extra files when you pick them', meet: 'Join meetings for you', stage: 'Put people on the meeting stage when it is their turn', remote: 'Take commands from a control meeting', identity: 'See your name and picture' };
   var CAP_DESC = {
     wasm: 'Lets the app run a compiled (WebAssembly) engine — like a chess engine or a codec — in a background worker on your device, so it can do heavy computation fast without freezing. It still cannot reach the internet: the engine runs entirely offline, sealed inside this app.',
     gpu: 'Lets the app run computations on your device’s graphics chip (GPU) via WebGPU — for fast on-device AI, image, or physics work. It still cannot reach the internet: the GPU has no network path, and everything runs offline, sealed inside this app.',
@@ -80,6 +80,7 @@
     assets: 'Lets the app download extra files the first time you open them — a translation, a language pack, a model. Each file is hash-pinned in the app’s listing, arrives only when you pick it, and then stays on this device. Nothing downloads at install for these. Tap Download all to fetch every extra file now. Uncheck to block those downloads. Files that already came with install are not this toggle.',
     meet: 'Lets the app join meetings from this page. The meeting stays here, on GifOS — the app never receives the camera, the microphone, or a network connection. A bot joins with no camera and a bot badge everyone can see. The app may use the same meeting buttons a person can: hand, microphone, and camera. You can open a tile to watch and listen through the bot. That tile has no microphone and no camera for you.',
     stage: 'Only while the app runs in a meeting: it can ask for the person whose turn it is, and the person up next, to be on the stage. Your own page steps you up or down, like the Stage button. It never turns on your camera or microphone, and it never takes a presenter off the stage. In a hosted room only an admin can let people on. Uncheck to keep this app off the stage.',
+    identity: 'You let this app see your name and picture when it asked. Outside meetings no app sees them otherwise, and each app gets its own id for you, so apps cannot tell they run on the same computer. Inside a meeting, the app sees the name the room already shows.',
     remote: 'Lets the app treat one secret meeting as its control meeting. Only chat in that meeting can carry commands, and only after you have approved this. Uncheck to stop those commands.'
   };
   function optionalPins(manifest) {
@@ -181,6 +182,8 @@
         if (skip.indexOf(k) >= 0) return false;
         if (k === 'api') return apiNames(manifest).length;
         if (k === 'pool') return poolHosts(manifest).length;
+        // Not a declaration: shown once the person let this app see their name (runtime.js gifos.me), to take it back.
+        if (k === 'identity') { try { var r = JSON.parse(ls().getItem('gifos_idshare_' + ((manifest && manifest.appId) || (manifest && manifest.name) || 'app')) || 'null'); return !!(r && r.v === '1'); } catch (e) { return false; } }
         if (k === 'assets') {
           return optionalPins(manifest).length || !!(manifest && manifest.capabilities && manifest.capabilities.assets);
         }
@@ -200,7 +203,7 @@
       // (the words are different every time, so consent has to be too).
       if (!hasNet && !caps.length && !asked.length && !hands.length) { chipEl.style.display = 'none'; return; }
       var capSig = 'gifos_capack_' + ((manifest && manifest.appId) || 'app');
-      var sig = caps.join(',') + '|' + apiNames(manifest).join(',') + '|' + aiRoles(manifest).join(',') + '|' + poolHosts(manifest).join(',') + '|' + hands.join(',');
+      var sig = caps.filter(function (k) { return k !== 'identity'; }).join(',') + '|' + apiNames(manifest).join(',') + '|' + aiRoles(manifest).join(',') + '|' + poolHosts(manifest).join(',') + '|' + hands.join(',');
       function capAcked() { try { return ls().getItem(capSig) === sig; } catch (e) { return false; } }
       function ackCaps() { try { ls().setItem(capSig, sig); } catch (e) {} }
       function paintChip() {
@@ -459,7 +462,7 @@
         chipEl.onclick = openModal;
         // A link's ask ALWAYS opens the sheet — an acknowledgement stored for
         // this app's abilities says nothing about what today's link wants.
-        if (asked.length || (hasNet && !policy.acknowledged()) || (caps.length && !capAcked())) openModal();
+        if (asked.length || (hasNet && !policy.acknowledged()) || (caps.some(function (k) { return k !== 'identity'; }) && !capAcked())) openModal();   // a name the person already chose to share is no news to re-ask
       }
 
       // ---- REQUIRED capabilities gate (settings-backed only) ----
