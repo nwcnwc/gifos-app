@@ -52,7 +52,8 @@
     // Moving: the head (or the grip of a card with no title) is the handle. It takes no page pan and selects no words.
     '.dlg-card>.dlg-head,.dlg-card>.dlg-grip{touch-action:none;-webkit-user-select:none;user-select:none;cursor:grab}' +
     '.dlg-card>.dlg-head:focus-visible,.dlg-card>.dlg-grip:focus-visible{outline:2px solid #6ea8ff;outline-offset:2px}' +
-    '.dlg-card>.dlg-grip{display:block;flex:0 0 auto;width:56px;height:18px;margin:-10px auto 2px;padding:0;border:0;' +
+    // A grip is a full finger's reach (44 px tall, 88 wide) around a small bar, mostly in the card's top padding.
+    '.dlg-card>.dlg-grip{display:block;flex:0 0 auto;width:88px;height:44px;margin:-22px auto -14px;padding:0;border:0;' +
       'background:linear-gradient(currentColor,currentColor) center/36px 4px no-repeat;opacity:.35;border-radius:2px}' +
     'html.dlg-dragging,html.dlg-dragging *{cursor:grabbing!important;-webkit-user-select:none!important;user-select:none!important}' +
     // A moved card stands where it was put: out of its backdrop's centring, its words not reflowed.
