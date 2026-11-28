@@ -4796,9 +4796,9 @@ i18nStart(async()=>{
     function dayKey(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
     function dayOf(k){ var a=String(k).split('-'); return new Date(+a[0],(+a[1]||1)-1,+a[2]||1); }
     // One stored row as zero or more occurrences inside [from, to). A repeating event needs the iCalendar library
-    // (window.GifOSIcal, when the app carries it); without it a row stands for its first date only.
+    // (GifOS.ical, inlined when the app carries it); without it a row stands for its first date only.
     function occurrences(rows, from, to){
-      var L = window.GifOSIcal;
+      var L = window.GifOS && window.GifOS.ical;
       if (L && L.expandAll) return L.expandAll(rows, from, to, { max: 5000 }).map(function(o){ var e=o.event||{}; return { uid:e.uid||e.id, title:e.title, start:o.startMs, end:o.endMs, allDay:!!o.allDay, location:e.location, notes:e.notes, link:(L.meetingLink&&L.meetingLink(e))||e.url||'', recurring:!!o.recurring }; });
       var out = [];
       rows.forEach(function(r){
