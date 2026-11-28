@@ -31,8 +31,7 @@
   const mem = new Map();        // hash -> 'ok' | 'refused'
   const urls = new Map();       // hash -> blob: address of a picture that passed
   const inflight = new Map();   // hash -> Promise
-  const failed = new Map();     // hash -> when it could not be checked (not remembered for good: a retry after RETRY_MS)
-  const RETRY_MS = 30000;
+  const failed = new Set();     // hashes that could not be checked on this page (not remembered for good: the next page tries again)
   const stats = { checked: 0, cached: 0, ms: [] };
   let chain = Promise.resolve();   // one check at a time: a phone holds one
 
@@ -105,7 +104,7 @@
     if (k === 'refused') { stats.cached++; return Promise.resolve('refused'); }
     if (k === 'ok' && urls.has(hash)) { stats.cached++; return Promise.resolve('ok'); }
     if (inflight.has(hash)) return inflight.get(hash);
-    if (failed.has(hash) && Date.now() - failed.get(hash) < RETRY_MS) return Promise.resolve('refused');
+    if (failed.has(hash)) return Promise.resolve('refused');
     const p = fetchBytes(url).then((buf) => bytesMatch(hash, buf).then((same) => {
       if (!same) return done(hash, 'refused');                       // not the picture the hash names
       if (k === 'ok') { stats.cached++; return done(hash, 'ok', buf); }   // checked before on this device: no second look
@@ -118,7 +117,7 @@
       const next = chain.then(run, run);
       chain = next.catch(() => {});
       return next;
-    })).catch(() => { failed.set(hash, Date.now()); return 'refused-unchecked'; }).then((st) => (st === 'refused-unchecked' ? 'refused' : st)).finally(() => { inflight.delete(hash); });
+    })).catch(() => { failed.add(hash); return 'refused-unchecked'; }).then((st) => (st === 'refused-unchecked' ? 'refused' : st)).finally(() => { inflight.delete(hash); });
     inflight.set(hash, p);
     return p;
   }
