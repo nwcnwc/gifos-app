@@ -814,7 +814,7 @@
       // call and stays on duty until the node stops.
       const atDoor = doorNow();
       sock = net.steadySocket(makeUrl, {
-        onClose: (code) => { relayCloses.push({ code, at: Date.now() }); if (relayCloses.length > RELAY_CLOSES_KEPT) relayCloses.shift(); },
+        onClose: (code) => { relayCloses.push({ code, at: Date.now() }); if (relayCloses.length > RELAY_CLOSES_KEPT) relayCloses.shift(); if (opts.trace) { try { opts.trace('{"t":' + (env.TICK | 0) + ',"s":' + layer.ids.nid(peer) + ',"e":"RELAY-CLOSE","c":null,"d":"close=' + (code | 0) + '"}'); } catch (e) {} } },   // DEBUG trace sink only (HOTELFIX: the close code beside the door's re-entry)
         onConnectFail: () => { if (!stopped && opts.onRelayFail) { try { opts.onRelayFail(); } catch (e) {} } },   // a connect that never opened (the page may leave a dead relay)
         onDuty: () => !stopped,
         // opts.prepareUrl() (optional): the page brings what its URL presents up to date BEFORE every connect (a host's
