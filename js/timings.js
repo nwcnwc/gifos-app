@@ -376,6 +376,8 @@
     X402_RESUME_MS: 6000,   // ms
     X402_RESUME_TRIES: 3,   // count
     XV_BENIGN_MARGIN: 0.1,   // ratio
+    XV_BENIGN_MARGIN_MIN: 0.02,   // ratio
+    XV_BENIGN_MIN_MS: 12000,   // ms
     XV_BENIGN_MS: 60000,   // ms
     XV_BURST_FRAME_MS: 100,   // ms
     XV_BURST_MS: 1000,   // ms
@@ -384,6 +386,7 @@
     XV_CHANGE_MIN_MS: 1500,   // ms
     XV_CLEAN_MAX: 4,   // count
     XV_CLEAN_MIN: 1,   // count
+    XV_CONFIRM_SURE: 0.001,   // ratio
     XV_DEEP_GAP_MS: 4000,   // ms
     XV_DEEP_MAX_MS: 1500,   // ms
     XV_DUTY_DESK_PCT: 20,   // pct

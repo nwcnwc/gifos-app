@@ -411,7 +411,7 @@
               try {
                 await ready(m);
                 const v = posScore((await w.run(m.id, vpixels(bmp, m.size))).p, m);
-                return { v, hit: v >= (m.confirm == null ? m.line : m.confirm), ms: Math.round(performance.now() - t0) };
+                return { v, line: m.confirm == null ? m.line : m.confirm, hit: v >= (m.confirm == null ? m.line : m.confirm), ms: Math.round(performance.now() - t0) };
               } finally { if (bmp !== src && bmp && bmp.close) try { bmp.close(); } catch (e) {} }
             });
           },
@@ -672,7 +672,10 @@
       if (res.hit) { const h = holdFor(T.XV_STRONG); r.peak = Math.max(r.peak, T.XV_STRONG); r.holdUntil = Math.max(r.holdUntil, now() + h.hold); r.need = Math.max(r.need, h.clean); return; }
       // A clean confirm ALWAYS lifts, armed or not. The clean confirm also raises this picture's bar just above its confirmed-clean score (benignHi) until XV_BENIGN_MS passes, the picture changes or the score jumps past it: steady benign pictures stop churning, a higher score trips at once.
       r.lifts.push(now());
-      r.sus = false; r.benignHi = r.peak + T.XV_BENIGN_MARGIN; r.benignUntil = now() + T.XV_BENIGN_MS;
+      // One continuous mapping, certainty c (0 at the confirming model's line, 1 at XV_CONFIRM_SURE, log scale) -> the raise
+      // lerp(XV_BENIGN_MARGIN_MIN, XV_BENIGN_MARGIN, c) and its life lerp(XV_BENIGN_MIN_MS, XV_BENIGN_MS, c).
+      const ln = res.line > 0 ? res.line : 0.05, c = Math.min(1, Math.max(0, Math.log(ln / Math.max(1e-9, res.v)) / Math.log(ln / T.XV_CONFIRM_SURE)));
+      r.sus = false; r.benignHi = r.peak + T.XV_BENIGN_MARGIN_MIN + (T.XV_BENIGN_MARGIN - T.XV_BENIGN_MARGIN_MIN) * c; r.benignUntil = now() + T.XV_BENIGN_MIN_MS + (T.XV_BENIGN_MS - T.XV_BENIGN_MIN_MS) * c;
       emit(src.id, r, 'benign');
     }
     // The next picture to look at, in this order: (0) a new picture held back for its first look; (1) a HOT picture (a suspect
