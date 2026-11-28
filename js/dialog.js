@@ -21,7 +21,7 @@
  * working wherever they did.
  *
  * Every card also moves (see "moving a card" below): by its head with a
- * mouse, a finger or a pen, or the arrow keys on the focused head, so a
+ * mouse, a finger or a pen, or the arrow keys on the head once it has focus, so a
  * popup never has to cover what a person wants to see beside it.
  *
  * This is the one popup library: a popup is a .dlg-box (or one of the older
@@ -225,7 +225,9 @@
         card.insertBefore(grab, card.firstChild);
       }
     }
-    if (!grab.hasAttribute('tabindex')) grab.tabIndex = 0;
+    // Focusable for the arrow keys once pressed or focused, but never a Tab stop: Tab keeps going round the card's own
+    // controls (a dialog's focus trap starts at its first control, not its title).
+    if (!grab.hasAttribute('tabindex')) grab.tabIndex = -1;
     if (grab.classList.contains('dlg-grip')) grab.setAttribute('aria-hidden', 'true');
   }
 
