@@ -59,24 +59,8 @@
   }
 
   // ---- what this device holds ---------------------------------------------------------------------------------------
-  function model() {
-    const M = MR(), mine = M.mine(), privs = M.privates();
-    // A contact is our private room: one other person, my own member key for it (made at the swap).
-    const ours = privs.filter((x) => x.pubs.length === 1 && x.me).map((p) => ({ p, card: M.cardIn(p) }));
-    const viaPriv = new Set(ours.filter((x) => x.card).map((x) => M.roomKey(x.card.room, x.card.v)));   // shown with our private room
-    // A card to someone's room with no private room of ours (a card link, or from before the swap made one).
-    const cards = M.contacts().filter((c) => !viaPriv.has(M.roomKey(c.room, c.v))).map((c) => {
-      const pub = M.contactPub(c);
-      return { c, pair: pub ? M.pairWith(pub) : null };
-    });
-    const oursK = new Set(ours.map((x) => M.roomKey(x.p.room, x.p.v)));
-    const pairedK = new Set(cards.filter((x) => x.pair).map((x) => M.roomKey(x.pair.room, x.pair.v)));
-    const loose = privs.filter((p) => !oursK.has(M.roomKey(p.room, p.v)) && !pairedK.has(M.roomKey(p.room, p.v)));   // groups, an old pair room with no card
-    const taken = new Set(privs.map((p) => M.roomKey(p.room, p.v)));
-    if (mine) taken.add(M.roomKey(mine.room, mine.v));
-    const hosted = M.hosted().filter((h) => !taken.has(M.roomKey(h.room, h.v)));
-    return { mine, ours, cards, loose, hosted, missed: M.missed(), issued: M.issued().filter((x) => mine && M.roomKey(x.room, x.v) === M.roomKey(mine.room, mine.v)) };
-  }
+  // read through the one model the Meeting lobby and the Home views share (js/rooms-model.js)
+  const model = () => GifOS.roomsModel.read();
   const initials = (n) => (String(n || '?').replace(/[^\p{L}\p{N}\s]/gu, '').trim().split(/\s+/).map((w) => w[0] || '').join('').slice(0, 2) || '?').toUpperCase();
   // A ring's label carries the caller-ID mark ("Bob ✓", "Bob (card)"); the person is the name before it.
   const bareName = (label) => String(label || '').replace(/\s*(✓|\(card\))\s*$/, '');

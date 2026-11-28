@@ -121,8 +121,8 @@
     'rooms/missed'(c) { const h = K().api.missedChip(c.data.ppl); return { bare: true, hidden: !h, html: h }; },
     'broadcast/live'(c) {
       const k = K(), a = k.api, W = k.W, d = c.data;
-      if (c.flavor === 'bold') return { bare: true, html: head(W.live) + a.liveCard() };
-      return { html: head(W.onNow) + '<div class="hv-rows">' + a.tvRow() + d.casts.slice(0, c.size === 'small' ? 1 : 3).map((r, i) => a.roomRow(r, i, 'cast')).join('') + '</div>' };
+      if (c.flavor === 'bold') return { bare: true, html: head(W.live) + a.liveCard() + (c.size === 'small' ? '' : a.tvStrip(3)) };
+      return { html: head(W.onNow) + '<div class="hv-rows">' + a.tvRow() + d.casts.slice(0, c.size === 'small' ? 1 : 3).map((r, i) => a.roomRow(r, i, 'cast')).join('') + '</div>' + (c.size === 'small' ? '' : a.tvStrip(c.size === 'large' ? 8 : 4)) };
     },
     'appstore/apps'(c) {
       const k = K(), a = k.api, W = k.W, list = a.shortApps(c.size === 'small' ? 4 : 8);
