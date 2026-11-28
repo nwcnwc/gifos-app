@@ -1066,9 +1066,14 @@
       const narrow = window.matchMedia && window.matchMedia('(max-width: 700px), (max-height: 500px)').matches;
       document.documentElement.style.setProperty('--bclinktop', top + 'px');
       if (onAir && !narrow) {
-        card.style.top = 'auto';
+        // On a wide screen the host's live card sits just under the room line (Broadcast · You are live), clear of the
+        // dock: pinned to the bottom it lay under the floating bar and "Publish to GifOS.tv" could not be pressed.
+        // It reads no rect of the bar; the top never moves for it.
+        const air = document.getElementById('airbar');
+        const ab = air && air.classList.contains('on') ? air.getBoundingClientRect().bottom : 0;
+        card.style.bottom = '';
+        card.style.top = Math.max(top, Math.ceil(ab + 8)) + 'px';
         card.style.maxHeight = 'none';
-        card.style.bottom = Math.ceil(window.innerHeight - limit + 8) + 'px';
       } else {
         card.style.bottom = '';
         card.style.top = top + 'px';
