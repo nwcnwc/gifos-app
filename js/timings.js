@@ -400,6 +400,12 @@
     XV_HOT_MS: 4000,   // ms
     XV_PEND_MAX_MS: 3000,   // ms
     XV_PRELOAD_IDLE_MS: 1500,   // ms
+    XV_REFLAG_HOLD_MS: 4000,   // ms
+    XV_REFLAG_LIFTS: 2,   // count
+    XV_REFLAG_LIFT_MS: 30000,   // ms
+    XV_REFLAG_LINE: 0.25,   // ratio
+    XV_REFLAG_LOOKS: 3,   // count
+    XV_REFLAG_LOOK_MS: 10000,   // ms
     XV_RETRY_MS: 30000,   // ms
     XV_SENSE_DIFF: 10,   // count
     XV_SENSE_MS: 250,   // ms

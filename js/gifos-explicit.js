@@ -94,18 +94,42 @@
   function openCache() {
     try { return (root.caches && root.caches.open) ? root.caches.open(CACHE).catch(() => null) : Promise.resolve(null); } catch (e) { return Promise.resolve(null); }
   }
+  // THE DOWNLOAD METER (Nathan 11-28): the bytes the first check needs (the runtime and the first model; pins marked
+  // `first`) counted as they arrive, so a tile held back for it can say how far along it is. video.progress() / onProgress.
+  const meter = { total: 0, done: 0, ready: false, fns: new Set() };
+  let urgent = false;   // a picture is waiting on the models: no more low-priority fetches
+  function note(n) {
+    meter.done = Math.min(meter.total || Infinity, meter.done + n);
+    meter.fns.forEach((f) => { try { f(); } catch (e) {} });
+  }
+  function readBody(r, pin) {
+    if (!pin.first || !r.body || typeof r.body.getReader !== 'function') return r.arrayBuffer();
+    const rd = r.body.getReader(), parts = [];
+    let n = 0;
+    const step = () => rd.read().then((x) => {
+      if (x.done) {
+        const out = new Uint8Array(n);
+        let at = 0;
+        for (const c of parts) { out.set(c, at); at += c.length; }
+        return out.buffer;
+      }
+      parts.push(x.value); n += x.value.length; note(x.value.length);
+      return step();
+    });
+    return step();
+  }
   // One pinned file: the checked copy in Cache Storage when there is one, else a download checked against the pin
   // before it is kept or used. A body that does not match its pin is refused.
   function pinned(pin, cache) {
     const fromCache = cache ? cache.match(pin.url).then((hit) => {
       if (!hit || hit.headers.get('x-gifos-sha256') !== pin.sha256) return null;
-      return hit.arrayBuffer().then((b) => (b.byteLength === pin.bytes ? b : null));
+      return hit.arrayBuffer().then((b) => { if (b.byteLength !== pin.bytes) return null; if (pin.first) note(b.byteLength); return b; });
     }).catch(() => null) : Promise.resolve(null);
     return fromCache.then((hit) => {
       if (hit) return hit;
-      return fetch(pin.url, { credentials: 'omit', mode: 'cors' }).then((r) => {
+      return fetch(pin.url, urgent ? { credentials: 'omit', mode: 'cors' } : { credentials: 'omit', mode: 'cors', priority: 'low' }).then((r) => {
         if (!r.ok) throw new Error('download failed: HTTP ' + r.status + ' for ' + pin.name);
-        return r.arrayBuffer();
+        return readBody(r, pin);
       }).then((buf) => root.crypto.subtle.digest('SHA-256', buf).then((d) => {
         if (hex(d) !== pin.sha256) throw new Error('download failed: ' + pin.name + ' does not match its pin');
         const keep = cache ? cache.put(pin.url, new Response(buf.slice(0), { headers: { 'content-type': 'application/octet-stream', 'x-gifos-sha256': pin.sha256 } })).catch(() => {}) : null;
@@ -338,7 +362,9 @@
     if (why) return Promise.reject(new Error('this device cannot run the video check (' + why + ')'));
     chainP = (async () => {
       const [c, cache] = await Promise.all([videoCatalog(opts.catalog), openCache()]);
-      const pin = pinsFrom(c, opts);
+      const pin0 = pinsFrom(c, opts);
+      const pin = (f) => Object.assign(pin0(f), { first: !meter.ready });   // counted in the meter until the first check is ready
+      if (!meter.total) meter.total = ['js', 'wasm', 'mjs'].reduce((a, k) => a + (c.runtime[k].bytes || 0), 0) + c.chain.filter((m) => !m.lazy).reduce((a, m) => a + (m.file.bytes || 0), 0);
       const w = vworker();
       try {
         await w.runtime(await fetchRuntime(c.runtime, pin, cache), 'wasm');
@@ -346,6 +372,7 @@
         // A model loads on its first use: the later stages of the chain only when a frame first reaches them.
         const ready = (m) => m.ready || (m.ready = pinned(pin(m.file), cache).then((b) => w.load(m.id, b, m)).then((t) => { m.ms = t.ms; }, (e) => { m.ready = null; throw e; }));
         for (const m of stages) if (!m.lazy) await ready(m);
+        meter.ready = true; meter.done = meter.total; note(0);
         return {
           rule: RULE, backend: 'wasm', stages,
           // onFirst(v0): called the moment the first (fast) model has scored the frame, before the slower ones run, so a
@@ -460,13 +487,13 @@
     const mobile = opts.mobile != null ? !!opts.mobile : mobileUa();
     const duty = (mobile ? T.XV_DUTY_PHONE_PCT : T.XV_DUTY_DESK_PCT) / 100;
     const fduty = (mobile ? T.XV_FIRST_DUTY_PHONE_PCT : T.XV_FIRST_DUTY_DESK_PCT) / 100;
-    const open = opts.engine ? () => Promise.resolve(opts.engine) : () => videoOpen(opts);
+    const open = opts.engine ? () => Promise.resolve(opts.engine) : () => { urgent = true; return videoOpen(opts); };
     const openDeep = opts.deep !== undefined ? () => Promise.resolve(opts.deep) : () => videoDeep(opts);
     const log = typeof opts.log === 'function' ? opts.log : () => {};
     const gate = opts.gate !== false;   // a picture new to this page is held back until its first look passes (FASTTRIP 4)
     const recs = new Map();   // id -> per-picture record (see rec)
     const hidden = new Map(); // track -> video element of our own (a track with no element on the page)
-    let stopped = false, timer = null, deepTimer = null, senseTimer = null, eng = null, deep, deepWhy = '', avg = 0, avgF = 0, gap = 0, frames = 0, err = '', deepFrames = 0, fullReadyAt = 0, busy = false, bursts = 0;
+    let engAt = 0, stopped = false, timer = null, deepTimer = null, senseTimer = null, eng = null, deep, deepWhy = '', avg = 0, avgF = 0, gap = 0, frames = 0, err = '', deepFrames = 0, fullReadyAt = 0, busy = false, bursts = 0;
     const now = () => Date.now();
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     // r.tripped: the chain confirmed (two hits of three frames). r.sus: ONE frame passed the first model's suspect line:
@@ -475,7 +502,7 @@
     // 'checking' for pend alone | 'unsafe').
     const rec = (id) => {
       let r = recs.get(id);
-      if (!r) recs.set(id, (r = { t: tracker(), td: tracker(), tripped: false, sus: false, hotUntil: 0, confirm: false, benignUntil: 0, benignHi: 0, peak: 0, need: 1, holdUntil: 0, pend: false, pendAt: 0, kind: '', susClean: 0, changed: false, chgAt: 0, nextChg: 0, warm: false, prev: null, at: 0, n: 0, hits: 0, s: null, fresh: true }));
+      if (!r) recs.set(id, (r = { t: tracker(), td: tracker(), tripped: false, sus: false, hotUntil: 0, confirm: false, benignUntil: 0, benignHi: 0, lifts: [], looksHi: [], lastLook: 0, strong: false, peak: 0, need: 1, holdUntil: 0, pend: false, pendAt: 0, kind: '', susClean: 0, changed: false, chgAt: 0, nextChg: 0, warm: false, prev: null, at: 0, n: 0, hits: 0, s: null, fresh: true }));
       return r;
     };
     const ready = (el) => !!el && ((el.videoWidth > 0 && el.readyState >= 2) || (!('videoWidth' in el) && el.width > 0));
@@ -523,14 +550,34 @@
       const f = Math.pow(Math.min(1, Math.max(0, (score - line) / Math.max(1e-6, T.XV_STRONG - line))), T.XV_HOLD_CURVE);
       return { hold: T.XV_HOLD_MIN_MS + (T.XV_HOLD_MAX_MS - T.XV_HOLD_MIN_MS) * f, clean: Math.round(T.XV_CLEAN_MIN + (T.XV_CLEAN_MAX - T.XV_CLEAN_MIN) * f) };
     }
+    // THE RE-FLAG HOLD (a miss is the worst error): a picture the confirming model keeps calling clean while the first model
+    // keeps flagging it is held as hard as a confirmed one. Armed by XV_REFLAG_LIFTS clean lifts of one picture inside
+    // XV_REFLAG_LIFT_MS, or XV_REFLAG_LOOKS first looks at or over XV_REFLAG_LINE inside XV_REFLAG_LOOK_MS. Armed, the
+    // confirming model's clean cannot lift it and the benign band is off; only clean first looks below the line lift it.
+    const recent = (a, win) => { const t = now(); while (a.length && t - a[0] > win) a.shift(); return a.length; };
+    function noteLook(id, r, v0) {
+      if (v0 < T.XV_REFLAG_LINE || now() - r.lastLook < 200) return;   // one look is fed twice (its callback, then feed)
+      r.lastLook = now(); r.looksHi.push(r.lastLook);
+      if (recent(r.looksHi, T.XV_REFLAG_LOOK_MS) >= T.XV_REFLAG_LOOKS) arm(id, r, 'looks');
+    }
+    const reHold = () => { const h = holdFor(T.XV_STRONG); return { hold: Math.min(h.hold, T.XV_REFLAG_HOLD_MS), clean: h.clean }; };   // the strong clean count, a shorter floor
+    function arm(id, r, why) {
+      if (r.strong) return;
+      r.strong = true; r.benignUntil = 0; r.confirm = false;
+      const h = reHold();
+      if (r.sus) { r.peak = Math.max(r.peak, T.XV_STRONG); r.holdUntil = Math.max(r.holdUntil, now() + h.hold); r.need = Math.max(r.need, h.clean); }
+      log('xv reflag ' + String(id).slice(0, 8) + ' ' + why + ' strong hold');
+    }
     function setSus(id, r, v0) {
+      noteLook(id, r, v0);
+      if (!r.strong && !r.sus && !r.tripped && recent(r.lifts, T.XV_REFLAG_LIFT_MS) >= T.XV_REFLAG_LIFTS) arm(id, r, 'lifts');
       // A weak look inside the band the confirming model just called benign (until the score jumps, the picture changes, or
       // XV_BENIGN_MS passes) does not trip again: an ordinary face that hovers over the line gets one brief blur.
       if (!r.sus && !r.tripped && v0 < T.XV_STRONG && r.benignUntil > now() && v0 <= r.benignHi) return;
       if (r.sus || r.tripped) { r.susClean = 0; if (r.sus && v0 > r.peak) { r.peak = v0; const h = holdFor(v0); r.holdUntil = Math.max(r.holdUntil, now() + h.hold); r.need = Math.max(r.need, h.clean); } return; }
-      const h = holdFor(v0);
-      r.peak = v0; r.need = h.clean; r.holdUntil = now() + h.hold;
-      r.sus = true; r.susClean = 0; r.pend = false; r.confirm = v0 < T.XV_STRONG && !!eng.confirm;
+      const h = r.strong ? reHold() : holdFor(v0);
+      r.peak = r.strong ? Math.max(v0, T.XV_STRONG) : v0; r.need = h.clean; r.holdUntil = now() + h.hold;
+      r.sus = true; r.susClean = 0; r.pend = false; r.confirm = v0 < T.XV_STRONG && !!eng.confirm && !r.strong;
       log('xv suspect ' + String(id).slice(0, 8) + ' v0=' + Math.round(v0 * 1e4) / 1e4 + ' hold=' + Math.round(h.hold) + 'ms clean=' + h.clean);
       emit(id, r, 'suspect');
     }
@@ -546,7 +593,7 @@
         if (res.s[0] >= sl) r.hotUntil = now() + T.XV_HOT_MS;
         if (r.sus) {
           if (res.s[0] >= sl) setSus(id, r, res.s[0]); else r.susClean++;
-          if (r.tripped || (r.susClean >= r.need && now() >= r.holdUntil)) r.sus = false;
+          if (r.tripped || (r.susClean >= r.need && now() >= r.holdUntil)) { r.sus = false; r.strong = false; }
         } else if (!r.tripped && res.s[0] >= sl) setSus(id, r, res.s[0]);   // the chain's trip lifted on a picture still suspect: stay blurred, no blink
         r.pend = false;
       }
@@ -581,13 +628,13 @@
           const r = rec(src.id), t = now();
           if (r.fresh) {
             r.fresh = false;
-            if (eng && gate && !r.kind) { r.pend = true; r.pendAt = t; emit(src.id, r, 'new'); }
+            if (gate && !r.kind) { r.pend = true; r.pendAt = t; emit(src.id, r, 'new'); }   // held while the models still download too (the tile says how far along)
             r.changed = true; kick = true;
           }
           const l = luma(el);
           if (l && r.prev && t >= r.nextChg && lumaDiff(l, r.prev) >= T.XV_SENSE_DIFF) { r.changed = true; r.benignUntil = 0; kick = true; }
           if (l) r.prev = l;
-          if (r.pend && t - r.pendAt >= T.XV_PEND_MAX_MS) { r.pend = false; emit(src.id, r, 'late'); }
+          if (r.pend && eng && t - Math.max(r.pendAt, engAt) >= T.XV_PEND_MAX_MS) { r.pend = false; emit(src.id, r, 'late'); }   // the cap counts from when the check could first look
         }
       } catch (e) {}
       if (kick && !busy && eng) { if (timer) clearTimeout(timer); timer = setTimeout(tick); }
@@ -624,6 +671,8 @@
       log('xv confirm ' + String(src.id).slice(0, 8) + ' v=' + Math.round(res.v * 1e4) / 1e4 + (res.hit ? ' explicit' : ' clean') + ' ' + res.ms + 'ms');
       if (!r.sus || r.tripped) return;
       if (res.hit) { const h = holdFor(T.XV_STRONG); r.peak = Math.max(r.peak, T.XV_STRONG); r.holdUntil = Math.max(r.holdUntil, now() + h.hold); r.need = Math.max(r.need, h.clean); return; }
+      if (r.strong) return;   // re-flag hold: the confirming model's clean does not lift it
+      r.lifts.push(now());
       r.sus = false; r.benignHi = r.peak + T.XV_BENIGN_MARGIN; r.benignUntil = now() + T.XV_BENIGN_MS;
       emit(src.id, r, 'benign');
     }
@@ -662,7 +711,7 @@
       try {
         const a = list();
         if (a.length) {
-          if (!eng) { eng = await open(); err = ''; }
+          if (!eng) { eng = await open(); err = ''; engAt = now(); }
           if (deep === undefined) { deep = null; openDeep().then((d) => { deep = d; deepWhy = d ? 'on ' + d.ms + 'ms' : 'off'; if (d) log('xv deep on (' + d.id + ', ' + d.ms + ' ms a frame)'); if (d && !stopped) deepTick(); }, () => { deepWhy = 'off'; }); }
           const p = pick(a, 'chain');
           if (p && p.job === 'confirm') await confirmJob(p.src, p.el, p.r);
@@ -851,5 +900,13 @@
     seen: (h) => verdicts.get(h), _verdicts: verdicts, isMedia: (m) => isPictureMime(m) || isVideoMime(m) };
 
   GifOS.explicit = { guard, MODEL, VERSION, STILL_LINE, VIDEO_LINE, unsupported, catalog, open, classify, checkStill, tracker, blockOn, _score: score,
-    video: { RULE, catalog: videoCatalog, open: videoOpen, deep: videoDeep, watch, mobile: mobileUa } };
+    video: {
+      RULE, catalog: videoCatalog, open: videoOpen, deep: videoDeep, watch, mobile: mobileUa,
+      // Download progress of what the first check needs: { pct (0-100, or null until the catalog is known), ready }.
+      progress: () => ({ pct: meter.ready ? 100 : meter.total ? Math.min(99, Math.floor((100 * meter.done) / meter.total)) : null, ready: meter.ready }),
+      onProgress: (f) => { meter.fns.add(f); return () => meter.fns.delete(f); },
+      // PRELOAD ON EVERY GIFOS PAGE (Nathan 11-28): both models in the background, low priority, once per device (Cache Storage).
+      // Resolves { ms, err } and never throws. Safe to call again: it joins the one download.
+      preload: (opts) => { const t0 = performance.now(); return videoOpen(opts).then((e) => e.preload(), (e) => ({ err: String((e && e.message) || e) })).then((r) => Object.assign({ ms: Math.round(performance.now() - t0) }, r)); },
+    } };
 })(typeof window !== 'undefined' ? window : globalThis);
