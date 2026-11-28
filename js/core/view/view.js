@@ -9832,9 +9832,12 @@
         const maxY = Math.max(0, window.innerHeight - h - 22);
         const left0 = window.innerWidth / 2 - w / 2;
         const span = tabSpan();
+        const g2 = document.getElementById('bargrip2');
+        let span2 = 0;
+        if (g2) { const br = bar.getBoundingClientRect(), r2 = g2.getBoundingClientRect(); if (r2.width > 0 && br.width > 0) span2 = br.right - r2.left; }
         if (window.GifOS && GifOS.meetLayout && typeof GifOS.meetLayout.clampBar === 'function' && span > 0) {
-          const abs = GifOS.meetLayout.clampBar({ x: left0 + dockx, y: 0 }, { w: w, h: h, tab: span }, { w: window.innerWidth, h: window.innerHeight });
-          dockx = Math.max(-maxX, abs.x - left0);
+          const abs = GifOS.meetLayout.clampBar({ x: left0 + dockx, y: 0 }, { w: w, h: h, tab: span, tab2: span2 }, { w: window.innerWidth, h: window.innerHeight });
+          dockx = abs.x - left0; // either edge may stash the bar; a handle stays on screen
         } else {
           dockx = Math.max(-maxX, Math.min(maxX, dockx));
         }

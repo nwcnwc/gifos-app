@@ -147,11 +147,16 @@
     const vw = Math.max(0, view.w || 0), vh = Math.max(0, view.h || 0);
     const raw = bar && Number.isFinite(bar.tab) ? bar.tab : 0;
     const tab = bw > 0 && raw > 0 ? Math.min(bw, raw) : bw;
+    // The right handle's span (bar right edge back to its left side) keeps the bar
+    // stashable off the left edge too, with that handle still on screen.
+    const rawR = bar && Number.isFinite(bar.tab2) ? bar.tab2 : 0;
+    const tabR = bw > 0 && rawR > 0 ? Math.min(bw, rawR) : 0;
+    const minX = tabR > 0 ? -(bw - tabR) : 0; // no right handle known: the old left-edge guard
     const maxX = Math.max(0, vw - tab);
     const maxY = Math.max(0, vh - bh);
     const x = pos && Number.isFinite(pos.x) ? pos.x : 0;
     const y = pos && Number.isFinite(pos.y) ? pos.y : 0;
-    return { x: Math.min(maxX, Math.max(0, x)), y: Math.min(maxY, Math.max(0, y)) };
+    return { x: Math.min(maxX, Math.max(minX, x)), y: Math.min(maxY, Math.max(0, y)) };
   }
   function defaultBar(bar, view, phone) {
     const bottom = phone ? 16 : 18;
