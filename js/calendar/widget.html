@@ -1,0 +1,177 @@
+<!doctype html><meta charset="utf-8">
+<style>
+  *{box-sizing:border-box} html,body{margin:0}
+  body{font:15px ui-rounded,'SF Pro Rounded',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;color:var(--w-ink,#16182b);cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+  .dim{color:var(--w-dim,#667)}
+  body{padding:2px}
+  .top{display:flex;align-items:center;gap:.7rem}
+  .num{font-size:2.6rem;font-weight:800;letter-spacing:-.04em;line-height:1;color:var(--w-accent,#5b5bf0);font-variant-numeric:tabular-nums}
+  .wd{font-weight:750;font-size:1.02rem;text-transform:capitalize} .mo{font-size:.8rem;text-transform:capitalize}
+  ul{list-style:none;margin:.6rem 0 0;padding:0;display:flex;flex-direction:column;gap:.3rem}
+  li{display:flex;gap:.45rem;align-items:baseline;font-size:.86rem;min-width:0}
+  li .dot{flex:none;width:.55rem;height:.55rem;border-radius:50%;background:var(--w-accent2,#ff7ab8);align-self:center}
+  li .t{flex:none;font-size:.74rem;font-variant-numeric:tabular-nums;color:var(--w-dim,#667)}
+  li .n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+  li.later .n{font-weight:500}
+  .none{margin:.55rem 0 0;font-size:.82rem}
+  [data-size="wide"] body{display:flex;gap:1.1rem;align-items:center}
+  [data-size="wide"] ul,[data-size="wide"] .none{margin:0;flex:1;min-width:0}
+  [data-flavor="bold"] .num{font-size:3rem;font-weight:900}
+  [data-flavor="bold"] .wd{font-weight:900;text-transform:uppercase;letter-spacing:.03em}
+  h2{margin:0 0 .45rem;font-size:.98rem;text-transform:capitalize;display:flex;justify-content:space-between;align-items:baseline}
+  h2 span{font-size:.74rem;font-weight:500}
+  .g{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;text-align:center}
+  .g i{font-style:normal;font-size:.62rem;color:var(--w-dim,#667);padding-bottom:.15rem}
+  .g b{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:500;font-size:.78rem;line-height:1;height:1.9rem;border-radius:50%;font-variant-numeric:tabular-nums}
+  .g b.out{opacity:.3} .g b.today{background:var(--w-accent,#5b5bf0);color:var(--w-on,#fff);font-weight:800}
+  .dots{display:flex;gap:1px;height:.28rem;margin-top:.12rem}
+  .dots u{display:block;width:.26rem;height:.26rem;border-radius:50%;background:var(--w-accent2,#ff7ab8);text-decoration:none}
+  .g b.today .dots u{background:var(--w-on,#fff)}
+  [data-size="large"] .g b{height:2.2rem;font-size:.88rem}
+  [data-size="small"] .num{font-size:2rem}
+</style>
+<div id="w"></div>
+<script>
+/*@ical*/
+(function () {
+  'use strict';
+  var I = (window.GifOS && GifOS.ical) || null;
+  var W = window.gifos && gifos.widget;
+  var raw = [], events = [], cals = [], now = Date.now();
+  function T(k) { try { if (window.gifos && gifos.i18n) return gifos.i18n.t(k); } catch (e) {} return k; }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function tag() { try { var l = window.gifos && gifos.locale && gifos.locale(); if (l && l.tag) return l.tag; } catch (e) {} return undefined; }
+  function fmt(d, o) { try { return new Intl.DateTimeFormat(tag(), o).format(d); } catch (e) { return ''; } }
+  function pad(n) { n = String(n); return n.length < 2 ? '0' + n : n; }
+  function zone() {
+    try { var l = window.gifos && gifos.locale && gifos.locale(); if (l && l.timeZone) return l.timeZone; } catch (e) {}
+    try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch (e2) { return 'UTC'; }
+  }
+  function weekStart() {
+    try { var L = new Intl.Locale(tag() || 'en'), w = L.getWeekInfo ? L.getWeekInfo() : L.weekInfo; if (w && w.firstDay) return w.firstDay % 7; } catch (e) {}
+    var r = ((tag() || '').match(/-([A-Z]{2})/) || [])[1] || '';
+    return /^(US|CA|MX|BR|JP|IL|PH|AU|IN|KR|TW|HK|CO|PE|VE|AR)$/.test(r) ? 0 : 1;
+  }
+  function dateKey(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function addDate(s, n) {
+    var p = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); if (!p) return s || '';
+    var dt = new Date(Date.UTC(+p[1], +p[2] - 1, +p[3] + n));
+    return dt.getUTCFullYear() + '-' + pad(dt.getUTCMonth() + 1) + '-' + pad(dt.getUTCDate());
+  }
+  function addMin(local, mins) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(local); if (!m) return local;
+    var ms = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) + mins * 60000, d = new Date(ms);
+    return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()) + 'T' + pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ':00';
+  }
+  function hidden(id) {
+    for (var i = 0; i < cals.length; i++) if (cals[i] && cals[i].id === id) return !!cals[i].hidden;
+    return false;
+  }
+  function colorOf(id) {
+    for (var i = 0; i < cals.length; i++) if (cals[i] && cals[i].id === id && cals[i].color) return cals[i].color;
+    return '';
+  }
+  function normalize(rows) {
+    var out = [];
+    (rows || []).forEach(function (row) {
+      if (!row) return;
+      if (row.uid && (row.allDay || typeof row.start === 'number' || row.startLocal)) { if (!hidden(row.cal)) out.push(row); return; }
+      if (!row.d || !row.title || !I) return;
+      var allDay = !row.t;
+      var partial = { uid: 'legacy-' + (row.id || row.d) + '@gifos.app', title: row.title, cal: row.cal || '', allDay: allDay };
+      if (allDay) { partial.start = row.d; partial.end = addDate(row.d, 1); }
+      else {
+        var t = String(row.t).length === 5 ? row.t + ':00' : row.t;
+        partial.tzid = ''; partial.startLocal = row.d + 'T' + t; partial.endLocal = addMin(partial.startLocal, 60);
+      }
+      try { var ev = I.makeEvent(partial); if (!hidden(ev.cal)) out.push(ev); } catch (e) {}
+    });
+    return out;
+  }
+  function dayOf(occ) {
+    if (!occ) return '';
+    if (occ.allDay || !(occ.event && occ.event.tzid)) return String(occ.startLocal || '').slice(0, 10);
+    try { return I.utcToZoned(occ.startMs, zone()).slice(0, 10); } catch (e) { return String(occ.startLocal || '').slice(0, 10); }
+  }
+  function daysOf(occ) {
+    if (!occ.allDay) return [dayOf(occ)];
+    var out = [], d = String(occ.startLocal || '').slice(0, 10), end = String(occ.endLocal || '').slice(0, 10), g = 0;
+    if (!end || end <= d) end = addDate(d, 1);
+    while (d < end && g++ < 40) { out.push(d); d = addDate(d, 1); }
+    return out.length ? out : [String(occ.startLocal || '').slice(0, 10)];
+  }
+  function timeText(occ, todayKey) {
+    var dk = dayOf(occ);
+    if (dk && dk !== todayKey) {
+      var p = /^(\d{4})-(\d{2})-(\d{2})/.exec(dk);
+      if (p) return fmt(new Date(+p[1], +p[2] - 1, +p[3]), { month: 'short', day: 'numeric' });
+    }
+    if (occ.allDay) return T('allDay');
+    var local = (occ.event && !occ.event.tzid) ? occ.startLocal : '';
+    var ms = occ.startMs;
+    if (local && I) { try { ms = I.zonedToUtc(local, 'UTC'); } catch (e) {} }
+    return fmt(new Date(ms), { hour: 'numeric', minute: '2-digit', timeZone: (occ.event && occ.event.tzid) ? zone() : 'UTC' });
+  }
+  function expand(from, to) {
+    if (!I) return [];
+    try { return I.expandAll(events, from, to, { max: 400 }) || []; } catch (e) { return []; }
+  }
+  function dots(list) {
+    var seen = {}, html = '';
+    for (var i = 0; i < list.length && html.split('u>').length < 5; i++) {
+      var c = colorOf(list[i].event && list[i].event.cal) || 'var(--w-accent2,#ff7ab8)';
+      if (seen[c]) continue; seen[c] = 1;
+      html += '<u style="background:' + esc(c) + '"></u>';
+    }
+    return html ? '<span class="dots">' + html + '</span>' : '';
+  }
+  function monthCells(y, m, todayKey) {
+    var first = new Date(y, m, 1), lead = (first.getDay() - weekStart() + 7) % 7, out = [];
+    for (var i = 0; i < 42; i++) {
+      var d = new Date(y, m, 1 - lead + i);
+      if (i >= 35 && d.getMonth() !== m && i % 7 === 0) break;
+      out.push({ k: dateKey(d), n: d.getDate(), out: d.getMonth() !== m, today: dateKey(d) === todayKey, date: d });
+    }
+    return out;
+  }
+  function weekdayRow() {
+    var s = weekStart(), h = '';
+    for (var i = 0; i < 7; i++) h += '<i>' + esc(fmt(new Date(2023, 0, 1 + ((s + i) % 7)), { weekday: 'narrow' })) + '</i>';
+    return h;
+  }
+  function draw() {
+    var d = new Date(now), el = document.getElementById('w'), size = W ? W.size : 'medium';
+    if (!el) return;
+    if (W && W.id === 'month') {
+      var cells = monthCells(d.getFullYear(), d.getMonth(), dateKey(d));
+      var from = cells[0].date, to = new Date(cells[cells.length - 1].date.getFullYear(), cells[cells.length - 1].date.getMonth(), cells[cells.length - 1].date.getDate() + 1);
+      var occ = expand(from.getTime(), to.getTime()), by = {};
+      occ.forEach(function (o) { daysOf(o).forEach(function (k) { (by[k] = by[k] || []).push(o); }); });
+      el.innerHTML = '<h2>' + esc(fmt(d, { month: 'long' })) + '<span class="dim">' + esc(fmt(d, { weekday: 'short', day: 'numeric' })) + '</span></h2><div class="g">' + weekdayRow() +
+        cells.map(function (c) { return '<b class="' + (c.out ? 'out ' : '') + (c.today ? 'today' : '') + '">' + c.n + dots(by[c.k] || []) + '</b>'; }).join('') + '</div>';
+      return;
+    }
+    var start = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    var list = expand(start.getTime(), start.getTime() + 21 * 86400000);
+    list.sort(function (a, b) { return a.startMs - b.startMs; });
+    var n = size === 'small' ? 2 : size === 'wide' ? 3 : 4;
+    var tk = dateKey(d);
+    var rows = list.slice(0, n).map(function (o) {
+      var later = dayOf(o) !== tk;
+      var col = colorOf(o.event && o.event.cal) || 'var(--w-accent2,#ff7ab8)';
+      return '<li class="' + (later ? 'later' : '') + '"><i class="dot" style="background:' + esc(col) + '"></i><span class="t">' + esc(timeText(o, tk)) + '</span><span class="n">' + esc((o.event && o.event.title) || T('nothing')) + '</span></li>';
+    }).join('');
+    el.innerHTML = '<div class="top"><span class="num">' + d.getDate() + '</span><span><div class="wd">' + esc(fmt(d, { weekday: 'long' })) + '</div><div class="mo dim">' + esc(fmt(d, { month: 'long', year: 'numeric' })) + '</div></span></div>' +
+      (rows ? '<ul>' + rows + '</ul>' : '<p class="none dim">' + esc(T('nothing')) + '</p>');
+    if (size === 'wide') el.style.display = 'contents';
+  }
+  if (W && window.gifos && gifos.db) {
+    W.onMinute(function (t) { now = t; draw(); });
+    W.onChange(draw);
+    gifos.db('events').subscribe(function (rows) { raw = rows || []; events = normalize(raw); draw(); });
+    gifos.db('calendars').subscribe(function (rows) { cals = rows || []; events = normalize(raw); draw(); });
+    if (gifos.i18n && gifos.i18n.load) gifos.i18n.load().then(draw, draw);
+    document.body.onclick = function () { W.open(); };
+  } else draw();
+})();
+</script>

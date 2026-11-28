@@ -140,6 +140,7 @@
    "js/core/view/myroom.js",
    "js/ring-standby.js",
    "js/core/view/bell.js",
+   "js/calendar-bridge.js",
    "js/core/view/meet.js"
   ],
   "cast.html": [
@@ -150,11 +151,14 @@
    "js/core/view/myroom.js",
    "js/ring-standby.js",
    "js/core/view/bell.js",
+   "js/calendar-bridge.js",
    "js/core/view/cast.js"
   ],
   "run.html": [
    "js/core/view/subs.js",
-   "js/core/view/audio.js"
+   "js/core/view/audio.js",
+   "js/calendar-bridge.js",
+   "js/calendar-remind.js"
   ],
   "embed.html": [
    "js/core/view/shareshots.js",

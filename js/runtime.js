@@ -745,7 +745,15 @@
   }
 
   // ---- app-facing shim injected into the sandboxed iframe -----------------
-  function clientShim(gen, nonce) {
+  function clientShim(gen, nonce, withCalendar) {
+    // Present only for the seeded system Calendar. A store app that copies the manifest gets an empty string here.
+    const calendarApi = withCalendar ? `,
+        rooms: {
+          create: function(opts){ return rpc({ type:'sys', op:'rooms.create', mode: opts && opts.mode }); },
+          draft: function(){ return rpc({ type:'sys', op:'rooms.draft' }); }
+        },
+        alarms: { set: function(list){ return rpc({ type:'sys', op:'alarms.set', list: list }); } },
+        open: function(link){ return rpc({ type:'sys', op:'open', link: link }); }` : '';
     return `(function(){
       var GEN = ${Number(gen) || 1}, NONCE = ${JSON.stringify(String(nonce || ''))};
       var LOCALE0 = ${JSON.stringify(localeSnap()).replace(/</g, '\\u003c')}, I18N_CORE = (${i18nCoreSrc()});
@@ -1544,7 +1552,7 @@
           speakers: function(id, on){ return rpc({ type:'meet', op:'speakers', meetingId: id, on: !!on }); },
           speakerClips: function(id){ return rpc({ type:'meet', op:'speakerClips', meetingId: id }); },
           shots: function(id){ return rpc({ type:'meet', op:'shots', meetingId: id }); }
-        }
+        }${calendarApi}
       };
     })();`;
   }
@@ -1636,7 +1644,7 @@
   const baseTag = (doc) => { const b = doc.createElement('base'); b.setAttribute('href', 'about:srcdoc'); return b; };
 
   // ---- build a runnable, self-contained HTML doc from the archive ----------
-  function buildAppHtml(files, manifest, gen, nonce, entry) {
+  function buildAppHtml(files, manifest, gen, nonce, entry, withCalendar) {
     const withAgent = hasCap(manifest, 'agent');
     const CSP = appCsp(manifest);
     let html = gif.bytesToText(files[entry && files[entry] ? entry : 'index.html']);
@@ -1660,7 +1668,7 @@
       meta.setAttribute('http-equiv', 'Content-Security-Policy');
       meta.setAttribute('content', CSP);
       const shim = doc.createElement('script');
-      shim.textContent = clientShim(gen, nonce);
+      shim.textContent = clientShim(gen, nonce, !!withCalendar);
       doc.head.insertBefore(shim, doc.head.firstChild);
       doc.head.insertBefore(baseTag(doc), doc.head.firstChild);
       doc.head.insertBefore(meta, doc.head.firstChild);
@@ -1669,7 +1677,7 @@
     }
     // Non-DOM fallback (tooling): best-effort inject into <head> if present.
     const head = '<meta http-equiv="Content-Security-Policy" content="' + CSP + '">' +
-      APP_BASE_TAG + '<script>' + clientShim(gen, nonce) + '</script>';
+      APP_BASE_TAG + '<script>' + clientShim(gen, nonce, !!withCalendar) + '</script>';
     const tail = withAgent ? '<script>' + agentBootstrap() + '</script>' : '';
     const withHead = /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => m + head) : head + html;
     return withHead + tail;
@@ -4853,7 +4861,7 @@
   }
 
   let setupShownAt = 0; // the last time an app raised an apiSetup/aiSetup modal
-  function mountApp(iframe, files, manifest, db, originalBytes, policy, mountFileId, launch) {
+  function mountApp(iframe, files, manifest, db, originalBytes, policy, mountFileId, launch, calendarFile) {
     noteAppKey(manifest, files, originalBytes);   // who is asking, for what the person told this app (gifos.me)
     // The GifOS Meet apps run the in-meeting apps they ship and any app GIF a
     // person brings to the meeting (Load a GIF, Nathan 2026-11-13), but never
@@ -4867,6 +4875,8 @@
     }
     policy = policy || makeNetPolicy(null, manifest); // client-run: session-only
     mountFileId = mountFileId || null; // set for host mounts — lets gifos.assets() serve the icon's asset cache
+    // Calendar's bridge is the seeded system app only. A guest, a provider, and a store copy get none of it.
+    const calendarOn = !!(root.GifOS && root.GifOS.calendarBridge && root.GifOS.calendarBridge.seededCalendar(calendarFile, manifest));
     // The gate: gifos.launch() answers from here, and only once someone has
     // said yes. asked=[] resolves null immediately, so an app that always calls
     // launch() never waits for a sheet that isn't coming.
@@ -4912,6 +4922,7 @@
     const teardown = () => {
       if (torn) return; torn = true; live = 0;
       identFrames.delete(iframe);
+      try { if (calendarOn && root.GifOS && root.GifOS.calendarBridge) root.GifOS.calendarBridge.setActive(false); } catch (e) {}
       root.removeEventListener('message', handler);
       try { if (root.GifOS && root.GifOS.meetHost) { root.GifOS.meetHost.clearApp(); root.GifOS.meetHost.leaveAll(); } } catch (e) {}
       try { iframe.srcdoc = LEFT_FRAME_HTML; } catch (e) {}
@@ -4920,7 +4931,7 @@
       if (torn) return;
       if (++remounts > 6) { teardown(); return; }
       const g = ++gen;
-      try { iframe.srcdoc = buildAppHtml(files, manifest, g, nonce); } catch (e) { teardown(); return; }
+      try { iframe.srcdoc = buildAppHtml(files, manifest, g, nonce, undefined, calendarOn); } catch (e) { teardown(); return; }
       if (retry) setTimeout(() => { if (retry && !torn && gen === g && live !== g) { retry = false; remount(); } }, 5000);
     };
     const handler = (e) => {
@@ -5118,6 +5129,22 @@
       else if (d.type === 'purchases') {
         (GifOS.payBroker ? GifOS.payBroker.purchases(manifest, originalBytes) : Promise.reject(new Error('Payments are not available on this computer.')))
           .then((result) => reply({ ok: true, result })).catch((err) => reply({ ok: false, error: String(err && err.message || err) }));
+      }
+      else if (d.type === 'sys') {
+        // The seeded Calendar's own asks (rooms, reminders, opening a meeting), by its capabilities rooms and alarms.
+        // Checked again here: the frame can ask, and only the seeded Calendar is answered.
+        const bridge = root.GifOS && root.GifOS.calendarBridge;
+        const op = String(d.op || '');
+        const done = (p) => Promise.resolve(p).then((result) => reply({ ok: true, result })).catch((err) => reply({ ok: false, error: String(err && err.message || err) }));
+        if (!calendarOn || !bridge || !bridge.seededCalendar(calendarFile, manifest)) reply({ ok: false, error: 'This is not available to this app.' });
+        else if (op === 'rooms.create' && hasCap(manifest, 'rooms') && !capDisabled(manifest, 'rooms')) done(bridge.newRoom({ mode: d.mode }));
+        else if (op === 'rooms.draft' && hasCap(manifest, 'rooms') && !capDisabled(manifest, 'rooms')) done(bridge.draft());
+        else if (op === 'alarms.set' && hasCap(manifest, 'alarms') && !capDisabled(manifest, 'alarms')) done(bridge.setAlarms(d.list));
+        else if (op === 'open' && hasCap(manifest, 'rooms') && !capDisabled(manifest, 'rooms')) {
+          if (!gestured()) reply({ ok: false, error: 'Opening a meeting needs a tap or click first.' });
+          else done(bridge.join(d.link));
+        }
+        else reply({ ok: false, error: 'Unknown request.' });
       }
       else if (d.type === 'meet') {
         const host = root.GifOS && root.GifOS.meetHost;
@@ -5327,7 +5354,9 @@
       sandboxToken(iframe, 'allow-popups');
       sandboxToken(iframe, 'allow-popups-to-escape-sandbox');
     }
-    iframe.srcdoc = buildAppHtml(files, manifest, gen, nonce);
+    // While the seeded Calendar is open its page keeps listening doors, so messages from contacts arrive.
+    if (calendarOn) { try { root.GifOS.calendarBridge.setActive(true); } catch (e) {} }
+    iframe.srcdoc = buildAppHtml(files, manifest, gen, nonce, undefined, calendarOn);
     return () => root.removeEventListener('message', handler);
   }
 
@@ -5994,7 +6023,7 @@
         // Snapshot the state AT LOAD once, so the corner app-GIF and a
         // "data at connect time" steal share the same (memoized) bytes.
         const stealCtx = { connectState: connectState, cache: { bytes: null } };
-        mountApp(iframe, files, manifest, db, appBytes, netPolicy, fileId, launch);
+        mountApp(iframe, files, manifest, db, appBytes, netPolicy, fileId, launch, rec);
         if (root.__gifosOnApp) root.__gifosOnApp(appBytes, manifest);
         announceConn({ mode: 'local' });
         setStatus(T('runtime.status.running'));
