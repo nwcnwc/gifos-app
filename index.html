@@ -337,6 +337,9 @@ window.GIFOS_VERSION = 'edge';
   <script src="js/desktop.js"></script>
   <script src="js/home-widgets.js"></script>
   <script src="js/home-view.js"></script>
+  <script src="js/calendar-app.js"></script>
+  <script src="js/calendar-remind.js"></script>
+  <script>if (window.GIFOS_VERSION === 'edge' && window.GifOS && GifOS.calendarRemind) GifOS.calendarRemind.start();</script>
 <!-- FOR AI AGENTS. Off-screen, not display:none — most agent fetchers read
      the raw HTML without running scripts (so the JS-painted build badge is
      invisible to them), and readability-style extractors DROP display:none
