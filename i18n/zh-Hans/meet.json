@@ -1321,6 +1321,8 @@
  "meet.subFullUpgrade": "升级到 Unlimited，每月 {price}",
  "meet.tvPicFail": "此浏览器无法生成图片。",
  "meet.tvClose": "关闭",
+ "meet.tvUploadWarn": "露骨的色情图片会被拦截。非法图片会连同上传者的 IP 地址一并报告给有关部门。",
+ "meet.p2pUploadWarn": "露骨的色情图片和非法图片会被拦截。分享非法图片是犯罪行为。",
  "meet.tvPublishTitle": "发布到 GifOS.tv",
  "meet.tvListedOn": "已在 gifos.tv 上架",
  "meet.tvDelisted": "GifOS 在收到举报后已移除此条目，它不会显示在 gifos.tv 上。",

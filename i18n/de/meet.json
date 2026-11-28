@@ -1321,6 +1321,8 @@
   "meet.subFullUpgrade": "Auf Unlimited upgraden für {price}/Monat",
   "meet.tvPicFail": "Dieser Browser konnte das Bild nicht erstellen.",
   "meet.tvClose": "Schließen",
+  "meet.tvUploadWarn": "Sexuell explizite Bilder werden blockiert. Illegale Bilder werden den Behörden gemeldet, zusammen mit der IP-Adresse des Hochladenden.",
+  "meet.p2pUploadWarn": "Sexuell explizite und illegale Bilder werden blockiert. Das Teilen illegaler Bilder ist eine Straftat.",
   "meet.tvPublishTitle": "Auf GifOS.tv veröffentlichen",
   "meet.tvListedOn": "Auf gifos.tv gelistet",
   "meet.tvDelisted": "GifOS hat diesen Eintrag nach einer Meldung entfernt. Er wird auf gifos.tv nicht angezeigt.",

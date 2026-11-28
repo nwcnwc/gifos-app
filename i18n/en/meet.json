@@ -1329,6 +1329,8 @@
   "meet.subRestoreLink": "Restore with PayPal (lost device)",
   "meet.tvPicFail": "This browser could not make the picture.",
   "meet.tvClose": "Close",
+  "meet.tvUploadWarn": "Sexually explicit images are blocked. Illegal images are reported to the authorities, together with the uploader's IP address.",
+  "meet.p2pUploadWarn": "Sexually explicit and illegal images are blocked. Sharing illegal images is a crime.",
   "meet.tvPublishTitle": "Publish to GifOS.tv",
   "meet.tvListedOn": "Listed on gifos.tv",
   "meet.tvDelisted": "GifOS has removed this listing after a report. It is not shown on gifos.tv.",

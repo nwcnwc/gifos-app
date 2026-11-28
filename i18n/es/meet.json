@@ -1321,6 +1321,8 @@
   "meet.subFullUpgrade": "Pasa a Unlimited por {price}/mes",
   "meet.tvPicFail": "Este navegador no pudo crear la imagen.",
   "meet.tvClose": "Cerrar",
+  "meet.tvUploadWarn": "Las imágenes sexualmente explícitas están bloqueadas. Las imágenes ilegales se denuncian a las autoridades, junto con la dirección IP de quien las sube.",
+  "meet.p2pUploadWarn": "Las imágenes sexualmente explícitas e ilegales están bloqueadas. Compartir imágenes ilegales es un delito.",
   "meet.tvPublishTitle": "Publicar en GifOS.tv",
   "meet.tvListedOn": "Publicado en gifos.tv",
   "meet.tvDelisted": "GifOS ha retirado esta publicación tras una denuncia. No se muestra en gifos.tv.",
