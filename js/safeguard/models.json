@@ -1,0 +1,25 @@
+{
+  "about": "On-device explicit-picture check: the image model and its runtime. Every file is pinned by SHA-256; the page fetches it from the GifOS model host at <base>/<key>, checks every byte and hands the bytes to the check's worker, which makes no request of its own. src names the published upstream file the copy was taken from.",
+  "version": 1,
+  "base": "https://models.gifos.app",
+  "model": "nsfwjs-mnv2",
+  "modelVersion": "4.4.0",
+  "classes": ["drawing", "hentai", "neutral", "porn", "sexy"],
+  "size": 224,
+  "format": "layers",
+  "shards": ["weights"],
+  "files": {
+    "tf": { "name": "tf.min.js", "key": "tfjs-4.22.0/300dfae273d20b4046f46a06d735688f03675a807561e9bcb5f664eb2f3d2831/tf.min.js", "sha256": "300dfae273d20b4046f46a06d735688f03675a807561e9bcb5f664eb2f3d2831", "bytes": 1469843,
+      "src": "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js", "license": "Apache-2.0" },
+    "wasmJs": { "name": "tf-backend-wasm.min.js", "key": "tfjs-backend-wasm-4.22.0/691bbec0ef8b5a7f17f212e9c5d85832030f90d030b46e99acb4dea1fb16f009/tf-backend-wasm.min.js", "sha256": "691bbec0ef8b5a7f17f212e9c5d85832030f90d030b46e99acb4dea1fb16f009", "bytes": 149861,
+      "src": "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-wasm@4.22.0/dist/tf-backend-wasm.min.js", "license": "Apache-2.0" },
+    "wasm": { "name": "tfjs-backend-wasm.wasm", "key": "tfjs-backend-wasm-4.22.0/70a5d516060464e5269f01c74bac1772d6b8ab6cb612acf16b5cdaf61f78d892/tfjs-backend-wasm.wasm", "sha256": "70a5d516060464e5269f01c74bac1772d6b8ab6cb612acf16b5cdaf61f78d892", "bytes": 311123,
+      "src": "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-wasm@4.22.0/dist/tfjs-backend-wasm.wasm", "license": "Apache-2.0" },
+    "wasmSimd": { "name": "tfjs-backend-wasm-simd.wasm", "key": "tfjs-backend-wasm-4.22.0/77ebb28a6d34f371dbbf2086b7f2de8994acd8ea5a3cf1fa24d2c26c840cac7b/tfjs-backend-wasm-simd.wasm", "sha256": "77ebb28a6d34f371dbbf2086b7f2de8994acd8ea5a3cf1fa24d2c26c840cac7b", "bytes": 424594,
+      "src": "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-wasm@4.22.0/dist/tfjs-backend-wasm-simd.wasm", "license": "Apache-2.0" },
+    "modelJson": { "name": "model.json", "key": "nsfwjs-mnv2-4.4.0/11846416217e68bf1eb7b0e651bcfd305973566453c63275bbd16766ab089979/model.json", "sha256": "11846416217e68bf1eb7b0e651bcfd305973566453c63275bbd16766ab089979", "bytes": 128945,
+      "src": "https://raw.githubusercontent.com/infinitered/nsfwjs/d55a54c51f14380670064cc129b2ea51029c5e46/models/mobilenet_v2/model.json", "license": "MIT" },
+    "weights": { "name": "group1-shard1of1", "key": "nsfwjs-mnv2-4.4.0/8e7dddbb16acacc1bf1601b1b8a761e730ff934b7f2d7771312b2f000e5f5f13/group1-shard1of1", "sha256": "8e7dddbb16acacc1bf1601b1b8a761e730ff934b7f2d7771312b2f000e5f5f13", "bytes": 2619461,
+      "src": "https://raw.githubusercontent.com/infinitered/nsfwjs/d55a54c51f14380670064cc129b2ea51029c5e46/models/mobilenet_v2/group1-shard1of1", "license": "MIT" }
+  }
+}

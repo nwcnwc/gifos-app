@@ -2,6 +2,34 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.63",
+      "date": "2026-11-27",
+      "headline": "Movable popups, one ringing setting, clean addresses",
+      "features": [
+        "You can drag any popup by its top bar to see what is behind it.",
+        "One setting decides whether this device rings for calls to your rooms: Ring me on this device."
+      ],
+      "fixes": [
+        "A computer standing by for a call to your room keeps ringing until you answer or the caller hangs up (it stopped after a few seconds).",
+        "The first tap on Give my card or Swap cards on a phone now works.",
+        "Every GifOS page stays at its plain gifos.app address.",
+        "A host who signs in during a meeting gets Clear Stage for the viewers at once, without reconnecting."
+      ]
+    },
+    {
+      "version": "0.9.28.62",
+      "date": "2026-11-27",
+      "headline": "Better lip sync, checked thumbnails on GifOS TV",
+      "features": [
+        "Publishing to GifOS.tv checks the thumbnail you pick on your own device before it is listed. No picture is sent anywhere to be checked."
+      ],
+      "fixes": [
+        "Sound and picture stay in step for people who get the Stage through another person's device: the picture is prepared once, not twice.",
+        "A guest who joins at the very moment the host switches the waiting room on now shows on the waiting list instead of being cut off.",
+        "A host who reloads, or a TV channel that restarts, keeps Clear Stage for its viewers."
+      ]
+    },
+    {
       "version": "0.9.28.61",
       "date": "2026-11-27",
       "headline": "Backstage stays backstage, easier joining from old links",

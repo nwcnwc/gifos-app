@@ -107,9 +107,11 @@
   let extRing = null;
   const doors = new Map();   // room.v -> { el, part }
   function listenAll(st) {
-    if (!st.standby || !st.mine || mobile()) return;
+    // A phone opens doors only when it rings by standing by ("Ring me on this device" with no Doorbell: js/ring-standby.js).
+    const R = GifOS.ringHere, phoneRings = !!(R && R.mode() === 'open');
+    if (!st.standby || !st.mine || (mobile() && !phoneRings)) return;
     const M = MR();
-    const set = M.listenSet();
+    const set = mobile() ? M.listenSet().slice(0, R.doorsMax()) : M.listenSet();
     for (const rec of set) {
       const k = M.roomKey(rec.room, rec.v);
       if (doors.has(k)) continue;
@@ -200,7 +202,9 @@
           ringStart();
         }
       } else if (ringing) { ringing = null; show($('mr-ring'), false); ringStop(); }
-      if (st.standby && !barShut) bar(ringBlocked() ? 'Your personal room is open. Turn on the ringer so calls can ring here.' : 'Your personal room is open. Your contacts ring here.', ringBlocked() ? () => { try { ringCtx().resume(); } catch (e) {} paint(); } : null, 'Turn on the ringer', true);
+      // Truthful per device: contacts ring this page only through its doors or the Doorbell; card holders always ring here.
+      const contactsRing = !mobile() || doors.size > 0 || !!(GifOS.bell && GifOS.bell.on());
+      if (st.standby && !barShut) bar(ringBlocked() ? 'Your personal room is open. Turn on the ringer so calls can ring here.' : contactsRing ? 'Your personal room is open. Your contacts ring here.' : 'Your personal room is open. People with your card ring here. For your contacts, turn on Ring me on this device in Rooms.', ringBlocked() ? () => { try { ringCtx().resume(); } catch (e) {} paint(); } : null, 'Turn on the ringer', true);
       else if (!st.standby && st.mine && part.people().length && !barShut) bar('Your personal room', () => openMake(true), 'Swap cards', true);
       else if (!barShut) bar('');
       return;
@@ -531,15 +535,13 @@
     while (box.firstChild) doc.body.appendChild(box.firstChild);
   }
   function start() {
-    try { if (root.frameElement && root.frameElement.getAttribute('data-mr-listen') === '1') return; } catch (e) {}   // a hidden door: no view
+    try { if (root.frameElement && (root.frameElement.getAttribute('data-mr-listen') === '1' || root.frameElement.hasAttribute('data-ring-door'))) return; } catch (e) {}   // a hidden door: no view
     build();
     wire();
     // The lobby: a page with no room in its address.
     const here = LINKS() ? LINKS().read(root.location.pathname, '', root.location.hash) : { room: '' };
     if (!here.room) {
-      const M = MR(), mine = M && M.mine();
-      if (mine && M.stayOn() && !mobile()) { openRoom(mine.room, mine.v, true); return; }   // stay in my room
-      paintLobby();
+      paintLobby();   // "Ring me on this device" stands by from any GifOS tab (js/ring-standby.js): the lobby never jumps into a room
       root.addEventListener('storage', (e) => { if (e.key && e.key.indexOf('gifos_') === 0) paintLobby(); });
       return;
     }

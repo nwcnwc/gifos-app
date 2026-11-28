@@ -11,7 +11,7 @@
  *             room. A missed call belongs to the person who rang.
  *
  *   read()            { mine, ours:[{p, card}], cards:[{c, pair}], loose, hosted, missed, issued }
- *   people(m)         the contacts as one list, most recently used first:
+ *   people(m, w)      the contacts as one list (w: the caller's word for a contact with no name), most recently used first:
  *                     { kind:'p'|'c', key, name, room, v, last, ok, shared, pair }
  *   missed(m, list)   the missed calls, newest first: { label, name, at, who } (who: the person to call back, or null)
  *   ring(p)           leaves the hand-off notes a call to person p needs (the meeting page reads them) and returns
@@ -44,20 +44,20 @@
     return { mine, ours, cards, loose, hosted, missed: M.missed(), issued: M.issued().filter((x) => mine && M.roomKey(x.room, x.v) === M.roomKey(mine.room, mine.v)) };
   }
 
-  function people(m) {
+  function people(m, noName) {
     const M = MR(); if (!M) return [];
-    const list = m.ours.map((x) => ({ kind: 'p', key: M.roomKey(x.p.room, x.p.v), name: x.p.name || 'Contact', room: x.p.room, v: x.p.v, last: x.p.last || x.p.at || 0, ok: true, shared: !!x.card, pair: null }));
-    for (const x of m.cards) list.push({ kind: 'c', key: M.roomKey(x.c.room, x.c.v), name: x.c.name || 'Contact', room: x.c.room, v: x.c.v, last: x.c.at || 0, ok: !!x.c.bound, shared: false, pair: x.pair });
+    const list = m.ours.map((x) => ({ kind: 'p', key: M.roomKey(x.p.room, x.p.v), name: x.p.name || noName || 'Contact', room: x.p.room, v: x.p.v, last: x.p.last || x.p.at || 0, ok: true, shared: !!x.card, pair: null }));
+    for (const x of m.cards) list.push({ kind: 'c', key: M.roomKey(x.c.room, x.c.v), name: x.c.name || noName || 'Contact', room: x.c.room, v: x.c.v, last: x.c.at || 0, ok: !!x.c.bound, shared: false, pair: x.pair });
     return list.sort((a, b) => b.last - a.last);
   }
 
   // Who a missed call was from, to call back: the private room it rang in, else the person by name.
-  function missed(m, list) {
+  function missed(m, list, noName) {
     const M = MR(); if (!M) return [];
     return m.missed.slice().sort((a, b) => (b.at || 0) - (a.at || 0)).map((x) => {
       const name = bareName(x.label), pr = M.privFor(x.room, x.v), k = pr ? M.roomKey(pr.room, pr.v) : '';
       const who = (k && list.find((p) => p.kind === 'p' && p.key === k)) || list.find((p) => p.kind === 'p' && p.name === name) || list.find((p) => p.kind === 'c' && p.name === name) || null;
-      return { label: x.label || '', name: name || 'Someone', at: x.at, who };
+      return { label: x.label || '', name: name || noName || 'Someone', at: x.at, who };
     });
   }
 

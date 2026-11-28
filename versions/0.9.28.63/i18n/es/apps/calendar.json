@@ -1,0 +1,13 @@
+{
+  "title": "Calendario",
+  "today": "Hoy",
+  "prev": "Mes anterior",
+  "next": "Mes siguiente",
+  "newEvent": "Nuevo evento",
+  "time": "Hora",
+  "add": "Añadir",
+  "remove": "Quitar",
+  "allDay": "Todo el día",
+  "nothing": "Nada planeado",
+  "private": "Tu calendario se guarda en este dispositivo. No se envía nada a ningún sitio."
+}

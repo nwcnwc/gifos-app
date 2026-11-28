@@ -5,7 +5,12 @@
  * gifos.tv is the public directory of live GifOS broadcasts. A hosted room's admin presses "Publish to GifOS.tv" in
  * the Stream link card, fills in a public title, a public description and a thumbnail (an upload, or a still taken
  * from the Stage), and confirms. The page then, with each step shown as it happens:
- *   1. makes the thumbnail: a 640x360 JPEG drawn on a canvas on this device (so nothing but pixels leaves it);
+ *   1. makes the thumbnail: a 640x360 JPEG drawn on a canvas on this device (so nothing but pixels leaves it). The
+ *      picture is checked ON THIS DEVICE for sexually explicit content (GifOS.explicit, js/gifos-explicit.js) as soon as
+ *      it is picked; nothing about it is sent anywhere for the check. A picture that trips the check, or that this
+ *      device could not check, is never uploaded: the host is told why and may pick another, and the listing goes up
+ *      with the standard picture. A passing check is signed into the thumbnail order as its verdict ({m, v, ok:1});
+ *      gifos.tv stores the verdict beside the picture and takes no thumbnail without one;
  *   2. earns a proof-of-work token from gifos.tv (the same person check as joining a room);
  *   3. signs the thumbnail, the listing and the "on air" note with the room's admin key (the key never leaves this
  *      device; gifos.tv checks that the key's hash is the room's verifier, so only the room's admins can list it);
@@ -38,6 +43,24 @@
   if (GifOS.tvPublish) return;
 
   var API = String(root.GIFOS_TV_API || 'https://gifos.tv').replace(/\/+$/, '');
+  // The on-device picture check (js/gifos-explicit.js) sits beside this file; it is loaded only when a host first picks
+  // a thumbnail, so a page that never publishes never loads it.
+  var HERE = (function () { try { var s = root.document.currentScript; if (s && s.src) return s.src.replace(/[^/]*$/, ''); } catch (e) {} return '/js/'; })();
+  var checkLoad = null;
+  function explicitCheck() {
+    if (GifOS.explicit) return Promise.resolve(GifOS.explicit);
+    if (!checkLoad) {
+      checkLoad = new Promise(function (res, rej) {
+        var s = root.document.createElement('script');
+        s.src = HERE + 'gifos-explicit.js';
+        s.onload = function () { if (GifOS.explicit) res(GifOS.explicit); else rej(new Error('no check')); };
+        s.onerror = function () { rej(new Error('no check')); };
+        root.document.head.appendChild(s);
+      });
+      checkLoad.catch(function () { checkLoad = null; });
+    }
+    return checkLoad;
+  }
   var TITLE_MAX = 80, DESC_MAX = 500, THUMB_W = 640, THUMB_H = 360, THUMB_MAX = 240 * 1024;
   var ctx = null, onAirFor = '', keepTimer = 0, keepDue = 0, offNote = null, busy = false, dlg = null, ticket = null;
   var dev = Array.from(root.crypto.getRandomValues(new Uint8Array(6))).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
@@ -158,11 +181,11 @@
   // ---- the dialog --------------------------------------------------------------------
   var CSS = '' +
     '#tv-pub{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);padding:16px;box-sizing:border-box}' +
-    '#tv-pub .tvp{background:var(--c-white,#fff);color:var(--c-ink,#111);border-radius:16px;width:100%;max-width:520px;max-height:100%;display:flex;flex-direction:column;box-shadow:0 16px 40px rgba(0,0,0,.4);overflow:hidden;font-size:.95rem}' +
+    '#tv-pub .tvp{background:var(--c-white,#fff);color:var(--c-ink,#111);border-radius:16px;width:100%;max-width:520px;max-height:100%;box-shadow:0 16px 40px rgba(0,0,0,.4);font-size:.95rem}' +
     '#tv-pub header,#tv-pub footer{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:12px 16px;background:inherit}' +
     '#tv-pub header{border-bottom:1px solid rgba(0,0,0,.08)}#tv-pub footer{border-top:1px solid rgba(0,0,0,.08);justify-content:flex-end;flex-wrap:wrap}' +
     '#tv-pub header h2{margin:0;font-size:1.05rem;flex:1}' +
-    '#tv-pub .body{flex:1 1 auto;overflow:auto;padding:12px 16px;display:flex;flex-direction:column;gap:10px}' +
+    '#tv-pub .body{padding:12px 16px;display:flex;flex-direction:column;gap:10px}' +
     '#tv-pub label{display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:.85rem}' +
     '#tv-pub input[type=text],#tv-pub textarea{font:inherit;font-weight:400;border:1.5px solid var(--c-gray,#bbb);border-radius:10px;padding:8px 10px;color:inherit;background:inherit;box-sizing:border-box;width:100%}' +
     '#tv-pub textarea{min-height:72px;resize:vertical}' +
@@ -195,13 +218,13 @@
     if (!root.document.getElementById('tv-pub-css')) root.document.head.appendChild(el('style', { id: 'tv-pub-css', text: CSS }));
     var l = listed();
     var closeBtn = el('button', { type: 'button', text: T('tvClose', 'Close') });
-    var box = el('div', { cls: 'tvp', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'tv-pub-h' });
-    dlg = el('div', { id: 'tv-pub' }, [box]);
+    var box = el('div', { cls: 'tvp dlg-box', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'tv-pub-h' });
+    dlg = el('div', { id: 'tv-pub', cls: 'dlg-backdrop' }, [box]);
     closeBtn.onclick = function () { if (!busy) close(); };
     dlg.addEventListener('click', function (e) { if (e.target === dlg && !busy) close(); });
-    box.appendChild(el('header', {}, [el('h2', { id: 'tv-pub-h', text: T('tvPublishTitle', 'Publish to GifOS.tv') }), closeBtn]));
-    var body = el('div', { cls: 'body' }); box.appendChild(body);
-    var foot = el('footer'); box.appendChild(foot);
+    box.appendChild(el('header', { cls: 'dlg-head' }, [el('h2', { id: 'tv-pub-h', text: T('tvPublishTitle', 'Publish to GifOS.tv') }), closeBtn]));
+    var body = el('div', { cls: 'body dlg-body' }); box.appendChild(body);
+    var foot = el('footer', { cls: 'dlg-actions' }); box.appendChild(foot);
     root.document.body.appendChild(dlg);
     if (l) return showListed(body, foot, l);
     showForm(body, foot);
@@ -230,8 +253,26 @@
     var cnt = el('span', { cls: 'cnt', text: '0/' + DESC_MAX });
     desc.oninput = function () { cnt.textContent = desc.value.length + '/' + DESC_MAX; };
     var thumbBox = el('div', { cls: 'thumb', text: T('tvNoPic', 'No picture yet') });
-    var canvas = null;
-    function setCanvas(c) { canvas = c; thumbBox.textContent = ''; thumbBox.appendChild(c); }
+    var canvas = null, verdict = null, checking = 0;
+    // A picked picture is shown only after it passed the check on this device; until then, and when it did not, the
+    // box shows words and the listing would use the standard picture.
+    function setCanvas(c) {
+      var mine = ++checking;
+      canvas = null; verdict = null;
+      thumbBox.textContent = T('tvChecking', 'Checking the picture on this device…');
+      picErr.textContent = '';
+      go.disabled = true;
+      explicitCheck().then(function (E) { return E.checkStill(c); }).then(function (r) {
+        if (mine !== checking) return;
+        if (r.ok && r.verdict) { canvas = c; verdict = r.verdict; thumbBox.textContent = ''; thumbBox.appendChild(c); return; }
+        thumbBox.textContent = T('tvPicStd', 'The listing will use the standard picture.');
+        picErr.textContent = T('tvPicExplicit', 'This picture can’t be the thumbnail: it may show nudity or sexual content. Please choose another picture.');
+      }, function () {
+        if (mine !== checking) return;
+        thumbBox.textContent = T('tvPicStd', 'The listing will use the standard picture.');
+        picErr.textContent = T('tvPicNoCheck', 'This device could not check the picture, so it can’t be the thumbnail. The listing will use the standard picture.');
+      }).then(function () { if (mine === checking) go.disabled = false; });
+    }
     var file = el('input', { type: 'file', accept: 'image/*', style: 'display:none', id: 'tv-file' });
     file.onchange = function () {
       var f = file.files && file.files[0]; if (!f) return;
@@ -249,10 +290,13 @@
       try { setCanvas(drawCover(v, v.videoWidth, v.videoHeight)); err.textContent = ''; } catch (e) { err.textContent = T('tvPicFail', 'This browser could not make the picture.'); }
     };
     var err = el('p', { cls: 'err', role: 'alert' });
+    // The picture check's words sit right under the picture, where the host is looking.
+    var picErr = el('p', { cls: 'err', role: 'alert', id: 'tv-pic-err' });
     body.appendChild(el('label', {}, [document.createTextNode(T('tvFTitle', 'Public title')), title]));
     body.appendChild(el('label', {}, [document.createTextNode(T('tvFDesc', 'Public description')), desc, cnt]));
     body.appendChild(el('div', { cls: 'thumbwrap' }, [el('label', { text: T('tvFPic', 'Thumbnail') }), thumbBox]));
     body.appendChild(el('div', { cls: 'row' }, [up, snap, file]));
+    body.appendChild(picErr);
     body.appendChild(el('label', { cls: 'chk' }, [pw, document.createTextNode(T('tvFPw', 'Password needed to watch (shown as a badge; put the password in the description or give it out yourself)'))]));
     body.appendChild(el('label', {}, [document.createTextNode(T('tvFTip', 'Base address for tips (optional, public; not shown yet)')), tip]));
     body.appendChild(el('p', { cls: 'note', text: T('tvFNote', 'Everything here is public. Your room password is never listed: a room with a password still asks for it.') }));
@@ -264,7 +308,7 @@
       var t = title.value.trim(), d = desc.value.trim(), a = tip.value.trim();
       if (!t) { err.textContent = T('tvNeedTitle', 'Give it a title.'); return; }
       if (a && !/^0x[0-9a-fA-F]{40}$/.test(a)) { err.textContent = T('tvBadTip', 'A Base address is 0x followed by 40 letters and digits.'); return; }
-      publish(body, foot, { title: t, desc: d, tip: a, pw: pw.checked ? 1 : 0, canvas: canvas });
+      publish(body, foot, { title: t, desc: d, tip: a, pw: pw.checked ? 1 : 0, canvas: canvas, verdict: verdict });
     };
   }
   function stepsUi(body, names) {
@@ -295,14 +339,14 @@
     var names = [T('tvS1', 'Making the thumbnail'), T('tvS2', 'Person check'), T('tvS3', 'Proving it’s your room'), T('tvS4', 'Uploading the thumbnail'), T('tvS5', 'Publishing the listing'), T('tvS6', 'Going on air'), T('tvS7', 'Checking gifos.tv')];
     var ui = stepsUi(body, names), thumb = '', url = '', blob = null, bytes = null, w = null;
     ui.next();
-    (f.canvas ? toJpeg(f.canvas) : Promise.resolve(null)).then(function (b) {
+    (f.canvas && f.verdict ? toJpeg(f.canvas) : Promise.resolve(null)).then(function (b) {
       blob = b;
       ui.next();
       return tokenFor();
     }).then(function (jt) {
       if (!jt && !(ticket && ticket.mode() === 'off')) throw new Error(T('tvPowFail', 'The person check did not finish. Try again.'));
       ui.next();
-      return (blob ? blob.arrayBuffer().then(function (ab) { bytes = ab; return sha256hex(ab); }).then(function (sha) { return ctx.sign('tvthumb', { sha: sha }); }) : Promise.resolve(null));
+      return (blob ? blob.arrayBuffer().then(function (ab) { bytes = ab; return sha256hex(ab); }).then(function (sha) { return ctx.sign('tvthumb', { sha: sha, chk: f.verdict }); }) : Promise.resolve(null));
     }).then(function (tw) {
       w = tw;
       ui.next();

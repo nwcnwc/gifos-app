@@ -1041,7 +1041,8 @@
     // CONNECTING). A framed page has no update bar, so the player reads version.json itself, now, then every
     // UPDATE_CHECK_MS and when it is shown again; a newer release reloads this frame onto it, the room link kept.
     (function watchRelease() {
-      var m = /^\/versions\/(\d+(?:\.\d+){2,3})\//.exec(location.pathname);
+      // The document base names the build (archive-version.sh stamps it): the address rests at the clean /embed.
+      var m = /\/versions\/(\d+(?:\.\d+){2,3})\//.exec((function () { try { return document.baseURI || ''; } catch (e) { return ''; } })()) || /^\/versions\/(\d+(?:\.\d+){2,3})\//.exec(location.pathname);
       if (!m) return;   // the edge build follows its own deploys
       var mine = m[1], moving = false;
       var newer = function (a, b) {
