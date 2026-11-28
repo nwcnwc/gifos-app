@@ -467,7 +467,7 @@
     // A PRIVATE ROOM: membership is a member's My Room key. Every other seat (held or seated) is asked for a key word for
     // this room; a proved knocker is let in (the key word is the Admit); a seat that cannot prove within MYROOM_PROVE_MS is
     // a stranger and this page leaves. The mic opens (the person's own Join/Answer tap) once everyone here has proved.
-    const proved = new Map(), askedAt = new Map(), unproved = new Map(), listeners2 = new Set(), letIn = new Map();
+    const proved = new Map(), askedAt = new Map(), unproved = new Map(), listeners2 = new Set(), letIn = new Map(), told2 = new Set();
     let privDoor = false, strangerSaid = false, wordAt = 0, belled = false;
     const MIC_SS = 'gifos_mr_mic';
     const listening = () => !!(host.listen && host.listen());
@@ -511,7 +511,7 @@
       // unproved (a private room's door says nothing to a stranger, so it listed nobody) and the proof came a moment later
       // on the door's channel. Without this it waited until the door's idle limit closed that channel and it knocked again.
       for (const pid of proved.keys()) {
-        if (host.isHere(pid) || !host.reach(pid) || (listening() && !listeners2.has(pid))) continue;
+        if (!host.seated() || host.isHere(pid) || !host.reach(pid) || (listening() && !listeners2.has(pid))) continue;
         if (now - (letIn.get(pid) || 0) < (T().MYROOM_PROVE_MS || 0)) continue;
         letIn.set(pid, now); host.admit(pid);
       }
@@ -573,7 +573,11 @@
         return;
       }
       if (rings.has(pid)) { sendSigned(pid, 'ringing'); return; }
-      if ((host.held(pid) || (!host.isHere(pid) && host.reach(pid))) && (!listening() || o.l)) { letIn.set(pid, host.now()); host.admit(pid); }   // proved: the key word is the Admit
+      if ((host.held(pid) || (host.seated() && !host.isHere(pid) && host.reach(pid))) && (!listening() || o.l)) {
+        letIn.set(pid, host.now()); host.admit(pid);   // proved: the key word is the Admit
+        // ...and my own word goes back with it, so the one I let in knows me before its seat lands (its mic opens then)
+        if (!told2.has(pid)) { told2.add(pid); myWord(rec).then((w2) => { if (w2) host.send(pid, { op: 'key', w: w2 }); }, () => {}); }
+      }
     }
 
     // THE OWNER.
