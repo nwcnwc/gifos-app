@@ -1,6 +1,6 @@
 {
  "v": 1,
- "build": "0.9.28.73",
+ "build": "0.9.28.74",
  "signer": "gifos.app",
  "files": {
   "js/app-owner.js": "7c709e7f9e553d5c4c38ef8925dc7841fe2b68a2f95ebce0846593f91eb54535",
@@ -10,7 +10,7 @@
   "js/core/link.js": "488c02af144728dfc1389359705cd2b538c8f1ffae701b69dc49cae8ac5c9457",
   "js/core/media/nones.json": "7d2eb896463019791353607f70ee9fd01d0666f2325e4978d5f6c7ebd2da3ae7",
   "js/core/media/plane-node.js": "07b4a478437cfd734fe2817e9ec35dea107bde747623ea9c3069557c6a73c7a0",
-  "js/core/meeting.js": "cba9f4e9fabbcdb83609462ec8f189bdd406b01ee31ede680003c7eef8c375f9",
+  "js/core/meeting.js": "0b8ffc99d840dab0ca2faaefa2f28980a6316473931052dc131c0d841eb2746f",
   "js/core/node.js": "af4011b07bb93bea8e6e1e4f501fa3772bf7e7dd98e2dfd0fe54347f17c1fc8d",
   "js/core/platform.json": "ff63aab6f5c875f1206fbcfa080d47e7e2af32b636700eb2fe9deb154287a20d",
   "js/core/ports/vp8.js": "22fae340bb175dcb1c35319ab28066644fe59a7867cc2dddeb4a51f9b534d803",
@@ -19,7 +19,7 @@
   "js/gifos-ed.js": "99e1e602c9ab147c7833b407fbef93f8e1c397db8e99023e8ce7005515730584",
   "js/gifos-gif.js": "41608ffbf042ac043e666a3fb45560493d7e8920e6f85b425412b1de00f1b6b7",
   "js/gifos-grants.js": "fb3d62ea1f191be592ee2420f44933436d40a436000478f1f71e4a446f940ff8",
-  "js/gifos-identity.js": "7a3d99d5b549a2c5e7f854a88a2e41bfb673f7f8de37f07f663354bddd762d3b",
+  "js/gifos-identity.js": "d5757546154221dd20c8d8d5cf725e8eadbc49988551986fc615aeb2d91db8b3",
   "js/gifos-net.js": "a49cf9e5f3ccf2fb0948c1faf3a8bdc018bd35c203e6d669eb883c372421cc51",
   "js/gifos-sign.js": "eb81ca9dcaf099ebf5c65a10ca6d52b2761cbd9d3be16ee5a1a7952b9ab68eda",
   "js/gifos-store.js": "e0bf3114e392287e44efe67248c1c43731912a3244bf8234cf558cd18f5eec34",
@@ -34,7 +34,7 @@
   "js/meet-layout.js": "3c36e4b59fd7972256dd65a3487a8b6d6fb6c7644d56054138e10b524305f704",
   "js/meet-leave.js": "92f60bb18199ffee5e6d8a1a8fc8783c53fa41732f4a5d3c4c2409843e814d50",
   "js/meet-meters.js": "de65337255ff5c85bd2fac0186405abfa597c9f93f739f1a44ae6cd6ea0f9939",
-  "js/meet-myroom.js": "0c67b772bc4f55076d151efb9827a51eab0b1a982e9340ebd3de939c3e6b72a4",
+  "js/meet-myroom.js": "e609f65ba0655e7ecde9254964cecf1805016c2eb0363b74164ed083e03dccae",
   "js/meet-pack.js": "f4342e4b596a07d2f3f36667824a084fb5891520d597246345df63dc9752699e",
   "js/meet-power.js": "f23923b8751fc84762516e07ac345ad88d88fe1c05f69b1408c5c4a6d3d4be29",
   "js/meet-progress.js": "4544b950a5c9411efd147d71ee73328822274bc702b6d5807b57732a1c310dc7",
@@ -46,7 +46,7 @@
   "js/meet-zones.js": "71773f5cf0b9f9b2d587f4d01c59d4c611a680dbfb3c717fe6d0c2dfe9301309",
   "js/mesh-identity.js": "e7c41650476bf262b0ba41d9970072b77eb748c16d1d9267c73fb4af8e5e1a79",
   "js/mesh-media.js": "e260c0863adb884f3da1d76426be478d7beb53c5b9015af3262a1669e7c3780c",
-  "js/mesh-wire.js": "0ad466aaab749e6ac6b92526f86b5d0594dc8f18b3ff926dd3bfd756e4bdf6fa",
+  "js/mesh-wire.js": "8069232c8af44534c1c1ceca51078a6baba092c5be50ee6b64ce2bead902de97",
   "js/mesh/books.js": "092db7b0f42029f95830cfc42f5f3180466832730e7a3510364785d3b97b8c6e",
   "js/mesh/burst.js": "70e72093587a0f383f199c799cd55eb952ecf3d18d88b401500db52a10dcec25",
   "js/mesh/c7proof.js": "defc7b5cc309af34d6b04a052704cdf9cf5080f1a99d68ffdd7318a6cd1591ac",
@@ -108,7 +108,7 @@
   "js/mesh/witness.js": "57fbb5be7700b06efab185322f1be7875ef8b64fcd9c8edb65b34410010135c6",
   "js/relay-config.js": "a96dbda776b370254dbeeded999677a4087880e3c23bca918e4366fb4f788799",
   "js/runtime.js": "67974cc2dcb41a86c701f94c43fb121b0de90f72017fb5eb805d0fdd43f03b26",
-  "js/timings.js": "5456c001052ec193dcde770aa482527c7295177b0003e13d6bebc6c040987890"
+  "js/timings.js": "bf38263a9a458fd919d983941a4372f847eb33912811d7e92de56e95c1cfc8c4"
  },
- "sig": "BWDqAcfG8gp0EzGbRRs5z5RwCZj0YRSY8jf8QC3iPPjCocGgjpD9N/P7Kb0T1h/aHNPpjAooYG2kFmti6CedAg=="
+ "sig": "sqheaRJYZK+eDHg/UhIF5mrjFdHhVYEmm9Q02XKCpufwGXGck0C0FgabnjwjoyiMnf5n5xt0TSOsPP5jExm5BA=="
 }
