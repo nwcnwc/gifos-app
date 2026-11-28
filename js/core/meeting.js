@@ -11352,7 +11352,7 @@
     //   - A receiver drops a frame that is not a door kind and opened under the door key: nobody outside can say it.
     //   - A page holds a few seat keys (two rooms that met, two founders): it seals with the oldest and reads all.
     //   - A password change moves these keys with the room key (the derivation holds the room material).
-    { seatDoorKind, seatSeal, seatWait, seatTake, seatAskedBy, seatTaken, seatGive, seatTells, seatStep, seatRekey, seatReset, seatNameFor, seatNames, seatHas, seatDoorDrop, seatInfo, seatLinkProof, seatLinkProofOk, seatOutsider, seatProvedCh } = (function () {
+    { seatDoorKind, seatSeal, seatWait, seatTake, seatAskedBy, seatTaken, seatGive, seatTells, seatStep, seatRekey, seatReset, seatNameFor, seatNames, seatHas, seatDoorDrop, seatInfo, seatLinkProof, seatLinkProofOk, seatOutsider, seatProvedCh, seatReady } = (function () {
     const seatKeys = new Map();      // kid -> { hex, t, cur, prev }: cur / prev are the AES keys under the room's current / replaced material
     let seatCur = '';                // the kid I seal with: the oldest key I hold
     let seatDerived = Promise.resolve();   // every key change runs on this chain; a seal or an open waits for it
@@ -11624,8 +11624,9 @@
       }).catch(() => false);
     }
     function seatDoorDrop(inner) { const kk = String(inner.k).slice(0, 16) + (inner.k === 'sig' && inner.msg ? '.' + String(inner.msg.kind).slice(0, 12) : ''); seatStats.doorDrop[kk] = (seatStats.doorDrop[kk] || 0) + 1; }
+    const seatReady = () => seatDerived;   // settles once every key change asked for so far has landed
     const seatInfo = () => ({ cur: seatCur, kids: seatOrder().map((e) => e[0]), named: seatOrder().filter((e) => e[1].ws).map((e) => e[0]), waitTx: seatWaitTx.length, heldRx: seatHeldRx.length, stats: JSON.parse(JSON.stringify(seatStats)) });   // names only, never a key
-    return { seatDoorKind, seatSeal, seatWait, seatTake, seatAskedBy, seatTaken, seatGive, seatTells, seatStep, seatRekey, seatReset, seatNameFor, seatNames, seatHas, seatDoorDrop, seatInfo, seatLinkProof, seatLinkProofOk, seatOutsider, seatProvedCh };
+    return { seatDoorKind, seatSeal, seatWait, seatTake, seatAskedBy, seatTaken, seatGive, seatTells, seatStep, seatRekey, seatReset, seatNameFor, seatNames, seatHas, seatDoorDrop, seatInfo, seatLinkProof, seatLinkProofOk, seatOutsider, seatProvedCh, seatReady };
     })();
     let pwEpoch = 0;          // generation counter, carried inside the signed grant: the room's FLOOR (a pulse may raise it)
     let pwHeldEp = 0;         // the generation of the password this page HOLDS; a grant is a replay only at or below this
@@ -24473,7 +24474,7 @@
       const sendTv = (f) => net.sealFixed(roomE2E, f).then((env) => { if (env) G.door.send({ t: 'peer', to: id, ty: 'tv', msg: env }); });
       G.link = C.createLink(Object.assign(carryIo(id, C.linkName(myId), sendTv, (dev, l) => G.door.send({ t: 'tvouch', to: dev, l }), true), {
         onUp: () => carryGuestUp(), onDown: (why) => carryGuestDown(why),
-        onAudio: (buf) => { if (G.in && G.voice) G.voice.take(buf); else if (G.q) G.q.st.early++; },
+        onAudio: (buf) => { if (G.in && G.voice) G.voice.take(buf); else if (G.q && !G.q.st.rxDoor.sk) G.q.st.early++; },   // early: before the key's hand-over reached me (after it, a packet finds my voice not made yet and is let go)
         onText: (m) => carryHear(G.q, m, carryGuestText) }));
       G.link.start();
       clearTimeout(G.askT);
@@ -24672,7 +24673,7 @@
         if (!inner || typeof inner.k !== 'string') { q.st.unread++; return; }
         if (!seatDoorKind(inner)) { q.st.doorDrop++; seatDoorDrop(inner); return; }   // nobody outside the room can say it
         carryCount(q.st.rxDoor, inner.k);
-        if (inner.k === 'sk' && !q.gives) seatTaken(q, q.dc, inner);
+        if (inner.k === 'sk' && !q.gives) { seatTaken(q, q.dc, inner); seatReady().then(() => { try { carryGuestTick(); } catch (e) {} }); }   // in the moment the key lands, not a look later
         else if (inner.k === 'skq' && q.gives) seatAskedBy(q, q.dc);
       }));
     }
