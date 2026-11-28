@@ -4994,7 +4994,7 @@
       if (!v) return;
       const c = viewerCropOf(tile.dataset.pzkey);
       const side = sideIn || parseFloat(tile.style.width) || tile.clientWidth;
-      const box = c && !MZ.isDefault(c) && tile.dataset.tier === 'row' ? MZ.cropBox(v.videoWidth, v.videoHeight, c, side) : null;
+      const box = c && !MZ.isDefault(c) && tile.dataset.tier === 'row' && Math.abs(tile.clientWidth - tile.clientHeight) < 2 ? MZ.cropBox(v.videoWidth, v.videoHeight, c, side) : null;
       if (!v._vcropRz) { v._vcropRz = true; v.addEventListener('resize', () => applyViewerCrop(tile)); }
       if (!box) {
         if (tile.dataset.vcrop) {
