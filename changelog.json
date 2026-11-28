@@ -2,6 +2,19 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.64",
+      "date": "2026-11-27",
+      "headline": "A clearer lobby, GifOS.tv categories, hosting on slow phones",
+      "features": [
+        "The meeting lobby is one menu: Open, Host, Join, then Rooms and Contacts.",
+        "GifOS.tv sorts channels into categories and can be searched; live viewer counts come from the meetings themselves."
+      ],
+      "fixes": [
+        "Hosting a room on a slow phone or computer works again: the host key is ready before the page connects.",
+        "Missed and incoming calls in your rooms read more clearly."
+      ]
+    },
+    {
       "version": "0.9.28.63",
       "date": "2026-11-27",
       "headline": "Movable popups, one ringing setting, clean addresses",
