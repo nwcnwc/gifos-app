@@ -4,12 +4,11 @@
     {
       "version": "0.9.28.66",
       "date": "2026-11-27",
-      "headline": "Explicit video stays off the Stage, one link for your room",
+      "headline": "One link for your room, plainer reports",
       "features": [
         "Your personal room has one link that works for everyone you share it with."
       ],
       "fixes": [
-        "A sexually explicit picture on the Stage of a public broadcast is blocked on the viewer's own device; nothing is sent anywhere to be checked.",
         "Reports and copyright notices read more plainly and reach the GifOS team."
       ]
     },
