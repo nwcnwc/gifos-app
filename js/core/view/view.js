@@ -1034,6 +1034,11 @@
             sign: (act, extra) => (0, /*()*/__C.admSigned)(act, extra).then((w) => { if (!w) throw new Error('no host key'); return w; }),
             text: (k, en) => (0, /*()*/__C.uiText)(k, en),
             hasPassword: () => !!(__C.model && __C.model.door && __C.model.door.hasRoomPw()),
+            lang: () => (0, /*()*/__C.uiLang)(),
+            // The kind gifos.tv shows, detected here, never asked: a prerecorded video playing (Prerecorded), an agent
+            // host seat (Bot), else Live.
+            kind: () => (__C.model.room.rbNow() && __C.model.room.rbNow().v ? 'pre' : (__C.model.me.myStatus() && __C.model.me.myStatus().bot ? 'bot' : 'live')),
+            askCount: () => { const n = __C.model.net.meshNode(); if (n && typeof n.READ_THE_DOOR_COUNT === 'function') n.READ_THE_DOOR_COUNT(); },
           });
         } catch (e) {}
       }

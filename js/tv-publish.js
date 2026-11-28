@@ -18,6 +18,13 @@
  *   5. reads the listing back from gifos.tv to check that it shows live.
  * It ends with "Listed on gifos.tv" and the listing's link, and the button reads "Listed: stop listing".
  *
+ * HOW PEOPLE FIND IT (gifos docs/gifos-tv.md "Discovery"): the host picks one category from a fixed list (CATS, the
+ * same slugs gifos.tv knows), up to 3 short tags, and the language (pre-filled with this page's language). The KIND is
+ * detected here, never asked: Prerecorded while a video plays, Bot for an agent host seat, else Live; it rides every
+ * listing, on-air note and keep-alive. With each on-air note and keep-alive the page also carries the relay's signed
+ * coarse count of the room's door (asked on this page's own relay socket, READ_THE_DOOR_COUNT); gifos.tv ranks by it
+ * and never calls the relay.
+ *
  * ONLY A ROOM THIS DEVICE LISTED EVER TALKS TO GIFOS.TV. "Listed" is remembered on this device per room
  * (localStorage gifos_tv:<room>); until the admin presses Publish, and after they stop listing, this file makes no
  * request of any kind. While the admin of a listed room is in it, the page sends:
@@ -36,6 +43,9 @@
  *     sign(act, x)  Promise<{sp, sig, pub}>: an order signed with the room's admin key
  *     text(k, en)   a translated string (English fallback)
  *     hasPassword() does the room have a password now (prefills "Password needed"; the password never leaves)
+ *     lang()        this page's language (pre-fills the listing's language)
+ *     kind()        'live' | 'pre' | 'bot': what the Stage carries now (see above)
+ *     askCount()    ask the relay for its signed count of the room's door; the answer comes to heardCount
  */
 (function (root) {
   'use strict';
@@ -61,8 +71,12 @@
     }
     return checkLoad;
   }
-  var TITLE_MAX = 80, DESC_MAX = 500, THUMB_W = 640, THUMB_H = 360, THUMB_MAX = 240 * 1024;
-  var ctx = null, onAirFor = '', keepTimer = 0, keepDue = 0, offNote = null, busy = false, dlg = null, ticket = null;
+  var TITLE_MAX = 80, DESC_MAX = 500, THUMB_W = 640, THUMB_H = 360, THUMB_MAX = 240 * 1024, TAGS_MAX = 3, TAG_MAX = 24;
+  // THE CATEGORIES, in gifos.tv's order (its tv/src/discover.js CATS: same slugs). English here; each has a translation.
+  var CATS = [['talk', 'Talk & Podcasts'], ['music', 'Music'], ['gaming', 'Gaming'], ['faith', 'Faith & Community'], ['education', 'Education & How-to'], ['news', 'News & Politics'], ['sports', 'Sports'], ['tech', 'Tech & AI'], ['art', 'Art & Making'], ['business', 'Business'], ['film', 'Film & Clips'], ['chat', 'Just Chatting']];
+  // Languages offered for a listing (the page's own is added when it is not here); names in this page's language.
+  var LANGS = ['en', 'es', 'pt', 'fr', 'de', 'it', 'nl', 'pl', 'ru', 'uk', 'tr', 'ar', 'hi', 'bn', 'id', 'vi', 'th', 'zh', 'ja', 'ko', 'sw'];
+  var ctx = null, onAirFor = '', keepTimer = 0, keepDue = 0, offNote = null, busy = false, dlg = null, ticket = null, doorCnt = null;
   var dev = Array.from(root.crypto.getRandomValues(new Uint8Array(6))).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
 
   function T(k, en) { try { return (ctx && ctx.text && ctx.text(k, en)) || en; } catch (e) { return en; } }
@@ -86,6 +100,26 @@
   function postOrder(w, withToken) {
     return (withToken ? tokenFor() : Promise.resolve('')).then(function (jt) {
       return root.fetch(API + '/api/order', { method: 'POST', credentials: 'omit', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ w: w, jt: jt || undefined }) });
+    }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { j.status = r.status; return j; }); });
+  }
+  function kindNow() { try { var k = ctx.kind && ctx.kind(); return k === 'pre' || k === 'bot' ? k : 'live'; } catch (e) { return 'live'; } }
+  // The door's count: asked before each on-air note and keep-alive; the newest answer the relay gave rides along
+  // (gifos.tv checks its signature and age; a stale or missing one just means no count).
+  // askCount() resolves when the answer comes, or after TV_COUNT_WAIT_MS (timings.json) without one: a relay that does
+  // not answer (no key, an older relay, asked too soon) only delays the note, and the note then goes without a count.
+  var countWaiters = [];
+  function askCount() {
+    try { if (ctx.askCount) ctx.askCount(); else return Promise.resolve(); } catch (e) { return Promise.resolve(); }
+    var wait = Number(GifOS.timings && GifOS.timings.TV_COUNT_WAIT_MS) || 0;
+    return new Promise(function (res) { countWaiters.push(res); setTimeout(res, wait); });
+  }
+  function heardCount(m) {
+    if (m && typeof m.sp === 'string' && typeof m.sig === 'string') doorCnt = { sp: m.sp, sig: m.sig };
+    var w = countWaiters.splice(0); w.forEach(function (f) { f(); });
+  }
+  function postAir(w, withToken) {
+    return (withToken ? tokenFor() : Promise.resolve('')).then(function (jt) {
+      return root.fetch(API + '/api/order', { method: 'POST', credentials: 'omit', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ w: w, jt: jt || undefined, dc: doorCnt || undefined }) });
     }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { j.status = r.status; return j; }); });
   }
   function sha256hex(buf) {
@@ -116,8 +150,8 @@
   function goOnAir() {
     var rk = ctx.roomKey();
     onAirFor = rk;
-    return ctx.sign('tvair', { on: 1 }).then(function (w) {
-      return postOrder(w, true);
+    return askCount().then(function () { return ctx.sign('tvair', { on: 1, k: kindNow() }); }).then(function (w) {
+      return postAir(w, true);
     }).then(function (j) {
       if (onAirFor !== rk) return j;
       if (j.status === 403 && j.pow && ticket) { ticket.drop(); onAirFor = ''; return j; }
@@ -131,7 +165,7 @@
   function keepAlive() {
     keepTimer = 0;
     if (!ctx || !listed() || !ctx.inMeeting() || !ctx.admin()) { if (onAirFor) sendOff(false); return; }
-    ctx.sign('tvkeep', {}).then(function (w) { return postOrder(w, false); }).then(function (j) {
+    askCount().then(function () { return ctx.sign('tvkeep', { k: kindNow() }); }).then(function (w) { return postAir(w, false); }).then(function (j) {
       if (j.ok) { schedule(j.next); return signOff(); }
       if (j.status === 404) { onAirFor = ''; return goOnAir(); }   // the listing went off air (an off note, or it lapsed): say on air again
       schedule(60000);
@@ -187,7 +221,7 @@
     '#tv-pub header h2{margin:0;font-size:1.05rem;flex:1}' +
     '#tv-pub .body{padding:12px 16px;display:flex;flex-direction:column;gap:10px}' +
     '#tv-pub label{display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:.85rem}' +
-    '#tv-pub input[type=text],#tv-pub textarea{font:inherit;font-weight:400;border:1.5px solid var(--c-gray,#bbb);border-radius:10px;padding:8px 10px;color:inherit;background:inherit;box-sizing:border-box;width:100%}' +
+    '#tv-pub input[type=text],#tv-pub textarea,#tv-pub select{font:inherit;font-weight:400;border:1.5px solid var(--c-gray,#bbb);border-radius:10px;padding:8px 10px;color:inherit;background:inherit;box-sizing:border-box;width:100%}' +
     '#tv-pub textarea{min-height:72px;resize:vertical}' +
     '#tv-pub label.chk{flex-direction:row;align-items:flex-start;gap:8px;font-weight:400}#tv-pub label.chk input{margin-top:3px;width:18px;height:18px;flex:0 0 auto}' +
     '#tv-pub .cnt{font-weight:400;opacity:.6;font-size:.75rem;align-self:flex-end}' +
@@ -250,6 +284,18 @@
     var tip = el('input', { type: 'text', autocomplete: 'off', spellcheck: 'false', placeholder: '0x…', id: 'tv-tip' });
     var pw = el('input', { type: 'checkbox', id: 'tv-pw' });
     try { pw.checked = !!(ctx.hasPassword && ctx.hasPassword()); } catch (e) {}
+    var cat = el('select', { id: 'tv-cat' });
+    cat.appendChild(el('option', { value: '', text: T('tvCatPick', 'Choose a category') }));
+    CATS.forEach(function (c) { cat.appendChild(el('option', { value: c[0], text: T('tvCat_' + c[0], c[1]) })); });
+    var tags = el('input', { type: 'text', autocomplete: 'off', maxlength: String(TAGS_MAX * (TAG_MAX + 2)), id: 'tv-tags', placeholder: 'chess, beginners' });
+    var lang = el('select', { id: 'tv-lang' });
+    var mine = ''; try { mine = String(ctx.lang && ctx.lang() || 'en').split('-')[0].toLowerCase(); } catch (e) { mine = 'en'; }
+    var names = null; try { names = new Intl.DisplayNames([mine, 'en'], { type: 'language' }); } catch (e) {}
+    (LANGS.indexOf(mine) < 0 && /^[a-z]{2,3}$/.test(mine) ? [mine].concat(LANGS) : LANGS).forEach(function (code) {
+      var n = code; try { n = (names && names.of(code)) || code; } catch (e) {}
+      lang.appendChild(el('option', { value: code, text: n }));
+    });
+    lang.value = LANGS.indexOf(mine) >= 0 || /^[a-z]{2,3}$/.test(mine) ? mine : 'en';
     var cnt = el('span', { cls: 'cnt', text: '0/' + DESC_MAX });
     desc.oninput = function () { cnt.textContent = desc.value.length + '/' + DESC_MAX; };
     var thumbBox = el('div', { cls: 'thumb', text: T('tvNoPic', 'No picture yet') });
@@ -294,6 +340,9 @@
     var picErr = el('p', { cls: 'err', role: 'alert', id: 'tv-pic-err' });
     body.appendChild(el('label', {}, [document.createTextNode(T('tvFTitle', 'Public title')), title]));
     body.appendChild(el('label', {}, [document.createTextNode(T('tvFDesc', 'Public description')), desc, cnt]));
+    body.appendChild(el('label', {}, [document.createTextNode(T('tvFCat', 'Category')), cat]));
+    body.appendChild(el('label', {}, [document.createTextNode(T('tvFTags', 'Tags (up to 3, separated by commas)')), tags]));
+    body.appendChild(el('label', {}, [document.createTextNode(T('tvFLang', 'Language')), lang]));
     body.appendChild(el('div', { cls: 'thumbwrap' }, [el('label', { text: T('tvFPic', 'Thumbnail') }), thumbBox]));
     body.appendChild(el('div', { cls: 'row' }, [up, snap, file]));
     body.appendChild(picErr);
@@ -307,8 +356,11 @@
       err.textContent = '';
       var t = title.value.trim(), d = desc.value.trim(), a = tip.value.trim();
       if (!t) { err.textContent = T('tvNeedTitle', 'Give it a title.'); return; }
+      if (!cat.value) { err.textContent = T('tvNeedCat', 'Choose a category.'); cat.focus(); return; }
+      var tg = tags.value.split(',').map(function (x) { return x.replace(/^\s*#+/, '').trim(); }).filter(Boolean);
+      if (tg.length > TAGS_MAX || tg.some(function (x) { return x.length > TAG_MAX || /[<>]/.test(x); })) { err.textContent = T('tvBadTags', 'Up to 3 tags, each at most 24 characters.'); tags.focus(); return; }
       if (a && !/^0x[0-9a-fA-F]{40}$/.test(a)) { err.textContent = T('tvBadTip', 'A Base address is 0x followed by 40 letters and digits.'); return; }
-      publish(body, foot, { title: t, desc: d, tip: a, pw: pw.checked ? 1 : 0, canvas: canvas, verdict: verdict });
+      publish(body, foot, { title: t, desc: d, tip: a, pw: pw.checked ? 1 : 0, canvas: canvas, verdict: verdict, cat: cat.value, tags: tg, lang: lang.value });
     };
   }
   function stepsUi(body, names) {
@@ -356,7 +408,7 @@
       }).then(function (r) { return r.json().catch(function () { return {}; }); }).then(function (j) { thumb = check(j, T('tvThumbFail', 'The thumbnail did not upload.')).thumb; });
     }).then(function () {
       ui.next();
-      return ctx.sign('tvlist', { title: f.title, desc: f.desc, thumb: thumb, tip: f.tip, pw: f.pw }).then(function (lw) { return postOrder(lw, true); });
+      return ctx.sign('tvlist', { title: f.title, desc: f.desc, thumb: thumb, tip: f.tip, pw: f.pw, cat: f.cat, tags: f.tags, lang: f.lang, k: kindNow() }).then(function (lw) { return postOrder(lw, true); });
     }).then(function (j) {
       check(j, T('tvListFail', 'The listing was not published.'));
       url = j.url;
@@ -417,5 +469,5 @@
     try { tick(); } catch (e) {}
     return card;
   }
-  GifOS.tvPublish = { paint: paint, api: API, _state: function () { return { onAirFor: onAirFor, keepDue: keepDue, listed: ctx ? listed() : null, hasOff: !!offNote }; } };
+  GifOS.tvPublish = { paint: paint, api: API, heardCount: heardCount, cats: CATS, _state: function () { return { onAirFor: onAirFor, keepDue: keepDue, listed: ctx ? listed() : null, hasOff: !!offNote, count: doorCnt }; } };
 })(typeof window !== 'undefined' ? window : globalThis);

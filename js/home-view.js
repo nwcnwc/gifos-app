@@ -213,6 +213,32 @@
       '<span class="hv-row-go">' + svg('arrow') + '</span></button>';
   const tvRow = () =>
     '<button type="button" class="hv-row tv" data-act="tv"><span class="hv-row-ic live">' + svg('tv') + '</span><span class="hv-row-t"><b>GifOS TV</b><span>' + esc(W.tvSub) + '</span></span><span class="hv-row-go">' + svg('arrow') + '</span></button>';
+  // ---- Live on GifOS.tv ----------------------------------------------------------------------------------------------
+  // GifOS.tvIndex.read(): gifos.tv's ONE index of live listings (the same file its directory browses and searches on
+  // the viewer's device; edge-cached, open to any origin). Read only while a look is up, at most once per two of the
+  // directory's own re-read periods (gifos.tv names it in the answer: config.pollMs; this page keeps no copy). A failure
+  // is quiet and not retried on this page (the strip is just not there). Looks show it through api.tvStrip(n).
+  const TV_API = String(root.GIFOS_TV_API || 'https://gifos.tv').replace(/\/+$/, '');
+  let tvLive = [], tvReadAt = 0, tvEvery = 0, tvReading = null, tvFailed = false;
+  GifOS.tvIndex = GifOS.tvIndex || {
+    read() {
+      if (tvReading) return tvReading;
+      tvReading = root.fetch(TV_API + '/api/list', { credentials: 'omit' }).then((r) => r.json()).then((j) => {
+        tvEvery = 2 * (Number(j && j.config && j.config.pollMs) || 0);
+        const ls = Array.isArray(j && j.listings) ? j.listings : [];
+        return ls.map((l) => Object.assign({}, l, { url: TV_API + '/' + l.name + '/' + l.v16 }));
+      }).finally(() => { tvReading = null; });
+      return tvReading;
+    },
+  };
+  function tvRefresh() {
+    if (tvFailed || tvReading || (tvReadAt && Date.now() - tvReadAt < tvEvery)) return;
+    tvReadAt = Date.now();
+    GifOS.tvIndex.read().then((ls) => { tvLive = ls; queuePaint(); }, () => { tvFailed = true; });
+  }
+  const tvKind = (l) => (l.kind === 'pre' ? W.tvKindPre : l.kind === 'bot' ? W.tvKindBot : W.live);
+  const tvStrip = (n) => (tvLive.length ? '<div class="hv-sec-h hv-tvlive"><h2>' + esc(W.tvLive) + '</h2><a class="hv-link" href="' + esc(TV_API) + '/" target="_blank" rel="noopener">' + esc(W.all) + '</a></div><div class="hv-rows hv-tvlive">' +
+    tvLive.slice(0, n).map((l, i) => '<button type="button" class="hv-row tv" data-act="tvl:' + i + '"><span class="hv-row-ic live">' + svg('tv') + '</span><span class="hv-row-t"><b>' + esc(l.title) + '</b><span>' + esc(tvKind(l) + (l.n >= 2 ? ' · ' + T('tvWatching', { n: l.n }) : '')) + '</span></span><span class="hv-row-go">' + svg('arrow') + '</span></button>').join('') + '</div>' : '');
   const liveCard = () => '<button type="button" class="p-live" data-act="tv"><span class="p-live-tag"><span class="hv-dot"></span>GifOS TV</span><b>' + esc(W.tvWatch) + '</b><span>' + esc(W.tvTune) + '</span></button>';
 
   // ---- popups: every one is a card of the shared popup library (js/dialog.js), which keeps Close on screen ---------------
@@ -309,7 +335,7 @@
   const api = {
     esc, svg, T, words: W, state, hello, hue, face, myFace, relTime, plain,
     slot: (name) => '<div class="hv-slot" data-slot="' + esc(name) + '"></div>',
-    joinForm, missedChip, personBubble, addBubble, isMissed, peopleStrip, peopleRows, roomRow, roomKind, tvRow, liveCard, meetRows,
+    joinForm, missedChip, personBubble, addBubble, isMissed, peopleStrip, peopleRows, roomRow, roomKind, tvRow, liveCard, tvStrip, meetRows,
     apps, appTile, allApps, shortApps, width: (el) => el.clientWidth || root.innerWidth,
   };
 
@@ -322,6 +348,7 @@
   function paint() {
     const id = current(), def = looks.get(id);
     if (id === 'classic' || !host || !def) return;
+    tvRefresh();
     const d = state.data = data(), sig = sigOf(id, d), ctx = { data: d };
     if (sig === frameSig && host.firstChild) { if (HW()) HW().refresh(host, def, ctx); return; }
     const keep = host.querySelector('.hv-join input'), typed = keep && doc.activeElement === keep ? keep.value : null;
@@ -350,6 +377,7 @@
       case 'room': { const r = d.rooms[+arg]; if (r) A.room(r.room, r.v); break; }
       case 'cast': { const r = d.casts[+arg]; if (r) A.watch(r.room, r.v); break; }
       case 'tv': A.watch(TV.room, TV.v); break;
+      case 'tvl': { const l = tvLive[+arg]; if (l) A.watch(l.name, l.v); break; }
       case 'golive': A.goLive(); closePopup(); break;
       case 'lobby': A.lobby(); closePopup(); break;
       case 'myroom': A.myRoom(); closePopup(); break;
