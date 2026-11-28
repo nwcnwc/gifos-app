@@ -1,2 +1,2 @@
 /* frozen at release cut by archive-version.sh */
-window.GIFOS_BUILD = 7176;
+window.GIFOS_BUILD = 7181;
