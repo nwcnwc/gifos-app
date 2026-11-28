@@ -2,6 +2,18 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.28.75",
+      "date": "2026-11-28",
+      "headline": "A new Home, and a Meeting that opens faster",
+      "features": [
+        "Home opens in the new Glass look: a light, daytime screen with a clock and your calendar. The classic Desktop is one tap away, and your choice stays on each device."
+      ],
+      "fixes": [
+        "Opening Meeting on a slow connection now shows a GifOS loading screen, with a note when the connection is slow, instead of a blank page.",
+        "After an update, the new version is fetched quietly in the background, so the first Meeting after it opens sooner."
+      ]
+    },
+    {
       "version": "0.9.28.74",
       "date": "2026-11-28",
       "headline": "Your contacts follow you across your devices",

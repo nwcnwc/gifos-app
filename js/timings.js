@@ -282,6 +282,9 @@
     SHARESHOT_CAP_WINDOW_MS: 60000,   // ms
     SHARESHOT_GAP_MS: 3000,   // ms
     SHARESHOT_TICK_MS: 1000,   // ms
+    SHELL_GONE_MS: 90000,   // ms
+    SHELL_HINT_MS: 4000,   // ms
+    SHELL_POLL_MS: 200,   // ms
     SIGN_KEY_MS: 2200,   // ms
     SIG_RETRY_CURE_MS: 8500,   // ms (SIG_RETRY_CURE)
     SNAP_MIN_MS: 3000,   // ms
@@ -424,6 +427,7 @@
     XV_REFLAG_LINE: 0.25,   // ratio
     XV_REFLAG_LOOKS: 3,   // count
     XV_REFLAG_LOOK_MS: 10000,   // ms
+    XV_RESUME_MS: 15000,   // ms
     XV_RETRY_MS: 30000,   // ms
     XV_SENSE_DIFF: 10,   // count
     XV_SENSE_MS: 250,   // ms

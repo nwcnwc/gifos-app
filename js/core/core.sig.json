@@ -1,6 +1,6 @@
 {
  "v": 1,
- "build": "0.9.28.74",
+ "build": "0.9.28.75",
  "signer": "gifos.app",
  "files": {
   "js/app-owner.js": "7c709e7f9e553d5c4c38ef8925dc7841fe2b68a2f95ebce0846593f91eb54535",
@@ -19,7 +19,7 @@
   "js/gifos-ed.js": "99e1e602c9ab147c7833b407fbef93f8e1c397db8e99023e8ce7005515730584",
   "js/gifos-gif.js": "41608ffbf042ac043e666a3fb45560493d7e8920e6f85b425412b1de00f1b6b7",
   "js/gifos-grants.js": "fb3d62ea1f191be592ee2420f44933436d40a436000478f1f71e4a446f940ff8",
-  "js/gifos-identity.js": "d5757546154221dd20c8d8d5cf725e8eadbc49988551986fc615aeb2d91db8b3",
+  "js/gifos-identity.js": "2210a725934f2507cf85cc999784e036e38cb9ae172f49a716b1098833570155",
   "js/gifos-net.js": "a49cf9e5f3ccf2fb0948c1faf3a8bdc018bd35c203e6d669eb883c372421cc51",
   "js/gifos-sign.js": "eb81ca9dcaf099ebf5c65a10ca6d52b2761cbd9d3be16ee5a1a7952b9ab68eda",
   "js/gifos-store.js": "e0bf3114e392287e44efe67248c1c43731912a3244bf8234cf558cd18f5eec34",
@@ -46,7 +46,7 @@
   "js/meet-zones.js": "71773f5cf0b9f9b2d587f4d01c59d4c611a680dbfb3c717fe6d0c2dfe9301309",
   "js/mesh-identity.js": "e7c41650476bf262b0ba41d9970072b77eb748c16d1d9267c73fb4af8e5e1a79",
   "js/mesh-media.js": "e260c0863adb884f3da1d76426be478d7beb53c5b9015af3262a1669e7c3780c",
-  "js/mesh-wire.js": "8069232c8af44534c1c1ceca51078a6baba092c5be50ee6b64ce2bead902de97",
+  "js/mesh-wire.js": "29c3c765ed9fcca85b72fd9a27d2bc0ca018d43274e2a932e7bb9f81873c5691",
   "js/mesh/books.js": "092db7b0f42029f95830cfc42f5f3180466832730e7a3510364785d3b97b8c6e",
   "js/mesh/burst.js": "70e72093587a0f383f199c799cd55eb952ecf3d18d88b401500db52a10dcec25",
   "js/mesh/c7proof.js": "defc7b5cc309af34d6b04a052704cdf9cf5080f1a99d68ffdd7318a6cd1591ac",
@@ -108,7 +108,7 @@
   "js/mesh/witness.js": "57fbb5be7700b06efab185322f1be7875ef8b64fcd9c8edb65b34410010135c6",
   "js/relay-config.js": "a96dbda776b370254dbeeded999677a4087880e3c23bca918e4366fb4f788799",
   "js/runtime.js": "67974cc2dcb41a86c701f94c43fb121b0de90f72017fb5eb805d0fdd43f03b26",
-  "js/timings.js": "bf38263a9a458fd919d983941a4372f847eb33912811d7e92de56e95c1cfc8c4"
+  "js/timings.js": "066f7a858c0a041895bd20ed020d0edec3cccdd7361cf285560795588a206cd4"
  },
- "sig": "sqheaRJYZK+eDHg/UhIF5mrjFdHhVYEmm9Q02XKCpufwGXGck0C0FgabnjwjoyiMnf5n5xt0TSOsPP5jExm5BA=="
+ "sig": "H0DZ6TmmpbeXflxwdC/l663IpU2zdny+insRqrUZQHXIn1ttUxRqeNo07DWst+divDgjAOdP9e3gi6lhOxXyBg=="
 }

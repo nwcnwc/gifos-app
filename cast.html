@@ -496,7 +496,8 @@
   }
   window.gifosPinTarget = pinTarget;
   // GENERATED from gifos timings.json by scripts/gen-timings.mjs (the line below): do not edit by hand.
-  var LOADER_T = { VERSION_ASK_MS: 1900, VERSION_FIRST_ASK_MS: 3900 };
+  var LOADER_T = { VERSION_ASK_MS: 1900, VERSION_FIRST_ASK_MS: 3900, SHELL_HINT_MS: 4000, SHELL_GONE_MS: 90000, SHELL_POLL_MS: 200 };
+  window.gifosLoaderT = LOADER_T;   // the loading shell (below) reads its waits from the same generated line
   // The release is asked about without blocking: the rest of this page (the
   // edge build) is stopped at once, version.json gets LOADER_T.VERSION_ASK_MS
   // to answer, and the page moves to the live release or, on no answer, to the
@@ -617,6 +618,19 @@
   else if(window.__gifosMb!=='1'&&p.get('mb')!=='1'&&!(L&&(L.room||L.code))&&!p.get('app'))document.documentElement.classList.add('lobby-entry');
 }catch(e){}})();</script>
 <style id="lobby-entry">html.lobby-entry #lobby:not(.show){display:block}html.lobby-entry #lobby:not(.show)>*{visibility:hidden}</style>
+<!-- NEVER A BLANK SCREEN (MEETSLOW 11-28): on a slow link the lobby's sheet stood empty for many seconds while the page's scripts came
+     down (the first open after a release downloads the whole new version), and looked like a hung browser. A GifOS-looking shell goes up
+     on <html> itself (outside <body>, so the booting gate does not hide it) the moment the lobby entry is known, says it is working, and
+     after a few seconds says the connection is slow. It goes away the moment the lobby has been filled, and after 90 s whatever happens. -->
+<script id="gifos-shell">(function(){try{var h=document.documentElement;if(!h.classList.contains('lobby-entry'))return;
+var d=document.createElement('div');d.id='gifos-shell';
+d.setAttribute('style','position:fixed;inset:0;z-index:2147483000;background:var(--bg,#0a0a0f);color:#e0e0f0;font:16px system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px');
+d.innerHTML='<style>@keyframes gsr{to{transform:rotate(360deg)}}</style><div style="font-weight:700;font-size:28px;letter-spacing:.02em">GifOS</div><div style="width:34px;height:34px;border:3px solid #2a2a3a;border-top-color:#7b5cff;border-radius:50%;animation:gsr 1s linear infinite"></div><div id="gifos-shell-m" style="opacity:0;transition:opacity .6s;color:#9a9ab0;font-size:14px;text-align:center;padding:0 24px">Still loading. The connection looks slow, but GifOS is on its way.</div>';
+h.appendChild(d);
+var T=window.gifosLoaderT;if(!T)return;   // the generated loader line (timings.json); the loader ran just above
+var t0=Date.now();setTimeout(function(){var m=document.getElementById('gifos-shell-m');if(m)m.style.opacity='1';},T.SHELL_HINT_MS);
+(function chk(){var l=document.getElementById('lobby');if((l&&l.classList.contains('show'))||Date.now()-t0>T.SHELL_GONE_MS){if(d.parentNode)d.parentNode.removeChild(d);return;}setTimeout(chk,T.SHELL_POLL_MS);})();
+}catch(e){}})();</script>
 <!--@shared:booting-->
 <script>(function(){var h=document.documentElement;h.className+=(h.className?' ':'')+'gifos-booting';var shown=0;
 function show(){if(shown)return;shown=1;h.classList.remove('gifos-booting');

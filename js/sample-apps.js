@@ -7725,7 +7725,7 @@ The Store itself does not keep a shopping cart in this icon.
     // Clock and Calendar: system apps whose widgets fill the looks of the Home Screen (js/home-view.js). They ride with
     // Calendar is assembled from js/calendar (the page inlines the library). A failed read skips Calendar and still seeds the rest.
     var calendarReady = Promise.resolve(null);
-    if (root.GIFOS_VERSION === 'edge' && root.GifOS && GifOS.calendarApp && typeof GifOS.calendarApp.files === 'function') {
+    if (root.GifOS && GifOS.calendarApp && typeof GifOS.calendarApp.files === 'function') {
       calendarReady = Promise.resolve().then(function () { return GifOS.calendarApp.files(); }).then(function (docs) {
         if (!docs || !docs['index.html'] || !docs['widget/index.html']) return null;
         return {
@@ -7739,9 +7739,9 @@ The Store itself does not keep a shopping cart in this icon.
         };
       }).catch(function () { return null; });
     }
-    // the looks: seeded on the edge build only, until a release makes a look its default. They go in the Tools folder,
+    // the looks: Clock and Calendar. They go in the Tools folder,
     // so the Home Screen's own default layout (and everything that counts or places root icons) is exactly a release's.
-    if (root.GIFOS_VERSION === 'edge') groups.find((g) => g.name === 'Tools').apps.push({
+    groups.find((g) => g.name === 'Tools').apps.push({
 
       name: 'Clock.gif', appId: 'clock', accent: [91, 91, 240],
       files: withHelp('clock', { 'manifest.json': manifest('clock', 'Clock', [91, 91, 240], { capabilities: { multiplayer: false },

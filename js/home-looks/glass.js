@@ -57,6 +57,7 @@
 .g-dock { position: absolute; left: 50%; bottom: 1rem; transform: translateX(-50%); z-index: 2; display: flex; gap: .1rem; padding: .55rem .5rem .4rem; border-radius: 1.8rem; max-width: calc(100% - 1.2rem);
   background: color-mix(in srgb, var(--h-solid) 90%, transparent); border: 1px solid var(--h-line); box-shadow: var(--h-shadow); backdrop-filter: blur(1.6rem) saturate(1.6); -webkit-backdrop-filter: blur(1.6rem) saturate(1.6); animation: hv-up .6s .2s cubic-bezier(.2,1.1,.3,1) both; }
 #home-view .hv-app.dock, .hv-prev .hv-app.dock { width: 4.1rem; }
+@media (max-height: 480px) { .g-dock { bottom: .4rem; padding: .3rem .4rem; } .hv-app.dock { width: 3.2rem; } .hv-app.dock .hv-app-n { display: none; } .hv-app.dock .hv-app-pic { width: 2.4rem; height: 2.4rem; } #home-view .hv-scroll { padding-bottom: 4.6rem; } }
 .hv-app.dock .hv-app-pic { width: 3rem; height: 3rem; background: var(--h-solid); }
 .hv-app.dock .hv-app-n { font-size: .62rem; -webkit-line-clamp: 1; }
 .hv-app.all .hv-app-pic { color: var(--h-acc); font-size: 1.4rem; }
