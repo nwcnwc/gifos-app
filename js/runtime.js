@@ -3292,8 +3292,9 @@
 
   // ---- the system providers' answers (Me & My Contacts) -------------------------------------------------------
   // contacts: the cards this device holds (gifos_contacts: name + room), offered to the person in the picker; a message
-  // to a contact travels in our private room through the page's contacts transport (GifOS.contactsTransport, set by
-  // the page that carries the My Room channel). Nothing here is ever handed to an app as a list.
+  // to a contact travels in our private room through the page's contacts transport (GifOS.providers.transport(t), set
+  // by the page that carries the My Room channel). Nothing here is ever handed to an app as a list.
+  let contactsTransport = null;
   function systemContacts() {
     let list = [];
     try { list = JSON.parse(root.localStorage.getItem('gifos_contacts') || '[]') || []; } catch (e) { list = []; }
@@ -3305,7 +3306,7 @@
     if (prov.kind === 'system' && role === 'contacts') {
       if (req.op === 'list') return Promise.resolve(systemContacts());
       if (req.op === 'send') {
-        const tr = GifOS.contactsTransport;
+        const tr = contactsTransport;
         if (!tr || typeof tr.send !== 'function') return Promise.reject(new Error('NOT_AVAILABLE: Messages to contacts are not available on this page.'));
         return Promise.resolve(tr.send(req.id, { to: req.to, msg: req.msg })).then((r) => ({ state: (r && r.state) || 'sent' }));
       }
@@ -3572,6 +3573,8 @@
     dataAssigned: (role) => { const c = dataConfig()[role]; return (c && c.app) ? c : null; },
     dataResolve: (role) => resolveDataProvider(role).then((p) => (p ? { key: p.key, name: p.name, kind: p.kind, recognised: !!p.recognised, networky: !!p.networky } : null)),
     deliver,
+    // the page that carries the My Room channel hands in its sender: { send(contactId, { to, msg }) -> { state } }
+    transport: (t) => { contactsTransport = t && typeof t.send === 'function' ? t : null; },
     // A widget asking for its app (js/home-widgets.js): the same key, list and sheets as the app's own window.
     ask: (manifest, files, bytes, d) => { noteAppKey(manifest, files, bytes); return brokerData(manifest, d || {}); },
     assigned: (role) => { const c = aiConfig()[role]; return (c && c.app) ? c : null; },
