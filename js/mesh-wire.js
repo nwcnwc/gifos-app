@@ -609,6 +609,32 @@
       if (held && who) { heldAsks.set(String(who), [f, via, dir, direct]); if (heldAsks.size > 64) heldAsks.delete(heldAsks.keys().next().value); }
       return held;
     }
+    // ONE DOOR, FOR A SEAT'S OWN FRAMES (docs/door-hold-design.md "Backlog 20"). While a waiting room holds the door, a
+    // page that is not in the meeting is heard only when it knocks: every other seat frame it sends (on its own channel,
+    // or in a friend's envelope under its name) is kept from my seat, so no frame of its own making can place it. The
+    // page says who is not in (opts.outsider: no seat in my view, no link end, no host, no host's Admit, and its channel
+    // has not proved the room's seat key); a thrown answer fails closed. A frame an in-seat hands on is that seat's.
+    // The last few frames are kept and delivered when the page says the sender is in (replayHeld: a proof, an Admit),
+    // so an honest seat whose proof is a frame behind its first word loses nothing.
+    const heldFrames = new Map();   // sender -> [deliver, at] of its last frames kept back
+    function outsiderHolds(snd, deliver) {
+      if (typeof opts.outsider !== 'function' || !raw || !snd) return false;
+      if (Array.from(raw.occ.values()).includes(layer.ids.nid(snd))) return false;
+      let out = true; try { out = !!opts.outsider(snd); } catch (e) {}
+      if (!out) return false;
+      let q = heldFrames.get(snd);
+      if (!q) { if (heldFrames.size >= 32) heldFrames.delete(heldFrames.keys().next().value); heldFrames.set(snd, q = []); }
+      q.push([deliver, Date.now()]); if (q.length > 8) q.shift();
+      return true;
+    }
+    function replayHeld(list) {
+      for (const p of list || []) {
+        const q = heldFrames.get(String(p)); if (!q || stopped || !raw) continue;
+        heldFrames.delete(String(p));
+        const now = Date.now();
+        for (const [deliver, at] of q) if (now - at <= REPLAY_MS && !outsiderHolds(String(p), deliver)) deliver();
+      }
+    }
     // A held knock judged AGAIN now (the page learned something, e.g. a fresh door count): it goes through the
     // waiting-room gate once more, and only a knock the page no longer holds reaches the seat. Never an admit.
     function recheckHeld(list) {
@@ -690,10 +716,15 @@
           }
           if (!ok && f.t === 'RECLAIM') return;   // no proof, no reclaim: the seat never hears it
           if (f.t === 'WHOHOME' && doorBlocks(f, via, m.dir, dir)) return;   // waiting room: no HOME, no roster
-          if (ok && dir && m.pd) layer.sideIn(String(via), f, m.pd);
-          if (ok && f.t === 'LEAVE' && f.rel && f.bye && !f.mvd) markBye(msgM.clone(relayForm(msgM, f)), via, dirOf(m.dir), dir);
-          if (ok && sponsored && claim === layer.ids.nid(String(origin))) proven = origin;
-          penv.frame(ok ? relayForm(msgM, f) : f, String(via), dirOf(m.dir), dir, sponsored, proven);
+          const deliver = () => {
+            if (stopped || !raw) return;
+            if (ok && dir && m.pd) layer.sideIn(String(via), f, m.pd);
+            if (ok && f.t === 'LEAVE' && f.rel && f.bye && !f.mvd) markBye(msgM.clone(relayForm(msgM, f)), via, dirOf(m.dir), dir);
+            if (ok && sponsored && claim === layer.ids.nid(String(origin))) proven = origin;
+            penv.frame(ok ? relayForm(msgM, f) : f, String(via), dirOf(m.dir), dir, sponsored, proven);
+          };
+          if (f.t !== 'WHOHOME' && outsiderHolds(sponsored ? String(origin) : (via != null ? String(via) : ''), deliver)) return;   // a page that is not in is heard only when it knocks
+          deliver();
         };
         if (claim === -1) { verifyChain(() => prove().then(() => done(true))); return; }
         if (claim === NOSIGNER) { verifyChain(() => prove().then(() => done(false))); return; }
@@ -1346,7 +1377,7 @@
         ckey: (c) => net.topo.ckey(c), ownedLinks: (c) => net.topo.ownedLinks(c),
         pipes: () => (penv ? penv.pipePeers() : []),   // the far ends of my joining connections that are up: room-wide traffic crosses them
       });
-      seat = layer.view; seat.answerDoor = answerHeld; seat.recheckDoor = recheckHeld;
+      seat = layer.view; seat.answerDoor = answerHeld; seat.recheckDoor = recheckHeld; seat.recheckEntry = replayHeld;
       penv = GifOS.meshPageEnv.create({
         peer, ids: layer.ids, seat: () => raw, tickMs,
         pc: Object.assign({}, opts.pc || {}, { send: (to, m, dir) => ((typeof opts.dcOpen !== 'function' || opts.dcOpen(to)) ? sendFrameTo(to, m, dir) : false) }),
