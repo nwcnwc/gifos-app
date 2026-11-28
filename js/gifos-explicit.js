@@ -719,7 +719,7 @@
         if (!ready(el)) continue;
         const r = rec(src.id);
         if (lane === 'deep') { const k = r.deepAt || 0; if (k < bk) { bk = k; best = { src, el, r, job: 'frame' }; } continue; }
-        if (r.confirm && r.sus && !r.tripped) { if (now() < r.confirmAt) continue; if (!(cb < bc || (cb === bc && r.at < bk))) continue; bc = cb; bk = r.at; best = { src, el, r, job: 'confirm' }; continue; }
+        if (r.confirm && r.sus && !r.tripped && now() >= r.confirmAt) { if (!(cb < bc || (cb === bc && r.at < bk))) continue; bc = cb; bk = r.at; best = { src, el, r, job: 'confirm' }; continue; }
         const hot = r.sus || r.tripped || r.hotUntil > t;
         if (r.warm && !r.sus && t < fullReadyAt) continue;
         let cls = 3, k = r.at, job = 'frame';
