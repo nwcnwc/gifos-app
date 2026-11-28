@@ -234,11 +234,19 @@
   function tvRefresh() {
     if (tvFailed || tvReading || (tvReadAt && Date.now() - tvReadAt < tvEvery)) return;
     tvReadAt = Date.now();
-    GifOS.tvIndex.read().then((ls) => { tvLive = ls; queuePaint(); }, () => { tvFailed = true; });
+    GifOS.tvIndex.read().then((ls) => { tvLive = ls; queuePaint(); tvThumbs(ls); }, () => { tvFailed = true; });
+  }
+  // A listing's thumbnail is drawn only after THIS device has checked it (js/thumb-gate.js: explicit check first, once per
+  // picture, nothing sent anywhere). Until then, and for a refused one, the row keeps its icon.
+  const tvThumbUrl = (l) => TV_API + '/api/thumb/' + encodeURIComponent(l.id) + '.jpg?h=' + encodeURIComponent(l.thumb);
+  function tvThumbs(ls) {
+    const G = GifOS.thumbGate;
+    if (!G) return;
+    ls.slice(0, 8).forEach((l) => { if (l.id && l.thumb && !G.src(l.thumb)) G.load(tvThumbUrl(l), l.thumb).then((st) => { if (st === 'ok') queuePaint(); }); });
   }
   const tvKind = (l) => (l.kind === 'pre' ? W.tvKindPre : l.kind === 'bot' ? W.tvKindBot : W.live);
   const tvStrip = (n) => (tvLive.length ? '<div class="hv-sec-h hv-tvlive"><h2>' + esc(W.tvLive) + '</h2><a class="hv-link" href="' + esc(TV_API) + '/" target="_blank" rel="noopener">' + esc(W.all) + '</a></div><div class="hv-rows hv-tvlive">' +
-    tvLive.slice(0, n).map((l, i) => '<button type="button" class="hv-row tv" data-act="tvl:' + i + '"><span class="hv-row-ic live">' + svg('tv') + '</span><span class="hv-row-t"><b>' + esc(l.title) + '</b><span>' + esc(tvKind(l) + (l.n >= 2 ? ' · ' + T('tvWatching', { n: l.n }) : '')) + '</span></span><span class="hv-row-go">' + svg('arrow') + '</span></button>').join('') + '</div>' : '');
+    tvLive.slice(0, n).map((l, i) => '<button type="button" class="hv-row tv" data-act="tvl:' + i + '"><span class="hv-row-ic live">' + (GifOS.thumbGate && l.thumb && GifOS.thumbGate.src(l.thumb) ? '<img class="hv-tvthumb" alt="" src="' + GifOS.thumbGate.src(l.thumb) + '">' : svg('tv')) + '</span><span class="hv-row-t"><b>' + esc(l.title) + '</b><span>' + esc(tvKind(l) + (l.n >= 2 ? ' · ' + T('tvWatching', { n: l.n }) : '')) + '</span></span><span class="hv-row-go">' + svg('arrow') + '</span></button>').join('') + '</div>' : '');
   const liveCard = () => '<button type="button" class="p-live" data-act="tv"><span class="p-live-tag"><span class="hv-dot"></span>GifOS TV</span><b>' + esc(W.tvWatch) + '</b><span>' + esc(W.tvTune) + '</span></button>';
 
   // ---- popups: every one is a card of the shared popup library (js/dialog.js), which keeps Close on screen ---------------
