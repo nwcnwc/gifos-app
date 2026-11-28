@@ -2089,6 +2089,28 @@
   // pair so one gesture opens one tab; a deliberate re-open a moment later still
   // works because the window is short.
   let lastOpen = { id: null, t: 0 };
+  // NEVER A BLANK WHITE TAB (MEETSLOW 11-28): a new tab stays white until the first bytes of the page it opens arrive, which on a
+  // slow link is seconds (and the first open after a release downloads the whole new version). So the tab is opened IN the tap
+  // (iOS needs that), a small GifOS-looking shell is written into it at once, and only then is it pointed at the page: the old
+  // document stays on screen until the new one commits. The shell says it is working, and after a while says it is a slow link.
+  function openWithShell(url) {
+    let w = null;
+    try { w = root.open('', '_blank'); } catch (e) { w = null; }
+    if (!w) { root.open(url, '_blank'); return; }
+    try {
+      const d = w.document;
+      d.open();
+      d.write('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GifOS</title>' +
+        '<style>html,body{margin:0;height:100%;background:#0a0a0f;color:#e0e0f0;font:16px system-ui,sans-serif}' +
+        'body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}' +
+        '.b{font-weight:700;font-size:28px;letter-spacing:.02em}.s{width:34px;height:34px;border:3px solid #2a2a3a;border-top-color:#7b5cff;border-radius:50%;animation:r 1s linear infinite}' +
+        '@keyframes r{to{transform:rotate(360deg)}}#m{opacity:0;transition:opacity .6s;color:#9a9ab0;font-size:14px;text-align:center;padding:0 24px}#m.on{opacity:1}</style>' +
+        '<div class="b">GifOS</div><div class="s"></div><div id="m">Still loading. The connection looks slow, but GifOS is on its way.</div>' +
+        '<script>setTimeout(function(){document.getElementById("m").className="on"},4000)<\/script>');
+      d.close();
+      w.location.href = url;
+    } catch (e) { try { w.location.href = url; } catch (e2) { root.open(url, '_blank'); } }
+  }
   function openItem(it) {
     const now = Date.now();
     if (lastOpen.id === it.id && now - lastOpen.t < 700) return;
@@ -2102,7 +2124,7 @@
     if (it._identity && GifOS.identityUI) { GifOS.identityUI.manage(); return; }   // My identity: its own sheet, nothing to run
     if (it._receipt) { root.open('receipt.html#id=' + encodeURIComponent(it.fileId) + nsParam('&db='), '_blank'); return; }
     if (it._isApp) {
-      root.open('run.html#id=' + encodeURIComponent(it.fileId) + nsParam('&db='), '_blank');
+      openWithShell('run.html#id=' + encodeURIComponent(it.fileId) + nsParam('&db='));
       return;
     }
     // Non-app files (a plain image, or a whole-computer backup GIF) need the

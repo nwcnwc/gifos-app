@@ -98,6 +98,11 @@
   // `first`) counted as they arrive, so a tile held back for it can say how far along it is. video.progress() / onProgress.
   const meter = { total: 0, done: 0, ready: false, fns: new Set() };
   let urgent = false;   // a picture is waiting on the models: no more low-priority fetches
+  // PAUSE (MEETSLOW 11-28): the background download must never compete with a page the person is loading. Every low-priority
+  // fetch carries lowAC's signal; pauseLow() aborts them all (a part never kept is dropped, a kept file is not fetched again).
+  // A waiting picture (urgent) is never aborted.
+  let lowAC = new AbortController();
+  function pauseLow() { if (urgent) return false; try { lowAC.abort(); } catch (e) {} lowAC = new AbortController(); return true; }
   function note(n) {
     meter.done = Math.min(meter.total || Infinity, meter.done + n);
     meter.fns.forEach((f) => { try { f(); } catch (e) {} });
@@ -127,7 +132,7 @@
     }).catch(() => null) : Promise.resolve(null);
     return fromCache.then((hit) => {
       if (hit) return hit;
-      return fetch(pin.url, urgent ? { credentials: 'omit', mode: 'cors' } : { credentials: 'omit', mode: 'cors', priority: 'low' }).then((r) => {
+      return fetch(pin.url, urgent ? { credentials: 'omit', mode: 'cors' } : { credentials: 'omit', mode: 'cors', priority: 'low', signal: lowAC.signal }).then((r) => {
         if (!r.ok) throw new Error('download failed: HTTP ' + r.status + ' for ' + pin.name);
         return readBody(r, pin);
       }).then((buf) => root.crypto.subtle.digest('SHA-256', buf).then((d) => {
@@ -915,6 +920,7 @@
       onProgress: (f) => { meter.fns.add(f); return () => meter.fns.delete(f); },
       // PRELOAD ON EVERY GIFOS PAGE (Nathan 11-28): both models in the background, low priority, once per device (Cache Storage).
       // Resolves { ms, err } and never throws. Safe to call again: it joins the one download.
+      pause: pauseLow,
       preload: (opts) => { const t0 = performance.now(); return videoOpen(opts).then((e) => e.preload(), (e) => ({ err: String((e && e.message) || e) })).then((r) => Object.assign({ ms: Math.round(performance.now() - t0) }, r)); },
     } };
 })(typeof window !== 'undefined' ? window : globalThis);
