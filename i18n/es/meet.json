@@ -1390,6 +1390,8 @@
   "meet.setScopeNote": "Te sigue: se guarda en Me & My Contacts, igual en cada dispositivo que lo tenga. Solo este dispositivo: se queda en este teléfono u ordenador.",
   "meet.blurWhyUnsafe": "Difuminado por seguridad",
   "meet.blurSaysUnsafe": "Difuminado por seguridad",
+  "meet.blurWhyChecking": "Cambiando a video nítido…",
+  "meet.blurSaysChecking": "Cambiando a video nítido…",
   "meet.admXvH": "Seguridad del video",
   "meet.admXblk": "Bloquear contenido explícito",
   "meet.admXblkSub": "Las páginas de GifOS revisan el video en tu dispositivo y ocultan las imágenes sexualmente explícitas. No se envía nada a GifOS ni a nadie más. GifOS no puede ver tus reuniones.",

@@ -1390,6 +1390,8 @@
   "meet.setScopeNote": "Folgt Ihnen: in „Me & My Contacts“ gespeichert, gleich auf jedem Gerät, das sie hat. Nur dieses Gerät: bleibt auf diesem Telefon oder Computer.",
   "meet.blurWhyUnsafe": "Aus Sicherheitsgründen unscharf",
   "meet.blurSaysUnsafe": "Aus Sicherheitsgründen unscharf",
+  "meet.blurWhyChecking": "Wechsel zu klarem Video…",
+  "meet.blurSaysChecking": "Wechsel zu klarem Video…",
   "meet.admXvH": "Videosicherheit",
   "meet.admXblk": "Explizite Inhalte blockieren",
   "meet.admXblkSub": "GifOS-Seiten prüfen Video auf deinem Gerät und verbergen sexuell explizite Bilder. Nichts wird an GifOS oder sonst jemanden gesendet. GifOS kann deine Meetings nicht sehen.",

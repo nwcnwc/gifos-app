@@ -388,6 +388,12 @@
               } finally { if (bmp !== src && bmp && bmp.close) try { bmp.close(); } catch (e) {} }
             });
           },
+          // PRELOAD (FASTTRIP5): ready every stage now (the confirming model included) so the first confirm costs inference only.
+          // Bytes come from the Cache Storage copy (one download per device). Resolves { ms, err } and never throws.
+          preload() {
+            const t0 = performance.now();
+            return Promise.all(stages.map((m) => ready(m).then(() => null, (e) => String((e && e.message) || e)))).then((errs) => ({ ms: Math.round(performance.now() - t0), err: errs.filter(Boolean).join('; ') }));
+          },
           suspectLine: stages[0].suspect == null ? stages[0].line : stages[0].suspect,
           warmLine: stages[0].line,
           close() { w.close(); chainP = null; },
@@ -701,6 +707,21 @@
     }
     // poke(): something changed (a picture started being shown clear): look now rather than at the end of the gap.
     function poke() { if (stopped || busy || !timer || !(gap > T.XV_FIRST_GAP_MIN_MS)) return; clearTimeout(timer); timer = setTimeout(tick); }
+    // PRELOAD: the blocker is on for this room (the page starts a watch only then), so load both models in idle time, before
+    // any picture is clear; never blocks the join. The first model comes first, then the confirming one.
+    if (opts.preload !== false) {
+      const idle = (f) => (typeof root.requestIdleCallback === 'function' ? root.requestIdleCallback(f, { timeout: 5000 }) : setTimeout(f, 1500));
+      idle(async () => {
+        if (stopped) return;
+        try {
+          const t0 = performance.now();
+          const e = await open();
+          if (stopped || typeof e.preload !== 'function') return;
+          const r = await e.preload();
+          log('xv preload ' + (r.err ? 'error ' + r.err.slice(0, 100) : 'ready') + ' ' + Math.round(performance.now() - t0) + 'ms');
+        } catch (e) { log('xv preload skipped ' + String((e && e.message) || e).slice(0, 100)); }
+      });
+    }
     timer = setTimeout(tick, T.XV_FIRST_GAP_MIN_MS);   // the first look soon after the loop starts
     senseTimer = setTimeout(sense);
     return {
