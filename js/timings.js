@@ -380,6 +380,7 @@
     XV_AGG_N: 2,   // count
     XV_BURST_FRAME_MS: 100,   // ms
     XV_BURST_N: 4,   // count
+    XV_BURST_N_PHONE: 2,   // count
     XV_CHANGE_MIN_MS: 1500,   // ms
     XV_CLEAN_MAX: 6,   // count
     XV_CLEAN_MIN: 2,   // count
@@ -399,6 +400,7 @@
     XV_DUTY_DESK_PCT: 20,   // pct
     XV_DUTY_PHONE_PCT: 10,   // pct
     XV_GAP_MAX_MS: 8000,   // ms
+    XV_GAP_MAX_PHONE_MS: 20000,   // ms
     XV_GAP_MIN_MS: 1000,   // ms
     XV_RETRY_MS: 30000,   // ms
     holdMs: 2500,   // ms

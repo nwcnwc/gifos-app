@@ -5129,14 +5129,14 @@
         let id = X.els.get(v);
         if (!id) { id = 'el:' + (++X.n); X.els.set(v, id); X.byId.set(id, v); }
         let f = ''; try { f = getComputedStyle(v).filter || ''; } catch (e) {}
-        if (held(id) || f.indexOf('blur') < 0) { out.push({ id, el: v }); seen.add(tr.id); }
+        if (held(id) || v.dataset.xvb || f.indexOf('blur') < 0) { out.push({ id, el: v }); seen.add(tr.id); }   // a picture this loop blurred stays a source so it can lift (its own filter must not hide it)
       }
       return out;
     }
     function xvSync(on) {
       const E = window.GifOS && GifOS.explicit;
       if (on && !xvWatch && E && E.video && !E.unsupported()) {
-        xvWatch = E.video.watch({ sources: xvSources, onChange: (id, tripped, why, kind) => { const xe = xvSources.X && xvSources.X.byId.get(id); if (xe) { try { xe.style.filter = tripped ? 'blur(40px)' : ''; } catch (e) {} } else (0, /*()*/__C.xvSet)(id, tripped, why, kind); }, log: (line) => { try { (0, /*()*/__C.clog)(line); } catch (e) {} } });
+        xvWatch = E.video.watch({ sources: xvSources, onChange: (id, tripped, why, kind) => { const xe = xvSources.X && xvSources.X.byId.get(id); if (xe) { try { xe.style.filter = tripped ? 'blur(40px)' : ''; if (tripped) xe.dataset.xvb = '1'; else delete xe.dataset.xvb; } catch (e) {} } else (0, /*()*/__C.xvSet)(id, tripped, why, kind); }, log: (line) => { try { (0, /*()*/__C.clog)(line); } catch (e) {} } });
       } else if (!on && xvWatch) {
         const w = xvWatch;
         xvWatch = null;

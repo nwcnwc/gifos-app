@@ -577,7 +577,7 @@
     async function burstJob(src, el, r) {
       const t0 = now(), sc = [];
       r.changed = false; bursts++;
-      for (let i = 0; i < T.XV_BURST_N && !stopped; i++) {
+      for (let i = 0; i < (mobile ? T.XV_BURST_N_PHONE : T.XV_BURST_N) && !stopped; i++) {
         if (i) await sleep(T.XV_BURST_FRAME_MS);
         const x = await eng.first(el);
         sc.push(x.v);
@@ -638,7 +638,7 @@
             else avgF = avgF ? avgF * 0.8 + res.ms * 0.2 : res.ms;
             feed(p.src.id, p.r, res, 'chain');
           }
-          wait = Math.min(T.XV_GAP_MAX_MS, Math.max(T.XV_FIRST_GAP_MIN_MS, (avgF || 100) / fduty));
+          wait = Math.min(mobile ? T.XV_GAP_MAX_PHONE_MS : T.XV_GAP_MAX_MS, Math.max(T.XV_FIRST_GAP_MIN_MS, (avgF || 100) / fduty));
           // A suspect or a held-back picture: look again soon whatever the duty limit says.
           for (const r of recs.values()) if (r.sus || r.pend || r.changed || (r.burst && r.burst > 0)) { wait = Math.min(wait, T.XV_FIRST_GAP_MIN_MS, T.XV_BURST_MS); break; }
         }
