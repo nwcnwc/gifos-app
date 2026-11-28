@@ -739,9 +739,15 @@
       } catch (e) {
         err = String((e && e.message) || e);
         log('xv error ' + err.slice(0, 160));
-        eng = null;
-        for (const [id, r] of recs) if (r.pend) { r.pend = false; emit(id, r, 'error'); }
-        wait = T.XV_RETRY_MS;
+        if (/no picture to check/.test(err)) {
+          // A picture with no frame yet (a camera just turned on) is not a broken engine: look again soon, keep the models,
+          // or every other picture would wait XV_RETRY_MS (30 s) for its check behind it.
+          wait = T.XV_FIRST_GAP_MIN_MS;
+        } else {
+          eng = null;
+          for (const [id, r] of recs) if (r.pend) { r.pend = false; emit(id, r, 'error'); }
+          wait = T.XV_RETRY_MS;
+        }
       }
       busy = false;
       gap = wait;
