@@ -251,6 +251,7 @@ for await (const line of meet.lines({ toMe: true })) {
         <li data-i18n="welcome.c1.w1">No sign-up, no download, no phone app: open a link and you're in.</li>
         <li data-i18n="welcome.c1.w2">Free at any size: majority-rules meetings have no seat cap.</li>
         <li data-i18n="welcome.c1.w3">Big meetings where everyone can talk: each row talks among itself and hears the Stage.</li>
+        <li data-i18n="welcome.c1.w5">Peer to peer: people pass the meeting along to one another, so no one's connection has to carry the whole crowd, and the meeting costs the same to run at any size.</li>
         <li data-i18n="welcome.c1.w4">Float keeps the meeting in a small window while you get your screen back.</li></ul></div>
       <p data-i18n="welcome.c1.b1">A <b>majority-rules meeting</b> (an open meeting) belongs to nobody: if someone misbehaves, the room votes them off the Stage or out of the meeting. You choose how you appear: max blur, min blur or clear.</p>
       <p data-i18n="welcome.c1.b2">The meeting grows with the crowd. The first people sit on the Stage; as more arrive they fill rows, and each row talks among itself and hears the Stage. Rows fill a Stadium, from ten people to thousands on the same link. There are live captions, a transcript you can download, and a chat that is gone when everyone leaves. Tap <b>Float</b> and the meeting follows you in a small window.</p>
@@ -286,6 +287,7 @@ for await (const line of meet.lines({ toMe: true })) {
       <p class="head" data-i18n="welcome.c3.head">Name the broadcast and go live. Speakers, a shared screen or an app go up on the Stage, and everyone else watches.</p>
       <div class="solves"><h3 data-i18n="welcome.beats">How GifOS beats the others</h3><ul>
         <li data-i18n="welcome.c3.w1">No stream keys, encoders or streaming service: name it and go live from a browser tab.</li>
+        <li data-i18n="welcome.c3.w3">Serve a big audience from your home internet: you send to only a handful of viewers directly and they pass it on, so your upload does not grow when the audience does.</li>
         <li data-i18n="welcome.c3.w2">The audience talks back: viewers react and chat.</li></ul></div>
       <ul class="try"><li class="lbl" data-i18n="welcome.try">Try it</li>
         <li><a class="btn main" href="/cast" data-i18n="welcome.c3.t1">Start a broadcast</a></li>
@@ -301,7 +303,8 @@ for await (const line of meet.lines({ toMe: true })) {
       <p class="head" data-i18n="welcome.c4.head">One line puts a live GifOS meeting or broadcast on your page. The welcome meeting at the top of this page is one.</p>
       <div class="solves"><h3 data-i18n="welcome.beats">How GifOS beats the others</h3><ul>
         <li data-i18n="welcome.c4.w1">One line of code puts live video on your site, with no vendor player or contract.</li>
-        <li data-i18n="welcome.c4.w2">Viewers stay on your site to watch.</li></ul></div>
+        <li data-i18n="welcome.c4.w2">Viewers stay on your site to watch.</li>
+        <li data-i18n="welcome.c4.w3">No video bill and no server to size: the broadcaster feeds a handful of viewers directly and the audience passes the stream on, so a home connection is enough.</li></ul></div>
       <p data-i18n="welcome.c4.b1">Viewers can unmute, chat, react, go full screen, or float the player while they keep reading. They never turn on a camera or a microphone. Hosted rooms stay blurred in the player too, unless the host allows a clear Stage. The player plays while a host is in charge of the room and shows a short card the rest of the time.</p>
       <p class="lbl" data-i18n="welcome.c4.l1"><b>The script tag</b> (works on most sites). Put your room's name in place of <code>ROOM</code>:</p>
       <div class="code"><pre id="snip-script">&lt;script src="https://gifos.app/embed.js" data-room="ROOM"&gt;&lt;/script&gt;</pre><button class="copy" type="button" data-copy="snip-script">Copy</button></div>
@@ -344,7 +347,8 @@ for await (const line of meet.lines({ toMe: true })) {
       <p class="head" data-i18n="welcome.c5.head">A live broadcast that never stops: a hundred public-domain films, about seven hours of them, back to back, sent from a Raspberry Pi at home. This player is the same one line of code.</p>
       <div class="solves"><h3 data-i18n="welcome.beats">How GifOS beats the others</h3><ul>
         <li data-i18n="welcome.c5.w1">A 24-hour channel with no studio and no servers: one Raspberry Pi at home.</li>
-        <li><span class="soon" data-i18n="welcome.soon">Coming</span><span data-i18n="welcome.c5.w2">Finding live shows worth watching: a public directory at gifos.tv.</span></li>
+        <li data-i18n="welcome.c5.w4">Peer to peer: the Pi sends to only a handful of viewers directly, and viewers pass the stream on to one another. The audience can grow without your upload growing, so an ordinary home internet connection is enough.</li>
+        <li data-i18n="welcome.c5.w2">Finding live shows worth watching: a public directory at gifos.tv, with categories and search.</li>
         <li><span class="soon" data-i18n="welcome.soon">Coming</span><span data-i18n="welcome.c5.w3">Hosts supported directly: a donate button on a listing.</span></li></ul></div>
       <div class="player" id="tvplayer"><script src="/embed.js" data-room="gifos-tv" data-verifier="cc51c5e4f4418c66aa52a486" data-title="GifOS TV"></script></div>
       <p class="note under" data-i18n="welcome.c5.blur">The picture starts blurred: GifOS blurs video for viewers unless the room has a password. This broadcast's host has a plan with Clear Stage, so tap the picture to see the Stage clearly.</p>
@@ -358,7 +362,7 @@ for await (const line of meet.lines({ toMe: true })) {
             <li data-i18n="welcome.c5.h4"><b>The films.</b> A hundred short films from <a href="https://commons.wikimedia.org" rel="noopener" target="_blank">Wikimedia Commons</a> and the <a href="https://archive.org" rel="noopener" target="_blank">Internet Archive</a>: cartoons, early animation, newsreels, music films, space and nature. We kept a film only when its own file page lists it as public domain or CC0, and only when it has sound all the way through (no long silences that would sound like a broken player). The <a href="/tv/clips.json">full list with sources and credits</a> is below.</li>
             <li data-i18n="welcome.c5.h5"><b>Prepared once, elsewhere.</b> Another computer converted every film to one light format (640&times;360 pictures, VP8 video and Opus sound in WebM), evened out the loudness, and joined the films back to back into reels of about forty minutes. The Pi only keeps the reels, in a folder with a size cap, so it never fills its card.</li>
             <li data-i18n="welcome.c5.h6"><b>GifOS's own Rebroadcast button.</b> Every broadcast host has it: More, Rebroadcast, Choose a video. The script presses it with the next reel, and when a reel ends it starts the next one, forever. Viewers see the Prerecorded badge.</li>
-            <li data-i18n="welcome.c5.h7"><b>Peer to peer.</b> GifOS meetings run between the people in them, not on our servers. Viewers pass the Stage along to one another, so a Pi on a home connection does not send a copy to everyone watching.</li>
+            <li data-i18n="welcome.c5.h7"><b>Peer to peer.</b> GifOS meetings run between the people in them, not on our servers. The Pi sends the Stage to only a handful of viewers directly; they pass it on to others, and those to others. However many are watching, the Pi's upload stays about the same, so a home connection can feed a big audience.</li>
             <li data-i18n="welcome.c5.h8"><b>Always on.</b> The script runs as a service that restarts on failure. A watchdog restarts it if it stops reporting, and it rejoins on its own when GifOS ships a new release.</li>
             <li data-i18n="welcome.c5.h9"><b>On this page.</b> The player above is this snippet:</li>
           </ol>
@@ -367,7 +371,6 @@ for await (const line of meet.lines({ toMe: true })) {
       </details>
       <details class="tvcredits" id="tvcredits"><summary data-i18n="welcome.c5.credits">All the films in GifOS TV, with credits</summary><div class="in"><p>Loading the list&hellip;</p></div></details>
       <ul class="coming">
-        <li><span class="soon" data-i18n="welcome.soon">Coming</span><span data-i18n="welcome.c5.s1">gifos.tv: a hosted room presses one button, List on gifos.tv, and shows up in a public directory while it's live.</span></li>
         <li><span class="soon" data-i18n="welcome.soon">Coming</span><span data-i18n="welcome.c5.s2">A donate button on a listing, paid straight to the host.</span></li></ul>
     </section>
 
@@ -376,7 +379,7 @@ for await (const line of meet.lines({ toMe: true })) {
       <h2 data-i18n="welcome.c6.title">Why it costs so little: peer to peer</h2>
       <p class="head" data-i18n="welcome.c6.head">The people in the meeting carry it. Each browser sends, receives and passes video along for its neighbours; our servers only introduce people.</p>
       <div class="solves"><h3 data-i18n="welcome.beats">How GifOS beats the others</h3><ul>
-        <li data-i18n="welcome.c6.w1">Costs that don't grow with every viewer: the people in the meeting carry it.</li>
+        <li data-i18n="welcome.c6.w1">Built so the audience can grow without your upload growing: you send to only a handful of people directly, and the rest receive it through the people already watching. The same home connection serves ten viewers or ten thousand, and the cost does not grow with every viewer.</li>
         <li data-i18n="welcome.c6.w2">End-to-end encrypted: our servers only introduce people.</li>
         <li data-i18n="welcome.c6.w3">Free stays free: majority-rules meetings cost us so little they are free, forever.</li></ul></div>
       <p data-i18n="welcome.c6.b1">Meetings are end-to-end encrypted. Voice and chat get through corporate and school firewalls on the free plan, still end-to-end encrypted; a paid plan connects video across up to 3, 6 or 20 firewalled networks, still end-to-end encrypted. A bigger meeting doesn't mean a bigger video bill for us, which is why majority-rules meetings are free, forever.</p>
