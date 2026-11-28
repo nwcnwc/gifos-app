@@ -1137,6 +1137,42 @@
     $('emb-gear').onclick = function () { setPanel(panel === 'menu' ? null : 'menu'); };
     $('emb-info').onclick = function () { setPanel(panel === 'info' ? null : 'info'); };
     $('emb-info-close').onclick = function () { setPanel(null, true); };
+    // DEBUG LOG DOWNLOAD (only when the embedder asked: data-debug="1" -> &debug=1 in the hash). The page's own debug trace
+    // (the meeting's recorder: connection states, TURN and ICE events, door, liveness) is kept on this device and leaves only
+    // when the viewer presses this. Room passwords and keys never reach the file: values under secret-looking keys are dropped.
+    (function () {
+      var asks = false; try { asks = /(?:^|[#&?])debug=(?:on|1|true)(?:&|$)/i.test(location.hash); } catch (e) {}
+      var row = $('emb-m-debug'), btn = $('emb-debug-dl'), note = $('emb-debug-note');
+      if (!row || !btn || !asks) return;
+      row.hidden = false;
+      var SECRET = /"([A-Za-z0-9_.-]*(?:pass|pw|secret|cred|token|auth|private|seed|apikey|roomkey|hostkey)[A-Za-z0-9_.-]*)"\s*:\s*"(?:[^"\\]|\\.)*"/gi;
+      btn.onclick = function () {
+        var D = null, store = null;
+        try { D = C.model.net.DLOG(); store = C.dlogStoreGet(); } catch (e) {}
+        if (!D || !store) { note.textContent = ' ' + tr('dbgNone', 'No debug log on this device.'); return; }
+        btn.disabled = true; note.textContent = '';
+        Promise.resolve().then(function () { try { if (C.model.net.dlogRec() && C.model.net.dlogRec().live()) return C.model.net.dlogRec().flush(true); } catch (e) {} })
+          .then(function () { var ver = ''; try { ver = String(window.GIFOS_VERSION || 'edge') + ' build ' + String(window.GIFOS_BUILD || 0) + ' (embed)'; } catch (e) {} return store.exportParts({ ver: ver, ua: navigator.userAgent }); })
+          .then(function (parts) { return new Blob(parts).text(); })
+          .then(function (text) {
+            text = text.replace(SECRET, '"$1":"-"');
+            var plain = new Blob([text], { type: 'application/x-ndjson' });
+            if (typeof CompressionStream === 'function' && plain.stream) {
+              return new Response(plain.stream().pipeThrough(new CompressionStream('gzip'))).blob().then(function (gz) { return { blob: new Blob([gz], { type: 'application/gzip' }), gz: true }; }, function () { return { blob: plain, gz: false }; });
+            }
+            return { blob: plain, gz: false };
+          })
+          .then(function (out) {
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(out.blob); a.download = D.fileName(Date.now()).replace(/^gifos-debug/, 'gifos-embed-debug') + (out.gz ? '.gz' : ''); a.style.display = 'none';
+            document.body.appendChild(a); a.click();
+            setTimeout(function () { try { URL.revokeObjectURL(a.href); a.remove(); } catch (e) {} }, 60000);
+            note.textContent = ' ' + tr('dbgDone', 'Saved.');
+          })
+          .catch(function () { note.textContent = ' ' + tr('dbgFail', 'Could not export the debug log.'); })
+          .then(function () { btn.disabled = false; });
+      };
+    })();
     $('emb-chat').onclick = function () { setPanel(panel === 'chat' ? null : 'chat'); if (panel === 'chat') { try { $('emb-chat-in').focus(); } catch (e) {} } };
     $('emb-chat-close').onclick = function () { setPanel(null, true); };
     $('emb-chat-form').onsubmit = function (e) { e.preventDefault(); sendChat(); };
