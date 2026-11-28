@@ -130,7 +130,7 @@ var CORE = [
   '/i18n/en/meet.json', '/i18n/en/embed.json',
   '/i18n/en/apps/appstore.json', '/i18n/en/apps/askai.json', '/i18n/en/apps/bible.json', '/i18n/en/apps/broadcast.json', '/i18n/en/apps/calc.json', '/i18n/en/apps/camera.json', '/i18n/en/apps/chat.json', '/i18n/en/apps/chess.json', '/i18n/en/apps/connect4.json', '/i18n/en/apps/dial.json', '/i18n/en/apps/fakefacts.json', '/i18n/en/apps/fortune.json', '/i18n/en/apps/guestbook.json', '/i18n/en/apps/imposter.json', '/i18n/en/apps/meet.json', '/i18n/en/apps/minesweeper.json', '/i18n/en/apps/mymedia.json', '/i18n/en/apps/notes.json', '/i18n/en/apps/oneclue.json', '/i18n/en/apps/paint.json', '/i18n/en/apps/reader.json', '/i18n/en/apps/roulette.json', '/i18n/en/apps/samebrain.json', '/i18n/en/apps/speechcoach.json', '/i18n/en/apps/spy.json', '/i18n/en/apps/taketurns.json', '/i18n/en/apps/tictactoe.json', '/i18n/en/apps/tilt.json', '/i18n/en/apps/timer.json', '/i18n/en/apps/welcome.json', '/i18n/en/apps/wolves.json',
   '/themes/theme.js', '/themes/icons.js', '/themes/eggs.js',
-  '/gifos.key', '/version.json', '/changelog.json', '/og.png', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/badge-96.png',
+  '/gifos.key', '/version.json', '/changelog.json', '/og.png', '/manifest.webmanifest', '/icon.svg', '/themes/call-icon-192.png', '/themes/call-badge-96.png',
 ];
 
 // A meeting join installs this worker too. These three are the desktop, not
@@ -654,7 +654,7 @@ function bellTime(at) { try { return new Date(at).toLocaleTimeString([], { hour:
 // ("Answer", "Pick up", "Join") and phrases like "X is calling" or "Incoming call" trip it for common contact names
 // ("Dad", "Mom"); the contact's name with its ✓ over the time is clean for all of them, and so is "Missed call: X ✓" with
 // Call back. So the ring is the name and the time, a tap answers it, a swipe turns it down, and a call shows once.
-var BELL_ICON = '/icon-192.png', BELL_BADGE = '/badge-96.png';
+var BELL_ICON = '/themes/call-icon-192.png', BELL_BADGE = '/themes/call-badge-96.png';
 var BELL_TXT = { ring: 'GifOS call', missed: 'Missed call', back: 'Call back' };
 function bellTag(i) { return 'gifos-call-' + String(i || 'x'); }
 function bellMissed(label, when, url, i, r, c) {
