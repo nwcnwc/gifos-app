@@ -185,8 +185,9 @@
     '#ring-sheet button.go{background:#1a7f37;border-color:#1a7f37;color:#fff}' +
     '@media (prefers-color-scheme: dark){#ring-sheet .ring-box{background:var(--surface,#1d1f24);color:var(--text,#eee)}}';
   // A word with one OK (no ring, no tone).
+  let later = null;   // a word that came while a ring was up: shown when the ring ends
   function notice(title, text) {
-    if (ringing) return;
+    if (ringing) { later = [title, text]; return; }
     sheet(title, text, 'OK');
     const no = doc.getElementById('ring-no'); if (no) no.hidden = true;
     doc.getElementById('ring-yes').onclick = () => { const el = doc.getElementById('ring-sheet'); if (el) el.hidden = true; };
@@ -217,6 +218,7 @@
     try { if (note) note.close(); } catch (e) {}
     note = null;
     const el = doc.getElementById('ring-sheet'); if (el) el.hidden = true;
+    if (later) { const n = later; later = null; notice(n[0], n[1]); }
   }
   function answer() {
     const r = ringing; if (!r) return;
