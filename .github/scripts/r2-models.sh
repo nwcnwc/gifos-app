@@ -18,7 +18,7 @@
 #            changes in place; a new version is a new path
 #   headers  Cache-Control: public, max-age=31536000, immutable
 #            Content-Type: application/octet-stream
-#   CORS     GET/HEAD from https://gifos.app (MODELS_ORIGINS, space-separated)
+#   CORS     GET/HEAD from https://gifos.app and https://gifos.tv (the on-device thumbnail check; MODELS_ORIGINS, space-separated)
 #   cache    a zone Cache Rule makes models.gifos.app eligible for the edge
 #            cache and keeps each object's own Cache-Control (.onnx is not one
 #            of Cloudflare's default cached extensions)
@@ -46,7 +46,7 @@ set -euo pipefail
 BUCKET="${MODELS_BUCKET:-gifos-models}"
 DOMAIN="${MODELS_DOMAIN:-models.gifos.app}"
 ZONE_NAME="${ZONE_NAME:-gifos.app}"
-ORIGINS="${MODELS_ORIGINS:-https://gifos.app}"
+ORIGINS="${MODELS_ORIGINS:-https://gifos.app https://gifos.tv}"   # gifos.tv too: a deploy that set only gifos.app would undo the rule the thumbnail check needs (2026-11-28)
 CACHE_CONTROL='public, max-age=31536000, immutable'
 CONTENT_TYPE='application/octet-stream'
 RULE_REF='gifos_models_edge_cache'
