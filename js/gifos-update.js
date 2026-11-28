@@ -298,8 +298,16 @@
       // priority, so the first open after a release is already on the device (sw.js prefetchRelease; MEETSLOW 11-28: that open
       // downloaded ~2 MB over a hotel link while the person watched a blank tab).
       try {
-        const sw = root.navigator && root.navigator.serviceWorker, mine = String(root.GIFOS_VERSION || '');
-        if (sw && sw.controller && mine && mine !== 'edge' && mine !== live.latest) sw.controller.postMessage({ type: 'gifos-prefetch-release', version: live.latest });
+        // A release page (this page's own /versions/<x>/ folder, or the Home's GIFOS_VERSION) asks for the LIVE release: when it is
+        // newer than this page, so the next open is already here; when it is this page's own, so a Meeting opened later from this
+        // Home is too. Edge pages never do. The worker skips what it already holds, so asking again costs nothing.
+        const sw = root.navigator && root.navigator.serviceWorker;
+        const m = /^\/versions\/(\d+\.\d+\.\d+(?:\.\d+)?)\//.exec(root.location.pathname || '');
+        const mine = String(root.GIFOS_VERSION || (m && m[1]) || '');
+        if (sw && mine && mine !== 'edge') {
+          const post = () => { const a = sw.controller; if (a) a.postMessage({ type: 'gifos-prefetch-release', version: live.latest }); return !!a; };
+          if (!post() && sw.ready) sw.ready.then((reg) => { if (reg && reg.active) reg.active.postMessage({ type: 'gifos-prefetch-release', version: live.latest }); }).catch(() => {});
+        }
       } catch (e) {}
       const want = !(opts && typeof opts.notes === 'function') || opts.notes(info);
       if (!want || notesFor === live.latest) return { info, changelog: notesCache };
