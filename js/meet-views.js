@@ -1689,15 +1689,15 @@
         pzSet(g.h, pzStep(g.geo, g.c0, g.p0, mid(e.touches), g.d0 / dist(e.touches)));
       }, { passive: false, capture: true });
       document.addEventListener('touchend', (e) => {
-        if (g && e.touches.length < 2) { g = null; quiet = Date.now() + 450; if (e.cancelable) e.preventDefault(); tap = null; return; }
+        if (g && e.touches.length < 2) { g = null; quiet = Date.now() + TM.PINCH_QUIET_MS; if (e.cancelable) e.preventDefault(); tap = null; return; }
         // double-tap on a zoomed picture puts it back (a first tap is only a tap)
         if (e.touches.length || e.changedTouches.length !== 1) { tap = null; return; }
         const t = e.changedTouches[0], now = Date.now(), h = pzHostAt(t.clientX, t.clientY);
         if (!h || !pzKey(h)) { tap = null; return; }
-        if (tap && tap.h === h && now - tap.t < 400 && Math.hypot(t.clientX - tap.x, t.clientY - tap.y) < 40) {
+        if (tap && tap.h === h && now - tap.t < TM.PINCH_DOUBLE_TAP_MS && Math.hypot(t.clientX - tap.x, t.clientY - tap.y) < 40) {
           tap = null;
           if (GifOS.meetZones.isDefault(D.cropOf(pzKey(h)))) return;
-          quiet = now + 450; if (e.cancelable) e.preventDefault();
+          quiet = now + TM.PINCH_QUIET_MS; if (e.cancelable) e.preventDefault();
           D.closeWin();
           pzSet(h, null);
           return;

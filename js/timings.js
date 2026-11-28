@@ -191,6 +191,8 @@
     PAYPAL_KEEP_MS: 21600000,   // ms
     PAYPAL_POLL_MS: 2000,   // ms
     PEER_SILENT_MS: 30000,   // ms
+    PINCH_DOUBLE_TAP_MS: 300,   // ms
+    PINCH_QUIET_MS: 300,   // ms
     PIN_HOLD_MS: 2000,   // ms
     PIPE_HOLD_EVERY_MS: 1000,   // ms
     PIPE_HOLD_MAX_MS: 4000,   // ms
