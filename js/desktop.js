@@ -4036,7 +4036,7 @@
         '</section>' +
         '<section data-page="look" hidden>' +
           '<p class="add-help">' + escapeHtml(ST('settings.look.intro')) + '</p>' +
-          (GifOS.homeView && GifOS.homeView.available() ? GifOS.homeView.settingsHtml() : '') +
+          (GifOS.homeView && GifOS.homeView.available() ? GifOS.homeView.settingsHtml(scopeTag) : '') +
           '<div class="set-group">' + escapeHtml(ST('settings.look.background')) + scopeTag(false) + '</div>' +
           '<div class="set-card set-pad">' +
             '<label class="set-label" for="set-bg-color">' + escapeHtml(ST('settings.look.color')) + '</label>' +
